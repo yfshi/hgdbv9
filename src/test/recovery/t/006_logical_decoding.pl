@@ -67,7 +67,11 @@ $node_primary->restart('fast');
 $result = $node_primary->safe_psql('postgres',
 	qq[SELECT pg_logical_slot_get_changes('test_slot', NULL, NULL);]);
 chomp($result);
-is($result, '', 'Decoding after fast restart repeats no rows');
+
+my @filterd_changes = grep { !/(pg_reboot|pg_audit_log|BEGIN|COMMIT)/ } split(/\n/, $result);
+my $filterd_result = join("\n", @filterd_changes);
+#is($result, '', 'Decoding after fast restart repeats no rows');
+is($filterd_result, '', 'Decoding after fast restart repeats no rows');
 
 # Insert some rows and verify that we get the same results from pg_recvlogical
 # and the SQL interface.
@@ -82,10 +86,20 @@ table public.decoding_test: INSERT: x[integer]:3 y[text]:'3'
 table public.decoding_test: INSERT: x[integer]:4 y[text]:'4'
 COMMIT};
 
+my $expected1 = q{table public.decoding_test: INSERT: x[integer]:1 y[text]:'1'
+table public.decoding_test: INSERT: x[integer]:2 y[text]:'2'
+table public.decoding_test: INSERT: x[integer]:3 y[text]:'3'
+table public.decoding_test: INSERT: x[integer]:4 y[text]:'4'};
+
 my $stdout_sql = $node_primary->safe_psql('postgres',
 	qq[SELECT data FROM pg_logical_slot_peek_changes('test_slot', NULL, NULL, 'include-xids', '0', 'skip-empty-xacts', '1');]
 );
-is($stdout_sql, $expected, 'got expected output from SQL decoding session');
+#is($stdout_sql, $expected, 'got expected output from SQL decoding session');
+
+my @filterd_lines = grep { !/(pg_reboot|pg_audit_log|BEGIN|COMMIT)/ } split(/\n/, $stdout_sql);
+my $filterd_results = join("\n", @filterd_lines);
+is($filterd_results, $expected1, 'got expected output from SQL decoding session');
+
 
 my $endpos = $node_primary->safe_psql('postgres',
 	"SELECT lsn FROM pg_logical_slot_peek_changes('test_slot', NULL, NULL) ORDER BY lsn DESC LIMIT 1;"
@@ -103,8 +117,11 @@ my $stdout_recv = $node_primary->pg_recvlogical_upto(
 	'include-xids'     => '0',
 	'skip-empty-xacts' => '1');
 chomp($stdout_recv);
-is($stdout_recv, $expected,
-	'got same expected output from pg_recvlogical decoding session');
+my @filterd_line = grep { !/(pg_reboot|pg_audit_log|BEGIN|COMMIT)/ } split(/\n/, $stdout_recv);
+my $filterd_results_l = join("\n", @filterd_line);
+is($filterd_results_l, $expected1, 'got same expected output from pg_recvlogical decoding session');
+#is($stdout_recv, $expected,
+#	'got same expected output from pg_recvlogical decoding session');
 
 $node_primary->poll_query_until('postgres',
 	"SELECT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'test_slot' AND active_pid IS NULL)"

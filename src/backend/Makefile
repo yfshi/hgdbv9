@@ -236,7 +236,9 @@ endif
 	# END - SQL PARSER
 	$(INSTALL_DATA) $(srcdir)/utils/misc/ivorysql.mysql.conf.sample '$(DESTDIR)$(datadir)/ivorysql.mysql.conf.sample'
 	# END - SRS-MISC-MYSQL-FRAME
-
+	# Begin - ReqID:SRS-SECURITY-AUDIT
+	$(INSTALL_DATA) $(srcdir)/utils/misc/sec_pg.conf.sample '$(DESTDIR)$(datadir)/sec_pg.conf.sample'
+	# End - ReqID:SRS-SECURITY-AUDIT
 ifeq ($(with_llvm), yes)
 install-bin: install-postgres-bitcode
 
@@ -300,7 +302,10 @@ endif
 	$(MAKE) -C utils uninstall-data
 	rm -f '$(DESTDIR)$(datadir)/pg_hba.conf.sample' \
 	      '$(DESTDIR)$(datadir)/pg_ident.conf.sample' \
-	      '$(DESTDIR)$(datadir)/postgresql.conf.sample'
+	      '$(DESTDIR)$(datadir)/postgresql.conf.sample' 
+	# Begin - ReqID:SRS-SECURITY-AUDIT
+	rm -f '$(DESTDIR)$(datadir)/sec_pg.conf.sample'
+	# End - ReqID:SRS-SECURITY-AUDIT
 ifeq ($(with_llvm), yes)
 	$(call uninstall_llvm_module,postgres)
 endif

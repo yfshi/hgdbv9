@@ -111,6 +111,8 @@ pg_amop|t
 pg_amproc|t
 pg_attrdef|t
 pg_attribute|t
+pg_audit_config|t
+pg_audit_log|f
 pg_auth_members|t
 pg_authid|t
 pg_cast|t
@@ -149,9 +151,12 @@ pg_proc|t
 pg_publication|t
 pg_publication_rel|t
 pg_range|t
+pg_reboot|t
 pg_replication_origin|t
 pg_rewrite|t
 pg_seclabel|t
+pg_secmon_history|f
+pg_secmon_thrhis|f
 pg_sequence|t
 pg_shdepend|t
 pg_shdescription|t
@@ -162,6 +167,13 @@ pg_statistic_ext_data|t
 pg_subscription|t
 pg_subscription_rel|t
 pg_tablespace|t
+pg_track_db_role_settings_history|t
+pg_track_db_role_settings_list|t
+pg_track_settings_history|t
+pg_track_settings_list|t
+pg_track_settings_rds_src_tmp|f
+pg_track_settings_reboot_src_tmp|f
+pg_track_settings_settings_src_tmp|f
 pg_transform|t
 pg_trigger|t
 pg_ts_config|t

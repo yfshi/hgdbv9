@@ -9,6 +9,12 @@
  * Copyright (c) 2000-2021, PostgreSQL Global Development Group
  * Written by Peter Eisentraut <peter_e@gmx.net>.
  *
+ * Authored by wanghaoyan@highgo.com, 20240327.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * IDENTIFICATION
  *	  src/backend/utils/misc/guc.c
  *
@@ -4796,7 +4802,18 @@ static struct config_string ConfigureNamesString[] =
 		"",
 		check_restrict_nonsystem_relation_kind, assign_restrict_nonsystem_relation_kind, NULL
 	},
-
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	{
+		{"databasename", PGC_POSTMASTER, DEVELOPER_OPTIONS,
+			gettext_noop("Sets the default database name."),
+			NULL,
+			GUC_IS_NAME
+		},
+		&DatabaseName,
+		"postgres",
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-AUDIT */
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_STRING_PARAMS
 	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */

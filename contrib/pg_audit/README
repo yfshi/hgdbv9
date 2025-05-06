@@ -1,0 +1,70 @@
+The HGDB mandatory access control module
+----------------------------------------
+
+This directory contains the source code of MAC machenism.
+
+
+Basically, This directory currently only contain mandatory access rules. 
+Because some priviliges problem ,the functions to support other feature,
+such as get/set seclabel, compare seclabels are moved to the /src directory. 
+Maybe someday those functions will be moved back to make this extension easier
+to maintain. 
+
+The code in hg_hooks.c provide the function about table-level MAC rules.
+In short, the table-level access rules will be like the pseudo code as 
+following,
+
+switch(query->commandType)
+{
+	case CMD_SELECT:
+		if (!HgRowLevelSecurityIsON)
+		{
+			if(Compare_Two_Labels(sub_seclabel,obj_seclabel) == LABEL_UNCOMPARABLE)
+				report error!!
+		}
+		else
+		{
+			if(relkind == RELKIND_RELATION)
+				hg_make_rowlevel_quals_node(query,varno);
+					
+		}
+		break;
+
+	case CMD_UPDATE:
+		if (Compare_Two_Labels(sub_seclabel,obj_seclabel) != LABEL_EQUAL)	
+			report error!!
+				
+		if (HgRowLevelSecurityIsON)
+			if(relkind == RELKIND_RELATION)
+				hg_make_rowlevel_quals_node(query,varno);
+					
+		break;
+
+	case CMD_DELETE:
+		if (Compare_Two_Labels(sub_seclabel,obj_seclabel) != LABEL_EQUAL)
+			report error!!
+		if (HgRowLevelSecurityIsON)
+			if(relkind == RELKIND_RELATION)
+				hg_make_rowlevel_quals_node(query,varno);
+	
+		break;
+			
+	case CMD_INSERT:
+		if (Compare_Two_Labels(obj_seclabel,sub_seclabel) == LABEL_UNCOMPARABLE)
+			report error!!
+		break;
+			
+	default:
+		break;
+}
+
+And it also provide the function to link the extension with internal 
+hooks. You can find more details in the decrisption above each function in 
+the file.
+
+The code in file row-level.c contain the functions to support row-level mandatory
+access control rules. When enable row-level mandatory access control, the system will 
+apply row-level check rules to the query by calling function hg_make_rowlevel_quals_node().
+Funciton hg_make_rowlevel_quals_node() add a condition node to the query, just like add 
+the access control rule as a WHERE clause in query.And more details can be found 
+in each funciotn's decription.

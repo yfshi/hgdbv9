@@ -6,6 +6,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  *
  * IDENTIFICATION
  *	  src/backend/commands/tablecmds.c
@@ -127,6 +133,9 @@
 /* End - ReqID:SRS-MYSQL-CASE */
 
 #include "catalog/dependency.h" /* BUG#Z1279 */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /*
  * ON COMMIT action list
@@ -2544,6 +2553,12 @@ ExecuteTruncateGuts(List *explicit_rels,
 	{
 		ExecASTruncateTriggers(estate, resultRelInfo);
 		resultRelInfo++;
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		if(audit_object_hook)
+		{
+			(*audit_object_hook)(InvalidOid,(Relation) lfirst(cell));
+		}
+/* End - ReqID:SRS-SECURITY-AUDIT */
 	}
 
 	/* Handle queued AFTER triggers */
@@ -4660,6 +4675,11 @@ AlterTable(AlterTableStmt *stmt, LOCKMODE lockmode,
 		   AlterTableUtilityContext *context)
 {
 	Relation	rel;
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_alter_pg_audit_log_hook)
+		(*audit_alter_pg_audit_log_hook)(stmt->relation->relname);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/* Caller is required to provide an adequate lock. */
 	rel = relation_open(context->relid, NoLock);

@@ -1,0 +1,2 @@
+version=3
+https://github.com/rjuju/pg_track_settings/tags .*/([0-9.]*).tar.gz

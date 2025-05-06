@@ -22,6 +22,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20240327.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  *
  * IDENTIFICATION
  *	  src/backend/executor/execExpr.c
@@ -59,6 +65,9 @@
 #include "catalog/pg_proc.h"
 #include "parser/parse_param.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 
 typedef struct ExprSetupInfo
@@ -2794,6 +2803,15 @@ ExecInitFunc(ExprEvalStep *scratch, Expr *node, List *args, Oid funcid,
 		/* Check permission to call function */
 		aclresult = pg_proc_aclcheck(funcid, GetUserId(), ACL_EXECUTE);
 		if (aclresult != ACLCHECK_OK)
+		{
+/* Begin - ReqID:SRS-SECURITY-AUDIT */	
+			if (sqlite_open_db_for_audit_hook && strcmp(get_func_name(funcid), "pg_reload_conf") == 0)
+			{
+				char *errstr = "permission denied for function pg_reload_conf";
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
+			}
+/* End - ReqID:SRS-SECURITY-AUDIT */
+		}
 			aclcheck_error(aclresult, OBJECT_FUNCTION, get_func_name(funcid));
 		InvokeFunctionExecuteHook(funcid);
 	}

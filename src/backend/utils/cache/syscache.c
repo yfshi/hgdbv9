@@ -6,6 +6,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  *
  * IDENTIFICATION
  *	  src/backend/utils/cache/syscache.c
@@ -90,6 +96,9 @@
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "catalog/pg_audit_config.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /*---------------------------------------------------------------------------
 
@@ -222,6 +231,30 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		128
 	},
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	{AuditConfigRelationId, /* AUDITCONFIGID */
+		AuditConfigconfIdIndexId,
+		1,
+		{
+			Anum_pg_audit_config_confid,
+			0,
+			0,
+			0
+		},
+		2
+	},
+	{AuditConfigRelationId, /* AUDITACTIONNAMEAUDITTYPEID */
+		AuditConfigActionnameAudittypeIndexId,
+		4,
+		{
+			Anum_pg_audit_config_actionname,
+			Anum_pg_audit_config_objoid,
+			Anum_pg_audit_config_classoid,
+			Anum_pg_audit_config_audittype
+		},
+		16
+	},
+/* End - ReqID:SRS-SECURITY-AUDIT */
 	{AuthMemRelationId,			/* AUTHMEMMEMROLE */
 		AuthMemMemRoleIndexId,
 		2,

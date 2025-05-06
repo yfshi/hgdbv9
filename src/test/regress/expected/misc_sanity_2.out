@@ -78,7 +78,12 @@ end loop;
 end$$;
 NOTICE:  pg_attrdef contains unpinned initdb-created object(s)
 NOTICE:  pg_database contains unpinned initdb-created object(s)
+NOTICE:  pg_event_trigger contains unpinned initdb-created object(s)
 NOTICE:  pg_extension contains unpinned initdb-created object(s)
+NOTICE:  pg_foreign_data_wrapper contains unpinned initdb-created object(s)
+NOTICE:  pg_foreign_server contains unpinned initdb-created object(s)
+NOTICE:  pg_package contains unpinned initdb-created object(s)
+NOTICE:  pg_package_body contains unpinned initdb-created object(s)
 NOTICE:  pg_rewrite contains unpinned initdb-created object(s)
 NOTICE:  pg_tablespace contains unpinned initdb-created object(s)
 NOTICE:  pg_trigger contains unpinned initdb-created object(s)
@@ -124,12 +129,13 @@ FROM pg_class
 WHERE relnamespace = 'pg_catalog'::regnamespace AND relkind = 'r'
       AND pg_class.oid NOT IN (SELECT indrelid FROM pg_index WHERE indisprimary)
 ORDER BY 1;
-   relname   
--------------
+     relname     
+-----------------
+ pg_audit_config
  pg_depend
  pg_object
  pg_shdepend
-(3 rows)
+(4 rows)
 
 -- system catalog unique indexes not wrapped in a constraint
 -- (There should be none.)

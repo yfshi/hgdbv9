@@ -251,18 +251,34 @@ $killme2->finish;
 $node->poll_query_until('postgres', undef, '');
 
 # Check for temporary files -- should be there
-is( $node->safe_psql(
-		'postgres', 'SELECT COUNT(1) FROM pg_ls_dir($$base/pgsql_tmp$$)'),
-	qq(1),
-	'one temporary file');
+#is( $node->safe_psql(
+#		'postgres', 'SELECT COUNT(1) FROM pg_ls_dir($$base/pgsql_tmp$$)'),
+#	qq(1),
+#	'one temporary file');
+my $tmp_files = $node->safe_psql(
+	'postgres',
+	'SELECT pg_ls_dir($$base/pgsql_tmp$$)'
+	);
+my @files = split(/\n/, $tmp_files);
+	
+is(scalar @files, 1, 'one temporary file');
+my $tmp_file = $files[0];
 
 # Restart should remove the temporary files
 $node->restart();
+#sleep 3;
 
 # Check the temporary files -- should be gone
-is( $node->safe_psql(
-		'postgres', 'SELECT COUNT(1) FROM pg_ls_dir($$base/pgsql_tmp$$)'),
-	qq(0),
-	'temporary file was removed');
+#is( $node->safe_psql(
+#		'postgres', 'SELECT COUNT(1) FROM pg_ls_dir($$base/pgsql_tmp$$)'),
+#	qq(0),
+#	'temporary file was removed');
+
+my $remaining_files = $node->safe_psql(
+	'postgres',
+	'SELECT pg_ls_dir($$base/pgsql_tmp$$)'
+	);
+
+unlike($remaining_files, qr/^$tmp_file$/m, 'temporary file was removed');
 
 $node->stop();

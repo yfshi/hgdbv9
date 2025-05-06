@@ -8,6 +8,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  *
  * IDENTIFICATION
  *	  src/backend/access/transam/xact.c
@@ -69,6 +75,9 @@
 #include "utils/snapmgr.h"
 #include "utils/timeout.h"
 #include "utils/timestamp.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /*
  *	User-tweakable parameters
@@ -383,6 +392,16 @@ IsTransactionState(void)
 	 */
 	return (s->state == TRANS_INPROGRESS);
 }
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+bool
+IsDefaultTransactionState(void)
+{
+	TransactionState s = CurrentTransactionState;
+
+	return (s->state == TRANS_DEFAULT);
+}
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /*
  *	IsAbortedTransactionBlockState
@@ -2107,6 +2126,13 @@ CommitTransaction(void)
 	TransactionId latestXid;
 	bool		is_parallel_worker;
 
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_commited_hook)
+	{
+		(*audit_commited_hook)();
+	}
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 	is_parallel_worker = (s->blockState == TBLOCK_PARALLEL_INPROGRESS);
 
 	/* Enforce parallel mode restrictions during parallel worker commit. */
@@ -2370,6 +2396,13 @@ PrepareTransaction(void)
 	TransactionId xid = GetCurrentTransactionId();
 	GlobalTransaction gxact;
 	TimestampTz prepared_at;
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_commited_hook)
+	{
+		(*audit_commited_hook)();
+	}
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	Assert(!IsInParallelMode());
 
@@ -2724,6 +2757,15 @@ AbortTransaction(void)
 	 * abort processing
 	 */
 	s->state = TRANS_ABORT;
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_aborted_hook)
+	{
+		s->state = TRANS_INPROGRESS;
+		(*audit_aborted_hook)();
+		s->state = TRANS_ABORT;
+	}
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/*
 	 * Reset user ID which might have been changed transiently.  We need this

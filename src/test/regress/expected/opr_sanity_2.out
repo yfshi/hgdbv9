@@ -2316,16 +2316,89 @@ WHERE c.oid = attrelid AND c.oid < 32767 AND
     c.relkind != 'v' AND  -- we don't care about columns in views
     attcollation != 0 AND
     attcollation != (SELECT oid FROM pg_collation WHERE collname = 'C');
-          relname           |      attname      | attcollation 
-----------------------------+-------------------+--------------
- mys_show_charset_results   | Charset           |          100
- mys_show_charset_results   | Description       |          100
- mys_show_charset_results   | Default collation |          100
- mys_show_collation_results | Collation         |          100
- mys_show_collation_results | Charset           |          100
- mys_show_collation_results | Default           |          100
- mys_show_collation_results | Compiled          |          100
-(7 rows)
+                relname                 |      attname      | attcollation 
+----------------------------------------+-------------------+--------------
+ pga_jobagent                           | jagstation        |          100
+ pga_jobclass                           | jclname           |          100
+ pga_jobclass_name                      | jclname           |          100
+ pga_job                                | jobname           |          100
+ pga_job                                | jobdesc           |          100
+ pga_job                                | jobhostagent      |          100
+ pga_job                                | log_user          |          100
+ pga_job                                | priv_user         |          100
+ pga_job                                | schema_user       |          100
+ pga_job                                | nls_env           |          100
+ pga_jobstep                            | jstname           |          100
+ pga_jobstep                            | jstkind           |          100
+ pga_jobstep                            | jstcode           |          100
+ pga_jobstep                            | jstdesc           |          100
+ pga_jobstep                            | jstconnstr        |          100
+ pga_jobstep                            | jstonerror        |          100
+ pga_schedule                           | jscname           |          100
+ pga_schedule                           | jscdesc           |          100
+ pga_schedule                           | dbmsjob_interval  |          100
+ pga_joblog                             | jlgstatus         |          100
+ pga_jobsteplog                         | jsloutput         |          100
+ pga_jobsteplog                         | jslstatus         |          100
+ mys_show_charset_results               | Charset           |          100
+ mys_show_charset_results               | Description       |          100
+ mys_show_charset_results               | Default collation |          100
+ mys_show_collation_results             | Collation         |          100
+ mys_show_collation_results             | Charset           |          100
+ mys_show_collation_results             | Default           |          100
+ mys_show_collation_results             | Compiled          |          100
+ pg_track_settings_settings_src_tmp     | name              |          100
+ pg_track_settings_settings_src_tmp     | setting           |          100
+ pg_track_settings_settings_src_tmp     | current_setting   |          100
+ pg_track_settings_list                 | name              |          100
+ pg_track_settings_list_pkey            | name              |          100
+ pg_track_settings_history              | name              |          100
+ pg_track_settings_history              | setting           |          100
+ pg_track_settings_history              | setting_pretty    |          100
+ pg_track_settings_history_pkey         | name              |          100
+ pg_track_settings_rds_src_tmp          | name              |          100
+ pg_track_settings_rds_src_tmp          | setting           |          100
+ pg_track_db_role_settings_list         | name              |          100
+ pg_track_db_role_settings_list_pkey    | name              |          100
+ pg_track_db_role_settings_history      | name              |          100
+ pg_track_db_role_settings_history      | setting           |          100
+ pg_track_db_role_settings_history_pkey | name              |          100
+ pg_audit_log                           | username          |          100
+ pg_audit_log                           | rolename          |          100
+ pg_audit_log                           | namespacename     |          100
+ pg_audit_log                           | objectname        |          100
+ pg_audit_log                           | colname           |          100
+ pg_audit_log                           | objecttype        |          100
+ pg_audit_log                           | actionname        |          100
+ pg_audit_log                           | clientport        |          100
+ pg_audit_log                           | clientname        |          100
+ pg_audit_log                           | clientip          |          100
+ pg_audit_log                           | clientmac         |          100
+ pg_audit_log                           | clientappname     |          100
+ pg_audit_log                           | sqltext           |          100
+ pg_audit_log                           | errtext           |          100
+ pg_audit_log                           | authmethod        |          100
+ pg_audit_log                           | privlevel         |          100
+ pg_secmon_thrhis                       | basename          |          100
+ pg_secmon_thrhis                       | basevalue         |          100
+ sqlite_audit_log                       | username          |          100
+ sqlite_audit_log                       | rolename          |          100
+ sqlite_audit_log                       | audittime         |          100
+ sqlite_audit_log                       | namespacename     |          100
+ sqlite_audit_log                       | objectname        |          100
+ sqlite_audit_log                       | colname           |          100
+ sqlite_audit_log                       | objecttype        |          100
+ sqlite_audit_log                       | actionname        |          100
+ sqlite_audit_log                       | clientport        |          100
+ sqlite_audit_log                       | clientname        |          100
+ sqlite_audit_log                       | clientip          |          100
+ sqlite_audit_log                       | clientmac         |          100
+ sqlite_audit_log                       | clientappname     |          100
+ sqlite_audit_log                       | sqltext           |          100
+ sqlite_audit_log                       | errtext           |          100
+ sqlite_audit_log                       | authmethod        |          100
+ sqlite_audit_log                       | privlevel         |          100
+(80 rows)
 
 -- Double-check that collation-sensitive indexes have "C" collation, too.
 SELECT indexrelid::regclass, indrelid::regclass, iclass, icoll
@@ -2335,7 +2408,8 @@ FROM (SELECT indexrelid, indrelid,
       WHERE indrelid < 16384) ss
 WHERE icoll != 0 AND
     icoll != (SELECT oid FROM pg_collation WHERE collname = 'C');
- indexrelid | indrelid | iclass | icoll 
-------------+----------+--------+-------
-(0 rows)
+        indexrelid         |       indrelid       | iclass | icoll 
+---------------------------+----------------------+--------+-------
+ pgagent.pga_jobclass_name | pgagent.pga_jobclass |   3126 |   100
+(1 row)
 

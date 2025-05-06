@@ -4,6 +4,12 @@
  *
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  *
+ * Authored by wanghaoyan@highgo.com, 20240327.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * IDENTIFICATION
  *	  src/backend/postmaster/bgworker.c
  *
@@ -962,6 +968,9 @@ RegisterBackgroundWorker(BackgroundWorker *worker)
 	rw->rw_pid = 0;
 	rw->rw_child_slot = 0;
 	rw->rw_crashed_at = 0;
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	rw->rw_shmem_slot = 0;
+/* End - ReqID:SRS-SECURITY-AUDIT */
 	rw->rw_terminate = false;
 
 	slist_push_head(&BackgroundWorkerList, &rw->rw_lnode);

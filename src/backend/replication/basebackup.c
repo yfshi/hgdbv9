@@ -5,6 +5,12 @@
  *
  * Portions Copyright (c) 2010-2021, PostgreSQL Global Development Group
  *
+ * Authored by wanghaoyan@highgo.com, 20240327.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * IDENTIFICATION
  *	  src/backend/replication/basebackup.c
  *
@@ -44,6 +50,9 @@
 #include "utils/relcache.h"
 #include "utils/resowner.h"
 #include "utils/timestamp.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 typedef struct
 {
@@ -640,8 +649,14 @@ perform_base_backup(basebackup_options *opt)
 				CheckXLogRemoved(segno, tli);
 				/* Send the chunk as a CopyData message */
 				if (pq_putmessage('d', buf, cnt))
+				{
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+					if (audit_system_event_hook)
+						audit_system_event_hook(true, 7);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 					ereport(ERROR,
 							(errmsg("base backup could not send data, aborting backup")));
+				}
 				update_basebackup_progress(cnt);
 
 				len += cnt;
@@ -1767,8 +1782,14 @@ sendFile(const char *readfilename, const char *tarfilename,
 
 		/* Send the chunk as a CopyData message */
 		if (pq_putmessage('d', buf, cnt))
+		{
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			if (audit_system_event_hook)
+				audit_system_event_hook(true, 7);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 			ereport(ERROR,
 					(errmsg("base backup could not send data, aborting backup")));
+		}
 		update_basebackup_progress(cnt);
 
 		/* Also feed it to the checksum machinery. */

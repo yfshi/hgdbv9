@@ -35,6 +35,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  *
  * IDENTIFICATION
  *	  src/backend/postmaster/postmaster.c
@@ -149,6 +155,9 @@
 #include "executor/nodeModifyTable.h"
 #include "access/heapam.h"
 #include "parser/parse_merge.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
@@ -223,6 +232,9 @@ BackgroundWorker *MyBgworkerEntry = NULL;
 int			PostPortNumber;
 int			OraPortNumber;	/* ReqID:LISTEN-MULTI-PORT */
 int			MysPortNumber;	/* ReqID:SRS-MISC-MYSQL-FRAME */
+char 		*DatabaseName; /* ReqID:SRS-SECURITY-AUDIT */
+
+
 
 
 /* The directory names for Unix socket(s) */
@@ -1256,8 +1268,18 @@ PostmasterMain(int argc, char *argv[])
 		}
 
 		if (!success && elemlist != NIL)
+		{
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			if (sqlite_open_db_for_audit_hook)
+			{
+				char *errstr = "could not create any PostgreSQL TCP/IP sockets";
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START, AUDIT_FAIL, NULL, errstr);
+			}
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 			ereport(FATAL,
 					(errmsg("could not create any PostgreSQL TCP/IP sockets")));
+		}
 
 		list_free(elemlist);
 		pfree(rawstring);
@@ -2687,6 +2709,11 @@ retry1:
 	 * Done putting stuff in TopMemoryContext.
 	 */
 	MemoryContextSwitchTo(oldcontext);
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	/* audit get conninfo */
+	if (audit_SaveConnectInfo_hook)
+		(*audit_SaveConnectInfo_hook)(port);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/*
 	 * If we're going to reject the connection due to database state, say so
@@ -3108,13 +3135,31 @@ SIGHUP_handler(SIGNAL_ARGS)
 
 		/* Reload authentication config files too */
 		if (!load_hba())
+		{
 			ereport(LOG,
 			/* translator: %s is a configuration file */
 					(errmsg("%s was not reloaded", "pg_hba.conf")));
+/* Begin - ReqID:SRS-SECURITY-AUDIT */			
+			if (sqlite_open_db_for_audit_hook)
+			{
+				char *errstr = "pg_hba.conf was not reloaded";
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
+			}
+/* End - ReqID:SRS-SECURITY-AUDIT */
+		}
 
 		if (!load_ident())
+		{
 			ereport(LOG,
 					(errmsg("%s was not reloaded", "pg_ident.conf")));
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			if (sqlite_open_db_for_audit_hook)
+			{
+				char *errstr = "pg_ident.conf was not reloaded";
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
+			}
+/* End - ReqID:SRS-SECURITY-AUDIT */
+		}
 
 #ifdef USE_SSL
 		/* Reload SSL configuration as well */
@@ -3123,8 +3168,17 @@ SIGHUP_handler(SIGNAL_ARGS)
 			if (secure_initialize(false) == 0)
 				LoadedSSL = true;
 			else
+			{
 				ereport(LOG,
 						(errmsg("SSL configuration was not reloaded")));
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+				if (sqlite_open_db_for_audit_hook)
+				{
+					char *errstr = "SSL configuration was not reloaded";
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
+				}
+/* End - ReqID:SRS-SECURITY-AUDIT */
+			}
 		}
 		else
 		{
@@ -3138,6 +3192,10 @@ SIGHUP_handler(SIGNAL_ARGS)
 		write_nondefault_variables(PGC_SIGHUP);
 #endif
 	}
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (sqlite_open_db_for_audit_hook)
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_SUCCESS, NULL, NULL);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 #ifdef WIN32
 	PG_SETMASK(&UnBlockSig);
@@ -3291,6 +3349,13 @@ pmdie(SIGNAL_ARGS)
 			PostmasterStateMachine();
 			break;
 	}
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_StopPgagent_hook)
+		(*audit_StopPgagent_hook)();
+
+	if (sqlite_open_db_for_audit_hook)
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_STOP, AUDIT_SUCCESS, NULL, NULL);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 #ifdef WIN32
 	PG_SETMASK(&UnBlockSig);
@@ -3367,6 +3432,13 @@ reaper(SIGNAL_ARGS)
 							 pid, exitstatus);
 				ereport(LOG,
 						(errmsg("aborting startup due to startup process failure")));
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+				if (sqlite_open_db_for_audit_hook)
+				{
+					char *errstr = "aborting startup due to startup process failure";
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START, AUDIT_FAIL, NULL, errstr);
+				}
+/* End - ReqID:SRS-SECURITY-AUDIT */		
 				ExitPostmaster(1);
 			}
 
@@ -3442,6 +3514,10 @@ reaper(SIGNAL_ARGS)
 			/* at this point we are really open for business */
 			ereport(LOG,
 					(errmsg("database system is ready to accept connections")));
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START, AUDIT_SUCCESS, NULL, NULL);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 			/* Report status */
 			AddToDataDirLockFile(LOCK_FILE_LINE_PM_STATUS, PM_STATUS_READY);
@@ -5676,7 +5752,10 @@ sigusr1_handler(SIGNAL_ARGS)
 #ifdef USE_SYSTEMD
 		sd_notify(0, "READY=1");
 #endif
-
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		if (sqlite_open_db_for_audit_hook)
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START, AUDIT_SUCCESS, NULL, NULL);
+/* End - ReqID:SRS-SECURITY-AUDIT */		
 		pmState = PM_HOT_STANDBY;
 		connsAllowed = ALLOW_ALL_CONNS;
 

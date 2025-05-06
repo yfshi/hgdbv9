@@ -46,6 +46,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20240327.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  *
  * IDENTIFICATION
  *	  src/backend/utils/error/elog.c
@@ -82,6 +88,9 @@
 #include "utils/guc.h"
 #include "utils/memutils.h"
 #include "utils/ps_status.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 
 /* In this module, access gettext() via err_gettext() */
@@ -129,6 +138,11 @@ bool		syslog_split_messages = true;
 static bool openlog_done = false;
 static char *syslog_ident = NULL;
 static int	syslog_facility = LOG_LOCAL0;
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifndef _WIN32
+char audit_msg[MAXPGPATH];
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 static void write_syslog(int level, const char *line);
 #endif
@@ -569,6 +583,12 @@ errfinish(const char *filename, int lineno, const char *funcname)
 	 */
 	if (elevel == ERROR)
 	{
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifndef _WIN32
+		unsigned int len;
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
+			
 		/*
 		 * We do some minimal cleanup before longjmp'ing so that handlers can
 		 * execute in a reasonably sane state.
@@ -584,17 +604,50 @@ errfinish(const char *filename, int lineno, const char *funcname)
 
 		CritSectionCount = 0;	/* should be unnecessary, but... */
 
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		if (audit_system_event_hook)
+			audit_system_event_hook(false, edata->sqlerrcode);
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 		/*
 		 * Note that we leave CurrentMemoryContext set to ErrorContext. The
 		 * handler should reset it to something else soon.
 		 */
 
 		recursion_depth--;
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifndef _WIN32
+		len = strlen(edata->message);
+
+		if (len > 0)
+		{
+			memcpy(audit_msg, edata->message, len > 1023 ? 1023 : len);
+		}
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
+		
 		PG_RE_THROW();
 	}
 
 	/* Emit the message to the right places */
 	EmitErrorReport();
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */	
+#ifndef _WIN32
+	if (elevel == FATAL || elevel == PANIC)
+	{
+		unsigned int len;
+		
+		len = strlen(edata->message);
+
+		if (len > 0)
+		{
+			memcpy(audit_msg, edata->message, len > 1023 ? 1023 : len);
+		}
+	}
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/* Now free up subsidiary data attached to stack entry, and release it */
 	if (edata->message)
@@ -657,6 +710,11 @@ errfinish(const char *filename, int lineno, const char *funcname)
 		 */
 		if (pgStatSessionEndCause == DISCONNECT_NORMAL)
 			pgStatSessionEndCause = DISCONNECT_FATAL;
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */	
+		if (audit_system_event_hook)
+			audit_system_event_hook(false, edata->sqlerrcode);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 		/*
 		 * Do normal process-exit cleanup, then return exit code 1 to indicate

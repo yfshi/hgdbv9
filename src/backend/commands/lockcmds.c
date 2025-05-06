@@ -6,6 +6,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20240327.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  *
  * IDENTIFICATION
  *	  src/backend/commands/lockcmds.c
@@ -27,6 +33,9 @@
 #include "utils/acl.h"
 #include "utils/lsyscache.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 static void LockTableRecurse(Oid reloid, LOCKMODE lockmode, bool nowait);
 static AclResult LockTableAclCheck(Oid relid, LOCKMODE lockmode, Oid userid);
@@ -64,6 +73,13 @@ LockTableCommand(LockStmt *lockstmt)
 			LockViewRecurse(reloid, lockstmt->mode, lockstmt->nowait, NIL);
 		else if (recurse)
 			LockTableRecurse(reloid, lockstmt->mode, lockstmt->nowait);
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		if(audit_object_hook)
+		{
+			(*audit_object_hook)(reloid,NULL);
+		}
+/* End - ReqID:SRS-SECURITY-AUDIT */
 	}
 }
 
