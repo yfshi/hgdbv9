@@ -5155,7 +5155,7 @@ static struct config_enum ConfigureNamesEnum[] =
 			NULL
 		},
 		&Password_encryption,
-		PASSWORD_TYPE_SCRAM_SHA_256,
+		PASSWORD_TYPE_SCRAM_SM3,
 		password_encryption_options,
 		NULL, NULL, NULL
 	},

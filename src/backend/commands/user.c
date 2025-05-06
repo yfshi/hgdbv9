@@ -1331,6 +1331,7 @@ RenameRole(const char *oldname, const char *newname)
 				(errmsg("MD5 password cleared because of role rename")));
 	}
 #ifdef USE_GMSSL
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	else if (!isnull && get_password_type(TextDatumGetCString(datum)) == PASSWORD_TYPE_SM3)
 	{
 		/* MD5 uses the username as salt, so just clear it on a rename */
@@ -1340,6 +1341,7 @@ RenameRole(const char *oldname, const char *newname)
 		ereport(NOTICE,
 				(errmsg("SM3 password cleared because of role rename")));
 	}
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #endif
 
 	newtuple = heap_modify_tuple(oldtuple, dsc, repl_val, repl_null, repl_repl);

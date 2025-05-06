@@ -200,6 +200,15 @@ pg_be_scramsha256_get_mechanisms(Port *port, StringInfo buf) //ReqID:SRS-SECURIT
 	appendStringInfoChar(buf, '\0');
 }
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+/*
+ * pg_be_scramsm3_get_mechanisms
+ *
+ * Get a list of SASL mechanisms that this module supports.
+ *
+ * For the convenience of building the FE/BE packet that lists the
+ * mechanisms, the names are appended to the given StringInfo buffer,
+ * separated by '\0' bytes.
+ */
 void
 pg_be_scramsm3_get_mechanisms(Port *port, StringInfo buf)
 {
@@ -214,6 +223,15 @@ pg_be_scramsm3_get_mechanisms(Port *port, StringInfo buf)
 	appendStringInfoChar(buf, '\0');
 }
 
+/*
+ * pg_be_scramsm3sha256_get_mechanisms
+ *
+ * Get a list of SASL mechanisms that this module supports.
+ *
+ * For the convenience of building the FE/BE packet that lists the
+ * mechanisms, the names are appended to the given StringInfo buffer,
+ * separated by '\0' bytes.
+ */
 void
 pg_be_scramsm3sha256_get_mechanisms(Port *port, StringInfo buf)
 {
@@ -221,6 +239,16 @@ pg_be_scramsm3sha256_get_mechanisms(Port *port, StringInfo buf)
 	appendStringInfoString(buf, SCRAM_SM3_SHA256_NAME);
 	appendStringInfoChar(buf, '\0');
 }
+
+/*
+ * pg_be_scramsha256sm3_get_mechanisms
+ *
+ * Get a list of SASL mechanisms that this module supports.
+ *
+ * For the convenience of building the FE/BE packet that lists the
+ * mechanisms, the names are appended to the given StringInfo buffer,
+ * separated by '\0' bytes.
+ */
 void
 pg_be_scramsha256sm3_get_mechanisms(Port *port, StringInfo buf)
 {
@@ -270,14 +298,20 @@ pg_be_scram_init(Port *port,
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #ifdef HAVE_BE_TLS_GET_CERTIFICATE_HASH
 	if ((strcmp(selected_mech, SCRAM_SHA_256_PLUS_NAME) == 0 ||
-		strcmp(selected_mech, SCRAM_SM3_PLUS_NAME) == 0) && port->ssl_in_use)
+#ifdef USE_GMSSL
+		strcmp(selected_mech, SCRAM_SM3_PLUS_NAME) == 0
+#endif
+		) && port->ssl_in_use)
 		state->channel_binding_in_use = true;
 	else
 #endif
 	if (strcmp(selected_mech, SCRAM_SHA_256_NAME) == 0 ||
+#ifdef USE_GMSSL
 		strcmp(selected_mech, SCRAM_SM3_NAME) == 0 ||
 		strcmp(selected_mech, SCRAM_SM3_SHA256_NAME) == 0 ||
-		strcmp(selected_mech, SCRAM_SHA256_SM3_NAME) == 0)
+		strcmp(selected_mech, SCRAM_SHA256_SM3_NAME) == 0
+#endif
+	)
 		state->channel_binding_in_use = false;
 	else
 		ereport(ERROR,

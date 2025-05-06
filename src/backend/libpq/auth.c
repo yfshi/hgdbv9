@@ -921,35 +921,54 @@ CheckPWChallengeAuth(Port *port, char **logdetail)
 	 * had an MD5 password, CheckSCRAMAuth() will fail.
 	 */
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_MD5){
+	if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_MD5)
+	{
 		auth_result = CheckMD5Auth(port, shadow_pass, logdetail);
 #ifdef USE_GMSSL
-	}else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SM3){
+	}
+	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SM3)
+	{
 		auth_result = CheckSM3Auth(port, shadow_pass, logdetail);
-    }else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_MD5){
+    }
+	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_MD5)
+	{
 		auth_result = CheckMD5_SM3Auth(port, shadow_pass, logdetail);
-    }else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SM3){
+    }
+	else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SM3)
+	{
 		auth_result = CheckSM3Auth(port, shadow_pass, logdetail);
 #endif
-	}else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256){
+	}
+	else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256)
+	{
 		port->hba->auth_method = uaSCRAMsha256;
         auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
-    }else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256){
+    }
+	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256)
+	{
 		port->hba->auth_method = uaSCRAMsha256;
         auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
 #ifdef USE_GMSSL
-    }else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SCRAM_SM3){
+    }
+	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SCRAM_SM3)
+	{
 		port->hba->auth_method = uaSCRAMsm3;
         auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
-    }else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SCRAM_SM3){
+    }
+	else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SCRAM_SM3)
+	{
 		port->hba->auth_method = uaSCRAMsm3;
         auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
 #endif
-    }else if (port->hba->auth_method == uaSCRAMsm3 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256){
+    }
+	else if (port->hba->auth_method == uaSCRAMsm3 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256)
+	{
         port->hba->auth_method = uaSCRAMsha256sm3;
         auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
 #ifdef USE_GMSSL
-    }else if (port->hba->auth_method == uaSCRAMsha256 && pwtype == PASSWORD_TYPE_SCRAM_SM3){
+    }
+	else if (port->hba->auth_method == uaSCRAMsha256 && pwtype == PASSWORD_TYPE_SCRAM_SM3)
+	{
         port->hba->auth_method = uaSCRAMsm3;
         auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
 #endif
@@ -1302,11 +1321,6 @@ CheckTOTPAuth(Port *port, char *shadow_otp, char **logdetail)
 	int			result;
 	int 		user_totp = 0;
 
-	if (Db_user_namespace)
-		ereport(FATAL,
-				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-				 errmsg("OTP authentication is not supported when \"db_user_namespace\" is enabled")));
-
 	/* include the salt to use for computing the response */
 	if (!pg_strong_random(otpSalt, 6))
 	{
@@ -1322,6 +1336,10 @@ CheckTOTPAuth(Port *port, char *shadow_otp, char **logdetail)
 		return STATUS_EOF;		/* client wouldn't send password */
 
 	user_totp = atoi(passwd);
+	if(user_totp <= 0)
+		ereport(FATAL,
+			(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("TOTP authentication failed")));
 
 	result = mfa_totp_verify(port->user_name, shadow_otp, user_totp,
 							  otpSalt, 6, logdetail);
@@ -1343,11 +1361,6 @@ CheckPKEYAuth(Port *port, char *shadow_otp, char **logdetail)
     char        otpSalt[16];        /* Password salt */
     char       *passwd;
     int         result;
-
-    if (Db_user_namespace)
-        ereport(FATAL,
-                (errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-                 errmsg("OTP authentication is not supported when \"db_user_namespace\" is enabled")));
 
     if (!pg_strong_random(otpSalt, sizeof(otpSalt)))
     {
