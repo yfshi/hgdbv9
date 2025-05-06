@@ -47,6 +47,8 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 
+#include "catalog/pg_mfaid.h"		/* ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 /*
  * Parameters to determine when to emit a log message in
  * GetNewOidWithIndex()
@@ -282,7 +284,10 @@ IsSharedRelation(Oid relationId)
 		relationId == TableSpaceRelationId ||
 		relationId == DbRoleSettingRelationId ||
 		relationId == ReplicationOriginRelationId ||
-		relationId == SubscriptionRelationId)
+                relationId == SubscriptionRelationId
+                || relationId == MfaIdRelationId        /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+               )
+
 		return true;
 	/* These are their indexes */
 	if (relationId == AuthIdRolnameIndexId ||
@@ -301,7 +306,10 @@ IsSharedRelation(Oid relationId)
 		relationId == ReplicationOriginIdentIndex ||
 		relationId == ReplicationOriginNameIndex ||
 		relationId == SubscriptionObjectIndexId ||
-		relationId == SubscriptionNameIndexId)
+                relationId == SubscriptionNameIndexId
+                || relationId == MfaIdOidIndexId       /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+                )
+
 		return true;
 	/* These are their toast tables and toast indexes */
 	if (relationId == PgAuthidToastTable ||

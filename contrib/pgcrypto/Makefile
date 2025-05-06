@@ -1,6 +1,6 @@
 # contrib/pgcrypto/Makefile
 
-INT_SRCS = internal.c internal-sha2.c blf.c rijndael.c \
+INT_SRCS = internal.c internal-sha2.c internal-sm3.c blf.c rijndael.c sm4.c \
 		pgp-mpi-internal.c imath.c
 INT_TESTS = sha2
 
@@ -13,6 +13,18 @@ ZLIB_OFF_TST = pgp-zlib-DISABLED
 CF_SRCS = $(if $(subst openssl,,$(with_ssl)), $(INT_SRCS), $(OSSL_SRCS))
 CF_TESTS = $(if $(subst openssl,,$(with_ssl)), $(INT_TESTS), $(OSSL_TESTS))
 CF_PGP_TESTS = $(if $(subst no,,$(with_zlib)), $(ZLIB_TST), $(ZLIB_OFF_TST))
+
+MIN_OPENSSL_VERSION := 1.1.1
+
+OPENSSL_VERSION := $(shell pkg-config --modversion openssl)
+
+OPENSSL_VERSION_CHECK := $(shell \
+    printf "%s\n%s" "$(OPENSSL_VERSION)" "$(MIN_OPENSSL_VERSION)" | sort -V | head -n1)
+
+ifneq ($(OPENSSL_VERSION_CHECK),$(MIN_OPENSSL_VERSION))
+CF_SRCS = $(INT_SRCS)
+CF_TESTS = $(INT_TESTS)
+endif
 
 SRCS = \
 	$(CF_SRCS) \
@@ -49,18 +61,18 @@ DATA = pgcrypto--1.3.sql pgcrypto--1.2--1.3.sql pgcrypto--1.1--1.2.sql \
 	pgcrypto--1.0--1.1.sql
 PGFILEDESC = "pgcrypto - cryptographic functions"
 
-REGRESS = init md5 sha1 hmac-md5 hmac-sha1 blowfish rijndael \
+REGRESS = init md5 sha1 sm3 hmac-md5 hmac-sha1 hmac-sm3 blowfish rijndael sm4 \
 	$(CF_TESTS) \
 	crypt-des crypt-md5 crypt-blowfish crypt-xdes \
 	pgp-armor pgp-decrypt pgp-encrypt $(CF_PGP_TESTS) \
 	pgp-pubkey-decrypt pgp-pubkey-encrypt pgp-info
-ORA_REGRESS = init md5 sha1 hmac-md5 hmac-sha1 blowfish rijndael \
+ORA_REGRESS = init md5 sha1 sm3 hmac-md5 hmac-sha1 hmac-sm3 blowfish rijndael sm4 \
 	$(CF_TESTS) \
 	crypt-des crypt-md5 crypt-blowfish crypt-xdes \
 	pgp-armor pgp-decrypt pgp-encrypt $(CF_PGP_TESTS) \
 	pgp-pubkey-decrypt pgp-pubkey-encrypt pgp-info
 #Begin - ReqID:SRS-MISC-MYSQL-FRAME
-MYS_REGRESS = mys_init mys_md5 mys_sha1 mys_hmac-md5 mys_hmac-sha1 mys_blowfish mys_rijndael \
+MYS_REGRESS = mys_init mys_md5 mys_sha1 sm3 mys_hmac-md5 mys_hmac-sha1 hmac-sm3 mys_blowfish mys_rijndael sm4 \
 	$(CF_TESTS) \
 	mys_crypt-des mys_crypt-md5 mys_crypt-blowfish mys_crypt-xdes \
 	mys_pgp-armor mys_pgp-decrypt mys_pgp-encrypt $(CF_PGP_TESTS) \

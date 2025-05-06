@@ -1,0 +1,48 @@
+LOAD 'credcheck';
+--
+--reset all settings
+--
+ALTER SYSTEM SET credcheck.enable TO ON;
+ALTER SYSTEM SET credcheck.login_msg_display TO OFF;
+SELECT PG_RELOAD_CONF();
+SET credcheck.username_min_length TO DEFAULT;
+SET credcheck.username_min_special TO DEFAULT;
+SET credcheck.username_min_upper TO DEFAULT;
+SET credcheck.username_min_upper TO DEFAULT;
+SET credcheck.username_min_digit TO DEFAULT;
+SET credcheck.username_contain_password TO DEFAULT;
+SET credcheck.username_ignore_case TO DEFAULT;
+SET credcheck.username_contain TO DEFAULT;
+SET credcheck.username_not_contain TO DEFAULT;
+SET credcheck.username_min_repeat TO DEFAULT;
+SET credcheck.password_min_length TO DEFAULT;
+SET credcheck.password_min_special TO DEFAULT;
+SET credcheck.password_min_upper TO DEFAULT;
+SET credcheck.password_min_upper TO DEFAULT;
+SET credcheck.password_min_digit TO DEFAULT;
+SET credcheck.password_contain_username TO DEFAULT;
+SET credcheck.password_ignore_case TO DEFAULT;
+SET credcheck.password_contain TO DEFAULT;
+SET credcheck.password_not_contain TO DEFAULT;
+SET credcheck.password_min_repeat TO DEFAULT;
+SET credcheck.password_reuse_history = 0;
+SET credcheck.password_reuse_interval = 0;
+
+-- create role clause checks
+SET credcheck.password_force_set TO on;
+-- fail, the PASSWORD clause must be present
+CREATE USER aaa;
+-- Success
+CREATE USER aaa PASSWORD 'DummY';
+-- Success
+ALTER USER aaa PASSWORD 'DummY2' VALID UNTIL '2030-01-01 00:00:00';
+
+-- Clear the user
+DROP USER aaa;
+
+-- History must be empty
+SELECT count(*), '0' AS "expected" FROM pg_password_history ;
+
+ALTER SYSTEM RESET credcheck.enable;
+ALTER SYSTEM RESET credcheck.login_msg_display;
+SELECT PG_RELOAD_CONF();

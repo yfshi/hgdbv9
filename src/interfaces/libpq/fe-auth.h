@@ -31,6 +31,8 @@ extern void pg_fe_scram_free(void *opaq);
 extern void pg_fe_scram_exchange(void *opaq, char *input, int inputlen,
 								 char **output, int *outputlen,
 								 bool *done, bool *success);
-extern char *pg_fe_scram_build_secret(const char *password);
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+extern char *pg_fe_scram_build_secret(const char *scram_type, const char *password);
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 #endif							/* FE_AUTH_H */

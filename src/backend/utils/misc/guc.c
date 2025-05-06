@@ -553,6 +553,10 @@ static const struct config_enum_entry plan_cache_mode_options[] = {
 
 static const struct config_enum_entry password_encryption_options[] = {
 	{"md5", PASSWORD_TYPE_MD5, false},
+#ifdef USE_GMSSL
+	{"sm3", PASSWORD_TYPE_SM3, false}, // ReqID:SRS-SECURITY-IDENTITYAUTH
+	{"scram-sm3", PASSWORD_TYPE_SCRAM_SM3, false}, // ReqID:SRS-SECURITY-IDENTITYAUTH
+#endif
 	{"scram-sha-256", PASSWORD_TYPE_SCRAM_SHA_256, false},
 	{NULL, 0, false}
 };
@@ -5151,7 +5155,8 @@ static struct config_enum ConfigureNamesEnum[] =
 			NULL
 		},
 		&Password_encryption,
-		PASSWORD_TYPE_SCRAM_SHA_256, password_encryption_options,
+		PASSWORD_TYPE_SCRAM_SHA_256,
+		password_encryption_options,
 		NULL, NULL, NULL
 	},
 

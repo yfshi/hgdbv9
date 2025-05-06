@@ -31,7 +31,7 @@
 static bool useReadline;
 static bool useHistory;
 
-static char *psql_history;
+static char *psql_history = NULL;
 
 static int	history_lines_added;
 
@@ -49,6 +49,129 @@ static int	history_lines_added;
 
 static void finishInput(void);
 
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+static void finishInput_no_save(void);
+static bool mask_password(char *input) {
+    char *start_tag_begin, *start_tag_end, *tag, *pattern, *pwd_start, *end_pattern, *p;
+    size_t tag_len, pattern_len;
+    
+    if (input == NULL) {
+        return false;
+    }
+    
+    start_tag_begin = strchr(input, '$');
+    if (!start_tag_begin) {
+        return false;
+    }
+    
+    start_tag_end = strchr(start_tag_begin + 1, '$');
+    if (!start_tag_end) {
+        return false;
+    }
+    
+    tag_len = start_tag_end - start_tag_begin - 1;
+    
+
+    tag = (char *)malloc(tag_len + 1);
+    if (!tag) {
+        perror("malloc failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(tag, 0, tag_len + 1);
+    strncpy(tag, start_tag_begin + 1, tag_len);
+    tag[tag_len] = '\0';
+    
+    pattern_len = tag_len + 2;
+    pattern = (char *)malloc(pattern_len + 1);
+    if (!pattern) {
+        perror("malloc failed");
+        free(tag);
+        exit(EXIT_FAILURE);
+    }
+    sprintf(pattern, "$%s$", tag);
+    
+    pwd_start = start_tag_end + 1;
+    end_pattern = strstr(pwd_start, pattern);
+    if (!end_pattern) {
+        free(tag);
+        free(pattern);
+        return false;
+    }
+    
+    for (p = pwd_start; p < end_pattern; p++) {
+        *p = '*';
+    }
+    
+    free(tag);
+    free(pattern);
+    return true;
+}
+static bool hide_password(char *query_string) {
+    char *cp, *start;
+    char *p;
+	char *user_p = NULL;
+	bool e_flag = false;
+
+    if (!query_string)
+        return false;
+
+    for (cp = query_string; *cp != '\0'; cp++) {
+        *cp = tolower((unsigned char)*cp);
+    }
+
+    if (strstr(query_string, "password") &&
+        (strstr(query_string, "alter") || strstr(query_string, "create")) &&
+        (strstr(query_string, "user") || strstr(query_string, "role"))) {
+
+		user_p = strstr(query_string, "user");
+		if(!user_p)
+			user_p = strstr(query_string, "role");
+
+        cp = strstr(user_p, "password");
+        if (!cp)
+            return false;
+
+        p = cp + strlen("password");
+        while (*p && isspace((unsigned char)*p)) {
+            p++;
+        }
+
+		if (*p == 'e'){
+			e_flag = true;
+			p++;
+		}
+
+        if (*p != '\'')
+            return mask_password(p);
+
+        start = p;
+        p = start + 1;
+
+        while (*p != '\0') {
+            if (*p == '\'') {
+                if (*(p + 1) == '\'') {
+                    *p = '*';
+                    *(p + 1) = '*';
+                    p += 2;
+                } else {
+                    break;
+                }
+            } else if (e_flag && *p == '\\') {
+                *p = '*';
+                *(p + 1) = '*';
+                p += 2;
+            }else {
+                *p = '*';
+                p++;
+            }
+        }
+        return true;
+    }
+
+    return false;
+}
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 /*
  * gets_interactive()
@@ -157,12 +280,24 @@ pg_send_history(PQExpBuffer history_buf)
 		}
 		else
 		{
+			char *tmp = NULL;
+
 			/* Save each previous line for ignoredups processing */
 			if (prev_hist)
 				free(prev_hist);
 			prev_hist = pg_strdup(s);
 			/* And send it to readline */
-			add_history(s);
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+			tmp = pstrdup(s);
+			if(hide_password(tmp)){
+				add_history(tmp);
+			}
+			else{
+				add_history(s);
+			}
+			if(tmp)
+				pfree(tmp);
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 			/* Count lines added to history for use later */
 			history_lines_added++;
 		}
@@ -343,7 +478,7 @@ decode_history(void)
  * The only "flag" right now is 1 for use readline & history.
  */
 void
-initializeInput(int flags)
+initializeInput(int flags, int save_flags) // ReqID:SRS-SECURITY-IDENTITYAUTH
 {
 #ifdef USE_READLINE
 	if (flags & 1)
@@ -383,15 +518,20 @@ initializeInput(int flags)
 			expand_tilde(&psql_history);
 		}
 
-		if (psql_history)
-		{
-			read_history(psql_history);
-			decode_history();
-		}
+			if (psql_history)
+			{
+				read_history(psql_history);
+				decode_history();
+			}
 	}
 #endif
 
-	atexit(finishInput);
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if(save_flags&1)
+		atexit(finishInput);
+	else
+		atexit(finishInput_no_save);
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 }
 
 
@@ -538,6 +678,18 @@ finishInput(void)
 	if (useHistory && psql_history)
 	{
 		(void) saveHistory(psql_history, pset.histsize);
+		free(psql_history);
+		psql_history = NULL;
+	}
+#endif
+}
+
+static void
+finishInput_no_save(void)
+{
+#ifdef USE_READLINE
+	if (useHistory && psql_history)
+	{
 		free(psql_history);
 		psql_history = NULL;
 	}

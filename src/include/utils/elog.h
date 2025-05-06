@@ -22,6 +22,8 @@
 
 #include <setjmp.h>
 
+#include <string.h>	/* ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 /* Error level codes */
 #define DEBUG5		10			/* Debugging messages, in categories of
 								 * decreasing detail. */

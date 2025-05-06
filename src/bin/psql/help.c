@@ -112,6 +112,9 @@ usage(unsigned short int pager)
 	fprintf(output, _("  -q, --quiet              run quietly (no messages, only query output)\n"));
 	fprintf(output, _("  -s, --single-step        single-step mode (confirm each query)\n"));
 	fprintf(output, _("  -S, --single-line        single-line mode (end of line terminates SQL command)\n"));
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	fprintf(output, _("  -N, --no-echo            disable enhanced history command line editing (readline)\n"));
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	fprintf(output, _("\nOutput format options:\n"));
 	fprintf(output, _("  -A, --no-align           unaligned table output mode\n"));
@@ -144,7 +147,14 @@ usage(unsigned short int pager)
 	fprintf(output, _("  -U, --username=USERNAME  database user name (default: \"%s\")\n"), user);
 	fprintf(output, _("  -w, --no-password        never prompt for password\n"));
 	fprintf(output, _("  -W, --password           force password prompt (should happen automatically)\n"));
-
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	env = getenv("PASSIDENT");
+	fprintf(output, _("  -D, --ident=PASSIDENT    Database directory(if use identifier) (default: \"%s\")\n"),env);
+	env = getenv("PASSMAC");
+	fprintf(output, _("  -M, --ident=PASSMAC      Gets the MAC address of the specified NIC (default: \"%s\")\n"),env);
+	env = getenv("PASSCUSTOM");
+	fprintf(output, _("  -C, --ident=PASSCUSTOM   Custom Key (default: \"%s\")\n"),env);
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	fprintf(output, _("\nFor more information, type \"\\?\" (for internal commands) or \"\\help\" (for SQL\n"
 					  "commands) from within psql, or consult the psql section in the PostgreSQL\n"
 					  "documentation.\n\n"));

@@ -71,7 +71,7 @@ CATALOG_HEADERS := \
 	pg_collation.h pg_partitioned_table.h pg_range.h pg_transform.h \
 	pg_sequence.h pg_publication.h pg_publication_rel.h pg_subscription.h \
 	pg_subscription_rel.h pg_package.h pg_package_body.h pg_force_view.h \
-	pg_object.h
+	pg_object.h pg_mfaid.h
 
 GENERATED_HEADERS := $(CATALOG_HEADERS:%.h=%_d.h) schemapg.h system_fk_info.h
 

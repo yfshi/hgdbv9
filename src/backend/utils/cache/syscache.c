@@ -86,6 +86,7 @@
 /* End - SRS-SQL-PACKAGE */
 #include "catalog/pg_object.h"	/* ReqID:SRS-SQL-Object */
 
+#include "catalog/pg_mfaid.h"  /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 #include "lib/qunique.h"
 #include "miscadmin.h"
 #include "storage/lmgr.h"
@@ -565,6 +566,18 @@ static const struct cachedesc cacheinfo[] = {
 			0
 		},
 		4
+	},
+/* ReqID:SRS-SECURITY-IDENTITYAUTH */
+	{MfaIdRelationId,			/* MFAAUTHOID */
+		MfaIdOidIndexId,
+		1,
+		{
+			Anum_pg_mfaid_oid,
+			0,
+			0,
+			0
+		},
+		8
 	},
 	{NamespaceRelationId,		/* NAMESPACENAME */
 		NamespaceNameIndexId,

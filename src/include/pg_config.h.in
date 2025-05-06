@@ -283,6 +283,9 @@
 /* Define to 1 if you have the `gettimeofday' function. */
 #undef HAVE_GETTIMEOFDAY
 
+/* Define to 1 if you have the <gmssl/sm4.h> header file. */
+#undef HAVE_GMSSL_SM4_H
+
 /* Define to 1 if you have the <gssapi/gssapi.h> header file. */
 #undef HAVE_GSSAPI_GSSAPI_H
 
@@ -345,6 +348,9 @@
 
 /* Define to 1 if you have the `crypto' library (-lcrypto). */
 #undef HAVE_LIBCRYPTO
+
+/* Define to 1 if you have the `gmssl' library (-lgmssl). */
+#undef HAVE_LIBGMSSL
 
 /* Define to 1 if you have the `ldap' library (-lldap). */
 #undef HAVE_LIBLDAP
@@ -943,6 +949,9 @@
 /* Define to 1 to build with BSD Authentication support. (--with-bsd-auth) */
 #undef USE_BSD_AUTH
 
+/* Define to 1 to build with GmSSL support. (--with-gmssl) */
+#undef USE_GMSSL
+
 /* Define to build with ICU support. (--with-icu) */
 #undef USE_ICU
 
@@ -979,8 +988,6 @@
 
 /* Define to 1 to build with root user. (--enable-root) */
 #undef USE_ROOT
-/* Define to 1 to build with root user. (--enable-root) on ifdef win32*/
-#undef USE_ADMINISTRATOR
 
 /* Define to 1 to use software CRC-32C implementation (slicing-by-8). */
 #undef USE_SLICING_BY_8_CRC32C

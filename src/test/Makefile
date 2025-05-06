@@ -33,6 +33,9 @@ SUBDIRS += ssl
 endif
 endif
 
+# ReqID:SRS-SECURITY-IDENTITYAUTH
+SUBDIRS += mfa authentication-all
+
 # We don't build or execute these by default, but we do want "make
 # clean" etc to recurse into them.  (We must filter out those that we
 # have conditionally included into SUBDIRS above, else there will be

@@ -117,8 +117,10 @@ ORDER BY 1, 2;
  pg_index                | indpred       | pg_node_tree
  pg_largeobject          | data          | bytea
  pg_largeobject_metadata | lomacl        | aclitem[]
+ pg_mfaid                | mfa_key       | text
+ pg_mfaid                | mfa_type      | text
  pga_joblog              | jlgstatus     | character
-(13 rows)
+(15 rows)
 
 -- system catalogs without primary keys
 --

@@ -142,7 +142,11 @@ pg_fe_scram_channel_bound(void *opaq)
 		return false;
 
 	/* channel binding mechanism not used */
-	if (strcmp(state->sasl_mechanism, SCRAM_SHA_256_PLUS_NAME) != 0)
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if (strcmp(state->sasl_mechanism, SCRAM_SHA_256_PLUS_NAME) != 0
+	&& strcmp(state->sasl_mechanism, SCRAM_SM3_PLUS_NAME) != 0
+	)
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		return false;
 
 	/* all clear! */
@@ -388,14 +392,23 @@ build_client_first_message(fe_scram_state *state)
 	/*
 	 * First build the gs2-header with channel binding information.
 	 */
-	if (strcmp(state->sasl_mechanism, SCRAM_SHA_256_PLUS_NAME) == 0)
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if (strcmp(state->sasl_mechanism, SCRAM_SHA_256_PLUS_NAME) == 0
+	|| strcmp(state->sasl_mechanism, SCRAM_SM3_PLUS_NAME) == 0
+	)
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	{
 		Assert(conn->ssl_in_use);
 		appendPQExpBufferStr(&buf, "p=tls-server-end-point");
 	}
 #ifdef HAVE_PGTLS_GET_PEER_CERTIFICATE_HASH
 	else if (conn->channel_binding[0] != 'd' && /* disable */
-			 conn->ssl_in_use)
+			 conn->ssl_in_use
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+			&& !(strcmp(state->sasl_mechanism, SCRAM_SHA256_SM3_NAME) == 0 ||
+				strcmp(state->sasl_mechanism, SCRAM_SM3_SHA256_NAME) == 0)
+	)
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	{
 		/*
 		 * Client supports channel binding, but thinks the server does not.
@@ -464,7 +477,11 @@ build_client_final_message(fe_scram_state *state)
 	 * build_client_first_message(), because the server will check that it's
 	 * the same flag both times.
 	 */
-	if (strcmp(state->sasl_mechanism, SCRAM_SHA_256_PLUS_NAME) == 0)
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if (strcmp(state->sasl_mechanism, SCRAM_SHA_256_PLUS_NAME) == 0
+	|| strcmp(state->sasl_mechanism, SCRAM_SM3_PLUS_NAME) == 0
+	)
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	{
 #ifdef HAVE_PGTLS_GET_PEER_CERTIFICATE_HASH
 		char	   *cbind_data = NULL;
@@ -536,7 +553,12 @@ build_client_final_message(fe_scram_state *state)
 	}
 #ifdef HAVE_PGTLS_GET_PEER_CERTIFICATE_HASH
 	else if (conn->channel_binding[0] != 'd' && /* disable */
-			 conn->ssl_in_use)
+			 conn->ssl_in_use
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+			&& !(strcmp(state->sasl_mechanism, SCRAM_SHA256_SM3_NAME) == 0 ||
+				strcmp(state->sasl_mechanism, SCRAM_SM3_SHA256_NAME) == 0)
+				)
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		appendPQExpBufferStr(&buf, "c=eSws");	/* base64 of "y,," */
 #endif
 	else
@@ -777,9 +799,23 @@ calculate_client_proof(fe_scram_state *state,
 	uint8		ClientKey[SCRAM_KEY_LEN];
 	uint8		ClientSignature[SCRAM_KEY_LEN];
 	int			i;
-	pg_hmac_ctx *ctx;
 
-	ctx = pg_hmac_create(PG_SHA256);
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	pg_hmac_ctx *ctx = NULL;
+
+	if (strcmp(state->sasl_mechanism, "SCRAM-SHA-256") == 0 
+		|| strcmp(state->sasl_mechanism, "SCRAM-SM3-SHA256") == 0
+		|| strcmp(state->sasl_mechanism, "SCRAM-SHA-256-PLUS") == 0){
+        ctx = pg_hmac_create(PG_SHA256);
+    }
+#ifdef USE_GMSSL
+	else if (strcmp(state->sasl_mechanism, "SCRAM-SM3") == 0 
+		|| strcmp(state->sasl_mechanism, "SCRAM-SHA256-SM3") == 0
+		|| strcmp(state->sasl_mechanism, "SCRAM-SM3-PLUS") == 0){
+        ctx = pg_hmac_create(PG_SM3);
+    }
+#endif
+
 	if (ctx == NULL)
 		return false;
 
@@ -787,10 +823,10 @@ calculate_client_proof(fe_scram_state *state,
 	 * Calculate SaltedPassword, and store it in 'state' so that we can reuse
 	 * it later in verify_server_signature.
 	 */
-	if (scram_SaltedPassword(state->password, state->salt, state->saltlen,
+	if (scram_SaltedPassword(state->sasl_mechanism, state->password, state->salt, state->saltlen,
 							 state->iterations, state->SaltedPassword) < 0 ||
-		scram_ClientKey(state->SaltedPassword, ClientKey) < 0 ||
-		scram_H(ClientKey, SCRAM_KEY_LEN, StoredKey) < 0 ||
+		scram_ClientKey(state->sasl_mechanism, state->SaltedPassword, ClientKey) < 0 ||
+		scram_H(state->sasl_mechanism, ClientKey, SCRAM_KEY_LEN, StoredKey) < 0 ||
 		pg_hmac_init(ctx, StoredKey, SCRAM_KEY_LEN) < 0 ||
 		pg_hmac_update(ctx,
 					   (uint8 *) state->client_first_message_bare,
@@ -808,6 +844,7 @@ calculate_client_proof(fe_scram_state *state,
 		pg_hmac_free(ctx);
 		return false;
 	}
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	for (i = 0; i < SCRAM_KEY_LEN; i++)
 		result[i] = ClientKey[i] ^ ClientSignature[i];
@@ -827,13 +864,27 @@ verify_server_signature(fe_scram_state *state, bool *match)
 {
 	uint8		expected_ServerSignature[SCRAM_KEY_LEN];
 	uint8		ServerKey[SCRAM_KEY_LEN];
-	pg_hmac_ctx *ctx;
+	pg_hmac_ctx *ctx = NULL;
 
-	ctx = pg_hmac_create(PG_SHA256);
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if (strcmp(state->sasl_mechanism, "SCRAM-SHA-256") == 0 
+		|| strcmp(state->sasl_mechanism, "SCRAM-SM3-SHA256") == 0
+		|| strcmp(state->sasl_mechanism, "SCRAM-SHA-256-PLUS") == 0){
+        ctx = pg_hmac_create(PG_SHA256);
+    }
+#ifdef USE_GMSSL
+	else if (strcmp(state->sasl_mechanism, "SCRAM-SM3") == 0 
+		|| strcmp(state->sasl_mechanism, "SCRAM-SHA256-SM3") == 0
+		|| strcmp(state->sasl_mechanism, "SCRAM-SM3-PLUS") == 0){
+        ctx = pg_hmac_create(PG_SM3);
+    }
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 	if (ctx == NULL)
 		return false;
 
-	if (scram_ServerKey(state->SaltedPassword, ServerKey) < 0 ||
+	if (scram_ServerKey(state->sasl_mechanism, state->SaltedPassword, ServerKey) < 0 || //ReqID:SRS-SECURITY-IDENTITYAUTH
 	/* calculate ServerSignature */
 		pg_hmac_init(ctx, ServerKey, SCRAM_KEY_LEN) < 0 ||
 		pg_hmac_update(ctx,
@@ -868,8 +919,10 @@ verify_server_signature(fe_scram_state *state, bool *match)
 /*
  * Build a new SCRAM secret.
  */
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 char *
-pg_fe_scram_build_secret(const char *password)
+pg_fe_scram_build_secret(const char *scram_type, const char *password)
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 {
 	char	   *prep_password;
 	pg_saslprep_rc rc;
@@ -895,10 +948,10 @@ pg_fe_scram_build_secret(const char *password)
 			free(prep_password);
 		return NULL;
 	}
-
-	result = scram_build_secret(saltbuf, SCRAM_DEFAULT_SALT_LEN,
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	result = scram_build_secret(scram_type, saltbuf, SCRAM_DEFAULT_SALT_LEN,
 								SCRAM_DEFAULT_ITERATIONS, password);
-
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (prep_password)
 		free(prep_password);
 

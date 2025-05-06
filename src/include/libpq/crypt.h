@@ -29,7 +29,11 @@ typedef enum PasswordType
 {
 	PASSWORD_TYPE_PLAINTEXT = 0,
 	PASSWORD_TYPE_MD5,
-	PASSWORD_TYPE_SCRAM_SHA_256
+	PASSWORD_TYPE_SCRAM_SHA_256,
+#ifdef USE_GMSSL
+	PASSWORD_TYPE_SM3, //ReqID:SRS-SECURITY-IDENTITYAUTH
+	PASSWORD_TYPE_SCRAM_SM3 // ReqID:SRS-SECURITY-IDENTITYAUTH
+#endif
 } PasswordType;
 
 extern PasswordType get_password_type(const char *shadow_pass);
@@ -41,6 +45,24 @@ extern char *get_role_password(const char *role, char **logdetail);
 extern int	md5_crypt_verify(const char *role, const char *shadow_pass,
 							 const char *client_pass, const char *md5_salt,
 							 int md5_salt_len, char **logdetail);
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+extern int sm3_crypt_verify(const char *role, const char *shadow_pass,
+				 const char *client_pass,
+				 const char *sm3_salt, int sm3_salt_len,
+				 char **logdetail);
+int
+md5_sm3_crypt_verify(const char *role, const char *shadow_pass,
+				 const char *client_pass,
+				 const char *md5_salt, int md5_salt_len,
+				 char **logdetail);
+
+int
+sm3_md5_crypt_verify(const char *role, const char *shadow_pass,
+				 const char *client_pass,
+				 const char *md5_salt, int md5_salt_len,
+				 char **logdetail);
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 extern int	plain_crypt_verify(const char *role, const char *shadow_pass,
 							   const char *client_pass, char **logdetail);
 

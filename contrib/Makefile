@@ -59,7 +59,8 @@ SUBDIRS = \
 		mys_btree_gist \
 		mys_btree_gin	\
 		uuid-ossp \
-		hg_misc
+                hg_misc
+
 
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo
@@ -105,6 +106,9 @@ SUBDIRS += restricted_dba
 #Begin - ReqID:SRS-SECURITY-AUDIT
 SUBDIRS += pg_audit pg_track_settings sqlite_fdw
 #End - ReqID:SRS-SECURITY-AUDIT
+# Begin - ReqID:SRS-SECURITY-IDENTITYAUTH
+SUBDIRS += credcheck
+# End - ReqID:SRS-SECURITY-IDENTITYAUTH
 
 # Missing:
 #		start-scripts	\ (does not have a makefile)

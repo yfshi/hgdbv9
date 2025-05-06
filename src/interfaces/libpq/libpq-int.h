@@ -395,6 +395,16 @@ struct pg_conn
 	char	   *ssl_max_protocol_version;	/* maximum TLS protocol version */
 	char	   *target_session_attrs;	/* desired session properties */
 
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	char	   *pgprikey;		// Secondary authentication (pkey) private key
+	char	   *pgclientcert;	// Secondary Authentication (cert) certificate file
+	char	   *pgclientkey;	// Secondary Authentication (cert) private key file
+
+	char	   *passident;		// pgpass Specifies the ID path used for decryption (-D)
+	char	   *passmac;		// pgpass Specifies the name of the network adapter used for decryption (-M)
+	char	   *passcustom;		// pgpass Specifies the user-defined key used for decryption (-C)
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 	/* Optional file to write trace info to */
 	FILE	   *Pfdebug;
 	int			traceFlags;

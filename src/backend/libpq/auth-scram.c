@@ -162,12 +162,14 @@ static char *build_server_first_message(scram_state *state);
 static char *build_server_final_message(scram_state *state);
 static bool verify_client_proof(scram_state *state);
 static bool verify_final_nonce(scram_state *state);
-static void mock_scram_secret(const char *username, int *iterations,
+// ReqID:SRS-SECURITY-IDENTITYAUTH
+static void mock_scram_secret(const char *scram_type, const char *username, int *iterations,
 							  char **salt, uint8 *stored_key, uint8 *server_key);
 static bool is_scram_printable(char *p);
 static char *sanitize_char(char c);
 static char *sanitize_str(const char *s);
-static char *scram_mock_salt(const char *username);
+// ReqID:SRS-SECURITY-IDENTITYAUTH
+static char *scram_mock_salt(const char *scram_type, const char *username);
 
 /*
  * pg_be_scram_get_mechanisms
@@ -179,7 +181,7 @@ static char *scram_mock_salt(const char *username);
  * separated by '\0' bytes.
  */
 void
-pg_be_scram_get_mechanisms(Port *port, StringInfo buf)
+pg_be_scramsha256_get_mechanisms(Port *port, StringInfo buf) //ReqID:SRS-SECURITY-IDENTITYAUTH
 {
 	/*
 	 * Advertise the mechanisms in decreasing order of importance.  So the
@@ -197,7 +199,36 @@ pg_be_scram_get_mechanisms(Port *port, StringInfo buf)
 	appendStringInfoString(buf, SCRAM_SHA_256_NAME);
 	appendStringInfoChar(buf, '\0');
 }
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+void
+pg_be_scramsm3_get_mechanisms(Port *port, StringInfo buf)
+{
+#ifdef HAVE_BE_TLS_GET_CERTIFICATE_HASH
+	if (port->ssl_in_use)
+	{
+		appendStringInfoString(buf, SCRAM_SM3_PLUS_NAME);
+		appendStringInfoChar(buf, '\0');
+	}
+#endif
+	appendStringInfoString(buf, SCRAM_SM3_NAME);
+	appendStringInfoChar(buf, '\0');
+}
 
+void
+pg_be_scramsm3sha256_get_mechanisms(Port *port, StringInfo buf)
+{
+
+	appendStringInfoString(buf, SCRAM_SM3_SHA256_NAME);
+	appendStringInfoChar(buf, '\0');
+}
+void
+pg_be_scramsha256sm3_get_mechanisms(Port *port, StringInfo buf)
+{
+
+	appendStringInfoString(buf, SCRAM_SHA256_SM3_NAME);
+	appendStringInfoChar(buf, '\0');
+}
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 /*
  * pg_be_scram_init
  *
@@ -236,18 +267,23 @@ pg_be_scram_init(Port *port,
 	 * client nevertheless tries to select it, it's a protocol violation like
 	 * selecting any other SASL mechanism we don't support.
 	 */
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #ifdef HAVE_BE_TLS_GET_CERTIFICATE_HASH
-	if (strcmp(selected_mech, SCRAM_SHA_256_PLUS_NAME) == 0 && port->ssl_in_use)
+	if ((strcmp(selected_mech, SCRAM_SHA_256_PLUS_NAME) == 0 ||
+		strcmp(selected_mech, SCRAM_SM3_PLUS_NAME) == 0) && port->ssl_in_use)
 		state->channel_binding_in_use = true;
 	else
 #endif
-	if (strcmp(selected_mech, SCRAM_SHA_256_NAME) == 0)
+	if (strcmp(selected_mech, SCRAM_SHA_256_NAME) == 0 ||
+		strcmp(selected_mech, SCRAM_SM3_NAME) == 0 ||
+		strcmp(selected_mech, SCRAM_SM3_SHA256_NAME) == 0 ||
+		strcmp(selected_mech, SCRAM_SHA256_SM3_NAME) == 0)
 		state->channel_binding_in_use = false;
 	else
 		ereport(ERROR,
 				(errcode(ERRCODE_PROTOCOL_VIOLATION),
 				 errmsg("client selected an invalid SASL authentication mechanism")));
-
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	/*
 	 * Parse the stored secret.
 	 */
@@ -255,9 +291,10 @@ pg_be_scram_init(Port *port,
 	{
 		int			password_type = get_password_type(shadow_pass);
 
+		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		if (password_type == PASSWORD_TYPE_SCRAM_SHA_256)
 		{
-			if (parse_scram_secret(shadow_pass, &state->iterations, &state->salt,
+			if (parse_scram_secret("SCRAM-SHA-256", shadow_pass, &state->iterations, &state->salt,
 								   state->StoredKey, state->ServerKey))
 				got_secret = true;
 			else
@@ -267,11 +304,31 @@ pg_be_scram_init(Port *port,
 				 * parsed.
 				 */
 				ereport(LOG,
-						(errmsg("invalid SCRAM secret for user \"%s\"",
+						(errmsg("invalid SCRAM-SHA-256 secret for user \"%s\"",
 								state->port->user_name)));
 				got_secret = false;
 			}
 		}
+#ifdef USE_GMSSL
+		else if (password_type == PASSWORD_TYPE_SCRAM_SM3)
+		{
+			if (parse_scram_secret("SCRAM-SM3", shadow_pass, &state->iterations, &state->salt,
+								   state->StoredKey, state->ServerKey))
+				got_secret = true;
+			else
+			{
+				/*
+				 * The password looked like a SCRAM secret, but could not be
+				 * parsed.
+				 */
+				ereport(LOG,
+						(errmsg("invalid SCRAM-SM3 secret for user \"%s\"",
+								state->port->user_name)));
+				got_secret = false;
+			}
+		}
+#endif
+		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		else
 		{
 			/*
@@ -301,9 +358,22 @@ pg_be_scram_init(Port *port,
 	 */
 	if (!got_secret)
 	{
-		mock_scram_secret(state->port->user_name, &state->iterations,
-						  &state->salt, state->StoredKey, state->ServerKey);
-		state->doomed = true;
+		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		//if (shadow_pass)
+		{
+			int			password_type = PASSWORD_TYPE_PLAINTEXT;
+			if(shadow_pass)
+				password_type = get_password_type(shadow_pass);
+
+			if (password_type == PASSWORD_TYPE_SCRAM_SHA_256)
+				mock_scram_secret("SCRAM-SHA-256", state->port->user_name, &state->iterations,
+							&state->salt, state->StoredKey, state->ServerKey);
+			else
+				mock_scram_secret("SCRAM-SM3", state->port->user_name, &state->iterations,
+							&state->salt, state->StoredKey, state->ServerKey);
+			state->doomed = true;
+		}
+		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	}
 
 	return state;
@@ -449,7 +519,7 @@ pg_be_scram_exchange(void *opaq, const char *input, int inputlen,
  * The result is palloc'd, so caller is responsible for freeing it.
  */
 char *
-pg_be_scram_build_secret(const char *password)
+pg_be_scram_build_secret(const char *scram_type, const char *password) // ReqID:SRS-SECURITY-IDENTITYAUTH
 {
 	char	   *prep_password;
 	pg_saslprep_rc rc;
@@ -470,8 +540,8 @@ pg_be_scram_build_secret(const char *password)
 		ereport(ERROR,
 				(errcode(ERRCODE_INTERNAL_ERROR),
 				 errmsg("could not generate random salt")));
-
-	result = scram_build_secret(saltbuf, SCRAM_DEFAULT_SALT_LEN,
+	/* ReqID:SRS-SECURITY-IDENTITYAUTH */
+	result = scram_build_secret(scram_type, saltbuf, SCRAM_DEFAULT_SALT_LEN,
 								SCRAM_DEFAULT_ITERATIONS, password);
 
 	if (prep_password)
@@ -486,8 +556,8 @@ pg_be_scram_build_secret(const char *password)
  * secret stored in pg_authid.
  */
 bool
-scram_verify_plain_password(const char *username, const char *password,
-							const char *secret)
+scram_verify_plain_password(const char *scram_type, const char *username, const char *password,
+							const char *secret) // ReqID:SRS-SECURITY-IDENTITYAUTH
 {
 	char	   *encoded_salt;
 	char	   *salt;
@@ -499,8 +569,8 @@ scram_verify_plain_password(const char *username, const char *password,
 	uint8		computed_key[SCRAM_KEY_LEN];
 	char	   *prep_password;
 	pg_saslprep_rc rc;
-
-	if (!parse_scram_secret(secret, &iterations, &encoded_salt,
+	/* ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if (!parse_scram_secret(scram_type, secret, &iterations, &encoded_salt,
 							stored_key, server_key))
 	{
 		/*
@@ -527,10 +597,11 @@ scram_verify_plain_password(const char *username, const char *password,
 	if (rc == SASLPREP_SUCCESS)
 		password = prep_password;
 
+	/* ReqID:SRS-SECURITY-IDENTITYAUTH */
 	/* Compute Server Key based on the user-supplied plaintext password */
-	if (scram_SaltedPassword(password, salt, saltlen, iterations,
+	if (scram_SaltedPassword(scram_type, password, salt, saltlen, iterations,
 							 salted_password) < 0 ||
-		scram_ServerKey(salted_password, computed_key) < 0)
+		scram_ServerKey(scram_type, salted_password, computed_key) < 0)
 	{
 		elog(ERROR, "could not compute server key");
 	}
@@ -557,8 +628,9 @@ scram_verify_plain_password(const char *username, const char *password,
  *
  * Returns true if the SCRAM secret has been parsed, and false otherwise.
  */
+/* ReqID:SRS-SECURITY-IDENTITYAUTH */
 bool
-parse_scram_secret(const char *secret, int *iterations, char **salt,
+parse_scram_secret(const char *scram_type, const char *secret, int *iterations, char **salt,
 				   uint8 *stored_key, uint8 *server_key)
 {
 	char	   *v;
@@ -591,7 +663,7 @@ parse_scram_secret(const char *secret, int *iterations, char **salt,
 		goto invalid_secret;
 
 	/* Parse the fields */
-	if (strcmp(scheme_str, "SCRAM-SHA-256") != 0)
+	if (strcmp(scheme_str, scram_type) != 0) // ReqID:SRS-SECURITY-IDENTITYAUTH
 		goto invalid_secret;
 
 	errno = 0;
@@ -648,8 +720,9 @@ invalid_secret:
  * caller must pass pre-allocated buffers of size SCRAM_KEY_LEN, and
  * the buffer for the salt is palloc'd by this function.
  */
+/* ReqID:SRS-SECURITY-IDENTITYAUTH */
 static void
-mock_scram_secret(const char *username, int *iterations, char **salt,
+mock_scram_secret(const char *scram_type, const char *username, int *iterations, char **salt,
 				  uint8 *stored_key, uint8 *server_key)
 {
 	char	   *raw_salt;
@@ -664,7 +737,7 @@ mock_scram_secret(const char *username, int *iterations, char **salt,
 	 * as the salt generated for mock authentication uses the cluster's nonce
 	 * value.
 	 */
-	raw_salt = scram_mock_salt(username);
+	raw_salt = scram_mock_salt(scram_type, username); /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (raw_salt == NULL)
 		elog(ERROR, "could not encode salt");
 
@@ -1101,8 +1174,19 @@ verify_client_proof(scram_state *state)
 	uint8		ClientSignature[SCRAM_KEY_LEN];
 	uint8		ClientKey[SCRAM_KEY_LEN];
 	uint8		client_StoredKey[SCRAM_KEY_LEN];
-	pg_hmac_ctx *ctx = pg_hmac_create(PG_SHA256);
+
+	pg_hmac_ctx *ctx = NULL; /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 	int			i;
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if(state->port->hba->auth_method == uaSCRAMsha256 || state->port->hba->auth_method == uaSCRAMsm3sha256)
+		ctx = pg_hmac_create(PG_SHA256);
+#ifdef USE_GMSSL
+	else if(state->port->hba->auth_method == uaSCRAMsm3 || state->port->hba->auth_method == uaSCRAMsha256sm3)
+		ctx = pg_hmac_create(PG_SM3);
+#endif
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if (ctx == NULL)
+		return false;
 
 	/*
 	 * Calculate ClientSignature.  Note that we don't log directly a failure
@@ -1131,11 +1215,16 @@ verify_client_proof(scram_state *state)
 	/* Extract the ClientKey that the client calculated from the proof */
 	for (i = 0; i < SCRAM_KEY_LEN; i++)
 		ClientKey[i] = state->ClientProof[i] ^ ClientSignature[i];
-
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	/* Hash it one more time, and compare with StoredKey */
-	if (scram_H(ClientKey, SCRAM_KEY_LEN, client_StoredKey) < 0)
-		elog(ERROR, "could not hash stored key");
-
+	if(state->port->hba->auth_method == uaSCRAMsha256 || state->port->hba->auth_method == uaSCRAMsha256sm3){
+		if (scram_H("SCRAM-SHA-256", ClientKey, SCRAM_KEY_LEN, client_StoredKey) < 0)
+			elog(ERROR, "could not hash stored key");
+	}else if(state->port->hba->auth_method == uaSCRAMsm3 || state->port->hba->auth_method == uaSCRAMsm3sha256){
+		if (scram_H("SCRAM-SM3", ClientKey, SCRAM_KEY_LEN, client_StoredKey) < 0)
+			elog(ERROR, "could not hash stored key");
+	}
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (memcmp(client_StoredKey, state->StoredKey, SCRAM_KEY_LEN) != 0)
 		return false;
 
@@ -1362,8 +1451,15 @@ build_server_final_message(scram_state *state)
 	uint8		ServerSignature[SCRAM_KEY_LEN];
 	char	   *server_signature_base64;
 	int			siglen;
-	pg_hmac_ctx *ctx = pg_hmac_create(PG_SHA256);
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	pg_hmac_ctx *ctx = NULL;//pg_hmac_create(PG_SHA256);
 
+	if (state->port->hba->auth_method == uaSCRAMsha256 || state->port->hba->auth_method == uaSCRAMsm3sha256)
+		ctx = pg_hmac_create(PG_SHA256);
+#ifdef USE_GMSSL
+	else if (state->port->hba->auth_method == uaSCRAMsm3 || state->port->hba->auth_method == uaSCRAMsha256sm3)
+		ctx = pg_hmac_create(PG_SM3);
+#endif
 	/* calculate ServerSignature */
 	if (pg_hmac_init(ctx, state->ServerKey, SCRAM_KEY_LEN) < 0 ||
 		pg_hmac_update(ctx,
@@ -1415,7 +1511,7 @@ build_server_final_message(scram_state *state)
  * pointer to a static buffer of size SCRAM_DEFAULT_SALT_LEN, or NULL.
  */
 static char *
-scram_mock_salt(const char *username)
+scram_mock_salt(const char *scram_type, const char *username) /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 {
 	pg_cryptohash_ctx *ctx;
 	static uint8 sha_digest[PG_SHA256_DIGEST_LENGTH];
@@ -1429,8 +1525,14 @@ scram_mock_salt(const char *username)
 	 */
 	StaticAssertStmt(PG_SHA256_DIGEST_LENGTH >= SCRAM_DEFAULT_SALT_LEN,
 					 "salt length greater than SHA256 digest length");
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if(scram_type[7] == 'H')
+		ctx = pg_cryptohash_create(PG_SHA256);
+#ifdef USE_GMSSL
+	else
+		ctx = pg_cryptohash_create(PG_SM3);
+#endif
 
-	ctx = pg_cryptohash_create(PG_SHA256);
 	if (pg_cryptohash_init(ctx) < 0 ||
 		pg_cryptohash_update(ctx, (uint8 *) username, strlen(username)) < 0 ||
 		pg_cryptohash_update(ctx, (uint8 *) mock_auth_nonce, MOCK_AUTH_NONCE_LEN) < 0 ||
@@ -1440,6 +1542,6 @@ scram_mock_salt(const char *username)
 		return NULL;
 	}
 	pg_cryptohash_free(ctx);
-
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	return (char *) sha_digest;
 }

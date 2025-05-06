@@ -27,6 +27,9 @@
 #include "common/md5.h"
 #include "common/sha1.h"
 #include "common/sha2.h"
+
+#include "common/sm3.h" /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 #ifndef FRONTEND
 #include "utils/memutils.h"
 #include "utils/resowner.h"
@@ -149,6 +152,9 @@ pg_cryptohash_init(pg_cryptohash_ctx *ctx)
 		case PG_SHA512:
 			status = EVP_DigestInit_ex(ctx->evpctx, EVP_sha512(), NULL);
 			break;
+		case PG_SM3: // ReqID:SRS-SECURITY-IDENTITYAUTH
+			status = EVP_DigestInit_ex(ctx->evpctx, EVP_sm3(), NULL);
+			break;
 	}
 
 	/* OpenSSL internals return 1 on success, 0 on failure */
@@ -215,6 +221,10 @@ pg_cryptohash_final(pg_cryptohash_ctx *ctx, uint8 *dest, size_t len)
 			break;
 		case PG_SHA512:
 			if (len < PG_SHA512_DIGEST_LENGTH)
+				return -1;
+			break;
+		case PG_SM3: // ReqID:SRS-SECURITY-IDENTITYAUTH
+			if (len < PG_SM3_DIGEST_LENGTH)
 				return -1;
 			break;
 	}

@@ -31,7 +31,9 @@
 #include "mb/pg_wchar.h"
 #include "pg_config_paths.h"
 #include "port/pg_bswap.h"
-
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#include "common/pass_crypt.h"
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #ifdef WIN32
 #include "win32.h"
 #ifdef _WIN32_IE
@@ -344,6 +346,31 @@ static const internalPQconninfoOption PQconninfoOptions[] = {
 		"Target-Session-Attrs", "", 15, /* sizeof("prefer-standby") = 15 */
 	offsetof(struct pg_conn, target_session_attrs)},
 
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	{"privatekey", "PGPRIVATEKEY", NULL, NULL,
+		"Client-Privatekey", "", 256,
+	offsetof(struct pg_conn, pgprikey)},
+
+	{"clientcertfile", "PGCLIENTCERTFILE", NULL, NULL,
+		"Client-Cert", "", 256,
+	offsetof(struct pg_conn, pgclientcert)},
+
+	{"clientkey", "PGCLIENTKEYFILE", NULL, NULL,
+		"Client-Key", "", 256,
+	offsetof(struct pg_conn, pgclientkey)},
+
+	{"ident", "PASSIDENT", NULL, NULL,
+		"Database-identifier", "", 256,
+	offsetof(struct pg_conn, passident)},
+
+	{"mac", "PASSMAC", NULL, NULL,
+		"Network-card", "", 64,
+	offsetof(struct pg_conn, passmac)},
+
+	{"custom", "PASSCUSTOM", NULL, NULL,
+		"Custom-Key", "", 64,
+	offsetof(struct pg_conn, passcustom)},
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	/* Terminating entry --- MUST BE LAST */
 	{NULL, NULL, NULL, NULL,
@@ -1258,6 +1285,23 @@ connectOptions2(PGconn *conn)
 									 conn->dbName,
 									 conn->pguser,
 									 conn->pgpassfile);
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+				/* The password field in the pgpass file is automatically identified and decrypted if it is ciphertext */
+				if(conn->connhost[i].password && pass_is_encrypted(conn->connhost[i].password)){
+					unsigned char key[32];
+					char passwd[128];
+					bool ret = pass_gen_key(conn->passident, conn->passmac, conn->passcustom, key);
+					if(ret){
+						ret = pass_decrypt(conn->connhost[i].password, key, key + 16, passwd);
+						if(ret)
+							conn->connhost[i].password = strdup(passwd);
+					}
+				}
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 			}
 		}
 	}

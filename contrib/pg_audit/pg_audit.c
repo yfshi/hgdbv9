@@ -4102,7 +4102,7 @@ get_auth_method(UserAuth method)
 			strcpy(result, "scram-sm3");
 			break;
 #else
-		case uaSCRAM:
+		case uaSCRAMsha256:
 			strcpy(result, "scram-sha-256");
 			break;
 #endif

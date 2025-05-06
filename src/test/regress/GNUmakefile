@@ -139,6 +139,9 @@ submake-contrib-spi: | submake-libpgport submake-generated-headers
 ## Run tests
 ##
 
+# ReqID:SRS-SECURITY-IDENTITYAUTH
+EXTRA_TESTS += password-idcheck
+
 REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 --make-testtablespace-dir \
 	$(EXTRA_REGRESS_OPTS)
 

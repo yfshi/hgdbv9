@@ -1,0 +1,135 @@
+--
+-- SM4 cipher
+--
+-- ensure consistent test output regardless of the default bytea format
+SET bytea_output TO escape;
+-- some standard Rijndael testvalues
+SELECT encode(encrypt(
+decode('00112233445566778899aabbccddeeff', 'hex'),
+decode('000102030405060708090a0b0c0d0e0f', 'hex'),
+'sm4-ecb/pad:none'), 'hex');
+              encode              
+----------------------------------
+ 74c046048161bbf3d4ceff33d3f429be
+(1 row)
+
+SELECT encode(encrypt(
+decode('00112233445566778899aabbccddeeff', 'hex'),
+decode('000102030405060708090a0b0c0d0e0f1011121314151617', 'hex'),
+'sm4-ecb/pad:none'), 'hex');
+              encode              
+----------------------------------
+ 74c046048161bbf3d4ceff33d3f429be
+(1 row)
+
+SELECT encode(encrypt(
+decode('00112233445566778899aabbccddeeff', 'hex'),
+decode('000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f', 'hex'),
+'sm4-ecb/pad:none'), 'hex');
+              encode              
+----------------------------------
+ 74c046048161bbf3d4ceff33d3f429be
+(1 row)
+
+-- cbc
+SELECT encode(encrypt(
+decode('00112233445566778899aabbccddeeff', 'hex'),
+decode('000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f', 'hex'),
+'sm4-cbc/pad:none'), 'hex');
+              encode              
+----------------------------------
+ 74c046048161bbf3d4ceff33d3f429be
+(1 row)
+
+-- key padding
+SELECT encode(encrypt(
+decode('0011223344', 'hex'),
+decode('000102030405', 'hex'),
+'sm4-cbc'), 'hex');
+              encode              
+----------------------------------
+ dc9bb452a15068522d1763a31557614b
+(1 row)
+
+SELECT encode(encrypt(
+decode('0011223344', 'hex'),
+decode('000102030405060708090a0b0c0d0e0f10111213', 'hex'),
+'sm4-cbc'), 'hex');
+              encode              
+----------------------------------
+ e613628cdc1436acbd113cfe4696590c
+(1 row)
+
+SELECT encode(encrypt(
+decode('0011223344', 'hex'),
+decode('000102030405060708090a0b0c0d0e0f101112131415161718191a1b', 'hex'),
+'sm4-cbc'), 'hex');
+              encode              
+----------------------------------
+ e613628cdc1436acbd113cfe4696590c
+(1 row)
+
+-- empty data
+SET ivorysql.enable_emptystring_to_null to off;
+select encode(encrypt('', 'foo', 'sm4'), 'hex');
+              encode              
+----------------------------------
+ d415dfee576acae1b72e6c1ca2b708fe
+(1 row)
+
+-- 10 bytes key
+select encode(encrypt('foo', '0123456789', 'sm4'), 'hex');
+              encode              
+----------------------------------
+ 04029767966d3900caa1ce252115a3d1
+(1 row)
+
+-- 22 bytes key
+select encode(encrypt('foo', '0123456789012345678901', 'sm4'), 'hex');
+              encode              
+----------------------------------
+ 75ddd67ec183ccff512f5a2e8ad3c900
+(1 row)
+
+-- decrypt
+select decrypt(encrypt('foo', '0123456', 'sm4'), '0123456', 'sm4');
+ decrypt 
+---------
+ foo
+(1 row)
+
+-- iv
+select encode(encrypt_iv('foo', '0123456', 'abcd', 'sm4'), 'hex');
+              encode              
+----------------------------------
+ c9e8290bec346d69a12cb3e0d3c3a783
+(1 row)
+
+select decrypt_iv(decode('c9e8290bec346d69a12cb3e0d3c3a783', 'hex'),
+		'0123456', 'abcd', 'sm4');
+ decrypt_iv 
+------------
+ foo
+(1 row)
+
+-- long message
+select encode(encrypt('Lets try a longer message.', '0123456789', 'sm4'), 'hex');
+                              encode                              
+------------------------------------------------------------------
+ 6c0444e460cfc0a60ee9dd627e1766ae505f5550b8fb38fe3ba9c34ad4ec5ca6
+(1 row)
+
+select decrypt(encrypt('Lets try a longer message.', '0123456789', 'sm4'), '0123456789', 'sm4');
+          decrypt           
+----------------------------
+ Lets try a longer message.
+(1 row)
+
+-- 中文
+select convert_from(decrypt('\x06d2283c71227bbf3ac9708f4848a0c7', '0123456789', 'sm4'), 'utf8');
+ convert_from 
+--------------
+ 中国
+(1 row)
+
+RESET ivorysql.enable_emptystring_to_null;

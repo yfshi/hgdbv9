@@ -120,6 +120,9 @@ submake-contrib-spi: | submake-libpgport submake-generated-headers
 ## Run tests
 ##
 
+# ReqID:SRS-SECURITY-IDENTITYAUTH
+EXTRA_TESTS += password-idcheck
+
 EXTRA_INSTALL = contrib/pageinspect contrib/gb18030_2022
 
 ORACLE_REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 --make-testtablespace-dir \

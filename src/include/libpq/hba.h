@@ -30,7 +30,15 @@ typedef enum UserAuth
 	uaIdent,
 	uaPassword,
 	uaMD5,
-	uaSCRAM,
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	uaSM3,
+	uaMD5SM3,
+	uaSM3MD5,
+	uaSCRAMsha256,
+	uaSCRAMsm3,
+	uaSCRAMsm3sha256,
+	uaSCRAMsha256sm3,
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	uaGSS,
 	uaSSPI,
 	uaPAM,
@@ -41,6 +49,16 @@ typedef enum UserAuth
 	uaPeer
 #define USER_AUTH_LAST uaPeer	/* Must be last value of this enum */
 } UserAuth;
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+typedef enum UserMFAAuth
+{
+	uaTOTP,
+	uaPKEY,
+	uaCERT,
+	uaNONE
+} UserMFAAuth;
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 /*
  * Data structures representing pg_hba.conf entries
@@ -91,6 +109,11 @@ typedef struct HbaLine
 	IPCompareMethod ip_cmp_method;
 	char	   *hostname;
 	UserAuth	auth_method;
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	UserMFAAuth	mfa_auth_method;
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 	char	   *usermap;
 	char	   *pamservice;
 	bool		pam_use_hostname;

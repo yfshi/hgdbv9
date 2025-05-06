@@ -162,6 +162,19 @@ extern bool Db_user_namespace;
 #define AUTH_REQ_SASL_CONT 11	/* Continue SASL authentication */
 #define AUTH_REQ_SASL_FIN  12	/* Final SASL message */
 
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#define AUTH_REQ_TOTP		13	/* totp password */
+#define AUTH_REQ_PKEY		14	/* signature */
+#define AUTH_REQ_CERT_CERT		15	/* cert */
+#define AUTH_REQ_CERT_SIGN		16	/* cert signature */
+
+#ifdef USE_GMSSL
+#define AUTH_REQ_SM3			17	/* sm3 password */
+#define AUTH_REQ_MD5_SM3		18	/* md5 password */
+#define AUTH_REQ_SM3_MD5		19	/* md5 password */
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 typedef uint32 AuthRequest;
 
 
