@@ -49,7 +49,7 @@ PG_FUNCTION_INFO_V1(myint4_negative);
 int32 
 my_atoi_int4(const char *s)
 {
-	long l;
+	int64 l;
 	char *badp;
 	int save_errno = 0;
 	int flag = SIGNED_FLAG;
