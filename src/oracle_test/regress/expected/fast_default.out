@@ -325,16 +325,16 @@ FROM T
 ORDER BY pk LIMIT 10;
  coalesce | coalesce 
 ----------+----------
- -1       | hello
- -1       | hello
- -1       | hello
- -1       | hello
- -1       | hello
- -1       | hello
- -1       | hello
- -1       | hello
- -1       | hello
- -1       | hello
+       -1 | hello
+       -1 | hello
+       -1 | hello
+       -1 | hello
+       -1 | hello
+       -1 | hello
+       -1 | hello
+       -1 | hello
+       -1 | hello
+       -1 | hello
 (10 rows)
 
 -- Aggregate function

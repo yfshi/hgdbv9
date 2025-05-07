@@ -1188,6 +1188,18 @@ typedef struct RowCompareExpr
 	List	   *rargs;			/* the right-hand input arguments */
 } RowCompareExpr;
 
+/* Begin - BUG#Z4592 */
+/*
+ * CoalesceType - a sub NodeTag(label) for CoalesceExpr.
+ */
+typedef enum CoalescetTag
+{
+	TAG_COALESCE,
+	TAG_NVL,
+	TAG_NVL2
+} CoalescetTag;
+/* End - BUG#Z4592 */
+
 /*
  * CoalesceExpr - a COALESCE expression
  */
@@ -1197,7 +1209,7 @@ typedef struct CoalesceExpr
 	Oid			coalescetype;	/* type of expression result */
 	Oid			coalescecollid; /* OID of collation, or InvalidOid if none */
 	List	   *args;			/* the arguments */
-	bool		isnvl;			/* BUG#Z4591: wrapper for compatible Oracle's NVL */
+	CoalescetTag coalescetag;	/* BUG#Z4591: wrapper for compatible Oracle's NVL NVL2 */
 	int			location;		/* token location, or -1 if unknown */
 } CoalesceExpr;
 

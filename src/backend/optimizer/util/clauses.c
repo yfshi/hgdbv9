@@ -3519,7 +3519,7 @@ eval_whenexpr2:
 					 * an exception is the case where both arguments of NVL are
 					 * NULL, which can be optimized.
 					 */
-					if (IsA(e, Const) && !coalesceexpr->isnvl /* BUG#Z4591 */)
+					if (IsA(e, Const) && coalesceexpr->coalescetag == TAG_COALESCE /* BUG#Z4591 */)
 					{
 						if (((Const *) e)->constisnull)
 							continue;	/* drop null constant */
@@ -3532,7 +3532,9 @@ eval_whenexpr2:
 					newargs = lappend(newargs, e);
 
 					/* Begin - BUG#Z4591 */
-					if (coalesceexpr->isnvl && IsA(e, Const) && ((Const *) e)->constisnull)
+					if ((coalesceexpr->coalescetag == TAG_NVL ||
+						 coalesceexpr->coalescetag == TAG_NVL2) &&
+						IsA(e, Const) && ((Const *) e)->constisnull)
 						nvl_null_cnt++;
 					/* End - BUG#Z4591 */
 				}
@@ -3541,7 +3543,11 @@ eval_whenexpr2:
 				 * If all the arguments were constant null, the result is just
 				 * null
 				 */
-				if (newargs == NIL || nvl_null_cnt == 2 /* BUG#Z4591 */)
+				if (newargs == NIL ||
+					/* Begin - BUG#Z4592 */
+					(coalesceexpr->coalescetag == TAG_NVL && nvl_null_cnt == 2) ||
+					(coalesceexpr->coalescetag == TAG_NVL2 && nvl_null_cnt == 3))
+					/* End - BUG#Z4592 */
 					return (Node *) makeNullConst(coalesceexpr->coalescetype,
 												  -1,
 												  coalesceexpr->coalescecollid);
@@ -3550,7 +3556,7 @@ eval_whenexpr2:
 				newcoalesce->coalescetype = coalesceexpr->coalescetype;
 				newcoalesce->coalescecollid = coalesceexpr->coalescecollid;
 				newcoalesce->args = newargs;
-				newcoalesce->isnvl = coalesceexpr->isnvl;	/* BUG#Z4591 */
+				newcoalesce->coalescetag = coalesceexpr->coalescetag;	/* BUG#Z4591 */
 				newcoalesce->location = coalesceexpr->location;
 				return (Node *) newcoalesce;
 			}

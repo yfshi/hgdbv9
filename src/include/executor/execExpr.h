@@ -272,6 +272,10 @@ typedef enum ExprEvalOp
 	EEOP_ORA_ROWNUM,
 	/* End - ReqID:SRS-SQL-ROWNUM */
 
+	/* Begin - BUG#Z4591 */
+	EEOP_NVL_FETCH,
+	/* End - BUG#Z4591 */
+
 	/* non-existent operation, used e.g. to check array lengths */
 	EEOP_LAST
 } ExprEvalOp;
@@ -711,6 +715,14 @@ typedef struct ExprEvalStep
 			int64		*num;
 		} ptr_rownum;
 		/* End - ReqID:SRS-SQL-ROWNUM */
+
+		/* Begin - BUG#Z4591 */
+		struct
+		{
+			int			expr2_step;
+			int			expr3_step;
+		}			nvl_val_fetchstep;
+		/* End - BUG#Z4591 */
 	}			d;
 } ExprEvalStep;
 

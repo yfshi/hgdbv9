@@ -2381,41 +2381,69 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				CoalesceExpr *coalesce = (CoalesceExpr *) node;
 
 				/* Begin - BUG#Z4591 */
-				if (coalesce->isnvl)
+				if (coalesce->coalescetag == TAG_NVL)
 				{
-					ListCell   *cell1;
-					ListCell   *cell2;
 					Expr	   *expr1;
 					Expr	   *expr2;
-					int			jump_stepid;
+					int			expr1_stepid;
+					int			expr2_stepid;
+					Datum	   *expr2_val = palloc(sizeof(Datum));
+					bool	   *expr2_null = palloc(sizeof(bool));
 
 					/* NVL expr must have two args? */
 					Assert(list_length(coalesce->args) == 2);
 
-					cell1 = list_head(coalesce->args);
-					cell2 = list_second_cell(coalesce->args);
+					expr1 = (Expr *) linitial(coalesce->args);
+					expr2 = (Expr *) lsecond(coalesce->args);
 
 					/*
 					 * Process expr2 first to check implicit conversion.
 					 */
-					expr2 = (Expr *) lfirst(cell2);
-					ExecInitExprRec(expr2, state, resv, resnull);
+					ExecInitExprRec(expr2, state, expr2_val, expr2_null);
+					expr2_stepid = state->steps_len - 1;
 
-					expr1 = (Expr *) lfirst(cell1);
+					ExecInitExprRec(expr1, state, resv, resnull);
+					expr1_stepid = state->steps_len - 1;
+
+					scratch.opcode = EEOP_NVL_FETCH;
+					scratch.d.nvl_val_fetchstep.expr2_step = expr1_stepid;
+					scratch.d.nvl_val_fetchstep.expr3_step = expr2_stepid;
+					ExprEvalPushStep(state, &scratch);
+				}
+				/* Begin - BUG#Z4592 */
+				else if (coalesce->coalescetag == TAG_NVL2)
+				{
+					Expr	   *expr1;
+					Expr	   *expr2;
+					Expr	   *expr3;
+					int			expr2_stepid;
+					int			expr3_stepid;
+					Datum	   *expr2_val = palloc(sizeof(Datum));
+					bool	   *expr2_null = palloc(sizeof(bool));
+					Datum	   *expr3_val = palloc(sizeof(Datum));
+					bool	   *expr3_null = palloc(sizeof(bool));
+
+					/* NVL2 expr must have three args? */
+					Assert(list_length(coalesce->args) == 3);
+
+					expr1 = (Expr *) linitial(coalesce->args);
+					expr2 = (Expr *) lsecond(coalesce->args);
+					expr3 = (Expr *) lthird(coalesce->args);
+
+					ExecInitExprRec(expr3, state, expr3_val, expr3_null);
+					expr3_stepid = state->steps_len - 1;
+
+					ExecInitExprRec(expr2, state, expr2_val, expr2_null);
+					expr2_stepid = state->steps_len - 1;
+
 					ExecInitExprRec(expr1, state, resv, resnull);
 
-					/* if expr1 is not null, skip to end of NVL expr */
-					scratch.opcode = EEOP_JUMP_IF_NOT_NULL;
-					scratch.d.jump.jumpdone = -1;	/* adjust later */
+					scratch.opcode = EEOP_NVL_FETCH;
+					scratch.d.nvl_val_fetchstep.expr2_step = expr2_stepid;
+					scratch.d.nvl_val_fetchstep.expr3_step = expr3_stepid;
 					ExprEvalPushStep(state, &scratch);
-					jump_stepid = state->steps_len - 1;
-
-					/* expr1 is null return expr2 */
-					ExecInitExprRec(expr2, state, resv, resnull);
-
-					/* final adjust jump target */
-					state->steps[jump_stepid].d.jump.jumpdone = state->steps_len;
 				}
+				/* End - BUG#Z4592 */
 				else
 				/* End - BUG#Z4591 */
 				{

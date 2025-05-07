@@ -4478,6 +4478,97 @@ select_common_type_for_nvl(ParseState *pstate, List *exprs, const char *context,
 }
 /* End - BUGID:0000536 */
 
+/* Begin - BUG#Z4592 */
+/*
+ * Copy from select_common_type_for_nvl, except not checking expr1.
+ */
+Oid
+select_common_type_for_nvl2(ParseState *pstate, List *exprs, const char *context,
+				   Node **which_expr)
+{
+	Node	   *pexpr;
+	Oid			ptype;
+	ListCell   *lc;
+
+	Assert(exprs != NIL);
+	pexpr = (Node *) lsecond(exprs);
+	lc = lnext(exprs, list_second_cell(exprs));
+	ptype = exprType(pexpr);
+
+	if (ptype == UNKNOWNOID)
+	{
+		if (!IsA(pexpr, Const) || !((Const *)pexpr)->constisnull)
+		{
+			if (compatible_db  == PG_PARSER)
+				ptype = TEXTOID;
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+			else if (compatible_db  == MYS_PARSER)
+				ptype = TEXTOID;
+			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+			else if (compatible_db == ORA_PARSER)
+			{
+				if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
+					ptype = ORAVARCHARBYTEOID;
+				else
+					ptype = ORAVARCHARCHAROID;
+			}
+		}
+		else
+		{
+			for_each_cell(lc, exprs, lc)
+			{
+				Node	   *nexpr = (Node *) lfirst(lc);
+				Oid			ntype = getBaseType(exprType(nexpr));
+
+				/* move on to next one if no new information... */
+				if (ntype != UNKNOWNOID && ntype != ptype)
+				{
+					TYPCATEGORY ncategory;
+					bool		nispreferred;
+
+					get_type_category_preferred(ntype, &ncategory, &nispreferred);
+
+					/* so far, only unknowns so take anything... */
+					pexpr = nexpr;
+					ptype = ntype;
+
+					break;
+				}
+			}
+
+			if (ptype == UNKNOWNOID)
+			{
+				if (compatible_db == PG_PARSER)
+					ptype = TEXTOID;
+				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+				else if (compatible_db  == MYS_PARSER)
+					ptype = TEXTOID;
+				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+				else if (compatible_db == ORA_PARSER)
+				{
+					if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
+						ptype = ORAVARCHARBYTEOID;
+					else
+						ptype = ORAVARCHARCHAROID;
+				}
+			}
+		}
+	}
+
+	/*
+	 * Nope, so set up for the full algorithm.  Note that at this point, lc
+	 * points to the first list item with type different from pexpr's; we need
+	 * not re-examine any items the previous loop advanced over.
+	 */
+	ptype = getBaseType(ptype);
+	ptype = get_preferred_type(ptype);
+
+	if (which_expr)
+		*which_expr = pexpr;
+	return ptype;
+}
+/* End - BUG#Z4592 */
+
 /*
  * select_common_type_from_oids()
  *		Determine the common supertype of an array of type OIDs.

@@ -2442,7 +2442,7 @@ select 1.000000000123 ^ (-2147483648);
 select coalesce(nullif(0.9999999999 ^ 23300000000000, 0), 0) as rounds_to_zero;
  rounds_to_zero 
 ----------------
- 0
+              0
 (1 row)
 
 select round(((1 - 1.500012345678e-1000) ^ 1.45e1003) * 1e1000);
@@ -2467,7 +2467,7 @@ select 0.5678 ^ (-85);
 select coalesce(nullif(0.9999999999 ^ 70000000000000, 0), 0) as underflows;
  underflows 
 ------------
- 0
+          0
 (1 row)
 
 -- negative base to integer powers
@@ -2640,13 +2640,13 @@ select exp('-inf'::numeric);
 select coalesce(nullif(exp(-5000::numeric), 0), 0) as rounds_to_zero;
  rounds_to_zero 
 ----------------
- 0
+              0
 (1 row)
 
 select coalesce(nullif(exp(-10000::numeric), 0), 0) as underflows;
  underflows 
 ------------
- 0
+          0
 (1 row)
 
 -- cases that used to generate inaccurate results

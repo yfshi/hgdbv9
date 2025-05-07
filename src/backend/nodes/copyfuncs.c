@@ -2094,7 +2094,7 @@ _copyCoalesceExpr(const CoalesceExpr *from)
 	COPY_SCALAR_FIELD(coalescetype);
 	COPY_SCALAR_FIELD(coalescecollid);
 	COPY_NODE_FIELD(args);
-	COPY_SCALAR_FIELD(isnvl); /* BUG#Z4591 */
+	COPY_SCALAR_FIELD(coalescetag); /* BUG#Z4591 */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;

@@ -514,6 +514,9 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		&&CASE_EEOP_OUT_PARAM_CALLBACK,
 		/* End - ReqID:SRS-SQL-FUNCOUT */
 		&&CASE_EEOP_ORA_ROWNUM,	/* ReqID:SRS-SQL-ROWNUM */
+		/* Begin - BUG#Z4591 */
+		&&CASE_EEOP_NVL_FETCH,
+		/* End - BUG#Z4591 */
 		&&CASE_EEOP_LAST
 	};
 
@@ -1850,6 +1853,24 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			EEO_NEXT();
 		}
 		/* Begin - ReqID:SRS-SQL-ROWNUM */
+
+		/* Begin - BUG#Z4591 */
+		EEO_CASE(EEOP_NVL_FETCH)
+		{
+			if (*op->resnull)
+			{
+				*op->resnull = *state->steps[op->d.nvl_val_fetchstep.expr3_step].resnull;
+				*op->resvalue = *state->steps[op->d.nvl_val_fetchstep.expr3_step].resvalue;
+			}
+			else
+			{
+				*op->resnull = *state->steps[op->d.nvl_val_fetchstep.expr2_step].resnull;
+				*op->resvalue = *state->steps[op->d.nvl_val_fetchstep.expr2_step].resvalue;
+			}
+
+			EEO_NEXT();
+		}
+		/* End - BUG#Z4591 */
 
 		EEO_CASE(EEOP_LAST)
 		{

@@ -456,7 +456,7 @@ drop table test1;
 create table test1(col1 money,col2  int);
 insert into test1 values(23,1);
 SELECT NVL (col1, NULL) from test1;
-ERROR:  COALESCE could not convert type money to number
+ERROR:  NVL could not convert type money to number
 LINE 1: SELECT NVL (col1, NULL) from test1;
                     ^
 drop table test1;
@@ -869,7 +869,7 @@ drop table test1;
 create table test1(col1 money,col2  int);
 insert into test1 values(23,1);
 SELECT NVL (NULL, col1) from test1;
-ERROR:  COALESCE could not convert type money to number
+ERROR:  NVL could not convert type money to number
 LINE 1: SELECT NVL (NULL, col1) from test1;
                           ^
 drop table test1;
@@ -1201,19 +1201,19 @@ LINE 1: SELECT NVL (NULL, ()$!~);
 SELECT NVL2(null,1,-2);
  nvl2 
 ------
-   -2
+ -2
 (1 row)
 
 SELECT NVL2(NULL, 1,cos(0));
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 SELECT NVL2(NULL, 1,2*3); 
  nvl2 
 ------
-    6
+ 6
 (1 row)
 
 SELECT NVL2(NULL,'sales',col1) from test11;
@@ -1231,13 +1231,13 @@ SELECT NVL2(NULL,'sales',col1) from test11;
 SELECT NVL2('sales',1,-2);
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 SELECT NVL2('sales',2*4,-2);
  nvl2 
 ------
-    8
+ 8
 (1 row)
 
 SELECT NVL2('sales',cos(0),-2);
@@ -1260,7 +1260,7 @@ SELECT NVL2('sales',col1,-2) from test11;
 SELECT NVL2(cos(0), 1,-2);
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 SELECT NVL2(cos(0),to_date('1998','YYYY'),'iruyw');--报错
@@ -1271,7 +1271,7 @@ LINE 1: SELECT NVL2(cos(0),to_date('1998','YYYY'),'iruyw');
 SELECT NVL2(2*3, 1,-2);
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 SELECT NVL2(2*3, to_date('1998','YYYY'),'i2ywh');--报错
@@ -1290,7 +1290,7 @@ SELECT NVL2(col1, 'aaaa','ueywh') from test11;
 (5 rows)
 
 SELECT NVL2(col1,111,to_date('1998','YYYY')) from test11;--报错
-ERROR:  CASE types integer and date cannot be matched
+ERROR:  NVL2 could not convert type date to number
 LINE 1: SELECT NVL2(col1,111,to_date('1998','YYYY')) from test11;
                              ^
 DROP TABLE test11;
@@ -1319,7 +1319,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1329,7 +1329,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1339,7 +1339,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1349,7 +1349,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1359,7 +1359,7 @@ insert into test1 values(23.225,1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1369,7 +1369,7 @@ insert into test1 values(23.225,1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1379,7 +1379,7 @@ insert into test1 values(23.225,1);
 SELECT  NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1389,7 +1389,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1399,7 +1399,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1409,7 +1409,7 @@ insert into test1 values(23,1);
 SELECT  NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1420,7 +1420,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (col1,1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1461,7 +1461,7 @@ insert into test1 values(E'\\001',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1472,7 +1472,7 @@ insert into test1 values('1999-1-5',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1482,7 +1482,7 @@ insert into test1 values('1999-1-5 8:00:00',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1492,7 +1492,7 @@ insert into test1 values('1999-01-05',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1502,7 +1502,7 @@ insert into test1 values('14:12:50',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1512,7 +1512,7 @@ insert into test1 values('14:12:50-8',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1522,7 +1522,7 @@ insert into test1 values('1-2',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1533,7 +1533,7 @@ insert into test1 values(true,1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1547,7 +1547,7 @@ INSERT INTO person_test VALUES ('Moe', 'happy');
 SELECT NVL2( current_mood, 1,2) from person_test;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table person_test;
@@ -1559,7 +1559,7 @@ insert into test1 values(point(5,8),1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1569,7 +1569,7 @@ insert into test1 values(line(point '(-1,0)', point '(1,0)'),1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1579,7 +1579,7 @@ insert into test1 values(lseg(box '((-1,0),(1,0))'),1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1589,7 +1589,7 @@ insert into test1 values(box(point '(0,0)', point '(1,1)'),1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1599,7 +1599,7 @@ insert into test1 values(path(polygon '((0,0),(1,1),(2,0))'),1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1609,7 +1609,7 @@ insert into test1 values(polygon(box '((0,0),(1,1))'),1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1619,7 +1619,7 @@ insert into test1 values(circle(point '(0,0)', 2.0),1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1630,7 +1630,7 @@ insert into test1 values('192.168.100.128/25',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1640,7 +1640,7 @@ insert into test1 values('192.168.100.128/25',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1650,7 +1650,7 @@ insert into test1 values('08:00:2b:01:02:03',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1661,7 +1661,7 @@ insert into test1 values(B'101',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1671,7 +1671,7 @@ insert into test1 values(B'00',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1682,7 +1682,7 @@ insert into test1 values(to_tsvector('english', 'The Fat Rats'),1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1692,7 +1692,7 @@ insert into test1 values(to_tsquery('Fat:ab & Cats'),1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1702,7 +1702,7 @@ insert into test1 values('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1712,7 +1712,7 @@ insert into test1 values('5'::json,1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1722,7 +1722,7 @@ insert into test1 values(array[5,6],1);
 SELECT NVL2 (col1, 1,2) from test1;
  nvl2 
 ------
-    1
+ 1
 (1 row)
 
 drop table test1;
@@ -1734,7 +1734,7 @@ insert into test1 values(23,1);
 SELECT NVL2 ('sales',col1, NULL) from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -1744,7 +1744,7 @@ insert into test1 values(23,1);
 SELECT NVL2 ('sales',col1, NULL) from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -1754,7 +1754,7 @@ insert into test1 values(23,1);
 SELECT NVL2 ('sales',col1, NULL) from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -1764,7 +1764,7 @@ insert into test1 values(23,1);
 SELECT NVL2 ('sales',col1, NULL)from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -1804,7 +1804,7 @@ insert into test1 values(23,1);
 SELECT NVL2 ('sales',col1, NULL) from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -1814,7 +1814,7 @@ insert into test1 values(23,1);
 SELECT NVL2 ('sales',col1, NULL)from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -1824,7 +1824,7 @@ insert into test1 values(23,1);
 SELECT NVL2 ('sales',col1, NULL) from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -1833,11 +1833,9 @@ drop table test1;
 create table test1(col1 money,col2  int);
 insert into test1 values(23,1);
 SELECT NVL2 ('sales',col1, NULL) from test1;
-  nvl2  
---------
- $23.00
-(1 row)
-
+ERROR:  NVL2 could not convert type money to number
+LINE 1: SELECT NVL2 ('sales',col1, NULL) from test1;
+                             ^
 drop table test1;
 --字符类型：
 --1.varchar:
@@ -1935,9 +1933,9 @@ drop table test1;
 create table test1(col1 interval year to month,col2  int);
 insert into test1 values('1-2',1);
 SELECT NVL2 ('sales',col1, NULL) from test1;
-  nvl2  
---------
- +01-02
+     nvl2      
+---------------
+ +000000001-02
 (1 row)
 
 drop table test1;
@@ -2149,7 +2147,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (NULL,1, col1) from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -2159,7 +2157,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (NULL,1, col1) from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -2169,7 +2167,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (NULL,1, col1) from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -2179,7 +2177,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (NULL,1, col1)from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -2219,7 +2217,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (NULL,1, col1) from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -2229,7 +2227,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (NULL,1, col1)from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -2239,7 +2237,7 @@ insert into test1 values(23,1);
 SELECT NVL2 (NULL,1, col1) from test1;
  nvl2 
 ------
-   23
+ 23
 (1 row)
 
 drop table test1;
@@ -2248,124 +2246,96 @@ drop table test1;
 create table test1(col1 money,col2  int);
 insert into test1 values(23,1);
 SELECT NVL2 (NULL,1, col1) from test1;
-  nvl2  
---------
- $23.00
-(1 row)
-
+ERROR:  NVL2 could not convert type money to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --字符类型：
 --1.varchar:
 create table test1(col1 varchar(10),col2  int);
 insert into test1 values('sales',1);
 SELECT NVL2 (NULL,1, col1) from test1;
- nvl2  
--------
- sales
-(1 row)
-
+ERROR:  invalid input syntax for type numeric: "sales"
 drop table test1;
 --2.char:
 create table test1(col1 char(10),col2  int);
 insert into test1 values('sales',1);
 SELECT NVL2 (NULL,1, col1) from test1;
-    nvl2    
-------------
- sales     
-(1 row)
-
+ERROR:  invalid input syntax for type numeric: "sales     "
 drop table test1;
 --3.text:
 create table test1(col1 text,col2  int);
 insert into test1 values('sales',1);
 SELECT NVL2 (NULL,1, col1)from test1;
- nvl2  
--------
- sales
-(1 row)
-
+ERROR:  NVL2 could not convert type text to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --二进制数据类型:
 create table test1(col1 bytea,col2  int);
 insert into test1 values(E'\\001',1);
 SELECT NVL2 (NULL,1, col1) from test1;
- nvl2 
-------
- \x01
-(1 row)
-
+ERROR:  NVL2 could not convert type bytea to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --日期/时间类型：
 --1.timestamp:
 create table test1(col1 timestamp,col2  int);
 insert into test1 values('1999-1-5',1);
 SELECT NVL2 (NULL,1, col1) from test1;
-           nvl2           
---------------------------
- Tue Jan 05 00:00:00 1999
-(1 row)
-
+ERROR:  NVL2 could not convert type timestamp to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --2.timestamp with time zone:
 create table test1(col1 timestamp with time zone,col2  int);
 insert into test1 values('1999-1-5 8:00:00',1);
 SELECT NVL2 (NULL,1, col1) from test1;
-             nvl2             
-------------------------------
- Tue Jan 05 08:00:00 1999 PST
-(1 row)
-
+ERROR:  NVL2 could not convert type timestamp with time zone to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --3.date:
 create table test1(col1 date,col2  int);
 insert into test1 values('1999-01-05',1);
 SELECT NVL2 (NULL,1, col1)from test1;
-           nvl2           
---------------------------
- Tue Jan 05 00:00:00 1999
-(1 row)
-
+ERROR:  NVL2 could not convert type date to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --4.time:
 create table test1(col1 time,col2  int);
 insert into test1 values('14:12:50',1);
 SELECT NVL2 (NULL,1, col1)from test1;
-   nvl2   
-----------
- 14:12:50
-(1 row)
-
+ERROR:  NVL2 could not convert type time without time zone to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --5.time with time zone:
 create table test1(col1 time with time zone,col2  int);
 insert into test1 values('14:12:50-8',1);
 SELECT NVL2 (NULL,1, col1) from test1;
-    nvl2     
--------------
- 14:12:50-08
-(1 row)
-
+ERROR:  NVL2 could not convert type time with time zone to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --6.interval:
 create table test1(col1 interval year to month,col2  int);
 insert into test1 values('1-2',1);
 SELECT NVL2 (NULL,1, col1) from test1;
-  nvl2  
---------
- +01-02
-(1 row)
-
+ERROR:  NVL2 could not convert type interval year to month to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --布尔类型：
 --boolean:
 create table test1(col1 boolean,col2  int);
 insert into test1 values(true,1);
 SELECT NVL2 (NULL,1, col1) from test1;
- nvl2 
-------
- t
-(1 row)
-
+ERROR:  NVL2 could not convert type boolean to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --枚举类型：
 CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
@@ -2387,174 +2357,140 @@ drop type mood;
 create table test1(col1 point,col2  int);
 insert into test1 values(point(5,8),1);
 SELECT NVL2 (NULL,1, col1) from test1;
- nvl2  
--------
- (5,8)
-(1 row)
-
+ERROR:  NVL2 could not convert type point to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --2.line:
 create table test1(col1 line,col2  int);
 insert into test1 values(line(point '(-1,0)', point '(1,0)'),1);
 SELECT NVL2 (NULL,1, col1) from test1;
-   nvl2   
-----------
- {0,-1,0}
-(1 row)
-
+ERROR:  NVL2 could not convert type line to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --3.lseg:
 create table test1(col1 lseg,col2  int);
 insert into test1 values(lseg(box '((-1,0),(1,0))'),1);
 SELECT NVL2 (NULL,1, col1)from test1;
-      nvl2      
-----------------
- [(1,0),(-1,0)]
-(1 row)
-
+ERROR:  NVL2 could not convert type lseg to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --4.box:
 create table test1(col1 box,col2  int);
 insert into test1 values(box(point '(0,0)', point '(1,1)'),1);
 SELECT NVL2 (NULL,1, col1)from test1;
-    nvl2     
--------------
- (1,1),(0,0)
-(1 row)
-
+ERROR:  NVL2 could not convert type box to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --5.path:
 create table test1(col1 path,col2  int);
 insert into test1 values(path(polygon '((0,0),(1,1),(2,0))'),1);
 SELECT NVL2 (NULL,1, col1)from test1;
-        nvl2         
----------------------
- ((0,0),(1,1),(2,0))
-(1 row)
-
+ERROR:  NVL2 could not convert type path to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --6.polygon:
 create table test1(col1 polygon,col2  int);
 insert into test1 values(polygon(box '((0,0),(1,1))'),1);
 SELECT NVL2 (NULL,1, col1) from test1;
-           nvl2            
----------------------------
- ((0,0),(0,1),(1,1),(1,0))
-(1 row)
-
+ERROR:  NVL2 could not convert type polygon to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --7.circle:
 create table test1(col1 circle,col2  int);
 insert into test1 values(circle(point '(0,0)', 2.0),1);
 SELECT NVL2 (NULL,1, col1)from test1;
-   nvl2    
------------
- <(0,0),2>
-(1 row)
-
+ERROR:  NVL2 could not convert type circle to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --网络地址类型：
 --1.cidr:
 create table test1(col1 cidr,col2  int);
 insert into test1 values('192.168.100.128/25',1);
 SELECT NVL2 (NULL,1, col1)from test1;
-        nvl2        
---------------------
- 192.168.100.128/25
-(1 row)
-
+ERROR:  NVL2 could not convert type cidr to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --2.inet:
 create table test1(col1 inet,col2  int);
 insert into test1 values('192.168.100.128/25',1);
 SELECT NVL2 (NULL,1, col1) from test1;
-        nvl2        
---------------------
- 192.168.100.128/25
-(1 row)
-
+ERROR:  NVL2 could not convert type inet to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --3.macaddr:
 create table test1(col1 macaddr,col2  int);
 insert into test1 values('08:00:2b:01:02:03',1);
 SELECT NVL2 (NULL,1, col1) from test1;
-       nvl2        
--------------------
- 08:00:2b:01:02:03
-(1 row)
-
+ERROR:  NVL2 could not convert type macaddr to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --位串类型：
 --1.bit(n):
 create table test1(col1 bit(3),col2  int);
 insert into test1 values(B'101',1);
 SELECT NVL2 (NULL,1, col1)from test1;
- nvl2 
-------
- 101
-(1 row)
-
+ERROR:  NVL2 could not convert type bit to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --2.bit varying(n):
 create table test1(col1 bit varying(5),col2  int);
 insert into test1 values(B'00',1);
 SELECT NVL2 (NULL,1, col1) from test1;
- nvl2 
-------
- 00
-(1 row)
-
+ERROR:  NVL2 could not convert type bit varying to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --文本搜索类型：
 --1.tsvector：
 create table test1(col1 tsvector,col2  int);
 insert into test1 values(to_tsvector('english', 'The Fat Rats'),1);
 SELECT NVL2 (NULL,1, col1) from test1;
-      nvl2       
------------------
- 'fat':2 'rat':3
-(1 row)
-
+ERROR:  NVL2 could not convert type tsvector to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --2.tsquery：
 create table test1(col1 tsquery,col2  int);
 insert into test1 values(to_tsquery('Fat:ab & Cats'),1);
 SELECT NVL2 (NULL,1, col1) from test1;
-       nvl2        
--------------------
- 'fat':AB & 'cats'
-(1 row)
-
+ERROR:  NVL2 could not convert type tsquery to number
+LINE 1: SELECT NVL2 (NULL,1, col1) from test1;
+                             ^
 drop table test1;
 --UUID类型：
 create table test1(col1 UUID,col2  int);
 insert into test1 values('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',1);
 SELECT NVL2 (NULL,1, col1)from test1;
-                 nvl2                 
---------------------------------------
- a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
-(1 row)
-
+ERROR:  NVL2 could not convert type uuid to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --JSON类型：
 create table test1(col1 JSON,col2  int);
 insert into test1 values('5'::json,1);
 SELECT NVL2 (NULL,1, col1)from test1;
- nvl2 
-------
- 5
-(1 row)
-
+ERROR:  NVL2 could not convert type json to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --Arrays:
 create table test1(col1 int[],col2  int);
 insert into test1 values(array[5,6],1);
 SELECT NVL2 (NULL,1, col1)from test1;
- nvl2  
--------
- {5,6}
-(1 row)
-
+ERROR:  NVL2 could not convert type integer[] to number
+LINE 1: SELECT NVL2 (NULL,1, col1)from test1;
+                             ^
 drop table test1;
 --expr1/expr2/expr3输入非法
 --1.expr1输入非法字符：
@@ -4447,3 +4383,158 @@ select nvl(nvl(null, null), nvl(111,222)) from dual; -- 111
 (1 row)
 
 /* End - BUG#Z4591 */
+/* Begin - BUG#Z4592 */
+select nvl2(null, 123, 456) from dual;	-- 456
+ nvl2 
+------
+ 456
+(1 row)
+
+select nvl2(100, 123, 456) from dual;	-- 123
+ nvl2 
+------
+ 123
+(1 row)
+
+select nvl2(null, 123, 'aaa') from dual; -- error
+ERROR:  invalid input syntax for type numeric: "aaa"
+LINE 1: select nvl2(null, 123, 'aaa') from dual;
+                               ^
+select nvl2(null, null, null) from dual;	-- null
+ nvl2 
+------
+ 
+(1 row)
+
+-- expr1 can be any datatype, result all 1.
+select nvl2(cast('111' as char(10)), 1, 2) from dual;
+ nvl2 
+------
+ 1
+(1 row)
+
+select nvl2(cast('111' as varchar2(10)), 1, 2) from dual;
+ nvl2 
+------
+ 1
+(1 row)
+
+select nvl2(cast(111 as number), 1, 2) from dual;
+ nvl2 
+------
+ 1
+(1 row)
+
+select nvl2(cast(111 as float), 1, 2) from dual;
+ nvl2 
+------
+ 1
+(1 row)
+
+select nvl2(cast(111 as binary_float), 1, 2) from dual;
+ nvl2 
+------
+ 1
+(1 row)
+
+select nvl2(cast(111 as binary_double), 1, 2) from dual;
+ nvl2 
+------
+ 1
+(1 row)
+
+select nvl2(sysdate, 1, 2) from dual;
+ nvl2 
+------
+ 1
+(1 row)
+
+select nvl2(systimestamp, 1, 2) from dual;
+ nvl2 
+------
+ 1
+(1 row)
+
+select nvl2(interval '1-1' year to month, 1, 2) from dual;
+ nvl2 
+------
+ 1
+(1 row)
+
+select nvl2(interval '1 1:1:1' day to second, 1, 2) from dual;
+ nvl2 
+------
+ 1
+(1 row)
+
+-- expr2 is NVL2 result type.
+select nvl2(date'2025-5-1', date'2025-5-1', cast(4 as number)) as a from dual;	-- error(number to date)
+ERROR:  NVL2 could not convert type number to date
+LINE 1: select nvl2(date'2025-5-1', date'2025-5-1', cast(4 as number...
+                                                    ^
+select nvl2(date'2025-5-1', cast(4 as number), date'2025-5-1') as a from dual;	-- error(date to number)
+ERROR:  NVL2 could not convert type date to number
+select nvl2(sysdate, cast(3 as number), cast(4 as number)) as a from dual;	-- 3
+ a 
+---
+ 3
+(1 row)
+
+select nvl2(cast(3 as number), date'2025-5-1', timestamp'2025-5-1 11:11:11') as a from dual;	-- 2025-5-1
+     a      
+------------
+ 2025-05-01
+(1 row)
+
+-- nested
+select nvl2(null, 123, nvl2(sysdate, 'aaa', 'bbb')) from dual;	-- error
+ERROR:  invalid input syntax for type numeric: "aaa"
+select nvl2(null, 123, nvl2(sysdate, '123', '456')) from dual;	-- 123
+ nvl2 
+------
+ 123
+(1 row)
+
+select nvl2(null, nvl2(sysdate, 123, 456), 'aaa') from dual;	-- error
+ERROR:  invalid input syntax for type numeric: "aaa"
+LINE 1: select nvl2(null, nvl2(sysdate, 123, 456), 'aaa') from dual;
+                                                   ^
+select nvl2(null, nvl2(sysdate, 'aaa', 'bbb'), 123) from dual;	-- 123
+ nvl2 
+------
+ 123
+(1 row)
+
+select nvl2(111, nvl2(sysdate, 123, 456), 'aaa') from dual;	-- error
+ERROR:  invalid input syntax for type numeric: "aaa"
+LINE 1: select nvl2(111, nvl2(sysdate, 123, 456), 'aaa') from dual;
+                                                  ^
+select nvl2(111, nvl2(sysdate, 'aaa', 'bbb'), 123) from dual;	-- aaa
+ nvl2 
+------
+ aaa
+(1 row)
+
+select nvl2(nvl2(sysdate, 123, 456), 123, 'bbb') from dual;	-- error
+ERROR:  invalid input syntax for type numeric: "bbb"
+LINE 1: select nvl2(nvl2(sysdate, 123, 456), 123, 'bbb') from dual;
+                                                  ^
+select nvl2(nvl2(sysdate, 123, 456), 123, 456) from dual;	-- 123
+ nvl2 
+------
+ 123
+(1 row)
+
+select nvl2(nvl(null, null), 123, 456) from dual;	-- 456
+ nvl2 
+------
+ 456
+(1 row)
+
+select nvl2(nvl(null, 111), 123, 456) from dual;	-- 123
+ nvl2 
+------
+ 123
+(1 row)
+
+/* End - BUG#Z4592 */

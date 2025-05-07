@@ -2442,3 +2442,40 @@ select nvl(nvl(123, null), nvl(111,222)) from dual; -- 123
 select nvl(nvl(null, 123), nvl(111,222)) from dual; -- 123
 select nvl(nvl(null, null), nvl(111,222)) from dual; -- 111
 /* End - BUG#Z4591 */
+
+/* Begin - BUG#Z4592 */
+select nvl2(null, 123, 456) from dual;	-- 456
+select nvl2(100, 123, 456) from dual;	-- 123
+select nvl2(null, 123, 'aaa') from dual; -- error
+select nvl2(null, null, null) from dual;	-- null
+
+-- expr1 can be any datatype, result all 1.
+select nvl2(cast('111' as char(10)), 1, 2) from dual;
+select nvl2(cast('111' as varchar2(10)), 1, 2) from dual;
+select nvl2(cast(111 as number), 1, 2) from dual;
+select nvl2(cast(111 as float), 1, 2) from dual;
+select nvl2(cast(111 as binary_float), 1, 2) from dual;
+select nvl2(cast(111 as binary_double), 1, 2) from dual;
+select nvl2(sysdate, 1, 2) from dual;
+select nvl2(systimestamp, 1, 2) from dual;
+select nvl2(interval '1-1' year to month, 1, 2) from dual;
+select nvl2(interval '1 1:1:1' day to second, 1, 2) from dual;
+
+-- expr2 is NVL2 result type.
+select nvl2(date'2025-5-1', date'2025-5-1', cast(4 as number)) as a from dual;	-- error(number to date)
+select nvl2(date'2025-5-1', cast(4 as number), date'2025-5-1') as a from dual;	-- error(date to number)
+select nvl2(sysdate, cast(3 as number), cast(4 as number)) as a from dual;	-- 3
+select nvl2(cast(3 as number), date'2025-5-1', timestamp'2025-5-1 11:11:11') as a from dual;	-- 2025-5-1
+
+-- nested
+select nvl2(null, 123, nvl2(sysdate, 'aaa', 'bbb')) from dual;	-- error
+select nvl2(null, 123, nvl2(sysdate, '123', '456')) from dual;	-- 123
+select nvl2(null, nvl2(sysdate, 123, 456), 'aaa') from dual;	-- error
+select nvl2(null, nvl2(sysdate, 'aaa', 'bbb'), 123) from dual;	-- 123
+select nvl2(111, nvl2(sysdate, 123, 456), 'aaa') from dual;	-- error
+select nvl2(111, nvl2(sysdate, 'aaa', 'bbb'), 123) from dual;	-- aaa
+select nvl2(nvl2(sysdate, 123, 456), 123, 'bbb') from dual;	-- error
+select nvl2(nvl2(sysdate, 123, 456), 123, 456) from dual;	-- 123
+select nvl2(nvl(null, null), 123, 456) from dual;	-- 456
+select nvl2(nvl(null, 111), 123, 456) from dual;	-- 123
+/* End - BUG#Z4592 */
