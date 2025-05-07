@@ -31,6 +31,7 @@
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
+#include "utils/resgroup.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 /*
  * ActivePortal is the currently executing Portal (the most closely nested,
@@ -155,7 +156,9 @@ ProcessQuery(PlannedStmt *plan,
 	queryDesc = CreateQueryDesc(plan, sourceText,
 								GetActiveSnapshot(), InvalidSnapshot,
 								dest, params, queryEnv, 0);
-
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	check_and_unassign_from_resgroup(queryDesc->plannedstmt);
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/*
 	 * Call ExecutorStart to prepare the plan for execution
 	 */
@@ -512,7 +515,9 @@ PortalStart(Portal portal, ParamListInfo params,
 											params,
 											portal->queryEnv,
 											0);
-
+				/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+				check_and_unassign_from_resgroup(queryDesc->plannedstmt);
+				/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 				/*
 				 * If it's a scrollable cursor, executor needs to support
 				 * REWIND and backwards scan, as well as whatever the caller

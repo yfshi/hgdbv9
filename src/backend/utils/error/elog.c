@@ -3758,3 +3758,27 @@ trace_recovery(int trace_level)
 
 	return trace_level;
 }
+
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+bool
+elog_demote(int downgrade_to_elevel)
+{
+	ErrorData  *edata;
+
+	if (errordata_stack_depth < 0 ||
+		errordata_stack_depth >= ERRORDATA_STACK_SIZE - 1)
+		return false;
+
+	edata = &errordata[errordata_stack_depth];
+
+	if (downgrade_to_elevel >= ERROR ||
+		recursion_depth != 0 ||
+		edata->elevel > ERROR ||
+		edata->elevel < downgrade_to_elevel)
+		return false;
+
+	edata->elevel = downgrade_to_elevel;
+	return true;
+}
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+

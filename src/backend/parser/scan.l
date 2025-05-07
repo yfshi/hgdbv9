@@ -40,6 +40,10 @@
 #include "parser/parser.h"		/* only needed for GUC variables */
 #include "parser/scansup.h"
 #include "mb/pg_wchar.h"
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+#include "utils/resgroup.h"
+#include "utils/resource_manager.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 }
 
 %{
@@ -1378,11 +1382,21 @@ check_string_escape_warning(unsigned char ychar, core_yyscan_t yyscanner)
 	else if (ychar == '\\')
 	{
 		if (yyextra->warn_on_first_escape && yyextra->escape_string_warning)
-			ereport(WARNING,
-					(errcode(ERRCODE_NONSTANDARD_USE_OF_ESCAPE_CHARACTER),
-					 errmsg("nonstandard use of \\\\ in a string literal"),
-					 errhint("Use the escape string syntax for backslashes, e.g., E'\\\\'."),
-					 lexer_errposition()));
+		{
+			/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+			if(IsResGroupActivated() && pg_resource_group_disable_notice_scansup)
+			{
+			}
+			else 
+			{
+				ereport(WARNING,
+						(errcode(ERRCODE_NONSTANDARD_USE_OF_ESCAPE_CHARACTER),
+						 errmsg("nonstandard use of \\\\ in a string literal"),
+						 errhint("Use the escape string syntax for backslashes, e.g., E'\\\\'."),
+						 lexer_errposition()));
+			}
+			/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		}
 		yyextra->warn_on_first_escape = false;	/* warn only once per string */
 	}
 	else

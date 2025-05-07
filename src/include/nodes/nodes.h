@@ -378,6 +378,11 @@ typedef enum NodeTag
 	T_CreateRoleStmt,
 	T_AlterRoleStmt,
 	T_DropRoleStmt,
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	T_CreateResourceGroupStmt,
+	T_DropResourceGroupStmt,
+	T_AlterResourceGroupStmt,
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	T_LockStmt,
 	T_ConstraintsSetStmt,
 	T_ReindexStmt,

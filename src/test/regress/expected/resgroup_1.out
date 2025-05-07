@@ -1,0 +1,366 @@
+/* skip test if resgroup is not enabled.*/
+select 1=2 OR (select count(*) from pg_resgroup_role) = 0
+	AS skip_test \gset
+\if :skip_test
+\quit
+\endif
+show pg_resource_manager;
+ pg_resource_manager 
+---------------------
+ none
+(1 row)
+
+show pg_resource_group_queuing_timeout;
+ pg_resource_group_queuing_timeout 
+-----------------------------------
+ 0
+(1 row)
+
+show pg_resource_group_bypass;
+ pg_resource_group_bypass 
+--------------------------
+ off
+(1 row)
+
+show pg_resource_group_bypass_catalog_query;
+ pg_resource_group_bypass_catalog_query 
+----------------------------------------
+ on
+(1 row)
+
+show pg_resource_group_cpu_limit;
+ pg_resource_group_cpu_limit 
+-----------------------------
+ 0.9
+(1 row)
+
+show pg_resource_group_cpu_priority;
+ pg_resource_group_cpu_priority 
+--------------------------------
+ 10
+(1 row)
+
+show pg_resource_group_queuing_timeout;
+ pg_resource_group_queuing_timeout 
+-----------------------------------
+ 0
+(1 row)
+
+show pg_resource_group_move_timeout;
+ pg_resource_group_move_timeout 
+--------------------------------
+ 30s
+(1 row)
+
+CREATE RESOURCE GROUP rgroup0 WITH (
+CONCURRENCY=20, 
+CPU_MAX_PERCENT=20, 
+MEMORY_LIMIT=250, 
+CPU_WEIGHT=500, 
+MIN_COST=50, 
+DISK_QUOTA='300MB',
+IO_LIMIT='pg_default: wbps=1000, rbps=1000, wiops=100, riops=100');
+ERROR:  option "disk_quota" not recognized
+CREATE RESOURCE GROUP rgroup1 WITH (
+CONCURRENCY=20, 
+CPU_MAX_PERCENT=20, 
+MEMORY_LIMIT=250, 
+CPU_WEIGHT=500, 
+MIN_COST=50, 
+IO_LIMIT='pg_default: wbps=1000, rbps=1000, wiops=100, riops=100');
+ERROR:  resource group must be enabled to use io limit feature
+CREATE RESOURCE GROUP rgroup2 WITH (
+CONCURRENCY=20, 
+CPU_MAX_PERCENT=20, 
+MEMORY_LIMIT=250, 
+CPU_WEIGHT=500, 
+MIN_COST=50);
+CREATE RESOURCE GROUP rgroup3 WITH (
+CONCURRENCY=20, 
+CPU_MAX_PERCENT=20, 
+MEMORY_LIMIT=250, 
+CPU_WEIGHT=500, 
+MIN_COST=50);
+CREATE RESOURCE GROUP rgroup4 WITH (
+CONCURRENCY=20, 
+CPU_MAX_PERCENT=20, 
+MEMORY_LIMIT=250, 
+CPU_WEIGHT=500, 
+MIN_COST=50);
+CREATE RESOURCE GROUP rgroup5 WITH (
+CONCURRENCY=20, 
+CPU_MAX_PERCENT=20, 
+MEMORY_LIMIT=250, 
+CPU_WEIGHT=500, 
+MIN_COST=50);
+--rgroup1 rgroup2 rgroup3 rgroup4 rgroup5 + 3
+select count(*) from pg_resgroup;
+ count 
+-------
+     7
+(1 row)
+
+select * from pg_resgroup where oid in(6437, 6438, 6441);
+ oid  |    rsgname    | parent 
+------+---------------+--------
+ 6437 | default_group |      0
+ 6438 | admin_group   |      0
+ 6441 | system_group  |      0
+(3 rows)
+
+select count(*) from pg_resgroupcapability where resgroupid not in(6437, 6438, 6441);;
+ count 
+-------
+    28
+(1 row)
+
+select * from pg_resgroupcapability where resgroupid in(6437, 6438, 6441) and rgroleid=0;
+ resgroupid | reslimittype | rgroleid | value | option 
+------------+--------------+----------+-------+--------
+       6437 |            1 |        0 | 20    | 
+       6437 |            2 |        0 | 20    | 
+       6437 |            3 |        0 | 100   | 
+       6437 |            4 |        0 | -1    | 
+       6437 |            5 |        0 | -1    | 
+       6437 |            6 |        0 | 500   | 
+       6437 |            7 |        0 | -1    | 
+       6438 |            1 |        0 | 10    | 
+       6438 |            2 |        0 | 10    | 
+       6438 |            3 |        0 | 100   | 
+       6438 |            4 |        0 | -1    | 
+       6438 |            5 |        0 | -1    | 
+       6438 |            6 |        0 | 500   | 
+       6438 |            7 |        0 | -1    | 
+       6441 |            1 |        0 | 0     | 
+       6441 |            2 |        0 | 10    | 
+       6441 |            3 |        0 | 100   | 
+       6441 |            4 |        0 | -1    | 
+       6441 |            5 |        0 | -1    | 
+       6441 |            6 |        0 | 500   | 
+       6441 |            7 |        0 | -1    | 
+(21 rows)
+
+\d+ pg_resgroup_config
+                       View "pg_catalog.pg_resgroup_config"
+     Column      | Type | Collation | Nullable | Default | Storage  | Description 
+-----------------+------+-----------+----------+---------+----------+-------------
+ groupid         | oid  |           |          |         | plain    | 
+ groupname       | name |           |          |         | plain    | 
+ concurrency     | text | C         |          |         | extended | 
+ cpu_max_percent | text | C         |          |         | extended | 
+ cpu_weight      | text | C         |          |         | extended | 
+ cpuset          | text | C         |          |         | extended | 
+ memory_limit    | text | C         |          |         | extended | 
+ min_cost        | text | C         |          |         | extended | 
+ io_limit        | text | C         |          |         | extended | 
+View definition:
+ SELECT g.oid AS groupid,
+    g.rsgname AS groupname,
+    t1.value AS concurrency,
+    t2.value AS cpu_max_percent,
+    t3.value AS cpu_weight,
+    t4.value AS cpuset,
+    t5.value AS memory_limit,
+    t6.value AS min_cost,
+    t7.value AS io_limit
+   FROM pg_resgroup g
+     JOIN pg_resgroupcapability t1 ON g.oid = t1.resgroupid AND t1.reslimittype = 1
+     JOIN pg_resgroupcapability t2 ON g.oid = t2.resgroupid AND t2.reslimittype = 2
+     JOIN pg_resgroupcapability t3 ON g.oid = t3.resgroupid AND t3.reslimittype = 3
+     JOIN pg_resgroupcapability t5 ON g.oid = t5.resgroupid AND t5.reslimittype = 5
+     JOIN pg_resgroupcapability t6 ON g.oid = t6.resgroupid AND t6.reslimittype = 6
+     JOIN pg_resgroupcapability t7 ON g.oid = t7.resgroupid AND t7.reslimittype = 7
+     LEFT JOIN pg_resgroupcapability t4 ON g.oid = t4.resgroupid AND t4.reslimittype = 4;
+
+\d+ pg_resgroup_role
+                    View "pg_catalog.pg_resgroup_role"
+  Column   | Type | Collation | Nullable | Default | Storage | Description 
+-----------+------+-----------+----------+---------+---------+-------------
+ rrrolname | name |           |          |         | plain   | 
+ rrrsgname | name |           |          |         | plain   | 
+View definition:
+ SELECT pgr.rolname AS rrrolname,
+    pgrg.rsgname AS rrrsgname
+   FROM pg_roles pgr
+     JOIN pg_resgroup pgrg ON getoidbypgobjectviews(pgr.oid) = pgrg.oid;
+
+\d+ pg_resgroup_status
+                           View "pg_catalog.pg_resgroup_status"
+        Column        |   Type   | Collation | Nullable | Default | Storage | Description 
+----------------------+----------+-----------+----------+---------+---------+-------------
+ groupid              | oid      |           |          |         | plain   | 
+ groupname            | name     |           |          |         | plain   | 
+ num_running          | integer  |           |          |         | plain   | 
+ num_queueing         | integer  |           |          |         | plain   | 
+ num_queued           | bigint   |           |          |         | plain   | 
+ num_executed         | bigint   |           |          |         | plain   | 
+ total_queue_duration | interval |           |          |         | plain   | 
+View definition:
+ SELECT s.groupid,
+    r.rsgname AS groupname,
+    s.num_running,
+    s.num_queueing,
+    s.num_queued,
+    s.num_executed,
+    s.total_queue_duration
+   FROM pg_resgroup_get_status(NULL::oid) s(groupid, num_running, num_queueing, num_queued, num_executed, total_queue_duration, cpu_usage, memory_usage),
+    pg_resgroup r
+  WHERE s.groupid = r.oid;
+
+--select * from pg_resgroup_config;
+select groupname, concurrency, cpu_max_percent, cpu_weight, cpuset, memory_limit, min_cost, io_limit from pg_resgroup_config order by groupname;
+   groupname   | concurrency | cpu_max_percent | cpu_weight | cpuset | memory_limit | min_cost | io_limit 
+---------------+-------------+-----------------+------------+--------+--------------+----------+----------
+ admin_group   | 10          | 10              | 100        | -1     | -1           | 500      | -1
+ default_group | 20          | 20              | 100        | -1     | -1           | 500      | -1
+ rgroup2       | 20          | 20              | 500        | -1     | 250          | 50       | -1
+ rgroup3       | 20          | 20              | 500        | -1     | 250          | 50       | -1
+ rgroup4       | 20          | 20              | 500        | -1     | 250          | 50       | -1
+ rgroup5       | 20          | 20              | 500        | -1     | 250          | 50       | -1
+ system_group  | 0           | 10              | 100        | -1     | -1           | 500      | -1
+(7 rows)
+
+select * from pg_resgroup_role where rrrolname not in (select rolname from pg_authid  where oid=10) order by rrrolname;
+         rrrolname         |   rrrsgname   
+---------------------------+---------------
+ pg_database_owner         | default_group
+ pg_execute_server_program | default_group
+ pg_monitor                | default_group
+ pg_read_all_data          | default_group
+ pg_read_all_settings      | default_group
+ pg_read_all_stats         | default_group
+ pg_read_server_files      | default_group
+ pg_signal_backend         | default_group
+ pg_stat_scan_tables       | default_group
+ pg_write_all_data         | default_group
+ pg_write_server_files     | default_group
+(11 rows)
+
+select * from pg_resgroup_status;
+ groupid | groupname | num_running | num_queueing | num_queued | num_executed | total_queue_duration 
+---------+-----------+-------------+--------------+------------+--------------+----------------------
+(0 rows)
+
+create user hguser01 with password 'Hello@123';
+create user hguser02 with password 'Hello@123';
+create user hguser03 with password 'Hello@123';
+alter role hguser01 resource group rgroup2;
+WARNING:  resource group is disabled
+HINT:  To enable set pg_resource_manager=group
+alter role hguser02 resource group rgroup3;
+WARNING:  resource group is disabled
+HINT:  To enable set pg_resource_manager=group
+alter role hguser03 resource group rgroup4;
+WARNING:  resource group is disabled
+HINT:  To enable set pg_resource_manager=group
+create user hguser04 with password 'Hello@123' resource group rgroup5;
+WARNING:  resource group is disabled
+HINT:  To enable set pg_resource_manager=group
+select groupname, concurrency, cpu_max_percent, cpu_weight, cpuset, memory_limit, min_cost, io_limit from pg_resgroup_config order by groupname;
+   groupname   | concurrency | cpu_max_percent | cpu_weight | cpuset | memory_limit | min_cost | io_limit 
+---------------+-------------+-----------------+------------+--------+--------------+----------+----------
+ admin_group   | 10          | 10              | 100        | -1     | -1           | 500      | -1
+ default_group | 20          | 20              | 100        | -1     | -1           | 500      | -1
+ rgroup2       | 20          | 20              | 500        | -1     | 250          | 50       | -1
+ rgroup3       | 20          | 20              | 500        | -1     | 250          | 50       | -1
+ rgroup4       | 20          | 20              | 500        | -1     | 250          | 50       | -1
+ rgroup5       | 20          | 20              | 500        | -1     | 250          | 50       | -1
+ system_group  | 0           | 10              | 100        | -1     | -1           | 500      | -1
+(7 rows)
+
+--select * from pg_resgroup_config;
+select * from pg_resgroup_role where rrrolname not in (select rolname from pg_authid  where oid=10) order by rrrolname;
+         rrrolname         |   rrrsgname   
+---------------------------+---------------
+ hguser01                  | rgroup2
+ hguser02                  | rgroup3
+ hguser03                  | rgroup4
+ hguser04                  | rgroup5
+ pg_database_owner         | default_group
+ pg_execute_server_program | default_group
+ pg_monitor                | default_group
+ pg_read_all_data          | default_group
+ pg_read_all_settings      | default_group
+ pg_read_all_stats         | default_group
+ pg_read_server_files      | default_group
+ pg_signal_backend         | default_group
+ pg_stat_scan_tables       | default_group
+ pg_write_all_data         | default_group
+ pg_write_server_files     | default_group
+(15 rows)
+
+select * from pg_resgroup_status;
+ groupid | groupname | num_running | num_queueing | num_queued | num_executed | total_queue_duration 
+---------+-----------+-------------+--------------+------------+--------------+----------------------
+(0 rows)
+
+--select groupid, groupname, num_running, num_queueing, num_queued, num_executed, total_queue_duration from pg_resgroup_status order by groupname;
+select groupname, num_running, num_queueing, num_queued, total_queue_duration from pg_resgroup_status order by groupname;
+ groupname | num_running | num_queueing | num_queued | total_queue_duration 
+-----------+-------------+--------------+------------+----------------------
+(0 rows)
+
+DROP USER hguser01;
+DROP USER hguser02;
+DROP USER hguser03;
+DROP USER hguser04;
+DROP RESOURCE GROUP rgroup1;
+ERROR:  resource group "rgroup1" does not exist
+DROP RESOURCE GROUP rgroup2;
+DROP RESOURCE GROUP rgroup3;
+DROP RESOURCE GROUP rgroup4;
+DROP RESOURCE GROUP rgroup5;
+select count(*) from pg_resgroup;
+ count 
+-------
+     3
+(1 row)
+
+select * from pg_resgroup where oid in(6437, 6438, 6441);
+ oid  |    rsgname    | parent 
+------+---------------+--------
+ 6437 | default_group |      0
+ 6438 | admin_group   |      0
+ 6441 | system_group  |      0
+(3 rows)
+
+select * from pg_resgroup;
+ oid  |    rsgname    | parent 
+------+---------------+--------
+ 6437 | default_group |      0
+ 6438 | admin_group   |      0
+ 6441 | system_group  |      0
+(3 rows)
+
+select count(*) from pg_resgroupcapability where resgroupid not in(6437, 6438, 6441);
+ count 
+-------
+     0
+(1 row)
+
+select * from pg_resgroupcapability where resgroupid in(6437, 6438, 6441) and rgroleid=0;
+ resgroupid | reslimittype | rgroleid | value | option 
+------------+--------------+----------+-------+--------
+       6437 |            1 |        0 | 20    | 
+       6437 |            2 |        0 | 20    | 
+       6437 |            3 |        0 | 100   | 
+       6437 |            4 |        0 | -1    | 
+       6437 |            5 |        0 | -1    | 
+       6437 |            6 |        0 | 500   | 
+       6437 |            7 |        0 | -1    | 
+       6438 |            1 |        0 | 10    | 
+       6438 |            2 |        0 | 10    | 
+       6438 |            3 |        0 | 100   | 
+       6438 |            4 |        0 | -1    | 
+       6438 |            5 |        0 | -1    | 
+       6438 |            6 |        0 | 500   | 
+       6438 |            7 |        0 | -1    | 
+       6441 |            1 |        0 | 0     | 
+       6441 |            2 |        0 | 10    | 
+       6441 |            3 |        0 | 100   | 
+       6441 |            4 |        0 | -1    | 
+       6441 |            5 |        0 | -1    | 
+       6441 |            6 |        0 | 500   | 
+       6441 |            7 |        0 | -1    | 
+(21 rows)
+

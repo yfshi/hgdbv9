@@ -103,6 +103,14 @@ extern void ProcArraySetFdwXactUnresolvedXmin(TransactionId xmin);
 
 extern int list_all_backend_gtt_frozenxids(int max_size, int *pids, uint32 *xids, int *n);
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+extern int GetSessionIdByPid(int pid);
+extern bool ResGroupMoveSignalTarget(int sessionId, void *slot, Oid groupId,
+                                                               bool isExecutor);
+extern void ResGroupMoveCheckTargetReady(int sessionId, bool *clean, bool *result);
+extern void ResGroupMoveNotifyInitiator(pid_t callerPid);
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 extern void SendSignalToAllBackends(ProcSignalReason reason);	/* ReqID:SRS-SQL-DBLINK */
 
 #endif							/* PROCARRAY_H */

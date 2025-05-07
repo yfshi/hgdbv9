@@ -70,6 +70,11 @@
 #include "catalog/pg_auth_members.h"
 #include "commands/user.h"
 #include "utils/ora_compatible.h"
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+#include "catalog/pg_resgroup.h"
+#include "utils/resource_manager.h"
+#include "catalog/pg_resgroupcapability.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 typedef struct
 {

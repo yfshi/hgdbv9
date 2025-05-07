@@ -79,6 +79,8 @@
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
+#include "utils/resgroup.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 /*
  *	User-tweakable parameters
  */
@@ -324,6 +326,9 @@ typedef struct SubXactCallbackItem
 
 static SubXactCallbackItem *SubXact_callbacks = NULL;
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+static XactCallbackItem *Xact_callbacks_once = NULL;
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 /* local function prototypes */
 static void AssignTransactionId(TransactionState s);
@@ -337,6 +342,9 @@ static void AtStart_Cache(void);
 static void AtStart_Memory(void);
 static void AtStart_ResourceOwner(void);
 static void CallXactCallbacks(XactEvent event);
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+static void CallXactCallbacksOnce(XactEvent event);
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 static void CallSubXactCallbacks(SubXactEvent event,
 								 SubTransactionId mySubid,
 								 SubTransactionId parentSubid);
@@ -2110,6 +2118,13 @@ StartTransaction(void)
 	 */
 	s->state = TRANS_INPROGRESS;
 
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/*
+	 * Acquire a resource group slot.
+	 */
+	if (ShouldAssignResGroup())
+		AssignResGroup();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	ShowTransactionState("StartTransaction");
 }
 
@@ -2289,7 +2304,9 @@ CommitTransaction(void)
 
 	CallXactCallbacks(is_parallel_worker ? XACT_EVENT_PARALLEL_COMMIT
 					  : XACT_EVENT_COMMIT);
-
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	CallXactCallbacksOnce(XACT_EVENT_COMMIT);
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	ResourceOwnerRelease(TopTransactionResourceOwner,
 						 RESOURCE_RELEASE_BEFORE_LOCKS,
 						 true, true);
@@ -2381,6 +2398,11 @@ CommitTransaction(void)
 	s->state = TRANS_DEFAULT;
 
 	RESUME_INTERRUPTS();
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* Release resource group slot at the end of a transaction */
+	if (ShouldUnassignResGroup())
+		UnassignResGroup();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 }
 
 
@@ -2439,7 +2461,9 @@ PrepareTransaction(void)
 	}
 
 	CallXactCallbacks(XACT_EVENT_PRE_PREPARE);
-
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	CallXactCallbacksOnce(XACT_EVENT_PRE_PREPARE);
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/*
 	 * The remaining actions cannot call any user-defined code, so it's safe
 	 * to start shutting down within-transaction services.  But note that most
@@ -2679,6 +2703,11 @@ PrepareTransaction(void)
 	s->state = TRANS_DEFAULT;
 
 	RESUME_INTERRUPTS();
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */	
+	/* Release resource group slot at the end of prepare transaction on segment */
+	if (ShouldUnassignResGroup())
+		UnassignResGroup();
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 }
 
 
@@ -2847,7 +2876,9 @@ AbortTransaction(void)
 			CallXactCallbacks(XACT_EVENT_PARALLEL_ABORT);
 		else
 			CallXactCallbacks(XACT_EVENT_ABORT);
-
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		CallXactCallbacksOnce(XACT_EVENT_ABORT);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		ResourceOwnerRelease(TopTransactionResourceOwner,
 							 RESOURCE_RELEASE_BEFORE_LOCKS,
 							 false, true);
@@ -2881,6 +2912,11 @@ AbortTransaction(void)
 	 * State remains TRANS_ABORT until CleanupTransaction().
 	 */
 	RESUME_INTERRUPTS();
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */	
+	/* Release resource group slot at the end of a transaction */
+	if (ShouldUnassignResGroup())
+		UnassignResGroup();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 }
 
 /*
@@ -2930,6 +2966,11 @@ CleanupTransaction(void)
 	 * default
 	 */
 	s->state = TRANS_DEFAULT;
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */	
+	/* Release resource group slot at the end of a transaction */
+	if (ShouldUnassignResGroup())
+		UnassignResGroup();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 }
 
 /*
@@ -3695,6 +3736,60 @@ CallXactCallbacks(XactEvent event)
 		item->callback(event, item->arg);
 }
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/* Register or deregister callback functions for start/end Xact.  Call only once. */
+void
+RegisterXactCallbackOnce(XactCallback callback, void *arg)
+{
+	XactCallbackItem *item;
+
+	item = (XactCallbackItem *)
+		MemoryContextAlloc(TopMemoryContext, sizeof(XactCallbackItem));
+	item->callback = callback;
+	item->arg = arg;
+	item->next = Xact_callbacks_once;
+	Xact_callbacks_once = item;
+}
+
+void
+UnregisterXactCallbackOnce(XactCallback callback, void *arg)
+{
+	XactCallbackItem *item;
+	XactCallbackItem *prev;
+
+	prev = NULL;
+	for (item = Xact_callbacks_once; item; prev = item, item = item->next)
+	{
+		if (item->callback == callback && item->arg == arg)
+		{
+			if (prev)
+				prev->next = item->next;
+			else
+				Xact_callbacks_once = item->next;
+			pfree(item);
+			break;
+		}
+	}
+}
+
+static void
+CallXactCallbacksOnce(XactEvent event)
+{
+	/* currently callback once should ignore prepare. */
+	if (event == XACT_EVENT_PREPARE)
+		return;
+
+	while(Xact_callbacks_once)
+	{
+		XactCallbackItem *next = Xact_callbacks_once->next;
+		XactCallback callback=Xact_callbacks_once->callback;
+		void*arg=Xact_callbacks_once->arg;
+		pfree(Xact_callbacks_once);
+		Xact_callbacks_once = next;
+		callback(event,arg);
+	}
+}
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 /*
  * Register or deregister callback functions for start- and end-of-subxact

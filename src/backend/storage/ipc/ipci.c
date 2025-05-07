@@ -50,6 +50,11 @@
 #include "storage/spin.h"
 #include "utils/snapmgr.h"
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+#include "utils/resgroup.h"
+#include "utils/resource_manager.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 /* GUCs */
 int			shared_memory_type = DEFAULT_SHARED_MEMORY_TYPE;
 
@@ -171,7 +176,13 @@ CreateSharedMemoryAndSemaphores(void)
 #ifdef EXEC_BACKEND
 		size = add_size(size, ShmemBackendArraySize());
 #endif
-
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		if (IsResGroupEnabled())
+		{
+			size = add_size(size, ResGroupShmemSize());
+			size = add_size(size, SessionState_ShmemSize());
+		}
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		/* freeze the addin request size and include it */
 		addin_request_allowed = false;
 		size = add_size(size, total_addin_request);
@@ -252,7 +263,14 @@ CreateSharedMemoryAndSemaphores(void)
 	 * Set up predicate lock manager
 	 */
 	InitPredicateLocks();
-
+	
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/*
+	 * Set up resource manager 
+	 */
+	ResManagerShmemInit();
+	SessionState_ShmemInit();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/*
 	 * Set up process table
 	 */

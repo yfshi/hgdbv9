@@ -60,6 +60,8 @@
 #include "commands/sequence.h"
 /* End - BUG#M0000401 */
 
+#include "utils/resgroup.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 typedef struct
 {
 	DestReceiver pub;			/* publicly-known function pointers */
@@ -394,7 +396,9 @@ ExecCreateTableAs(ParseState *pstate, CreateTableAsStmt *stmt,
 		queryDesc = CreateQueryDesc(plan, pstate->p_sourcetext,
 									GetActiveSnapshot(), InvalidSnapshot,
 									dest, params, queryEnv, 0);
-
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */	
+		check_and_unassign_from_resgroup(queryDesc->plannedstmt);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		/* call ExecutorStart to prepare the plan for execution */
 		ExecutorStart(queryDesc, GetIntoRelEFlags(into));
 

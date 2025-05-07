@@ -1,0 +1,5 @@
+/* skip test if resgroup is not enabled.*/
+select 1=2 OR (select count(*) from pg_resgroup_role) = 0
+	AS skip_test \gset
+\if :skip_test
+\quit

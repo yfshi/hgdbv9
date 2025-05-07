@@ -302,7 +302,11 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 		CreateMatViewStmt RefreshMatViewStmt CreateAmStmt
 		CreatePublicationStmt AlterPublicationStmt
 		CreateSubscriptionStmt AlterSubscriptionStmt DropSubscriptionStmt
-
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+%type <node>	AlterResourceGroupStmt
+		CreateResourceGroupStmt
+		DropResourceGroupStmt
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 %type <node>	select_no_parens select_with_parens select_clause
 				simple_select values_clause
 				PLpgSQL_Expr PLAssignStmt
@@ -343,6 +347,11 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <str>		opt_type
 %type <str>		foreign_server_version opt_foreign_server_version
 %type <str>		opt_in_database
+
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+%type <list>	OptResourceGroupList
+%type <defelt>	OptResourceGroupElem
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 %type <str>		OptSchemaName
 %type <list>	OptSchemaEltList
@@ -656,9 +665,11 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	CACHE CALL CALLED CASCADE CASCADED CASE CAST CATALOG_P CHAIN CHAR_P
 	CHARACTER CHARACTERISTICS CHECK CHECKPOINT CLASS CLOSE
 	CLUSTER COALESCE COLLATE COLLATION COLUMN COLUMNS COMMENT COMMENTS COMMIT
-	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT
+	COMMITTED COMPRESSION CONCURRENCY /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ CONCURRENTLY CONFIGURATION CONFLICT
 	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
-	COST CREATE CROSS CSV CUBE CURRENT_P
+	COST 
+	CPUSET CPU_MAX_PERCENT CPU_WEIGHT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	CREATE CROSS CSV CUBE CURRENT_P
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA CURRENT_SHARD /* ReqID:SRS-MISC-BULKLOAD*/
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
 
@@ -681,7 +692,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	IDENTITY_P IF_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
 	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INTEGER
-	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
+	INTERSECT INTERVAL INTO INVOKER IO_LIMIT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ IS ISNULL ISOLATION
 
 	JOIN
 
@@ -691,8 +702,8 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGBAD /* BUG#Z1087 */ LOGGED
 
-	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE METHOD
-	MINUTE_P MINVALUE MODE MONTH_P MOVE
+	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEMORY_LIMIT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ MERGE METHOD
+	MINUTE_P MINVALUE MIN_COST /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ MODE MONTH_P MOVE
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
 	NORMALIZE NORMALIZED
@@ -711,7 +722,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
-	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
+	RESET RESOURCE /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWS RULE
 
 	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
@@ -945,6 +956,7 @@ stmt:
 			| AlterTblSpcStmt
 			| AlterCompositeTypeStmt
 			| AlterPublicationStmt
+			| AlterResourceGroupStmt /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| AlterRoleSetStmt
 			| AlterRoleStmt
 			| AlterSubscriptionStmt
@@ -979,6 +991,7 @@ stmt:
 			| AlterOpFamilyStmt
 			| CreatePolicyStmt
 			| CreatePLangStmt
+			| CreateResourceGroupStmt /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| CreateSchemaStmt
 			| CreateSeqStmt
 			| CreateStmt
@@ -1003,6 +1016,7 @@ stmt:
 			| DropOpClassStmt
 			| DropOpFamilyStmt
 			| DropOwnedStmt
+			| DropResourceGroupStmt /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| DropStmt
 			| DropSubscriptionStmt
 			| DropTableSpaceStmt
@@ -1048,6 +1062,93 @@ stmt:
 			| /*EMPTY*/
 				{ $$ = NULL; }
 		;
+
+
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/*****************************************************************************
+ *
+ * Create a new Resource Group
+ *
+ *****************************************************************************/
+
+CreateResourceGroupStmt:
+			CREATE RESOURCE GROUP_P name WITH definition
+				{
+					CreateResourceGroupStmt *n = makeNode(CreateResourceGroupStmt);
+					n->name = $4;
+					n->options = $6;
+					$$ = (Node *)n;
+				}
+		;
+
+/*****************************************************************************
+ *
+ * Drop a Resource Group
+ *
+ *****************************************************************************/
+
+DropResourceGroupStmt:
+			DROP RESOURCE GROUP_P name
+				 {
+					DropResourceGroupStmt *n = makeNode(DropResourceGroupStmt);
+					n->name = $4;
+					$$ = (Node *)n;
+				 }
+		;
+
+/*****************************************************************************
+ *
+ * Alter a Resource Group
+ *
+ *****************************************************************************/
+AlterResourceGroupStmt:
+			ALTER RESOURCE GROUP_P name SET OptResourceGroupList
+				 {
+					AlterResourceGroupStmt *n = makeNode(AlterResourceGroupStmt);
+					n->name = $4;
+					n->options = $6;
+					$$ = (Node *)n;
+				 }
+		;
+
+/*
+ * Option for ALTER RESOURCE GROUP
+ */
+OptResourceGroupList: OptResourceGroupElem			{ $$ = list_make1($1); }
+		;
+
+OptResourceGroupElem:
+			CONCURRENCY SignedIconst
+				{
+					/* was "concurrency" */
+					$$ = makeDefElem("concurrency", (Node *) makeInteger($2), @1);
+				}
+			| CPU_MAX_PERCENT SignedIconst
+				{
+					$$ = makeDefElem("cpu_max_percent", (Node *) makeInteger($2), @1);
+				}
+			| CPU_WEIGHT SignedIconst
+				{
+					$$ = makeDefElem("cpu_weight", (Node *) makeInteger($2), @1);
+				}
+			| CPUSET Sconst
+				{
+					$$ = makeDefElem("cpuset", (Node *) makeString($2), @1);
+				}
+			| MEMORY_LIMIT SignedIconst
+				{
+					$$ = makeDefElem("memory_limit", (Node *) makeInteger($2), @1);
+				}
+			| MIN_COST SignedIconst
+				{
+					$$ = makeDefElem("min_cost", (Node *) makeInteger($2), @1);
+				}
+			| IO_LIMIT Sconst
+				{
+					$$ = makeDefElem("io_limit", (Node *) makeString($2), @1);
+				}
+		;
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 /*****************************************************************************
  *
@@ -1141,6 +1242,12 @@ AlterOptRoleElem:
 				{
 					$$ = makeDefElem("validUntil", (Node *)makeString($3), @1);
 				}
+			/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+			| RESOURCE GROUP_P any_name
+				{
+					$$ = makeDefElem("resourceGroup", (Node *) $3, @1);
+				}
+			/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		/*	Supported but not documented for roles, for use by ALTER GROUP. */
 			| USER role_list
 				{
@@ -15788,6 +15895,7 @@ unreserved_keyword:
 			| COMMIT
 			| COMMITTED
 			| COMPRESSION
+			| CONCURRENCY /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| CONFIGURATION
 			| CONFLICT
 			| CONNECTION
@@ -15797,6 +15905,9 @@ unreserved_keyword:
 			| CONVERSION_P
 			| COPY
 			| COST
+			| CPUSET /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+			| CPU_MAX_PERCENT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+			| CPU_WEIGHT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| CSV
 			| CUBE
 			| CURRENT_P
@@ -15877,6 +15988,7 @@ unreserved_keyword:
 			| INSERT
 			| INSTEAD
 			| INVOKER
+			| IO_LIMIT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| ISOLATION
 			| KEY
 			| LABEL
@@ -15898,10 +16010,12 @@ unreserved_keyword:
 			| MATCHED
 			| MATERIALIZED
 			| MAXVALUE
+			| MEMORY_LIMIT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| MERGE
 			| METHOD
 			| MINUTE_P
 			| MINVALUE
+			| MIN_COST /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| MODE
 			| MONTH_P
 			| MOVE
@@ -15970,6 +16084,7 @@ unreserved_keyword:
 			| REPLACE
 			| REPLICA
 			| RESET
+			| RESOURCE /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| RESTART
 			| RESTRICT
 			| RETURN
@@ -16326,6 +16441,7 @@ bare_label_keyword:
 			| COMMIT
 			| COMMITTED
 			| COMPRESSION
+			| CONCURRENCY /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| CONCURRENTLY
 			| CONFIGURATION
 			| CONFLICT
@@ -16337,6 +16453,9 @@ bare_label_keyword:
 			| CONVERSION_P
 			| COPY
 			| COST
+			| CPUSET /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+			| CPU_MAX_PERCENT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+			| CPU_WEIGHT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| CROSS
 			| CSV
 			| CUBE
@@ -16448,6 +16567,7 @@ bare_label_keyword:
 			| INTEGER
 			| INTERVAL
 			| INVOKER
+			| IO_LIMIT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| IS
 			| ISOLATION
 			| JOIN
@@ -16478,9 +16598,11 @@ bare_label_keyword:
 			| MATCHED
 			| MATERIALIZED
 			| MAXVALUE
+			| MEMORY_LIMIT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| MERGE
 			| METHOD
 			| MINVALUE
+			| MIN_COST /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| MODE
 			| MOVE
 			| NAME_P
@@ -16566,6 +16688,7 @@ bare_label_keyword:
 			| REPLACE
 			| REPLICA
 			| RESET
+			| RESOURCE /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| RESTART
 			| RESTRICT
 			| RETURN

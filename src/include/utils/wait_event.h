@@ -25,6 +25,9 @@
 #define PG_WAIT_TIMEOUT				0x09000000U
 #define PG_WAIT_IO					0x0A000000U
 
+#define PG_WAIT_RESOURCE_GROUP		0xA0000000U /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
+
 /* ----------
  * Wait Events - Activity
  *
