@@ -176,6 +176,7 @@ Section: Class 22 - Data Exception
 22025    E    ERRCODE_INVALID_ESCAPE_SEQUENCE                                invalid_escape_sequence
 22P06    E    ERRCODE_NONSTANDARD_USE_OF_ESCAPE_CHARACTER                    nonstandard_use_of_escape_character
 22010    E    ERRCODE_INVALID_INDICATOR_PARAMETER_VALUE                      invalid_indicator_parameter_value
+22020    E    ERRCODE_INVALID_LIMIT_VALUE                                    invalid_limit_value
 22023    E    ERRCODE_INVALID_PARAMETER_VALUE                                invalid_parameter_value
 22013    E    ERRCODE_INVALID_PRECEDING_OR_FOLLOWING_SIZE                    invalid_preceding_or_following_size
 2201B    E    ERRCODE_INVALID_REGULAR_EXPRESSION                             invalid_regular_expression

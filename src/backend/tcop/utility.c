@@ -82,6 +82,8 @@
 
 #include "foreign/foreign.h"	/* ReqID:SRS-SQL-DBLINK */
 
+#include "commands/resgroupcmds.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 /* Hook for plugins to get control in ProcessUtility() */
 ProcessUtility_hook_type ProcessUtility_hook = NULL;
 
@@ -96,6 +98,7 @@ static void ProcessUtilitySlow(ParseState *pstate,
 							   DestReceiver *dest,
 							   QueryCompletion *qc);
 static void ExecDropStmt(DropStmt *stmt, bool isTopLevel);
+static int process_utility_nesting_level = 0; /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 /*
  * CommandIsReadOnly: is an executable query read-only?
@@ -219,6 +222,11 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_CreateTrigStmt:
 		case T_CreateUserMappingStmt:
 		case T_CreatedbStmt:
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		case T_CreateResourceGroupStmt:
+		case T_DropResourceGroupStmt:
+		case T_AlterResourceGroupStmt:
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		case T_DefineStmt:
 		case T_DropForeignServerStmt:
 		case T_DropOwnedStmt:
@@ -537,20 +545,33 @@ ProcessUtility(PlannedStmt *pstmt,
 	Assert(pstmt->commandType == CMD_UTILITY);
 	Assert(queryString != NULL);	/* required as of 8.4 */
 	Assert(qc == NULL || qc->commandTag == CMDTAG_UNKNOWN);
-
-	/*
-	 * We provide a function hook variable that lets loadable plugins get
-	 * control when ProcessUtility is called.  Such a plugin would normally
-	 * call standard_ProcessUtility().
-	 */
-	if (ProcessUtility_hook)
-		(*ProcessUtility_hook) (pstmt, queryString, readOnlyTree,
-								context, params, queryEnv,
-								dest, qc);
-	else
-		standard_ProcessUtility(pstmt, queryString, readOnlyTree,
-								context, params, queryEnv,
-								dest, qc);
+	
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	process_utility_nesting_level++;
+	PG_TRY();
+	{
+		/*
+		 * We provide a function hook variable that lets loadable plugins get
+		 * control when ProcessUtility is called.  Such a plugin would normally
+		 * call standard_ProcessUtility().
+		 */
+		if (ProcessUtility_hook)
+			(*ProcessUtility_hook) (pstmt, queryString, readOnlyTree,
+									context, params, queryEnv,
+									dest, qc);
+		else
+			standard_ProcessUtility(pstmt, queryString, readOnlyTree,
+									context, params, queryEnv,
+									dest, qc);
+		process_utility_nesting_level--;
+	}
+	PG_CATCH();
+	{
+		process_utility_nesting_level--;
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 }
 
 /*
@@ -922,7 +943,23 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 			/* no event triggers on event triggers */
 			AlterEventTrigger((AlterEventTrigStmt *) parsetree);
 			break;
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		/* RESOURCE GROUP statements */
+		case T_CreateResourceGroupStmt:
+			PreventInTransactionBlock(isTopLevel, "CREATE RESOURCE GROUP");
+			CreateResourceGroup((CreateResourceGroupStmt *) parsetree);
+			break;
 
+		case T_AlterResourceGroupStmt:
+			PreventInTransactionBlock(isTopLevel, "ALTER RESOURCE GROUP");
+			AlterResourceGroup((AlterResourceGroupStmt *) parsetree);
+			break;
+
+		case T_DropResourceGroupStmt:
+			PreventInTransactionBlock(isTopLevel, "DROP RESOURCE GROUP");
+			DropResourceGroup((DropResourceGroupStmt *) parsetree);
+			break;
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			/*
 			 * ******************************** ROLE statements ****
 			 */
@@ -3085,7 +3122,21 @@ CreateCommandTag(Node *parsetree)
 		case T_CreatePLangStmt:
 			tag = CMDTAG_CREATE_LANGUAGE;
 			break;
+		
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		case T_CreateResourceGroupStmt:
+			tag = CMDTAG_CREATE_RESOURCE_GROUP;
+			break;
 
+		case T_DropResourceGroupStmt:
+			tag = CMDTAG_DROP_RESOURCE_GROUP;
+			break;
+
+		case T_AlterResourceGroupStmt:
+			tag = CMDTAG_ALTER_RESOURCE_GROUP;
+			break;
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		
 		case T_CreateRoleStmt:
 			tag = CMDTAG_CREATE_ROLE;
 			break;
@@ -3940,3 +3991,11 @@ GetCommandLogLevel(Node *parsetree)
 
 	return lev;
 }
+
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+bool
+utility_nested(void)
+{
+	return process_utility_nesting_level >= 2;
+}
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */

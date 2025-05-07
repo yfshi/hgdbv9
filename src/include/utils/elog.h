@@ -480,4 +480,6 @@ extern void write_stderr(const char *fmt,...) pg_attribute_printf(1, 2);
  */
 extern void write_stderr_signal_safe(const char *fmt);
 
+extern bool elog_demote(int downgrade_to_elevel); /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 #endif							/* ELOG_H */

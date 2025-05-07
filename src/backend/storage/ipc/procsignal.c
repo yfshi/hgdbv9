@@ -32,7 +32,7 @@
 #include "tcop/tcopprot.h"
 #include "utils/memutils.h"
 #include "commands/dbcommands.h"	/* ReqID:SRS-SQL-DBLINK */
-
+#include "utils/resgroup.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 /*
  * The SIGUSR1 signal is multiplexed to support signaling multiple event
  * types. The specific reason is communicated via flags in shared memory.
@@ -679,7 +679,10 @@ procsignal_sigusr1_handler(SIGNAL_ARGS)
 
 	if (CheckProcSignal(PROCSIG_RECOVERY_CONFLICT_BUFFERPIN))
 		RecoveryConflictInterrupt(PROCSIG_RECOVERY_CONFLICT_BUFFERPIN);
-
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	if (CheckProcSignal(PROCSIG_RESOURCE_GROUP_MOVE_QUERY))
+		HandleMoveResourceGroup();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/* Begin - ReqID:SRS-SQL-DBLINK */
 	if (CheckProcSignal(PROCSIG_RELOAD_DB_GUC))
 		HandleReloadDBGucSignal();

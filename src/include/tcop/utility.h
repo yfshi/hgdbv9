@@ -109,4 +109,6 @@ extern LogStmtLevel GetCommandLogLevel(Node *parsetree);
 
 extern bool CommandIsReadOnly(PlannedStmt *pstmt);
 
+extern bool utility_nested(void); /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 #endif							/* UTILITY_H */

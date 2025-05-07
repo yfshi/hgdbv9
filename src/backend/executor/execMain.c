@@ -83,6 +83,8 @@ ExecutorEnd_hook_type ExecutorEnd_hook = NULL;
 /* Hook for plugin to get control in ExecCheckRTPerms() */
 ExecutorCheckPerms_hook_type ExecutorCheckPerms_hook = NULL;
 
+static int executor_run_nesting_level = 0; /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 /* decls for local routines only used within this module */
 static void InitPlan(QueryDesc *queryDesc, int eflags);
 static void CheckValidRowMarkRel(Relation rel, RowMarkType markType);
@@ -313,10 +315,24 @@ ExecutorRun(QueryDesc *queryDesc,
 			ScanDirection direction, uint64 count,
 			bool execute_once)
 {
-	if (ExecutorRun_hook)
-		(*ExecutorRun_hook) (queryDesc, direction, count, execute_once);
-	else
-		standard_ExecutorRun(queryDesc, direction, count, execute_once);
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* check if it is inside procedure call. */
+	executor_run_nesting_level++;
+	PG_TRY();
+	{
+		if (ExecutorRun_hook)
+			(*ExecutorRun_hook) (queryDesc, direction, count, execute_once);
+		else
+			standard_ExecutorRun(queryDesc, direction, count, execute_once);
+		executor_run_nesting_level--;
+	}
+	PG_CATCH();
+	{
+		executor_run_nesting_level--;
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 }
 
 void
@@ -3189,6 +3205,16 @@ EvalPlanQualEnd(EPQState *epqstate)
 	epqstate->epqExtra->relsubs_blocked = NULL;
 }
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/*
+ * For details, see comments at the definition of static var executor_run_nesting_level
+ */
+bool
+already_under_executor_run(void)
+{
+	return executor_run_nesting_level > 0;
+}
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 /*

@@ -452,6 +452,13 @@ extern void WarnNoTransactionBlock(bool isTopLevel, const char *stmtType);
 extern bool IsInTransactionBlock(bool isTopLevel);
 extern void RegisterXactCallback(XactCallback callback, void *arg);
 extern void UnregisterXactCallback(XactCallback callback, void *arg);
+
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+extern void RegisterXactCallbackOnce(XactCallback callback, void *arg);
+extern void UnregisterXactCallbackOnce(XactCallback callback, void *arg);
+
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 extern void RegisterSubXactCallback(SubXactCallback callback, void *arg);
 extern void UnregisterSubXactCallback(SubXactCallback callback, void *arg);
 

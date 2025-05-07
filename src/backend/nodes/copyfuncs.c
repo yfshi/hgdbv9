@@ -5120,6 +5120,40 @@ _copyAlterTSConfigurationStmt(const AlterTSConfigurationStmt *from)
 	return newnode;
 }
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+static CreateResourceGroupStmt *
+_copyCreateResourceGroupStmt(const CreateResourceGroupStmt *from)
+{
+	CreateResourceGroupStmt *newnode = makeNode(CreateResourceGroupStmt);
+
+	COPY_STRING_FIELD(name);
+	COPY_NODE_FIELD(options);
+
+	return newnode;
+}
+
+static DropResourceGroupStmt *
+_copyDropResourceGroupStmt(const DropResourceGroupStmt *from)
+{
+	DropResourceGroupStmt *newnode = makeNode(DropResourceGroupStmt);
+
+	COPY_STRING_FIELD(name);
+
+	return newnode;
+}
+
+static AlterResourceGroupStmt *
+_copyAlterResourceGroupStmt(const AlterResourceGroupStmt *from)
+{
+	AlterResourceGroupStmt *newnode = makeNode(AlterResourceGroupStmt);
+
+	COPY_STRING_FIELD(name);
+	COPY_NODE_FIELD(options);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 static CreatePolicyStmt *
 _copyCreatePolicyStmt(const CreatePolicyStmt *from)
 {
@@ -6286,6 +6320,17 @@ copyObjectImpl(const void *from)
 		case T_AlterTSConfigurationStmt:
 			retval = _copyAlterTSConfigurationStmt(from);
 			break;
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		case T_CreateResourceGroupStmt:
+			retval = _copyCreateResourceGroupStmt(from);
+			break;
+		case T_DropResourceGroupStmt:
+			retval = _copyDropResourceGroupStmt(from);
+			break;
+		case T_AlterResourceGroupStmt:
+			retval = _copyAlterResourceGroupStmt(from);
+			break;
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		case T_CreatePolicyStmt:
 			retval = _copyCreatePolicyStmt(from);
 			break;

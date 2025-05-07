@@ -681,5 +681,6 @@ extern ResultRelInfo *ExecLookupResultRelByOid(ModifyTableState *node,
 											   Oid resultoid,
 											   bool missing_ok,
 											   bool update_cache);
+extern bool already_under_executor_run(void); /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 #endif							/* EXECUTOR_H  */

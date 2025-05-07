@@ -134,6 +134,10 @@ test: fast_default
 # run stats by itself because its delay may be insufficient under heavy load
 test: stats
 
+#/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+test: resgroup
+#/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 #/* Begin - ReqID:SRS-MISC-BULKLOAD */
 test: copyerror
 #/* End - ReqID:SRS-MISC-BULKLOAD */

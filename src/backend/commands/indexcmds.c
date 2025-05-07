@@ -79,6 +79,7 @@
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
+#include "utils/resource_manager.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 /* non-export function prototypes */
 static bool CompareOpclassOptions(Datum *opts1, Datum *opts2, int natts);
@@ -1743,8 +1744,11 @@ DefineIndex(Oid relationId,
 		set_indexsafe_procflags();
 
 	/* We should now definitely not be advertising any xmin. */
-	Assert(MyProc->xmin == InvalidTransactionId);
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* todolist there is no such assert in gp7.1 */
+	Assert(MyProc->xmin == InvalidTransactionId || IsResGroupActivated());
 
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/*
 	 * The index is now valid in the sense that it contains all currently
 	 * interesting tuples.  But since it might not contain tuples deleted just
@@ -4503,8 +4507,13 @@ set_indexsafe_procflags(void)
 	 * This should only be called before installing xid or xmin in MyProc;
 	 * otherwise, concurrent processes could see an Xmin that moves backwards.
 	 */
-	Assert(MyProc->xid == InvalidTransactionId &&
-		   MyProc->xmin == InvalidTransactionId);
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* todolist there is no such assert in gp7.1 */
+	Assert( (MyProc->xid == InvalidTransactionId &&
+		   MyProc->xmin == InvalidTransactionId) ||
+		   IsResGroupActivated());
+
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 	LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
 	MyProc->statusFlags |= PROC_IN_SAFE_IC;

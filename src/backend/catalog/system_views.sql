@@ -1336,6 +1336,54 @@ CREATE VIEW pg_replication_origin_status AS
 
 REVOKE ALL ON pg_replication_origin_status FROM public;
 
+/* BEGIN - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+CREATE VIEW pg_resgroup_config AS
+    SELECT G.oid       AS groupid
+         , G.rsgname   AS groupname
+         , T1.value    AS concurrency
+         , T2.value    AS cpu_max_percent
+         , T3.value    AS cpu_weight
+         , T4.value    AS cpuset
+         , T5.value    AS memory_limit
+         , T6.value    AS min_cost
+         , T7.value    AS io_limit
+    FROM pg_resgroup G
+         JOIN pg_resgroupcapability T1 ON G.oid = T1.resgroupid AND T1.reslimittype = 1
+         JOIN pg_resgroupcapability T2 ON G.oid = T2.resgroupid AND T2.reslimittype = 2
+         JOIN pg_resgroupcapability T3 ON G.oid = T3.resgroupid AND T3.reslimittype = 3
+         JOIN pg_resgroupcapability T5 ON G.oid = T5.resgroupid AND T5.reslimittype = 5
+         JOIN pg_resgroupcapability T6 ON G.oid = T6.resgroupid AND T6.reslimittype = 6
+         JOIN pg_resgroupcapability T7 ON G.oid = T7.resgroupid AND T7.reslimittype = 7
+         LEFT JOIN pg_resgroupcapability T4 ON G.oid = T4.resgroupid AND T4.reslimittype = 4
+    ;
+
+GRANT SELECT ON pg_resgroup_config TO public;
+
+CREATE VIEW pg_resgroup_role
+AS
+    SELECT
+        pgr.rolname AS rrrolname,
+		pgrg.rsgname AS rrrsgname
+	FROM
+		pg_catalog.pg_roles pgr
+	JOIN
+		pg_catalog.pg_resgroup pgrg
+	ON
+		getOidByPgObjectViews(pgr.oid) = pgrg.oid
+	;
+
+GRANT SELECT ON pg_resgroup_role TO public;
+
+CREATE VIEW pg_resgroup_status AS
+    SELECT s.groupid, r.rsgname as groupname, s.num_running, s.num_queueing,
+           s.num_queued, s.num_executed, s.total_queue_duration
+    FROM pg_resgroup_get_status(null) AS s,
+         pg_resgroup AS r
+    WHERE s.groupid = r.oid;
+
+GRANT SELECT ON pg_resgroup_status TO public;
+/* END - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 -- All columns of pg_subscription except subconninfo are publicly readable.
 REVOKE ALL ON pg_subscription FROM public;
 GRANT SELECT (oid, subdbid, subname, subowner, subenabled, subbinary,

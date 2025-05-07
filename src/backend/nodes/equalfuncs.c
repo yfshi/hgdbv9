@@ -2550,6 +2550,31 @@ _equalDropOwnedStmt(const DropOwnedStmt *a, const DropOwnedStmt *b)
 	return true;
 }
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+static bool
+_equalCreateResourceGroupStmt(const CreateResourceGroupStmt *a, const CreateResourceGroupStmt *b)
+{
+	COMPARE_STRING_FIELD(name);
+	COMPARE_NODE_FIELD(options);
+	return true;
+}
+
+static bool
+_equalDropResourceGroupStmt(const DropResourceGroupStmt *a, const DropResourceGroupStmt *b)
+{
+	COMPARE_STRING_FIELD(name);
+	return true;
+}
+
+static bool
+_equalAlterResourceGroupStmt(const AlterResourceGroupStmt *a, const AlterResourceGroupStmt *b)
+{
+	COMPARE_STRING_FIELD(name);
+	COMPARE_NODE_FIELD(options);
+	return true;
+}
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 static bool
 _equalReassignOwnedStmt(const ReassignOwnedStmt *a, const ReassignOwnedStmt *b)
 {
@@ -4172,6 +4197,17 @@ equal(const void *a, const void *b)
 		case T_DropOwnedStmt:
 			retval = _equalDropOwnedStmt(a, b);
 			break;
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		case T_CreateResourceGroupStmt:
+			retval = _equalCreateResourceGroupStmt(a, b);
+			break;
+		case T_DropResourceGroupStmt:
+			retval = _equalDropResourceGroupStmt(a, b);
+			break;
+		case T_AlterResourceGroupStmt:
+			retval = _equalAlterResourceGroupStmt(a, b);
+			break;
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		case T_ReassignOwnedStmt:
 			retval = _equalReassignOwnedStmt(a, b);
 			break;

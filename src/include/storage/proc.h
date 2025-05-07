@@ -19,6 +19,7 @@
 #include "lib/ilist.h"
 #include "storage/latch.h"
 #include "storage/lock.h"
+#include "storage/spin.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 #include "storage/pg_sema.h"
 #include "storage/proclist_types.h"
 
@@ -253,6 +254,19 @@ struct PGPROC
 	TransactionId procArrayGroupMemberXid;
 
 	uint32		wait_event_info;	/* proc's wait information */
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/*
+	 * Information for resource group
+	 */
+	void		*resSlot;	/* the resource group slot granted.
+							 * NULL indicates the resource group is
+							 * locked for drop. */
+	slock_t		movetoMutex; /* spinlock to protect moveto* fields below */
+	void		*movetoResSlot; /* the resource group slot move to */
+	Oid 		movetoGroupId;  /* the resource group id move to */
+	pid_t		movetoCallerPid; /* pid of moving initiator */
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 	/* Support for group transaction status update. */
 	bool		clogGroupMember;	/* true, if member of clog group */

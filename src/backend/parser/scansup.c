@@ -19,6 +19,10 @@
 #include "mb/pg_wchar.h"
 #include "parser/scansup.h"
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+#include "utils/resgroup.h"
+#include "utils/resource_manager.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 /*
  * downcase_truncate_identifier() --- do appropriate downcasing and
@@ -36,7 +40,16 @@
 char *
 downcase_truncate_identifier(const char *ident, int len, bool warn)
 {
-	return downcase_identifier(ident, len, warn, true);
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	if(IsResGroupActivated() && pg_resource_group_disable_notice_scansup)
+	{
+		return downcase_identifier(ident, len, false, true);
+	}
+	else 
+	{
+		return downcase_identifier(ident, len, warn, true);
+	}
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 }
 
 /*

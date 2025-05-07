@@ -27,6 +27,7 @@ OBJS = \
 	restrictinfo.o \
 	tlist.o \
 	var.o \
+	walkers.o \
 	ora_indexcond.o
 
 include $(top_srcdir)/src/backend/common.mk

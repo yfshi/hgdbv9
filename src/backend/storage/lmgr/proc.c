@@ -527,6 +527,15 @@ InitProcess(void)
 	MyProc->lwWaitMode = 0;
 	MyProc->waitLock = NULL;
 	MyProc->waitProcLock = NULL;
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	MyProc->resSlot = NULL;
+	SpinLockInit(&MyProc->movetoMutex);
+	MyProc->movetoResSlot = NULL;
+	MyProc->movetoGroupId = InvalidOid;
+	MyProc->movetoCallerPid = InvalidPid;
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	
 	pg_atomic_write_u64(&MyProc->waitStart, 0);
 #ifdef USE_ASSERT_CHECKING
 	{

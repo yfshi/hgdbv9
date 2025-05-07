@@ -5708,3 +5708,202 @@ SendSignalToAllBackends(ProcSignalReason reason)
 	LWLockRelease(ProcArrayLock);
 }
 /* End - ReqID:SRS-SQL-DBLINK */
+
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/*
+ * Check if slot control is on the target side and clean all target's
+ * moveto* params.
+ *
+ * Cleaning and checking should be performed as one atomic operation inside one
+ * mutex.
+ * 'clean' flag is bidirectional. If 'clean' is set to true, then all moveto*
+ * params will be cleaned, no matter was target handled them or not.
+ * More, it will be forcefully set to true, if target process handled our
+ * command. Thus, if function returned true in 'clean', it should be treated
+ * as terminal state and all new calls to ResGroupMoveCheckTargetReady()
+ * before calling ResGroupMoveSignalTarget() make no sense.
+ */
+void
+ResGroupMoveCheckTargetReady(int sessionId, bool *clean, bool *result)
+{
+	ProcArrayStruct *arrayP = procArray;
+
+	*result = false;
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+	for (int i = 0; i < arrayP->numProcs; i++)
+	{
+		/* perf numa */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[arrayP->pgprocnos[i]];
+#else
+		PGPROC	   *proc = &allProcs[arrayP->pgprocnos[i]];
+#endif
+
+		/*
+		 * Also ignore entrydb processes. We use mppIsWriter which described
+		 * in ResGroupMoveSignalTarget().
+		 */
+		SpinLockAcquire(&proc->movetoMutex);
+		/* If proc->movetoCallerPid not equals to MyProc->pid, the target
+		 * process could is handling signal from another caller.After we
+		 * get the movetoMutex check it again.
+		 */
+		if (proc->movetoCallerPid == MyProc->pid)
+		{
+			/*
+			 * InvalidOid of movetoGroupId means target process tried to
+			 * handle our command
+			 */
+			if (proc->movetoGroupId == InvalidOid)
+			{
+				/*
+				 * empty movetoResSlot means target process got all the
+				 * control over slot
+				 */
+				*result = (proc->movetoResSlot == NULL);
+				*clean = true;
+			}
+
+			/*
+			 * Clean all params, especially movetoCallerPid, which guards
+			 * target processes from another initiators. After releasing
+			 * spinlock any other process allowed to start new move command.
+			 */
+			if (*clean)
+			{
+				proc->movetoResSlot = NULL;
+				proc->movetoGroupId = InvalidOid;
+				proc->movetoCallerPid = InvalidPid;
+			}
+		}
+		SpinLockRelease(&proc->movetoMutex);
+		break;
+	}
+	LWLockRelease(ProcArrayLock);
+}
+
+/*
+ * Set the destination group slot or group id in PGPROC, and send a signal to the proc.
+ * 
+ * isExecutor is not used now.
+ *
+ */
+bool
+ResGroupMoveSignalTarget(int sessionId, void *slot, Oid groupId,
+						 bool isExecutor)
+{
+	pid_t		pid;
+	BackendId	backendId;
+	ProcArrayStruct *arrayP = procArray;
+	bool		sent = false;
+	bool		found = false;
+
+	Assert(groupId != InvalidOid);
+
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+	for (int i = 0; i < arrayP->numProcs; i++)
+	{
+		/* perf numa */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[arrayP->pgprocnos[i]];
+#else
+		PGPROC	   *proc = &allProcs[arrayP->pgprocnos[i]];
+#endif
+
+		/*
+		 * Before, we didn't distinguish entrydb processes from main target
+		 * process on coordinator. There was a case with entrydb executors
+		 * when we can send a signal to target process only, but not to
+		 * entrydb executor process or vice versa. As a mediocre solution we
+		 * assume mppIsWriter for entrydb processes is always false.
+		 *
+		 * We can send a signal to target or entrydb processes only from QD.
+		 * The second (XOR) part of condition checks did we find entrydb
+		 * (isExecutor && !mppIsWriter) or target (!isExecutor &&
+		 * mppIsWriter). If neither, we continue the search.
+		 */
+
+		found = true;
+		pid = proc->pid;
+		backendId = proc->backendId;
+
+		SpinLockAcquire(&proc->movetoMutex);
+		/* only target process needs slot and callerPid to operate */
+		if (1)
+		{
+			/*
+			 * movetoCallerPid is a guard which marks there is currently
+			 * active initiator process
+			 */
+			if (proc->movetoCallerPid != InvalidPid)
+			{
+				SpinLockRelease(&proc->movetoMutex);
+				/* elog(NOTICE, "cannot move process, which is already moving"); */
+				break;
+			}
+			Assert(proc->movetoCallerPid == InvalidPid);
+			Assert(proc->movetoResSlot == NULL);
+			Assert(slot != NULL);
+
+			proc->movetoResSlot = slot;
+			proc->movetoCallerPid = MyProc->pid;
+		}
+		proc->movetoGroupId = groupId;
+		SpinLockRelease(&proc->movetoMutex);
+
+		if (SendProcSignal(pid, PROCSIG_RESOURCE_GROUP_MOVE_QUERY, backendId))
+		{
+			SpinLockAcquire(&proc->movetoMutex);
+			if (0)
+			{
+				proc->movetoResSlot = NULL;
+				proc->movetoCallerPid = InvalidPid;
+			}
+			proc->movetoGroupId = InvalidOid;
+			SpinLockRelease(&proc->movetoMutex);
+
+			elog(NOTICE, "cannot send signal to backend %d with PID %d",
+				 backendId, pid);
+		}
+		else
+			sent = true;
+
+	}
+	LWLockRelease(ProcArrayLock);
+
+	if (!found && !isExecutor)
+		elog(NOTICE, "cannot find target process");
+
+	return sent;
+}
+
+/*
+ * Notify initiator process that target process is ready to move to a new
+ * group. This is an optional feature to speed up initiator's awakening.
+ * Inititator will get the actual command result by changed movetoResSlot
+ * and movetoGroupId values.
+ */
+void
+ResGroupMoveNotifyInitiator(pid_t callerPid)
+{
+	ProcArrayStruct *arrayP = procArray;
+	
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+	for (int i = 0; i < arrayP->numProcs; i++)
+	{
+ 		/* perf numa */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[arrayP->pgprocnos[i]];
+#else
+		PGPROC	   *proc = &allProcs[arrayP->pgprocnos[i]];
+#endif
+		if (proc->pid != callerPid)
+			continue;
+ 
+		SetLatch(&proc->procLatch);
+		break;
+	}
+	LWLockRelease(ProcArrayLock);
+}
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+

@@ -1,0 +1,52 @@
+#----------------------------------------------------------------------
+#
+# pg_resgroupcapability.dat
+#    Initial contents of the pg_resgroupcapability system relation.
+#
+# Portions Copyright (c) 1996-2018, PostgreSQL Global Development Group
+# Portions Copyright (c) 1994, Regents of the University of California
+#
+# Authored by zhangyilin@highgo.com
+# Portions Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All rights reserved.
+#
+# src/include/catalog/pg_resgroupcapability.dat
+#
+#----------------------------------------------------------------------
+
+[
+
+{ resgroupid => '6437', reslimittype => '1', value => '20' ,rgroleid => '0' },
+{ resgroupid => '6437', reslimittype => '2', value => '20' ,rgroleid => '0' },
+{ resgroupid => '6437', reslimittype => '3', value => '100' ,rgroleid => '0' },
+{ resgroupid => '6437', reslimittype => '4', value => '-1' ,rgroleid => '0' },
+{ resgroupid => '6437', reslimittype => '5', value => '-1' ,rgroleid => '0' },
+{ resgroupid => '6437', reslimittype => '6', value => '500' ,rgroleid => '0' },
+{ resgroupid => '6437', reslimittype => '7', value => '-1' ,rgroleid => '0' },
+{ resgroupid => '6438', reslimittype => '1', value => '10' ,rgroleid => '0' },
+{ resgroupid => '6438', reslimittype => '2', value => '10' ,rgroleid => '0' },
+{ resgroupid => '6438', reslimittype => '3', value => '100' ,rgroleid => '0' },
+{ resgroupid => '6438', reslimittype => '4', value => '-1' ,rgroleid => '0' },
+{ resgroupid => '6438', reslimittype => '5', value => '-1' ,rgroleid => '0' },
+{ resgroupid => '6438', reslimittype => '6', value => '500' ,rgroleid => '0' },
+{ resgroupid => '6438', reslimittype => '7', value => '-1' ,rgroleid => '0' },
+{ resgroupid => '6441', reslimittype => '1', value => '0' ,rgroleid => '0' },
+{ resgroupid => '6441', reslimittype => '2', value => '10' ,rgroleid => '0' },
+{ resgroupid => '6441', reslimittype => '3', value => '100' ,rgroleid => '0' },
+{ resgroupid => '6441', reslimittype => '4', value => '-1' ,rgroleid => '0' },
+{ resgroupid => '6441', reslimittype => '5', value => '-1' ,rgroleid => '0' },
+{ resgroupid => '6441', reslimittype => '6', value => '500' ,rgroleid => '0' },
+{ resgroupid => '6441', reslimittype => '7', value => '-1' ,rgroleid => '0' },
+{ resgroupid => '6438', reslimittype => '8', rgroleid => '10', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '6171', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '6181', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '6182', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '3373', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '3374', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '3375', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '3377', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '4569', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '4570', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '4571', value => '', },
+{ resgroupid => '6437', reslimittype => '8', rgroleid => '4200', value => '', },
+]
+
