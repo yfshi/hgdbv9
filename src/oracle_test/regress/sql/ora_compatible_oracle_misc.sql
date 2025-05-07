@@ -192,3 +192,40 @@ create table test_m475(a interval);
 drop table test_m475;
 reset ivorysql.enable_pg_interval_datatype;
 /* End - BUG#M0000475 */
+
+--bug#Z4645
+show ivorysql.identifier_case_switch;
+
+create database test_dwdai_id;
+
+\c test_dwdai_id -
+show ivorysql.identifier_case_switch;
+
+\c regression -
+alter system set ivorysql.identifier_case_switch = interchange;
+select pg_reload_conf();
+alter database test_dwdai_id set ivorysql.identifier_case_switch = interchange;
+
+\c test_dwdai_id -
+show ivorysql.identifier_case_switch;
+
+\c regression -
+show ivorysql.identifier_case_switch;
+
+set ivorysql.identifier_case_switch = lowercase;
+show ivorysql.identifier_case_switch;
+
+set ivorysql.identifier_case_switch = normal;
+show ivorysql.identifier_case_switch;
+
+reset ivorysql.identifier_case_switch;
+show ivorysql.identifier_case_switch;
+
+--recover
+alter system set ivorysql.identifier_case_switch = normal;
+select pg_reload_conf();
+\c test_dwdai_id -
+\c regression -
+show ivorysql.identifier_case_switch;
+
+drop database test_dwdai_id;
