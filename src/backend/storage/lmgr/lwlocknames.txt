@@ -55,4 +55,7 @@ WrapLimitsVacuumLock				46
 NotifyQueueTailLock					47
 FdwXactLock							48
 FdwXactResolverLock					49
-BadfileWriteLock				50
+BadfileWriteLock					50
+# ReqID:SRS-SECURITY-RESOURCEMANAGEMENT 51 and 52
+ResGroupLock						51
+SessionStateLock					52

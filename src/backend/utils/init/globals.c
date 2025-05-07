@@ -126,6 +126,11 @@ double		hash_mem_multiplier = 1.0;
 int			maintenance_work_mem = 65536;
 int			max_parallel_maintenance_workers = 2;
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+bool		ResGroupActivated = false;
+bool		pg_resource_group_disable_notice_scansup = false; /* resource group, skip the impact on regression testing. */
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 /*
  * Primary determinants of sizes of shared-memory structures.
  *

@@ -119,6 +119,8 @@
 #include "utils/inval.h"
 #include "utils/varlena.h"
 #include "utils/xml.h"
+#include "utils/resource_manager.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ 
+
 /* BEGIN - SQL PARSER */
 #include "utils/ora_compatible.h"
 /* END - SQL PARSER */
@@ -281,6 +283,17 @@ static bool check_recovery_target_lsn(char **newval, void **extra, GucSource sou
 static void assign_recovery_target_lsn(const char *newval, void *extra);
 static bool check_primary_slot_name(char **newval, void **extra, GucSource source);
 static bool check_default_with_oids(bool *newval, void **extra, GucSource source);
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/* resource group check */
+static bool check_pg_resource_group_bypass(bool *newval, void **extra, GucSource source);
+bool pgvars_check_pg_resource_manager_policy(char **newval, void **extra, GucSource source);
+void pgvars_assign_pg_resource_manager_policy(const char *newval, void *extra);
+const char *pgvars_show_pg_resource_manager_policy(void);
+const char *pgvars_assign_pg_resqueue_memory_policy(const char *newval, bool doit, GucSource source);
+const char *pgvars_show_pg_resqueue_memory_policy(void);
+bool pgvars_check_pg_resource_group_cgroup_parent(char **newval, void **extra, GucSource source);
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DECLARE
 #include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
@@ -691,6 +704,25 @@ int			tcp_keepalives_interval;
 int			tcp_keepalives_count;
 int			tcp_user_timeout;
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/* Resource group GUCs */
+bool		pg_resgroup_debug_wait_queue = true;
+int			pg_resource_group_queuing_timeout = 0;
+int			pg_resource_group_move_timeout = 30000;
+
+ResourceManagerPolicy pg_resource_manager_policy;
+
+int 		pg_resource_group_cpu_priority;
+double		pg_resource_group_cpu_limit;
+bool		pg_resource_group_bypass;
+bool		pg_resource_group_bypass_catalog_query;
+
+char	   *pg_resource_group_cgroup_parent;
+bool		pg_resource_group_databaseuser;
+static char *pg_resource_manager_str;
+
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 /*
  * SSL renegotiation was been removed in PostgreSQL 9.5, but we tolerate it
  * being set to zero (meaning never renegotiate) for backward compatibility.
@@ -807,6 +839,10 @@ const char *const config_group_names[] =
 	gettext_noop("Connections and Authentication / Authentication"),
 	/* CONN_AUTH_SSL */
 	gettext_noop("Connections and Authentication / SSL"),
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* RESOURCES */
+	gettext_noop("Resource Usage"),
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/* RESOURCES_MEM */
 	gettext_noop("Resource Usage / Memory"),
 	/* RESOURCES_DISK */
@@ -819,6 +855,10 @@ const char *const config_group_names[] =
 	gettext_noop("Resource Usage / Background Writer"),
 	/* RESOURCES_ASYNCHRONOUS */
 	gettext_noop("Resource Usage / Asynchronous Behavior"),
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* RESOURCES_MGM */
+	gettext_noop("Resource Usage / Resources Management"),
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/* WAL_SETTINGS */
 	gettext_noop("Write-Ahead Log / Settings"),
 	/* WAL_CHECKPOINTS */
@@ -2214,6 +2254,44 @@ static struct config_bool ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	{
+		{"pg_resource_group_bypass", PGC_USERSET, RESOURCES,
+			gettext_noop("If the value is true, the query in this session will not be limited by resource group."),
+			NULL
+		},
+		&pg_resource_group_bypass,
+		false,
+		check_pg_resource_group_bypass, NULL, NULL
+	},
+	{
+		{"pg_resource_group_bypass_catalog_query", PGC_USERSET, RESOURCES,
+			gettext_noop("Bypass all catalog only queries."),
+			NULL
+		},
+		&pg_resource_group_bypass_catalog_query,
+		true, NULL, NULL
+	},	
+	{
+		{"pg_resgroup_debug_wait_queue", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Enable the debugging check on the wait queue of resource group."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&pg_resgroup_debug_wait_queue,
+		true,
+		NULL, NULL, NULL
+	},
+	{
+		{"pg_resource_group_databaseuser", PGC_USERSET, RESOURCES_MGM,
+			gettext_noop("Enable resource group for database user."),
+			NULL
+		},
+		&pg_resource_group_databaseuser,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/* Begin - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
 	{
 		{"enable_insertparallel", PGC_USERSET, QUERY_TUNING_METHOD,
@@ -3708,6 +3786,37 @@ static struct config_int ConfigureNamesInt[] =
 		0, 0, INT_MAX,
 		check_client_connection_check_interval, NULL, NULL
 	},
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	{
+		{"pg_resource_group_cpu_priority", PGC_POSTMASTER, RESOURCES,
+			gettext_noop("Sets the cpu priority for postgres processes when resource group is enabled."),
+			NULL
+		},
+		&pg_resource_group_cpu_priority,
+		10, 1, 50,
+		NULL, NULL, NULL
+	},
+	{
+		{"pg_resource_group_move_timeout", PGC_USERSET, RESOURCES_MGM,
+			gettext_noop("Wait up to the specified time (in ms) while moving process to another resource group (after queuing on it) before give up."),
+			NULL,
+			GUC_UNIT_MS
+		},
+		&pg_resource_group_move_timeout,
+		30000, 10, INT_MAX,
+		NULL, NULL, NULL
+	},
+	{
+		{"pg_resource_group_queuing_timeout", PGC_USERSET, RESOURCES_MGM,
+			gettext_noop("A transaction gives up on queuing on a resource group after this timeout (in ms)."),
+			NULL,
+			GUC_UNIT_MS
+		},
+		&pg_resource_group_queuing_timeout,
+		0, 0, INT_MAX,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/* Begin - BUG#M0000527 */
 	{
 		{"hg_connect_size",
@@ -4012,6 +4121,17 @@ static struct config_real ConfigureNamesReal[] =
 		0.0, 0.0, 1.0,
 		NULL, NULL, NULL
 	},
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	{
+		{"pg_resource_group_cpu_limit", PGC_POSTMASTER, RESOURCES,
+			gettext_noop("Maximum percentage of CPU resources assigned to a cluster."),
+			NULL
+		},
+		&pg_resource_group_cpu_limit,
+		0.9, 0.1, 1.0,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_REAL_PARAMS
 	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
@@ -4795,7 +4915,32 @@ static struct config_string ConfigureNamesString[] =
 		"",
 		check_backtrace_functions, assign_backtrace_functions, NULL
 	},
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	{
+		{"pg_resource_manager", PGC_POSTMASTER, RESOURCES,
+		gettext_noop("Sets the type of resource manager."),
+			gettext_noop("Only support \"none\", \"group\" and \"group-v2\" for now.")
+		},
+		&pg_resource_manager_str,
+		"none",
+		pgvars_check_pg_resource_manager_policy,
+		pgvars_assign_pg_resource_manager_policy,
+		pgvars_show_pg_resource_manager_policy,
+	},
+	/**
+	{
+		{"pg_resource_group_cgroup_parent", PGC_POSTMASTER, RESOURCES,
+			gettext_noop("The root of hgdb cgroup hierarchy."),
+			NULL,
+			GUC_SUPERUSER_ONLY
+		},
+		&pg_resource_group_cgroup_parent,
+		"hgdb.service",
+		pgvars_check_pg_resource_group_cgroup_parent, NULL, NULL
+	},
+	**/
 
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	{
 		{"restrict_nonsystem_relation_kind", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("Prohibits access to non-system relations of specified kinds."),
@@ -12676,6 +12821,114 @@ check_application_name(char **newval, void **extra, GucSource source)
 
 	return true;
 }
+
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+static bool
+check_pg_resource_group_bypass(bool *newval, void **extra, GucSource source)
+{
+	if (!ResGroupIsAssigned())
+		return true;
+
+	GUC_check_errmsg("SET pg_resource_group_bypass cannot run inside a transaction block");
+	return false;
+}
+
+
+/*
+ * pgvars_check_pg_resource_manager_policy
+ * pgvars_assign_pg_resource_manager_policy
+ * pgvars_show_pg_resource_manager_policy
+ */
+bool
+pgvars_check_pg_resource_manager_policy(char **newval, void **extra, GucSource source)
+{
+	if (*newval == NULL ||
+		*newval[0] == 0 ||
+		!pg_strcasecmp("none", *newval) ||
+		!pg_strcasecmp("group", *newval) ||
+		!pg_strcasecmp("group-v2", *newval))
+		return true;
+
+	GUC_check_errmsg("invalid value for resource manager policy: \"%s\"", *newval);
+	return false;
+}
+
+void
+pgvars_assign_pg_resource_manager_policy(const char *newval, void *extra)
+{
+	if (newval == NULL || newval[0] == 0)
+		pg_resource_manager_policy = RESOURCE_MANAGER_POLICY_NONE;
+	else if (!pg_strcasecmp("none", newval))
+		pg_resource_manager_policy = RESOURCE_MANAGER_POLICY_NONE;
+	else if (!pg_strcasecmp("group", newval))
+	{
+		pg_resource_manager_policy = RESOURCE_MANAGER_POLICY_GROUP;
+	}
+	else if (!pg_strcasecmp("group-v2", newval))
+	{
+		pg_resource_manager_policy = RESOURCE_MANAGER_POLICY_GROUP_V2;
+	}
+	/*
+	 * No else should happen, since newval has been checked in check_hook.
+	 */
+}
+
+const char *
+pgvars_show_pg_resource_manager_policy(void)
+{
+	switch (pg_resource_manager_policy)
+	{
+		case RESOURCE_MANAGER_POLICY_NONE:
+			return "none";
+		case RESOURCE_MANAGER_POLICY_GROUP:
+			return "group";
+		case RESOURCE_MANAGER_POLICY_GROUP_V2:
+			return "group-v2";
+		default:
+			Assert(!"unexpected resource manager policy");
+			return "unknown";
+	}
+}
+
+bool
+pgvars_check_pg_resource_group_cgroup_parent(char **newval, void **extra, GucSource source)
+{
+	int		  regres;
+	char	  err[128];
+	regex_t  re;
+	char	 *pattern = "^[0-9a-zA-Z][-._0-9a-zA-Z]*$";
+	pg_wchar *wpattern = palloc((strlen(pattern) + 1) * sizeof(pg_wchar));
+	int		  wlen = pg_mb2wchar_with_len(pattern, wpattern, strlen(pattern));
+	pg_wchar *data = palloc((strlen(*newval) + 1) * sizeof(pg_wchar));
+	int		  data_len = pg_mb2wchar_with_len(*newval, data, sizeof(*newval));
+	bool	  match = true;
+
+	regres = pg_regcomp(&re, wpattern, wlen, REG_ADVANCED, DEFAULT_COLLATION_OID);
+	if (regres != REG_OKAY)
+	{
+		pg_regerror(regres, &re, err, sizeof(err));
+		GUC_check_errmsg("compile regex failed: %s", err);
+
+		pfree(wpattern);
+		pfree(data);
+
+		return false;
+	}
+
+	regres = pg_regexec(&re, data, data_len, 0, NULL, 0, NULL, 0);
+	if (regres != REG_OKAY)
+	{
+		match = false;
+		GUC_check_errmsg("pg_resource_group_cgroup_parent can only contains alphabet, number and non-leading . _ -");
+	}
+
+	pg_regfree(&re);
+	pfree(wpattern);
+	pfree(data);
+
+	return match;
+}
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 static void
 assign_application_name(const char *newval, void *extra)

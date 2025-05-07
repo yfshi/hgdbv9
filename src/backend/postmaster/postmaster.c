@@ -148,6 +148,11 @@
 /* End - case sensitive indentify */
 #include "utils/guc_tables.h"
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+#include "utils/resgroup.h"
+#include "utils/resource_manager.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 #ifdef EXEC_BACKEND
 #include "storage/spin.h"
 #endif
@@ -1615,6 +1620,10 @@ PostmasterMain(int argc, char *argv[])
 	 */
 	RemovePgTempFiles();
 
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	if (IsResGroupEnabled())
+		initCgroup();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/*
 	 * Initialize stats collection subsystem (this does NOT start the
 	 * collector process!)

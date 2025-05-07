@@ -2368,6 +2368,32 @@ typedef struct AccessPriv
 	List	   *cols;			/* list of Value strings */
 } AccessPriv;
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/* ----------------------
+ *	Create/Alter/Drop Resource Group Statements
+ * ----------------------
+ */
+typedef struct CreateResourceGroupStmt
+{
+	NodeTag		type;
+	char	   *name;			/* resource group name */
+	List	   *options;		/* List of DefElem nodes */
+} CreateResourceGroupStmt;
+
+typedef struct DropResourceGroupStmt
+{
+	NodeTag		type;
+	char	   *name;			/* resource group to remove */
+} DropResourceGroupStmt;
+
+typedef struct AlterResourceGroupStmt
+{
+	NodeTag		type;
+	char	   *name;			/* resource group to alter */
+	List	   *options;		/* List of DefElem nodes */
+} AlterResourceGroupStmt;
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 /* ----------------------
  *		Grant/Revoke Role Statement
  *

@@ -153,6 +153,8 @@ pg_publication_rel|t
 pg_range|t
 pg_reboot|t
 pg_replication_origin|t
+pg_resgroup|t
+pg_resgroupcapability|t
 pg_rewrite|t
 pg_seclabel|t
 pg_secmon_history|f

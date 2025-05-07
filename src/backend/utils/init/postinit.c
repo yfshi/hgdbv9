@@ -63,6 +63,10 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/timeout.h"
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+#include "utils/resgroup.h"
+#include "utils/resource_manager.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 static HeapTuple GetDatabaseTuple(const char *dbname);
 static HeapTuple GetDatabaseTupleByOid(Oid dboid);
@@ -593,7 +597,10 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	 * Once I have done this, I am visible to other backends!
 	 */
 	InitProcessPhase2();
-
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* Initialize SessionState entry */
+	SessionState_Init();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/*
 	 * Initialize my entry in the shared-invalidation manager's array of
 	 * per-backend data.
@@ -1098,7 +1105,12 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 
 	/* Initialize this backend's session state. */
 	InitializeSession();
-
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/*
+	 * Initialize resource manager.
+	 */
+	InitResManager();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/* report this backend in the PgBackendStatus array */
 	if (!bootstrap)
 		pgstat_bestart();
@@ -1216,7 +1228,10 @@ ShutdownPostgres(int code, Datum arg)
 {
 	/* Make sure we've killed any active transaction */
 	AbortOutOfAnyTransaction();
-
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* Release SessionState entry */
+	SessionState_Shutdown();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/*
 	 * User locks are not released by transaction end, so be sure to release
 	 * them explicitly.

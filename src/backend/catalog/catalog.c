@@ -39,6 +39,10 @@
 #include "catalog/pg_subscription.h"
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_type.h"
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+#include "catalog/pg_resgroup.h"
+#include "catalog/pg_resgroupcapability.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 #include "miscadmin.h"
 #include "storage/fd.h"
 #include "utils/fmgroids.h"
@@ -283,6 +287,10 @@ IsSharedRelation(Oid relationId)
 		relationId == SharedSecLabelRelationId ||
 		relationId == TableSpaceRelationId ||
 		relationId == DbRoleSettingRelationId ||
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		relationId == ResGroupRelationId ||
+		relationId == ResGroupCapabilityRelationId ||
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		relationId == ReplicationOriginRelationId ||
                 relationId == SubscriptionRelationId
                 || relationId == MfaIdRelationId        /* ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -305,6 +313,13 @@ IsSharedRelation(Oid relationId)
 		relationId == DbRoleSettingDatidRolidIndexId ||
 		relationId == ReplicationOriginIdentIndex ||
 		relationId == ReplicationOriginNameIndex ||
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		relationId == ResGroupOidIndexId ||
+		relationId == ResGroupRsgnameIndexId ||
+		relationId == ResGroupCapabilityResgroupidRgroleidIndexId ||
+		relationId == ResGroupCapabilityResgroupidResLimittypeIndexId ||
+		relationId == ResGroupCapabilityResgroupidIndexId ||
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		relationId == SubscriptionObjectIndexId ||
                 relationId == SubscriptionNameIndexId
                 || relationId == MfaIdOidIndexId       /* ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -327,6 +342,10 @@ IsSharedRelation(Oid relationId)
 		relationId == PgSubscriptionToastTable ||
 		relationId == PgSubscriptionToastIndex ||
 		relationId == PgTablespaceToastTable ||
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		relationId == PgResGroupCapabilityToastTable ||
+		relationId == PgResGroupCapabilityToastIndex ||
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		relationId == PgTablespaceToastIndex)
 		return true;
 	return false;

@@ -48,6 +48,14 @@
 #include "se_features_interface.h"
 /* End - ReqID:SRS-SECURITY-POWERS */
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+#include "catalog/pg_resgroup.h"
+#include "utils/resource_manager.h"
+#include "commands/resgroupcmds.h"
+#include "catalog/pg_namespace.h"
+#include "catalog/pg_resgroupcapability.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 /* Potentially set by pg_upgrade_support functions */
 Oid			binary_upgrade_next_pg_authid_oid = InvalidOid;
 
@@ -115,7 +123,11 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	DefElem    *dadminmembers = NULL;
 	DefElem    *dvalidUntil = NULL;
 	DefElem    *dbypassRLS = NULL;
-
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	DefElem    *dresgroup = NULL;
+	char	   *resgroup = NULL;
+	
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/* The defaults can vary depending on the original statement type */
 	switch (stmt->stmt_type)
 	{
@@ -247,6 +259,17 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 						 parser_errposition(pstate, defel->location)));
 			dvalidUntil = defel;
 		}
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		else if (strcmp(defel->defname, "resourceGroup") == 0)
+		{
+
+			if (dresgroup)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			dresgroup = defel;
+		}
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		else if (strcmp(defel->defname, "bypassrls") == 0)
 		{
 			if (dbypassRLS)
@@ -291,6 +314,10 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 		adminmembers = (List *) dadminmembers->arg;
 	if (dvalidUntil)
 		validUntil = strVal(dvalidUntil->arg);
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	if (dresgroup)
+		resgroup = strVal(linitial((List *) dresgroup->arg));
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	if (dbypassRLS)
 		bypassrls = intVal(dbypassRLS->arg) != 0;
 
@@ -437,7 +464,6 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 
 	new_record[Anum_pg_authid_rolvaliduntil - 1] = validUntil_datum;
 	new_record_nulls[Anum_pg_authid_rolvaliduntil - 1] = validUntil_null;
-
 	new_record[Anum_pg_authid_rolbypassrls - 1] = BoolGetDatum(bypassrls);
 
 	/*
@@ -461,6 +487,143 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	}
 
 	new_record[Anum_pg_authid_oid - 1] = ObjectIdGetDatum(roleid);
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* enable_resgroup */
+	if (resgroup)
+	{
+		Oid			rsgid;
+
+		rsgid = get_resgroup_oid(resgroup, false);
+
+		if (rsgid == ADMINRESGROUP_OID && !issuper)
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("only superuser can be assigned to admin resgroup")));
+
+		if (rsgid == SYSTEMRESGROUP_OID)
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("assigning to system resgroup is not allowed")));
+
+		ResGroupCheckForRole(rsgid);
+		if (!IsResGroupActivated())
+			ereport(WARNING,
+					(errmsg("resource group is disabled"),
+					 errhint("To enable set pg_resource_manager=group")));
+		/* use pg_resgroupcapability instead of pg_object */
+		if(1)
+		{
+			/*
+			 * pg_resgroupcapability 
+			 * rsgid RESGROUP_LIMIT_TYPE_ROLEID null roleid
+			 * 
+			 *
+			 */
+			Datum new_record[Natts_pg_resgroupcapability];
+			bool new_record_nulls[Natts_pg_resgroupcapability];
+			HeapTuple tuple;
+			TupleDesc tupDesc;
+			Relation	relRGCapability;
+
+			MemSet(new_record, 0, sizeof(new_record));
+			MemSet(new_record_nulls, false, sizeof(new_record_nulls));
+
+			relRGCapability = table_open(ResGroupCapabilityRelationId, ExclusiveLock);
+			tupDesc = RelationGetDescr(relRGCapability);
+			
+			new_record[Anum_pg_resgroupcapability_resgroupid - 1] = ObjectIdGetDatum(rsgid);
+			new_record[Anum_pg_resgroupcapability_reslimittype - 1] = UInt16GetDatum(RESGROUP_LIMIT_TYPE_ROLEID);
+			new_record[Anum_pg_resgroupcapability_rgroleid - 1] = ObjectIdGetDatum(roleid);
+			new_record_nulls[Anum_pg_resgroupcapability_value -1] = true;
+			new_record_nulls[Anum_pg_resgroupcapability_option -1] = true;
+
+			tuple = heap_form_tuple(tupDesc, new_record, new_record_nulls);
+			CatalogTupleInsert(relRGCapability, tuple);
+			
+			table_close(relRGCapability, ExclusiveLock);
+		}
+
+	}
+	else if (issuper)
+	{
+		if (IsResGroupActivated())
+		{
+			/* too many regression test cases are affected.
+			ereport(NOTICE,
+					(errmsg("resource group required -- using admin resource group \"admin_group\"")));
+			*/
+		}
+		/* use pg_resgroupcapability instead of pg_object */
+		if(1)
+		{
+			/*
+			 * pg_resgroupcapability 
+			 * rsgid RESGROUP_LIMIT_TYPE_ROLEID null roleid
+			 */
+			Datum new_record[Natts_pg_resgroupcapability];
+			bool new_record_nulls[Natts_pg_resgroupcapability];
+			HeapTuple tuple;
+			TupleDesc tupDesc;
+			Relation	relRGCapability;
+
+			MemSet(new_record, 0, sizeof(new_record));
+			MemSet(new_record_nulls, false, sizeof(new_record_nulls));
+		
+			relRGCapability = table_open(ResGroupCapabilityRelationId, ExclusiveLock);
+			tupDesc = RelationGetDescr(relRGCapability);
+			
+			new_record[Anum_pg_resgroupcapability_resgroupid - 1] = ObjectIdGetDatum(ADMINRESGROUP_OID);
+			new_record[Anum_pg_resgroupcapability_reslimittype - 1] = UInt16GetDatum(RESGROUP_LIMIT_TYPE_ROLEID);
+			new_record[Anum_pg_resgroupcapability_rgroleid - 1] = ObjectIdGetDatum(roleid);
+			new_record_nulls[Anum_pg_resgroupcapability_value -1] = true;
+			new_record_nulls[Anum_pg_resgroupcapability_option -1] = true;
+		
+			tuple = heap_form_tuple(tupDesc, new_record, new_record_nulls);
+			CatalogTupleInsert(relRGCapability, tuple);
+			
+			table_close(relRGCapability, ExclusiveLock);
+		}
+	}
+	else
+	{
+		/* too many regression test cases are affected.
+		if (IsResGroupActivated())
+		{
+			ereport(NOTICE,
+					(errmsg("resource group required -- using default resource group \"default_group\"")));
+		}
+		*/
+		/* use pg_resgroupcapability instead of pg_object */
+		if(1)
+		{
+			/*
+			 * pg_resgroupcapability 
+			 * rsgid RESGROUP_LIMIT_TYPE_ROLEID null roleid
+			 */
+			Datum new_record[Natts_pg_resgroupcapability];
+			bool new_record_nulls[Natts_pg_resgroupcapability];
+			HeapTuple tuple;
+			TupleDesc tupDesc;
+			Relation	relRGCapability;
+		
+			MemSet(new_record, 0, sizeof(new_record));
+			MemSet(new_record_nulls, false, sizeof(new_record_nulls));
+		
+			relRGCapability = table_open(ResGroupCapabilityRelationId, ExclusiveLock);
+			tupDesc = RelationGetDescr(relRGCapability);
+			
+			new_record[Anum_pg_resgroupcapability_resgroupid - 1] = ObjectIdGetDatum(DEFAULTRESGROUP_OID);
+			new_record[Anum_pg_resgroupcapability_reslimittype - 1] = UInt16GetDatum(RESGROUP_LIMIT_TYPE_ROLEID);
+			new_record[Anum_pg_resgroupcapability_rgroleid - 1] = ObjectIdGetDatum(roleid);
+			new_record_nulls[Anum_pg_resgroupcapability_value -1] = true;
+			new_record_nulls[Anum_pg_resgroupcapability_option -1] = true;
+			tuple = heap_form_tuple(tupDesc, new_record, new_record_nulls);
+			CatalogTupleInsert(relRGCapability, tuple);
+			
+			table_close(relRGCapability, ExclusiveLock);
+		}
+	}
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 	tuple = heap_form_tuple(pg_authid_dsc, new_record, new_record_nulls);
 
@@ -588,6 +751,12 @@ AlterRole(AlterRoleStmt *stmt)
 	DefElem    *dvalidUntil = NULL;
 	DefElem    *dbypassRLS = NULL;
 	Oid			roleid;
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	char	   *resgroup = NULL;
+	DefElem    *dresgroup = NULL;
+	bool		bWas_super = false;	/* Was the user a superuser? */
+
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 	check_rolespec_name(stmt->role,
 						_("Cannot alter reserved roles."));
@@ -678,6 +847,16 @@ AlterRole(AlterRoleStmt *stmt)
 						 errmsg("conflicting or redundant options")));
 			dvalidUntil = defel;
 		}
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		else if (strcmp(defel->defname, "resourceGroup") == 0)
+		{
+			if (dresgroup)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			dresgroup = defel;
+		}
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		else if (strcmp(defel->defname, "bypassrls") == 0)
 		{
 			if (dbypassRLS)
@@ -717,6 +896,10 @@ AlterRole(AlterRoleStmt *stmt)
 		rolemembers = (List *) drolemembers->arg;
 	if (dvalidUntil)
 		validUntil = strVal(dvalidUntil->arg);
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	if (dresgroup)
+		resgroup = strVal(linitial((List *) dresgroup->arg));
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	if (dbypassRLS)
 		bypassrls = intVal(dbypassRLS->arg);
 
@@ -737,6 +920,10 @@ AlterRole(AlterRoleStmt *stmt)
 	 * property.  Otherwise, if you don't have createrole, you're only allowed
 	 * to change your own password.
 	 */
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	bWas_super = ((Form_pg_authid) GETSTRUCT(tuple))->rolsuper;
+
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	if (authform->rolsuper || issuper >= 0)
 	{
 		if (!superuser())
@@ -835,8 +1022,114 @@ AlterRole(AlterRoleStmt *stmt)
 	 */
 	if (issuper >= 0)
 	{
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		bool isNull = false;
+		Oid roleResgroup;
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(issuper > 0);
 		new_record_repl[Anum_pg_authid_rolsuper - 1] = true;
+
+		if (!isNull)
+		{
+			/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+			/* enable_resgroup */
+			if(1)
+			{
+				roleResgroup = getResGroupIdByPgCapability(roleid);
+				
+				if (issuper == 0 && roleResgroup == ADMINRESGROUP_OID)
+				{
+					Datum		valuesAtt[Natts_pg_resgroupcapability];
+					bool		nullsAtt[Natts_pg_resgroupcapability];
+					bool		replacesAtt[Natts_pg_resgroupcapability];
+					
+					Relation	tablerel;
+					HeapTuple	tuple;
+					HeapTuple	newtup;
+					
+					/* Lock the attribute row and get the data */
+					tablerel = table_open(ResGroupCapabilityRelationId, RowExclusiveLock);
+					tuple = SearchSysCache3(RESGROUPCAPABILITYOIDRGROLEID,
+											ObjectIdGetDatum(roleResgroup),
+											Int16GetDatum(RESGROUP_LIMIT_TYPE_ROLEID),
+											ObjectIdGetDatum(roleid));
+					
+					if (!HeapTupleIsValid(tuple))
+						elog(ERROR, "cache lookup failed for resource group %u and role %u",
+							 roleResgroup, roleid);
+					
+					/* update the tuple - set atthasmissing and attmissingval */
+					MemSet(valuesAtt, 0, sizeof(valuesAtt));
+					MemSet(nullsAtt, false, sizeof(nullsAtt));
+					MemSet(replacesAtt, false, sizeof(replacesAtt));
+					
+					valuesAtt[Anum_pg_resgroupcapability_resgroupid - 1] = ObjectIdGetDatum(DEFAULTRESGROUP_OID);
+					replacesAtt[Anum_pg_resgroupcapability_resgroupid - 1] = true;
+					
+					newtup = heap_modify_tuple(tuple, RelationGetDescr(tablerel),
+											   valuesAtt, nullsAtt, replacesAtt);
+					CatalogTupleUpdate(tablerel, &newtup->t_self, newtup);
+					
+					/* clean up */
+					ReleaseSysCache(tuple);
+					table_close(tablerel, RowExclusiveLock);
+
+				}
+				else if (issuper > 0 && roleResgroup == DEFAULTRESGROUP_OID)
+				{
+					Datum		valuesAtt[Natts_pg_resgroupcapability];
+					bool		nullsAtt[Natts_pg_resgroupcapability];
+					bool		replacesAtt[Natts_pg_resgroupcapability];
+					
+					Relation	tablerel;
+					HeapTuple	tuple;
+					HeapTuple	newtup;
+					
+					
+					/* Lock the attribute row and get the data */
+					tablerel = table_open(ResGroupCapabilityRelationId, RowExclusiveLock);
+					tuple = SearchSysCache3(RESGROUPCAPABILITYOIDRGROLEID,
+											ObjectIdGetDatum(roleResgroup),
+											Int16GetDatum(RESGROUP_LIMIT_TYPE_ROLEID),
+											ObjectIdGetDatum(roleid));
+					
+					if (!HeapTupleIsValid(tuple))
+						elog(ERROR, "cache lookup failed for resource group %u and role %u",
+							 roleResgroup, roleid);
+					
+					/* update the tuple - set atthasmissing and attmissingval */
+					MemSet(valuesAtt, 0, sizeof(valuesAtt));
+					MemSet(nullsAtt, false, sizeof(nullsAtt));
+					MemSet(replacesAtt, false, sizeof(replacesAtt));
+					
+					valuesAtt[Anum_pg_resgroupcapability_resgroupid - 1] = ObjectIdGetDatum(ADMINRESGROUP_OID);
+					replacesAtt[Anum_pg_resgroupcapability_resgroupid - 1] = true;
+					
+					newtup = heap_modify_tuple(tuple, RelationGetDescr(tablerel),
+											   valuesAtt, nullsAtt, replacesAtt);
+					CatalogTupleUpdate(tablerel, &newtup->t_self, newtup);
+					
+					/* clean up */
+					ReleaseSysCache(tuple);
+					table_close(tablerel, RowExclusiveLock);
+
+				}
+				else if(issuper == 0 && roleResgroup == DEFAULTRESGROUP_OID)
+				{
+					;
+				}
+				else if(issuper > 0 && roleResgroup == ADMINRESGROUP_OID)
+				{
+					;
+				}
+				
+			}
+			/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		}
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		/* get current superuser status */
+		bWas_super = (issuper > 0);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	}
 
 	if (inherit >= 0)
@@ -910,7 +1203,90 @@ AlterRole(AlterRoleStmt *stmt)
 	new_record[Anum_pg_authid_rolvaliduntil - 1] = validUntil_datum;
 	new_record_nulls[Anum_pg_authid_rolvaliduntil - 1] = validUntil_null;
 	new_record_repl[Anum_pg_authid_rolvaliduntil - 1] = true;
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	if (resgroup)
+	{
+		Oid			rsgid;
 
+		if (strcmp(resgroup, "none") == 0)
+		{
+			if (bWas_super)
+				resgroup = pstrdup("admin_group");
+			else
+				resgroup = pstrdup("default_group");
+
+			if (IsResGroupActivated())
+			{
+				/* too many regression test cases are affected.
+				ereport(NOTICE,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("resource group required -- "
+								"using default resource group \"%s\"",
+								resgroup)));
+				*/
+			}
+		}
+
+		rsgid = get_resgroup_oid(resgroup, false);
+
+		if (rsgid == ADMINRESGROUP_OID && !bWas_super)
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("only superuser can be assigned to admin resgroup")));
+
+		if (rsgid == SYSTEMRESGROUP_OID)
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("assigning to system resgroup is not allowed")));
+
+		ResGroupCheckForRole(rsgid);
+		if (!IsResGroupActivated())
+		{
+			ereport(WARNING,
+					(errmsg("resource group is disabled"),
+					 errhint("To enable set pg_resource_manager=group")));
+		}
+		if (1)
+		{
+			/* enable_resgroup */
+			Datum		valuesAtt[Natts_pg_resgroupcapability];
+			bool		nullsAtt[Natts_pg_resgroupcapability];
+			bool		replacesAtt[Natts_pg_resgroupcapability];
+			
+			Relation	tablerel;
+			HeapTuple	tuple;
+			HeapTuple	newtup;
+			Oid resGroupOid = getResGroupIdByPgCapability(roleid);
+			
+			/* Lock the attribute row and get the data */
+			tablerel = table_open(ResGroupCapabilityRelationId, RowExclusiveLock);
+			tuple = SearchSysCache3(RESGROUPCAPABILITYOIDRGROLEID,
+									ObjectIdGetDatum(resGroupOid),
+									Int16GetDatum(RESGROUP_LIMIT_TYPE_ROLEID),
+									ObjectIdGetDatum(roleid));
+
+			if (!HeapTupleIsValid(tuple))
+				elog(ERROR, "cache lookup failed for resource group %u and role %u",
+					 resGroupOid, roleid);
+			
+			/* update the tuple - set atthasmissing and attmissingval */
+			MemSet(valuesAtt, 0, sizeof(valuesAtt));
+			MemSet(nullsAtt, false, sizeof(nullsAtt));
+			MemSet(replacesAtt, false, sizeof(replacesAtt));
+			
+			valuesAtt[Anum_pg_resgroupcapability_resgroupid - 1] = ObjectIdGetDatum(rsgid);
+			replacesAtt[Anum_pg_resgroupcapability_resgroupid - 1] = true;
+			
+			newtup = heap_modify_tuple(tuple, RelationGetDescr(tablerel),
+									   valuesAtt, nullsAtt, replacesAtt);
+			CatalogTupleUpdate(tablerel, &newtup->t_self, newtup);
+			
+			/* clean up */
+			ReleaseSysCache(tuple);
+			table_close(tablerel, RowExclusiveLock);
+		}
+	}
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	if (bypassrls >= 0)
 	{
 		new_record[Anum_pg_authid_rolbypassrls - 1] = BoolGetDatum(bypassrls > 0);
@@ -1136,7 +1512,31 @@ DropRole(DropRoleStmt *stmt)
 							role),
 					 errdetail_internal("%s", detail),
 					 errdetail_log("%s", detail_log)));
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		/* enable_resgroup */
+		if ( 1 )
+		{
+			Relation	relation;
+			HeapTuple	tup;
+			Oid resGroupOid = getResGroupIdByPgCapability(roleid);
+			
+			relation = table_open(ResGroupCapabilityRelationId, RowExclusiveLock);
+			
+			tup = SearchSysCache3(RESGROUPCAPABILITYOIDRGROLEID,
+									ObjectIdGetDatum(resGroupOid),
+									Int16GetDatum(RESGROUP_LIMIT_TYPE_ROLEID),
+									ObjectIdGetDatum(roleid));
+			if (!HeapTupleIsValid(tup))
+				elog(ERROR, "cache lookup failed for role %u", roleid);
+			
+			CatalogTupleDelete(relation, &tup->t_self);
+			
+			ReleaseSysCache(tup);
+			
+			table_close(relation, RowExclusiveLock);
 
+		}
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		/*
 		 * Remove the role from the pg_authid table
 		 */

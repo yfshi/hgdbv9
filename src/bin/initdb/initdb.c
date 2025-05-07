@@ -1971,6 +1971,12 @@ setup_depend(FILE *cmdfd)
 		" FROM pg_collation;\n\n",
 		"INSERT INTO pg_shdepend SELECT 0,0,0,0, tableoid,oid, 'p' "
 		" FROM pg_authid;\n\n",
+		
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		/* resource group additions */
+		"INSERT INTO pg_shdepend SELECT 0,0,0,0, tableoid,oid, 'p' "
+		" FROM pg_resgroup;\n\n",
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		NULL
 	};
 

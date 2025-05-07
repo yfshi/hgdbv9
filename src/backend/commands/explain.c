@@ -42,6 +42,7 @@
 #include "utils/ora_compatible.h"
 #include "funcapi.h" /* SRS-PLSQL-SUBPROC */
 
+#include "utils/resgroup.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 
 /* Hook for plugins to get control in ExplainOneQuery() */
@@ -577,7 +578,9 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 		eflags = EXEC_FLAG_EXPLAIN_ONLY;
 	if (into)
 		eflags |= GetIntoRelEFlags(into);
-
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	check_and_unassign_from_resgroup(queryDesc->plannedstmt);
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/* call ExecutorStart to prepare the plan for execution */
 	ExecutorStart(queryDesc, eflags);
 

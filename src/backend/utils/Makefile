@@ -26,6 +26,7 @@ SUBDIRS     = \
 	misc \
 	mmgr \
 	resowner \
+	resgroup \
 	sort \
 	time
 

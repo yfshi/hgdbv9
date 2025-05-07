@@ -87,6 +87,12 @@
 #include "catalog/pg_object.h"	/* ReqID:SRS-SQL-Object */
 
 #include "catalog/pg_mfaid.h"  /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+#include "catalog/pg_resgroup.h"
+#include "catalog/pg_resgroupcapability.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 #include "lib/qunique.h"
 #include "miscadmin.h"
 #include "storage/lmgr.h"
@@ -849,6 +855,41 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		16
 	},
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	{ResGroupRelationId,		/* RESGROUPNAME */
+		ResGroupRsgnameIndexId,
+		1,
+		{
+			Anum_pg_resgroup_rsgname,
+			0,
+			0,
+			0
+		},
+		128
+	},
+	{ResGroupRelationId,		/* RESGROUPOID */
+		ResGroupOidIndexId,
+		1,
+		{
+			Anum_pg_resgroup_oid,
+			0,
+			0,
+			0
+		},
+		128
+	},
+	{ResGroupCapabilityRelationId,		/* RESGROUPCAPABILITYOIDRGROLEID */
+		ResGroupCapabilityResgroupidRgroleidIndexId,
+		3,
+		{
+			Anum_pg_resgroupcapability_resgroupid,
+			Anum_pg_resgroupcapability_reslimittype,
+			Anum_pg_resgroupcapability_rgroleid,
+			0
+		},
+		128
+	},
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	{RewriteRelationId,			/* RULERELNAME */
 		RewriteRelRulenameIndexId,
 		2,

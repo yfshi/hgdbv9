@@ -11753,6 +11753,42 @@
   proargtypes => '', prosrc => 'ivy_get_host_ipv6' },
 /* End - ReqID:SRS-SQL-DBLINK */
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+{ oid => 6066,
+  descr => 'statistics: information about resource groups',
+  proname => 'pg_resgroup_get_status', prorows => '1000',
+  proisstrict => 'f', proretset => 't', provolatile => 'v',
+  proparallel => 'r', prorettype => 'record',
+  proargtypes => 'oid',
+  proallargtypes => 'oid,oid,int4,int4,int8,int8,interval,json,json',
+  proargmodes => '{i,o,o,o,o,o,o,o,o}',
+  proargnames => '{groupid,groupid,num_running,num_queueing,num_queued,num_executed,total_queue_duration,cpu_usage,memory_usage}',
+  prosrc => 'pg_resgroup_get_status' },
+
+{ oid => '6107',
+  descr => 'test prime compute',
+  proname => 'my_cpu_prime', prorettype => 'bool',
+  proargtypes => 'int4 int4',
+  prosrc => 'my_cpu_prime' },
+
+{ oid => '6108',
+  descr => 'get oid by pg_object for views',
+  proname => 'getoidbypgobjectviews', prorettype => 'oid',
+  proargtypes => 'oid',
+  prosrc => 'getOidByPgObjectViews' },
+
+{ oid => 6109,
+  descr => 'statistics: io information about resource groups',
+  proname => 'pg_resgroup_get_iostats', prorows => '1000',
+  proisstrict => 'f', proretset => 't', provolatile => 'v',
+  proparallel => 'r', prorettype => 'record',
+  proargtypes => 'oid',
+  proallargtypes => 'oid,text,oid,text,int8,int8,int8,int8',
+  proargmodes => '{i,o,o,o,o,o,o,o}',
+  proargnames => '{groupid,rsgname,groupid,tablespace,rbps,wbps,riops,wiops}',
+  prosrc => 'pg_resgroup_get_iostats' },
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
 /* Begin - BUG#M0000414 */
 { oid => '4663', descr => 'internal conversion function for UTF8 to GBK',
   proname => 'utf8_to_gbk_2', prolang => 'c', prorettype => 'int4',
