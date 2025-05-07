@@ -109,7 +109,6 @@
 #include "libpq/pqsignal.h"
 #include "pg_getopt.h"
 #include "pgstat.h"
-//#include "port.h"					/* SQL PARSER */
 #include "port/pg_bswap.h"
 #include "postmaster/autovacuum.h"
 #include "postmaster/bgworker_internals.h"

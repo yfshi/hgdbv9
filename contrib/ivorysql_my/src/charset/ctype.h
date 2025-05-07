@@ -10,6 +10,8 @@
 #include "postgres.h"
 #include "c.h"
 
+#include "../include/ivorysql_my.h"
+
 #define MY_CS_REPLACEMENT_CHARACTER 0xFFFD
 
 #define MY_CHARSET_UNDEFINED     (0)        // for unit testing
@@ -55,8 +57,6 @@
     #define MB2(x)                (x)
 #endif
 
-typedef unsigned int uint;
-typedef unsigned char uchar;
 typedef unsigned long int my_wc_t;
 
 typedef struct MY_COLLATION_HANDLER MY_COLLATION_HANDLER;

@@ -23,7 +23,7 @@
 #include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/numeric.h"
-#include "../include/my_ctype_simple.h"
+#include "../include/ivorysql_my.h"
 
 #define PG_GETARG_UINT64(n)	 DatumGetUInt64(PG_GETARG_DATUM(n))
 

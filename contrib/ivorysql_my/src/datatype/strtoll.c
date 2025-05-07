@@ -1,6 +1,6 @@
 /*------------------------------------------------------------------
  * 
- * File: my_ctype_simple.c
+ * File: strtoll.c
  *
  * Abstract: 
  * 		MySQL's ctype simple funciton
@@ -11,41 +11,45 @@
  * Copyright (c) 2023, HighGo Software Co.,Ltd. All rights reserved. 
  *
  * Identification:
- *		contrib/ivorysql_my/src/datatype/my_ctype_simple.c
+ *		contrib/ivorysql_my/src/datatype/strtoll.c
  *
  * ReqID:SRS-MYSQL-NUMBERICTYPE
  * 
  *------------------------------------------------------------------
  */
 
-#include "../include/my_ctype_simple.h"
+#include "postgres.h"
+ 
+#include "../include/ivorysql_my.h"
+
+#include <limits.h>
 
 #define CUTOFF  (ULLONG_MAX / 10)
 #define CUTLIM  (ULLONG_MAX % 10)
 #define DIGITS_IN_ULONGLONG 20
 
-static uint64 d10[DIGITS_IN_ULONGLONG]=
+static uint64 d10[DIGITS_IN_ULONGLONG] =
 {
-  1,
-  10,
-  100,
-  1000,
-  10000,
-  100000,
-  1000000,
-  10000000,
-  100000000,
-  1000000000,
-  10000000000ULL,
-  100000000000ULL,
-  1000000000000ULL,
-  10000000000000ULL,
-  100000000000000ULL,
-  1000000000000000ULL,
-  10000000000000000ULL,
-  100000000000000000ULL,
-  1000000000000000000ULL,
-  10000000000000000000ULL
+	1,
+	10,
+	100,
+	1000,
+	10000,
+	100000,
+	1000000,
+	10000000,
+	100000000,
+	1000000000,
+	10000000000ULL,
+	100000000000ULL,
+	1000000000000ULL,
+	10000000000000ULL,
+	100000000000000ULL,
+	1000000000000000ULL,
+	10000000000000000ULL,
+	100000000000000000ULL,
+	1000000000000000000ULL,
+	10000000000000000000ULL
 };
 
 /*
@@ -103,8 +107,8 @@ static uint64 d10[DIGITS_IN_ULONGLONG]=
     EDOM If the string didn't contain any digits.
     In this case the return value is 0.
 */
-uint64 my_strntoull10rnd_8bit(const char *str, size_t length, int unsigned_flag,
-							  char **endptr, int *error)
+uint64 
+my_strntoull10rnd_8bit(const char *str, size_t length, int unsigned_flag, char **endptr, int *error)
 {
 	const char *dot, *end9, *beg, *end = str + length;
 	uint64 ull;
@@ -169,11 +173,11 @@ uint64 my_strntoull10rnd_8bit(const char *str, size_t length, int unsigned_flag,
 				digits++;
 				continue;
 			}
-			/*
-        Adding the next digit would overflow.
-        Remember the next digit in "addon", for rounding.
-        Scan all digits with an optional single dot.
-      */
+			/**
+			 * Adding the next digit would overflow.
+			 * Remember the next digit in "addon", for rounding.
+			 * Scan all digits with an optional single dot.
+			 */
 			if (ull == CUTOFF)
 			{
 				ull = ULLONG_MAX;

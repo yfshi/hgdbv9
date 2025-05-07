@@ -23,7 +23,6 @@
 #include "mysql_parser/mys_case_sensitive.h"
 #include "include/ivorysql_my.h"
 #include "include/casesensitive.h"
-#include "include/my_ctype_simple.h"
 #include "utils/varlena.h"
 
 /* Only include it once in any C file */

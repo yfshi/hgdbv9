@@ -16,30 +16,32 @@
  */
 
 #include "postgres.h"
+
 #include <ctype.h>
 #include <math.h>
 #include <float.h>
-#include "fmgr.h"
 #include <limits.h>
 #include <sys/time.h>
+
 #include "access/hash.h"
 #include "access/xact.h"
 #include "catalog/pg_type.h"
+#include "fmgr.h"
 #include "funcapi.h"
 #include "libpq/pqformat.h"
 #include "miscadmin.h"
-#include "pgtime.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "parser/scansup.h"
+#include "pgtime.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/datetime.h"
 #include "utils/formatting.h"
 #include "utils/guc.h"
+#include "utils/numeric.h"
 #include "utils/timestamp.h"
 #include "utils/varlena.h"
-#include "utils/numeric.h"
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 static uint64 pg_atoi_uint8(const char *s,int c);

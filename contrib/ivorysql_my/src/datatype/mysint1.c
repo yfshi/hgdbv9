@@ -1,6 +1,6 @@
 /*------------------------------------------------------------------
  *
- * File: mys_int1.c
+ * File: mysint1.c
  *
  * Abstract:
  * 		Compatible with MySQL's int1 type.
@@ -11,16 +11,15 @@
  * Copyright (c) 2023, HighGo Software Co.,Ltd. All rights reserved.
  *
  * Identification:
- *		contrib/ivorysql_my/src/datatype/mysigned.c
+ *		contrib/ivorysql_my/src/datatype/mysint1.c
  *
  *------------------------------------------------------------------
  */
 
-//#include "fmgr.h"
 #include "postgres.h"
-#include "utils/guc.h"
 #include "common/int.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 
 PG_FUNCTION_INFO_V1(myint1_positive);
 

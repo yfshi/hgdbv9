@@ -18,13 +18,12 @@
  *------------------------------------------------------------------
  */
 
-//#include "fmgr.h"
 #include "postgres.h"
 #include "common/int.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/numeric.h"
-#include "../include/my_ctype_simple.h"
+#include "../include/ivorysql_my.h"
 
 PG_FUNCTION_INFO_V1(myint2_bit_and);
 PG_FUNCTION_INFO_V1(myint2_bit_or);
