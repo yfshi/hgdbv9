@@ -208,6 +208,7 @@ pass_is_encrypted(const char *passwd)
 bool
 pass_encrypt(const char *passwd, const unsigned char *key, const unsigned char *hmac_key, char *out)
 {
+	unsigned char buf_plain[BUFFER_MAX_SIZE];
 	SM4_KEY ctx;
 	unsigned char out_enc[BUFFER_MAX_SIZE];
 	size_t out_enc_len = 0;
@@ -223,8 +224,9 @@ pass_encrypt(const char *passwd, const unsigned char *key, const unsigned char *
 	out_len += 16;
 
 	sm4_set_encrypt_key(&ctx, key);
+	memcpy(buf_plain, out_enc + SM4_IV_SIZE, out_len - SM4_IV_SIZE);
 	sm4_cbc_padding_encrypt(&ctx, out_enc,
-							out_enc + SM4_IV_SIZE, out_len - SM4_IV_SIZE,
+							buf_plain, out_len - SM4_IV_SIZE,
 							out_enc + SM4_IV_SIZE, &out_enc_len);
 	out_len = SM4_IV_SIZE + out_enc_len;
 
