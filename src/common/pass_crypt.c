@@ -244,6 +244,7 @@ pass_encrypt(const char *passwd, const unsigned char *key, const unsigned char *
 bool
 pass_decrypt(const char *passwd, const unsigned char *key, const unsigned char *hmac_key, char *out)
 {
+	unsigned char buf_cipher[BUFFER_MAX_SIZE];
 	SM4_KEY ctx;
 	unsigned char pass_dec[BUFFER_MAX_SIZE];
 	size_t pass_dec_len = 0;
@@ -257,8 +258,9 @@ pass_decrypt(const char *passwd, const unsigned char *key, const unsigned char *
 	pass_dec_len -= 16;
 	pass_dec_len -= SM4_IV_SIZE;
 	sm4_set_decrypt_key(&ctx, key);
+	memcpy(buf_cipher, pass_dec + SM4_IV_SIZE, pass_dec_len);
 	sm4_cbc_padding_decrypt(&ctx, pass_dec,							// key、iv
-							pass_dec + SM4_IV_SIZE, pass_dec_len,	// in、inlen
+							buf_cipher, pass_dec_len,	// in、inlen
 							pass_dec + SM4_IV_SIZE, &pass_dec_len); // out、outlen
 	pass_dec_len -= 16;
 	pass_hmac(pass_dec, pass_dec_len + SM4_IV_SIZE, hmac_key, digst);
