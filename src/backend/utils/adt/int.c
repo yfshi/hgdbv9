@@ -47,7 +47,7 @@
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 /* Hook to int datatype in */
-Mysql_int_datatype_in_hook_type mysql_int_datatype_in_hook = NULL;
+Mysql_int2_datatype_in_hook_type mysql_int2_datatype_in_hook = NULL;
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 /* Hook to int4 datatype in */
@@ -83,9 +83,9 @@ int2in(PG_FUNCTION_ARGS)
 	/* End - BUG#M0000194 */
 
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
-	if (mysql_int_datatype_in_hook && MYS_PARSER == compatible_db)
+	if (mysql_int2_datatype_in_hook && MYS_PARSER == compatible_db)
 	{
-		PG_RETURN_INT16((*mysql_int_datatype_in_hook)(num));
+		PG_RETURN_INT16((*mysql_int2_datatype_in_hook)(num));
 	}
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
 

@@ -228,6 +228,7 @@ PG_FUNCTION_INFO_V1(int8_ormysuint8);
 PG_FUNCTION_INFO_V1(mysuint8_invertmysuint8);
 
 PG_FUNCTION_INFO_V1(mysuint8_boolean);
+PG_FUNCTION_INFO_V1(mysuint8_numeric);
 
 PG_FUNCTION_INFO_V1(mysuint8_like);
 PG_FUNCTION_INFO_V1(mysuint8_int8_like);
@@ -2004,6 +2005,14 @@ Datum mysuint8_boolean(PG_FUNCTION_ARGS)
 	uint64		val1 = PG_GETARG_INT64(0);
 
 	PG_RETURN_BOOL(val1 != 0);
+}
+
+// mysuint8 to numeric
+Datum mysuint8_numeric(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_INT64(0);
+
+	PG_RETURN_NUMERIC(uint64_to_numeric(val1));
 }
 
 /*****************************************************************************

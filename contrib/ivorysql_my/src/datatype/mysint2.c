@@ -65,27 +65,71 @@ my_atoi_int2(const char *s)
 				errmsg("invalid input syntax for type smallint")));
 	if (*s == 0)
 	{
-		ereport(ERROR,
-			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				errmsg("invalid input syntax for type smallint: \"%s\"", s)));
+		if (!is_strict_mode())
+		{
+			ereport(WARNING,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input syntax for type %s: \"%s\"",
+						"smallint", s)));
+
+			return 0;
+		}
+		else
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input syntax for type %s: \"%s\"",
+						"smallint", s)));
+		}
 	}
 
 	errno = 0;
-    l = my_strntoull10rnd_8bit(s, strlen(s), flag, &badp, &save_errno);
+	l = my_strntoull10rnd_8bit(s, strlen(s), flag, &badp, &save_errno);
 
 	/* We made no progress parsing the string, so bail out */
 	if (s == badp)
 	{
-		ereport(ERROR,
-			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				errmsg("invalid input syntax for type smallint: \"%s\"", s)));
+		if (!is_strict_mode())
+		{
+			ereport(WARNING,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input syntax for type %s: \"%s\"",
+						"smallint", s)));
+
+			return 0;
+		}
+		else
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input syntax for type %s: \"%s\"",
+						"smallint", s)));
+		}
 	}
 
 	if (save_errno == ERANGE || l < PG_INT16_MIN || l > PG_INT16_MAX)
 	{
-		ereport(ERROR,
-			(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-				errmsg("value \"%s\" is out of range for type smallint", s)));
+		if(!is_strict_mode())
+		{
+			if(l < PG_INT32_MIN)
+			{
+				l = PG_INT32_MIN;
+			}
+			else
+			{
+				l = PG_INT32_MAX;
+			}
+
+			ereport(WARNING,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					errmsg("value \"%s\" is out of range for type smallint", s)));
+		}
+		else
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					errmsg("value \"%s\" is out of range for type smallint", s)));
+		}
 	}
 
 	/*

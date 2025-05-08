@@ -870,9 +870,12 @@ GetExprNode(List *exprList, List *attrnos, int varattno)
 /*
  * transformColumnReference
  * Parsing and processing column references.
+ * 
+ * fix “insert into test values(1, a * 2)” dump bug, opexpr change type to node.
+ * 
  */
 static void
-transformColumnReference(ParseState *pstate, List          **exprList, Node **opexpr, List *attrnos, int atrrno)
+transformColumnReference(ParseState *pstate, List **exprList, Node **opexpr, List *attrnos, int atrrno)
 {
 	List	   *tmpattrnos = NIL;
 	List	   *argslist = NIL;
@@ -918,23 +921,6 @@ transformColumnReference(ParseState *pstate, List          **exprList, Node **op
 							}
 							else
 							{
-								/* If it is a primary key column, you need to get an implicit default value. */
-//								Bitmapset  *pkattnos;
-//								Bitmapset  *varattnos;
-//								Oid			constraintOid;
-//								pkattnos = get_primary_key_attnos(pstate->p_target_relation->rd_node.relNode, false, &constraintOid);
-//								if (!pkattnos)
-//									tmpnode = MakeNullNode();
-//								else
-//								{
-//									varattnos = bms_add_member(varattnos,
-//										   var->varattno - FirstLowInvalidHeapAttributeNumber);
-//									if (bms_is_subset(pkattnos, varattnos))
-//									{
-//										/* get type implict default value. */
-//										tmpnode = MakeNullNode();
-//									}
-//								}
 								tmpnode = MakeNullNode();
 							}
 						}
@@ -949,14 +935,14 @@ transformColumnReference(ParseState *pstate, List          **exprList, Node **op
 					 */
 					else if (IsA(node1, OpExpr))
 					{
-						OpExpr	   *opr= (OpExpr*)node1;
+						OpExpr	   *opr = (OpExpr*)node1;
 						transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, num);
 						argslist = lappend(argslist, opr);
 					}
 					/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 					else if (IsA(node1, FuncExpr))
 					{
-						FuncExpr	   *opr= (FuncExpr*)node1;
+						FuncExpr	   *opr = (FuncExpr*)node1;
 						transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, num);
 						argslist = lappend(argslist, opr);
 					}
@@ -969,7 +955,7 @@ transformColumnReference(ParseState *pstate, List          **exprList, Node **op
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 			else if (IsA(node, FuncExpr))
 			{
-				FuncExpr	   *opr= (FuncExpr*)node;
+				FuncExpr	   *opr = (FuncExpr*)node;
 				transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, num);
 				argslist = lappend(argslist, opr);
 			}
@@ -1010,22 +996,6 @@ transformColumnReference(ParseState *pstate, List          **exprList, Node **op
 					else
 					{
 						/* If it is a primary key column, you need to get an implicit default value. */
-//						Bitmapset  *pkattnos;
-//						Bitmapset  *varattnos;
-//						Oid			constraintOid;
-//						pkattnos = get_primary_key_attnos(pstate->p_target_relation->rd_node.relNode, false, &constraintOid);
-//						if (!pkattnos)
-//							tmpnode = MakeNullNode();
-//						else
-//						{
-//							varattnos = bms_add_member(varattnos,
-//								   var->varattno - FirstLowInvalidHeapAttributeNumber);
-//							if (bms_is_subset(pkattnos, varattnos))
-//							{
-//								/* get type implict default value. */
-//								tmpnode = MakeNullNode();
-//							}
-//						}
 						tmpnode = MakeNullNode();
 					}
 				}
@@ -1036,14 +1006,14 @@ transformColumnReference(ParseState *pstate, List          **exprList, Node **op
 			}
 			else if (IsA(node1, OpExpr))
 			{
-				OpExpr	   *opr= (OpExpr*)node1;
+				OpExpr	   *opr = (OpExpr*)node1;
 				transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, atrrno);
 				argslist = lappend(argslist, opr);
 			}
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 			else if (IsA(node1, FuncExpr))
 			{
-				FuncExpr	   *opr= (FuncExpr*)node1;
+				FuncExpr	   *opr = (FuncExpr*)node1;
 				transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, atrrno);
 				argslist = lappend(argslist, opr);
 			}

@@ -25,8 +25,6 @@
 #include "utils/numeric.h"
 #include "../include/ivorysql_my.h"
 
-#define PG_GETARG_UINT64(n)	 DatumGetUInt64(PG_GETARG_DATUM(n))
-
 PG_FUNCTION_INFO_V1(myint4_bit_and);
 PG_FUNCTION_INFO_V1(myint4_bit_or);
 PG_FUNCTION_INFO_V1(myint4_pl);
@@ -68,20 +66,44 @@ my_atoi_int4(const char *s)
 				errmsg("invalid input syntax for type integer")));
 	if (*s == 0)
 	{
-		ereport(ERROR,
-			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				errmsg("invalid input syntax for type integer: \"%s\"", s)));
+		if (!is_strict_mode())
+		{
+			ereport(WARNING,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					errmsg("invalid input syntax for type integer: \"%s\"", s)));
+
+			return 0;
+		}
+		else
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					errmsg("invalid input syntax for type integer: \"%s\"", s)));
+		}
 	}
 
 	errno = 0;
-    l = my_strntoull10rnd_8bit(s, strlen(s), flag, &badp, &save_errno);
+	l = my_strntoull10rnd_8bit(s, strlen(s), flag, &badp, &save_errno);
 
 	/* We made no progress parsing the string, so bail out */
 	if (s == badp)
-	{
-		ereport(ERROR,
-			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				errmsg("invalid input syntax for type integer: \"%s\"", s)));
+	{		
+		if (!is_strict_mode())
+		{
+			ereport(WARNING,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input syntax for type %s: \"%s\"",
+						"integer", s)));
+
+			return 0;
+		}
+		else
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input syntax for type %s: \"%s\"",
+						"integer", s)));
+		}
 	}
 
 	if (save_errno == ERANGE || l < PG_INT32_MIN || l > PG_INT32_MAX)

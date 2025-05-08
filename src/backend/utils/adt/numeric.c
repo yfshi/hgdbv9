@@ -526,6 +526,7 @@ static void apply_typmod_special(Numeric num, int32 typmod);
 static bool numericvar_to_int32(const NumericVar *var, int32 *result);
 static bool numericvar_to_int64(const NumericVar *var, int64 *result);
 static void int64_to_numericvar(int64 val, NumericVar *var);
+static void uint64_to_numericvar(uint64 val, NumericVar *var);
 static bool numericvar_to_uint64(const NumericVar *var, uint64 *result);
 #ifdef HAVE_INT128
 static bool numericvar_to_int128(const NumericVar *var, int128 *result);
@@ -3161,8 +3162,8 @@ numeric_div_opt_error(Numeric num1, Numeric num2, bool *have_error)
 
 	if (MYS_PARSER == compatible_db)
 	{
-		rscale = arg1.dscale + div_prec_increment < DECIMAL_MAX_SCALE ?
-					arg1.dscale + div_prec_increment : DECIMAL_MAX_SCALE;
+		rscale = arg1.dscale + div_precision_increment < DECIMAL_MAX_SCALE ?
+					arg1.dscale + div_precision_increment : DECIMAL_MAX_SCALE;
 	}
 	else
 	{
@@ -4173,6 +4174,24 @@ int64_to_numeric(int64 val)
 
 	return res;
 }
+
+Numeric
+uint64_to_numeric(uint64 val)
+{
+	Numeric		res;
+	NumericVar	result;
+
+	init_var(&result);
+
+	int64_to_numericvar(val, &result);
+
+	res = make_result(&result);
+
+	free_var(&result);
+
+	return res;
+}
+
 
 /*
  * Convert val1/(10**log10val2) to numeric.  This is much faster than normal
@@ -7937,6 +7956,45 @@ int64_to_numericvar(int64 val, NumericVar *var)
 		uval = val;
 	}
 	var->dscale = 0;
+	if (val == 0)
+	{
+		var->ndigits = 0;
+		var->weight = 0;
+		return;
+	}
+	ptr = var->digits + var->ndigits;
+	ndigits = 0;
+	do
+	{
+		ptr--;
+		ndigits++;
+		newuval = uval / NBASE;
+		*ptr = uval - newuval * NBASE;
+		uval = newuval;
+	} while (uval);
+	var->digits = ptr;
+	var->ndigits = ndigits;
+	var->weight = ndigits - 1;
+}
+
+/*
+ * Convert uint8 value to numeric.
+ */
+static void
+uint64_to_numericvar(uint64 val, NumericVar *var)
+{
+	uint64		uval,
+				newuval;
+	NumericDigit *ptr;
+	int			ndigits;
+
+	/* int64 can require at most 20 decimal digits; add one for safety */
+	alloc_var(var, 21 / DEC_DIGITS);
+
+	var->sign = NUMERIC_POS;
+	uval = val;
+	var->dscale = 0;
+
 	if (val == 0)
 	{
 		var->ndigits = 0;

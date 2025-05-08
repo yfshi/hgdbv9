@@ -14635,7 +14635,7 @@ GenericType:
 			type_function_name opt_type_modifiers field_unsigned
 				{
 					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-					if ($3 && MYS_PARSER == compatible_db && strcmp($1, "int4") == 0)
+					if ($3 && strcmp($1, "int4") == 0)
 					{
 						A_Const *node_const = NULL;
 						List	   *typmods = $2;
@@ -14667,7 +14667,7 @@ GenericType:
 					}	
 					else /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-					if ($3 && MYS_PARSER == compatible_db && strcmp($1, "int8") == 0)
+					if ($3 && strcmp($1, "int8") == 0)
 					{
 						A_Const *node_const = NULL;
 						List	   *typmods = $2;
@@ -14699,7 +14699,7 @@ GenericType:
 					}	
 					else /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
-					if (!$3 && MYS_PARSER == compatible_db && strcmp($1, "int4") == 0)
+					if (!$3 && strcmp($1, "int4") == 0)
 					{
 						$$ = makeTypeName($1);
 						$$->location = @1;
@@ -16794,14 +16794,6 @@ func_expr_common_subexpr:
 											   COERCE_SQL_SYNTAX,
 											   @1);
 				}
-			// | INT4 '(' a_expr ')'
-			// 	{
-			// 		$$ = (Node *) makeFuncCall(SystemFuncName("int4"),
-			// 								   list_make1($3),
-			// 								   COERCE_SQL_SYNTAX,
-			// 								   @1);
-			// 	}
-
 			| INT2 SCONST
 				{
 					$$ = makeTypeCast(makeStringConst($2, @1), SystemTypeName("int2"), @1);

@@ -4477,7 +4477,7 @@ INSERT INTO transition_table_level1 (level1_no)
 ANALYZE transition_table_level1;
 
 INSERT INTO transition_table_level2 (level2_no, parent_no)
-  SELECT level2_no, (level2_no div 50) + 1 AS parent_no
+  SELECT level2_no, (level2_no operator(pg_catalog./) 50) + 1 AS parent_no
     FROM generate_series(1,9999) level2_no;
 ANALYZE transition_table_level2;
 
