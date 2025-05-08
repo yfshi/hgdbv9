@@ -1362,23 +1362,23 @@ setup_config(void)
 	 */
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
-	if (strcmp(authmethodlocal, "scram-sha-256") == 0 &&
-		 strcmp(authmethodhost, "scram-sha-256") == 0)
+	if (strcmp(authmethodlocal, "scram-sm3") == 0 &&
+		 strcmp(authmethodhost, "scram-sm3") == 0)
 	{
 		conflines = replace_token(conflines,
-								  "#password_encryption = scram-sm3",
-								  "password_encryption = scram-sha-256");
+								  "#password_encryption = scram-sha-256",
+								  "password_encryption = scram-sm3");
 	}else if (strcmp(authmethodlocal, "sm3") == 0 &&
 		 strcmp(authmethodhost, "sm3") == 0)
 	{
 		conflines = replace_token(conflines,
-								  "#password_encryption = scram-sm3",
+								  "#password_encryption = scram-sha-256",
 								  "password_encryption = sm3");
 	}else if (strcmp(authmethodlocal, "md5") == 0 &&
 		 strcmp(authmethodhost, "md5") == 0)
 	{
 		conflines = replace_token(conflines,
-								  "#password_encryption = scram-sm3",
+								  "#password_encryption = scram-sha-256",
 								  "password_encryption = md5");
 	}
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */

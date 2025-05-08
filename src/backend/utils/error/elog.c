@@ -3000,7 +3000,7 @@ write_csvlog(ErrorData *edata)
 		char *query_string_tmp = NULL;
 		query_string_tmp = pstrdup(edata->message);
 
-		if(hide_password(query_string_tmp))
+		if(Log_Password_Hide && hide_password(query_string_tmp))
 		{
 			appendCSVLiteral(&buf, query_string_tmp);
 		}
@@ -3050,7 +3050,7 @@ write_csvlog(ErrorData *edata)
 		char *query_string_tmp = NULL;
 		query_string_tmp = pstrdup(debug_query_string);
 
-		if(hide_password(query_string_tmp))
+		if(Log_Password_Hide && hide_password(query_string_tmp))
 		{
 			appendCSVLiteral(&buf, query_string_tmp);
 		}
@@ -3298,7 +3298,7 @@ send_message_to_server_log(ErrorData *edata)
 		char *query_string_tmp = NULL;
 		query_string_tmp = pstrdup(edata->message);
 
-		if(hide_password(query_string_tmp))
+		if(Log_Password_Hide && hide_password(query_string_tmp))
 		{
 			append_with_tabs(&buf, query_string_tmp);
 		}
@@ -3396,7 +3396,7 @@ send_message_to_server_log(ErrorData *edata)
 		query_string_tmp = pstrdup(debug_query_string);
 		log_line_prefix(&buf, edata);
 		appendStringInfoString(&buf, _("STATEMENT:  "));
-		if(hide_password(query_string_tmp)){
+		if(Log_Password_Hide && hide_password(query_string_tmp)){
 			append_with_tabs(&buf, query_string_tmp);
 		}
 		else{

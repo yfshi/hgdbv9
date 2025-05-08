@@ -1031,7 +1031,7 @@ CheckMFAAuth(Port *port, char **logdetail)
 	 * If get_role_password() returned error, return error, even if the
 	 * authentication succeeded.
 	 */
-	if (!shadow_otp)
+	else
 	{
 		Assert(auth_result != STATUS_OK);
 		return STATUS_ERROR;

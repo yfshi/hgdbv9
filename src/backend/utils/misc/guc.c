@@ -1557,6 +1557,19 @@ static struct config_bool ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
+
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	{
+		{"log_password_hide", PGC_SIGHUP, LOGGING_WHAT,
+			gettext_noop("Whether to hide the password field in the log."),
+			NULL
+		},
+		&Log_Password_Hide,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 	{
 		{"debug_print_parse", PGC_USERSET, LOGGING_WHAT,
 			gettext_noop("Logs each query's parse tree."),
@@ -5300,7 +5313,7 @@ static struct config_enum ConfigureNamesEnum[] =
 			NULL
 		},
 		&Password_encryption,
-		PASSWORD_TYPE_SCRAM_SM3,
+		PASSWORD_TYPE_SCRAM_SHA_256,
 		password_encryption_options,
 		NULL, NULL, NULL
 	},

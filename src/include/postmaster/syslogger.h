@@ -69,6 +69,7 @@ extern PGDLLIMPORT char *Log_directory;
 extern PGDLLIMPORT char *Log_filename;
 extern bool Log_truncate_on_rotation;
 extern int	Log_file_mode;
+extern bool Log_Password_Hide;
 
 #ifndef WIN32
 extern int	syslogPipe[2];
