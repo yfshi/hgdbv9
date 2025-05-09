@@ -23,7 +23,10 @@ typedef enum
 	PG_SHA224,
 	PG_SHA256,
 	PG_SHA384,
-	PG_SHA512
+	PG_SHA512,
+#ifdef USE_GMSSL
+	PG_SM3	// ReqID:SRS-SECURITY-IDENTITYAUTH
+#endif
 } pg_cryptohash_type;
 
 /* opaque context, private to each cryptohash implementation */

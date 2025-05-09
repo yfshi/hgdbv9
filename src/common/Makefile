@@ -77,13 +77,27 @@ OBJS_COMMON = \
 	unicode_norm.o \
 	username.o \
 	wait_error.o \
-	wchar.o
-
+	wchar.o	 \
+	sm3_common.o	\
+	mfa_common.o	\
+	mac.o	\
+	hkdf.o	\
+	pass_crypt.o
 ifeq ($(with_ssl),openssl)
+ifeq ($(HAVE_X509_GET_SIGNATURE_INFO),1)
 OBJS_COMMON += \
 	protocol_openssl.o \
 	cryptohash_openssl.o \
 	hmac_openssl.o
+else
+OBJS_COMMON += \
+	protocol_openssl.o \
+	cryptohash.o \
+	hmac.o \
+	md5.o \
+	sha1.o \
+	sha2.o
+endif
 else
 OBJS_COMMON += \
 	cryptohash.o \
@@ -93,6 +107,7 @@ OBJS_COMMON += \
 	sha2.o
 endif
 
+# End - ReqID:SRS-SECURITY-IDENTITYAUTH
 # A few files are currently only built for frontend, not server
 # (Mkvcbuild.pm has a copy of this list, too).  logging.c is excluded
 # from OBJS_FRONTEND_SHLIB (shared library) as a matter of policy,

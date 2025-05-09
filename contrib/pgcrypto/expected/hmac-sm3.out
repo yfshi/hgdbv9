@@ -1,0 +1,72 @@
+--
+-- HMAC-SHA1
+--
+SELECT encode(hmac(
+'Hi There',
+decode('0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b', 'hex'),
+'sm3'), 'hex');
+                              encode                              
+------------------------------------------------------------------
+ 12d66c84b4a40ad8035c263e419bd43c7e52fb438b930eba0c94e34cdb9b63f3
+(1 row)
+
+-- 2
+SELECT encode(hmac(
+'Jefe',
+'what do ya want for nothing?',
+'sm3'), 'hex');
+                              encode                              
+------------------------------------------------------------------
+ 02a361cd5cfcf0ee3ec522732c2f3ba18963ab19b13aadb222d0a713274d7a70
+(1 row)
+
+-- 3
+SELECT encode(hmac(
+decode('dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd', 'hex'),
+decode('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'hex'),
+'sm3'), 'hex');
+                              encode                              
+------------------------------------------------------------------
+ 7bfeba1b1518329f73aad171e89009fc41d43b66de11e779b5615bfbf0b85973
+(1 row)
+
+-- 4
+SELECT encode(hmac(
+decode('cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd', 'hex'),
+decode('0102030405060708090a0b0c0d0e0f10111213141516171819', 'hex'),
+'sm3'), 'hex');
+                              encode                              
+------------------------------------------------------------------
+ b57c79be03472aeb8cada581dea332cb2ba83d19cb1b052dd07194def75fb8cd
+(1 row)
+
+-- 5
+SELECT encode(hmac(
+'Test With Truncation',
+decode('0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c', 'hex'),
+'sm3'), 'hex');
+                              encode                              
+------------------------------------------------------------------
+ 47541fc981b3457ab94e71b31911c73762ef466f5fe84411467f90686d97120a
+(1 row)
+
+-- 6
+SELECT encode(hmac(
+'Test Using Larger Than Block-Size Key - Hash Key First',
+decode('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'hex'),
+'sm3'), 'hex');
+                              encode                              
+------------------------------------------------------------------
+ c794651f5455f80546855f744ff50146d5286e1cb677d5088c059cd8b03bb9ce
+(1 row)
+
+-- 7
+SELECT encode(hmac(
+'Test Using Larger Than Block-Size Key and Larger Than One Block-Size Data',
+decode('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'hex'),
+'sm3'), 'hex');
+                              encode                              
+------------------------------------------------------------------
+ 0888924905d64874be20dc784b57f2cf9ea375905339075c5af90418b4bf8705
+(1 row)
+

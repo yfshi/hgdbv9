@@ -41,8 +41,7 @@
 extern char *gets_interactive(const char *prompt, PQExpBuffer query_buf);
 extern char *gets_fromFile(FILE *source);
 
-extern void initializeInput(int flags);
-
+extern void initializeInput(int flags, int save_flags); // ReqID:SRS-SECURITY-IDENTITYAUTH
 extern bool printHistory(const char *fname, unsigned short int pager);
 
 extern void pg_append_history(const char *s, PQExpBuffer history_buf);

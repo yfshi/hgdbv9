@@ -36,6 +36,12 @@
 #include "blf.h"
 #include "px.h"
 #include "rijndael.h"
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+#include "sm4.h"
+#ifdef USE_GMSSL
+#include <gmssl/sm4.h>
+#endif
+/* End - REQID:SRS-SECRET-PGCRYPTO */
 
 #include "common/cryptohash.h"
 #include "common/md5.h"
@@ -51,6 +57,11 @@ void		init_sha224(PX_MD *h);
 void		init_sha256(PX_MD *h);
 void		init_sha384(PX_MD *h);
 void		init_sha512(PX_MD *h);
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+void		init_sm3(PX_MD *h);
+#endif
+/* End - REQID:SRS-SECRET-PGCRYPTO */
 
 struct int_digest
 {
@@ -66,6 +77,11 @@ static const struct int_digest
 	{"sha256", init_sha256},
 	{"sha384", init_sha384},
 	{"sha512", init_sha512},
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+    {"sm3", init_sm3},
+#endif
+/* End - REQID:SRS-SECRET-PGCRYPTO */
 	{NULL, NULL}
 };
 
@@ -224,6 +240,11 @@ struct int_ctx
 	{
 		BlowfishContext bf;
 		rijndael_ctx rj;
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+        SM4_KEY sm4;
+#endif
+/* End - REQID:SRS-SECRET-PGCRYPTO */
 	}			ctx;
 	unsigned	keylen;
 	int			is_init;
@@ -318,7 +339,7 @@ rj_encrypt(PX_Cipher *c, const uint8 *data, unsigned dlen, uint8 *res)
 
 	if (cx->mode == MODE_CBC)
 	{
-		aes_cbc_encrypt(&cx->ctx.rj, cx->iv, res, dlen);
+		pg_aes_cbc_encrypt(&cx->ctx.rj, cx->iv, res, dlen);
 		memcpy(cx->iv, res + dlen - 16, 16);
 	}
 	else
@@ -346,7 +367,7 @@ rj_decrypt(PX_Cipher *c, const uint8 *data, unsigned dlen, uint8 *res)
 
 	if (cx->mode == MODE_CBC)
 	{
-		aes_cbc_decrypt(&cx->ctx.rj, cx->iv, res, dlen);
+		pg_aes_cbc_decrypt(&cx->ctx.rj, cx->iv, res, dlen);
 		memcpy(cx->iv, data + dlen - 16, 16);
 	}
 	else
@@ -488,6 +509,125 @@ bf_load(int mode)
 	return c;
 }
 
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+static unsigned
+sm4_block_size(PX_Cipher *c)
+{
+	return SM4_BLOCK_SIZE;
+}
+
+static unsigned
+sm4_key_size(PX_Cipher *c)
+{
+	return SM4_KEY_SIZE;
+}
+
+static unsigned
+sm4_iv_size(PX_Cipher *c)
+{
+	return SM4_BLOCK_SIZE;
+}
+
+static int
+sm4_init(PX_Cipher *c, const uint8 *key, unsigned klen, const uint8 *iv)
+{
+	struct int_ctx *cx = (struct int_ctx *) c->ptr;
+
+	if (klen <= 128 / 8)
+		cx->keylen = 128 / 8;
+	else
+		return PXE_KEY_TOO_BIG;
+
+	memcpy(&cx->keybuf, key, klen);
+
+	if (iv)
+		memcpy(cx->iv, iv, 128 / 8);
+
+	return 0;
+}
+
+static int
+pg_sm4_encrypt(PX_Cipher *c, const uint8 *data, unsigned dlen, uint8 *res)
+{
+	struct int_ctx *cx = (struct int_ctx *) c->ptr;
+
+	if (!cx->is_init)
+	{
+		sm4_set_encrypt_key(&cx->ctx.sm4, cx->keybuf);
+	}
+
+	if (dlen == 0)
+		return 0;
+
+	if (dlen & 15)
+		return PXE_NOTBLOCKSIZE;
+
+	//memcpy(res, data, dlen);
+
+	if (cx->mode == MODE_CBC)
+	{
+		pg_sm4_cbc_encrypt(&cx->ctx.sm4, cx->iv, data, dlen/SM4_BLOCK_SIZE, res);
+		memcpy(cx->iv, res + dlen - SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
+	}
+	else
+		pg_sm4_ecb_encrypt(&cx->ctx.sm4, data, dlen/SM4_BLOCK_SIZE, res);
+
+	return 0;
+}
+
+static int
+pg_sm4_decrypt(PX_Cipher *c, const uint8 *data, unsigned dlen, uint8 *res)
+{
+	struct int_ctx *cx = (struct int_ctx *) c->ptr;
+
+	if (!cx->is_init)
+		sm4_set_decrypt_key(&cx->ctx.sm4, cx->keybuf);
+
+	if (dlen == 0)
+		return 0;
+
+	if (dlen & 15)
+		return PXE_NOTBLOCKSIZE;
+
+	//memcpy(res, data, dlen);
+
+	if (cx->mode == MODE_CBC)
+	{
+		pg_sm4_cbc_decrypt(&cx->ctx.sm4, cx->iv, data, dlen/SM4_BLOCK_SIZE, res);
+		memcpy(cx->iv, data + dlen - SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
+	}
+	else
+		pg_sm4_ecb_decrypt(&cx->ctx.sm4, data, dlen/SM4_BLOCK_SIZE, res);
+
+	return 0;
+}
+
+static PX_Cipher *
+sm4_load(int mode)
+{
+	PX_Cipher  *c;
+	struct int_ctx *cx;
+
+	c = palloc0(sizeof *c);
+
+	c->block_size = sm4_block_size;
+	c->key_size = sm4_key_size;
+	c->iv_size = sm4_iv_size;
+	c->init = sm4_init;
+	c->encrypt = pg_sm4_encrypt;
+	c->decrypt = pg_sm4_decrypt;
+	c->free = intctx_free;
+
+	cx = palloc0(sizeof *cx);
+	cx->mode = mode;
+	c->ptr = cx;
+	return c;
+}
+#endif
+
+/* End - REQID:SRS-SECRET-PGCRYPTO */
+
 /* ciphers */
 
 static PX_Cipher *
@@ -514,6 +654,22 @@ bf_cbc_load(void)
 	return bf_load(MODE_CBC);
 }
 
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+static PX_Cipher *
+sm4_ecb(void)
+{
+	return sm4_load(MODE_ECB);
+}
+
+static PX_Cipher *
+sm4_cbc(void)
+{
+	return sm4_load(MODE_CBC);
+}
+#endif
+/* End - REQID:SRS-SECRET-PGCRYPTO */
+
 struct int_cipher
 {
 	char	   *name;
@@ -526,6 +682,12 @@ static const struct int_cipher
 	{"bf-ecb", bf_ecb_load},
 	{"aes-128-cbc", rj_128_cbc},
 	{"aes-128-ecb", rj_128_ecb},
+/* Begin - ReqID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+    {"sm4-cbc", sm4_cbc},
+    {"sm4-ecb", sm4_ecb},
+#endif
+/* End - ReqID:SRS-SECRET-PGCRYPTO */
 	{NULL, NULL}
 };
 
@@ -538,6 +700,11 @@ static const PX_Alias int_aliases[] = {
 	{"aes-128", "aes-128-cbc"},
 	{"rijndael", "aes-128-cbc"},
 	{"rijndael-128", "aes-128-cbc"},
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+	{"sm4", "sm4-cbc"},
+	{"sm4-cbc", "sm4-cbc"},
+	{"sm4-ecb", "sm4-ecb"},
+/* End - REQID:SRS-SECRET-PGCRYPTO */
 	{NULL, NULL}
 };
 

@@ -642,6 +642,80 @@ ossl_aes_cbc_init(PX_Cipher *c, const uint8 *key, unsigned klen, const uint8 *iv
 
 	return err;
 }
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+#ifdef OPENSSL_VERSION_NUMBER
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+static int
+ossl_sm4_init(PX_Cipher *c, const uint8 *key, unsigned klen, const uint8 *iv)
+{
+	OSSLCipher *od = c->ptr;
+	unsigned	bs = gen_ossl_block_size(c);
+
+	if (klen <= 128 / 8)
+		od->klen = 128 / 8;
+	else
+		return PXE_KEY_TOO_BIG;
+
+	memcpy(od->key, key, klen);
+
+	if (iv)
+		memcpy(od->iv, iv, bs);
+	else
+		memset(od->iv, 0, bs);
+
+	return 0;
+}
+
+static int
+ossl_sm4_ecb_init(PX_Cipher *c, const uint8 *key, unsigned klen, const uint8 *iv)
+{
+	OSSLCipher *od = c->ptr;
+	int			err;
+
+	err = ossl_sm4_init(c, key, klen, iv);
+	if (err)
+		return err;
+
+	switch (od->klen)
+	{
+		case 128 / 8:
+			od->evp_ciph = EVP_sm4_ecb();
+			break;
+		default:
+			/* shouldn't happen */
+			err = PXE_CIPHER_INIT;
+			break;
+	}
+
+	return err;
+}
+
+static int
+ossl_sm4_cbc_init(PX_Cipher *c, const uint8 *key, unsigned klen, const uint8 *iv)
+{
+	OSSLCipher *od = c->ptr;
+	int			err;
+
+	err = ossl_sm4_init(c, key, klen, iv);
+	if (err)
+		return err;
+
+	switch (od->klen)
+	{
+		case 128 / 8:
+			od->evp_ciph = EVP_sm4_cbc();
+			break;
+		default:
+			/* shouldn't happen */
+			err = PXE_CIPHER_INIT;
+			break;
+	}
+
+	return err;
+}
+#endif
+#endif
+/* End - REQID:SRS-SECRET-PGCRYPTO */
 
 /*
  * aliases
@@ -662,6 +736,15 @@ static PX_Alias ossl_aliases[] = {
 	{"rijndael", "aes-cbc"},
 	{"rijndael-cbc", "aes-cbc"},
 	{"rijndael-ecb", "aes-ecb"},
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+#ifdef OPENSSL_VERSION_NUMBER
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	{"sm4", "sm4-cbc"},
+	{"sm4-cbc", "sm4-cbc"},
+	{"sm4-ecb", "sm4-ecb"},
+#endif
+#endif
+/* End - REQID:SRS-SECRET-PGCRYPTO */
 	{NULL}
 };
 
@@ -732,7 +815,25 @@ static const struct ossl_cipher ossl_aes_cbc = {
 								 * function */
 	128 / 8, 256 / 8
 };
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+#ifdef OPENSSL_VERSION_NUMBER
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+static const struct ossl_cipher ossl_sm4_ecb = {
+	ossl_sm4_ecb_init,
+	NULL,						/* EVP_aes_XXX_ecb(), determined in init
+								 * function */
+	128 / 8, 128 / 8
+};
 
+static const struct ossl_cipher ossl_sm4_cbc = {
+	ossl_sm4_cbc_init,
+	NULL,						/* EVP_aes_XXX_cbc(), determined in init
+								 * function */
+	128 / 8, 128 / 8
+};
+#endif
+#endif
+/* End - REQID:SRS-SECRET-PGCRYPTO */
 /*
  * Special handlers
  */
@@ -754,6 +855,14 @@ static const struct ossl_cipher_lookup ossl_cipher_types[] = {
 	{"cast5-cbc", &ossl_cast_cbc},
 	{"aes-ecb", &ossl_aes_ecb},
 	{"aes-cbc", &ossl_aes_cbc},
+/* Begin - REQID:SRS-SECRET-PGCRYPTO */
+#ifdef OPENSSL_VERSION_NUMBER
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	{"sm4-ecb", &ossl_sm4_ecb},
+	{"sm4-cbc", &ossl_sm4_cbc},
+#endif
+#endif
+/* End - REQID:SRS-SECRET-PGCRYPTO */
 	{NULL}
 };
 

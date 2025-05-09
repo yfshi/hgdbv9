@@ -128,7 +128,15 @@ static const char *const UserAuthName[] =
 	"ident",
 	"password",
 	"md5",
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	"sm3",
+	"md5sm3",
+	"sm3md5",
 	"scram-sha-256",
+	"scram-sm3",
+	"scram-sha256-sm3",
+	"scram-sm3-sha256",
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	"gss",
 	"sspi",
 	"pam",
@@ -1323,7 +1331,8 @@ parse_hba_line(TokenizedLine *tok_line, int elevel)
 		return NULL;
 	}
 	tokens = lfirst(field);
-	if (tokens->length > 1)
+
+	if (tokens->length > 2) // ReqID:SRS-SECURITY-IDENTITYAUTH
 	{
 		ereport(elevel,
 				(errcode(ERRCODE_CONFIG_FILE_ERROR),
@@ -1337,29 +1346,31 @@ parse_hba_line(TokenizedLine *tok_line, int elevel)
 	token = linitial(tokens);
 
 	unsupauth = NULL;
-	if (strcmp(token->string, "trust") == 0)
+
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if (strncmp(token->string, "trust", strlen("trust")) == 0)
 		parsedline->auth_method = uaTrust;
-	else if (strcmp(token->string, "ident") == 0)
+	else if (strncmp(token->string, "ident", strlen("ident")) == 0)
 		parsedline->auth_method = uaIdent;
-	else if (strcmp(token->string, "peer") == 0)
+	else if (strncmp(token->string, "peer", strlen("peer")) == 0)
 		parsedline->auth_method = uaPeer;
-	else if (strcmp(token->string, "password") == 0)
+	else if (strncmp(token->string, "password", strlen("password")) == 0)
 		parsedline->auth_method = uaPassword;
-	else if (strcmp(token->string, "gss") == 0)
+	else if (strncmp(token->string, "gss", strlen("gss")) == 0)
 #ifdef ENABLE_GSS
 		parsedline->auth_method = uaGSS;
 #else
 		unsupauth = "gss";
 #endif
-	else if (strcmp(token->string, "sspi") == 0)
+	else if (strncmp(token->string, "sspi", strlen("sspi")) == 0)
 #ifdef ENABLE_SSPI
 		parsedline->auth_method = uaSSPI;
 #else
 		unsupauth = "sspi";
 #endif
-	else if (strcmp(token->string, "reject") == 0)
+	else if (strncmp(token->string, "reject", strlen("reject")) == 0)
 		parsedline->auth_method = uaReject;
-	else if (strcmp(token->string, "md5") == 0)
+	else if (strncmp(token->string, "md5", strlen("md5")) == 0)
 	{
 		if (Db_user_namespace)
 		{
@@ -1373,33 +1384,49 @@ parse_hba_line(TokenizedLine *tok_line, int elevel)
 		}
 		parsedline->auth_method = uaMD5;
 	}
-	else if (strcmp(token->string, "scram-sha-256") == 0)
-		parsedline->auth_method = uaSCRAM;
-	else if (strcmp(token->string, "pam") == 0)
+	else if (strncmp(token->string, "sm3", strlen("sm3")) == 0)
+	{
+		if (Db_user_namespace)
+		{
+			ereport(elevel,
+					(errcode(ERRCODE_CONFIG_FILE_ERROR),
+					 errmsg("SM3 authentication is not supported when \"db_user_namespace\" is enabled"),
+					 errcontext("line %d of configuration file \"%s\"",
+								line_num, HbaFileName)));
+			*err_msg = "SM3 authentication is not supported when \"db_user_namespace\" is enabled";
+			return NULL;
+		}
+		parsedline->auth_method = uaSM3;
+	}
+	else if (strncmp(token->string, "scram-sha-256", strlen("scram-sha-256")) == 0)
+		parsedline->auth_method = uaSCRAMsha256;
+	else if (strncmp(token->string, "scram-sm3", strlen("scram-sm3")) == 0)
+		parsedline->auth_method = uaSCRAMsm3;
+	else if (strncmp(token->string, "pam", strlen("pam")) == 0)
 #ifdef USE_PAM
 		parsedline->auth_method = uaPAM;
 #else
 		unsupauth = "pam";
 #endif
-	else if (strcmp(token->string, "bsd") == 0)
+	else if (strncmp(token->string, "bsd", strlen("bsd")) == 0)
 #ifdef USE_BSD_AUTH
 		parsedline->auth_method = uaBSD;
 #else
 		unsupauth = "bsd";
 #endif
-	else if (strcmp(token->string, "ldap") == 0)
+	else if (strncmp(token->string, "ldap", strlen("ldap")) == 0)
 #ifdef USE_LDAP
 		parsedline->auth_method = uaLDAP;
 #else
 		unsupauth = "ldap";
 #endif
-	else if (strcmp(token->string, "cert") == 0)
+	else if (strncmp(token->string, "cert", strlen("cert")) == 0)
 #ifdef USE_SSL
 		parsedline->auth_method = uaCert;
 #else
 		unsupauth = "cert";
 #endif
-	else if (strcmp(token->string, "radius") == 0)
+	else if (strncmp(token->string, "radius", strlen("radius")) == 0)
 		parsedline->auth_method = uaRADIUS;
 	else
 	{
@@ -1413,7 +1440,7 @@ parse_hba_line(TokenizedLine *tok_line, int elevel)
 							token->string);
 		return NULL;
 	}
-
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (unsupauth)
 	{
 		ereport(elevel,
@@ -1426,6 +1453,23 @@ parse_hba_line(TokenizedLine *tok_line, int elevel)
 							token->string);
 		return NULL;
 	}
+
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	/*
+	 * parsedline->mfa_auth_method
+	 */
+	parsedline->mfa_auth_method = uaNONE;
+	if (tokens->length == 2)
+	{
+		token = lsecond(tokens);
+		if(strcmp(token->string, "totp") == 0)
+			parsedline->mfa_auth_method = uaTOTP;
+		else if(strcmp(token->string, "pkey") == 0)
+			parsedline->mfa_auth_method = uaPKEY;
+		else if(strcmp(token->string, "cert") == 0)
+			parsedline->mfa_auth_method = uaCERT;
+	}
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	/*
 	 * XXX: When using ident on local connections, change it to peer, for

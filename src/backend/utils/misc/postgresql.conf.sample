@@ -93,7 +93,7 @@
 # - Authentication -
 
 #authentication_timeout = 1min		# 1s-600s
-#password_encryption = scram-sha-256	# scram-sha-256 or md5
+#password_encryption = scram-sha-256	# scram-sha-256 scram-sm3 or md5 sm3
 #db_user_namespace = off
 
 # GSSAPI using Kerberos
@@ -723,7 +723,7 @@
 
 #local_preload_libraries = ''
 #session_preload_libraries = ''
-shared_preload_libraries = 'gb18030_2022'	# (change requires restart)
+shared_preload_libraries = 'gb18030_2022'	# (change requires restart) # ReqID:SRS-SECURITY-IDENTITYAUTH
 #jit_provider = 'llvmjit'		# JIT library to use
 
 # - Other Defaults -
@@ -812,6 +812,14 @@ shared_preload_libraries = 'gb18030_2022'	# (change requires restart)
 #------------------------------------------------------------------------------
 
 # Add settings for extensions here
+# Begin - ReqID:SRS-SECURITY-IDENTITYAUTH
+credcheck.enable = off
+#credcheck.password_min_length = 8
+#credcheck.password_min_special = 1
+#credcheck.password_min_digit = 1
+#credcheck.password_min_upper = 1
+#credcheck.password_min_lower = 1
+# End - ReqID:SRS-SECURITY-IDENTITYAUTH
 
 #------------------------------------------------------------------------------
 #COMPATIBLE LEVEL

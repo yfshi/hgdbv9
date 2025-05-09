@@ -16,6 +16,7 @@
 #include "common/cryptohash.h"
 #include "common/md5.h"
 #include "common/sha2.h"
+#include "common/sm3.h"		/* ReqID:SRS-SECURITY-IDENTITYAUTH */
 #include "utils/builtins.h"
 
 
@@ -91,6 +92,12 @@ cryptohash_internal(pg_cryptohash_type type, bytea *input)
 			typestr = "SHA256";
 			digest_len = PG_SHA256_DIGEST_LENGTH;
 			break;
+#ifdef USE_GMSSL
+		case PG_SM3: /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+			typestr = "SM3";
+			digest_len = PG_SM3_DIGEST_LENGTH;
+			break;
+#endif
 		case PG_SHA384:
 			typestr = "SHA384";
 			digest_len = PG_SHA384_DIGEST_LENGTH;
@@ -143,6 +150,22 @@ sha256_bytea(PG_FUNCTION_ARGS)
 
 	PG_RETURN_BYTEA_P(result);
 }
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
+Datum
+sm3_bytea(PG_FUNCTION_ARGS)
+{
+#ifdef USE_GMSSL
+	bytea	   *result = cryptohash_internal(PG_SM3, PG_GETARG_BYTEA_PP(0));
+
+	PG_RETURN_BYTEA_P(result);
+#else
+	elog(ERROR, "the SM3 encryption algorithm is requires the GmSSL");
+#endif
+}
+
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 Datum
 sha384_bytea(PG_FUNCTION_ARGS)

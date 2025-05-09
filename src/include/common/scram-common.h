@@ -19,7 +19,12 @@
 /* Name of SCRAM mechanisms per IANA */
 #define SCRAM_SHA_256_NAME "SCRAM-SHA-256"
 #define SCRAM_SHA_256_PLUS_NAME "SCRAM-SHA-256-PLUS"	/* with channel binding */
-
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#define SCRAM_SM3_NAME "SCRAM-SM3"
+#define SCRAM_SM3_PLUS_NAME "SCRAM-SM3-PLUS"	/* with channel binding */
+#define SCRAM_SM3_SHA256_NAME "SCRAM-SM3-SHA256"
+#define SCRAM_SHA256_SM3_NAME "SCRAM-SHA256-SM3"
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 /* Length of SCRAM keys (client and server) */
 #define SCRAM_KEY_LEN				PG_SHA256_DIGEST_LENGTH
 
@@ -45,14 +50,14 @@
  * 4096 per RFC 7677.
  */
 #define SCRAM_DEFAULT_ITERATIONS	4096
-
-extern int	scram_SaltedPassword(const char *password, const char *salt,
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+extern int	scram_SaltedPassword(const char *scram_type, const char *password, const char *salt,
 								 int saltlen, int iterations, uint8 *result);
-extern int	scram_H(const uint8 *str, int len, uint8 *result);
-extern int	scram_ClientKey(const uint8 *salted_password, uint8 *result);
-extern int	scram_ServerKey(const uint8 *salted_password, uint8 *result);
+extern int	scram_H(const char *scram_type, const uint8 *str, int len, uint8 *result);
+extern int	scram_ClientKey(const char *scram_type, const uint8 *salted_password, uint8 *result);
+extern int	scram_ServerKey(const char *scram_type, const uint8 *salted_password, uint8 *result);
 
-extern char *scram_build_secret(const char *salt, int saltlen, int iterations,
+extern char *scram_build_secret(const char *scram_type, const char *salt, int saltlen, int iterations,
 								const char *password);
-
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #endif							/* SCRAM_COMMON_H */

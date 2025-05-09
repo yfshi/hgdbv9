@@ -1028,6 +1028,15 @@ AC_SUBST(with_krb_srvnam)
 AC_DEFINE_UNQUOTED([PG_KRB_SRVNAM], ["$with_krb_srvnam"],
                    [Define to the name of the default PostgreSQL service principal in Kerberos (GSSAPI). (--with-krb-srvnam=NAME)])
 
+#
+# GmSSL
+#
+AC_MSG_CHECKING([whether to build with GmSSL support])
+PGAC_ARG_BOOL(with, gmssl, no,
+              [build with GmSSL support],
+              [AC_DEFINE([USE_GMSSL], 1, [Define to 1 to build with GmSSL support. (--with-gmssl)])])
+AC_MSG_RESULT([$with_gmssl])
+AC_SUBST(with_gmssl)
 
 #
 # PAM
@@ -1518,6 +1527,10 @@ elif test "$with_ssl" != no ; then
 fi
 AC_SUBST(with_ssl)
 
+if test "$with_gmssl" = yes ; then
+  AC_CHECK_LIB(gmssl, sm4_ctr_encrypt_init, [], [AC_MSG_ERROR([library 'gmssl' is required for GmSSL support])])
+fi
+
 if test "$with_pam" = yes ; then
   AC_CHECK_LIB(pam,    pam_start, [], [AC_MSG_ERROR([library 'pam' is required for PAM])])
 fi
@@ -1717,6 +1730,10 @@ fi
 if test "$with_ssl" = openssl ; then
   AC_CHECK_HEADER(openssl/ssl.h, [], [AC_MSG_ERROR([header file <openssl/ssl.h> is required for OpenSSL])])
   AC_CHECK_HEADER(openssl/err.h, [], [AC_MSG_ERROR([header file <openssl/err.h> is required for OpenSSL])])
+fi
+
+if test "$with_gmssl" = yes ; then
+  AC_CHECK_HEADERS(gmssl/sm4.h, [], [AC_MSG_ERROR([header file <gmssl/sm4.h> is required for GmSSL])])
 fi
 
 if test "$with_pam" = yes ; then

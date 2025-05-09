@@ -26,4 +26,6 @@ extern void ClientAuthentication(Port *port);
 typedef void (*ClientAuthentication_hook_type) (Port *, int);
 extern PGDLLIMPORT ClientAuthentication_hook_type ClientAuthentication_hook;
 
+/* ReqID:SRS-SECURITY-IDENTITYAUTH */
+extern PGDLLIMPORT char *ip_addr_str;
 #endif							/* AUTH_H */

@@ -94,7 +94,7 @@
 extern const char *select_default_timezone(const char *share_path);
 
 static const char *const auth_methods_host[] = {
-	"trust", "reject", "scram-sha-256", "md5", "password", "ident", "radius",
+	"trust", "reject", "scram-sha-256", "scram-sm3", "sm3", "md5", "password", "ident", "radius", // ReqID:SRS-SECURITY-IDENTITYAUTH
 #ifdef ENABLE_GSS
 	"gss",
 #endif
@@ -116,7 +116,7 @@ static const char *const auth_methods_host[] = {
 	NULL
 };
 static const char *const auth_methods_local[] = {
-	"trust", "reject", "scram-sha-256", "md5", "password", "peer", "radius",
+	"trust", "reject", "scram-sha-256", "scram-sm3", "sm3", "md5", "password", "peer", "radius", // ReqID:SRS-SECURITY-IDENTITYAUTH
 #ifdef USE_PAM
 	"pam", "pam ",
 #endif
@@ -344,6 +344,11 @@ static void load_sqlite_fdw(FILE *cmdfd);
 static void load_pg_track_settings(FILE *cmdfd);
 static void create_audit_tbls(FILE *cmdfd);
 /* End - ReqID:SRS-SECURITY-AUDIT */
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+static void load_cred_check(FILE *cmdfd);
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 static void vacuum_db(FILE *cmdfd);
 static void make_template0(FILE *cmdfd);
 static void make_postgres(FILE *cmdfd);
@@ -1355,15 +1360,28 @@ setup_config(void)
 	 * Change password_encryption setting to md5 if md5 was chosen as an
 	 * authentication method, unless scram-sha-256 was also chosen.
 	 */
-	if ((strcmp(authmethodlocal, "md5") == 0 &&
-		 strcmp(authmethodhost, "scram-sha-256") != 0) ||
-		(strcmp(authmethodhost, "md5") == 0 &&
-		 strcmp(authmethodlocal, "scram-sha-256") != 0))
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
+	if (strcmp(authmethodlocal, "scram-sm3") == 0 &&
+		 strcmp(authmethodhost, "scram-sm3") == 0)
+	{
+		conflines = replace_token(conflines,
+								  "#password_encryption = scram-sha-256",
+								  "password_encryption = scram-sm3");
+	}else if (strcmp(authmethodlocal, "sm3") == 0 &&
+		 strcmp(authmethodhost, "sm3") == 0)
+	{
+		conflines = replace_token(conflines,
+								  "#password_encryption = scram-sha-256",
+								  "password_encryption = sm3");
+	}else if (strcmp(authmethodlocal, "md5") == 0 &&
+		 strcmp(authmethodhost, "md5") == 0)
 	{
 		conflines = replace_token(conflines,
 								  "#password_encryption = scram-sha-256",
 								  "password_encryption = md5");
 	}
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	/*
 	 * If group access has been enabled for the cluster then it makes sense to
@@ -1401,12 +1419,16 @@ setup_config(void)
 	}
 	/* End - BUG#0000065 */
 	/* Begin - ReqID:SRS-SECURITY-POWERS */
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	{
         char *token = "shared_preload_libraries = 'gb18030_2022'";
-        char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw'"; //ReqID:SRS-SECURITY-AUDIT
+        char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
         conflines = replace_token(conflines,token, replacement);
 	}
 	/* End - ReqID:SRS-SECURITY-POWERS */
+	/* End - ReqID:SRS-SECURITY-POWERS */
+
+		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	snprintf(path, sizeof(path), "%s/postgresql.conf", pg_data);
 
@@ -1442,12 +1464,15 @@ setup_config(void)
 		/* End - SRS-MISC-COMPATDM-SQL */
 
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
+		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		{
             		char *token = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object'";
-            		char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, restricted_dba, pg_audit, sqlite_fdw'"; //ReqID:SRS-SECURITY-AUDIT
+            		char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
             		conflines = replace_token(conflines,token, replacement);
         	}
 		/* End - ReqID:SRS-SECURITY-POWERS */
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 		writefile(path, conflines);
 		if (chmod(path, pg_file_create_mode) != 0)
 		{
@@ -1466,12 +1491,14 @@ setup_config(void)
 		snprintf(path, sizeof(path), "%s/ivorysql.mysql.conf", pg_data);
 
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
+		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		{
 	        char *token = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my'";
-	        char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, sqlite_fdw'"; //ReqID:SRS-SECURITY-AUDIT
+	        char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
 	        conflines = replace_token(conflines,token, replacement);
 		}
 		/* End - ReqID:SRS-SECURITY-POWERS */
+		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 		writefile(path, conflines);
 		if (chmod(path, pg_file_create_mode) != 0)
@@ -2370,6 +2397,13 @@ load_pg_track_settings(FILE *cmdfd)
 }
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+static void
+load_cred_check(FILE *cmdfd)
+{
+	PG_CMD_PUTS("create extension credcheck WITH SCHEMA public;\n\n");
+}
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 /*
  * clean everything up in template1
  */
@@ -2832,10 +2866,14 @@ check_need_password(const char *authmethodlocal, const char *authmethodhost)
 {
 	if ((strcmp(authmethodlocal, "md5") == 0 ||
 		 strcmp(authmethodlocal, "password") == 0 ||
-		 strcmp(authmethodlocal, "scram-sha-256") == 0) &&
+		 strcmp(authmethodlocal, "scram-sha-256") == 0 ||
+		 strcmp(authmethodlocal, "scram-sm3") == 0 ||
+		 strcmp(authmethodlocal, "sm3") == 0) &&
 		(strcmp(authmethodhost, "md5") == 0 ||
 		 strcmp(authmethodhost, "password") == 0 ||
-		 strcmp(authmethodhost, "scram-sha-256") == 0) &&
+		 strcmp(authmethodhost, "scram-sha-256") == 0 ||
+		 strcmp(authmethodhost, "sm3") == 0 ||
+		 strcmp(authmethodhost, "scram-sm3") == 0) &&
 		!(pwprompt || pwfilename))
 	{
 		pg_log_error("must specify a password for the superuser to enable password authentication");
@@ -3603,6 +3641,10 @@ initialize_data_directory(void)
 	/* Begin - ReqID:SRS-SECURITY-POWERS */
 	PG_CMD_PUTS("CREATE EXTENSION restricted_dba SCHEMA public;\n\n");
 	/* End - ReqID:SRS-SECURITY-POWERS */
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	load_cred_check(cmdfd);
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	vacuum_db(cmdfd);
 

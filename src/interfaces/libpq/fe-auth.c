@@ -38,6 +38,13 @@
 #include <pwd.h>
 #endif
 
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#include "common/sm3.h"
+#include "common/mfa.h"
+#include "common/string.h"
+#include "common/base64.h"
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 #include "common/md5.h"
 #include "common/scram-common.h"
 #include "fe-auth.h"
@@ -462,7 +469,7 @@ pg_SASL_init(PGconn *conn, int payloadlen)
 		/* An empty string indicates end of list */
 		if (mechanism_buf.data[0] == '\0')
 			break;
-
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		/*
 		 * Select the mechanism to use.  Pick SCRAM-SHA-256-PLUS over anything
 		 * else if a channel binding type is set and if the client supports it
@@ -470,7 +477,9 @@ pg_SASL_init(PGconn *conn, int payloadlen)
 		 * nothing else has already been picked.  If we add more mechanisms, a
 		 * more refined priority mechanism might become necessary.
 		 */
-		if (strcmp(mechanism_buf.data, SCRAM_SHA_256_PLUS_NAME) == 0)
+		if (strcmp(mechanism_buf.data, SCRAM_SHA_256_PLUS_NAME) == 0
+		|| strcmp(mechanism_buf.data, SCRAM_SM3_PLUS_NAME) == 0
+		)
 		{
 			if (conn->ssl_in_use)
 			{
@@ -481,9 +490,13 @@ pg_SASL_init(PGconn *conn, int payloadlen)
 				 * The client supports channel binding, which is chosen if
 				 * channel_binding is not disabled.
 				 */
-				if (conn->channel_binding[0] != 'd')	/* disable */
-					selected_mechanism = SCRAM_SHA_256_PLUS_NAME;
-#else
+				if (conn->channel_binding[0] != 'd'){	/* disable */
+					if (strcmp(mechanism_buf.data, SCRAM_SHA_256_PLUS_NAME) == 0)
+						selected_mechanism = SCRAM_SHA_256_PLUS_NAME;
+					else
+						selected_mechanism = SCRAM_SM3_PLUS_NAME;
+
+				}
 				/*
 				 * The client does not support channel binding.  If it is
 				 * required, complain immediately instead of the error below
@@ -517,6 +530,15 @@ pg_SASL_init(PGconn *conn, int payloadlen)
 		else if (strcmp(mechanism_buf.data, SCRAM_SHA_256_NAME) == 0 &&
 				 !selected_mechanism)
 			selected_mechanism = SCRAM_SHA_256_NAME;
+        else if (strcmp(mechanism_buf.data, SCRAM_SM3_NAME) == 0 &&
+				 !selected_mechanism)
+			selected_mechanism = SCRAM_SM3_NAME;
+        else if (strcmp(mechanism_buf.data, SCRAM_SM3_SHA256_NAME) == 0 &&
+				 !selected_mechanism)
+			selected_mechanism = SCRAM_SM3_SHA256_NAME;
+        else if (strcmp(mechanism_buf.data, SCRAM_SHA256_SM3_NAME) == 0 &&
+				 !selected_mechanism)
+			selected_mechanism = SCRAM_SHA256_SM3_NAME;
 	}
 
 	if (!selected_mechanism)
@@ -527,13 +549,15 @@ pg_SASL_init(PGconn *conn, int payloadlen)
 	}
 
 	if (conn->channel_binding[0] == 'r' &&	/* require */
-		strcmp(selected_mechanism, SCRAM_SHA_256_PLUS_NAME) != 0)
+		strcmp(selected_mechanism, SCRAM_SHA_256_PLUS_NAME) != 0
+		&& strcmp(selected_mechanism, SCRAM_SM3_PLUS_NAME) != 0
+		)
 	{
 		appendPQExpBufferStr(&conn->errorMessage,
 							 libpq_gettext("channel binding is required, but server did not offer an authentication method that supports channel binding\n"));
 		goto error;
 	}
-
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	/*
 	 * Now that the SASL mechanism has been chosen for the exchange,
 	 * initialize its state information.
@@ -743,6 +767,98 @@ pg_local_sendauth(PGconn *conn)
 #endif
 }
 
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+/* Secondary authentication (totp) : sends the totp password */
+static int
+pg_totp_sendauth(PGconn *conn, const char *password, AuthRequest areq)
+{
+	int			ret;
+	char		otpSalt[7];
+
+	/* Read the salt from the AuthenticationMD5Password message. */
+	if (areq == AUTH_REQ_TOTP)
+	{
+		if (pqGetnchar(otpSalt, 6, conn))
+			return STATUS_ERROR;	/* shouldn't happen */
+	}
+
+	ret = pqPacketSend(conn, 'p', password, strlen(password) + 1);
+
+	return ret;
+}
+
+#ifdef USE_OPENSSL
+/* Secondary authentication (pkey) : sends the signature */
+static int
+pg_pkey_sendauth(PGconn *conn, const char *password, AuthRequest areq)
+{
+	int			ret;
+	char	   *sig = NULL;
+	char	   *sig_b64 = NULL;
+	char		otpSalt[17];
+	size_t 		sig_len;
+
+	/* Read the salt from the AuthenticationMD5Password message. */
+	if (areq == AUTH_REQ_PKEY)
+	{
+		if (pqGetnchar(otpSalt, 16, conn))
+			return STATUS_ERROR;	/* shouldn't happen */
+	}
+	otpSalt[16] = '\0';
+	sig = pg_pkey_sign(password, otpSalt, &sig_len);
+	sig_b64 = pg_base64_encode((unsigned char *)sig, sig_len);
+	ret = pqPacketSend(conn, 'p', sig_b64, strlen(sig_b64) + 1);
+	free(sig);
+	return ret;
+}
+/* Secondary authentication (cert) : sends the certificate */
+static int
+pg_cert_cert_sendauth(PGconn *conn, const char *clientcert, AuthRequest areq)
+{
+	int			ret;
+	char	   *cert = NULL;
+	char		otpSalt[17];
+	size_t 		cert_len = 0;
+
+	/* Read the salt from the AuthenticationMD5Password message. */
+	if (areq == AUTH_REQ_CERT_CERT)
+	{
+		//if (pqGetnchar(otpSalt, 16, conn))
+		//	return STATUS_ERROR;	/* shouldn't happen */
+	}
+	//otpSalt[16] = '\0';
+	cert = pg_get_cert(clientcert, otpSalt, &cert_len);
+	ret = pqPacketSend(conn, 'p', cert, cert_len + 1);
+	free(cert);
+	return ret;
+}
+/* Secondary authentication (cert) : sends the signature */
+static int
+pg_cert_sign_sendauth(PGconn *conn, const char *clientkey, AuthRequest areq)
+{
+	int			ret;
+	char		*sig = NULL;
+	char		sig_b64[512] = {0x00};
+	char		otpSalt[17];
+	size_t 		sig_len = 0;
+
+	/* Read the salt from the AuthenticationMD5Password message. */
+	if (areq == AUTH_REQ_CERT_SIGN)
+	{
+		if (pqGetnchar(otpSalt, 16, conn))
+			return STATUS_ERROR;	/* shouldn't happen */
+	}
+	//otpSalt[16] = '\0';
+	sig = pg_cert_sign(clientkey, otpSalt, &sig_len);
+	sig_len = pg_b64_encode(sig, sig_len, sig_b64, sizeof(sig_b64));
+	sig_b64[sig_len] = '\0';
+	ret = pqPacketSend(conn, 'p', sig_b64, strlen(sig_b64) + 1);
+	free(sig);
+	return ret;
+}
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 static int
 pg_password_sendauth(PGconn *conn, const char *password, AuthRequest areq)
 {
@@ -752,7 +868,11 @@ pg_password_sendauth(PGconn *conn, const char *password, AuthRequest areq)
 	char		md5Salt[4];
 
 	/* Read the salt from the AuthenticationMD5Password message. */
-	if (areq == AUTH_REQ_MD5)
+	if (areq == AUTH_REQ_MD5 
+#ifdef USE_GMSSL
+	|| areq == AUTH_REQ_SM3 || areq == AUTH_REQ_MD5_SM3|| areq == AUTH_REQ_SM3_MD5 /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+#endif
+	) 
 	{
 		if (pqGetnchar(md5Salt, 4, conn))
 			return STATUS_ERROR;	/* shouldn't happen */
@@ -792,6 +912,100 @@ pg_password_sendauth(PGconn *conn, const char *password, AuthRequest areq)
 				pwd_to_send = crypt_pwd;
 				break;
 			}
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+		case AUTH_REQ_SM3:	// SM3 authentication
+			{
+				char	   *crypt_pwd2;
+
+				/* Allocate enough space for two MD5 hashes */
+				crypt_pwd = malloc(2 * (SM3_PASSWD_LEN + 1));
+				if (!crypt_pwd)
+				{
+					appendPQExpBufferStr(&conn->errorMessage,
+										 libpq_gettext("out of memory\n"));
+					return STATUS_ERROR;
+				}
+
+				crypt_pwd2 = crypt_pwd + SM3_PASSWD_LEN + 1;
+				if (!pg_sm3_encrypt(password, conn->pguser,
+									strlen(conn->pguser), crypt_pwd2))
+				{
+					free(crypt_pwd);
+					return STATUS_ERROR;
+				}
+				if (!pg_sm3_encrypt(crypt_pwd2 + strlen("sm3"), md5Salt,
+									4, crypt_pwd))
+				{
+					free(crypt_pwd);
+					return STATUS_ERROR;
+				}
+
+				pwd_to_send = crypt_pwd;
+				break;
+			}
+		case AUTH_REQ_MD5_SM3:	// MD5-SM3 authentication
+			{
+				char	   *crypt_pwd2;
+
+				/* Allocate enough space for two MD5 hashes */
+				crypt_pwd = malloc(MD5_PASSWD_LEN + SM3_PASSWD_LEN + 2);
+				if (!crypt_pwd)
+				{
+					appendPQExpBufferStr(&conn->errorMessage,
+										 libpq_gettext("out of memory\n"));
+					return STATUS_ERROR;
+				}
+
+				crypt_pwd2 = crypt_pwd + SM3_PASSWD_LEN + 1;
+				if (!pg_md5_encrypt(password, conn->pguser,
+									strlen(conn->pguser), crypt_pwd2))
+				{
+					free(crypt_pwd);
+					return STATUS_ERROR;
+				}
+				if (!pg_sm3_encrypt(crypt_pwd2 + strlen("sm3"), md5Salt,
+									4, crypt_pwd))
+				{
+					free(crypt_pwd);
+					return STATUS_ERROR;
+				}
+
+				pwd_to_send = crypt_pwd;
+				break;
+			}
+		case AUTH_REQ_SM3_MD5:	// SM3-MD5 authentication
+			{
+				char	   *crypt_pwd2;
+
+				/* Allocate enough space for two MD5 hashes */
+				crypt_pwd = malloc(MD5_PASSWD_LEN + SM3_PASSWD_LEN + 2);
+				if (!crypt_pwd)
+				{
+					appendPQExpBufferStr(&conn->errorMessage,
+										 libpq_gettext("out of memory\n"));
+					return STATUS_ERROR;
+				}
+
+				crypt_pwd2 = crypt_pwd + MD5_PASSWD_LEN + 1;
+				if (!pg_sm3_encrypt(password, conn->pguser,
+									strlen(conn->pguser), crypt_pwd2))
+				{
+					free(crypt_pwd);
+					return STATUS_ERROR;
+				}
+				if (!pg_md5_encrypt(crypt_pwd2 + strlen("md5"), md5Salt,
+									4, crypt_pwd))
+				{
+					free(crypt_pwd);
+					return STATUS_ERROR;
+				}
+
+				pwd_to_send = crypt_pwd;
+				break;
+			}
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		case AUTH_REQ_PASSWORD:
 			pwd_to_send = password;
 			break;
@@ -994,6 +1208,13 @@ pg_fe_sendauth(AuthRequest areq, int payloadlen, PGconn *conn)
 			return STATUS_ERROR;
 
 		case AUTH_REQ_MD5:
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+        case AUTH_REQ_SM3:
+        case AUTH_REQ_MD5_SM3:
+        case AUTH_REQ_SM3_MD5:
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		case AUTH_REQ_PASSWORD:
 			{
 				char	   *password;
@@ -1016,7 +1237,64 @@ pg_fe_sendauth(AuthRequest areq, int payloadlen, PGconn *conn)
 				}
 				break;
 			}
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		case AUTH_REQ_TOTP:
+			{
+				char	   *password;
 
+				password = simple_prompt("TOTP password:", false);
+				
+				if (password == NULL || password[0] == '\0')
+				{
+					appendPQExpBufferStr(&conn->errorMessage,
+										 PQnoPasswordSupplied);
+					return STATUS_ERROR;
+				}
+				if (pg_totp_sendauth(conn, password, areq) != STATUS_OK)
+				{
+					appendPQExpBufferStr(&conn->errorMessage,
+										 "fe_sendauth: error sending TOTP password authentication\n");
+					return STATUS_ERROR;
+				}
+				break;
+			}
+#ifdef USE_OPENSSL
+		case AUTH_REQ_PKEY:
+			{
+				if (!conn->pgprikey ||
+					conn->pgprikey[0] == '\0' ||
+					pg_pkey_sendauth(conn, conn->pgprikey, areq) != STATUS_OK)
+				{
+					appendPQExpBufferStr(&conn->errorMessage,
+										 "fe_sendauth: error sending PKEY password authentication\n");
+					return STATUS_ERROR;
+				}
+				break;
+			}
+		case AUTH_REQ_CERT_CERT:
+			{
+				if (!conn->pgclientcert ||
+					conn->pgclientcert[0] == '\0' ||
+					pg_cert_cert_sendauth(conn, conn->pgclientcert, areq) != STATUS_OK)
+				{
+					appendPQExpBufferStr(&conn->errorMessage,
+										 "fe_sendauth: error sending CERT certificate authentication\n");
+					return STATUS_ERROR;
+				}
+				break;
+			}
+		case AUTH_REQ_CERT_SIGN:
+			{
+				if (conn->pgclientcert[0] == '\0' || pg_cert_sign_sendauth(conn, conn->pgclientkey, areq) != STATUS_OK)
+				{
+					appendPQExpBufferStr(&conn->errorMessage,
+										 "fe_sendauth: error sending CERT signature authentication\n");
+					return STATUS_ERROR;
+				}
+				break;
+			}
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		case AUTH_REQ_SASL:
 
 			/*
@@ -1255,9 +1533,13 @@ PQencryptPasswordConn(PGconn *conn, const char *passwd, const char *user,
 	 */
 	if (strcmp(algorithm, "scram-sha-256") == 0)
 	{
-		crypt_pwd = pg_fe_scram_build_secret(passwd);
-	}
-	else if (strcmp(algorithm, "md5") == 0)
+		crypt_pwd = pg_fe_scram_build_secret("SCRAM-SHA-256", passwd);
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	}else if (strcmp(algorithm, "scram-sm3") == 0)
+	{
+		crypt_pwd = pg_fe_scram_build_secret("SCRAM-SM3", passwd);
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	}else if (strcmp(algorithm, "md5") == 0)
 	{
 		crypt_pwd = malloc(MD5_PASSWD_LEN + 1);
 		if (crypt_pwd)
@@ -1269,6 +1551,22 @@ PQencryptPasswordConn(PGconn *conn, const char *passwd, const char *user,
 			}
 		}
 	}
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+	else if (strcmp(algorithm, "sm3") == 0)
+	{
+		crypt_pwd = malloc(SM3_PASSWD_LEN + 1);
+		if (crypt_pwd)
+		{
+			if (!pg_sm3_encrypt(passwd, user, strlen(user), crypt_pwd))
+			{
+				free(crypt_pwd);
+				crypt_pwd = NULL;
+			}
+		}
+	}
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	else
 	{
 		appendPQExpBuffer(&conn->errorMessage,

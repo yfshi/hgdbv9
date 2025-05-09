@@ -25,6 +25,7 @@
 #include "common/md5.h"
 #include "common/sha1.h"
 #include "common/sha2.h"
+#include "common/sm3.h"		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 /*
  * In backend, use palloc/pfree to ease the error handling.  In frontend,
@@ -104,6 +105,12 @@ pg_hmac_create(pg_cryptohash_type type)
 			ctx->digest_size = PG_SHA512_DIGEST_LENGTH;
 			ctx->block_size = PG_SHA512_BLOCK_LENGTH;
 			break;
+#ifdef USE_GMSSL
+		case PG_SM3: // ReqID:SRS-SECURITY-IDENTITYAUTH
+			ctx->digest_size = PG_SM3_DIGEST_LENGTH;
+			ctx->block_size = PG_SM3_BLOCK_LENGTH;
+			break;
+#endif
 	}
 
 	ctx->hash = pg_cryptohash_create(type);

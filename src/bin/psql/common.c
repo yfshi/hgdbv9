@@ -3242,3 +3242,55 @@ pbe_failure:
 	return res;
 }
 /* End - ReqID:SRS-CMD-PSQL */
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+void
+getLoginMessage(PGconn *conn)
+{
+	PGresult *res;
+
+	const char *initial_query =	"DO $$\n BEGIN PERFORM login_message_display(); END $$;\n";
+
+	res = PQexec(conn, initial_query);
+
+	if (PQresultStatus(res) == PGRES_TUPLES_OK)
+	{
+		PrintQueryResults(res, true, false);
+	}
+
+	if (res)
+		PQclear(res);
+}
+
+void
+getExpirationAlarm(PGconn *conn, const char *user_name)
+{
+	PGresult *res;
+
+	char initial_query[512];
+
+	snprintf(initial_query, sizeof(initial_query), 
+		"DO $$\n" \
+		"DECLARE\n" \
+		"	user_validity TEXT DEFAULT NULL;\n" \
+		"BEGIN\n" \
+		"	SELECT (user_expiration_info('%s')).user_validity INTO user_validity;\n" \
+		"EXCEPTION\n" \
+		"	WHEN OTHERS THEN\n" \
+		"		NULL;\n" \
+		"	IF user_validity IS NOT NULL THEN\n" \
+		"		RAISE NOTICE 'Your account will expire in: %%', user_validity;\n" \
+		"	END IF;\n" \
+		"END $$;", user_name);
+
+	res = PQexec(conn, initial_query);
+
+	if (PQresultStatus(res) == PGRES_TUPLES_OK)
+	{
+		PrintQueryResults(res, true, false);
+	}
+
+	if (res)
+		PQclear(res);
+}
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */

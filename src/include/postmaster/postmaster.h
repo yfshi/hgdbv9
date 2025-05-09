@@ -20,7 +20,8 @@
 #define _POSTMASTER_H
 
 /* GUC options */
-extern bool EnableSSL;
+extern PGDLLIMPORT bool EnableSSL;		/* ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 extern int	ReservedBackends;
 extern PGDLLIMPORT int PostPortNumber;
 extern PGDLLIMPORT int OraPortNumber;	/* ReqID:LISTEN-MULTI-PORT */

@@ -49,6 +49,10 @@
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#include "libpq/mfa.h"
+char *ip_addr_str = "localhost";
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 /*----------------------------------------------------------------
  * Global authentication functions
@@ -69,9 +73,19 @@ static int	CheckPasswordAuth(Port *port, char **logdetail);
 static int	CheckPWChallengeAuth(Port *port, char **logdetail);
 
 static int	CheckMD5Auth(Port *port, char *shadow_pass, char **logdetail);
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+static int	CheckSM3Auth(Port *port, char *shadow_pass, char **logdetail);
+static int	CheckMD5_SM3Auth(Port *port, char *shadow_pass, char **logdetail);
+#endif
 static int	CheckSCRAMAuth(Port *port, char *shadow_pass, char **logdetail);
-
-
+static int	CheckTOTPAuth(Port *port, char *shadow_otp, char **logdetail);
+#ifdef USE_OPENSSL
+static int	CheckPKEYAuth(Port *port, char *shadow_otp, char **logdetail);
+static int	CheckCERTAuth(Port *port, char *shadow_otp, char **logdetail);
+#endif
+static int	CheckMFAAuth(Port *port, char **logdetail);
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 /*----------------------------------------------------------------
  * Ident authentication
  *----------------------------------------------------------------
@@ -303,7 +317,15 @@ auth_failed(Port *port, int status, char *logdetail)
 			break;
 		case uaPassword:
 		case uaMD5:
-		case uaSCRAM:
+		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		case uaSM3:
+		case uaMD5SM3:
+		case uaSM3MD5:
+		case uaSCRAMsha256:
+		case uaSCRAMsm3:
+		case uaSCRAMsha256sm3:
+		case uaSCRAMsm3sha256:
+		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 			errstr = gettext_noop("password authentication failed for user \"%s\"");
 			/* We use it to indicate if a .pgpass password failed. */
 			errcode_return = ERRCODE_INVALID_PASSWORD;
@@ -415,6 +437,8 @@ ClientAuthentication(Port *port)
 {
 	int			status = STATUS_ERROR;
 	char	   *logdetail = NULL;
+
+	ip_addr_str = port->remote_host; // ReqID:SRS-SECURITY-IDENTITYAUTH
 
 	/*
 	 * Get the authentication method to use for this frontend/database
@@ -620,7 +644,15 @@ ClientAuthentication(Port *port)
 			break;
 
 		case uaMD5:
-		case uaSCRAM:
+		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		case uaSM3:
+		case uaMD5SM3:
+		case uaSM3MD5:
+		case uaSCRAMsha256:
+		case uaSCRAMsm3:
+		case uaSCRAMsha256sm3:
+		case uaSCRAMsm3sha256:
+		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 			status = CheckPWChallengeAuth(port, &logdetail);
 			break;
 
@@ -679,6 +711,11 @@ ClientAuthentication(Port *port)
 	if (audit_Save_ConnectAuthMethod_hook)
 		(*audit_Save_ConnectAuthMethod_hook)(port);
 	/* End - ReqID:SRS-SECURITY-AUDIT */
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if (status == STATUS_OK && port->hba->mfa_auth_method != uaNONE)
+		status = CheckMFAAuth(port, &logdetail);
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 	if (ClientAuthentication_hook)
 		(*ClientAuthentication_hook) (port, status);
 
@@ -845,8 +882,17 @@ CheckPWChallengeAuth(Port *port, char **logdetail)
 	char	   *shadow_pass;
 	PasswordType pwtype;
 
-	Assert(port->hba->auth_method == uaSCRAM ||
-		   port->hba->auth_method == uaMD5);
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	UserAuth	tmp_auth = port->hba->auth_method;
+	Assert(port->hba->auth_method == uaSCRAMsha256 ||
+		   port->hba->auth_method == uaSCRAMsm3 ||
+		   port->hba->auth_method == uaSCRAMsha256sm3 ||
+		   port->hba->auth_method == uaSCRAMsm3sha256 ||
+		   port->hba->auth_method == uaSM3 ||
+		   port->hba->auth_method == uaMD5 ||
+		   port->hba->auth_method == uaSM3MD5 ||
+		   port->hba->auth_method == uaMD5SM3);
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	/* First look up the user's password. */
 	shadow_pass = get_role_password(port->user_name, logdetail);
@@ -874,11 +920,64 @@ CheckPWChallengeAuth(Port *port, char **logdetail)
 	 * If MD5 authentication is not allowed, always use SCRAM.  If the user
 	 * had an MD5 password, CheckSCRAMAuth() will fail.
 	 */
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_MD5)
+	{
 		auth_result = CheckMD5Auth(port, shadow_pass, logdetail);
-	else
+#ifdef USE_GMSSL
+	}
+	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SM3)
+	{
+		auth_result = CheckSM3Auth(port, shadow_pass, logdetail);
+    }
+	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_MD5)
+	{
+		auth_result = CheckMD5_SM3Auth(port, shadow_pass, logdetail);
+    }
+	else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SM3)
+	{
+		auth_result = CheckSM3Auth(port, shadow_pass, logdetail);
+#endif
+	}
+	else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256)
+	{
+		port->hba->auth_method = uaSCRAMsha256;
+        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+    }
+	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256)
+	{
+		port->hba->auth_method = uaSCRAMsha256;
+        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+#ifdef USE_GMSSL
+    }
+	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SCRAM_SM3)
+	{
+		port->hba->auth_method = uaSCRAMsm3;
+        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+    }
+	else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SCRAM_SM3)
+	{
+		port->hba->auth_method = uaSCRAMsm3;
+        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+#endif
+    }
+	else if (port->hba->auth_method == uaSCRAMsm3 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256)
+	{
+        port->hba->auth_method = uaSCRAMsha256sm3;
+        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+#ifdef USE_GMSSL
+    }
+	else if (port->hba->auth_method == uaSCRAMsha256 && pwtype == PASSWORD_TYPE_SCRAM_SM3)
+	{
+        port->hba->auth_method = uaSCRAMsm3;
+        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+#endif
+    }
+    else
 		auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
 
+	port->hba->auth_method = tmp_auth;
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (shadow_pass)
 		pfree(shadow_pass);
 	else
@@ -895,6 +994,52 @@ CheckPWChallengeAuth(Port *port, char **logdetail)
 
 	return auth_result;
 }
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+/*
+ * TOTP and HOTP authentication.
+ */
+static int
+CheckMFAAuth(Port *port, char **logdetail)
+{
+	int			auth_result;
+	char	   *shadow_otp;
+	MFAType		otp_type;
+	Oid			roleid;
+
+	roleid = mfa_get_roleid(port->user_name);
+
+	/* First look up the user's password. */
+	shadow_otp = mfa_get_key(port, roleid, &otp_type, logdetail);
+
+	if(port->hba->mfa_auth_method == uaTOTP && otp_type == MFA_TYPE_TOTP)
+		auth_result = CheckTOTPAuth(port, shadow_otp, logdetail);
+#ifdef USE_OPENSSL
+	else if(port->hba->mfa_auth_method == uaPKEY && otp_type == MFA_TYPE_PKEY)
+		auth_result = CheckPKEYAuth(port, shadow_otp, logdetail);
+	else if(port->hba->mfa_auth_method == uaCERT && otp_type == MFA_TYPE_CERT)
+		auth_result = CheckCERTAuth(port, shadow_otp, logdetail);
+#endif
+	else 
+		ereport(FATAL,
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("MFA authentication failed")));
+
+	if (shadow_otp)
+		pfree(shadow_otp);
+	/*
+	 * If get_role_password() returned error, return error, even if the
+	 * authentication succeeded.
+	 */
+	else
+	{
+		Assert(auth_result != STATUS_OK);
+		return STATUS_ERROR;
+	}
+
+	return auth_result;
+}
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 static int
 CheckMD5Auth(Port *port, char *shadow_pass, char **logdetail)
@@ -933,6 +1078,84 @@ CheckMD5Auth(Port *port, char *shadow_pass, char **logdetail)
 	return result;
 }
 
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+static int
+CheckSM3Auth(Port *port, char *shadow_pass, char **logdetail)
+{
+	char		sm3Salt[4];		/* Password salt */
+	char	   *passwd;
+	int			result;
+
+	if (Db_user_namespace)
+		ereport(FATAL,
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("SM3 authentication is not supported when \"db_user_namespace\" is enabled")));
+
+	/* include the salt to use for computing the response */
+	if (!pg_strong_random(sm3Salt, 4))
+	{
+		ereport(LOG,
+				(errmsg("could not generate random SM3 salt")));
+		return STATUS_ERROR;
+	}
+
+	sendAuthRequest(port, AUTH_REQ_SM3, sm3Salt, 4);
+
+	passwd = recv_password_packet(port);
+	if (passwd == NULL)
+		return STATUS_EOF;		/* client wouldn't send password */
+
+	if (shadow_pass)
+		result = sm3_crypt_verify(port->user_name, shadow_pass, passwd,
+								  sm3Salt, 4, logdetail);
+	else
+		result = STATUS_ERROR;
+
+	pfree(passwd);
+
+	return result;
+}
+
+static int
+CheckMD5_SM3Auth(Port *port, char *shadow_pass, char **logdetail)
+{
+	char		md5Salt[4];		/* Password salt */
+	char	   *passwd;
+	int			result;
+
+	if (Db_user_namespace)
+		ereport(FATAL,
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("MD5 authentication is not supported when \"db_user_namespace\" is enabled")));
+
+	/* include the salt to use for computing the response */
+	if (!pg_strong_random(md5Salt, 4))
+	{
+		ereport(LOG,
+				(errmsg("could not generate random MD5 salt")));
+		return STATUS_ERROR;
+	}
+
+	sendAuthRequest(port, AUTH_REQ_MD5_SM3, md5Salt, 4);
+
+	passwd = recv_password_packet(port);
+	if (passwd == NULL)
+		return STATUS_EOF;		/* client wouldn't send password */
+
+	if (shadow_pass)
+		result = md5_sm3_crypt_verify(port->user_name, shadow_pass, passwd,
+								  md5Salt, 4, logdetail);
+	else
+		result = STATUS_ERROR;
+
+	pfree(passwd);
+
+	return result;
+}
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 static int
 CheckSCRAMAuth(Port *port, char *shadow_pass, char **logdetail)
 {
@@ -953,7 +1176,17 @@ CheckSCRAMAuth(Port *port, char *shadow_pass, char **logdetail)
 	 */
 	initStringInfo(&sasl_mechs);
 
-	pg_be_scram_get_mechanisms(port, &sasl_mechs);
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if(port->hba->auth_method == uaSCRAMsha256)
+		pg_be_scramsha256_get_mechanisms(port, &sasl_mechs);
+	else if(port->hba->auth_method == uaSCRAMsm3)
+		pg_be_scramsm3_get_mechanisms(port, &sasl_mechs);
+	else if(port->hba->auth_method == uaSCRAMsha256sm3)
+		pg_be_scramsha256sm3_get_mechanisms(port, &sasl_mechs);
+	else if(port->hba->auth_method == uaSCRAMsm3sha256)
+		pg_be_scramsm3sha256_get_mechanisms(port, &sasl_mechs);
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 	/* Put another '\0' to mark that list is finished. */
 	appendStringInfoChar(&sasl_mechs, '\0');
 
@@ -1079,6 +1312,130 @@ CheckSCRAMAuth(Port *port, char *shadow_pass, char **logdetail)
 	return STATUS_OK;
 }
 
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+static int
+CheckTOTPAuth(Port *port, char *shadow_otp, char **logdetail)
+{
+	char		otpSalt[6];		/* Password salt */
+	char	   *passwd;
+	int			result;
+	int 		user_totp = 0;
+
+	/* include the salt to use for computing the response */
+	if (!pg_strong_random(otpSalt, 6))
+	{
+		ereport(LOG,
+				(errmsg("could not generate random OTP salt")));
+		return STATUS_ERROR;
+	}
+
+	sendAuthRequest(port, AUTH_REQ_TOTP, otpSalt, 6);
+
+	passwd = recv_password_packet(port);
+	if (passwd == NULL)
+		return STATUS_EOF;		/* client wouldn't send password */
+
+	user_totp = atoi(passwd);
+	if(user_totp <= 0)
+		ereport(FATAL,
+			(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("TOTP authentication failed")));
+
+	result = mfa_totp_verify(port->user_name, shadow_otp, user_totp,
+							  otpSalt, 6, logdetail);
+
+	pfree(passwd);
+
+	if(result == STATUS_ERROR)
+		ereport(FATAL,
+			(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("TOTP authentication failed")));
+
+	return result;
+}
+
+#ifdef USE_OPENSSL
+static int
+CheckPKEYAuth(Port *port, char *shadow_otp, char **logdetail)
+{
+    char        otpSalt[16];        /* Password salt */
+    char       *passwd;
+    int         result;
+
+    if (!pg_strong_random(otpSalt, sizeof(otpSalt)))
+    {
+        ereport(LOG,
+                (errmsg("could not generate random PKEY salt")));
+        return STATUS_ERROR;
+    }
+
+    sendAuthRequest(port, AUTH_REQ_PKEY, otpSalt, sizeof(otpSalt));
+
+    passwd = recv_password_packet(port);
+    if (passwd == NULL)
+        return STATUS_EOF;
+
+    result = mfa_pkey_verify(port->user_name, shadow_otp, passwd,
+                             otpSalt, sizeof(otpSalt), logdetail);
+
+    pfree(passwd);
+
+    if (result == STATUS_ERROR)
+        ereport(FATAL,
+                (errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+                 errmsg("PKEY authentication failed %s", *logdetail)));
+
+    return result;
+}
+
+static int
+CheckCERTAuth(Port *port, char *shadow_otp, char **logdetail)
+{
+	char		otpSalt[16];		/* Password salt */
+	char	   *cert;
+	char	   *sign;
+	int			result = STATUS_OK;
+
+	if (Db_user_namespace)
+		ereport(FATAL,
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("OTP authentication is not supported when \"db_user_namespace\" is enabled")));
+
+	/* include the salt to use for computing the response */
+	if (!pg_strong_random(otpSalt, sizeof(otpSalt)))
+	{
+		ereport(LOG,
+				(errmsg("could not generate random PKEY salt")));
+		return STATUS_ERROR;
+	}
+
+	sendAuthRequest(port, AUTH_REQ_CERT_CERT, otpSalt, 0);
+
+	cert = recv_password_packet(port);
+	if (cert == NULL)
+		return STATUS_EOF;		/* client wouldn't send password */
+
+	sendAuthRequest(port, AUTH_REQ_CERT_SIGN, otpSalt, sizeof(otpSalt));
+
+	sign = recv_password_packet(port);
+	if (sign == NULL)
+		return STATUS_EOF;		/* client wouldn't send password */
+
+	result = mfa_cert_verify(port->user_name, cert, sign, shadow_otp, 
+								  otpSalt, sizeof(otpSalt), logdetail);
+
+	pfree(cert);
+	pfree(sign);
+
+	if(result == STATUS_ERROR)
+		ereport(FATAL,
+			(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("CERT authentication failed %s", *logdetail)));
+
+	return result;
+}
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 /*----------------------------------------------------------------
  * GSSAPI authentication system

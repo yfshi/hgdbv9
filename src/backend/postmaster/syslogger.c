@@ -74,6 +74,7 @@ char	   *Log_directory = NULL;
 char	   *Log_filename = NULL;
 bool		Log_truncate_on_rotation = false;
 int			Log_file_mode = S_IRUSR | S_IWUSR;
+bool		Log_Password_Hide = false;
 
 extern bool redirection_done;
 

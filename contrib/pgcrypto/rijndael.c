@@ -542,7 +542,7 @@ aes_ecb_decrypt(rijndael_ctx *ctx, uint8 *data, unsigned len)
 }
 
 void
-aes_cbc_encrypt(rijndael_ctx *ctx, uint8 *iva, uint8 *data, unsigned len)
+pg_aes_cbc_encrypt(rijndael_ctx *ctx, uint8 *iva, uint8 *data, unsigned len)
 {
 	uint32	   *iv = (uint32 *) iva;
 	uint32	   *d = (uint32 *) data;
@@ -564,7 +564,7 @@ aes_cbc_encrypt(rijndael_ctx *ctx, uint8 *iva, uint8 *data, unsigned len)
 }
 
 void
-aes_cbc_decrypt(rijndael_ctx *ctx, uint8 *iva, uint8 *data, unsigned len)
+pg_aes_cbc_decrypt(rijndael_ctx *ctx, uint8 *iva, uint8 *data, unsigned len)
 {
 	uint32	   *d = (uint32 *) data;
 	unsigned	bs = 16;

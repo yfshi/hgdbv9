@@ -26,6 +26,7 @@
 #include "common/md5.h"
 #include "common/sha1.h"
 #include "common/sha2.h"
+#include "common/sm3.h"		/* ReqID:SRS-SECURITY-IDENTITYAUTH */
 #ifndef FRONTEND
 #include "utils/memutils.h"
 #include "utils/resowner.h"
@@ -148,6 +149,9 @@ pg_hmac_init(pg_hmac_ctx *ctx, const uint8 *key, size_t len)
 		case PG_SHA512:
 			status = HMAC_Init_ex(ctx->hmacctx, key, len, EVP_sha512(), NULL);
 			break;
+		case PG_SM3: // ReqID:SRS-SECURITY-IDENTITYAUTH
+			status = HMAC_Init_ex(ctx->hmacctx, key, len, EVP_sm3(), NULL);
+			break;
 	}
 
 	/* OpenSSL internals return 1 on success, 0 on failure */
@@ -216,6 +220,10 @@ pg_hmac_final(pg_hmac_ctx *ctx, uint8 *dest, size_t len)
 			break;
 		case PG_SHA512:
 			if (len < PG_SHA512_DIGEST_LENGTH)
+				return -1;
+			break;
+		case PG_SM3: // ReqID:SRS-SECURITY-IDENTITYAUTH
+			if (len < PG_SM3_DIGEST_LENGTH)
 				return -1;
 			break;
 	}

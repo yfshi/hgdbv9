@@ -159,7 +159,7 @@ sub mkvcbuild
 	  keywords.c kwlookup.c link-canary.c md5_common.c
 	  pg_get_line.c pg_lzcompress.c pgfnames.c psprintf.c relpath.c rmtree.c
 	  saslprep.c scram-common.c string.c stringinfo.c unicode_norm.c username.c
-	  wait_error.c wchar.c);
+	  wait_error.c wchar.c mfa_common.c sm3_common.c sm4_cbc.c sm4.c pass_crypt.c hkdf.c mac.c);		# ReqID:SRS-SECURITY-IDENTITYAUTH
 
 	if ($solution->{options}->{openssl})
 	{
@@ -174,6 +174,7 @@ sub mkvcbuild
 		push(@pgcommonallfiles, 'md5.c');
 		push(@pgcommonallfiles, 'sha1.c');
 		push(@pgcommonallfiles, 'sha2.c');
+		push(@pgcommonallfiles, 'sm3.c');	# ReqID:SRS-SECURITY-IDENTITYAUTH
 	}
 
 	our @pgcommonfrontendfiles = (
@@ -650,6 +651,13 @@ sub mkvcbuild
 		push @contrib_excludes, 'uuid-ossp';
 	}
 		
+
+	# /* Begin - ReqID:SRS-SECURITY-POWERS */
+	if (!$solution->{options}->{with_security_enhancement})
+	{
+		push @contrib_excludes, 'restricted_dba';
+	}
+	# /* End - ReqID:SRS-SECURITY-POWERS */
 
 	# AddProject() does not recognize the constructs used to populate OBJS in
 	# the pgcrypto Makefile, so it will discover no files.

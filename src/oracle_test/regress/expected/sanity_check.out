@@ -137,6 +137,7 @@ pg_init_privs|t
 pg_language|t
 pg_largeobject|t
 pg_largeobject_metadata|t
+pg_mfaid|t
 pg_namespace|t
 pg_object|t
 pg_opclass|t

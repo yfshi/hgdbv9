@@ -21,17 +21,23 @@
 #define SASL_EXCHANGE_SUCCESS		1
 #define SASL_EXCHANGE_FAILURE		2
 
+extern void pg_be_scramsha256_get_mechanisms(Port *port, StringInfo buf);
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 /* Routines dedicated to authentication */
-extern void pg_be_scram_get_mechanisms(Port *port, StringInfo buf);
+extern void pg_be_scramsm3_get_mechanisms(Port *port, StringInfo buf);
+extern void pg_be_scramsha256sm3_get_mechanisms(Port *port, StringInfo buf);
+extern void pg_be_scramsm3sha256_get_mechanisms(Port *port, StringInfo buf);
+
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 extern void *pg_be_scram_init(Port *port, const char *selected_mech, const char *shadow_pass);
 extern int	pg_be_scram_exchange(void *opaq, const char *input, int inputlen,
 								 char **output, int *outputlen, char **logdetail);
-
-/* Routines to handle and check SCRAM-SHA-256 secret */
-extern char *pg_be_scram_build_secret(const char *password);
-extern bool parse_scram_secret(const char *secret, int *iterations, char **salt,
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+/* Routines to handle and check SCRAM-SHA-256 SCRAM-SM3 secret */
+extern char *pg_be_scram_build_secret(const char *scram_type, const char *password);
+extern bool parse_scram_secret(const char *scram_type, const char *secret, int *iterations, char **salt,
 							   uint8 *stored_key, uint8 *server_key);
-extern bool scram_verify_plain_password(const char *username,
+extern bool scram_verify_plain_password(const char *scram_type, const char *username,
 										const char *password, const char *secret);
-
 #endif							/* PG_SCRAM_H */

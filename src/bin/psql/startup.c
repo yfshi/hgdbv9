@@ -75,8 +75,14 @@ struct adhoc_opts
 	char	   *host;
 	char	   *port;
 	char	   *username;
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	char	   *ident;
+	char	   *mac;
+	char	   *custom;
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	char	   *logfilename;
 	bool		no_readline;
+	bool		no_saveline; // ReqID:SRS-SECURITY-IDENTITYAUTH
 	bool		no_psqlrc;
 	bool		single_txn;
 	bool		list_dbs;
@@ -270,7 +276,9 @@ main(int argc, char *argv[])
 	/* loop until we have a password if requested by backend */
 	do
 	{
-#define PARAMS_ARRAY_SIZE	8
+
+#define PARAMS_ARRAY_SIZE	11 // ReqID:SRS-SECURITY-IDENTITYAUTH
+
 		const char **keywords = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*keywords));
 		const char **values = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*values));
 
@@ -289,8 +297,16 @@ main(int argc, char *argv[])
 		values[5] = pset.progname;
 		keywords[6] = "client_encoding";
 		values[6] = (pset.notty || getenv("PGCLIENTENCODING")) ? NULL : "auto";
-		keywords[7] = NULL;
-		values[7] = NULL;
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		keywords[7] = "ident";
+		values[7] = options.ident;
+		keywords[8] = "mac";
+		values[8] = options.mac;
+		keywords[9] = "custom";
+		values[9] = options.custom;
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		keywords[10] = NULL;
+		values[10] = NULL;
 
 		new_pass = false;
 		pset.db = PQconnectdbParams(keywords, values, true);
@@ -333,7 +349,10 @@ main(int argc, char *argv[])
 	/* BEGIN - SQL PARSER */
 	getDbCompatibleMode(pset.db);
 	/* END - SQL PARSER */
-
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	getLoginMessage(pset.db);
+	getExpirationAlarm(pset.db, PQuser(pset.db));
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	psql_setup_cancel_handler();
 
 	PQsetNoticeProcessor(pset.db, NoticeProcessor, NULL);
@@ -503,7 +522,8 @@ error:
 		connection_warnings(true);
 		if (!pset.quiet)
 			printf(_("Type \"help\" for help.\n\n"));
-		initializeInput(options.no_readline ? 0 : 1);
+
+		initializeInput(options.no_readline ? 0 : 1, options.no_saveline ? 0 : 1); /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 		successResult = MainLoop(stdin);
 	}
 
@@ -570,6 +590,15 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 		{"no-psqlrc", no_argument, NULL, 'X'},
 		{"help", optional_argument, NULL, 1},
 		{"csv", no_argument, NULL, 2},
+		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
+		{"no-echo", no_argument, NULL, 'N'},
+
+		{"ident", required_argument, NULL, 'D'},
+		{"mac", required_argument, NULL, 'M'},
+		{"custom", required_argument, NULL, 'C'},
+
+		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		{NULL, 0, NULL, 0}
 	};
 
@@ -579,9 +608,9 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 	memset(options, 0, sizeof *options);
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
-	while ((c = getopt_long(argc, argv, "aAbc:d:eEf:F:h:HlL:no:p:P:qR:sStT:U:v:VGwWxXz?01",
+	while ((c = getopt_long(argc, argv, "aAbc:d:eEf:F:h:HlL:no:p:P:qR:sStT:U:v:VGwWxXz?01D:M:C:N", /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 #else
-	while ((c = getopt_long(argc, argv, "aAbc:d:eEf:F:h:HlL:no:p:P:qR:sStT:U:v:VwWxXz?01",
+	while ((c = getopt_long(argc, argv, "aAbc:d:eEf:F:h:HlL:no:p:P:qR:sStT:U:v:VwWxXz?01D:M:C:N", /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 							long_options, &optindex)) != -1)
@@ -639,6 +668,9 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 				break;
 			case 'n':
 				options->no_readline = true;
+				break;
+			case 'N': // ReqID:SRS-SECURITY-IDENTITYAUTH
+				options->no_saveline = true;
 				break;
 			case 'o':
 				if (!setQFout(optarg))
@@ -778,6 +810,17 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 			case 2:
 				pset.popt.topt.format = PRINT_CSV;
 				break;
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+			case 'D':
+				options->ident = pg_strdup(optarg);
+				break;
+			case 'M':
+				options->mac = pg_strdup(optarg);
+				break;
+			case 'C':
+				options->custom = pg_strdup(optarg);
+				break;
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 			default:
 		unknown_option:
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),

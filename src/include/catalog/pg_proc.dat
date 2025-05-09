@@ -11893,4 +11893,15 @@
   prosrc => 'binary_upgrade_set_next_sequence_pg_class_oid' },
 # /* End - BUGZ1641 */
 /*END Oracle Compatibility Metadatas*/
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+  { oid => '6015', descr => 'Two-factor authentication Settings',
+  proname => 'pg_set_2fa', prorettype => 'text', proargtypes => 'text text text',
+  prosrc => 'pg_set_2fa' },
+
+  { oid => '6016', descr => 'SM3 hash',
+  proname => 'sm3', proleakproof => 't', prorettype => 'bytea',
+  proargtypes => 'bytea', prosrc => 'sm3_bytea' },
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 ]
