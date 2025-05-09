@@ -297,17 +297,18 @@ pg_be_scram_init(Port *port,
 	 */
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #ifdef HAVE_BE_TLS_GET_CERTIFICATE_HASH
-	if ((strcmp(selected_mech, SCRAM_SHA_256_PLUS_NAME) == 0 ||
+	if ((strcmp(selected_mech, SCRAM_SHA_256_PLUS_NAME) == 0
 #ifdef USE_GMSSL
-		strcmp(selected_mech, SCRAM_SM3_PLUS_NAME) == 0
+		|| strcmp(selected_mech, SCRAM_SM3_PLUS_NAME) == 0
 #endif
-		) && port->ssl_in_use)
+		) &&
+		port->ssl_in_use)
 		state->channel_binding_in_use = true;
 	else
 #endif
-	if (strcmp(selected_mech, SCRAM_SHA_256_NAME) == 0 ||
+	if (strcmp(selected_mech, SCRAM_SHA_256_NAME) == 0
 #ifdef USE_GMSSL
-		strcmp(selected_mech, SCRAM_SM3_NAME) == 0 ||
+		|| strcmp(selected_mech, SCRAM_SM3_NAME) == 0 ||
 		strcmp(selected_mech, SCRAM_SM3_SHA256_NAME) == 0 ||
 		strcmp(selected_mech, SCRAM_SHA256_SM3_NAME) == 0
 #endif
