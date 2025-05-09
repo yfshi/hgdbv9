@@ -111,13 +111,13 @@ my_atoi_int2(const char *s)
 	{
 		if(!is_strict_mode())
 		{
-			if(l < PG_INT32_MIN)
+			if(l < PG_INT16_MIN)
 			{
-				l = PG_INT32_MIN;
+				l = PG_INT16_MIN;
 			}
 			else
 			{
-				l = PG_INT32_MAX;
+				l = PG_INT16_MAX;
 			}
 
 			ereport(WARNING,

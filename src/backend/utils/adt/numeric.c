@@ -4183,7 +4183,7 @@ uint64_to_numeric(uint64 val)
 
 	init_var(&result);
 
-	int64_to_numericvar(val, &result);
+	uint64_to_numericvar(val, &result);
 
 	res = make_result(&result);
 

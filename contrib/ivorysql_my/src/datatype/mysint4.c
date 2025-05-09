@@ -108,9 +108,27 @@ my_atoi_int4(const char *s)
 
 	if (save_errno == ERANGE || l < PG_INT32_MIN || l > PG_INT32_MAX)
 	{
-		ereport(ERROR,
-			(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-				errmsg("value \"%s\" is out of range for type integer", s)));
+		if(!is_strict_mode())
+		{
+			if(l < PG_INT32_MIN)
+			{
+				l = PG_INT32_MIN;
+			}
+			else
+			{
+				l = PG_INT32_MAX;
+			}
+
+			ereport(WARNING,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					errmsg("value \"%s\" is out of range for type integer", s)));
+		}
+		else
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					errmsg("value \"%s\" is out of range for type integer", s)));
+		}
 	}
 
 	/*

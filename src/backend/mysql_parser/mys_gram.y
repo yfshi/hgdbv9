@@ -14634,72 +14634,73 @@ ConstTypename:
 GenericType:
 			type_function_name opt_type_modifiers field_unsigned
 				{
-					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-					if ($3 && strcmp($1, "int4") == 0)
+					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4-UINT8 */
+					if ($3)
 					{
-						A_Const *node_const = NULL;
-						List	   *typmods = $2;
-
-						if (typmods != NULL)
+						if (strcmp($1, "int4") == 0)
 						{
-							if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+							A_Const *node_const = NULL;
+							List	   *typmods = $2;
+
+							if (typmods != NULL)
 							{
-								ereport(ERROR,
-										(errcode(ERRCODE_SYNTAX_ERROR),
-										errmsg("syntax error at or near"),
-										parser_errposition(@2)));
+								if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+								{
+									ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											errmsg("syntax error at or near"),
+											parser_errposition(@2)));
+								}
+
+								node_const = (A_Const *) linitial(typmods);
+								if (nodeTag(&node_const->val) != T_Integer ||
+									node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+								{
+									ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											errmsg("syntax error at or near"),
+											parser_errposition(@2)));
+								}
 							}
 
-							node_const = (A_Const *) linitial(typmods);
-							if (nodeTag(&node_const->val) != T_Integer ||
-								node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
-							{
-								ereport(ERROR,
-										(errcode(ERRCODE_SYNTAX_ERROR),
-										errmsg("syntax error at or near"),
-										parser_errposition(@2)));
-							}
+							$$ = MySQLSystemTypeName("mysuint4");
+							$$->typmods = $2;
+							$$->location = @1;
 						}
-
-						$$ = MySQLSystemTypeName("mysuint4");
-						$$->typmods = $2;
-						$$->location = @1;
-					}	
-					else /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-					if ($3 && strcmp($1, "int8") == 0)
-					{
-						A_Const *node_const = NULL;
-						List	   *typmods = $2;
-
-						if (typmods != NULL)
+						if (strcmp($1, "int8") == 0)
 						{
-							if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+							A_Const *node_const = NULL;
+							List	   *typmods = $2;
+
+							if (typmods != NULL)
 							{
-								ereport(ERROR,
-										(errcode(ERRCODE_SYNTAX_ERROR),
-										errmsg("syntax error at or near"),
-										parser_errposition(@2)));
+								if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+								{
+									ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											errmsg("syntax error at or near"),
+											parser_errposition(@2)));
+								}
+
+								node_const = (A_Const *) linitial(typmods);
+								if (nodeTag(&node_const->val) != T_Integer ||
+									node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+								{
+									ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											errmsg("syntax error at or near"),
+											parser_errposition(@2)));
+								}
 							}
 
-							node_const = (A_Const *) linitial(typmods);
-							if (nodeTag(&node_const->val) != T_Integer ||
-								node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
-							{
-								ereport(ERROR,
-										(errcode(ERRCODE_SYNTAX_ERROR),
-										errmsg("syntax error at or near"),
-										parser_errposition(@2)));
-							}
-						}
-
-						$$ = MySQLSystemTypeName("mysuint8");
-						$$->typmods = $2;
-						$$->location = @1;
+							$$ = MySQLSystemTypeName("mysuint8");
+							$$->typmods = $2;
+							$$->location = @1;
+						}	
 					}	
-					else /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+					/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4-UINT8 */
 					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
-					if (!$3 && strcmp($1, "int4") == 0)
+					else if (strcmp($1, "int4") == 0)
 					{
 						$$ = makeTypeName($1);
 						$$->location = @1;
