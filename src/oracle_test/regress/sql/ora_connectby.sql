@@ -2568,3 +2568,33 @@ order siblings by emp_name;
 
 --clean data
 drop table employees;
+
+--bug#Z4710
+create table org_structure (
+	emp_id number,
+	emp_name varchar(50),
+	dept varchar(20),
+	salary number,
+	manager_id number
+);
+
+insert into org_structure values (1, 'CEO', 'CEO', 100000, NULL);
+insert into org_structure values (2, 'managerA', 'sale', 80000, 1);
+insert into org_structure values (3, 'managerB', 'IT', 85000, 1);
+insert into org_structure values (4, 'staffA1', 'sale', 60000, 2);
+insert into org_structure values (5, 'staffB1', 'IT', 65000, 3);
+
+--error
+select emp_name, avg(salary) from org_structure
+start with manager_id is null connect by prior emp_id = manager_id
+group by emp_name
+order siblings by emp_name;
+
+--ok
+select emp_name, avg(salary) from org_structure
+start with manager_id is null connect by prior emp_id = manager_id
+group by emp_name
+order by emp_name;
+
+--clean data
+drop table org_structure;

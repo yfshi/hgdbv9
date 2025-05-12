@@ -2265,11 +2265,24 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	{
 		IgnoreStr  *ignoreStr = NULL;
 
+		/* Begin - BUG#Z00004710 */
+		/*
+		 * if has group by, then order SIBLINGS by is not allowed here
+		 */
+		if (stmt->groupClause != NIL && stmt->sortClause != NIL)
+		{
+			SortBy *srby = (SortBy *) linitial(stmt->sortClause);
+
+			if (srby->siblings)
+				elog(ERROR, "ORDER SIBLINGS BY clause not allowed here");
+		}
+		/* End - BUG#Z00004710 */
+
 		stmt = transformHierarQueryClause(pstate, stmt,
 					&ignoreStr, pstate->p_sourcetext);
 		pstate->p_connectby_names = ignoreStr;
 	}
-	else if (stmt->sortClause != NULL)
+	else if (stmt->sortClause != NIL)
 	{
 		SortBy *srby = (SortBy *) linitial(stmt->sortClause);
 

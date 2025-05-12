@@ -15,6 +15,34 @@ include $(top_builddir)/src/Makefile.global
  
 $(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck)	# SRS-MISC-GB18030	# BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH
 
+#/* Begin - BUG#Z00004703 */
+#build src/ before contrib/ or make -j 16 maybe failed for contrilb
+#rely on src
+all-contrib/gb18030_2022-recurse: all-src-recurse
+install-contrib/gb18030_2022-recurse: install-src-recurse
+all-contrib/ivorysql_ora-recurse: all-src-recurse
+install-contrib/ivorysql_ora-recurse: install-src-recurse
+all-contrib/pg_object-recurse: all-src-recurse
+install-contrib/pg_object-recurse: install-src-recurse
+all-contrib/postgres_fdw-recurse: all-src-recurse
+install-contrib/postgres_fdw-recurse: install-src-recurse
+all-contrib/ivorysql_my-recurse: all-src-recurse
+install-contrib/ivorysql_my-recurse: install-src-recurse
+all-contrib/uuid-ossp-recurse: all-src-recurse
+install-contrib/uuid-ossp-recurse: install-src-recurse
+all-contrib/restricted_dba-recurse: all-src-recurse
+install-contrib/restricted_dba-recurse: install-src-recurse
+all-contrib/pg_audit-recurse: all-src-recurse
+install-contrib/pg_audit-recurse: install-src-recurse
+all-contrib/sqlite_fdw-recurse: all-src-recurse
+install-contrib/sqlite_fdw-recurse: install-src-recurse
+all-contrib/pg_track_settings-recurse: all-src-recurse
+install-contrib/pg_track_settings-recurse: install-src-recurse
+all-contrib/credcheck-recurse: all-src-recurse
+install-contrib/credcheck-recurse: install-src-recurse
+#/* End - BUG#Z00004703 */
+
+
 docs:
 	$(MAKE) -C doc all
 
