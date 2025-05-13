@@ -7,20 +7,22 @@ OBJS = \
 	src/ivorysql_my.o \
 	src/case_sensitive/casesensitive.o \
 	src/case_sensitive/casefunc.o \
-	src/datatype/my_ctype_simple.o \
-	src/datatype/mysint2.o \
+	src/datatype/strtoll.o \
 	src/datatype/myyear.o \
 	src/datatype/mysdate.o \
-	src/datatype/mys_int1.o \
-	src/datatype/mys_int3.o \
+	src/datatype/mysint1.o \
+	src/datatype/mysint2.o \
+	src/datatype/mysint3.o \
+	src/datatype/mysint4.o \
 	src/datatype/mysuint4.o \
 	src/datatype/mysuint8.o \
-	src/datatype/binary/strtod.o \
-	src/datatype/binary/anyblob.o \
-	src/datatype/binary/anybinary.o \
-	src/datatype/binary/binary.o \
-	src/datatype/binary/varbinary.o \
-	src/datatype/binary/binary_gin.o \
+	src/datatype/mysfloat.o \
+	src/datatype/strtod.o \
+	src/datatype/anyblob.o \
+	src/datatype/anybinary.o \
+	src/datatype/binary.o \
+	src/datatype/varbinary.o \
+	src/datatype/binary_gin.o \
 	src/charset/charset.o \
 	src/charset/ctype-bin.o \
 	src/charset/ctype-mb.o \
@@ -37,8 +39,8 @@ OBJS = \
 	src/charset/ctype-sjis.o \
 	src/charset/ctype-ujis.o \
 	src/charset/ctype-extra.o \
-	src/character/mystext.o \
-	src/datatype/mysfloat.o
+	src/character/mystext.o
+
 
 EXTENSION = ivorysql_my
 
@@ -104,12 +106,11 @@ MYS_REGRESS = multi_update \
 			  show_charset \
 			  mys_int1	\
 			  mys_int2	\
+			  mys_int3 \
+			  mys_int4	\
 			  mys_float \
 			  mys-char-varchar \
-			  mys_int3 \
 			  group_by
-
-
 
 
 ifdef USE_PGXS

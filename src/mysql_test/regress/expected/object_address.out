@@ -475,7 +475,7 @@ SELECT (pg_identify_object(addr1.classid, addr1.objid, addr1.objsubid)).*,
  language                  |            | plpgsql           | plpgsql                                                              | t
  schema                    |            | addr_nsp          | addr_nsp                                                             | t
  operator class            | pg_catalog | int4_ops          | pg_catalog.int4_ops USING btree                                      | t
- operator                  | pg_catalog |                   | pg_catalog.+(integer,integer)                                        | t
+ operator                  | ivymy      |                   | ivymy.+(integer,integer)                                             | t
  rule                      |            |                   | "_RETURN" on addr_nsp.genview                                        | t
  trigger                   |            |                   | t on addr_nsp.gentable                                               | t
  operator family           | pg_catalog | integer_ops       | pg_catalog.integer_ops USING btree                                   | t

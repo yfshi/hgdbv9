@@ -303,13 +303,13 @@ BEGIN
   RETURN r;
 END; $$ LANGUAGE plpgsql;
 SELECT PLUS_TWO(3);
- plus_two 
+ PLUS_TWO 
 ----------
         5
 (1 row)
 
 SELECT PLUS_TWO(7);
- plus_two 
+ PLUS_TWO 
 ----------
         9
 (1 row)
@@ -318,13 +318,13 @@ SELECT PLUS_TWO(7);
 CREATE FUNCTION PLUS_ONE(i INTEGER) RETURNS INTEGER AS
 $$ SELECT (i + 1.0)::INTEGER LIMIT 1 $$ LANGUAGE SQL;
 SELECT PLUS_ONE(8);
- plus_one 
+ PLUS_ONE 
 ----------
         9
 (1 row)
 
 SELECT PLUS_ONE(10);
- plus_one 
+ PLUS_ONE 
 ----------
        11
 (1 row)
@@ -361,13 +361,13 @@ BEGIN
   RETURN r;
 END; $$ LANGUAGE plpgsql;
 SELECT PLUS_TWO(-1);
- plus_two 
+ PLUS_TWO 
 ----------
         1
 (1 row)
 
 SELECT PLUS_TWO(2);
- plus_two 
+ PLUS_TWO 
 ----------
         4
 (1 row)
@@ -376,13 +376,13 @@ SELECT PLUS_TWO(2);
 CREATE FUNCTION PLUS_ONE(i INTEGER) RETURNS INTEGER AS
 $$ SELECT (i + 1.0)::INTEGER LIMIT 1 $$ LANGUAGE SQL;
 SELECT PLUS_ONE(3);
- plus_one 
+ PLUS_ONE 
 ----------
         4
 (1 row)
 
 SELECT PLUS_ONE(1);
- plus_one 
+ PLUS_ONE 
 ----------
         2
 (1 row)
@@ -808,26 +808,26 @@ SELECT pg_stat_statements_reset();
 CREATE TABLE test ();
 PREPARE prep1 AS SELECT COUNT(*) FROM test;
 EXECUTE prep1;
- count 
+ COUNT 
 -------
      0
 (1 row)
 
 EXECUTE prep1;
- count 
+ COUNT 
 -------
      0
 (1 row)
 
 EXECUTE prep1;
- count 
+ COUNT 
 -------
      0
 (1 row)
 
 ALTER TABLE test ADD COLUMN x int;
 EXECUTE prep1;
- count 
+ COUNT 
 -------
      0
 (1 row)
@@ -942,7 +942,7 @@ SELECT * FROM ONLY tbl_inh;
 (0 rows)
 
 SELECT COUNT(*) FROM pg_stat_statements WHERE query LIKE '%FROM%tbl_inh%';
- count 
+ COUNT 
 -------
      2
 (1 row)
@@ -980,7 +980,7 @@ FETCH FIRST 2 ROW ONLY;
 (2 rows)
 
 SELECT COUNT(*) FROM pg_stat_statements WHERE query LIKE '%FETCH FIRST%';
- count 
+ COUNT 
 -------
      2
 (1 row)
@@ -1041,7 +1041,7 @@ ORDER BY a, b, c;
 (13 rows)
 
 SELECT COUNT(*) FROM pg_stat_statements WHERE query LIKE '%GROUP BY%ROLLUP%';
- count 
+ COUNT 
 -------
      2
 (1 row)
@@ -1072,7 +1072,7 @@ SELECT (
 (3 rows)
 
 SELECT COUNT(*) FROM pg_stat_statements WHERE query LIKE '%SELECT GROUPING%';
- count 
+ COUNT 
 -------
      2
 (1 row)

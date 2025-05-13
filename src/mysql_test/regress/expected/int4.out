@@ -6,9 +6,6 @@ INSERT INTO INT4_TBL(f1) VALUES ('   0  ');
 INSERT INTO INT4_TBL(f1) VALUES ('123456     ');
 INSERT INTO INT4_TBL(f1) VALUES ('    -123456');
 INSERT INTO INT4_TBL(f1) VALUES ('34.5');
-ERROR:  invalid input syntax for type integer: "34.5"
-LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('34.5');
-                                         ^
 -- largest and smallest values
 INSERT INTO INT4_TBL(f1) VALUES ('2147483647');
 INSERT INTO INT4_TBL(f1) VALUES ('-2147483647');
@@ -22,11 +19,11 @@ ERROR:  invalid input syntax for type integer: "asdf"
 LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('asdf');
                                          ^
 INSERT INTO INT4_TBL(f1) VALUES ('     ');
-ERROR:  invalid input syntax for type integer: "     "
+ERROR:  invalid input syntax for type integer: ""
 LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('     ');
                                          ^
 INSERT INTO INT4_TBL(f1) VALUES ('   asdf   ');
-ERROR:  invalid input syntax for type integer: "   asdf   "
+ERROR:  invalid input syntax for type integer: "asdf   "
 LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('   asdf   ');
                                          ^
 INSERT INTO INT4_TBL(f1) VALUES ('- 1234');
@@ -47,27 +44,30 @@ SELECT * FROM INT4_TBL;
            0
       123456
      -123456
+          35
   2147483647
  -2147483647
-(5 rows)
+(6 rows)
 
 SELECT i.* FROM INT4_TBL i WHERE i.f1 <> int2 '0';
      f1      
 -------------
       123456
      -123456
+          35
   2147483647
  -2147483647
-(4 rows)
+(5 rows)
 
 SELECT i.* FROM INT4_TBL i WHERE i.f1 <> int4 '0';
      f1      
 -------------
       123456
      -123456
+          35
   2147483647
  -2147483647
-(4 rows)
+(5 rows)
 
 SELECT i.* FROM INT4_TBL i WHERE i.f1 = int2 '0';
  f1 
@@ -115,38 +115,43 @@ SELECT i.* FROM INT4_TBL i WHERE i.f1 > int2 '0';
      f1     
 ------------
      123456
+         35
  2147483647
-(2 rows)
+(3 rows)
 
 SELECT i.* FROM INT4_TBL i WHERE i.f1 > int4 '0';
      f1     
 ------------
      123456
+         35
  2147483647
-(2 rows)
+(3 rows)
 
 SELECT i.* FROM INT4_TBL i WHERE i.f1 >= int2 '0';
      f1     
 ------------
           0
      123456
+         35
  2147483647
-(3 rows)
+(4 rows)
 
 SELECT i.* FROM INT4_TBL i WHERE i.f1 >= int4 '0';
      f1     
 ------------
           0
      123456
+         35
  2147483647
-(3 rows)
+(4 rows)
 
 -- positive odds
 SELECT i.* FROM INT4_TBL i WHERE (i.f1 % int2 '2') = int2 '1';
      f1     
 ------------
+         35
  2147483647
-(1 row)
+(2 rows)
 
 -- any evens
 SELECT i.* FROM INT4_TBL i WHERE (i.f1 % int4 '2') = int2 '0';
@@ -166,7 +171,8 @@ WHERE abs(f1) < 1073741824;
        0 |       0
   123456 |  246912
  -123456 | -246912
-(3 rows)
+      35 |      70
+(4 rows)
 
 SELECT i.f1, i.f1 * int4 '2' AS x FROM INT4_TBL i;
 ERROR:  integer out of range
@@ -177,7 +183,8 @@ WHERE abs(f1) < 1073741824;
        0 |       0
   123456 |  246912
  -123456 | -246912
-(3 rows)
+      35 |      70
+(4 rows)
 
 SELECT i.f1, i.f1 + int2 '2' AS x FROM INT4_TBL i;
 ERROR:  integer out of range
@@ -188,11 +195,21 @@ WHERE f1 < 2147483646;
            0 |           2
       123456 |      123458
      -123456 |     -123454
+          35 |          37
  -2147483647 | -2147483645
-(4 rows)
+(5 rows)
 
 SELECT i.f1, i.f1 + int4 '2' AS x FROM INT4_TBL i;
-ERROR:  integer out of range
+     f1      |      x      
+-------------+-------------
+           0 |           2
+      123456 |      123458
+     -123456 |     -123454
+          35 |          37
+  2147483647 |  2147483649
+ -2147483647 | -2147483645
+(6 rows)
+
 SELECT i.f1, i.f1 + int4 '2' AS x FROM INT4_TBL i
 WHERE f1 < 2147483646;
      f1      |      x      
@@ -200,8 +217,9 @@ WHERE f1 < 2147483646;
            0 |           2
       123456 |      123458
      -123456 |     -123454
+          35 |          37
  -2147483647 | -2147483645
-(4 rows)
+(5 rows)
 
 SELECT i.f1, i.f1 - int2 '2' AS x FROM INT4_TBL i;
 ERROR:  integer out of range
@@ -212,11 +230,21 @@ WHERE f1 > -2147483647;
           0 |         -2
      123456 |     123454
     -123456 |    -123458
+         35 |         33
  2147483647 | 2147483645
-(4 rows)
+(5 rows)
 
 SELECT i.f1, i.f1 - int4 '2' AS x FROM INT4_TBL i;
-ERROR:  integer out of range
+     f1      |      x      
+-------------+-------------
+           0 |          -2
+      123456 |      123454
+     -123456 |     -123458
+          35 |          33
+  2147483647 |  2147483645
+ -2147483647 | -2147483649
+(6 rows)
+
 SELECT i.f1, i.f1 - int4 '2' AS x FROM INT4_TBL i
 WHERE f1 > -2147483647;
      f1     |     x      
@@ -224,8 +252,9 @@ WHERE f1 > -2147483647;
           0 |         -2
      123456 |     123454
     -123456 |    -123458
+         35 |         33
  2147483647 | 2147483645
-(4 rows)
+(5 rows)
 
 SELECT i.f1, i.f1 / int2 '2' AS x FROM INT4_TBL i;
      f1      |      x      
@@ -233,19 +262,21 @@ SELECT i.f1, i.f1 / int2 '2' AS x FROM INT4_TBL i;
            0 |           0
       123456 |       61728
      -123456 |      -61728
+          35 |          17
   2147483647 |  1073741823
  -2147483647 | -1073741823
-(5 rows)
+(6 rows)
 
 SELECT i.f1, i.f1 / int4 '2' AS x FROM INT4_TBL i;
-     f1      |      x      
--------------+-------------
-           0 |           0
-      123456 |       61728
-     -123456 |      -61728
-  2147483647 |  1073741823
- -2147483647 | -1073741823
-(5 rows)
+     f1      |        x         
+-------------+------------------
+           0 |           0.0000
+      123456 |       61728.0000
+     -123456 |      -61728.0000
+          35 |          17.5000
+  2147483647 |  1073741823.5000
+ -2147483647 | -1073741823.5000
+(6 rows)
 
 --
 -- more complex expressions
@@ -306,9 +337,9 @@ SELECT 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 AS ten;
 (1 row)
 
 SELECT 2 + 2 / 2 AS three;
- three 
--------
-     3
+ three  
+--------
+ 3.0000
 (1 row)
 
 SELECT (2 + 2) / 2 AS two;
@@ -334,7 +365,11 @@ SELECT ((-1::int4<<31)+1)::text;
 SELECT (-2147483648)::int4 * (-1)::int4;
 ERROR:  integer out of range
 SELECT (-2147483648)::int4 / (-1)::int4;
-ERROR:  integer out of range
+    ?column?     
+-----------------
+ 2147483648.0000
+(1 row)
+
 SELECT (-2147483648)::int4 % (-1)::int4;
  ?column? 
 ----------

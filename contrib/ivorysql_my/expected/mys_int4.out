@@ -1,0 +1,1013 @@
+--int[(M)]
+create table t1 (a int[-1]); --fail
+ERROR:  syntax error at or near "-"
+LINE 1: create table t1 (a int[-1]);
+                               ^
+create table t2 (a int(0));
+\d t2
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a int(3));
+\d t2
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+
+insert into t2 values (2);
+select * from t2;
+ a 
+---
+ 2
+(1 row)
+
+drop table t2;
+create table t2 (a int4(0));
+\d t2
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a int4(3));
+\d t2
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+
+insert into t2 values (2);
+select * from t2;
+ a 
+---
+ 2
+(1 row)
+
+drop table t2;
+create table t2 (a integer(0));
+\d t2
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a integer(3));
+\d t2
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+
+insert into t2 values (2);
+select * from t2;
+ a 
+---
+ 2
+(1 row)
+
+drop table t2;
+--int4
+create table t1(c1 int);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-2147483648);
+insert into t1 values(2147483647);
+insert into t1 values(-2147483649);
+ERROR:  integer out of range
+insert into t1 values(4294967295);
+ERROR:  integer out of range
+select * from t1;
+     c1      
+-------------
+           0
+           1
+          -1
+ -2147483648
+  2147483647
+(5 rows)
+
+drop table t1;
+create table t1(c1 int SIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-2147483648);
+insert into t1 values(2147483647);
+insert into t1 values(-2147483649);
+ERROR:  integer out of range
+insert into t1 values(4294967295);
+ERROR:  integer out of range
+select * from t1;
+     c1      
+-------------
+           0
+           1
+          -1
+ -2147483648
+  2147483647
+(5 rows)
+
+drop table t1;
+create table t1(c1 int4);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-2147483648);
+insert into t1 values(2147483647);
+insert into t1 values(-2147483649);
+ERROR:  integer out of range
+insert into t1 values(4294967295);
+ERROR:  integer out of range
+select * from t1;
+     c1      
+-------------
+           0
+           1
+          -1
+ -2147483648
+  2147483647
+(5 rows)
+
+drop table t1;
+create table t1(c1 int4 SIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-2147483648);
+insert into t1 values(2147483647);
+insert into t1 values(-2147483649);
+ERROR:  integer out of range
+insert into t1 values(4294967295);
+ERROR:  integer out of range
+select * from t1;
+     c1      
+-------------
+           0
+           1
+          -1
+ -2147483648
+  2147483647
+(5 rows)
+
+drop table t1;
+create table t1(c1 integer);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-2147483648);
+insert into t1 values(2147483647);
+insert into t1 values(-2147483649);
+ERROR:  integer out of range
+insert into t1 values(4294967295);
+ERROR:  integer out of range
+select * from t1;
+     c1      
+-------------
+           0
+           1
+          -1
+ -2147483648
+  2147483647
+(5 rows)
+
+drop table t1;
+create table t1(c1 integer SIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-2147483648);
+insert into t1 values(2147483647);
+insert into t1 values(-2147483649);
+ERROR:  integer out of range
+insert into t1 values(4294967295);
+ERROR:  integer out of range
+select * from t1;
+     c1      
+-------------
+           0
+           1
+          -1
+ -2147483648
+  2147483647
+(5 rows)
+
+drop table t1;
+CREATE TABLE t1 (col1 INT);
+INSERT INTO t1 VALUES(-2147483648),(0),(2147483647),('-2147483648'),('2147483647'),(-2147483648.0),(2147483647.0);
+INSERT INTO t1 (col1) VALUES(-2147483649);
+ERROR:  integer out of range
+INSERT INTO t1 (col1) VALUES(2147643648);
+ERROR:  integer out of range
+INSERT INTO t1 (col1) VALUES(-1);
+INSERT INTO t1 (col1) VALUES(4294967296);
+ERROR:  integer out of range
+INSERT INTO t1 (col1) VALUES('-2147483649');
+ERROR:  value "-2147483649" is out of range for type integer
+LINE 1: INSERT INTO t1 (col1) VALUES('-2147483649');
+                                     ^
+INSERT INTO t1 (col1) VALUES('2147643648');
+ERROR:  value "2147643648" is out of range for type integer
+LINE 1: INSERT INTO t1 (col1) VALUES('2147643648');
+                                     ^
+INSERT INTO t1 (col1) VALUES('-1');
+INSERT INTO t1 (col1) VALUES('4294967296');
+ERROR:  value "4294967296" is out of range for type integer
+LINE 1: INSERT INTO t1 (col1) VALUES('4294967296');
+                                     ^
+INSERT INTO t1 (col1) VALUES(-2147483649.0);
+ERROR:  integer out of range
+INSERT INTO t1 (col1) VALUES(2147643648.0);
+ERROR:  integer out of range
+INSERT INTO t1 (col1) VALUES(-1.0);
+INSERT INTO t1 (col1) VALUES(4294967296.0);
+ERROR:  integer out of range
+UPDATE t1 SET col1 = col1 - 50 WHERE col1 < 0;
+ERROR:  integer out of range
+UPDATE t1 SET col1 =col1 + 50 WHERE col1 > 0;
+ERROR:  integer out of range
+UPDATE t1 SET col1 =col1 / 0 WHERE col1 > 0;
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+UPDATE t1 SET col1= MOD(col1,0) WHERE col1 > 0;
+INSERT INTO t1 (col1) VALUES ('');
+ERROR:  invalid input syntax for type integer: ""
+LINE 1: INSERT INTO t1 (col1) VALUES ('');
+                                      ^
+INSERT INTO t1 (col1) VALUES ('a59b');
+ERROR:  invalid input syntax for type integer: "a59b"
+LINE 1: INSERT INTO t1 (col1) VALUES ('a59b');
+                                      ^
+INSERT INTO t1 (col1) VALUES ('1a');
+ERROR:  invalid input syntax for type integer: "1a"
+LINE 1: INSERT INTO t1 (col1) VALUES ('1a');
+                                      ^
+INSERT INTO t1 (col1) VALUES ('2a');
+ERROR:  invalid input syntax for type integer: "2a"
+LINE 1: INSERT INTO t1 (col1) VALUES ('2a');
+                                      ^
+INSERT INTO t1 values (1/0);
+WARNING:  Division by 0
+INSERT INTO t1 values (-2147483649),(2147643648);
+ERROR:  integer out of range
+INSERT INTO t1 values ('-2147483649'),('2147643648');
+ERROR:  value "-2147483649" is out of range for type integer
+LINE 1: INSERT INTO t1 values ('-2147483649'),('2147643648');
+                               ^
+INSERT INTO t1 values (-2147483649.0),(2147643648.0);
+ERROR:  integer out of range
+UPDATE t1 SET col1=1/NULL where col1=0;
+SELECT * FROM t1;
+    col1     
+-------------
+ -2147483648
+ -2147483648
+ -2147483648
+          -1
+          -1
+          -1
+            
+            
+            
+            
+            
+(11 rows)
+
+DROP TABLE t1;
+--create tables
+CREATE TABLE t1(c1 INT NOT NULL, c2 INT NOT NULL);
+\d t1;
+                 Table "public.t1"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c1     | integer |           | not null | 
+ c2     | integer |           | not null | 
+
+CREATE TABLE t2(c1 INT NULL);
+\d t2;
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c1     | integer |           |          | 
+
+CREATE TABLE t3(c1 INT NOT NULL);
+\d t3;
+                 Table "public.t3"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c1     | integer |           | not null | 
+
+CREATE TABLE t4(c1 INT(5) NULL DEFAULT 1);
+\d t4;
+                 Table "public.t4"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c1     | integer |           |          | 1
+
+CREATE TABLE t5(c1 INT(1) NULL);
+\d t5;
+                 Table "public.t5"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c1     | integer |           |          | 
+
+DROP TABLE t1,t2,t3,t4,t5;
+--operator
+create table tb_test(id int);
+insert into tb_test values (2147483647),(-2147483648),(0),(1);
+select !id from tb_test;
+ ?column? 
+----------
+        0
+        0
+        1
+        0
+(4 rows)
+
+select ~id from tb_test;
+       ?column?       
+----------------------
+ 18446744071562067968
+ 2147483647
+ 18446744073709551615
+ 18446744073709551614
+(4 rows)
+
+select +id from tb_test;
+  ?column?   
+-------------
+  2147483647
+ -2147483648
+           0
+           1
+(4 rows)
+
+select -id from tb_test;
+  ?column?   
+-------------
+ -2147483647
+  2147483648
+           0
+          -1
+(4 rows)
+
+select * from tb_test;
+     id      
+-------------
+  2147483647
+ -2147483648
+           0
+           1
+(4 rows)
+
+drop table tb_test;
+create table t1 (col1 int, col2 int);
+insert into t1 values(1, 2147483647);
+insert into t1 values(1, -2147483648);
+select col1 + col2 from t1;
+  ?column?   
+-------------
+  2147483648
+ -2147483647
+(2 rows)
+
+select col1 - col2 from t1;
+  ?column?   
+-------------
+ -2147483646
+  2147483649
+(2 rows)
+
+select col1 * col2 from t1;
+  ?column?   
+-------------
+  2147483647
+ -2147483648
+(2 rows)
+
+select col1 / col2 from t1;
+ ?column? 
+----------
+   0.0000
+   0.0000
+(2 rows)
+
+select col1 div col2 from t1;
+ ?column? 
+----------
+        0
+        0
+(2 rows)
+
+select col1 % col2 from t1;
+ ?column? 
+----------
+        1
+        1
+(2 rows)
+
+select col1 & col2 from t1;
+ ?column? 
+----------
+ 1
+ 0
+(2 rows)
+
+select col1 | col2 from t1;
+       ?column?       
+----------------------
+ 2147483647
+ 18446744071562067969
+(2 rows)
+
+select col1 ^ col2 from t1; --failed
+       ?column?       
+----------------------
+ 2147483646
+ 18446744071562067969
+(2 rows)
+
+select col1 || col2 from t1;
+ ?column? 
+----------
+ t
+ t
+(2 rows)
+
+select col1 && col2 from t1;
+ ?column? 
+----------
+        1
+        1
+(2 rows)
+
+select col1 <=> col2 from t1;
+ ?column? 
+----------
+        0
+        0
+(2 rows)
+
+drop table t1;
+CREATE TABLE t1(c1 INT);
+INSERT INTO t1 (c1) VALUES(0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
+SELECT * FROM t1 WHERE c1 > 5;
+ c1 
+----
+  6
+  7
+  8
+  9
+(4 rows)
+
+SELECT * FROM t1 WHERE c1 >= 5;
+ c1 
+----
+  5
+  6
+  7
+  8
+  9
+(5 rows)
+
+SELECT * FROM t1 WHERE c1 = 5;
+ c1 
+----
+  5
+(1 row)
+
+SELECT * FROM t1 WHERE c1 != 5;
+ c1 
+----
+  0
+  1
+  2
+  3
+  4
+  6
+  7
+  8
+  9
+(9 rows)
+
+SELECT * FROM t1 WHERE c1 <> 5;
+ c1 
+----
+  0
+  1
+  2
+  3
+  4
+  6
+  7
+  8
+  9
+(9 rows)
+
+SELECT * FROM t1 WHERE c1 < 5;
+ c1 
+----
+  0
+  1
+  2
+  3
+  4
+(5 rows)
+
+SELECT * FROM t1 WHERE c1 <= 5;
+ c1 
+----
+  0
+  1
+  2
+  3
+  4
+  5
+(6 rows)
+
+DROP TABLE t1;
+create table test1(a int, b int default 3);
+insert into test1 values();
+insert into test1 values(5, a + 2);
+insert into test1 values(5, a - 2);
+insert into test1 values(1, a * 2);
+insert into test1 values(6, a / 2);
+insert into test1 values(7, a % 2);
+select * from test1;
+ a | b 
+---+---
+   | 3
+ 5 | 7
+ 5 | 3
+ 1 | 2
+ 6 | 3
+ 7 | 1
+(6 rows)
+
+drop table test1;
+create table tb_test(id int);
+insert into tb_test values (123),(-456),(0);
+select -id from tb_test;
+ ?column? 
+----------
+     -123
+      456
+        0
+(3 rows)
+
+select * from tb_test;
+  id  
+------
+  123
+ -456
+    0
+(3 rows)
+
+drop table tb_test;
+create table t1 (col1 int, col2 int);
+insert into t1 values(1, 123);
+insert into t1 values(1, -123);
+select col1 + col2 from t1;
+ ?column? 
+----------
+      124
+     -122
+(2 rows)
+
+insert into t1 values(1, col1 + 1);
+select * from t1;
+ col1 | col2 
+------+------
+    1 |  123
+    1 | -123
+    1 |    2
+(3 rows)
+
+drop table t1;
+create table t1 (col1 int, col2 int);
+insert into t1 values(1, 123);
+insert into t1 values(1, -123);
+select col1 - col2 from t1;
+ ?column? 
+----------
+     -122
+      124
+(2 rows)
+
+insert into t1 values(2, col1 - 1);
+select * from t1;
+ col1 | col2 
+------+------
+    1 |  123
+    1 | -123
+    2 |    1
+(3 rows)
+
+drop table t1;
+create table t1 (col1 int, col2 int);
+insert into t1 values(1, 123);
+insert into t1 values(1, -123);
+select col1 * col2 from t1;
+ ?column? 
+----------
+      123
+     -123
+(2 rows)
+
+insert into t1 values(2, col1 * 2);
+select * from t1;
+ col1 | col2 
+------+------
+    1 |  123
+    1 | -123
+    2 |    4
+(3 rows)
+
+drop table t1;
+create table t1 (col1 int, col2 int);
+insert into t1 values(100, 10);
+insert into t1 values(100, -10);
+select col1 / col2 from t1;
+ ?column? 
+----------
+  10.0000
+ -10.0000
+(2 rows)
+
+insert into t1 values(2, col1 / 2);
+select * from t1;
+ col1 | col2 
+------+------
+  100 |   10
+  100 |  -10
+    2 |    1
+(3 rows)
+
+drop table t1;
+create table t1 (col1 float8, col2 float8);
+insert into t1 values(2.1, col1 / 2);
+select * from t1;
+ col1 | col2 
+------+------
+  2.1 | 1.05
+(1 row)
+
+drop table t1;
+create table t1 (i int, j int);
+insert into t1 values (1,1), (1,2), (2,3), (2,4);
+select i, count(distinct j) from t1 group by i;
+ i | count 
+---+-------
+ 1 |     2
+ 2 |     2
+(2 rows)
+
+select i+0.0 as i2, count(distinct j) from t1 group by i2;
+ i2  | count 
+-----+-------
+ 1.0 |     2
+ 2.0 |     2
+(2 rows)
+
+drop table t1;
+CREATE TABLE t1 (a int DEFAULT NULL, b int DEFAULT NULL);
+INSERT INTO t1 VALUES (3,30), (1,10), (2,10);
+SELECT a+CAST(1 AS decimal(65,30)) AS aa, SUM(b) FROM t1 GROUP BY aa;
+                aa                | SUM 
+----------------------------------+-----
+ 3.000000000000000000000000000000 |  10
+ 4.000000000000000000000000000000 |  30
+ 2.000000000000000000000000000000 |  10
+(3 rows)
+
+SELECT a+CAST(1 AS decimal(65,31)) AS aa, SUM(b) FROM t1 GROUP BY aa;
+                aa                 | SUM 
+-----------------------------------+-----
+ 3.0000000000000000000000000000000 |  10
+ 4.0000000000000000000000000000000 |  30
+ 2.0000000000000000000000000000000 |  10
+(3 rows)
+
+DROP TABLE t1;
+-- cast
+select '0'::int;
+ int4 
+------
+    0
+(1 row)
+
+select '-2147483648'::int;
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select '2147483647'::int;
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select '-2147483649'::int;
+ERROR:  value "-2147483649" is out of range for type integer
+LINE 1: select '-2147483649'::int;
+               ^
+select '2147483648'::int;
+ERROR:  value "2147483648" is out of range for type integer
+LINE 1: select '2147483648'::int;
+               ^
+------------------------------
+--to integer
+------------------------------
+------------------------------
+--from int4 to other pg type
+------------------------------
+select '2147483647'::int::pg_catalog.int4;
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.int8;
+    int8    
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.float4;
+    float4     
+---------------
+ 2.1474836e+09
+(1 row)
+
+select '2147483647'::int::pg_catalog.float8;
+   float8   
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.numeric;
+  numeric   
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.oid;
+    oid     
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regclass;
+  regclass  
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.varchar;
+  varchar   
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.bpchar;
+   bpchar   
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.text;
+    text    
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regoperator;
+ regoperator 
+-------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regcollation;
+ regcollation 
+--------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regtype;
+  regtype   
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regconfig;
+ regconfig  
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regdictionary;
+ regdictionary 
+---------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regnamespace;
+ regnamespace 
+--------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regrole;
+  regrole   
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regproc;
+  regproc   
+------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regprocedure;
+ regprocedure 
+--------------
+ 2147483647
+(1 row)
+
+select '2147483647'::int::pg_catalog.regoper;
+  regoper   
+------------
+ 2147483647
+(1 row)
+
+----------------------------------
+--from other pg type to int
+----------------------------------
+select cast('32767'::pg_catalog.int2 as int);
+ int4  
+-------
+ 32767
+(1 row)
+
+select cast('2147483647'::pg_catalog.int4 as int);
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select cast('2147483647'::pg_catalog.int8 as int);
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select cast('2000000000'::pg_catalog.float4 as int);
+    int4    
+------------
+ 2000000000
+(1 row)
+
+select cast('2147483647'::pg_catalog.float8 as int);
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select cast('2147483647'::pg_catalog.numeric as int);
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select cast('-32768'::pg_catalog.int2 as int);
+  int4  
+--------
+ -32768
+(1 row)
+
+select cast('-2147483648'::pg_catalog.int4 as int);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-2147483648'::pg_catalog.int8 as int);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-2147483648'::pg_catalog.float4 as int);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-2147483648'::pg_catalog.float8 as int);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-2147483648'::pg_catalog.numeric as int);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-2147483648'::pg_catalog.int4 as int);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-2147483648'::pg_catalog.int8 as int);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-2147483648'::pg_catalog.float4 as int);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-2147483648'::pg_catalog.float8 as int);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-2147483648'::pg_catalog.numeric as int);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select '123'::pg_catalog.int2::int;
+ int4 
+------
+  123
+(1 row)
+
+select '123'::pg_catalog.int4::int;
+ int4 
+------
+  123
+(1 row)
+
+select '123'::pg_catalog.int8::int;
+ int4 
+------
+  123
+(1 row)
+
+select '123'::pg_catalog.float4::int;
+ int4 
+------
+  123
+(1 row)
+
+select '123'::pg_catalog.float8::int;
+ int4 
+------
+  123
+(1 row)
+
+select '123'::pg_catalog.numeric::int;
+ int4 
+------
+  123
+(1 row)
+

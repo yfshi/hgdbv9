@@ -908,11 +908,11 @@ select * from exists_tbl t1
  c1 | c2 | c3 
 ----+----+----
   0 |  0 |  1
-  1 |  0 |  2
+  1 |  1 |  2
   2 |  1 |  3
-  3 |  1 |  4
+  3 |  2 |  4
   4 |  2 |  5
-  5 |  2 |  6
+  5 |  3 |  6
 (6 rows)
 
 --
@@ -1063,7 +1063,7 @@ select sum(o.four), sum(ss.a) from
     with recursive x(a) as
       (select o.four as a
        union
-       select a + 1 from x
+       select (a + 1)::integer from x
        where a < 10)
     select * from x
   ) ss
@@ -1090,7 +1090,7 @@ select sum(o.four), sum(ss.a) from
     with recursive x(a) as
       (select o.four as a
        union
-       select a + 1 from x
+       select (a + 1)::integer from x
        where a < 10)
     select * from x
   ) ss

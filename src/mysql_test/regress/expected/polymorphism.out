@@ -784,7 +784,7 @@ select f3, myaggn10a(f1) from t group by f3 order by f3;
  c  | {1,2}
 (3 rows)
 
-select mysum2(f1, f1 + 1) from t;
+select mysum2(f1, (f1 + 1)::integer) from t;
  mysum2 
 --------
      38
@@ -2045,9 +2045,11 @@ select x, pg_typeof(x) from anyctest(11, '12') x;
 (1 row)
 
 select x, pg_typeof(x) from anyctest(11, '12.2') x;  -- fail
-ERROR:  invalid input syntax for type integer: "12.2"
-LINE 1: select x, pg_typeof(x) from anyctest(11, '12.2') x;
-                                                 ^
+    x    | pg_typeof 
+---------+-----------
+ {11,12} | integer[]
+(1 row)
+
 select x, pg_typeof(x) from anyctest(variadic array[11, 12]) x;
     x    | pg_typeof 
 ---------+-----------

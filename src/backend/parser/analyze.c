@@ -133,7 +133,7 @@ static void transformMultiMergeTargetList(List *rellist, List **targetList);
 /* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 static UpsertExpr*
 transformUpsertClause(ParseState *pstate, UpsertClause *upsertClause, List *resultRelations);
-static void transformColumnReference(ParseState *pstate, List          **exprList, OpExpr **opexpr, List *attrnos, int atrrno);
+static void transformColumnReference(ParseState *pstate, List **exprList, Node **opexpr, List *attrnos, int atrrno);
 static void transformSchemaInTargetlist(List **targetlist);
 static void transformTableAndSchemaInCols(ParseState *pstate, List **cols);
 static Node *MakeNullNode();
@@ -878,9 +878,12 @@ GetExprNode(List *exprList, List *attrnos, int varattno)
 /*
  * transformColumnReference
  * Parsing and processing column references.
+ * 
+ * fix “insert into test values(1, a * 2)” dump bug, opexpr change type to node.
+ * 
  */
 static void
-transformColumnReference(ParseState *pstate, List          **exprList, OpExpr **opexpr, List *attrnos, int atrrno)
+transformColumnReference(ParseState *pstate, List **exprList, Node **opexpr, List *attrnos, int atrrno)
 {
 	List	   *tmpattrnos = NIL;
 	List	   *argslist = NIL;
@@ -899,9 +902,9 @@ transformColumnReference(ParseState *pstate, List          **exprList, OpExpr **
 			/* Whether the node is OpExpr */
 			if (IsA(node, OpExpr))
 			{
-				OpExpr   *opexpr = (OpExpr*)node;
+				OpExpr   *tmp_opexpr = (OpExpr*)node;
 				/* Iterate over each parameter of the expression */
-				foreach(lc1, opexpr->args)
+				foreach(lc1, tmp_opexpr->args)
 				{
 					Node   *node1 = lfirst(lc1);
 					/* If the expression references the previous table column,
@@ -926,23 +929,6 @@ transformColumnReference(ParseState *pstate, List          **exprList, OpExpr **
 							}
 							else
 							{
-								/* If it is a primary key column, you need to get an implicit default value. */
-//								Bitmapset  *pkattnos;
-//								Bitmapset  *varattnos;
-//								Oid			constraintOid;
-//								pkattnos = get_primary_key_attnos(pstate->p_target_relation->rd_node.relNode, false, &constraintOid);
-//								if (!pkattnos)
-//									tmpnode = MakeNullNode();
-//								else
-//								{
-//									varattnos = bms_add_member(varattnos,
-//										   var->varattno - FirstLowInvalidHeapAttributeNumber);
-//									if (bms_is_subset(pkattnos, varattnos))
-//									{
-//										/* get type implict default value. */
-//										tmpnode = MakeNullNode();
-//									}
-//								}
 								tmpnode = MakeNullNode();
 							}
 						}
@@ -957,30 +943,70 @@ transformColumnReference(ParseState *pstate, List          **exprList, OpExpr **
 					 */
 					else if (IsA(node1, OpExpr))
 					{
-						OpExpr	   *opr= (OpExpr*)node1;
-						transformColumnReference(pstate, exprList, &opr, attrnos, num);
+						OpExpr	   *opr = (OpExpr*)node1;
+						transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, num);
 						argslist = lappend(argslist, opr);
 					}
+					/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
+					else if (IsA(node1, FuncExpr))
+					{
+						FuncExpr	   *opr = (FuncExpr*)node1;
+						transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, num);
+						argslist = lappend(argslist, opr);
+					}
+					/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
 					else
 						argslist = lappend(argslist, node1);
 				}
-				opexpr->args = argslist;
+				tmp_opexpr->args = argslist;
 			}
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
+			else if (IsA(node, FuncExpr))
+			{
+				FuncExpr	   *opr = (FuncExpr*)node;
+				transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, num);
+				argslist = lappend(argslist, opr);
+			}
+			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
 		}
 	}
 	/* Recursively process parameters, which are expressions. */
 	else
 	{
-		foreach(lc1, (*opexpr)->args)
+		/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
+		List	   *args = NULL;
+		if (IsA(*opexpr, FuncExpr))
+		{
+			args = ((FuncExpr *)(*opexpr))->args;
+		}
+		else if (IsA(*opexpr, OpExpr))
+		{
+			args = ((OpExpr *)(*opexpr))->args;
+		}
+		/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+
+		foreach(lc1, args)
 		{
 			Node   *node1 = lfirst(lc1);
 			if (IsA(node1, Var))
 			{
 				Node	   *tmpnode;
 				Var		   *var = (Var*)node1;
+				Form_pg_attribute att_tup;
 
 				if (atrrno <= var->varattno)
-					tmpnode = MakeNullNode();
+				{
+					att_tup = TupleDescAttr(pstate->p_target_relation->rd_att, var->varattno - 1);
+					if (att_tup->atthasdef)
+					{
+						tmpnode = build_column_default(pstate->p_target_relation, var->varattno);
+					}
+					else
+					{
+						/* If it is a primary key column, you need to get an implicit default value. */
+						tmpnode = MakeNullNode();
+					}
+				}
 				else
 					tmpnode = GetExprNode(*exprList, tmpattrnos, var->varattno);
 
@@ -988,14 +1014,32 @@ transformColumnReference(ParseState *pstate, List          **exprList, OpExpr **
 			}
 			else if (IsA(node1, OpExpr))
 			{
-				OpExpr	   *opr= (OpExpr*)node1;
-				transformColumnReference(pstate, exprList, &opr, attrnos, atrrno);
+				OpExpr	   *opr = (OpExpr*)node1;
+				transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, atrrno);
 				argslist = lappend(argslist, opr);
 			}
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
+			else if (IsA(node1, FuncExpr))
+			{
+				FuncExpr	   *opr = (FuncExpr*)node1;
+				transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, atrrno);
+				argslist = lappend(argslist, opr);
+			}
+			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
 			else
 				argslist = lappend(argslist, node1);
 		}
-		(*opexpr)->args = argslist;
+
+		/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
+		if (IsA(*opexpr, FuncExpr))
+		{
+			((FuncExpr *)(*opexpr))->args = argslist;
+		}
+		else if (IsA(*opexpr, OpExpr))
+		{
+			((OpExpr *)(*opexpr))->args = argslist;
+		}
+		/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
 	}
 }
 

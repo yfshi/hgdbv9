@@ -318,9 +318,9 @@ unicode_column_linestyle single
 unicode_header_linestyle single
 -- test multi-line headers, wrapping, and newline indicators
 -- in aligned, unaligned, and wrapped formats
-prepare q as select array_to_string(array_agg(repeat('x',2*n)),E'\n') as "ab
+prepare q as select array_to_string(array_agg(repeat('x',(2*n)::integer)),E'\n') as "ab
 
-c", array_to_string(array_agg(repeat('y',20-2*n)),E'\n') as "a
+c", array_to_string(array_agg(repeat('y',(20-2*n)::integer)),E'\n') as "a
 bc" from generate_series(1,10) as n(n) group by n>1 order by n>1;
 \pset linestyle ascii
 \pset expanded off
@@ -1274,7 +1274,7 @@ execute q;
 
 deallocate q;
 -- test single-line header and data
-prepare q as select repeat('x',2*n) as "0123456789abcdef", repeat('y',20-2*n) as "0123456789" from generate_series(1,10) as n;
+prepare q as select repeat('x',(2*n)::integer) as "0123456789abcdef", repeat('y',(20-2*n)::integer) as "0123456789" from generate_series(1,10) as n;
 \pset linestyle ascii
 \pset expanded off
 \pset columns 40
@@ -4668,13 +4668,18 @@ error code: 42601
 last error message: syntax error at or near ";"
 \set VERBOSITY sqlstate
 SELECT 1/0;
-ERROR:  22012
+WARNING:  22012
+ ?column? 
+----------
+         
+(1 row)
+
 \echo 'error:' :ERROR
-error: true
+error: false
 \echo 'error code:' :SQLSTATE
-error code: 22012
+error code: 00000
 \echo 'last error message:' :LAST_ERROR_MESSAGE
-last error message: division by zero
+last error message: syntax error at or near ";"
 \set VERBOSITY default
 -- working \gdesc
 SELECT 3 AS three, 4 AS four \gdesc
@@ -5184,10 +5189,10 @@ List of access methods
 (1 row)
 
 \do - pg_catalog.int4
-                               List of operators
-   Schema   | Name | Left arg type | Right arg type | Result type | Description 
-------------+------+---------------+----------------+-------------+-------------
- pg_catalog | -    |               | integer        | integer     | negate
+                             List of operators
+ Schema | Name | Left arg type | Right arg type | Result type | Description 
+--------+------+---------------+----------------+-------------+-------------
+ ivymy  | -    |               | integer        | bigint      | 
 (1 row)
 
 \do && anyarray *

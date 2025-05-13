@@ -446,15 +446,84 @@ BEGIN;
 	DECLARE c CURSOR FOR SELECT unique2/0 FROM tenk1 ORDER BY unique2;
 	SAVEPOINT two;
 		FETCH 10 FROM c;
-ERROR:  division by zero
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+(10 rows)
+
 	ROLLBACK TO SAVEPOINT two;
 	-- c is now dead to the world ...
 		FETCH 10 FROM c;
-ERROR:  portal "c" cannot be run
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+(10 rows)
+
 	ROLLBACK TO SAVEPOINT two;
 	RELEASE SAVEPOINT two;
 	FETCH 10 FROM c;
-ERROR:  portal "c" cannot be run
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+(10 rows)
+
 COMMIT;
 --
 -- Check that "stable" functions are really stable.  They should not be
@@ -962,12 +1031,18 @@ insert into i_table values(1)\; select * from i_table;
 
 -- 1/0 error will cause rolling back the whole implicit transaction
 insert into i_table values(2)\; select * from i_table\; select 1/0;
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 select * from i_table;
  f1 
 ----
   1
-(1 row)
+  2
+(2 rows)
 
 rollback;  -- we are not in a transaction at this point
 WARNING:  there is no transaction in progress
@@ -987,7 +1062,12 @@ rollback;
 -- commit in implicit-transaction state commits but issues a warning.
 insert into i_table values(7)\; commit\; insert into i_table values(8)\; select 1/0;
 WARNING:  there is no transaction in progress
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 -- similarly, rollback aborts but issues a warning.
 insert into i_table values(9)\; rollback\; select 2;
 WARNING:  there is no transaction in progress
@@ -1000,10 +1080,12 @@ select * from i_table;
  f1 
 ----
   1
+  2
   3
   5
   7
-(4 rows)
+  8
+(6 rows)
 
 rollback;  -- we are not in a transaction at this point
 WARNING:  there is no transaction in progress
@@ -1104,7 +1186,12 @@ DROP TABLE trans_abc;
 -- THIS MUST BE THE LAST TEST IN THIS FILE.
 begin;
 select 1/0;
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 rollback to X;
 ERROR:  savepoint "X" does not exist
 -- DO NOT ADD ANYTHING HERE.

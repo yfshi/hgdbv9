@@ -260,14 +260,14 @@ CREATE TABLE plt1 (a int, b int, c text) PARTITION BY LIST(c);
 CREATE TABLE plt1_p1 PARTITION OF plt1 FOR VALUES IN ('0000', '0003', '0004', '0010');
 CREATE TABLE plt1_p2 PARTITION OF plt1 FOR VALUES IN ('0001', '0005', '0002', '0009');
 CREATE TABLE plt1_p3 PARTITION OF plt1 FOR VALUES IN ('0006', '0007', '0008', '0011');
-INSERT INTO plt1 SELECT i, i, to_char(i/50, 'FM0000') FROM generate_series(0, 599, 2) i;
+INSERT INTO plt1 SELECT i, i, to_char(i div 50, 'FM0000') FROM generate_series(0, 599, 2) i;
 ANALYZE plt1;
 
 CREATE TABLE plt2 (a int, b int, c text) PARTITION BY LIST(c);
 CREATE TABLE plt2_p1 PARTITION OF plt2 FOR VALUES IN ('0000', '0003', '0004', '0010');
 CREATE TABLE plt2_p2 PARTITION OF plt2 FOR VALUES IN ('0001', '0005', '0002', '0009');
 CREATE TABLE plt2_p3 PARTITION OF plt2 FOR VALUES IN ('0006', '0007', '0008', '0011');
-INSERT INTO plt2 SELECT i, i, to_char(i/50, 'FM0000') FROM generate_series(0, 599, 3) i;
+INSERT INTO plt2 SELECT i, i, to_char(i div 50, 'FM0000') FROM generate_series(0, 599, 3) i;
 ANALYZE plt2;
 
 --
@@ -277,7 +277,7 @@ CREATE TABLE plt1_e (a int, b int, c text) PARTITION BY LIST(ltrim(c, 'A'));
 CREATE TABLE plt1_e_p1 PARTITION OF plt1_e FOR VALUES IN ('0000', '0003', '0004', '0010');
 CREATE TABLE plt1_e_p2 PARTITION OF plt1_e FOR VALUES IN ('0001', '0005', '0002', '0009');
 CREATE TABLE plt1_e_p3 PARTITION OF plt1_e FOR VALUES IN ('0006', '0007', '0008', '0011');
-INSERT INTO plt1_e SELECT i, i, 'A' || to_char(i/50, 'FM0000') FROM generate_series(0, 599, 2) i;
+INSERT INTO plt1_e SELECT i, i, 'A' || to_char(i div 50, 'FM0000') FROM generate_series(0, 599, 2) i;
 ANALYZE plt1_e;
 
 -- test partition matching with N-way join
@@ -305,14 +305,14 @@ CREATE TABLE pht1 (a int, b int, c text) PARTITION BY HASH(c);
 CREATE TABLE pht1_p1 PARTITION OF pht1 FOR VALUES WITH (MODULUS 3, REMAINDER 0);
 CREATE TABLE pht1_p2 PARTITION OF pht1 FOR VALUES WITH (MODULUS 3, REMAINDER 1);
 CREATE TABLE pht1_p3 PARTITION OF pht1 FOR VALUES WITH (MODULUS 3, REMAINDER 2);
-INSERT INTO pht1 SELECT i, i, to_char(i/50, 'FM0000') FROM generate_series(0, 599, 2) i;
+INSERT INTO pht1 SELECT i, i, to_char(i div 50, 'FM0000') FROM generate_series(0, 599, 2) i;
 ANALYZE pht1;
 
 CREATE TABLE pht2 (a int, b int, c text) PARTITION BY HASH(c);
 CREATE TABLE pht2_p1 PARTITION OF pht2 FOR VALUES WITH (MODULUS 3, REMAINDER 0);
 CREATE TABLE pht2_p2 PARTITION OF pht2 FOR VALUES WITH (MODULUS 3, REMAINDER 1);
 CREATE TABLE pht2_p3 PARTITION OF pht2 FOR VALUES WITH (MODULUS 3, REMAINDER 2);
-INSERT INTO pht2 SELECT i, i, to_char(i/50, 'FM0000') FROM generate_series(0, 599, 3) i;
+INSERT INTO pht2 SELECT i, i, to_char(i div 50, 'FM0000') FROM generate_series(0, 599, 3) i;
 ANALYZE pht2;
 
 --
@@ -322,7 +322,7 @@ CREATE TABLE pht1_e (a int, b int, c text) PARTITION BY HASH(ltrim(c, 'A'));
 CREATE TABLE pht1_e_p1 PARTITION OF pht1_e FOR VALUES WITH (MODULUS 3, REMAINDER 0);
 CREATE TABLE pht1_e_p2 PARTITION OF pht1_e FOR VALUES WITH (MODULUS 3, REMAINDER 1);
 CREATE TABLE pht1_e_p3 PARTITION OF pht1_e FOR VALUES WITH (MODULUS 3, REMAINDER 2);
-INSERT INTO pht1_e SELECT i, i, 'A' || to_char(i/50, 'FM0000') FROM generate_series(0, 299, 2) i;
+INSERT INTO pht1_e SELECT i, i, 'A' || to_char(i div 50, 'FM0000') FROM generate_series(0, 299, 2) i;
 ANALYZE pht1_e;
 
 -- test partition matching with N-way join
@@ -454,14 +454,14 @@ ANALYZE prt1_n;
 CREATE TABLE prt2_n (a int, b int, c text) PARTITION BY LIST(c);
 CREATE TABLE prt2_n_p1 PARTITION OF prt2_n FOR VALUES IN ('0000', '0003', '0004', '0010', '0006', '0007');
 CREATE TABLE prt2_n_p2 PARTITION OF prt2_n FOR VALUES IN ('0001', '0005', '0002', '0009', '0008', '0011');
-INSERT INTO prt2_n SELECT i, i, to_char(i/50, 'FM0000') FROM generate_series(0, 599, 2) i;
+INSERT INTO prt2_n SELECT i, i, to_char(i div 50, 'FM0000') FROM generate_series(0, 599, 2) i;
 ANALYZE prt2_n;
 
 CREATE TABLE prt3_n (a int, b int, c text) PARTITION BY LIST(c);
 CREATE TABLE prt3_n_p1 PARTITION OF prt3_n FOR VALUES IN ('0000', '0004', '0006', '0007');
 CREATE TABLE prt3_n_p2 PARTITION OF prt3_n FOR VALUES IN ('0001', '0002', '0008', '0010');
 CREATE TABLE prt3_n_p3 PARTITION OF prt3_n FOR VALUES IN ('0003', '0005', '0009', '0011');
-INSERT INTO prt2_n SELECT i, i, to_char(i/50, 'FM0000') FROM generate_series(0, 599, 2) i;
+INSERT INTO prt2_n SELECT i, i, to_char(i div 50, 'FM0000') FROM generate_series(0, 599, 2) i;
 ANALYZE prt3_n;
 
 CREATE TABLE prt4_n (a int, b int, c text) PARTITION BY RANGE(a);

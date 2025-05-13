@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <math.h>
 
+#include "anybinary.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
 #include "fmgr.h"
@@ -26,7 +27,6 @@
 #include "utils/sortsupport.h"
 #include "utils/fmgrprotos.h"
 #include "utils/float.h"
-#include "anybinary.h"
 
 PG_FUNCTION_INFO_V1(binary_typmodout);
 PG_FUNCTION_INFO_V1(binary_typmodin);

@@ -8,7 +8,7 @@ declare x int;
 begin
 	begin	-- start a subtransaction
 		raise notice 'should see this';
-		x := 100 / $1;
+		x := 100 div $1;
 		raise notice 'should see this only if % <> 0', $1;
 		sx := $1;
 		raise notice 'should see this only if % fits in smallint', $1;
@@ -32,7 +32,7 @@ select trap_zero_divide(100000);
 select trap_zero_divide(-100);
 
 create table match_source as
-  select x as id, x*10 as data, x/10 as ten from generate_series(1,100) x;
+  select x as id, x*10 as data, x div 10 as ten from generate_series(1,100) x;
 
 create function trap_matching_test(int) returns int as $$
 declare x int;
@@ -40,7 +40,7 @@ declare x int;
 	y int;
 begin
 	begin	-- start a subtransaction
-		x := 100 / $1;
+		x := 100 div $1;
 		sx := $1;
 		select into y data from match_source where id =
 			(select id from match_source b where ten = $1);

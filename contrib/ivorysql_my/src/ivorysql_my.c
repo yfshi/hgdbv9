@@ -23,7 +23,6 @@
 #include "mysql_parser/mys_case_sensitive.h"
 #include "include/ivorysql_my.h"
 #include "include/casesensitive.h"
-#include "include/my_ctype_simple.h"
 #include "utils/varlena.h"
 
 /* Only include it once in any C file */
@@ -44,9 +43,12 @@ static Mysql_casesensitive_get_attName_hook_type premysql_get_attName_hook = NUL
 static Mysql_casesensitive_get_typoid_hook_type premysql_get_typoid_hook = NULL;
 /* End - ReqID:SRS-MYSQL-CASE */
 
-/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
-static Mysql_int_datatype_in_hook_type pre_mysql_int_datatype_in_hook = NULL;
-/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+static Mysql_int2_datatype_in_hook_type pre_mysql_int2_datatype_in_hook = NULL;
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+static Mysql_int4_datatype_in_hook_type pre_mysql_int4_datatype_in_hook = NULL;
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 
 void _PG_init(void);
 void _PG_fini(void);
@@ -97,10 +99,14 @@ _PG_init(void)
 	mysql_hash_hook = do_mysql_hash;
 	/* End - Req:SRS-MYSQL-CHARSET */
 
-	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
-	pre_mysql_int_datatype_in_hook = mysql_int_datatype_in_hook;
-	mysql_int_datatype_in_hook = my_atoi_int2;
-	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+	pre_mysql_int2_datatype_in_hook = mysql_int2_datatype_in_hook;
+	mysql_int2_datatype_in_hook = my_atoi_int2;
+	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2*/
+	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+	pre_mysql_int4_datatype_in_hook = mysql_int4_datatype_in_hook;
+	mysql_int4_datatype_in_hook = my_atoi_int4;
+	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 }
 
 /*
@@ -132,7 +138,10 @@ _PG_fini(void)
 	import_mysql_collation_hook = pre_import_mysql_collation_hook;
 	/* End - Req:SRS-MYSQL-CHARSET */
 
-	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
-	mysql_int_datatype_in_hook = pre_mysql_int_datatype_in_hook;
-	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+	mysql_int2_datatype_in_hook = pre_mysql_int2_datatype_in_hook;
+	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+	mysql_int4_datatype_in_hook = pre_mysql_int4_datatype_in_hook;
+	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 }

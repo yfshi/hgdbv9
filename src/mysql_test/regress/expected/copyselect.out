@@ -123,9 +123,15 @@ drop table test1;
 -- psql handling of COPY in multi-command strings
 copy (select 1) to stdout\; select 1/0;	-- row, then error
 1
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 select 1/0\; copy (select 1) to stdout; -- error only
-ERROR:  division by zero
+WARNING:  Division by 0
+1
 copy (select 1) to stdout\; copy (select 2) to stdout\; select 0\; select 3; -- 1 2 3
 1
 2

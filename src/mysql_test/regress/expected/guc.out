@@ -747,13 +747,16 @@ end $$
 language plpgsql
 set work_mem = '1MB';
 select myfunc(0);
-ERROR:  division by zero
-CONTEXT:  SQL statement "SELECT 1/$1"
-PL/pgSQL function myfunc(integer) line 4 at PERFORM
+WARNING:  Division by 0
+ myfunc 
+--------
+ 2MB
+(1 row)
+
 select current_setting('work_mem');
  current_setting 
 -----------------
- 3MB
+ 2MB
 (1 row)
 
 select myfunc(1), current_setting('work_mem');

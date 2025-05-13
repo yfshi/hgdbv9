@@ -2768,14 +2768,19 @@ select c2/2, sum(c2) * (c2/2) from ft1 group by c2/2 order by c2/2;
 (4 rows)
 
 select c2/2, sum(c2) * (c2/2) from ft1 group by c2/2 order by c2/2;
- ?column? | ?column? 
-----------+----------
-        0 |        0
-        1 |      500
-        2 |     1800
-        3 |     3900
-        4 |     6800
-(5 rows)
+ ?column? | ?column?  
+----------+-----------
+   0.0000 |    0.0000
+   0.5000 |   50.0000
+   1.0000 |  200.0000
+   1.5000 |  450.0000
+   2.0000 |  800.0000
+   2.5000 | 1250.0000
+   3.0000 | 1800.0000
+   3.5000 | 2450.0000
+   4.0000 | 3200.0000
+   4.5000 | 4050.0000
+(10 rows)
 
 -- Aggregates in subquery are pushed down.
 explain (verbose, costs off)

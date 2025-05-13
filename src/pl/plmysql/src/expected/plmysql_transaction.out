@@ -446,17 +446,40 @@ BEGIN
     END LOOP;
 END;
 $$;
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
 SELECT * FROM test1;
- a  |     b     
-----+-----------
-  1 | exception
-  2 | exception
-  4 | exception
-  5 | exception
-  7 | exception
-  8 | exception
- 10 | exception
-(7 rows)
+ a  |  b   
+----+------
+  1 | good
+    | bad
+  2 | good
+    | bad
+  3 | good
+    | bad
+  4 | good
+    | bad
+  5 | good
+    | bad
+  6 | good
+    | bad
+  7 | good
+    | bad
+  8 | good
+    | bad
+  9 | good
+    | bad
+ 10 | good
+    | bad
+(20 rows)
 
 -- detoast result of simple expression after commit
 CREATE TEMP TABLE test4(f1 text);

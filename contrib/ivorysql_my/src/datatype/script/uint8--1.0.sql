@@ -1460,6 +1460,19 @@ CREATE CAST (ivymy.mysuint8 AS boolean)
 WITH FUNCTION ivymy.mysuint8_boolean(ivymy.mysuint8)
 AS ASSIGNMENT;
 
+--mysuint8 to numeric
+CREATE FUNCTION ivymy.mysuint8_numeric(ivymy.mysuint8)
+RETURNS pg_catalog.numeric 
+AS 'MODULE_PATHNAME','mysuint8_numeric'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.mysuint8 AS pg_catalog.numeric)
+WITH FUNCTION ivymy.mysuint8_numeric(ivymy.mysuint8)
+AS IMPLICIT;
+
 ----operator =
 CREATE OPERATOR = (
 	procedure = ivymy.mysuint8_eq,

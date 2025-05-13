@@ -1170,12 +1170,14 @@ ORDER BY 1, 2;
  //   | //
  <    | >
  <->  | <->
+ <<   | <<
  <<   | >>
  <<=  | >>=
  <=   | >=
  <>   | <>
  <@   | @>
  =    | =
+ >>   | >>
  ?#   | ?#
  ?-   | ?-
  ?-|  | ?-|
@@ -1188,7 +1190,7 @@ ORDER BY 1, 2;
  ~<=~ | ~>=~
  ~<~  | ~>~
  ~=   | ~=
-(34 rows)
+(36 rows)
 
 -- Likewise for negator pairs.
 SELECT DISTINCT o1.oprname AS op1, o2.oprname AS op2

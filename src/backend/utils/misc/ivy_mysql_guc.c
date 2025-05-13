@@ -29,6 +29,10 @@
 	bool check_lower_case_table_names(int *newval, void **extra, GucSource source);
 	void assign_lower_case_table_names(int newval, void *extra);
 	/* End - ReqID:SRS-MYSQL-CASE */
+	/* Begin - qID: SRS-MYSQL-NUMBERICTYPE */
+	bool check_div_precision_increment(int *newval, void **extra, GucSource source);
+	void assign_div_precision_increment(int newval, void *extra);
+	/* End - qID: SRS-MYSQL-NUMBERICTYPE */	
 #endif
 
 #ifdef IVY_MY_GUC_VAR_DEFINE
@@ -52,7 +56,7 @@ bool		mysql_convert = false;		/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 int			lower_case_table_names = 0;		/* ReqID:SRS-MYSQL-CASE */
 bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 bool		not_mode_pad_char_to_full = true;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
-int			div_prec_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
+int			div_precision_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
 /* Begin - BUG#M533 */
 bool		mysql_functional_diff_control = true;
 bool		cast_to_char = true;
@@ -67,7 +71,10 @@ bool		cast_to_char = true;
 	#define DEF_LOWER_NUM 0
 #endif
 /* End - ReqID:SRS-MYSQL-CASE */
-
+/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE */
+#define DIV_PREC_MAX_VALUE 30
+#define DIV_PREC_MIN_VALUE 4
+/* End - ReqID: SRS-MYSQL-NUMBERICTYPE */
 #endif
 #ifdef IVY_MY_GUC_BOOL_PARAMS
 
@@ -185,13 +192,13 @@ bool		cast_to_char = true;
 	/* End - ReqID:SRS-MYSQL-CASE */
 	/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE */
 	{
-		{"div_prec_increment", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+		{"div_precision_increment", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Use mysql code in datatype function."),
 			NULL
 		},
-		&div_prec_increment,
+		&div_precision_increment,
 		4, 0, 30,
-		NULL, NULL, NULL
+		check_div_precision_increment, assign_div_precision_increment, NULL
 	},
 	/* End - ReqID: SRS-MYSQL-NUMBERICTYPE */
 #endif
@@ -476,6 +483,43 @@ assign_lower_case_table_names(int newval, void *extra)
 	lower_case_table_names = newval;
 }
 /* End - ReqID:SRS-MYSQL-CASE */
+
+/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE */
+/*
+ * div_precision_increment
+ *   guc parameter must >=4 and =< 30
+ *
+ */
+bool
+check_div_precision_increment(int *newval, void **extra, GucSource source)
+{
+	if (*newval < DIV_PREC_MIN_VALUE)
+	{
+
+		ereport(WARNING,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("Truncated incorrect div_precision_increment value: \"%d\"", *newval)));
+		*newval = DIV_PREC_MIN_VALUE;
+	}
+
+	if (*newval > DIV_PREC_MAX_VALUE)
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("Truncated incorrect div_precision_increment value: \"%d\"", *newval)));
+		*newval = DIV_PREC_MAX_VALUE;
+	}
+
+	return true;
+}
+
+void
+assign_div_precision_increment(int newval, void *extra)
+{
+	div_precision_increment = newval;
+}
+/* End - ReqID: SRS-MYSQL-NUMBERICTYPE */
+
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 static bool check_max_allowed_packet(char **newval, void **extra, GucSource source)
 {

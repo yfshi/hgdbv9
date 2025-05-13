@@ -16,10 +16,10 @@
 #ifndef MYS_BINARY_H
 #define MYS_BINARY_H
 
+#include "access/detoast.h"
 #include "fmgr.h"
 #include "utils/array.h"
 #include "utils/guc.h"
-#include "access/detoast.h"
 
 #define VAL(CH)			((CH) - '0')
 #define DIG(VAL)		((VAL) + '0')

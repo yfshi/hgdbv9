@@ -16,30 +16,32 @@
  */
 
 #include "postgres.h"
+
 #include <ctype.h>
 #include <math.h>
 #include <float.h>
-#include "fmgr.h"
 #include <limits.h>
 #include <sys/time.h>
+
 #include "access/hash.h"
 #include "access/xact.h"
 #include "catalog/pg_type.h"
+#include "fmgr.h"
 #include "funcapi.h"
 #include "libpq/pqformat.h"
 #include "miscadmin.h"
-#include "pgtime.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "parser/scansup.h"
+#include "pgtime.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/datetime.h"
 #include "utils/formatting.h"
 #include "utils/guc.h"
+#include "utils/numeric.h"
 #include "utils/timestamp.h"
 #include "utils/varlena.h"
-#include "utils/numeric.h"
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 static uint64 pg_atoi_uint8(const char *s,int c);
@@ -226,6 +228,7 @@ PG_FUNCTION_INFO_V1(int8_ormysuint8);
 PG_FUNCTION_INFO_V1(mysuint8_invertmysuint8);
 
 PG_FUNCTION_INFO_V1(mysuint8_boolean);
+PG_FUNCTION_INFO_V1(mysuint8_numeric);
 
 PG_FUNCTION_INFO_V1(mysuint8_like);
 PG_FUNCTION_INFO_V1(mysuint8_int8_like);
@@ -2002,6 +2005,14 @@ Datum mysuint8_boolean(PG_FUNCTION_ARGS)
 	uint64		val1 = PG_GETARG_INT64(0);
 
 	PG_RETURN_BOOL(val1 != 0);
+}
+
+// mysuint8 to numeric
+Datum mysuint8_numeric(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_INT64(0);
+
+	PG_RETURN_NUMERIC(uint64_to_numeric(val1));
 }
 
 /*****************************************************************************

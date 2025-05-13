@@ -276,7 +276,9 @@ CREATE OR REPLACE FUNCTION sql_from_python_error() RETURNS void AS $$
 plpy.execute("select sql_error()")
 $$ LANGUAGE plpythonu;
 SELECT python_traceback();
-ERROR:  spiexceptions.DivisionByZero: division by zero
+WARNING:  Division by 0
+ERROR:  spiexceptions.SyntaxError: query has no destination for result data
+HINT:  If you want to discard the results of a SELECT, use PERFORM instead.
 CONTEXT:  Traceback (most recent call last):
   PL/Python function "python_traceback", line 11, in <module>
     first()
@@ -288,11 +290,12 @@ CONTEXT:  Traceback (most recent call last):
     plpy.execute("select sql_error()")
 PL/Python function "python_traceback"
 SELECT sql_error();
-ERROR:  division by zero
-CONTEXT:  SQL statement "select 1/0"
-PL/pgSQL function sql_error() line 3 at SQL statement
+ERROR:  query has no destination for result data
+HINT:  If you want to discard the results of a SELECT, use PERFORM instead.
+CONTEXT:  PL/pgSQL function sql_error() line 3 at SQL statement
 SELECT python_from_sql_error();
-ERROR:  spiexceptions.DivisionByZero: division by zero
+ERROR:  spiexceptions.SyntaxError: query has no destination for result data
+HINT:  If you want to discard the results of a SELECT, use PERFORM instead.
 CONTEXT:  Traceback (most recent call last):
   PL/Python function "python_traceback", line 11, in <module>
     first()
@@ -306,7 +309,8 @@ PL/Python function "python_traceback"
 SQL statement "select python_traceback()"
 PL/pgSQL function python_from_sql_error() line 3 at SQL statement
 SELECT sql_from_python_error();
-ERROR:  spiexceptions.DivisionByZero: division by zero
+ERROR:  spiexceptions.SyntaxError: query has no destination for result data
+HINT:  If you want to discard the results of a SELECT, use PERFORM instead.
 CONTEXT:  Traceback (most recent call last):
   PL/Python function "sql_from_python_error", line 2, in <module>
     plpy.execute("select sql_error()")

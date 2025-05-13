@@ -47,8 +47,12 @@
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 /* Hook to int datatype in */
-Mysql_int_datatype_in_hook_type mysql_int_datatype_in_hook = NULL;
+Mysql_int2_datatype_in_hook_type mysql_int2_datatype_in_hook = NULL;
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+/* Hook to int4 datatype in */
+Mysql_int4_datatype_in_hook_type mysql_int4_datatype_in_hook = NULL;
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 
 #define Int2VectorSize(n)	(offsetof(int2vector, values) + (n) * sizeof(int16))
 
@@ -79,9 +83,9 @@ int2in(PG_FUNCTION_ARGS)
 	/* End - BUG#M0000194 */
 
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
-	if (mysql_int_datatype_in_hook && MYS_PARSER == compatible_db)
+	if (mysql_int2_datatype_in_hook && MYS_PARSER == compatible_db)
 	{
-		PG_RETURN_INT16((*mysql_int_datatype_in_hook)(num));
+		PG_RETURN_INT16((*mysql_int2_datatype_in_hook)(num));
 	}
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
 
@@ -293,6 +297,13 @@ int4in(PG_FUNCTION_ARGS)
 	if (ora_strtoint64((const char *) num, "integer", &ival))
 		PG_RETURN_INT32((int32) ival);
 	/* End - BUG#M0000194 */
+
+	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+	if (mysql_int4_datatype_in_hook && MYS_PARSER == compatible_db)
+	{
+		PG_RETURN_INT32((*mysql_int4_datatype_in_hook)(num));
+	}
+	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 
 	PG_RETURN_INT32(pg_strtoint32(num));
 }
