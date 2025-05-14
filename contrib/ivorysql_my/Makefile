@@ -14,6 +14,8 @@ OBJS = \
 	src/datatype/mysint2.o \
 	src/datatype/mysint3.o \
 	src/datatype/mysint4.o \
+	src/datatype/mysuint1.o \
+	src/datatype/mysuint2.o \
 	src/datatype/mysuint4.o \
 	src/datatype/mysuint8.o \
 	src/datatype/mysfloat.o \
@@ -78,6 +80,9 @@ MYS_REGRESS = multi_update \
 			  mys_tinytext \
 			  mys_mediumtext \
 			  mys_longtext \
+			  mys_uint1		\
+			  mys_uint2		\
+			  mys_uint3		\
 			  mys_uint4		\
 			  mys_uint8		\
 			  test_binary \

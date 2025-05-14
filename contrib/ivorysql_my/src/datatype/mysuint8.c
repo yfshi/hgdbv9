@@ -42,10 +42,9 @@
 #include "utils/numeric.h"
 #include "utils/timestamp.h"
 #include "utils/varlena.h"
+#include "../include/ivorysql_my.h"
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-static uint64 pg_atoi_uint8(const char *s,int c);
-
 PG_FUNCTION_INFO_V1(mysuint8_in);
 PG_FUNCTION_INFO_V1(mysuint8_out);
 PG_FUNCTION_INFO_V1(mysuint8_recv);
@@ -241,74 +240,6 @@ PG_FUNCTION_INFO_V1(mysuint8_smaller);
 PG_FUNCTION_INFO_V1(mysuint8_avg_accum);
 PG_FUNCTION_INFO_V1(mysuint8_sum);
 
-/*
- * The in function does not need to determine the sql_mode
- * return warning.  
- */
-static uint64 pg_atoi_uint8(const char *s,int c)
-{
-	long long l;
-	char *badp;
-	int save_errno = 0;
-
-	/*
-	 * Some versions of strtol treat the empty string as an error, but some
-	 * seem not to.  Make an explicit test to be sure we catch it.
-	 */
-	if (s == NULL)
-		elog(ERROR, "NULL pointer");
-	if (*s == 0)
-	{
-		ereport(WARNING,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-		l = 0;
-		return l;
-	}
-
-	errno = 0;
-
-	l = strtoull(s, &badp, 10);
-
-	/* We made no progress parsing the string, so bail out */
-	if (s == badp)
-	{
-		ereport(WARNING,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-		l = 0;
-		return l;
-	}
-
-	if (save_errno == ERANGE || l < 0 || l > PG_UINT64_MAX)
-	{
-		ereport(WARNING,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("value \"%s\" is out of range for unsigned 32-bit integer", s)));
-		l = l < 0 ? 0 : PG_UINT64_MAX;
-		return l;
-	}
-
-	/*
-	 * Skip any trailing whitespace; if anything but whitespace remains before
-	 * the terminating character, bail out
-	 */
-	while (*badp && *badp != c && isspace((unsigned char)*badp))
-		badp++;
-
-	if (*badp && *badp != c)
-	{
-		ereport(WARNING,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-	}
-
-	return (uint64)l;
-}
-
 /*****************************************************************************
  *	 mysuint8 ADT
  *****************************************************************************/
@@ -322,7 +253,7 @@ mysuint8_in(PG_FUNCTION_ARGS)
 {
 	char *num = PG_GETARG_CSTRING(0);
 
-	uint64 temp = pg_atoi_uint8(num, '\0');
+	uint64 temp = pg_atoi_uint(num, '\0', 8, false);
 
 	PG_RETURN_UINT64(temp);
 }

@@ -41,7 +41,9 @@
 /*End - ReqID:SRS-MYDSQL-DATATYPE */
 #include "tsearch/ts_locale.h"/* ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 
-uint32 pg_atoi_uint4_check(const char *s,int c);/* ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
+Mysql_uint_datatype_in_hook_type mysql_uint_datatype_in_hook = NULL;
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
 
 /* Begin - ReqID:SRS-MYSQL-DATETYPE */
 typedef enum datetime
@@ -80,6 +82,41 @@ static Node *coerce_record_to_complex(ParseState *pstate, Node *node,
 static bool is_complex_array(Oid typid);
 static bool typeIsOfTypedTable(Oid reltypeId, Oid reloftypeId);
 
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+static int32 Num2Mysdate(Const *con, Oid inputTypeId);
+static int32 Str2Mysdate(Const *con, Const *newcon);
+/* End - ReqID:SRS-MYSQL-DATETYPE */
+
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+static int64 Num2Mysdatetime(Const *con, Oid inputTypeId);
+static int64 Str2Mysdatetime(Const *con, Const *newcon);
+static Datum Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert);
+static Datum Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert);
+/* End - ReqID:SRS-MYSQL-DATETYPE */
+
+/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+static int64 Num2Mystimestamp(Const *con, Oid inputTypeId);
+static int64 Str2Mystimestamp(Const *con, Const *newcon);
+static Datum Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert);
+static Datum Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert);
+/* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+
+/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
+static int64 Num2Mystime(Const *con, Oid inputTypeId, bool is_insert);
+static int64 Str2Mystime(Const *con, Const *newcon, bool is_insert);
+static Datum Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert);
+static Datum Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert);
+/* End - ReqID:SRS-MYSQL-TIMETYPE */
+
+static uint32 pg_atoi_uint4_check(const char *s,int c);/* ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+static uint64 Num2Mysuint4(Const *con, Oid inputTypeId, int sizenum);
+static uint64 Str2Mysuint(Const *con, Const *newcon, int sizenum);
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+static uint64 Num2Mysuint8(Const *con, Oid inputTypeId);
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
 /*
  * coerce_to_target_type()
@@ -178,8 +215,7 @@ int64 log_10_int[20]=
 	1000000000000000000ULL, 10000000000000000000ULL
 };
 
-
-int32
+static int32
 Num2Mysdate(Const *con, Oid inputTypeId)
 {
 	DateADT	  date = 0;
@@ -282,7 +318,7 @@ Num2Mysdate(Const *con, Oid inputTypeId)
 	return date;
 }
 
-int32
+static int32
 Str2Mysdate(Const *con, Const *newcon)
 {
 	DateADT	  date = 0;
@@ -412,7 +448,7 @@ Str2Mysdate(Const *con, Const *newcon)
 /* End - ReqID:SRS-MYSQL-DATETYPE */
 
 /* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
-int64
+static int64
 Num2Mysdatetime(Const *con, Oid inputTypeId)
 {
 	TimeADT	  datetime = -1;
@@ -546,7 +582,7 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 	return datetime;
 }
 
-int64
+static int64
 Str2Mysdatetime(Const *con, Const *newcon)
 {
 	TimeADT	  datetime = -1;
@@ -691,7 +727,7 @@ Str2Mysdatetime(Const *con, Const *newcon)
 	return datetime;
 }
 
-Datum
+static Datum
 Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 {
 	int64	  datetime = -1;
@@ -833,7 +869,7 @@ Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 	return NumericGetDatum(num);
 }
 
-Datum
+static Datum
 Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 {
 	TimeADT		datetime = -1;
@@ -998,7 +1034,7 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 /* End - ReqID:SRS-MYSQL-DATETIMETYPE */
 
 /* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
-int64
+static int64
 Num2Mystimestamp(Const *con, Oid inputTypeId)
 {
 	TimeADT	  datetime = -1;
@@ -1135,7 +1171,7 @@ Num2Mystimestamp(Const *con, Oid inputTypeId)
 	return datetime;
 }
 
-int64
+static int64
 Str2Mystimestamp(Const *con, Const *newcon)
 {
 	TimeADT	  datetime = -1;
@@ -1294,7 +1330,7 @@ Str2Mystimestamp(Const *con, Const *newcon)
 	return datetime;
 }
 
-Datum
+static Datum
 Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 {
 	TimeADT	  datetime = -1;
@@ -1431,7 +1467,7 @@ Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 	return NumericGetDatum(num);
 }
 
-Datum
+static Datum
 Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 {
 	TimeADT		datetime = -1;
@@ -1613,7 +1649,7 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 /* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
 
 /* Begin - ReqID:SRS-MYSQL-TIMETYPE */
-int64
+static int64
 Num2Mystime(Const *con, Oid inputTypeId , bool is_insert)
 {
 	TimeADT		time = -2;
@@ -1731,7 +1767,7 @@ Num2Mystime(Const *con, Oid inputTypeId , bool is_insert)
 	return neg!=1?time:-time;
 }
 
-int64
+static int64
 Str2Mystime(Const *con, Const *newcon, bool is_insert)
 {
 	TimeADT		time = -2;
@@ -1840,7 +1876,7 @@ Str2Mystime(Const *con, Const *newcon, bool is_insert)
 	return neg!=1?time:-time;
 }
 
-Datum
+static Datum
 Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 {
 	TimeADT		time = -2;
@@ -1972,7 +2008,7 @@ Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 	return NumericGetDatum(num);
 }
 
-Datum
+static Datum
 Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert)
 {
 	TimeADT		time = -2;
@@ -2103,7 +2139,12 @@ Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert)
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-uint32 pg_atoi_uint4_check(const char *s,int c)
+/*
+ * str to mysuint
+ * use C-lib strtoll function
+ */
+static uint32 
+pg_atoi_uint4_check(const char *s,int c)
 {
 	long long l;
 	char *badp;
@@ -2169,20 +2210,30 @@ uint32 pg_atoi_uint4_check(const char *s,int c)
 	return (uint32)l;
 }
 
-uint64 Num2Mysuint4(Const *con, Oid inputTypeId)
+/*
+ * numeric to mysuint4 mysuint3, mysuint(domain mysuint4)
+ * con     : str const value
+ * newcon  : new const value
+ * sizenum : size (3byte 4byte)
+ */
+static uint64 
+Num2Mysuint4(Const *con, Oid inputTypeId, int sizenum)
 {
 	uint32		val2 = 0;
+	uint64	maxvalue = 0;
+
+	maxvalue = (sizenum == 3? PG_UINT24_MAX:PG_UINT32_MAX);
 
 	if (inputTypeId == NUMERICOID)
 	{
 		int64		val1 = 0;
 		val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(con->constvalue)));
 		val2 = val1;
-		if (val1 < 0 || val1 > PG_UINT32_MAX)
+		if (val1 < 0 || val1 > maxvalue)
 		{
 			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
 			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
-			val2 = val1 < 0 ? 0 : PG_UINT32_MAX;
+			val2 = val1 < 0 ? 0 : maxvalue;
 		}
 	}
 	else
@@ -2190,21 +2241,28 @@ uint64 Num2Mysuint4(Const *con, Oid inputTypeId)
 		int64		val1 = 0;
 		val1 = con->constvalue;
 		val2 = val1;
-		if (val1 < 0 || val1 > PG_UINT32_MAX)
+		if (val1 < 0 || val1 > maxvalue)
 		{
 			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
 			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
-			val2 = val1 < 0 ? 0 : PG_UINT32_MAX;
+			val2 = val1 < 0 ? 0 : maxvalue;
 		}
 
 	}
 	return val2;
 }
 
-uint64 Str2Mysuint4(Const *con, Const *newcon)
+/*
+ * str to mysuint
+ * con     : str const value
+ * newcon  : new const value
+ * sizenum : size (1byte 2byte 3byte 4byte 8byte)
+ */
+static uint64 
+Str2Mysuint(Const *con, Const *newcon, int sizenum)
 {
 	char *num = NULL;
-	uint32 temp = 0;
+	uint64 temp = 0;
 
 	if (con->constisnull)
 	{
@@ -2213,7 +2271,18 @@ uint64 Str2Mysuint4(Const *con, Const *newcon)
 	}
 
 	num = DatumGetCString(con->constvalue);
-	temp = pg_atoi_uint4_check(num, '\0');
+
+	/* call the mysql callback processing function, and call the C-lib function when system fault
+	 * the two exception scenatios for handing strings are inconsistent.
+	 */
+	if (mysql_uint_datatype_in_hook)
+	{
+		temp = (*mysql_uint_datatype_in_hook)(num, '\0', sizenum, true);
+	}
+	else
+	{
+		temp = pg_atoi_uint4_check(num, '\0');
+	}
 
 	return temp;
 
@@ -2221,73 +2290,8 @@ uint64 Str2Mysuint4(Const *con, Const *newcon)
 /* End - SRS-MYSQL-NUMBERICTYPE-UINT4 */
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-uint64 pg_atoi_uint8_check(const char *s,int c)
-{
-	unsigned long long l;
-	char *badp;
-
-	/*
-	 * Some versions of strtol treat the empty string as an error, but some
-	 * seem not to.  Make an explicit test to be sure we catch it.
-	 */
-	if (s == NULL)
-		elog(ERROR, "NULL pointer");
-	if (*s == 0)
-	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-		l = 0;
-		return l;
-	}
-
-	errno = 0;
-
-	l = strtoull(s, &badp, 10);
-
-	/* We made no progress parsing the string, so bail out */
-	if (s == badp)
-	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-		l = 0;
-		return l;
-	}
-
-	if (errno  == ERANGE || l < 0 || l > PG_UINT64_MAX)
-	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("value \"%s\" is out of range for unsigned 64-bit integer", s)));
-		l = l < 0 ? 0 : PG_UINT64_MAX;
-		return l;
-	}
-
-	/*
-	 * Skip any trailing whitespace; if anything but whitespace remains before
-	 * the terminating character, bail out
-	 */
-	while (*badp && *badp != c && isspace((unsigned char)*badp))
-		badp++;
-
-	if (*badp && *badp != c)
-	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-	}
-	return (uint64)l;
-}
-
-uint64 Num2Mysuint8(Const *con, Oid inputTypeId)
+static uint64 
+Num2Mysuint8(Const *con, Oid inputTypeId)
 {
 	uint64		val1 = 0;
 
@@ -2335,24 +2339,6 @@ uint64 Num2Mysuint8(Const *con, Oid inputTypeId)
 
 	}
 	return val1;
-}
-
-uint64 Str2Mysuint8(Const *con, Const *newcon)
-{
-	char *strnum = NULL;
-	uint64 ret = 0;
-
-	if (con->constisnull)
-	{
-		newcon->constisnull = true;
-		return ret;
-	}
-
-	strnum = DatumGetCString(con->constvalue);
-	ret = pg_atoi_uint8_check(strnum, '\0');
-
-	return ret;
-
 }
 /* End - SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
@@ -2638,7 +2624,9 @@ coerce_type(ParseState *pstate, Node *node,
 			else if(dateflg == MYS_UINT4_FLG)
 			{
 				uint32 tempvalue = 0;
-				tempvalue = Num2Mysuint4(con, inputTypeId);
+				int sizenum = 0;
+				sizenum = (targetTypeId == MYSUINT3OID? 3:4);
+				tempvalue = Num2Mysuint4(con, inputTypeId, sizenum);
 				newcon->constvalue = TimeADTGetDatum(tempvalue);
 			}
 			/* End - SRS-MYSQL-NUMBERICTYPE-UINT4 */
@@ -3050,79 +3038,112 @@ coerce_type(ParseState *pstate, Node *node,
 				int is_insert = (pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
 								(pstate && (pstate->p_is_insert || pstate->p_myscreateastmt));
 
-				if (baseTypeId == MYSDATEOID)
+				switch ( baseTypeId )
 				{
-					DateADT		date;
-					date = Str2Mysdate(con, newcon);
-					newcon->constvalue = DateADTGetDatum(date);
-				}
-				else if (baseTypeId == MYSDATETIMEOID)
-				{
-					TimeADT		datetime;
-					datetime = Str2Mysdatetime(con, newcon);
-					newcon->constvalue = TimeADTGetDatum(datetime);
-				}
-				else if (baseTypeId == MYSDATETIMESOID)
-				{
-					Datum		datetime;
-					datetime = Str2Mysdatetimes(con, newcon, targetTypeMod, is_insert);
-					newcon->constvalue = datetime;
-				}
-				else if (baseTypeId == MYSTIMESTAMPOID)
-				{
-					TimeADT		datetime;
-					datetime = Str2Mystimestamp(con, newcon);
-					newcon->constvalue = TimeADTGetDatum(datetime);
-				}
-				else if (baseTypeId == MYSTIMESTAMPSOID)
-				{
-					Datum		datetime;
-					datetime = Str2Mystimestamps(con, newcon, targetTypeMod, is_insert);
-					newcon->constvalue = datetime;
-				}
-				else if (baseTypeId == MYSTIMEOID)
-				{
-					TimeADT		time;
-					time = Str2Mystime(con, newcon, is_insert);
-					newcon->constvalue = TimeADTGetDatum(time);
-				}
-				else if (baseTypeId == MYSTIMESOID)
-				{
-					TimeADT		time;
-					time = Str2Mystimes(con, newcon, targetTypeMod, is_insert);
-					newcon->constvalue = TimeADTGetDatum(time);
-				}
-				/* End - ReqID:SRS-MYSQL-TIMETYPE */
-				/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-				else if (baseTypeId == MYSUINT4OID)
-				{
-					uint64		value;
-					value = Str2Mysuint4(con, newcon);
-					newcon->constvalue = UInt32GetDatum(value);
-				}
-				/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-				/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-				else if (baseTypeId == MYSUINT8OID)
-				{
-					uint64		value;
-					value = Str2Mysuint8(con, newcon);
-					newcon->constvalue = UInt64GetDatum(value);
-				}
-				/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-				else
-				{
-					/*
-					 * We assume here that UNKNOWN's internal representation is the same
-					 * as CSTRING.
-					 */
-			 		if (!con->constisnull)
-						newcon->constvalue = stringTypeDatum(baseType,
-														DatumGetCString(con->constvalue),
-															 inputTypeMod);
-					else
-						newcon->constvalue = stringTypeDatum(baseType,
-															 NULL,
-														 	inputTypeMod);
+					case  MYSDATEOID :
+					{
+						DateADT		date;
+						date = Str2Mysdate(con, newcon);
+						newcon->constvalue = DateADTGetDatum(date);
+						break;
+					}
+					case  MYSDATETIMEOID :
+					{
+						TimeADT		datetime;
+						datetime = Str2Mysdatetime(con, newcon);
+						newcon->constvalue = TimeADTGetDatum(datetime);
+						break;
+					}
+					case  MYSDATETIMESOID :
+					{
+						Datum		datetime;
+						datetime = Str2Mysdatetimes(con, newcon, targetTypeMod, is_insert);
+						newcon->constvalue = datetime;
+						break;
+					}
+					case  MYSTIMESTAMPOID :
+					{
+						TimeADT		datetime;
+						datetime = Str2Mystimestamp(con, newcon);
+						newcon->constvalue = TimeADTGetDatum(datetime);
+						break;
+					}
+					case  MYSTIMESTAMPSOID :
+					{
+						Datum		datetime;
+						datetime = Str2Mystimestamps(con, newcon, targetTypeMod, is_insert);
+						newcon->constvalue = datetime;
+						break;
+					}
+					case  MYSTIMEOID :
+					{
+						TimeADT		time;
+						time = Str2Mystime(con, newcon, is_insert);
+						newcon->constvalue = TimeADTGetDatum(time);
+						break;
+					}
+					case  MYSTIMESOID :
+					{
+						TimeADT		time;
+						time = Str2Mystimes(con, newcon, targetTypeMod, is_insert);
+						newcon->constvalue = TimeADTGetDatum(time);
+						break;
+					}
+					/* End - ReqID:SRS-MYSQL-TIMETYPE */
+					/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+					case  MYSUINT4OID :
+					{
+						uint64		value;
+						value = Str2Mysuint(con, newcon, 4);
+						newcon->constvalue = UInt32GetDatum(value);
+						break;
+					}
+					case  MYSUINT3OID :
+					{
+						uint64		value;
+						value = Str2Mysuint(con, newcon, 3);
+						newcon->constvalue = UInt32GetDatum(value);
+						break;
+					}
+					case  MYSUINT2OID :
+					{
+						uint64		value;
+						value = Str2Mysuint(con, newcon, 2);
+						newcon->constvalue = UInt32GetDatum(value);
+						break;
+					}
+					case  MYSUINT1OID :
+					{
+						uint64		value;
+						value = Str2Mysuint(con, newcon, 1);
+						newcon->constvalue = UInt32GetDatum(value);
+						break;
+					}
+					case  MYSUINT8OID :
+					{
+						uint64		value;
+						value = Str2Mysuint(con, newcon, 8);
+						newcon->constvalue = UInt32GetDatum(value);
+						break;
+					}
+					/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+					default:
+					{
+						/*
+						* We assume here that UNKNOWN's internal representation is the same
+						* as CSTRING.
+						*/
+						if (!con->constisnull)
+							newcon->constvalue = stringTypeDatum(baseType,
+															DatumGetCString(con->constvalue),
+																inputTypeMod);
+						else
+							newcon->constvalue = stringTypeDatum(baseType,
+																NULL,
+																inputTypeMod);
+
+						break;
+					}
 				}
 			}
 			else

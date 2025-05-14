@@ -5,10 +5,34 @@ select cast(1111 as UNSIGNED) ; -- 1111
  1111
 (1 row)
 
+select cast(1111.4 as UNSIGNED) ; -- 1111
+ mysuint8 
+----------
+ 1111
+(1 row)
+
 select cast(1111.8 as UNSIGNED) ; --1112
  mysuint8 
 ----------
  1112
+(1 row)
+
+select cast('1111.4' as UNSIGNED) ; -- 1111
+WARNING:  invalid input syntax for type integer: "1111.4"
+LINE 1: select cast('1111.4' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 1111
+(1 row)
+
+select cast('1111.8' as UNSIGNED) ; -- 1111
+WARNING:  invalid input syntax for type integer: "1111.8"
+LINE 1: select cast('1111.8' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 1111
 (1 row)
 
 select cast(4294967297.8 as UNSIGNED) ; --4294967298
@@ -122,10 +146,34 @@ select cast(1111 as UNSIGNED) ; --1111
  1111
 (1 row)
 
+select cast(1111.4 as UNSIGNED) ; -- 1111
+ mysuint8 
+----------
+ 1111
+(1 row)
+
 select cast(1111.8 as UNSIGNED) ; --1112
  mysuint8 
 ----------
  1112
+(1 row)
+
+select cast('1111.4' as UNSIGNED) ; -- 1111
+WARNING:  invalid input syntax for type integer: "1111.4"
+LINE 1: select cast('1111.4' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 1111
+(1 row)
+
+select cast('1111.8' as UNSIGNED) ; -- 1111
+WARNING:  invalid input syntax for type integer: "1111.8"
+LINE 1: select cast('1111.8' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 1111
 (1 row)
 
 select cast(4294967297.8 as UNSIGNED) ; --4294967298
@@ -382,6 +430,25 @@ insert into t1 values('42222222222222294967297');
 ERROR:  value "42222222222222294967297" is out of range for unsigned 64-bit integer
 LINE 1: insert into t1 values('42222222222222294967297');
                               ^
+insert into t1 values('a111') ;
+ERROR:  invalid input syntax for type integer: "a111"
+LINE 1: insert into t1 values('a111') ;
+                              ^
+insert into t1 values('111a') ;
+ERROR:  invalid input syntax for type integer: "111a"
+LINE 1: insert into t1 values('111a') ;
+                              ^
+insert into t1 values('.111') ;
+insert into t1 values('0111') ;
+insert into t1 values('#111') ;
+ERROR:  invalid input syntax for type integer: "#111"
+LINE 1: insert into t1 values('#111') ;
+                              ^
+insert into t1 values('111#') ;
+ERROR:  invalid input syntax for type integer: "111#"
+LINE 1: insert into t1 values('111#') ;
+                              ^
+insert into t1 values('111.') ;
 select * from t1;
          c1          
 ---------------------
@@ -390,7 +457,25 @@ select * from t1;
  9223372036854775808
  100
  9223372036854775808
-(5 rows)
+ 0
+ 111
+ 111
+(8 rows)
+
+drop table t1;
+create table t1(c1 int8 UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
+select * from t1;
+ c1 
+----
+ 1
+ 2
+ 1
+ 2
+(4 rows)
 
 drop table t1;
 --int8[(M)]
@@ -527,6 +612,21 @@ select * from t1;
 (8 rows)
 
 drop table t1;
+create table t1(c1 bigint UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
+select * from t1;
+ c1 
+----
+ 1
+ 2
+ 1
+ 2
+(4 rows)
+
+drop table t1;
 --int8
 create table t1(c1 int8 UNSIGNED);
 insert into t1 values(0);
@@ -558,6 +658,21 @@ select * from t1;
  9223372036854775808
  18446744073709551615
 (8 rows)
+
+drop table t1;
+create table t1(c1 int8 UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
+select * from t1;
+ c1 
+----
+ 1
+ 2
+ 1
+ 2
+(4 rows)
 
 drop table t1;
 set SQL_MODE to default;
