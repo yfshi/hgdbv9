@@ -9,51 +9,51 @@ set default_text_search_config = 'pg_catalog.simple';
 select decode(NULL, 1, 2018, 2, timestamp'2018-2-1 00:00:00', timestamp'2018-5-1 00:00:00');
 ERROR:  DECODE could not convert type timestamp to number
 LINE 1: select decode(NULL, 1, 2018, 2, timestamp'2018-2-1 00:00:00'...
-          ^
+                                     ^
 select decode('abc', 123, 123,4, date'2018-8-1', 5) from dual;
-ERROR:  invalid input syntax for type integer: "abc"
+ERROR:  DECODE could not convert type date to number
 LINE 1: select decode('abc', 123, 123,4, date'2018-8-1', 5) from dua...
-                      ^
+                                      ^
 select decode('abc', 123, 123,4, 5, date'2018-8-1', 5) from dual;
 ERROR:  DECODE could not convert type date to number
 select decode('abc', 123, 123,4, 5, 6,timestamp'2018-08-1 00:00:00') from dual;
-ERROR:  invalid input syntax for type integer: "abc"
+ERROR:  DECODE could not convert type timestamp to number
 LINE 1: select decode('abc', 123, 123,4, 5, 6,timestamp'2018-08-1 00...
-                      ^
+                                            ^
 select decode('abc', date'2018-8-1', 5, 123, 123,4, 5) from dual;
 ERROR:  DECODE could not convert type integer to date
 LINE 1: select decode('abc', date'2018-8-1', 5, 123, 123,4, 5) from ...
                                                 ^
 select decode('abc', date'2018-8-1', 5, date'2018-8-2', date'2018-8-3',4, 5) from dual;
-ERROR:  DECODE could not convert type integer to date
-LINE 1: ...date'2018-8-1', 5, date'2018-8-2', date'2018-8-3',4, 5) from...
-                                                             ^
+ERROR:  DECODE could not convert type date to number
 select decode('abc', 123, 123,4, 5, 6,timestamp'2018-08-1 00:00:00', interval'1-1' year to month) from dual;
-ERROR:  invalid input syntax for type integer: "abc"
+ERROR:  DECODE could not convert type timestamp to number
 LINE 1: select decode('abc', 123, 123,4, 5, 6,timestamp'2018-08-1 00...
-                      ^
+                                            ^
 select decode('abc', 123, 123,4, timestamp'2018-08-1 00:00:00', interval'1-1' year to month) from dual;
-ERROR:  invalid input syntax for type integer: "abc"
+ERROR:  DECODE could not convert type timestamp to number
 LINE 1: select decode('abc', 123, 123,4, timestamp'2018-08-1 00:00:0...
-                      ^
+                                      ^
 select decode('abc', 123, 123,4, 456, interval'1-1' year to month) from dual;
-ERROR:  invalid input syntax for type integer: "abc"
+ERROR:  invalid input syntax for type numeric: "abc"
 LINE 1: select decode('abc', 123, 123,4, 456, interval'1-1' year to ...
                       ^
 select decode('abc', 123, 123,4, '456', interval'1-1' year to month) from dual;
-ERROR:  invalid input syntax for type integer: "abc"
+ERROR:  invalid input syntax for type numeric: "abc"
 LINE 1: select decode('abc', 123, 123,4, '456', interval'1-1' year t...
                       ^
 select decode('abc', 123, 123,4, '456', 456.7) from dual;
-ERROR:  invalid input syntax for type integer: "abc"
+ERROR:  invalid input syntax for type numeric: "abc"
 LINE 1: select decode('abc', 123, 123,4, '456', 456.7) from dual;
                       ^
 select decode('abc', 123, date'2018-8-1', '456', 456.7) from dual;
-ERROR:  invalid input syntax for type integer: "abc"
+ERROR:  DECODE could not convert type numeric to date
 LINE 1: select decode('abc', 123, date'2018-8-1', '456', 456.7) from...
-                      ^
+                                                  ^
 select decode(NULL, 1, interval'1-1' year to month, 2, timestamp'2018-2-1 00:00:00', date'2018-8-1');
-ERROR:  DECODE could not convert type date to interval year to month
+ERROR:  DECODE could not convert type timestamp to interval year to month
+LINE 1: ...lect decode(NULL, 1, interval'1-1' year to month, 2, timesta...
+                                                             ^
 -- ok
 select decode('123', 123, date'2018-8-1', '456', timestamp'2018-08-1 00:00:00') from dual;
   decode   
@@ -2971,7 +2971,7 @@ insert into test1 values('sales',1);
 SELECT decode(col1,NULL,0,'sales',7000)from test1;
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -2989,19 +2989,19 @@ drop table test1;
 create table test1(col1 money,col2  int);
 insert into test1 values(8000,1);
 SELECT decode (col1,NULL,0,8000::money,7000) from test1;  
-ERROR:  DECODE could not convert type money to number
-LINE 1: SELECT decode (col1,NULL,0,8000::money,7000) from test1;
-                                   ^
-drop table test1;
---二进制数据类型:
-create table test1(col1 bytea,col2  int);
-insert into test1 values(E'\\001',1);
-SELECT decode (col1,NULL,0,E'\\001',7000) from test1;
  decode 
 --------
  7000
 (1 row)
 
+drop table test1;
+--二进制数据类型:
+create table test1(col1 bytea,col2  int);
+insert into test1 values(E'\\001',1);
+SELECT decode (col1,NULL,0,E'\\001',7000) from test1;
+ERROR:  DECODE could not convert type bytea to varchar2
+LINE 1: SELECT decode (col1,NULL,0,E'\\001',7000) from test1;
+                       ^
 drop table test1;
 --日期/时间类型:
 --1.timestamp:
@@ -3010,7 +3010,7 @@ insert into test1 values('1999-1-5 00:00:00',1);
 SELECT decode (col1,NULL,0,'1999-1-5',7000)from test1;  
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -3020,7 +3020,7 @@ insert into test1 values('1999-1-5 8:00:00',1);
 SELECT decode (col1,NULL,0,'1999-1-5 8:00:00',7000)from test1;  
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -3030,7 +3030,7 @@ insert into test1 values('1999-01-05',1);
 SELECT decode (col1,NULL,0,'1999-01-05',7000)from test1;  
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -3050,7 +3050,7 @@ insert into test1 values('14:12:50-8',1);
 SELECT decode (col1,NULL,0,'14:12:50-8',7000)from test1; 
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -3060,7 +3060,7 @@ insert into test1 values('1-2',1);
 SELECT decode (col1,NULL,0,'1-2',7000)from test1; 
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -3069,11 +3069,9 @@ drop table test1;
 create table test1(col1 boolean,col2  int);
 insert into test1 values(true,1);
 SELECT decode (col1,NULL,0,true,7000)from test1;    
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type boolean to varchar2
+LINE 1: SELECT decode (col1,NULL,0,true,7000)from test1;
+                                   ^
 drop table test1;
 --枚举类型：
 CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
@@ -3093,69 +3091,57 @@ drop type mood;
 create table test1(col1 point,col2  int);
 insert into test1 values(point'(5,8)',1);
 SELECT decode (col1,NULL,0,point'(5,8)',7000)from test1;--报错 
-ERROR:  operator does not exist: point = unknown
+ERROR:  DECODE could not convert type point to varchar2
 LINE 1: SELECT decode (col1,NULL,0,point'(5,8)',7000)from test1;
-                       ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                                        ^
 drop table test1;
 --2.line:
 create table test1(col1 line,col2  int);
 insert into test1 values(line(point '(-1,0)', point '(1,0)'),1);
 SELECT decode (col1,NULL,0,line(point '(-1,0)', point '(1,0)'),7000)from test1;     
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type line to varchar2
+LINE 1: SELECT decode (col1,NULL,0,line(point '(-1,0)', point '(1,0)...
+                                   ^
 drop table test1;
 --3.lseg:
 create table test1(col1 lseg,col2  int);
 insert into test1 values(lseg(box '((-1,0),(1,0))'),1);
 SELECT decode (col1,NULL,0,lseg(box '((-1,0),(1,0))'),7000)from test1;   
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type lseg to varchar2
+LINE 1: SELECT decode (col1,NULL,0,lseg(box '((-1,0),(1,0))'),7000)f...
+                                   ^
 drop table test1;
 --4.box:
 create table test1(col1 box,col2  int);
 insert into test1 values(box(point '(0,0)', point '(1,1)'),1);
 SELECT decode (col1,NULL,0,box(point '(0,0)', point '(1,1)'),7000)from test1;    
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type box to varchar2
+LINE 1: SELECT decode (col1,NULL,0,box(point '(0,0)', point '(1,1)')...
+                                   ^
 drop table test1;
 --5.path:
 create table test1(col1 path,col2  int);
 insert into test1 values(path(polygon '((0,0),(1,1),(2,0))'),1);
 SELECT decode (col1,NULL,0,path(polygon '((0,0),(1,1),(2,0))'),7000)from test1;   
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type path to varchar2
+LINE 1: SELECT decode (col1,NULL,0,path(polygon '((0,0),(1,1),(2,0))...
+                                   ^
 drop table test1;
 --6.polygon，不支持
 create table test1(col1 polygon,col2  int);
 insert into test1 values(polygon(box '((0,0),(1,1))'),1);
 SELECT decode (col1,NULL,0,polygon(box '((0,0),(1,1))'),7000)from test1;--报错  
-ERROR:  operator does not exist: polygon = unknown
+ERROR:  DECODE could not convert type polygon to varchar2
 LINE 1: SELECT decode (col1,NULL,0,polygon(box '((0,0),(1,1))'),7000...
-                       ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                                   ^
 drop table test1;
 --7.circle:
 create table test1(col1 circle,col2  int);
 insert into test1 values(circle(point '(0,0)', 2.0),1);
 SELECT decode (col1,NULL,0,circle(point '(0,0)', 2.0),7000)from test1;   
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type circle to varchar2
+LINE 1: SELECT decode (col1,NULL,0,circle(point '(0,0)', 2.0),7000)f...
+                                   ^
 drop table test1;
 --网络地址类型：
 --1.cidr:
@@ -3187,42 +3173,34 @@ drop table test1;
 create table test1(col1 bit(3),col2  int);
 insert into test1 values(B'101',1);
 SELECT decode (col1,NULL,0,B'101',7000)from test1;    
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type bit to varchar2
+LINE 1: SELECT decode (col1,NULL,0,B'101',7000)from test1;
+                                   ^
 drop table test1;
 --2.bit varying(n):
 create table test1(col1 bit varying(5),col2  int);
 insert into test1 values(B'00',1);
 SELECT decode (col1,NULL,0,B'00',7000)from test1;     
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type bit to varchar2
+LINE 1: SELECT decode (col1,NULL,0,B'00',7000)from test1;
+                                   ^
 drop table test1;
 --文本搜索类型：
 --1.tsvector：
 create table test1(col1 tsvector,col2  int);
 insert into test1 values(to_tsvector('english', 'The Fat Rats'),1);
 SELECT decode (col1,NULL,0,to_tsvector('english', 'The Fat Rats'),7000)from test1;     
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type tsvector to varchar2
+LINE 1: SELECT decode (col1,NULL,0,to_tsvector('english', 'The Fat R...
+                                   ^
 drop table test1;
 --2.tsquery：
 create table test1(col1 tsquery,col2  int);
 insert into test1 values(to_tsquery('Fat:ab & Cats'),1);
 SELECT decode (col1,NULL,0,to_tsquery('Fat:ab & Cats'),7000)from test1; 
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type tsquery to varchar2
+LINE 1: SELECT decode (col1,NULL,0,to_tsquery('Fat:ab & Cats'),7000)...
+                                   ^
 drop table test1;
 --UUID类型：
 create table test1(col1 UUID,col2  int);
@@ -3236,20 +3214,17 @@ drop table test1;
 create table test1(col1 JSON,col2  int);
 insert into test1 values('5'::json,1);
 SELECT decode (col1,NULL,0,'5'::json,7000)from test1;--报错
-ERROR:  operator does not exist: json = unknown
+ERROR:  DECODE could not convert type json to varchar2
 LINE 1: SELECT decode (col1,NULL,0,'5'::json,7000)from test1;
-                       ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                                   ^
 drop table test1;
 --Arrays:
 create table test1(col1 int[],col2  int);
 insert into test1 values(array[5,6],1);
 SELECT decode (col1,NULL,0,array[5,6],7000)from test1; 
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type integer[] to varchar2
+LINE 1: SELECT decode (col1,NULL,0,array[5,6],7000)from test1;
+                                   ^
 drop table test1;
 --参数search为任意数据类型，且expr和search类型一致
 --数值类型：
@@ -3370,7 +3345,7 @@ insert into test1 values('sales',1);
 SELECT decode ('sales',NULL,0,col1,7000) from test1;
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -3388,17 +3363,19 @@ drop table test1;
 create table test1(col1 money,col2  int);
 insert into test1 values(8000,1);
 SELECT decode (8000::money,NULL,0,col1,7000) from test1; 
-ERROR:  DECODE could not convert type money to number
-LINE 1: SELECT decode (8000::money,NULL,0,col1,7000) from test1;
-                                          ^
+ decode 
+--------
+ 7000
+(1 row)
+
 drop table test1;
 --二进制数据类型:
 create table test1(col1 bytea,col2  int);
 insert into test1 values(E'\\001',1);
 SELECT decode (E'\\001',NULL,0,col1,7000) from test1; 
-ERROR:  DECODE could not convert type varchar2 to bytea
+ERROR:  DECODE could not convert type bytea to varchar2
 LINE 1: SELECT decode (E'\\001',NULL,0,col1,7000) from test1;
-                       ^
+                                       ^
 drop table test1;
 --日期/时间类型:
 --1.timestamp:
@@ -3407,7 +3384,7 @@ insert into test1 values('1999-1-5 00:00:00',1);
 SELECT decode ('1999-1-5',NULL,0,col1,7000)from test1;  
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -3417,7 +3394,7 @@ insert into test1 values('1999-1-5 8:00:00',1);
 SELECT decode ('1999-1-5 8:00:00',NULL,0,col1,7000)from test1; 
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -3427,7 +3404,7 @@ insert into test1 values('1999-01-05',1);
 SELECT decode ('1999-01-05',NULL,0,col1,7000)from test1; 
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -3435,17 +3412,21 @@ drop table test1;
 create table test1(col1 time,col2  int);
 insert into test1 values('14:12:50',1);
 SELECT decode ('14:12:50',NULL,0,col1,7000)from test1;  
-ERROR:  DECODE could not convert type varchar2 to time without time zone
-LINE 1: SELECT decode ('14:12:50',NULL,0,col1,7000)from test1;
-                       ^
+ decode 
+--------
+ 7000
+(1 row)
+
 drop table test1;
 --5.time with time zone:
 create table test1(col1 time with time zone,col2  int);
 insert into test1 values('14:12:50-8',1);
 SELECT decode ('14:12:50-8',NULL,0,col1,7000)from test1; 
-ERROR:  DECODE could not convert type varchar2 to time with time zone
-LINE 1: SELECT decode ('14:12:50-8',NULL,0,col1,7000)from test1;
-                       ^
+ decode 
+--------
+ 
+(1 row)
+
 drop table test1;
 --6.interval:
 create table test1(col1 interval year to month,col2  int);
@@ -3453,7 +3434,7 @@ insert into test1 values('1-2',1);
 SELECT decode ('1-2',NULL,0,col1,7000)from test1;  
  decode 
 --------
- 7000
+ 
 (1 row)
 
 drop table test1;
@@ -3462,9 +3443,9 @@ drop table test1;
 create table test1(col1 boolean,col2  int);
 insert into test1 values(true,1);
 SELECT decode ('true',NULL,0,col1,7000)from test1;    
-ERROR:  DECODE could not convert type varchar2 to boolean
+ERROR:  DECODE could not convert type boolean to varchar2
 LINE 1: SELECT decode ('true',NULL,0,col1,7000)from test1;
-                       ^
+                                     ^
 drop table test1;
 --枚举类型：
 CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
@@ -3474,9 +3455,9 @@ CREATE TABLE person_test (
 );
 INSERT INTO person_test VALUES ('Moe', 'happy');
 SELECT decode ( 'happy',NULL,0,current_mood,7000)from person_test;    
-ERROR:  DECODE could not convert type varchar2 to mood
+ERROR:  DECODE could not convert type mood to varchar2
 LINE 1: SELECT decode ( 'happy',NULL,0,current_mood,7000)from person...
-                        ^
+                                       ^
 drop table person_test;
 drop type mood;
 --几何类型：
@@ -3484,163 +3465,140 @@ drop type mood;
 create table test1(col1 point,col2  int);
 insert into test1 values(point(5,8),1);
 SELECT decode (point(5,8),NULL,0,col1,7000)from test1;--报错
-ERROR:  operator does not exist: point = unknown
+ERROR:  DECODE could not convert type point to varchar2
 LINE 1: SELECT decode (point(5,8),NULL,0,col1,7000)from test1;
-                       ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                                         ^
 drop table test1;
 --2.line:
 create table test1(col1 line,col2  int);
 insert into test1 values(line(point '(-1,0)', point '(1,0)'),1);
 SELECT decode (line(point '(-1,0)', point '(1,0)'),NULL,0,col1,7000)from test1;   
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type line to varchar2
+LINE 1: ...ecode (line(point '(-1,0)', point '(1,0)'),NULL,0,col1,7000)...
+                                                             ^
 drop table test1;
 --3.lseg:
 create table test1(col1 lseg,col2  int);
 insert into test1 values(lseg(box '((-1,0),(1,0))'),1);
 SELECT decode (lseg(box '((-1,0),(1,0))'),NULL,0,col1,7000)from test1; 
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type lseg to varchar2
+LINE 1: SELECT decode (lseg(box '((-1,0),(1,0))'),NULL,0,col1,7000)f...
+                                                         ^
 drop table test1;
 --4.box:
 create table test1(col1 box,col2  int);
 insert into test1 values(box(point '(0,0)', point '(1,1)'),1);
 SELECT decode (box(point '(0,0)', point '(1,1)'),NULL,0,col1,7000)from test1; 
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type box to varchar2
+LINE 1: ... decode (box(point '(0,0)', point '(1,1)'),NULL,0,col1,7000)...
+                                                             ^
 drop table test1;
 --5.path:
 create table test1(col1 path,col2  int);
 insert into test1 values(path(polygon '((0,0),(1,1),(2,0))'),1);
 SELECT decode (path(polygon '((0,0),(1,1),(2,0))'),NULL,0,col1,7000)from test1;   
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type path to varchar2
+LINE 1: ...ecode (path(polygon '((0,0),(1,1),(2,0))'),NULL,0,col1,7000)...
+                                                             ^
 drop table test1;
 --6.polygon，不支持
 create table test1(col1 polygon,col2  int);
 insert into test1 values(polygon(box '((0,0),(1,1))'),1);
 SELECT decode (polygon(box '((0,0),(1,1))'),NULL,0,col1,7000)from test1;--报错
-ERROR:  operator does not exist: polygon = unknown
-LINE 1: SELECT decode (polygon(box '((0,0),(1,1))'),NULL,0,col1,7000...
-                       ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ERROR:  DECODE could not convert type polygon to varchar2
+LINE 1: ...ELECT decode (polygon(box '((0,0),(1,1))'),NULL,0,col1,7000)...
+                                                             ^
 drop table test1;
 --7.circle:
 create table test1(col1 circle,col2  int);
 insert into test1 values(circle(point '(0,0)', 2.0),1);
 SELECT decode (circle(point '(0,0)', 2.0),NULL,0,col1,7000)from test1; 
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type circle to varchar2
+LINE 1: SELECT decode (circle(point '(0,0)', 2.0),NULL,0,col1,7000)f...
+                                                         ^
 drop table test1;
 --网络地址类型：
 --1.cidr:
 create table test1(col1 cidr,col2  int);
 insert into test1 values('192.168.100.128/25',1);
 SELECT decode ('192.168.100.128/25',NULL,0,col1,7000)from test1;  
-ERROR:  DECODE could not convert type varchar2 to cidr
+ERROR:  DECODE could not convert type cidr to varchar2
 LINE 1: SELECT decode ('192.168.100.128/25',NULL,0,col1,7000)from te...
-                       ^
+                                                   ^
 drop table test1;
 --2.inet:
 create table test1(col1 inet,col2  int);
 insert into test1 values('192.168.100.128/25',1);
 SELECT decode ('192.168.100.128/25',NULL,0,col1,7000)from test1;  
-ERROR:  DECODE could not convert type varchar2 to inet
+ERROR:  DECODE could not convert type inet to varchar2
 LINE 1: SELECT decode ('192.168.100.128/25',NULL,0,col1,7000)from te...
-                       ^
+                                                   ^
 drop table test1;
 --3.macaddr:
 create table test1(col1 macaddr,col2  int);
 insert into test1 values('08:00:2b:01:02:03',1);
 SELECT decode ('08:00:2b:01:02:03',NULL,0,col1,7000)from test1;    
-ERROR:  DECODE could not convert type varchar2 to macaddr
+ERROR:  DECODE could not convert type macaddr to varchar2
 LINE 1: SELECT decode ('08:00:2b:01:02:03',NULL,0,col1,7000)from tes...
-                       ^
+                                                  ^
 drop table test1;
 --位串类型：
 --1.bit(n):
 create table test1(col1 bit(3),col2  int);
 insert into test1 values(B'101',1);
 SELECT decode (B'101',NULL,0,col1,7000)from test1;    
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type bit to varchar2
+LINE 1: SELECT decode (B'101',NULL,0,col1,7000)from test1;
+                                     ^
 drop table test1;
 --2.bit varying(n):
 create table test1(col1 bit varying(5),col2  int);
 insert into test1 values(B'00',1);
 SELECT decode (B'00',NULL,0,col1,7000)from test1;     
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type bit varying to varchar2
+LINE 1: SELECT decode (B'00',NULL,0,col1,7000)from test1;
+                                    ^
 drop table test1;
 --文本搜索类型：
 --1.tsvector：
 create table test1(col1 tsvector,col2  int);
 insert into test1 values(to_tsvector('english', 'The Fat Rats'),1);
 SELECT decode (to_tsvector('english', 'The Fat Rats'),NULL,0,col1,7000)from test1;     
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type tsvector to varchar2
+LINE 1: ...de (to_tsvector('english', 'The Fat Rats'),NULL,0,col1,7000)...
+                                                             ^
 drop table test1;
 --2.tsquery：
 create table test1(col1 tsquery,col2  int);
 insert into test1 values(to_tsquery('Fat:ab & Cats'),1);
 SELECT decode (to_tsquery('Fat:ab & Cats'),NULL,0,col1,7000)from test1; 
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type tsquery to varchar2
+LINE 1: SELECT decode (to_tsquery('Fat:ab & Cats'),NULL,0,col1,7000)...
+                                                          ^
 drop table test1;
 --UUID类型：
 create table test1(col1 UUID,col2  int);
 insert into test1 values('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',1);
 SELECT decode ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',NULL,0,col1,7000)from test1;     
-ERROR:  DECODE could not convert type varchar2 to uuid
-LINE 1: SELECT decode ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',NULL,0...
-                       ^
+ERROR:  DECODE could not convert type uuid to varchar2
+LINE 1: ...de ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',NULL,0,col1,7000)...
+                                                             ^
 drop table test1;
 --JSON类型，不支持
 create table test1(col1 JSON,col2  int);
 insert into test1 values('5'::json,1);
 SELECT decode ('5'::json,NULL,0,col1,7000)from test1;--报错
-ERROR:  operator does not exist: json = unknown
+ERROR:  DECODE could not convert type json to varchar2
 LINE 1: SELECT decode ('5'::json,NULL,0,col1,7000)from test1;
-                       ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                                        ^
 drop table test1;
 --Arrays:
 create table test1(col1 int[],col2  int);
 insert into test1 values(array[5,6],1);
 SELECT decode (array[5,6],NULL,0,col1,7000)from test1;   
- decode 
---------
- 7000
-(1 row)
-
+ERROR:  DECODE could not convert type integer[] to varchar2
+LINE 1: SELECT decode (array[5,6],NULL,0,col1,7000)from test1;
+                                         ^
 drop table test1;
 --expr和search数据类型不同，报错
 create table test1(col1 int,col2  varchar(10));
@@ -3790,19 +3748,19 @@ drop table test1;
 create table test1(col1 money,col2  int);
 insert into test1 values(8000,1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;  
-ERROR:  DECODE could not convert type money to number
-LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
-                                           ^
+  decode   
+-----------
+ $8,000.00
+(1 row)
+
 drop table test1;
 --二进制数据类型:
 create table test1(col1 bytea,col2  int);
 insert into test1 values(E'\\001',1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;
- decode 
---------
- \x01
-(1 row)
-
+ERROR:  DECODE could not convert type bytea to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --日期/时间类型:
 --1.timestamp:
@@ -3859,9 +3817,9 @@ drop table test1;
 create table test1(col1 interval year to month,col2  int);
 insert into test1 values('1-2',1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;
- decode 
---------
- +01-02
+    decode     
+---------------
+ +000000001-02
 (1 row)
 
 drop table test1;
@@ -3870,11 +3828,9 @@ drop table test1;
 create table test1(col1 boolean,col2  int);
 insert into test1 values(true,1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;  
- decode 
---------
- t
-(1 row)
-
+ERROR:  DECODE could not convert type boolean to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --枚举类型：
 CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
@@ -3884,11 +3840,9 @@ CREATE TABLE person_test (
 );
 INSERT INTO person_test VALUES ('Moe', 'happy');
 SELECT decode (23, 20,NULL,23,current_mood,current_mood) from person_test;
- decode 
---------
- happy
-(1 row)
-
+ERROR:  DECODE could not convert type mood to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,current_mood,current_mood) fro...
+                                   ^
 drop table person_test;
 drop type mood;
 --几何类型：
@@ -3896,174 +3850,140 @@ drop type mood;
 create table test1(col1 point,col2  int);
 insert into test1 values(point(5,8),1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;  
- decode 
---------
- (5,8)
-(1 row)
-
+ERROR:  DECODE could not convert type point to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --2.line:
 create table test1(col1 line,col2  int);
 insert into test1 values(line(point '(-1,0)', point '(1,0)'),1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;  
-  decode  
-----------
- {0,-1,0}
-(1 row)
-
+ERROR:  DECODE could not convert type line to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --3.lseg:
 create table test1(col1 lseg,col2  int);
 insert into test1 values(lseg(box '((-1,0),(1,0))'),1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;   
-     decode     
-----------------
- [(1,0),(-1,0)]
-(1 row)
-
+ERROR:  DECODE could not convert type lseg to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --4.box:
 create table test1(col1 box,col2  int);
 insert into test1 values(box(point '(0,0)', point '(1,1)'),1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;   
-   decode    
--------------
- (1,1),(0,0)
-(1 row)
-
+ERROR:  DECODE could not convert type box to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --5.path:
 create table test1(col1 path,col2  int);
 insert into test1 values(path(polygon '((0,0),(1,1),(2,0))'),1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;   
-       decode        
----------------------
- ((0,0),(1,1),(2,0))
-(1 row)
-
+ERROR:  DECODE could not convert type path to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --6.polygon:
 create table test1(col1 polygon,col2  int);
 insert into test1 values(polygon(box '((0,0),(1,1))'),1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;    
-          decode           
----------------------------
- ((0,0),(0,1),(1,1),(1,0))
-(1 row)
-
+ERROR:  DECODE could not convert type polygon to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --7.circle:
 create table test1(col1 circle,col2  int);
 insert into test1 values(circle(point '(0,0)', 2.0),1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;  
-  decode   
------------
- <(0,0),2>
-(1 row)
-
+ERROR:  DECODE could not convert type circle to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --网络地址类型：
 --1.cidr:
 create table test1(col1 cidr,col2  int);
 insert into test1 values('192.168.100.128/25',1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;   
-       decode       
---------------------
- 192.168.100.128/25
-(1 row)
-
+ERROR:  DECODE could not convert type cidr to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --2.inet:
 create table test1(col1 inet,col2  int);
 insert into test1 values('192.168.100.128/25',1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;   
-       decode       
---------------------
- 192.168.100.128/25
-(1 row)
-
+ERROR:  DECODE could not convert type inet to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --3.macaddr:
 create table test1(col1 macaddr,col2  int);
 insert into test1 values('08:00:2b:01:02:03',1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;   
-      decode       
--------------------
- 08:00:2b:01:02:03
-(1 row)
-
+ERROR:  DECODE could not convert type macaddr to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --位串类型：
 --1.bit(n):
 create table test1(col1 bit(3),col2  int);
 insert into test1 values(B'101',1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;   
- decode 
---------
- 101
-(1 row)
-
+ERROR:  DECODE could not convert type bit to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --2.bit varying(n):
 create table test1(col1 bit varying(5),col2  int);
 insert into test1 values(B'00',1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;       
- decode 
---------
- 00
-(1 row)
-
+ERROR:  DECODE could not convert type bit varying to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --文本搜索类型：
 --1.tsvector：
 create table test1(col1 tsvector,col2  int);
 insert into test1 values(to_tsvector('english', 'The Fat Rats'),1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;    
-     decode      
------------------
- 'fat':2 'rat':3
-(1 row)
-
+ERROR:  DECODE could not convert type tsvector to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --2.tsquery：
 create table test1(col1 tsquery,col2  int);
 insert into test1 values(to_tsquery('Fat:ab & Cats'),1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;   
-      decode       
--------------------
- 'fat':AB & 'cats'
-(1 row)
-
+ERROR:  DECODE could not convert type tsquery to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --UUID类型：
 create table test1(col1 UUID,col2  int);
 insert into test1 values('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;   
-                decode                
---------------------------------------
- a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
-(1 row)
-
+ERROR:  DECODE could not convert type uuid to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --JSON类型：
 create table test1(col1 JSON,col2  int);
 insert into test1 values('5'::json,1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;    
- decode 
---------
- 5
-(1 row)
-
+ERROR:  DECODE could not convert type json to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --Arrays:
 create table test1(col1 int[],col2  int);
 insert into test1 values(array[5,6],1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;  
- decode 
---------
- {5,6}
-(1 row)
-
+ERROR:  DECODE could not convert type integer[] to varchar2
+LINE 1: SELECT decode (23, 20,NULL,23,col1,col1) from test1;
+                                   ^
 drop table test1;
 --result和default数据类型不同，报错
 create table test1(col1 int,col2  varchar(10));
@@ -4538,3 +4458,20 @@ select nvl2(nvl(null, 111), 123, 456) from dual;	-- 123
 (1 row)
 
 /* End - BUG#Z4592 */
+/* Begin - BUG#Z4593 */
+create table tb_datatype(c_char char(8), c_num NUMBER(5,2), c_dt date);
+insert into tb_datatype values('Hello', '12.3456', date'2025-05-10');
+select decode(c_num, c_char, 'A', c_num, 'B', 'C') from tb_datatype;
+ decode 
+--------
+ B
+(1 row)
+
+select decode(c_dt, c_char, 'A', c_dt, 'B', 'C') from tb_datatype;
+ decode 
+--------
+ B
+(1 row)
+
+drop table tb_datatype;
+/* End - BUG#Z4593 */
