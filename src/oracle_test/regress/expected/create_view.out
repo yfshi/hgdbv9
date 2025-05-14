@@ -1758,19 +1758,19 @@ select * from
   cast(1+2 as int4) as i4,
   cast(1+2 as int8) as i8;
 select pg_get_viewdef('tt20v', true);
-                pg_get_viewdef                
-----------------------------------------------
-  SELECT c.c,                                +
-     col.col,                                +
-     d.d,                                    +
-     t.t,                                    +
-     i4.i4,                                  +
-     i8.i8                                   +
-    FROM COALESCE(1::number, 2::number) c(c),+
-     COLLATION FOR ('x'::text) col(col),     +
-     "current_date"() d(d),                  +
-     "localtimestamp"(3) t(t),               +
-     CAST(1 + 2 AS integer) i4(i4),          +
+               pg_get_viewdef                
+---------------------------------------------
+  SELECT c.c,                               +
+     col.col,                               +
+     d.d,                                   +
+     t.t,                                   +
+     i4.i4,                                 +
+     i8.i8                                  +
+    FROM COALESCE(1, 2) c(c),               +
+     COLLATION FOR ('x'::text) col(col),    +
+     "current_date"() d(d),                 +
+     "localtimestamp"(3) t(t),              +
+     CAST(1 + 2 AS integer) i4(i4),         +
      CAST((1 + 2)::bigint AS bigint) i8(i8);
 (1 row)
 

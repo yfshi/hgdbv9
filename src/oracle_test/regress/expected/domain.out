@@ -74,13 +74,13 @@ from basictest;
 select pg_typeof(coalesce(4::domainint4, 7));
  pg_typeof 
 -----------
- number
+ integer
 (1 row)
 
 select pg_typeof(coalesce(4::domainint4, 7::domainint4));
- pg_typeof 
------------
- number
+ pg_typeof  
+------------
+ domainint4
 (1 row)
 
 drop table basictest;

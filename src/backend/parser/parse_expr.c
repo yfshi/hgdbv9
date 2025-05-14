@@ -3364,7 +3364,28 @@ transformCoalesceExpr(ParseState *pstate, CoalesceExpr *c)
 		newc->coalescetype = select_common_type(pstate, newargs, "COALESCE", NULL);
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else if (compatible_db == ORA_PARSER)
-		newc->coalescetype = select_common_type_for_nvl(pstate, newargs, "COALESCE", NULL);
+	/* Begin - BUG#Z4592 */
+	{
+		/*
+		 * Even in Oracle compatibility mode, the behavior of native Coalesce expression
+		 * should not be broken. Currently, the side effects here break the behavior of
+		 * native Coalesce, this error is fixed now.
+		 *
+		 * The logic of the return type of NVL and NVL2 expressions is different. return
+		 * type of NVL is based on expr1, and return type of NVL2 is based on expr2.
+		 * However, NVL2 does not check whether expr1 can be implicitly converted to expr2,
+		 * but only checks the implicit conversion between expr2 and expr3.
+		 */
+		if (c->coalescetag == TAG_COALESCE)
+			newc->coalescetype = select_common_type(pstate, newargs, "COALESCE", NULL);
+		else if (c->coalescetag == TAG_NVL)
+			newc->coalescetype = select_common_type_for_nvl(pstate, newargs, "NVL", NULL);
+		else if (c->coalescetag == TAG_NVL2)
+			newc->coalescetype = select_common_type_for_nvl2(pstate, newargs, "NVL2", NULL);
+		else
+			elog(ERROR, "invalid coalesce tag");
+	}
+	/* End - BUG#Z4592 */
 	/* End - BUGID:0000536 */
 	/* coalescecollid will be set by parse_collate.c */
 
@@ -3373,11 +3394,26 @@ transformCoalesceExpr(ParseState *pstate, CoalesceExpr *c)
 	{
 		Node	   *e = (Node *) lfirst(args);
 		Node	   *newe;
+		/* Begin - BUG#Z4592 */
+		char	   *who;	/* make error messages more user-friendly */
 
-		newe = coerce_to_common_type(pstate, e,
-									 newc->coalescetype,
-									 "COALESCE");
-		newcoercedargs = lappend(newcoercedargs, newe);
+		who = c->coalescetag == TAG_COALESCE ? "COALESCE" : c->coalescetag == TAG_NVL ? "NVL" : "NVL2";
+
+		/* expr1 of NVL2 no need convert */
+		if (c->coalescetag == TAG_NVL2 && list_head(newargs) == args)
+		{
+			newcoercedargs = lappend(newcoercedargs, e);
+			continue;
+		}
+		else
+		/* End - BUG#Z4592 */
+		{
+			newe = coerce_to_common_type(pstate, e,
+										 newc->coalescetype,
+										 who /* BUG#Z4592 */);
+
+			newcoercedargs = lappend(newcoercedargs, newe);
+		}
 	}
 
 	/* if any subexpression contained a SRF, complain */
@@ -3392,7 +3428,7 @@ transformCoalesceExpr(ParseState *pstate, CoalesceExpr *c)
 									exprLocation(pstate->p_last_srf))));
 
 	newc->args = newcoercedargs;
-	newc->isnvl = c->isnvl;	/* BUG#Z4591 */
+	newc->coalescetag = c->coalescetag;	/* BUG#Z4591 */
 	newc->location = c->location;
 	return (Node *) newc;
 }

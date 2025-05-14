@@ -19489,7 +19489,7 @@ case_expr:	CASE case_arg when_clause_list case_default END_P
 					expr_list = lappend(a_expr,$5);
 					n = makeNode(CoalesceExpr);
 					n->args = expr_list;
-					n->isnvl = true;	/* BUG#Z4591 */
+					n->coalescetag = TAG_NVL;	/* BUG#Z4591 */
 					n->location = @1;
 					res->val = (Node *) n;
 					res->location = @1;
@@ -19498,47 +19498,33 @@ case_expr:	CASE case_arg when_clause_list case_default END_P
 				}
 			| NVL2 '(' a_expr ',' a_expr ',' a_expr ')'
 				{
-					List *args = NIL;
-					NullTest *n_expr = NULL;
-					CaseExpr *c = NULL;
-					CaseWhen *w = NULL;
-			
+					/* Begin - BUG#Z4592 */
+					/*
+					 * BUG#Z4592:
+					 * The implementation of NVL2 is modified from CaseExpr to
+					 * CoalesceExpr because the number of parameters of NVL2 is
+					 * fixed and the implicit conversion rules are the same as NVL.
+					 *
+					 * In order to detect implicit conversion rules, we don't do any
+					 * optimization here, that is, we have to wrap a CoalesceExpr even
+					 * if the first a_expr is NULL.
+					 */
 					ResTarget *res = makeNode(ResTarget);
+					List *args = NIL;
+					CoalesceExpr *n = NULL;
+			
 					res->name = pstrdup($1);
 					res->indirection = NIL;
-			
-					if($3->type == T_A_Const)
-					{
-						if(((A_Const *) $3)->val.type != T_Null)
-						{
-							res->val = $5;
-							res->location = @5;
-						}
-						else
-						{
-							res->val = $7;
-							res->location = @7;
-						}
-					}
-					else
-					{
-						n_expr = makeNode(NullTest);
-						n_expr->arg = (Expr *) $3;
-						n_expr->nulltesttype = IS_NULL;
-						n_expr->location = @3;
-			
-						c = makeNode(CaseExpr);
-						w = makeNode(CaseWhen);
-						w->expr = (Expr *) n_expr;
-						w->result = (Expr *) $7;
-						args = lappend(args, w);
-						c->args = args;
-						c->defresult = (Expr *) $5;
-			
-						res->val = (Node *) c;
-						res->location = @1;
-					}
+					args = list_make3($3, $5, $7);
+
+					n = makeNode(CoalesceExpr);
+					n->args = args;
+					n->coalescetag = TAG_NVL2;
+					n->location = @1;
+					res->val = (Node *) n;
+					res->location = @1;
 					$$ = (Node *) res;
+					/* End - BUG#Z4592 */
 				}
 			/* End - ReqID:SRS-GKC-BUILTIN_FUNCTIONS-001 */
 

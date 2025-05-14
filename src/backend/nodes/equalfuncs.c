@@ -674,7 +674,7 @@ _equalCoalesceExpr(const CoalesceExpr *a, const CoalesceExpr *b)
 	COMPARE_SCALAR_FIELD(coalescetype);
 	COMPARE_SCALAR_FIELD(coalescecollid);
 	COMPARE_NODE_FIELD(args);
-	COMPARE_SCALAR_FIELD(isnvl); /* BUG#Z4591 */
+	COMPARE_SCALAR_FIELD(coalescetag); /* BUG#Z4591 */
 	COMPARE_LOCATION_FIELD(location);
 
 	return true;
