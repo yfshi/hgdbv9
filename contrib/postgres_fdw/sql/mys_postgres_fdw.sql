@@ -2631,7 +2631,7 @@ CREATE SCHEMA import_source;
 CREATE TABLE import_source.t1 (c1 int, c2 varchar NOT NULL);
 CREATE TABLE import_source.t2 (c1 int default 42, c2 varchar NULL, c3 text collate "POSIX");
 CREATE TYPE typ1 AS (m1 int, m2 varchar);
-CREATE TABLE import_source.t3 (c1 timestamptz default now(), c2 typ1);
+CREATE TABLE import_source.t3 (c1 timestamptz default pg_catalog.now(), c2 typ1);
 CREATE TABLE import_source."x 4" (c1 float8, "C 2" text, c3 varchar(42));
 CREATE TABLE import_source."x 5" (c1 float8);
 ALTER TABLE import_source."x 5" DROP COLUMN c1;

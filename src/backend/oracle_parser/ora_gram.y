@@ -226,6 +226,8 @@ static void determineLanguage(List *options);
 /* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
 static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 /* End - ReqID:SRS-SQL-ORACLE-LIKE */
+static List *OracleSystemFuncName(char *name);
+static TypeName *OracleSystemTypeName(char *name);
 
 %}
 
@@ -22030,7 +22032,7 @@ SystemFuncName(char *name)
 }
 
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-List *
+static List *
 OracleSystemFuncName(char *name)
 {
 	return list_make2(makeString("sys"), makeString(name));
@@ -22055,7 +22057,7 @@ SystemTypeName(char *name)
  *
  */
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-TypeName *
+static TypeName *
 OracleSystemTypeName(char *name)
 {
 	return makeTypeNameFromNameList(list_make2(makeString("sys"),

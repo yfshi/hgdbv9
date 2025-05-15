@@ -561,11 +561,10 @@ LINE 1: SELECT EXTRACT(CENTURY FROM DATE '2001-01-01');
                ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(CENTURY FROM CURRENT_DATE)>=21 AS True;     -- true
- true 
-------
- t
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(CENTURY FROM CURRENT_DATE)>=21 AS True;
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 --
 -- millennium
 --
@@ -595,11 +594,10 @@ LINE 1: SELECT EXTRACT(MILLENNIUM FROM DATE '2001-01-01');
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 -- next test to be fixed on the turn of the next millennium;-)
 SELECT EXTRACT(MILLENNIUM FROM CURRENT_DATE);         --  3
- extract 
----------
-       3
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(MILLENNIUM FROM CURRENT_DATE);
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 --
 -- decade
 --

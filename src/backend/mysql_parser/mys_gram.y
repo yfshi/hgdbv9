@@ -248,7 +248,8 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 static List *MystextSystemFuncName(char *name);
 static TypeName *MystextSystemTypeName(char *name);
 /* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
-
+static List *MysqlSystemFuncName(char *name);
+static TypeName *MySQLSystemTypeName(char *name);
 %}
 
 %pure-parser
@@ -637,6 +638,7 @@ static TypeName *MystextSystemTypeName(char *name);
 				Int2 Int2WithLength Int2WithoutLength	/* ReqID:SRS-MYSQL-NUMERICTYPE */
 %type <str>		character
 %type <str>		extract_arg
+%type <str>		timestamp_units
 %type <boolean> opt_varying opt_no_inherit
 %type <ival>	opt_timezone
 
@@ -755,7 +757,7 @@ static TypeName *MystextSystemTypeName(char *name);
 	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P CONVERT COPY
 	COST CREATE CROSS CSV CUBE CURRENT_P
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
-	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
+	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CURTIME CYCLE
 
 	DATA_P DATABASE DATE_P DATETIME_P DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELAYED DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC
@@ -787,7 +789,7 @@ static TypeName *MystextSystemTypeName(char *name);
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED LONGBLOB LOW_PRIORITY
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEDIUMBLOB MEDIUMINT MERGE METHOD
-	MINUTE_P MINVALUE MOD MODE MONTH_P MOVE
+	MICROSECOND_P MINUTE_P MINVALUE MOD MODE MONTH_P MOVE
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
 	NORMALIZE NORMALIZED
@@ -802,7 +804,7 @@ static TypeName *MystextSystemTypeName(char *name);
 	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
 	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROGRAM PUBLICATION
 
-	QUOTE QUICK /* ReqID:SRS-MYSQL-SQL-DELETE */
+	QUATER_P QUOTE QUICK /* ReqID:SRS-MYSQL-SQL-DELETE */
 
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
@@ -816,7 +818,7 @@ static TypeName *MystextSystemTypeName(char *name);
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TEMP TEMPLATE TEMPORARY TEXT_P THEN
-	TIES TIME TIMESTAMP TINYBLOB TINYINT TO TRAILING TRANSACTION TRANSFORM
+	TIES TIME TIMESTAMP TIMESTAMPADD TINYBLOB TINYINT TO TRAILING TRANSACTION TRANSFORM
 	TREAT TRIGGER TRIM TRUE_P
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
@@ -826,7 +828,7 @@ static TypeName *MystextSystemTypeName(char *name);
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARBINARY VARCHAR VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VOLATILE
 
-	WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
+	WEEK_P WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
 
 	XML_P XMLATTRIBUTES XMLCONCAT XMLELEMENT XMLEXISTS XMLFOREST XMLNAMESPACES
 	XMLPARSE XMLPI XMLROOT XMLSERIALIZE XMLTABLE
@@ -15617,17 +15619,30 @@ Datetime:
 						$$->location = @1;
 					}
 				}
-			| YEAR '(' Iconst ')'
+			/* Begin - SRS-MYSQL-BUILDINFUNCTION */	
+			| YEAR '(' a_expr ')'
 				{
-					$$ = MySQLSystemTypeName("year");
-					if ($3 != 4)
+					if(IsA($3,A_Const) && ((A_Const *) $3)->val.type == T_Integer)
+					{
+						int year_val =intVal(&((A_Const *) $3) ->val);
+						$$ = MySQLSystemTypeName("year");
+						if (year_val != 4)
+							ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								errmsg("Supports only YEAR or YEAR(4) column"),
+								parser_errposition(@3)));
+						$$->typmods = list_make1(makeIntConst(year_val, @3));
+						$$->location = @1;
+					}
+					else
+					{
 						ereport(ERROR,
-							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-							 errmsg("Supports only YEAR or YEAR(4) column"),
-							 parser_errposition(@3)));
-					$$->typmods = list_make1(makeIntConst($3, @3));
-					$$->location = @1;
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("syntax error at or near \" YEAR \" "),
+								parser_errposition(@1)));
+					}
 				}
+			/* End - SRS-MYSQL-BUILDINFUNCTION */
 			| YEAR
 				{
 					$$ = MySQLSystemTypeName("year");
@@ -15732,17 +15747,30 @@ ConstDatetime:
 						$$->location = @1;
 					}
 				}
-			| YEAR '(' Iconst ')'
+			/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+			| YEAR '(' a_expr ')'
 				{
-					$$ = MySQLSystemTypeName("year");
-					if ($3 != 4)
+					if (IsA($3, A_Const) && ((A_Const *) $3)->val.type == T_Integer)
+					{
+						int year_val = intVal(&((A_Const *) $3) ->val);
+						$$ = MySQLSystemTypeName("year");
+						if (year_val != 4)
+							ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								errmsg("Supports only YEAR or YEAR(4) column"),
+								parser_errposition(@3)));
+						$$->typmods = list_make1(makeIntConst(year_val, @3));
+						$$->location = @1;
+					}
+					else
+					{
 						ereport(ERROR,
-							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-							 errmsg("Supports only YEAR or YEAR(4) column"),
-							 parser_errposition(@3)));
-					$$->typmods = list_make1(makeIntConst($3, @3));
-					$$->location = @1;
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("syntax error at or near \" YEAR \" "),
+								parser_errposition(@1)));
+					}
 				}
+			/* End - SRS-MYSQL-BUILDINFUNCTION */
 			| YEAR
 				{
 					$$ = MySQLSystemTypeName("year");
@@ -16696,18 +16724,57 @@ func_expr_common_subexpr:
 											   COERCE_SQL_SYNTAX,
 											   @1);
 				}
+			/* Begin - SRS-MYSQL-BUILDINFUNCTION */	
 			| CURRENT_DATE
 				{
-					$$ = makeSQLValueFunction(SVFOP_CURRENT_DATE, -1, @1);
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("curdate"),
+												NIL,
+												COERCE_SQL_SYNTAX,
+												@1);
+				}
+			| CURRENT_DATE '(' ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("curdate"),
+												NIL,
+												COERCE_SQL_SYNTAX,
+												@1);
 				}
 			| CURRENT_TIME
 				{
-					$$ = makeSQLValueFunction(SVFOP_CURRENT_TIME, -1, @1);
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myscurtime"),
+												NIL,
+												COERCE_SQL_SYNTAX,
+												@1);
+				}
+			| CURRENT_TIME '(' ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myscurtime"),
+												NIL,
+												COERCE_SQL_SYNTAX,
+												@1);
 				}
 			| CURRENT_TIME '(' Iconst ')'
 				{
-					$$ = makeSQLValueFunction(SVFOP_CURRENT_TIME_N, $3, @1);
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myscurtime"),
+												list_make1(makeIntConst($3, @3)),
+												COERCE_SQL_SYNTAX,
+												@2);
 				}
+			| CURTIME '(' ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myscurtime"),
+												NIL,
+												COERCE_SQL_SYNTAX,
+												@1);
+				}
+			| CURTIME '(' Iconst ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myscurtime"),
+												list_make1(makeIntConst($3, @3)),
+												COERCE_SQL_SYNTAX,
+												@2);
+				}
+			/* End - SRS-MYSQL-BUILDINFUNCTION */
 			| CURRENT_TIMESTAMP
 				{
 					$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP, -1, @1);
@@ -16732,6 +16799,22 @@ func_expr_common_subexpr:
 				{
 					$$ = makeSQLValueFunction(SVFOP_LOCALTIMESTAMP_N, $3, @1);
 				}
+			/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+			| TIMESTAMPADD '(' timestamp_units ',' a_expr ',' a_expr ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("mytimestampadd"),
+												list_make3(makeStringConst($3, @1), $5, $7),
+												COERCE_SQL_SYNTAX,
+												@2);
+				}
+			| YEAR '(' a_expr ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myyear"),
+												list_make1($3),
+												COERCE_SQL_SYNTAX,
+												@1);
+				}
+			/* End - SRS-MYSQL-BUILDINFUNCTION */
 			| CURRENT_ROLE
 				{
 					$$ = makeSQLValueFunction(SVFOP_CURRENT_ROLE, -1, @1);
@@ -17519,6 +17602,7 @@ extract_list:
 /* Allow delimited string Sconst in extract_arg as an SQL extension.
  * - thomas 2001-04-12
  */
+ /* Begin - SRS-MYSQL-BUILDINFUNCTION */
 extract_arg:
 			IDENT									{ $$ = $1; }
 			| MONTH_P								{ $$ = "month"; }
@@ -17526,9 +17610,25 @@ extract_arg:
 			| HOUR_P								{ $$ = "hour"; }
 			| MINUTE_P								{ $$ = "minute"; }
 			| SECOND_P								{ $$ = "second"; }
+			| WEEK_P								{ $$ = "week"; }
+			| MICROSECOND_P							{ $$ = "microsecond"; }
+			| QUATER_P								{ $$ = "quater"; }
 			| Sconst								{ $$ = $1; }
 		;
 
+timestamp_units:
+			IDENT      { $$ = $1; }
+			| YEAR   { $$ = pstrdup("year"); }
+			| DAY_P    { $$ = pstrdup("day"); }
+			| HOUR_P   { $$ = pstrdup("hour"); }
+			| MICROSECOND_P { $$ = pstrdup("microsecond"); }
+			| MINUTE_P { $$ = pstrdup("minute"); }
+			| SECOND_P { $$ = pstrdup("second"); }
+			| MONTH_P { $$ = pstrdup("month"); }
+			| QUATER_P { $$ = pstrdup("quater"); }
+			| WEEK_P { $$ = pstrdup("week"); }
+			| SCONST   { $$ = $1; }
+/* End - SRS-MYSQL-BUILDINFUNCTION */
 unicode_normal_form:
 			NFC										{ $$ = "NFC"; }
 			| NFD									{ $$ = "NFD"; }
@@ -18401,6 +18501,7 @@ unreserved_keyword:
 			| MAXVALUE
 			| MERGE
 			| METHOD
+			| MICROSECOND_P
 			| MINUTE_P
 			| MINVALUE
 			| MOD
@@ -18454,6 +18555,7 @@ unreserved_keyword:
 			| PROCEDURES
 			| PROGRAM
 			| PUBLICATION
+			| QUATER_P
 			| QUOTE
 			| RANGE
 			| READ
@@ -18550,6 +18652,7 @@ unreserved_keyword:
 			| VIEW
 			| VIEWS
 			| VOLATILE
+			| WEEK_P
 			| WHITESPACE_P
 			| WITHIN
 			| WITHOUT
@@ -18621,6 +18724,7 @@ col_name_keyword:
 			| TEXT_P  /* ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 			| TIME
 			| TIMESTAMP
+			| TIMESTAMPADD
 			| TINYBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| TINYINT		 /* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| TREAT
@@ -18711,6 +18815,7 @@ reserved_keyword:
 			| CURRENT_TIME
 			| CURRENT_TIMESTAMP
 			| CURRENT_USER
+			| CURTIME
 			| DEFAULT
 			| DEFERRABLE
 			| DELAYED	/* ReqID:SRS-MYSQL-SQL-INSERT */
@@ -18871,6 +18976,7 @@ bare_label_keyword:
 			| CURRENT_TIMESTAMP
 			| CURRENT_USER
 			| CURSOR
+			| CURTIME
 			| CYCLE
 			| DATA_P
 			| DATABASE
@@ -19167,6 +19273,7 @@ bare_label_keyword:
 			| TIES
 			| TIME
 			| TIMESTAMP
+			| TIMESTAMPADD
 			| TINYBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| TINYINT		/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| TRAILING
@@ -19699,6 +19806,13 @@ SystemFuncName(char *name)
 {
 	return list_make2(makeString("pg_catalog"), makeString(name));
 }
+/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+static List *
+MysqlSystemFuncName(char *name)
+{
+	return list_make2(makeString("ivymy"), makeString(name));
+}
+/* End - SRS-MYSQL-BUILDINFUNCTION */
 
 /* SystemTypeName()
  * Build a properly-qualified reference to a built-in type.
@@ -19719,7 +19833,7 @@ SystemTypeName(char *name)
  *
  */
 /* Begin - ReqID:SRS-MYSQL-YEARTYPE */
-TypeName *
+static TypeName *
 MySQLSystemTypeName(char *name)
 {
 	return makeTypeNameFromNameList(list_make2(makeString("ivymy"),

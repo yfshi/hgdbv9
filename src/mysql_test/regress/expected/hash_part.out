@@ -93,7 +93,7 @@ SELECT satisfies_hash_partition('mcinthash'::regclass, 4, 0,
 ERROR:  number of partitioning columns (2) does not match number of partition keys provided (0)
 -- wrong type
 SELECT satisfies_hash_partition('mcinthash'::regclass, 4, 0,
-								variadic array[now(), now()]);
+								variadic array[pg_catalog.now(), pg_catalog.now()]);
 ERROR:  column 1 of the partition key has type "integer", but supplied value is of type "timestamp with time zone"
 -- check satisfies_hash_partition passes correct collation
 create table text_hashp (a text) partition by hash (a);

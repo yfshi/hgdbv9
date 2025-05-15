@@ -1321,13 +1321,13 @@ SELECT pg_get_viewdef('v_window');
 DROP VIEW v_window;
 CREATE TEMP VIEW v_window AS
 	SELECT i, min(i) over (order by i range between '1 day' preceding and '10 days' following) as min_i
-  FROM generate_series(now(), now()+'100 days'::interval, '1 hour') i;
+  FROM generate_series(pg_catalog.now(), pg_catalog.now()+'100 days'::interval, '1 hour') i;
 SELECT pg_get_viewdef('v_window');
                                                       pg_get_viewdef                                                       
 ---------------------------------------------------------------------------------------------------------------------------
   SELECT i.i,                                                                                                             +
      min(i.i) OVER (ORDER BY i.i RANGE BETWEEN '@ 1 day'::interval PRECEDING AND '@ 10 days'::interval FOLLOWING) AS min_i+
-    FROM generate_series(now(), (now() + '@ 100 days'::interval), '@ 1 hour'::interval) i(i);
+    FROM generate_series(pg_catalog.now(), (pg_catalog.now() + '@ 100 days'::interval), '@ 1 hour'::interval) i(i);
 (1 row)
 
 -- RANGE offset PRECEDING/FOLLOWING tests

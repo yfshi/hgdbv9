@@ -247,7 +247,7 @@ INSERT INTO T VALUES (1);
 SELECT set('t');
 
 -- now() is stable, because it returns the transaction timestamp
-ALTER TABLE T ADD COLUMN c1 TIMESTAMP DEFAULT now();
+ALTER TABLE T ADD COLUMN c1 TIMESTAMP DEFAULT pg_catalog.now();
 
 SELECT comp();
 

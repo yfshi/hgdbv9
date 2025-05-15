@@ -62,7 +62,7 @@ static pg_tz *FetchDynamicTimeZone(TimeZoneAbbrevTable *tbl, const datetkn *tp);
 /* Begin - ReqID:SRS-MYSQL-DATETYPE */
 static int CalmicroSecondsPower(int num);
 
-static bool check_datetime(struct pg_tm *tm, bool not_zero_date, my_time_flags flag, int *warn);
+static bool check_datetime(struct pg_tm *tm, bool not_zero_date, int flag, int *warn);
 
 static void get_datetime_from_num(int64 num, struct pg_tm *tm);
 
@@ -2980,7 +2980,7 @@ CalmicroSecondsPower(int num)
 
 /* Check datetime */
 static bool 
-check_datetime(struct pg_tm *tm, bool not_zero_date, my_time_flags flag, int *warn)
+check_datetime(struct pg_tm *tm, bool not_zero_date, int flag, int *warn)
 {
 	if (not_zero_date)
 	{
