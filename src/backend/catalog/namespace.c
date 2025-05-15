@@ -320,7 +320,7 @@ RangeVarGetRelidExtended(const RangeVar *relation, LOCKMODE lockmode,
 				relId = InvalidOid; /* this probably can't happen? */
 			else
 			{
-				if (relation->schemaname)
+				if (relation->schemaname && relation->srvname == NULL)
 				{
 					Oid			namespaceId;
 
@@ -352,13 +352,7 @@ RangeVarGetRelidExtended(const RangeVar *relation, LOCKMODE lockmode,
 		}
 		else
 		{
-			/* search the namespace path */
-			/* Begin - ReqID:SRS-SQL-DBLINK */
-			if (relation->srvname)
-				relId = RelnameGetRelid(psprintf("%s@%s", relation->relname, relation->srvname));
-			/* End - ReqID:SRS-SQL-DBLINK */
-			else
-				relId = RelnameGetRelid(relation->relname);
+			relId = RelnameGetRelid(relation->relname);
 		}
 
 		/*
@@ -5599,3 +5593,11 @@ is_mysql_format_collation(Oid collid)
 	return provider == COLLPROVIDER_MYSQL;
 }
 /* End - Req:SRS-MYSQL-CHARSET */
+
+/* Begin - BUG#Z4433 */
+Oid
+GetActiveCreationNamespace(void)
+{
+	return activeCreationNamespace;
+}
+/* End - BUG#Z4433 */

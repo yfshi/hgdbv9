@@ -1457,7 +1457,12 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 
 		/* Begin - BUG#M0000489 */
 		if (rv->srvname)
-			rv->lnkrelname = psprintf("%s@%s", rv->relname, rv->srvname);
+		{
+			if (rv->schemaname)
+				rv->lnkrelname = psprintf("%s_%s@%s", rv->schemaname, rv->relname, rv->srvname);
+			else
+				rv->lnkrelname = psprintf("%s@%s", rv->relname, rv->srvname);
+		}
 		/* End - BUG#M0000489 */
 
 		/* Check if it's a CTE or tuplestore reference */

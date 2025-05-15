@@ -111,6 +111,7 @@ static int	specialAttNum(const char *attname);
 static bool isQueryUsingTempRelation_walker(Node *node, void *context);
 static bool is_query_using_gtt_walker(Node *node, void *context);
 static List *get_open_dblinks(void);
+static bool ivyisMixedCase(const char *str);
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 static List *GetValidindexhint(List **indexOidList, IndexHintRelationData *indexdata);
@@ -1577,6 +1578,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 	RangeVar	*rangevar;
 	RangeVar	*dblinkrv = NULL;
 	RangeVar   	*localrelation;
+	char		*umpname = NULL;
 	List	   	*cmd_list = NIL;
 	List 		*raw_parsetree_list = NIL;
 	List 		*tupnatts = NIL;
@@ -1624,7 +1626,21 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 			}
 
 			is_dblnkrel = true;
-			localrelation->relname = psprintf("%s@%s", relation->relname, relation->srvname);
+			get_usermapping_name(mapping->options, &umpname);
+
+			/* Begin - BUG#Z4578 */
+			if (relation->schemaname)
+				localrelation->relname = psprintf("%s_%s@%s", relation->schemaname, relation->relname, relation->srvname);
+			else
+			{
+				if (dblinkrel_schema_use_user)
+					localrelation->relname = psprintf("%s_%s@%s", umpname, relation->relname, relation->srvname);
+				else
+					localrelation->relname = psprintf("%s_%s@%s", get_namespace_name(GetActiveCreationNamespace()), relation->relname, relation->srvname);
+			}
+			/* End - BUG#Z4578 */
+
+			localrelation->relpersistence = RELPERSISTENCE_TEMP;
 		}
 	}
 	/* End - ReqID:SRS-SQL-DBLINK */
@@ -1684,25 +1700,37 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 					imstmt = makeNode(ImportForeignSchemaStmt);
 					imstmt->server_name = relation->srvname;
 
+					/* Begin - BUG#Z4433 */
 					if (fdw_type == PG_FDW)
 					{
 						if (relation->schemaname)
 							imstmt->remote_schema = psprintf("%s", relation->schemaname);
 						else
-							imstmt->remote_schema = psprintf("%s", "public");
-						imstmt->list_type = FDW_IMPORT_SCHEMA_LIMIT_TO;
-						imstmt->table_list = list_make1(rangevar);
+						{
+							/*
+							 * dblinkrel_schema_use_user is on by default. we assume that like Oracle
+							 * the table or view accessed by the current user is under the schema with
+							 * the same name as the remote connected user.
+							 * if dblinkrel_schema_use_user if off, we take the current user's search_path
+							 * as the remote schema.
+							 */
+							if (dblinkrel_schema_use_user)
+								imstmt->remote_schema = psprintf("%s", umpname);
+							else
+								imstmt->remote_schema = psprintf("%s", get_namespace_name(GetActiveCreationNamespace()));
+						}
 					}
 					else if (fdw_type == ORA_FDW)
 					{
-						char	*umpname = NULL;
-
-						get_usermapping_name(mapping->options, &umpname);
-
-						imstmt->remote_schema = psprintf("%s", upper_character(umpname, strlen(umpname)));
-						imstmt->list_type = FDW_IMPORT_SCHEMA_LIMIT_TO;
-						imstmt->table_list = list_make1(rangevar);
+						if (relation->schemaname)
+							imstmt->remote_schema = psprintf("%s", upper_character(relation->schemaname, strlen(relation->schemaname)));
+						else
+							imstmt->remote_schema = psprintf("%s", upper_character(umpname, strlen(umpname)));
 					}
+
+					imstmt->list_type = FDW_IMPORT_SCHEMA_LIMIT_TO;
+					imstmt->table_list = list_make1(rangevar);
+					/* End - BUG#Z4433 */
 
 					/* Call FDW to get a list of commands */
 					cmd_list = fdw_routine->ImportForeignSchema(imstmt, server->serverid);
@@ -1793,8 +1821,6 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 
 	if (is_dblnkrel)
 	{
-		char	*umpname = NULL;
-
 		/* get the old tupnatts list */
 		for (i = 0; i < rel->rd_att->natts; i++)
 		{
@@ -1811,18 +1837,34 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 			tupnatts = lappend(tupnatts, col);
 		}
 
+		/* Begin - BUG#Z4433 */
 		if (fdw_type == ORA_FDW)
 		{
-			get_usermapping_name(mapping->options, &umpname);
-			relnspname = psprintf("%s", upper_character(umpname, strlen(umpname)));
+			if (relation->schemaname)
+				relnspname = psprintf("%s", upper_character(relation->schemaname, strlen(relation->schemaname)));
+			else
+				relnspname = psprintf("%s", upper_character(umpname, strlen(umpname)));
 		}
 		else if (fdw_type == PG_FDW)
 		{
 			if (relation->schemaname)
 				relnspname = psprintf("%s", relation->schemaname);
 			else
-				relnspname = psprintf("%s", "public");
+			{
+				/*
+				 * dblinkrel_schema_use_user is on by default. we assume that like Oracle
+				 * the table or view accessed by the current user is under the schema with
+				 * the same name as the remote connected user.
+				 * if dblinkrel_schema_use_user if off, we take the current user's search_path
+				 * as the remote schema.
+				 */
+				if (dblinkrel_schema_use_user)
+					relnspname = psprintf("%s",umpname);
+				else
+					relnspname = psprintf("%s", get_namespace_name(GetActiveCreationNamespace()));
+			}
 		}
+		/* End - BUG#Z4433 */
 
 		/*
 		 * check the metadata change
@@ -1868,7 +1910,10 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 				table_close(rel, lockmode);
 
 				/* 2. drop this old table */
-				dopstmt = psprintf("DROP FOREIGN TEMP TABLE %s", localrelation->relname);
+				if (ivyisMixedCase(relnspname))
+					dopstmt = psprintf("DROP FOREIGN TEMP TABLE \"%s_%s\"@%s", relnspname, relation->relname, relation->srvname);
+				else
+					dopstmt = psprintf("DROP FOREIGN TEMP TABLE %s", localrelation->relname);
 
 				raw_parsetree_list = pg_parse_query(dopstmt);
 				Assert(list_length(raw_parsetree_list) == 1);
@@ -1895,7 +1940,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 
 				/* 3. create a new one using changed matedata */
 				query_string = buildCreateForeignTablequeryString(mdtupnatts_changed,
-																 relation->relname, relation->relname, server->servername,
+																 localrelation->relname, relation->relname, server->servername,
 																 relnspname, fdw_type);
 
 				raw_parsetree_list = pg_parse_query(query_string);
@@ -4656,3 +4701,24 @@ err:
 	return retType;
 }
 /* End - ReqID:SRS-MYSQL-UPDATE */
+
+static bool
+ivyisMixedCase(const char *str)
+{
+	int has_upper = 0, has_lower = 0;
+
+	while (*str)
+	{
+		if (isupper((unsigned char *)str))
+			has_upper = 1;
+		else if (islower((unsigned char *)str))
+			has_lower = 1;
+
+		if (has_upper && has_lower)
+			return true;
+
+		str++;
+	}
+
+	return false;
+}

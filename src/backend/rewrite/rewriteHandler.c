@@ -265,8 +265,9 @@ AcquireRewriteLocks(Query *parsetree,
 					else if (strcmp(fdw->fdwname, "postgres_fdw") == 0)
 						fdw_type = PG_FDW;
 
-					ftname = psprintf("%s@%s", rte->linkrelname, server->servername);
-
+					/* Begin - BUG#Z4578 */
+					ftname = psprintf("%s_%s@%s", down_character(rte->linkrelnsname, strlen(rte->linkrelnsname)), rte->linkrelname, server->servername);
+					/* End - BUG#Z4578 */
 					PG_TRY();
 					{
 						MemoryContextSwitchTo(current_cxt);
@@ -293,8 +294,8 @@ AcquireRewriteLocks(Query *parsetree,
 					{
 						query_string = buildCreateForeignTablequeryString(rte->linkrelattrs, rte->linkrelname,
 																		  rte->linkrelname, server->servername,
-																		  rte->linkrelnsname, fdw_type
-																		  );
+																		  rte->linkrelnsname,
+																		  fdw_type);
 
 						/* Parse the SQL string into a list of raw parse trees. */
 						raw_parsetree_list = pg_parse_query(pstrdup(query_string));
@@ -4995,8 +4996,12 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 			ForeignServer *server;
 
 			server = GetForeignServer(rte->serverOid);
-			ftname = psprintf("%s@%s", rte->linkrelname, server->servername);
-
+			/* Begin - BUG#Z4578 */
+			if (strcmp(server->servertype, "postgres")== 0)
+				ftname = psprintf("%s_%s@%s", rte->linkrelnsname, rte->linkrelname, server->servername);
+			else if (strcmp(server->servertype, "oracle") == 0)
+				ftname = psprintf("%s_%s@%s", down_character(rte->linkrelnsname, strlen(rte->linkrelnsname)), rte->linkrelname, server->servername);
+			/* End - BUG#Z4578 */
 			rel = get_rel_oid_from_relname(ftname, AccessShareLock, ACL_SELECT);
 
 			rte->rtekind = RTE_RELATION;

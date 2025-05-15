@@ -186,7 +186,7 @@ extern OverrideSearchPath *CopyOverrideSearchPath(OverrideSearchPath *path);
 extern bool OverrideSearchPathMatchesCurrent(OverrideSearchPath *path);
 extern void PushOverrideSearchPath(OverrideSearchPath *newpath);
 extern void PopOverrideSearchPath(void);
-
+extern Oid	GetActiveCreationNamespace(void);	/* BUG#Z4433 */
 extern Oid	get_collation_oid(List *collname, bool missing_ok);
 extern Oid	get_conversion_oid(List *conname, bool missing_ok);
 extern Oid	FindDefaultConversionProc(int32 for_encoding, int32 to_encoding);

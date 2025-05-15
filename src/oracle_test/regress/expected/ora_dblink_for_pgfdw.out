@@ -3,31 +3,13 @@
  * Test DBLINK feature
  *
  ****************************************************************/
---add system user
-CREATE USER system WITH superuser;
-\c - system
-create or replace function dbuser_createdb() RETURNS void as
-$$
-declare
-    name text;
-begin
-	select into name 10::regrole;
-    execute format('set session authorization %s;',name);
-	return;
-end;
-$$ language plpgsql;
-/
+--add enrol11 user
+CREATE USER enrol11 WITH superuser;
 set ivorysql.compatible_mode to pg;
 show ivorysql.compatible_mode;
  ivorysql.compatible_mode 
 --------------------------
  pg
-(1 row)
-
-select dbuser_createdb();
- dbuser_createdb 
------------------
- 
 (1 row)
 
 create database tdblnk;
@@ -38,9 +20,9 @@ show ivorysql.compatible_mode;
  oracle
 (1 row)
 
-set session authorization system;
-\c tdblnk system
-ALTER USER system with password 'ivy123';
+\c tdblnk enrol11
+create schema enrol11;
+ALTER USER enrol11 with password 'ivy123';
 CREATE TABLE it1(c1 int, c2 varchar2(10));
 CREATE TABLE it2(b1 int, b2 int);
 CREATE TABLE it3(a varchar2(20), b number);
@@ -55,8 +37,7 @@ INSERT INTO it5(m, n) VALUES ('shared', 99), ('private', 909), ('public', 999);
 CREATE VIEW vit1 AS SELECT * FROM it1 WHERE c1 < 10;
 -- create materialized view
 CREATE MATERIALIZED VIEW mivt2 AS SELECT * FROM it2;
-\c regression system
---CREATE EXTENSION postgres_fdw;
+\c regression
 CREATE TABLE lptb(a int);
 INSERT INTO lptb VALUES (1), (100), (1000);
 -- create a public DBLINK
@@ -73,7 +54,7 @@ show ivorysql.default_dblink_fdw; -- postgres_fdw is default fdw
 DO $d$
     BEGIN
         EXECUTE $$ create public database link ivyfuplnk
-			connect to system identified by "ivy123"
+			connect to enrol11 identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -86,7 +67,7 @@ $d$;
 DO $d$
     BEGIN
         EXECUTE $$ create database link ivyfurlnk
-			connect to system identified by "ivy123"
+			connect to enrol11 identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -112,7 +93,7 @@ DO $d$
 $d$;
 -- must be create a user mapping for current_user DBLINK before using this link
 create user mapping for public
- server ivycurrent options (user 'system', password 'ivy123');
+ server ivycurrent options (user 'enrol11', password 'ivy123');
 --
 -- Connected User
 --
@@ -129,15 +110,15 @@ DO $d$
 $d$;
 -- must be create a user mapping for Connected User DBLINK before using this link
 create user mapping for public
- server ivyconned options (user 'system', password 'ivy123');
+ server ivyconned options (user 'enrol11', password 'ivy123');
 --
 -- Shared DBLINK
 --
 DO $d$
     BEGIN
         EXECUTE $$ create shared public database link spglink
-		connect to system identified by "ivy123"
-		AUTHENTICATED BY system IDENTIFIED BY "ivy123"
+		connect to enrol11 identified by "ivy123"
+		AUTHENTICATED BY enrol11 IDENTIFIED BY "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -278,38 +259,39 @@ drop procedure ins_from_pglnk;
 /*End - BUG#Z1391 */
 -- test alter database link command
 select umoptions from pg_user_mappings where srvname = 'ivyfurlnk';
-           umoptions           
--------------------------------
- {user=system,password=IVY123}
+           umoptions            
+--------------------------------
+ {user=enrol11,password=IVY123}
 (1 row)
 
-alter database link ivyfurlnk connect to system identified by ivorysqlpro;
+alter database link ivyfurlnk connect to enrol11 identified by ivorysqlpro;
 select umoptions from pg_user_mappings where srvname = 'ivyfurlnk';
-             umoptions              
-------------------------------------
- {user=system,password=IVORYSQLPRO}
+              umoptions              
+-------------------------------------
+ {user=enrol11,password=IVORYSQLPRO}
 (1 row)
 
 -- drop link
 drop database link ivyfurlnk;
 NOTICE:  drop cascades to 2 other objects
-DETAIL:  drop cascades to user mapping for system on server ivyfurlnk
-drop cascades to foreign table "it2@ivyfurlnk"
+DETAIL:  drop cascades to user mapping for enrol11 on server ivyfurlnk
+drop cascades to foreign table "enrol11_it2@ivyfurlnk"
 drop public database link ivyfuplnk;
-NOTICE:  drop cascades to 5 other objects
+NOTICE:  drop cascades to 6 other objects
 DETAIL:  drop cascades to user mapping for public on server ivyfuplnk
+drop cascades to foreign table "enrol11_it1@ivyfuplnk"
+drop cascades to foreign table "enrol11_vit1@ivyfuplnk"
+drop cascades to foreign table "enrol11_mivt2@ivyfuplnk"
+drop cascades to foreign table "enrol11_it2@ivyfuplnk"
 drop cascades to foreign table "it1@ivyfuplnk"
-drop cascades to foreign table "vit1@ivyfuplnk"
-drop cascades to foreign table "mivt2@ivyfuplnk"
-drop cascades to foreign table "it2@ivyfuplnk"
 drop public database link ivycurrent;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to user mapping for public on server ivycurrent
-drop cascades to foreign table "it3@ivycurrent"
+drop cascades to foreign table "enrol11_it3@ivycurrent"
 drop public database link ivyconned;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to user mapping for public on server ivyconned
-drop cascades to foreign table "it4@ivyconned"
+drop cascades to foreign table "enrol11_it4@ivyconned"
 -- access the shared DBLINK
 select * from it5@spglink;
     m    |  n  | e 
@@ -322,7 +304,7 @@ select * from it5@spglink;
 drop public database link spglink;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to user mapping for public on server spglink
-drop cascades to foreign table "it5@spglink"
+drop cascades to foreign table "enrol11_it5@spglink"
 -- test global_names GUC
 show global_names;
  global_names 
@@ -340,7 +322,7 @@ show global_names;
 DO $d$
     BEGIN
         EXECUTE $$ create public database link glolnk
-			connect to system identified by "ivy123"
+			connect to enrol11 identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -356,7 +338,7 @@ LINE 1: select * from it1@glolnk;
 DO $d$
     BEGIN
         EXECUTE $$ create public database link tdblnk
-			connect to system identified by "ivy123"
+			connect to enrol11 identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -381,7 +363,7 @@ NOTICE:  drop cascades to user mapping for public on server glolnk
 drop public database link tdblnk;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to user mapping for public on server tdblnk
-drop cascades to foreign table "it1@tdblnk"
+drop cascades to foreign table "enrol11_it1@tdblnk"
 show global_names;
  global_names 
 --------------
@@ -404,17 +386,16 @@ select * from lptb@regression;
  1000
 (3 rows)
 
-\c - system
 select current_user;
  current_user 
 --------------
- system
+ enrol11
 (1 row)
 
 drop view vt1;
 --drop extension postgres_fdw;
 drop table lptb;
-\c tdblnk system
+\c tdblnk enrol11
 drop view vit1;
 drop MATERIALIZED view mivt2;
 drop table it1;
@@ -422,7 +403,8 @@ drop table it2;
 drop table it3;
 drop table it4;
 drop table it5;
-\c regression system
+drop schema enrol11;
+\c regression
 set ivorysql.compatible_mode to pg;
 show ivorysql.compatible_mode;
  ivorysql.compatible_mode 
@@ -430,27 +412,5 @@ show ivorysql.compatible_mode;
  pg
 (1 row)
 
-select dbuser_createdb();
- dbuser_createdb 
------------------
- 
-(1 row)
-
 drop database tdblnk;
 set ivorysql.compatible_mode to oracle;
-show ivorysql.compatible_mode;
- ivorysql.compatible_mode 
---------------------------
- oracle
-(1 row)
-
-drop function dbuser_createdb;
---drop system user
-declare
-    name text;
-begin
-        select into name 10::regrole;
-		execute format('set session authorization %s;',name);
-end;
-/
-DROP USER system;

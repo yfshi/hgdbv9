@@ -151,6 +151,7 @@ int32 ora_open_links_per_instance = 4;	/* BUG#Z1325 */
 char *default_dblink_fdw = "";
 bool check_lnk_metadata_changed = false;
 bool ora_global_names = false;
+bool dblinkrel_schema_use_user = true;	/* BUG#Z4433 */
 /* End - ReqID:SRS-SQL-DBLINK */
 
 
@@ -701,8 +702,8 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
-	{
-		{"global_names", PGC_SUSET, COMPAT_ORACLE_OPTIONS,
+	{	/* BUG#Z4602 */
+		{"global_names", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("enforce that database links have same name as remote database."),
 			NULL,
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
@@ -711,6 +712,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
+	/* Begin - BUG#Z4433 */
+	{
+		{"ivorysql.dblinkrel_schema_use_user", PGC_SUSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("enforce that database links have same name as remote database."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&dblinkrel_schema_use_user,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#Z4433 */
 	/* End - ReqID:SRS-SQL-DBLINK */
 	/* Begin - BUG#M0000376 */
 	{
