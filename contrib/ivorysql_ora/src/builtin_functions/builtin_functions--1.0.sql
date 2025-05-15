@@ -1308,17 +1308,6 @@ AS 'MODULE_PATHNAME', 'ora_convert'
 LANGUAGE C IMMUTABLE STRICT;
 /* End - BUG#M0000194 */
 
-/* Begin - Bug#Z1064 */
-/* get macro value */
-CREATE FUNCTION sys.get_macro_value(text)
-RETURNS text
-AS 'MODULE_PATHNAME','get_macro_value'
-LANGUAGE C
-PARALLEL SAFE  -- BUG#M0000422
-STRICT
-IMMUTABLE;
-/* End - Bug#Z1064 */
-
 /* Begin - BUG#M0000457 */
 CREATE FUNCTION sys.listagg1_transfn(internal, text)
 RETURNS internal

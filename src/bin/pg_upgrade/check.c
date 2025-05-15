@@ -1606,14 +1606,14 @@ get_first_normal_oid(ClusterInfo *cluster)
 	res = executeQueryOrDie(conn,
 							"SELECT count(*) "
 							"FROM pg_namespace ns JOIN pg_proc p ON ns.oid = p.pronamespace "
-							"WHERE ns.nspname = 'sys' AND p.proname = 'get_macro_value'");
+							"WHERE ns.nspname = 'pg_catalog' AND p.proname = 'get_macro_value'");
 
 	if (atoi(PQgetvalue(res, 0, 0)) == 1)
 	{
 		PQclear(res);
 		res = executeQueryOrDie(conn,
 							"SELECT "
-							"sys.get_macro_value('FirstNormalObjectId')");
+							"pg_catalog.get_macro_value('FirstNormalObjectId')");
 
 		if (PQntuples(res) != 1)
 		{
