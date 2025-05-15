@@ -322,7 +322,7 @@ DROP VIEW v_window;
 
 CREATE TEMP VIEW v_window AS
 	SELECT i, min(i) over (order by i range between '1 day' preceding and '10 days' following) as min_i
-  FROM generate_series(now(), now()+'100 days'::interval, '1 hour') i;
+  FROM generate_series(pg_catalog.now(), pg_catalog.now()+'100 days'::interval, '1 hour') i;
 
 SELECT pg_get_viewdef('v_window');
 

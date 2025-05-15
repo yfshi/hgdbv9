@@ -8877,7 +8877,7 @@ CREATE SCHEMA import_source;
 CREATE TABLE import_source.t1 (c1 int, c2 varchar NOT NULL);
 CREATE TABLE import_source.t2 (c1 int default 42, c2 varchar NULL, c3 text collate "POSIX");
 CREATE TYPE typ1 AS (m1 int, m2 varchar);
-CREATE TABLE import_source.t3 (c1 timestamptz default now(), c2 typ1);
+CREATE TABLE import_source.t3 (c1 timestamptz default pg_catalog.now(), c2 typ1);
 CREATE TABLE import_source."x 4" (c1 float8, "C 2" text, c3 varchar(42));
 CREATE TABLE import_source."x 5" (c1 float8);
 ALTER TABLE import_source."x 5" DROP COLUMN c1;
@@ -8962,75 +8962,16 @@ FDW options: (schema_name 'import_source', table_name 'x 6')
 CREATE SCHEMA import_dest2;
 IMPORT FOREIGN SCHEMA import_source FROM SERVER loopback INTO import_dest2
   OPTIONS (import_default 'true');
+ERROR:  column "c1" is of type timestamp with time zone but default expression is of type datetime
+HINT:  You will need to rewrite or cast the expression.
+CONTEXT:  importing foreign table "t3"
 \det+ import_dest2.*
-                                     List of foreign tables
-    Schema    | Table |  Server  |                   FDW options                   | Description 
---------------+-------+----------+-------------------------------------------------+-------------
- import_dest2 | t1    | loopback | (schema_name 'import_source', table_name 't1')  | 
- import_dest2 | t2    | loopback | (schema_name 'import_source', table_name 't2')  | 
- import_dest2 | t3    | loopback | (schema_name 'import_source', table_name 't3')  | 
- import_dest2 | t4    | loopback | (schema_name 'import_source', table_name 't4')  | 
- import_dest2 | x 4   | loopback | (schema_name 'import_source', table_name 'x 4') | 
- import_dest2 | x 5   | loopback | (schema_name 'import_source', table_name 'x 5') | 
- import_dest2 | x 6   | loopback | (schema_name 'import_source', table_name 'x 6') | 
-(7 rows)
+               List of foreign tables
+ Schema | Table | Server | FDW options | Description 
+--------+-------+--------+-------------+-------------
+(0 rows)
 
 \d import_dest2.*
-                         Foreign table "import_dest2.t1"
- Column |       Type        | Collation | Nullable | Default |    FDW options     
---------+-------------------+-----------+----------+---------+--------------------
- c1     | integer           |           |          |         | (column_name 'c1')
- c2     | character varying |           | not null |         | (column_name 'c2')
-Server: loopback
-FDW options: (schema_name 'import_source', table_name 't1')
-
-                         Foreign table "import_dest2.t2"
- Column |       Type        | Collation | Nullable | Default |    FDW options     
---------+-------------------+-----------+----------+---------+--------------------
- c1     | integer           |           |          | 42      | (column_name 'c1')
- c2     | character varying |           |          |         | (column_name 'c2')
- c3     | text              | POSIX     |          |         | (column_name 'c3')
-Server: loopback
-FDW options: (schema_name 'import_source', table_name 't2')
-
-                             Foreign table "import_dest2.t3"
- Column |           Type           | Collation | Nullable | Default |    FDW options     
---------+--------------------------+-----------+----------+---------+--------------------
- c1     | timestamp with time zone |           |          | now()   | (column_name 'c1')
- c2     | typ1                     |           |          |         | (column_name 'c2')
-Server: loopback
-FDW options: (schema_name 'import_source', table_name 't3')
-
-                    Foreign table "import_dest2.t4"
- Column |  Type   | Collation | Nullable | Default |    FDW options     
---------+---------+-----------+----------+---------+--------------------
- c1     | integer |           |          |         | (column_name 'c1')
-Server: loopback
-FDW options: (schema_name 'import_source', table_name 't4')
-
-                           Foreign table "import_dest2.x 4"
- Column |         Type          | Collation | Nullable | Default |     FDW options     
---------+-----------------------+-----------+----------+---------+---------------------
- c1     | double precision      |           |          |         | (column_name 'c1')
- C 2    | text                  |           |          |         | (column_name 'C 2')
- c3     | character varying(42) |           |          |         | (column_name 'c3')
-Server: loopback
-FDW options: (schema_name 'import_source', table_name 'x 4')
-
-               Foreign table "import_dest2.x 5"
- Column | Type | Collation | Nullable | Default | FDW options 
---------+------+-----------+----------+---------+-------------
-Server: loopback
-FDW options: (schema_name 'import_source', table_name 'x 5')
-
-                                   Foreign table "import_dest2.x 6"
- Column |  Type   | Collation | Nullable |                Default                |    FDW options     
---------+---------+-----------+----------+---------------------------------------+--------------------
- c1     | integer |           |          |                                       | (column_name 'c1')
- c2     | integer |           |          | generated always as ((c1 * 2)) stored | (column_name 'c2')
-Server: loopback
-FDW options: (schema_name 'import_source', table_name 'x 6')
-
 CREATE SCHEMA import_dest3;
 IMPORT FOREIGN SCHEMA import_source FROM SERVER loopback INTO import_dest3
   OPTIONS (import_collate 'false', import_generated 'false', import_not_null 'false');

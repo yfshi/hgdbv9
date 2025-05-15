@@ -1003,17 +1003,17 @@ where a.thousand = b.thousand
 --
 explain (verbose, costs off)
   select x, x from
-    (select (select now()) as x from (values(1),(2)) v(y)) ss;
+    (select (select pg_catalog.now()) as x from (values(1),(2)) v(y)) ss;
         QUERY PLAN         
----------------------------
+------------------------------------
  Values Scan on "*VALUES*"
    Output: $0, $1
    InitPlan 1 (returns $0)
      ->  Result
-           Output: now()
+           Output: pg_catalog.now()
    InitPlan 2 (returns $1)
      ->  Result
-           Output: now()
+           Output: pg_catalog.now()
 (8 rows)
 
 explain (verbose, costs off)
@@ -1032,18 +1032,18 @@ explain (verbose, costs off)
 
 explain (verbose, costs off)
   select x, x from
-    (select (select now() where y=y) as x from (values(1),(2)) v(y)) ss;
+    (select (select pg_catalog.now() where y=y) as x from (values(1),(2)) v(y)) ss;
                               QUERY PLAN                              
 ----------------------------------------------------------------------
  Values Scan on "*VALUES*"
    Output: (SubPlan 1), (SubPlan 2)
    SubPlan 1
      ->  Result
-           Output: now()
+           Output: pg_catalog.now()
            One-Time Filter: ("*VALUES*".column1 = "*VALUES*".column1)
    SubPlan 2
      ->  Result
-           Output: now()
+           Output: pg_catalog.now()
            One-Time Filter: ("*VALUES*".column1 = "*VALUES*".column1)
 (10 rows)
 
@@ -1633,12 +1633,12 @@ select * from x where f1 = 1;
 
 -- Stable functions are safe to inline
 explain (verbose, costs off)
-with x as (select * from (select f1, now() from subselect_tbl) ss)
+with x as (select * from (select f1, pg_catalog.now() from subselect_tbl) ss)
 select * from x where f1 = 1;
             QUERY PLAN             
------------------------------------
+----------------------------------------------
  Seq Scan on public.subselect_tbl
-   Output: subselect_tbl.f1, now()
+   Output: subselect_tbl.f1, pg_catalog.now()
    Filter: (subselect_tbl.f1 = 1)
 (3 rows)
 
@@ -1676,16 +1676,16 @@ select * from x where f1 = 1;
 
 -- Multiply-referenced CTEs are inlined only when requested
 explain (verbose, costs off)
-with x as (select * from (select f1, now() as n from subselect_tbl) ss)
+with x as (select * from (select f1, pg_catalog.now() as n from subselect_tbl) ss)
 select * from x, x x2 where x.n = x2.n;
                 QUERY PLAN                 
--------------------------------------------
+------------------------------------------------------
  Merge Join
    Output: x.f1, x.n, x2.f1, x2.n
    Merge Cond: (x.n = x2.n)
    CTE x
      ->  Seq Scan on public.subselect_tbl
-           Output: subselect_tbl.f1, now()
+           Output: subselect_tbl.f1, pg_catalog.now()
    ->  Sort
          Output: x.f1, x.n
          Sort Key: x.n
@@ -1699,13 +1699,13 @@ select * from x, x x2 where x.n = x2.n;
 (16 rows)
 
 explain (verbose, costs off)
-with x as not materialized (select * from (select f1, now() as n from subselect_tbl) ss)
+with x as not materialized (select * from (select f1, pg_catalog.now() as n from subselect_tbl) ss)
 select * from x, x x2 where x.n = x2.n;
                                  QUERY PLAN                                 
-----------------------------------------------------------------------------
+------------------------------------------------------------------------------------
  Result
-   Output: subselect_tbl.f1, now(), subselect_tbl_1.f1, now()
-   One-Time Filter: (now() = now())
+   Output: subselect_tbl.f1, pg_catalog.now(), subselect_tbl_1.f1, pg_catalog.now()
+   One-Time Filter: (pg_catalog.now() = pg_catalog.now())
    ->  Nested Loop
          Output: subselect_tbl.f1, subselect_tbl_1.f1
          ->  Seq Scan on public.subselect_tbl

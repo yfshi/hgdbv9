@@ -44,8 +44,9 @@
 #include "utils/numeric.h"
 #include "utils/timestamp.h"
 #include "utils/varlena.h"
+#include "utils/numeric.h"
+#include "../include/datetime_func.h"  /* SRS-MYSQL-BUILDINFUNCTION */
 
-#define SQL_MODE_DEFAULT (9)
 
 int getCount(uint64 num);
 bool isValidDatetimeFormat(const char *datetime) ;
@@ -336,7 +337,7 @@ mysdate_in(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -3396,7 +3397,7 @@ Datum mysdate_text_like(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -3483,7 +3484,7 @@ Datum mysdate_text_notlike(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -3782,7 +3783,7 @@ mysdatetime_in(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr = 0;
 	mysql_dttype ftype = 0;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -7072,7 +7073,7 @@ Datum mysdatetime_text_like(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -7159,7 +7160,7 @@ Datum mysdatetime_text_notlike(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -7473,7 +7474,7 @@ mysdatetimes_in(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -11176,7 +11177,7 @@ Datum mysdatetimes_text_like(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -11280,7 +11281,7 @@ Datum mysdatetimes_text_notlike(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -11597,7 +11598,7 @@ mystimestamp_in(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -14847,7 +14848,7 @@ Datum mystimestamp_text_like(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -14934,7 +14935,7 @@ Datum mystimestamp_text_notlike(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -15248,7 +15249,7 @@ mystimestamps_in(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -18917,7 +18918,7 @@ Datum mystimestamps_text_like(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -19021,7 +19022,7 @@ Datum mystimestamps_text_notlike(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -19347,7 +19348,7 @@ mystime_in(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nanosec = false;
@@ -22322,7 +22323,7 @@ Datum mystime_text_like(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr = 0;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -22419,7 +22420,7 @@ Datum mystime_text_notlike(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -22740,7 +22741,7 @@ mystimes_in(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int 		dterr;
 	mysql_dttype ftype;
-	int 		flag = SQL_MODE_DEFAULT;
+	int 		flag = TIME_FLAG_INIT;
 	int 		warn = 0;
 	int 		nanoseconds = 0;
 	bool		nanosec = false;
@@ -26332,7 +26333,7 @@ Datum mystimes_text_like(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -26440,7 +26441,7 @@ Datum mystimes_text_notlike(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = SQL_MODE_DEFAULT;
+	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nonsec = false;
@@ -27013,3 +27014,123 @@ Datum mystimes_mystimestamps(PG_FUNCTION_ARGS)
 
 	PG_RETURN_NUMERIC(num);
 }
+
+/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+bool 
+str_datetime_in_with_flag_internal(char *str, struct pg_tm *result_tm, fsec_t *result_fsec, mysql_dttype *result_tm_type)
+{
+	int flag = TIME_FLAG_INIT;
+	int nanoseconds = 0;
+	bool nonsec = false;
+	int fsec_len = 0;
+	fsec_t fsec;
+	mysql_dttype tm_type = MYSQL_TIMESTAMP_DATE;
+	struct pg_tm tt, *tm = &tt;
+	int errlevel;
+	int warning = 0;
+
+	errlevel = (is_strict_mode() ? ERROR : WARNING);
+
+	MemSet(tm, 0, sizeof(struct pg_tm));
+
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
+		flag |= TIME_NO_ZERO_DATE;
+	if (has_sql_mode(MODE_INVALID_DATES))
+		flag |= TIME_INVALID_DATES;
+
+	mystr_to_datetime(str, strlen(str), tm, flag, &fsec, &tm_type, &warning, &nanoseconds, &fsec_len);
+	nonsec = mysdatetime_add_nanoseconds_with_round(tm, &fsec, &warning, nanoseconds);
+
+	if (tm_type < 0 || nonsec || (warning == MYSQL_TIME_WARN_ZERO_DATE && has_sql_mode(MODE_NO_ZERO_DATE)))
+	{
+
+		if (errlevel == ERROR && warning > 0)
+		{
+			ereport(errlevel, errmsg("Incorrect datetime value: \"%s\"", str));
+		}
+		else
+		{
+			ereport(errlevel, errmsg("Truncated incorrect date or datetime value: \"%s\"", str));
+		}
+		return false;
+	}
+
+	*result_fsec = fsec;
+	*result_tm_type = tm_type;
+	*result_tm = tt;
+
+	return true;
+}
+
+bool 
+num_datetime_in_with_flag_internal(Numeric num, struct pg_tm *result_tm, fsec_t *result_fsec, mysql_dttype *result_tm_type)
+{
+	struct pg_tm tt, *tm = &tt;
+	int64 datetimetemp = 0;
+	int64 len = 0;
+	char *str, *tmpstr;
+	fsec_t nanoseconds = 0;
+	fsec_t fsec = 0;
+	int dterr;
+	mysql_dttype ftype;
+	int flag = 0;
+	int warn = 0;
+
+	/* Calculate the length of the input data and return NULL if the integer part exceeds 14 digits. */
+	str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
+	tmpstr = pstrdup(str);
+	while (*str && *str != '.')
+	{
+		len++;
+		datetimetemp = datetimetemp * 10 + *str - '0';
+		str++;
+	}
+
+	/* Calculate the time */
+	str++; /* jump '.' */
+	for (int i = 0; i < 9; i++)
+	{
+		int numtemp = 0;
+		if (*str != '\0')
+		{
+			numtemp = *str - '0';
+			str++;
+		}
+		nanoseconds = nanoseconds * 10 + numtemp;
+	}
+
+	if (datetimetemp == 0)
+	{
+		MemSet(tm, 0, sizeof(struct pg_tm));
+	}
+	else if (datetimetemp < 0)
+	{
+		ereport(ERROR, (errmsg("Incorrect DATETIME value '%s'", tmpstr)));
+		return false;
+	}
+	else
+	{
+		flag = 9;
+		dterr = mysnumber_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
+		if (dterr < 0 || warn)
+		{
+			ereport(WARNING, (errmsg("Incorrect DATETIME value: '%ld'", datetimetemp)));
+			if (dterr < 0)
+				return false;
+		}
+
+		if (mysdatetime_rounded_seconds(tm, &fsec, &warn))
+		{
+			ereport(WARNING, (errmsg("DATETIME field overflow.")));
+			return false;
+		}
+	}
+
+	*result_fsec = fsec;
+	*result_tm_type = ftype;
+	*result_tm = tt;
+
+	return true;
+}
+/* End - SRS-MYSQL-BUILDINFUNCTION */
+

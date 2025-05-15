@@ -34,9 +34,9 @@ INSERT INTO arrtest (a, b[1:2][1:2], c, d, e, f, g)
 INSERT INTO arrtest (a, b[1:2], c, d[1:2])
    VALUES ('{}', '{3,4}', '{foo,bar}', '{bar,foo}');
 
-INSERT INTO arrtest (b[2]) VALUES(now());  -- error, type mismatch
+INSERT INTO arrtest (b[2]) VALUES(pg_catalog.now());  -- error, type mismatch
 
-INSERT INTO arrtest (b[1:2]) VALUES(now());  -- error, type mismatch
+INSERT INTO arrtest (b[1:2]) VALUES(pg_catalog.now());  -- error, type mismatch
 
 SELECT * FROM arrtest;
 
@@ -126,7 +126,7 @@ UPDATE arrtest
   SET c[1:NULL] = '{"can''t assign"}'
   WHERE array_dims(c) is not null;
 -- Un-subscriptable type
-SELECT (now())[1];
+SELECT (pg_catalog.now())[1];
 
 -- test slices with empty lower and/or upper index
 CREATE TEMP TABLE arrtest_s (
@@ -733,7 +733,7 @@ SELECT
     width_bucket(op, ARRAY[1, 3, 5, 10]) AS wb_1
 FROM generate_series(0,11) as op;
 
-SELECT width_bucket(now(),
+SELECT width_bucket(pg_catalog.now(),
                     array['yesterday', 'today', 'tomorrow']::timestamptz[]);
 
 -- corner cases

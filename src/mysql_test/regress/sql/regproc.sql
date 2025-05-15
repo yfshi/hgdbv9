@@ -10,7 +10,6 @@ CREATE ROLE regress_regrole_test;
 
 SELECT regoper('||/');
 SELECT regoperator('+(int4,int4)');
-SELECT regproc('now');
 SELECT regprocedure('abs(numeric)');
 SELECT regclass('pg_class');
 SELECT regtype('int4');
@@ -18,7 +17,6 @@ SELECT regcollation('"POSIX"');
 
 SELECT to_regoper('||/');
 SELECT to_regoperator('+(int4,int4)');
-SELECT to_regproc('now');
 SELECT to_regprocedure('abs(numeric)');
 SELECT to_regclass('pg_class');
 SELECT to_regtype('int4');

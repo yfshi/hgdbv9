@@ -150,7 +150,7 @@ EXPLAIN (costs off) DELETE FROM rw_view1 WHERE a=5;
 
 -- it's still updatable if we add a DO ALSO rule
 
-CREATE TABLE base_tbl_hist(ts timestamptz default now(), a int, b text);
+CREATE TABLE base_tbl_hist(ts timestamptz default pg_catalog.now(), a int, b text);
 
 CREATE RULE base_tbl_log AS ON INSERT TO rw_view1 DO ALSO
   INSERT INTO base_tbl_hist(a,b) VALUES(new.a, new.b);

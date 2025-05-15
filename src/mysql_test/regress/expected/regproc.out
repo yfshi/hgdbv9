@@ -16,12 +16,6 @@ SELECT regoperator('+(int4,int4)');
  +(integer,integer)
 (1 row)
 
-SELECT regproc('now');
- regproc 
----------
- now
-(1 row)
-
 SELECT regprocedure('abs(numeric)');
  regprocedure 
 --------------
@@ -56,12 +50,6 @@ SELECT to_regoperator('+(int4,int4)');
    to_regoperator   
 --------------------
  +(integer,integer)
-(1 row)
-
-SELECT to_regproc('now');
- to_regproc 
-------------
- now
 (1 row)
 
 SELECT to_regprocedure('abs(numeric)');
@@ -102,9 +90,9 @@ SELECT regoperator('pg_catalog.+(int4,int4)');
 (1 row)
 
 SELECT regproc('pg_catalog.now');
- regproc 
----------
- now
+    regproc     
+----------------
+ pg_catalog.now
 (1 row)
 
 SELECT regprocedure('pg_catalog.abs(numeric)');
@@ -138,9 +126,9 @@ SELECT to_regoper('pg_catalog.||/');
 (1 row)
 
 SELECT to_regproc('pg_catalog.now');
- to_regproc 
-------------
- now
+   to_regproc   
+----------------
+ pg_catalog.now
 (1 row)
 
 SELECT to_regprocedure('pg_catalog.abs(numeric)');

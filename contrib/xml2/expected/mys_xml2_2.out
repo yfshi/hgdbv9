@@ -88,13 +88,9 @@ as t(id int4, doc int4);
   1 |   1
 (1 row)
 
-create table articles (article_id integer, article_xml xml, date_entered date);
+create table articles (article_id integer, article_xml xml, date_entered pg_catalog.date);
 insert into articles (article_id, article_xml, date_entered)
-values (2, '<article><author>test</author><pages>37</pages></article>', now());
-ERROR:  column "date_entered" is of type date but expression is of type timestamp with time zone
-LINE 2: ...e><author>test</author><pages>37</pages></article>', now());
-                                                                ^
-HINT:  You will need to rewrite or cast the expression.
+values (2, '<article><author>test</author><pages>37</pages></article>', pg_catalog.now());
 SELECT * FROM
 xpath_table('article_id',
             'article_xml',
@@ -104,7 +100,8 @@ xpath_table('article_id',
 AS t(article_id integer, author text, page_count integer, title text);
  article_id | author | page_count | title 
 ------------+--------+------------+-------
-(0 rows)
+          2 | test   |         37 | 
+(1 row)
 
 -- this used to fail when invoked a second time
 select xslt_process('<aaa/>',$$<xsl:stylesheet version="1.0"

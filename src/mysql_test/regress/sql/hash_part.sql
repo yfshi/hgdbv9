@@ -73,7 +73,7 @@ SELECT satisfies_hash_partition('mcinthash'::regclass, 4, 0,
 
 -- wrong type
 SELECT satisfies_hash_partition('mcinthash'::regclass, 4, 0,
-								variadic array[now(), now()]);
+								variadic array[pg_catalog.now(), pg_catalog.now()]);
 
 -- check satisfies_hash_partition passes correct collation
 create table text_hashp (a text) partition by hash (a);

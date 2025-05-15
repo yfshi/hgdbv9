@@ -477,14 +477,14 @@ LINE 1: CREATE TABLE t1 (c1 YEAR(0));
                                  ^
 --error ER_INVALID_YEAR_COLUMN_LENGTH
 CREATE TABLE t1 (c1 YEAR(4294967295));
-ERROR:  syntax error at or near "4294967295"
+ERROR:  syntax error at or near " YEAR " 
 LINE 1: CREATE TABLE t1 (c1 YEAR(4294967295));
-                                 ^
+                            ^
 --error ER_INVALID_YEAR_COLUMN_LENGTH
 CREATE TABLE t1 (c1 YEAR(4294967296));
-ERROR:  syntax error at or near "4294967296"
+ERROR:  syntax error at or near " YEAR " 
 LINE 1: CREATE TABLE t1 (c1 YEAR(4294967296));
-                                 ^
+                            ^
 CREATE TABLE t1 (c1 YEAR(4));
 -- SHOW CREATE TABLE t1;
 INSERT INTO t1 VALUES (55);

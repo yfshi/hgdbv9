@@ -1,0 +1,612 @@
+/*DAY*/
+create table test_day(funcname text, result text);
+insert into test_day values('day(''2021-1-1'')', day('2021-1-1'));
+insert into test_day values('day(''2021-1-1 00:00:00'')', day('2021-1-1 00:00:00'));
+insert into test_day values('day(''2021-1-1 23:59:59.9999995'')', day('2021-1-1 23:59:59.9999995'));
+insert into test_day values('day(''0000-1-1 23:59:59.9999995'')', day('0000-1-1 23:59:59.9999995'));
+/*Because of there is difference in the handling of datetime type date in the year '0000' when rounding occurs,lead to difference in the result of this case*/
+insert into test_day values('day(''0000-12-31 22:59:59.9999995'')', day('0000-12-31 22:59:59.9999995'));
+insert into test_day values('day(''0000-12-31 23:59:59.9999995'')', day('0000-12-31 23:59:59.9999995'));
+insert into test_day values('day(''0000-1-1'')', day('0000-1-1'));
+insert into test_day values('day(''9999-12-31'')', day('9999-12-31'));
+insert into test_day values('day(''0000-1-1 00:00:00'')', day('0000-1-1 00:00:00'));
+insert into test_day values('day(''9999-12-31 23:59:59.999999'')', day('9999-12-31 23:59:59.999999'));
+WARNING:  DATETIME field overflow.
+insert into test_day values('day(date''0000-1-1'')', day(date'0000-1-1'));
+insert into test_day values('day(cast(''9999-12-31 12:12:12'' as datetime))', day(cast('9999-12-31 12:12:12' as datetime)));
+insert into test_day values('day(101)', day(101));
+insert into test_day values('day(99991231)', day(99991231));
+insert into test_day values('day(99991231235959.999999)', day(99991231235959.999999));
+insert into test_day values('day(20211112235959.999999)', day(20211112235959.999999));
+insert into test_day values('day(20211112235959.9999999)', day(20211112235959.9999999));
+insert into test_day values('day(null)', day(null));
+insert into test_day values('day(''2021-00-01'')', day('2021-00-01'));
+insert into test_day values('day(''2021-01-00'')', day('2021-01-00'));
+insert into test_day values('day(''2021-00-00'')', day('2021-00-00'));
+insert into test_day values('day(20210001)', day(20210001));
+insert into test_day values('day(20210100)', day(20210100));
+insert into test_day values('day(20210000)', day(20210000));
+insert into test_day values('day(0)', day(0));
+select * from test_day;
+                   funcname                   | result 
+----------------------------------------------+--------
+ day('2021-1-1')                              | 1
+ day('2021-1-1 00:00:00')                     | 1
+ day('2021-1-1 23:59:59.9999995')             | 2
+ day('0000-1-1 23:59:59.9999995')             | 2
+ day('0000-12-31 22:59:59.9999995')           | 31
+ day('0000-12-31 23:59:59.9999995')           | 1
+ day('0000-1-1')                              | 1
+ day('9999-12-31')                            | 31
+ day('0000-1-1 00:00:00')                     | 1
+ day('9999-12-31 23:59:59.999999')            | 
+ day(date'0000-1-1')                          | 1
+ day(cast('9999-12-31 12:12:12' as datetime)) | 31
+ day(101)                                     | 1
+ day(99991231)                                | 31
+ day(99991231235959.999999)                   | 31
+ day(20211112235959.999999)                   | 12
+ day(20211112235959.9999999)                  | 12
+ day(null)                                    | 
+ day('2021-00-01')                            | 1
+ day('2021-01-00')                            | 0
+ day('2021-00-00')                            | 0
+ day(20210001)                                | 1
+ day(20210100)                                | 0
+ day(20210000)                                | 0
+ day(0)                                       | 0
+(25 rows)
+
+drop table test_day;
+--sql_mode
+/*Becauseof mystext type '0000-00-00' conversion mysdatetime type has difference with mysql,lead to difference in the result of this case*/
+create table test_mode_day(funcname text, result text, mode text);
+set sql_mode ='';
+insert into test_mode_day values('day(''0000-00-00'')', day('0000-00-00') ,'sql_mode = ');
+set sql_mode ='NO_ZERO_IN_DATE';
+insert into test_mode_day values('day(''0000-00-00'')', day('0000-00-00') ,'sql_mode = NO_ZERO_IN_DATE');
+set sql_mode ='NO_ZERO_DATE';
+insert into test_mode_day values('day(''0000-00-00'')', day('0000-00-00') ,'sql_mode = NO_ZERO_DATE');
+WARNING:  Incorrect datetime value: '0000-00-00'
+set sql_mode ='STRICT_TRANS_TABLES,STRICT_ALL_TABLES';
+insert into test_mode_day values('day(''0000-00-00'')', day('0000-00-00') ,'sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES');
+set sql_mode ='STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE';
+insert into test_mode_day values('day(''0000-00-00'')', day('0000-00-00') ,'sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE');
+WARNING:  Incorrect datetime value: '0000-00-00'
+set sql_mode ='STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE';
+insert into test_mode_day values('day(''0000-00-00'')', day('0000-00-00') ,'sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE');
+set sql_mode ='STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE';
+insert into test_mode_day values('day(''0000-00-00'')', day('0000-00-00') ,'sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE');
+WARNING:  Incorrect datetime value: '0000-00-00'
+select * from test_mode_day;
+     funcname      | result |                                     mode                                      
+-------------------+--------+-------------------------------------------------------------------------------
+ day('0000-00-00') | 1      | sql_mode = 
+ day('0000-00-00') | 1      | sql_mode = NO_ZERO_IN_DATE
+ day('0000-00-00') |        | sql_mode = NO_ZERO_DATE
+ day('0000-00-00') | 1      | sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES
+ day('0000-00-00') |        | sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE
+ day('0000-00-00') | 1      | sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE
+ day('0000-00-00') |        | sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE
+(7 rows)
+
+drop table test_mode_day;
+create table test_mode_day(funcname text, result text, mode text);
+set sql_mode ='NO_ZERO_DATE';
+insert into test_mode_day values('day(''10000-1-1'')', day('10000-1-1') ,'sql_mode = NO_ZERO_DATE');
+WARNING:  Incorrect datetime value: '10000-1-1'
+insert into test_mode_day values('day(''9999-12-31 23:59:59.9999995'')', day('9999-12-31 23:59:59.9999995') ,'sql_mode = NO_ZERO_DATE');
+WARNING:  Datetime function: datetime field overflow
+WARNING:  Truncated incorrect datetime value: '9999-12-31 23:59:59.9999995'
+insert into test_mode_day values('day(-1)', day(-1) ,'sql_mode = NO_ZERO_DATE');
+ERROR:  Incorrect DATETIME value '-1'
+insert into test_mode_day values('day(99991231235959.9999995)', day(99991231235959.9999995) ,'sql_mode = NO_ZERO_DATE');
+insert into test_mode_day values('day(99991231235959.9999995)', day(99991231235959.9999995) ,'sql_mode = NO_ZERO_DATE');
+insert into test_mode_day values('day(9999999999999999999999)', day(9999999999999999999999) ,'sql_mode = NO_ZERO_DATE');
+WARNING:  Incorrect DATETIME value: '1864712049423024127'
+set sql_mode ='STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE';
+insert into test_mode_day values('day(''10000-1-1'')', day('10000-1-1') ,'sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE');
+WARNING:  Incorrect datetime value: '10000-1-1'
+insert into test_mode_day values('day(''9999-12-31 23:59:59.9999995'')', day('9999-12-31 23:59:59.9999995') ,'sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE');
+WARNING:  Datetime function: datetime field overflow
+WARNING:  Truncated incorrect datetime value: '9999-12-31 23:59:59.9999995'
+insert into test_mode_day values('day(-1)', day(-1) ,'sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE');
+ERROR:  Incorrect DATETIME value '-1'
+/*Because mysdatetimes are handled differently with mysql error when rounding occurs ,lead to difference in the result of this case*/
+insert into test_mode_day values('day(99991231235959.9999995)', day(99991231235959.9999995) ,'sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE');
+insert into test_mode_day values('day(99991231235959.9999995)', day(99991231235959.9999995) ,'sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE');
+insert into test_mode_day values('day(9999999999999999999999)', day(9999999999999999999999) ,'sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE');
+WARNING:  Incorrect DATETIME value: '1864712049423024127'
+select * from test_mode_day;
+              funcname              | result |                             mode                              
+------------------------------------+--------+---------------------------------------------------------------
+ day('10000-1-1')                   |        | sql_mode = NO_ZERO_DATE
+ day('9999-12-31 23:59:59.9999995') |        | sql_mode = NO_ZERO_DATE
+ day(99991231235959.9999995)        | 31     | sql_mode = NO_ZERO_DATE
+ day(99991231235959.9999995)        | 31     | sql_mode = NO_ZERO_DATE
+ day(9999999999999999999999)        |        | sql_mode = NO_ZERO_DATE
+ day('10000-1-1')                   |        | sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE
+ day('9999-12-31 23:59:59.9999995') |        | sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE
+ day(99991231235959.9999995)        | 31     | sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE
+ day(99991231235959.9999995)        | 31     | sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE
+ day(9999999999999999999999)        |        | sql_mode = STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_DATE
+(10 rows)
+
+drop table test_mode_day;
+set sql_mode='ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+/*DAYOFMONTH*/
+SELECT dayofmonth('2022-10-09 09:55:28.12345');
+ dayofmonth 
+------------
+          9
+(1 row)
+
+SELECT dayofmonth(20221009);
+ dayofmonth 
+------------
+          9
+(1 row)
+
+select dayofmonth('20:38:40');
+WARNING:  Incorrect datetime value: '20:38:40'
+ dayofmonth 
+------------
+           
+(1 row)
+
+select dayofmonth(203840);
+WARNING:  Incorrect DATETIME value: '203840'
+ dayofmonth 
+------------
+           
+(1 row)
+
+/*DAYOFWEEK*/
+SELECT dayofweek('2022-10-09 09:55:28.12345');
+ dayofweek 
+-----------
+         1
+(1 row)
+
+SELECT dayofweek(20221009);
+ dayofweek 
+-----------
+         1
+(1 row)
+
+select dayofweek('14:14:14');
+WARNING:  Incorrect datetime value: '14:14:14'
+ dayofweek 
+-----------
+          
+(1 row)
+
+select dayofweek(time'2022-06-28 00:00:00');
+ERROR:  Incorrect TIME value: '2022-06-28 00:00:00'
+/*Because mystime conversion to mysdate is different from mysql*/
+select dayofweek(time'838:59:59');
+ERROR:  Incorrect TIME value: '838:59:59'
+/*DAYOFYEAR*/
+SELECT dayofyear('2022-10-09 09:55:28.12345');
+ dayofyear 
+-----------
+       282
+(1 row)
+
+SELECT dayofyear(20221009);
+ dayofyear 
+-----------
+       282
+(1 row)
+
+select dayofyear('20:38:40');
+WARNING:  Incorrect datetime value: '20:38:40'
+ dayofyear 
+-----------
+          
+(1 row)
+
+select dayofyear(203840);
+WARNING:  Incorrect DATETIME value: '203840'
+ dayofyear 
+-----------
+          
+(1 row)
+
+/*QUARTER*/
+SELECT quarter('2022-10-09 09:55:28.12345');
+ quarter 
+---------
+       4
+(1 row)
+
+SELECT quarter(20221009);
+ quarter 
+---------
+       4
+(1 row)
+
+select quarter('20:38:40');
+WARNING:  Incorrect datetime value: '20:38:40'
+ quarter 
+---------
+        
+(1 row)
+
+select quarter(time'20:38:40');
+ quarter 
+---------
+       2
+(1 row)
+
+select quarter(203840);
+WARNING:  Incorrect DATETIME value: '203840'
+ quarter 
+---------
+        
+(1 row)
+
+select quarter(time'203840');
+ quarter 
+---------
+       2
+(1 row)
+
+/*HOUR*/
+set sql_mode='ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+SELECT hour('2022-10-09 09:55:28.12345');
+ hour 
+------
+    9
+(1 row)
+
+select hour('10:20:30');
+ hour 
+------
+   10
+(1 row)
+
+select hour('30:20:10.123456');
+ hour 
+------
+   30
+(1 row)
+
+select hour('2022-10-09 11:22:33');
+ hour 
+------
+   11
+(1 row)
+
+select hour('2022-10-09 11:22:33.456789');
+ hour 
+------
+   11
+(1 row)
+
+select hour('20221009112233');
+ hour 
+------
+   11
+(1 row)
+
+select hour('373839');
+ hour 
+------
+   37
+(1 row)
+
+select hour('2022-10-09');
+ERROR:  Truncated incorrect time value: "2022-10-09"
+create table test_hour(hour int);
+insert into test_hour select hour('-838:59:59');
+insert into test_hour select hour('838:59:59');
+insert into test_hour select hour('-840:59:59');
+ERROR:  Truncated incorrect time value: "-840:59:59"
+insert into test_hour select hour('840:59:59');
+ERROR:  Truncated incorrect time value: "840:59:59"
+insert into test_hour select hour('');
+insert into test_hour select hour('abc');
+ERROR:  Truncated incorrect time value: "abc"
+insert into test_hour select hour('1234abc');
+ERROR:  Truncated incorrect time value: "1234abc"
+insert into test_hour select hour('23:59:59.999999');
+insert into test_hour select hour('23:59:59.9999999');
+insert into test_hour select hour('23:59:59.9999995');
+insert into test_hour select hour('23:59:59.9999994');
+insert ignore into test_hour select hour('-838:59:59');
+insert ignore into test_hour select hour('838:59:59');
+insert ignore into test_hour select hour('-840:59:59');
+ERROR:  Truncated incorrect time value: "-840:59:59"
+insert ignore into test_hour select hour('840:59:59');
+ERROR:  Truncated incorrect time value: "840:59:59"
+insert ignore into test_hour select hour('');
+insert ignore into test_hour select hour('abc');
+ERROR:  Truncated incorrect time value: "abc"
+insert ignore into test_hour select hour('1234abc');
+ERROR:  Truncated incorrect time value: "1234abc"
+insert ignore into test_hour select hour('23:59:59.999999');
+insert ignore into test_hour select hour('23:59:59.9999999');
+insert ignore into test_hour select hour('23:59:59.9999995');
+insert ignore into test_hour select hour('23:59:59.9999994');
+select * from test_hour;
+ hour 
+------
+  838
+  838
+     
+   23
+   24
+   24
+   23
+  838
+  838
+     
+   23
+   24
+   24
+   23
+(14 rows)
+
+drop table test_hour;
+set sql_mode='';
+create table test_hour(hour int);
+insert into test_hour select hour('-838:59:59');
+insert into test_hour select hour('838:59:59');
+insert into test_hour select hour('-840:59:59');
+WARNING:  Truncated incorrect time value: "-840:59:59"
+insert into test_hour select hour('840:59:59');
+WARNING:  Truncated incorrect time value: "840:59:59"
+insert into test_hour select hour('');
+insert into test_hour select hour('abc');
+WARNING:  Truncated incorrect time value: "abc"
+insert into test_hour select hour('1234abc');
+WARNING:  Truncated incorrect time value: "1234abc"
+insert into test_hour select hour('23:59:59.999999');
+insert into test_hour select hour('23:59:59.9999999');
+insert into test_hour select hour('23:59:59.9999995');
+insert into test_hour select hour('23:59:59.9999994');
+select * from test_hour;
+ hour 
+------
+  838
+  838
+  838
+  838
+     
+    0
+    0
+   23
+   24
+   24
+   23
+(11 rows)
+
+drop table test_hour;
+/*MICROSECOND*/
+SELECT microsecond('2022-10-09 09:55:28.12345');
+ microsecond 
+-------------
+      123450
+(1 row)
+
+select microsecond('10:20:30');
+ microsecond 
+-------------
+           0
+(1 row)
+
+select microsecond('30:20:10.123456');
+ microsecond 
+-------------
+      123456
+(1 row)
+
+select microsecond('2022-10-09 11:22:33');
+ microsecond 
+-------------
+           0
+(1 row)
+
+select microsecond('2022-10-09 11:22:33.456789');
+ microsecond 
+-------------
+      456789
+(1 row)
+
+select microsecond('20221009112233');
+ microsecond 
+-------------
+           0
+(1 row)
+
+select microsecond('373839');
+ microsecond 
+-------------
+           0
+(1 row)
+
+select microsecond('2022-10-09');
+WARNING:  Truncated incorrect time value: "2022-10-09"
+ microsecond 
+-------------
+           0
+(1 row)
+
+/*MINUTE*/
+select MINUTE(datetime '2021-11-4 16:30:44.341191');
+ERROR:  Unknown column 'datetime' in 'field list' 
+LINE 2: select MINUTE(datetime '2021-11-4 16:30:44.341191');
+                      ^
+SELECT minute('2022-10-09 09:55:28.12345');
+ minute 
+--------
+     55
+(1 row)
+
+select minute('10:20:30');
+ minute 
+--------
+     20
+(1 row)
+
+select minute('30:20:10.123456');
+ minute 
+--------
+     20
+(1 row)
+
+select minute('2022-10-09 11:22:33');
+ minute 
+--------
+     22
+(1 row)
+
+select minute('2022-10-09 11:22:33.456789');
+ minute 
+--------
+     22
+(1 row)
+
+select minute('20221009112233');
+ minute 
+--------
+     22
+(1 row)
+
+select minute('373839');
+ minute 
+--------
+     38
+(1 row)
+
+select minute('2022-10-09');
+WARNING:  Truncated incorrect time value: "2022-10-09"
+ minute 
+--------
+     20
+(1 row)
+
+/*SECOND*/
+SELECT second('2022-10-09 09:55:28.12345');
+ second 
+--------
+     28
+(1 row)
+
+select second('10:20:30');
+ second 
+--------
+     30
+(1 row)
+
+select second('30:20:10.123456');
+ second 
+--------
+     10
+(1 row)
+
+select second('2022-10-09 11:22:33');
+ second 
+--------
+     33
+(1 row)
+
+select second('2022-10-09 11:22:33.456789');
+ second 
+--------
+     33
+(1 row)
+
+select second('20221009112233');
+ second 
+--------
+     33
+(1 row)
+
+select second('373839');
+ second 
+--------
+     39
+(1 row)
+
+select second('2022-10-09');
+WARNING:  Truncated incorrect time value: "2022-10-09"
+ second 
+--------
+     22
+(1 row)
+
+/*WEEKDAY*/
+SELECT weekday('2022-10-09 09:55:28.12345');
+ weekday 
+---------
+       6
+(1 row)
+
+SELECT weekday(20221009);
+ weekday 
+---------
+       6
+(1 row)
+
+/*WEEKOFYEAR*/
+SELECT weekofyear('2022-10-09 09:55:28.12345');
+ weekofyear 
+------------
+         40
+(1 row)
+
+SELECT weekofyear(20221009);
+ weekofyear 
+------------
+         40
+(1 row)
+
+/*YEAR*/
+select year('');
+WARNING:  Incorrect datetime value: ''
+ myyear 
+--------
+       
+(1 row)
+
+select year('2022');
+WARNING:  Incorrect datetime value: '2022'
+ myyear 
+--------
+       
+(1 row)
+
+select year('2022-06');
+WARNING:  Incorrect datetime value: '2022-06'
+ myyear 
+--------
+       
+(1 row)
+
+select year('2022-06-13');
+ myyear 
+--------
+   2022
+(1 row)
+
+select year('9999-06-13');
+ myyear 
+--------
+   9999
+(1 row)
+
+select year('10000-06-13');
+WARNING:  Incorrect datetime value: '10000-06-13'
+ myyear 
+--------
+       
+(1 row)
+
+select year(20221009);
+ myyear 
+--------
+   2022
+(1 row)
+

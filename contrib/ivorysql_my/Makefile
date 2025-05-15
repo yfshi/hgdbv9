@@ -39,6 +39,7 @@ OBJS = \
 	src/charset/ctype-sjis.o \
 	src/charset/ctype-ujis.o \
 	src/charset/ctype-extra.o \
+	src/builtin_functions/datetime_func.o \
 	src/character/mystext.o
 
 
@@ -110,6 +111,7 @@ MYS_REGRESS = multi_update \
 			  mys_int4	\
 			  mys_float \
 			  mys-char-varchar \
+			  time_func	\
 			  group_by
 
 

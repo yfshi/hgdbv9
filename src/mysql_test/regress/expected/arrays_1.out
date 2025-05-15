@@ -26,14 +26,14 @@ INSERT INTO arrtest (a, b[1:2][1:2], c, d, e, f, g)
            '{"abc","abcde"}', '{"abc","abcde"}');
 INSERT INTO arrtest (a, b[1:2], c, d[1:2])
    VALUES ('{}', '{3,4}', '{foo,bar}', '{bar,foo}');
-INSERT INTO arrtest (b[2]) VALUES(now());  -- error, type mismatch
+INSERT INTO arrtest (b[2]) VALUES(pg_catalog.now());  -- error, type mismatch
 ERROR:  subscripted assignment to "b" requires type integer but expression is of type timestamp with time zone
-LINE 1: INSERT INTO arrtest (b[2]) VALUES(now());
+LINE 1: INSERT INTO arrtest (b[2]) VALUES(pg_catalog.now());
                              ^
 HINT:  You will need to rewrite or cast the expression.
-INSERT INTO arrtest (b[1:2]) VALUES(now());  -- error, type mismatch
+INSERT INTO arrtest (b[1:2]) VALUES(pg_catalog.now());  -- error, type mismatch
 ERROR:  subscripted assignment to "b" requires type integer[] but expression is of type timestamp with time zone
-LINE 1: INSERT INTO arrtest (b[1:2]) VALUES(now());
+LINE 1: INSERT INTO arrtest (b[1:2]) VALUES(pg_catalog.now());
                              ^
 HINT:  You will need to rewrite or cast the expression.
 SELECT * FROM arrtest;
@@ -236,9 +236,9 @@ UPDATE arrtest
   WHERE array_dims(c) is not null;
 ERROR:  array subscript in assignment must not be null
 -- Un-subscriptable type
-SELECT (now())[1];
+SELECT (pg_catalog.now())[1];
 ERROR:  cannot subscript type timestamp with time zone because it does not support subscripting
-LINE 1: SELECT (now())[1];
+LINE 1: SELECT (pg_catalog.now())[1];
                 ^
 -- test slices with empty lower and/or upper index
 CREATE TEMP TABLE arrtest_s (
@@ -2399,7 +2399,7 @@ FROM generate_series(0,11) as op;
  11 |    4
 (12 rows)
 
-SELECT width_bucket(now(),
+SELECT width_bucket(pg_catalog.now(),
                     array['yesterday', 'today', 'tomorrow']::timestamptz[]);
  width_bucket 
 --------------

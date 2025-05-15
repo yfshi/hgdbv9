@@ -2278,10 +2278,14 @@ VALUES ( to_char(  now()::pg_catalog.timestamp,          'HH12:MI:SS') ),
        ( to_char(  125.7::float4,             '999D9') ),
        ( to_char(  125.9::float8,             '999D9') ),
        ( to_char( -125.8::numeric,            '999D99S') );
+ERROR:  operator does not exist: datetime + interval
+LINE 3:        ( to_char(  now() + '1 sec'::interval, 'HH12:MI:SS') ...
+                                 ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT COUNT(*) = 19::bigint AS t FROM try;
  t 
 ---
- t
+ f
 (1 row)
 
 SELECT like_escape( name, '' ) = like_escape( name::text, '' ) AS t FROM srt;

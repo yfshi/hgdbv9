@@ -124,6 +124,7 @@ struct tzEntry;
 #define DTZMOD	28				/* "DST" as a separate word */
 /* reserved for unrecognized string values */
 #define UNKNOWN_FIELD	31
+#define QUARTER	32	/* SRS-MYSQL-BUILDINFUNCTION */
 
 /*
  * Token field definitions for time parsing and decoding.
@@ -212,19 +213,21 @@ typedef enum
 	MYSQL_TIMESTAMP_DATE = 0,
 	MYSQL_TIMESTAMP_DATETIME = 1,
 	MYSQL_TIMESTAMP_TIME = 2
-}mysql_dttype;
+} mysql_dttype;
 
 #define TIME_MAX_HOUR 838
 
 /* Flags to str_to_datetime and number_to_datetime */
-typedef int my_time_flags;
-static const my_time_flags TIME_FUZZY_DATE =         1;
-static const my_time_flags TIME_DATETIME_ONLY =      2;
-static const my_time_flags TIME_NO_NSEC_ROUNDING =   4;
-static const my_time_flags TIME_NO_DATE_FRAC_WARN =  8;
-static const my_time_flags TIME_NO_ZERO_IN_DATE =   16;
-static const my_time_flags TIME_NO_ZERO_DATE =      32;
-static const my_time_flags TIME_INVALID_DATES =     64;
+
+#define TIME_FUZZY_DATE         	1
+#define TIME_DATETIME_ONLY      	2
+#define TIME_NO_NSEC_ROUNDING   	4
+#define TIME_NO_DATE_FRAC_WARN  	8
+#define TIME_NO_ZERO_IN_DATE    	16
+#define TIME_NO_ZERO_DATE      		32
+#define TIME_INVALID_DATES      	64
+
+#define TIME_FLAG_INIT ((TIME_FUZZY_DATE | TIME_NO_DATE_FRAC_WARN))
 
 /* Conversion warnings */
 #define MYSQL_TIME_WARN_TRUNCATED         1

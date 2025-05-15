@@ -1707,7 +1707,7 @@ select pg_get_viewdef('tt20v', true);
      i8.i8                                    +
     FROM COALESCE(1, 2) c(c),                 +
      COLLATION FOR ('x'::text) col(col),      +
-     CURRENT_DATE d(d),                       +
+     curdate() d(d),                          +
      LOCALTIMESTAMP(3) t(t),                  +
      CAST((1 + 2)::integer AS integer) i4(i4),+
      CAST(1 + 2 AS bigint) i8(i8);

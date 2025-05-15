@@ -349,23 +349,23 @@ SELECT to_char(d, 'FF1 FF2 FF3 FF4 FF5 FF6  ff1 ff2 ff3 ff4 ff5 ff6  MS US')
 
 -- Check OF, TZH, TZM with various zone offsets, particularly fractional hours
 SET timezone = '00:00';
-SELECT to_char(now(), 'OF') as "OF", to_char(now(), 'TZH:TZM') as "TZH:TZM";
+SELECT to_char(pg_catalog.now(), 'OF') as "OF", to_char(pg_catalog.now(), 'TZH:TZM') as "TZH:TZM";
 SET timezone = '+02:00';
-SELECT to_char(now(), 'OF') as "OF", to_char(now(), 'TZH:TZM') as "TZH:TZM";
+SELECT to_char(pg_catalog.now(), 'OF') as "OF", to_char(pg_catalog.now(), 'TZH:TZM') as "TZH:TZM";
 SET timezone = '-13:00';
-SELECT to_char(now(), 'OF') as "OF", to_char(now(), 'TZH:TZM') as "TZH:TZM";
+SELECT to_char(pg_catalog.now(), 'OF') as "OF", to_char(pg_catalog.now(), 'TZH:TZM') as "TZH:TZM";
 SET timezone = '-00:30';
-SELECT to_char(now(), 'OF') as "OF", to_char(now(), 'TZH:TZM') as "TZH:TZM";
+SELECT to_char(pg_catalog.now(), 'OF') as "OF", to_char(pg_catalog.now(), 'TZH:TZM') as "TZH:TZM";
 SET timezone = '00:30';
-SELECT to_char(now(), 'OF') as "OF", to_char(now(), 'TZH:TZM') as "TZH:TZM";
+SELECT to_char(pg_catalog.now(), 'OF') as "OF", to_char(pg_catalog.now(), 'TZH:TZM') as "TZH:TZM";
 SET timezone = '-04:30';
-SELECT to_char(now(), 'OF') as "OF", to_char(now(), 'TZH:TZM') as "TZH:TZM";
+SELECT to_char(pg_catalog.now(), 'OF') as "OF", to_char(pg_catalog.now(), 'TZH:TZM') as "TZH:TZM";
 SET timezone = '04:30';
-SELECT to_char(now(), 'OF') as "OF", to_char(now(), 'TZH:TZM') as "TZH:TZM";
+SELECT to_char(pg_catalog.now(), 'OF') as "OF", to_char(pg_catalog.now(), 'TZH:TZM') as "TZH:TZM";
 SET timezone = '-04:15';
-SELECT to_char(now(), 'OF') as "OF", to_char(now(), 'TZH:TZM') as "TZH:TZM";
+SELECT to_char(pg_catalog.now(), 'OF') as "OF", to_char(pg_catalog.now(), 'TZH:TZM') as "TZH:TZM";
 SET timezone = '04:15';
-SELECT to_char(now(), 'OF') as "OF", to_char(now(), 'TZH:TZM') as "TZH:TZM";
+SELECT to_char(pg_catalog.now(), 'OF') as "OF", to_char(pg_catalog.now(), 'TZH:TZM') as "TZH:TZM";
 RESET timezone;
 
 CREATE TABLE TIMESTAMPTZ_TST (a int , b timestamptz);

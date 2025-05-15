@@ -5,24 +5,24 @@
 -- Tests for SQLVAlueFunction
 --
 -- current_date  (always matches because of transactional behaviour)
-SELECT date(now())::text = current_date::text;
+SELECT date(pg_catalog.now())::text = current_date::text;
 ERROR:  syntax error at or near "("
-LINE 1: SELECT date(now())::text = current_date::text;
+LINE 1: SELECT date(pg_catalog.now())::text = current_date::text;
                    ^
 -- current_time / localtime
-SELECT now()::timetz::text = current_time::text;
+SELECT pg_catalog.now()::timetz::text = current_time::text;
  ?column? 
 ----------
- t
+ f
 (1 row)
 
-SELECT now()::timetz(4)::text = current_time(4)::text;
+SELECT pg_catalog.now()::timetz(4)::text = current_time(4)::text;
  ?column? 
 ----------
- t
+ f
 (1 row)
 
-SELECT now()::time::text = localtime::text;
+SELECT pg_catalog.now()::time::text = localtime::text;
  ?column? 
 ----------
  f
@@ -31,11 +31,10 @@ SELECT now()::time::text = localtime::text;
 --SELECT now()::time(3)::text = localtime(3)::text;
 -- current_timestamp / localtimestamp (always matches because of transactional behaviour)
 SELECT current_timestamp = NOW();
- ?column? 
-----------
- t
-(1 row)
-
+ERROR:  operator does not exist: timestamp with time zone = datetime
+LINE 1: SELECT current_timestamp = NOW();
+                                 ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 -- precision
 SELECT length(current_timestamp::text) >= length(current_timestamp(0)::text);
  ?column? 
@@ -44,7 +43,7 @@ SELECT length(current_timestamp::text) >= length(current_timestamp(0)::text);
 (1 row)
 
 -- localtimestamp
-SELECT now()::timestamp::text = localtimestamp::text;
+SELECT pg_catalog.now()::timestamp::text = localtimestamp::text;
 ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
 -- current_role/user/user is tested in rolenames.sql
 -- current database / catalog

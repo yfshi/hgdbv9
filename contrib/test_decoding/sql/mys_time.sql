@@ -3,7 +3,7 @@ SET synchronous_commit = on;
 CREATE TABLE test_time(data text);
 
 -- remember the current time
-SELECT set_config('test.time_before', NOW()::text, false) IS NOT NULL;
+SELECT set_config('test.time_before', pg_catalog.NOW()::text, false) IS NOT NULL;
 
 SELECT 'init' FROM pg_create_logical_replication_slot('regression_slot', 'test_decoding');
 
