@@ -2486,7 +2486,47 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	ListCell   *l;
 	Node	   *defresult;
 	Oid			ptype = InvalidOid;
+	Oid			restype = InvalidOid;
 	List	   *whenexprs;
+	CaseWhen   *first_when; /* BUG#Z4593 */
+
+	/* Begin - BUG#Z4593 */
+	/* gram.y ensures this is true, future syntax changes will be captured here */
+	Assert(list_length(c->args) >= 1);
+
+	/*
+	 * Oracle doc say:
+	 * Oracle automatically converts expr and each search value
+	 * to data type of the first search value before comparing.
+	 * Oracle automatically converts the return value to the same
+	 * data type as the first result.
+	 */
+	first_when = (CaseWhen *) linitial(c->args);
+	arg = transformExprRecurse(pstate, (Node *) first_when->expr);
+	ptype = exprType(arg);
+	if (ptype == UNKNOWNOID)
+	{
+		if (nls_length_semantics == NLS_LENGTH_BYTE)
+			ptype = ORAVARCHARBYTEOID;
+		else
+			ptype = ORAVARCHARCHAROID;
+	}
+	/* Oracle noexist bigint data type, but I think add int8 would be better? */
+	else if (ptype == INT4OID || ptype == INT2OID || ptype == INT8OID)
+		ptype = NUMBEROID;
+
+	arg = transformExprRecurse(pstate, (Node *) first_when->result);
+	restype = exprType(arg);
+	if (restype == UNKNOWNOID)
+	{
+		if (nls_length_semantics == NLS_LENGTH_BYTE)
+			restype = ORAVARCHARBYTEOID;
+		else
+			restype = ORAVARCHARCHAROID;
+	}
+	else if (restype == INT4OID || restype == INT2OID || restype == INT8OID)
+		restype = NUMBEROID;
+	/* End - BUG#Z4593 */
 
 	newc = makeNode(CaseExpr);
 
@@ -2502,26 +2542,40 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	whenexprs = NIL;
 	if (database_mode == DB_ORACLE)
 	{
+		List	   *whenresults = NIL; /* BUG#Z4593 */
+		ListCell   *result_cell;
+
 		foreach(l, c->args)
 		{
 			CaseWhen   *w = (CaseWhen *) lfirst(l);
 			Node	   *warg;
+			Node	   *wresult; /* BUG#Z4593 */
 			Expr	   *tmp;
 
 			Assert(IsA(w, CaseWhen));
 
 			warg = (Node *) w->expr;
+			wresult = (Node *) w->result; /* BUG#Z4593 */
 
 			tmp = (Expr *) transformExprRecurse(pstate, warg);
 			whenexprs = lappend(whenexprs, tmp);
+
+			/* Begin - BUG#Z4593 */
+			tmp = (Expr *) transformExprRecurse(pstate, wresult);
+			whenresults = lappend(whenresults, tmp);
+			/* End - BUG#Z4593 */
 		}
-		ptype = select_common_type_for_nvl(pstate, whenexprs, "DECODE", NULL);
 
 		l = lnext(whenexprs, list_head(whenexprs));
-		while (l)
+		result_cell = lnext(whenresults, list_head(whenresults)); /* BUG#Z4593 */
+		while (l && result_cell /* BUG#Z4593 */)
 		{
 			Expr   *w = (Expr *) lfirst(l);
 			Oid			ntype = exprType((Node *) w);
+			/* Begin - BUG#Z4593 */
+			Expr   *wresult = (Expr *) lfirst(result_cell);
+			Oid		wresult_type = exprType((Node *) wresult);
+			/* End - BUG#Z4593 */
 
 			if (!can_coerce_type(1, &ntype, &ptype, COERCION_IMPLICIT))
 				ereport(ERROR,
@@ -2533,7 +2587,20 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 								format_type_be(ptype)),
 						 parser_errposition(pstate, exprLocation((Node *) w))));
 
+			/* Begin - BUG#Z4593 */
+			if (!can_coerce_type(1, &wresult_type, &restype, COERCION_IMPLICIT))
+				ereport(ERROR,
+						(errcode(ERRCODE_CANNOT_COERCE),
+				/* translator: first %s is name of a SQL construct, eg CASE */
+						 errmsg("%s could not convert type %s to %s",
+								"DECODE",
+								format_type_be(wresult_type),
+								format_type_be(restype)),
+						 parser_errposition(pstate, exprLocation((Node *) w))));
+			/* End - BUG#Z4593 */
+
 			l = lnext(whenexprs, l);
+			result_cell = lnext(whenresults, result_cell); /* BUG#Z4593 */
 		}
 	}
 
@@ -2644,6 +2711,8 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 				A_Const *ac1 = makeNode(A_Const);
 				TypeCast *tc = makeNode(TypeCast);
 				TypeCast *tc1 = makeNode(TypeCast);
+				TypeCast *expr_cast = makeNode(TypeCast); /* BUG#Z4593 */
+				TypeCast *search_cast = makeNode(TypeCast); /* BUG#Z4593 */
 				
 				innernewexpr = makeNode(CaseExpr);
 				innerneww = makeNode(CaseWhen);
@@ -2727,9 +2796,18 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 				 *  case when a is not null and b is not null and a = b then true
 				 *  current step: a = b
 				 */
+				/* Begin - BUG#Z4593 */
+				search_cast->arg = (Node*) warg;
+				search_cast->typeName = makeTypeNameFromOid(ptype, -1);
+				search_cast->location = -1;
+
+				expr_cast->arg = (Node*) c->arg;
+				expr_cast->typeName = makeTypeNameFromOid(ptype, -1);
+				expr_cast->location = -1;
+				/* End - BUG#Z4593 */
 				aexpr = makeSimpleA_Expr(AEXPR_OP, "=",
-												 (Node *) c->arg,
-												 warg,
+												 (Node *) expr_cast, /* BUG#Z4593 */
+												 (Node *) search_cast, /* BUG#Z4593 */
 												 w->location);
 				blist1 = lappend(blist1, aexpr);
 
@@ -2816,6 +2894,8 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	}
 	newc->defresult = (Expr *) transformExprRecurse(pstate, defresult);
 
+	/* Begin - BUG#Z4593 */
+	#if 0
 	/*
 	 * Note: default result is considered the most significant type in
 	 * determining preferred type. This is how the code worked before, but it
@@ -2839,14 +2919,17 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	else if (database_mode == DB_ORACLE)
 		ptype = select_common_type_for_nvl(pstate, resultexprs, "DECODE", NULL);
 	Assert(OidIsValid(ptype));
-	newc->casetype = ptype;
+	#endif
+	/* End - BUG#Z4593 */
+
+	newc->casetype = restype; /* BUG#Z4593 */
 	/* casecollid will be set by parse_collate.c */
 
 	/* Convert default result clause, if necessary */
 	newc->defresult = (Expr *)
 		coerce_to_common_type(pstate,
 							  (Node *) newc->defresult,
-							  ptype,
+							  restype, /* BUG#Z4593 */
 							  "DECODE");
 
 	/* Convert when-clause results, if necessary */
@@ -2857,7 +2940,7 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 		w->result = (Expr *)
 			coerce_to_common_type(pstate,
 								  (Node *) w->result,
-								  ptype,
+								  restype, /* BUG#Z4593 */
 								  "DECODE");
 	}
 
