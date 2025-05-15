@@ -7695,7 +7695,7 @@ ivorysqlDblinkCheckMetadataChanged(Oid srvId, char *nsp, char  *relname)
 						   " ON ns.oid = c.relnamespace WHERE");
 	appendStringInfo(&buf, " c.relname = '%s'", relname);
 	appendStringInfo(&buf, " AND ns.nspname = '%s'", nsp);
-	appendStringInfoString(&buf, " AND a.attnum > 0;");
+	appendStringInfoString(&buf, " AND a.attnum > 0 AND NOT a.attisdropped;");
 
 	PG_TRY();
 	{

@@ -5,37 +5,21 @@
  *
  ****************************************************************/
 
---add system user
-CREATE USER system WITH superuser;
-
-\c - system
-
-create or replace function dbuser_createdb() RETURNS void as
-$$
-declare
-    name text;
-begin
-	select into name 10::regrole;
-    execute format('set session authorization %s;',name);
-	return;
-end;
-$$ language plpgsql;
-/
+--add enrol11 user
+CREATE USER enrol11 WITH superuser;
 
 set ivorysql.compatible_mode to pg;
 show ivorysql.compatible_mode;
-
-select dbuser_createdb();
 
 create database tdblnk;
 
 set ivorysql.compatible_mode to oracle;
 show ivorysql.compatible_mode;
-set session authorization system;
 
-\c tdblnk system
+\c tdblnk enrol11
+create schema enrol11;
 
-ALTER USER system with password 'ivy123';
+ALTER USER enrol11 with password 'ivy123';
 
 CREATE TABLE it1(c1 int, c2 varchar2(10));
 CREATE TABLE it2(b1 int, b2 int);
@@ -58,9 +42,7 @@ CREATE VIEW vit1 AS SELECT * FROM it1 WHERE c1 < 10;
 CREATE MATERIALIZED VIEW mivt2 AS SELECT * FROM it2;
 
 
-\c regression system
-
---CREATE EXTENSION postgres_fdw;
+\c regression
 
 CREATE TABLE lptb(a int);
 INSERT INTO lptb VALUES (1), (100), (1000);
@@ -75,7 +57,7 @@ show ivorysql.default_dblink_fdw; -- postgres_fdw is default fdw
 DO $d$
     BEGIN
         EXECUTE $$ create public database link ivyfuplnk
-			connect to system identified by "ivy123"
+			connect to enrol11 identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -89,7 +71,7 @@ $d$;
 DO $d$
     BEGIN
         EXECUTE $$ create database link ivyfurlnk
-			connect to system identified by "ivy123"
+			connect to enrol11 identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -118,7 +100,7 @@ $d$;
 
 -- must be create a user mapping for current_user DBLINK before using this link
 create user mapping for public
- server ivycurrent options (user 'system', password 'ivy123');
+ server ivycurrent options (user 'enrol11', password 'ivy123');
 
 
 --
@@ -138,7 +120,7 @@ $d$;
 
 -- must be create a user mapping for Connected User DBLINK before using this link
 create user mapping for public
- server ivyconned options (user 'system', password 'ivy123');
+ server ivyconned options (user 'enrol11', password 'ivy123');
 
 
 --
@@ -147,8 +129,8 @@ create user mapping for public
 DO $d$
     BEGIN
         EXECUTE $$ create shared public database link spglink
-		connect to system identified by "ivy123"
-		AUTHENTICATED BY system IDENTIFIED BY "ivy123"
+		connect to enrol11 identified by "ivy123"
+		AUTHENTICATED BY enrol11 IDENTIFIED BY "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -165,6 +147,7 @@ BEGIN
 END;
 /
 /*End - BUG#Z1391 */
+
 
 -- access remote table it1, it2, it3, it4, it5 by DBLINKs
 select * from it1@ivyfuplnk;
@@ -216,7 +199,7 @@ drop procedure ins_from_pglnk;
 -- test alter database link command
 select umoptions from pg_user_mappings where srvname = 'ivyfurlnk';
 
-alter database link ivyfurlnk connect to system identified by ivorysqlpro;
+alter database link ivyfurlnk connect to enrol11 identified by ivorysqlpro;
 
 select umoptions from pg_user_mappings where srvname = 'ivyfurlnk';
 
@@ -243,7 +226,7 @@ show global_names;
 DO $d$
     BEGIN
         EXECUTE $$ create public database link glolnk
-			connect to system identified by "ivy123"
+			connect to enrol11 identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -259,7 +242,7 @@ select * from it1@glolnk; -- error
 DO $d$
     BEGIN
         EXECUTE $$ create public database link tdblnk
-			connect to system identified by "ivy123"
+			connect to enrol11 identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -285,8 +268,6 @@ show global_names;
 select * from lptb@regression;
 
 
-\c - system
-
 select current_user;
 
 drop view vt1;
@@ -294,7 +275,7 @@ drop view vt1;
 drop table lptb;
 
 
-\c tdblnk system
+\c tdblnk enrol11
 drop view vit1;
 drop MATERIALIZED view mivt2;
 drop table it1;
@@ -302,30 +283,12 @@ drop table it2;
 drop table it3;
 drop table it4;
 drop table it5;
+drop schema enrol11;
 
 
-\c regression system
+\c regression
 
 set ivorysql.compatible_mode to pg;
 show ivorysql.compatible_mode;
-
-select dbuser_createdb();
-
 drop database tdblnk;
-
 set ivorysql.compatible_mode to oracle;
-
-show ivorysql.compatible_mode;
-
-drop function dbuser_createdb;
-
---drop system user
-declare
-    name text;
-begin
-        select into name 10::regrole;
-		execute format('set session authorization %s;',name);
-end;
-/
-
-DROP USER system;

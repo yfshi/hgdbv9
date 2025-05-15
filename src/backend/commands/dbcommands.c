@@ -2511,6 +2511,6 @@ HandleReloadDBGucSignal(void)
 		newvalue = psprintf("%s", "off");
 
 	/* Update local  value */
-	SetConfigOption("global_names", newvalue, PGC_SUSET, PGC_S_SESSION);
+	SetConfigOption("global_names", newvalue, PGC_USERSET, PGC_S_SESSION); /* BUG#Z4602 */
 }
 /* Begin - ReqID:SRS-SQL-DBLINK */

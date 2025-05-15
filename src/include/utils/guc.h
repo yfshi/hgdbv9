@@ -473,6 +473,7 @@ extern PGDLLIMPORT int ora_open_links;
 extern PGDLLIMPORT int32 ora_open_links_per_instance;	/*BUG#Z1325 */
 extern PGDLLIMPORT bool check_lnk_metadata_changed;
 extern PGDLLIMPORT bool ora_global_names;
+extern PGDLLIMPORT bool dblinkrel_schema_use_user;	/* BUG#Z4433 */
 /* End - ReqID:SRS-SQL-DBLINK */
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
