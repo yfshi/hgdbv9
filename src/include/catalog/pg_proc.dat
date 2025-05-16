@@ -11753,6 +11753,12 @@
   proargtypes => '', prosrc => 'ivy_get_host_ipv6' },
 /* End - ReqID:SRS-SQL-DBLINK */
 
+/* Begin - Bug#M534 */
+{ oid => '4657',descr => 'get macro value',
+proname => 'get_macro_value', prorettype => 'text',
+proargtypes => 'text',prosrc => 'get_macro_value'},
+/*Begin - Bug#M534*/
+
 /* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 { oid => 6066,
   descr => 'statistics: information about resource groups',
