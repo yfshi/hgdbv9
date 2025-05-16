@@ -175,7 +175,7 @@ BEGIN
     WHERE jscjobid = job;
 
     IF broken IS NULL THEN
-        new_job_broken := TRUE;
+        RAISE EXCEPTION 'Wrong number or type of argument in call BROKEN'; /* BUG#Z4577 */
     ELSE
         new_job_broken := broken;
     END IF;
@@ -263,12 +263,6 @@ BEGIN
             
             IF new_nextdate < fixed_sysdate THEN
                 RAISE EXCEPTION 'IVY-27470: failed to re-enable "SYS"."DBMS_JOB$_% " after making requested change  IVY-12005: may not schedule automatic refresh for times in the past',job;
-            END IF;
-
-            IF new_nextdate = fixed_sysdate THEN
-                UPDATE pgagent.pga_job
-                SET jobenabled = FALSE
-                WHERE jobid = job;
             END IF;
         END IF;
     END IF;
@@ -441,11 +435,13 @@ BEGIN
 
 
             IF has_keyword THEN
-
-                SELECT jobnextrun 
-                INTO v_next_date
-                FROM pgagent.pga_job
-                WHERE jobid = job;
+				/* Begin - BUG#Z4579 */
+				/* Oracle calendar syntax jobs use the last execution time as the start date */
+				SELECT joblastrun INTO v_next_date FROM pgagent.pga_job WHERE jobid = job;
+				IF v_next_date IS NULL THEN
+					v_next_date = now();
+				END IF;
+				/* End - BUG#Z4579 */
 
                 v_next_date := evaluate_calendar_string(interval::text, v_next_date::pg_catalog.timestamp, NULL, false);
 
@@ -1149,7 +1145,6 @@ BEGIN
 								 what,
 								 current_database_name,
 								 interval,
-								 true,
 								 NULL,
 								 true,
 								 job);
@@ -1257,7 +1252,7 @@ SELECT
     (SELECT SUM(jl.jlgduration)
      FROM pgagent.pga_joblog jl
      WHERE jl.jlgjobid = j.jobid) AS TOTAL_TIME,
-    CASE WHEN j.jobenabled = 't' THEN 'N' ELSE 'Y' END AS B,
+    CASE WHEN j.jobenabled = 't' THEN 'N' ELSE 'Y' END AS BROKEN, /* BUG#Z4563 */
     s.dbmsjob_interval AS INTERVAL,
     j.failures AS FAILURES,
     js.jstcode AS WHAT,
@@ -1317,7 +1312,7 @@ SELECT
     (SELECT SUM(jl.jlgduration)
      FROM pgagent.pga_joblog jl
      WHERE jl.jlgjobid = j.jobid) AS TOTAL_TIME,
-    CASE WHEN j.jobenabled = 't' THEN 'N' ELSE 'Y' END AS B,
+    CASE WHEN j.jobenabled = 't' THEN 'N' ELSE 'Y' END AS BROKEN, /* BUG#Z4563 */
     s.dbmsjob_interval AS INTERVAL,
     j.failures AS FAILURES,
     js.jstcode AS WHAT,
@@ -1357,7 +1352,7 @@ SELECT
     (SELECT SUM(jl.jlgduration)
      FROM pgagent.pga_joblog jl
      WHERE jl.jlgjobid = j.jobid) AS TOTAL_TIME,
-    CASE WHEN j.jobenabled = 't' THEN 'N' ELSE 'Y' END AS B,
+    CASE WHEN j.jobenabled = 't' THEN 'N' ELSE 'Y' END AS BROKEN, /* BUG#Z4563 */
     s.dbmsjob_interval AS INTERVAL,
     j.failures AS FAILURES,
     js.jstcode AS WHAT,

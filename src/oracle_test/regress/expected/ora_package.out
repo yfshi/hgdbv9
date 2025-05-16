@@ -5993,91 +5993,90 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  dbms_job      | PACKAGE BODY | 355  |                                                                  what,
  dbms_job      | PACKAGE BODY | 356  |                                                                  current_database_name,
  dbms_job      | PACKAGE BODY | 357  |                                                                  interval,
- dbms_job      | PACKAGE BODY | 358  |                                                                  true,
- dbms_job      | PACKAGE BODY | 359  |                                                                  NULL,
- dbms_job      | PACKAGE BODY | 360  |                                                                  true,
- dbms_job      | PACKAGE BODY | 361  |                                                                  job);
- dbms_job      | PACKAGE BODY | 362  |         /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 363  |     ELSE
- dbms_job      | PACKAGE BODY | 364  | 
- dbms_job      | PACKAGE BODY | 365  |         BEGIN
- dbms_job      | PACKAGE BODY | 366  | 
- dbms_job      | PACKAGE BODY | 367  |             result_datetime := sys.evaluate_next_schedule_expression(interval::text);
- dbms_job      | PACKAGE BODY | 368  |         EXCEPTION
- dbms_job      | PACKAGE BODY | 369  |             WHEN others THEN
- dbms_job      | PACKAGE BODY | 370  |                 
- dbms_job      | PACKAGE BODY | 371  |             RAISE EXCEPTION 'IVY-27465: invalid value %s for attribute REPEAT_INTERVAL',interval;
- dbms_job      | PACKAGE BODY | 372  |         END;
- dbms_job      | PACKAGE BODY | 373  | 
- dbms_job      | PACKAGE BODY | 374  |         IF result_datetime <= fixed_sysdate THEN
- dbms_job      | PACKAGE BODY | 375  |             interval_expression_jobenabled := false;
- dbms_job      | PACKAGE BODY | 376  |             interval_expression_failures := 1;
- dbms_job      | PACKAGE BODY | 377  |         END IF;
- dbms_job      | PACKAGE BODY | 378  | 
- dbms_job      | PACKAGE BODY | 379  |         IF now_future THEN
- dbms_job      | PACKAGE BODY | 380  |             result_datetime  := next_date::timestamp;
- dbms_job      | PACKAGE BODY | 381  |         END IF;
- dbms_job      | PACKAGE BODY | 382  | 
- dbms_job      | PACKAGE BODY | 383  |             /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 384  |             /*
- dbms_job      | PACKAGE BODY | 385  |              * call sys.insert_pgagent_tables2 procedure to operator the tables in schema pgagent.
- dbms_job      | PACKAGE BODY | 386  |              * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
- dbms_job      | PACKAGE BODY | 387  |              * call the package dbms_job to create a job, the user can't operator the objects
- dbms_job      | PACKAGE BODY | 388  |              * in schema pgagent.
- dbms_job      | PACKAGE BODY | 389  |              */
- dbms_job      | PACKAGE BODY | 390  |         sys.insert_pgagent_tables2(interval_expression_jobenabled,
- dbms_job      | PACKAGE BODY | 391  |                                          result_datetime::pg_catalog.timestamptz,
- dbms_job      | PACKAGE BODY | 392  |                                          no_parse,
- dbms_job      | PACKAGE BODY | 393  |                                          current_user_varchar,
- dbms_job      | PACKAGE BODY | 394  |                                          interval_expression_failures,
- dbms_job      | PACKAGE BODY | 395  |                                          nls_env_varchar,
- dbms_job      | PACKAGE BODY | 396  |                                                                  what,
- dbms_job      | PACKAGE BODY | 397  |                                                                  current_database_name,
- dbms_job      | PACKAGE BODY | 398  |                                                                  interval,
- dbms_job      | PACKAGE BODY | 399  |                                                                  next_date::text::pg_catalog.timestamptz,
- dbms_job      | PACKAGE BODY | 400  |                                                                  false,
- dbms_job      | PACKAGE BODY | 401  |                                                                  job);
- dbms_job      | PACKAGE BODY | 402  |         /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 403  |     END IF;
- dbms_job      | PACKAGE BODY | 404  | 
- dbms_job      | PACKAGE BODY | 405  |     EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
- dbms_job      | PACKAGE BODY | 406  |     
- dbms_job      | PACKAGE BODY | 407  | END isubmit;
+ dbms_job      | PACKAGE BODY | 358  |                                                                  NULL,
+ dbms_job      | PACKAGE BODY | 359  |                                                                  true,
+ dbms_job      | PACKAGE BODY | 360  |                                                                  job);
+ dbms_job      | PACKAGE BODY | 361  |         /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 362  |     ELSE
+ dbms_job      | PACKAGE BODY | 363  | 
+ dbms_job      | PACKAGE BODY | 364  |         BEGIN
+ dbms_job      | PACKAGE BODY | 365  | 
+ dbms_job      | PACKAGE BODY | 366  |             result_datetime := sys.evaluate_next_schedule_expression(interval::text);
+ dbms_job      | PACKAGE BODY | 367  |         EXCEPTION
+ dbms_job      | PACKAGE BODY | 368  |             WHEN others THEN
+ dbms_job      | PACKAGE BODY | 369  |                 
+ dbms_job      | PACKAGE BODY | 370  |             RAISE EXCEPTION 'IVY-27465: invalid value %s for attribute REPEAT_INTERVAL',interval;
+ dbms_job      | PACKAGE BODY | 371  |         END;
+ dbms_job      | PACKAGE BODY | 372  | 
+ dbms_job      | PACKAGE BODY | 373  |         IF result_datetime <= fixed_sysdate THEN
+ dbms_job      | PACKAGE BODY | 374  |             interval_expression_jobenabled := false;
+ dbms_job      | PACKAGE BODY | 375  |             interval_expression_failures := 1;
+ dbms_job      | PACKAGE BODY | 376  |         END IF;
+ dbms_job      | PACKAGE BODY | 377  | 
+ dbms_job      | PACKAGE BODY | 378  |         IF now_future THEN
+ dbms_job      | PACKAGE BODY | 379  |             result_datetime  := next_date::timestamp;
+ dbms_job      | PACKAGE BODY | 380  |         END IF;
+ dbms_job      | PACKAGE BODY | 381  | 
+ dbms_job      | PACKAGE BODY | 382  |             /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 383  |             /*
+ dbms_job      | PACKAGE BODY | 384  |              * call sys.insert_pgagent_tables2 procedure to operator the tables in schema pgagent.
+ dbms_job      | PACKAGE BODY | 385  |              * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
+ dbms_job      | PACKAGE BODY | 386  |              * call the package dbms_job to create a job, the user can't operator the objects
+ dbms_job      | PACKAGE BODY | 387  |              * in schema pgagent.
+ dbms_job      | PACKAGE BODY | 388  |              */
+ dbms_job      | PACKAGE BODY | 389  |         sys.insert_pgagent_tables2(interval_expression_jobenabled,
+ dbms_job      | PACKAGE BODY | 390  |                                          result_datetime::pg_catalog.timestamptz,
+ dbms_job      | PACKAGE BODY | 391  |                                          no_parse,
+ dbms_job      | PACKAGE BODY | 392  |                                          current_user_varchar,
+ dbms_job      | PACKAGE BODY | 393  |                                          interval_expression_failures,
+ dbms_job      | PACKAGE BODY | 394  |                                          nls_env_varchar,
+ dbms_job      | PACKAGE BODY | 395  |                                                                  what,
+ dbms_job      | PACKAGE BODY | 396  |                                                                  current_database_name,
+ dbms_job      | PACKAGE BODY | 397  |                                                                  interval,
+ dbms_job      | PACKAGE BODY | 398  |                                                                  next_date::text::pg_catalog.timestamptz,
+ dbms_job      | PACKAGE BODY | 399  |                                                                  false,
+ dbms_job      | PACKAGE BODY | 400  |                                                                  job);
+ dbms_job      | PACKAGE BODY | 401  |         /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 402  |     END IF;
+ dbms_job      | PACKAGE BODY | 403  | 
+ dbms_job      | PACKAGE BODY | 404  |     EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
+ dbms_job      | PACKAGE BODY | 405  |     
+ dbms_job      | PACKAGE BODY | 406  | END isubmit;
+ dbms_job      | PACKAGE BODY | 407  | 
  dbms_job      | PACKAGE BODY | 408  | 
  dbms_job      | PACKAGE BODY | 409  | 
- dbms_job      | PACKAGE BODY | 410  | 
- dbms_job      | PACKAGE BODY | 411  | PROCEDURE user_export (
- dbms_job      | PACKAGE BODY | 412  |     job IN INTEGER,
- dbms_job      | PACKAGE BODY | 413  |     mycall IN OUT VARCHAR2
- dbms_job      | PACKAGE BODY | 414  | ) IS
- dbms_job      | PACKAGE BODY | 415  |     v_what VARCHAR2(4000);
- dbms_job      | PACKAGE BODY | 416  |     v_next_date VARCHAR2(100);
- dbms_job      | PACKAGE BODY | 417  |     v_interval VARCHAR2(100);
- dbms_job      | PACKAGE BODY | 418  |     v_no_parse VARCHAR2(10);
- dbms_job      | PACKAGE BODY | 419  |     v_job_count NUMBER;
- dbms_job      | PACKAGE BODY | 420  | BEGIN
- dbms_job      | PACKAGE BODY | 421  |   /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 422  |   sys.user_export(job,
- dbms_job      | PACKAGE BODY | 423  |                   mycall);
- dbms_job      | PACKAGE BODY | 424  |   /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 425  | END user_export;
+ dbms_job      | PACKAGE BODY | 410  | PROCEDURE user_export (
+ dbms_job      | PACKAGE BODY | 411  |     job IN INTEGER,
+ dbms_job      | PACKAGE BODY | 412  |     mycall IN OUT VARCHAR2
+ dbms_job      | PACKAGE BODY | 413  | ) IS
+ dbms_job      | PACKAGE BODY | 414  |     v_what VARCHAR2(4000);
+ dbms_job      | PACKAGE BODY | 415  |     v_next_date VARCHAR2(100);
+ dbms_job      | PACKAGE BODY | 416  |     v_interval VARCHAR2(100);
+ dbms_job      | PACKAGE BODY | 417  |     v_no_parse VARCHAR2(10);
+ dbms_job      | PACKAGE BODY | 418  |     v_job_count NUMBER;
+ dbms_job      | PACKAGE BODY | 419  | BEGIN
+ dbms_job      | PACKAGE BODY | 420  |   /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 421  |   sys.user_export(job,
+ dbms_job      | PACKAGE BODY | 422  |                   mycall);
+ dbms_job      | PACKAGE BODY | 423  |   /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 424  | END user_export;
+ dbms_job      | PACKAGE BODY | 425  | 
  dbms_job      | PACKAGE BODY | 426  | 
  dbms_job      | PACKAGE BODY | 427  | 
- dbms_job      | PACKAGE BODY | 428  | 
- dbms_job      | PACKAGE BODY | 429  | PROCEDURE user_export (
- dbms_job      | PACKAGE BODY | 430  |     job IN INTEGER,
- dbms_job      | PACKAGE BODY | 431  |     mycall IN OUT VARCHAR2,
- dbms_job      | PACKAGE BODY | 432  |     myinst IN OUT VARCHAR2
- dbms_job      | PACKAGE BODY | 433  | ) IS
- dbms_job      | PACKAGE BODY | 434  | BEGIN
- dbms_job      | PACKAGE BODY | 435  |   /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 436  |   sys.user_export(job,
- dbms_job      | PACKAGE BODY | 437  |                   mycall,
- dbms_job      | PACKAGE BODY | 438  |                           myinst);
- dbms_job      | PACKAGE BODY | 439  |   /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 440  | END user_export;
- dbms_job      | PACKAGE BODY | 441  | 
- dbms_job      | PACKAGE BODY | 442  | END;
+ dbms_job      | PACKAGE BODY | 428  | PROCEDURE user_export (
+ dbms_job      | PACKAGE BODY | 429  |     job IN INTEGER,
+ dbms_job      | PACKAGE BODY | 430  |     mycall IN OUT VARCHAR2,
+ dbms_job      | PACKAGE BODY | 431  |     myinst IN OUT VARCHAR2
+ dbms_job      | PACKAGE BODY | 432  | ) IS
+ dbms_job      | PACKAGE BODY | 433  | BEGIN
+ dbms_job      | PACKAGE BODY | 434  |   /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 435  |   sys.user_export(job,
+ dbms_job      | PACKAGE BODY | 436  |                   mycall,
+ dbms_job      | PACKAGE BODY | 437  |                           myinst);
+ dbms_job      | PACKAGE BODY | 438  |   /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 439  | END user_export;
+ dbms_job      | PACKAGE BODY | 440  | 
+ dbms_job      | PACKAGE BODY | 441  | END;
  dbms_metadata | PACKAGE      | 1    | PACKAGE dbms_metadata IS
  dbms_metadata | PACKAGE      | 2    |   FUNCTION GET_OBJNAME(ori_name IN VARCHAR(63)) RETURN VARCHAR(63);
  dbms_metadata | PACKAGE      | 3    |   FUNCTION CHECK_PRIVILEGE(owneroid IN OID) RETURN BOOLEAN;
@@ -7836,7 +7835,7 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(2265 rows)
+(2264 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                            text                                                                                                             
@@ -8263,91 +8262,90 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  dbms_job      | PACKAGE BODY | 355  |                                                                  what,
  dbms_job      | PACKAGE BODY | 356  |                                                                  current_database_name,
  dbms_job      | PACKAGE BODY | 357  |                                                                  interval,
- dbms_job      | PACKAGE BODY | 358  |                                                                  true,
- dbms_job      | PACKAGE BODY | 359  |                                                                  NULL,
- dbms_job      | PACKAGE BODY | 360  |                                                                  true,
- dbms_job      | PACKAGE BODY | 361  |                                                                  job);
- dbms_job      | PACKAGE BODY | 362  |         /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 363  |     ELSE
- dbms_job      | PACKAGE BODY | 364  | 
- dbms_job      | PACKAGE BODY | 365  |         BEGIN
- dbms_job      | PACKAGE BODY | 366  | 
- dbms_job      | PACKAGE BODY | 367  |             result_datetime := sys.evaluate_next_schedule_expression(interval::text);
- dbms_job      | PACKAGE BODY | 368  |         EXCEPTION
- dbms_job      | PACKAGE BODY | 369  |             WHEN others THEN
- dbms_job      | PACKAGE BODY | 370  |                 
- dbms_job      | PACKAGE BODY | 371  |             RAISE EXCEPTION 'IVY-27465: invalid value %s for attribute REPEAT_INTERVAL',interval;
- dbms_job      | PACKAGE BODY | 372  |         END;
- dbms_job      | PACKAGE BODY | 373  | 
- dbms_job      | PACKAGE BODY | 374  |         IF result_datetime <= fixed_sysdate THEN
- dbms_job      | PACKAGE BODY | 375  |             interval_expression_jobenabled := false;
- dbms_job      | PACKAGE BODY | 376  |             interval_expression_failures := 1;
- dbms_job      | PACKAGE BODY | 377  |         END IF;
- dbms_job      | PACKAGE BODY | 378  | 
- dbms_job      | PACKAGE BODY | 379  |         IF now_future THEN
- dbms_job      | PACKAGE BODY | 380  |             result_datetime  := next_date::timestamp;
- dbms_job      | PACKAGE BODY | 381  |         END IF;
- dbms_job      | PACKAGE BODY | 382  | 
- dbms_job      | PACKAGE BODY | 383  |             /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 384  |             /*
- dbms_job      | PACKAGE BODY | 385  |              * call sys.insert_pgagent_tables2 procedure to operator the tables in schema pgagent.
- dbms_job      | PACKAGE BODY | 386  |              * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
- dbms_job      | PACKAGE BODY | 387  |              * call the package dbms_job to create a job, the user can't operator the objects
- dbms_job      | PACKAGE BODY | 388  |              * in schema pgagent.
- dbms_job      | PACKAGE BODY | 389  |              */
- dbms_job      | PACKAGE BODY | 390  |         sys.insert_pgagent_tables2(interval_expression_jobenabled,
- dbms_job      | PACKAGE BODY | 391  |                                          result_datetime::pg_catalog.timestamptz,
- dbms_job      | PACKAGE BODY | 392  |                                          no_parse,
- dbms_job      | PACKAGE BODY | 393  |                                          current_user_varchar,
- dbms_job      | PACKAGE BODY | 394  |                                          interval_expression_failures,
- dbms_job      | PACKAGE BODY | 395  |                                          nls_env_varchar,
- dbms_job      | PACKAGE BODY | 396  |                                                                  what,
- dbms_job      | PACKAGE BODY | 397  |                                                                  current_database_name,
- dbms_job      | PACKAGE BODY | 398  |                                                                  interval,
- dbms_job      | PACKAGE BODY | 399  |                                                                  next_date::text::pg_catalog.timestamptz,
- dbms_job      | PACKAGE BODY | 400  |                                                                  false,
- dbms_job      | PACKAGE BODY | 401  |                                                                  job);
- dbms_job      | PACKAGE BODY | 402  |         /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 403  |     END IF;
- dbms_job      | PACKAGE BODY | 404  | 
- dbms_job      | PACKAGE BODY | 405  |     EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
- dbms_job      | PACKAGE BODY | 406  |     
- dbms_job      | PACKAGE BODY | 407  | END isubmit;
+ dbms_job      | PACKAGE BODY | 358  |                                                                  NULL,
+ dbms_job      | PACKAGE BODY | 359  |                                                                  true,
+ dbms_job      | PACKAGE BODY | 360  |                                                                  job);
+ dbms_job      | PACKAGE BODY | 361  |         /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 362  |     ELSE
+ dbms_job      | PACKAGE BODY | 363  | 
+ dbms_job      | PACKAGE BODY | 364  |         BEGIN
+ dbms_job      | PACKAGE BODY | 365  | 
+ dbms_job      | PACKAGE BODY | 366  |             result_datetime := sys.evaluate_next_schedule_expression(interval::text);
+ dbms_job      | PACKAGE BODY | 367  |         EXCEPTION
+ dbms_job      | PACKAGE BODY | 368  |             WHEN others THEN
+ dbms_job      | PACKAGE BODY | 369  |                 
+ dbms_job      | PACKAGE BODY | 370  |             RAISE EXCEPTION 'IVY-27465: invalid value %s for attribute REPEAT_INTERVAL',interval;
+ dbms_job      | PACKAGE BODY | 371  |         END;
+ dbms_job      | PACKAGE BODY | 372  | 
+ dbms_job      | PACKAGE BODY | 373  |         IF result_datetime <= fixed_sysdate THEN
+ dbms_job      | PACKAGE BODY | 374  |             interval_expression_jobenabled := false;
+ dbms_job      | PACKAGE BODY | 375  |             interval_expression_failures := 1;
+ dbms_job      | PACKAGE BODY | 376  |         END IF;
+ dbms_job      | PACKAGE BODY | 377  | 
+ dbms_job      | PACKAGE BODY | 378  |         IF now_future THEN
+ dbms_job      | PACKAGE BODY | 379  |             result_datetime  := next_date::timestamp;
+ dbms_job      | PACKAGE BODY | 380  |         END IF;
+ dbms_job      | PACKAGE BODY | 381  | 
+ dbms_job      | PACKAGE BODY | 382  |             /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 383  |             /*
+ dbms_job      | PACKAGE BODY | 384  |              * call sys.insert_pgagent_tables2 procedure to operator the tables in schema pgagent.
+ dbms_job      | PACKAGE BODY | 385  |              * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
+ dbms_job      | PACKAGE BODY | 386  |              * call the package dbms_job to create a job, the user can't operator the objects
+ dbms_job      | PACKAGE BODY | 387  |              * in schema pgagent.
+ dbms_job      | PACKAGE BODY | 388  |              */
+ dbms_job      | PACKAGE BODY | 389  |         sys.insert_pgagent_tables2(interval_expression_jobenabled,
+ dbms_job      | PACKAGE BODY | 390  |                                          result_datetime::pg_catalog.timestamptz,
+ dbms_job      | PACKAGE BODY | 391  |                                          no_parse,
+ dbms_job      | PACKAGE BODY | 392  |                                          current_user_varchar,
+ dbms_job      | PACKAGE BODY | 393  |                                          interval_expression_failures,
+ dbms_job      | PACKAGE BODY | 394  |                                          nls_env_varchar,
+ dbms_job      | PACKAGE BODY | 395  |                                                                  what,
+ dbms_job      | PACKAGE BODY | 396  |                                                                  current_database_name,
+ dbms_job      | PACKAGE BODY | 397  |                                                                  interval,
+ dbms_job      | PACKAGE BODY | 398  |                                                                  next_date::text::pg_catalog.timestamptz,
+ dbms_job      | PACKAGE BODY | 399  |                                                                  false,
+ dbms_job      | PACKAGE BODY | 400  |                                                                  job);
+ dbms_job      | PACKAGE BODY | 401  |         /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 402  |     END IF;
+ dbms_job      | PACKAGE BODY | 403  | 
+ dbms_job      | PACKAGE BODY | 404  |     EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
+ dbms_job      | PACKAGE BODY | 405  |     
+ dbms_job      | PACKAGE BODY | 406  | END isubmit;
+ dbms_job      | PACKAGE BODY | 407  | 
  dbms_job      | PACKAGE BODY | 408  | 
  dbms_job      | PACKAGE BODY | 409  | 
- dbms_job      | PACKAGE BODY | 410  | 
- dbms_job      | PACKAGE BODY | 411  | PROCEDURE user_export (
- dbms_job      | PACKAGE BODY | 412  |     job IN INTEGER,
- dbms_job      | PACKAGE BODY | 413  |     mycall IN OUT VARCHAR2
- dbms_job      | PACKAGE BODY | 414  | ) IS
- dbms_job      | PACKAGE BODY | 415  |     v_what VARCHAR2(4000);
- dbms_job      | PACKAGE BODY | 416  |     v_next_date VARCHAR2(100);
- dbms_job      | PACKAGE BODY | 417  |     v_interval VARCHAR2(100);
- dbms_job      | PACKAGE BODY | 418  |     v_no_parse VARCHAR2(10);
- dbms_job      | PACKAGE BODY | 419  |     v_job_count NUMBER;
- dbms_job      | PACKAGE BODY | 420  | BEGIN
- dbms_job      | PACKAGE BODY | 421  |   /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 422  |   sys.user_export(job,
- dbms_job      | PACKAGE BODY | 423  |                   mycall);
- dbms_job      | PACKAGE BODY | 424  |   /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 425  | END user_export;
+ dbms_job      | PACKAGE BODY | 410  | PROCEDURE user_export (
+ dbms_job      | PACKAGE BODY | 411  |     job IN INTEGER,
+ dbms_job      | PACKAGE BODY | 412  |     mycall IN OUT VARCHAR2
+ dbms_job      | PACKAGE BODY | 413  | ) IS
+ dbms_job      | PACKAGE BODY | 414  |     v_what VARCHAR2(4000);
+ dbms_job      | PACKAGE BODY | 415  |     v_next_date VARCHAR2(100);
+ dbms_job      | PACKAGE BODY | 416  |     v_interval VARCHAR2(100);
+ dbms_job      | PACKAGE BODY | 417  |     v_no_parse VARCHAR2(10);
+ dbms_job      | PACKAGE BODY | 418  |     v_job_count NUMBER;
+ dbms_job      | PACKAGE BODY | 419  | BEGIN
+ dbms_job      | PACKAGE BODY | 420  |   /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 421  |   sys.user_export(job,
+ dbms_job      | PACKAGE BODY | 422  |                   mycall);
+ dbms_job      | PACKAGE BODY | 423  |   /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 424  | END user_export;
+ dbms_job      | PACKAGE BODY | 425  | 
  dbms_job      | PACKAGE BODY | 426  | 
  dbms_job      | PACKAGE BODY | 427  | 
- dbms_job      | PACKAGE BODY | 428  | 
- dbms_job      | PACKAGE BODY | 429  | PROCEDURE user_export (
- dbms_job      | PACKAGE BODY | 430  |     job IN INTEGER,
- dbms_job      | PACKAGE BODY | 431  |     mycall IN OUT VARCHAR2,
- dbms_job      | PACKAGE BODY | 432  |     myinst IN OUT VARCHAR2
- dbms_job      | PACKAGE BODY | 433  | ) IS
- dbms_job      | PACKAGE BODY | 434  | BEGIN
- dbms_job      | PACKAGE BODY | 435  |   /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 436  |   sys.user_export(job,
- dbms_job      | PACKAGE BODY | 437  |                   mycall,
- dbms_job      | PACKAGE BODY | 438  |                           myinst);
- dbms_job      | PACKAGE BODY | 439  |   /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 440  | END user_export;
- dbms_job      | PACKAGE BODY | 441  | 
- dbms_job      | PACKAGE BODY | 442  | END;
+ dbms_job      | PACKAGE BODY | 428  | PROCEDURE user_export (
+ dbms_job      | PACKAGE BODY | 429  |     job IN INTEGER,
+ dbms_job      | PACKAGE BODY | 430  |     mycall IN OUT VARCHAR2,
+ dbms_job      | PACKAGE BODY | 431  |     myinst IN OUT VARCHAR2
+ dbms_job      | PACKAGE BODY | 432  | ) IS
+ dbms_job      | PACKAGE BODY | 433  | BEGIN
+ dbms_job      | PACKAGE BODY | 434  |   /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 435  |   sys.user_export(job,
+ dbms_job      | PACKAGE BODY | 436  |                   mycall,
+ dbms_job      | PACKAGE BODY | 437  |                           myinst);
+ dbms_job      | PACKAGE BODY | 438  |   /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 439  | END user_export;
+ dbms_job      | PACKAGE BODY | 440  | 
+ dbms_job      | PACKAGE BODY | 441  | END;
  dbms_metadata | PACKAGE      | 1    | PACKAGE dbms_metadata IS
  dbms_metadata | PACKAGE      | 2    |   FUNCTION GET_OBJNAME(ori_name IN VARCHAR(63)) RETURN VARCHAR(63);
  dbms_metadata | PACKAGE      | 3    |   FUNCTION CHECK_PRIVILEGE(owneroid IN OID) RETURN BOOLEAN;
@@ -10106,7 +10104,7 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(2265 rows)
+(2264 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
    name    |     type     | line |                                 text                                  
@@ -11001,91 +10999,90 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  dbms_job      | PACKAGE BODY | 355  |                                                                  what,
  dbms_job      | PACKAGE BODY | 356  |                                                                  current_database_name,
  dbms_job      | PACKAGE BODY | 357  |                                                                  interval,
- dbms_job      | PACKAGE BODY | 358  |                                                                  true,
- dbms_job      | PACKAGE BODY | 359  |                                                                  NULL,
- dbms_job      | PACKAGE BODY | 360  |                                                                  true,
- dbms_job      | PACKAGE BODY | 361  |                                                                  job);
- dbms_job      | PACKAGE BODY | 362  |         /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 363  |     ELSE
- dbms_job      | PACKAGE BODY | 364  | 
- dbms_job      | PACKAGE BODY | 365  |         BEGIN
- dbms_job      | PACKAGE BODY | 366  | 
- dbms_job      | PACKAGE BODY | 367  |             result_datetime := sys.evaluate_next_schedule_expression(interval::text);
- dbms_job      | PACKAGE BODY | 368  |         EXCEPTION
- dbms_job      | PACKAGE BODY | 369  |             WHEN others THEN
- dbms_job      | PACKAGE BODY | 370  |                 
- dbms_job      | PACKAGE BODY | 371  |             RAISE EXCEPTION 'IVY-27465: invalid value %s for attribute REPEAT_INTERVAL',interval;
- dbms_job      | PACKAGE BODY | 372  |         END;
- dbms_job      | PACKAGE BODY | 373  | 
- dbms_job      | PACKAGE BODY | 374  |         IF result_datetime <= fixed_sysdate THEN
- dbms_job      | PACKAGE BODY | 375  |             interval_expression_jobenabled := false;
- dbms_job      | PACKAGE BODY | 376  |             interval_expression_failures := 1;
- dbms_job      | PACKAGE BODY | 377  |         END IF;
- dbms_job      | PACKAGE BODY | 378  | 
- dbms_job      | PACKAGE BODY | 379  |         IF now_future THEN
- dbms_job      | PACKAGE BODY | 380  |             result_datetime  := next_date::timestamp;
- dbms_job      | PACKAGE BODY | 381  |         END IF;
- dbms_job      | PACKAGE BODY | 382  | 
- dbms_job      | PACKAGE BODY | 383  |             /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 384  |             /*
- dbms_job      | PACKAGE BODY | 385  |              * call sys.insert_pgagent_tables2 procedure to operator the tables in schema pgagent.
- dbms_job      | PACKAGE BODY | 386  |              * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
- dbms_job      | PACKAGE BODY | 387  |              * call the package dbms_job to create a job, the user can't operator the objects
- dbms_job      | PACKAGE BODY | 388  |              * in schema pgagent.
- dbms_job      | PACKAGE BODY | 389  |              */
- dbms_job      | PACKAGE BODY | 390  |         sys.insert_pgagent_tables2(interval_expression_jobenabled,
- dbms_job      | PACKAGE BODY | 391  |                                          result_datetime::pg_catalog.timestamptz,
- dbms_job      | PACKAGE BODY | 392  |                                          no_parse,
- dbms_job      | PACKAGE BODY | 393  |                                          current_user_varchar,
- dbms_job      | PACKAGE BODY | 394  |                                          interval_expression_failures,
- dbms_job      | PACKAGE BODY | 395  |                                          nls_env_varchar,
- dbms_job      | PACKAGE BODY | 396  |                                                                  what,
- dbms_job      | PACKAGE BODY | 397  |                                                                  current_database_name,
- dbms_job      | PACKAGE BODY | 398  |                                                                  interval,
- dbms_job      | PACKAGE BODY | 399  |                                                                  next_date::text::pg_catalog.timestamptz,
- dbms_job      | PACKAGE BODY | 400  |                                                                  false,
- dbms_job      | PACKAGE BODY | 401  |                                                                  job);
- dbms_job      | PACKAGE BODY | 402  |         /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 403  |     END IF;
- dbms_job      | PACKAGE BODY | 404  | 
- dbms_job      | PACKAGE BODY | 405  |     EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
- dbms_job      | PACKAGE BODY | 406  |     
- dbms_job      | PACKAGE BODY | 407  | END isubmit;
+ dbms_job      | PACKAGE BODY | 358  |                                                                  NULL,
+ dbms_job      | PACKAGE BODY | 359  |                                                                  true,
+ dbms_job      | PACKAGE BODY | 360  |                                                                  job);
+ dbms_job      | PACKAGE BODY | 361  |         /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 362  |     ELSE
+ dbms_job      | PACKAGE BODY | 363  | 
+ dbms_job      | PACKAGE BODY | 364  |         BEGIN
+ dbms_job      | PACKAGE BODY | 365  | 
+ dbms_job      | PACKAGE BODY | 366  |             result_datetime := sys.evaluate_next_schedule_expression(interval::text);
+ dbms_job      | PACKAGE BODY | 367  |         EXCEPTION
+ dbms_job      | PACKAGE BODY | 368  |             WHEN others THEN
+ dbms_job      | PACKAGE BODY | 369  |                 
+ dbms_job      | PACKAGE BODY | 370  |             RAISE EXCEPTION 'IVY-27465: invalid value %s for attribute REPEAT_INTERVAL',interval;
+ dbms_job      | PACKAGE BODY | 371  |         END;
+ dbms_job      | PACKAGE BODY | 372  | 
+ dbms_job      | PACKAGE BODY | 373  |         IF result_datetime <= fixed_sysdate THEN
+ dbms_job      | PACKAGE BODY | 374  |             interval_expression_jobenabled := false;
+ dbms_job      | PACKAGE BODY | 375  |             interval_expression_failures := 1;
+ dbms_job      | PACKAGE BODY | 376  |         END IF;
+ dbms_job      | PACKAGE BODY | 377  | 
+ dbms_job      | PACKAGE BODY | 378  |         IF now_future THEN
+ dbms_job      | PACKAGE BODY | 379  |             result_datetime  := next_date::timestamp;
+ dbms_job      | PACKAGE BODY | 380  |         END IF;
+ dbms_job      | PACKAGE BODY | 381  | 
+ dbms_job      | PACKAGE BODY | 382  |             /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 383  |             /*
+ dbms_job      | PACKAGE BODY | 384  |              * call sys.insert_pgagent_tables2 procedure to operator the tables in schema pgagent.
+ dbms_job      | PACKAGE BODY | 385  |              * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
+ dbms_job      | PACKAGE BODY | 386  |              * call the package dbms_job to create a job, the user can't operator the objects
+ dbms_job      | PACKAGE BODY | 387  |              * in schema pgagent.
+ dbms_job      | PACKAGE BODY | 388  |              */
+ dbms_job      | PACKAGE BODY | 389  |         sys.insert_pgagent_tables2(interval_expression_jobenabled,
+ dbms_job      | PACKAGE BODY | 390  |                                          result_datetime::pg_catalog.timestamptz,
+ dbms_job      | PACKAGE BODY | 391  |                                          no_parse,
+ dbms_job      | PACKAGE BODY | 392  |                                          current_user_varchar,
+ dbms_job      | PACKAGE BODY | 393  |                                          interval_expression_failures,
+ dbms_job      | PACKAGE BODY | 394  |                                          nls_env_varchar,
+ dbms_job      | PACKAGE BODY | 395  |                                                                  what,
+ dbms_job      | PACKAGE BODY | 396  |                                                                  current_database_name,
+ dbms_job      | PACKAGE BODY | 397  |                                                                  interval,
+ dbms_job      | PACKAGE BODY | 398  |                                                                  next_date::text::pg_catalog.timestamptz,
+ dbms_job      | PACKAGE BODY | 399  |                                                                  false,
+ dbms_job      | PACKAGE BODY | 400  |                                                                  job);
+ dbms_job      | PACKAGE BODY | 401  |         /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 402  |     END IF;
+ dbms_job      | PACKAGE BODY | 403  | 
+ dbms_job      | PACKAGE BODY | 404  |     EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
+ dbms_job      | PACKAGE BODY | 405  |     
+ dbms_job      | PACKAGE BODY | 406  | END isubmit;
+ dbms_job      | PACKAGE BODY | 407  | 
  dbms_job      | PACKAGE BODY | 408  | 
  dbms_job      | PACKAGE BODY | 409  | 
- dbms_job      | PACKAGE BODY | 410  | 
- dbms_job      | PACKAGE BODY | 411  | PROCEDURE user_export (
- dbms_job      | PACKAGE BODY | 412  |     job IN INTEGER,
- dbms_job      | PACKAGE BODY | 413  |     mycall IN OUT VARCHAR2
- dbms_job      | PACKAGE BODY | 414  | ) IS
- dbms_job      | PACKAGE BODY | 415  |     v_what VARCHAR2(4000);
- dbms_job      | PACKAGE BODY | 416  |     v_next_date VARCHAR2(100);
- dbms_job      | PACKAGE BODY | 417  |     v_interval VARCHAR2(100);
- dbms_job      | PACKAGE BODY | 418  |     v_no_parse VARCHAR2(10);
- dbms_job      | PACKAGE BODY | 419  |     v_job_count NUMBER;
- dbms_job      | PACKAGE BODY | 420  | BEGIN
- dbms_job      | PACKAGE BODY | 421  |   /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 422  |   sys.user_export(job,
- dbms_job      | PACKAGE BODY | 423  |                   mycall);
- dbms_job      | PACKAGE BODY | 424  |   /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 425  | END user_export;
+ dbms_job      | PACKAGE BODY | 410  | PROCEDURE user_export (
+ dbms_job      | PACKAGE BODY | 411  |     job IN INTEGER,
+ dbms_job      | PACKAGE BODY | 412  |     mycall IN OUT VARCHAR2
+ dbms_job      | PACKAGE BODY | 413  | ) IS
+ dbms_job      | PACKAGE BODY | 414  |     v_what VARCHAR2(4000);
+ dbms_job      | PACKAGE BODY | 415  |     v_next_date VARCHAR2(100);
+ dbms_job      | PACKAGE BODY | 416  |     v_interval VARCHAR2(100);
+ dbms_job      | PACKAGE BODY | 417  |     v_no_parse VARCHAR2(10);
+ dbms_job      | PACKAGE BODY | 418  |     v_job_count NUMBER;
+ dbms_job      | PACKAGE BODY | 419  | BEGIN
+ dbms_job      | PACKAGE BODY | 420  |   /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 421  |   sys.user_export(job,
+ dbms_job      | PACKAGE BODY | 422  |                   mycall);
+ dbms_job      | PACKAGE BODY | 423  |   /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 424  | END user_export;
+ dbms_job      | PACKAGE BODY | 425  | 
  dbms_job      | PACKAGE BODY | 426  | 
  dbms_job      | PACKAGE BODY | 427  | 
- dbms_job      | PACKAGE BODY | 428  | 
- dbms_job      | PACKAGE BODY | 429  | PROCEDURE user_export (
- dbms_job      | PACKAGE BODY | 430  |     job IN INTEGER,
- dbms_job      | PACKAGE BODY | 431  |     mycall IN OUT VARCHAR2,
- dbms_job      | PACKAGE BODY | 432  |     myinst IN OUT VARCHAR2
- dbms_job      | PACKAGE BODY | 433  | ) IS
- dbms_job      | PACKAGE BODY | 434  | BEGIN
- dbms_job      | PACKAGE BODY | 435  |   /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 436  |   sys.user_export(job,
- dbms_job      | PACKAGE BODY | 437  |                   mycall,
- dbms_job      | PACKAGE BODY | 438  |                           myinst);
- dbms_job      | PACKAGE BODY | 439  |   /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 440  | END user_export;
- dbms_job      | PACKAGE BODY | 441  | 
- dbms_job      | PACKAGE BODY | 442  | END;
+ dbms_job      | PACKAGE BODY | 428  | PROCEDURE user_export (
+ dbms_job      | PACKAGE BODY | 429  |     job IN INTEGER,
+ dbms_job      | PACKAGE BODY | 430  |     mycall IN OUT VARCHAR2,
+ dbms_job      | PACKAGE BODY | 431  |     myinst IN OUT VARCHAR2
+ dbms_job      | PACKAGE BODY | 432  | ) IS
+ dbms_job      | PACKAGE BODY | 433  | BEGIN
+ dbms_job      | PACKAGE BODY | 434  |   /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 435  |   sys.user_export(job,
+ dbms_job      | PACKAGE BODY | 436  |                   mycall,
+ dbms_job      | PACKAGE BODY | 437  |                           myinst);
+ dbms_job      | PACKAGE BODY | 438  |   /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 439  | END user_export;
+ dbms_job      | PACKAGE BODY | 440  | 
+ dbms_job      | PACKAGE BODY | 441  | END;
  dbms_metadata | PACKAGE      | 1    | PACKAGE dbms_metadata IS
  dbms_metadata | PACKAGE      | 2    |   FUNCTION GET_OBJNAME(ori_name IN VARCHAR(63)) RETURN VARCHAR(63);
  dbms_metadata | PACKAGE      | 3    |   FUNCTION CHECK_PRIVILEGE(owneroid IN OID) RETURN BOOLEAN;
@@ -12844,7 +12841,7 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(2265 rows)
+(2264 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                            text                                                                                                             
@@ -15353,91 +15350,90 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  dbms_job      | PACKAGE BODY | 355  |                                                                  what,
  dbms_job      | PACKAGE BODY | 356  |                                                                  current_database_name,
  dbms_job      | PACKAGE BODY | 357  |                                                                  interval,
- dbms_job      | PACKAGE BODY | 358  |                                                                  true,
- dbms_job      | PACKAGE BODY | 359  |                                                                  NULL,
- dbms_job      | PACKAGE BODY | 360  |                                                                  true,
- dbms_job      | PACKAGE BODY | 361  |                                                                  job);
- dbms_job      | PACKAGE BODY | 362  |         /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 363  |     ELSE
- dbms_job      | PACKAGE BODY | 364  | 
- dbms_job      | PACKAGE BODY | 365  |         BEGIN
- dbms_job      | PACKAGE BODY | 366  | 
- dbms_job      | PACKAGE BODY | 367  |             result_datetime := sys.evaluate_next_schedule_expression(interval::text);
- dbms_job      | PACKAGE BODY | 368  |         EXCEPTION
- dbms_job      | PACKAGE BODY | 369  |             WHEN others THEN
- dbms_job      | PACKAGE BODY | 370  |                 
- dbms_job      | PACKAGE BODY | 371  |             RAISE EXCEPTION 'IVY-27465: invalid value %s for attribute REPEAT_INTERVAL',interval;
- dbms_job      | PACKAGE BODY | 372  |         END;
- dbms_job      | PACKAGE BODY | 373  | 
- dbms_job      | PACKAGE BODY | 374  |         IF result_datetime <= fixed_sysdate THEN
- dbms_job      | PACKAGE BODY | 375  |             interval_expression_jobenabled := false;
- dbms_job      | PACKAGE BODY | 376  |             interval_expression_failures := 1;
- dbms_job      | PACKAGE BODY | 377  |         END IF;
- dbms_job      | PACKAGE BODY | 378  | 
- dbms_job      | PACKAGE BODY | 379  |         IF now_future THEN
- dbms_job      | PACKAGE BODY | 380  |             result_datetime  := next_date::timestamp;
- dbms_job      | PACKAGE BODY | 381  |         END IF;
- dbms_job      | PACKAGE BODY | 382  | 
- dbms_job      | PACKAGE BODY | 383  |             /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 384  |             /*
- dbms_job      | PACKAGE BODY | 385  |              * call sys.insert_pgagent_tables2 procedure to operator the tables in schema pgagent.
- dbms_job      | PACKAGE BODY | 386  |              * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
- dbms_job      | PACKAGE BODY | 387  |              * call the package dbms_job to create a job, the user can't operator the objects
- dbms_job      | PACKAGE BODY | 388  |              * in schema pgagent.
- dbms_job      | PACKAGE BODY | 389  |              */
- dbms_job      | PACKAGE BODY | 390  |         sys.insert_pgagent_tables2(interval_expression_jobenabled,
- dbms_job      | PACKAGE BODY | 391  |                                          result_datetime::pg_catalog.timestamptz,
- dbms_job      | PACKAGE BODY | 392  |                                          no_parse,
- dbms_job      | PACKAGE BODY | 393  |                                          current_user_varchar,
- dbms_job      | PACKAGE BODY | 394  |                                          interval_expression_failures,
- dbms_job      | PACKAGE BODY | 395  |                                          nls_env_varchar,
- dbms_job      | PACKAGE BODY | 396  |                                                                  what,
- dbms_job      | PACKAGE BODY | 397  |                                                                  current_database_name,
- dbms_job      | PACKAGE BODY | 398  |                                                                  interval,
- dbms_job      | PACKAGE BODY | 399  |                                                                  next_date::text::pg_catalog.timestamptz,
- dbms_job      | PACKAGE BODY | 400  |                                                                  false,
- dbms_job      | PACKAGE BODY | 401  |                                                                  job);
- dbms_job      | PACKAGE BODY | 402  |         /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 403  |     END IF;
- dbms_job      | PACKAGE BODY | 404  | 
- dbms_job      | PACKAGE BODY | 405  |     EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
- dbms_job      | PACKAGE BODY | 406  |     
- dbms_job      | PACKAGE BODY | 407  | END isubmit;
+ dbms_job      | PACKAGE BODY | 358  |                                                                  NULL,
+ dbms_job      | PACKAGE BODY | 359  |                                                                  true,
+ dbms_job      | PACKAGE BODY | 360  |                                                                  job);
+ dbms_job      | PACKAGE BODY | 361  |         /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 362  |     ELSE
+ dbms_job      | PACKAGE BODY | 363  | 
+ dbms_job      | PACKAGE BODY | 364  |         BEGIN
+ dbms_job      | PACKAGE BODY | 365  | 
+ dbms_job      | PACKAGE BODY | 366  |             result_datetime := sys.evaluate_next_schedule_expression(interval::text);
+ dbms_job      | PACKAGE BODY | 367  |         EXCEPTION
+ dbms_job      | PACKAGE BODY | 368  |             WHEN others THEN
+ dbms_job      | PACKAGE BODY | 369  |                 
+ dbms_job      | PACKAGE BODY | 370  |             RAISE EXCEPTION 'IVY-27465: invalid value %s for attribute REPEAT_INTERVAL',interval;
+ dbms_job      | PACKAGE BODY | 371  |         END;
+ dbms_job      | PACKAGE BODY | 372  | 
+ dbms_job      | PACKAGE BODY | 373  |         IF result_datetime <= fixed_sysdate THEN
+ dbms_job      | PACKAGE BODY | 374  |             interval_expression_jobenabled := false;
+ dbms_job      | PACKAGE BODY | 375  |             interval_expression_failures := 1;
+ dbms_job      | PACKAGE BODY | 376  |         END IF;
+ dbms_job      | PACKAGE BODY | 377  | 
+ dbms_job      | PACKAGE BODY | 378  |         IF now_future THEN
+ dbms_job      | PACKAGE BODY | 379  |             result_datetime  := next_date::timestamp;
+ dbms_job      | PACKAGE BODY | 380  |         END IF;
+ dbms_job      | PACKAGE BODY | 381  | 
+ dbms_job      | PACKAGE BODY | 382  |             /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 383  |             /*
+ dbms_job      | PACKAGE BODY | 384  |              * call sys.insert_pgagent_tables2 procedure to operator the tables in schema pgagent.
+ dbms_job      | PACKAGE BODY | 385  |              * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
+ dbms_job      | PACKAGE BODY | 386  |              * call the package dbms_job to create a job, the user can't operator the objects
+ dbms_job      | PACKAGE BODY | 387  |              * in schema pgagent.
+ dbms_job      | PACKAGE BODY | 388  |              */
+ dbms_job      | PACKAGE BODY | 389  |         sys.insert_pgagent_tables2(interval_expression_jobenabled,
+ dbms_job      | PACKAGE BODY | 390  |                                          result_datetime::pg_catalog.timestamptz,
+ dbms_job      | PACKAGE BODY | 391  |                                          no_parse,
+ dbms_job      | PACKAGE BODY | 392  |                                          current_user_varchar,
+ dbms_job      | PACKAGE BODY | 393  |                                          interval_expression_failures,
+ dbms_job      | PACKAGE BODY | 394  |                                          nls_env_varchar,
+ dbms_job      | PACKAGE BODY | 395  |                                                                  what,
+ dbms_job      | PACKAGE BODY | 396  |                                                                  current_database_name,
+ dbms_job      | PACKAGE BODY | 397  |                                                                  interval,
+ dbms_job      | PACKAGE BODY | 398  |                                                                  next_date::text::pg_catalog.timestamptz,
+ dbms_job      | PACKAGE BODY | 399  |                                                                  false,
+ dbms_job      | PACKAGE BODY | 400  |                                                                  job);
+ dbms_job      | PACKAGE BODY | 401  |         /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 402  |     END IF;
+ dbms_job      | PACKAGE BODY | 403  | 
+ dbms_job      | PACKAGE BODY | 404  |     EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
+ dbms_job      | PACKAGE BODY | 405  |     
+ dbms_job      | PACKAGE BODY | 406  | END isubmit;
+ dbms_job      | PACKAGE BODY | 407  | 
  dbms_job      | PACKAGE BODY | 408  | 
  dbms_job      | PACKAGE BODY | 409  | 
- dbms_job      | PACKAGE BODY | 410  | 
- dbms_job      | PACKAGE BODY | 411  | PROCEDURE user_export (
- dbms_job      | PACKAGE BODY | 412  |     job IN INTEGER,
- dbms_job      | PACKAGE BODY | 413  |     mycall IN OUT VARCHAR2
- dbms_job      | PACKAGE BODY | 414  | ) IS
- dbms_job      | PACKAGE BODY | 415  |     v_what VARCHAR2(4000);
- dbms_job      | PACKAGE BODY | 416  |     v_next_date VARCHAR2(100);
- dbms_job      | PACKAGE BODY | 417  |     v_interval VARCHAR2(100);
- dbms_job      | PACKAGE BODY | 418  |     v_no_parse VARCHAR2(10);
- dbms_job      | PACKAGE BODY | 419  |     v_job_count NUMBER;
- dbms_job      | PACKAGE BODY | 420  | BEGIN
- dbms_job      | PACKAGE BODY | 421  |   /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 422  |   sys.user_export(job,
- dbms_job      | PACKAGE BODY | 423  |                   mycall);
- dbms_job      | PACKAGE BODY | 424  |   /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 425  | END user_export;
+ dbms_job      | PACKAGE BODY | 410  | PROCEDURE user_export (
+ dbms_job      | PACKAGE BODY | 411  |     job IN INTEGER,
+ dbms_job      | PACKAGE BODY | 412  |     mycall IN OUT VARCHAR2
+ dbms_job      | PACKAGE BODY | 413  | ) IS
+ dbms_job      | PACKAGE BODY | 414  |     v_what VARCHAR2(4000);
+ dbms_job      | PACKAGE BODY | 415  |     v_next_date VARCHAR2(100);
+ dbms_job      | PACKAGE BODY | 416  |     v_interval VARCHAR2(100);
+ dbms_job      | PACKAGE BODY | 417  |     v_no_parse VARCHAR2(10);
+ dbms_job      | PACKAGE BODY | 418  |     v_job_count NUMBER;
+ dbms_job      | PACKAGE BODY | 419  | BEGIN
+ dbms_job      | PACKAGE BODY | 420  |   /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 421  |   sys.user_export(job,
+ dbms_job      | PACKAGE BODY | 422  |                   mycall);
+ dbms_job      | PACKAGE BODY | 423  |   /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 424  | END user_export;
+ dbms_job      | PACKAGE BODY | 425  | 
  dbms_job      | PACKAGE BODY | 426  | 
  dbms_job      | PACKAGE BODY | 427  | 
- dbms_job      | PACKAGE BODY | 428  | 
- dbms_job      | PACKAGE BODY | 429  | PROCEDURE user_export (
- dbms_job      | PACKAGE BODY | 430  |     job IN INTEGER,
- dbms_job      | PACKAGE BODY | 431  |     mycall IN OUT VARCHAR2,
- dbms_job      | PACKAGE BODY | 432  |     myinst IN OUT VARCHAR2
- dbms_job      | PACKAGE BODY | 433  | ) IS
- dbms_job      | PACKAGE BODY | 434  | BEGIN
- dbms_job      | PACKAGE BODY | 435  |   /* BEGIN - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 436  |   sys.user_export(job,
- dbms_job      | PACKAGE BODY | 437  |                   mycall,
- dbms_job      | PACKAGE BODY | 438  |                           myinst);
- dbms_job      | PACKAGE BODY | 439  |   /* END - BUG#M0000412 */
- dbms_job      | PACKAGE BODY | 440  | END user_export;
- dbms_job      | PACKAGE BODY | 441  | 
- dbms_job      | PACKAGE BODY | 442  | END;
+ dbms_job      | PACKAGE BODY | 428  | PROCEDURE user_export (
+ dbms_job      | PACKAGE BODY | 429  |     job IN INTEGER,
+ dbms_job      | PACKAGE BODY | 430  |     mycall IN OUT VARCHAR2,
+ dbms_job      | PACKAGE BODY | 431  |     myinst IN OUT VARCHAR2
+ dbms_job      | PACKAGE BODY | 432  | ) IS
+ dbms_job      | PACKAGE BODY | 433  | BEGIN
+ dbms_job      | PACKAGE BODY | 434  |   /* BEGIN - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 435  |   sys.user_export(job,
+ dbms_job      | PACKAGE BODY | 436  |                   mycall,
+ dbms_job      | PACKAGE BODY | 437  |                           myinst);
+ dbms_job      | PACKAGE BODY | 438  |   /* END - BUG#M0000412 */
+ dbms_job      | PACKAGE BODY | 439  | END user_export;
+ dbms_job      | PACKAGE BODY | 440  | 
+ dbms_job      | PACKAGE BODY | 441  | END;
  dbms_metadata | PACKAGE      | 1    | PACKAGE dbms_metadata IS
  dbms_metadata | PACKAGE      | 2    |   FUNCTION GET_OBJNAME(ori_name IN VARCHAR(63)) RETURN VARCHAR(63);
  dbms_metadata | PACKAGE      | 3    |   FUNCTION CHECK_PRIVILEGE(owneroid IN OID) RETURN BOOLEAN;
@@ -17196,7 +17192,7 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(2265 rows)
+(2264 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                            text                                                                                                             
