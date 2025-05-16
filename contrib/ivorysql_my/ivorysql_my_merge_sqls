@@ -2,7 +2,10 @@ src/datatype/script/datatype
 src/datatype/script/int
 src/datatype/script/int2
 src/datatype/script/int4
+src/datatype/script/uint1
+src/datatype/script/uint2
 src/datatype/script/uint4
+src/datatype/script/uint3
 src/datatype/script/uint8
 src/datatype/script/float
 src/datatype/script/year

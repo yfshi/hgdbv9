@@ -97,6 +97,8 @@ drop table t2;
 create table t1(c1 int);
 insert into t1 values(0);
 insert into t1 values(1);
+insert into t1 values(1.5);
+insert into t1 values('1.5');
 insert into t1 values(-1);
 insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
@@ -109,15 +111,19 @@ select * from t1;
 -------------
            0
            1
+           2
+           2
           -1
  -2147483648
   2147483647
-(5 rows)
+(7 rows)
 
 drop table t1;
 create table t1(c1 int SIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
+insert into t1 values(1.5);
+insert into t1 values('1.5');
 insert into t1 values(-1);
 insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
@@ -130,10 +136,12 @@ select * from t1;
 -------------
            0
            1
+           2
+           2
           -1
  -2147483648
   2147483647
-(5 rows)
+(7 rows)
 
 drop table t1;
 create table t1(c1 int4);

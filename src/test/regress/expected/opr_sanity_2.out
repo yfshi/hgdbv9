@@ -2242,6 +2242,8 @@ ORDER BY 1, 2, 3;
                     | mystimestamptime_ops  | mystimestamp_ops  | timestamp
                     | mystimestime_ops      | mystimes_ops      | time
                     | mystimetime_ops       | mystime_ops       | time
+                    | mysuint1_ops          | mysuint1_ops      | ivymy.mysuint1
+                    | mysuint2_ops          | mysuint2_ops      | ivymy.mysuint2
                     | mysuint4_ops          | mysuint4_ops      | ivymy.mysuint4
                     | mysuint8_ops          | mysuint8_ops      | ivymy.mysuint8
                     | numeric_ops           | numeric_ops       | numeric
@@ -2253,7 +2255,7 @@ ORDER BY 1, 2, 3;
                     | tsvector_ops          | tsvector_ops      | tsvector
                     | varbinary_ops         | varbinary_ops     | varbinary
                     | year_ops              | year_ops          | ivymy.year
-(32 rows)
+(34 rows)
 
 -- **************** pg_index ****************
 -- Look for illegal values in pg_index fields.

@@ -111,43 +111,8 @@ extern CoercionPathType find_coercion_pathway(Oid targetTypeId,
 extern CoercionPathType find_typmod_coercion_function(Oid typeId,
 													  Oid *funcid);
 
-/* Begin - ReqID:SRS-MYSQL-DATETYPE */
-extern int32 Num2Mysdate(Const *con, Oid inputTypeId);
-extern int32 Str2Mysdate(Const *con, Const *newcon);
-/* End - ReqID:SRS-MYSQL-DATETYPE */
-
-/* Begin - ReqID:SRS-MYSQL-DATETYPE */
-extern int64 Num2Mysdatetime(Const *con, Oid inputTypeId);
-extern int64 Str2Mysdatetime(Const *con, Const *newcon);
-extern Datum Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert);
-extern Datum Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert);
-/* End - ReqID:SRS-MYSQL-DATETYPE */
-
-/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
-extern int64 Num2Mystimestamp(Const *con, Oid inputTypeId);
-extern int64 Str2Mystimestamp(Const *con, Const *newcon);
-extern Datum Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert);
-extern Datum Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert);
-
-/* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
-
-/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
-extern int64 Num2Mystime(Const *con, Oid inputTypeId, bool is_insert);
-extern int64 Str2Mystime(Const *con, Const *newcon, bool is_insert);
-extern Datum Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert);
-extern Datum Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert);
-
-/* End - ReqID:SRS-MYSQL-TIMETYPE */
-
-/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-extern uint64 Num2Mysuint4(Const *con, Oid inputTypeId);
-extern uint64 Str2Mysuint4(Const *con, Const *newcon);
-/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-
-/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-extern uint64 pg_atoi_uint8_check(const char *s,int c);
-extern uint64 Num2Mysuint8(Const *con, Oid inputTypeId);
-extern uint64 Str2Mysuint8(Const *con, Const *newcon);
-/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
+typedef uint64 (*Mysql_uint_datatype_in_hook_type) (const char *s,int c, int sizenum, bool seterr);
+extern PGDLLIMPORT Mysql_uint_datatype_in_hook_type mysql_uint_datatype_in_hook;
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
 #endif							/* PARSE_COERCE_H */

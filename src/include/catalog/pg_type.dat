@@ -1096,6 +1096,30 @@
   typsend => 'int2send', typalign => 's', typstorage => 'p', typbasetype => 'int2' },
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
+{ oid => '9202', array_type_oid => '9203',
+  descr => 'mysql unsigned tiny integer, 1-byte storage',
+  typname => 'mysuint1', typnamespace => 'ivymy', typlen => '1', typbyval => 't', 
+  typcategory => 'N', typinput => '-', typoutput => '-', 
+  typreceive => '-', typsend => '-', 
+  typalign => 'c' , 
+  typmodin => '-', typmodout => '-' },
+{ oid => '9206', array_type_oid => '9207',
+  descr => 'mysql unsigned small integer, 2-byte storage',
+  typname => 'mysuint2', typnamespace => 'ivymy', typlen => '2', typbyval => 't', 
+  typcategory => 'N', typinput => '-', typoutput => '-', 
+  typreceive => '-', typsend => '-', 
+  typalign => 's' , 
+  typmodin => '-', typmodout => '-' },
+ { oid => '9210', array_type_oid => '9211',
+  descr => 'mysql unsigned mediumint integer, 3-byte storage',
+  typname => 'mysuint3', typnamespace => 'ivymy', typlen => '4', typbyval => 't', typtype => 'd',
+  typcategory => 'N', typinput => 'domain_in', typoutput => '-', 
+  typreceive => 'domain_recv', typsend => '-', 
+  typalign => 'i' , typstorage => 'p', typbasetype => 'mysuint4', typtypmod => 10,
+  typmodin => '-', typmodout => '-' },
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
+
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 { oid => '9214', array_type_oid => '9215',
   descr => 'mysql unsigned integer, 4-byte storage',

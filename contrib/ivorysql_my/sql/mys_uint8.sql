@@ -1,6 +1,9 @@
 set SQL_MODE='TRADITIONAL';
 select cast(1111 as UNSIGNED) ; -- 1111
+select cast(1111.4 as UNSIGNED) ; -- 1111
 select cast(1111.8 as UNSIGNED) ; --1112
+select cast('1111.4' as UNSIGNED) ; -- 1111
+select cast('1111.8' as UNSIGNED) ; -- 1111
 select cast(4294967297.8 as UNSIGNED) ; --4294967298
 select cast('1111' as UNSIGNED) ; --1111
 select cast('4294967295' as UNSIGNED) ; --4294967295
@@ -18,7 +21,10 @@ select cast(9223372036854775808 as UNSIGNED) ; --9223372036854775808
 
 set SQL_MODE='';
 select cast(1111 as UNSIGNED) ; --1111
+select cast(1111.4 as UNSIGNED) ; -- 1111
 select cast(1111.8 as UNSIGNED) ; --1112
+select cast('1111.4' as UNSIGNED) ; -- 1111
+select cast('1111.8' as UNSIGNED) ; -- 1111
 select cast(4294967297.8 as UNSIGNED) ; --4294967298
 select cast('1111' as UNSIGNED) ; --1111
 select cast('4294967295' as UNSIGNED) ; --4294967295
@@ -99,6 +105,21 @@ insert into t1 values(9223372036854775808);
 insert into t1 values('100');
 insert into t1 values('9223372036854775808');
 insert into t1 values('42222222222222294967297');
+insert into t1 values('a111') ;
+insert into t1 values('111a') ;
+insert into t1 values('.111') ;
+insert into t1 values('0111') ;
+insert into t1 values('#111') ;
+insert into t1 values('111#') ;
+insert into t1 values('111.') ;
+select * from t1;
+drop table t1;
+
+create table t1(c1 int8 UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
 select * from t1;
 drop table t1;
 
@@ -158,6 +179,13 @@ insert into t1 values('42222222222222294967297');
 select * from t1;
 drop table t1;
 
+create table t1(c1 bigint UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
+select * from t1;
+drop table t1;
 --int8
 create table t1(c1 int8 UNSIGNED);
 insert into t1 values(0);
@@ -170,6 +198,15 @@ insert into t1 values('9223372036854775808');
 insert into t1 values('42222222222222294967297');
 select * from t1;
 drop table t1;
+
+create table t1(c1 int8 UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
+select * from t1;
+drop table t1;
+
 
 set SQL_MODE to default;
 -- oper

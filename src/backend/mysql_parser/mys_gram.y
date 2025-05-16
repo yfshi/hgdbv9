@@ -250,6 +250,11 @@ static TypeName *MystextSystemTypeName(char *name);
 /* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 static List *MysqlSystemFuncName(char *name);
 static TypeName *MySQLSystemTypeName(char *name);
+
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
+static int MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscanner);
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
+
 %}
 
 %pure-parser
@@ -635,7 +640,6 @@ static TypeName *MySQLSystemTypeName(char *name);
 				BlobWithLength BlobWithoutLength
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
 				Datetime /* ReqID:SRS-MYSQL-DATETYPE */
-				Int2 Int2WithLength Int2WithoutLength	/* ReqID:SRS-MYSQL-NUMERICTYPE */
 %type <str>		character
 %type <str>		extract_arg
 %type <str>		timestamp_units
@@ -777,7 +781,7 @@ static TypeName *MySQLSystemTypeName(char *name);
 
 	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
-	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT2 INT3 INTEGER
+	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT3 INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
 
 	JOIN
@@ -14601,7 +14605,6 @@ SimpleTypename:
 					$$->typmods = list_make2(makeIntConst(INTERVAL_FULL_RANGE, -1),
 											 makeIntConst($3, @3));
 				}
-			| Int2									{ $$ = $1; } /* ReqID:SRS-MYSQL-NUMERICTYPE-INT2 */
 		;
 
 /* We have a separate ConstTypename to allow defaulting fixed-length
@@ -14639,62 +14642,44 @@ GenericType:
 					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4-UINT8 */
 					if ($3)
 					{
-						if (strcmp($1, "int4") == 0)
+						A_Const *node_const = NULL;
+						List	   *typmods = $2;
+
+						if (typmods != NULL)
 						{
-							A_Const *node_const = NULL;
-							List	   *typmods = $2;
-
-							if (typmods != NULL)
+							if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
 							{
-								if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
-								{
-									ereport(ERROR,
-											(errcode(ERRCODE_SYNTAX_ERROR),
-											errmsg("syntax error at or near"),
-											parser_errposition(@2)));
-								}
-
-								node_const = (A_Const *) linitial(typmods);
-								if (nodeTag(&node_const->val) != T_Integer ||
-									node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
-								{
-									ereport(ERROR,
-											(errcode(ERRCODE_SYNTAX_ERROR),
-											errmsg("syntax error at or near"),
-											parser_errposition(@2)));
-								}
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
 							}
 
+							node_const = (A_Const *) linitial(typmods);
+							if (nodeTag(&node_const->val) != T_Integer ||
+								node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+						}
+
+						if (strcmp($1, "int2") == 0)
+						{
+							$$ = MySQLSystemTypeName("mysuint2");
+							$$->typmods = $2;
+							$$->location = @1;
+						}
+						if (strcmp($1, "int4") == 0)
+						{
 							$$ = MySQLSystemTypeName("mysuint4");
 							$$->typmods = $2;
 							$$->location = @1;
 						}
 						if (strcmp($1, "int8") == 0)
 						{
-							A_Const *node_const = NULL;
-							List	   *typmods = $2;
-
-							if (typmods != NULL)
-							{
-								if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
-								{
-									ereport(ERROR,
-											(errcode(ERRCODE_SYNTAX_ERROR),
-											errmsg("syntax error at or near"),
-											parser_errposition(@2)));
-								}
-
-								node_const = (A_Const *) linitial(typmods);
-								if (nodeTag(&node_const->val) != T_Integer ||
-									node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
-								{
-									ereport(ERROR,
-											(errcode(ERRCODE_SYNTAX_ERROR),
-											errmsg("syntax error at or near"),
-											parser_errposition(@2)));
-								}
-							}
-
 							$$ = MySQLSystemTypeName("mysuint8");
 							$$->typmods = $2;
 							$$->location = @1;
@@ -14703,6 +14688,11 @@ GenericType:
 					/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4-UINT8 */
 					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 					else if (strcmp($1, "int4") == 0)
+					{
+						$$ = makeTypeName($1);
+						$$->location = @1;
+					}
+					else if (strcmp($1, "int2") == 0)
 					{
 						$$ = makeTypeName($1);
 						$$->location = @1;
@@ -14717,7 +14707,7 @@ GenericType:
 				}
 			| type_function_name opt_type_modifiers SIGNED
 				{
-					if (MYS_PARSER == compatible_db && strcmp($1, "int4") == 0)
+					if (strcmp($1, "int4") == 0 || strcmp($1, "int2") == 0)
 					{
 						$$ = makeTypeName($1);
 						$$->location = @1;
@@ -14750,28 +14740,6 @@ Numeric:	NumericNoConflict { $$ = $1; }
 					$$->location = @1;
 				}
 			/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
-			| SMALLINT
-				{
-					$$ = SystemTypeName("int2");
-					$$->location = @1;
-				}
-			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
-			| SMALLINT SIGNED
-				{
-					$$ = SystemTypeName("int2");
-					$$->location = @1;
-				}
-			| SMALLINT '(' Iconst ')'
-				{
-					$$ = SystemTypeName("int2");
-					$$->location = @1;
-				}
-			| SMALLINT '(' Iconst ')' SIGNED
-				{
-					$$ = SystemTypeName("int2");
-					$$->location = @1;
-				}
-			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| BIGINT
 				{
 					$$ = SystemTypeName("int8");
@@ -14825,7 +14793,45 @@ Numeric:	NumericNoConflict { $$ = $1; }
 					$$ = SystemTypeName("bool");
 					$$->location = @1;
 				}
+			/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
+			| SMALLINT opt_type_modifiers flag_signed
+				{
+					A_Const *node_const = NULL;
+					List	   *typmods = $2;
 
+					if (typmods != NULL)
+					{
+						if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near"),
+									 parser_errposition(@2)));
+						}
+
+						node_const = (A_Const *) linitial(typmods);
+						if (nodeTag(&node_const->val) == T_Float)
+						{
+							int m = atoi(node_const->val.val.str);
+							if (m < 0 || m > 255)
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("syntax error at or near"),
+										 parser_errposition(@2)));
+						}
+						else if (nodeTag(&node_const->val) != T_Integer ||
+							node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near"),
+									 parser_errposition(@2)));
+						}
+					}
+					$$ = SystemTypeName("int2");
+					$$->location = @1;
+				}
+			/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| type_int3 opt_type_modifiers flag_signed
 				{
@@ -14943,7 +14949,66 @@ opt_unsigned:
 /* Begin - ReqID:SRS-MYSQL-NUMERICTYPE-FLOAT */
 NumericNoConflict: 
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-			integer_int unsigned_list
+			type_int1 opt_type_modifiers unsigned_list
+				{
+					List	   *typmods = $2;
+
+					$$ = MySQLSystemTypeName("mysuint1");
+					if (typmods != NULL)
+					{
+						int	typmod = MySQLNumericCheckTypemod(typmods, @2, yyscanner);
+						if(-1 == typmod)
+						{
+							$$->typmods = typmods;
+						}
+						else
+						{
+							$$->typmods = list_make1(makeIntConst(typmod, @2));
+						}
+					}
+					$$->location = @1;
+				}
+			| SMALLINT opt_type_modifiers unsigned_list
+				{
+					List	   *typmods = $2;
+
+					$$ = MySQLSystemTypeName("mysuint2");
+					if (typmods != NULL)
+					{
+						int	typmod = MySQLNumericCheckTypemod(typmods, @2, yyscanner);
+						if(-1 == typmod)
+						{
+							$$->typmods = typmods;
+						}
+						else
+						{
+							$$->typmods = list_make1(makeIntConst(typmod, @2));
+						}
+					}
+					$$->location = @1;
+				}
+			| type_int3 opt_type_modifiers unsigned_list
+				{
+					List	   *typmods = $2;
+					$$ = MySQLSystemTypeName("mysuint3");
+					$$->typmods = list_make1(makeIntConst(11, -1));
+					if (typmods != NULL)
+					{
+						int	typmod = MySQLNumericCheckTypemod(typmods, @2, yyscanner);
+						if(-1 == typmod)
+						{
+							$$->typmods = typmods;
+						}
+						else
+						{
+							$$->typmods = list_make1(makeIntConst(typmod, @2));
+						}
+					}
+					$$->location = @1;
+				}
+			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+			| integer_int unsigned_list
 				{
 					$$ = MySQLSystemTypeName("mysuint4");
 					$$->location = @1;
@@ -15249,45 +15314,6 @@ character:	CHARACTER opt_varying
 opt_varying:
 			VARYING									{ $$ = true; }
 			| /*EMPTY*/								{ $$ = false; }
-		;
-/*
- * SQL int2
- */
-/* ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
-Int2:
-			Int2WithLength
-			{
-				$$ = $1;
-			}
-			|	Int2WithoutLength
-			{
-				$$ = $1;
-			}
-		;
-
-Int2WithLength:
-			INT2  '(' Iconst ')'
-				{
-					$$ = SystemTypeName("int2");
-					$$->location = @1;
-				}
-			| INT2  '(' Iconst ')' SIGNED
-				{
-					$$ = SystemTypeName("int2");
-					$$->location = @1;
-				}			
-
-Int2WithoutLength:
-			INT2
-			{
-				$$ = SystemTypeName("int2");
-				$$->location = @1;
-			}
-			| INT2  SIGNED
-			{
-				$$ = SystemTypeName("int2");
-				$$->location = @1;
-			}	
 		;
 
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
@@ -16870,19 +16896,6 @@ func_expr_common_subexpr:
 					$$ = makeTypeCast($3, MySQLSystemTypeName("mysuint8"), @1);
 				}
 			/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
-			| INT2 '(' a_expr ')'
-				{
-					$$ = (Node *) makeFuncCall(SystemFuncName("int2"),
-											   list_make1($3),
-											   COERCE_SQL_SYNTAX,
-											   @1);
-				}
-			| INT2 SCONST
-				{
-					$$ = makeTypeCast(makeStringConst($2, @1), SystemTypeName("int2"), @1);
-				}
-			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 			| CONVERT '(' a_expr ',' Typename ')'
 				{ $$ = makeTypeCast($3, $5, @1); }
@@ -18697,7 +18710,6 @@ col_name_keyword:
 			| INOUT
 			| INT_P
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
-			| INT2			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| INTEGER
 			| INTERVAL
@@ -19078,7 +19090,6 @@ bare_label_keyword:
 			| INSTEAD
 			| INT_P
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
-			| INT2			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| INTEGER
 			| INTERVAL
@@ -19840,6 +19851,45 @@ MySQLSystemTypeName(char *name)
 											   makeString(name)));
 }
 /* End - ReqID:ReqID:SRS-MYSQL-YEARTYPE */
+
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
+int
+MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscanner)
+{
+	A_Const *node_const = NULL;
+	int		mod = -1;
+
+	if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("syntax error at or near"),
+					parser_errposition(position)));
+	}
+
+	node_const = (A_Const *) linitial(typmods);
+	if (nodeTag(&node_const->val) == T_Float)
+	{
+		mod = atoi(node_const->val.val.str);
+		if (mod < 0 || mod > 255)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("syntax error at or near"),
+						parser_errposition(position)));
+	}
+	else if (nodeTag(&node_const->val) != T_Integer ||
+		node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("syntax error at or near"),
+					parser_errposition(position)));
+	}
+
+	return mod;
+}
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
+
 /* End - ReqID:SRS-MYSQL-DATETYPE */
 /* doNegate()
  * Handle negation of a numeric constant.

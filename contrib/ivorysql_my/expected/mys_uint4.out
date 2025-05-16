@@ -327,6 +327,25 @@ ERROR:  integer unsigned out of range
 LINE 1: insert into t1 values(-2147483649);
                               ^
 insert into t1 values(4294967295);
+insert into t1 values('a111') ;
+ERROR:  invalid input syntax for type integer: "a111"
+LINE 1: insert into t1 values('a111') ;
+                              ^
+insert into t1 values('111a') ;
+ERROR:  invalid input syntax for type integer: "111a"
+LINE 1: insert into t1 values('111a') ;
+                              ^
+insert into t1 values('.111') ;
+insert into t1 values('0111') ;
+insert into t1 values('#111') ;
+ERROR:  invalid input syntax for type integer: "#111"
+LINE 1: insert into t1 values('#111') ;
+                              ^
+insert into t1 values('111#') ;
+ERROR:  invalid input syntax for type integer: "111#"
+LINE 1: insert into t1 values('111#') ;
+                              ^
+insert into t1 values('111.') ;
 select * from t1;
      c1     
 ------------
@@ -334,6 +353,24 @@ select * from t1;
  1
  2147483647
  4294967295
+ 0
+ 111
+ 111
+(7 rows)
+
+drop table t1;
+create table t1(c1 integer UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
+select * from t1;
+ c1 
+----
+ 1
+ 2
+ 1
+ 2
 (4 rows)
 
 drop table t1;
@@ -450,6 +487,21 @@ select * from t1;
 (4 rows)
 
 drop table t1;
+create table t1(c1 int UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
+select * from t1;
+ c1 
+----
+ 1
+ 2
+ 1
+ 2
+(4 rows)
+
+drop table t1;
 --int[(M)]
 create table t1 (a int[-1] UNSIGNED); --fail
 ERROR:  syntax error at or near "-"
@@ -560,6 +612,21 @@ select * from t1;
  1
  2147483647
  4294967295
+(4 rows)
+
+drop table t1;
+create table t1(c1 int4 UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
+select * from t1;
+ c1 
+----
+ 1
+ 2
+ 1
+ 2
 (4 rows)
 
 drop table t1;

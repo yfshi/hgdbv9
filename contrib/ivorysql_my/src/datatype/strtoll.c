@@ -21,6 +21,7 @@
 #include "postgres.h"
  
 #include "../include/ivorysql_my.h"
+#include "utils/guc.h"
 
 #include <limits.h>
 
@@ -346,4 +347,112 @@ ret_too_big:
 	*error = ERANGE;
 	return unsigned_flag ? ULLONG_MAX : negative ? (uint64)LLONG_MIN
 												 : (uint64)LLONG_MAX;
+}
+
+/*
+ * The in function does not need to determine the sql_mode
+ * return warning.  
+ */
+uint64 pg_atoi_uint(const char *s,int c, int sizenum, bool seterr)
+{
+	unsigned long long l;
+	char *badp;
+	int save_errno = 0;
+	uint64	maxvalue = 0;
+	int flag = UNSIGNED_FLAG;
+	int EREPORT_LEVEL = 0;
+
+	if (seterr)
+	{
+		EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+	}
+	else
+	{
+		EREPORT_LEVEL =  WARNING;
+	}
+	switch (sizenum)
+	{
+		case  1:
+			maxvalue = PG_UINT8_MAX;
+		break;
+		case  2:
+			maxvalue = PG_UINT16_MAX;
+		break;
+		case  3:
+			maxvalue = PG_UINT24_MAX;
+		break;
+		case  4:
+			maxvalue = PG_UINT32_MAX;
+		break;
+		case  8:
+			maxvalue = PG_UINT64_MAX;
+		break;
+		default:
+			maxvalue = PG_UINT64_MAX;
+		break;
+	}
+	/*
+	 * Some versions of strtol treat the empty string as an error, but some
+	 * seem not to.  Make an explicit test to be sure we catch it.
+	 */
+	if (s == NULL)
+		elog(ERROR, "NULL pointer");
+	if (*s == 0)
+	{
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("invalid input syntax for type %s: \"%s\"",
+					"integer", s)));
+		l = 0;
+		return l;
+	}
+
+	if (seterr)
+	{
+		errno = 0;
+		l = my_strntoull10rnd_8bit(s, strlen(s), flag, &badp, &save_errno);
+	}
+	else
+	{
+		errno = 0;
+		l = strtoull(s, &badp, 10);
+		save_errno = errno;
+	}
+
+	/* We made no progress parsing the string, so bail out */
+	if (s == badp)
+	{
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("invalid input syntax for type %s: \"%s\"",
+					"integer", s)));
+		l = 0;
+		return l;
+	}
+
+	if (save_errno == ERANGE || l < 0 || l > maxvalue)
+	{
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("value \"%s\" is out of range for unsigned %d-bit integer", s, sizenum*8)));
+		l = l < 0 ? 0 : maxvalue;
+		return l;
+	}
+
+	/*
+	 * Skip any trailing whitespace; if anything but whitespace remains before
+	 * the terminating character, bail out
+	 */
+	while (*badp && *badp != c && isspace((unsigned char)*badp))
+		badp++;
+
+	if (*badp && *badp != c)
+	{
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("invalid input syntax for type %s: \"%s\"",
+					"integer", s)));
+	}
+
+	return (uint64)l;
 }

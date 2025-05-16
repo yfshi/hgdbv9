@@ -85,81 +85,47 @@ select * from t1;
 
 drop table t1;
 create table t1 (a int1 UNSIGNED);
-ERROR:  syntax error at or near "UNSIGNED"
-LINE 1: create table t1 (a int1 UNSIGNED);
-                                ^
 insert into t1 values(0);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(0);
-                    ^
 insert into t1 values(1);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(1);
-                    ^
 insert into t1 values(-1);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(-1);
-                    ^
+ERROR:  integer unsigned out of range
 insert into t1 values(-128);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(-128);
-                    ^
+ERROR:  integer unsigned out of range
 insert into t1 values(-129);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(-129);
-                    ^
+ERROR:  integer unsigned out of range
 insert into t1 values(127);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(127);
-                    ^
 insert into t1 values(128);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(128);
-                    ^
 select * from t1;
-ERROR:  relation "t1" does not exist
-LINE 1: select * from t1;
-                      ^
+  a  
+-----
+ 0
+ 1
+ 127
+ 128
+(4 rows)
+
 drop table t1;
-ERROR:  table "t1" does not exist
 create table t1 (a tinyint UNSIGNED);
-ERROR:  syntax error at or near "UNSIGNED"
-LINE 1: create table t1 (a tinyint UNSIGNED);
-                                   ^
 insert into t1 values(0);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(0);
-                    ^
 insert into t1 values(1);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(1);
-                    ^
 insert into t1 values(-1);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(-1);
-                    ^
+ERROR:  integer unsigned out of range
 insert into t1 values(-128);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(-128);
-                    ^
+ERROR:  integer unsigned out of range
 insert into t1 values(-129);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(-129);
-                    ^
+ERROR:  integer unsigned out of range
 insert into t1 values(127);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(127);
-                    ^
 insert into t1 values(128);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 values(128);
-                    ^
 select * from t1;
-ERROR:  relation "t1" does not exist
-LINE 1: select * from t1;
-                      ^
+  a  
+-----
+ 0
+ 1
+ 127
+ 128
+(4 rows)
+
 drop table t1;
-ERROR:  table "t1" does not exist
 --int1[(M)]
 create table t1 (a int1(-1));
 ERROR:  syntax error at or near

@@ -57,6 +57,21 @@ insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 insert into t1 values(4294967295);
+insert into t1 values('a111') ;
+insert into t1 values('111a') ;
+insert into t1 values('.111') ;
+insert into t1 values('0111') ;
+insert into t1 values('#111') ;
+insert into t1 values('111#') ;
+insert into t1 values('111.') ;
+select * from t1;
+drop table t1;
+
+create table t1(c1 integer UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
 select * from t1;
 drop table t1;
 
@@ -107,6 +122,15 @@ insert into t1 values(-2147483649);
 insert into t1 values(4294967295);
 select * from t1;
 drop table t1;
+
+create table t1(c1 int UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
+select * from t1;
+drop table t1;
+
 --int[(M)]
 create table t1 (a int[-1] UNSIGNED); --fail
 
@@ -152,6 +176,14 @@ insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 insert into t1 values(4294967295);
+select * from t1;
+drop table t1;
+
+create table t1(c1 int4 UNSIGNED);
+insert into t1 values(1.4);
+insert into t1 values(1.5);
+insert into t1 values('1.4');
+insert into t1 values('1.5');
 select * from t1;
 drop table t1;
 

@@ -24,6 +24,7 @@
 #include "include/ivorysql_my.h"
 #include "include/casesensitive.h"
 #include "utils/varlena.h"
+#include "parser/parse_coerce.h"
 
 /* Only include it once in any C file */
 PG_MODULE_MAGIC;
@@ -49,6 +50,10 @@ static Mysql_int2_datatype_in_hook_type pre_mysql_int2_datatype_in_hook = NULL;
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 static Mysql_int4_datatype_in_hook_type pre_mysql_int4_datatype_in_hook = NULL;
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE_UIN123 */
+static Mysql_uint_datatype_in_hook_type pre_mysql_uint_datatype_in_hook = NULL;
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE_UIN123 */
 
 void _PG_init(void);
 void _PG_fini(void);
@@ -107,6 +112,11 @@ _PG_init(void)
 	pre_mysql_int4_datatype_in_hook = mysql_int4_datatype_in_hook;
 	mysql_int4_datatype_in_hook = my_atoi_int4;
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+
+	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
+	pre_mysql_uint_datatype_in_hook = mysql_uint_datatype_in_hook;
+	mysql_uint_datatype_in_hook = pg_atoi_uint;
+	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
 }
 
 /*
@@ -144,4 +154,8 @@ _PG_fini(void)
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 	mysql_int4_datatype_in_hook = pre_mysql_int4_datatype_in_hook;
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+
+	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
+	mysql_uint_datatype_in_hook = pre_mysql_uint_datatype_in_hook;
+	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
 }
