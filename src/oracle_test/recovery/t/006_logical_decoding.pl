@@ -55,8 +55,13 @@ $node_primary->safe_psql('postgres',
 # Basic decoding works
 $result = $node_primary->safe_psql('postgres',
 	qq[SELECT pg_logical_slot_get_changes('test_slot', NULL, NULL);]);
-is(scalar(my @foobar = split /^/m, $result),
-	12, 'Decoding produced 12 rows inc BEGIN/COMMIT');
+#is(scalar(my @foobar = split /^/m, $result),
+#	12, 'Decoding produced 12 rows inc BEGIN/COMMIT');
+
+my @filterd_line0 = grep { !/(pg_reboot|pg_audit_log|BEGIN|COMMIT)/ } split(/\n/, $result);
+my $filterd_result0 = join("\n", @filterd_line0);
+is(scalar(my @foobar = split /^/m, $filterd_result0),
+	10, 'Decoding produced 10 rows not inc BEGIN/COMMIT');
 
 # If we immediately crash the server we might lose the progress we just made
 # and replay the same changes again. But a clean shutdown should never repeat

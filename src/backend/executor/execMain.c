@@ -73,6 +73,11 @@
 #include "rewrite/rewriteHandler.h"
 #include "nodes/nodeFuncs.h"
 /* End - Bug#Z491 */
+/* Begin - BUG#00004706 */
+#include "se_features_interface.h"
+#include "catalog/pg_audit_config.h"
+/* End - BUG#00004706 */
+
 
 /* Hooks for plugins to get control in ExecutorStart/Run/Finish/End */
 ExecutorStart_hook_type ExecutorStart_hook = NULL;
@@ -650,6 +655,16 @@ ExecCheckRTEPerms(RangeTblEntry *rte)
 		return true;
 
 	relOid = rte->relid;
+	
+	/* Begin - BUG#00004706 */
+	if (AuditConfigRelationId == relOid && IS_SYSSAO(GetUserId()) &&
+			(requiredPerms & ACL_DELETE) != 0)
+	{
+		/* syssao can always delete from pg_audit_log */
+		return true;
+	}
+	
+	/* End - BUG#00004706 */
 
 	/*
 	 * userid to check as: current user unless we have a setuid indication.

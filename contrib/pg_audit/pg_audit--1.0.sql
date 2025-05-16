@@ -705,24 +705,6 @@ GRANT ALL ON TABLE pg_track_settings_history TO PUBLIC;
 GRANT ALL ON TABLE pg_track_db_role_settings_list TO PUBLIC;
 GRANT ALL ON TABLE pg_track_db_role_settings_history TO PUBLIC;
 GRANT ALL ON TABLE pg_reboot TO PUBLIC;
-alter SCHEMA pgagent owner to syssao;
-alter table pgagent.pga_joblog owner to syssao;
-alter table pgagent.pga_job owner to syssao;
-alter table pgagent.pga_jobsteplog owner to syssao;
-alter sequence pgagent.pga_joblog_jlgid_seq owner to syssao;
-alter sequence pgagent.pga_jobsteplog_jslid_seq owner to syssao;
-alter sequence pgagent.pga_job_jobid_seq owner to syssao;
-GRANT ALL ON SCHEMA pgagent to PUBLIC;
-GRANT ALL ON TABLE pgagent.pga_jobagent to PUBLIC;
-GRANT ALL ON TABLE pgagent.pga_job to PUBLIC;
-GRANT ALL ON TABLE pgagent.pga_joblog to PUBLIC;
-GRANT ALL ON TABLE pgagent.pga_jobstep to PUBLIC;
-GRANT ALL ON TABLE pgagent.pga_schedule to PUBLIC;
-GRANT ALL ON TABLE pgagent.pga_jobclass to PUBLIC;
-GRANT ALL ON TABLE pgagent.pga_jobsteplog to PUBLIC;
-GRANT ALL ON SEQUENCE pgagent.pga_joblog_jlgid_seq TO PUBLIC;
-GRANT ALL ON SEQUENCE pgagent.pga_jobsteplog_jslid_seq TO PUBLIC;
-GRANT ALL ON SEQUENCE pgagent.pga_job_jobid_seq TO PUBLIC;
 
 GRANT SELECT ON pg_audit_log to syssao_role;
 
