@@ -10,16 +10,22 @@ create user u2;
 grant sysdba_role to sysdba_u1,sysdba_u2;
 grant syssso_role to syssso_u1,syssso_u2;
 grant syssao_role to syssao_u1,syssao_u2;
-create user dba_u1;
-create user dba_u2;
+create user dba_u1 superuser createdb createrole;
+create user dba_u2 superuser createdb createrole;
 create user sso_u1;
 create user sso_u2;
 create user sao_u1;
 create user sao_u2;
+grant sysdba_role to dba_u1 with admin option;
+grant sysdba_role to dba_u2;
+grant syssso_role to sso_u1 with admin option;
+grant syssso_role to sso_u2;
+grant syssao_role to sao_u1 with admin option;
+grant syssso_role to sao_u2;
 create database testdb;
 alter database testdb set se_feature.mode to on;
 -- For member of sysdba_role
-\c testdb sysdba_u1
+\c testdb dba_u1
 ---- CREATE TABLE
 ------ pass
 create role n_r1;
@@ -31,63 +37,160 @@ create user n_user_5 with in group n_r1;
 create user n_user_7 with admin n_r1;
 create user n_user_8 with role n_r1;
 ------ fail
-    -- cannot with superuser createdb createrole
+------ cannot with superuser createdb createrole
 create user n_u1 with superuser;
 ERROR:  permission denied
 create user n_u1 with createrole;
 ERROR:  permission denied
 create user n_u1 with createdb;
 ERROR:  permission denied
-    --cannot be member of security roles when create;
+------cannot be member of security roles when create;
 create user n_u1 with in role sysdba_role;
-ERROR:  must have admin option to operate security role "sysdba_role"
-create user n_u1 with in role sysdba_u1;
-ERROR:  a user of security role cannot operate itself in membership
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
+create user n_u1 with in role dba_u1;
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
 create user n_u1 with in role syssso_role;
-ERROR:  must have admin option to operate security role "syssso_role"
-create user n_u1 with in role syssso_u1;
-ERROR:  must have admin option to operate security role "syssso_u1"
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
+create user n_u1 with in role sso_u1;
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
 create user n_u1 with in role syssso_role;
-ERROR:  must have admin option to operate security role "syssso_role"
-create user n_u1 with in role syssao_u1;
-ERROR:  must have admin option to operate security role "syssao_u1"
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
+create user n_u1 with in role sao_u1;
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
 create user n_u1 with in group sysdba_role;
-ERROR:  must have admin option to operate security role "sysdba_role"
-create user n_u1 with in group sysdba_u1;
-ERROR:  a user of security role cannot operate itself in membership
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
+create user n_u1 with in group dba_u1;
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
 create user n_u1 with in group syssso_role;
-ERROR:  must have admin option to operate security role "syssso_role"
-create user n_u1 with in group syssso_u1;
-ERROR:  must have admin option to operate security role "syssso_u1"
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
+create user n_u1 with in group sso_u1;
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
 create user n_u1 with in group syssso_role;
-ERROR:  must have admin option to operate security role "syssso_role"
-create user n_u1 with in group syssao_u1;
-ERROR:  must have admin option to operate security role "syssao_u1"
-    -- cannot have member of other security roles member;
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
+create user n_u1 with in group sao_u1;
+ERROR:  permission denied
+DETAIL:  cannot set security roles in 'IN ROLE/GROUP' clause.
+------ cannot have member of other security roles member;
 create user n_u1 with role sysdba_role;
-ERROR:  cannot grant others to security role "sysdba_role"
-create user n_u1 with role sysdba_u1;
-ERROR:  cannot grant others to security role "sysdba_u1"
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "sysdba_role"
+create user n_u1 with role dba_u1;
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "dba_u1"
 create user n_u1 with role syssso_role;
-ERROR:  cannot grant others to security role "syssso_role"
-create user n_u1 with role syssso_u1;
-ERROR:  cannot grant others to security role "syssso_u1"
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "syssso_role"
+create user n_u1 with role sso_u1;
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "sso_u1"
 create user n_u1 with role syssso_role;
-ERROR:  cannot grant others to security role "syssso_role"
-create user n_u1 with role syssao_u1;
-ERROR:  cannot grant others to security role "syssao_u1"
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "syssso_role"
+create user n_u1 with role sao_u1;
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "sao_u1"
 create user n_u1 with admin sysdba_role;
-ERROR:  cannot grant others to security role "sysdba_role"
-create user n_u1 with admin sysdba_u1;
-ERROR:  cannot grant others to security role "sysdba_u1"
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "sysdba_role"
+create user n_u1 with admin dba_u1;
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "dba_u1"
 create user n_u1 with admin syssso_role;
-ERROR:  cannot grant others to security role "syssso_role"
-create user n_u1 with admin syssso_u1;
-ERROR:  cannot grant others to security role "syssso_u1"
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "syssso_role"
+create user n_u1 with admin sso_u1;
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "sso_u1"
 create user n_u1 with admin syssso_role;
-ERROR:  cannot grant others to security role "syssso_role"
-create user n_u1 with admin syssao_u1;
-ERROR:  cannot grant others to security role "syssao_u1"
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "syssso_role"
+create user n_u1 with admin sao_u1;
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "sao_u1"
+---- ALTER USER
+------ pass
+------ alter self pass and validuntil
+alter user dba_u1 with password '123456' valid until '2077-01-01';
+------ alter normal user
+alter user n_user_1 with noinherit nologin noreplication nobypassrls;
+alter user n_user_1 with inherit login replication bypassrls;
+alter user n_user_1 with connection limit 11;
+alter user n_user_1 with password '123456' valid until '2077-01-01';
+------ fail
+------ alter sysdba_role member
+alter user dba_u1 with inherit login replication bypassrls;
+ERROR:  permission denied
+alter user dba_u1 with noinherit nologin noreplication nobypassrls;
+ERROR:  permission denied
+alter user dba_u1 with connection limit 11;
+ERROR:  permission denied
+alter user dba_u1 with superuser createrole createdb;
+ERROR:  permission denied
+alter user dba_u1 with nosuperuser nocreaterole nocreatedb;
+ERROR:  permission denied
+alter user dba_u2 with password '123456' valid until '2077-01-01';
+ERROR:  permission denied
+------ alter syssso_role member
+alter user sso_u1 with inherit login replication bypassrls;
+ERROR:  permission denied
+alter user sso_u1 with noinherit nologin noreplication nobypassrls;
+ERROR:  permission denied
+alter user sso_u1 with connection limit 11;
+ERROR:  permission denied
+alter user sso_u1 with superuser createrole createdb;
+ERROR:  permission denied
+alter user sso_u1 with nosuperuser nocreaterole nocreatedb;
+ERROR:  permission denied
+alter user sso_u1 with password '123456' valid until '2077-01-01';
+ERROR:  permission denied
+------ alter syssao_role member
+alter user sao_u1 with inherit login replication bypassrls;
+ERROR:  permission denied
+alter user sao_u1 with noinherit nologin noreplication nobypassrls;
+ERROR:  permission denied
+alter user sao_u1 with connection limit 11;
+ERROR:  permission denied
+alter user sao_u1 with superuser createrole createdb;
+ERROR:  permission denied
+alter user sao_u1 with nosuperuser nocreaterole nocreatedb;
+ERROR:  permission denied
+alter user sao_u1 with password '123456' valid until '2077-01-01';
+ERROR:  permission denied
+------ alter normal user
+alter user n_user_1 with superuser;
+ERROR:  permission denied
+alter user n_user_1 with createrole;
+ERROR:  permission denied
+alter user n_user_1 with createdb;
+ERROR:  permission denied
+---- GRANT ROLE
+------ pass
+grant sysdba_role to n_user_1;
+revoke sysdba_role from n_user_1;
+------ fail
+grant n_r1 to dba_u2;
+ERROR:  permission denied
+DETAIL:  cannot give other role to security role "dba_u2"
+grant dba_u1 to n_user_2;
+ERROR:  permission denied
+DETAIL:  a user of security role cannot operate itself in membership
+grant syssso_role to n_user_2;
+ERROR:  permission denied
+DETAIL:  must have admin option to operate security role "syssso_role"
+grant syssao_role to n_user_2;
+ERROR:  permission denied
+DETAIL:  must have admin option to operate security role "syssao_role"
 ---- DROP USER
 ------ pass
 drop user n_user_1;
@@ -98,6 +201,19 @@ drop user n_user_5;
 drop user n_user_7;
 drop user n_user_8;
 drop role n_r1;
+------ fail
+drop user dba_u1;
+ERROR:  permission denied
+drop user dba_u2;
+ERROR:  permission denied
+drop user sso_u1;
+ERROR:  permission denied
+drop user sso_u2;
+ERROR:  permission denied
+drop user sao_u1;
+ERROR:  permission denied
+drop user sao_u2;
+ERROR:  permission denied
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

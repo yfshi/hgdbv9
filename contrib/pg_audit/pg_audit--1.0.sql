@@ -725,6 +725,7 @@ GRANT ALL ON SEQUENCE pgagent.pga_jobsteplog_jslid_seq TO PUBLIC;
 GRANT ALL ON SEQUENCE pgagent.pga_job_jobid_seq TO PUBLIC;
 
 GRANT SELECT ON pg_audit_log to syssao_role;
+GRANT SELECT ON pg_audit_log to syssso_role; -- /* Bug#z4284 */
 
 CREATE SERVER IF NOT EXISTS sqlite_server 
 FOREIGN DATA WRAPPER sqlite_fdw

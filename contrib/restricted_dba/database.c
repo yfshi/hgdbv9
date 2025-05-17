@@ -101,10 +101,18 @@ alter_database_set_check(AlterDatabaseSetStmt *stmt)
 {
 	Oid			datid = get_database_oid(stmt->dbname, false);
 
-	if ((pg_strncasecmp(stmt->setstmt->name,"se_feature.",strlen("se_feature.")) == 0
-		|| pg_strncasecmp(stmt->setstmt->name,"credcheck.",strlen("credcheck.")) == 0
-		) && IS_SYSSSO(GetUserId()))
+	if (pg_strncasecmp(stmt->setstmt->name,"se_feature.",strlen("se_feature.")) == 0 ||
+		pg_strncasecmp(stmt->setstmt->name,"credcheck.",strlen("credcheck.")) == 0)
 	{
+		/*Begin -- bug#z4705*/
+		if (!IS_SYSSSO(GetUserId()))	
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied")));
+		}
+		/*End -- bug#z4705*/	
+		
 		/*
 		* Obtain a lock on the database and make sure it didn't go away in the
 		* meantime.
@@ -116,7 +124,7 @@ alter_database_set_check(AlterDatabaseSetStmt *stmt)
 		UnlockSharedObject(DatabaseRelationId, datid, 0, AccessShareLock);
 	
 		return false;
-	}	
+	}
 
 	return true;
 }

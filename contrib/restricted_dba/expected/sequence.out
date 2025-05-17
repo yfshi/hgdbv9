@@ -30,6 +30,8 @@ DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member 
 create sequence sch_syssao_u1.seq2_syssao_u1;
 ERROR:  permission denied for schema sch_syssao_u1
 DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+create sequence sch_non_exist.seq_non_exist;
+ERROR:  schema "sch_non_exist" does not exist
 ---- ALTER SEQUENCE OWNER
 ------ pass
 alter sequence seq1_sysdba_u1 owner to sysdba_u1;
@@ -48,6 +50,8 @@ DETAIL:  syssso_role/syssao_role member cannot be owner of relation
 alter sequence seq1_u1 owner to syssao_u1;
 ERROR:  permission denied
 DETAIL:  syssso_role/syssao_role member cannot be owner of relation
+alter sequence seq_non_exist owner to sysdba_u1;
+ERROR:  relation "seq_non_exist" does not exist
 ---- ALTER SEQUENCE
 ------ pass
 alter sequence seq1_sysdba_u1 restart with 100;
@@ -60,6 +64,8 @@ DETAIL:  cannot alter sequence of syssso_role/syssao_role member
 alter sequence seq1_syssao_u1 restart with 100;
 ERROR:  permission denied
 DETAIL:  cannot alter sequence of syssso_role/syssao_role member
+alter sequence seq_non_exist restart with 100;
+ERROR:  relation "seq_non_exist" does not exist
 ---- ALTER SEQUENCE RENAME
 ------ pass
 alter sequence seq1_sysdba_u1 rename to seq1_sysdba_u1_new;
@@ -72,6 +78,8 @@ DETAIL:  cannot alter relation of syssso_role/syssao_role member
 alter sequence seq1_syssao_u1 rename to seq1_syssao_u1_new;
 ERROR:  permission denied
 DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq_non_exist rename to seq_non_exist_new;
+ERROR:  relation "seq_non_exist" does not exist
 ---- ALTER SEQUENCE SCHEMA
 ------ pass
 alter sequence seq1_sysdba_u1_new set schema sch_sysdba_u1;
@@ -90,6 +98,10 @@ DETAIL:  cannot alter relation of syssso_role/syssao_role member
 alter sequence seq1_syssao_u1 set schema sch_u1;
 ERROR:  permission denied
 DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq_non_exist set schema sch_sysdba_u1;
+ERROR:  relation "seq_non_exist" does not exist
+alter sequence seq1_sysdba_u1_new set schema sch_non_exist;
+ERROR:  schema "sch_non_exist" does not exist
 ---- GRANT SEQUENCE
 ------ pass
 grant all on seq1_sysdba_u1_new to sysdba_u1;
@@ -123,6 +135,8 @@ DETAIL:  cannot grant privilege of normal user to syssso_role/syssao_role member
 grant all on seq1_u1_new to syssao_u1;
 ERROR:  permission denied
 DETAIL:  cannot grant privilege of normal user to syssso_role/syssao_role member
+grant all on seq_non_exist to sysdba_u1;
+ERROR:  relation "seq_non_exist" does not exist
 ---- DROP SEQUENCE
 ------ pass
 drop sequence seq1_sysdba_u1_new;
@@ -135,6 +149,8 @@ DETAIL:  cannot drop relation of syssso_role/syssao_role member
 drop sequence seq1_syssao_u1;
 ERROR:  permission denied
 DETAIL:  cannot drop relation of syssso_role/syssao_role member
+drop sequence seq_non_exist;
+ERROR:  relation "seq_non_exist" does not exist
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

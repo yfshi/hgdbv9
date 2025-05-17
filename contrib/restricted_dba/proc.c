@@ -149,7 +149,7 @@ alter_proc_owner_check(AlterOwnerStmt *stmt, const char *name, Oid newOwnerId)
 	tup = SearchSysCache1(PROCOID, procoid);
 	if (!HeapTupleIsValid(tup))
 		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_SCHEMA),
+				(errcode(ERRCODE_UNDEFINED_FUNCTION),
 				 errmsg("function \"%s\" does not exist", name)));
 
 	procform = (Form_pg_proc) GETSTRUCT(tup);
@@ -201,7 +201,7 @@ bool alter_proc_rename_check(RenameStmt *stmt)
 	if (!HeapTupleIsValid(tup))
 	{
 		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				(errcode(ERRCODE_UNDEFINED_FUNCTION),
 				 errmsg("function \"%s\" does not exist", stmt->subname)));
 	}	
 
@@ -240,7 +240,7 @@ alter_proc_schema_check(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 	if (!HeapTupleIsValid(tup))
 	{
 		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				(errcode(ERRCODE_UNDEFINED_FUNCTION),
 				 errmsg("function with oid \"%d\" does not exist", procid)));
 	}
 
@@ -285,7 +285,7 @@ alter_proc_check(ParseState *pstate, AlterFunctionStmt *stmt)
 	if (!HeapTupleIsValid(tup))
 	{
 		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				(errcode(ERRCODE_UNDEFINED_FUNCTION),
 				 errmsg("function with oid \"%d\" does not exist", procid)));
 	}
 	
@@ -329,7 +329,7 @@ bool drop_proc_check(DropStmt *stmt)
 		if (!HeapTupleIsValid(tup))
 		{
 			ereport(ERROR,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					(errcode(ERRCODE_UNDEFINED_FUNCTION),
 					errmsg("function with oid \"%d\" does not exist", procid)));
 		}
 	

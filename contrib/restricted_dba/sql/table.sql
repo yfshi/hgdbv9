@@ -29,6 +29,7 @@ create table sch_u1.tb1_dba_u1(id int);
 ------ fail
 create table sch_syssso_u1.tb1_dba_u1(id int);
 create table sch_syssao_u1.tb1_dba_u1(id int);
+create table sch_non_exist.tb1_non_exist(id int);
 
 ---- ALTER TABLE OWNER
 ------ pass
@@ -41,6 +42,7 @@ alter table tb1_dba_u1 owner to syssso_u1;
 alter table tb1_dba_u1 owner to syssao_u1;
 alter table tb1_sso_u1 owner to sysdba_u1;
 alter table tb1_sao_u1 owner to u1;
+alter table tb1_non_exist owner to u1;
 
 ---- ALTER TABLE RENAME
 ------ pass
@@ -51,6 +53,7 @@ alter table tb2_dba_u1 owner to sysdba_u1;
 ------ fail
 alter table tb1_sso_u1 rename to tb1_sso_u1_new;
 alter table tb1_sao_u1 rename to tb1_sao_u1_new;
+alter table tb1_non_exist rename to tb1_non_exist_new;
 
 ---- ALTER TABLE SCHEMA
 ------ pass
@@ -62,6 +65,8 @@ alter table tb2_dba_u1 set schema sch_syssso_u1;
 alter table tb2_dba_u1 set schema sch_syssao_u1;
 alter table tb1_sso_u1 set schema sch_syssso_u1;
 alter table tb1_sao_u1 set schema sch_syssso_u1;
+alter table tb1_non_exist set schema sch_sysdba_u1;
+alter table tb2_dba_u1 set schema sch_non_exist;
 
 ---- ALTER TABLE
 ------ pass
@@ -74,6 +79,7 @@ alter table tb1_u1 drop column name;
 ------ fail
 alter table tb1_sso_u1 add column name text;
 alter table tb1_sao_u1 add column name text;
+alter table tb1_non_exist add column name text;
 
 ---- GRANT/REVOKE
 ------ pass
@@ -90,6 +96,7 @@ grant all on tb1_sso_u1 to sysdba_u1;
 grant all on tb1_sao_u1 to u1;
 grant all on tb1_sao_u1 to sysdba_u1;
 grant all on tb1_sso_u1 to u1;
+grant all on tb1_non_exist to sysdba_u2;
 
 ---- DROP TABLE
 ------ pass
@@ -100,6 +107,7 @@ drop table sch_u1.tb1_dba_u1;
 ------ fail
 drop table tb1_sso_u1;
 drop table tb1_sao_u1;
+drop table tb1_non_exist;
 
 -- Clean test object
 \c testdb syssso_u1

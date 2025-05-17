@@ -119,7 +119,7 @@ use_schema_check(Oid namespaceid, Oid roleid)
 		tp = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(namespaceid));
 		if (!HeapTupleIsValid(tp))
 			ereport(ERROR,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					(errcode(ERRCODE_UNDEFINED_SCHEMA),
 					errmsg("schema with OID %u does not exist", namespaceid)));
 
 		nsptup = (Form_pg_namespace) GETSTRUCT(tp);
@@ -241,7 +241,7 @@ drop_schema_check(ObjectAddress *object, char* auditname)
 	nsptuple = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(nsp_oid));
 	if (!HeapTupleIsValid(nsptuple))
 		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				(errcode(ERRCODE_UNDEFINED_SCHEMA),
 				errmsg("schema with OID %u does not exist", nsp_oid)));
 
 	nspowner = ((Form_pg_namespace) GETSTRUCT(nsptuple))->nspowner;

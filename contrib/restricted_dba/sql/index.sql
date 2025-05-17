@@ -33,6 +33,7 @@ create index idx_u1_id on tb1_u1(id);
 ------ fail
 create index idx_sso_u1_id2 on tb1_sso_u1(id2);
 create index idx_sao_u1_id2 on tb1_sao_u1(id2);
+create index idx_non_exist on tb1_non_exist(id);
 
 ---- ALTER INDEX RENAME
 ------ pass
@@ -43,6 +44,7 @@ alter index idx_u1_id rename to idx_u1_id_new;
 ------ fail
 alter index idx_sso_u1_id rename to idx_sso_u1_id_new;
 alter index idx_sao_u1_id rename to idx_sao_u1_id_new;
+alter index idx_non_exist rename to idx_non_exist_new;
 
 ---- ALTER INDEX
 ------ pass
@@ -53,6 +55,7 @@ alter index idx_u1_id_new set (fillfactor = 75);
 ------ fail
 alter index idx_sso_u1_id set (fillfactor = 75);
 alter index idx_sao_u1_id set (fillfactor = 75);
+alter index idx_non_exist set (fillfactor = 75);
 
 ---- DROP INDEX
 ------ pass
@@ -63,6 +66,7 @@ drop index idx_u1_id_new;
 ------ fail
 drop index idx_sso_u1_id;
 drop index idx_sao_u1_id;
+drop index idx_non_exist;
 
 -- Clean test object
 \c testdb syssso_u1
