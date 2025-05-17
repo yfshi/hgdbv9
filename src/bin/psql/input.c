@@ -12,6 +12,7 @@
 #endif
 #include <fcntl.h>
 #include <limits.h>
+#include <regex.h>
 
 #include "common.h"
 #include "common/logging.h"
@@ -33,8 +34,7 @@ static bool useHistory;
 
 static char *psql_history = NULL;
 
-static int	history_lines_added;
-
+static int history_lines_added;
 
 /*
  *	Preserve newlines in saved queries by mapping '\n' to NL_IN_HISTORY
@@ -44,133 +44,256 @@ static int	history_lines_added;
  *	handled by the readline routines so it can not be used
  *	for this purpose.
  */
-#define NL_IN_HISTORY	0x01
+#define NL_IN_HISTORY 0x01
 #endif
 
 static void finishInput(void);
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-static void finishInput_no_save(void);
-static bool mask_password(char *input) {
-    char *start_tag_begin, *start_tag_end, *tag, *pattern, *pwd_start, *end_pattern, *p;
-    size_t tag_len, pattern_len;
-    
-    if (input == NULL) {
-        return false;
-    }
-    
-    start_tag_begin = strchr(input, '$');
-    if (!start_tag_begin) {
-        return false;
-    }
-    
-    start_tag_end = strchr(start_tag_begin + 1, '$');
-    if (!start_tag_end) {
-        return false;
-    }
-    
-    tag_len = start_tag_end - start_tag_begin - 1;
-    
+static void
+finishInput_no_save(void);
 
-    tag = (char *)malloc(tag_len + 1);
-    if (!tag) {
-        perror("malloc failed");
-        exit(EXIT_FAILURE);
-    }
-
-    memset(tag, 0, tag_len + 1);
-    strncpy(tag, start_tag_begin + 1, tag_len);
-    tag[tag_len] = '\0';
-    
-    pattern_len = tag_len + 2;
-    pattern = (char *)malloc(pattern_len + 1);
-    if (!pattern) {
-        perror("malloc failed");
-        free(tag);
-        exit(EXIT_FAILURE);
-    }
-    sprintf(pattern, "$%s$", tag);
-    
-    pwd_start = start_tag_end + 1;
-    end_pattern = strstr(pwd_start, pattern);
-    if (!end_pattern) {
-        free(tag);
-        free(pattern);
-        return false;
-    }
-    
-    for (p = pwd_start; p < end_pattern; p++) {
-        *p = '*';
-    }
-    
-    free(tag);
-    free(pattern);
-    return true;
+#ifndef WIN32
+static int
+is_tag_char(char c)
+{
+	return isalnum((unsigned char)c) || c == '_';
 }
-static bool hide_password(char *query_string) {
-    char *cp, *start;
-    char *p;
-	char *user_p = NULL;
-	bool e_flag = false;
 
-    if (!query_string)
-        return false;
-
-    for (cp = query_string; *cp != '\0'; cp++) {
-        *cp = tolower((unsigned char)*cp);
-    }
-
-    if (strstr(query_string, "password") &&
-        (strstr(query_string, "alter") || strstr(query_string, "create")) &&
-        (strstr(query_string, "user") || strstr(query_string, "role"))) {
-
-		user_p = strstr(query_string, "user");
-		if(!user_p)
-			user_p = strstr(query_string, "role");
-
-        cp = strstr(user_p, "password");
-        if (!cp)
-            return false;
-
-        p = cp + strlen("password");
-        while (*p && isspace((unsigned char)*p)) {
-            p++;
-        }
-
-		if (*p == 'e'){
-			e_flag = true;
+static int
+find_single_quoted_end(const char *str)
+{
+	const char *p = str + 1;
+	while (*p)
+	{
+		if (*p == '\'')
+		{
+			if (*(p + 1) == '\'')
+			{
+				p += 2;
+			}
+			else
+			{
+				return (int)(p - str + 1);
+			}
+		}
+		else
+		{
 			p++;
 		}
-
-        if (*p != '\'')
-            return mask_password(p);
-
-        start = p;
-        p = start + 1;
-
-        while (*p != '\0') {
-            if (*p == '\'') {
-                if (*(p + 1) == '\'') {
-                    *p = '*';
-                    *(p + 1) = '*';
-                    p += 2;
-                } else {
-                    break;
-                }
-            } else if (e_flag && *p == '\\') {
-                *p = '*';
-                *(p + 1) = '*';
-                p += 2;
-            }else {
-                *p = '*';
-                p++;
-            }
-        }
-        return true;
-    }
-
-    return false;
+	}
+	return -1;
 }
+
+static int
+find_escape_quoted_end(const char *str)
+{
+	const char *p = str + 1;
+	while (*p)
+	{
+		if (*p == '\\' && (*(p + 1) == '\'' || *(p + 1) == '\\'))
+		{
+			p += 2;
+		}
+		else if (*p == '\'')
+		{
+			return (int)(p - str + 1);
+		}
+		else
+		{
+			p++;
+		}
+	}
+	return -1;
+}
+
+static int
+find_dollar_quoted_end(const char *str)
+{
+	const char *p = str + 1;
+	char tag[64] = {0};
+	int tag_len = 0;
+	char end_tag[70];
+	const char *q = NULL;
+	size_t end_tag_len = 0;
+
+	if (*str != '$')
+		return -1;
+
+	while (is_tag_char(*p) && tag_len < (int)(sizeof(tag) - 1))
+	{
+		tag[tag_len++] = *p++;
+	}
+	if (*p != '$')
+		return -1;
+	p++;
+
+	snprintf(end_tag, sizeof(end_tag), "$%s$", tag);
+	end_tag_len = strlen(end_tag);
+	q = p;
+	while (*q)
+	{
+		if (*q == '$' && strncmp(q, end_tag, end_tag_len) == 0)
+		{
+			return (int)(q - str + end_tag_len);
+		}
+		q++;
+	}
+	return -1;
+}
+
+static bool
+hide_password(const char *input, char *output, size_t out_size)
+{
+	regex_t regex;
+	const char *cursor = input;
+	size_t out_pos = 0;
+	regmatch_t pmatch[2];
+	const char *replacement = "'******'";
+
+	int m0_s = 0;
+	int g1_s = 0;
+	int g1_e = 0;
+
+	const char *pattern = "password[[:space:]]+((E|e)?['$])";
+	if (regcomp(&regex, pattern, REG_ICASE | REG_EXTENDED) != 0)
+	{
+		fprintf(stderr, "Regex compilation failed\n");
+		return false;
+	}
+
+	while (*cursor)
+	{
+		int first_len;
+		int has_e_prefix = 0;
+		const char *g1_start = NULL;
+		const char *pw_start = NULL;
+		const char *lit_end = NULL;
+		size_t prefix_len = 0;
+		size_t rep_len = 0;
+
+		int ret = regexec(&regex, cursor, 2, pmatch, 0);
+		if (ret == REG_NOMATCH)
+		{
+			size_t remain = strlen(cursor);
+			if (out_pos + remain >= out_size)
+			{
+				regfree(&regex);
+				return false;
+			}
+			memcpy(output + out_pos, cursor, remain);
+			out_pos += remain;
+			break;
+		}
+		else if (ret != 0)
+		{
+			regfree(&regex);
+			return false;
+		}
+
+		m0_s = pmatch[0].rm_so;
+		g1_s = pmatch[1].rm_so;
+		g1_e = pmatch[1].rm_eo;
+
+		if (out_pos + m0_s >= out_size)
+		{
+			regfree(&regex);
+			return false;
+		}
+		memcpy(output + out_pos, cursor, m0_s);
+		out_pos += m0_s;
+
+		has_e_prefix = 0;
+		g1_start = cursor + g1_s;
+		if (g1_e - g1_s >= 2 && (g1_start[0] == 'E' || g1_start[0] == 'e'))
+		{
+			has_e_prefix = 1;
+			pw_start = g1_start + 1;
+		}
+		else
+		{
+			pw_start = g1_start;
+		}
+
+		if (*pw_start == '\'')
+		{
+			first_len = has_e_prefix
+							? find_escape_quoted_end(pw_start)
+							: find_single_quoted_end(pw_start);
+		}
+		else
+		{
+			first_len = find_dollar_quoted_end(pw_start);
+		}
+		if (first_len < 0)
+		{
+			regfree(&regex);
+			return false;
+		}
+
+		lit_end = pw_start + first_len;
+		while (1)
+		{
+			int next_len = -1;
+			const char *t = lit_end;
+			while (*t && isspace((unsigned char)*t))
+				t++;
+			if ((t[0] == 'E' || t[0] == 'e') && t[1] == '\'')
+			{
+				next_len = find_escape_quoted_end(t);
+			}
+			else if (t[0] == '\'')
+			{
+				next_len = find_single_quoted_end(t);
+			}
+			else if (t[0] == '$')
+			{
+				next_len = find_dollar_quoted_end(t);
+			}
+			else
+			{
+				break;
+			}
+			if (next_len < 0)
+			{
+				regfree(&regex);
+				return false;
+			}
+			lit_end = t + next_len;
+		}
+
+		prefix_len = (pw_start - (cursor + m0_s));
+		if (out_pos + prefix_len >= out_size)
+		{
+			regfree(&regex);
+			return false;
+		}
+		memcpy(output + out_pos, cursor + m0_s, prefix_len);
+		out_pos += prefix_len;
+
+		rep_len = strlen(replacement);
+		if (out_pos + rep_len >= out_size)
+		{
+			regfree(&regex);
+			return false;
+		}
+		memcpy(output + out_pos, replacement, rep_len);
+		out_pos += rep_len;
+
+		cursor = lit_end;
+	}
+
+	output[out_pos] = '\0';
+	regfree(&regex);
+	return true;
+}
+#else
+static bool
+hide_password(const char *input, char *output, size_t out_size)
+{
+	return false;
+}
+#endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 /*
@@ -192,7 +315,7 @@ gets_interactive(const char *prompt, PQExpBuffer query_buf)
 #ifdef USE_READLINE
 	if (useReadline)
 	{
-		char	   *result;
+		char *result;
 
 		/*
 		 * Some versions of readline don't notice SIGWINCH signals that arrive
@@ -212,7 +335,7 @@ gets_interactive(const char *prompt, PQExpBuffer query_buf)
 		sigint_interrupt_enabled = true;
 
 		/* On some platforms, readline is declared as readline(char *) */
-		result = readline((char *) prompt);
+		result = readline((char *)prompt);
 
 		/* Disable SIGINT again */
 		sigint_interrupt_enabled = false;
@@ -229,12 +352,10 @@ gets_interactive(const char *prompt, PQExpBuffer query_buf)
 	return gets_fromFile(stdin);
 }
 
-
 /*
  * Append the line to the history buffer, making sure there is a trailing '\n'
  */
-void
-pg_append_history(const char *s, PQExpBuffer history_buf)
+void pg_append_history(const char *s, PQExpBuffer history_buf)
 {
 #ifdef USE_READLINE
 	if (useHistory && s)
@@ -246,7 +367,6 @@ pg_append_history(const char *s, PQExpBuffer history_buf)
 #endif
 }
 
-
 /*
  * Emit accumulated history entry to readline's history mechanism,
  * then reset the buffer to empty.
@@ -255,14 +375,13 @@ pg_append_history(const char *s, PQExpBuffer history_buf)
  * function don't hurt.  There must have been at least one line added by
  * pg_append_history before we'll do anything.
  */
-void
-pg_send_history(PQExpBuffer history_buf)
+void pg_send_history(PQExpBuffer history_buf)
 {
 #ifdef USE_READLINE
 	static char *prev_hist = NULL;
 
-	char	   *s = history_buf->data;
-	int			i;
+	char *s = history_buf->data;
+	int i;
 
 	/* Trim any trailing \n's (OK to scribble on history_buf) */
 	for (i = strlen(s) - 1; i >= 0 && s[i] == '\n'; i--)
@@ -287,17 +406,19 @@ pg_send_history(PQExpBuffer history_buf)
 				free(prev_hist);
 			prev_hist = pg_strdup(s);
 			/* And send it to readline */
-/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-			tmp = pstrdup(s);
-			if(hide_password(tmp)){
+			/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+			tmp = pg_malloc(strlen(s) + 7);
+			if (hide_password(s, tmp, strlen(s) + 7))
+			{
 				add_history(tmp);
 			}
-			else{
+			else
+			{
 				add_history(s);
 			}
-			if(tmp)
+			if (tmp)
 				pfree(tmp);
-/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+			/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 			/* Count lines added to history for use later */
 			history_lines_added++;
 		}
@@ -306,7 +427,6 @@ pg_send_history(PQExpBuffer history_buf)
 	resetPQExpBuffer(history_buf);
 #endif
 }
-
 
 /*
  * gets_fromFile
@@ -324,16 +444,16 @@ gets_fromFile(FILE *source)
 {
 	static PQExpBuffer buffer = NULL;
 
-	char		line[1024];
+	char line[1024];
 
-	if (buffer == NULL)			/* first time through? */
+	if (buffer == NULL) /* first time through? */
 		buffer = createPQExpBuffer();
 	else
 		resetPQExpBuffer(buffer);
 
 	for (;;)
 	{
-		char	   *result;
+		char *result;
 
 		/* Enable SIGINT to longjmp to sigint_interrupt_jmp */
 		sigint_interrupt_enabled = true;
@@ -371,13 +491,12 @@ gets_fromFile(FILE *source)
 		}
 	}
 
-	if (buffer->len > 0)		/* EOF after reading some bufferload(s) */
+	if (buffer->len > 0) /* EOF after reading some bufferload(s) */
 		return pg_strdup(buffer->data);
 
 	/* EOF, so return null */
 	return NULL;
 }
-
 
 #ifdef USE_READLINE
 
@@ -411,23 +530,24 @@ gets_fromFile(FILE *source)
  *		}
  *		END_ITERATE_HISTORY();
  */
-#define BEGIN_ITERATE_HISTORY(VARNAME) \
-	do { \
-		HIST_ENTRY *VARNAME; \
-		bool		use_prev_; \
-		\
-		history_set_pos(0); \
-		use_prev_ = (previous_history() != NULL); \
-		history_set_pos(0); \
-		for (VARNAME = current_history(); VARNAME != NULL; \
+#define BEGIN_ITERATE_HISTORY(VARNAME)                                  \
+	do                                                                  \
+	{                                                                   \
+		HIST_ENTRY *VARNAME;                                            \
+		bool use_prev_;                                                 \
+                                                                        \
+		history_set_pos(0);                                             \
+		use_prev_ = (previous_history() != NULL);                       \
+		history_set_pos(0);                                             \
+		for (VARNAME = current_history(); VARNAME != NULL;              \
 			 VARNAME = use_prev_ ? previous_history() : next_history()) \
-		{ \
-			(void) 0
+		{                                                               \
+			(void)0
 
 #define END_ITERATE_HISTORY() \
-		} \
-	} while(0)
-
+	}                         \
+	}                         \
+	while (0)
 
 /*
  * Convert newlines to NL_IN_HISTORY for safe saving in readline history file
@@ -437,10 +557,10 @@ encode_history(void)
 {
 	BEGIN_ITERATE_HISTORY(cur_hist);
 	{
-		char	   *cur_ptr;
+		char *cur_ptr;
 
 		/* some platforms declare HIST_ENTRY.line as const char * */
-		for (cur_ptr = (char *) cur_hist->line; *cur_ptr; cur_ptr++)
+		for (cur_ptr = (char *)cur_hist->line; *cur_ptr; cur_ptr++)
 		{
 			if (*cur_ptr == '\n')
 				*cur_ptr = NL_IN_HISTORY;
@@ -457,10 +577,10 @@ decode_history(void)
 {
 	BEGIN_ITERATE_HISTORY(cur_hist);
 	{
-		char	   *cur_ptr;
+		char *cur_ptr;
 
 		/* some platforms declare HIST_ENTRY.line as const char * */
-		for (cur_ptr = (char *) cur_hist->line; *cur_ptr; cur_ptr++)
+		for (cur_ptr = (char *)cur_hist->line; *cur_ptr; cur_ptr++)
 		{
 			if (*cur_ptr == NL_IN_HISTORY)
 				*cur_ptr = '\n';
@@ -468,8 +588,7 @@ decode_history(void)
 	}
 	END_ITERATE_HISTORY();
 }
-#endif							/* USE_READLINE */
-
+#endif /* USE_READLINE */
 
 /*
  * Put any startup stuff related to input in here. It's good to maintain
@@ -477,14 +596,13 @@ decode_history(void)
  *
  * The only "flag" right now is 1 for use readline & history.
  */
-void
-initializeInput(int flags, int save_flags) // ReqID:SRS-SECURITY-IDENTITYAUTH
+void initializeInput(int flags, int save_flags) // ReqID:SRS-SECURITY-IDENTITYAUTH
 {
 #ifdef USE_READLINE
 	if (flags & 1)
 	{
 		const char *histfile;
-		char		home[MAXPGPATH];
+		char home[MAXPGPATH];
 
 		useReadline = true;
 
@@ -500,7 +618,7 @@ initializeInput(int flags, int save_flags) // ReqID:SRS-SECURITY-IDENTITYAUTH
 
 		if (histfile == NULL)
 		{
-			char	   *envhist;
+			char *envhist;
 
 			envhist = getenv("PSQL_HISTORY");
 			if (envhist != NULL && strlen(envhist) > 0)
@@ -518,22 +636,21 @@ initializeInput(int flags, int save_flags) // ReqID:SRS-SECURITY-IDENTITYAUTH
 			expand_tilde(&psql_history);
 		}
 
-			if (psql_history)
-			{
-				read_history(psql_history);
-				decode_history();
-			}
+		if (psql_history)
+		{
+			read_history(psql_history);
+			decode_history();
+		}
 	}
 #endif
 
-/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	if(save_flags&1)
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	if (save_flags & 1)
 		atexit(finishInput);
 	else
 		atexit(finishInput_no_save);
-/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 }
-
 
 /*
  * This function saves the readline history when psql exits.
@@ -547,7 +664,7 @@ initializeInput(int flags, int save_flags) // ReqID:SRS-SECURITY-IDENTITYAUTH
 static bool
 saveHistory(char *fname, int max_lines)
 {
-	int			errnum;
+	int errnum;
 
 	/*
 	 * Suppressing the write attempt when HISTFILE is set to /dev/null may
@@ -574,14 +691,14 @@ saveHistory(char *fname, int max_lines)
 		 */
 #if defined(HAVE_HISTORY_TRUNCATE_FILE) && defined(HAVE_APPEND_HISTORY)
 		{
-			int			nlines;
-			int			fd;
+			int nlines;
+			int fd;
 
 			/* truncate previous entries if needed */
 			if (max_lines >= 0)
 			{
 				nlines = Max(max_lines - history_lines_added, 0);
-				(void) history_truncate_file(fname, nlines);
+				(void)history_truncate_file(fname, nlines);
 			}
 			/* append_history fails if file doesn't already exist :-( */
 			fd = open(fname, O_CREAT | O_WRONLY | PG_BINARY, 0600);
@@ -596,7 +713,7 @@ saveHistory(char *fname, int max_lines)
 			if (errnum == 0)
 				return true;
 		}
-#else							/* don't have append support */
+#else /* don't have append support */
 		{
 			/* truncate what we have ... */
 			if (max_lines >= 0)
@@ -614,8 +731,6 @@ saveHistory(char *fname, int max_lines)
 }
 #endif
 
-
-
 /*
  * Print history to the specified file, or to the console if fname is NULL
  * (psql \s command)
@@ -625,12 +740,11 @@ saveHistory(char *fname, int max_lines)
  * (preferring to encode its output) and may fail outright when the target
  * file is specified as /dev/tty.
  */
-bool
-printHistory(const char *fname, unsigned short int pager)
+bool printHistory(const char *fname, unsigned short int pager)
 {
 #ifdef USE_READLINE
-	FILE	   *output;
-	bool		is_pager;
+	FILE *output;
+	bool is_pager;
 
 	if (!useHistory)
 		return false;
@@ -670,14 +784,13 @@ printHistory(const char *fname, unsigned short int pager)
 #endif
 }
 
-
 static void
 finishInput(void)
 {
 #ifdef USE_READLINE
 	if (useHistory && psql_history)
 	{
-		(void) saveHistory(psql_history, pset.histsize);
+		(void)saveHistory(psql_history, pset.histsize);
 		free(psql_history);
 		psql_history = NULL;
 	}

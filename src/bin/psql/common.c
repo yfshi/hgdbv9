@@ -3275,12 +3275,12 @@ getExpirationAlarm(PGconn *conn, const char *user_name)
 		"	user_validity TEXT DEFAULT NULL;\n" \
 		"BEGIN\n" \
 		"	SELECT (user_expiration_info('%s')).user_validity INTO user_validity;\n" \
-		"EXCEPTION\n" \
-		"	WHEN OTHERS THEN\n" \
-		"		NULL;\n" \
 		"	IF user_validity IS NOT NULL THEN\n" \
 		"		RAISE NOTICE 'Your account will expire in: %%', user_validity;\n" \
 		"	END IF;\n" \
+		"EXCEPTION\n" \
+		"	WHEN OTHERS THEN\n" \
+		"		NULL;\n" \
 		"END $$;", user_name);
 
 	res = PQexec(conn, initial_query);

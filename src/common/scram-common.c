@@ -103,7 +103,7 @@ scram_SaltedPassword(const char *scram_type, const char *password,	// ReqID:SRS-
 int
 scram_H(const char *scram_type, const uint8 *input, int len, uint8 *result)
 {
-	pg_cryptohash_ctx *ctx;
+	pg_cryptohash_ctx *ctx = NULL;
 
 	if(scram_type[7] == 'H' )
 		ctx = pg_cryptohash_create(PG_SHA256);
