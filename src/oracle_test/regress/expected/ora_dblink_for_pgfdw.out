@@ -277,13 +277,12 @@ NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to user mapping for enrol11 on server ivyfurlnk
 drop cascades to foreign table "enrol11_it2@ivyfurlnk"
 drop public database link ivyfuplnk;
-NOTICE:  drop cascades to 6 other objects
+NOTICE:  drop cascades to 5 other objects
 DETAIL:  drop cascades to user mapping for public on server ivyfuplnk
 drop cascades to foreign table "enrol11_it1@ivyfuplnk"
 drop cascades to foreign table "enrol11_vit1@ivyfuplnk"
 drop cascades to foreign table "enrol11_mivt2@ivyfuplnk"
 drop cascades to foreign table "enrol11_it2@ivyfuplnk"
-drop cascades to foreign table "it1@ivyfuplnk"
 drop public database link ivycurrent;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to user mapping for public on server ivycurrent

@@ -1740,7 +1740,7 @@ AlterDatabaseSet(AlterDatabaseSetStmt *stmt)
 	 */
 	shdepLockAndCheckObject(DatabaseRelationId, datid);
 
-	if (!pg_database_ownercheck(datid, GetUserId()))
+	if (!is_global_names && !pg_database_ownercheck(datid, GetUserId())) /* BUG#Z4603 */
 		aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_DATABASE,
 					   stmt->dbname);
 

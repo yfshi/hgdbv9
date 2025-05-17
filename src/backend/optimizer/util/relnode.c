@@ -219,7 +219,6 @@ build_simple_rel(PlannerInfo *root, int relid, RelOptInfo *parent)
 		List		*raw_parsetree_list = NIL;
 		ListCell	*f;
 		ForeignServer *server;
-		ForeignDataWrapper *fdw;
 		RawStmt    *rs;
 		CreateForeignTableStmt *cstmt;
 		PlannedStmt *pstmt;
@@ -230,16 +229,19 @@ build_simple_rel(PlannerInfo *root, int relid, RelOptInfo *parent)
 		char		*query_string;
 		MemoryContext	current_cxt = CurrentMemoryContext;
 
-		/* Get fdw name */
+		/* Get server */
 		server = GetForeignServer(rte->serverOid);
-		fdw = GetForeignDataWrapper(server->fdwid);
 
-		if (strcmp(fdw->fdwname, "oracle_fdw") == 0)
-			fdw_type = ORA_FDW;
-		else if (strcmp(fdw->fdwname, "postgres_fdw") == 0)
+		if (strcmp(server->servertype, "postgres")== 0)
+		{
 			fdw_type = PG_FDW;
-
-		ftname = psprintf("%s@%s", rte->linkrelname, server->servername);
+			ftname = psprintf("%s_%s@%s", rte->linkrelnsname, rte->linkrelname, server->servername);
+		}
+		else if (strcmp(server->servertype, "oracle") == 0)
+		{
+			ftname = psprintf("%s_%s@%s", down_character(rte->linkrelnsname, strlen(rte->linkrelnsname)), rte->linkrelname, server->servername);
+			fdw_type = ORA_FDW;
+		}
 
 		PG_TRY();
 		{

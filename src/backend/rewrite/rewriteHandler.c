@@ -228,7 +228,6 @@ AcquireRewriteLocks(Query *parsetree,
 					List	    *raw_parsetree_list = NIL;
 					ListCell    *f;
 					ForeignServer *server;
-					ForeignDataWrapper *fdw;
 					RawStmt    *rs;
 					CreateForeignTableStmt *cstmt;
 					PlannedStmt *pstmt;
@@ -258,11 +257,10 @@ AcquireRewriteLocks(Query *parsetree,
 
 					/* Get fdw name */
 					server = GetForeignServer(rte->serverOid);
-					fdw = GetForeignDataWrapper(server->fdwid);
 
-					if (strcmp(fdw->fdwname, "oracle_fdw") == 0)
+					if (strcmp(server->servertype, "oracle")== 0)
 						fdw_type = ORA_FDW;
-					else if (strcmp(fdw->fdwname, "postgres_fdw") == 0)
+					else if (strcmp(server->servertype, "postgres") == 0)
 						fdw_type = PG_FDW;
 
 					/* Begin - BUG#Z4578 */
