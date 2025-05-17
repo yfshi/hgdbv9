@@ -61,6 +61,9 @@
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
+/* Begin - BUG#00004709 */
+#include "pg_contrib_audit.h"
+/* End - BUG#00004709 */
 
 /*
  * We don't want to log each fetching of a value from a sequence,
@@ -1534,6 +1537,13 @@ init_sequence(Oid relid, SeqTable *p_elm, Relation *p_rel)
 		elm->filenode = seqrel->rd_rel->relfilenode;
 		elm->cached = elm->last;
 	}
+	
+	/* Begin - BUG#00004709 */
+	if(audit_object_hook)
+	{
+		(*audit_object_hook)(relid,seqrel);
+	}
+	/* End - BUG#00004709 */
 
 	/* Return results */
 	*p_elm = elm;

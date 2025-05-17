@@ -1017,6 +1017,9 @@ audit_get_privilege(char *type)
 		pg_strcasecmp(type, ALTER_ROLE_S) == 0 ||
 		pg_strcasecmp(type, ALTER_SYSTEM_S) == 0 ||
 		pg_strcasecmp(type, ALTER_SCHEMA_S) == 0 ||
+		/* Begin - BUG#00004719 */
+		pg_strcasecmp(type, ALTER_USER_S) == 0 ||
+		/* End - BUG#00004719 */
 		pg_strcasecmp(type, DROP_ROLE_S) == 0 ||
 		pg_strcasecmp(type, DROP_SCHEMA_S) == 0 ||
 		pg_strcasecmp(type, DROP_USER_S) == 0 ||
@@ -1054,7 +1057,6 @@ audit_get_privilege(char *type)
 		pg_strcasecmp(type, ALTER_INDEX_S) == 0 ||
 		pg_strcasecmp(type, ALTER_SEQUENCE_S) == 0 ||
 		pg_strcasecmp(type, ALTER_TRIGGER_S) == 0 ||
-		pg_strcasecmp(type, ALTER_USER_S) == 0 ||
 		pg_strcasecmp(type, DROP_DOMAIN_S) == 0 ||
 		pg_strcasecmp(type, DROP_PROCEDURE_S) == 0 ||
 		pg_strcasecmp(type, DROP_INDEX_S) == 0 ||
@@ -1085,7 +1087,7 @@ audit_get_privilege(char *type)
 		pg_strcasecmp(type, MANDATORY_AUDIT_ON_S) == 0 ||
 		pg_strcasecmp(type, MANDATORY_AUDIT_OFF_S) == 0 ||
 		pg_strcasecmp(type, SWITCHOVER_S) == 0)
-		strcpy(pri, AUDIT_PRIVILEGE_INSTACE_S);
+		strcpy(pri, AUDIT_PRIVILEGE_INSTANCE_S);
 	else
 		strcpy(pri, AUDIT_PRIVILEGE_SCHEMAOBJECT_S);
 
@@ -4325,12 +4327,12 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 	{
 		case SYSTEMAUDIT_START:
 			strcpy(actionname, START_S);
-			strcpy(privilege, AUDIT_PRIVILEGE_INSTACE_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_INSTANCE_S);
 			break;
 
 		case SYSTEMAUDIT_STOP:
 			strcpy(actionname, STOP_S);
-			strcpy(privilege, AUDIT_PRIVILEGE_INSTACE_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_INSTANCE_S);
 			break;
 
 		case SYSTEMAUDIT_LOGIN:
@@ -4355,30 +4357,30 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 
 		case SYSTEMAUDIT_RELOAD:
 			strcpy(actionname, RELOAD_S);
-			strcpy(privilege, AUDIT_PRIVILEGE_INSTACE_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_INSTANCE_S);
 			break;
 		case SYSTEMAUDIT_AUDIT_STORAGE_INVALID:
 			strcpy(actionname, AUDIT_STORAGE_INVALID_S);
-			strcpy(privilege, AUDIT_PRIVILEGE_INSTACE_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_INSTANCE_S);
 			break;
 		case SYSTEMAUDIT_ALTER_GUC:
 			strcpy(actionname, ALTER_GUC_S);
-			strcpy(privilege, AUDIT_PRIVILEGE_INSTACE_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_INSTANCE_S);
 			break;
 
 		case SYSTEMAUDIT_SWITCHOVER:
 			strcpy(actionname, SWITCHOVER_S);
-			strcpy(privilege, AUDIT_PRIVILEGE_INSTACE_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_INSTANCE_S);
 			break;
 
 		case MANDATORY_AUDIT_ON:
 			strcpy(actionname, MANDATORY_AUDIT_ON_S);
-			strcpy(privilege, AUDIT_PRIVILEGE_INSTACE_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_INSTANCE_S);
 			break;
 
 		case MANDATORY_AUDIT_OFF:
 			strcpy(actionname, MANDATORY_AUDIT_OFF_S);
-			strcpy(privilege, AUDIT_PRIVILEGE_INSTACE_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_INSTANCE_S);
 			break;
 
 		case SYSTEMAUDIT_PG_DUMP:
@@ -4718,11 +4720,11 @@ generateSystemEvent(AuditSystemEvent event, AuditResult result)
 		query_string_tmp = pstrdup(auditEvent->sqltext);
 		if (hide_password(query_string_tmp))
 		{
-			memcpy(newAuditEvent->sqltext, query_string_tmp, strlen(query_string_tmp));
+			newAuditEvent->sqltext = pnstrdup((const char *)(query_string_tmp), strlen(query_string_tmp));
 		}
 		else
 		{
-			memcpy(newAuditEvent->sqltext, auditEvent->sqltext, cmdlen);
+			newAuditEvent->sqltext = pnstrdup((const char *)(auditEvent->sqltext), cmdlen);
 		}
 	}
 	else
@@ -5166,6 +5168,7 @@ audit_postmaster_sighup_guc(char *context)
 			char	   *setting;
 			AuditEvent *auditevent = NULL;
 			int 		len;
+			int			ret;
 			char	   *actionname;
 			char	   *sql = palloc0(MAXPGPATH);
 
@@ -5195,7 +5198,7 @@ audit_postmaster_sighup_guc(char *context)
 
 			if (pg_strcasecmp(name, "audit.enable") == 0)
 			{
-			
+				ret = -2;
 				if (pg_strcasecmp(setting, "on") == 0)
 				{
 					actionname = malloc(32);
@@ -5214,6 +5217,7 @@ audit_postmaster_sighup_guc(char *context)
 				if (audit_GUC.audit_enable == AUDIT_ON && (audit_GUC.audit_systemopers == AUDIT_OPER_SUCC ||
                                         audit_GUC.audit_systemopers == AUDIT_OPER_ALL))
 				{
+					ret = -1;
 					actionname = malloc(32);
 					strcpy(actionname, ALTER_GUC_S);
 					auditevent->actionname = ALTER_GUC_S;
@@ -5236,7 +5240,7 @@ audit_postmaster_sighup_guc(char *context)
 			auditevent->result = AUDIT_SUCCESS;
 			auditevent->confoids[0] = 0;
 
-			audit_insert_all_log(audit_log, auditevent, NULL, -1);
+			audit_insert_all_log(audit_log, auditevent, NULL, ret);
 
 		}
 
@@ -5472,11 +5476,10 @@ audit_arch_job(void)
 
 			memset(cmd, 0, MAXPGPATH);
 
-			if (se_feature.mode)
-				sprintf(cmd, "pgagent host=localhost dbname=%s port=%d user=syssao ", dbname, PostPortNumber);
-			else
-				sprintf(cmd, "pgagent host=localhost dbname=%s port=%d user=%s ", dbname, PostPortNumber, username);
-
+			/* Begin - BUG#00004708 */
+			sprintf(cmd, "pgagent host=localhost dbname=%s port=%d user=%s ", dbname, PostPortNumber, username);
+			/* End - BUG#00004708 */
+			
 			rc = system(cmd);
 
 			if (rc != 0)
