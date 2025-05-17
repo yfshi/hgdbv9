@@ -73,5 +73,16 @@ alter_system_set_check(AlterSystemStmt *altersysstmt)
 		call_next = false;
 	}
 
+	/*Begin -- bug#z4705*/
+	if (((pg_strncasecmp(name,"audit.",strlen("audit.")) == 0) ||
+		(pg_strncasecmp(name,"credcheck.",strlen("credcheck.")) == 0 ) ||	
+		(pg_strncasecmp(name,"se_feature.",strlen("se_feature.")) == 0 )) && IS_SYSDBA(GetUserId()))	
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied")));
+	}
+	/*End -- bug#z4705*/
+
 	return call_next;
 }

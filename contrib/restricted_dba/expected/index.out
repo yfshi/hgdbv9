@@ -30,6 +30,8 @@ DETAIL:  member of sysdba_role can only create indexon its owned relation
 create index idx_sao_u1_id2 on tb1_sao_u1(id2);
 ERROR:  permission denied
 DETAIL:  member of sysdba_role can only create indexon its owned relation
+create index idx_non_exist on tb1_non_exist(id);
+ERROR:  relation "tb1_non_exist" does not exist
 ---- ALTER INDEX RENAME
 ------ pass
 alter index idx_dba_u1_id rename to idx_dba_u1_id_new;
@@ -42,6 +44,8 @@ DETAIL:  cannot alter relation of syssso_role/syssao_role member
 alter index idx_sao_u1_id rename to idx_sao_u1_id_new;
 ERROR:  permission denied
 DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter index idx_non_exist rename to idx_non_exist_new;
+ERROR:  relation "idx_non_exist" does not exist
 ---- ALTER INDEX
 ------ pass
 alter index idx_dba_u1_id_new set (fillfactor = 75);
@@ -54,6 +58,8 @@ DETAIL:  cannot alter relation of syssso_role/syssao_role member
 alter index idx_sao_u1_id set (fillfactor = 75);
 ERROR:  permission denied
 DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter index idx_non_exist set (fillfactor = 75);
+ERROR:  relation "idx_non_exist" does not exist
 ---- DROP INDEX
 ------ pass
 drop index idx_dba_u1_id_new;
@@ -66,6 +72,8 @@ DETAIL:  cannot drop relation of syssso_role/syssao_role member
 drop index idx_sao_u1_id;
 ERROR:  permission denied
 DETAIL:  cannot drop relation of syssso_role/syssao_role member
+drop index idx_non_exist;
+ERROR:  relation "idx_non_exist" does not exist
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

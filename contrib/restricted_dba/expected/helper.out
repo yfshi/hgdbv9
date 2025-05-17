@@ -29,6 +29,9 @@ select is_syssao('syssao'::regrole);
  t
 (1 row)
 
+--pass
+alter system set se_feature.mode to on;
+alter system reset se_feature.mode;
 -- set se_feature.mode to on and check membership again;
 set se_feature.mode to on;
 select is_sysdba(10);
@@ -61,3 +64,13 @@ select is_syssao('syssao'::regrole);
  t
 (1 row)
 
+--fail
+alter system set se_feature.mode to on;
+ERROR:  permission denied
+alter system reset se_feature.mode;
+ERROR:  permission denied
+--fail, these test case depends on other module
+alter system set credcheck.enable to on;
+ERROR:  permission denied
+alter system reset audit.enable;
+ERROR:  permission denied

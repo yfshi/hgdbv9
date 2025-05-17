@@ -32,6 +32,7 @@ create sequence sch_u1.seq2_u1;
 ------ fail
 create sequence sch_syssso_u1.seq2_syssso_u1;
 create sequence sch_syssao_u1.seq2_syssao_u1;
+create sequence sch_non_exist.seq_non_exist;
 
 ---- ALTER SEQUENCE OWNER
 ------ pass
@@ -43,6 +44,7 @@ alter sequence seq1_syssso_u1 owner to sysdba_u1;
 alter sequence seq1_syssao_u1 owner to u1;
 alter sequence seq1_sysdba_u1 owner to syssso_u1;
 alter sequence seq1_u1 owner to syssao_u1;
+alter sequence seq_non_exist owner to sysdba_u1;
 
 ---- ALTER SEQUENCE
 ------ pass
@@ -52,6 +54,7 @@ alter sequence seq1_u1 restart with 100;
 ------ fail
 alter sequence seq1_syssso_u1 restart with 100;
 alter sequence seq1_syssao_u1 restart with 100;
+alter sequence seq_non_exist restart with 100;
 
 ---- ALTER SEQUENCE RENAME
 ------ pass
@@ -61,6 +64,7 @@ alter sequence seq1_u1 rename to seq1_u1_new;
 ------ fail
 alter sequence seq1_syssso_u1 rename to seq1_syssso_u1_new;
 alter sequence seq1_syssao_u1 rename to seq1_syssao_u1_new;
+alter sequence seq_non_exist rename to seq_non_exist_new;
 
 ---- ALTER SEQUENCE SCHEMA
 ------ pass
@@ -72,6 +76,8 @@ alter sequence seq1_sysdba_u1_new set schema sch_syssso_u1;
 alter sequence seq1_u1_new set schema sch_syssao_u1;
 alter sequence seq1_syssso_u1 set schema sch_sysdba_u1;
 alter sequence seq1_syssao_u1 set schema sch_u1;
+alter sequence seq_non_exist set schema sch_sysdba_u1;
+alter sequence seq1_sysdba_u1_new set schema sch_non_exist;
 
 ---- GRANT SEQUENCE
 ------ pass
@@ -90,6 +96,7 @@ grant all on seq1_syssso_u1 to sysdba_u1;
 grant all on seq1_syssao_u1 to sysdba_u1;
 grant all on seq1_u1_new to syssso_u1;
 grant all on seq1_u1_new to syssao_u1;
+grant all on seq_non_exist to sysdba_u1;
 
 ---- DROP SEQUENCE
 ------ pass
@@ -99,6 +106,7 @@ drop sequence seq1_u1_new;
 ------ fail
 drop sequence seq1_syssso_u1;
 drop sequence seq1_syssao_u1;
+drop sequence seq_non_exist;
 
 -- Clean test object
 \c testdb syssso_u1

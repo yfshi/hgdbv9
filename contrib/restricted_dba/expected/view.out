@@ -36,6 +36,8 @@ DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member 
 create view sch_syssao_u1.v2_syssao_u1 as select * from test_create;
 ERROR:  permission denied for schema sch_syssao_u1
 DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+create view sch_non_exist.v1_non_exist as select * from test_create;
+ERROR:  schema "sch_non_exist" does not exist
 ---- ALTER VIEW RENAME
 ------ pass
 alter view v2_sysdba_u1 rename to v2_sysdba_u1_new;
@@ -48,6 +50,8 @@ DETAIL:  cannot alter relation of syssso_role/syssao_role member
 alter view v1_sao_u1 rename to v1_sao_u1_new;
 ERROR:  permission denied
 DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter view v1_non_exist rename to v1_non_exist_new;
+ERROR:  relation "v1_non_exist" does not exist
 ---- ALTER VIEW
 ------ pass
 alter view v2_sysdba_u1_new alter column ts set default now();
@@ -60,6 +64,8 @@ DETAIL:  cannot alter relation of syssso_role/syssao_role member
 alter view v1_sao_u1 alter column ts set default now();
 ERROR:  permission denied
 DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter view v1_non_exist alter column ts set default now();
+ERROR:  relation "v1_non_exist" does not exist
 ---- ALTER VIEW OWNER
 ------ pass
 alter view v2_sysdba_u1_new owner to sysdba_u1;
@@ -78,6 +84,8 @@ DETAIL:  syssso_role/syssao_role member cannot be owner of relation
 alter view v1_u1_new owner to syssao_u1;
 ERROR:  permission denied
 DETAIL:  syssso_role/syssao_role member cannot be owner of relation
+alter view v1_non_exist owner to sysdba_u1;
+ERROR:  relation "v1_non_exist" does not exist
 ---- ALTER VIEW SCHEMA
 ------ pass
 alter view v2_sysdba_u1_new set schema sch_sysdba_u1;
@@ -96,6 +104,10 @@ DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member 
 alter view v1_u1_new set schema sch_syssao_u1;
 ERROR:  permission denied for schema sch_syssao_u1
 DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+alter view v1_non_exist set schema sch_sysdba_u1;
+ERROR:  relation "v1_non_exist" does not exist
+alter view v2_sysdba_u1_new set schema sch_non_exist;
+ERROR:  schema "sch_non_exist" does not exist
 ---- DROP VIEW
 ------ pass
 drop view v2_sysdba_u1_new;
@@ -108,6 +120,8 @@ DETAIL:  cannot drop relation of syssso_role/syssao_role member
 drop view v1_sao_u1;
 ERROR:  permission denied
 DETAIL:  cannot drop relation of syssso_role/syssao_role member
+drop view v1_non_exist;
+ERROR:  relation "v1_non_exist" does not exist
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

@@ -352,8 +352,8 @@ alter_relation_rename_check(RenameStmt *stmt)
 	if (!HeapTupleIsValid(tup))
 	{
 		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("relation \"%s\" does not exist", stmt->subname)));
+				(errcode(ERRCODE_UNDEFINED_TABLE),
+				 errmsg("relation \"%s\" does not exist", stmt->relation->relname)));
 	}	
 		
 
@@ -398,7 +398,7 @@ alter_relation_schema_check(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 	if (!HeapTupleIsValid(tup))
 	{
 		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				(errcode(ERRCODE_UNDEFINED_TABLE),
 				 errmsg("relation \"%s\" does not exist", stmt->relation->relname)));
 	}	
 		
@@ -462,7 +462,7 @@ bool drop_relation_check(DropStmt *stmt)
 		if (!HeapTupleIsValid(tup))
 		{
 			ereport(ERROR,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					(errcode(ERRCODE_UNDEFINED_TABLE),
 					errmsg("relation \"%s\" does not exist", rel->relname)));
 		}
 

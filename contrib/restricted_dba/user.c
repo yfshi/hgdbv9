@@ -70,18 +70,21 @@ change_member_check(const char* rolname, Oid roleid, Oid grantor,
 		if (!is_admin_of_role_nosuper(grantor,roleid))
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					 errmsg("must have admin option to operate security role \"%s\"",
+					 errmsg("permission denied"),
+					 errdetail("must have admin option to operate security role \"%s\"",
 					 rolname)));
 
 		if (grantor == roleid)
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_GRANT_OPERATION),
-					 errmsg("a user of security role cannot operate itself in membership")));
+					 errmsg("permission denied"),
+					 errdetail("a user of security role cannot operate itself in membership")));
 
 		if (admin_opt)
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_GRANT_OPERATION),
-					 errmsg("security roles cannot be operated with admin option")));
+					 errmsg("permission denied"),
+					 errdetail("security roles cannot be operated with admin option")));
 	}
 
 	if(grantee_ids && grantee_specs)
@@ -103,16 +106,18 @@ change_member_check(const char* rolname, Oid roleid, Oid grantor,
 				{
 					ereport(ERROR,
 							(errcode(ERRCODE_INVALID_GRANT_OPERATION),
-							errmsg("cannot grant others to security role \"%s\"",
-									grantee_name)));
+							 errmsg("permission denied"),
+							 errdetail("cannot give other role to security role \"%s\"",
+									 grantee_name)));
 				}	
 				else
 				{
 					if (grantor == grantee_id)
 						ereport(ERROR,
 								(errcode(ERRCODE_INVALID_GRANT_OPERATION),
-								errmsg("security role \"%s\" cannot do self revoke",
-										grantee_name)));
+								 errmsg("permission denied"),
+								 errdetail("security role \"%s\" cannot do self revoke",
+										 grantee_name)));
 				}
 			}
 		}
@@ -189,18 +194,21 @@ alter_role_check(AlterRoleStmt *stmt)
 	Form_pg_authid authform;
 	ListCell   *option;
 	char	   *rolename = NULL;
-	char	   *password = NULL;	/* user password */
 	int			issuper = -1;	/* Make the user a superuser? */
 	int			createrole = -1;	/* Can this user create roles? */
 	int			createdb = -1;	/* Can the user create databases? */
 	List	   *rolemembers = NIL;	/* roles to be added/removed */
-	char	   *validUntil = NULL;	/* time the login is valid until */
 	DefElem    *dpassword = NULL;
 	DefElem    *dissuper = NULL;
+	DefElem    *dinherit = NULL;
 	DefElem    *dcreaterole = NULL;
 	DefElem    *dcreatedb = NULL;
+	DefElem    *dcanlogin = NULL;
+	DefElem    *disreplication = NULL;
+	DefElem    *dconnlimit = NULL;
 	DefElem    *drolemembers = NULL;
 	DefElem    *dvalidUntil = NULL;
+	DefElem    *dbypassRLS = NULL;
 	Oid			roleid;
 
 	if (strcmp(stmt->role->rolename, SYSDBA_ROLE) == 0 ||
@@ -214,6 +222,11 @@ alter_role_check(AlterRoleStmt *stmt)
 	}
 
 	/* Extract options from the statement node tree */
+	/*Begin -- bug#z4288*/
+	/*
+	 * Since no one should modify security user's attribute
+	 * we have to check all alter user option
+	 */
 	foreach(option, stmt->options)
 	{
 		DefElem    *defel = (DefElem *) lfirst(option);
@@ -234,6 +247,14 @@ alter_role_check(AlterRoleStmt *stmt)
 						 errmsg("conflicting or redundant options")));
 			dissuper = defel;
 		}
+		else if (strcmp(defel->defname, "inherit") == 0)
+		{
+			if (dinherit)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			dinherit = defel;
+		}
 		else if (strcmp(defel->defname, "createrole") == 0)
 		{
 			if (dcreaterole)
@@ -249,6 +270,30 @@ alter_role_check(AlterRoleStmt *stmt)
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options")));
 			dcreatedb = defel;
+		}
+		else if (strcmp(defel->defname, "canlogin") == 0)
+		{
+			if (dcanlogin)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			dcanlogin = defel;
+		}
+		else if (strcmp(defel->defname, "isreplication") == 0)
+		{
+			if (disreplication)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			disreplication = defel;
+		}
+		else if (strcmp(defel->defname, "connectionlimit") == 0)
+		{
+			if (dconnlimit)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			dconnlimit = defel;
 		}
 		else if (strcmp(defel->defname, "rolemembers") == 0 &&
 				 stmt->action != 0)
@@ -267,21 +312,36 @@ alter_role_check(AlterRoleStmt *stmt)
 						 errmsg("conflicting or redundant options")));
 			dvalidUntil = defel;
 		}
+		else if (strcmp(defel->defname, "bypassrls") == 0)
+		{
+			if (dbypassRLS)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			dbypassRLS = defel;
+		}
+		else
+			elog(ERROR, "option \"%s\" not recognized",
+				 defel->defname);
 	}
+	/*End -- bug#z4288*/
 
-	if (dpassword && dpassword->arg)
-		password = strVal(dpassword->arg);
 	if (dissuper)
 		issuper = intVal(dissuper->arg);
 	if (dcreaterole)
 		createrole = intVal(dcreaterole->arg);
 	if (dcreatedb)
 		createdb = intVal(dcreatedb->arg);
-	if (dvalidUntil)
-		validUntil = strVal(dvalidUntil->arg);
 	if (drolemembers)
 		rolemembers = (List *) drolemembers->arg;
 
+	/*no one allowed to have these attributes*/
+	if (issuper > 0 || createrole > 0 || createdb > 0)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied")));
+	}
 
 	/*
 	 * Scan the pg_authid relation to be certain the user exists.
@@ -294,33 +354,33 @@ alter_role_check(AlterRoleStmt *stmt)
 	authform = (Form_pg_authid) GETSTRUCT(tuple);
 	rolename = pstrdup(NameStr(authform->rolname));
 	roleid = authform->oid;
-
 	
-	if ((IS_SYSDBA(roleid) && (!IS_SYSDBA(GetUserId()))) ||
-		(IS_SYSSSO(roleid) && (!IS_SYSSSO(GetUserId()))) ||
-		(IS_SYSSAO(roleid) && (!IS_SYSSAO(GetUserId()))))
+	if (IS_SYSDBA(roleid) || IS_SYSSSO(roleid) || IS_SYSSAO(roleid))
 	{
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("permission denied")));
-	}
-	
-	if(IS_SYSDBA(roleid) || IS_SYSSSO(roleid) || IS_SYSSAO(roleid))
-	{
-		if((password || validUntil) && (roleid != GetUserId()))
+		if (roleid != GetUserId())
+		{
 			ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("permission denied")));
-	}
+		}
 
-
-	if (!IS_SYSDBA(roleid) && (issuper > 0 || createrole > 0 || createdb > 0))
-	{
-		ereport(ERROR,
+		/*allow alter password and validuntil*/
+		if (dissuper ||
+			dcreatedb ||
+			dcreaterole ||
+			dinherit ||
+			dcanlogin || 
+			disreplication || 
+			dconnlimit || 
+			dbypassRLS)
+		{
+			ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("permission denied")));
+		}
 	}
 
+	/*alter group*/
 	if (rolemembers)
 	{
 		if(stmt->action == 1)
@@ -458,11 +518,13 @@ create_role_check(ParseState *pstate, CreateRoleStmt *stmt)
 			HeapTuple	oldroletup = get_rolespec_tuple(oldrole);
 			Form_pg_authid oldroleform = (Form_pg_authid) GETSTRUCT(oldroletup);
 			Oid			oldroleid = oldroleform->oid;
-			char	   *oldrolename = NameStr(oldroleform->rolname);
 
-			change_member_check(oldrolename, oldroleid, GetUserId(),
-								NIL, NIL, 
-								false, true);
+			if (IS_SYSSSO(oldroleid) || IS_SYSSAO(oldroleid) || IS_SYSDBA(oldroleid))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_GRANT_OPERATION),
+						 errmsg("permission denied"),
+						 errdetail("cannot set security roles in 'IN ROLE/GROUP' clause.")));
+
 
 			ReleaseSysCache(oldroletup);
 		}

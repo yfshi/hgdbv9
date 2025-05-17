@@ -40,6 +40,7 @@ create view sch_u1.v1_u1 as select * from test_create;
 ------ fail
 create view sch_syssso_u1.v2_syssso_u1 as select * from test_create;
 create view sch_syssao_u1.v2_syssao_u1 as select * from test_create;
+create view sch_non_exist.v1_non_exist as select * from test_create;
 
 
 ---- ALTER VIEW RENAME
@@ -50,6 +51,7 @@ alter view v1_u1 rename to v1_u1_new;
 ------ fail
 alter view v1_sso_u1 rename to v1_sso_u1_new;
 alter view v1_sao_u1 rename to v1_sao_u1_new;
+alter view v1_non_exist rename to v1_non_exist_new;
 
 ---- ALTER VIEW
 ------ pass
@@ -59,6 +61,7 @@ alter view v1_u1_new alter column ts set default now();
 ------ fail
 alter view v1_sso_u1 alter column ts set default now();
 alter view v1_sao_u1 alter column ts set default now();
+alter view v1_non_exist alter column ts set default now();
 
 ---- ALTER VIEW OWNER
 ------ pass
@@ -70,6 +73,7 @@ alter view v1_sso_u1 owner to sysdba_u1;
 alter view v1_sao_u1 owner to u1;
 alter view v2_sysdba_u1_new owner to syssso_u1;
 alter view v1_u1_new owner to syssao_u1;
+alter view v1_non_exist owner to sysdba_u1;
 
 ---- ALTER VIEW SCHEMA
 ------ pass
@@ -81,6 +85,8 @@ alter view v2_sysdba_u1_new set schema sch_syssso_u1;
 alter view v2_sysdba_u1_new set schema sch_syssao_u1;
 alter view v1_u1_new set schema sch_syssso_u1;
 alter view v1_u1_new set schema sch_syssao_u1;
+alter view v1_non_exist set schema sch_sysdba_u1;
+alter view v2_sysdba_u1_new set schema sch_non_exist;
 
 ---- DROP VIEW
 ------ pass
@@ -90,6 +96,7 @@ drop view v1_u1_new;
 ------ fail
 drop view v1_sso_u1;
 drop view v1_sao_u1;
+drop view v1_non_exist;
 
 -- Clean test object
 \c testdb syssso_u1
