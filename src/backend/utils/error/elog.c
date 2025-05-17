@@ -91,7 +91,10 @@
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
-
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#include "regex/regex.h"
+#include "catalog/pg_collation_d.h"
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 /* In this module, access gettext() via err_gettext() */
 #undef _
@@ -200,7 +203,7 @@ static void send_message_to_frontend(ErrorData *edata);
 static const char *error_severity(int elevel);
 static void append_with_tabs(StringInfo buf, const char *str);
 
-static bool hide_password(char *query_string);
+static bool hide_password(const char *input, char *output, size_t out_size);
 
 /*
  * is_log_level_output -- is elevel logically >= log_min_level?
@@ -2994,21 +2997,24 @@ write_csvlog(ErrorData *edata)
 	appendStringInfoChar(&buf, ',');
 
 	/* errmessage */
-
 	{
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-		char *query_string_tmp = NULL;
-		query_string_tmp = pstrdup(edata->message);
-
-		if(Log_Password_Hide && hide_password(query_string_tmp))
+		if (Log_Password_Hide)
 		{
-			appendCSVLiteral(&buf, query_string_tmp);
+			char *query_string_tmp = palloc0(strlen(edata->message) + 7);
+			if (query_string_tmp &&
+					hide_password(edata->message, query_string_tmp, strlen(edata->message) + 7))
+				appendCSVLiteral(&buf, query_string_tmp);
+			else
+				appendCSVLiteral(&buf, edata->message);
+
+			if (query_string_tmp)
+				pfree(query_string_tmp);
 		}
 		else
 		{
 			appendCSVLiteral(&buf, edata->message);
 		}
-		pfree(query_string_tmp);
 		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	}
 
@@ -3047,18 +3053,22 @@ write_csvlog(ErrorData *edata)
 	if (print_stmt)
 	{
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-		char *query_string_tmp = NULL;
-		query_string_tmp = pstrdup(debug_query_string);
-
-		if(Log_Password_Hide && hide_password(query_string_tmp))
+		if (Log_Password_Hide)
 		{
-			appendCSVLiteral(&buf, query_string_tmp);
+			char *query_string_tmp = palloc0(strlen(debug_query_string) + 7);
+			if (query_string_tmp &&
+					hide_password(debug_query_string, query_string_tmp, strlen(debug_query_string) + 7))
+				appendCSVLiteral(&buf, query_string_tmp);
+			else
+				appendCSVLiteral(&buf, edata->message);
+
+			if (query_string_tmp)
+				pfree(query_string_tmp);
 		}
 		else
 		{
 			appendCSVLiteral(&buf, edata->message);
 		}
-		pfree(query_string_tmp);
 		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	}
 
@@ -3151,125 +3161,247 @@ unpack_sql_state(int sql_state)
 }
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-static bool mask_password(char *input) {
-    char *start_tag_begin, *start_tag_end, *tag, *pattern, *pwd_start, *end_pattern, *p;
-    size_t tag_len, pattern_len;
-    
-    if (input == NULL) {
-        return false;
-    }
-    
-    start_tag_begin = strchr(input, '$');
-    if (!start_tag_begin) {
-        return false;
-    }
-    
-    start_tag_end = strchr(start_tag_begin + 1, '$');
-    if (!start_tag_end) {
-        return false;
-    }
-    
-    tag_len = start_tag_end - start_tag_begin - 1;
-    
-
-    tag = (char *)malloc(tag_len + 1);
-    if (!tag) {
-        perror("malloc failed");
-        exit(EXIT_FAILURE);
-    }
-
-    memset(tag, 0, tag_len + 1);
-    strncpy(tag, start_tag_begin + 1, tag_len);
-    tag[tag_len] = '\0';
-    
-    pattern_len = tag_len + 2;
-    pattern = (char *)malloc(pattern_len + 1);
-    if (!pattern) {
-        perror("malloc failed");
-        free(tag);
-        exit(EXIT_FAILURE);
-    }
-    sprintf(pattern, "$%s$", tag);
-    
-    pwd_start = start_tag_end + 1;
-    end_pattern = strstr(pwd_start, pattern);
-    if (!end_pattern) {
-        free(tag);
-        free(pattern);
-        return false;
-    }
-    
-    for (p = pwd_start; p < end_pattern; p++) {
-        *p = '*';
-    }
-    
-    free(tag);
-    free(pattern);
-    return true;
+static int
+is_tag_char(char c)
+{
+	return isalnum((unsigned char)c) || c == '_';
 }
-static bool hide_password(char *query_string) {
-    char *cp, *start;
-    char *p;
-	char *user_p = NULL;
-	bool e_flag = false;
 
-    if (!query_string)
-        return false;
-
-    for (cp = query_string; *cp != '\0'; cp++) {
-        *cp = tolower((unsigned char)*cp);
-    }
-
-    if (strstr(query_string, "password") &&
-        (strstr(query_string, "alter") || strstr(query_string, "create")) &&
-        (strstr(query_string, "user") || strstr(query_string, "role"))) {
-
-		user_p = strstr(query_string, "user");
-		if(!user_p)
-			user_p = strstr(query_string, "role");
-
-        cp = strstr(user_p, "password");
-        if (!cp)
-            return false;
-
-        p = cp + strlen("password");
-        while (*p && isspace((unsigned char)*p)) {
-            p++;
-        }
-
-		if (*p == 'e'){
-			e_flag = true;
+static int
+find_single_quoted_end(const char *str)
+{
+	const char *p = str + 1;
+	while (*p)
+	{
+		if (*p == '\'')
+		{
+			if (*(p + 1) == '\'')
+			{
+				p += 2;
+			}
+			else
+			{
+				return (int)(p - str + 1);
+			}
+		}
+		else
+		{
 			p++;
 		}
+	}
+	return -1;
+}
 
-        if (*p != '\'')
-            return mask_password(p);
+static int
+find_escape_quoted_end(const char *str)
+{
+	const char *p = str + 1;
+	while (*p)
+	{
+		if (*p == '\\' && (*(p + 1) == '\'' || *(p + 1) == '\\'))
+		{
+			p += 2;
+		}
+		else if (*p == '\'')
+		{
+			return (int)(p - str + 1);
+		}
+		else
+		{
+			p++;
+		}
+	}
+	return -1;
+}
 
-        start = p;
-        p = start + 1;
+static int
+find_dollar_quoted_end(const char *str)
+{
+	const char *p = str + 1;
+	char tag[64] = {0};
+	int tag_len = 0;
+	char end_tag[70];
+	const char *q = NULL;
+	size_t end_tag_len = 0;
 
-        while (*p != '\0') {
-            if (*p == '\'') {
-                if (*(p + 1) == '\'') {
-                    *p = '*';
-                    *(p + 1) = '*';
-                    p += 2;
-                } else {
-                    break;
-                }
-            } else if (e_flag && *p == '\\') {
-                *p = '*';
-                *(p + 1) = '*';
-                p += 2;
-            }else {
-                *p = '*';
-                p++;
-            }
-        }
-        return true;
-    }
+	if (*str != '$')
+		return -1;
 
-    return false;
+	while (is_tag_char(*p) && tag_len < (int)(sizeof(tag) - 1))
+	{
+		tag[tag_len++] = *p++;
+	}
+	if (*p != '$')
+		return -1;
+	p++;
+
+	snprintf(end_tag, sizeof(end_tag), "$%s$", tag);
+	end_tag_len = strlen(end_tag);
+	q = p;
+	while (*q)
+	{
+		if (*q == '$' && strncmp(q, end_tag, end_tag_len) == 0)
+		{
+			return (int)(q - str + end_tag_len);
+		}
+		q++;
+	}
+	return -1;
+}
+
+static bool
+hide_password(const char *input, char *output, size_t out_size)
+{
+	pg_regex_t regex;
+	const char *cursor = input;
+	size_t out_pos = 0;
+	pg_regmatch_t pmatch[2];
+	const char *replacement = "'******'";
+
+	int m0_s = 0;
+	int g1_s = 0;
+	int g1_e = 0;
+
+	int pat_wlen = 0;
+	const char *pattern = "password[[:space:]]+((E|e)?['$])";
+	pg_wchar *wpattern =  (pg_wchar *) palloc((strlen(pattern) + 1) * sizeof(pg_wchar));
+	pat_wlen = pg_mb2wchar_with_len(pattern, wpattern, strlen(pattern));
+	if (pg_regcomp(&regex, wpattern, pat_wlen, REG_ICASE | REG_EXTENDED, C_COLLATION_OID) != REG_OKAY)
+	{
+		fprintf(stderr, "Regex compilation failed\n");
+		return false;
+	}
+	pfree(wpattern);
+
+	while (*cursor)
+	{
+		int ret = 0;
+		int first_len;
+		int has_e_prefix = 0;
+		const char *g1_start = NULL;
+		const char *pw_start = NULL;
+		const char *lit_end = NULL;
+		size_t prefix_len = 0;
+		size_t rep_len = 0;
+		int win_len = 0;
+		pg_wchar *win =  (pg_wchar *) palloc((strlen(cursor) + 1) * sizeof(pg_wchar));
+		win_len = pg_mb2wchar_with_len(cursor, win, strlen(cursor));
+		ret = pg_regexec(&regex, win, win_len, 0, NULL, 2, pmatch, 0);
+		if (ret == REG_NOMATCH)
+		{
+			size_t remain = strlen(cursor);
+			if (out_pos + remain >= out_size)
+			{
+				pg_regfree(&regex);
+				return false;
+			}
+			memcpy(output + out_pos, cursor, remain);
+			out_pos += remain;
+			break;
+		}
+		else if (ret != REG_OKAY)
+		{
+			pg_regfree(&regex);
+			return false;
+		}
+
+		pfree(win);
+
+		m0_s = pmatch[0].rm_so;
+		g1_s = pmatch[1].rm_so;
+		g1_e = pmatch[1].rm_eo;
+
+		if (out_pos + m0_s >= out_size)
+		{
+			pg_regfree(&regex);
+			return false;
+		}
+		memcpy(output + out_pos, cursor, m0_s);
+		out_pos += m0_s;
+
+		has_e_prefix = 0;
+		g1_start = cursor + g1_s;
+		if (g1_e - g1_s >= 2 && (g1_start[0] == 'E' || g1_start[0] == 'e'))
+		{
+			has_e_prefix = 1;
+			pw_start = g1_start + 1;
+		}
+		else
+		{
+			pw_start = g1_start;
+		}
+
+		if (*pw_start == '\'')
+		{
+			first_len = has_e_prefix
+							? find_escape_quoted_end(pw_start)
+							: find_single_quoted_end(pw_start);
+		}
+		else
+		{
+			first_len = find_dollar_quoted_end(pw_start);
+		}
+		if (first_len < 0)
+		{
+			pg_regfree(&regex);
+			return false;
+		}
+
+		lit_end = pw_start + first_len;
+		while (1)
+		{
+			int next_len = -1;
+			const char *t = lit_end;
+			while (*t && isspace((unsigned char)*t))
+				t++;
+			if ((t[0] == 'E' || t[0] == 'e') && t[1] == '\'')
+			{
+				next_len = find_escape_quoted_end(t);
+			}
+			else if (t[0] == '\'')
+			{
+				next_len = find_single_quoted_end(t);
+			}
+			else if (t[0] == '$')
+			{
+				next_len = find_dollar_quoted_end(t);
+			}
+			else
+			{
+				break;
+			}
+			if (next_len < 0)
+			{
+				pg_regfree(&regex);
+				return false;
+			}
+			lit_end = t + next_len;
+		}
+
+		prefix_len = (pw_start - (cursor + m0_s));
+		if (out_pos + prefix_len >= out_size)
+		{
+			pg_regfree(&regex);
+			return false;
+		}
+		memcpy(output + out_pos, cursor + m0_s, prefix_len);
+		out_pos += prefix_len;
+
+		rep_len = strlen(replacement);
+		if (out_pos + rep_len >= out_size)
+		{
+			pg_regfree(&regex);
+			return false;
+		}
+		memcpy(output + out_pos, replacement, rep_len);
+		out_pos += rep_len;
+
+		cursor = lit_end;
+	}
+
+	output[out_pos] = '\0';
+	pg_regfree(&regex);
+	return true;
 }
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
@@ -3295,18 +3427,22 @@ send_message_to_server_log(ErrorData *edata)
 	if (edata->message)
 	{
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-		char *query_string_tmp = NULL;
-		query_string_tmp = pstrdup(edata->message);
-
-		if(Log_Password_Hide && hide_password(query_string_tmp))
+		if (Log_Password_Hide)
 		{
-			append_with_tabs(&buf, query_string_tmp);
+			char *query_string_tmp = palloc0(strlen(edata->message) + 7);
+			if (query_string_tmp &&
+					hide_password(edata->message, query_string_tmp, strlen(edata->message) + 7))
+				append_with_tabs(&buf, query_string_tmp);
+			else
+				append_with_tabs(&buf, edata->message);
+
+			if (query_string_tmp)
+				pfree(query_string_tmp);
 		}
 		else
 		{
 			append_with_tabs(&buf, edata->message);
 		}
-		pfree(query_string_tmp);
 		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	}
 	else
@@ -3391,20 +3527,26 @@ send_message_to_server_log(ErrorData *edata)
 		debug_query_string != NULL &&
 		!edata->hide_stmt)
 	{
-		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-		char *query_string_tmp = NULL;
-		query_string_tmp = pstrdup(debug_query_string);
 		log_line_prefix(&buf, edata);
 		appendStringInfoString(&buf, _("STATEMENT:  "));
-		if(Log_Password_Hide && hide_password(query_string_tmp)){
-			append_with_tabs(&buf, query_string_tmp);
+		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		if (Log_Password_Hide)
+		{
+			char *query_string_tmp = palloc0(strlen(debug_query_string) + 7);
+			if (query_string_tmp &&
+					hide_password(debug_query_string, query_string_tmp, strlen(debug_query_string) + 7))
+				append_with_tabs(&buf, query_string_tmp);
+			else
+				append_with_tabs(&buf, debug_query_string);
+
+			if (query_string_tmp)
+				pfree(query_string_tmp);
 		}
 		else{
 			append_with_tabs(&buf, debug_query_string);
 		}
-		appendStringInfoChar(&buf, '\n');
-		pfree(query_string_tmp);
 		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		appendStringInfoChar(&buf, '\n');
 	}
 
 #ifdef HAVE_SYSLOG

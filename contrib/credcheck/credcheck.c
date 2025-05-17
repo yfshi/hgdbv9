@@ -2511,9 +2511,9 @@ credcheck_max_auth_failure(Port *port, int status)
 				else
 				{
 					TimestampTz dt_now = GetCurrentTimestamp();
-					int result;
+					int64_t result;
 
-					result = ((int)(dt_now - lock_time)) / 1000000.0; /* in seconds */
+					result = ((int64_t)(dt_now - lock_time)) / 1000000.0; /* in seconds */
 					/* in mins */
 					if (reset_time > 0 && result > reset_time * 60)
 					{
