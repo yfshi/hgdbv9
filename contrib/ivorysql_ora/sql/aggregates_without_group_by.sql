@@ -1,0 +1,121 @@
+set ivorysql.aggregates_without_group_by = on;
+
+create table order_by_test(id int);
+insert into order_by_test values (1);
+insert into order_by_test values (2);
+
+-- always ok in mysql
+select count(*) from order_by_test order by id;
+-- mysql not support this synatx, pg should error
+select rank(id) within group (order by id) from order_by_test;
+set sql_mode = '';
+-- mysql not support this synatx, pg should error
+select rank(id) within group (order by id) from order_by_test;
+reset sql_mode;
+drop table order_by_test;
+
+
+create table t_orderby_559(a int, b int, c int);
+insert into t_orderby_559 values(8,9,2);
+insert into t_orderby_559 values(2,4,9);
+insert into t_orderby_559 values(6,2,8);
+insert into t_orderby_559 values(7,9,5);
+
+-- ok
+select count(1) from t_orderby_559 order by a;
+-- fail
+select count(1), a from t_orderby_559 order by a;
+-- ok
+select count(1) from t_orderby_559 group by a order by a;
+-- fail
+select count(1) from t_orderby_559 group by a order by a,b;
+-- fail
+select count(1),b from t_orderby_559 group by a order by a,b;
+-- ok
+select count(1) from t_orderby_559 group by a, b order by a,b;
+-- ok
+select count(1) from t_orderby_559 having count(a) > 3 order by a,b;
+-- ok
+select count(1) from t_orderby_559 having count(b) > 3 order by a,b;
+-- ok
+select sum(1) from t_orderby_559 order by rownum;
+-- fail
+select sum(1), rownum from t_orderby_559 order by rownum;
+-- ok
+select sum(1) from t_orderby_559 group by rownum order by rownum;
+drop table t_orderby_559;
+
+
+create table t_order(id integer, name varchar(23));
+--ok
+select count(*) from t_order where id > 2 order by name;
+--ok
+select count(id) from t_order where id >2 order by name;
+--ok
+select count(1) from t_order order by id,name;
+--ok
+select count(id),count(name) from t_order order by id,name;
+--ok
+select count(id) from t_order order by id,name;
+--ok
+select count(id),count(name) from t_order order by name;
+--ok
+select count(id),count(name) from t_order order by id;
+--failed
+select count(id),count(name),name from t_order order by id;
+
+--test distinct 
+--ok
+SELECT DISTINCT id,name FROM t_order ORDER BY name;
+--error
+SELECT DISTINCT id FROM t_order ORDER BY name;
+--error
+SELECT DISTINCT name,COUNT(id) FROM t_order ORDER BY id;
+--test distinct + aggerage
+--ok
+select distinct count(name) from t_order order by name;
+--error
+select id from t_order having count(*) > id order by name;
+--ok
+select sum(id) over(partition by name) from t_order order by id;
+--ok
+select sum(id) over(partition by name) from t_order order by name;
+--ok
+(select count(1) from t_order order by name) UNION ALL(select count(1) from t_order order by id) order by 1;
+--ok
+select distinct int4(sum(id)) from t_order order by id;
+--ok
+select distinct count(id), sum(id) from t_order order by id;
+--error
+select distinct int4(name) from t_order order by name;
+
+
+drop table t_order;
+
+
+CREATE TABLE tenk1 (
+    unique1    int,
+    unique2    int
+);
+CREATE INDEX tenk1_unique2 ON tenk1 USING btree(unique2 int4_ops);
+insert into tenk1 values (1, 1);
+insert into tenk1 values (2, 2);
+insert into tenk1 values (3, 3);
+-- ok
+explain (costs off) select max(unique2) from tenk1 order by max(unique2);
+-- ok
+explain (costs off) select max(unique2) from tenk1 order by max(unique2) + 1;
+-- ok
+explain (costs off) select max(unique2) from tenk1 order by min(unique2);
+-- ok, ignore order by
+explain (costs off) select max(unique2) from tenk1 order by unique2;
+-- ok, ignore order by
+explain (costs off) select max(unique2) from tenk1 order by int4(unique2);
+-- ok, cannit ignore order by
+explain (costs off) select max(unique2), generate_series(1,3) as g from tenk1 order by g desc;
+-- ok, cannit ignore order by
+select max(unique2), generate_series(1,3) as g from tenk1 order by g desc;
+
+drop table tenk1;
+
+reset ivorysql.aggregates_without_group_by;

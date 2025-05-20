@@ -663,6 +663,9 @@ char	   *event_source;
 bool		row_security;
 bool		check_function_bodies = true;
 
+/* Begin - BUG#Z4610 */
+bool		aggregates_without_group_by = false;
+/* End - BUG#Z4610 */
 
 /*
  * This GUC exists solely for backward compatibility, check its definition for
@@ -2317,6 +2320,17 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+	/* Begin - BUG#Z4610 */
+	{
+		{"ivorysql.aggregates_without_group_by", PGC_USERSET, QUERY_TUNING_METHOD,
+			gettext_noop("Allow to use order by clause without group by clause when call aggerate function."),
+			NULL
+		},
+		&aggregates_without_group_by,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#Z4610 */
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_BOOL_PARAMS
 	#include "ivy_oracle_guc.c"

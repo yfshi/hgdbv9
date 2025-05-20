@@ -100,7 +100,8 @@ ORA_REGRESS = \
 	dm_compatible \
 	ora_dbms_job \
 	decode \
-	ora_dbms_metadata
+	ora_dbms_metadata \
+	aggregates_without_group_by
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
