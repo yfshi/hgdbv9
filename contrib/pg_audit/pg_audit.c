@@ -17,7 +17,6 @@
  */
 #include "postgres.h"
 #include "pg_audit.h"
-//#include "utils/sqlite3.h"
 #include <sqlite3.h>
 #include <signal.h>
 #include <sys/time.h>
@@ -1298,7 +1297,7 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		values[17] = (Datum)0;
 		nulls[17] = true;
 	}
-	if (clientInfo.port != NULL && strlen(clientInfo.port) > 0)
+	if (strlen(clientInfo.port) > 0)
 	{
 		values[18] = PointerGetDatum(cstring_to_text(clientInfo.port));
 	}
@@ -1307,7 +1306,7 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		values[18] = (Datum)0;
 		nulls[18] = true;
 	}
-	if (clientInfo.clientname != NULL && strlen(clientInfo.clientname) > 0)
+	if (strlen(clientInfo.clientname) > 0)
 	{
 		values[19] = PointerGetDatum(cstring_to_text(clientInfo.clientname));
 	}
@@ -1316,7 +1315,7 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		values[19] = (Datum)0;
 		nulls[19] = true;
 	}
-	if (clientInfo.ip != NULL && strlen(clientInfo.ip) > 0)
+	if (strlen(clientInfo.ip) > 0)
 	{
 		values[20] = PointerGetDatum(cstring_to_text(clientInfo.ip));
 	}
@@ -1325,7 +1324,7 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		values[20] = (Datum)0;
 		nulls[20] = true;
 	}
-	if (clientInfo.mac != NULL && strlen(clientInfo.mac) > 0)
+	if (strlen(clientInfo.mac) > 0)
 	{
 		values[21] = PointerGetDatum(cstring_to_text(clientInfo.mac));
 	}
@@ -1334,7 +1333,7 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		values[21] = (Datum)0;
 		nulls[21] = true;
 	}
-	if (clientInfo.appname != NULL && strlen(clientInfo.appname) > 0)
+	if (strlen(clientInfo.appname) > 0)
 	{
 		values[22] = PointerGetDatum(cstring_to_text(clientInfo.appname));
 	}
@@ -1363,8 +1362,7 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		nulls[23] = true;
 	}
 #if !defined(_WIN32) && !defined(_WIN64)
-
-	if (audit_msg != NULL)
+	if (strlen(audit_msg) != 0)
 	{
 		values[24] = PointerGetDatum(cstring_to_text(audit_msg));
 	}
@@ -1374,7 +1372,7 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		values[24] = (Datum)0;
 		nulls[24] = true;
 	}
-	if (clientInfo.authmethod != NULL && strlen(clientInfo.authmethod) > 0)
+	if (strlen(clientInfo.authmethod) > 0)
 	{
 		values[25] = PointerGetDatum(cstring_to_text(clientInfo.authmethod));
 	}
@@ -4548,7 +4546,7 @@ audit_save_connectinfo(Port *port)
 		memcpy(&(clientInfo.appname), port->application_name, strlen(port->application_name) + 1);
 	}
 
-	if (host_name != NULL)
+	if (strlen(host_name) != 0)
 	{
 		memcpy(&(clientInfo.clientname), host_name, strlen(host_name) + 1);
 	}
