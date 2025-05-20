@@ -4803,6 +4803,16 @@ deal_with_system_event(AuditSystemEvent event, AuditResult result)
 	if (audit_GUC.audit_enable != AUDIT_ON)
 		return;
 
+	if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
+	{
+		if (MyProcPort && MyProcPort->user_name)
+			sqlite_open_db_for_audit_hook(event, result, MyProcPort->user_name, NULL);
+		else
+			sqlite_open_db_for_audit_hook(event, result, NULL, NULL);
+
+		return ;
+	}
+
 	/* Exclude mandatory audit */
 	if (MANDATORY_AUDIT_ON != event && MANDATORY_AUDIT_OFF != event)
 	{

@@ -4602,8 +4602,10 @@ PostgresMain(int argc, char *argv[],
 	SetProcessingMode(NormalProcessing);
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
-	if (audit_system_event_hook)
+	if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
 		audit_system_event_hook(true, 3);
+	else if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/*
@@ -5258,8 +5260,10 @@ PostgresMain(int argc, char *argv[],
 					whereToSendOutput = DestNone;
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
-				if (audit_system_event_hook)
+				if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
 					audit_system_event_hook(true, 4);
+				else if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 				/*
