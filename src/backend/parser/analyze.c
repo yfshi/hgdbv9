@@ -28,6 +28,8 @@
  *-------------------------------------------------------------------------
  */
 
+#include <assert.h>
+
 #include "postgres.h"
 
 #include "access/sysattr.h"
@@ -2275,6 +2277,40 @@ count_rowexpr_columns(ParseState *pstate, Node *expr)
 	return -1;
 }
 
+/** 
+ * Begin - BUG#M4610
+ * When call aggregate function without group by clause, 
+ * order by clause may be meanless.
+ */
+static void
+aggregates_without_group_by_check(ParseState *pstate, Query *qry)
+{
+	assert(pstate->p_hasAggs && qry->groupClause == NULL && qry->sortClause != NULL);
+
+	if (aggregates_without_group_by)
+	{
+		ListCell   *l;
+		List	   *sortClause_copy = copyObject(qry->sortClause);
+
+		foreach(l, qry->sortClause)
+		{
+			SortGroupClause *sortcl = (SortGroupClause *) lfirst(l);
+			TargetEntry *tle = get_sortgroupclause_tle(sortcl, qry->targetList);
+
+			/**
+			 * If the TargetEntry add by order by clause, the resjunk is true.
+			 */
+			if (tle->resjunk)
+			{
+				qry->targetList = list_delete(qry->targetList, tle);
+				sortClause_copy = list_delete(sortClause_copy, sortcl);
+			}
+		}
+
+		qry->sortClause = sortClause_copy;
+	}
+}
+/* End - BUG#M4610 */
 
 /*
  * transformSelectStmt -
@@ -2358,10 +2394,10 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 
 	/* mark column origins */
 	markTargetListOrigins(pstate, qry->targetList);
-/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
 	if (audit_privi_mode_hook)
 		stmt->whereClause = (*audit_privi_mode_hook)(stmt->whereClause, true);
-/* End - ReqID:SRS-SECURITY-AUDIT */
+	/* End - ReqID:SRS-SECURITY-AUDIT */
 
 
 	/* transform WHERE */
@@ -2392,6 +2428,13 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 											stmt->groupDistinct ? EXPR_KIND_GROUP_BY_DISTINCT : EXPR_KIND_GROUP_BY, /* SRS-SQL-NLSSORT */
 											false /* allow SQL92 rules */ );
 	qry->groupDistinct = stmt->groupDistinct;
+
+	/* Begin - BUG#M4610 */
+	if (pstate->p_hasAggs && qry->groupClause == NULL && qry->sortClause != NULL)
+	{
+		aggregates_without_group_by_check(pstate, qry);
+	}
+	/* End - BUG#M4610 */
 
 	if (stmt->distinctClause == NIL)
 	{
@@ -2951,6 +2994,13 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 	}
 
 	assign_query_collations(pstate, qry);
+
+	/* Begin - BUG#M4610 */
+	if (pstate->p_hasAggs && qry->groupClause == NULL && qry->sortClause != NULL)
+	{
+		aggregates_without_group_by_check(pstate, qry);
+	}
+	/* End - BUG#M4610 */
 
 	/* this must be done after collations, for reliable comparison of exprs */
 	if (pstate->p_hasAggs || qry->groupClause || qry->groupingSets || qry->havingQual)
@@ -4855,6 +4905,13 @@ transformPLAssignStmt(ParseState *pstate, PLAssignStmt *stmt)
 											qry->sortClause,
 											EXPR_KIND_GROUP_BY,
 											false /* allow SQL92 rules */ );
+
+	/* Begin - BUG#M4610 */
+	if (pstate->p_hasAggs && qry->groupClause == NULL && qry->sortClause != NULL)
+	{
+		aggregates_without_group_by_check(pstate, qry);
+	}
+	/* End - BUG#M4610 */
 
 	if (sstmt->distinctClause == NIL)
 	{

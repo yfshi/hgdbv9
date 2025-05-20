@@ -714,4 +714,8 @@ extern PGDLLIMPORT char *max_sort_length_str;
 extern PGDLLIMPORT bool  enable_character_blob;
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
 
+/* Begin - BUG#Z4610 */
+extern PGDLLIMPORT bool aggregates_without_group_by;
+/* End - BUG#Z4610 */
+
 #endif							/* GUC_H */

@@ -117,7 +117,7 @@ MYS_REGRESS = multi_update \
 			  mys_float \
 			  mys-char-varchar \
 			  time_func	\
-			  group_by
+			  aggregates_without_group_by
 
 
 ifdef USE_PGXS

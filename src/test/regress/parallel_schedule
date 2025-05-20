@@ -149,3 +149,7 @@ test: copy_skip
 #/* Begin - BUG#Z1616 */
 test: copy_skipbadR
 #/* End - BUG#Z1616 */
+
+#/* Begin - BUG#Z4610 */
+test: aggregates_without_group_by
+#/* End - BUG#Z4610 */
