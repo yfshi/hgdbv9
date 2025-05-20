@@ -883,6 +883,23 @@ static void audit_define_GUC(void)
 					 audit_sqlite_check_hook,
 					 NULL,
 					 NULL);
+
+	/* There may be issues when going to pg_reboot 
+	 * during wal recovery test.
+	 * This parameter is used to disable pg_track_settings feature 
+	 * during wal recovery test.
+	 */
+	DefineCustomEnumVariable("audit.track_settings",
+						 "turn on or off",
+						 NULL,
+						 (int *)&(audit_GUC.track_settings),
+						 AUDIT_ON,
+						 audit_turn_options,
+						 PGC_POSTMASTER,
+						 0,
+						 NULL,
+						 NULL,
+						 NULL);
 }
 
 /*
@@ -5662,10 +5679,11 @@ pg_audit_launch(void)
 	BackgroundWorkerInitializeConnection(DatabaseName, NULL, 0);
 	
 
-	//if (audit_GUC.audit_systemopers != AUDIT_OPER_OFF)
-	/* There is no switch to determine audit parameters here,
-	 * it is to record mandatory audits
+	/* If audit_GUC.track_settings is off then pg_track_settings_snapshot
+	 * function will not be called to prevent it from affecting regress
+	 * test of wal.
 	 */
+	if (audit_GUC.track_settings == AUDIT_ON)
 	{
 		audit_postmaster_sighup_guc("postmaster");
 	}
@@ -5678,7 +5696,7 @@ pg_audit_launch(void)
 		audit_arch_job();
 	}
 
-	/* If the path of sqlite id modified, the path also
+	/* If the path of sqlite is modified, the path also
 	 * needs to be modified in pg_foreign_server
 	 */
 	if (audit_GUC.audit_enable == AUDIT_ON && audit_GUC.audit_systemopers != AUDIT_OPER_OFF && 
