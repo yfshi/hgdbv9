@@ -346,6 +346,7 @@ typedef struct AduitSwitchGUC
 	int audit_privimode;
 	AuditOpresSwitch audit_systemopers;
 	char *audit_sqlitedbpath;
+	AuditSwitch track_settings;
 }AduitSwitchGUC;
 
 extern bool receive_sighup;
