@@ -1152,7 +1152,6 @@ BEGIN
     ELSE
 
         BEGIN
-
             result_datetime := sys.evaluate_next_schedule_expression(interval::text);
         EXCEPTION
             WHEN others THEN
@@ -1165,7 +1164,7 @@ BEGIN
             interval_expression_failures := 1;
         END IF;
 
-        IF now_future THEN
+        IF now_future OR ((interval IS NULL OR interval ILIKE 'null') AND next_date < fixed_sysdate /* BUG#Z4760 */) THEN
             result_datetime  := next_date::timestamp;
         END IF;
 
