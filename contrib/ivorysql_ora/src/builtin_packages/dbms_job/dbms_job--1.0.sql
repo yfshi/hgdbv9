@@ -59,6 +59,41 @@ BEGIN
     RETURN newjobnextrun;
 END;
 
+/* Begin - BUG#Z4792 */
+/* Same as sys.evaluate_jobnextrun above, except not update pgagent.pga_job */
+CREATE OR REPLACE FUNCTION sys.evaluate_jobnextrun_for_trigger(dbmsjobid IN NUMBER) 
+RETURN timestamp SECURITY INVOKER
+IS
+    newjobnextrun timestamp;
+    jobenabled BOOLEAN;
+BEGIN
+    SELECT j.jobenabled INTO jobenabled FROM pgagent.pga_job j WHERE j.jobid = dbmsjobid;
+
+    IF jobenabled THEN
+        set nls_date_format="YYYY-MM-DD HH24:MI:SS";
+
+        IF (SELECT s.dbmsjob_calendar_enable 
+            FROM pgagent.pga_schedule s
+            WHERE s.jscenabled = TRUE AND s.jscjobid = dbmsjobid) THEN
+            SELECT MIN(sys.evaluate_calendar_string(s.dbmsjob_interval, j.jobnextrun::pg_catalog.timestamp, NULL, false))
+            INTO newjobnextrun
+            FROM pgagent.pga_schedule s, pgagent.pga_job j
+            WHERE s.jscenabled = TRUE AND s.jscjobid = dbmsjobid
+              AND j.jobid = dbmsjobid;
+        ELSE
+            SELECT MIN(sys.evaluate_next_schedule_expression(s.dbmsjob_interval))
+            INTO newjobnextrun
+            FROM pgagent.pga_schedule s
+            WHERE s.jscenabled = TRUE AND s.jscjobid = dbmsjobid;
+        END IF;
+    ELSE
+        newjobnextrun := NULL;
+    END IF;
+
+    RETURN newjobnextrun;
+END;
+/* End - BUG#Z4792 */
+
 /* BEGIN - BUG#M0000412 */
 CREATE OR REPLACE PROCEDURE sys.pgagent_setval() AUTHID DEFINER IS
   next_job_id INTEGER;

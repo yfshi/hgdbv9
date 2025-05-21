@@ -586,10 +586,17 @@ CREATE OR REPLACE FUNCTION pgagent.pga_job_trigger()
 BEGIN
     IF NEW.jobenabled THEN
         IF NEW.jobnextrun IS NULL THEN
-             SELECT INTO NEW.jobnextrun
-                    MIN(pgagent.pga_next_schedule(jscid, jscstart, jscend, jscminutes, jschours, jscweekdays, jscmonthdays, jscmonths))
-               FROM pgagent.pga_schedule
-              WHERE jscenabled AND jscjobid=OLD.jobid;
+        	IF NOT (SELECT dbmsjob_flag FROM pgagent.pga_job WHERE jobid=OLD.jobid) THEN /* BUG#Z4792 */
+	             SELECT INTO NEW.jobnextrun
+	                    MIN(pgagent.pga_next_schedule(jscid, jscstart, jscend, jscminutes, jschours, jscweekdays, jscmonthdays, jscmonths))
+	               FROM pgagent.pga_schedule
+	              WHERE jscenabled AND jscjobid=OLD.jobid;
+	        ELSE
+	        	/* Begin - BUG#Z4792 */
+	        	SELECT sys.evaluate_jobnextrun_for_trigger(OLD.jobid) INTO NEW.jobnextrun;
+	        	NEW.failures := NEW.failures + 1;
+	        	/* End - BUG#Z4792 */
+	        END IF;
         END IF;
     ELSE
         IF NOT (SELECT dbmsjob_flag FROM pgagent.pga_job WHERE jobid=OLD.jobid) THEN
