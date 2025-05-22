@@ -2489,6 +2489,7 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	Oid			restype = InvalidOid;
 	List	   *whenexprs;
 	CaseWhen   *first_when; /* BUG#Z4593 */
+	bool		first_is_numeric = false; /* BUG#Z4593 */
 
 	/* Begin - BUG#Z4593 */
 	/* gram.y ensures this is true, future syntax changes will be captured here */
@@ -2526,6 +2527,17 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	}
 	else if (restype == INT4OID || restype == INT2OID || restype == INT8OID)
 		restype = NUMBEROID;
+
+	/*
+	 * Oracle doc say:
+	 * If the first search-result pair are numeric, then Oracle compares
+	 * all search-result expressions and the first expr to determine the
+	 * argument with the highest numeric precedence, implicitly converts
+	 * the remaining arguments to that data type, and returns that datatype.
+	 */
+#define ISNUMERICTYPE(t) ((t) == NUMBEROID || (t) == BINARY_FLOATOID || (t) == BINARY_DOUBLEOID)
+	if (ISNUMERICTYPE(ptype) || ISNUMERICTYPE(restype))
+		first_is_numeric = true;
 	/* End - BUG#Z4593 */
 
 	newc = makeNode(CaseExpr);
@@ -2539,9 +2551,15 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	 */
 	arg = transformExprRecurse(pstate, (Node *) copyObject(c->arg));
 
+	/* Begin - BUG#Z4593 */
+	if (arg && ISNUMERICTYPE(ptype) && ISNUMERICTYPE(exprType(arg)) && exprType(arg) > ptype)
+		ptype = exprType(arg);
+	/* End - BUG#Z4593 */
+
 	whenexprs = NIL;
 	if (database_mode == DB_ORACLE)
 	{
+		int			args_cnt = 0; /* BUG#Z4593 */
 		List	   *whenresults = NIL; /* BUG#Z4593 */
 		ListCell   *result_cell;
 
@@ -2550,19 +2568,54 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 			CaseWhen   *w = (CaseWhen *) lfirst(l);
 			Node	   *warg;
 			Node	   *wresult; /* BUG#Z4593 */
-			Expr	   *tmp;
+			Expr	   *arg_expr; /* BUG#Z4593 */
+			Expr	   *result_expr; /* BUG#Z4593 */
 
 			Assert(IsA(w, CaseWhen));
 
 			warg = (Node *) w->expr;
 			wresult = (Node *) w->result; /* BUG#Z4593 */
 
-			tmp = (Expr *) transformExprRecurse(pstate, warg);
-			whenexprs = lappend(whenexprs, tmp);
+			arg_expr = (Expr *) transformExprRecurse(pstate, warg);
+			whenexprs = lappend(whenexprs, arg_expr);
 
 			/* Begin - BUG#Z4593 */
-			tmp = (Expr *) transformExprRecurse(pstate, wresult);
-			whenresults = lappend(whenresults, tmp);
+			result_expr = (Expr *) transformExprRecurse(pstate, wresult);
+			whenresults = lappend(whenresults, result_expr);
+
+			args_cnt++;
+
+			/*
+			 * For the special case of decode, if the first search-result pair
+			 * are numeric, ptype and restype must be adjusted if necessary.
+			 */
+			if(first_is_numeric && args_cnt > 1)
+			{
+				Oid		new_ptype = exprType((Node *)arg_expr);
+				Oid		new_restype = exprType((Node *)result_expr);
+
+				/*
+				 * There is no need to worry about the legacy processing of the
+				 * int type, because int is mapped to NUMBER(38) in Oracle and
+				 * NUMBER has the lowest precedence.
+				 *
+				 * Oracle precedence order is:
+				 * BINARY_DOUBLEOID > BINARY_FLOATOID > NUMBEROID
+				 * we using the OID check which argument with the highest numeric
+				 * precedence, as a coincidence, the OIDs and precedence of numeric
+				 * types are always increasing in order.
+				 * This is a bit ugly, but it works.
+				 */
+				if (ISNUMERICTYPE(ptype) &&
+					ISNUMERICTYPE(new_ptype) &&
+					new_ptype > ptype)
+					ptype = new_ptype;
+
+				if (ISNUMERICTYPE(restype) &&
+					ISNUMERICTYPE(new_restype) &&
+					new_restype > restype)
+					restype = new_restype;
+			}
 			/* End - BUG#Z4593 */
 		}
 

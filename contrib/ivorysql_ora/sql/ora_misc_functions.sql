@@ -2481,9 +2481,10 @@ select nvl2(nvl(null, 111), 123, 456) from dual;	-- 123
 /* End - BUG#Z4592 */
 
 /* Begin - BUG#Z4593 */
-create table tb_datatype(c_char char(8), c_num NUMBER(5,2), c_dt date);
-insert into tb_datatype values('Hello', '12.3456', date'2025-05-10');
+create table tb_datatype(c_char char(8), c_num NUMBER(5,2), c_dt date, c_byflt binary_float, c_bydbl binary_double);
+insert into tb_datatype values('Hello', '12.3456', date'2025-05-10', -1.17549E-38, -2.2E-308D);
 select decode(c_num, c_char, 'A', c_num, 'B', 'C') from tb_datatype;
 select decode(c_dt, c_char, 'A', c_dt, 'B', 'C') from tb_datatype;
+select decode(c_num, c_byflt, 'A', c_bydbl, 'B', 'C') from tb_datatype;
 drop table tb_datatype;
 /* End - BUG#Z4593 */
