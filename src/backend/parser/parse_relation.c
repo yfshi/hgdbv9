@@ -4707,18 +4707,20 @@ ivyisMixedCase(const char *str)
 {
 	int has_upper = 0, has_lower = 0;
 
+	if (str == NULL)
+		return false;
+
 	while (*str)
 	{
-		if (isupper((unsigned char *)str))
-			has_upper = 1;
-		else if (islower((unsigned char *)str))
-			has_lower = 1;
+		unsigned char ch = (unsigned char)*str;
 
-		if (has_upper && has_lower)
-			return true;
+		if (isupper(ch))
+			has_upper = 1;
+		else if (islower(ch))
+			has_lower = 1;
 
 		str++;
 	}
 
-	return false;
+	return has_upper && has_lower;
 }
