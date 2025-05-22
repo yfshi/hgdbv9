@@ -99,11 +99,15 @@ create_db_check(ParseState *pstate, const CreatedbStmt *stmt)
 bool
 alter_database_set_check(AlterDatabaseSetStmt *stmt)
 {
-	Oid			datid = get_database_oid(stmt->dbname, false);
+	Oid			datid;
 
 	if (pg_strncasecmp(stmt->setstmt->name,"se_feature.",strlen("se_feature.")) == 0 ||
 		pg_strncasecmp(stmt->setstmt->name,"credcheck.",strlen("credcheck.")) == 0)
 	{
+		/*Begin -- bug#z4455*/
+		datid = get_database_oid(stmt->dbname, false);
+		/*Begin -- bug#z4455*/
+
 		/*Begin -- bug#z4705*/
 		if (!IS_SYSSSO(GetUserId()))	
 		{

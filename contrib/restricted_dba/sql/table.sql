@@ -8,6 +8,9 @@ create schema sch_sysdba_u1 authorization sysdba_u1;
 create schema sch_syssso_u1 authorization syssso_u1;
 create schema sch_syssao_u1 authorization syssao_u1;
 
+create schema sch_syssso_u2 authorization syssso_u2;
+grant create on schema sch_syssso_u2 to sysdba_role;
+
 create table tb1_sso_u1(id int);
 create table tb1_sao_u1(id int);
 alter table tb1_sso_u1 owner to syssso_u1;
@@ -26,6 +29,7 @@ create table public.tb1_dba_u1(id int);
 create table tb2_dba_u1(id int);
 create table sch_sysdba_u1.tb1_dba_u1(id int);
 create table sch_u1.tb1_dba_u1(id int);
+create table sch_syssso_u2.tb1_dba_u1(id int);
 ------ fail
 create table sch_syssso_u1.tb1_dba_u1(id int);
 create table sch_syssao_u1.tb1_dba_u1(id int);
@@ -104,6 +108,7 @@ drop table tb1_dba_u1;
 drop table tb2_dba_u1;
 drop table sch_sysdba_u1.tb1_dba_u1;
 drop table sch_u1.tb1_dba_u1;
+drop table sch_syssso_u2.tb1_dba_u1;
 ------ fail
 drop table tb1_sso_u1;
 drop table tb1_sao_u1;
@@ -118,6 +123,7 @@ drop schema sch_syssso_u1;
 drop schema sch_syssao_u1;
 drop schema sch_sysdba_u1;
 drop schema sch_u1;
+drop schema sch_syssso_u2;
 
 drop table tb1_u1;
 drop table tb1_sso_u1;

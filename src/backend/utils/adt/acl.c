@@ -5022,52 +5022,6 @@ is_admin_of_role(Oid member, Oid role)
 	return result;
 }
 
-/* Begin - ReqID:SRS-SECURITY-POWERS */
-
-/* same as above but not influenced by superuser */
-bool
-is_admin_of_role_nosuper(Oid member, Oid role)
-{
-	bool		result = false;
-
-	if (member == role)
-
-		/*
-		 * A role can admin itself when it matches the session user and we're
-		 * outside any security-restricted operation, SECURITY DEFINER or
-		 * similar context.  SQL-standard roles cannot self-admin.  However,
-		 * SQL-standard users are distinct from roles, and they are not
-		 * grantable like roles: PostgreSQL's role-user duality extends the
-		 * standard.  Checking for a session user match has the effect of
-		 * letting a role self-admin only when it's conspicuously behaving
-		 * like a user.  Note that allowing self-admin under a mere SET ROLE
-		 * would make WITH ADMIN OPTION largely irrelevant; any member could
-		 * SET ROLE to issue the otherwise-forbidden command.
-		 *
-		 * Withholding self-admin in a security-restricted operation prevents
-		 * object owners from harnessing the session user identity during
-		 * administrative maintenance.  Suppose Alice owns a database, has
-		 * issued "GRANT alice TO bob", and runs a daily ANALYZE.  Bob creates
-		 * an alice-owned SECURITY DEFINER function that issues "REVOKE alice
-		 * FROM carol".  If he creates an expression index calling that
-		 * function, Alice will attempt the REVOKE during each ANALYZE.
-		 * Checking InSecurityRestrictedOperation() thwarts that attack.
-		 *
-		 * Withholding self-admin in SECURITY DEFINER functions makes their
-		 * behavior independent of the calling user.  There's no security or
-		 * SQL-standard-conformance need for that restriction, though.
-		 *
-		 * A role cannot have actual WITH ADMIN OPTION on itself, because that
-		 * would imply a membership loop.  Therefore, we're done either way.
-		 */
-		return member == GetSessionUserId() &&
-			!InLocalUserIdChange() && !InSecurityRestrictedOperation();
-
-	(void) roles_is_member_of(member, ROLERECURSE_MEMBERS, role, &result);
-	return result;
-}
-/* End - ReqID:SRS-SECURITY-POWERS */
-
 
 /* does what it says ... */
 static int
@@ -5374,3 +5328,149 @@ get_current_userid(PG_FUNCTION_ARGS)
 	PG_RETURN_OID(roleid);
 }
 
+/* Begin - ReqID:SRS-SECURITY-POWERS */
+
+/* same as is_admin_of_role() but not influenced by superuser */
+bool
+is_admin_of_role_nosuper(Oid member, Oid role)
+{
+	bool		result = false;
+
+	if (member == role)
+
+		/*
+		 * A role can admin itself when it matches the session user and we're
+		 * outside any security-restricted operation, SECURITY DEFINER or
+		 * similar context.  SQL-standard roles cannot self-admin.  However,
+		 * SQL-standard users are distinct from roles, and they are not
+		 * grantable like roles: PostgreSQL's role-user duality extends the
+		 * standard.  Checking for a session user match has the effect of
+		 * letting a role self-admin only when it's conspicuously behaving
+		 * like a user.  Note that allowing self-admin under a mere SET ROLE
+		 * would make WITH ADMIN OPTION largely irrelevant; any member could
+		 * SET ROLE to issue the otherwise-forbidden command.
+		 *
+		 * Withholding self-admin in a security-restricted operation prevents
+		 * object owners from harnessing the session user identity during
+		 * administrative maintenance.  Suppose Alice owns a database, has
+		 * issued "GRANT alice TO bob", and runs a daily ANALYZE.  Bob creates
+		 * an alice-owned SECURITY DEFINER function that issues "REVOKE alice
+		 * FROM carol".  If he creates an expression index calling that
+		 * function, Alice will attempt the REVOKE during each ANALYZE.
+		 * Checking InSecurityRestrictedOperation() thwarts that attack.
+		 *
+		 * Withholding self-admin in SECURITY DEFINER functions makes their
+		 * behavior independent of the calling user.  There's no security or
+		 * SQL-standard-conformance need for that restriction, though.
+		 *
+		 * A role cannot have actual WITH ADMIN OPTION on itself, because that
+		 * would imply a membership loop.  Therefore, we're done either way.
+		 */
+		return member == GetSessionUserId() &&
+			!InLocalUserIdChange() && !InSecurityRestrictedOperation();
+
+	(void) roles_is_member_of(member, ROLERECURSE_MEMBERS, role, &result);
+	return result;
+}
+
+/* same as has_privs_of_role() but not influenced by superuser */
+bool
+has_privs_of_role_nosuper(Oid member, Oid role)
+{
+	/* Fast path for simple case */
+	if (member == role)
+		return true;
+
+	/*
+	 * Find all the roles that member has the privileges of, including
+	 * multi-level recursion, then see if target role is any one of them.
+	 */
+	return list_member_oid(roles_is_member_of(member, ROLERECURSE_PRIVS,
+											  InvalidOid, NULL),
+						   role);
+}
+
+/* same as aclmask() but not influenced by superuser */
+AclMode
+aclmask_nosuper(const Acl *acl, Oid roleid, Oid ownerId,
+		AclMode mask, AclMaskHow how)
+{
+	AclMode		result;
+	AclMode		remaining;
+	AclItem    *aidat;
+	int			i,
+				num;
+
+	/*
+	 * Null ACL should not happen, since caller should have inserted
+	 * appropriate default
+	 */
+	if (acl == NULL)
+		elog(ERROR, "null ACL");
+
+	check_acl(acl);
+
+	/* Quick exit for mask == 0 */
+	if (mask == 0)
+		return 0;
+
+	result = 0;
+
+	/* Owner always implicitly has all grant options */
+	if ((mask & ACLITEM_ALL_GOPTION_BITS) &&
+		has_privs_of_role_nosuper(roleid, ownerId))
+	{
+		result = mask & ACLITEM_ALL_GOPTION_BITS;
+		if ((how == ACLMASK_ALL) ? (result == mask) : (result != 0))
+			return result;
+	}
+
+	num = ACL_NUM(acl);
+	aidat = ACL_DAT(acl);
+
+	/*
+	 * Check privileges granted directly to roleid or to public
+	 */
+	for (i = 0; i < num; i++)
+	{
+		AclItem    *aidata = &aidat[i];
+
+		if (aidata->ai_grantee == ACL_ID_PUBLIC ||
+			aidata->ai_grantee == roleid)
+		{
+			result |= aidata->ai_privs & mask;
+			if ((how == ACLMASK_ALL) ? (result == mask) : (result != 0))
+				return result;
+		}
+	}
+
+	/*
+	 * Check privileges granted indirectly via role memberships. We do this in
+	 * a separate pass to minimize expensive indirect membership tests.  In
+	 * particular, it's worth testing whether a given ACL entry grants any
+	 * privileges still of interest before we perform the has_privs_of_role
+	 * test.
+	 */
+	remaining = mask & ~result;
+	for (i = 0; i < num; i++)
+	{
+		AclItem    *aidata = &aidat[i];
+
+		if (aidata->ai_grantee == ACL_ID_PUBLIC ||
+			aidata->ai_grantee == roleid)
+			continue;			/* already checked it */
+
+		if ((aidata->ai_privs & remaining) &&
+			has_privs_of_role_nosuper(roleid, aidata->ai_grantee))
+		{
+			result |= aidata->ai_privs & mask;
+			if ((how == ACLMASK_ALL) ? (result == mask) : (result != 0))
+				return result;
+			remaining = mask & ~result;
+		}
+	}
+
+	return result;
+}
+
+/* End - ReqID:SRS-SECURITY-POWERS */

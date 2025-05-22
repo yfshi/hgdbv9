@@ -9,6 +9,9 @@ create schema sch_sysdba_u2 authorization sysdba_u2;
 create schema sch_syssso_u1 authorization syssso_u1;
 create schema sch_syssao_u1 authorization syssao_u1;
 
+create schema sch_syssso_u2 authorization syssso_u2;
+grant create on schema sch_syssso_u2 to sysdba_role;
+
 create sequence seq1_syssso_u1;
 create sequence seq1_syssao_u1;
 create sequence seq1_u1;
@@ -29,6 +32,7 @@ create sequence sch_sysdba_u2.seq1_sysdba_u2;
 create sequence seq1_sysdba_u1;
 create sequence seq1_sysdba_u2;
 create sequence sch_u1.seq2_u1;
+create sequence sch_syssso_u2.seq1_sysdba_u1;
 ------ fail
 create sequence sch_syssso_u1.seq2_syssso_u1;
 create sequence sch_syssao_u1.seq2_syssao_u1;
@@ -103,6 +107,7 @@ grant all on seq_non_exist to sysdba_u1;
 drop sequence seq1_sysdba_u1_new;
 drop sequence seq1_sysdba_u2_new;
 drop sequence seq1_u1_new;
+drop sequence sch_syssso_u2.seq1_sysdba_u1;
 ------ fail
 drop sequence seq1_syssso_u1;
 drop sequence seq1_syssao_u1;
@@ -122,6 +127,7 @@ drop schema sch_sysdba_u2;
 drop schema sch_syssso_u1;
 drop schema sch_syssao_u1;
 drop schema sch_u1;
+drop schema sch_syssso_u2;
 
 drop sequence seq1_syssso_u1;
 drop sequence seq1_syssao_u1;

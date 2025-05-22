@@ -9,6 +9,8 @@ create schema sch_sysdba_u2 authorization sysdba_u2;
 create schema sch_syssso_u1 authorization syssso_u1;
 create schema sch_syssao_u1 authorization syssao_u1;
 create schema sch_u1 authorization u1;
+create schema sch_syssso_u2 authorization syssso_u2;
+grant create on schema sch_syssso_u2 to sysdba_role;
 
 create table tb1_sso_u1(id int, id2 int);
 create table tb1_sao_u1(id int, id2 int);
@@ -37,6 +39,7 @@ create view sch_sysdba_u2.v1_sysdba_u2 as select * from test_create;
 create view v2_sysdba_u1 as select * from test_create;
 create view v2_sysdba_u2 as select * from test_create;
 create view sch_u1.v1_u1 as select * from test_create;
+create view sch_syssso_u2.v1_sysdba_u1 as select * from test_create;
 ------ fail
 create view sch_syssso_u1.v2_syssso_u1 as select * from test_create;
 create view sch_syssao_u1.v2_syssao_u1 as select * from test_create;
@@ -93,6 +96,7 @@ alter view v2_sysdba_u1_new set schema sch_non_exist;
 drop view v2_sysdba_u1_new;
 drop view v2_sysdba_u2_new;
 drop view v1_u1_new;
+drop view sch_syssso_u2.v1_sysdba_u1;
 ------ fail
 drop view v1_sso_u1;
 drop view v1_sao_u1;
@@ -113,6 +117,7 @@ drop schema sch_sysdba_u2;
 drop schema sch_syssso_u1;
 drop schema sch_syssao_u1;
 drop schema sch_u1;
+drop schema sch_syssso_u2;
 
 \c template1 sysdba_u1
 drop database testdb;

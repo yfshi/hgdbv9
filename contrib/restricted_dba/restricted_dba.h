@@ -23,6 +23,7 @@
 #include "nodes/parsenodes.h"
 #include "parser/parse_node.h"
 #include "storage/lwlock.h"
+#include "utils/acl.h"
 
 #include "se_features_interface.h"
 
@@ -47,6 +48,17 @@ extern SeParamCtl *se_param_ctl;
 
 /*aclchk.c*/
 extern bool grant_object_check(GrantStmt *stmt);
+extern AclMode pg_class_aclmask_nosuper(Oid table_oid, Oid roleid,
+									 	AclMode mask, AclMaskHow how);
+extern AclMode pg_class_aclmask_ext_nosuper(Oid table_oid, Oid roleid, AclMode mask,
+											AclMaskHow how, bool *is_missing);
+extern AclMode pg_namespace_aclmask_nosuper(Oid nsp_oid, Oid roleid,
+											AclMode mask, AclMaskHow how);
+extern AclResult pg_attribute_aclcheck_nosuper(Oid table_oid, AttrNumber attnum,
+					  Oid roleid, AclMode mode);
+extern AclResult pg_attribute_aclcheck_all_nosuper(Oid table_oid, Oid roleid, AclMode mode,
+						  AclMaskHow how);
+
 
 /*user.c*/
 extern bool grant_role_check(GrantRoleStmt *stmt);

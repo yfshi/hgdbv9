@@ -21,7 +21,7 @@ PGFILEDESC = "restricted_dba - restrict superuser privilege from dba"
 
 REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/restricted_dba/restricted_dba.conf
 
-REGRESS = role helper tablespace database schema table view sequence index function procedure routine
+REGRESS = role helper tablespace database schema table view sequence index function procedure routine aclchk misc
 # ORA_REGRESS = restricted_dba
 
 
