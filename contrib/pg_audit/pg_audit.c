@@ -4300,11 +4300,15 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 	char	   *actionname;
 	TimestampTz audittime;
 	char	   *privilege;
-	Oid				useroid;
-	int32			sessionid;
-	char			inserttext[MAXPGPATH] = {0};
-	char		   *tmp = NULL;
-	char		   *timestr = NULL;
+	Oid			useroid = 0;
+	/* Begin - BUG#00004776 */
+	Oid			roleoid = 0;
+	char	   *rolename = NULL;
+	/* End - BUG#00004776 */
+	int32		sessionid;
+	char		inserttext[MAXPGPATH] = {0};
+	char	   *tmp = NULL;
+	char	   *timestr = NULL;
 
 	
 	if ((audit_GUC.audit_enable != AUDIT_ON || audit_GUC.audit_systemopers == AUDIT_OPER_OFF)
@@ -4453,10 +4457,32 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 		if (useroid != InvalidOid)
 			tmp = GetUserNameFromId(useroid, true);
 	}
+
+	/* Begin - BUG#00004776 */
+	if (OidIsValid(useroid))
+	{
+		CatCList   *catlist;
+		
+		catlist = SearchSysCacheList1(AUTHMEMMEMROLE, ObjectIdGetDatum(useroid));
+		if (catlist->n_members > 0)
+		{
+			HeapTuple   auth_member_tuple = &catlist->members[0]->tuple;
+			Form_pg_auth_members auth_member = (Form_pg_auth_members) GETSTRUCT(auth_member_tuple);
+
+			roleoid = auth_member->roleid;
+		}
+		if (catlist)
+			ReleaseSysCacheList(catlist);
+	}
+
+	if (OidIsValid(roleoid))
+	{
+		rolename = GetUserNameFromId(roleoid, true);
+	}
+	/* End - BUG#00004776 */
 	
-	
-	sprintf(inserttext, "insert into pg_sqlite_audit_log(sessionoid, useroid, username, audittime, result, audittype, commandid, actionname, clientport, clientname, clientip, clientmac, clientappname, errtext, authmethod, privlevel) values(%d, %d, \'%s\', \'%s\', \'%c\', \'%c\', 0, \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\')", 
-						sessionid, useroid, username != NULL ? username : tmp, timestr, result, AUDIT_TYPE_SYSYEM, actionname,
+	sprintf(inserttext, "insert into pg_sqlite_audit_log(sessionoid, useroid, username, roleoid, rolename, audittime, result, audittype, commandid, actionname, clientport, clientname, clientip, clientmac, clientappname, errtext, authmethod, privlevel) values(%d, %d, \'%s\', %d, \'%s\', \'%s\', \'%c\', \'%c\', 0, \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\')", 
+						sessionid, useroid, username != NULL ? username : tmp, roleoid, rolename, timestr, result, AUDIT_TYPE_SYSYEM, actionname,
 						clientInfo.port, clientInfo.clientname, clientInfo.ip, clientInfo.mac,
 						clientInfo.appname, errtext, clientInfo.authmethod, privilege);
 	rc = sqlite3_exec(conn, inserttext, NULL, NULL, &err);

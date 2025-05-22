@@ -2839,8 +2839,9 @@ ExecInitFunc(ExprEvalStep *scratch, Expr *node, List *args, Oid funcid,
 				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
 			}
 /* End - ReqID:SRS-SECURITY-AUDIT */
-		}
 			aclcheck_error(aclresult, OBJECT_FUNCTION, get_func_name(funcid));
+
+		}
 		InvokeFunctionExecuteHook(funcid);
 	}
 	/* End - SRS-PLSQL-SUBPROC */
