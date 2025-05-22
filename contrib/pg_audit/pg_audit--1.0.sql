@@ -746,3 +746,6 @@ CREATE FOREIGN TABLE public.sqlite_audit_log(
 
 ALTER TABLE public.sqlite_audit_log OWNER TO syssao;
 GRANT SELECT ON public.sqlite_audit_log TO syssso;
+
+GRANT SELECT ON public.sqlite_audit_log to syssao_role;
+GRANT SELECT ON public.sqlite_audit_log to syssso_role;
