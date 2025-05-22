@@ -217,6 +217,11 @@ bool   convert_gbk_to_utf8_question_mark = true;
 bool	connect_by_rownum_use_func = true;
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
 
+/* Begin - wai BUG#Z00001678 */
+int		format_max_string_size_len = 4000;
+/* End - wai BUG#Z00001678 */
+
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -1000,6 +1005,17 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#Z1325 */
+	/* Begin - wai BUG#Z00001678 */
+	{
+		{"ivorysql.format_max_string_size_len", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Set the format type length of Oracle varchar and varchar2 types when typmod is -1."),
+			NULL
+		},
+		&format_max_string_size_len,
+		4000, 4000, 32767,
+		NULL, NULL, NULL
+	},
+	/* End - wai BUG#Z00001678 */
 	/* End - ReqID:SRS-SQL-DBLINK */	
 #endif
 #if 0

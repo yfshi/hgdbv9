@@ -1886,15 +1886,33 @@ Datum
 oracle_substr3(PG_FUNCTION_ARGS)
 {
 	int32	len = PG_GETARG_INT32(2);
+	/* Begin - req#00001426 */
+	text *res;
+
 	if (len < 0)
 		PG_RETURN_NULL();
-	PG_RETURN_TEXT_P(ora_substr(PG_GETARG_DATUM(0), PG_GETARG_INT32(1), len));
+	res = ora_substr(PG_GETARG_DATUM(0), PG_GETARG_INT32(1), len);
+
+	if (res == NULL)
+		PG_RETURN_NULL();
+	else
+		PG_RETURN_TEXT_P(res);
+	/* End - req#00001426 */
 }
 
 Datum
 oracle_substr2(PG_FUNCTION_ARGS)
 {
-	PG_RETURN_TEXT_P(ora_substr(PG_GETARG_DATUM(0), PG_GETARG_INT32(1), -1));
+	/* Begin - req#00001426 */
+	text *res;
+
+	res = ora_substr(PG_GETARG_DATUM(0), PG_GETARG_INT32(1), -1);
+
+	if (res == NULL)
+		PG_RETURN_NULL();
+	else
+		PG_RETURN_TEXT_P(res);
+	/* End - req#00001426 */
 }
 
 /*
@@ -1903,6 +1921,10 @@ oracle_substr2(PG_FUNCTION_ARGS)
 static text *
 ora_substr(Datum str, int start, int len)
 {
+	/* Begin - req#00001426 */
+	text *result;
+	/* End - req#00001426 */
+
 	if (start == 0)
 		start = 1;	/* 0 is interpreted as 1 */
 	else if (start < 0)
@@ -1914,16 +1936,29 @@ ora_substr(Datum str, int start, int len)
 		n = pg_mbstrlen_with_len(VARDATA_ANY(t), VARSIZE_ANY_EXHDR(t));
 		start = n + start + 1;
 		if (start <= 0)
-			return cstring_to_text("");
+			return NULL; /* req#00001426 */
 		str = PointerGetDatum(t);	/* save detoasted text */
 	}
 
+	/* Begin - req#00001426 */
+	/*
+	 * empty string is considered as NULL in oracle
+	 */
 	if (len < 0)
-		return DatumGetTextP(DirectFunctionCall2(text_substr_no_len,
+		result =  DatumGetTextP(DirectFunctionCall2(text_substr_no_len,
 			str, Int32GetDatum(start)));
 	else
-		return DatumGetTextP(DirectFunctionCall3(text_substr,
+		result =  DatumGetTextP(DirectFunctionCall3(text_substr,
 			str, Int32GetDatum(start), Int32GetDatum(len)));
+	if (result != NULL &&
+		VARSIZE_ANY_EXHDR(result) == 0)
+	{
+		pfree(result);
+		return NULL;
+	}
+	else
+		return DatumGetTextP(result);
+	/* End - req#00001426 */
 }
 
 /****************************************************************
@@ -2023,6 +2058,10 @@ ora_instr_mb(text *txt, text *pattern, int start, int nth, Oid coll /* BUG#Z1463
 		if (beg >= end)
 			return 0;	/* out of range */
 	}
+	else if (start == 0) /* req#00001426 */
+	{
+		return 0;
+	}
 	else
 	{
 		dx = -1;
@@ -2073,6 +2112,10 @@ ora_instr(text *txt, text *pattern, int start, int nth, Oid coll /* BUG#Z1463 */
 		end = len_txt - len_pat + 1;
 		if (beg >= end)
 			return 0;	/* out of range */
+	}
+	else if (start == 0) /* req#00001426 */
+	{
+		return 0;
 	}
 	else
 	{

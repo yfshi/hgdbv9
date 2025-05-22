@@ -251,3 +251,81 @@ insert into fktable values(1,'2',45.5);
 
 drop table fktable;
 drop table pktable;
+
+--req#00001426 
+create table test_null(id int,name varchar2(10));
+insert into test_null values(1,'12345');
+
+--1 row
+select * from test_null where substr(name,6,1) is null;
+
+--1 row
+select * from test_null where substr(name,6) is null;
+
+--1 row
+select * from test_null where substr(name,-6,1) is null;
+
+--1 row
+select * from test_null where substr(name,-6) is null;
+
+--no row
+select * from test_null where substr(name,5,1) is null;
+
+--no row
+select * from test_null where substr(name,5) is null;
+
+--no row
+select * from test_null where substr(name,-5,1) is null;
+
+--no row
+select * from test_null where substr(name,-5) is null;
+
+--1 row
+select * from test_null where substr(name,5,-1) is null;
+
+--1 row
+select * from test_null where substr(name, 2,-1) is null;
+
+--1 row
+select * from test_null where substr(name,2,0) is null;
+
+
+--no row
+select * from test_null where substr(name, -1,1) is null;
+
+--no row
+select * from test_null where substr(name, -5,1) isnull;
+
+--print 1
+select substr(name, -5,1) from test_null;
+
+
+--1 row
+select * from test_null where substr(name, -6,1) is null;
+
+
+--no row
+select * from test_null where instr(name, '1',1) is null;
+
+--no row
+select * from test_null where instr(name,'1',2) is null;
+
+--print 0
+select instr(name, '1',0) from test_null;
+
+
+--print 0
+select instr(name, '1',2) from test_null;
+
+--print 1
+select instr(name, '1',1) from test_null;
+
+--print 1
+select instr(name, '1',-1) from test_null;
+
+
+--print 0
+select instr(name, '1',-0) from test_null;
+
+--clean data
+drop table test_null;

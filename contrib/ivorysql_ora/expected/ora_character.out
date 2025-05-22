@@ -402,10 +402,10 @@ SELECT * FROM TEST_ORAVARCHAR WHERE a='111';
 VACUUM ANALYZE TEST_ORAVARCHAR;
 --SET enable_bitmapscan = off;
 explain (costs off) SELECT * FROM TEST_ORAVARCHAR WHERE a='111';
-                       QUERY PLAN                        
----------------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Index Scan using test_oravarchar_b on test_oravarchar
-   Index Cond: ((a)::varchar2(5 char) = '111'::varchar2)
+   Index Cond: ((a)::varchar2(5 char) = '111'::varchar2(4000))
 (2 rows)
 
 -- drop table

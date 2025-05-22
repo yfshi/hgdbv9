@@ -413,3 +413,316 @@ show ivorysql.compatible_mode;
 
 drop database tdblnk;
 set ivorysql.compatible_mode to oracle;
+--bug#Z1678
+create schema enrol11;
+CREATE  TABLE enrol11."RES_ACCESSPOINT"("TYPE" VARCHAR2(64) ,"CUTIN_DATE" TIMESTAMP(6) ,
+"LONGITUDE" FLOAT ,"LATITUDE" FLOAT ,"CITY_ID" NUMBER ,"STATUS" NUMBER ,"MAINT_DEP" VARCHAR2(64) ,
+"COUNTY_ID" NUMBER ,"LOCATION" VARCHAR2(255) ,"RELATED_SITE" NUMBER ,"ZH_LABEL" VARCHAR2(255)   NOT NULL,
+"TIME_STAMP" TIMESTAMP(6) ,"STATEFLAG" NUMBER   NOT NULL,"REMARK" VARCHAR2(255) ,
+"CREATOR" VARCHAR2(255) ,"INT_ID" NUMBER   NOT NULL,"CREAT_TIME" TIMESTAMP(6) ,"MODIFIER" VARCHAR2(255) ,
+"MODIFY_TIME" TIMESTAMP(6) ,"TELEPHONE" VARCHAR2(64) ,"MAINTAIN_PERSON" VARCHAR2(64) ,"MAINTAIN_PHONE" VARCHAR2(64) ,
+"IS_WRONG" VARCHAR2(32) ,"WRONG_INFO" VARCHAR2(1024) ,"RESOURCE_POINT_CODE" VARCHAR2(128) ,"PROJECT_ID" VARCHAR2(64) ,
+"GPS" VARCHAR2(64) ,"ALIAS" VARCHAR2(128)  DEFAULT '',"REALX" FLOAT ,"REALY" FLOAT ,"EDIT_SESSION" NUMBER ,"IS_RESERVE" NUMBER(10,0) ,
+"BUILD_AREA_ID" NUMBER(10,0) ,"CUID" VARCHAR2(255) ,"LOADFLAG" VARCHAR2(48) ,"MANAGE_UNIT" VARCHAR2(128)  DEFAULT '',"IS_DENGGAN" VARCHAR2(24)  DEFAULT '',
+"DENGGAN_CODE" VARCHAR2(128)  DEFAULT '',"QRCODE" VARCHAR2(255)  DEFAULT '',"INVENT_ROOM_ID" VARCHAR2(255) ,"ADDRESS_CODE" VARCHAR2(255) ,
+"ZICHAN_SITE_CODE1" VARCHAR2(255) ,"ASSETCODE" VARCHAR2(255) ,"RESOURCE_TAG" VARCHAR2(255)  DEFAULT '',
+"RELATED_DATA_CENTRE" VARCHAR2(255)  DEFAULT '',"LIFECYCLE_STATUS" VARCHAR2(255)  DEFAULT 2,
+"RESOURCE_NUM" VARCHAR2(255)  DEFAULT '',"QUALITOR" VARCHAR2(255)  DEFAULT '',"MOBILE_ADDRESS" VARCHAR2(255)  DEFAULT '',
+"RELATED_IRON" VARCHAR2(255)  DEFAULT '',"COLLECT_IRON_NUM" VARCHAR2(255)  DEFAULT '',"COLLECT_IRON_NAME" VARCHAR2(255)  DEFAULT '',
+"IS_RELATED_IRON" VARCHAR2(255)  DEFAULT '',"IS_POINT" VARCHAR2(255)  DEFAULT '',"SITE_CODE" VARCHAR2(255)  DEFAULT '',
+"SITE_CODE_NAME" VARCHAR2(255)  DEFAULT '',"REALIZE_MODEL" VARCHAR2(255)  DEFAULT '',"MAX_POWER" VARCHAR2(255)  DEFAULT '',
+"ASSET_SITE_NUM" VARCHAR2(255)  DEFAULT '',"ASSET_SITE_DESCRIBE" VARCHAR2(255)  DEFAULT '',"TOTAL_POWER" VARCHAR2(255)  DEFAULT '',
+"LOCATION_PRIMARY" VARCHAR2(255)  DEFAULT '',"ASSET_TAG" VARCHAR2(255)  DEFAULT '',"ASSETS_NAME" VARCHAR2(255)  DEFAULT '',
+"PROVINCE_ID" VARCHAR2(255)  DEFAULT 1289887769,"PROPERTY_UNIT" VARCHAR2(64)  DEFAULT '',"PROPERTY_RIGHT" VARCHAR2(64)  DEFAULT '',
+"DATA_QUALITY_PERSON" VARCHAR2(255)  DEFAULT '',"ZH_LABEL_JT" VARCHAR2(255) ,"LOCATION_PRIMARY_Y" VARCHAR2(255) ,
+"AIRCONDITIONER_POWER" VARCHAR2(64)  DEFAULT '',"LOCATION_LS" VARCHAR2(255) ,"SHARE_ATTRIBUTE" VARCHAR2(255)  DEFAULT '',
+"FIVE_G_FLAG" VARCHAR2(255)  DEFAULT '',"RETIRE_TIME" TIMESTAMP(6) ,"LONGITUDE_WX" VARCHAR2(255) ,"LATITUDE_WX" VARCHAR2(255) ,
+"ASSET_TYPE" VARCHAR2(255) ,"SERVICE_SITE_TYPE" VARCHAR2(255) ,"GRID" VARCHAR2(255)  DEFAULT '',"REIMBURSEMENT_NAME" VARCHAR2(255)  DEFAULT '',
+"REIMBURSEMENT_CODE" VARCHAR2(255)  DEFAULT '',"STANDARD_ADDRESS" VARCHAR2(255) ,"QR_CODE_NO" VARCHAR2(255)  DEFAULT '',
+"PROJECT_CODE" VARCHAR2(255)  DEFAULT '',"PROJECT_NAME" VARCHAR2(255)  DEFAULT '',"ASSET_ADDRESS_CODE" VARCHAR2(255)  DEFAULT '',
+"FLOOR_NUM" VARCHAR2(255)  DEFAULT '',"LONGITUDE_JY" NUMBER ,"LATITUDE_JY" NUMBER ,"JY_FROM" VARCHAR2(64) ,"JY_JULI" VARCHAR2(64) ,
+"WHETHER_TELECOM_SERVICE" VARCHAR2(255)  DEFAULT '',"TELECOM_SERVICE_PROJECT_CODE" VARCHAR2(255)  DEFAULT '',"TELECOM_SERVICE_PROJECT_NAME" VARCHAR2(255)  DEFAULT '',
+"MAINIT_UNIT" VARCHAR2(255) ,"AREA_TYPE" VARCHAR2(255) ,"RELATED_SITE_BAK" NUMBER ,"PMS_DESIGN_CODE" VARCHAR2(255) ,"PMS_DESIGN_NAME" VARCHAR2(255) ,
+"IF_VILLAGE_PASS_SERV" VARCHAR2(255) ,"VILLAGE_PASS_SERV_CODE" VARCHAR2(255) ,"VILLAGE_PASS_SERV_NAME" VARCHAR2(255) ,"CHARTER" VARCHAR2(255) ,"CHARTER_PHONE" VARCHAR2(255) );
+CREATE  TABLE enrol11."RMS_EQUIPROOM"("INT_ID" NUMBER(38,0)   NOT NULL,
+"STATEFLAG" NUMBER   NOT NULL,"TIME_STAMP" TIMESTAMP(6) ,
+"CREATOR" VARCHAR2(255) ,"MODIFIER" VARCHAR2(255) ,
+"MODIFY_TIME" TIMESTAMP(6) ,"CREAT_TIME" TIMESTAMP(6)  DEFAULT SYSDATE(),"ZH_LABEL" VARCHAR2(256) ,
+"ABBREVIATION" VARCHAR2(255) ,"ALIAS" VARCHAR2(255) ,"ROOM_TYPE" VARCHAR2(255) ,"NODEEQUIP_TYPE" VARCHAR2(255) ,
+"RELATED_SITE_ID" NUMBER(38,0) ,"STAIRS_IN" NUMBER ,"LENGTH" FLOAT ,"HEIGHT" FLOAT ,"WIDTH" FLOAT ,"RACK_START_ROW" VARCHAR2(255) ,
+"RACK_END_ROW" VARCHAR2(255) ,"RACK_START_COL" VARCHAR2(255) ,"RACK_END_COL" VARCHAR2(255) ,"RACK_ROW_DIRECTION" VARCHAR2(255) ,
+"RACK_COL_DIRECTION" VARCHAR2(255) ,"IS_COM_BUILD" VARCHAR2(255) ,"COM_BUILD_UNIT" VARCHAR2(255) ,"IS_SHARE" VARCHAR2(255) ,
+"SHARE_VENDOR" VARCHAR2(255) ,"REMARK" VARCHAR2(255) ,"CITY_ID" NUMBER(38,0) ,"EQUIPMENTCODE" VARCHAR2(255)  DEFAULT '',
+"PROPERTY" VARCHAR2(255)  DEFAULT '',"EQUIPROOM_CODE" VARCHAR2(255)  DEFAULT '',"IS_WRONG" VARCHAR2(255) ,"WRONG_INFO" VARCHAR2(4000) ,
+"PROVINCE_ID" NUMBER(38,0)  DEFAULT 1289887769,"COUNTY_ID" NUMBER(38,0)  DEFAULT '',"BUREAU_ID" NUMBER(38,0) ,"EQUIPROOM_ADDRESS" VARCHAR2(255) ,
+"PROJECT_ID" NUMBER(38,0) ,"PROJECT_NAME" VARCHAR2(200) ,"DH_SITE_NAME" VARCHAR2(100) ,"CHECK_TIME" TIMESTAMP(6) ,
+"HZ_ID" VARCHAR2(100) ,"STATUS" VARCHAR2(40)  DEFAULT 2,"IN_DATE" TIMESTAMP(6) ,"ADMINISTRATION" VARCHAR2(40) ,
+"FAIL_ACC_UNIT" VARCHAR2(100) ,"MANAGE_COMPANY" VARCHAR2(100) ,"FADIANJIZU" VARCHAR2(100) ,"FAIL_ACC_UNIT_ID" VARCHAR2(100) ,
+"FADIANJIZU_ID" VARCHAR2(100) ,"QRCODE" VARCHAR2(255) ,"TRANS_ZU" VARCHAR2(100) ,"TRANS_ZU_ID" VARCHAR2(100) ,
+"SHIFEN_ZU" VARCHAR2(100) ,"SHIFEN_ZU_ID" VARCHAR2(100) ,"TRANS_ROOM_TYPE" VARCHAR2(100) ,"ACREAGE" NUMBER(10,2) ,
+"PRO_TASK_ID" NUMBER ,"FILE_PATH" VARCHAR2(1000) ,"LOCATION_INIT_STATUS" NUMBER ,"ROW_NUM" NUMBER ,"COL_NUM" NUMBER ,
+"ROW_DIRECTION" NUMBER  DEFAULT 1,"COL_DIRECTION" NUMBER  DEFAULT 3,"SERVICE_LEVEL" VARCHAR2(255) ,"ROW_START_NO" VARCHAR2(56) ,
+"COL_START_NO" VARCHAR2(56) ,"TRANS_ID" VARCHAR2(255) ,"SECURITY_LEVEL" VARCHAR2(22) ,
+"SURVEY_STATUS" NUMBER  DEFAULT 0,"DONGHUAN_ZU_ID" VARCHAR2(255) ,"DONGHUAN_ZU" VARCHAR2(255) ,
+"BACKGROUND_IMAGE" VARCHAR2(512) ,"PRO_DH_ZU_ID" VARCHAR2(255) ,"LONGITUDE" NUMBER(13,7) ,
+"LATITUDE" NUMBER(13,7) ,"QUALITOR" VARCHAR2(32) ,"RESFDN" VARCHAR2(255) ,"RELATED_TOWER_CODE" VARCHAR2(255) ,
+"PLACE" VARCHAR2(255) ,"CQ_UNIT" VARCHAR2(255) ,"ROOM_LEVEL" NUMBER(38,0) ,"TRANS_ROOM_TYPEID" NUMBER(38,0) ,
+"BINDBYHAND" NUMBER ,"SF_DW" VARCHAR2(20) ,"RENT_TYPE" VARCHAR2(255)  DEFAULT '',"WHJB" VARCHAR2(255) ,
+"WHLX" VARCHAR2(255) ,"DX" VARCHAR2(255) ,"DH_SITE_TYPE" VARCHAR2(100) ,"JW_DATE" DATE ,"TW_DATE" DATE ,
+"AB_FLAG" NUMBER ,"EAM_CODE" VARCHAR2(100) ,"AIR_RATE" VARCHAR2(100) ,"NE_RATE" VARCHAR2(100) ,"TOWER_ROOM_TYPE" VARCHAR2(100) ,
+"DH_GXX_NAME" VARCHAR2(100) ,"EAM_ORG" VARCHAR2(100) ,"XZQH" VARCHAR2(100) ,"XHSC" NUMBER ,"ZTSC" NUMBER ,"BJR" VARCHAR2(100) ,
+"IS_GDYJ" VARCHAR2(100) ,"POWER_ROOM_TYPE" VARCHAR2(100) ,"AREAROOM" VARCHAR2(255) ,"RELATED_FLOOR_CUID" VARCHAR2(255) ,
+"TRANS_ROOM" VARCHAR2(25) ,"IS_TRANSFER" VARCHAR2(32) ,"METERING_MODE" VARCHAR2(32) ,"POWER_TYPE" VARCHAR2(32) ,
+"AIR_SUPPLY" VARCHAR2(32) ,"ALREADY_BAY" VARCHAR2(32) ,"CAN_BAY" VARCHAR2(32) ,"ALREADY_AREA" VARCHAR2(32) ,
+"CAN_AREA" VARCHAR2(32) ,"IS_DATA" VARCHAR2(32) ,"MAINT_MODE" VARCHAR2(32) ,"KEY_TYPE" VARCHAR2(32) ,
+"BUSINESS_BRANCH" VARCHAR2(32) ,"IS_2G_3G" VARCHAR2(32) ,"MAINTANCER" VARCHAR2(32) ,"BUILD_TYPE" VARCHAR2(32) ,
+"CAB_COL_DIRECTION" VARCHAR2(32) ,"CAB_ROW_DIRECTION" VARCHAR2(32) ,"CAB_END_COL" VARCHAR2(32) ,
+"CAB_START_COL" VARCHAR2(32) ,"CAB_END_ROW" VARCHAR2(32) ,"CAB_START_ROW" VARCHAR2(32) ,
+"USEDAREA" VARCHAR2(32) ,"COM_SHARE_UNIT" VARCHAR2(32) ,"CUTIN_DATE" TIMESTAMP(6) ,"STATE" VARCHAR2(32) ,
+"ROOM_TYPE1" VARCHAR2(32) ,"OLD_NAME" VARCHAR2(32) ,"MANAGE_UNIT" VARCHAR2(32) ,"INVENT_ROOM_ID" VARCHAR2(255) ,
+"DANGER_RANK" VARCHAR2(255) ,"ADDRESS_CODE" VARCHAR2(255) ,"LABEL" VARCHAR2(32) ,"ZICHAN_SITE_CODE1" VARCHAR2(255) ,
+"ASSETCODE" VARCHAR2(255) ,"CUID" VARCHAR2(255) ,"OWNERSHIP" VARCHAR2(255)  DEFAULT '',
+"SHARED_COMPANY" VARCHAR2(255)  DEFAULT '',"CONSTRUCT_COMPANY" VARCHAR2(255)  DEFAULT '',
+"IS_APPROVED" VARCHAR2(255)  DEFAULT '',"STANDARD_NAME" VARCHAR2(255)  DEFAULT '',"COL_CUID" VARCHAR2(255)  DEFAULT '',
+"MAIN_DEVICE_MODEL" VARCHAR2(255)  DEFAULT '',"ADDRESS" VARCHAR2(255)  DEFAULT '',"OBJECT_TYPE_CODE" NUMBER  DEFAULT 0,
+"ROW_COUNT" NUMBER  DEFAULT 0,"COL_COUNT" NUMBER  DEFAULT 0,"BASE_STA_DEVICE_TYPE" VARCHAR2(255)  DEFAULT '',
+"COLUMNCOUNT" NUMBER  DEFAULT 0,"CONTACT_ADDRESS" VARCHAR2(255)  DEFAULT '',"FLOOR_MAXNUM" NUMBER  DEFAULT 0,"LABEL_CN" VARCHAR2(255)  DEFAULT '',
+"MAINTAINDEPARTMENT" VARCHAR2(255)  DEFAULT '',"TELEPHONE" VARCHAR2(255)  DEFAULT '',"CONTACTOR" VARCHAR2(255)  DEFAULT '',
+"DEVICE_RELATED_PROJECT" VARCHAR2(255)  DEFAULT '',"SEVICE_LEADER_CODE" NUMBER  DEFAULT 0,"OWNER_LINKTEL" VARCHAR2(255)  DEFAULT '',
+"OWNER_LINKMAN" VARCHAR2(255)  DEFAULT '',"LEASE" VARCHAR2(255)  DEFAULT '',"RESPONSIBLE_LEAD" VARCHAR2(255)  DEFAULT '',
+"RESOURCE_ID" VARCHAR2(255)  DEFAULT '',"ROOM_ITS_TEL" NUMBER  DEFAULT 0,"ERP_CODE" VARCHAR2(255)  DEFAULT '',
+"GT_VERSION" NUMBER  DEFAULT 0,"OBJECTID" NUMBER  DEFAULT 0,"RESPONSIBLE_UNIT" VARCHAR2(255)  DEFAULT '',"ROOM_ADMIN_PHONE" VARCHAR2(255)  DEFAULT '',
+"ROOM_TYPE_IRMS" NUMBER  DEFAULT 0,"ROOM_ITS" VARCHAR2(255)  DEFAULT '',"ROOM_NO" VARCHAR2(255)  DEFAULT '',
+"ROOM_ADMIN" VARCHAR2(255)  DEFAULT '',"LAST_MODIFY_TIME" DATE ,"ROOM_IDENTIFICATION" VARCHAR2(255)  DEFAULT '',
+"ROOM_LOCATION" VARCHAR2(255)  DEFAULT '',"ROOM_COVER_REGION" VARCHAR2(255)  DEFAULT '',"TOWER_COMPANY_STATUS" VARCHAR2(255)  DEFAULT '',
+"TRANSFER_NOT" VARCHAR2(255)  DEFAULT '',"ROOM_FORM" VARCHAR2(255)  DEFAULT '',"ROOM_STRUCTURE" VARCHAR2(255)  DEFAULT '',
+"MOVE_CODE" VARCHAR2(255)  DEFAULT '',"TOWER_COMPANY_ROOM" VARCHAR2(255)  DEFAULT '',"TOWER_COMPANY_SITE" VARCHAR2(255)  DEFAULT '',
+"COLLECTION_SITE_CODE" VARCHAR2(255)  DEFAULT '',"COLLECTION_ROOM_CODE" VARCHAR2(255)  DEFAULT '',"COLLECTION_ROOM_NAME" VARCHAR2(255)  DEFAULT '',
+"WHETHER_ASSOCIATED_TOWER" VARCHAR2(255)  DEFAULT '',"FLOOR_LOCATION" VARCHAR2(255)  DEFAULT '',"PROPERTY_NATURE" VARCHAR2(255)  DEFAULT '',
+"ASSET_NAME" VARCHAR2(255)  DEFAULT '',"IS_MOVING_RING" VARCHAR2(255)  DEFAULT '',
+"STANDARD_NOMENCLATURE" VARCHAR2(512)  DEFAULT '',"PROPERTY_UNIT" VARCHAR2(255)  DEFAULT '',"EQUIPMENT_POWER" VARCHAR2(255)  DEFAULT '',
+"AIRCONDITIONER_POWER" VARCHAR2(255)  DEFAULT '',"LOCATION_DESCRIPTION" VARCHAR2(255)  DEFAULT '',"LOCATION_CODE" VARCHAR2(255)  DEFAULT '',
+"INSTALLABLE_EQUIVALENT_RACK" NUMBER  DEFAULT 0,"ALREADY_EQUIVALENT_RACK" NUMBER  DEFAULT 0,"ROOM_CLASSIFICATION" VARCHAR2(255)  DEFAULT '',
+"IS_ADDRESS" VARCHAR2(255)  DEFAULT '',"ROOM_NATURE" VARCHAR2(255)  DEFAULT '',"ADDRESS_NAME" VARCHAR2(255)  DEFAULT '',
+"ADDRESS_CODE_WIRELESS" VARCHAR2(255)  DEFAULT '',"MAX_POWER" NUMBER(22,10) ,"POWER_CAPACITY" NUMBER(22,10) ,"RELATED_TIETA_CODE" VARCHAR2(255) ,
+"ZX_PROPERTY_UNIT" VARCHAR2(255) ,"ZX_INDEX" VARCHAR2(255) ,"STAIRSIN" NUMBER ,"ZH_LABEL_JT" VARCHAR2(255) ,"PROJECT_NUM" VARCHAR2(255)  DEFAULT '',
+"IMPORTANT_ROOM" VARCHAR2(255) ,"RETIRE_TIME" TIMESTAMP(6)  DEFAULT null,"FIVE_G_FLAG" VARCHAR2(255)  DEFAULT '',"ASSET_TYPE" VARCHAR2(255) ,
+"SAVEOUTLINE" VARCHAR2(255) ,"GRID" VARCHAR2(255)  DEFAULT '',"REIMBURSEMENT_NAME" VARCHAR2(255)  DEFAULT '',"REIMBURSEMENT_CODE" VARCHAR2(255)  DEFAULT '',
+"CORRIGENDUM" VARCHAR2(255) ,"PROJECT_CODE" VARCHAR2(255)  DEFAULT '',"UUID" VARCHAR2(255)  DEFAULT '',"CHINA_TOWER_OPERATIONS_ID" VARCHAR2(255)  DEFAULT '',
+"WHETHER_TELECOM_SERVICE" VARCHAR2(255)  DEFAULT '',"TELECOM_SERVICE_PROJECT_CODE" VARCHAR2(255)  DEFAULT '',
+"TELECOM_SERVICE_PROJECT_NAME" VARCHAR2(255)  DEFAULT '',"ATTACHMENT" VARCHAR2(2000) ,"PRODUCTION_BUILDING_TYPE" VARCHAR2(64) ,
+"POWER_USED" NUMBER(38,0) ,"POWER_TOTAL" NUMBER(38,0) ,"SITE_ID" NUMBER(38,0) ,"OUTLINE" CLOB ,"COMPASS" NUMBER(38,0) ,
+"NAME_OFFSET" VARCHAR2(255) ,"ADDRESS_CODE_A" VARCHAR2(255) ,"MAINIT_UNIT" VARCHAR2(255) ,"PMS_DESIGN_CODE" VARCHAR2(255) ,
+"PMS_DESIGN_NAME" VARCHAR2(255) ,"HALLWAY_NUM" VARCHAR2(64) ,"HALLWAY_WIDTH" VARCHAR2(64) ,"CHARTER" VARCHAR2(255) ,
+"CHARTER_PHONE" VARCHAR2(255) ,"COMPASS_OFFSET" NUMBER(38,0) ,"BUSINESS_UNIT" VARCHAR2(255) ,"PLAN_RACK_NUM" NUMBER(22,0) ,
+"LOADABLE_RACK_NUM" NUMBER(22,0) ,"INSTALLED_RACK_NUM" NUMBER(22,0) ,"IS_HEADQUARTERS_USED" VARCHAR2(64) ,"UUID_JITUAN" VARCHAR2(255) ,"
+IF_VILLAGE_PASS_SERV" VARCHAR2(255) ,"VILLAGE_PASS_SERV_CODE" VARCHAR2(255) ,"VILLAGE_PASS_SERV_NAME" VARCHAR2(255) );
+DO $d$
+    BEGIN
+        EXECUTE $$ create public database link tdblnk
+			connect to enrol11 identified by "ivy123"
+			using '(DESCRIPTION =
+            (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
+            (CONNECT_DATA =
+                (SERVER = DEDICATED)
+                (SERVICE_NAME = regression)
+            ))'$$;
+    END;
+$d$;
+set search_path to enrol11;
+CREATE OR REPLACE VIEW enrol11.V_NE_EQUIPROOM
+AS SELECT rms_equiproom."INT_ID",
+    rms_equiproom."ZH_LABEL",
+    rms_equiproom."CITY_ID",
+    rms_equiproom."COUNTY_ID",
+    rms_equiproom."STATEFLAG",
+    rms_equiproom."STATUS" ,
+    rms_equiproom."CUID"
+   FROM "RMS_EQUIPROOM" rms_equiproom
+  WHERE rms_equiproom."STATEFLAG" = 0::number
+UNION ALL
+ SELECT res_accesspoint."INT_ID",
+    res_accesspoint."ZH_LABEL",
+    res_accesspoint."CITY_ID",
+    res_accesspoint."COUNTY_ID",
+    res_accesspoint."STATEFLAG",
+    to_char(res_accesspoint."STATUS" ) AS "STATUS" ,
+    res_accesspoint."CUID" 
+   FROM "RES_ACCESSPOINT" res_accesspoint
+  WHERE res_accesspoint."STATEFLAG" = 0::number;
+  
+reset search_path;
+\d enrol11.V_NE_EQUIPROOM
+                  View "enrol11.v_ne_equiproom"
+  Column   |      Type      |   Collation    | Nullable | Default 
+-----------+----------------+----------------+----------+---------
+ INT_ID    | number         |                |          | 
+ ZH_LABEL  | varchar2(256)  | using_nls_comp |          | 
+ CITY_ID   | number         |                |          | 
+ COUNTY_ID | number         |                |          | 
+ STATEFLAG | number         |                |          | 
+ STATUS    | varchar2(4000) | using_nls_comp |          | 
+ CUID      | varchar2(255)  | using_nls_comp |          | 
+
+select * from enrol11.V_NE_EQUIPROOM@tdblnk;
+ INT_ID | ZH_LABEL | CITY_ID | COUNTY_ID | STATEFLAG | STATUS | CUID 
+--------+----------+---------+-----------+-----------+--------+------
+(0 rows)
+
+CREATE TABLE rms_equiproom(int_id number(38,0),zh_label varchar2(256)
+,city_id number(38,0),county_id number(38,0),stateflag number NOT null,status varchar2(40),
+cuid varchar2(255));
+CREATE TABLE res_accesspoint(int_id number NOT null,
+zh_label varchar2(255),city_id number,county_id number,
+stateflag number NOT null,status number, cuid varchar2(255));
+CREATE OR REPLACE VIEW V_NE_EQUIPROOM0
+AS SELECT rms_equiproom.int_id,
+    rms_equiproom.zh_label,
+    rms_equiproom.city_id,
+    rms_equiproom.county_id,
+    rms_equiproom.stateflag,
+    rms_equiproom.status,
+    rms_equiproom.cuid
+   FROM rms_equiproom
+  WHERE rms_equiproom.stateflag = 0
+UNION ALL
+ SELECT res_accesspoint.int_id,
+    res_accesspoint.zh_label,
+    res_accesspoint.city_id,
+    res_accesspoint.county_id,
+    res_accesspoint.stateflag,
+    to_char(res_accesspoint.status) AS status,
+    res_accesspoint.cuid
+   FROM res_accesspoint
+  WHERE res_accesspoint.stateflag = 0;
+\d V_NE_EQUIPROOM0
+                  View "enrol11.v_ne_equiproom0"
+  Column   |      Type      |   Collation    | Nullable | Default 
+-----------+----------------+----------------+----------+---------
+ int_id    | number         |                |          | 
+ zh_label  | varchar2(256)  | using_nls_comp |          | 
+ city_id   | number         |                |          | 
+ county_id | number         |                |          | 
+ stateflag | number         |                |          | 
+ status    | varchar2(4000) | using_nls_comp |          | 
+ cuid      | varchar2(255)  | using_nls_comp |          | 
+
+CREATE OR REPLACE VIEW V_NE_EQUIPROOM1
+AS SELECT rms_equiproom.int_id,
+    rms_equiproom.zh_label,
+    rms_equiproom.city_id,
+    rms_equiproom.county_id,
+    rms_equiproom.stateflag,
+    rms_equiproom.status,
+    rms_equiproom.cuid
+   FROM rms_equiproom
+  WHERE rms_equiproom.stateflag = 0;
+\d V_NE_EQUIPROOM1
+                 View "enrol11.v_ne_equiproom1"
+  Column   |     Type      |   Collation    | Nullable | Default 
+-----------+---------------+----------------+----------+---------
+ int_id    | number(38,0)  |                |          | 
+ zh_label  | varchar2(256) | using_nls_comp |          | 
+ city_id   | number(38,0)  |                |          | 
+ county_id | number(38,0)  |                |          | 
+ stateflag | number        |                |          | 
+ status    | varchar2(40)  | using_nls_comp |          | 
+ cuid      | varchar2(255) | using_nls_comp |          | 
+
+CREATE OR REPLACE VIEW V_NE_EQUIPROOM2
+AS
+ SELECT res_accesspoint.int_id,
+    res_accesspoint.zh_label,
+    res_accesspoint.city_id,
+    res_accesspoint.county_id,
+    res_accesspoint.stateflag,
+    to_char(res_accesspoint.status) AS status,
+    res_accesspoint.cuid
+   FROM res_accesspoint
+  WHERE res_accesspoint.stateflag = 0;
+\d V_NE_EQUIPROOM2
+                  View "enrol11.v_ne_equiproom2"
+  Column   |      Type      |   Collation    | Nullable | Default 
+-----------+----------------+----------------+----------+---------
+ int_id    | number         |                |          | 
+ zh_label  | varchar2(255)  | using_nls_comp |          | 
+ city_id   | number         |                |          | 
+ county_id | number         |                |          | 
+ stateflag | number         |                |          | 
+ status    | varchar2(4000) |                |          | 
+ cuid      | varchar2(255)  | using_nls_comp |          | 
+
+select * from V_NE_EQUIPROOM0@tdblnk;
+ int_id | zh_label | city_id | county_id | stateflag | status | cuid 
+--------+----------+---------+-----------+-----------+--------+------
+(0 rows)
+
+select * from V_NE_EQUIPROOM1@tdblnk;
+ int_id | zh_label | city_id | county_id | stateflag | status | cuid 
+--------+----------+---------+-----------+-----------+--------+------
+(0 rows)
+
+select * from V_NE_EQUIPROOM2@tdblnk;
+ int_id | zh_label | city_id | county_id | stateflag | status | cuid 
+--------+----------+---------+-----------+-----------+--------+------
+(0 rows)
+
+create table test_id_char(id char(10));
+create table test_id_char2(id char(5));
+create view test_view as
+  select * from test_id_char
+union all
+  select * from test_id_char2;
+\d test_view
+                View "enrol11.test_view"
+ Column |   Type   |   Collation    | Nullable | Default 
+--------+----------+----------------+----------+---------
+ id     | char(10) | using_nls_comp |          | 
+
+select * from test_view@tdblnk;
+ id 
+----
+(0 rows)
+
+create or replace function test_f(id integer) return varchar2 is
+ begin
+   return 'abc';
+ end;
+ /
+create view test_func_view as select test_f(23) from dual;
+\d test_func_view
+              View "enrol11.test_func_view"
+ Column |      Type      | Collation | Nullable | Default 
+--------+----------------+-----------+----------+---------
+ test_f | varchar2(4000) |           |          | 
+
+select * from test_func_view@tdblnk;
+ test_f 
+--------
+ abc
+(1 row)
+
+--clean data
+drop view test_func_view;
+drop function test_f;
+drop view test_view;
+drop table test_id_char;
+drop table test_id_char2;
+drop view V_NE_EQUIPROOM2;
+drop view V_NE_EQUIPROOM1;
+drop view V_NE_EQUIPROOM0;
+drop table res_accesspoint;
+drop table rms_equiproom;
+drop view enrol11.V_NE_EQUIPROOM;
+drop public database link tdblnk;
+NOTICE:  drop cascades to 7 other objects
+DETAIL:  drop cascades to user mapping for public on server tdblnk
+drop cascades to foreign table "enrol11_v_ne_equiproom@tdblnk"
+drop cascades to foreign table "enrol11_v_ne_equiproom0@tdblnk"
+drop cascades to foreign table "enrol11_v_ne_equiproom1@tdblnk"
+drop cascades to foreign table "enrol11_v_ne_equiproom2@tdblnk"
+drop cascades to foreign table "enrol11_test_view@tdblnk"
+drop cascades to foreign table "enrol11_test_func_view@tdblnk"
+drop table enrol11."RMS_EQUIPROOM";
+drop table enrol11."RES_ACCESSPOINT";
+drop schema enrol11;

@@ -263,3 +263,154 @@ DETAIL:  Key (x2)=(23) is not present in table "pktable".
 insert into fktable values(1,'2',45.5);
 drop table fktable;
 drop table pktable;
+--req#00001426 
+create table test_null(id int,name varchar2(10));
+insert into test_null values(1,'12345');
+--1 row
+select * from test_null where substr(name,6,1) is null;
+ id | name  
+----+-------
+  1 | 12345
+(1 row)
+
+--1 row
+select * from test_null where substr(name,6) is null;
+ id | name  
+----+-------
+  1 | 12345
+(1 row)
+
+--1 row
+select * from test_null where substr(name,-6,1) is null;
+ id | name  
+----+-------
+  1 | 12345
+(1 row)
+
+--1 row
+select * from test_null where substr(name,-6) is null;
+ id | name  
+----+-------
+  1 | 12345
+(1 row)
+
+--no row
+select * from test_null where substr(name,5,1) is null;
+ id | name 
+----+------
+(0 rows)
+
+--no row
+select * from test_null where substr(name,5) is null;
+ id | name 
+----+------
+(0 rows)
+
+--no row
+select * from test_null where substr(name,-5,1) is null;
+ id | name 
+----+------
+(0 rows)
+
+--no row
+select * from test_null where substr(name,-5) is null;
+ id | name 
+----+------
+(0 rows)
+
+--1 row
+select * from test_null where substr(name,5,-1) is null;
+ id | name  
+----+-------
+  1 | 12345
+(1 row)
+
+--1 row
+select * from test_null where substr(name, 2,-1) is null;
+ id | name  
+----+-------
+  1 | 12345
+(1 row)
+
+--1 row
+select * from test_null where substr(name,2,0) is null;
+ id | name  
+----+-------
+  1 | 12345
+(1 row)
+
+--no row
+select * from test_null where substr(name, -1,1) is null;
+ id | name 
+----+------
+(0 rows)
+
+--no row
+select * from test_null where substr(name, -5,1) isnull;
+ id | name 
+----+------
+(0 rows)
+
+--print 1
+select substr(name, -5,1) from test_null;
+ substr 
+--------
+ 1
+(1 row)
+
+--1 row
+select * from test_null where substr(name, -6,1) is null;
+ id | name  
+----+-------
+  1 | 12345
+(1 row)
+
+--no row
+select * from test_null where instr(name, '1',1) is null;
+ id | name 
+----+------
+(0 rows)
+
+--no row
+select * from test_null where instr(name,'1',2) is null;
+ id | name 
+----+------
+(0 rows)
+
+--print 0
+select instr(name, '1',0) from test_null;
+ instr 
+-------
+     0
+(1 row)
+
+--print 0
+select instr(name, '1',2) from test_null;
+ instr 
+-------
+     0
+(1 row)
+
+--print 1
+select instr(name, '1',1) from test_null;
+ instr 
+-------
+     1
+(1 row)
+
+--print 1
+select instr(name, '1',-1) from test_null;
+ instr 
+-------
+     1
+(1 row)
+
+--print 0
+select instr(name, '1',-0) from test_null;
+ instr 
+-------
+     0
+(1 row)
+
+--clean data
+drop table test_null;
