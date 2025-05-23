@@ -146,7 +146,7 @@ SET NLS_TIMESTAMP_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
 -- effective number of fractional seconds is 6,the part of excess is 0
 INSERT INTO TEST_TIMESTAMP VALUES('1990-1-19 11:11:11.123456789');
 
-INSERT INTO TEST_TIMESTAMP VALUES('1990-2-19');		-- hour、minute、second、fractional second is zero.
+INSERT INTO TEST_TIMESTAMP VALUES('1990-2-19');		-- hour, minute, second, fractional second is zero.
 
 INSERT INTO TEST_TIMESTAMP VALUES('1990-2-19 11:11:11');
 
@@ -279,7 +279,7 @@ SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
 -- effective number of fractional seconds is 6,the part of excess is 0
 INSERT INTO TEST_TIMESTAMPTZ VALUES('1990-1-19 11:11:11.123456789');
 
-INSERT INTO TEST_TIMESTAMPTZ VALUES('1990-2-19');		-- hour、minute、second、fractional second is zero.
+INSERT INTO TEST_TIMESTAMPTZ VALUES('1990-2-19');		-- hour, minute, second, fractional second is zero.
 
 INSERT INTO TEST_TIMESTAMPTZ VALUES('1990-2-19 11:11:11');
 
