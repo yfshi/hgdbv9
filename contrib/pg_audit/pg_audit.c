@@ -8064,7 +8064,7 @@ audit_get_options_on_object(ObjectType objtype, List *optionlist)
 							break;
 						default:
 							ereport(ERROR,
-									(errmsg("option %s on table  is not surporrted to audit", audit_stmttype_to_string(auditevent))));
+									(errmsg("option %s on table is not supported to audit", audit_stmttype_to_string(auditevent))));
 					}
 				}
 				break;
@@ -8090,7 +8090,7 @@ audit_get_options_on_object(ObjectType objtype, List *optionlist)
 							break;
 						default:
 							ereport(ERROR,
-									(errmsg("option %s on view/sequence  is not surporrted to audit", audit_stmttype_to_string(auditevent))));
+									(errmsg("option %s on view/sequence is not supported to audit", audit_stmttype_to_string(auditevent))));
 					}
 				}
 				break;
@@ -8117,7 +8117,7 @@ audit_get_options_on_object(ObjectType objtype, List *optionlist)
 							break;
 						default:
 							ereport(ERROR,
-									(errmsg("option %s on view/sequence  is not surporrted to audit", audit_stmttype_to_string(auditevent))));
+									(errmsg("option %s on view/sequence is not supported to audit", audit_stmttype_to_string(auditevent))));
 					}
 				}
 				break;
@@ -8142,7 +8142,7 @@ audit_get_options_on_object(ObjectType objtype, List *optionlist)
 							break;
 						default:
 							ereport(ERROR,
-									(errmsg("option %s on produce  is not surporrted to audit", audit_stmttype_to_string(auditevent))));
+									(errmsg("option %s on produce is not supported to audit", audit_stmttype_to_string(auditevent))));
 					}
 				}
 				break;
@@ -8168,7 +8168,7 @@ audit_get_options_on_object(ObjectType objtype, List *optionlist)
 							break;
 						default:
 							ereport(ERROR,
-									(errmsg("option %s on function	is not surporrted to audit", audit_stmttype_to_string(auditevent))));
+									(errmsg("option %s on functionis not supported to audit", audit_stmttype_to_string(auditevent))));
 					}
 				}
 				break;
@@ -8191,13 +8191,13 @@ audit_get_options_on_object(ObjectType objtype, List *optionlist)
 							break;
 						default:
 							ereport(ERROR,
-									(errmsg("option %s on column  is not surporrted to audit", audit_stmttype_to_string(auditevent))));
+									(errmsg("option %s on column is not supported to audit", audit_stmttype_to_string(auditevent))));
 					}
 				}
 				break;
 			default:
 				ereport(ERROR,
-							 (errmsg("object %d  is not surporrted to audit", objtype)));
+							 (errmsg("object %d is not supported to audit", objtype)));
 	}
 
 	return options;
@@ -8332,7 +8332,7 @@ audit_get_object_from_namelist(List *obj, ObjectType objtype, char *schema)
 		default:
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
-					 errmsg("not surporrted type %d",objtype)));
+					 errmsg("not supported type %d",objtype)));
 			
 	}
 
@@ -8449,7 +8449,7 @@ add_delete_audit_object3(PG_FUNCTION_ARGS, Oid auditoroid, char *schema, AuditRe
 	if (audit_obj.objtype == -1)
 	{
 		ereport(ERROR,
-				(errmsg("object type '%s' is not surporrted", key_value)));
+				(errmsg("object type '%s' is not supported", key_value)));
 	}
 	if (!OidIsValid(get_namespace_oid(schema, true)))
 	{
