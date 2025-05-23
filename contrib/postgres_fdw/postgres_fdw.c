@@ -7709,8 +7709,7 @@ ivorysqlDblinkCheckMetadataChanged(Oid srvId, char *nsp, char  *relname)
 		for (i = 0; i < numrows; i++)
 		{
 			TupdescNatts *col = makeNode(TupdescNatts);
-
-			col->colname	= PQgetvalue(res, i, 0);
+			col->colname	= psprintf("%s", PQgetvalue(res, i, PQfnumber(res, "column_name"))); /* BUG#Z4798 */
 			col->coltypid  	= atooid(PQgetvalue(res, i, PQfnumber(res, "column_type")));
 			col->coltypmod 	= atoi(PQgetvalue(res, i, PQfnumber(res, "column_typmod")));
 

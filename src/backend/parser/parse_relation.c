@@ -111,7 +111,6 @@ static int	specialAttNum(const char *attname);
 static bool isQueryUsingTempRelation_walker(Node *node, void *context);
 static bool is_query_using_gtt_walker(Node *node, void *context);
 static List *get_open_dblinks(void);
-static bool ivyisMixedCase(const char *str);
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 static List *GetValidindexhint(List **indexOidList, IndexHintRelationData *indexdata);
@@ -1902,28 +1901,24 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 
 			if (metadata_changed)
 			{
-				char		*dopstmt;
+				char		*dopstmt = NULL;
 				DropStmt	*ds;
 				char		*query_string = NULL;
 
 				/* 1. close opened table */
 				table_close(rel, lockmode);
 
-				/* 2. drop this old table */
-				if (ivyisMixedCase(relnspname))
-					dopstmt = psprintf("DROP FOREIGN TEMP TABLE \"%s_%s\"@%s", relnspname, relation->relname, relation->srvname);
-				else
-					dopstmt = psprintf("DROP FOREIGN TEMP TABLE %s", localrelation->relname);
+				/* 2. drop the current table */
+				/* Begin - BUG#Z4778 */
+				ds = makeNode(DropStmt);
+				ds->removeType = OBJECT_FOREIGN_TABLE;
+				ds->missing_ok = false;
+				ds->objects = lappend(ds->objects, list_make1(makeString(localrelation->relname)));
+				ds->behavior = DROP_CASCADE;
+				ds->concurrent = false;
 
-				raw_parsetree_list = pg_parse_query(dopstmt);
-				Assert(list_length(raw_parsetree_list) == 1);
-
-				f = list_head(raw_parsetree_list);
-				rs =  lfirst(f);
-				ds = (DropStmt *) rs->stmt;
-
-				if ((!IsA(ds, DropStmt)))
-					elog(ERROR, "not a DropStmt");
+				dopstmt = psprintf("DROP FOREIGN TEMP TABLE %s", localrelation->relname);
+				/* End - BUG#Z4778 */
 
 				pstmt = makeNode(PlannedStmt);
 				pstmt->commandType = CMD_UTILITY;
@@ -4701,24 +4696,3 @@ err:
 	return retType;
 }
 /* End - ReqID:SRS-MYSQL-UPDATE */
-
-static bool
-ivyisMixedCase(const char *str)
-{
-	int has_upper = 0, has_lower = 0;
-
-	while (*str)
-	{
-		if (isupper((unsigned char *)str))
-			has_upper = 1;
-		else if (islower((unsigned char *)str))
-			has_lower = 1;
-
-		if (has_upper && has_lower)
-			return true;
-
-		str++;
-	}
-
-	return false;
-}
