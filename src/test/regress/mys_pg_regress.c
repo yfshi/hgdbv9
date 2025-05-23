@@ -2521,13 +2521,13 @@ regression_main(int argc, char *argv[],
 		header(_("starting postmaster"));
 		snprintf(buf, sizeof(buf),
 				 "\"%s%spostgres\" -D \"%s/data\" -F%s "
-				 "-c \"listen_addresses=%s\" -k \"%s\" "
+				 "-c \"listen_addresses=%s\" -c \"ivorysql.listen_addresses=%s\" -k \"%s\" "
 				 "-p %d -m %d "							/* SQL PARSER */
 				 "> \"%s/log/postmaster.log\" 2>&1",
 				 bindir ? bindir : "",
 				 bindir ? "/" : "",
 				 temp_instance, debug ? " -d 5" : "",
-				 hostname ? hostname : "", sockdir ? sockdir : "",
+				 hostname ? hostname : "", hostname ? hostname : "", sockdir ? sockdir : "",
 				 port, mysPort,							/* SQL PARSER */
 				 outputdir);
 		postmaster_pid = spawn_process(buf);
