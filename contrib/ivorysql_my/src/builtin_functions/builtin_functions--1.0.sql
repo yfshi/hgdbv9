@@ -349,3 +349,12 @@ LANGUAGE C STABLE PARALLEL SAFE;
 CREATE OR REPLACE FUNCTION ivymy.Localtimestamp() returns ivymy.mysdatetime AS $$
     SELECT cast(pg_catalog.now() as ivymy.mysdatetime);
 $$ LANGUAGE SQL PARALLEL SAFE;
+
+/* FIX BUG 4814 */
+CREATE FUNCTION ivymy.substring(pg_catalog.text, pg_catalog.int4, pg_catalog.int8)
+RETURNS pg_catalog.text
+AS 'text_substr'
+LANGUAGE internal
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
