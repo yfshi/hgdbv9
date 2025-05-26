@@ -22,10 +22,16 @@
 
 #include "postgres.h"
 
-#define UNSIGNED_FLAG   1
-#define SIGNED_FLAG     0
+#define SIGNED_FLAG                     0
+#define UNSIGNED_FLAG                   1
 
-typedef unsigned int uint;
+#define VAL(CH)			                ((CH) - '0')
+
+#define YEAR4_LEN                       4
+#define YEAR2_LEN                       2
+#define YEAR2_BOUND_BETWEEN_20C_21C     70
+#define YEAR2_IN_RANGE(x)               ((x) >= 0 && (x) <= 99)
+
 typedef unsigned char uchar;
 
 extern int16 my_atoi_int2(const char *s);

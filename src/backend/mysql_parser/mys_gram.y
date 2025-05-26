@@ -248,8 +248,12 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 static List *MystextSystemFuncName(char *name);
 static TypeName *MystextSystemTypeName(char *name);
 /* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+
+/*Begin - ReqID:  SRS-MYSQL-BUILDINFUNCTION */
 static List *MysqlSystemFuncName(char *name);
 static TypeName *MySQLSystemTypeName(char *name);
+static void CheckIconstType(Node* node);
+/*End - ReqID:  SRS-MYSQL-BUILDINFUNCTION */
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
 static int MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscanner);
@@ -15518,11 +15522,14 @@ BlobWithoutLength:
  */
 /* ReqID:SRS-MYSQL-DATETYPE */
 Datetime:
-			TIMESTAMP '(' Iconst ')' opt_timezone
+			TIMESTAMP '(' a_expr ')' opt_timezone
 				{
+					
 					/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
 					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL == $5)
 					{
+						CheckIconstType($3);			/* SRS-MYSQL-BUILDINFUNCTION */
+
 						if(0 == $3)
 						{
 							$$ = MySQLSystemTypeName("mystimestamp");
@@ -15531,7 +15538,7 @@ Datetime:
 						else
 						{
 							$$ = MySQLSystemTypeName("mystimestamps");
-							$$->typmods = list_make1(makeIntConst($3, @3));
+							$$->typmods = list_make1($3);
 							$$->location = @1;
 						}
 					}
@@ -15542,7 +15549,7 @@ Datetime:
 							$$ = SystemTypeName("timestamptz");
 						else
 							$$ = SystemTypeName("timestamp");
-						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->typmods = list_make1($3);
 						$$->location = @1;
 					}
 				}
@@ -15602,11 +15609,13 @@ Datetime:
 					}
 					/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
 				}
-			| TIME '(' Iconst ')' opt_timezone
+			| TIME '(' a_expr ')' opt_timezone
 				{
 					/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
 					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL == $5)
 					{
+						CheckIconstType($3);		/* SRS-MYSQL-BUILDINFUNCTION */
+
 						if(0 == $3)
 						{
 							$$ = MySQLSystemTypeName("mystime");
@@ -15615,7 +15624,7 @@ Datetime:
 						else
 						{
 							$$ = MySQLSystemTypeName("mystimes");
-							$$->typmods = list_make1(makeIntConst($3, @3));
+							$$->typmods = list_make1($3);
 							$$->location = @1;
 						}
 					}
@@ -15626,7 +15635,7 @@ Datetime:
 							$$ = SystemTypeName("timetz");
 						else
 							$$ = SystemTypeName("time");
-						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->typmods = list_make1($3);
 						$$->location = @1;
 					}
 				}
@@ -15699,8 +15708,10 @@ ConstDatetime:
 						$$->location = @1;
 					}
 				}
-			| TIMESTAMP '(' Iconst ')' opt_timezone
+			| TIMESTAMP '(' a_expr ')' opt_timezone
 				{
+					CheckIconstType($3);		/* SRS-MYSQL-BUILDINFUNCTION */
+
 					/* ReqID:SRS-MYSQL-TIMESTAMPTYPE */
 					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL ==$5)
 					{
@@ -15714,7 +15725,7 @@ ConstDatetime:
 							$$ = SystemTypeName("timestamptz");
 						else
 							$$ = SystemTypeName("timestamp");
-						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->typmods = list_make1($3);
 						$$->location = @1;
 					}
 				}
@@ -15757,8 +15768,10 @@ ConstDatetime:
 						$$->location = @1;
 					}
 				}
-			| TIME '(' Iconst ')' opt_timezone
+			| TIME '(' a_expr ')' opt_timezone
 				{
+					CheckIconstType($3);		/* SRS-MYSQL-BUILDINFUNCTION */
+					
 					/* ReqID:SRS-MYSQL-TIMETYPE */
 					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL ==$5)
 					{
@@ -15772,7 +15785,7 @@ ConstDatetime:
 							$$ = SystemTypeName("timetz");
 						else
 							$$ = SystemTypeName("time");
-						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->typmods = list_make1($3);
 						$$->location = @1;
 					}
 				}
@@ -16829,6 +16842,20 @@ func_expr_common_subexpr:
 					$$ = makeSQLValueFunction(SVFOP_LOCALTIMESTAMP_N, $3, @1);
 				}
 			/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+			| TIMESTAMP '(' a_expr ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("mytimestamp1"),
+												list_make1($3),
+												COERCE_SQL_SYNTAX,
+												@1);
+				}
+			| TIMESTAMP '(' a_expr ',' a_expr ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("mytimestamp2"),
+												list_make2( $3, $5),
+												COERCE_SQL_SYNTAX,
+												@1);
+				}
 			| TIMESTAMPADD '(' timestamp_units ',' a_expr ',' a_expr ')'
 				{
 					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("mytimestampadd"),
@@ -16842,6 +16869,13 @@ func_expr_common_subexpr:
 												list_make1($3),
 												COERCE_SQL_SYNTAX,
 												@1);
+				}
+			| TIME '(' a_expr ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("mytime"),
+											   list_make1($3),
+											   COERCE_SQL_SYNTAX,
+											   @1);
 				}
 			/* End - SRS-MYSQL-BUILDINFUNCTION */
 			| CURRENT_ROLE
@@ -20553,3 +20587,18 @@ MystextSystemTypeName(char *name)
 	return makeTypeNameFromNameList(list_make1(makeString(name)));
 }
 /* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
+/* Begin - ReqID: SRS-MYSQL-BUILDINFUNCTION */
+static void CheckIconstType(Node* node) 
+{
+	// Check whether the input parameter is of type Iconst. If not, report an error.
+	if (!IsA(node, A_Const) || ((A_Const*)node)->val.type != T_Integer) {
+		ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			errmsg("Un-support feature"),
+			errdetail("The parameter type should be an integer constant")));
+	}
+}
+/* End - ReqID: SRS-MYSQL-BUILDINFUNCTION */

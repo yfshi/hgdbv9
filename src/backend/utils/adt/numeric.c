@@ -11771,3 +11771,84 @@ invalid_syntax:
 	return false;					/* keep compiler quiet */
 }
 /* End - BUG#M0000194 */
+
+/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+#define LLDIV_MIN -1000000000000000000LL
+#define LLDIV_MAX 1000000000000000000LL
+
+bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to)
+{
+	NumericVar tmp;
+	int int_end_pos;
+	int frac_start_pos;
+	int frac_group;
+	unsigned long long pow_of_10[20] = {
+		1, 10, 100, 1000, 10000UL, 100000UL, 1000000UL, 10000000UL,
+		100000000ULL, 1000000000ULL, 10000000000ULL, 100000000000ULL,
+		1000000000000ULL, 10000000000000ULL, 100000000000000ULL,
+		1000000000000000ULL, 10000000000000000ULL, 100000000000000000ULL,
+		1000000000000000000ULL, 10000000000000000000ULL};
+
+	init_var_from_num(num, &tmp);
+
+	if (!tmp.ndigits)
+	{
+		/* from == 0 */
+		to->quot = 0;
+		to->rem = 0;
+		return true;
+	}
+
+	/*example num = 1234.5,digits[] = {0,1234,5600},weight = 1 means values of digits[1] = digits[1]*10^0
+		so num = digits[0]*10^1 + digits[1]*10^0 + digits[3]*10^-1*/
+	to->quot = to->rem = 0;
+
+	/*weight less than 0  means that the numeric is a fractional*/
+	int_end_pos = (tmp.weight < 0 ? -1 : tmp.weight);
+	frac_start_pos = int_end_pos + 1;
+	/* Avoid to overflow. */
+	if (int_end_pos > DEC_DIGITS ||
+		(tmp.weight == DEC_DIGITS && tmp.digits[0] >= (int64)(LLDIV_MAX / pow_of_10[tmp.weight * DEC_DIGITS])))
+	{
+		to->quot = tmp.sign ? LLDIV_MIN : LLDIV_MAX;
+		to->rem = 0;
+		return false;
+	}
+
+	for (int i = tmp.weight, j = 0; i >= 0 && j < tmp.ndigits; i--, j++)
+	{
+		to->quot += tmp.digits[j] * pow_of_10[i * DEC_DIGITS];
+	}
+
+	/*Fractional part is equal to the total number of groups sub the frac_start group*/
+	frac_group = tmp.ndigits - frac_start_pos;
+
+	/*The range of decimal places is 0~(1 - 10^-8),tmp.weight == -2 means that the numeric is a fractional and in rang of 10^-4 to 10^-8*/
+	if (tmp.dscale > 0 && tmp.weight >= -2)
+	{
+		if (frac_group == 1)
+		{
+			if (tmp.weight == -2)
+			{
+				to->rem = tmp.digits[frac_start_pos] * pow_of_10[1];
+			}
+			else
+			{
+				to->rem = tmp.digits[frac_start_pos] * NBASE * pow_of_10[1];
+			}
+		}
+		else
+		{
+			to->rem = (tmp.digits[frac_start_pos] * NBASE + tmp.digits[frac_start_pos + 1]) * pow_of_10[1];
+		}
+	}
+
+	if (tmp.sign)
+	{
+		to->quot = -to->quot;
+		to->rem = -to->rem;
+	}
+
+	return true;
+}
+/* End - SRS-MYSQL-BUILDINFUNCTION */

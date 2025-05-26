@@ -354,7 +354,7 @@ varbinary_or(PG_FUNCTION_ARGS)
 	return ((my_strtod_8bit(VARDATA_ANY(arg1), len1, &end1, &error) != 0.0) || (my_strtod_8bit(VARDATA_ANY(arg2), len2, &end2, &error) != 0.0));
 }
 
-bool 
+static bool 
 mys_get_varbinary_bool(bytea *arg)
 {
 	int len;

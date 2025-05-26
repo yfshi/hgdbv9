@@ -3468,12 +3468,6 @@ non_zero_date(const struct pg_tm *tm)
 	return tm->tm_year || tm->tm_mon || tm->tm_mday;
 }
 
-bool
-zero_date(const struct pg_tm *tm)
-{
-	return !tm->tm_year || !tm->tm_mon || !tm->tm_mday;
-}
-
 /* Convert datetime value specified as number to broken-down TIME
 * representation and form value of DATETIME type .
 */

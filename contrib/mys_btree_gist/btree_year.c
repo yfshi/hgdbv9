@@ -11,7 +11,6 @@
 #include "utils/datetime.h"
 #include "utils/date.h"
 #include "utils/float.h"
-#include "../../contrib/ivorysql_my/src/datatype/myyear.h"
 
 typedef struct
 {
@@ -25,7 +24,6 @@ typedef struct
 PG_FUNCTION_INFO_V1(gbt_year_consistent);
 PG_FUNCTION_INFO_V1(gbt_year_union);
 PG_FUNCTION_INFO_V1(gbt_year_compress);
-// PG_FUNCTION_INFO_V1(gbt_year_decompress);
 PG_FUNCTION_INFO_V1(gbt_year_penalty);
 PG_FUNCTION_INFO_V1(gbt_year_picksplit);
 PG_FUNCTION_INFO_V1(gbt_year_same);
