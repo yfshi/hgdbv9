@@ -15,7 +15,6 @@ show pg_resource_group_cpu_limit;
 show pg_resource_group_cpu_priority;
 
 show pg_resource_group_queuing_timeout;
-show pg_resource_group_move_timeout;
 
 CREATE RESOURCE GROUP rgroup0 WITH (
 CONCURRENCY=20, 

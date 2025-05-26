@@ -46,12 +46,6 @@ show pg_resource_group_queuing_timeout;
  0
 (1 row)
 
-show pg_resource_group_move_timeout;
- pg_resource_group_move_timeout 
---------------------------------
- 30s
-(1 row)
-
 CREATE RESOURCE GROUP rgroup0 WITH (
 CONCURRENCY=20, 
 CPU_MAX_PERCENT=20, 

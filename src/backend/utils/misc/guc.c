@@ -721,7 +721,6 @@ bool		pg_resource_group_bypass;
 bool		pg_resource_group_bypass_catalog_query;
 
 char	   *pg_resource_group_cgroup_parent;
-bool		pg_resource_group_databaseuser;
 static char *pg_resource_manager_str;
 
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
@@ -2298,15 +2297,6 @@ static struct config_bool ConfigureNamesBool[] =
 		true,
 		NULL, NULL, NULL
 	},
-	{
-		{"pg_resource_group_databaseuser", PGC_USERSET, RESOURCES_MGM,
-			gettext_noop("Enable resource group for database user."),
-			NULL
-		},
-		&pg_resource_group_databaseuser,
-		false,
-		NULL, NULL, NULL
-	},
 	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/* Begin - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
 	{
@@ -3821,16 +3811,6 @@ static struct config_int ConfigureNamesInt[] =
 		},
 		&pg_resource_group_cpu_priority,
 		10, 1, 50,
-		NULL, NULL, NULL
-	},
-	{
-		{"pg_resource_group_move_timeout", PGC_USERSET, RESOURCES_MGM,
-			gettext_noop("Wait up to the specified time (in ms) while moving process to another resource group (after queuing on it) before give up."),
-			NULL,
-			GUC_UNIT_MS
-		},
-		&pg_resource_group_move_timeout,
-		30000, 10, INT_MAX,
 		NULL, NULL, NULL
 	},
 	{
