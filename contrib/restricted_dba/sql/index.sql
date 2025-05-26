@@ -40,6 +40,7 @@ create index idx_non_exist on tb1_non_exist(id);
 alter index idx_dba_u1_id rename to idx_dba_u1_id_new;
 alter index idx_dba_u2_id rename to idx_dba_u2_id_new;
 alter index idx_u1_id rename to idx_u1_id_new;
+alter index if exists idx_non_exist rename to idx_non_exist_new;
 
 ------ fail
 alter index idx_sso_u1_id rename to idx_sso_u1_id_new;
@@ -51,6 +52,7 @@ alter index idx_non_exist rename to idx_non_exist_new;
 alter index idx_dba_u1_id_new set (fillfactor = 75);
 alter index idx_dba_u2_id_new set (fillfactor = 75);
 alter index idx_u1_id_new set (fillfactor = 75);
+alter index if exists idx_non_exist set (fillfactor = 75);
 
 ------ fail
 alter index idx_sso_u1_id set (fillfactor = 75);
@@ -62,6 +64,7 @@ alter index idx_non_exist set (fillfactor = 75);
 drop index idx_dba_u1_id_new;
 drop index idx_dba_u2_id_new;
 drop index idx_u1_id_new;
+drop index if exists idx_non_exist;
 
 ------ fail
 drop index idx_sso_u1_id;

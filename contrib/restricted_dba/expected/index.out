@@ -37,6 +37,8 @@ ERROR:  relation "tb1_non_exist" does not exist
 alter index idx_dba_u1_id rename to idx_dba_u1_id_new;
 alter index idx_dba_u2_id rename to idx_dba_u2_id_new;
 alter index idx_u1_id rename to idx_u1_id_new;
+alter index if exists idx_non_exist rename to idx_non_exist_new;
+NOTICE:  relation "idx_non_exist" does not exist, skipping
 ------ fail
 alter index idx_sso_u1_id rename to idx_sso_u1_id_new;
 ERROR:  permission denied
@@ -51,6 +53,8 @@ ERROR:  relation "idx_non_exist" does not exist
 alter index idx_dba_u1_id_new set (fillfactor = 75);
 alter index idx_dba_u2_id_new set (fillfactor = 75);
 alter index idx_u1_id_new set (fillfactor = 75);
+alter index if exists idx_non_exist set (fillfactor = 75);
+NOTICE:  relation "idx_non_exist" does not exist, skipping
 ------ fail
 alter index idx_sso_u1_id set (fillfactor = 75);
 ERROR:  permission denied
@@ -65,6 +69,8 @@ ERROR:  relation "idx_non_exist" does not exist
 drop index idx_dba_u1_id_new;
 drop index idx_dba_u2_id_new;
 drop index idx_u1_id_new;
+drop index if exists idx_non_exist;
+NOTICE:  index "idx_non_exist" does not exist, skipping
 ------ fail
 drop index idx_sso_u1_id;
 ERROR:  permission denied
@@ -73,7 +79,7 @@ drop index idx_sao_u1_id;
 ERROR:  permission denied
 DETAIL:  cannot drop relation of syssso_role/syssao_role member
 drop index idx_non_exist;
-ERROR:  relation "idx_non_exist" does not exist
+ERROR:  index "idx_non_exist" does not exist
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

@@ -42,6 +42,8 @@ alter table tb2_dba_u1 owner to sysdba_u2;
 alter table tb2_dba_u1 owner to u1;
 alter table tb2_dba_u1 owner to u2;
 alter table tb2_dba_u1 owner to sysdba_u1;
+alter table if exists tb1_non_exist owner to u1;
+NOTICE:  relation "tb1_non_exist" does not exist, skipping
 ------ fail
 alter table tb1_dba_u1 owner to syssso_u1;
 ERROR:  permission denied
@@ -63,6 +65,8 @@ alter table tb2_dba_u1 rename to tb2_dba_u1_new;
 alter table tb2_dba_u1_new owner to u1;
 alter table tb2_dba_u1_new rename to tb2_dba_u1;
 alter table tb2_dba_u1 owner to sysdba_u1;
+alter table if exists tb1_non_exist rename to tb1_non_exist_new;
+NOTICE:  relation "tb1_non_exist" does not exist, skipping
 ------ fail
 alter table tb1_sso_u1 rename to tb1_sso_u1_new;
 ERROR:  permission denied
@@ -151,6 +155,8 @@ drop table tb2_dba_u1;
 drop table sch_sysdba_u1.tb1_dba_u1;
 drop table sch_u1.tb1_dba_u1;
 drop table sch_syssso_u2.tb1_dba_u1;
+drop table if exists tb1_non_exist;
+NOTICE:  table "tb1_non_exist" does not exist, skipping
 ------ fail
 drop table tb1_sso_u1;
 ERROR:  permission denied
@@ -159,7 +165,7 @@ drop table tb1_sao_u1;
 ERROR:  permission denied
 DETAIL:  cannot drop relation of syssso_role/syssao_role member
 drop table tb1_non_exist;
-ERROR:  relation "tb1_non_exist" does not exist
+ERROR:  table "tb1_non_exist" does not exist
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

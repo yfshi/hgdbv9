@@ -43,6 +43,7 @@ create sequence sch_non_exist.seq_non_exist;
 alter sequence seq1_sysdba_u1 owner to sysdba_u1;
 alter sequence seq1_sysdba_u2 owner to sysdba_u2;
 alter sequence seq1_u1 owner to u1;
+alter sequence if exists seq_non_exist owner to sysdba_u1;
 ------ fail
 alter sequence seq1_syssso_u1 owner to sysdba_u1;
 alter sequence seq1_syssao_u1 owner to u1;
@@ -55,6 +56,7 @@ alter sequence seq_non_exist owner to sysdba_u1;
 alter sequence seq1_sysdba_u1 restart with 100;
 alter sequence seq1_sysdba_u2 restart with 100;
 alter sequence seq1_u1 restart with 100;
+alter sequence if exists seq_non_exist restart with 100;
 ------ fail
 alter sequence seq1_syssso_u1 restart with 100;
 alter sequence seq1_syssao_u1 restart with 100;
@@ -65,6 +67,7 @@ alter sequence seq_non_exist restart with 100;
 alter sequence seq1_sysdba_u1 rename to seq1_sysdba_u1_new;
 alter sequence seq1_sysdba_u2 rename to seq1_sysdba_u2_new;
 alter sequence seq1_u1 rename to seq1_u1_new;
+alter sequence if exists seq_non_exist rename to seq_non_exist_new;
 ------ fail
 alter sequence seq1_syssso_u1 rename to seq1_syssso_u1_new;
 alter sequence seq1_syssao_u1 rename to seq1_syssao_u1_new;
@@ -108,6 +111,7 @@ drop sequence seq1_sysdba_u1_new;
 drop sequence seq1_sysdba_u2_new;
 drop sequence seq1_u1_new;
 drop sequence sch_syssso_u2.seq1_sysdba_u1;
+drop sequence if exists seq_non_exist;
 ------ fail
 drop sequence seq1_syssso_u1;
 drop sequence seq1_syssao_u1;

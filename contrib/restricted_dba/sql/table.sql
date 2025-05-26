@@ -41,6 +41,7 @@ alter table tb2_dba_u1 owner to sysdba_u2;
 alter table tb2_dba_u1 owner to u1;
 alter table tb2_dba_u1 owner to u2;
 alter table tb2_dba_u1 owner to sysdba_u1;
+alter table if exists tb1_non_exist owner to u1;
 ------ fail
 alter table tb1_dba_u1 owner to syssso_u1;
 alter table tb1_dba_u1 owner to syssao_u1;
@@ -54,6 +55,7 @@ alter table tb2_dba_u1 rename to tb2_dba_u1_new;
 alter table tb2_dba_u1_new owner to u1;
 alter table tb2_dba_u1_new rename to tb2_dba_u1;
 alter table tb2_dba_u1 owner to sysdba_u1;
+alter table if exists tb1_non_exist rename to tb1_non_exist_new;
 ------ fail
 alter table tb1_sso_u1 rename to tb1_sso_u1_new;
 alter table tb1_sao_u1 rename to tb1_sao_u1_new;
@@ -109,6 +111,7 @@ drop table tb2_dba_u1;
 drop table sch_sysdba_u1.tb1_dba_u1;
 drop table sch_u1.tb1_dba_u1;
 drop table sch_syssso_u2.tb1_dba_u1;
+drop table if exists tb1_non_exist;
 ------ fail
 drop table tb1_sso_u1;
 drop table tb1_sao_u1;
