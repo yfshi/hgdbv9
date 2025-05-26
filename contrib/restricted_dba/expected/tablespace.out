@@ -18,6 +18,10 @@ HINT:  Must be member of sysdba_role to own a tablespace.
 alter tablespace pg_default owner to u1;
 ERROR:  permission denied
 DETAIL:  only sysdba_role member can be owner
+alter tablespace tbspc_non_exist owner to sysdba_u1;
+ERROR:  tablespace "tbspc_non_exist" does not exist
+alter tablespace tbspc_non_exist rename to new_tbspc;
+ERROR:  tablespace "tbspc_non_exist" does not exist
 ------ pass
 alter tablespace pg_default owner to sysdba_u1;
 select spcowner = 'sysdba_u1'::regrole as is_owner from pg_tablespace where spcname = 'pg_default';
@@ -30,6 +34,8 @@ select spcowner = 'sysdba_u1'::regrole as is_owner from pg_tablespace where spcn
 ------ fail, because you cannot drop pg_default
 drop tablespace pg_default;
 ERROR:  permission denied for tablespace pg_default
+drop tablespace tbspc_non_exist;
+ERROR:  tablespace "tbspc_non_exist" does not exist
 ---- GRANT/REVOKE
 ------ pass
 grant all on tablespace pg_default to sysdba_u2;
@@ -41,6 +47,16 @@ DETAIL:  cannot grant privilege on tablespace to syssso_role/syssao_role member.
 grant all on tablespace pg_default to syssao_u1;
 ERROR:  permission denied
 DETAIL:  cannot grant privilege on tablespace to syssso_role/syssao_role member.
+grant create on tablespace pg_default to syssso_u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege on tablespace to syssso_role/syssao_role member.
+grant create on tablespace pg_default to syssao_u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege on tablespace to syssso_role/syssao_role member.
+grant all on tablespace tbspc_non_exist to syssso_u1;
+ERROR:  tablespace "tbspc_non_exist" does not exist
+grant create on tablespace tbspc_non_exist to syssao_u1;
+ERROR:  tablespace "tbspc_non_exist" does not exist
 grant all on tablespace pg_default to u2 with grant option;
 ERROR:  permission denied
 DETAIL:  cannot grant privilege on tablespace with grant option to non-sysdba_role member

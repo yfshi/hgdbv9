@@ -97,7 +97,7 @@ rename_object_check(RenameStmt *stmt)
 			return rename_role_check(stmt->subname, stmt->newname);
 		case OBJECT_TABLESPACE:
 		case OBJECT_DATABASE:
-			/*do nothing, allow to rename by its owner*/
+			break; /*do nothing, allow to rename by its owner*/ /* Bug#z4756 */
 		case OBJECT_SCHEMA:
 			return alter_schema_rename_check(stmt->subname, stmt->newname);
 		case OBJECT_TABLE:
@@ -137,12 +137,14 @@ alter_owner_check(AlterOwnerStmt *stmt)
 	{
 		case OBJECT_TABLESPACE:
 		case OBJECT_DATABASE:
-		if(!IS_SYSDBA(newowner))
-		{	
-			ereport(ERROR,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					 errmsg("permission denied"),
-					 errdetail("only sysdba_role member can be owner")));
+		{
+			if(!IS_SYSDBA(newowner))
+			{	
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("only sysdba_role member can be owner")));
+			}
 		}
 		break;
 		case OBJECT_SCHEMA:

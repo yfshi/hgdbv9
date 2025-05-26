@@ -130,13 +130,18 @@ use_schema_check(Oid namespaceid, Oid roleid)
 
 		if (IS_SYSSSO(nspowner) || IS_SYSSAO(nspowner))
 		{
-			result = false;
-			ereport(ERROR,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					errmsg("permission denied for schema %s", nspname),
-					errdetail("sysdba_role member cannot use schema of"
-								" syssso_role/syssao_role member schema")));
+			/* Bug#z4741*/
+			if(pg_namespace_aclmask_nosuper(namespaceid, roleid, ACL_CREATE ,ACLMASK_ANY) == 0)
+			{
+				result = false;
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						 errmsg("permission denied for schema %s", nspname),
+						 errdetail("sysdba_role member cannot use schema of "
+								   "syssso_role/syssao_role member schema")));
+			}
 		}
+
 	}
 	/*leave other non superuser case to acl*/
 

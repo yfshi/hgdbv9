@@ -209,6 +209,7 @@ alter_role_check(AlterRoleStmt *stmt)
 	DefElem    *drolemembers = NULL;
 	DefElem    *dvalidUntil = NULL;
 	DefElem    *dbypassRLS = NULL;
+	DefElem    *dresgroup = NULL;
 	Oid			roleid;
 
 	if (strcmp(stmt->role->rolename, SYSDBA_ROLE) == 0 ||
@@ -320,6 +321,21 @@ alter_role_check(AlterRoleStmt *stmt)
 						 errmsg("conflicting or redundant options")));
 			dbypassRLS = defel;
 		}
+		/*Begin --bug#z4761*/
+		/*
+		 * For resource group we currently don't add any restriction, just
+		 * make it pass alter user. Maybe it will follows alter user rule latter.
+		 */
+		else if (strcmp(defel->defname, "resourceGroup") == 0)
+		{
+
+			if (dresgroup)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			dresgroup = defel;
+		}
+		/*End --bug#z4761*/
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);

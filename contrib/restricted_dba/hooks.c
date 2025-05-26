@@ -39,7 +39,9 @@
 #include "tcop/utility.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
+#include "utils/lsyscache.h"
 #include "utils/queryenvironment.h"
+#include "utils/syscache.h"
 #include "utils/elog.h"
 
 
@@ -56,7 +58,7 @@ void	_PG_init(void);
  * Saved hook entries (if stacked)
  */
 static object_access_hook_type next_object_access_hook = NULL;
-// static ExecutorCheckPerms_hook_type next_exec_check_perms_hook = NULL;
+static ExecutorCheckPerms_hook_type next_exec_check_perms_hook = NULL;
 static ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 
@@ -432,33 +434,211 @@ se_feature_mode_show (void)
 	return se_feature.mode ? "on" : "off";
 }
 
-// static bool
-// se_feature_check_perms(List *rangeTabls, bool abort)
-// {
-// 	ListCell   *l;
-// 	bool		result = true;
 
-// 	foreach(l, rangeTabls)
-// 	{
-// 		RangeTblEntry *rte = (RangeTblEntry *) lfirst(l);
-// 		char *relname = get_rel_name(rte->relid);
+/*
+ * check_rte_perms_modified - similar to ExecCheckRTPerms.
+ *
+ * Check INSERT or UPDATE access permissions for a single RTE (these are processed uniformly).
+ */
+static bool
+check_rte_perms_modified(Oid relOid, Oid userid, Bitmapset *modifiedCols,
+						  AclMode requiredPerms)
+{
+	int			col = -1;
 
-// 		result = ExecCheckRTEPerms(rte);
-// 		if (!result)
-// 		{
-// 			Assert(rte->rtekind == RTE_RELATION);
-// 			if (abort)
-// 				aclcheck_error(ACLCHECK_NO_PRIV, get_relkind_objtype(get_rel_relkind(rte->relid)),
-// 							   get_rel_name(rte->relid));
-// 			return false;
-// 		}
-// 	}
+	/*
+	 * When the query doesn't explicitly update any columns, allow the query
+	 * if we have permission on any column of the rel.  This is to handle
+	 * SELECT FOR UPDATE as well as possible corner cases in UPDATE.
+	 */
+	if (bms_is_empty(modifiedCols))
+	{
+		if (pg_attribute_aclcheck_all_nosuper(relOid, userid, requiredPerms,
+									  ACLMASK_ANY) != ACLCHECK_OK)
+			return false;
+	}
 
-// 	if (next_exec_check_perms_hook)
-// 		result = (*next_exec_check_perms_hook) (rangeTabls,
-// 												abort);
-// 	return result;
-// }
+	while ((col = bms_next_member(modifiedCols, col)) >= 0)
+	{
+		/* bit #s are offset by FirstLowInvalidHeapAttributeNumber */
+		AttrNumber	attno = col + FirstLowInvalidHeapAttributeNumber;
+
+		if (attno == InvalidAttrNumber)
+		{
+			/* whole-row reference can't happen here */
+			elog(ERROR, "whole-row update is not implemented");
+		}
+		else
+		{
+			if (pg_attribute_aclcheck_nosuper(relOid, attno, userid,
+									  requiredPerms) != ACLCHECK_OK)
+				return false;
+		}
+	}
+	return true;
+}
+
+/*
+ * check_rte_perms
+ *
+ * Check access permissions for a single RTE.
+ * Similar to ExecCheckRTEPerms
+ */
+static bool
+check_rte_perms(RangeTblEntry *rte)
+{
+	AclMode		requiredPerms;
+	AclMode		relPerms;
+	AclMode		remainingPerms;
+	Oid			relOid;
+	Oid			userid;
+
+	/*
+	 * No work if requiredPerms is empty.
+	 */
+	requiredPerms = rte->requiredPerms;
+	if (requiredPerms == 0)
+		return true;
+
+	relOid = rte->relid;
+
+	/*
+	 * userid to check as: current user unless we have a setuid indication.
+	 *
+	 * Note: GetUserId() is presently fast enough that there's no harm in
+	 * calling it separately for each RTE.  If that stops being true, we could
+	 * call it once in ExecCheckRTPerms and pass the userid down from there.
+	 * But for now, no need for the extra clutter.
+	 */
+	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+
+	/*
+	 * We must have *all* the requiredPerms bits, but some of the bits can be
+	 * satisfied from column-level rather than relation-level permissions.
+	 * First, remove any bits that are satisfied by relation permissions.
+	 */
+	relPerms = pg_class_aclmask_nosuper(relOid, userid, requiredPerms, ACLMASK_ALL);
+	remainingPerms = requiredPerms & ~relPerms;
+	if (remainingPerms != 0)
+	{
+		int			col = -1;
+
+		/*
+		 * If we lack any permissions that exist only as relation permissions,
+		 * we can fail straight away.
+		 */
+		if (remainingPerms & ~(ACL_SELECT | ACL_INSERT | ACL_UPDATE))
+			return false;
+
+		/*
+		 * Check to see if we have the needed privileges at column level.
+		 *
+		 * Note: failures just report a table-level error; it would be nicer
+		 * to report a column-level error if we have some but not all of the
+		 * column privileges.
+		 */
+		if (remainingPerms & ACL_SELECT)
+		{
+			/*
+			 * When the query doesn't explicitly reference any columns (for
+			 * example, SELECT COUNT(*) FROM table), allow the query if we
+			 * have SELECT on any column of the rel, as per SQL spec.
+			 */
+			if (bms_is_empty(rte->selectedCols))
+			{
+				if (pg_attribute_aclcheck_all_nosuper(relOid, userid, ACL_SELECT,
+											  ACLMASK_ANY) != ACLCHECK_OK)
+					return false;
+			}
+
+			while ((col = bms_next_member(rte->selectedCols, col)) >= 0)
+			{
+				/* bit #s are offset by FirstLowInvalidHeapAttributeNumber */
+				AttrNumber	attno = col + FirstLowInvalidHeapAttributeNumber;
+
+				if (attno == InvalidAttrNumber)
+				{
+					/* Whole-row reference, must have priv on all cols */
+					if (pg_attribute_aclcheck_all_nosuper(relOid, userid, ACL_SELECT,
+												  ACLMASK_ALL) != ACLCHECK_OK)
+						return false;
+				}
+				else
+				{
+					if (pg_attribute_aclcheck_nosuper(relOid, attno, userid,
+											  ACL_SELECT) != ACLCHECK_OK)
+						return false;
+				}
+			}
+		}
+
+		/*
+		 * Basically the same for the mod columns, for both INSERT and UPDATE
+		 * privilege as specified by remainingPerms.
+		 */
+		if (remainingPerms & ACL_INSERT && !check_rte_perms_modified(relOid,
+																	  userid,
+																	  rte->insertedCols,
+																	  ACL_INSERT))
+			return false;
+
+		if (remainingPerms & ACL_UPDATE && !check_rte_perms_modified(relOid,
+																	  userid,
+																	  rte->updatedCols,
+																	  ACL_UPDATE))
+			return false;
+	}
+	return true;
+}
+
+static bool
+se_feature_check_perms(List *rangeTabls, bool abort)
+{
+	ListCell   *l;
+	bool		result = true;
+
+	if(se_feature.mode)
+	{
+		foreach(l, rangeTabls)
+		{
+			RangeTblEntry *rte = (RangeTblEntry *) lfirst(l);
+			Oid			relOid = rte->relid;
+			HeapTuple	tup;
+			Form_pg_class classform;
+			Oid			relowner;
+
+			if (rte->rtekind != RTE_RELATION)
+				continue;
+
+			tup = SearchSysCache1(RELOID, ObjectIdGetDatum(relOid));
+			if (HeapTupleIsValid(tup))
+			{
+				classform = (Form_pg_class) GETSTRUCT(tup);
+				relowner = classform->relowner;
+
+				if(IS_SYSSSO(relowner) || IS_SYSSAO(relowner))
+				{
+					result = check_rte_perms(rte);
+					if (!result)
+					{
+						Assert(rte->rtekind == RTE_RELATION);
+						if (abort)
+							aclcheck_error(ACLCHECK_NO_PRIV, get_relkind_objtype(get_rel_relkind(rte->relid)),
+										get_rel_name(rte->relid));
+						return false;
+					}
+				}
+			}
+			
+			ReleaseSysCache(tup);
+		}
+	}
+
+	if (next_exec_check_perms_hook)
+		result = (*next_exec_check_perms_hook) (rangeTabls,
+												abort);
+	return result;
+}
 
 /*
  * sepgsql_object_access
@@ -627,8 +807,10 @@ _PG_init(void)
 	object_access_hook = object_access_check;
 
 	/* DML permission check */
-	// next_exec_check_perms_hook = ExecutorCheckPerms_hook;
-	// ExecutorCheckPerms_hook = se_feature_check_perms;
+	/*Begin -- bug#z4735*/
+	next_exec_check_perms_hook = ExecutorCheckPerms_hook;
+	ExecutorCheckPerms_hook = se_feature_check_perms;
+	/*End -- bug#z4735*/
 
 	/* ProcessUtility hook */
 	next_ProcessUtility_hook = ProcessUtility_hook;

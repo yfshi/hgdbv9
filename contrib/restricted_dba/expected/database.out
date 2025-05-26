@@ -11,8 +11,14 @@ create database db1 owner sysdba_u1;
 alter database db1 owner to u1;
 ERROR:  permission denied
 DETAIL:  only sysdba_role member can be owner
+alter database db_non_exist owner to sysdba_u1;
+ERROR:  database "db_non_exist" does not exist
+alter database db_non_exist rename to db_1;
+ERROR:  database "db_non_exist" does not exist
 ------ pass
 alter database db1 owner to sysdba_u2;
+alter database db1 rename to db1_new;
+alter database db1_new rename to db1;
 ---- GRANT/REVOKE
 ------ pass
 grant all on database db1 to sysdba_u1;
@@ -24,10 +30,18 @@ ERROR:  permission denied
 DETAIL:  cannot grant privilege on database with grant optionto non-sysdba_role member
 grant create on database db1 to syssso_u1 with grant option;
 ERROR:  permission denied
-DETAIL:  cannot grant privilege on database with grant optionto non-sysdba_role member
+DETAIL:  cannot grant privilege on database to syssso_role/syssao_role member.
+grant create on database db1 to syssso_u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege on database to syssso_role/syssao_role member.
 grant all on database db1 to syssao_u1;
 ERROR:  permission denied
 DETAIL:  cannot grant privilege on database to syssso_role/syssao_role member.
+grant create on database db_non_exist to sysdba_u1;
+ERROR:  database "db_non_exist" does not exist
 ---- DROP DATABASE
 ------ pass
 drop database db1;
+------ pass
+drop database db_non_exist;
+ERROR:  database "db_non_exist" does not exist

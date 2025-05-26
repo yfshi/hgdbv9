@@ -9,6 +9,9 @@ create schema sch_sysdba_u1 authorization sysdba_u1;
 create schema sch_syssso_u1 authorization syssso_u1;
 create schema sch_syssao_u1 authorization syssao_u1;
 
+create schema sch_syssso_u2 authorization syssso_u2;
+grant create on schema sch_syssso_u2 to sysdba_role;
+
 create function func_u1(a integer, b integer) returns integer
 as 'select a + b' language sql;
 create function func_sysdba_u1(a integer, b integer) returns integer
@@ -34,6 +37,8 @@ as 'select a + b' language sql;
 create function sch_sysdba_u1.func_sysdba_u1_f1(a integer, b integer) returns integer
 as 'select a + b' language sql;
 create function sch_u1.func_sysdba_u1_f1(a integer, b integer) returns integer
+as 'select a + b' language sql;
+create function sch_syssso_u2.func_sysdba_u1_f1(a integer, b integer) returns integer
 as 'select a + b' language sql;
 ------ fail
 create function sch_syssso_u1.func_sysdba_u1_f1(a integer, b integer) returns integer
@@ -104,6 +109,7 @@ grant all on function func_syssao_u1 to u1;
 drop function public.func_sysdba_u1_f1;
 drop function sch_sysdba_u1.func_sysdba_u1_f1;
 drop function sch_u1.func_sysdba_u1_f1;
+drop function sch_syssso_u2.func_sysdba_u1_f1;
 ------ fail
 drop function func_syssso_u1;
 drop function func_syssao_u1;
@@ -117,6 +123,7 @@ drop schema sch_syssso_u1;
 drop schema sch_syssao_u1;
 drop schema sch_sysdba_u1;
 drop schema sch_u1;
+drop schema sch_syssso_u2;
 
 drop function func_u1;
 drop function func_sysdba_u1;

@@ -15,6 +15,8 @@ create tablespace test_tablespace owner u1  location '/a_test_tablespace/not_exi
 ---- ALTER TABLESPACE
 ------ fail
 alter tablespace pg_default owner to u1;
+alter tablespace tbspc_non_exist owner to sysdba_u1;
+alter tablespace tbspc_non_exist rename to new_tbspc;
 ------ pass
 alter tablespace pg_default owner to sysdba_u1;
 select spcowner = 'sysdba_u1'::regrole as is_owner from pg_tablespace where spcname = 'pg_default';
@@ -22,6 +24,7 @@ select spcowner = 'sysdba_u1'::regrole as is_owner from pg_tablespace where spcn
 ---- DROP TABLESPACE
 ------ fail, because you cannot drop pg_default
 drop tablespace pg_default;
+drop tablespace tbspc_non_exist;
 
 ---- GRANT/REVOKE
 ------ pass
@@ -30,6 +33,10 @@ grant all on tablespace pg_default to u2;
 ------ fail
 grant all on tablespace pg_default to syssso_u1;
 grant all on tablespace pg_default to syssao_u1;
+grant create on tablespace pg_default to syssso_u1;
+grant create on tablespace pg_default to syssao_u1;
+grant all on tablespace tbspc_non_exist to syssso_u1;
+grant create on tablespace tbspc_non_exist to syssao_u1;
 grant all on tablespace pg_default to u2 with grant option;
 
 -- Clean test object

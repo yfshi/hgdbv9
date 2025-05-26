@@ -90,6 +90,18 @@
 
 #include "restricted_dba.h"
 
+static AclMode
+pg_attribute_aclmask_ext_nosuper(Oid table_oid, AttrNumber attnum, Oid roleid,
+						 AclMode mask, AclMaskHow how, bool *is_missing);
+
+static AclMode
+pg_attribute_aclmask_nosuper(Oid table_oid, AttrNumber attnum, Oid roleid,
+					 AclMode mask, AclMaskHow how);
+
+static AclResult
+pg_attribute_aclcheck_ext_nosuper(Oid table_oid, AttrNumber attnum,
+						  Oid roleid, AclMode mode, bool *is_missing);
+
 
 static void
 grant_tablespace_check(InternalGrant *istmt)
@@ -398,7 +410,6 @@ grant_proc_check(InternalGrant *istmt)
 	table_close(relation, RowShareLock);
 }
 
-
 /*
  * getRelationsInNamespace
  *
@@ -623,6 +634,7 @@ objectNamesToOids(ObjectType objtype, List *objnames)
 
 	return objects;
 }
+
 /*
  * objectsInSchemaToOids
  *
@@ -742,8 +754,42 @@ objectsInSchemaToOids(ObjectType objtype, List *nspnames)
 	return objects;
 }
 
-
-
+static AclMode
+string_to_privilege(const char *privname)
+{
+	if (strcmp(privname, "insert") == 0)
+		return ACL_INSERT;
+	if (strcmp(privname, "select") == 0)
+		return ACL_SELECT;
+	if (strcmp(privname, "update") == 0)
+		return ACL_UPDATE;
+	if (strcmp(privname, "delete") == 0)
+		return ACL_DELETE;
+	if (strcmp(privname, "truncate") == 0)
+		return ACL_TRUNCATE;
+	if (strcmp(privname, "references") == 0)
+		return ACL_REFERENCES;
+	if (strcmp(privname, "trigger") == 0)
+		return ACL_TRIGGER;
+	if (strcmp(privname, "execute") == 0)
+		return ACL_EXECUTE;
+	if (strcmp(privname, "usage") == 0)
+		return ACL_USAGE;
+	if (strcmp(privname, "create") == 0)
+		return ACL_CREATE;
+	if (strcmp(privname, "temporary") == 0)
+		return ACL_CREATE_TEMP;
+	if (strcmp(privname, "temp") == 0)
+		return ACL_CREATE_TEMP;
+	if (strcmp(privname, "connect") == 0)
+		return ACL_CONNECT;
+	if (strcmp(privname, "rule") == 0)
+		return 0;				/* ignore old RULE privileges */
+	ereport(ERROR,
+			(errcode(ERRCODE_SYNTAX_ERROR),
+			 errmsg("unrecognized privilege type \"%s\"", privname)));
+	return 0;					/* appease compiler */
+}
 
 /*
  * Called to execute the utility commands GRANT and REVOKE
@@ -836,6 +882,33 @@ grant_object_check(GrantStmt *stmt)
 	{
 		istmt.all_privs = false;
 		istmt.privileges = ACL_NO_RIGHTS;
+		/*Begin -- Bug#z4750*/
+		foreach(cell, stmt->privileges)
+		{
+			AccessPriv *privnode = (AccessPriv *) lfirst(cell);
+			AclMode		priv;
+
+			/*
+			 * If it's a column-level specification, we just set it aside in
+			 * col_privs for the moment; but insist it's for a relation.
+			 */
+			if (privnode->cols)
+			{
+				if (stmt->objtype != OBJECT_TABLE)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_GRANT_OPERATION),
+							 errmsg("column privileges are only valid for relations")));
+				istmt.col_privs = lappend(istmt.col_privs, privnode);
+				continue;
+			}
+
+			if (privnode->priv_name == NULL)	/* parser mistake? */
+				elog(ERROR, "AccessPriv node must specify privilege or columns");
+			priv = string_to_privilege(privnode->priv_name);
+
+			istmt.privileges |= priv;
+		}
+		/*End -- Bug#z4750*/
 	}
 
 	/*
@@ -890,7 +963,7 @@ grant_object_check(GrantStmt *stmt)
 		case OBJECT_TABLESPACE:
 			// all_privileges = ACL_ALL_RIGHTS_TABLESPACE;
 			// errormsg = gettext_noop("invalid privilege type %s for tablespace");
-            grant_tablespace_check(&istmt);
+			grant_tablespace_check(&istmt);
 			break;
 		case OBJECT_TYPE:
 			// all_privileges = ACL_ALL_RIGHTS_TYPE;
@@ -915,4 +988,432 @@ grant_object_check(GrantStmt *stmt)
 	return true;
 }
 
+/*
+ * pg_attribute_aclmask_nosuper
+ *
+ * same as pg_attribute_aclmask() but not influenced by superuser.
+ */
+static AclMode
+pg_attribute_aclmask_nosuper(Oid table_oid, AttrNumber attnum, Oid roleid,
+					 AclMode mask, AclMaskHow how)
+{
+	return pg_attribute_aclmask_ext_nosuper(table_oid, attnum, roleid,
+									mask, how, NULL);
+}
 
+/*
+ * Exported routine for examining a user's privileges for a column
+ *
+ * Does the bulk of the work for pg_attribute_aclmask(), and allows other
+ * callers to avoid the missing attribute ERROR when is_missing is non-NULL.
+ */
+static AclMode
+pg_attribute_aclmask_ext_nosuper(Oid table_oid, AttrNumber attnum, Oid roleid,
+						 AclMode mask, AclMaskHow how, bool *is_missing)
+{
+	AclMode		result;
+	HeapTuple	classTuple;
+	HeapTuple	attTuple;
+	Form_pg_class classForm;
+	Form_pg_attribute attributeForm;
+	Datum		aclDatum;
+	bool		isNull;
+	Acl		   *acl;
+	Oid			ownerId;
+
+	/*
+	 * First, get the column's ACL from its pg_attribute entry
+	 */
+	attTuple = SearchSysCache2(ATTNUM,
+							   ObjectIdGetDatum(table_oid),
+							   Int16GetDatum(attnum));
+	if (!HeapTupleIsValid(attTuple))
+	{
+		if (is_missing != NULL)
+		{
+			/* return "no privileges" instead of throwing an error */
+			*is_missing = true;
+			return 0;
+		}
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_COLUMN),
+					 errmsg("attribute %d of relation with OID %u does not exist",
+							attnum, table_oid)));
+	}
+
+	attributeForm = (Form_pg_attribute) GETSTRUCT(attTuple);
+
+	/* Check dropped columns, too */
+	if (attributeForm->attisdropped)
+	{
+		if (is_missing != NULL)
+		{
+			/* return "no privileges" instead of throwing an error */
+			*is_missing = true;
+			ReleaseSysCache(attTuple);
+			return 0;
+		}
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_COLUMN),
+					 errmsg("attribute %d of relation with OID %u does not exist",
+							attnum, table_oid)));
+	}
+
+	aclDatum = SysCacheGetAttr(ATTNUM, attTuple, Anum_pg_attribute_attacl,
+							   &isNull);
+
+	/*
+	 * Here we hard-wire knowledge that the default ACL for a column grants no
+	 * privileges, so that we can fall out quickly in the very common case
+	 * where attacl is null.
+	 */
+	if (isNull)
+	{
+		ReleaseSysCache(attTuple);
+		return 0;
+	}
+
+	/*
+	 * Must get the relation's ownerId from pg_class.  Since we already found
+	 * a pg_attribute entry, the only likely reason for this to fail is that a
+	 * concurrent DROP of the relation committed since then (which could only
+	 * happen if we don't have lock on the relation).  We prefer to report "no
+	 * privileges" rather than failing in such a case, so as to avoid unwanted
+	 * failures in has_column_privilege() tests.
+	 */
+	classTuple = SearchSysCache1(RELOID, ObjectIdGetDatum(table_oid));
+	if (!HeapTupleIsValid(classTuple))
+	{
+		ReleaseSysCache(attTuple);
+		return 0;
+	}
+	classForm = (Form_pg_class) GETSTRUCT(classTuple);
+
+	ownerId = classForm->relowner;
+
+	ReleaseSysCache(classTuple);
+
+	/* detoast column's ACL if necessary */
+	acl = DatumGetAclP(aclDatum);
+
+	result = aclmask_nosuper(acl, roleid, ownerId, mask, how);
+
+	/* if we have a detoasted copy, free it */
+	if (acl && (Pointer) acl != DatumGetPointer(aclDatum))
+		pfree(acl);
+
+	ReleaseSysCache(attTuple);
+
+	return result;
+}
+
+/*
+ * pg_attribute_aclcheck_nosuper
+ *
+ * same as pg_attribute_aclcheck() but not influenced by superuser.
+ */
+AclResult
+pg_attribute_aclcheck_nosuper(Oid table_oid, AttrNumber attnum,
+					  Oid roleid, AclMode mode)
+{
+	return pg_attribute_aclcheck_ext_nosuper(table_oid, attnum, roleid, mode, NULL);
+}
+
+
+/*
+ * pg_attribute_aclcheck_ext_nosuper
+ *
+ * same as pg_attribute_aclcheck_ext() but not influenced by superuser.
+ */
+static AclResult
+pg_attribute_aclcheck_ext_nosuper(Oid table_oid, AttrNumber attnum,
+						  Oid roleid, AclMode mode, bool *is_missing)
+{
+	if (pg_attribute_aclmask_ext_nosuper(table_oid, attnum, roleid, mode,
+								 ACLMASK_ANY, is_missing) != 0)
+		return ACLCHECK_OK;
+	else
+		return ACLCHECK_NO_PRIV;
+}
+
+/*
+ * pg_attribute_aclcheck_all_nosuper
+ *
+ * same as is_admin_of_role() but not influenced by superuser.
+ */
+AclResult
+pg_attribute_aclcheck_all_nosuper(Oid table_oid, Oid roleid, AclMode mode,
+						  AclMaskHow how)
+{
+	AclResult	result;
+	HeapTuple	classTuple;
+	Form_pg_class classForm;
+	AttrNumber	nattrs;
+	AttrNumber	curr_att;
+
+	/*
+	 * Must fetch pg_class row to check number of attributes.  As in
+	 * pg_attribute_aclmask, we prefer to return "no privileges" instead of
+	 * throwing an error if we get any unexpected lookup errors.
+	 */
+	classTuple = SearchSysCache1(RELOID, ObjectIdGetDatum(table_oid));
+	if (!HeapTupleIsValid(classTuple))
+		return ACLCHECK_NO_PRIV;
+	classForm = (Form_pg_class) GETSTRUCT(classTuple);
+
+	nattrs = classForm->relnatts;
+
+	ReleaseSysCache(classTuple);
+
+	/*
+	 * Initialize result in case there are no non-dropped columns.  We want to
+	 * report failure in such cases for either value of 'how'.
+	 */
+	result = ACLCHECK_NO_PRIV;
+
+	for (curr_att = 1; curr_att <= nattrs; curr_att++)
+	{
+		HeapTuple	attTuple;
+		AclMode		attmask;
+
+		attTuple = SearchSysCache2(ATTNUM,
+								   ObjectIdGetDatum(table_oid),
+								   Int16GetDatum(curr_att));
+		if (!HeapTupleIsValid(attTuple))
+			continue;
+
+		/* ignore dropped columns */
+		if (((Form_pg_attribute) GETSTRUCT(attTuple))->attisdropped)
+		{
+			ReleaseSysCache(attTuple);
+			continue;
+		}
+
+		/*
+		 * Here we hard-wire knowledge that the default ACL for a column
+		 * grants no privileges, so that we can fall out quickly in the very
+		 * common case where attacl is null.
+		 */
+		if (heap_attisnull(attTuple, Anum_pg_attribute_attacl, NULL))
+			attmask = 0;
+		else
+			attmask = pg_attribute_aclmask_nosuper(table_oid, curr_att, roleid,
+										   mode, ACLMASK_ANY);
+
+		ReleaseSysCache(attTuple);
+
+		if (attmask != 0)
+		{
+			result = ACLCHECK_OK;
+			if (how == ACLMASK_ANY)
+				break;			/* succeed on any success */
+		}
+		else
+		{
+			result = ACLCHECK_NO_PRIV;
+			if (how == ACLMASK_ALL)
+				break;			/* fail on any failure */
+		}
+	}
+
+	return result;
+}
+
+/*
+ * Exported routine for examining a user's privileges for a table
+ */
+AclMode
+pg_class_aclmask_nosuper(Oid table_oid, Oid roleid,
+				 AclMode mask, AclMaskHow how)
+{
+	return pg_class_aclmask_ext_nosuper(table_oid, roleid, mask, how, NULL);
+}
+
+/*
+ * Exported routine for examining a user's privileges for a table
+ *
+ * Does the bulk of the work for pg_class_aclmask(), and allows other
+ * callers to avoid the missing relation ERROR when is_missing is non-NULL.
+ */
+AclMode
+pg_class_aclmask_ext_nosuper(Oid table_oid, Oid roleid, AclMode mask,
+					 AclMaskHow how, bool *is_missing)
+{
+	AclMode		result;
+	HeapTuple	tuple;
+	Form_pg_class classForm;
+	Datum		aclDatum;
+	bool		isNull;
+	Acl		   *acl;
+	Oid			ownerId;
+
+	/*
+	 * Must get the relation's tuple from pg_class
+	 */
+	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(table_oid));
+	if (!HeapTupleIsValid(tuple))
+	{
+		if (is_missing != NULL)
+		{
+			/* return "no privileges" instead of throwing an error */
+			*is_missing = true;
+			return 0;
+		}
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_TABLE),
+					 errmsg("relation with OID %u does not exist",
+							table_oid)));
+	}
+
+	classForm = (Form_pg_class) GETSTRUCT(tuple);
+
+	/*
+	 * Normal case: get the relation's ACL from pg_class
+	 */
+	ownerId = classForm->relowner;
+
+	aclDatum = SysCacheGetAttr(RELOID, tuple, Anum_pg_class_relacl,
+							   &isNull);
+	if (isNull)
+	{
+		/* No ACL, so build default ACL */
+		switch (classForm->relkind)
+		{
+			case RELKIND_SEQUENCE:
+				acl = acldefault(OBJECT_SEQUENCE, ownerId);
+				break;
+			default:
+				acl = acldefault(OBJECT_TABLE, ownerId);
+				break;
+		}
+		aclDatum = (Datum) 0;
+	}
+	else
+	{
+		/* detoast rel's ACL if necessary */
+		acl = DatumGetAclP(aclDatum);
+	}
+
+	result = aclmask_nosuper(acl, roleid, ownerId, mask, how);
+
+	/* if we have a detoasted copy, free it */
+	if (acl && (Pointer) acl != DatumGetPointer(aclDatum))
+		pfree(acl);
+
+	ReleaseSysCache(tuple);
+
+	/*
+	 * Check if ACL_SELECT is being checked and, if so, and not set already as
+	 * part of the result, then check if the user is a member of the
+	 * pg_read_all_data role, which allows read access to all relations.
+	 */
+	if (mask & ACL_SELECT && !(result & ACL_SELECT) &&
+		has_privs_of_role_nosuper(roleid, ROLE_PG_READ_ALL_DATA))
+		result |= ACL_SELECT;
+
+	/*
+	 * Check if ACL_INSERT, ACL_UPDATE, or ACL_DELETE is being checked and, if
+	 * so, and not set already as part of the result, then check if the user
+	 * is a member of the pg_write_all_data role, which allows
+	 * INSERT/UPDATE/DELETE access to all relations (except system catalogs,
+	 * which requires superuser, see above).
+	 */
+	if (mask & (ACL_INSERT | ACL_UPDATE | ACL_DELETE) &&
+		!(result & (ACL_INSERT | ACL_UPDATE | ACL_DELETE)) &&
+		has_privs_of_role_nosuper(roleid, ROLE_PG_WRITE_ALL_DATA))
+		result |= (mask & (ACL_INSERT | ACL_UPDATE | ACL_DELETE));
+
+	return result;
+}
+
+
+/*
+ * Exported routine for examining a user's privileges for a namespace
+ */
+AclMode
+pg_namespace_aclmask_nosuper(Oid nsp_oid, Oid roleid,
+					 AclMode mask, AclMaskHow how)
+{
+	AclMode		result;
+	HeapTuple	tuple;
+	Datum		aclDatum;
+	bool		isNull;
+	Acl		   *acl;
+	Oid			ownerId;
+
+	/*
+	 * If we have been assigned this namespace as a temp namespace, check to
+	 * make sure we have CREATE TEMP permission on the database, and if so act
+	 * as though we have all standard (but not GRANT OPTION) permissions on
+	 * the namespace.  If we don't have CREATE TEMP, act as though we have
+	 * only USAGE (and not CREATE) rights.
+	 *
+	 * This may seem redundant given the check in InitTempTableNamespace, but
+	 * it really isn't since current user ID may have changed since then. The
+	 * upshot of this behavior is that a SECURITY DEFINER function can create
+	 * temp tables that can then be accessed (if permission is granted) by
+	 * code in the same session that doesn't have permissions to create temp
+	 * tables.
+	 *
+	 * XXX Would it be safe to ereport a special error message as
+	 * InitTempTableNamespace does?  Returning zero here means we'll get a
+	 * generic "permission denied for schema pg_temp_N" message, which is not
+	 * remarkably user-friendly.
+	 */
+	if (isTempNamespace(nsp_oid))
+	{
+		if (pg_database_aclcheck(MyDatabaseId, roleid,
+								 ACL_CREATE_TEMP) == ACLCHECK_OK)
+			return mask & ACL_ALL_RIGHTS_SCHEMA;
+		else
+			return mask & ACL_USAGE;
+	}
+
+	/*
+	 * Get the schema's ACL from pg_namespace
+	 */
+	tuple = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(nsp_oid));
+	if (!HeapTupleIsValid(tuple))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_SCHEMA),
+				 errmsg("schema with OID %u does not exist", nsp_oid)));
+
+	ownerId = ((Form_pg_namespace) GETSTRUCT(tuple))->nspowner;
+
+	aclDatum = SysCacheGetAttr(NAMESPACEOID, tuple, Anum_pg_namespace_nspacl,
+							   &isNull);
+	if (isNull)
+	{
+		/* No ACL, so build default ACL */
+		acl = acldefault(OBJECT_SCHEMA, ownerId);
+		aclDatum = (Datum) 0;
+	}
+	else
+	{
+		/* detoast ACL if necessary */
+		acl = DatumGetAclP(aclDatum);
+	}
+
+	result = aclmask_nosuper(acl, roleid, ownerId, mask, how);
+
+	/* if we have a detoasted copy, free it */
+	if (acl && (Pointer) acl != DatumGetPointer(aclDatum))
+		pfree(acl);
+
+	ReleaseSysCache(tuple);
+
+	/*
+	 * Check if ACL_USAGE is being checked and, if so, and not set already as
+	 * part of the result, then check if the user is a member of the
+	 * pg_read_all_data or pg_write_all_data roles, which allow usage access
+	 * to all schemas.
+	 */
+	if (mask & ACL_USAGE && !(result & ACL_USAGE) &&
+		(has_privs_of_role_nosuper(roleid, ROLE_PG_READ_ALL_DATA) ||
+		 has_privs_of_role_nosuper(roleid, ROLE_PG_WRITE_ALL_DATA)))
+		result |= ACL_USAGE;
+	return result;
+}
