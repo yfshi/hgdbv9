@@ -2600,7 +2600,8 @@ shouldBypassQuery(const char *query_string)
 			}
 		}
 		else if (nodeTag(parsetree) != T_VariableSetStmt &&
-			nodeTag(parsetree) != T_VariableShowStmt)
+			nodeTag(parsetree) != T_VariableShowStmt &&
+			nodeTag(parsetree) != T_AlterSystemStmt ) /* BUG#4773 */
 		{
 			bypass = false;
 			break;
