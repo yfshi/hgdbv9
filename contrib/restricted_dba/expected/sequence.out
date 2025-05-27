@@ -40,6 +40,8 @@ ERROR:  schema "sch_non_exist" does not exist
 alter sequence seq1_sysdba_u1 owner to sysdba_u1;
 alter sequence seq1_sysdba_u2 owner to sysdba_u2;
 alter sequence seq1_u1 owner to u1;
+alter sequence if exists seq_non_exist owner to sysdba_u1;
+NOTICE:  relation "seq_non_exist" does not exist, skipping
 ------ fail
 alter sequence seq1_syssso_u1 owner to sysdba_u1;
 ERROR:  permission denied
@@ -60,6 +62,8 @@ ERROR:  relation "seq_non_exist" does not exist
 alter sequence seq1_sysdba_u1 restart with 100;
 alter sequence seq1_sysdba_u2 restart with 100;
 alter sequence seq1_u1 restart with 100;
+alter sequence if exists seq_non_exist restart with 100;
+ERROR:  relation "seq_non_exist" does not exist
 ------ fail
 alter sequence seq1_syssso_u1 restart with 100;
 ERROR:  permission denied
@@ -74,6 +78,8 @@ ERROR:  relation "seq_non_exist" does not exist
 alter sequence seq1_sysdba_u1 rename to seq1_sysdba_u1_new;
 alter sequence seq1_sysdba_u2 rename to seq1_sysdba_u2_new;
 alter sequence seq1_u1 rename to seq1_u1_new;
+alter sequence if exists seq_non_exist rename to seq_non_exist_new;
+NOTICE:  relation "seq_non_exist" does not exist, skipping
 ------ fail
 alter sequence seq1_syssso_u1 rename to seq1_syssso_u1_new;
 ERROR:  permission denied
@@ -146,6 +152,8 @@ drop sequence seq1_sysdba_u1_new;
 drop sequence seq1_sysdba_u2_new;
 drop sequence seq1_u1_new;
 drop sequence sch_syssso_u2.seq1_sysdba_u1;
+drop sequence if exists seq_non_exist;
+NOTICE:  sequence "seq_non_exist" does not exist, skipping
 ------ fail
 drop sequence seq1_syssso_u1;
 ERROR:  permission denied
@@ -154,7 +162,7 @@ drop sequence seq1_syssao_u1;
 ERROR:  permission denied
 DETAIL:  cannot drop relation of syssso_role/syssao_role member
 drop sequence seq_non_exist;
-ERROR:  relation "seq_non_exist" does not exist
+ERROR:  sequence "seq_non_exist" does not exist
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

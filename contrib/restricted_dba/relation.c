@@ -248,24 +248,21 @@ create_index_check(IndexStmt *stmt)
 		reloid = RangeVarGetRelid(stmt->relation, AccessShareLock, false);
 
 		tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(reloid));
-		if (!HeapTupleIsValid(tuple))
-			ereport(ERROR,
-					(errcode(ERRCODE_UNDEFINED_TABLE),
-					errmsg("relation with OID %u does not exist", reloid)));
+		if (HeapTupleIsValid(tuple))
+		{
+			ownerId = ((Form_pg_class) GETSTRUCT(tuple))->relowner;
+			
+			if(IS_SYSSSO(ownerId) || IS_SYSSAO(ownerId))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("member of sysdba_role can only create index"
+									"on its owned relation")));
 
-		ownerId = ((Form_pg_class) GETSTRUCT(tuple))->relowner;
-
-		ReleaseSysCache(tuple);
+			ReleaseSysCache(tuple);
+		}
 
 		UnlockRelationOid(reloid, AccessShareLock);
-
-		if(IS_SYSSSO(ownerId) || IS_SYSSAO(ownerId))
-			ereport(ERROR,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					errmsg("permission denied"),
-					errdetail("member of sysdba_role can only create index"
-							 	"on its owned relation")));
-	
 	}
 
 	return true;
@@ -279,6 +276,10 @@ alter_relation_check(AlterTableStmt *stmt)
 
 	relid = AlterTableLookupRelation(stmt, NoLock);
 
+	/*
+	 * we only care the relation existed case,
+	 * leave non-exist case to original error check
+	 */
 	if (OidIsValid(relid))
 	{
 
@@ -299,12 +300,6 @@ alter_relation_check(AlterTableStmt *stmt)
 		}
 
 		ReleaseSysCache(tuple);
-	}
-	else
-	{
-		ereport(NOTICE,
-				(errmsg("relation \"%s\" does not exist",
-						stmt->relation->relname)));
 	}
 
 
@@ -349,26 +344,24 @@ alter_relation_rename_check(RenameStmt *stmt)
 
 	tup = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
 
-	if (!HeapTupleIsValid(tup))
+	/*
+	 * we only care the relation existed case,
+	 * leave non-exist case to original error check
+	 */
+	if (HeapTupleIsValid(tup))
 	{
-		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_TABLE),
-				 errmsg("relation \"%s\" does not exist", stmt->relation->relname)));
-	}	
+		classform = (Form_pg_class) GETSTRUCT(tup);
+		relowner = classform->relowner;
+
+		if(IS_SYSSSO(relowner) || IS_SYSSAO(relowner))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("cannot alter relation of syssso_role/syssao_role "
+								"member")));
 		
-
-	classform = (Form_pg_class) GETSTRUCT(tup);
-	relowner = classform->relowner;
-
-
-	if(IS_SYSSSO(relowner) || IS_SYSSAO(relowner))
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				errmsg("permission denied"),
-				errdetail("cannot alter relation of syssso_role/syssao_role "
-							"member")));
-
-	ReleaseSysCache(tup);
+		ReleaseSysCache(tup);
+	}	
 
 	table_close(rel, RowExclusiveLock);
 
@@ -395,36 +388,35 @@ alter_relation_schema_check(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 
 	tup = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
 
-	if (!HeapTupleIsValid(tup))
+	/*
+	 * we only care the relation existed case,
+	 * leave non-exist case to original error check
+	 */
+	if (HeapTupleIsValid(tup))
 	{
-		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_TABLE),
-				 errmsg("relation \"%s\" does not exist", stmt->relation->relname)));
-	}	
-		
-
-	classform = (Form_pg_class) GETSTRUCT(tup);
-	relowner = classform->relowner;
-	relname = NameStr(classform->relname);
+		classform = (Form_pg_class) GETSTRUCT(tup);
+		relowner = classform->relowner;
+		relname = NameStr(classform->relname);
 
 
-	if(IS_SYSSSO(relowner) || IS_SYSSAO(relowner))
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				errmsg("permission denied"),
-				errdetail("cannot alter relation of syssso_role/syssao_role "
-							"member")));
+		if(IS_SYSSSO(relowner) || IS_SYSSAO(relowner))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("cannot alter relation of syssso_role/syssao_role "
+								"member")));
+		}
+
+
+		/* Get and lock schema OID and check its permissions. */
+		newrv = makeRangeVar(stmt->newschema,relname, -1);
+		newnspoid = RangeVarGetAndCheckCreationNamespace(newrv, NoLock, NULL);
+		/*check whewher creater able to use the schema*/
+		use_schema_check(newnspoid, GetUserId());
+
+		ReleaseSysCache(tup);
 	}
-
-
-	/* Get and lock schema OID and check its permissions. */
-	newrv = makeRangeVar(stmt->newschema,relname, -1);
-	newnspoid = RangeVarGetAndCheckCreationNamespace(newrv, NoLock, NULL);
-	/*check whewher creater able to use the schema*/
-	use_schema_check(newnspoid, GetUserId());
-
-	ReleaseSysCache(tup);
 
 	return true;
 
@@ -459,25 +451,27 @@ bool drop_relation_check(DropStmt *stmt)
 										  NULL,NULL);
 
 		tup = SearchSysCache1(RELOID, ObjectIdGetDatum(relOid));
-		if (!HeapTupleIsValid(tup))
+		/*
+		 * we only care the relation existed case,
+		 * leave non-exist case to original error check
+		 */
+		if (HeapTupleIsValid(tup))
 		{
-			ereport(ERROR,
-					(errcode(ERRCODE_UNDEFINED_TABLE),
-					errmsg("relation \"%s\" does not exist", rel->relname)));
+			classform = (Form_pg_class) GETSTRUCT(tup);
+			relowner = classform->relowner;
+
+			if(IS_SYSSSO(relowner) || IS_SYSSAO(relowner))
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("cannot drop relation of syssso_role/syssao_role "
+									"member")));
+			}
+			ReleaseSysCache(tup);
 		}
 
-		classform = (Form_pg_class) GETSTRUCT(tup);
-		relowner = classform->relowner;
-
-		if(IS_SYSSSO(relowner) || IS_SYSSAO(relowner))
-		{
-			ereport(ERROR,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					errmsg("permission denied"),
-					errdetail("cannot drop relation of syssso_role/syssao_role "
-								"member")));
-		}
-		ReleaseSysCache(tup);
+		
 	}
 
 	return true;
@@ -489,7 +483,10 @@ alter_sequence_check(AlterSeqStmt *stmt)
 	Oid			relid;
 
 	relid = RangeVarGetRelid(stmt->sequence, NoLock, false);
-	
+	/*
+	 * we only care the relation existed case,
+	 * leave non-exist case to original error check
+	 */
 	if (OidIsValid(relid))
 	{
 
@@ -511,13 +508,7 @@ alter_sequence_check(AlterSeqStmt *stmt)
 
 		ReleaseSysCache(tuple);
 	}
-	else
-	{
-		ereport(NOTICE,
-				(errmsg("sequence \"%s\" does not exist",
-						stmt->sequence->relname)));
-	}
-	
+
 	return true;
 }
 

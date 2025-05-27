@@ -147,36 +147,40 @@ alter_proc_owner_check(AlterOwnerStmt *stmt, const char *name, Oid newOwnerId)
 								 false);
 
 	tup = SearchSysCache1(PROCOID, procoid);
-	if (!HeapTupleIsValid(tup))
-		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_FUNCTION),
-				 errmsg("function \"%s\" does not exist", name)));
 
-	procform = (Form_pg_proc) GETSTRUCT(tup);
-	procowner = procform->proowner;
-
-	if (IS_SYSDBA(GetUserId()) &&
-	 	(IS_SYSSSO(procowner) || IS_SYSSAO(procowner)))
+	/*
+	 * we only care the relation existed case,
+	 * leave non-exist case to original error check
+	 */
+	if (HeapTupleIsValid(tup))
 	{
-		result = false;
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("permission denied"),
-				 errdetail("cannot alter function/procedure/routine of "
-				 			"syssso_role/syssao_role member")));
+		procform = (Form_pg_proc) GETSTRUCT(tup);
+		procowner = procform->proowner;
+
+		if (IS_SYSDBA(GetUserId()) &&
+			(IS_SYSSSO(procowner) || IS_SYSSAO(procowner)))
+		{
+			result = false;
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("cannot alter function/procedure/routine of "
+								"syssso_role/syssao_role member")));
+		}
+
+		if(IS_SYSSSO(newOwnerId) || IS_SYSSAO(newOwnerId))
+		{	
+			result = false;
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("syssso_role/syssao_role member "
+							"cannot be owner of function/procedure/routine")));
+		}
+
+		ReleaseSysCache(tup);
 	}
 
-	if(IS_SYSSSO(newOwnerId) || IS_SYSSAO(newOwnerId))
-	{	
-		result = false;
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("permission denied"),
-				 errdetail("syssso_role/syssao_role member "
-				 		   "cannot be owner of function/procedure/routine")));
-	}
-
-	ReleaseSysCache(tup);
 	table_close(rel, RowShareLock);
 
 	return result;
@@ -198,24 +202,25 @@ bool alter_proc_rename_check(RenameStmt *stmt)
 
 	tup = SearchSysCache1(PROCOID, procid);
 
-	if (!HeapTupleIsValid(tup))
+	/*
+	 * we only care the relation existed case,
+	 * leave non-exist case to original error check
+	 */
+	if (HeapTupleIsValid(tup))
 	{
-		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_FUNCTION),
-				 errmsg("function \"%s\" does not exist", stmt->subname)));
+		procform = (Form_pg_proc) GETSTRUCT(tup);
+		procowner = procform->proowner;
+
+		if(IS_SYSSSO(procowner) || IS_SYSSAO(procowner))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("cannot alter function/procedure/routine of "
+								"syssso_role/syssao_role member")));
+
+		ReleaseSysCache(tup);
 	}	
 
-	procform = (Form_pg_proc) GETSTRUCT(tup);
-	procowner = procform->proowner;
-
-	if(IS_SYSSSO(procowner) || IS_SYSSAO(procowner))
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				errmsg("permission denied"),
-				errdetail("cannot alter function/procedure/routine of "
-							"syssso_role/syssao_role member")));
-
-	ReleaseSysCache(tup);
 	table_close(rel, RowShareLock);
 
 	return true;
@@ -237,30 +242,31 @@ alter_proc_schema_check(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 	procid = LookupFuncWithArgs(stmt->objectType, func, false);
 	tup = SearchSysCache1(PROCOID, procid);
 
-	if (!HeapTupleIsValid(tup))
+	/*
+	 * we only care the relation existed case,
+	 * leave non-exist case to original error check
+	 */
+	if (HeapTupleIsValid(tup))
 	{
-		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_FUNCTION),
-				 errmsg("function with oid \"%d\" does not exist", procid)));
+		procform = (Form_pg_proc) GETSTRUCT(tup);
+		procowner = procform->proowner;
+
+		if(IS_SYSSSO(procowner) || IS_SYSSAO(procowner))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("cannot alter function/procedure/routine of "
+								"syssso_role/syssao_role member")));
+		}
+
+		newnspoid = LookupCreationNamespace(stmt->newschema);
+		/*check whewher creater able to use the schema*/
+		use_schema_check(newnspoid, GetUserId());
+
+		ReleaseSysCache(tup);
 	}
 
-	procform = (Form_pg_proc) GETSTRUCT(tup);
-	procowner = procform->proowner;
-
-	if(IS_SYSSSO(procowner) || IS_SYSSAO(procowner))
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				errmsg("permission denied"),
-				errdetail("cannot alter function/procedure/routine of "
-							"syssso_role/syssao_role member")));
-	}
-
-	newnspoid = LookupCreationNamespace(stmt->newschema);
-	/*check whewher creater able to use the schema*/
-	use_schema_check(newnspoid, GetUserId());
-
-	ReleaseSysCache(tup);
 	table_close(rel, RowShareLock);
 
 	return true;
@@ -282,27 +288,27 @@ alter_proc_check(ParseState *pstate, AlterFunctionStmt *stmt)
 	procid = LookupFuncWithArgs(stmt->objtype, stmt->func, false);
 	tup = SearchSysCache1(PROCOID, procid);
 
-	if (!HeapTupleIsValid(tup))
+	/*
+	 * we only care the relation existed case,
+	 * leave non-exist case to original error check
+	 */
+	if (HeapTupleIsValid(tup))
 	{
-		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_FUNCTION),
-				 errmsg("function with oid \"%d\" does not exist", procid)));
-	}
-	
-	procform = (Form_pg_proc) GETSTRUCT(tup);
-	procowner = procform->proowner;
+		procform = (Form_pg_proc) GETSTRUCT(tup);
+		procowner = procform->proowner;
 
-	if(IS_SYSSSO(procowner) || IS_SYSSAO(procowner))
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				errmsg("permission denied"),
-				errdetail("cannot alter function/procedure/routine of "
-							"syssso_role/syssao_role member")));
+		if(IS_SYSSSO(procowner) || IS_SYSSAO(procowner))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("cannot alter function/procedure/routine of "
+								"syssso_role/syssao_role member")));
+		}
+
+		ReleaseSysCache(tup);
 	}
 
-
-	ReleaseSysCache(tup);
 	table_close(rel, RowShareLock);
 
 	return true;
@@ -326,26 +332,26 @@ bool drop_proc_check(DropStmt *stmt)
 		procid = LookupFuncWithArgs(stmt->removeType, func, false);
 		tup = SearchSysCache1(PROCOID, procid);
 
-		if (!HeapTupleIsValid(tup))
+		/*
+		 * we only care the relation existed case,
+		 * leave non-exist case to original error check
+		 */
+		if (HeapTupleIsValid(tup))
 		{
-			ereport(ERROR,
-					(errcode(ERRCODE_UNDEFINED_FUNCTION),
-					errmsg("function with oid \"%d\" does not exist", procid)));
-		}
-	
-		procform = (Form_pg_proc) GETSTRUCT(tup);
-		procowner = procform->proowner;
+			procform = (Form_pg_proc) GETSTRUCT(tup);
+			procowner = procform->proowner;
 
-		if(IS_SYSSSO(procowner) || IS_SYSSAO(procowner))
-		{
-			ereport(ERROR,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					errmsg("permission denied"),
-					errdetail("cannot drop function/procedure/routine of "
-								"syssso_role/syssao_role member")));
+			if(IS_SYSSSO(procowner) || IS_SYSSAO(procowner))
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("cannot drop function/procedure/routine of "
+									"syssso_role/syssao_role member")));
+			}
+		
+			ReleaseSysCache(tup);
 		}
-	
-		ReleaseSysCache(tup);
 	}
 
 	table_close(rel, RowShareLock);

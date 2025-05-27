@@ -51,6 +51,7 @@ create view sch_non_exist.v1_non_exist as select * from test_create;
 alter view v2_sysdba_u1 rename to v2_sysdba_u1_new;
 alter view v2_sysdba_u2 rename to v2_sysdba_u2_new;
 alter view v1_u1 rename to v1_u1_new;
+alter view if exists v1_non_exist rename to v1_non_exist_new;
 ------ fail
 alter view v1_sso_u1 rename to v1_sso_u1_new;
 alter view v1_sao_u1 rename to v1_sao_u1_new;
@@ -61,6 +62,7 @@ alter view v1_non_exist rename to v1_non_exist_new;
 alter view v2_sysdba_u1_new alter column ts set default now();
 alter view v2_sysdba_u2_new alter column ts set default now();
 alter view v1_u1_new alter column ts set default now();
+alter view if exists v1_non_exist alter column ts set default now();
 ------ fail
 alter view v1_sso_u1 alter column ts set default now();
 alter view v1_sao_u1 alter column ts set default now();
@@ -71,6 +73,7 @@ alter view v1_non_exist alter column ts set default now();
 alter view v2_sysdba_u1_new owner to sysdba_u1;
 alter view v2_sysdba_u2_new owner to sysdba_u2;
 alter view v1_u1_new owner to u1;
+alter view if exists v1_non_exist owner to sysdba_u1;
 ------ fail
 alter view v1_sso_u1 owner to sysdba_u1;
 alter view v1_sao_u1 owner to u1;
@@ -97,6 +100,7 @@ drop view v2_sysdba_u1_new;
 drop view v2_sysdba_u2_new;
 drop view v1_u1_new;
 drop view sch_syssso_u2.v1_sysdba_u1;
+drop view if exists v1_non_exist;
 ------ fail
 drop view v1_sso_u1;
 drop view v1_sao_u1;
