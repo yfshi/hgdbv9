@@ -32,10 +32,15 @@
 #include "utils/sortsupport.h"
 #include "utils/varlena.h"
 
-/* 
-	'pg text' 'blob' 'tinyblob' 'mediumblob' 'longblob' all call this to check length limit.
-	finally, return bytea type.
-*/
+#define TINYBLOB_MAX_LENGTH     255
+#define BLOB_MAX_LENGTH         65535
+#define MEDIUMBLOB_MAX_LENGTH   16777215
+#define LONGBLOB_MAX_LENGTH     4294967295
+
+/**
+ * 'pg text' 'blob' 'tinyblob' 'mediumblob' 'longblob' all call this to check length limit.
+ * finally, return bytea type.
+ */
 static bytea *
 cast_to_anyblob(bytea *source, int64 max_length,
 				const char *typname, bool isExplicit, bool isPg2My)

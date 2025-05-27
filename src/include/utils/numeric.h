@@ -80,4 +80,8 @@ extern int32 numeric_int4_opt_error(Numeric num, bool *error);
 /* Begin - bug0000457 */
 Numeric numeric_bitand(Numeric arg1, Numeric arg2);
 /* End - bug0000457 */
+
+/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+extern bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to);
+/* End - SRS-MYSQL-BUILDINFUNCTION */
 #endif							/* _PG_NUMERIC_H_ */

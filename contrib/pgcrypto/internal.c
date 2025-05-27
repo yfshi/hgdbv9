@@ -563,11 +563,9 @@ pg_sm4_encrypt(PX_Cipher *c, const uint8 *data, unsigned dlen, uint8 *res)
 	if (dlen & 15)
 		return PXE_NOTBLOCKSIZE;
 
-	//memcpy(res, data, dlen);
-
 	if (cx->mode == MODE_CBC)
 	{
-		pg_sm4_cbc_encrypt(&cx->ctx.sm4, cx->iv, data, dlen/SM4_BLOCK_SIZE, res);
+		pg_sm4_cbc_encrypt(&cx->ctx.sm4, cx->iv, INT_MAX_IV, data, dlen / SM4_BLOCK_SIZE, res);
 		memcpy(cx->iv, res + dlen - SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
 	}
 	else
@@ -590,11 +588,9 @@ pg_sm4_decrypt(PX_Cipher *c, const uint8 *data, unsigned dlen, uint8 *res)
 	if (dlen & 15)
 		return PXE_NOTBLOCKSIZE;
 
-	//memcpy(res, data, dlen);
-
 	if (cx->mode == MODE_CBC)
 	{
-		pg_sm4_cbc_decrypt(&cx->ctx.sm4, cx->iv, data, dlen/SM4_BLOCK_SIZE, res);
+		pg_sm4_cbc_decrypt(&cx->ctx.sm4, cx->iv, INT_MAX_IV, data, dlen/SM4_BLOCK_SIZE, res);
 		memcpy(cx->iv, data + dlen - SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
 	}
 	else

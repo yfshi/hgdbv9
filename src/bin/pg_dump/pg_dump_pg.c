@@ -14817,15 +14817,15 @@ dumpACL(Archive *fout, DumpId objDumpId, DumpId altDumpId,
 	   SELECT pg_catalog.binary_upgrade_set_record_init_privs(false);
 
 	situation:
-	   1、pg to v9 (no license)
-	   2、pg to v9 (have license)
-	   3、v9(no license) to pg
-	   4、v9(no license) to v9(no license)
+	   1. pg to v9 (no license)
+	   2. pg to v9 (have license)
+	   3. v9(no license) to pg
+	   4. v9(no license) to v9(no license)
 
-	   5、v9(have license) to pg
-	   6、v9(have license) to v9(have license)
-	   7、v9(no license) to v9(have license)
-	   8、v9(have license) to v9(no license)
+	   5. v9(have license) to pg
+	   6. v9(have license) to v9(have license)
+	   7. v9(no license) to v9(have license)
+	   8. v9(have license) to v9(no license)
 	   */
 	if (strcmp(name, "\"v_lic_baseinfo\"") == 0 ||
 		strcmp(name, "\"v_lic_funcinfo\"") == 0 ||

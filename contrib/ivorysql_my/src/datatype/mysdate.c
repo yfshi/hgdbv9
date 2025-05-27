@@ -42,64 +42,9 @@
 #include "utils/formatting.h"
 #include "utils/guc.h"
 #include "utils/numeric.h"
+#include "utils/lsyscache.h"
 #include "utils/timestamp.h"
 #include "utils/varlena.h"
-#include "utils/numeric.h"
-#include "../include/datetime_func.h"  /* SRS-MYSQL-BUILDINFUNCTION */
-
-
-int getCount(uint64 num);
-bool isValidDatetimeFormat(const char *datetime) ;
-//BIT_COUNT
-int getCount(uint64 num)
-{
-	int count = 0;
-	while (num)
-	{
-		count += num & 1;
-		num >>= 1;
-	}
-	return count;
-}
-
-int msec_round_add[7]=
-{
-	500000000,
-	50000000,
-	5000000,
-	500000,
-	50000,
-	5000,
-	0
-};
-int64 log_10_int[20]=
-{
-	1, 10, 100, 1000, 10000UL, 100000UL, 1000000UL, 10000000UL,
-	100000000ULL, 1000000000ULL, 10000000000ULL, 100000000000ULL,
-	1000000000000ULL, 10000000000000ULL, 100000000000000ULL,
-	1000000000000000ULL, 10000000000000000ULL, 100000000000000000ULL,
-	1000000000000000000ULL, 10000000000000000000ULL
-};
-
-char *zero_num[6]=
-{
-	"0", "00", "000", "0000", "00000", "000000"
-};
-
-
-bool isValidDatetimeFormat(const char *datetime) 
-{
-	if (strlen(datetime) > 26) {
-		return false;
-	}
-
-	if (datetime[4] != '-' || datetime[7] != '-' ||
-		datetime[13] != ':' || datetime[16] != ':' ) {
-		return false;
-	}
-
-	return true;
-}
 
 /* Begin - ReqID:SRS-MYSQL-DATETYPE */
 PG_FUNCTION_INFO_V1(mysdate_in);
@@ -319,6 +264,57 @@ PG_FUNCTION_INFO_V1(mysdate2_notlike);
 PG_FUNCTION_INFO_V1(mysdate_text_notlike);
 PG_FUNCTION_INFO_V1(mysdate_int8_notlike);
 
+int msec_round_add[7] = {
+	500000000,
+	50000000,
+	5000000,
+	500000,
+	50000,
+	5000,
+	0
+};
+
+int64 log_10_int[20] = {
+	1, 10, 100, 1000, 10000UL, 100000UL, 1000000UL, 10000000UL,
+	100000000ULL, 1000000000ULL, 10000000000ULL, 100000000000ULL,
+	1000000000000ULL, 10000000000000ULL, 100000000000000ULL,
+	1000000000000000ULL, 10000000000000000ULL, 100000000000000000ULL,
+	1000000000000000000ULL, 10000000000000000000ULL
+};
+
+char *zero_num[6] = {
+	"0", "00", "000", "0000", "00000", "000000"
+};
+
+static int
+getCount(uint64 num)
+{
+	int count = 0;
+	while (num)
+	{
+		count += num & 1;
+		num >>= 1;
+	}
+	return count;
+}
+
+static bool
+isValidDatetimeFormat(const char *datetime) 
+{
+	if (strlen(datetime) > 26)
+	{
+		return false;
+	}
+
+	if (datetime[4] != '-' || datetime[7] != '-' ||
+		datetime[13] != ':' || datetime[16] != ':' )
+	{
+		return false;
+	}
+
+	return true;
+}
+
 /*****************************************************************************
  *	 Date ADT
  *****************************************************************************/
@@ -392,7 +388,7 @@ mysdate_out(PG_FUNCTION_ARGS)
 	char	   *result = NULL;
 	struct pg_tm tt,
 			   *tm = &tt;
-	char		buf[MAXDATELEN + 1]={0};
+	char		buf[MAXDATELEN + 1] ={0};
 
 	if(date == 0)
 		PG_RETURN_NULL();
@@ -7463,9 +7459,6 @@ Datum
 mysdatetimes_in(PG_FUNCTION_ARGS)
 {
 	char	   *str = PG_GETARG_CSTRING(0);
-#ifdef NOT_USED
-	Oid			typelem = PG_GETARG_OID(1);
-#endif
 	int32		typmod = PG_GETARG_INT32(2);
 
 	TimeADT		datetime = -1;
@@ -7479,75 +7472,84 @@ mysdatetimes_in(PG_FUNCTION_ARGS)
 	int			nanoseconds = 0;
 	bool		nonsec = false;
 	TimeOffset	time = 0;
-	int64 datetemp = 0;
+	int64 		datetemp = 0;
 	Numeric		num ;
 	int			fsec_len;
 	char		buf[MAXDATELEN + 1] = {0};
 
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	/**
+	 * Begin - SRS-MYSQL-BUILDINFUNCTION
+	 * When do cast, typmod may be -1, it's illegal in this logic.
+	 */
+	if (typmod == -1)
+		typmod = DATETIME_MAX_DECIMALS;
+	/* End - SRS-MYSQL-BUILDINFUNCTION */
+
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode( MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
 
 	MemSet(tm, 0, sizeof(struct pg_tm));
 	dterr = mystr_to_datetime(str, strlen(str), tm, flag, &fsec, &ftype, &warn, &nanoseconds, &fsec_len);
-	fsec += (nanoseconds+500) / 1000;
-	nonsec = mysdatetime_add_nanoseconds_with_round(tm, &fsec,&warn, msec_round_add[typmod]);
-	fsec = fsec - fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - typmod];
+	fsec += (nanoseconds + 500) / 1000;
+	nonsec = mysdatetime_add_nanoseconds_with_round(tm, &fsec, &warn, msec_round_add[typmod]);
+	fsec = fsec - fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - typmod];
 
-	if(dterr || warn || nonsec)
+	if (dterr || warn || nonsec)
 	{
-		if((MYSQL_TIME_WARN_TRUNCATED & warn) && !dterr) 
+		if ((MYSQL_TIME_WARN_TRUNCATED & warn) && !dterr)
 			ereport(WARNING, (errmsg("Truncated incorrect datetime value: '%s'", str)));
-		else if((MYSQL_TIME_WARN_OUT_OF_RANGE & warn) && nonsec)
+		else if ((MYSQL_TIME_WARN_OUT_OF_RANGE & warn) && nonsec)
 		{
 			ereport(WARNING, (errmsg("datetime function: datetime field overflow")));
 			ereport(WARNING, (errmsg("Truncated incorrect datetime value: '%s'", str)));
 		}
-		else if(MYSQL_TIME_WARN_ZERO_IN_DATE & warn)
+		else if (MYSQL_TIME_WARN_ZERO_IN_DATE & warn)
 			ereport(WARNING, (errmsg("Truncated incorrect datetime value: '%s'", str)));
 		else
 			ereport(WARNING, (errmsg("Incorrect datetime value: '%s'", str)));
 
-		//ERROR 1064 (42000): You have an error in your SQL syntax
-		if(dterr < 0 || nonsec)
+		// ERROR 1064 (42000): You have an error in your SQL syntax
+		if (dterr < 0 || nonsec)
 		{
 			PG_RETURN_NULL();
 		}
 	}
 
-	if(tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
+	if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
 	{
 		tm->tm_year = 1000;
 		tm->tm_mon = 01;
 		tm->tm_mday = 01;
 	}
 
-	if(fsec == 1000000)
+	if (fsec == 1000000)
 	{
-		dterr = mysdatetime_rounded_seconds(tm, &fsec,&warn);
-		if(dterr)
+		dterr = mysdatetime_rounded_seconds(tm, &fsec, &warn);
+		if (dterr)
 		{
 			ereport(WARNING, (errmsg("datetime field overflow.")));
 			PG_RETURN_NULL();
 		}
 		fsec = 0;
 	}
-	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
+
+	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
 	datetemp = datetemp * 1000000;
 	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	datetime = datetemp + time;
 
 #ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
+	snprintf(buf, MAXDATELEN, "%lld.%06d", datetime, fsec);
 #else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
+	snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
 #endif
 
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-											   CStringGetDatum(buf),
-											   ObjectIdGetDatum(InvalidOid),
-											   Int32GetDatum((((14+typmod) << 16)|typmod) + VARHDRSZ)));
+											  CStringGetDatum(buf),
+											  ObjectIdGetDatum(InvalidOid),
+											  Int32GetDatum((((14 + typmod) << 16) | typmod) + VARHDRSZ)));
 
 	PG_RETURN_NUMERIC(num);
 }
@@ -7675,7 +7677,7 @@ mysdatetimes_typmodout(PG_FUNCTION_ARGS)
 	char	   *res = (char *) palloc(64);
 
 	if (typmod >= 0)
-		snprintf(res, 64, "(%d)",typmod);
+		snprintf(res, 64, "(%d)", typmod);
 	else
 		*res = '\0';
 
@@ -15441,7 +15443,7 @@ mystimestamps_typmodout(PG_FUNCTION_ARGS)
 	char	   *res = (char *) palloc(64);
 
 	if (typmod >= 0)
-		snprintf(res, 64, "(%d)",typmod);
+		snprintf(res, 64, "(%d)", typmod);
 	else
 		*res = '\0';
 
@@ -22746,14 +22748,18 @@ mystimes_in(PG_FUNCTION_ARGS)
 	int 		nanoseconds = 0;
 	bool		nanosec = false;
 	TimeOffset	time = 0;
-	int neg = 0;
+	int 		neg = 0;
 	char		buf[MAXDATELEN + 1] = {0};
-	Numeric		num ;
+	Numeric		num;
+	int32		typmod = PG_GETARG_INT32(2);
 
-#ifdef NOT_USED
-	Oid 			typelem = PG_GETARG_OID(1);
-#endif
-	int32			typmod = PG_GETARG_INT32(2);
+	/**
+	 * Begin - SRS-MYSQL-BUILDINFUNCTION
+	 * When do cast, typmod may be -1, it's illegal in this logic.
+	 */
+	if (typmod == -1)
+		typmod = DATETIME_MAX_DECIMALS;
+	/* End - SRS-MYSQL-BUILDINFUNCTION */
 
 	if(has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
@@ -22815,7 +22821,7 @@ mystimes_out(PG_FUNCTION_ARGS)
 	char		*result;
 	struct pg_tm tt,
 				*tm = &tt;
-	char		buf[MAXDATELEN + 1]={0};
+	char		buf[MAXDATELEN + 1] ={0};
 	char		*str=NULL;
 	int			neg = 0;
 
@@ -27014,123 +27020,3 @@ Datum mystimes_mystimestamps(PG_FUNCTION_ARGS)
 
 	PG_RETURN_NUMERIC(num);
 }
-
-/* Begin - SRS-MYSQL-BUILDINFUNCTION */
-bool 
-str_datetime_in_with_flag_internal(char *str, struct pg_tm *result_tm, fsec_t *result_fsec, mysql_dttype *result_tm_type)
-{
-	int flag = TIME_FLAG_INIT;
-	int nanoseconds = 0;
-	bool nonsec = false;
-	int fsec_len = 0;
-	fsec_t fsec;
-	mysql_dttype tm_type = MYSQL_TIMESTAMP_DATE;
-	struct pg_tm tt, *tm = &tt;
-	int errlevel;
-	int warning = 0;
-
-	errlevel = (is_strict_mode() ? ERROR : WARNING);
-
-	MemSet(tm, 0, sizeof(struct pg_tm));
-
-	if (has_sql_mode(MODE_NO_ZERO_DATE))
-		flag |= TIME_NO_ZERO_DATE;
-	if (has_sql_mode(MODE_INVALID_DATES))
-		flag |= TIME_INVALID_DATES;
-
-	mystr_to_datetime(str, strlen(str), tm, flag, &fsec, &tm_type, &warning, &nanoseconds, &fsec_len);
-	nonsec = mysdatetime_add_nanoseconds_with_round(tm, &fsec, &warning, nanoseconds);
-
-	if (tm_type < 0 || nonsec || (warning == MYSQL_TIME_WARN_ZERO_DATE && has_sql_mode(MODE_NO_ZERO_DATE)))
-	{
-
-		if (errlevel == ERROR && warning > 0)
-		{
-			ereport(errlevel, errmsg("Incorrect datetime value: \"%s\"", str));
-		}
-		else
-		{
-			ereport(errlevel, errmsg("Truncated incorrect date or datetime value: \"%s\"", str));
-		}
-		return false;
-	}
-
-	*result_fsec = fsec;
-	*result_tm_type = tm_type;
-	*result_tm = tt;
-
-	return true;
-}
-
-bool 
-num_datetime_in_with_flag_internal(Numeric num, struct pg_tm *result_tm, fsec_t *result_fsec, mysql_dttype *result_tm_type)
-{
-	struct pg_tm tt, *tm = &tt;
-	int64 datetimetemp = 0;
-	int64 len = 0;
-	char *str, *tmpstr;
-	fsec_t nanoseconds = 0;
-	fsec_t fsec = 0;
-	int dterr;
-	mysql_dttype ftype;
-	int flag = 0;
-	int warn = 0;
-
-	/* Calculate the length of the input data and return NULL if the integer part exceeds 14 digits. */
-	str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
-	tmpstr = pstrdup(str);
-	while (*str && *str != '.')
-	{
-		len++;
-		datetimetemp = datetimetemp * 10 + *str - '0';
-		str++;
-	}
-
-	/* Calculate the time */
-	str++; /* jump '.' */
-	for (int i = 0; i < 9; i++)
-	{
-		int numtemp = 0;
-		if (*str != '\0')
-		{
-			numtemp = *str - '0';
-			str++;
-		}
-		nanoseconds = nanoseconds * 10 + numtemp;
-	}
-
-	if (datetimetemp == 0)
-	{
-		MemSet(tm, 0, sizeof(struct pg_tm));
-	}
-	else if (datetimetemp < 0)
-	{
-		ereport(ERROR, (errmsg("Incorrect DATETIME value '%s'", tmpstr)));
-		return false;
-	}
-	else
-	{
-		flag = 9;
-		dterr = mysnumber_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
-		if (dterr < 0 || warn)
-		{
-			ereport(WARNING, (errmsg("Incorrect DATETIME value: '%ld'", datetimetemp)));
-			if (dterr < 0)
-				return false;
-		}
-
-		if (mysdatetime_rounded_seconds(tm, &fsec, &warn))
-		{
-			ereport(WARNING, (errmsg("DATETIME field overflow.")));
-			return false;
-		}
-	}
-
-	*result_fsec = fsec;
-	*result_tm_type = ftype;
-	*result_tm = tt;
-
-	return true;
-}
-/* End - SRS-MYSQL-BUILDINFUNCTION */
-

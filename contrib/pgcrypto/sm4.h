@@ -16,9 +16,9 @@ extern "C" {
 void pg_sm4_ecb_encrypt(const SM4_KEY *key, const uint8_t *in, size_t nblocks, uint8_t *out);
 void pg_sm4_ecb_decrypt(const SM4_KEY *key, const uint8_t *in, size_t nblocks, uint8_t *out);
 
-void pg_sm4_cbc_encrypt(const SM4_KEY *key, const uint8_t *iv,
+void pg_sm4_cbc_encrypt(const SM4_KEY *key, const uint8_t *iv, size_t iv_size,
 	const uint8_t *in, size_t nblocks, uint8_t *out);
-void pg_sm4_cbc_decrypt(const SM4_KEY *key, const uint8_t *iv,
+	void pg_sm4_cbc_decrypt(const SM4_KEY *key, const uint8_t *iv, size_t iv_size,
 	const uint8_t *in, size_t nblocks, uint8_t *out);
 
 #ifdef __cplusplus

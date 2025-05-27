@@ -28,6 +28,9 @@
 #include "utils/fmgrprotos.h"
 #include "utils/float.h"
 
+#define BINARY_MAX_LENGTH       255
+#define VARBINARY_MAX_LENGTH    65532
+
 PG_FUNCTION_INFO_V1(binary_typmodout);
 PG_FUNCTION_INFO_V1(binary_typmodin);
 PG_FUNCTION_INFO_V1(varbinary_typmodin);
@@ -88,7 +91,7 @@ anybinary_typmodin(ArrayType *ta, int64 max_length, const char *typname)
 }
 
 /* common code for binary typmodout and varbinary typmodout */
-char *
+static char *
 anybinary_typmodout(int32 typmod)
 {
 	const size_t buffer_len = 64;
@@ -337,7 +340,8 @@ mys_bytea2float8(bytea *arg)
 	end = VARDATA_ANY(arg) + len;
 
 	arg_val = float8in_internal_opt_error(num, &end, "double precision", num, &have_error);
-	if (have_error) {
+	if (have_error)
+	{
 		arg_val = strtod(num, &end);
 	}
 

@@ -1221,6 +1221,11 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 				d = FunctionCallInvoke(fcinfo_in);
 				*op->resvalue = d;
 
+				if (compatible_db == MYS_PARSER)
+				{
+					*op->resnull = fcinfo_in->isnull;
+				}
+
 				/* Should get null result if and only if str is NULL */
 				if (str == NULL)
 				{
@@ -1229,10 +1234,11 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 				}
 				else
 				{
-					Assert(!*op->resnull);
 					if(compatible_db != MYS_PARSER)/* ReqID:SRS-MYSQL-DATETYPE */
+					{
+						Assert(!*op->resnull);
 						Assert(!fcinfo_in->isnull);
-
+					}
 				}
 			}
 

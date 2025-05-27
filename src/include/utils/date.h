@@ -66,6 +66,11 @@ typedef struct
 #define PG_RETURN_TIMEADT(x)	 return TimeADTGetDatum(x)
 #define PG_RETURN_TIMETZADT_P(x) return TimeTzADTPGetDatum(x)
 
+/* Begin - SRS-MYSQL-YEARTYPE */
+typedef uint8_t YearADT;
+#define YEAR_CONVERT(x)     ((x) = (-x))
+#define IS_YEAR2(x)         ((x) < 0)
+/* End - SRS-MYSQL-YEARTYPE */
 
 /* date.c */
 extern int32 anytime_typmod_check(bool istz, int32 typmod);

@@ -17,7 +17,6 @@
 #include "utils/uuid.h"
 #include "utils/varbit.h"
 #include "utils/varlena.h"
-#include "../../contrib/ivorysql_my/src/datatype/myyear.h"
 
 PG_MODULE_MAGIC;
 

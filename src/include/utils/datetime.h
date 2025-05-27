@@ -427,7 +427,6 @@ extern int mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fse
 extern bool non_zero_time(const struct pg_tm *tm, int fsec);
 
 extern bool non_zero_date(const struct pg_tm *tm);
-extern bool zero_date(const struct pg_tm *tm);
 
 extern bool mysdatetime_add_nanoseconds_with_round(struct pg_tm *tm, int *fsec, int *warn, int nanoseconds);
 
