@@ -4780,6 +4780,15 @@ select_common_typmod(ParseState *pstate, List *exprs, Oid common_type)
 	ListCell   *lc;
 	bool		first = true;
 	int32		result = -1;
+	/* Begin - wai BUG#Z00001678 */
+	bool 		isorastrtype = false;
+
+	if (common_type == ORACHARCHAROID ||
+		common_type == ORACHARBYTEOID ||
+		common_type == ORAVARCHARCHAROID ||
+		common_type == ORAVARCHARBYTEOID)
+		isorastrtype = true;
+	/* End - wai BUG#Z00001678 */
 
 	foreach(lc, exprs)
 	{
@@ -4795,8 +4804,20 @@ select_common_typmod(ParseState *pstate, List *exprs, Oid common_type)
 		}
 		else
 		{
+			int32 cur_typmode = exprTypmod(expr);
+
+			/* Begin - wai BUG#Z00001678 */
+			/* oracle varchar2 or char we use the max type */
+			if (isorastrtype &&
+				cur_typmode >= 1 &&
+				result >= 1)
+			{
+				if (result < cur_typmode)
+					result = cur_typmode;
+			}
+			/* End - wai BUG#Z00001678 */
 			/* As soon as we see a non-matching typmod, fall back to -1 */
-			if (result != exprTypmod(expr))
+			else if (result != exprTypmod(expr))
 				return -1;
 		}
 	}
