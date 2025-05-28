@@ -1924,8 +1924,8 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 				pstmt->commandType = CMD_UTILITY;
 				pstmt->canSetTag = false;
 				pstmt->utilityStmt = (Node *) ds;
-				pstmt->stmt_location = rs->stmt_location;
-				pstmt->stmt_len = rs->stmt_len;
+				pstmt->stmt_location = -1;	/* BUG#Z4798 */
+				pstmt->stmt_len = -1;		/* BUG#Z4798 */
 
 				ProcessUtility(pstmt, dopstmt, false,
 							   PROCESS_UTILITY_SUBCOMMAND, NULL, NULL,
