@@ -5318,6 +5318,7 @@ audit_arch_job(void)
 	StringInfoData buf;
 	/* Begin - BUG#00004708 */
 	char	   *username = NULL;
+	char		user[MAXPGPATH] = {0};
 	/* End - BUG#00004708 */
 	int			ret;
 	uint64		proc;
@@ -5418,6 +5419,8 @@ audit_arch_job(void)
 
 	/* Begin - BUG#00004708 */
 	username = GetUserNameFromId(10, true);
+	/* the memory requested by username may be flushed out when it is used ageain later */
+	sprintf(user, "%s", username);
 	/* End - BUG#00004708 */
 
 	for (elemno = 0; elemno < noids; elemno++)
@@ -5462,7 +5465,7 @@ audit_arch_job(void)
 		else
 		{
 			
-			sprintf(connstr, "host=localhost dbname=%s port=%d user=%s", dbname, PostPortNumber, username);
+			sprintf(connstr, "host=localhost dbname=%s port=%d user=%s", dbname, PostPortNumber, user);
 		}
 		/* End - BUG#00004708 */
 
@@ -5549,7 +5552,7 @@ audit_arch_job(void)
 			memset(cmd, 0, MAXPGPATH);
 
 			/* Begin - BUG#00004708 */
-			sprintf(cmd, "pgagent host=localhost dbname=%s port=%d user=%s ", dbname, PostPortNumber, username);
+			sprintf(cmd, "pgagent host=localhost dbname=%s port=%d user=%s ", dbname, PostPortNumber, user);
 			/* End - BUG#00004708 */
 			
 			rc = system(cmd);
