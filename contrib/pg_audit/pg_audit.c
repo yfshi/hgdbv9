@@ -5316,6 +5316,9 @@ static void
 audit_arch_job(void)
 {
 	StringInfoData buf;
+	/* Begin - BUG#00004708 */
+	char	   *username = NULL;
+	/* End - BUG#00004708 */
 	int			ret;
 	uint64		proc;
 	int			elemno;
@@ -5413,6 +5416,10 @@ audit_arch_job(void)
 		}
 	}
 
+	/* Begin - BUG#00004708 */
+	username = GetUserNameFromId(10, true);
+	/* End - BUG#00004708 */
+
 	for (elemno = 0; elemno < noids; elemno++)
 	{
 		char *dbname;
@@ -5421,6 +5428,9 @@ audit_arch_job(void)
 		char	timec[20];
 		char   *archpath;
 		char	copysql[MAXPGPATH] = {0};
+		/* Begin - BUG#00004708 */
+		char	connstr[MAXPGPATH] = {0};
+		/* End - BUG#00004708 */
 		
 
 		dbname = get_database_name(oids[elemno]);
@@ -5443,6 +5453,19 @@ audit_arch_job(void)
 			return;
 		}
 
+		/* Begin - BUG#00004708 */
+		memset(connstr, 0 , MAXPGPATH);
+		if (se_feature.mode)
+		{
+			sprintf(connstr, "host=localhost dbname=%s port=%d user=syssao", dbname, PostPortNumber);
+		}
+		else
+		{
+			
+			sprintf(connstr, "host=localhost dbname=%s port=%d user=%s", dbname, PostPortNumber, username);
+		}
+		/* End - BUG#00004708 */
+
 		initStringInfo(&buf);
 		pgstat_report_activity(STATE_RUNNING, buf.data);
 		appendStringInfo(&buf, "WITH id AS "
@@ -5458,7 +5481,7 @@ audit_arch_job(void)
 										 "SELECT id.jobid, 'Audit automatic archiving', "
 										 "'Audit automatic archiving every hour', true, 's', 'f', "
 										 "'%s', "
-										 "'%s', '' FROM id) "
+										 "'%s', '%s' FROM id) "
 										 "INSERT INTO pgagent.pga_schedule (jscjobid, jscname, jscdesc, jscminutes, "
 										 "jschours, jscweekdays, jscmonthdays, jscmonths, jscenabled, jscstart) "
 										 "SELECT id.jobid, 'Audit automatic archiving', "
@@ -5468,7 +5491,7 @@ audit_arch_job(void)
 										 "'{t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t}', "
 										 "'{t,t,t,t,t,t,t}', "
 										 "'{t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t}', "
-										 "'{t,t,t,t,t,t,t,t,t,t,t,t}', true, '%s' FROM id", copysql, dbname, timec);
+										 "'{t,t,t,t,t,t,t,t,t,t,t,t}', true, '%s' FROM id", copysql, dbname, connstr, timec);
 		
 		ret = SPI_execute(buf.data, false, 0);
 		
@@ -5518,12 +5541,10 @@ audit_arch_job(void)
 			HeapTuple	spi_tuple;
 			char	   *dbname;
 			char		cmd[MAXPGPATH];
-			char	   *username;
 
 			spi_tuple = spi_tuptable->vals[i];
 			
 			dbname = SPI_getvalue(spi_tuple, spi_tupdesc, 1);
-			username = GetUserNameFromId(10, true);
 
 			memset(cmd, 0, MAXPGPATH);
 
@@ -5822,26 +5843,15 @@ check_audit_sao_permission(Oid roid, bool istable)
 {
 	if (se_feature.mode)
 	{
-		if (se_feature.restricted_dba)
+		/* Begin - BUG#00004872 */
+		if (!IS_SYSSAO(roid))
 		{
-			if (!IS_SYSSAO(roid))
-			{
-				if (istable)
-					elog(ERROR, "permission denied, only role=syssao_role can select this table");
-				else
-					elog(ERROR, "permission denied, only role=syssao_role can run this function");
-			}
+			if (istable)
+				elog(ERROR, "permission denied, only role=syssao_role can select this table");
+			else
+				elog(ERROR, "permission denied, only role=syssao_role can run this function");
 		}
-		else
-		{
-			if (!IS_SYSSAO(roid) && !superuser())
-			{
-				if (istable)
-					elog(ERROR, "permission denied, only superuser or role=syssao_role can select this table");
-				else
-					elog(ERROR, "permission denied, only superuser or role=syssao_role can run this function");
-			}
-		}
+		/* End - BUG#00004872 */
 	}
 	else
 	{
@@ -5854,17 +5864,6 @@ check_audit_sao_permission(Oid roid, bool istable)
 		}
 	}
 	return;
-#if 0
-
-	Oid SaoRoleid = get_role_oid(SYS_SYSSAO, true);
-	if (!OidIsValid(SaoRoleid) || !is_member_of_role_nosuper(GetUserId(), SaoRoleid))
-	{
-		if (istable)
-			elog(ERROR, "permission denied, only role=syssao_r can run this table");
-		else
-			elog(ERROR, "permission denied, only role=syssao_r can run this function");
-	}
-#endif
 }
 
 static void
@@ -5872,53 +5871,29 @@ check_audit_saosso_perm(Oid roid, bool istable)
 {	
 	if (se_feature.mode)
 	{
-		if (se_feature.restricted_dba)
+		/* Begin - BUG#00004872 */
+		if (audit_GUC.audit_privimode == 1)
 		{
-			if (audit_GUC.audit_privimode == 1)
+			if (!IS_SYSSAO(roid))
 			{
-				if (!IS_SYSSAO(roid))
-				{
-					if (istable)
-						elog(ERROR, "permission denied, only role=syssao_role can select this table");
-					else
-						elog(ERROR, "permission denied, only role=syssao_role can run this function");
-				}
-			}
-			else
-			{
-				if (!IS_SYSSAO(roid) && (!IS_SYSSSO(roid)))
-				{
-					if (istable)
-						elog(ERROR, "permission denied, only role=syssao_role or role=syssso_role can select this table");
-					else
-						elog(ERROR, "permission denied, only role=syssao_role or role=syssso_role can run this function");
-
-				}
+				if (istable)
+					elog(ERROR, "permission denied, only role=syssao_role can select this table");
+				else
+					elog(ERROR, "permission denied, only role=syssao_role can run this function");
 			}
 		}
 		else
 		{
-			if (audit_GUC.audit_privimode == 1)
+			if (!IS_SYSSAO(roid) && (!IS_SYSSSO(roid)))
 			{
-				if (!IS_SYSSAO(roid) && !superuser())
-				{
-					if (istable)
-						elog(ERROR, "permission denied, only superuser or role=syssao_role can select this table");
-					else
-						elog(ERROR, "permission denied, only superuser or role=syssao_role can run this function");
-				}
-			}
-			else
-			{
-				if (!IS_SYSSAO(roid) && (!IS_SYSSSO(roid)) && !superuser())
-				{
-					if (istable)
-						elog(ERROR, "permission denied, only superuser or role=syssao_role or role=syssso_role can select this table");
-					else
-						elog(ERROR, "permission denied, only superuser or role=syssao_role or role=syssso_role can run this function");
-				}
+				if (istable)
+					elog(ERROR, "permission denied, only role=syssao_role or role=syssso_role can select this table");
+				else
+					elog(ERROR, "permission denied, only role=syssao_role or role=syssso_role can run this function");
+
 			}
 		}
+		/* End - BUG#00004872 */
 	}
 	else
 	{
@@ -8921,65 +8896,30 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 
 	if (se_feature.mode)
 	{
-		if (se_feature.restricted_dba)
+		/* Begin - BUG#00004872 */
+		if (audit_GUC.audit_privimode == 1)
 		{
-			if (audit_GUC.audit_privimode == 1)
+			if (IS_SYSSAO(userid))
 			{
-				if (IS_SYSSAO(userid))
-				{
-					snprintf(archcmd, MAXPGPATH, "copy pg_audit_log to '%s/%s-%d-%s.csv'", archpath, username, MyDatabaseId, time_str);
-				}
-				
+				snprintf(archcmd, MAXPGPATH, "copy pg_audit_log to '%s/%s-%d-%s.csv'", archpath, username, MyDatabaseId, time_str);
 			}
-			else
-			{
-				if (IS_SYSSAO(userid))
-				{
-					snprintf(archcmd, MAXPGPATH, "copy (select * from pg_audit_log where rolename = 'sysdba_role' or rolename = 'syssso_role') to '%s/%s-%d-%s.csv'", 
-								archpath, username, MyDatabaseId, time_str);
-				}
 			
-				else
-				{
-					snprintf(archcmd, MAXPGPATH, "copy (select * from pg_audit_log where rolename != 'sysdba_role' and rolename != 'syssso_role' or username IS NULL) to '%s/%s-%d-%s.csv'", 
-								archpath, username, MyDatabaseId, time_str);
-				}
-			}
 		}
 		else
 		{
-			if (audit_GUC.audit_privimode == 1)
+			if (IS_SYSSAO(userid))
 			{
-				if (IS_SYSSAO(userid))
-				{
-					snprintf(archcmd, MAXPGPATH, "copy pg_audit_log to '%s/%s-%d-%s.csv'", archpath, username, MyDatabaseId, time_str);
-				}
-				else if (superuser())
-				{
-					
-					snprintf(archcmd, MAXPGPATH, "copy pg_audit_log to '%s/%s-%d-%s.csv'", archpath, username, MyDatabaseId, time_str);
-				}
+				snprintf(archcmd, MAXPGPATH, "copy (select * from pg_audit_log where rolename = 'sysdba_role' or rolename = 'syssso_role') to '%s/%s-%d-%s.csv'", 
+							archpath, username, MyDatabaseId, time_str);
 			}
+		
 			else
 			{
-				if (IS_SYSSAO(userid))
-				{
-					snprintf(archcmd, MAXPGPATH, "copy (select * from pg_audit_log where rolename = 'sysdba_role' or rolename = 'syssso_role') to '%s/%s-%d-%s.csv'", 
-								archpath, username, MyDatabaseId, time_str);
-				}
-			
-				else if (IS_SYSSSO(userid))
-				{
-					snprintf(archcmd, MAXPGPATH, "copy (select * from pg_audit_log where rolename != 'sysdba_role' and rolename != 'syssso_role' or username IS NULL) to '%s/%s-%d-%s.csv'", 
-								archpath, username, MyDatabaseId, time_str);
-				}
-				else
-				{
-					snprintf(archcmd, MAXPGPATH, "copy pg_audit_log to '%s/%s-%d-%s.csv'", archpath, username, MyDatabaseId, time_str);
-				}
-					
+				snprintf(archcmd, MAXPGPATH, "copy (select * from pg_audit_log where rolename != 'sysdba_role' and rolename != 'syssso_role' or username IS NULL) to '%s/%s-%d-%s.csv'", 
+							archpath, username, MyDatabaseId, time_str);
 			}
 		}
+		/* End - BUG#00004872 */
 	}
 	else
 	{

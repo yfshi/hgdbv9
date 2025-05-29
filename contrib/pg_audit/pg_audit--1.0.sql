@@ -184,7 +184,6 @@ CREATE OR REPLACE FUNCTION public.pg_clean_auditlog()
 RETURNS BOOLEAN AS $$
 DECLARE
 	mode BOOLEAN;
-	restricted_dba BOOLEAN;
     v_sql1 TEXT;
     v_sql2 TEXT;
     v_sql3 TEXT;
@@ -193,32 +192,15 @@ DECLARE
     v_row_count BIGINT;
 BEGIN
 	SELECT into mode current_setting('se_feature.mode');
-	SELECT into restricted_dba current_setting('se_feature.restricted_dba');
     v_sql1 := format('SELECT current_is_syssao()');
     v_sql2 := format('SELECT current_is_superuser()');
     v_sql3 := format('WITH deleted_rows AS (DELETE FROM pg_audit_log RETURNING *) SELECT count(*) FROM deleted_rows');
 
-    IF mode = TRUE AND restricted_dba = TRUE THEN
+    IF mode = TRUE THEN
     	EXECUTE v_sql1 INTO issao;
 
 	    IF issao = FALSE THEN
 			RAISE EXCEPTION 'permission denied, only role=syssao_role can run this function';
-			RETURN FALSE;
-		ELSE
-	    	EXECUTE v_sql3 INTO v_row_count;
-
-		    IF v_row_count > 0 THEN
-		        RETURN TRUE;
-		    ELSE
-		        RETURN FALSE;
-		    END IF;
-		END IF;
-    ELSIF mode = TRUE AND restricted_dba = FALSE THEN
-    	EXECUTE v_sql1 INTO issao;
-    	EXECUTE v_sql2 INTO issuper;
-
-    	IF issao = FALSE AND issuper = FALSE THEN
-    		RAISE EXCEPTION 'permission denied, only superuser or role=syssao_role can run this function';
 			RETURN FALSE;
 		ELSE
 	    	EXECUTE v_sql3 INTO v_row_count;
@@ -257,7 +239,6 @@ CREATE OR REPLACE FUNCTION public.pg_clean_audit_config()
 RETURNS BOOLEAN AS $$
 DECLARE
 	mode BOOLEAN;
-	restricted_dba BOOLEAN;
     v_sql1 TEXT;
     v_sql2 TEXT;
     v_sql3 TEXT;
@@ -266,32 +247,15 @@ DECLARE
     v_row_count BIGINT;
 BEGIN
 	SELECT into mode current_setting('se_feature.mode');
-	SELECT into restricted_dba current_setting('se_feature.restricted_dba');
     v_sql1 := format('SELECT current_is_syssao()');
     v_sql2 := format('SELECT current_is_superuser()');
     v_sql3 := format('WITH deleted_rows AS (DELETE FROM pg_audit_config RETURNING *) SELECT count(*) FROM deleted_rows');
 
-   IF mode = TRUE AND restricted_dba = TRUE THEN
+   IF mode = TRUE THEN
     	EXECUTE v_sql1 INTO issao;
 
 	    IF issao = FALSE THEN
 			RAISE EXCEPTION 'permission denied, only role=syssao_role can run this function';
-			RETURN FALSE;
-		ELSE
-	    	EXECUTE v_sql3 INTO v_row_count;
-
-		    IF v_row_count > 0 THEN
-		        RETURN TRUE;
-		    ELSE
-		        RETURN FALSE;
-		    END IF;
-		END IF;
-    ELSIF mode = TRUE AND restricted_dba = FALSE THEN
-    	EXECUTE v_sql1 INTO issao;
-    	EXECUTE v_sql2 INTO issuper;
-
-    	IF issao = FALSE AND issuper = FALSE THEN
-    		RAISE EXCEPTION 'permission denied, only superuser or role=syssao_role can run this function';
 			RETURN FALSE;
 		ELSE
 	    	EXECUTE v_sql3 INTO v_row_count;
@@ -330,7 +294,6 @@ DECLARE
     retentiondays integer;
     can_delete_time timestamp;
     mode BOOLEAN;
-	restricted_dba BOOLEAN;
     v_sql1 TEXT;
     v_sql2 TEXT;
     v_sql3 TEXT;
@@ -339,42 +302,15 @@ DECLARE
     v_row_count BIGINT;
 BEGIN
 	SELECT into mode current_setting('se_feature.mode');
-	SELECT into restricted_dba current_setting('se_feature.restricted_dba');
 	SELECT into retentiondays current_setting('audit.retentiondays');
 	v_sql1 := format('SELECT current_is_syssao()');
     v_sql2 := format('SELECT current_is_superuser()');
 
-	IF mode = TRUE AND restricted_dba = TRUE THEN
+	IF mode = TRUE THEN
 		EXECUTE v_sql1 INTO issao;
 
 	    IF issao = FALSE THEN
 			RAISE EXCEPTION 'permission denied, only role=syssao_role can run this function';
-			RETURN FALSE;
-		ELSE
-			SELECT into can_delete_time
-		    now() -  INTERVAL '1' day * retentiondays;
-		 
-		    IF can_delete_time >= timestamp_to_delete THEN
-		        v_sql3 := format('WITH deleted_rows AS (DELETE FROM public.pg_audit_log WHERE audittime <= %L RETURNING *) SELECT count(*) FROM deleted_rows',
-		        				timestamp_to_delete);
-		    ELSE
-		        v_sql3 := format('WITH deleted_rows AS (DELETE FROM public.pg_audit_log WHERE audittime <= %L RETURNING *) SELECT count(*) FROM deleted_rows', 
-		        				can_delete_time);
-		    END IF;
-		    
-		    EXECUTE v_sql3 INTO v_row_count;
-		    IF v_row_count > 0 THEN
-		        RETURN TRUE;
-		    ELSE
-		        RETURN FALSE;
-		    END IF;
-		END IF;
-	ELSIF mode = TRUE AND restricted_dba = FALSE THEN
-    	EXECUTE v_sql1 INTO issao;
-    	EXECUTE v_sql2 INTO issuper;
-
-    	IF issao = FALSE AND issuper = FALSE THEN
-    		RAISE EXCEPTION 'permission denied, only superuser or role=syssao_role can run this function';
 			RETURN FALSE;
 		ELSE
 			SELECT into can_delete_time
@@ -433,7 +369,6 @@ CREATE OR REPLACE FUNCTION public.pg_delete_audit_config(
 ) RETURNS BOOLEAN AS $$
 DECLARE
 	mode BOOLEAN;
-	restricted_dba BOOLEAN;
     v_sql1 TEXT;
     v_sql2 TEXT;
     v_sql3 TEXT;
@@ -442,34 +377,14 @@ DECLARE
     v_row_count BIGINT;
 BEGIN
 	SELECT into mode current_setting('se_feature.mode');
-	SELECT into restricted_dba current_setting('se_feature.restricted_dba');
     v_sql1 := format('SELECT current_is_syssao()');
     v_sql2 := format('SELECT current_is_superuser()');
 
-    IF mode = TRUE AND restricted_dba = TRUE THEN
+    IF mode = TRUE THEN
 		EXECUTE v_sql1 INTO issao;
 
 	    IF issao = FALSE THEN
 			RAISE EXCEPTION 'permission denied, only role=syssao_role can run this function';
-			RETURN FALSE;
-		ELSE
-			v_sql3 := format('WITH deleted_rows AS (DELETE FROM pg_audit_config WHERE confid = %L RETURNING *) SELECT count(*) FROM deleted_rows', 
-	                    dconfid);
-
-		    EXECUTE v_sql3 INTO v_row_count;
-
-		    IF v_row_count > 0 THEN
-		        RETURN TRUE;
-		    ELSE
-		        RETURN FALSE;
-		    END IF;
-		END IF;
-	ELSIF mode = TRUE AND restricted_dba = FALSE THEN
-    	EXECUTE v_sql1 INTO issao;
-    	EXECUTE v_sql2 INTO issuper;
-
-    	IF issao = FALSE AND issuper = FALSE THEN
-    		RAISE EXCEPTION 'permission denied, only superuser or role=syssao_role can run this function';
 			RETURN FALSE;
 		ELSE
 		    v_sql3 := format('WITH deleted_rows AS (DELETE FROM pg_audit_config WHERE confid = %L RETURNING *) SELECT count(*) FROM deleted_rows', 
@@ -708,6 +623,22 @@ GRANT ALL ON TABLE pg_reboot TO PUBLIC;
 
 GRANT SELECT ON pg_audit_log to syssao_role;
 GRANT SELECT ON pg_audit_log to syssso_role; -- /* Bug#z4284 */
+
+-- /* Begin - BUG#00004708 */
+GRANT ALL ON SCHEMA pgagent to syssao;
+GRANT ALL ON TABLE pgagent.pga_jobagent to syssao;
+GRANT ALL ON TABLE pgagent.pga_job to syssao;
+GRANT ALL ON TABLE pgagent.pga_joblog to syssao;
+GRANT ALL ON TABLE pgagent.pga_jobstep to syssao;
+GRANT ALL ON TABLE pgagent.pga_schedule to syssao;
+GRANT ALL ON TABLE pgagent.pga_jobclass to syssao;
+GRANT ALL ON TABLE pgagent.pga_jobsteplog to syssao;
+GRANT ALL ON SEQUENCE pgagent.pga_joblog_jlgid_seq TO syssao;
+GRANT ALL ON SEQUENCE pgagent.pga_jobsteplog_jslid_seq TO syssao;
+GRANT ALL ON SEQUENCE pgagent.pga_job_jobid_seq TO syssao;
+GRANT ALL ON SEQUENCE pgagent.pga_schedule_jscid_seq TO syssao;
+GRANT ALL ON SEQUENCE pgagent.pga_jobstep_jstid_seq TO syssao;
+-- /* End - BUG#00004708 */
 
 CREATE SERVER IF NOT EXISTS sqlite_server 
 FOREIGN DATA WRAPPER sqlite_fdw
