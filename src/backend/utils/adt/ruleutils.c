@@ -10469,6 +10469,13 @@ get_oper_expr(OpExpr *expr, deparse_context *context)
 		/* binary operator */
 		Node	   *arg1 = (Node *) linitial(args);
 		Node	   *arg2 = (Node *) lsecond(args);
+
+		/* BEGIN - BUG#Z1677 */
+		int tmp_pos = 12;
+		char *ptrA = NULL;
+		char *ptrB = NULL;
+		/* END - BUG#Z1677 */
+
 		/* BEGIN - BUG#Z1333 */
 		int			location = 0;
 		int			comma_location = 0;
@@ -10483,18 +10490,37 @@ get_oper_expr(OpExpr *expr, deparse_context *context)
 		/* END - BUG#Z1333 */
 		get_rule_expr_paren(arg2, context, true, (Node *) expr);
 		/* BEGIN - BUG#Z1333 */
+
+		/* BEGIN - BUG#Z1677 Z1630*/
+		/* change (like_escape('148%'::text, ''::text))::varchar2(4000) =>'148%'::text */
+		ptrA = buf->data + location;
+
+		if (quote_all_identifiers)
+		{
+			ptrB = strstr(buf->data + location, "\"like_escape\"(");
+			if (ptrB != NULL)
+			{
+				tmp_pos = abs(ptrB - ptrA) + strlen("\"like_escape\"(");
+			}
+		}
+		else
+		{
+			ptrB = strstr(buf->data + location, "like_escape(");
+			if (ptrB != NULL)
+			{
+				tmp_pos = abs(ptrB - ptrA) + strlen("like_escape(");
+			}
+		}
+		/* END - BUG#Z1677 Z1630*/
+
 		if (location != 0 &&
-			(buf->len - location - 12 > 0) &&
+			(buf->len - location - tmp_pos > 0) &&	/*  BUG#Z1677*/
 			compatible_db == ORA_PARSER &&
 			enable_emptystring_to_NULL == true)
 		{
-			tmp_expr = palloc(buf->len - location - 12);
-			/* Begin - BUGZ1630 */
-			if (quote_all_identifiers)
-				memcpy(tmp_expr, buf->data + location + 14, buf->len - location - 14);
-			else
-			/* End - BUGZ1630 */
-				memcpy(tmp_expr, buf->data + location + 12, buf->len - location - 12);
+			tmp_expr = palloc(buf->len - location - tmp_pos);
+			memcpy(tmp_expr, buf->data + location + tmp_pos, buf->len - location - tmp_pos);
+
 			for(int i = 0; i < strlen(tmp_expr); i++)
 			{
 				if (tmp_expr[i] == ',')
