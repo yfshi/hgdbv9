@@ -10759,7 +10759,11 @@ exec_close_unused_open_cursor(PLiSQL_execstate *estate, int last_global_varno)
 				portal = SPI_cursor_find(curname);
 				if (portal != NULL)
 				{
-					if (!list_member(used_portal, (void *)portal))
+					if (!list_member(used_portal, (void *)portal) &&
+						/* Begin - req#Z00001467 */
+						portal->status != PORTAL_ACTIVE &&
+						!portal->portalPinned)
+						/* End - req#Z00001467 */
 						SPI_cursor_close(portal);
 				}
 				if (curname)

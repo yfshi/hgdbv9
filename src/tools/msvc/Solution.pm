@@ -524,9 +524,6 @@ sub GenerateFiles
 		USE_LIBXML                 => undef,
 		USE_LIBXSLT                => undef,
 		USE_LZ4                    => undef,
-		#/* Begin - ReqID:SRS-SQL-PACKAGE */
-		ENABLE_CURSOR_UNNAME       => $self->{options}->{cursor_unname} ? 1 : undef,
-		#/* End - ReqID:SRS-SQL-PACKAGE */
 		USE_LDAP                   => $self->{options}->{ldap} ? 1 : undef,
 		# Begin - ReqID:SRS-MISC-LICENSE
 		USE_LICENSE				   => $self->{options}->{license} ? 1 : undef,
@@ -1366,9 +1363,6 @@ sub GetFakeConfigure
 	my $cfg = '--enable-thread-safety';
 	$cfg .= ' --enable-cassert'   if ($self->{options}->{asserts});
 	$cfg .= ' --enable-nls'       if ($self->{options}->{nls});
-	#/* Begin - ReqID:SRS-SQL-PACKAGE */
-	$cfg .= ' --enable-cursor-unname' if ($self->{options}->{cursor_unname});
-	#/* End - ReqID:SRS-SQL-PACKAGE */
 	$cfg .= ' --enable-tap-tests' if ($self->{options}->{tap_tests});
 	#/* Begin - Bug#M0000315 */
 	$cfg .= ' --enable-root' 	 	if ($self->{options}->{administrator});
