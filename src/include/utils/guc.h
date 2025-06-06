@@ -456,6 +456,10 @@ extern PGDLLIMPORT bool convert_gbk_to_utf8_question_mark;
 extern bool connect_by_rownum_use_func;
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
 
+/* Begin - OA#1475 */
+extern bool compatible_ora_bytea_concat_operator;
+/* End - OA#1475 */
+
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

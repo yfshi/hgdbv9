@@ -83,3 +83,6 @@ SELECT uuid_generate_v4() <> uuid_generate_v4();
 
 -- BUG#M0000359
 SELECT sys_guid() <> sys_guid();
+
+-- OA#1475
+SELECT pg_typeof('ACCESS:' || sys_guid());

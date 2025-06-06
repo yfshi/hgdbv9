@@ -221,6 +221,10 @@ bool	connect_by_rownum_use_func = true;
 int		format_max_string_size_len = 4000;
 /* End - wai BUG#Z00001678 */
 
+/* Begin - OA#1475 */
+bool	compatible_ora_bytea_concat_operator = true;
+/* End - OA#1475 */
+
 
 #endif
 
@@ -896,6 +900,17 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+	{
+		{"ivorysql.compatible_ora_bytea_concat_operator", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+		gettext_noop("Compatible with Oracle \"BYTEA || UNKNOWN\" operator."),
+		NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&compatible_ora_bytea_concat_operator,
+		true,
+		NULL, NULL, NULL
+	},
 
 #endif
 #if 0
