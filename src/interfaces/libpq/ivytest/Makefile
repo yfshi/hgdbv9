@@ -19,10 +19,12 @@ PROGS = testlibpq testlibpqstmt2 testlibpq_nullstmt testlibpq_allout testlibpq_p
 	testlibpq_call testlibpqstmt2_call testlibpq_question_mark testlibpq_refcursor_out_ora testlibpq_question_mark2 \
 	testlibpq_prepare_plsql_dml testlibpq_prepare_anonlymous_parameter
 
-all: anonly.h $(PROGS)
+all: $(PROGS)
 
 anonly.h: test_gen_insert.sh
 	$(SHELL) $<
+
+testlibpq_prepare_anonlymous_parameter: anonly.h
 
 clean distclean maintainer-clean:
 	rm -f *.o

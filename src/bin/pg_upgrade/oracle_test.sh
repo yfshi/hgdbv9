@@ -69,7 +69,7 @@ case $testhost in
 		;;
 esac
 
-POSTMASTER_OPTS="-F -c listen_addresses=\"$LISTEN_ADDRESSES\" -c ivorysql.enable_ora_default_collation=on -k \"$PG_REGRESS_SOCKET_DIR\""
+POSTMASTER_OPTS="-F -c listen_addresses=\"$LISTEN_ADDRESSES\" -c ivorysql.listen_addresses=\"$LISTEN_ADDRESSES\" -c ivorysql.enable_ora_default_collation=on -k \"$PG_REGRESS_SOCKET_DIR\""
 export PGHOST
 
 # don't rely on $PWD here, as old shells don't set it
@@ -253,7 +253,7 @@ PGDATA="$BASE_PGDATA"
 
 standard_initdb 'initdb'
 
-pg_upgrade -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -q "$ORAPORT" -Q "$ORAPORT" -O "-c ivorysql.enable_ora_default_collation=on"
+pg_upgrade -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -q "$ORAPORT" -Q "$ORAPORT" -o "-c ivorysql.listen_addresses=$LISTEN_ADDRESSES" -O "-c ivorysql.listen_addresses=$LISTEN_ADDRESSES -c ivorysql.enable_ora_default_collation=on" -s "$PG_REGRESS_SOCKET_DIR"
 
 # make sure all directories and files have group permissions, on Unix hosts
 # Windows hosts don't support Unix-y permissions.

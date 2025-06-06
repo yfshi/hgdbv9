@@ -232,3 +232,5 @@ mysql-check: mysql_test.sh all temp-install
 
 # installcheck is not supported because there's no meaningful way to test
 # pg_upgrade against a single already-running server
+
+.NOTPARALLEL: pro2pro_check pg2hg_check hg2pg_check oracle-check mysql-check

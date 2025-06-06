@@ -58,7 +58,7 @@ case $testhost in
 		;;
 esac
 
-POSTMASTER_OPTS="-F -c listen_addresses=$LISTEN_ADDRESSES -k \"$PGHOST\""
+POSTMASTER_OPTS="-F -c listen_addresses=$LISTEN_ADDRESSES -c ivorysql.listen_addresses=$LISTEN_ADDRESSES -k \"$PGHOST\""
 export PGHOST
 
 # don't rely on $PWD here, as old shells don't set it
