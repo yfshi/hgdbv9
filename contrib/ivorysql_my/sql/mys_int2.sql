@@ -231,3 +231,13 @@ create view v4 as select * from v2 where 20 < (select (s1) from t1);
 insert into v4 values (30);
 drop view v4, v3, v2, v1;
 drop table t1;
+
+-- fix bug 5015
+create table tb_test(id int2);
+set sql_mode = default;
+insert into tb_test values ('123abc');
+set sql_mode = '';
+insert into tb_test values ('123abc');
+select * from tb_test;
+drop table tb_test;
+set sql_mode = default;
