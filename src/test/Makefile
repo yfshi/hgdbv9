@@ -34,7 +34,15 @@ endif
 endif
 
 # ReqID:SRS-SECURITY-IDENTITYAUTH
-SUBDIRS += mfa authentication-all
+ifeq ($(with_gmssl),yes)
+SUBDIRS += authentication-all
+endif
+ifeq ($(with_ssl),openssl)
+SUBDIRS += mfa-openssl
+endif
+ifeq ($(with_gmssl),yes)
+SUBDIRS += mfa-gmssl
+endif
 
 # We don't build or execute these by default, but we do want "make
 # clean" etc to recurse into them.  (We must filter out those that we

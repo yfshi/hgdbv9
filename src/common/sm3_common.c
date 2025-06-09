@@ -1,18 +1,20 @@
 /*-------------------------------------------------------------------------
  *
- * md5_common.c
- *	  Routines shared between all MD5 implementations used for encrypted
+ * sm3_common.c
+ *	  Routines shared between all SM3 implementations used for encrypted
  *	  passwords.
  *
- * Sverre H. Huseby <sverrehu@online.no>
+ * Author: suzy@highgo.com, 20241220.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
- * Portions Copyright (c) 1994, Regents of the University of California
+ * Copyright:
+ * Copyright (c) 2024, HighGo Software Co.,Ltd. All rights reserved.
  *
- * IDENTIFICATION
- *	  src/common/md5_common.c
+ * Identification:
+ * 		src/common/sm3_common.c
  *
- *-------------------------------------------------------------------------
+ * Add files that require "SRS-SECURITY-IDENTITYAUTH"
+ *
+ * ---------------------------------------------------------------------
  */
 
 #ifndef FRONTEND

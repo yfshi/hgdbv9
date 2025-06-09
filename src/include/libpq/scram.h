@@ -21,14 +21,14 @@
 #define SASL_EXCHANGE_SUCCESS		1
 #define SASL_EXCHANGE_FAILURE		2
 
-extern void pg_be_scramsha256_get_mechanisms(Port *port, StringInfo buf);
+extern void pg_be_scram_get_mechanisms(Port *port, StringInfo buf);
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-
+#ifdef USE_GMSSL
 /* Routines dedicated to authentication */
 extern void pg_be_scramsm3_get_mechanisms(Port *port, StringInfo buf);
 extern void pg_be_scramsha256sm3_get_mechanisms(Port *port, StringInfo buf);
 extern void pg_be_scramsm3sha256_get_mechanisms(Port *port, StringInfo buf);
-
+#endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 extern void *pg_be_scram_init(Port *port, const char *selected_mech, const char *shadow_pass);
 extern int	pg_be_scram_exchange(void *opaq, const char *input, int inputlen,

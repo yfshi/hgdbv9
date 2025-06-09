@@ -121,7 +121,9 @@ submake-contrib-spi: | submake-libpgport submake-generated-headers
 ##
 
 # ReqID:SRS-SECURITY-IDENTITYAUTH
+ifeq ($(with_gmssl),yes)
 EXTRA_TESTS += password-idcheck
+endif
 
 EXTRA_INSTALL = contrib/pageinspect contrib/gb18030_2022
 

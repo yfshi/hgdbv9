@@ -45,7 +45,8 @@ OBJS = \
 	pqexpbuffer.o \
 	fe-auth.o \
 	ivy_sema.o \
-	ivy-exec.o
+	ivy-exec.o \
+	mfa_common.o
 
 # File shared across all SSL implementations supported.
 ifneq ($(with_ssl),no)

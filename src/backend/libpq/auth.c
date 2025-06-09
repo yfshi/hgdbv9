@@ -80,7 +80,7 @@ static int	CheckMD5_SM3Auth(Port *port, char *shadow_pass, char **logdetail);
 #endif
 static int	CheckSCRAMAuth(Port *port, char *shadow_pass, char **logdetail);
 static int	CheckTOTPAuth(Port *port, char *shadow_otp, char **logdetail);
-#ifdef USE_OPENSSL
+#if defined(USE_OPENSSL) || defined(USE_GMSSL)
 static int	CheckPKEYAuth(Port *port, char *shadow_otp, char **logdetail);
 static int	CheckCERTAuth(Port *port, char *shadow_otp, char **logdetail);
 #endif
@@ -921,60 +921,56 @@ CheckPWChallengeAuth(Port *port, char **logdetail)
 	 * had an MD5 password, CheckSCRAMAuth() will fail.
 	 */
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_MD5)
+	switch(pwtype)
 	{
-		auth_result = CheckMD5Auth(port, shadow_pass, logdetail);
+		case PASSWORD_TYPE_MD5:
+		{
+			if (port->hba->auth_method == uaMD5)
+				auth_result = CheckMD5Auth(port, shadow_pass, logdetail);
 #ifdef USE_GMSSL
+			else if (port->hba->auth_method == uaSM3)
+				auth_result = CheckMD5_SM3Auth(port, shadow_pass, logdetail);
+#endif
+			else
+				auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+			break;
+		}
+		case PASSWORD_TYPE_SCRAM_SHA_256:
+		{
+			if (port->hba->auth_method == uaMD5
+#ifdef USE_GMSSL
+				|| port->hba->auth_method == uaSM3
+#endif
+			)
+				port->hba->auth_method = uaSCRAMsha256;
+#ifdef USE_GMSSL
+			else if (port->hba->auth_method == uaSCRAMsm3)
+				port->hba->auth_method = uaSCRAMsha256sm3;
+#endif
+			auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+
+			break;
+		}
+#ifdef USE_GMSSL
+		case PASSWORD_TYPE_SM3:
+		{
+			if (port->hba->auth_method == uaSM3 || port->hba->auth_method == uaMD5)
+				auth_result = CheckSM3Auth(port, shadow_pass, logdetail);
+			else
+				auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+			break;
+		}
+		case PASSWORD_TYPE_SCRAM_SM3:
+		{
+				port->hba->auth_method = uaSCRAMsm3;
+				auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+			break;
+		}
+#endif
+		default:
+			auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
+			break;
 	}
-	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SM3)
-	{
-		auth_result = CheckSM3Auth(port, shadow_pass, logdetail);
-    }
-	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_MD5)
-	{
-		auth_result = CheckMD5_SM3Auth(port, shadow_pass, logdetail);
-    }
-	else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SM3)
-	{
-		auth_result = CheckSM3Auth(port, shadow_pass, logdetail);
-#endif
-	}
-	else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256)
-	{
-		port->hba->auth_method = uaSCRAMsha256;
-        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
-    }
-	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256)
-	{
-		port->hba->auth_method = uaSCRAMsha256;
-        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
-#ifdef USE_GMSSL
-    }
-	else if (port->hba->auth_method == uaSM3 && pwtype == PASSWORD_TYPE_SCRAM_SM3)
-	{
-		port->hba->auth_method = uaSCRAMsm3;
-        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
-    }
-	else if (port->hba->auth_method == uaMD5 && pwtype == PASSWORD_TYPE_SCRAM_SM3)
-	{
-		port->hba->auth_method = uaSCRAMsm3;
-        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
-#endif
-    }
-	else if (port->hba->auth_method == uaSCRAMsm3 && pwtype == PASSWORD_TYPE_SCRAM_SHA_256)
-	{
-        port->hba->auth_method = uaSCRAMsha256sm3;
-        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
-#ifdef USE_GMSSL
-    }
-	else if (port->hba->auth_method == uaSCRAMsha256 && pwtype == PASSWORD_TYPE_SCRAM_SM3)
-	{
-        port->hba->auth_method = uaSCRAMsm3;
-        auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
-#endif
-    }
-    else
-		auth_result = CheckSCRAMAuth(port, shadow_pass, logdetail);
 
 	port->hba->auth_method = tmp_auth;
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -1014,7 +1010,7 @@ CheckMFAAuth(Port *port, char **logdetail)
 
 	if(port->hba->mfa_auth_method == uaTOTP && otp_type == MFA_TYPE_TOTP)
 		auth_result = CheckTOTPAuth(port, shadow_otp, logdetail);
-#ifdef USE_OPENSSL
+#if defined(USE_OPENSSL) || defined(USE_GMSSL)
 	else if(port->hba->mfa_auth_method == uaPKEY && otp_type == MFA_TYPE_PKEY)
 		auth_result = CheckPKEYAuth(port, shadow_otp, logdetail);
 	else if(port->hba->mfa_auth_method == uaCERT && otp_type == MFA_TYPE_CERT)
@@ -1047,11 +1043,6 @@ CheckMD5Auth(Port *port, char *shadow_pass, char **logdetail)
 	char		md5Salt[4];		/* Password salt */
 	char	   *passwd;
 	int			result;
-
-	if (Db_user_namespace)
-		ereport(FATAL,
-				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-				 errmsg("MD5 authentication is not supported when \"db_user_namespace\" is enabled")));
 
 	/* include the salt to use for computing the response */
 	if (!pg_strong_random(md5Salt, 4))
@@ -1087,11 +1078,6 @@ CheckSM3Auth(Port *port, char *shadow_pass, char **logdetail)
 	char	   *passwd;
 	int			result;
 
-	if (Db_user_namespace)
-		ereport(FATAL,
-				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-				 errmsg("SM3 authentication is not supported when \"db_user_namespace\" is enabled")));
-
 	/* include the salt to use for computing the response */
 	if (!pg_strong_random(sm3Salt, 4))
 	{
@@ -1123,11 +1109,6 @@ CheckMD5_SM3Auth(Port *port, char *shadow_pass, char **logdetail)
 	char		md5Salt[4];		/* Password salt */
 	char	   *passwd;
 	int			result;
-
-	if (Db_user_namespace)
-		ereport(FATAL,
-				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-				 errmsg("MD5 authentication is not supported when \"db_user_namespace\" is enabled")));
 
 	/* include the salt to use for computing the response */
 	if (!pg_strong_random(md5Salt, 4))
@@ -1178,13 +1159,15 @@ CheckSCRAMAuth(Port *port, char *shadow_pass, char **logdetail)
 
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if(port->hba->auth_method == uaSCRAMsha256)
-		pg_be_scramsha256_get_mechanisms(port, &sasl_mechs);
+		pg_be_scram_get_mechanisms(port, &sasl_mechs);
+#ifdef USE_GMSSL
 	else if(port->hba->auth_method == uaSCRAMsm3)
 		pg_be_scramsm3_get_mechanisms(port, &sasl_mechs);
 	else if(port->hba->auth_method == uaSCRAMsha256sm3)
 		pg_be_scramsha256sm3_get_mechanisms(port, &sasl_mechs);
 	else if(port->hba->auth_method == uaSCRAMsm3sha256)
 		pg_be_scramsm3sha256_get_mechanisms(port, &sasl_mechs);
+#endif
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	/* Put another '\0' to mark that list is finished. */
@@ -1354,7 +1337,7 @@ CheckTOTPAuth(Port *port, char *shadow_otp, char **logdetail)
 	return result;
 }
 
-#ifdef USE_OPENSSL
+#if defined(USE_OPENSSL) || defined(USE_GMSSL)
 static int
 CheckPKEYAuth(Port *port, char *shadow_otp, char **logdetail)
 {
@@ -1396,11 +1379,6 @@ CheckCERTAuth(Port *port, char *shadow_otp, char **logdetail)
 	char	   *sign;
 	int			result = STATUS_OK;
 
-	if (Db_user_namespace)
-		ereport(FATAL,
-				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-				 errmsg("OTP authentication is not supported when \"db_user_namespace\" is enabled")));
-
 	/* include the salt to use for computing the response */
 	if (!pg_strong_random(otpSalt, sizeof(otpSalt)))
 	{
@@ -1430,7 +1408,7 @@ CheckCERTAuth(Port *port, char *shadow_otp, char **logdetail)
 	if(result == STATUS_ERROR)
 		ereport(FATAL,
 			(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-				 errmsg("CERT authentication failed %s", *logdetail)));
+				 errmsg("CERT authentication failed: %s", *logdetail)));
 
 	return result;
 }

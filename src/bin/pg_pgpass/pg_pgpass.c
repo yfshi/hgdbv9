@@ -126,13 +126,19 @@ pgpass_crypt(bool isencrypt, const unsigned char *key,
 	 */
 #endif
 
-	fp = fopen(pgpassfile, "r");
+	fp = fopen(pgpassfile, "r+");
 	if (fp == NULL)
+	{
+		perror("Open file failed");
 		return false;
+	}
 
-	tfp = fopen(tmpfile, "w");
+	tfp = fopen(tmpfile, "w+");
 	if (fp == NULL)
+	{
+		perror("Open file failed");
 		return false;
+	}
 
 	while (!feof(fp) && !ferror(fp))
 	{
@@ -330,18 +336,31 @@ int main(int argc, char *argv[])
 	}
 
 	ret = pass_gen_key(DataDir, Interface, CustomKey, key);
+	if (!ret)
+	{
+		pg_log_error("Failed to generate key");
+		return 0;
+	}
 
 	ret = pgpass_crypt(isEncrypt, key, key + 16, PgpassFile, PGPASSFILE ".tmp");
 	if (ret)
 	{
-		durable_rename(PGPASSFILE ".tmp", PgpassFile, LOG);
+		if (durable_rename(PGPASSFILE ".tmp", PgpassFile, LOG) != 0)
+		{
+			pg_log_error("Failed to rename file");
+			return 0;
+		}
 
 		// 600
 		if (chmod(PgpassFile, S_IRUSR | S_IWUSR) != 0)
 		{
-			perror("Failed to set file permissions");
-			return false;
+			pg_log_error("Failed to set file permissions");
+			return 0;
 		}
+	}
+	else
+	{
+		pg_log_warning("Failed to %s", isEncrypt?"encrypt":"decrypt");
 	}
 
 	return 0;

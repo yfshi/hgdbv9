@@ -181,7 +181,7 @@ static char *scram_mock_salt(const char *scram_type, const char *username);
  * separated by '\0' bytes.
  */
 void
-pg_be_scramsha256_get_mechanisms(Port *port, StringInfo buf) //ReqID:SRS-SECURITY-IDENTITYAUTH
+pg_be_scram_get_mechanisms(Port *port, StringInfo buf) //ReqID:SRS-SECURITY-IDENTITYAUTH
 {
 	/*
 	 * Advertise the mechanisms in decreasing order of importance.  So the
@@ -200,6 +200,7 @@ pg_be_scramsha256_get_mechanisms(Port *port, StringInfo buf) //ReqID:SRS-SECURIT
 	appendStringInfoChar(buf, '\0');
 }
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
 /*
  * pg_be_scramsm3_get_mechanisms
  *
@@ -256,6 +257,7 @@ pg_be_scramsha256sm3_get_mechanisms(Port *port, StringInfo buf)
 	appendStringInfoString(buf, SCRAM_SHA256_SM3_NAME);
 	appendStringInfoChar(buf, '\0');
 }
+#endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 /*
  * pg_be_scram_init
@@ -403,9 +405,11 @@ pg_be_scram_init(Port *port,
 			if (password_type == PASSWORD_TYPE_SCRAM_SHA_256)
 				mock_scram_secret("SCRAM-SHA-256", state->port->user_name, &state->iterations,
 							&state->salt, state->StoredKey, state->ServerKey);
-			else
+#ifdef USE_GMSSL
+			else if (password_type == PASSWORD_TYPE_SCRAM_SM3)
 				mock_scram_secret("SCRAM-SM3", state->port->user_name, &state->iterations,
 							&state->salt, state->StoredKey, state->ServerKey);
+#endif
 			state->doomed = true;
 		}
 		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */

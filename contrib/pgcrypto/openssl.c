@@ -35,6 +35,11 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
+#ifdef USE_GMSSL
+#include <gmssl/sm3.h>
+#include <gmssl/sm4.h>
+#endif
+
 #include "px.h"
 #include "utils/memutils.h"
 #include "utils/resowner.h"
@@ -66,6 +71,15 @@ typedef struct OSSLDigest
 
 static OSSLDigest *open_digests = NULL;
 static bool digest_resowner_callback_registered = false;
+
+/* Begin - ReqID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+static int
+px_find_digest_sm3(PX_MD **res);
+static int
+px_find_cipher_gssl(const char *name, PX_Cipher **res);
+#endif
+/* End - ReqID:SRS-SECRET-PGCRYPTO */
 
 static void
 free_openssl_digest(OSSLDigest *digest)
@@ -182,6 +196,13 @@ px_find_digest(const char *name, PX_MD **res)
 	PX_MD	   *h;
 	OSSLDigest *digest;
 
+/* Begin - ReqID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+	if (pg_strcasecmp(name, "sm3") == 0)
+		return px_find_digest_sm3(res);
+#endif
+/* End - ReqID:SRS-SECRET-PGCRYPTO */
+
 	if (!px_openssl_initialized)
 	{
 		px_openssl_initialized = 1;
@@ -238,6 +259,85 @@ px_find_digest(const char *name, PX_MD **res)
 	*res = h;
 	return 0;
 }
+
+/* Begin - ReqID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+
+static unsigned
+digest_result_size_sm3(PX_MD *h)
+{
+	return SM3_DIGEST_SIZE;
+}
+
+static unsigned
+digest_block_size_sm3(PX_MD *h)
+{
+	return SM3_BLOCK_SIZE;
+}
+
+static void
+digest_reset_sm3(PX_MD *h)
+{
+	SM3_CTX *ctx = (SM3_CTX *) h->p.ptr;
+
+	return sm3_init(ctx);
+}
+
+static void
+digest_update_sm3(PX_MD *h, const uint8 *data, unsigned dlen)
+{
+	size_t datalen = dlen;
+	SM3_CTX *ctx = (SM3_CTX *) h->p.ptr;
+
+	return sm3_update(ctx, data, datalen);
+}
+
+static void
+digest_finish_sm3(PX_MD *h, uint8 *dst)
+{
+	SM3_CTX *ctx = (SM3_CTX *) h->p.ptr;
+
+	return sm3_finish(ctx, dst);
+}
+
+static void
+digest_free_sm3(PX_MD *h)
+{
+	SM3_CTX *ctx = (SM3_CTX *) h->p.ptr;
+
+	pfree(ctx);
+	pfree(h);
+}
+
+static int
+px_find_digest_sm3(PX_MD **res)
+{
+	SM3_CTX *ctx;
+	PX_MD	   *h;
+
+	ctx = palloc0(sizeof(SM3_CTX));
+	if (!ctx)
+	{
+		return -1;
+	}
+
+	sm3_init(ctx);
+
+	/* The PX_MD object is allocated in the current memory context. */
+	h = palloc0(sizeof(PX_MD));
+	h->result_size = digest_result_size_sm3;
+	h->block_size = digest_block_size_sm3;
+	h->reset = digest_reset_sm3;
+	h->update = digest_update_sm3;
+	h->finish = digest_finish_sm3;
+	h->free = digest_free_sm3;
+	h->p.ptr = (void *)ctx;
+
+	*res = h;
+	return 0;
+}
+#endif
+/* End - ReqID:SRS-SECRET-PGCRYPTO */
 
 /*
  * Ciphers
@@ -642,80 +742,6 @@ ossl_aes_cbc_init(PX_Cipher *c, const uint8 *key, unsigned klen, const uint8 *iv
 
 	return err;
 }
-/* Begin - REQID:SRS-SECRET-PGCRYPTO */
-#ifdef OPENSSL_VERSION_NUMBER
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-static int
-ossl_sm4_init(PX_Cipher *c, const uint8 *key, unsigned klen, const uint8 *iv)
-{
-	OSSLCipher *od = c->ptr;
-	unsigned	bs = gen_ossl_block_size(c);
-
-	if (klen <= 128 / 8)
-		od->klen = 128 / 8;
-	else
-		return PXE_KEY_TOO_BIG;
-
-	memcpy(od->key, key, klen);
-
-	if (iv)
-		memcpy(od->iv, iv, bs);
-	else
-		memset(od->iv, 0, bs);
-
-	return 0;
-}
-
-static int
-ossl_sm4_ecb_init(PX_Cipher *c, const uint8 *key, unsigned klen, const uint8 *iv)
-{
-	OSSLCipher *od = c->ptr;
-	int			err;
-
-	err = ossl_sm4_init(c, key, klen, iv);
-	if (err)
-		return err;
-
-	switch (od->klen)
-	{
-		case 128 / 8:
-			od->evp_ciph = EVP_sm4_ecb();
-			break;
-		default:
-			/* shouldn't happen */
-			err = PXE_CIPHER_INIT;
-			break;
-	}
-
-	return err;
-}
-
-static int
-ossl_sm4_cbc_init(PX_Cipher *c, const uint8 *key, unsigned klen, const uint8 *iv)
-{
-	OSSLCipher *od = c->ptr;
-	int			err;
-
-	err = ossl_sm4_init(c, key, klen, iv);
-	if (err)
-		return err;
-
-	switch (od->klen)
-	{
-		case 128 / 8:
-			od->evp_ciph = EVP_sm4_cbc();
-			break;
-		default:
-			/* shouldn't happen */
-			err = PXE_CIPHER_INIT;
-			break;
-	}
-
-	return err;
-}
-#endif
-#endif
-/* End - REQID:SRS-SECRET-PGCRYPTO */
 
 /*
  * aliases
@@ -737,12 +763,10 @@ static PX_Alias ossl_aliases[] = {
 	{"rijndael-cbc", "aes-cbc"},
 	{"rijndael-ecb", "aes-ecb"},
 /* Begin - REQID:SRS-SECRET-PGCRYPTO */
-#ifdef OPENSSL_VERSION_NUMBER
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#ifdef USE_GMSSL
 	{"sm4", "sm4-cbc"},
 	{"sm4-cbc", "sm4-cbc"},
 	{"sm4-ecb", "sm4-ecb"},
-#endif
 #endif
 /* End - REQID:SRS-SECRET-PGCRYPTO */
 	{NULL}
@@ -815,25 +839,7 @@ static const struct ossl_cipher ossl_aes_cbc = {
 								 * function */
 	128 / 8, 256 / 8
 };
-/* Begin - REQID:SRS-SECRET-PGCRYPTO */
-#ifdef OPENSSL_VERSION_NUMBER
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-static const struct ossl_cipher ossl_sm4_ecb = {
-	ossl_sm4_ecb_init,
-	NULL,						/* EVP_aes_XXX_ecb(), determined in init
-								 * function */
-	128 / 8, 128 / 8
-};
 
-static const struct ossl_cipher ossl_sm4_cbc = {
-	ossl_sm4_cbc_init,
-	NULL,						/* EVP_aes_XXX_cbc(), determined in init
-								 * function */
-	128 / 8, 128 / 8
-};
-#endif
-#endif
-/* End - REQID:SRS-SECRET-PGCRYPTO */
 /*
  * Special handlers
  */
@@ -856,11 +862,9 @@ static const struct ossl_cipher_lookup ossl_cipher_types[] = {
 	{"aes-ecb", &ossl_aes_ecb},
 	{"aes-cbc", &ossl_aes_cbc},
 /* Begin - REQID:SRS-SECRET-PGCRYPTO */
-#ifdef OPENSSL_VERSION_NUMBER
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	{"sm4-ecb", &ossl_sm4_ecb},
-	{"sm4-cbc", &ossl_sm4_cbc},
-#endif
+#ifdef USE_GMSSL
+	{"sm4-ecb", NULL},
+	{"sm4-cbc", NULL},
 #endif
 /* End - REQID:SRS-SECRET-PGCRYPTO */
 	{NULL}
@@ -882,6 +886,13 @@ px_find_cipher(const char *name, PX_Cipher **res)
 			break;
 	if (i->name == NULL)
 		return PXE_NO_CIPHER;
+
+/* Begin - ReqID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+	if (strncmp(i->name, "sm4", 3) == 0)
+		return px_find_cipher_gssl(i->name, res);
+#endif
+/* End - ReqID:SRS-SECRET-PGCRYPTO */
 
 	if (!cipher_resowner_callback_registered)
 	{
@@ -928,3 +939,179 @@ px_find_cipher(const char *name, PX_Cipher **res)
 	*res = c;
 	return 0;
 }
+
+/* Begin - ReqID:SRS-SECRET-PGCRYPTO */
+#ifdef USE_GMSSL
+
+typedef enum GSSLCipherMod
+{
+	MOD_SM4_ECB = 1,
+	MOD_SM4_CBC = 2
+}GSSLCipherMod;
+
+typedef struct GSSLCipher
+{
+	SM4_KEY			sm4_ctx;
+	uint8			key[SM4_KEY_SIZE];
+	uint8			iv[SM4_BLOCK_SIZE];
+	bool			init;
+	GSSLCipherMod	mod;
+} GSSLCipher;
+
+static unsigned
+gen_gssl_block_size(PX_Cipher *c)
+{
+	return SM4_BLOCK_SIZE;
+}
+
+static unsigned
+gen_gssl_key_size(PX_Cipher *c)
+{
+	return SM4_KEY_SIZE;
+}
+
+static unsigned
+gen_gssl_iv_size(PX_Cipher *c)
+{
+	return SM4_BLOCK_SIZE;
+}
+
+static void
+gen_gssl_free(PX_Cipher *c)
+{
+	GSSLCipher *od = (GSSLCipher *)c->ptr;
+
+	pfree(od);
+	pfree(c);
+}
+
+static int
+gen_gssl_decrypt(PX_Cipher *c, const uint8 *data, unsigned dlen,
+				 uint8 *res)
+{
+	GSSLCipher *od = (GSSLCipher *)c->ptr;
+
+	if (!od->init)
+	{
+		sm4_set_decrypt_key(&od->sm4_ctx, od->key);
+		od->init = true;
+	}
+
+	if (dlen == 0)
+		return 0;
+
+	if (dlen & 15)
+		return PXE_NOTBLOCKSIZE;
+
+	if (od->mod == MOD_SM4_CBC)
+	{
+		sm4_cbc_decrypt(&od->sm4_ctx, od->iv, data, dlen/SM4_BLOCK_SIZE, res);
+		memcpy(od->iv, data + dlen - SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
+	}
+	else
+	{
+		int i = 0;
+		for (i = 0; i < dlen/SM4_BLOCK_SIZE; i++)
+		{
+			sm4_decrypt(&od->sm4_ctx, data + i*SM4_BLOCK_SIZE, res  + i*SM4_BLOCK_SIZE);
+		}
+	}
+
+	return 0;
+}
+
+static int
+gen_gssl_encrypt(PX_Cipher *c, const uint8 *data, unsigned dlen,
+				 uint8 *res)
+{
+	GSSLCipher *od = (GSSLCipher *)c->ptr;
+
+	if (!od->init)
+	{
+		sm4_set_encrypt_key(&od->sm4_ctx, od->key);
+		od->init = true;
+	}
+
+	if (dlen == 0)
+		return 0;
+
+	if (dlen & 15)
+		return PXE_NOTBLOCKSIZE;
+
+	if (od->mod == MOD_SM4_CBC)
+	{
+		sm4_cbc_encrypt(&od->sm4_ctx, od->iv, data, dlen/SM4_BLOCK_SIZE, res);
+		memcpy(od->iv, res + dlen - SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
+	}
+	else
+	{
+		int i = 0;
+		for (i = 0; i < dlen/SM4_BLOCK_SIZE; i++)
+		{
+			sm4_encrypt(&od->sm4_ctx, data + i*SM4_BLOCK_SIZE, res  + i*SM4_BLOCK_SIZE);
+		}
+	}
+
+	return 0;
+}
+
+static int
+gen_gssl_init(PX_Cipher *c, const uint8 *key, unsigned klen, const uint8 *iv)
+{
+	GSSLCipher *od = (GSSLCipher *)c->ptr;
+
+	if (klen > SM4_KEY_SIZE)
+		return PXE_KEY_TOO_BIG;
+
+	memcpy(od->key, key, klen);
+
+	if (iv)
+		memcpy(od->iv, iv, SM4_BLOCK_SIZE);
+
+	od->init = false;
+
+	return PXE_OK;
+}
+
+/* SM4 functions */
+static int
+px_find_cipher_gssl(const char *name, PX_Cipher **res)
+{
+	PX_Cipher  *c = NULL;
+	GSSLCipher *od;
+
+	od = palloc0(sizeof(GSSLCipher));
+	if (!od)
+	{
+		return -1;
+	}
+
+	od->init = false;
+
+	if (strcmp(name, "sm4-ecb") == 0)
+		od->mod = MOD_SM4_ECB;	//sm4-ecb
+	else if (strcmp(name, "sm4-cbc") == 0)
+		od->mod = MOD_SM4_CBC;	//sm4-cbc
+	else
+	{
+		pfree(od);
+		return -1;
+	}
+
+	/* The PX_Cipher is allocated in current memory context */
+	c = palloc0(sizeof(PX_Cipher));
+	c->block_size = gen_gssl_block_size;
+	c->key_size = gen_gssl_key_size;
+	c->iv_size = gen_gssl_iv_size;
+	c->free = gen_gssl_free;
+	c->init = gen_gssl_init;
+	c->encrypt = gen_gssl_encrypt;
+	c->decrypt = gen_gssl_decrypt;
+	c->ptr = (void *)od;
+
+	*res = c;
+	return 0;
+}
+
+#endif
+/* End - ReqID:SRS-SECRET-PGCRYPTO */

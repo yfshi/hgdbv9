@@ -23,9 +23,10 @@
 
 #include "common/sm3.h"
 
-#define SM4_IV_SIZE SM4_BLOCK_SIZE
+#define PG_DIGEST_LENGTH 32
+#define SYMM_IV_SIZE 16
 #define PWD_MAX_SIZE 32
-#define BUFFER_MAX_SIZE ((SM4_IV_SIZE + PWD_MAX_SIZE + 16 + PG_SM3_DIGEST_LENGTH * 2) * 4 / 3)
+#define BUFFER_MAX_SIZE ((SYMM_IV_SIZE + PWD_MAX_SIZE + 16 + PG_DIGEST_LENGTH * 2) * 4 / 3)
 
 bool pass_is_encrypted(const char *passwd);
 bool pass_encrypt(const char *passwd, const unsigned char *key, const unsigned char *hmac_key, char *out);

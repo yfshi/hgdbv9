@@ -1,11 +1,16 @@
 
 #include "postgres.h"
 
-#ifdef USE_GMSSL
 #include "common/hmac.h"
 #include "common/hkdf.h"
 
-bool sm3_hkdf_expand(unsigned char *out,
+/*
+ * hkdf_expand_key
+ *
+ * Return the calcution result of hmac as the key.
+ * 
+ */
+bool hkdf_expand_key(unsigned char *out,
 					const unsigned char *id, int id_len,
 					const unsigned char *mac, int mac_len,
 					const unsigned char *ckey, int ckey_len,
@@ -22,7 +27,11 @@ bool sm3_hkdf_expand(unsigned char *out,
 	if(counter <= 0)
 		counter = 3;
 
+#ifdef USE_GMSSL
 	hmac_ctx = pg_hmac_create(PG_SM3);
+#else
+	hmac_ctx = pg_hmac_create(PG_SHA256);
+#endif
 	if(hmac_ctx == NULL)
 		return false;
 
@@ -38,6 +47,7 @@ bool sm3_hkdf_expand(unsigned char *out,
 		pg_hmac_final(hmac_ctx, out, 32);
 	}
 
+	pg_hmac_free(hmac_ctx);
+
 	return true;
 }
-#endif

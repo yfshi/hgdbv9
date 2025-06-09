@@ -4,6 +4,9 @@
  *
  * Abstract:
  * 		This file contains the encryption and decryption functions of the pgpass file.
+ * 		Use SM4 and SM3 encryption when using --with-gmssl
+ * 		Use AES and SHA256 encryption when using --with-openssl
+ * 		Neither or them uses XOR and SHA256 encryption when in use
  *
  * Author: suzy@highgo.com, 20241220.
  *
@@ -24,13 +27,23 @@
 #include "postgres_fe.h"
 #endif
 
-#ifdef USE_GMSSL
-#include <gmssl/sm4.h>
-
 #include <sys/param.h>
 #include <unistd.h>
 
+#ifdef USE_GMSSL
+#include <gmssl/sm4.h>
 #include "common/sm3.h"
+#elif defined(USE_OPENSSL)
+#include <openssl/ec.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include "common/md5.h"
+#else
+#include "common/md5.h"
+#endif
+
 #include "common/hmac.h"
 #include "common/hkdf.h"
 #include "common/mac.h"
@@ -45,10 +58,15 @@ static const char _base64[] =
 
 static void pass_hmac(const unsigned char *msg, size_t msg_len, const unsigned char *key, unsigned char *digest)
 {
+#ifdef USE_GMSSL
 	pg_hmac_ctx *ctx = pg_hmac_create(PG_SM3);
-	pg_hmac_init(ctx, key, SM4_KEY_SIZE);
+#else
+	pg_hmac_ctx *ctx = pg_hmac_create(PG_SHA256);
+#endif
+	pg_hmac_init(ctx, key, 16);
 	pg_hmac_update(ctx, msg, msg_len);
-	pg_hmac_final(ctx, digest, PG_SM3_DIGEST_LENGTH);
+	pg_hmac_final(ctx, digest, PG_DIGEST_LENGTH);
+	pg_hmac_free(ctx);
 }
 
 static ControlFileData *
@@ -67,6 +85,8 @@ get_identifier(const char *DataDir, bool *crc_ok_p)
 	AssertArg(crc_ok_p);
 
 	ControlFile = palloc(sizeof(ControlFileData));
+	if (ControlFile)
+		return NULL;
 	snprintf(ControlFilePath, MAXPGPATH, "%s/global/pg_control", DataDir);
 
 #ifdef FRONTEND
@@ -168,6 +188,140 @@ retry:
 	return ControlFile;
 }
 
+static int
+symm_encrypt(const uint8_t *key, const uint8_t *iv,
+			 uint8_t *in, int inlen, uint8_t *out, size_t *outlen)
+{
+#ifdef USE_GMSSL
+	{
+		SM4_KEY ctx;
+		sm4_set_encrypt_key(&ctx, key);
+		sm4_cbc_padding_encrypt(&ctx, iv,
+								in, inlen,
+								out, outlen);
+		return 1;
+	}
+#elif defined(USE_OPENSSL)
+	{
+		int outl = 0;
+		EVP_CIPHER_CTX *ctx = NULL;
+		int ciphertext_len = 0;
+		int ret = -1;
+
+		if (!(ctx = EVP_CIPHER_CTX_new()))
+		{
+			goto end;
+		}
+
+		if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key, iv))
+		{
+			goto end;
+		}
+
+		if (1 != EVP_EncryptUpdate(ctx, out, &outl, in, inlen))
+		{
+			goto end;
+		}
+		ciphertext_len = outl;
+
+		if (1 != EVP_EncryptFinal_ex(ctx, out + ciphertext_len, &outl))
+		{
+			goto end;
+		}
+		ciphertext_len += outl;
+
+		*outlen = ciphertext_len;
+		ret = ciphertext_len;
+
+	end:
+		if (ctx)
+			EVP_CIPHER_CTX_free(ctx);
+		return ret;
+	}
+#else
+	{
+		int i = 0;
+		unsigned char pad = 0;
+
+		pad = 15 - ((inlen + 15)%16);
+		memcpy(out, in, inlen);
+		memset(out + inlen, pad, pad);
+		for (i = 0; i < inlen + pad; i++)
+		{
+			out[i] = out[i] ^ iv[i%16];
+			out[i] = out[i] ^ key[i%16];
+		}
+		*outlen = inlen + pad;
+		return 1;
+	}
+#endif
+}
+
+static int
+symm_decrypt(const uint8_t *key, const uint8_t *iv,
+			 uint8_t *in, int inlen, uint8_t *out, size_t *outlen)
+{
+#ifdef USE_GMSSL
+	{
+		SM4_KEY ctx;
+		sm4_set_decrypt_key(&ctx, key);
+		sm4_cbc_padding_decrypt(&ctx, iv,	  // key、iv
+								in, inlen,	  // in、inlen
+								out, outlen); // out、outlen
+		return 1;
+	}
+#elif defined(USE_OPENSSL)
+	{
+		int outl = 0;
+		EVP_CIPHER_CTX *ctx = NULL;
+		int plaintext_len = 0;
+		int ret = -1;
+
+		if (!(ctx = EVP_CIPHER_CTX_new()))
+		{
+			goto end;
+		}
+
+		if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key, iv))
+		{
+			goto end;
+		}
+
+		if (1 != EVP_DecryptUpdate(ctx, out, &outl, in, inlen))
+		{
+			goto end;
+		}
+		plaintext_len = outl;
+
+		if (1 != EVP_DecryptFinal_ex(ctx, out + plaintext_len, &outl))
+		{
+			goto end;
+		}
+		plaintext_len += outl;
+
+		*outlen = plaintext_len;
+		ret = plaintext_len;
+
+	end:
+		if (ctx)
+			EVP_CIPHER_CTX_free(ctx);
+		return ret;
+	}
+#else
+	{
+		int i = 0;
+		for (i = 0; i < inlen; i++)
+		{
+			out[i] = in[i] ^ key[i%16];
+			out[i] = out[i] ^ iv[i%16];
+		}
+		*outlen = inlen - out[inlen - 1];
+
+		return 1;
+	}
+#endif
+}
+
 /*
  * pass_is_encrypted
  *
@@ -175,12 +329,11 @@ retry:
  * the first 16 bytes of the sm3-hmac values
  * of all the previous data; if not, it is plaintext.
  */
-bool
-pass_is_encrypted(const char *passwd)
+bool pass_is_encrypted(const char *passwd)
 {
 	unsigned char b64_dec[BUFFER_MAX_SIZE];
 	int b64_dec_len = 0;
-	unsigned char digst[PG_SM3_DIGEST_LENGTH];
+	unsigned char digst[PG_DIGEST_LENGTH];
 
 	if (strspn(passwd, _base64) != strlen(passwd))
 	{
@@ -192,7 +345,11 @@ pass_is_encrypted(const char *passwd)
 		return false;
 	}
 
+#ifdef USE_GMSSL
 	pg_sm3_binary(b64_dec, b64_dec_len - 16, digst);
+#else
+	pg_md5_binary(b64_dec, b64_dec_len - 16, digst);
+#endif
 
 	if (memcmp(digst, b64_dec + b64_dec_len - 16, 16) == 0)
 		return true;
@@ -205,33 +362,35 @@ pass_is_encrypted(const char *passwd)
  *
  * Encrypt the "password" field.
  */
-bool
-pass_encrypt(const char *passwd, const unsigned char *key, const unsigned char *hmac_key, char *out)
+bool pass_encrypt(const char *passwd, const unsigned char *key, const unsigned char *hmac_key, char *out)
 {
 	unsigned char buf_plain[BUFFER_MAX_SIZE];
-	SM4_KEY ctx;
 	unsigned char out_enc[BUFFER_MAX_SIZE];
 	size_t out_enc_len = 0;
 	int out_len = 0;
 
-	pg_strong_random(out_enc, SM4_IV_SIZE);
-	out_len = SM4_IV_SIZE;
+	pg_strong_random(out_enc, SYMM_IV_SIZE);
+	out_len = SYMM_IV_SIZE;
 
-	memcpy(out_enc + SM4_IV_SIZE, passwd, strlen(passwd));
+	memcpy(out_enc + SYMM_IV_SIZE, passwd, strlen(passwd));
 	out_len += strlen(passwd) > PWD_MAX_SIZE ? PWD_MAX_SIZE : strlen(passwd);
 
 	pass_hmac(out_enc, out_len, hmac_key, out_enc + out_len);
 	out_len += 16;
 
-	sm4_set_encrypt_key(&ctx, key);
-	memcpy(buf_plain, out_enc + SM4_IV_SIZE, out_len - SM4_IV_SIZE);
-	sm4_cbc_padding_encrypt(&ctx, out_enc,
-							buf_plain, out_len - SM4_IV_SIZE,
-							out_enc + SM4_IV_SIZE, &out_enc_len);
-	out_len = SM4_IV_SIZE + out_enc_len;
+	memcpy(buf_plain, out_enc + SYMM_IV_SIZE, out_len - SYMM_IV_SIZE);
 
+	symm_encrypt(key, out_enc,
+						buf_plain, out_len - SYMM_IV_SIZE,
+						out_enc + SYMM_IV_SIZE, &out_enc_len);
+
+	out_len = SYMM_IV_SIZE + out_enc_len;
+
+#ifdef USE_GMSSL
 	pg_sm3_binary(out_enc, out_len, out_enc + out_len);
-
+#else
+	pg_md5_binary(out_enc, out_len, out_enc + out_len);
+#endif
 	out_len += 16;
 
 	pg_b64_encode((char *)out_enc, out_len, out, 256);
@@ -243,14 +402,13 @@ pass_encrypt(const char *passwd, const unsigned char *key, const unsigned char *
  *
  * Decrypt the "password" field.
  */
-bool
-pass_decrypt(const char *passwd, const unsigned char *key, const unsigned char *hmac_key, char *out)
+bool pass_decrypt(const char *passwd, const unsigned char *key, const unsigned char *hmac_key, char *out)
 {
 	unsigned char buf_cipher[BUFFER_MAX_SIZE];
-	SM4_KEY ctx;
+
 	unsigned char pass_dec[BUFFER_MAX_SIZE];
 	size_t pass_dec_len = 0;
-	unsigned char digst[PG_SM3_DIGEST_LENGTH];
+	unsigned char digst[PG_DIGEST_LENGTH];
 
 	pass_dec_len = pg_b64_decode(passwd, strlen(passwd), (char *)pass_dec, sizeof(pass_dec));
 	if (pass_dec_len <= 0 || pass_dec_len < 64 || pass_dec_len % 16 != 0)
@@ -258,18 +416,20 @@ pass_decrypt(const char *passwd, const unsigned char *key, const unsigned char *
 		return false;
 	}
 	pass_dec_len -= 16;
-	pass_dec_len -= SM4_IV_SIZE;
-	sm4_set_decrypt_key(&ctx, key);
-	memcpy(buf_cipher, pass_dec + SM4_IV_SIZE, pass_dec_len);
-	sm4_cbc_padding_decrypt(&ctx, pass_dec,							// key, iv
-							buf_cipher, pass_dec_len,	// in, inlen
-							pass_dec + SM4_IV_SIZE, &pass_dec_len); // out, outlen
+	pass_dec_len -= SYMM_IV_SIZE;
+
+	memcpy(buf_cipher, pass_dec + SYMM_IV_SIZE, pass_dec_len);
+
+	symm_decrypt(key, pass_dec,							// key、iv
+							buf_cipher, pass_dec_len,				// in、inlen
+							pass_dec + SYMM_IV_SIZE, &pass_dec_len); // out、outlen
+
 	pass_dec_len -= 16;
-	pass_hmac(pass_dec, pass_dec_len + SM4_IV_SIZE, hmac_key, digst);
-	if (memcmp(digst, pass_dec + SM4_IV_SIZE + pass_dec_len, 16) != 0)
+	pass_hmac(pass_dec, pass_dec_len + SYMM_IV_SIZE, hmac_key, digst);
+	if (memcmp(digst, pass_dec + SYMM_IV_SIZE + pass_dec_len, 16) != 0)
 		return false;
 
-	memcpy(out, pass_dec + SM4_IV_SIZE, pass_dec_len);
+	memcpy(out, pass_dec + SYMM_IV_SIZE, pass_dec_len);
 	out[pass_dec_len] = '\0';
 	return true;
 }
@@ -280,8 +440,7 @@ pass_decrypt(const char *passwd, const unsigned char *key, const unsigned char *
  * Generate the encryption key based on the input database path,
  * network card name and custom password.
  */
-bool
-pass_gen_key(char *DataDir, char *Interface, char *CustomKey, unsigned char *sm4_key)
+bool pass_gen_key(char *DataDir, char *Interface, char *CustomKey, unsigned char *sm4_key)
 {
 
 	char ident[17] = {0};
@@ -298,11 +457,14 @@ pass_gen_key(char *DataDir, char *Interface, char *CustomKey, unsigned char *sm4
 	{
 		/* get a copy of the control file */
 		ControlFile = get_identifier(DataDir, &crc_ok);
+		if (!ControlFile)
+			return false;
 		if (!crc_ok)
 			printf(_("WARNING: The identifier was requested, but failed to obtain it.\n\n"));
 		snprintf(ident, sizeof(ident) - 1, "%llx",
 				 (unsigned long long)ControlFile->system_identifier);
 		ident_len = 11;
+		pfree(ControlFile);
 	}
 
 	/* Require MAC */
@@ -316,12 +478,11 @@ pass_gen_key(char *DataDir, char *Interface, char *CustomKey, unsigned char *sm4
 	if (CustomKey && CustomKey[0] != '\0')
 		customkey_len = strlen(CustomKey);
 
-	ret = sm3_hkdf_expand(sm4_key,
+	/* The fist 16 bytes are the key, and the last 16 bytes are the hamc key */
+	ret = hkdf_expand_key(sm4_key,
 						  (unsigned char *)ident, ident_len,
 						  (unsigned char *)mac, mac_len,
 						  (unsigned char *)CustomKey, customkey_len,
 						  16);
 	return ret;
 }
-
-#endif

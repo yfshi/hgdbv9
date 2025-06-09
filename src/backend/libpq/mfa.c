@@ -55,7 +55,7 @@
 #include "utils/acl.h"
 #include "catalog/objectaddress.h"
 #include "utils/timestamp.h"
-
+#include "access/heapam.h"
 #include "se_features_interface.h"
 
 #ifdef USE_OPENSSL
@@ -64,6 +64,13 @@
 #include <openssl/pem.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
+#endif
+
+#ifdef USE_GMSSL
+#include <gmssl/sm2.h>
+#include <gmssl/base64.h>
+#include <gmssl/x509.h>
+#include <gmssl/pem.h>
 #endif
 
 #ifdef _WIN32
@@ -80,7 +87,8 @@
 static const char base32_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
 
 /* Base32*/
-static void base32_decode(const char *base32, unsigned char *output, size_t *output_len)
+static void
+base32_decode(const char *base32, unsigned char *output, size_t *output_len)
 {
 	size_t bit_index = 0;
 	*output_len = 0;
@@ -115,7 +123,8 @@ static void base32_decode(const char *base32, unsigned char *output, size_t *out
 }
 
 /* Base32 */
-static void base32_encode(const unsigned char *input, size_t input_len, char *base32, size_t *base32_len)
+static void
+base32_encode(const unsigned char *input, size_t input_len, char *base32, size_t *base32_len)
 {
 	size_t bit_index = 0;
 	int value = 0;
@@ -143,57 +152,19 @@ static void base32_encode(const unsigned char *input, size_t input_len, char *ba
 	base32[*base32_len] = '\0';
 }
 
-#ifdef USE_OPENSSL
+#if defined(USE_OPENSSL) || defined(USE_GMSSL)
 static const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-
-char *mfa_base64_encode(const unsigned char *input, int length)
-{
-	char *output = NULL;
-	BIO *bio, *b64;
-	BUF_MEM *bufferPtr;
-
-	b64 = BIO_new(BIO_f_base64());
-	bio = BIO_new(BIO_s_mem());
-	bio = BIO_push(b64, bio);
-	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); // no new line
-
-	BIO_write(bio, input, length);
-	(void)BIO_flush(bio);
-	BIO_get_mem_ptr(bio, &bufferPtr);
-
-	output = (char *)malloc(bufferPtr->length + 1);
-	memcpy(output, bufferPtr->data, bufferPtr->length);
-	output[bufferPtr->length] = '\0'; // null-terminate the string
-
-	BIO_free_all(bio);
-	return output;
-}
-
-unsigned char *mfa_base64_decode(const char *input, int *length)
-{
-	BIO *bio, *b64;
-	int input_len = strlen(input);
-	unsigned char *buffer = (unsigned char *)malloc(input_len);
-
-	b64 = BIO_new(BIO_f_base64());
-	bio = BIO_new_mem_buf(input, input_len);
-	bio = BIO_push(b64, bio);
-	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); /* no new line */
-
-	*length = BIO_read(bio, buffer, input_len);
-	BIO_free_all(bio);
-
-	return buffer;
-}
 #endif
 
-static long get_time_interval()
+static long
+get_time_interval()
 {
 	return time(NULL) / TIME_STEP;
 }
 
 /* HMAC-SHA1 */
-static unsigned char *hmac_sha1(const unsigned char *key, int key_len,
+static unsigned char *
+hmac_sha1(const unsigned char *key, int key_len,
 								const unsigned char *data, int data_len,
 								unsigned char *result, unsigned int result_len)
 {
@@ -202,6 +173,7 @@ static unsigned char *hmac_sha1(const unsigned char *key, int key_len,
 	if (hmac_ctx == NULL)
 	{
 		elog(ERROR, gettext_noop("TOTP could not initialize checksum context"));
+		return NULL;
 	}
 
 	if (pg_hmac_init(hmac_ctx, key, key_len) < 0 ||
@@ -210,6 +182,7 @@ static unsigned char *hmac_sha1(const unsigned char *key, int key_len,
 	{
 		pg_hmac_free(hmac_ctx);
 		elog(ERROR, gettext_noop("TOTP could not initialize checksum"));
+		return NULL;
 	}
 
 	pg_hmac_free(hmac_ctx);
@@ -281,9 +254,7 @@ mfa_totp_verify(const char *role, const char *show_otp,
 	generated_otp = mfa_totp_generate(key, key_len);
 
 	if (user_totp == generated_otp)
-	{
 		return STATUS_OK;
-	}
 
 	return STATUS_ERROR;
 }
@@ -308,7 +279,7 @@ mfa_totp_genkey(char *out)
 	base32_encode(key, 12, out, &key_len);
 	out[key_len] = '\0';
 
-	return 0;
+	return 1;
 }
 
 /*
@@ -327,7 +298,7 @@ mfa_get_keytype(const char *type, const char *key)
 			strspn(key, base32_chars) > 8)
 		{
 			return MFA_TYPE_TOTP;
-#ifdef USE_OPENSSL
+#if defined(USE_OPENSSL) || defined(USE_GMSSL)
 		}
 		else if (strncmp(type, "pkey", 4) == 0 &&
 				 strspn(key, base64_chars) > 120)
@@ -336,7 +307,7 @@ mfa_get_keytype(const char *type, const char *key)
 #endif
 		}
 	}
-#ifdef USE_OPENSSL
+#if defined(USE_OPENSSL) || defined(USE_GMSSL)
 	if (strncmp(type, "cert", 4) == 0)
 	{
 		return MFA_TYPE_CERT;
@@ -431,7 +402,6 @@ mfa_get_key(Port *port, Oid roleid, MFAType *otp_type, char **logdetail)
 }
 
 #ifdef USE_OPENSSL
-
 /*
  * pkey_signature_verify
  *
@@ -439,59 +409,103 @@ mfa_get_key(Port *port, Oid roleid, MFAType *otp_type, char **logdetail)
  * using the saved public key.
  */
 static int
-pkey_signature_verify(const char *publicKeyBase64, const char *message, const unsigned char *sig, size_t sig_len, char *user_id)
+pkey_signature_verify_openssl(const char *publicKeyBase64, const char *message,
+								const unsigned char *sig, size_t sig_len)
 {
 	int publicKeyDER_len;
-	unsigned char *publicKeyDER;
-	BIO *bio_mem;
+	BIO *bio_mem = NULL;
 	EVP_PKEY *pkey = NULL;
-	EVP_MD_CTX *mctx;
+	EVP_MD_CTX *mctx = NULL;
 	int ret;
 	int pkey_type = EVP_PKEY_NONE;
 
-	publicKeyDER = mfa_base64_decode(publicKeyBase64, &publicKeyDER_len);
+	int inlen = strlen(publicKeyBase64);
+	unsigned char *publicKeyDER = palloc0(inlen);
+
+	if (!publicKeyDER)
+		return 0;
+
+	publicKeyDER_len = pg_b64_decode(publicKeyBase64, inlen,
+									(char *)publicKeyDER, inlen);
+
+	if (publicKeyDER_len <= 1)
+	{
+		pfree(publicKeyDER);
+		return 0;
+	}
 
 	bio_mem = BIO_new(BIO_s_mem());
 	BIO_write(bio_mem, publicKeyDER, publicKeyDER_len);
 	pkey = d2i_PUBKEY_bio(bio_mem, NULL);
 	BIO_free_all(bio_mem);
-	free(publicKeyDER);
+	pfree(publicKeyDER);
 
-	if (pkey == NULL)
-	{
-		return -1;
-	}
+	if (!pkey)
+		goto end;
 
 	mctx = EVP_MD_CTX_create();
+	if (!mctx)
+		goto end;
 
 	pkey_type = EVP_PKEY_id(pkey);
 	if (pkey_type == EVP_PKEY_RSA)
-	{
 		EVP_DigestVerifyInit(mctx, NULL, EVP_sha256(), NULL, pkey);
-	}
 	else
-	{
-#ifdef OPENSSL_VERSION_NUMBER
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-		return -1;
-#elif OPENSSL_VERSION_NUMBER < 0x30000000L
-		EVP_PKEY_set_alias_type(pkey, EVP_PKEY_SM2);
-#endif
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-		EVP_DigestVerifyInit(mctx, NULL, EVP_sm3(), NULL, pkey);
-#endif
-#endif
-	}
+		goto end;
 
 	EVP_DigestVerifyUpdate(mctx, message, 16);
 
 	ret = EVP_DigestVerifyFinal(mctx, (unsigned char *)sig, sig_len);
 
-	EVP_MD_CTX_destroy(mctx);
-	EVP_PKEY_free(pkey);
+end:
+	if (mctx)
+		EVP_MD_CTX_destroy(mctx);
+	if (pkey)
+		EVP_PKEY_free(pkey);
 
-	return (ret == 1) ? 1 : 0;
+	return ret;
 }
+#endif
+
+#ifdef USE_GMSSL
+
+#define MAX_DER_SIZE 512
+
+static int
+pkey_signature_verify_gmssl(const char *publicKeyBase64,
+							const char *message, const unsigned char *sig,
+							size_t sig_len)
+{
+	int ret = 0;
+	SM2_KEY verify_key;
+	uint8_t pub_der[MAX_DER_SIZE];
+	const uint8_t *p = pub_der;
+	int priv_derlen = 0;
+	size_t pub_derlen  = sizeof(pub_der);
+	size_t plen = pub_derlen;
+	uint8_t dgst[SM3_DIGEST_SIZE];
+	SM3_CTX sm3;
+
+	priv_derlen = base64_decode_block(pub_der, (uint8_t *)publicKeyBase64,
+										strlen(publicKeyBase64));
+	if (priv_derlen <= 1)
+		goto end;
+
+	sm3_init(&sm3);
+	sm3_update(&sm3, (const uint8_t *)message, 16);
+	sm3_finish(&sm3, dgst);
+
+	if (sm2_public_key_info_from_der(&verify_key, &p, &plen) != 1)
+		goto end;
+
+	if (sm2_verify(&verify_key, dgst, sig, sig_len) != 1)
+		goto end;
+
+	ret = 1;
+end:
+	return ret;
+}
+#endif
 
 /*
  * mfa_pkey_verify
@@ -500,33 +514,60 @@ pkey_signature_verify(const char *publicKeyBase64, const char *message, const un
  */
 int
 mfa_pkey_verify(const char *role, const char *show_otp,
-					char *user_totp,
+					char *user_otp,
 					const char *opt_salt, int otp_salt_len,
 					char **logdetail)
 {
 	int sig_len = 0;
-	unsigned char *sig = mfa_base64_decode(user_totp, &sig_len);
-	if (1 == pkey_signature_verify(show_otp, opt_salt, sig, sig_len, NULL))
+	char *pkey = NULL;
+	int user_otp_len = strlen(user_otp);
+	unsigned char *sig = palloc0(user_otp_len);
+	if (!sig)
+		return STATUS_ERROR;
+
+	sig_len = pg_b64_decode(user_otp, user_otp_len, (char *)sig, user_otp_len);
+	if (sig_len <= 0)
 	{
+		pfree(sig);
+		return STATUS_ERROR;
+	}
+
+#ifdef USE_OPENSSL
+	pkey = strdup(show_otp);
+	if (1 == pkey_signature_verify_openssl(pkey, opt_salt, sig, sig_len))
+	{
+		pfree(sig);
 		return STATUS_OK;
 	}
+#endif
+#ifdef USE_GMSSL
+	pkey = strdup(show_otp);
+	if (1 == pkey_signature_verify_gmssl(pkey, opt_salt, sig, sig_len))
+	{
+		pfree(sig);
+		return STATUS_OK;
+	}
+#endif
+
+#if !defined(USE_OPENSSL) && !defined(USE_GMSSL)
+	(void)pkey;
+#endif
+
+	pfree(sig);
+	*logdetail = psprintf(_("Signature verification failed."));
+
 	return STATUS_ERROR;
 }
 
-static void cert_handleErrors(void)
-{
-	ERR_print_errors_fp(stderr);
-	abort();
-}
-
+#ifdef USE_OPENSSL
 /*
- * cert_signature_verify_sm2_rsa
+ * cert_signature_verify_openssl
  *
  * Certificate authentication: Use the public key in the saved certificate
- * (sm2 or rsa)to verify the signature data sent by the client.
+ * (rsa)to verify the signature data sent by the client.
  */
 static int
-cert_signature_verify_sm2_rsa(const char *cert_data, size_t cert_data_len,
+cert_signature_verify_openssl(const char *cert_data, size_t cert_data_len,
 										 const unsigned char *sig, size_t sig_len,
 										 const unsigned char *data, size_t data_len)
 {
@@ -534,20 +575,15 @@ cert_signature_verify_sm2_rsa(const char *cert_data, size_t cert_data_len,
 	EVP_PKEY *pkey = NULL;
 	BIO *bio_mem = NULL;
 	X509 *cert = NULL;
-	EVP_PKEY_CTX *ctx = NULL;
 	EVP_MD_CTX *mctx = NULL;
 	int pkey_type = -1;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	const char *sm2_id = "1234567812345678";
-#endif
+
 	bio_mem = BIO_new(BIO_s_mem());
 	BIO_write(bio_mem, cert_data, cert_data_len);
 	cert = PEM_read_bio_X509(bio_mem, NULL, NULL, NULL);
 	BIO_free_all(bio_mem);
 	if (cert == NULL)
-	{
 		return -1;
-	}
 
 	pkey = X509_get_pubkey(cert);
 	if (pkey == NULL)
@@ -558,35 +594,11 @@ cert_signature_verify_sm2_rsa(const char *cert_data, size_t cert_data_len,
 
 	mctx = EVP_MD_CTX_create();
 	if (!mctx)
-	{
 		goto cleanup;
-	}
 
 	pkey_type = EVP_PKEY_id(pkey);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	if (pkey_type <= 0)
-	{
-		int algnid = 0;
-		X509_PUBKEY *pubkey_info = X509_get_X509_PUBKEY(cert);
-		X509_ALGOR *alg = NULL;
-		const ASN1_OBJECT *obj = NULL;
-		X509_PUBKEY_get0_param(NULL, NULL, NULL, &alg, pubkey_info);
 
-		X509_ALGOR_get0(&obj, NULL, NULL, alg);
-		algnid = OBJ_obj2nid(obj);
-
-		if (algnid == NID_sm2)
-		{
-			pkey_type = EVP_PKEY_SM2;
-		}
-	}
-
-	if (pkey_type <= 0)
-	{
-		pkey_type = EVP_PKEY_SM2;
-	}
-#endif
-	if (pkey_type == EVP_PKEY_RSA || pkey_type == EVP_PKEY_EC)
+	if (pkey_type == EVP_PKEY_RSA)
 	{
 		if (EVP_DigestVerifyInit(mctx, NULL, EVP_sha256(), NULL, pkey) <= 0)
 		{
@@ -594,84 +606,91 @@ cert_signature_verify_sm2_rsa(const char *cert_data, size_t cert_data_len,
 			goto cleanup;
 		}
 	}
-#if defined(HAVE_X509_GET_SIGNATURE_INFO)
-	else if (pkey_type == EVP_PKEY_SM2)
-	{
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-		if (!EVP_PKEY_set_alias_type(pkey, EVP_PKEY_SM2))
-		{
-			ERR_print_errors_fp(stderr);
-			goto cleanup;
-		}
-#endif
-		ctx = EVP_PKEY_CTX_new(pkey, NULL);
-
-		if (EVP_PKEY_CTX_set1_id(ctx, sm2_id, strlen((char *)sm2_id)) <= 0)
-		{
-			ERR_print_errors_fp(stderr);
-			goto cleanup;
-		}
-		EVP_MD_CTX_set_pkey_ctx(mctx, ctx);
-
-		if (EVP_DigestVerifyInit(mctx, NULL, EVP_sm3(), NULL, pkey) <= 0)
-		{
-			ERR_print_errors_fp(stderr);
-			goto cleanup;
-		}
-	}
-#endif
 	else
 	{
 		goto cleanup;
 	}
 
 	ret = EVP_DigestVerifyUpdate(mctx, data, data_len);
-	if (!ret)
-	{
+	if (ret != 1)
 		goto cleanup;
-	}
 
-	ret = (EVP_DigestVerifyFinal(mctx, sig, sig_len) == 1) ? 1 : 0;
-
-	if (!ret)
-	{
-		goto cleanup;
-	}
+	ret = EVP_DigestVerifyFinal(mctx, sig, sig_len);
 
 cleanup:
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	if (mctx)
-		EVP_MD_CTX_cleanup(mctx);
-#else
-	if (mctx)
-	{
-		EVP_MD_CTX_free(mctx);
-	}
-#endif
-	if (ctx)
-	{
-		EVP_PKEY_CTX_free(ctx);
-	}
-
+		EVP_MD_CTX_destroy(mctx);
 	if (pkey)
-	{
 		EVP_PKEY_free(pkey);
-	}
+
 	if (cert)
-	{
 		X509_free(cert);
-	}
 
 	return ret;
 }
+#endif
 
+#ifdef USE_GMSSL
+static int load_cert_from_pem_string(const char *pem_str, uint8_t *cert, size_t *cert_len, size_t maxlen) {
+	int ret = -1;
+	FILE *fp = fmemopen((void *)pem_str, strlen(pem_str), "r");
+	if (!fp) 
+		return -1;
+
+	ret = x509_cert_from_pem(cert, cert_len, maxlen, fp);
+
+	fclose(fp);
+	return ret;
+}
+
+/*
+ * cert_signature_verify_gmssl
+ *
+ * Certificate authentication: Use the public key in the saved certificate
+ * (sm2)to verify the signature data sent by the client.
+ */
 static int
-cert_signature_verify(const char *cert_data, size_t cert_data_len,
-								 const unsigned char *sig, size_t sig_len,
-								 const unsigned char *data, size_t data_len)
+cert_signature_verify_gmssl(const char *cert_data, size_t cert_data_len,
+										 const unsigned char *sig, size_t sig_len,
+										 const unsigned char *data, size_t data_len)
 {
-	return cert_signature_verify_sm2_rsa(cert_data, cert_data_len, sig, sig_len, data, data_len);
+	uint8_t  client_cert[4096];
+	size_t client_cert_len = 0;
+	SM2_KEY client_pubkey;
+	uint8_t dgst[32];
+	int ret = -1;
+
+	if (load_cert_from_pem_string(cert_data, client_cert,
+									&client_cert_len, sizeof(client_cert)) != 1)
+		goto end;
+
+	sm3_digest(data, data_len, dgst);
+
+	if (x509_cert_get_subject_public_key(client_cert, client_cert_len, &client_pubkey) != 1)
+		goto end;
+
+	if (sm2_verify(&client_pubkey, dgst, sig, sig_len) != 1)
+		goto end;
+
+	ret = 1;
+
+end:
+	return ret;
+}
+#endif
+
+#ifdef USE_OPENSSL
+
+static void
+init_openssl(void)
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+	static bool isfirst = true;
+	if (isfirst)
+		OpenSSL_add_all_algorithms();
+	isfirst = false;
+#endif
 }
 
 /*
@@ -681,7 +700,7 @@ cert_signature_verify(const char *cert_data, size_t cert_data_len,
  * to verify whether the client certificate is valid and has expired.
  */
 static int
-cert_cert_verify(const char *cert_str, const char *root_cert_path)
+cert_verify_openssl(const char *cert_str, const char *root_cert_path, char **logdetail)
 {
 	int ret = 0;
 	X509 *cert = NULL;
@@ -691,78 +710,175 @@ cert_cert_verify(const char *cert_str, const char *root_cert_path)
 
 	BIO *bio = BIO_new_mem_buf(cert_str, -1);
 	if (!bio)
-		cert_handleErrors();
+		goto end;
 
 	cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 	BIO_free(bio);
+	bio = NULL;
 	if (!cert)
-		cert_handleErrors();
+		goto end;
 
-	// validity check
+	/* validity check */
 	{
 		ASN1_TIME *notBefore = X509_get_notBefore(cert);
 		ASN1_TIME *notAfter = X509_get_notAfter(cert);
 		time_t current_time = time(NULL);
 
-		if (X509_cmp_time(notBefore, &current_time) > 0)
+		if (X509_cmp_time(notBefore, &current_time) > 0 || X509_cmp_time(notAfter, &current_time) < 0)
 		{
-			X509_free(cert);
-			return 1;
-		}
-
-		if (X509_cmp_time(notAfter, &current_time) < 0)
-		{
-			X509_free(cert);
-			return 1;
+			*logdetail = psprintf(_("Certificate verification failed(RSA certificate is expired or not yet valid)."));
+			goto end;
 		}
 	}
 
 	bio = BIO_new_file(root_cert_path, "r");
 	if (!bio)
-		cert_handleErrors();
+		goto end;
 
 	root_cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-	BIO_free(bio);
 	if (!root_cert)
-		cert_handleErrors();
+		goto end;
 
 	cert_store = X509_STORE_new();
 	if (!cert_store)
-		cert_handleErrors();
+		goto end;
 
 	if (X509_STORE_add_cert(cert_store, root_cert) != 1)
-	{
-		X509_STORE_free(cert_store);
-		cert_handleErrors();
-	}
+		goto end;
 
 	ctx = X509_STORE_CTX_new();
 	if (!ctx)
-	{
-		X509_STORE_free(cert_store);
-		cert_handleErrors();
-	}
+		goto end;
 
 	if (X509_STORE_CTX_init(ctx, cert_store, cert, NULL) != 1)
-	{
-		X509_STORE_CTX_free(ctx);
-		X509_STORE_free(cert_store);
-		cert_handleErrors();
-	}
+		goto end;
 
 	ret = X509_verify_cert(ctx);
 	if (ret != 1)
+		*logdetail = psprintf(_("Certificate verification failed(RSA)."));
+
+end:
+	if (bio)
+		BIO_free(bio);
+	if (ctx)
+		X509_STORE_CTX_free(ctx);
+	if (cert_store)
+		X509_STORE_free(cert_store);
+	if (cert)
+		X509_free(cert);
+	if (root_cert)
+		X509_free(root_cert);
+
+	return ret;
+}
+
+static int
+cert_get_cert_type(const char *client_crt)
+{
+    BIO *bio = NULL;
+    X509 *cert = NULL;
+    EVP_PKEY *pkey = NULL;
+    int result = 0;
+
+    bio = BIO_new_mem_buf(client_crt, (int)strlen(client_crt));
+    if (!bio) goto err;
+
+    cert = PEM_read_bio_X509(bio, NULL, 0, NULL);
+    if (!cert) goto err;
+
+    pkey = X509_get_pubkey(cert);
+    if (!pkey) goto err;
+
+    switch (EVP_PKEY_base_id(pkey)) {
+        case EVP_PKEY_RSA:
+            result = 1;
+            break;
+        default:
+            result = 0;
+			break;
+    }
+
+    EVP_PKEY_free(pkey);
+    X509_free(cert);
+    BIO_free(bio);
+    return result;
+
+err:
+    if (pkey) EVP_PKEY_free(pkey);
+    if (cert) X509_free(cert);
+    if (bio) BIO_free(bio);
+    return result;
+}
+
+#endif
+
+#ifdef USE_GMSSL
+static int
+cert_verify_gmssl(const char *cert_str, const char *root_cert_path, char **logdetail)
+{
+	uint8_t root_cert[4096], client_cert[4096];
+	size_t root_cert_len = 0, client_cert_len = 0;
+	int ret = -1;
+
+	FILE *fp = fopen(root_cert_path, "r");
+	if (!fp) 
+		goto end;
+
+	if (x509_cert_from_pem(root_cert, &root_cert_len, sizeof(root_cert), fp) != 1) {
+		fclose(fp);
+		goto end;
+	}
+	fclose(fp);
+
+	if (load_cert_from_pem_string(cert_str, client_cert,
+									&client_cert_len, sizeof(client_cert)) != 1)
+		goto end;
+
 	{
-		return 0;
+		time_t   not_before, not_after;
+		time_t now;
+		int    ok  = 0;
+
+		if (x509_cert_get_details(
+				client_cert, client_cert_len,
+				NULL,
+				NULL, NULL,
+				NULL,
+				NULL, NULL,
+				&not_before, &not_after,
+				NULL, NULL,
+				NULL,
+				NULL, NULL,
+				NULL, NULL,
+				NULL, NULL,
+				NULL,
+				NULL, NULL) != 1) {
+			goto end;
+		}
+
+		now = time(NULL);
+		ok  = x509_validity_check(not_before, not_after, now,
+										X509_VALIDITY_MAX_SECONDS);
+		if (ok != 1)
+		{
+			*logdetail = psprintf(_("Certificate verification failed(SM2 certificate is expired or not yet valid)."));
+			goto end;
+		}
 	}
 
-	X509_STORE_CTX_free(ctx);
-	X509_STORE_free(cert_store);
-	X509_free(cert);
-	X509_free(root_cert);
+	if (x509_cert_verify_by_ca_cert(client_cert, client_cert_len, root_cert,
+						root_cert_len, SM2_DEFAULT_ID, SM2_DEFAULT_ID_LENGTH) != 1)
+	{
+		*logdetail = psprintf(_("Certificate verification failed(SM2)."));
+		goto end;
+	}
 
-	return (ret == 1) ? 0 : 1;
+	ret = 1;
+end:
+
+	return ret;
 }
+#endif
 
 /*
  * mfa_cert_verify
@@ -775,6 +891,8 @@ mfa_cert_verify(const char *role, const char *cert, const char *sign,
 					char *shadow_otp, const char *opt_salt, int otp_salt_len,
 					char **logdetail)
 {
+#if defined(USE_OPENSSL) || defined(USE_GMSSL)
+	int cert_type = 0;	//0: SM2 1: RSA
 	int sig_len = 0;
 	unsigned char sig[512] = {0x00};
 	char root_cert_file[128] = {0};
@@ -807,20 +925,45 @@ mfa_cert_verify(const char *role, const char *cert, const char *sign,
 		return STATUS_ERROR;
 	}
 
-	if (cert_cert_verify(cert, root_cert_file) != 0)
+#ifdef USE_OPENSSL
+	init_openssl();
+	cert_type = cert_get_cert_type(cert);
+	if (cert_type == 1)
 	{
-		return STATUS_ERROR;
-	}
-	sig_len = pg_b64_decode(sign, strlen(sign), (char *)sig, sizeof(sig));
+		if (cert_verify_openssl(cert, root_cert_file, logdetail) == 1)
+		{
+			sig_len = pg_b64_decode(sign, strlen(sign), (char *)sig, sizeof(sig));
 
-	if (cert_signature_verify(cert, strlen(cert), sig, sig_len, (const unsigned char *)opt_salt, otp_salt_len) != 1)
+			if (cert_signature_verify_openssl(cert, strlen(cert), sig, sig_len, (const unsigned char *)opt_salt, otp_salt_len) == 1)
+				return STATUS_OK;
+			else
+				*logdetail = psprintf(_("Signature verification failed(RSA)."));
+		}
+	}
+#endif
+
+#ifdef USE_GMSSL
+	if (cert_type == 0)
 	{
-		return STATUS_ERROR;
-	}
+		if (cert_verify_gmssl(cert, root_cert_file, logdetail) == 1)
+		{
+			sig_len = pg_b64_decode(sign, strlen(sign), (char *)sig, sizeof(sig));
 
-	return STATUS_OK;
+			if (cert_signature_verify_gmssl(cert, strlen(cert), sig, sig_len, (const unsigned char *)opt_salt, otp_salt_len) == 1)
+				return STATUS_OK;
+			else
+				*logdetail = psprintf(_("Signature verification failed(SM2)."));
+		}
+	}
+#endif
+
+#else
+	*logdetail = psprintf(_("Certificate authentication requries the use of" \
+								"--with-openssl or --with-gmssl for compilation."));
+#endif
+
+	return STATUS_ERROR;
 }
-#endif /* USE_OPENSSL */
 
 /*
  * modify_mfa_param
@@ -828,7 +971,7 @@ mfa_cert_verify(const char *role, const char *cert, const char *sign,
  * Modify or add the secondary authentication configuration for users.
  */
 static bool
-modify_mfa_param(const char *rolename, const char *otp, const char *param)
+modify_mfa_param(const char *rolename, const char *otp, const char *param, bool isdel)
 {
 	Relation rel;
 	HeapTuple oldtuple;
@@ -840,7 +983,7 @@ modify_mfa_param(const char *rolename, const char *otp, const char *param)
 	TupleDesc tupDesc;
 	Oid useroid;
 
-	if (param == NULL)
+	if (!isdel && param == NULL)
 		return false;
 
 	/* Initialize inserted values */
@@ -865,6 +1008,11 @@ modify_mfa_param(const char *rolename, const char *otp, const char *param)
 	 */
 	if (HeapTupleIsValid(oldtuple))
 	{
+		if(isdel)
+		{
+			simple_heap_delete(rel, &oldtuple->t_self);
+		}
+		else
 		{
 			/* fill in the values and then update */
 			values[Anum_pg_mfaid_oid - 1] = ObjectIdGetDatum(useroid);
@@ -880,26 +1028,28 @@ modify_mfa_param(const char *rolename, const char *otp, const char *param)
 
 			newtup = heap_modify_tuple(oldtuple, tupDesc, values, nulls, replaces);
 			CatalogTupleUpdate(rel, &newtup->t_self, newtup);
-
-			ReleaseSysCache(oldtuple);
 		}
+		ReleaseSysCache(oldtuple);
 	}
 	else
 	{
-		/* fill in the values and then update */
-		values[Anum_pg_mfaid_oid - 1] = ObjectIdGetDatum(useroid);
-		if (otp)
-			values[Anum_pg_mfaid_mfa_type - 1] = CStringGetTextDatum(otp);
-		else
-			nulls[Anum_pg_mfaid_mfa_type - 1] = true;
+		if (!isdel)
+		{
+			/* fill in the values and then update */
+			values[Anum_pg_mfaid_oid - 1] = ObjectIdGetDatum(useroid);
+			if (otp)
+				values[Anum_pg_mfaid_mfa_type - 1] = CStringGetTextDatum(otp);
+			else
+				nulls[Anum_pg_mfaid_mfa_type - 1] = true;
 
-		if (param)
-			values[Anum_pg_mfaid_mfa_key - 1] = CStringGetTextDatum(param);
-		else
-			nulls[Anum_pg_mfaid_mfa_key - 1] = true;
+			if (param)
+				values[Anum_pg_mfaid_mfa_key - 1] = CStringGetTextDatum(param);
+			else
+				nulls[Anum_pg_mfaid_mfa_key - 1] = true;
 
-		newtup = heap_form_tuple(tupDesc, values, nulls);
-		CatalogTupleInsert(rel, newtup);
+			newtup = heap_form_tuple(tupDesc, values, nulls);
+			CatalogTupleInsert(rel, newtup);
+		}
 	}
 
 	table_close(rel, NoLock);
@@ -933,35 +1083,69 @@ Datum pg_set_2fa(PG_FUNCTION_ARGS)
 	const char *param_p = TextDatumGetCString(param);
 
 	if (!is_manager())
-		elog(ERROR, "Permission denied. Only role=(syssso_role or sysdba_role) can execute this function.");
+		elog(ERROR, "Permission denied.");
 
 	/* Prepare the output message */
 	snprintf(out_str, sizeof(out_str), "Set two-factor authentication to %s for %s: success!", type_p, role_p);
 
 	/* Check the type and prepare rolotp accordingly */
-	if ((_strncasecmp(type_p, "TOTP", 4) == 0) &&
-		(strlen(param_p) <= BASE32_LENGTH) &&
-		(strspn(param_p, base32_chars) == strlen(param_p)))
+	if (_strncasecmp(type_p, "TOTP", 4) == 0)
 	{
-		modify_mfa_param(role_p, "totp", param_p);
-#ifdef USE_OPENSSL
+		if (strlen(param_p) == 0 || param_p[0] == '\0')
+		{
+			char out[64];
+			if (mfa_totp_genkey(out) == 1)
+				modify_mfa_param(role_p, "totp", out, false);
+		}
+		else if ((strlen(param_p) <= BASE32_LENGTH) &&
+			strspn(param_p, base32_chars) == strlen(param_p))
+		{
+			modify_mfa_param(role_p, "totp", param_p, false);
+		}
+		else
+		{
+			snprintf(out_str, sizeof(out_str), "Invalid TOTP key.");
+		}
 	}
+#if defined(USE_OPENSSL) || defined(USE_GMSSL)
 	else if (_strncasecmp(type_p, "PKEY", 4) == 0)
 	{
-		modify_mfa_param(role_p, "pkey", param_p);
+		modify_mfa_param(role_p, "pkey", param_p, false);
 	}
 	else if (_strncasecmp(type_p, "CERT", 4) == 0)
 	{
 		if (param_p == NULL || strlen(param_p) == 0 || param_p[0] == '\0')
-			modify_mfa_param(role_p, "cert", "rsa");
+			modify_mfa_param(role_p, "cert", "rsa", false);
 		else
-			modify_mfa_param(role_p, "cert", param_p);
-#endif
+			modify_mfa_param(role_p, "cert", param_p, false);
 	}
+#endif
 	else
 	{
 		snprintf(out_str, sizeof(out_str), "Unknown type or wrong key.");
 	}
+
+	PG_RETURN_TEXT_P(cstring_to_text(out_str));
+}
+
+/*
+ * pg_unset_2fa
+ *
+ * Delete the secondary authentication configuration for users.
+ */
+Datum pg_unset_2fa(PG_FUNCTION_ARGS)
+{
+	char out_str[64];
+	Datum role = PG_GETARG_DATUM(0);
+	const char *role_p = TextDatumGetCString(role);
+
+	if (!is_manager())
+		elog(ERROR, "Permission denied.");
+
+	/* Prepare the output message */
+	snprintf(out_str, sizeof(out_str), "Unset two-factor authentication for %s: success!", role_p);
+
+	modify_mfa_param(role_p, NULL, NULL, true);
 
 	PG_RETURN_TEXT_P(cstring_to_text(out_str));
 }
