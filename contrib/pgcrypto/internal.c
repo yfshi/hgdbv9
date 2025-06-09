@@ -37,7 +37,6 @@
 #include "px.h"
 #include "rijndael.h"
 /* Begin - REQID:SRS-SECRET-PGCRYPTO */
-#include "sm4.h"
 #ifdef USE_GMSSL
 #include <gmssl/sm4.h>
 #endif
@@ -565,11 +564,17 @@ pg_sm4_encrypt(PX_Cipher *c, const uint8 *data, unsigned dlen, uint8 *res)
 
 	if (cx->mode == MODE_CBC)
 	{
-		pg_sm4_cbc_encrypt(&cx->ctx.sm4, cx->iv, INT_MAX_IV, data, dlen / SM4_BLOCK_SIZE, res);
+		sm4_cbc_encrypt(&cx->ctx.sm4, cx->iv, data, dlen/SM4_BLOCK_SIZE, res);
 		memcpy(cx->iv, res + dlen - SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
 	}
 	else
-		pg_sm4_ecb_encrypt(&cx->ctx.sm4, data, dlen/SM4_BLOCK_SIZE, res);
+	{
+		int i = 0;
+		for (i = 0; i < dlen/SM4_BLOCK_SIZE; i++)
+		{
+			sm4_encrypt(&cx->ctx.sm4, data + i*SM4_BLOCK_SIZE, res  + i*SM4_BLOCK_SIZE);
+		}
+	}
 
 	return 0;
 }
@@ -590,12 +595,17 @@ pg_sm4_decrypt(PX_Cipher *c, const uint8 *data, unsigned dlen, uint8 *res)
 
 	if (cx->mode == MODE_CBC)
 	{
-		pg_sm4_cbc_decrypt(&cx->ctx.sm4, cx->iv, INT_MAX_IV, data, dlen/SM4_BLOCK_SIZE, res);
+		sm4_cbc_decrypt(&cx->ctx.sm4, cx->iv, data, dlen/SM4_BLOCK_SIZE, res);
 		memcpy(cx->iv, data + dlen - SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
 	}
 	else
-		pg_sm4_ecb_decrypt(&cx->ctx.sm4, data, dlen/SM4_BLOCK_SIZE, res);
-
+	{
+		int i = 0;
+		for (i = 0; i < dlen/SM4_BLOCK_SIZE; i++)
+		{
+			sm4_encrypt(&cx->ctx.sm4, data + i*SM4_BLOCK_SIZE, res  + i*SM4_BLOCK_SIZE);
+		}
+	}
 	return 0;
 }
 

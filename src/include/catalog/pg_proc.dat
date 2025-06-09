@@ -11905,6 +11905,10 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proname => 'pg_set_2fa', prorettype => 'text', proargtypes => 'text text text',
   prosrc => 'pg_set_2fa' },
 
+  { oid => '6017', descr => 'Two-factor authentication Settings',
+  proname => 'pg_unset_2fa', prorettype => 'text', proargtypes => 'text',
+  prosrc => 'pg_unset_2fa' },
+
   { oid => '6016', descr => 'SM3 hash',
   proname => 'sm3', proleakproof => 't', prorettype => 'bytea',
   proargtypes => 'bytea', prosrc => 'sm3_bytea' },

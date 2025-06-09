@@ -140,7 +140,9 @@ submake-contrib-spi: | submake-libpgport submake-generated-headers
 ##
 
 # ReqID:SRS-SECURITY-IDENTITYAUTH
+ifeq ($(with_gmssl),yes)
 EXTRA_TESTS += password-idcheck
+endif
 
 REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 --make-testtablespace-dir \
 	$(EXTRA_REGRESS_OPTS)

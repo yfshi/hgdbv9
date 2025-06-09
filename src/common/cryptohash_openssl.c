@@ -23,6 +23,12 @@
 
 #include <openssl/evp.h>
 
+/* Bigen ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+#include <gmssl/sm3.h>
+#endif
+/* End ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 #include "common/cryptohash.h"
 #include "common/md5.h"
 #include "common/sha1.h"
@@ -61,6 +67,10 @@ struct pg_cryptohash_ctx
 
 	EVP_MD_CTX *evpctx;
 
+#ifdef USE_GMSSL
+	SM3_CTX sm3ctx;
+#endif
+
 #ifndef FRONTEND
 	ResourceOwner resowner;
 #endif
@@ -92,6 +102,13 @@ pg_cryptohash_create(pg_cryptohash_type type)
 	memset(ctx, 0, sizeof(pg_cryptohash_ctx));
 	ctx->type = type;
 
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+	if (type != PG_SM3)
+	{
+#endif
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
 	/*
 	 * Initialization takes care of assigning the correct type for OpenSSL.
 	 */
@@ -109,6 +126,12 @@ pg_cryptohash_create(pg_cryptohash_type type)
 		return NULL;
 #endif
 	}
+
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+	}
+#endif
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 #ifndef FRONTEND
 	ctx->resowner = CurrentResourceOwner;
@@ -152,9 +175,14 @@ pg_cryptohash_init(pg_cryptohash_ctx *ctx)
 		case PG_SHA512:
 			status = EVP_DigestInit_ex(ctx->evpctx, EVP_sha512(), NULL);
 			break;
-		case PG_SM3: // ReqID:SRS-SECURITY-IDENTITYAUTH
-			status = EVP_DigestInit_ex(ctx->evpctx, EVP_sm3(), NULL);
+		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+		case PG_SM3:
+			sm3_init(&ctx->sm3ctx);
+			status = 1;
 			break;
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	}
 
 	/* OpenSSL internals return 1 on success, 0 on failure */
@@ -175,6 +203,16 @@ pg_cryptohash_update(pg_cryptohash_ctx *ctx, const uint8 *data, size_t len)
 
 	if (ctx == NULL)
 		return -1;
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+	if (ctx->type == PG_SM3)
+	{
+		sm3_update(&ctx->sm3ctx, (const uint8_t *)data, (size_t)len);
+		return 0;
+	}
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	status = EVP_DigestUpdate(ctx->evpctx, data, len);
 
@@ -223,12 +261,25 @@ pg_cryptohash_final(pg_cryptohash_ctx *ctx, uint8 *dest, size_t len)
 			if (len < PG_SHA512_DIGEST_LENGTH)
 				return -1;
 			break;
-		case PG_SM3: // ReqID:SRS-SECURITY-IDENTITYAUTH
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+		case PG_SM3:
 			if (len < PG_SM3_DIGEST_LENGTH)
 				return -1;
 			break;
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	}
 
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+	if (ctx->type == PG_SM3)
+	{
+		sm3_finish(&ctx->sm3ctx, dest);
+		return 0;
+	}
+#endif
+/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	status = EVP_DigestFinal_ex(ctx->evpctx, dest, 0);
 
 	/* OpenSSL internals return 1 on success, 0 on failure */
@@ -247,7 +298,11 @@ pg_cryptohash_free(pg_cryptohash_ctx *ctx)
 {
 	if (ctx == NULL)
 		return;
-
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+	if (ctx->type != PG_SM3)
+#endif
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	EVP_MD_CTX_destroy(ctx->evpctx);
 
 #ifndef FRONTEND

@@ -38,7 +38,7 @@ extern int mfa_totp_verify(const char *role, const char *show_otp,
 						   char **logdetail);
 
 extern int mfa_pkey_verify(const char *role, const char *show_otp,
-						   char *user_totp,
+						   char *user_otp,
 						   const char *opt_salt, int otp_salt_len,
 						   char **logdetail);
 
@@ -52,8 +52,5 @@ extern char *mfa_get_key(Port *port, Oid roleid, MFAType *otp_type, char **logde
 
 extern Oid
 mfa_get_roleid(const char *rolename);
-
-extern char *mfa_base64_encode(const unsigned char *input, int length);
-extern unsigned char *mfa_base64_decode(const char *input, int *length);
 
 #endif

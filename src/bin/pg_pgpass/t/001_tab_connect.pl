@@ -63,7 +63,7 @@ $node->safe_psql('postgres',
 );
 
 my $pgpassfile = "${tempdir}/pgpass";
-copy("pgpass/.pgpass", "${pgpassfile}");
+copy("data/test/.pgpass", "${pgpassfile}");
 chmod 0600, "${pgpassfile}";
 
 delete $ENV{"PGPASSWORD"};

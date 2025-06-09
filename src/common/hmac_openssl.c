@@ -22,6 +22,10 @@
 
 #include <openssl/hmac.h>
 
+#ifdef USE_GMSSL
+#include <gmssl/sm3.h> /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+#endif
+
 #include "common/hmac.h"
 #include "common/md5.h"
 #include "common/sha1.h"
@@ -57,6 +61,10 @@ struct pg_hmac_ctx
 	HMAC_CTX   *hmacctx;
 	pg_cryptohash_type type;
 
+#ifdef USE_GMSSL
+	SM3_HMAC_CTX sm3ctx;
+#endif
+
 #ifndef FRONTEND
 	ResourceOwner resowner;
 #endif
@@ -79,6 +87,13 @@ pg_hmac_create(pg_cryptohash_type type)
 	memset(ctx, 0, sizeof(pg_hmac_ctx));
 
 	ctx->type = type;
+
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+	if (type == PG_SM3)
+		return ctx;
+#endif
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	/*
 	 * Initialization takes care of assigning the correct type for OpenSSL.
@@ -149,9 +164,14 @@ pg_hmac_init(pg_hmac_ctx *ctx, const uint8 *key, size_t len)
 		case PG_SHA512:
 			status = HMAC_Init_ex(ctx->hmacctx, key, len, EVP_sha512(), NULL);
 			break;
-		case PG_SM3: // ReqID:SRS-SECURITY-IDENTITYAUTH
-			status = HMAC_Init_ex(ctx->hmacctx, key, len, EVP_sm3(), NULL);
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+		case PG_SM3:
+			sm3_hmac_init(&ctx->sm3ctx, key, len);
+			status = 1;
 			break;
+#endif
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	}
 
 	/* OpenSSL internals return 1 on success, 0 on failure */
@@ -173,7 +193,15 @@ pg_hmac_update(pg_hmac_ctx *ctx, const uint8 *data, size_t len)
 
 	if (ctx == NULL)
 		return -1;
-
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+	if (ctx->type == PG_SM3)
+	{
+		sm3_hmac_update(&ctx->sm3ctx, data, len);
+		return 0;
+	}
+#endif
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	status = HMAC_Update(ctx->hmacctx, data, len);
 
 	/* OpenSSL internals return 1 on success, 0 on failure */
@@ -222,12 +250,24 @@ pg_hmac_final(pg_hmac_ctx *ctx, uint8 *dest, size_t len)
 			if (len < PG_SHA512_DIGEST_LENGTH)
 				return -1;
 			break;
-		case PG_SM3: // ReqID:SRS-SECURITY-IDENTITYAUTH
+		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+		case PG_SM3:
 			if (len < PG_SM3_DIGEST_LENGTH)
 				return -1;
 			break;
+#endif
+		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	}
-
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
+	if (ctx->type == PG_SM3)
+	{
+		sm3_hmac_finish(&ctx->sm3ctx, dest);
+		return 0;
+	}
+#endif
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	status = HMAC_Final(ctx->hmacctx, dest, &outlen);
 
 	/* OpenSSL internals return 1 on success, 0 on failure */
@@ -247,6 +287,10 @@ pg_hmac_free(pg_hmac_ctx *ctx)
 	if (ctx == NULL)
 		return;
 
+#ifdef USE_GMSSL
+	if (ctx->type != PG_SM3) /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+	{
+#endif
 #ifdef HAVE_HMAC_CTX_FREE
 	HMAC_CTX_free(ctx->hmacctx);
 #ifndef FRONTEND
@@ -257,6 +301,9 @@ pg_hmac_free(pg_hmac_ctx *ctx)
 	FREE(ctx->hmacctx);
 #endif
 
+#ifdef USE_GMSSL
+	} /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+#endif
 	explicit_bzero(ctx, sizeof(pg_hmac_ctx));
 	FREE(ctx);
 }

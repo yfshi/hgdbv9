@@ -40,7 +40,6 @@
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #include "common/sm3.h"
-#include "common/mfa.h"
 #include "common/string.h"
 #include "common/base64.h"
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -49,6 +48,7 @@
 #include "common/scram-common.h"
 #include "fe-auth.h"
 #include "libpq-fe.h"
+#include "mfa_common.h"
 
 #ifdef ENABLE_GSS
 /*
@@ -787,30 +787,36 @@ pg_totp_sendauth(PGconn *conn, const char *password, AuthRequest areq)
 	return ret;
 }
 
-#ifdef USE_OPENSSL
+#if defined(USE_OPENSSL) || defined(USE_GMSSL)
 /* Secondary authentication (pkey) : sends the signature */
 static int
 pg_pkey_sendauth(PGconn *conn, const char *password, AuthRequest areq)
 {
-	int			ret;
-	char	   *sig = NULL;
-	char	   *sig_b64 = NULL;
+	unsigned char	   *sig = NULL;
+	char	   sig_b64[512];
 	char		otpSalt[17];
 	size_t 		sig_len;
 
-	/* Read the salt from the AuthenticationMD5Password message. */
+	/* Read the salt from the AuthenticationPKEY message. */
 	if (areq == AUTH_REQ_PKEY)
 	{
 		if (pqGetnchar(otpSalt, 16, conn))
 			return STATUS_ERROR;	/* shouldn't happen */
 	}
-	otpSalt[16] = '\0';
-	sig = pg_pkey_sign(password, otpSalt, &sig_len);
-	sig_b64 = pg_base64_encode((unsigned char *)sig, sig_len);
-	ret = pqPacketSend(conn, 'p', sig_b64, strlen(sig_b64) + 1);
+
+	sig = pq_pkey_sign(password, otpSalt, &sig_len);
+	if (!sig)
+		return STATUS_ERROR;
+
+	sig_len = pg_b64_encode((char *)sig, sig_len, sig_b64, sizeof(sig_b64));
 	free(sig);
-	return ret;
+	if (sig_len <= 0)
+		return STATUS_ERROR;
+
+	sig_b64[sig_len] = '\0';
+	return pqPacketSend(conn, 'p', sig_b64, strlen(sig_b64) + 1);
 }
+
 /* Secondary authentication (cert) : sends the certificate */
 static int
 pg_cert_cert_sendauth(PGconn *conn, const char *clientcert, AuthRequest areq)
@@ -820,41 +826,42 @@ pg_cert_cert_sendauth(PGconn *conn, const char *clientcert, AuthRequest areq)
 	char		otpSalt[17];
 	size_t 		cert_len = 0;
 
-	/* Read the salt from the AuthenticationMD5Password message. */
-	if (areq == AUTH_REQ_CERT_CERT)
-	{
-		//if (pqGetnchar(otpSalt, 16, conn))
-		//	return STATUS_ERROR;	/* shouldn't happen */
-	}
-	//otpSalt[16] = '\0';
-	cert = pg_get_cert(clientcert, otpSalt, &cert_len);
+	cert = pq_get_cert(clientcert, otpSalt, &cert_len);
+	if (!cert)
+		return STATUS_ERROR;
 	ret = pqPacketSend(conn, 'p', cert, cert_len + 1);
 	free(cert);
+
 	return ret;
 }
+
 /* Secondary authentication (cert) : sends the signature */
 static int
 pg_cert_sign_sendauth(PGconn *conn, const char *clientkey, AuthRequest areq)
 {
-	int			ret;
-	char		*sig = NULL;
+	unsigned char		*sig = NULL;
 	char		sig_b64[512] = {0x00};
 	char		otpSalt[17];
 	size_t 		sig_len = 0;
 
-	/* Read the salt from the AuthenticationMD5Password message. */
+	/* Read the salt from the AuthenticationCERTSIGN message. */
 	if (areq == AUTH_REQ_CERT_SIGN)
 	{
 		if (pqGetnchar(otpSalt, 16, conn))
 			return STATUS_ERROR;	/* shouldn't happen */
 	}
-	//otpSalt[16] = '\0';
-	sig = pg_cert_sign(clientkey, otpSalt, &sig_len);
-	sig_len = pg_b64_encode(sig, sig_len, sig_b64, sizeof(sig_b64));
-	sig_b64[sig_len] = '\0';
-	ret = pqPacketSend(conn, 'p', sig_b64, strlen(sig_b64) + 1);
+
+	sig = pq_cert_sign(clientkey, otpSalt, &sig_len);
+	if (!sig)
+		return STATUS_ERROR;
+
+	sig_len = pg_b64_encode((char *)sig, sig_len, sig_b64, sizeof(sig_b64));
 	free(sig);
-	return ret;
+	if (sig_len <= 0)
+		return STATUS_ERROR;
+
+	sig_b64[sig_len] = '\0';
+	return pqPacketSend(conn, 'p', sig_b64, strlen(sig_b64) + 1);
 }
 #endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -870,7 +877,8 @@ pg_password_sendauth(PGconn *conn, const char *password, AuthRequest areq)
 	/* Read the salt from the AuthenticationMD5Password message. */
 	if (areq == AUTH_REQ_MD5 
 #ifdef USE_GMSSL
-	|| areq == AUTH_REQ_SM3 || areq == AUTH_REQ_MD5_SM3|| areq == AUTH_REQ_SM3_MD5 /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+		|| areq == AUTH_REQ_SM3 || areq == AUTH_REQ_MD5_SM3
+		|| areq == AUTH_REQ_SM3_MD5 /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 #endif
 	) 
 	{
@@ -1258,7 +1266,7 @@ pg_fe_sendauth(AuthRequest areq, int payloadlen, PGconn *conn)
 				}
 				break;
 			}
-#ifdef USE_OPENSSL
+#if defined(USE_OPENSSL) || defined(USE_GMSSL)
 		case AUTH_REQ_PKEY:
 			{
 				if (!conn->pgprikey ||

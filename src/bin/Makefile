@@ -35,9 +35,7 @@ SUBDIRS = \
 	scripts 
 
 # Begin - ReqID:SRS-SECURITY-IDENTITYAUTH
-ifeq ($(with_gmssl),yes)
 SUBDIRS += pg_pgpass
-endif
 
 ifeq ($(PORTNAME), win32)
 SUBDIRS += pgevent

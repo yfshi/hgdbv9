@@ -1287,7 +1287,6 @@ connectOptions2(PGconn *conn)
 									 conn->pgpassfile);
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-#ifdef USE_GMSSL
 				/* The password field in the pgpass file is automatically identified and decrypted if it is ciphertext */
 				if(conn->connhost[i].password && pass_is_encrypted(conn->connhost[i].password)){
 					unsigned char key[32];
@@ -1299,7 +1298,6 @@ connectOptions2(PGconn *conn)
 							conn->connhost[i].password = strdup(passwd);
 					}
 				}
-#endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 			}
