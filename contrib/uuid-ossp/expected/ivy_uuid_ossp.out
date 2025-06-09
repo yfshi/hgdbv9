@@ -151,3 +151,10 @@ SELECT sys_guid() <> sys_guid();
  t
 (1 row)
 
+-- OA#1475
+SELECT pg_typeof('ACCESS:' || sys_guid());
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+

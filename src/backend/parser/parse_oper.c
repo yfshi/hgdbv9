@@ -306,6 +306,23 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 		was_unknown = true;
 	}
 
+	/* Begin - OA#1475 */
+	if (ORA_PARSER == compatible_db && compatible_ora_bytea_concat_operator &&
+		was_unknown && arg1 == BYTEAOID)
+	{
+		char	*schemaname;
+		char	*opername;
+
+		/* Get operator name */
+		DeconstructQualifiedName(opname, &schemaname, &opername);
+		if (strcmp(opername, "||") == 0)
+		{
+			arg1 = ORAVARCHARCHAROID;
+			arg2 = ORAVARCHARCHAROID;
+		}
+	}
+	/* End - OA#1475 */
+
 	result = OpernameGetOprid(opname, arg1, arg2);
 	if (OidIsValid(result))
 		return result;
