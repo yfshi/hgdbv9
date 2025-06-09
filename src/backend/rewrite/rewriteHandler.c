@@ -407,7 +407,7 @@ AcquireRewriteLocks(Query *parsetree,
 									forExecute,
 									(forUpdatePushedDown ||
 									 get_parse_rowmark(parsetree, rt_index) != NULL),
-									 false); /* BUG#M0000489 */
+									 true); /* BUG#M0000489 */
 				break;
 
 			default:

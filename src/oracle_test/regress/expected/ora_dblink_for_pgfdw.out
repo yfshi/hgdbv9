@@ -28,6 +28,7 @@ CREATE TABLE it2(b1 int, b2 int);
 CREATE TABLE it3(a varchar2(20), b number);
 CREATE TABLE it4(x number, y varchar2(10));
 CREATE TABLE it5(m varchar2(10), n number(5), e blob);
+CREATE TABLE test_null(id integer, name varchar2(256));
 INSERT INTO it1 VALUES (11, 'DBLINK'), (1, 'DATATYPE'), (3, 'PACKAGE'), (7, 'SEQUENCE');
 INSERT INTO it2 VALUES (1, 1001), (12, 1003), (5, 7), (3, 1005);
 INSERT INTO it3 VALUES ('zzz', 26), ('ccc', 3), ('ddd', 4);
@@ -206,6 +207,24 @@ select * from vt1;
  SEQUENCE
 (4 rows)
 
+/* Begin - OA-REQ-1457 */
+create or replace view vt_null as
+  select a1.* from test_null@ivyfuplnk a1 left join (select * from test_null@ivyfuplnk) b on a1.id = b.id;
+\d+ vt_null
+                                 View "public.vt_null"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT a1.id,
+    a1.name
+   FROM enrol11.test_null@ivyfuplnk a1
+     LEFT JOIN ( SELECT "test_null@ivyfuplnk".id,
+            "test_null@ivyfuplnk".name
+           FROM enrol11.test_null@ivyfuplnk) b ON a1.id = b.id;
+
+/* End - OA-REQ-1457 */
 -- where conditions
 --select * from it1@ivyfuplnk where it1.c2@ivyfuplnk = 'PACKAGE';
 select * from it1@ivyfuplnk where c2 = 'PACKAGE';
@@ -277,11 +296,12 @@ NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to user mapping for enrol11 on server ivyfurlnk
 drop cascades to foreign table "enrol11_it2@ivyfurlnk"
 drop public database link ivyfuplnk;
-NOTICE:  drop cascades to 5 other objects
+NOTICE:  drop cascades to 6 other objects
 DETAIL:  drop cascades to user mapping for public on server ivyfuplnk
 drop cascades to foreign table "enrol11_it1@ivyfuplnk"
 drop cascades to foreign table "enrol11_vit1@ivyfuplnk"
 drop cascades to foreign table "enrol11_mivt2@ivyfuplnk"
+drop cascades to foreign table "enrol11_test_null@ivyfuplnk"
 drop cascades to foreign table "enrol11_it2@ivyfuplnk"
 drop public database link ivycurrent;
 NOTICE:  drop cascades to 2 other objects
@@ -392,6 +412,7 @@ select current_user;
 (1 row)
 
 drop view vt1;
+drop view vt_null;
 --drop extension postgres_fdw;
 drop table lptb;
 \c tdblnk enrol11
@@ -402,6 +423,7 @@ drop table it2;
 drop table it3;
 drop table it4;
 drop table it5;
+drop table test_null;
 drop schema enrol11;
 \c regression
 set ivorysql.compatible_mode to pg;

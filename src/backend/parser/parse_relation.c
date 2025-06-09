@@ -4109,6 +4109,11 @@ get_rte_attribute_is_dropped(RangeTblEntry *rte, AttrNumber attnum)
 							rte->eref->aliasname)));
 			result = false;		/* keep compiler quiet */
 			break;
+		/* Begin - OA-REQ-1457 */
+		case RTE_DBLINK:
+			result = false;
+			break;
+		/* End - OA-REQ-1457 */
 		default:
 			elog(ERROR, "unrecognized RTE kind: %d", (int) rte->rtekind);
 			result = false;		/* keep compiler quiet */

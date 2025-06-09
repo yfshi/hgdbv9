@@ -7957,23 +7957,12 @@ get_variable(Var *var, int levelsup, bool istoplevel, deparse_context *context)
 
 	if (refname && (context->varprefix || attname == NULL))
 	{
-		/* Begin - BUG#M0000489 */
-		if (rte->rtekind != RTE_DBLINK)
-		{
-			appendStringInfoString(buf, quote_identifier(refname));
-			appendStringInfoChar(buf, '.');
-		}
-		/* End - BUG#M0000489 */
+		appendStringInfoString(buf, quote_identifier(refname));
+		appendStringInfoChar(buf, '.');
+
 	}
 	if (attname)
-	{
-		/* Begin - BUG#M0000489 */
-		if (rte->rtekind == RTE_DBLINK)
-			appendStringInfoString(buf, attname);
-		/* End - BUG#M0000489 */
-		else
-			appendStringInfoString(buf, quote_identifier(attname));
-	}
+		appendStringInfoString(buf, quote_identifier(attname));
 	else
 	{
 		appendStringInfoChar(buf, '*');
@@ -11685,9 +11674,9 @@ get_from_clause_item(Node *jtnode, Query *query, deparse_context *context)
 			case RTE_DBLINK:
 				{
 					ForeignServer * fs = GetForeignServer(rte->serverOid);
-					appendStringInfo(buf, "%s%s@%s",
-									 only_marker(rte),
-									 rte->linkrelname, fs->servername);
+					appendStringInfo(buf, "%s.%s@%s",
+									 rte->linkrelnsname,
+									 rte->linkrelname, fs->servername); /* OA-REQ-1457 */
 				}
 				break;
 			/* End - BUG#M0000489 */
