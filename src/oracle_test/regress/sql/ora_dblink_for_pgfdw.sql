@@ -26,6 +26,7 @@ CREATE TABLE it2(b1 int, b2 int);
 CREATE TABLE it3(a varchar2(20), b number);
 CREATE TABLE it4(x number, y varchar2(10));
 CREATE TABLE it5(m varchar2(10), n number(5), e blob);
+CREATE TABLE test_null(id integer, name varchar2(256));
 
 
 INSERT INTO it1 VALUES (11, 'DBLINK'), (1, 'DATATYPE'), (3, 'PACKAGE'), (7, 'SEQUENCE');
@@ -173,6 +174,12 @@ create view vt1 as select c2 from it1@ivyfuplnk;
 -- access local view vt1
 select * from vt1;
 
+/* Begin - OA-REQ-1457 */
+create or replace view vt_null as
+  select a1.* from test_null@ivyfuplnk a1 left join (select * from test_null@ivyfuplnk) b on a1.id = b.id;
+
+\d+ vt_null
+/* End - OA-REQ-1457 */
 
 -- where conditions
 --select * from it1@ivyfuplnk where it1.c2@ivyfuplnk = 'PACKAGE';
@@ -271,6 +278,7 @@ select * from lptb@regression;
 select current_user;
 
 drop view vt1;
+drop view vt_null;
 --drop extension postgres_fdw;
 drop table lptb;
 
@@ -283,6 +291,7 @@ drop table it2;
 drop table it3;
 drop table it4;
 drop table it5;
+drop table test_null;
 drop schema enrol11;
 
 
