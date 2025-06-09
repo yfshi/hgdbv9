@@ -6,7 +6,7 @@
  * 	  Porfermance GUC parameters.
  *
  * Copyright:
- * Copyright (c) 2024, HighGo Software Co.,Ltd. All rights reserved.
+ * Copyright (c) 2024-2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * Identification:
  *		contrib/hg_misc/src/internal_guc/internal.c
@@ -130,6 +130,9 @@ CLOGShmemBuffersHook(void)
  * the same index_name, GUC parameters will be reset to default.
  * 
  * Use by hook: pdbg_vacuum_hook
+ * 
+ * TODOz: We temporarily remove process of get_snapshot_fast_release_lwlock,
+ *        since it will fall into C assert. Maybe add it back at another day.
  */
 void
 PDBGVacuum(Relation rel)
@@ -150,14 +153,12 @@ PDBGVacuum(Relation rel)
 
     if (!reset)
     {
-        SetConfigFile("hg_misc.get_snapshot_fast_release_lwlock", "true");
         SetConfigFile("hg_misc.clog_multiple_number", "8");
         SetConfigFile("hg_misc.heap_page_repair_interval", "8");
         SetConfigFile("hg_misc.special_index_oid", indexOid);
     }
     else
     {
-        SetConfigFile("hg_misc.get_snapshot_fast_release_lwlock", "false");
         SetConfigFile("hg_misc.clog_multiple_number", "1");
         SetConfigFile("hg_misc.heap_page_repair_interval", "1");
         SetConfigFile("hg_misc.special_index_oid", "0");
@@ -175,19 +176,6 @@ PDBGVacuum(Relation rel)
     *skip_log = false;
 
     pfree(indexOid);
-}
-
-/*
- * Allocate and initialize shared memory member.
- * Use by hook: shmem_startup_hook.
- */
-void
-PDBGShmeminit(void)
-{
-    skip_log = (bool *) ShmemAlloc(MAXALIGN(sizeof(bool)));
-    
-    if (skip_log != NULL)
-        *skip_log = false;
 }
 
 /*
@@ -268,6 +256,9 @@ internal_set_prune_interval(PG_FUNCTION_ARGS)
  *      clog_multiple_number
  *      heap_page_repair_interval
  *      special_index_oid
+ * 
+ * TODOz: We temporarily remove process of get_snapshot_fast_release_lwlock,
+ *        since it will fall into C assert. Maybe add it back at another day.
  */
 PG_FUNCTION_INFO_V1(internal_set_perf);
 Datum
@@ -276,7 +267,6 @@ internal_set_perf(PG_FUNCTION_ARGS)
 	char	   *a = palloc0(15);
 	char	   *b = palloc0(15);
 	char	   *c = palloc0(15);
-	bool		d = PG_GETARG_BOOL(0);
 
     if (skip_log == NULL)
         elog(ERROR, "You need to add \'hg_misc\' to preload shared library!");
@@ -285,11 +275,6 @@ internal_set_perf(PG_FUNCTION_ARGS)
 	pg_ltoa(PG_GETARG_INT32(1), a);
 	pg_ltoa(PG_GETARG_INT32(2), b);
 	pg_ltoa(PG_GETARG_INT32(3), c);
-
-	if (d)
-		SetConfigFile("hg_misc.get_snapshot_fast_release_lwlock", "true");
-	else
-		SetConfigFile("hg_misc.get_snapshot_fast_release_lwlock", "false");
 
 	SetConfigFile("hg_misc.clog_multiple_number", a);
 	SetConfigFile("hg_misc.heap_page_repair_interval", b);

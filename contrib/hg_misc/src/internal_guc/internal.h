@@ -21,7 +21,6 @@ extern bool SkipSpecialIndexOid(IndexScanDesc scan);
 extern Size CLOGShmemBuffersHook(void);
 extern bool PDBGIfPrintLog(void);
 extern void PDBGVacuum(Relation rel);
-extern void PDBGShmeminit(void);
 
 #endif /* INTERNAL_H */
 /* End - ReqID:SRS-Performance-GUC */
