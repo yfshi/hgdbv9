@@ -318,3 +318,13 @@ select '123'::pg_catalog.int8::int;
 select '123'::pg_catalog.float4::int;
 select '123'::pg_catalog.float8::int;
 select '123'::pg_catalog.numeric::int;
+
+-- fix bug 5015
+create table tb_test(id int);
+set sql_mode = default;
+insert into tb_test values ('123abc');
+set sql_mode = '';
+insert into tb_test values ('123abc');
+select * from tb_test;
+drop table tb_test;
+set sql_mode = default;

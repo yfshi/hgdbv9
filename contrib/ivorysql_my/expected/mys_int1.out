@@ -496,3 +496,23 @@ select +id from tb_test;
 (3 rows)
 
 drop table tb_test;
+-- fix bug 5015
+create table tb_test(id int1);
+set sql_mode = default;
+insert into tb_test values ('123abc');
+ERROR:  invalid input syntax for type smallint: "123abc"
+LINE 1: insert into tb_test values ('123abc');
+                                    ^
+set sql_mode = '';
+insert into tb_test values ('123abc');
+WARNING:  invalid input syntax for type smallint: "123abc"
+LINE 1: insert into tb_test values ('123abc');
+                                    ^
+select * from tb_test;
+ id  
+-----
+ 123
+(1 row)
+
+drop table tb_test;
+set sql_mode = default;

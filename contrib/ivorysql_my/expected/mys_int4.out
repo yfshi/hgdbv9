@@ -1019,3 +1019,23 @@ select '123'::pg_catalog.numeric::int;
   123
 (1 row)
 
+-- fix bug 5015
+create table tb_test(id int);
+set sql_mode = default;
+insert into tb_test values ('123abc');
+ERROR:  invalid input syntax for type integer: "123abc"
+LINE 1: insert into tb_test values ('123abc');
+                                    ^
+set sql_mode = '';
+insert into tb_test values ('123abc');
+WARNING:  invalid input syntax for type integer: "123abc"
+LINE 1: insert into tb_test values ('123abc');
+                                    ^
+select * from tb_test;
+ id  
+-----
+ 123
+(1 row)
+
+drop table tb_test;
+set sql_mode = default;

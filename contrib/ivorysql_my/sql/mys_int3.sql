@@ -125,3 +125,13 @@ create table tb_test(id int3);
 insert into tb_test values (123),(-121),(0);
 select +id from tb_test;
 drop table tb_test;
+
+-- fix bug 5015
+create table tb_test(id int3);
+set sql_mode = default;
+insert into tb_test values ('123abc');
+set sql_mode = '';
+insert into tb_test values ('123abc');
+select * from tb_test;
+drop table tb_test;
+set sql_mode = default;

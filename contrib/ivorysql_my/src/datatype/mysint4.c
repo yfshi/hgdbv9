@@ -140,9 +140,18 @@ my_atoi_int4(const char *s)
 
 	if (*badp && *badp != '\0')
 	{
-		ereport(ERROR,
-			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				errmsg("invalid input syntax for type integer: \"%s\"", s)));
+		if(!is_strict_mode())
+		{
+			ereport(WARNING,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					errmsg("invalid input syntax for type integer: \"%s\"", s)));
+		}
+		else
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					errmsg("invalid input syntax for type integer: \"%s\"", s)));
+		}
 	}
 
 	return (int32)l;
