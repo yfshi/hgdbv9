@@ -318,8 +318,9 @@ ExecCheckTIDVisible(EState *estate,
  *
  * This fills the resultRelInfo's ri_GeneratedExprs field and makes an
  * associated ResultRelInfoExtra struct to hold ri_extraUpdatedCols.
- * (Currently, ri_extraUpdatedCols is consulted only in UPDATE, but we might
- * as well fill it for INSERT too.)
+ * (Currently, ri_extraUpdatedCols is consulted only in UPDATE, but we
+ * must fill it in other cases too, since for example cmdtype might be
+ * MERGE yet an UPDATE might happen later.)
  */
 void
 ExecInitStoredGenerated(ResultRelInfo *resultRelInfo,
@@ -2176,13 +2177,14 @@ ExecUpdateAct(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 	updateCxt->crossPartUpdate = false;
 
 	/*
-	 * If we generate a new candidate tuple after EvalPlanQual testing, we
-	 * must loop back here and recheck any RLS policies and constraints. (We
-	 * don't need to redo triggers, however.  If there are any BEFORE triggers
-	 * then trigger.c will have done table_tuple_lock to lock the correct
-	 * tuple, so there's no need to do them again.)
+	 * If we move the tuple to a new partition, we loop back here to recompute
+	 * GENERATED values (which are allowed to be different across partitions)
+	 * and recheck any RLS policies and constraints.  We do not fire any
+	 * BEFORE triggers of the new partition, however.
 	 */
-lreplace:;
+lreplace:
+	/* Fill in GENERATEd columns */
+	ExecUpdatePrepareSlot(resultRelInfo, slot, estate);
 
 	/* ensure slot is independent, consider e.g. EPQ */
 	ExecMaterializeSlot(slot);
@@ -2394,9 +2396,10 @@ ExecUpdatePrologue(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 }
 
 /*
- * ExecUpdatePrepareSlot -- subroutine for ExecUpdate
+ * ExecUpdatePrepareSlot -- subroutine for ExecUpdateAct
  *
  * Apply the final modifications to the tuple slot before the update.
+ * (This is split out because we also need it in the foreign-table code path.)
  */
 void
 ExecUpdatePrepareSlot(ResultRelInfo *resultRelInfo,
@@ -2553,6 +2556,7 @@ ExecUpdate(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 	}
 	else if (resultRelInfo->ri_FdwRoutine)
 	{
+		/* Fill in GENERATEd columns */
 		ExecUpdatePrepareSlot(resultRelInfo, slot, estate);
 
 		/*
@@ -2577,8 +2581,15 @@ ExecUpdate(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 	{
 		ItemPointerData lockedtid;
 		/* Fill in the slot appropriately */
-		ExecUpdatePrepareSlot(resultRelInfo, slot, estate);
-redo_act:;
+
+		/*
+		 * If we generate a new candidate tuple after EvalPlanQual testing, we
+		 * must loop back here to try again.  (We don't need to redo triggers,
+		 * however.  If there are any BEFORE triggers then trigger.c will have
+		 * done table_tuple_lock to lock the correct tuple, so there's no need
+		 * to do them again.)
+		 */
+redo_act:
 		lockedtid = *tupleid;
 		result = ExecUpdateAct(context, resultRelInfo, tupleid, oldtuple, slot,
 							   canSetTag, &updateCxt);
@@ -3417,7 +3428,6 @@ lmerge_matched:;
 					result = TM_Ok;
 					goto out;
 				}
-				ExecUpdatePrepareSlot(resultRelInfo, newslot, context->estate);
 				result = ExecUpdateAct(context, resultRelInfo, tupleid, NULL,
 									   newslot, mtstate->canSetTag, &updateCxt);
 				
