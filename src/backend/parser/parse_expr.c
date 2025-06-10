@@ -4014,39 +4014,57 @@ transformTypeCast(ParseState *pstate, TypeCast *tc)
 
 	/* Begin - BUG#M533 */
 	if (MYS_PARSER == compatible_db && (mysql_functional_diff_control && cast_to_char) &&
-		targetType == BPCHAROID && targetTypmod != VARHDRSZ)
+		targetType == BPCHAROID)
 	{
 		int32		tmptargetTypmod = -1;
 
-		/* when the typemod is -2, represent the type is char or nchar,
-		 * not type mode. when the typemod is not -2, represent the type
-		 * is char(n) or nchar(n). when the type is char or nchar, if the
-		 * arg is string, the type mode is the string length, when then arg is expr,
-		 * the type mode is -1;
-		 */
-		arg = tc->arg;
-		if (IsA(arg, A_Const))
+		if (targetTypmod != VARHDRSZ)
 		{
-			A_Const *aconst = (A_Const *)arg;
+			/* when the typemod is -2, represent the type is char or nchar,
+			 * not type mode. when the typemod is not -2, represent the type
+			 * is char(n) or nchar(n). when the type is char or nchar, if the
+			 * arg is string, the type mode is the string length, when then arg is expr,
+			 * the type mode is -1;
+			 */
+			arg = tc->arg;
+			if (IsA(arg, A_Const))
+			{
+				A_Const *aconst = (A_Const *)arg;
 
-			if (aconst->val.type == T_String && aconst->val.val.str != NULL)
-				tmptargetTypmod = DatumGetInt32(DirectFunctionCall1(textlen,
-																	 CStringGetTextDatum(aconst->val.val.str)));
+				if (aconst->val.type == T_String && aconst->val.val.str != NULL)
+					tmptargetTypmod = DatumGetInt32(DirectFunctionCall1(textlen,
+																		 CStringGetTextDatum(aconst->val.val.str)));
+			}
+
+			/* when the typemod is -2, the type is char or nchar,
+			 * type mode is charactor lenth;
+			 * when the typemod is not -2, the type is char(n) or nchar(n),
+			 * type mode is type mode - header;
+			 */
+			if (tc->typeName->typemod != -2)
+				tmptargetTypmod = targetTypmod - VARHDRSZ;
+
+			tc->typeName->names = list_make2(makeString("pg_catalog"), makeString("varchar"));
+			tc->typeName->typmods = list_make1(mysmakeIntConst(tmptargetTypmod, -1));
+			targetTypmod = 0;
+			targetType = InvalidOid;
+			typenameTypeIdAndMod(pstate, tc->typeName, &targetType, &targetTypmod);
 		}
+		/* Begin - BUG#Z00005108 */
+		else
+		{
+			A_Const *n = makeNode(A_Const);
 
-		/* when the typemod is -2, the type is char or nchar,
-		 * type mode is charactor lenth;
-		 * when the typemod is not -2, the type is char(n) or nchar(n),
-		 * type mode is type mode - header;
-		 */
-		if (tc->typeName->typemod != -2)
-			tmptargetTypmod = targetTypmod - VARHDRSZ;
-
-		tc->typeName->names = list_make2(makeString("pg_catalog"), makeString("varchar"));
-		tc->typeName->typmods = list_make1(mysmakeIntConst(tmptargetTypmod, -1));
-		targetTypmod = 0;
-		targetType = InvalidOid;
-		typenameTypeIdAndMod(pstate, tc->typeName, &targetType, &targetTypmod);
+			n->val.type = T_String;
+			n->val.val.str = "";
+			n->location = -1;
+			tc->arg = (Node *)n;
+			arg = tc->arg;
+			ereport(WARNING,
+					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+					 errmsg("value too long for type char(0), Data truncated.")));
+		}
+		/* End - BUG#Z00005108 */
 	}
 	/* End - BUG#M533 */
 

@@ -1938,3 +1938,97 @@ create table tb5 as select cast(repeat('a', 6) as nchar(10));
 
 drop table tb, tb1, tb2, tb3, tb4, tb5;
 set mysql.functional_diff_control = off;
+-- bug#z5074
+create table tb(col char(0));
+\d+ tb
+                                       Table "public.tb"
+ Column |     Type     | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+--------------+-----------+----------+---------+----------+--------------+-------------
+ col    | character(0) |           |          |         | extended |              | 
+
+insert into tb values();
+select * from tb;
+ col 
+-----
+ 
+(1 row)
+
+delete from tb;
+insert into tb values(NULL);
+select * from tb;
+ col 
+-----
+ 
+(1 row)
+
+delete from tb;
+insert into tb values('');
+select * from tb;
+ col 
+-----
+ 
+(1 row)
+
+delete from tb;
+insert into tb values(' ');
+select * from tb;
+ col 
+-----
+ 
+(1 row)
+
+delete from tb;
+insert into tb values(1);
+ERROR:  value too long for type char(0)
+select * from tb;
+ col 
+-----
+(0 rows)
+
+delete from tb;
+insert into tb values('a');
+ERROR:  value too long for type char(0)
+select * from tb;
+ col 
+-----
+(0 rows)
+
+delete from tb;
+insert into tb values('');
+insert into tb values(' ');
+insert into tb values('              ');
+select * from tb;
+ col 
+-----
+ 
+ 
+ 
+(3 rows)
+
+drop table tb;
+-- bug#z5108
+set mysql.functional_diff_control to on;
+create table tb (col char(10));
+insert into tb values('xy');
+select cast(col as char), char_length(cast(col as char)) from tb;
+ col | char_length 
+-----+-------------
+ xy  |           2
+(1 row)
+
+select cast(col as char(0)), char_length(cast(col as char(0))) from tb;
+WARNING:  value too long for type char(0), Data truncated.
+WARNING:  value too long for type char(0), Data truncated.
+ bpchar | char_length 
+--------+-------------
+        |           0
+(1 row)
+
+select cast(col as char(10)), char_length(cast(col as char(10))) from tb;
+ col | char_length 
+-----+-------------
+ xy  |           2
+(1 row)
+
+drop table tb;
+set mysql.functional_diff_control to off;
