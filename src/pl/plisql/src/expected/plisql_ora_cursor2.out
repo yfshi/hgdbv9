@@ -1329,7 +1329,7 @@ BEGIN
   CLOSE c1;
 end;
 /
-ERROR:  cursor "f_0_2_c1" does not exist
+ERROR:  cursor variable "c1" is null
 CONTEXT:  PL/iSQL function inline_code_block line 8 at CLOSE
 --ok
 --again open the same explicit cursor
@@ -1414,7 +1414,7 @@ BEGIN
   OPEN test_pkg.c1;
 end;
 /
-ERROR:  cursor "p_0_1_c1" already in use
+ERROR:  cursor "<unnamed portal 25>" already in use
 CONTEXT:  PL/iSQL function inline_code_block line 2 at OPEN
 --ok
 BEGIN
@@ -2340,7 +2340,7 @@ BEGIN
   CLOSE :c1;
 end;
 /
-ERROR:  cursor "<unnamed portal 11>" does not exist
+ERROR:  cursor "<unnamed portal 64>" does not exist
 CONTEXT:  PL/iSQL function inline_code_block line 2 at CLOSE
 --assign a init value
 --oracle raise error, but we success
@@ -2437,7 +2437,7 @@ end;
 INFO:  var2 is open
 INFO:  var1 is open
 INFO:  var2 is again open
-ERROR:  cursor "<unnamed portal 14>" does not exist
+ERROR:  cursor "<unnamed portal 67>" does not exist
 CONTEXT:  PL/iSQL function inline_code_block line 24 at FETCH
 --again open
 --print
@@ -2478,7 +2478,7 @@ end;
 INFO:  var2 is open
 INFO:  var1 is open
 INFO:  var2 is again open
-ERROR:  cursor "<unnamed portal 15>" does not exist
+ERROR:  cursor "<unnamed portal 68>" does not exist
 CONTEXT:  PL/iSQL function inline_code_block line 25 at FETCH
 --fetch and again open
 --ok and print
@@ -2554,7 +2554,7 @@ end;
 INFO:  var2 is open
 INFO:  var1 is open
 INFO:  var2 is again open
-ERROR:  cursor "<unnamed portal 17>" does not exist
+ERROR:  cursor "<unnamed portal 70>" does not exist
 CONTEXT:  PL/iSQL function inline_code_block line 25 at FETCH
 --raise error
 --query return type
@@ -2630,7 +2630,7 @@ INFO:  fetch var2
 INFO:  4
 INFO:  close var1
 INFO:  close var2
-ERROR:  cursor "<unnamed portal 18>" does not exist
+ERROR:  cursor "<unnamed portal 71>" does not exist
 CONTEXT:  PL/iSQL function inline_code_block line 22 at CLOSE
 --ok
 DECLARE
@@ -3426,7 +3426,7 @@ INFO:  var2 is open
 INFO:  var1 is open
 INFO:  after close var1
 INFO:  var2 is open
-ERROR:  cursor "<unnamed portal 50>" does not exist
+ERROR:  cursor "<unnamed portal 105>" does not exist
 CONTEXT:  PL/iSQL function inline_code_block line 23 at CLOSE
 --exchage var1 and var2
 --print
@@ -3465,7 +3465,7 @@ INFO:  var2 is open
 INFO:  var1 is open
 INFO:  after close var2
 INFO:  var1 is open
-ERROR:  cursor "<unnamed portal 51>" does not exist
+ERROR:  cursor "<unnamed portal 106>" does not exist
 CONTEXT:  PL/iSQL function inline_code_block line 23 at CLOSE
 --fetch var1
 --ok and print
@@ -3540,7 +3540,7 @@ INFO:  var2 is open
 INFO:  var1 is open
 INFO:  after close var2
 INFO:  var1 is open
-ERROR:  cursor "<unnamed portal 53>" does not exist
+ERROR:  cursor "<unnamed portal 108>" does not exist
 CONTEXT:  PL/iSQL function inline_code_block line 24 at CLOSE
 --maybe isnull
 --ok and print
@@ -5245,7 +5245,7 @@ BEGIN
 end;
 /
 INFO:  var1 is open 1
-ERROR:  cursor "<unnamed portal 1178>" does not exist
+ERROR:  cursor "<unnamed portal 1308>" does not exist
 CONTEXT:  PL/iSQL function inline_code_block line 11 at CLOSE
 --error
 DECLARE
@@ -5266,7 +5266,7 @@ BEGIN
 end;
 /
 INFO:  var1 is open 1
-ERROR:  cursor "<unnamed portal 1179>" does not exist
+ERROR:  cursor "<unnamed portal 1309>" does not exist
 CONTEXT:  PL/iSQL function inline_code_block line 11 at CLOSE
 --ok
 DECLARE
@@ -7223,7 +7223,7 @@ BEGIN
   close c1;
 END;
 /
-ERROR:  cursor "f_0_2_c1" already in use
+ERROR:  cursor "<unnamed portal 1368>" already in use
 CONTEXT:  PL/iSQL function inline_code_block line 6 at OPEN
 --error
 DECLARE
@@ -8276,7 +8276,7 @@ begin
   var1 := test_f(test_f1(23));
 end;
 /
-ERROR:  cursor "f_0_2_c1" already in use
+ERROR:  cursor "<unnamed portal 1390>" already in use
 CONTEXT:  PL/iSQL function test_f line 6 at OPEN
 PL/iSQL function inline_code_block line 15 at assignment
 --test ok
@@ -8336,7 +8336,7 @@ begin
   var1 := test_f1(23);
 end;
 /
-ERROR:  cursor "f_1_5_c1" already in use
+ERROR:  cursor "<unnamed portal 1411>" already in use
 CONTEXT:  PL/iSQL function test_ff1 line 9 at OPEN
 PL/iSQL function test_f1 line 18 at assignment
 PL/iSQL function inline_code_block line 22 at assignment
@@ -8658,9 +8658,9 @@ begin
     close var2;
 end;
 /
-INFO:  var1:<unnamed portal 1236>
+INFO:  var1:<unnamed portal 1429>
 INFO:  (1,xiexie)
-INFO:  var2:<unnamed portal 1237>
+INFO:  var2:<unnamed portal 1430>
 INFO:  (1,zhang,san,200000,1)
 --test function call function
 create or replace function test_udt_var(id out sys_refcursor,name out varchar) return sys_refcursor as
@@ -8701,9 +8701,9 @@ begin
 end;
 /
 INFO:  interal function
-INFO:  c1:<unnamed portal 1238>
+INFO:  c1:<unnamed portal 1431>
 INFO:  (1,xiexie)
-INFO:  c2:<unnamed portal 1239>
+INFO:  c2:<unnamed portal 1432>
 INFO:  (1,xiexie)
 drop function test_cursor(sys_refcursor,varchar);
 drop function test_udt_var(sys_refcursor,varchar);

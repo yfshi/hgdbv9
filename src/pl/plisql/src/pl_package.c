@@ -1536,7 +1536,7 @@ plisql_package_compile(Oid pkgoid,
 	/*
 	 * Lookup the pg_package tuple by Oid
 	 */
-	pkgTup = SearchSysCache1(PKGOID, ObjectIdGetDatum(pkgoid));
+	pkgTup = SearchSysCacheCopy1(PKGOID, ObjectIdGetDatum(pkgoid)); /* req#Z00001467 */
 	if (!HeapTupleIsValid(pkgTup))
 		elog(ERROR, "cache lookup failed for package %u", pkgoid);
 
@@ -1599,7 +1599,7 @@ plisql_package_compile(Oid pkgoid,
 			newpsource->status = PLISQL_PACKAGE_REBUILD;
 	}
 
-	ReleaseSysCache(pkgTup);
+	heap_freetuple(pkgTup); /* req#Z00001467 */
 
 	return item;
 }
@@ -3624,7 +3624,41 @@ plisql_get_subprocs_from_package(Oid pkgoid,
 	item = PackageCacheLookup(&pkgoid);
 
 	if (item == NULL)
-		item = plisql_package_compile(pkgoid, false, false);
+	{
+		/* Begin - req#Z00001467 */
+		int rc;
+		MemoryContext curr_context = CurrentMemoryContext;
+
+		/*
+		 * Connect to SPI manager
+		 */
+		if ((rc = SPI_connect_ext(0)) != SPI_OK_CONNECT)
+			elog(ERROR, "SPI_connect failed: %s", SPI_result_code_string(rc));
+
+		PG_TRY();
+		{
+			item = plisql_package_compile(pkgoid, false, false);
+		}
+
+		PG_CATCH();
+		{
+			MemoryContextSwitchTo(curr_context);
+			FlushErrorState();
+			item = NULL;
+		}
+
+		PG_END_TRY();
+
+		MemoryContextSwitchTo(curr_context);
+
+		/*
+		 * Disconnect from SPI manager
+		 */
+		if ((rc = SPI_finish()) != SPI_OK_FINISH)
+			elog(ERROR, "SPI_finish failed: %s", SPI_result_code_string(rc));
+		/* End - req#Z00001467 */
+	}
+
 	if (item == NULL)
 		return;
 

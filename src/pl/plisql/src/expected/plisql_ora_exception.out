@@ -2603,7 +2603,7 @@ begin
   open c1;
 end;
 /
-ERROR:  cursor "f_0_0_2_c1" already in use
+ERROR:  cursor "<unnamed portal 8>" already in use
 CONTEXT:  PL/iSQL function inline_code_block line 5 at OPEN
 --ok and print no data found
 begin

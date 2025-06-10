@@ -21900,3 +21900,106 @@ drop owned by enrol11;
 drop user usr1_tivp001141030;
 drop user enrol11;
 drop procedure test_grant_database_user;
+--req#1456
+CREATE TABLE department (
+  id          NUMBER PRIMARY KEY,
+  name        VARCHAR2(50),
+  parent_id   NUMBER
+);
+INSERT INTO department (id, name, parent_id) VALUES (1, 'Root', NULL);
+INSERT INTO department (id, name, parent_id) VALUES (2, 'Child 1', 1);
+INSERT INTO department (id, name, parent_id) VALUES (3, 'Child 2', 1);
+INSERT INTO department (id, name, parent_id) VALUES (4, 'Grandchild 1', 2);
+INSERT INTO department (id, name, parent_id) VALUES (5, 'Grandchild 2', 3);
+CREATE OR REPLACE PACKAGE dept_pkg AS
+  PROCEDURE traverse_departments (p_start_id IN NUMBER);
+END dept_pkg;
+/
+CREATE OR REPLACE PACKAGE BODY dept_pkg AS
+  visited NUMBER[];
+  PROCEDURE traverse_departments (p_start_id IN NUMBER) IS
+
+    CURSOR c_children (p_parent_id NUMBER) IS
+      SELECT id, name
+      FROM department
+      WHERE parent_id = p_parent_id order by id,name;
+
+  BEGIN
+    IF p_start_id = ANY(visited) THEN
+      RETURN;
+    END IF;
+
+    visited:=array_append(visited,p_start_id);
+    raise info 'Department ID: % is being processed.', p_start_id;
+    FOR child_rec IN c_children(p_start_id) LOOP
+      raise info 'Found Child: %-%', child_rec.id,child_rec.name;
+      traverse_departments(child_rec.id);
+    END LOOP;
+  END traverse_departments;
+END dept_pkg;
+/
+BEGIN
+  dept_pkg.traverse_departments(p_start_id => 1);
+END;
+/
+INFO:  Department ID: 1 is being processed.
+INFO:  Found Child: 2-Child 1
+INFO:  Department ID: 2 is being processed.
+INFO:  Found Child: 4-Grandchild 1
+INFO:  Department ID: 4 is being processed.
+INFO:  Found Child: 3-Child 2
+INFO:  Department ID: 3 is being processed.
+INFO:  Found Child: 5-Grandchild 2
+INFO:  Department ID: 5 is being processed.
+alter package dept_pkg compile;
+BEGIN
+  dept_pkg.traverse_departments(p_start_id => 1);
+END;
+/
+INFO:  Department ID: 1 is being processed.
+INFO:  Found Child: 2-Child 1
+INFO:  Department ID: 2 is being processed.
+INFO:  Found Child: 4-Grandchild 1
+INFO:  Department ID: 4 is being processed.
+INFO:  Found Child: 3-Child 2
+INFO:  Department ID: 3 is being processed.
+INFO:  Found Child: 5-Grandchild 2
+INFO:  Department ID: 5 is being processed.
+--req1467
+create or replace package test_pkg IS
+  cursor c1 is select * from department;
+end;
+/
+select * from pg_get_subprocs_in_package() where package_name = 'test_pkg';
+ oid | namespace | owner | package_name | proc_name | fno | kind | nargs | ndefaults | rettype | rettypname | argtypes | argtypenames | argmodes | argnames | argdefaults | prosecdef | type_names | type_object_types | data_lengths | data_precisions | data_scales 
+-----+-----------+-------+--------------+-----------+-----+------+-------+-----------+---------+------------+----------+--------------+----------+----------+-------------+-----------+------------+-------------------+--------------+-----------------+-------------
+(0 rows)
+
+set check_function_bodies = off;
+create or replace package test_pkg1 IS
+  cursor c1 is select * from department;
+  cursor c1 is select * from department;
+end;
+/
+create or replace package test_pkg2 IS
+  cursor c1 is select * from department;
+  cursor c1 is select * from department;
+end;
+/
+create or replace package test_pkg3 IS
+  cursor c1 is select * from department;
+  cursor c1 is select * from department;
+end;
+/
+select * from pg_get_subprocs_in_package() where package_name = 'test_pkg3' or package_name = 'test_pkg1' or package_name = 'test_pkg2';
+ oid | namespace | owner | package_name | proc_name | fno | kind | nargs | ndefaults | rettype | rettypname | argtypes | argtypenames | argmodes | argnames | argdefaults | prosecdef | type_names | type_object_types | data_lengths | data_precisions | data_scales 
+-----+-----------+-------+--------------+-----------+-----+------+-------+-----------+---------+------------+----------+--------------+----------+----------+-------------+-----------+------------+-------------------+--------------+-----------------+-------------
+(0 rows)
+
+--clean data
+drop package test_pkg1;
+drop package test_pkg2;
+drop package test_pkg3;
+reset check_function_bodies;
+drop package dept_pkg;
+drop table department;

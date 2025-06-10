@@ -862,6 +862,9 @@ plisql_free_function_memory(PLiSQL_function *func,
 								int start_datum, int start_subprocfunc) /* SRS-PLSQL-SUBPROC */
 {
 	int			i;
+	/* Begin - req#Z00001467 */
+	bool		is_pkg = (func->item != NULL);
+	/* End - req#Z00001467 */
 
 	/* Better not call this on an in-use function */
 	Assert(func->use_count == 0);
@@ -998,7 +1001,11 @@ plisql_free_function_memory(PLiSQL_function *func,
 	if (func->fn_cxt &&
 		start_datum == 0 && start_subprocfunc == 0) /* SRS-PLSQL-SUBPROC */
 		MemoryContextDelete(func->fn_cxt);
-	func->fn_cxt = NULL;
+	/* End - req#Z00001467 */
+	/* package func rely on fn_cxt */
+	if (!is_pkg)
+		func->fn_cxt = NULL;
+	/* End - req#Z00001467 */
 }
 
 
