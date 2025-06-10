@@ -124,6 +124,59 @@ PGAC_ARG_REQ(with, libraries, [DIRS], [look for additional libraries in DIRS],
 PGAC_ARG_REQ(with, libs,      [DIRS], [alternative spelling of --with-libraries],
              [LIBRARY_DIRS=$withval])
 
+#/* Begin - BUG#Z00004967 */
+##add for build_version func
+# Add HG_PRODUCT_NAME
+PGAC_ARG_REQ(with, hg_product_name, [STRING], [Hgdb product name],
+             [HG_PRODUCT_NAME="$withval"],
+             [HG_PRODUCT_NAME="HG Database Server"])
+AC_DEFINE_UNQUOTED(HG_PRODUCT_NAME, "$HG_PRODUCT_NAME", [Hgdb product name as a string])
+
+#add HG_MAJOR_VERSION
+PGAC_ARG_REQ(with, hg_major_version, [STRING], [Hgdb major version],
+             [HG_MAJOR_VERSION="$withval"],
+             [HG_MAJOR_VERSION="V9"])
+AC_DEFINE_UNQUOTED(HG_MAJOR_VERSION, "$HG_MAJOR_VERSION", [Hgdb major version as a string])
+
+#add HG_EXTRAL_VERSION
+PGAC_ARG_REQ(with, hg_extral_version, [STRING], [Hgdb extral version],
+             [HG_EXTRAL_VERSION="$withval"],
+             [HG_EXTRAL_VERSION="03-0-0-0000"])
+AC_DEFINE_UNQUOTED(HG_EXTRAL_VERSION, "$HG_EXTRAL_VERSION", [Hgdb extral version as a string])
+
+#add HG_PROJECT_ID
+PGAC_ARG_REQ(with, hg_project_id, [STRING], [Hgdb git project id],
+             [HG_PROJECT_ID="$withval"],
+             [HG_PROJECT_ID="590"])
+AC_DEFINE_UNQUOTED(HG_PROJECT_ID, "$HG_PROJECT_ID", [Hgdb git project id as a string])
+
+##add HG_PATCH_STR
+PGAC_ARG_REQ(with, hg_patch_str, [STRING], [Hgdb patch name string ],
+             [HG_PATCH_STR="$withval"],
+             [HG_PATCH_STR=""])
+AC_DEFINE_UNQUOTED(HG_PATCH_STR, "$HG_PATCH_STR", [Hgdb patch name string])
+
+##add HG_BUILD_CPU
+AC_DEFINE_UNQUOTED(HG_BUILD_CPU, "$host_cpu", [Hgdb build cpu type])
+
+##add HG_BUILD_DATE
+date_time_str=`date '+%Y%m%d'`
+AC_DEFINE_UNQUOTED(HG_BUILD_DATE, "$date_time_str", [Hgdb build date])
+
+##add HG_BRANCH_HASH and HG_BRANCH_COMMIT_HASH
+if ! git rev-parse --ls-inside-work-tree > /dev/null 2>&1; then
+    hg_branch_hash="0000";
+    hg_branch_commit_hash="0000";
+else
+    hg_branch_name=$(git rev-parse --abbrev-ref HEAD)
+    hg_branch_hash=$(echo -n "$branch_name" | sha256sum | cut -d ' ' -f 1 | rev | cut -c 1-7 | rev)
+    hg_branch_commit_hash=$(git rev-parse --short HEAD)
+fi
+
+AC_DEFINE_UNQUOTED(HG_BRANCH_HASH, "$hg_branch_hash", [Hgdb branch name hash])
+AC_DEFINE_UNQUOTED(HG_BRANCH_COMMIT_HASH, "$hg_branch_commit_hash", [Hgdb git commit hash])
+#/* End - BUG#Z00004967 */
+
 
 #
 # 64-bit integer date/time storage is now the only option, but to avoid
@@ -238,6 +291,8 @@ elif test "$default_mys_port" -lt "1" -o "$default_mys_port" -gt "65535"; then
 fi
 
 # End - ReqID:SRS-MISC-MYSQL-FRAME
+
+
 
 #
 # '-rpath'-like feature can be disabled

@@ -834,6 +834,11 @@ with_template
 with_includes
 with_libraries
 with_libs
+with_hg_product_name
+with_hg_major_version
+with_hg_extral_version
+with_hg_project_id
+with_hg_patch_str
 enable_integer_datetimes
 enable_nls
 with_pgport
@@ -1563,6 +1568,16 @@ Optional Packages:
   --with-includes=DIRS    look for additional header files in DIRS
   --with-libraries=DIRS   look for additional libraries in DIRS
   --with-libs=DIRS        alternative spelling of --with-libraries
+  --with-hg_product_name=STRING
+                          Hgdb product name
+  --with-hg_major_version=STRING
+                          Hgdb major version
+  --with-hg_extral_version=STRING
+                          Hgdb extral version
+  --with-hg_project_id=STRING
+                          Hgdb git project id
+  --with-hg_patch_str=STRING
+                          Hgdb patch name string
   --with-pgport=PORTNUM   set default port number [5432]
   --with-oraport=PORTNUM  set default port number for oracle [1521]
   --with-mysport=PORTNUM  set default port number for mysql [3306]
@@ -3127,6 +3142,195 @@ fi
 
 
 
+#/* Begin - BUG#Z00004967 */
+##add for build_version func
+# Add HG_PRODUCT_NAME
+
+
+
+# Check whether --with-hg_product_name was given.
+if test "${with_hg_product_name+set}" = set; then :
+  withval=$with_hg_product_name;
+  case $withval in
+    yes)
+      as_fn_error $? "argument required for --with-hg_product_name option" "$LINENO" 5
+      ;;
+    no)
+      as_fn_error $? "argument required for --with-hg_product_name option" "$LINENO" 5
+      ;;
+    *)
+      HG_PRODUCT_NAME="$withval"
+      ;;
+  esac
+
+else
+  HG_PRODUCT_NAME="HG Database Server"
+fi
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define HG_PRODUCT_NAME "$HG_PRODUCT_NAME"
+_ACEOF
+
+
+#add HG_MAJOR_VERSION
+
+
+
+# Check whether --with-hg_major_version was given.
+if test "${with_hg_major_version+set}" = set; then :
+  withval=$with_hg_major_version;
+  case $withval in
+    yes)
+      as_fn_error $? "argument required for --with-hg_major_version option" "$LINENO" 5
+      ;;
+    no)
+      as_fn_error $? "argument required for --with-hg_major_version option" "$LINENO" 5
+      ;;
+    *)
+      HG_MAJOR_VERSION="$withval"
+      ;;
+  esac
+
+else
+  HG_MAJOR_VERSION="V9"
+fi
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define HG_MAJOR_VERSION "$HG_MAJOR_VERSION"
+_ACEOF
+
+
+#add HG_EXTRAL_VERSION
+
+
+
+# Check whether --with-hg_extral_version was given.
+if test "${with_hg_extral_version+set}" = set; then :
+  withval=$with_hg_extral_version;
+  case $withval in
+    yes)
+      as_fn_error $? "argument required for --with-hg_extral_version option" "$LINENO" 5
+      ;;
+    no)
+      as_fn_error $? "argument required for --with-hg_extral_version option" "$LINENO" 5
+      ;;
+    *)
+      HG_EXTRAL_VERSION="$withval"
+      ;;
+  esac
+
+else
+  HG_EXTRAL_VERSION="03-0-0-0000"
+fi
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define HG_EXTRAL_VERSION "$HG_EXTRAL_VERSION"
+_ACEOF
+
+
+#add HG_PROJECT_ID
+
+
+
+# Check whether --with-hg_project_id was given.
+if test "${with_hg_project_id+set}" = set; then :
+  withval=$with_hg_project_id;
+  case $withval in
+    yes)
+      as_fn_error $? "argument required for --with-hg_project_id option" "$LINENO" 5
+      ;;
+    no)
+      as_fn_error $? "argument required for --with-hg_project_id option" "$LINENO" 5
+      ;;
+    *)
+      HG_PROJECT_ID="$withval"
+      ;;
+  esac
+
+else
+  HG_PROJECT_ID="590"
+fi
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define HG_PROJECT_ID "$HG_PROJECT_ID"
+_ACEOF
+
+
+##add HG_PATCH_STR
+
+
+
+# Check whether --with-hg_patch_str was given.
+if test "${with_hg_patch_str+set}" = set; then :
+  withval=$with_hg_patch_str;
+  case $withval in
+    yes)
+      as_fn_error $? "argument required for --with-hg_patch_str option" "$LINENO" 5
+      ;;
+    no)
+      as_fn_error $? "argument required for --with-hg_patch_str option" "$LINENO" 5
+      ;;
+    *)
+      HG_PATCH_STR="$withval"
+      ;;
+  esac
+
+else
+  HG_PATCH_STR=""
+fi
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define HG_PATCH_STR "$HG_PATCH_STR"
+_ACEOF
+
+
+##add HG_BUILD_CPU
+
+cat >>confdefs.h <<_ACEOF
+#define HG_BUILD_CPU "$host_cpu"
+_ACEOF
+
+
+##add HG_BUILD_DATE
+date_time_str=`date '+%Y%m%d'`
+
+cat >>confdefs.h <<_ACEOF
+#define HG_BUILD_DATE "$date_time_str"
+_ACEOF
+
+
+##add HG_BRANCH_HASH and HG_BRANCH_COMMIT_HASH
+if ! git rev-parse --ls-inside-work-tree > /dev/null 2>&1; then
+    hg_branch_hash="0000";
+    hg_branch_commit_hash="0000";
+else
+    hg_branch_name=$(git rev-parse --abbrev-ref HEAD)
+    hg_branch_hash=$(echo -n "$branch_name" | sha256sum | cut -d ' ' -f 1 | rev | cut -c 1-7 | rev)
+    hg_branch_commit_hash=$(git rev-parse --short HEAD)
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define HG_BRANCH_HASH "$hg_branch_hash"
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define HG_BRANCH_COMMIT_HASH "$hg_branch_commit_hash"
+_ACEOF
+
+#/* End - BUG#Z00004967 */
+
 
 #
 # 64-bit integer date/time storage is now the only option, but to avoid
@@ -3362,6 +3566,8 @@ elif test "$default_mys_port" -lt "1" -o "$default_mys_port" -gt "65535"; then
 fi
 
 # End - ReqID:SRS-MISC-MYSQL-FRAME
+
+
 
 #
 # '-rpath'-like feature can be disabled

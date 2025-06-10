@@ -12,6 +12,10 @@ use Carp;
 use strict;
 use warnings;
 use VSObjectFactory;
+#/* Begin - BUG#Z00004967 */
+use Digest::SHA qw(sha256_hex);
+#/* End - BUG#Z00004967 */
+
 
 no warnings qw(redefine);    ## no critic
 
@@ -66,6 +70,18 @@ sub _new
 		die "Bad max_funarg $options->{max_funarg}";
 	}
 # End - ReqID:SRS-SQL-PROC
+	#/* Begin - BUG#Z00004967 */
+	$options->{hg_product_name} = "HG Database Server"
+		unless $options->{hg_product_name};		#undef means default
+	$options->{hg_major_version} = "V9"
+		unless $options->{hg_major_version};		#undef means default
+	$options->{hg_extral_version} = "03-0-0-0000"
+		unless $options->{hg_extral_version};		#undef means default
+	$options->{hg_project_id} = "590"
+		unless $options->{hg_project_id};		#undef means default
+	$options->{hg_patch_str} = ""
+		unless $options->{hg_patch_str};		#undef means default
+	#/* End - BUG#Z00004967 */
 	return $self;
 }
 
@@ -173,6 +189,13 @@ sub GenerateFiles
 	my ($majorver, $minorver);
 	my $ac_define_openssl_api_compat_found = 0;
 	my $openssl_api_compat;
+	#/* Begin - BUG#Z00004967 */
+	my $hg_build_date;
+	my $hg_branch_hash;
+	my $hg_branch_commit_hash;
+	my $hg_system_result;
+	my $hg_branch_name;
+	#/* End - BUG#Z00004967 */
 
 	# Parse configure.ac to get version numbers
 	open(my $c, '<', "configure.ac")
@@ -213,6 +236,7 @@ sub GenerateFiles
 		copyFile("src/include/port/win32.h", "src/include/pg_config_os.h");
 	}
 
+
 	print "Generating configuration headers...\n";
 	my $extraver = $self->{options}->{extraver};
 	$extraver = '' unless defined $extraver;
@@ -221,6 +245,37 @@ sub GenerateFiles
 	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
 	my $mysport = $self->{options}->{"--with-mysport"} || 3306;
 	# End - ReqID:SRS-MISC-MYSQL-FRAME
+
+	#/* Begin - BUG#Z00004967 */
+	#get current time
+	my $sec;
+	my $min;
+	my $hour;
+	my $mday;
+	my $mon;
+	my $year;
+	my $wday;
+	my $yday;
+	my $isdst;
+	($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+	$year = $year + 1900;
+	$mon = $mon + 1;
+	$hg_build_date = sprintf("%d%02d%d", $year,$mon,$mday);
+	$hg_system_result = `git status`;
+	if ($? != 0)
+	{
+		$hg_branch_hash = "0000";
+		$hg_branch_commit_hash = "0000";
+	}
+	else
+	{
+		$hg_branch_name = `git rev-parse --abbrev-ref HEAD`;
+		$hg_branch_hash = substr(sha256_hex($hg_branch_name), -7);
+		$hg_branch_commit_hash = `git rev-parse --short HEAD`;
+		chomp($hg_branch_commit_hash);
+	}
+
+	#/* End - BUG#Z00004967 */
 
 	# Every symbol in pg_config.h.in must be accounted for here.  Set
 	# to undef if the symbol should not be defined.
@@ -542,6 +597,17 @@ sub GenerateFiles
 		# Begin - ReqID:SRS-Performance-GUC
 		MISC_INTERNAL              => $self->{options}->{internal_guc} ? 1 : undef,
 		# End - ReqID:SRS-Performance-GUC
+		#/* Begin - BUG#Z00004967 */
+		HG_PRODUCT_NAME				=> $self->{options}->{hg_product_name},
+		HG_MAJOR_VERSION			=> $self->{options}->{hg_major_version},
+		HG_EXTRAL_VERSION			=> $self->{options}->{hg_extral_version},
+		HG_PROJECT_ID				=> $self->{options}->{hg_project_id},
+		HG_PATCH_STR				=> $self->{options}->{hg_patch_str},
+		HG_BUILD_CPU				=> qq {"$bits-bit"},
+		HG_BUILD_DATE				=> qq {"$hg_build_date"},
+		HG_BRANCH_HASH				=> qq {"$hg_branch_hash"},
+		HG_BRANCH_COMMIT_HASH		=> qq {"$hg_branch_commit_hash"},
+		#/* End - BUG#Z00004967 */
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,
