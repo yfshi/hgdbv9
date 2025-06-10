@@ -60,7 +60,7 @@ DiscardCommand(DiscardStmt *stmt, bool isTopLevel)
 			break;
 		/* Begin - ReqID:SRS-SQL-GTT */
 		case DISCARD_GLOBAL_TEMP:
-			remove_all_gtt_storage_in_currentsession();
+			ResetGttStorage();
 			break;
 		/* End - ReqID:SRS-SQL-GTT */
 		default:
@@ -95,6 +95,6 @@ DiscardAll(bool isTopLevel)
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* Begin - ReqID:SRS-SQL-GTT */
-	remove_all_gtt_storage_in_currentsession();
+	ResetGttStorage();
 	/* End - ReqID:SRS-SQL-GTT */
 }

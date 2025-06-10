@@ -422,3 +422,18 @@ truncate gtt_truncate;
 truncate gtt_truncate;
 end;
 drop table gtt_truncate;
+
+/* Begin - OA-REQ-1481 */
+CREATE GLOBAL TEMPORARY TABLE t_tmp_drr_call_out (
+	ID NUMBER(20, 0) NULL,
+	CALL_OUT_ID varchar2(4000) NULL
+) ON COMMIT PRESERVE ROWS;
+
+insert into t_tmp_drr_call_out values(1,'sjfsjfjsfjsjfsjfsljfslfjlsjfafjlakjsfdljafdajwoejfwjfelwjfslfj1232324324234242432jlwjlfrjslfjlsjafljlsfjjfafjasjfljajfjlajfljfa');
+discard all;
+CREATE INDEX t_tmp_index ON t_tmp_drr_call_out USING btree (call_out_id);
+insert into t_tmp_drr_call_out values(1,'sjfsjfjsfjsjfsjfsljfslfjlsjfafjlakjsfdljafdajwoejfwjfelwjfslfj1232324324234242432jlwjlfrjslfjlsjafljlsfjjfafjasjfljajfjlajfljfa');
+discard all;
+
+drop table t_tmp_drr_call_out;
+/* End - OA-REQ-1481 */
