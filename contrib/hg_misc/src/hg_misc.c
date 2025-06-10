@@ -8,7 +8,7 @@
  *          internal_guc(performance GUC)
  *
  * Copyright:
- * Copyright (c) 2022-2024, HighGo Software Co.,Ltd. All rights reserved.
+ * Copyright (c) 2022-2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * Identification:
  *		contrib/hg_misc/src/hg_misc.c
@@ -49,6 +49,24 @@ PG_MODULE_MAGIC;
 void		_PG_init(void);
 void		_PG_fini(void);
 
+
+#ifdef MISC_INTERNAL
+/*
+ * Allocate and initialize shared memory member.
+ * Use by hook: shmem_startup_hook.
+ */
+static void
+PDBGShmeminit(void)
+{
+    if (prev_shmem_startup_hook)
+        prev_shmem_startup_hook();
+
+    skip_log = (bool *) ShmemAlloc(MAXALIGN(sizeof(bool)));
+    
+    if (skip_log != NULL)
+        *skip_log = false;
+}
+#endif /* MISC_INTERNAL */
 
 /*
  * Module load callback
