@@ -1674,28 +1674,19 @@ gtt_search_by_relid(Oid relid, bool missing_ok)
 }
 
 /*
- * remove_all_gtt_storage_in_currentsession
+ * ResetGttStorage
  *	support for DISCARD TEMP command remove all the global temp tables.
  */
 void
-remove_all_gtt_storage_in_currentsession(void)
+ResetGttStorage(void)
 {
-	HASH_SEQ_STATUS				status;
-	gtt_local_hash_entry		*entry;
-
 	if (gtt_storage_local_hash == NULL)
 		return;
 
-	/* Search all GTT in current backend */
-	hash_seq_init(&status, gtt_storage_local_hash);
+	/* Begin - OA-REQ-1481 */
+	gtt_storage_removeall(0, 0);
 
-	while ((entry = (gtt_local_hash_entry *) hash_seq_search(&status)) != NULL)
-	{
-		Relation		rel;
-
-		rel = relation_open(entry->relid, RowExclusiveLock);
-		RelationDropStorage(rel);
-		smgrDoPendingDeletes(true);
-		relation_close(rel, NoLock);
-	}
+	hash_destroy(gtt_storage_local_hash);
+	gtt_storage_local_hash = NULL;
+	/* End - OA-REQ-1481 */
 }
