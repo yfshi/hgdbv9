@@ -3175,8 +3175,8 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
 		/* In mysql mode, can't specify target table for update in FROM clause. */
-		if (DB_MYSQL == compatible_db && qtree &&
-			pstate->p_isupdate && qtree->rtable)
+		if (MYS_PARSER == compatible_db && qtree &&
+			pstate->p_isupdate && qtree->rtable) /* BUG#Z5121 */
 		{
 			ListCell   *lc;
 			ListCell   *lc1;

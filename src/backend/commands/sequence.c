@@ -2692,7 +2692,7 @@ process_owned_by(Relation seqrel, List *owned_by, bool for_identity)
 								attrname, RelationGetRelationName(tablerel))));
 		}
 		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		else if (compatible_db == DB_MYSQL)
+		else if (compatible_db == MYS_PARSER) /* BUG#Z5121 */
 		{
 			attnum = get_attnum(RelationGetRelid(tablerel), attrname);
 			if (attnum == InvalidAttrNumber)

@@ -258,7 +258,7 @@ scanNameSpaceForRefname(ParseState *pstate, const char *refname, int location)
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-	if (compatible_db == DB_MYSQL && !result)
+	if (compatible_db == MYS_PARSER && !result) /* BUG#Z5121 */
 	{
 		foreach(l, pstate->p_varnamespace)
 		{
@@ -326,7 +326,7 @@ scanNameSpaceForRelid(ParseState *pstate, Oid relid, int location)
 		}
 	}
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-	if (compatible_db == DB_MYSQL && !result)
+	if (compatible_db == MYS_PARSER && !result) /* BUG#Z5121 */
 	{
 		foreach(l, pstate->p_varnamespace)
 		{
@@ -2156,7 +2156,7 @@ addRangeTableEntry(ParseState *pstate,
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	/* In MySQL mode, deal index hint pre check */
-	if(relation->indexhints != NIL && DB_MYSQL == compatible_db)
+	if(relation->indexhints != NIL && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 	{
 		IndexHintType	ihtype = INDEX_HINT_USE;
 		ihtype = preCheckIndexHints(pstate, relation->indexhints, rel);
@@ -3301,7 +3301,7 @@ addNSItemToQuery(ParseState *pstate, ParseNamespaceItem *nsitem,
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	else
 	{
-		if (DB_MYSQL == compatible_db)
+		if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 		{
 			/* Set the new nsitem's visibility flags correctly */
 			nsitem->p_rel_visible = addToRelNameSpace;

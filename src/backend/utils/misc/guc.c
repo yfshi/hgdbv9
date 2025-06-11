@@ -9377,7 +9377,7 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 				WarnNoTransactionBlock(isTopLevel, "SET LOCAL");
 
 			/* Begin - BUG#Z1444 */
-			if (stmt->is_use && DB_MYSQL == compatible_db && list_length(stmt->args) == 1)
+			if (stmt->is_use && MYS_PARSER == compatible_db && list_length(stmt->args) == 1) /* BUG#Z5121 */
 			{
 				Node   *con = (Node *)linitial(stmt->args);
 				char   *nspname = NULL;

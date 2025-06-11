@@ -1530,3 +1530,37 @@ drop table t_mutil_t1,t_mutil_t2;
 drop table t_t_mutil_t1,t_t_mutil_t2,t_t_mutil_t3;
 drop table t_u_mutil_t1,t_u_mutil_t2,t_u_mutil_t3;
 drop table test_trigger_des_tbl1,test_trigger_des_tbl2,test_trigger_src_tbl1,test_trigger_src_tbl2;
+--BUG#Z4241
+CREATE TABLE person_3
+(
+id SERIAL NOT NULL,
+name VARCHAR NOT NULL,
+begin_time TIMESTAMP,
+end_time TIMESTAMP
+) PARTITION BY LIST (name);
+create table person_3_1
+partition of person_3 for values in ('张三','李四');
+create table person_3_2
+partition of person_3 for values in ('王五','赵六');
+insert into person_3 (id, "name", begin_time, end_time)
+values(1,'张三','2024-06-23 01:00:00','2024-06-23 01:00:00'),
+(2,'李四','2024-06-24 01:00:00','2024-06-24 01:00:00'),
+(1,'王五','2024-06-23 01:00:00','2024-06-23 01:00:00'),
+(4,'赵六','2024-06-23 01:00:00','2024-06-23 01:00:00');
+delete aa,bb from person_3 partition(person_3_1) aa ,person_3 partition (person_3_2) bb where aa.id = bb.id ;
+ERROR:  The partition relation person_3_1 is duplicated.
+select * from person_3_1;
+ id | name |     begin_time      |      end_time       
+----+------+---------------------+---------------------
+  1 | 张三 | 2024-06-23 01:00:00 | 2024-06-23 01:00:00
+  2 | 李四 | 2024-06-24 01:00:00 | 2024-06-24 01:00:00
+(2 rows)
+
+select * from person_3_2;
+ id | name |     begin_time      |      end_time       
+----+------+---------------------+---------------------
+  1 | 王五 | 2024-06-23 01:00:00 | 2024-06-23 01:00:00
+  4 | 赵六 | 2024-06-23 01:00:00 | 2024-06-23 01:00:00
+(2 rows)
+
+drop table person_3;
