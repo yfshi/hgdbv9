@@ -285,11 +285,11 @@ select !id from tb_test;
 (3 rows)
 
 select ~id from tb_test;
- ?column? 
-----------
-     -124
-      120
-       -1
+       ?column?       
+----------------------
+ 18446744073709551492
+ 120
+ 18446744073709551615
 (3 rows)
 
 select +id from tb_test;
@@ -351,8 +351,8 @@ select col1 / col2 from t1;
 select col1 div col2 from t1;
  ?column? 
 ----------
-   0.0081
-  -0.0081
+        0
+        0
 (2 rows)
 
 select col1 % col2 from t1;
@@ -365,29 +365,29 @@ select col1 % col2 from t1;
 select col1 & col2 from t1;
  ?column? 
 ----------
-        1
-        1
+ 1
+ 1
 (2 rows)
 
 select col1 | col2 from t1;
- ?column? 
-----------
-      123
-     -123
+       ?column?       
+----------------------
+ 123
+ 18446744073709551493
 (2 rows)
 
 select col1 ^ col2 from t1; --failed
- ?column? 
-----------
-      122
-     -124
+       ?column?       
+----------------------
+ 122
+ 18446744073709551492
 (2 rows)
 
 select col1 || col2 from t1;
  ?column? 
 ----------
- t
- t
+        1
+        1
 (2 rows)
 
 select col1 && col2 from t1;
