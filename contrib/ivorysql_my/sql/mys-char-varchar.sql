@@ -634,3 +634,43 @@ create table tb5 as select cast(repeat('a', 6) as nchar(10));
 
 drop table tb, tb1, tb2, tb3, tb4, tb5;
 set mysql.functional_diff_control = off;
+
+
+-- bug#z5074
+create table tb(col char(0));
+\d+ tb
+insert into tb values();
+select * from tb;
+delete from tb;
+insert into tb values(NULL);
+select * from tb;
+delete from tb;
+insert into tb values('');
+select * from tb;
+delete from tb;
+insert into tb values(' ');
+select * from tb;
+delete from tb;
+insert into tb values(1);
+select * from tb;
+delete from tb;
+insert into tb values('a');
+select * from tb;
+delete from tb;
+
+insert into tb values('');
+insert into tb values(' ');
+insert into tb values('              ');
+select * from tb;
+drop table tb;
+
+
+-- bug#z5108
+set mysql.functional_diff_control to on;
+create table tb (col char(10));
+insert into tb values('xy');
+select cast(col as char), char_length(cast(col as char)) from tb;
+select cast(col as char(0)), char_length(cast(col as char(0))) from tb;
+select cast(col as char(10)), char_length(cast(col as char(10))) from tb;
+drop table tb;
+set mysql.functional_diff_control to off;

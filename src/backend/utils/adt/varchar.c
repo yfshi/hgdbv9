@@ -39,6 +39,9 @@ mys_dotrim(const char *string, int stringlen,
 	   Oid coll);
 Datum mysrtrim(text *string, Oid collid);
 /* End - ReqID: SRS-MYSQL-CHARACTERTYPE */
+/* Begin - BUG#Z00005074 */
+static bool myscharis_space(char a);
+/* End - BUG#Z00005074 */
 
 /* common code for bpchartypmodin and varchartypmodin */
 static int32
@@ -341,7 +344,18 @@ bpchar(PG_FUNCTION_ARGS)
 	 */
 	if (compatible_db == MYS_PARSER && maxlen == 0 && len > 0 && charlen > 0)
 	{
-		if (is_strict_mode())
+		/* Begin - BUG#Z00005074 */
+		int		i;
+		bool	all_spaces = true;
+
+		for (i = 0; i < len; i++)
+		{
+			if (!myscharis_space(s[i]))
+				all_spaces = false;
+		}
+		/* End - BUG#Z00005074 */
+
+		if (!all_spaces && is_strict_mode())	/* BUG#Z00005074 */
 		{
 			ereport(ERROR,
 					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
@@ -354,10 +368,11 @@ bpchar(PG_FUNCTION_ARGS)
 			len = VARSIZE_ANY_EXHDR(source);
 			s = VARDATA_ANY(source);
 			charlen = pg_mbstrlen_with_len(s, len);
-			ereport(WARNING,
-					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					 errmsg("value too long for type char(%d), Data truncated.",
-					 maxlen)));
+			if (!all_spaces)	/* BUG#Z00005074 */
+				ereport(WARNING,
+						(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+						 errmsg("value too long for type char(%d), Data truncated.",
+						 maxlen)));
 			/* No work if supplied data matches typmod already */
 			if (charlen == maxlen)
 				PG_RETURN_BPCHAR_P(source);
@@ -1585,3 +1600,24 @@ mys_dotrim(const char *string, int stringlen,
 	return cstring_to_text_with_len(string, stringlen);
 }
 /* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
+
+/* Begin - BUG#Z00005074 */
+/* myscharis_space
+ * Is A a space character.
+ */
+static bool myscharis_space(char a)
+{
+	switch (a)
+	{
+		case ' ':
+		case '\f':
+		case '\n':
+		case '\r':
+		case '\t':
+		case '\v':
+			return true;
+		default:
+			return false;
+	}
+}
+/* End - BUG#Z00005074 */
