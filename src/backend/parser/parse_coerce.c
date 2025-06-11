@@ -4111,7 +4111,7 @@ coerce_to_boolean(ParseState *pstate, Node *node,
 
 		newnode = coerce_to_target_type(pstate, node, inputTypeId,
 										BOOLOID, -1,
-										COERCION_ASSIGNMENT,
+										MYS_PARSER == compatible_db ? COERCION_EXPLICIT : COERCION_ASSIGNMENT, /* BUG#5051 */
 										COERCE_IMPLICIT_CAST,
 										-1);
 		if (newnode == NULL)
