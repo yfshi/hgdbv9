@@ -293,6 +293,17 @@ select a % b from test1;
         0
 (6 rows)
 
+select a div b from test1; --BUG#5049
+ ?column? 
+----------
+         
+        1
+        1
+        0
+        2
+        7
+(6 rows)
+
 select not a from test1;
  ?column? 
 ----------
@@ -315,7 +326,7 @@ select !a from test1;
         0
 (6 rows)
 
-select a AND b from test1;
+select a AND b from test1; --BUG#5050
  ?column? 
 ----------
  
@@ -326,7 +337,7 @@ select a AND b from test1;
  t
 (6 rows)
 
-select a && b from test1;
+select a && b from test1; --BUG#5050
  ?column? 
 ----------
          
@@ -337,7 +348,7 @@ select a && b from test1;
         1
 (6 rows)
 
-select a or b from test1;
+select a or b from test1; --BUG#5051
  ?column? 
 ----------
  t
@@ -348,7 +359,7 @@ select a or b from test1;
  t
 (6 rows)
 
-select a || b from test1;
+select a || b from test1; --BUG#5051
  ?column? 
 ----------
          
@@ -359,7 +370,18 @@ select a || b from test1;
         1
 (6 rows)
 
-select a xor b from test1;
+select a ^ b from test1; --BUG#5056
+ ?column? 
+----------
+ 
+ 6
+ 6
+ 5
+ 5
+ 6
+(6 rows)
+
+select a xor b from test1; --BUG#5052
  ?column? 
 ----------
  
@@ -370,7 +392,7 @@ select a xor b from test1;
  f
 (6 rows)
 
-select a & b from test1;
+select a & b from test1; --BUG#5053
  ?column? 
 ----------
  
@@ -381,7 +403,7 @@ select a & b from test1;
  1
 (6 rows)
 
-select a | b from test1;
+select a | b from test1; --BUG#5054
  ?column? 
 ----------
  
@@ -392,7 +414,7 @@ select a | b from test1;
  7
 (6 rows)
 
-select ~b from test1;
+select ~b from test1;	--BUG#5055
        ?column?       
 ----------------------
  18446744073709551612
