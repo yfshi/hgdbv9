@@ -369,3 +369,15 @@ create table t1(c int(10) signed);
 drop table t1;
 create table t2(c integer(10) signed);
 drop table t2;
+
+-- fix bug 5164
+set sql_mode = default;
+set div_precision_increment = 99;
+show div_precision_increment;
+set div_precision_increment = -1;
+show div_precision_increment;
+set sql_mode = '';
+set div_precision_increment = 99;
+show div_precision_increment;
+set div_precision_increment = -1;
+show div_precision_increment;
