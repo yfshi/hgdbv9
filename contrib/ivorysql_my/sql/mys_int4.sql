@@ -156,7 +156,7 @@ DROP TABLE t1,t2,t3,t4,t5;
 create table tb_test(id int);
 insert into tb_test values (2147483647),(-2147483648),(0),(1);
 select !id from tb_test;
-select ~id from tb_test;
+select ~id from tb_test;	--BUG#5055	
 select +id from tb_test;
 select -id from tb_test;
 select * from tb_test;
@@ -169,13 +169,16 @@ select col1 + col2 from t1;
 select col1 - col2 from t1;
 select col1 * col2 from t1;
 select col1 / col2 from t1;
-select col1 div col2 from t1;
+select col1 div col2 from t1; --BUG#5049
 select col1 % col2 from t1;
-select col1 & col2 from t1;
-select col1 | col2 from t1;
-select col1 ^ col2 from t1; --failed
-select col1 || col2 from t1;
-select col1 && col2 from t1;
+select col1 & col2 from t1; --BUG#5053
+select col1 | col2 from t1; --BUG#5054
+select col1 ^ col2 from t1; --BUG#5056
+select col1 || col2 from t1; --BUG#5051
+select col1 or col2 from t1; --BUG#5051
+select col1 && col2 from t1; --BUG#5050
+select col1 and col2 from t1; --BUG#5050
+select col1 xor col2 from t1; --BUG#5052
 select col1 <=> col2 from t1;
 drop table t1;
 

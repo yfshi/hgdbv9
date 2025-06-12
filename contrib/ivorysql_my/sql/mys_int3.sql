@@ -87,21 +87,24 @@ select a - b from test1;
 select a * b from test1;
 select a / b from test1;
 select a % b from test1;
-/*
+select a div b from test1; --BUG#5049
+
+select a ^ b from test1; --BUG#5056
+
 select not a from test1;
 select !a from test1;
 
-select a AND b from test1;
-select a && b from test1;
+select a AND b from test1; --BUG#5050
+select a && b from test1; --BUG#5050
 
-select a or b from test1;
-select a || b from test1;
+select a or b from test1; --BUG#5051
+select a || b from test1; --BUG#5051
 
-select a xor b from test1;
-*/
-select a & b from test1;
-select a | b from test1;
-select ~b from test1;
+select a xor b from test1; --BUG#5052 
+
+select a & b from test1; --BUG#5053
+select a | b from test1; --BUG#5054
+select ~b from test1;	--BUG#5055
 
 select a >> b from test1;
 select a << b from test1;

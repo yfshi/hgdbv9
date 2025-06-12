@@ -360,7 +360,7 @@ select !id from tb_test;
         0
 (4 rows)
 
-select ~id from tb_test;
+select ~id from tb_test;	--BUG#5055	
        ?column?       
 ----------------------
  18446744071562067968
@@ -428,7 +428,7 @@ select col1 / col2 from t1;
    0.0000
 (2 rows)
 
-select col1 div col2 from t1;
+select col1 div col2 from t1; --BUG#5049
  ?column? 
 ----------
         0
@@ -442,39 +442,60 @@ select col1 % col2 from t1;
         1
 (2 rows)
 
-select col1 & col2 from t1;
+select col1 & col2 from t1; --BUG#5053
  ?column? 
 ----------
  1
  0
 (2 rows)
 
-select col1 | col2 from t1;
+select col1 | col2 from t1; --BUG#5054
        ?column?       
 ----------------------
  2147483647
  18446744071562067969
 (2 rows)
 
-select col1 ^ col2 from t1; --failed
+select col1 ^ col2 from t1; --BUG#5056
        ?column?       
 ----------------------
  2147483646
  18446744071562067969
 (2 rows)
 
-select col1 || col2 from t1;
+select col1 || col2 from t1; --BUG#5051
  ?column? 
 ----------
  t
  t
 (2 rows)
 
-select col1 && col2 from t1;
+select col1 or col2 from t1; --BUG#5051
+ ?column? 
+----------
+ t
+ t
+(2 rows)
+
+select col1 && col2 from t1; --BUG#5050
  ?column? 
 ----------
         1
         1
+(2 rows)
+
+select col1 and col2 from t1; --BUG#5050
+ ?column? 
+----------
+ t
+ t
+(2 rows)
+
+select col1 xor col2 from t1; --BUG#5052
+ ?column? 
+----------
+ f
+ f
 (2 rows)
 
 select col1 <=> col2 from t1;
