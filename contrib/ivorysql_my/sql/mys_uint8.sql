@@ -74,6 +74,13 @@ insert into t3 values (3);
 select * from t3;
 drop table t3;
 
+create table t2(age bigint(256.4) unsigned);
+create table t2(id1 int8(255.9) unsigned, id2 int8(254.9) unsigned, age bigint(255.4) unsigned);
+\d t2
+insert into t2 values (2, 5, 44);
+select * from t2;
+drop table t2;
+
 --mediumint zerofill
 create table t2 (a bigint(-1) ZEROFILL);
 
@@ -670,3 +677,21 @@ SELECT AVG(m1) AS avg_value FROM t1;
 SELECT SUM(m1) AS sum_value FROM t1;
 
 DROP TABLE t1;
+create table t1(id int8 unsigned);
+insert into t1 values (1),(null);
+select * from t1;
+select avg(id) from t1;
+DROP TABLE t1;
+
+create table t_aggregate (value int8 unsigned);
+insert into t_aggregate (value) values (128), (100), (0), (50), (100), (255), (32767), (65535), (4294967295), (18446744073709551615);
+select avg(value), SUM(value) from t_aggregate;
+DROP TABLE t_aggregate;
+
+create table t1 (col_uint int8 unsigned);
+insert into t1 values (100);
+select -col_uint from t1;
+DROP TABLE t1;
+
+create table t1(id in1 signed);
+create table t2(id intt unsigned);

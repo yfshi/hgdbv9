@@ -424,17 +424,38 @@ select * from t3;
 (1 row)
 
 drop table t3;
+create table t2(age integer(256.4) unsigned);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t2(age integer(256.4) unsigned);
+                                   ^
+create table t2(id1 int4(255.9) unsigned, id2 int4(254.9) unsigned, age integer(255.4) unsigned);
+\d t2
+                    Table "public.t2"
+ Column |     Type      | Collation | Nullable | Default 
+--------+---------------+-----------+----------+---------
+ id1    | mysuint4(255) |           |          | 
+ id2    | mysuint4(254) |           |          | 
+ age    | mysuint4(255) |           |          | 
+
+insert into t2 values (2, 5, 44);
+select * from t2;
+ id1 | id2 | age 
+-----+-----+-----
+ 2   | 5   | 44
+(1 row)
+
+drop table t2;
 --mediumint zerofill
 create table t2 (a integer(-1) ZEROFILL);
-ERROR:  syntax error at or near "-"
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
 LINE 1: create table t2 (a integer(-1) ZEROFILL);
-                                   ^
+                                  ^
 create table t2 (a integer ZEROFILL);
 \d t2
-                 Table "public.t2"
- Column |   Type   | Collation | Nullable | Default 
---------+----------+-----------+----------+---------
- a      | mysuint4 |           |          | 
+                   Table "public.t2"
+ Column |     Type     | Collation | Nullable | Default 
+--------+--------------+-----------+----------+---------
+ a      | mysuint4(10) |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -554,15 +575,15 @@ select * from t3;
 drop table t3;
 --mediumint zerofill
 create table t2 (a int(-1) ZEROFILL);
-ERROR:  syntax error at or near "-"
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
 LINE 1: create table t2 (a int(-1) ZEROFILL);
-                               ^
+                              ^
 create table t2 (a int ZEROFILL);
 \d t2
-                 Table "public.t2"
- Column |   Type   | Collation | Nullable | Default 
---------+----------+-----------+----------+---------
- a      | mysuint4 |           |          | 
+                   Table "public.t2"
+ Column |     Type     | Collation | Nullable | Default 
+--------+--------------+-----------+----------+---------
+ a      | mysuint4(10) |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -682,7 +703,7 @@ select * from t3;
 drop table t3;
 --mediumint zerofill
 create table t2 (a int4(-1) ZEROFILL);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
 LINE 1: create table t2 (a int4(-1) ZEROFILL);
                                ^
 create table t2 (a int4 ZEROFILL);
@@ -799,15 +820,15 @@ select * from t3;
 drop table t3;
 --mediumint zerofill
 create table t2 (a integer(-1) ZEROFILL);
-ERROR:  syntax error at or near "-"
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
 LINE 1: create table t2 (a integer(-1) ZEROFILL);
-                                   ^
+                                  ^
 create table t2 (a integer ZEROFILL);
 \d t2
-                 Table "public.t2"
- Column |   Type   | Collation | Nullable | Default 
---------+----------+-----------+----------+---------
- a      | mysuint4 |           |          | 
+                   Table "public.t2"
+ Column |     Type     | Collation | Nullable | Default 
+--------+--------------+-----------+----------+---------
+ a      | mysuint4(10) |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -2949,6 +2970,40 @@ SELECT SUM(m1) AS sum_value FROM t1;
  sum_value 
 -----------
       4056
+(1 row)
+
+DROP TABLE t1;
+create table t1(id int4 unsigned);
+insert into t1 values (1),(null);
+select * from t1;
+ id 
+----
+ 1
+ 
+(2 rows)
+
+select avg(id) from t1;
+  avg   
+--------
+ 1.0000
+(1 row)
+
+DROP TABLE t1;
+create table t_aggregate (value int4 unsigned);
+insert into t_aggregate (value) values (128), (100), (0), (50), (100), (255), (32767), (65535), (4294967295), (4294967295);
+select avg(value), SUM(value) from t_aggregate;
+      avg       |    SUM     
+----------------+------------
+ 859003352.5000 | 8590033525
+(1 row)
+
+DROP TABLE t_aggregate;
+create table t1 (col_uint int4 unsigned);
+insert into t1 values (100);
+select -col_uint from t1;
+ ?column? 
+----------
+     -100
 (1 row)
 
 DROP TABLE t1;

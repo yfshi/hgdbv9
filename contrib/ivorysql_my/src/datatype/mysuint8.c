@@ -120,6 +120,8 @@ PG_FUNCTION_INFO_V1(int2_addmysuint8);
 PG_FUNCTION_INFO_V1(int4_addmysuint8);
 PG_FUNCTION_INFO_V1(int8_addmysuint8);
 
+PG_FUNCTION_INFO_V1(mysuint8_negative);
+
 PG_FUNCTION_INFO_V1(mysuint8_submysuint8);
 PG_FUNCTION_INFO_V1(mysuint8_subint2);
 PG_FUNCTION_INFO_V1(mysuint8_subint4);
@@ -238,6 +240,7 @@ PG_FUNCTION_INFO_V1(mysuint8_larger);
 PG_FUNCTION_INFO_V1(mysuint8_smaller);
 
 PG_FUNCTION_INFO_V1(mysuint8_avg_accum);
+PG_FUNCTION_INFO_V1(mysuint8_avg);
 PG_FUNCTION_INFO_V1(mysuint8_sum);
 
 /*****************************************************************************
@@ -945,6 +948,14 @@ int8_addmysuint8(PG_FUNCTION_ARGS)
         ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}	
 	PG_RETURN_UINT64(val1 + val2);
+}
+
+Datum
+mysuint8_negative(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+
+	PG_RETURN_INT64(-((int64)val1));
 }
 
 Datum
@@ -2033,39 +2044,66 @@ Datum mysuint8_smaller(PG_FUNCTION_ARGS)
 typedef struct Int8TransTypeData
 {
 	int64		count;
-	int64		sum;
+	Numeric		sum;
+	MemoryContext agg_context;
 } Int8TransTypeData;
 
 Datum mysuint8_avg_accum(PG_FUNCTION_ARGS)
 {
-	ArrayType  *transarray;
-	int32		newval = PG_GETARG_INT32(1);
-	Int8TransTypeData *transdata = NULL;
+	Int8TransTypeData *state;
+	MemoryContext agg_context;
+	MemoryContext old_context;
+	state = PG_ARGISNULL(0) ? NULL : (Int8TransTypeData *) PG_GETARG_POINTER(0);
 
-	/*
-	 * If we're invoked as an aggregate, we can cheat and modify our first
-	 * parameter in-place to reduce palloc overhead. Otherwise we need to make
-	 * a copy of it before scribbling on it.
-	 */
-	if (AggCheckCallContext(fcinfo, NULL))
-		transarray = PG_GETARG_ARRAYTYPE_P(0);
-	else
-		transarray = PG_GETARG_ARRAYTYPE_P_COPY(0);
+	/* Create the state data on the first call */
+	if (state == NULL)
+	{
+		if (!AggCheckCallContext(fcinfo, &agg_context))
+			elog(ERROR, "aggregate function called in non-aggregate context");
 
-	if (ARR_HASNULL(transarray) ||
-		ARR_SIZE(transarray) != ARR_OVERHEAD_NONULLS(1) + sizeof(Int8TransTypeData))
-		elog(ERROR, "expected 2-element int8 array");
+		old_context = MemoryContextSwitchTo(agg_context);
 
-	transdata = (Int8TransTypeData *) ARR_DATA_PTR(transarray);
-	transdata->count++;
-	transdata->sum += newval;
+		state = (Int8TransTypeData *) palloc0(sizeof(Int8TransTypeData));
+		state->count = 0;
+		state->sum = uint64_to_numeric(0);
+		state->agg_context = agg_context;
+		MemoryContextSwitchTo(old_context);
+	}
 
-	PG_RETURN_ARRAYTYPE_P(transarray);
+	if (!PG_ARGISNULL(1))
+	{
+		MemoryContext old_context;
+		uint64		newval = 0;
+		newval = PG_GETARG_UINT64(1);
+		old_context = MemoryContextSwitchTo(state->agg_context);
+		state->count++;
+		state->sum = DatumGetNumeric(DirectFunctionCall2(numeric_add, NumericGetDatum(state->sum), NumericGetDatum(uint64_to_numeric(newval))));
+		MemoryContextSwitchTo(old_context);
+	}
+
+	PG_RETURN_POINTER(state);
+}
+
+Datum mysuint8_avg(PG_FUNCTION_ARGS)
+{
+	Int8TransTypeData *state;
+	Datum		N_datum;
+	Datum		sumX_datum;
+	state = PG_ARGISNULL(0) ? NULL : (Int8TransTypeData *) PG_GETARG_POINTER(0);
+
+	/* If there were no non-null inputs, return NULL */
+	if (state == NULL || state->count == 0)
+		PG_RETURN_NULL();
+	
+	sumX_datum = NumericGetDatum(state->sum);
+	N_datum = NumericGetDatum(int64_to_numeric(state->count));
+
+	PG_RETURN_DATUM(DirectFunctionCall2(numeric_div, sumX_datum, N_datum));
 }
 
 Datum mysuint8_sum(PG_FUNCTION_ARGS)
 {
-	int64		newval;
+	uint64		newval;
 
 	if (PG_ARGISNULL(0))
 	{
@@ -2073,8 +2111,9 @@ Datum mysuint8_sum(PG_FUNCTION_ARGS)
 		if (PG_ARGISNULL(1))
 			PG_RETURN_NULL();	/* still no non-null */
 		/* This is the first non-null input. */
-		newval = (int64) PG_GETARG_INT32(1);
-		PG_RETURN_INT64(newval);
+		newval = (uint64) PG_GETARG_UINT64(1);
+
+		PG_RETURN_NUMERIC(uint64_to_numeric(newval));
 	}
 
 	/*
@@ -2098,16 +2137,16 @@ Datum mysuint8_sum(PG_FUNCTION_ARGS)
 	else
 #endif
 	{
-		int64		oldsum = PG_GETARG_INT64(0);
-
+		Numeric		oldsum = PG_GETARG_NUMERIC(0);
 		/* Leave sum unchanged if new input is null. */
 		if (PG_ARGISNULL(1))
-			PG_RETURN_INT64(oldsum);
+			PG_RETURN_NUMERIC(oldsum);
 
 		/* OK to do the addition. */
-		newval = oldsum + (int64) PG_GETARG_INT32(1);
+		newval = (uint64) PG_GETARG_UINT64(1);
 
-		PG_RETURN_INT64(newval);
+		oldsum = DatumGetNumeric(DirectFunctionCall2(numeric_add, NumericGetDatum(oldsum), NumericGetDatum(uint64_to_numeric(newval))));
+		PG_RETURN_NUMERIC(oldsum);
 	}
 }
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
