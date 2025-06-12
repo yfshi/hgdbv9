@@ -734,6 +734,52 @@ copy xxxx from '@abs_srcdir@/data/ora_copy_format_error.data' with(format csv, d
 drop table xxxx;
 -- End - BUG#M0000526
 
+-- Begin - OA-REQ-1488
+-- if newline marker is \r\n, but find \n, skip
+-- \n in middle
+delete from x_bad;
+create table oa1488(a VARCHAR(255), b VARCHAR(255),c VARCHAR(255), d VARCHAR(255));
+copy oa1488 from '@abs_srcdir@/data/oa_1488_1.data' with(format csv, delimiter '^');
+copy oa1488 from '@abs_srcdir@/data/oa_1488_1.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '@abs_srcdir@/data/oa_1488_1.data' with(format csv, delimiter '^', taskid '1488_1', badtable 'x_bad');
+-- succes 10, bad 2
+select count(*) from oa1488;
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_1';
+
+-- \n in middle and tail
+delete from oa1488;
+delete from x_bad;
+copy oa1488 from '@abs_srcdir@/data/oa_1488_2.data' with(format csv, delimiter '^');
+copy oa1488 from '@abs_srcdir@/data/oa_1488_2.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '@abs_srcdir@/data/oa_1488_2.data' with(format csv, delimiter '^', taskid '1488_2', badtable 'x_bad');
+--success 8, bad 3
+select count(*) from oa1488;
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_2';
+
+-- \n split one line to two lines
+delete from oa1488;
+delete from x_bad;
+copy oa1488 from '@abs_srcdir@/data/oa_1488_3.data' with(format csv, delimiter '^');
+copy oa1488 from '@abs_srcdir@/data/oa_1488_3.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '@abs_srcdir@/data/oa_1488_3.data' with(format csv, delimiter '^', taskid '1488_3', badtable 'x_bad');
+--success 6, bad 5
+select count(*) from oa1488;
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_3';
+
+-- if newline marker is \n, but find \r\n, skip
+-- \r\n in middle and tail
+delete from oa1488;
+delete from x_bad;
+copy oa1488 from '@abs_srcdir@/data/oa_1488_4.data' with(format csv, delimiter '^');
+copy oa1488 from '@abs_srcdir@/data/oa_1488_4.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '@abs_srcdir@/data/oa_1488_4.data' with(format csv, delimiter '^', taskid '1488_4', badtable 'x_bad');
+--success 8, bad 3
+select count(*) from oa1488;
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_4';
+
+drop table oa1488;
+-- End - OA-REQ-1488
+
 -- clean up
 DROP TABLE x;
 DROP TABLE x_bad;

@@ -183,6 +183,11 @@ typedef struct CopyFromStateData
 	StringInfoData tmp_copy_fail_message;
 	/* End - BUG:M0000383 */
 
+	/* Begin - OA-REQ-1488 */
+	bool line_buf_error;
+	bool line_buf_error2;
+	/* End - OA-REQ-1488 */
+
 } CopyFromStateData;
 
 extern void ReceiveCopyBegin(CopyFromState cstate);
