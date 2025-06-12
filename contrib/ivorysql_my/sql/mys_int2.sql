@@ -244,3 +244,23 @@ insert into tb_test values ('123abc');
 select * from tb_test;
 drop table tb_test;
 set sql_mode = default;
+
+-- fix bug 5060
+create table t(c smallint(-1) signed);
+create table t(c smallint(-1) SIGNED);
+create table t(c smallint(-1));
+create table t(c int2(-1) signed);
+create table t(c int2(-1) SIGNED);
+create table t(c int2(-1));
+create table t(c INT2(-1) signed);
+create table t(c INT2(-1) SIGNED);
+create table t(c INT2(-1));
+create table t(c smallint(256) signed);
+create table t(c smallint(256) SIGNED);
+create table t(c smallint(256));
+create table t(c int2(256) signed);
+create table t(c int2(256) SIGNED);
+create table t(c int2(256));
+create table t(c INT2(256) signed);
+create table t(c INT2(256) SIGNED);
+create table t(c INT2(256));
