@@ -815,8 +815,8 @@ set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 	required_outer = rel->lateral_relids;
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (enable_indexhint && compatible_db == DB_MYSQL &&
-		root->parse->indexhintList && rel->indexlist)
+	if (enable_indexhint && compatible_db == MYS_PARSER &&
+		root->parse->indexhintList && rel->indexlist) /* BUG#Z5121 */
 	{
 		/* If the index hint is use or force, skip seqscan. */
 		if (!IsUseOrForceIndexhint(root->parse->indexhintList, rel->indexlist))
@@ -839,8 +839,8 @@ set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	/* If no index scan path is generated, a sequence scan path needs to be generated. */
-	if (enable_indexhint && compatible_db == DB_MYSQL &&
-		root->parse->indexhintList && rel->indexlist)
+	if (enable_indexhint && compatible_db == MYS_PARSER &&
+		root->parse->indexhintList && rel->indexlist) /* BUG#Z5121 */
 	{
 		if (!rel->pathlist)
 			add_path(rel, create_seqscan_path(root, rel, required_outer, 0));

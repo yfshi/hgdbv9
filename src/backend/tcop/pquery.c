@@ -181,7 +181,7 @@ ProcessQuery(PlannedStmt *plan,
 				break;
 			case CMD_INSERT:
 				/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-				if (((ModifyTableState*)queryDesc->planstate)->isReplace && DB_MYSQL == compatible_db)
+				if (((ModifyTableState*)queryDesc->planstate)->isReplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 					SetQueryCompletion(qc, CMDTAG_REPLACE, queryDesc->estate->es_processed);
 				else
 				/* End - ReqID:SRS-MYSQL-SQL-REPLACE */

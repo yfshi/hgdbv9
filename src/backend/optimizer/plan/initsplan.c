@@ -153,7 +153,7 @@ add_other_rels_to_query(PlannerInfo *root)
 	int			rti;
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (DB_MYSQL == compatible_db && list_length(root->all_result_relids_list) > 1)
+	if (MYS_PARSER == compatible_db && list_length(root->all_result_relids_list) > 1) /* BUG#Z5121 */
 	{
 		int		tmpresult = root->parse->resultRelation;
 		for (rti = 1; rti < root->simple_rel_array_size; rti++)

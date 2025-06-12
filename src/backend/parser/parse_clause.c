@@ -286,7 +286,7 @@ setMultiTargetTable(ParseState* pstate, RangeVar* relRv, bool inh, bool alsoSour
 	 * For UPDATE, maybe target table has been added to rtable before.
 	 * if that, no need to do that again, just set resultRelation to the existed rtindex.
 	 */
-	if (DB_MYSQL == compatible_db)
+	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 	{
 		if (multiModify && (requiredPerms & ACL_UPDATE))
 		{
@@ -462,13 +462,13 @@ setTargetTable(ParseState *pstate, RangeVar *relation,
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	/* If INSERT, add table to insertvarnamespace. */
-	if (pstate->p_is_insert && DB_MYSQL == compatible_db && !pstate->p_ruleflag)
+	if (pstate->p_is_insert && MYS_PARSER == compatible_db && !pstate->p_ruleflag) /* BUG#Z5121 */
 		addNSItemToQuery(pstate, nsitem, false, false, false);
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	/* In MySQL mode, deal index hint pre check */
-	if (relation->indexhints != NIL && DB_MYSQL == compatible_db)
+	if (relation->indexhints != NIL && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 	{
 		IndexHintType	ihtype = INDEX_HINT_USE;
 		ihtype = preCheckIndexHints(pstate, relation->indexhints, pstate->p_target_relation);
@@ -1477,12 +1477,12 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		rtr = makeNode(RangeTblRef);
 		rtr->rtindex = nsitem->p_rtindex;
 
-		if (DB_MYSQL == compatible_db && rv->ispartition)
+		if (MYS_PARSER == compatible_db && rv->ispartition) /* BUG#Z5121 */
 			pstate->p_addupdatedeleterv = lappend(pstate->p_addupdatedeleterv, rv);
 
 		/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
-		if (DB_MYSQL == compatible_db && pstate->p_addDeleteTable &&
-			pstate->p_delrellist)
+		if (MYS_PARSER == compatible_db && pstate->p_addDeleteTable &&
+			pstate->p_delrellist) /* BUG#Z5121 */
 		{
 			ColumnRef   *ref = NULL;
 			is_exists = transformRelInfromOrusingcluase(pstate->p_delrellist, rv, &ref);

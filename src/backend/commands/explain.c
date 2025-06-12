@@ -1187,7 +1187,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			{
 				case CMD_INSERT:
 					/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-					if (((ModifyTable *) plan)->isReplace && DB_MYSQL == compatible_db)
+					if (((ModifyTable *) plan)->isReplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 						pname = operation = "Replace";
 					else
 						pname = operation = "Insert";
@@ -3780,7 +3780,7 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es, bool multiTarget)
 	{
 		case T_ModifyTable:
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
-			if (multiTarget && DB_MYSQL == compatible_db)
+			if (multiTarget && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 			{
 				objecttag = "Relation Name";
 				break;
@@ -3882,7 +3882,7 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es, bool multiTarget)
 	{
 		appendStringInfoString(es->str, " on");
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (multiTarget && DB_MYSQL == compatible_db)
+		if (multiTarget && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 		{
 			appendStringInfoString(es->str, " MULTI-RELATION");
 		}
@@ -3898,7 +3898,7 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es, bool multiTarget)
 		}
 	}
 	else
-	{	if (objecttag != NULL && multiTarget && DB_MYSQL == compatible_db)
+	{	if (objecttag != NULL && multiTarget && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 		{
 			ExplainPropertyText(objecttag, "MULTI-RELATION", es);
 		}

@@ -3494,7 +3494,7 @@ transformRuleStmt(RuleStmt *stmt, const char *queryString,
 
 			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 			/* In MySQL mode,Set flag about rules */
-			if (compatible_db == DB_MYSQL)
+			if (compatible_db == MYS_PARSER) /* BUG#Z5121 */
 				sub_pstate->p_ruleflag = true;
 			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 

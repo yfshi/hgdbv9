@@ -693,7 +693,7 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
-	if (DB_MYSQL == compatible_db)
+	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 	{
 		if (stmt->usingClause || stmt->relationList)
 		{
@@ -715,12 +715,12 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	/* set up range table with just the result rel */
 	if (stmt->relation)
 	{
-		if (DB_MYSQL == compatible_db && stmt->relationList && stmt->collist)
+		if (MYS_PARSER == compatible_db && stmt->relationList && stmt->collist) /* BUG#Z5121 */
 		{
 			transformCollistInFromcClause(list_make1(stmt->relation), stmt->collist);
 			stmt->relationList = NIL;
 		}
-		if (DB_MYSQL == compatible_db && stmt->relation->ispartition)
+		if (MYS_PARSER == compatible_db && stmt->relation->ispartition) /* BUG#Z5121 */
 			transformGetpartionRelationOid(qry, stmt->relation);
 		qry->resultRelation = setTargetTable(pstate, stmt->relation,
 											 stmt->relation->inh,
@@ -743,8 +743,8 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	 * USING keyword is used rather than FROM because FROM is already a
 	 * keyword in the DELETE syntax.
 	 */
-	if (DB_MYSQL == compatible_db &&
-		(stmt->usingClause || stmt->relationList))
+	if (MYS_PARSER == compatible_db &&
+		(stmt->usingClause || stmt->relationList)) /* BUG#Z5121 */
 	{
 		if (qry->cteList)
 			ereport(ERROR,
@@ -760,7 +760,7 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	transformFromClause(pstate, stmt->usingClause);
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
-	if (DB_MYSQL == compatible_db)
+	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 	{
 		transformFromClause(pstate, stmt->relationList);
 
@@ -1251,7 +1251,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 	pstate->p_is_insert = true;
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-	if (DB_MYSQL == compatible_db)
+	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 	{
 		qry->isReplace = stmt->isReplace;
 		pstate->p_isreplace = stmt->isReplace; /* BUG#Z1626 */
@@ -1329,7 +1329,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 										 false, false, targetPerms);
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-	if (DB_MYSQL == compatible_db)
+	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 		transformTableAndSchemaInCols(pstate, &(stmt->cols));
 	/* Validate stmt->cols list, or build default list if no list given */
 	icolumns = checkInsertTargets(pstate, stmt->cols, &attrnos);
@@ -1382,7 +1382,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 		/* In MySQL mode, check if the temporary table is referenced multiple times */
-		if (DB_MYSQL == compatible_db)
+		if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 			transformCheckTemptableIsMultiUse(pstate->p_rtable, sub_pstate->p_rtable);
 		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
@@ -1403,7 +1403,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 											   false,
 											   false);
 		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-		if (DB_MYSQL == compatible_db)
+		if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 		{
 			addNSItemToQuery(pstate, nsitem, true, false, true);
 		}
@@ -1450,7 +1450,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 		/* Check that the number of column values in the query is the same as
 		 * the number of columns inserted into the table.
 		 */
-		if(compatible_db == DB_MYSQL && exprList && icolumns)
+		if (compatible_db ==  MYS_PARSER && exprList && icolumns) /* BUG#Z5121 */
 		{
 			if (list_length(exprList) != list_length(icolumns))
 				ereport(ERROR,
@@ -1514,7 +1514,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 			/* In mysql mode, handle column references. */
-			if (DB_MYSQL == compatible_db && sublist)
+			if (MYS_PARSER == compatible_db && sublist) /* BUG#Z5121 */
 			{
 				transformColumnReference(pstate, &sublist, NULL, attrnos, 0);
 				/* Begin - BUG#Z1434 */
@@ -1661,7 +1661,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 									  stmt->cols,
 									  icolumns, attrnos,
 									  false);
-		if (DB_MYSQL == compatible_db && exprList)
+		if (MYS_PARSER == compatible_db && exprList) /* BUG#Z5121 */
 		{
 			transformColumnReference(pstate, &exprList, NULL, attrnos, 0);
 			/* Begin - BUG#Z1434 */
@@ -1720,7 +1720,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 	/* Process DUPLICATE KEY UPDATE, if any. */
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-	if (DB_MYSQL == compatible_db && stmt->upsertClause)
+	if (MYS_PARSER == compatible_db && stmt->upsertClause) /* BUG#Z5121 */
 	{
 //		qry->resultRelations = lappend_int(qry->resultRelations, qry->resultRelation);
 		qry->upsertClause = transformUpsertClause(pstate, stmt->upsertClause, qry->resultRelations);
@@ -1779,7 +1779,7 @@ transformInsertRow(ParseState *pstate, List *exprlist,
 	if (list_length(exprlist) > list_length(icolumns))
 	/* Begin - BUG#Z1626 */
 	{
-		if (pstate->p_isreplace && DB_MYSQL == compatible_db)
+		if (pstate->p_isreplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
 					 errmsg("REPLACE has more expressions than target columns"),
@@ -1808,7 +1808,7 @@ transformInsertRow(ParseState *pstate, List *exprlist,
 		 * hint in that case.)
 		 */
 		/* Begin - BUG#Z1626 */
-		if (pstate->p_isreplace && DB_MYSQL == compatible_db)
+		if (pstate->p_isreplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 						ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
 					 errmsg(" REPLACE has more target columns than expressions"),
@@ -3996,7 +3996,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	pstate->p_is_insert = false;
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (DB_MYSQL == compatible_db)
+	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 	{
 		pstate->p_isupdate = true;
 		if (stmt->relation)
@@ -4029,7 +4029,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (DB_MYSQL == compatible_db && stmt->relationClause)
+	if (MYS_PARSER == compatible_db && stmt->relationClause) /* BUG#Z5121 */
 	{
 		if (qry->cteList)
 			ereport(ERROR,
@@ -4055,7 +4055,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 											 true,
 											 ACL_UPDATE);
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (DB_MYSQL == compatible_db)
+		if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 			pstate->p_updateRelations = lappend_int(pstate->p_updateRelations, qry->resultRelation);
 		/* End - ReqID:SRS-MYSQL-UPDATE */
 	}
@@ -4069,7 +4069,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 		nsitem->p_lateral_ok = false;
 	}
 
-	if (DB_MYSQL == compatible_db && pstate->p_indexhintLists)
+	if (MYS_PARSER == compatible_db && pstate->p_indexhintLists) /* BUG#Z5121 */
 		qry->indexhintList = pstate->p_indexhintLists;
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 
@@ -4087,7 +4087,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 		nsitem->p_lateral_ok = true;
 	}
 
-	if (compatible_db != DB_MYSQL)
+	if (compatible_db != MYS_PARSER) /* BUG#Z5121 */
 		qual = transformWhereClause(pstate, stmt->whereClause,
 									EXPR_KIND_WHERE, "WHERE");
 	/* End - ReqID:SRS-MYSQL-UPDATE */
@@ -4115,7 +4115,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 		 * transforming the target list to match the UPDATE target columns.
 		 */
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (DB_MYSQL == compatible_db && stmt->relationClause)
+		if (MYS_PARSER == compatible_db && stmt->relationClause) /* BUG#Z5121 */
 		{
 			if (pstate->p_addupdatedeleterv)
 				transformGetpartionRelationOids(qry, pstate->p_addupdatedeleterv);
@@ -4128,13 +4128,13 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 			qry->targetList = transformUpdateTargetList(pstate, stmt->targetList);
 
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (DB_MYSQL == compatible_db && qry->resultRelation)
+		if (MYS_PARSER == compatible_db && qry->resultRelation) /* BUG#Z5121 */
 			transformLimitSortClause(pstate, stmt, qry, false);
 		/* End - ReqID:SRS-MYSQL-UPDATE */
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (DB_MYSQL == compatible_db)
+	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
 		qual = transformWhereClause(pstate, stmt->whereClause,
 										EXPR_KIND_WHERE, "WHERE");
 	/* End - ReqID:SRS-MYSQL-UPDATE */
@@ -4148,13 +4148,13 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	assign_query_collations(pstate, qry);
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (DB_MYSQL == compatible_db && list_length(qry->resultRelations) == 1)
+	if (MYS_PARSER == compatible_db && list_length(qry->resultRelations) == 1) /* BUG#Z5121 */
 	{
 		qry->resultRelation = linitial_int(qry->resultRelations);
 		qry->resultRelations = NIL;
 	}
 
-	if (pstate->p_updateRelations && DB_MYSQL == compatible_db)
+	if (pstate->p_updateRelations && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 		pstate->p_updateRelations = NIL;
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 

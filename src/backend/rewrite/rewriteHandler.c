@@ -4384,7 +4384,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 		bool		defaults_remaining = false;
 
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (DB_MYSQL == compatible_db && parsetree->resultRelations)
+		if (MYS_PARSER == compatible_db && parsetree->resultRelations) /* BUG#Z5121 */
 		{
 			result_relation = (parsetree->resultRelations ? lfirst_int(list_head(parsetree->resultRelations)) : 0);
 			if (result_relation == 0)
@@ -4496,7 +4496,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 		else if (event == CMD_UPDATE)
 		{
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
-			if (list_length(parsetree->resultRelations) > 1 && DB_MYSQL == compatible_db)
+			if (list_length(parsetree->resultRelations) > 1 && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 			{
 				rewriteTargetListMultiUpdate(parsetree, parsetree->rtable, parsetree->resultRelations);
 			}
@@ -4547,7 +4547,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 		}
 		else if (event == CMD_DELETE)
 		{
-			if (list_length(parsetree->resultRelations) > 1 && DB_MYSQL == compatible_db)
+			if (list_length(parsetree->resultRelations) > 1 && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 				rewriteTargetListMutilUD(parsetree, parsetree->rtable, parsetree->resultRelations);
 			/* Nothing to do here */
 		}
@@ -4627,7 +4627,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 			rewriteRelations = lappend_oid(rewriteRelations, RelationGetRelid(rt_entry_relation));
 
 		/* Element of resultRelations may be update under rewriteTargetView. */
-		if (DB_MYSQL == compatible_db && parsetree->resultRelations)
+		if (MYS_PARSER == compatible_db && parsetree->resultRelations) /* BUG#Z5121 */
 		{
 			ListCell   *resultRel = NULL;
 			bool		rewriteView = false;
@@ -4858,7 +4858,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 			foreach(n, rewrite_events)
 			{
 				rev = (rewrite_event *) lfirst(n);
-				if (DB_MYSQL == compatible_db && rewriteRelations)
+				if (MYS_PARSER == compatible_db && rewriteRelations) /* BUG#Z5121 */
 				{
 					if (list_member_oid(rewriteRelations, rev->relation) &&
 					rev->event == event)
@@ -4879,7 +4879,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 			}
 
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
-			if (DB_MYSQL == compatible_db && rewriteRelations)
+			if (MYS_PARSER == compatible_db && rewriteRelations) /* BUG#Z5121 */
 			{
 				foreach (n, rewriteRelations)
 				{
@@ -4919,7 +4919,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 			}
 
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
-			if (DB_MYSQL == compatible_db && rewriteRelations)
+			if (MYS_PARSER == compatible_db && rewriteRelations) /* BUG#Z5121 */
 			{
 				for (i = 0; i < list_length(rewriteRelations); i++)
 					rewrite_events = list_delete_first(rewrite_events);
@@ -5067,7 +5067,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-	if (parsetree->isReplace && DB_MYSQL == compatible_db)
+	if (parsetree->isReplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
 	{
 		foreach (lc1, rewritten)
 		{

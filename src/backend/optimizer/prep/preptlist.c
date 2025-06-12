@@ -80,7 +80,7 @@ preprocess_targetlist(PlannerInfo *root)
 	RangeTblEntry   *rte = NULL;
 	int			tmp_relation = 0;
 
-	if(DB_MYSQL == compatible_db && parse->resultRelations)
+	if(MYS_PARSER == compatible_db && parse->resultRelations) /* BUG#Z5121 */
 	{
 		multirelsflag = true;
 		result_relation = parse->resultRelations ? lfirst_int(list_head(parse->resultRelations)) : 0;

@@ -539,13 +539,13 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 		leaf_part_rri->ri_IndexRelationDescs == NULL)
 	{
 		/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-		if (node && DB_MYSQL == compatible_db &&
-			node->isReplace)
+		if (node && MYS_PARSER == compatible_db &&
+			node->isReplace) /* BUG#Z5121 */
 			ExecOpenIndices(leaf_part_rri,
 							(node->isReplace &&
 							node != NULL));
-		else if (node && DB_MYSQL == compatible_db &&
-				 node->upsertAction != UPSERT_NONE)
+		else if (node && MYS_PARSER == compatible_db &&
+				 node->upsertAction != UPSERT_NONE) /* BUG#Z5121 */
 			ExecOpenIndices(leaf_part_rri,
 							(node != NULL &&
 							 node->upsertAction != UPSERT_NONE));
