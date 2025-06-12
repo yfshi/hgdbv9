@@ -264,3 +264,15 @@ create table t(c int2(256));
 create table t(c INT2(256) signed);
 create table t(c INT2(256) SIGNED);
 create table t(c INT2(256));
+
+-- fix bug 5061
+create table tb_test(id int2);
+set sql_mode = default;
+insert into tb_test values (-32769);
+insert into tb_test values (32768);
+set sql_mode = '';
+insert into tb_test values (-32769);
+insert into tb_test values (32768);
+select * from tb_test;
+drop table tb_test;
+set sql_mode = default;

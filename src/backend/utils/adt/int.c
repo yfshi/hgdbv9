@@ -367,10 +367,28 @@ i4toi2(PG_FUNCTION_ARGS)
 	int32		arg1 = PG_GETARG_INT32(0);
 
 	if (unlikely(arg1 < SHRT_MIN) || unlikely(arg1 > SHRT_MAX))
-		ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-				 errmsg("smallint out of range")));
-
+	{
+		/* Begin - SRS-MYSQL-NUMBERICTYPE-INT2 */
+		if (MYS_PARSER == compatible_db && (!is_strict_mode()))
+		{
+			if(arg1 < PG_INT16_MIN)
+			{
+				arg1 = PG_INT16_MIN;
+			}
+			else
+			{
+				arg1 = PG_INT16_MAX;
+			}
+			ereport(WARNING,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					errmsg("smallint out of range")));
+		}	
+		/* End - SRS-MYSQL-NUMBERICTYPE-INT2 */
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					errmsg("smallint out of range")));
+	}
 	PG_RETURN_INT16((int16) arg1);
 }
 
