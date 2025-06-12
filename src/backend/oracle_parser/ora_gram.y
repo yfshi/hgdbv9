@@ -12691,7 +12691,7 @@ ViewStmt: CREATE OptTemp OptViewForce VIEW qualified_name opt_column_list opt_re
 					 * incorrectly obtaining the view definition when using a multi-statement
 					 * parser tree.
 					 */
-					stmt_iteral = pnstrdup(pg_yyget_extra(yyscanner)->core_yy_extra.scanbuf + @1, yylloc - @1);
+					stmt_iteral = pnstrdup(pg_yyget_extra(yyscanner)->core_yy_extra.scanbuf + @9, yylloc - @9); /* OA-REQ-1459 */
 					n->stmt_literal = psprintf("%s;", stmt_iteral);
 					pfree(stmt_iteral);
 					/* End - ReqID:SRS-SQL-FORCEVIEW */
@@ -12716,7 +12716,7 @@ ViewStmt: CREATE OptTemp OptViewForce VIEW qualified_name opt_column_list opt_re
 					 * incorrectly obtaining the view definition when using a multi-statement
 					 * parser tree.
 					 */
-					stmt_iteral = pnstrdup(pg_yyget_extra(yyscanner)->core_yy_extra.scanbuf + @1, yylloc - @1);
+					stmt_iteral = pnstrdup(pg_yyget_extra(yyscanner)->core_yy_extra.scanbuf + @11, yylloc - @11); /* OA-REQ-1459 */
 					n->stmt_literal = psprintf("%s;", stmt_iteral);
 					pfree(stmt_iteral);
 					/* End - ReqID:SRS-SQL-FORCEVIEW */

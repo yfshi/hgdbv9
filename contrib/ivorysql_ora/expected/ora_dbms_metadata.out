@@ -92,9 +92,9 @@ DROP TABLE tv3;
 CREATE FORCE VIEW fv1 AS SELECT * FROM tv4;
 WARNING:  View created with compilation errors
 SELECT DBMS_METADATA.get_ddl('VIEW', 'FV1', 'PUBLIC') from dual;
-                   get_ddl                   
----------------------------------------------
- CREATE FORCE VIEW fv1 AS SELECT * FROM tv4;
+                              get_ddl                              
+-------------------------------------------------------------------
+ CREATE OR REPLACE FORCE VIEW "PUBLIC"."FV1" AS SELECT * FROM tv4;
 (1 row)
 
 DROP VIEW fv1;
