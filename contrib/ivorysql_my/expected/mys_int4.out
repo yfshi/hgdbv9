@@ -1186,3 +1186,38 @@ create table t1(c int(10) signed);
 drop table t1;
 create table t2(c integer(10) signed);
 drop table t2;
+-- fix bug 5164
+set sql_mode = default;
+set div_precision_increment = 99;
+WARNING:  Truncated incorrect div_precision_increment value: "99"
+show div_precision_increment;
+ div_precision_increment 
+-------------------------
+ 30
+(1 row)
+
+set div_precision_increment = -1;
+WARNING:  Truncated incorrect div_precision_increment value: "-1"
+show div_precision_increment;
+ div_precision_increment 
+-------------------------
+ 4
+(1 row)
+
+set sql_mode = '';
+set div_precision_increment = 99;
+WARNING:  Truncated incorrect div_precision_increment value: "99"
+show div_precision_increment;
+ div_precision_increment 
+-------------------------
+ 30
+(1 row)
+
+set div_precision_increment = -1;
+WARNING:  Truncated incorrect div_precision_increment value: "-1"
+show div_precision_increment;
+ div_precision_increment 
+-------------------------
+ 4
+(1 row)
+
