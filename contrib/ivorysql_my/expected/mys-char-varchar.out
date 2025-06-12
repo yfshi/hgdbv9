@@ -2031,4 +2031,115 @@ select cast(col as char(10)), char_length(cast(col as char(10))) from tb;
 (1 row)
 
 drop table tb;
+-- bug#z5124
+create table tb (col char(10)); 
+insert into tb values('abc');
+select convert('abc' using gbk);
+WARNING:   Syntax support only
+ ?column? 
+----------
+ abc
+(1 row)
+
+select convert('abc' using gb18030);
+WARNING:   Syntax support only
+ ?column? 
+----------
+ abc
+(1 row)
+
+drop table tb;
+-- bug#z5134
+create table tb (id int,col char(10)); 
+insert into tb values(1,'abc'); 
+insert into tb values(2,'123'); 
+insert into tb values(3,'123.4');
+select convert(col ,unsigned) from tb where id=1;  --0
+WARNING:  invalid input syntax for type integer: "abc"
+ col 
+-----
+ 0
+(1 row)
+
+select convert(col , unsigned) from tb where id=2; --123
+ col 
+-----
+ 123
+(1 row)
+
+select convert(col , unsigned) from tb where id=3; --123
+WARNING:  invalid input syntax for type integer: "123.4"
+ col 
+-----
+ 123
+(1 row)
+
+drop table tb;
+-- bug#z5148
+create table tb(col varchar(0));
+\d+ tb
+                                           Table "public.tb"
+ Column |         Type         | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+----------------------+-----------+----------+---------+----------+--------------+-------------
+ col    | character varying(0) |           |          |         | extended |              | 
+
+insert into tb values();
+insert into tb values(NULL);
+insert into tb values('');
+insert into tb values(' '); --succ
+WARNING:  value too long for type varchar(0), Data truncated.
+insert into tb values(1);
+ERROR:  value too long for type varchar(0)
+insert into tb values('a');
+ERROR:  value too long for type varchar(0)
+drop table tb;
+-- bug#z5149
+create table tb (col varchar(10)); 
+insert into tb values('xy');
+select cast(col as char), char_length(cast(col as char)) from tb; --('xy',2)
+ col | char_length 
+-----+-------------
+ xy  |           2
+(1 row)
+
+select cast(col as char(0)), char_length(cast(col as char(0))) from tb; --(,0)
+WARNING:  value too long for type char(0), Data truncated.
+WARNING:  value too long for type char(0), Data truncated.
+ bpchar | char_length 
+--------+-------------
+        |           0
+(1 row)
+
+select cast(col as char(10)), char_length(cast(col as char(10))) from tb; --('xy',2)
+ col | char_length 
+-----+-------------
+ xy  |           2
+(1 row)
+
+drop table tb;
+-- bug#z5153
+create table tb (id int,col varchar(10));
+insert into tb values(1,'abc');
+insert into tb values(2,'123');
+insert into tb values(3,'123.4');
+select convert(col ,unsigned) from tb where id=1; --0
+WARNING:  invalid input syntax for type integer: "abc"
+ col 
+-----
+ 0
+(1 row)
+
+select convert(col , unsigned) from tb where id=2; --123
+ col 
+-----
+ 123
+(1 row)
+
+select convert(col , unsigned) from tb where id=3; --123
+WARNING:  invalid input syntax for type integer: "123.4"
+ col 
+-----
+ 123
+(1 row)
+
 set mysql.functional_diff_control to off;

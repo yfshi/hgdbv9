@@ -1,6 +1,7 @@
 /*
  * test mysql binary type conversion
  */
+set mysql.functional_diff_control = true;
 -- parameter settings
 SET ivorysql.compatible_mode TO mysql;
 set mysql.enable_character_blob to on;
@@ -968,30 +969,30 @@ SELECT         c1::longblob       FROM my_longblob_t06;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_binary_t07;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_binary_t07;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::char           FROM my_binary_t07;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1067,30 +1068,30 @@ LINE 1: SELECT         c1::json           FROM my_binary_t07;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_binary_t07;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_binary_t07;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::nchar          FROM my_binary_t07;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1114,9 +1115,9 @@ ERROR:  cannot cast type binary to mysuint8
 LINE 1: SELECT  cast(c1 as unsigned)      FROM my_binary_t07;
                 ^
 SELECT convert(c1, unsigned)      FROM my_binary_t07;
-ERROR:  syntax error at or near "unsigned"
+ERROR:  cannot cast type binary to mysuint8
 LINE 1: SELECT convert(c1, unsigned)      FROM my_binary_t07;
-                           ^
+               ^
 SELECT         c1::unsigned       FROM my_binary_t07;
 ERROR:  syntax error at or near "unsigned"
 LINE 1: SELECT         c1::unsigned       FROM my_binary_t07;
@@ -1126,30 +1127,30 @@ LINE 1: SELECT         c1::unsigned       FROM my_binary_t07;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_varbinary_t08;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_varbinary_t08;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::char           FROM my_varbinary_t08;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- TODO[TD013]: EXPECT: get {NULL, NULL, NULL, NULL}, and warning
@@ -1294,30 +1295,30 @@ CONTEXT:  JSON data, line 1: abcd
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_varbinary_t08;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_varbinary_t08;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::nchar          FROM my_varbinary_t08;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1349,9 +1350,17 @@ WARNING:  invalid input syntax for type integer: "q1w2"
 (4 rows)
 
 SELECT convert(c1, unsigned)      FROM my_varbinary_t08;
-ERROR:  syntax error at or near "unsigned"
-LINE 1: SELECT convert(c1, unsigned)      FROM my_varbinary_t08;
-                           ^
+WARNING:  invalid input syntax for type integer: "abcd"
+WARNING:  invalid input syntax for type integer: "1q2w"
+WARNING:  invalid input syntax for type integer: "q1w2"
+  c1  
+------
+ 1234
+ 0
+ 1
+ 0
+(4 rows)
+
 SELECT         c1::unsigned       FROM my_varbinary_t08;
 ERROR:  syntax error at or near "unsigned"
 LINE 1: SELECT         c1::unsigned       FROM my_varbinary_t08;
@@ -1361,30 +1370,30 @@ LINE 1: SELECT         c1::unsigned       FROM my_varbinary_t08;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_blob_t09;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_blob_t09;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::char           FROM my_blob_t09;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1460,30 +1469,30 @@ LINE 1: SELECT         c1::json           FROM my_blob_t09;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_blob_t09;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_blob_t09;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::nchar          FROM my_blob_t09;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1507,9 +1516,9 @@ ERROR:  cannot cast type blob to mysuint8
 LINE 1: SELECT  cast(c1 as unsigned)      FROM my_blob_t09;
                 ^
 SELECT convert(c1, unsigned)      FROM my_blob_t09;
-ERROR:  syntax error at or near "unsigned"
+ERROR:  cannot cast type blob to mysuint8
 LINE 1: SELECT convert(c1, unsigned)      FROM my_blob_t09;
-                           ^
+               ^
 SELECT         c1::unsigned       FROM my_blob_t09;
 ERROR:  syntax error at or near "unsigned"
 LINE 1: SELECT         c1::unsigned       FROM my_blob_t09;
@@ -1519,30 +1528,30 @@ LINE 1: SELECT         c1::unsigned       FROM my_blob_t09;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_tinyblob_t10;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_tinyblob_t10;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::char           FROM my_tinyblob_t10;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1618,30 +1627,30 @@ LINE 1: SELECT         c1::json           FROM my_tinyblob_t10;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_tinyblob_t10;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_tinyblob_t10;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::nchar          FROM my_tinyblob_t10;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1665,9 +1674,9 @@ ERROR:  cannot cast type tinyblob to mysuint8
 LINE 1: SELECT  cast(c1 as unsigned)      FROM my_tinyblob_t10;
                 ^
 SELECT convert(c1, unsigned)      FROM my_tinyblob_t10;
-ERROR:  syntax error at or near "unsigned"
+ERROR:  cannot cast type tinyblob to mysuint8
 LINE 1: SELECT convert(c1, unsigned)      FROM my_tinyblob_t10;
-                           ^
+               ^
 SELECT         c1::unsigned       FROM my_tinyblob_t10;
 ERROR:  syntax error at or near "unsigned"
 LINE 1: SELECT         c1::unsigned       FROM my_tinyblob_t10;
@@ -1677,30 +1686,30 @@ LINE 1: SELECT         c1::unsigned       FROM my_tinyblob_t10;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_mediumblob_t11;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_mediumblob_t11;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::char           FROM my_mediumblob_t11;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1776,30 +1785,30 @@ LINE 1: SELECT         c1::json           FROM my_mediumblob_t11;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_mediumblob_t11;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_mediumblob_t11;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::nchar          FROM my_mediumblob_t11;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1823,9 +1832,9 @@ ERROR:  cannot cast type mediumblob to mysuint8
 LINE 1: SELECT  cast(c1 as unsigned)      FROM my_mediumblob_t11;
                 ^
 SELECT convert(c1, unsigned)      FROM my_mediumblob_t11;
-ERROR:  syntax error at or near "unsigned"
+ERROR:  cannot cast type mediumblob to mysuint8
 LINE 1: SELECT convert(c1, unsigned)      FROM my_mediumblob_t11;
-                           ^
+               ^
 SELECT         c1::unsigned       FROM my_mediumblob_t11;
 ERROR:  syntax error at or near "unsigned"
 LINE 1: SELECT         c1::unsigned       FROM my_mediumblob_t11;
@@ -1835,30 +1844,30 @@ LINE 1: SELECT         c1::unsigned       FROM my_mediumblob_t11;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_longblob_t12;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_longblob_t12;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::char           FROM my_longblob_t12;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1934,30 +1943,30 @@ LINE 1: SELECT         c1::json           FROM my_longblob_t12;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_longblob_t12;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_longblob_t12;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 SELECT         c1::nchar          FROM my_longblob_t12;
- c1 
-----
- 1
- a
- 1
- q
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1981,9 +1990,9 @@ ERROR:  cannot cast type longblob to mysuint8
 LINE 1: SELECT  cast(c1 as unsigned)      FROM my_longblob_t12;
                 ^
 SELECT convert(c1, unsigned)      FROM my_longblob_t12;
-ERROR:  syntax error at or near "unsigned"
+ERROR:  cannot cast type longblob to mysuint8
 LINE 1: SELECT convert(c1, unsigned)      FROM my_longblob_t12;
-                           ^
+               ^
 SELECT         c1::unsigned       FROM my_longblob_t12;
 ERROR:  syntax error at or near "unsigned"
 LINE 1: SELECT         c1::unsigned       FROM my_longblob_t12;
@@ -2275,3 +2284,4 @@ SELECT         c1::longblob  FROM pg_bytea_t14;
 (4 rows)
 
 set mysql.mysql_convert = false;
+set mysql.functional_diff_control = false;

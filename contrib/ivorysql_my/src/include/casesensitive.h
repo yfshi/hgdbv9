@@ -42,6 +42,10 @@ extern void get_obj_nameinfo_bybodyid(ObjectAddress address, char **objname, cha
 extern HeapTuple mysql_SearchAttName(Oid relid, char *attname);
 extern Oid pg_compatible_mysql_get_typoid(ParseState *pstate, const TypeName *typeName, bool temp_ok, 
 										  char *schemaname, char *typname, bool missing_ok);
-
+/* Begin - BUG#Z00004315/4316 */
+extern bool mys_check_for_column_name_collision(Relation rel,
+															 const char *colname,
+															 bool if_not_exists,
+/* End - BUG#Z00004315/4316 */															 bool caseflg);
 
 #endif	/* IVORYSQL_MYS_CASE_H_ */

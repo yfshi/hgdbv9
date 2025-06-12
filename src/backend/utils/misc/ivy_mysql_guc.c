@@ -140,7 +140,7 @@ bool		cast_to_char = true;
 			NULL
 		},
 		&mysql_convert,
-		false,
+		true,	/* BUG#Z5124 */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */

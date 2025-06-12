@@ -62,7 +62,12 @@ typedef Oid (*Mysql_casesensitive_get_typoid_hook_type) (ParseState *pstate,
 																		char *schemaname,
 																		char *typname,
 																		bool missing_ok);
-
+/* Begin - BUG#Z00004315/4316 */
+typedef bool (*Mysql_check_for_column_name_collision_hook_type) (Relation rel,
+																	 const char *colname,
+																	 bool if_not_exists,
+																	 bool caseflg);
+/* End - BUG#Z00004315/4316 */
 
 
 extern PGDLLIMPORT Mysql_case_switch_hook_type mysql_switch_hook;
@@ -75,7 +80,9 @@ extern PGDLLIMPORT Mysql_case_switch_createobjlower_hook_type mysql_objlower_hoo
 extern PGDLLIMPORT Mysql_casesensitive_get_obj_nameinfo_hook_type mysql_get_objnameinfo_hook;
 extern PGDLLIMPORT Mysql_casesensitive_get_attName_hook_type mysql_get_attName_hook;
 extern PGDLLIMPORT Mysql_casesensitive_get_typoid_hook_type mysql_get_typoid_hook;
-
+/* Begin - BUG#Z00004315/4316 */
+extern PGDLLIMPORT Mysql_check_for_column_name_collision_hook_type mysql_check_for_column_name_collision;
+/* End - BUG#Z00004315/4316 */
 
 extern DefElem *mys_casemakeDefElem(char *name, int location);
 extern char *mys_lower_one_string_case(char *str);

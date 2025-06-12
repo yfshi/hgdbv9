@@ -54,6 +54,9 @@ static Mysql_int4_datatype_in_hook_type pre_mysql_int4_datatype_in_hook = NULL;
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE_UIN123 */
 static Mysql_uint_datatype_in_hook_type pre_mysql_uint_datatype_in_hook = NULL;
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE_UIN123 */
+/* Begin - BUG#Z00004315/4316 */
+Mysql_check_for_column_name_collision_hook_type pre_mysql_check_for_column_name_collision = NULL;
+/* End - BUG#Z00004315/4316 */
 
 void _PG_init(void);
 void _PG_fini(void);
@@ -117,6 +120,10 @@ _PG_init(void)
 	pre_mysql_uint_datatype_in_hook = mysql_uint_datatype_in_hook;
 	mysql_uint_datatype_in_hook = pg_atoi_uint;
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
+	pre_mysql_check_for_column_name_collision = mysql_check_for_column_name_collision;
+	/* Begin - BUG#Z00004315/4316 */
+	mysql_check_for_column_name_collision = mys_check_for_column_name_collision;
+	/* End - BUG#Z00004315/4316 */
 }
 
 /*
@@ -158,4 +165,7 @@ _PG_fini(void)
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
 	mysql_uint_datatype_in_hook = pre_mysql_uint_datatype_in_hook;
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
+	/* Begin - BUG#Z00004315/4316 */
+	mysql_check_for_column_name_collision = pre_mysql_check_for_column_name_collision;
+	/* End - BUG#Z00004315/4316 */
 }

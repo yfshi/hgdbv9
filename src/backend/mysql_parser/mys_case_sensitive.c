@@ -35,6 +35,9 @@ Mysql_case_switch_createobjlower_hook_type mysql_objlower_hook = NULL;
 Mysql_casesensitive_get_obj_nameinfo_hook_type mysql_get_objnameinfo_hook = NULL;
 Mysql_casesensitive_get_attName_hook_type mysql_get_attName_hook = NULL;
 Mysql_casesensitive_get_typoid_hook_type mysql_get_typoid_hook = NULL;
+/* Begin - BUG#Z00004315/4316 */
+Mysql_check_for_column_name_collision_hook_type mysql_check_for_column_name_collision = NULL;
+/* End - BUG#Z00004315/4316 */
 
 /*
  * mys_casemakeDefElem

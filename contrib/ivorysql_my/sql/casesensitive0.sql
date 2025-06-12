@@ -460,6 +460,119 @@ ALTER TABLE TB RENAME COLUMN id3_3 TO id4_4;
 \d TB
 drop table TB;
 
+--1
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN ID TO ID1_1;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN ID TO Id2_2;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN ID TO iD3_3;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN ID TO id4_4;
+\d TB
+drop table TB;
+
+--2
+create table TB(ID int, name varchar(30));
+\d TB TB
+ALTER TABLE TB RENAME COLUMN Id TO ID1_1;
+\d TB TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN Id TO Id2_2;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN Id TO iD3_3;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN Id TO id4_4;
+\d TB
+drop table TB;
+
+
+--3
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN iD TO ID1_1;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN iD TO Id2_2;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN iD TO iD3_3;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN iD TO id4_4;
+\d TB
+drop table TB;
+
+--4
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN id TO ID1_1;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN id TO Id2_2;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN id TO iD3_3;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN id TO id4_4;
+\d TB
+drop table TB;
+
+
+--5
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB RENAME COLUMN ID TO id;
+\d TB
+ALTER TABLE TB RENAME COLUMN Id TO Id;
+\d TB
+ALTER TABLE TB RENAME COLUMN id TO id;
+\d TB
+drop table TB;
+
 
 
 -- bug:z4316
@@ -494,6 +607,7 @@ create table TB(ID int, name varchar(30));
 ALTER TABLE TB add COLUMN IDD text, add COLUMN aaa text;
 \d TB
 drop table TB;
+
 
 reset ivorysql.compatible_mode;
 reset mysql.enable_case_switch;

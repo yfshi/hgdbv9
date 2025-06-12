@@ -415,3 +415,108 @@ mysql_SearchAttName(Oid relid, char *attname)
 
 	return NULL;
 }
+
+/* Begin - BUG#Z00004315/4316 */
+/*
+ * If a new or renamed column will collide with the name of an existing
+ * column and if_not_exists is false then error out, else do nothing.
+ */
+bool
+mys_check_for_column_name_collision(Relation rel, const char *colname,
+								bool if_not_exists, bool caseflg)
+{
+	HeapTuple	attTuple;
+	int			attnum;
+	TupleDesc	tupdesc = NULL;
+
+	tupdesc = RelationGetDescr(rel);
+	if (tupdesc)
+	{
+		int i;
+
+		for (i = 0; i < tupdesc->natts; i++)
+		{
+			Form_pg_attribute att = TupleDescAttr(tupdesc, i);
+
+			if (caseflg)
+			{
+				if (strcmp(colname, NameStr(att->attname)) == 0)
+				{
+
+					if (if_not_exists)
+					{
+						return false;
+					}
+
+					ereport(ERROR,
+							(errcode(ERRCODE_DUPLICATE_COLUMN),
+							 errmsg("column \"%s\" of relation \"%s\" already exists",
+									colname, RelationGetRelationName(rel))));
+				}
+			}
+			else
+			{
+				if (pg_strcasecmp(colname, NameStr(att->attname)) == 0)
+				{
+
+					if (if_not_exists)
+					{
+						ereport(NOTICE,
+								(errcode(ERRCODE_DUPLICATE_COLUMN),
+								 errmsg("column \"%s\" of relation \"%s\" already exists, skipping",
+										colname, RelationGetRelationName(rel))));
+						return false;
+					}
+
+					ereport(ERROR,
+							(errcode(ERRCODE_DUPLICATE_COLUMN),
+							 errmsg("column \"%s\" of relation \"%s\" already exists",
+									colname, RelationGetRelationName(rel))));
+				}
+			}
+		}
+	}
+
+	/*
+	 * this test is deliberately not attisdropped-aware, since if one tries to
+	 * add a column matching a dropped column name, it's gonna fail anyway.
+	 */
+	attTuple = SearchSysCache2(ATTNAME,
+							   ObjectIdGetDatum(RelationGetRelid(rel)),
+							   PointerGetDatum(colname));
+	if (!HeapTupleIsValid(attTuple))
+		return true;
+
+	attnum = ((Form_pg_attribute) GETSTRUCT(attTuple))->attnum;
+	ReleaseSysCache(attTuple);
+
+	/*
+	 * We throw a different error message for conflicts with system column
+	 * names, since they are normally not shown and the user might otherwise
+	 * be confused about the reason for the conflict.
+	 */
+	if (attnum <= 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_DUPLICATE_COLUMN),
+				 errmsg("column name \"%s\" conflicts with a system column name",
+						colname)));
+	else
+	{
+		if (if_not_exists)
+		{
+			ereport(NOTICE,
+					(errcode(ERRCODE_DUPLICATE_COLUMN),
+					 errmsg("column \"%s\" of relation \"%s\" already exists, skipping",
+							colname, RelationGetRelationName(rel))));
+			return false;
+		}
+
+		ereport(ERROR,
+				(errcode(ERRCODE_DUPLICATE_COLUMN),
+				 errmsg("column \"%s\" of relation \"%s\" already exists",
+						colname, RelationGetRelationName(rel))));
+	}
+
+	return true;
+}
+/* End - BUG#Z00004315/4316 */
