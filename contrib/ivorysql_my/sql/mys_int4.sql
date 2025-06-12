@@ -331,3 +331,41 @@ insert into tb_test values ('123abc');
 select * from tb_test;
 drop table tb_test;
 set sql_mode = default;
+
+-- fix bug 5060
+create table t(c integer(-1) signed);
+create table t(c integer(-1) SIGNED);
+create table t(c integer(-1));
+create table t(c int4(-1) signed);
+create table t(c int4(-1) SIGNED);
+create table t(c int4(-1));
+create table t(c INT4(-1) signed);
+create table t(c INT4(-1) SIGNED);
+create table t(c INT4(-1));
+create table t(c integer(256) signed);
+create table t(c integer(256) SIGNED);
+create table t(c integer(256));
+create table t(c int4(256) signed);
+create table t(c int4(256) SIGNED);
+create table t(c int4(256));
+create table t(c INT4(256) signed);
+create table t(c INT4(256) SIGNED);
+create table t(c INT4(256));
+create table t(c int(256) signed);
+create table t(c int(256) SIGNED);
+create table t(c int(256));
+create table t(c INT(256) signed);
+create table t(c INT(256) SIGNED);
+create table t(c INT(256));
+create table t(c int(-1) signed);
+create table t(c int(-1) SIGNED);
+create table t(c int(-1));
+create table t(c INT(-1) signed);
+create table t(c INT(-1) SIGNED);
+create table t(c INT(-1));
+
+-- fix bug 5103
+create table t1(c int(10) signed);
+drop table t1;
+create table t2(c integer(10) signed);
+drop table t2;
