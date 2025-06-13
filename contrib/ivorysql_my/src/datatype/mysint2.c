@@ -42,6 +42,7 @@ PG_FUNCTION_INFO_V1(myint2_bit_neg);
 PG_FUNCTION_INFO_V1(myint2_positive);
 PG_FUNCTION_INFO_V1(myint2_negative);
 PG_FUNCTION_INFO_V1(myint2_boolean);
+PG_FUNCTION_INFO_V1(boolean_myint2);
 
 int16 
 my_atoi_int2(const char *s)
@@ -428,4 +429,13 @@ myint2_boolean(PG_FUNCTION_ARGS)
 	int64	val1 = PG_GETARG_INT64(0);
 
 	PG_RETURN_BOOL(val1 != 0);
+}
+
+/* cast boolean to int2 */
+Datum 
+boolean_myint2(PG_FUNCTION_ARGS)
+{
+	int64	val1 = PG_GETARG_BOOL(0);
+
+	PG_RETURN_BOOL(val1 ? true : false);
 }
