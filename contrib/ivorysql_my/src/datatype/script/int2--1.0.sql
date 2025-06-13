@@ -266,6 +266,30 @@ CREATE CAST (pg_catalog.int2 AS pg_catalog.varchar)
 WITH INOUT
 AS ASSIGNMENT;
 
+CREATE FUNCTION ivymy.mystext2int2(pg_catalog.varchar)
+RETURNS pg_catalog.int2
+AS 'MODULE_PATHNAME', 'mystext2int2'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+CREATE CAST(pg_catalog.varchar as pg_catalog.int2) 
+WITH FUNCTION ivymy.mystext2int2(pg_catalog.varchar) 
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.boolean_myint2(pg_catalog.bool) 
+RETURNS pg_catalog.int2
+AS 'MODULE_PATHNAME','boolean_myint2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (pg_catalog.bool AS pg_catalog.int2)
+WITH FUNCTION ivymy.boolean_myint2(pg_catalog.bool)
+AS ASSIGNMENT;
+
 -- operator xor or and
 CREATE FUNCTION ivymy.myint2_boolean(pg_catalog.int2) 
 RETURNS pg_catalog.bool 
