@@ -15093,20 +15093,35 @@ NumericNoConflict:
 					$$->location = @1;
 				}
 		;
-opt_float_noempty: '(' Iconst ')'
+/* Begin - BUG#Z5182 */
+opt_float_noempty: '(' a_expr ')'
 				{
 					/*
 					 * Check FLOAT() precision limits assuming IEEE floating
 					 * types - thomas 1997-09-18
 					 */
-					if ($2 < 1)
+					Node   *typmod = $2;
+					int		mod = -1;
+					if (IsA(typmod, A_Const))
+					{
+						A_Const   *tynode = (A_Const *)typmod;
+						if (nodeTag(&tynode->val) == T_Float)
+						{
+							mod = floatVal(&tynode->val);
+						}
+						else if (nodeTag(&tynode->val) == T_Integer)
+						{
+							mod = intVal(&tynode->val);
+						}
+					}
+					if (mod < 0)
 						ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								 errmsg("precision for type float must be at least 1 bit"),
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near"),
 								 parser_errposition(@2)));
-					else if ($2 <= 24)
+					else if (mod <= 24)
 						$$ = SystemTypeName("float4");
-					else if ($2 <= 53)
+					else if (mod <= 53)
 						$$ = SystemTypeName("float8");
 					else
 						ereport(ERROR,
@@ -15114,6 +15129,7 @@ opt_float_noempty: '(' Iconst ')'
 								 errmsg("precision for type float must be less than 54 bits"),
 								 parser_errposition(@2)));
 				}
+/* End - BUG#Z5182 */
 			| mys_float
 				{
 					$$ = $1;

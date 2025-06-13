@@ -627,21 +627,21 @@ create table t2(id real);
 drop table t1,t2;
 --neg--bug uint8
 select ~2.5::float8;
- ?column? 
-----------
-       -3
+       ?column?       
+----------------------
+ 18446744073709551613
 (1 row)
 
 select ~0.0::float8;
- ?column? 
-----------
-       -1
+       ?column?       
+----------------------
+ 18446744073709551615
 (1 row)
 
 select ~(-2.5::float8);
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 --logic not
@@ -662,6 +662,17 @@ select !(-2.5::float8);--f
 ----------
  f
 (1 row)
+
+--BUG#Z5183
+CREATE TABLE tb_test (f FLOAT);
+INSERT INTO tb_test VALUES (3.14), (0), (-2.5);
+select ~f,-f,!f from tb_test;
+       ?column?       |      ?column?      | ?column? 
+----------------------+--------------------+----------
+ 18446744073709551612 | -3.140000104904175 | f
+ 18446744073709551615 |                 -0 | t
+ 1                    |                2.5 | f
+(3 rows)
 
 --<=>
 select 0.9::float4 <=> 0.0::float4;--f
@@ -2271,3 +2282,7 @@ select NULL XOR 0.9::float8;--NULL
  
 (1 row)
 
+--BUG#Z5182
+create table tb_test1 (id float(0));
+create table tb_test2 (id FLOAT(8.9));
+drop table tb_test1,tb_test2;
