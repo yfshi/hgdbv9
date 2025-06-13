@@ -651,6 +651,16 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
+----function negative
+CREATE FUNCTION ivymy.mysuint8_negative(ivymy.mysuint8)
+RETURNS  bigint
+AS 'MODULE_PATHNAME','mysuint8_negative'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
 ----function sub
 CREATE FUNCTION ivymy.mysuint8_sub(ivymy.mysuint8, ivymy.mysuint8)
 RETURNS  ivymy.mysuint8
@@ -1999,6 +2009,12 @@ CREATE OPERATOR + (
 
 --operator -
 CREATE OPERATOR - (
+	procedure = ivymy.mysuint8_negative,
+	rightarg = ivymy.mysuint8
+);
+
+--operator -
+CREATE OPERATOR - (
 	procedure = ivymy.mysuint8_sub,
 	leftarg = ivymy.mysuint8,
 	rightarg = ivymy.mysuint8
@@ -2689,23 +2705,29 @@ CREATE AGGREGATE ivymy.min(ivymy.mysuint8) (
 );
 
 /* AVG */
-CREATE FUNCTION ivymy.mysuint8_avg_accum(pg_catalog.int8[], ivymy.mysuint8)
-RETURNS pg_catalog.int8[]
+CREATE FUNCTION ivymy.mysuint8_avg_accum(internal, ivymy.mysuint8)
+RETURNS internal
 AS 'MODULE_PATHNAME', 'mysuint8_avg_accum'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.mysuint8_avg(internal)
+RETURNS pg_catalog.numeric
+AS 'MODULE_PATHNAME', 'mysuint8_avg'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE AGGREGATE ivymy.avg(ivymy.mysuint8) (
    sfunc = mysuint8_avg_accum, 
-   stype = bigint[],
-   finalfunc = int8_avg,
-   initcond = '{0,0}'
+   stype = internal,
+   finalfunc = mysuint8_avg
 );
 
 /* sum */
-CREATE FUNCTION ivymy.mysuint8_sum(pg_catalog.int8, ivymy.mysuint8)
-RETURNS pg_catalog.int8
+CREATE FUNCTION ivymy.mysuint8_sum(pg_catalog.numeric, ivymy.mysuint8)
+RETURNS pg_catalog.numeric
 AS 'MODULE_PATHNAME', 'mysuint8_sum'
 LANGUAGE C
 PARALLEL SAFE
@@ -2713,5 +2735,5 @@ IMMUTABLE;
 
 CREATE AGGREGATE ivymy.sum(ivymy.mysuint8) (
   SFUNC = ivymy.mysuint8_sum,
-  STYPE = pg_catalog.int8
+  STYPE = pg_catalog.numeric
 );

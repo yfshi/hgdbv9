@@ -124,6 +124,8 @@ PG_FUNCTION_INFO_V1(int2_addmysuint1);
 PG_FUNCTION_INFO_V1(int4_addmysuint1);
 PG_FUNCTION_INFO_V1(int8_addmysuint1);
 
+PG_FUNCTION_INFO_V1(mysuint1_negative);
+
 PG_FUNCTION_INFO_V1(mysuint1_submysuint1);
 PG_FUNCTION_INFO_V1(mysuint1_subint2);
 PG_FUNCTION_INFO_V1(mysuint1_subint4);
@@ -931,6 +933,14 @@ int8_addmysuint1(PG_FUNCTION_ARGS)
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}	
 	PG_RETURN_UINT64(val1 + val2);
+}
+
+Datum
+mysuint1_negative(PG_FUNCTION_ARGS)
+{
+	uint8		val1 = PG_GETARG_UINT32(0);
+
+	PG_RETURN_INT32(-((int32)val1));
 }
 
 Datum
@@ -2013,7 +2023,7 @@ Datum mysuint1_smaller(PG_FUNCTION_ARGS)
 Datum mysuint1_avg_accum(PG_FUNCTION_ARGS)
 {
 	ArrayType  *transarray;
-	int32		newval = PG_GETARG_INT32(1);
+	uint8		newval = 0;
 	Int8TransTypeData *transdata = NULL;
 
 	/*
@@ -2025,6 +2035,12 @@ Datum mysuint1_avg_accum(PG_FUNCTION_ARGS)
 		transarray = PG_GETARG_ARRAYTYPE_P(0);
 	else
 		transarray = PG_GETARG_ARRAYTYPE_P_COPY(0);
+
+	if (PG_ARGISNULL(1))
+	{
+		PG_RETURN_ARRAYTYPE_P(transarray);
+	}
+	newval = PG_GETARG_UINT32(1);
 
 	if (ARR_HASNULL(transarray) ||
 		ARR_SIZE(transarray) != ARR_OVERHEAD_NONULLS(1) + sizeof(Int8TransTypeData))
@@ -2039,7 +2055,7 @@ Datum mysuint1_avg_accum(PG_FUNCTION_ARGS)
 
 Datum mysuint1_sum(PG_FUNCTION_ARGS)
 {
-	int64		newval;
+	uint8		newval;
 
 	if (PG_ARGISNULL(0))
 	{
@@ -2047,7 +2063,7 @@ Datum mysuint1_sum(PG_FUNCTION_ARGS)
 		if (PG_ARGISNULL(1))
 			PG_RETURN_NULL();	/* still no non-null */
 		/* This is the first non-null input. */
-		newval = (int64) PG_GETARG_INT32(1);
+		newval = PG_GETARG_UINT32(1);
 		PG_RETURN_INT64(newval);
 	}
 
@@ -2079,9 +2095,10 @@ Datum mysuint1_sum(PG_FUNCTION_ARGS)
 			PG_RETURN_INT64(oldsum);
 
 		/* OK to do the addition. */
-		newval = oldsum + (int64) PG_GETARG_INT32(1);
+		newval = PG_GETARG_UINT32(1);
+		oldsum = oldsum + newval;
 
-		PG_RETURN_INT64(newval);
+		PG_RETURN_INT64(oldsum);
 	}
 }
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-uint1 */

@@ -651,6 +651,16 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
+----function negative
+CREATE FUNCTION ivymy.mysuint2_negative(ivymy.mysuint2)
+RETURNS  pg_catalog.int4
+AS 'MODULE_PATHNAME','mysuint2_negative'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
 ----function sub
 CREATE FUNCTION ivymy.mysuint2_sub(ivymy.mysuint2, ivymy.mysuint2)
 RETURNS  ivymy.mysuint4
@@ -1982,6 +1992,12 @@ CREATE OPERATOR + (
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.mysuint2,
 	commutator = +
+);
+
+--operator -
+CREATE OPERATOR - (
+	procedure = ivymy.mysuint2_negative,
+	rightarg = ivymy.mysuint2
 );
 
 --operator -

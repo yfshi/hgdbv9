@@ -14649,48 +14649,45 @@ GenericType:
 					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4-UINT8 */
 					if ($3)
 					{
-						A_Const *node_const = NULL;
 						List	   *typmods = $2;
 
 						if (typmods != NULL)
 						{
-							if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+							int	typmod = MySQLNumericCheckTypemod(typmods, @2, yyscanner);
+							if(-1 == typmod)
 							{
-								ereport(ERROR,
-										(errcode(ERRCODE_SYNTAX_ERROR),
-										errmsg("syntax error at or near"),
-										parser_errposition(@2)));
+								typmods = typmods;
 							}
-
-							node_const = (A_Const *) linitial(typmods);
-							if (nodeTag(&node_const->val) != T_Integer ||
-								node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+							else
 							{
-								ereport(ERROR,
-										(errcode(ERRCODE_SYNTAX_ERROR),
-										errmsg("syntax error at or near"),
-										parser_errposition(@2)));
+								typmods = list_make1(makeIntConst(typmod, @2));
 							}
 						}
 
 						if (strcmp($1, "int2") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint2");
-							$$->typmods = $2;
+							$$->typmods = typmods;
 							$$->location = @1;
 						}
-						if (strcmp($1, "int4") == 0)
+						else if (strcmp($1, "int4") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint4");
-							$$->typmods = $2;
+							$$->typmods = typmods;
 							$$->location = @1;
 						}
-						if (strcmp($1, "int8") == 0)
+						else if (strcmp($1, "int8") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint8");
-							$$->typmods = $2;
+							$$->typmods = typmods;
 							$$->location = @1;
-						}	
+						}
+						else
+						{
+							$$ = MySQLSystemTypeName($1);
+							$$->typmods = typmods;
+							$$->location = @1;
+						}
 					}	
 					/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4-UINT8 */
 					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
@@ -14719,6 +14716,11 @@ GenericType:
 						$$ = makeTypeName($1);
 						$$->location = @1;
 					}
+					else
+					{
+						$$ = makeTypeName($1);
+						$$->location = @1;
+					}
 				}
 			| type_function_name attrs opt_type_modifiers
 				{
@@ -14736,13 +14738,22 @@ opt_type_modifiers: '(' expr_list ')'				{ $$ = $2; }
  * SQL numeric data types
  */
 Numeric:	NumericNoConflict { $$ = $1; }
-			| integer_int
+			| integer_int opt_type_modifiers flag_signed
 				{
-					$$ = SystemTypeName("int4");
-					$$->location = @1;
-				}
-			| integer_int SIGNED
-				{
+					List	   *typmods = $2;
+
+					if (typmods != NULL)
+					{
+						int	typmod = MySQLNumericCheckTypemod(typmods, @2, yyscanner);
+						if(-1 == typmod)
+						{
+							typmods = typmods;
+						}
+						else
+						{
+							typmods = list_make1(makeIntConst(typmod, @2));
+						}
+					}
 					$$ = SystemTypeName("int4");
 					$$->location = @1;
 				}
@@ -14961,6 +14972,7 @@ NumericNoConflict:
 					List	   *typmods = $2;
 
 					$$ = MySQLSystemTypeName("mysuint1");
+					$$->typmods = list_make1(makeIntConst(3, -1));
 					if (typmods != NULL)
 					{
 						int	typmod = MySQLNumericCheckTypemod(typmods, @2, yyscanner);
@@ -14980,6 +14992,7 @@ NumericNoConflict:
 					List	   *typmods = $2;
 
 					$$ = MySQLSystemTypeName("mysuint2");
+					$$->typmods = list_make1(makeIntConst(5, -1));
 					if (typmods != NULL)
 					{
 						int	typmod = MySQLNumericCheckTypemod(typmods, @2, yyscanner);
@@ -14998,7 +15011,7 @@ NumericNoConflict:
 				{
 					List	   *typmods = $2;
 					$$ = MySQLSystemTypeName("mysuint3");
-					$$->typmods = list_make1(makeIntConst(11, -1));
+					$$->typmods = list_make1(makeIntConst(8, -1));
 					if (typmods != NULL)
 					{
 						int	typmod = MySQLNumericCheckTypemod(typmods, @2, yyscanner);
@@ -15015,46 +15028,45 @@ NumericNoConflict:
 				}
 			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-			| integer_int unsigned_list
+			| integer_int opt_type_modifiers unsigned_list
 				{
+					List	   *typmods = $2;
 					$$ = MySQLSystemTypeName("mysuint4");
-					$$->location = @1;
-				}
-			| integer_int '(' Iconst ')' field_unsigned
-				{
-					if($5)
+					$$->typmods = list_make1(makeIntConst(10, -1));
+					if (typmods != NULL)
 					{
-						$$ = MySQLSystemTypeName("mysuint4");
-						$$->typmods = list_make1(makeIntConst($3, @3));
-						$$->location = @1;
-					} 
-					else
-					{
-						$$ = SystemTypeName("int4");
-						$$->location = @1;
+						int	typmod = MySQLNumericCheckTypemod(typmods, @2, yyscanner);
+						if(-1 == typmod)
+						{
+							$$->typmods = typmods;
+						}
+						else
+						{
+							$$->typmods = list_make1(makeIntConst(typmod, @2));
+						}
 					}
+					$$->location = @1;
 				}
 			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-			| BIGINT unsigned_list
+			| BIGINT opt_type_modifiers unsigned_list
 				{
+					List	   *typmods = $2;
 					$$ = MySQLSystemTypeName("mysuint8");
-					$$->location = @1;
-				}
-			| BIGINT '(' Iconst ')' field_unsigned
-				{
-					if($5)
+					$$->typmods = list_make1(makeIntConst(20, -1));
+					if (typmods != NULL)
 					{
-						$$ = MySQLSystemTypeName("mysuint8");
-						$$->typmods = list_make1(makeIntConst($3, @3));
-						$$->location = @1;
-					} 
-					else
-					{
-						$$ = SystemTypeName("int4");
-						$$->typmods = list_make1(makeIntConst($3, @3));
-						$$->location = @1;
+						int	typmod = MySQLNumericCheckTypemod(typmods, @2, yyscanner);
+						if(-1 == typmod)
+						{
+							$$->typmods = typmods;
+						}
+						else
+						{
+							$$->typmods = list_make1(makeIntConst(typmod, @2));
+						}
 					}
+					$$->location = @1;
 				}
 			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */				
 			|REAL mys_float
@@ -19913,7 +19925,7 @@ MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscanne
 		if (mod < 0 || mod > 255)
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
-						errmsg("syntax error at or near"),
+						errmsg("Display width out of range for column 'age' (min = 0 max = 255)"),
 						parser_errposition(position)));
 	}
 	else if (nodeTag(&node_const->val) != T_Integer ||
@@ -19921,7 +19933,7 @@ MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscanne
 	{
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("syntax error at or near"),
+					errmsg("Display width out of range for column 'age' (min = 0 max = 255)"),
 					parser_errposition(position)));
 	}
 

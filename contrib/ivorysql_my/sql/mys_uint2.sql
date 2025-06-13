@@ -60,6 +60,13 @@ insert into t2 values (2);
 select * from t2;
 drop table t2;
 
+create table t2(age smallint(256.4) unsigned);
+create table t2(id1 int2(255.9) unsigned, id2 int2(254.9) unsigned, age smallint(255.4) unsigned);
+\d t2
+insert into t2 values (2, 5, 44);
+select * from t2;
+drop table t2;
+
 --smallint zerofill
 create table t2 (a smallint(-1) ZEROFILL);
 
@@ -491,5 +498,20 @@ SELECT * FROM t1;
 SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
 SELECT AVG(m1) AS avg_value FROM t1;
 SELECT SUM(m1) AS sum_value FROM t1;
+DROP TABLE t1;
 
+create table t1(id int2 unsigned);
+insert into t1 values (1),(null);
+select * from t1;
+select avg(id) from t1;
+DROP TABLE t1;
+
+create table t_aggregate (value int2 unsigned);
+insert into t_aggregate (value) values (128), (100), (0), (50), (100), (255), (32767), (65535);
+select avg(value), SUM(value) from t_aggregate;
+DROP TABLE t_aggregate;
+
+create table t1 (col_uint int2 unsigned);
+insert into t1 values (100);
+select -col_uint from t1;
 DROP TABLE t1;
