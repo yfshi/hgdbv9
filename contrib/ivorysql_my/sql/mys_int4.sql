@@ -381,3 +381,13 @@ set div_precision_increment = 99;
 show div_precision_increment;
 set div_precision_increment = -1;
 show div_precision_increment;
+
+-- fix bug 5091
+create table test_MEDIUMINT (a int3,b mediumint signed);
+insert into test_MEDIUMINT (a, b) values(8388607, -8388608);
+select a * b AS mul_result from test_MEDIUMINT;
+drop table test_MEDIUMINT;
+create table test_INT (a int4,b int signed);
+insert into test_INT (a, b) values(8388607, -8388608);
+select a * b AS mul_result from test_INT;
+drop table test_INT;
