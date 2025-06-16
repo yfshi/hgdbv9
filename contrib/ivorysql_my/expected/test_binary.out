@@ -14,7 +14,8 @@ DROP TABLE IF EXISTS
   my_binary_t4,
   my_binary_t5,
   my_binary_t6,
-  my_binary_t7
+  my_binary_t7,
+  my_binary_t8
 ;
 NOTICE:  table "my_binary_t1" does not exist, skipping
 NOTICE:  table "my_binary_t2" does not exist, skipping
@@ -23,6 +24,7 @@ NOTICE:  table "my_binary_t4" does not exist, skipping
 NOTICE:  table "my_binary_t5" does not exist, skipping
 NOTICE:  table "my_binary_t6" does not exist, skipping
 NOTICE:  table "my_binary_t7" does not exist, skipping
+NOTICE:  table "my_binary_t8" does not exist, skipping
 CREATE TABLE my_binary_t1(c1 binary(-1)); -- should error
 ERROR:  syntax error at or near "-"
 LINE 1: CREATE TABLE my_binary_t1(c1 binary(-1));
@@ -162,6 +164,33 @@ SELECT binary('101010') as result; -- should ok
 --------
  101010
 (1 row)
+
+set sql_mode='';
+set mysql.enable_character_blob to off;
+CREATE TABLE my_binary_t8 (c1 binary(8));
+INSERT  INTO my_binary_t8 values ('HGDB');
+INSERT  INTO my_binary_t8 values ('Database');
+INSERT  INTO my_binary_t8 values ('Database1');
+WARNING:  value too long for type binary(8), data truncated
+LINE 1: INSERT  INTO my_binary_t8 values ('Database1');
+                                          ^
+INSERT  INTO my_binary_t8 values ('Database ');
+WARNING:  value too long for type binary(8), data truncated
+LINE 1: INSERT  INTO my_binary_t8 values ('Database ');
+                                          ^
+INSERT  INTO my_binary_t8 values ('数据库');
+WARNING:  value too long for type binary(8), data truncated
+LINE 1: INSERT  INTO my_binary_t8 values ('数据库');
+                                          ^
+SELECT * FROM my_binary_t8;
+         c1         
+--------------------
+ \x4847444200000000
+ \x4461746162617365
+ \x4461746162617365
+ \x4461746162617365
+ \xe695b0e68daee5ba
+(5 rows)
 
 DISCARD ALL;
 /*
