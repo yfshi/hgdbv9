@@ -14664,7 +14664,7 @@ GenericType:
 							}
 						}
 
-					if (strcmp($1, "int2") == 0 || strcmp($1, "INT2") == 0 )
+						if (strcmp($1, "int2") == 0 || strcmp($1, "INT2") == 0 )
 						{
 							$$ = MySQLSystemTypeName("mysuint2");
 							$$->typmods = typmods;
@@ -14765,6 +14765,29 @@ GenericType:
 					}
 					else
 					{
+						A_Const *node_const = NULL;
+						List	   *typmods = $2;
+
+						if (typmods != NULL)
+						{
+							if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+
+							node_const = (A_Const *) linitial(typmods);
+							if (nodeTag(&node_const->val) != T_Integer ||
+								node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+						}
 						$$ = makeTypeName($1);
 						$$->location = @1;
 					}
@@ -15094,17 +15117,6 @@ NumericNoConflict:
 					}
 					$$->location = @1;
 				}
-			// | integer_int '(' Iconst ')' SIGNED
-			// 	{
-			// 		if ($3 < 0 || $3 > 255)
-			// 			ereport(ERROR,
-			// 				(errcode(ERRCODE_SYNTAX_ERROR),
-			// 				errmsg("syntax error at or near"),
-			// 				parser_errposition(@2)));
-
-			// 		$$ = SystemTypeName("int4");
-			// 		$$->location = @1;
-			// 	}
 			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 			| BIGINT opt_type_modifiers unsigned_list
