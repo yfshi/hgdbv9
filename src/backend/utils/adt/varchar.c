@@ -351,7 +351,10 @@ bpchar(PG_FUNCTION_ARGS)
 		for (i = 0; i < len; i++)
 		{
 			if (!myscharis_space(s[i]))
+			{
 				all_spaces = false;
+				break;
+			}
 		}
 		/* End - BUG#Z00005074 */
 
@@ -717,7 +720,21 @@ varchar(PG_FUNCTION_ARGS)
 	 */
 	if (compatible_db == MYS_PARSER && maxlen == 0 && len > 0)
 	{
-		if (is_strict_mode())
+		/* Begin - BUG#Z00005148 */
+		int		i;
+		bool	all_spaces = true;
+
+		for (i = 0; i < len; i++)
+		{
+			if (!myscharis_space(s_data[i]))
+			{
+				all_spaces = false;
+				break;
+			}
+		}
+		/* End - BUG#Z00005148 */
+
+		if (!all_spaces && is_strict_mode())	/* BUG#Z00005148 */
 		{
 			ereport(ERROR,
 					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),

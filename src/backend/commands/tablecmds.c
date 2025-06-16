@@ -4040,7 +4040,12 @@ renameatt_internal(Oid myrelid,
 						oldattname)));
 
 	/* new name should not already exist */
-	(void) check_for_column_name_collision(targetrelation, newattname, false);
+	/* Begin - BUG#Z00004315/4316 */
+	if (mysql_check_for_column_name_collision && mysql_switch_hook && mysql_switch_hook())
+		mysql_check_for_column_name_collision(targetrelation, newattname, true, true);
+	else
+		(void) check_for_column_name_collision(targetrelation, newattname, false);
+	/* End - BUG#Z00004315/4316 */
 
 	/* apply the update */
 	namestrcpy(&(attform->attname), newattname);
@@ -7532,11 +7537,24 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	}
 
 	/* skip if the name already exists and if_not_exists is true */
-	if (!check_for_column_name_collision(rel, colDef->colname, if_not_exists))
+	/* Begin - BUG#Z00004315/4316 */
+	if (mysql_check_for_column_name_collision && mysql_switch_hook && mysql_switch_hook())
 	{
-		table_close(attrdesc, RowExclusiveLock);
-		return InvalidObjectAddress;
+		if (!mysql_check_for_column_name_collision(rel, colDef->colname, if_not_exists, false))
+		{
+			table_close(attrdesc, RowExclusiveLock);
+			return InvalidObjectAddress;
+		}
 	}
+	else
+	{
+		if (!check_for_column_name_collision(rel, colDef->colname, if_not_exists))
+		{
+			table_close(attrdesc, RowExclusiveLock);
+			return InvalidObjectAddress;
+		}
+	}
+	/* End - BUG#Z00004315/4316 */
 
 	generate = colDef->generated;	/* ReqID:SRS-SQL-VIRTUALCOL */
 	/*
@@ -8004,42 +8022,6 @@ check_for_column_name_collision(Relation rel, const char *colname,
 {
 	HeapTuple	attTuple;
 	int			attnum;
-
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_switch_hook())
-	{
-		TupleDesc	tupdesc = NULL;
-
-		tupdesc = RelationGetDescr(rel);
-		if (tupdesc)
-		{
-			int i;
-
-			for (i = 0; i < tupdesc->natts; i++)
-			{
-				Form_pg_attribute att = TupleDescAttr(tupdesc, i);
-
-				if (!pg_strcasecmp(colname, NameStr(att->attname)))
-				{
-
-					if (if_not_exists)
-					{
-						ereport(NOTICE,
-								(errcode(ERRCODE_DUPLICATE_COLUMN),
-								 errmsg("column \"%s\" of relation \"%s\" already exists, skipping",
-										colname, RelationGetRelationName(rel))));
-						return false;
-					}
-
-					ereport(ERROR,
-							(errcode(ERRCODE_DUPLICATE_COLUMN),
-							 errmsg("column \"%s\" of relation \"%s\" already exists",
-									colname, RelationGetRelationName(rel))));
-				}
-			}
-		}
-	}
-	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * this test is deliberately not attisdropped-aware, since if one tries to

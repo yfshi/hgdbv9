@@ -673,4 +673,50 @@ select cast(col as char), char_length(cast(col as char)) from tb;
 select cast(col as char(0)), char_length(cast(col as char(0))) from tb;
 select cast(col as char(10)), char_length(cast(col as char(10))) from tb;
 drop table tb;
+
+-- bug#z5124
+create table tb (col char(10)); 
+insert into tb values('abc');
+select convert('abc' using gbk);
+select convert('abc' using gb18030);
+drop table tb;
+
+-- bug#z5134
+create table tb (id int,col char(10)); 
+insert into tb values(1,'abc'); 
+insert into tb values(2,'123'); 
+insert into tb values(3,'123.4');
+select convert(col ,unsigned) from tb where id=1;  --0
+select convert(col , unsigned) from tb where id=2; --123
+select convert(col , unsigned) from tb where id=3; --123
+drop table tb;
+
+-- bug#z5148
+create table tb(col varchar(0));
+\d+ tb
+insert into tb values();
+insert into tb values(NULL);
+insert into tb values('');
+insert into tb values(' '); --succ
+insert into tb values(1);
+insert into tb values('a');
+drop table tb;
+
+-- bug#z5149
+create table tb (col varchar(10)); 
+insert into tb values('xy');
+select cast(col as char), char_length(cast(col as char)) from tb; --('xy',2)
+select cast(col as char(0)), char_length(cast(col as char(0))) from tb; --(,0)
+select cast(col as char(10)), char_length(cast(col as char(10))) from tb; --('xy',2)
+drop table tb;
+
+-- bug#z5153
+create table tb (id int,col varchar(10));
+insert into tb values(1,'abc');
+insert into tb values(2,'123');
+insert into tb values(3,'123.4');
+select convert(col ,unsigned) from tb where id=1; --0
+select convert(col , unsigned) from tb where id=2; --123
+select convert(col , unsigned) from tb where id=3; --123
+
 set mysql.functional_diff_control to off;

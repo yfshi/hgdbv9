@@ -15280,7 +15280,7 @@ CharacterWithLength:  character '(' Iconst ')'
 					if (length < 0 || length > 4294967295)
 							ereport(ERROR,
 											(errcode(ERRCODE_SYNTAX_ERROR),
-											 errmsg("You have an error in you SQL syntax in text( ... "),
+											 errmsg("Display width out of range for text length ( 0 <= length <= 4294967295)"),	/* BUG#Z00005157 */
 											 parser_errposition(@1)));
 					else if (length > 0 && length <= 255)
 							$$ = MySQLSystemTypeName("tinytext");
@@ -16931,6 +16931,20 @@ func_expr_common_subexpr:
 					$$ = makeTypeCast($3, $5, @1);
 				}
 			/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
+			/* Begin - BUG#Z00005134 */
+			| CONVERT '(' a_expr ',' UNSIGNED INTEGER ')'
+				{
+					$$ = makeTypeCast($3, MySQLSystemTypeName("mysuint4"), @1);
+				}
+			| CONVERT '(' a_expr ',' UNSIGNED INT_P ')'
+				{
+					$$ = makeTypeCast($3, MySQLSystemTypeName("mysuint4"), @1);
+				}
+			| CONVERT '(' a_expr ',' UNSIGNED')'
+				{
+					$$ = makeTypeCast($3, MySQLSystemTypeName("mysuint8"), @1);
+				}
+			/* End - BUG#Z00005134 */
 			/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 			| CAST '(' a_expr AS UNSIGNED INTEGER ')'
 				{ 				

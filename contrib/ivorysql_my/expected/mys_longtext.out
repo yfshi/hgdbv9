@@ -67,7 +67,7 @@ LINE 1: create table tb3(col text(4294967295) charset utf8);
                                               ^
 \d+ tb3
 create table tb4(col text(4294967296) charset utf8);  -- fail
-ERROR:  You have an error in you SQL syntax in text( ... 
+ERROR:  Display width out of range for text length ( 0 <= length <= 4294967295)
 LINE 1: create table tb4(col text(4294967296) charset utf8);
                              ^
 \d+ tb4
@@ -1446,6 +1446,7 @@ create table tb5 as select cast('{"name":"CoderAcademy", "age": 30}'::longtext a
 
 drop table if exists tb1,tb2,tb3,tb4,tb5;
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_CONVERT_001
+set mysql.functional_diff_control = true;
 create table tb (col longtext);
 insert into tb values('abc');
 select convert('abc' using gbk);  -- success
@@ -1492,27 +1493,27 @@ insert into tb values('xy');
 select convert(col , char), char_length(convert(col , char)) from tb;  -- ('xy',2)
  col | char_length 
 -----+-------------
- x   |           1
+ xy  |           2
 (1 row)
 
 select convert(col , char(0)), char_length(convert(col , char(0)))  from tb;  -- (,0)
 WARNING:  value too long for type char(0), Data truncated.
 WARNING:  value too long for type char(0), Data truncated.
- col | char_length 
------+-------------
-     |           0
+ bpchar | char_length 
+--------+-------------
+        |           0
 (1 row)
 
 select convert(col , char(10)), char_length(convert(col , char(10)))  from tb;  -- ('xy',2)
-    col     | char_length 
-------------+-------------
- xy         |           2
+ col | char_length 
+-----+-------------
+ xy  |           2
 (1 row)
 
 select convert(col , char(10)), char_length(convert(col , char(10) charset utf16))  from tb;  -- ('xy',2)
-    col     | char_length 
-------------+-------------
- xy         |           2
+ col | char_length 
+-----+-------------
+ xy  |           2
 (1 row)
 
 drop table if exists tb;
@@ -1620,27 +1621,27 @@ insert into tb values('xy');
 select convert(col , nchar), char_length(convert(col , nchar)) from tb;  -- ('xy',2)
  col | char_length 
 -----+-------------
- x   |           1
+ xy  |           2
 (1 row)
 
 select convert(col , nchar(0)), char_length(convert(col , nchar(0))) from tb;  -- (,0)
 WARNING:  value too long for type char(0), Data truncated.
 WARNING:  value too long for type char(0), Data truncated.
- col | char_length 
------+-------------
-     |           0
+ bpchar | char_length 
+--------+-------------
+        |           0
 (1 row)
 
 select convert(col , nchar(10)), char_length(convert(col , nchar(10))) from tb;  -- ('xy',2)
-    col     | char_length 
-------------+-------------
- xy         |           2
+ col | char_length 
+-----+-------------
+ xy  |           2
 (1 row)
 
 select convert(col , nchar(10)), char_length(convert(col , nchar(10) charset utf16)) from tb; -- fail
-    col     | char_length 
-------------+-------------
- xy         |           2
+ col | char_length 
+-----+-------------
+ xy  |           2
 (1 row)
 
 drop table if exists tb;
@@ -1717,18 +1718,27 @@ insert into tb values(1,'abc');
 insert into tb values(2,'123');
 insert into tb values(3,'123.4');
 select convert(col ,unsigned) from tb where id=1;  -- 0
-ERROR:  syntax error at or near "unsigned"
-LINE 1: select convert(col ,unsigned) from tb where id=1;
-                            ^
+WARNING:  invalid input syntax for type integer: "abc"
+ col 
+-----
+ 0
+(1 row)
+
 select convert(col , unsigned) from tb where id=2;  -- 123
-ERROR:  syntax error at or near "unsigned"
-LINE 1: select convert(col , unsigned) from tb where id=2;
-                             ^
+ col 
+-----
+ 123
+(1 row)
+
 select convert(col , unsigned) from tb where id=3;  -- 123
-ERROR:  syntax error at or near "unsigned"
-LINE 1: select convert(col , unsigned) from tb where id=3;
-                             ^
+WARNING:  invalid input syntax for type integer: "123.4"
+ col 
+-----
+ 123
+(1 row)
+
 drop table if exists tb;
+set mysql.functional_diff_control = false;
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_CONVERT_013
 create table tb (col longtext);
 insert into tb values('123');

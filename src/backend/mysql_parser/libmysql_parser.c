@@ -296,7 +296,7 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 		case CONVERT:
 			{
 				cur_token_length = 0;
-				if (mysql_convert == false)
+				if (!(mysql_convert && mysql_functional_diff_control))	/* BUG#Z5124 */
 					cur_token = IDENT;
 
 				return cur_token;

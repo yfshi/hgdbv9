@@ -1087,6 +1087,318 @@ ALTER TABLE TB RENAME COLUMN id3_3 TO id4_4;
  name   | character varying(30) |           |          | 
 
 drop table TB;
+--1
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN ID TO ID1_1;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID1_1  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN ID TO Id2_2;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ Id2_2  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN ID TO iD3_3;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ iD3_3  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN ID TO id4_4;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ id4_4  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+--2
+create table TB(ID int, name varchar(30));
+\d TB TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+\d: extra argument "TB" ignored
+ALTER TABLE TB RENAME COLUMN Id TO ID1_1;
+\d TB TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID1_1  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+\d: extra argument "TB" ignored
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN Id TO Id2_2;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ Id2_2  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN Id TO iD3_3;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ iD3_3  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN Id TO id4_4;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ id4_4  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+--3
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN iD TO ID1_1;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID1_1  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN iD TO Id2_2;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ Id2_2  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN iD TO iD3_3;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ iD3_3  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN iD TO id4_4;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ id4_4  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+--4
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN id TO ID1_1;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID1_1  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN id TO Id2_2;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ Id2_2  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN id TO iD3_3;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ iD3_3  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN id TO id4_4;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ id4_4  | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
+--5
+create table TB(ID int, name varchar(30));
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ ID     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN ID TO id;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ id     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN Id TO Id;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ Id     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+ALTER TABLE TB RENAME COLUMN id TO id;
+\d TB
+                        Table "public.TB"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ id     | integer               |           |          | 
+ name   | character varying(30) |           |          | 
+
+drop table TB;
 -- bug:z4316
 create table TB(ID int, name varchar(30));
 insert into TB values (1, 'zhangsan'), (2, 'lisi');
