@@ -14664,20 +14664,20 @@ GenericType:
 							}
 						}
 
-						if (strcmp($1, "int2") == 0 || strcmp($1, "INT2") == 0)
+					if (strcmp($1, "int2") == 0 || strcmp($1, "INT2") == 0 )
 						{
 							$$ = MySQLSystemTypeName("mysuint2");
 							$$->typmods = typmods;
 							$$->location = @1;
 						}
-						if (strcmp($1, "int4") == 0 || strcmp($1, "INT4") == 0
-							|| strcmp($1, "int") == 0 || strcmp($1, "INT") == 0)
+						else if (strcmp($1, "int4") == 0 || strcmp($1, "INT4") == 0 
+								|| strcmp($1, "int") == 0 || strcmp($1, "INT") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint4");
 							$$->typmods = typmods;
 							$$->location = @1;
 						}
-						if (strcmp($1, "int8") == 0 || strcmp($1, "INT8") == 0)
+						else if (strcmp($1, "int8") == 0 || strcmp($1, "INT8") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint8");
 							$$->typmods = typmods;
@@ -14690,6 +14690,7 @@ GenericType:
 							$$->location = @1;
 						}
 					}	
+
 					/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4-UINT8 */
 					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2-INT4 */
 					else if (strcmp($1, "int2") == 0 ||strcmp($1, "INT2") == 0 
@@ -15093,17 +15094,17 @@ NumericNoConflict:
 					}
 					$$->location = @1;
 				}
-			| integer_int '(' Iconst ')' SIGNED
-				{
-					if ($3 < 0 || $3 > 255)
-						ereport(ERROR,
-							(errcode(ERRCODE_SYNTAX_ERROR),
-							errmsg("syntax error at or near"),
-							parser_errposition(@2)));
+			// | integer_int '(' Iconst ')' SIGNED
+			// 	{
+			// 		if ($3 < 0 || $3 > 255)
+			// 			ereport(ERROR,
+			// 				(errcode(ERRCODE_SYNTAX_ERROR),
+			// 				errmsg("syntax error at or near"),
+			// 				parser_errposition(@2)));
 
-					$$ = SystemTypeName("int4");
-					$$->location = @1;
-				}
+			// 		$$ = SystemTypeName("int4");
+			// 		$$->location = @1;
+			// 	}
 			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 			| BIGINT opt_type_modifiers unsigned_list
