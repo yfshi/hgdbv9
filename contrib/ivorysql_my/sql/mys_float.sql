@@ -309,6 +309,11 @@ select !2.5::float8;--f
 select !0::float8;--t
 select !(-2.5::float8);--f
 
+--BUG#Z5183
+CREATE TABLE tb_test (f FLOAT);
+INSERT INTO tb_test VALUES (3.14), (0), (-2.5);
+select ~f,-f,!f from tb_test;
+
 --<=>
 select 0.9::float4 <=> 0.0::float4;--f
 select 1.15::float4 <=> 0.2::float4;--f
@@ -614,3 +619,8 @@ select -2.5::float8 XOR 2.8::float8;--0
 select -5.5::float8 XOR 2.2::float8;--0
 select 0.9::float8 XOR NULL;--NULL
 select NULL XOR 0.9::float8;--NULL
+
+--BUG#Z5182
+create table tb_test1 (id float(0));
+create table tb_test2 (id FLOAT(8.9));
+drop table tb_test1,tb_test2;

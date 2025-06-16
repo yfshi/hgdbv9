@@ -5,7 +5,7 @@
  ***************************************************************/
 -- ~
 CREATE FUNCTION ivymy.mysfloat8_not(float8)
-RETURNS bigint
+RETURNS ivymy.mysuint8 /* BUG#Z5183 */
 AS 'MODULE_PATHNAME','mysfloat8_not'
 LANGUAGE C
 PARALLEL SAFE
