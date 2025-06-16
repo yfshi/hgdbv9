@@ -5850,9 +5850,13 @@ check_audit_sao_permission(Oid roid, bool istable)
 		if (!IS_SYSSAO(roid))
 		{
 			if (istable)
-				elog(ERROR, "permission denied, only role=syssao_role can select this table");
+				ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied, only role=syssao_role can select this table")));
 			else
-				elog(ERROR, "permission denied, only role=syssao_role can run this function");
+				ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied, only role=syssao_role can run this function")));
 		}
 		/* End - BUG#00004872 */
 	}
@@ -5861,9 +5865,13 @@ check_audit_sao_permission(Oid roid, bool istable)
 		if (!superuser())
 		{
 			if (istable)
-				elog(ERROR, "permission denied, only superuser can select this table");
+				ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied, only superuser can select this table")));
 			else
-				elog(ERROR, "permission denied, only superuser can run this function");
+				ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied, only superuser can run this function")));
 		}
 	}
 	return;
@@ -5880,9 +5888,13 @@ check_audit_saosso_perm(Oid roid, bool istable)
 			if (!IS_SYSSAO(roid))
 			{
 				if (istable)
-					elog(ERROR, "permission denied, only role=syssao_role can select this table");
+					ereport(ERROR,
+								(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+								 errmsg("permission denied, only role=syssao_role can select this table")));
 				else
-					elog(ERROR, "permission denied, only role=syssao_role can run this function");
+					ereport(ERROR,
+								(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+								 errmsg("permission denied, only role=syssao_role can run this function")));
 			}
 		}
 		else
@@ -5890,9 +5902,13 @@ check_audit_saosso_perm(Oid roid, bool istable)
 			if (!IS_SYSSAO(roid) && (!IS_SYSSSO(roid)))
 			{
 				if (istable)
-					elog(ERROR, "permission denied, only role=syssao_role or role=syssso_role can select this table");
+					ereport(ERROR,
+								(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+								 errmsg("permission denied, only role=syssao_role or role=syssso_role can select this table")));
 				else
-					elog(ERROR, "permission denied, only role=syssao_role or role=syssso_role can run this function");
+					ereport(ERROR,
+								(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+								 errmsg("permission denied, only role=syssao_role or role=syssso_role can run this function")));
 
 			}
 		}
@@ -5903,9 +5919,13 @@ check_audit_saosso_perm(Oid roid, bool istable)
 		if (!superuser())
 		{
 			if (istable)
-				elog(ERROR, "permission denied, only superuser can select this table");
+				ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied, only superuser can select this table")));
 			else
-				elog(ERROR, "permission denied, only superuser can run this function");
+				ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied, only superuser can run this function")));
 		}
 	}
 	return;
