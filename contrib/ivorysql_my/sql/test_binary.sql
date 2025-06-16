@@ -17,7 +17,8 @@ DROP TABLE IF EXISTS
   my_binary_t4,
   my_binary_t5,
   my_binary_t6,
-  my_binary_t7
+  my_binary_t7,
+  my_binary_t8
 ;
 
 CREATE TABLE my_binary_t1(c1 binary(-1)); -- should error
@@ -73,6 +74,16 @@ SELECT * FROM my_binary_t9;
 SELECT binary'101010' as result; -- should ok
 
 SELECT binary('101010') as result; -- should ok
+
+set sql_mode='';
+set mysql.enable_character_blob to off;
+CREATE TABLE my_binary_t8 (c1 binary(8));
+INSERT  INTO my_binary_t8 values ('HGDB');
+INSERT  INTO my_binary_t8 values ('Database');
+INSERT  INTO my_binary_t8 values ('Database1');
+INSERT  INTO my_binary_t8 values ('Database ');
+INSERT  INTO my_binary_t8 values ('数据库');
+SELECT * FROM my_binary_t8;
 
 DISCARD ALL;
 

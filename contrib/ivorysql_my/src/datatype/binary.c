@@ -155,8 +155,7 @@ binary_in(PG_FUNCTION_ARGS)
 		maxmblen = maxlen;
 		new_text = (char *)palloc0(len);
 		memcpy(new_text, inputText, maxmblen);
-		inputText = new_text;
-		len = maxmblen;
+		PG_RETURN_BYTEA_P(DirectFunctionCall1(byteain, CStringGetDatum(new_text)));
 	}
 
 	/* Recognize hex input */
