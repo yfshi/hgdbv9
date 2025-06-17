@@ -19,6 +19,9 @@
 
 #include "libpq/pqformat.h"
 #include "utils/builtins.h"
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+
 
 /*
  * Try to interpret value as boolean value.  Valid values are: true,
@@ -144,6 +147,14 @@ boolin(PG_FUNCTION_ARGS)
 	len = strlen(str);
 	while (len > 0 && isspace((unsigned char) str[len - 1]))
 		len--;
+
+	if (MYS_PARSER == compatible_db && use_mysql_bool == true)
+	{
+		if (in_str[0] < '1' || in_str[0] > '9')
+			PG_RETURN_BOOL(false);
+		else
+			PG_RETURN_BOOL(true);
+	}
 
 	if (parse_bool_with_len(str, len, &result))
 		PG_RETURN_BOOL(result);
