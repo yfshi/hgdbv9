@@ -504,6 +504,7 @@ extern PGDLLIMPORT bool mysql_convert;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT
 extern PGDLLIMPORT bool mysql_functional_diff_control;
 extern PGDLLIMPORT bool cast_to_char;
 /* End - BUG#M533 */
+extern PGDLLIMPORT bool use_mysql_bool;
 
 /*
  * Functions exported by guc.c

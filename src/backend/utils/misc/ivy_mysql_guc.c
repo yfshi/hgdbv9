@@ -61,6 +61,7 @@ int			div_precision_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
 bool		mysql_functional_diff_control = true;
 bool		cast_to_char = true;
 /* End - BUG#M533 */
+bool		use_mysql_bool = false;
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
@@ -164,6 +165,16 @@ bool		cast_to_char = true;
 		NULL, NULL, NULL
 	},
 /* End - BUG#M533 */
+	{
+		{"mysql.use_mysql_bool", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("MySQL and Postgres bool is difference."),
+			NULL
+		},
+		&use_mysql_bool,
+		false,
+		NULL, NULL, NULL
+	},
+
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS
