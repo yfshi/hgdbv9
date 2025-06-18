@@ -14664,20 +14664,19 @@ GenericType:
 							}
 						}
 
-						if (strcmp($1, "int2") == 0 || strcmp($1, "INT2") == 0 )
+						if (pg_strcasecmp($1, "int2") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint2");
 							$$->typmods = typmods;
 							$$->location = @1;
 						}
-						else if (strcmp($1, "int4") == 0 || strcmp($1, "INT4") == 0 
-								|| strcmp($1, "int") == 0 || strcmp($1, "INT") == 0)
+						else if (pg_strcasecmp($1, "int4") == 0 || pg_strcasecmp($1, "int") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint4");
 							$$->typmods = typmods;
 							$$->location = @1;
 						}
-						else if (strcmp($1, "int8") == 0 || strcmp($1, "INT8") == 0)
+						else if (pg_strcasecmp($1, "int8") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint8");
 							$$->typmods = typmods;
@@ -14693,9 +14692,9 @@ GenericType:
 
 					/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4-UINT8 */
 					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2-INT4 */
-					else if (strcmp($1, "int2") == 0 ||strcmp($1, "INT2") == 0 
-							|| strcmp($1, "int4") == 0 || strcmp($1, "INT4") == 0
-							|| strcmp($1, "int") == 0 || strcmp($1, "INT") == 0)
+					else if (pg_strcasecmp($1, "int2") == 0
+							|| pg_strcasecmp($1, "int4") == 0
+							|| pg_strcasecmp($1, "int") == 0)
 					{
 						A_Const *node_const = NULL;
 						List	   *typmods = $2;
@@ -14733,9 +14732,9 @@ GenericType:
 				}
 			| type_function_name opt_type_modifiers SIGNED
 				{
-					if (strcmp($1, "int2") == 0 ||strcmp($1, "INT2") == 0 
-						|| strcmp($1, "int4") == 0 || strcmp($1, "INT4") == 0
-						|| strcmp($1, "int") == 0 || strcmp($1, "INT") == 0)
+					if (pg_strcasecmp($1, "int2") == 0 
+						|| pg_strcasecmp($1, "int4") == 0 
+						|| pg_strcasecmp($1, "int") == 0)
 					{
 						A_Const *node_const = NULL;
 						List	   *typmods = $2;

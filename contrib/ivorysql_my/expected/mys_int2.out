@@ -802,7 +802,7 @@ select * from tb_test;
 
 drop table tb_test;
 set sql_mode = default;
--- fix bug 5060
+-- BUG#5060
 create table t(c smallint(-1) signed);
 ERROR:  syntax error at or near
 LINE 1: create table t(c smallint(-1) signed);
@@ -875,7 +875,7 @@ create table t(c INT2(256));
 ERROR:  syntax error at or near
 LINE 1: create table t(c INT2(256));
                              ^
--- fix bug 5061
+-- BUG#5061
 create table tb_test(id int2);
 set sql_mode = default;
 insert into tb_test values (-32769);

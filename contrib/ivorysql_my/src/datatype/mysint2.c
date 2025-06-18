@@ -318,6 +318,7 @@ myint2_bit_xor(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(arg1 ^ arg2);
 }
 
+/* Begin - BUG#5051 */
 /* operator int2 || int2 */
 Datum 
 myint2_or(PG_FUNCTION_ARGS)
@@ -339,7 +340,9 @@ myint2_or(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_INT32(0);
 }
+/* End - BUG#5051 */
 
+/* Begin - BUG#5050 */
 /* operator int2 && int2 */
 Datum 
 myint2_and(PG_FUNCTION_ARGS)
@@ -361,6 +364,7 @@ myint2_and(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_INT32(0);
 }
+/* End - BUG#5050 */
 
 /* operator int2 <=> int2 */
 Datum 
@@ -422,6 +426,7 @@ myint2_negative(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(-num);
 }
 
+/* Begin - BUG#5050 BUG#5051 BUG#5052 */
 /* cast to boolean */
 Datum 
 myint2_boolean(PG_FUNCTION_ARGS)
@@ -430,6 +435,7 @@ myint2_boolean(PG_FUNCTION_ARGS)
 
 	PG_RETURN_BOOL(val1 != 0);
 }
+/* End - BUG#5050 BUG#5051 BUG#5052 */
 
 /* cast boolean to int2 */
 Datum 

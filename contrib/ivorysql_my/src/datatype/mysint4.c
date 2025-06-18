@@ -210,7 +210,7 @@ myint4_mul(PG_FUNCTION_ARGS)
 	int64 arg1 = PG_GETARG_INT64(1);
 	int64 result = 0;
 	
-	result = DatumGetInt64(DirectFunctionCall2(int8mul, Int64GetDatum(arg0),
+	result = DatumGetInt64(DirectFunctionCall2(int8mul, Int64GetDatum(arg0),	/* BUG#5091 */
 							Int64GetDatum(arg1)));
 
 	PG_RETURN_INT64(result);

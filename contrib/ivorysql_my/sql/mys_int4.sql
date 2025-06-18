@@ -364,13 +364,13 @@ create table t(c INT(-1) signed);
 create table t(c INT(-1) SIGNED);
 create table t(c INT(-1));
 
--- fix bug 5103
+-- BUG#5103
 create table t1(c int(10) signed);
 drop table t1;
 create table t2(c integer(10) signed);
 drop table t2;
 
--- fix bug 5164
+-- BUG#5164
 set sql_mode = default;
 set div_precision_increment = 99;
 show div_precision_increment;
@@ -382,7 +382,7 @@ show div_precision_increment;
 set div_precision_increment = -1;
 show div_precision_increment;
 
--- fix bug 5091
+-- BUG#5091
 create table test_MEDIUMINT (a int3,b mediumint signed);
 insert into test_MEDIUMINT (a, b) values(8388607, -8388608);
 select a * b AS mul_result from test_MEDIUMINT;
