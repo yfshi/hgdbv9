@@ -960,6 +960,108 @@ HINT:  Use quoted CSV field to represent carriage return.
 CONTEXT:  COPY xxxx, line 8
 drop table xxxx;
 -- End - BUG#M0000526
+-- Begin - OA-REQ-1488
+-- if newline marker is \r\n, but find \n, skip
+-- \n in middle
+delete from x_bad;
+create table oa1488(a VARCHAR2(255), b VARCHAR2(255),c VARCHAR2(255), d VARCHAR2(255));
+copy oa1488 from '@abs_srcdir@/data/oa_1488_1.data' with(format csv, delimiter '^');
+ERROR:  unquoted newline found in data
+HINT:  Use quoted CSV field to represent newline.
+CONTEXT:  COPY oa1488, line 3
+copy oa1488 from '@abs_srcdir@/data/oa_1488_1.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '@abs_srcdir@/data/oa_1488_1.data' with(format csv, delimiter '^', taskid '1488_1', badtable 'x_bad');
+-- succes 10, bad 2
+select count(*) from oa1488;
+ count 
+-------
+    10
+(1 row)
+
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_1';
+ taskid | schema | tablename | lineno |                  buff                  
+--------+--------+-----------+--------+----------------------------------------
+ 1488_1 | public | oa1488    |      3 | 辽市办事处^12396069^11.216.69.157^普通
+ 1488_1 | public | oa1488    |      6 | 街道办公楼^12396072^11.216.69.160^普通
+(2 rows)
+
+-- \n in middle and tail
+delete from oa1488;
+delete from x_bad;
+copy oa1488 from '@abs_srcdir@/data/oa_1488_2.data' with(format csv, delimiter '^');
+ERROR:  unquoted newline found in data
+HINT:  Use quoted CSV field to represent newline.
+CONTEXT:  COPY oa1488, line 3
+copy oa1488 from '@abs_srcdir@/data/oa_1488_2.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '@abs_srcdir@/data/oa_1488_2.data' with(format csv, delimiter '^', taskid '1488_2', badtable 'x_bad');
+--success 8, bad 3
+select count(*) from oa1488;
+ count 
+-------
+     8
+(1 row)
+
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_2';
+ taskid | schema | tablename | lineno |                   buff                   
+--------+--------+-----------+--------+------------------------------------------
+ 1488_2 | public | oa1488    |      3 | 辽市办事处^12396069^11.216.69.157^普通
+ 1488_2 | public | oa1488    |      6 | 街道办公楼^12396072^11.216.69.160^普通
+ 1488_2 | public | oa1488    |      7 | 专线用户机房^12396073^11.216.69.161^普通
+(3 rows)
+
+-- \n split one line to two lines
+delete from oa1488;
+delete from x_bad;
+copy oa1488 from '@abs_srcdir@/data/oa_1488_3.data' with(format csv, delimiter '^');
+ERROR:  unquoted newline found in data
+HINT:  Use quoted CSV field to represent newline.
+CONTEXT:  COPY oa1488, line 3
+copy oa1488 from '@abs_srcdir@/data/oa_1488_3.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '@abs_srcdir@/data/oa_1488_3.data' with(format csv, delimiter '^', taskid '1488_3', badtable 'x_bad');
+--success 6, bad 5
+select count(*) from oa1488;
+ count 
+-------
+     6
+(1 row)
+
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_3';
+ taskid | schema | tablename | lineno |                   buff                   
+--------+--------+-----------+--------+------------------------------------------
+ 1488_3 | public | oa1488    |      3 | 辽市办事处^12396069^11.216.69.157^普通
+ 1488_3 | public | oa1488    |      4 | 平市办事处^12396070^11.216.69.158
+ 1488_3 | public | oa1488    |      5 | ^普通
+ 1488_3 | public | oa1488    |      7 | 街道办公楼^12396072^11.216.69.160^普通
+ 1488_3 | public | oa1488    |      8 | 专线用户机房^12396073^11.216.69.161^普通
+(5 rows)
+
+-- if newline marker is \n, but find \r\n, skip
+-- \r\n in middle and tail
+delete from oa1488;
+delete from x_bad;
+copy oa1488 from '@abs_srcdir@/data/oa_1488_4.data' with(format csv, delimiter '^');
+ERROR:  unquoted carriage return found in data
+HINT:  Use quoted CSV field to represent carriage return.
+CONTEXT:  COPY oa1488, line 2
+copy oa1488 from '@abs_srcdir@/data/oa_1488_4.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '@abs_srcdir@/data/oa_1488_4.data' with(format csv, delimiter '^', taskid '1488_4', badtable 'x_bad');
+--success 8, bad 3
+select count(*) from oa1488;
+ count 
+-------
+     8
+(1 row)
+
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_4';
+ taskid | schema | tablename | lineno |                   buff                   
+--------+--------+-----------+--------+------------------------------------------
+ 1488_4 | public | oa1488    |      2 | 吉市办事处^12396068^11.216.69.156^普通
+ 1488_4 | public | oa1488    |      5 | 生产楼机房^12396071^11.216.69.159^普通
+ 1488_4 | public | oa1488    |      7 | 专线用户机房^12396073^11.216.69.161^普通
+(3 rows)
+
+drop table oa1488;
+-- End - OA-REQ-1488
 -- clean up
 DROP TABLE x;
 DROP TABLE x_bad;

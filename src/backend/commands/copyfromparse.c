@@ -1581,10 +1581,29 @@ CopyReadLine(CopyFromState cstate)
 		switch (cstate->eol_type)
 		{
 			case EOL_NL:
-				Assert(cstate->line_buf.len >= 1);
-				Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\n');
-				cstate->line_buf.len--;
-				cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				/* Begin - OA-REQ-1488 */
+				/*
+				 * if the newline mark is \n
+				 * but find \r\n, will skip this line
+				 * for here, check the data should be \r\n for the buffer
+				 * then set the len and the tail to \0
+				 */
+				if (cstate->opts.tolerate && cstate->line_buf_error2)
+				{
+					Assert(cstate->line_buf.len >= 2);
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 2] == '\r');
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\n');
+					cstate->line_buf.len -= 2;
+					cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				}
+				/* End - OA-REQ-1488 */
+				else
+				{	
+					Assert(cstate->line_buf.len >= 1);
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\n');
+					cstate->line_buf.len--;
+					cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				}
 				break;
 			case EOL_CR:
 				Assert(cstate->line_buf.len >= 1);
@@ -1593,11 +1612,29 @@ CopyReadLine(CopyFromState cstate)
 				cstate->line_buf.data[cstate->line_buf.len] = '\0';
 				break;
 			case EOL_CRNL:
-				Assert(cstate->line_buf.len >= 2);
-				Assert(cstate->line_buf.data[cstate->line_buf.len - 2] == '\r');
-				Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\n');
-				cstate->line_buf.len -= 2;
-				cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				/* Begin - OA-REQ-1488 */
+				/*
+				 * if newline marker is \r\n
+				 * find \n, will skip this line
+				 * for here, check there should be \n for the buffer
+				 * then set the len and the tail to \0
+				 */
+				if (cstate->opts.tolerate && cstate->line_buf_error)
+				{
+					Assert(cstate->line_buf.len >= 1);
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\n');
+					cstate->line_buf.len -= 1;
+					cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				}
+				/* End - OA-REQ-1488 */
+				else
+				{
+					Assert(cstate->line_buf.len >= 2);
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 2] == '\r');
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\n');
+					cstate->line_buf.len -= 2;
+					cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				}
 				break;
 			case EOL_UNKNOWN:
 				/* shouldn't get here */
@@ -1608,6 +1645,26 @@ CopyReadLine(CopyFromState cstate)
 
 	/* Now it's safe to use the buffer in error messages */
 	cstate->line_buf_valid = true;
+
+	/* Begin - OA-REQ-1488 */
+	if (cstate->opts.tolerate && (cstate->line_buf_error || cstate->line_buf_error2))
+	{
+		/* 
+		 * raise an error
+		 * cstate->line_buf_error means there should be \r\n, but find \n
+		 * cstate->line_buf_error2 means there should be \n, but find \r\n
+		 * will skip this line
+		 */
+		ereport(ERROR,
+			(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+			 !cstate->opts.csv_mode ?
+			 errmsg("literal newline found in data") :
+			 errmsg("unquoted newline found in data"),
+			 !cstate->opts.csv_mode ?
+			 errhint("Use \"\\n\" to represent newline.") :
+			 errhint("Use quoted CSV field to represent newline.")));
+	}
+	/* End - OA-REQ-1488 */
 
 	return result;
 }
@@ -1631,6 +1688,15 @@ CopyReadLineText(CopyFromState cstate)
 				last_was_esc = false;
 	char		quotec = '\0';
 	char		escapec = '\0';
+
+	/* Begin - OA-REQ-1488 */
+	/*
+	 * line_buf_error means there should be \r\n, but find \n
+	 * line_buf_error2 means there should be \n, but find \r\n
+	 */
+	cstate->line_buf_error = false;
+	cstate->line_buf_error2 = false;
+	/* End - OA-REQ-1488 */
 
 	if (cstate->opts.csv_mode)
 	{
@@ -1826,8 +1892,28 @@ CopyReadLineText(CopyFromState cstate)
 			}
 			else if (cstate->eol_type == EOL_NL)
 			{
-				if (cstate->opts.tolerate == true)		/* BUG#M0000526 */
-					cstate->input_reached_error = true;	/* BUG#M0000526 */
+				/* Begin - OA-REQ-1488 */
+				/*
+				 * if the newline marked by \n
+				 * but find \r, check next char
+				 * if \n, skip this line
+				 * if not \n, raise an error
+				 */
+				if (cstate->opts.tolerate == true)
+				{
+					IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(0);
+					c = copy_input_buf[input_buf_ptr];
+					/* found \r, and \n */
+					if (c == '\n')
+					{
+						input_buf_ptr++;	/* eat newline */
+						cstate->line_buf_error2 = true;
+						break;
+					}
+
+					cstate->input_reached_error = true;
+				}
+				/* End - OA-REQ-1488 */
 
 				ereport(ERROR,
 						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
@@ -1847,8 +1933,21 @@ CopyReadLineText(CopyFromState cstate)
 		{
 			if (cstate->eol_type == EOL_CR || cstate->eol_type == EOL_CRNL)
 			{
-				if (cstate->opts.tolerate == true)		/* BUG#M0000526 */
-					cstate->input_reached_error = true;     /* BUG#M0000526 */
+				/* Begin - OA-REQ-1488 */
+				/*
+				 * newline marker is \r\n
+				 * but find \n
+				 */
+				if (cstate->opts.tolerate && cstate->eol_type == EOL_CRNL)
+				{
+					cstate->line_buf_error = true;
+					break;
+				}
+				else if (cstate->opts.tolerate && cstate->eol_type == EOL_CR)	/* BUG#M0000526 */
+				{
+					cstate->input_reached_error = true;	/* BUG#M0000526 */
+				}
+				/* End - OA-REQ-1488 */
 
 				ereport(ERROR,
 						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
