@@ -16,7 +16,7 @@ PGFILEDESC = "credcheck - postgresql credential checker"
 #DATA = $(wildcard updates/*--*.sql) $(EXTENSION)--$(EXTVERSION).sql
 DATA = credcheck--2.8.0.sql
 
-REGRESS_OPTS  = --inputdir=test --load-extension=credcheck
+REGRESS_OPTS  = --inputdir=test --load-extension=credcheck --max-connections=1
 TESTS = 01_username 02_password 03_rename 04_alter_pwd \
 	05_reuse_history 06_reuse_interval 07_valid_until \
 	08_creat_set
