@@ -1,6 +1,5 @@
 #!/bin/sh
 
->anonly.h
 anonly_str="\"begin "
 i=1
 #map testlibpq_prepare_anonlymous_parameter.c MAX_NARGS
@@ -23,4 +22,4 @@ done
 done
 
 anonly_str=$anonly_str"end;\""
-echo "const char *anonymous_paramete_str = $anonly_str;">>anonly.h
+echo "const char *anonymous_paramete_str = $anonly_str;" > anonly.h

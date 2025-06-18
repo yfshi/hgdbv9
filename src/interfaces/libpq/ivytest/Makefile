@@ -21,11 +21,6 @@ PROGS = testlibpq testlibpqstmt2 testlibpq_nullstmt testlibpq_allout testlibpq_p
 
 all: $(PROGS)
 
-anonly.h: test_gen_insert.sh
-	$(SHELL) $<
-
-testlibpq_prepare_anonlymous_parameter: anonly.h
-
 clean distclean maintainer-clean:
 	rm -f *.o
 	rm -f $(PROGS)
