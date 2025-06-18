@@ -11914,4 +11914,9 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proargtypes => 'bytea', prosrc => 'sm3_bytea' },
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
+{ oid => '6018', descr => 'Hgdb buld_version string',
+  proname => 'build_version', provolatile => 's', prorettype => 'text',
+  proargtypes => '', prosrc => 'hgdb_build_version' },
+
+
 ]

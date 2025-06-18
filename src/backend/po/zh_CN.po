@@ -23595,6 +23595,11 @@ msgstr "列路径筛选器不能为空字符串"
 msgid "more than one value returned by column XPath expression"
 msgstr "列XPath表达式返回了多个值"
 
+#: utils/adt/version.c:43
+#, c-format
+msgid "HG Database Server"
+msgstr "瀚高数据库管理系统"
+
 #: utils/cache/lsyscache.c:2654 utils/cache/lsyscache.c:2687
 #: utils/cache/lsyscache.c:2720 utils/cache/lsyscache.c:2753
 #, c-format

@@ -72,6 +72,17 @@
 /* Define to the default TCP port number as a string constant. */
 #undef DEF_PGPORT_STR
 
+/* Begin - BUG#Z00004967 */
+#undef HG_PRODUCT_NAME
+#undef HG_MAJOR_VERSION
+#undef HG_EXTRAL_VERSION
+#undef HG_PROJECT_ID
+#undef HG_PATCH_STR
+#undef HG_BUILD_CPU
+#undef HG_BUILD_DATE
+#undef HG_BRANCH_HASH
+#undef HG_BRANCH_COMMIT_HASH
+/* End - BUG#Z00004967 */
 
 /* Define to build with GSSAPI support. (--with-gssapi) */
 #undef ENABLE_GSS

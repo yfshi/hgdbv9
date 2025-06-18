@@ -272,3 +272,6 @@ DROP TABLE clstr_4;
 DROP TABLE clstr_expression;
 
 DROP USER regress_clstr_user;
+
+-- BUG#Z00004967 */
+select count(*) from build_version();
