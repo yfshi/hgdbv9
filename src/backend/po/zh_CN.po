@@ -23755,7 +23755,7 @@ msgstr "致命错误"
 
 #: utils/error/elog.c:3355
 msgid "PANIC"
-msgstr "比致命错误还过分的错误"
+msgstr "比致命错误更严重的错误"
 
 #: utils/fmgr/dfmgr.c:130
 #, c-format
