@@ -396,25 +396,33 @@ pg_be_scram_init(Port *port,
 	if (!got_secret)
 	{
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-		//if (shadow_pass)
+		/* Begin - BUG#5211 */
+		PasswordType password_type = PASSWORD_TYPE_PLAINTEXT;
+		if (shadow_pass)
+			password_type = get_password_type(shadow_pass);
+		else
 		{
-			int			password_type = PASSWORD_TYPE_PLAINTEXT;
-			if(shadow_pass)
-				password_type = get_password_type(shadow_pass);
-
-			if (password_type == PASSWORD_TYPE_SCRAM_SHA_256)
-				mock_scram_secret("SCRAM-SHA-256", state->port->user_name, &state->iterations,
-							&state->salt, state->StoredKey, state->ServerKey);
+			UserAuth uauth = port->hba->auth_method;
 #ifdef USE_GMSSL
-			else if (password_type == PASSWORD_TYPE_SCRAM_SM3)
-				mock_scram_secret("SCRAM-SM3", state->port->user_name, &state->iterations,
-							&state->salt, state->StoredKey, state->ServerKey);
+			if (uauth == uaSCRAMsm3 || uauth == uaSCRAMsha256sm3)
+				password_type = PASSWORD_TYPE_SCRAM_SM3;
+			else
 #endif
-			state->doomed = true;
+				password_type = PASSWORD_TYPE_SCRAM_SHA_256;
 		}
-		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	}
 
+#ifdef USE_GMSSL
+		if (password_type == PASSWORD_TYPE_SCRAM_SM3)
+			mock_scram_secret("SCRAM-SM3", state->port->user_name, &state->iterations,
+							&state->salt, state->StoredKey, state->ServerKey);
+		else
+#endif
+			mock_scram_secret("SCRAM-SHA-256", state->port->user_name, &state->iterations,
+							&state->salt, state->StoredKey, state->ServerKey);
+		/* End - BUG#5211 */
+		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		state->doomed = true;
+	}
 	return state;
 }
 
@@ -1552,7 +1560,7 @@ build_server_final_message(scram_state *state)
 static char *
 scram_mock_salt(const char *scram_type, const char *username) /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 {
-	pg_cryptohash_ctx *ctx;
+	pg_cryptohash_ctx *ctx = NULL;	/* BUG#5211 */
 	static uint8 sha_digest[PG_SHA256_DIGEST_LENGTH];
 	char	   *mock_auth_nonce = GetMockAuthenticationNonce();
 
