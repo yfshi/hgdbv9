@@ -47,6 +47,8 @@
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
 #include "../include/ivorysql_my.h"
+#include "../include/mys_locale.h"
+
 
 PG_FUNCTION_INFO_V1(dayofmonth);
 PG_FUNCTION_INFO_V1(dayofweek);
@@ -83,6 +85,25 @@ PG_FUNCTION_INFO_V1(timestampadd);
 PG_FUNCTION_INFO_V1(timestamp_arg1);
 PG_FUNCTION_INFO_V1(timestamp_arg2);
 
+PG_FUNCTION_INFO_V1(to_days);
+PG_FUNCTION_INFO_V1(to_seconds);
+PG_FUNCTION_INFO_V1(unix_timestamp_no_args);
+PG_FUNCTION_INFO_V1(utc_date_func);
+PG_FUNCTION_INFO_V1(utc_time_func);
+PG_FUNCTION_INFO_V1(utc_timestamp_func);
+PG_FUNCTION_INFO_V1(dayname);
+PG_FUNCTION_INFO_V1(monthname);
+PG_FUNCTION_INFO_V1(time_to_sec);
+PG_FUNCTION_INFO_V1(mys_month);
+PG_FUNCTION_INFO_V1(mys_date);
+PG_FUNCTION_INFO_V1(mys_week);
+PG_FUNCTION_INFO_V1(mys_week_mode);
+PG_FUNCTION_INFO_V1(yearweek);
+PG_FUNCTION_INFO_V1(datediff);
+PG_FUNCTION_INFO_V1(from_days);
+PG_FUNCTION_INFO_V1(convert_tz);
+PG_FUNCTION_INFO_V1(get_format);
+
 #define MICRO_PER_NANOSEC 1000
 #define FORMAT_TIME_BOUND 838
 #define FORMAT_TIME_MAX_VALUE (FORMAT_TIME_BOUND * 10000 + 59 * 100 + 59)
@@ -104,6 +125,59 @@ PG_FUNCTION_INFO_V1(timestamp_arg2);
 #define NANOSEC_PER_USEC 1000
 
 #define FORMAT_TIME_MAX_VALUE_TO_DAY 70
+
+#define MONS_PER_YEAR 12
+#define MONSPERYEAR 12
+#define DAYSPERNYEAR 365
+#define DAYSPERLYEAR 366
+#define WEEK_MONDAY_FIRST 1
+#define WEEK_YEAR 2
+#define WEEK_FIRST_WEEKDAY 4
+#define MONDAY_IS_FIRST_WEEKDAY 1
+#define MONDAY_IS_FIRST_WEEKDAY 1
+#define SCOPE_OF_WEEK 2
+#define FIRST_FULL_WEEK 4
+#define FOUR_DAYS_IN_YEAR 4
+#define WEEKS_PER_YEAR 52
+#define DAYS_PER_COMMON_YEAR 365
+#define DAYS_PER_LEAP_YEAR 366
+#define SECS_PER_MIN 60
+#define MINS_PER_HOUR 60
+#define HOURS_PER_DAY 24
+#define DAYS_PER_WEEK 7
+#define DAYS_PER_NYEAR 365
+#define DAYS_PER_LYEAR 366
+#define MONS_PER_YEAR 12
+#define FRAC_PRECISION 6
+#define JANUARY 1
+#define EPOCH_YEAR 1970
+#define LEAPS_THRU_END_OF(y)  ((y) / 4 - (y) / 100 + (y) / 400)
+
+static const int mon_starts[2][MONS_PER_YEAR] =
+{
+	{ 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 },
+	{ 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335 }
+};
+
+static const int mon_lengths[2][MONSPERYEAR] =
+{
+	{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
+	{31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+};
+
+static const int year_lengths[2] =
+{
+	DAYSPERNYEAR, DAYSPERLYEAR
+};
+
+typedef struct DateTimeFormat
+{
+	const char   *format_name;
+	const char   *date_format;
+	const char   *datetime_format;
+	const char   *time_format;
+}DateTimeFormat;
+
 
 static unsigned long long pow_of_10[20] = {
     1, 10, 100, 1000, 10000UL, 100000UL, 1000000UL, 10000000UL,
@@ -142,6 +216,36 @@ static bool datetime_sub_interval(Timestamp datetime, Interval *span, Timestamp 
 static TimeOffset time2t(const int hour, const int min, const int sec, const fsec_t fsec);
 static Datum timestamp_add_internal(FunctionCallInfo fcinfo, char *lowunits, int unit, int unit_type, Numeric num);
 static bool determine_conversion(int dtk);
+
+static long calc_day(int year, int month, int day);
+static int calc_weekday(long daynr, bool sunday_first_day_of_week);
+static unsigned int calc_days_in_year(int year);
+static bool get_datetime_from_numeric(Numeric numvalue, struct pg_tm *tm, fsec_t *fsec, int flag, int *dec);
+static bool get_date_from_int(int64 num, struct pg_tm *tm, fsec_t *fsec, int flag);
+static bool get_time_from_num(Numeric num, struct pg_tm *tm, fsec_t *fsec, int flag, int *dec);
+static int calc_week(struct pg_tm* tm, int64 mode, int *year);
+static int week_mode(int mode);
+static void make_warning(char *str, mysql_dttype ftype);
+static void get_date_from_day(int64 val, struct pg_tm *tm);
+static pg_time_t sec_since_epoch(int year, int mon, int mday, int hour, int min ,int sec);
+static pg_time_t time_to_gmt_sec(struct pg_tm *tm, int offset);
+static void mys_sec_to_time(struct pg_tm *tmp, pg_time_t t, int offset);
+static int determine_precision(int micro);
+static bool parse_timezone(struct pg_tm *tm, char *str, int *tz);
+
+
+static DateTimeFormat date_time_formats[] =
+{
+	{"usa", "%m.%d.%Y", "%Y-%m-%d %H.%i.%s", "%h:%i:%s %p" },
+	{"jis", "%Y-%m-%d", "%Y-%m-%d %H:%i:%s", "%H:%i:%s" },
+	{"iso", "%Y-%m-%d", "%Y-%m-%d %H:%i:%s", "%H:%i:%s" },
+	{"eur", "%d.%m.%Y", "%Y-%m-%d %H.%i.%s", "%H.%i.%s" },
+	{"internal", "%Y%m%d", "%Y%m%d%H%i%s", "%H%i%s" }
+};
+
+static int szdate_time_formats = sizeof date_time_formats / sizeof date_time_formats[0];
+
+
 
 static Datum
 ivymy_dayof_date(FunctionCallInfo fcinfo, int datekind)
@@ -2156,4 +2260,956 @@ timestampadd(PG_FUNCTION_ARGS)
     }
 
     return timestamp_add_internal(fcinfo, lowunits, unit, unit_type, num);
+}
+
+/*
+ * calc_day - calculate the number of days.
+ */
+static long
+calc_day(int year, int month, int day)
+{
+	long	delsum;
+	int		temp;
+	int		y = year; /* may be < 0 temporarily */
+
+	if (y == 0 && month == 0)
+		return 0; /* Skip errors */
+
+	/* Cast to int to be able to handle month == 0 */
+	delsum = (long) (365 * y + 31 *( month - 1) + day);
+	if (month <= 2)
+		y--;
+	else
+		delsum -= (long) ( month * 4 + 23) / 10;
+	temp = (int) ((y / 100 + 1) * 3) / 4;
+	Assert(delsum + y / 4 - temp >= 0);
+	return (delsum + y / 4 - temp);
+}
+
+/*
+ * make_warning - set warning message.
+ */
+static void
+make_warning(char *str, mysql_dttype ftype)
+{
+	char   *type_str;
+	switch (ftype)
+	{
+		case MYSQL_TIMESTAMP_DATE:
+			type_str= "date";
+			break;
+		case MYSQL_TIMESTAMP_TIME:
+			type_str= "time";
+			break;
+		case MYSQL_TIMESTAMP_DATETIME:
+		default:
+			type_str= "datetime";
+			break;
+	}
+	if (str)
+	{
+		if(ftype > MYSQL_TIMESTAMP_ERROR)
+			ereport(WARNING, (errmsg("Truncated incorrect %s value: '%s'", type_str, str)));
+		else
+			ereport(WARNING, (errmsg("Incorrect %s value: '%s'", type_str, str)));
+	}
+	return;
+}
+
+/*
+ * get_date_from_int - parsing a date by integer value.
+ */
+static bool
+get_date_from_int(int64 num, struct pg_tm *tm, fsec_t *fsec, int flag)
+{
+	int			dterr;
+	mysql_dttype ftype;
+	int			warn = 0;
+
+	dterr = mysnumber_to_datetime(num, tm, flag, fsec, &ftype, &warn);
+	if (warn || dterr < 0) /* Returns an error result, the value is not 0. */
+	{
+		char   *strtemp = DatumGetCString(DirectFunctionCall1(int8out, Int64GetDatum(num)));
+		make_warning(strtemp, MYSQL_TIMESTAMP_NONE);
+		if (dterr)
+			return false;
+	}
+
+	return true;
+}
+
+
+/*
+ * calc_weekday - Returns 0 for monday, 1 for tuesday ....
+ */
+static int
+calc_weekday(long daynr, bool sunday_first_day_of_week)
+{
+	return ((int) ((daynr + 5 + (sunday_first_day_of_week ? 1 : 0)) % 7));
+}
+
+/*
+ * week_mode - deal with mode.
+ */
+static int
+week_mode(int mode)
+{
+	int		week_format = (mode & 7);
+	if (!(week_format & WEEK_MONDAY_FIRST))
+		week_format ^= WEEK_FIRST_WEEKDAY;
+	return week_format;
+}
+
+/*
+ * calc_week -
+ * tm specified date info structure
+ * mode specified week mode in [0~7]
+ * year this parameter may be used in yearweek()
+ */
+static int
+calc_week(struct pg_tm* tm, int64 mode, int *year)
+{
+	struct pg_tm tmp_tt, *tmp_tm = &tmp_tt;
+	long days;
+	long weekday;
+	long tm_year = tm->tm_year;
+	long tm_mon = tm->tm_mon;
+	long tm_mday = tm->tm_mday;
+
+	long sum_day = calc_day(tm_year, tm_mon, tm_mday);
+	long sum_start_day = calc_day(tm_year, 1, 1);
+
+	bool monday_is_first_day = mode & MONDAY_IS_FIRST_WEEKDAY;
+	bool week_scope = mode & SCOPE_OF_WEEK;
+	bool first_week = mode & FIRST_FULL_WEEK;
+
+	tmp_tm->tm_year = tm->tm_year;
+	tmp_tm->tm_mon = 1;
+	tmp_tm->tm_mday = 1;
+	weekday = calc_weekday(sum_start_day, !monday_is_first_day);
+	*year = tm_year;
+
+	if (tm_mon == JANUARY && tm_mday <= DAYS_PER_WEEK - weekday)
+	{
+		if (!week_scope && ((first_week && weekday != 0) || (!first_week && weekday >= FOUR_DAYS_IN_YEAR)))
+			return 0;
+
+		week_scope = true;
+		(*year)--;
+		days = isleap(*year) ? DAYS_PER_LEAP_YEAR : DAYS_PER_COMMON_YEAR;
+		sum_start_day -= days;
+		weekday = (weekday + (WEEKS_PER_YEAR + 1) * DAYS_PER_WEEK - days) % DAYS_PER_WEEK;
+	}
+
+	if ((first_week && weekday != 0) || (!first_week && weekday >= FOUR_DAYS_IN_YEAR))
+		days = sum_day - (sum_start_day + (DAYS_PER_WEEK - weekday));
+	else
+		days = sum_day - (sum_start_day - weekday);
+
+	if (week_scope && days >= WEEKS_PER_YEAR * DAYS_PER_WEEK)
+	{
+		weekday = (weekday + (isleap(*year) ? DAYS_PER_LEAP_YEAR : DAYS_PER_COMMON_YEAR)) % DAYS_PER_WEEK;
+		if ((first_week && weekday == 0) || (!first_week && weekday < FOUR_DAYS_IN_YEAR))
+		{
+			(*year)++;
+			return 1;
+		}
+	}
+
+	return days / DAYS_PER_WEEK + 1;
+}
+
+/*
+ * get_date_from_day - converting days to date.
+ */
+static void
+get_date_from_day(int64 val, struct pg_tm *tm)
+{
+	int		year, temp, leap_day, day_of_year, days_in_year;
+	int		month_value = 0;
+
+	if (val <= 365 || val >= 3652500)
+	{
+		/* Fix if wrong day value */
+		tm->tm_year = tm->tm_mon = tm->tm_mday =0;
+	}
+	else
+	{
+		year = (val * 100 / 36525);
+		temp = (((year - 1) / 100 + 1) * 3) / 4;
+		day_of_year = (val - year * 365) - (year - 1) / 4 + temp;
+		while (day_of_year > (days_in_year = calc_days_in_year(year)))
+		{
+			day_of_year -= days_in_year;
+			year++;
+		}
+
+		leap_day = 0;
+		if (days_in_year == 366)
+		{
+			if (day_of_year > 31 + 28)
+			{
+				day_of_year--;
+				if (day_of_year == 31 + 28)
+					leap_day = 1;	/* Handle leapyears leapday */
+			}
+		}
+		tm->tm_mon = 1;
+		for (int i = 0; i < 12; i++)
+		{
+			month_value = day_tab[0][i];
+			if (day_of_year > month_value)
+			{
+				day_of_year -= month_value;
+				(tm->tm_mon)++;
+			}
+			else
+				break;
+		}
+		tm->tm_year = year;
+		tm->tm_mday =day_of_year + leap_day;
+	}
+}
+
+/*
+ * calc_days_in_year - Calc days in one year. works with 0 <= year <= 99.
+ */
+static unsigned int
+calc_days_in_year(int year)
+{
+	return ((year & 3) == 0 && (year % 100 || (year % 400 == 0 && year)) ? DAYS_PER_LEAP_YEAR : DAYS_PER_COMMON_YEAR);
+}
+
+/*
+ * get_time_from_num - parsing time values through numeric values.
+ */
+static bool
+get_time_from_num(Numeric num, struct pg_tm *tm, fsec_t *fsec, int flag, int *dec)
+{
+	int			dterr;
+	mysql_dttype ftype;
+	int			warn = 0;
+	int64		timetemp = 0;
+	int			neg = 0;
+	int64		nanofsec =0;
+	char	   *str;
+	int64		len = 0;
+
+	char   *strtemp = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
+	str = pstrdup(strtemp);
+
+	while(*strtemp && *strtemp != '.')
+	{
+		if(*strtemp == '-')
+		{
+			neg = 1;
+			strtemp++;
+			continue;
+		}
+		len++;
+		timetemp = timetemp * 10 + *strtemp - '0';
+		strtemp++;
+	}
+	/* Calculate the time */
+	strtemp++; /* jump '.' */
+	for(int i = 0; i < 9; i++)
+	{
+		int numtemp = 0;
+		if(*strtemp != '\0')
+		{
+			numtemp = *strtemp - '0';
+			strtemp++;
+			(*dec)++;
+		}
+		nanofsec = nanofsec * 10 + numtemp;
+	}
+	timetemp = (neg != 1 ? timetemp : -timetemp);
+
+	/* First obtain nanosecond accuracy, then obtain dec accuracy */
+	dterr = mysnumber_to_time(timetemp, tm, flag, fsec, &ftype, &warn, &neg);
+	*fsec = (nanofsec + 500) / 1000;
+	(void)mystime_add_nanoseconds_with_round(tm, fsec, msec_round_add[(*dec)], &warn);
+	*fsec = *fsec - *fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - (*dec)];
+	if (dterr < 0 || warn)
+	{
+		make_warning(str, ftype);
+		if (dterr < 0)
+			return false;
+	}
+
+	if (neg)
+	{
+		tm->tm_hour = -tm->tm_hour;
+		tm->tm_min = -tm->tm_min;
+		tm->tm_sec = -tm->tm_sec;
+	}
+
+	return true;
+}
+
+/*
+ * get_datetime_from_numeric - parsing date and time values through numeric value.
+ */
+static bool
+get_datetime_from_numeric(Numeric numvalue, struct pg_tm *tm, fsec_t *fsec, int flag, int *dec)
+{
+	int64		datetimetemp = 0;
+	int64		len = 0;
+	char	   *str, *tmpstr;
+	fsec_t		nanoseconds = 0;
+	int			dterr;
+	mysql_dttype ftype;
+	int			warn = 0;
+
+	/* Calculate the length of the input data and return NULL if the integer part exceeds 14 digits. */
+	str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(numvalue)));
+	tmpstr = pstrdup(str);
+	/* Get the value before the decimal point. */
+	while(*str && *str != '.')
+	{
+		len++;
+		datetimetemp = datetimetemp * 10 + *str - '0';
+		str++;
+	}
+
+	/* Calculate the time */
+	str++; /* jump '.' */
+	for(int i = 0; i < 9; i++)
+	{
+		int numtemp = 0;
+		if(*str != '\0')
+		{
+			numtemp = *str - '0';
+			str++;
+			(*dec)++;
+		}
+		nanoseconds = nanoseconds * 10 + numtemp;
+	}
+
+	if(datetimetemp == 0)
+	{
+		MemSet(tm, 0, sizeof( struct pg_tm));
+	}
+	else
+	{
+		dterr = mysnumber_to_datetime(datetimetemp, tm, flag, fsec, &ftype, &warn);
+		if (nanoseconds < 0 || dterr == -1)
+		{
+			MemSet(tm, 0, sizeof( struct pg_tm));
+			ftype = MYSQL_TIMESTAMP_ERROR;
+			if (!warn)
+				warn|= MYSQL_TIME_WARN_TRUNCATED;
+			if (warn)
+				make_warning(tmpstr, ftype);
+			return false;
+		}
+		else if (ftype == MYSQL_TIMESTAMP_DATE)
+		{
+			/*
+			Generate a warning in case of DATE with fractional part:
+			20011231.1234 -> '2001-12-31'
+			unless the caller does not want the warning: for example, CAST does.
+			*/
+			if (nanoseconds && !(flag & TIME_NO_DATE_FRAC_WARN))
+				warn |= MYSQL_TIME_WARN_TRUNCATED;
+		}
+		else if (!(flag & TIME_NO_NSEC_ROUNDING))
+		{
+			*fsec = (nanoseconds + 500)/1000;
+			(void)mysdatetime_add_nanoseconds_with_round(tm, fsec, &warn, msec_round_add[(*dec)]);
+			*fsec = *fsec - *fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - (*dec)];
+		}
+
+		if (warn)
+			make_warning(tmpstr, ftype);
+	}
+
+	return true;
+}
+
+/*
+ * sec_since_epoch - calculation date and time to seconds.
+ */
+static pg_time_t
+sec_since_epoch(int year, int mon, int mday, int hour, int min ,int sec)
+{
+	int64	days;
+	/* Guard against my_time_t overflow(on system with 32 bit my_time_t) */
+	Assert(!(year == TIMESTAMP_MAX_YEAR && mon == 1 && mday > 17));
+	/*
+	 * It turns out that only whenever month is normalized or unnormalized
+	 * plays role.
+	 */
+	Assert(mon > 0 && mon < 13);
+	days= year * DAYS_PER_NYEAR - EPOCH_YEAR * DAYS_PER_NYEAR +
+			   LEAPS_THRU_END_OF(year - 1) -
+			   LEAPS_THRU_END_OF(EPOCH_YEAR - 1);
+	days += mon_starts[isleap(year)][mon - 1];
+	days += mday - 1;
+
+	return ((days * HOURS_PER_DAY + hour) * MINS_PER_HOUR + min) * SECS_PER_MIN + sec;
+}
+
+/*
+ * time_to_gmt_sec - calculation of date from from_tz
+ */
+static pg_time_t
+time_to_gmt_sec(struct pg_tm *tm, int offset)
+{
+	pg_time_t	local_t;
+	int			shift = 0;
+
+	/*
+	 * Check timestamp range.we have to do this as calling function relies on
+	 * us to make all validation checks here.
+	 */
+	if (!validate_timestamp_range(tm))
+		return 0;
+
+	/*
+	 * Do a temporary shift of the boundary dates to avoid
+	 * overflow of my_time_t if the time value is near it's
+	 * maximum range
+	 */
+	if ((tm->tm_year == TIMESTAMP_MAX_YEAR) && (tm->tm_mon == 1) && tm->tm_mday > 4)
+		shift = 2;
+
+	local_t= sec_since_epoch(tm->tm_year, tm->tm_mon, (tm->tm_mday - shift),
+							 tm->tm_hour, tm->tm_min, tm->tm_sec) - offset;
+
+	if (shift)
+	{
+		/* Add back the shifted time */
+		local_t += shift * SECS_PER_DAY;
+	}
+
+	if (local_t >= TIMESTAMP_MIN_VALUE && local_t <= TIMESTAMP_MAX_VALUE)
+		return local_t;
+
+	/* range error*/
+	return 0;
+}
+
+/*
+ * calculation date to_tz
+ */
+static void
+mys_sec_to_time(struct pg_tm *tmp, pg_time_t t, int offset)
+{
+	int64	days;
+	int64	rem;
+	int		y;
+	int		yleap;
+
+	days = t / SECS_PER_DAY;
+	rem = t % SECS_PER_DAY;
+
+	/*
+	 * We do this as separate step after dividing t, because this
+	 * allows us handle times near my_time_t bounds without overflows.
+	 */
+	rem += offset;
+	while (rem < 0)
+	{
+		rem += SECS_PER_DAY;
+		days--;
+	}
+	while (rem >= SECS_PER_DAY)
+	{
+		rem -= SECS_PER_DAY;
+		days++;
+	}
+	tmp->tm_hour = rem / SECS_PER_HOUR;
+	rem = rem % SECS_PER_HOUR;
+	tmp->tm_min = rem / SECS_PER_MIN;
+	/*
+	 * A positive leap second requires a special
+	 * representation.  This uses "... ??:59:60" et seq.
+	 */
+	tmp->tm_sec= rem % SECS_PER_MIN;
+
+	y = EPOCH_YEAR;
+	while (days < 0 || days >= year_lengths[yleap = isleap(y)])
+	{
+		int		newy;
+
+		newy = y + days / DAYS_PER_NYEAR;
+		if (days < 0)
+			newy--;
+		days -= (newy - y) * DAYS_PER_NYEAR +
+				 LEAPS_THRU_END_OF(newy - 1) -
+				 LEAPS_THRU_END_OF(y - 1);
+		y = newy;
+	}
+	tmp->tm_year = y;
+
+	tmp->tm_mon= 0;
+	for (int i = 0; i < 12 && days >= mon_lengths[yleap][i]; i++)
+	{
+		days = days - mon_lengths[yleap][i];
+		tmp->tm_mon++;
+	}
+	tmp->tm_mon++;
+	tmp->tm_mday= days + 1;
+}
+
+/*
+ * Determine how many digits to be saved behind the decimal point.
+ */
+static int
+determine_precision(int micro)
+{
+	int trailing_zero;
+	if (!micro)
+	{
+		return 0;
+	}
+
+	trailing_zero = 0;
+	while (micro % 10 == 0)
+	{
+		micro /= 10;
+		trailing_zero++;
+	}
+	return FRAC_PRECISION - trailing_zero;
+}
+
+/*
+ * parse timezone and check validity, range '-12:59' to '+13:00'
+ */
+static bool
+parse_timezone(struct pg_tm *tm, char *str, int *tz)
+{
+	if (isdigit((unsigned char) *str))
+		return false;
+
+	*tz = mys_parse_sane_timezone(tm, cstring_to_text(str));
+	if (str[0] == '-' || str[0] == '+')
+	{
+		if (str[0] == '-')
+		{
+			if (*tz > 12 * MINS_PER_HOUR * SECS_PER_MIN + 59 * SECS_PER_MIN)
+				return false;
+		}
+		else
+		{
+			if (-(*tz) > 13 * MINS_PER_HOUR * SECS_PER_MIN)
+				return false;
+		}
+		if (!strstr(str, ":"))
+			return false;
+	}
+	return true;
+}
+
+
+Datum
+to_days(PG_FUNCTION_ARGS)
+{
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t	fsec = 0;
+	int64	result = 0;
+	int		flag = TIME_NO_ZERO_DATE;
+
+	DateADT	date = PG_GETARG_DATEADT(0);
+
+	if (!get_date_from_int(date, tm, &fsec, flag))
+		PG_RETURN_NULL();
+
+	result = calc_day(tm->tm_year, tm->tm_mon, tm->tm_mday);
+	PG_RETURN_INT64(result);
+}
+
+Datum
+to_seconds(PG_FUNCTION_ARGS)
+{
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t	fsec = 0;
+	int64	result = 0;
+	int		flag = TIME_NO_ZERO_DATE;
+	int		dec = 0;
+	int64	part1 = 0, part2 = 0;
+
+	Numeric	date = PG_GETARG_NUMERIC(0);
+
+	if (!get_datetime_from_numeric(date, tm, &fsec, flag, &dec))
+		PG_RETURN_NULL();
+
+	part1 = calc_day(tm->tm_year, tm->tm_mon, tm->tm_mday);
+	part2 = ((tm->tm_hour * MINS_PER_HOUR + tm->tm_min) * SECS_PER_MINUTE) + tm->tm_sec;
+	result = part2 + part1 * 24L * MINS_PER_HOUR * SECS_PER_MINUTE;
+	PG_RETURN_INT64(result);
+}
+
+Datum
+unix_timestamp_no_args(PG_FUNCTION_ARGS)
+{
+	Timestamp now;
+	Timestamp epoch;
+	struct pg_tm tt, *tm = &tt;
+	Timestamp result;
+
+	GetCurrentDateTime(tm);
+	epoch = SetEpochTimestamp();
+	tm2timestamp(tm, 0, NULL, &now);
+	result = now - epoch - tm->tm_gmtoff * USECS_PER_SEC;
+	PG_RETURN_NUMERIC(DirectFunctionCall2(numeric_trunc,
+					   DirectFunctionCall2(numeric_div,
+					   DirectFunctionCall1(int8_numeric, result),
+					   DirectFunctionCall1(int8_numeric, USECS_PER_SEC)),
+					   determine_precision(result % USECS_PER_SEC)));
+}
+
+
+Datum
+utc_date_func(PG_FUNCTION_ARGS)
+{
+	DateADT result = 0;
+	struct pg_tm tt, *tm = &tt;
+
+	TimestampTz now = GetCurrentTimestamp();
+	Timestamp curtm = (Timestamp)now;
+	DateADT date = DatumGetDateADT(DirectFunctionCall1(timestamptz_date, curtm));
+	j2date(date + POSTGRES_EPOCH_JDATE,
+			   &(tm->tm_year), &(tm->tm_mon), &(tm->tm_mday));
+
+	if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
+		result = MYSQL_ZERO_DATE;
+	else
+		result = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+
+	PG_RETURN_DATEADT(result);
+}
+
+
+Datum
+utc_time_func(PG_FUNCTION_ARGS)
+{
+	Numeric		num;
+	TimestampTz	now;
+	TimeADT		result;
+
+	int32		typmod = PG_GETARG_INT32(0);
+	if (typmod < 0 || typmod > MAX_TIME_PRECISION)
+	{
+		ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("Too-big precision %d specified for 'utc_time'. Maximum is %d.", typmod, MAX_TIMESTAMP_PRECISION)));
+	}
+
+	now = GetCurrentTimestamp();
+	result = DatumGetTimeADT(DirectFunctionCall1(timestamp_time, (Timestamp)now));
+	AdjustTimeForTypmod(&result, typmod);
+
+	num = DatumGetNumeric(DirectFunctionCall2(pgtime_mystimes, result, PG_GETARG_DATUM(0)));
+	PG_RETURN_NUMERIC(num);
+}
+
+
+Datum
+utc_timestamp_func(PG_FUNCTION_ARGS)
+{
+	Numeric		num;
+	TimestampTz	now;
+	TimeADT		result;
+	int32 typmod = PG_GETARG_INT32(0);
+
+	if (typmod < 0 || typmod > MAX_TIME_PRECISION)
+	{
+		ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("Too-big precision %d specified for 'utc_timestamp'. Maximum is %d.", typmod, MAX_TIMESTAMP_PRECISION)));
+	}
+	now = GetCurrentTimestamp();
+	result = (Timestamp)now;
+	AdjustTimestampForTypmod(&result, typmod);
+	num = DatumGetNumeric(DirectFunctionCall2(pgtimestamp_mystimestamps, result, PG_GETARG_DATUM(0)));
+	PG_RETURN_NUMERIC(num);
+}
+
+Datum
+dayname(PG_FUNCTION_ARGS)
+{
+	long		weekday;
+	char	   *weekname = NULL;
+	MyLocale   *locale = NULL;
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t		fsec = 0;
+	int			flag = TIME_NO_ZERO_DATE;
+
+	DateADT		date = PG_GETARG_DATEADT(0);
+
+	if (!get_date_from_int(date, tm, &fsec, flag))
+		PG_RETURN_NULL();
+	weekday = calc_weekday(calc_day(tm->tm_year, tm->tm_mon, tm->tm_mday), false);
+
+	if (locale == NULL)
+		locale = MyLocaleSearch(lc_time_names);
+	weekname = locale->day_names[weekday];
+
+	PG_RETURN_TEXT_P(cstring_to_text(weekname));
+}
+
+Datum
+monthname(PG_FUNCTION_ARGS)
+{
+	char	   *monthname = NULL;
+	MyLocale   *locale = NULL;
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t		fsec = 0;
+	int			flag = TIME_FUZZY_DATE;
+
+	DateADT		date = PG_GETARG_DATEADT(0);
+
+	if (!get_date_from_int(date, tm, &fsec, flag))
+		PG_RETURN_NULL();
+
+	if (!tm->tm_mon)
+		PG_RETURN_NULL();
+
+	if (locale == NULL)
+		locale = MyLocaleSearch(lc_time_names);
+	monthname = locale->month_names[tm->tm_mon - 1];
+
+	PG_RETURN_TEXT_P(cstring_to_text(monthname));
+}
+
+Datum
+time_to_sec(PG_FUNCTION_ARGS)
+{
+	int64		result = 0;
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t		fsec = 0;
+	int			flag = 0;
+	int			dec = 0;
+
+	Numeric		num = PG_GETARG_NUMERIC(0);
+	if (!get_time_from_num(num, tm, &fsec, flag, &dec))
+		PG_RETURN_NULL();
+
+	result = ((tm->tm_hour * MINS_PER_HOUR + tm->tm_min) * SECS_PER_MINUTE) + tm->tm_sec;
+	PG_RETURN_INT64(result);
+}
+
+Datum
+mys_month(PG_FUNCTION_ARGS)
+{
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t		fsec = 0;
+	int			flag = TIME_FUZZY_DATE;
+
+	DateADT		date = PG_GETARG_DATEADT(0);
+
+	if (!get_date_from_int(date, tm, &fsec, flag))
+		PG_RETURN_NULL();
+
+	PG_RETURN_INT32(tm->tm_mon);
+}
+
+Datum
+mys_date(PG_FUNCTION_ARGS)
+{
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t	fsec = 0;
+	DateADT	result = 0;
+	int		flag = TIME_FUZZY_DATE | TIME_NO_DATE_FRAC_WARN;
+
+	DateADT 	date = PG_GETARG_DATEADT(0);
+	if (!get_date_from_int(date, tm, &fsec, flag))
+		PG_RETURN_NULL();
+
+	if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
+		result = MYSQL_ZERO_DATE;
+	else
+		result = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+
+	PG_RETURN_DATEADT(result);
+}
+
+Datum
+mys_week(PG_FUNCTION_ARGS)
+{
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t	fsec = 0;
+	int		result = 0;
+	int		mode = default_week_format;
+	int		flag = TIME_NO_ZERO_DATE;
+
+	DateADT		date = PG_GETARG_DATEADT(0);
+
+	if (!get_date_from_int(date, tm, &fsec, flag))
+		PG_RETURN_NULL();
+	result = calc_week(tm, week_mode(mode), &(tm->tm_year));
+	PG_RETURN_INT32(result);
+}
+
+Datum
+mys_week_mode(PG_FUNCTION_ARGS)
+{
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t	fsec = 0;
+	int		result = 0;
+	int		flag = TIME_NO_ZERO_DATE;
+
+	DateADT		date = PG_GETARG_DATEADT(0);
+	int			mode = PG_GETARG_INT32(1);
+
+	if (!get_date_from_int(date, tm, &fsec, flag))
+		PG_RETURN_NULL();
+	result = calc_week(tm, week_mode(mode), &(tm->tm_year));
+	PG_RETURN_INT32(result);
+}
+
+Datum
+yearweek(PG_FUNCTION_ARGS)
+{
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t	fsec = 0;
+	int		result = 0;
+	int		flag = TIME_NO_ZERO_DATE;
+
+	DateADT		date = PG_GETARG_DATEADT(0);
+	int			mode = PG_GETARG_INT32(1);
+
+	if (mode > 7)
+		mode = 7;
+	else if (mode < 0)
+		mode = 0;
+
+	if (!get_date_from_int(date, tm, &fsec, flag))
+		PG_RETURN_NULL();
+
+	result = calc_week(tm, week_mode(mode) | WEEK_YEAR, &(tm->tm_year));
+	result += tm->tm_year * 100;
+	PG_RETURN_INT64(result);
+}
+
+Datum
+datediff(PG_FUNCTION_ARGS)
+{
+	int64	day1 = -1;
+	int64	day2 = -1;
+
+	day1 = DatumGetInt64(DirectFunctionCall1(to_days, PG_GETARG_DATUM(0)));
+	day2 = DatumGetInt64(DirectFunctionCall1(to_days, PG_GETARG_DATUM(1)));
+
+	if (!day1 || !day2)
+		PG_RETURN_NULL();
+	PG_RETURN_INT64(day1 - day2);
+}
+
+Datum
+from_days(PG_FUNCTION_ARGS)
+{
+	struct	pg_tm tt, *tm = &tt;
+	DateADT	result = 0;
+	int64	num = 0;
+
+	num = DatumGetInt64(DirectFunctionCall1(numeric_int8, PG_GETARG_DATUM(0)));
+	get_date_from_day(num, tm);
+	if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
+		result = MYSQL_ZERO_DATE;
+	else
+		result = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+
+	PG_RETURN_DATEADT(result);
+}
+
+Datum
+convert_tz(PG_FUNCTION_ARGS)
+{
+	char   *str1, *str2;
+	struct	pg_tm tt, *tm = &tt;
+	fsec_t	fsec = 0;
+	int64	result = 0;
+	Numeric nic;
+	int		flag = TIME_NO_ZERO_DATE;
+	int		tz1 = 0;
+	int		tz2 = 0;
+	pg_time_t	tm_tmp = 0;
+	TimeOffset	time = 0;
+	int64		datetemp = 0;
+	int			dec = 0;
+	text	   *arg1;
+	text	   *arg2;
+	char		buf[MAXDATELEN + 1] = {0};
+
+	Numeric datetime = PG_GETARG_NUMERIC(0);
+	if (!get_datetime_from_numeric(datetime, tm, &fsec, flag, &dec))
+		PG_RETURN_NULL();
+
+	arg1 = PG_GETARG_TEXT_PP(1);
+	arg2 = PG_GETARG_TEXT_PP(2);
+	str1 = text_to_cstring(arg1);
+	str2 = text_to_cstring(arg2);
+	/* if the digital time zone does not have a +/- sign. */
+	if (!parse_timezone(tm, str1, &tz1))
+		PG_RETURN_NULL();
+	if (!parse_timezone(tm, str2, &tz2))
+		PG_RETURN_NULL();
+
+	/* calculation of date from from_tz to to_tz. */
+	tm_tmp = time_to_gmt_sec(tm, -tz1);
+	if (tm_tmp)
+		mys_sec_to_time(tm, tm_tmp, -tz2);
+
+	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ;
+	datetemp = datetemp * 1000000;
+	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+	result = datetemp + time;
+
+#ifdef WIN32
+	snprintf(buf, MAXDATELEN, "%lld.%06d", result, fsec);
+#else
+	snprintf(buf, MAXDATELEN, "%ld.%06d", result, fsec);
+#endif
+
+	nic = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+											   CStringGetDatum(buf),
+											   ObjectIdGetDatum(InvalidOid),
+											   Int32GetDatum((((14 + dec) << 16) | dec) + VARHDRSZ)));
+
+	PG_RETURN_NUMERIC(nic);
+}
+
+/*
+ * get_format(date/datetime/time, 'EUR'|'USA'|'JIS'|'ISO'|'INTERNAL')
+ */
+Datum
+get_format(PG_FUNCTION_ARGS)
+{
+	int32		time_type = PG_GETARG_INT32(0);
+	text	   *units = PG_GETARG_TEXT_PP(1);
+	const char *result_str = NULL;
+
+	char   *lowunits = downcase_truncate_identifier(VARDATA_ANY(units), VARSIZE_ANY_EXHDR(units), false);
+	bool	find_format = false;
+	int		i;
+	for (i = 0; i < szdate_time_formats; i++)
+	{
+		if (strcmp(lowunits, date_time_formats[i].format_name) == 0)
+		{
+			find_format = true;
+			break;
+		}
+	}
+
+	if (!find_format)
+		PG_RETURN_NULL();
+
+	switch (time_type)
+	{
+		case DTK_DATE:
+			result_str = date_time_formats[i].date_format;
+			break;
+		case DTK_DATE_TIME:
+			result_str = date_time_formats[i].datetime_format;
+			break;
+		case DTK_TIME:
+			result_str = date_time_formats[i].time_format;
+			break;
+		default:
+			Assert(0);  /* impossible */
+			break;
+	}
+
+	PG_RETURN_DATUM(CStringGetTextDatum(result_str));
 }

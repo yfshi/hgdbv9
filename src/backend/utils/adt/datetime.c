@@ -3589,7 +3589,7 @@ static inline long calc_daynr(uint32 year,uint32 month,uint32 day)
     FALSE   The MYSQL_TIME value is definitely out of range
 */
 
-static inline bool validate_timestamp_range(struct pg_tm *tm)
+bool validate_timestamp_range(struct pg_tm *tm) /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 {
 	if ((tm->tm_year > TIMESTAMP_MAX_YEAR || tm->tm_year < TIMESTAMP_MIN_YEAR) ||
 		(tm->tm_year == TIMESTAMP_MAX_YEAR && (tm->tm_mon > 1 || tm->tm_mday > 19)) ||

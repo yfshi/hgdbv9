@@ -148,6 +148,7 @@ struct tzEntry;
 #define DTK_TIME		3
 #define DTK_TZ			4
 #define DTK_AGO			5
+#define DTK_DATE_TIME	7 /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 #define DTK_SPECIAL		6
 #define DTK_EARLY		9
@@ -443,5 +444,6 @@ extern int mysstr_to_time(const char *str, size_t length, struct pg_tm *tm, int 
 					  fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int *neg);
 extern int mysnumber_to_time(int64 nr, struct pg_tm *tm,  int flag, int *fsec, mysql_dttype *ftype, int *warnings, int *neg);
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
+extern bool validate_timestamp_range(struct pg_tm *tm); /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 #endif							/* DATETIME_H */

@@ -620,3 +620,1324 @@ LANGUAGE internal
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+
+--to_days
+CREATE FUNCTION ivymy.to_days(date)
+RETURNS bigint
+AS 'MODULE_PATHNAME','to_days'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_days(datetime)
+RETURNS bigint
+AS $$
+	select ivymy.to_days($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_days(datetime(6))
+RETURNS bigint
+AS $$
+	select ivymy.to_days($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_days(numeric)
+RETURNS bigint
+AS $$
+	select ivymy.to_days($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_days(time)
+RETURNS bigint
+AS $$
+	select ivymy.to_days($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_days(time(6))
+RETURNS bigint
+AS $$
+	select ivymy.to_days($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_days(text)
+RETURNS bigint
+AS $$
+	select ivymy.to_days($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_days(timestamp)
+RETURNS bigint
+AS $$
+	select ivymy.to_days($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_days(timestamp(6))
+RETURNS bigint
+AS $$
+	select ivymy.to_days($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--to_seconds
+CREATE FUNCTION ivymy.to_seconds(datetime(6))
+RETURNS bigint
+AS 'MODULE_PATHNAME','to_seconds'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_seconds(datetime)
+RETURNS bigint
+AS $$
+	select ivymy.to_seconds($1::datetime(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_seconds(date)
+RETURNS bigint
+AS $$
+	select ivymy.to_seconds($1::datetime(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_seconds(timestamp)
+RETURNS bigint
+AS $$
+	select ivymy.to_seconds($1::datetime(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_seconds(timestamp(6))
+RETURNS bigint
+AS $$
+	select ivymy.to_seconds($1::datetime(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_seconds(time)
+RETURNS bigint
+AS $$
+	select ivymy.to_seconds($1::datetime(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_seconds(time(6))
+RETURNS bigint
+AS $$
+	select ivymy.to_seconds($1::datetime(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_seconds(numeric)
+RETURNS bigint
+AS $$
+	select ivymy.to_seconds($1::datetime(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.to_seconds(text)
+RETURNS bigint
+AS $$
+	select ivymy.to_seconds($1::datetime(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--unix_timestamp
+CREATE FUNCTION ivymy.unix_timestamp()
+RETURNS numeric
+AS 'MODULE_PATHNAME','unix_timestamp_no_args'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--utc_date
+CREATE FUNCTION ivymy.utc_date()
+RETURNS date
+AS 'MODULE_PATHNAME','utc_date_func'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--utc_time
+CREATE FUNCTION ivymy.utc_time(int)
+RETURNS time(6)
+AS 'MODULE_PATHNAME','utc_time_func'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--utc_timestamp
+CREATE FUNCTION ivymy.utc_timestamp(int)
+RETURNS timestamp(6)
+AS 'MODULE_PATHNAME','utc_timestamp_func'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--dayname
+CREATE FUNCTION ivymy.dayname(date)
+RETURNS text
+AS 'MODULE_PATHNAME','dayname'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.dayname(datetime)
+RETURNS text
+AS $$
+	select ivymy.dayname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.dayname(datetime(6))
+RETURNS text
+AS $$
+	select ivymy.dayname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.dayname(numeric)
+RETURNS text
+AS $$
+	select ivymy.dayname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.dayname(time)
+RETURNS text
+AS $$
+	select ivymy.dayname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.dayname(time(6))
+RETURNS text
+AS $$
+	select ivymy.dayname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.dayname(text)
+RETURNS text
+AS $$
+	select ivymy.dayname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.dayname(timestamp)
+RETURNS text
+AS $$
+	select ivymy.dayname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.dayname(timestamp(6))
+RETURNS text
+AS $$
+	select ivymy.dayname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--month
+CREATE FUNCTION ivymy.monthname(date)
+RETURNS text
+AS 'MODULE_PATHNAME','monthname'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.monthname(datetime)
+RETURNS text
+AS $$
+	select ivymy.monthname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.monthname(datetime(6))
+RETURNS text
+AS $$
+	select ivymy.monthname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.monthname(numeric)
+RETURNS text
+AS $$
+	select ivymy.monthname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.monthname(time)
+RETURNS text
+AS $$
+	select ivymy.monthname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.monthname(time(6))
+RETURNS text
+AS $$
+	select ivymy.monthname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.monthname(text)
+RETURNS text
+AS $$
+	select ivymy.monthname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.monthname(timestamp)
+RETURNS text
+AS $$
+	select ivymy.monthname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.monthname(timestamp(6))
+RETURNS text
+AS $$
+	select ivymy.monthname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--time_to_sec
+CREATE FUNCTION ivymy.time_to_sec(time(6))
+RETURNS bigint
+AS 'MODULE_PATHNAME','time_to_sec'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.time_to_sec(time)
+RETURNS bigint
+AS $$
+	select ivymy.time_to_sec($1::time(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.time_to_sec(text)
+RETURNS bigint
+AS $$
+	select ivymy.time_to_sec($1::time(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.time_to_sec(numeric)
+RETURNS bigint
+AS $$
+	select ivymy.time_to_sec($1::time(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.time_to_sec(datetime)
+RETURNS bigint
+AS $$
+	select ivymy.time_to_sec($1::time(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.time_to_sec(datetime(6))
+RETURNS bigint
+AS $$
+	select ivymy.time_to_sec($1::time(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.time_to_sec(timestamp)
+RETURNS bigint
+AS $$
+	select ivymy.time_to_sec($1::time(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.time_to_sec(timestamp(6))
+RETURNS bigint
+AS $$
+	select ivymy.time_to_sec($1::time(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+
+--month
+CREATE FUNCTION ivymy.month(date)
+RETURNS int
+AS 'MODULE_PATHNAME','mys_month'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.month(datetime)
+RETURNS int
+AS $$
+	select ivymy.month($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.month(datetime(6))
+RETURNS int
+AS $$
+	select ivymy.month($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.month(numeric)
+RETURNS int
+AS $$
+	select ivymy.month($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.month(time)
+RETURNS int
+AS $$
+	select ivymy.month($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.month(time(6))
+RETURNS int
+AS $$
+	select ivymy.month($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.month(text)
+RETURNS int
+AS $$
+	select ivymy.month($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.month(timestamp)
+RETURNS int
+AS $$
+	select ivymy.month($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.month(timestamp(6))
+RETURNS int
+AS $$
+	select ivymy.month($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--date
+CREATE FUNCTION ivymy.date(date)
+RETURNS date
+AS 'MODULE_PATHNAME','mys_date'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.date(datetime)
+RETURNS date
+AS $$
+	select ivymy.date($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.date(datetime(6))
+RETURNS date
+AS $$
+	select ivymy.date($1::ivymy.mysdate);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.date(numeric)
+RETURNS date
+AS $$
+	select ivymy.date($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.date(time)
+RETURNS date
+AS $$
+	select ivymy.date($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.date(time(6))
+RETURNS date
+AS $$
+	select ivymy.date($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.date(text)
+RETURNS date
+AS $$
+	select ivymy.date($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.date(timestamp)
+RETURNS date
+AS $$
+	select ivymy.date($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.date(timestamp(6))
+RETURNS date
+AS $$
+	select ivymy.date($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--week
+CREATE FUNCTION ivymy.week(date)
+RETURNS int
+AS 'MODULE_PATHNAME','mys_week'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(datetime)
+RETURNS int
+AS $$
+	select ivymy.week($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(datetime(6))
+RETURNS int
+AS $$
+	select ivymy.week($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(numeric)
+RETURNS int
+AS $$
+	select ivymy.week($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(time)
+RETURNS int
+AS $$
+	select ivymy.week($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(time(6))
+RETURNS int
+AS $$
+	select ivymy.week($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(text)
+RETURNS int
+AS $$
+	select ivymy.week($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(timestamp)
+RETURNS int
+AS $$
+	select ivymy.week($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(timestamp(6))
+RETURNS int
+AS $$
+	select ivymy.week($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(date, int)
+RETURNS int
+AS 'MODULE_PATHNAME','mys_week_mode'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(datetime, int)
+RETURNS int
+AS $$
+	select ivymy.week($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(datetime(6), int)
+RETURNS int
+AS $$
+	select ivymy.week($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(numeric, int)
+RETURNS int
+AS $$
+	select ivymy.week($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(time, int)
+RETURNS int
+AS $$
+	select ivymy.week($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(time(6), int)
+RETURNS int
+AS $$
+	select ivymy.week($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(text, int)
+RETURNS int
+AS $$
+	select ivymy.week($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(timestamp, int)
+RETURNS int
+AS $$
+	select ivymy.week($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.week(timestamp(6), int)
+RETURNS int
+AS $$
+	select ivymy.week($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--yearweek
+CREATE FUNCTION ivymy.yearweek(date, int)
+RETURNS bigint
+AS 'MODULE_PATHNAME','yearweek'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(datetime, int)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(datetime(6), int)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(numeric, int)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(time, int)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(time(6), int)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(text, int)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(timestamp, int)
+RETURNS int
+AS $$
+	select ivymy.yearweek($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(timestamp(6), int)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(date)
+RETURNS int
+AS $$
+	select ivymy.yearweek($1, 0);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(datetime)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1, 0);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(datetime(6))
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1, 0);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(numeric)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1, 0);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(time)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1, 0);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(time(6))
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1, 0);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(text)
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1, 0);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(timestamp)
+RETURNS int
+AS $$
+	select ivymy.yearweek($1, 0);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.yearweek(timestamp(6))
+RETURNS bigint
+AS $$
+	select ivymy.yearweek($1, 0);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--datediff
+CREATE FUNCTION ivymy.datediff(date, date)
+RETURNS bigint
+AS 'MODULE_PATHNAME','datediff'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(datetime, datetime)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(datetime(6), datetime(6))
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(time, time)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(time(6), time(6))
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(text, text)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(numeric, numeric)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::ivymy.mysdate, $2::ivymy.mysdate);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(date, numeric)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(numeric, date)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(datetime, numeric)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(numeric, datetime)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(datetime(6), numeric)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(numeric, datetime(6))
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(ivymy.mystime, numeric)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::ivymy.mysdate, $2::ivymy.mysdate);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(numeric, time)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(time(6), numeric)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(numeric, time(6))
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(date, text)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(text, date)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(datetime, text)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(text, ivymy.mysdatetime)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(datetime(6), text)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(text, datetime(6))
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(time, text)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(text, time)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(time(6), text)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(text, time(6))
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(numeric, text)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(text, numeric)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--from_days
+CREATE FUNCTION ivymy.from_days(numeric)
+RETURNS date
+AS 'MODULE_PATHNAME','from_days'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(date)
+RETURNS date
+AS $$
+	select ivymy.from_days($1::bigint);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(text)
+RETURNS date
+AS $$
+	select ivymy.from_days($1::bigint);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(datetime(6))
+RETURNS date
+AS $$
+	select ivymy.from_days($1::numeric);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(datetime)
+RETURNS date
+AS $$
+	select ivymy.from_days($1::numeric);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(timestamp)
+RETURNS date
+AS $$
+	select ivymy.from_days($1::numeric);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(timestamp(6))
+RETURNS date
+AS $$
+	select ivymy.from_days($1::numeric);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(time)
+RETURNS date
+AS $$
+	select ivymy.from_days($1::numeric);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(time(6))
+RETURNS date
+AS $$
+	select ivymy.from_days($1::numeric);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+--convert_tz
+CREATE FUNCTION ivymy.convert_tz(datetime(6), text, text)
+RETURNS datetime(6)
+AS 'MODULE_PATHNAME','convert_tz'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.convert_tz(datetime, text, text)
+RETURNS datetime(6)
+AS $$
+	select ivymy.convert_tz($1::datetime(6), $2, $3);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.convert_tz(time, text, text)
+RETURNS datetime(6)
+AS $$
+	select ivymy.convert_tz($1::datetime(6), $2, $3);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.convert_tz(time(6), text, text)
+RETURNS datetime(6)
+AS $$
+	select ivymy.convert_tz($1::datetime(6), $2, $3);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.convert_tz(numeric, text, text)
+RETURNS datetime(6)
+AS $$
+	select ivymy.convert_tz($1::datetime(6), $2, $3);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.convert_tz(text, text, text)
+RETURNS datetime(6)
+AS $$
+	select ivymy.convert_tz($1::datetime(6), $2, $3);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.get_format(int, text)
+RETURNS text
+AS 'MODULE_PATHNAME','get_format'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;

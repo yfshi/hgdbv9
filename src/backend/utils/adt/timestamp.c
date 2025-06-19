@@ -5989,3 +5989,14 @@ generate_series_timestamptz(PG_FUNCTION_ARGS)
 		SRF_RETURN_DONE(funcctx);
 	}
 }
+
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+/*
+ * mys_parse_sane_timezone - parse timezone.
+ */
+int
+mys_parse_sane_timezone(struct pg_tm *tm, text *tz)
+{
+	return parse_sane_timezone(tm, tz);
+}
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
