@@ -35,6 +35,23 @@ CATALOG(pg_force_view,9120,ForceViewRelationId)
 	char		ident_case;		/* see IDENT_CASE__xxx constants below */
 
 #ifdef CATALOG_VARLEN			/* variable-length fields start here */
+	/*
+	 * OA-REQ-1459:
+	 * attlist holds the plain text of the view column names enclosed
+	 * in parentheses, for example (c1,c2). Because force view does not
+	 * record column information in pg_attribute. in some cases we don't
+	 * know what the type of the view column is, For example,
+	 * in the following example, Oracle is ok:
+	 *
+	 *	CREATE FORCE VIEW V1(A, B, C) AS SELECT D FROM T1;
+	 *
+	 * In addition, neither Oracle nor Postgres has syntax for adding or
+	 * removing columns from a view, so I treat the columns of a view as
+	 * constants, rather than as variables like the view name. Postgres
+	 * has syntax for renaming view names. Therefore, variables such as
+	 * view names must be obtained dynamically when the view is compiled.
+	 */
+	text		attlist;
 	text		source;
 #endif
 } FormData_pg_force_view;

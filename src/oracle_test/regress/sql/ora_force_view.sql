@@ -140,3 +140,13 @@ select * from vtest193;
 drop view vtest193;
 drop table test193;
 /* End - BUG#M0000210 */
+
+/* Begin - OA-REQ-1459 */
+create schema oa_req_1459;
+create force view oa_req_1459.v_req_1459(vcol1, vcol2) as select a, b from oa_req_1459.tb1;
+select pg_get_viewdef('oa_req_1459.v_req_1459'); 
+alter schema oa_req_1459 rename to req_1459;
+select pg_get_viewdef('req_1459.v_req_1459'); 
+drop view req_1459.v_req_1459;
+drop schema req_1459;
+/* End - OA-REQ-1459 */

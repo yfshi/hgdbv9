@@ -6,25 +6,25 @@ LINE 2: create view v_bug193 as select * from t_bug193;
 create force view v_bug193 as select * from t_bug193;
 WARNING:  View created with compilation errors
 select pg_get_viewdef('v_bug193');
-                    pg_get_viewdef                     
--------------------------------------------------------
- create force view v_bug193 as select * from t_bug193;
+                             pg_get_viewdef                              
+-------------------------------------------------------------------------
+ CREATE OR REPLACE FORCE VIEW public.v_bug193 AS select * from t_bug193;
 (1 row)
 
 create force view v_bug193 as select * from t_bug193_1;
 WARNING:  View created with compilation errors
 select pg_get_viewdef('v_bug193');		-- force view defination not change
-                    pg_get_viewdef                     
--------------------------------------------------------
- create force view v_bug193 as select * from t_bug193;
+                             pg_get_viewdef                              
+-------------------------------------------------------------------------
+ CREATE OR REPLACE FORCE VIEW public.v_bug193 AS select * from t_bug193;
 (1 row)
 
 create or replace force view v_bug193 as select * from t_bug193_1;
 WARNING:  View created with compilation errors
 select pg_get_viewdef('v_bug193');		-- force view defination be changed
-                           pg_get_viewdef                           
---------------------------------------------------------------------
- create or replace force view v_bug193 as select * from t_bug193_1;
+                              pg_get_viewdef                               
+---------------------------------------------------------------------------
+ CREATE OR REPLACE FORCE VIEW public.v_bug193 AS select * from t_bug193_1;
 (1 row)
 
 create table test_bug193(a int);
@@ -56,9 +56,9 @@ WARNING:  View created with compilation errors
 select * from bug193_ok;	-- error, view has errors
 ERROR:  view "public.bug193_ok" has errors
 select pg_get_viewdef('bug193_ok');
-                           pg_get_viewdef                            
----------------------------------------------------------------------
- create or replace force view bug193_ok as select * from t_bug193_2;
+                               pg_get_viewdef                               
+----------------------------------------------------------------------------
+ CREATE OR REPLACE FORCE VIEW public.bug193_ok AS select * from t_bug193_2;
 (1 row)
 
 create view bug193_ok_1 as select * from test_bug193;
@@ -320,3 +320,23 @@ select * from vtest193;
 drop view vtest193;
 drop table test193;
 /* End - BUG#M0000210 */
+/* Begin - OA-REQ-1459 */
+create schema oa_req_1459;
+create force view oa_req_1459.v_req_1459(vcol1, vcol2) as select a, b from oa_req_1459.tb1;
+WARNING:  View created with compilation errors
+select pg_get_viewdef('oa_req_1459.v_req_1459'); 
+                                             pg_get_viewdef                                              
+---------------------------------------------------------------------------------------------------------
+ CREATE OR REPLACE FORCE VIEW oa_req_1459.v_req_1459 (vcol1, vcol2) AS select a, b from oa_req_1459.tb1;
+(1 row)
+
+alter schema oa_req_1459 rename to req_1459;
+select pg_get_viewdef('req_1459.v_req_1459'); 
+                                            pg_get_viewdef                                            
+------------------------------------------------------------------------------------------------------
+ CREATE OR REPLACE FORCE VIEW req_1459.v_req_1459 (vcol1, vcol2) AS select a, b from oa_req_1459.tb1;
+(1 row)
+
+drop view req_1459.v_req_1459;
+drop schema req_1459;
+/* End - OA-REQ-1459 */

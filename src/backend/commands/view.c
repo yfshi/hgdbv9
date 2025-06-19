@@ -640,6 +640,7 @@ DefineView(ViewStmt *stmt, const char *queryString,
 		if (need_store)
 		{
 			char	ident_case;
+			StringInfo	buf = makeStringInfo(); /* OA-REQ-1459 */
 
 			if (identifier_case_switch == NORMAL)
 				ident_case = IDENT_CASE_NORMAL;
@@ -654,7 +655,29 @@ DefineView(ViewStmt *stmt, const char *queryString,
 				elog(ERROR, "Incorrect identifier_case_switch value");
 			}
 
-			StoreForceViewQuery(address.objectId, stmt->replace, ident_case, stmt->stmt_literal ? stmt->stmt_literal : queryString);
+			/* Begin - OA-REQ-1459 */
+			/* Shouldn't happen? */
+			if (!stmt->stmt_literal)
+				elog(ERROR, "Unable to obtain query for force view");
+
+			if (stmt->aliases != NIL)
+			{
+				ListCell	*alist_item;
+				int			attno = 0;
+
+				appendStringInfoChar(buf, '(');
+				foreach(alist_item, stmt->aliases)
+				{
+					if (attno != 0)
+						appendStringInfoString(buf, ", ");
+					appendStringInfoString(buf, quote_identifier(strVal(lfirst(alist_item))));
+					attno++;
+				}
+				appendStringInfoChar(buf, ')');
+			}
+			/* End - OA-REQ-1459 */
+
+			StoreForceViewQuery(address.objectId, stmt->replace, ident_case, stmt->stmt_literal, stmt->aliases ? buf->data : NULL /* OA-REQ-1459 */);
 		}
 
 		/* oracle always issues this warning */
@@ -839,7 +862,7 @@ StoreViewQuery(Oid viewOid, Query *viewParse, bool replace)
 
 /* Begin - ReqID:SRS-SQL-FORCEVIEW */
 void
-StoreForceViewQuery(Oid viewOid, bool replace, char ident_case ,const char *queryString)
+StoreForceViewQuery(Oid viewOid, bool replace, char ident_case ,const char *queryString, const char *attlist /* OA-REQ-1459 */)
 {
 	Datum		values[Natts_pg_force_view];
 	bool		nulls[Natts_pg_force_view];
@@ -853,6 +876,17 @@ StoreForceViewQuery(Oid viewOid, bool replace, char ident_case ,const char *quer
 	values[Anum_pg_force_view_fvoid - 1] = ObjectIdGetDatum(viewOid);
 	values[Anum_pg_force_view_ident_case - 1] = CharGetDatum(ident_case);
 	values[Anum_pg_force_view_source - 1] = CStringGetTextDatum(queryString);
+
+	/* Begin - OA-REQ-1459 */
+	/*
+	 * When the view changes from valid to invalid or no
+	 * column name is specified attlist is null.
+	 */
+	if (attlist)
+		values[Anum_pg_force_view_attlist - 1] = CStringGetTextDatum(attlist);
+	else
+		nulls[Anum_pg_force_view_attlist - 1] = true;
+	/* End - OA-REQ-1459 */
 
 	/*
 	 * Ready to store new pg_force_view tuple
@@ -875,6 +909,7 @@ StoreForceViewQuery(Oid viewOid, bool replace, char ident_case ,const char *quer
 		MemSet(replaces, false, sizeof(replaces));
 		replaces[Anum_pg_force_view_source - 1] = true;
 		replaces[Anum_pg_force_view_ident_case - 1] = true;
+		replaces[Anum_pg_force_view_attlist - 1] = true; /* OA-REQ-1459 */
 
 		tup = heap_modify_tuple(oldtup, RelationGetDescr(pg_force_view_desc),
 								values, nulls, replaces);
@@ -1018,11 +1053,25 @@ get_force_view_def(Oid viewoid)
 	HeapTuple	tup;
 	Datum		view_source;
 	bool		isnull;
-	char		*source;
+	/* Begin - OA-REQ-1459 */
+	Datum		view_attlist;
+	Datum		view_ident_case;
+	char		ident_case;
+	int			save_nestlevel;
+	StringInfo	buf = makeStringInfo();
+	/* End - OA-REQ-1459 */
 
 	tup = SearchSysCache1(FORCEVIEWOID, ObjectIdGetDatum(viewoid));
 	if (!HeapTupleIsValid(tup))
 		elog(ERROR, "cache lookup failed for force view %u", viewoid);
+
+	/* Begin - OA-REQ-1459 */
+	view_ident_case = SysCacheGetAttr(FORCEVIEWOID, tup,
+										Anum_pg_force_view_ident_case,
+										&isnull);
+	if (isnull)
+		elog(ERROR, "the ident case of force view %u is lost", viewoid);
+	/* End - OA-REQ-1459 */
 
 	view_source = SysCacheGetAttr(FORCEVIEWOID, tup,
 									 Anum_pg_force_view_source,
@@ -1030,9 +1079,50 @@ get_force_view_def(Oid viewoid)
 	if (isnull)
 		elog(ERROR, "the definition of force view %u is lost", viewoid);
 
-	source = TextDatumGetCString(view_source);
+	/* Begin - OA-REQ-1459 */
+	view_attlist = SysCacheGetAttr(FORCEVIEWOID, tup,
+									Anum_pg_force_view_attlist,
+									&isnull);
+
+	save_nestlevel = NewGUCNestLevel();
+	ident_case = DatumGetChar(view_ident_case);
+	if (ident_case == IDENT_CASE_NORMAL)
+		(void) set_config_option("ivorysql.identifier_case_switch", "normal",
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	else if (ident_case == IDENT_CASE_INTERCHANGE)
+		(void) set_config_option("ivorysql.identifier_case_switch", "interchange",
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	else if (ident_case == IDENT_CASE_LOWERCASE)
+		(void) set_config_option("ivorysql.identifier_case_switch", "lowercase",
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	else if (ident_case == IDENT_CASE_UNDEFINE)
+		/* Shouldn't happen, issue a warning? */
+		elog(WARNING, "An unknown ident case was encountered");
+	else
+		elog(ERROR, "Invalid ident case for force view");
+
+	appendStringInfoString(buf, "CREATE OR REPLACE FORCE VIEW ");
+	appendStringInfoString(buf, quote_identifier(get_namespace_name(get_rel_namespace(viewoid))));
+	appendStringInfoChar(buf, '.');
+	appendStringInfoString(buf, quote_identifier(get_rel_name(viewoid)));
+
+	if (!isnull)
+	{
+		appendStringInfoChar(buf, ' ');
+		appendStringInfoString(buf, TextDatumGetCString(view_attlist));
+	}
+
+	appendStringInfoString(buf, " AS ");
+	appendStringInfoString(buf, TextDatumGetCString(view_source));
+
 	ReleaseSysCache(tup);
-	return source;
+	AtEOXact_GUC(false, save_nestlevel);
+
+	return buf->data;
+	/* End - OA-REQ-1459 */
 }
 
 static bool
@@ -1201,11 +1291,15 @@ compile_force_view(Oid viewoid)
 	bool		res = false;
 	bool		isnull;
 	char		*fview_querystring;
-	Datum		view_source;
+	/* Begin - OA-REQ-1459 */
+	int			save_nestlevel;
+	Datum		view_ident_case;
+	char		ident_case;
+	HeapTuple	tup;
+	/* End - OA-REQ-1459 */
 	List	   *raw_parsetree_list;
 	RawStmt    *rs;
 	Node		*node;
-	HeapTuple	tup;
 
 	if (!rel_is_force_view(viewoid))
 		return true;
@@ -1215,14 +1309,37 @@ compile_force_view(Oid viewoid)
 	if (!HeapTupleIsValid(tup))
 		elog(ERROR, "cache lookup failed for force view %u", viewoid);
 
-	view_source = SysCacheGetAttr(FORCEVIEWOID, tup,
-									 Anum_pg_force_view_source,
-									 &isnull);
+	/* Begin - OA-REQ-1459 */
+	view_ident_case = SysCacheGetAttr(FORCEVIEWOID, tup,
+										Anum_pg_force_view_ident_case,
+										&isnull);
 	if (isnull)
-		elog(ERROR, "the definition of force view %u is lost", viewoid);
+		elog(ERROR, "the ident case of force view %u is lost", viewoid);
 
-	fview_querystring = TextDatumGetCString(view_source);
+	ident_case = DatumGetChar(view_ident_case);
 	ReleaseSysCache(tup);
+
+	fview_querystring = get_force_view_def(viewoid);
+	save_nestlevel = NewGUCNestLevel();
+
+	if (ident_case == IDENT_CASE_NORMAL)
+		(void) set_config_option("ivorysql.identifier_case_switch", "normal",
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	else if (ident_case == IDENT_CASE_INTERCHANGE)
+		(void) set_config_option("ivorysql.identifier_case_switch", "interchange",
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	else if (ident_case == IDENT_CASE_LOWERCASE)
+		(void) set_config_option("ivorysql.identifier_case_switch", "lowercase",
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	else if (ident_case == IDENT_CASE_UNDEFINE)
+		/* Shouldn't happen, issue a warning? */
+		elog(WARNING, "An unknown ident case was encountered");
+	else
+		elog(ERROR, "Invalid ident case for force view");
+	/* End - OA-REQ-1459 */
 
 	/* second: parser */
 	raw_parsetree_list = raw_parser(fview_querystring, RAW_PARSE_DEFAULT);
@@ -1242,6 +1359,8 @@ compile_force_view(Oid viewoid)
 	 * helps to analyze the problem for user.
 	 */
 	res = compile_force_view_internal((ViewStmt *) node, fview_querystring, viewoid);
+
+	AtEOXact_GUC(false, save_nestlevel); /* OA-REQ-1459 */
 	pfree(fview_querystring);
 
 	return res;
@@ -1260,11 +1379,12 @@ make_view_invalid(Oid viewid)
 	Relation	viewrel;
 	Relation	relation;
 	HeapTuple	tuple;
-	StringInfo	buf;
 	Form_pg_class classForm;
 	Datum		viewdef;
+	char		ident_case = IDENT_CASE_NORMAL; /* OA-REQ-1459 */
 	Oid			ruleoid = InvalidOid;
 	bool		isnull;
+	char		*viewdef_p; /* OA-REQ-1459 */
 
 	if (rel_is_force_view(viewid))
 		return true;
@@ -1276,6 +1396,15 @@ make_view_invalid(Oid viewid)
 	 * cannot compile the view, except the session that created the view.
 	 */
 	viewdef = DirectFunctionCall1(pg_get_viewdef, ObjectIdGetDatum(viewid));
+	/* Begin - OA-REQ-1459 */
+	if (identifier_case_switch == INTERCHANGE)
+		ident_case = IDENT_CASE_INTERCHANGE;
+	else if (identifier_case_switch == NORMAL)
+		ident_case = IDENT_CASE_NORMAL;
+	else if (identifier_case_switch == LOWERCASE)
+		ident_case = IDENT_CASE_LOWERCASE;
+	/* End - OA-REQ-1459 */
+
 	viewrel = relation_open(viewid, AccessExclusiveLock);
 	CheckTableNotInUse(viewrel, "INVALID VIEW");
 
@@ -1334,8 +1463,10 @@ make_view_invalid(Oid viewid)
 
 	/*
 	 * 5.pg_force_view
-	 * Store the definition of force view.
+	 * Store the query definition of force view.
 	 */
+	/* Begin - OA-REQ-1459 */
+#if 0
 	buf = makeStringInfo();
 	appendStringInfoString(buf, "CREATE FORCE VIEW ");
 	appendStringInfoString(buf, quote_identifier(get_namespace_name(get_rel_namespace(viewid))));
@@ -1343,14 +1474,20 @@ make_view_invalid(Oid viewid)
 	appendStringInfoString(buf, quote_identifier(get_rel_name(viewid)));
 	appendStringInfoString(buf, " AS \n");
 	appendStringInfoString(buf, TextDatumGetCString(viewdef));
+#endif
+	viewdef_p = TextDatumGetCString(viewdef);
+	while (*viewdef_p == ' ')
+		viewdef_p++;
+	/* End - OA-REQ-1459 */
 
 	/*
 	 * When invalidating the view, we do not obtain the view definition directly
 	 * from the query text entered by the user, but obtain it through pg_get_viewdef.
-	 * Therefore, the correctness of the meaning of double quotes in obtaining the view
-	 * definition should depend on pg_get_viewdef, so we use IDENT_CASE_UNDEFINE directly.
+	 * Therefore, The view column names are already reflected in the query alias, so
+	 * there is no need to store attlist in pg_force_view. the correctness of the meaning
+	 * of double quotes in obtaining the view definition should depend on pg_get_viewdef.
 	 */
-	StoreForceViewQuery(viewid, false, IDENT_CASE_UNDEFINE, buf->data);
+	StoreForceViewQuery(viewid, false, ident_case, viewdef_p, NULL); /* OA-REQ-1459 */
 
 	/* Make change visible */
 	CommandCounterIncrement();
