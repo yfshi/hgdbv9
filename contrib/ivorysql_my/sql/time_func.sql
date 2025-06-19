@@ -721,3 +721,381 @@ insert into func_test(functionName, result) values('TIMESTAMPADD(DAY,1,cast(''20
 insert into func_test(functionName, result) values('TIMESTAMPADD(YEAR,''abc'',''0001-01-01'')', TIMESTAMPADD(year,'abc','0001-01-01'));
 select * from func_test;
 drop table func_test;
+
+set datestyle = 'ISO, YMD';
+--to_days
+select to_days(950501);--728779
+select to_days(0);--NULL warning
+select to_days(1);--NULL warning
+select to_days(100);--NULL warning
+select to_days(101);--730485
+select to_days(20000012);--NULL warning
+select to_days(20001111250000);--NULL warning
+select to_days(121212.22);--warning 735214
+select to_days(20120000121212.22);--NULL warning
+select to_days('2007-10-07');--733321
+select to_days('2011'::year);--error
+select to_days(cast('2025-04-21 10:12:12.22' as datetime(6)));--739727
+select to_days(cast(201212128182822.222 as datetime));--NULL warning
+select to_days();--error
+select to_days(NULL);--NULL
+select to_days(1,2,3);--error
+
+--to_seconds
+select to_seconds(950501);--62966505600
+select to_seconds('2007-10-07');--63358934400
+select to_seconds(1);--NULL warning
+select to_seconds(100);--NULL warning
+select to_seconds(101);--63113904000
+select to_seconds(20000012);--NULL warning
+select to_seconds(20001111250000);--NULL warning
+select to_seconds(121212.22);--warning 63522489600
+select to_seconds(20120000121212.22);--NULL warning
+--select to_seconds(cast('2025-04-22 23:59:59' as time));
+--select to_seconds(cast('23:59:59' as time));
+--select to_seconds(cast(8382822.222 as time));
+--select to_seconds(cast(8382822.5999999 as time));
+--select to_seconds(cast(8382822.5999999 as time(6)));
+select to_seconds(cast(201212128182822.222 as datetime));--NULL warning
+select to_seconds(cast(20121212182822.222 as datetime));--63522556102
+select to_seconds(cast(20121212182822.5999999 as datetime));--63522556103
+select to_seconds(cast('2025-04-21 10:12:12.6999992' as datetime(6)));--63912449532
+select to_seconds();--error
+select to_seconds(NULL);--NULL
+select to_seconds(1,2);--error
+
+--dayname
+set lc_time_names to default;
+select dayname(950501);--Monday
+select dayname('2007-10-07');--Sunday
+select dayname(1);--NULL warning
+select dayname(100);--NULL warning
+select dayname(101);--Saturday
+select dayname(101.6);--Saturday warning
+select dayname(20000012);--NULL warning
+select dayname(20001111250000);--NULL warning
+select dayname(121212.22);--warning Wednesday
+select dayname(20120000121212.22);--NULL warning
+select dayname(cast(201212128182822.222 as datetime));--NULL warning
+select dayname(cast(20121212182822.222 as datetime));--Wednesday
+select dayname(cast(20121212182822.5999999 as datetime));--Wednesday
+select dayname(cast('2025-04-21 10:12:12.6999992' as datetime(6)));--Monday
+select dayname();--error
+select dayname(NULL);--NULL
+select dayname(1,2);--error
+
+--monthname
+select monthname(950501);--May
+select monthname('2007-10-07');--October
+select monthname('2008-02-03');--February
+select monthname(1);--NULL warning
+select monthname(100);--NULL warning
+select monthname(101);--January
+select monthname(101.6);-- warning January
+select monthname(20000012);--NULL
+select monthname(20001111250000);--NULL warning
+select monthname(121212.22);--warning December
+select monthname(20120000121212.22);--NULL 
+select monthname(cast(201212128182822.222 as datetime));--NULL warning
+select monthname(cast(20121212182822.222 as datetime));--December
+select monthname(cast(20121212182822.5999999 as datetime));--December
+select monthname(cast('2025-04-21 10:12:12.6999992' as datetime(6)));--April
+select monthname();--error
+select monthname(NULL);--NULL
+select monthname(1,2);--error
+
+--time_to_sec
+select time_to_sec(101);--61
+select time_to_sec(10);--10
+select time_to_sec(1);--1
+select time_to_sec(1.2);--1
+select time_to_sec(0);--0
+select time_to_sec(89);--NULL warning
+select time_to_sec(8.9);--8
+select time_to_sec(12128.9);--4888
+select time_to_sec(950501);--342301
+select time_to_sec('2007-10-07');--1207 warning
+select time_to_sec('2008-02-03');--1208 warning
+select time_to_sec(100);--60
+select time_to_sec(101.6);--61
+select time_to_sec(20000012);--NULL warning
+select time_to_sec(20001111250000);--NULL warning
+select time_to_sec(121212.22);--43932
+select time_to_sec(20120000121212.22);--NULL warning
+select time_to_sec('23:59:59');--86399
+select time_to_sec('00:39:38');--2378
+select time_to_sec(cast('2025-04-22 23:59:59' as time));--86399
+select time_to_sec(cast('23:59:59' as time));--86399
+select time_to_sec(cast(8382822.222 as time));--3018502
+select time_to_sec(cast(8382822.5999999 as time));--3018503
+select time_to_sec(cast(8382822.5999999 as time(6)));--3018502
+select time_to_sec(cast(201212128182822.222 as datetime));--NULL warning
+select time_to_sec(cast(20121212182822.222 as datetime));--66502
+select time_to_sec(cast(20121212182822.5999999 as datetime));--66503
+select time_to_sec(cast('2025-04-21 10:12:12.6999992' as datetime(6)));--36732
+select time_to_sec();--error
+select time_to_sec(NULL);--NULL
+select time_to_sec(1,2);--error
+
+--date
+select date(101);--2000-01-01
+select date(10);--NULL warning
+select date(1);--NULL warning
+select date(1.2);--NULL warning
+select date(0);--0000-00-00
+select date(89);--NULL warning
+select date(8.9);--NULL warning
+select date(12128.9);--NULL warning
+select date(950501);--1995-05-01
+select date('2007-10-07');--2007-10-07
+select date('2008-02-03');--2008-02-03
+select date(100);--NULL warning
+select date(101.6);--2000-01-01
+select date(20000012);--2000-00-12
+select date(20001111250000);--NULL warning
+select date(200011112323233242424242456565);--NULL warning
+select date(121212.22);--2012-12-12
+select date(20120000121212.22);-- 2012-00-00 
+select date('23:59:59');--NULL warning
+select date('00:39:38');--NULL warning
+--select date(cast('2025-04-22 23:59:59' as time));
+--select date(cast('23:59:59' as time));
+--select date(cast(8382822.222 as time));
+--select date(cast(8382822.5999999 as time));
+--select date(cast(8382822.5999999 as time(6)));
+select date(cast(2011 as year));--NULL warning
+select date(cast(201212128182822.222 as datetime));--NULL warning
+select date(cast(20121212182822.222 as datetime));--2012-12-12
+select date(cast(20121212182822.5999999 as datetime));--2012-12-12
+select date(cast('2025-04-21 10:12:12.6999992' as datetime(6)));--2025-04-21
+select date();--syntax error
+select date(NULL);--NULL
+select date(1,2);--syntax error
+
+--week
+set default_week_format to default;
+select week(101);--0
+select week(10);--NULL warning
+select week(1);--NULL warning
+select week(1.2);--NULL warning
+select week(0);--NULL warning
+select week(89);--NULL warning
+select week(8.9);--NULL warning
+select week(12128.9);--NULL warning
+select week(950501);--18
+select week('2007-10-07');--40
+select week('2008-02-03');--5
+select week(100);--NULL warning
+select week(101.6);--NULL warning
+select week(20000012);--NULL warning
+select week(20001111250000);--NULL warning
+select week(200011112323233242424242456565);--NULL warning
+select week(121212.22);--50 warning
+select week(20120000121212.22);--NULL warning
+select week('23:59:59');--NULL warning
+select week('00:39:38');--NULL warning
+select week(cast(2011 as year));--NULL warning
+select week(cast(201212128182822.222 as datetime));--NULL warning
+select week(cast(20121212182822.222 as datetime));--50
+select week(cast(20121212182822.5999999 as datetime));--50
+select week(cast('2025-04-21 10:12:12.6999992' as datetime(6)));--16
+select week('1987-01-01');--0
+select week();--error
+select week(NULL);--NULL
+select week(1,2,3);--error
+
+select week(101, 2);--52
+select week(10, 2);--NULL warning
+select week(1, 2);--NULL warning
+select week(1.2, 2);--NULL warning
+select week(0, 2);--NULL warning
+select week(89, 2);--NULL warning
+select week(8.9, 2);--NULL warning
+select week(12128.9, 2);--NULL warning
+select week(950501, 2);--18
+select week('2007-10-07', 2);--40
+select week('2008-02-03', 2);--5
+select week(100, 2);--NULL warning
+select week(101.6, 2);--NULL warning
+select week(20000012, 2);--NULL warning
+select week(20001111250000, 2);--NULL warning
+select week(200011112323233242424242456565, 2);--NULL warning
+select week(121212.22, 2);--50 warning
+select week(20120000121212.22, 2);--NULL warning
+select week('23:59:59', 2);--NULL warning
+select week('00:39:38', 2);--NULL warning
+select week(cast(2011 as year), 2);--NULL warning
+select week(cast(201212128182822.222 as datetime), 2);--NULL warning
+select week(cast(20121212182822.222 as datetime), 2);--50
+select week(cast(20121212182822.5999999 as datetime), 2);--50
+select week(cast('2025-04-21 10:12:12.6999992' as datetime(6)), 2);--16
+select week('1987-01-01', 2);--52
+select week(NULL, NULL);--NULL
+
+--yearweek
+select yearweek('1987-01-01');--198652
+select yearweek(101);--199952
+select yearweek(10);--NULL warning
+select yearweek(1);--NULL warning
+select yearweek(1.2);--NULL warning
+select yearweek(0);--NULL warning
+select yearweek(89);--NULL warning
+select yearweek(8.9);--NULL warning
+select yearweek(12128.9);--NULL warning
+select yearweek(950501);--199518
+select yearweek('2007-10-07');--200740
+select yearweek('2008-02-03');--200805
+select yearweek(100);--NULL warning
+select yearweek(101.6);--199952 warning
+select yearweek(20000012);--NULL warning
+select yearweek(20001111250000);--NULL warning
+select yearweek(200011112323233242424242456565);--NULL warning
+select yearweek(121212.22);--201250 warning
+select yearweek(20120000121212.22);--NULL warning
+select yearweek('23:59:59');--NULL warning
+select yearweek('00:39:38');--NULL warning
+select yearweek(cast(2011 as year));--NULL warning
+select yearweek(cast(201212128182822.222 as datetime));--NULL warning
+select yearweek(cast(20121212182822.222 as datetime));--201250
+select yearweek(cast(20121212182822.5999999 as datetime));--201250
+select yearweek(cast('2025-04-21 10:12:12.6999992' as datetime(6)));--202516
+select yearweek();--error
+select yearweek(NULL);--NULL
+
+select yearweek('1987-01-01', 4);--198653
+select yearweek(101, 4);--199952
+select yearweek(10, 4);--NULL warning
+select yearweek(1, 4);--NULL warning
+select yearweek(1.2, 4);--NULL warning
+select yearweek(0, 4);--NULL warning
+select yearweek(89, 4);--NULL warning
+select yearweek(8.9, 4);--NULL warning
+select yearweek(12128.9, 4);--NULL warning
+select yearweek(950501, 4);--199518
+select yearweek('2007-10-07', 4);--200741
+select yearweek('2008-02-03', 4);--200806
+select yearweek(100, 4);--NULL warning
+select yearweek(101.6, 4);--199952 warning
+select yearweek(20000012, 4);--NULL warning
+select yearweek(20001111250000, 4);--NULL warning
+select yearweek(200011112323233242424242456565, 4);--NULL warning
+select yearweek(121212.22, 4);--201250 warning
+select yearweek(20120000121212.22, 4);--NULL warning
+select yearweek('23:59:59', 4);--NULL warning
+select yearweek('00:39:38', 4);--NULL warning
+select yearweek(cast(2011 as year), 4);--NULL warning
+select yearweek(cast(201212128182822.222 as datetime), 4);--NULL warning
+select yearweek(cast(20121212182822.222 as datetime), 4);--201250
+select yearweek(cast(20121212182822.5999999 as datetime), 4);--201250
+select yearweek(cast('2025-04-21 10:12:12.6999992' as datetime(6)), 4);--202517
+select yearweek(NULL, NULL);--NULL
+select yearweek(1, 2, 3);--error
+
+--datediff
+select datediff('2007-12-31 23:59:59', '2007-12-30');--1
+select datediff('2007-11-30 23:59:59', '2007-12-31');---31
+select datediff(20071130, '2007-12-31');---31
+select datediff(20071130, 101);--2890
+select datediff(20071130, 101.55);--2890
+select datediff('2007-11-30 23:59:59', 20071231);---31
+select datediff(cast(20121212182822.222 as datetime), 20071231);--1808
+select datediff(cast(20121212182822.222 as datetime), 20071231.555);--1808
+select datediff(cast(20121212182822.222 as date), 20071231);--1808
+select datediff(cast(20121212182822.222 as date), 20071231.333);--1808
+select datediff(cast(20121212182822.222 as date), '2007-12-31');--1808
+select datediff(cast(20121212182822.222 as datetime), '2007-12-31');--1808
+select datediff(cast(20121212182822.222 as date), cast(20121112182822.222 as date));---30
+select datediff(cast(20121212182822.222 as datetime), cast(20121112182822.222 as datetime));--30
+select datediff(cast(20121212182822.222 as date), cast(20121112182822.222 as datetime));--30
+select datediff(cast(20121212182822.222 as date), cast(20121112182822.222 as datetime(6)));--30
+--select datediff(cast(20121212182822.222 as date), cast(20121112182822.222 as time));
+--select datediff(cast(20121212182822.222 as date), cast(20121112182822.222 as time(6)));
+select datediff(NULL, NULL);--NULL
+select datediff('2007-12-31 23:59:59');--error
+select datediff();--error
+
+--from_days
+select from_days(101);--0000-00-00
+select from_days(10);--0000-00-00
+select from_days(1);--0000-00-00
+select from_days(1.2);--0000-00-00
+select from_days(0);--0000-00-00
+select from_days(89);--0000-00-00
+select from_days(8.9);--0000-00-00
+select from_days(12128.9);-- 0033-03-17
+select from_days(950501);--2602-05-21
+select from_days(365.5);--0001-01-01
+select from_days(365.4);--0000-00-00
+select from_days(3652500);--0000-00-00
+select from_days(3652499);--10000-03-15
+select from_days(100);--0000-00-00
+select from_days(101.6);--0000-00-00
+select from_days(20000012);--0000-00-00
+select from_days(20001111250000);--0000-00-00
+select from_days(200011112323233242424242456565);--0000-00-00 warning
+select from_days(121212.22);--0331-11-14
+select from_days(20120000121212.22);--0000-00-00
+select from_days('2007-10-07');--0005-06-30 warning
+select from_days('2008-02-03');--0005-07-01 warning
+select from_days('23:59:59');--0000-00-00 warning
+select from_days('00:39:38');--0000-00-00 warning
+select from_days(cast('2025-04-22 23:59:59' as time));--0646-01-13
+select from_days(cast('23:59:59' as time));--0646-01-13
+select from_days(cast(8382822.222 as time));--0000-00-00
+select from_days(cast(8382822.5999999 as time));--0000-00-00
+select from_days(cast(8382822.5999999 as time(6)));--0000-00-00
+select from_days(cast(2011 as year));--0005-07-04
+select from_days(cast(201212128182822.222 as datetime));--NULL warning
+select from_days(cast(20121212182822.222 as datetime));--0000-00-00
+select from_days(cast(20121212182822.5999999 as datetime));--0000-00-00
+select from_days(cast('2025-04-21 10:12:12.6999992' as datetime(6)));--0000-00-00
+select from_days();--error
+select from_days(NULL);--NULL
+select from_days(1, 2);--error
+
+--convert_tz
+select convert_tz(101,'-02:00','+10:00');--2000-01-01 12:00:00
+select convert_tz('2004-01-01 12:00:00','-00:00','+00:00');--2004-01-01 12:00:00
+select convert_tz('2004-01-01 12:00:00','00:00','+00:00');--NULL
+select convert_tz('2004-01-01 12:00:00','+00:00','+13:00');--2004-01-02 01:00:00
+select convert_tz('2004-01-01 12:00:00','+00:00','+14:00');--NULL
+select convert_tz('2004-01-01 12:00:00','+00:00','-13:00');--NULL
+select convert_tz('2004-01-01 12:00:00','+00:00','-12:59');--2003-12-31 23:01:00
+select convert_tz(cast(2011 as year), '+02:00','+08:00');--NULL
+select convert_tz(cast(201212128182822.222 as datetime), '+02:00', '+08:00');--NULL warning
+select convert_tz(cast(20121212182822.222 as datetime), '+02:00', '+08:00');--2012-12-13 00:28:22
+select convert_tz(cast(20121212182822.5999999 as datetime), '+02:00', '+08:00');-- 2012-12-13 00:28:23
+select convert_tz(cast('2025-04-21 10:12:12.6999992' as datetime(6)), '+02:00', '+08:00');--2025-04-21 16:12:12.699999
+select convert_tz();--error
+select convert_tz(NULL);--error
+select convert_tz(101);--error
+select convert_tz(101,'-02:00');--error
+select convert_tz(101, '+02:00', '+08:00', 1);--error  syntax error
+select convert_tz(NULL,NULL,NULL);--NULL
+
+-- get_format
+select get_format(DATE, 'EUR');
+select get_format(DATE, 'USA'); 
+select get_format(DATE, 'JIS');
+select get_format(DATE, 'ISO');
+select get_format(DATE, 'INTERNAL');
+select get_format(DATETIME, 'EUR');
+select get_format(DATETIME, 'USA');
+select get_format(DATETIME, 'JIS');
+select get_format(DATETIME, 'ISO');
+select get_format(DATETIME, 'INTERNAL');
+select get_format(TIME, 'EUR');
+select get_format(TIME, 'USA');
+select get_format(TIME, 'JIS');
+select get_format(TIME, 'ISO');
+select get_format(TIME, 'INTERNAL');
+select get_format(TIMESTAMP, 'EUR');
+select get_format(TIMESTAMP, 'USA');
+select get_format(TIMESTAMP, 'JIS');
+select get_format(TIMESTAMP, 'ISO');
+select get_format(TIMESTAMP, 'INTERNAL');
+-- sepeical
+select get_format(DATE, 'abc');
+select get_format(DATE, null);
+--error
+select get_format(abc, 'EUR');

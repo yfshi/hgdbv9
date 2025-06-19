@@ -42,8 +42,8 @@ OBJS = \
 	src/charset/ctype-ujis.o \
 	src/charset/ctype-extra.o \
 	src/builtin_functions/datetime_func.o \
-	src/character/mystext.o
-
+	src/character/mystext.o	\
+	src/builtin_functions/mys_locale.o
 
 EXTENSION = ivorysql_my
 

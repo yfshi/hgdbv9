@@ -506,6 +506,11 @@ extern PGDLLIMPORT bool cast_to_char;
 /* End - BUG#M533 */
 extern PGDLLIMPORT bool use_mysql_bool;
 
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+extern PGDLLIMPORT char *lc_time_names;
+extern PGDLLIMPORT int default_week_format;
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 /*
  * Functions exported by guc.c
  */

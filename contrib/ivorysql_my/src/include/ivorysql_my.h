@@ -21,6 +21,7 @@
 #define IVORYSQL_MYS_H_
 
 #include "postgres.h"
+#include "fmgr.h" /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 #define SIGNED_FLAG                     0
 #define UNSIGNED_FLAG                   1
@@ -38,4 +39,9 @@ extern int16 my_atoi_int2(const char *s);
 extern int32 my_atoi_int4(const char *s);
 extern uint64 my_strntoull10rnd_8bit(const char *str, size_t length, int unsigned_flag, char **endptr, int *error);
 extern uint64 pg_atoi_uint(const char *s,int c, int sizenum, bool seterr);
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+extern Datum pgtime_mystimes(PG_FUNCTION_ARGS);
+extern Datum pgtimestamp_mystimestamps(PG_FUNCTION_ARGS);
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 #endif	/* IVORYSQL_MYS_H_ */

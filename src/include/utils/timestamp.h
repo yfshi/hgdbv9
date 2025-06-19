@@ -113,4 +113,8 @@ extern int	date2isoyearday(int year, int mon, int mday);
 
 extern bool TimestampTimestampTzRequiresRewrite(void);
 
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+extern int mys_parse_sane_timezone(struct pg_tm *tm, text *tz);
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 #endif							/* TIMESTAMP_H */

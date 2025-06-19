@@ -508,6 +508,10 @@ static int MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan
 %type <range>	insert_partition_clause update_delete_partition_clause
 /* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+%type <node>	get_format_time_type
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 %type <node>	opt_routine_body
 %type <groupclause> group_clause
 %type <list>	group_by_list
@@ -781,7 +785,7 @@ static int MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan
 	FALSE_P FAMILY FETCH FILTER FINALIZE FIRST_P FLOAT_P FOLLOWING FOR
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
 
-	GENERATED GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
+	GENERATED GET_FORMAT GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
 
 	HANDLER HAVING HEADER_P HIGH_PRIORITY HOLD HOUR_P
 
@@ -833,7 +837,7 @@ static int MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
 	UESCAPE UNBOUNDED UNCOMMITTED UNENCRYPTED UNION UNIQUE UNKNOWN
-	UNLISTEN UNLOGGED UNSIGNED UNTIL UPDATE USE USER USING
+	UNLISTEN UNLOGGED UNSIGNED UNTIL UPDATE USE USER USING UTC_DATE UTC_TIME UTC_TIMESTAMP /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARBINARY VARCHAR VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VOLATILE
@@ -17236,7 +17240,118 @@ func_expr_common_subexpr:
 					n->location = @1;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			| GET_FORMAT '(' get_format_time_type ',' a_expr ')'
+				{
+					FuncCall *n = makeNode(FuncCall);
+					n->funcname = MysqlSystemFuncName("get_format");
+					n->args = list_make2($3, $5);
+					n->agg_order = NIL;
+					n->agg_star = false;
+					n->agg_distinct = false;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			| UTC_DATE opt_brackets
+				{
+					/*
+					 * Translate as "utc_date_func()".
+					 */
+					FuncCall *n = makeNode(FuncCall);
+					n->funcname = MysqlSystemFuncName("utc_date");
+					n->args = NIL;
+					n->agg_order = NIL;
+					n->agg_star = false;
+					n->agg_distinct = false;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			| UTC_TIME opt_brackets
+				{
+					/*
+					 * Translate as "utc_time_func(0)".
+					 */
+					FuncCall *n = makeNode(FuncCall);
+					n->funcname = MysqlSystemFuncName("utc_time");
+					n->args = list_make1(makeIntConst(0, -1));
+					n->agg_order = NIL;
+					n->agg_star = false;
+					n->agg_distinct = false;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			| UTC_TIME '(' Iconst ')'
+				{
+					/*
+					 * Translate as "utc_time_func(Iconst)".
+					 */
+					FuncCall *n = makeNode(FuncCall);
+					n->funcname = MysqlSystemFuncName("utc_time");
+					n->args = list_make1(makeIntConst($3, @3));
+					n->agg_order = NIL;
+					n->agg_star = false;
+					n->agg_distinct = false;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			| UTC_TIMESTAMP opt_brackets
+				{
+					/*
+					 * Translate as "utc_timestamp_func(0)".
+					 */
+					FuncCall *n = makeNode(FuncCall);
+					n->funcname = MysqlSystemFuncName("utc_timestamp");
+					n->args = list_make1(makeIntConst(0, -1));
+					n->agg_order = NIL;
+					n->agg_star = false;
+					n->agg_distinct = false;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			| UTC_TIMESTAMP '(' Iconst ')'
+				{
+					/*
+					 * Translate as "utc_timestamp_func(Iconst)".
+					 */
+					FuncCall *n = makeNode(FuncCall);
+					n->funcname = MysqlSystemFuncName("utc_timestamp");
+					n->args = list_make1(makeIntConst($3, @3));
+					n->agg_order = NIL;
+					n->agg_star = false;
+					n->agg_distinct = false;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			| DATE_P '(' a_expr ')'
+				{
+					FuncCall *n = makeNode(FuncCall);
+					n->funcname = MysqlSystemFuncName("date");
+					n->args = list_make1($3);
+					n->agg_order = NIL;
+					n->agg_star = false;
+					n->agg_distinct = false;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
 		;
+opt_brackets: '(' ')'
+			| /*EMPTY*/
+		;
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 /*
  * SQL/XML support
@@ -17753,6 +17868,16 @@ unicode_normal_form:
 			| NFKC									{ $$ = "NFKC"; }
 			| NFKD									{ $$ = "NFKD"; }
 		;
+
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+get_format_time_type:
+			DATE_P									{ $$ = makeIntConst(DTK_DATE, @1); }
+			| TIME									{ $$ = makeIntConst(DTK_TIME, @1); }
+			| DATETIME_P							{ $$ = makeIntConst(DTK_DATE_TIME, @1); }
+			| TIMESTAMP 							{ $$ = makeIntConst(DTK_DATE_TIME, @1); }
+		;
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 
 /* OVERLAY() arguments */
 overlay_list:
@@ -18810,6 +18935,7 @@ col_name_keyword:
 			| EXISTS
 			| EXTRACT
 			| FLOAT_P
+			| GET_FORMAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| GREATEST
 			| GROUPING
 			| INOUT
@@ -18989,6 +19115,9 @@ reserved_keyword:
 			| USE	/* ReqID:SRS-MYSQL-UPDATE */
 			| USER
 			| USING
+			| UTC_DATE /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			| UTC_TIME /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			| UTC_TIMESTAMP /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| VARIADIC
 			| WHEN
 			| WHERE
@@ -19162,6 +19291,7 @@ bare_label_keyword:
 			| FUNCTION
 			| FUNCTIONS
 			| GENERATED
+			| GET_FORMAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| GLOBAL
 			| GRANTED
 			| GREATEST
@@ -19418,6 +19548,9 @@ bare_label_keyword:
 			| USE
 			| USER
 			| USING
+			| UTC_DATE /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			| UTC_TIME /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			| UTC_TIMESTAMP /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| VACUUM
 			| VALID
 			| VALIDATE

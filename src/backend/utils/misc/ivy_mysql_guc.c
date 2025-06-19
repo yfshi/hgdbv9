@@ -34,6 +34,13 @@
 	void assign_div_precision_increment(int newval, void *extra);
 	/* End - qID: SRS-MYSQL-NUMBERICTYPE */	
 	static void assign_regress_test_default_value(bool newval, void *extra);
+	/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+	static void assign_lc_time_names(const char *target, void *extra);
+	static bool check_lc_time_names(char **target, void **extra, GucSource source);
+	static int lc_time_names_Search(const char *target);
+	static bool check_default_week_format(int *newval, void **extra, GucSource source);
+	static void assign_default_week_format(int newval, void *extra);
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 #endif
 
 #ifdef IVY_MY_GUC_VAR_DEFINE
@@ -64,6 +71,11 @@ bool		cast_to_char = true;
 /* End - BUG#M533 */
 bool		use_mysql_bool = false;
 
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+char	   *lc_time_names = NULL;
+int			default_week_format = 0;
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
 #define MAX_LOWER_NUM 2
@@ -77,6 +89,12 @@ bool		use_mysql_bool = false;
 #define DIV_PREC_MAX_VALUE 30
 #define DIV_PREC_MIN_VALUE 4
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE */
+
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+#define DEF_WEEK_FORMAT 0
+#define MAX_WEEK_FORMAT 7
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 #endif
 #ifdef IVY_MY_GUC_BOOL_PARAMS
 
@@ -214,6 +232,17 @@ bool		use_mysql_bool = false;
 		check_div_precision_increment, assign_div_precision_increment, NULL
 	},
 	/* End - ReqID: SRS-MYSQL-NUMBERICTYPE */
+	/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+	{
+		{"default_week_format", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("MySQL default_week_format parameter."),
+			NULL
+		},
+		&default_week_format,
+		DEF_WEEK_FORMAT, PG_INT32_MIN, PG_INT32_MAX,
+		check_default_week_format, assign_default_week_format, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 #endif
 
 #ifdef IVY_MY_GUC_STRING_PARAMS
@@ -244,6 +273,19 @@ bool		use_mysql_bool = false;
 		"ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,REAL_AS_FLOAT,PIPES_AS_CONCAT",
 		check_sql_mode, assign_sql_mode, show_sql_mode
 	},
+	/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+	{
+		{
+			"lc_time_names", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Sets mysql lc_time_names."),
+			NULL,
+			GUC_LIST_INPUT
+		},
+		&lc_time_names,
+		"en_US",
+		check_lc_time_names, assign_lc_time_names, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 	/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 	{ 
 		{
@@ -599,4 +641,223 @@ assign_regress_test_default_value(bool newval, void *extra)
 		SetConfigOption("mysql.mode_pad_char_to_full", "off", PGC_USERSET, PGC_S_OVERRIDE);
 	}
 }
+
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+#define REPORT_LC_TIME_NAMES_VALUE_ERROR(val) do { \
+	ereport(ERROR, \
+			(errcode(ERRCODE_SYSTEM_ERROR), \
+			errmsg("Variable 'lc_time_names' can't be set to the value of '%s'", val))); \
+} while(0);
+
+static char *mys_lc_time_names[] =
+{
+	"ar_AE",
+	"ar_BH",
+	"ar_DZ",
+	"ar_EG",
+	"ar_IN",
+	"ar_IQ",
+	"ar_JO",
+	"ar_KW",
+	"ar_LB",
+	"ar_LY",
+	"ar_MA",
+	"ar_OM",
+	"ar_QA",
+	"ar_SA",
+	"ar_SD",
+	"ar_SY",
+	"ar_TN",
+	"ar_YE",
+	"be_BY",
+	"bg_BG",
+	"ca_ES",
+	"cs_CZ",
+	"da_DK",
+	"de_AT",
+	"de_BE",
+	"de_CH",
+	"de_DE",
+	"de_LU",
+	"en_AU",
+	"en_CA",
+	"en_GB",
+	"en_IN",
+	"en_NZ",
+	"en_PH",
+	"en_US",
+	"en_ZA",
+	"en_ZW",
+	"es_AR",
+	"es_BO",
+	"es_CL",
+	"es_CO",
+	"es_CR",
+	"es_DO",
+	"es_EC",
+	"es_ES",
+	"es_GT",
+	"es_HN",
+	"es_MX",
+	"es_NI",
+	"es_PA",
+	"es_PE",
+	"es_PR",
+	"es_PY",
+	"es_SV",
+	"es_US",
+	"es_UY",
+	"es_VE",
+	"el_GR",
+	"et_EE",
+	"eu_ES",
+	"fi_FI",
+	"fo_FO",
+	"fr_BE",
+	"fr_CA",
+	"fr_CH",
+	"fr_FR",
+	"fr_LU",
+	"gl_ES",
+	"gu_IN",
+	"he_IL",
+	"hi_IN",
+	"hr_HR",
+	"hu_HU",
+	"id_ID",
+	"is_IS",
+	"it_CH",
+	"it_IT",
+	"ja_JP",
+	"ko_KR",
+	"lt_LT",
+	"lv_LV",
+	"mk_MK",
+	"mn_MN",
+	"ms_MY",
+	"nb_NO",
+	"nl_BE",
+	"nl_NL",
+	"no_NO",
+	"pl_PL",
+	"pt_BR",
+	"pt_PT",
+	"rm_CH",
+	"ro_RO",
+	"ru_RU",
+	"ru_UA",
+	"sk_SK",
+	"sl_SI",
+	"sq_AL",
+	"sr_RS",
+	"sv_FI",
+	"sv_SE",
+	"ta_IN",
+	"te_IN",
+	"th_TH",
+	"tr_TR",
+	"uk_UA",
+	"ur_PK",
+	"vi_VN",
+	"zh_CN",
+	"zh_HK",
+	"zh_TW"
+};
+
+int LC_TIME_NMAES_NUM = sizeof(mys_lc_time_names)/sizeof(mys_lc_time_names[0]);
+
+/*
+ * assign_lc_time_names
+ * Set the lc_time_names variable value.
+ */
+static void
+assign_lc_time_names(const char *target, void *extra)
+{
+	int		result = lc_time_names_Search(target);
+	lc_time_names = mys_lc_time_names[result];
+}
+
+/*
+ * check_lc_time_names
+ * Check if the value of the lc_time_names variable is correct.
+ */
+static bool
+check_lc_time_names(char **target, void **extra, GucSource source)
+{
+	(void)lc_time_names_Search(*target);
+	return true;
+}
+
+/*
+ * lc_time_names_Search
+ * Use binary search to find out whether the lc_time_names variable exists in the mys_lc_time_names array.
+ */
+static int
+lc_time_names_Search(const char *target)
+{
+	int		start = 0;
+	int		end = LC_TIME_NMAES_NUM - 1;
+	int		result = -1;
+
+	while (start <= end)
+	{
+		int		mid = (start + end) / 2;
+		int		cmp_res = pg_strcasecmp(target, mys_lc_time_names[mid]);
+		if (cmp_res > 0)
+		{
+			start = mid + 1;
+		}
+		else if (cmp_res < 0)
+		{
+			end = mid - 1;
+		}
+		else
+		{
+			result = mid;
+			break;
+		}
+	}
+	if (result < 0)
+		REPORT_LC_TIME_NAMES_VALUE_ERROR(target);
+
+	return result;
+}
+
+
+/*
+ * check_default_week_format
+ *   guc parameter value calculation.
+ *
+ */
+static bool
+check_default_week_format(int *newval, void **extra, GucSource source)
+{
+	if (*newval < DEF_WEEK_FORMAT || *newval > MAX_WEEK_FORMAT)
+	{
+		ereport(WARNING, \
+			(errcode(ERRCODE_SYSTEM_ERROR), \
+			errmsg("Truncated incorrect default_week_format value: '%d'", *newval)));
+
+		if (*newval < DEF_WEEK_FORMAT)
+			*newval = DEF_WEEK_FORMAT;
+		else
+			*newval = MAX_WEEK_FORMAT;
+	}
+	return true;
+}
+
+/*
+ * assign_default_week_format
+ *   assign value for guc parameter.
+ *
+ * Assign a value to default_week_format.
+ *
+ */
+void
+assign_default_week_format(int newval, void *extra)
+{
+	default_week_format = newval;
+}
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 #endif
