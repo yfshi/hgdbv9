@@ -392,7 +392,7 @@ select cast('1111213.595988888888888' as time);--111:12:14
 (1 row)
 
 select cast('11111121.9' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '11111121.9'
+WARNING:  Truncated incorrect time value: '11111121.9'
 LINE 1: select cast('11111121.9' as time);
                     ^
   mystime  
@@ -401,7 +401,7 @@ LINE 1: select cast('11111121.9' as time);
 (1 row)
 
 select cast('11111121.23' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '11111121.23'
+WARNING:  Truncated incorrect time value: '11111121.23'
 LINE 1: select cast('11111121.23' as time);
                     ^
   mystime  
@@ -410,7 +410,7 @@ LINE 1: select cast('11111121.23' as time);
 (1 row)
 
 select cast('11111121.24' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '11111121.24'
+WARNING:  Truncated incorrect time value: '11111121.24'
 LINE 1: select cast('11111121.24' as time);
                     ^
   mystime  
@@ -419,7 +419,7 @@ LINE 1: select cast('11111121.24' as time);
 (1 row)
 
 select cast('11111121.235555' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '11111121.235555'
+WARNING:  Truncated incorrect time value: '11111121.235555'
 LINE 1: select cast('11111121.235555' as time);
                     ^
   mystime  
@@ -428,7 +428,7 @@ LINE 1: select cast('11111121.235555' as time);
 (1 row)
 
 select cast('11111121.245555' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '11111121.245555'
+WARNING:  Truncated incorrect time value: '11111121.245555'
 LINE 1: select cast('11111121.245555' as time);
                     ^
   mystime  
@@ -437,7 +437,7 @@ LINE 1: select cast('11111121.245555' as time);
 (1 row)
 
 select cast('11111121.236055' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '11111121.236055'
+WARNING:  Truncated incorrect time value: '11111121.236055'
 LINE 1: select cast('11111121.236055' as time);
                     ^
   mystime  
@@ -446,7 +446,7 @@ LINE 1: select cast('11111121.236055' as time);
 (1 row)
 
 select cast('11111121.235560' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '11111121.235560'
+WARNING:  Truncated incorrect time value: '11111121.235560'
 LINE 1: select cast('11111121.235560' as time);
                     ^
   mystime  
@@ -455,7 +455,7 @@ LINE 1: select cast('11111121.235560' as time);
 (1 row)
 
 select cast('11111121.235555999999999' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '11111121.235555999999999'
+WARNING:  Truncated incorrect time value: '11111121.235555999999999'
 LINE 1: select cast('11111121.235555999999999' as time);
                     ^
   mystime  
@@ -464,7 +464,7 @@ LINE 1: select cast('11111121.235555999999999' as time);
 (1 row)
 
 select cast('111111211.2' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '111111211.2'
+WARNING:  Truncated incorrect time value: '111111211.2'
 LINE 1: select cast('111111211.2' as time);
                     ^
   mystime  
@@ -473,7 +473,7 @@ LINE 1: select cast('111111211.2' as time);
 (1 row)
 
 select cast('111111241.2' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '111111241.2'
+WARNING:  Truncated incorrect time value: '111111241.2'
 LINE 1: select cast('111111241.2' as time);
                     ^
   mystime  
@@ -482,7 +482,7 @@ LINE 1: select cast('111111241.2' as time);
 (1 row)
 
 select cast('111111231.2' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '111111231.2'
+WARNING:  Truncated incorrect time value: '111111231.2'
 LINE 1: select cast('111111231.2' as time);
                     ^
   mystime  
@@ -491,7 +491,7 @@ LINE 1: select cast('111111231.2' as time);
 (1 row)
 
 select cast('111111239.2' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '111111239.2'
+WARNING:  Truncated incorrect time value: '111111239.2'
 LINE 1: select cast('111111239.2' as time);
                     ^
   mystime  
@@ -500,7 +500,7 @@ LINE 1: select cast('111111239.2' as time);
 (1 row)
 
 select cast('111111239.59' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '111111239.59'
+WARNING:  Truncated incorrect time value: '111111239.59'
 LINE 1: select cast('111111239.59' as time);
                     ^
   mystime  
@@ -509,7 +509,7 @@ LINE 1: select cast('111111239.59' as time);
 (1 row)
 
 select cast('111111239.60' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '111111239.60'
+WARNING:  Truncated incorrect time value: '111111239.60'
 LINE 1: select cast('111111239.60' as time);
                     ^
   mystime  
@@ -518,7 +518,7 @@ LINE 1: select cast('111111239.60' as time);
 (1 row)
 
 select cast('111111239.5999999999' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '111111239.5999999999'
+WARNING:  Truncated incorrect time value: '111111239.5999999999'
 LINE 1: select cast('111111239.5999999999' as time);
                     ^
   mystime  
@@ -527,7 +527,7 @@ LINE 1: select cast('111111239.5999999999' as time);
 (1 row)
 
 select cast('1111112111.2' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '1111112111.2'
+WARNING:  Truncated incorrect time value: '1111112111.2'
 LINE 1: select cast('1111112111.2' as time);
                     ^
   mystime  
@@ -536,7 +536,7 @@ LINE 1: select cast('1111112111.2' as time);
 (1 row)
 
 select cast('1111112411.2' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '1111112411.2'
+WARNING:  Truncated incorrect time value: '1111112411.2'
 LINE 1: select cast('1111112411.2' as time);
                     ^
   mystime  
@@ -545,7 +545,7 @@ LINE 1: select cast('1111112411.2' as time);
 (1 row)
 
 select cast('1111112159.2' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '1111112159.2'
+WARNING:  Truncated incorrect time value: '1111112159.2'
 LINE 1: select cast('1111112159.2' as time);
                     ^
   mystime  
@@ -563,7 +563,7 @@ LINE 1: select cast('1111112160.2' as time);
 (1 row)
 
 select cast('1111112159.59' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '1111112159.59'
+WARNING:  Truncated incorrect time value: '1111112159.59'
 LINE 1: select cast('1111112159.59' as time);
                     ^
   mystime  
@@ -572,7 +572,7 @@ LINE 1: select cast('1111112159.59' as time);
 (1 row)
 
 select cast('1111112159.5999999999999' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '1111112159.5999999999999'
+WARNING:  Truncated incorrect time value: '1111112159.5999999999999'
 LINE 1: select cast('1111112159.5999999999999' as time);
                     ^
   mystime  
@@ -2560,7 +2560,7 @@ WARNING:  Incorrect TIME value: '8385959.555555555'
 (1 row)
 
 select cast('8385959.444444' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '8385959.444444'
+WARNING:  Truncated incorrect time value: '8385959.444444'
 LINE 1: select cast('8385959.444444' as time);
                     ^
   mystime  
@@ -2569,7 +2569,7 @@ LINE 1: select cast('8385959.444444' as time);
 (1 row)
 
 select cast('8385959.555555' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '8385959.555555'
+WARNING:  Truncated incorrect time value: '8385959.555555'
 LINE 1: select cast('8385959.555555' as time);
                     ^
   mystime  
@@ -2578,7 +2578,7 @@ LINE 1: select cast('8385959.555555' as time);
 (1 row)
 
 select cast('8385959.555555555' as time);--838:59:59 warning
-WARNING:  Incorrect time value: '8385959.555555555'
+WARNING:  Truncated incorrect time value: '8385959.555555555'
 LINE 1: select cast('8385959.555555555' as time);
                     ^
   mystime  
@@ -2587,7 +2587,7 @@ LINE 1: select cast('8385959.555555555' as time);
 (1 row)
 
 select cast('8385959.444444' as time(3));--838:59:59.000 warning
-WARNING:  Incorrect time value: '8385959.444444'
+WARNING:  Truncated incorrect time value: '8385959.444444'
 LINE 1: select cast('8385959.444444' as time(3));
                     ^
    mystimes    
@@ -2596,7 +2596,7 @@ LINE 1: select cast('8385959.444444' as time(3));
 (1 row)
 
 select cast('8385959.555555' as time(3));--838:59:59.000 warning
-WARNING:  Incorrect time value: '8385959.555555'
+WARNING:  Truncated incorrect time value: '8385959.555555'
 LINE 1: select cast('8385959.555555' as time(3));
                     ^
    mystimes    
@@ -2605,7 +2605,7 @@ LINE 1: select cast('8385959.555555' as time(3));
 (1 row)
 
 select cast('8385959.555555555' as time(3));--838:59:59 warning
-WARNING:  Incorrect time value: '8385959.555555555'
+WARNING:  Truncated incorrect time value: '8385959.555555555'
 LINE 1: select cast('8385959.555555555' as time(3));
                     ^
    mystimes    
@@ -7089,7 +7089,7 @@ select cast('1111213.595988888888888' as time(5));--111:12:13.59599
 (1 row)
 
 select cast('11111121.9' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '11111121.9'
+WARNING:  Truncated incorrect time value: '11111121.9'
 LINE 1: select cast('11111121.9' as time(5));
                     ^
     mystimes     
@@ -7098,7 +7098,7 @@ LINE 1: select cast('11111121.9' as time(5));
 (1 row)
 
 select cast('11111121.23' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '11111121.23'
+WARNING:  Truncated incorrect time value: '11111121.23'
 LINE 1: select cast('11111121.23' as time(5));
                     ^
     mystimes     
@@ -7107,7 +7107,7 @@ LINE 1: select cast('11111121.23' as time(5));
 (1 row)
 
 select cast('11111121.24' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '11111121.24'
+WARNING:  Truncated incorrect time value: '11111121.24'
 LINE 1: select cast('11111121.24' as time(5));
                     ^
     mystimes     
@@ -7116,7 +7116,7 @@ LINE 1: select cast('11111121.24' as time(5));
 (1 row)
 
 select cast('11111121.235555' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '11111121.235555'
+WARNING:  Truncated incorrect time value: '11111121.235555'
 LINE 1: select cast('11111121.235555' as time(5));
                     ^
     mystimes     
@@ -7125,7 +7125,7 @@ LINE 1: select cast('11111121.235555' as time(5));
 (1 row)
 
 select cast('11111121.245555' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '11111121.245555'
+WARNING:  Truncated incorrect time value: '11111121.245555'
 LINE 1: select cast('11111121.245555' as time(5));
                     ^
     mystimes     
@@ -7134,7 +7134,7 @@ LINE 1: select cast('11111121.245555' as time(5));
 (1 row)
 
 select cast('11111121.236055' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '11111121.236055'
+WARNING:  Truncated incorrect time value: '11111121.236055'
 LINE 1: select cast('11111121.236055' as time(5));
                     ^
     mystimes     
@@ -7143,7 +7143,7 @@ LINE 1: select cast('11111121.236055' as time(5));
 (1 row)
 
 select cast('11111121.235560' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '11111121.235560'
+WARNING:  Truncated incorrect time value: '11111121.235560'
 LINE 1: select cast('11111121.235560' as time(5));
                     ^
     mystimes     
@@ -7152,7 +7152,7 @@ LINE 1: select cast('11111121.235560' as time(5));
 (1 row)
 
 select cast('11111121.235555999999999' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '11111121.235555999999999'
+WARNING:  Truncated incorrect time value: '11111121.235555999999999'
 LINE 1: select cast('11111121.235555999999999' as time(5));
                     ^
     mystimes     
@@ -7161,7 +7161,7 @@ LINE 1: select cast('11111121.235555999999999' as time(5));
 (1 row)
 
 select cast('111111211.2' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '111111211.2'
+WARNING:  Truncated incorrect time value: '111111211.2'
 LINE 1: select cast('111111211.2' as time(5));
                     ^
     mystimes     
@@ -7170,7 +7170,7 @@ LINE 1: select cast('111111211.2' as time(5));
 (1 row)
 
 select cast('111111241.2' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '111111241.2'
+WARNING:  Truncated incorrect time value: '111111241.2'
 LINE 1: select cast('111111241.2' as time(5));
                     ^
     mystimes     
@@ -7179,7 +7179,7 @@ LINE 1: select cast('111111241.2' as time(5));
 (1 row)
 
 select cast('111111231.2' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '111111231.2'
+WARNING:  Truncated incorrect time value: '111111231.2'
 LINE 1: select cast('111111231.2' as time(5));
                     ^
     mystimes     
@@ -7188,7 +7188,7 @@ LINE 1: select cast('111111231.2' as time(5));
 (1 row)
 
 select cast('111111239.2' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '111111239.2'
+WARNING:  Truncated incorrect time value: '111111239.2'
 LINE 1: select cast('111111239.2' as time(5));
                     ^
     mystimes     
@@ -7197,7 +7197,7 @@ LINE 1: select cast('111111239.2' as time(5));
 (1 row)
 
 select cast('111111239.59' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '111111239.59'
+WARNING:  Truncated incorrect time value: '111111239.59'
 LINE 1: select cast('111111239.59' as time(5));
                     ^
     mystimes     
@@ -7206,7 +7206,7 @@ LINE 1: select cast('111111239.59' as time(5));
 (1 row)
 
 select cast('111111239.60' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '111111239.60'
+WARNING:  Truncated incorrect time value: '111111239.60'
 LINE 1: select cast('111111239.60' as time(5));
                     ^
     mystimes     
@@ -7215,7 +7215,7 @@ LINE 1: select cast('111111239.60' as time(5));
 (1 row)
 
 select cast('111111239.5999999999' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '111111239.5999999999'
+WARNING:  Truncated incorrect time value: '111111239.5999999999'
 LINE 1: select cast('111111239.5999999999' as time(5));
                     ^
     mystimes     
@@ -7224,7 +7224,7 @@ LINE 1: select cast('111111239.5999999999' as time(5));
 (1 row)
 
 select cast('1111112111.2' as time(5));--838:59:59.000009 warning
-WARNING:  Incorrect time value: '1111112111.2'
+WARNING:  Truncated incorrect time value: '1111112111.2'
 LINE 1: select cast('1111112111.2' as time(5));
                     ^
     mystimes     
@@ -7233,7 +7233,7 @@ LINE 1: select cast('1111112111.2' as time(5));
 (1 row)
 
 select cast('1111112411.2' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '1111112411.2'
+WARNING:  Truncated incorrect time value: '1111112411.2'
 LINE 1: select cast('1111112411.2' as time(5));
                     ^
     mystimes     
@@ -7242,7 +7242,7 @@ LINE 1: select cast('1111112411.2' as time(5));
 (1 row)
 
 select cast('1111112159.2' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '1111112159.2'
+WARNING:  Truncated incorrect time value: '1111112159.2'
 LINE 1: select cast('1111112159.2' as time(5));
                     ^
     mystimes     
@@ -7260,7 +7260,7 @@ LINE 1: select cast('1111112160.2' as time(5));
 (1 row)
 
 select cast('1111112159.59' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '1111112159.59'
+WARNING:  Truncated incorrect time value: '1111112159.59'
 LINE 1: select cast('1111112159.59' as time(5));
                     ^
     mystimes     
@@ -7269,7 +7269,7 @@ LINE 1: select cast('1111112159.59' as time(5));
 (1 row)
 
 select cast('1111112159.5999999999999' as time(5));--838:59:59.00000 warning
-WARNING:  Incorrect time value: '1111112159.5999999999999'
+WARNING:  Truncated incorrect time value: '1111112159.5999999999999'
 LINE 1: select cast('1111112159.5999999999999' as time(5));
                     ^
     mystimes     
@@ -9726,8 +9726,14 @@ insert into test values(20200934231817.49999);--warning
 WARNING:  Out of range value.
 LINE 1: insert into test values(20200934231817.49999);
                                 ^
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
 insert into test values(0914231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(0914231817.49999);
                                 ^
 insert into test values(190914231817.49999);--warning
@@ -9740,6 +9746,9 @@ LINE 1: insert into test values(790914231817.49999);
                                 ^
 insert into test values(14231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(14231817.49999);
                                 ^
 insert into test values(231817.49999);
@@ -9819,8 +9828,14 @@ insert into test values(20200934231817.49999);--warning
 WARNING:  Out of range value.
 LINE 1: insert into test values(20200934231817.49999);
                                 ^
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
 insert into test values(0914231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(0914231817.49999);
                                 ^
 insert into test values(190914231817.49999);--warning
@@ -9833,6 +9848,9 @@ LINE 1: insert into test values(790914231817.49999);
                                 ^
 insert into test values(14231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(14231817.49999);
                                 ^
 insert into test values(231817.49999);
@@ -10001,8 +10019,14 @@ insert into test values(20200934231817.49999);--warning
 WARNING:  Out of range value.
 LINE 1: insert into test values(20200934231817.49999);
                                 ^
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
 insert into test values(0914231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(0914231817.49999);
                                 ^
 insert into test values(190914231817.49999);--warning
@@ -10015,6 +10039,9 @@ LINE 1: insert into test values(790914231817.49999);
                                 ^
 insert into test values(14231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(14231817.49999);
                                 ^
 insert into test values(231817.49999);
@@ -10185,8 +10212,14 @@ insert into test values(20200934231817.49999);--warning
 WARNING:  Out of range value.
 LINE 1: insert into test values(20200934231817.49999);
                                 ^
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
 insert into test values(0914231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(0914231817.49999);
                                 ^
 insert into test values(190914231817.49999);--warning
@@ -10199,6 +10232,9 @@ LINE 1: insert into test values(790914231817.49999);
                                 ^
 insert into test values(14231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(14231817.49999);
                                 ^
 insert into test values(231817.49999);
@@ -10370,8 +10406,14 @@ insert into test values(20200934231817.49999);--warning
 WARNING:  Out of range value.
 LINE 1: insert into test values(20200934231817.49999);
                                 ^
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
 insert into test values(0914231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(0914231817.49999);
                                 ^
 insert into test values(190914231817.49999);--warning
@@ -10384,6 +10426,9 @@ LINE 1: insert into test values(790914231817.49999);
                                 ^
 insert into test values(14231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(14231817.49999);
                                 ^
 insert into test values(231817.49999);
@@ -10465,8 +10510,14 @@ insert into test values(20200934231817.49999);--warning
 WARNING:  Out of range value.
 LINE 1: insert into test values(20200934231817.49999);
                                 ^
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
 insert into test values(0914231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(0914231817.49999);
                                 ^
 insert into test values(190914231817.49999);--warning
@@ -10479,6 +10530,9 @@ LINE 1: insert into test values(790914231817.49999);
                                 ^
 insert into test values(14231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(14231817.49999);
                                 ^
 insert into test values(231817.49999);
@@ -10560,8 +10614,14 @@ insert into test values(20200934231817.49999);--warning
 WARNING:  Out of range value.
 LINE 1: insert into test values(20200934231817.49999);
                                 ^
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
 insert into test values(0914231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(0914231817.49999);
                                 ^
 insert into test values(190914231817.49999);--warning
@@ -10574,6 +10634,9 @@ LINE 1: insert into test values(790914231817.49999);
                                 ^
 insert into test values(14231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(14231817.49999);
                                 ^
 insert into test values(231817.49999);
@@ -10655,8 +10718,14 @@ insert into test values(20200934231817.49999);--warning
 WARNING:  Out of range value.
 LINE 1: insert into test values(20200934231817.49999);
                                 ^
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
 insert into test values(0914231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(0914231817.49999);
                                 ^
 insert into test values(190914231817.49999);--warning
@@ -10669,6 +10738,9 @@ LINE 1: insert into test values(790914231817.49999);
                                 ^
 insert into test values(14231817.49999);--warning
 WARNING:  Out of range value.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+WARNING:  Data truncated for column.
 LINE 1: insert into test values(14231817.49999);
                                 ^
 insert into test values(231817.49999);

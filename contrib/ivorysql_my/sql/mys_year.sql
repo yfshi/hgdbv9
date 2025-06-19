@@ -1,4 +1,4 @@
-SELECT set_config('search_path', 'ivymy, '||current_setting('search_path'), false);
+
 set ivorysql.compatible_mode to mysql;
 set datestyle to 'ISO,YMD';
 

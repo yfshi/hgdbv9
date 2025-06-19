@@ -33,6 +33,7 @@
 	bool check_div_precision_increment(int *newval, void **extra, GucSource source);
 	void assign_div_precision_increment(int newval, void *extra);
 	/* End - qID: SRS-MYSQL-NUMBERICTYPE */	
+	static void assign_regress_test_default_value(bool newval, void *extra);
 #endif
 
 #ifdef IVY_MY_GUC_VAR_DEFINE
@@ -58,7 +59,7 @@ bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 bool		not_mode_pad_char_to_full = true;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 int			div_precision_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
 /* Begin - BUG#M533 */
-bool		mysql_functional_diff_control = true;
+bool		regress_test_default_value = false;
 bool		cast_to_char = true;
 /* End - BUG#M533 */
 bool		use_mysql_bool = false;
@@ -147,13 +148,14 @@ bool		use_mysql_bool = false;
 	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 	/* Begin - BUG#M533 */
 	{
-		{"mysql.functional_diff_control", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+		// Only for regress test
+		{"mysql.regress_test_default_value", PGC_POSTMASTER, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Controlling the functional difference between MySQL and Postgres."),
 			NULL
 		},
-		&mysql_functional_diff_control,
-		true,
-		NULL, NULL, NULL
+		&regress_test_default_value,
+		false,
+		NULL, assign_regress_test_default_value, NULL
 	},
 	{
 		{"mysql.cast_to_char", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
@@ -237,6 +239,7 @@ bool		use_mysql_bool = false;
 			GUC_LIST_INPUT
 		},
 		&sql_mode_str,
+		// psql need PIPES_AS_CONCAT, so we add it to default value, which is different from MySQL's.
 		"ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,"
 		"ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,REAL_AS_FLOAT,PIPES_AS_CONCAT",
 		check_sql_mode, assign_sql_mode, show_sql_mode
@@ -584,4 +587,16 @@ static bool check_max_sort_length(char **newval, void **extra, GucSource source)
 	return true; 
 }
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
+static void
+assign_regress_test_default_value(bool newval, void *extra)
+{
+	regress_test_default_value = newval;
+
+	if (newval)
+	{
+		SetConfigOption("mysql.cast_to_char", "off", PGC_USERSET, PGC_S_OVERRIDE);
+		SetConfigOption("mysql.mode_pad_char_to_full", "off", PGC_USERSET, PGC_S_OVERRIDE);
+	}
+}
 #endif

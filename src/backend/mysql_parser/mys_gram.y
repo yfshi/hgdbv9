@@ -16811,35 +16811,35 @@ func_expr_common_subexpr:
 				}
 			| CURRENT_TIME
 				{
-					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myscurtime"),
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("curtime"),
 												NIL,
 												COERCE_SQL_SYNTAX,
 												@1);
 				}
 			| CURRENT_TIME '(' ')'
 				{
-					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myscurtime"),
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("curtime"),
 												NIL,
 												COERCE_SQL_SYNTAX,
 												@1);
 				}
 			| CURRENT_TIME '(' Iconst ')'
 				{
-					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myscurtime"),
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("curtime"),
 												list_make1(makeIntConst($3, @3)),
 												COERCE_SQL_SYNTAX,
 												@2);
 				}
 			| CURTIME '(' ')'
 				{
-					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myscurtime"),
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("curtime"),
 												NIL,
 												COERCE_SQL_SYNTAX,
 												@1);
 				}
 			| CURTIME '(' Iconst ')'
 				{
-					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myscurtime"),
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("curtime"),
 												list_make1(makeIntConst($3, @3)),
 												COERCE_SQL_SYNTAX,
 												@2);
@@ -16847,19 +16847,45 @@ func_expr_common_subexpr:
 			/* End - SRS-MYSQL-BUILDINFUNCTION */
 			| CURRENT_TIMESTAMP
 				{
-					$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP, -1, @1);
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("current_timestamp"),
+											   NIL,
+											   COERCE_SQL_SYNTAX,
+											   @1);
+				}
+			| CURRENT_TIMESTAMP '(' ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("current_timestamp"),
+											   NIL,
+											   COERCE_SQL_SYNTAX,
+											   @1);
 				}
 			| CURRENT_TIMESTAMP '(' Iconst ')'
 				{
-					$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP_N, $3, @1);
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("current_timestamp"),
+											   list_make1(makeIntConst($3, @1)),
+											   COERCE_SQL_SYNTAX,
+											   @1);
 				}
 			| LOCALTIME
 				{
-					$$ = makeSQLValueFunction(SVFOP_LOCALTIME, -1, @1);
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("localtime"),
+											   NIL,
+											   COERCE_SQL_SYNTAX,
+											   @1);
+				}
+			| LOCALTIME '(' ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("localtime"),
+											   NIL,
+											   COERCE_SQL_SYNTAX,
+											   @1);
 				}
 			| LOCALTIME '(' Iconst ')'
 				{
-					$$ = makeSQLValueFunction(SVFOP_LOCALTIME_N, $3, @1);
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("localtime"),
+											   list_make1(makeIntConst($3, @1)),
+											   COERCE_SQL_SYNTAX,
+											   @1);
 				}
 			| LOCALTIMESTAMP
 				{
@@ -16872,21 +16898,21 @@ func_expr_common_subexpr:
 			/* Begin - SRS-MYSQL-BUILDINFUNCTION */
 			| TIMESTAMP '(' a_expr ')'
 				{
-					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("mytimestamp1"),
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("timestamp"),
 												list_make1($3),
 												COERCE_SQL_SYNTAX,
 												@1);
 				}
 			| TIMESTAMP '(' a_expr ',' a_expr ')'
 				{
-					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("mytimestamp2"),
-												list_make2( $3, $5),
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("timestamp"),
+												list_make2($3, $5),
 												COERCE_SQL_SYNTAX,
 												@1);
 				}
 			| TIMESTAMPADD '(' timestamp_units ',' a_expr ',' a_expr ')'
 				{
-					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("mytimestampadd"),
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("timestampadd"),
 												list_make3(makeStringConst($3, @1), $5, $7),
 												COERCE_SQL_SYNTAX,
 												@2);
@@ -16900,7 +16926,7 @@ func_expr_common_subexpr:
 				}
 			| TIME '(' a_expr ')'
 				{
-					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("mytime"),
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("time"),
 											   list_make1($3),
 											   COERCE_SQL_SYNTAX,
 											   @1);

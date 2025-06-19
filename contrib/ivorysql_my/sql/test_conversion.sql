@@ -1,7 +1,7 @@
 /*
  * test mysql binary type conversion
  */
-set mysql.functional_diff_control = true;
+set mysql.cast_to_char = on;
 -- parameter settings
 SET ivorysql.compatible_mode TO mysql;
 set mysql.enable_character_blob to on;
@@ -757,4 +757,4 @@ SELECT convert(c1, longblob) FROM pg_bytea_t14;
 SELECT         c1::longblob  FROM pg_bytea_t14;
 
 set mysql.mysql_convert = false;
-set mysql.functional_diff_control = false;
+set mysql.cast_to_char = off;

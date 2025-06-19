@@ -478,7 +478,7 @@ numeric_mysdate(PG_FUNCTION_ARGS)
 		str++;
 	}
 
-	date = DatumGetDateADT(DirectFunctionCall1(int_mysdate, Int64GetDatum(n)));
+	date = DatumGetDateADT(DirectFunctionCall2(int_mysdate, Int64GetDatum(n), CStringGetDatum(tmpstr)));
 	PG_RETURN_DATEADT(date);
 }
 
@@ -492,12 +492,18 @@ int_mysdate(PG_FUNCTION_ARGS)
 	int64		arg = PG_GETARG_INT64(0);
 	DateADT		date = 0;
 	fsec_t		fsec = 0;
-	struct pg_tm tt,
-			   *tm = &tt;
-	int			dterr;
+	int			dterr, flag, warn = 0;	
 	mysql_dttype ftype;
-	int 		flag;
-	int			warn = 0;
+	struct pg_tm tt, *tm = &tt;
+
+	/* Begin - bug#z5068 */
+	char 	 	*raw = NULL;
+
+	if (PG_NARGS() > 1)
+		raw = PG_GETARG_CSTRING(1);
+
+	MYS_ZERO_tm(tm);
+	/* End - bug#z5068 */
 
 	if(arg == 0)
 	{
@@ -585,11 +591,18 @@ int_mysdate(PG_FUNCTION_ARGS)
 			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (dterr < 0 || warn)
 			{
-			#ifdef WIN32
-				ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", arg)));
-			#else
-				ereport(WARNING, (errmsg("Incorrect datetime value: '%ld'", arg)));
-			#endif
+				/* Begin - bug#z5068 */
+				if (raw)
+					ereport(WARNING, (errmsg("Incorrect datetime value: '%s'", raw)));
+				/* End - bug#z5068 */
+				else
+				{
+					#ifdef WIN32
+						ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", arg)));
+					#else
+						ereport(WARNING, (errmsg("Incorrect datetime value: '%ld'", arg)));
+					#endif
+				}
 				if(dterr < 0)
 					PG_RETURN_NULL();
 			}
@@ -3857,9 +3870,9 @@ mysdatetime_out(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		int64	part1, part2;
-		DateADT		date = 0;
-		date = datetime/1000000;
+		int64 part1, part2;
+		DateADT date = 0;
+		date = datetime / 1000000;
 		part1 = (date / 10000);
 		part2 = (date - part1 * 10000);
 
@@ -3867,12 +3880,12 @@ mysdatetime_out(PG_FUNCTION_ARGS)
 		tm->tm_mon = part2 / 100;
 		tm->tm_mday = part2 % 100;
 
-		tm->tm_hour = datetime%1000000 / 10000;
-		tm->tm_min = datetime%1000000%10000 / 100;
-		tm->tm_sec = datetime%1000000%10000%100;
+		tm->tm_hour = datetime % 1000000 / 10000;
+		tm->tm_min = datetime % 1000000 % 10000 / 100;
+		tm->tm_sec = datetime % 1000000 % 10000 % 100;
 
-		snprintf(buf, MAXDATELEN, "%04d-%02d-%02d %02d:%02d:%02d",tm->tm_year,tm->tm_mon,tm->tm_mday,
-				tm->tm_hour,tm->tm_min,tm->tm_sec);
+		snprintf(buf, MAXDATELEN, "%04d-%02d-%02d %02d:%02d:%02d", tm->tm_year, tm->tm_mon, tm->tm_mday,
+				 tm->tm_hour, tm->tm_min, tm->tm_sec);
 	}
 
 	result = pstrdup(buf);
@@ -22821,48 +22834,51 @@ mystimes_out(PG_FUNCTION_ARGS)
 	char		*result;
 	struct pg_tm tt,
 				*tm = &tt;
-	char		buf[MAXDATELEN + 1] ={0};
-	char		*str=NULL;
-	int			neg = 0;
+	char		buf[MAXDATELEN + 1] = {0};
+	char		*str = NULL;
+	bool		neg = false;
 
 	time = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(num)));
+
+	/* Begin - bug#z5127 */
+	if (is_numeric_neg(num))
+	{
+		if (time < 0)
+			time = -time;
+		neg = true;
+	}
+	/* End - bug#z5127 */
+
 	tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(num),
-						   NumericGetDatum(int64_to_numeric(1000000))));
+												   NumericGetDatum(int64_to_numeric(1000000))));
 	tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mod, NumericGetDatum(tempfsec),
-						   NumericGetDatum(int64_to_numeric(1000000))));
+												   NumericGetDatum(int64_to_numeric(1000000))));
 
 	fsec = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(tempfsec)));
 
-	//Process rounding
-	if(fsec >= 500000)
+	// Process rounding
+	if (fsec >= 500000)
 		time = time - 1;
 
 	str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
 	str = strchr(str, '.');
-	if(str == NULL)
+	if (str == NULL)
 		str = "";
 
-	if(time == MYSQL_NULL_TIME)
+	if (time == MYSQL_NULL_TIME)
 		PG_RETURN_NULL();
 
-	if(time < 0)
-	{
-		neg = 1;
-		time = -time;
-	}
-
-	
-	if(time == MYSQL_ZERO_TIME && fsec == 0 )
+	if (time == MYSQL_ZERO_TIME && fsec == 0)
 	{
 		snprintf(buf, MAXDATELEN, "00:00:00%s", str);
 	}
 	else
 	{
 		tm->tm_hour = time / 10000;
-		tm->tm_min = time%10000 / 100;
-		tm->tm_sec = time%100;
+		tm->tm_min = time % 10000 / 100;
+		tm->tm_sec = time % 100;
 
-		snprintf(buf, MAXDATELEN, "%s%02d:%02d:%02d%s", neg==1?"-":"", tm->tm_hour,tm->tm_min,tm->tm_sec, str);
+		snprintf(buf, MAXDATELEN, "%s%02d:%02d:%02d%s", neg ? "-" : "", tm->tm_hour, tm->tm_min, tm->tm_sec, str);
 	}
 
 	result = pstrdup(buf);
@@ -26533,14 +26549,14 @@ Datum mystimes_numeric_notlike(PG_FUNCTION_ARGS)
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 
 /* mysdate to time */
-PG_FUNCTION_INFO_V1( mysdate_mystime);
+PG_FUNCTION_INFO_V1(mysdate_mystime);
 /* mystime mystimes to date datetime timestamp */
-PG_FUNCTION_INFO_V1( mystime_mysdate);
-PG_FUNCTION_INFO_V1( mystime_mysdatetime);
-PG_FUNCTION_INFO_V1( mystime_mystimestamp);
-PG_FUNCTION_INFO_V1( mystimes_mysdate);
-PG_FUNCTION_INFO_V1( mystimes_mysdatetime);
-PG_FUNCTION_INFO_V1( mystimes_mystimestamp);
+PG_FUNCTION_INFO_V1(mystime_mysdate);
+PG_FUNCTION_INFO_V1(mystime_mysdatetime);
+PG_FUNCTION_INFO_V1(mystime_mystimestamp);
+PG_FUNCTION_INFO_V1(mystimes_mysdate);
+PG_FUNCTION_INFO_V1(mystimes_mysdatetime);
+PG_FUNCTION_INFO_V1(mystimes_mystimestamp);
 /* mysdate to datetimes timestamps times */
 PG_FUNCTION_INFO_V1(mysdate_mysdatetimes);
 PG_FUNCTION_INFO_V1(mysdate_mystimestamps);
@@ -26575,25 +26591,64 @@ Datum mysdate_mystime(PG_FUNCTION_ARGS)
 }
 Datum mystime_mysdate(PG_FUNCTION_ARGS)
 {
-	DateADT		date = 0;
-	struct pg_tm tm;
+	DateADT			date = 0;
+	struct pg_tm 	tt, *tm = &tt;
+	TimeADT			time = PG_GETARG_TIMEADT(0);
+	int 			hour = time / 10000,
+					min = time % 10000 / 100,
+					sec = time % 10000 % 100;
+	TimeOffset 		timestamp1 = hour * USECS_PER_HOUR + min * USECS_PER_MINUTE + sec * USECS_PER_SEC,
+					timestamp2 = 0,
+					timestamp = 0;
+	fsec_t			fsec = 0;
 
-	GetCurrentDateTime(&tm);
-	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
+	MYS_ZERO_tm(tm);
+	GetCurrentDateTime(tm);
+
+	// Ignore time, just keep date
+	tm->tm_hour = tm->tm_min = tm->tm_sec = 0;
+
+	tm2timestamp(tm, 0, NULL, &timestamp2);
+
+	timestamp = timestamp1 + timestamp2;
+
+	MYS_ZERO_tm(tm);
+	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
+
+	date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
 	PG_RETURN_DATEADT(date);
 }
 Datum mystime_mysdatetime(PG_FUNCTION_ARGS)
 {
-	TimeADT		datetime;
-	TimeADT		date = 0;
-	TimeADT		time = PG_GETARG_TIMEADT(0);
-	struct pg_tm tm;
+	TimeADT			time_in = PG_GETARG_TIMEADT(0);
+	int 			hour = time_in / 10000,
+					min = time_in % 10000 / 100,
+					sec = time_in % 10000 % 100;
+	TimeOffset 		timestamp1 = hour * USECS_PER_HOUR + min * USECS_PER_MINUTE + sec * USECS_PER_SEC,
+					timestamp2 = 0,
+					timestamp = 0;
+	fsec_t			fsec = 0;
+	struct pg_tm 	tt, *tm = &tt;
+	TimeADT			datetime, date = 0, time = 0;
 
-	GetCurrentDateTime(&tm);
-	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
+	MYS_ZERO_tm(tm);
+	GetCurrentDateTime(tm);
 
-	datetime = date*1000000 + time;
-	PG_RETURN_TIMEADT(datetime);
+	// Ignore time, just keep date
+	tm->tm_hour = tm->tm_min = tm->tm_sec = 0;
+
+	tm2timestamp(tm, 0, NULL, &timestamp2);
+
+	timestamp = timestamp1 + timestamp2;
+
+	MYS_ZERO_tm(tm);
+	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
+	
+	date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+
+	datetime = date * 1000000 + time;
+	PG_RETURN_TIMEADT(datetime);	
 }
 Datum mystime_mystimestamp(PG_FUNCTION_ARGS)
 {
@@ -26605,33 +26660,77 @@ Datum mystime_mystimestamp(PG_FUNCTION_ARGS)
 	GetCurrentDateTime(&tm);
 	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
 
-	datetime = date*1000000 + time;
+	datetime = date * 1000000 + time;
 	PG_RETURN_TIMEADT(datetime);
 }
+
 Datum mystimes_mysdate(PG_FUNCTION_ARGS)
 {
-	DateADT		date = 0;
-	struct pg_tm tm;
+	DateADT			date = 0;
+	struct pg_tm 	tt, *tm = &tt;
+	Numeric 		times = PG_GETARG_NUMERIC(0);
+	TimeADT			time = DatumGetInt64(DirectFunctionCall1(numeric_int8,
+															 NumericGetDatum(times)));
+	int 			hour = time / 10000,
+					min = time % 10000 / 100,
+					sec = time % 10000 % 100;
+	TimeOffset 		timestamp1 = hour * USECS_PER_HOUR + min * USECS_PER_MINUTE + sec * USECS_PER_SEC,
+					timestamp2 = 0,
+					timestamp = 0;
+	fsec_t			fsec = 0;
 
-	GetCurrentDateTime(&tm);
-	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
+	MYS_ZERO_tm(tm);
+	GetCurrentDateTime(tm);
+
+	// Ignore time, just keep date
+	tm->tm_hour = tm->tm_min = tm->tm_sec = 0;
+
+	tm2timestamp(tm, 0, NULL, &timestamp2);
+
+	timestamp = timestamp1 + timestamp2;
+
+	MYS_ZERO_tm(tm);
+	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
+
+	date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
 	PG_RETURN_DATEADT(date);
 }
+
 Datum mystimes_mysdatetime(PG_FUNCTION_ARGS)
 {
-	Numeric		times = PG_GETARG_NUMERIC(0);
-	TimeADT		datetime;
-	TimeADT		date = 0;
-	TimeADT		time = 0;
-	struct pg_tm tm;
+	Numeric 		times = PG_GETARG_NUMERIC(0);
+	TimeADT			time_in = DatumGetInt64(DirectFunctionCall1(numeric_int8,
+																NumericGetDatum(times)));
+	int 			hour = time_in / 10000,
+					min = time_in % 10000 / 100,
+					sec = time_in % 10000 % 100;
+	TimeOffset 		timestamp1 = hour * USECS_PER_HOUR + min * USECS_PER_MINUTE + sec * USECS_PER_SEC,
+					timestamp2 = 0,
+					timestamp = 0;
+	fsec_t			fsec = 0;
+	struct pg_tm 	tt, *tm = &tt;
+	TimeADT			datetime, date = 0, time = 0;
 
-	GetCurrentDateTime(&tm);
-	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
+	MYS_ZERO_tm(tm);
+	GetCurrentDateTime(tm);
 
-	time = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(times)));
-	datetime = date*1000000 + time;
-	PG_RETURN_TIMEADT(datetime);
+	// Ignore time, just keep date
+	tm->tm_hour = tm->tm_min = tm->tm_sec = 0;
+
+	tm2timestamp(tm, 0, NULL, &timestamp2);
+
+	timestamp = timestamp1 + timestamp2;
+
+	MYS_ZERO_tm(tm);
+	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
+	
+	date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+
+	datetime = date * 1000000 + time;
+	PG_RETURN_TIMEADT(datetime);	
 }
+
 Datum mystimes_mystimestamp(PG_FUNCTION_ARGS)
 {
 	Numeric		times = PG_GETARG_NUMERIC(0);

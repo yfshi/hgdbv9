@@ -1,9 +1,3 @@
-SELECT set_config('search_path', 'ivymy, '||current_setting('search_path'), false);
-       set_config       
-------------------------
- ivymy, "$user", public
-(1 row)
-
 set ivorysql.compatible_mode to mysql;
 set datestyle to 'ISO,YMD';
 -- #
@@ -49,6 +43,10 @@ select * from t1 order by y4;
 drop table t1;
 create table t1 (y year);
 insert into t1 values (now());
+ERROR:  column "y" is of type "year" but expression is of type datetime
+LINE 1: insert into t1 values (now());
+                               ^
+HINT:  You will need to rewrite or cast the expression.
 -- select if(y = now(), 1, 0) from t1;
 drop table t1;
 -- #
@@ -165,15 +163,15 @@ SELECT * FROM t2 WHERE yy > NULL;
 (0 rows)
 
 SELECT * FROM t2 WHERE yy = NOW();
- yy | c2 
-----+----
-(0 rows)
-
+ERROR:  operator does not exist: "year" = datetime
+LINE 1: SELECT * FROM t2 WHERE yy = NOW();
+                                  ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT * FROM t4 WHERE yyyy = NOW();
- yyyy | c4 
-------+----
-(0 rows)
-
+ERROR:  operator does not exist: "year" = datetime
+LINE 1: SELECT * FROM t4 WHERE yyyy = NOW();
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT * FROM t2 WHERE yy = 99;
   yy  |  c2  
 ------+------
@@ -576,7 +574,15 @@ SELECT * FROM test_year;
 (5 rows)
 
 INSERT INTO test_year(y) VALUES(now());
+ERROR:  column "y" is of type "year" but expression is of type datetime
+LINE 1: INSERT INTO test_year(y) VALUES(now());
+                                        ^
+HINT:  You will need to rewrite or cast the expression.
 INSERT INTO test_year(y) VALUES(current_timestamp);
+ERROR:  column "y" is of type "year" but expression is of type datetime
+LINE 1: INSERT INTO test_year(y) VALUES(current_timestamp);
+                                        ^
+HINT:  You will need to rewrite or cast the expression.
 CREATE INDEX tyear ON test_year(y);
 SET ENABLE_SEQSCAN = OFF;
 EXPLAIN (COSTS OFF)

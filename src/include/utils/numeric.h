@@ -84,4 +84,8 @@ Numeric numeric_bitand(Numeric arg1, Numeric arg2);
 /* Begin - SRS-MYSQL-BUILDINFUNCTION */
 extern bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to);
 /* End - SRS-MYSQL-BUILDINFUNCTION */
+
+/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+extern bool is_numeric_neg(Numeric num);
+/* End - SRS-MYSQL-BUILDINFUNCTION */
 #endif							/* _PG_NUMERIC_H_ */

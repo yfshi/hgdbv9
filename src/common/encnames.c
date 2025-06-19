@@ -50,7 +50,7 @@ const pg_encname pg_encname_tbl[] =
 		"cp866", PG_WIN866, "DOS Russian", "cp866_general_ci"
 	},
 	{
-		"cp932", PG_SJIS, "SJIS for Windows Japanese", "cp932_general_ci"
+		"cp932", PG_SJIS, "SJIS for Windows Japanese", "cp932_japanese_ci"
 	},
 	{
 		"euccn", PG_EUC_CN

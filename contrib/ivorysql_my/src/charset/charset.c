@@ -209,10 +209,10 @@ show_charset_first_call(PG_FUNCTION_ARGS)
     MemoryContext     oldContext = MemoryContextSwitchTo(fctx->multi_call_memory_ctx);
     TupleDesc         tupdesc = CreateTemplateTupleDesc(SHOW_CHARSET_RESULTSET_NATTR, false);
 
-    TupleDescInitEntry(tupdesc, (AttrNumber) 1, "Charset", TEXTOID, -1, 0);
-    TupleDescInitEntry(tupdesc, (AttrNumber) 2, "Description", TEXTOID, -1, 0);
-    TupleDescInitEntry(tupdesc, (AttrNumber) 3, "Default collation", TEXTOID, -1, 0);
-    TupleDescInitEntry(tupdesc, (AttrNumber) 4, "Maxlen", INT4OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 1, "Charset", VARCHAROID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 2, "Description", VARCHAROID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 3, "Default collation", VARCHAROID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 4, "Maxlen", INT8OID, -1, 0);
     
     /**
      * The list will be free before doing next function call.
@@ -263,7 +263,7 @@ show_mysql_charsets(PG_FUNCTION_ARGS)
         values[0] = CStringGetTextDatum(charset->name);
         values[1] = CStringGetTextDatum(charset->description);
         values[2] = CStringGetTextDatum(charset->default_collation);
-        values[3] = Int32GetDatum(pg_encoding_max_length(charset->encoding));
+        values[3] = Int64GetDatum(pg_encoding_max_length(charset->encoding));
         
         returnTuple = heap_form_tuple(fctx->tuple_desc, values, nulls);
 
@@ -280,12 +280,12 @@ show_collation_first_call(PG_FUNCTION_ARGS)
     MemoryContext     oldContext = MemoryContextSwitchTo(fctx->multi_call_memory_ctx);
     TupleDesc         tupdesc = CreateTemplateTupleDesc(SHOW_COLLATION_RESULTSET_NATTR, false);
 
-    TupleDescInitEntry(tupdesc, (AttrNumber) 1, "Collation", TEXTOID, -1, 0);
-    TupleDescInitEntry(tupdesc, (AttrNumber) 2, "Charset", TEXTOID, -1, 0);
-    TupleDescInitEntry(tupdesc, (AttrNumber) 3, "Id", INT4OID, -1, 0);
-    TupleDescInitEntry(tupdesc, (AttrNumber) 4, "Default", TEXTOID, -1, 0);
-    TupleDescInitEntry(tupdesc, (AttrNumber) 5, "Compiled", TEXTOID, -1, 0);
-    TupleDescInitEntry(tupdesc, (AttrNumber) 6, "Sortlen", INT4OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 1, "Collation", VARCHAROID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 2, "Charset", VARCHAROID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 3, "Id", INT8OID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 4, "Default", VARCHAROID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 5, "Compiled", VARCHAROID, -1, 0);
+    TupleDescInitEntry(tupdesc, (AttrNumber) 6, "Sortlen", INT8OID, -1, 0);
     
     fctx->tuple_desc = BlessTupleDesc(tupdesc);
     fctx->max_calls = lengthof(all_cs);
@@ -334,10 +334,10 @@ show_mysql_collations(PG_FUNCTION_ARGS)
         
         values[0] = CStringGetTextDatum(coll_name);     // Collation
         values[1] = CStringGetTextDatum(csname);        // Charset
-        values[2] = Int32GetDatum(cs->number);          // Id
+        values[2] = Int64GetDatum(cs->number);          // Id
         values[3] = CStringGetTextDatum(Default);       // Default
         values[4] = CStringGetTextDatum(Compiled);      // Compiled
-        values[5] = Int32GetDatum(cs->sort_len);        // Sortlen
+        values[5] = Int64GetDatum(cs->sort_len);        // Sortlen
         
         returnTuple = heap_form_tuple(fctx->tuple_desc, values, nulls);
 

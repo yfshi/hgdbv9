@@ -418,7 +418,7 @@ create table tb5 as select cast('{"name":"CoderAcademy", "age": 30}'::mediumtext
 drop table if exists tb1,tb2,tb3,tb4,tb5;
 
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_CONVERT_001
-set mysql.functional_diff_control = true;
+set mysql.cast_to_char = on;
 create table tb (col mediumtext);
 insert into tb values('abc');
 select convert('abc' using gbk);  -- success
@@ -530,7 +530,7 @@ select convert(col , unsigned) from tb where id=2;  -- 123
 select convert(col , unsigned) from tb where id=3;  -- 123
 drop table if exists tb;
 
-set mysql.functional_diff_control = false;
+set mysql.cast_to_char = off;
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_CONVERT_013
 create table tb (col mediumtext);
 insert into tb values('123');

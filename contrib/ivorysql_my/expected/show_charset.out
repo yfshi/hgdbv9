@@ -9,7 +9,7 @@ show charset;
  cp1256  | Windows Arabic                  | cp1256_general_ci   |      1
  cp1257  | Windows Baltic                  | cp1257_general_ci   |      1
  cp866   | DOS Russian                     | cp866_general_ci    |      1
- cp932   | SJIS for Windows Japanese       | cp932_general_ci    |      2
+ cp932   | SJIS for Windows Japanese       | cp932_japanese_ci   |      2
  eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
  euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
  gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
@@ -56,7 +56,7 @@ show charset where maxlen > 1;
  Charset |           Description           |  Default collation  | Maxlen 
 ---------+---------------------------------+---------------------+--------
  big5    | Big5 Traditional Chinese        | big5_chinese_ci     |      2
- cp932   | SJIS for Windows Japanese       | cp932_general_ci    |      2
+ cp932   | SJIS for Windows Japanese       | cp932_japanese_ci   |      2
  eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
  euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
  gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
@@ -80,7 +80,7 @@ show character set;
  cp1256  | Windows Arabic                  | cp1256_general_ci   |      1
  cp1257  | Windows Baltic                  | cp1257_general_ci   |      1
  cp866   | DOS Russian                     | cp866_general_ci    |      1
- cp932   | SJIS for Windows Japanese       | cp932_general_ci    |      2
+ cp932   | SJIS for Windows Japanese       | cp932_japanese_ci   |      2
  eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
  euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
  gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
@@ -127,7 +127,7 @@ show character set where maxlen > 1;
  Charset |           Description           |  Default collation  | Maxlen 
 ---------+---------------------------------+---------------------+--------
  big5    | Big5 Traditional Chinese        | big5_chinese_ci     |      2
- cp932   | SJIS for Windows Japanese       | cp932_general_ci    |      2
+ cp932   | SJIS for Windows Japanese       | cp932_japanese_ci   |      2
  eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
  euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
  gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
@@ -193,7 +193,7 @@ show collation;
  gbk_bin                     | gbk     |  87 |         | Yes      |       1
  sjis_bin                    | sjis    |  88 |         | Yes      |       1
  ujis_bin                    | ujis    |  91 |         | Yes      |       1
- cp932_japanese_ci           | cp932   |  95 |         | Yes      |       1
+ cp932_japanese_ci           | cp932   |  95 | Yes     | Yes      |       1
  cp932_bin                   | cp932   |  96 |         | Yes      |       1
  eucjpms_japanese_ci         | eucjpms |  97 | Yes     | Yes      |       1
  eucjpms_bin                 | eucjpms |  98 |         | Yes      |       1

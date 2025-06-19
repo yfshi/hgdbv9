@@ -1015,7 +1015,7 @@ DirectFunctionCall1Coll(PGFunction func, Oid collation, Datum arg1)
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull && MYS_PARSER != compatible_db) /* ReqID:SRS-MYSQL-DATETYPE */
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1037,7 +1037,7 @@ DirectFunctionCall2Coll(PGFunction func, Oid collation, Datum arg1, Datum arg2)
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1062,7 +1062,7 @@ DirectFunctionCall3Coll(PGFunction func, Oid collation, Datum arg1, Datum arg2,
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1089,7 +1089,7 @@ DirectFunctionCall4Coll(PGFunction func, Oid collation, Datum arg1, Datum arg2,
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1118,7 +1118,7 @@ DirectFunctionCall5Coll(PGFunction func, Oid collation, Datum arg1, Datum arg2,
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1150,7 +1150,7 @@ DirectFunctionCall6Coll(PGFunction func, Oid collation, Datum arg1, Datum arg2,
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1184,7 +1184,7 @@ DirectFunctionCall7Coll(PGFunction func, Oid collation, Datum arg1, Datum arg2,
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1220,7 +1220,7 @@ DirectFunctionCall8Coll(PGFunction func, Oid collation, Datum arg1, Datum arg2,
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1259,7 +1259,7 @@ DirectFunctionCall9Coll(PGFunction func, Oid collation, Datum arg1, Datum arg2,
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1288,7 +1288,7 @@ CallerFInfoFunctionCall1(PGFunction func, FmgrInfo *flinfo, Oid collation, Datum
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1310,7 +1310,7 @@ CallerFInfoFunctionCall2(PGFunction func, FmgrInfo *flinfo, Oid collation, Datum
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db /* ReqID:SRS-MYSQL-DATETYPE */)
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
