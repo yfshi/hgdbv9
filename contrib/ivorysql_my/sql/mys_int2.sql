@@ -122,7 +122,7 @@ DROP TABLE t1,t2,t3,t4,t5;
 create table tb_test(id int2);
 insert into tb_test values (123),(-121),(0);
 select !id from tb_test;
-select ~id from tb_test;
+select ~id from tb_test;	--BUG#5055	
 select +id from tb_test;
 select -id from tb_test;
 select * from tb_test;
@@ -135,13 +135,16 @@ select col1 + col2 from t1;
 select col1 - col2 from t1;
 select col1 * col2 from t1;
 select col1 / col2 from t1;
-select col1 div col2 from t1;
+select col1 div col2 from t1; --BUG#5049
 select col1 % col2 from t1;
-select col1 & col2 from t1;
-select col1 | col2 from t1;
-select col1 ^ col2 from t1; --failed
-select col1 || col2 from t1;
-select col1 && col2 from t1;
+select col1 & col2 from t1; --BUG#5053
+select col1 | col2 from t1; --BUG#5054
+select col1 ^ col2 from t1; --BUG#5056
+select col1 || col2 from t1; --BUG#5051
+select col1 or col2 from t1; --BUG#5051
+select col1 && col2 from t1; --BUG#5050
+select col1 and col2 from t1; --BUG#5050
+select col1 xor col2 from t1; --BUG#5052
 select col1 <=> col2 from t1;
 drop table t1;
 
@@ -238,6 +241,38 @@ set sql_mode = default;
 insert into tb_test values ('123abc');
 set sql_mode = '';
 insert into tb_test values ('123abc');
+select * from tb_test;
+drop table tb_test;
+set sql_mode = default;
+
+-- BUG#5060
+create table t(c smallint(-1) signed);
+create table t(c smallint(-1) SIGNED);
+create table t(c smallint(-1));
+create table t(c int2(-1) signed);
+create table t(c int2(-1) SIGNED);
+create table t(c int2(-1));
+create table t(c INT2(-1) signed);
+create table t(c INT2(-1) SIGNED);
+create table t(c INT2(-1));
+create table t(c smallint(256) signed);
+create table t(c smallint(256) SIGNED);
+create table t(c smallint(256));
+create table t(c int2(256) signed);
+create table t(c int2(256) SIGNED);
+create table t(c int2(256));
+create table t(c INT2(256) signed);
+create table t(c INT2(256) SIGNED);
+create table t(c INT2(256));
+
+-- BUG#5061
+create table tb_test(id int2);
+set sql_mode = default;
+insert into tb_test values (-32769);
+insert into tb_test values (32768);
+set sql_mode = '';
+insert into tb_test values (-32769);
+insert into tb_test values (32768);
 select * from tb_test;
 drop table tb_test;
 set sql_mode = default;

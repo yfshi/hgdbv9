@@ -156,7 +156,7 @@ DROP TABLE t1,t2,t3,t4,t5;
 create table tb_test(id int);
 insert into tb_test values (2147483647),(-2147483648),(0),(1);
 select !id from tb_test;
-select ~id from tb_test;
+select ~id from tb_test;	--BUG#5055	
 select +id from tb_test;
 select -id from tb_test;
 select * from tb_test;
@@ -169,13 +169,16 @@ select col1 + col2 from t1;
 select col1 - col2 from t1;
 select col1 * col2 from t1;
 select col1 / col2 from t1;
-select col1 div col2 from t1;
+select col1 div col2 from t1; --BUG#5049
 select col1 % col2 from t1;
-select col1 & col2 from t1;
-select col1 | col2 from t1;
-select col1 ^ col2 from t1; --failed
-select col1 || col2 from t1;
-select col1 && col2 from t1;
+select col1 & col2 from t1; --BUG#5053
+select col1 | col2 from t1; --BUG#5054
+select col1 ^ col2 from t1; --BUG#5056
+select col1 || col2 from t1; --BUG#5051
+select col1 or col2 from t1; --BUG#5051
+select col1 && col2 from t1; --BUG#5050
+select col1 and col2 from t1; --BUG#5050
+select col1 xor col2 from t1; --BUG#5052
 select col1 <=> col2 from t1;
 drop table t1;
 
@@ -328,3 +331,63 @@ insert into tb_test values ('123abc');
 select * from tb_test;
 drop table tb_test;
 set sql_mode = default;
+
+-- fix bug 5060
+create table t(c integer(-1) signed);
+create table t(c integer(-1) SIGNED);
+create table t(c integer(-1));
+create table t(c int4(-1) signed);
+create table t(c int4(-1) SIGNED);
+create table t(c int4(-1));
+create table t(c INT4(-1) signed);
+create table t(c INT4(-1) SIGNED);
+create table t(c INT4(-1));
+create table t(c integer(256) signed);
+create table t(c integer(256) SIGNED);
+create table t(c integer(256));
+create table t(c int4(256) signed);
+create table t(c int4(256) SIGNED);
+create table t(c int4(256));
+create table t(c INT4(256) signed);
+create table t(c INT4(256) SIGNED);
+create table t(c INT4(256));
+create table t(c int(256) signed);
+create table t(c int(256) SIGNED);
+create table t(c int(256));
+create table t(c INT(256) signed);
+create table t(c INT(256) SIGNED);
+create table t(c INT(256));
+create table t(c int(-1) signed);
+create table t(c int(-1) SIGNED);
+create table t(c int(-1));
+create table t(c INT(-1) signed);
+create table t(c INT(-1) SIGNED);
+create table t(c INT(-1));
+
+-- BUG#5103
+create table t1(c int(10) signed);
+drop table t1;
+create table t2(c integer(10) signed);
+drop table t2;
+
+-- BUG#5164
+set sql_mode = default;
+set div_precision_increment = 99;
+show div_precision_increment;
+set div_precision_increment = -1;
+show div_precision_increment;
+set sql_mode = '';
+set div_precision_increment = 99;
+show div_precision_increment;
+set div_precision_increment = -1;
+show div_precision_increment;
+
+-- BUG#5091
+create table test_MEDIUMINT (a int3,b mediumint signed);
+insert into test_MEDIUMINT (a, b) values(8388607, -8388608);
+select a * b AS mul_result from test_MEDIUMINT;
+drop table test_MEDIUMINT;
+create table test_INT (a int4,b int signed);
+insert into test_INT (a, b) values(8388607, -8388608);
+select a * b AS mul_result from test_INT;
+drop table test_INT;

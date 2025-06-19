@@ -210,8 +210,8 @@ myint4_mul(PG_FUNCTION_ARGS)
 	int64 arg1 = PG_GETARG_INT64(1);
 	int64 result = 0;
 	
-	result = DatumGetInt32(DirectFunctionCall2(int4mul, Int32GetDatum(arg0),
-							Int32GetDatum(arg1)));
+	result = DatumGetInt64(DirectFunctionCall2(int8mul, Int64GetDatum(arg0),	/* BUG#5091 */
+							Int64GetDatum(arg1)));
 
 	PG_RETURN_INT64(result);
 }
@@ -318,7 +318,27 @@ myint4_bit_xor(PG_FUNCTION_ARGS)
 }
 
 /* operator int2 || int2 */
-//cast to boolean
+Datum 
+myint4_or(PG_FUNCTION_ARGS)
+{
+	int64 arg0 = 0;
+	int64 arg1 = 0;
+
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+	{
+		PG_RETURN_NULL();
+	}
+
+	arg0 = PG_GETARG_INT64(0);
+	arg1 = PG_GETARG_INT64(1);
+
+	if ((arg0 != 0) || (arg1 != 0))
+	{
+		PG_RETURN_INT32(1);
+	}
+	PG_RETURN_INT32(0);
+}
+
 
 /* operator int4 && int4 */
 Datum 

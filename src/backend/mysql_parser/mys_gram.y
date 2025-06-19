@@ -14668,19 +14668,19 @@ GenericType:
 							}
 						}
 
-						if (strcmp($1, "int2") == 0)
+						if (pg_strcasecmp($1, "int2") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint2");
 							$$->typmods = typmods;
 							$$->location = @1;
 						}
-						else if (strcmp($1, "int4") == 0)
+						else if (pg_strcasecmp($1, "int4") == 0 || pg_strcasecmp($1, "int") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint4");
 							$$->typmods = typmods;
 							$$->location = @1;
 						}
-						else if (strcmp($1, "int8") == 0)
+						else if (pg_strcasecmp($1, "int8") == 0)
 						{
 							$$ = MySQLSystemTypeName("mysuint8");
 							$$->typmods = typmods;
@@ -14693,19 +14693,40 @@ GenericType:
 							$$->location = @1;
 						}
 					}	
+
 					/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4-UINT8 */
-					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
-					else if (strcmp($1, "int4") == 0)
+					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2-INT4 */
+					else if (pg_strcasecmp($1, "int2") == 0
+							|| pg_strcasecmp($1, "int4") == 0
+							|| pg_strcasecmp($1, "int") == 0)
 					{
+						A_Const *node_const = NULL;
+						List	   *typmods = $2;
+
+						if (typmods != NULL)
+						{
+							if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+
+							node_const = (A_Const *) linitial(typmods);
+							if (nodeTag(&node_const->val) != T_Integer ||
+								node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+						}
 						$$ = makeTypeName($1);
 						$$->location = @1;
 					}
-					else if (strcmp($1, "int2") == 0)
-					{
-						$$ = makeTypeName($1);
-						$$->location = @1;
-					}
-					/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+					/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2-INT4 */
 					else
 					{
 						$$ = makeTypeName($1);
@@ -14715,13 +14736,61 @@ GenericType:
 				}
 			| type_function_name opt_type_modifiers SIGNED
 				{
-					if (strcmp($1, "int4") == 0 || strcmp($1, "int2") == 0)
+					if (pg_strcasecmp($1, "int2") == 0 
+						|| pg_strcasecmp($1, "int4") == 0 
+						|| pg_strcasecmp($1, "int") == 0)
 					{
+						A_Const *node_const = NULL;
+						List	   *typmods = $2;
+
+						if (typmods != NULL)
+						{
+							if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+
+							node_const = (A_Const *) linitial(typmods);
+							if (nodeTag(&node_const->val) != T_Integer ||
+								node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+						}
 						$$ = makeTypeName($1);
 						$$->location = @1;
 					}
 					else
 					{
+						A_Const *node_const = NULL;
+						List	   *typmods = $2;
+
+						if (typmods != NULL)
+						{
+							if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+
+							node_const = (A_Const *) linitial(typmods);
+							if (nodeTag(&node_const->val) != T_Integer ||
+								node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+						}
 						$$ = makeTypeName($1);
 						$$->location = @1;
 					}

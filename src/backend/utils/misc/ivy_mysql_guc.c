@@ -228,7 +228,7 @@ int			default_week_format = 0;
 			NULL
 		},
 		&div_precision_increment,
-		4, 0, 30,
+		4, INT_MIN, INT_MAX,	/* BUG#5164 */
 		check_div_precision_increment, assign_div_precision_increment, NULL
 	},
 	/* End - ReqID: SRS-MYSQL-NUMBERICTYPE */

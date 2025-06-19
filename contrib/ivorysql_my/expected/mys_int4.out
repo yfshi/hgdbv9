@@ -360,7 +360,7 @@ select !id from tb_test;
         0
 (4 rows)
 
-select ~id from tb_test;
+select ~id from tb_test;	--BUG#5055	
        ?column?       
 ----------------------
  18446744071562067968
@@ -428,7 +428,7 @@ select col1 / col2 from t1;
    0.0000
 (2 rows)
 
-select col1 div col2 from t1;
+select col1 div col2 from t1; --BUG#5049
  ?column? 
 ----------
         0
@@ -442,39 +442,60 @@ select col1 % col2 from t1;
         1
 (2 rows)
 
-select col1 & col2 from t1;
+select col1 & col2 from t1; --BUG#5053
  ?column? 
 ----------
  1
  0
 (2 rows)
 
-select col1 | col2 from t1;
+select col1 | col2 from t1; --BUG#5054
        ?column?       
 ----------------------
  2147483647
  18446744071562067969
 (2 rows)
 
-select col1 ^ col2 from t1; --failed
+select col1 ^ col2 from t1; --BUG#5056
        ?column?       
 ----------------------
  2147483646
  18446744071562067969
 (2 rows)
 
-select col1 || col2 from t1;
+select col1 || col2 from t1; --BUG#5051
  ?column? 
 ----------
  t
  t
 (2 rows)
 
-select col1 && col2 from t1;
+select col1 or col2 from t1; --BUG#5051
+ ?column? 
+----------
+ t
+ t
+(2 rows)
+
+select col1 && col2 from t1; --BUG#5050
  ?column? 
 ----------
         1
         1
+(2 rows)
+
+select col1 and col2 from t1; --BUG#5050
+ ?column? 
+----------
+ t
+ t
+(2 rows)
+
+select col1 xor col2 from t1; --BUG#5052
+ ?column? 
+----------
+ f
+ f
 (2 rows)
 
 select col1 <=> col2 from t1;
@@ -1039,3 +1060,183 @@ select * from tb_test;
 
 drop table tb_test;
 set sql_mode = default;
+-- fix bug 5060
+create table t(c integer(-1) signed);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c integer(-1) signed);
+                                ^
+create table t(c integer(-1) SIGNED);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c integer(-1) SIGNED);
+                                ^
+create table t(c integer(-1));
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c integer(-1));
+                                ^
+create table t(c int4(-1) signed);
+ERROR:  syntax error at or near
+LINE 1: create table t(c int4(-1) signed);
+                             ^
+create table t(c int4(-1) SIGNED);
+ERROR:  syntax error at or near
+LINE 1: create table t(c int4(-1) SIGNED);
+                             ^
+create table t(c int4(-1));
+ERROR:  syntax error at or near
+LINE 1: create table t(c int4(-1));
+                             ^
+create table t(c INT4(-1) signed);
+ERROR:  syntax error at or near
+LINE 1: create table t(c INT4(-1) signed);
+                             ^
+create table t(c INT4(-1) SIGNED);
+ERROR:  syntax error at or near
+LINE 1: create table t(c INT4(-1) SIGNED);
+                             ^
+create table t(c INT4(-1));
+ERROR:  syntax error at or near
+LINE 1: create table t(c INT4(-1));
+                             ^
+create table t(c integer(256) signed);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c integer(256) signed);
+                                ^
+create table t(c integer(256) SIGNED);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c integer(256) SIGNED);
+                                ^
+create table t(c integer(256));
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c integer(256));
+                                ^
+create table t(c int4(256) signed);
+ERROR:  syntax error at or near
+LINE 1: create table t(c int4(256) signed);
+                             ^
+create table t(c int4(256) SIGNED);
+ERROR:  syntax error at or near
+LINE 1: create table t(c int4(256) SIGNED);
+                             ^
+create table t(c int4(256));
+ERROR:  syntax error at or near
+LINE 1: create table t(c int4(256));
+                             ^
+create table t(c INT4(256) signed);
+ERROR:  syntax error at or near
+LINE 1: create table t(c INT4(256) signed);
+                             ^
+create table t(c INT4(256) SIGNED);
+ERROR:  syntax error at or near
+LINE 1: create table t(c INT4(256) SIGNED);
+                             ^
+create table t(c INT4(256));
+ERROR:  syntax error at or near
+LINE 1: create table t(c INT4(256));
+                             ^
+create table t(c int(256) signed);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c int(256) signed);
+                            ^
+create table t(c int(256) SIGNED);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c int(256) SIGNED);
+                            ^
+create table t(c int(256));
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c int(256));
+                            ^
+create table t(c INT(256) signed);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c INT(256) signed);
+                            ^
+create table t(c INT(256) SIGNED);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c INT(256) SIGNED);
+                            ^
+create table t(c INT(256));
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c INT(256));
+                            ^
+create table t(c int(-1) signed);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c int(-1) signed);
+                            ^
+create table t(c int(-1) SIGNED);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c int(-1) SIGNED);
+                            ^
+create table t(c int(-1));
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c int(-1));
+                            ^
+create table t(c INT(-1) signed);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c INT(-1) signed);
+                            ^
+create table t(c INT(-1) SIGNED);
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c INT(-1) SIGNED);
+                            ^
+create table t(c INT(-1));
+ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+LINE 1: create table t(c INT(-1));
+                            ^
+-- BUG#5103
+create table t1(c int(10) signed);
+drop table t1;
+create table t2(c integer(10) signed);
+drop table t2;
+-- BUG#5164
+set sql_mode = default;
+set div_precision_increment = 99;
+WARNING:  Truncated incorrect div_precision_increment value: "99"
+show div_precision_increment;
+ div_precision_increment 
+-------------------------
+ 30
+(1 row)
+
+set div_precision_increment = -1;
+WARNING:  Truncated incorrect div_precision_increment value: "-1"
+show div_precision_increment;
+ div_precision_increment 
+-------------------------
+ 4
+(1 row)
+
+set sql_mode = '';
+set div_precision_increment = 99;
+WARNING:  Truncated incorrect div_precision_increment value: "99"
+show div_precision_increment;
+ div_precision_increment 
+-------------------------
+ 30
+(1 row)
+
+set div_precision_increment = -1;
+WARNING:  Truncated incorrect div_precision_increment value: "-1"
+show div_precision_increment;
+ div_precision_increment 
+-------------------------
+ 4
+(1 row)
+
+-- BUG#5091
+create table test_MEDIUMINT (a int3,b mediumint signed);
+insert into test_MEDIUMINT (a, b) values(8388607, -8388608);
+select a * b AS mul_result from test_MEDIUMINT;
+   mul_result    
+-----------------
+ -70368735789056
+(1 row)
+
+drop table test_MEDIUMINT;
+create table test_INT (a int4,b int signed);
+insert into test_INT (a, b) values(8388607, -8388608);
+select a * b AS mul_result from test_INT;
+   mul_result    
+-----------------
+ -70368735789056
+(1 row)
+
+drop table test_INT;

@@ -175,7 +175,16 @@ WHERE abs(f1) < 1073741824;
 (4 rows)
 
 SELECT i.f1, i.f1 * int4 '2' AS x FROM INT4_TBL i;
-ERROR:  integer out of range
+     f1      |      x      
+-------------+-------------
+           0 |           0
+      123456 |      246912
+     -123456 |     -246912
+          35 |          70
+  2147483647 |  4294967294
+ -2147483647 | -4294967294
+(6 rows)
+
 SELECT i.f1, i.f1 * int4 '2' AS x FROM INT4_TBL i
 WHERE abs(f1) < 1073741824;
    f1    |    x    
@@ -363,7 +372,11 @@ SELECT ((-1::int4<<31)+1)::text;
 
 -- check sane handling of INT_MIN overflow cases
 SELECT (-2147483648)::int4 * (-1)::int4;
-ERROR:  integer out of range
+  ?column?  
+------------
+ 2147483648
+(1 row)
+
 SELECT (-2147483648)::int4 / (-1)::int4;
     ?column?     
 -----------------

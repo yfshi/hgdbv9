@@ -9,7 +9,7 @@
 
 --  "&"
 CREATE FUNCTION ivymy.myint2_bit_and(pg_catalog.int2, pg_catalog.int2)
-RETURNS pg_catalog.int8		--uint8
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','myint2_bit_and'
 LANGUAGE C
 PARALLEL SAFE
@@ -25,7 +25,7 @@ CREATE OPERATOR ivymy.& (
 
 --  "|"
 CREATE FUNCTION ivymy.myint2_bit_or(pg_catalog.int2, pg_catalog.int2)
-RETURNS pg_catalog.int8		--uint8
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','myint2_bit_or'
 LANGUAGE C
 PARALLEL SAFE
@@ -105,7 +105,7 @@ CREATE OPERATOR ivymy./ (
 );
 
 --  "//"
-CREATE FUNCTION ivymy.mys_div(pg_catalog.int2, pg_catalog.int2)
+CREATE FUNCTION ivymy.myint2_exact_div(pg_catalog.int2, pg_catalog.int2)
 RETURNS pg_catalog.int4
 AS 'MODULE_PATHNAME','myint2_exact_div'
 LANGUAGE C
@@ -114,7 +114,7 @@ STRICT
 IMMUTABLE;
 
 CREATE OPERATOR ivymy.// (
-	procedure = ivymy.myint2_div,
+	procedure = ivymy.myint2_exact_div,
 	leftarg = pg_catalog.int2,
 	rightarg = pg_catalog.int2,
 	commutator = //
@@ -138,7 +138,7 @@ CREATE OPERATOR ivymy.% (
 
 --  "^"
 CREATE FUNCTION ivymy.myint2_bit_xor(pg_catalog.int2, pg_catalog.int2)
-RETURNS pg_catalog.int8	--uint8
+RETURNS ivymy.mysuint8	
 AS 'MODULE_PATHNAME','myint2_bit_xor'
 LANGUAGE C
 PARALLEL SAFE
@@ -153,7 +153,20 @@ CREATE OPERATOR ivymy.^ (
 );
 
 --  "||"
--- cast to bool
+CREATE FUNCTION ivymy.myint2_or(pg_catalog.int2, pg_catalog.int2)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME','myint2_or'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.|| (
+	procedure = ivymy.myint2_or,
+	leftarg = pg_catalog.int2,
+	rightarg = pg_catalog.int2,
+	commutator = ||
+);
 
 --  "&&"
 CREATE FUNCTION ivymy.myint2_and(pg_catalog.int2, pg_catalog.int2)
@@ -201,7 +214,7 @@ CREATE OPERATOR !(
 
 --  "~"
 CREATE FUNCTION ivymy.myint2_bit_neg(pg_catalog.int2)
-RETURNS pg_catalog.int8 --uint8
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','myint2_bit_neg'
 LANGUAGE C
 PARALLEL SAFE
@@ -251,4 +264,41 @@ AS ASSIGNMENT;
 -- to varchar
 CREATE CAST (pg_catalog.int2 AS pg_catalog.varchar) 
 WITH INOUT
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.mystext2int2(pg_catalog.varchar)
+RETURNS pg_catalog.int2
+AS 'MODULE_PATHNAME', 'mystext2int2'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+CREATE CAST(pg_catalog.varchar as pg_catalog.int2) 
+WITH FUNCTION ivymy.mystext2int2(pg_catalog.varchar) 
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.boolean_myint2(pg_catalog.bool) 
+RETURNS pg_catalog.int2
+AS 'MODULE_PATHNAME','boolean_myint2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (pg_catalog.bool AS pg_catalog.int2)
+WITH FUNCTION ivymy.boolean_myint2(pg_catalog.bool)
+AS ASSIGNMENT;
+
+-- operator xor or and
+CREATE FUNCTION ivymy.myint2_boolean(pg_catalog.int2) 
+RETURNS pg_catalog.bool 
+AS 'MODULE_PATHNAME','myint2_boolean'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (pg_catalog.int2 AS pg_catalog.bool)
+WITH FUNCTION ivymy.myint2_boolean(pg_catalog.int2)
 AS ASSIGNMENT;
