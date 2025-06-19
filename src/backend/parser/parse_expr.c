@@ -4013,7 +4013,7 @@ transformTypeCast(ParseState *pstate, TypeCast *tc)
 	typenameTypeIdAndMod(pstate, tc->typeName, &targetType, &targetTypmod);
 
 	/* Begin - BUG#M533 */
-	if (MYS_PARSER == compatible_db && (mysql_functional_diff_control && cast_to_char) &&
+	if (MYS_PARSER == compatible_db && cast_to_char &&
 		targetType == BPCHAROID)
 	{
 		int32		tmptargetTypmod = -1;

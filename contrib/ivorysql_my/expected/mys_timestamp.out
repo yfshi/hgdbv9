@@ -3492,7 +3492,7 @@ insert into t1 (t1,t3) values (default, default);
                                                   Table "public.t1"
  Column |   Type    | Collation | Nullable |             Default              | Storage | Stats target | Description 
 --------+-----------+-----------+----------+----------------------------------+---------+--------------+-------------
- t1     | timestamp |           | not null | CURRENT_TIMESTAMP                | plain   |              | 
+ t1     | timestamp |           | not null | "current_timestamp"()            | plain   |              | 
  t2     | datetime  |           |          |                                  | plain   |              | 
  t3     | timestamp |           | not null | '0000-00-00 00:00:00'::timestamp | plain   |              | 
 
@@ -3505,11 +3505,11 @@ insert into t1 (t1) values (default);
 --select * from t1;
 --replace_result $DEFAULT_ENGINE ENGINE
 \d+ t1;
-                                          Table "public.t1"
- Column |   Type    | Collation | Nullable |      Default      | Storage | Stats target | Description 
---------+-----------+-----------+----------+-------------------+---------+--------------+-------------
- t1     | timestamp |           | not null | CURRENT_TIMESTAMP | plain   |              | 
- t2     | datetime  |           |          |                   | plain   |              | 
+                                            Table "public.t1"
+ Column |   Type    | Collation | Nullable |        Default        | Storage | Stats target | Description 
+--------+-----------+-----------+----------+-----------------------+---------+--------------+-------------
+ t1     | timestamp |           | not null | "current_timestamp"() | plain   |              | 
+ t2     | datetime  |           |          |                       | plain   |              | 
 
 truncate table t1;
 insert into t1 values ('2004-04-01 00:00:00', '2004-04-01 00:00:00');

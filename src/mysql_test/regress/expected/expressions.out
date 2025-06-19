@@ -31,10 +31,11 @@ SELECT pg_catalog.now()::time::text = localtime::text;
 --SELECT now()::time(3)::text = localtime(3)::text;
 -- current_timestamp / localtimestamp (always matches because of transactional behaviour)
 SELECT current_timestamp = NOW();
-ERROR:  operator does not exist: timestamp with time zone = datetime
-LINE 1: SELECT current_timestamp = NOW();
-                                 ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ ?column? 
+----------
+ t
+(1 row)
+
 -- precision
 SELECT length(current_timestamp::text) >= length(current_timestamp(0)::text);
  ?column? 

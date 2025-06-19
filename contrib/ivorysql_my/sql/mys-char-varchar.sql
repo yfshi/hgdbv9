@@ -293,11 +293,10 @@ insert into tb1 values (6, '');
 insert into tb(id, name) select id, name from tb1;
 select * from tb;
 show ivorysql.compatible_mode ;
-show mysql.functional_diff_control;
 select * from tb1;
-set mysql.functional_diff_control = true;
+set mysql.mode_pad_char_to_full = on;
 select * from tb1;
-set mysql.functional_diff_control = false ;
+set mysql.mode_pad_char_to_full = off;
 select name, length(name) from tb;
 select repeat(name, '10') from tb;
 select text(name), length(text(name)) from tb;
@@ -460,7 +459,7 @@ reset sql_mode;
 
 
 ----------------- fix bug m533 ----------------
-set mysql.functional_diff_control = true;
+set mysql.cast_to_char = on;
 select cast('a' as char);
 select cast('ab' as char);
 select cast('abc' as char);
@@ -633,7 +632,7 @@ create table tb5 as select cast(repeat('a', 6) as nchar(10));
 \d tb5
 
 drop table tb, tb1, tb2, tb3, tb4, tb5;
-set mysql.functional_diff_control = off;
+set mysql.mode_pad_char_to_full = on;
 
 
 -- bug#z5074
@@ -666,7 +665,6 @@ drop table tb;
 
 
 -- bug#z5108
-set mysql.functional_diff_control to on;
 create table tb (col char(10));
 insert into tb values('xy');
 select cast(col as char), char_length(cast(col as char)) from tb;
@@ -718,5 +716,5 @@ insert into tb values(3,'123.4');
 select convert(col ,unsigned) from tb where id=1; --0
 select convert(col , unsigned) from tb where id=2; --123
 select convert(col , unsigned) from tb where id=3; --123
-
-set mysql.functional_diff_control to off;
+set mysql.cast_to_char = off;
+set mysql.mode_pad_char_to_full = off;

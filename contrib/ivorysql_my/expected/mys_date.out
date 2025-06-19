@@ -2575,14 +2575,14 @@ select cast(05*23 as date);--2000-01-15
 (1 row)
 
 select cast(06/03 as date);--NULL 
-WARNING:  Incorrect datetime value: '2'
+WARNING:  Incorrect datetime value: '2.0000'
  mysdate 
 ---------
  
 (1 row)
 
 select cast(300/03 as date);--NULL
-WARNING:  Incorrect datetime value: '100'
+WARNING:  Incorrect datetime value: '100.0000'
  mysdate 
 ---------
  

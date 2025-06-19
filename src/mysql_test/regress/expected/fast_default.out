@@ -56,6 +56,8 @@ CREATE EVENT TRIGGER has_volatile_rewrite
 ALTER TABLE has_volatile ADD col1 int;
 ALTER TABLE has_volatile ADD col2 int DEFAULT 1;
 ALTER TABLE has_volatile ADD col3 timestamptz DEFAULT current_timestamp;
+ERROR:  column "col3" is of type timestamp with time zone but default expression is of type datetime
+HINT:  You will need to rewrite or cast the expression.
 ALTER TABLE has_volatile ADD col4 int DEFAULT (random() * 10000)::int;
 NOTICE:  rewriting table has_volatile for reason 2
 -- Test a large sample of different datatypes

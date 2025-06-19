@@ -195,13 +195,7 @@ struct tzEntry;
 #define DTK_TIME_M		(DTK_M(HOUR) | DTK_M(MINUTE) | DTK_ALL_SECS_M)
 
 /* Begin - ReqID:SRS-MYSQL-DATETYPE */
-#define MYS_ZERO_tm(_X) \
-do {	\
-	(_X)->tm_sec  = (_X)->tm_year = (_X)->tm_min = (_X)->tm_wday = \
-	(_X)->tm_hour = (_X)->tm_yday = (_X)->tm_isdst = (_X)->tm_mon  = 0; \
-	(_X)->tm_mday = 0; \
-	(_X)->tm_zone = NULL; \
-} while(0)
+#define MYS_ZERO_tm(_X) 	memset(_X, 0, sizeof(struct pg_tm))
 
 /* mysql date part */
 #define MAX_DATE_PARTS 8
@@ -442,10 +436,7 @@ extern bool datetime_with_no_zero_in_date_to_timeval(struct pg_tm *tm, fsec_t fs
 bool set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is_strict);
 bool num_set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is_strict, int *is_out_range);
 
-extern int double2datetimenanosec(double nr, int64 *datetime, fsec_t *fsec);
-extern void adjust_time_range(struct pg_tm *tm, fsec_t * fsec, int *warning) ;
-extern bool mystime_add_nanoseconds_with_round(struct pg_tm *tm, fsec_t *fsec,
-														int nanoseconds, int *warnings);
+extern bool mystime_add_nanoseconds_with_round(struct pg_tm *tm, fsec_t *fsec, int nanoseconds, int *warnings);
 extern bool mystime_rounded_seconds(struct pg_tm *tm, int *fsec, int *warn, int dec);
 
 extern int mysstr_to_time(const char *str, size_t length, struct pg_tm *tm, int flag,

@@ -69,7 +69,7 @@ case $testhost in
 		;;
 esac
 
-POSTMASTER_OPTS="-F -c listen_addresses=\"$LISTEN_ADDRESSES\" -c mysql.listen_addresses=\"$LISTEN_ADDRESSES\" -c mysql.functional_diff_control=off -k \"$PG_REGRESS_SOCKET_DIR\""
+POSTMASTER_OPTS="-F -c listen_addresses=\"$LISTEN_ADDRESSES\" -c mysql.listen_addresses=\"$LISTEN_ADDRESSES\" -c mysql.regress_test_default_value=on -k \"$PG_REGRESS_SOCKET_DIR\""
 export PGHOST
 
 # don't rely on $PWD here, as old shells don't set it
@@ -252,7 +252,7 @@ PGDATA="$BASE_PGDATA"
 
 standard_initdb 'initdb'
 
-pg_upgrade $PG_UPGRADE_OPTS -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -y "$MYSPORT" -Y "$MYSPORT" -o "-c mysql.listen_addresses=$LISTEN_ADDRESSES" -O "-c mysql.listen_addresses=$LISTEN_ADDRESSES -c mysql.functional_diff_control=off" -s "$PG_REGRESS_SOCKET_DIR"
+pg_upgrade $PG_UPGRADE_OPTS -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -y "$MYSPORT" -Y "$MYSPORT" -o "-c mysql.listen_addresses=$LISTEN_ADDRESSES" -O "-c mysql.listen_addresses=$LISTEN_ADDRESSES -c mysql.regress_test_default_value=on" -s "$PG_REGRESS_SOCKET_DIR"
 
 # make sure all directories and files have group permissions, on Unix hosts
 # Windows hosts don't support Unix-y permissions.

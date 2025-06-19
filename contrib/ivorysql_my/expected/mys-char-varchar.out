@@ -604,12 +604,6 @@ show ivorysql.compatible_mode ;
  mysql
 (1 row)
 
-show mysql.functional_diff_control;
- mysql.functional_diff_control 
--------------------------------
- off
-(1 row)
-
 select * from tb1;
  id |    name    
 ----+------------
@@ -621,7 +615,7 @@ select * from tb1;
   6 |           
 (6 rows)
 
-set mysql.functional_diff_control = true;
+set mysql.mode_pad_char_to_full = on;
 select * from tb1;
  id | name  
 ----+-------
@@ -633,7 +627,7 @@ select * from tb1;
   6 | 
 (6 rows)
 
-set mysql.functional_diff_control = false ;
+set mysql.mode_pad_char_to_full = off;
 select name, length(name) from tb;
  name  | length 
 -------+--------
@@ -1350,7 +1344,7 @@ delete from t6;
 drop table t6;
 reset sql_mode;
 ----------------- fix bug m533 ----------------
-set mysql.functional_diff_control = true;
+set mysql.cast_to_char = on;
 select cast('a' as char);
  varchar 
 ---------
@@ -1937,7 +1931,7 @@ create table tb5 as select cast(repeat('a', 6) as nchar(10));
  repeat | character varying(10) |           |          | 
 
 drop table tb, tb1, tb2, tb3, tb4, tb5;
-set mysql.functional_diff_control = off;
+set mysql.mode_pad_char_to_full = on;
 -- bug#z5074
 create table tb(col char(0));
 \d+ tb
@@ -2007,7 +2001,6 @@ select * from tb;
 
 drop table tb;
 -- bug#z5108
-set mysql.functional_diff_control to on;
 create table tb (col char(10));
 insert into tb values('xy');
 select cast(col as char), char_length(cast(col as char)) from tb;
@@ -2142,4 +2135,5 @@ WARNING:  invalid input syntax for type integer: "123.4"
  123
 (1 row)
 
-set mysql.functional_diff_control to off;
+set mysql.cast_to_char = off;
+set mysql.mode_pad_char_to_full = off;

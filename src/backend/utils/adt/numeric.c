@@ -11852,3 +11852,14 @@ bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to)
 	return true;
 }
 /* End - SRS-MYSQL-BUILDINFUNCTION */
+
+/* Begin - bug#z5127 */
+bool
+is_numeric_neg(Numeric num)
+{
+	if (NUMERIC_SIGN(num) == NUMERIC_POS)
+		return false;
+
+	return true;
+}
+/* End - bug#z5127 */

@@ -48,41 +48,40 @@
 #include "utils/timestamp.h"
 #include "../include/ivorysql_my.h"
 
-PG_FUNCTION_INFO_V1(ivymy_dayofmonth);
-PG_FUNCTION_INFO_V1(ivymy_dayofweek);
-PG_FUNCTION_INFO_V1(ivymy_dayofyear);
-PG_FUNCTION_INFO_V1(ivymy_quarter);
+PG_FUNCTION_INFO_V1(dayofmonth);
+PG_FUNCTION_INFO_V1(dayofweek);
+PG_FUNCTION_INFO_V1(dayofyear);
+PG_FUNCTION_INFO_V1(quarter);
 
-PG_FUNCTION_INFO_V1(GetHour);
-PG_FUNCTION_INFO_V1(GetMinute);
-PG_FUNCTION_INFO_V1(GetSecond);
-PG_FUNCTION_INFO_V1(GetMicrosecond);
+PG_FUNCTION_INFO_V1(hour);
+PG_FUNCTION_INFO_V1(minute);
+PG_FUNCTION_INFO_V1(second);
+PG_FUNCTION_INFO_V1(microsecond);
 
-PG_FUNCTION_INFO_V1(ivymy_year);
-PG_FUNCTION_INFO_V1(ivymy_weekday);
-PG_FUNCTION_INFO_V1(ivymy_weekofyear);
+PG_FUNCTION_INFO_V1(year);
+PG_FUNCTION_INFO_V1(weekday);
+PG_FUNCTION_INFO_V1(weekofyear);
 
-PG_FUNCTION_INFO_V1(ivymy_curdate);
-PG_FUNCTION_INFO_V1(ivymy_now_fsp);
-PG_FUNCTION_INFO_V1(ivymy_curtime_fsp);
-PG_FUNCTION_INFO_V1(ivymy_sysdate_fsp);
+PG_FUNCTION_INFO_V1(now);
+PG_FUNCTION_INFO_V1(curtime);
+PG_FUNCTION_INFO_V1(sysdate);
 
-PG_FUNCTION_INFO_V1(ivymy_makedate);
-PG_FUNCTION_INFO_V1(ivymy_maketime);
+PG_FUNCTION_INFO_V1(makedate);
+PG_FUNCTION_INFO_V1(maketime);
 
-PG_FUNCTION_INFO_V1(ivymy_period_add);
-PG_FUNCTION_INFO_V1(ivymy_period_diff);
+PG_FUNCTION_INFO_V1(period_add);
+PG_FUNCTION_INFO_V1(period_diff);
 
-PG_FUNCTION_INFO_V1(ivymy_time);
-PG_FUNCTION_INFO_V1(ivymy_timediff);
-PG_FUNCTION_INFO_V1(ivymy_time_format);
+PG_FUNCTION_INFO_V1(mystime);
+PG_FUNCTION_INFO_V1(timediff);
+PG_FUNCTION_INFO_V1(time_format);
 
-PG_FUNCTION_INFO_V1(ivymy_subtime);
-PG_FUNCTION_INFO_V1(ivymy_sec_to_time);
+PG_FUNCTION_INFO_V1(subtime);
+PG_FUNCTION_INFO_V1(sec_to_time);
 
-PG_FUNCTION_INFO_V1(ivymy_timestampadd);
-PG_FUNCTION_INFO_V1(ivymy_timestamp_arg1);
-PG_FUNCTION_INFO_V1(ivymy_timestamp_arg2);
+PG_FUNCTION_INFO_V1(timestampadd);
+PG_FUNCTION_INFO_V1(timestamp_arg1);
+PG_FUNCTION_INFO_V1(timestamp_arg2);
 
 #define MICRO_PER_NANOSEC 1000
 #define FORMAT_TIME_BOUND 838
@@ -90,7 +89,6 @@ PG_FUNCTION_INFO_V1(ivymy_timestamp_arg2);
 #define FORMAT_TIMESTAMP_MAX_VALUE INT64CONST(252455615999999999)  /* datetime 9999-12-31 23:59:59.999999 */
 #define FORMAT_TIMESTAMP_MIN_VALUE INT64CONST(-63113904000000000)  /* datetime 0000-01-01 00:00:00.000000 */
 #define FORMAT_TIMESTAMP_FIRST_YEAR INT64CONST(-63082281600000000) /* datetime 0001-01-01 00:00:00.000000 */
-#define MAX_PRECISION 6
 #define TIME_MAX_FRAC 999999
 #define MAX_YEAR_OF_DATE 9999
 #define MIN_YEAR_OF_DATE 0
@@ -153,8 +151,15 @@ ivymy_dayof_date(FunctionCallInfo fcinfo, int datekind)
     int64 intresult = 0;
     int64 part1, part2;
 
-    if (mysdate == 0 || mysdate == MYSQL_ZERO_DATE)
+    /* Begin - bug#z5083 */
+    if (mysdate == 0)
         PG_RETURN_NULL();
+
+    if (mysdate == MYSQL_ZERO_DATE)
+        PG_RETURN_INT32(intresult);
+    /* End - bug#z5083 */
+
+    MYS_ZERO_tm(tm); /* bug#5127 */
 
     part1 = (mysdate / 10000);
     part2 = (mysdate - part1 * 10000);
@@ -189,25 +194,25 @@ ivymy_dayof_date(FunctionCallInfo fcinfo, int datekind)
 }
 
 Datum 
-ivymy_dayofmonth(PG_FUNCTION_ARGS)
+dayofmonth(PG_FUNCTION_ARGS)
 {
     return (ivymy_dayof_date(fcinfo, MONTH));
 }
 
 Datum 
-ivymy_dayofweek(PG_FUNCTION_ARGS)
+dayofweek(PG_FUNCTION_ARGS)
 {
     return (ivymy_dayof_date(fcinfo, WEEK));
 }
 
 Datum 
-ivymy_dayofyear(PG_FUNCTION_ARGS)
+dayofyear(PG_FUNCTION_ARGS)
 {
     return (ivymy_dayof_date(fcinfo, YEAR));
 }
 
 Datum 
-ivymy_quarter(PG_FUNCTION_ARGS)
+quarter(PG_FUNCTION_ARGS)
 {
     return (ivymy_dayof_date(fcinfo, QUARTER));
 }
@@ -258,6 +263,8 @@ GetSpecificPartOfTime(FunctionCallInfo fcinfo, int part)
     int64 fsec = 0;
     int64 time = 0;
 
+    MYS_ZERO_tm(tm); /* bug#5127 */
+
     time = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(num)));
     tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(num),
                                                    NumericGetDatum(int64_to_numeric(1000000))));
@@ -284,31 +291,31 @@ GetSpecificPartOfTime(FunctionCallInfo fcinfo, int part)
 }
 
 Datum
-GetHour(PG_FUNCTION_ARGS)
+hour(PG_FUNCTION_ARGS)
 {
     return GetSpecificPartOfTime(fcinfo, HOUR);
 }
 
 Datum
-GetMicrosecond(PG_FUNCTION_ARGS)
+microsecond(PG_FUNCTION_ARGS)
 {
     return GetSpecificPartOfTime(fcinfo, MICROSECOND);
 }
 
 Datum 
-GetMinute(PG_FUNCTION_ARGS)
+minute(PG_FUNCTION_ARGS)
 {
     return GetSpecificPartOfTime(fcinfo, MINUTE);
 }
 
 Datum 
-GetSecond(PG_FUNCTION_ARGS)
+second(PG_FUNCTION_ARGS)
 {
     return GetSpecificPartOfTime(fcinfo, SECOND);
 }
 
 Datum 
-ivymy_weekday(PG_FUNCTION_ARGS)
+weekday(PG_FUNCTION_ARGS)
 {
     DateADT mysdate = PG_GETARG_DATEADT(0);
     struct pg_tm tt, *tm = &tt;
@@ -317,6 +324,8 @@ ivymy_weekday(PG_FUNCTION_ARGS)
 
     if (mysdate == 0 || mysdate == MYSQL_ZERO_DATE)
         PG_RETURN_NULL();
+
+    MYS_ZERO_tm(tm); /* bug#5127 */
 
     part1 = (mysdate / 10000);
     part2 = (mysdate - part1 * 10000);
@@ -333,7 +342,7 @@ ivymy_weekday(PG_FUNCTION_ARGS)
 }
 
 Datum
-ivymy_weekofyear(PG_FUNCTION_ARGS)
+weekofyear(PG_FUNCTION_ARGS)
 {
     DateADT mysdate = PG_GETARG_DATEADT(0);
     struct pg_tm tt, *tm = &tt;
@@ -342,6 +351,8 @@ ivymy_weekofyear(PG_FUNCTION_ARGS)
 
     if (mysdate == 0 || mysdate == MYSQL_ZERO_DATE)
         PG_RETURN_NULL();
+
+    MYS_ZERO_tm(tm); /* bug#5127 */
 
     part1 = (mysdate / 10000);
     part2 = (mysdate - part1 * 10000);
@@ -355,7 +366,7 @@ ivymy_weekofyear(PG_FUNCTION_ARGS)
 }
 
 Datum 
-ivymy_year(PG_FUNCTION_ARGS)
+year(PG_FUNCTION_ARGS)
 {
     DateADT mysdate = PG_GETARG_DATEADT(0);
     struct pg_tm tt, *tm = &tt;
@@ -363,6 +374,8 @@ ivymy_year(PG_FUNCTION_ARGS)
 
     if (mysdate == 0 || mysdate == MYSQL_ZERO_DATE)
         PG_RETURN_NULL();
+
+    MYS_ZERO_tm(tm); /* bug#5127 */
 
     part1 = (mysdate / 10000);
     part2 = (mysdate - part1 * 10000);
@@ -377,40 +390,8 @@ ivymy_year(PG_FUNCTION_ARGS)
     PG_RETURN_NULL();
 }
 
-/* ivymy_curdate()
- * reruen  current date in b compatibility,    date
- */
 Datum 
-ivymy_curdate(PG_FUNCTION_ARGS)
-{
-    TimestampTz state_start_timestamp;
-    struct pg_tm tt, *tm = &tt;
-    DateADT date;
-    fsec_t fsec;
-    int tz;
-
-    state_start_timestamp = GetCurrentStatementStartTimestamp();
-
-    if (timestamp2tm(state_start_timestamp, &tz, tm, &fsec, NULL, NULL) != 0)
-    {
-        ereport(ERROR, (errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-                        errmsg("date out of range")));
-    }
-
-    if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
-    {
-        date = MYSQL_ZERO_DATE;
-    }
-    else
-    {
-        date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
-    }
-
-    PG_RETURN_DATEADT(date);
-}
-
-Datum 
-ivymy_curtime_fsp(PG_FUNCTION_ARGS)
+curtime(PG_FUNCTION_ARGS)
 {
     int typmod = PG_GETARG_INT32(0);
     TimestampTz state_start_timestamp;
@@ -423,12 +404,14 @@ ivymy_curtime_fsp(PG_FUNCTION_ARGS)
     char buf[MAXDATELEN + 1] = {0};
     Numeric num;
 
-    if (typmod > MAX_PRECISION)
+    if (typmod > DATETIME_MAX_DECIMALS)
     {
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                  errmsg("Too-big precision %d specified for \'curtime\'. Maximum is 6.", typmod)));
     }
+
+    MYS_ZERO_tm(tm); /* bug#5127 */
 
     state_start_timestamp = GetCurrentStatementStartTimestamp();
 
@@ -476,11 +459,11 @@ ivymy_curtime_fsp(PG_FUNCTION_ARGS)
     PG_RETURN_NUMERIC(num);
 }
 
-/* ivymy_now_fsp()
+/* now()
  * return current timestamp in b compatibility
  */
 Datum 
-ivymy_now_fsp(PG_FUNCTION_ARGS)
+now(PG_FUNCTION_ARGS)
 {
     int typmod = PG_GETARG_INT32(0);
     TimestampTz state_start_timestamp;
@@ -496,13 +479,15 @@ ivymy_now_fsp(PG_FUNCTION_ARGS)
     char buf[MAXDATELEN + 1] = {0};
 
     /* lexical analyzer can only recognize positive integers for token ICONST in gram.y */
-    if (typmod > MAX_PRECISION)
+    if (typmod > DATETIME_MAX_DECIMALS)
     {
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                  errmsg("Too-big precision %d specified for \'now\'. Maximum is 6.", typmod)));
     }
 
+    MYS_ZERO_tm(tm); /* bug#5127 */
+    
     state_start_timestamp = GetCurrentStatementStartTimestamp();
 
     if ((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
@@ -557,7 +542,7 @@ ivymy_now_fsp(PG_FUNCTION_ARGS)
 }
 
 Datum 
-ivymy_sysdate_fsp(PG_FUNCTION_ARGS)
+sysdate(PG_FUNCTION_ARGS)
 {
     int typmod = PG_GETARG_INT32(0);
     TimestampTz sys_timestamp;
@@ -579,6 +564,9 @@ ivymy_sysdate_fsp(PG_FUNCTION_ARGS)
                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                  errmsg("Too-big precision %d specified for \'now\'. Maximum is 6.", typmod)));
     }
+
+    MYS_ZERO_tm(tm); /* bug#5127 */
+
     sys_timestamp = GetCurrentTimestamp();
 
     if ((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
@@ -632,12 +620,12 @@ ivymy_sysdate_fsp(PG_FUNCTION_ARGS)
     return NumericGetDatum(num);
 }
 
-/* ivymy_makedate()
+/* makedate()
  * Description: Convert yyyy.ddd into date type
  * return: Convert result, date type.
  */
 Datum 
-ivymy_makedate(PG_FUNCTION_ARGS)
+makedate(PG_FUNCTION_ARGS)
 {
     int64 year = PG_GETARG_INT64(0);
     int64 dayofyear = PG_GETARG_INT64(1);
@@ -674,13 +662,13 @@ ivymy_makedate(PG_FUNCTION_ARGS)
     PG_RETURN_DATEADT(date);
 }
 
-/* ivymy_maketime()
+/* maketime()
  * Description: Convert hh, min, sec into time type
  * return: Convert result, time type.
  */
 
 Datum 
-ivymy_maketime(PG_FUNCTION_ARGS)
+maketime(PG_FUNCTION_ARGS)
 {
     int64 hour = PG_GETARG_INT64(0);
     int64 minute = PG_GETARG_INT64(1);
@@ -695,6 +683,8 @@ ivymy_maketime(PG_FUNCTION_ARGS)
     bool overflow = 0;
     bool neg = 0;
     unsigned int nanoseconds;
+
+    MYS_ZERO_tm(&tt); /* bug#5127 */
 
     if (!mysnumeric_to_lldiv_t(PG_GETARG_NUMERIC(2), &seconds))
     {
@@ -782,12 +772,12 @@ convert_month_to_period(unsigned long month)
     return year * 100 + month % 12 + 1;
 }
 
-/* ivymy_period_add()
+/* period_add()
  * Description: Add some months to a period of time.
  * return: result, int64 type.
  */
 Datum 
-ivymy_period_add(PG_FUNCTION_ARGS)
+period_add(PG_FUNCTION_ARGS)
 {
     unsigned long period = (unsigned long)PG_GETARG_INT64(0);
     int months = (int)PG_GETARG_INT64(1);
@@ -796,12 +786,12 @@ ivymy_period_add(PG_FUNCTION_ARGS)
     PG_RETURN_INT64((int64)convert_month_to_period((unsigned int)((int)convert_period_to_month(period) + months)));
 }
 
-/* ivymy_period_diff()
+/* period_diff()
  * Description: Calculate the number of months between two period of times.
  * return: result, int64 type.
  */
 Datum 
-ivymy_period_diff(PG_FUNCTION_ARGS)
+period_diff(PG_FUNCTION_ARGS)
 {
     uint64 input1 = (uint64)PG_GETARG_INT64(0);
     uint64 input2 = (uint64)PG_GETARG_INT64(1);
@@ -810,12 +800,12 @@ ivymy_period_diff(PG_FUNCTION_ARGS)
     PG_RETURN_INT64(ret);
 }
 
-/* ivymy_sec_to_time()
+/* sec_to_time()
  * Description: Convert seconds into time type
  * return: Convert result, time type.
  */
 Datum 
-ivymy_sec_to_time(PG_FUNCTION_ARGS)
+sec_to_time(PG_FUNCTION_ARGS)
 {
     lldiv_t seconds;
     TimeADT time;
@@ -963,6 +953,7 @@ convert_cstring_to_pg_tm(char *str, struct pg_tm *result_tm, fsec_t *result_fsec
 static Oid
 convert_cstring_to_datetime_time(char *str, struct pg_tm *result_tm, fsec_t *result_fsec, int *result_neg)
 {
+    char *raw = str;
 	size_t len = strlen(str);
 	const char *start;
 	const char *end = str + len;
@@ -974,7 +965,6 @@ convert_cstring_to_datetime_time(char *str, struct pg_tm *result_tm, fsec_t *res
 	int nanoseconds = 0;
 	int typmod = 6;
 	int dash_count = 0;
-	int neg = 0;
 
 	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
@@ -1004,24 +994,29 @@ convert_cstring_to_datetime_time(char *str, struct pg_tm *result_tm, fsec_t *res
 	}
 
 	/* Not a timestamp. Try to convert str to time*/
-	mysstr_to_time(start, strlen(start), result_tm, flag, &fsec, &ftype, &warn, &nanoseconds, &neg);
+	mysstr_to_time(start, strlen(start), result_tm, flag, &fsec, &ftype, &warn, &nanoseconds, result_neg);
 	
-    if (neg)
-		*result_neg = -1;
-	
+    if (result_tm->tm_min > TIME_MAX_MINUTE || result_tm->tm_sec > TIME_MAX_SECOND)
+        return InvalidOid;
+
     fsec += (nanoseconds + 500) / 1000;
 	mystime_add_nanoseconds_with_round(result_tm, &fsec, msec_round_add[typmod], &warn);
 	fsec = fsec - fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - typmod];
 	*result_fsec = fsec;
+
+    if (warn & MYSQL_TIME_WARN_TRUNCATED)
+    {
+        ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", raw)));
+    }
 	
     if (fsec)
 		return MYSTIMESOID;
-	else
-		return MYSTIMEOID;
+	
+    return MYSTIMEOID;
 }
 
 Datum 
-ivymy_subtime(PG_FUNCTION_ARGS)
+subtime(PG_FUNCTION_ARGS)
 {
     Oid val_type1, val_type2;
     Oid typeOutput1, typeOutput2;
@@ -1039,6 +1034,12 @@ ivymy_subtime(PG_FUNCTION_ARGS)
     TimeADT time1, time2, res_time;
     Timestamp datetime1, res_datetime;
     char *val_str1, *val_str2;
+
+    /* Begin - bug#5127 */
+    MYS_ZERO_tm(tm1);
+    MYS_ZERO_tm(tm2);
+    MYS_ZERO_tm(res_tm);
+    /* End - bug#5127 */
 
     val_type1 = get_fn_expr_argtype(fcinfo->flinfo, 0);
     val_type2 = get_fn_expr_argtype(fcinfo->flinfo, 1);
@@ -1080,6 +1081,13 @@ ivymy_subtime(PG_FUNCTION_ARGS)
         default:
         {
             val_type2 = convert_cstring_to_datetime_time(val_str2, tm2, &fsec2, &neg2);
+
+            if (!OidIsValid(val_type2))
+            {
+                ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", val_str2)));
+                PG_RETURN_NULL();
+            }
+
             if (tm2time(tm2, fsec2, &time2) != 0)
             {
                 ereport(ERROR,
@@ -1100,6 +1108,13 @@ ivymy_subtime(PG_FUNCTION_ARGS)
     }
 
     val_type1 = convert_cstring_to_datetime_time(val_str1, tm1, &fsec1, &neg1);
+
+    if (!OidIsValid(val_type1))
+    {
+        ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", val_str1)));
+        PG_RETURN_NULL();
+    }
+    
     if (tm2time(tm1, fsec1, &time1) != 0)
     {
         ereport(ERROR,
@@ -1172,7 +1187,7 @@ ivymy_subtime(PG_FUNCTION_ARGS)
 }
 
 Datum 
-ivymy_timediff(PG_FUNCTION_ARGS)
+timediff(PG_FUNCTION_ARGS)
 {
     TimeADT time1, time2, res_time;
     Timestamp datetime1, datetime2;
@@ -1188,7 +1203,15 @@ ivymy_timediff(PG_FUNCTION_ARGS)
     char buf[MAXDATELEN + 1] = {0};
     Numeric num;
     int is_strict_mode = 0;
-    int dec = 6;
+    int dec = 0, dec1 = 0, dec2 = 0;
+    char *dot;
+    bool neg = false;
+
+    /* Begin - bug#5127 */
+    MYS_ZERO_tm(tm1);
+    MYS_ZERO_tm(tm2);
+    MYS_ZERO_tm(res_tm);
+    /* End - bug#5127 */
 
     val_type1 = get_fn_expr_argtype(fcinfo->flinfo, 0);
     val_type2 = get_fn_expr_argtype(fcinfo->flinfo, 1);
@@ -1209,42 +1232,75 @@ ivymy_timediff(PG_FUNCTION_ARGS)
     getTypeOutputInfo(val_type2, &typeOutput2, &typIsVarlena2);
     val_str2 = OidOutputFunctionCall(typeOutput2, PG_GETARG_DATUM(1));
 
+    /* Begin - bug#z5127 */
+    dot = strchr(val_str1, '.');
+    if (dot)
+    {
+        dec1 = strlen(val_str1) - (dot - val_str1) - 1;
+
+        if (dec1 > DATETIME_MAX_DECIMALS)
+            dec1 = DATETIME_MAX_DECIMALS;
+    }
+
+    dot = strchr(val_str2, '.');
+    if (dot)
+    {
+        dec2 = strlen(val_str2) - (dot - val_str2) - 1;
+
+        if (dec2 > DATETIME_MAX_DECIMALS)
+            dec2 = DATETIME_MAX_DECIMALS;
+    }
+
+    dec = Max(dec1, dec2);
+    /* End - bug#z5127 */
+
     val_type1 = convert_cstring_to_datetime_time(val_str1, tm1, &fsec1, &neg1);
     val_type2 = convert_cstring_to_datetime_time(val_str2, tm2, &fsec2, &neg2);
+
+    if (!OidIsValid(val_type1))
+    {
+        ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", val_str1)));
+        PG_RETURN_NULL();
+    }
+
+    if (!OidIsValid(val_type2))
+    {
+        ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", val_str1)));
+        PG_RETURN_NULL();
+    }
 
     if (val_type1 != val_type2)
     {
         // If the datetime/time types of the two parameters are different
         PG_RETURN_NULL();
     }
+
     switch (val_type1)
     {
         case MYSTIMEOID:
         case MYSTIMESOID:
+        {
+            if (tm2time(tm1, fsec1, &time1) != 0)
+                ereport(ERROR,
+                        (errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+                        errmsg("datetime string and format model does not match")));
+            if (neg1)
             {
-                if (tm2time(tm1, fsec1, &time1) != 0)
-                    ereport(ERROR,
-                            (errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-                            errmsg("datetime string and format model does not match")));
-                if (neg1)
-                {
-                    time1 = -time1;
-                }
-
-                if (tm2time(tm2, fsec2, &time2) != 0)
-                    ereport(ERROR,
-                            (errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-                            errmsg("datetime string and format model does not match")));
-                if (neg2)
-                {
-                    time2 = -time2;
-                }
-
-                res_time = time1 - time2;
-
-                time2tm(res_time, res_tm, &res_fsec);
-                break;
+                time1 = -time1;
             }
+
+            if (tm2time(tm2, fsec2, &time2) != 0)
+                ereport(ERROR,
+                        (errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+                        errmsg("datetime string and format model does not match")));
+            if (neg2)
+            {
+                time2 = -time2;
+            }
+
+            res_time = time1 - time2;
+            break;
+        }
         case MYSDATETIMEOID:
         case MYSDATETIMESOID:
         case MYSDATEOID:
@@ -1259,6 +1315,7 @@ ivymy_timediff(PG_FUNCTION_ARGS)
             {
                 TimestampDifference(datetime1, datetime2, &secs, &usecs);
                 sign = -1;
+                neg = true;
             }
             else
             {
@@ -1278,44 +1335,34 @@ ivymy_timediff(PG_FUNCTION_ARGS)
 
     time2tm(res_time, res_tm, &res_fsec);
 
-    (void)mystime_add_nanoseconds_with_round(res_tm, &res_fsec, msec_round_add[dec], &warn);
+    mystime_add_nanoseconds_with_round(res_tm, &res_fsec, msec_round_add[dec], &warn);
     res_fsec = res_fsec - res_fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - dec];
 
-    if (!warn)
-    {
-        result = res_tm->tm_hour * 10000 + res_tm->tm_min * 100 + res_tm->tm_sec;
-    }
-    else
-    {
-        if (is_strict_mode && (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE)))
-        {
-            ereport(ERROR, (errmsg("Incorrect TIME value: '%ld'", res_time)));
-        }
-        if (warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
-        {
-            ereport(WARNING, (errmsg("Out of range value.")));
-            result = MYSQL_ZERO_TIME;
-        }
-    }
+    result = res_tm->tm_hour * 10000 + res_tm->tm_min * 100 + res_tm->tm_sec;
 
     if (result < -FORMAT_TIME_MAX_VALUE || result > FORMAT_TIME_MAX_VALUE)
     {
-        ereport(is_strict_mode, (errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-                                 errmsg("time field value out of range")));
+        if (is_strict_mode)
+            ereport(ERROR, (errmsg("Truncated incorrect time value")));
+        else
+            ereport(WARNING, (errmsg("Truncated incorrect time value")));
+        
         result = result < -FORMAT_TIME_MAX_VALUE ? -FORMAT_TIME_MAX_VALUE : FORMAT_TIME_MAX_VALUE;
         res_fsec = 0;
     }
 
-    if (res_fsec < 0 && result < 0)
+    if (res_fsec < 0)
     {
         res_fsec = -res_fsec;
-        if (result > 0)
-        {
-            result = -result;
-        }
+        if (result == 0)
+            neg = true;
     }
 
-    snprintf(buf, MAXDATELEN, "%ld.%06d", result, res_fsec);
+    /* Keep only one negative sign */
+    if (result < 0)
+        neg = false;
+
+    snprintf(buf, MAXDATELEN, "%s%ld.%06d", neg ? "-" : "", result, res_fsec);
     num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
                                               CStringGetDatum(buf),
                                               ObjectIdGetDatum(InvalidOid),
@@ -1325,24 +1372,25 @@ ivymy_timediff(PG_FUNCTION_ARGS)
 }
 
 Datum 
-ivymy_time(PG_FUNCTION_ARGS)
+mystime(PG_FUNCTION_ARGS)
 {
-    TimeADT time;
-    TimeADT result = 0;
-    int64 res = 0;
-    Timestamp datetime;
-    Oid val_type;
-    char *val_str;
-    Oid typeOutput;
-    bool typIsVarlena;
+    int         neg = 0,
+                warn = 0,
+                dec = 0,
+                is_strict_mode = 0;
+    char        *dot, /* bug#z5128 */
+                *val_str,
+                buf[MAXDATELEN + 1] = {0};
+    int64       res = 0;
+    bool        typIsVarlena;
+    TimeADT     time, result = 0;
+    Timestamp   datetime;
+    Oid         val_type, typeOutput;
+    fsec_t      fsec = 0;
+    Numeric     num;
     struct pg_tm tt, *tm = &tt;
-    fsec_t fsec = 0;
-    int neg = 0;
-    int warn = 0;
-    char buf[MAXDATELEN + 1] = {0};
-    Numeric num;
-    int is_strict_mode = 0;
-    int dec = 6;
+
+    MYS_ZERO_tm(tm); /* bug#5127 */
 
     val_type = get_fn_expr_argtype(fcinfo->flinfo, 0);
     if (!OidIsValid(val_type))
@@ -1353,6 +1401,17 @@ ivymy_time(PG_FUNCTION_ARGS)
     getTypeOutputInfo(val_type, &typeOutput, &typIsVarlena);
 
     val_str = OidOutputFunctionCall(typeOutput, PG_GETARG_DATUM(0));
+    
+    /* Begin - bug#z5128 */
+    dot = strchr(val_str, '.');
+    if (dot)
+    {
+        dec = strlen(val_str) - (dot - val_str) - 1;
+
+        if (dec > DATETIME_MAX_DECIMALS)
+            dec = DATETIME_MAX_DECIMALS;
+    }
+    /* End - bug#z5128 */
 
     val_type = convert_cstring_to_datetime_time(val_str, tm, &fsec, &neg);
 
@@ -1375,6 +1434,12 @@ ivymy_time(PG_FUNCTION_ARGS)
             result = DatumGetTimeADT(DirectFunctionCall1(timestamp_time, TimeADTGetDatum(datetime)));
             break;
         default:
+            if (!OidIsValid(val_type))
+            {
+                ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", val_str)));
+                PG_RETURN_NULL();
+            }
+
             ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH),
                             errmsg("unsupported input data type: %s", format_type_be(val_type))));
     }
@@ -1386,26 +1451,11 @@ ivymy_time(PG_FUNCTION_ARGS)
     time2tm(result, tm, &fsec);
 
     mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
+
     fsec = fsec - fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - dec];
 
-    if (!warn)
-    {
-        res = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-    }
-    else
-    {
-        if (is_strict_mode && (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE)))
-        {
-            ereport(ERROR, (errmsg("Incorrect TIME value: '%ld'", time)));
-        }
-
-        if (warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
-        {
-            ereport(WARNING, (errmsg("Out of range value.")));
-            res = MYSQL_ZERO_TIME;
-        }
-    }
-
+    res = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;    
+    
     if (res < -FORMAT_TIME_MAX_VALUE || res > FORMAT_TIME_MAX_VALUE)
     {
         ereport(is_strict_mode, (errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
@@ -1423,7 +1473,7 @@ ivymy_time(PG_FUNCTION_ARGS)
         }
     }
 
-    snprintf(buf, MAXDATELEN, "%s%ld.%06d", neg == 1 ? "-" : "", res, fsec);
+    snprintf(buf, MAXDATELEN, "%s%ld.%06d", neg != 0 ? "-" : "", res, fsec);
     num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
                                               CStringGetDatum(buf),
                                               ObjectIdGetDatum(InvalidOid),
@@ -1445,18 +1495,23 @@ time_format_text(text *time_text, text *format_text)
     struct pg_tm tt, *tm = &tt;
     fsec_t fsec;
     int hours_i; /* hour in range of 0..12 */
-    int timeSign = 1;
-    bool isNeg = false; /* positive or negative time */
+    Oid val_type;
+    int neg = 0;
+
+    MYS_ZERO_tm(tm); /* bug#5127 */
 
     /* convert time_text and format_text into string from text */
     text_to_cstring_buffer(time_text, buf, MAXDATELEN);   
     text_to_cstring_buffer(format_text, format, MAXDATELEN);
 
     /* is time_text in datetime or time format? */
-    convert_cstring_to_datetime_time(buf, tm, &fsec, &timeSign);
+    val_type = convert_cstring_to_datetime_time(buf, tm, &fsec, &neg);
 
-    /* check whether it is a negative time */
-    isNeg = (timeSign == -1);
+    if (!OidIsValid(val_type))
+    {
+        ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", buf)));
+        return NULL;
+    }
 
     /* carry for fsec */
     if (fsec / USECS_PER_SEC)
@@ -1478,7 +1533,7 @@ time_format_text(text *time_text, text *format_text)
                  errmsg("date/time field value out of range: \"%s\"", str)));
     }
 
-    if (isNeg)
+    if (neg)
     {
         str[0] = '-';
         str[1] = '\0';
@@ -1605,7 +1660,7 @@ time_format_text(text *time_text, text *format_text)
 }
 
 Datum 
-ivymy_time_format(PG_FUNCTION_ARGS)
+time_format(PG_FUNCTION_ARGS)
 {
     char *res;
     text *val_text1 = PG_GETARG_TEXT_PP(0);
@@ -1622,16 +1677,32 @@ ivymy_time_format(PG_FUNCTION_ARGS)
 }
 
 Datum 
-ivymy_timestamp_arg1(PG_FUNCTION_ARGS)
+timestamp_arg1(PG_FUNCTION_ARGS)
 {
+    text    *date_text = PG_GETARG_TEXT_PP(0);
+    char    *dot,
+            *val_str = text_to_cstring(date_text);
+    int     dec = 0;
+    fsec_t  fsec = 0;
+    TimeOffset time = 0;
+    int64   datetemp = 0;
+    Numeric num, precision_base;
+    Datum   cstr;
     TimeADT timestamp = -1;
     struct pg_tm tt, *tm = &tt;
-    fsec_t fsec = 0;
-    TimeOffset time = 0;
-    int64 datetemp = 0;
-    Numeric num;
-    text *date_text = PG_GETARG_TEXT_PP(0);
-    char *val_str = text_to_cstring(date_text);
+
+    MYS_ZERO_tm(tm); /* bug#5127 */
+
+    /* Begin - bug#z5129 */
+    dot = strchr(val_str, '.');
+    if (dot)
+    {
+        dec = strlen(val_str) - (dot - val_str) - 1;
+
+        if (dec > DATETIME_MAX_DECIMALS)
+            dec = DATETIME_MAX_DECIMALS;
+    }
+    /* End - bug#z5129 */
 
     convert_cstring_to_pg_tm(val_str, tm, &fsec);
 
@@ -1640,18 +1711,37 @@ ivymy_timestamp_arg1(PG_FUNCTION_ARGS)
     time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
     timestamp = datetemp + time;
 
-    num = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(int64_to_numeric(timestamp)),
-                                              NumericGetDatum(int64_to_numeric(1000000))));
-    num = DatumGetNumeric(DirectFunctionCall2(numeric_add, NumericGetDatum(num),
-                                              NumericGetDatum(int64_to_numeric(fsec))));
-    num = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(num),
-                                              NumericGetDatum(int64_to_numeric(1000000))));
+    /**
+     * Begin - bug#z5129 
+     * Set precision to 7, which is bigger than DATETIME_MAX_DECIMALS.
+     */
+    precision_base = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+                                                         CStringGetDatum("1000000.0000000"),
+                                                         ObjectIdGetDatum(InvalidOid),
+                                                         Int32GetDatum((((14 + dec) << 16) | dec) + VARHDRSZ)));
+    /* End - bug#z5129 */
+
+    num = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(int64_to_numeric(timestamp)), NumericGetDatum(precision_base)));
+    num = DatumGetNumeric(DirectFunctionCall2(numeric_add, NumericGetDatum(num), NumericGetDatum(int64_to_numeric(fsec))));
+    num = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(num), NumericGetDatum(int64_to_numeric(1000000))));
+
+    /** 
+     * Begin - bug#z5129 
+     * Recompute result's precision
+     */
+    cstr = DirectFunctionCall1(numeric_out, PointerGetDatum(num));
+
+    num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+                                              cstr,
+                                              ObjectIdGetDatum(InvalidOid),
+                                              Int32GetDatum((((14 + dec) << 16) | dec) + VARHDRSZ)));
+    /* End - bug#z5129 */
 
     PG_RETURN_NUMERIC(num);
 }
 
 Datum 
-ivymy_timestamp_arg2(PG_FUNCTION_ARGS)
+timestamp_arg2(PG_FUNCTION_ARGS)
 {
     TimeADT time2;
     Timestamp datetime1, res_datetime;
@@ -1667,6 +1757,12 @@ ivymy_timestamp_arg2(PG_FUNCTION_ARGS)
     int warn = 0;
     int dterr;
     TimeADT timestamp = -1;
+
+    /* Begin - bug#5127 */
+    MYS_ZERO_tm(tm1);
+    MYS_ZERO_tm(tm2);
+    MYS_ZERO_tm(res_tm);
+    /* End - bug#5127 */
 
     convert_cstring_to_pg_tm(val_str1, tm1, &fsec1);
     tm2timestamp(tm1, fsec1, NULL, &datetime1);
@@ -1863,6 +1959,9 @@ datetime_sub_interval(Timestamp datetime, Interval *span, Timestamp *result, boo
         {
             struct pg_tm tt, *tm = &tt;
             fsec_t fsec;
+
+            MYS_ZERO_tm(tm); /* bug#5127 */
+
             timestamp2tm(*result, NULL, tm, &fsec, NULL, NULL);
             tm->tm_year = 0;
             tm->tm_mon = 0;
@@ -1893,6 +1992,11 @@ timestamp_add_internal(FunctionCallInfo fcinfo, char *lowunits, int unit, int un
     text *res;
     Interval sp, *span = &sp;
     bool conversion;
+
+    /* Begin - bug#5127 */
+    MYS_ZERO_tm(tm);
+    MYS_ZERO_tm(res_tm);
+    /* End - bug#5127 */
 
     if (!OidIsValid(expr_type))
         ereport(ERROR,
@@ -1995,7 +2099,7 @@ timestamp_add_internal(FunctionCallInfo fcinfo, char *lowunits, int unit, int un
 }
 
 Datum 
-ivymy_timestampadd(PG_FUNCTION_ARGS)
+timestampadd(PG_FUNCTION_ARGS)
 {
     Numeric num;
     int true_len, errorno;

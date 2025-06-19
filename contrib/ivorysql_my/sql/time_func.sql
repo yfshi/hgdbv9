@@ -33,6 +33,10 @@ insert into test_day values('day(0)', day(0));
 select * from test_day;
 drop table test_day;
 
+select day(true);       -- bug#z5063
+select day(false);      -- bug#z5063
+select day(0);          -- bug#z5063
+
 --sql_mode
 /*Becauseof mystext type '0000-00-00' conversion mysdatetime type has difference with mysql,lead to difference in the result of this case*/
 create table test_mode_day(funcname text, result text, mode text);
@@ -88,8 +92,7 @@ SELECT dayofweek('2022-10-09 09:55:28.12345');
 SELECT dayofweek(20221009);
 select dayofweek('14:14:14');
 select dayofweek(time'2022-06-28 00:00:00');
-/*Because mystime conversion to mysdate is different from mysql*/
-select dayofweek(time'838:59:59');
+
 
 /*DAYOFYEAR*/
 SELECT dayofyear('2022-10-09 09:55:28.12345');
@@ -105,6 +108,9 @@ select quarter('20:38:40');
 select quarter(time'20:38:40');
 select quarter(203840);
 select quarter(time'203840');
+select quarter(true);       -- bug#z5083
+select quarter(false);      -- bug#z5083
+select quarter(0);          -- bug#z5083
 
 /*HOUR*/
 set sql_mode='ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
@@ -116,6 +122,9 @@ select hour('2022-10-09 11:22:33.456789');
 select hour('20221009112233');
 select hour('373839');
 select hour('2022-10-09');
+select hour(true);      -- bug#z5086
+select hour(false);     -- bug#z5086
+select hour(0);         -- bug#z5086
 
 create table test_hour(hour int);
 insert into test_hour select hour('-838:59:59');
@@ -168,6 +177,9 @@ select microsecond('2022-10-09 11:22:33.456789');
 select microsecond('20221009112233');
 select microsecond('373839');
 select microsecond('2022-10-09');
+select microsecond(true);       -- bug#z5093
+select microsecond(false);      -- bug#z5093
+select microsecond(0);          -- bug#z5093
 
 /*MINUTE*/
 select MINUTE(datetime '2021-11-4 16:30:44.341191');
@@ -179,6 +191,9 @@ select minute('2022-10-09 11:22:33.456789');
 select minute('20221009112233');
 select minute('373839');
 select minute('2022-10-09');
+select minute(true);    -- bug#z5096
+select minute(false);   -- bug#z5096
+select minute(0);       -- bug#z5096
 
 /*SECOND*/
 SELECT second('2022-10-09 09:55:28.12345');
@@ -189,6 +204,9 @@ select second('2022-10-09 11:22:33.456789');
 select second('20221009112233');
 select second('373839');
 select second('2022-10-09');
+select second(true);    -- bug#z5101
+select second(false);   -- bug#z5101
+select second(0);       -- bug#z5099
 
 /*WEEKDAY*/
 SELECT weekday('2022-10-09 09:55:28.12345');
@@ -357,6 +375,16 @@ select timediff(date'2022-01-01','2022-01-02');
 select timediff('2022-01-01',date'2022-01-02');
 select timediff('asdf', '00:00:00');
 select timediff(time'00:00:00', 'asdfg');
+/* Begin - bug#z5127 */
+select timediff('1:1:1.100000', '1:1:0.200000'); -- 00:00:00.900000
+select timediff('1:1:1.100000', '1:1:1.200000'); -- -00:00:00.100000
+select timediff('1:1:2.100000', '1:1:1.200000'); -- 00:00:00.900000
+select timediff('1:1:1.100000', '1:1:2.200000'); -- -00:00:01.100000
+select TIMEDIFF('01-01-01 00:00:00','01-01-01 00:00:00.000001'); -- -00:00:00.000001
+select TIMEDIFF('1-01-1 20:59:59', '2001-01-01 21:00'); --  -838:59:59
+select timediff('1:1:1.100000', '1:1:90.200000'); -- NULL
+select timediff('1:1:91.100000', '1:1:0.200000'); -- NULL
+/* End - bug#z5127 */
 
 -- TIMEDIFF ( datetime, datetime )
 create table func_test(functionName varchar(256),result varchar(256));
@@ -443,6 +471,18 @@ insert into func_test(functionName, result) values('TIMEDIFF(year''2021'', year'
 select * from func_test;
 drop table func_test;
 /*TIME*/
+
+/* Begin - bug#z5128 */
+SELECT TIME('00:00:00');    -- 00:00:00
+SELECT TIME('23:59:59');    -- 23:59:59
+SELECT TIME('-23:59:59');   -- -23:59:59
+select TIME(240000.000001); -- 24:00:00.000001
+select TIME('838:59:59');   -- 838:59:59
+select TIME('839:59:59');   -- 838:59:59
+select TIME('836:99:59');   -- NULL
+select TIME('836:59:99');   -- NULL
+select time('-0:0:0.100000');  -- -00:00:00.100000
+/* End - bug#z5128 */
 
 -- TIME (time)
 create table func_test(functionName varchar(256),result varchar(256));

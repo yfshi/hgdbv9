@@ -1446,7 +1446,7 @@ create table tb5 as select cast('{"name":"CoderAcademy", "age": 30}'::longtext a
 
 drop table if exists tb1,tb2,tb3,tb4,tb5;
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_CONVERT_001
-set mysql.functional_diff_control = true;
+set mysql.cast_to_char = on;
 create table tb (col longtext);
 insert into tb values('abc');
 select convert('abc' using gbk);  -- success
@@ -1738,7 +1738,7 @@ WARNING:  invalid input syntax for type integer: "123.4"
 (1 row)
 
 drop table if exists tb;
-set mysql.functional_diff_control = false;
+set mysql.cast_to_char = off;
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_CONVERT_013
 create table tb (col longtext);
 insert into tb values('123');

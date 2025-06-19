@@ -3441,18 +3441,18 @@ mystr_to_datetime(const char *str, int length, struct pg_tm *tm, int flag,
 static void
 get_datetime_from_num(int64 num, struct pg_tm *tm)
 {
-	long	  part1, part2;
+	long part1, part2;
 
-	part1=(long) (num / 1000000);
-	part2=(long) (num - (long long)part1 * 1000000);
-	tm->tm_year=	(int) (part1 / 10000);
+	part1 = (long)(num / 1000000);
+	part2 = (long)(num - (long long)part1 * 1000000);
+	tm->tm_year = (int)(part1 / 10000);
 	part1 %= 10000;
-	tm->tm_mon= (int) part1 / 100;
-	tm->tm_mday=	 (int) part1 % 100;
-	tm->tm_hour=	(int) (part2/10000);
+	tm->tm_mon = (int)part1 / 100;
+	tm->tm_mday = (int)part1 % 100;
+	tm->tm_hour = (int)(part2 / 10000);
 	part2 %= 10000;
-	tm->tm_min=(int) part2 / 100;
-	tm->tm_sec=(int) part2 % 100;
+	tm->tm_min = (int)part2 / 100;
+	tm->tm_sec = (int)part2 % 100;
 }
 
 /* Check if the time part is zero */
@@ -3471,11 +3471,9 @@ non_zero_date(const struct pg_tm *tm)
 /* Convert datetime value specified as number to broken-down TIME
 * representation and form value of DATETIME type .
 */
-int
-mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dttype *ftype, int *warn)
+int mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dttype *ftype, int *warn)
 {
 	*warn = 0;
-	MYS_ZERO_tm(tm);
 	*ftype = MYSQL_TIMESTAMP_DATE;
 
 	if (num == 0 || num >= 10000101000000)
@@ -3492,7 +3490,7 @@ mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dt
 	if (num < 101)
 		goto err;
 
-	if (num <= (YY_PART_YEAR-1) * 10000 + 1231)
+	if (num <= (YY_PART_YEAR - 1) * 10000 + 1231)
 	{
 		/* YYMMDD, year: 2000-2069 */
 		num = (num + 20000000) * 1000000;
@@ -3508,12 +3506,10 @@ mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dt
 		goto isdatetime;
 	}
 	/*
-	* Though officially we support DATE values from 1000-01-01 only, one can
-	* easily insert a value like 1-1-1. So, for consistency reasons such dates
-	* are allowed when TIME_FUZZY_DATE is set.
-	*/
-	//  if (num < 10000101 && !(flags & TIME_FUZZY_DATE))
-	//	  goto err;
+	 * Though officially we support DATE values from 1000-01-01 only, one can
+	 * easily insert a value like 1-1-1. So, for consistency reasons such dates
+	 * are allowed when TIME_FUZZY_DATE is set.
+	 */
 	if (num <= 99991231)
 	{
 		num = num * 1000000;
@@ -3524,7 +3520,7 @@ mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dt
 
 	*ftype = MYSQL_TIMESTAMP_DATETIME;
 
-	if (num <= (YY_PART_YEAR-1) * 10000000000 + 1231235959)
+	if (num <= (YY_PART_YEAR - 1) * 10000000000 + 1231235959)
 	{
 		/* YYMMDDHHMMSS, 2000-2069 */
 		num = num + 20000000000000;
@@ -3533,11 +3529,11 @@ mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dt
 	if (num < YY_PART_YEAR * 10000000000 + 101000000)
 		goto err;
 	if (num <= 991231235959)
-		num = num + 19000000000000;	  /* YYMMDDHHMMSS, 1970-1999 */
+		num = num + 19000000000000; /* YYMMDDHHMMSS, 1970-1999 */
 
 isdatetime:
 	get_datetime_from_num(num, tm);
-	if(!check_datetime(tm, (num != 0), flag, warn) && !check_datetime_range(tm, *fsec, *ftype))
+	if (!check_datetime(tm, (num != 0), flag, warn) && !check_datetime_range(tm, *fsec, *ftype))
 		return 1;
 err:
 	*warn = MYSQL_TIME_WARN_TRUNCATED;
@@ -3931,69 +3927,28 @@ bool num_set_mystime_warning(char *str, char *datetype, int is_err, int warn, in
 	return false;
 }
 
-
-#define LLDIV_MIN -1000000000000000000LL
-#define LLDIV_MAX  1000000000000000000LL
-int double2datetimenanosec(double nr, int64 *datetime, fsec_t *fsec)
+static void 
+adjust_time_range(struct pg_tm *tm, fsec_t *fsec, fsec_t fsec_raw, int *warning) 
 {
-	double temp_num;
-	if (nr > LLDIV_MAX)
-	{
-		*datetime = LLDIV_MAX;
-		*fsec = 0;
-		return -1;
-	}
-	else if (nr < LLDIV_MIN)
-	{
-		*datetime = LLDIV_MIN;
-		*fsec = 0;
-		return -1;
-	}
-	/* Truncate fractional part toward zero and store into "quot" */
-	*datetime = temp_num =  (nr > 0 ? floor(nr) : ceil(nr));
+	int64 hour = (int64)tm->tm_hour + 24LL * tm->tm_mday;
 
-	/* Multiply reminder to 10^9 and store into "rem" */
-	*fsec = (int64) rint((nr - temp_num) * 1000000000);
-	/*
-	Sometimes the expression "(double) 0.999999999xxx * (double) 10e9"
-	gives 1,000,000,000 instead of 999,999,999 due to lack of double precision.
-	The callers do not expect lld->rem to be greater than 999,999,999.
-	Let's catch this corner case and put the "nanounit" (e.g. nanosecond)
-	value in ldd->rem back into the valid range.
-	*/
-	if (*fsec > 999999999LL)
-		*fsec = 999999999LL;
-	else if (*fsec < -999999999LL)
-		*fsec = -999999999LL;
-
-	*datetime = (long long int)temp_num;
-	return 0;
-}
-
-void adjust_time_range(struct pg_tm *tm, fsec_t *fsec, int *warning) 
-{
-	int64 hour= (int64) tm->tm_hour + 24LL * tm->tm_mday;
-
-	if (hour <= TIME_MAX_HOUR && 
-		(hour != TIME_MAX_HOUR || tm->tm_min != TIME_MAX_MINUTE ||
-		tm->tm_sec != TIME_MAX_SECOND || !(*fsec)))
+	if (hour > TIME_MAX_HOUR || 
+		(hour == TIME_MAX_HOUR && tm->tm_min == TIME_MAX_MINUTE && tm->tm_sec == TIME_MAX_SECOND && fsec_raw > 0))
 	{
-		return;
-	}
-	else
-	{
-		tm->tm_mday = *fsec= 0;
+		tm->tm_mday = *fsec = 0;
 		tm->tm_hour = TIME_MAX_HOUR;
 		tm->tm_min = TIME_MAX_MINUTE;
 		tm->tm_sec = TIME_MAX_SECOND;
 
-		*warning|= MYSQL_TIME_WARN_OUT_OF_RANGE;	
+		*warning |= MYSQL_TIME_WARN_TRUNCATED;
 	}
 }
 
 bool mystime_add_nanoseconds_with_round(struct pg_tm *tm, fsec_t *fsec,
-                                     int nanoseconds, int *warnings)
+										int nanoseconds, int *warnings)
 {
+	fsec_t fsec_raw = *fsec;
+
 	if (nanoseconds < 500)
 		return false;
 
@@ -4014,17 +3969,17 @@ bool mystime_add_nanoseconds_with_round(struct pg_tm *tm, fsec_t *fsec,
 		tm->tm_min++;
 		goto ret;
 	}
-	tm->tm_min= 0;
+	tm->tm_min = 0;
 	tm->tm_hour++;
 
 ret:
 	/*
-	We can get '838:59:59.000001' at this point, which
-	is bigger than the maximum possible value '838:59:59.000000'.
-	Checking only "hour > 838" is not enough.
-	Do full adjust_time_range().
-	*/
-	adjust_time_range(tm, fsec, warnings);
+	 * We can get '838:59:59.000001' at this point, which
+	 * is bigger than the maximum possible value '838:59:59.000000'.
+	 * Checking only "hour > 838" is not enough.
+	 * Do full adjust_time_range().
+	 */
+	adjust_time_range(tm, fsec, fsec_raw, warnings);
 	return false;
 }
 
@@ -4088,23 +4043,23 @@ mystime_rounded_seconds(struct pg_tm *tm, int *fsec, int *warn, int dec)
 */
 
 int mysstr_to_time(const char *str, size_t length, struct pg_tm *tm, int flag,
-					  fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int *neg)
+				   fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int *neg)
 {
 	int date[5];
 	int64 value;
-	const char *end=str+length, *end_of_days;
-	bool found_days,found_hours;
+	const char *end = str + length, *end_of_days;
+	bool found_days, found_hours;
 	uint32 state;
 
 	*neg = 0;
 
 	/* Skip space at start */
-	for (; str != end && isspace((unsigned char)*str) ; str++)
+	for (; str != end && isspace((unsigned char)*str); str++)
 		length--;
 
 	if (str != end && *str == '-')
 	{
-		*neg=1;
+		*neg = 1;
 		str++;
 		length--;
 	}
@@ -4114,128 +4069,130 @@ int mysstr_to_time(const char *str, size_t length, struct pg_tm *tm, int flag,
 	/* Check first if this is a full TIMESTAMP */
 	if (length >= 12)
 	{
-		int			fsec_len;
+		int fsec_len;
 		/* Probably full timestamp */
-		(void) mystr_to_datetime(str, strlen(str), tm, (TIME_FUZZY_DATE | TIME_DATETIME_ONLY),
+		(void)mystr_to_datetime(str, strlen(str), tm, (TIME_FUZZY_DATE | TIME_DATETIME_ONLY),
 								fsec, ftype, warn, nanoseconds, &fsec_len);
 		if (*ftype >= MYSQL_TIMESTAMP_ERROR)
-		{	
+		{
 			return *ftype == MYSQL_TIMESTAMP_ERROR ? -1 : 0;
 		}
 		*warn = 0;
 	}
 
 	/* Not a timestamp. Try to get this as a DAYS_TO_SECOND string */
-	for (value=0; str != end && isdigit((unsigned char)*str) ; str++)
-		value=value*10L + (long) (*str - '0');
+	for (value = 0; str != end && isdigit((unsigned char)*str); str++)
+		value = value * 10L + (long)(*str - '0');
 
 	if (value > UINT_MAX)
 		return -1;
 
 	/* Skip all space after 'days' */
-	end_of_days= str;
-	for (; str != end && isspace((unsigned char)*str) ; str++)
+	end_of_days = str;
+	for (; str != end && isspace((unsigned char)*str); str++)
 		;
 
-	state= 0;
-	found_days=found_hours=0;
-	if ((uint32) (end-str) > 1 && str != end_of_days &&
+	state = 0;
+	found_days = found_hours = 0;
+	if ((uint32)(end - str) > 1 && str != end_of_days &&
 		isdigit((unsigned char)*str))
-	{                                             /* Found days part */
-		date[0]= (uint64) value;
-		state= 1;                                   /* Assume next is hours */
-		found_days= 1;
+	{ /* Found days part */
+		date[0] = (uint64)value;
+		state = 1; /* Assume next is hours */
+		found_days = 1;
 	}
-	else if ((end-str) > 1 &&  *str == ':' &&
-			isdigit((unsigned char)str[1]))
+	else if ((end - str) > 1 && *str == ':' &&
+			 isdigit((unsigned char)str[1]))
 	{
-		date[0]= 0;                                 /* Assume we found hours */
-		date[1]= (uint64) value;
-		state=2;
-		found_hours=1;
-		str++;                                      /* skip ':' */
+		date[0] = 0; /* Assume we found hours */
+		date[1] = (uint64)value;
+		state = 2;
+		found_hours = 1;
+		str++; /* skip ':' */
 	}
 	else
 	{
 		/* String given as one number; assume HHMMSS format */
-		date[0]= 0;
-		date[1]= (uint64) (value/10000);
-		date[2]= (uint64) (value/100 % 100);
-		date[3]= (uint64) (value % 100);
-		state=4;
+		date[0] = 0;
+		date[1] = (uint64)(value / 10000);
+		date[2] = (uint64)(value / 100 % 100);
+		date[3] = (uint64)(value % 100);
+		state = 4;
 		goto fractional;
 	}
 
 	/* Read hours, minutes and seconds */
 	for (;;)
 	{
-		for (value=0; str != end && isdigit((unsigned char)*str) ; str++)
+		for (value = 0; str != end && isdigit((unsigned char)*str); str++)
 		{
-			value=value*10L + (long) (*str - '0');
+			value = value * 10L + (long)(*str - '0');
 		}
-		date[state++]= (uint64) value;
+		date[state++] = (uint64)value;
 
-		if (state == 4 || (end-str) < 2 || *str != ':' ||
+		if (state == 4 || (end - str) < 2 || *str != ':' ||
 			!isdigit((unsigned char)str[1]))
 			break;
-		str++;                                      /* Skip time_separator (':') */
+		str++; /* Skip time_separator (':') */
 	}
 
 	if (state != 4)
-	{                                             /* Not HH:MM:SS */
+	{ /* Not HH:MM:SS */
 		/* Fix the date to assume that seconds was given */
 		if (!found_hours && !found_days)
 		{
-			size_t len= sizeof(long) * (state - 1);
-			memmove((unsigned char*) (date+4) - len, (unsigned char*) (date+state) - len, len);
-			memset(date, 0, sizeof(long)*(4-state));
+			size_t len = sizeof(long) * (state - 1);
+			memmove((unsigned char *)(date + 4) - len, (unsigned char *)(date + state) - len, len);
+			memset(date, 0, sizeof(long) * (4 - state));
 		}
 		else
-			memset((date+state), 0, sizeof(long)*(4-state));
+			memset((date + state), 0, sizeof(long) * (4 - state));
 	}
 
 fractional:
 	/* Get fractional second part */
-	if ((end-str) >= 2 && *str == '.' && isdigit((unsigned char)str[1]))
+	if ((end - str) >= 2 && *str == '.' && isdigit((unsigned char)str[1]))
 	{
-		int field_length= 5;
-		str++; value=(uint32) (unsigned char) (*str - '0');
+		int field_length = 5;
+		str++;
+		value = (uint32)(unsigned char)(*str - '0');
 		while (++str != end && isdigit((unsigned char)*str))
 		{
 			if (field_length-- > 0)
-			value= value*10 + (uint32) (unsigned char) (*str - '0');
+				value = value * 10 + (uint32)(unsigned char)(*str - '0');
 		}
 		if (field_length >= 0)
 		{
-			*fsec= DATETIME_MAX_DECIMALS - field_length;
+			*fsec = DATETIME_MAX_DECIMALS - field_length;
 			if (field_length > 0)
-				value*= (long) CalmicroSecondsPower( field_length);
+				value *= (long)CalmicroSecondsPower(field_length);
 		}
 		else
 		{
 			/* Scan digits left after microseconds */
-			*fsec= 6;
-			*nanoseconds= 100 * (int) (str[-1] - '0');
-			for ( ; str != end && isdigit((unsigned char)*str); str++)
-			{ }
+			*fsec = 6;
+			*nanoseconds = 100 * (int)(str[-1] - '0');
+			for (; str != end && isdigit((unsigned char)*str); str++)
+			{
+			}
 		}
-		date[4]= (uint64) value;
+		date[4] = (uint64)value;
 	}
 	else if ((end - str) == 1 && *str == '.')
 	{
 		str++;
-		date[4]= 0;
+		date[4] = 0;
 	}
 	else
-		date[4]=0;
+		date[4] = 0;
 
 	/* Check for exponent part: E<gigit> | E<sign><digit> */
 	/* (may occur as result of %g formatting of time value) */
 	if ((end - str) > 1 &&
 		(*str == 'e' || *str == 'E') &&
 		(isdigit((unsigned char)str[1]) ||
-		((str[1] == '-' || str[1] == '+') &&
-		(end - str) > 2 && isdigit((unsigned char)str[2]))))
+		 ((str[1] == '-' || str[1] == '+') &&
+		  (end - str) > 2 && isdigit((unsigned char)str[2]))))
 		return -1;
 
 	if (internal_format_positions[7] != 255)
@@ -4243,15 +4200,15 @@ fractional:
 		/* Read a possible AM/PM */
 		while (str != end && isspace((unsigned char)*str))
 			str++;
-		if (str+2 <= end && (str[1] == 'M' || str[1] == 'm'))
+		if (str + 2 <= end && (str[1] == 'M' || str[1] == 'm'))
 		{
 			if (str[0] == 'p' || str[0] == 'P')
 			{
-			str+= 2;
-			date[1]= date[1]%12 + 12;
+				str += 2;
+				date[1] = date[1] % 12 + 12;
 			}
 			else if (str[0] == 'a' || str[0] == 'A')
-			str+=2;
+				str += 2;
 		}
 	}
 
@@ -4261,25 +4218,24 @@ fractional:
 		date[4] > UINT_MAX)
 		return -1;
 
-	tm->tm_year=         0;                      /* For protocol::store_time */
-	tm->tm_mon=        0;
+	tm->tm_year = 0; /* For protocol::store_time */
+	tm->tm_mon = 0;
+	tm->tm_mday = 0;
+	tm->tm_hour = date[1] + date[0] * 24; /* Mix days and hours */
 
-	tm->tm_mday=  0;
-	tm->tm_hour= date[1] + date[0] * 24; /* Mix days and hours */
-
-	tm->tm_min=       date[2];
-	tm->tm_sec=       date[3];
-	*fsec=  date[4];
-	*ftype= MYSQL_TIMESTAMP_TIME;
+	tm->tm_min = date[2];
+	tm->tm_sec = date[3];
+	*fsec = date[4];
+	*ftype = MYSQL_TIMESTAMP_TIME;
 
 	if (tm->tm_min >= 60 || tm->tm_sec >= 60 || *fsec > 999999)
 	{
-		*warn|= MYSQL_TIME_WARN_OUT_OF_RANGE;
+		*warn |= MYSQL_TIME_WARN_OUT_OF_RANGE;
 		return -1;
 	}
 
 	/* Adjust the value into supported MYSQL_TIME range */
-	adjust_time_range(tm, fsec, warn);
+	adjust_time_range(tm, fsec, *fsec, warn);
 
 	/* Check if there is garbage at end of the MYSQL_TIME specification */
 	if (str != end)
@@ -4288,7 +4244,7 @@ fractional:
 		{
 			if (!isspace((unsigned char)*str))
 			{
-				*warn|= MYSQL_TIME_WARN_TRUNCATED;
+				*warn |= MYSQL_TIME_WARN_TRUNCATED;
 				break;
 			}
 		} while (++str != end);
