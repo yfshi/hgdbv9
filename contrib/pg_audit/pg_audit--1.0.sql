@@ -200,7 +200,9 @@ BEGIN
     	EXECUTE v_sql1 INTO issao;
 
 	    IF issao = FALSE THEN
-			RAISE EXCEPTION 'permission denied, only role=syssao_role can run this function';
+			RAISE EXCEPTION USING
+			ERRCODE = 'insufficient_privilege',
+			MESSAGE = 'permission denied, only role=syssao_role can run this function';
 			RETURN FALSE;
 		ELSE
 	    	EXECUTE v_sql3 INTO v_row_count;
@@ -215,7 +217,9 @@ BEGIN
 		EXECUTE v_sql2 INTO issuper;
 
 		IF issuper = FALSE THEN
-    		RAISE EXCEPTION 'permission denied, only superuser can run this function';
+    		RAISE EXCEPTION USING
+			ERRCODE = 'insufficient_privilege',
+			MESSAGE = 'permission denied, only superuser can run this function';
 			RETURN FALSE;
 		ELSE
 	    	EXECUTE v_sql3 INTO v_row_count;
@@ -255,7 +259,9 @@ BEGIN
     	EXECUTE v_sql1 INTO issao;
 
 	    IF issao = FALSE THEN
-			RAISE EXCEPTION 'permission denied, only role=syssao_role can run this function';
+			RAISE EXCEPTION USING
+			ERRCODE = 'insufficient_privilege',
+			MESSAGE = 'permission denied, only role=syssao_role can run this function';
 			RETURN FALSE;
 		ELSE
 	    	EXECUTE v_sql3 INTO v_row_count;
@@ -270,7 +276,9 @@ BEGIN
 		EXECUTE v_sql2 INTO issuper;
 
 		IF issuper = FALSE THEN
-    		RAISE EXCEPTION 'permission denied, only superuser can run this function';
+    		RAISE EXCEPTION USING
+			ERRCODE = 'insufficient_privilege',
+			MESSAGE = 'permission denied, only superuser can run this function';
 			RETURN FALSE;
 		ELSE
 	    	EXECUTE v_sql3 INTO v_row_count;
@@ -310,7 +318,9 @@ BEGIN
 		EXECUTE v_sql1 INTO issao;
 
 	    IF issao = FALSE THEN
-			RAISE EXCEPTION 'permission denied, only role=syssao_role can run this function';
+			RAISE EXCEPTION USING
+			ERRCODE = 'insufficient_privilege',
+			MESSAGE = 'permission denied, only role=syssao_role can run this function';
 			RETURN FALSE;
 		ELSE
 			SELECT into can_delete_time
@@ -335,7 +345,9 @@ BEGIN
 		EXECUTE v_sql2 INTO issuper;
 
 		IF issuper = FALSE THEN
-    		RAISE EXCEPTION 'permission denied, only superuser can run this function';
+    		RAISE EXCEPTION USING
+			ERRCODE = 'insufficient_privilege',
+			MESSAGE = 'permission denied, only superuser can run this function';
 			RETURN FALSE;
 		ELSE
 		    SELECT into can_delete_time
@@ -384,7 +396,9 @@ BEGIN
 		EXECUTE v_sql1 INTO issao;
 
 	    IF issao = FALSE THEN
-			RAISE EXCEPTION 'permission denied, only role=syssao_role can run this function';
+			RAISE EXCEPTION USING
+			ERRCODE = 'insufficient_privilege',
+			MESSAGE = 'permission denied, only role=syssao_role can run this function';
 			RETURN FALSE;
 		ELSE
 		    v_sql3 := format('WITH deleted_rows AS (DELETE FROM pg_audit_config WHERE confid = %L RETURNING *) SELECT count(*) FROM deleted_rows', 
@@ -402,7 +416,9 @@ BEGIN
 		EXECUTE v_sql2 INTO issuper;
 
 		IF issuper = FALSE THEN
-    		RAISE EXCEPTION 'permission denied, only superuser can run this function';
+    		RAISE EXCEPTION USING
+			ERRCODE = 'insufficient_privilege',
+			MESSAGE = 'permission denied, only superuser can run this function';
 			RETURN FALSE;
 		ELSE
 			v_sql3 := format('WITH deleted_rows AS (DELETE FROM pg_audit_config WHERE confid = %L RETURNING *) SELECT count(*) FROM deleted_rows', 
