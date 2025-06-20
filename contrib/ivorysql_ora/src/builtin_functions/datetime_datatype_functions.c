@@ -162,6 +162,26 @@ const char *const date_timezone[] =
 	NULL
 };
 
+/* Begin - OA-REQ-1504 */
+/*
+ * Oracle's sysdate/systimestamp functions use the OS time zone.
+ * However, if you change the OS time zone, the established connection
+ * will not respond immediately and you will need to re-establish the
+ * connection to use the changed time zone. Therefore, it can be considered
+ * that the time zone change is at the session level.
+ *
+ * 0 is a valid time zone offset, so temporarily use PG_INT64_MAX for invalid
+ * time zone values.
+ *
+ * In fact, you can also consider obtaining the session-level time zone when
+ * the backend process is initialized, but I am worried that the sys_time_zone()
+ * interface may fail due to cross-platform or any other reasons, thus destroying
+ * stability. Currently only the current extenson uses it. If other kernel codes
+ * use it in the future, you can consider moving it to another location.
+ */
+static int64 session_os_timezone = PG_INT64_MAX;
+/* End - OA-REQ-1504 */
+
 static int64 sys_time_zone(void);
 static int days_of_month(int y, int m);
 static void tm_round(struct pg_tm *tm, text *fmt);
@@ -189,7 +209,12 @@ sysdate(PG_FUNCTION_ARGS)
 	fsec_t		fsec;
 	int64 systimezone;
 
-	systimezone = sys_time_zone();
+	/* Begin - OA-REQ-1504 */
+	if (session_os_timezone == PG_INT64_MAX)
+		session_os_timezone = sys_time_zone();
+	systimezone = session_os_timezone;
+	/* End - OA-REQ-1504 */
+
 	timestamp = timestamp + systimezone * 1000000;
 
 	if (TIMESTAMP_NOT_FINITE(timestamp))
