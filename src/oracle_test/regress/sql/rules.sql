@@ -203,11 +203,11 @@ select * from rtest_v1;
 -- now with only one target attribute
 insert into rtest_v1 (a) select a from rtest_t3;
 select * from rtest_v1;
-select * from rtest_v1 where b isnull;
+select * from rtest_v1 where b is null;
 
 -- let attribute a differ (must be done on rtest_t1 - see above)
-update rtest_t1 set a = a + 10 where b isnull;
-delete from rtest_v1 where b isnull;
+update rtest_t1 set a = a + 10 where b is null;
+delete from rtest_v1 where b is null;
 select * from rtest_v1;
 
 -- now updates with constant expression
@@ -750,7 +750,7 @@ create rule rrule as
   on update to vview do instead
 (
   insert into cchild (pid, descrip)
-    select old.pid, new.descrip where old.descrip isnull;
+    select old.pid, new.descrip where old.descrip is null;
   update cchild set descrip = new.descrip where cchild.pid = old.pid;
 );
 

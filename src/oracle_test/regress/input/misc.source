@@ -101,7 +101,7 @@ SELECT class, b, c
 
 SELECT class, c FROM e_star* x WHERE x.c NOTNULL;
 
-SELECT * FROM f_star* x WHERE x.c ISNULL;
+SELECT * FROM f_star* x WHERE x.c IS NULL;
 
 -- grouping and aggregation on inherited sets have been busted in the past...
 
@@ -124,7 +124,7 @@ ALTER TABLE a_star* RENAME COLUMN a TO aa;
 
 SELECT class, aa
    FROM a_star* x
-   WHERE aa ISNULL;
+   WHERE aa IS NULL;
 
 -- As of Postgres 7.1, ALTER implicitly recurses,
 -- so this should be same as ALTER a_star*

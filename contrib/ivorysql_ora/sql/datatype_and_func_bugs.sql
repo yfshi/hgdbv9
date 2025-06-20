@@ -294,7 +294,7 @@ select * from test_null where substr(name,2,0) is null;
 select * from test_null where substr(name, -1,1) is null;
 
 --no row
-select * from test_null where substr(name, -5,1) isnull;
+select * from test_null where substr(name, -5,1) is null;
 
 --print 1
 select substr(name, -5,1) from test_null;

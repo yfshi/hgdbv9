@@ -346,7 +346,7 @@ select * from test_null where substr(name, -1,1) is null;
 (0 rows)
 
 --no row
-select * from test_null where substr(name, -5,1) isnull;
+select * from test_null where substr(name, -5,1) is null;
  id | name 
 ----+------
 (0 rows)
