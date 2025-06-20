@@ -305,6 +305,7 @@ typedef enum NodeTag
 	T_Float,
 	T_String,
 	T_BitString,
+	T_HexString,/* BUG#5048 5070 */	
 	T_BFloat, /* BUG:Z093 */
 	T_BDouble, /* BUG:Z093 */
 	T_Null,

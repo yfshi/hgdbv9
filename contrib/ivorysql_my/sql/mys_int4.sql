@@ -391,3 +391,19 @@ create table test_INT (a int4,b int signed);
 insert into test_INT (a, b) values(8388607, -8388608);
 select a * b AS mul_result from test_INT;
 drop table test_INT;
+
+-- BUG#5048 5070
+create table tb_test(id int4);
+set sql_mode = default;
+insert into tb_test values (0x1f2a);
+insert into tb_test values (0x7fffffff);
+insert into tb_test values (0x80000000);
+insert into tb_test values (0xffffffffffffffff);
+set sql_mode = '';
+insert into tb_test values (0x1f2a);
+insert into tb_test values (0x7fffffff);
+insert into tb_test values (0x80000000);
+insert into tb_test values (0xffffffffffffffff);
+select * from tb_test;
+drop table tb_test;
+set sql_mode = default;
