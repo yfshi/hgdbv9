@@ -774,7 +774,7 @@ static TypeName *OracleSystemTypeName(char *name);
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
 
 	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INTEGER
-	INTERSECT INTERVAL INTO INVISIBLE INVOKER IS ISNULL ISOLATION	/* ReqID:SRS-SQL-INVISIBLECOL */
+	INTERSECT INTERVAL INTO INVISIBLE INVOKER IS ISOLATION	/* ReqID:SRS-SQL-INVISIBLECOL */
 
 
 	JOIN
@@ -984,7 +984,7 @@ static TypeName *OracleSystemTypeName(char *name);
 %left		OR
 %left		AND
 %right		NOT
-%nonassoc	IS ISNULL NOTNULL	/* IS sets precedence for IS NULL, etc */
+%nonassoc	IS NOTNULL	/* IS sets precedence for IS NULL, etc */
 %nonassoc	'<' '>' '=' LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
 %nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA
 %nonassoc	ESCAPE			/* ESCAPE must be just above LIKE/ILIKE/SIMILAR */
@@ -17480,14 +17480,6 @@ a_expr:		c_expr									{ $$ = $1; }
 					n->location = @2;
 					$$ = (Node *)n;
 				}
-			| a_expr ISNULL
-				{
-					NullTest *n = makeNode(NullTest);
-					n->arg = (Expr *) $1;
-					n->nulltesttype = IS_NULL;
-					n->location = @2;
-					$$ = (Node *)n;
-				}
 			| a_expr IS NOT NULL_P						%prec IS
 				{
 					NullTest *n = makeNode(NullTest);
@@ -20855,7 +20847,6 @@ type_func_name_keyword:
 			| ILIKE
 			| INNER_P
 			| IS
-			| ISNULL
 			| JOIN
 			| LEFT
 			| LIKE

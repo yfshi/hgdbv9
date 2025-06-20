@@ -205,7 +205,7 @@ SELECT class, c FROM e_star* x WHERE x.c NOTNULL;
  f     | hi carl
 (12 rows)
 
-SELECT * FROM f_star* x WHERE x.c ISNULL;
+SELECT * FROM f_star* x WHERE x.c IS NULL;
  class | a  | c |  e  |                     f                     
 -------+----+---+-----+-------------------------------------------
  f     | 22 |   |  -7 | ((111,555),(222,666),(333,777),(444,888))
@@ -244,7 +244,7 @@ ALTER TABLE b_star* RENAME COLUMN b TO bb;
 ALTER TABLE a_star* RENAME COLUMN a TO aa;
 SELECT class, aa
    FROM a_star* x
-   WHERE aa ISNULL;
+   WHERE aa IS NULL;
  class | aa 
 -------+----
  a     |   

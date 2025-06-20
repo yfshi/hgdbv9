@@ -440,7 +440,7 @@ create trigger tg_chkslotname before insert
 -- ************************************************************
 create function tg_chkslotlink() returns trigger as '
 begin
-    if new.slotlink isnull then
+    if new.slotlink is null then
         new.slotlink := '''';
     end if;
     return new;
@@ -470,7 +470,7 @@ create trigger tg_chkslotlink before insert or update
 -- ************************************************************
 create function tg_chkbacklink() returns trigger as '
 begin
-    if new.backlink isnull then
+    if new.backlink is null then
         new.backlink := '''';
     end if;
     return new;
