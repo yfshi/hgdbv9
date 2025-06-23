@@ -40,9 +40,9 @@ SELECT sum(a) AS sum_198 FROM aggtest;
 (1 row)
 
 SELECT sum(b) AS avg_431_773 FROM aggtest;
- avg_431_773 
--------------
-     431.773
+   avg_431_773    
+------------------
+ 431.772609092295
 (1 row)
 
 SELECT sum(gpa) AS avg_6_8 FROM ONLY student;
@@ -62,9 +62,9 @@ SELECT max(a) AS max_100 FROM aggtest;
 (1 row)
 
 SELECT max(aggtest.b) AS max_324_78 FROM aggtest;
- max_324_78 
-------------
-     324.78
+    max_324_78    
+------------------
+ 324.779998779297
 (1 row)
 
 SELECT max(student.gpa) AS max_3_7 FROM student;
@@ -1914,9 +1914,9 @@ select percentile_cont(0.5) within group (order by b) from aggtest;
 (1 row)
 
 select percentile_cont(0.5) within group (order by b), sum(b) from aggtest;
- percentile_cont  |   sum   
-------------------+---------
- 53.4485001564026 | 431.773
+ percentile_cont  |       sum        
+------------------+------------------
+ 53.4485001564026 | 431.772609092295
 (1 row)
 
 select percentile_cont(0.5) within group (order by thousand) from tenk1;
