@@ -16985,10 +16985,14 @@ func_expr_common_subexpr:
 				}
 			| TIMESTAMPADD '(' timestamp_units ',' a_expr ',' a_expr ')'
 				{
+					Node *arg1 = makeStringConst($3, @3);
+					Node *arg2 = makeTypeCast($5, SystemTypeName("int4"), @5);
+					Node *arg3 = makeTypeCast($7, MySQLSystemTypeName("mysdatetimes"), @7);
+
 					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("timestampadd"),
-												list_make3(makeStringConst($3, @1), $5, $7),
-												COERCE_SQL_SYNTAX,
-												@2);
+											   list_make3(arg1, arg2, arg3),
+											   COERCE_SQL_SYNTAX,
+											   @2);
 				}
 			| YEAR '(' a_expr ')'
 				{
@@ -17919,17 +17923,19 @@ extract_arg:
 		;
 
 timestamp_units:
-			IDENT      { $$ = $1; }
-			| YEAR   { $$ = pstrdup("year"); }
-			| DAY_P    { $$ = pstrdup("day"); }
-			| HOUR_P   { $$ = pstrdup("hour"); }
+			IDENT      		{ $$ = $1; }
+			| YEAR   		{ $$ = pstrdup("year"); }
+			| DAY_P    		{ $$ = pstrdup("day"); }
+			| HOUR_P   		{ $$ = pstrdup("hour"); }
 			| MICROSECOND_P { $$ = pstrdup("microsecond"); }
-			| MINUTE_P { $$ = pstrdup("minute"); }
-			| SECOND_P { $$ = pstrdup("second"); }
-			| MONTH_P { $$ = pstrdup("month"); }
-			| QUATER_P { $$ = pstrdup("quater"); }
-			| WEEK_P { $$ = pstrdup("week"); }
-			| SCONST   { $$ = $1; }
+			| MINUTE_P 		{ $$ = pstrdup("minute"); }
+			| SECOND_P 		{ $$ = pstrdup("second"); }
+			| MONTH_P 		{ $$ = pstrdup("month"); }
+			| QUATER_P 		{ $$ = pstrdup("quater"); }
+			| WEEK_P 		{ $$ = pstrdup("week"); }
+			| SCONST   		{ $$ = $1; }
+		;
+
 /* End - SRS-MYSQL-BUILDINFUNCTION */
 unicode_normal_form:
 			NFC										{ $$ = "NFC"; }
