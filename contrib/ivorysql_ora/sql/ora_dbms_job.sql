@@ -380,4 +380,8 @@ begin
 end;
 /
 
+/* Begin - BUG#Z5339 */
+select evaluate_calendar_string('FREQ=MINUTELY;INTERVAL=10;BYMONTH=2;BYMONTHDAY=-1', to_date('2025-6-24 00:00:00', 'YYYY-MM-DD HH24:MI:SS'), to_date('2025-6-24 00:00:00', 'YYYY-MM-DD HH24:MI:SS'), true);
+/* End - BUG#Z5339 */
+
 DROP USER system;

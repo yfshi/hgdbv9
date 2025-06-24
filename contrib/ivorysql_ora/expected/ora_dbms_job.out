@@ -347,4 +347,12 @@ begin
 		execute format('set session authorization %s;',name);
 end;
 /
+/* Begin - BUG#Z5339 */
+select evaluate_calendar_string('FREQ=MINUTELY;INTERVAL=10;BYMONTH=2;BYMONTHDAY=-1', to_date('2025-6-24 00:00:00', 'YYYY-MM-DD HH24:MI:SS'), to_date('2025-6-24 00:00:00', 'YYYY-MM-DD HH24:MI:SS'), true);
+  evaluate_calendar_string  
+----------------------------
+ 2026-02-28 00:00:00.000000
+(1 row)
+
+/* End - BUG#Z5339 */
 DROP USER system;
