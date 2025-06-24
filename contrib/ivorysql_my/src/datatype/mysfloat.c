@@ -51,7 +51,10 @@ PG_FUNCTION_INFO_V1(mysfloat8_logic_and);
 PG_FUNCTION_INFO_V1(mysfloat8_logic_or);
 PG_FUNCTION_INFO_V1(mysfloat4_boolean);
 PG_FUNCTION_INFO_V1(mysfloat8_boolean);
-
+/* Begin - BUG#Z5204 */
+PG_FUNCTION_INFO_V1(mysfloat4larger);
+PG_FUNCTION_INFO_V1(mysfloat84_pl);
+/* End - BUG#Z5204 */
 
 /*
  * mysfloat8_not - bitwise inversion.
@@ -530,3 +533,38 @@ mysfloat8_boolean(PG_FUNCTION_ARGS)
 	val1 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
 	PG_RETURN_BOOL(val1);
 }
+
+/* Begin - BUG#Z5204 */
+/*
+ * mysfloat4larger - float8 > float4
+ */
+Datum
+mysfloat4larger(PG_FUNCTION_ARGS)
+{
+	float8	arg1 = PG_GETARG_FLOAT8(0);
+	float4	arg2 = PG_GETARG_FLOAT4(1);
+	float8	result;
+
+	if (float8_gt(arg1, arg2))
+		result = arg1;
+	else
+		result = arg2;
+	PG_RETURN_FLOAT8(result);
+}
+
+/*
+ * mysfloat84_pl - float8 + float4.
+ */
+Datum
+mysfloat84_pl(PG_FUNCTION_ARGS)
+{
+	float8	arg1 = PG_GETARG_FLOAT8(0);
+	float4	arg2 = PG_GETARG_FLOAT4(1);
+
+	float8	result = arg1 + arg2;
+	if (unlikely(isinf(result)) && !isinf(arg1) && !isinf(arg2))
+		float_overflow_error();
+
+	PG_RETURN_FLOAT8(result);
+}
+/* End - BUG#Z5204 */

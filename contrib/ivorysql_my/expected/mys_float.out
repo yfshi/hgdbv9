@@ -2286,3 +2286,22 @@ select NULL XOR 0.9::float8;--NULL
 create table tb_test1 (id float(0));
 create table tb_test2 (id FLOAT(8.9));
 drop table tb_test1,tb_test2;
+--BUG#5204
+CREATE TABLE t_aggregate_float (
+id SERIAL PRIMARY KEY,
+value FLOAT
+);
+INSERT INTO t_aggregate_float (value) VALUES (123456.789), (-100.5), (0), (50.25), (100.75), (123456.78910111213);
+SELECT MAX(value) FROM t_aggregate_float;
+      MAX       
+----------------
+ 123456.7890625
+(1 row)
+
+SELECT SUM(value) FROM t_aggregate_float;
+      SUM      
+---------------
+ 246964.078125
+(1 row)
+
+drop table t_aggregate_float;

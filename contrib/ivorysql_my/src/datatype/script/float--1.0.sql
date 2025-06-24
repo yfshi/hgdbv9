@@ -372,3 +372,33 @@ AS ASSIGNMENT;
 CREATE CAST (float8 AS boolean)
 WITH FUNCTION ivymy.mysfloat8_boolean(float8)
 AS ASSIGNMENT;
+
+/* Begin - BUG#Z5204 */
+--max
+CREATE FUNCTION ivymy.mysfloat4larger(float8, float4)
+RETURNS float8
+AS 'MODULE_PATHNAME', 'mysfloat4larger'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE AGGREGATE ivymy.max(float4) (
+	SFUNC = ivymy.mysfloat4larger,
+	STYPE = float8,
+	SORTOP = >,
+	PARALLEL = SAFE
+);
+
+--sum
+CREATE FUNCTION ivymy.mysfloat84_pl(float8, float4)
+RETURNS float8
+AS 'MODULE_PATHNAME', 'mysfloat84_pl'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE AGGREGATE ivymy.sum(float4) (
+	SFUNC = ivymy.mysfloat84_pl,
+	STYPE = float8
+);
+/* End - BUG#Z5204 */
