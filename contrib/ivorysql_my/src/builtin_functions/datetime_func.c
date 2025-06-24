@@ -210,12 +210,6 @@ static int64 getPartFromTm(struct pg_tm *tm, fsec_t fsec, int part);
 static Datum GetSpecificPartOfTime(FunctionCallInfo fcinfo, int part);
 static unsigned long convert_period_to_month(unsigned long period);
 static unsigned long convert_month_to_period(unsigned long month);
-static bool calc_interval(Interval *span, lldiv_t arg, int dtk);
-static TimeADT time_sub_interval(TimeADT time, Interval *span);
-static bool datetime_sub_interval(Timestamp datetime, Interval *span, Timestamp *result, bool is_add_func);
-static TimeOffset time2t(const int hour, const int min, const int sec, const fsec_t fsec);
-static Datum timestamp_add_internal(FunctionCallInfo fcinfo, char *lowunits, int unit, int unit_type, Numeric num);
-static bool determine_conversion(int dtk);
 
 static long calc_day(int year, int month, int day);
 static int calc_weekday(long daynr, bool sunday_first_day_of_week);
@@ -377,7 +371,7 @@ GetSpecificPartOfTime(FunctionCallInfo fcinfo, int part)
     fsec = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(tempfsec)));
 
     if (fsec >= 500000)
-        time = time - 1;
+        time--;
 
     if (time == MYSQL_NULL_TIME)
         PG_RETURN_NULL();
@@ -904,82 +898,77 @@ period_diff(PG_FUNCTION_ARGS)
     PG_RETURN_INT64(ret);
 }
 
-/* sec_to_time()
- * Description: Convert seconds into time type
- * return: Convert result, time type.
- */
 Datum 
 sec_to_time(PG_FUNCTION_ARGS)
 {
-    lldiv_t seconds;
-    TimeADT time;
-    bool neg = 0;
-    bool overflow = 0;
-    int dec = 6;
-    char buf[MAXDATELEN + 1] = {0};
-    Numeric num;
-    fsec_t fsec = 0;
-    int total_sec = 0;
-    int hour = 0;
-    int min = 0;
-    int sec = 0;
-    unsigned int nanoseconds;
+    Numeric     num = PG_GETARG_NUMERIC(0);
+    char        *raw = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
+    fsec_t      fsec = 0;
+    int         total_sec = 0;
+    int         hour = 0, min = 0, sec = 0;
+    lldiv_t     seconds;
+    TimeADT     time;
+    bool        neg = 0;
+    int         dec = 0;
+    char        buf[MAXDATELEN + 1];
+    char        *dot = strchr(raw, '.');
+
+    /* Begin - bug#5125 */
+    if (dot)
+    {
+        dec = raw + strlen(raw) - dot - 1;
+        if (dec > DATETIME_MAX_DECIMALS)
+            dec = DATETIME_MAX_DECIMALS;
+    }
+
+    if (is_numeric_neg(num))
+    {
+        neg = true;
+        num = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(num),
+                                                  NumericGetDatum(int64_to_numeric(-1))));
+    }
+    /* End - bug#5125 */
     
-    if (!mysnumeric_to_lldiv_t(PG_GETARG_NUMERIC(0), &seconds))
+    if ((!mysnumeric_to_lldiv_t(num, &seconds)) ||
+        (seconds.quot > TIME_MAX_VALUE_SECONDS) ||
+        (seconds.quot == TIME_MAX_VALUE_SECONDS && seconds.rem != 0))
     {
-        overflow = 1;
+        hour = TIME_MAX_HOUR;
+        min = TIME_MAX_MINUTE;
+        sec = TIME_MAX_MINUTE;
+        fsec = 0;
+
+        ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", raw)));
     }
-
-    if (seconds.quot < 0)
+    else
     {
-        neg = 1;
-        seconds.quot = -seconds.quot;
-        seconds.rem = -seconds.rem;
-    }
-
-    if (seconds.quot > TIME_MAX_VALUE_SECONDS)
-        overflow = 1;
-
-    if (!overflow)
-    {
-        total_sec = (int)seconds.quot; // keep only the integer part
+        total_sec = (int)seconds.quot;
         fsec = (int)(seconds.rem / MICRO_PER_NANOSEC);
-        nanoseconds = seconds.rem % MICRO_PER_NANOSEC;
-        if (nanoseconds >= (MICRO_PER_NANOSEC / 2))
+
+        // Will do round off
+        if (seconds.rem % MICRO_PER_NANOSEC >= 500)
         {
             fsec += 1;
-        }
-
-        hour = total_sec / 3600;
-        min = (total_sec % 3600) / 60;
-        sec = total_sec % 60;
-        time = hour * 10000 + min * 100 + sec;
-
-        if (neg)
-        {
-            time = -time;
-        }
-
-        for (int i = 1; i <= 6; i++)
-        {
-            if (fsec % pow_of_10[i] == 0)
+            if (fsec >= 1000000)
             {
-                dec--;
+                fsec -= 1000000;
+                total_sec++;
             }
         }
+
+        hour = total_sec / SECS_PER_HOUR;
+        min = (total_sec % SECS_PER_HOUR) / MINS_PER_HOUR;
+        sec = total_sec % MINS_PER_HOUR;
     }
 
-    if (overflow || time < -FORMAT_TIME_MAX_VALUE || time > FORMAT_TIME_MAX_VALUE)
-    {
-        time = FORMAT_TIME_MAX_VALUE;
-        dec = 0;
-    }
-    snprintf(buf, MAXDATELEN, "%ld.%06d", time, fsec);
+    time = hour * 10000 + min * 100 + sec;
+    snprintf(buf, MAXDATELEN, "%s%ld.%06d", neg ? "-" : "", time, fsec);
     num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
                                               CStringGetDatum(buf),
                                               ObjectIdGetDatum(InvalidOid),
                                               Int32GetDatum((((14 + dec) << 16) | dec) + VARHDRSZ)));
 
+    pfree(raw);
     PG_RETURN_NUMERIC(num);
 }
 
@@ -1017,14 +1006,11 @@ convert_cstring_to_pg_tm(char *str, struct pg_tm *result_tm, fsec_t *result_fsec
 	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
 
-	mystr_to_datetime(str, strlen(str), result_tm, flag, result_fsec, &tm_type, &warning, &nanoseconds, &fsec_len);
+	if (mystr_to_datetime(str, strlen(str), result_tm, flag, result_fsec, &tm_type, &warning, &nanoseconds, &fsec_len) == -1)
+        return InvalidOid; /* bug#z5110 */
+
 	mysdatetime_add_nanoseconds_with_round(result_tm, result_fsec, &warning, nanoseconds);
 
-	if (warning)
-	{
-		ereport(WARNING, (errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-						  errmsg("date/time field value out of range: \"%s\"", str)));
-	}
 	/*Return the timestamp type of str according to tm_type*/
 	switch (tm_type)
 	{
@@ -1098,7 +1084,10 @@ convert_cstring_to_datetime_time(char *str, struct pg_tm *result_tm, fsec_t *res
 	}
 
 	/* Not a timestamp. Try to convert str to time*/
-	mysstr_to_time(start, strlen(start), result_tm, flag, &fsec, &ftype, &warn, &nanoseconds, result_neg);
+    if (mysstr_to_time(start, strlen(start), result_tm, flag, &fsec, &ftype, &warn, &nanoseconds, result_neg) == -1)
+    {
+        return InvalidOid; /* bug#z5110 */
+    }
 	
     if (result_tm->tm_min > TIME_MAX_MINUTE || result_tm->tm_sec > TIME_MAX_SECOND)
         return InvalidOid;
@@ -1808,7 +1797,11 @@ timestamp_arg1(PG_FUNCTION_ARGS)
     }
     /* End - bug#z5129 */
 
-    convert_cstring_to_pg_tm(val_str, tm, &fsec);
+    if (convert_cstring_to_pg_tm(val_str, tm, &fsec) == InvalidOid)
+    {
+        ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", val_str)));
+        PG_RETURN_NULL(); /* bug#z5110 */
+    }
 
     datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
     datetemp = datetemp * 1000000;
@@ -1868,10 +1861,20 @@ timestamp_arg2(PG_FUNCTION_ARGS)
     MYS_ZERO_tm(res_tm);
     /* End - bug#5127 */
 
-    convert_cstring_to_pg_tm(val_str1, tm1, &fsec1);
+    if (convert_cstring_to_pg_tm(val_str1, tm1, &fsec1) == InvalidOid)
+    {
+        ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", val_str1)));
+        PG_RETURN_NULL(); /* bug#z5110 */
+    }
+
     tm2timestamp(tm1, fsec1, NULL, &datetime1);
 
-    convert_cstring_to_pg_tm(val_str2, tm2, &fsec2);
+    if (convert_cstring_to_pg_tm(val_str2, tm2, &fsec2) == InvalidOid)
+    {
+        ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", val_str2)));
+        PG_RETURN_NULL(); /* bug#z5110 */
+    }
+
     tm2time(tm2, fsec2, &time2);
 
     if (datetime_sub_time(datetime1, -time2, &res_datetime))
@@ -1919,210 +1922,158 @@ timestamp_arg2(PG_FUNCTION_ARGS)
     PG_RETURN_NULL();
 }
 
-/**
- * return -1 if the result is a normal negtive value
- * reutrn 0 if the result >= 0
- */
-static long long 
-str2ll_with_endptr(char *start, int tmp_len, int *true_len, int *error)
+/* Begin - bug#z5130 */
+static int64
+mys_tm2time(struct pg_tm *tm)
 {
-    char *cp = (char *)palloc(sizeof(char) * (tmp_len + 1));
-    char *endptr = NULL;
-    long long value;
-    errno = 0;
+    int64 time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 
-    for (int i = 0; i < tmp_len; ++i)
-    {
-        cp[i] = *(start + i);
-    }
-
-    cp[tmp_len] = '\0';
-    value = strtoll(cp, &endptr, 10);
-
-    if (endptr == cp)
-        *error = EDOM;
-    else if (errno == ERANGE)
-        *error = ERANGE;
-    else if (value < 0)
-        *error = -1;
-    else if (value >= 0)
-        *error = 0;
-
-    *true_len = (int)(endptr - cp);
-
-    return value;
+    return time;
 }
 
-static TimeOffset
-time2t(const int hour, const int min, const int sec, const fsec_t fsec)
+static int64
+mys_tm2date(struct pg_tm *tm)
 {
-    return (((((hour * MINS_PER_HOUR) + min) * SECS_PER_MINUTE) + sec) * USECS_PER_SEC) + fsec;
+    int64 date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+
+    return date;
 }
 
-static bool 
-calc_interval(Interval *span, lldiv_t arg, int dtk)
+static int64
+mys_tm2datetime(struct pg_tm *tm)
 {
-    int64 integer_part = arg.quot;
-    int64 frac_part = arg.rem;
-    int64 carry = ((abs(frac_part) / FRAC_PART_LEN_IN_NUMERICSEC >= ROUNDING_BORDER) ? 1 : 0);
-    int64 signal = ((integer_part >= 0 && frac_part >= 0) ? 1 : -1);
+    int64 date = mys_tm2date(tm);
+    int64 time = mys_tm2time(tm);
+    int64 datetime = date * 1000000 + time;
 
-    switch (dtk)
-    {
-        case DTK_YEAR:
-            span->month = (integer_part + carry * signal) * MONTHS_PER_YEAR;
-            break;
-        case DTK_MONTH:
-            span->month = (integer_part + carry * signal);
-            break;
-        case DTK_QUARTER:
-            span->month = (integer_part + carry * signal) * MONTHS_PER_QUARTER;
-            break;
-        case DTK_DAY:
-            span->day = (integer_part + carry * signal);
-            break;
-        case DTK_WEEK:
-            span->day = (integer_part + carry * signal) * DAYS_PER_WEEK;
-            break;
-        case DTK_HOUR:
-            span->time = time2t((integer_part + carry * signal), 0, 0, 0);
-            break;
-        case DTK_MINUTE:
-            span->time = time2t(0, (integer_part + carry * signal), 0, 0);
-            break;
-        case DTK_SECOND:
-            frac_part /= NANOSEC_PER_USEC;
-            span->time = time2t(0, 0, integer_part, frac_part);
-            break;
-        case DTK_MICROSEC:
-            span->time = time2t(0, 0, 0, (integer_part + carry * signal));
-            break;
-        default:
-            return false;
-    }
-
-    return true;
+    return datetime;
 }
 
-static TimeADT 
-time_sub_interval(TimeADT time, Interval *span)
+static void
+mys_time2tm(int64 time, struct pg_tm *tm)
 {
-    TimeADT result;
+    tm->tm_hour = time / 10000;
+    tm->tm_min = (time % 10000) / 100;
+    tm->tm_sec = (time % 10000) % 100;
+}
 
-    if (span->month || span->day < -FORMAT_TIME_MAX_VALUE_TO_DAY ||
-        span->day > FORMAT_TIME_MAX_VALUE_TO_DAY)
-    {
-        ereport(ERROR, (errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-                        errmsg("time field value out of range")));
-        return FORMAT_TIME_MAX_VALUE;
-    }
+static void
+mys_date2tm(int64 date, struct pg_tm *tm)
+{
+    tm->tm_year = date / 10000;
+    tm->tm_mon = (date % 10000) / 100;
+    tm->tm_mday = (date % 10000) % 100;
+}
+
+static void
+mys_datetime2tm(int64 datetime, struct pg_tm *tm)
+{
+    int64   date = datetime / 1000000;
+    int64   time = datetime % 1000000;
+
+    mys_date2tm(date, tm);
+    mys_time2tm(time, tm);
+}
+
+static void
+mys_datetimes2tm(Numeric datetimes, struct pg_tm *tm, fsec_t *fsec)
+{
+    int64       datetime;
+    Numeric		tempfsec;
+
+    datetime = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(datetimes)));
+    tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(datetimes),
+                                                   NumericGetDatum(int64_to_numeric(1000000))));
+    tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mod, NumericGetDatum(tempfsec),
+                                                   NumericGetDatum(int64_to_numeric(1000000))));
+
+    *fsec = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(tempfsec)));
+
+    if (*fsec > 500000)
+        datetime--;
+
+    mys_datetime2tm(datetime, tm);
+}
+/* End - bug#z5130 */
+
+Datum 
+timestampadd(PG_FUNCTION_ARGS)
+{
+    int             unit_val, unit_type;
+    text            *units = PG_GETARG_TEXT_PP(0);
+    int64           interval = (int64) PG_GETARG_INT32(1); // may be negative
+    char            *lowunits = downcase_truncate_identifier(VARDATA_ANY(units),
+											                 VARSIZE_ANY_EXHDR(units),
+											                 false);
+    TimeOffset      timestamp = 0, units_timestamp = 0;
+    struct pg_tm    tt, *tm = &tt;
+    fsec_t	        fsec = 0;
+    int64           datetime = 0;
+    char            buf[MAXDATELEN];
+    int             dec = 0;
+    Numeric         num;
     
-    result = time - (span->day * SECS_PER_DAY * USECS_PER_SEC + span->time);
-    if (result < -FORMAT_TIME_MAX_VALUE || result > FORMAT_TIME_MAX_VALUE)
-    {
-        ereport(ERROR, (errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-                        errmsg("time field value out of range")));
-        return FORMAT_TIME_MAX_VALUE;
-    }
-
-    return result;
-}
-
-static bool 
-determine_conversion(int dtk)
-{
-    switch (dtk)
-    {
-        case DTK_HOUR:
-        case DTK_MINUTE:
-        case DTK_SECOND:
-        case DTK_MICROSEC:
-            return true;
-        default:
-            return false;
-    }
-}
-
-static bool 
-datetime_sub_interval(Timestamp datetime, Interval *span, Timestamp *result, bool is_add_func)
-{
-    if (datetime < FORMAT_TIMESTAMP_MIN_VALUE || datetime > FORMAT_TIMESTAMP_MAX_VALUE)
-        return false;
-
-    *result = DirectFunctionCall2(timestamp_mi_interval, TimestampGetDatum(datetime), PointerGetDatum(span));
-
-    if (*result < FORMAT_TIMESTAMP_MIN_VALUE || *result > FORMAT_TIMESTAMP_MAX_VALUE)
-        return false;
-
-    if (span->time == 0 && span->day == 0)
-        return true;
-
-    if (*result < FORMAT_TIMESTAMP_FIRST_YEAR)
-    {
-        if (is_add_func)
-        {
-            struct pg_tm tt, *tm = &tt;
-            fsec_t fsec;
-
-            MYS_ZERO_tm(tm); /* bug#5127 */
-
-            timestamp2tm(*result, NULL, tm, &fsec, NULL, NULL);
-            tm->tm_year = 0;
-            tm->tm_mon = 0;
-            tm->tm_mday = 0;
-            tm2timestamp(tm, fsec, NULL, result);
-            return true;
-        }
-        
-        return false;
-    }
-
-    return true;
-}
-
-static Datum
-timestamp_add_internal(FunctionCallInfo fcinfo, char *lowunits, int unit, int unit_type, Numeric num)
-{
-    Oid expr_type = get_fn_expr_argtype(fcinfo->flinfo, 2);
-    char *expr;
-    Timestamp datetime, res_datetime;
-    TimeADT time, res_time;
-    lldiv_t delta;
-    bool typIsVarlena;
-    Oid typeOutput;
-    struct pg_tm tt, *tm = &tt, res_tt, *res_tm = &res_tt;
-    fsec_t fsec = 0, res_fsec = 0;
-    char buf[MAXDATELEN + 1] = {0};
-    text *res;
-    Interval sp, *span = &sp;
-    bool conversion;
-
-    /* Begin - bug#5127 */
     MYS_ZERO_tm(tm);
-    MYS_ZERO_tm(res_tm);
-    /* End - bug#5127 */
 
-    if (!OidIsValid(expr_type))
-        ereport(ERROR,
-                (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                 errmsg("INVALID TYPE!")));
+    mys_datetimes2tm(PG_GETARG_NUMERIC(2), tm, &fsec);
 
-    getTypeOutputInfo(expr_type, &typeOutput, &typIsVarlena);
-    expr = OidOutputFunctionCall(typeOutput, PG_GETARG_DATUM(2));
-    expr_type = convert_cstring_to_pg_tm(expr, tm, &fsec);
+    unit_type = DecodeUnits(0, lowunits, &unit_val);
 
-    if (!mysnumeric_to_lldiv_t(num, &delta))
-    {
-        ereport(ERROR, (errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE), errmsg("interval out of range")));
-    }
+    if (unit_type == UNKNOWN_FIELD)
+        unit_type = DecodeSpecial(0, lowunits, &unit_val);
 
-    span->time = span->day = span->month = 0;
+    if (fsec != 0 || unit_type == DTK_MICROSEC)
+        dec = 6;
 
     if (unit_type == UNITS)
     {
-        if (!calc_interval(span, delta, unit))
+        switch (unit_val)
         {
-            ereport(ERROR, (errcode(ERRCODE_ERROR_IN_ASSIGNMENT), errmsg("failed to calculate interval")));
+            case DTK_WEEK:
+                interval *= DAYS_PER_WEEK;
+                /* fallthrough */
+            case DTK_DAY:
+                interval *= HOURS_PER_DAY;
+                /* fallthrough */
+            case DTK_HOUR:
+                interval *= MINS_PER_HOUR;
+                /* fallthrough */
+            case DTK_MINUTE:
+                interval *= SECS_PER_MINUTE;
+                /* fallthrough */
+            case DTK_SECOND:
+                interval *= USECS_PER_SEC;
+                /* fallthrough */
+            case DTK_MICROSEC:
+                units_timestamp = interval;
+                break;
+            case DTK_YEAR:
+                interval *= 4;
+                /* fallthrough */
+            case DTK_QUARTER:
+                interval *= 3;
+                /* fallthrough */
+            case DTK_MONTH:
+            {
+                tm->tm_mon += interval % MONTHS_PER_YEAR;
+                tm->tm_year += interval / MONTHS_PER_YEAR;
+                    
+                if (tm->tm_mon > MONTHS_PER_YEAR)
+                {
+                    tm->tm_year++;
+                    tm->tm_mon -= MONTHS_PER_YEAR;
+                }
+                
+                if (tm->tm_mon <= 0)
+                {
+                    tm->tm_year--;
+                    tm->tm_mon += MONTHS_PER_YEAR;
+                }
+
+                break;
+            }
+            default:
+                break;
         }
     }
     else
@@ -2130,136 +2081,26 @@ timestamp_add_internal(FunctionCallInfo fcinfo, char *lowunits, int unit, int un
         ereport(ERROR, (errcode(ERRCODE_UNDEFINED_PARAMETER), errmsg("unknown unit: \"%s\"", lowunits)));
     }
 
-    /*Call function timestamp_mi_interval to sub span*/
-    span->time = -span->time;
-    span->day = -span->day;
-    span->month = -span->month;
-
-    conversion = determine_conversion(unit);
-
-    switch (expr_type)
+    if (tm->tm_year < 0 || tm->tm_year > 9999)
     {
-        // when the input type is time or timetz
-        case MYSTIMEOID:
-        case MYSTIMESOID:
-            {
-                tm2time(tm, fsec, &time);
-                res_time = time_sub_interval(time, span);
-                if (res_time == 0)
-                {
-                    snprintf(buf, MAXDATELEN, "00:00:00");
-                }
-                else if (res_time > 0)
-                {
-                    time2tm(res_time, res_tm, &res_fsec);
-                    snprintf(buf, MAXDATELEN, "%02d:%02d:%02d%06d", res_tm->tm_hour, res_tm->tm_min, res_tm->tm_sec, res_fsec);
-                }
-                else
-                {
-                    time2tm(res_time, res_tm, &res_fsec);
-                    snprintf(buf, MAXDATELEN, "-%02d:%02d:%02d%06d", res_tm->tm_hour, res_tm->tm_min, res_tm->tm_sec, res_fsec);
-                }
-                res = cstring_to_text(buf);
-                PG_RETURN_TEXT_P(res);
-            }
-        case MYSDATEOID:
-            if (!conversion)
-            {
-                tm2timestamp(tm, fsec, NULL, &datetime);
-                if (datetime_sub_interval(datetime, span, &res_datetime, false))
-                {
-                    timestamp2tm(res_datetime, NULL, res_tm, &res_fsec, NULL, NULL);
-                    snprintf(buf, MAXDATELEN, "%04d-%02d-%02d", res_tm->tm_year, res_tm->tm_mon, res_tm->tm_mday);
-
-                    res = cstring_to_text(buf);
-                    PG_RETURN_TEXT_P(res);
-                }
-                break;
-            }
-            /* fallthrough */
-        case MYSDATETIMEOID:
-        case MYSDATETIMESOID:
-        case MYSTIMESTAMPOID:
-        case MYSTIMESTAMPSOID:
-            tm2timestamp(tm, fsec, NULL, &datetime);
-            if (datetime_sub_interval(datetime, span, &res_datetime, false))
-            {
-                timestamp2tm(res_datetime, NULL, res_tm, &res_fsec, NULL, NULL);
-                snprintf(buf, MAXDATELEN, "%04d-%02d-%02d %02d:%02d:%02d%06d", res_tm->tm_year, res_tm->tm_mon, res_tm->tm_mday,
-                        res_tm->tm_hour, res_tm->tm_min, res_tm->tm_sec, res_fsec);
-
-                res = cstring_to_text(buf);
-                PG_RETURN_TEXT_P(res);
-            }
-            break;
-        default:
-            ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH),
-                            errmsg("unsupported input data type: %s", format_type_be(expr_type))));
+        ereport(WARNING, (errmsg("Datetime function: datetime field overflow")));
+        PG_RETURN_NULL();
     }
 
-    ereport(ERROR, (errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE), errmsg("date/time field overflow")));
+    tm2timestamp(tm, 0, NULL, &timestamp);
+    timestamp += units_timestamp;
+    timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
 
-    PG_RETURN_NULL();
-}
+    datetime = mys_tm2datetime(tm);
+    
+    snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
 
-Datum 
-timestampadd(PG_FUNCTION_ARGS)
-{
-    Numeric num;
-    int true_len, errorno;
-    long long ret;
-    text *date_text1 = PG_GETARG_TEXT_PP(0);
-    char *val_str1 = text_to_cstring(date_text1);
-    char *num_str;
-    text *units = cstring_to_text(val_str1);
-    char *lowunits = NULL;
-    int unit = 0;
-    int unit_type;
-    Interval sp, *span = &sp;
-    Oid val_type2, typeOutput2;
-    bool typIsVarlena2;
+    num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+                                              CStringGetDatum(buf),
+                                              ObjectIdGetDatum(InvalidOid),
+                                              Int32GetDatum((((14 + dec) << 16) | dec) + VARHDRSZ)));
 
-    val_type2 = get_fn_expr_argtype(fcinfo->flinfo, 1);
-
-    if (!OidIsValid(val_type2))
-        ereport(ERROR,
-                (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                 errmsg("INVALID TYPE!")));
-
-    getTypeOutputInfo(val_type2, &typeOutput2, &typIsVarlena2);
-    num_str = OidOutputFunctionCall(typeOutput2, PG_GETARG_DATUM(1));
-
-    lowunits = downcase_truncate_identifier(VARDATA_ANY(units), VARSIZE_ANY_EXHDR(units), false);
-
-    span->time = span->day = span->month = 0;
-
-    /* parse unit */
-    unit_type = DecodeUnits(0, lowunits, &unit);
-
-    if (unit_type == UNKNOWN_FIELD)
-    {
-        unit_type = DecodeSpecial(0, lowunits, &unit);
-    }
-
-    /* check the format of num_str */
-    ret = str2ll_with_endptr(num_str, strlen(num_str), &true_len, &errorno);
-    if (errorno == EDOM)
-    {
-        ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
-                        errmsg("Truncated incorrect INTEGER value: %s", num_str)));
-    }
-
-    /* str to Numeric*/
-    if (unit == DTK_SECOND)
-    {
-        num = DatumGetNumeric(DirectFunctionCall3(numeric_in, CStringGetDatum(num_str), ObjectIdGetDatum(0), Int32GetDatum(-1)));
-    }
-    else
-    {
-        num = DatumGetNumeric(DirectFunctionCall1(int8_numeric, Int64GetDatum(ret)));
-    }
-
-    return timestamp_add_internal(fcinfo, lowunits, unit, unit_type, num);
+    PG_RETURN_NUMERIC(num);
 }
 
 /*

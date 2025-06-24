@@ -506,14 +506,21 @@ CREATE OR REPLACE FUNCTION ivymy.period_diff(text, text) returns int8 AS $$
 $$ LANGUAGE SQL STRICT PARALLEL SAFE;
 
 /*SEC_TO_TIME */
-CREATE OR REPLACE FUNCTION ivymy.sec_to_time(numeric) RETURNS time(6) 
-LANGUAGE C STABLE STRICT 
-as 'MODULE_PATHNAME', 'sec_to_time';
+CREATE OR REPLACE FUNCTION ivymy.sec_to_time(numeric)
+RETURNS time(6)
+AS 'MODULE_PATHNAME', 'sec_to_time'
+LANGUAGE C
+STABLE
+STRICT;
 
-CREATE OR REPLACE FUNCTION ivymy.sec_to_time(text) RETURNS time(6) 
+CREATE OR REPLACE FUNCTION ivymy.sec_to_time(text)
+RETURNS time(6) 
 AS $$
-    SELECT ivymy.sec_to_time(cast($1 as numeric));
-$$ LANGUAGE SQL STRICT PARALLEL SAFE;
+    SELECT sec_to_time(cast($1 as numeric));
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE;
 
 /*SUBTIME*/
 CREATE OR REPLACE FUNCTION ivymy.subtime("any", "any") RETURNS text 
@@ -530,9 +537,13 @@ STRICT
 PARALLEL SAFE;
 
 /*TIME*/
-CREATE OR REPLACE FUNCTION ivymy.time("any") RETURNS time(6) 
-LANGUAGE C STABLE STRICT PARALLEL SAFE 
-as 'MODULE_PATHNAME', 'mystime';
+CREATE OR REPLACE FUNCTION ivymy.time("any")
+RETURNS time(6)
+AS 'MODULE_PATHNAME', 'mystime'
+LANGUAGE C
+STABLE
+STRICT
+PARALLEL SAFE;
 
 /*TIME_FORMAT*/
 CREATE OR REPLACE FUNCTION ivymy.time_format(text, text) RETURNS text 
@@ -603,13 +614,13 @@ STRICT
 PARALLEL SAFE;
 
 /*TIMESTAMPADD*/
-CREATE OR REPLACE FUNCTION ivymy.timestampadd(text, "any", "any")
-RETURNS text 
+CREATE OR REPLACE FUNCTION ivymy.timestampadd(text, int, datetime(6))
+RETURNS datetime(6)
 as 'MODULE_PATHNAME', 'timestampadd'
 LANGUAGE C 
 STABLE 
 STRICT 
-PARALLEL SAFE ;
+PARALLEL SAFE;
 /* End - SRS-MYSQL-BUILDINFUNCTION */
 
 /* FIX BUG 4814 */
