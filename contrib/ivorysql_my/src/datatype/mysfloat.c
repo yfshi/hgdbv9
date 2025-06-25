@@ -40,7 +40,6 @@ PG_FUNCTION_INFO_V1(mysfloat8_xor);
 PG_FUNCTION_INFO_V1(mysfloat4_pl);
 PG_FUNCTION_INFO_V1(mysfloat4_mi);
 PG_FUNCTION_INFO_V1(mysfloat4_mul);
-PG_FUNCTION_INFO_V1(mysfloat4_div);
 PG_FUNCTION_INFO_V1(mysfloat48_div);
 PG_FUNCTION_INFO_V1(mysfloat8_div);
 PG_FUNCTION_INFO_V1(mysfloat84_div);
@@ -278,34 +277,6 @@ mysfloat4_mul(PG_FUNCTION_ARGS)
 	if (unlikely(isinf(result)) && !isinf(arg1) && !isinf(arg2))
 		float_overflow_error();
 	if (unlikely(result == 0.0) && arg1 != 0.0 && arg2 != 0.0)
-		float_underflow_error();
-
-	PG_RETURN_FLOAT8(result);
-}
-
-/*
- * mysfloat4_div - float4 / float4.
- */
-Datum
-mysfloat4_div(PG_FUNCTION_ARGS)
-{
-	float4	arg1 = PG_GETARG_FLOAT4(0);
-	float4	arg2 = PG_GETARG_FLOAT4(1);
-	float8	result = 0.0;
-
-	if (arg2 == 0.0)
-	{
-		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			ereport(WARNING,
-				(errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		PG_RETURN_NULL();
-	}
-
-	result = arg1 / arg2;
-
-	if (unlikely(isinf(result)) && !isinf(arg1))
-		float_overflow_error();
-	if (unlikely(result == 0.0) && arg1 != 0.0 && !isinf(arg2))
 		float_underflow_error();
 
 	PG_RETURN_FLOAT8(result);

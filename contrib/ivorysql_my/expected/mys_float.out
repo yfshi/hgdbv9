@@ -1679,9 +1679,9 @@ WARNING:  Division by 0
 (1 row)
 
 select 1.15::float4 / 0.2::float4;--5.749999795109036
- ?column? 
-----------
-     5.75
+     ?column?      
+-------------------
+ 5.749999795109036
 (1 row)
 
 select 2.5::float4 / 2.5::float4;--1
@@ -1693,13 +1693,13 @@ select 2.5::float4 / 2.5::float4;--1
 select 2.5::float4 / 2.1::float4;--1.1904762445393628
       ?column?      
 --------------------
- 1.1904762983322144
+ 1.1904762445393628
 (1 row)
 
 select 2.5::float4 / 2.8::float4;--0.8928571580624096
       ?column?      
 --------------------
- 0.8928571343421936
+ 0.8928571580624096
 (1 row)
 
 select -2.5::float4 / 2.8::float4;---0.8928571580624096
@@ -1875,9 +1875,9 @@ select 0.9::float4 / 0.0::float4;--NULL
 (1 row)
 
 select 1.15::float4 / 0.2::float4;--5.749999795109036
- ?column? 
-----------
-     5.75
+     ?column?      
+-------------------
+ 5.749999795109036
 (1 row)
 
 select 2.5::float4 / 2.5::float4;--1
@@ -1889,13 +1889,13 @@ select 2.5::float4 / 2.5::float4;--1
 select 2.5::float4 / 2.1::float4;--1.1904762445393628
       ?column?      
 --------------------
- 1.1904762983322144
+ 1.1904762445393628
 (1 row)
 
 select 2.5::float4 / 2.8::float4;--0.8928571580624096
       ?column?      
 --------------------
- 0.8928571343421936
+ 0.8928571580624096
 (1 row)
 
 select -2.5::float4 / 2.8::float4;---0.8928571580624096
@@ -2286,7 +2286,7 @@ select NULL XOR 0.9::float8;--NULL
 create table tb_test1 (id float(0));
 create table tb_test2 (id FLOAT(8.9));
 drop table tb_test1,tb_test2;
---BUG#5204
+--BUG#Z5204
 CREATE TABLE t_aggregate_float (
 id SERIAL PRIMARY KEY,
 value FLOAT
@@ -2305,3 +2305,30 @@ SELECT SUM(value) FROM t_aggregate_float;
 (1 row)
 
 drop table t_aggregate_float;
+--BUG#Z5351
+CREATE TABLE db_test (
+a float,
+b float,
+c double
+);
+INSERT INTO db_test (a, b, c) VALUES
+(1.5, 2.5, 3.75),
+(0.0, 1.0, 2.0),
+(-3.5, -1.5, -2.5),
+(NULL, 2.0, 3.0),
+(4.0, 0.0, 1.0),
+(1e3, 2e3, 3e3);
+SELECT a / b, pg_typeof(a / b) FROM db_test;
+WARNING:  Division by 0
+WARNING:  Division by 0
+      ?column?      |    pg_typeof     
+--------------------+------------------
+                0.6 | double precision
+                  0 | double precision
+ 2.3333333333333335 | double precision
+                    | double precision
+                    | double precision
+                0.5 | double precision
+(6 rows)
+
+drop table db_test;

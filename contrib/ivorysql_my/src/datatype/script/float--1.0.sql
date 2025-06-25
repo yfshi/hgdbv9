@@ -227,20 +227,6 @@ CREATE OPERATOR ivymy.||(
 );
 
 -- /
-CREATE FUNCTION ivymy.mysfloat4_div(float4, float4)
-RETURNS float8
-AS 'MODULE_PATHNAME','mysfloat4_div'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE;
-
-CREATE OPERATOR ivymy./ (
-	procedure = ivymy.mysfloat4_div,
-	leftarg = float4,
-	rightarg = float4
-);
-
 CREATE FUNCTION ivymy.mysfloat48_div(float4, float8)
 RETURNS float8
 AS 'MODULE_PATHNAME','mysfloat48_div'
@@ -282,6 +268,23 @@ CREATE OPERATOR ivymy./ (
 	leftarg = float8,
 	rightarg = float4
 );
+
+/* Begin - BUG#Z5351 */
+CREATE FUNCTION ivymy.mysfloat4_div(float4, float4)
+RETURNS float8
+AS $$
+	select ivymy.mysfloat84_div($1::float8, $2)
+$$ LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy./ (
+	procedure = ivymy.mysfloat4_div,
+	leftarg = float4,
+	rightarg = float4
+);
+/* End - BUG#Z5351 */
 
 -- //
 CREATE FUNCTION ivymy.mysfloat4_moddiv(float4, float4)
