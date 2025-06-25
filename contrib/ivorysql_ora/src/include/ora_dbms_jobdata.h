@@ -171,7 +171,7 @@ typedef struct ScheduleData
 	int		interval;
 	char	month[12];
 	char	monthday[31];
-	char	negative_monthday[31];
+	signed char	negative_monthday[31]; /* BUG#Z5339 */
 	int		negative_monthday_count;
 	char	hour[24];
 	char	minute[60];
