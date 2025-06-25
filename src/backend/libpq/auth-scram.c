@@ -397,21 +397,19 @@ pg_be_scram_init(Port *port,
 	{
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		/* Begin - BUG#5211 */
+#ifdef USE_GMSSL
 		PasswordType password_type = PASSWORD_TYPE_PLAINTEXT;
 		if (shadow_pass)
 			password_type = get_password_type(shadow_pass);
 		else
 		{
 			UserAuth uauth = port->hba->auth_method;
-#ifdef USE_GMSSL
 			if (uauth == uaSCRAMsm3 || uauth == uaSCRAMsha256sm3)
 				password_type = PASSWORD_TYPE_SCRAM_SM3;
 			else
-#endif
 				password_type = PASSWORD_TYPE_SCRAM_SHA_256;
 		}
 
-#ifdef USE_GMSSL
 		if (password_type == PASSWORD_TYPE_SCRAM_SM3)
 			mock_scram_secret("SCRAM-SM3", state->port->user_name, &state->iterations,
 							&state->salt, state->StoredKey, state->ServerKey);
