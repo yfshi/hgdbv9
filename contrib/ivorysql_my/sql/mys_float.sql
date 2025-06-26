@@ -625,7 +625,7 @@ create table tb_test1 (id float(0));
 create table tb_test2 (id FLOAT(8.9));
 drop table tb_test1,tb_test2;
 
---BUG#5204
+--BUG#Z5204
 CREATE TABLE t_aggregate_float (
 id SERIAL PRIMARY KEY,
 value FLOAT
@@ -636,3 +636,21 @@ SELECT MAX(value) FROM t_aggregate_float;
 
 SELECT SUM(value) FROM t_aggregate_float;
 drop table t_aggregate_float;
+--BUG#Z5351
+CREATE TABLE db_test (
+a float,
+b float,
+c double
+);
+
+INSERT INTO db_test (a, b, c) VALUES
+(1.5, 2.5, 3.75),
+(0.0, 1.0, 2.0),
+(-3.5, -1.5, -2.5),
+(NULL, 2.0, 3.0),
+(4.0, 0.0, 1.0),
+(1e3, 2e3, 3e3);
+
+SELECT a / b, pg_typeof(a / b) FROM db_test;
+
+drop table db_test;
