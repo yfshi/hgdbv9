@@ -147,19 +147,20 @@ mysfloat8safeeq(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(float8_eq(arg1, arg2));
 }
 
+/* Begin - BUG#Z5355 */
 /*
  * mysfloat8_and - bitwise AND.
  */
 Datum
 mysfloat8_and(PG_FUNCTION_ARGS)
 {
-	int64	val1;
-	int64	val2;
+	uint64	val1;
+	uint64	val2;
 
-	val1 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
-	val2 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(1)));
+	val1 = DatumGetUInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
+	val2 = DatumGetUInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(1)));
 
-	PG_RETURN_INT64(val1 & val2);
+	PG_RETURN_UINT64(val1 & val2);
 }
 
 /*
@@ -168,13 +169,13 @@ mysfloat8_and(PG_FUNCTION_ARGS)
 Datum
 mysfloat8_or(PG_FUNCTION_ARGS)
 {
-	int64	val1;
-	int64	val2;
+	uint64	val1;
+	uint64	val2;
 
-	val1 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
-	val2 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(1)));
+	val1 = DatumGetUInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
+	val2 = DatumGetUInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(1)));
 
-	PG_RETURN_INT64(val1 | val2);
+	PG_RETURN_UINT64(val1 | val2);
 }
 
 /*
@@ -183,18 +184,18 @@ mysfloat8_or(PG_FUNCTION_ARGS)
 Datum
 mysfloat8_shl(PG_FUNCTION_ARGS)
 {
-	int64	val1;
-	int64	val2;
+	uint64	val1;
+	uint64	val2;
 	
-	val1 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
-	val2 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(1)));
+	val1 = DatumGetUInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
+	val2 = DatumGetUInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(1)));
 
 	if(val2 > sizeof(int64) * 8)
 	{
-		PG_RETURN_INT64(0);
+		PG_RETURN_UINT64(0);
 	}
 
-	PG_RETURN_INT64(val1 << val2);
+	PG_RETURN_UINT64(val1 << val2);
 }
 
 /*
@@ -203,18 +204,18 @@ mysfloat8_shl(PG_FUNCTION_ARGS)
 Datum
 mysfloat8_shr(PG_FUNCTION_ARGS)
 {
-	int64	val1;
-	int64	val2;
+	uint64	val1;
+	uint64	val2;
 	
-	val1 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
-	val2 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(1)));
+	val1 = DatumGetUInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
+	val2 = DatumGetUInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(1)));
 
 	if(val2 > sizeof(int64) * 8)
 	{
-		PG_RETURN_INT64(0);
+		PG_RETURN_UINT64(0);
 	}
 
-	PG_RETURN_INT64(val1 >> val2);
+	PG_RETURN_UINT64(val1 >> val2);
 }
 
 /*
@@ -223,14 +224,15 @@ mysfloat8_shr(PG_FUNCTION_ARGS)
 Datum
 mysfloat8_xor(PG_FUNCTION_ARGS)
 {
-	int64	val1;
-	int64	val2;
+	uint64	val1;
+	uint64	val2;
 
-	val1 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
-	val2 = DatumGetInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(1)));
+	val1 = DatumGetUInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(0)));
+	val2 = DatumGetUInt64(DirectFunctionCall1(dtoi8, PG_GETARG_DATUM(1)));
 
-	PG_RETURN_INT64(val1 ^ val2);
+	PG_RETURN_UINT64(val1 ^ val2);
 }
+/* End - BUG#Z5355 */
 
 /*
  * mysfloat8_pl - float4 + float4.

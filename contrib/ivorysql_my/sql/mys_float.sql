@@ -654,3 +654,21 @@ INSERT INTO db_test (a, b, c) VALUES
 SELECT a / b, pg_typeof(a / b) FROM db_test;
 
 drop table db_test;
+
+--BUG#Z5355
+CREATE TABLE db_test (
+a double,
+b double,
+c float
+);
+
+INSERT INTO db_test (a, b, c) VALUES
+(10.0, 3.0, 2.0),
+(0.0, 1.0, 1.0),
+(-8.0, -2.0, 4.0),
+(NULL, 5.0, 1.0),
+(256.0, 8.0, 2.0),
+(1000.0, 0.0, 0.5);
+SELECT a & b, pg_typeof(a & b) FROM db_test;
+SELECT a | b, pg_typeof(a & b) FROM db_test;
+drop table db_test;
