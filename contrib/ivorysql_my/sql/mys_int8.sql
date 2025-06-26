@@ -1,0 +1,14 @@
+create table tb_test(id int8);
+set sql_mode = default;
+insert into tb_test values (0x1234abcd4567aaaa);
+insert into tb_test values (0x7fffffffffffffff);
+insert into tb_test values (0x8000000000000000);
+insert into tb_test values (0xffffffffffffffff);
+set sql_mode = '';
+insert into tb_test values (0x1234abcd4567aaaa);
+insert into tb_test values (0x7fffffffffffffff);
+insert into tb_test values (0x8000000000000000);
+insert into tb_test values (0xffffffffffffffff);
+select * from tb_test;
+drop table tb_test;
+set sql_mode = default;

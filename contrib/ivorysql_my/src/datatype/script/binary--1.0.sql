@@ -929,6 +929,44 @@ CREATE CAST (ivymy.longblob AS ivymy.varbinary)
 WITH FUNCTION ivymy.varbinary(ivymy.longblob, integer, boolean)
 AS ASSIGNMENT;
 
+/* Begin BUG#5048 5070 */		
+CREATE FUNCTION ivymy.varbinary2int2(ivymy.varbinary, integer, boolean)
+RETURNS pg_catalog.int2
+AS 'MODULE_PATHNAME','varbinary2int2'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME','varbinary2int4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean)
+RETURNS pg_catalog.int8
+AS 'MODULE_PATHNAME','varbinary2int8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS pg_catalog.int2)
+WITH FUNCTION ivymy.varbinary2int2(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+CREATE CAST (ivymy.varbinary AS pg_catalog.int4)
+WITH FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+CREATE CAST (ivymy.varbinary AS pg_catalog.int8)
+WITH FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+/* End BUG#5048 5070 */
+
 /********************************************************************************
  *
  * BINARY OPERATOR

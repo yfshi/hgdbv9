@@ -58,6 +58,10 @@ static Mysql_uint_datatype_in_hook_type pre_mysql_uint_datatype_in_hook = NULL;
 Mysql_check_for_column_name_collision_hook_type pre_mysql_check_for_column_name_collision = NULL;
 /* End - BUG#Z00004315/4316 */
 
+/* Begin BUG#5048 5070 */
+static Mysql_hexstring_to_varbinary_hook_type pre_mysql_hexstring_to_varbinary_hook = NULL;
+/* End BUG#5048 5070 */
+
 void _PG_init(void);
 void _PG_fini(void);
 
@@ -124,6 +128,11 @@ _PG_init(void)
 	/* Begin - BUG#Z00004315/4316 */
 	mysql_check_for_column_name_collision = mys_check_for_column_name_collision;
 	/* End - BUG#Z00004315/4316 */
+
+	/* Begin BUG#5048 5070 */
+	pre_mysql_hexstring_to_varbinary_hook = mysql_hexstring_to_varbinary_hook;
+	mysql_hexstring_to_varbinary_hook = hexstring_varbinary;
+	/* End BUG#5048 5070 */
 }
 
 /*
@@ -168,4 +177,8 @@ _PG_fini(void)
 	/* Begin - BUG#Z00004315/4316 */
 	mysql_check_for_column_name_collision = pre_mysql_check_for_column_name_collision;
 	/* End - BUG#Z00004315/4316 */
+
+	/* Begin BUG#5048 5070 */
+	mysql_hexstring_to_varbinary_hook = pre_mysql_hexstring_to_varbinary_hook;
+	/* End BUG#5048 5070 */
 }

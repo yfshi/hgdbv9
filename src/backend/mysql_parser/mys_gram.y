@@ -193,6 +193,7 @@ static Node *makeStringConstCast(char *str, int location, TypeName *typename);
 static Node *makeIntConst(int val, int location);
 static Node *makeFloatConst(char *str, int location);
 static Node *makeBitStringConst(char *str, int location);
+static Node *makeHexStringConst(char *str, int location); /* BUG#5048 5070 */
 static Node *makeNullAConst(int location);
 static Node *makeAConst(Value *v, int location);
 static Node *makeBoolAConst(bool state, int location);
@@ -746,6 +747,7 @@ static int MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan
 %token <ival>	ICONST PARAM
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS
+%token <str>	HCONST /* Begin BUG#5048 5070 */
 
 /*
  * If you want to make any keyword changes, update the keyword table in
@@ -18327,6 +18329,12 @@ AexprConst: Iconst
 				{
 					$$ = makeBitStringConst($1, @1);
 				}
+			/* Begin BUG#5048 5070 */
+			| HCONST
+				{
+					$$ = makeHexStringConst($1, @1);
+				}
+			/* End BUG#5048 5070 */
 			| XCONST
 				{
 					/* This is a bit constant per SQL99:
@@ -19834,6 +19842,20 @@ makeBitStringConst(char *str, int location)
 
 	return (Node *)n;
 }
+
+/* Begin BUG#5048 5070 */
+static Node *
+makeHexStringConst(char *str, int location)
+{
+	A_Const *n = makeNode(A_Const);
+
+	n->val.type = T_HexString;
+	n->val.val.str = str;
+	n->location = location;
+
+	return (Node *)n;
+}
+/* End BUG#5048 5070 */
 
 static Node *
 makeNullAConst(int location)

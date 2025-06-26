@@ -276,3 +276,19 @@ insert into tb_test values (32768);
 select * from tb_test;
 drop table tb_test;
 set sql_mode = default;
+
+-- BUG#5048 5070
+create table tb_test(id int2);
+set sql_mode = default;
+insert into tb_test values (0x1f);
+insert into tb_test values (0x7fff);
+insert into tb_test values (0x8000);
+insert into tb_test values (0xffffffffffffffff);
+set sql_mode = '';
+insert into tb_test values (0x1f);
+insert into tb_test values (0x7fff);
+insert into tb_test values (0x8000);
+insert into tb_test values (0xffffffffffffffff);
+select * from tb_test;
+drop table tb_test;
+set sql_mode = default;

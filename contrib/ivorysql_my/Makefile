@@ -114,6 +114,7 @@ MYS_REGRESS = multi_update \
 			  mys_int2	\
 			  mys_int3 \
 			  mys_int4	\
+			  mys_int8	\
 			  mys_float \
 			  mys-char-varchar \
 			  time_func	\

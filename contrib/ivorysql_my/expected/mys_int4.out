@@ -1240,3 +1240,32 @@ select a * b AS mul_result from test_INT;
 (1 row)
 
 drop table test_INT;
+-- BUG#5048 5070
+create table tb_test(id int4);
+set sql_mode = default;
+insert into tb_test values (0x1f2a);
+insert into tb_test values (0x7fffffff);
+insert into tb_test values (0x80000000);
+ERROR:  BINARY value is out of range for type integer
+insert into tb_test values (0xffffffffffffffff);
+ERROR:  BINARY value is out of range for type integer
+set sql_mode = '';
+insert into tb_test values (0x1f2a);
+insert into tb_test values (0x7fffffff);
+insert into tb_test values (0x80000000);
+WARNING:  BINARY value is out of range for type integer
+insert into tb_test values (0xffffffffffffffff);
+WARNING:  BINARY value is out of range for type integer
+select * from tb_test;
+     id     
+------------
+       7978
+ 2147483647
+       7978
+ 2147483647
+ 2147483647
+ 2147483647
+(6 rows)
+
+drop table tb_test;
+set sql_mode = default;

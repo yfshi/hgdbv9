@@ -238,6 +238,7 @@ static	void			check_raise_parameters(PLmySQL_stmt_raise *stmt);
 %token <ival>	ICONST PARAM
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS
+%token <str>	HCONST /* BUG#5048 5070 */
 
 /*
  * Other tokens recognized by plmysql's lexer interface layer (pl_scanner.c).
