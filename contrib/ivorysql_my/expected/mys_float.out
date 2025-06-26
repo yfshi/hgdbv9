@@ -793,275 +793,275 @@ select NULL <=> NULL;--t
 select 0.9::float8 & 0.0::float8;--0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 1.15::float8 & 0.2::float8;--0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 2.5::float8 & 2.5::float8;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select 2.5::float8 & 2.1::float8;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select 2.5::float8 & 2.8::float8;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select -2.5::float8 & 2.8::float8;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select -5.5::float8 & 2.2::float8;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select 0.9::float8 & NULL;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 select NULL & 0.9::float8;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 --<<
 select 0.9::float8 << 0.0::float8;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 1.15::float8 << 0.2::float8;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 2.5::float8 << 2.5::float8;--8
  ?column? 
 ----------
-        8
+ 8
 (1 row)
 
 select 2.5::float8 << 2.1::float8;--8
  ?column? 
 ----------
-        8
+ 8
 (1 row)
 
 select 2.5::float8 << 2.8::float8;--16
  ?column? 
 ----------
-       16
+ 16
 (1 row)
 
 select -2.5::float8 << 2.8::float8;--18446744073709551600
- ?column? 
-----------
-      -16
+       ?column?       
+----------------------
+ 18446744073709551600
 (1 row)
 
 select -5.5::float8 << 2.2::float8;--18446744073709551592
- ?column? 
-----------
-      -24
+       ?column?       
+----------------------
+ 18446744073709551592
 (1 row)
 
 select 0.9::float8 << NULL;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 select NULL << 0.9::float8;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 -->>
 select 0.9::float8 >> 0.0::float8;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 1.15::float8 >> 0.2::float8;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 2.5::float8 >> 2.5::float8;--0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 2.5::float8 >> 2.1::float8;--0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 2.5::float8 >> 2.8::float8;--0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select -2.5::float8 >> 2.8::float8;--2305843009213693951
- ?column? 
-----------
-       -1
+      ?column?       
+---------------------
+ 2305843009213693951
 (1 row)
 
 select -5.5::float8 >> 2.2::float8;--4611686018427387902
- ?column? 
-----------
-       -2
+      ?column?       
+---------------------
+ 4611686018427387902
 (1 row)
 
 select 0.9::float8 >> NULL;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 select NULL >> 0.9::float8;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 --|
 select 0.9::float8 | 0.0::float8;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 1.15::float8 | 0.2::float8;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 2.5::float8 | 2.5::float8;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select 2.5::float8 | 2.1::float8;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select 2.5::float8 | 2.8::float8;--3
  ?column? 
 ----------
-        3
+ 3
 (1 row)
 
 select -2.5::float8 | 2.8::float8;--18446744073709551615
- ?column? 
-----------
-       -1
+       ?column?       
+----------------------
+ 18446744073709551615
 (1 row)
 
 select -5.5::float8 | 2.2::float8;--18446744073709551610
- ?column? 
-----------
-       -6
+       ?column?       
+----------------------
+ 18446744073709551610
 (1 row)
 
 select 0.9::float8 | NULL;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 select NULL | 0.9::float8;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 -- ^
 select 0.9::float8 ^ 0.0::float8;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 1.15::float8 ^ 0.2::float8;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 2.5::float8 ^ 2.5::float8;--0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 2.5::float8 ^ 2.1::float8;--0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 2.5::float8 ^ 2.8::float8;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select -2.5::float8 ^ 2.8::float8;--18446744073709551613
- ?column? 
-----------
-       -3
+       ?column?       
+----------------------
+ 18446744073709551613
 (1 row)
 
 select -5.5::float8 ^ 2.2::float8;--18446744073709551608
- ?column? 
-----------
-       -8
+       ?column?       
+----------------------
+ 18446744073709551608
 (1 row)
 
 select 0.9::float8 ^ NULL;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 select NULL ^ 0.9::float8;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 --+
@@ -2329,6 +2329,42 @@ WARNING:  Division by 0
                     | double precision
                     | double precision
                 0.5 | double precision
+(6 rows)
+
+drop table db_test;
+--BUG#Z5355
+CREATE TABLE db_test (
+a double,
+b double,
+c float
+);
+INSERT INTO db_test (a, b, c) VALUES
+(10.0, 3.0, 2.0),
+(0.0, 1.0, 1.0),
+(-8.0, -2.0, 4.0),
+(NULL, 5.0, 1.0),
+(256.0, 8.0, 2.0),
+(1000.0, 0.0, 0.5);
+SELECT a & b, pg_typeof(a & b) FROM db_test;
+       ?column?       | pg_typeof 
+----------------------+-----------
+ 2                    | mysuint8
+ 0                    | mysuint8
+ 18446744073709551608 | mysuint8
+                      | mysuint8
+ 0                    | mysuint8
+ 0                    | mysuint8
+(6 rows)
+
+SELECT a | b, pg_typeof(a & b) FROM db_test;
+       ?column?       | pg_typeof 
+----------------------+-----------
+ 11                   | mysuint8
+ 1                    | mysuint8
+ 18446744073709551614 | mysuint8
+                      | mysuint8
+ 264                  | mysuint8
+ 1000                 | mysuint8
 (6 rows)
 
 drop table db_test;

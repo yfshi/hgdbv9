@@ -78,7 +78,7 @@ CREATE OPERATOR ivymy.<=> (
 
 -- &
 CREATE FUNCTION ivymy.mysfloat8_and(float8, float8)
-RETURNS int8
+RETURNS ivymy.mysuint8 /* BUG#Z5355 */
 AS 'MODULE_PATHNAME','mysfloat8_and'
 LANGUAGE C
 PARALLEL SAFE
@@ -93,7 +93,7 @@ CREATE OPERATOR ivymy.& (
 
 -- <<
 CREATE FUNCTION ivymy.mysfloat8_shl(float8, float8)
-RETURNS int8
+RETURNS  ivymy.mysuint8 /* BUG#Z5355 */
 AS 'MODULE_PATHNAME','mysfloat8_shl'
 LANGUAGE C
 PARALLEL SAFE
@@ -108,7 +108,7 @@ CREATE OPERATOR ivymy.<< (
 
 -- >>
 CREATE FUNCTION ivymy.mysfloat8_shr(float8, float8)
-RETURNS int8
+RETURNS ivymy.mysuint8 /* BUG#Z5355 */
 AS 'MODULE_PATHNAME','mysfloat8_shr'
 LANGUAGE C
 PARALLEL SAFE
@@ -123,7 +123,7 @@ CREATE OPERATOR ivymy.>> (
 
 -- |
 CREATE FUNCTION ivymy.mysfloat8_or(float8, float8)
-RETURNS int8
+RETURNS ivymy.mysuint8 /* BUG#Z5355 */
 AS 'MODULE_PATHNAME','mysfloat8_or'
 LANGUAGE C
 PARALLEL SAFE
@@ -138,7 +138,7 @@ CREATE OPERATOR ivymy.| (
 
 -- ^
 CREATE FUNCTION ivymy.mysfloat8_xor(float8, float8)
-RETURNS int8
+RETURNS ivymy.mysuint8 /* BUG#Z5355 */
 AS 'MODULE_PATHNAME','mysfloat8_xor'
 LANGUAGE C
 PARALLEL SAFE
