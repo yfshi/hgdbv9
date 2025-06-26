@@ -1428,6 +1428,8 @@ audit_write_record_list(void)
 	ListCell *listcell;
 	Oid			relOid;
 	Relation	audit_log;
+	bool		need_check_alteruser = false;
+	bool		need_check_dropuser = false;
 
 	StartTransactionCommand();
 	
@@ -1458,7 +1460,17 @@ audit_write_record_list(void)
 			audit_form = (Form_pg_audit_config) GETSTRUCT(audit_tuple);
 
 			if (!audit_form->enable)
+			{
+				if (strcmp(auditevent->actionname, ALTER_ROLE_S) == 0)
+				{
+					need_check_alteruser = true;
+				}
+				else if (strcmp(auditevent->actionname, DROP_ROLE_S) == 0)
+				{
+					need_check_dropuser = true;
+				}
 				continue;
+			}
 			
 			if (audit_form->auditmode != auditevent->result && audit_form->auditmode != AUDIT_ALL)
 				continue;
@@ -1531,7 +1543,7 @@ audit_write_record_list(void)
 		/* For the same information on the parse tree as ALTER USER and ALTER ROLE, 
 		 * further processing is required 
 		 */
-		if ((strcmp(auditevent->actionname, ALTER_ROLE_S) == 0) && n_members == 0)
+		if (((strcmp(auditevent->actionname, ALTER_ROLE_S) == 0) && n_members == 0) || need_check_alteruser)
 		{
 			CatCList   *catlistr;
 			char	   *actionname;
@@ -1565,7 +1577,7 @@ audit_write_record_list(void)
 		/* For the same information on the parse tree as DROP USER and DROP ROLE, 
 		 * further processing is required 
 		 */
-		else if ((strcmp(auditevent->actionname, DROP_ROLE_S) == 0) && n_members == 0)
+		else if (((strcmp(auditevent->actionname, DROP_ROLE_S) == 0) && n_members == 0) || need_check_dropuser)
 		{
 			CatCList * catlistr;
 			char	*actionname;
@@ -4333,11 +4345,6 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 		return;
 	}
 
-	rc = sqlite3_open(audit_GUC.audit_sqlitedbpath, &conn);
-	if (rc != SQLITE_OK)
-		ereport(WARNING,
-				(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-				 errmsg("Failed to open SQLite DB, file '%s', result code %d", audit_GUC.audit_sqlitedbpath, rc)));
 	/* make 'LIKE' of SQLite case sensitive like PostgreSQL */
 	actionname = malloc(32);
 	privilege = malloc(10);
@@ -4431,6 +4438,13 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 			break;
 	}
 
+	rc = sqlite3_open(audit_GUC.audit_sqlitedbpath, &conn);
+	if (rc != SQLITE_OK)
+		ereport(WARNING,
+				(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
+				 errmsg("Failed to open SQLite DB, file '%s', result code %d", audit_GUC.audit_sqlitedbpath, rc)));
+	sqlite3_busy_timeout(conn, 5000);
+
 	audittime = GetCurrentTimestamp();
 	timestr = pstrdup(timestamptz_to_str(audittime));
 	useroid = GetUserId_audit();
@@ -4459,7 +4473,7 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 	}
 
 	/* Begin - BUG#00004776 */
-	if (OidIsValid(useroid))
+	if (IsTransactionState() && OidIsValid(useroid))
 	{
 		CatCList   *catlist;
 		
@@ -4488,68 +4502,14 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 	rc = sqlite3_exec(conn, inserttext, NULL, NULL, &err);
 	if (rc != SQLITE_OK)
 	{
-		char	   *cerr;
-		char		createtext[MAXPGPATH] = {0};
-
-		sprintf(createtext, "create table pg_sqlite_audit_log( \n"
-										"confid oid, \n"
-										"sessionoid integer, \n"
-										"useroid oid, \n"
-										"username text, \n"
-										"roleoid oid, \n"
-										"rolename text, \n"
-										"audittime text, \n"
-										"result \"char\", \n"
-										"namespaceid oid, \n"
-										"namespacename text, \n"
-										"objectoid oid, \n"
-										"objectname text, \n"
-										"colname text, \n"
-										"classid oid, \n"
-										"objecttype text, \n"
-										"audittype \"char\", \n"
-										"commandid integer, \n"
-										"actionname text, \n"
-										"clientport text, \n"
-										"clientname text, \n"
-										"clientip text, \n"
-										"clientmac text, \n"
-										"clientappname text, \n"
-										"sqltext text, \n"
-										"errtext text, \n"
-										"authmethod text, \n"
-										"privlevel text) \n");
-
-		sqlite3_free(err);
-
-		rc = sqlite3_exec(conn, createtext, NULL, NULL, &cerr);
-
-		if (rc != SQLITE_OK)
-		{
-			char	   *perr = pstrdup(cerr);
-
-			sqlite3_free(cerr);
-			sqlite3_close(conn);
-			conn = NULL;
-			ereport(WARNING,
-					(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-					 errmsg("Failed to create table pg_sqlite_audit_log in SQLite DB, file '%s', SQLite error '%s', result code %d", audit_GUC.audit_sqlitedbpath, perr, rc)));
-		}
-		else
-		{
-			rc = sqlite3_exec(conn, inserttext, NULL, NULL, &err);
-			if (rc != SQLITE_OK)
-			{
-				sqlite3_free(err);
-				sqlite3_close(conn);
-				conn = NULL;
-				ereport(WARNING,
+		ereport(WARNING,
 						(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
 						 errmsg("Failed to insert in SQLite DB, file '%s', SQLite error '%s', result code %d", audit_GUC.audit_sqlitedbpath, err, rc)));
-			}
-		}
-
+		sqlite3_free(err);
 	}
+
+	sqlite3_close(conn);
+	conn = NULL;
 }
 
 
@@ -5727,7 +5687,7 @@ pg_audit_launch(void)
 	pqsignal(SIGHUP, pg_audit_sighup);//wakeup latch
 	pqsignal(SIGTERM, pg_audit_sigterm);//backend
 	pqsignal(SIGUSR1, procsignal_sigusr1_handler);
-	
+
 	/* We're now ready to receive signals */
 	BackgroundWorkerUnblockSignals();
 	pgaudit_setup_memcxt();
@@ -8166,7 +8126,7 @@ audit_get_options_on_object(ObjectType objtype, List *optionlist)
 							break;
 						default:
 							ereport(ERROR,
-									(errmsg("option %s on functionis not supported to audit", audit_stmttype_to_string(auditevent))));
+									(errmsg("option %s on function is not supported to audit", audit_stmttype_to_string(auditevent))));
 					}
 				}
 				break;
