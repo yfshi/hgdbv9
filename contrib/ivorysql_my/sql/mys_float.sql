@@ -672,3 +672,21 @@ INSERT INTO db_test (a, b, c) VALUES
 SELECT a & b, pg_typeof(a & b) FROM db_test;
 SELECT a | b, pg_typeof(a & b) FROM db_test;
 drop table db_test;
+
+--BUG#Z5201
+CREATE TABLE db_test (a FLOAT);
+
+INSERT INTO db_test VALUES
+(3.0),
+(3.14),
+(2.9999999),
+(3.0000001),
+(NULL);
+
+SELECT a,a <=> 3,a <=> 2023-01-01,a <=> '3.14' FROM db_test ORDER BY a;
+SELECT a,a + 3,a + '3',a + '3.14' FROM db_test ORDER BY a;
+SELECT a,a - 3,a - '3',a - '3.14' FROM db_test ORDER BY a;
+SELECT a,a & 3,a & '3.14',a <=> '3.14',a << 1,a >> 1,a << '1',a >> '1',a | 1,a | '1', a | '3.14',a ^ 1,a ^ '1',a ^ '3.14' FROM db_test ORDER BY a;
+SELECT a,a*3,a*2023-01-01,a*'3.14' FROM db_test ORDER BY a;
+SELECT a,a/3,a /2023-01-01,a/'3.14' FROM db_test ORDER BY a;
+drop table db_test;
