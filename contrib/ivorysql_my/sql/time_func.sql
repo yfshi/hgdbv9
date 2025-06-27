@@ -1099,3 +1099,9 @@ select get_format(DATE, 'abc');
 select get_format(DATE, null);
 --error
 select get_format(abc, 'EUR');
+
+/* Begin - bug#z5367 */
+select timestampadd(month, 1, '2019-1-30');     -- 2019-02-28
+select timestampadd(month, 13, '2019-1-30');    -- 2020-02-29
+select timestampadd(month, -1, '2019-3-30');    -- 2019-02-28
+/* End - bug#z5367 */

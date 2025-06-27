@@ -4029,3 +4029,23 @@ select get_format(abc, 'EUR');
 ERROR:  syntax error at or near "abc"
 LINE 1: select get_format(abc, 'EUR');
                           ^
+/* Begin - bug#z5367 */
+select timestampadd(month, 1, '2019-1-30');     -- 2019-02-28
+    timestampadd     
+---------------------
+ 2019-02-28 00:00:00
+(1 row)
+
+select timestampadd(month, 13, '2019-1-30');    -- 2020-02-29
+    timestampadd     
+---------------------
+ 2020-02-29 00:00:00
+(1 row)
+
+select timestampadd(month, -1, '2019-3-30');    -- 2019-02-28
+    timestampadd     
+---------------------
+ 2019-02-28 00:00:00
+(1 row)
+
+/* End - bug#z5367 */
