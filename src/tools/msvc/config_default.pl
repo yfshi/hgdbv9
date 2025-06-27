@@ -31,6 +31,9 @@ our $config = {
 	hg_project_id =>undef, # --with-hg_project_id
 	hg_patch_str =>undef, # --with-hg_patch_str
 	#/* End - BUG#Z00004967 */
+	#/* Begin - BUG#Z00005371 */
+	hg_hgdb_version =>undef, #--with-hg_hgdb_version
+	#/* End - BUG#Z00005371 */
 	extraver  => undef,    # --with-extra-version=<string>
 	gss       => undef,    # --with-gssapi=<path>
 	icu       => undef,    # --with-icu=<path>

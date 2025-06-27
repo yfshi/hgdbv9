@@ -82,6 +82,10 @@ sub _new
 	$options->{hg_patch_str} = ""
 		unless $options->{hg_patch_str};		#undef means default
 	#/* End - BUG#Z00004967 */
+	#/* Begin - BUG#Z00005371 */
+	$options->{hg_hgdb_version} = "V9.0"
+		unless $options->{hg_hgdb_version};		#undef means default
+	#/* End - BUG#Z00005371 */
 	return $self;
 }
 
@@ -608,6 +612,9 @@ sub GenerateFiles
 		HG_BRANCH_HASH				=> qq {"$hg_branch_hash"},
 		HG_BRANCH_COMMIT_HASH		=> qq {"$hg_branch_commit_hash"},
 		#/* End - BUG#Z00004967 */
+		#/* Begin - BUG#Z00005371 */
+		HG_HGDB_VERSION				=> $self->{options}->{hg_hgdb_version},
+		#/* End - BUG#Z00005371 */
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,

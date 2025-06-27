@@ -592,3 +592,10 @@ select count(*) from build_version();
      1
 (1 row)
 
+--BUG#Z00005371
+select count(*) from hgdb_version();
+ count 
+-------
+     1
+(1 row)
+

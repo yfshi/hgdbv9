@@ -83,6 +83,9 @@
 #undef HG_BRANCH_HASH
 #undef HG_BRANCH_COMMIT_HASH
 /* End - BUG#Z00004967 */
+/* Begin - BUG#Z00005371 */
+#undef HG_HGDB_VERSION
+/* End - BUG#Z00005371 */
 
 /* Define to build with GSSAPI support. (--with-gssapi) */
 #undef ENABLE_GSS

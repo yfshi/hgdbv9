@@ -275,3 +275,5 @@ DROP USER regress_clstr_user;
 
 -- BUG#Z00004967 */
 select count(*) from build_version();
+--BUG#Z00005371
+select count(*) from hgdb_version();

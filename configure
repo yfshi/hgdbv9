@@ -839,6 +839,7 @@ with_hg_major_version
 with_hg_extral_version
 with_hg_project_id
 with_hg_patch_str
+with_hg_hgdb_version
 enable_integer_datetimes
 enable_nls
 with_pgport
@@ -1578,6 +1579,8 @@ Optional Packages:
                           Hgdb git project id
   --with-hg_patch_str=STRING
                           Hgdb patch name string
+  --with-hg_hgdb_version=STRING
+                          Hg hgdb_version
   --with-pgport=PORTNUM   set default port number [5432]
   --with-oraport=PORTNUM  set default port number for oracle [1521]
   --with-mysport=PORTNUM  set default port number for mysql [3306]
@@ -3330,6 +3333,38 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 #/* End - BUG#Z00004967 */
+
+#/* Begin - BUG#Z00005371 */
+##add HG_HGDB_VERSION
+
+
+
+# Check whether --with-hg_hgdb_version was given.
+if test "${with_hg_hgdb_version+set}" = set; then :
+  withval=$with_hg_hgdb_version;
+  case $withval in
+    yes)
+      as_fn_error $? "argument required for --with-hg_hgdb_version option" "$LINENO" 5
+      ;;
+    no)
+      as_fn_error $? "argument required for --with-hg_hgdb_version option" "$LINENO" 5
+      ;;
+    *)
+      HG_HGDB_VERSION="$withval"
+      ;;
+  esac
+
+else
+  HG_HGDB_VERSION="V9.0"
+fi
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define HG_HGDB_VERSION "$HG_HGDB_VERSION"
+_ACEOF
+
+#/* End - BUG#Z00005371 */
 
 
 #
