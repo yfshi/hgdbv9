@@ -1007,7 +1007,9 @@ convert_cstring_to_pg_tm(char *str, struct pg_tm *result_tm, fsec_t *result_fsec
 		flag |= TIME_INVALID_DATES;
 
 	if (mystr_to_datetime(str, strlen(str), result_tm, flag, result_fsec, &tm_type, &warning, &nanoseconds, &fsec_len) == -1)
+    {
         return InvalidOid; /* bug#z5110 */
+    }
 
 	mysdatetime_add_nanoseconds_with_round(result_tm, result_fsec, &warning, nanoseconds);
 
@@ -2055,6 +2057,8 @@ timestampadd(PG_FUNCTION_ARGS)
                 /* fallthrough */
             case DTK_MONTH:
             {
+                int days; /* bug#z5367 */
+                
                 tm->tm_mon += interval % MONTHS_PER_YEAR;
                 tm->tm_year += interval / MONTHS_PER_YEAR;
                     
@@ -2069,6 +2073,19 @@ timestampadd(PG_FUNCTION_ARGS)
                     tm->tm_year--;
                     tm->tm_mon += MONTHS_PER_YEAR;
                 }
+
+                /**
+                 * Begin - bug#z5367
+                 * If you add MONTH, QUARTER, or YEAR and the resulting date has
+                 * a day that is larger than the maximum day for the new month,
+                 * the day is adjusted to the maximum days in the new month.
+                 * such as timestamp(MONTH, 1, '2019-01-30'), it will get '2019-2-28'.
+                 */
+                days = mon_lengths[isleap(tm->tm_year)][tm->tm_mon - 1];
+
+                if (tm->tm_mday > days)
+                    tm->tm_mday = days;
+                /* End - bug#z5367 */
 
                 break;
             }
