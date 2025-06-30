@@ -306,6 +306,24 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 		was_unknown = true;
 	}
 
+	/* Begin - BUG#Z5201 */
+	if (MYS_PARSER == compatible_db &&
+		was_unknown && arg1 == FLOAT4OID)
+	{
+		char	*schemaname;
+		char	*opername;
+
+		/* Get operator name */
+		DeconstructQualifiedName(opname, &schemaname, &opername);
+		if(!strcmp(opername, "<=>") ||
+			!strcmp(opername, "+") ||
+			!strcmp(opername, "-") ||
+			!strcmp(opername, "*") ||
+			!strcmp(opername, "/"))
+		arg1 = arg2 = FLOAT8OID;
+	}
+	/* End - BUG#Z5201 */
+
 	/* Begin - OA#1475 */
 	if (ORA_PARSER == compatible_db && compatible_ora_bytea_concat_operator &&
 		was_unknown && arg1 == BYTEAOID)
