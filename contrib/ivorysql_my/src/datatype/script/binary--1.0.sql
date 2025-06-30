@@ -504,7 +504,7 @@ CREATE OPERATOR ivymy.^ (
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.binary_bitneg(ivymy.binary)
-RETURNS bigint
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
@@ -1111,7 +1111,7 @@ LEAKPROOF;
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.varbinary_bitneg(ivymy.varbinary)
-RETURNS bigint
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
@@ -1917,7 +1917,7 @@ CREATE OPERATOR ivymy.^ (
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.myblob_bitneg(ivymy.myblob)
-RETURNS bigint
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
@@ -2613,7 +2613,7 @@ CREATE OPERATOR ivymy.^ (
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.tinyblob_bitneg(ivymy.tinyblob)
-RETURNS bigint
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
@@ -3308,7 +3308,7 @@ CREATE OPERATOR ivymy.^ (
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.mediumblob_bitneg(ivymy.mediumblob)
-RETURNS bigint
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
@@ -4004,7 +4004,7 @@ CREATE OPERATOR ivymy.^ (
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.longblob_bitneg(ivymy.longblob)
-RETURNS bigint
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
