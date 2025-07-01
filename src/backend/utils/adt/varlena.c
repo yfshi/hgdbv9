@@ -448,7 +448,7 @@ byteaout(PG_FUNCTION_ARGS)
 	if (bytea_output == BYTEA_OUTPUT_HEX && !enable_character_blob) /* ReqID:SRS-MYSQL-BINARYTYPE */
 	{
 		/* Begin - Bug#z1457 */
-		if (hex_bytea)
+		if (hex_bytea && DB_ORACLE == compatible_db) /* BUG#m541 */
 		{
 			rp = result = palloc(VARSIZE_ANY_EXHDR(vlena) * 2 + 1);
 			rp += hex_encode(VARDATA_ANY(vlena), VARSIZE_ANY_EXHDR(vlena), rp);
