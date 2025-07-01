@@ -226,6 +226,9 @@ DecodeXLogOp(LogicalDecodingContext *ctx, XLogRecordBuffer *buf)
 		case XLOG_FPI_FOR_HINT:
 		case XLOG_FPI:
 		case XLOG_OVERWRITE_CONTRECORD:
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		case XLOG_ENCRYPTION_LSN:
+		/* End - ReqID:SRS-SECURITY-TDE */
 			break;
 		default:
 			elog(ERROR, "unexpected RM_XLOG_ID record type: %u", info);

@@ -95,11 +95,21 @@
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "crypto/kmgr.h"
+#include "crypto/bufenc.h"
+#include "crypto/walenc.h"
+#include "postmaster/postmaster.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 extern uint32 bootstrap_data_checksum_version;
 /* BEGIN - SQL PARSER */
 extern int	  bootstrap_database_mode;
 /* END - SQL PARSER */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+extern int bootstrap_file_encryption_method;
+extern int bootstrap_encryption_target_mode;
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* Unsupported old recovery command file names (relative to $PGDATA) */
 #define RECOVERY_COMMAND_FILE	"recovery.conf"
@@ -948,6 +958,10 @@ static bool holdingAllLocks = false;
 static MemoryContext walDebugCxt = NULL;
 #endif
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+MemoryContext walEncryptCxt = NULL;
+/* End - ReqID:SRS-SECURITY-TDE */
+
 static void readRecoverySignalFile(void);
 static void validateRecoveryParameters(void);
 static void exitArchiveRecovery(TimeLineID endTLI, XLogRecPtr endOfLog);
@@ -1040,6 +1054,9 @@ static void WALInsertLockAcquire(void);
 static void WALInsertLockAcquireExclusive(void);
 static void WALInsertLockRelease(void);
 static void WALInsertLockUpdateInsertingAt(XLogRecPtr insertingAt);
+/* Begin - ReqID:SRS-SECURITY-TDE */
+static Size XLogWritePages(char *from, int npages, uint32 startoffset);
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * Insert an XLOG record represented by an already-constructed chain of data
@@ -2765,64 +2782,53 @@ XLogWrite(XLogwrtRqst WriteRqst, bool flexible)
 			finishing_seg)
 		{
 			char	   *from;
-			Size		nbytes;
-			Size		nleft;
-			int			written;
-			instr_time	start;
 
 			/* OK to write the page(s) */
 			from = XLogCtl->pages + startidx * (Size) XLOG_BLCKSZ;
-			nbytes = npages * (Size) XLOG_BLCKSZ;
-			nleft = nbytes;
-			do
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			if (WALEncrypted)
 			{
-				errno = 0;
+				Size	nbytes;
+				Size	nencrypted;
+				uint32	encr_offset;
 
-				/* Measure I/O timing to write WAL data */
-				if (track_wal_io_timing)
-					INSTR_TIME_SET_CURRENT(start);
-
-				pgstat_report_wait_start(WAIT_EVENT_WAL_WRITE);
-				written = pg_pwrite(openLogFile, from, nleft, startoffset);
-				pgstat_report_wait_end();
-
-				/*
-				 * Increment the I/O timing and the number of times WAL data
-				 * were written out to disk.
+				/* 
+				 * We use the encrypt buffer instead of encrypt inplace
+				 * to avoid the multiple encryptions. We should not 
+				 * encrypt the unused space, in order to avoid 
+				 * "reused key attack"
 				 */
-				if (track_wal_io_timing)
+				encr_offset = startoffset;
+				nbytes = npages * XLOG_BLCKSZ;
+				if (ispartialpage)
+					nbytes -= (XLOG_BLCKSZ - (WriteRqst.Write % XLOG_BLCKSZ));
+				
+				while (nbytes > 0)
 				{
-					instr_time	duration;
+					char   *xlog;
+					int		epages;
 
-					INSTR_TIME_SET_CURRENT(duration);
-					INSTR_TIME_SUBTRACT(duration, start);
-					WalStats.m_wal_write_time += INSTR_TIME_GET_MICROSEC(duration);
+					/* We encrypt as much data as possible at a time, 
+					 * instead of one page at a time, in order to 
+					 * reduce the number of I/O */
+					xlog = XLogEncryptCopy(from, nbytes, &nencrypted, 
+							ThisTimeLineID, openLogSegNo, encr_offset);
+					from += nencrypted;
+					nbytes -= nencrypted;
+					encr_offset += nencrypted;
+
+					epages = nencrypted / XLOG_BLCKSZ;
+					if (nencrypted % XLOG_BLCKSZ > 0)
+						epages = epages + 1;
+					startoffset += XLogWritePages(xlog,
+												  epages,
+												  startoffset);
+					
 				}
-
-				WalStats.m_wal_write++;
-
-				if (written <= 0)
-				{
-					char		xlogfname[MAXFNAMELEN];
-					int			save_errno;
-
-					if (errno == EINTR)
-						continue;
-
-					save_errno = errno;
-					XLogFileName(xlogfname, ThisTimeLineID, openLogSegNo,
-								 wal_segment_size);
-					errno = save_errno;
-					ereport(PANIC,
-							(errcode_for_file_access(),
-							 errmsg("could not write to log file %s "
-									"at offset %u, length %zu: %m",
-									xlogfname, startoffset, nleft)));
-				}
-				nleft -= written;
-				from += written;
-				startoffset += written;
-			} while (nleft > 0);
+			}
+			else
+				startoffset += XLogWritePages(from, npages, startoffset);
+			/* End - ReqID:SRS-SECURITY-TDE */
 
 			npages = 0;
 
@@ -2938,6 +2944,77 @@ XLogWrite(XLogwrtRqst WriteRqst, bool flexible)
 		SpinLockRelease(&XLogCtl->info_lck);
 	}
 }
+
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/*
+ * Write page(s) to the XLOG file.
+ *
+ * Returns the number of bytes written.
+ */
+static Size
+XLogWritePages(char *from, int npages, uint32 startoffset)
+{
+	Size		nbytes;
+	Size		nleft;
+	int			written;
+	instr_time	start;
+
+	nbytes = npages * (Size) XLOG_BLCKSZ;
+	nleft = nbytes;
+
+	do
+	{
+		errno = 0;
+
+		/* Measure I/O timing to write WAL data */
+		if (track_wal_io_timing)
+			INSTR_TIME_SET_CURRENT(start);
+
+		pgstat_report_wait_start(WAIT_EVENT_WAL_WRITE);
+		written = pg_pwrite(openLogFile, from, nleft, startoffset);
+		pgstat_report_wait_end();
+
+		/*
+		 * Increment the I/O timing and the number of times WAL data
+		 * were written out to disk.
+		 */
+		if (track_wal_io_timing)
+		{
+			instr_time	duration;
+
+			INSTR_TIME_SET_CURRENT(duration);
+			INSTR_TIME_SUBTRACT(duration, start);
+			WalStats.m_wal_write_time += INSTR_TIME_GET_MICROSEC(duration);
+		}
+
+		WalStats.m_wal_write++;
+
+		if (written <= 0)
+		{
+			char		xlogfname[MAXFNAMELEN];
+			int			save_errno;
+
+			if (errno == EINTR)
+				continue;
+
+			save_errno = errno;
+			XLogFileName(xlogfname, ThisTimeLineID, openLogSegNo,
+						 wal_segment_size);
+			errno = save_errno;
+			ereport(PANIC,
+					(errcode_for_file_access(),
+					 errmsg("could not write to log file %s "
+							"at offset %u, length %zu: %m",
+							xlogfname, startoffset, nleft)));
+		}
+		nleft -= written;
+		from += written;
+		startoffset += written;
+	} while (nleft > 0);
+
+	return written;
+}
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * Record the LSN for an asynchronous transaction commit/abort
@@ -3789,6 +3866,19 @@ XLogFileCopy(XLogSegNo destsegno, TimeLineID srcTLI, XLogSegNo srcsegno,
 			}
 			pgstat_report_wait_end();
 		}
+
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		/* Since timeline is being changed and since wal encryption iv contains
+		 * the timeline, we need to decrypt the buffer and encrypt it with the
+		 * new iv.
+		 */
+		if (WALEncrypted && nread > 0)
+		{
+			XLogDecryptInplace(buffer.data, nread, srcTLI, srcsegno, nbytes);
+			XLogEncryptInplace(buffer.data, nread, ThisTimeLineID, destsegno, nbytes);
+		}
+		/* End - ReqID:SRS-SECURITY-TDE */
+
 		errno = 0;
 		pgstat_report_wait_start(WAIT_EVENT_WAL_COPY_WRITE);
 		if ((int) write(fd, buffer.data, sizeof(buffer)) != (int) sizeof(buffer))
@@ -4905,6 +4995,10 @@ InitControlFile(uint64 sysidentifier)
 	ControlFile->wal_log_hints = wal_log_hints;
 	ControlFile->track_commit_timestamp = track_commit_timestamp;
 	ControlFile->data_checksum_version = bootstrap_data_checksum_version;
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	ControlFile->file_encryption_method = bootstrap_file_encryption_method;
+	ControlFile->encryption_target_mode = bootstrap_encryption_target_mode;
+	/* End - ReqID:SRS-SECURITY-TDE */
 }
 
 static void
@@ -5206,6 +5300,13 @@ ReadControlFile(void)
 						PGC_INTERNAL, PGC_S_OVERRIDE);
 	/* END - SQL PARSER  SRS-MISC-MYSQL-FRAME */
 	/* End - ReqID:SRS-MISC-GUC */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	StaticAssertStmt(lengthof(encryption_methods) == NUM_ENCRYPTION_METHODS,
+							 "encryption_methods[] must match NUM_ENCRYPTION_METHODS");
+	SetConfigOption("file_encryption_method",
+					encryption_methods[ControlFile->file_encryption_method].name,
+					PGC_INTERNAL, PGC_S_OVERRIDE);
+	/* Begin - ReqID:SRS-SECURITY-TDE */
 }
 
 /*
@@ -5247,6 +5348,38 @@ DataChecksumsEnabled(void)
 	Assert(ControlFile != NULL);
 	return (ControlFile->data_checksum_version > 0);
 }
+
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/*
+ * Is cluster file encryption enabled?
+ */
+int
+GetFileEncryptionMethod(void)
+{
+	if (IsBootstrapProcessingMode())
+		return bootstrap_file_encryption_method;
+	else
+	{
+		Assert(ControlFile != NULL);
+		return ControlFile->file_encryption_method;
+	}
+}
+
+/*
+ * Get cluster file encryption mode
+ */
+int
+GetEncryptionMode(void)
+{
+	if (IsBootstrapProcessingMode())
+		return bootstrap_encryption_target_mode;
+	else
+	{
+		Assert(ControlFile != NULL);
+		return ControlFile->encryption_target_mode;
+	}
+}
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * Returns a fake LSN for unlogged relations.
@@ -5432,6 +5565,21 @@ XLOGShmemInit(void)
 	}
 #endif
 
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/*
+	 * Create a memory context for WAL encrypt that's exempt from the normal
+	 * "no pallocs in critical section" rule. 
+	 */
+	if (WALEncrypted && walEncryptCxt == NULL)
+	{
+		walEncryptCxt = AllocSetContextCreate(TopMemoryContext,
+											"WAL Encrypt",
+											ALLOCSET_DEFAULT_MINSIZE, 
+											XLOG_ENCRYPT_SIZE, 
+											XLOG_ENCRYPT_SIZE * 2);
+		MemoryContextAllowInCriticalSection(walEncryptCxt, true);
+	}
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	XLogCtl = (XLogCtlData *)
 		ShmemInitStruct("XLOG Ctl", XLOGShmemSize(), &foundXLog);
@@ -5664,6 +5812,16 @@ BootStrapXLOG(void)
 	/* Create first XLOG segment file */
 	use_existent = false;
 	openLogFile = XLogFileInit(1, &use_existent, false);
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	BootStrapKmgr();
+	InitializeBufferEncryption();
+	InitializeXLogEncryption();
+
+	/* Encrypt the first XLOG */
+	if (WALEncrypted)
+		XLogEncryptInplace((char *) page, XLOG_BLCKSZ, ThisTimeLineID, 1, 0);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/*
 	 * We needn't bother with Reserve/ReleaseExternalFD here, since we'll
@@ -10937,6 +11095,12 @@ xlog_redo(XLogReaderState *record)
 			UnlockReleaseBuffer(buffer);
 		}
 	}
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	else if (info == XLOG_ENCRYPTION_LSN)
+	{
+		/* nothing to do here */
+	}
+	/* End - ReqID:SRS-SECURITY-TDE */
 	else if (info == XLOG_BACKUP_END)
 	{
 		XLogRecPtr	startpoint;
@@ -12879,6 +13043,11 @@ retry:
 	Assert(reqLen <= readLen);
 
 	xlogreader->seg.ws_tli = curFileTLI;
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (WALEncrypted)
+		XLogDecryptInplace(readBuf, XLOG_BLCKSZ, curFileTLI, readSegNo, readOff);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/*
 	 * Check the page header immediately, so that we can retry immediately if

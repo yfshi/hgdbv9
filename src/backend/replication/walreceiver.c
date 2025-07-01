@@ -327,6 +327,16 @@ WalReceiverMain(void)
 		 */
 		primary_sysid = walrcv_identify_system(wrconn, &primaryTLI);
 
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		/* If we (the slave) are not encrypted, ask master to decrypt the data
+		 * - it will just ignore the decryption if it's unencrypted too. If we
+		 * are encrypted, we expect the primary to be encrypted too, using the
+		 * same key - it'd be too stricky to ask the primary to (re)encrypt
+		 * data using particular key.
+		 */
+		options.proto.physical.cipher = WALEncrypted;
+		/* End - ReqID:SRS-SECURITY-TDE */
+
 		snprintf(standby_sysid, sizeof(standby_sysid), UINT64_FORMAT,
 				 GetSystemIdentifier());
 		if (strcmp(primary_sysid, standby_sysid) != 0)

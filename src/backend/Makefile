@@ -21,7 +21,7 @@ SUBDIRS = access bootstrap catalog parser commands executor foreign lib libpq \
 	main nodes optimizer partitioning port postmaster \
 	regex replication rewrite \
 	statistics storage tcop tsearch utils $(top_builddir)/src/timezone \
-	jit
+	jit crypto
 
 include $(srcdir)/common.mk
 
@@ -239,6 +239,17 @@ endif
 	# Begin - ReqID:SRS-SECURITY-AUDIT
 	$(INSTALL_DATA) $(srcdir)/utils/misc/sec_pg.conf.sample '$(DESTDIR)$(datadir)/sec_pg.conf.sample'
 	# End - ReqID:SRS-SECURITY-AUDIT
+	# BEGIN - SRS-SECURITY-TDE
+	$(INSTALL_DATA) $(srcdir)/crypto/ckey_aws.sh.sample '$(DESTDIR)$(datadir)/auth_commands/ckey_aws.sh.sample'
+	$(INSTALL_DATA) $(srcdir)/crypto/ckey_direct.sh.sample '$(DESTDIR)$(datadir)/auth_commands/ckey_direct.sh.sample'
+	$(INSTALL_DATA) $(srcdir)/crypto/ckey_passphrase.sh.sample '$(DESTDIR)$(datadir)/auth_commands/ckey_passphrase.sh.sample'
+	$(INSTALL_DATA) $(srcdir)/crypto/ckey_piv_nopin.sh.sample '$(DESTDIR)$(datadir)/auth_commands/ckey_piv_nopin.sh.sample'
+	$(INSTALL_DATA) $(srcdir)/crypto/ckey_piv_pin.sh.sample '$(DESTDIR)$(datadir)/auth_commands/ckey_piv_pin.sh.sample'
+	$(INSTALL_DATA) $(srcdir)/crypto/ssl_passphrase.sh.sample '$(DESTDIR)$(datadir)/auth_commands/ssl_passphrase.sh.sample'
+	$(INSTALL_DATA) $(srcdir)/crypto/ckey_hsm.sh.sample '$(DESTDIR)$(datadir)/auth_commands/ckey_hsm.sh.sample'
+	$(INSTALL_DATA) $(srcdir)/crypto/swsds.ini.sample '$(DESTDIR)$(datadir)/auth_commands/swsds.ini.sample'
+	# END - SRS-SECURITY-TDE
+
 ifeq ($(with_llvm), yes)
 install-bin: install-postgres-bitcode
 
@@ -263,6 +274,7 @@ endif
 
 installdirs:
 	$(MKDIR_P) '$(DESTDIR)$(bindir)' '$(DESTDIR)$(datadir)'
+	$(MKDIR_P) '$(DESTDIR)$(datadir)' '$(DESTDIR)$(datadir)/auth_commands'
 ifeq ($(PORTNAME), cygwin)
 ifeq ($(MAKE_DLL), true)
 	$(MKDIR_P) '$(DESTDIR)$(libdir)'
@@ -306,6 +318,16 @@ endif
 	# Begin - ReqID:SRS-SECURITY-AUDIT
 	rm -f '$(DESTDIR)$(datadir)/sec_pg.conf.sample'
 	# End - ReqID:SRS-SECURITY-AUDIT
+	# BEGIN - SRS-SECURITY-TDE
+	rm -f '$(DESTDIR)$(datadir)/postgresql.conf.sample' \
+	      '$(DESTDIR)$(datadir)/auth_commands/ckey_aws.sh.sample' \
+	      '$(DESTDIR)$(datadir)/auth_commands/ckey_direct.sh.sample' \
+	      '$(DESTDIR)$(datadir)/auth_commands/ckey_passphrase.sh.sample' \
+	      '$(DESTDIR)$(datadir)/auth_commands/ckey_piv_nopin.sh.sample' \
+	      '$(DESTDIR)$(datadir)/auth_commands/ckey_piv_pin.sh.sample' \
+	      '$(DESTDIR)$(datadir)/auth_commands/ssl_passphrase.sh.sample' \
+		  '$(DESTDIR)$(datadir)/auth_commands/ckey_hsm.sh.sample' \
+		  '$(DESTDIR)$(datadir)/auth_commands/swsds.ini.sample'
 ifeq ($(with_llvm), yes)
 	$(call uninstall_llvm_module,postgres)
 endif

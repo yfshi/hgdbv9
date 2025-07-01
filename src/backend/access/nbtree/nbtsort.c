@@ -662,6 +662,12 @@ _bt_blwritepage(BTWriteState *wstate, Page page, BlockNumber blkno)
 				   true);
 	}
 
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (RelationIsEncrypted(wstate->index))
+		PageSetEncrypted(page);
+	PageEncryptInplace(page, MAIN_FORKNUM, RelationIsPermanent(wstate->index),
+					   blkno);
+	/* End - ReqID:SRS-SECURITY-TDE */
 	PageSetChecksumInplace(page, blkno);
 
 	/*

@@ -12,6 +12,13 @@
 #include <ctype.h>
 
 #include "pg_upgrade.h"
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include <dirent.h>
+#include "access/xlog_internal.h"
+#include "common/controldata_utils.h"
+#include "common/file_utils.h"
+#include "common/kmgr_utils.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * get_control_data()
@@ -60,6 +67,9 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 	bool		got_date_is_int = false;
 	bool		got_data_checksum_version = false;
 	bool		got_cluster_state = false;
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	int			got_file_encryption_method = false;
+	/* End - ReqID:SRS-SECURITY-TDE */
 	char	   *lc_collate = NULL;
 	char	   *lc_ctype = NULL;
 	char	   *lc_monetary = NULL;
@@ -126,6 +136,15 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 		if ((output = popen(cmd, "r")) == NULL)
 			pg_fatal("could not get control data using %s: %s\n",
 					 cmd, strerror(errno));
+
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		/* Only in >= 13 */
+		if (GET_MAJOR_VERSION(cluster->major_version) >= 1300)
+		{
+			cluster->controldata.file_encryption_method = DISABLED_ENCRYPTION_METHOD;
+			got_file_encryption_method = true;
+		}
+		/* End - ReqID:SRS-SECURITY-TDE */
 
 		/* we have the result of cmd in "output". so parse it line by line now */
 		while (fgets(bufin, sizeof(bufin), output))
@@ -540,6 +559,20 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		}
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		else if ((p = strstr(bufin, "Cluster file encryption method:")) != NULL)
+		{
+			p = strchr(p, ':');
+
+			if (p == NULL || strlen(p) <= 1)
+				pg_fatal("%d: controldata retrieval problem\n", __LINE__);
+
+			p++;				/* remove ':' char */
+			/* used later for contrib check */
+			cluster->controldata.file_encryption_method = atoi(p);
+			got_file_encryption_method = true;
+		}
+		/* End - ReqID:SRS-SECURITY-TDE */
 	}
 
 	pclose(output);
@@ -609,7 +642,8 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 		(!got_large_object &&
 		 cluster->controldata.ctrl_ver >= LARGE_OBJECT_SIZE_PG_CONTROL_VER) ||
 		!got_date_is_int || !got_data_checksum_version ||
-		cluster->controldata.database_mode == DB_NATIVE)/* ReqID:SRS-CMD-pg2highgo */
+		cluster->controldata.database_mode == DB_NATIVE ||/* ReqID:SRS-CMD-pg2highgo */
+		!got_file_encryption_method) /* ReqID:SRS-SECURITY-TDE */
 	{
 		if (cluster == &old_cluster)
 			pg_log(PG_REPORT,
@@ -681,6 +715,12 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 		if (cluster->controldata.database_mode == DB_NATIVE)/* ReqID:SRS-CMD-pg2highgo */
 			pg_log(PG_REPORT, "  database mode\n");
 
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		/* value added in Postgres 13(HGDB v9) */
+		if (!got_file_encryption_method)
+			pg_log(PG_REPORT, "  file encryption method\n");
+		/* End - ReqID:SRS-SECURITY-TDE */
+
 		pg_fatal("Cannot continue without required control information, terminating\n");
 	}
 }
@@ -750,6 +790,16 @@ check_control_data(ControlData *oldctrl,
 	if (oldctrl->database_mode != newctrl->database_mode)/* BEGIN - ReqID:SRS-CMD-pg2highgo */
 		pg_fatal("old and new pg_controldata database mode do not match\n");
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/*
+	 * We cannot upgrade if the old cluster file encryption method
+	 * doesn't match the new one.
+	 */
+	if (oldctrl->file_encryption_method != newctrl->file_encryption_method)
+		pg_fatal("old and new clusters use different file encryption methods or\n"
+				 "one cluster uses encryption and the other does not");
+	/* End - ReqID:SRS-SECURITY-TDE */
 }
 
 

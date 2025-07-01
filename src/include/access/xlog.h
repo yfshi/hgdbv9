@@ -19,7 +19,9 @@
 #include "lib/stringinfo.h"
 #include "nodes/pg_list.h"
 #include "storage/fd.h"
-
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "common/kmgr_utils.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* Sync methods */
 #define SYNC_METHOD_FSYNC		0
@@ -248,6 +250,18 @@ extern bool XLOG_DEBUG;
 #define XLOG_MARK_UNIMPORTANT	0x02	/* record not important for durability */
 #define XLOG_INCLUDE_XID		0x04	/* WAL-internal message-passing hack */
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#ifndef FRONTEND
+#define FileEncryptionEnabled (GetFileEncryptionMethod() != DISABLED_ENCRYPTION_METHOD)
+#define WALEncrypted (FileEncryptionEnabled && \
+			(GetEncryptionMode() == ENCRYPTION_MODE_ALL ||\
+			GetEncryptionMode() == ENCRYPTION_MODE_WAL))
+#define AllTableEncrypted (FileEncryptionEnabled && \
+			(GetEncryptionMode() == ENCRYPTION_MODE_ALL ||\
+			GetEncryptionMode() == ENCRYPTION_MODE_REL))
+#define PG_CIPHER_ENCRYPT_CTR (encryption_methods[GetFileEncryptionMethod()].cipher_encrypt_id)
+#endif
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* Checkpoint statistics */
 typedef struct CheckpointStatsData
@@ -289,6 +303,10 @@ typedef enum WALAvailability
 
 struct XLogRecData;
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+extern MemoryContext walEncryptCxt;
+/* End - ReqID:SRS-SECURITY-TDE */
+
 extern XLogRecPtr XLogInsertRecord(struct XLogRecData *rdata,
 								   XLogRecPtr fpw_lsn,
 								   uint8 flags,
@@ -328,6 +346,12 @@ extern void UpdateControlFile(void);
 extern uint64 GetSystemIdentifier(void);
 extern char *GetMockAuthenticationNonce(void);
 extern bool DataChecksumsEnabled(void);
+
+/* Begin - ReqID:SRS-SECURITY-TDE */
+extern int GetFileEncryptionMethod(void);
+extern int GetEncryptionMode(void);
+/* End - ReqID:SRS-SECURITY-TDE */
+
 extern XLogRecPtr GetFakeLSNForUnloggedRel(void);
 extern Size XLOGShmemSize(void);
 extern void XLOGShmemInit(void);

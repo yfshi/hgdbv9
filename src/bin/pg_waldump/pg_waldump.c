@@ -29,9 +29,24 @@
 #include "license.h"
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "common/hex.h"
+#include "crypto/walenc.h"
+/* End - ReqID:SRS-SECURITY-TDE */
+
 static const char *progname;
 
 static int	WalSegSz;
+
+/* Begin - ReqID:SRS-SECURITY-TDE */
+static int terminal_fd = -1;
+static bool pass_terminal_fd = false;
+static char *cluster_key_cmd = NULL;
+char		cluster_key_hex[ALLOC_KMGR_CLUSTER_KEY_LEN];
+static char cluster_key[KMGR_CLUSTER_KEY_LEN];
+static char	*key_path = NULL;
+static CryptoKey	data_key;
+/* End - ReqID:SRS-SECURITY-TDE */
 
 typedef struct XLogDumpPrivate
 {
@@ -75,6 +90,116 @@ typedef struct XLogDumpStats
 } XLogDumpStats;
 
 #define fatal_error(...) do { pg_log_fatal(__VA_ARGS__); exit(EXIT_FAILURE); } while(0)
+
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/* Retrieve the cluster key */
+static void
+retrieve_cluster_key(void)
+{
+	int			cluster_key_len;
+
+	/*
+	 * If we have been asked to pass an open file descriptor to the user
+	 * terminal to the commands, set one up.
+	 */
+	if (pass_terminal_fd)
+	{
+		open_terminal_fd(terminal_fd);
+		if (terminal_fd < 0)
+		{
+			pg_log_error(_("%s: could not open terminal: %s\n"),
+						 progname, strerror(errno));
+			exit(1);
+		}
+	}
+
+	/* Get the key encryption key from the cluster key command */
+	cluster_key_len = kmgr_run_cluster_key_command(cluster_key_cmd,
+												   cluster_key_hex,
+												   ALLOC_KMGR_CLUSTER_KEY_LEN,
+												   NULL, terminal_fd);
+
+	if (!KMGR_USE_HSM_MODE && pg_hex_decode(cluster_key_hex, cluster_key_len,
+					(char *) cluster_key, KMGR_CLUSTER_KEY_LEN) !=
+					KMGR_CLUSTER_KEY_LEN){
+		pg_log_error("cluster key must be at %d hex bytes", KMGR_CLUSTER_KEY_LEN * 2);
+		exit(1);
+	}
+
+	close_terminal_fd(terminal_fd);
+}
+
+/* Decrypt the data key */
+static void
+retrieve_xlog_key(void)
+{
+	PgCipherCtx *ctx;
+	char	in_key[MAX_WRAPPED_KEY_LENGTH];
+	size_t	in_klen;
+	int		fd;
+	int		len;
+	struct stat st;
+
+	if (!KMGR_USE_HSM_MODE)
+	{
+		ctx = pg_cipher_ctx_create(PG_CIPHER_AES_KWP,
+								(unsigned char *) cluster_key,
+								KMGR_CLUSTER_KEY_LEN, false);
+		if (!ctx || !ctx->ctx)
+			pg_log_error("could not initialize encryption context");
+	}
+
+	if ((fd = open(key_path, O_RDONLY | PG_BINARY, 0)) < 0)
+	{
+		pg_log_error("could not open file \"%s\": %m", key_path);
+		exit(1);
+	}
+
+	if (fstat(fd, &st))
+	{
+		pg_log_error("could not stat file \"%s\": %m", key_path);
+		exit(1);
+	}
+
+	in_klen = st.st_size;
+
+	if (in_klen > MAX_WRAPPED_KEY_LENGTH)
+	{
+		pg_log_error("invalid wrapped key length (%d)", (int)in_klen);
+		exit(1);
+	}
+
+	/* read the data key */
+	len = read(fd, in_key, in_klen);
+	if (len != in_klen)
+	{
+		if (len < 0)
+			pg_log_error("could not read file \"%s\": %m", key_path);
+		else
+			pg_log_error("could not read file \"%s\": read %d of %d", 
+						 key_path, len, (int)in_klen);
+		exit(1);
+	}
+
+	if (!KMGR_USE_HSM_MODE)
+	{
+		/* decrypt with the key */
+		if (!kmgr_unwrap_data_key(ctx, (unsigned char *)in_key, in_klen, &data_key))
+		{
+			pg_log_error("incorrect key specified");
+			exit(1);
+		}
+
+		/* The cluster key is correct, free the cipher context */
+		pg_cipher_ctx_free(ctx);
+	}
+	else
+	{
+		memcpy(&data_key, in_key, sizeof(CryptoKey));
+	}
+		
+}
+/* End - ReqID:SRS-SECURITY-TDE */
 
 static void
 print_rmgr_list(void)
@@ -195,25 +320,58 @@ search_directory(const char *directory, const char *fname)
 		PGAlignedXLogBlock buf;
 		int			r;
 
-		r = read(fd, buf.data, XLOG_BLCKSZ);
-		if (r == XLOG_BLCKSZ)
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		/* 
+		 * Even if we don't set the paramters for TDE, we still need to try
+		 * find it from PGDATA. So here we could not know whether the database
+		 * is encrypted.
+		 */
+		if (true)
 		{
-			XLogLongPageHeader longhdr = (XLogLongPageHeader) buf.data;
+			/* 
+			 * We cannot get the size from the header
+			 * until the page is decrypted. Here we need to take more
+			 * expensive approach and really check the file size.
+			  */
+			WalSegSz = (int) lseek(fd, 0, SEEK_END);
+			if (WalSegSz <= 0)
+				fatal_error("Could not determine size of WAL segment \"%s\"", fname);
 
-			WalSegSz = longhdr->xlp_seg_size;
-
-			if (!IsValidWalSegSize(WalSegSz))
-				fatal_error(ngettext("WAL segment size must be a power of two between 1 MB and 1 GB, but the WAL file \"%s\" header specifies %d byte",
-									 "WAL segment size must be a power of two between 1 MB and 1 GB, but the WAL file \"%s\" header specifies %d bytes",
+			/*
+			 * Verification of the file size is the only useful thing we can
+			 * do. If anything else is wrong, the XLOG reader should find out
+			 * after decryption.
+			 */
+			 if (!IsValidWalSegSize(WalSegSz))
+				fatal_error(ngettext("WAL segment size must be a power of two between 1 MB and 1 GB, but size of the WAL file \"%s\" is %d byte",
+									 "WAL segment size must be a power of two between 1 MB and 1 GB, but size of the WAL file \"%s\" is %d bytes",
 									 WalSegSz),
-							fname, WalSegSz);
+								fname, WalSegSz);
 		}
-		else if (r < 0)
-			fatal_error("could not read file \"%s\": %m",
-						fname);
-		else
-			fatal_error("could not read file \"%s\": read %d of %zu",
-						fname, r, (Size) XLOG_BLCKSZ);
+		/* End - ReqID:SRS-SECURITY-TDE */
+		else 
+		{
+			r = read(fd, buf.data, XLOG_BLCKSZ);
+			if (r == XLOG_BLCKSZ)
+			{
+				XLogLongPageHeader longhdr = (XLogLongPageHeader) buf.data;
+
+				WalSegSz = longhdr->xlp_seg_size;
+
+				if (!IsValidWalSegSize(WalSegSz))
+					fatal_error(ngettext("WAL segment size must be a power of two between 1 MB and 1 GB, but the WAL file \"%s\" header specifies %d byte",
+										"WAL segment size must be a power of two between 1 MB and 1 GB, but the WAL file \"%s\" header specifies %d bytes",
+										WalSegSz),
+								fname, WalSegSz);
+			}
+			else if (r < 0)
+				fatal_error("could not read file \"%s\": %m",
+							fname);
+			else
+				fatal_error("could not read file \"%s\": read %d of %zu",
+							fname, r, (Size) XLOG_BLCKSZ);
+		}
+			
 		close(fd);
 		return true;
 	}
@@ -354,7 +512,7 @@ WALDumpReadPage(XLogReaderState *state, XLogRecPtr targetPagePtr, int reqLen,
 	}
 
 	if (!WALRead(state, readBuff, targetPagePtr, count, private->timeline,
-				 &errinfo))
+				 &errinfo, true))
 	{
 		WALOpenSegment *seg = &errinfo.wre_seg;
 		char		fname[MAXPGPATH];
@@ -749,6 +907,13 @@ usage(void)
 	printf(_("  -x, --xid=XID          only show records with transaction ID XID\n"));
 	printf(_("  -z, --stats[=record]   show statistics instead of records\n"
 			 "                         (optionally, show per-record statistics)\n"));
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -C, --cluster-key-command=COMMAND\n"
+			 "						   set command to obtain the cluster key\n"));
+	printf(_("  -R, --authprompt	   prompt for a passphrase or PIN\n"));
+	printf(_("  -K, --encrypt-method   the encryption method of the wal file\n"));
+	printf(_("  -W, --wal-key		   the path of the wal's key file\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -?, --help             show this help, then exit\n"));
 	printf(_("\nReport bugs to <%s>.\n"), PACKAGE_BUGREPORT);
 	printf(_("%s home page: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);
@@ -782,6 +947,12 @@ main(int argc, char **argv)
 		{"xid", required_argument, NULL, 'x'},
 		{"version", no_argument, NULL, 'V'},
 		{"stats", optional_argument, NULL, 'z'},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"cluster-key-command", required_argument, NULL, 'C'},
+		{"authprompt", required_argument, NULL, 'R'},
+		{"encrypt-method", required_argument, NULL, 'K'},
+		{"wal-key", required_argument, NULL, 'W'},
+		/* End - ReqID:SRS-SECURITY-TDE */
 		{NULL, 0, NULL, 0}
 	};
 
@@ -842,7 +1013,7 @@ main(int argc, char **argv)
 		goto bad_argument;
 	}
 
-	while ((option = getopt_long(argc, argv, "be:fn:p:qr:s:t:x:z",
+	while ((option = getopt_long(argc, argv, "bC:e:fK:n:p:qr:Rs:t:W:x:z:",
 								 long_options, &optindex)) != -1)
 	{
 		switch (option)
@@ -943,6 +1114,38 @@ main(int argc, char **argv)
 					}
 				}
 				break;
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'C':
+				cluster_key_cmd = pg_strdup(optarg);
+				WALEncrypted = true;
+				break;
+			case 'R':
+				pass_terminal_fd = true;
+				break;
+			case 'K':
+				{
+					int i;
+
+					/* method 0/disabled cannot be specified */
+					for (i = DISABLED_ENCRYPTION_METHOD + 1;
+						 i < NUM_ENCRYPTION_METHODS; i++)
+						if (pg_strcasecmp(optarg, encryption_methods[i].name) == 0)
+						{
+							PG_CIPHER_ENCRYPT_CTR = encryption_methods[i].cipher_encrypt_id;
+							break;
+						}
+					if (i == NUM_ENCRYPTION_METHODS)
+					{
+						pg_log_error("invalid encryption method specified");
+						goto bad_argument;
+					}
+					WALEncrypted = true;
+					break;
+				}
+			case 'W':
+				key_path = pg_strdup(optarg);
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 			default:
 				goto bad_argument;
 		}
@@ -1055,6 +1258,52 @@ main(int argc, char **argv)
 	}
 
 	/* done with argument parsing, do the actual work */
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/* Try to get kmgr conf from PGDATA */
+	if (cluster_key_cmd == NULL || PG_CIPHER_ENCRYPT_CTR == PG_CIPHER_INVALID)
+	{
+		char		datadir[MAXPGPATH];
+		int			encryption_mode = ENCRYPTION_MODE_NOTHING;		
+
+		snprintf(datadir, MAXPGPATH, "%s/..", waldir);
+		if (kmgr_get_keycmd_conf(datadir, &cluster_key_cmd, &PG_CIPHER_ENCRYPT_CTR, &encryption_mode))
+		{
+			if (cluster_key_cmd != NULL && PG_CIPHER_ENCRYPT_CTR != PG_CIPHER_INVALID && 
+				(encryption_mode == ENCRYPTION_MODE_ALL || encryption_mode == ENCRYPTION_MODE_WAL))
+			{
+				if (key_path == NULL)
+				{
+					char		keypath[MAXPGPATH];
+					snprintf(keypath, MAXPGPATH, "%s/%s/wal.wkey", datadir, LIVE_KMGR_DIR);
+					key_path = pstrdup(keypath);
+				}
+
+				WALEncrypted = true;
+			}
+		}
+	}
+
+	if (WALEncrypted)
+	{
+		if (cluster_key_cmd == NULL || PG_CIPHER_ENCRYPT_CTR == PG_CIPHER_INVALID)
+		{
+			pg_log_error("cluster-key-command and encrypt-method option must be passed when WAL were encrypted\n");
+			goto bad_argument;
+		}
+
+		retrieve_cluster_key(); 
+		if (key_path == NULL)
+		{
+			pg_log_error("wal-key option must be passed when WAL were encrypted\n");
+			goto bad_argument;
+		}
+
+		retrieve_xlog_key();
+		LocalXLogKey = &data_key;
+		InitializeXLogEncryption();
+	}
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/* we have everything we need, start reading */
 	xlogreader_state =

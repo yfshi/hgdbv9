@@ -500,17 +500,19 @@ gistplacetopage(Relation rel, Size freespace, GISTSTATE *giststate,
 		 * later. (There can't be any concurrent scans during index build, so
 		 * we don't need to be able to detect concurrent splits yet.)
 		 */
+		/* Begin - ReqID:SRS-SECURITY-TDE */
 		if (is_build)
-			recptr = GistBuildLSN;
+			recptr = !FileEncryptionEnabled ? GistBuildLSN :
+						LSNForEncryption(RelationIsPermanent(rel));
+		else if (RelationNeedsWAL(rel))
+			recptr = gistXLogSplit(is_leaf,
+								   dist, oldrlink, oldnsn, leftchildbuf,
+								   markfollowright);
+		else if (FileEncryptionEnabled)
+			recptr = LSNForEncryption(RelationIsPermanent(rel));
 		else
-		{
-			if (RelationNeedsWAL(rel))
-				recptr = gistXLogSplit(is_leaf,
-									   dist, oldrlink, oldnsn, leftchildbuf,
-									   markfollowright);
-			else
-				recptr = gistGetFakeLSN(rel);
-		}
+			recptr = gistGetFakeLSN(rel);
+		/* End - ReqID:SRS-SECURITY-TDE */
 
 		for (ptr = dist; ptr; ptr = ptr->next)
 			PageSetLSN(ptr->page, recptr);
@@ -567,28 +569,31 @@ gistplacetopage(Relation rel, Size freespace, GISTSTATE *giststate,
 		if (BufferIsValid(leftchildbuf))
 			MarkBufferDirty(leftchildbuf);
 
+		/* Begin - ReqID:SRS-SECURITY-TDE */
 		if (is_build)
-			recptr = GistBuildLSN;
-		else
+			recptr = !FileEncryptionEnabled ? GistBuildLSN :
+						LSNForEncryption(RelationIsPermanent(rel));
+		else if (RelationNeedsWAL(rel))
 		{
-			if (RelationNeedsWAL(rel))
+			OffsetNumber ndeloffs = 0,
+						deloffs[1];
+
+			if (OffsetNumberIsValid(oldoffnum))
 			{
-				OffsetNumber ndeloffs = 0,
-							deloffs[1];
-
-				if (OffsetNumberIsValid(oldoffnum))
-				{
-					deloffs[0] = oldoffnum;
-					ndeloffs = 1;
-				}
-
-				recptr = gistXLogUpdate(buffer,
-										deloffs, ndeloffs, itup, ntup,
-										leftchildbuf);
+				deloffs[0] = oldoffnum;
+				ndeloffs = 1;
 			}
-			else
-				recptr = gistGetFakeLSN(rel);
+
+			recptr = gistXLogUpdate(buffer,
+									deloffs, ndeloffs, itup, ntup,
+									leftchildbuf);
 		}
+		else if (FileEncryptionEnabled)
+			recptr = LSNForEncryption(RelationIsPermanent(rel));
+		else
+			recptr = gistGetFakeLSN(rel);
+		/* End - ReqID:SRS-SECURITY-TDE */
+
 		PageSetLSN(page, recptr);
 
 		if (newblkno)
@@ -1685,6 +1690,8 @@ gistprunepage(Relation rel, Page page, Buffer buffer, Relation heapRel)
 
 	if (ndeletable > 0)
 	{
+		XLogRecPtr	recptr;
+
 		TransactionId latestRemovedXid = InvalidTransactionId;
 
 		if (XLogStandbyInfoActive() && RelationNeedsWAL(rel))
@@ -1708,18 +1715,21 @@ gistprunepage(Relation rel, Page page, Buffer buffer, Relation heapRel)
 		MarkBufferDirty(buffer);
 
 		/* XLOG stuff */
+		/* Begin - ReqID:SRS-SECURITY-TDE */
 		if (RelationNeedsWAL(rel))
 		{
-			XLogRecPtr	recptr;
-
 			recptr = gistXLogDelete(buffer,
 									deletable, ndeletable,
 									latestRemovedXid);
 
-			PageSetLSN(page, recptr);
 		}
+		else if (FileEncryptionEnabled)
+			recptr = LSNForEncryption(RelationIsPermanent(rel));
 		else
-			PageSetLSN(page, gistGetFakeLSN(rel));
+			recptr = gistGetFakeLSN(rel);
+
+		PageSetLSN(page, recptr);
+		/* End - ReqID:SRS-SECURITY-TDE */
 
 		END_CRIT_SECTION();
 	}

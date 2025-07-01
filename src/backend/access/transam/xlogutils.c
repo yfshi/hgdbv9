@@ -940,7 +940,10 @@ read_local_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr,
 	 * zero-padded up to the page boundary if it's incomplete.
 	 */
 	if (!WALRead(state, cur_page, targetPagePtr, XLOG_BLCKSZ, tli,
-				 &errinfo))
+				 &errinfo,
+				/* Begin - ReqID:SRS-SECURITY-TDE */
+				true))
+				/* End - ReqID:SRS-SECURITY-TDE */
 		WALReadRaiseError(&errinfo);
 
 	/* number of valid bytes in the buffer */

@@ -1389,3 +1389,11 @@ REVOKE ALL ON pg_subscription FROM public;
 GRANT SELECT (oid, subdbid, subname, subowner, subenabled, subbinary,
               substream, subslotname, subsynccommit, subpublications)
     ON pg_subscription TO public;
+
+-- Begin - ReqID:SRS-SECURITY-TDE
+CREATE VIEW pg_encryption_keys AS
+   SELECT * FROM pg_show_all_encryption_keys() AS A;
+
+REVOKE ALL on pg_encryption_keys FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION pg_show_all_encryption_keys() FROM PUBLIC;
+-- End - ReqID:SRS-SECURITY-TDE

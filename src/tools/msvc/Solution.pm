@@ -335,6 +335,7 @@ sub GenerateFiles
 		HAVE_DLOPEN                                 => undef,
 		HAVE_EDITLINE_HISTORY_H                     => undef,
 		HAVE_EDITLINE_READLINE_H                    => undef,
+		HAVE_EVP_SM4_CTR                            => undef,
 		HAVE_EXECINFO_H                             => undef,
 		HAVE_EXPLICIT_BZERO                         => undef,
 		HAVE_FDATASYNC                              => undef,
@@ -666,6 +667,7 @@ sub GenerateFiles
 		{
 			$define{HAVE_X509_GET_SIGNATURE_INFO} = 1;
 			$define{HAVE_SSL_CTX_SET_NUM_TICKETS} = 1;
+			$define{HAVE_EVP_SM4_CTR} = 1;
 		}
 
 		# Symbols needed with OpenSSL 1.1.0 and above.

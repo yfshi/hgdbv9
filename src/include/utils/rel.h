@@ -368,6 +368,7 @@ typedef struct StdRdOptions
 	StdRdOptIndexCleanup vacuum_index_cleanup;	/* controls index vacuuming */
 	bool		vacuum_truncate;	/* enables vacuum to truncate a relation */
 	bool		on_commit_delete_rows;	/* global temp table */
+	bool		encrypt;		/* encrypt the relation (ReqID:SRS-SECURITY-TDE) */
 } StdRdOptions;
 
 #define HEAP_MIN_FILLFACTOR			10
@@ -777,5 +778,10 @@ RelationGetSmgr(Relation rel)
 /* routines in utils/cache/relcache.c */
 extern void RelationIncrementReferenceCount(Relation rel);
 extern void RelationDecrementReferenceCount(Relation rel);
+
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/* in utils/cache/relopt.c */
+extern bool RelationIsEncrypted(Relation rel);
+/* End - ReqID:SRS-SECURITY-TDE */
 
 #endif							/* REL_H */

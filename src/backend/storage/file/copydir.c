@@ -26,6 +26,10 @@
 #include "pgstat.h"
 #include "storage/copydir.h"
 #include "storage/fd.h"
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "access/xloginsert.h"
+#include "crypto/bufenc.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * copydir: copy a directory
@@ -74,7 +78,10 @@ copydir(char *fromdir, char *todir, bool recurse)
 				copydir(fromfile, tofile, true);
 		}
 		else if (S_ISREG(fst.st_mode))
-			copy_file(fromfile, tofile);
+			copy_file(fromfile, tofile,
+					/* Begin - ReqID:SRS-SECURITY-TDE */
+						false);
+					/* End - ReqID:SRS-SECURITY-TDE */
 	}
 	FreeDir(xldir);
 
@@ -124,7 +131,10 @@ copydir(char *fromdir, char *todir, bool recurse)
  * copy one file
  */
 void
-copy_file(char *fromfile, char *tofile)
+copy_file(char *fromfile, char *tofile,
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+			bool encrypt_init_file)
+		/* End - ReqID:SRS-SECURITY-TDE */
 {
 	char	   *buffer;
 	int			srcfd;
@@ -132,9 +142,10 @@ copy_file(char *fromfile, char *tofile)
 	int			nbytes;
 	off_t		offset;
 	off_t		flush_offset;
-
+	/* Begin - ReqID:SRS-SECURITY-TDE */
 	/* Size of copy buffer (read and write requests) */
-#define COPY_BUF_SIZE (8 * BLCKSZ)
+	int			copy_buf_size = (encrypt_init_file) ? BLCKSZ : 8 * BLCKSZ;
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/*
 	 * Size of data flush requests.  It seems beneficial on most platforms to
@@ -149,7 +160,9 @@ copy_file(char *fromfile, char *tofile)
 #endif
 
 	/* Use palloc to ensure we get a maxaligned buffer */
-	buffer = palloc(COPY_BUF_SIZE);
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	buffer = palloc(copy_buf_size);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/*
 	 * Open the files
@@ -187,7 +200,9 @@ copy_file(char *fromfile, char *tofile)
 		}
 
 		pgstat_report_wait_start(WAIT_EVENT_COPY_FILE_READ);
-		nbytes = read(srcfd, buffer, COPY_BUF_SIZE);
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		nbytes = read(srcfd, buffer, copy_buf_size);
+		/* End - ReqID:SRS-SECURITY-TDE */
 		pgstat_report_wait_end();
 		if (nbytes < 0)
 			ereport(ERROR,
@@ -195,6 +210,22 @@ copy_file(char *fromfile, char *tofile)
 					 errmsg("could not read file \"%s\": %m", fromfile)));
 		if (nbytes == 0)
 			break;
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		/*
+		 * When we copy an init fork page to be part of an empty unlogged
+		 * relation, its real LSN must be replaced with a fake one, and the
+		 * page encrypted.
+		 */
+		if (encrypt_init_file)
+		{
+			Page page = (Page) buffer;
+
+			Assert(nbytes == BLCKSZ);
+			PageSetLSN(page, LSNForEncryption(false));
+			PageEncryptInplace(page, MAIN_FORKNUM, false, offset / BLCKSZ);
+		}
+		/* End - ReqID:SRS-SECURITY-TDE */
+
 		errno = 0;
 		pgstat_report_wait_start(WAIT_EVENT_COPY_FILE_WRITE);
 		if ((int) write(dstfd, buffer, nbytes) != nbytes)

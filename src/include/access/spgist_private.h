@@ -27,6 +27,7 @@ typedef struct SpGistOptions
 {
 	int32		varlena_header_;	/* varlena header (do not touch directly!) */
 	int			fillfactor;		/* page fill factor in percent (0..100) */
+	bool		encrypt;		/* encrypt the index (ReqID:SRS-SECURITY-TDE) */
 } SpGistOptions;
 
 #define SpGistGetFillFactor(relation) \

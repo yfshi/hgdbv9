@@ -221,6 +221,11 @@ static LagTracker *lag_tracker;
 /* Signal handlers */
 static void WalSndLastCycleHandler(SIGNAL_ARGS);
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/* Decrypt */
+static bool decrypt_stream = false;
+/* End - ReqID:SRS-SECURITY-TDE */
+
 /* Prototypes for private functions */
 typedef void (*WalSndSendDataCallback) (void);
 static void WalSndLoop(WalSndSendDataCallback send_data);
@@ -740,6 +745,14 @@ StartReplication(StartReplicationCmd *cmd)
 		/* Main loop of walsender */
 		replication_active = true;
 
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		xlogreader->sendTLI = sendTimeLine;
+		if (!cmd->cipher)
+			decrypt_stream = true;
+		else
+			decrypt_stream = false;
+		/* End - ReqID:SRS-SECURITY-TDE */
+
 		WalSndLoop(XLogSendPhysical);
 
 		replication_active = false;
@@ -842,7 +855,10 @@ logical_read_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr, int req
 				 state->seg.ws_tli, /* Pass the current TLI because only
 									 * WalSndSegmentOpen controls whether new
 									 * TLI is needed. */
-				 &errinfo))
+				 &errinfo,
+				/* Begin - ReqID:SRS-SECURITY-TDE */
+				 decrypt_stream))
+				/* End - ReqID:SRS-SECURITY-TDE */
 		WALReadRaiseError(&errinfo);
 
 	/*
@@ -1023,6 +1039,13 @@ CreateReplicationSlot(CreateReplicationSlotCmd *cmd)
 		 */
 		last_reply_timestamp = 0;
 
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		if (WALEncrypted)
+			decrypt_stream = true;
+		else
+			decrypt_stream = false;
+		/* End - ReqID:SRS-SECURITY-TDE */
+
 		/* build initial snapshot, might take a while */
 		DecodingContextFindStartpoint(ctx);
 
@@ -1202,6 +1225,13 @@ StartLogicalReplication(StartReplicationCmd *cmd)
 	replication_active = true;
 
 	SyncRepInitConfig();
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/* TODO(TDE): For now, in logical replication we decrypt and then send. 
+	 * We will consider implementing sending without decryption in future versions. 
+	 */
+	decrypt_stream = true;
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/* Main loop of walsender */
 	WalSndLoop(XLogSendLogical);
@@ -2806,7 +2836,10 @@ retry:
 				 xlogreader->seg.ws_tli,	/* Pass the current TLI because
 											 * only WalSndSegmentOpen controls
 											 * whether new TLI is needed. */
-				 &errinfo))
+				 &errinfo,
+				/* Begin - ReqID:SRS-SECURITY-TDE */
+				 decrypt_stream))
+				/* End - ReqID:SRS-SECURITY-TDE */
 		WALReadRaiseError(&errinfo);
 
 	/* See logical_read_xlog_page(). */

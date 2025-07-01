@@ -610,7 +610,10 @@ ginoptions(Datum reloptions, bool validate)
 	static const relopt_parse_elt tab[] = {
 		{"fastupdate", RELOPT_TYPE_BOOL, offsetof(GinOptions, useFastUpdate)},
 		{"gin_pending_list_limit", RELOPT_TYPE_INT, offsetof(GinOptions,
-															 pendingListCleanupSize)}
+															 pendingListCleanupSize)},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"encrypt", RELOPT_TYPE_BOOL, offsetof(GinOptions, encrypt)}
+		/* End - ReqID:SRS-SECURITY-TDE */
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate,

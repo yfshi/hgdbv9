@@ -1,0 +1,66 @@
+# Cryptographic device interface configuration file
+[ErrorLog]
+level=2
+logfile=swsds.log
+logjsonerror=swsds_error.log
+logjsoninfo=swsds_info.log
+maxsize=10
+[HSM1]
+ip=192.168.95.124
+port=8078
+passwd=0E0F6A06AE3BD1E49A7AB13F85FE1591
+[Timeout]
+connect=30
+service=30
+[ConnectionPool]
+poolsize=50
+[AccessInfo]
+# Enable private key access control  0:disable 1:enable  2:Thread-local variable(only in Linux)
+controlAuthority=1
+# The arrangement order of the private key access control permissions algorithm 
+# RSA=1  SM2=2   ECDSA=3  DSA=4  SM9MAST=5  SM9USER=6  EdDSA=7
+algorithmArrangement=1234567
+[SessionKey]
+# Session key synchronization during multi-machine load balancing
+# 0:Session not synchronized		1:Session key unsynchronized (affect performance)
+Synchronize=1
+[Sem]
+# Whether to turn off the signal light
+# 0: turn on		Not 0: turn off
+SemStatus=1
+[Hash]
+# Hash mode
+# 0-client		1-server
+HashMode=1
+[KeepAlive]
+#Keep-alive heartbeat time
+heartbeat=60
+[OpenDevice]
+# Open multiple devices allow only one success
+# 1:allow		Not 1: disallow
+OpenDeviceMode=0
+# Limit nums of opened session same as connection pool
+# 1:limit		Not 1:no limit
+SessionHandleManage=0
+[Global]
+# Protocal ssl/tcp  
+Protocol=tcp
+#0:One-way authentication		1:Two-way authentication
+sslmode=0
+#0:RSA  1:SM2	2:ECDSA
+sslAlgorithm=0
+# Enable cipher list
+# 0:disable		1:enable
+CipherList = 0
+# ECDHE-ECDSA-AES128-GCM-SHA256
+# ECDHE-ECDSA-AES128-SHA256
+# ECDHE-RSA-AES128-GCM-SHA256
+# ECDHE-RSA-AES128-SHA256
+CipherListName=ECDHE-RSA-AES128-GCM-SHA256
+[Authentication]
+KeyStore=
+KeyStorePassword=
+KeyStoreEnc=
+KeyStoreEncPassword=
+TrustedKeyStore=
+TrustedKeyStorePassword=

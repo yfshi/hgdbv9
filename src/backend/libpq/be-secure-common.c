@@ -25,6 +25,9 @@
 #include "common/string.h"
 #include "libpq/libpq.h"
 #include "storage/fd.h"
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "postmaster/postmaster.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * Run ssl_passphrase_command
@@ -61,6 +64,21 @@ run_ssl_passphrase_command(const char *prompt, bool is_server_start, char *buf, 
 					appendStringInfoString(&command, prompt);
 					p++;
 					break;
+				/* Begin - ReqID:SRS-SECURITY-TDE */
+				case 'R':
+					{
+						char fd_str[20];
+
+						if (terminal_fd == -1)
+							ereport(ERROR,
+									(errcode(ERRCODE_INTERNAL_ERROR),
+									 errmsg("ssl_passphrase_command referenced %%R, but -R not specified")));
+						p++;
+						snprintf(fd_str, sizeof(fd_str), "%d", terminal_fd);
+						appendStringInfoString(&command, fd_str);
+						break;
+					}
+				/* End - ReqID:SRS-SECURITY-TDE */
 				case '%':
 					appendStringInfoChar(&command, '%');
 					p++;

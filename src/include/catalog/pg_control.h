@@ -78,6 +78,9 @@ typedef struct CheckPoint
 #define XLOG_FPI						0xB0
 /* 0xC0 is used in Postgres 9.5-11 */
 #define XLOG_OVERWRITE_CONTRECORD		0xD0
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#define XLOG_ENCRYPTION_LSN				0xE0
+/* End - ReqID:SRS-SECURITY-TDE */
 
 
 /*
@@ -234,6 +237,13 @@ typedef struct ControlFileData
 	int8		dbmode;
 	int8		casemode; /* case conversion mode 0 normal,1 interchange, 2 lowercase */
 	/* END - SQL PARSER */
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/* File encryption method;  index into encryption_methods[]. */
+	int		file_encryption_method;
+	/* File encryption target mode; index into encryption_target_modes[]. */
+	int		encryption_target_mode;
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/* CRC of all above ... MUST BE LAST! */
 	pg_crc32c	crc;

@@ -1090,6 +1090,7 @@ typedef struct BTOptions
 	int			fillfactor;		/* page fill factor in percent (0..100) */
 	float8		vacuum_cleanup_index_scale_factor;	/* deprecated */
 	bool		deduplicate_items;	/* Try to deduplicate items? */
+	bool		encrypt;			/* encrypt the index (ReqID:SRS-SECURITY-TDE) */
 } BTOptions;
 
 #define BTGetFillFactor(relation) \

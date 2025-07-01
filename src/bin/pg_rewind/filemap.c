@@ -33,6 +33,9 @@
 #include "filemap.h"
 #include "pg_rewind.h"
 #include "storage/fd.h"
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "common/kmgr_utils.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * Define a hash table which we can use to store information about the files
@@ -135,6 +138,15 @@ static const char *excludeDirContents[] =
 
 	/* Contents removed on startup, see AsyncShmemInit(). */
 	"pg_notify",
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/*
+	 * Skip cryptographic keys. It's generally not a good idea to copy the
+	 * cryptographic keys from source database because these might use
+	 * different cluster key.
+	 */
+	KMGR_DIR,
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/*
 	 * Old contents are loaded for possible debugging but are not required for

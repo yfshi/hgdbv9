@@ -37,6 +37,9 @@ typedef struct StreamCtl
 	bool		mark_done;		/* Mark segment as done in generated archive */
 	bool		do_sync;		/* Flush to disk to ensure consistent state of
 								 * data */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	bool		cipher;			/* Use cipher text in streaming */
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	stream_stop_callback stream_stop;	/* Stop streaming when returns true */
 

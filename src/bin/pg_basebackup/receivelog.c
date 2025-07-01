@@ -572,10 +572,13 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 			return true;
 
 		/* Initiate the replication stream at specified location */
-		snprintf(query, sizeof(query), "START_REPLICATION %s%X/%X TIMELINE %u",
+		snprintf(query, sizeof(query), "START_REPLICATION %s%X/%X TIMELINE %u %s",
 				 slotcmd,
 				 LSN_FORMAT_ARGS(stream->startpos),
-				 stream->timeline);
+				 stream->timeline,
+				 /* Begin - ReqID:SRS-SECURITY-TDE */
+				 stream->cipher ? "CIPHER" : "");
+				 /* End - ReqID:SRS-SECURITY-TDE */
 		res = PQexec(conn, query);
 		if (PQresultStatus(res) != PGRES_COPY_BOTH)
 		{

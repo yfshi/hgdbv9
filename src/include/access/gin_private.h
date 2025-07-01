@@ -27,6 +27,7 @@ typedef struct GinOptions
 	int32		vl_len_;		/* varlena header (do not touch directly!) */
 	bool		useFastUpdate;	/* use fast updates? */
 	int			pendingListCleanupSize; /* maximum size of pending list */
+	bool		encrypt;		/* encrypt the index (ReqID:SRS-SECURITY-TDE) */
 } GinOptions;
 
 #define GIN_DEFAULT_USE_FASTUPDATE	true

@@ -89,6 +89,9 @@
 #include "license.h"
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "common/kmgr_utils.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* Ideally this would be in a .h file, but it hardly seems worth the trouble */
 extern const char *select_default_timezone(const char *share_path);
@@ -167,6 +170,14 @@ static bool data_checksums = false;
 static char *xlog_dir = NULL;
 static char *str_wal_segment_size_mb = NULL;
 static int	wal_segment_size_mb;
+/* Begin - ReqID:SRS-SECURITY-TDE */
+static bool pass_terminal_fd = false;
+static char *term_fd_opt = NULL;
+static int file_encryption_method = DISABLED_ENCRYPTION_METHOD;
+static int encryption_target_mode = ENCRYPTION_MODE_NOTHING;
+static char *cluster_key_cmd = NULL;
+static char *old_key_datadir = NULL;
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* internal vars */
 static const char *progname;
@@ -258,6 +269,7 @@ static const char *const subdirs[] = {
 /* End - ReqID:SRS-SECURITY-AUDIT */
 	"pg_wal/archive_status",
 	"pg_commit_ts",
+	"pg_cryptokeys", /* ReqID:SRS-SECURITY-TDE */
 	"pg_dynshmem",
 	"pg_fdwxact",
 	"pg_notify",
@@ -1113,12 +1125,15 @@ test_config_settings(void)
 		test_buffs = MIN_BUFS_FOR_CONNS(test_conns);
 
 		snprintf(cmd, sizeof(cmd),
-				 "\"%s\" --boot -x0 %s %s "
+				 "\"%s\" --boot -x0 %s %s %s"
 				 "-c max_connections=%d "
 				 "-c shared_buffers=%d "
 				 "-c dynamic_shared_memory_type=%s "
 				 "< \"%s\" > \"%s\" 2>&1",
 				 backend_exec, boot_options, extra_options,
+				 /* Begin - ReqID:SRS-SECURITY-TDE */
+				 term_fd_opt ? term_fd_opt : "",
+				 /* End - ReqID:SRS-SECURITY-TDE */
 				 test_conns, test_buffs,
 				 dynamic_shared_memory_type,
 				 DEVNULL, DEVNULL);
@@ -1149,12 +1164,15 @@ test_config_settings(void)
 		}
 
 		snprintf(cmd, sizeof(cmd),
-				 "\"%s\" --boot -x0 %s %s "
+				 "\"%s\" --boot -x0 %s %s %s "
 				 "-c max_connections=%d "
 				 "-c shared_buffers=%d "
 				 "-c dynamic_shared_memory_type=%s "
 				 "< \"%s\" > \"%s\" 2>&1",
 				 backend_exec, boot_options, extra_options,
+				 /* Begin - ReqID:SRS-SECURITY-TDE */
+				 term_fd_opt ? term_fd_opt : "",
+				 /* End - ReqID:SRS-SECURITY-TDE */
 				 n_connections, test_buffs,
 				 dynamic_shared_memory_type,
 				 DEVNULL, DEVNULL);
@@ -1382,6 +1400,16 @@ setup_config(void)
 								  "password_encryption = md5");
 	}
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (cluster_key_cmd)
+	{
+		/* When we want to modify the paramter, remember to update kmgr_get_keycmd_conf. */
+		snprintf(repltok, sizeof(repltok), "cluster_key_command = '%s'",
+				 escape_quotes(cluster_key_cmd));
+		conflines = replace_token(conflines, "#cluster_key_command = ''", repltok);
+	}
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/*
 	 * If group access has been enabled for the cluster then it makes sense to
@@ -1721,7 +1749,8 @@ bootstrap_template1(void)
 
 	snprintf(cmd, sizeof(cmd),
 			 /* BEGIN - SQL PARSER */
-			 "\"%s\" --boot -x1 -c ivorysql.identifier_case_switch=%d -X %u %s %s %s %s %s",
+			 "\"%s\" --boot -x1 -c ivorysql.identifier_case_switch=%d "
+			 "-X %u %s %s %s %s %s %s %s %s %s %s %s %s",
 			 /* END - SQL PARSER */
 			 backend_exec,
 			 caseswitchmode,	/* case sensitive indentify: add guc "identifier_case_switch" */
@@ -1731,7 +1760,16 @@ bootstrap_template1(void)
 			 /* END - SQL PARSER */
 			 data_checksums ? "-k" : "",
 			 boot_options, extra_options,
-			 debug ? "-d 5" : "");
+			 debug ? "-d 5" : "",
+			 /* Begin - ReqID:SRS-SECURITY-TDE */
+			 cluster_key_cmd ? "-K" : "",
+			 cluster_key_cmd ? encryption_methods[file_encryption_method].name : "",
+			 encryption_target_mode ? "-z" : "",
+			 encryption_target_mode ? encryption_target_modes[encryption_target_mode].name : "",
+			 old_key_datadir ? "-u" : "",
+			 old_key_datadir ? old_key_datadir : "",
+			 term_fd_opt ? term_fd_opt : "");
+			 /* End - ReqID:SRS-SECURITY-TDE */
 
 
 	PG_CMD_OPEN;
@@ -2826,6 +2864,18 @@ usage(const char *progname)
 	printf(_("  -G, --highgo-version      output version of highgo information, then exit\n"));
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -C, --cluster-key-command=COMMAND\n"
+			 "                            enable cluster file encryption and set command\n"
+			 "                            to obtain the cluster key\n"));
+	printf(_("  -R, --authprompt          prompt for a passphrase or PIN\n"));
+	printf(_("  -K, --file-encryption-method=METHOD\n"
+			 "                            cluster file encryption method\n"));
+	printf(_("  -z, --file-encryption-mode=MODE\n"
+			 "             				  cluster file encryption mode\n"));
+	printf(_("  -u, --copy-encryption-keys=DATADIR\n"
+			 "                            copy the file encryption key from another cluster\n"));
+ 	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -?, --help                show this help, then exit\n"));
 	printf(_("\nIf the data directory is not specified, the environment variable PGDATA\n"
 			 "is used.\n"));
@@ -3475,6 +3525,21 @@ initialize_data_directory(void)
 	/* Top level PG_VERSION is checked by bootstrapper, so make it first */
 	write_version_file(NULL);
 
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (pass_terminal_fd)
+	{
+		int terminal_fd = open("/dev/tty", O_RDWR, 0);
+
+		if (terminal_fd < 0)
+		{
+			pg_log_error(_("%s: could not open terminal: %s\n"),
+						 progname, strerror(errno));
+			exit(1);
+		}
+		term_fd_opt = psprintf("-R %d", terminal_fd);
+	}
+	/* End - ReqID:SRS-SECURITY-TDE */
+
 	/* Select suitable configuration settings */
 	set_null_conf();
 	test_config_settings();
@@ -3501,21 +3566,30 @@ initialize_data_directory(void)
 	if (strcmp(dbmode, "pg") == 0)
 	/* END - SQL PARSER */
 		snprintf(cmd, sizeof(cmd),
-				 "\"%s\" %s %s template1 >%s",
+				 "\"%s\" %s %s %s template1 >%s",
 				 backend_exec, backend_options, extra_options,
+				 /* Begin - ReqID:SRS-SECURITY-TDE */
+				 term_fd_opt ? term_fd_opt : "",
+				 /* End - ReqID:SRS-SECURITY-TDE */
 				 DEVNULL);
 	/* BEGIN - SQL PARSER */
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	else if(strcmp(dbmode, "mysql") == 0)
 		snprintf(cmd, sizeof(cmd),
-				 "\"%s\" %s %s %s template1 >%s",
+				 "\"%s\" %s %s %s %s template1 >%s",
 				 backend_exec, backend_options, extra_options, mys_options,
+				 /* Begin - ReqID:SRS-SECURITY-TDE */
+				 term_fd_opt ? term_fd_opt : "",
+				 /* End - ReqID:SRS-SECURITY-TDE */
 				 DEVNULL);
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else
 		snprintf(cmd, sizeof(cmd),
-				 "\"%s\" %s %s %s template1 >%s",
+				 "\"%s\" %s %s %s %s template1 >%s",
 				 backend_exec, backend_options, extra_options, ora_options,
+				 /* Begin - ReqID:SRS-SECURITY-TDE */
+				 term_fd_opt ? term_fd_opt : "",
+				 /* End - ReqID:SRS-SECURITY-TDE */
 				 DEVNULL);
 	/* END - SQL PARSER */
 
@@ -3710,6 +3784,13 @@ main(int argc, char *argv[])
 /* End - ReqID:SRS-SECURITY-AUDIT */
 		{"discard-caches", no_argument, NULL, 14},
 		{"enable_blankspace_compare",required_argument,NULL,15},	/* SRS-MISC-COMPATDM-SQL */
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"cluster-key-command", required_argument, NULL, 'C'},
+		{"authprompt", no_argument, NULL, 'R'},
+		{"file-encryption-method", required_argument, NULL, 'K'},
+		{"file-encryption-mode", required_argument, NULL, 'z'},
+		{"copy-encryption-keys", required_argument, NULL, 'u'},
+		/* End - ReqID:SRS-SECURITY-TDE */
 		{NULL, 0, NULL, 0}
 	};
 
@@ -3770,12 +3851,12 @@ main(int argc, char *argv[])
 	/* BEGIN - SQL PARSER */
 	/* case sensitive indentify: add "-c" option for specifing case conversion mode */
 	/* Begin - ReqID:SRS-SECURITY-AUDIT */
-	while ((c = getopt_long(argc, argv, "A:a:c:dD:E:gkL:m:nNsST:U:WX:H:P:", long_options, &option_index)) != -1) //ReqID:SRS-SECURITY-AUDIT
+	while ((c = getopt_long(argc, argv, "a:A:c:C:dD:E:gkK:L:m:nNRsST:u:U:WX:z:H:P:", long_options, &option_index)) != -1)
 	/* END - SQL PARSER */
 #else
 	/* BEGIN - SQL PARSER */
 	/* case sensitive indentify: add "-c" option for specifing case conversion mode */
-	while ((c = getopt_long(argc, argv, "A:a:c:dD:E:gkL:m:nNsST:U:WX:", long_options, &option_index)) != -1) //ReqID:SRS-SECURITY-AUDIT
+	while ((c = getopt_long(argc, argv, "a:A:c:C:dD:E:gkK:L:m:nNRsST:u:U:WX:z:", long_options, &option_index)) != -1)
 	/* END - SQL PARSER */
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
@@ -3890,6 +3971,56 @@ main(int argc, char *argv[])
 			case 'L':
 				share_path = pg_strdup(optarg);
 				break;
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'C':
+				cluster_key_cmd = pg_strdup(optarg);
+				break;
+			case 'R':
+				pass_terminal_fd = true;
+				break;
+			case 'K':
+				{
+					int i;
+
+					/* method 0/disabled cannot be specified */
+					for (i = DISABLED_ENCRYPTION_METHOD + 1; i < NUM_ENCRYPTION_METHODS; i++)
+					{
+						if (pg_strcasecmp(optarg, encryption_methods[i].name) == 0)
+						{
+							file_encryption_method = i;
+							break;
+						}
+					}
+					if (i == NUM_ENCRYPTION_METHODS)
+					{
+						fprintf(stderr, _("invalid cluster encryption method\n"));
+						exit(1);
+					}
+				}
+				break;
+			case 'z':
+				{
+					int i;
+
+					for (i = 0; i < NUM_ENCRYPTION_MODES; i++)
+					{
+						if (pg_strcasecmp(optarg, encryption_target_modes[i].name) == 0)
+						{
+							encryption_target_mode = i;
+							break;
+						}
+					}
+					if (i == NUM_ENCRYPTION_MODES)
+					{
+						fprintf(stderr, _("invalid cluster encryption mode\n"));
+						exit(1);
+					}
+				}
+				break;
+			case 'u':
+				old_key_datadir = pg_strdup(optarg);
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 			case 1:
 				locale = pg_strdup(optarg);
 				break;
@@ -4002,6 +4133,34 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+#ifndef USE_OPENSSL
+	if (cluster_key_cmd)
+	{
+		pg_log_error("cluster file encryption is not supported because OpenSSL is not supported by this build");
+		exit(1);
+	}
+#endif
+
+	if (old_key_datadir != NULL && cluster_key_cmd == NULL)
+	{
+		pg_log_error("copying encryption keys requires the cluster key command to be specified");
+		exit(1);
+	}
+
+	if (file_encryption_method != DISABLED_ENCRYPTION_METHOD &&
+		cluster_key_cmd == NULL)
+	{
+		pg_log_error("a file encryption method requires the cluster key command to be specified");
+		exit(1);
+	}
+
+	/* set the default */
+	if (file_encryption_method == DISABLED_ENCRYPTION_METHOD &&
+		cluster_key_cmd != NULL)
+		file_encryption_method = DEFAULT_ENABLED_ENCRYPTION_METHOD;
+	/* End - ReqID:SRS-SECURITY-TDE */
+
 	check_authmethod_unspecified(&authmethodlocal);
 	check_authmethod_unspecified(&authmethodhost);
 
@@ -4088,6 +4247,13 @@ main(int argc, char *argv[])
 		printf(_("Data page checksums are enabled.\n"));
 	else
 		printf(_("Data page checksums are disabled.\n"));
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (cluster_key_cmd)
+		printf(_("Cluster file encryption is enabled.\n"));
+	else
+		printf(_("Cluster file encryption is disabled.\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	if (pwprompt || pwfilename)
 		get_su_pwd();

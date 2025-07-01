@@ -13,6 +13,9 @@
 #include "fe_utils/string_utils.h"
 #include "mb/pg_wchar.h"
 #include "pg_upgrade.h"
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "common/kmgr_utils.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 static void check_new_cluster_is_empty(void);
 static void check_databases_are_compatible(void);
@@ -32,6 +35,9 @@ static void check_for_removed_data_type_usage(ClusterInfo *cluster,
 											  const char *datatype);
 static void check_for_jsonb_9_4_usage(ClusterInfo *cluster);
 static void check_for_pg_role_prefix(ClusterInfo *cluster);
+/* Begin - ReqID:SRS-SECURITY-TDE */
+static void check_for_cluster_key_failure(ClusterInfo *cluster);
+/* End - ReqID:SRS-SECURITY-TDE */
 static void check_for_new_tablespace_dir(ClusterInfo *new_cluster);
 static void check_for_user_defined_encoding_conversions(ClusterInfo *cluster);
 static char *get_canonical_locale_name(int category, const char *locale);
@@ -180,6 +186,11 @@ check_and_dump_old_cluster(bool live_check)
 	if (GET_MAJOR_VERSION(old_cluster.major_version) <= 905)
 		check_for_pg_role_prefix(&old_cluster);
 
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (GET_MAJOR_VERSION(old_cluster.major_version) >= 1300)
+		check_for_cluster_key_failure(&old_cluster);
+	/* End - ReqID:SRS-SECURITY-TDE */
+
 	if (GET_MAJOR_VERSION(old_cluster.major_version) == 904 &&
 		old_cluster.controldata.cat_ver < JSONB_FORMAT_CHANGE_CAT_VER)
 		check_for_jsonb_9_4_usage(&old_cluster);
@@ -217,6 +228,11 @@ check_new_cluster(void)
 	check_databases_are_compatible();
 
 	check_loadable_libraries();
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (GET_MAJOR_VERSION(old_cluster.major_version) >= 1300)
+		check_for_cluster_key_failure(&new_cluster);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	switch (user_opts.transfer_mode)
 	{
@@ -1557,6 +1573,32 @@ check_for_user_defined_encoding_conversions(ClusterInfo *cluster)
 		check_ok();
 }
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/*
+ * check_for_cluster_key_failure()
+ *
+ *	Make sure there was no unrepaired pg_alterckey failure
+ */
+static void
+check_for_cluster_key_failure(ClusterInfo *cluster)
+{
+	struct stat buffer;
+
+	if (stat (KMGR_DIR_PID, &buffer) == 0)
+	{
+		if (cluster == &old_cluster)
+			pg_fatal("The source cluster had a pg_alterckey failure that needs repair or\n"
+					 "pg_alterckey is running.  Run pg_alterckey --repair or wait for it\n"
+					 "to complete.\n");
+		else
+			pg_fatal("The target cluster had a pg_alterckey failure that needs repair or\n"
+					 "pg_alterckey is running.  Run pg_alterckey --repair or wait for it\n"
+					 "to complete.\n");
+	}
+
+	check_ok();
+}
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * get_canonical_locale_name

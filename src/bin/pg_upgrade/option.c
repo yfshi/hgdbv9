@@ -63,6 +63,9 @@ parseCommandLine(int argc, char *argv[])
 		{"check", no_argument, NULL, 'c'},
 		{"link", no_argument, NULL, 'k'},
 		{"retain", no_argument, NULL, 'r'},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"authprompt", no_argument, NULL, 'R'},
+		/* End - ReqID:SRS-SECURITY-TDE */
 		{"jobs", required_argument, NULL, 'j'},
 		{"socketdir", required_argument, NULL, 's'},
 		{"verbose", no_argument, NULL, 'v'},
@@ -163,7 +166,7 @@ parseCommandLine(int argc, char *argv[])
 #endif
 /* End - Bug#M0000315 */
 
-	while ((option = getopt_long(argc, argv, "d:D:b:B:cj:ko:O:p:P:q:Q:y:Y:rs:U:vN:",	/* ReqID:SRS-GKC-DATATYPE_001 */  /* ReqID:SRS-MISC-MYSQL-FRAME *//* Bug# Z1638 */
+	while ((option = getopt_long(argc, argv, "d:D:b:B:cj:ko:O:p:P:q:Q:y:Y:rRs:U:vN:",	/* ReqID:SRS-GKC-DATATYPE_001 */  /* ReqID:SRS-MISC-MYSQL-FRAME *//* Bug# Z1638 */
 								 long_options, &optindex)) != -1)
 	{
 		switch (option)
@@ -260,6 +263,12 @@ parseCommandLine(int argc, char *argv[])
 			case 'r':
 				log_opts.retain = true;
 				break;
+
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'R':
+				user_opts.pass_terminal_fd = true;
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 
 			case 's':
 				user_opts.socketdir = pg_strdup(optarg);

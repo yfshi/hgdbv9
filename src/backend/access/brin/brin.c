@@ -988,7 +988,10 @@ brinoptions(Datum reloptions, bool validate)
 {
 	static const relopt_parse_elt tab[] = {
 		{"pages_per_range", RELOPT_TYPE_INT, offsetof(BrinOptions, pagesPerRange)},
-		{"autosummarize", RELOPT_TYPE_BOOL, offsetof(BrinOptions, autosummarize)}
+		{"autosummarize", RELOPT_TYPE_BOOL, offsetof(BrinOptions, autosummarize)},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"encrypt", RELOPT_TYPE_BOOL, offsetof(BrinOptions, encrypt)}
+		/* End - ReqID:SRS-SECURITY-TDE */
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate,

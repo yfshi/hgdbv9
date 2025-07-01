@@ -55,7 +55,9 @@
 #include "utils/rel.h"
 #include "utils/resowner_private.h"
 #include "utils/timestamp.h"
-
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "crypto/bufenc.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* Note: these two macros only work on shared buffers, not local ones! */
 #define BufHdrGetBlock(bufHdr)	((Block) (BufferBlocks + ((Size) (bufHdr)->buf_id) * BLCKSZ))
@@ -774,6 +776,55 @@ ReadBufferExtended(Relation reln, ForkNumber forkNum, BlockNumber blockNum,
 							forkNum, blockNum, mode, strategy, &hit);
 	if (hit)
 		pgstat_count_buffer_hit(reln);
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/* We set/unset the encrypt flag after get the buffer immediately */
+	if (!AllTableEncrypted)
+	{
+		BufferDesc *bufHdr;
+		uint32		buf_state;
+		
+		if (BufferIsLocal(buf))
+			bufHdr = GetLocalBufferDescriptor(-buf - 1);
+		else
+			bufHdr = GetBufferDescriptor(buf - 1);
+
+		buf_state = LockBufHdr(bufHdr);
+		if (buf_state & BM_VALID)
+		{
+			bool set_dirty = false;
+			if (RelationIsEncrypted(reln))
+			{
+				if (!(buf_state & BM_ENCRYPT))
+				{
+					buf_state |= BM_ENCRYPT;
+					set_dirty = true;
+				}
+			}
+			else
+			{
+				/*
+				 * If a table is restored from an encrypted state to plaintext,
+				 * we will not decrypt it all immediatelly. Instead, we will
+				 * passively decrypt one page at a time and then write it
+				 * to disk in plaintext.
+				 */
+				if (buf_state & BM_ENCRYPT)
+				{
+					buf_state &= ~BM_ENCRYPT;
+					set_dirty = true;
+				}
+			}
+
+			if (set_dirty)
+			{
+				buf_state |= BM_DIRTY;
+			}
+		}
+		UnlockBufHdr(bufHdr, buf_state);
+	}
+	/* End - ReqID:SRS-SECURITY-TDE */
+
 	return buf;
 }
 
@@ -1022,7 +1073,12 @@ ReadBuffer_common(SMgrRelation smgr, char relpersistence, ForkNumber forkNum,
 			}
 
 			/* check for garbage data */
-			if (!PageIsVerifiedExtended((Page) bufBlock, blockNum,
+			if (!PageIsVerifiedExtended((Page) bufBlock,
+										/* Begin - ReqID:SRS-SECURITY-TDE */
+										forkNum,
+										relpersistence == RELPERSISTENCE_PERMANENT,
+										/* End - ReqID:SRS-SECURITY-TDE */
+										blockNum,
 										PIV_LOG_WARNING | PIV_REPORT_STAT))
 			{
 				if (mode == RBM_ZERO_ON_ERROR || zero_damaged_pages)
@@ -2902,12 +2958,34 @@ FlushBuffer(BufferDesc *buf, SMgrRelation reln)
 	 */
 	bufBlock = BufHdrGetBlock(buf);
 
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (FileEncryptionEnabled)
+	{
+		if (!AllTableEncrypted)
+		{
+			if (!PageIsNew(bufBlock) && (buf_state & BM_ENCRYPT))
+				PageSetEncrypted((Page) bufBlock);
+			else
+				PageClearEncrypted((Page) bufBlock);
+		}
+
+		/*
+		 * Technically BM_PERMANENT could indicate an init fork, but that's
+		 * okay since forkNum would also tell us not to encrypt init forks.
+		 */
+		bufToWrite = PageEncryptCopy((Page) bufBlock, buf->tag.forkNum,
+									 buf_state & BM_PERMANENT, buf->tag.blockNum);
+		bufToWrite = PageSetChecksumCopy((Page) bufToWrite, buf->tag.blockNum);
+	}
+	else
+		bufToWrite = PageSetChecksumCopy((Page) bufBlock, buf->tag.blockNum);
+
 	/*
 	 * Update page checksum if desired.  Since we have only shared lock on the
 	 * buffer, other processes might be updating hint bits in it, so we must
 	 * copy the page to private storage if we do checksumming.
 	 */
-	bufToWrite = PageSetChecksumCopy((Page) bufBlock, buf->tag.blockNum);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	if (track_io_timing)
 		INSTR_TIME_SET_CURRENT(io_start);
@@ -3570,6 +3648,11 @@ FlushRelationBuffers(Relation rel)
 				errcallback.previous = error_context_stack;
 				error_context_stack = &errcallback;
 
+				/* Begin - ReqID:SRS-SECURITY-TDE */
+				/* XXX should we be writing a copy of the page here? */
+				PageEncryptInplace(localpage, bufHdr->tag.forkNum,
+								   RelationIsPermanent(rel), bufHdr->tag.blockNum);
+				/* End - ReqID:SRS-SECURITY-TDE */
 				PageSetChecksumInplace(localpage, bufHdr->tag.blockNum);
 
 				smgrwrite(RelationGetSmgr(rel),

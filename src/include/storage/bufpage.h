@@ -18,6 +18,9 @@
 #include "storage/block.h"
 #include "storage/item.h"
 #include "storage/off.h"
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "common/relpath.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * A postgres disk page is an abstraction layered on top of a postgres
@@ -164,6 +167,10 @@ typedef struct PageHeaderData
 } PageHeaderData;
 
 typedef PageHeaderData *PageHeader;
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#define PageEncryptOffset	offsetof(PageHeaderData, pd_special)
+#define SizeOfPageEncryption (BLCKSZ - PageEncryptOffset)
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * pd_flags contains the following flag bits.  Undefined bits are initialized
@@ -181,8 +188,11 @@ typedef PageHeaderData *PageHeader;
 #define PD_PAGE_FULL		0x0002	/* not enough free space for new tuple? */
 #define PD_ALL_VISIBLE		0x0004	/* all tuples on page are visible to
 									 * everyone */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#define PD_ENCRYPTED		0x0008	/* page is encrypted */
 
-#define PD_VALID_FLAG_BITS	0x0007	/* OR of all valid pd_flags bits */
+#define PD_VALID_FLAG_BITS	0x000F	/* OR of all valid pd_flags bits */
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * Page layout version number 0 is for pre-7.3 Postgres releases.
@@ -389,6 +399,15 @@ PageValidateSpecialPointer(Page page)
 #define PageClearAllVisible(page) \
 	(((PageHeader) (page))->pd_flags &= ~PD_ALL_VISIBLE)
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#define PageIsEncrypted(page) \
+	(((PageHeader) (page))->pd_flags & PD_ENCRYPTED)
+#define PageSetEncrypted(page) \
+	(((PageHeader) (page))->pd_flags |= PD_ENCRYPTED)
+#define PageClearEncrypted(page) \
+	(((PageHeader) (page))->pd_flags &= ~PD_ENCRYPTED)
+/* End - ReqID:SRS-SECURITY-TDE */
+
 #define PageSetPrunable(page, xid) \
 do { \
 	Assert(TransactionIdIsNormal(xid)); \
@@ -420,9 +439,11 @@ do { \
 						((overwrite) ? PAI_OVERWRITE : 0) | \
 						((is_heap) ? PAI_IS_HEAP : 0))
 
-#define PageIsVerified(page, blkno) \
-	PageIsVerifiedExtended(page, blkno, \
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#define PageIsVerified(page, relation_is_permanent, blkno) \
+	PageIsVerifiedExtended(page, MAIN_FORKNUM, relation_is_permanent, blkno, \
 						   PIV_LOG_WARNING | PIV_REPORT_STAT)
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * Check that BLCKSZ is a multiple of sizeof(size_t).  In
@@ -435,7 +456,12 @@ StaticAssertDecl(BLCKSZ == ((BLCKSZ / sizeof(size_t)) * sizeof(size_t)),
 				 "BLCKSZ has to be a multiple of sizeof(size_t)");
 
 extern void PageInit(Page page, Size pageSize, Size specialSize);
-extern bool PageIsVerifiedExtended(Page page, BlockNumber blkno, int flags);
+/* Begin - ReqID:SRS-SECURITY-TDE */
+extern bool PageIsVerifiedExtended(Page page, ForkNumber forknum,
+								   bool relation_is_permanent,
+								   BlockNumber blkno,
+								   int flags);
+/* End - ReqID:SRS-SECURITY-TDE */
 extern OffsetNumber PageAddItemExtended(Page page, Item item, Size size,
 										OffsetNumber offsetNumber, int flags);
 extern Page PageGetTempPage(Page page);
@@ -455,5 +481,13 @@ extern bool PageIndexTupleOverwrite(Page page, OffsetNumber offnum,
 									Item newtup, Size newsize);
 extern char *PageSetChecksumCopy(Page page, BlockNumber blkno);
 extern void PageSetChecksumInplace(Page page, BlockNumber blkno);
+/* Begin - ReqID:SRS-SECURITY-TDE */
+extern char *PageEncryptCopy(Page page, ForkNumber forknum,
+							 bool relation_is_permanent, BlockNumber blkno);
+extern void PageEncryptInplace(Page page, ForkNumber forknum,
+							   bool relation_is_permanent, BlockNumber blkno);
+extern void PageDecryptInplace(Page page, ForkNumber forknum,
+							   bool relation_is_permanent, BlockNumber blkno);
+/* End - ReqID:SRS-SECURITY-TDE */
 
 #endif							/* BUFPAGE_H */

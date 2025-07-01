@@ -53,12 +53,20 @@
 /* BEGIN - SQL PARSER */
 #include "utils/ora_compatible.h"
 /* END - SQL PARSER */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "crypto/bufenc.h"
+#include "postmaster/postmaster.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 uint32		bootstrap_data_checksum_version = 0;	/* No checksum */
 /* BEGIN - SQL PARSER */
 int			bootstrap_database_mode = DB_ORACLE;
 /* END - SQL PARSER */
-
+/* Begin - ReqID:SRS-SECURITY-TDE */
+int			bootstrap_file_encryption_method = DISABLED_ENCRYPTION_METHOD;
+int			bootstrap_encryption_target_mode = ENCRYPTION_MODE_NOTHING;
+char		*bootstrap_old_key_datadir = NULL;	/* disabled */
+/* End - ReqID:SRS-SECURITY-TDE */
 
 static void CheckerModeMain(void);
 static void BootstrapModeMain(void);
@@ -236,7 +244,7 @@ AuxiliaryProcessMain(int argc, char *argv[])
 
 	/* BEGIN - SQL PARSER */
 	/* add parameter "-y" for sql parser mode option */
-	while ((flag = getopt(argc, argv, "B:c:d:D:Fkr:x:X:-:y:")) != -1)
+	while ((flag = getopt(argc, argv, "B:c:d:D:FkK:r:R:u:x:X:-:y:z:")) != -1)
 	/* END - SQL PARSER */
 	{
 		switch (flag)
@@ -266,6 +274,47 @@ AuxiliaryProcessMain(int argc, char *argv[])
 			case 'k':
 				bootstrap_data_checksum_version = PG_DATA_CHECKSUM_VERSION;
 				break;
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'K':
+				{
+					int i;
+
+					/* method 0/disabled cannot be specified */
+					for (i = DISABLED_ENCRYPTION_METHOD + 1;
+						 i < NUM_ENCRYPTION_METHODS; i++)
+						if (pg_strcasecmp(optarg, encryption_methods[i].name) == 0)
+						{
+							bootstrap_file_encryption_method = i;
+							break;
+						}
+					if (i == NUM_ENCRYPTION_METHODS)
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("invalid encryption method specified")));
+				}
+				break;
+			case 'z':
+				{
+					int i;
+
+					for (i = 0; i < NUM_ENCRYPTION_MODES; i++)
+					{
+						if (pg_strcasecmp(optarg, encryption_target_modes[i].name) == 0)
+						{
+							bootstrap_encryption_target_mode = i;
+							break;
+						}
+					}
+					if (i == NUM_ENCRYPTION_MODES)
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("invalid encryption mode specified")));
+				}
+				break;
+			case 'u':
+				bootstrap_old_key_datadir = pstrdup(optarg);
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 			/* BEGIN - SQL PARSER */
 			case 'y':
 				{
@@ -289,6 +338,11 @@ AuxiliaryProcessMain(int argc, char *argv[])
 			case 'r':
 				strlcpy(OutputFileName, optarg, MAXPGPATH);
 				break;
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'R':
+				terminal_fd = atoi(optarg);
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 			case 'x':
 				MyAuxProcType = atoi(optarg);
 				break;

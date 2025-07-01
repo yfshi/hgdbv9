@@ -53,6 +53,12 @@
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "catalog/pg_control.h"
+#include "common/controldata_utils.h"
+#include "common/kmgr_utils.h"
+#include "crypto/walenc.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 typedef struct
 {
@@ -92,6 +98,11 @@ static void update_basebackup_progress(int64 delta);
 static bool is_checksummed_file(const char *fullpath, const char *filename);
 static int	basebackup_read_file(int fd, char *buf, size_t nbytes, off_t offset,
 								 const char *filename, bool partial_read_ok);
+/* Begin - ReqID:SRS-SECURITY-TDE */
+static void sendControlFileContent(const char *filename, const char *content,
+								   backup_manifest_info *manifest, struct stat *statbuf);
+static bool is_encrypted_relation_file(const char *fullpath, const char *filename);
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* Was the backup currently in-progress initiated in recovery mode? */
 static bool backup_started_in_recovery = false;
@@ -139,6 +150,11 @@ static int64 backup_total = 0;
 /* Amount of backup data already streamed */
 static int64 backup_streamed = 0;
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/* Decrypt reltion files and WAL */
+static bool decrypt = true;
+/* End - ReqID:SRS-SECURITY-TDE */
+
 /*
  * Definition of one element part of an exclusion list, used for paths part
  * of checksum validation or base backups.  "name" is the name of the file
@@ -161,6 +177,12 @@ struct exclude_list_item
  */
 static const char *const excludeDirContents[] =
 {
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/* Skip temporary crypto key directories */
+	NEW_KMGR_DIR,
+	OLD_KMGR_DIR,
+	/* End - ReqID:SRS-SECURITY-TDE */
+
 	/*
 	 * Skip temporary statistics files. PG_STAT_TMP_DIR must be skipped even
 	 * when stats_temp_directory is set because PGSS_TEXT_FILE is always
@@ -447,8 +469,32 @@ perform_base_backup(basebackup_options *opt)
 							(errcode_for_file_access(),
 							 errmsg("could not stat file \"%s\": %m",
 									XLOG_CONTROL_FILE)));
-				sendFile(XLOG_CONTROL_FILE, XLOG_CONTROL_FILE, &statbuf,
-						 false, InvalidOid, &manifest, NULL);
+				/* Begin - ReqID:SRS-SECURITY-TDE */
+				/* If we decrypt the cluster, we need to adjust the control file */
+				if (decrypt)
+				{
+					ControlFileData *cfile;
+					char   *cfile_raw;
+					bool	crc_ok;
+
+					cfile = get_controlfile(".", &crc_ok);
+					cfile->file_encryption_method = DISABLED_ENCRYPTION_METHOD;
+					cfile->encryption_target_mode = ENCRYPTION_MODE_NOTHING;
+
+					/* Recalculate CRC of control file */
+					INIT_CRC32C(cfile->crc);
+					COMP_CRC32C(cfile->crc, (char *) cfile,
+								offsetof(ControlFileData, crc));
+					FIN_CRC32C(cfile->crc);
+
+					cfile_raw = (char *) palloc0(PG_CONTROL_FILE_SIZE);
+					memcpy(cfile_raw, cfile, sizeof(ControlFileData));
+					sendControlFileContent(XLOG_CONTROL_FILE, cfile_raw, &manifest, &statbuf);
+				}
+				else
+					sendFile(XLOG_CONTROL_FILE, XLOG_CONTROL_FILE, &statbuf,
+							 false, InvalidOid, &manifest, NULL);
+				/* End - ReqID:SRS-SECURITY-TDE */
 			}
 			else
 				sendTablespace(ti->path, ti->oid, false, &manifest);
@@ -647,6 +693,12 @@ perform_base_backup(basebackup_options *opt)
 											   len, pathbuf, true)) > 0)
 			{
 				CheckXLogRemoved(segno, tli);
+
+				/* Begin - ReqID:SRS-SECURITY-TDE */
+				if (decrypt && WALEncrypted)
+					XLogDecryptInplace(buf + len, cnt, tli, segno, len);
+				/* End - ReqID:SRS-SECURITY-TDE */
+
 				/* Send the chunk as a CopyData message */
 				if (pq_putmessage('d', buf, cnt))
 				{
@@ -787,6 +839,9 @@ parse_basebackup_options(List *options, basebackup_options *opt)
 	bool		o_noverify_checksums = false;
 	bool		o_manifest = false;
 	bool		o_manifest_checksums = false;
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	bool		o_cipher = false;
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	MemSet(opt, 0, sizeof(*opt));
 	opt->manifest = MANIFEST_OPTION_NO;
@@ -919,6 +974,18 @@ parse_basebackup_options(List *options, basebackup_options *opt)
 								optval)));
 			o_manifest_checksums = true;
 		}
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		else if (strcmp(defel->defname, "cipher") == 0)
+		{
+			if (o_cipher)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("duplicate option \"%s\"", defel->defname)));
+
+			decrypt = false;
+			o_cipher = true;
+		}
+		/* End - ReqID:SRS-SECURITY-TDE */
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);
@@ -1167,6 +1234,70 @@ sendFileWithContent(const char *filename, const char *content,
 	AddFileToBackupManifest(manifest, NULL, filename, len,
 							(pg_time_t) statbuf.st_mtime, &checksum_ctx);
 }
+
+/* Begin - ReqID:SRS-SECURITY-TDE */
+static void
+sendControlFileContent(const char *filename, const char *content,
+					   backup_manifest_info *manifest, struct stat *statbuf)
+{
+	int		pad,
+			len;
+	pg_checksum_context checksum_ctx;
+
+	if (pg_checksum_init(&checksum_ctx, manifest->checksum_type) < 0)
+		elog(ERROR, "could not initialize checksum of file \"%s\"",
+			 filename);
+
+	len = PG_CONTROL_FILE_SIZE;
+
+	_tarWriteHeader(filename, NULL, statbuf, false);
+	/* Send the contents as a CopyData message */
+	pq_putmessage('d', content, len);
+
+	update_basebackup_progress(len);
+
+	/* Pad to a multiple of the tar block size. */
+	pad = tarPaddingBytesRequired(len);
+	if (pad > 0)
+	{
+		char	buf[TAR_BLOCK_SIZE];
+
+		MemSet(buf, 0, pad);
+		pq_putmessage('d', buf, pad);
+		update_basebackup_progress(pad);
+	}
+
+	if (pg_checksum_update(&checksum_ctx, (uint8 *) content, len) < 0)
+		elog(ERROR, "counld not update checksum of file \"%s\"",
+			 filename);
+
+	AddFileToBackupManifest(manifest, NULL, filename, len,
+							(pg_time_t) statbuf->st_mtime, &checksum_ctx);
+}
+
+static bool 
+is_encrypted_relation_file(const char *fullpath, const char *filename)
+{
+	int			relOidChars;
+	ForkNumber	relForkNum;
+
+	if (strncmp(fullpath, "./global/", 9) == 0 ||
+		strncmp(fullpath, "./base/", 7) == 0 ||
+		strncmp(fullpath, "/", 1) == 0)
+	{
+
+		if (!parse_filename_for_nontemp_relation(filename, &relOidChars, &relForkNum))
+			return false;
+
+		if (relForkNum != MAIN_FORKNUM)
+			return false;
+
+		return true;
+	}
+
+	return false;
+}
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * Include the tablespace directory pointed to by 'path' in the output tar
@@ -1610,6 +1741,11 @@ sendFile(const char *readfilename, const char *tarfilename,
 	char	   *segmentpath;
 	bool		verify_checksum = false;
 	pg_checksum_context checksum_ctx;
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	bool		update_checksum = false;
+	BlockNumber d_blkno = 0;
+	char	   *filename = NULL;
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	if (pg_checksum_init(&checksum_ctx, manifest->checksum_type) < 0)
 		elog(ERROR, "could not initialize checksum of file \"%s\"",
@@ -1627,10 +1763,10 @@ sendFile(const char *readfilename, const char *tarfilename,
 
 	_tarWriteHeader(tarfilename, NULL, statbuf, false);
 
-	if (!noverify_checksums && DataChecksumsEnabled())
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if ((!noverify_checksums || (decrypt && FileEncryptionEnabled)) && 
+		DataChecksumsEnabled())
 	{
-		char	   *filename;
-
 		/*
 		 * Get the filename (excluding path).  As last_dir_separator()
 		 * includes the last directory separator, we chop that off by
@@ -1640,7 +1776,12 @@ sendFile(const char *readfilename, const char *tarfilename,
 
 		if (is_checksummed_file(readfilename, filename))
 		{
-			verify_checksum = true;
+			if (!noverify_checksums)
+				verify_checksum = true;
+
+			if (decrypt && FileEncryptionEnabled)
+				update_checksum = true;
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 			/*
 			 * Cut off at the segment boundary (".") to get the segment number
@@ -1711,7 +1852,8 @@ sendFile(const char *readfilename, const char *tarfilename,
 				 * this case. We also skip completely new pages, since they
 				 * don't have a checksum yet.
 				 */
-				if (!PageIsNew(page) && PageGetLSN(page) < startptr)
+				if (verify_checksum && /* ReqID:SRS-SECURITY-TDE */
+					!PageIsNew(page) && PageGetLSN(page) < startptr)
 				{
 					checksum = pg_checksum_page((char *) page, blkno + segmentno * RELSEG_SIZE);
 					phdr = (PageHeader) page;
@@ -1779,6 +1921,39 @@ sendFile(const char *readfilename, const char *tarfilename,
 				blkno++;
 			}
 		}
+
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		/* Try to decrypt file */
+		if (decrypt && FileEncryptionEnabled)
+		{
+			if (filename == NULL)
+				filename = last_dir_separator(readfilename) + 1;
+
+			if (is_encrypted_relation_file(readfilename, filename))
+			{
+				if (cnt % BLCKSZ != 0)
+					ereport(ERROR,
+							(errmsg("could not decrypt file \"%s\", block "
+									"%d: read buffer size %d and page size %d "
+									"differ",
+									readfilename, d_blkno, (int) cnt, BLCKSZ)));
+				for (i = 0; i < cnt / BLCKSZ; i++)
+				{
+					BlockNumber	blocknum = d_blkno + segmentno * RELSEG_SIZE;
+
+					page = buf + BLCKSZ * i;
+
+					/* The unlogged table will not be dumped */
+					PageDecryptInplace(page, MAIN_FORKNUM, true, blocknum);
+
+					/* Compute new checksum for the decrypted page */
+					if (update_checksum)
+						PageSetChecksumInplace(page, blocknum);
+				d_blkno++;
+				}
+			}
+		}
+		/* End - ReqID:SRS-SECURITY-TDE */
 
 		/* Send the chunk as a CopyData message */
 		if (pq_putmessage('d', buf, cnt))

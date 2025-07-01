@@ -27,6 +27,10 @@
 #include "license.h"
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "common/kmgr_utils.h"
+/* End - ReqID:SRS-SECURITY-TDE */
+
 /*
  * For efficiency, we'd like our hash table containing information about the
  * manifest to start out with approximately the correct number of entries.
@@ -155,6 +159,13 @@ static void usage(void);
 
 static const char *progname;
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+static const char *cluster_key_cmd = NULL;
+static bool pass_terminal_fd = false;
+static const char *cluster_key_method = NULL;
+static const char *key_path = NULL;
+/* End - ReqID:SRS-SECURITY-TDE */
+
 /*
  * Main entry point.
  */
@@ -169,6 +180,11 @@ main(int argc, char **argv)
 		{"quiet", no_argument, NULL, 'q'},
 		{"skip-checksums", no_argument, NULL, 's'},
 		{"wal-directory", required_argument, NULL, 'w'},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"cluster-key-command", required_argument, NULL, 'C'},
+		{"authprompt", required_argument, NULL, 'R'},
+		{"encrypt-method", required_argument, NULL, 'K'},
+		/* End - ReqID:SRS-SECURITY-TDE */
 		{NULL, 0, NULL, 0}
 	};
 
@@ -233,7 +249,7 @@ main(int argc, char **argv)
 	simple_string_list_append(&context.ignore_list, "recovery.signal");
 	simple_string_list_append(&context.ignore_list, "standby.signal");
 
-	while ((c = getopt_long(argc, argv, "ei:m:nqsw:", long_options, NULL)) != -1)
+	while ((c = getopt_long(argc, argv, "C:ei:K:m:nqRsw:", long_options, NULL)) != -1)
 	{
 		switch (c)
 		{
@@ -265,6 +281,17 @@ main(int argc, char **argv)
 				wal_directory = pstrdup(optarg);
 				canonicalize_path(wal_directory);
 				break;
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'C':
+				cluster_key_cmd = pg_strdup(optarg);
+				break;
+			case 'R':
+				pass_terminal_fd = true;
+				break;
+			case 'K':
+				cluster_key_method = pg_strdup(optarg);
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 			default:
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
@@ -330,6 +357,9 @@ main(int argc, char **argv)
 	/* By default, look for the WAL in the backup directory, too. */
 	if (wal_directory == NULL)
 		wal_directory = psprintf("%s/pg_wal", context.backup_directory);
+
+	if (key_path == NULL)
+		key_path = psprintf("%s/%s/wal.wkey", context.backup_directory, LIVE_KMGR_DIR);
 
 	/*
 	 * Try to read the manifest. We treat any errors encountered while parsing
@@ -829,10 +859,20 @@ parse_required_wal(verifier_context *context, char *pg_waldump_path,
 	{
 		char	   *pg_waldump_cmd;
 
-		pg_waldump_cmd = psprintf("\"%s\" --quiet --path=\"%s\" --timeline=%u --start=%X/%X --end=%X/%X\n",
+		pg_waldump_cmd = psprintf("\"%s\" --quiet --path=\"%s\" --timeline=%u --start=%X/%X --end=%X/%X "
+								  "%s %s %s %s %s %s %s \n",
 								  pg_waldump_path, wal_directory, this_wal_range->tli,
 								  LSN_FORMAT_ARGS(this_wal_range->start_lsn),
-								  LSN_FORMAT_ARGS(this_wal_range->end_lsn));
+								  LSN_FORMAT_ARGS(this_wal_range->end_lsn),
+								  /* Begin - ReqID:SRS-SECURITY-TDE */
+								  cluster_key_cmd != NULL ? "-C" : "",
+								  cluster_key_cmd != NULL ? psprintf("\"%s\"", cluster_key_cmd) : "",
+								  pass_terminal_fd ? "-R" : "",
+								  cluster_key_method != NULL ? "-K" : "",
+								  cluster_key_method != NULL ? cluster_key_method : "",
+								  key_path != NULL ? "-W" : "",
+								  key_path != NULL ? psprintf("\"%s\"", key_path) : ""
+								  /* End - ReqID:SRS-SECURITY-TDE */);
 		if (system(pg_waldump_cmd) != 0)
 			report_backup_error(context,
 								"WAL parsing failed for timeline %u",
@@ -937,6 +977,12 @@ usage(void)
 	printf(_("  -G, --highgo-version		output version of highgo information, then exit\n"));
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -C, --cluster-key-command=COMMAND\n"
+			 "						   set command to obtain the cluster key\n"));
+	printf(_("  -R, --authprompt	   prompt for a passphrase or PIN\n"));
+	printf(_("  -K, --encrypt-method   the encryption method of the wal file\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -?, --help                  show this help, then exit\n"));
 	printf(_("\nReport bugs to <%s>.\n"), PACKAGE_BUGREPORT);
 	printf(_("%s home page: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);

@@ -45,6 +45,9 @@ static bool do_create_slot = false;
 static bool slot_exists_ok = false;
 static bool do_drop_slot = false;
 static bool do_sync = true;
+/* Begin - ReqID:SRS-SECURITY-TDE */
+static bool decrypt = false;
+/* End - ReqID:SRS-SECURITY-TDE */
 static bool synchronous = false;
 static char *replication_slot = NULL;
 static XLogRecPtr endpos = InvalidXLogRecPtr;
@@ -94,6 +97,9 @@ usage(void)
 	printf(_("      --synchronous      flush write-ahead log immediately after writing\n"));
 	printf(_("  -v, --verbose          output verbose messages\n"));
 	printf(_("  -V, --version          output version information, then exit\n"));
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -y, --decrypt          receive the data decrypted\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 	printf(_("  -G, --highgo-version   output version of highgo information, then exit\n"));
@@ -438,6 +444,9 @@ StreamLog(void)
 	stream.synchronous = synchronous;
 	stream.do_sync = do_sync;
 	stream.mark_done = false;
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	stream.cipher = !decrypt;
+	/* End - ReqID:SRS-SECURITY-TDE */
 	stream.walmethod = CreateWalDirectoryMethod(basedir, compresslevel,
 												stream.do_sync);
 	stream.partial_suffix = ".partial";
@@ -491,6 +500,9 @@ main(int argc, char **argv)
 		{"status-interval", required_argument, NULL, 's'},
 		{"slot", required_argument, NULL, 'S'},
 		{"verbose", no_argument, NULL, 'v'},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"decrypt", no_argument, NULL, 'y'},
+		/* End - ReqID:SRS-SECURITY-TDE */
 		{"compress", required_argument, NULL, 'Z'},
 /* action */
 		{"create-slot", no_argument, NULL, 1},
@@ -537,7 +549,7 @@ main(int argc, char **argv)
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	}
 
-	while ((c = getopt_long(argc, argv, "D:d:E:h:p:U:s:S:nwWvZ:",
+	while ((c = getopt_long(argc, argv, "D:d:E:h:p:U:s:S:nwWvyZ:",
 							long_options, &option_index)) != -1)
 	{
 		switch (c)
@@ -593,6 +605,11 @@ main(int argc, char **argv)
 			case 'v':
 				verbose++;
 				break;
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'y':
+				decrypt = true;
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 			case 'Z':
 				compresslevel = atoi(optarg);
 				if (compresslevel < 0 || compresslevel > 9)

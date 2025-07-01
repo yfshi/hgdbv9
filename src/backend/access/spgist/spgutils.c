@@ -758,6 +758,9 @@ spgoptions(Datum reloptions, bool validate)
 {
 	static const relopt_parse_elt tab[] = {
 		{"fillfactor", RELOPT_TYPE_INT, offsetof(SpGistOptions, fillfactor)},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"encrypt", RELOPT_TYPE_BOOL, offsetof(SpGistOptions, encrypt)}
+		/* End - ReqID:SRS-SECURITY-TDE */
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate,

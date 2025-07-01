@@ -49,6 +49,9 @@
 #include "storage/sinvaladt.h"
 #include "storage/spin.h"
 #include "utils/snapmgr.h"
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "crypto/kmgr.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 #include "utils/resgroup.h"
@@ -173,6 +176,9 @@ CreateSharedMemoryAndSemaphores(void)
 		size = add_size(size, active_gtt_shared_hash_size());
 		size = add_size(size, FdwXactShmemSize());
 		size = add_size(size, FdwXactLauncherShmemSize());
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		size = add_size(size, KmgrShmemSize());
+		/* End - ReqID:SRS-SECURITY-TDE */
 #ifdef EXEC_BACKEND
 		size = add_size(size, ShmemBackendArraySize());
 #endif
@@ -309,6 +315,9 @@ CreateSharedMemoryAndSemaphores(void)
 	AsyncShmemInit();
 	FdwXactShmemInit();
 	FdwXactLauncherShmemInit();
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	KmgrShmemInit();
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 #ifdef EXEC_BACKEND
 
