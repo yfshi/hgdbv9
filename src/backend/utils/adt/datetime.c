@@ -3865,10 +3865,15 @@ bool set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is
 		{
 			ereport(WARNING, errcode(ERRCODE_INVALID_DATETIME_FORMAT), (errmsg("Out of range value.")));
 		}
-		else if(warn & (MYSQL_TIME_WARN_TRUNCATED | MYSQL_TIME_WARN_INVALID_TIMESTAMP |
+		else if(warn & (MYSQL_TIME_WARN_INVALID_TIMESTAMP |
 						MYSQL_TIME_WARN_ZERO_DATE | MYSQL_TIME_NOTE_TRUNCATED | MYSQL_TIME_WARN_ZERO_IN_DATE))
 		{
 			ereport(WARNING, errcode(ERRCODE_INVALID_DATETIME_FORMAT), (errmsg("Data truncated for column.")));
+		}
+		else if(warn & MYSQL_TIME_WARN_TRUNCATED)
+		{
+			int	EREPORT_LEVEL = is_strict?ERROR:WARNING;
+			ereport(EREPORT_LEVEL, errcode(ERRCODE_INVALID_DATETIME_FORMAT), (errmsg("Data truncated for column.")));
 		}
 	}
 	return false;

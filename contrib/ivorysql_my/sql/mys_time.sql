@@ -2913,3 +2913,25 @@ select cast(cast('11-11-11 11:11:11.111111' as time(5)) as timestamp);
 select cast(cast('11-11-11 11:11:11.111111' as time(5)) as timestamp(4));
 select cast(cast('11-11-11 11:11:11.111111' as time(5)) as time);
 select cast(cast('11-11-11 11:11:11.111111' as time(5)) as time(4));
+
+create table time_01(tm TIME);
+set sql_mode ='';
+INSERT INTO time_01 values ('-838:59:59.000000');
+INSERT INTO time_01 values ('-837:00:00.000000');
+INSERT INTO time_01 values ('230:56:59.999999');
+INSERT INTO time_01 values ('838:59:59.000000');
+INSERT INTO time_01 values ('-839:00:00.000000');
+INSERT INTO time_01 values ('839:00:00.000000');
+select * from time_01;
+drop table time_01;
+
+create table time_01(tm TIME);
+set sql_mode =default;
+INSERT INTO time_01 values ('-838:59:59.000000');
+INSERT INTO time_01 values ('-837:00:00.000000');
+INSERT INTO time_01 values ('230:56:59.999999');
+INSERT INTO time_01 values ('838:59:59.000000');
+INSERT INTO time_01 values ('-839:00:00.000000');
+INSERT INTO time_01 values ('839:00:00.000000');
+select * from time_01;
+drop table time_01;

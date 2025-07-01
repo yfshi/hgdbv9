@@ -6,18 +6,18 @@ INSERT INTO TIME_TBL VALUES ('00:00');
 INSERT INTO TIME_TBL VALUES ('01:00');
 -- as of 7.4, timezone spec should be accepted and ignored
 INSERT INTO TIME_TBL VALUES ('02:03 PST');
-WARNING:  Data truncated for column.
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO TIME_TBL VALUES ('02:03 PST');
                                      ^
 INSERT INTO TIME_TBL VALUES ('11:59 EDT');
-WARNING:  Data truncated for column.
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO TIME_TBL VALUES ('11:59 EDT');
                                      ^
 INSERT INTO TIME_TBL VALUES ('12:00');
 INSERT INTO TIME_TBL VALUES ('12:01');
 INSERT INTO TIME_TBL VALUES ('23:59');
 INSERT INTO TIME_TBL VALUES ('11:59:59.99 PM');
-WARNING:  Data truncated for column.
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO TIME_TBL VALUES ('11:59:59.99 PM');
                                      ^
 INSERT INTO TIME_TBL VALUES ('2003-03-07 15:36:39 America/New_York');
@@ -38,35 +38,29 @@ SELECT f1 AS "Time" FROM TIME_TBL;
 -------------
  00:00:00.00
  01:00:00.00
- 02:03:00.00
- 11:59:00.00
  12:00:00.00
  12:01:00.00
  23:59:00.00
- 11:59:59.99
  15:36:39.00
  15:36:39.00
-(10 rows)
+(7 rows)
 
 SELECT f1 AS "Three" FROM TIME_TBL WHERE f1 < '05:06:07';
     Three    
 -------------
  00:00:00.00
  01:00:00.00
- 02:03:00.00
-(3 rows)
+(2 rows)
 
 SELECT f1 AS "Five" FROM TIME_TBL WHERE f1 > '05:06:07';
     Five     
 -------------
- 11:59:00.00
  12:00:00.00
  12:01:00.00
  23:59:00.00
- 11:59:59.99
  15:36:39.00
  15:36:39.00
-(7 rows)
+(5 rows)
 
 SELECT f1 AS "None" FROM TIME_TBL WHERE f1 < '00:00';
  None 
@@ -78,15 +72,12 @@ SELECT f1 AS "Eight" FROM TIME_TBL WHERE f1 >= '00:00';
 -------------
  00:00:00.00
  01:00:00.00
- 02:03:00.00
- 11:59:00.00
  12:00:00.00
  12:01:00.00
  23:59:00.00
- 11:59:59.99
  15:36:39.00
  15:36:39.00
-(10 rows)
+(7 rows)
 
 -- Check edge cases
 SELECT '23:59:59.999999'::time;
@@ -156,15 +147,12 @@ SELECT f1 + time '00:01' AS "Illegal" FROM TIME_TBL;
 -----------
     100.00
   10100.00
-  20400.00
- 116000.00
  120100.00
  120200.00
  236000.00
- 116059.99
  153739.00
  153739.00
-(10 rows)
+(7 rows)
 
 --
 -- test EXTRACT

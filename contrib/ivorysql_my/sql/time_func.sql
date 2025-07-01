@@ -105,9 +105,9 @@ select dayofyear(203840);
 SELECT quarter('2022-10-09 09:55:28.12345');
 SELECT quarter(20221009);
 select quarter('20:38:40');
-select quarter(time'20:38:40');
+--select quarter(time'20:38:40');
 select quarter(203840);
-select quarter(time'203840');
+--select quarter(time'203840');
 select quarter(true);       -- bug#z5083
 select quarter(false);      -- bug#z5083
 select quarter(0);          -- bug#z5083

@@ -2653,3 +2653,17 @@ select cast(cast('11-11-11 11:11:11.111111' as datetime(5)) as timestamp);
 select cast(cast('11-11-11 11:11:11.111111' as datetime(5)) as timestamp(4));
 select cast(cast('11-11-11 11:11:11.111111' as datetime(5)) as time);
 select cast(cast('11-11-11 11:11:11.111111' as datetime(5)) as time(4));
+
+
+create table datetime_01(a1 datetime);
+set sql_mode ='';
+insert into datetime_01 values('1111111111111.1');
+insert into datetime_01 values('111111111111111.1');
+
+
+set sql_mode=default;
+insert into datetime_01 values('1111111111111.1');
+insert into datetime_01 values('111111111111111.1');
+select * from datetime_01;
+
+drop table datetime_01;

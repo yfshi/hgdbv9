@@ -505,6 +505,9 @@ DROP TABLE brin_timestamp_test;
 CREATE TABLE brin_date_test(a DATE);
 -- insert values close to date minimum
 INSERT INTO brin_date_test SELECT '4713-01-01 BC'::date + i FROM generate_series(1, 30) s(i);
+ERROR:  Truncated incorrect datetime value: '4713-01-01 BC'.
+LINE 1: INSERT INTO brin_date_test SELECT '4713-01-01 BC'::date + i ...
+                                          ^
 -- insert values close to date minimum
 INSERT INTO brin_date_test SELECT '5874897-12-01'::date + i FROM generate_series(1, 30) s(i);
 ERROR:  Incorrect DATE value: '5874897-12-01'
@@ -520,8 +523,7 @@ SELECT * FROM brin_date_test WHERE a = '2023-01-01'::date;
 ----------------------------------------------------
  Seq Scan on brin_date_test (actual rows=0 loops=1)
    Filter: (a = '2023-01-01'::date)
-   Rows Removed by Filter: 30
-(3 rows)
+(2 rows)
 
 DROP TABLE brin_date_test;
 RESET enable_seqscan;
