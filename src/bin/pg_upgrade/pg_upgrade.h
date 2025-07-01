@@ -12,6 +12,9 @@
 
 #include "libpq-fe.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-CMD-pg2highgo */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "common/kmgr_utils.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* Use port in the private/dynamic port number range */
 #define DEF_PGUPORT			50432
@@ -226,6 +229,9 @@ typedef struct
 	bool		float8_pass_by_value;
 	uint32		data_checksum_version;
 	DBMode		database_mode;	/* ReqID:SRS-CMD-pg2highgo */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	int			file_encryption_method;
+	/* End - ReqID:SRS-SECURITY-TDE */
 } ControlData;
 
 /*
@@ -304,6 +310,9 @@ typedef struct
 	transferMode transfer_mode; /* copy files or link them? */
 	int			jobs;			/* number of processes/threads to use */
 	char	   *socketdir;		/* directory to use for Unix sockets */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	bool		pass_terminal_fd; /* pass -R to pg_ctl? */
+	/* End - ReqID:SRS-SECURITY-TDE */
 } UserOpts;
 
 typedef struct

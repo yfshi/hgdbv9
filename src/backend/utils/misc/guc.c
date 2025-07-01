@@ -152,6 +152,9 @@
 #include "ivy_mysql_guc.c"
 #undef IVY_MY_GUC_FUNC_DEFINE
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "crypto/kmgr.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* Begin - BUG#Z1444 */
 #include "utils/syscache.h"
@@ -776,7 +779,9 @@ static char *recovery_target_xid_string;
 static char *recovery_target_name_string;
 static char *recovery_target_lsn_string;
 static char *restrict_nonsystem_relation_kind_string;
-
+/* Begin - ReqID:SRS-SECURITY-TDE */
+static char *file_encryption_method_str;
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /* should be static, but commands/variable.c needs to get at this */
 char	   *role_string;
@@ -933,12 +938,17 @@ const char *const config_group_names[] =
 	/* COMPAT_MYSQL_OPTIONS */
 	gettext_noop("Compat MySQL Options"),
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/* ENCRYPTION */
+	gettext_noop("Encryption"),
+	/* End - ReqID:SRS-SECURITY-TDE */
 	/* help_config wants this array to be null-terminated */
 	NULL,
 	NULL
 };
 
-StaticAssertDecl(lengthof(config_group_names) == (COMPAT_MYSQL_OPTIONS + 3),/* BUG#Z0001269 */
+
+StaticAssertDecl(lengthof(config_group_names) == (ENCRYPTION + 3),/* BUG#Z0001269, ReqID:SRS-SECURITY-TDE */
 				 "array length mismatch");
 
 /*
@@ -4867,6 +4877,29 @@ static struct config_string ConfigureNamesString[] =
 		"",
 		NULL, NULL, NULL
 	},
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	{
+		{"cluster_key_command", PGC_SIGHUP, ENCRYPTION,
+			gettext_noop("Command to obtain cluster key for cluster file encryption."),
+			NULL
+		},
+		&cluster_key_command,
+		"",
+		NULL, NULL, NULL
+	},
+
+	{
+		{"file_encryption_method", PGC_INTERNAL, PRESET_OPTIONS,
+		 gettext_noop("Shows the cluster file encryption method."),
+		 NULL,
+		 GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&file_encryption_method_str,
+		"",
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	{
 		{"application_name", PGC_USERSET, LOGGING_WHAT,

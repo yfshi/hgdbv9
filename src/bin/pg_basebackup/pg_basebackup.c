@@ -189,6 +189,11 @@ static volatile LONG has_xlogendptr = 0;
 /* Contents of configuration file to be generated */
 static PQExpBuffer recoveryconfcontents = NULL;
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/* decrypt data */
+static bool decrypt = false;
+/* End - ReqID:SRS-SECURITY-TDE */
+
 /* Function headers */
 static void usage(void);
 static void verify_dir_is_empty_or_create(char *dirname, bool *created, bool *found);
@@ -406,6 +411,9 @@ usage(void)
 	printf(_("      --waldir=WALDIR    location for the write-ahead log directory\n"));
 	printf(_("  -X, --wal-method=none|fetch|stream\n"
 			 "                         include required WAL files with specified method\n"));
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -y, --decrypt          receive the data decrypted\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -z, --gzip             compress tar output\n"));
 	printf(_("  -Z, --compress=0-9     compress tar output with given compression level\n"));
 	printf(_("\nGeneral options:\n"));
@@ -568,6 +576,9 @@ LogStreamerMain(logstreamer_param *param)
 	/* fsync happens at the end of pg_basebackup for all data */
 	stream.do_sync = false;
 	stream.mark_done = true;
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	stream.cipher = !decrypt;
+	/* End - ReqID:SRS-SECURITY-TDE */
 	stream.partial_suffix = NULL;
 	stream.replication_slot = replication_slot;
 
@@ -1912,7 +1923,7 @@ BaseBackup(void)
 	}
 
 	basebkp =
-		psprintf("BASE_BACKUP LABEL '%s' %s %s %s %s %s %s %s %s %s",
+		psprintf("BASE_BACKUP LABEL '%s' %s %s %s %s %s %s %s %s %s %s",
 				 escaped_label,
 				 estimatesize ? "PROGRESS" : "",
 				 includewal == FETCH_WAL ? "WAL" : "",
@@ -1922,7 +1933,10 @@ BaseBackup(void)
 				 format == 't' ? "TABLESPACE_MAP" : "",
 				 verify_checksums ? "" : "NOVERIFY_CHECKSUMS",
 				 manifest_clause ? manifest_clause : "",
-				 manifest_checksums_clause);
+				 manifest_checksums_clause,
+				 /* Begin - ReqID:SRS-SECURITY-TDE */
+				 !decrypt ? "CIPHER" : "");
+				 /* End - ReqID:SRS-SECURITY-TDE */
 
 	if (PQsendQuery(conn, basebkp) == 0)
 	{
@@ -2257,6 +2271,9 @@ main(int argc, char **argv)
 		{"slot", required_argument, NULL, 'S'},
 		{"tablespace-mapping", required_argument, NULL, 'T'},
 		{"wal-method", required_argument, NULL, 'X'},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"decrypt", no_argument, NULL, 'y'},
+		/* End - ReqID:SRS-SECURITY-TDE */
 		{"gzip", no_argument, NULL, 'z'},
 		{"compress", required_argument, NULL, 'Z'},
 		{"label", required_argument, NULL, 'l'},
@@ -2316,7 +2333,7 @@ main(int argc, char **argv)
 
 	atexit(cleanup_directories_atexit);
 
-	while ((c = getopt_long(argc, argv, "CD:F:r:RS:T:X:l:nNzZ:d:c:h:p:U:s:wWkvP",
+	while ((c = getopt_long(argc, argv, "CD:F:r:RS:T:X:l:nNyzZ:d:c:h:p:U:s:wWkvP",
 							long_options, &option_index)) != -1)
 	{
 		switch (c)
@@ -2383,6 +2400,11 @@ main(int argc, char **argv)
 					exit(1);
 				}
 				break;
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'y':
+				decrypt = true;
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 			case 1:
 				xlog_dir = pg_strdup(optarg);
 				break;

@@ -43,6 +43,9 @@ extern bool enable_bonjour;
 extern char *bonjour_name;
 extern bool restart_after_crash;
 extern bool remove_temp_files_after_crash;
+/* Begin - ReqID:SRS-SECURITY-TDE */
+extern int	terminal_fd;
+/* End - ReqID:SRS-SECURITY-TDE */
 
 #ifdef WIN32
 extern HANDLE PostmasterHandle;

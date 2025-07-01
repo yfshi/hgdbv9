@@ -262,6 +262,10 @@ struct XLogReaderState
 	XLogRecPtr	missingContrecPtr;
 	/* Set when XLP_FIRST_IS_OVERWRITE_CONTRECORD is found */
 	XLogRecPtr	overwrittenRecPtr;
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	TimeLineID	sendTLI;
+	/* End - ReqID:SRS-SECURITY-TDE */
 };
 
 /* Get a new XLogReader */
@@ -303,7 +307,7 @@ typedef struct WALReadError
 
 extern bool WALRead(XLogReaderState *state,
 					char *buf, XLogRecPtr startptr, Size count,
-					TimeLineID tli, WALReadError *errinfo);
+					TimeLineID tli, WALReadError *errinfo, bool decrypt);
 
 /* Functions for decoding an XLogRecord */
 
@@ -336,5 +340,13 @@ extern char *XLogRecGetBlockData(XLogReaderState *record, uint8 block_id, Size *
 extern bool XLogRecGetBlockTag(XLogReaderState *record, uint8 block_id,
 							   RelFileNode *rnode, ForkNumber *forknum,
 							   BlockNumber *blknum);
+/* Begin - ReqID:SRS-SECURITY-TDE */
+extern char* XLogEncryptCopy(char *xlog, Size size, Size *nencrypted, 
+				TimeLineID timeline, XLogSegNo segment, uint32 offset);
+extern void XLogEncryptInplace(char *xlog, Size size, TimeLineID timeline,
+							   XLogSegNo segment, uint32 offset);
+extern void XLogDecryptInplace(char *xlog, Size size, TimeLineID timeline,
+							   XLogSegNo segment, uint32 offset);
+/* End - ReqID:SRS-SECURITY-TDE */
 
 #endif							/* XLOGREADER_H */

@@ -61,6 +61,10 @@ extern void log_newpage_range(Relation rel, ForkNumber forkNum,
 							  BlockNumber startblk, BlockNumber endblk, bool page_std);
 extern XLogRecPtr XLogSaveBufferForHint(Buffer buffer, bool buffer_std);
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+extern XLogRecPtr LSNForEncryption(bool use_wal_lsn);
+/* End - ReqID:SRS-SECURITY-TDE */
+
 extern void InitXLogInsert(void);
 
 #endif							/* XLOGINSERT_H */

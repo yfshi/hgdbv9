@@ -345,6 +345,9 @@ help(const char *progname)
 	printf(_("  -N MAX-CONNECT     maximum number of allowed connections\n"));
 	printf(_("  -p PORT            port number to listen on in Postgres mode\n"));
 	printf(_("  -o PORT            port number to listen on in Oracle mode\n"));	/* ReqID:SRS-GKC-DATATYPE_001 */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -R fd              prompt for the cluster key\n"));
+	/* Begin - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -s                 show statistics after each query\n"));
 	printf(_("  -S WORK-MEM        set amount of memory for sorts (in kB)\n"));
 	printf(_("  -V, --version      output version information, then exit\n"));
@@ -377,7 +380,13 @@ help(const char *progname)
 	printf(_("\nOptions for bootstrapping mode:\n"));
 	printf(_("  --boot             selects bootstrapping mode (must be first argument)\n"));
 	printf(_("  DBNAME             database name (mandatory argument in bootstrapping mode)\n"));
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -K LEN             enable cluster file encryption with specified key bit length\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -r FILENAME        send stdout and stderr to given file\n"));
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -u DATADIR         copy encryption keys from datadir\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -x NUM             internal use\n"));
 
 	printf(_("\nPlease read the documentation for the complete list of run-time\n"

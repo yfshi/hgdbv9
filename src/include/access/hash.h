@@ -268,6 +268,7 @@ typedef struct HashOptions
 {
 	int32		varlena_header_;	/* varlena header (do not touch directly!) */
 	int			fillfactor;		/* page fill factor in percent (0..100) */
+	bool		encrypt;		/* encrypt the index (ReqID:SRS-SECURITY-TDE) */
 } HashOptions;
 
 #define HashGetFillFactor(relation) \

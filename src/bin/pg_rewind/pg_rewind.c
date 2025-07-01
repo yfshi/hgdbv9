@@ -34,6 +34,11 @@
 #include "license.h"
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "access/xlogreader.h"
+#include "common/hex.h"
+#include "crypto/walenc.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 static void usage(const char *progname);
 
 static void perform_rewind(filemap_t *filemap, rewind_source *source,
@@ -51,6 +56,11 @@ static void sanityChecks(void);
 static void findCommonAncestorTimeline(XLogRecPtr *recptr, int *tliIndex);
 static void ensureCleanShutdown(const char *argv0);
 static void disconnect_atexit(void);
+
+/* Begin - ReqID:SRS-SECURITY-TDE */
+static void retrieve_cluster_key(void);
+static void retrieve_xlog_key(void);
+/* End - ReqID:SRS-SECURITY-TDE */
 
 static ControlFileData ControlFile_target;
 static ControlFileData ControlFile_source;
@@ -79,6 +89,16 @@ int			targetNentries;
 uint64		fetch_size;
 uint64		fetch_done;
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/* Encryption */
+static int	terminal_fd = -1;
+static bool	pass_terminal_fd = false;
+static char *cluster_key_cmd = NULL;
+static char	cluster_key_hex[ALLOC_KMGR_CLUSTER_KEY_LEN];
+static char cluster_key[KMGR_CLUSTER_KEY_LEN];
+static CryptoKey	data_key;
+/* End - ReqID:SRS-SECURITY-TDE */
+
 static PGconn *conn;
 static rewind_source *source;
 
@@ -101,6 +121,11 @@ usage(const char *progname)
 			 "                                 (requires --source-server)\n"));
 	printf(_("      --debug                    write a lot of debug messages\n"));
 	printf(_("      --no-ensure-shutdown       do not automatically fix unclean shutdown\n"));
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -C, --cluster-key-command=COMMAND\n"
+			 "								   set command to obtain the cluster key\n"));
+	printf(_("  -T, --authprompt			   prompt for a passphrase or PIN\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -V, --version                  output version information, then exit\n"));
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
@@ -130,6 +155,10 @@ main(int argc, char **argv)
 		{"progress", no_argument, NULL, 'P'},
 		{"no-save-wal", no_argument, NULL, 'w'},
 		{"debug", no_argument, NULL, 3},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"cluster-key-command", required_argument, NULL, 'C'},
+		{"authprompt", no_argument, NULL, 'T'},
+		/* End - ReqID:SRS-SECURITY-TDE */
 		{NULL, 0, NULL, 0}
 	};
 	int			option_index;
@@ -176,13 +205,14 @@ main(int argc, char **argv)
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	}
 
-	while ((c = getopt_long(argc, argv, "cD:nNPRw", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "cC:D:nNPRTw", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
 			case '?':
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 				exit(1);
+				break;
 
 			case 'c':
 				restore_wal = true;
@@ -212,6 +242,16 @@ main(int argc, char **argv)
 			case 'D':			/* -D or --target-pgdata */
 				datadir_target = pg_strdup(optarg);
 				break;
+
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'C':
+				cluster_key_cmd = pg_strdup(optarg);
+				break;
+
+			case 'T':
+				pass_terminal_fd = true;
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 
 			case 1:				/* --source-pgdata */
 				datadir_source = pg_strdup(optarg);
@@ -354,6 +394,29 @@ main(int argc, char **argv)
 	pg_free(buffer);
 
 	sanityChecks();
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	WALEncrypted = (ControlFile_source.encryption_target_mode == ENCRYPTION_MODE_ALL ||
+						ControlFile_source.encryption_target_mode == ENCRYPTION_MODE_WAL);
+	PG_CIPHER_ENCRYPT_CTR = encryption_methods[ControlFile_source.file_encryption_method].cipher_encrypt_id;
+
+	if (WALEncrypted)
+	{
+		if (cluster_key_cmd == NULL)
+		{
+			if (!kmgr_get_keycmd_conf(datadir_target, &cluster_key_cmd, NULL, NULL))
+			{
+				pg_log_error("cluster-key-command option must be passed for encrypted cluster");
+				exit(1);
+			}
+		}
+
+		retrieve_cluster_key(); 
+		retrieve_xlog_key();
+		LocalXLogKey = &data_key;
+		InitializeXLogEncryption();
+	}
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/*
 	 * Find the common ancestor timeline between the clusters.
@@ -1171,3 +1234,88 @@ disconnect_atexit(void)
 	if (conn != NULL)
 		PQfinish(conn);
 }
+
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/* Retrieve the cluster key */
+static void
+retrieve_cluster_key(void)
+{
+	int			cluster_key_len;
+
+	/*
+	 * If we have been asked to pass an open file descriptor to the user
+	 * terminal to the commands, set one up.
+	 */
+	if (pass_terminal_fd)
+	{
+		open_terminal_fd(terminal_fd);
+		if (terminal_fd < 0)
+		{
+			pg_log_error(_("%s: could not open terminal: %s\n"),
+						 progname, strerror(errno));
+			exit(1);
+		}
+	}
+
+	/* Get the key encryption key from the cluster key command */
+	cluster_key_len = kmgr_run_cluster_key_command(cluster_key_cmd,
+												   cluster_key_hex,
+												   ALLOC_KMGR_CLUSTER_KEY_LEN,
+												   datadir_target, terminal_fd);
+
+	if (!KMGR_USE_HSM_MODE && pg_hex_decode(cluster_key_hex, cluster_key_len,
+					(char *) cluster_key, KMGR_CLUSTER_KEY_LEN) !=
+					KMGR_CLUSTER_KEY_LEN){
+		pg_log_error("cluster key must be at %d hex bytes", KMGR_CLUSTER_KEY_LEN * 2);
+		exit(1);
+	}
+
+	close_terminal_fd(terminal_fd);
+}
+
+/* Decrypt the data key */
+static void
+retrieve_xlog_key(void)
+{
+	PgCipherCtx *ctx;
+	char	key_path[MAXPGPATH];
+	char   *in_key;
+	size_t	in_klen;
+
+	if (!KMGR_USE_HSM_MODE)
+	{
+		ctx = pg_cipher_ctx_create(PG_CIPHER_AES_KWP,
+								(unsigned char *) cluster_key,
+								KMGR_CLUSTER_KEY_LEN, false);
+		if (!ctx || !ctx->ctx)
+			pg_log_error("could not initialize encryption context");
+	}
+
+	CryptoKeyFilePath(key_path, LIVE_KMGR_DIR, KMGR_KEY_ID_WAL);
+	in_key = source->fetch_file(source, key_path, &in_klen);
+
+	if (in_klen > MAX_WRAPPED_KEY_LENGTH)
+	{
+		pg_log_error("invalid wrapped key length (%d)", (int)in_klen);
+		exit(1);
+	}
+
+	if (!KMGR_USE_HSM_MODE)
+	{
+		/* decrypt with the key */
+		if (!kmgr_unwrap_data_key(ctx, (unsigned char *)in_key, in_klen, &data_key))
+		{
+			pg_log_error("incorrect key specified");
+			exit(1);
+		}
+
+		/* The cluster key is correct, free the cipher context */
+		pg_cipher_ctx_free(ctx);
+	}
+	else
+	{
+		memcpy(&data_key, in_key, sizeof(CryptoKey));
+	}
+}
+/* End - ReqID:SRS-SECURITY-TDE */
+

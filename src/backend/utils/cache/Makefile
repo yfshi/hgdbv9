@@ -23,6 +23,7 @@ OBJS = \
 	relcache.o \
 	relfilenodemap.o \
 	relmapper.o \
+	relopt.o \
 	spccache.o \
 	syscache.o \
 	ts_cache.o \

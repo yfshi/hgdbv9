@@ -13,7 +13,8 @@ OBJS = \
 	compat.o \
 	pg_waldump.o \
 	rmgrdesc.o \
-	xlogreader.o
+	xlogreader.o \
+	walenc.o
 
 override CPPFLAGS := -DFRONTEND $(CPPFLAGS)
 
@@ -27,6 +28,9 @@ pg_waldump: $(OBJS) | submake-libpgport
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 
 xlogreader.c: % : $(top_srcdir)/src/backend/access/transam/%
+	rm -f $@ && $(LN_S) $< .
+
+walenc.c: % : $(top_srcdir)/src/backend/crypto/%
 	rm -f $@ && $(LN_S) $< .
 
 $(RMGRDESCSOURCES): % : $(top_srcdir)/src/backend/access/rmgrdesc/%
@@ -43,6 +47,7 @@ uninstall:
 
 clean distclean maintainer-clean:
 	rm -f pg_waldump$(X) $(OBJS) $(RMGRDESCSOURCES) xlogreader.c
+	rm -f pg_waldump$(X) $(OBJS) $(RMGRDESCSOURCES) walenc.c
 	rm -rf tmp_check
 
 check:

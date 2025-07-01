@@ -747,6 +747,17 @@ pgstat_get_wait_io(WaitEventIO w)
 		case WAIT_EVENT_FDWXACT_RESOLVER_MAIN:
 			event_name = "FdwXactResolverMain";
 			break;
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		case WAIT_EVENT_KEY_FILE_READ:
+			event_name = "KeyFileRead";
+			break;
+		case WAIT_EVENT_KEY_FILE_WRITE:
+			event_name = "KeyFileWrite";
+			break;
+		case WAIT_EVENT_KEY_FILE_SYNC:
+			event_name = "KeyFileSync";
+			break;
+		/* End - ReqID:SRS-SECURITY-TDE */
 
 			/* no default case, so that compiler will warn */
 	}

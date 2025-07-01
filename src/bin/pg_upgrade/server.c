@@ -260,8 +260,12 @@ start_postmaster(ClusterInfo *cluster, bool report_and_exit_on_error)
 	if (cluster->controldata.database_mode == DB_ORACLE) /* ReqID:SRS-CMD-pg2highgo */
 	{
 		snprintf(cmd, sizeof(cmd),
-				 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d -o %d%s%s %s%s\" start",
-				 cluster->bindir, SERVER_LOG_FILE, cluster->pgconfig, cluster->port, cluster->oraport,
+				 "\"%s/pg_ctl\" -w%s -l \"%s\" -D \"%s\" -o \"-p %d -o %d%s%s %s%s\" start",
+				 cluster->bindir, 
+				 /* Begin - ReqID:SRS-SECURITY-TDE */
+				 user_opts.pass_terminal_fd ? " -R" : "",
+				 /* End - ReqID:SRS-SECURITY-TDE */
+				 SERVER_LOG_FILE, cluster->pgconfig, cluster->port, cluster->oraport,
 				 (cluster->controldata.cat_ver >=
 				  BINARY_UPGRADE_SERVER_FLAG_CAT_VER) ? " -b" :
 				 " -c autovacuum=off -c autovacuum_freeze_max_age=2000000000",

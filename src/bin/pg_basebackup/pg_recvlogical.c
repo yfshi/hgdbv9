@@ -65,6 +65,11 @@ static bool output_needs_fsync = false;
 static XLogRecPtr output_written_lsn = InvalidXLogRecPtr;
 static XLogRecPtr output_fsync_lsn = InvalidXLogRecPtr;
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+/* decrypt data */
+static bool decrypt = false;
+/* End - ReqID:SRS-SECURITY-TDE */
+
 static void usage(void);
 static void StreamLogicalLog(void);
 static bool flushAndSendFeedback(PGconn *conn, TimestampTz *now);
@@ -97,6 +102,9 @@ usage(void)
 	printf(_("  -s, --status-interval=SECS\n"
 			 "                         time between status packets sent to server (default: %d)\n"), (standby_message_timeout / 1000));
 	printf(_("  -S, --slot=SLOTNAME    name of the logical replication slot\n"));
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -y, --decrypt          receive the data decrypted\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -v, --verbose          output verbose messages\n"));
 	printf(_("  -V, --version          output version information, then exit\n"));
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
@@ -263,6 +271,11 @@ StreamLogicalLog(void)
 
 	if (noptions)
 		appendPQExpBufferChar(query, ')');
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (!decrypt)
+		appendPQExpBufferStr(query, " CIPHER");
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	res = PQexec(conn, query->data);
 	if (PQresultStatus(res) != PGRES_COPY_BOTH)
@@ -702,6 +715,9 @@ main(int argc, char **argv)
 		{"plugin", required_argument, NULL, 'P'},
 		{"status-interval", required_argument, NULL, 's'},
 		{"slot", required_argument, NULL, 'S'},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"decrypt", no_argument, NULL, 'y'},
+		/* End - ReqID:SRS-SECURITY-TDE */
 /* action */
 		{"create-slot", no_argument, NULL, 1},
 		{"start", no_argument, NULL, 2},
@@ -745,7 +761,7 @@ main(int argc, char **argv)
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	}
 
-	while ((c = getopt_long(argc, argv, "E:f:F:nvd:h:p:U:wWI:o:P:s:S:",
+	while ((c = getopt_long(argc, argv, "E:f:F:nvd:h:p:U:wWI:o:P:s:S:y",
 							long_options, &option_index)) != -1)
 	{
 		switch (c)
@@ -843,6 +859,11 @@ main(int argc, char **argv)
 			case 'S':
 				replication_slot = pg_strdup(optarg);
 				break;
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'y':
+				decrypt = true;
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 /* action */
 			case 1:
 				do_create_slot = true;

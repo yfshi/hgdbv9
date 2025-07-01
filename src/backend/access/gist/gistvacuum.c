@@ -174,6 +174,10 @@ gistvacuumscan(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
 	vstate.callback_state = callback_state;
 	if (RelationNeedsWAL(rel))
 		vstate.startNSN = GetInsertRecPtr();
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	else if (FileEncryptionEnabled)
+		vstate.startNSN = LSNForEncryption(RelationIsPermanent(rel));
+	/* End - ReqID:SRS-SECURITY-TDE */
 	else
 		vstate.startNSN = gistGetFakeLSN(rel);
 
@@ -353,6 +357,8 @@ restart:
 		 */
 		if (ntodelete > 0)
 		{
+			XLogRecPtr	recptr;
+
 			START_CRIT_SECTION();
 
 			MarkBufferDirty(buffer);
@@ -360,17 +366,18 @@ restart:
 			PageIndexMultiDelete(page, todelete, ntodelete);
 			GistMarkTuplesDeleted(page);
 
+			/* Begin - ReqID:SRS-SECURITY-TDE */
 			if (RelationNeedsWAL(rel))
-			{
-				XLogRecPtr	recptr;
-
 				recptr = gistXLogUpdate(buffer,
 										todelete, ntodelete,
 										NULL, 0, InvalidBuffer);
-				PageSetLSN(page, recptr);
-			}
+			else if (FileEncryptionEnabled)
+				recptr = LSNForEncryption(RelationIsPermanent(rel));
 			else
-				PageSetLSN(page, gistGetFakeLSN(rel));
+				recptr = gistGetFakeLSN(rel);
+
+			PageSetLSN(page, recptr);
+			/* End - ReqID:SRS-SECURITY-TDE */
 
 			END_CRIT_SECTION();
 
@@ -657,8 +664,13 @@ gistdeletepage(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
 
 	if (RelationNeedsWAL(info->index))
 		recptr = gistXLogPageDelete(leafBuffer, txid, parentBuffer, downlink);
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	else if (FileEncryptionEnabled)
+		recptr = LSNForEncryption(RelationIsPermanent(info->index));
+	/* End - ReqID:SRS-SECURITY-TDE */
 	else
 		recptr = gistGetFakeLSN(info->index);
+
 	PageSetLSN(parentPage, recptr);
 	PageSetLSN(leafPage, recptr);
 

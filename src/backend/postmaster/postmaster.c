@@ -169,6 +169,10 @@
 #include "license.h"
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "crypto/bufenc.h"
+#include "crypto/walenc.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 #ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
 #include "hg_misc.h"
@@ -279,6 +283,9 @@ static int	SendStop = false;
 
 /* still more option variables */
 bool		EnableSSL = false;
+/* Begin - ReqID:SRS-SECURITY-TDE */
+int			terminal_fd = -1;
+/* End - ReqID:SRS-SECURITY-TDE */
 
 int			PreAuthDelay = 0;
 int			AuthenticationTimeout = 60;
@@ -765,7 +772,9 @@ PostmasterMain(int argc, char *argv[])
 	 * tcop/postgres.c (the option sets should not conflict) and with the
 	 * common help() function in main/main.c.
 	 */
-	while ((opt = getopt(argc, argv, "B:bc:C:D:d:EeFf:h:ijk:lN:m:nOo:Pp:r:S:sTt:W:-:")) != -1)	/* ReqID:LISTEN-MULTI-PORT SRS-MISC-MYSQL-FRAME */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	while ((opt = getopt(argc, argv, "B:bc:C:D:d:EeFf:h:ijk:lN:m:nOo:Pp:r:R:S:sTt:W:-:")) != -1)	/* ReqID:LISTEN-MULTI-PORT SRS-MISC-MYSQL-FRAME */
+	/* End - ReqID:SRS-SECURITY-TDE */
 	{
 		switch (opt)
 		{
@@ -866,6 +875,12 @@ PostmasterMain(int argc, char *argv[])
 			case 'r':
 				/* only used by single-user backend */
 				break;
+
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			case 'R':
+				terminal_fd = atoi(optarg);
+				break;
+			/* End - ReqID:SRS-SECURITY-TDE */
 
 			case 'S':
 				SetConfigOption("work_mem", optarg, PGC_POSTMASTER, PGC_S_ARGV);
@@ -1641,6 +1656,13 @@ PostmasterMain(int argc, char *argv[])
 	if (IsResGroupEnabled())
 		initCgroup();
 	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	InitializeKmgr();
+	InitializeBufferEncryption();
+	InitializeXLogEncryption();
+	/* End - ReqID:SRS-SECURITY-TDE */
+
 	/*
 	 * Initialize stats collection subsystem (this does NOT start the
 	 * collector process!)

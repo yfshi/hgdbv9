@@ -217,6 +217,14 @@ LocalBufferAlloc(SMgrRelation smgr, ForkNumber forkNum, BlockNumber blockNum,
 		/* Find smgr relation for buffer */
 		oreln = smgropen(bufHdr->tag.rnode, MyBackendId);
 
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		/*
+		 * Technically BM_PERMANENT could indicate an init fork, but that's
+		 * okay since forkNum would also tell us not to encrypt init forks.
+		 */
+		PageEncryptInplace(localpage, bufHdr->tag.forkNum,
+					   buf_state & BM_PERMANENT, bufHdr->tag.blockNum);
+		/* End - ReqID:SRS-SECURITY-TDE */
 		PageSetChecksumInplace(localpage, bufHdr->tag.blockNum);
 
 		/* And write... */

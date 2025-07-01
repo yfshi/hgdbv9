@@ -174,6 +174,9 @@ typedef struct
 		struct
 		{
 			TimeLineID	startpointTLI;	/* Starting timeline */
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			bool		cipher;		/* encrypted wal */
+			/* End - ReqID:SRS-SECURITY-TDE */
 		}			physical;
 		struct
 		{

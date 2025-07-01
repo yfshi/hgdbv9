@@ -1339,6 +1339,11 @@ pg_cursors| SELECT c.name,
     c.is_scrollable,
     c.creation_time
    FROM pg_cursor() c(name, statement, is_holdable, is_binary, is_scrollable, creation_time);
+pg_encryption_keys| SELECT a.keyid,
+    a.name,
+    a.method,
+    a.last_rotation_time
+   FROM pg_show_all_encryption_keys() a(keyid, name, method, last_rotation_time);
 pg_file_settings| SELECT a.sourcefile,
     a.sourceline,
     a.seqno,

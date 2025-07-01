@@ -11913,6 +11913,16 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proname => 'sm3', proleakproof => 't', prorettype => 'bytea',
   proargtypes => 'bytea', prosrc => 'sm3_bytea' },
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+# kms handling
+{ oid => '8434', descr => 'show all encryption keys',
+  proname => 'pg_show_all_encryption_keys', prorows => '10', proretset => 't',
+  provolatile => 's', prorettype => 'record', proargtypes => '',
+  proallargtypes => '{int4,text,text,text}',
+  proargmodes => '{o,o,o,o}',
+  proargnames => '{keyid,name,method,last_rotation_time}',
+  prosrc => 'show_all_encryption_keys' },
+/* End - ReqID:SRS-SECURITY-TDE */
 
 { oid => '6018', descr => 'Hgdb buld_version string',
   proname => 'build_version', provolatile => 's', prorettype => 'text',

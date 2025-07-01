@@ -25,7 +25,10 @@
 #include "storage/bufpage.h"
 #include "storage/checksum.h"
 #include "storage/checksum_impl.h"
-
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include <dirent.h>
+#include "common/file_utils.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * cloneFile()

@@ -86,6 +86,7 @@ Node *replication_parse_result;
 %token K_USE_SNAPSHOT
 %token K_MANIFEST
 %token K_MANIFEST_CHECKSUMS
+%token K_CIPHER /* ReqID:SRS-SECURITY-TDE */
 
 %type <node>	command
 %type <node>	base_backup start_replication start_logical_replication
@@ -94,6 +95,9 @@ Node *replication_parse_result;
 %type <list>	base_backup_opt_list
 %type <defelt>	base_backup_opt
 %type <uintval>	opt_timeline
+/* Begin - ReqID:SRS-SECURITY-TDE */
+%type <boolval>	opt_decrypt
+/* End - ReqID:SRS-SECURITY-TDE */
 %type <list>	plugin_options plugin_opt_list
 %type <defelt>	plugin_opt_elem
 %type <node>	plugin_opt_arg
@@ -154,7 +158,7 @@ var_name:	IDENT	{ $$ = $1; }
 /*
  * BASE_BACKUP [LABEL '<label>'] [PROGRESS] [FAST] [WAL] [NOWAIT]
  * [MAX_RATE %d] [TABLESPACE_MAP] [NOVERIFY_CHECKSUMS]
- * [MANIFEST %s] [MANIFEST_CHECKSUMS %s]
+ * [MANIFEST %s] [MANIFEST_CHECKSUMS %s] [DECRYPT]
  */
 base_backup:
 			K_BASE_BACKUP base_backup_opt_list
@@ -223,6 +227,13 @@ base_backup_opt:
 				  $$ = makeDefElem("manifest_checksums",
 								   (Node *)makeString($2), -1);
 				}
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			| K_CIPHER
+				{
+				  $$ = makeDefElem("cipher",
+								   (Node *)makeInteger(true), -1);
+				};
+			/* End - ReqID:SRS-SECURITY-TDE */
 			;
 
 create_replication_slot:
@@ -302,10 +313,13 @@ drop_replication_slot:
 			;
 
 /*
- * START_REPLICATION [SLOT slot] [PHYSICAL] %X/%X [TIMELINE %d]
+ * START_REPLICATION [SLOT slot] [PHYSICAL] %X/%X [TIMELINE %d] [DECRYPT]
  */
 start_replication:
 			K_START_REPLICATION opt_slot opt_physical RECPTR opt_timeline
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			opt_decrypt
+			/* End - ReqID:SRS-SECURITY-TDE */
 				{
 					StartReplicationCmd *cmd;
 
@@ -314,13 +328,19 @@ start_replication:
 					cmd->slotname = $2;
 					cmd->startpoint = $4;
 					cmd->timeline = $5;
+					/* Begin - ReqID:SRS-SECURITY-TDE */
+					cmd->cipher = $6;
+					/* End - ReqID:SRS-SECURITY-TDE */
 					$$ = (Node *) cmd;
 				}
 			;
 
-/* START_REPLICATION SLOT slot LOGICAL %X/%X options */
+/* START_REPLICATION SLOT slot LOGICAL %X/%X options [CIPHER] */
 start_logical_replication:
 			K_START_REPLICATION K_SLOT IDENT K_LOGICAL RECPTR plugin_options
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			opt_decrypt
+			/* End - ReqID:SRS-SECURITY-TDE */
 				{
 					StartReplicationCmd *cmd;
 					cmd = makeNode(StartReplicationCmd);
@@ -328,6 +348,9 @@ start_logical_replication:
 					cmd->slotname = $3;
 					cmd->startpoint = $5;
 					cmd->options = $6;
+					/* Begin - ReqID:SRS-SECURITY-TDE */
+					cmd->cipher = $7;
+					/* End - ReqID:SRS-SECURITY-TDE */
 					$$ = (Node *) cmd;
 				}
 			;
@@ -380,6 +403,12 @@ opt_timeline:
 				| /* EMPTY */			{ $$ = 0; }
 			;
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+opt_decrypt:
+			K_CIPHER						{ $$ = true; }
+			| /* EMPTY */					{ $$ = false; }
+			;
+/* End - ReqID:SRS-SECURITY-TDE */
 
 plugin_options:
 			'(' plugin_opt_list ')'			{ $$ = $2; }

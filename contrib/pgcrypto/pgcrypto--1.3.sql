@@ -215,3 +215,80 @@ CREATE FUNCTION pgp_armor_headers(text, key OUT text, value OUT text)
 RETURNS SETOF record
 AS 'MODULE_PATHNAME', 'pgp_armor_headers'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+--
+-- HSM api
+--
+CREATE FUNCTION hsm_generate_key(algname cstring, lenbit int, kekid int)
+RETURNS bytea
+AS 'MODULE_PATHNAME', 'hsm_generate_key'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_import_key(algname cstring, kekid int, rkey bytea)
+RETURNS int
+AS 'MODULE_PATHNAME', 'hsm_import_key'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_generate_key_pair(algname cstring, lenbit int)
+RETURNS TABLE(key bytea)
+AS 'MODULE_PATHNAME', 'hsm_generate_key_pair'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_import_key_pair(algname cstring, pubkey bytea, prikey bytea, mode cstring default 'all')
+RETURNS int
+AS 'MODULE_PATHNAME', 'hsm_import_key_pair'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_destroy_key(id int)
+RETURNS void
+AS 'MODULE_PATHNAME', 'hsm_destroy_key'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE TYPE hsm_keys_record AS (id int, algname text, mode text, kekid int, lenbit int);
+CREATE FUNCTION hsm_show_keys()
+RETURNS SETOF hsm_keys_record
+AS 'MODULE_PATHNAME', 'hsm_show_keys'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_encrypt(algname cstring, id int, plaintext bytea, iv bytea default '')
+RETURNS bytea
+AS 'MODULE_PATHNAME', 'hsm_encrypt'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_decrypt(algname cstring, id int, ciphertext bytea, iv bytea default '')
+RETURNS bytea
+AS 'MODULE_PATHNAME', 'hsm_decrypt'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_gen_random_bytes(len int)
+RETURNS bytea
+AS 'MODULE_PATHNAME', 'hsm_gen_random_bytes'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_hash(algname cstring, datatext bytea)
+RETURNS bytea
+AS 'MODULE_PATHNAME', 'hsm_hash'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_pub_encrypt(algname cstring, id int, plaintext bytea, keylenbits int default 0)
+RETURNS bytea
+AS 'MODULE_PATHNAME', 'hsm_pub_encrypt'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_pub_decrypt(algname cstring, id int, ciphertext bytea, 
+                                passwd cstring default '', keylenbits int default 0)
+RETURNS bytea
+AS 'MODULE_PATHNAME', 'hsm_pub_decrypt'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_sign(algname cstring, id int, datatext bytea, 
+                         passwd cstring default '', keylenbits int default 0)
+RETURNS bytea
+AS 'MODULE_PATHNAME', 'hsm_sign'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION hsm_verify(algname cstring, id int, datatext bytea, signtext bytea, 
+                           keylenbits int default 0)
+RETURNS void
+AS 'MODULE_PATHNAME', 'hsm_verify'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;

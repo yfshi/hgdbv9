@@ -61,6 +61,7 @@ OBJS_COMMON = \
 	ip.o \
 	jsonapi.o \
 	keywords.o \
+	kmgr_utils.o \
 	kwlookup.o \
 	link-canary.o \
 	md5_common.o \
@@ -81,20 +82,22 @@ OBJS_COMMON = \
 	sm3_common.o	\
 	mac.o	\
 	hkdf.o	\
-	pass_crypt.o
-
+	pass_crypt.o \
+	hex.o
 ifeq ($(with_ssl),openssl)
 OBJS_COMMON += \
 	protocol_openssl.o \
 	cryptohash_openssl.o \
-	hmac_openssl.o
+	hmac_openssl.o \
+	cipher_openssl.o
 else
 OBJS_COMMON += \
 	cryptohash.o \
 	hmac.o \
 	md5.o \
 	sha1.o \
-	sha2.o
+	sha2.o \
+	cipher.o
 endif
 
 # A few files are currently only built for frontend, not server

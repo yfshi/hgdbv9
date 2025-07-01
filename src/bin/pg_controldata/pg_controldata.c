@@ -33,6 +33,9 @@
 #include "license.h"
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "common/kmgr_utils.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 static void
 usage(const char *progname)
 {
@@ -358,5 +361,11 @@ main(int argc, char *argv[])
 	printf(_("case conversion mode:                 %u\n"),
 		ControlFile->casemode);
 	/* END - case sensitive indentify */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("File encryption method:               %s\n"),
+		   encryption_methods[ControlFile->file_encryption_method].name);
+	printf(_("File encryption mode:                 %s\n"),
+		   encryption_target_modes[ControlFile->encryption_target_mode].name);
+	/* End - ReqID:SRS-SECURITY-TDE */
 	return 0;
 }

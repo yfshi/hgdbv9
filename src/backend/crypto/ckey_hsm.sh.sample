@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# Provide HSM configure information. 
+
+[[ "$#" -lt 2 ]] && echo "cluster_key_command usage: $0 \"%d\" \"key_id\"" 1>&2 && exit 1
+# No need for %R or -R since we are not prompting
+
+DIR="$1"
+[ ! -e "$DIR" ] && echo "$DIR does not exist" 1>&2 && exit 1
+[ ! -d "$DIR" ] && echo "$DIR is not a directory" 1>&2 && exit 1
+
+# File containing the id of the HSM KEK id
+HSM_KEK_ID_FILE="$DIR/hsm-key.id"
+HSM_KEK_ID="HSM_KEK_ID=$2"
+
+# Store the KEK id of HSM in the pg_cryptokeys/live/hsm-key.id. It may not
+# be needed for now, but storing important information into key file rather
+#  than relying solely on the configure file is a wiser choice.
+if [ ! -e "$HSM_KEK_ID_FILE" ]
+then
+	echo "$HSM_KEK_ID" > "$HSM_KEK_ID_FILE"
+fi
+
+# Return HSM flag
+echo $HSM_KEK_ID
+
+exit 0

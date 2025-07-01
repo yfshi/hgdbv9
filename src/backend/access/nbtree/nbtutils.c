@@ -2123,7 +2123,10 @@ btoptions(Datum reloptions, bool validate)
 		{"vacuum_cleanup_index_scale_factor", RELOPT_TYPE_REAL,
 		offsetof(BTOptions, vacuum_cleanup_index_scale_factor)},
 		{"deduplicate_items", RELOPT_TYPE_BOOL,
-		offsetof(BTOptions, deduplicate_items)}
+		offsetof(BTOptions, deduplicate_items)},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"encrypt", RELOPT_TYPE_BOOL, offsetof(BTOptions, encrypt)}
+		/* End - ReqID:SRS-SECURITY-TDE */
 
 	};
 

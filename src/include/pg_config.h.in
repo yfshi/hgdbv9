@@ -214,6 +214,9 @@
 /* Define to 1 if you have the <editline/readline.h> header file. */
 #undef HAVE_EDITLINE_READLINE_H
 
+/* Define to 1 if you have the `EVP_sm4_ctr' function. */
+#undef HAVE_EVP_SM4_CTR
+
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
 
@@ -383,6 +386,9 @@
 
 /* Define to 1 if you have the `ssl' library (-lssl). */
 #undef HAVE_LIBSSL
+
+/* Define to 1 if you have the `swsds' library (-lswsds). */
+#undef HAVE_LIBSWSDS
 
 /* Define to 1 if you have the `wldap32' library (-lwldap32). */
 #undef HAVE_LIBWLDAP32
@@ -636,6 +642,9 @@
 
 /* Define to 1 if `tm_zone' is a member of `struct tm'. */
 #undef HAVE_STRUCT_TM_TM_ZONE
+
+/* Define to 1 if you have the <swsds.h> header file. */
+#undef HAVE_SWSDS_H
 
 /* Define to 1 if you have the `symlink' function. */
 #undef HAVE_SYMLINK
@@ -942,6 +951,9 @@
 /* Define to 1 if strerror_r() returns int. */
 #undef STRERROR_R_INT
 
+/* Define to 0 to build without administrator user. */
+#undef USE_ADMINISTRATOR
+
 /* Define to 1 to use ARMv8 CRC Extension. */
 #undef USE_ARMV8_CRC32C
 
@@ -1006,6 +1018,9 @@
 /* Define to 1 to use Intel SSE 4.2 CRC instructions with a runtime check. */
 #undef USE_SSE42_CRC32C_WITH_RUNTIME_CHECK
 
+/* Define to 1 to build with swsds support. (--with-swsds) */
+#undef USE_SWSDS
+
 /* Define to build with systemd support. (--with-systemd) */
 #undef USE_SYSTEMD
 
@@ -1026,7 +1041,6 @@
 
 /* Define to 1 if `wcstombs_l' requires <xlocale.h>. */
 #undef WCSTOMBS_L_IN_XLOCALE
-
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */

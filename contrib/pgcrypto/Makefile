@@ -40,7 +40,8 @@ SRCS = \
 	pgp.c \
 	px-crypt.c \
 	px-hmac.c \
-	px.c
+	px.c \
+	kmgr_swsds.c
 
 MODULE_big	= pgcrypto
 OBJS = \

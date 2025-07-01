@@ -716,6 +716,7 @@ with_systemd
 with_selinux
 with_license
 with_ldap
+with_swsds
 with_gmssl
 with_krb_srvnam
 krb_srvtab
@@ -873,6 +874,7 @@ with_python
 with_gssapi
 with_krb_srvnam
 with_gmssl
+with_swsds
 with_pam
 with_bsd_auth
 with_ldap
@@ -1599,6 +1601,7 @@ Optional Packages:
   --with-krb-srvnam=NAME  default service principal name in Kerberos (GSSAPI)
                           [postgres]
   --with-gmssl            build with GmSSL support
+  --with-swsds            build with swsds support
   --with-pam              build with PAM support
   --with-bsd-auth         build with BSD Authentication support
   --with-ldap             build with LDAP support
@@ -9061,6 +9064,41 @@ $as_echo "$with_gmssl" >&6; }
 
 
 #
+# swsds
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with swsds support" >&5
+$as_echo_n "checking whether to build with swsds support... " >&6; }
+
+
+
+# Check whether --with-swsds was given.
+if test "${with_swsds+set}" = set; then :
+  withval=$with_swsds;
+  case $withval in
+    yes)
+
+$as_echo "#define USE_SWSDS 1" >>confdefs.h
+
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --with-swsds option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  with_swsds=no
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_swsds" >&5
+$as_echo "$with_swsds" >&6; }
+
+
+#
 # PAM
 #
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with PAM support" >&5
@@ -13828,7 +13866,7 @@ fi
 done
 
   # Function introduced in OpenSSL 1.1.1.
-  for ac_func in X509_get_signature_info SSL_CTX_set_num_tickets
+  for ac_func in X509_get_signature_info SSL_CTX_set_num_tickets EVP_sm4_ctr
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -13894,6 +13932,56 @@ _ACEOF
 
 else
   as_fn_error $? "library 'gmssl' is required for GmSSL support" "$LINENO" 5
+fi
+
+fi
+
+if test "$with_swsds" = yes ; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SDF_OpenDevice in -lswsds" >&5
+$as_echo_n "checking for SDF_OpenDevice in -lswsds... " >&6; }
+if ${ac_cv_lib_swsds_SDF_OpenDevice+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lswsds  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char SDF_OpenDevice ();
+int
+main ()
+{
+return SDF_OpenDevice ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_swsds_SDF_OpenDevice=yes
+else
+  ac_cv_lib_swsds_SDF_OpenDevice=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_swsds_SDF_OpenDevice" >&5
+$as_echo "$ac_cv_lib_swsds_SDF_OpenDevice" >&6; }
+if test "x$ac_cv_lib_swsds_SDF_OpenDevice" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBSWSDS 1
+_ACEOF
+
+  LIBS="-lswsds $LIBS"
+
+else
+  as_fn_error $? "library 'swsds' is required for swsds support" "$LINENO" 5
 fi
 
 fi
@@ -14900,6 +14988,23 @@ _ACEOF
 
 else
   as_fn_error $? "header file <gmssl/sm4.h> is required for GmSSL" "$LINENO" 5
+fi
+
+done
+
+fi
+
+if test "$with_swsds" = yes ; then
+  for ac_header in swsds.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "swsds.h" "ac_cv_header_swsds_h" "$ac_includes_default"
+if test "x$ac_cv_header_swsds_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_SWSDS_H 1
+_ACEOF
+
+else
+  as_fn_error $? "header file <swsds.h> is required for swsds" "$LINENO" 5
 fi
 
 done
@@ -19581,6 +19686,10 @@ $as_echo "slicing-by-8" >&6; }
   fi
 fi
 
+
+# Fix Bug#M0000315 for windows
+
+$as_echo "#define USE_ADMINISTRATOR 0" >>confdefs.h
 
 
 # Select semaphore implementation type.

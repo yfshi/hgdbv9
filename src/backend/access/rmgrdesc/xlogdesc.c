@@ -80,7 +80,10 @@ xlog_desc(StringInfo buf, XLogReaderState *record)
 
 		appendStringInfoString(buf, xlrec->rp_name);
 	}
-	else if (info == XLOG_FPI || info == XLOG_FPI_FOR_HINT)
+	else if (info == XLOG_FPI || info == XLOG_FPI_FOR_HINT ||
+			/* Begin - ReqID:SRS-SECURITY-TDE */
+			 info == XLOG_ENCRYPTION_LSN)
+			 /* End - ReqID:SRS-SECURITY-TDE */
 	{
 		/* no further information to print */
 	}
@@ -198,6 +201,11 @@ xlog_identify(uint8 info)
 		case XLOG_FPI_FOR_HINT:
 			id = "FPI_FOR_HINT";
 			break;
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		case XLOG_ENCRYPTION_LSN:
+			id = "ENCRYPTION_LSN";
+			break;
+		/* End - ReqID:SRS-SECURITY-TDE */
 	}
 
 	return id;

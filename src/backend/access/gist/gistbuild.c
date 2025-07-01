@@ -299,7 +299,10 @@ gistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 		GISTInitBuffer(buffer, F_LEAF);
 
 		MarkBufferDirty(buffer);
-		PageSetLSN(page, GistBuildLSN);
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		PageSetLSN(page, !FileEncryptionEnabled ? GistBuildLSN :
+				   LSNForEncryption(RelationIsPermanent(index)));
+		/* End - ReqID:SRS-SECURITY-TDE */
 
 		UnlockReleaseBuffer(buffer);
 
@@ -449,7 +452,18 @@ gist_indexsortbuild(GISTBuildState *state)
 	gist_indexsortbuild_flush_ready_pages(state);
 
 	/* Write out the root */
-	PageSetLSN(pagestate->page, GistBuildLSN);
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	PageSetLSN(pagestate->page, !FileEncryptionEnabled ? GistBuildLSN :
+			   LSNForEncryption(RelationIsPermanent(state->indexrel)));
+	/* Make sure LSNs are vaild, and if encryption, are not constant. */
+	Assert(!XLogRecPtrIsInvalid(PageGetLSN(pagestate->page)) &&
+		   (!FileEncryptionEnabled ||
+			PageGetLSN(pagestate->page) != GistBuildLSN));
+	if (RelationIsEncrypted(state->indexrel))
+		PageSetEncrypted(pagestate->page);
+	PageEncryptInplace(pagestate->page, MAIN_FORKNUM, RelationIsPermanent(state->indexrel),
+					   GIST_ROOT_BLKNO);
+	/* End - ReqID:SRS-SECURITY-TDE */
 	PageSetChecksumInplace(pagestate->page, GIST_ROOT_BLKNO);
 	smgrwrite(RelationGetSmgr(state->indexrel), MAIN_FORKNUM, GIST_ROOT_BLKNO,
 			  pagestate->page, true);
@@ -581,7 +595,18 @@ gist_indexsortbuild_flush_ready_pages(GISTBuildState *state)
 		if (blkno != state->pages_written)
 			elog(ERROR, "unexpected block number to flush GiST sorting build");
 
-		PageSetLSN(page, GistBuildLSN);
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		PageSetLSN(page, !FileEncryptionEnabled ? GistBuildLSN :
+				   LSNForEncryption(RelationIsPermanent(state->indexrel)));
+		/* Make sure LSNs are vaild, and if encryption, are not constant. */
+		Assert(!XLogRecPtrIsInvalid(PageGetLSN(page)) &&
+			   (!FileEncryptionEnabled ||
+				PageGetLSN(page) != GistBuildLSN));
+		if (RelationIsEncrypted(state->indexrel))
+			PageSetEncrypted(page);
+		PageEncryptInplace(page, MAIN_FORKNUM, RelationIsPermanent(state->indexrel),
+				   blkno);
+		/* End - ReqID:SRS-SECURITY-TDE */
 		PageSetChecksumInplace(page, blkno);
 		smgrextend(RelationGetSmgr(state->indexrel), MAIN_FORKNUM, blkno, page,
 				   true);

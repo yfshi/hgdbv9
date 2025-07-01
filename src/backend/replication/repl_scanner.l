@@ -134,6 +134,7 @@ USE_SNAPSHOT		{ return K_USE_SNAPSHOT; }
 WAIT				{ return K_WAIT; }
 MANIFEST			{ return K_MANIFEST; }
 MANIFEST_CHECKSUMS	{ return K_MANIFEST_CHECKSUMS; }
+CIPHER				{ return K_CIPHER; }
 
 {space}+		{ /* do nothing */ }
 

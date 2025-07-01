@@ -22,6 +22,7 @@ typedef struct BrinOptions
 	int32		vl_len_;		/* varlena header (do not touch directly!) */
 	BlockNumber pagesPerRange;
 	bool		autosummarize;
+	bool		encrypt;		/* encrypt the index (ReqID:SRS-SECURITY-TDE) */
 } BrinOptions;
 
 

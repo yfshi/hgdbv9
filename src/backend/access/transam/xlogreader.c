@@ -33,6 +33,10 @@
 #include "utils/memutils.h"
 #endif
 
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "crypto/walenc.h"
+/* End - ReqID:SRS-SECURITY-TDE */
+
 static void report_invalid_record(XLogReaderState *state, const char *fmt,...)
 			pg_attribute_printf(2, 3);
 static void allocate_recordbuf(XLogReaderState *state, uint32 reclength);
@@ -1085,7 +1089,10 @@ err:
 bool
 WALRead(XLogReaderState *state,
 		char *buf, XLogRecPtr startptr, Size count, TimeLineID tli,
-		WALReadError *errinfo)
+		WALReadError *errinfo,
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		bool decrypt)
+		/* End - ReqID:SRS-SECURITY-TDE */
 {
 	char	   *p;
 	XLogRecPtr	recptr;
@@ -1134,18 +1141,17 @@ WALRead(XLogReaderState *state,
 		else
 			segbytes = nbytes;
 
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		/* Reset errno first; eases reporting non-errno-affecting errors */
+		errno = 0;
+		/* End - ReqID:SRS-SECURITY-TDE */
 #ifndef FRONTEND
 		pgstat_report_wait_start(WAIT_EVENT_WAL_READ);
 #endif
-
-		/* Reset errno first; eases reporting non-errno-affecting errors */
-		errno = 0;
 		readbytes = pg_pread(state->seg.ws_file, p, segbytes, (off_t) startoff);
-
 #ifndef FRONTEND
 		pgstat_report_wait_end();
 #endif
-
 		if (readbytes <= 0)
 		{
 			errinfo->wre_errno = errno;
@@ -1155,6 +1161,26 @@ WALRead(XLogReaderState *state,
 			errinfo->wre_seg = state->seg;
 			return false;
 		}
+
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		if (WALEncrypted)
+		{
+			if (decrypt)
+			{
+				XLogDecryptInplace(p, readbytes, tli, state->seg.ws_segno, startoff);
+			}
+			else if (state->sendTLI != tli)
+			{
+				/* 
+				 * In the WalSndSegmentOpen function, data might be read from the WAL log files of a newer timeline. 
+				 * This can cause the standby node to use an incorrect timeline to construct the IV. Therefore, 
+				 * it is necessary to ensure that the WAL logs received by the standby are encrypted with the IV it expects.
+				 */
+				XLogDecryptInplace(p, readbytes, tli, state->seg.ws_segno, startoff);
+				XLogEncryptInplace(p, readbytes, state->sendTLI, state->seg.ws_segno, startoff);
+			}
+		}	
+		/* End - ReqID:SRS-SECURITY-TDE */
 
 		/* Update state for read */
 		recptr += readbytes;
@@ -1647,3 +1673,97 @@ XLogRecGetFullXid(XLogReaderState *record)
 }
 
 #endif
+
+/* Begin - ReqID:SRS-SECURITY-TDE */
+char*
+XLogEncryptCopy(char *xlog, Size size, Size *nencrypted, 
+				TimeLineID timeline, XLogSegNo segment, uint32 offset)
+{
+	static char *xlogCopy = NULL;
+
+	if (xlogCopy == NULL)
+	{
+#ifndef FRONTEND
+		xlogCopy = MemoryContextAlloc(walEncryptCxt,
+									  XLOG_ENCRYPT_SIZE);
+#else
+		xlogCopy = palloc(XLOG_ENCRYPT_SIZE);
+#endif
+	}
+
+	if (size < XLOG_ENCRYPT_SIZE)
+		*nencrypted = size;
+	else
+		*nencrypted = XLOG_ENCRYPT_SIZE;
+
+	memcpy(xlogCopy, xlog, *nencrypted);
+	XLogEncryptInplace(xlogCopy, *nencrypted, timeline,
+					   segment, offset);
+
+	return xlogCopy;
+}
+
+void
+XLogEncryptInplace(char *xlog, Size size, TimeLineID timeline,
+				   XLogSegNo segment, uint32 offset)
+{
+	uint32		counter;
+	uint32		shift;
+	uint32		partlen;
+
+	/* Calculate the counter */
+	counter = offset / WALENC_BLOCK;
+	shift = offset % WALENC_BLOCK;
+
+	/* There have an uncompleted block */
+	if (shift > 0)
+	{
+		unsigned char xlogPart[WALENC_BLOCK];
+		
+		partlen = Min(WALENC_BLOCK - shift, size);
+		memcpy(xlogPart + shift, xlog, partlen);
+		EncryptXLog((char *) xlogPart, (Size) WALENC_BLOCK,
+					timeline, segment, counter);
+		memcpy(xlog, xlogPart + shift, partlen);
+
+		xlog += partlen;
+		size -= partlen;
+		counter++;
+	}
+
+	if (size > 0)
+		EncryptXLog(xlog, size, timeline, segment, counter);
+}
+
+void
+XLogDecryptInplace(char *xlog, Size size, TimeLineID timeline,
+				   XLogSegNo segment, uint32 offset)
+{
+	uint32		counter;
+	uint32		shift;
+	uint32		partlen;
+
+	/* Calculate the counter */
+	counter = offset / WALENC_BLOCK;
+	shift = offset % WALENC_BLOCK;
+
+	/* There have an uncompleted block */
+	if (shift > 0)
+	{
+		unsigned char xlogPart[WALENC_BLOCK];
+
+		partlen = Min(WALENC_BLOCK - shift, size);
+		memcpy(xlogPart + shift, xlog, partlen);
+		DecryptXLog((char *) xlogPart, (Size) WALENC_BLOCK,
+					timeline, segment, counter);
+		memcpy(xlog, xlogPart + shift, partlen);
+
+		xlog += partlen;
+		size -= partlen;
+		counter++;
+	}
+
+	if (size > 0)
+		DecryptXLog(xlog, size, timeline, segment, counter);
+}
+/* End - ReqID:SRS-SECURITY-TDE */

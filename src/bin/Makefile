@@ -32,7 +32,8 @@ SUBDIRS = \
 	pg_waldump \
 	pgbench \
 	psql \
-	scripts 
+	scripts \
+	pg_alterckey
 
 # Begin - ReqID:SRS-SECURITY-IDENTITYAUTH
 SUBDIRS += pg_pgpass

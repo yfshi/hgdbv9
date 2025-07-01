@@ -396,6 +396,7 @@ typedef struct GiSTOptions
 	int32		vl_len_;		/* varlena header (do not touch directly!) */
 	int			fillfactor;		/* page fill factor in percent (0..100) */
 	GistOptBufferingMode buffering_mode;	/* buffering build mode */
+	bool		encrypt;		/* encrypt the index (ReqID:SRS-SECURITY-TDE) */
 } GiSTOptions;
 
 /* gist.c */

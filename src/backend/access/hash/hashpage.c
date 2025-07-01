@@ -1028,6 +1028,11 @@ _hash_alloc_buckets(Relation rel, BlockNumber firstblock, uint32 nblocks)
 					zerobuf.data,
 					true);
 
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (RelationIsEncrypted(rel))
+		PageSetEncrypted(page);
+	PageEncryptInplace(page, MAIN_FORKNUM, RelationIsPermanent(rel), lastblock);
+	/* End - ReqID:SRS-SECURITY-TDE */
 	PageSetChecksumInplace(page, lastblock);
 	smgrextend(RelationGetSmgr(rel), MAIN_FORKNUM, lastblock, zerobuf.data,
 			   false);

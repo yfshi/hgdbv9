@@ -23,6 +23,9 @@
 #include "fe_utils/archive.h"
 #include "filemap.h"
 #include "pg_rewind.h"
+/* Begin - ReqID:SRS-SECURITY-TDE */
+#include "crypto/walenc.h"
+/* End - ReqID:SRS-SECURITY-TDE */
 
 /*
  * RmgrNames is an array of resource manager names, to make error messages
@@ -374,6 +377,13 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 
 		return -1;
 	}
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (WALEncrypted)
+		XLogDecryptInplace(readBuf, XLOG_BLCKSZ,
+					targetHistory[private->tliIndex].tli,
+					xlogreadsegno, targetPageOff);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	Assert(targetSegNo == xlogreadsegno);
 

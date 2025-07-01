@@ -477,6 +477,12 @@ libpqrcv_startstreaming(WalReceiverConn *conn,
 		appendStringInfo(&cmd, " TIMELINE %u",
 						 options->proto.physical.startpointTLI);
 
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/* Request encrypted stream if appropriate. */
+	if (!options->logical && options->proto.physical.cipher)
+		appendStringInfo(&cmd, " CIPHER");
+	/* End - ReqID:SRS-SECURITY-TDE */
+
 	/* Start streaming. */
 	res = libpqrcv_PQexec(conn->streamConn, cmd.data);
 	pfree(cmd.data);

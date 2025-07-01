@@ -84,6 +84,9 @@ typedef struct StartReplicationCmd
 	TimeLineID	timeline;
 	XLogRecPtr	startpoint;
 	List	   *options;
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	bool		cipher;
+	/* End - ReqID:SRS-SECURITY-TDE */
 } StartReplicationCmd;
 
 

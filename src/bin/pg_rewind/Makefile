@@ -28,7 +28,8 @@ OBJS = \
 	parsexlog.o \
 	pg_rewind.o \
 	timeline.o \
-	xlogreader.o
+	xlogreader.o \
+	walenc.o
 
 EXTRA_CLEAN = xlogreader.c
 
@@ -38,6 +39,9 @@ pg_rewind: $(OBJS) | submake-libpq submake-libpgport
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 
 xlogreader.c: % : $(top_srcdir)/src/backend/access/transam/%
+	rm -f $@ && $(LN_S) $< .
+
+walenc.c: % : $(top_srcdir)/src/backend/crypto/%
 	rm -f $@ && $(LN_S) $< .
 
 install: all installdirs
@@ -51,6 +55,7 @@ uninstall:
 
 clean distclean maintainer-clean:
 	rm -f pg_rewind$(X) $(OBJS) xlogreader.c
+	rm -f pg_rewind$(X) $(OBJS) walenc.c
 	rm -rf tmp_check
 
 check:

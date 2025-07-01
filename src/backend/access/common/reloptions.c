@@ -183,6 +183,19 @@ static relopt_bool boolRelOpts[] =
 		false
 	},
 	/* End - BUG#Z1460 */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	{
+		{
+			"encrypt",
+			"Enables encryption on this table",
+			RELOPT_KIND_HEAP | RELOPT_KIND_TOAST |  RELOPT_KIND_BTREE |
+			RELOPT_KIND_HASH | RELOPT_KIND_GIN | RELOPT_KIND_GIST |
+			RELOPT_KIND_SPGIST | RELOPT_KIND_BRIN,
+			AccessExclusiveLock
+		},
+		false
+	},
+	/* End - ReqID:SRS-SECURITY-TDE */
 	/* list terminator */
 	{{NULL}}
 };
@@ -1907,7 +1920,11 @@ default_reloptions(Datum reloptions, bool validate, relopt_kind kind)
 		{"vacuum_index_cleanup", RELOPT_TYPE_ENUM,
 		offsetof(StdRdOptions, vacuum_index_cleanup)},
 		{"vacuum_truncate", RELOPT_TYPE_BOOL,
-		offsetof(StdRdOptions, vacuum_truncate)}
+		offsetof(StdRdOptions, vacuum_truncate)},
+		/* Begin - ReqID:SRS-SECURITY-TDE */
+		{"encrypt", RELOPT_TYPE_BOOL,
+		offsetof(StdRdOptions, encrypt)}
+		/* End - ReqID:SRS-SECURITY-TDE */
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate, kind,

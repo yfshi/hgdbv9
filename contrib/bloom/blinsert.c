@@ -176,6 +176,12 @@ blbuildempty(Relation index)
 	 * XLOG_DBASE_CREATE or XLOG_TBLSPC_CREATE record.  Therefore, we need
 	 * this even when wal_level=minimal.
 	 */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (RelationIsEncrypted(index))
+		PageSetEncrypted(metapage);
+	PageEncryptInplace(metapage, INIT_FORKNUM, RelationIsPermanent(index),
+					   BLOOM_METAPAGE_BLKNO);
+	/* End - ReqID:SRS-SECURITY-TDE */
 	PageSetChecksumInplace(metapage, BLOOM_METAPAGE_BLKNO);
 	smgrwrite(RelationGetSmgr(index), INIT_FORKNUM, BLOOM_METAPAGE_BLKNO,
 			  (char *) metapage, true);

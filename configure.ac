@@ -1084,6 +1084,16 @@ AC_MSG_RESULT([$with_gmssl])
 AC_SUBST(with_gmssl)
 
 #
+# swsds
+#
+AC_MSG_CHECKING([whether to build with swsds support])
+PGAC_ARG_BOOL(with, swsds, no,
+              [build with swsds support],
+              [AC_DEFINE([USE_SWSDS], 1, [Define to 1 to build with swsds support. (--with-swsds)])])
+AC_MSG_RESULT([$with_swsds])
+AC_SUBST(with_swsds)
+
+#
 # PAM
 #
 AC_MSG_CHECKING([whether to build with PAM support])
@@ -1565,7 +1575,7 @@ if test "$with_ssl" = openssl ; then
   # function was removed.
   AC_CHECK_FUNCS([CRYPTO_lock])
   # Function introduced in OpenSSL 1.1.1.
-  AC_CHECK_FUNCS([X509_get_signature_info SSL_CTX_set_num_tickets])
+  AC_CHECK_FUNCS([X509_get_signature_info SSL_CTX_set_num_tickets EVP_sm4_ctr])
   AC_DEFINE([USE_OPENSSL], 1, [Define to 1 to build with OpenSSL support. (--with-ssl=openssl)])
 elif test "$with_ssl" != no ; then
   AC_MSG_ERROR([--with-ssl must specify openssl])
@@ -1574,6 +1584,10 @@ AC_SUBST(with_ssl)
 
 if test "$with_gmssl" = yes ; then
   AC_CHECK_LIB(gmssl, sm4_ctr_encrypt_init, [], [AC_MSG_ERROR([library 'gmssl' is required for GmSSL support])])
+fi
+
+if test "$with_swsds" = yes ; then
+  AC_CHECK_LIB(swsds, SDF_OpenDevice, [], [AC_MSG_ERROR([library 'swsds' is required for swsds support])])
 fi
 
 if test "$with_pam" = yes ; then
@@ -1779,6 +1793,10 @@ fi
 
 if test "$with_gmssl" = yes ; then
   AC_CHECK_HEADERS(gmssl/sm4.h, [], [AC_MSG_ERROR([header file <gmssl/sm4.h> is required for GmSSL])])
+fi
+
+if test "$with_swsds" = yes ; then
+  AC_CHECK_HEADERS(swsds.h, [], [AC_MSG_ERROR([header file <swsds.h> is required for swsds])])
 fi
 
 if test "$with_pam" = yes ; then
@@ -2500,6 +2518,8 @@ else
 fi
 AC_SUBST(PG_CRC32C_OBJS)
 
+# Fix Bug#M0000315 for windows
+AC_DEFINE(USE_ADMINISTRATOR, 0, [Define to 0 to build without administrator user.])
 
 # Select semaphore implementation type.
 if test "$PORTNAME" != "win32"; then
