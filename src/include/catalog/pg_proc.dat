@@ -11928,5 +11928,11 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proname => 'build_version', provolatile => 's', prorettype => 'text',
   proargtypes => '', prosrc => 'hgdb_build_version' },
 
+#/* Begin - BUG#Z00005371 */
+{ oid => '6019', descr => 'Hgdb hgdb_version string',
+  proname => 'hgdb_version', provolatile => 's', prorettype => 'text',
+  proargtypes => '', prosrc => 'hgdb_version' },
+#/* End - BUG#Z00005371 */
+
 
 ]

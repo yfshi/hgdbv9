@@ -177,6 +177,14 @@ AC_DEFINE_UNQUOTED(HG_BRANCH_HASH, "$hg_branch_hash", [Hgdb branch name hash])
 AC_DEFINE_UNQUOTED(HG_BRANCH_COMMIT_HASH, "$hg_branch_commit_hash", [Hgdb git commit hash])
 #/* End - BUG#Z00004967 */
 
+#/* Begin - BUG#Z00005371 */
+##add HG_HGDB_VERSION
+PGAC_ARG_REQ(with, hg_hgdb_version, [STRING], [Hg hgdb_version],
+             [HG_HGDB_VERSION="$withval"],
+             [HG_HGDB_VERSION="V9.0"])
+AC_DEFINE_UNQUOTED(HG_HGDB_VERSION, "$HG_HGDB_VERSION", [Hg hgdb_version str])
+#/* End - BUG#Z00005371 */
+
 
 #
 # 64-bit integer date/time storage is now the only option, but to avoid
