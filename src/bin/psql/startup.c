@@ -350,7 +350,6 @@ main(int argc, char *argv[])
 	getDbCompatibleMode(pset.db);
 	/* END - SQL PARSER */
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	getLoginMessage(pset.db);
 	getExpirationAlarm(pset.db, PQuser(pset.db));
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	psql_setup_cancel_handler();

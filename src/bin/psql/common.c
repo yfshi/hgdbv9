@@ -3245,24 +3245,6 @@ pbe_failure:
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 void
-getLoginMessage(PGconn *conn)
-{
-	PGresult *res;
-
-	const char *initial_query =	"DO $$\n BEGIN PERFORM login_message_display(); END $$;\n";
-
-	res = PQexec(conn, initial_query);
-
-	if (PQresultStatus(res) == PGRES_TUPLES_OK)
-	{
-		PrintQueryResults(res, true, false);
-	}
-
-	if (res)
-		PQclear(res);
-}
-
-void
 getExpirationAlarm(PGconn *conn, const char *user_name)
 {
 	PGresult *res;

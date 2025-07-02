@@ -56,7 +56,6 @@ extern bool SendQuery_PBE(const char *query, HostVariable *hv);
 /* End - ReqID:SRS-CMD-PSQL */
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-extern void getLoginMessage(PGconn *conn);
 extern void getExpirationAlarm(PGconn *conn, const char *user_name);
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #endif							/* COMMON_H */
