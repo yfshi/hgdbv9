@@ -145,12 +145,6 @@ static int	varstrfastcmp_locale(char *a1p, int len1, char *a2p, int len2, SortSu
 static int	varstrcmp_abbrev(Datum x, Datum y, SortSupport ssup);
 static Datum varstr_abbrev_convert(Datum original, SortSupport ssup);
 static bool varstr_abbrev_abort(int memtupcount, SortSupport ssup);
-static int32 text_length(Datum str);
-static text *text_catenate(text *t1, text *t2);
-static text *text_substring(Datum str,
-							int32 start,
-							int32 length,
-							bool length_not_specified);
 static text *text_overlay(text *t1, text *t2, int sp, int sl);
 static int	text_position(text *t1, text *t2, Oid collid);
 static void text_position_setup(text *t1, text *t2, Oid collid, TextPositionState *state);
@@ -756,7 +750,7 @@ textlen(PG_FUNCTION_ARGS)
  *	it may still be in compressed form.  We can avoid decompressing it at all
  *	in some cases.
  */
-static int32
+int32
 text_length(Datum str)
 {
 	/* fastpath when max encoding length is one */
@@ -832,7 +826,7 @@ textcat(PG_FUNCTION_ARGS)
  *
  * Arguments can be in short-header form, but not compressed or out-of-line
  */
-static text *
+text *
 text_catenate(text *t1, text *t2)
 {
 	text	   *result;
@@ -955,7 +949,7 @@ text_substr_no_len(PG_FUNCTION_ARGS)
  *
  *	The result is always a freshly palloc'd datum.
  */
-static text *
+text *
 text_substring(Datum str, int32 start, int32 length, bool length_not_specified)
 {
 	int32		eml = pg_database_encoding_max_length();
@@ -2584,8 +2578,7 @@ blobfastcmp_c(Datum x, Datum y, SortSupport ssup)
 			   *a2p;
 	int			len1,
 				len2,
-				result,
-				max_sort_length;
+				result;
 
 	a1p = VARDATA_ANY(arg1);
 	a2p = VARDATA_ANY(arg2);
@@ -2593,7 +2586,6 @@ blobfastcmp_c(Datum x, Datum y, SortSupport ssup)
 	len1 = VARSIZE_ANY_EXHDR(arg1);
 	len2 = VARSIZE_ANY_EXHDR(arg2);
 
-	max_sort_length = atoi(max_sort_length_str);
 	len1 = len1 > max_sort_length ? max_sort_length : len1;
 	len2 = len2 > max_sort_length ? max_sort_length : len2;
 

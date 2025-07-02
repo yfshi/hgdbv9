@@ -18,6 +18,7 @@
 #include "utils/builtins.h"
 #include "utils/float.h"
 #include "fmgr.h"
+#include "../include/ivorysql_my.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +41,8 @@ PG_FUNCTION_INFO_V1(mystext2int4);
 PG_FUNCTION_INFO_V1(mystext2int8);
 PG_FUNCTION_INFO_V1(mystext2float8);
 PG_FUNCTION_INFO_V1(mys_isnull);
+PG_FUNCTION_INFO_V1(mys_text2uint4);
+PG_FUNCTION_INFO_V1(mys_text2uint8);
 
 
 /*
@@ -196,7 +199,7 @@ extract_leading_number_str(const char *str, char *out_buf, size_t size)
  * Returns:
  *   The length of the extracted result.
  */
-static void
+bool
 extract_leading_integer_str(const char *str, char *out_buf, size_t size)
 {
 	char temp[64] = {0};   /* Temporary buffer to hold the numeric part (without the sign) */
@@ -206,17 +209,20 @@ extract_leading_integer_str(const char *str, char *out_buf, size_t size)
 	int negative = 0;      /* Flag for negative sign */
 	bool allZero = true;
 	char final_buf[128] = {0};  /* Larger buffer to avoid snprintf truncation warnings */
+	const char *raw;
 
 	memset(out_buf, 0, size);
 
 	/* Skip leading whitespace */
 	while (isspace(*p)) p++;
 
+	raw = p;
+
 	/* If the first character is not a digit, '+', '-', or '.', return "0" */
 	if (!isdigit(*p) && *p != '+' && *p != '-' && *p != '.')
 	{
 		strncpy(out_buf, "0", 2);
-		return;
+		return false;
 	}
 
 	/* Check for the sign */
@@ -278,7 +284,11 @@ extract_leading_integer_str(const char *str, char *out_buf, size_t size)
 	/* Copy the final result into the output buffer */
 	strncpy(out_buf, final_buf, size);
 	out_buf[size - 1] = '\0';
-	return;
+
+	if (strcmp(raw, out_buf))
+		return false;
+
+	return true;
 }
 
 /*
@@ -618,21 +628,21 @@ mystext2int2(PG_FUNCTION_ARGS)
 Datum
 mystext2int4(PG_FUNCTION_ARGS)
 {
+	char	   *arg = text_to_cstring(PG_GETARG_TEXT_PP(0));
 	char	   num[64];
-	text	   *arg;
-	int32	   i_arg = 0;
+	int32	   ret = 0;
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
+	if (!extract_leading_integer_str(arg, num, sizeof(num)))
+	{
+		ereport(WARNING, 
+				errmsg("Truncated incorrect INTEGER value: '%s'", arg));
+	}
 
-	arg = PG_GETARG_TEXT_PP(0);
-
-	extract_leading_integer_str(text_to_cstring(arg), num, sizeof(num));
-
-	i_arg = DatumGetInt32(DirectFunctionCall1(int4in,
+	ret = DatumGetInt32(DirectFunctionCall1(int4in,
 												CStringGetDatum(num)));
 
-	PG_RETURN_INT32(i_arg);
+	pfree(arg);
+	PG_RETURN_INT32(ret);
 }
 
 /*
@@ -643,21 +653,21 @@ mystext2int4(PG_FUNCTION_ARGS)
 Datum
 mystext2int8(PG_FUNCTION_ARGS)
 {
+	char	   *arg = text_to_cstring(PG_GETARG_TEXT_PP(0));
 	char	   num[64];
-	text	   *arg;
-	int64	   i_arg = 0;
+	int64	   ret = 0;
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
+	if (!extract_leading_integer_str(arg, num, sizeof(num)))
+	{
+		ereport(WARNING, 
+				errmsg("Truncated incorrect INTEGER value: '%s'", arg));
+	}
 
-	arg = PG_GETARG_TEXT_PP(0);
-
-	extract_leading_integer_str(text_to_cstring(arg), num, sizeof(num));
-
-	i_arg = DatumGetInt64(DirectFunctionCall1(int8in,
+	ret = DatumGetInt32(DirectFunctionCall1(int8in,
 												CStringGetDatum(num)));
 
-	PG_RETURN_INT64(i_arg);
+	pfree(arg);
+	PG_RETURN_INT64(ret);
 }
 
 /*
@@ -702,4 +712,44 @@ mys_isnull(PG_FUNCTION_ARGS)
 		PG_RETURN_BOOL(true);
 	else
 		PG_RETURN_BOOL(false);
+}
+
+Datum
+mys_text2uint4(PG_FUNCTION_ARGS)
+{
+	char	   *arg = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	char	   num[64];
+	uint32	   ret = 0;
+
+	if (!extract_leading_integer_str(arg, num, sizeof(num)))
+	{
+		ereport(WARNING, 
+				errmsg("Truncated incorrect INTEGER value: '%s'", arg));
+	}
+
+	ret = DatumGetInt32(DirectFunctionCall1(mysuint4_in,
+											CStringGetDatum(num)));
+
+	pfree(arg);
+	PG_RETURN_UINT32(ret);
+}
+
+Datum
+mys_text2uint8(PG_FUNCTION_ARGS)
+{
+	char	   *arg = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	char	   num[64];
+	uint64	   ret = 0;
+
+	if (!extract_leading_integer_str(arg, num, sizeof(num)))
+	{
+		ereport(WARNING, 
+				errmsg("Truncated incorrect INTEGER value: '%s'", arg));
+	}
+
+	ret = DatumGetInt32(DirectFunctionCall1(mysuint8_in,
+											CStringGetDatum(num)));
+
+	pfree(arg);
+	PG_RETURN_UINT64(ret);
 }

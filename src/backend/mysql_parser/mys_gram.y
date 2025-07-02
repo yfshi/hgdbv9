@@ -64,6 +64,7 @@
 #include "utils/datetime.h"
 #include "utils/numeric.h"
 #include "utils/xml.h"
+#include "utils/builtins.h"
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */ /* Begin - ReqID:SRS-MYSQL-DATETYPE */
 #include "utils/guc.h"
@@ -603,7 +604,7 @@ static int MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan
 %type <list>	rowsfrom_item rowsfrom_list opt_col_def_list
 %type <boolean> opt_ordinality
 %type <list>	ExclusionConstraintList ExclusionConstraintElem
-%type <list>	func_arg_list func_arg_list_opt
+%type <list>	func_arg_list func_arg_list_opt field_func_args_list /* ReqID:SRS-MYSQL-BINARYTYPE */
 %type <node>	func_arg_expr
 %type <list>	row explicit_row implicit_row type_list array_expr_list
 %type <node>	case_expr case_arg when_clause case_default
@@ -659,7 +660,7 @@ static int MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan
 %type <str>		Sconst comment_text notify_payload
 %type <str>		RoleId opt_boolean_or_string
 %type <list>	var_list
-%type <str>		ColId ColLabel BareColLabel
+%type <str>		ColId ColLabel BareColLabel name_const_label /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 %type <str>		NonReservedWord NonReservedWord_or_Sconst
 %type <str>		var_name type_function_name param_name
 %type <str>		createdb_opt_name plassign_target
@@ -780,11 +781,11 @@ static int MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan
 	DIV DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP DUPLICATE_P
 
-	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
+	EACH ELSE ELT /* ReqID:SRS-MYSQL-BINARYTYPE */ ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
 	EXTENSION EXTERNAL EXTRACT
 
-	FALSE_P FAMILY FETCH FILTER FINALIZE FIRST_P FLOAT_P FOLLOWING FOR
+	FALSE_P FAMILY FETCH FIELD /* ReqID:SRS-MYSQL-BINARYTYPE */ FILTER FINALIZE FIRST_P FLOAT_P FOLLOWING FOR
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
 
 	GENERATED GET_FORMAT GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
@@ -807,7 +808,7 @@ static int MySQLNumericCheckTypemod(List *typmods, int position, mys_core_yyscan
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEDIUMBLOB MEDIUMINT MERGE METHOD
 	MICROSECOND_P MINUTE_P MINVALUE MOD MODE MONTH_P MOVE
 
-	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
+	NAME_CONST NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
 	NORMALIZE NORMALIZED
 	NOT NOTHING NOTIFY NOTNULL NOWAIT NULL_P NULLIF
 	NULLS_P NUMERIC
@@ -15326,6 +15327,45 @@ CharacterWithLength:  character '(' Iconst ')'
 					$$->typmods = list_make1(makeIntConst($3, @3));
 					$$->location = @1;
 				}
+				/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+				| CHAR_P '(' func_arg_list_opt ')'
+				{
+					Node	*node;
+					double	length = 0;
+
+					if (list_length($3) != 1)
+						ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("You have an error in you SQL syntax,in char( ... "),
+									 parser_errposition(@1)));
+
+					node = linitial($3);
+					if (IsA(node, A_Const))
+					{
+						A_Const *con = (A_Const *)node;
+
+						if (((Value *)(&con->val))->type == T_Integer)
+							length = intVal(&con->val);
+						else if (((Value *)(&con->val))->type == T_Float)
+							length = floatVal(&con->val);
+						else
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("You have an error in you SQL syntax in char( ... "),
+									 parser_errposition(@1)));
+					}
+					else
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("You have an error in you SQL syntax in char( ... "),
+								 parser_errposition(@1)));
+
+					$$ = makeTypeNameFromNameList(list_make1(makeString("bpchar")));
+					$$->typmods = list_make1(makeIntConst(length, @3));
+					$$->location = @1;
+				}
+				/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 				/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE- NCHAR VARCHAR(n) */
 				| NCHAR_P VARCHAR '(' Iconst ')'
 				{
@@ -15405,11 +15445,26 @@ CharacterWithoutLength:	 character
 					$$->location = @1;
 				}
 				/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+
+				/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+				| CHAR_P
+				{
+					$$ = SystemTypeName((char *)("bpchar"));
+
+					/* char defaults to char(1), varchar to no limit */
+					$$->typmods = list_make1(makeIntConst(1, -1));
+					$$->typemod = -2;	/* BUG#M533 */
+					$$->location = @1;
+				}
+				| CHAR_P VARYING
+				{
+					$$ = SystemTypeName((char *)("varchar"));
+					$$->location = @1;
+				}
+				/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 		;
 
 character:	CHARACTER opt_varying
-										{ $$ = $2 ? "varchar": "bpchar"; }
-			| CHAR_P opt_varying
 										{ $$ = $2 ? "varchar": "bpchar"; }
 			| VARCHAR
 										{ $$ = "varchar"; }
@@ -15528,6 +15583,17 @@ BinaryWithoutLength:
 			{
 				$$ = MySQLSystemTypeName("binary");
 				if (strcmp($1, "binary") == 0)
+				{
+					$$->typmods = NIL;
+					$$->typemod = -1;
+				}
+				$$->location = @1;
+			}
+			/* We make vabinary as function return type */
+			| VARBINARY
+			{
+				$$ = MySQLSystemTypeName("varbinary");
+				if (strcmp($1, "varbinary") == 0)
 				{
 					$$->typmods = NIL;
 					$$->typemod = -1;
@@ -16523,7 +16589,92 @@ a_expr:		c_expr									{ $$ = $1; }
 					n->location = @1;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			| CHAR_P '(' func_arg_list_opt ')'
+				{
+					FuncCall *n = makeFuncCall(MysqlSystemFuncName("char"),
+											   $3,
+											   COERCE_EXPLICIT_CALL,
+											   @2);
+					$$ = (Node *)n;
+				}
+			| CHAR_P '(' func_arg_list_opt USING any_name ')'
+				{
+					FuncCall *n;
+
+					ereport(WARNING, (errmsg("Ignore USING syntax in char() function")));
+
+					n = makeFuncCall(MysqlSystemFuncName("char"),
+									 $3,
+									 COERCE_EXPLICIT_CALL,
+									 @2);
+
+					$$ = (Node *)n;
+				}
+			| FIELD '(' field_func_args_list ')'
+				{
+					FuncCall *n = makeFuncCall(MysqlSystemFuncName("field"),
+											   $3,
+											   COERCE_EXPLICIT_CALL,
+											   @2);
+					$$ = (Node *)n;
+				}
+			| ELT '(' a_expr ',' field_func_args_list ')'
+				{
+					FuncCall *n = makeFuncCall(MysqlSystemFuncName("elt"),
+											   lcons($3, $5),
+											   COERCE_EXPLICIT_CALL,
+											   @2);
+					$$ = (Node *)n;
+				}
+			| NAME_CONST '(' name_const_label ',' a_expr ')'
+				{
+					ResTarget 	*res = NULL;
+
+					if (!IsA($5, A_Const))
+						elog(ERROR, "Incorrect arguments to NAME_CONST");
+
+					res = makeNode(ResTarget);
+					res->name = $3;
+					res->indirection = NIL;
+					res->val = (Node *) $5;
+					res->location = @1;
+					$$ = (Node *)res;
+				}
+			/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 		;
+
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+name_const_label:
+			Sconst
+				{ 
+					$$ = pstrdup($1); 
+				}
+			| Iconst
+				{
+					char  name[NAMEDATALEN];
+					pg_itoa($1, name);
+					$$ = pstrdup(name);
+				}
+			| FCONST
+				{
+					$$ = pstrdup($1); 
+				}
+		;
+
+field_func_args_list:
+			a_expr
+				{
+					Node *n = makeTypeCast($1, SystemTypeName("text"), @1);
+					$$ = list_make1(n);
+				}
+			| field_func_args_list ',' a_expr
+				{
+					Node *n = makeTypeCast($3, SystemTypeName("text"), @3);
+					$$ = lappend($1, n);
+				}
+		;
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 /*
  * Restricted expressions
@@ -17080,7 +17231,7 @@ func_expr_common_subexpr:
 					$$ = makeTypeCast($3, MySQLSystemTypeName("mysuint8"), @1);
 				}
 			/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+			/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 			| CONVERT '(' a_expr ',' Typename ')'
 				{ $$ = makeTypeCast($3, $5, @1); }
 
@@ -17093,7 +17244,7 @@ func_expr_common_subexpr:
 				{
 					$$ = makeTypeCast(makeStringConst($3, @1), MySQLSystemTypeName("binary"), @1);
 				}
-/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+			/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 			| EXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
@@ -17464,11 +17615,18 @@ xml_attribute_el: a_expr AS ColLabel
 				}
 			| a_expr
 				{
-					$$ = makeNode(ResTarget);
-					$$->name = NULL;
-					$$->indirection = NIL;
-					$$->val = (Node *) $1;
-					$$->location = @1;
+					/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+					if (IsA($1, ResTarget))
+						$$ = (ResTarget *) $1;
+					else
+					/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+					{
+						$$ = makeNode(ResTarget);
+						$$->name = NULL;
+						$$->indirection = NIL;
+						$$->val = (Node *) $1;
+						$$->location = @1;
+					}
 				}
 		;
 
@@ -18202,11 +18360,18 @@ target_el:	a_expr AS ColLabel
 				}
 			| a_expr
 				{
-					$$ = makeNode(ResTarget);
-					$$->name = NULL;
-					$$->indirection = NIL;
-					$$->val = (Node *)$1;
-					$$->location = @1;
+					/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+					if (IsA($1, ResTarget))
+						$$ = (ResTarget *) $1;
+					else
+					/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+					{
+						$$ = makeNode(ResTarget);
+						$$->name = NULL;
+						$$->indirection = NIL;
+						$$->val = (Node *)$1;
+						$$->location = @1;
+					}
 				}
 			| '*'
 				{
@@ -19015,8 +19180,10 @@ col_name_keyword:
 			| DEC
 			| DECIMAL_P
 			| DOUBLE_P
+			| ELT                 /* ReqID:SRS-MYSQL-BINARYTYPE */
 			| EXISTS
 			| EXTRACT
+			| FIELD               /* ReqID:SRS-MYSQL-BINARYTYPE */
 			| FLOAT_P
 			| GET_FORMAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| GREATEST
@@ -19031,6 +19198,7 @@ col_name_keyword:
 			| LONGBLOB		/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| MEDIUMBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| MEDIUMINT		/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
+			| NAME_CONST
 			| NATIONAL
 			| NCHAR
 			| NONE
@@ -19343,6 +19511,7 @@ bare_label_keyword:
 			| DUPLICATE_P
 			| EACH
 			| ELSE
+			| ELT 			/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| ENABLE_P
 			| ENCODING
 			| ENCRYPTED
@@ -19362,6 +19531,7 @@ bare_label_keyword:
 			| EXTRACT
 			| FALSE_P
 			| FAMILY
+			| FIELD 		/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| FINALIZE
 			| FIRST_P
 			| FLOAT_P
@@ -19455,6 +19625,7 @@ bare_label_keyword:
 			| MOVE
 			| NAME_P
 			| NAMES
+			| NAME_CONST
 			| NATIONAL
 			| NATURAL
 			| NCHAR

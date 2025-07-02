@@ -221,10 +221,10 @@ select distinct count(id), sum(id) from t_order order by id;
 (1 row)
 
 --error
-select distinct int4(name) from t_order order by name;
+select distinct int4(name::int) from t_order order by name;
 ERROR:  for SELECT DISTINCT, ORDER BY expressions must appear in select list
-LINE 1: select distinct int4(name) from t_order order by name;
-                                                         ^
+LINE 1: select distinct int4(name::int) from t_order order by name;
+                                                              ^
 drop table t_order;
 CREATE TABLE tenk1 (
     unique1    int,

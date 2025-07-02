@@ -597,3 +597,15 @@ reset mysql.mysql_convert;
 
 -- bug#z5157
 create table tb9(col text(4294967296));
+
+-- cast to integer
+create table tb10(a int, b text, c varchar(20));
+insert into tb10 values ('-1', '-1', '-1');
+insert into tb10 values ('24.4', '24.4', '24.4');
+insert into tb10 values ('24.5', '24.5', '24.5');
+
+select a, cast(b as int), cast(c as int) from tb10;                     -- [-1, -1, -1], [24, 24, 24], [25, 24, 24]
+select a, cast(b as int unsigned), cast(c as int unsigned) from tb10;   -- [-1, 4294967295, 4294967295], [24, 24, 24], [25, 24, 24]
+select a, cast(b as int8), cast(c as int8) from tb10;                   -- [-1, -1, -1], [24, 24, 24], [25, 24, 24]
+select a, cast(b as int8 unsigned), cast(c as int8 unsigned) from tb10; -- [-1, 18446744073709551615, 18446744073709551615], [24, 24, 24], [25, 24, 24]
+drop table tb10;

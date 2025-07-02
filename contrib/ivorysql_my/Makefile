@@ -25,6 +25,8 @@ OBJS = \
 	src/datatype/binary.o \
 	src/datatype/varbinary.o \
 	src/datatype/binary_gin.o \
+	src/datatype/mystext.o	\
+	src/datatype/myschar.o	\
 	src/charset/charset.o \
 	src/charset/ctype-bin.o \
 	src/charset/ctype-mb.o \
@@ -42,7 +44,7 @@ OBJS = \
 	src/charset/ctype-ujis.o \
 	src/charset/ctype-extra.o \
 	src/builtin_functions/datetime_func.o \
-	src/character/mystext.o	\
+	src/builtin_functions/character_func.o \
 	src/builtin_functions/mys_locale.o
 
 EXTENSION = ivorysql_my
@@ -117,6 +119,7 @@ MYS_REGRESS = multi_update \
 			  mys_int8	\
 			  mys_float \
 			  mys-char-varchar \
+			  character_func \
 			  time_func	\
 			  aggregates_without_group_by
 

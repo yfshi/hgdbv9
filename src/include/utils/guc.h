@@ -724,8 +724,8 @@ extern PGDLLIMPORT sql_mode_t  sql_mode;
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-extern PGDLLIMPORT char *max_allowed_packet_value;
-extern PGDLLIMPORT char *max_sort_length_str;
+extern PGDLLIMPORT int 	 max_allowed_packet;
+extern PGDLLIMPORT int 	 max_sort_length;
 extern PGDLLIMPORT bool  enable_character_blob;
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
 

@@ -21,10 +21,6 @@
 	static void assign_sql_mode(const char *newval, void *extra);
 	static bool check_sql_mode(char **newval, void **extra, GucSource source);
 	static const char *show_sql_mode(void);
-	/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-	static bool check_max_allowed_packet(char **newval, void **extra, GucSource source);
-	static bool check_max_sort_length(char **newval, void **extra, GucSource source);
-	/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	bool check_lower_case_table_names(int *newval, void **extra, GucSource source);
 	void assign_lower_case_table_names(int newval, void *extra);
@@ -53,8 +49,8 @@ sql_mode_t  sql_mode;
 static char *sql_mode_str = NULL;
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-char 		*max_allowed_packet_str = "4194304";
-char 		*max_sort_length_str = "1024";
+int			max_allowed_packet = 4194304;
+int			max_sort_length = 1024;
 bool		enable_character_blob = false;
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
 /* Begin - BUG#Z1434 */
@@ -243,6 +239,28 @@ int			default_week_format = 0;
 		check_default_week_format, assign_default_week_format, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+	/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+	{
+		{
+			"max_allowed_packet", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Sets mysql max_allowed_packet ."),
+			NULL
+		},
+		&max_allowed_packet,
+		4194304, 1024, 1073741824,
+		NULL, NULL, NULL
+	},
+	{
+		{
+			"max_sort_length", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Sets mysql max_sort_length."),
+			NULL
+		},
+		&max_sort_length,
+		1024, 4, 8388608,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 #endif
 
 #ifdef IVY_MY_GUC_STRING_PARAMS
@@ -286,28 +304,6 @@ int			default_week_format = 0;
 		check_lc_time_names, assign_lc_time_names, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
-	/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-	{ 
-		{
-			"max_allowed_packet", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
-			gettext_noop("Sets mysql max_allowed_packet ."),
-			NULL
-		},
-		&max_allowed_packet_str,
-		"4194304",
-		check_max_allowed_packet, NULL, NULL
-	},
-	{ 
-		{
-			"max_sort_length", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
-			gettext_noop("Sets mysql max_sort_length."),
-			NULL
-		},
-		&max_sort_length_str,
-		"1024",
-		check_max_sort_length, NULL, NULL
-	},
-	/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 #endif
 
 #ifdef IVY_MY_GUC_FUNC_DEFINE
@@ -575,60 +571,6 @@ assign_div_precision_increment(int newval, void *extra)
 	div_precision_increment = newval;
 }
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE */
-
-/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-static bool check_max_allowed_packet(char **newval, void **extra, GucSource source)
-{
-	long int value = 0;
-	char *it = *newval;
-
-	while (*it) 
-	{
-		if (!isdigit((unsigned char)*it)) 
-		{
-			ereport(ERROR, 
-				(errcode(ERRCODE_SYSTEM_ERROR), 
-					errmsg("Incorrect argument type to variable 'max_allowed_packet")));
-		}
-		value = value * 10 + (*it - '0'); 
-		it++;
-	}
-
-	if (value < 1024 || value > 1073741824) 
-	{
-		ereport(ERROR, 
-			(errcode(ERRCODE_SYSTEM_ERROR), 
-			errmsg("Incorrect argument type to variable 'max_allowed_packet")));
-	}
-	return true;
-}
-
-static bool check_max_sort_length(char **newval, void **extra, GucSource source)
-{
-	long int value = 0;
-	char *it = *newval;
-
-	while (*it) 
-	{
-		if (!isdigit((unsigned char)*it)) 
-		{
-			ereport(ERROR, 
-				(errcode(ERRCODE_SYSTEM_ERROR), 
-				errmsg("Incorrect argument type to variable 'max_sort_length")));
-		}
-		value = value * 10 + (*it - '0'); 
-		it++;
-	}
-
-	if (value < 4 || value > 8388608) 
-	{
-		ereport(ERROR, 
-			(errcode(ERRCODE_SYSTEM_ERROR), 
-			errmsg("Incorrect argument type to variable 'max_allowed_packet")));
-	}
-	return true; 
-}
-/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 
 static void
 assign_regress_test_default_value(bool newval, void *extra)

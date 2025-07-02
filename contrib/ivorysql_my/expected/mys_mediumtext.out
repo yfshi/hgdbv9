@@ -1311,6 +1311,7 @@ insert into tb values(1,'abc');
 insert into tb values(2,'123');
 insert into tb values(3,'123.4');
 select cast(col as integer) from tb where id=1;  -- 0
+WARNING:  Truncated incorrect INTEGER value: 'abc'
  col 
 -----
    0
@@ -1323,6 +1324,7 @@ select cast(col as integer) from tb where id=2;  -- 123
 (1 row)
 
 select cast(col as integer) from tb where id=3;  -- 123
+WARNING:  Truncated incorrect INTEGER value: '123.4'
  col 
 -----
  123
@@ -1673,6 +1675,7 @@ insert into tb values(1,'abc');
 insert into tb values(2,'123');
 insert into tb values(3,'123.4');
 select convert(col , integer) from tb where id=1;  -- 0
+WARNING:  Truncated incorrect INTEGER value: 'abc'
  col 
 -----
    0
@@ -1685,6 +1688,7 @@ select convert(col , integer) from tb where id=2;  -- 123
 (1 row)
 
 select convert(col , integer) from tb where id=3;  -- 123
+WARNING:  Truncated incorrect INTEGER value: '123.4'
  col 
 -----
  123
@@ -1722,7 +1726,7 @@ insert into tb values(1,'abc');
 insert into tb values(2,'123');
 insert into tb values(3,'123.4');
 select convert(col ,unsigned) from tb where id=1;  -- 0
-WARNING:  invalid input syntax for type integer: "abc"
+WARNING:  Truncated incorrect INTEGER value: 'abc'
  col 
 -----
  0
@@ -1735,7 +1739,7 @@ select convert(col , unsigned) from tb where id=2;  -- 123
 (1 row)
 
 select convert(col , unsigned) from tb where id=3;  -- 123
-WARNING:  invalid input syntax for type integer: "123.4"
+WARNING:  Truncated incorrect INTEGER value: '123.4'
  col 
 -----
  123

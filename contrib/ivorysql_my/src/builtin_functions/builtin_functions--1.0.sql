@@ -632,6 +632,604 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
+/***************************************************************
+ *
+ * Character Functions.
+ *
+ ***************************************************************/
+-- locate
+
+CREATE FUNCTION ivymy.locate(text, text)
+RETURNS integer
+AS 'MODULE_PATHNAME','locate'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.locate(text, text, bigint)
+RETURNS integer
+AS 'MODULE_PATHNAME','locate'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.locate(text, text, int)
+RETURNS integer
+AS $$
+    SELECT ivymy.locate($1, $2, $3::bigint);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.locate(text, text, numeric)
+RETURNS integer
+AS $$
+    SELECT ivymy.locate($1, $2, $3::bigint);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+
+-- lcase
+CREATE FUNCTION ivymy.lcase(text)
+RETURNS varchar
+AS 'lower'
+LANGUAGE internal
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.lcase(numeric)
+RETURNS varchar
+AS $$
+select lcase($1::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION ivymy.lcase(int4)
+RETURNS varchar
+AS $$
+select lcase($1::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+
+-- ucase
+
+CREATE FUNCTION ivymy.ucase(text)
+RETURNS varchar
+AS 'upper'
+LANGUAGE internal
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.ucase(numeric)
+RETURNS varchar
+AS $$
+select ucase($1::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION ivymy.ucase(int4)
+RETURNS varchar
+AS $$
+select ucase($1::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+-- insert
+
+CREATE FUNCTION ivymy.insert(text, bigint, bigint, text)
+RETURNS varchar
+AS 'MODULE_PATHNAME','insert'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.insert(text, text, text, text)
+RETURNS varchar
+AS $$
+    select ivymy.insert($1, $2::bigint, $3::bigint, $4);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.insert(text, bigint, text, text)
+RETURNS varchar
+AS $$
+    select ivymy.insert($1, $2, $3::bigint, $4);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.insert(text, text, bigint, text)
+RETURNS varchar
+AS $$
+    select ivymy.insert($1, $2::bigint, $3, $4);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- bin
+
+CREATE FUNCTION ivymy.bin(int8)
+RETURNS varchar
+AS 'MODULE_PATHNAME','to_bin64'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- cannot cast numeric to int8, because mysql will do round off
+CREATE FUNCTION ivymy.bin(numeric)
+RETURNS varchar
+AS 'MODULE_PATHNAME','bin_num'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.bin(int4)
+RETURNS varchar
+AS $$
+select ivymy.bin($1::int8);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION ivymy.bin(text)
+RETURNS varchar
+AS 'MODULE_PATHNAME','bin_text'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.bin(datetime)
+RETURNS varchar
+AS $$
+select ivymy.bin($1::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION ivymy.bin(bit)
+RETURNS varchar
+AS $$
+select ivymy.bin($1::int8);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+-- char
+
+CREATE FUNCTION ivymy.char(VARIADIC int[])
+RETURNS varbinary
+AS 'MODULE_PATHNAME','myschar'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+
+-- elt
+CREATE FUNCTION ivymy.elt(bigint, VARIADIC text[])
+RETURNS VARCHAR
+AS 'MODULE_PATHNAME','elt'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- field
+CREATE FUNCTION ivymy.field(VARIADIC arr text[])
+RETURNS int
+AS 'MODULE_PATHNAME','field'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+
+-- find_in_set
+
+CREATE FUNCTION ivymy.find_in_set(text, text)
+RETURNS int
+AS 'MODULE_PATHNAME','find_in_set'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.find_in_set(int, text)
+RETURNS int
+AS 'select ivymy.find_in_set($1::text, $2)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- hex
+CREATE OR REPLACE FUNCTION ivymy.hex(text)
+RETURNS varchar
+AS 'MODULE_PATHNAME', 'hex_str'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.hex(int8)
+RETURNS varchar
+AS 'MODULE_PATHNAME','hex_num'
+LANGUAGE C PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.hex(int4)
+RETURNS varchar
+AS $$
+select hex($1::int8);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.hex(numeric)
+RETURNS varchar
+AS $$
+select hex($1::int8);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.hex(bool)
+RETURNS varchar
+AS $$
+select hex($1::int);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.hex(float8)
+RETURNS varchar
+AS $$
+select hex($1::int8);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.hex(date)
+RETURNS varchar
+AS $$
+select hex($1::text);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.hex(datetime)
+RETURNS varchar
+AS $$
+select hex($1::text);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.hex(time)
+RETURNS varchar
+AS $$
+select hex($1::text);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.hex(binary)
+RETURNS varchar
+AS 'MODULE_PATHNAME','hex_bytea'
+LANGUAGE C PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.hex(varbinary)
+RETURNS varchar
+AS $$
+select hex($1::binary);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+-- space
+
+CREATE FUNCTION ivymy.space(int8)
+RETURNS varchar
+AS 'MODULE_PATHNAME','space'
+LANGUAGE C PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.space(int4)
+RETURNS varchar
+AS $$
+select space($1::int8);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.space(numeric)
+RETURNS varchar
+AS $$
+select space($1::int8);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.space(text)
+RETURNS varchar
+AS $$
+select space($1::int8);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+
+-- soundex
+
+CREATE FUNCTION ivymy.soundex(text)
+RETURNS VARCHAR
+AS 'MODULE_PATHNAME','soundex'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.soundex(bit)
+RETURNS VARCHAR
+AS $$
+    SELECT ''
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.soundex(bool)
+RETURNS VARCHAR
+AS $$
+    SELECT ''
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.soundex(numeric)
+RETURNS VARCHAR
+AS $$
+    SELECT ''
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+
+-- export_set
+
+CREATE FUNCTION ivymy.export_set(int8, text, text, text default ',', int default 64)
+RETURNS varchar
+AS 'MODULE_PATHNAME', 'export_set'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.export_set(text, text, text, text default ',', int default 64)
+RETURNS varchar
+AS $$
+    select export_set($1::int8, $2, $3, $4, $5);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+
+-- ord
+CREATE FUNCTION ivymy.ord(text)
+RETURNS bigint
+AS 'MODULE_PATHNAME','ord'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.ord(numeric)
+RETURNS bigint
+AS 'select ivymy.ord($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- substring_index
+CREATE FUNCTION ivymy.substring_index(text, text, bigint)
+RETURNS varchar
+AS 'MODULE_PATHNAME','substring_index'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.substring_index(text, text, int)
+RETURNS varchar
+AS $$
+    SELECT ivymy.substring_index($1, $2, $3::bigint)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.substring_index(text, text, numeric)
+RETURNS varchar
+AS $$
+    SELECT ivymy.substring_index($1, $2, $3::bigint)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- from_base64
+
+CREATE FUNCTION ivymy.from_base64(text)
+RETURNS varbinary
+AS 'MODULE_PATHNAME','base64_decode'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+
+-- to_base64
+
+CREATE FUNCTION ivymy.to_base64(text)
+RETURNS varchar
+AS 'MODULE_PATHNAME','base64_encode'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+
+-- length
+CREATE FUNCTION ivymy.length(text)
+RETURNS int
+AS 'MODULE_PATHNAME','mys_text_length'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.length(numeric)
+RETURNS int
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.length(datetime)
+RETURNS int
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.length(date)
+RETURNS int
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- octet_length
+
+CREATE FUNCTION ivymy.octet_length(numeric)
+RETURNS int4
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.octet_length(boolean)
+RETURNS int4
+AS 'select length($1::integer)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.octet_length(timestamp)
+RETURNS int4
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.octet_length(datetime)
+RETURNS int4
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.octet_length(time)
+RETURNS int4
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.octet_length(date)
+RETURNS int4
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- bit_length
+
+CREATE FUNCTION ivymy.bit_length(int)
+RETURNS bigint
+AS $$
+    select bit_length($1::text);
+$$
+LANGUAGE sql
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.bit_length(datetime)
+RETURNS bigint
+AS $$
+    select bit_length($1::text);
+$$
+LANGUAGE sql
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.bit_length(date)
+RETURNS bigint
+AS $$
+    select bit_length($1::text);
+$$
+LANGUAGE sql
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- left
+
+CREATE OR REPLACE FUNCTION ivymy.left(numeric, numeric)
+RETURNS varchar
+AS $$
+select left($1::text, $2::int4);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.left(text, text)
+RETURNS varchar
+AS $$
+select left($1, $2::int4);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.left(text, bool)
+RETURNS varchar
+AS $$
+select left($1, $2::int4);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.left(bool, int4)
+RETURNS varchar
+AS $$
+select left($1::int4::text, $2);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+
+-- right
+
+CREATE OR REPLACE FUNCTION ivymy.right(numeric, numeric)
+RETURNS varchar
+AS $$
+select right($1::text, $2::int4);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.right(text, text)
+RETURNS varchar
+AS $$
+select right($1, $2::int4);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.right(text, bool)
+RETURNS varchar
+AS $$
+select right($1, $2::int4);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.right(bool, int4)
+RETURNS varchar
+AS $$
+select right($1::int4::text, $2);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
 --to_days
 CREATE FUNCTION ivymy.to_days(date)
 RETURNS bigint
