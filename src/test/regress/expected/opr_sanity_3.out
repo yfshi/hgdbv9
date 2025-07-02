@@ -999,29 +999,29 @@ WHERE c.castmethod = 'b' AND
     NOT EXISTS (SELECT 1 FROM pg_cast k
                 WHERE k.castmethod = 'b' AND
                     k.castsource = c.casttarget AND
-                    k.casttarget = c.castsource);
+                    k.casttarget = c.castsource) order by castsource;
     castsource     |    casttarget     | castfunc | castcontext 
 -------------------+-------------------+----------+-------------
+ text              | character         |        0 | i
+ text              | char              |        0 | i
+ text              | char              |        0 | i
+ xml               | text              |        0 | a
+ xml               | character         |        0 | a
+ xml               | character varying |        0 | a
+ xml               | char              |        0 | a
+ xml               | char              |        0 | a
+ xml               | varchar2          |        0 | a
+ xml               | varchar2          |        0 | a
+ pg_node_tree      | text              |        0 | i
+ cidr              | inet              |        0 | i
+ character varying | character         |        0 | i
+ character varying | char              |        0 | i
+ character varying | char              |        0 | i
  pg_ndistinct      | bytea             |        0 | i
  pg_dependencies   | bytea             |        0 | i
  pg_mcv_list       | bytea             |        0 | i
- xml               | text              |        0 | a
- pg_node_tree      | text              |        0 | i
- cidr              | inet              |        0 | i
- text              | character         |        0 | i
- xml               | character         |        0 | a
- character varying | character         |        0 | i
  varchar2          | character         |        0 | i
  varchar2          | character         |        0 | i
- xml               | character varying |        0 | a
- text              | char              |        0 | i
- xml               | char              |        0 | a
- character varying | char              |        0 | i
- text              | char              |        0 | i
- xml               | char              |        0 | a
- character varying | char              |        0 | i
- xml               | varchar2          |        0 | a
- xml               | varchar2          |        0 | a
  date              | timestamp         |        0 | i
 (21 rows)
 

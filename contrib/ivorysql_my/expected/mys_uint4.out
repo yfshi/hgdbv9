@@ -32,8 +32,6 @@ select cast('4294967295' as int UNSIGNED) ;
 
 select cast('4294967297' as int UNSIGNED) ;
 WARNING:  value "4294967297" is out of range for unsigned 32-bit integer
-LINE 1: select cast('4294967297' as int UNSIGNED) ;
-                    ^
   mysuint4  
 ------------
  4294967295
@@ -41,8 +39,6 @@ LINE 1: select cast('4294967297' as int UNSIGNED) ;
 
 select cast('a111' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: "a111"
-LINE 1: select cast('a111' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  0
@@ -50,8 +46,6 @@ LINE 1: select cast('a111' as int UNSIGNED) ;
 
 select cast('111a' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: "111a"
-LINE 1: select cast('111a' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  111
@@ -59,8 +53,6 @@ LINE 1: select cast('111a' as int UNSIGNED) ;
 
 select cast('.111' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: ".111"
-LINE 1: select cast('.111' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  0
@@ -74,8 +66,6 @@ select cast('0111' as int UNSIGNED) ;
 
 select cast('#111' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: "#111"
-LINE 1: select cast('#111' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  0
@@ -83,8 +73,6 @@ LINE 1: select cast('#111' as int UNSIGNED) ;
 
 select cast('111#' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: "111#"
-LINE 1: select cast('111#' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  111
@@ -92,8 +80,6 @@ LINE 1: select cast('111#' as int UNSIGNED) ;
 
 select cast('111.' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: "111."
-LINE 1: select cast('111.' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  111
@@ -187,8 +173,6 @@ select cast('4294967295' as int UNSIGNED) ;
 
 select cast('4294967297' as int UNSIGNED) ;
 WARNING:  value "4294967297" is out of range for unsigned 32-bit integer
-LINE 1: select cast('4294967297' as int UNSIGNED) ;
-                    ^
   mysuint4  
 ------------
  4294967295
@@ -196,8 +180,6 @@ LINE 1: select cast('4294967297' as int UNSIGNED) ;
 
 select cast('a111' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: "a111"
-LINE 1: select cast('a111' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  0
@@ -205,8 +187,6 @@ LINE 1: select cast('a111' as int UNSIGNED) ;
 
 select cast('111a' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: "111a"
-LINE 1: select cast('111a' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  111
@@ -214,8 +194,6 @@ LINE 1: select cast('111a' as int UNSIGNED) ;
 
 select cast('.111' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: ".111"
-LINE 1: select cast('.111' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  0
@@ -229,8 +207,6 @@ select cast('0111' as int UNSIGNED) ;
 
 select cast('#111' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: "#111"
-LINE 1: select cast('#111' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  0
@@ -238,8 +214,6 @@ LINE 1: select cast('#111' as int UNSIGNED) ;
 
 select cast('111#' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: "111#"
-LINE 1: select cast('111#' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  111
@@ -247,8 +221,6 @@ LINE 1: select cast('111#' as int UNSIGNED) ;
 
 select cast('111.' as int UNSIGNED) ;
 WARNING:  invalid input syntax for type integer: "111."
-LINE 1: select cast('111.' as int UNSIGNED) ;
-                    ^
  mysuint4 
 ----------
  111
@@ -315,17 +287,11 @@ insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
 ERROR:  integer unsigned out of range
-LINE 1: insert into t1 values(-1);
-                              ^
 insert into t1 values(-2147483648);
 ERROR:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483648);
-                              ^
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 ERROR:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483649);
-                              ^
 insert into t1 values(4294967295);
 insert into t1 values('a111') ;
 ERROR:  invalid input syntax for type integer: "a111"
@@ -486,17 +452,11 @@ insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
 ERROR:  integer unsigned out of range
-LINE 1: insert into t1 values(-1);
-                              ^
 insert into t1 values(-2147483648);
 ERROR:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483648);
-                              ^
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 ERROR:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483649);
-                              ^
 insert into t1 values(4294967295);
 select * from t1;
      c1     
@@ -614,17 +574,11 @@ insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
 ERROR:  integer unsigned out of range
-LINE 1: insert into t1 values(-1);
-                              ^
 insert into t1 values(-2147483648);
 ERROR:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483648);
-                              ^
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 ERROR:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483649);
-                              ^
 insert into t1 values(4294967295);
 select * from t1;
      c1     
@@ -743,17 +697,11 @@ insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
 WARNING:  integer unsigned out of range
-LINE 1: insert into t1 values(-1);
-                              ^
 insert into t1 values(-2147483648);
 WARNING:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483648);
-                              ^
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 WARNING:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483649);
-                              ^
 insert into t1 values(4294967295);
 select * from t1;
      c1     
@@ -859,17 +807,11 @@ insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
 WARNING:  integer unsigned out of range
-LINE 1: insert into t1 values(-1);
-                              ^
 insert into t1 values(-2147483648);
 WARNING:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483648);
-                              ^
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 WARNING:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483649);
-                              ^
 insert into t1 values(4294967295);
 select * from t1;
      c1     
@@ -890,17 +832,11 @@ insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
 WARNING:  integer unsigned out of range
-LINE 1: insert into t1 values(-1);
-                              ^
 insert into t1 values(-2147483648);
 WARNING:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483648);
-                              ^
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 WARNING:  integer unsigned out of range
-LINE 1: insert into t1 values(-2147483649);
-                              ^
 insert into t1 values(4294967295);
 select * from t1;
      c1     
@@ -2756,18 +2692,20 @@ select a from t1 where a like 0111;
 (1 row)
 
 select a from t1 where a like 'a111'; --0
-ERROR:  invalid input syntax for type integer: "a111"
-LINE 1: select a from t1 where a like 'a111';
-                                      ^
+ a 
+---
+(0 rows)
+
 select a from t1 where a like 1111; --0
  a 
 ---
 (0 rows)
 
 select a from t1 where a like '111a'; --0
-ERROR:  invalid input syntax for type integer: "111a"
-LINE 1: select a from t1 where a like '111a';
-                                      ^
+ a 
+---
+(0 rows)
+
 set SQL_MODE='';
 select a from t1 where a like '111'; --1
   a  
@@ -2788,9 +2726,6 @@ select a from t1 where a like 0111;
 (1 row)
 
 select a from t1 where a like 'a111'; --0
-WARNING:  invalid input syntax for type integer: "a111"
-LINE 1: select a from t1 where a like 'a111';
-                                      ^
  a 
 ---
 (0 rows)
@@ -2801,13 +2736,9 @@ select a from t1 where a like 1111; --0
 (0 rows)
 
 select a from t1 where a like '111a'; --0
-WARNING:  invalid input syntax for type integer: "111a"
-LINE 1: select a from t1 where a like '111a';
-                                      ^
-  a  
------
- 111
-(1 row)
+ a 
+---
+(0 rows)
 
 set SQL_MODE=default;
 drop table t1;
@@ -2902,21 +2833,21 @@ explain (COSTS OFF) select * from tb1 where a < 10;
               QUERY PLAN               
 ---------------------------------------
  Index Only Scan using idx_tree on tb1
-   Filter: (a < 10)
+   Index Cond: (a < 10)
 (2 rows)
 
 explain (COSTS OFF) select * from tb1 where a <= 10;
               QUERY PLAN               
 ---------------------------------------
  Index Only Scan using idx_tree on tb1
-   Filter: (a <= 10)
+   Index Cond: (a <= 10)
 (2 rows)
 
 explain (COSTS OFF) select * from tb1 where a = 10;
               QUERY PLAN               
 ---------------------------------------
  Index Only Scan using idx_tree on tb1
-   Filter: (a = 10)
+   Index Cond: (a = 10)
 (2 rows)
 
 explain (COSTS OFF) select * from tb1 where a != 10;
@@ -2930,14 +2861,14 @@ explain (COSTS OFF) select * from tb1 where a >= 10;
               QUERY PLAN               
 ---------------------------------------
  Index Only Scan using idx_tree on tb1
-   Filter: (a >= 10)
+   Index Cond: (a >= 10)
 (2 rows)
 
 explain (COSTS OFF) select * from tb1 where a > 10;
               QUERY PLAN               
 ---------------------------------------
  Index Only Scan using idx_tree on tb1
-   Filter: (a > 10)
+   Index Cond: (a > 10)
 (2 rows)
 
 set enable_seqscan =true;
@@ -3007,3 +2938,133 @@ select -col_uint from t1;
 (1 row)
 
 DROP TABLE t1;
+set enable_seqscan=off;
+set enable_bitmapscan =off;
+create table t_index(id int4 unsigned ,description varchar(100));
+insert into t_index (id, description) values(generate_series(0,167772),'aa');
+create index index_id_btree on t_index (id);
+explain (COSTS OFF) select * from t_index where id BETWEEN 65 and 70;
+                 QUERY PLAN                 
+--------------------------------------------
+ Index Scan using index_id_btree on t_index
+   Index Cond: ((id >= 65) AND (id <= 70))
+(2 rows)
+
+drop table t_index;
+set enable_seqscan=on;
+set enable_bitmapscan =on;
+create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
+insert into t_conversion (id) values (cast('127' as varchar));
+select * from t_conversion;
+ id  | age 
+-----+-----
+ 127 | 18
+(1 row)
+
+drop table t_conversion;
+create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
+insert into t_conversion (id) values (cast('127' as text));
+select * from t_conversion;
+ id  | age 
+-----+-----
+ 127 | 18
+(1 row)
+
+drop table t_conversion;
+create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
+insert into t_conversion (id) values (TRUE);
+insert into t_conversion (id) values (0x12);
+ERROR:  column "id" is of type mysuint1 but expression is of type varbinary
+LINE 1: insert into t_conversion (id) values (0x12);
+                                              ^
+HINT:  You will need to rewrite or cast the expression.
+select id from t_conversion;
+ id 
+----
+ 1
+(1 row)
+
+drop table t_conversion;
+create table t_like_operator(id int4 unsigned);
+insert into t_like_operator values(101),(102),(103),(104),(205),(208);
+select * from t_like_operator where id like '1%';
+ id  
+-----
+ 101
+ 102
+ 103
+ 104
+(4 rows)
+
+select * from t_like_operator where id like '%4';
+ id  
+-----
+ 104
+(1 row)
+
+select * from t_like_operator where id like '%1%';
+ id  
+-----
+ 101
+ 102
+ 103
+ 104
+(4 rows)
+
+select * from t_like_operator where id like '1_3';
+ id  
+-----
+ 103
+(1 row)
+
+select * from t_like_operator where id like '_8';
+ id 
+----
+(0 rows)
+
+select * from t_like_operator where id not like '1%';
+ id  
+-----
+ 205
+ 208
+(2 rows)
+
+select * from t_like_operator where id not like '%4';
+ id  
+-----
+ 101
+ 102
+ 103
+ 205
+ 208
+(5 rows)
+
+select * from t_like_operator where id not like '%1%';
+ id  
+-----
+ 205
+ 208
+(2 rows)
+
+select * from t_like_operator where id not like '1_3';
+ id  
+-----
+ 101
+ 102
+ 104
+ 205
+ 208
+(5 rows)
+
+select * from t_like_operator where id not like '_8';
+ id  
+-----
+ 101
+ 102
+ 103
+ 104
+ 205
+ 208
+(6 rows)
+
+drop table t_like_operator;

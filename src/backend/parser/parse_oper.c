@@ -294,6 +294,23 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 	Oid			result;
 	bool		was_unknown = false;
 
+
+	/* Begin - BUG#5123 */
+	if (MYS_PARSER == compatible_db && arg2 == UNKNOWNOID &&
+		(arg1 == MYSUINT1OID || arg1 == MYSUINT2OID || arg1 == MYSUINT3OID || arg1 == MYSUINT4OID || arg1 == MYSUINT8OID))
+	{
+		char	*schemaname;
+		char	*opername;
+
+		/* Get operator name */
+		DeconstructQualifiedName(opname, &schemaname, &opername);
+		if ((strcmp(opername, "~~") == 0) || (strcmp(opername, "!~~") == 0))
+		{
+			arg2 = TEXTOID;
+		}
+	}
+	/* End - BUG#5123 */
+		
 	/* Unspecified type for one of the arguments? then use the other */
 	if ((arg1 == UNKNOWNOID) && (arg2 != InvalidOid))
 	{

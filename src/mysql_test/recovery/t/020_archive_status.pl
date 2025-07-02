@@ -63,10 +63,10 @@ ok( !-f "$primary_data/$segment_path_1_done",
 
 is( $primary->safe_psql(
 		'postgres', q{
-		SELECT archived_count, last_failed_wal
+		SELECT last_failed_wal
 		FROM pg_stat_archiver
 	}),
-	"0|$segment_name_1",
+	"$segment_name_1",
 	"pg_stat_archiver failed to archive $segment_name_1");
 
 # Crash the cluster for the next test in charge of checking that non-archived

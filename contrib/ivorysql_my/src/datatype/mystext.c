@@ -41,9 +41,14 @@ PG_FUNCTION_INFO_V1(mystext2int4);
 PG_FUNCTION_INFO_V1(mystext2int8);
 PG_FUNCTION_INFO_V1(mystext2float8);
 PG_FUNCTION_INFO_V1(mys_isnull);
-PG_FUNCTION_INFO_V1(mys_text2uint4);
-PG_FUNCTION_INFO_V1(mys_text2uint8);
-
+PG_FUNCTION_INFO_V1(mystext2mysuint1);
+PG_FUNCTION_INFO_V1(bpchar2mysuint1);
+PG_FUNCTION_INFO_V1(mystext2mysuint2);
+PG_FUNCTION_INFO_V1(bpchar2mysuint2);
+PG_FUNCTION_INFO_V1(mystext2mysuint4);
+PG_FUNCTION_INFO_V1(bpchar2mysuint4);
+PG_FUNCTION_INFO_V1(mystext2mysuint8);
+PG_FUNCTION_INFO_V1(bpchar2mysuint8);
 
 /*
  * extract_leading_number_str:
@@ -714,42 +719,162 @@ mys_isnull(PG_FUNCTION_ARGS)
 		PG_RETURN_BOOL(false);
 }
 
+/*
+ * Comparison functions for mysql func.
+ *
+ * The support routine for cast 'text -> uint1'
+ */
 Datum
-mys_text2uint4(PG_FUNCTION_ARGS)
+mystext2mysuint1(PG_FUNCTION_ARGS)
 {
-	char	   *arg = text_to_cstring(PG_GETARG_TEXT_PP(0));
-	char	   num[64];
-	uint32	   ret = 0;
+	char	   *num = NULL;
+	text	   *arg;
+	uint64		temp;
 
-	if (!extract_leading_integer_str(arg, num, sizeof(num)))
-	{
-		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", arg));
-	}
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	arg = PG_GETARG_TEXT_PP(0);
+	num = (char* )text_to_cstring(arg);
+	temp = pg_atoi_uint(num, '\0', 1, false);
 
-	ret = DatumGetInt32(DirectFunctionCall1(mysuint4_in,
-											CStringGetDatum(num)));
-
-	pfree(arg);
-	PG_RETURN_UINT32(ret);
+	PG_RETURN_UINT64(temp);
 }
 
+/*
+ * Comparison functions for mysql func.
+ *
+ * The support routine for cast 'bpchar -> uint1'
+ */
 Datum
-mys_text2uint8(PG_FUNCTION_ARGS)
+bpchar2mysuint1(PG_FUNCTION_ARGS)
 {
-	char	   *arg = text_to_cstring(PG_GETARG_TEXT_PP(0));
-	char	   num[64];
-	uint64	   ret = 0;
+	char	   *num = NULL;
+	uint64		temp;
 
-	if (!extract_leading_integer_str(arg, num, sizeof(num)))
-	{
-		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", arg));
-	}
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	num = DatumGetCString(DirectFunctionCall1(bpcharout, PG_GETARG_DATUM(0)));
+	temp = pg_atoi_uint(num, '\0', 1, false);
 
-	ret = DatumGetInt32(DirectFunctionCall1(mysuint8_in,
-											CStringGetDatum(num)));
+	PG_RETURN_UINT64(temp);
+}
 
-	pfree(arg);
-	PG_RETURN_UINT64(ret);
+/*
+ * Comparison functions for mysql func.
+ *
+ * The support routine for cast 'text -> uint2'
+ */
+Datum
+mystext2mysuint2(PG_FUNCTION_ARGS)
+{
+	char	   *num = NULL;
+	text	   *arg;
+	uint64		temp;
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	arg = PG_GETARG_TEXT_PP(0);
+	num = (char* )text_to_cstring(arg);
+	temp = pg_atoi_uint(num, '\0', 2, false);
+
+	PG_RETURN_UINT64(temp);
+}
+
+/*
+ * Comparison functions for mysql func.
+ *
+ * The support routine for cast 'bpchar -> uint2'
+ */
+Datum
+bpchar2mysuint2(PG_FUNCTION_ARGS)
+{
+	char	   *num = NULL;
+	uint64		temp;
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	num = DatumGetCString(DirectFunctionCall1(bpcharout, PG_GETARG_DATUM(0)));
+	temp = pg_atoi_uint(num, '\0', 2, false);
+
+	PG_RETURN_UINT64(temp);
+}
+
+/*
+ * Comparison functions for mysql func.
+ *
+ * The support routine for cast 'text -> uint4'
+ */
+Datum
+mystext2mysuint4(PG_FUNCTION_ARGS)
+{
+	char	   *num = NULL;
+	text	   *arg;
+	uint64		temp;
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	arg = PG_GETARG_TEXT_PP(0);
+	num = (char* )text_to_cstring(arg);
+	temp = pg_atoi_uint(num, '\0', 4, false);
+
+	PG_RETURN_UINT64(temp);
+}
+
+/*
+ * Comparison functions for mysql func.
+ *
+ * The support routine for cast 'bpchar -> uint4'
+ */
+Datum
+bpchar2mysuint4(PG_FUNCTION_ARGS)
+{
+	char	   *num = NULL;
+	uint64		temp;
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	num = DatumGetCString(DirectFunctionCall1(bpcharout, PG_GETARG_DATUM(0)));
+	temp = pg_atoi_uint(num, '\0', 4, false);
+
+	PG_RETURN_UINT64(temp);
+}
+
+/*
+ * Comparison functions for mysql func.
+ *
+ * The support routine for cast 'text -> uint8'
+ */
+Datum
+mystext2mysuint8(PG_FUNCTION_ARGS)
+{
+	char	   *num = NULL;
+	text	   *arg;
+	uint64		temp;
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	arg = PG_GETARG_TEXT_PP(0);
+	num = (char* )text_to_cstring(arg);
+	temp = pg_atoi_uint(num, '\0', 8, false);
+
+	PG_RETURN_UINT64(temp);
+}
+
+/*
+ * Comparison functions for mysql func.
+ *
+ * The support routine for cast 'bpchar -> uint8'
+ */
+Datum
+bpchar2mysuint8(PG_FUNCTION_ARGS)
+{
+	char	   *num = NULL;
+	uint64		temp;
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	num = DatumGetCString(DirectFunctionCall1(bpcharout, PG_GETARG_DATUM(0)));
+	temp = pg_atoi_uint(num, '\0', 8, false);
+
+	PG_RETURN_UINT64(temp);
 }

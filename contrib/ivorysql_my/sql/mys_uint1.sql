@@ -518,3 +518,44 @@ create table t1 (col_uint int1 unsigned);
 insert into t1 values (100);
 select -col_uint from t1;
 DROP TABLE t1;
+
+set enable_seqscan=off;
+set enable_bitmapscan =off;
+create table t_index(id int1 unsigned ,description varchar(100));
+insert into t_index (id, description) values(generate_series(0,167),'aa');
+create index index_id_btree on t_index (id);
+explain (COSTS OFF) select * from t_index where id BETWEEN 65 and 70;
+drop table t_index;
+set enable_seqscan=on;
+set enable_bitmapscan =on;
+
+create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
+insert into t_conversion (id) values (cast('127' as varchar));
+select * from t_conversion;
+drop table t_conversion;
+
+create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
+insert into t_conversion (id) values (cast('127' as text));
+select * from t_conversion;
+drop table t_conversion;
+
+create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
+insert into t_conversion (id) values (TRUE);
+insert into t_conversion (id) values (0x12);
+select id from t_conversion;
+drop table t_conversion;
+
+create table t_like_operator(id int1 unsigned);
+insert into t_like_operator values(101),(102),(103),(104),(205),(208);
+select * from t_like_operator where id like '1%';
+select * from t_like_operator where id like '%4';
+select * from t_like_operator where id like '%1%';
+select * from t_like_operator where id like '1_3';
+select * from t_like_operator where id like '_8';
+
+select * from t_like_operator where id not like '1%';
+select * from t_like_operator where id not like '%4';
+select * from t_like_operator where id not like '%1%';
+select * from t_like_operator where id not like '1_3';
+select * from t_like_operator where id not like '_8';
+drop table t_like_operator;

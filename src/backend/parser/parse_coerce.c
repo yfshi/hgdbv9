@@ -55,9 +55,7 @@ typedef enum datetime
 	MYS_TIMESTAMP_FLG,
 	MYS_TIMESTAMPS_FLG,
 	MYS_TIME_FLG,
-	MYS_TIMES_FLG,
-	MYS_UINT4_FLG,
-	MYS_UINT8_FLG
+	MYS_TIMES_FLG
 } mys_datetime;
 /* End - ReqID:SRS-MYSQL-DATETYPE */
 PGDLLIMPORT ora_raw_input_hook_type ora_raw_input_hook;
@@ -110,8 +108,8 @@ static Datum Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert);
 
 static uint32 pg_atoi_uint4_check(const char *s,int c);/* ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-static uint64 Num2Mysuint4(Const *con, Oid inputTypeId, int sizenum);
-static uint64 Str2Mysuint(Const *con, Const *newcon, int sizenum);
+static uint64 Num2Mysuint1234(Const *con, Oid inputTypeId, Oid targetTypeId);
+static uint64 Str2Mysuint12348(Const *con, Const *newcon, Oid targetTypeId);
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
@@ -2258,12 +2256,43 @@ pg_atoi_uint4_check(const char *s,int c)
  * sizenum : size (3byte 4byte)
  */
 static uint64 
-Num2Mysuint4(Const *con, Oid inputTypeId, int sizenum)
+Num2Mysuint1234(Const *con, Oid inputTypeId, Oid targetTypeId)
 {
 	uint32		val2 = 0;
-	uint64	maxvalue = 0;
+	uint64		maxvalue = 0;
 
-	maxvalue = (sizenum == 3? PG_UINT24_MAX:PG_UINT32_MAX);
+	switch ( targetTypeId )
+	{
+		case  MYSUINT1OID :
+		{
+			maxvalue = PG_UINT8_MAX;
+			break;
+		}
+		case  MYSUINT2OID :
+		{
+			maxvalue = PG_UINT16_MAX;
+			break;
+		}
+		case  MYSUINT3OID :
+		{
+			maxvalue = PG_UINT24_MAX;
+			break;
+		}
+		case  MYSUINT4OID :
+		{
+			maxvalue = PG_UINT32_MAX;
+			break;
+		}
+		case  MYSUINT8OID :
+		{
+			maxvalue = PG_UINT64_MAX;
+			break;
+		}
+		default:
+		{
+			break;
+		}
+	}
 
 	if (inputTypeId == NUMERICOID)
 	{
@@ -2272,8 +2301,7 @@ Num2Mysuint4(Const *con, Oid inputTypeId, int sizenum)
 		val2 = val1;
 		if (val1 < 0 || val1 > maxvalue)
 		{
-			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			ereport(WARNING, (errmsg("integer unsigned out of range")));
 			val2 = val1 < 0 ? 0 : maxvalue;
 		}
 	}
@@ -2284,11 +2312,9 @@ Num2Mysuint4(Const *con, Oid inputTypeId, int sizenum)
 		val2 = val1;
 		if (val1 < 0 || val1 > maxvalue)
 		{
-			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			ereport(WARNING, (errmsg("integer unsigned out of range")));
 			val2 = val1 < 0 ? 0 : maxvalue;
 		}
-
 	}
 	return val2;
 }
@@ -2300,15 +2326,49 @@ Num2Mysuint4(Const *con, Oid inputTypeId, int sizenum)
  * sizenum : size (1byte 2byte 3byte 4byte 8byte)
  */
 static uint64 
-Str2Mysuint(Const *con, Const *newcon, int sizenum)
+Str2Mysuint12348(Const *con, Const *newcon, Oid targetTypeId)
 {
 	char *num = NULL;
 	uint64 temp = 0;
+	int sizenum = 0;
 
 	if (con->constisnull)
 	{
 		newcon->constisnull = true;
 		return temp;
+	}
+
+	switch ( targetTypeId )
+	{
+		case  MYSUINT1OID :
+		{
+			sizenum = 1;
+			break;
+		}
+		case  MYSUINT2OID :
+		{
+			sizenum = 2;
+			break;
+		}
+		case  MYSUINT3OID :
+		{
+			sizenum = 3;
+			break;
+		}
+		case  MYSUINT4OID :
+		{
+			sizenum = 4;
+			break;
+		}
+		case  MYSUINT8OID :
+		{
+			sizenum = 8;
+			break;
+		}
+		default:
+		{
+			break;
+		}
 	}
 
 	num = DatumGetCString(con->constvalue);
@@ -2318,7 +2378,7 @@ Str2Mysuint(Const *con, Const *newcon, int sizenum)
 	 */
 	if (mysql_uint_datatype_in_hook)
 	{
-		temp = (*mysql_uint_datatype_in_hook)(num, '\0', sizenum, true);
+		temp = (*mysql_uint_datatype_in_hook)(num, '\0', sizenum, false);
 	}
 	else
 	{
@@ -2346,15 +2406,13 @@ Num2Mysuint8(Const *con, Oid inputTypeId)
 		if (DatumGetBool(DirectFunctionCall2(
 			numeric_gt, NumericGetDatum(con->constvalue), NumericGetDatum(uint8maxnum))))
 		{
-			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			ereport(WARNING, (errmsg("integer unsigned out of range")));
 			return PG_UINT64_MAX;
 		}
 		if (DatumGetBool(DirectFunctionCall2(
 				numeric_lt, NumericGetDatum(con->constvalue), NumericGetDatum(int64_to_numeric(0)))))
 		{
-			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			ereport(WARNING, (errmsg("integer unsigned out of range")));
 			return 0;
 		}
 
@@ -2362,8 +2420,7 @@ Num2Mysuint8(Const *con, Oid inputTypeId)
 
 		if (val1 < 0 || val1 > PG_UINT64_MAX)
 		{
-			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			ereport(WARNING, (errmsg("integer unsigned out of range")));
 			val1 = val1 < 0 ? 0 : PG_UINT64_MAX;
 		}
 	}
@@ -2373,8 +2430,7 @@ Num2Mysuint8(Const *con, Oid inputTypeId)
 		val1 = tempval;
 		if (tempval < 0 || tempval > PG_UINT64_MAX)
 		{
-			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			ereport(WARNING, (errmsg("integer unsigned out of range")));
 			val1 = tempval < 0 ? 0 : PG_UINT64_MAX;
 		}
 
@@ -2507,6 +2563,103 @@ coerce_type(ParseState *pstate, Node *node,
 			return node;
 		}
 	}
+
+	if ( MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext &&
+		 IsA(node, Const) &&
+		(inputTypeId == INT4OID || inputTypeId == NUMERICOID ||
+		 inputTypeId == INT8OID || inputTypeId == INT2OID )  &&
+		(targetTypeId == MYSUINT1OID || targetTypeId == MYSUINT2OID || 
+		 targetTypeId == MYSUINT3OID || targetTypeId == MYSUINT4OID || targetTypeId == MYSUINT8OID) )
+	{
+		/*
+		 * use cast(int as uint)
+		 * cast does not reised an error, to distinguish the error handling mechanism from the inout function
+		 * preprocessing is performed on the cast
+		 */
+		ParseCallbackState pcbstate;
+		Type		baseType;
+		uint64		tempvalue = 0;
+
+		Oid			baseTypeId;
+		int32		baseTypeMod;
+		Const	   *con = (Const *) node;
+		Const	   *newcon = makeNode(Const);
+
+		baseTypeMod = targetTypeMod;
+		baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
+		baseType = typeidType(baseTypeId);
+
+		newcon->consttype = baseTypeId;
+		newcon->consttypmod = baseTypeMod;
+		newcon->constcollid = typeTypeCollation(baseType);
+		newcon->constlen = typeLen(baseType);
+		newcon->constbyval = typeByVal(baseType);
+		newcon->constisnull = con->constisnull;
+		newcon->location = con->location;
+
+		if (targetTypeId == MYSUINT8OID)
+		{
+			tempvalue = Num2Mysuint8(con, inputTypeId);
+			newcon->constvalue = TimeADTGetDatum(tempvalue);
+		}
+		else
+		{
+			tempvalue = Num2Mysuint1234(con, inputTypeId, targetTypeId);
+			newcon->constvalue = Int64GetDatum(tempvalue);
+		}
+
+		setup_parser_errposition_callback(&pcbstate, pstate, con->location);
+
+		result = (Node *) newcon;
+		ReleaseSysCache(baseType);
+		cancel_parser_errposition_callback(&pcbstate);
+		
+		return result;
+	}
+
+	if ( MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext &&
+		(inputTypeId == UNKNOWNOID) &&
+		 IsA(node, Const) &&
+		(targetTypeId == MYSUINT1OID || targetTypeId == MYSUINT2OID || 
+		 targetTypeId == MYSUINT3OID || targetTypeId == MYSUINT4OID || targetTypeId == MYSUINT8OID) )
+	{
+		/*
+		 * use cast(unknown as uint)
+		 * cast does not reised an error, to distinguish the error handling mechanism from the inout function
+		 * preprocessing is performed on the cast
+		 */
+		ParseCallbackState pcbstate;
+		Type		baseType;
+		uint64		tempvalue = 0;
+
+		Oid			baseTypeId;
+		int32		baseTypeMod;
+		Const	   *con = (Const *) node;
+		Const	   *newcon = makeNode(Const);
+
+		baseTypeMod = targetTypeMod;
+		baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
+		baseType = typeidType(baseTypeId);
+
+		newcon->consttype = baseTypeId;
+		newcon->consttypmod = baseTypeMod;
+		newcon->constcollid = typeTypeCollation(baseType);
+		newcon->constlen = typeLen(baseType);
+		newcon->constbyval = typeByVal(baseType);
+		newcon->constisnull = con->constisnull;
+		newcon->location = con->location;
+
+		tempvalue = Str2Mysuint12348(con, newcon, targetTypeId);
+		newcon->constvalue = UInt32GetDatum(tempvalue);
+
+		setup_parser_errposition_callback(&pcbstate, pstate, con->location);
+
+		result = (Node *) newcon;
+		ReleaseSysCache(baseType);
+		cancel_parser_errposition_callback(&pcbstate);
+		
+		return result;
+	}
 	/* 
 	 * When an integer or numeric is inserted as a date type column in mysql,
 	 * type conversion needs to be processed.
@@ -2566,18 +2719,6 @@ coerce_type(ParseState *pstate, Node *node,
 			{
 				dateflg = MYS_TIMES_FLG;
 			}
-			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-			else if (baseTypeId == MYSUINT4OID)
-			{
-				dateflg = MYS_UINT4_FLG;
-			}
-			/* End - SRS-MYSQL-NUMBERICTYPE-UINT4 */
-			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-			else if (baseTypeId == MYSUINT4OID)
-			{
-				dateflg = MYS_UINT8_FLG;
-			}
-			/* End - SRS-MYSQL-NUMBERICTYPE-UINT8 */
 		}
 
 		if ( COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATEOID)
@@ -2594,10 +2735,6 @@ coerce_type(ParseState *pstate, Node *node,
 			dateflg = MYS_TIME_FLG;
 		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESOID)
 			dateflg = MYS_TIMES_FLG;
-		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSUINT4OID)
-			dateflg = MYS_UINT4_FLG;
-		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSUINT8OID)
-			dateflg = MYS_UINT8_FLG;
 
 		if (dateflg)
 		{
@@ -2661,24 +2798,6 @@ coerce_type(ParseState *pstate, Node *node,
 				time = Num2Mystimes(con, inputTypeId, targetTypeMod, is_insert);
 				newcon->constvalue = TimeADTGetDatum(time);
 			}
-			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-			else if (dateflg == MYS_UINT4_FLG)
-			{
-				uint32 tempvalue = 0;
-				int sizenum = 0;
-				sizenum = (targetTypeId == MYSUINT3OID? 3:4);
-				tempvalue = Num2Mysuint4(con, inputTypeId, sizenum);
-				newcon->constvalue = TimeADTGetDatum(tempvalue);
-			}
-			/* End - SRS-MYSQL-NUMBERICTYPE-UINT4 */
-			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-			else if (dateflg == MYS_UINT8_FLG)
-			{
-				uint64 tempvalue = 0;
-				tempvalue = Num2Mysuint8(con, inputTypeId);
-				newcon->constvalue = TimeADTGetDatum(tempvalue);
-			}
-			/* End - SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
 			result = (Node *) newcon;
 			ReleaseSysCache(baseType);
@@ -3137,43 +3256,6 @@ coerce_type(ParseState *pstate, Node *node,
 						break;
 					}
 					/* End - ReqID:SRS-MYSQL-TIMETYPE */
-					/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-					case  MYSUINT4OID :
-					{
-						uint64		value;
-						value = Str2Mysuint(con, newcon, 4);
-						newcon->constvalue = UInt32GetDatum(value);
-						break;
-					}
-					case  MYSUINT3OID :
-					{
-						uint64		value;
-						value = Str2Mysuint(con, newcon, 3);
-						newcon->constvalue = UInt32GetDatum(value);
-						break;
-					}
-					case  MYSUINT2OID :
-					{
-						uint64		value;
-						value = Str2Mysuint(con, newcon, 2);
-						newcon->constvalue = UInt32GetDatum(value);
-						break;
-					}
-					case  MYSUINT1OID :
-					{
-						uint64		value;
-						value = Str2Mysuint(con, newcon, 1);
-						newcon->constvalue = UInt32GetDatum(value);
-						break;
-					}
-					case  MYSUINT8OID :
-					{
-						uint64		value;
-						value = Str2Mysuint(con, newcon, 8);
-						newcon->constvalue = UInt32GetDatum(value);
-						break;
-					}
-					/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 					default:
 					{
 						/*

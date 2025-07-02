@@ -18,6 +18,10 @@ OBJS = \
 	src/datatype/mysuint2.o \
 	src/datatype/mysuint4.o \
 	src/datatype/mysuint8.o \
+	src/datatype/mysuint1_index.o \
+	src/datatype/mysuint2_index.o \
+	src/datatype/mysuint4_index.o \
+	src/datatype/mysuint8_index.o \
 	src/datatype/mysfloat.o \
 	src/datatype/strtod.o \
 	src/datatype/anyblob.o \

@@ -1873,7 +1873,7 @@ insert into tb values(1,'abc');
 insert into tb values(2,'123');
 insert into tb values(3,'123.4');
 select convert(col ,unsigned) from tb where id=1;  -- 0
-WARNING:  Truncated incorrect INTEGER value: 'abc'
+WARNING:  invalid input syntax for type integer: "abc"
  col 
 -----
  0
@@ -1886,7 +1886,7 @@ select convert(col , unsigned) from tb where id=2;  -- 123
 (1 row)
 
 select convert(col , unsigned) from tb where id=3;  -- 123
-WARNING:  Truncated incorrect INTEGER value: '123.4'
+WARNING:  invalid input syntax for type integer: "123.4"
  col 
 -----
  123
@@ -1966,10 +1966,10 @@ WARNING:  Truncated incorrect INTEGER value: '24.5'
 select a, cast(b as int unsigned), cast(c as int unsigned) from tb10;   -- [-1, 4294967295, 4294967295], [24, 24, 24], [25, 24, 24]
 WARNING:  value "-1" is out of range for unsigned 32-bit integer
 WARNING:  value "-1" is out of range for unsigned 32-bit integer
-WARNING:  Truncated incorrect INTEGER value: '24.4'
-WARNING:  Truncated incorrect INTEGER value: '24.4'
-WARNING:  Truncated incorrect INTEGER value: '24.5'
-WARNING:  Truncated incorrect INTEGER value: '24.5'
+WARNING:  invalid input syntax for type integer: "24.4"
+WARNING:  invalid input syntax for type integer: "24.4"
+WARNING:  invalid input syntax for type integer: "24.5"
+WARNING:  invalid input syntax for type integer: "24.5"
  a  |     b      |     c      
 ----+------------+------------
  -1 | 4294967295 | 4294967295
@@ -1990,10 +1990,10 @@ WARNING:  Truncated incorrect INTEGER value: '24.5'
 (3 rows)
 
 select a, cast(b as int8 unsigned), cast(c as int8 unsigned) from tb10; -- [-1, 18446744073709551615, 18446744073709551615], [24, 24, 24], [25, 24, 24]
-WARNING:  Truncated incorrect INTEGER value: '24.4'
-WARNING:  Truncated incorrect INTEGER value: '24.4'
-WARNING:  Truncated incorrect INTEGER value: '24.5'
-WARNING:  Truncated incorrect INTEGER value: '24.5'
+WARNING:  invalid input syntax for type integer: "24.4"
+WARNING:  invalid input syntax for type integer: "24.4"
+WARNING:  invalid input syntax for type integer: "24.5"
+WARNING:  invalid input syntax for type integer: "24.5"
  a  |          b           |          c           
 ----+----------------------+----------------------
  -1 | 18446744073709551615 | 18446744073709551615

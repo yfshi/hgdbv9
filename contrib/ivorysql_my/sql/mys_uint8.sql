@@ -695,3 +695,64 @@ DROP TABLE t1;
 
 create table t1(id in1 signed);
 create table t2(id intt unsigned);
+
+set enable_seqscan=off;
+set enable_bitmapscan =off;
+create table t_index(id int8 unsigned ,description varchar(100));
+insert into t_index (id, description) values(generate_series(0,167772),'aa');
+create index index_id_btree on t_index (id);
+explain (COSTS OFF)  select * from t_index where id BETWEEN 65 and 70;
+drop table t_index;
+set enable_seqscan=on;
+set enable_bitmapscan =on;
+
+create table tt(id1 mysuint1, id2 mysuint8);
+insert into tt values(255, 257);
+select id1<id2 from tt;
+select id1=id2 from tt;
+select id1>id2 from tt;
+drop table tt;
+create table tt(id1 mysuint1, id2 mysuint2);
+insert into tt values(255, 65535);
+select id1<id2 from tt;
+select id1=id2 from tt;
+select id1>id2 from tt;
+drop table tt;
+
+create table tt(id1 mysuint1, id2 int4);
+insert into tt values(255, -128);
+select id1<id2 from tt;
+select id1=id2 from tt;
+select id1>id2 from tt;
+drop table tt;
+
+create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
+insert into t_conversion (id) values (cast('127' as varchar));
+select * from t_conversion;
+drop table t_conversion;
+
+create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
+insert into t_conversion (id) values (cast('127' as text));
+select * from t_conversion;
+drop table t_conversion;
+
+create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
+insert into t_conversion (id) values (TRUE);
+insert into t_conversion (id) values (0x12);
+select id from t_conversion;
+drop table t_conversion;
+
+create table t_like_operator(id int8 unsigned);
+insert into t_like_operator values(101),(102),(103),(104),(205),(208);
+select * from t_like_operator where id like '1%';
+select * from t_like_operator where id like '%4';
+select * from t_like_operator where id like '%1%';
+select * from t_like_operator where id like '1_3';
+select * from t_like_operator where id like '_8';
+
+select * from t_like_operator where id not like '1%';
+select * from t_like_operator where id not like '%4';
+select * from t_like_operator where id not like '%1%';
+select * from t_like_operator where id not like '1_3';
+select * from t_like_operator where id not like '_8';
+drop table t_like_operator;
