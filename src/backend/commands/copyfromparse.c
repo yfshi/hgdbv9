@@ -1588,7 +1588,7 @@ CopyReadLine(CopyFromState cstate)
 				 * for here, check the data should be \r\n for the buffer
 				 * then set the len and the tail to \0
 				 */
-				if (cstate->opts.tolerate && cstate->line_buf_error2)
+				if (cstate->opts.tolerate && cstate->line_buf_error_rn)
 				{
 					Assert(cstate->line_buf.len >= 2);
 					Assert(cstate->line_buf.data[cstate->line_buf.len - 2] == '\r');
@@ -1597,6 +1597,21 @@ CopyReadLine(CopyFromState cstate)
 					cstate->line_buf.data[cstate->line_buf.len] = '\0';
 				}
 				/* End - OA-REQ-1488 */
+				/* Begin - OA-REQ-1541 */
+				/*
+				 * if the newline mark is \n
+				 * but find \r, will skip this line
+				 * for here, check the data should be \r for the buffer
+				 * then set the len and the tail to \0
+				 */
+				else if (cstate->opts.tolerate && cstate->line_buf_error_r)
+				{
+					Assert(cstate->line_buf.len >= 1);
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\r');
+					cstate->line_buf.len--;
+					cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				}
+				/* End - OA-REQ-1541 */
 				else
 				{	
 					Assert(cstate->line_buf.len >= 1);
@@ -1606,10 +1621,36 @@ CopyReadLine(CopyFromState cstate)
 				}
 				break;
 			case EOL_CR:
-				Assert(cstate->line_buf.len >= 1);
-				Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\r');
-				cstate->line_buf.len--;
-				cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				/* Begin - OA-REQ-1541 */
+				/*
+				 * if the newline mark is \r
+				 * but find \n or \r\n, will skip this line
+				 * for here, check the data should be \n or \r\n for the buffer
+				 * then set the len and the tail to \0
+				 */
+				if (cstate->opts.tolerate && cstate->line_buf_error_n)
+				{
+					Assert(cstate->line_buf.len >= 1);
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\n');
+					cstate->line_buf.len--;
+					cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				}
+				else if (cstate->opts.tolerate && cstate->line_buf_error_rn)
+				{
+					Assert(cstate->line_buf.len >= 2);
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 2] == '\r');
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\n');
+					cstate->line_buf.len -= 2;
+					cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				}
+				/* End - OA-REQ-1541 */
+				else
+				{
+					Assert(cstate->line_buf.len >= 1);
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\r');
+					cstate->line_buf.len--;
+					cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				}
 				break;
 			case EOL_CRNL:
 				/* Begin - OA-REQ-1488 */
@@ -1619,7 +1660,7 @@ CopyReadLine(CopyFromState cstate)
 				 * for here, check there should be \n for the buffer
 				 * then set the len and the tail to \0
 				 */
-				if (cstate->opts.tolerate && cstate->line_buf_error)
+				if (cstate->opts.tolerate && cstate->line_buf_error_n)
 				{
 					Assert(cstate->line_buf.len >= 1);
 					Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\n');
@@ -1627,6 +1668,21 @@ CopyReadLine(CopyFromState cstate)
 					cstate->line_buf.data[cstate->line_buf.len] = '\0';
 				}
 				/* End - OA-REQ-1488 */
+				/* Begin - OA-REQ-1541 */
+				/*
+				 * if newline marker is \r\n
+				 * find \r, will skip this line
+				 * for here, check there should be \r for the buffer
+				 * then set the len and the tail to \0
+				 */
+				else if (cstate->opts.tolerate && cstate->line_buf_error_r)
+				{
+					Assert(cstate->line_buf.len >= 1);
+					Assert(cstate->line_buf.data[cstate->line_buf.len - 1] == '\r');
+					cstate->line_buf.len -= 1;
+					cstate->line_buf.data[cstate->line_buf.len] = '\0';
+				}
+				/* End - OA-REQ-1541 */
 				else
 				{
 					Assert(cstate->line_buf.len >= 2);
@@ -1646,13 +1702,14 @@ CopyReadLine(CopyFromState cstate)
 	/* Now it's safe to use the buffer in error messages */
 	cstate->line_buf_valid = true;
 
-	/* Begin - OA-REQ-1488 */
-	if (cstate->opts.tolerate && (cstate->line_buf_error || cstate->line_buf_error2))
+	/* Begin - OA-REQ-1488, OA-REQ-1541 */
+	if (cstate->opts.tolerate && (cstate->line_buf_error_r || cstate->line_buf_error_n || cstate->line_buf_error_rn))
 	{
 		/* 
 		 * raise an error
-		 * cstate->line_buf_error means there should be \r\n, but find \n
-		 * cstate->line_buf_error2 means there should be \n, but find \r\n
+		 * cstate->line_buf_error_r means found \r, but need skip
+		 * cstate->line_buf_error_n means found \n, but need skip
+		 * cstate->line_buf_error_n means found \r\n, but need skip
 		 * will skip this line
 		 */
 		ereport(ERROR,
@@ -1664,7 +1721,7 @@ CopyReadLine(CopyFromState cstate)
 			 errhint("Use \"\\n\" to represent newline.") :
 			 errhint("Use quoted CSV field to represent newline.")));
 	}
-	/* End - OA-REQ-1488 */
+	/* End - OA-REQ-1488, OA-REQ-1541 */
 
 	return result;
 }
@@ -1689,14 +1746,16 @@ CopyReadLineText(CopyFromState cstate)
 	char		quotec = '\0';
 	char		escapec = '\0';
 
-	/* Begin - OA-REQ-1488 */
+	/* Begin - OA-REQ-1488, OA-REQ-1541 */
 	/*
-	 * line_buf_error means there should be \r\n, but find \n
-	 * line_buf_error2 means there should be \n, but find \r\n
+	 * line_buf_error_r means found \r
+	 * line_buf_error_n means found \n
+	 * line_buf_error_rn means found \r\n
 	 */
-	cstate->line_buf_error = false;
-	cstate->line_buf_error2 = false;
-	/* End - OA-REQ-1488 */
+	cstate->line_buf_error_r = false;
+	cstate->line_buf_error_n = false;
+	cstate->line_buf_error_rn = false;
+	/* End - OA-REQ-1488, OA-REQ-1541 */
 
 	if (cstate->opts.csv_mode)
 	{
@@ -1869,17 +1928,24 @@ CopyReadLineText(CopyFromState cstate)
 					/* found \r, but no \n */
 					if (cstate->eol_type == EOL_CRNL)
 					{
-						if (cstate->opts.tolerate == true)	/* BUG#M0000526 */
-							cstate->input_reached_error = true;	/* BUG#M0000526 */
-
-						ereport(ERROR,
+						/* Begin - OA-REQ-1541 */
+						if (cstate->opts.tolerate == true)
+						{
+							cstate->line_buf_error_r = true;
+							break;
+						}
+						/* End - OA-REQ-1541 */
+						else
+						{
+							ereport(ERROR,
 								(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
-								 !cstate->opts.csv_mode ?
-								 errmsg("literal carriage return found in data") :
-								 errmsg("unquoted carriage return found in data"),
-								 !cstate->opts.csv_mode ?
-								 errhint("Use \"\\r\" to represent carriage return.") :
-								 errhint("Use quoted CSV field to represent carriage return.")));
+								!cstate->opts.csv_mode ?
+								errmsg("literal carriage return found in data") :
+								errmsg("unquoted carriage return found in data"),
+								!cstate->opts.csv_mode ?
+								errhint("Use \"\\r\" to represent carriage return.") :
+								errhint("Use quoted CSV field to represent carriage return.")));
+						}
 
 					}
 
@@ -1897,7 +1963,7 @@ CopyReadLineText(CopyFromState cstate)
 				 * if the newline marked by \n
 				 * but find \r, check next char
 				 * if \n, skip this line
-				 * if not \n, raise an error
+				 * if \r\n, skip this line
 				 */
 				if (cstate->opts.tolerate == true)
 				{
@@ -1907,11 +1973,15 @@ CopyReadLineText(CopyFromState cstate)
 					if (c == '\n')
 					{
 						input_buf_ptr++;	/* eat newline */
-						cstate->line_buf_error2 = true;
+						cstate->line_buf_error_rn = true;
 						break;
 					}
-
-					cstate->input_reached_error = true;
+					/* find \r, but no \n */
+					else 
+					{
+						cstate->line_buf_error_r = true;
+						break;
+					}
 				}
 				/* End - OA-REQ-1488 */
 
@@ -1924,6 +1994,27 @@ CopyReadLineText(CopyFromState cstate)
 						 errhint("Use \"\\r\" to represent carriage return.") :
 						 errhint("Use quoted CSV field to represent carriage return.")));
 			}
+			/* Begin - OA-REQ-1541 */
+			/*
+			 * if newline marker is \r
+			 * skip \r\n line
+			 */
+			else if (cstate->eol_type == EOL_CR)
+			{
+				if (cstate->opts.tolerate == true)
+				{
+					IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(0);
+					c = copy_input_buf[input_buf_ptr];
+					/* found \r, and \n */
+					if (c == '\n')
+					{
+						input_buf_ptr++;        /* eat newline */
+						cstate->line_buf_error_rn = true;
+						break;
+					}
+				}
+			}
+			/* End - OA-REQ-1541 */
 			/* If reach here, we have found the line terminator */
 			break;
 		}
@@ -1935,17 +2026,13 @@ CopyReadLineText(CopyFromState cstate)
 			{
 				/* Begin - OA-REQ-1488 */
 				/*
-				 * newline marker is \r\n
-				 * but find \n
+				 * newline marker is \r\n, but find \n, skip
+				 * newline marker is \r, but find \n, skip
 				 */
-				if (cstate->opts.tolerate && cstate->eol_type == EOL_CRNL)
+				if (cstate->opts.tolerate)
 				{
-					cstate->line_buf_error = true;
+					cstate->line_buf_error_n = true;
 					break;
-				}
-				else if (cstate->opts.tolerate && cstate->eol_type == EOL_CR)	/* BUG#M0000526 */
-				{
-					cstate->input_reached_error = true;	/* BUG#M0000526 */
 				}
 				/* End - OA-REQ-1488 */
 

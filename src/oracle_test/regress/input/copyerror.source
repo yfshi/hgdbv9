@@ -699,12 +699,7 @@ DROP TABLE p_z1149;
 
 -- Begin - BUG#M0000526
 -- file format error, return an error
-create table xxxx(n1 varchar2(100), n2 varchar2(100), n3 varchar2(100), n4 varchar2(100), n5 varchar2(100));
-
-copy xxxx from '@abs_srcdir@/data/ora_copy_format_error.data' with(format csv, delimiter '|');
-copy xxxx from '@abs_srcdir@/data/ora_copy_format_error.data' with(format csv, delimiter '|', skipbad);
-
-drop table xxxx;
+-- after OA-REQ-1488 and 1541, \r,\n,\r\n format error can skip
 -- End - BUG#M0000526
 
 -- Begin - OA-REQ-1488
@@ -752,6 +747,52 @@ select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_4';
 
 drop table oa1488;
 -- End - OA-REQ-1488
+
+-- Begin - OA-REQ-1541
+CREATE  TABLE oa1541("CITY_ID" NUMBER ,"CITY_NAME" VARCHAR2(255) ,"COUNTY_NAME" VARCHAR2(255) ,"ZH_LABEL" VARCHAR2(255) ,"PARENT_ID" NUMBER ,"FIVE_ADDRESS_NAME" VARCHAR2(255));
+
+-- oa_1541_1, fileformat=unix, newline marker is \r\n, but include \r or \n
+-- success 4 + 4, bad 9
+DELETE FROM x_bad;
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_1.data' with(format csv, delimiter '^');
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_1.data' with(format csv, delimiter '^', skipbad);
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_1.data' with(format csv, delimiter '^', taskid '1541_1', badtable 'x_bad');
+SELECT count(*) FROM oa1541;
+SELECT count(*) FROM x_bad WHERE taskid = '1541_1';
+
+-- oa_1541_2, fileformat=dos, newline marker is \r\n, but include \r or \n
+-- success 5 + 5, bad 8
+DELETE FROM oa1541;
+DELETE FROM x_bad;
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_2.data' with(format csv, delimiter '^');
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_2.data' with(format csv, delimiter '^', skipbad);
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_2.data' with(format csv, delimiter '^', taskid '1541_2', badtable 'x_bad');
+SELECT count(*) FROM oa1541;
+SELECT count(*) FROM x_bad WHERE taskid = '1541_2';
+
+-- oa_1541_3, fileformat=unix, newline marker is \n, but include \r or \r\n
+-- success 4 + 4, bad 9
+DELETE FROM oa1541;
+DELETE FROM x_bad;
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_3.data' with(format csv, delimiter '^');
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_3.data' with(format csv, delimiter '^', skipbad);
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_3.data' with(format csv, delimiter '^', taskid '1541_3', badtable 'x_bad');
+SELECT count(*) FROM oa1541;
+SELECT count(*) FROM x_bad WHERE taskid = '1541_3';
+
+-- oa_1541_4, fileformat=unix, newline marker is \r, but include \n or \r\n
+-- success 5 + 5, bad 4
+DELETE FROM oa1541;
+DELETE FROM x_bad;
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_4.data' with(format csv, delimiter '^');
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_4.data' with(format csv, delimiter '^', skipbad);
+COPY oa1541 FROM '@abs_srcdir@/data/oa_1541_4.data' with(format csv, delimiter '^', taskid '1541_4', badtable 'x_bad');
+SELECT count(*) FROM oa1541;
+SELECT count(*) FROM x_bad WHERE taskid = '1541_4';
+
+DROP TABLE oa1541;
+
+-- End - OA-REQ-1541
 
 -- clean up
 DROP TABLE x;
