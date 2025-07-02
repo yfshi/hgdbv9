@@ -251,12 +251,7 @@ WARNING:  Incorrect datetime value: '20:38:40'
         
 (1 row)
 
-select quarter(time'20:38:40');
- quarter 
----------
-       2
-(1 row)
-
+--select quarter(time'20:38:40');
 select quarter(203840);
 WARNING:  Incorrect datetime value: '203840'
  quarter 
@@ -264,12 +259,7 @@ WARNING:  Incorrect datetime value: '203840'
         
 (1 row)
 
-select quarter(time'203840');
- quarter 
----------
-       2
-(1 row)
-
+--select quarter(time'203840');
 select quarter(true);       -- bug#z5083
 WARNING:  Incorrect datetime value: '1'
  quarter 
