@@ -175,7 +175,7 @@ my $final_expected_output_bb1 = q(table public.decoding: INSERT: blah[text]:'bef
 table public.decoding: INSERT: blah[text]:'afterbb'
 table public.decoding: INSERT: blah[text]:'after failover');
 
-my @filterd_lines = grep { !/(pg_reboot|pg_track_settings_history|pg_audit|BEGIN|COMMIT)/ } split(/\n/, $stdout);
+my @filterd_lines = grep { !/(pg_reboot|pg_track_settings_history|pg_track_settings_list|pg_audit|BEGIN|COMMIT)/ } split(/\n/, $stdout);
 my $filterd_results = join("\n", @filterd_lines);
 is($filterd_results, $final_expected_output_bb1, 'decoded expected data from slot before_basebackup');
 #is($stdout, $final_expected_output_bb,
