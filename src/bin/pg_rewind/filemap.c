@@ -714,6 +714,7 @@ static file_action_t
 decide_file_action(file_entry_t *entry)
 {
 	const char *path = entry->path;
+	char localpath[MAXPGPATH];
 
 	/*
 	 * Don't touch the control file. It is handled specially, after copying
@@ -721,6 +722,13 @@ decide_file_action(file_entry_t *entry)
 	 */
 	if (strcmp(path, "global/pg_control") == 0)
 		return FILE_ACTION_NONE;
+
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	/* Don't remove the pg_cryptokeys file. */
+	snprintf(localpath, sizeof(localpath), "%s/", KMGR_DIR);
+	if (strstr(path, localpath) == path)
+		return FILE_ACTION_NONE;
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/*
 	 * Remove all files matching the exclusion filters in the target.
