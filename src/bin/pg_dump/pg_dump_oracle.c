@@ -333,6 +333,10 @@ setup_connectionOracle(Archive *AH, const char *dumpencoding,
 	PGconn	   *conn = GetConnection(AH);
 	const char *std_strings;
 
+	/* Begin - Z5360 */
+	ExecuteSqlStatement(AH, "set ivorysql.enable_emptystring_to_NULL = off");
+	/* End - Z5360 */
+
 	PQclear(ExecuteSqlQueryForSingleRow(AH, ALWAYS_SECURE_SEARCH_PATH_SQL));
 
 	/*
@@ -17197,7 +17201,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		{
 			idx_oid = atooid(PQgetvalue(idx_res, 0, 0));
 			appendPQExpBuffer(q, "\nSELECT pg_catalog.binary_upgrade_set_next_index_pg_class_oid('%d'::pg_catalog.oid);"
-								 "\nCREATE INDEX %s_%d_rowid_idx ON %s (rowid);", idx_oid, tbinfo->dobj.name, tbinfo->dobj.catId.oid, tbinfo->dobj.name);
+								 "\nCREATE INDEX %s_%d_rowid_idx ON %s.%s (rowid);", idx_oid, tbinfo->dobj.name, tbinfo->dobj.catId.oid,tbinfo->dobj.namespace->dobj.name, tbinfo->dobj.name);
 		}
 		if(idx_res)
 			PQclear(idx_res);
