@@ -58,4 +58,10 @@ extern bool SplitGUCList(char *rawstring, char separator,
 extern text *replace_text_regexp(text *src_text, void *regexp,
 								 text *replace_text, bool glob);
 
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+extern int32 text_length(Datum str);
+extern text *text_substring(Datum str, int32 start, int32 length, bool length_not_specified);
+extern text *text_catenate(text *t1, text *t2);
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
 #endif

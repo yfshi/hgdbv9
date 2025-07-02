@@ -8,7 +8,7 @@ ALTER FUNCTION levenshtein(text, text, int, int, int) PARALLEL SAFE;
 ALTER FUNCTION levenshtein_less_equal(text, text, int) PARALLEL SAFE;
 ALTER FUNCTION levenshtein_less_equal(text, text, int, int, int, int) PARALLEL SAFE;
 ALTER FUNCTION metaphone(text, int) PARALLEL SAFE;
-ALTER FUNCTION soundex(text) PARALLEL SAFE;
+ALTER FUNCTION pg_catalog.soundex(text) PARALLEL SAFE;
 ALTER FUNCTION text_soundex(text) PARALLEL SAFE;
 ALTER FUNCTION difference(text, text) PARALLEL SAFE;
 ALTER FUNCTION dmetaphone(text) PARALLEL SAFE;

@@ -70,9 +70,9 @@ select * from t1;
 DROP TABLE t1;
 -- select length(quote(concat(''::char(0),"test"))); --8
 select length(concat(char(0),"test")); --not support, mysq is 5
-ERROR:  syntax error at or near ","
+ERROR:  column "test" does not exist
 LINE 1: select length(concat(char(0),"test"));
-                                    ^
+                                     ^
 create table t1 as select
 --nullif(null, 'string') as c14,
 trim('string' from null) as c15,
@@ -163,35 +163,37 @@ c bit(1)
 );
 insert into t1 values(1, '', '0'),(2, '', '1'),(3, '', NULL),(4, NULL, '0'),(5, NULL, '1'),(6, NULL, NULL);
 select a,b,bin(c) from t1 where b = '' and c is null order by a;
-ERROR:  function bin(bit) does not exist
-LINE 1: select a,b,bin(c) from t1 where b = '' and c is null order b...
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 3 |   | 
+(1 row)
+
 select a,b,bin(c) from t1 where b is null and c is null order by a;
-ERROR:  function bin(bit) does not exist
-LINE 1: select a,b,bin(c) from t1 where b is null and c is null orde...
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 6 |   | 
+(1 row)
+
 select a,b,bin(c) from t1 where b = '' and c = 0 order by a;
-ERROR:  function bin(bit) does not exist
+ERROR:  operator does not exist: bit = integer
 LINE 1: select a,b,bin(c) from t1 where b = '' and c = 0 order by a;
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+                                                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 select a,b,bin(c) from t1 where b is null and c = 0 order by a;
-ERROR:  function bin(bit) does not exist
+ERROR:  operator does not exist: bit = integer
 LINE 1: select a,b,bin(c) from t1 where b is null and c = 0 order by...
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+                                                        ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 select a,b,bin(c) from t1 where b = '' and c = 1 order by a;
-ERROR:  function bin(bit) does not exist
+ERROR:  operator does not exist: bit = integer
 LINE 1: select a,b,bin(c) from t1 where b = '' and c = 1 order by a;
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+                                                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 select a,b,bin(c) from t1 where b is null and c = 1 order by a;
-ERROR:  function bin(bit) does not exist
+ERROR:  operator does not exist: bit = integer
 LINE 1: select a,b,bin(c) from t1 where b is null and c = 1 order by...
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+                                                        ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 drop table t1;
 create table t1 (
 a int primary key,
@@ -309,35 +311,37 @@ insert into t1 values(1, '', '0'),
                      (6, NULL, NULL);
 --echo #verify data in table
 select a,b,bin(c) from t1 where b = '' and c is null order by a;
-ERROR:  function bin(bit) does not exist
-LINE 1: select a,b,bin(c) from t1 where b = '' and c is null order b...
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 3 |   | 
+(1 row)
+
 select a,b,bin(c) from t1 where b is null and c is null order by a;
-ERROR:  function bin(bit) does not exist
-LINE 1: select a,b,bin(c) from t1 where b is null and c is null orde...
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 6 |   | 
+(1 row)
+
 select a,b,bin(c) from t1 where b = '' and c = 0 order by a;
-ERROR:  function bin(bit) does not exist
+ERROR:  operator does not exist: bit = integer
 LINE 1: select a,b,bin(c) from t1 where b = '' and c = 0 order by a;
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+                                                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 select a,b,bin(c) from t1 where b is null and c = 0 order by a;
-ERROR:  function bin(bit) does not exist
+ERROR:  operator does not exist: bit = integer
 LINE 1: select a,b,bin(c) from t1 where b is null and c = 0 order by...
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+                                                        ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 select a,b,bin(c) from t1 where b = '' and c = 1 order by a;
-ERROR:  function bin(bit) does not exist
+ERROR:  operator does not exist: bit = integer
 LINE 1: select a,b,bin(c) from t1 where b = '' and c = 1 order by a;
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+                                                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 select a,b,bin(c) from t1 where b is null and c = 1 order by a;
-ERROR:  function bin(bit) does not exist
+ERROR:  operator does not exist: bit = integer
 LINE 1: select a,b,bin(c) from t1 where b is null and c = 1 order by...
-                   ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+                                                        ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 drop table t1;
 create table t1 (
   a int primary key,
@@ -2116,7 +2120,7 @@ insert into tb values(1,'abc');
 insert into tb values(2,'123');
 insert into tb values(3,'123.4');
 select convert(col ,unsigned) from tb where id=1; --0
-WARNING:  invalid input syntax for type integer: "abc"
+WARNING:  Truncated incorrect INTEGER value: 'abc'
  col 
 -----
  0
@@ -2129,7 +2133,7 @@ select convert(col , unsigned) from tb where id=2; --123
 (1 row)
 
 select convert(col , unsigned) from tb where id=3; --123
-WARNING:  invalid input syntax for type integer: "123.4"
+WARNING:  Truncated incorrect INTEGER value: '123.4'
  col 
 -----
  123

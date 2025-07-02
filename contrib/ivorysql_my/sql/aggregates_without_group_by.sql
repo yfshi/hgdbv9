@@ -91,7 +91,7 @@ select distinct count(id), sum(id) from t_order order by id;
 --ok
 select distinctrow count(id), sum(id) from t_order order by id;
 --error
-select distinct int4(name) from t_order order by name;
+select distinct int4(name::int) from t_order order by name;
 
 
 drop table t_order;

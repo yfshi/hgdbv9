@@ -1,0 +1,1399 @@
+-- MySQL Character Function Test Cases in PostgreSQL-style Regression SQL Format
+-- This file tests MySQL string and character-related built-in functions.
+-- LOCATE
+SELECT LOCATE('he','hello'),LOCATE('he','hello',2),LOCATE('lo','hello',2) ; -- 1 0 4
+ LOCATE | LOCATE | LOCATE 
+--------+--------+--------
+      1 |      0 |      4
+(1 row)
+
+SELECT LOCATE('a','b',2),LOCATE('','a',1); -- 0 1
+ LOCATE | LOCATE 
+--------+--------
+      0 |      1
+(1 row)
+
+SELECT LOCATE('he','hello',-2);  -- 0
+ LOCATE 
+--------
+      0
+(1 row)
+
+SELECT LOCATE('bar','foobarbar');       -- 4
+ LOCATE 
+--------
+      4
+(1 row)
+
+SELECT LOCATE('bar','foobarbar', 0);    -- 0
+ LOCATE 
+--------
+      0
+(1 row)
+
+SELECT LOCATE('bar','foobarbar', 1);    -- 4
+ LOCATE 
+--------
+      4
+(1 row)
+
+SELECT LOCATE('lo','hello',-4294967295); -- 0
+ LOCATE 
+--------
+      0
+(1 row)
+
+SELECT LOCATE('lo','hello',4294967295); -- 0
+ LOCATE 
+--------
+      0
+(1 row)
+
+SELECT LOCATE('lo','hello',-4294967296); -- 0
+ LOCATE 
+--------
+      0
+(1 row)
+
+SELECT LOCATE('lo','hello',4294967296); -- 0
+ LOCATE 
+--------
+      0
+(1 row)
+
+SELECT LOCATE('lo','hello',-4294967297); -- 0
+ LOCATE 
+--------
+      0
+(1 row)
+
+SELECT LOCATE('lo','hello',4294967297); -- 0
+ LOCATE 
+--------
+      0
+(1 row)
+
+SELECT LOCATE('lo','hello',-18446744073709551615); -- 0
+ERROR:  bigint out of range
+CONTEXT:  SQL function "locate" statement 1
+SELECT LOCATE('lo','hello',18446744073709551615); -- 0
+ERROR:  bigint out of range
+CONTEXT:  SQL function "locate" statement 1
+SELECT LOCATE('lo','hello',-18446744073709551616); -- 0
+ERROR:  bigint out of range
+CONTEXT:  SQL function "locate" statement 1
+SELECT LOCATE('lo','hello',18446744073709551616); -- 0
+ERROR:  bigint out of range
+CONTEXT:  SQL function "locate" statement 1
+SELECT LOCATE('lo','hello',-18446744073709551617); -- 0
+ERROR:  bigint out of range
+CONTEXT:  SQL function "locate" statement 1
+SELECT LOCATE('lo','hello',18446744073709551617); -- 0
+ERROR:  bigint out of range
+CONTEXT:  SQL function "locate" statement 1
+SELECT LOCATE('foo', NULL); -- NULL
+ LOCATE 
+--------
+       
+(1 row)
+
+SELECT LOCATE(NULL, 'o'); -- NULL
+ LOCATE 
+--------
+       
+(1 row)
+
+SELECT LOCATE(NULL, NULL); -- NULL
+ LOCATE 
+--------
+       
+(1 row)
+
+SELECT LOCATE('foo', NULL) IS NULL; -- 1
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT LOCATE(NULL, 'o') IS NULL; -- 1
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT LOCATE(NULL, NULL) IS NULL; -- 1
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT ISNULL(LOCATE('foo', NULL)); -- 1
+ isnull 
+--------
+ t
+(1 row)
+
+SELECT ISNULL(LOCATE(NULL, 'o')); -- 1
+ isnull 
+--------
+ t
+(1 row)
+
+SELECT ISNULL(LOCATE(NULL, NULL)); -- 1
+ isnull 
+--------
+ t
+(1 row)
+
+SELECT LOCATE('foo', NULL) <=> NULL; -- 1
+ ?column? 
+----------
+        1
+(1 row)
+
+SELECT LOCATE(NULL, 'o') <=> NULL; -- 1
+ ?column? 
+----------
+        1
+(1 row)
+
+SELECT LOCATE(NULL, NULL) <=> NULL; -- 1
+ ?column? 
+----------
+        1
+(1 row)
+
+CREATE TABLE t1 (id int NOT NULL PRIMARY KEY, a varchar(10), p varchar(10));
+INSERT INTO t1 VALUES (1, 'foo', 'o');
+INSERT INTO t1 VALUES (2, 'foo', NULL);
+INSERT INTO t1 VALUES (3, NULL, 'o');
+INSERT INTO t1 VALUES (4, NULL, NULL);
+SELECT id, LOCATE(a,p) FROM t1;
+ id | LOCATE 
+----+--------
+  1 |      0
+  2 |       
+  3 |       
+  4 |       
+(4 rows)
+
+SELECT id, LOCATE(a,p) IS NULL FROM t1;
+ id | ?column? 
+----+----------
+  1 | f
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+SELECT id, ISNULL(LOCATE(a,p)) FROM t1;
+ id | isnull 
+----+--------
+  1 | f
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+SELECT id, LOCATE(a,p) <=> NULL FROM t1;
+ id | ?column? 
+----+----------
+  1 |        0
+  2 |        1
+  3 |        1
+  4 |        1
+(4 rows)
+
+SELECT id FROM t1 WHERE LOCATE(a,p) IS NULL;
+ id 
+----
+  2
+  3
+  4
+(3 rows)
+
+SELECT id FROM t1 WHERE LOCATE(a,p) <=> NULL;
+ id 
+----
+  2
+  3
+  4
+(3 rows)
+
+drop table t1;
+create table t_locate as select LOCATE('he','hello');
+\d t_locate
+              Table "public.t_locate"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ LOCATE | integer |           |          | 
+
+drop table t_locate;
+-- LCASE / LOWER
+SELECT lcase(1);
+ lcase 
+-------
+ 1
+(1 row)
+
+SELECT lcase(1.1);
+ lcase 
+-------
+ 1.1
+(1 row)
+
+SELECT LCASE('Hello WORLD'); -- 'hello world'
+    LCASE    
+-------------
+ hello world
+(1 row)
+
+SELECT LCASE(NULL); -- NULL
+ LCASE 
+-------
+ 
+(1 row)
+
+SELECT REPLACE(CONCAT(LCASE(CONCAT('THIS',' ','IS',' ','A',' ')),UCASE('false'),' ','test'),'FALSE','REAL') ;
+       replace       
+---------------------
+ this is a REAL test
+(1 row)
+
+-- UCASE / UPPER
+SELECT ucase(1);
+ ucase 
+-------
+ 1
+(1 row)
+
+SELECT ucase(1.1);
+ ucase 
+-------
+ 1.1
+(1 row)
+
+SELECT UCASE('Hello WORLD'); -- 'HELLO WORLD'
+    UCASE    
+-------------
+ HELLO WORLD
+(1 row)
+
+SELECT UCASE(NULL); -- NULL
+ UCASE 
+-------
+ 
+(1 row)
+
+-- INSERT
+SELECT INSERT('abcdefg', 2, 3, 'Z'); -- 'aZefg'
+ insert 
+--------
+ aZefg
+(1 row)
+
+SELECT INSERT('abcdefg', '2a', 3, 'Z'); -- 'aZefg'
+WARNING:  Truncated incorrect INTEGER value: '2a'
+ insert 
+--------
+ aZefg
+(1 row)
+
+SELECT INSERT('abcdefg', '2a', '3a', 'Z'); -- 'aZefg'
+WARNING:  Truncated incorrect INTEGER value: '2a'
+WARNING:  Truncated incorrect INTEGER value: '3a'
+ insert 
+--------
+ aZefg
+(1 row)
+
+SELECT INSERT(NULL, 2, 3, 'Z'); -- NULL
+ insert 
+--------
+ 
+(1 row)
+
+SELECT INSERT('abcdefg', -1, 3, 'Z'); -- 'abcdefg'
+ insert  
+---------
+ abcdefg
+(1 row)
+
+SELECT INSERT('abc', 1, -3, '1234'); -- '1234'
+ insert 
+--------
+ 1234
+(1 row)
+
+SELECT INSERT('abc', -1, -3, '1234'); -- 'abc'
+ insert 
+--------
+ abc
+(1 row)
+
+SELECT INSERT('abc', 3, 3, '1234'); -- 'ab1234'
+ insert 
+--------
+ ab1234
+(1 row)
+
+SELECT INSERT('abc', 4, 3, '1234'); -- 'abc'
+ insert 
+--------
+ abc
+(1 row)
+
+SELECT INSERT('abc', 5, 3, '1234'); -- 'abc'
+ insert 
+--------
+ abc
+(1 row)
+
+SELECT INSERT('abc', 6, 3, '1234'); -- 'abc'
+ insert 
+--------
+ abc
+(1 row)
+
+SELECT INSERT('abc', 6, 2147483646, '1234'); -- 'abc'
+ insert 
+--------
+ abc
+(1 row)
+
+SELECT INSERT('abc',  '2147483646',6, '1234'); -- 'abc'
+ insert 
+--------
+ abc
+(1 row)
+
+SELECT INSERT('abc',  2147483646,'6', '1234'); -- 'abc'
+ insert 
+--------
+ abc
+(1 row)
+
+SELECT INSERT('abc',  '2147483646','6', '1234'); -- 'abc'
+ insert 
+--------
+ abc
+(1 row)
+
+SELECT INSERT('Quadratic', 3, 4, 'What');   -- 'QuWhattic'
+  insert   
+-----------
+ QuWhattic
+(1 row)
+
+SELECT INSERT('Quadratic', -1, 4, 'What');  -- 'Quadratic'
+  insert   
+-----------
+ Quadratic
+(1 row)
+
+SELECT INSERT('Quadratic', 3, 100, 'What'); -- 'QuWhat'
+ insert 
+--------
+ QuWhat
+(1 row)
+
+create table t_insert as SELECT INSERT('abc', 3, 3, '1234');
+\d t_insert
+                   Table "public.t_insert"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ insert | character varying |           |          | 
+
+drop table t_insert;
+-- BIN
+SELECT BIN(0); -- '0'
+ BIN 
+-----
+ 0
+(1 row)
+
+SELECT BIN(-1);   -- '1111111111111111111111111111111111111111111111111111111111111111'
+                               BIN                                
+------------------------------------------------------------------
+ 1111111111111111111111111111111111111111111111111111111111111111
+(1 row)
+
+SELECT BIN(-1.2); -- '1111111111111111111111111111111111111111111111111111111111111111'
+                               BIN                                
+------------------------------------------------------------------
+ 1111111111111111111111111111111111111111111111111111111111111111
+(1 row)
+
+SELECT BIN(-1.6); -- '1111111111111111111111111111111111111111111111111111111111111111'
+                               BIN                                
+------------------------------------------------------------------
+ 1111111111111111111111111111111111111111111111111111111111111111
+(1 row)
+
+SELECT BIN(-10);  -- '1111111111111111111111111111111111111111111111111111111111110110'
+                               BIN                                
+------------------------------------------------------------------
+ 1111111111111111111111111111111111111111111111111111111111110110
+(1 row)
+
+SELECT BIN(1.2); -- '1'
+ BIN 
+-----
+ 1
+(1 row)
+
+SELECT BIN(1.6); -- '1'
+ BIN 
+-----
+ 1
+(1 row)
+
+SELECT BIN(10); -- '1010'
+ BIN  
+------
+ 1010
+(1 row)
+
+SELECT BIN(NULL); -- NULL
+ BIN 
+-----
+ 
+(1 row)
+
+SELECT BIN('a'); -- '0'
+ BIN 
+-----
+ 0
+(1 row)
+
+SELECT bin(cast(111 as datetime)); -- '11111010000'
+     bin     
+-------------
+ 11111010000
+(1 row)
+
+SELECT bin(cast(20250101 as datetime)); -- '11111101001'
+     bin     
+-------------
+ 11111101001
+(1 row)
+
+SELECT bin(1,2);
+ERROR:  function bin(integer, integer) does not exist
+LINE 1: SELECT bin(1,2);
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+-- CHAR
+SELECT CHAR(65, 66, 67); -- 'ABC'
+   char   
+----------
+ \x414243
+(1 row)
+
+SELECT CHAR(NULL); -- NULL
+ char 
+------
+ \x
+(1 row)
+
+-- ELT
+SELECT ELT(2, 'a', 'b', 'c'); -- 'b'
+ elt 
+-----
+ b
+(1 row)
+
+SELECT ELT(0, 'a', 'b', 'c'); -- NULL
+ elt 
+-----
+ 
+(1 row)
+
+SELECT ELT(NULL, 'a', 'b'); -- NULL
+ elt 
+-----
+ 
+(1 row)
+
+SELECT ELT('1', 'a', 'b'); -- NULL
+ elt 
+-----
+ a
+(1 row)
+
+SELECT ELT('c', 'a', 'b'); -- NULL
+ERROR:  invalid input syntax for type bigint: "c"
+LINE 1: SELECT ELT('c', 'a', 'b');
+                   ^
+SELECT ELT(1, 2, 3); -- 2
+ elt 
+-----
+ 2
+(1 row)
+
+CREATE TABLE t_elt as SELECT ELT(2, 'a', 'b', 'c');
+\d t_elt
+                    Table "public.t_elt"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ elt    | character varying |           |          | 
+
+drop table t_elt;
+-- FIELD
+SELECT FIELD('b', 'a', 'b', 'c'); -- 2
+ field 
+-------
+     2
+(1 row)
+
+SELECT FIELD(NULL, 'a', 'b'); -- 0
+ field 
+-------
+     0
+(1 row)
+
+SELECT FIELD('a', NULL, 'b'); -- 0
+ field 
+-------
+     0
+(1 row)
+
+--SELECT FIELD('b','A','B'); -- 2
+SELECT FIELD('B','A','B'); -- 2
+ field 
+-------
+     2
+(1 row)
+
+SELECT FIELD('1','3','2',1); -- 3
+ field 
+-------
+     3
+(1 row)
+
+SELECT FIELD(1, 3, 2, 1); -- 3
+ field 
+-------
+     3
+(1 row)
+
+SELECT FIELD(1::int1 unsigned, 3::int2 unsigned, 2::int4 unsigned, 1::int8 unsigned);
+ field 
+-------
+     3
+(1 row)
+
+create table t_field as SELECT FIELD('b', 'a', 'b', 'c');;
+\d t_field
+              Table "public.t_field"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ field  | integer |           |          | 
+
+drop table t_field;
+-- FIND_IN_SET
+SELECT FIND_IN_SET('b', 'a,b,c'); -- 2
+ FIND_IN_SET 
+-------------
+           2
+(1 row)
+
+SELECT FIND_IN_SET(NULL, 'a,b,c'); -- NULL
+ FIND_IN_SET 
+-------------
+            
+(1 row)
+
+SELECT FIND_IN_SET('a', NULL); -- NULL
+ FIND_IN_SET 
+-------------
+            
+(1 row)
+
+SELECT FIND_IN_SET(1, 'a,2,1'); -- 3
+ FIND_IN_SET 
+-------------
+           3
+(1 row)
+
+SELECT FIND_IN_SET('ab', 'abc,ab,1'); -- 2
+ FIND_IN_SET 
+-------------
+           2
+(1 row)
+
+-- HEX
+SELECT HEX('abc'); -- 616263
+  HEX   
+--------
+ 616263
+(1 row)
+
+SELECT HEX(12356612313); -- 2E082F0D9
+    HEX    
+-----------
+ 2E082F0D9
+(1 row)
+
+SELECT HEX(-12356612313); -- FFFFFFFD1F7D0F27
+       HEX        
+------------------
+ FFFFFFFD1F7D0F27
+(1 row)
+
+SELECT HEX(123.4); -- 7B
+ HEX 
+-----
+ 7B
+(1 row)
+
+SELECT HEX(123.5); -- 7C
+ HEX 
+-----
+ 7C
+(1 row)
+
+SELECT HEX(-123.4); -- FFFFFFFFFFFFFF85
+       HEX        
+------------------
+ FFFFFFFFFFFFFF85
+(1 row)
+
+SELECT HEX(-123.5); -- FFFFFFFFFFFFFF84
+       HEX        
+------------------
+ FFFFFFFFFFFFFF84
+(1 row)
+
+SELECT HEX(0); -- 0
+ HEX 
+-----
+ 0
+(1 row)
+
+SELECT HEX(NULL); -- NULL
+ HEX 
+-----
+ 
+(1 row)
+
+SELECT HEX(cast('2025-12-12' as date)); -- 323032352D31322D3132
+         HEX          
+----------------------
+ 323032352D31322D3132
+(1 row)
+
+SELECT HEX(cast('111112111.1.29' as datetime)); -- 323031312D31312D31322031313A30313A3031
+                  HEX                   
+----------------------------------------
+ 323031312D31312D31322031313A30313A3031
+(1 row)
+
+SELECT HEX(cast('10:57:11' as time)); -- 31303A35373A3131
+       HEX        
+------------------
+ 31303A35373A3131
+(1 row)
+
+SELECT HEX(true); -- 1
+ HEX 
+-----
+ 1
+(1 row)
+
+SELECT HEX(false); -- 0
+ HEX 
+-----
+ 0
+(1 row)
+
+-- SPACE
+SELECT CONCAT('A', SPACE(3), 'B'); -- 'A   B'
+ CONCAT 
+--------
+ A   B
+(1 row)
+
+SELECT SPACE(-1); -- ''
+ SPACE 
+-------
+ 
+(1 row)
+
+SELECT CONCAT('A', SPACE('4'), 'B'); -- 'A    B'
+ CONCAT 
+--------
+ A    B
+(1 row)
+
+SELECT CONCAT('A', SPACE('a'), 'B'); -- 'AB'
+WARNING:  Truncated incorrect INTEGER value: 'a'
+ CONCAT 
+--------
+ AB
+(1 row)
+
+-- SOUNDEX
+SELECT SOUNDEX('hello'); -- 'H400'
+ SOUNDEX 
+---------
+ H400
+(1 row)
+
+SELECT SOUNDEX(NULL); -- NULL
+ SOUNDEX 
+---------
+ 
+(1 row)
+
+SELECT SOUNDEX(''),SOUNDEX('he'),SOUNDEX('hello all folks'),SOUNDEX('#3556 in bugdb');
+ SOUNDEX | SOUNDEX | SOUNDEX | SOUNDEX 
+---------+---------+---------+---------
+         | H000    | H4142   | I51231
+(1 row)
+
+SELECT SOUNDEX(true);
+ SOUNDEX 
+---------
+ 
+(1 row)
+
+SELECT SOUNDEX(123);
+ SOUNDEX 
+---------
+ 
+(1 row)
+
+-- EXPORT_SET
+SELECT EXPORT_SET(5, 'Y', 'N', ':'); -- Y:N:Y:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N
+                                                           EXPORT_SET                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Y:N:Y:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N:N
+(1 row)
+
+SELECT EXPORT_SET(5, 'Y', 'N', ':', 4); -- Y:N:Y:N
+ EXPORT_SET 
+------------
+ Y:N:Y:N
+(1 row)
+
+SELECT EXPORT_SET(5, 'Y', 'N', ',', 4); -- 'Y,N,Y,N'
+ EXPORT_SET 
+------------
+ Y,N,Y,N
+(1 row)
+
+SELECT EXPORT_SET(NULL, 'Y', 'N'); -- NULL
+ EXPORT_SET 
+------------
+ 
+(1 row)
+
+SELECT EXPORT_SET('5', 'Y', 'N', ',', 4); -- 'Y,N,Y,N'
+ EXPORT_SET 
+------------
+ Y,N,Y,N
+(1 row)
+
+SELECT EXPORT_SET('5', 'Y', 'N', ','); --'Y,N,Y,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N'
+                                                           EXPORT_SET                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Y,N,Y,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N
+(1 row)
+
+SELECT EXPORT_SET('5', 'Y', 'N'); -- 'Y,N,Y,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N'
+                                                           EXPORT_SET                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Y,N,Y,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N
+(1 row)
+
+SELECT EXPORT_SET('a', 'Y', 'N', ',', 4); -- 'N,N,N,N'
+WARNING:  Truncated incorrect INTEGER value: 'a'
+ EXPORT_SET 
+------------
+ N,N,N,N
+(1 row)
+
+-- ORD
+SELECT ORD('A'); -- 65
+ ORD 
+-----
+  65
+(1 row)
+
+SELECT ORD(NULL); -- NULL
+ ORD 
+-----
+    
+(1 row)
+
+-- SUBSTRING_INDEX
+SELECT SUBSTRING_INDEX('a,b,c,d', ',', 2); -- 'a,b'
+ SUBSTRING_INDEX 
+-----------------
+ a,b
+(1 row)
+
+SELECT SUBSTRING_INDEX('a,b,c,d', ',', -2); -- 'c,d'
+ SUBSTRING_INDEX 
+-----------------
+ c,d
+(1 row)
+
+SELECT SUBSTRING_INDEX(NULL, ',', 2); -- NULL
+ SUBSTRING_INDEX 
+-----------------
+ 
+(1 row)
+
+select substring_index('a..b..c', '..', 0); -- ''
+ substring_index 
+-----------------
+ 
+(1 row)
+
+select substring_index('a..b..c', '..', -2147483648); -- 'a..b..c'
+ substring_index 
+-----------------
+ a..b..c
+(1 row)
+
+select substring_index('a..b..c', '..', -2147483649); -- 'a..b..c'
+ substring_index 
+-----------------
+ a..b..c
+(1 row)
+
+select substring_index('a..b..c', '..', 2147483647); -- 'a..b..c'
+ substring_index 
+-----------------
+ a..b..c
+(1 row)
+
+select substring_index('a..b..c', '..', 2147483648); -- 'a..b..c'
+ substring_index 
+-----------------
+ a..b..c
+(1 row)
+
+select substring_index('a..b..c', '..', 9223372036854775807); -- 'c'
+ substring_index 
+-----------------
+ c
+(1 row)
+
+select substring_index('a..b..c', '..', 9223372036854775808); -- ''
+ERROR:  bigint out of range
+CONTEXT:  SQL function "substring_index" statement 1
+select substring_index('a..b..c', '..', -9223372036854775808); -- ''
+ substring_index 
+-----------------
+ 
+(1 row)
+
+select substring_index('a..b..c', '..', -9223372036854775809); -- ''
+ERROR:  bigint out of range
+CONTEXT:  SQL function "substring_index" statement 1
+select substring_index('a..b..c', '..', 18446744073709551615); -- 'c'
+ERROR:  bigint out of range
+CONTEXT:  SQL function "substring_index" statement 1
+select substring_index('a..b..c', '..', 18446744073709551616); -- 'c'
+ERROR:  bigint out of range
+CONTEXT:  SQL function "substring_index" statement 1
+create table t_sub as SELECT SUBSTRING_INDEX('a,b,c,d', ',', 2);
+\d t_sub
+                         Table "public.t_sub"
+     Column      |       Type        | Collation | Nullable | Default 
+-----------------+-------------------+-----------+----------+---------
+ SUBSTRING_INDEX | character varying |           |          | 
+
+drop table t_sub;
+-- FROM_BASE64 / TO_BASE64
+SELECT FROM_BASE64('aGVsbG8='); -- 'hello'
+ FROM_BASE64  
+--------------
+ \x68656c6c6f
+(1 row)
+
+SELECT TO_BASE64('hello'); -- 'aGVsbG8='
+ TO_BASE64 
+-----------
+ aGVsbG8=
+(1 row)
+
+SELECT FROM_BASE64(NULL); -- NULL
+ FROM_BASE64 
+-------------
+ 
+(1 row)
+
+SELECT TO_BASE64(NULL); -- NULL
+ TO_BASE64 
+-----------
+ 
+(1 row)
+
+SELECT FROM_BASE64('Zg=='); -- 'f'
+ FROM_BASE64 
+-------------
+ \x66
+(1 row)
+
+SELECT TO_BASE64('f'); -- 'Zg=='
+ TO_BASE64 
+-----------
+ Zg==
+(1 row)
+
+SELECT FROM_BASE64('Zm8='); -- 'fo'
+ FROM_BASE64 
+-------------
+ \x666f
+(1 row)
+
+SELECT TO_BASE64('fo'); -- 'Zm8='
+ TO_BASE64 
+-----------
+ Zm8=
+(1 row)
+
+SELECT FROM_BASE64('Zm9v'); -- 'foo'
+ FROM_BASE64 
+-------------
+ \x666f6f
+(1 row)
+
+SELECT TO_BASE64('foo'); -- 'Zm9v'
+ TO_BASE64 
+-----------
+ Zm9v
+(1 row)
+
+SELECT FROM_BASE64('Zm9vYg=='); -- 'foob'
+ FROM_BASE64 
+-------------
+ \x666f6f62
+(1 row)
+
+SELECT TO_BASE64('foob'); -- 'Zm9vYg=='
+ TO_BASE64 
+-----------
+ Zm9vYg==
+(1 row)
+
+SELECT FROM_BASE64('Zm9vYmE='); -- 'fooba'
+ FROM_BASE64  
+--------------
+ \x666f6f6261
+(1 row)
+
+SELECT TO_BASE64('fooba'); -- 'Zm9vYmE='
+ TO_BASE64 
+-----------
+ Zm9vYmE=
+(1 row)
+
+SELECT FROM_BASE64('Zm9vYmFy'); -- 'foobar'
+  FROM_BASE64   
+----------------
+ \x666f6f626172
+(1 row)
+
+SELECT TO_BASE64('foobar'); -- 'Zm9vYmFy'
+ TO_BASE64 
+-----------
+ Zm9vYmFy
+(1 row)
+
+-- Delimiters are allowed at any position
+SELECT hex(FROM_BASE64('  A B C D  ')); -- '001083'
+  hex   
+--------
+ 001083
+(1 row)
+
+SELECT hex(FROM_BASE64('  A A = = ')); -- '00'
+ hex 
+-----
+ 00
+(1 row)
+
+SELECT hex(FROM_BASE64('  A A A = ')); -- '0000'
+ hex  
+------
+ 0000
+(1 row)
+
+/* use psql return NULL; use libpq return 001083 */
+SELECT hex(FROM_BASE64('  A  \n  B  \r  C  \t D  ')); -- '001083'
+ hex 
+-----
+ 
+(1 row)
+
+create table t_hex_binary (a varbinary(111));
+insert into t_hex_binary values (FROM_BASE64('  A B C D  '));
+select hex(a::binary) from t_hex_binary;  -- '001083'
+  hex   
+--------
+ 001083
+(1 row)
+
+drop table t_hex_binary;
+-- UUID
+--SELECT UUID(); -- (example format)
+-- LENGTH / BIT_LENGTH / OCTET_LENGTH /
+SELECT LENGTH('abc'); -- 3
+ LENGTH 
+--------
+      3
+(1 row)
+
+SELECT LENGTH('你好'); -- 6 (utf8mb4)
+ LENGTH 
+--------
+      6
+(1 row)
+
+SELECT LENGTH(NULL); -- NULL
+ LENGTH 
+--------
+       
+(1 row)
+
+--SELECT LENGTH(true);
+SELECT LENGTH(123);
+ LENGTH 
+--------
+      3
+(1 row)
+
+SELECT LENGTH(cast(111 as datetime));
+ LENGTH 
+--------
+     19
+(1 row)
+
+SELECT BIT_LENGTH('abc'); -- 24
+ BIT_LENGTH 
+------------
+         24
+(1 row)
+
+SELECT OCTET_LENGTH('abc'); -- 3
+ OCTET_LENGTH 
+--------------
+            3
+(1 row)
+
+SELECT OCTET_LENGTH(12356612313); -- 11
+ OCTET_LENGTH 
+--------------
+           11
+(1 row)
+
+SELECT OCTET_LENGTH(-12356612313); -- 12
+ OCTET_LENGTH 
+--------------
+           12
+(1 row)
+
+SELECT OCTET_LENGTH(123.4); -- 5
+ OCTET_LENGTH 
+--------------
+            5
+(1 row)
+
+SELECT OCTET_LENGTH(-123.4); -- 6
+ OCTET_LENGTH 
+--------------
+            6
+(1 row)
+
+SELECT OCTET_LENGTH(0); -- 1
+ OCTET_LENGTH 
+--------------
+            1
+(1 row)
+
+SELECT OCTET_LENGTH(NULL); -- NULL
+ OCTET_LENGTH 
+--------------
+             
+(1 row)
+
+SELECT OCTET_LENGTH(cast('2025-12-12' as date)); -- 10
+ OCTET_LENGTH 
+--------------
+           10
+(1 row)
+
+SELECT OCTET_LENGTH(cast('111112111.1.29' as datetime)); --19
+ OCTET_LENGTH 
+--------------
+           19
+(1 row)
+
+SELECT OCTET_LENGTH(cast('10:57:11' as time)); -- 8
+ OCTET_LENGTH 
+--------------
+            8
+(1 row)
+
+SELECT OCTET_LENGTH(true); -- 1
+ OCTET_LENGTH 
+--------------
+            1
+(1 row)
+
+SELECT OCTET_LENGTH(false); -- 1
+ OCTET_LENGTH 
+--------------
+            1
+(1 row)
+
+-- CONVERT
+--SELECT CONVERT('你好' USING latin1); -- likely garbled
+--SELECT CONVERT(NULL USING utf8mb4); -- NULL
+-- FORMAT
+/*
+SELECT FORMAT(12345.6789, 2); -- '12,345.68'
+SELECT FORMAT(12345.6789, 2, 'de_DE'); -- '12.345,68'
+SELECT FORMAT(NULL, 2); -- NULL
+*/
+-- LEFT / RIGHT
+SELECT LEFT('abcdef', 3); -- 'abc'
+ left 
+------
+ abc
+(1 row)
+
+SELECT LEFT('abcdef', '3'); -- 'abc'
+ left 
+------
+ abc
+(1 row)
+
+SELECT LEFT(1234, '3'); -- 123
+ left 
+------
+ 123
+(1 row)
+
+SELECT LEFT(1234, 3) + 0; -- 123
+ ?column? 
+----------
+      123
+(1 row)
+
+SELECT LEFT(12.34, 3.0) + 0; -- 12
+ ?column? 
+----------
+       12
+(1 row)
+
+SELECT LEFT(NULL, 3); -- NULL
+ left 
+------
+ 
+(1 row)
+
+SELECT LEFT(true, 1); -- 1
+ left 
+------
+ 1
+(1 row)
+
+SELECT LEFT(false, 1); -- 0
+ left 
+------
+ 0
+(1 row)
+
+SELECT LEFT('abcd', true); -- 'a'
+ left 
+------
+ a
+(1 row)
+
+SELECT LEFT('abcd', false); -- ''
+ left 
+------
+ 
+(1 row)
+
+SELECT RIGHT('abcdef', 3); -- 'def'
+ right 
+-------
+ def
+(1 row)
+
+SELECT RIGHT('abcdef', '3'); -- 'def'
+ right 
+-------
+ def
+(1 row)
+
+SELECT RIGHT(1234, '3'); -- 234
+ right 
+-------
+ 234
+(1 row)
+
+SELECT RIGHT(1234, 3) + 0; -- 234
+ ?column? 
+----------
+      234
+(1 row)
+
+SELECT RIGHT(12.34, 3.0) + 0; -- 0.34
+ ?column? 
+----------
+     0.34
+(1 row)
+
+SELECT RIGHT(NULL, 3); -- NULL
+ right 
+-------
+ 
+(1 row)
+
+SELECT RIGHT(true, 1); -- 1
+ right 
+-------
+ 1
+(1 row)
+
+SELECT RIGHT(false, 1); -- 0
+ right 
+-------
+ 0
+(1 row)
+
+SELECT RIGHT('abcd', true); -- 'd'
+ right 
+-------
+ d
+(1 row)
+
+SELECT RIGHT('abcd', false); -- ''
+ right 
+-------
+ 
+(1 row)
+
+-- NAME_CONST
+SELECT NAME_CONST('test', NOW()); --error ER_WRONG_ARGUMENTS
+ERROR:  Incorrect arguments to NAME_CONST
+SELECT NAME_CONST('test', UPPER('test')); --error ER_WRONG_ARGUMENTS
+ERROR:  Incorrect arguments to NAME_CONST
+SELECT NAME_CONST('test', NULL); -- NULL
+ test 
+------
+ 
+(1 row)
+
+SELECT NAME_CONST('test', 1); -- '1'
+ test 
+------
+    1
+(1 row)
+
+SELECT NAME_CONST('test', -1); -- '-1'
+ test 
+------
+   -1
+(1 row)
+
+SELECT NAME_CONST('test', 1.0); -- '1.0'
+ test 
+------
+  1.0
+(1 row)
+
+SELECT NAME_CONST('test', -1.0); -- '-1.0'
+ test 
+------
+ -1.0
+(1 row)
+
+SELECT NAME_CONST('test', 'test'); -- 'test'
+ test 
+------
+ test
+(1 row)
+
+CREATE TABLE t1 (a INT);
+INSERT INTO t1 VALUES (1),(2),(3);
+SELECT NAME_CONST('flag',1)    * MAX(a) FROM t1; -- '3'
+ ?column? 
+----------
+        3
+(1 row)
+
+SELECT NAME_CONST('flag',1.5)  * MAX(a) FROM t1; -- '4.5'
+ ?column? 
+----------
+      4.5
+(1 row)
+
+SELECT NAME_CONST('flag',-1)   * MAX(a) FROM t1; -- '-3'
+ ?column? 
+----------
+       -3
+(1 row)
+
+SELECT NAME_CONST('flag',-1.5) * MAX(a) FROM t1; -- '-4.5'
+ ?column? 
+----------
+     -4.5
+(1 row)
+
+SELECT NAME_CONST('flag', SQRT(4)) * MAX(a) FROM t1; --error ER_WRONG_ARGUMENTS
+ERROR:  Incorrect arguments to NAME_CONST
+SELECT NAME_CONST('flag',-SQRT(4)) * MAX(a) FROM t1; --error ER_WRONG_ARGUMENTS
+ERROR:  Incorrect arguments to NAME_CONST
+SELECT NAME_CONST(x,2) FROM (SELECT a x FROM t1) t; --error ER_WRONG_ARGUMENTS
+ERROR:  syntax error at or near "x"
+LINE 1: SELECT NAME_CONST(x,2) FROM (SELECT a x FROM t1) t;
+                          ^
+SELECT NAME_CONST(a, '1') FROM t1; --error ER_WRONG_ARGUMENTS
+ERROR:  syntax error at or near "a"
+LINE 1: SELECT NAME_CONST(a, '1') FROM t1;
+                          ^
+SELECT NAME_CONST(a, '1'); --error ER_WRONG_ARGUMENTS
+ERROR:  syntax error at or near "a"
+LINE 1: SELECT NAME_CONST(a, '1');
+                          ^
+SELECT NAME_CONST('a', '1'); -- '1'
+ a 
+---
+ 1
+(1 row)
+
+SELECT NAME_CONST(2, '1'); -- ok
+ 2 
+---
+ 1
+(1 row)
+
+SELECT NAME_CONST(2.345, '1'); -- ok
+ 2.345 
+-------
+ 1
+(1 row)
+
+DROP TABLE t1;
+-- POSITION
+select position('bar' IN 'foobarbar'); -- 4
+ position 
+----------
+        4
+(1 row)
+
+select position('xbar' IN  'foobar'); -- 0
+ position 
+----------
+        0
+(1 row)
+

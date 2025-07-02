@@ -1,29 +1,29 @@
 CREATE EXTENSION fuzzystrmatch;
-SELECT soundex('hello world!');
+SELECT pg_catalog.soundex('hello world!');
  soundex 
 ---------
  H464
 (1 row)
 
-SELECT soundex('Anne'), soundex('Ann'), difference('Anne', 'Ann');
+SELECT pg_catalog.soundex('Anne'), pg_catalog.soundex('Ann'), difference('Anne', 'Ann');
  soundex | soundex | difference 
 ---------+---------+------------
  A500    | A500    |          4
 (1 row)
 
-SELECT soundex('Anne'), soundex('Andrew'), difference('Anne', 'Andrew');
+SELECT pg_catalog.soundex('Anne'), pg_catalog.soundex('Andrew'), difference('Anne', 'Andrew');
  soundex | soundex | difference 
 ---------+---------+------------
  A500    | A536    |          2
 (1 row)
 
-SELECT soundex('Anne'), soundex('Margaret'), difference('Anne', 'Margaret');
+SELECT pg_catalog.soundex('Anne'), pg_catalog.soundex('Margaret'), difference('Anne', 'Margaret');
  soundex | soundex | difference 
 ---------+---------+------------
  A500    | M626    |          0
 (1 row)
 
-SELECT soundex(''), difference('', '');
+SELECT pg_catalog.soundex(''), difference('', '');
  soundex | difference 
 ---------+------------
          |          4

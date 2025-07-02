@@ -178,6 +178,19 @@ CREATE FUNCTION ivymy.mystext2int4(text)
 CREATE CAST(text as pg_catalog.int4) WITH FUNCTION ivymy.mystext2int4(text) AS ASSIGNMENT;
 
 --
+-- cast (text as uint4)
+--
+CREATE FUNCTION ivymy.mys_text2uint4(text)
+RETURNS mysuint4
+AS 'MODULE_PATHNAME', 'mys_text2uint4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST(text as mysuint4) WITH FUNCTION ivymy.mys_text2uint4(text) AS ASSIGNMENT;
+
+--
 -- cast (text as int8)
 --
 CREATE FUNCTION ivymy.mystext2int8(text)
@@ -188,6 +201,19 @@ CREATE FUNCTION ivymy.mystext2int8(text)
 CREATE CAST(text as pg_catalog.int8) WITH FUNCTION ivymy.mystext2int8(text) AS IMPLICIT;
 
 --
+-- cast (text as uint8)
+--
+CREATE FUNCTION ivymy.mys_text2uint8(text)
+RETURNS mysuint8
+AS 'MODULE_PATHNAME', 'mys_text2uint8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST(text as mysuint8) WITH FUNCTION ivymy.mys_text2uint8(text) AS ASSIGNMENT;
+
+--
 -- cast (text as float8)
 --
 CREATE OR REPLACE FUNCTION ivymy.mystext2float8(text)
@@ -196,3 +222,70 @@ CREATE OR REPLACE FUNCTION ivymy.mystext2float8(text)
 	LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
 
 CREATE CAST(text as pg_catalog.float8) WITH FUNCTION ivymy.mystext2float8(text) AS IMPLICIT;
+
+--
+-- cast (varchar as int2)
+--
+CREATE FUNCTION ivymy.mys_varchar2int2(varchar)
+RETURNS int2
+AS 'MODULE_PATHNAME', 'mys_varchar2int2'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+CREATE CAST(varchar as int2) 
+WITH FUNCTION ivymy.mys_varchar2int2(varchar) 
+AS ASSIGNMENT;
+
+--
+-- cast (varchar as int4)
+--
+CREATE FUNCTION ivymy.mys_varchar2int4(varchar)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME', 'mys_varchar2int4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST(varchar as pg_catalog.int4) WITH FUNCTION ivymy.mys_varchar2int4(varchar) AS ASSIGNMENT;
+
+--
+-- cast (varchar as uint4)
+--
+CREATE FUNCTION ivymy.mys_varchar2uint4(varchar)
+RETURNS mysuint4
+AS 'MODULE_PATHNAME', 'mys_varchar2uint4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST(varchar as mysuint4) WITH FUNCTION ivymy.mys_varchar2uint4(varchar) AS ASSIGNMENT;
+
+--
+-- cast (varchar as int8)
+--
+CREATE FUNCTION ivymy.mys_varchar2int8(varchar)
+RETURNS pg_catalog.int8
+AS 'MODULE_PATHNAME', 'mys_varchar2int8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST(varchar as pg_catalog.int8) WITH FUNCTION ivymy.mys_varchar2int8(varchar) AS ASSIGNMENT;
+
+--
+-- cast (varchar as uint8)
+--
+CREATE FUNCTION ivymy.mys_varchar2uint8(varchar)
+RETURNS mysuint8
+AS 'MODULE_PATHNAME', 'mys_varchar2uint8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST(varchar as mysuint8) WITH FUNCTION ivymy.mys_varchar2uint8(varchar) AS ASSIGNMENT;

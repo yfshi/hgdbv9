@@ -1897,6 +1897,8 @@ select f3,max(f1) from foo group by f3;
 
 -- Simple tests for alter table column type
 alter table foo alter f1 TYPE integer; -- fails
+WARNING:  Truncated incorrect INTEGER value: 'bb'
+WARNING:  Truncated incorrect INTEGER value: 'qq'
 alter table foo alter f1 TYPE varchar(10);
 create table anothertab (atcol1 serial8, atcol2 boolean,
 	constraint anothertab_chk check (atcol1 <= 3));

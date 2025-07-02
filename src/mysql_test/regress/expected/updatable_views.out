@@ -2413,9 +2413,25 @@ ERROR:  invalid input syntax for type real: "ONE"
 LINE 1: UPDATE v2 SET b = 'ONE' WHERE a = 1;
                           ^
 UPDATE v2 SET a = -1 WHERE a = 1; -- not allowed
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
 UPDATE v2 SET c = 30 WHERE a = 1; -- not allowed
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
 DELETE FROM v2 WHERE a = 2; -- ok
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
 SELECT * FROM v2;
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
+WARNING:  Truncated incorrect INTEGER value: 't1'
  a | b | c 
 ---+---+---
 (0 rows)

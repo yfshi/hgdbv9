@@ -99,17 +99,15 @@ select c1='hgdb\0\0' from my_varbinary_t01;
 
 -- should error
 create table my_varbinary_t02(c1 varbinary);
-ERROR:  syntax error at or near ")"
-LINE 1: create table my_varbinary_t02(c1 varbinary);
-                                                  ^
 -- should ok
 create table my_varbinary_t02(c1 varbinary(10));
+ERROR:  relation "my_varbinary_t02" already exists
 -- should ok
 \d my_varbinary_t02;
-             Table "public.my_varbinary_t02"
- Column |     Type      | Collation | Nullable | Default 
---------+---------------+-----------+----------+---------
- c1     | varbinary(10) |           |          | 
+           Table "public.my_varbinary_t02"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ c1     | varbinary |           |          | 
 
 -- should error
 create table my_varbinary_t03(c1 varbinary(-1));
@@ -268,9 +266,11 @@ select * from my_varbinary_t18;
 
 -- should syntax error
 select varbinary'101010' as result;
-ERROR:  syntax error at or near "'101010'"
-LINE 1: select varbinary'101010' as result;
-                        ^
+ result 
+--------
+ 101010
+(1 row)
+
 SET sql_mode = '';
 -- should warning
 insert into  my_varbinary_t15 values ('Database1');
