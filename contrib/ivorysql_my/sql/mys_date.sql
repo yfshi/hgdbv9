@@ -1272,3 +1272,17 @@ select cast('11-11-11 11:11:11.111111' as timestamp) + cast('11-11-11 11:11:11.1
 
 --select cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 11:11:11.111111' as datetime(3));
 select cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 11:11:11.111111' as timestamp(3));
+
+
+create table date_01(a1 date);
+set sql_mode ='';
+insert into date_01 values('1111111111111.1');
+insert into date_01 values('111111111111111.1');
+
+
+set sql_mode=default;
+insert into date_01 values('1111111111111.1');
+insert into date_01 values('111111111111111.1');
+select * from date_01;
+
+drop table date_01;

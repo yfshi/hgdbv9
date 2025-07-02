@@ -1442,3 +1442,16 @@ select  cast(id as timestamp(4))  from t1;
 select  cast(id as time)          from t1;    
 select  cast(id as time(4))       from t1;  
 drop table t1;
+
+create table timestamp_01(a1 timestamp);
+set sql_mode ='';
+insert into timestamp_01 values('1111111111111.1');
+insert into timestamp_01 values('111111111111111.1');
+
+
+set sql_mode=default;
+insert into timestamp_01 values('1111111111111.1');
+insert into timestamp_01 values('111111111111111.1');
+select * from timestamp_01;
+
+drop table timestamp_01;

@@ -233,17 +233,17 @@ Num2Mysdate(Const *con, Oid inputTypeId)
 	MYS_ZERO_tm(tm); /* bug#5127 */
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
+	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
 	   has_sql_mode(MODE_STRICT_ALL_TABLES))
 		is_strict_mode = true;
 
-	if(inputTypeId == NUMERICOID)
+	if (inputTypeId == NUMERICOID)
 	{
 		int64 	  len = 0;
 		char		 *str;
@@ -252,8 +252,8 @@ Num2Mysdate(Const *con, Oid inputTypeId)
 		while(*str && *str != '.')
 		{
 			len++;
-			if(len > 14)
-			ereport(ERROR, (errmsg("Incorrect DATE value: '%s'", errstr)));
+			if (len > 14)
+				ereport(ERROR, (errmsg("Incorrect DATE value: '%s'", errstr)));
 			n = n * 10 + *str - '0';
 			str++;
 		}
@@ -267,26 +267,26 @@ Num2Mysdate(Const *con, Oid inputTypeId)
 	if (non_zero_time(tm, fsec))
 		warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
-	if(dterr < 0) /* Returns an error result, the value is not 0. */
+	if (dterr < 0) /* Returns an error result, the value is not 0. */
 	{
-		if(is_strict_mode)/* strict mode */
+		if (is_strict_mode)/* strict mode */
 		{
-			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			if (warn & MYSQL_TIME_WARN_TRUNCATED)
 				ereport(ERROR, (errmsg("Incorrect DATE value: '%s'", errstr)));
-			if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+			if (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 				MYSQL_TIME_WARN_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATE value: '%s'", errstr)));
 
 		}
 		else /* non-strict mode */
 		{
-			if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+			if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
 				MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 			{
 				ereport(WARNING, (errmsg("Out of range value.")));
 				date = MYSQL_ZERO_DATE;
 			}
-			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			if (warn & MYSQL_TIME_WARN_TRUNCATED)
 			{
 				ereport(WARNING, (errmsg("Data truncated for column.")));
 				date = MYSQL_ZERO_DATE;
@@ -310,10 +310,10 @@ Num2Mysdate(Const *con, Oid inputTypeId)
 		}
 
 		/* check date is zero. */
-		if(!non_zero_date(tm))
+		if (!non_zero_date(tm))
 			date = MYSQL_ZERO_DATE;
 
-		if(date != MYSQL_ZERO_DATE)
+		if (date != MYSQL_ZERO_DATE)
 			date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
 
 	}
@@ -328,26 +328,26 @@ Str2Mysdate(Const *con, Const *newcon)
 	bool	  is_strict_mode = false;
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
+	if ((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
 	   (has_sql_mode(MODE_STRICT_ALL_TABLES)))
 		is_strict_mode = true;
 
-	if(con->constvalue == 0)
+	if (con->constvalue == 0)
 	{
-		if(con->constisnull)
+		if (con->constisnull)
 		{
 			date = 0;
 			newcon->constisnull = true;
 		}
 		else
 		{
-			if(is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
+			if (is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATE value: %s", DatumGetCString(con->constvalue))));
 			else
@@ -376,12 +376,12 @@ Str2Mysdate(Const *con, Const *newcon)
 		* MySQL date type explicit type conversion
 		* date'1990-1-1' input format
 		*/
-		if(con->location == (-2))
+		if (con->location == (-2))
 		{
-			if(!dterr && ftype == MYSQL_TIMESTAMP_DATE && !warn)
+			if (!dterr && ftype == MYSQL_TIMESTAMP_DATE && !warn)
 			{
 				//ok
-				if(!tm->tm_year && !tm->tm_mon && !tm->tm_mday)
+				if (!tm->tm_year && !tm->tm_mon && !tm->tm_mday)
 					date = MYSQL_ZERO_DATE;
 				else
 					date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
@@ -392,16 +392,13 @@ Str2Mysdate(Const *con, Const *newcon)
 		/* String insert as column */
 		else
 		{
-			if(dterr) /* Returns an error result, the value is not 0. */
+			if (dterr) /* Returns an error result, the value is not 0. */
 			{
-				if(is_strict_mode) /* Is strict mode*/
+				if (is_strict_mode) /* Is strict mode*/
 				{
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
-					{
-						ereport(ERROR, (errmsg("Incorrect DATE value: '%s'", str)));
-					}
-					if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
-						MYSQL_TIME_WARN_ZERO_IN_DATE))
+					if (warn & 
+						(MYSQL_TIME_WARN_TRUNCATED | MYSQL_TIME_WARN_OUT_OF_RANGE | 
+						 MYSQL_TIME_WARN_ZERO_DATE | MYSQL_TIME_WARN_ZERO_IN_DATE))
 					{
 						ereport(ERROR, (errmsg("Incorrect DATE value: '%s'", str)));
 					}
@@ -409,13 +406,13 @@ Str2Mysdate(Const *con, Const *newcon)
 				}
 				else /* non-strict mode */
 				{
-					if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+					if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
 						MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 					{
 						ereport(WARNING, (errmsg("Out of range value.")));
 						date = MYSQL_ZERO_DATE;
 					}
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
 					{
 						ereport(WARNING, (errmsg("Truncated incorrect datetime value: '%s'", str)));
 						date = MYSQL_ZERO_DATE;
@@ -426,20 +423,25 @@ Str2Mysdate(Const *con, Const *newcon)
 			}
 			else /* Returns the correct result with a value of 0 */
 			{
-				if(!warn)
+				if (!warn)
 				{
-					if(tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
+					if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
 						date = MYSQL_ZERO_DATE;
 				}
 				else
 				{
-					if(warn & MYSQL_TIME_WARN_ZERO_IN_DATE)
+					int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+					if (warn & MYSQL_TIME_WARN_ZERO_IN_DATE)
 					{
 						ereport(WARNING, (errmsg("Out of range value.")));
 						date = MYSQL_ZERO_DATE;
 					}
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
+					{
+						ereport(EREPORT_LEVEL, (errmsg("Truncated incorrect datetime value: '%s'.",str)));
+					}
 				}
-				if(date != MYSQL_ZERO_DATE)
+				if (date != MYSQL_ZERO_DATE)
 					date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
 			}
 		}
@@ -471,17 +473,17 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 	MYS_ZERO_tm(tm); /* bug#5127 */
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
+	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
 	   has_sql_mode(MODE_STRICT_ALL_TABLES))
 		is_strict_mode = true;
 
-	if(inputTypeId == NUMERICOID)
+	if (inputTypeId == NUMERICOID)
 	{
 		int64 	  len = 0;
 		char		 *str;
@@ -490,7 +492,7 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 		while(*str && *str != '.')
 		{
 			len++;
-			if(len > 14)
+			if (len > 14)
 			ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", errstr)));
 			n = n * 10 + *str - '0';
 			str++;
@@ -500,7 +502,7 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 		for(int i=0; i<6; i++)
 		{
 			int num = 0;
-			if(*str != '\0')
+			if (*str != '\0')
 			{
 				num = *str - '0';
 				str++;
@@ -515,14 +517,14 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 	}
 	dterr = mysnumber_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
 
-	if(dterr < 0) /* Returns an error result, the value is not 0. */
+	if (dterr < 0) /* Returns an error result, the value is not 0. */
 	{
-		if(is_strict_mode)/* strict mode */
+		if (is_strict_mode)/* strict mode */
 		{
 			datetime = MYSQL_ZERO_DATETIME;
-			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			if (warn & MYSQL_TIME_WARN_TRUNCATED)
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", errstr)));
-			if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+			if (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 				MYSQL_TIME_WARN_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", errstr)));
 
@@ -530,12 +532,12 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 		else /* non-strict mode */
 		{
 			datetime = MYSQL_ZERO_DATETIME;
-			if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+			if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
 				MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 			{
 				ereport(WARNING, (errmsg("Out of range value.")));
 			}
-			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			if (warn & MYSQL_TIME_WARN_TRUNCATED)
 			{
 				ereport(WARNING, (errmsg("Data truncated for column.")));
 			}
@@ -559,13 +561,13 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 		}
 
 		/* check date is zero. */
-		if(!non_zero_date(tm))
+		if (!non_zero_date(tm))
 			datetime = MYSQL_ZERO_DATETIME;
 
 		dterr = mysdatetime_rounded_seconds(tm, &fsec,&warn);
-		if(dterr)
+		if (dterr)
 		{		
-			if(is_strict_mode)/* strict mode */
+			if (is_strict_mode)/* strict mode */
 			{
 				ereport(ERROR, (errmsg("DATETIME field overflow.")));
 			}
@@ -576,7 +578,7 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 				datetime = MYSQL_ZERO_DATETIME;
 			}
 		}
-		if(datetime != MYSQL_ZERO_DATETIME)
+		if (datetime != MYSQL_ZERO_DATETIME)
 		{
 			int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 			datetemp = datetemp * 1000000;
@@ -597,26 +599,26 @@ Str2Mysdatetime(Const *con, Const *newcon)
 	bool	  is_strict_mode = false;
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
+	if ((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
 	   (has_sql_mode(MODE_STRICT_ALL_TABLES)))
 		is_strict_mode = true;
 
-	if(con->constvalue == 0)
+	if (con->constvalue == 0)
 	{
-		if(con->constisnull)
+		if (con->constisnull)
 		{
 			datetime = 0;
 			newcon->constisnull = true;
 		}
 		else
 		{
-			if(is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
+			if (is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: %s", DatumGetCString(con->constvalue))));
 			else
@@ -645,12 +647,12 @@ Str2Mysdatetime(Const *con, Const *newcon)
 		* MySQL date type explicit type conversion
 		* date'1990-1-1' input format
 		*/
-		if(con->location == (-2))
+		if (con->location == (-2))
 		{
-			if(!dterr && ftype == MYSQL_TIMESTAMP_DATE && !warn)
+			if (!dterr && ftype == MYSQL_TIMESTAMP_DATE && !warn)
 			{
 				//ok
-				if(!tm->tm_year && !tm->tm_mon && !tm->tm_mday)
+				if (!tm->tm_year && !tm->tm_mon && !tm->tm_mday)
 					datetime = MYSQL_ZERO_DATETIME;
 				else
 					datetime = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
@@ -661,16 +663,16 @@ Str2Mysdatetime(Const *con, Const *newcon)
 		/* String insert as column */
 		else
 		{
-			if(dterr) /* Returns an error result, the value is not 0. */
+			if (dterr) /* Returns an error result, the value is not 0. */
 			{
-				if(is_strict_mode) /* Is strict mode*/
+				if (is_strict_mode) /* Is strict mode*/
 				{
 					datetime = MYSQL_ZERO_DATETIME;
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 					}
-					if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+					if (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 						MYSQL_TIME_WARN_ZERO_IN_DATE))
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
@@ -680,12 +682,12 @@ Str2Mysdatetime(Const *con, Const *newcon)
 				else /* non-strict mode */
 				{
 					datetime = MYSQL_ZERO_DATETIME;
-					if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+					if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
 						MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 					{
 						ereport(WARNING, (errmsg("Out of range value.")));
 					}
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
 					{
 						ereport(WARNING, (errmsg("Truncated incorrect datetime value: '%s'", str)));
 					}
@@ -693,24 +695,30 @@ Str2Mysdatetime(Const *con, Const *newcon)
 			}
 			else /* Returns the correct result with a value of 0 */
 			{
-				if(!warn)
+				if (!warn)
 				{
-					if(tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
+					if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
 						datetime = MYSQL_ZERO_DATETIME;
 				}
 				else
 				{
-					if(warn & MYSQL_TIME_WARN_ZERO_IN_DATE)
+					int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+					if (warn & MYSQL_TIME_WARN_ZERO_IN_DATE)
 					{
 						ereport(WARNING, (errmsg("Out of range value.")));
 						datetime = MYSQL_ZERO_DATETIME;
 					}
+
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
+					{
+						ereport(EREPORT_LEVEL, (errmsg("Truncated incorrect datetime value: '%s'.",str)));
+					}
 				}
 
 				dterr = mysdatetime_rounded_seconds(tm, &fsec,&warn);
-				if(dterr)
+				if (dterr)
 				{
-					if(is_strict_mode)/* strict mode */
+					if (is_strict_mode)/* strict mode */
 					{
 						ereport(ERROR, (errmsg("DATETIME field overflow.")));
 					}
@@ -721,7 +729,7 @@ Str2Mysdatetime(Const *con, Const *newcon)
 						datetime = MYSQL_ZERO_DATETIME;
 					}
 				}
-				if(datetime != 0 && datetime != MYSQL_ZERO_DATETIME)
+				if (datetime != 0 && datetime != MYSQL_ZERO_DATETIME)
 				{
 					int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 					datetemp = datetemp * 1000000;
@@ -757,17 +765,17 @@ Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 	MYS_ZERO_tm(tm); /* bug#5127 */
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
+	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
 	   has_sql_mode(MODE_STRICT_ALL_TABLES))
 		is_strict_mode = true;
 
-	if(inputTypeId == NUMERICOID)
+	if (inputTypeId == NUMERICOID)
 	{
 		int64 	  len = 0;
 		char		 *errstr;
@@ -784,7 +792,7 @@ Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		for(int i=0; i<9; i++)
 		{
 			int num = 0;
-			if(*errstr != '\0')
+			if (*errstr != '\0')
 			{
 				num = *errstr - '0';
 				errstr++;
@@ -798,24 +806,24 @@ Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		n = con->constvalue;
 	}
 	dterr = mysnumber_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
-	if(dterr < 0) /* Returns an error result, the value is not 0. */
+	if (dterr < 0) /* Returns an error result, the value is not 0. */
 	{
-		if(is_strict_mode)/* strict mode */
+		if (is_strict_mode)/* strict mode */
 		{
-			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			if (warn & MYSQL_TIME_WARN_TRUNCATED)
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
-			if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+			if (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 				MYSQL_TIME_WARN_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 		}
 		else /* non-strict mode */
 		{
-			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			if (warn & MYSQL_TIME_WARN_TRUNCATED)
 			{
 				ereport(WARNING, (errmsg("Data truncated for column.")));
 				datetime = MYSQL_ZERO_TIMESTAMP;
 			}
-			else if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+			else if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
 				MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 			{
 				ereport(WARNING, (errmsg("Out of range value.")));
@@ -844,20 +852,20 @@ Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		}
 		
 		/* check date is zero. */
-		if(!non_zero_date(tm))
+		if (!non_zero_date(tm))
 			datetime = MYSQL_ZERO_TIMESTAMP;
 
-		if(is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
+		if (is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
 		{
 			ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 		}
-		if(warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
+		if (warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 		{
 			ereport(WARNING, (errmsg("Out of range value.")));
 			datetime = MYSQL_ZERO_TIMESTAMP;
 		}
 
-		if(datetime != MYSQL_ZERO_TIMESTAMP)
+		if (datetime != MYSQL_ZERO_TIMESTAMP)
 		{
 			int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 			datetemp = datetemp * 1000000;
@@ -895,26 +903,26 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 	MYS_ZERO_tm(tm); /* bug#5127 */
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
+	if ((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
 	   (has_sql_mode(MODE_STRICT_ALL_TABLES)))
 		is_strict_mode = true;
 
-	if(con->constvalue == 0)
+	if (con->constvalue == 0)
 	{
-		if(con->constisnull)
+		if (con->constisnull)
 		{
 			datetime = 0;
 			newcon->constisnull = true;
 		}
 		else
 		{
-			if(is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
+			if (is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: %s", DatumGetCString(con->constvalue))));
 			else
@@ -937,7 +945,7 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 		/* select * from t1 where f2 in ('01-01-01 00:00:00.5556')
 		 * get fsec len
 		 */
-		if(-1 == dec)
+		if (-1 == dec)
 		{
 			dec = fsec_len;
 		}
@@ -948,12 +956,12 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 		* MySQL date type explicit type conversion
 		* date'1990-1-1' input format
 		*/
-		if(con->location == (-2))
+		if (con->location == (-2))
 		{
-			if(!dterr && ftype == MYSQL_TIMESTAMP_DATETIME && !warn)
+			if (!dterr && ftype == MYSQL_TIMESTAMP_DATETIME && !warn)
 			{
 				//ok
-				if(!tm->tm_year && !tm->tm_mon && !tm->tm_mday)
+				if (!tm->tm_year && !tm->tm_mon && !tm->tm_mday)
 					datetime = MYSQL_ZERO_TIMESTAMP;
 				else
 				{
@@ -969,15 +977,15 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 		/* String insert as column */
 		else
 		{
-			if(dterr) /* Returns an error result, the value is not 0. */
+			if (dterr) /* Returns an error result, the value is not 0. */
 			{
-				if(is_strict_mode) /* Is strict mode*/
+				if (is_strict_mode) /* Is strict mode*/
 				{
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 					}
-					if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+					if (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 						MYSQL_TIME_WARN_ZERO_IN_DATE))
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
@@ -986,13 +994,13 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 				}
 				else /* non-strict mode */
 				{
-					if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+					if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
 						MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 					{
 						ereport(WARNING, (errmsg("Out of range value.")));
 						datetime = MYSQL_ZERO_TIMESTAMP;
 					}
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
 					{
 						ereport(WARNING, (errmsg("Truncated incorrect datetime value: '%s'", str)));
 						datetime = MYSQL_ZERO_TIMESTAMP;
@@ -1001,18 +1009,18 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 			}
 			else /* Returns the correct result with a value of 0 */
 			{
-				if(!warn)
+				if (!warn)
 				{
-					if(tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
+					if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
 						datetime = MYSQL_ZERO_TIMESTAMP;
 				}
 				else
 				{
-					if(is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
+					if (is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 					}
-					if(warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
+					if (warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 					{
 						ereport(WARNING, (errmsg("Out of range value.")));
 						datetime = MYSQL_ZERO_TIMESTAMP;
@@ -1022,7 +1030,7 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 		}
 	}
 
-	if(datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
+	if (datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
 	{
 		int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 		datetemp = datetemp * 1000000;
@@ -1065,17 +1073,17 @@ Num2Mystimestamp(Const *con, Oid inputTypeId)
 	MYS_ZERO_tm(tm); /* bug#5127 */
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
+	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
 	   has_sql_mode(MODE_STRICT_ALL_TABLES))
 		is_strict_mode = true;
 
-	if(inputTypeId == NUMERICOID)
+	if (inputTypeId == NUMERICOID)
 	{
 		int64 	  len = 0;
 		char		 *errstr;
@@ -1084,7 +1092,7 @@ Num2Mystimestamp(Const *con, Oid inputTypeId)
 		while(*errstr && *errstr != '.')
 		{
 			len++;
-			if(len > 14)
+			if (len > 14)
 			ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", errstr)));
 			n = n * 10 + *errstr - '0';
 			errstr++;
@@ -1094,7 +1102,7 @@ Num2Mystimestamp(Const *con, Oid inputTypeId)
 		for(int i=0; i<6; i++)
 		{
 			int num = 0;
-			if(*errstr != '\0')
+			if (*errstr != '\0')
 			{
 				num = *errstr - '0';
 				errstr++;
@@ -1109,30 +1117,30 @@ Num2Mystimestamp(Const *con, Oid inputTypeId)
 		n = con->constvalue;
 	}
 	dterr = mysnumber_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
-	if(datetime_with_no_zero_in_date_to_timeval(tm, fsec, &warn))
+	if (datetime_with_no_zero_in_date_to_timeval(tm, fsec, &warn))
 	{
 		datetime = MYSQL_ZERO_TIMESTAMP;
 	}
 
-	if(dterr < 0) /* Returns an error result, the value is not 0. */
+	if (dterr < 0) /* Returns an error result, the value is not 0. */
 	{
-		if(is_strict_mode)/* strict mode */
+		if (is_strict_mode)/* strict mode */
 		{
-			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			if (warn & MYSQL_TIME_WARN_TRUNCATED)
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
-			if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+			if (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 				MYSQL_TIME_WARN_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 
 		}
 		else /* non-strict mode */
 		{
-			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			if (warn & MYSQL_TIME_WARN_TRUNCATED)
 			{
 				ereport(WARNING, (errmsg("Data truncated for column.")));
 				datetime = MYSQL_ZERO_TIMESTAMP;
 			}
-			else if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+			else if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
 				MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 			{
 				ereport(WARNING, (errmsg("Out of range value.")));
@@ -1145,13 +1153,13 @@ Num2Mystimestamp(Const *con, Oid inputTypeId)
 	else /* Returns the correct result with a value of 0 */
 	{
 		/* check date is zero. */
-		if(!non_zero_date(tm))
+		if (!non_zero_date(tm))
 			datetime = MYSQL_ZERO_TIMESTAMP;
 
 		dterr = mysdatetime_rounded_seconds(tm, &fsec,&warn);
-		if(dterr)
+		if (dterr)
 		{		
-			if(is_strict_mode)/* strict mode */
+			if (is_strict_mode)/* strict mode */
 			{
 				ereport(ERROR, (errmsg("DATETIME field overflow.")));
 			}
@@ -1162,18 +1170,18 @@ Num2Mystimestamp(Const *con, Oid inputTypeId)
 			}
 		}
 		
-		if(is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
+		if (is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
 		{
 			ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 		}
-		if(warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
+		if (warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 		{
 			ereport(WARNING, (errmsg("Out of range value.")));
 			datetime = MYSQL_ZERO_TIMESTAMP;
 		}
 
 
-		if(datetime != MYSQL_ZERO_TIMESTAMP)
+		if (datetime != MYSQL_ZERO_TIMESTAMP)
 		{
 			int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 			datetemp = datetemp * 1000000;
@@ -1194,26 +1202,26 @@ Str2Mystimestamp(Const *con, Const *newcon)
 	bool	  is_strict_mode = false;
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
+	if ((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
 	   (has_sql_mode(MODE_STRICT_ALL_TABLES)))
 		is_strict_mode = true;
 
-	if(con->constvalue == 0)
+	if (con->constvalue == 0)
 	{
-		if(con->constisnull)
+		if (con->constisnull)
 		{
 			datetime = 0;
 			newcon->constisnull = true;
 		}
 		else
 		{
-			if(is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
+			if (is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: %s", DatumGetCString(con->constvalue))));
 			else
@@ -1243,12 +1251,12 @@ Str2Mystimestamp(Const *con, Const *newcon)
 		* MySQL date type explicit type conversion
 		* date'1990-1-1' input format
 		*/
-		if(con->location == (-2))
+		if (con->location == (-2))
 		{
-			if(!dterr && ftype == MYSQL_TIMESTAMP_DATETIME && !warn)
+			if (!dterr && ftype == MYSQL_TIMESTAMP_DATETIME && !warn)
 			{
 				//ok
-				if(!tm->tm_year && !tm->tm_mon && !tm->tm_mday)
+				if (!tm->tm_year && !tm->tm_mon && !tm->tm_mday)
 					datetime = MYSQL_ZERO_TIMESTAMP;
 				else
 				{
@@ -1264,19 +1272,19 @@ Str2Mystimestamp(Const *con, Const *newcon)
 		/* String insert as column */
 		else
 		{
-			if(datetime_with_no_zero_in_date_to_timeval(tm, fsec, &warn))
+			if (datetime_with_no_zero_in_date_to_timeval(tm, fsec, &warn))
 			{
 				datetime = MYSQL_ZERO_TIMESTAMP;
 			}
-			if(dterr) /* Returns an error result, the value is not 0. */
+			if (dterr) /* Returns an error result, the value is not 0. */
 			{
-				if(is_strict_mode) /* Is strict mode*/
+				if (is_strict_mode) /* Is strict mode*/
 				{
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 					}
-					if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+					if (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 						MYSQL_TIME_WARN_ZERO_IN_DATE))
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
@@ -1285,13 +1293,13 @@ Str2Mystimestamp(Const *con, Const *newcon)
 				}
 				else /* non-strict mode */
 				{
-					if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+					if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
 						MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 					{
 						ereport(WARNING, (errmsg("Out of range value.")));
 						datetime = MYSQL_ZERO_TIMESTAMP;
 					}
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
 					{
 						ereport(WARNING, (errmsg("Truncated incorrect datetime value: '%s'", str)));
 						datetime = MYSQL_ZERO_TIMESTAMP;
@@ -1301,9 +1309,9 @@ Str2Mystimestamp(Const *con, Const *newcon)
 			else /* Returns the correct result with a value of 0 */
 			{
 				dterr = mysdatetime_rounded_seconds(tm, &fsec,&warn);
-				if(dterr)
+				if (dterr)
 				{
-					if(is_strict_mode)/* strict mode */
+					if (is_strict_mode)/* strict mode */
 					{
 						ereport(ERROR, (errmsg("DATETIME field overflow.")));
 					}
@@ -1313,26 +1321,32 @@ Str2Mystimestamp(Const *con, Const *newcon)
 						datetime = MYSQL_ZERO_TIMESTAMP;
 					}
 				}
-				if(!warn)
+				if (!warn)
 				{
-					if(tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
+					if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
 						datetime = MYSQL_ZERO_TIMESTAMP;
 				}
 				else
 				{
-					if(is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
+					if (is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE )))
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 					}
-					if(warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
+					
+					if (warn & (  MYSQL_TIME_WARN_TRUNCATED))
+					{
+						int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+						ereport(EREPORT_LEVEL, (errmsg("Incorrect DATETIME value: '%s'", str)));
+					}
+
+					if (warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 					{
 						ereport(WARNING, (errmsg("Out of range value.")));
 						datetime = MYSQL_ZERO_TIMESTAMP;
 					}
 				}
 
-
-				if(datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
+				if (datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
 				{
 					int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 					datetemp = datetemp * 1000000;
@@ -1367,17 +1381,17 @@ Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 	MYS_ZERO_tm(tm); /* bug#5127 */
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
+	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
 	   has_sql_mode(MODE_STRICT_ALL_TABLES))
 		is_strict_mode = true;
 
-	if(inputTypeId == NUMERICOID)
+	if (inputTypeId == NUMERICOID)
 	{
 		int64 	  len = 0;
 		char		 *errstr;
@@ -1386,7 +1400,7 @@ Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		while(*errstr && *errstr != '.')
 		{
 			len++;
-			if(len > 14)
+			if (len > 14)
 			ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", errstr)));
 			n = n * 10 + *errstr - '0';
 			errstr++;
@@ -1396,7 +1410,7 @@ Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		for(int i=0; i<6; i++)
 		{
 			int num = 0;
-			if(*errstr != '\0')
+			if (*errstr != '\0')
 			{
 				num = *errstr - '0';
 				errstr++;
@@ -1414,30 +1428,30 @@ Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 	(void)mysdatetime_add_nanoseconds_with_round(tm, &fsec, &warn, msec_round_add[dec]);
 	fsec = fsec - fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - dec];
 
-	if(datetime_with_no_zero_in_date_to_timeval(tm, fsec, &warn))
+	if (datetime_with_no_zero_in_date_to_timeval(tm, fsec, &warn))
 	{
 		datetime = MYSQL_ZERO_TIMESTAMP;
 	}
 
-	if(dterr < 0) /* Returns an error result, the value is not 0. */
+	if (dterr < 0) /* Returns an error result, the value is not 0. */
 	{
-		if(is_strict_mode)/* strict mode */
+		if (is_strict_mode)/* strict mode */
 		{
-			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			if (warn & MYSQL_TIME_WARN_TRUNCATED)
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
-			if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+			if (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 				MYSQL_TIME_WARN_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 
 		}
 		else /* non-strict mode */
 		{
-			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			if (warn & MYSQL_TIME_WARN_TRUNCATED)
 			{
 				ereport(WARNING, (errmsg("Data truncated for column.")));
 				datetime = MYSQL_ZERO_TIMESTAMP;
 			}
-			else if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+			else if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
 				MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 			{
 				ereport(WARNING, (errmsg("Out of range value.")));
@@ -1450,20 +1464,20 @@ Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 	else /* Returns the correct result with a value of 0 */
 	{
 		/* check date is zero. */
-		if(!non_zero_date(tm))
+		if (!non_zero_date(tm))
 			datetime = MYSQL_ZERO_TIMESTAMP;
 
-		if(is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
+		if (is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
 		{
 			ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 		}
-		if(warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
+		if (warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 		{
 			ereport(WARNING, (errmsg("Out of range value.")));
 			datetime = MYSQL_ZERO_TIMESTAMP;
 		}
 
-		if(datetime != MYSQL_ZERO_TIMESTAMP)
+		if (datetime != MYSQL_ZERO_TIMESTAMP)
 		{
 			int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 			datetemp = datetemp * 1000000;
@@ -1497,26 +1511,26 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 	char		buf[MAXDATELEN + 1] = {0};
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
+	if ((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
 	   (has_sql_mode(MODE_STRICT_ALL_TABLES)))
 		is_strict_mode = true;
 
-	if(con->constvalue == 0)
+	if (con->constvalue == 0)
 	{
-		if(con->constisnull)
+		if (con->constisnull)
 		{
 			datetime = 0;
 			newcon->constisnull = true;
 		}
 		else
 		{
-			if(is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
+			if (is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: %s", DatumGetCString(con->constvalue))));
 			else
@@ -1543,7 +1557,7 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 		/* select * from t1 where f2 in ('01-01-01 00:00:00.5556')
 		 * get fsec len
 		 */
-		if(-1 == dec)
+		if (-1 == dec)
 		{
 			dec = fsec_len;
 		}
@@ -1554,12 +1568,12 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 		* MySQL date type explicit type conversion
 		* date'1990-1-1' input format
 		*/
-		if(con->location == (-2))
+		if (con->location == (-2))
 		{
-			if(!dterr && ftype == MYSQL_TIMESTAMP_DATETIME && !warn)
+			if (!dterr && ftype == MYSQL_TIMESTAMP_DATETIME && !warn)
 			{
 				//ok
-				if(!tm->tm_year && !tm->tm_mon && !tm->tm_mday)
+				if (!tm->tm_year && !tm->tm_mon && !tm->tm_mday)
 					datetime = MYSQL_ZERO_TIMESTAMP;
 				else
 				{
@@ -1575,19 +1589,19 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 		/* String insert as column */
 		else
 		{
-			if(datetime_with_no_zero_in_date_to_timeval(tm, fsec, &warn))
+			if (datetime_with_no_zero_in_date_to_timeval(tm, fsec, &warn))
 			{
 				datetime = MYSQL_ZERO_TIMESTAMP;
 			}
-			if(dterr) /* Returns an error result, the value is not 0. */
+			if (dterr) /* Returns an error result, the value is not 0. */
 			{
-				if(is_strict_mode) /* Is strict mode*/
+				if (is_strict_mode) /* Is strict mode*/
 				{
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 					}
-					if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+					if (warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 						MYSQL_TIME_WARN_ZERO_IN_DATE))
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
@@ -1596,13 +1610,13 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 				}
 				else /* non-strict mode */
 				{
-					if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+					if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
 						MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 					{
 						ereport(WARNING, (errmsg("Out of range value.")));
 						datetime = MYSQL_ZERO_TIMESTAMP;
 					}
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
+					if (warn & MYSQL_TIME_WARN_TRUNCATED)
 					{
 						ereport(WARNING, (errmsg("Truncated incorrect datetime value: '%s'", str)));
 						datetime = MYSQL_ZERO_TIMESTAMP;
@@ -1612,9 +1626,9 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 			else /* Returns the correct result with a value of 0 */
 			{
 				//dterr = mysdatetime_rounded_seconds(tm, &fsec,&warn);
-				if(dterr)
+				if (dterr)
 				{
-					if(is_strict_mode)/* strict mode */
+					if (is_strict_mode)/* strict mode */
 					{
 						ereport(ERROR, (errmsg("DATETIME field overflow.")));
 					}
@@ -1624,18 +1638,18 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 						datetime = MYSQL_ZERO_TIMESTAMP;
 					}
 				}
-				if(!warn)
+				if (!warn)
 				{
-					if(tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
+					if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
 						datetime = MYSQL_ZERO_TIMESTAMP;
 				}
 				else
 				{
-					if(is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
+					if (is_strict_mode &&(warn & ( MYSQL_TIME_WARN_OUT_OF_RANGE)))
 					{
 						ereport(ERROR, (errmsg("Incorrect DATETIME value: '%s'", str)));
 					}
-					if(warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
+					if (warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
 					{
 						ereport(WARNING, (errmsg("Out of range value.")));
 						datetime = MYSQL_ZERO_TIMESTAMP;
@@ -1643,7 +1657,7 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 				}
 
 
-				if(datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
+				if (datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
 				{
 					int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 					datetemp = datetemp * 1000000;
@@ -1690,17 +1704,17 @@ Num2Mystime(Const *con, Oid inputTypeId , bool is_insert)
 	MYS_ZERO_tm(tm); /* bug#5127 */
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
+	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
 	   has_sql_mode(MODE_STRICT_ALL_TABLES))
 		is_strict_mode = true;
 
-	if(inputTypeId == NUMERICOID)
+	if (inputTypeId == NUMERICOID)
 	{
 		int64 	  len = 0;
 		
@@ -1709,7 +1723,7 @@ Num2Mystime(Const *con, Oid inputTypeId , bool is_insert)
 
 		while(*strtemp && *strtemp != '.')
 		{
-			if(*strtemp == '-')
+			if (*strtemp == '-')
 			{
 				neg = 1;
 				strtemp++;
@@ -1724,7 +1738,7 @@ Num2Mystime(Const *con, Oid inputTypeId , bool is_insert)
 		for(int i=0; i<9; i++)
 		{
 			int numtemp = 0;
-			if(*strtemp != '\0')
+			if (*strtemp != '\0')
 			{
 				numtemp = *strtemp - '0';
 				strtemp++;
@@ -1745,28 +1759,28 @@ Num2Mystime(Const *con, Oid inputTypeId , bool is_insert)
 	(void)mystime_rounded_seconds(tm, &fsec,&warn, 0);
 	if (is_insert)
 	{
-		if(non_zero_date(tm))
+		if (non_zero_date(tm))
 		{
 			warn|= MYSQL_TIME_NOTE_TRUNCATED;
 		}
 		//set warnings
-		if(!num_set_mystime_warning(str, "time", dterr, warn, is_strict_mode, &is_out_range))
+		if (!num_set_mystime_warning(str, "time", dterr, warn, is_strict_mode, &is_out_range))
 		{
 			int daytosec = 0;
-			if(is_insert && !tm->tm_mon)
+			if (is_insert && !tm->tm_mon)
 			{
 				daytosec = tm->tm_mday * 24;
 			}
 			time = (tm->tm_hour+daytosec) * 10000 + tm->tm_min * 100 + tm->tm_sec;
 		
-			if(!tm->tm_year &&	!tm->tm_mon && !tm->tm_mday && !tm->tm_hour && !tm->tm_min && !tm->tm_sec)
+			if (!tm->tm_year &&	!tm->tm_mon && !tm->tm_mday && !tm->tm_hour && !tm->tm_min && !tm->tm_sec)
 			{
 				time = MYSQL_ZERO_TIME;
 			}
 		}
 		else
 		{
-			if(is_out_range)
+			if (is_out_range)
 			{
 				time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 			}
@@ -1779,7 +1793,7 @@ Num2Mystime(Const *con, Oid inputTypeId , bool is_insert)
 		if (dterr < 0 || warn)
 		{
 			ereport(WARNING, (errmsg("Incorrect TIME value: '%s'", str)));
-			if(dterr < 0)
+			if (dterr < 0)
 				return 0;
 		}
 
@@ -1798,26 +1812,26 @@ Str2Mystime(Const *con, Const *newcon, bool is_insert)
 	int		  neg = 0;
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
+	if ((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
 	   (has_sql_mode(MODE_STRICT_ALL_TABLES)))
 		is_strict_mode = true;
 
-	if(con->constvalue == 0)
+	if (con->constvalue == 0)
 	{
-		if(con->constisnull)
+		if (con->constisnull)
 		{
 			time = MYSQL_NULL_TIME;
 			newcon->constisnull = true;
 		}
 		else
 		{
-			if(is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
+			if (is_strict_mode && (flag & TIME_NO_ZERO_DATE ) &&
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect TIME value: %s", DatumGetCString(con->constvalue))));
 			else
@@ -1845,15 +1859,15 @@ Str2Mystime(Const *con, Const *newcon, bool is_insert)
 		dterr = mysstr_to_time(str, len, tm, flag, &fsec, &ftype, &warn, &nanoseconds, &neg);
 
 		//time'12:13:14'  or select '10:22:33.5' <= ...;
-		if(!is_insert)
+		if (!is_insert)
 		{
 			(void)mystime_add_nanoseconds_with_round(tm, &fsec, nanoseconds, &warn);
 			(void)mystime_rounded_seconds(tm, &fsec,&warn, 0);
-			if(!dterr && ftype == MYSQL_TIMESTAMP_TIME && !warn)
+			if (!dterr && ftype == MYSQL_TIMESTAMP_TIME && !warn)
 			{
 				//ok
 				time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-				if(!tm->tm_year &&  !tm->tm_mon && !tm->tm_mday && !tm->tm_hour && !tm->tm_min && !tm->tm_sec && !fsec)
+				if (!tm->tm_year &&  !tm->tm_mon && !tm->tm_mday && !tm->tm_hour && !tm->tm_min && !tm->tm_sec && !fsec)
 				{
 					time = MYSQL_ZERO_TIME;
 				}
@@ -1865,28 +1879,28 @@ Str2Mystime(Const *con, Const *newcon, bool is_insert)
 			}
 		}
 
-		if(!dterr)
+		if (!dterr)
 		{
 			fsec += (nanoseconds+500) / 1000;
 			(void)mystime_add_nanoseconds_with_round(tm, &fsec, nanoseconds, &warn);
 			(void)mystime_rounded_seconds(tm, &fsec,&warn, 0);
-			if(non_zero_date(tm))
+			if (non_zero_date(tm))
 			{
 				warn|= MYSQL_TIME_NOTE_TRUNCATED;
 			}
 		}
 		
 		//set warnings
-		if(!set_mystime_warning(str, "time", dterr, warn, is_strict_mode))
+		if (!set_mystime_warning(str, "time", dterr, warn, is_strict_mode))
 		{
 			int daytosec = 0;
-			if(is_insert && !tm->tm_mon)
+			if (is_insert && !tm->tm_mon)
 			{
 				daytosec = tm->tm_mday * 24;
 			}
 			time = (tm->tm_hour+daytosec) * 10000 + tm->tm_min * 100 + tm->tm_sec;
 
-			if(!tm->tm_year &&  !tm->tm_mon && !tm->tm_mday && !tm->tm_hour && !tm->tm_min && !tm->tm_sec)
+			if (!tm->tm_year &&  !tm->tm_mon && !tm->tm_mday && !tm->tm_hour && !tm->tm_min && !tm->tm_sec)
 			{
 				time = MYSQL_ZERO_TIME;
 			}
@@ -1923,17 +1937,17 @@ Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 	MYS_ZERO_tm(tm); /* bug#5127 */
 
 	/* Get the sql_mode parameter value. */
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
+	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
 		flag |= TIME_NO_ZERO_IN_DATE;
-	if(has_sql_mode(MODE_INVALID_DATES))
+	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
+	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
 	   has_sql_mode(MODE_STRICT_ALL_TABLES))
 		is_strict_mode = true;
 
-	if(inputTypeId == NUMERICOID)
+	if (inputTypeId == NUMERICOID)
 	{
 		int64 	  len = 0;
 		
@@ -1942,7 +1956,7 @@ Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 
 		while(*strtemp && *strtemp != '.')
 		{
-			if(*strtemp == '-')
+			if (*strtemp == '-')
 			{
 				neg = 1;
 				strtemp++;
@@ -1957,7 +1971,7 @@ Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		for(int i=0; i<9; i++)
 		{
 			int numtemp = 0;
-			if(*strtemp != '\0')
+			if (*strtemp != '\0')
 			{
 				numtemp = *strtemp - '0';
 				strtemp++;
@@ -1981,28 +1995,28 @@ Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 
 	if (is_insert)
 	{
-		if(non_zero_date(tm))
+		if (non_zero_date(tm))
 		{
 			warn|= MYSQL_TIME_NOTE_TRUNCATED;
 		}
 		//set warnings
-		if(!num_set_mystime_warning(str, "time", dterr, warn, is_strict_mode, &is_out_range))
+		if (!num_set_mystime_warning(str, "time", dterr, warn, is_strict_mode, &is_out_range))
 		{
 			int daytosec = 0;
-			if(is_insert && !tm->tm_mon)
+			if (is_insert && !tm->tm_mon)
 			{
 				daytosec = tm->tm_mday * 24;
 			}
 			time = (tm->tm_hour+daytosec) * 10000 + tm->tm_min * 100 + tm->tm_sec;
 		
-			if(!tm->tm_year &&	!tm->tm_mon && !tm->tm_mday && !tm->tm_hour && !tm->tm_min && !tm->tm_sec)
+			if (!tm->tm_year &&	!tm->tm_mon && !tm->tm_mday && !tm->tm_hour && !tm->tm_min && !tm->tm_sec)
 			{
 				time = MYSQL_ZERO_TIME;
 			}
 		}
 		else
 		{
-			if(is_out_range)
+			if (is_out_range)
 			{
 				tm->tm_hour = TIME_MAX_HOUR;
 				tm->tm_min = TIME_MAX_MINUTE;
@@ -2019,7 +2033,7 @@ Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		if (dterr < 0 || warn)
 		{
 			ereport(WARNING, (errmsg("Incorrect TIME value: '%s'", str)));
-			if(dterr < 0)
+			if (dterr < 0)
 				return 0;
 		}
 		time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
@@ -2329,14 +2343,14 @@ Num2Mysuint8(Const *con, Oid inputTypeId)
 										ObjectIdGetDatum(InvalidOid),
 										Int32GetDatum(-1)));
 
-		if(DatumGetBool(DirectFunctionCall2(
+		if (DatumGetBool(DirectFunctionCall2(
 			numeric_gt, NumericGetDatum(con->constvalue), NumericGetDatum(uint8maxnum))))
 		{
 			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
 			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
 			return PG_UINT64_MAX;
 		}
-		if(DatumGetBool(DirectFunctionCall2(
+		if (DatumGetBool(DirectFunctionCall2(
 				numeric_lt, NumericGetDatum(con->constvalue), NumericGetDatum(int64_to_numeric(0)))))
 		{
 			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
@@ -2405,15 +2419,15 @@ coerce_type(ParseState *pstate, Node *node,
 	{
 		/* Begin - ReqID:SRS-MYSQL-DATETYPE*/
 		//error:select cast('1.1111' as timestamp);
-		if(MYS_PARSER == compatible_db )
+		if (MYS_PARSER == compatible_db )
 		{
-			if( COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
+			if ( COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
 			{
 				elog(ERROR,
 					"You have an error in your SQL syntax;"
 					"check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
 			}
-			if((targetTypeId == MYSDATETIMESOID || targetTypeId == MYSTIMESTAMPSOID || targetTypeId == MYSTIMESOID ) &&
+			if ((targetTypeId == MYSDATETIMESOID || targetTypeId == MYSTIMESTAMPSOID || targetTypeId == MYSTIMESOID ) &&
 				targetTypeMod != -1 && COERCION_EXPLICIT == ccontext)
 			{
 				/* After the precision is modified, set the original value to numeric, 
@@ -2498,7 +2512,7 @@ coerce_type(ParseState *pstate, Node *node,
 	 * type conversion needs to be processed.
 	 */
 	/* Begin - ReqID:SRS-MYSQL-DATETYPE*/
-	if((inputTypeId == INT4OID ||
+	if ((inputTypeId == INT4OID ||
 		inputTypeId == NUMERICOID ||
 		inputTypeId == INT8OID ||
 		inputTypeId == INT2OID) &&
@@ -2513,79 +2527,79 @@ coerce_type(ParseState *pstate, Node *node,
 		baseTypeMod = targetTypeMod;
 		baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
 		//error:select cast('1.1111' as timestamp);
-		if(COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
+		if (COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
 		{
 			elog(ERROR,
 				"You have an error in your SQL syntax;"
 				"check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
 		}
 
-		if((pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
+		if ((pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
 			(pstate && (pstate->p_is_insert || pstate->p_myscreateastmt)))
 		{
 			is_insert = true;
-			if(baseTypeId == MYSDATEOID)
+			if (baseTypeId == MYSDATEOID)
 			{
 				dateflg = MYS_DATE_FLG;
 			}
-			else if(baseTypeId == MYSDATETIMEOID)
+			else if (baseTypeId == MYSDATETIMEOID)
 			{
 				dateflg = MYS_DATETIME_FLG;
 			}
-			else if(baseTypeId == MYSDATETIMESOID)
+			else if (baseTypeId == MYSDATETIMESOID)
 			{
 				dateflg = MYS_DATETIMES_FLG;
 			}
-			else if(baseTypeId == MYSTIMESTAMPOID)
+			else if (baseTypeId == MYSTIMESTAMPOID)
 			{
 				dateflg = MYS_TIMESTAMP_FLG;
 			}
-			else if(baseTypeId == MYSTIMESTAMPSOID)
+			else if (baseTypeId == MYSTIMESTAMPSOID)
 			{
 				dateflg = MYS_TIMESTAMPS_FLG;
 			}
-			else if(baseTypeId == MYSTIMEOID)
+			else if (baseTypeId == MYSTIMEOID)
 			{
 				dateflg = MYS_TIME_FLG;
 			}
-			else if(baseTypeId == MYSTIMESOID)
+			else if (baseTypeId == MYSTIMESOID)
 			{
 				dateflg = MYS_TIMES_FLG;
 			}
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-			else if(baseTypeId == MYSUINT4OID)
+			else if (baseTypeId == MYSUINT4OID)
 			{
 				dateflg = MYS_UINT4_FLG;
 			}
 			/* End - SRS-MYSQL-NUMBERICTYPE-UINT4 */
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-			else if(baseTypeId == MYSUINT4OID)
+			else if (baseTypeId == MYSUINT4OID)
 			{
 				dateflg = MYS_UINT8_FLG;
 			}
 			/* End - SRS-MYSQL-NUMBERICTYPE-UINT8 */
 		}
 
-		if( COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATEOID)
+		if ( COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATEOID)
 			dateflg = MYS_DATE_FLG;
-		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATETIMEOID)
+		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATETIMEOID)
 			dateflg = MYS_DATETIME_FLG;
-		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATETIMESOID)
+		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATETIMESOID)
 			dateflg = MYS_DATETIMES_FLG;
-		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESTAMPOID)
+		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESTAMPOID)
 			dateflg = MYS_TIMESTAMP_FLG;
-		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESTAMPSOID)
+		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESTAMPSOID)
 			dateflg = MYS_TIMESTAMPS_FLG;
-		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMEOID)
+		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMEOID)
 			dateflg = MYS_TIME_FLG;
-		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESOID)
+		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESOID)
 			dateflg = MYS_TIMES_FLG;
-		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSUINT4OID)
+		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSUINT4OID)
 			dateflg = MYS_UINT4_FLG;
-		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSUINT8OID)
+		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSUINT8OID)
 			dateflg = MYS_UINT8_FLG;
 
-		if(dateflg)
+		if (dateflg)
 		{
 			DateADT		date;
 			TimeADT		datetime;
@@ -2610,45 +2624,45 @@ coerce_type(ParseState *pstate, Node *node,
 			 */
 			setup_parser_errposition_callback(&pcbstate, pstate, con->location);
 
-			if(dateflg == MYS_DATE_FLG)
+			if (dateflg == MYS_DATE_FLG)
 			{
 				date = Num2Mysdate(con, inputTypeId);
 				newcon->constvalue = DateADTGetDatum(date);
 			}
-			else if(dateflg == MYS_DATETIME_FLG)
+			else if (dateflg == MYS_DATETIME_FLG)
 			{
 				datetime = Num2Mysdatetime(con, inputTypeId);
 				newcon->constvalue = TimeADTGetDatum(datetime);
 			}
-			else if(dateflg == MYS_DATETIMES_FLG)
+			else if (dateflg == MYS_DATETIMES_FLG)
 			{
 				Datum		timestamps;
 				timestamps = Num2Mysdatetimes(con, inputTypeId, targetTypeMod, is_insert);
 				newcon->constvalue = timestamps;
 			}
-			else if(dateflg == MYS_TIMESTAMP_FLG)
+			else if (dateflg == MYS_TIMESTAMP_FLG)
 			{
 				datetime = Num2Mystimestamp(con, inputTypeId);
 				newcon->constvalue = TimeADTGetDatum(datetime);
 			}
-			else if(dateflg == MYS_TIMESTAMPS_FLG)
+			else if (dateflg == MYS_TIMESTAMPS_FLG)
 			{
 				Datum		timestamps;
 				timestamps = Num2Mystimestamps(con, inputTypeId, targetTypeMod, is_insert);
 				newcon->constvalue = timestamps;
 			}
-			else if(dateflg == MYS_TIME_FLG)
+			else if (dateflg == MYS_TIME_FLG)
 			{
 				time = Num2Mystime(con, inputTypeId, is_insert);
 				newcon->constvalue = TimeADTGetDatum(time);
 			}
-			else if(dateflg == MYS_TIMES_FLG)
+			else if (dateflg == MYS_TIMES_FLG)
 			{
 				time = Num2Mystimes(con, inputTypeId, targetTypeMod, is_insert);
 				newcon->constvalue = TimeADTGetDatum(time);
 			}
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-			else if(dateflg == MYS_UINT4_FLG)
+			else if (dateflg == MYS_UINT4_FLG)
 			{
 				uint32 tempvalue = 0;
 				int sizenum = 0;
@@ -2658,7 +2672,7 @@ coerce_type(ParseState *pstate, Node *node,
 			}
 			/* End - SRS-MYSQL-NUMBERICTYPE-UINT4 */
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-			else if(dateflg == MYS_UINT8_FLG)
+			else if (dateflg == MYS_UINT8_FLG)
 			{
 				uint64 tempvalue = 0;
 				tempvalue = Num2Mysuint8(con, inputTypeId);
@@ -2775,7 +2789,7 @@ coerce_type(ParseState *pstate, Node *node,
 			* TODO: 
 			*	Perhaps we should add a field to the Const struct instead of relying on -2.
 			*/
-			if(con->location == (-2)) {
+			if (con->location == (-2)) {
 				/* date'1990-1-1' input format */
 				if (baseTypeId == ORADATEOID)
 				{
@@ -2856,7 +2870,7 @@ coerce_type(ParseState *pstate, Node *node,
 						newcon->location = 2;
 						
 					}
-					else if(nf == 3 && ftype[0] == DTK_DATE && ftype[1] == DTK_TIME)
+					else if (nf == 3 && ftype[0] == DTK_DATE && ftype[1] == DTK_TIME)
 					{
 						Type		baseType_tmp;
 								
@@ -2954,7 +2968,7 @@ coerce_type(ParseState *pstate, Node *node,
 						newcon->location = 2;
 						
 					}
-					else if(nf == 2 && ftype[0] == DTK_TIME &&
+					else if (nf == 2 && ftype[0] == DTK_TIME &&
 						(ftype[1] == DTK_TZ || ftype[1] == DTK_STRING || ftype[1] == DTK_SPECIAL))
 					{
 						TimeTzADT *result = (TimeTzADT *) palloc(sizeof(TimeTzADT));
@@ -3017,9 +3031,9 @@ coerce_type(ParseState *pstate, Node *node,
 			}
 			
 			/* START BUG#M0000285 */
-			else if(baseTypeId == BYTEAOID && (targetTypeId == RAWOID || targetTypeId == BLOBOID))
+			else if (baseTypeId == BYTEAOID && (targetTypeId == RAWOID || targetTypeId == BLOBOID))
 			{
-				if(ora_raw_input_hook)
+				if (ora_raw_input_hook)
 					newcon->constvalue = DirectFunctionCall2(ora_raw_input_hook, ObjectIdGetDatum(targetTypeId), con->constvalue);
 			}
 			/* END BUG#M0000285 */
@@ -3043,11 +3057,11 @@ coerce_type(ParseState *pstate, Node *node,
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
 		/* Begin - ReqID:SRS-MYSQL-DATETYPE */
 		/* date'2222-22-22' */
-		else if(MYS_PARSER == compatible_db )
+		else if (MYS_PARSER == compatible_db )
 		{
 			bool mysdateflag = false;
 			//error:select cast('1.1111' as timestamp);
-			if(con->location != (-2) && COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
+			if (con->location != (-2) && COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
 			{
 				elog(ERROR,
 					"You have an error in your SQL syntax;"
@@ -3062,7 +3076,7 @@ coerce_type(ParseState *pstate, Node *node,
 			 * 2. insert into tb values ('1111-11-11')
 			 * 3. cast
 			 */
-			if( (COERCION_IMPLICIT == ccontext || con->location == -1)    ||
+			if ( (COERCION_IMPLICIT == ccontext || con->location == -1)    ||
 				(COERCION_ASSIGNMENT == ccontext || con->location == (-2)) || 
 				(mysdateflag && pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
 				(mysdateflag && pstate && pstate->p_is_insert  && COERCION_EXPLICIT != ccontext) ||
@@ -3181,7 +3195,7 @@ coerce_type(ParseState *pstate, Node *node,
 			}
 			else
 			{
-				if(baseTypeId == MYSDATETIMEOID || baseTypeId == MYSDATETIMESOID ||
+				if (baseTypeId == MYSDATETIMEOID || baseTypeId == MYSDATETIMESOID ||
 					baseTypeId == MYSTIMESTAMPOID || baseTypeId == MYSTIMESTAMPSOID ||
 					baseTypeId == MYSTIMESOID || baseTypeId == MYSDATETIMESOID ||
 					baseTypeId == MYSDATEOID
@@ -3208,7 +3222,7 @@ coerce_type(ParseState *pstate, Node *node,
 														 	inputTypeMod);
 				}
 
-				if(newcon->constvalue == 0 && 
+				if (newcon->constvalue == 0 && 
 					(baseTypeId == MYSDATETIMESOID ||
 					 baseTypeId == MYSTIMESTAMPSOID ||
 					 baseTypeId == MYSTIMESOID))
@@ -3292,7 +3306,7 @@ coerce_type(ParseState *pstate, Node *node,
 
 	/* Begin - ReqID:SRS-MYSQL-DATETYPE*/
 	//error:select cast('1.1111' as timestamp);
-	if(MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext && 
+	if (MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext && 
 		(targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
 	{
 		elog(ERROR,

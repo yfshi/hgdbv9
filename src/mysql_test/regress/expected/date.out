@@ -22,6 +22,9 @@ INSERT INTO DATE_TBL VALUES ('2038-04-08');
 INSERT INTO DATE_TBL VALUES ('2039-04-09');
 INSERT INTO DATE_TBL VALUES ('2040-04-10');
 INSERT INTO DATE_TBL VALUES ('2040-04-10 BC');
+ERROR:  Truncated incorrect datetime value: '2040-04-10 BC'.
+LINE 1: INSERT INTO DATE_TBL VALUES ('2040-04-10 BC');
+                                     ^
 SELECT f1 FROM DATE_TBL;
      f1     
 ------------
@@ -40,8 +43,7 @@ SELECT f1 FROM DATE_TBL;
  2038-04-08
  2039-04-09
  2040-04-10
- 2040-04-10
-(16 rows)
+(15 rows)
 
 SELECT f1 FROM DATE_TBL WHERE f1 < '2000-01-01';
      f1     
@@ -477,8 +479,7 @@ SELECT f1 - date '2000-01-01' AS "Days From 2K" FROM DATE_TBL;
        380307
        390308
        400309
-       400309
-(16 rows)
+(15 rows)
 
 SELECT f1 - date 'epoch' AS "Days From Epoch" FROM DATE_TBL;
 ERROR:  Incorrect DATE value: 'epoch'

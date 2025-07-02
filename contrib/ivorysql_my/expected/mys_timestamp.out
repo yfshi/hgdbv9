@@ -3406,6 +3406,12 @@ select ix+0 from t1;
 
 truncate table t1;
 insert into t1 values ("0000-00-00 00:00:00 some trailer"),("2003-01-01 00:00:00 some trailer");
+WARNING:  Incorrect DATETIME value: '0000-00-00 00:00:00 some trailer'
+LINE 1: insert into t1 values ("0000-00-00 00:00:00 some trailer"),(...
+                               ^
+WARNING:  Incorrect DATETIME value: '2003-01-01 00:00:00 some trailer'
+LINE 1: ...o t1 values ("0000-00-00 00:00:00 some trailer"),("2003-01-0...
+                                                             ^
 select ix+0 from t1;
     ?column?    
 ----------------
@@ -4165,3 +4171,33 @@ select  cast(id as time(4))       from t1;
 (1 row)
 
 drop table t1;
+create table timestamp_01(a1 timestamp);
+set sql_mode ='';
+insert into timestamp_01 values('1111111111111.1');
+WARNING:  Incorrect DATETIME value: '1111111111111.1'
+LINE 1: insert into timestamp_01 values('1111111111111.1');
+                                        ^
+insert into timestamp_01 values('111111111111111.1');
+WARNING:  Incorrect DATETIME value: '111111111111111.1'
+LINE 1: insert into timestamp_01 values('111111111111111.1');
+                                        ^
+WARNING:  Out of range value.
+LINE 1: insert into timestamp_01 values('111111111111111.1');
+                                        ^
+set sql_mode=default;
+insert into timestamp_01 values('1111111111111.1');
+ERROR:  Incorrect DATETIME value: '1111111111111.1'
+LINE 1: insert into timestamp_01 values('1111111111111.1');
+                                        ^
+insert into timestamp_01 values('111111111111111.1');
+ERROR:  Incorrect DATETIME value: '111111111111111.1'
+LINE 1: insert into timestamp_01 values('111111111111111.1');
+                                        ^
+select * from timestamp_01;
+         a1          
+---------------------
+ 2011-11-11 11:11:11
+ 0000-00-00 00:00:00
+(2 rows)
+
+drop table timestamp_01;
