@@ -7,6 +7,10 @@ src/datatype/script/uint2
 src/datatype/script/uint4
 src/datatype/script/uint3
 src/datatype/script/uint8
+src/datatype/script/uint1_index
+src/datatype/script/uint2_index
+src/datatype/script/uint4_index
+src/datatype/script/uint8_index
 src/datatype/script/float
 src/datatype/script/year
 src/datatype/script/time

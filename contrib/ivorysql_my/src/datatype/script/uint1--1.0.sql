@@ -137,6 +137,91 @@ STABLE;
 CREATE CAST (pg_catalog.numeric AS ivymy.mysuint1)
 WITH FUNCTION ivymy.numeric_mysuint1(pg_catalog.numeric)
 AS ASSIGNMENT;
+
+-- to bpchar
+CREATE CAST (ivymy.mysuint1 AS pg_catalog.bpchar) 
+WITH INOUT
+AS ASSIGNMENT;
+
+-- to varchar
+CREATE CAST (ivymy.mysuint1 AS pg_catalog.varchar) 
+WITH INOUT
+AS ASSIGNMENT;
+
+--
+-- cast (varchar as uint1)
+--
+CREATE FUNCTION ivymy.mystext2mysuint1(pg_catalog.varchar)
+RETURNS ivymy.mysuint1
+AS 'MODULE_PATHNAME', 'mystext2mysuint1'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+CREATE CAST(pg_catalog.varchar as ivymy.mysuint1) 
+WITH FUNCTION ivymy.mystext2mysuint1(pg_catalog.varchar) 
+AS ASSIGNMENT;
+--
+-- cast (char as uint1)
+--
+CREATE FUNCTION ivymy.mystext2mysuint1(pg_catalog.char)
+RETURNS ivymy.mysuint1
+AS 'MODULE_PATHNAME', 'mystext2mysuint1'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+CREATE CAST(pg_catalog.char as ivymy.mysuint1) 
+WITH FUNCTION ivymy.mystext2mysuint1(pg_catalog.char) 
+AS ASSIGNMENT;
+
+--
+-- cast (bpchar as uint1)
+--
+CREATE FUNCTION ivymy.mystext2mysuint1(pg_catalog.bpchar)
+RETURNS ivymy.mysuint1
+AS 'MODULE_PATHNAME', 'mystext2mysuint1'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+CREATE CAST(pg_catalog.bpchar as ivymy.mysuint1) 
+WITH FUNCTION ivymy.mystext2mysuint1(pg_catalog.bpchar) 
+AS ASSIGNMENT;
+
+--
+-- cast (text as uint1)
+--
+CREATE FUNCTION ivymy.mystext2mysuint1(pg_catalog.text)
+RETURNS ivymy.mysuint1
+AS 'MODULE_PATHNAME', 'mystext2mysuint1'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+CREATE CAST(pg_catalog.text as ivymy.mysuint1) 
+WITH FUNCTION ivymy.mystext2mysuint1(pg_catalog.text) 
+AS ASSIGNMENT;
+
+--
+-- cast (bool as uint1)
+--
+CREATE FUNCTION ivymy.boolean_mysuint1(pg_catalog.bool) 
+RETURNS ivymy.mysuint1
+AS 'MODULE_PATHNAME','boolean_mysuint1'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (pg_catalog.bool AS ivymy.mysuint1)
+WITH FUNCTION ivymy.boolean_mysuint1(pg_catalog.bool)
+AS ASSIGNMENT;
+
 /* CREATE CAST */
 ---------- Compatible Postgresql Cast ----------
 CREATE CAST (ivymy.mysuint1 AS ivymy.mysuint4) WITH INOUT AS IMPLICIT;
@@ -1490,7 +1575,8 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel
+	join = eqjoinsel,
+	merges
 );
 
 CREATE OPERATOR = (
@@ -1500,7 +1586,8 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel
+	join = eqjoinsel,
+	merges
 );
 
 CREATE OPERATOR = (
@@ -1510,7 +1597,8 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel
+	join = eqjoinsel,
+	merges
 );
 
 CREATE OPERATOR = (
@@ -1520,7 +1608,8 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel
+	join = eqjoinsel,
+	merges
 );
 
 CREATE OPERATOR = (
@@ -1530,7 +1619,8 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel
+	join = eqjoinsel,
+	merges
 );
 
 CREATE OPERATOR = (
@@ -1540,7 +1630,8 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel
+	join = eqjoinsel,
+	merges
 );
 
 ----operator <>
@@ -1764,8 +1855,8 @@ CREATE OPERATOR <= (
 	rightarg = ivymy.mysuint1,
 	commutator = >=,
 	negator = >,
-	restrict = scalarltsel,
-	join = scalarltjoinsel
+	restrict = scalarlesel,
+	join = scalarlejoinsel
 );
 
 CREATE OPERATOR <= (
@@ -1774,8 +1865,8 @@ CREATE OPERATOR <= (
 	rightarg = pg_catalog.int2,
 	commutator = >=,
 	negator = >,
-	restrict = scalarltsel,
-	join = scalarltjoinsel
+	restrict = scalarlesel,
+	join = scalarlejoinsel
 );
 
 CREATE OPERATOR <= (
@@ -1784,8 +1875,8 @@ CREATE OPERATOR <= (
 	rightarg = pg_catalog.int4,
 	commutator = >=,
 	negator = >,
-	restrict = scalarltsel,
-	join = scalarltjoinsel
+	restrict = scalarlesel,
+	join = scalarlejoinsel
 );
 
 CREATE OPERATOR <= (
@@ -1794,8 +1885,8 @@ CREATE OPERATOR <= (
 	rightarg = pg_catalog.int8,
 	commutator = >=,
 	negator = >,
-	restrict = scalarltsel,
-	join = scalarltjoinsel
+	restrict = scalarlesel,
+	join = scalarlejoinsel
 );
 
 CREATE OPERATOR <= (
@@ -1804,8 +1895,8 @@ CREATE OPERATOR <= (
 	rightarg = ivymy.mysuint1,
 	commutator = >=,
 	negator = >,
-	restrict = scalarltsel,
-	join = scalarltjoinsel
+	restrict = scalarlesel,
+	join = scalarlejoinsel
 );
 
 CREATE OPERATOR <= (
@@ -1814,8 +1905,8 @@ CREATE OPERATOR <= (
 	rightarg = ivymy.mysuint1,
 	commutator = >=,
 	negator = >,
-	restrict = scalarltsel,
-	join = scalarltjoinsel
+	restrict = scalarlesel,
+	join = scalarlejoinsel
 );
 
 CREATE OPERATOR <= (
@@ -1824,8 +1915,8 @@ CREATE OPERATOR <= (
 	rightarg = ivymy.mysuint1,
 	commutator = >=,
 	negator = >,
-	restrict = scalarltsel,
-	join = scalarltjoinsel
+	restrict = scalarlesel,
+	join = scalarlejoinsel
 );
 
 --operator >=
@@ -1835,8 +1926,8 @@ CREATE OPERATOR >= (
 	rightarg = ivymy.mysuint1,
 	commutator = <=,
 	negator = <,
-	restrict = scalargtsel,
-	join = scalargtjoinsel
+	restrict = scalargesel,
+	join = scalargejoinsel
 );
 
 CREATE OPERATOR >= (
@@ -1845,8 +1936,8 @@ CREATE OPERATOR >= (
 	rightarg = pg_catalog.int2,
 	commutator = <=,
 	negator = <,
-	restrict = scalargtsel,
-	join = scalargtjoinsel
+	restrict = scalargesel,
+	join = scalargejoinsel
 );
 
 CREATE OPERATOR >= (
@@ -1855,8 +1946,8 @@ CREATE OPERATOR >= (
 	rightarg = pg_catalog.int4,
 	commutator = <=,
 	negator = <,
-	restrict = scalargtsel,
-	join = scalargtjoinsel
+	restrict = scalargesel,
+	join = scalargejoinsel
 );
 
 CREATE OPERATOR >= (
@@ -1865,8 +1956,8 @@ CREATE OPERATOR >= (
 	rightarg = pg_catalog.int8,
 	commutator = <=,
 	negator = <,
-	restrict = scalargtsel,
-	join = scalargtjoinsel
+	restrict = scalargesel,
+	join = scalargejoinsel
 );
 
 CREATE OPERATOR >= (
@@ -1875,8 +1966,8 @@ CREATE OPERATOR >= (
 	rightarg = ivymy.mysuint1,
 	commutator = <=,
 	negator = <,
-	restrict = scalargtsel,
-	join = scalargtjoinsel
+	restrict = scalargesel,
+	join = scalargejoinsel
 );
 
 CREATE OPERATOR >= (
@@ -1885,8 +1976,8 @@ CREATE OPERATOR >= (
 	rightarg = ivymy.mysuint1,
 	commutator = <=,
 	negator = <,
-	restrict = scalargtsel,
-	join = scalargtjoinsel
+	restrict = scalargesel,
+	join = scalargejoinsel
 );
 
 CREATE OPERATOR >= (
@@ -1895,8 +1986,8 @@ CREATE OPERATOR >= (
 	rightarg = ivymy.mysuint1,
 	commutator = <=,
 	negator = <,
-	restrict = scalargtsel,
-	join = scalargtjoinsel
+	restrict = scalargesel,
+	join = scalargejoinsel
 
 );
 
@@ -2549,6 +2640,24 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
+CREATE  OR REPLACE FUNCTION ivymy.mysuint1_like(ivymy.mysuint1, pg_catalog.text)
+RETURNS boolean
+AS 'MODULE_PATHNAME','mysuint1_text_like'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE  OR REPLACE FUNCTION ivymy.mysuint1_notlike(ivymy.mysuint1, pg_catalog.text)
+RETURNS boolean
+AS 'MODULE_PATHNAME','mysuint1_text_notlike'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
 CREATE  OR REPLACE FUNCTION ivymy.mysuint1_notlike(ivymy.mysuint1, ivymy.mysuint1)
 RETURNS boolean
 AS 'MODULE_PATHNAME','mysuint1_notlike'
@@ -2581,6 +2690,18 @@ CREATE OPERATOR ~~ (
 	rightarg = pg_catalog.int8
 );
 
+CREATE OPERATOR ~~ (
+	procedure = ivymy.mysuint1_like,
+	leftarg = ivymy.mysuint1,
+	rightarg = pg_catalog.text
+);
+
+CREATE OPERATOR !~~ (
+	procedure = ivymy.mysuint1_notlike,
+	leftarg = ivymy.mysuint1,
+	rightarg = pg_catalog.text
+);
+
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysuint1_notlike,
 	leftarg = ivymy.mysuint1,
@@ -2592,68 +2713,6 @@ CREATE OPERATOR !~~ (
 	leftarg = ivymy.mysuint1,
 	rightarg = pg_catalog.int8
 );
-
-/*
- * B-tree Index Support
- * Create Operator family 'mysuint1_ops' for type 'mysuint1'.
- */
-/* B-tree index support procedure */
-CREATE FUNCTION ivymy.mysuint1_cmp(ivymy.mysuint1, ivymy.mysuint1)
-RETURNS integer
-AS 'MODULE_PATHNAME','mysuint1_cmp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint1_sortsupport(internal)
-RETURNS void
-AS 'btint8sortsupport'
-LANGUAGE internal
-PARALLEL SAFE
-STRICT
-IMMUTABLE;
-
-/* Create Operator family 'mysuint1_ops' */
-CREATE OPERATOR FAMILY ivymy.mysuint1_ops USING btree;
-
-/* CREATE OPERATOR CLASS for 'oramysuint1' */
-CREATE OPERATOR CLASS ivymy.mysuint1_ops
-	DEFAULT FOR TYPE ivymy.mysuint1 USING btree FAMILY ivymy.mysuint1_ops AS
-		OPERATOR		1		< (ivymy.mysuint1, ivymy.mysuint1),
-		OPERATOR		2		<= (ivymy.mysuint1, ivymy.mysuint1),
-		OPERATOR		3		= (ivymy.mysuint1, ivymy.mysuint1),
-		OPERATOR		4		>= (ivymy.mysuint1, ivymy.mysuint1),
-		OPERATOR		5		> (ivymy.mysuint1, ivymy.mysuint1),
-		FUNCTION		1		ivymy.mysuint1_cmp(ivymy.mysuint1, ivymy.mysuint1),
-		FUNCTION		2		ivymy.mysuint1_sortsupport(internal);
-
-/* HASH index support */
-CREATE FUNCTION ivymy.mysuint1_hash(ivymy.mysuint1)
-RETURNS integer
-AS 'MODULE_PATHNAME','mysuint1_hash'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE;
-
-CREATE FUNCTION ivymy.mysuint1_hash_extended(ivymy.mysuint1, bigint)
-RETURNS bigint
-AS 'MODULE_PATHNAME','mysuint1_hash_extended'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE;
-
-
-CREATE OPERATOR CLASS ivymy.mysuint1_ops
-	DEFAULT FOR TYPE ivymy.mysuint1 USING hash AS
-		OPERATOR		1		= (ivymy.mysuint1, ivymy.mysuint1),
-		FUNCTION		1		ivymy.mysuint1_hash(ivymy.mysuint1),
-		FUNCTION		2		ivymy.mysuint1_hash_extended(ivymy.mysuint1, bigint);
-
-GRANT USAGE ON SCHEMA ivymy TO PUBLIC;
 
 --
 -- CREATE AGGREGATE 

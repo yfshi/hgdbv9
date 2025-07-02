@@ -5028,10 +5028,10 @@ List of access methods
 (7 rows)
 
 \dAf btree int4
-              List of operator families
-  AM   | Operator family |     Applicable types      
--------+-----------------+---------------------------
- btree | integer_ops     | smallint, integer, bigint
+                                  List of operator families
+  AM   | Operator family |                         Applicable types                          
+-------+-----------------+-------------------------------------------------------------------
+ btree | integer_ops     | smallint, integer, bigint, mysuint1, mysuint2, mysuint4, mysuint8
 (1 row)
 
 \dAo+ btree float_ops

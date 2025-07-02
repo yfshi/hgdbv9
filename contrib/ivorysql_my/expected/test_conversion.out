@@ -1338,29 +1338,9 @@ LINE 1: SELECT         c1::signed         FROM my_varbinary_t08;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as unsigned)      FROM my_varbinary_t08;
-WARNING:  invalid input syntax for type integer: "abcd"
-WARNING:  invalid input syntax for type integer: "1q2w"
-WARNING:  invalid input syntax for type integer: "q1w2"
-  c1  
-------
- 1234
- 0
- 1
- 0
-(4 rows)
-
+ERROR:  invalid input syntax for type integer: "abcd"
 SELECT convert(c1, unsigned)      FROM my_varbinary_t08;
-WARNING:  invalid input syntax for type integer: "abcd"
-WARNING:  invalid input syntax for type integer: "1q2w"
-WARNING:  invalid input syntax for type integer: "q1w2"
-  c1  
-------
- 1234
- 0
- 1
- 0
-(4 rows)
-
+ERROR:  invalid input syntax for type integer: "abcd"
 SELECT         c1::unsigned       FROM my_varbinary_t08;
 ERROR:  syntax error at or near "unsigned"
 LINE 1: SELECT         c1::unsigned       FROM my_varbinary_t08;

@@ -59,6 +59,7 @@ PG_FUNCTION_INFO_V1(mysuint1_scale);
 
 PG_FUNCTION_INFO_V1(int_mysuint1);
 PG_FUNCTION_INFO_V1(numeric_mysuint1);
+PG_FUNCTION_INFO_V1(boolean_mysuint1);
 
 PG_FUNCTION_INFO_V1(mysuint1_eq);
 PG_FUNCTION_INFO_V1(mysuint1_eqint2);
@@ -133,10 +134,6 @@ PG_FUNCTION_INFO_V1(mysuint1_subint8);
 PG_FUNCTION_INFO_V1(int2_submysuint1);
 PG_FUNCTION_INFO_V1(int4_submysuint1);
 PG_FUNCTION_INFO_V1(int8_submysuint1);
-
-PG_FUNCTION_INFO_V1(mysuint1_cmp);
-PG_FUNCTION_INFO_V1(mysuint1_hash);
-PG_FUNCTION_INFO_V1(mysuint1_hash_extended);
 
 PG_FUNCTION_INFO_V1(mysuint1_mulmysuint1);
 PG_FUNCTION_INFO_V1(mysuint1_mulint2);
@@ -236,8 +233,10 @@ PG_FUNCTION_INFO_V1(mysuint1_boolean);
 
 PG_FUNCTION_INFO_V1(mysuint1_like);
 PG_FUNCTION_INFO_V1(mysuint1_int8_like);
+PG_FUNCTION_INFO_V1(mysuint1_text_like);
 PG_FUNCTION_INFO_V1(mysuint1_notlike);
 PG_FUNCTION_INFO_V1(mysuint1_int8_notlike);
+PG_FUNCTION_INFO_V1(mysuint1_text_notlike);
 
 PG_FUNCTION_INFO_V1(mysuint1_larger);
 PG_FUNCTION_INFO_V1(mysuint1_smaller);
@@ -258,7 +257,7 @@ mysuint1_in(PG_FUNCTION_ARGS)
 {
 	char *num = PG_GETARG_CSTRING(0);
 
-	uint32 temp = pg_atoi_uint(num, '\0', 1, false);
+	uint32 temp = pg_atoi_uint(num, '\0', 1, true);
 
 	PG_RETURN_UINT32(temp);
 }
@@ -377,6 +376,12 @@ numeric_mysuint1(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT32(val2);
 }
+
+Datum
+boolean_mysuint1(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_UINT32(PG_GETARG_BOOL(0));
+}
 /*****************************************************************************
  *	 Operator Function														 *
  *****************************************************************************/
@@ -482,7 +487,8 @@ mysuint1_neint8(PG_FUNCTION_ARGS)
 }
 
 
-Datum int2_nemysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_nemysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
@@ -490,7 +496,8 @@ Datum int2_nemysuint1(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(val2 != val1);
 }
 
-Datum int4_nemysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_nemysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
@@ -498,7 +505,8 @@ Datum int4_nemysuint1(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(val2 != val1);
 }
 
-Datum int8_nemysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_nemysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1029,7 +1037,8 @@ int8_submysuint1(PG_FUNCTION_ARGS)
 }
 
 // *
-Datum mysuint1_mulmysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_mulmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
@@ -1040,7 +1049,8 @@ Datum mysuint1_mulmysuint1(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64(res);
 }
-Datum mysuint1_mulint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_mulint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
@@ -1051,7 +1061,8 @@ Datum mysuint1_mulint2(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64(res);
 }
-Datum mysuint1_mulint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_mulint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
@@ -1062,7 +1073,8 @@ Datum mysuint1_mulint4(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64(res);
 }
-Datum mysuint1_mulint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_mulint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1074,7 +1086,8 @@ Datum mysuint1_mulint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(res);
 }
 
-Datum int2_mulmysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_mulmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
@@ -1085,7 +1098,8 @@ Datum int2_mulmysuint1(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64(res);
 }
-Datum int4_mulmysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_mulmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
@@ -1096,7 +1110,8 @@ Datum int4_mulmysuint1(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64(res);
 }
-Datum int8_mulmysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_mulmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1109,7 +1124,8 @@ Datum int8_mulmysuint1(PG_FUNCTION_ARGS)
 }
 
 // div
-Datum mysuint1_divmysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_divmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
@@ -1127,7 +1143,8 @@ Datum mysuint1_divmysuint1(PG_FUNCTION_ARGS)
 	PG_RETURN_NUMERIC(res);
 	
 }
-Datum mysuint1_divint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_divint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
@@ -1144,7 +1161,8 @@ Datum mysuint1_divint2(PG_FUNCTION_ARGS)
 
 	PG_RETURN_NUMERIC(res);
 }
-Datum mysuint1_divint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_divint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
@@ -1161,7 +1179,8 @@ Datum mysuint1_divint4(PG_FUNCTION_ARGS)
 
 	PG_RETURN_NUMERIC(res);
 }
-Datum mysuint1_divint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_divint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1179,7 +1198,8 @@ Datum mysuint1_divint8(PG_FUNCTION_ARGS)
 	PG_RETURN_NUMERIC(res);
 }
 
-Datum int2_divmysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_divmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
@@ -1196,7 +1216,8 @@ Datum int2_divmysuint1(PG_FUNCTION_ARGS)
 
 	PG_RETURN_NUMERIC(res);
 }
-Datum int4_divmysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_divmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
@@ -1213,7 +1234,8 @@ Datum int4_divmysuint1(PG_FUNCTION_ARGS)
 
 	PG_RETURN_NUMERIC(res);
 }
-Datum int8_divmysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_divmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1232,7 +1254,8 @@ Datum int8_divmysuint1(PG_FUNCTION_ARGS)
 }
 
 // exact_div
-Datum mysuint1_exact_divmysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_exact_divmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
@@ -1249,7 +1272,8 @@ Datum mysuint1_exact_divmysuint1(PG_FUNCTION_ARGS)
 	
 	PG_RETURN_UINT32(val1 / val2);
 }
-Datum mysuint1_exact_divint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_exact_divint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
@@ -1265,7 +1289,8 @@ Datum mysuint1_exact_divint2(PG_FUNCTION_ARGS)
 	}	
 	PG_RETURN_UINT32(val1 / val2);
 }
-Datum mysuint1_exact_divint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_exact_divint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
@@ -1282,7 +1307,8 @@ Datum mysuint1_exact_divint4(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT32(val1 / val2);
 }
-Datum mysuint1_exact_divint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_exact_divint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1299,7 +1325,8 @@ Datum mysuint1_exact_divint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(val1 / val2);
 }
 
-Datum int2_exact_divmysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_exact_divmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
@@ -1316,7 +1343,8 @@ Datum int2_exact_divmysuint1(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT32(val2 / val1);
 }
-Datum int4_exact_divmysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_exact_divmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
@@ -1333,7 +1361,8 @@ Datum int4_exact_divmysuint1(PG_FUNCTION_ARGS)
 	
 	PG_RETURN_UINT32(val2 / val1);
 }
-Datum int8_exact_divmysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_exact_divmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1353,7 +1382,8 @@ Datum int8_exact_divmysuint1(PG_FUNCTION_ARGS)
 
 
 // mod
-Datum mysuint1_modmysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_modmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
@@ -1369,7 +1399,8 @@ Datum mysuint1_modmysuint1(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT32(val1 % val2);
 }
-Datum mysuint1_modint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_modint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
@@ -1386,7 +1417,8 @@ Datum mysuint1_modint2(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT32(val1 % val2);
 }
-Datum mysuint1_modint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_modint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
@@ -1402,7 +1434,8 @@ Datum mysuint1_modint4(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT32(val1 % val2);
 }
-Datum mysuint1_modint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_modint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1419,7 +1452,8 @@ Datum mysuint1_modint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(val1 % val2);
 }
 
-Datum int2_modmysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_modmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
@@ -1436,7 +1470,8 @@ Datum int2_modmysuint1(PG_FUNCTION_ARGS)
 
 	PG_RETURN_INT64(val2 % val1);
 }
-Datum int4_modmysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_modmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
@@ -1452,7 +1487,8 @@ Datum int4_modmysuint1(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_INT64(val2 % val1);
 }
-Datum int8_modmysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_modmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1470,14 +1506,16 @@ Datum int8_modmysuint1(PG_FUNCTION_ARGS)
 }
 
 // bitand
-Datum mysuint1_bitandmysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitandmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
 
 	PG_RETURN_UINT64(val1 & val2);
 }
-Datum mysuint1_bitandint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitandint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
@@ -1485,14 +1523,16 @@ Datum mysuint1_bitandint2(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT64(val1 & val2);
 }
-Datum mysuint1_bitandint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitandint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
 
 	PG_RETURN_UINT64(val1 & val2);
 }
-Datum mysuint1_bitandint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitandint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1500,21 +1540,24 @@ Datum mysuint1_bitandint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(val1 & val2);
 }
 
-Datum int2_bitandmysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_bitandmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
 
 	PG_RETURN_UINT64(val2 & val1);
 }
-Datum int4_bitandmysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_bitandmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
 
 	PG_RETURN_UINT64(val2 & val1);
 }
-Datum int8_bitandmysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_bitandmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1523,28 +1566,32 @@ Datum int8_bitandmysuint1(PG_FUNCTION_ARGS)
 }
 
 // bitor
-Datum mysuint1_bitormysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
 
 	PG_RETURN_UINT64(val1 | val2);
 }
-Datum mysuint1_bitorint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitorint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
 
 	PG_RETURN_UINT64(val1 | val2);
 }
-Datum mysuint1_bitorint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitorint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
 
 	PG_RETURN_UINT64(val1 | val2);
 }
-Datum mysuint1_bitorint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitorint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1552,21 +1599,24 @@ Datum mysuint1_bitorint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(val1 | val2);
 }
 
-Datum int2_bitormysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_bitormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
 
 	PG_RETURN_UINT64(val2 | val1);
 }
-Datum int4_bitormysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_bitormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
 
 	PG_RETURN_UINT64(val2 | val1);
 }
-Datum int8_bitormysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_bitormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1576,7 +1626,8 @@ Datum int8_bitormysuint1(PG_FUNCTION_ARGS)
 
 
 // nega
-Datum mysuint1_negamysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_negamysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint64		res;
@@ -1586,28 +1637,32 @@ Datum mysuint1_negamysuint1(PG_FUNCTION_ARGS)
 }
 
 // bitxor
-Datum mysuint1_bitxormysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitxormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
 
 	PG_RETURN_UINT64(val1 ^ val2);
 }
-Datum mysuint1_bitxorint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitxorint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
 
 	PG_RETURN_UINT64(val1 ^ val2);
 }
-Datum mysuint1_bitxorint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitxorint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
 
 	PG_RETURN_UINT64(val1 ^ val2);
 }
-Datum mysuint1_bitxorint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bitxorint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1615,21 +1670,24 @@ Datum mysuint1_bitxorint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(val1 ^ val2);
 }
 
-Datum int2_bitxormysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_bitxormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
 
 	PG_RETURN_UINT64(val2 ^ val1);
 }
-Datum int4_bitxormysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_bitxormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
 
 	PG_RETURN_UINT64(val2 ^ val1);
 }
-Datum int8_bitxormysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_bitxormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1639,7 +1697,8 @@ Datum int8_bitxormysuint1(PG_FUNCTION_ARGS)
 
 
 // right move
-Datum mysuint1_rightmovmysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_rightmovmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
@@ -1651,7 +1710,8 @@ Datum mysuint1_rightmovmysuint1(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT64((uint64)val1 >> val2);
 }
-Datum mysuint1_rightmovint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_rightmovint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
@@ -1662,7 +1722,8 @@ Datum mysuint1_rightmovint2(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64((uint64)val1 >> val2);
 }
-Datum mysuint1_rightmovint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_rightmovint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
@@ -1673,7 +1734,8 @@ Datum mysuint1_rightmovint4(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64((uint64)val1 >> val2);
 }
-Datum mysuint1_rightmovint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_rightmovint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1685,7 +1747,8 @@ Datum mysuint1_rightmovint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64((uint64)val1 >> val2);
 }
 
-Datum int2_rightmovmysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_rightmovmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
@@ -1696,7 +1759,8 @@ Datum int2_rightmovmysuint1(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64(val2 >> val1);
 }
-Datum int4_rightmovmysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_rightmovmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
@@ -1707,7 +1771,8 @@ Datum int4_rightmovmysuint1(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64(val2 >> val1);
 }
-Datum int8_rightmovmysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_rightmovmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1721,7 +1786,8 @@ Datum int8_rightmovmysuint1(PG_FUNCTION_ARGS)
 
 
 // left move
-Datum mysuint1_leftmovmysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_leftmovmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
@@ -1732,7 +1798,8 @@ Datum mysuint1_leftmovmysuint1(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64((uint64)val1 << val2);
 }
-Datum mysuint1_leftmovint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_leftmovint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
@@ -1743,7 +1810,8 @@ Datum mysuint1_leftmovint2(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64((uint64)val1 << val2);
 }
-Datum mysuint1_leftmovint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_leftmovint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
@@ -1754,7 +1822,8 @@ Datum mysuint1_leftmovint4(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64((uint64)val1 << val2);
 }
-Datum mysuint1_leftmovint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_leftmovint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1766,7 +1835,8 @@ Datum mysuint1_leftmovint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64((uint64)val1 << val2);
 }
 
-Datum int2_leftmovmysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_leftmovmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
@@ -1777,7 +1847,8 @@ Datum int2_leftmovmysuint1(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64(val2 << val1);
 }
-Datum int4_leftmovmysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_leftmovmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
@@ -1788,7 +1859,8 @@ Datum int4_leftmovmysuint1(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_UINT64(val2 << val1);
 }
-Datum int8_leftmovmysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_leftmovmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1801,7 +1873,8 @@ Datum int8_leftmovmysuint1(PG_FUNCTION_ARGS)
 }
 
 //BIT_COUNT
-Datum mysuint1_bit_count(PG_FUNCTION_ARGS)
+Datum
+mysuint1_bit_count(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint32			count = 0;
@@ -1816,28 +1889,32 @@ Datum mysuint1_bit_count(PG_FUNCTION_ARGS)
 }
 
 // and &&
-Datum mysuint1_andmysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_andmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
 
 	PG_RETURN_UINT32(val1 && val2);
 }
-Datum mysuint1_andint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_andint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
 
 	PG_RETURN_UINT32(val1 && val2);
 }
-Datum mysuint1_andint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_andint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
 
 	PG_RETURN_UINT32(val1 && val2);
 }
-Datum mysuint1_andint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_andint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1845,21 +1922,24 @@ Datum mysuint1_andint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT32(val1 && val2);
 }
 
-Datum int2_andmysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_andmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
 
 	PG_RETURN_UINT32(val2 && val1);
 }
-Datum int4_andmysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_andmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
 
 	PG_RETURN_UINT32(val2 && val1);
 }
-Datum int8_andmysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_andmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1868,28 +1948,32 @@ Datum int8_andmysuint1(PG_FUNCTION_ARGS)
 }
 
 // or ||
-Datum mysuint1_ormysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_ormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
 
 	PG_RETURN_UINT32(val1 || val2);
 }
-Datum mysuint1_orint2(PG_FUNCTION_ARGS)
+Datum
+mysuint1_orint2(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int16		val2 = PG_GETARG_INT16(1);
 
 	PG_RETURN_UINT32(val1 || val2);
 }
-Datum mysuint1_orint4(PG_FUNCTION_ARGS)
+Datum
+mysuint1_orint4(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int32		val2 = PG_GETARG_INT32(1);
 
 	PG_RETURN_UINT32(val1 || val2);
 }
-Datum mysuint1_orint8(PG_FUNCTION_ARGS)
+Datum
+mysuint1_orint8(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1897,21 +1981,24 @@ Datum mysuint1_orint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT32(val1 || val2);
 }
 
-Datum int2_ormysuint1(PG_FUNCTION_ARGS)
+Datum
+int2_ormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int16		val2 = PG_GETARG_INT16(0);
 
 	PG_RETURN_UINT32(val2 || val1);
 }
-Datum int4_ormysuint1(PG_FUNCTION_ARGS)
+Datum
+int4_ormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int32		val2 = PG_GETARG_INT32(0);
 
 	PG_RETURN_UINT32(val2 || val1);
 }
-Datum int8_ormysuint1(PG_FUNCTION_ARGS)
+Datum
+int8_ormysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(1);
 	int64		val2 = PG_GETARG_INT64(0);
@@ -1921,7 +2008,8 @@ Datum int8_ormysuint1(PG_FUNCTION_ARGS)
 
 
 // invert ! 
-Datum mysuint1_invertmysuint1(PG_FUNCTION_ARGS)
+Datum
+mysuint1_invertmysuint1(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 
@@ -1929,43 +2017,17 @@ Datum mysuint1_invertmysuint1(PG_FUNCTION_ARGS)
 }
 
 // mysuint1 to boolean
-Datum mysuint1_boolean(PG_FUNCTION_ARGS)
+Datum
+mysuint1_boolean(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 
 	PG_RETURN_BOOL(val1 != 0);
 }
 
-/*****************************************************************************
- *	 B-tree index support procedure
- *****************************************************************************/
-Datum
-mysuint1_cmp(PG_FUNCTION_ARGS)
-{
-	uint8		val1 = PG_GETARG_UINT32(0);
-	uint8		val2 = PG_GETARG_UINT32(1);
-
-	if (val1 < val2)
-		PG_RETURN_INT32(-1);
-	else if (val1 > val2)
-		PG_RETURN_INT32(1);
-	PG_RETURN_INT32(0);
-}
-
-Datum
-mysuint1_hash(PG_FUNCTION_ARGS)
-{
-	return hashint4(fcinfo);
-}
-
-Datum
-mysuint1_hash_extended(PG_FUNCTION_ARGS)
-{
-	return hashint4extended(fcinfo);
-}
-
 //like
-Datum mysuint1_like(PG_FUNCTION_ARGS)
+Datum
+mysuint1_like(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
@@ -1973,7 +2035,8 @@ Datum mysuint1_like(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(val1 == val2);
 }
 
-Datum mysuint1_int8_like(PG_FUNCTION_ARGS)
+Datum
+mysuint1_int8_like(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -1984,7 +2047,25 @@ Datum mysuint1_int8_like(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(val1 == val2);
 }
 
-Datum mysuint1_notlike(PG_FUNCTION_ARGS)
+Datum
+mysuint1_text_like(PG_FUNCTION_ARGS)
+{
+	uint32		val1 = PG_GETARG_UINT32(0);
+	Datum		val2 = PG_GETARG_DATUM(1);
+	text		*val1text = NULL;
+	bool		result =false;
+	char		*val1str = (char *)palloc(32); /* sign, 11 digits, '\0' */
+
+	pg_lltoa(val1, val1str);
+
+	val1text = cstring_to_text(val1str);
+	result = DatumGetBool(DirectFunctionCall2(textlike, Int64GetDatum(val1text), val2));
+
+	PG_RETURN_BOOL(result);
+}
+
+Datum
+mysuint1_notlike(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
@@ -1992,7 +2073,8 @@ Datum mysuint1_notlike(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(val1 != val2);
 }
 
-Datum mysuint1_int8_notlike(PG_FUNCTION_ARGS)
+Datum
+mysuint1_int8_notlike(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -2003,8 +2085,26 @@ Datum mysuint1_int8_notlike(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(val1 != val2);
 }
 
+Datum
+mysuint1_text_notlike(PG_FUNCTION_ARGS)
+{
+	uint32		val1 = PG_GETARG_UINT32(0);
+	Datum		val2 = PG_GETARG_DATUM(1);
+	text		*val1text = NULL;
+	bool		result =false;
+	char		*val1str = (char *)palloc(32); /* sign, 11 digits, '\0' */
+
+	pg_lltoa(val1, val1str);
+
+	val1text = cstring_to_text(val1str);
+	result = DatumGetBool(DirectFunctionCall2(textnlike, Int64GetDatum(val1text), val2));
+
+	PG_RETURN_BOOL(result);
+}
+
 /* AGGREGATE */
-Datum mysuint1_larger(PG_FUNCTION_ARGS)
+Datum
+mysuint1_larger(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
@@ -2012,7 +2112,8 @@ Datum mysuint1_larger(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT32(val1 > val2 ? val1 : val2);
 }
 
-Datum mysuint1_smaller(PG_FUNCTION_ARGS)
+Datum
+mysuint1_smaller(PG_FUNCTION_ARGS)
 {
 	uint8		val1 = PG_GETARG_UINT32(0);
 	uint8		val2 = PG_GETARG_UINT32(1);
@@ -2020,7 +2121,8 @@ Datum mysuint1_smaller(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT32(val1 < val2 ? val1 : val2);
 }
 
-Datum mysuint1_avg_accum(PG_FUNCTION_ARGS)
+Datum
+mysuint1_avg_accum(PG_FUNCTION_ARGS)
 {
 	ArrayType  *transarray;
 	uint8		newval = 0;
@@ -2053,7 +2155,8 @@ Datum mysuint1_avg_accum(PG_FUNCTION_ARGS)
 	PG_RETURN_ARRAYTYPE_P(transarray);
 }
 
-Datum mysuint1_sum(PG_FUNCTION_ARGS)
+Datum
+mysuint1_sum(PG_FUNCTION_ARGS)
 {
 	uint8		newval;
 

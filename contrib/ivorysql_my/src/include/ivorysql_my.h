@@ -33,6 +33,10 @@
 #define YEAR2_BOUND_BETWEEN_20C_21C     70
 #define YEAR2_IN_RANGE(x)               ((x) >= 0 && (x) <= 99)
 
+#define A_LESS_THAN_B                   (-1)
+#define A_GREATER_THAN_B                (1)
+#define A_EQUAL_B                       (0)
+
 typedef unsigned char uchar;
 
 extern bytea *hexstring_varbinary(const char *value);/* BUG#5048 5070 */
