@@ -144,7 +144,9 @@ pg_fe_scram_channel_bound(void *opaq)
 	/* channel binding mechanism not used */
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (strcmp(state->sasl_mechanism, SCRAM_SHA_256_PLUS_NAME) != 0
+#ifdef USE_GMSSL
 	&& strcmp(state->sasl_mechanism, SCRAM_SM3_PLUS_NAME) != 0
+#endif
 	)
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		return false;
@@ -394,7 +396,9 @@ build_client_first_message(fe_scram_state *state)
 	 */
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (strcmp(state->sasl_mechanism, SCRAM_SHA_256_PLUS_NAME) == 0
+#ifdef USE_GMSSL
 	|| strcmp(state->sasl_mechanism, SCRAM_SM3_PLUS_NAME) == 0
+#endif
 	)
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	{
@@ -405,8 +409,10 @@ build_client_first_message(fe_scram_state *state)
 	else if (conn->channel_binding[0] != 'd' && /* disable */
 			 conn->ssl_in_use
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
 			&& !(strcmp(state->sasl_mechanism, SCRAM_SHA256_SM3_NAME) == 0 ||
 				strcmp(state->sasl_mechanism, SCRAM_SM3_SHA256_NAME) == 0)
+#endif
 	)
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	{
@@ -479,7 +485,9 @@ build_client_final_message(fe_scram_state *state)
 	 */
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (strcmp(state->sasl_mechanism, SCRAM_SHA_256_PLUS_NAME) == 0
+#ifdef USE_GMSSL
 	|| strcmp(state->sasl_mechanism, SCRAM_SM3_PLUS_NAME) == 0
+#endif
 	)
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	{
@@ -555,8 +563,10 @@ build_client_final_message(fe_scram_state *state)
 	else if (conn->channel_binding[0] != 'd' && /* disable */
 			 conn->ssl_in_use
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
 			&& !(strcmp(state->sasl_mechanism, SCRAM_SHA256_SM3_NAME) == 0 ||
 				strcmp(state->sasl_mechanism, SCRAM_SM3_SHA256_NAME) == 0)
+#endif
 				)
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		appendPQExpBufferStr(&buf, "c=eSws");	/* base64 of "y,," */
@@ -804,7 +814,9 @@ calculate_client_proof(fe_scram_state *state,
 	pg_hmac_ctx *ctx = NULL;
 
 	if (strcmp(state->sasl_mechanism, "SCRAM-SHA-256") == 0 
+#ifdef USE_GMSSL
 		|| strcmp(state->sasl_mechanism, "SCRAM-SM3-SHA256") == 0
+#endif
 		|| strcmp(state->sasl_mechanism, "SCRAM-SHA-256-PLUS") == 0){
         ctx = pg_hmac_create(PG_SHA256);
     }
@@ -868,7 +880,9 @@ verify_server_signature(fe_scram_state *state, bool *match)
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (strcmp(state->sasl_mechanism, "SCRAM-SHA-256") == 0 
+#ifdef USE_GMSSL
 		|| strcmp(state->sasl_mechanism, "SCRAM-SM3-SHA256") == 0
+#endif
 		|| strcmp(state->sasl_mechanism, "SCRAM-SHA-256-PLUS") == 0){
         ctx = pg_hmac_create(PG_SHA256);
     }

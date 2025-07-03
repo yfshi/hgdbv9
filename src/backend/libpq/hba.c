@@ -129,13 +129,17 @@ static const char *const UserAuthName[] =
 	"password",
 	"md5",
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
 	"sm3",
 	"md5sm3",
 	"sm3md5",
+#endif
 	"scram-sha-256",
+#ifdef USE_GMSSL
 	"scram-sm3",
 	"scram-sha256-sm3",
 	"scram-sm3-sha256",
+#endif
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	"gss",
 	"sspi",
@@ -1384,6 +1388,7 @@ parse_hba_line(TokenizedLine *tok_line, int elevel)
 		}
 		parsedline->auth_method = uaMD5;
 	}
+#ifdef USE_GMSSL
 	else if (strncmp(token->string, "sm3", strlen("sm3")) == 0)
 	{
 		if (Db_user_namespace)
@@ -1398,10 +1403,13 @@ parse_hba_line(TokenizedLine *tok_line, int elevel)
 		}
 		parsedline->auth_method = uaSM3;
 	}
+#endif
 	else if (strncmp(token->string, "scram-sha-256", strlen("scram-sha-256")) == 0)
 		parsedline->auth_method = uaSCRAMsha256;
+#ifdef USE_GMSSL
 	else if (strncmp(token->string, "scram-sm3", strlen("scram-sm3")) == 0)
 		parsedline->auth_method = uaSCRAMsm3;
+#endif
 	else if (strncmp(token->string, "pam", strlen("pam")) == 0)
 #ifdef USE_PAM
 		parsedline->auth_method = uaPAM;

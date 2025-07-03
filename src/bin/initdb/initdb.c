@@ -97,7 +97,10 @@
 extern const char *select_default_timezone(const char *share_path);
 
 static const char *const auth_methods_host[] = {
-	"trust", "reject", "scram-sha-256", "scram-sm3", "sm3", "md5", "password", "ident", "radius", // ReqID:SRS-SECURITY-IDENTITYAUTH
+	"trust", "reject", "scram-sha-256", "md5", "password", "ident", "radius", 
+#ifdef USE_GMSSL
+	"scram-sm3", "sm3",	// ReqID:SRS-SECURITY-IDENTITYAUTH
+#endif
 #ifdef ENABLE_GSS
 	"gss",
 #endif
@@ -119,7 +122,10 @@ static const char *const auth_methods_host[] = {
 	NULL
 };
 static const char *const auth_methods_local[] = {
-	"trust", "reject", "scram-sha-256", "scram-sm3", "sm3", "md5", "password", "peer", "radius", // ReqID:SRS-SECURITY-IDENTITYAUTH
+	"trust", "reject", "scram-sha-256", "md5", "password", "peer", "radius",
+#ifdef USE_GMSSL
+	"scram-sm3", "sm3",  // ReqID:SRS-SECURITY-IDENTITYAUTH
+#endif
 #ifdef USE_PAM
 	"pam", "pam ",
 #endif
@@ -1379,7 +1385,7 @@ setup_config(void)
 	 * authentication method, unless scram-sha-256 was also chosen.
 	 */
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-
+#ifdef USE_GMSSL
 	if (strcmp(authmethodlocal, "scram-sm3") == 0 &&
 		 strcmp(authmethodhost, "scram-sm3") == 0)
 	{
@@ -1392,7 +1398,9 @@ setup_config(void)
 		conflines = replace_token(conflines,
 								  "#password_encryption = scram-sha-256",
 								  "password_encryption = sm3");
-	}else if (strcmp(authmethodlocal, "md5") == 0 &&
+	}else
+#endif
+	if (strcmp(authmethodlocal, "md5") == 0 &&
 		 strcmp(authmethodhost, "md5") == 0)
 	{
 		conflines = replace_token(conflines,
@@ -2918,14 +2926,19 @@ check_need_password(const char *authmethodlocal, const char *authmethodhost)
 {
 	if ((strcmp(authmethodlocal, "md5") == 0 ||
 		 strcmp(authmethodlocal, "password") == 0 ||
-		 strcmp(authmethodlocal, "scram-sha-256") == 0 ||
-		 strcmp(authmethodlocal, "scram-sm3") == 0 ||
-		 strcmp(authmethodlocal, "sm3") == 0) &&
-		(strcmp(authmethodhost, "md5") == 0 ||
+		 strcmp(authmethodlocal, "scram-sha-256") == 0
+#ifdef USE_GMSSL
+		|| strcmp(authmethodlocal, "scram-sm3") == 0 ||
+		 strcmp(authmethodlocal, "sm3") == 0
+#endif
+		) && (strcmp(authmethodhost, "md5") == 0 ||
 		 strcmp(authmethodhost, "password") == 0 ||
-		 strcmp(authmethodhost, "scram-sha-256") == 0 ||
-		 strcmp(authmethodhost, "sm3") == 0 ||
-		 strcmp(authmethodhost, "scram-sm3") == 0) &&
+		 strcmp(authmethodhost, "scram-sha-256") == 0
+#ifdef USE_GMSSL
+		 || strcmp(authmethodhost, "sm3") == 0 ||
+		 strcmp(authmethodhost, "scram-sm3") == 0
+#endif
+		) &&
 		!(pwprompt || pwfilename))
 	{
 		pg_log_error("must specify a password for the superuser to enable password authentication");

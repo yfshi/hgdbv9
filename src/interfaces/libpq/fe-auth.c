@@ -39,7 +39,9 @@
 #endif
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
 #include "common/sm3.h"
+#endif
 #include "common/string.h"
 #include "common/base64.h"
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -478,7 +480,9 @@ pg_SASL_init(PGconn *conn, int payloadlen)
 		 * more refined priority mechanism might become necessary.
 		 */
 		if (strcmp(mechanism_buf.data, SCRAM_SHA_256_PLUS_NAME) == 0
+#ifdef USE_GMSSL
 		|| strcmp(mechanism_buf.data, SCRAM_SM3_PLUS_NAME) == 0
+#endif
 		)
 		{
 			if (conn->ssl_in_use)
@@ -493,8 +497,10 @@ pg_SASL_init(PGconn *conn, int payloadlen)
 				if (conn->channel_binding[0] != 'd'){	/* disable */
 					if (strcmp(mechanism_buf.data, SCRAM_SHA_256_PLUS_NAME) == 0)
 						selected_mechanism = SCRAM_SHA_256_PLUS_NAME;
-					else
+#ifdef USE_GMSSL
+					else if (strcmp(mechanism_buf.data, SCRAM_SM3_PLUS_NAME) == 0)
 						selected_mechanism = SCRAM_SM3_PLUS_NAME;
+#endif
 
 				}
 				/*
@@ -530,6 +536,7 @@ pg_SASL_init(PGconn *conn, int payloadlen)
 		else if (strcmp(mechanism_buf.data, SCRAM_SHA_256_NAME) == 0 &&
 				 !selected_mechanism)
 			selected_mechanism = SCRAM_SHA_256_NAME;
+#ifdef USE_GMSSL
         else if (strcmp(mechanism_buf.data, SCRAM_SM3_NAME) == 0 &&
 				 !selected_mechanism)
 			selected_mechanism = SCRAM_SM3_NAME;
@@ -539,6 +546,7 @@ pg_SASL_init(PGconn *conn, int payloadlen)
         else if (strcmp(mechanism_buf.data, SCRAM_SHA256_SM3_NAME) == 0 &&
 				 !selected_mechanism)
 			selected_mechanism = SCRAM_SHA256_SM3_NAME;
+#endif
 	}
 
 	if (!selected_mechanism)
@@ -550,7 +558,9 @@ pg_SASL_init(PGconn *conn, int payloadlen)
 
 	if (conn->channel_binding[0] == 'r' &&	/* require */
 		strcmp(selected_mechanism, SCRAM_SHA_256_PLUS_NAME) != 0
+#ifdef USE_GMSSL
 		&& strcmp(selected_mechanism, SCRAM_SM3_PLUS_NAME) != 0
+#endif
 		)
 	{
 		appendPQExpBufferStr(&conn->errorMessage,
@@ -1543,11 +1553,15 @@ PQencryptPasswordConn(PGconn *conn, const char *passwd, const char *user,
 	{
 		crypt_pwd = pg_fe_scram_build_secret("SCRAM-SHA-256", passwd);
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	}else if (strcmp(algorithm, "scram-sm3") == 0)
+	}
+#ifdef USE_GMSSL
+	else if (strcmp(algorithm, "scram-sm3") == 0)
 	{
 		crypt_pwd = pg_fe_scram_build_secret("SCRAM-SM3", passwd);
+	}
+#endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	}else if (strcmp(algorithm, "md5") == 0)
+	else if (strcmp(algorithm, "md5") == 0)
 	{
 		crypt_pwd = malloc(MD5_PASSWD_LEN + 1);
 		if (crypt_pwd)

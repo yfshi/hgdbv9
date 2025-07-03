@@ -20,10 +20,12 @@
 #define SCRAM_SHA_256_NAME "SCRAM-SHA-256"
 #define SCRAM_SHA_256_PLUS_NAME "SCRAM-SHA-256-PLUS"	/* with channel binding */
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
 #define SCRAM_SM3_NAME "SCRAM-SM3"
 #define SCRAM_SM3_PLUS_NAME "SCRAM-SM3-PLUS"	/* with channel binding */
 #define SCRAM_SM3_SHA256_NAME "SCRAM-SM3-SHA256"
 #define SCRAM_SHA256_SM3_NAME "SCRAM-SHA256-SM3"
+#endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 /* Length of SCRAM keys (client and server) */
 #define SCRAM_KEY_LEN				PG_SHA256_DIGEST_LENGTH

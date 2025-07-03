@@ -30,7 +30,9 @@
 #include "commands/dbcommands.h"
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
 #include "common/sm3.h"
+#endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 /*
@@ -395,8 +397,11 @@ plain_crypt_verify(const char *role, const char *shadow_pass,
 				   const char *client_pass,
 				   char **logdetail)
 {
+#ifdef USE_GMSSL
 	char		crypt_client_pass[SM3_PASSWD_LEN + 1];
-
+#else
+	char		crypt_client_pass[MD5_PASSWD_LEN + 1];
+#endif
 	/*
 	 * Client sent password in plaintext.  If we have an MD5 hash stored, hash
 	 * the password the client sent, and compare the hashes.  Otherwise

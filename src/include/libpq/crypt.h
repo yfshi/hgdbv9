@@ -46,6 +46,7 @@ extern int	md5_crypt_verify(const char *role, const char *shadow_pass,
 							 const char *client_pass, const char *md5_salt,
 							 int md5_salt_len, char **logdetail);
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
 extern int sm3_crypt_verify(const char *role, const char *shadow_pass,
 				 const char *client_pass,
 				 const char *sm3_salt, int sm3_salt_len,
@@ -61,6 +62,7 @@ sm3_md5_crypt_verify(const char *role, const char *shadow_pass,
 				 const char *client_pass,
 				 const char *md5_salt, int md5_salt_len,
 				 char **logdetail);
+#endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 extern int	plain_crypt_verify(const char *role, const char *shadow_pass,

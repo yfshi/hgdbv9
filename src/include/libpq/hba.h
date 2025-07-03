@@ -31,13 +31,17 @@ typedef enum UserAuth
 	uaPassword,
 	uaMD5,
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+#ifdef USE_GMSSL
 	uaSM3,
 	uaMD5SM3,
 	uaSM3MD5,
+#endif
 	uaSCRAMsha256,
+#ifdef USE_GMSSL
 	uaSCRAMsm3,
 	uaSCRAMsm3sha256,
 	uaSCRAMsha256sm3,
+#endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	uaGSS,
 	uaSSPI,
