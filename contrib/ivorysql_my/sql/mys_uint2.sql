@@ -513,6 +513,7 @@ DROP TABLE t_aggregate;
 
 create table t1 (col_uint int2 unsigned);
 insert into t1 values (100);
+insert into t1 values(65535),(65534),(65530);
 select -col_uint from t1;
 DROP TABLE t1;
 

@@ -2738,6 +2738,20 @@ select -col_uint from t1;
      -100
 (1 row)
 
+insert into t1 values (4294967295);
+select -col_uint from t1;
+  ?column?   
+-------------
+        -100
+ -4294967295
+(2 rows)
+
+insert into t1 values (4294967296);
+select -col_uint from t1;
+ERROR:  BIGINT unsigned out of range
+insert into t1 values(18446744073709551615),(18446744073709551610),(1844674407370955150);
+select -col_uint from t1;
+ERROR:  BIGINT unsigned out of range
 DROP TABLE t1;
 create table t1(id in1 signed);
 ERROR:  type "in1" does not exist
@@ -2940,3 +2954,32 @@ select * from t_like_operator where id not like '_8';
 (6 rows)
 
 drop table t_like_operator;
+create table t_binary_operators (col_uint3 int3 unsigned,col_int8 int8);
+insert into t_binary_operators values (65535,65535),(500000,3),(1,5),(0,0);
+select col_int8 AND col_uint3 from t_binary_operators;
+ ?column? 
+----------
+ t
+ t
+ t
+ f
+(4 rows)
+
+select col_int8 OR col_uint3 from t_binary_operators;
+ ?column? 
+----------
+ t
+ t
+ t
+ f
+(4 rows)
+
+select col_int8 XOR col_uint3 from t_binary_operators;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+(4 rows)
+

@@ -225,6 +225,7 @@ PG_FUNCTION_INFO_V1(int8_ormysuint8);
 
 PG_FUNCTION_INFO_V1(mysuint8_invertmysuint8);
 
+PG_FUNCTION_INFO_V1(int8_boolean);
 PG_FUNCTION_INFO_V1(mysuint8_boolean);
 PG_FUNCTION_INFO_V1(mysuint8_numeric);
 
@@ -964,8 +965,12 @@ Datum
 mysuint8_negative(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-
-	PG_RETURN_INT64(-((int64)val1));
+	int64		tempvalue = (int64)val1;
+	if (tempvalue > PG_UINT32_MAX)
+	{
+        ereport(ERROR, (errmsg("BIGINT unsigned out of range")));
+	}	
+	PG_RETURN_INT64(-tempvalue);
 }
 
 Datum
@@ -2029,6 +2034,16 @@ mysuint8_invertmysuint8(PG_FUNCTION_ARGS)
 	uint64		val1 = PG_GETARG_INT64(0);
 
 	PG_RETURN_UINT64(!val1);
+}
+
+// int8 to boolean
+Datum
+int8_boolean(PG_FUNCTION_ARGS)
+{
+	if (PG_GETARG_INT64(0) == 0)
+		PG_RETURN_BOOL(false);
+	else
+		PG_RETURN_BOOL(true);
 }
 
 // mysuint8 to boolean

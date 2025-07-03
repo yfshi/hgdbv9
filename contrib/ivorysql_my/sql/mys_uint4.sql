@@ -779,6 +779,7 @@ DROP TABLE t_aggregate;
 
 create table t1 (col_uint int4 unsigned);
 insert into t1 values (100);
+insert into t1 values(4294967295),(4294967290),(4294967280);
 select -col_uint from t1;
 DROP TABLE t1;
 

@@ -945,8 +945,8 @@ Datum
 mysuint4_negative(PG_FUNCTION_ARGS)
 {
 	uint32		val1 = PG_GETARG_UINT32(0);
-
-	PG_RETURN_INT32(-((int32)val1));
+	int64		tempvalue = (int64)val1;
+	PG_RETURN_INT64(-tempvalue);
 }
 
 Datum

@@ -691,6 +691,12 @@ DROP TABLE t_aggregate;
 create table t1 (col_uint int8 unsigned);
 insert into t1 values (100);
 select -col_uint from t1;
+insert into t1 values (4294967295);
+select -col_uint from t1;
+insert into t1 values (4294967296);
+select -col_uint from t1;
+insert into t1 values(18446744073709551615),(18446744073709551610),(1844674407370955150);
+select -col_uint from t1;
 DROP TABLE t1;
 
 create table t1(id in1 signed);
@@ -756,3 +762,9 @@ select * from t_like_operator where id not like '%1%';
 select * from t_like_operator where id not like '1_3';
 select * from t_like_operator where id not like '_8';
 drop table t_like_operator;
+
+create table t_binary_operators (col_uint3 int3 unsigned,col_int8 int8);
+insert into t_binary_operators values (65535,65535),(500000,3),(1,5),(0,0);
+select col_int8 AND col_uint3 from t_binary_operators;
+select col_int8 OR col_uint3 from t_binary_operators;
+select col_int8 XOR col_uint3 from t_binary_operators;

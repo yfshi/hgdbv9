@@ -1544,6 +1544,18 @@ LEAKPROOF;
 --operator xor or and
 
 --mysuint8 to boolean
+CREATE FUNCTION ivymy.int8_boolean(pg_catalog.int8) 
+RETURNS boolean 
+AS 'MODULE_PATHNAME','int8_boolean'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (pg_catalog.int8 AS boolean)
+WITH FUNCTION ivymy.int8_boolean(pg_catalog.int8)
+AS ASSIGNMENT;
+
 CREATE FUNCTION ivymy.mysuint8_boolean(ivymy.mysuint8) 
 RETURNS boolean 
 AS 'MODULE_PATHNAME','mysuint8_boolean'

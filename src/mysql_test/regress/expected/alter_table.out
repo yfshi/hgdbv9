@@ -1881,8 +1881,8 @@ select * from anothertab;
 (2 rows)
 
 alter table anothertab alter column atcol1 type boolean; -- fails
-ERROR:  column "atcol1" cannot be cast automatically to type boolean
-HINT:  You might need to specify "USING atcol1::boolean".
+ERROR:  operator does not exist: boolean <= integer
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 alter table anothertab alter column atcol1 type boolean using atcol1::int; -- fails
 ERROR:  result of USING clause for column "atcol1" cannot be cast automatically to type boolean
 HINT:  You might need to add an explicit cast.
@@ -1920,7 +1920,8 @@ select * from anothertab;
 
 alter table anothertab alter column atcol1 type boolean
         using case when atcol1 % 2 = 0 then true else false end; -- fails
-ERROR:  default for column "atcol1" cannot be cast automatically to type boolean
+ERROR:  operator does not exist: boolean <= integer
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 alter table anothertab alter column atcol1 drop default;
 alter table anothertab alter column atcol1 type boolean
         using case when atcol1 % 2 = 0 then true else false end; -- fails
