@@ -2730,6 +2730,7 @@ select avg(value), SUM(value) from t_aggregate;
 (1 row)
 
 DROP TABLE t_aggregate;
+set sql_mode=default;
 create table t1 (col_uint int8 unsigned);
 insert into t1 values (100);
 select -col_uint from t1;
@@ -2748,11 +2749,74 @@ select -col_uint from t1;
 
 insert into t1 values (4294967296);
 select -col_uint from t1;
+  ?column?   
+-------------
+        -100
+ -4294967295
+ -4294967296
+(3 rows)
+
+insert into t1 values(9223372036854775808);
+select -col_uint from t1;
+       ?column?       
+----------------------
+                 -100
+          -4294967295
+          -4294967296
+ -9223372036854775808
+(4 rows)
+
+insert into t1 values(9223372036854775809);
+select -col_uint from t1;
 ERROR:  BIGINT unsigned out of range
 insert into t1 values(18446744073709551615),(18446744073709551610),(1844674407370955150);
 select -col_uint from t1;
 ERROR:  BIGINT unsigned out of range
 DROP TABLE t1;
+set sql_mode='';
+create table t1 (col_uint int8 unsigned);
+insert into t1 values (100);
+select -col_uint from t1;
+ ?column? 
+----------
+     -100
+(1 row)
+
+insert into t1 values (4294967295);
+select -col_uint from t1;
+  ?column?   
+-------------
+        -100
+ -4294967295
+(2 rows)
+
+insert into t1 values (4294967296);
+select -col_uint from t1;
+  ?column?   
+-------------
+        -100
+ -4294967295
+ -4294967296
+(3 rows)
+
+insert into t1 values(9223372036854775808);
+select -col_uint from t1;
+       ?column?       
+----------------------
+                 -100
+          -4294967295
+          -4294967296
+ -9223372036854775808
+(4 rows)
+
+insert into t1 values(9223372036854775809);
+select -col_uint from t1;
+ERROR:  BIGINT unsigned out of range
+insert into t1 values(18446744073709551615),(18446744073709551610),(1844674407370955150);
+select -col_uint from t1;
+ERROR:  BIGINT unsigned out of range
+DROP TABLE t1;
+set sql_mode=default;
 create table t1(id in1 signed);
 ERROR:  type "in1" does not exist
 LINE 1: create table t1(id in1 signed);

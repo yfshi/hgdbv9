@@ -688,6 +688,7 @@ insert into t_aggregate (value) values (128), (100), (0), (50), (100), (255), (3
 select avg(value), SUM(value) from t_aggregate;
 DROP TABLE t_aggregate;
 
+set sql_mode=default;
 create table t1 (col_uint int8 unsigned);
 insert into t1 values (100);
 select -col_uint from t1;
@@ -695,9 +696,29 @@ insert into t1 values (4294967295);
 select -col_uint from t1;
 insert into t1 values (4294967296);
 select -col_uint from t1;
+insert into t1 values(9223372036854775808);
+select -col_uint from t1;
+insert into t1 values(9223372036854775809);
+select -col_uint from t1;
 insert into t1 values(18446744073709551615),(18446744073709551610),(1844674407370955150);
 select -col_uint from t1;
 DROP TABLE t1;
+set sql_mode='';
+create table t1 (col_uint int8 unsigned);
+insert into t1 values (100);
+select -col_uint from t1;
+insert into t1 values (4294967295);
+select -col_uint from t1;
+insert into t1 values (4294967296);
+select -col_uint from t1;
+insert into t1 values(9223372036854775808);
+select -col_uint from t1;
+insert into t1 values(9223372036854775809);
+select -col_uint from t1;
+insert into t1 values(18446744073709551615),(18446744073709551610),(1844674407370955150);
+select -col_uint from t1;
+DROP TABLE t1;
+set sql_mode=default;
 
 create table t1(id in1 signed);
 create table t2(id intt unsigned);
