@@ -2037,7 +2037,7 @@ mysuint8_invertmysuint8(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(0);
 
-	PG_RETURN_UINT64(!val1);
+	PG_RETURN_INT32(!val1);
 }
 
 // int8 to boolean

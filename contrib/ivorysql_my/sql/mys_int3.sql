@@ -31,6 +31,8 @@ insert into t1 values(-8388608);
 insert into t1 values(8388607);
 insert into t1 values(-8388609);
 insert into t1 values(8388608);
+insert into t1 values(true);--BUG#5392
+insert into t1 values(false);--BUG#5392
 select * from t1;
 drop table t1;
 

@@ -2808,6 +2808,40 @@ coerce_type(ParseState *pstate, Node *node,
 	}
 	/* End - ReqID:SRS-MYSQL-DATETYPE */
 
+	/* Begin - BUG#5392 */
+	if (inputTypeId == BOOLOID && (targetTypeId == INT4OID || targetTypeId == MEDIUMINTOID)
+		&& IsA(node, Const) && MYS_PARSER == compatible_db
+		&& ((pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) 
+			|| (pstate && (pstate->p_is_insert || pstate->p_myscreateastmt)))) 
+	{
+		Oid			baseTypeId;
+		int32		baseTypeMod;
+		Type		baseType;
+		ParseCallbackState pcbstate;
+		Const	   *con = (Const *) node;
+		Const	   *newcon = makeNode(Const);
+		
+		baseTypeMod = targetTypeMod;
+		baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
+		baseType = typeidType(baseTypeId);
+
+		newcon->consttype = targetTypeId;
+		newcon->consttypmod = baseTypeMod;
+		newcon->constcollid = typeTypeCollation(baseType);
+		newcon->constlen = typeLen(baseType);
+		newcon->constbyval = typeByVal(baseType);
+		newcon->constisnull = con->constisnull;
+
+		setup_parser_errposition_callback(&pcbstate, pstate, con->location);
+		newcon->constvalue = Int32GetDatum(con->constvalue ? 1 : 0);
+
+		result = (Node *) newcon;
+		ReleaseSysCache(baseType);
+		cancel_parser_errposition_callback(&pcbstate);
+		return result;
+	}
+	/* End - BUG#5392 */
+
 	if (inputTypeId == UNKNOWNOID && IsA(node, Const))
 	{
 		/*
@@ -3708,6 +3742,15 @@ can_coerce_type(int nargs, const Oid *input_typeids, const Oid *target_typeids,
 		if (typeInheritsFrom(inputTypeId, targetTypeId)
 			|| typeIsOfTypedTable(inputTypeId, targetTypeId))
 			continue;
+
+		/* Begin - BUG#5392 */
+		if (MYS_PARSER == compatible_db && inputTypeId == BOOLOID && 
+			(targetTypeId == INT4OID || targetTypeId == MEDIUMINTOID))
+		{
+			/* Coerce a bool type to int*/
+			continue;
+		}
+		/* End - BUG#5392 */
 
 		/*
 		 * Else, cannot coerce at this argument position

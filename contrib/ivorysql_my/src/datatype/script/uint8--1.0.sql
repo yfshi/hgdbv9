@@ -1533,7 +1533,7 @@ LEAKPROOF;
 
 ----operator invert !
 CREATE FUNCTION ivymy.mysuint8_invert(ivymy.mysuint8)
-RETURNS pg_catalog.int8
+RETURNS pg_catalog.int4
 AS 'MODULE_PATHNAME','mysuint8_invertmysuint8'
 LANGUAGE C
 PARALLEL SAFE

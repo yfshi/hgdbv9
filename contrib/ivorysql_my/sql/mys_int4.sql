@@ -48,6 +48,8 @@ insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 insert into t1 values(4294967295);
+insert into t1 values(true);--BUG#5392
+insert into t1 values(false);--BUG#5392
 select * from t1;
 drop table t1;
 
