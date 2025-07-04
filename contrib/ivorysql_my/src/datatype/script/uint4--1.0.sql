@@ -738,7 +738,7 @@ LEAKPROOF;
 
 ----function negative
 CREATE FUNCTION ivymy.mysuint4_negative(ivymy.mysuint4)
-RETURNS  pg_catalog.int4
+RETURNS  pg_catalog.int8
 AS 'MODULE_PATHNAME','mysuint4_negative'
 LANGUAGE C
 PARALLEL SAFE

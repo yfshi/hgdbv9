@@ -942,9 +942,9 @@ int8_nemysuint2(PG_FUNCTION_ARGS)
  Datum
 mysuint2_negative(PG_FUNCTION_ARGS)
 {
-	uint32		val1 = PG_GETARG_UINT32(0);
-
-	PG_RETURN_INT32(-((int32)val1));
+	uint16		val1 = PG_GETARG_UINT32(0);
+	int32		tempvalue = (int32)val1;
+	PG_RETURN_INT32(-tempvalue);
 }
 
  Datum
