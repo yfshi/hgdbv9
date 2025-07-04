@@ -1712,6 +1712,17 @@ select -col_uint from t1;
      -250
 (4 rows)
 
+insert into t1 values (256);
+ERROR:  integer unsigned out of range
+select -col_uint from t1;
+ ?column? 
+----------
+     -100
+     -254
+     -255
+     -250
+(4 rows)
+
 DROP TABLE t1;
 set enable_seqscan=off;
 set enable_bitmapscan =off;

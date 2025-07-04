@@ -349,7 +349,7 @@ int_mysuint4(PG_FUNCTION_ARGS)
 	if (val1 < 0 || val1 > PG_UINT32_MAX)
 	{
 		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-        ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
 		val1 = val1 < 0 ? 0 : PG_UINT32_MAX;
 	}
 
@@ -367,7 +367,7 @@ numeric_mysuint4(PG_FUNCTION_ARGS)
 	if (val1 < 0 || val1 > PG_UINT32_MAX)
 	{
 		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-        ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
 		val1 = val1 < 0 ? 0 : PG_UINT32_MAX;
 	}
 	val2 = val1;
@@ -864,7 +864,7 @@ mysuint4_addmysuint4(PG_FUNCTION_ARGS)
 	uint32		val2 = PG_GETARG_UINT32(1);
 	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(val1 + val2);
 }
@@ -876,7 +876,7 @@ mysuint4_addint2(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(1);
 	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(val1 + val2);
 }
@@ -888,7 +888,7 @@ mysuint4_addint4(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(1);
 	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(val1 + val2);
 }
@@ -900,7 +900,7 @@ mysuint4_addint8(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(1);
 	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(val1 + val2);
 }
@@ -912,7 +912,7 @@ int2_addmysuint4(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(0);
 	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(val1 + val2);
 }
@@ -924,7 +924,7 @@ int4_addmysuint4(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(0);
 	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(val1 + val2);
 }
@@ -936,7 +936,7 @@ int8_addmysuint4(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(0);
 	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}	
 	PG_RETURN_UINT64(val1 + val2);
 }
@@ -956,7 +956,7 @@ mysuint4_submysuint4(PG_FUNCTION_ARGS)
 	uint32		val2 = PG_GETARG_UINT32(1);
 	if ((val1 < val2) || (val1 - val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 
 	PG_RETURN_UINT32(val1 - val2);
@@ -969,7 +969,7 @@ mysuint4_subint2(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(1);
 	if ((val1 - val2) < 0 || (val1 - val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT32(val1 - val2);
 }
@@ -981,7 +981,7 @@ mysuint4_subint4(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(1);
 	if ((val1 - val2) < 0 || (val1 - val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT32(val1 - val2);
 }
@@ -993,7 +993,7 @@ mysuint4_subint8(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(1);
 	if ((val1 - val2) < 0 || (val1 - val2) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT32(val1 - val2);
 }
@@ -1005,7 +1005,7 @@ int2_submysuint4(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(0);
 	if (val2 < 0 || (val2 - val1) < 0 || (val2 - val1) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT32(val2 - val1);
 }
@@ -1017,7 +1017,7 @@ int4_submysuint4(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(0);
 	if (val2 < 0 || (val2 - val1) < 0 || (val2 - val1) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT32(val2 - val1);
 }
@@ -1029,7 +1029,7 @@ int8_submysuint4(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(0);
 	if (val2 < 0 || (val2 - val1) < 0 || (val2 - val1) > PG_UINT32_MAX)
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT32(val2 - val1);
 }
@@ -1043,7 +1043,7 @@ mysuint4_mulmysuint4(PG_FUNCTION_ARGS)
 	uint32		res = val1*val2;
 	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(res);
 }
@@ -1055,7 +1055,7 @@ mysuint4_mulint2(PG_FUNCTION_ARGS)
 	uint32		res = val1*val2;
 	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(res);
 }
@@ -1067,7 +1067,7 @@ mysuint4_mulint4(PG_FUNCTION_ARGS)
 	uint32		res = val1*val2;
 	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(res);
 }
@@ -1079,7 +1079,7 @@ mysuint4_mulint8(PG_FUNCTION_ARGS)
 	uint32		res = val1*val2;
 	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(res);
 }
@@ -1092,7 +1092,7 @@ int2_mulmysuint4(PG_FUNCTION_ARGS)
 	uint32		res = val2*val1;
 	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(res);
 }
@@ -1104,7 +1104,7 @@ int4_mulmysuint4(PG_FUNCTION_ARGS)
 	uint32		res = val2*val1;
 	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(res);
 }
@@ -1116,7 +1116,7 @@ int8_mulmysuint4(PG_FUNCTION_ARGS)
 	uint32		res = val2*val1;
 	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	PG_RETURN_UINT64(res);
 }
@@ -1259,7 +1259,7 @@ mysuint4_exact_divmysuint4(PG_FUNCTION_ARGS)
 	uint32		val2 = PG_GETARG_UINT32(1);
 	if (val2 < 0 )
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	if(val2 == 0)
 	{
@@ -1277,7 +1277,7 @@ mysuint4_exact_divint2(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(1);
 	if (val2 < 0 )
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	if(val2 == 0)
 	{
@@ -1294,7 +1294,7 @@ mysuint4_exact_divint4(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(1);
 	if (val2 < 0 )
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	if(val2 == 0)
 	{
@@ -1312,7 +1312,7 @@ mysuint4_exact_divint8(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(1);
 	if (val2 < 0 )
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	if(val2 == 0)
 	{
@@ -1330,7 +1330,7 @@ int2_exact_divmysuint4(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(0);
 	if (val2 < 0 )
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	if(val1 == 0)
 	{
@@ -1348,7 +1348,7 @@ int4_exact_divmysuint4(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(0);
 	if (val2 < 0 )
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	if(val1 == 0)
 	{
@@ -1366,7 +1366,7 @@ int8_exact_divmysuint4(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(0);
 	if (val2 < 0 )
 	{
-        ereport(ERROR, (errmsg("integer unsigned out of range")));
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
 	if(val1 == 0)
 	{
@@ -1387,7 +1387,7 @@ mysuint4_modmysuint4(PG_FUNCTION_ARGS)
 	uint32		val2 = PG_GETARG_UINT32(1);
 	if (val2 < 0 )
 	{
-        PG_RETURN_UINT32(0);
+		PG_RETURN_UINT32(0);
 	}
 	if(val2 == 0)
 	{
@@ -1404,7 +1404,7 @@ mysuint4_modint2(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(1);
 	if (val2 < 0 )
 	{
-        PG_RETURN_UINT32(0);
+		PG_RETURN_UINT32(0);
 	}
 	if(val2 == 0)
 	{
@@ -1422,7 +1422,7 @@ mysuint4_modint4(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(1);
 	if (val2 < 0 )
 	{
-        PG_RETURN_UINT32(0);
+		PG_RETURN_UINT32(0);
 	}
 	if(val2 == 0)
 	{
@@ -1439,7 +1439,7 @@ mysuint4_modint8(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(1);
 	if (val2 < 0 )
 	{
-        PG_RETURN_UINT32(0);
+		PG_RETURN_UINT32(0);
 	}
 	if(val2 == 0)
 	{
@@ -1457,7 +1457,7 @@ int2_modmysuint4(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(0);
 	if (val2 < 0 )
 	{
-        PG_RETURN_UINT32(0);
+		PG_RETURN_UINT32(0);
 	}
 	if(val1 == 0)
 	{
@@ -1475,7 +1475,7 @@ int4_modmysuint4(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(0);
 	if (val2 < 0 )
 	{
-        PG_RETURN_UINT32(0);
+		PG_RETURN_UINT32(0);
 	}
 	if(val1 == 0)
 	{
@@ -1492,7 +1492,7 @@ int8_modmysuint4(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(0);
 	if (val2 < 0 )
 	{
-        PG_RETURN_UINT32(0);
+		PG_RETURN_UINT32(0);
 	}
 	if(val1 == 0)
 	{
