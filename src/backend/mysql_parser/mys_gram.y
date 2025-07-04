@@ -15359,7 +15359,13 @@ CharacterWithLength:  character '(' Iconst ')'
 								(errcode(ERRCODE_SYNTAX_ERROR),
 								 errmsg("You have an error in you SQL syntax in char( ... "),
 								 parser_errposition(@1)));
-
+					/* Begin - BUG#Z00005405 */
+					if (length < 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("You have an error in you SQL syntax in char( ... "),
+								 parser_errposition(@1)));
+					/* End - BUG#Z00005405 */
 					$$ = makeTypeNameFromNameList(list_make1(makeString("bpchar")));
 					$$->typmods = list_make1(makeIntConst(length, @3));
 					$$->location = @1;

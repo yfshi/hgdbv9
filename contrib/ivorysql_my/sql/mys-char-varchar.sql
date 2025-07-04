@@ -718,3 +718,16 @@ select convert(col , unsigned) from tb where id=2; --123
 select convert(col , unsigned) from tb where id=3; --123
 set mysql.cast_to_char = off;
 set mysql.mode_pad_char_to_full = off;
+
+--bug#z5405
+create table tb1(col char(a));	--err
+create table tb2(col char(*));	--err
+create table tb3(col char(-));	--err
+create table tb4(col char());	--err
+create table tb4(col char(-1));	--err
+create table tb5(col char(256));
+create table tb6(col char(0));
+create table tb7(col char(10));
+create table tb8(col char(255));
+create table tb9(col char);
+drop table tb5, tb6, tb7, tb8, tb9;
