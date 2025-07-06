@@ -85,7 +85,7 @@ get_identifier(const char *DataDir, bool *crc_ok_p)
 	AssertArg(crc_ok_p);
 
 	ControlFile = palloc(sizeof(ControlFileData));
-	if (ControlFile)
+	if (!ControlFile)
 		return NULL;
 	snprintf(ControlFilePath, MAXPGPATH, "%s/global/pg_control", DataDir);
 
@@ -457,10 +457,17 @@ bool pass_gen_key(char *DataDir, char *Interface, char *CustomKey, unsigned char
 	{
 		/* get a copy of the control file */
 		ControlFile = get_identifier(DataDir, &crc_ok);
-		if (!ControlFile)
-			return false;
-		if (!crc_ok)
+
+		if (!ControlFile){
 			printf(_("WARNING: The identifier was requested, but failed to obtain it.\n\n"));
+			return false;
+		}
+		if (!crc_ok){
+			printf(_("WARNING: The identifier was requested, but failed to obtain it.\n\n"));
+			pfree(ControlFile);
+			return false;
+		}
+
 		snprintf(ident, sizeof(ident) - 1, "%llx",
 				 (unsigned long long)ControlFile->system_identifier);
 		ident_len = 11;
@@ -471,6 +478,10 @@ bool pass_gen_key(char *DataDir, char *Interface, char *CustomKey, unsigned char
 	if (Interface && Interface[0] != '\0')
 	{
 		ret = pg_get_mac_address(Interface, mac);
+		if(!ret){
+			printf(_("WARNING: The mac was requested, but failed to obtain it.\n\n"));
+			return false;
+		}
 		mac_len = 12;
 	}
 
