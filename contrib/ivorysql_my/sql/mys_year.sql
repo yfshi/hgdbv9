@@ -253,5 +253,45 @@ SELECT 1+y FROM t;
 SELECT 2025-y FROM t;
 SELECT 2*y FROM t;
 SELECT 2025/y FROM t where y != 0;
+DROP TABLE t;
+
+-- Fix Bug#Z5261
+CREATE TABLE year_01(created_year YEAR);
+INSERT INTO year_01 VALUES ('2025-01-01');
+INSERT INTO year_01 VALUES ('2025-01-01'::date);
+INSERT INTO year_01 VALUES ('2023');
+-- insert into year_01 VALUES ('2023'::char); no support
+SELECT * FROM year_01;
+DROP TABLE year_01;
+
+-- Fix Bug#Z5263
+CREATE TABLE year_02(id int, created_year YEAR);
+INSERT INTO year_02(id,created_year) VALUES (1, '2016'),(2, '2017'),(3, 2018),(1, '2019'),(2, '2020'),(3, '2021');
+SELECT * FROM year_02 where created_year LIKE '2019';
+SELECT * FROM year_02 where created_year NOT LIKE '2019';
+SELECT * FROM year_02 where created_year LIKE 2019;
+SELECT * FROM year_02 where created_year NOT LIKE 2019;
+
+SELECT * FROM year_02 where created_year LIKE '2%';
+SELECT * FROM year_02 where created_year LIKE '%9';
+SELECT * FROM year_02 where created_year LIKE '%0%';
+SELECT * FROM year_02 where created_year LIKE '2%8';
+
+SELECT * FROM year_02 where created_year NOT LIKE '2%';
+SELECT * FROM year_02 where created_year NOT LIKE '%9';
+SELECT * FROM year_02 where created_year NOT LIKE '%0%';
+SELECT * FROM year_02 where created_year NOT LIKE '2%8';
+
+SELECT * FROM year_02 where created_year LIKE '201_';
+SELECT * FROM year_02 where created_year LIKE '_018';
+SELECT * FROM year_02 where created_year LIKE '_0%';
+SELECT * FROM year_02 where created_year LIKE '2_%_%';
+
+SELECT * FROM year_02 where created_year NOT LIKE '201_';
+SELECT * FROM year_02 where created_year NOT LIKE '_018';
+SELECT * FROM year_02 where created_year NOT LIKE '_0%';
+SELECT * FROM year_02 where created_year NOT LIKE '2_%_%';
+
+DROP TABLE year_02;
 
 SELECT set_config('search_path', trim(leading 'ivymy, ' from current_setting('search_path')), false);
