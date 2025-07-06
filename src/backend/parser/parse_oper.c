@@ -297,7 +297,7 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 
 	/* Begin - BUG#5123 */
 	if (MYS_PARSER == compatible_db && arg2 == UNKNOWNOID &&
-		(arg1 == MYSUINT1OID || arg1 == MYSUINT2OID || arg1 == MYSUINT3OID || arg1 == MYSUINT4OID || arg1 == MYSUINT8OID))
+		(arg1 == UINT1OID || arg1 == UINT2OID || arg1 == UINT3OID || arg1 == UINT4OID || arg1 == UINT8OID))
 	{
 		char	*schemaname;
 		char	*opername;

@@ -426,21 +426,21 @@ SELECT * FROM test_type_conversion_booltrue(true, false);
 ERROR:  value for domain booltrue violates check constraint "booltrue_check"
 CONTEXT:  while creating return value
 PL/Python function "test_type_conversion_booltrue"
-CREATE DOMAIN uint2 AS int2 CHECK (VALUE >= 0);
-CREATE FUNCTION test_type_conversion_uint2(x uint2, y int) RETURNS uint2 AS $$
+CREATE DOMAIN uint2_ AS int2 CHECK (VALUE >= 0);
+CREATE FUNCTION test_type_conversion_uint2(x uint2_, y int) RETURNS uint2_ AS $$
 plpy.info(x, type(x))
 return y
 $$ LANGUAGE plpython3u;
-SELECT * FROM test_type_conversion_uint2(100::uint2, 50);
+SELECT * FROM test_type_conversion_uint2(100::uint2_, 50);
 INFO:  (100, <class 'int'>)
  test_type_conversion_uint2 
 ----------------------------
                          50
 (1 row)
 
-SELECT * FROM test_type_conversion_uint2(100::uint2, -50);
+SELECT * FROM test_type_conversion_uint2(100::uint2_, -50);
 INFO:  (100, <class 'int'>)
-ERROR:  value for domain uint2 violates check constraint "uint2_check"
+ERROR:  value for domain uint2_ violates check constraint "uint2__check"
 CONTEXT:  while creating return value
 PL/Python function "test_type_conversion_uint2"
 SELECT * FROM test_type_conversion_uint2(null, 1);
@@ -823,18 +823,18 @@ PL/Python function "test_type_conversion_array_domain_check_violation"
 --
 -- Arrays of domains
 --
-CREATE FUNCTION test_read_uint2_array(x uint2[]) RETURNS uint2 AS $$
+CREATE FUNCTION test_read_uint2_array(x uint2_[]) RETURNS uint2_ AS $$
 plpy.info(x, type(x))
 return x[0]
 $$ LANGUAGE plpython3u;
-select test_read_uint2_array(array[1::uint2]);
+select test_read_uint2_array(array[1::uint2_]);
 INFO:  ([1], <class 'list'>)
  test_read_uint2_array 
 -----------------------
                      1
 (1 row)
 
-CREATE FUNCTION test_build_uint2_array(x int2) RETURNS uint2[] AS $$
+CREATE FUNCTION test_build_uint2_array(x int2) RETURNS uint2_[] AS $$
 return [x, x]
 $$ LANGUAGE plpython3u;
 select test_build_uint2_array(1::int2);

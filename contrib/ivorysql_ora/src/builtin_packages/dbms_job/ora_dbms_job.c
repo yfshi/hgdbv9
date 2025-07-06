@@ -535,7 +535,7 @@ transform_schedule(Schedule *schedule, Timestamp start_date)
 				if (sch->has_bymonthday)
 				{
 					init_array_from_byclause(schedule, sch->monthday, BYMONTHDAY_ARRAY);
-					init_negative_monthday_array(schedule, sch->negative_monthday, &(sch->negative_monthday_count));
+					init_negative_monthday_array(schedule, (char *) sch->negative_monthday, &(sch->negative_monthday_count));
 				}
 				else
 					init_array_from_start_date(tm, sch->monthday, BYMONTHDAY_ARRAY);
@@ -587,7 +587,7 @@ transform_schedule(Schedule *schedule, Timestamp start_date)
 				if (sch->has_bymonthday)
 				{
 					init_array_from_byclause(schedule, sch->monthday, BYMONTHDAY_ARRAY);
-					init_negative_monthday_array(schedule, sch->negative_monthday, &(sch->negative_monthday_count));
+					init_negative_monthday_array(schedule, (char *) sch->negative_monthday, &(sch->negative_monthday_count));
 				}
 				else
 					init_array_from_start_date(tm, sch->monthday, BYMONTHDAY_ARRAY);
@@ -623,7 +623,7 @@ transform_schedule(Schedule *schedule, Timestamp start_date)
 				if (sch->has_bymonthday)
 				{
 					init_array_from_byclause(schedule, sch->monthday, BYMONTHDAY_ARRAY);
-					init_negative_monthday_array(schedule, sch->negative_monthday, &(sch->negative_monthday_count));
+					init_negative_monthday_array(schedule, (char *) sch->negative_monthday, &(sch->negative_monthday_count));
 				}
 				else
 				{
@@ -666,7 +666,7 @@ transform_schedule(Schedule *schedule, Timestamp start_date)
 				if (sch->has_bymonthday)
 				{
 					init_array_from_byclause(schedule, sch->monthday, BYMONTHDAY_ARRAY);
-					init_negative_monthday_array(schedule, sch->negative_monthday, &(sch->negative_monthday_count));
+					init_negative_monthday_array(schedule, (char *) sch->negative_monthday, &(sch->negative_monthday_count));
 				}
 				else
 					init_array_all_set(sch->monthday, BYMONTHDAY_ARRAY);
@@ -718,7 +718,7 @@ transform_schedule(Schedule *schedule, Timestamp start_date)
 				if (sch->has_bymonthday)
 				{
 					init_array_from_byclause(schedule, sch->monthday, BYMONTHDAY_ARRAY);
-					init_negative_monthday_array(schedule, sch->negative_monthday, &(sch->negative_monthday_count));
+					init_negative_monthday_array(schedule, (char *) sch->negative_monthday, &(sch->negative_monthday_count));
 				}
 				else
 					init_array_all_set(sch->monthday, BYMONTHDAY_ARRAY);
@@ -770,7 +770,7 @@ transform_schedule(Schedule *schedule, Timestamp start_date)
 				if (sch->has_bymonthday)
 				{
 					init_array_from_byclause(schedule, sch->monthday, BYMONTHDAY_ARRAY);
-					init_negative_monthday_array(schedule, sch->negative_monthday, &(sch->negative_monthday_count));
+					init_negative_monthday_array(schedule, (char *) sch->negative_monthday, &(sch->negative_monthday_count));
 				}
 				else
 					init_array_all_set(sch->monthday, BYMONTHDAY_ARRAY);

@@ -65,10 +65,10 @@ LINE 1: create table t1 (a smallint[-1] UNSIGNED);
                                     ^
 create table t2 (a smallint(0) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(0) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -80,10 +80,10 @@ select * from t2;
 drop table t2;
 create table t2 (a smallint(3) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -95,10 +95,10 @@ select * from t2;
 drop table t2;
 create table t3 (a smallint(4) UNSIGNED);
 \d t3
-                   Table "public.t3"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(4) |           |          | 
+                Table "public.t3"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t3 values (3);
 select * from t3;
@@ -110,10 +110,10 @@ select * from t3;
 drop table t3;
 create table t2 (a smallint(3.4) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -125,10 +125,10 @@ select * from t2;
 drop table t2;
 create table t2 (a smallint(3.5) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -139,17 +139,17 @@ select * from t2;
 
 drop table t2;
 create table t2(age smallint(256.4) unsigned);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t2(age smallint(256.4) unsigned);
                                     ^
 create table t2(id1 int2(255.9) unsigned, id2 int2(254.9) unsigned, age smallint(255.4) unsigned);
 \d t2
-                    Table "public.t2"
- Column |     Type      | Collation | Nullable | Default 
---------+---------------+-----------+----------+---------
- id1    | mysuint2(255) |           |          | 
- id2    | mysuint2(254) |           |          | 
- age    | mysuint2(255) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ id1    | uint2 |           |          | 
+ id2    | uint2 |           |          | 
+ age    | uint2 |           |          | 
 
 insert into t2 values (2, 5, 44);
 select * from t2;
@@ -161,15 +161,15 @@ select * from t2;
 drop table t2;
 --smallint zerofill
 create table t2 (a smallint(-1) ZEROFILL);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t2 (a smallint(-1) ZEROFILL);
                                    ^
 create table t2 (a smallint ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(5) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -181,10 +181,10 @@ select * from t2;
 drop table t2;
 create table t2 (a smallint(2) ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -238,10 +238,10 @@ LINE 1: create table t1 (a int2[-1] UNSIGNED);
                                 ^
 create table t2 (a int2(0) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(0) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -253,10 +253,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int2(3) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -268,10 +268,10 @@ select * from t2;
 drop table t2;
 create table t3 (a int2(4) UNSIGNED);
 \d t3
-                   Table "public.t3"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(4) |           |          | 
+                Table "public.t3"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t3 values (3);
 select * from t3;
@@ -283,15 +283,15 @@ select * from t3;
 drop table t3;
 --smallint zerofill
 create table t2 (a int2(-1) ZEROFILL);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t2 (a int2(-1) ZEROFILL);
                                ^
 create table t2 (a int2 ZEROFILL);
 \d t2
-                 Table "public.t2"
- Column |   Type   | Collation | Nullable | Default 
---------+----------+-----------+----------+---------
- a      | mysuint2 |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -303,10 +303,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int2(2) ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -377,10 +377,10 @@ LINE 1: create table t1 (a smallint[-1] UNSIGNED );
                                     ^
 create table t2 (a smallint(0) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(0) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -392,10 +392,10 @@ select * from t2;
 drop table t2;
 create table t2 (a smallint(3) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -407,10 +407,10 @@ select * from t2;
 drop table t2;
 create table t3 (a smallint(4) UNSIGNED);
 \d t3
-                   Table "public.t3"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(4) |           |          | 
+                Table "public.t3"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t3 values (3);
 select * from t3;
@@ -422,15 +422,15 @@ select * from t3;
 drop table t3;
 --smallint zerofill
 create table t2 (a smallint(-1) ZEROFILL);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t2 (a smallint(-1) ZEROFILL);
                                    ^
 create table t2 (a smallint ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(5) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -442,10 +442,10 @@ select * from t2;
 drop table t2;
 create table t2 (a smallint(2) ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -489,10 +489,10 @@ LINE 1: create table t1 (a int2[-1] UNSIGNED);
                                 ^
 create table t2 (a int2(0) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(0) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -504,10 +504,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int2(3) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -519,10 +519,10 @@ select * from t2;
 drop table t2;
 create table t3 (a int2(4) UNSIGNED);
 \d t3
-                   Table "public.t3"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(4) |           |          | 
+                Table "public.t3"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t3 values (3);
 select * from t3;
@@ -534,15 +534,15 @@ select * from t3;
 drop table t3;
 --smallint zerofill
 create table t2 (a int2(-1) ZEROFILL);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t2 (a int2(-1) ZEROFILL);
                                ^
 create table t2 (a int2 ZEROFILL);
 \d t2
-                 Table "public.t2"
- Column |   Type   | Collation | Nullable | Default 
---------+----------+-----------+----------+---------
- a      | mysuint2 |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -554,10 +554,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int2(2) ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint2(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint2 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -1719,11 +1719,11 @@ explain (COSTS OFF) select * from t_index where id BETWEEN 65 and 70;
    Index Cond: ((id >= 65) AND (id <= 70))
 (2 rows)
 
-explain (COSTS OFF) select * from t_index where id BETWEEN 65::mysuint2 and 70::mysuint2;
-                            QUERY PLAN                             
--------------------------------------------------------------------
+explain (COSTS OFF) select * from t_index where id BETWEEN 65::uint2 and 70::uint2;
+                         QUERY PLAN                          
+-------------------------------------------------------------
  Index Scan using index_id_btree on t_index
-   Index Cond: ((id >= '65'::mysuint2) AND (id <= '70'::mysuint2))
+   Index Cond: ((id >= '65'::uint2) AND (id <= '70'::uint2))
 (2 rows)
 
 drop table t_index;
@@ -1750,15 +1750,12 @@ drop table t_conversion;
 create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
 insert into t_conversion (id) values (TRUE);
 insert into t_conversion (id) values (0x12);
-ERROR:  column "id" is of type mysuint1 but expression is of type varbinary
-LINE 1: insert into t_conversion (id) values (0x12);
-                                              ^
-HINT:  You will need to rewrite or cast the expression.
 select id from t_conversion;
  id 
 ----
  1
-(1 row)
+ 18
+(2 rows)
 
 drop table t_conversion;
 create table t_like_operator(id int2 unsigned);

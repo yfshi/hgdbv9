@@ -10,7 +10,7 @@
  * Copyright (c) 2023, HighGo Software Co.,Ltd. All rights reserved. 
  *
  * Identification:
- *		contrib/ivorysql_my/src/datatype/mysuint1.c
+ *		contrib/ivorysql_my/src/datatype/mysuint4_index.c
  *
  *------------------------------------------------------------------
  */
@@ -43,7 +43,7 @@
 #include "../include/ivorysql_my.h"
 
 /*****************************************************************************
- *	 mysuint4 hash
+ *	 uint4 hash
 *****************************************************************************/
 PG_FUNCTION_INFO_V1(mysuint4_hash);
 PG_FUNCTION_INFO_V1(mysuint4_hash_extended);
@@ -61,7 +61,7 @@ mysuint4_hash_extended(PG_FUNCTION_ARGS)
 }
 
 /*****************************************************************************
- *	 mysuint4 btree
+ *	 uint4 btree
  *****************************************************************************/
 PG_FUNCTION_INFO_V1(mysuint4int2_cmp);
 PG_FUNCTION_INFO_V1(int2mysuint4_cmp);
@@ -197,7 +197,7 @@ mysuint48_cmp(PG_FUNCTION_ARGS)
 }
 
 /*****************************************************************************
- *	 mysuint4 --> mysuint1 mysuint2 mysuint8
+ *	 uint4 --> uint1 uint2 uint8
 *****************************************************************************/
 PG_FUNCTION_INFO_V1(mysuint41_eq);
 PG_FUNCTION_INFO_V1(mysuint41_ne);

@@ -2863,7 +2863,7 @@ getBaseTypeAndTypmod(Oid typid, int32 *typmod)
 			break;
 		}
 
-		if (typid != LONGOID && typid != RAWOID && typid != MYSUINT3OID)	/* BUG:0000003 */
+		if (typid != LONGOID && typid != RAWOID && typid != UINT3OID)	/* BUG:0000003 */
 			Assert(*typmod == -1);
 		typid = typTup->typbasetype;
 		*typmod = typTup->typtypmod;

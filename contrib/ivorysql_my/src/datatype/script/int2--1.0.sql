@@ -9,7 +9,7 @@
 
 --  "&"
 CREATE FUNCTION ivymy.myint2_bit_and(pg_catalog.int2, pg_catalog.int2)
-RETURNS ivymy.mysuint8
+RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','myint2_bit_and'
 LANGUAGE C
 PARALLEL SAFE
@@ -25,7 +25,7 @@ CREATE OPERATOR ivymy.& (
 
 --  "|"
 CREATE FUNCTION ivymy.myint2_bit_or(pg_catalog.int2, pg_catalog.int2)
-RETURNS ivymy.mysuint8
+RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','myint2_bit_or'
 LANGUAGE C
 PARALLEL SAFE
@@ -138,7 +138,7 @@ CREATE OPERATOR ivymy.% (
 
 --  "^"
 CREATE FUNCTION ivymy.myint2_bit_xor(pg_catalog.int2, pg_catalog.int2)
-RETURNS ivymy.mysuint8	
+RETURNS ivymy.uint8	
 AS 'MODULE_PATHNAME','myint2_bit_xor'
 LANGUAGE C
 PARALLEL SAFE
@@ -213,7 +213,7 @@ CREATE OPERATOR !(
 
 --  "~"
 CREATE FUNCTION ivymy.myint2_bit_neg(pg_catalog.int2)
-RETURNS ivymy.mysuint8
+RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','myint2_bit_neg'
 LANGUAGE C
 PARALLEL SAFE

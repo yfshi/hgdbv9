@@ -416,7 +416,7 @@ pkey_signature_verify_openssl(const char *publicKeyBase64, const char *message,
 	BIO *bio_mem = NULL;
 	EVP_PKEY *pkey = NULL;
 	EVP_MD_CTX *mctx = NULL;
-	int ret;
+	int ret = 0;
 	int pkey_type = EVP_PKEY_NONE;
 
 	int inlen = strlen(publicKeyBase64);

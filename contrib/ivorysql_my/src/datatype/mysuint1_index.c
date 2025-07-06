@@ -10,7 +10,7 @@
  * Copyright (c) 2023, HighGo Software Co.,Ltd. All rights reserved. 
  *
  * Identification:
- *		contrib/ivorysql_my/src/datatype/mysuint1.c
+ *		contrib/ivorysql_my/src/datatype/mysuint1_index.c
  *
  *------------------------------------------------------------------
  */
@@ -43,7 +43,7 @@
 #include "../include/ivorysql_my.h"
 
 /*****************************************************************************
- *	 mysuint1 hash
+ *	 uint1 hash
  *****************************************************************************/
 PG_FUNCTION_INFO_V1(mysuint1_hash);
 PG_FUNCTION_INFO_V1(mysuint1_hash_extended);
@@ -61,7 +61,7 @@ mysuint1_hash_extended(PG_FUNCTION_ARGS)
 }
 
 /*****************************************************************************
- *	 mysuint1 btree 
+ *	 uint1 btree 
  *   Comparison functions for mysql btree func.
  *   cmp function 
  *****************************************************************************/
@@ -199,7 +199,7 @@ mysuint18_cmp(PG_FUNCTION_ARGS)
 
 
 /*****************************************************************************
- *	 mysuint1 --> mysuint2 mysuint4 mysuint8
+ *	 uint1 --> uint2 uint4 uint8
 *****************************************************************************/
 PG_FUNCTION_INFO_V1(mysuint12_eq);
 PG_FUNCTION_INFO_V1(mysuint12_ne);

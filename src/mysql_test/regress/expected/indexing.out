@@ -1255,15 +1255,9 @@ alter table idxpart2 drop column c;
 create unique index on idxpart (a);
 alter table idxpart attach partition idxpart2 for values from (100000) to (1000000);
 insert into idxpart values (0, 'zero'), (42, 'life'), (2^16, 'sixteen');
-ERROR:  column "a" is of type integer but expression is of type mysuint8
-LINE 1: ...t into idxpart values (0, 'zero'), (42, 'life'), (2^16, 'six...
-                                                             ^
-HINT:  You will need to rewrite or cast the expression.
 insert into idxpart select 2^g, format('two to power of %s', g) from generate_series(15, 17) g;
-ERROR:  column "a" is of type integer but expression is of type mysuint8
-LINE 1: insert into idxpart select 2^g, format('two to power of %s',...
-                                   ^
-HINT:  You will need to rewrite or cast the expression.
+ERROR:  duplicate key value violates unique constraint "idxpart1_a_idx"
+DETAIL:  Key (a)=(18) already exists.
 insert into idxpart values (16, 'sixteen');
 insert into idxpart (b, a) values ('one', 142857), ('two', 285714);
 insert into idxpart select a * 2, b || b from idxpart where a between 2^16 and 2^19;
@@ -1274,12 +1268,15 @@ insert into idxpart values (857142, 'six');
 select tableoid::regclass, * from idxpart order by a;
  tableoid |   a    |       b        
 ----------+--------+----------------
+ idxpart1 |      0 | zero
  idxpart1 |     16 | sixteen
+ idxpart1 |     18 | sixteen
+ idxpart1 |     42 | life
  idxpart2 | 142857 | one
  idxpart2 | 285714 | two
  idxpart2 | 572814 | inserted first
  idxpart2 | 857142 | six
-(5 rows)
+(8 rows)
 
 drop table idxpart;
 -- Test some other non-btree index types

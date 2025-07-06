@@ -764,14 +764,16 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			Datum		d;
 
 			/* Begin - ReqID:SRS-MYSQL-DATETYPE */
-			if(compatible_db == MYS_PARSER && state->parent && state->parent->state)
+			if (compatible_db == MYS_PARSER && state->parent && state->parent->state)
 			{
-				if(state->parent->state->es_plannedstmt)
+				if (state->parent->state->es_plannedstmt)
 				{
-					if(state->parent->state->es_plannedstmt->commandType == CMD_INSERT)
+					if (state->parent->state->es_plannedstmt->commandType == CMD_INSERT ||
+						state->parent->state->es_plannedstmt->commandType == CMD_UPDATE)
 						fcinfo->flinfo->fn_insert = true;
 				}
-				if(state->parent->state->es_createtbas)
+				
+				if (state->parent->state->es_createtbas)
 					fcinfo->flinfo->fn_insert = true;
 			}
 			/* End - ReqID:SRS-MYSQL-DATETYPE */

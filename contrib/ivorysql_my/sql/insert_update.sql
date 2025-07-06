@@ -1,6 +1,5 @@
 create table value_test(a int not null, b int default 3);
---show dolphin.sql_mode;
---插入NULL值
+--show sql_mode;
 insert into value_test values();--error
 insert into value_test values();--warning
 select * from value_test;
@@ -9,7 +8,6 @@ create table test(a int, b int default 3);
 insert into test values();
 select * from test;
 
---引用值列表中先前设置的任何列
 insert into test values(1, a * 2);
 insert into test(a,b) values(2, a * 2);
 insert into test(a,b) values(2, a * 2 ),(3, a * 3);
@@ -27,7 +25,6 @@ create table test1(a varchar(2), b date);
 insert into test1 values();
 drop table test1;
 
---insert ON DUPLICATE KEY UPDATE用法
 create table t1(a int unique, b int, c int);
 INSERT INTO t1 (a, b, c) VALUES (1, 2, 3);
 INSERT INTO t1 (a, b, c) value(b * c + 1, b * 2, a * b * 2);
@@ -58,8 +55,7 @@ select *from t1;
 insert into t1 select a,b from t2;
 select *from t1;
 drop table t2 cascade;
---插入时，查询列需要匹配插入的列个数。
---insert ...select 用法
+--insert ...select
 create table test(id int, idd int);
 insert into test values(1, 2);
 insert into test select id from test;
@@ -68,21 +64,20 @@ select * from test;
 drop table test;
 drop table t1;
 
---temporary table用法
+--temporary table
 create temporary table t1(col1 int, col2 int);
 create table test1(a int,b int);
 insert into t1 values(1,2);
 insert into test1 select * from t1;
-insert into t1 select * from t1;--error 临时表中不允许
+insert into t1 select * from t1;--error
 
---当t1是TEMPORARY 表时，不能使用 INSERT INTO t ... SELECT ... FROM t，因为 TEMPORARY 表不能在同一语句中被引用两次。
---insert set用法
+--insert set
 delete from test1;
 insert into test1 set a = 1,b = 2;
 select * from test1;
 drop table test1, t1;
 
---insert delayed用法
+--insert delayed
 create table test(id int);
 insert delayed  into test values(1);--warning
 
@@ -127,7 +122,6 @@ on duplicate key update e = e + 1;
 select * from tt1;
 rollback;
 
---触发器
 create table tt2(id int);
 CREATE OR REPLACE FUNCTION tri_update_func1() RETURNS TRIGGER AS
 $$
@@ -161,7 +155,6 @@ select * from tt2;
 rollback;
 drop table tt2;
 
---pbe的支持
 create table tt(e int primary key,f int);
 insert tt  value(2, 3),(5, 6);
 PREPARE prtt (int, int) AS

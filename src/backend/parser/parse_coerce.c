@@ -2250,7 +2250,7 @@ pg_atoi_uint4_check(const char *s,int c)
 }
 
 /*
- * numeric to mysuint4 mysuint3, mysuint(domain mysuint4)
+ * numeric to uint4 uint3, mysuint(domain uint4)
  * con     : str const value
  * newcon  : new const value
  * sizenum : size (3byte 4byte)
@@ -2263,27 +2263,27 @@ Num2Mysuint1234(Const *con, Oid inputTypeId, Oid targetTypeId)
 
 	switch ( targetTypeId )
 	{
-		case  MYSUINT1OID :
+		case UINT1OID:
 		{
 			maxvalue = PG_UINT8_MAX;
 			break;
 		}
-		case  MYSUINT2OID :
+		case UINT2OID:
 		{
 			maxvalue = PG_UINT16_MAX;
 			break;
 		}
-		case  MYSUINT3OID :
+		case UINT3OID:
 		{
 			maxvalue = PG_UINT24_MAX;
 			break;
 		}
-		case  MYSUINT4OID :
+		case UINT4OID:
 		{
 			maxvalue = PG_UINT32_MAX;
 			break;
 		}
-		case  MYSUINT8OID :
+		case UINT8OID:
 		{
 			maxvalue = PG_UINT64_MAX;
 			break;
@@ -2340,27 +2340,27 @@ Str2Mysuint12348(Const *con, Const *newcon, Oid targetTypeId)
 
 	switch ( targetTypeId )
 	{
-		case  MYSUINT1OID :
+		case UINT1OID:
 		{
 			sizenum = 1;
 			break;
 		}
-		case  MYSUINT2OID :
+		case UINT2OID:
 		{
 			sizenum = 2;
 			break;
 		}
-		case  MYSUINT3OID :
+		case UINT3OID:
 		{
 			sizenum = 3;
 			break;
 		}
-		case  MYSUINT4OID :
+		case UINT4OID:
 		{
 			sizenum = 4;
 			break;
 		}
-		case  MYSUINT8OID :
+		case UINT8OID:
 		{
 			sizenum = 8;
 			break;
@@ -2475,15 +2475,15 @@ coerce_type(ParseState *pstate, Node *node,
 	{
 		/* Begin - ReqID:SRS-MYSQL-DATETYPE*/
 		//error:select cast('1.1111' as timestamp);
-		if (MYS_PARSER == compatible_db )
+		if (MYS_PARSER == compatible_db)
 		{
-			if ( COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
+			if (COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
 			{
 				elog(ERROR,
 					"You have an error in your SQL syntax;"
 					"check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
 			}
-			if ((targetTypeId == MYSDATETIMESOID || targetTypeId == MYSTIMESTAMPSOID || targetTypeId == MYSTIMESOID ) &&
+			if ((targetTypeId == MYSDATETIMESOID || targetTypeId == MYSTIMESTAMPSOID || targetTypeId == MYSTIMESOID) &&
 				targetTypeMod != -1 && COERCION_EXPLICIT == ccontext)
 			{
 				/* After the precision is modified, set the original value to numeric, 
@@ -2564,12 +2564,11 @@ coerce_type(ParseState *pstate, Node *node,
 		}
 	}
 
-	if ( MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext &&
-		 IsA(node, Const) &&
+	if (MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext && IsA(node, Const) &&
 		(inputTypeId == INT4OID || inputTypeId == NUMERICOID ||
-		 inputTypeId == INT8OID || inputTypeId == INT2OID )  &&
-		(targetTypeId == MYSUINT1OID || targetTypeId == MYSUINT2OID || 
-		 targetTypeId == MYSUINT3OID || targetTypeId == MYSUINT4OID || targetTypeId == MYSUINT8OID) )
+		 inputTypeId == INT8OID || inputTypeId == INT2OID) &&
+		(targetTypeId == UINT1OID || targetTypeId == UINT2OID || 
+		 targetTypeId == UINT3OID || targetTypeId == UINT4OID || targetTypeId == UINT8OID) )
 	{
 		/*
 		 * use cast(int as uint)
@@ -2597,7 +2596,7 @@ coerce_type(ParseState *pstate, Node *node,
 		newcon->constisnull = con->constisnull;
 		newcon->location = con->location;
 
-		if (targetTypeId == MYSUINT8OID)
+		if (targetTypeId == UINT8OID)
 		{
 			tempvalue = Num2Mysuint8(con, inputTypeId);
 			newcon->constvalue = TimeADTGetDatum(tempvalue);
@@ -2617,11 +2616,10 @@ coerce_type(ParseState *pstate, Node *node,
 		return result;
 	}
 
-	if ( MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext &&
-		(inputTypeId == UNKNOWNOID) &&
-		 IsA(node, Const) &&
-		(targetTypeId == MYSUINT1OID || targetTypeId == MYSUINT2OID || 
-		 targetTypeId == MYSUINT3OID || targetTypeId == MYSUINT4OID || targetTypeId == MYSUINT8OID) )
+	if (MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext &&
+		inputTypeId == UNKNOWNOID && IsA(node, Const) &&
+		(targetTypeId == UINT1OID || targetTypeId == UINT2OID || 
+		 targetTypeId == UINT3OID || targetTypeId == UINT4OID || targetTypeId == UINT8OID) )
 	{
 		/*
 		 * use cast(unknown as uint)
@@ -2721,7 +2719,7 @@ coerce_type(ParseState *pstate, Node *node,
 			}
 		}
 
-		if ( COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATEOID)
+		if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATEOID)
 			dateflg = MYS_DATE_FLG;
 		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATETIMEOID)
 			dateflg = MYS_DATETIME_FLG;

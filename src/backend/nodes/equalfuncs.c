@@ -3508,6 +3508,7 @@ _equalValue(const Value *a, const Value *b)
 		case T_BFloat: /* BUG:Z093 */
 		case T_BDouble: /* BUG:Z093 */
 		/* End - ReqID:SRS-PLSQL-EXCEPTION */
+		case T_HexString: /* BUG#5048 5070 */	
 			COMPARE_STRING_FIELD(val.str);
 			break;
 		case T_Null:
@@ -3792,6 +3793,7 @@ equal(const void *a, const void *b)
 		case T_BFloat: /* BUG:Z093 */
 		case T_BDouble: /* BUG:Z093 */
 		/* End - ReqID:SRS-PLSQL-EXCEPTION */
+		case T_HexString: /* BUG#5048 5070 */	
 			retval = _equalValue(a, b);
 			break;
 

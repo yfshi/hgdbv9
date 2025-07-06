@@ -2230,10 +2230,10 @@ ORDER BY 1, 2, 3;
                     | binary_ops            | binary_ops        | binary
                     | float_ops             | float4_ops        | real
                     | float_ops             | float8_ops        | double precision
-                    | integer_ops           | mysuint1_ops      | ivymy.mysuint1
-                    | integer_ops           | mysuint2_ops      | ivymy.mysuint2
-                    | integer_ops           | mysuint4_class    | ivymy.mysuint4
-                    | integer_ops           | mysuint8_ops      | ivymy.mysuint8
+                    | integer_ops           | mysuint1_ops      | ivymy.uint1
+                    | integer_ops           | mysuint2_ops      | ivymy.uint2
+                    | integer_ops           | mysuint4_class    | ivymy.uint4
+                    | integer_ops           | mysuint8_ops      | ivymy.uint8
                     | interval_ops          | interval_ops      | interval
                     | jsonb_ops             | jsonb_ops         | jsonb
                     | longblob_ops          | longblob_ops      | longblob

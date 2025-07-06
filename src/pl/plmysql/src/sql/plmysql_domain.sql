@@ -27,20 +27,20 @@ SELECT * FROM test_assign_booltrue(false, true);
 SELECT * FROM test_assign_booltrue(true, false);
 
 
-CREATE DOMAIN uint2 AS int2 CHECK (VALUE >= 0);
+CREATE DOMAIN uint2_ AS int2 CHECK (VALUE >= 0);
 
-CREATE FUNCTION test_argresult_uint2(x uint2, y int) RETURNS uint2 AS $$
+CREATE FUNCTION test_argresult_uint2(x uint2_, y int) RETURNS uint2_ AS $$
 begin
 return y;
 end
 $$ LANGUAGE plmysql;
 
-SELECT * FROM test_argresult_uint2(100::uint2, 50);
-SELECT * FROM test_argresult_uint2(100::uint2, -50);
+SELECT * FROM test_argresult_uint2(100::uint2_, 50);
+SELECT * FROM test_argresult_uint2(100::uint2_, -50);
 SELECT * FROM test_argresult_uint2(null, 1);
 
-CREATE FUNCTION test_assign_uint2(x int, y int) RETURNS uint2 AS $$
-declare v uint2 := x;
+CREATE FUNCTION test_assign_uint2(x int, y int) RETURNS uint2_ AS $$
+declare v uint2_ := x;
 begin
 v := y;
 return v;
@@ -120,15 +120,15 @@ SELECT * FROM test_assign_ordered_pair_domain(2,1,3);
 -- Arrays of domains
 --
 
-CREATE FUNCTION test_read_uint2_array(x uint2[]) RETURNS uint2 AS $$
+CREATE FUNCTION test_read_uint2_array(x uint2_[]) RETURNS uint2_ AS $$
 begin
 return x[1];
 end
 $$ LANGUAGE plmysql;
 
-select test_read_uint2_array(array[1::uint2]);
+select test_read_uint2_array(array[1::uint2_]);
 
-CREATE FUNCTION test_build_uint2_array(x int2) RETURNS uint2[] AS $$
+CREATE FUNCTION test_build_uint2_array(x int2) RETURNS uint2_[] AS $$
 begin
 return array[x, x];
 end

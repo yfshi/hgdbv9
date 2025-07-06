@@ -504,7 +504,7 @@ CREATE OPERATOR ivymy.^ (
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.binary_bitneg(ivymy.binary)
-RETURNS ivymy.mysuint8
+RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
@@ -929,26 +929,50 @@ CREATE CAST (ivymy.longblob AS ivymy.varbinary)
 WITH FUNCTION ivymy.varbinary(ivymy.longblob, integer, boolean)
 AS ASSIGNMENT;
 
-/* Begin BUG#5048 5070 */		
+/* Begin BUG#5048 5070 */
+-- cast varbinary to text
+CREATE FUNCTION ivymy.varbinary2text(ivymy.varbinary, integer, boolean)
+RETURNS text
+AS 'MODULE_PATHNAME','varbinary2text'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS text)
+WITH FUNCTION ivymy.varbinary2text(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast varbinary to bpchar
+CREATE FUNCTION ivymy.varbinary2bpchar(ivymy.varbinary, integer, boolean)
+RETURNS bpchar
+AS 'MODULE_PATHNAME','varbinary2bpchar'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS bpchar)
+WITH FUNCTION ivymy.varbinary2bpchar(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast varbinary to varchar
+CREATE FUNCTION ivymy.varbinary2varchar(ivymy.varbinary, integer, boolean)
+RETURNS varchar
+AS 'MODULE_PATHNAME','varbinary2varchar'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS varchar)
+WITH FUNCTION ivymy.varbinary2varchar(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast varbinary to int2
 CREATE FUNCTION ivymy.varbinary2int2(ivymy.varbinary, integer, boolean)
 RETURNS pg_catalog.int2
 AS 'MODULE_PATHNAME','varbinary2int2'
-LANGUAGE C
-STRICT
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean)
-RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME','varbinary2int4'
-LANGUAGE C
-STRICT
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','varbinary2int8'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
@@ -958,13 +982,72 @@ CREATE CAST (ivymy.varbinary AS pg_catalog.int2)
 WITH FUNCTION ivymy.varbinary2int2(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
 
+-- cast varbinary to int4
+CREATE FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME','varbinary2int4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
 CREATE CAST (ivymy.varbinary AS pg_catalog.int4)
 WITH FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
 
+-- cast varbinary to int8
+CREATE FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean)
+RETURNS pg_catalog.int8
+AS 'MODULE_PATHNAME','varbinary2int8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
 CREATE CAST (ivymy.varbinary AS pg_catalog.int8)
 WITH FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
+
+
+-- cast varbinary to date
+CREATE FUNCTION ivymy.varbinary2date(ivymy.varbinary, integer, boolean)
+RETURNS date
+AS 'MODULE_PATHNAME','varbinary2date'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS date)
+WITH FUNCTION ivymy.varbinary2date(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast varbinary to time
+CREATE FUNCTION ivymy.varbinary2time(ivymy.varbinary, integer, boolean)
+RETURNS time
+AS 'MODULE_PATHNAME','varbinary2time'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS time)
+WITH FUNCTION ivymy.varbinary2time(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast varbinary to datetime
+CREATE FUNCTION ivymy.varbinary2datetime(ivymy.varbinary, integer, boolean)
+RETURNS datetime
+AS 'MODULE_PATHNAME','varbinary2datetime'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS datetime)
+WITH FUNCTION ivymy.varbinary2datetime(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
 /* End BUG#5048 5070 */
 
 /********************************************************************************
@@ -1111,7 +1194,7 @@ LEAKPROOF;
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.varbinary_bitneg(ivymy.varbinary)
-RETURNS ivymy.mysuint8
+RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
@@ -1917,7 +2000,7 @@ CREATE OPERATOR ivymy.^ (
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.myblob_bitneg(ivymy.myblob)
-RETURNS ivymy.mysuint8
+RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
@@ -2613,7 +2696,7 @@ CREATE OPERATOR ivymy.^ (
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.tinyblob_bitneg(ivymy.tinyblob)
-RETURNS ivymy.mysuint8
+RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
@@ -3308,7 +3391,7 @@ CREATE OPERATOR ivymy.^ (
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.mediumblob_bitneg(ivymy.mediumblob)
-RETURNS ivymy.mysuint8
+RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE
@@ -4004,7 +4087,7 @@ CREATE OPERATOR ivymy.^ (
 
 ----function bitneg
 CREATE OR REPLACE FUNCTION ivymy.longblob_bitneg(ivymy.longblob)
-RETURNS ivymy.mysuint8
+RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','varbinary_bitneg'
 LANGUAGE C
 PARALLEL SAFE

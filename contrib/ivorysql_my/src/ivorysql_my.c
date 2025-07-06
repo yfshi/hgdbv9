@@ -59,7 +59,7 @@ Mysql_check_for_column_name_collision_hook_type pre_mysql_check_for_column_name_
 /* End - BUG#Z00004315/4316 */
 
 /* Begin BUG#5048 5070 */
-static Mysql_hexstring_to_varbinary_hook_type pre_mysql_hexstring_to_varbinary_hook;
+static mysql_hexstring_to_varbinary_hook_type pre_mysql_hexstring_to_varbinary_hook = NULL;
 /* End BUG#5048 5070 */
 
 void _PG_init(void);

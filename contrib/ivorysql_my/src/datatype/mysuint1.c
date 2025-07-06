@@ -245,12 +245,12 @@ PG_FUNCTION_INFO_V1(mysuint1_avg_accum);
 PG_FUNCTION_INFO_V1(mysuint1_sum);
 
 /*****************************************************************************
- *	 mysuint1 ADT
+ *	 uint1 ADT
  *****************************************************************************/
 
 /* 
  * mysuint1_in
- * Given mysuint1 text string, convert to internal mysuint1 format.
+ * Given uint1 text string, convert to internal uint1 format.
  */
 Datum
 mysuint1_in(PG_FUNCTION_ARGS)
@@ -264,7 +264,7 @@ mysuint1_in(PG_FUNCTION_ARGS)
 
 /* 
  * mysuint1_out
- * Given internal format mysuint1, convert to text string.
+ * Given internal format uint1, convert to text string.
  */
 Datum
 mysuint1_out(PG_FUNCTION_ARGS)
@@ -278,7 +278,7 @@ mysuint1_out(PG_FUNCTION_ARGS)
 }
 
 /*
- *mysuint1_recv			- converts external binary format to mysuint1
+ *mysuint1_recv			- converts external binary format to uint1
  */
 Datum
 mysuint1_recv(PG_FUNCTION_ARGS)
@@ -289,7 +289,7 @@ mysuint1_recv(PG_FUNCTION_ARGS)
 }
 
 /*
- *mysuint1_send			- converts mysuint1 to binary format
+ *mysuint1_send			- converts uint1 to binary format
  */
 Datum
 mysuint1_send(PG_FUNCTION_ARGS)
@@ -2016,7 +2016,7 @@ mysuint1_invertmysuint1(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT32(!val1);
 }
 
-// mysuint1 to boolean
+// uint1 to boolean
 Datum
 mysuint1_boolean(PG_FUNCTION_ARGS)
 {

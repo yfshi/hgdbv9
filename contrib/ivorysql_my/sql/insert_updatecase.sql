@@ -1,6 +1,5 @@
 create table VALUE_TEST1(a int not null, b int default 3);
---show dolphin.sql_mode;
---插入NULL值
+--show sql_mode;
 insert into VALUE_TEST1 values();--error
 insert into VALUE_TEST1 values();--warning
 select * from VALUE_TEST1;
@@ -10,7 +9,6 @@ create table TEST(a int, b int default 3);
 insert into TEST values();
 select * from TEST;
 
---引用值列表中先前设置的任何列
 insert into TEST values(1, a * 2);
 insert into TEST(a,b) values(2, a * 2);
 insert into TEST(a,b) values(2, a * 2 ),(3, a * 3);
@@ -28,7 +26,7 @@ create table TEST1(a varchar(2), b date);
 insert into TEST1 values();
 drop table TEST1;
 
---insert ON DUPLICATE KEY UPDATE用法
+--insert ON DUPLICATE KEY UPDATE
 create table T1(a int unique, b int, c int);
 INSERT INTO T1 (a, b, c) VALUES (1, 2, 3);
 INSERT INTO T1 (a, b, c) value(b * c + 1, b * 2, a * b * 2);
@@ -59,8 +57,7 @@ select *from T1;
 insert into T1 select a,b from T2;
 select *from T1;
 drop table T2 cascade;
---插入时，查询列需要匹配插入的列个数。
---insert ...select 用法
+--insert ...select
 create table TEST(id int, idd int);
 insert into TEST values(1, 2);
 insert into TEST select id from TEST;
@@ -69,21 +66,20 @@ select * from TEST;
 drop table TEST;
 drop table T1;
 
---temporary table用法
+--temporary table
 create temporary table T1(col1 int, col2 int);
 create table TEST1(a int,b int);
 insert into T1 values(1,2);
 insert into TEST1 select * from T1;
-insert into T1 select * from T1;--error 临时表中不允许
+insert into T1 select * from T1;--error
 
---当t1是TEMPORARY 表时，不能使用 INSERT INTO t ... SELECT ... FROM t，因为 TEMPORARY 表不能在同一语句中被引用两次。
---insert set用法
+--insert set
 delete from TEST1;
 insert into TEST1 set a = 1,b = 2;
 select * from TEST1;
 drop table TEST1, T1;
 
---insert delayed用法
+--insert delayed
 create table TEST(id int);
 insert delayed  into TEST values(1);--warning
 
@@ -128,7 +124,6 @@ on duplicate key update e = e + 1;
 select * from  CTT1;
 rollback;
 
---触发器
 create table TT2(id int);
 CREATE OR REPLACE FUNCTION tri_update_func1() RETURNS TRIGGER AS
 $$
@@ -163,7 +158,6 @@ rollback;
 drop table  CTT1;
 drop table TT2;
 
---pbe的支持
 create table TT(e int primary key,f int);
 insert TT  value(2, 3),(5, 6);
 PREPARE prtt (int, int) AS
@@ -431,7 +425,6 @@ INSERT INTO TEST_INSERT.T05 VALUES(DEFAULT, DEFAULT, 200), (DEFAULT, 200, DEFAUL
 ON DUPLICATE KEY UPDATE col3 = DEFAULT, col1 = col3;
 SELECT * FROM TEST_INSERT.T05 ORDER BY 1, 2, 3;
 
---问题 mysql均支持
 --- TEST using table name on update
 ---error
 INSERT INTO TEST_INSERT.T05 VALUES(DEFAULT, DEFAULT, 200), (DEFAULT, 200, DEFAULT)

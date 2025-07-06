@@ -442,19 +442,18 @@ bool pass_decrypt(const char *passwd, const unsigned char *key, const unsigned c
  */
 bool pass_gen_key(char *DataDir, char *Interface, char *CustomKey, unsigned char *sm4_key)
 {
-
 	char ident[17] = {0};
 	int ident_len = 0;
 	char mac[13] = {0};
 	int mac_len = 0;
 	int customkey_len = 0;
 	bool ret = false;
-	bool crc_ok;
 	ControlFileData *ControlFile;
 
 	/* Require identifier*/
 	if (DataDir && DataDir[0] != '\0')
 	{
+		bool crc_ok = true;
 		/* get a copy of the control file */
 		ControlFile = get_identifier(DataDir, &crc_ok);
 
