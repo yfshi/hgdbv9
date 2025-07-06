@@ -8400,6 +8400,19 @@ func_type:	Typename								{ $$ = $1; }
 					$$->setof = true;
 					$$->location = @2;
 				}
+			/* Begin - BUG#5401 */
+			/* We make vabinary as function return type */
+			| VARBINARY
+			{
+				$$ = MySQLSystemTypeName("varbinary");
+				if (strcmp($1, "varbinary") == 0)
+				{
+					$$->typmods = NIL;
+					$$->typemod = -1;
+				}
+				$$->location = @1;
+			}
+			/* End - BUG#5401 */
 		;
 
 func_arg_with_default:
@@ -15589,17 +15602,6 @@ BinaryWithoutLength:
 			{
 				$$ = MySQLSystemTypeName("binary");
 				if (strcmp($1, "binary") == 0)
-				{
-					$$->typmods = NIL;
-					$$->typemod = -1;
-				}
-				$$->location = @1;
-			}
-			/* We make vabinary as function return type */
-			| VARBINARY
-			{
-				$$ = MySQLSystemTypeName("varbinary");
-				if (strcmp($1, "varbinary") == 0)
 				{
 					$$->typmods = NIL;
 					$$->typemod = -1;

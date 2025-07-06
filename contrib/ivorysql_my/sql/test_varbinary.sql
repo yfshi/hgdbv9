@@ -57,7 +57,7 @@ select c1='hgdb ' from my_varbinary_t01;
 -- should get {0,0,1}
 select c1='hgdb\0\0' from my_varbinary_t01;
 
--- should error
+-- should error BUG#5401
 create table my_varbinary_t02(c1 varbinary);
 
 -- should ok

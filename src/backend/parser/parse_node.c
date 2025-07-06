@@ -460,7 +460,7 @@ make_const(ParseState *pstate, Value *value, int location)
 			setup_parser_errposition_callback(&pcbstate, pstate, location);
 			if (mysql_hexstring_to_varbinary_hook)
 			{
-				val = (*mysql_hexstring_to_varbinary_hook)(strVal(value));
+				val = (mysql_hexstring_to_varbinary_hook)(strVal(value));
 			}
 			cancel_parser_errposition_callback(&pcbstate);
 			typeid = VARBINARYOID;

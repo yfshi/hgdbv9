@@ -251,7 +251,7 @@ Datum
 varbinary2int8(PG_FUNCTION_ARGS)
 {
 	bytea 	*arg;
-	unsigned char	*data;
+	char	*data;
 	int		len,i;
 	uint64	value = 0;
 
@@ -441,7 +441,7 @@ varbinary_in(PG_FUNCTION_ARGS)
 }
 
 /* Begin BUG#5048 5070 */
-bytea * 
+Datum
 hexstring_varbinary(const char *value)
 {
 	bytea		*result;
@@ -474,7 +474,7 @@ hexstring_varbinary(const char *value)
 	bc = hex_decode(value, len, VARDATA(result));
 	SET_VARSIZE(result, bc + VARHDRSZ); /* actual length */
 
-	return result;
+	PG_RETURN_BYTEA_P(result);
 }
 /* End BUG#5048 5070 */
 

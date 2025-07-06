@@ -350,10 +350,16 @@ myint2_and(PG_FUNCTION_ARGS)
 	int64 arg0 = 0;
 	int64 arg1 = 0;
 
-	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+	/* Begin - BUG#5050 */
+	if (PG_ARGISNULL(0) && PG_ARGISNULL(1))
 	{
 		PG_RETURN_NULL();
 	}
+	else if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+	{
+		PG_RETURN_INT32(0);
+	}
+	/* End - BUG#5050 */	
 
 	arg0 = PG_GETARG_INT64(0);
 	arg1 = PG_GETARG_INT64(1);

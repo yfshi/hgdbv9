@@ -39,7 +39,7 @@
 
 typedef unsigned char uchar;
 
-extern bytea *hexstring_varbinary(const char *value);/* BUG#5048 5070 */
+extern Datum hexstring_varbinary(const char *value);/* BUG#5048 5070 */
 extern int16 my_atoi_int2(const char *s);
 extern int32 my_atoi_int4(const char *s);
 extern uint64 my_strntoull10rnd_8bit(const char *str, size_t length, int unsigned_flag, char **endptr, int *error);
