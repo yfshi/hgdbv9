@@ -15,6 +15,26 @@
 
 #include "parser/parse_node.h"
 
+/* Begin BUG#5048 5070 */
+#define exprIsHexConstant(n) \
+		  ((IsA((n), A_Const) && ((A_Const *) (n))->val.type == T_HexString))
+
+#define isMysNumericType(targetType) \
+					  ((targetType == TINYINTOID 	|| \
+						targetType == INT2OID 	 	|| \
+						targetType == MEDIUMINTOID 	|| \
+						targetType == INT4OID 		|| \
+						targetType == INT8OID 		|| \
+						targetType == UINT1OID 		|| \
+						targetType == UINT2OID 		|| \
+						targetType == UINT3OID 		|| \
+						targetType == UINT4OID 		|| \
+						targetType == UINT8OID 		|| \
+						targetType == FLOAT4OID 	|| \
+						targetType == FLOAT8OID 	|| \
+						targetType == NUMERICOID))
+/* End BUG#5048 5070 */
+
 /* GUC parameters */
 extern bool Transform_null_equals;
 
@@ -33,4 +53,5 @@ extern void transformFuncArg(ParseState *pstate, Node *func_arg);
 
 extern const char *ParseExprKindName(ParseExprKind exprKind);
 
+extern Node *make_bigint_const_from_hex(Node *n); /* BUG#5048 5070 */
 #endif							/* PARSE_EXPR_H */

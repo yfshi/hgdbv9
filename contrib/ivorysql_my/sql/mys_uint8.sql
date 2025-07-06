@@ -733,20 +733,20 @@ drop table t_index;
 set enable_seqscan=on;
 set enable_bitmapscan =on;
 
-create table tt(id1 mysuint1, id2 mysuint8);
+create table tt(id1 uint1, id2 uint8);
 insert into tt values(255, 257);
 select id1<id2 from tt;
 select id1=id2 from tt;
 select id1>id2 from tt;
 drop table tt;
-create table tt(id1 mysuint1, id2 mysuint2);
+create table tt(id1 uint1, id2 uint2);
 insert into tt values(255, 65535);
 select id1<id2 from tt;
 select id1=id2 from tt;
 select id1>id2 from tt;
 drop table tt;
 
-create table tt(id1 mysuint1, id2 int4);
+create table tt(id1 uint1, id2 int4);
 insert into tt values(255, -128);
 select id1<id2 from tt;
 select id1=id2 from tt;

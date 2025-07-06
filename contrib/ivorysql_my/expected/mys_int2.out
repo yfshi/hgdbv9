@@ -804,75 +804,75 @@ drop table tb_test;
 set sql_mode = default;
 -- BUG#5060
 create table t(c smallint(-1) signed);
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c smallint(-1) signed);
                                  ^
 create table t(c smallint(-1) SIGNED);
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c smallint(-1) SIGNED);
                                  ^
 create table t(c smallint(-1));
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c smallint(-1));
                                  ^
 create table t(c int2(-1) signed);
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c int2(-1) signed);
                              ^
 create table t(c int2(-1) SIGNED);
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c int2(-1) SIGNED);
                              ^
 create table t(c int2(-1));
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c int2(-1));
                              ^
 create table t(c INT2(-1) signed);
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c INT2(-1) signed);
                              ^
 create table t(c INT2(-1) SIGNED);
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c INT2(-1) SIGNED);
                              ^
 create table t(c INT2(-1));
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c INT2(-1));
                              ^
 create table t(c smallint(256) signed);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c smallint(256) signed);
                                  ^
 create table t(c smallint(256) SIGNED);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c smallint(256) SIGNED);
                                  ^
 create table t(c smallint(256));
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c smallint(256));
                                  ^
 create table t(c int2(256) signed);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c int2(256) signed);
                              ^
 create table t(c int2(256) SIGNED);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c int2(256) SIGNED);
                              ^
 create table t(c int2(256));
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c int2(256));
                              ^
 create table t(c INT2(256) signed);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c INT2(256) signed);
                              ^
 create table t(c INT2(256) SIGNED);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c INT2(256) SIGNED);
                              ^
 create table t(c INT2(256));
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c INT2(256));
                              ^
 -- BUG#5061
@@ -902,16 +902,16 @@ set sql_mode = default;
 insert into tb_test values (0x1f);
 insert into tb_test values (0x7fff);
 insert into tb_test values (0x8000);
-ERROR:  BINARY value is out of range for type smallint
+ERROR:  Out of range value for column
 insert into tb_test values (0xffffffffffffffff);
-ERROR:  BINARY value is out of range for type smallint
+ERROR:  Out of range value for column
 set sql_mode = '';
 insert into tb_test values (0x1f);
 insert into tb_test values (0x7fff);
 insert into tb_test values (0x8000);
-WARNING:  BINARY value is out of range for type smallint
+WARNING:  Out of range value for column
 insert into tb_test values (0xffffffffffffffff);
-WARNING:  BINARY value is out of range for type smallint
+WARNING:  Out of range value for column
 select * from tb_test;
   id   
 -------

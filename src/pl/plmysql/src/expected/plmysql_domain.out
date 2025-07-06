@@ -37,29 +37,29 @@ CONTEXT:  PL/mySQL function test_assign_booltrue(boolean,boolean) line 3 during 
 SELECT * FROM test_assign_booltrue(true, false);
 ERROR:  value for domain booltrue violates check constraint "booltrue_check"
 CONTEXT:  PL/mySQL function test_assign_booltrue(boolean,boolean) line 4 at assignment
-CREATE DOMAIN uint2 AS int2 CHECK (VALUE >= 0);
-CREATE FUNCTION test_argresult_uint2(x uint2, y int) RETURNS uint2 AS $$
+CREATE DOMAIN uint2_ AS int2 CHECK (VALUE >= 0);
+CREATE FUNCTION test_argresult_uint2(x uint2_, y int) RETURNS uint2_ AS $$
 begin
 return y;
 end
 $$ LANGUAGE plmysql;
-SELECT * FROM test_argresult_uint2(100::uint2, 50);
+SELECT * FROM test_argresult_uint2(100::uint2_, 50);
  test_argresult_uint2 
 ----------------------
                    50
 (1 row)
 
-SELECT * FROM test_argresult_uint2(100::uint2, -50);
-ERROR:  value for domain uint2 violates check constraint "uint2_check"
-CONTEXT:  PL/mySQL function test_argresult_uint2(uint2,integer) while casting return value to function's return type
+SELECT * FROM test_argresult_uint2(100::uint2_, -50);
+ERROR:  value for domain uint2_ violates check constraint "uint2__check"
+CONTEXT:  PL/mySQL function test_argresult_uint2(uint2_,integer) while casting return value to function's return type
 SELECT * FROM test_argresult_uint2(null, 1);
  test_argresult_uint2 
 ----------------------
                     1
 (1 row)
 
-CREATE FUNCTION test_assign_uint2(x int, y int) RETURNS uint2 AS $$
-declare v uint2 := x;
+CREATE FUNCTION test_assign_uint2(x int, y int) RETURNS uint2_ AS $$
+declare v uint2_ := x;
 begin
 v := y;
 return v;
@@ -72,10 +72,10 @@ SELECT * FROM test_assign_uint2(100, 50);
 (1 row)
 
 SELECT * FROM test_assign_uint2(100, -50);
-ERROR:  value for domain uint2 violates check constraint "uint2_check"
+ERROR:  value for domain uint2_ violates check constraint "uint2__check"
 CONTEXT:  PL/mySQL function test_assign_uint2(integer,integer) line 4 at assignment
 SELECT * FROM test_assign_uint2(-100, 50);
-ERROR:  value for domain uint2 violates check constraint "uint2_check"
+ERROR:  value for domain uint2_ violates check constraint "uint2__check"
 CONTEXT:  PL/mySQL function test_assign_uint2(integer,integer) line 3 during statement block local variable initialization
 SELECT * FROM test_assign_uint2(null, 1);
  test_assign_uint2 
@@ -172,18 +172,18 @@ CONTEXT:  PL/mySQL function test_assign_ordered_pair_domain(integer,integer,inte
 --
 -- Arrays of domains
 --
-CREATE FUNCTION test_read_uint2_array(x uint2[]) RETURNS uint2 AS $$
+CREATE FUNCTION test_read_uint2_array(x uint2_[]) RETURNS uint2_ AS $$
 begin
 return x[1];
 end
 $$ LANGUAGE plmysql;
-select test_read_uint2_array(array[1::uint2]);
+select test_read_uint2_array(array[1::uint2_]);
  test_read_uint2_array 
 -----------------------
                      1
 (1 row)
 
-CREATE FUNCTION test_build_uint2_array(x int2) RETURNS uint2[] AS $$
+CREATE FUNCTION test_build_uint2_array(x int2) RETURNS uint2_[] AS $$
 begin
 return array[x, x];
 end

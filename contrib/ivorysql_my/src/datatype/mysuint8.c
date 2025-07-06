@@ -56,6 +56,13 @@ PG_FUNCTION_INFO_V1(mysuint8_scale);
 PG_FUNCTION_INFO_V1(int_mysuint8);
 PG_FUNCTION_INFO_V1(numeric_mysuint8);
 PG_FUNCTION_INFO_V1(boolean_mysuint8);
+PG_FUNCTION_INFO_V1(mys_uint82uint1);
+PG_FUNCTION_INFO_V1(mys_uint82int2);
+PG_FUNCTION_INFO_V1(mys_uint82uint2);
+PG_FUNCTION_INFO_V1(mys_uint82int4);
+PG_FUNCTION_INFO_V1(mys_uint82int8);
+PG_FUNCTION_INFO_V1(mys_uint82float4);
+PG_FUNCTION_INFO_V1(mys_uint82float8);
 
 PG_FUNCTION_INFO_V1(mysuint8_eq);
 PG_FUNCTION_INFO_V1(mysuint8_eqint2);
@@ -244,12 +251,12 @@ PG_FUNCTION_INFO_V1(mysuint8_avg);
 PG_FUNCTION_INFO_V1(mysuint8_sum);
 
 /*****************************************************************************
- *	 mysuint8 ADT
+ *	 uint8 ADT
  *****************************************************************************/
 
 /* 
  * mysuint8_in
- * Given mysuint8 text string, convert to internal mysuint8 format.
+ * Given uint8 text string, convert to internal uint8 format.
  */
 Datum
 mysuint8_in(PG_FUNCTION_ARGS)
@@ -263,7 +270,7 @@ mysuint8_in(PG_FUNCTION_ARGS)
 
 /* 
  * mysuint8_out
- * Given internal format mysuint8, convert to text string.
+ * Given internal format uint8, convert to text string.
  */
 Datum
 mysuint8_out(PG_FUNCTION_ARGS)
@@ -281,7 +288,7 @@ mysuint8_out(PG_FUNCTION_ARGS)
 }
 
 /*
- *mysuint8_recv			- converts external binary format to mysuint8
+ *mysuint8_recv			- converts external binary format to uint8
  */
 Datum
 mysuint8_recv(PG_FUNCTION_ARGS)
@@ -292,7 +299,7 @@ mysuint8_recv(PG_FUNCTION_ARGS)
 }
 
 /*
- *mysuint8_send			- converts mysuint8 to binary format
+ *mysuint8_send			- converts uint8 to binary format
  */
 Datum
 mysuint8_send(PG_FUNCTION_ARGS)
@@ -2030,7 +2037,6 @@ int8_ormysuint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(val2 || val1);
 }
 
-
 // invert ! 
 Datum
 mysuint8_invertmysuint8(PG_FUNCTION_ARGS)
@@ -2059,7 +2065,7 @@ mysuint8_boolean(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(val1 != 0);
 }
 
-// mysuint8 to numeric
+// uint8 to numeric
 Datum
 mysuint8_numeric(PG_FUNCTION_ARGS)
 {
@@ -2276,3 +2282,106 @@ mysuint8_sum(PG_FUNCTION_ARGS)
 	}
 }
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+
+/* Begin BUG#5048 5070 */
+#define InsertGreaterLimitCheck(BASE, LIMIT, RET) \
+	do { \
+		if (fcinfo->flinfo->fn_insert) \
+		{ \
+			if (BASE > LIMIT) \
+			{ \
+				ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column"))); \
+				RET = LIMIT; \
+			} \
+		} \
+	} while(0);
+
+Datum
+mys_uint82uint1(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	uint8		val2 = val1;
+	
+	/**
+	 * val1 is unsigned int64, it is greater than 0, 
+	 * need not check PG_UINT8_MIN.
+	 */
+	InsertGreaterLimitCheck(val1, PG_UINT8_MAX, val2);
+	
+	PG_RETURN_UINT8(val2);
+}
+
+Datum
+mys_uint82int2(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	int16		val2 = val1;
+	
+	/**
+	 * val1 is unsigned int64, it is greater than 0, 
+	 * need not check PG_INT16_MIN.
+	 */
+	InsertGreaterLimitCheck(val1, PG_INT16_MAX, val2);
+
+	PG_RETURN_INT16(val2);
+}
+
+Datum
+mys_uint82uint2(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	uint16		val2 = val1;
+	
+	/**
+	 * val1 is unsigned int64, it is greater than 0, 
+	 * need not check PG_UINT16_MIN.
+	 */
+	InsertGreaterLimitCheck(val1, PG_UINT16_MAX, val2);
+
+	PG_RETURN_UINT16(val2);
+}
+
+Datum
+mys_uint82int4(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	int32		val2 = val1;
+
+	InsertGreaterLimitCheck(val1, PG_INT32_MAX, val2);
+	
+	PG_RETURN_INT32(val2);
+}
+
+Datum
+mys_uint82int8(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	int64		val2 = val1;
+
+	InsertGreaterLimitCheck(val1, PG_INT64_MAX, val2);
+
+	PG_RETURN_INT64(val2);
+}
+
+Datum
+mys_uint82float4(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	float		val2 = val1;
+
+	InsertGreaterLimitCheck(val1, FLT_MAX, val2);
+	
+	PG_RETURN_FLOAT4(val2);
+}
+
+Datum
+mys_uint82float8(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	double		val2 = val1;
+
+	InsertGreaterLimitCheck(val1, DBL_MAX, val2);
+
+	PG_RETURN_FLOAT8(val2);
+}
+/* End BUG#5048 5070 */

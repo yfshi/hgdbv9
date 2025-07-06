@@ -523,7 +523,7 @@ create table t_index(id int2 unsigned ,description varchar(100));
 insert into t_index (id, description) values(generate_series(0,1672),'aa');
 create index index_id_btree on t_index (id);
 explain (COSTS OFF) select * from t_index where id BETWEEN 65 and 70;
-explain (COSTS OFF) select * from t_index where id BETWEEN 65::mysuint2 and 70::mysuint2;
+explain (COSTS OFF) select * from t_index where id BETWEEN 65::uint2 and 70::uint2;
 drop table t_index;
 set enable_seqscan=on;
 set enable_bitmapscan =on;

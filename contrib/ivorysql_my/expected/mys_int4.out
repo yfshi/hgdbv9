@@ -1066,123 +1066,123 @@ drop table tb_test;
 set sql_mode = default;
 -- fix bug 5060
 create table t(c integer(-1) signed);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c integer(-1) signed);
                                 ^
 create table t(c integer(-1) SIGNED);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c integer(-1) SIGNED);
                                 ^
 create table t(c integer(-1));
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c integer(-1));
                                 ^
 create table t(c int4(-1) signed);
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c int4(-1) signed);
                              ^
 create table t(c int4(-1) SIGNED);
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c int4(-1) SIGNED);
                              ^
 create table t(c int4(-1));
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c int4(-1));
                              ^
 create table t(c INT4(-1) signed);
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c INT4(-1) signed);
                              ^
 create table t(c INT4(-1) SIGNED);
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c INT4(-1) SIGNED);
                              ^
 create table t(c INT4(-1));
-ERROR:  syntax error at or near
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c INT4(-1));
                              ^
 create table t(c integer(256) signed);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c integer(256) signed);
                                 ^
 create table t(c integer(256) SIGNED);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c integer(256) SIGNED);
                                 ^
 create table t(c integer(256));
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c integer(256));
                                 ^
 create table t(c int4(256) signed);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c int4(256) signed);
                              ^
 create table t(c int4(256) SIGNED);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c int4(256) SIGNED);
                              ^
 create table t(c int4(256));
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c int4(256));
                              ^
 create table t(c INT4(256) signed);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c INT4(256) signed);
                              ^
 create table t(c INT4(256) SIGNED);
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c INT4(256) SIGNED);
                              ^
 create table t(c INT4(256));
-ERROR:  syntax error at or near
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c INT4(256));
                              ^
 create table t(c int(256) signed);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c int(256) signed);
                             ^
 create table t(c int(256) SIGNED);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c int(256) SIGNED);
                             ^
 create table t(c int(256));
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c int(256));
                             ^
 create table t(c INT(256) signed);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c INT(256) signed);
                             ^
 create table t(c INT(256) SIGNED);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c INT(256) SIGNED);
                             ^
 create table t(c INT(256));
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t(c INT(256));
                             ^
 create table t(c int(-1) signed);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c int(-1) signed);
                             ^
 create table t(c int(-1) SIGNED);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c int(-1) SIGNED);
                             ^
 create table t(c int(-1));
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c int(-1));
                             ^
 create table t(c INT(-1) signed);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c INT(-1) signed);
                             ^
 create table t(c INT(-1) SIGNED);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c INT(-1) SIGNED);
                             ^
 create table t(c INT(-1));
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t(c INT(-1));
                             ^
 -- BUG#5103
@@ -1250,16 +1250,16 @@ set sql_mode = default;
 insert into tb_test values (0x1f2a);
 insert into tb_test values (0x7fffffff);
 insert into tb_test values (0x80000000);
-ERROR:  BINARY value is out of range for type integer
+ERROR:  Out of range value for column
 insert into tb_test values (0xffffffffffffffff);
-ERROR:  BINARY value is out of range for type integer
+ERROR:  Out of range value for column
 set sql_mode = '';
 insert into tb_test values (0x1f2a);
 insert into tb_test values (0x7fffffff);
 insert into tb_test values (0x80000000);
-WARNING:  BINARY value is out of range for type integer
+WARNING:  Out of range value for column
 insert into tb_test values (0xffffffffffffffff);
-WARNING:  BINARY value is out of range for type integer
+WARNING:  Out of range value for column
 select * from tb_test;
      id     
 ------------

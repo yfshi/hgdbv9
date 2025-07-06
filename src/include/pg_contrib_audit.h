@@ -267,7 +267,7 @@ typedef struct
 
 typedef struct AuditEvent
 {
-	char	   *actionname;
+	char	  	actionname[32];
 	Oid			confoids[MAX_NCONFOIDS];
 	char		conftypes[MAX_NCONFOIDS];
 	int32		nconfoids;
@@ -291,7 +291,7 @@ typedef struct AuditEvent
 	char	   *sqltext;		
 	char		clientname[CLIENTNAME_LEN];	// MyProcPort->remote_hostname
 	char		clientip[CLIENTIP_LEN];	// MyProcPort->remote_host
-	char		clientmac[MAC_LEN];	// MyProcPort->remote_mac£¨todo£¬windows£©
+	char		clientmac[MAC_LEN];
 	char		clientport[CLIENTPORT_LEN];	// MyProcPort->remote_port
 	char		clientappname[CLIENTNAME_LEN];	// application_name
 	char		authmethod[AUTHMETHOD_LEN];

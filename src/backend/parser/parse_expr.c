@@ -13,6 +13,8 @@
  *-------------------------------------------------------------------------
  */
 
+#include <assert.h>
+
 #include "postgres.h"
 
 #include "catalog/pg_collation.h"
@@ -1327,6 +1329,24 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 	Node	   *rexpr = a->rexpr;
 	Node	   *result;
 
+	/** 
+	 * Begin BUG#5048 5070 
+	 * When do caculate with hex string, we parse it to uint64 always.
+	 */
+	if (compatible_db == MYS_PARSER)
+	{
+		if (lexpr && exprIsHexConstant(lexpr))
+		{
+			lexpr = make_bigint_const_from_hex(lexpr);
+		}
+
+		if (rexpr && exprIsHexConstant(rexpr))
+		{
+			rexpr = make_bigint_const_from_hex(rexpr);
+		}
+	}
+	/* End BUG#5048 5070 */
+
 	/*
 	 * Special-case "foo = NULL" and "NULL = foo" for compatibility with
 	 * standards-broken products (like Microsoft's).  Turn these into IS NULL
@@ -1877,6 +1897,19 @@ transformBoolExpr(ParseState *pstate, BoolExpr *a)
 	foreach(lc, a->args)
 	{
 		Node	   *arg = (Node *) lfirst(lc);
+
+		if (MYS_PARSER == compatible_db)
+		{
+			/** 
+			 * Begin BUG#5048 5070 
+			 * Treate hex string in bool context as uint64.
+			 */
+			if (exprIsHexConstant(arg))
+			{
+				arg = make_bigint_const_from_hex(arg);
+			}
+			/* End BUG#5048 5070 */
+		}
 
 		arg = transformExprRecurse(pstate, arg);
 		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
@@ -3992,6 +4025,106 @@ transformWholeRowRef(ParseState *pstate, ParseNamespaceItem *nsitem,
 	}
 }
 
+/* Begin BUG#5048 5070 */
+static int64
+parse_hex_string_to_int64(char *src)
+{
+	int64	value = 0;
+	int 	len = strlen(src);
+	char 	*end = src + len;
+	char	bytes[64], *dst = bytes;
+	size_t	size = 0;
+
+	if (len > 2 * sizeof(int64))
+	{
+		const char *lost_end = end - 2 * sizeof(int64);
+		for (char *p = src; p < lost_end; p++)
+		{
+			if (*p != '\0')
+			{				
+				char errbuff[512], *errptr= errbuff;
+
+				*errptr++ = 'x';
+				*errptr++ = '\'';
+
+				if (len % 2)
+					*errptr++ = '0';
+				
+				for (p = src; p < end; p++)
+				{
+					if (errptr > errbuff + sizeof(errbuff) - 4)
+						break;
+					*errptr++ = *p;
+				}
+
+				*errptr++ = '\'';
+				*errptr++ = '\0';
+
+				ereport(WARNING,
+						errmsg("Truncated incorrect BINARY value: %s", errbuff));
+
+				return -1;
+			}
+		}
+	}
+
+	if (len % 2)
+	{
+		*dst++ = mys_get_hex(src++);
+		len--;
+		size++;
+	}
+
+	size += mys_hex_decode(src, len, bytes);
+
+	for (int i = 0; i < size; i++)
+	{
+		value = (value << 8) + (uint8) bytes[i];
+	}
+
+	return value;
+}
+
+/**
+ * Use TypeCast node to convert hex to unsigned bigint.
+ */
+Node *
+make_bigint_const_from_hex(Node *n)
+{
+	char		buf[64];
+	char 		*hex;
+	A_Const 	*aconst;
+	int64 		value;
+	TypeCast 	*tc;
+
+	assert(exprIsHexConstant(n));
+
+	aconst = (A_Const *) n;
+
+	hex = aconst->val.val.str; // without prefix '0x'
+
+	// remove prefix zero
+	while (*hex == '0')
+		hex++;
+	
+	value = parse_hex_string_to_int64(hex);
+
+	snprintf(buf, sizeof(buf), "%ld", value);
+
+	aconst = makeNode(A_Const);
+	aconst->val.type = T_String;
+	aconst->val.val.str = pstrdup(buf);
+	aconst->location = exprLocation(n);
+
+	tc = makeNode(TypeCast);
+	tc->arg = (Node *) aconst;
+	tc->typeName = makeTypeNameFromNameList(list_make2(makeString("ivymy"), makeString("uint8")));
+	tc->location = exprLocation(n);
+	
+	return (Node *) tc;
+}
+/* End BUG#5048 5070 */
+
 /*
  * Handle an explicit CAST construct.
  *
@@ -4012,59 +4145,79 @@ transformTypeCast(ParseState *pstate, TypeCast *tc)
 	/* Look up the type name first */
 	typenameTypeIdAndMod(pstate, tc->typeName, &targetType, &targetTypmod);
 
-	/* Begin - BUG#M533 */
-	if (MYS_PARSER == compatible_db && cast_to_char &&
-		targetType == BPCHAROID)
+	/** 
+	 * Begin - BUG#M533 
+	 * when cast hex string to other data, we parse it to uint64 or
+	 * varbinary according to target type.
+	 */
+	if (MYS_PARSER == compatible_db)
 	{
-		int32		tmptargetTypmod = -1;
-
-		if (targetTypmod != VARHDRSZ)
+		/* Begin BUG#5048 5070 */
+		if (exprIsHexConstant(arg))
 		{
-			/* when the typemod is -2, represent the type is char or nchar,
-			 * not type mode. when the typemod is not -2, represent the type
-			 * is char(n) or nchar(n). when the type is char or nchar, if the
-			 * arg is string, the type mode is the string length, when then arg is expr,
-			 * the type mode is -1;
+			/**
+			 * When cast to date/time/datetime, we treat hex string as varbinary.
+			 * Other target type, we treat as unsigned bigint.
 			 */
-			arg = tc->arg;
-			if (IsA(arg, A_Const))
+			if (isMysNumericType(targetType))
 			{
-				A_Const *aconst = (A_Const *)arg;
-
-				if (aconst->val.type == T_String && aconst->val.val.str != NULL)
-					tmptargetTypmod = DatumGetInt32(DirectFunctionCall1(textlen,
-																		 CStringGetTextDatum(aconst->val.val.str)));
+				arg = make_bigint_const_from_hex(arg);
 			}
-
-			/* when the typemod is -2, the type is char or nchar,
-			 * type mode is charactor lenth;
-			 * when the typemod is not -2, the type is char(n) or nchar(n),
-			 * type mode is type mode - header;
-			 */
-			if (tc->typeName->typemod != -2)
-				tmptargetTypmod = targetTypmod - VARHDRSZ;
-
-			tc->typeName->names = list_make2(makeString("pg_catalog"), makeString("varchar"));
-			tc->typeName->typmods = list_make1(mysmakeIntConst(tmptargetTypmod, -1));
-			targetTypmod = 0;
-			targetType = InvalidOid;
-			typenameTypeIdAndMod(pstate, tc->typeName, &targetType, &targetTypmod);
 		}
-		/* Begin - BUG#Z00005108 */
-		else
+		/* End BUG#5048 5070 */
+
+		if (cast_to_char && targetType == BPCHAROID)
 		{
-			A_Const *n = makeNode(A_Const);
+			int32		tmptargetTypmod = -1;
 
-			n->val.type = T_String;
-			n->val.val.str = "";
-			n->location = -1;
-			tc->arg = (Node *)n;
-			arg = tc->arg;
-			ereport(WARNING,
-					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					 errmsg("value too long for type char(0), Data truncated.")));
+			if (targetTypmod != VARHDRSZ)
+			{
+				/* when the typemod is -2, represent the type is char or nchar,
+				 * not type mode. when the typemod is not -2, represent the type
+				 * is char(n) or nchar(n). when the type is char or nchar, if the
+				 * arg is string, the type mode is the string length, when then arg is expr,
+				 * the type mode is -1;
+				 */
+				arg = tc->arg;
+				if (IsA(arg, A_Const))
+				{
+					A_Const *aconst = (A_Const *)arg;
+
+					if (aconst->val.type == T_String && aconst->val.val.str != NULL)
+						tmptargetTypmod = DatumGetInt32(DirectFunctionCall1(textlen,
+																			CStringGetTextDatum(aconst->val.val.str)));
+				}
+
+				/* when the typemod is -2, the type is char or nchar,
+				 * type mode is charactor lenth;
+				 * when the typemod is not -2, the type is char(n) or nchar(n),
+				 * type mode is type mode - header;
+				 */
+				if (tc->typeName->typemod != -2)
+					tmptargetTypmod = targetTypmod - VARHDRSZ;
+
+				tc->typeName->names = list_make2(makeString("pg_catalog"), makeString("varchar"));
+				tc->typeName->typmods = list_make1(mysmakeIntConst(tmptargetTypmod, -1));
+				targetTypmod = 0;
+				targetType = InvalidOid;
+				typenameTypeIdAndMod(pstate, tc->typeName, &targetType, &targetTypmod);
+			}
+			/* Begin - BUG#Z00005108 */
+			else
+			{
+				A_Const *n = makeNode(A_Const);
+
+				n->val.type = T_String;
+				n->val.val.str = "";
+				n->location = -1;
+				tc->arg = (Node *)n;
+				arg = tc->arg;
+				ereport(WARNING,
+						(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+						 errmsg("value too long for type char(0), Data truncated.")));
+			}
+			/* End - BUG#Z00005108 */
 		}
-		/* End - BUG#Z00005108 */
 	}
 	/* End - BUG#M533 */
 

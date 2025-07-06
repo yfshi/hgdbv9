@@ -442,7 +442,7 @@ extern Const *make_const(ParseState *pstate, Value *value, int location);
 /* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 /* Begin BUG#5048 5070 */
-typedef Datum (*Mysql_hexstring_to_varbinary_hook_type) (const char *str);
-extern PGDLLIMPORT Mysql_hexstring_to_varbinary_hook_type mysql_hexstring_to_varbinary_hook;
+typedef Datum (*mysql_hexstring_to_varbinary_hook_type) (const char *str);
+extern PGDLLIMPORT mysql_hexstring_to_varbinary_hook_type mysql_hexstring_to_varbinary_hook;
 /* End BUG#5048 5070 */
 #endif							/* PARSE_NODE_H */

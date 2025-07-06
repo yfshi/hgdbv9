@@ -37,13 +37,26 @@ create table t1 (f1 float(24),f2 float(52));
 --replace_column 8 #
 --show full columns from t1;
 insert into t1 values(10,10),(1e+5,1e+5),(1234567890,1234567890),(1e+10,1e+10),(1e+15,1e+15),(1e+20,1e+20),(1e+50,1e+50),(1e+150,1e+150);
-ERROR:  "100000000000000000000000000000000000000000000000000" is out of range for type real
 insert into t1 values(-10,-10),(1e-5,1e-5),(1e-10,1e-10),(1e-15,1e-15),(1e-20,1e-20),(1e-50,1e-50),(1e-150,1e-150);
-ERROR:  "0.00000000000000000000000000000000000000000000000001" is out of range for type real
 select * from t1;
- f1 | f2 
-----+----
-(0 rows)
+     f1      |     f2      
+-------------+-------------
+          10 |          10
+      100000 |      100000
+  1234567890 |  1234567890
+ 10000000000 | 10000000000
+       1e+15 |       1e+15
+       1e+20 |       1e+20
+       1e+50 |       1e+50
+      1e+150 |      1e+150
+         -10 |         -10
+       1e-05 |       1e-05
+       1e-10 |       1e-10
+       1e-15 |       1e-15
+       1e-20 |       1e-20
+       1e-50 |       1e-50
+      1e-150 |      1e-150
+(15 rows)
 
 drop table t1;
 create table t1 (datum double);
@@ -150,9 +163,7 @@ drop table t1;
 ERROR:  table "t1" does not exist
 --error 1425
 create table t1 (a float(200,100), b double(200,100));
-ERROR:  scale must be between 0 and 30.
-LINE 1: create table t1 (a float(200,100), b double(200,100));
-                                     ^
+ERROR:  Too big scale 100 specified for column. Maximum is 30.
 create table t1 (c20 char);
 insert into t1 values (5000.0);
 ERROR:  value too long for type character(1)
@@ -161,31 +172,23 @@ ERROR:  value too long for type character(1)
 drop table t1;
 --error 1063
 create table t1 (f float(54));	
-ERROR:  precision for type float must be less than 54 bits
+ERROR:  Incorrect column specifier for column
 LINE 1: create table t1 (f float(54));
-                                 ^
+                                ^
 --disable_warnings
 drop table if exists t1;
 NOTICE:  table "t1" does not exist, skipping
 --enable_warnings
 create table t1 (d1 double, d2 double unsigned);
-ERROR:  syntax error at or near "unsigned"
-LINE 1: create table t1 (d1 double, d2 double unsigned);
-                                              ^
 insert into t1 set d1 = -1.0;
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1 set d1 = -1.0;
-                    ^
 update t1 set d2 = d1;
-ERROR:  relation "t1" does not exist
-LINE 1: update t1 set d2 = d1;
-               ^
 select * from t1;
-ERROR:  relation "t1" does not exist
-LINE 1: select * from t1;
-                      ^
+ d1 | d2 
+----+----
+ -1 | -1
+(1 row)
+
 drop table t1;
-ERROR:  table "t1" does not exist
 create table t1 (f float(4,3));
 insert into t1 values (-11.0),(-11),("-11"),(11.0),(11),("11");
 select * from t1;
@@ -246,7 +249,7 @@ select * from t1 where reckey=108;
 (1 row)
 
 select * from t1 where reckey=1.08E2;
-ERROR:  operator does not exist: mysuint4 = numeric
+ERROR:  operator does not exist: uint4 = numeric
 LINE 1: select * from t1 where reckey=1.08E2;
                                      ^
 HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
@@ -257,7 +260,7 @@ select * from t1 where reckey=109;
 (1 row)
 
 select * from t1 where reckey=1.09E2;
-ERROR:  operator does not exist: mysuint4 = numeric
+ERROR:  operator does not exist: uint4 = numeric
 LINE 1: select * from t1 where reckey=1.09E2;
                                      ^
 HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
@@ -402,32 +405,21 @@ drop table t1;
 --echo End of 4.1 tests
 --error 1427
 create table t1 (s1 float(0,2));
-ERROR:  precision must be between 1 and 255.
-LINE 1: create table t1 (s1 float(0,2));
-                                  ^
+ERROR:  For float(M,D), double(M,D) or decimal(M,D), M must be >= D
 --error 1427
 create table t1 (s1 float(1,2));
-ERROR:  invalid type modifier, precision must be greater than scale.
-LINE 1: create table t1 (s1 float(1,2));
-                                  ^
+ERROR:  For float(M,D), double(M,D) or decimal(M,D), M must be >= D
 CREATE TABLE t1 (
   f1 real zerofill,
   f2 double zerofill,
   f3 float zerofill);
-ERROR:  syntax error at or near "zerofill"
-LINE 2:   f1 real zerofill,
-                  ^
 INSERT INTO t1 VALUES ( 0.314152e+1, 0.314152e+1, 0.314152e+1);
-ERROR:  relation "t1" does not exist
-LINE 1: INSERT INTO t1 VALUES ( 0.314152e+1, 0.314152e+1, 0.314152e+...
-                    ^
 --let $my_stmt= select f1, f2, f3 FROM t1;
 --eval PREPARE stmt1 FROM '$my_stmt';
 --select f1, f2, f3 FROM t1;
 --eval $my_stmt;
 --EXECUTE stmt1;
 DROP TABLE t1;
-ERROR:  table "t1" does not exist
 create table t1 (f1 double(200, 0));
 insert into t1 values (1e199), (-1e199);
 insert into t1 values (1e200), (-1e200);
@@ -449,14 +441,14 @@ insert into t1 values (1e29), (-1e29);
 insert into t1 values (1e30), (-1e30);
 insert into t1 values (2e30), (-2e30);
 select f1 + 0e0 from t1;
- ?column? 
-----------
-    1e+29
-   -1e+29
-    1e+30
-   -1e+30
-    2e+30
-   -2e+30
+        ?column?         
+-------------------------
+  1.0000000150474662e+29
+ -1.0000000150474662e+29
+  1.0000000150474662e+30
+ -1.0000000150474662e+30
+  2.0000000300949324e+30
+ -2.0000000300949324e+30
 (6 rows)
 
 drop table t1;
@@ -500,7 +492,7 @@ create table t1(d double, u bigint unsigned);
 insert into t1(d) values (9.22337203685479e18),
                          (1.84e19);
 update t1 set u = d;
-ERROR:  column "u" is of type mysuint8 but expression is of type double precision
+ERROR:  column "u" is of type uint8 but expression is of type double precision
 LINE 1: update t1 set u = d;
                           ^
 HINT:  You will need to rewrite or cast the expression.
@@ -2348,23 +2340,23 @@ INSERT INTO db_test (a, b, c) VALUES
 SELECT a & b, pg_typeof(a & b) FROM db_test;
        ?column?       | pg_typeof 
 ----------------------+-----------
- 2                    | mysuint8
- 0                    | mysuint8
- 18446744073709551608 | mysuint8
-                      | mysuint8
- 0                    | mysuint8
- 0                    | mysuint8
+ 2                    | uint8
+ 0                    | uint8
+ 18446744073709551608 | uint8
+                      | uint8
+ 0                    | uint8
+ 0                    | uint8
 (6 rows)
 
 SELECT a | b, pg_typeof(a & b) FROM db_test;
        ?column?       | pg_typeof 
 ----------------------+-----------
- 11                   | mysuint8
- 1                    | mysuint8
- 18446744073709551614 | mysuint8
-                      | mysuint8
- 264                  | mysuint8
- 1000                 | mysuint8
+ 11                   | uint8
+ 1                    | uint8
+ 18446744073709551614 | uint8
+                      | uint8
+ 264                  | uint8
+ 1000                 | uint8
 (6 rows)
 
 drop table db_test;

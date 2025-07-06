@@ -707,9 +707,7 @@ SELECT * FROM gtest_child;
 (1 row)
 
 UPDATE gtest_parent SET f1 = f1 + 60, f2 = f2 + 1;
-WARNING:  Incorrect datetime value: '20160775'
-ERROR:  no partition of relation "gtest_parent" found for row
-DETAIL:  Partition key of the failing row contains (f1) = (null).
+ERROR:  Incorrect DATE value: '20160775'
 SELECT * FROM gtest_parent;
      f1     | f2 | f3 
 ------------+----+----

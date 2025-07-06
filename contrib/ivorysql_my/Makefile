@@ -125,6 +125,7 @@ MYS_REGRESS = multi_update \
 			  mys-char-varchar \
 			  character_func \
 			  time_func	\
+			  hex_string \
 			  aggregates_without_group_by
 
 

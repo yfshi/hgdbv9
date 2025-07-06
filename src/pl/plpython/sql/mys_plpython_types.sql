@@ -185,15 +185,15 @@ SELECT * FROM test_type_conversion_booltrue(false, true);
 SELECT * FROM test_type_conversion_booltrue(true, false);
 
 
-CREATE DOMAIN uint2 AS int2 CHECK (VALUE >= 0);
+CREATE DOMAIN uint2_ AS int2 CHECK (VALUE >= 0);
 
-CREATE FUNCTION test_type_conversion_uint2(x uint2, y int) RETURNS uint2 AS $$
+CREATE FUNCTION test_type_conversion_uint2(x uint2_, y int) RETURNS uint2_ AS $$
 plpy.info(x, type(x))
 return y
 $$ LANGUAGE plpythonu;
 
-SELECT * FROM test_type_conversion_uint2(100::uint2, 50);
-SELECT * FROM test_type_conversion_uint2(100::uint2, -50);
+SELECT * FROM test_type_conversion_uint2(100::uint2_, 50);
+SELECT * FROM test_type_conversion_uint2(100::uint2_, -50);
 SELECT * FROM test_type_conversion_uint2(null, 1);
 
 
@@ -442,14 +442,14 @@ SELECT * FROM test_type_conversion_array_domain_check_violation();
 -- Arrays of domains
 --
 
-CREATE FUNCTION test_read_uint2_array(x uint2[]) RETURNS uint2 AS $$
+CREATE FUNCTION test_read_uint2_array(x uint2_[]) RETURNS uint2_ AS $$
 plpy.info(x, type(x))
 return x[0]
 $$ LANGUAGE plpythonu;
 
-select test_read_uint2_array(array[1::uint2]);
+select test_read_uint2_array(array[1::uint2_]);
 
-CREATE FUNCTION test_build_uint2_array(x int2) RETURNS uint2[] AS $$
+CREATE FUNCTION test_build_uint2_array(x int2) RETURNS uint2_[] AS $$
 return [x, x]
 $$ LANGUAGE plpythonu;
 

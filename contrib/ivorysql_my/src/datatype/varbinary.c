@@ -40,9 +40,15 @@ PG_FUNCTION_INFO_V1(varbinary);
 PG_FUNCTION_INFO_V1(varbinary2);
 PG_FUNCTION_INFO_V1(varbinary2bool);
 /* Begin BUG#5048 5070 */
+PG_FUNCTION_INFO_V1(varbinary2text);
+PG_FUNCTION_INFO_V1(varbinary2bpchar);
+PG_FUNCTION_INFO_V1(varbinary2varchar);
 PG_FUNCTION_INFO_V1(varbinary2int2);
 PG_FUNCTION_INFO_V1(varbinary2int4);
 PG_FUNCTION_INFO_V1(varbinary2int8);
+PG_FUNCTION_INFO_V1(varbinary2date);
+PG_FUNCTION_INFO_V1(varbinary2time);
+PG_FUNCTION_INFO_V1(varbinary2datetime);
 /* End BUG#5048 5070 */
 PG_FUNCTION_INFO_V1(varbinary_in);
 PG_FUNCTION_INFO_V1(varbinary_recv);
@@ -136,172 +142,46 @@ varbinary2bool(PG_FUNCTION_ARGS)
 Datum 
 varbinary2int2(PG_FUNCTION_ARGS)
 {
-	bytea 	*arg;
-	char	*data;
-	int		len,i;
-	uint64	value = 0;
+	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
+	int64	  	ret = 0;
+	char		num[64];
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
+	extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num));
 
-	arg = PG_GETARG_BYTEA_PP(0);
-	data = VARDATA_ANY(arg);
-	len = VARSIZE_ANY_EXHDR(arg);
+	ret = DatumGetInt64(DirectFunctionCall1(int2in,
+											CStringGetDatum(num)));
 
-	if (len > sizeof(int16))
-	{
-		if (!is_strict_mode())
-		{
-			ereport(WARNING,
-				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					errmsg("BINARY value is out of range for type smallint")));
-			PG_RETURN_INT16(PG_INT16_MAX);
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("BINARY value is out of range for type smallint")));
-		}
-	}
-
-	for (i = 0; i < len; i++)
-	{
-		value = (value << 8) + (uint64)(unsigned char)data[i];
-	}
-
-	if (value > PG_INT16_MAX)
-	{
-		if (!is_strict_mode())
-		{
-			ereport(WARNING,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("BINARY value is out of range for type smallint")));
-			PG_RETURN_INT16(PG_INT16_MAX);
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("BINARY value is out of range for type smallint")));
-		}
-	}
-
-	PG_RETURN_INT16(value);
+	PG_RETURN_INT16(ret);
 }
 
 Datum 
 varbinary2int4(PG_FUNCTION_ARGS)
 {
-	bytea	*arg;
-	char	*data;
-	int	len,i;
-	uint64	value = 0;
+	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
+	int64	  	ret = 0;
+	char		num[64];
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
+	extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num));
 
-	arg = PG_GETARG_BYTEA_PP(0);
-	data = VARDATA_ANY(arg);
-	len = VARSIZE_ANY_EXHDR(arg);
+	ret = DatumGetInt64(DirectFunctionCall1(int4in,
+											CStringGetDatum(num)));
 
-	if (len > sizeof(int32))
-	{
-		if (!is_strict_mode())
-		{
-			ereport(WARNING,
-				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					errmsg("BINARY value is out of range for type integer")));
-			PG_RETURN_INT32(PG_INT32_MAX);
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("BINARY value is out of range for type integer")));
-		}
-	}
-
-	for (i = 0; i < len; i++)
-	{
-		value = (value << 8) + (uint64)(unsigned char)data[i];
-	}
-
-	if (value > PG_INT32_MAX)
-	{
-		if (!is_strict_mode())
-		{
-			ereport(WARNING,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("BINARY value is out of range for type integer")));
-			PG_RETURN_INT32(PG_INT32_MAX);
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("BINARY value is out of range for type integer")));
-		}
-	}
-
-	PG_RETURN_INT32(value);
+	PG_RETURN_INT32(ret);
 }
 
 Datum 
 varbinary2int8(PG_FUNCTION_ARGS)
 {
-	bytea 	*arg;
-	char	*data;
-	int		len,i;
-	uint64	value = 0;
+	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
+	int64	  	ret = 0;
+	char		num[64];
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
+	extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num));
 
-	arg = PG_GETARG_BYTEA_PP(0);
-	data = VARDATA_ANY(arg);
-	len = VARSIZE_ANY_EXHDR(arg);
+	ret = DatumGetInt64(DirectFunctionCall1(int8in,
+											CStringGetDatum(num)));
 
-	if (len > sizeof(int64))
-	{
-		if (!is_strict_mode())
-		{
-			ereport(WARNING,
-				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					errmsg("BINARY value is out of range for type bigint")));
-			PG_RETURN_INT64(PG_INT64_MAX);
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("BINARY value is out of range for type bigint")));
-		}
-	}
-
-	for (i = 0; i < len; i++)
-	{
-		value = (value << 8) + (uint64)(unsigned char)data[i];
-	}
-
-	if (value > PG_INT64_MAX)
-	{
-		if (!is_strict_mode())
-		{
-			ereport(WARNING,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("BINARY value is out of range for type bigint")));
-			PG_RETURN_INT64(PG_INT64_MAX);
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("BINARY value is out of range for type bigint")));
-		}
-	}
-
-	PG_RETURN_INT64(value);
+	PG_RETURN_INT64(ret);
 }
 /* End BUG#5048 5070 */
 
@@ -440,39 +320,28 @@ varbinary_in(PG_FUNCTION_ARGS)
 	PG_RETURN_BYTEA_P(result);
 }
 
-/* Begin BUG#5048 5070 */
+/**
+ * Begin BUG#5048 5070 
+ * Hex value without '0x' prefix
+ */
 Datum
-hexstring_varbinary(const char *value)
+hexstring_varbinary(const char *src)
 {
-	bytea		*result;
-	char		*new_value;
-	char		*rp;
-	int 		bc;
-	size_t 	len, maxlen, maxmblen;
+	int 	len = strlen(src);
+	int 	bc = (len + 1) / 2  + VARHDRSZ;
 
-	size_t new_length = strlen(value) + 3; // '\\' 'x' '\0'
-	rp = new_value = palloc(new_length);
-	
-	if (new_value == NULL)
+	bytea	*result = palloc0(bc);
+	char	*dst = VARDATA(result);
+
+	if (len % 2)
 	{
-		fprintf(stderr, "Memory allocation failed\n");
-		exit(EXIT_FAILURE);
+		*dst++ = mys_get_hex(src++);
+		len--;
 	}
 
-	*rp++ = '\\';
-	*rp++ = 'x';
-	*rp++ = (uint64)value;
+	mys_hex_decode(src, len, dst);
 
-	len = strlen(value);
-	maxlen = -1 - VARHDRSZ;
-	maxmblen = pg_mbcharcliplen(new_value, len + 2, maxlen); // actual save length
-
-	result = cstring_to_text_with_len(new_value, maxmblen);
-
-	bc = len / 2 + VARHDRSZ; /* maximum possible length */
-	result = palloc(bc);
-	bc = hex_decode(value, len, VARDATA(result));
-	SET_VARSIZE(result, bc + VARHDRSZ); /* actual length */
+	SET_VARSIZE(result, bc);
 
 	PG_RETURN_BYTEA_P(result);
 }
@@ -780,3 +649,111 @@ varbinary_sortsupport(PG_FUNCTION_ARGS)
 
 	PG_RETURN_VOID();
 }
+
+/* Begin BUG#5048 5070 */
+Datum 
+varbinary2date(PG_FUNCTION_ARGS)
+{
+	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
+	int 	len = VARSIZE_ANY_EXHDR(arg);
+	char 	*data = palloc0(len + 1);
+	Datum 	result;
+
+	memcpy(data, VARDATA_ANY(arg), len);
+	
+	result = DirectFunctionCall1(mysdate_in, 
+							     CStringGetDatum(data));
+
+	pfree(data);
+	
+	return result;
+}
+
+Datum 
+varbinary2time(PG_FUNCTION_ARGS)
+{
+	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
+	int 	len = VARSIZE_ANY_EXHDR(arg);
+	char 	*data = palloc0(len + 1);
+	Datum 	result;
+
+	memcpy(data, VARDATA_ANY(arg), len);
+	
+	result = DirectFunctionCall1(mystime_in, 
+							     CStringGetDatum(data));
+
+	pfree(data);
+	
+	return result;
+}
+
+Datum 
+varbinary2datetime(PG_FUNCTION_ARGS)
+{
+	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
+	int 	len = VARSIZE_ANY_EXHDR(arg);
+	char 	*data = palloc0(len + 1);
+	Datum 	result;
+
+	memcpy(data, VARDATA_ANY(arg), len);
+	
+	result = DirectFunctionCall1(mysdatetime_in, 
+							     CStringGetDatum(data));
+
+	pfree(data);
+	
+	return result;
+}
+
+Datum 
+varbinary2text(PG_FUNCTION_ARGS)
+{
+	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
+	char 	*data = VARDATA_ANY(arg);
+	int 	len = VARSIZE_ANY_EXHDR(arg);
+	text	*ret = cstring_to_text_with_len(data, len);
+	
+	PG_RETURN_TEXT_P(ret);
+}
+
+Datum 
+varbinary2bpchar(PG_FUNCTION_ARGS)
+{
+	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
+	int 		len = VARSIZE_ANY_EXHDR(arg);
+	char 		*data = palloc0(len + 1);
+	Datum 		result;
+
+	memcpy(data, VARDATA_ANY(arg), len);
+	
+	result = DirectFunctionCall3(bpcharin, 
+								 CStringGetDatum(data),
+								 ObjectIdGetDatum(InvalidOid),
+								 Int32GetDatum(-1));
+
+	pfree(data);
+
+	return result;
+}
+
+Datum 
+varbinary2varchar(PG_FUNCTION_ARGS)
+{
+	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
+	int 	len = VARSIZE_ANY_EXHDR(arg);
+	char 	*data = palloc0(len + 1);
+	Datum 	result;
+
+	memcpy(data, VARDATA_ANY(arg), len);
+	
+	result = DirectFunctionCall3(varcharin, 
+								 CStringGetDatum(data),
+								 ObjectIdGetDatum(InvalidOid),
+								 Int32GetDatum(-1));
+	
+
+	pfree(data);
+	
+	return result;
+}
+/* End BUG#5048 5070 */

@@ -17,6 +17,7 @@
  */
 #include "postgres.h"
 #include "pg_audit.h"
+#include <assert.h>
 #include <sqlite3.h>
 #include <signal.h>
 #include <sys/time.h>
@@ -281,8 +282,8 @@ static AuditEventStackItem *stack_push(void);
 static AuditEventStackItem *stack_pop_to_list(AuditResult result);
 static char *audit_get_actionname_DML(CmdType operation);
 static void audit_ExecutorStart_hook(QueryDesc *queryDesc, int eflags);
-static char *alter_obj_type_auditstmt_actionname(ObjectType objtype);
-static char *audit_get_actionname_from_tree(Node *parsetree);
+static void alter_obj_type_auditstmt_actionname(ObjectType objtype, char *buf);
+static void audit_get_actionname_from_tree(Node *parsetree, char *buf);
 static void log_select_dml_col(RangeTblEntry *rte, Oid relOid, Relation rel);
 static void log_select_dml(List *rangeTabls);
 static void audit_object_access_hook(ObjectAccessType access,
@@ -1305,15 +1306,8 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 
 	values[16] = Int32GetDatum(event->commandid);
 
-	if (event->actionname)
-	{
-		values[17] = PointerGetDatum(cstring_to_text(event->actionname));
-	}
-	else
-	{
-		values[17] = (Datum)0;
-		nulls[17] = true;
-	}
+	values[17] = PointerGetDatum(cstring_to_text(event->actionname));
+	
 	if (strlen(clientInfo.port) > 0)
 	{
 		values[18] = PointerGetDatum(cstring_to_text(clientInfo.port));
@@ -1546,13 +1540,11 @@ audit_write_record_list(void)
 		if (((strcmp(auditevent->actionname, ALTER_ROLE_S) == 0) && n_members == 0) || need_check_alteruser)
 		{
 			CatCList   *catlistr;
-			char	   *actionname;
 
 			catlistr = SearchSysCacheList1(AUDITACTIONNAMEAUDITTYPEID, CStringGetDatum(ALTER_USER_S));
 		
 			for (i = 0; i < catlistr->n_members; i++)
 			{
-			
 				HeapTuple	tuple = &catlistr->members[i]->tuple;
 				
 				audit_form = (Form_pg_audit_config) GETSTRUCT(tuple);
@@ -1563,12 +1555,10 @@ audit_write_record_list(void)
 				if (audit_form->auditmode != auditevent->result && audit_form->auditmode != AUDIT_ALL)
 					continue;
 
-				actionname = malloc(32);
-				strcpy(actionname, ALTER_USER_S);
+				strcpy(auditevent->actionname, ALTER_USER_S);
 				
 				auditevent->confoids[i] = audit_form->confid;
 				auditevent->conftypes[i] = audit_form->audittype;
-				auditevent->actionname = actionname;
 				
 				audit_insert_all_log(audit_log, auditevent, NULL, i);
 			}
@@ -1580,7 +1570,6 @@ audit_write_record_list(void)
 		else if (((strcmp(auditevent->actionname, DROP_ROLE_S) == 0) && n_members == 0) || need_check_dropuser)
 		{
 			CatCList * catlistr;
-			char	*actionname;
 
 			catlistr = SearchSysCacheList1(AUDITACTIONNAMEAUDITTYPEID, CStringGetDatum(DROP_USER_S));
 
@@ -1596,12 +1585,10 @@ audit_write_record_list(void)
 				if (audit_form->auditmode != auditevent->result && audit_form->auditmode != AUDIT_ALL)
 					continue;
 				
-				actionname = malloc(32);
-				strcpy(actionname, DROP_USER_S);
-				
+				strcpy(auditevent->actionname, DROP_USER_S);
+
 				auditevent->confoids[i] = audit_form->confid;
 				auditevent->conftypes[i] = audit_form->audittype;
-				auditevent->actionname = actionname;
 				
 				audit_insert_all_log(audit_log, auditevent, NULL, i);
 			}
@@ -1765,9 +1752,12 @@ audit_ExecutorStart_hook(QueryDesc *queryDesc, int eflags)
 	{
 		if (!internalStatement)
 		{
+			char *actionname;
 			stackItem = stack_push();
 
-			stackItem->auditEvent->actionname = audit_get_actionname_DML(queryDesc->operation);
+			actionname = audit_get_actionname_DML(queryDesc->operation);
+
+			strcpy(stackItem->auditEvent->actionname, actionname);
 			stackItem->auditEvent->conftypes[0] = AUDIT_TYPE_INVALID;
 			stackItem->auditEvent->sessionid = MyProcPid;
 			stackItem->auditEvent->commandid = GetCurrentCommandId(false);
@@ -1816,13 +1806,11 @@ audit_check_pg_track_settings(Node *parsetree)
  * Return: Audit statement type
  *
  */
-static char *
-alter_obj_type_auditstmt_actionname(ObjectType objtype)
+static void
+alter_obj_type_auditstmt_actionname(ObjectType objtype, char *buf)
 {
-	static char *buf = NULL;
+	assert(buf);
 
-	buf = malloc(100);
-	
 	switch (objtype)
 	{
 		case OBJECT_AGGREGATE:
@@ -1952,10 +1940,8 @@ alter_obj_type_auditstmt_actionname(ObjectType objtype)
 			break;
 	}
 
-	if (buf == NULL && strlen(buf) == 0)
+	if (strlen(buf) == 0)
 		strcpy(buf, INVALID_STMT_S);
-
-	return buf;
 }
 
 
@@ -1967,18 +1953,16 @@ alter_obj_type_auditstmt_actionname(ObjectType objtype)
  * Return: Audit statement type
  *
  */
-static char *
-audit_get_actionname_from_tree(Node *parsetree)
+static void
+audit_get_actionname_from_tree(Node *parsetree, char *buf)
 {
-	static char *buf;
-
-	buf = malloc(100);
+	assert(buf);
 	
 	switch (nodeTag(parsetree))
 	{
 			/* recurse if we're given a RawStmt */
 		case T_RawStmt:
-			buf = audit_get_actionname_from_tree(((RawStmt *) parsetree)->stmt);
+			audit_get_actionname_from_tree(((RawStmt *) parsetree)->stmt, buf);
 			break;
 
 			/* raw plannable queries */
@@ -2286,27 +2270,27 @@ audit_get_actionname_from_tree(Node *parsetree)
 			break;
 
 		case T_RenameStmt:
-			buf = alter_obj_type_auditstmt_actionname(((RenameStmt *) parsetree)->renameType);
+			alter_obj_type_auditstmt_actionname(((RenameStmt *) parsetree)->renameType, buf);
 			break;
 
 		case T_AlterObjectDependsStmt:
-			buf = alter_obj_type_auditstmt_actionname(((AlterObjectDependsStmt *) parsetree)->objectType);
+			alter_obj_type_auditstmt_actionname(((AlterObjectDependsStmt *) parsetree)->objectType, buf);
 			break;
 
 		case T_AlterObjectSchemaStmt:
-			buf = alter_obj_type_auditstmt_actionname(((AlterObjectSchemaStmt *) parsetree)->objectType);
+			alter_obj_type_auditstmt_actionname(((AlterObjectSchemaStmt *) parsetree)->objectType, buf);
 			break;
 
 		case T_AlterOwnerStmt:
-			buf = alter_obj_type_auditstmt_actionname(((AlterOwnerStmt *) parsetree)->objectType);
+			alter_obj_type_auditstmt_actionname(((AlterOwnerStmt *) parsetree)->objectType, buf);
 			break;
 
 		case T_AlterTableMoveAllStmt:
-			buf = alter_obj_type_auditstmt_actionname(((AlterTableMoveAllStmt *) parsetree)->objtype);
+			alter_obj_type_auditstmt_actionname(((AlterTableMoveAllStmt *) parsetree)->objtype, buf);
 			break;
 
 		case T_AlterTableStmt:
-			buf = alter_obj_type_auditstmt_actionname(((AlterTableStmt *) parsetree)->objtype);
+			alter_obj_type_auditstmt_actionname(((AlterTableStmt *) parsetree)->objtype, buf);
 			break;
 
 		case T_AlterDomainStmt:
@@ -2767,7 +2751,7 @@ audit_get_actionname_from_tree(Node *parsetree)
 						strcpy(buf, DELETE_S);
 						break;
 					case CMD_UTILITY:
-						buf = audit_get_actionname_from_tree(stmt->utilityStmt);
+						audit_get_actionname_from_tree(stmt->utilityStmt, buf);
 						break;
 					default:
 						elog(WARNING, "unrecognized commandType: %d",
@@ -2827,7 +2811,7 @@ audit_get_actionname_from_tree(Node *parsetree)
 						strcpy(buf, DELETE_S);
 						break;
 					case CMD_UTILITY:
-						buf = audit_get_actionname_from_tree(stmt->utilityStmt);
+						audit_get_actionname_from_tree(stmt->utilityStmt, buf);
 						break;
 					default:
 						elog(WARNING, "unrecognized commandType: %d",
@@ -2855,10 +2839,8 @@ audit_get_actionname_from_tree(Node *parsetree)
 			break;
 	}
 
-	if (buf == NULL && strlen(buf) == 0)
+	if (strlen(buf) == 0)
 		strcpy(buf, INVALID_STMT_S);
-	
-	return buf;
 }
 
 
@@ -2892,7 +2874,7 @@ audit_ProcessUtility_hook(PlannedStmt *pstmt,
 			stackItem->auditEvent->audittime = operstarttime;
 			stackItem->auditEvent->sessionid = MyProcPid;
 			stackItem->auditEvent->commandid = GetCurrentCommandId(false);
-			stackItem->auditEvent->actionname = audit_get_actionname_from_tree(pstmt->utilityStmt);
+			audit_get_actionname_from_tree(pstmt->utilityStmt, stackItem->auditEvent->actionname);
 			stackItem->auditEvent->conftypes[0] = AUDIT_TYPE_INVALID;
 
 			contextOld = MemoryContextSwitchTo(stackItem->auditEvent->auditContext);
@@ -3347,14 +3329,11 @@ audit_alter_set_guc(List *parsetreeList)
 
 				if (strcmp(timec, tsc) != 0)
 					continue;
-					
 				
 				name = SPI_getvalue(spi_tuple, spi_tupdesc, 2);
 				setting = SPI_getvalue(spi_tuple, spi_tupdesc, 3);
 
-				
-
-				auditevent->actionname = ALTER_GUC_S;
+				strcpy(auditevent->actionname, ALTER_GUC_S);
 				auditevent->audittime = DatumGetTimestampTz(DirectFunctionCall3(timestamptz_in,
 																	 CStringGetDatum(ts),
 																	 ObjectIdGetDatum(InvalidOid),
@@ -4626,12 +4605,10 @@ generateSystemEvent(AuditSystemEvent event, AuditResult result)
 {
 	int			 record_len;
 	AuditEvent *newAuditEvent;
-	char	   *actionname = NULL;
+	char	   actionname[32];
 	AuditEvent *auditEvent = NULL;
 	char *query_string_tmp = NULL;
 	int cmdlen = 0;
-
-	actionname = malloc(32);
 
 	switch(event)
 	{
@@ -4735,14 +4712,14 @@ generateSystemEvent(AuditSystemEvent event, AuditResult result)
 	}
 
 	newAuditEvent->audittime = GetCurrentTimestamp();
-	newAuditEvent->actionname = actionname;
+	strcpy(newAuditEvent->actionname, actionname);
 
 	newAuditEvent->privilege = AUDIT_PRIVILEGE_SYSTEM;
 
 	/* When a system audit occurs, there may not be a user ID */
 	newAuditEvent->useroid = GetUserId_audit();
 	/* When the user inputs the password incorrectly */
-	if (!OidIsValid(newAuditEvent->useroid) && strcmp(actionname, LOGIN_S) == 0 && result == AUDIT_FAIL)
+	if (!OidIsValid(newAuditEvent->useroid) && strcmp(newAuditEvent->actionname, LOGIN_S) == 0 && result == AUDIT_FAIL)
 	{
 		newAuditEvent->useroid = get_role_oid(MyProcPort->user_name, true);
 	}
@@ -5180,7 +5157,6 @@ audit_postmaster_sighup_guc(char *context)
 			AuditEvent *auditevent = NULL;
 			int 		len;
 			int			ret;
-			char	   *actionname;
 			char	   *sql = palloc0(MAXPGPATH);
 
 			
@@ -5212,26 +5188,21 @@ audit_postmaster_sighup_guc(char *context)
 				ret = -2;
 				if (pg_strcasecmp(setting, "on") == 0)
 				{
-					actionname = malloc(32);
-					strcpy(actionname, MANDATORY_AUDIT_ON_S);
-					auditevent->actionname = actionname;
+					strcpy(auditevent->actionname, MANDATORY_AUDIT_ON_S);
 				}
 				else
 				{
-					actionname = malloc(32);
-					strcpy(actionname, MANDATORY_AUDIT_OFF_S);
-					auditevent->actionname = actionname;
+					strcpy(auditevent->actionname, MANDATORY_AUDIT_OFF_S);
 				}
 			}
 			else
 			{
-				if (audit_GUC.audit_enable == AUDIT_ON && (audit_GUC.audit_systemopers == AUDIT_OPER_SUCC ||
-                                        audit_GUC.audit_systemopers == AUDIT_OPER_ALL))
+				if ((audit_GUC.audit_enable == AUDIT_ON) && 
+					(audit_GUC.audit_systemopers == AUDIT_OPER_SUCC ||
+                     audit_GUC.audit_systemopers == AUDIT_OPER_ALL))
 				{
 					ret = -1;
-					actionname = malloc(32);
-					strcpy(actionname, ALTER_GUC_S);
-					auditevent->actionname = ALTER_GUC_S;
+					strcpy(auditevent->actionname, ALTER_GUC_S);
 				}
 				else
 					continue;
@@ -8656,8 +8627,8 @@ void audit_ddl_command_end(PG_FUNCTION_ARGS, const char *query)
 			continue;
 		}
 
-		if (strcmp(auditEventStack->auditEvent->actionname, ALTER_SEQUENCE_S) == 0
-			|| strcmp(auditEventStack->auditEvent->actionname, ALTER_FUNCTION_S) == 0)
+		if (strcmp(auditEventStack->auditEvent->actionname, ALTER_SEQUENCE_S) == 0 ||
+			strcmp(auditEventStack->auditEvent->actionname, ALTER_FUNCTION_S) == 0)
 		{
 			continue;
 		}

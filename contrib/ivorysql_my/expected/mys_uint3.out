@@ -8,11 +8,11 @@ ERROR:  integer unsigned out of range
 insert into t1 values(-2147483648);
 ERROR:  integer unsigned out of range
 insert into t1 values(2147483647);
-ERROR:  value for domain mysuint3 violates check constraint "uint3_check"
+ERROR:  value for domain uint3 violates check constraint "uint3_check"
 insert into t1 values(-2147483649);
 ERROR:  integer unsigned out of range
 insert into t1 values(4294967295);
-ERROR:  value for domain mysuint3 violates check constraint "uint3_check"
+ERROR:  value for domain uint3 violates check constraint "uint3_check"
 insert into t1 values('a111') ;
 ERROR:  invalid input syntax for type integer: "a111"
 LINE 1: insert into t1 values('a111') ;
@@ -65,10 +65,10 @@ LINE 1: create table t1 (a mediumint[-1] UNSIGNED);
                                      ^
 create table t2 (a mediumint(0) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(0) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -80,10 +80,10 @@ select * from t2;
 drop table t2;
 create table t2 (a mediumint(3) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -95,10 +95,10 @@ select * from t2;
 drop table t2;
 create table t3 (a mediumint(4) UNSIGNED);
 \d t3
-                   Table "public.t3"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(4) |           |          | 
+                Table "public.t3"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t3 values (3);
 select * from t3;
@@ -110,10 +110,10 @@ select * from t3;
 drop table t3;
 create table t2 (a mediumint(3.4) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -125,10 +125,10 @@ select * from t2;
 drop table t2;
 create table t2 (a mediumint(3.5) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -139,17 +139,17 @@ select * from t2;
 
 drop table t2;
 create table t2(age mediumint(256.4) unsigned);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t2(age mediumint(256.4) unsigned);
                                      ^
 create table t2(id1 int3(255.9) unsigned, id2 int3(254.9) unsigned, age mediumint(255.4) unsigned);
 \d t2
-                    Table "public.t2"
- Column |     Type      | Collation | Nullable | Default 
---------+---------------+-----------+----------+---------
- id1    | mysuint3(255) |           |          | 
- id2    | mysuint3(254) |           |          | 
- age    | mysuint3(255) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ id1    | uint3 |           |          | 
+ id2    | uint3 |           |          | 
+ age    | uint3 |           |          | 
 
 insert into t2 values (2, 5, 44);
 select * from t2;
@@ -161,15 +161,15 @@ select * from t2;
 drop table t2;
 --mediumint zerofill
 create table t2 (a mediumint(-1) ZEROFILL);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t2 (a mediumint(-1) ZEROFILL);
                                     ^
 create table t2 (a mediumint ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(8) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -181,10 +181,10 @@ select * from t2;
 drop table t2;
 create table t2 (a mediumint(2) ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -203,11 +203,11 @@ ERROR:  integer unsigned out of range
 insert into t1 values(-2147483648);
 ERROR:  integer unsigned out of range
 insert into t1 values(2147483647);
-ERROR:  value for domain mysuint3 violates check constraint "uint3_check"
+ERROR:  value for domain uint3 violates check constraint "uint3_check"
 insert into t1 values(-2147483649);
 ERROR:  integer unsigned out of range
 insert into t1 values(4294967295);
-ERROR:  value for domain mysuint3 violates check constraint "uint3_check"
+ERROR:  value for domain uint3 violates check constraint "uint3_check"
 select * from t1;
  c1 
 ----
@@ -238,10 +238,10 @@ LINE 1: create table t1 (a int3[-1] UNSIGNED);
                                 ^
 create table t2 (a int3(0) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(0) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -253,10 +253,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int3(3) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -268,10 +268,10 @@ select * from t2;
 drop table t2;
 create table t3 (a int3(4) UNSIGNED);
 \d t3
-                   Table "public.t3"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(4) |           |          | 
+                Table "public.t3"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t3 values (3);
 select * from t3;
@@ -283,15 +283,15 @@ select * from t3;
 drop table t3;
 --mediumint zerofill
 create table t2 (a int3(-1) ZEROFILL);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t2 (a int3(-1) ZEROFILL);
                                ^
 create table t2 (a int3 ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(8) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -303,10 +303,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int3(2) ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -326,11 +326,11 @@ WARNING:  integer unsigned out of range
 insert into t1 values(-2147483648);
 WARNING:  integer unsigned out of range
 insert into t1 values(2147483647);
-ERROR:  value for domain mysuint3 violates check constraint "uint3_check"
+ERROR:  value for domain uint3 violates check constraint "uint3_check"
 insert into t1 values(-2147483649);
 WARNING:  integer unsigned out of range
 insert into t1 values(4294967295);
-ERROR:  value for domain mysuint3 violates check constraint "uint3_check"
+ERROR:  value for domain uint3 violates check constraint "uint3_check"
 insert into t1 values('a111') ;
 WARNING:  invalid input syntax for type integer: "a111"
 LINE 1: insert into t1 values('a111') ;
@@ -375,10 +375,10 @@ LINE 1: create table t1 (a mediumint[-1] UNSIGNED );
                                      ^
 create table t2 (a mediumint(0) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(0) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -390,10 +390,10 @@ select * from t2;
 drop table t2;
 create table t2 (a mediumint(3) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -405,10 +405,10 @@ select * from t2;
 drop table t2;
 create table t3 (a mediumint(4) UNSIGNED);
 \d t3
-                   Table "public.t3"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(4) |           |          | 
+                Table "public.t3"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t3 values (3);
 select * from t3;
@@ -420,15 +420,15 @@ select * from t3;
 drop table t3;
 --mediumint zerofill
 create table t2 (a mediumint(-1) ZEROFILL);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t2 (a mediumint(-1) ZEROFILL);
                                     ^
 create table t2 (a mediumint ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(8) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -440,10 +440,10 @@ select * from t2;
 drop table t2;
 create table t2 (a mediumint(2) ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -462,11 +462,11 @@ WARNING:  integer unsigned out of range
 insert into t1 values(-2147483648);
 WARNING:  integer unsigned out of range
 insert into t1 values(2147483647);
-ERROR:  value for domain mysuint3 violates check constraint "uint3_check"
+ERROR:  value for domain uint3 violates check constraint "uint3_check"
 insert into t1 values(-2147483649);
 WARNING:  integer unsigned out of range
 insert into t1 values(4294967295);
-ERROR:  value for domain mysuint3 violates check constraint "uint3_check"
+ERROR:  value for domain uint3 violates check constraint "uint3_check"
 select * from t1;
  c1 
 ----
@@ -485,10 +485,10 @@ LINE 1: create table t1 (a int3[-1] UNSIGNED);
                                 ^
 create table t2 (a int3(0) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(0) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -500,10 +500,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int3(3) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -515,10 +515,10 @@ select * from t2;
 drop table t2;
 create table t3 (a int3(4) UNSIGNED);
 \d t3
-                   Table "public.t3"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(4) |           |          | 
+                Table "public.t3"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t3 values (3);
 select * from t3;
@@ -530,15 +530,15 @@ select * from t3;
 drop table t3;
 --mediumint zerofill
 create table t2 (a int3(-1) ZEROFILL);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t2 (a int3(-1) ZEROFILL);
                                ^
 create table t2 (a int3 ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(8) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -550,10 +550,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int3(2) ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint3(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint3 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -1509,38 +1509,38 @@ create index idx1 on idx_1 using btree (idx);
 insert into idx_1 values (111),(222),(333);
 vacuum full analyze idx_1;
 explain (COSTS OFF) select * from idx_1 where idx < 111;
-            QUERY PLAN             
------------------------------------
+           QUERY PLAN           
+--------------------------------
  Seq Scan on idx_1
-   Filter: ((idx)::mysuint4 < 111)
+   Filter: ((idx)::uint4 < 111)
 (2 rows)
 
 explain (COSTS OFF) select * from idx_1 where idx > 222;
-            QUERY PLAN             
------------------------------------
+           QUERY PLAN           
+--------------------------------
  Seq Scan on idx_1
-   Filter: ((idx)::mysuint4 > 222)
+   Filter: ((idx)::uint4 > 222)
 (2 rows)
 
 explain (COSTS OFF) select * from idx_1 where idx = 333;
-            QUERY PLAN             
------------------------------------
+           QUERY PLAN           
+--------------------------------
  Seq Scan on idx_1
-   Filter: ((idx)::mysuint4 = 333)
+   Filter: ((idx)::uint4 = 333)
 (2 rows)
 
 explain (COSTS OFF) select * from idx_1 where idx <= 444;
-             QUERY PLAN             
-------------------------------------
+           QUERY PLAN            
+---------------------------------
  Seq Scan on idx_1
-   Filter: ((idx)::mysuint4 <= 444)
+   Filter: ((idx)::uint4 <= 444)
 (2 rows)
 
 explain (COSTS OFF) select * from idx_1 where idx >= 555;
-             QUERY PLAN             
-------------------------------------
+           QUERY PLAN            
+---------------------------------
  Seq Scan on idx_1
-   Filter: ((idx)::mysuint4 >= 555)
+   Filter: ((idx)::uint4 >= 555)
 (2 rows)
 
 create table idx_2 (idx mediumint UNSIGNED);
@@ -1548,17 +1548,17 @@ create index idx2 on idx_2 using hash (idx);
 vacuum full analyze idx_2;
 insert into idx_2 values (111),(222),(333);
 explain (COSTS OFF) select * from idx_2 where idx = 111;
-            QUERY PLAN             
------------------------------------
+           QUERY PLAN           
+--------------------------------
  Seq Scan on idx_2
-   Filter: ((idx)::mysuint4 = 111)
+   Filter: ((idx)::uint4 = 111)
 (2 rows)
 
 explain (COSTS OFF) select * from idx_2 where idx > 222;
-            QUERY PLAN             
------------------------------------
+           QUERY PLAN           
+--------------------------------
  Seq Scan on idx_2
-   Filter: ((idx)::mysuint4 > 222)
+   Filter: ((idx)::uint4 > 222)
 (2 rows)
 
 drop table idx_1,idx_2;
@@ -1579,10 +1579,10 @@ call proc1();
 create index idx1 on tb1 using hash(a);
 vacuum full analyze tb1;
 explain (COSTS OFF) select * from tb1 where a = 10;
-           QUERY PLAN           
---------------------------------
+         QUERY PLAN          
+-----------------------------
  Seq Scan on tb1
-   Filter: ((a)::mysuint4 = 10)
+   Filter: ((a)::uint4 = 10)
 (2 rows)
 
 drop index idx1;
@@ -1615,7 +1615,7 @@ explain (COSTS OFF) select * from tb1 where a != 10;
               QUERY PLAN               
 ---------------------------------------
  Index Only Scan using idx_tree on tb1
-   Filter: ((a)::mysuint4 <> 10)
+   Filter: ((a)::uint4 <> 10)
 (2 rows)
 
 explain (COSTS OFF) select * from tb1 where a >= 10;
@@ -1696,10 +1696,10 @@ create table t_index(id int3 unsigned ,description varchar(100));
 insert into t_index (id, description) values(generate_series(0,167772),'aa');
 create index index_id_btree on t_index (id);
 explain (COSTS OFF) select * from t_index where id BETWEEN 65 and 70;
-                            QUERY PLAN                             
--------------------------------------------------------------------
+                         QUERY PLAN                          
+-------------------------------------------------------------
  Index Scan using index_id_btree on t_index
-   Index Cond: (((id)::mysuint4 >= 65) AND ((id)::mysuint4 <= 70))
+   Index Cond: (((id)::uint4 >= 65) AND ((id)::uint4 <= 70))
 (2 rows)
 
 drop table t_index;
@@ -1726,15 +1726,12 @@ drop table t_conversion;
 create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
 insert into t_conversion (id) values (TRUE);
 insert into t_conversion (id) values (0x12);
-ERROR:  column "id" is of type mysuint1 but expression is of type varbinary
-LINE 1: insert into t_conversion (id) values (0x12);
-                                              ^
-HINT:  You will need to rewrite or cast the expression.
 select id from t_conversion;
  id 
 ----
  1
-(1 row)
+ 18
+(2 rows)
 
 drop table t_conversion;
 create table t_like_operator(id int3 unsigned);

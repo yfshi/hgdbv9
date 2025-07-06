@@ -1,249 +1,249 @@
 set SQL_MODE='TRADITIONAL';
 select cast(1111 as UNSIGNED) ; -- 1111
- mysuint8 
-----------
+ uint8 
+-------
  1111
 (1 row)
 
 select cast(1111.4 as UNSIGNED) ; -- 1111
- mysuint8 
-----------
+ uint8 
+-------
  1111
 (1 row)
 
 select cast(1111.8 as UNSIGNED) ; --1112
- mysuint8 
-----------
+ uint8 
+-------
  1112
 (1 row)
 
 select cast('1111.4' as UNSIGNED) ; -- 1111
 WARNING:  invalid input syntax for type integer: "1111.4"
- mysuint8 
-----------
+ uint8 
+-------
  1111
 (1 row)
 
 select cast('1111.8' as UNSIGNED) ; -- 1111
 WARNING:  invalid input syntax for type integer: "1111.8"
- mysuint8 
-----------
+ uint8 
+-------
  1111
 (1 row)
 
 select cast(4294967297.8 as UNSIGNED) ; --4294967298
-  mysuint8  
+   uint8    
 ------------
  4294967298
 (1 row)
 
 select cast('1111' as UNSIGNED) ; --1111
- mysuint8 
-----------
+ uint8 
+-------
  1111
 (1 row)
 
 select cast('4294967295' as UNSIGNED) ; --4294967295
-  mysuint8  
+   uint8    
 ------------
  4294967295
 (1 row)
 
 select cast('4294967297' as UNSIGNED) ; --4294967297
-  mysuint8  
+   uint8    
 ------------
  4294967297
 (1 row)
 
 select cast('a111' as UNSIGNED) ; --0
 WARNING:  invalid input syntax for type integer: "a111"
- mysuint8 
-----------
+ uint8 
+-------
  0
 (1 row)
 
 select cast('111a' as UNSIGNED) ; --111
 WARNING:  invalid input syntax for type integer: "111a"
- mysuint8 
-----------
+ uint8 
+-------
  111
 (1 row)
 
 select cast('.111' as UNSIGNED) ; --0
 WARNING:  invalid input syntax for type integer: ".111"
- mysuint8 
-----------
+ uint8 
+-------
  0
 (1 row)
 
 select cast('0111' as UNSIGNED) ; --111
- mysuint8 
-----------
+ uint8 
+-------
  111
 (1 row)
 
 select cast('#111' as UNSIGNED) ; --0
 WARNING:  invalid input syntax for type integer: "#111"
- mysuint8 
-----------
+ uint8 
+-------
  0
 (1 row)
 
 select cast('111#' as UNSIGNED) ; --111
 WARNING:  invalid input syntax for type integer: "111#"
- mysuint8 
-----------
+ uint8 
+-------
  111
 (1 row)
 
 select cast('111.' as UNSIGNED) ; --111
 WARNING:  invalid input syntax for type integer: "111."
- mysuint8 
-----------
+ uint8 
+-------
  111
 (1 row)
 
 select cast(42222222222222294967297.8 as UNSIGNED) ; --18446744073709551615
 WARNING:  integer unsigned out of range
-       mysuint8       
+        uint8         
 ----------------------
  18446744073709551615
 (1 row)
 
 select cast(42222222222222294967297 as UNSIGNED) ; --18446744073709551615
 WARNING:  integer unsigned out of range
-       mysuint8       
+        uint8         
 ----------------------
  18446744073709551615
 (1 row)
 
 select cast(9223372036854775808 as UNSIGNED) ; --9223372036854775808
-      mysuint8       
+        uint8        
 ---------------------
  9223372036854775808
 (1 row)
 
 set SQL_MODE='';
 select cast(1111 as UNSIGNED) ; --1111
- mysuint8 
-----------
+ uint8 
+-------
  1111
 (1 row)
 
 select cast(1111.4 as UNSIGNED) ; -- 1111
- mysuint8 
-----------
+ uint8 
+-------
  1111
 (1 row)
 
 select cast(1111.8 as UNSIGNED) ; --1112
- mysuint8 
-----------
+ uint8 
+-------
  1112
 (1 row)
 
 select cast('1111.4' as UNSIGNED) ; -- 1111
 WARNING:  invalid input syntax for type integer: "1111.4"
- mysuint8 
-----------
+ uint8 
+-------
  1111
 (1 row)
 
 select cast('1111.8' as UNSIGNED) ; -- 1111
 WARNING:  invalid input syntax for type integer: "1111.8"
- mysuint8 
-----------
+ uint8 
+-------
  1111
 (1 row)
 
 select cast(4294967297.8 as UNSIGNED) ; --4294967298
-  mysuint8  
+   uint8    
 ------------
  4294967298
 (1 row)
 
 select cast('1111' as UNSIGNED) ; --1111
- mysuint8 
-----------
+ uint8 
+-------
  1111
 (1 row)
 
 select cast('4294967295' as UNSIGNED) ; --4294967295
-  mysuint8  
+   uint8    
 ------------
  4294967295
 (1 row)
 
 select cast('4294967297' as UNSIGNED) ; --4294967297
-  mysuint8  
+   uint8    
 ------------
  4294967297
 (1 row)
 
 select cast('a111' as UNSIGNED) ; --0
 WARNING:  invalid input syntax for type integer: "a111"
- mysuint8 
-----------
+ uint8 
+-------
  0
 (1 row)
 
 select cast('111a' as UNSIGNED) ; --111
 WARNING:  invalid input syntax for type integer: "111a"
- mysuint8 
-----------
+ uint8 
+-------
  111
 (1 row)
 
 select cast('.111' as UNSIGNED) ; --0
 WARNING:  invalid input syntax for type integer: ".111"
- mysuint8 
-----------
+ uint8 
+-------
  0
 (1 row)
 
 select cast('0111' as UNSIGNED) ; --111
- mysuint8 
-----------
+ uint8 
+-------
  111
 (1 row)
 
 select cast('#111' as UNSIGNED) ; --0
 WARNING:  invalid input syntax for type integer: "#111"
- mysuint8 
-----------
+ uint8 
+-------
  0
 (1 row)
 
 select cast('111#' as UNSIGNED) ; --111
 WARNING:  invalid input syntax for type integer: "111#"
- mysuint8 
-----------
+ uint8 
+-------
  111
 (1 row)
 
 select cast('111.' as UNSIGNED) ; --111
 WARNING:  invalid input syntax for type integer: "111."
- mysuint8 
-----------
+ uint8 
+-------
  111
 (1 row)
 
 select cast(42222222222222294967297.8 as UNSIGNED) ; --18446744073709551615
 WARNING:  integer unsigned out of range
-       mysuint8       
+        uint8         
 ----------------------
  18446744073709551615
 (1 row)
 
 select cast(42222222222222294967297 as UNSIGNED) ; --18446744073709551615
 WARNING:  integer unsigned out of range
-       mysuint8       
+        uint8         
 ----------------------
  18446744073709551615
 (1 row)
 
 select cast(9223372036854775808 as UNSIGNED) ; --9223372036854775808
-      mysuint8       
+        uint8        
 ---------------------
  9223372036854775808
 (1 row)
@@ -282,10 +282,10 @@ LINE 1: create table t1 (a bigint[-1] UNSIGNED);
                                   ^
 create table t2 (a bigint(0) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint8(0) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -297,10 +297,10 @@ select * from t2;
 drop table t2;
 create table t2 (a bigint(3) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint8(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -312,10 +312,10 @@ select * from t2;
 drop table t2;
 create table t3 (a bigint(4) UNSIGNED);
 \d t3
-                   Table "public.t3"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint8(4) |           |          | 
+                Table "public.t3"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t3 values (3);
 select * from t3;
@@ -326,17 +326,17 @@ select * from t3;
 
 drop table t3;
 create table t2(age bigint(256.4) unsigned);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  Display width out of range for column (max = 255)
 LINE 1: create table t2(age bigint(256.4) unsigned);
                                   ^
 create table t2(id1 int8(255.9) unsigned, id2 int8(254.9) unsigned, age bigint(255.4) unsigned);
 \d t2
-                    Table "public.t2"
- Column |     Type      | Collation | Nullable | Default 
---------+---------------+-----------+----------+---------
- id1    | mysuint8(255) |           |          | 
- id2    | mysuint8(254) |           |          | 
- age    | mysuint8(255) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ id1    | uint8 |           |          | 
+ id2    | uint8 |           |          | 
+ age    | uint8 |           |          | 
 
 insert into t2 values (2, 5, 44);
 select * from t2;
@@ -348,15 +348,15 @@ select * from t2;
 drop table t2;
 --mediumint zerofill
 create table t2 (a bigint(-1) ZEROFILL);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t2 (a bigint(-1) ZEROFILL);
                                  ^
 create table t2 (a bigint ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |     Type     | Collation | Nullable | Default 
---------+--------------+-----------+----------+---------
- a      | mysuint8(20) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -368,10 +368,10 @@ select * from t2;
 drop table t2;
 create table t2 (a bigint(2) ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint8(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -383,10 +383,10 @@ select * from t2;
 drop table t2;
 create table t2 (a bigint(2) UNSIGNED ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint8(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -466,10 +466,10 @@ LINE 1: create table t1 (a int8[-1] UNSIGNED);
                                 ^
 create table t2 (a int8(0) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint8(0) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -481,10 +481,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int8(3) UNSIGNED);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint8(3) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -496,10 +496,10 @@ select * from t2;
 drop table t2;
 create table t3 (a int8(4) UNSIGNED);
 \d t3
-                   Table "public.t3"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint8(4) |           |          | 
+                Table "public.t3"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t3 values (3);
 select * from t3;
@@ -511,15 +511,15 @@ select * from t3;
 drop table t3;
 --mediumint zerofill
 create table t2 (a int8(-1) ZEROFILL);
-ERROR:  Display width out of range for column 'age' (min = 0 max = 255)
+ERROR:  You have an error in your SQL syntax.
 LINE 1: create table t2 (a int8(-1) ZEROFILL);
                                ^
 create table t2 (a int8 ZEROFILL);
 \d t2
-                 Table "public.t2"
- Column |   Type   | Collation | Nullable | Default 
---------+----------+-----------+----------+---------
- a      | mysuint8 |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -531,10 +531,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int8(2) ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint8(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -546,10 +546,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int8(2) UNSIGNED ZEROFILL);
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | mysuint8(2) |           |          | 
+                Table "public.t2"
+ Column | Type  | Collation | Nullable | Default 
+--------+-------+-----------+----------+---------
+ a      | uint8 |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -2822,7 +2822,7 @@ ERROR:  type "in1" does not exist
 LINE 1: create table t1(id in1 signed);
                            ^
 create table t2(id intt unsigned);
-ERROR:  type "ivymy.intt" does not exist
+ERROR:  type "intt" does not exist
 LINE 1: create table t2(id intt unsigned);
                            ^
 set enable_seqscan=off;
@@ -2840,7 +2840,7 @@ explain (COSTS OFF)  select * from t_index where id BETWEEN 65 and 70;
 drop table t_index;
 set enable_seqscan=on;
 set enable_bitmapscan =on;
-create table tt(id1 mysuint1, id2 mysuint8);
+create table tt(id1 uint1, id2 uint8);
 insert into tt values(255, 257);
 select id1<id2 from tt;
  ?column? 
@@ -2861,7 +2861,7 @@ select id1>id2 from tt;
 (1 row)
 
 drop table tt;
-create table tt(id1 mysuint1, id2 mysuint2);
+create table tt(id1 uint1, id2 uint2);
 insert into tt values(255, 65535);
 select id1<id2 from tt;
  ?column? 
@@ -2882,7 +2882,7 @@ select id1>id2 from tt;
 (1 row)
 
 drop table tt;
-create table tt(id1 mysuint1, id2 int4);
+create table tt(id1 uint1, id2 int4);
 insert into tt values(255, -128);
 select id1<id2 from tt;
  ?column? 
@@ -2924,15 +2924,12 @@ drop table t_conversion;
 create table t_conversion (id int1 unsigned primary key ,age tinyint unsigned default 18);
 insert into t_conversion (id) values (TRUE);
 insert into t_conversion (id) values (0x12);
-ERROR:  column "id" is of type mysuint1 but expression is of type varbinary
-LINE 1: insert into t_conversion (id) values (0x12);
-                                              ^
-HINT:  You will need to rewrite or cast the expression.
 select id from t_conversion;
  id 
 ----
  1
-(1 row)
+ 18
+(2 rows)
 
 drop table t_conversion;
 create table t_like_operator(id int8 unsigned);

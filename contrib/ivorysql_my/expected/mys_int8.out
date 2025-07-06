@@ -3,16 +3,16 @@ set sql_mode = default;
 insert into tb_test values (0x1234abcd4567aaaa);
 insert into tb_test values (0x7fffffffffffffff);
 insert into tb_test values (0x8000000000000000);
-ERROR:  BINARY value is out of range for type bigint
+ERROR:  Out of range value for column
 insert into tb_test values (0xffffffffffffffff);
-ERROR:  BINARY value is out of range for type bigint
+ERROR:  Out of range value for column
 set sql_mode = '';
 insert into tb_test values (0x1234abcd4567aaaa);
 insert into tb_test values (0x7fffffffffffffff);
 insert into tb_test values (0x8000000000000000);
-WARNING:  BINARY value is out of range for type bigint
+WARNING:  Out of range value for column
 insert into tb_test values (0xffffffffffffffff);
-WARNING:  BINARY value is out of range for type bigint
+WARNING:  Out of range value for column
 select * from tb_test;
          id          
 ---------------------

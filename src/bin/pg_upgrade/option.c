@@ -78,7 +78,9 @@ parseCommandLine(int argc, char *argv[])
 	};
 	int			option;			/* Command line option */
 	int			optindex = 0;	/* used by getopt_long */
+	#ifndef USE_ROOT
 	int			os_user_effective_id;
+	#endif
 	FILE	   *fp;
 	char	  **filename;
 	time_t		run_time = time(NULL);
@@ -105,7 +107,10 @@ parseCommandLine(int argc, char *argv[])
 	new_cluster.dbname = "postgres";
 	/* End - Bug# Z1638 */
 
-	os_user_effective_id = get_user_info(&os_info.user);
+	#ifndef USE_ROOT
+	os_user_effective_id = 
+	#endif
+		get_user_info(&os_info.user);
 	/* we override just the database user name;  we got the OS id above */
 	if (getenv("PGUSER"))
 	{

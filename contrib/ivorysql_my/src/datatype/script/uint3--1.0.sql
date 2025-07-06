@@ -23,5 +23,5 @@ UPDATE pg_type
 SET typmodout=(SELECT oid FROM pg_proc WHERE proname='mysuint4_typmodout')
 WHERE oid = 9211;
 
-alter domain ivymy.mysuint3 add constraint uint3_check check(value >= 0 and value <= 16777215);
+alter domain ivymy.uint3 add constraint uint3_check check(value >= 0 and value <= 16777215);
 
