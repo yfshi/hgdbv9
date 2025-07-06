@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include "postgres.h"
 #include "access/hash.h"
 
@@ -104,13 +105,19 @@ PG_FUNCTION_INFO_V1(int_div_year);
 PG_FUNCTION_INFO_V1(year_eq_num);
 PG_FUNCTION_INFO_V1(num_eq_year);
 
+/* Fix Bug#Z5263 begin */
+PG_FUNCTION_INFO_V1(year_text_like);
+PG_FUNCTION_INFO_V1(year_text_notlike);
+PG_FUNCTION_INFO_V1(year_int_like);
+PG_FUNCTION_INFO_V1(year_int_notlike);
+/* Fix Bug#Z5263 end */
+
 static double float8in_internals(char* str, char** endptr_p, bool* hasError);
 static YearADT int32_to_YearADT(int32 year);
 static YearADT int4_to_YearADT(int32 year);
 static YearADT bigint_to_YearADT(int64 year);
 static int year_cmp_internal(YearADT y1, YearADT y2);
 static int year_fastcmp(Datum x, Datum y, SortSupport ssup);
-static void CheckDatetimeRange(const Timestamp time, Node *escontext);
 
 /*
  * year_in()
@@ -444,23 +451,11 @@ Datum numeric_year(PG_FUNCTION_ARGS)
 Datum date_year(PG_FUNCTION_ARGS)
 {
 	DateADT dateVal = PG_GETARG_DATEADT(0);
-	Timestamp timestamp;
 	int32  tmpResult;
-	fsec_t fsec;
-	struct pg_tm tt, *tm = &tt;
 
-	timestamp = dateVal * USECS_PER_DAY;
-
-	CheckDatetimeRange(timestamp, fcinfo->context);
-
-	if (timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL) != 0)
-		ereport(ERROR,
-			(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				errmsg("date_year timestamp out of range")));
-
-	tmpResult = 0;
-	if (tm->tm_year > 0)
-		tmpResult = tm->tm_year;
+	/* fix Bug#Z5261 begin */
+	tmpResult = dateVal / 10000;
+	/* fix Bug#Z5261 end */
 
 	PG_RETURN_YEARADT(int32_to_YearADT(tmpResult));
 }
@@ -1179,16 +1174,64 @@ year_fastcmp(Datum x, Datum y, SortSupport ssup)
 	return year_cmp_internal(yearLeft, yearRight);
 }
 
-/*
- * CheckDatetimeRange --- Check if timestamp is out of range for datetime
- */
-void
-CheckDatetimeRange(const Timestamp time, Node *escontext)
+/* Fix Bug#Z5263 begin */
+Datum year_text_like(PG_FUNCTION_ARGS)
 {
-	if (!IS_VALID_DATETIME(time))
-	{
-		ereport(ERROR,
-			(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				errmsg("data out of range for datetime")));
-	}
+	YearADT		yearLeft = PG_GETARG_YEARADT(0);
+	Datum		val = PG_GETARG_DATUM(1);
+	int32		yearVal;
+	char		yearStr[MAXINT8LEN + 1] = {0};
+	text	   *yearText;
+	bool		status;
+
+	yearVal = YearADT_to_Year(yearLeft);
+	sprintf(yearStr, "%d", yearVal);
+
+	yearText = cstring_to_text(yearStr);
+
+	status = DatumGetBool(DirectFunctionCall2(textlike, PointerGetDatum(yearText), val));
+
+	PG_RETURN_BOOL(status);
 }
+
+Datum year_text_notlike(PG_FUNCTION_ARGS)
+{
+	YearADT		yearLeft = PG_GETARG_YEARADT(0);
+	Datum		val = PG_GETARG_DATUM(1);
+	int32		yearVal;
+	char		yearStr[MAXINT8LEN + 1] = {0};
+	text	   *yearText;
+	bool		status;
+
+	yearVal = YearADT_to_Year(yearLeft);
+	sprintf(yearStr, "%d", yearVal);
+
+	yearText = cstring_to_text(yearStr);
+
+	status = DatumGetBool(DirectFunctionCall2(textnlike, PointerGetDatum(yearText), val));
+
+	PG_RETURN_BOOL(status);
+}
+
+Datum year_int_like(PG_FUNCTION_ARGS)
+{
+	YearADT		yearLeft = PG_GETARG_YEARADT(0);
+	int32_t     val  = PG_GETARG_INT32(1);
+	YearADT		yearRight;
+
+	yearRight = int32_to_YearADT(val);
+
+	PG_RETURN_BOOL(yearLeft == yearRight);
+}
+
+Datum year_int_notlike(PG_FUNCTION_ARGS)
+{
+	YearADT		yearLeft = PG_GETARG_YEARADT(0);
+	int32_t     val  = PG_GETARG_INT32(1);
+	YearADT		yearRight;
+
+	yearRight = int32_to_YearADT(val);
+
+	PG_RETURN_BOOL(yearLeft != yearRight);
+}
+/* Fix Bug#Z5263 end */

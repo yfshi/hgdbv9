@@ -690,6 +690,186 @@ SELECT 2025/y FROM t where y != 0;
         0
 (5 rows)
 
+DROP TABLE t;
+-- Fix Bug#Z5261
+CREATE TABLE year_01(created_year YEAR);
+INSERT INTO year_01 VALUES ('2025-01-01');
+INSERT INTO year_01 VALUES ('2025-01-01'::date);
+INSERT INTO year_01 VALUES ('2023');
+-- insert into year_01 VALUES ('2023'::char); no support
+SELECT * FROM year_01;
+ created_year 
+--------------
+ 2025
+ 2025
+ 2023
+(3 rows)
+
+DROP TABLE year_01;
+-- Fix Bug#Z5263
+CREATE TABLE year_02(id int, created_year YEAR);
+INSERT INTO year_02(id,created_year) VALUES (1, '2016'),(2, '2017'),(3, 2018),(1, '2019'),(2, '2020'),(3, '2021');
+SELECT * FROM year_02 where created_year LIKE '2019';
+ id | created_year 
+----+--------------
+  1 | 2019
+(1 row)
+
+SELECT * FROM year_02 where created_year NOT LIKE '2019';
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  3 | 2018
+  2 | 2020
+  3 | 2021
+(5 rows)
+
+SELECT * FROM year_02 where created_year LIKE 2019;
+ id | created_year 
+----+--------------
+  1 | 2019
+(1 row)
+
+SELECT * FROM year_02 where created_year NOT LIKE 2019;
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  3 | 2018
+  2 | 2020
+  3 | 2021
+(5 rows)
+
+SELECT * FROM year_02 where created_year LIKE '2%';
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  3 | 2018
+  1 | 2019
+  2 | 2020
+  3 | 2021
+(6 rows)
+
+SELECT * FROM year_02 where created_year LIKE '%9';
+ id | created_year 
+----+--------------
+  1 | 2019
+(1 row)
+
+SELECT * FROM year_02 where created_year LIKE '%0%';
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  3 | 2018
+  1 | 2019
+  2 | 2020
+  3 | 2021
+(6 rows)
+
+SELECT * FROM year_02 where created_year LIKE '2%8';
+ id | created_year 
+----+--------------
+  3 | 2018
+(1 row)
+
+SELECT * FROM year_02 where created_year NOT LIKE '2%';
+ id | created_year 
+----+--------------
+(0 rows)
+
+SELECT * FROM year_02 where created_year NOT LIKE '%9';
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  3 | 2018
+  2 | 2020
+  3 | 2021
+(5 rows)
+
+SELECT * FROM year_02 where created_year NOT LIKE '%0%';
+ id | created_year 
+----+--------------
+(0 rows)
+
+SELECT * FROM year_02 where created_year NOT LIKE '2%8';
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  1 | 2019
+  2 | 2020
+  3 | 2021
+(5 rows)
+
+SELECT * FROM year_02 where created_year LIKE '201_';
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  3 | 2018
+  1 | 2019
+(4 rows)
+
+SELECT * FROM year_02 where created_year LIKE '_018';
+ id | created_year 
+----+--------------
+  3 | 2018
+(1 row)
+
+SELECT * FROM year_02 where created_year LIKE '_0%';
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  3 | 2018
+  1 | 2019
+  2 | 2020
+  3 | 2021
+(6 rows)
+
+SELECT * FROM year_02 where created_year LIKE '2_%_%';
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  3 | 2018
+  1 | 2019
+  2 | 2020
+  3 | 2021
+(6 rows)
+
+SELECT * FROM year_02 where created_year NOT LIKE '201_';
+ id | created_year 
+----+--------------
+  2 | 2020
+  3 | 2021
+(2 rows)
+
+SELECT * FROM year_02 where created_year NOT LIKE '_018';
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  1 | 2019
+  2 | 2020
+  3 | 2021
+(5 rows)
+
+SELECT * FROM year_02 where created_year NOT LIKE '_0%';
+ id | created_year 
+----+--------------
+(0 rows)
+
+SELECT * FROM year_02 where created_year NOT LIKE '2_%_%';
+ id | created_year 
+----+--------------
+(0 rows)
+
+DROP TABLE year_02;
 SELECT set_config('search_path', trim(leading 'ivymy, ' from current_setting('search_path')), false);
    set_config    
 -----------------

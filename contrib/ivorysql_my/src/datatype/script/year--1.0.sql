@@ -716,3 +716,50 @@ CREATE OPERATOR ivymy.>(
     RESTRICT   = scalarltsel,
     JOIN       = scalarltjoinsel
 );
+
+-- Fix Bug#Z5263 begin
+CREATE  OR REPLACE FUNCTION ivymy.year_like(ivymy.year, pg_catalog.text)
+RETURNS boolean
+AS 'MODULE_PATHNAME','year_text_like'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR ~~ (
+	procedure = ivymy.year_like,
+	leftarg   = ivymy.year,
+	rightarg  = pg_catalog.text
+);
+
+CREATE  OR REPLACE FUNCTION ivymy.year_notlike(ivymy.year, pg_catalog.text)
+RETURNS boolean
+AS 'MODULE_PATHNAME','year_text_notlike'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR !~~ (
+	procedure = ivymy.year_notlike,
+	leftarg   = ivymy.year,
+	rightarg  = pg_catalog.text
+);
+
+CREATE  OR REPLACE FUNCTION ivymy.year_like(ivymy.year, pg_catalog.int4)
+RETURNS boolean
+AS 'MODULE_PATHNAME','year_int_like'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR ~~ (
+	procedure = ivymy.year_like,
+	leftarg   = ivymy.year,
+	rightarg  = pg_catalog.int4
+);
+
+CREATE  OR REPLACE FUNCTION ivymy.year_notlike(ivymy.year, pg_catalog.int4)
+RETURNS boolean
+AS 'MODULE_PATHNAME','year_int_notlike'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR !~~ (
+	procedure = ivymy.year_notlike,
+	leftarg   = ivymy.year,
+	rightarg  = pg_catalog.int4
+);
+
+-- Fix Bug#Z5263 end
