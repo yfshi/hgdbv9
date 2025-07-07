@@ -227,6 +227,12 @@ bool	compatible_ora_bytea_concat_operator = true;
 
 bool enable_strict_view_def = false; /* OA-REQ-1558 */
 
+/* Begin - OA#00001554 */
+bool enable_compatible_type_shippable = true;
+/* End - OA#00001554 */
+
+
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -925,6 +931,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - OA-REQ-1558 */
+	/* Begin - OA#00001554 */
+	{
+		{"ivorysql.enable_compatible_type_shippable", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+		gettext_noop("Enable Compatible type operator or functions shippble."),
+		NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_compatible_type_shippable,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - OA#00001554 */
 #endif
 #if 0
 	/* End-of-list marker */

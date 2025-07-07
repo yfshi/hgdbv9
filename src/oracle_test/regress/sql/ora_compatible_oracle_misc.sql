@@ -229,3 +229,45 @@ select pg_reload_conf();
 show ivorysql.identifier_case_switch;
 
 drop database test_dwdai_id;
+
+--bug#M542
+create table public.test_id_bugm542(id varchar2(256));
+
+create index test_bugm542_index on test_id_bugm542(id);
+
+create table sys.test_idx_bugm542(id varchar2(256));
+create index test_indexx_bugm542 on sys.test_idx_bugm542(id);
+
+create sequence public.test_seq_bugm542 start with 100 scale extend maxvalue 9999;
+create sequence sys.test_seq_bugm542 start with 100 scale extend maxvalue 9999;
+
+
+select column_name,data_type from information_schema.columns where table_name = 'test_id_bugm542';
+
+select schemaname,relname from pg_stat_sys_tables where relname = 'test_id_bugm542' or relname = 'test_idx_bugm542';
+select schemaname,relname from pg_stat_xact_sys_tables where relname = 'test_id_bugm542' or relname = 'test_idx_bugm542';
+select schemaname,relname from pg_stat_user_tables where relname = 'test_id_bugm542' or relname = 'test_idx_bugm542';
+select schemaname,relname from pg_stat_xact_user_tables where relname = 'test_id_bugm542' or relname = 'test_idx_bugm542';
+
+
+select schemaname,relname from pg_statio_sys_tables where relname = 'test_id_bugm542' or relname = 'test_idx_bugm542';
+select schemaname,relname from pg_statio_user_tables where relname = 'test_id_bugm542' or relname = 'test_idx_bugm542';
+
+
+select schemaname,relname from pg_stat_sys_indexes where indexrelname = 'test_bugm542_index' or indexrelname = 'test_indexx_bugm542';
+select schemaname,relname from pg_stat_user_indexes where indexrelname = 'test_bugm542_index' or indexrelname = 'test_indexx_bugm542';
+
+
+select schemaname,relname from pg_statio_sys_indexes where indexrelname = 'test_bugm542_index' or indexrelname = 'test_indexx_bugm542';
+select schemaname,relname from pg_statio_user_indexes where indexrelname = 'test_bugm542_index' or indexrelname = 'test_indexx_bugm542';
+
+
+select schemaname,relname from pg_statio_sys_sequences where relname = 'test_seq_bugm542';
+select schemaname,relname from pg_statio_user_sequences where relname = 'test_seq_bugm542';
+
+
+--clean data
+drop table public.test_id_bugm542;
+drop table sys.test_idx_bugm542;
+drop sequence sys.test_seq_bugm542;
+drop sequence public.test_seq_bugm542;

@@ -301,7 +301,7 @@ CREATE VIEW attributes AS
 
            CAST(
              CASE WHEN t.typelem <> 0 AND t.typlen = -1 THEN 'ARRAY'
-                  WHEN nt.nspname = 'pg_catalog' THEN format_type(a.atttypid, null)
+                  WHEN nt.nspname = 'pg_catalog' or nt.nspname = get_extral_sys_namespace() THEN format_type(a.atttypid, null) /* BUG#M542 */
                   ELSE 'USER-DEFINED' END
              AS character_data)
              AS data_type,
@@ -367,6 +367,7 @@ CREATE VIEW attributes AS
          JOIN (pg_type t JOIN pg_namespace nt ON (t.typnamespace = nt.oid)) ON a.atttypid = t.oid
          LEFT JOIN (pg_collation co JOIN pg_namespace nco ON (co.collnamespace = nco.oid))
            ON a.attcollation = co.oid AND (nco.nspname, co.collname) <> ('pg_catalog', 'default')
+		   and (nco.nspname, co.collname) <> (get_extral_sys_namespace(), 'default') /* BUG#M542 */
 
     WHERE a.attnum > 0 AND NOT a.attisdropped
           AND c.relkind IN ('c')
@@ -683,11 +684,11 @@ CREATE VIEW columns AS
            CAST(
              CASE WHEN t.typtype = 'd' THEN
                CASE WHEN bt.typelem <> 0 AND bt.typlen = -1 THEN 'ARRAY'
-                    WHEN nbt.nspname = 'pg_catalog' THEN format_type(t.typbasetype, null)
+                    WHEN nbt.nspname = 'pg_catalog' or nbt.nspname = get_extral_sys_namespace() THEN format_type(t.typbasetype, null) /* BUG#M542 */
                     ELSE 'USER-DEFINED' END
              ELSE
                CASE WHEN t.typelem <> 0 AND t.typlen = -1 THEN 'ARRAY'
-                    WHEN nt.nspname = 'pg_catalog' THEN format_type(a.atttypid, null)
+                    WHEN nt.nspname = 'pg_catalog' or nt.nspname = get_extral_sys_namespace()  THEN format_type(a.atttypid, null) /* BUG#M542 */
                     ELSE 'USER-DEFINED' END
              END
              AS character_data)
@@ -778,7 +779,7 @@ CREATE VIEW columns AS
          LEFT JOIN (pg_type bt JOIN pg_namespace nbt ON (bt.typnamespace = nbt.oid))
            ON (t.typtype = 'd' AND t.typbasetype = bt.oid)
          LEFT JOIN (pg_collation co JOIN pg_namespace nco ON (co.collnamespace = nco.oid))
-           ON a.attcollation = co.oid AND (nco.nspname, co.collname) <> ('pg_catalog', 'default')
+           ON a.attcollation = co.oid AND (nco.nspname, co.collname) <> ('pg_catalog', 'default') and (nco.nspname, co.collname) <> (get_extral_sys_namespace(), 'default') /* BUG#M542 */
          LEFT JOIN (pg_depend dep JOIN pg_sequence seq ON (dep.classid = 'pg_class'::regclass AND dep.objid = seq.seqrelid AND dep.deptype = 'i'))
            ON (dep.refclassid = 'pg_class'::regclass AND dep.refobjid = c.oid AND dep.refobjsubid = a.attnum)
 
@@ -961,7 +962,7 @@ CREATE VIEW domains AS
 
            CAST(
              CASE WHEN t.typelem <> 0 AND t.typlen = -1 THEN 'ARRAY'
-                  WHEN nbt.nspname = 'pg_catalog' THEN format_type(t.typbasetype, null)
+                  WHEN nbt.nspname = 'pg_catalog' or nbt.nspname = get_extral_sys_namespace()  THEN format_type(t.typbasetype, null) /* BUG#M542 */
                   ELSE 'USER-DEFINED' END
              AS character_data)
              AS data_type,
@@ -1028,6 +1029,7 @@ CREATE VIEW domains AS
            ON (t.typbasetype = bt.oid AND t.typtype = 'd')
          LEFT JOIN (pg_collation co JOIN pg_namespace nco ON (co.collnamespace = nco.oid))
            ON t.typcollation = co.oid AND (nco.nspname, co.collname) <> ('pg_catalog', 'default')
+		   and (nco.nspname, co.collname) <> (get_extral_sys_namespace(), 'default') /* BUG#M542 */
 
     WHERE (pg_has_role(t.typowner, 'USAGE')
            OR has_type_privilege(t.oid, 'USAGE'));
@@ -1149,7 +1151,7 @@ CREATE VIEW parameters AS
            CAST(NULLIF(proargnames[(ss.x).n], '') AS sql_identifier) AS parameter_name,
            CAST(
              CASE WHEN t.typelem <> 0 AND t.typlen = -1 THEN 'ARRAY'
-                  WHEN nt.nspname = 'pg_catalog' THEN format_type(t.oid, null)
+                  WHEN nt.nspname = 'pg_catalog' or nt.nspname = get_extral_sys_namespace()  THEN format_type(t.oid, null) /* BUG#M542 */
                   ELSE 'USER-DEFINED' END AS character_data)
              AS data_type,
            CAST(null AS cardinal_number) AS character_maximum_length,
@@ -1548,7 +1550,7 @@ CREATE VIEW routines AS
            CAST(
              CASE WHEN p.prokind = 'p' THEN NULL
                   WHEN t.typelem <> 0 AND t.typlen = -1 THEN 'ARRAY'
-                  WHEN nt.nspname = 'pg_catalog' THEN format_type(t.oid, null)
+                  WHEN nt.nspname = 'pg_catalog' or nt.nspname = get_extral_sys_namespace()  THEN format_type(t.oid, null) /* BUG#M542 */
                   ELSE 'USER-DEFINED' END AS character_data)
              AS data_type,
            CAST(null AS cardinal_number) AS character_maximum_length,
@@ -2720,7 +2722,7 @@ CREATE VIEW element_types AS
            CAST(x.objtype AS character_data) AS object_type,
            CAST(x.objdtdid AS sql_identifier) AS collection_type_identifier,
            CAST(
-             CASE WHEN nbt.nspname = 'pg_catalog' THEN format_type(bt.oid, null)
+             CASE WHEN nbt.nspname = 'pg_catalog' or nbt.nspname = get_extral_sys_namespace() THEN format_type(bt.oid, null) /* BUG#M542 */
                   ELSE 'USER-DEFINED' END AS character_data) AS data_type,
 
            CAST(null AS cardinal_number) AS character_maximum_length,
@@ -2791,6 +2793,7 @@ CREATE VIEW element_types AS
          ) AS x (objschema, objname, objtype, objdtdid, objtypeid, objcollation)
          LEFT JOIN (pg_collation co JOIN pg_namespace nco ON (co.collnamespace = nco.oid))
            ON x.objcollation = co.oid AND (nco.nspname, co.collname) <> ('pg_catalog', 'default')
+		   and (nco.nspname, co.collname) <> (get_extral_sys_namespace(), 'default') /* BUG#M542 */
 
     WHERE n.oid = x.objschema
           AND at.oid = x.objtypeid

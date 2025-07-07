@@ -29,6 +29,8 @@
 #include "utils/hsearch.h"
 #include "utils/inval.h"
 #include "utils/syscache.h"
+#include "utils/guc.h" /* OA#00001554 */
+
 
 /* Hash table for caching the results of shippability lookups */
 static HTAB *ShippableCacheHash = NULL;
@@ -154,6 +156,19 @@ is_builtin(Oid objectId)
 	return (objectId < FirstGenbkiObjectId);
 }
 
+
+/* Begin - OA#00001554 */
+/*
+ * is initdb product object
+ */
+bool
+is_catalog_objectid(Oid objectId)
+{
+	return (objectId < FirstNormalObjectId);
+}
+/* End - OA#00001554 */
+
+
 /*
  * is_shippable
  *	   Is this object (function/operator/type) shippable to foreign server?
@@ -167,6 +182,24 @@ is_shippable(Oid objectId, Oid classId, PgFdwRelationInfo *fpinfo)
 	/* Built-in objects are presumed shippable. */
 	if (is_builtin(objectId))
 		return true;
+
+	/* Begin - OA#00001554 */
+	/*
+	 * there,Both oracle and mysql
+	 * types and operators are loaded
+	 * in initdb and are considered non
+	 * shippable,However, in some cases,especially
+	 * when using dblink, oracle types do not support remote
+	 * delivery, which will result in very low performance, so
+	 * they need to be made shippable.
+	 * Here, we need to ensure that these objects are avaliable remotely, so
+	 * use the guc parameter control and determine the mode and its oid
+	 * range to control whether it can be transmitted.
+	 */
+	if (enable_compatible_type_shippable &&
+		is_catalog_objectid(objectId))
+		return true;
+	/* End - OA#00001554 */
 
 	/* Otherwise, give up if user hasn't specified any shippable extensions. */
 	if (fpinfo->shippable_extensions == NIL)

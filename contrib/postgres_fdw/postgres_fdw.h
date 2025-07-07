@@ -246,6 +246,9 @@ extern const char *get_jointype_name(JoinType jointype);
 
 /* in shippable.c */
 extern bool is_builtin(Oid objectId);
+/* Begin - OA#00001554 */
+extern bool is_catalog_objectid(Oid objectId);
+/* End - OA#00001554 */
 extern bool is_shippable(Oid objectId, Oid classId, PgFdwRelationInfo *fpinfo);
 
 #endif							/* POSTGRES_FDW_H */

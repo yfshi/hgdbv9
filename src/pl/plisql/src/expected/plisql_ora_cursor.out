@@ -10286,3 +10286,43 @@ SELECT * FROM tb2 ORDER BY t_id;
 --clean data
 DROP TABLE tb2;
 DROP TABLE tb1;
+--bug#Z5404
+--ok raise this is invalid cursor
+declare
+  cursor c1 is select 1 as id from dual;
+ begin
+   close c1;
+ exception
+  when invalid_cursor then
+     raise info '%', 'this is invalid cursor';
+ end;
+ /
+INFO:  this is invalid cursor
+ --ok raise this is invalid cursor
+ declare
+  cursor c1 is select 1 as id from dual;
+  var1 c1%rowtype;
+ begin
+   fetch c1 into var1;
+ exception
+  when invalid_cursor then
+     raise info '%', 'this is invalid cursor';
+ end;
+ /
+INFO:  this is invalid cursor
+--ok raise this is invalid cursor
+declare
+	cursor c1 is select 1 as id from dual;
+begin
+	close c1;
+	loop
+		raise notice '%','cursor record: ' || record.id;
+	end loop;
+exception
+	when invalid_cursor then
+	raise notice '%','this is invalid_cursor';
+	when others then
+	raise notice '%','unexpected error: ' || sqlerrm;
+end;
+/
+NOTICE:  this is invalid_cursor

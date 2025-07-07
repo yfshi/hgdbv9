@@ -5669,7 +5669,7 @@ exec_stmt_fetch(PLiSQL_execstate *estate, PLiSQL_stmt_fetch *stmt)
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	if (curvar->isnull)
 		ereport(ERROR,
-				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+				(errcode(ERRCODE_UNDEFINED_CURSOR), /* BUG#Z00005404: match invalid_cursor exception */
 				 errmsg("cursor variable \"%s\" is null", curvar->refname)));
 
 	/* Use eval_mcontext for short-lived string */
@@ -5832,7 +5832,7 @@ exec_stmt_close(PLiSQL_execstate *estate, PLiSQL_stmt_close *stmt)
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	if (!cursor_is_open(estate, curvar, false))
 		ereport(ERROR,
-				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+				(errcode(ERRCODE_UNDEFINED_CURSOR), /* BUG#Z00005404: match invalid_cursor exception */
 				 errmsg("cursor variable \"%s\" is null", curvar->refname)));
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 
