@@ -265,7 +265,9 @@ static const char *const subdirs[] = {
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 	"pgaudit",
 	//"pgaudit/auditlog",
+#ifdef USE_SQLITE
 	"pgaudit/sqlite",
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 	"pg_wal/archive_status",
 	"pg_commit_ts",
@@ -352,7 +354,9 @@ static void load_dbms_job_pgagent(FILE *cmdfd);
 /* End - ReqID:SRS-PLSQL-DBMS_JOB */
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 static void load_pg_audit(FILE *cmdfd);
+#ifdef USE_SQLITE
 static void load_sqlite_fdw(FILE *cmdfd);
+#endif
 static void load_pg_track_settings(FILE *cmdfd);
 static void create_audit_tbls(FILE *cmdfd);
 /* End - ReqID:SRS-SECURITY-AUDIT */
@@ -1450,7 +1454,11 @@ setup_config(void)
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	{
         char *token = "shared_preload_libraries = 'gb18030_2022'";
+#ifdef USE_SQLITE
         char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+#else
+		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+#endif
         conflines = replace_token(conflines,token, replacement);
 	}
 	/* End - ReqID:SRS-SECURITY-POWERS */
@@ -1495,7 +1503,11 @@ setup_config(void)
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		{
             		char *token = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object'";
+#ifdef USE_SQLITE
             		char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+#else
+					char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, restricted_dba, pg_audit, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+#endif
             		conflines = replace_token(conflines,token, replacement);
         	}
 		/* End - ReqID:SRS-SECURITY-POWERS */
@@ -1522,7 +1534,11 @@ setup_config(void)
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		{
 	        char *token = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my'";
+#ifdef USE_SQLITE
 	        char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+#else
+			char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+#endif
 	        conflines = replace_token(conflines,token, replacement);
 		}
 		/* End - ReqID:SRS-SECURITY-POWERS */
@@ -2418,9 +2434,14 @@ create_audit_tbls(FILE *cmdfd)
 static void
 load_pg_audit(FILE *cmdfd)
 {
+#ifdef USE_SQLITE
+	PG_CMD_PUTS("CREATE EXTENSION pg_audit VERSION '1.0-sqlite' SCHEMA public;\n\n");
+#else
 	PG_CMD_PUTS("CREATE EXTENSION pg_audit WITH SCHEMA public;\n\n");
+#endif
 }
 
+#ifdef USE_SQLITE
 /*
  * load sqlite_fdw
  */
@@ -2429,6 +2450,7 @@ load_sqlite_fdw(FILE *cmdfd)
 {
 	PG_CMD_PUTS("CREATE EXTENSION sqlite_fdw WITH SCHEMA public;\n\n");
 }
+#endif
 
 static void 
 load_pg_track_settings(FILE *cmdfd)
@@ -3484,6 +3506,7 @@ initialize_data_directory(void)
 		}
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
 		if (strcmp(subdirs[i], "pgaudit/sqlite") == 0)
 		{
 #ifdef _WIN32
@@ -3515,6 +3538,7 @@ initialize_data_directory(void)
 #endif
 			
 		}
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 		free(path);
@@ -3710,7 +3734,9 @@ initialize_data_directory(void)
 /* Begin - ReqID:SRS-SECURITY-AUDIT */	
 	load_pg_track_settings(cmdfd);
 	create_audit_tbls(cmdfd);
+#ifdef USE_SQLITE
 	load_sqlite_fdw(cmdfd);
+#endif
 	load_pg_audit(cmdfd);
 /* End - ReqID:SRS-SECURITY-AUDIT */
 

@@ -1000,30 +1000,46 @@ drop extension cube;
 --------+------+-------------
 (0 rows)
 
-\df
-                                                                            List of functions
+--\df
+SELECT 
+    n.nspname AS "Schema",
+    p.proname AS "Name",
+    pg_catalog.format_type(p.prorettype, NULL) AS "Result data type",
+    pg_catalog.pg_get_function_identity_arguments(p.oid) AS "Argument data types",
+    'func' AS "Type"
+FROM 
+    pg_catalog.pg_proc p
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+WHERE 
+    pg_catalog.pg_function_is_visible(p.oid)
+    AND p.prokind = 'f'  
+    AND p.prorettype <> 'pg_catalog.trigger'::pg_catalog.regtype 
+    AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+    AND p.proname NOT LIKE 'sqlite_fdw%'
+ORDER BY 
+    1, 2, 4;
  Schema |             Name              | Result data type |                                          Argument data types                                          | Type 
 --------+-------------------------------+------------------+-------------------------------------------------------------------------------------------------------+------
  public | check_se_param_change         | text             |                                                                                                       | func
  public | is_sysdba                     | boolean          | oid                                                                                                   | func
  public | is_syssao                     | boolean          | oid                                                                                                   | func
  public | is_syssso                     | boolean          | oid                                                                                                   | func
- public | login_message_display         | void             | username name DEFAULT NULL::name                                                                      | func
- public | pg_banned_role                | SETOF record     | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                       | func
+ public | login_message_display         | void             | username name                                                                                         | func
+ public | pg_banned_role                | record           | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                       | func
  public | pg_banned_role_reset          | integer          |                                                                                                       | func
  public | pg_banned_role_reset          | integer          | username name                                                                                         | func
- public | pg_password_history           | SETOF record     | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text | func
+ public | pg_password_history           | record           | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text | func
  public | pg_password_history_reset     | integer          |                                                                                                       | func
  public | pg_password_history_reset     | integer          | username name                                                                                         | func
  public | pg_password_history_timestamp | integer          | username name, new_timestamp timestamp with time zone                                                 | func
  public | postgres_fdw_disconnect       | boolean          | text                                                                                                  | func
  public | postgres_fdw_disconnect_all   | boolean          |                                                                                                       | func
- public | postgres_fdw_get_connections  | SETOF record     | OUT server_name text, OUT valid boolean                                                               | func
+ public | postgres_fdw_get_connections  | record           | OUT server_name text, OUT valid boolean                                                               | func
  public | postgres_fdw_handler          | fdw_handler      |                                                                                                       | func
  public | postgres_fdw_validator        | void             | text[], oid                                                                                           | func
  public | reset_all_se_param            | text             |                                                                                                       | func
  public | set_backend_se_param          | text             | oid, text, boolean                                                                                    | func
- public | user_expiration_info          | SETOF record     | username name DEFAULT NULL::name, OUT userid oid, OUT rolename name, OUT user_validity interval       | func
+ public | user_expiration_info          | record           | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                          | func
 (20 rows)
 
 \do
@@ -1041,30 +1057,47 @@ create extension cube with schema c;
 --------+------+-------------
 (0 rows)
 
-\df public.*
-                                                                            List of functions
+--\df public.*
+SELECT 
+    n.nspname AS "Schema",
+    p.proname AS "Name",
+    pg_catalog.format_type(p.prorettype, NULL) AS "Result data type",
+    pg_catalog.pg_get_function_identity_arguments(p.oid) AS "Argument data types",
+    'func' AS "Type"
+FROM 
+    pg_catalog.pg_proc p
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+WHERE 
+    n.nspname = 'public'
+    AND pg_catalog.pg_function_is_visible(p.oid)
+    AND p.prokind = 'f'  
+    AND p.prorettype <> 'pg_catalog.trigger'::pg_catalog.regtype 
+    AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+    AND p.proname NOT LIKE 'sqlite_fdw%'
+ORDER BY 
+    1, 2, 4;
  Schema |             Name              | Result data type |                                          Argument data types                                          | Type 
 --------+-------------------------------+------------------+-------------------------------------------------------------------------------------------------------+------
  public | check_se_param_change         | text             |                                                                                                       | func
  public | is_sysdba                     | boolean          | oid                                                                                                   | func
  public | is_syssao                     | boolean          | oid                                                                                                   | func
  public | is_syssso                     | boolean          | oid                                                                                                   | func
- public | login_message_display         | void             | username name DEFAULT NULL::name                                                                      | func
- public | pg_banned_role                | SETOF record     | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                       | func
+ public | login_message_display         | void             | username name                                                                                         | func
+ public | pg_banned_role                | record           | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                       | func
  public | pg_banned_role_reset          | integer          |                                                                                                       | func
  public | pg_banned_role_reset          | integer          | username name                                                                                         | func
- public | pg_password_history           | SETOF record     | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text | func
+ public | pg_password_history           | record           | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text | func
  public | pg_password_history_reset     | integer          |                                                                                                       | func
  public | pg_password_history_reset     | integer          | username name                                                                                         | func
  public | pg_password_history_timestamp | integer          | username name, new_timestamp timestamp with time zone                                                 | func
  public | postgres_fdw_disconnect       | boolean          | text                                                                                                  | func
  public | postgres_fdw_disconnect_all   | boolean          |                                                                                                       | func
- public | postgres_fdw_get_connections  | SETOF record     | OUT server_name text, OUT valid boolean                                                               | func
+ public | postgres_fdw_get_connections  | record           | OUT server_name text, OUT valid boolean                                                               | func
  public | postgres_fdw_handler          | fdw_handler      |                                                                                                       | func
  public | postgres_fdw_validator        | void             | text[], oid                                                                                           | func
  public | reset_all_se_param            | text             |                                                                                                       | func
  public | set_backend_se_param          | text             | oid, text, boolean                                                                                    | func
- public | user_expiration_info          | SETOF record     | username name DEFAULT NULL::name, OUT userid oid, OUT rolename name, OUT user_validity interval       | func
+ public | user_expiration_info          | record           | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                          | func
 (20 rows)
 
 \do public.*
@@ -1105,30 +1138,47 @@ NOTICE:  drop cascades to column f1 of table foo
 --------+------+-------------
 (0 rows)
 
-\df public.*
-                                                                            List of functions
+--\df public.*
+SELECT 
+    n.nspname AS "Schema",
+    p.proname AS "Name",
+    pg_catalog.format_type(p.prorettype, NULL) AS "Result data type",
+    pg_catalog.pg_get_function_identity_arguments(p.oid) AS "Argument data types",
+    'func' AS "Type"
+FROM 
+    pg_catalog.pg_proc p
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+WHERE 
+    n.nspname = 'public'
+    AND pg_catalog.pg_function_is_visible(p.oid)
+    AND p.prokind = 'f'  
+    AND p.prorettype <> 'pg_catalog.trigger'::pg_catalog.regtype 
+    AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+    AND p.proname NOT LIKE 'sqlite_fdw%'
+ORDER BY 
+    1, 2, 4;
  Schema |             Name              | Result data type |                                          Argument data types                                          | Type 
 --------+-------------------------------+------------------+-------------------------------------------------------------------------------------------------------+------
  public | check_se_param_change         | text             |                                                                                                       | func
  public | is_sysdba                     | boolean          | oid                                                                                                   | func
  public | is_syssao                     | boolean          | oid                                                                                                   | func
  public | is_syssso                     | boolean          | oid                                                                                                   | func
- public | login_message_display         | void             | username name DEFAULT NULL::name                                                                      | func
- public | pg_banned_role                | SETOF record     | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                       | func
+ public | login_message_display         | void             | username name                                                                                         | func
+ public | pg_banned_role                | record           | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                       | func
  public | pg_banned_role_reset          | integer          |                                                                                                       | func
  public | pg_banned_role_reset          | integer          | username name                                                                                         | func
- public | pg_password_history           | SETOF record     | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text | func
+ public | pg_password_history           | record           | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text | func
  public | pg_password_history_reset     | integer          |                                                                                                       | func
  public | pg_password_history_reset     | integer          | username name                                                                                         | func
  public | pg_password_history_timestamp | integer          | username name, new_timestamp timestamp with time zone                                                 | func
  public | postgres_fdw_disconnect       | boolean          | text                                                                                                  | func
  public | postgres_fdw_disconnect_all   | boolean          |                                                                                                       | func
- public | postgres_fdw_get_connections  | SETOF record     | OUT server_name text, OUT valid boolean                                                               | func
+ public | postgres_fdw_get_connections  | record           | OUT server_name text, OUT valid boolean                                                               | func
  public | postgres_fdw_handler          | fdw_handler      |                                                                                                       | func
  public | postgres_fdw_validator        | void             | text[], oid                                                                                           | func
  public | reset_all_se_param            | text             |                                                                                                       | func
  public | set_backend_se_param          | text             | oid, text, boolean                                                                                    | func
- public | user_expiration_info          | SETOF record     | username name DEFAULT NULL::name, OUT userid oid, OUT rolename name, OUT user_validity interval       | func
+ public | user_expiration_info          | record           | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                          | func
 (20 rows)
 
 \do public.*

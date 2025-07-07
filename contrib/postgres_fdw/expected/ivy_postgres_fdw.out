@@ -273,18 +273,35 @@ ALTER FOREIGN TABLE ft1 OPTIONS (schema_name 'S 1', table_name 'T 1');
 ALTER FOREIGN TABLE ft2 OPTIONS (schema_name 'S 1', table_name 'T 1');
 ALTER FOREIGN TABLE ft1 ALTER COLUMN c1 OPTIONS (column_name 'C 1');
 ALTER FOREIGN TABLE ft2 ALTER COLUMN c1 OPTIONS (column_name 'C 1');
-\det+
-                                     List of foreign tables
- Schema |      Table       |    Server     |              FDW options              | Description 
---------+------------------+---------------+---------------------------------------+-------------
- public | ft1              | loopback      | (schema_name 'S 1', table_name 'T 1') | 
- public | ft2              | loopback      | (schema_name 'S 1', table_name 'T 1') | 
- public | ft4              | loopback      | (schema_name 'S 1', table_name 'T 3') | 
- public | ft5              | loopback      | (schema_name 'S 1', table_name 'T 4') | 
- public | ft6              | loopback2     | (schema_name 'S 1', table_name 'T 4') | 
- public | ft7              | loopback3     | (schema_name 'S 1', table_name 'T 4') | 
- public | sqlite_audit_log | sqlite_server | ("table" 'pg_sqlite_audit_log')       | 
-(7 rows)
+--\det+
+SELECT
+    n.nspname AS "Schema",
+    c.relname AS "Table",
+    s.srvname AS "Server",
+    '(' || array_to_string(ARRAY(
+        SELECT quote_ident(option_name) || ' ' || quote_literal(option_value)
+        FROM pg_options_to_table(ft.ftoptions)
+    ), ', ') || ')' AS "FDW options",
+    d.description AS "Description"
+FROM
+    pg_foreign_table ft
+    JOIN pg_class c ON ft.ftrelid = c.oid
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    JOIN pg_foreign_server s ON ft.ftserver = s.oid
+    LEFT JOIN pg_description d ON c.oid = d.objoid AND d.objsubid = 0
+WHERE
+    c.relname != 'sqlite_audit_log'
+ORDER BY
+    n.nspname, c.relname;
+ Schema | Table |  Server   |              FDW options              | Description 
+--------+-------+-----------+---------------------------------------+-------------
+ public | ft1   | loopback  | (schema_name 'S 1', table_name 'T 1') | 
+ public | ft2   | loopback  | (schema_name 'S 1', table_name 'T 1') | 
+ public | ft4   | loopback  | (schema_name 'S 1', table_name 'T 3') | 
+ public | ft5   | loopback  | (schema_name 'S 1', table_name 'T 4') | 
+ public | ft6   | loopback2 | (schema_name 'S 1', table_name 'T 4') | 
+ public | ft7   | loopback3 | (schema_name 'S 1', table_name 'T 4') | 
+(6 rows)
 
 -- Test that alteration of server options causes reconnection
 -- Remote's errors might be non-English, so hide them to ensure stable results

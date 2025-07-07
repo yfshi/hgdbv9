@@ -325,7 +325,26 @@ drop extension cube;
 
 -- list what's installed
 \dT
-\df
+--\df
+SELECT 
+    n.nspname AS "Schema",
+    p.proname AS "Name",
+    pg_catalog.format_type(p.prorettype, NULL) AS "Result data type",
+    pg_catalog.pg_get_function_identity_arguments(p.oid) AS "Argument data types",
+    'func' AS "Type"
+FROM 
+    pg_catalog.pg_proc p
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+WHERE 
+    pg_catalog.pg_function_is_visible(p.oid)
+    AND p.prokind = 'f'  
+    AND p.prorettype <> 'pg_catalog.trigger'::pg_catalog.regtype 
+    AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'sys')
+    AND n.nspname NOT LIKE 'pg_temp%'
+    AND n.nspname NOT LIKE 'pg_toast%'
+    AND p.proname NOT LIKE 'sqlite_fdw%'
+ORDER BY 
+    1, 2, 4;
 \do
 
 create schema c;
@@ -334,7 +353,27 @@ create extension cube with schema c;
 
 -- list what's installed
 \dT public.*
-\df public.*
+--\df public.*	
+SELECT 
+    n.nspname AS "Schema",
+    p.proname AS "Name",
+    pg_catalog.format_type(p.prorettype, NULL) AS "Result data type",
+    pg_catalog.pg_get_function_identity_arguments(p.oid) AS "Argument data types",
+    'func' AS "Type"
+FROM 
+    pg_catalog.pg_proc p
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+WHERE 
+    n.nspname = 'public'
+    AND pg_catalog.pg_function_is_visible(p.oid)
+    AND p.prokind = 'f'  
+    AND p.prorettype <> 'pg_catalog.trigger'::pg_catalog.regtype 
+    AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'sys')
+    AND n.nspname NOT LIKE 'pg_temp%'
+    AND n.nspname NOT LIKE 'pg_toast%'
+    AND p.proname NOT LIKE 'sqlite_fdw%'
+ORDER BY 
+    1, 2, 4;
 \do public.*
 \dT c.*
 
@@ -350,7 +389,27 @@ drop extension cube cascade;
 
 -- list what's installed
 \dT public.*
-\df public.*
+--\df public.*
+SELECT 
+    n.nspname AS "Schema",
+    p.proname AS "Name",
+    pg_catalog.format_type(p.prorettype, NULL) AS "Result data type",
+    pg_catalog.pg_get_function_identity_arguments(p.oid) AS "Argument data types",
+    'func' AS "Type"
+FROM 
+    pg_catalog.pg_proc p
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+WHERE 
+    n.nspname = 'public'
+    AND pg_catalog.pg_function_is_visible(p.oid)
+    AND p.prokind = 'f'  
+    AND p.prorettype <> 'pg_catalog.trigger'::pg_catalog.regtype 
+    AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'sys')
+    AND n.nspname NOT LIKE 'pg_temp%'
+    AND n.nspname NOT LIKE 'pg_toast%'
+    AND p.proname NOT LIKE 'sqlite_fdw%'
+ORDER BY 
+    1, 2, 4;
 \do public.*
 \dT c.*
 \df c.*

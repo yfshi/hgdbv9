@@ -1040,13 +1040,30 @@ Check constraints:
 Server: s0
 FDW options: (delimiter ',', quote '"', "be quoted" 'value')
 
-\det+
-                                          List of foreign tables
- Schema |      Table       |    Server     |                   FDW options                   | Description 
---------+------------------+---------------+-------------------------------------------------+-------------
- public | ft1              | s0            | (delimiter ',', quote '"', "be quoted" 'value') | ft1
- public | sqlite_audit_log | sqlite_server | ("table" 'pg_sqlite_audit_log')                 | 
-(2 rows)
+--\det+
+SELECT
+    n.nspname AS "Schema",
+    c.relname AS "Table",
+    s.srvname AS "Server",
+    '(' || array_to_string(ARRAY(
+        SELECT quote_ident(option_name) || ' ' || quote_literal(option_value)
+        FROM pg_options_to_table(ft.ftoptions)
+    ), ', ') || ')' AS "FDW options",
+    d.description AS "Description"
+FROM
+    pg_foreign_table ft
+    JOIN pg_class c ON ft.ftrelid = c.oid
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    JOIN pg_foreign_server s ON ft.ftserver = s.oid
+    LEFT JOIN pg_description d ON c.oid = d.objoid AND d.objsubid = 0
+WHERE
+    c.relname != 'sqlite_audit_log'
+ORDER BY
+    n.nspname, c.relname;
+ Schema | Table | Server |                   FDW options                   | Description 
+--------+-------+--------+-------------------------------------------------+-------------
+ public | ft1   | s0     | (delimiter ',', quote '"', "be quoted" 'value') | ft1
+(1 row)
 
 CREATE INDEX id_ft1_c2 ON ft1 (c2);                             -- ERROR
 ERROR:  cannot create index on foreign table "ft1"
@@ -1342,12 +1359,11 @@ SELECT * FROM information_schema.role_usage_grants WHERE object_type LIKE 'FOREI
  regress_test_indirect     | regress_test_role2        | regression     |               | s6          | FOREIGN SERVER       | USAGE          | YES
 (4 rows)
 
-SELECT * FROM information_schema.foreign_tables ORDER BY 1, 2, 3;
+SELECT * FROM information_schema.foreign_tables WHERE foreign_table_name != 'sqlite_audit_log' ORDER BY 1, 2, 3;
  foreign_table_catalog | foreign_table_schema | foreign_table_name | foreign_server_catalog | foreign_server_name 
 -----------------------+----------------------+--------------------+------------------------+---------------------
  regression            | foreign_schema       | foreign_table_1    | regression             | s0
- regression            | public               | sqlite_audit_log   | regression             | sqlite_server
-(2 rows)
+(1 row)
 
 SELECT * FROM information_schema.foreign_table_options WHERE foreign_table_name != 'sqlite_audit_log' ORDER BY 1, 2, 3, 4;
  foreign_table_catalog | foreign_table_schema | foreign_table_name | option_name | option_value 

@@ -104,7 +104,10 @@ SUBDIRS += restricted_dba
 # /* End - ReqID:SRS-SECURITY-POWERS */
 
 #Begin - ReqID:SRS-SECURITY-AUDIT
-SUBDIRS += pg_audit pg_track_settings sqlite_fdw
+SUBDIRS += pg_audit pg_track_settings
+ifeq ($(with_sqlite), yes)
+SUBDIRS += sqlite_fdw
+endif
 #End - ReqID:SRS-SECURITY-AUDIT
 # Begin - ReqID:SRS-SECURITY-IDENTITYAUTH
 SUBDIRS += credcheck

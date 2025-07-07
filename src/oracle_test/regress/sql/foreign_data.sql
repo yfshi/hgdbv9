@@ -651,7 +651,27 @@ CREATE FOREIGN TABLE ft1 (
 COMMENT ON FOREIGN TABLE ft1 IS 'ft1';
 COMMENT ON COLUMN ft1.c1 IS 'ft1.c1';
 \d+ ft1
-\det+
+--\det+
+SELECT
+    n.nspname AS "Schema",
+    c.relname AS "Table",
+    s.srvname AS "Server",
+    '(' || array_to_string(ARRAY(
+        SELECT quote_ident(option_name) || ' ' || quote_literal(option_value)
+        FROM pg_options_to_table(ft.ftoptions)
+    ), ', ') || ')' AS "FDW options",
+    d.description AS "Description"
+FROM
+    pg_foreign_table ft
+    JOIN pg_class c ON ft.ftrelid = c.oid
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    JOIN pg_foreign_server s ON ft.ftserver = s.oid
+    LEFT JOIN pg_description d ON c.oid = d.objoid AND d.objsubid = 0
+WHERE
+    c.relname != 'sqlite_audit_log'
+ORDER BY
+    n.nspname, c.relname;
+
 CREATE INDEX id_ft1_c2 ON ft1 (c2);                             -- ERROR
 SELECT * FROM ft1;                                              -- ERROR
 EXPLAIN SELECT * FROM ft1;                                      -- ERROR
@@ -792,7 +812,7 @@ SELECT * FROM information_schema.user_mappings WHERE foreign_server_name != 'sql
 SELECT * FROM information_schema.user_mapping_options ORDER BY lower(authorization_identifier), 2, 3, 4;
 SELECT * FROM information_schema.usage_privileges WHERE object_type LIKE 'FOREIGN%' AND object_name IN ('s6', 'foo') ORDER BY 1, 2, 3, 4, 5;
 SELECT * FROM information_schema.role_usage_grants WHERE object_type LIKE 'FOREIGN%' AND object_name IN ('s6', 'foo') ORDER BY 1, 2, 3, 4, 5;
-SELECT * FROM information_schema.foreign_tables ORDER BY 1, 2, 3;
+SELECT * FROM information_schema.foreign_tables WHERE foreign_table_name != 'sqlite_audit_log' ORDER BY 1, 2, 3;
 SELECT * FROM information_schema.foreign_table_options WHERE foreign_table_name != 'sqlite_audit_log' ORDER BY 1, 2, 3, 4;
 SET ROLE regress_test_role;
 SELECT * FROM information_schema.user_mapping_options ORDER BY 1, 2, 3, 4;
