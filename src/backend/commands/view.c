@@ -1133,6 +1133,7 @@ compile_force_view_internal(ViewStmt *stmt, const char *queryString, Oid viewoid
 	RangeVar   *view;
 	ListCell   *cell;
 	bool		check_option;
+	MemoryContext	oldcontext = CurrentMemoryContext; /* OA-REQ-1558 */
 
 	/*
 	 * Run parse analysis to convert the raw parse tree to a Query.  Note this
@@ -1149,7 +1150,15 @@ compile_force_view_internal(ViewStmt *stmt, const char *queryString, Oid viewoid
 	}
 	PG_CATCH();
 	{
+		/* Begin - OA-REQ-1558 */
+		ErrorData  *edata;
+		MemoryContextSwitchTo(oldcontext);
+		edata = CopyErrorData();
 		FlushErrorState();
+		if (edata->message)
+			elog(LOG, "force view compile failed: %s", edata->message);
+		FreeErrorData(edata);
+		/* End - OA-REQ-1558 */
 		return false;
 	}
 	PG_END_TRY();
@@ -1385,17 +1394,20 @@ make_view_invalid(Oid viewid)
 	Oid			ruleoid = InvalidOid;
 	bool		isnull;
 	char		*viewdef_p; /* OA-REQ-1459 */
+	int			save_nestlevel; /* OA-REQ-1558 */
 
 	if (rel_is_force_view(viewid))
 		return true;
 
-	/*
-	 * TODO:
-	 * This interface cannot be used directly, because the definition
-	 * of this view must be with a schema, otherwise other sessions
-	 * cannot compile the view, except the session that created the view.
-	 */
+	/* Begin - OA-REQ-1558 */
+	save_nestlevel = NewGUCNestLevel();
+	(void) set_config_option("ivorysql.enable_strict_view_def", "true",
+							 PGC_USERSET, PGC_S_SESSION,
+							 GUC_ACTION_SAVE, true, 0, false);
 	viewdef = DirectFunctionCall1(pg_get_viewdef, ObjectIdGetDatum(viewid));
+	AtEOXact_GUC(false, save_nestlevel);
+	/* End - OA-REQ-1558 */
+
 	/* Begin - OA-REQ-1459 */
 	if (identifier_case_switch == INTERCHANGE)
 		ident_case = IDENT_CASE_INTERCHANGE;

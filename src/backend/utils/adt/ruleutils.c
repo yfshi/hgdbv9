@@ -11693,8 +11693,9 @@ get_from_clause_item(Node *jtnode, Query *query, deparse_context *context)
 				/* Normal relation RTE */
 				appendStringInfo(buf, "%s%s",
 								 only_marker(rte),
-								 generate_relation_name(rte->relid,
-														context->namespaces));
+								 enable_strict_view_def ?
+								 generate_qualified_relation_name(rte->relid) :
+								 generate_relation_name(rte->relid, context->namespaces) /* OA-REQ-1558 */);
 				break;
 			/* Begin - BUG#M0000489 */
 			case RTE_DBLINK:

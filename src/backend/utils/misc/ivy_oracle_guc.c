@@ -225,6 +225,7 @@ int		format_max_string_size_len = 4000;
 bool	compatible_ora_bytea_concat_operator = true;
 /* End - OA#1475 */
 
+bool enable_strict_view_def = false; /* OA-REQ-1558 */
 
 #endif
 
@@ -912,6 +913,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 
+	/* Begin - OA-REQ-1558 */
+	{
+		{"ivorysql.enable_strict_view_def", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("When enabled, all tables in view definition are schema-qualified."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_strict_view_def,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - OA-REQ-1558 */
 #endif
 #if 0
 	/* End-of-list marker */
