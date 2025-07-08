@@ -102,6 +102,10 @@ typedef uint32 DumpComponents;	/* a bitmask of dump object components */
 #define DUMP_COMPONENT_USERMAP		(1 << 6)
 #define DUMP_COMPONENT_ALL			(0xFFFF)
 
+/* BEGIN - bug#Z5417 */
+#define ROLE_CATALOG_LENGTH 16
+/* END - bug#Z5417 */
+
 /*
  * component types which require us to obtain a lock on the table
  *
@@ -773,7 +777,9 @@ extern struct dumpMethods dumpMethodsOracle;
 extern struct dumpMethods dumpMethodsPg;
 extern struct dumpMethods dumpMethodsMysql;	/* ReqID:SRS-MYSQL-PGDUMP */
 
-extern char role_catalog[10];
+/* BEGIN - bug#Z5417 */
+extern char role_catalog[ROLE_CATALOG_LENGTH];
+/* END - bug#Z5417 */
 extern int	no_role_passwords;
 
 extern bool dosync;

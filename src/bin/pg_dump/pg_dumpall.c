@@ -159,8 +159,11 @@ static int	server_version;
 static int	load_via_partition_root = 0;
 static int	on_conflict_do_nothing = 0;
 
-static char role_catalog[10];
-#define PG_AUTHID "pg_authid "
+/* BEGIN - bug#Z5417 */
+#define ROLE_CATALOG_LENGTH 16
+static char role_catalog[ROLE_CATALOG_LENGTH];
+/* END - bug#Z5417 */
+#define PG_AUTHID "pg_authid"
 #define PG_ROLES  "pg_roles "
 //#define IVORY_ROLES "ivory_roles " /* BUGZ4323 */
 
@@ -675,11 +678,11 @@ main(int argc, char *argv[])
 		else
 		#endif
 		/* End - BUGZ4323 */
-			sprintf(role_catalog, "%s", PG_ROLES);
+			snprintf(role_catalog, ROLE_CATALOG_LENGTH - 1, "%s", PG_ROLES);  /* bug#Z5417 */
 	}
 		
 	else
-		sprintf(role_catalog, "%s", PG_AUTHID);
+		snprintf(role_catalog, ROLE_CATALOG_LENGTH - 1, "%s", PG_AUTHID);  /* bug#Z5417 */
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */

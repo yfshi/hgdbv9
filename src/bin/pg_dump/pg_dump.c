@@ -121,7 +121,9 @@ typedef enum OidOptions
  * in the current file.
  */
 /* BEGIN - ReqID:SRS-MISC-USER */
-char role_catalog[10];
+/* BEGIN - bug#Z5417 */
+char role_catalog[ROLE_CATALOG_LENGTH];
+/* END - bug#Z5417 */
 #define PG_AUTHID "pg_authid"
 #define PG_ROLES  "pg_roles "
 int	no_role_passwords = 0;
@@ -627,9 +629,9 @@ main(int argc, char **argv)
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
 	if (no_role_passwords)
-		sprintf(role_catalog, "%s", PG_ROLES);
+		snprintf(role_catalog, ROLE_CATALOG_LENGTH - 1, "%s", PG_ROLES);  /* bug#Z5417 */
 	else
-		sprintf(role_catalog, "%s", PG_AUTHID);
+		snprintf(role_catalog, ROLE_CATALOG_LENGTH - 1, "%s", PG_AUTHID);  /* bug#Z5417 */
 	/* END - ReqID:SRS-MISC-USER */
 
 	/* --column-inserts implies --inserts */
