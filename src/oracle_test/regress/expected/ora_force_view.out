@@ -340,3 +340,41 @@ select pg_get_viewdef('req_1459.v_req_1459');
 drop view req_1459.v_req_1459;
 drop schema req_1459;
 /* End - OA-REQ-1459 */
+/* Begin - OA-REQ-1558 */
+create schema oa_req_1558;
+create table oa_req_1558.test(a int);
+create view oa_req_1558.vtest(va) as select a from oa_req_1558.test;
+select pg_get_viewdef('oa_req_1558.vtest');	-- has schema
+      pg_get_viewdef       
+---------------------------
+  SELECT test.a AS va     +
+    FROM oa_req_1558.test;
+(1 row)
+
+set search_path to oa_req_1558;
+select pg_get_viewdef('oa_req_1558.vtest'); -- no schema
+    pg_get_viewdef    
+----------------------
+  SELECT test.a AS va+
+    FROM test;
+(1 row)
+
+drop table oa_req_1558.test;
+select pg_get_viewdef('oa_req_1558.vtest'); -- force view always has schema
+                            pg_get_viewdef                             
+-----------------------------------------------------------------------
+ CREATE OR REPLACE FORCE VIEW oa_req_1558.vtest AS SELECT test.a AS va+
+    FROM oa_req_1558.test;
+(1 row)
+
+reset search_path;
+create table oa_req_1558.test(a int);
+select * from oa_req_1558.vtest; -- compile ok
+ va 
+----
+(0 rows)
+
+drop view oa_req_1558.vtest;
+drop table oa_req_1558.test;
+drop schema oa_req_1558;
+/* End - OA-REQ-1558 */

@@ -460,6 +460,7 @@ extern bool connect_by_rownum_use_func;
 extern bool compatible_ora_bytea_concat_operator;
 /* End - OA#1475 */
 
+extern PGDLLIMPORT bool enable_strict_view_def; /* OA-REQ-1558 */
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
