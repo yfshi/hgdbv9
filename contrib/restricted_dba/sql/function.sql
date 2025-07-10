@@ -104,6 +104,16 @@ grant all on function func_syssso_u1 to u1;
 grant all on function func_syssao_u1 to sysdba_u1;
 grant all on function func_syssao_u1 to u1;
 
+---- CALL FUNCTION
+------ pass
+select public.func_sysdba_u1_f1(1,1);
+select sch_sysdba_u1.func_sysdba_u1_f1(1,1);
+select sch_u1.func_sysdba_u1_f1(1,1);
+select sch_syssso_u2.func_sysdba_u1_f1(1,1);
+------ fail
+select func_syssso_u1(1,1);
+select func_syssao_u1(1,1);
+
 ---- DROP FUNCTION
 ------ pass
 drop function public.func_sysdba_u1_f1;

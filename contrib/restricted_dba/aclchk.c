@@ -1417,3 +1417,65 @@ pg_namespace_aclmask_nosuper(Oid nsp_oid, Oid roleid,
 		result |= ACL_USAGE;
 	return result;
 }
+
+/*
+ * Exported routine for examining a user's privileges for a function.
+ * Mostly same as pg_proc_aclmask but not influenced by superuser.
+ * 
+ * Note: the origin version give EXECUTE priv by default, we don't allow it.
+ */
+AclMode
+pg_proc_aclmask_nosuper(Oid proc_oid, Oid roleid,
+						AclMode mask, AclMaskHow how)
+{
+	AclMode		result;
+	HeapTuple	tuple;
+	Datum		aclDatum;
+	bool		isNull;
+	Acl		   *acl;
+	Oid			ownerId;
+
+	/*
+	 * Get the function's ACL from pg_proc
+	 */
+	tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(proc_oid));
+	if (!HeapTupleIsValid(tuple))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_FUNCTION),
+				 errmsg("function with OID %u does not exist", proc_oid)));
+
+	ownerId = ((Form_pg_proc) GETSTRUCT(tuple))->proowner;
+
+	aclDatum = SysCacheGetAttr(PROCOID, tuple, Anum_pg_proc_proacl,
+							   &isNull);
+	if (isNull)
+	{
+		/* No ACL, so build default ACL */
+		acl = func_acldefault(OBJECT_FUNCTION, ownerId);
+		aclDatum = (Datum) 0;
+	}
+	else
+	{
+		/* detoast ACL if necessary */
+		acl = DatumGetAclP(aclDatum);
+	}
+
+	result = aclmask_nosuper(acl, roleid, ownerId, mask, how);
+
+	/* if we have a detoasted copy, free it */
+	if (acl && (Pointer) acl != DatumGetPointer(aclDatum))
+		pfree(acl);
+
+	ReleaseSysCache(tuple);
+
+	return result;
+}
+
+AclResult
+pg_proc_aclcheck_nosuper(Oid proc_oid, Oid roleid, AclMode mode)
+{
+	if (pg_proc_aclmask_nosuper(proc_oid, roleid, mode, ACLMASK_ANY) != 0)
+		return ACLCHECK_OK;
+	else
+		return ACLCHECK_NO_PRIV;
+}

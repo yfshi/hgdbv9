@@ -5490,4 +5490,71 @@ aclmask_nosuper(const Acl *acl, Oid roleid, Oid ownerId,
 	return result;
 }
 
+/*
+ * A variation of acldefault().
+ *
+ * Since postgres defaultly give EXECUTE privilege to public. So we make
+ * a non-execute version for restricted user calling. Currently we only use
+ * this function in pg_proc_aclmask_nosuper() for EXECUTE permission check.
+ */
+Acl *
+func_acldefault(ObjectType objtype, Oid ownerId)
+{
+	AclMode		world_default;
+	AclMode		owner_default;
+	int			nacl;
+	Acl		   *acl;
+	AclItem    *aip;
+
+	switch (objtype)
+	{
+		case OBJECT_FUNCTION:
+			/*  */
+			world_default = ACL_NO_RIGHTS;
+			owner_default = ACL_ALL_RIGHTS_FUNCTION;
+			break;
+		default:
+			elog(ERROR, "unrecognized objtype: %d", (int) objtype);
+			world_default = ACL_NO_RIGHTS;	/* keep compiler quiet */
+			owner_default = ACL_NO_RIGHTS;
+			break;
+	}
+
+	nacl = 0;
+	if (world_default != ACL_NO_RIGHTS)
+		nacl++;
+	if (owner_default != ACL_NO_RIGHTS)
+		nacl++;
+
+	acl = allocacl(nacl);
+	aip = ACL_DAT(acl);
+
+	if (world_default != ACL_NO_RIGHTS)
+	{
+		aip->ai_grantee = ACL_ID_PUBLIC;
+		aip->ai_grantor = ownerId;
+		ACLITEM_SET_PRIVS_GOPTIONS(*aip, world_default, ACL_NO_RIGHTS);
+		aip++;
+	}
+
+	/*
+	 * Note that the owner's entry shows all ordinary privileges but no grant
+	 * options.  This is because his grant options come "from the system" and
+	 * not from his own efforts.  (The SQL spec says that the owner's rights
+	 * come from a "_SYSTEM" authid.)  However, we do consider that the
+	 * owner's ordinary privileges are self-granted; this lets him revoke
+	 * them.  We implement the owner's grant options without any explicit
+	 * "_SYSTEM"-like ACL entry, by internally special-casing the owner
+	 * wherever we are testing grant options.
+	 */
+	if (owner_default != ACL_NO_RIGHTS)
+	{
+		aip->ai_grantee = ownerId;
+		aip->ai_grantor = ownerId;
+		ACLITEM_SET_PRIVS_GOPTIONS(*aip, owner_default, ACL_NO_RIGHTS);
+	}
+
+	return acl;
+}
+
 /* End - ReqID:SRS-SECURITY-POWERS */
