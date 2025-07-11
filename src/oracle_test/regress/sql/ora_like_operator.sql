@@ -257,3 +257,86 @@ select * from wildcard_a where x like 'this is   a test                         
 select * from wildcard_a where x like 'this is   a test_';  -- 1 row
 set ivorysql.enable_blankspace_compare to on;
 -- End - Bug#Z471 && SRS-MISC-COMPATDM-SQL
+
+
+--OA1559
+create table test_id(id integer,name varchar2(256));
+
+insert into test_id values(1, 'abc');
+insert into test_id values(2, 'abc\');
+insert into test_id values(3, 'abc\ ');
+
+create view test_view1 as select * from test_id where name like '%abc' order by id;
+
+create view test_view2 as select * from test_id where name like '%abc\' order by id;
+
+create view test_view3 as select * from test_id where name like '%abc\ ' order by id;
+
+
+create view test_view4 as select  *from test_id where name not like '%abc' order by id;
+
+create view test_view5 as select * from test_id where name not like '%abc\' order by id;
+
+create view test_view6 as select  *from test_id where name not like '%abc\ ' order by id;
+
+create view test_view7 as select * from test_id where id like '1' and name not like '%abc' order by id;
+
+create view test_view8 as select * from test_id where name like NULL;
+
+create view test_view9 as select * from test_id where id like '1' and name like '%abc' order by id;
+
+create view test_view10 as select * from test_id where name like '%abc%' order by id;
+
+create view test_view11 as select * from test_id where name not like '%abc%' order by id;
+
+create view test_view12 as select * from test_id where name not like '%abc\\'  ESCAPE '\' order by id;
+
+create view test_view13 as select * from test_id where name not like '%abc\\'  ESCAPE '\' and name like '%abc\\' ESCAPE '\' order by id;
+
+create view test_view14 as select * from test_id where name not like '%abc\\'  ESCAPE '\' and name like '%abc\' order by id;
+
+select * from test_view1;
+\d+ test_view1
+select * from test_view2;
+\d+ test_view2
+select * from test_view3;
+\d+ test_view3
+select * from test_view4;
+\d+ test_view4
+select * from test_view5;
+\d+ test_view5
+select * from test_view6;
+\d+ test_view6
+select * from test_view7;
+\d+ test_view7
+select * from test_view8;
+\d+ test_view8
+select * from test_view9;
+\d+ test_view9
+select * from test_view10;
+\d+ test_view10
+select * from test_view11;
+\d+ test_view11
+select * from test_view12;
+\d+ test_view12
+select * from test_view13;
+\d+ test_view13
+select * from test_view14;
+\d+ test_view14
+
+--clean data
+drop view test_view1;
+drop view test_view2;
+drop view test_view3;
+drop view test_view4;
+drop view test_view5;
+drop view test_view6;
+drop view test_view7;
+drop view test_view8;
+drop view test_view9;
+drop view test_view10;
+drop view test_view11;
+drop view test_view12;
+drop view test_view13;
+drop view test_view14;
+drop table test_id;

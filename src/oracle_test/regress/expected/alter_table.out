@@ -3928,7 +3928,7 @@ ALTER TABLE ataddindex
 --------+------+----------------+----------+---------
  f1     | text | using_nls_comp |          | 
 Indexes:
-    "ataddindex_expr_excl" EXCLUDE USING btree (((f1 COLLATE "binary") ~~ 'a'::text) WITH =)
+    "ataddindex_expr_excl" EXCLUDE USING btree (((f1 COLLATE "binary") like 'a'::text) WITH =)
 
 DROP TABLE ataddindex;
 CREATE TABLE ataddindex(id int, ref_id int);

@@ -10458,75 +10458,97 @@ get_oper_expr(OpExpr *expr, deparse_context *context)
 		/* binary operator */
 		Node	   *arg1 = (Node *) linitial(args);
 		Node	   *arg2 = (Node *) lsecond(args);
+		/* Begin - OA#00001559 */
+		bool		ora_transformed = false;
+		Node		*aarg1 = NULL;
+		char	   *opr;
+		/* End - OA#00001559 */
 
-		/* BEGIN - BUG#Z1677 */
-		int tmp_pos = 12;
-		char *ptrA = NULL;
-		char *ptrB = NULL;
-		/* END - BUG#Z1677 */
-
-		/* BEGIN - BUG#Z1333 */
-		int			location = 0;
-		int			comma_location = 0;
-		char	   *tmp_expr;
-		char	   *opr = generate_operator_name(opno, exprType(arg1), exprType(arg2));
-		/* END - BUG#Z1333 */
 		get_rule_expr_paren(arg1, context, true, (Node *) expr);
-		/* BEGIN - BUG#Z1333 */
-		appendStringInfo(buf, " %s ", opr);
-		if(strcmp(opr, "~~") == 0)
-			location = buf->len;
-		/* END - BUG#Z1333 */
-		get_rule_expr_paren(arg2, context, true, (Node *) expr);
-		/* BEGIN - BUG#Z1333 */
 
-		/* BEGIN - BUG#Z1677 Z1630*/
-		/* change (like_escape('148%'::text, ''::text))::varchar2(4000) =>'148%'::text */
-		ptrA = buf->data + location;
+		/* Begin - OA#00001559 */
+		/*
+		 * there, because like and not like are converted to like xx
+		 * like_esacpe(arg1,'') in ora_gram.y,but the empty string '' is
+		 * converted to NULL in ora_scan.l, it will be ambiguous to use the
+		 * view definition query.
+		 * there, for this rewrite, then like or not like operation will be
+		 * restored
+		 */
+		opr = generate_operator_name(opno, exprType(arg1), exprType(arg2));
 
-		if (quote_all_identifiers)
+		/* check the like or not like */
+		if ((strcmp(opr, "~~") == 0 ||
+			strcmp(opr, "!~~") == 0) &&
+			arg2 != NULL &&
+			compatible_db == ORA_PARSER)
 		{
-			ptrB = strstr(buf->data + location, "\"like_escape\"(");
-			if (ptrB != NULL)
+			FuncExpr *funcexpr = NULL;
+			Node *tmp_arg2 = arg2;
+
+			while (nodeTag(tmp_arg2) == T_RelabelType)
 			{
-				tmp_pos = abs(ptrB - ptrA) + strlen("\"like_escape\"(");
+				tmp_arg2 = (Node *) ((RelabelType *) tmp_arg2)->arg;
 			}
+
+			if (nodeTag(tmp_arg2) == T_FuncExpr)
+				funcexpr = (FuncExpr *) tmp_arg2;
+
+			/* check like_escape function */
+			if (funcexpr != NULL &&
+				FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from) &&
+				list_length(funcexpr->args) == 2)
+			{
+				char *func_name = get_func_name(funcexpr->funcid);
+
+				if (func_name != NULL &&
+					strcmp(func_name, "like_escape") == 0)
+				{
+					/* check the second args is '' */
+					Node *aarg2 = lsecond(funcexpr->args);
+
+					aarg1 = linitial(funcexpr->args);
+
+					if (nodeTag(aarg2) == T_Const)
+					{
+						Const *cost = (Const *) aarg2;
+
+						if (!cost->constisnull)
+						{
+							Oid outfuncoid;
+							bool typisvarlena;
+							char *extval;
+
+							getTypeOutputInfo(cost->consttype, &outfuncoid, &typisvarlena);
+							extval = OidOutputFunctionCall(outfuncoid, cost->constvalue);
+
+							if (strcmp(extval, "") == 0)
+								ora_transformed = true;
+
+							pfree(extval);
+						}
+					}
+				}
+				if (func_name != NULL)
+					pfree(func_name);
+			}
+		}
+		if (ora_transformed)
+		{
+			Assert(aarg1 != NULL);
+
+			if (strcmp(opr, "!~~") == 0)
+				appendStringInfoString(buf, " not like ");
+			else
+				appendStringInfoString(buf, " like ");
+			get_rule_expr_paren(aarg1, context, true, (Node *) expr);
 		}
 		else
 		{
-			ptrB = strstr(buf->data + location, "like_escape(");
-			if (ptrB != NULL)
-			{
-				tmp_pos = abs(ptrB - ptrA) + strlen("like_escape(");
-			}
+			appendStringInfo(buf, " %s ", opr);
+			get_rule_expr_paren(arg2, context, true, (Node *) expr);
 		}
-		/* END - BUG#Z1677 Z1630*/
-
-		if (location != 0 &&
-			(buf->len - location - tmp_pos > 0) &&	/*  BUG#Z1677*/
-			compatible_db == ORA_PARSER &&
-			enable_emptystring_to_NULL == true)
-		{
-			tmp_expr = palloc(buf->len - location - tmp_pos);
-			memcpy(tmp_expr, buf->data + location + tmp_pos, buf->len - location - tmp_pos);
-
-			for(int i = 0; i < strlen(tmp_expr); i++)
-			{
-				if (tmp_expr[i] == ',')
-				{
-					comma_location = i;
-					break;
-				}
-			}
-			if (strncmp(tmp_expr + comma_location + 1, " ''", 3) == 0)
-			{
-				memcpy(buf->data + location, tmp_expr, comma_location);
-				context->buf->data[location + comma_location] = '\0';
-				buf->len = location + comma_location;
-			}
-			pfree(tmp_expr);
-		}
-		/* END - BUG#Z1333 */
+		/* End - OA#00001559 */
 	}
 	else
 	{

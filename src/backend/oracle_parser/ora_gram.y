@@ -229,6 +229,11 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 static List *OracleSystemFuncName(char *name);
 static TypeName *OracleSystemTypeName(char *name);
 
+/* Begin - OA#00001559 */
+static bool isAconstNode(Node *node);
+/* End - OA#00001559 */
+
+
 %}
 
 %pure-parser
@@ -17263,8 +17268,9 @@ a_expr:		c_expr									{ $$ = $1; }
 				{
 					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
 					/* If there is already an E conversion, there is no need to do it (like "") */
-					if ((ORA_PARSER == compatible_db) && (nodeTag($3) == T_A_Const) 
-						&& getXeFirstEscape(yyscanner))
+					if ((ORA_PARSER == compatible_db) &&
+						isAconstNode($3) && /*  OA#00001559 */
+						getXeFirstEscape(yyscanner))
 					{
 						FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
 												   list_make2($3, makeStringConst("", -1)),
@@ -17330,8 +17336,9 @@ a_expr:		c_expr									{ $$ = $1; }
 			| a_expr NOT_LA LIKE a_expr							%prec NOT_LA
 				{
 					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
-					if ((ORA_PARSER == compatible_db) && (nodeTag($4) == T_A_Const)
-						 && getXeFirstEscape(yyscanner))
+					if ((ORA_PARSER == compatible_db) &&
+						isAconstNode($4) && /*  OA#00001559 */
+						getXeFirstEscape(yyscanner))
 					{
 						FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
 												   list_make2($4, makeStringConst("", -1)),
@@ -22513,3 +22520,27 @@ getXeFirstEscape(ora_core_yyscan_t yyscanner)
 	return warn_on_first_escape;
 }
 /* End - ReqID:SRS-SQL-ORACLE-LIKE */
+
+
+/* Begin - OA#00001559 */
+/*
+ * check node is a cost node
+ * we should allow type cast
+ */
+static bool
+isAconstNode(Node *node)
+{
+	while (node != NULL &&
+		nodeTag(node) == T_TypeCast)
+	{
+		node = ((TypeCast *) node)->arg;
+	}
+
+	if (node != NULL &&
+		nodeTag(node) == T_A_Const)
+		return true;
+	else
+		return false;
+}
+/* End - OA#00001559 */
+
