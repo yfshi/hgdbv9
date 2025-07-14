@@ -562,3 +562,136 @@ drop public database link tdblnk;
 drop table enrol11."RMS_EQUIPROOM";
 drop table enrol11."RES_ACCESSPOINT";
 drop schema enrol11;
+
+--OA#00001554
+set ivorysql.enable_ora_default_collation = off;
+create schema enrol11;
+
+CREATE TABLE enrol11.RMS_BSSPORT (
+	INT_ID NUMBER NOT NULL,
+	STATEFLAG NUMBER NOT NULL,
+	TIME_STAMP TIMESTAMP(6) NOT NULL,
+	CREATOR VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	MODIFIER VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	MODIFY_TIME TIMESTAMP(6) NULL,
+	CREAT_TIME TIMESTAMP(6) NULL,
+	ZH_LABEL VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	NE_NAME VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	PORT_TYPE VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	RELATED_NE_ID NUMBER NULL,
+	STATUS VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	TDDF VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	RATE VARCHAR2(32 char) NULL COLLATE "DEFAULT",
+	IP_ADDRESS VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	RELATED_CARD_ID NUMBER NULL,
+	CIRCUIT_NAME VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	CITY_ID NUMBER NOT NULL DEFAULT '1'::number,
+	IS_WRONG VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	WRONG_INFO VARCHAR2(4000 char) NULL COLLATE "DEFAULT",
+	REMARK VARCHAR2(1000 char) NULL DEFAULT NULL::varchar2(4000) COLLATE "DEFAULT",
+	REMARK2 VARCHAR2(1000 char) NULL DEFAULT NULL::varchar2(4000) COLLATE "DEFAULT",
+	PORT_CLASS VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	RESFAPORT VARCHAR2(255 char) NULL DEFAULT NULL::varchar2(4000) COLLATE "DEFAULT",
+	RERATE VARCHAR2(255 char) NULL DEFAULT NULL::varchar2(4000) COLLATE "DEFAULT",
+	QRCODE VARCHAR2(255 char) NULL DEFAULT NULL::varchar2(4000) COLLATE "DEFAULT",
+	DATE_MANAGE VARCHAR2(255 char) NULL DEFAULT NULL::varchar2(4000) COLLATE "DEFAULT",
+	"LOCATION" VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	PORT_NO VARCHAR2(255 char) NULL DEFAULT NULL::varchar2(4000) COLLATE "DEFAULT",
+	DATA_MANAGER VARCHAR2(256 char) NULL COLLATE "DEFAULT",
+	COUNTY_ID NUMBER NULL,
+	RELATED_TYPE VARCHAR2(200 char) NULL DEFAULT NULL::varchar2(4000) COLLATE "DEFAULT",
+	CIRCUIT_ID VARCHAR2(255 char) NULL COLLATE "DEFAULT",
+	CONSTRAINT RMS_BSSPORT_SYS_C0060416 PRIMARY KEY (int_id, city_id, stateflag)
+)
+PARTITION BY RANGE (stateflag);
+CREATE INDEX rms_bssport_city_bssport ON ONLY enrol11.rms_bssport USING btree (city_id);
+CREATE INDEX rms_bssport_rms_bssport_idx1 ON ONLY enrol11.rms_bssport USING btree (stateflag);
+CREATE INDEX rms_bssport_rms_bssport_idx2 ON ONLY enrol11.rms_bssport USING btree (port_type);
+CREATE INDEX rms_bssport_rms_bssport_idx5 ON ONLY enrol11.rms_bssport USING btree (circuit_name);
+CREATE UNIQUE INDEX rms_bssport_rms_bssport_modify ON ONLY enrol11.rms_bssport USING btree (int_id, stateflag, city_id);
+CREATE INDEX rms_bssport_rms_bssport_pk_1 ON ONLY enrol11.rms_bssport USING btree (status);
+CREATE INDEX rms_bssport_rms_bssport_pk_2 ON ONLY enrol11.rms_bssport USING btree (zh_label);
+CREATE INDEX rms_bssport_rms_bssport_pk_3 ON ONLY enrol11.rms_bssport USING btree (related_ne_id);
+CREATE INDEX rms_bssport_rms_bssport_pk_4 ON ONLY enrol11.rms_bssport USING btree (zh_label, related_ne_id);
+CREATE INDEX rms_bssport_rms_bssport_pk_tddf ON ONLY enrol11.rms_bssport USING btree (tddf);
+CREATE INDEX rms_bssport_stateflag_int_id_zh_label_related_ne_id_idx ON ONLY enrol11.rms_bssport USING btree (stateflag, int_id, zh_label, related_ne_id);
+CREATE INDEX rms_bssport_w_bssport ON ONLY enrol11.rms_bssport USING btree (is_wrong);
+
+
+create table enrol11.rms_bsport1 partition of enrol11.RMS_BSSPORT for values from (0) to (6000);
+create table enrol11.rms_bsport13 partition of enrol11.RMS_BSSPORT for values from (6000) to (12000);
+create table enrol11.rms_bsport14 partition of enrol11.RMS_BSSPORT for values from (12000) to (22000);
+create table enrol11.rms_bsport15 partition of enrol11.RMS_BSSPORT for values from (22000) to (35000);
+create table enrol11.rms_bsport16 partition of enrol11.RMS_BSSPORT for values from (35000) to (48000);
+create table enrol11.rms_bsport17 partition of enrol11.RMS_BSSPORT for values from (48000) to (51000);
+create table enrol11.rms_bsport18 partition of enrol11.RMS_BSSPORT for values from  (51000) to (64000);
+create table enrol11.rms_bsport19 partition of enrol11.RMS_BSSPORT for values from (64000) to (87000);
+create table enrol11.rms_bsport110 partition of enrol11.RMS_BSSPORT for values from (87000) to (100000);
+create table enrol11.rms_bsport111 partition of enrol11.RMS_BSSPORT for values from  (100000) to (130000);
+create table enrol11.rms_bsport112 partition of enrol11.RMS_BSSPORT for values from (130000) to (150000);
+create table enrol11.rms_bsport113 partition of enrol11.RMS_BSSPORT for values from (150000) to (160000);
+create table enrol11.rms_bsport114 partition of enrol11.RMS_BSSPORT for values from  (160000) to (200000);
+create table enrol11.rms_bsport115 partition of enrol11.RMS_BSSPORT for values from (200000) to (210000);
+create table enrol11.rms_bsport116 partition of enrol11.RMS_BSSPORT for values from  (210000) to (300000);
+create table enrol11.rms_bsport117 partition of enrol11.RMS_BSSPORT for values from (300000) to (maxvalue);
+
+
+create table enrol11.test_text(id varchar2(256));
+
+DO $d$
+    BEGIN
+        EXECUTE $$ create public database link tdblnk
+                        connect to enrol11 identified by "ivy123"
+                        using '(DESCRIPTION =
+            (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
+            (CONNECT_DATA =
+                (SERVER = DEDICATED)
+                (SERVICE_NAME = regression)
+            ))'$$;
+    END;
+$d$;
+
+
+create or replace package test_pkg is
+  function test_f(a integer default 1) return integer;
+  function test_f_d(a integer default 1) return integer deterministic;
+end;
+/
+
+
+
+create or replace package body test_pkg is
+        function test_f(a integer default 1) return integer is
+        begin
+                raise notice '1';
+                return a;
+        end;
+        function test_f_d(a integer default 1) return integer is
+        begin
+                raise notice '1';
+                return a;
+        end;
+end;
+/
+
+
+
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where int_id = '100000';
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where test_pkg.test_f(int_id) = '100000';
+explain(costs off) select * from enrol11.test_text@tdblnk where id = '100000';
+
+--explain(costs off) select * from enrol11.test_text@tdblnk where standard.test_to_char(id) = '10000';
+
+set ivorysql.enable_compatible_type_shippable = off;
+
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where int_id = '100000';
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where test_pkg.test_f(int_id) = '100000';
+explain(costs off) select * from enrol11.test_text@tdblnk where id = '100000';
+--explain(costs off) select * from enrol11.test_text@tdblnk where standard.test_to_char(id) = '10000';
+
+--clean data
+drop package test_pkg;
+drop public database link tdblnk;
+drop table enrol11.RMS_BSSPORT;
+drop table enrol11.test_text;
+drop schema enrol11;

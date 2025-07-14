@@ -57,6 +57,7 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+#include "utils/guc.h" /* OA#00001554 */
 #include "commands/tablecmds.h"
 #include "funcapi.h" /* SRS-PLSQL-SUBPROC */
 
@@ -469,10 +470,23 @@ foreign_expr_walker(Node *node,
 		case T_FuncExpr:
 			{
 				FuncExpr   *fe = (FuncExpr *) node;
+				/* Begin - OA#00001554 */
+				bool		is_sys_package = false;
+				/* End - OA#00001554 */
 
 				/* Begin - SRS-PLSQL-SUBPROC*/
-				if (!FUNC_EXPR_FROM_PG_PROC(fe->function_from))
+				/* Begin - OA#00001554 */
+				/*
+				 * maybe initdb build package should shippable
+				 */
+				if (enable_compatible_type_shippable &&
+					FUNC_EXPR_FROM_PACKAGE(fe->function_from) &&
+					OidIsValid(fe->pkgoid) &&
+					is_catalog_objectid(fe->pkgoid))
+					is_sys_package = true;
+				else if (!FUNC_EXPR_FROM_PG_PROC(fe->function_from))
 					return false;
+				/* End - OA#00001554 */
 				/* End - SRS-PLSQL-SUBPROC*/
 
 				/*
@@ -480,7 +494,8 @@ foreign_expr_walker(Node *node,
 				 * can't be sent to remote because it might have incompatible
 				 * semantics on remote side.
 				 */
-				if (!is_shippable(fe->funcid, ProcedureRelationId, fpinfo))
+				if (!is_sys_package &&
+					!is_shippable(fe->funcid, ProcedureRelationId, fpinfo))
 					return false;
 
 				/*

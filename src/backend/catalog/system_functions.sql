@@ -594,6 +594,24 @@ LANGUAGE internal
 STRICT IMMUTABLE PARALLEL SAFE
 AS 'unicode_is_normalized';
 
+/* Begin - BUG#M542 */
+--get extral sys namespace
+CREATE OR REPLACE FUNCTION get_extral_sys_namespace()
+ RETURNS name
+ LANGUAGE sql
+ IMMUTABLE PARALLEL SAFE STRICT COST 1
+ as $$ select
+ case setting
+   when 'mysql' then
+      'ivymy'
+	when 'oracle' then
+	  'sys'
+	else
+	   ''
+ end case
+ from pg_show_all_settings() where name = 'ivorysql.database_mode' $$;
+/* End - BUG#M542 */
+
 --
 -- The default permissions for functions mean that anyone can execute them.
 -- A number of functions shouldn't be executable by just anyone, but rather
