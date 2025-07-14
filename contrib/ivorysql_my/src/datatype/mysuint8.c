@@ -56,11 +56,12 @@ PG_FUNCTION_INFO_V1(mysuint8_scale);
 PG_FUNCTION_INFO_V1(int_mysuint8);
 PG_FUNCTION_INFO_V1(numeric_mysuint8);
 PG_FUNCTION_INFO_V1(boolean_mysuint8);
-PG_FUNCTION_INFO_V1(mys_uint82uint1);
 PG_FUNCTION_INFO_V1(mys_uint82int2);
-PG_FUNCTION_INFO_V1(mys_uint82uint2);
 PG_FUNCTION_INFO_V1(mys_uint82int4);
 PG_FUNCTION_INFO_V1(mys_uint82int8);
+PG_FUNCTION_INFO_V1(mys_uint82uint1);
+PG_FUNCTION_INFO_V1(mys_uint82uint2);
+PG_FUNCTION_INFO_V1(mys_uint82uint4);
 PG_FUNCTION_INFO_V1(mys_uint82float4);
 PG_FUNCTION_INFO_V1(mys_uint82float8);
 
@@ -2297,21 +2298,6 @@ mysuint8_sum(PG_FUNCTION_ARGS)
 	} while(0);
 
 Datum
-mys_uint82uint1(PG_FUNCTION_ARGS)
-{
-	uint64		val1 = PG_GETARG_UINT64(0);
-	uint8		val2 = val1;
-	
-	/**
-	 * val1 is unsigned int64, it is greater than 0, 
-	 * need not check PG_UINT8_MIN.
-	 */
-	InsertGreaterLimitCheck(val1, PG_UINT8_MAX, val2);
-	
-	PG_RETURN_UINT8(val2);
-}
-
-Datum
 mys_uint82int2(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
@@ -2324,21 +2310,6 @@ mys_uint82int2(PG_FUNCTION_ARGS)
 	InsertGreaterLimitCheck(val1, PG_INT16_MAX, val2);
 
 	PG_RETURN_INT16(val2);
-}
-
-Datum
-mys_uint82uint2(PG_FUNCTION_ARGS)
-{
-	uint64		val1 = PG_GETARG_UINT64(0);
-	uint16		val2 = val1;
-	
-	/**
-	 * val1 is unsigned int64, it is greater than 0, 
-	 * need not check PG_UINT16_MIN.
-	 */
-	InsertGreaterLimitCheck(val1, PG_UINT16_MAX, val2);
-
-	PG_RETURN_UINT16(val2);
 }
 
 Datum
@@ -2361,6 +2332,51 @@ mys_uint82int8(PG_FUNCTION_ARGS)
 	InsertGreaterLimitCheck(val1, PG_INT64_MAX, val2);
 
 	PG_RETURN_INT64(val2);
+}
+
+Datum
+mys_uint82uint1(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	uint8		val2 = val1;
+	
+	/**
+	 * val1 is unsigned int64, it is greater than 0, 
+	 * need not check PG_UINT8_MIN.
+	 */
+	InsertGreaterLimitCheck(val1, PG_UINT8_MAX, val2);
+	
+	PG_RETURN_UINT8(val2);
+}
+
+Datum
+mys_uint82uint2(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	uint16		val2 = val1;
+	
+	/**
+	 * val1 is unsigned int64, it is greater than 0, 
+	 * need not check PG_UINT16_MIN.
+	 */
+	InsertGreaterLimitCheck(val1, PG_UINT16_MAX, val2);
+
+	PG_RETURN_UINT16(val2);
+}
+
+Datum
+mys_uint82uint4(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	uint32		val2 = val1;
+	
+	/**
+	 * val1 is unsigned int64, it is greater than 0, 
+	 * need not check PG_UINT16_MIN.
+	 */
+	InsertGreaterLimitCheck(val1, PG_UINT32_MAX, val2);
+
+	PG_RETURN_UINT32(val2);
 }
 
 Datum

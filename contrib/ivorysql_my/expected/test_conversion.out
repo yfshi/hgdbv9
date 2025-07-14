@@ -1324,6 +1324,9 @@ SELECT         c1::nchar          FROM my_varbinary_t08;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as signed)        FROM my_varbinary_t08;
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
   c1  
 ------
  1234
@@ -1333,6 +1336,9 @@ SELECT  cast(c1 as signed)        FROM my_varbinary_t08;
 (4 rows)
 
 SELECT convert(c1, signed)        FROM my_varbinary_t08;
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
   c1  
 ------
  1234
@@ -1348,9 +1354,29 @@ LINE 1: SELECT         c1::signed         FROM my_varbinary_t08;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as unsigned)      FROM my_varbinary_t08;
-ERROR:  invalid input syntax for type integer: "abcd"
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
+  c1  
+------
+ 1234
+ 0
+ 1
+ 0
+(4 rows)
+
 SELECT convert(c1, unsigned)      FROM my_varbinary_t08;
-ERROR:  invalid input syntax for type integer: "abcd"
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
+  c1  
+------
+ 1234
+ 0
+ 1
+ 0
+(4 rows)
+
 SELECT         c1::unsigned       FROM my_varbinary_t08;
 ERROR:  syntax error at or near "unsigned"
 LINE 1: SELECT         c1::unsigned       FROM my_varbinary_t08;

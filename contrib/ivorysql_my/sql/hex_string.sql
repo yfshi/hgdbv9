@@ -25,6 +25,16 @@ select cast(0x00 as unsigned);  -- 0
 select cast(0x11111111111111111 as signed);     -- -1
 select cast(0x11111111111111111 as unsigned);   -- 18446744073709551615
 
+create table hex_test(ii int1, i2 int2, i3 int3, i4 int4, i8 int8);
+insert into hex_test values (0x3, 0x3, 0x3, 0x3, 0x3);
+select * from hex_test;
+drop table hex_test;
+
+create table hex_test(u1 uint1, u2 uint2, u3 uint3, u4 uint4, u8 uint8);
+insert into hex_test values (0x3, 0x3, 0x3, 0x3, 0x3);
+select * from hex_test;
+drop table hex_test;
+
 create table hex_test(a int, b text, c char(10), d varchar(10), e varbinary(111), f float4, g float8);
 insert into hex_test values (0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3);
 insert into hex_test values (0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
@@ -34,6 +44,25 @@ insert into hex_test values (0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33);
 select * from hex_test;
 drop table hex_test;
 
+/* Begin - bug#z5411 */
+create table t1(id int3 unsigned);
+insert into t1 values(0x123);
+select * from t1;
+
+create table t2(a int2 unsigned);
+insert into t2 values(0x123);
+select * from t2;
+
+create table t3(a int4 unsigned);
+insert into t3 values(0x123);
+select * from t3;
+
+create table t4(a int8 unsigned);
+insert into t4 values(0x123);
+select * from t4;
+
+drop table t1, t2, t3, t4;
+/* End - bug#z5411 */
 
 select 0x7fffffffffffffff + 1;  -- 9223372036854775808
 select 0xfffffffffffffffe + 1;  -- 18446744073709551615
@@ -46,5 +75,12 @@ select 0x11111111111111111 and !0x22222222222222222;    -- 2 warnings
 select 0x22222222222222222 and !0x11111111111111111;    -- 2 warnings
 select !0x11111111111111111 and 0x22222222222222222;    -- mysql only 1 warning, but we have 2
 select !0x11111111111111111 and !0x22222222222222222;   -- mysql only 1 warning, but we have 2
+
+select 0x222222222222222224  = 0x222222222222222224;    -- no warning, return true
+select 0x222222222222222224  = 0x0222222222222222224;   -- no warning, return false for length mismatch
+select 0x00222222222222222224  = 0x0222222222222222224; -- no warning, return true
+
+select 0x222222222222222223  = 0x222222222222222224;    -- no warning, return false
+select 0x222222222222222223 != 0x222222222222222224;    -- no warning, return true
 
 reset mysql.cast_to_char;

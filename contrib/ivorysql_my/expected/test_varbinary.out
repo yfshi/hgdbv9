@@ -1995,3 +1995,32 @@ select c1 XOR c1, c1 XOR c2, c1 XOR c3, c2 XOR c3, c3 XOR c4, c4 XOR c5, c5 XOR 
  f        | f        | f        | f        | t        | f        | f        | f        | NULL     | NULL
 (1 row)
 
+/* Begin - bug#z5411 */
+create table tb_varbinary(c1 varbinary(10));
+insert into tb_varbinary values('1234'), ('abcd'), ('1q2w'), ('q1w2');
+select cast(c1 as unsigned) from tb_varbinary;
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
+  c1  
+------
+ 1234
+ 0
+ 1
+ 0
+(4 rows)
+
+select convert(c1, unsigned) from tb_varbinary;
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
+  c1  
+------
+ 1234
+ 0
+ 1
+ 0
+(4 rows)
+
+drop table tb_varbinary;
+/* Begin - bug#z5411 */

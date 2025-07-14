@@ -1717,3 +1717,11 @@ INSERT INTO my_varbinary_t1 VALUES ('123', '123', '1234', 'abcd', 'ABCD', '', ' 
 
 -- should get (0, 0, 0, 0, 1, 0, 0, 0, NULL, NULL) and warnings
 select c1 XOR c1, c1 XOR c2, c1 XOR c3, c2 XOR c3, c3 XOR c4, c4 XOR c5, c5 XOR c6, c6 XOR c7, c4 XOR c8, c6 XOR c8 from my_varbinary_t1;
+
+/* Begin - bug#z5411 */
+create table tb_varbinary(c1 varbinary(10));
+insert into tb_varbinary values('1234'), ('abcd'), ('1q2w'), ('q1w2');
+select cast(c1 as unsigned) from tb_varbinary;
+select convert(c1, unsigned) from tb_varbinary;
+drop table tb_varbinary;
+/* Begin - bug#z5411 */

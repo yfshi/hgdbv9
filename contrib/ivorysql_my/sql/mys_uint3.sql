@@ -551,3 +551,21 @@ select * from t_like_operator where id not like '%1%';
 select * from t_like_operator where id not like '1_3';
 select * from t_like_operator where id not like '_8';
 drop table t_like_operator;
+
+create table int3_test (a int3, b int3);
+insert into int3_test values (10, 3);
+select pg_typeof(a + b) from int3_test; -- int4
+select pg_typeof(a - b) from int3_test; -- int4
+select pg_typeof(+b) from int3_test;    -- int3
+select pg_typeof(-b) from int3_test;    -- int4
+drop table int3_test;
+
+/* Begin - bug#z5393 */
+create table t1 (
+    a int3,
+    b mediumint signed
+);
+insert into t1 values (5, 0),(10, 5);
+select a / b from t1;
+drop table t1;
+/* End - bug#z5393 */

@@ -122,10 +122,12 @@ MYS_REGRESS = multi_update \
 			  mys_int4	\
 			  mys_int8	\
 			  mys_float \
+			  mys_numeric \
 			  mys-char-varchar \
 			  character_func \
 			  time_func	\
 			  hex_string \
+			  operator \
 			  aggregates_without_group_by
 
 

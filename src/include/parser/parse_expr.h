@@ -17,7 +17,7 @@
 
 /* Begin BUG#5048 5070 */
 #define exprIsHexConstant(n) \
-		  ((IsA((n), A_Const) && ((A_Const *) (n))->val.type == T_HexString))
+		  (((n) && IsA((n), A_Const) && ((A_Const *) (n))->val.type == T_HexString))
 
 #define isMysNumericType(targetType) \
 					  ((targetType == TINYINTOID 	|| \

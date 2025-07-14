@@ -50,18 +50,15 @@ extern Datum pgtimestamp_mystimestamps(PG_FUNCTION_ARGS);
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 extern bool extract_leading_integer_str(const char *str, char *out_buf, size_t size);
-extern Datum mysdate_out(PG_FUNCTION_ARGS);
-extern Datum mysdatetime_out(PG_FUNCTION_ARGS);
-extern Datum mystime_out(PG_FUNCTION_ARGS);
-extern Datum mystimestamp_out(PG_FUNCTION_ARGS);
+extern Datum mysuint2_in(PG_FUNCTION_ARGS);
 extern Datum mysuint4_in(PG_FUNCTION_ARGS);
 extern Datum mysuint8_in(PG_FUNCTION_ARGS);
-/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
-
-/* Begin BUG#5048 5070 */
-extern bool extract_leading_integer_str(const char *str, char *out_buf, size_t size);
 extern Datum mysdate_in(PG_FUNCTION_ARGS);
+extern Datum mysdate_out(PG_FUNCTION_ARGS);
 extern Datum mystime_in(PG_FUNCTION_ARGS);
+extern Datum mystime_out(PG_FUNCTION_ARGS);
 extern Datum mysdatetime_in(PG_FUNCTION_ARGS);
-/* End BUG#5048 5070 */
+extern Datum mysdatetime_out(PG_FUNCTION_ARGS);
+extern Datum mystimestamp_out(PG_FUNCTION_ARGS);
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 #endif	/* IVORYSQL_MYS_H_ */

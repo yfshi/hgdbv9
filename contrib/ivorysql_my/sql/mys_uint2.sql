@@ -558,3 +558,10 @@ select * from t_like_operator where id not like '%1%';
 select * from t_like_operator where id not like '1_3';
 select * from t_like_operator where id not like '_8';
 drop table t_like_operator;
+
+/* Begin - bug#z5166 */
+create table t_div(id int1, name int2);
+insert into t_div values(10, 10);
+select id /3, name / 3 from t_div;
+drop table t_div;
+/* End - bug#z5166 */

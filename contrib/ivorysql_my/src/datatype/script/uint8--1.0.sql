@@ -143,19 +143,6 @@ WITH FUNCTION ivymy.numeric_mysuint8(pg_catalog.numeric)
 AS ASSIGNMENT;
 
 /* Begin BUG#5048 5070 */
--- cast uint8 to uint1
-CREATE FUNCTION ivymy.mys_uint82uint1(ivymy.uint8)
-RETURNS uint1
-AS 'MODULE_PATHNAME','mys_uint82uint1'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-STABLE;
-
-CREATE CAST (ivymy.uint8 as uint1)
-WITH FUNCTION ivymy.mys_uint82uint1(ivymy.uint8)
-AS ASSIGNMENT;
-
 -- cast uint8 to int2
 CREATE FUNCTION ivymy.mys_uint82int2(ivymy.uint8)
 RETURNS pg_catalog.int2
@@ -167,19 +154,6 @@ STABLE;
 
 CREATE CAST (ivymy.uint8 as pg_catalog.int2)
 WITH FUNCTION ivymy.mys_uint82int2(ivymy.uint8)
-AS ASSIGNMENT;
-
--- cast uint8 to uint2
-CREATE FUNCTION ivymy.mys_uint82uint2(ivymy.uint8)
-RETURNS uint2
-AS 'MODULE_PATHNAME','mys_uint82uint2'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-STABLE;
-
-CREATE CAST (ivymy.uint8 as uint2)
-WITH FUNCTION ivymy.mys_uint82uint2(ivymy.uint8)
 AS ASSIGNMENT;
 
 -- cast uint8 to int4
@@ -206,6 +180,45 @@ STABLE;
 
 CREATE CAST (ivymy.uint8 as pg_catalog.int8)
 WITH FUNCTION ivymy.mys_uint82int8(ivymy.uint8)
+AS ASSIGNMENT;
+
+-- cast uint8 to uint1
+CREATE FUNCTION ivymy.mys_uint82uint1(ivymy.uint8)
+RETURNS uint1
+AS 'MODULE_PATHNAME','mys_uint82uint1'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+STABLE;
+
+CREATE CAST (ivymy.uint8 as uint1)
+WITH FUNCTION ivymy.mys_uint82uint1(ivymy.uint8)
+AS ASSIGNMENT;
+
+-- cast uint8 to uint2
+CREATE FUNCTION ivymy.mys_uint82uint2(ivymy.uint8)
+RETURNS uint2
+AS 'MODULE_PATHNAME','mys_uint82uint2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+STABLE;
+
+CREATE CAST (ivymy.uint8 as uint2)
+WITH FUNCTION ivymy.mys_uint82uint2(ivymy.uint8)
+AS ASSIGNMENT;
+
+-- cast uint8 to uint4
+CREATE FUNCTION ivymy.mys_uint82uint4(uint8)
+RETURNS uint4
+AS 'MODULE_PATHNAME','mys_uint82uint4'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+STABLE;
+
+CREATE CAST (uint8 as uint4)
+WITH FUNCTION ivymy.mys_uint82uint4(uint8)
 AS ASSIGNMENT;
 
 -- cast uint8 to float4

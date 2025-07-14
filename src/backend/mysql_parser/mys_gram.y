@@ -784,7 +784,9 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
 	EXTENSION EXTERNAL EXTRACT
 
-	FALSE_P FAMILY FETCH FIELD /* ReqID:SRS-MYSQL-BINARYTYPE */ FILTER FINALIZE FIRST_P FLOAT_P FOLLOWING FOR
+	FALSE_P FAMILY FETCH FIELD /* ReqID:SRS-MYSQL-BINARYTYPE */ FILTER FINALIZE FIRST_P
+	FIXED /* bug#z5409 */
+	FLOAT_P FOLLOWING FOR
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
 
 	GENERATED GET_FORMAT GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
@@ -937,6 +939,10 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 %nonassoc	UNBOUNDED		/* ideally would have same precedence as IDENT */
 %nonassoc	IDENT PARTITION RANGE ROWS GROUPS PRECEDING FOLLOWING CUBE ROLLUP
 %left		Op OPERATOR		/* multi-character ops and user-defined operators */
+/* Begin - bug#z5412 */
+%left		'|'
+%left		'&'
+/* End - bug#z5412 */
 %left		'+' '-'
 %left		'*' '/' '%'
 %left		'^'
@@ -14847,6 +14853,7 @@ decimal:
 		DEC
 		| DECIMAL_P
 		| NUMERIC
+		| FIXED /* bug#z5409 */
 	;
 
 unsigned_list:
@@ -15768,6 +15775,12 @@ a_expr:		c_expr									{ $$ = $1; }
 			| a_expr MOD a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "%", $1, $3, @2); }
 			/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
+			/* Begin - bug#z5412 */
+			| a_expr '&' a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "&", $1, $3, @2); }
+			| a_expr '|' a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "|", $1, $3, @2); }
+			/* End - bug#z5412 */
 			| a_expr '^' a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "^", $1, $3, @2); }
 			| a_expr '<' a_expr
@@ -16324,6 +16337,12 @@ b_expr:		c_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", $1, $3, @2); }
 			| b_expr '%' b_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "%", $1, $3, @2); }
+			/* Begin - bug#z5412 */
+			| b_expr '&' b_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "&", $1, $3, @2); }
+			| b_expr '|' b_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "|", $1, $3, @2); }
+			/* End - bug#z5412 */
 			| b_expr '^' b_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "^", $1, $3, @2); }
 			| b_expr '<' b_expr
@@ -17538,6 +17557,10 @@ MathOp:		 '+'									{ $$ = "+"; }
 			| '<'									{ $$ = "<"; }
 			| '>'									{ $$ = ">"; }
 			| '='									{ $$ = "="; }
+			/* Begin - bug#z5412 */
+			| '&'									{ $$ = "&"; }
+			| '|'									{ $$ = "|"; }
+			/* End - bug#z5412 */
 			| LESS_EQUALS							{ $$ = "<="; }
 			| GREATER_EQUALS						{ $$ = ">="; }
 			| NOT_EQUALS							{ $$ = "<>"; }
@@ -18777,6 +18800,7 @@ col_name_keyword:
 			| EXISTS
 			| EXTRACT
 			| FIELD               /* ReqID:SRS-MYSQL-BINARYTYPE */
+			| FIXED		/* bug#z5409 */
 			| FLOAT_P
 			| GET_FORMAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| GREATEST
@@ -19127,6 +19151,7 @@ bare_label_keyword:
 			| FIELD 		/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| FINALIZE
 			| FIRST_P
+			| FIXED			/* bug#z5409 */
 			| FLOAT_P
 			| FOLLOWING
 			| FORCE

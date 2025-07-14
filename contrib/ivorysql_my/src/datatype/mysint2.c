@@ -31,6 +31,7 @@ PG_FUNCTION_INFO_V1(myint2_pl);
 PG_FUNCTION_INFO_V1(myint2_mi);
 PG_FUNCTION_INFO_V1(myint2_mul);
 PG_FUNCTION_INFO_V1(myint2_div);
+PG_FUNCTION_INFO_V1(myint2_div_int4); /* bug#z5166 */
 PG_FUNCTION_INFO_V1(myint2_exact_div);
 PG_FUNCTION_INFO_V1(myint2_mod);
 PG_FUNCTION_INFO_V1(myint2_bit_xor);
@@ -222,24 +223,48 @@ myint2_mul(PG_FUNCTION_ARGS)
 Datum
 myint2_div(PG_FUNCTION_ARGS)
 {
-	int64 arg0 = PG_GETARG_INT64(0);
-	int64 arg1 = PG_GETARG_INT64(1);
+	int64 arg0 = PG_GETARG_INT16(0);
+	int64 arg1 = PG_GETARG_INT16(1);
 	Numeric		res;
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 		PG_RETURN_NULL();
 
-	if(arg1 == 0)
+	if (arg1 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
 		PG_RETURN_NULL();
 	}
 	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(arg0)),
-							NumericGetDatum(int64_to_numeric(arg1))));
+											  NumericGetDatum(int64_to_numeric(arg1))));
 
 	PG_RETURN_NUMERIC(res);
 }
+
+/* Begin - bug#z5166 */
+Datum
+myint2_div_int4(PG_FUNCTION_ARGS)
+{
+	int64 arg0 = PG_GETARG_INT16(0);
+	int64 arg1 = PG_GETARG_INT32(1);
+	Numeric		res;
+
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+		PG_RETURN_NULL();
+
+	if (arg1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(arg0)),
+											  NumericGetDatum(int64_to_numeric(arg1))));
+
+	PG_RETURN_NUMERIC(res);
+}
+/* End - bug#z5166 */
 
 /* operator int2 div int2 */
 Datum 

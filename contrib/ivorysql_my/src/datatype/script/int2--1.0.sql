@@ -104,6 +104,23 @@ CREATE OPERATOR ivymy./ (
 	commutator = /
 );
 
+/* Begin - bug#5166 */
+CREATE FUNCTION ivymy.myint2_div(pg_catalog.int2, int4)
+RETURNS pg_catalog.numeric
+AS 'MODULE_PATHNAME','myint2_div_int4'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy./ (
+	procedure = ivymy.myint2_div,
+	leftarg = pg_catalog.int2,
+	rightarg = pg_catalog.int4,
+	commutator = /
+);
+/* End - bug#5166 */
+
 --  "//"
 CREATE FUNCTION ivymy.myint2_exact_div(pg_catalog.int2, pg_catalog.int2)
 RETURNS pg_catalog.int4
