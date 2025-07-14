@@ -15,6 +15,7 @@
 #include "utils/fmgrprotos.h"
 #include "utils/numeric.h"
 #include "utils/timestamp.h"
+#include "utils/guc.h" // Fix Bug#Z4800
 #include "../include/ivorysql_my.h"
 
 #define DatumGetYearADT(x)      ((YearADT)DatumGetInt16(x))
@@ -29,6 +30,7 @@
 #define MIN_YEAR2_NUM   0
 
 #define TYPMODOUT_LEN   64
+#define YEARSTRLEN		32
 
 #define YEAR4_IN_RANGE(x)   ((x) >= MIN_YEAR_NUM && (x) <= MAX_YEAR_NUM)
 #define YEAR_VALID(x)       (YEAR4_IN_RANGE(x) || YEAR2_IN_RANGE(x))
@@ -69,7 +71,16 @@ PG_FUNCTION_INFO_V1(year_eq_timestamptz);
 PG_FUNCTION_INFO_V1(numeric_year);
 PG_FUNCTION_INFO_V1(date_year);
 PG_FUNCTION_INFO_V1(time_year);
+/* Fix Bug#Z5406 begin */
+PG_FUNCTION_INFO_V1(times_year);
+/* Fix Bug#Z5406 end */
 PG_FUNCTION_INFO_V1(timetz_year);
+/* Fix Bug#Z5406 begin */
+PG_FUNCTION_INFO_V1(datetime_year);
+PG_FUNCTION_INFO_V1(datetimes_year);
+PG_FUNCTION_INFO_V1(timestamp_year);
+PG_FUNCTION_INFO_V1(timestamps_year);
+/* Fix Bug#Z5406 end */
 PG_FUNCTION_INFO_V1(char_year);
 PG_FUNCTION_INFO_V1(bigint_year);
 PG_FUNCTION_INFO_V1(year_lt_bigint);
@@ -451,10 +462,16 @@ Datum numeric_year(PG_FUNCTION_ARGS)
 Datum date_year(PG_FUNCTION_ARGS)
 {
 	DateADT dateVal = PG_GETARG_DATEADT(0);
+	uint64  dateOffsetYear = 10000;
 	int32  tmpResult;
 
 	/* fix Bug#Z5261 begin */
-	tmpResult = dateVal / 10000;
+	/*
+	 * date type format: 2025 0701
+	 * dateOffsetYear: 10000
+	 * year = 20250702 / 10000;
+	 */
+	tmpResult = dateVal / dateOffsetYear;
 	/* fix Bug#Z5261 end */
 
 	PG_RETURN_YEARADT(int32_to_YearADT(tmpResult));
@@ -481,6 +498,25 @@ Datum time_year(PG_FUNCTION_ARGS)
 	PG_RETURN_YEARADT(year);
 }
 
+/* Fix Bug#Z5406 begin */
+Datum times_year(PG_FUNCTION_ARGS)
+{
+	Timestamp	result = 0;
+	YearADT     year;
+	struct pg_tm tt,
+				*tm = &tt;
+
+	GetCurrentDateTime(tm);
+
+	if (tm->tm_year > 0)
+		result = tm->tm_year;
+
+	year = int32_to_YearADT(result);
+
+	PG_RETURN_YEARADT(year);
+}
+/* Fix Bug#Z5406 end */
+
 Datum timetz_year(PG_FUNCTION_ARGS)
 {
 	TimeTzADT  *query = PG_GETARG_TIMETZADT_P(0);
@@ -502,6 +538,106 @@ Datum timetz_year(PG_FUNCTION_ARGS)
 
 	PG_RETURN_YEARADT(year);
 }
+
+/* Fix Bug#Z5406 begin */
+Datum datetime_year(PG_FUNCTION_ARGS)
+{
+	TimeADT dateTimeVal = PG_GETARG_TIMEADT(0);
+	uint64  dateTimeOffsetYear = 10000000000;
+	int32   tmpResult;
+	YearADT year;
+
+	if (!dateTimeVal)
+		PG_RETURN_NULL();
+
+	/*
+	 * datetime type format: 2025 0707020134
+	 * year offset: 100000 00000
+	 * year = 2025 0707020134 / 100000 00000
+	 */
+	tmpResult = dateTimeVal / dateTimeOffsetYear;
+
+	year = int32_to_YearADT(tmpResult);
+
+	PG_RETURN_YEARADT(year);
+}
+
+Datum datetimes_year(PG_FUNCTION_ARGS)
+{
+	Numeric		dateTimeVal = PG_GETARG_NUMERIC(0);
+	uint64  dateTimeOffsetYear = 10000000000;
+	int32   tmpResult;
+	int64 	retValue;
+	YearADT year;
+
+	if (!dateTimeVal)
+		PG_RETURN_NULL();
+
+	/*
+	 * datetime type format: 2025 0707020134
+	 * year offset: 100000 00000
+	 * year = 2025 0707020134 / 100000 00000
+	 */
+	// tmpResult = dateTimeVal / dateTimeOffsetYear;
+	retValue = DatumGetInt64(DirectFunctionCall1(numeric_int8,
+						NumericGetDatum(dateTimeVal)));
+
+	tmpResult = retValue / dateTimeOffsetYear;
+
+	year = int32_to_YearADT(tmpResult);
+
+	PG_RETURN_YEARADT(year);
+}
+
+Datum timestamp_year(PG_FUNCTION_ARGS)
+{
+	TimeADT 	time_stamp = PG_GETARG_TIMESTAMP(0);
+	uint64 		timeStampOffsetYear = 10000000000;
+	int32 		tmpResult;
+	YearADT		year;
+	
+	if (!time_stamp)
+		PG_RETURN_NULL();
+
+	/*
+	 * timestamp type format: 2025 0707020134
+	 * year offset: 100000 00000
+	 * year = 2025 0707020134 / 100000 00000
+	 */
+	tmpResult = time_stamp / timeStampOffsetYear;
+
+	year = int32_to_YearADT(tmpResult);
+
+	PG_RETURN_YEARADT(year);
+}
+
+Datum timestamps_year(PG_FUNCTION_ARGS)
+{
+	Numeric		timestampsVal = PG_GETARG_NUMERIC(0);
+	uint64  timestampsOffsetYear = 10000000000;
+	int32   tmpResult;
+	int64 	retValue;
+	YearADT year;
+
+	if (!timestampsVal)
+		PG_RETURN_NULL();
+
+	/*
+	 * datetime type format: 2025 0707020134
+	 * year offset: 100000 00000
+	 * year = 2025 0707020134 / 100000 00000
+	 */
+	// tmpResult = dateTimeVal / dateTimeOffsetYear;
+	retValue = DatumGetInt64(DirectFunctionCall1(numeric_int8,
+						NumericGetDatum(timestampsVal)));
+
+	tmpResult = retValue / timestampsOffsetYear;
+
+	year = int32_to_YearADT(tmpResult);
+
+	PG_RETURN_YEARADT(year);
+}
+/* Fix Bug#Z5406 end */
 
 Datum char_year(PG_FUNCTION_ARGS)
 {
@@ -1072,6 +1208,7 @@ float8in_internals(char *str, char **endptr_p, bool *hasError)
 	return val;
 }
 
+/* Fix Bug#Z4800 begin */
 static YearADT
 int4_to_YearADT(int32 year)
 {
@@ -1085,14 +1222,23 @@ int4_to_YearADT(int32 year)
 		}
 		else
 		{
-			ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-					errmsg("%d is out of range value for year data type!", year)));
+			if (is_strict_mode())
+				ereport(ERROR,
+					(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+						errmsg("%d is out of range value for year data type!", year)));
+			else
+			{
+				ereport(WARNING,
+					(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+						errmsg("%d is out of range value for year data type!", year)));
+				year = 0;
+			}
 		}
 	}
 
 	return year;
 }
+/* Fix Bug#Z4800 end */
 
 static YearADT
 bigint_to_YearADT(int64 year)
@@ -1180,12 +1326,12 @@ Datum year_text_like(PG_FUNCTION_ARGS)
 	YearADT		yearLeft = PG_GETARG_YEARADT(0);
 	Datum		val = PG_GETARG_DATUM(1);
 	int32		yearVal;
-	char		yearStr[MAXINT8LEN + 1] = {0};
+	char		yearStr[YEARSTRLEN] = {0};
 	text	   *yearText;
 	bool		status;
 
 	yearVal = YearADT_to_Year(yearLeft);
-	sprintf(yearStr, "%d", yearVal);
+	snprintf(yearStr, sizeof(yearStr), "%d", yearVal);
 
 	yearText = cstring_to_text(yearStr);
 
@@ -1199,12 +1345,12 @@ Datum year_text_notlike(PG_FUNCTION_ARGS)
 	YearADT		yearLeft = PG_GETARG_YEARADT(0);
 	Datum		val = PG_GETARG_DATUM(1);
 	int32		yearVal;
-	char		yearStr[MAXINT8LEN + 1] = {0};
+	char		yearStr[YEARSTRLEN] = {0};
 	text	   *yearText;
 	bool		status;
 
 	yearVal = YearADT_to_Year(yearLeft);
-	sprintf(yearStr, "%d", yearVal);
+	snprintf(yearStr, sizeof(yearStr), "%d", yearVal);
 
 	yearText = cstring_to_text(yearStr);
 

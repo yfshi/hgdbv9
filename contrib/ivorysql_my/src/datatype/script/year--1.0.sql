@@ -1,10 +1,8 @@
 /***************************************************************
  *
- * ivymy.year(4) type support
+ * MySQL year type support
  *
- ***************************************************************/
-
--- CREATE YEAR'S BASIC FUNCTION
+***************************************************************/
 CREATE OR REPLACE FUNCTION ivymy.year_in(cstring)
 RETURNS ivymy.year
 AS 'MODULE_PATHNAME', 'year_in'
@@ -204,8 +202,7 @@ CREATE OPERATOR CLASS year_ops
 		OPERATOR	1	ivymy.= (ivymy.year, ivymy.year),
 		FUNCTION	1	ivymy.year_hash(ivymy.year);
 
--- CREATE YEAR'S CAST FUNCTION
--- To year
+---------- Compatible MySQL Cast ----------
 CREATE OR REPLACE FUNCTION ivymy.year(ivymy.year, integer)
 RETURNS ivymy.YEAR
 AS 'MODULE_PATHNAME', 'year_scale'
@@ -214,61 +211,45 @@ LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 CREATE CAST(year as year)
 WITH FUNCTION ivymy.year(ivymy.year, integer) AS ASSIGNMENT;
 
-CREATE OR REPLACE FUNCTION ivymy.int4_year(INT4)
+CREATE OR REPLACE FUNCTION ivymy.int4_year(pg_catalog.int4)
 RETURNS ivymy.year
 AS 'MODULE_PATHNAME', 'int4_year'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-CREATE CAST(INT4 AS year)
-WITH FUNCTION ivymy.int4_year(INT4) AS ASSIGNMENT;
+CREATE CAST(pg_catalog.int4 AS year)
+WITH FUNCTION ivymy.int4_year(pg_catalog.int4) AS ASSIGNMENT;
 
-CREATE OR REPLACE FUNCTION ivymy.timestamptz2year(timestamptz)
+CREATE OR REPLACE FUNCTION ivymy.timestamptz2year(pg_catalog.timestamptz)
 RETURNS ivymy.year
 AS 'MODULE_PATHNAME', 'timestamptz_year'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-CREATE CAST(timestamptz AS year)
-WITH FUNCTION ivymy.timestamptz2year(timestamptz) AS ASSIGNMENT;
+CREATE CAST(pg_catalog.timestamptz AS year)
+WITH FUNCTION ivymy.timestamptz2year(pg_catalog.timestamptz) AS ASSIGNMENT;
 
-CREATE OR REPLACE FUNCTION ivymy.numeric2year(numeric)
+CREATE OR REPLACE FUNCTION ivymy.numeric2year(pg_catalog.numeric)
 RETURNS ivymy.year
 AS 'MODULE_PATHNAME', 'numeric_year'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-CREATE CAST(numeric AS year)
-WITH FUNCTION ivymy.numeric2year(numeric) AS ASSIGNMENT;
+CREATE CAST(pg_catalog.numeric AS year)
+WITH FUNCTION ivymy.numeric2year(pg_catalog.numeric) AS ASSIGNMENT;
 
-CREATE OR REPLACE FUNCTION ivymy.date2year(DATE)
-RETURNS ivymy.year
-AS 'MODULE_PATHNAME', 'date_year'
-LANGUAGE C STABLE STRICT PARALLEL SAFE;
-
-CREATE CAST (DATE AS year)
-WITH FUNCTION ivymy.date2year(DATE) AS ASSIGNMENT;
-
-CREATE OR REPLACE FUNCTION ivymy.time2year(TIME)
-RETURNS ivymy.year
-AS 'MODULE_PATHNAME', 'time_year'
-LANGUAGE C STABLE STRICT PARALLEL SAFE;
-
-CREATE CAST (TIME as year)
-WITH FUNCTION ivymy.time2year(TIME) AS ASSIGNMENT;
-
-CREATE OR REPLACE FUNCTION ivymy.timetz2year(timetz)
+CREATE OR REPLACE FUNCTION ivymy.timetz2year(pg_catalog.timetz)
 RETURNS ivymy.year
 AS 'MODULE_PATHNAME', 'timetz_year'
 LANGUAGE C STABLE STRICT PARALLEL SAFE;
 
-CREATE CAST (timetz as year)
-WITH FUNCTION ivymy.timetz2year(timetz) AS ASSIGNMENT;
+CREATE CAST (pg_catalog.timetz as year)
+WITH FUNCTION ivymy.timetz2year(pg_catalog.timetz) AS ASSIGNMENT;
 
-CREATE OR REPLACE FUNCTION ivymy.char2year(CHAR)
+CREATE OR REPLACE FUNCTION ivymy.char2year(char)
 RETURNS ivymy.year
 AS 'MODULE_PATHNAME', 'char_year'
 LANGUAGE C VOLATILE STRICT PARALLEL SAFE;
 
-CREATE CAST (CHAR AS YEAR)
-WITH FUNCTION ivymy.char2year (CHAR) AS ASSIGNMENT;
+CREATE CAST (char AS YEAR)
+WITH FUNCTION ivymy.char2year (char) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.bigint2year(IN num BIGINT)
 RETURNS ivymy.year
@@ -289,7 +270,6 @@ RETURNS ivymy.year
 AS 'MODULE_PATHNAME', 'year_smaller'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
--- CREATE AGGREGATE pg_catalog.max(year)
 CREATE AGGREGATE ivymy.max(year)
 (
 	sfunc		= ivymy.year_larger,
@@ -299,7 +279,6 @@ CREATE AGGREGATE ivymy.max(year)
 	parallel	= safe
 );
 
--- CREATE AGGREGATE pg_catalog.min(year)
 CREATE AGGREGATE ivymy.min(year)
 (
 	sfunc		= ivymy.year_smaller,
@@ -444,12 +423,6 @@ CREATE OPERATOR ivymy./ (
     PROCEDURE   = ivymy.year_div_int
 );
 
-CREATE OPERATOR ivymy.// (
-    LEFTARG     = ivymy.year,
-    RIGHTARG    = pg_catalog.int4,
-    PROCEDURE   = ivymy.year_div_int
-);
-
 -- pg_catalog.int4 vs year
 CREATE FUNCTION ivymy.int_eq_year(pg_catalog.int4, ivymy.year)
 RETURNS bool
@@ -585,12 +558,6 @@ CREATE OPERATOR ivymy./ (
     PROCEDURE   = ivymy.int_div_year
 );
 
-CREATE OPERATOR ivymy.// (
-    LEFTARG     = pg_catalog.int4,
-    RIGHTARG    = ivymy.year,
-    PROCEDURE   = ivymy.int_div_year
-);
-
 -- ivymy.year vs pg_catalog.numeric
 CREATE FUNCTION ivymy.year_eq_num(ivymy.year, pg_catalog.numeric)
 RETURNS bool
@@ -601,7 +568,6 @@ CREATE OPERATOR ivymy.= (
     LEFTARG    = ivymy.year,
     RIGHTARG   = pg_catalog.numeric,
     COMMUTATOR = =,
-    -- NEGATOR    = <>,
     PROCEDURE  = ivymy.year_eq_num,
     RESTRICT   = eqsel,
     JOIN       = eqjoinsel
@@ -617,7 +583,6 @@ CREATE OPERATOR ivymy.= (
     LEFTARG    = pg_catalog.numeric,
     RIGHTARG   = ivymy.year,
     COMMUTATOR = =,
-    -- NEGATOR    = <>,
     PROCEDURE  = ivymy.num_eq_year,
     RESTRICT   = eqsel,
     JOIN       = eqjoinsel
@@ -633,7 +598,6 @@ CREATE OPERATOR ivymy.=(
 	LEFTARG		= ivymy.year,
 	RIGHTARG	= pg_catalog.timestamptz,
 	COMMUTATOR  = =,
-	-- NEGATOR     = <>,
 	PROCEDURE	= ivymy.year_eq_timestamptz,
 	RESTRICT	= eqsel,
 	JOIN		= eqjoinsel
@@ -649,7 +613,6 @@ CREATE OPERATOR ivymy.=(
 	LEFTARG		= pg_catalog.timestamptz,
 	RIGHTARG	= ivymy.year,
 	COMMUTATOR  = =,
-	-- NEGATOR     = <>,
 	PROCEDURE	= ivymy.timestamptz_eq_year,
 	RESTRICT	= eqsel,
 	JOIN		= eqjoinsel
@@ -664,7 +627,6 @@ LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 CREATE OPERATOR ivymy.<(
     LEFTARG    = ivymy.year,
     RIGHTARG   = bigint,
-    -- NEGATOR    = >=,
     COMMUTATOR = >,
     PROCEDURE  = ivymy.year_lt_bigint,
     RESTRICT   = scalarltsel,
@@ -679,7 +641,6 @@ LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 CREATE OPERATOR ivymy.>(
     LEFTARG    = ivymy.year,
     RIGHTARG   = bigint,
-    -- NEGATOR    = <=,
     COMMUTATOR = <,
     PROCEDURE  = ivymy.year_gt_bigint,
     RESTRICT   = scalarltsel,
@@ -695,7 +656,6 @@ LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 CREATE OPERATOR ivymy.<(
     LEFTARG    = bigint,
     RIGHTARG   = ivymy.year,
-    -- NEGATOR    = >=,
     COMMUTATOR = >,
     PROCEDURE  = ivymy.bigint_lt_year,
     RESTRICT   = scalarltsel,
@@ -710,7 +670,6 @@ LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 CREATE OPERATOR ivymy.>(
     LEFTARG    = bigint,
     RIGHTARG   = ivymy.year,
-    -- NEGATOR    = <=,
     COMMUTATOR = <,
     PROCEDURE  = ivymy.bigint_gt_year,
     RESTRICT   = scalarltsel,
@@ -761,5 +720,4 @@ CREATE OPERATOR !~~ (
 	leftarg   = ivymy.year,
 	rightarg  = pg_catalog.int4
 );
-
 -- Fix Bug#Z5263 end

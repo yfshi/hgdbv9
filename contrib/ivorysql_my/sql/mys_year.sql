@@ -1,7 +1,7 @@
 
 set ivorysql.compatible_mode to mysql;
 set datestyle to 'ISO,YMD';
-
+-- SET sql_mode = '';
 -- #
 -- # Test year
 -- #
@@ -293,5 +293,48 @@ SELECT * FROM year_02 where created_year NOT LIKE '_0%';
 SELECT * FROM year_02 where created_year NOT LIKE '2_%_%';
 
 DROP TABLE year_02;
+
+-- Fix Bug#Z5406
+CREATE TABLE t (col1 YEAR);
+INSERT INTO t VALUES (current_timestamp);
+INSERT INTO t VALUES (current_timestamp());
+DELETE FROM t;
+INSERT INTO t VALUES (cast('2025-07-01' as datetime));
+INSERT INTO t VALUES (cast('2025-07-01 00:00:00' as datetime));
+INSERT INTO t VALUES (cast('2025-07-01 12:00:00' as datetime));
+SELECT * FROM t;
+DROP TABLE t;
+
+CREATE TABLE t(col1 year, col2 year(4));
+INSERT INTO t VALUES('2025', '2025');
+SELECT cast(col1 as year(4)), cast(col2 as year) FROM t;
+DROP TABLE t;
+
+CREATE TABLE t (col1 year, col2 date, col3 time, col4 datetime, col5 timestamp);
+INSERT INTO t VALUES ('2025','2023-10-25', '12:30:15.123', '2023-10-25 14:30:45.000123', '2025-07-07 09:17:56.000321');
+-- SELECT col1, cast(col2 as YEAR), cast(col3 as YEAR), cast(col4 as YEAR), cast(col5 as YEAR) FROM t;
+SELECT col1, cast(col2 as YEAR), cast(col4 as YEAR), cast(col5 as YEAR) FROM t;
+DROP TABLE t;
+
+CREATE TABLE t (col1 year, col2 date, col3 time(3), col4 datetime(6), col5 timestamp(6));
+INSERT INTO t VALUES ('2025', '2023-10-25', '12:30:15.123', '2023-10-25 14:30:45.000123', '2025-07-07 09:17:56.000321');
+-- SELECT col1, cast(col2 as YEAR), cast(col3 as YEAR), cast(col4 as YEAR), cast(col5 as YEAR) FROM t;
+SELECT col1, cast(col2 as YEAR), cast(col4 as YEAR), cast(col5 as YEAR) FROM t;
+DROP TABLE t;
+
+-- Fix Bug#Z4800
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE';
+CREATE TABLE test (y YEAR);
+
+-- inserting illegal data error message
+INSERT INTO test VALUES ('0000'); -- Successful insertion
+INSERT INTO test VALUES ('2156'); -- Out of range error
+INSERT INTO test VALUES (300);    -- Out of range error
+
+SET sql_mode = '';
+INSERT INTO test VALUES ('0000'); -- Successful insertion
+INSERT INTO test VALUES (300);    -- Successful insertion, warning prompt
+SELECT * FROM test;
+DROP TABLE test;
 
 SELECT set_config('search_path', trim(leading 'ivymy, ' from current_setting('search_path')), false);

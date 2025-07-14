@@ -23994,3 +23994,64 @@ CREATE OPERATOR CLASS ivymy.mystime_minmax_ops
 		FUNCTION	2 	ivymy.brin_minmax_add_value(internal, internal, internal, internal),
 		FUNCTION	3 	ivymy.brin_minmax_consistent(internal, internal, internal),
 		FUNCTION	4 	ivymy.brin_minmax_union(internal, internal, internal);
+
+
+
+-- Convert MySQL date, time, time(N), datetime, datetime(N), timestamp, timestamp(N) to year
+CREATE OR REPLACE FUNCTION ivymy.date2year(ivymy.mysdate)
+RETURNS ivymy.year
+AS 'MODULE_PATHNAME', 'date_year'
+LANGUAGE C STABLE STRICT PARALLEL SAFE;
+
+CREATE CAST (ivymy.mysdate AS year)
+WITH FUNCTION ivymy.date2year(ivymy.mysdate) AS ASSIGNMENT;
+
+CREATE OR REPLACE FUNCTION ivymy.time2year(ivymy.mystime)
+RETURNS ivymy.year
+AS 'MODULE_PATHNAME', 'time_year'
+LANGUAGE C STABLE STRICT PARALLEL SAFE;
+
+CREATE CAST (ivymy.mystime as year)
+WITH FUNCTION ivymy.time2year(ivymy.mystime) AS ASSIGNMENT;
+
+-- Fix Bug#Z5406 begin
+CREATE OR REPLACE FUNCTION ivymy.times2year(ivymy.mystimes)
+RETURNS ivymy.year
+AS 'MODULE_PATHNAME', 'times_year'
+LANGUAGE C STABLE STRICT PARALLEL SAFE;
+
+CREATE CAST (ivymy.mystimes as year)
+WITH FUNCTION ivymy.times2year(ivymy.mystimes) AS ASSIGNMENT;
+
+CREATE OR REPLACE FUNCTION ivymy.datetime2year(ivymy.mysdatetime)
+RETURNS ivymy.year
+AS 'MODULE_PATHNAME', 'datetime_year'
+LANGUAGE C STABLE STRICT PARALLEL SAFE;
+
+CREATE CAST (ivymy.mysdatetime as year)
+WITH FUNCTION ivymy.datetime2year(ivymy.mysdatetime) AS ASSIGNMENT;
+
+CREATE OR REPLACE FUNCTION ivymy.datetimes2year(ivymy.mysdatetimes)
+RETURNS ivymy.year
+AS 'MODULE_PATHNAME', 'datetimes_year'
+LANGUAGE C STABLE STRICT PARALLEL SAFE;
+
+CREATE CAST (ivymy.mysdatetimes as year)
+WITH FUNCTION ivymy.datetimes2year(ivymy.mysdatetimes) AS ASSIGNMENT;
+
+CREATE OR REPLACE FUNCTION ivymy.timestamp2year(ivymy.mystimestamp)
+RETURNS ivymy.year
+AS 'MODULE_PATHNAME', 'timestamp_year'
+LANGUAGE C STABLE STRICT PARALLEL SAFE;
+
+CREATE CAST (ivymy.mystimestamp as year)
+WITH FUNCTION ivymy.timestamp2year(ivymy.mystimestamp) AS ASSIGNMENT;
+
+CREATE OR REPLACE FUNCTION ivymy.timestamps2year(ivymy.mystimestamps)
+RETURNS ivymy.year
+AS 'MODULE_PATHNAME', 'timestamps_year'
+LANGUAGE C STABLE STRICT PARALLEL SAFE;
+
+CREATE CAST (ivymy.mystimestamps as year)
+WITH FUNCTION ivymy.timestamps2year(ivymy.mystimestamps) AS ASSIGNMENT;
+-- Fix Bug#Z5406 end
