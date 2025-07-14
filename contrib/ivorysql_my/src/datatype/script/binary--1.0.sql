@@ -1008,6 +1008,44 @@ CREATE CAST (ivymy.varbinary AS pg_catalog.int8)
 WITH FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
 
+-- cast varbinary to uint2
+CREATE FUNCTION ivymy.varbinary2uint2(ivymy.varbinary, integer, boolean)
+RETURNS uint2
+AS 'MODULE_PATHNAME','varbinary2uint2'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS uint2)
+WITH FUNCTION ivymy.varbinary2uint2(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast varbinary to uint4
+CREATE FUNCTION ivymy.varbinary2uint4(ivymy.varbinary, integer, boolean)
+RETURNS uint4
+AS 'MODULE_PATHNAME','varbinary2uint4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS uint4)
+WITH FUNCTION ivymy.varbinary2uint4(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast varbinary to uint8
+CREATE FUNCTION ivymy.varbinary2uint8(ivymy.varbinary, integer, boolean)
+RETURNS uint8
+AS 'MODULE_PATHNAME','varbinary2uint8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS uint8)
+WITH FUNCTION ivymy.varbinary2uint8(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
 
 -- cast varbinary to date
 CREATE FUNCTION ivymy.varbinary2date(ivymy.varbinary, integer, boolean)

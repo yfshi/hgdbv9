@@ -126,6 +126,24 @@ WARNING:  Truncated incorrect BINARY value: x'011111111111111111'
  18446744073709551615
 (1 row)
 
+create table hex_test(ii int1, i2 int2, i3 int3, i4 int4, i8 int8);
+insert into hex_test values (0x3, 0x3, 0x3, 0x3, 0x3);
+select * from hex_test;
+ ii | i2 | i3 | i4 | i8 
+----+----+----+----+----
+  3 |  3 |  3 |  3 |  3
+(1 row)
+
+drop table hex_test;
+create table hex_test(u1 uint1, u2 uint2, u3 uint3, u4 uint4, u8 uint8);
+insert into hex_test values (0x3, 0x3, 0x3, 0x3, 0x3);
+select * from hex_test;
+ u1 | u2 | u3 | u4 | u8 
+----+----+----+----+----
+ 3  | 3  | 3  | 3  | 3
+(1 row)
+
+drop table hex_test;
 create table hex_test(a int, b text, c char(10), d varchar(10), e varbinary(111), f float4, g float8);
 insert into hex_test values (0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3);
 insert into hex_test values (0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
@@ -143,6 +161,41 @@ select * from hex_test;
 (5 rows)
 
 drop table hex_test;
+/* Begin - bug#z5411 */
+create table t1(id int3 unsigned);
+insert into t1 values(0x123);
+select * from t1;
+ id  
+-----
+ 291
+(1 row)
+
+create table t2(a int2 unsigned);
+insert into t2 values(0x123);
+select * from t2;
+  a  
+-----
+ 291
+(1 row)
+
+create table t3(a int4 unsigned);
+insert into t3 values(0x123);
+select * from t3;
+  a  
+-----
+ 291
+(1 row)
+
+create table t4(a int8 unsigned);
+insert into t4 values(0x123);
+select * from t4;
+  a  
+-----
+ 291
+(1 row)
+
+drop table t1, t2, t3, t4;
+/* End - bug#z5411 */
 select 0x7fffffffffffffff + 1;  -- 9223372036854775808
       ?column?       
 ---------------------
@@ -212,6 +265,36 @@ WARNING:  Truncated incorrect BINARY value: x'022222222222222222'
  ?column? 
 ----------
  f
+(1 row)
+
+select 0x222222222222222224  = 0x222222222222222224;    -- no warning, return true
+ ?column? 
+----------
+ t
+(1 row)
+
+select 0x222222222222222224  = 0x0222222222222222224;   -- no warning, return false for length mismatch
+ ?column? 
+----------
+ f
+(1 row)
+
+select 0x00222222222222222224  = 0x0222222222222222224; -- no warning, return true
+ ?column? 
+----------
+ t
+(1 row)
+
+select 0x222222222222222223  = 0x222222222222222224;    -- no warning, return false
+ ?column? 
+----------
+ f
+(1 row)
+
+select 0x222222222222222223 != 0x222222222222222224;    -- no warning, return true
+ ?column? 
+----------
+ t
 (1 row)
 
 reset mysql.cast_to_char;

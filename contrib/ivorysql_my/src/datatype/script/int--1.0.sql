@@ -54,22 +54,6 @@ CREATE OPERATOR ivymy.- (
 	rightarg = ivymy.mediumint
 );
 
---  "/"
-CREATE FUNCTION ivymy.myint3_div(ivymy.mediumint, ivymy.mediumint)
-RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','myint3_div'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE;
-
-CREATE OPERATOR ivymy./ (
-	procedure = ivymy.myint3_div,
-	leftarg = ivymy.mediumint,
-	rightarg = ivymy.mediumint
-);
-
-
 --"sign +"
 CREATE FUNCTION ivymy.myint3_positive(ivymy.mediumint)
 RETURNS ivymy.mediumint

@@ -46,6 +46,9 @@ PG_FUNCTION_INFO_V1(varbinary2varchar);
 PG_FUNCTION_INFO_V1(varbinary2int2);
 PG_FUNCTION_INFO_V1(varbinary2int4);
 PG_FUNCTION_INFO_V1(varbinary2int8);
+PG_FUNCTION_INFO_V1(varbinary2uint2);
+PG_FUNCTION_INFO_V1(varbinary2uint4);
+PG_FUNCTION_INFO_V1(varbinary2uint8);
 PG_FUNCTION_INFO_V1(varbinary2date);
 PG_FUNCTION_INFO_V1(varbinary2time);
 PG_FUNCTION_INFO_V1(varbinary2datetime);
@@ -143,12 +146,17 @@ Datum
 varbinary2int2(PG_FUNCTION_ARGS)
 {
 	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
-	int64	  	ret = 0;
+	int16	  	ret = 0;
 	char		num[64];
 
-	extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num));
+	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	{
+		ereport(WARNING, 
+				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+	}
 
-	ret = DatumGetInt64(DirectFunctionCall1(int2in,
+
+	ret = DatumGetInt16(DirectFunctionCall1(int2in,
 											CStringGetDatum(num)));
 
 	PG_RETURN_INT16(ret);
@@ -158,12 +166,17 @@ Datum
 varbinary2int4(PG_FUNCTION_ARGS)
 {
 	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
-	int64	  	ret = 0;
+	int32	  	ret = 0;
 	char		num[64];
 
-	extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num));
+	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	{
+		ereport(WARNING, 
+				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+	}
 
-	ret = DatumGetInt64(DirectFunctionCall1(int4in,
+
+	ret = DatumGetInt32(DirectFunctionCall1(int4in,
 											CStringGetDatum(num)));
 
 	PG_RETURN_INT32(ret);
@@ -176,7 +189,12 @@ varbinary2int8(PG_FUNCTION_ARGS)
 	int64	  	ret = 0;
 	char		num[64];
 
-	extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num));
+	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	{
+		ereport(WARNING, 
+				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+	}
+
 
 	ret = DatumGetInt64(DirectFunctionCall1(int8in,
 											CStringGetDatum(num)));
@@ -184,6 +202,68 @@ varbinary2int8(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(ret);
 }
 /* End BUG#5048 5070 */
+
+/* Begin - bug#z5400 */
+Datum 
+varbinary2uint2(PG_FUNCTION_ARGS)
+{
+	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
+	uint16	  	ret = 0;
+	char		num[64];
+
+	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	{
+		ereport(WARNING, 
+				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+	}
+
+
+	ret = DatumGetUInt16(DirectFunctionCall1(mysuint2_in,
+											 CStringGetDatum(num)));
+
+	PG_RETURN_UINT16(ret);
+}
+
+Datum 
+varbinary2uint4(PG_FUNCTION_ARGS)
+{
+	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
+	uint32	  	ret = 0;
+	char		num[64];
+
+	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	{
+		ereport(WARNING, 
+				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+	}
+
+
+	ret = DatumGetUInt32(DirectFunctionCall1(mysuint4_in,
+											 CStringGetDatum(num)));
+
+	PG_RETURN_UINT32(ret);
+}
+
+Datum 
+varbinary2uint8(PG_FUNCTION_ARGS)
+{
+	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
+	uint64	  	ret = 0;
+	char		num[64];
+
+	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	{
+		ereport(WARNING, 
+				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+	}
+
+
+	ret = DatumGetUInt64(DirectFunctionCall1(mysuint8_in,
+											 CStringGetDatum(num)));
+
+	PG_RETURN_UINT64(ret);
+}
+/* End - bug#z5400 */
 
 // reference from varchar.c function varcharin() and varlena.c function byteain()
 Datum 

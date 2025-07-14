@@ -1331,16 +1331,36 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 
 	/** 
 	 * Begin BUG#5048 5070 
-	 * When do caculate with hex string, we parse it to uint64 always.
+	 * When do caculate with hex string, we parse it to uint64 almost,
+	 * except lexpr and rexpr both are hex string and operator is '=' or '!='.
 	 */
 	if (compatible_db == MYS_PARSER)
 	{
-		if (lexpr && exprIsHexConstant(lexpr))
+		char	*oprname = strVal(linitial(a->name));
+		bool 	l_is_hex = exprIsHexConstant(lexpr),
+				r_is_hex = exprIsHexConstant(rexpr);
+
+		/* Begin - bug#z5414 */
+		if (l_is_hex && r_is_hex)
+		{
+			// operator '!=' will be replaced by '<>' actually
+			if (strcmp(oprname, "=") == 0 || strcmp(oprname, "<>") == 0)
+			{
+				/**
+				 * do nothing, trans hex string to varbinary.
+				 * We set l_is_hex and r_is_hex to false just to skip the following logic.
+				 */ 
+				l_is_hex = r_is_hex = false;
+			}
+		}
+		/* End - bug#z5414 */
+
+		if (l_is_hex)
 		{
 			lexpr = make_bigint_const_from_hex(lexpr);
 		}
 
-		if (rexpr && exprIsHexConstant(rexpr))
+		if (r_is_hex)
 		{
 			rexpr = make_bigint_const_from_hex(rexpr);
 		}
@@ -4075,7 +4095,7 @@ parse_hex_string_to_int64(char *src)
 		size++;
 	}
 
-	size += mys_hex_decode(src, len, bytes);
+	size += mys_hex_decode(src, len, dst);
 
 	for (int i = 0; i < size; i++)
 	{

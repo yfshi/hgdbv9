@@ -21,36 +21,8 @@
 #include "utils/guc.h"
 #include "utils/numeric.h"
 
-PG_FUNCTION_INFO_V1(myint3_div);
 PG_FUNCTION_INFO_V1(myint3_positive);
 PG_FUNCTION_INFO_V1(myint3_negative);
-
-Datum
-myint3_div(PG_FUNCTION_ARGS)
-{
-	int32 arg0 = PG_GETARG_INT32(0);
-	int32 arg1 = PG_GETARG_INT32(1);
-	static char *p_val = NULL;
-	Numeric		val;
-	Datum		res;
-
-	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-		PG_RETURN_NULL();
-
-	val = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(arg0)),
-							NumericGetDatum(int64_to_numeric(arg1))));
-
-
-	p_val = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(val)));
-
-	res = DirectFunctionCall3(numeric_in,
-	CStringGetDatum(p_val),
-	ObjectIdGetDatum(InvalidOid),
-	Int32GetDatum(((14 << 16) | 4) + VARHDRSZ));
-
-	PG_RETURN_NUMERIC(NumericGetDatum(res));
-}
-
 
 /* operator +int3 */
 Datum
@@ -69,4 +41,3 @@ myint3_negative(PG_FUNCTION_ARGS)
 
 	PG_RETURN_INT32(-num);
 }
-

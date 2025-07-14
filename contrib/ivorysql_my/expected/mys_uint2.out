@@ -1841,3 +1841,14 @@ select * from t_like_operator where id not like '_8';
 (6 rows)
 
 drop table t_like_operator;
+/* Begin - bug#z5166 */
+create table t_div(id int1, name int2);
+insert into t_div values(10, 10);
+select id /3, name / 3 from t_div;
+ ?column? | ?column? 
+----------+----------
+   3.3333 |   3.3333
+(1 row)
+
+drop table t_div;
+/* End - bug#z5166 */
