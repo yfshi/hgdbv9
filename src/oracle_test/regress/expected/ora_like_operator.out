@@ -915,3 +915,304 @@ select * from wildcard_a where x like 'this is   a test_';  -- 1 row
 
 set ivorysql.enable_blankspace_compare to on;
 -- End - Bug#Z471 && SRS-MISC-COMPATDM-SQL
+--OA1559
+create table test_id(id integer,name varchar2(256));
+insert into test_id values(1, 'abc');
+insert into test_id values(2, 'abc\');
+insert into test_id values(3, 'abc\ ');
+create view test_view1 as select * from test_id where name like '%abc' order by id;
+create view test_view2 as select * from test_id where name like '%abc\' order by id;
+create view test_view3 as select * from test_id where name like '%abc\ ' order by id;
+create view test_view4 as select  *from test_id where name not like '%abc' order by id;
+create view test_view5 as select * from test_id where name not like '%abc\' order by id;
+create view test_view6 as select  *from test_id where name not like '%abc\ ' order by id;
+create view test_view7 as select * from test_id where id like '1' and name not like '%abc' order by id;
+create view test_view8 as select * from test_id where name like NULL;
+create view test_view9 as select * from test_id where id like '1' and name like '%abc' order by id;
+create view test_view10 as select * from test_id where name like '%abc%' order by id;
+create view test_view11 as select * from test_id where name not like '%abc%' order by id;
+create view test_view12 as select * from test_id where name not like '%abc\\'  ESCAPE '\' order by id;
+create view test_view13 as select * from test_id where name not like '%abc\\'  ESCAPE '\' and name like '%abc\\' ESCAPE '\' order by id;
+create view test_view14 as select * from test_id where name not like '%abc\\'  ESCAPE '\' and name like '%abc\' order by id;
+select * from test_view1;
+ id | name 
+----+------
+  1 | abc
+(1 row)
+
+\d+ test_view1
+                               View "public.test_view1"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) like '%abc'::text
+  ORDER BY test_id.id;
+
+select * from test_view2;
+ id | name 
+----+------
+  2 | abc\
+(1 row)
+
+\d+ test_view2
+                               View "public.test_view2"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) like '%abc\'::text
+  ORDER BY test_id.id;
+
+select * from test_view3;
+ id | name  
+----+-------
+  3 | abc\ 
+(1 row)
+
+\d+ test_view3
+                               View "public.test_view3"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) like '%abc\ '::text
+  ORDER BY test_id.id;
+
+select * from test_view4;
+ id | name  
+----+-------
+  2 | abc\
+  3 | abc\ 
+(2 rows)
+
+\d+ test_view4
+                               View "public.test_view4"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) not like '%abc'::text
+  ORDER BY test_id.id;
+
+select * from test_view5;
+ id | name  
+----+-------
+  1 | abc
+  3 | abc\ 
+(2 rows)
+
+\d+ test_view5
+                               View "public.test_view5"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) not like '%abc\'::text
+  ORDER BY test_id.id;
+
+select * from test_view6;
+ id | name 
+----+------
+  1 | abc
+  2 | abc\
+(2 rows)
+
+\d+ test_view6
+                               View "public.test_view6"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) not like '%abc\ '::text
+  ORDER BY test_id.id;
+
+select * from test_view7;
+ id | name 
+----+------
+(0 rows)
+
+\d+ test_view7
+                               View "public.test_view7"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE test_id.id::varchar2(4000) like '1'::text AND ((test_id.name COLLATE "binary")::text) not like '%abc'::text
+  ORDER BY test_id.id;
+
+select * from test_view8;
+ id | name 
+----+------
+(0 rows)
+
+\d+ test_view8
+                               View "public.test_view8"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) like NULL::text;
+
+select * from test_view9;
+ id | name 
+----+------
+  1 | abc
+(1 row)
+
+\d+ test_view9
+                               View "public.test_view9"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE test_id.id::varchar2(4000) like '1'::text AND ((test_id.name COLLATE "binary")::text) like '%abc'::text
+  ORDER BY test_id.id;
+
+select * from test_view10;
+ id | name  
+----+-------
+  1 | abc
+  2 | abc\
+  3 | abc\ 
+(3 rows)
+
+\d+ test_view10
+                               View "public.test_view10"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) like '%abc%'::text
+  ORDER BY test_id.id;
+
+select * from test_view11;
+ id | name 
+----+------
+(0 rows)
+
+\d+ test_view11
+                               View "public.test_view11"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) not like '%abc%'::text
+  ORDER BY test_id.id;
+
+select * from test_view12;
+ id | name  
+----+-------
+  1 | abc
+  3 | abc\ 
+(2 rows)
+
+\d+ test_view12
+                               View "public.test_view12"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) !~~ like_escape('%abc\\'::text, '\'::text)
+  ORDER BY test_id.id;
+
+select * from test_view13;
+ id | name 
+----+------
+(0 rows)
+
+\d+ test_view13
+                               View "public.test_view13"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) !~~ like_escape('%abc\\'::text, '\'::text) AND ((test_id.name COLLATE "binary")::text) ~~ like_escape('%abc\\'::text, '\'::text)
+  ORDER BY test_id.id;
+
+select * from test_view14;
+ id | name 
+----+------
+(0 rows)
+
+\d+ test_view14
+                               View "public.test_view14"
+ Column |     Type      |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------------+----------------+----------+---------+----------+-------------
+ id     | integer       |                |          |         | plain    | 
+ name   | varchar2(256) | using_nls_comp |          |         | extended | 
+View definition:
+ SELECT test_id.id,
+    test_id.name
+   FROM test_id
+  WHERE ((test_id.name COLLATE "binary")::text) !~~ like_escape('%abc\\'::text, '\'::text) AND ((test_id.name COLLATE "binary")::text) like '%abc\'::text
+  ORDER BY test_id.id;
+
+--clean data
+drop view test_view1;
+drop view test_view2;
+drop view test_view3;
+drop view test_view4;
+drop view test_view5;
+drop view test_view6;
+drop view test_view7;
+drop view test_view8;
+drop view test_view9;
+drop view test_view10;
+drop view test_view11;
+drop view test_view12;
+drop view test_view13;
+drop view test_view14;
+drop table test_id;
