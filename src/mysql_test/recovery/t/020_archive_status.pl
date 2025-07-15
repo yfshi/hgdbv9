@@ -16,8 +16,19 @@ $primary->init(
 	has_archiving    => 1,
 	allows_streaming => 1);
 $primary->append_conf('postgresql.conf', 'autovacuum = off');
+$primary->append_conf('postgresql.conf', 'archive_mode = off');
 $primary->start;
 my $primary_data = $primary->data_dir;
+
+$primary->safe_psql(
+	'postgres', q{
+	SELECT pg_switch_wal();
+	CHECKPOINT;
+});
+
+$primary->append_conf('postgresql.conf', 'archive_mode = on');
+$primary->stop('immediate');
+$primary->start;
 
 # Temporarily use an archive_command value to make the archiver fail,
 # knowing that archiving is enabled.  Note that we cannot use a command
@@ -36,6 +47,10 @@ $primary->safe_psql(
     SELECT pg_reload_conf();
 });
 
+$primary->safe_psql(
+	'postgres', q{
+	SELECT pg_stat_reset_shared('archiver');
+});
 # Save the WAL segment currently in use and switch to a new segment.
 # This will be used to track the activity of the archiver.
 my $segment_name_1 = $primary->safe_psql('postgres',
@@ -63,10 +78,10 @@ ok( !-f "$primary_data/$segment_path_1_done",
 
 is( $primary->safe_psql(
 		'postgres', q{
-		SELECT last_failed_wal
+		SELECT archived_count, last_failed_wal
 		FROM pg_stat_archiver
 	}),
-	"$segment_name_1",
+	"0|$segment_name_1",
 	"pg_stat_archiver failed to archive $segment_name_1");
 
 # Crash the cluster for the next test in charge of checking that non-archived
