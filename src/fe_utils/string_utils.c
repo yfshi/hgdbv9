@@ -1668,7 +1668,7 @@ myspatternToSQLRegex(int encoding, PQExpBuffer dbnamebuf, PQExpBuffer schemabuf,
 			appendPQExpBufferChar(oricurbuf, '.');
 			if (left)
 				appendPQExpBufferChar(&orileft_literal, '?');
-			
+
 			cp++;
 		}
 		else if (!inquotes && ch == '.')
@@ -1754,7 +1754,7 @@ myspatternToSQLRegex(int encoding, PQExpBuffer dbnamebuf, PQExpBuffer schemabuf,
 					appendPQExpBufferChar(&left_literal, *cp);
 					appendPQExpBufferChar(&orileft_literal, *cp);
 				}
-				
+
 				tempchar = *cp++;
 				appendPQExpBufferChar(curbuf, tempchar);
 				appendPQExpBufferChar(oricurbuf, tempchar);
