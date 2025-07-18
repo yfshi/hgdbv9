@@ -364,6 +364,7 @@ auth_failed(Port *port, int status, char *logdetail)
 		logdetail = cdetail;
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
 	if (sqlite_open_db_for_audit_hook)
 	{
 		char	errtext[MAXPGPATH];
@@ -372,6 +373,7 @@ auth_failed(Port *port, int status, char *logdetail)
 		sprintf(errtext, errstr, port->user_name);
 		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_FAIL, port->user_name, errtext);
 	}
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 	ereport(FATAL,

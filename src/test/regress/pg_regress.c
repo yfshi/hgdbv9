@@ -2364,6 +2364,7 @@ regression_main(int argc, char *argv[],
 	if (temp_instance)
 	{
 		FILE	   *pg_conf;
+		FILE	   *sec_conf;
 		const char *env_wait;
 		int			wait_seconds;
 
@@ -2454,6 +2455,19 @@ regression_main(int argc, char *argv[],
 		}
 
 		fclose(pg_conf);
+
+		snprintf(buf, sizeof(buf), "%s/data/sec_pg.conf", temp_instance);
+		sec_conf = fopen(buf, "a");
+		if (sec_conf == NULL)
+		{
+			fprintf(stderr, _("\n%s: could not open \"%s\" for adding extra config: %s\n"), progname, buf, strerror(errno));
+			exit(2);
+		}
+
+		fputs("\n# Configuration added by pg_regress\n\n", sec_conf);
+		fputs("audit.track_settings = off\n", sec_conf);
+
+		fclose(sec_conf);
 
 #ifdef ENABLE_SSPI
 		if (!use_unix_sockets)

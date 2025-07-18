@@ -345,7 +345,9 @@ typedef struct AduitSwitchGUC
 	char *audit_mail;
 	int audit_privimode;
 	AuditOpresSwitch audit_systemopers;
+#ifdef USE_SQLITE
 	char *audit_sqlitedbpath;
+#endif
 	AuditSwitch track_settings;
 }AduitSwitchGUC;
 
@@ -385,8 +387,10 @@ extern PGDLLIMPORT pgaudit_Object_hook_type audit_object_hook;
 typedef void  (*audit_system_err)(bool flag, int sqlerrcode);
 extern PGDLLIMPORT audit_system_err audit_system_event_hook;
 
+#ifdef USE_SQLITE
 typedef void  (*audit_open_splite)(AuditSystemEvent event, AuditResult result, char *username, char *errtext);
 extern PGDLLIMPORT audit_open_splite sqlite_open_db_for_audit_hook;
+#endif
 
 typedef void  (*audit_drop_pg_audit)(char *extname);
 extern PGDLLIMPORT audit_drop_pg_audit audit_drop_pg_audit_hook;

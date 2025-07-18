@@ -1307,11 +1307,13 @@ PostmasterMain(int argc, char *argv[])
 		if (!success && elemlist != NIL)
 		{
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
 			if (sqlite_open_db_for_audit_hook)
 			{
 				char *errstr = "could not create any PostgreSQL TCP/IP sockets";
 				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START, AUDIT_FAIL, NULL, errstr);
 			}
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 			ereport(FATAL,
@@ -3188,12 +3190,14 @@ SIGHUP_handler(SIGNAL_ARGS)
 			ereport(LOG,
 			/* translator: %s is a configuration file */
 					(errmsg("%s was not reloaded", "pg_hba.conf")));
-/* Begin - ReqID:SRS-SECURITY-AUDIT */			
+/* Begin - ReqID:SRS-SECURITY-AUDIT */		
+#ifdef USE_SQLITE
 			if (sqlite_open_db_for_audit_hook)
 			{
 				char *errstr = "pg_hba.conf was not reloaded";
 				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
 			}
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 		}
 
@@ -3202,11 +3206,13 @@ SIGHUP_handler(SIGNAL_ARGS)
 			ereport(LOG,
 					(errmsg("%s was not reloaded", "pg_ident.conf")));
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
 			if (sqlite_open_db_for_audit_hook)
 			{
 				char *errstr = "pg_ident.conf was not reloaded";
 				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
 			}
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 		}
 
@@ -3221,11 +3227,13 @@ SIGHUP_handler(SIGNAL_ARGS)
 				ereport(LOG,
 						(errmsg("SSL configuration was not reloaded")));
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
 				if (sqlite_open_db_for_audit_hook)
 				{
 					char *errstr = "SSL configuration was not reloaded";
 					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
 				}
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 			}
 		}
@@ -3242,8 +3250,10 @@ SIGHUP_handler(SIGNAL_ARGS)
 #endif
 	}
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
 	if (sqlite_open_db_for_audit_hook)
 		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_SUCCESS, NULL, NULL);
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 #ifdef WIN32
@@ -3402,8 +3412,10 @@ pmdie(SIGNAL_ARGS)
 	if (audit_StopPgagent_hook)
 		(*audit_StopPgagent_hook)();
 
+#ifdef USE_SQLITE
 	if (sqlite_open_db_for_audit_hook)
 		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_STOP, AUDIT_SUCCESS, NULL, NULL);
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 #ifdef WIN32
@@ -3482,11 +3494,13 @@ reaper(SIGNAL_ARGS)
 				ereport(LOG,
 						(errmsg("aborting startup due to startup process failure")));
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
 				if (sqlite_open_db_for_audit_hook)
 				{
 					char *errstr = "aborting startup due to startup process failure";
 					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START, AUDIT_FAIL, NULL, errstr);
 				}
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */		
 				ExitPostmaster(1);
 			}
@@ -3564,8 +3578,10 @@ reaper(SIGNAL_ARGS)
 			ereport(LOG,
 					(errmsg("database system is ready to accept connections")));
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
 			if (sqlite_open_db_for_audit_hook)
 				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START, AUDIT_SUCCESS, NULL, NULL);
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 			/* Report status */
@@ -5803,8 +5819,10 @@ sigusr1_handler(SIGNAL_ARGS)
 		sd_notify(0, "READY=1");
 #endif
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
 		if (sqlite_open_db_for_audit_hook)
 			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START, AUDIT_SUCCESS, NULL, NULL);
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */		
 		pmState = PM_HOT_STANDBY;
 		connsAllowed = ALLOW_ALL_CONNS;

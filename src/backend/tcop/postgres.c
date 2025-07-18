@@ -217,7 +217,9 @@ pgaudit_SaveConnectInfo_hook_type audit_SaveConnectInfo_hook = NULL;
 pgaudit_SaveConnectInfo_hook_type audit_Save_ConnectAuthMethod_hook = NULL;
 pgaudit_SetServerOption_hook_type audit_SetServerOption_hook = NULL;
 audit_system_err audit_system_event_hook = NULL;
+#ifdef USE_SQLITE
 audit_open_splite sqlite_open_db_for_audit_hook = NULL;
+#endif
 pgaudit_AlterSetGuc_hook_type audit_AlterSetGuc_hook = NULL;
 pgaudit_AlterSetGuc_hook_type audit_CreateArchJob_hook = NULL;
 pgaudit_StopPgagent_hook_type audit_StopPgagent_hook = NULL;
@@ -4641,8 +4643,10 @@ PostgresMain(int argc, char *argv[],
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 	if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
 		audit_system_event_hook(true, 3);
+#ifdef USE_SQLITE
 	else if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
 		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/*
@@ -5299,8 +5303,10 @@ PostgresMain(int argc, char *argv[],
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 				if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
 					audit_system_event_hook(true, 4);
+#ifdef USE_SQLITE
 				else if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
 					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 				/*

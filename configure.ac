@@ -1129,6 +1129,16 @@ AC_MSG_RESULT([$with_swsds])
 AC_SUBST(with_swsds)
 
 #
+# SQLite
+#
+AC_MSG_CHECKING([whether to build with SQLite support])
+PGAC_ARG_BOOL(with, sqlite, no,
+              [build with SQLite support],
+              [AC_DEFINE([USE_SQLITE], 1, [Define to 1 to build with SQLite support. (--with-sqlite)])])
+AC_MSG_RESULT([$with_sqlite])
+AC_SUBST(with_sqlite)
+
+#
 # PAM
 #
 AC_MSG_CHECKING([whether to build with PAM support])
@@ -1625,6 +1635,10 @@ if test "$with_swsds" = yes ; then
   AC_CHECK_LIB(swsds, SDF_OpenDevice, [], [AC_MSG_ERROR([library 'swsds' is required for swsds support])])
 fi
 
+if test "$with_sqlite" = yes ; then
+  AC_CHECK_LIB(sqlite3, sqlite3_open, [], [AC_MSG_ERROR([library 'sqlite3' is required for SQLite support])])
+fi
+
 if test "$with_pam" = yes ; then
   AC_CHECK_LIB(pam,    pam_start, [], [AC_MSG_ERROR([library 'pam' is required for PAM])])
 fi
@@ -1830,6 +1844,10 @@ fi
 
 if test "$with_swsds" = yes ; then
   AC_CHECK_HEADERS(swsds.h, [], [AC_MSG_ERROR([header file <swsds.h> is required for swsds])])
+fi
+
+if test "$with_sqlite" = yes ; then
+  AC_CHECK_HEADERS(sqlite3.h, [], [AC_MSG_ERROR([header file <sqlite3.h> is required for SQLite])])
 fi
 
 if test "$with_pam" = yes ; then

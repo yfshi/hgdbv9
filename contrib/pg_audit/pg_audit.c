@@ -18,7 +18,9 @@
 #include "postgres.h"
 #include "pg_audit.h"
 #include <assert.h>
+#ifdef USE_SQLITE
 #include <sqlite3.h>
+#endif
 #include <signal.h>
 #include <sys/time.h>
 #include <time.h>
@@ -238,7 +240,9 @@ static void audit_change_GUC(void);
 static void audit_append_hook(void);
 static bool audit_real_check_hook(double *newvalue, void **extra, GucSource source);
 static bool audit_logdir_check_hook(char **newvalue, void **extra, GucSource source);
+#ifdef USE_SQLITE
 static bool audit_sqlite_check_hook(char **newvalue, void **extra, GucSource source);
+#endif
 static void check_audit_sao_permission(Oid roid, bool istable);
 static void check_audit_saosso_perm(Oid roid, bool istable);
 static ObjectType audit_get_objtype(char *key);
@@ -307,7 +311,9 @@ static void pg_audit_sigterm(SIGNAL_ARGS);
 static void pgaudit_setup_memcxt(void);
 static void audit_postmaster_sighup_guc(char *context);
 static void audit_arch_job(void);
+#ifdef USE_SQLITE
 static void audit_set_sqlite_path(void);
+#endif
 static void audit_stop_pgagent(void);
 static Node *audit_change_where_clause(Node *clause);
 static void audit_get_from_clause_name(Node *n);
@@ -706,6 +712,7 @@ audit_logdir_check_hook(char **newvalue, void **extra, GucSource source)
 }
 
 
+#ifdef USE_SQLITE
 /*
  * check sqlite database file path
  */
@@ -730,6 +737,7 @@ audit_sqlite_check_hook(char **newvalue, void **extra, GucSource source)
 	}
 	return true;
 }
+#endif
 
 /*
  * Function: audit_define_GUC()
@@ -872,6 +880,7 @@ static void audit_define_GUC(void)
 							  NULL,
 							  NULL,
 							  NULL);
+#ifdef USE_SQLITE
 	/* system audit switch */
 	DefineCustomStringVariable("audit.sqlitedbpath",
 					 "set sqlite database path",
@@ -883,6 +892,7 @@ static void audit_define_GUC(void)
 					 audit_sqlite_check_hook,
 					 NULL,
 					 NULL);
+#endif
 
 	/* There may be issues when going to pg_reboot 
 	 * during wal recovery test.
@@ -1131,11 +1141,13 @@ audit_insert_all_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, in
 	{
 		ErrorData *edata;
 		MemoryContext oldcontext = CurrentMemoryContext;
-		
+
 		MemoryContextSwitchTo(TopMemoryContext);
 		
+#ifdef USE_SQLITE
 		if (sqlite_open_db_for_audit_hook)
 			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_STORAGE_INVALID, AUDIT_SUCCESS, NULL, NULL);
+#endif
 
 	    edata = CopyErrorData();
 	    FlushErrorState();
@@ -4278,6 +4290,7 @@ audit_alter_pg_auditlog(char *relname)
 	}
 }
 
+#ifdef USE_SQLITE
 /*
  * Open remote sqlite database using specified database path
  * and flags of opened file descriptor mode.
@@ -4490,6 +4503,7 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 	sqlite3_close(conn);
 	conn = NULL;
 }
+#endif
 
 
 /*
@@ -4764,6 +4778,7 @@ deal_with_system_event(AuditSystemEvent event, AuditResult result)
 	if (audit_GUC.audit_enable != AUDIT_ON)
 		return;
 
+#ifdef USE_SQLITE
 	if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
 	{
 		if (MyProcPort && MyProcPort->user_name)
@@ -4773,6 +4788,7 @@ deal_with_system_event(AuditSystemEvent event, AuditResult result)
 
 		return ;
 	}
+#endif
 
 	/* Exclude mandatory audit */
 	if (MANDATORY_AUDIT_ON != event && MANDATORY_AUDIT_OFF != event)
@@ -5012,7 +5028,9 @@ audit_append_hook(void)
 	audit_StopPgagent_hook = audit_stop_pgagent;
 	audit_drop_pg_audit_hook = audit_drop_pgaudit;
 	audit_alter_pg_audit_log_hook = audit_alter_pg_auditlog;
+#ifdef USE_SQLITE
 	sqlite_open_db_for_audit_hook = sqlite_open_db_for_audit;
+#endif
 
 }
 
@@ -5506,6 +5524,7 @@ audit_arch_job(void)
 }
 
 
+#ifdef USE_SQLITE
 /* If the path of sqlite is modified, the path also
  * needs to be modified in pg_foreign_server
  */
@@ -5648,7 +5667,7 @@ audit_set_sqlite_path(void)
 	pgstat_report_activity(STATE_IDLE, NULL);
 	internalStatement = false;
 }
-
+#endif
 
 /* Functions of backend precess */
 void
@@ -5685,6 +5704,7 @@ pg_audit_launch(void)
 		audit_arch_job();
 	}
 
+#ifdef USE_SQLITE
 	/* If the path of sqlite is modified, the path also
 	 * needs to be modified in pg_foreign_server
 	 */
@@ -5693,6 +5713,7 @@ pg_audit_launch(void)
 	{
 		audit_set_sqlite_path();
 	}
+#endif
 
 	if (!RecoveryInProgress())
 	{

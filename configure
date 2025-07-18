@@ -718,6 +718,7 @@ with_license
 with_ldap
 with_swsds
 with_gmssl
+with_sqlite
 with_krb_srvnam
 krb_srvtab
 with_gssapi
@@ -876,6 +877,7 @@ with_gssapi
 with_krb_srvnam
 with_gmssl
 with_swsds
+with_sqlite
 with_pam
 with_bsd_auth
 with_ldap
@@ -1605,6 +1607,7 @@ Optional Packages:
                           [postgres]
   --with-gmssl            build with GmSSL support
   --with-swsds            build with swsds support
+  --with_sqlite		  build with SQLite support
   --with-pam              build with PAM support
   --with-bsd-auth         build with BSD Authentication support
   --with-ldap             build with LDAP support
@@ -9315,6 +9318,33 @@ fi
 $as_echo "$with_swsds" >&6; }
 
 
+# Check whether --with-sqlite was given.
+if test "${with_sqlite+set}" = set; then :
+  withval=$with_sqlite;
+  case $withval in
+    yes)
+
+$as_echo "#define USE_SQLITE 1" >>confdefs.h
+
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --with-sqlite option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  with_sqlite=no
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_sqlite" >&5
+$as_echo "$with_sqlite" >&6; }
+
+
 #
 # PAM
 #
@@ -14203,6 +14233,57 @@ fi
 
 fi
 
+if test "$with_sqlite" = yes ; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sqlite3_open in -lsqlite3" >&5
+$as_echo_n "checking for sqlite3_open in -lsqlite3... " >&6; }
+if ${ac_cv_lib_sqlite3_sqlite3_open+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lsqlite3  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char sqlite3_open ();
+int
+main ()
+{
+return sqlite3_open ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_sqlite3_sqlite3_open=yes
+else
+  ac_cv_lib_sqlite3_sqlite3_open=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_sqlite3_sqlite3_open" >&5
+$as_echo "$ac_cv_lib_sqlite3_sqlite3_open" >&6; }
+if test "x$ac_cv_lib_sqlite3_sqlite3_open" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBSQLITE3 1
+_ACEOF
+
+  LIBS="-lsqlite3 $LIBS"
+
+else
+  as_fn_error $? "library 'sqlite3' is required for SQLite support" "$LINENO" 5
+fi
+
+fi
+
+
 if test "$with_pam" = yes ; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pam_start in -lpam" >&5
 $as_echo_n "checking for pam_start in -lpam... " >&6; }
@@ -15133,6 +15214,20 @@ fi
 done
 
 fi
+
+
+if test "$with_sqlite" = yes ; then
+  ac_fn_c_check_header_mongrel "$LINENO" "sqlite3.h" "ac_cv_header_sqlite3_h" "$ac_includes_default"
+if test "x$ac_cv_header_sqlite3_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_SQLITE3_H 1
+_ACEOF
+else
+  as_fn_error $? "header file <sqlite3.h> is required for SQLite support" "$LINENO" 5
+fi
+
+fi
+
 
 if test "$with_pam" = yes ; then
   for ac_header in security/pam_appl.h

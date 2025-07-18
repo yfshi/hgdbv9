@@ -4,18 +4,14 @@ MODULE_big = pg_audit
 OBJS = pg_audit.o  $(WIN32RES)
 
 EXTENSION = pg_audit
-DATA = pg_audit--1.0.sql sqlite.db
+
 PGFILEDESC = "pg_audit - hgdb audit control"
-#SHLIB_LINK += -L$(top_builddir)/src/port -lpgport -lpgport_shlib -lpgport_srv
 
-REGRESS = pg_audit
-ORA_REGRESS = pg_audit
+DATA = pg_audit--1.0.sql
 
-TAP_TESTS = 1
-
-SQLITE_LIB = sqlite3
-
-SHLIB_LINK := -lsqlite3
+ifeq ($(with_sqlite), yes)
+DATA += pg_audit--1.0-sqlite.sql pg_audit--1.0--1.0-sqlite.sql sqlite.db
+endif
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
@@ -27,6 +23,24 @@ top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
+
+ifeq ($(with_sqlite), yes)
+override DATA := pg_audit--1.0-sqlite.sql pg_audit--1.0--1.0-sqlite.sql sqlite.db
+endif
+
+#SHLIB_LINK += -L$(top_builddir)/src/port -lpgport -lpgport_shlib -lpgport_srv
+
+REGRESS = pg_audit
+ORA_REGRESS = pg_audit
+
+TAP_TESTS = 1
+
+ifeq ($(with_sqlite), yes)
+SQLITE_LIB = sqlite3
+
+SHLIB_LINK := -lsqlite3
+endif
+
 
 
 #ifeq ($(PORTNAME), win32)

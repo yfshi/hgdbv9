@@ -2841,11 +2841,13 @@ ExecInitFunc(ExprEvalStep *scratch, Expr *node, List *args, Oid funcid,
 		if (aclresult != ACLCHECK_OK)
 		{
 /* Begin - ReqID:SRS-SECURITY-AUDIT */	
+#ifdef USE_SQLITE
 			if (sqlite_open_db_for_audit_hook && strcmp(get_func_name(funcid), "pg_reload_conf") == 0)
 			{
 				char *errstr = "permission denied for function pg_reload_conf";
 				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
 			}
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 			aclcheck_error(aclresult, OBJECT_FUNCTION, get_func_name(funcid));
 

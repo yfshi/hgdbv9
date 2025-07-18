@@ -259,12 +259,14 @@ pg_reload_conf(PG_FUNCTION_ARGS)
 	{
 		ereport(WARNING,
 				(errmsg("failed to send signal to postmaster: %m")));
-/* Begin - ReqID:SRS-SECURITY-AUDIT */				
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
 		if (sqlite_open_db_for_audit_hook)
 		{
 			char *errstr = "failed to send signal to postmaster";
 			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
 		}
+#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 		PG_RETURN_BOOL(false);

@@ -617,6 +617,7 @@ sub GenerateFiles
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,
+		USE_SQLITE                 => undef,
 		USE_PAM                    => undef,
 		USE_SLICING_BY_8_CRC32C    => undef,
 		USE_SSE42_CRC32C           => undef,

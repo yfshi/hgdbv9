@@ -300,6 +300,9 @@
 /* Define to 1 if you have the <gmssl/sm4.h> header file. */
 #undef HAVE_GMSSL_SM4_H
 
+/* Define to 1 if you have the <sqlite3.h> header file. */
+#undef HAVE_SQLITE3_H
+
 /* Define to 1 if you have the <gssapi/gssapi.h> header file. */
 #undef HAVE_GSSAPI_GSSAPI_H
 
@@ -365,6 +368,9 @@
 
 /* Define to 1 if you have the `gmssl' library (-lgmssl). */
 #undef HAVE_LIBGMSSL
+
+/* Define to 1 if you have the `sqlite3' library (-lsqlite3). */
+#undef HAVE_LIBSQLITE3
 
 /* Define to 1 if you have the `ldap' library (-lldap). */
 #undef HAVE_LIBLDAP
@@ -968,6 +974,9 @@
 
 /* Define to 1 to build with GmSSL support. (--with-gmssl) */
 #undef USE_GMSSL
+
+/* Define to 1 to build with SQLite support. (--with-sqlite) */
+#undef USE_SQLITE
 
 /* Define to build with ICU support. (--with-icu) */
 #undef USE_ICU
