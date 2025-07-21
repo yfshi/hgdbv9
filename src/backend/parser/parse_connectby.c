@@ -101,6 +101,9 @@ typedef struct add_tabreference_context
 	ParseState *cur_pstate;
 	char *tbname;
 	bool remove_schema;
+	/* Begin - BUG#Z00005447 */
+	bool	only_replace;		/* only replace a.xx to tbname.xx */
+	/* End - BUG#Z00005447 */
 	ParseState *child_pstate;
 	bool child_hasconnectby;
 } add_tabreference_context;
@@ -742,11 +745,23 @@ check_target_tname_walker(Node *node, void *context)
 				SelectStmt *stmt = (SelectStmt *) node;
 				ParseState *newpstate;
 				ParseState *saved_state;
+				/* Begin - BUG#Z00005447 */
+				List *from_clause;
+				/* End - BUG#Z00005447 */
 	
 				newpstate = make_parsestate(NULL);
 				newpstate->p_sourcetext = NULL;
-	
-				transformFromClause(newpstate, stmt->fromClause);
+
+				/* Begin - BUG#Z00005447 */
+				/*
+				 * there, transformFromClause maybe change origin
+				 * fromclauseitem like JoinExpr, so used in later
+				 * mabye report error, so we copy it
+				 */
+				from_clause = copyObject(stmt->fromClause);
+				transformFromClause(newpstate, from_clause);
+				list_free(from_clause);
+				/* End - BUG#Z00005447 */
 				newpstate->p_expr_kind = EXPR_KIND_SELECT_TARGET;
 
 				saved_state = ctx->cur_pstate;
@@ -874,8 +889,12 @@ add_tabreference_walker(Node *node, void *context)
 								else
 									elog(ERROR, "CONNECT BY clause required in this query block");
 							}
-							r->fields = lcons(makeString(pstrdup(ctx->tbname)),
+							/* Begin - BUG#Z00005447 */
+							/* final add_replace should only replace for some alias columns */
+							if (!ctx->only_replace)
+								r->fields = lcons(makeString(pstrdup(ctx->tbname)),
 										r->fields);
+							/* End - BUG#Z00005447 */
 							break;
 						case 2:
 							filednode = linitial(r->fields);
@@ -924,11 +943,23 @@ add_tabreference_walker(Node *node, void *context)
 				bool child_has_connectby = (stmt->connect_by != NULL);
 				bool saved_has_connectby;
 				ParseState *save_child_pstate;
+				/* Begin - BUG#Z00005447 */
+				List		*copy_fromclause = NIL;
+				/* End - BUG#Z00005447 */
 
 				newpstate = make_parsestate(NULL);
 				newpstate->p_sourcetext = NULL;
 
-				transformFromClause(newpstate, stmt->fromClause);
+				/* Begin - BUG#Z00005447 */
+				/*
+				 * there, transformFromClause maybe change origin
+				 * fromclauseitem like JoinExpr, so used in later
+				 * mabye report error, so we copy it
+				 */
+				copy_fromclause = copyObject(stmt->fromClause);
+				transformFromClause(newpstate, copy_fromclause);
+				list_free(copy_fromclause);
+				/* End - BUG#Z00005447 */
 				newpstate->p_expr_kind = EXPR_KIND_SELECT_TARGET;
 
 				saved_has_connectby = ctx->child_hasconnectby;
@@ -1112,13 +1143,25 @@ remove_tabreference_walker(Node *node, void *context)
 				SelectStmt *stmt = (SelectStmt *) node;
 				ParseState *newpstate;
 				ParseState *saved_child_pstate = ctx->child_pstate;
+				/* Begin - BUG#Z00005447 */
+				List *from_clause;
+				/* End - BUG#Z00005447 */
 
 				newpstate = make_parsestate(NULL);
 				newpstate->p_sourcetext = NULL;
 
 				ctx->child_pstate = newpstate;
 
-				transformFromClause(newpstate, stmt->fromClause);
+				/* Begin - BUG#Z00005447 */
+				/*
+				 * there, transformFromClause maybe change origin
+				 * fromclauseitem like JoinExpr, so used in later
+				 * mabye report error, so we copy it
+				 */
+				from_clause = copyObject(stmt->fromClause);
+				transformFromClause(newpstate, from_clause);
+				list_free(from_clause);
+				/* End - BUG#Z00005447 */
 				newpstate->p_expr_kind = EXPR_KIND_SELECT_TARGET;
 				stmt->targetList = (List *) parsetree_tree_walker((Node *)stmt->targetList,
 								remove_tabreference_walker, context);
@@ -2395,11 +2438,23 @@ replace_series_walker(Node *node, void *context)
 				bool	child_has_connectby = (stmt->connect_by != NULL);
 				bool	saved_child_hasconnectby = ctx->child_hasconnectby;
 				ParseState *saved_child_pstate = ctx->child_pstate;
+				/* Begin - BUG#Z00005447 */
+				List *from_clause;
+				/* End - BUG#Z00005447 */
 
 				newpstate = make_parsestate(NULL);
 				newpstate->p_sourcetext = NULL;
 
-				transformFromClause(newpstate, stmt->fromClause);
+				/* Begin - BUG#Z00005447 */
+				/*
+				 * there, transformFromClause maybe change origin
+				 * fromclauseitem like JoinExpr, so used in later
+				 * mabye report error, so we copy it
+				 */
+				from_clause = copyObject(stmt->fromClause);
+				transformFromClause(newpstate, from_clause);
+				list_free(from_clause);
+				/* End - BUG#Z00005447 */
 				newpstate->p_expr_kind = EXPR_KIND_SELECT_TARGET;
 
 				ctx->child_hasconnectby = child_has_connectby;
@@ -2971,6 +3026,9 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 	tab_ctx.child_hasconnectby = false;
 	tab_ctx.child_pstate = NULL;
 	tab_ctx.remove_schema = true;
+	/* Begin - BUG#Z00005447 */
+	tab_ctx.only_replace = false;
+	/* End - BUG#Z00005447 */
 	tab_ctx.cur_pstate = cur_pstate;
 	tab_ctx.tbname = internel_priorname;
 
@@ -3416,7 +3474,7 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 		List *colrefs;
 		ListCell *lc;
 
-		transformFromClause(tmp_pstate, internel_select->fromClause);
+		transformFromClause(tmp_pstate, copyObject(internel_select->fromClause)); /* BUG#Z00005447 */
 		rtindex = list_length(tmp_pstate->p_rtable);
 		tbl = rt_fetch(rtindex, tmp_pstate->p_rtable);
 		Assert(tbl->eref != NULL && tbl->eref->colnames != NIL);
@@ -4373,6 +4431,9 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 	allfinalstmt->fromClause = list_make1(finalSubselect2);
 
 	tab_ctx.tbname = allfinalname;
+	/* Begin - BUG#Z00005447 */
+	tab_ctx.only_replace = true;
+	/* End - BUG#Z00005447 */
 
 	allfinaltarget = (List *) parsetree_tree_walker((Node *) allfinaltarget,
 			add_tabreference_walker, (void *) &tab_ctx);
@@ -4385,16 +4446,21 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 			add_tabreference_walker, (void *) &tab_ctx);
 	allfinalstmt->whereClause = whereClause;
 
-	tab_ctx.tbname = internel_priorname;
-
+	/* Begin - BUG#Z00005447 */
 	/*
 	 * if there is order by clause in connect by query
 	 * siblings_by has been handle by window func row_num() over(order by)
+	 *
+	 * common order by maybe reference a.xx
 	 */
 	if (sortClause && !siblings_by)
 	{
-		allfinalstmt->sortClause = sortClause;
+		allfinalstmt->sortClause = (List *) parsetree_tree_walker((Node *) sortClause,
+					add_tabreference_walker, (void *) &tab_ctx);
 	}
+	tab_ctx.tbname = internel_priorname;
+	/* End - BUG#Z00005447 */
+
 	allfinalstmt->withClause = withclause;
 	allfinalstmt->limitCount = limitCount;
 	allfinalstmt->limitOffset = limitOffset;
