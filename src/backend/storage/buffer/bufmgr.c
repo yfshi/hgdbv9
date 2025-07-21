@@ -779,7 +779,7 @@ ReadBufferExtended(Relation reln, ForkNumber forkNum, BlockNumber blockNum,
 
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	/* We set/unset the encrypt flag after get the buffer immediately */
-	if (!AllTableEncrypted)
+	if (FileEncryptionEnabled && !AllTableEncrypted)
 	{
 		BufferDesc *bufHdr;
 		uint32		buf_state;
