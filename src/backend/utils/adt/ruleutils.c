@@ -10583,7 +10583,7 @@ get_func_expr(FuncExpr *expr, deparse_context *context,
 	Oid			argtypes[FUNC_MAX_ARGS];
 	int			nargs;
 	List	   *argnames;
-	bool		use_variadic;
+	bool		use_variadic = false; /* BUG#Z00005447 */
 	ListCell   *l;
 
 	/*

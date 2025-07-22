@@ -23397,3 +23397,126 @@ order by emp_name;
 
 --clean data
 drop table org_structure;
+--bug#Z5447
+CREATE TABLE zc_sys_mkb (
+    mkbh varchar2(6) NOT NULL,
+    mkmc varchar2(50),
+    url varchar2(200),
+    xh number(4,0),
+    qxbz varchar2(10),
+    icon varchar2(40),
+    xtbz varchar2(2),
+    czqx number(4,0),
+    ywsm number,
+    tplx number,
+    mklx varchar2(4),
+    ywlx varchar2(4),
+    mkjs varchar2(100),
+    mksm varchar2(100),
+    mkmc_eng varchar2(50),
+    gid varchar2(50),
+    pid varchar2(50)
+);
+CREATE TABLE ZC_SYS_CZQXB (
+	RYBH VARCHAR2(40 char) NOT NULL COLLATE "DEFAULT",
+	MKBH VARCHAR2(6 char) NOT NULL COLLATE "DEFAULT",
+	CZR VARCHAR2(40 char) NULL COLLATE "DEFAULT",
+	CZRQ DATE NULL,
+	CZQX NUMBER NULL,
+	XTBZ VARCHAR2(2 char) NULL COLLATE "DEFAULT",
+	CONSTRAINT ZC_SYS_CZQXB_PK_ZC_SYS_CZQXB PRIMARY KEY (rybh, mkbh)
+);
+insert into zc_sys_mkb(mkbh,gid,pid,qxbz,ywlx) values(1,1,0,1,'ab3d');
+insert into zc_sys_mkb(mkbh,gid,pid,qxbz,ywlx) values(2,2,1,1,'ab3d');
+insert into zc_sys_czqxb(RYBH,MKBH) values('000001',1);
+insert into zc_sys_czqxb(RYBH,MKBH) values('000001',2);
+SELECT g.gid
+FROM zc_sys_mkb g
+START WITH (mkbh IN (SELECT DISTINCT z.mkbh
+FROM ZC_SYS_CZQXB z
+LEFT JOIN zc_sys_mkb a
+ON z.mkbh = a.mkbh
+WHERE z.rybh = '000001'
+AND a.mkbh NOT LIKE '88%'
+AND instr(ywlx, '3') > 0
+AND qxbz = '1'
+AND nvl(mklx, '0') <> '9'
+AND a.mkbh NOT LIKE '66%'))
+CONNECT BY PRIOR g.pid = g.gid order by g.gid;
+ gid 
+-----
+ 1
+ 1
+ 2
+(3 rows)
+
+SELECT g.gid as mds
+FROM zc_sys_mkb g
+START WITH (mkbh IN (SELECT DISTINCT z.mkbh
+FROM ZC_SYS_CZQXB z
+LEFT JOIN zc_sys_mkb a
+ON z.mkbh = a.mkbh
+WHERE z.rybh = '000001'
+AND a.mkbh NOT LIKE '88%'
+AND instr(ywlx, '3') > 0
+AND qxbz = '1'
+AND nvl(mklx, '0') <> '9'
+AND a.mkbh NOT LIKE '66%'))
+CONNECT BY PRIOR g.pid = g.gid order by mds;
+ mds 
+-----
+ 1
+ 1
+ 2
+(3 rows)
+
+create table org_structure (
+	emp_id number,
+	emp_name varchar(50),
+	dept varchar(20),
+	salary number,
+	manager_id number
+);
+insert into org_structure values (1, 'CEO', 'CEO', 100000, NULL);
+insert into org_structure values (2, 'managerA', 'sale', 80000, 1);
+insert into org_structure values (3, 'managerB', 'IT', 85000, 1);
+insert into org_structure values (4, 'staffA1', 'sale', 60000, 2);
+insert into org_structure values (5, 'staffB1', 'IT', 65000, 3);
+--error
+select emp_name, avg(salary) from org_structure
+start with manager_id is null connect by prior emp_id = manager_id
+group by emp_name
+order siblings by emp_name;
+ERROR:  ORDER SIBLINGS BY clause not allowed here
+--ok
+select emp_name::varchar2(256), avg(salary) from org_structure
+start with manager_id::numeric is null connect by prior emp_id = manager_id
+group by emp_name
+order by emp_name;
+ emp_name |         avg         
+----------+---------------------
+ CEO      | 100000.000000000000
+ managerA | 80000.000000000000
+ managerB | 85000.000000000000
+ staffA1  | 60000.000000000000
+ staffB1  | 65000.000000000000
+(5 rows)
+
+--ok
+select emp_name::varchar2(256), avg(salary) from org_structure
+start with manager_id::numeric is null connect by prior emp_id::numeric = manager_id
+group by emp_name
+order by emp_name;
+ emp_name |         avg         
+----------+---------------------
+ CEO      | 100000.000000000000
+ managerA | 80000.000000000000
+ managerB | 85000.000000000000
+ staffA1  | 60000.000000000000
+ staffB1  | 65000.000000000000
+(5 rows)
+
+--clean data
+drop table zc_sys_mkb;
+drop table ZC_SYS_CZQXB;
+drop table org_structure;
