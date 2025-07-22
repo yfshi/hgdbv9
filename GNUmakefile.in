@@ -13,7 +13,11 @@ subdir =
 top_builddir = .
 include $(top_builddir)/src/Makefile.global
  
+ifeq ($(with_sqlite),yes)
 $(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck)	# SRS-MISC-GB18030	# BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH
+else
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/pg_track_settings contrib/credcheck)    # SRS-MISC-GB18030      # BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH
+endif
 
 #/* Begin - BUG#Z00004703 */
 #build src/ before contrib/ or make -j 16 maybe failed for contrilb
@@ -34,8 +38,10 @@ all-contrib/restricted_dba-recurse: all-src-recurse
 install-contrib/restricted_dba-recurse: install-src-recurse
 all-contrib/pg_audit-recurse: all-src-recurse
 install-contrib/pg_audit-recurse: install-src-recurse
+ifeq ($(with_sqlite),yes)
 all-contrib/sqlite_fdw-recurse: all-src-recurse
 install-contrib/sqlite_fdw-recurse: install-src-recurse
+endif
 all-contrib/pg_track_settings-recurse: all-src-recurse
 install-contrib/pg_track_settings-recurse: install-src-recurse
 all-contrib/credcheck-recurse: all-src-recurse
@@ -78,7 +84,11 @@ $(call recurse,distprep coverage,doc src config contrib)
 
 # clean, distclean, etc should apply to contrib too, even though
 # it's not built by default
+ifeq ($(with_sqlite),yes)
 $(call recurse,clean,doc contrib contrib/ivorysql_ora contrib/gb18030_2022 contrib/postgres_fdw contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck src config)	#BUG#M0000243 #BUGM0000266  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH
+else
+$(call recurse,clean,doc contrib contrib/ivorysql_ora contrib/gb18030_2022 contrib/postgres_fdw contrib/pg_audit contrib/pg_track_settings contrib/credcheck src config)     #BUG#M0000243 #BUGM0000266  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH
+endif
 
 clean:
 	rm -rf tmp_install/ portlock/

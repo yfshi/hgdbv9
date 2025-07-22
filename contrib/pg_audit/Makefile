@@ -7,10 +7,10 @@ EXTENSION = pg_audit
 
 PGFILEDESC = "pg_audit - hgdb audit control"
 
-DATA = pg_audit--1.0.sql
+DATA = pg_audit--1.0.sql pg_audit.control
 
 ifeq ($(with_sqlite), yes)
-DATA += pg_audit--1.0-sqlite.sql pg_audit--1.0--1.0-sqlite.sql sqlite.db
+DATA += pg_audit--1.1.sql pg_audit--1.0--1.1-sqlite.sql sqlite.db
 endif
 
 ifdef USE_PGXS
@@ -25,7 +25,7 @@ include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
 ifeq ($(with_sqlite), yes)
-override DATA := pg_audit--1.0-sqlite.sql pg_audit--1.0--1.0-sqlite.sql sqlite.db
+override DATA := pg_audit--1.1.sql pg_audit--1.0--1.1-sqlite.sql sqlite.db
 endif
 
 #SHLIB_LINK += -L$(top_builddir)/src/port -lpgport -lpgport_shlib -lpgport_srv
