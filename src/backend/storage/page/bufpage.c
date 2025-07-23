@@ -1556,6 +1556,9 @@ PageEncryptCopy(Page page, ForkNumber forknum, bool relation_is_permanent,
 {
 	static char *pageCopy = NULL;
 
+	if (!FileEncryptionEnabled)
+		return (char *) page;
+
 	/* If we don't need a checksum, just return the passed-in data */
 	if (PageIsNew(page) || !PageNeedsToBeEncrypted(forknum))
 		return (char *) page;
@@ -1581,6 +1584,9 @@ void
 PageEncryptInplace(Page page, ForkNumber forknum, bool relation_is_permanent,
 				   BlockNumber blkno)
 {
+	if (!FileEncryptionEnabled)
+		return;
+
 	if (PageIsNew(page) || !PageNeedsToBeEncrypted(forknum))
 		return;
 		
@@ -1595,6 +1601,9 @@ void
 PageDecryptInplace(Page page, ForkNumber forknum, bool relation_is_permanent,
 				   BlockNumber blkno)
 {
+	if (!FileEncryptionEnabled)
+		return;
+
 	if (PageIsNew(page) || !PageNeedsToBeEncrypted(forknum))
 		return;
 

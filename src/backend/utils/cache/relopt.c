@@ -49,12 +49,12 @@
 	((relation)->rd_options &&				\
 	((StdRdOptions *) (relation)->rd_options)->encrypt)
 
-bool
+inline bool
 RelationIsEncrypted(Relation rel)
 {
     bool    res = false;
 
-    if (!rel || !rel->rd_rel)
+    if (!FileEncryptionEnabled || !rel || !rel->rd_rel)
         return false;
 
     if (rel->rd_rel->relkind == RELKIND_RELATION ||
