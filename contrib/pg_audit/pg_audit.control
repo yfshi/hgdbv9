@@ -1,5 +1,5 @@
 # hg_audit extension
 comment = 'hgdb audit'
-default_version = '1.0'
+default_version = '1.1'
 module_pathname = '$libdir/pg_audit'
 relocatable = true

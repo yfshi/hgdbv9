@@ -2435,9 +2435,9 @@ static void
 load_pg_audit(FILE *cmdfd)
 {
 #ifdef USE_SQLITE
-	PG_CMD_PUTS("CREATE EXTENSION pg_audit VERSION '1.0-sqlite' SCHEMA public;\n\n");
-#else
 	PG_CMD_PUTS("CREATE EXTENSION pg_audit WITH SCHEMA public;\n\n");
+#else
+	PG_CMD_PUTS("CREATE EXTENSION pg_audit VERSION '1.0' SCHEMA public;\n\n");
 #endif
 }
 
