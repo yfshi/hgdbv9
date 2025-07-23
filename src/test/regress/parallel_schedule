@@ -100,6 +100,10 @@ test: write_parallel
 test: vacuum_parallel
 test: insert_parallel_select
 
+# Run this alone, because concurrent DROP TABLE would make non-superuser
+# "ANALYZE;" fail with "relation with OID $n does not exist".
+test: maintain_every
+
 # no relation related tests can be put in this group
 test: publication subscription
 
