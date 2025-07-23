@@ -1681,6 +1681,9 @@ XLogEncryptCopy(char *xlog, Size size, Size *nencrypted,
 {
 	static char *xlogCopy = NULL;
 
+	if (!WALEncrypted)
+		return xlog;
+
 	if (xlogCopy == NULL)
 	{
 #ifndef FRONTEND
@@ -1710,6 +1713,9 @@ XLogEncryptInplace(char *xlog, Size size, TimeLineID timeline,
 	uint32		counter;
 	uint32		shift;
 	uint32		partlen;
+
+	if (!WALEncrypted)
+		return;
 
 	/* Calculate the counter */
 	counter = offset / WALENC_BLOCK;
@@ -1742,6 +1748,9 @@ XLogDecryptInplace(char *xlog, Size size, TimeLineID timeline,
 	uint32		counter;
 	uint32		shift;
 	uint32		partlen;
+
+	if (!WALEncrypted)
+		return;
 
 	/* Calculate the counter */
 	counter = offset / WALENC_BLOCK;

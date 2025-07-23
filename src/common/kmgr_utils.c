@@ -720,7 +720,7 @@ kmgr_get_keycmd_conf(char *dataDir, char **cluster_key_command,
 	return true;
 }
 
-unsigned int
+inline unsigned int
 hsm_get_kek_id(void)
 {
 	return HSM_KEK_ID;
@@ -1580,7 +1580,7 @@ HSM_AlgId2Name(unsigned int algId)
 	return AlgName;
 }
 
-int
+inline int
 HSM_GetIndexByAlgId(unsigned int algId)
 {
 	int 	index = 0;

@@ -782,21 +782,26 @@ ReadBufferExtended(Relation reln, ForkNumber forkNum, BlockNumber blockNum,
 	if (FileEncryptionEnabled && !AllTableEncrypted)
 	{
 		BufferDesc *bufHdr;
-		uint32		buf_state;
+		uint32		buf_state = 0;
 		
 		if (BufferIsLocal(buf))
 			bufHdr = GetLocalBufferDescriptor(-buf - 1);
 		else
 			bufHdr = GetBufferDescriptor(buf - 1);
-
-		buf_state = LockBufHdr(bufHdr);
-		if (buf_state & BM_VALID)
+		
+		if (bufHdr->state.value & BM_VALID)
 		{
 			bool set_dirty = false;
+
+			/*
+			 * To reduce the impact on performance, we use the relation syscache
+			 * to ensure consistency and postpont the timepoint of locking the buffer.
+			 */
 			if (RelationIsEncrypted(reln))
 			{
-				if (!(buf_state & BM_ENCRYPT))
+				if (!(bufHdr->state.value & BM_ENCRYPT))
 				{
+					buf_state = LockBufHdr(bufHdr);
 					buf_state |= BM_ENCRYPT;
 					set_dirty = true;
 				}
@@ -809,8 +814,9 @@ ReadBufferExtended(Relation reln, ForkNumber forkNum, BlockNumber blockNum,
 				 * passively decrypt one page at a time and then write it
 				 * to disk in plaintext.
 				 */
-				if (buf_state & BM_ENCRYPT)
+				if (bufHdr->state.value & BM_ENCRYPT)
 				{
+					buf_state = LockBufHdr(bufHdr);
 					buf_state &= ~BM_ENCRYPT;
 					set_dirty = true;
 				}
@@ -821,7 +827,8 @@ ReadBufferExtended(Relation reln, ForkNumber forkNum, BlockNumber blockNum,
 				buf_state |= BM_DIRTY;
 			}
 		}
-		UnlockBufHdr(bufHdr, buf_state);
+		if (buf_state != 0)
+			UnlockBufHdr(bufHdr, buf_state);
 	}
 	/* End - ReqID:SRS-SECURITY-TDE */
 

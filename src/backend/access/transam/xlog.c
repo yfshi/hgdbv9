@@ -5350,7 +5350,7 @@ DataChecksumsEnabled(void)
 /*
  * Is cluster file encryption enabled?
  */
-int
+inline int
 GetFileEncryptionMethod(void)
 {
 	if (IsBootstrapProcessingMode())
@@ -5365,7 +5365,7 @@ GetFileEncryptionMethod(void)
 /*
  * Get cluster file encryption mode
  */
-int
+inline int
 GetEncryptionMode(void)
 {
 	if (IsBootstrapProcessingMode())
