@@ -25,8 +25,9 @@
 #include "common/md5.h"
 #include "common/sha1.h"
 #include "common/sha2.h"
+#ifdef USE_GMSSL
 #include "common/sm3.h"		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-
+#endif
 /*
  * In backend, use palloc/pfree to ease the error handling.  In frontend,
  * use malloc to be able to return a failure status back to the caller.

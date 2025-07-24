@@ -28,8 +28,8 @@
 #include "sha1_int.h"
 #include "sha2_int.h"
 
-#include "common/sm3.h" // ReqID:SRS-SECURITY-IDENTITYAUTH
 #ifdef USE_GMSSL
+#include "common/sm3.h" // ReqID:SRS-SECURITY-IDENTITYAUTH
 #include <gmssl/sm3.h>
 #endif
 

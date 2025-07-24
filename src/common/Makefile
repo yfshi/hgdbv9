@@ -79,11 +79,15 @@ OBJS_COMMON = \
 	username.o \
 	wait_error.o \
 	wchar.o	 \
-	sm3_common.o	\
 	mac.o	\
 	hkdf.o	\
 	pass_crypt.o \
 	hex.o
+
+ifeq ($(with_gmssl),yes)
+OBJS_COMMON += sm3_common.o
+endif
+
 ifeq ($(with_ssl),openssl)
 OBJS_COMMON += \
 	protocol_openssl.o \

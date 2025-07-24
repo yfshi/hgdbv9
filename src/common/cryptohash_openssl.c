@@ -33,9 +33,9 @@
 #include "common/md5.h"
 #include "common/sha1.h"
 #include "common/sha2.h"
-
+#ifdef USE_GMSSL
 #include "common/sm3.h" /* ReqID:SRS-SECURITY-IDENTITYAUTH */
-
+#endif
 #ifndef FRONTEND
 #include "utils/memutils.h"
 #include "utils/resowner.h"

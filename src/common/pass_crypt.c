@@ -326,7 +326,7 @@ symm_decrypt(const uint8_t *key, const uint8_t *iv,
  * pass_is_encrypted
  *
  * If it is ciphertext, the last 16 bytes are
- * the first 16 bytes of the sm3-hmac values
+ * the first 16 bytes of the hmac values
  * of all the previous data; if not, it is plaintext.
  */
 bool pass_is_encrypted(const char *passwd)

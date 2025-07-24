@@ -318,13 +318,15 @@ auth_failed(Port *port, int status, char *logdetail)
 		case uaPassword:
 		case uaMD5:
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		case uaSCRAMsha256:
+#ifdef USE_GMSSL
 		case uaSM3:
 		case uaMD5SM3:
 		case uaSM3MD5:
-		case uaSCRAMsha256:
 		case uaSCRAMsm3:
 		case uaSCRAMsha256sm3:
 		case uaSCRAMsm3sha256:
+#endif
 		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 			errstr = gettext_noop("password authentication failed for user \"%s\"");
 			/* We use it to indicate if a .pgpass password failed. */
@@ -647,13 +649,15 @@ ClientAuthentication(Port *port)
 
 		case uaMD5:
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		case uaSCRAMsha256:
+#ifdef USE_GMSSL
 		case uaSM3:
 		case uaMD5SM3:
 		case uaSM3MD5:
-		case uaSCRAMsha256:
 		case uaSCRAMsm3:
 		case uaSCRAMsha256sm3:
 		case uaSCRAMsm3sha256:
+#endif
 		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 			status = CheckPWChallengeAuth(port, &logdetail);
 			break;
@@ -887,13 +891,16 @@ CheckPWChallengeAuth(Port *port, char **logdetail)
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	UserAuth	tmp_auth = port->hba->auth_method;
 	Assert(port->hba->auth_method == uaSCRAMsha256 ||
-		   port->hba->auth_method == uaSCRAMsm3 ||
+			port->hba->auth_method == uaMD5
+#ifdef USE_GMSSL
+		   || port->hba->auth_method == uaSCRAMsm3 ||
 		   port->hba->auth_method == uaSCRAMsha256sm3 ||
 		   port->hba->auth_method == uaSCRAMsm3sha256 ||
 		   port->hba->auth_method == uaSM3 ||
-		   port->hba->auth_method == uaMD5 ||
 		   port->hba->auth_method == uaSM3MD5 ||
-		   port->hba->auth_method == uaMD5SM3);
+		   port->hba->auth_method == uaMD5SM3
+#endif
+		   );
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	/* First look up the user's password. */

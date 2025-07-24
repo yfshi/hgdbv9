@@ -4111,7 +4111,7 @@ get_auth_method(UserAuth method)
 		case uaMD5:
 			strcpy(result, "md5");
 			break;
-#ifdef ENABLE_IDCHECK
+#ifdef USE_GMSSL
 		case uaSM3:
 			strcpy(result, "sm3");
 			break;

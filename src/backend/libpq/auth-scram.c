@@ -1223,7 +1223,11 @@ verify_client_proof(scram_state *state)
 	pg_hmac_ctx *ctx = NULL; /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 	int			i;
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	if(state->port->hba->auth_method == uaSCRAMsha256 || state->port->hba->auth_method == uaSCRAMsm3sha256)
+	if(state->port->hba->auth_method == uaSCRAMsha256
+#ifdef USE_GMSSL
+	|| state->port->hba->auth_method == uaSCRAMsm3sha256
+#endif
+	)
 		ctx = pg_hmac_create(PG_SHA256);
 #ifdef USE_GMSSL
 	else if(state->port->hba->auth_method == uaSCRAMsm3 || state->port->hba->auth_method == uaSCRAMsha256sm3)
@@ -1262,13 +1266,20 @@ verify_client_proof(scram_state *state)
 		ClientKey[i] = state->ClientProof[i] ^ ClientSignature[i];
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	/* Hash it one more time, and compare with StoredKey */
-	if(state->port->hba->auth_method == uaSCRAMsha256 || state->port->hba->auth_method == uaSCRAMsha256sm3){
+	if(state->port->hba->auth_method == uaSCRAMsha256
+#ifdef USE_GMSSL
+	 || state->port->hba->auth_method == uaSCRAMsha256sm3
+#endif
+	 ){
 		if (scram_H("SCRAM-SHA-256", ClientKey, SCRAM_KEY_LEN, client_StoredKey) < 0)
 			elog(ERROR, "could not hash stored key");
-	}else if(state->port->hba->auth_method == uaSCRAMsm3 || state->port->hba->auth_method == uaSCRAMsm3sha256){
+	}
+#ifdef USE_GMSSL
+	else if(state->port->hba->auth_method == uaSCRAMsm3 || state->port->hba->auth_method == uaSCRAMsm3sha256){
 		if (scram_H("SCRAM-SM3", ClientKey, SCRAM_KEY_LEN, client_StoredKey) < 0)
 			elog(ERROR, "could not hash stored key");
 	}
+#endif
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (memcmp(client_StoredKey, state->StoredKey, SCRAM_KEY_LEN) != 0)
 		return false;
@@ -1499,7 +1510,11 @@ build_server_final_message(scram_state *state)
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	pg_hmac_ctx *ctx = NULL;//pg_hmac_create(PG_SHA256);
 
-	if (state->port->hba->auth_method == uaSCRAMsha256 || state->port->hba->auth_method == uaSCRAMsm3sha256)
+	if (state->port->hba->auth_method == uaSCRAMsha256
+#ifdef USE_GMSSL
+	|| state->port->hba->auth_method == uaSCRAMsm3sha256
+#endif
+	)
 		ctx = pg_hmac_create(PG_SHA256);
 #ifdef USE_GMSSL
 	else if (state->port->hba->auth_method == uaSCRAMsm3 || state->port->hba->auth_method == uaSCRAMsha256sm3)

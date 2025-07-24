@@ -21,8 +21,6 @@
 #ifndef PG_PASS_CRYPT_H
 #define PG_PASS_CRYPT_H
 
-#include "common/sm3.h"
-
 #define PG_DIGEST_LENGTH 32
 #define SYMM_IV_SIZE 16
 #define PWD_MAX_SIZE 32
