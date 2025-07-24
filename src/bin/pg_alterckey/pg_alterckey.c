@@ -103,6 +103,7 @@ static bool pass_terminal_fd = false;
 int			terminal_fd = -1;
 static bool repair_mode = false;
 static bool upgrade_mode = false;
+static bool downgrade_mode = false;
 static char *old_cluster_key_cmd = NULL,
 		   *new_cluster_key_cmd = NULL;
 static char old_cluster_key[KMGR_CLUSTER_KEY_LEN],
@@ -128,6 +129,8 @@ static void bzero_keys_and_exit(exit_action action);
 static void reencrypt_data_keys(void);
 static void install_new_keys(void);
 static OldVersion_ControlFileData *get_old_controlfile(const char *DataDir, bool *crc_ok_p);
+static void update_old_controlfile(const char *DataDir,
+					   				OldVersion_ControlFileData *ControlFile, bool do_sync);
 static void upgrade_controlfile(void);
 
 static void
@@ -146,6 +149,7 @@ usage(const char *progname)
 	printf(_("  -r, --repair           repair previous failure\n"));
 	printf(_("\nUpgrade options:\n"));
 	printf(_("  -u, --upgrade          upgrade pg_control file\n"));
+	printf(_("  -d, --downgrade        downgrade pg_control file\n"));
 	printf(_("\nIf no data directory (DATADIR) is specified, "
 			 "the environment variable PGDATA\nis used.\n\n"));
 	printf(_("Report bugs to <%s>.\n"), PACKAGE_BUGREPORT);
@@ -161,6 +165,7 @@ main(int argc, char *argv[])
 		{"repair", required_argument, NULL, 'r'},
 		{"pgdata", required_argument, NULL, 'D'},
 		{"upgrade", no_argument, NULL, 'u'},
+		{"downgrade", no_argument, NULL, 'd'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -185,7 +190,7 @@ main(int argc, char *argv[])
 	}
 
 	/* check for -r/-R */
-	while ((c = getopt_long(argc, argv, "D:rRu", long_options, NULL)) != -1)
+	while ((c = getopt_long(argc, argv, "dD:rRu", long_options, NULL)) != -1)
 	{
 		switch (c)
 		{
@@ -201,13 +206,16 @@ main(int argc, char *argv[])
 			case 'u':
 				upgrade_mode = true;
 				break;
+			case 'd':
+				downgrade_mode = true;
+				break;
 			default:
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 				exit(1);
 		}
 	}
 
-	if (!repair_mode && !upgrade_mode)
+	if (!repair_mode && !upgrade_mode && !downgrade_mode)
 	{
 		/* get cluster key commands */
 		if (optind < argc)
@@ -317,7 +325,7 @@ main(int argc, char *argv[])
 
 	recover_failure();
 
-	if (!repair_mode && !upgrade_mode)
+	if (!repair_mode && !upgrade_mode && !downgrade_mode)
 	{
 		retrieve_cluster_keys();
 		reencrypt_data_keys();
@@ -801,17 +809,36 @@ static void upgrade_controlfile(void)
 
 		new_control_file_data = palloc(sizeof(ControlFileData));
 		memcpy(new_control_file_data, old_control_file_data, 
-			   sizeof(OldVersion_ControlFileData) - sizeof(pg_crc32c));
+			   offsetof(OldVersion_ControlFileData, crc));
 		
 		new_control_file_data->file_encryption_method = 0;
 		new_control_file_data->encryption_target_mode = 0;
 
 		update_controlfile(DataDir, new_control_file_data, true);
 	}
+	else if (downgrade_mode)
+	{
+		bool	crc_ok;
+		OldVersion_ControlFileData *old_control_file_data;
+		ControlFileData *new_control_file_data;
+		
+		new_control_file_data = get_controlfile(DataDir, &crc_ok);
+		if (!crc_ok)
+		{
+			printf("%s: control file appears to be corrupt\n", progname);
+			exit(1);
+		}
+
+		old_control_file_data = palloc(sizeof(ControlFileData));
+		memcpy(old_control_file_data, new_control_file_data, 
+			   offsetof(OldVersion_ControlFileData, crc));
+
+		update_old_controlfile(DataDir, old_control_file_data, true);
+	}
 }
 
 /* Get old version controlfile values */
-OldVersion_ControlFileData *
+static OldVersion_ControlFileData *
 get_old_controlfile(const char *DataDir, bool *crc_ok_p)
 {
 	OldVersion_ControlFileData *ControlFile;
@@ -895,4 +922,71 @@ retry:
 					   "the PostgreSQL installation would be incompatible with this data directory.");
 
 	return ControlFile;
+}
+
+static void
+update_old_controlfile(const char *DataDir,
+					   OldVersion_ControlFileData *ControlFile, bool do_sync)
+{
+	int			fd;
+	char		buffer[PG_CONTROL_FILE_SIZE];
+	char		ControlFilePath[MAXPGPATH];
+
+	/*
+	 * Apply the same static assertions as in backend's WriteControlFile().
+	 */
+	StaticAssertStmt(sizeof(OldVersion_ControlFileData) <= PG_CONTROL_MAX_SAFE_SIZE,
+					 "pg_control is too large for atomic disk writes");
+	StaticAssertStmt(sizeof(OldVersion_ControlFileData) <= PG_CONTROL_FILE_SIZE,
+					 "sizeof(ControlFileData) exceeds PG_CONTROL_FILE_SIZE");
+
+	/* Recalculate CRC of control file */
+	INIT_CRC32C(ControlFile->crc);
+	COMP_CRC32C(ControlFile->crc,
+				(char *) ControlFile,
+				offsetof(OldVersion_ControlFileData, crc));
+	FIN_CRC32C(ControlFile->crc);
+
+	/*
+	 * Write out PG_CONTROL_FILE_SIZE bytes into pg_control by zero-padding
+	 * the excess over sizeof(ControlFileData), to avoid premature EOF related
+	 * errors when reading it.
+	 */
+	memset(buffer, 0, PG_CONTROL_FILE_SIZE);
+	memcpy(buffer, ControlFile, sizeof(OldVersion_ControlFileData));
+
+	snprintf(ControlFilePath, sizeof(ControlFilePath), "%s/%s", DataDir, "global/pg_control");
+
+	if ((fd = open(ControlFilePath, O_WRONLY | PG_BINARY,
+				   pg_file_create_mode)) == -1)
+	{
+		pg_log_fatal("could not open file \"%s\": %m", ControlFilePath);
+		exit(EXIT_FAILURE);
+	}
+
+	errno = 0;
+	if (write(fd, buffer, PG_CONTROL_FILE_SIZE) != PG_CONTROL_FILE_SIZE)
+	{
+		/* if write didn't set errno, assume problem is no disk space */
+		if (errno == 0)
+			errno = ENOSPC;
+
+		pg_log_fatal("could not write file \"%s\": %m", ControlFilePath);
+		exit(EXIT_FAILURE);
+	}
+
+	if (do_sync)
+	{
+		if (fsync(fd) != 0)
+		{
+			pg_log_fatal("could not fsync file \"%s\": %m", ControlFilePath);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if (close(fd) != 0)
+	{
+		pg_log_fatal("could not close file \"%s\": %m", ControlFilePath);
+		exit(EXIT_FAILURE);
+	}
 }
