@@ -18,6 +18,8 @@
 #include "common/controldata_utils.h"
 #include "common/file_utils.h"
 #include "common/kmgr_utils.h"
+
+#define TDE_PG_VERSION_NUM	140016
 /* End - ReqID:SRS-SECURITY-TDE */
 
 /*
@@ -68,7 +70,8 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 	bool		got_data_checksum_version = false;
 	bool		got_cluster_state = false;
 	/* Begin - ReqID:SRS-SECURITY-TDE */
-	int			got_file_encryption_method = false;
+	bool		got_file_encryption_method = false;
+	bool		got_file_encryption_mode = false;
 	/* End - ReqID:SRS-SECURITY-TDE */
 	char	   *lc_collate = NULL;
 	char	   *lc_ctype = NULL;
@@ -138,11 +141,13 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 					 cmd, strerror(errno));
 
 		/* Begin - ReqID:SRS-SECURITY-TDE */
-		/* Only in >= 13 */
-		if (GET_MAJOR_VERSION(cluster->major_version) >= 1300)
+		/* Only in >= PG v14.16(HGDB v9.0.4) */
+		if (cluster->bin_version >= TDE_PG_VERSION_NUM)
 		{
 			cluster->controldata.file_encryption_method = DISABLED_ENCRYPTION_METHOD;
 			got_file_encryption_method = true;
+			cluster->controldata.encryption_target_mode = ENCRYPTION_MODE_NOTHING;
+			got_file_encryption_mode = true;
 		}
 		/* End - ReqID:SRS-SECURITY-TDE */
 
@@ -560,7 +565,7 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 		}
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
 		/* Begin - ReqID:SRS-SECURITY-TDE */
-		else if ((p = strstr(bufin, "Cluster file encryption method:")) != NULL)
+		else if ((p = strstr(bufin, "File encryption method:")) != NULL)
 		{
 			p = strchr(p, ':');
 
@@ -570,6 +575,18 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 			p++;				/* remove ':' char */
 			/* used later for contrib check */
 			cluster->controldata.file_encryption_method = atoi(p);
+			got_file_encryption_method = true;
+		}
+		else if ((p = strstr(bufin, "File encryption mode:")) != NULL)
+		{
+			p = strchr(p, ':');
+
+			if (p == NULL || strlen(p) <= 1)
+				pg_fatal("%d: controldata retrieval problem\n", __LINE__);
+
+			p++;				/* remove ':' char */
+			/* used later for contrib check */
+			cluster->controldata.encryption_target_mode = atoi(p);
 			got_file_encryption_method = true;
 		}
 		/* End - ReqID:SRS-SECURITY-TDE */
@@ -643,7 +660,8 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 		 cluster->controldata.ctrl_ver >= LARGE_OBJECT_SIZE_PG_CONTROL_VER) ||
 		!got_date_is_int || !got_data_checksum_version ||
 		cluster->controldata.database_mode == DB_NATIVE ||/* ReqID:SRS-CMD-pg2highgo */
-		!got_file_encryption_method) /* ReqID:SRS-SECURITY-TDE */
+		(cluster->bin_version >= TDE_PG_VERSION_NUM && /* ReqID:SRS-SECURITY-TDE */
+		 (!got_file_encryption_method || !got_file_encryption_mode))) 
 	{
 		if (cluster == &old_cluster)
 			pg_log(PG_REPORT,
@@ -716,9 +734,14 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 			pg_log(PG_REPORT, "  database mode\n");
 
 		/* Begin - ReqID:SRS-SECURITY-TDE */
-		/* value added in Postgres 13(HGDB v9) */
-		if (!got_file_encryption_method)
+		/* value added in Postgres 14.16(HGDB v9.0.4) */
+		if (cluster->bin_version >= TDE_PG_VERSION_NUM && 
+			!got_file_encryption_method)
 			pg_log(PG_REPORT, "  file encryption method\n");
+		
+		if (cluster->bin_version >= TDE_PG_VERSION_NUM && 
+			!got_file_encryption_mode)
+			pg_log(PG_REPORT, "  file encryption mode\n");
 		/* End - ReqID:SRS-SECURITY-TDE */
 
 		pg_fatal("Cannot continue without required control information, terminating\n");
@@ -796,8 +819,9 @@ check_control_data(ControlData *oldctrl,
 	 * We cannot upgrade if the old cluster file encryption method
 	 * doesn't match the new one.
 	 */
-	if (oldctrl->file_encryption_method != newctrl->file_encryption_method)
-		pg_fatal("old and new clusters use different file encryption methods or\n"
+	if (oldctrl->file_encryption_method != newctrl->file_encryption_method ||
+		oldctrl->encryption_target_mode != newctrl->encryption_target_mode)
+		pg_fatal("old and new clusters use different file encryption methods/mode or\n"
 				 "one cluster uses encryption and the other does not");
 	/* End - ReqID:SRS-SECURITY-TDE */
 }

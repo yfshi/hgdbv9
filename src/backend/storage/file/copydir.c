@@ -29,6 +29,7 @@
 /* Begin - ReqID:SRS-SECURITY-TDE */
 #include "access/xloginsert.h"
 #include "crypto/bufenc.h"
+#include "access/xlog.h"
 /* End - ReqID:SRS-SECURITY-TDE */
 
 /*
@@ -216,13 +217,14 @@ copy_file(char *fromfile, char *tofile,
 		 * relation, its real LSN must be replaced with a fake one, and the
 		 * page encrypted.
 		 */
-		if (encrypt_init_file)
+		if (encrypt_init_file && FileEncryptionEnabled)
 		{
 			Page page = (Page) buffer;
 
 			Assert(nbytes == BLCKSZ);
 			PageSetLSN(page, LSNForEncryption(false));
 			PageEncryptInplace(page, MAIN_FORKNUM, false, offset / BLCKSZ);
+			PageSetChecksumInplace(page, offset / BLCKSZ);
 		}
 		/* End - ReqID:SRS-SECURITY-TDE */
 

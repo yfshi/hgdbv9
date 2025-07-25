@@ -231,6 +231,7 @@ typedef struct
 	DBMode		database_mode;	/* ReqID:SRS-CMD-pg2highgo */
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	int			file_encryption_method;
+	int			encryption_target_mode;
 	/* End - ReqID:SRS-SECURITY-TDE */
 } ControlData;
 
