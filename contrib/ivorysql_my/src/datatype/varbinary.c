@@ -305,10 +305,42 @@ varbinary_in(PG_FUNCTION_ARGS)
 	int 	bc, 
 			zero_cnt = 0,
 			atttypmod = PG_GETARG_INT32(2);
-	size_t 	len = strlen(inputText); // actual save length
+	size_t 	len = strlen(inputText),
+			maxlen = atttypmod - VARHDRSZ;
+	size_t  hex_len = 0;
 	bytea 	*result;
-	
-	if (atttypmod >= (int32)VARHDRSZ)
+
+	/* Recognize hex input */
+	/* Begin - bug#z5465 */ 
+	if (inputText[0] == '\\' && inputText[1] == 'x')
+	{
+		hex_len = len - 2;
+		if (HEX_LEN(len) > maxlen)
+		{
+			if (is_strict_mode())
+			{
+				ereport(ERROR, 
+					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+						errmsg("value too long for type varbinary(%d)", atttypmod - VARHDRSZ)));
+			}
+			else
+			{
+				hex_len = maxlen * 2;
+				ereport(WARNING, 
+					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+						errmsg("value too long for type varbinary(%d)", atttypmod - VARHDRSZ)));
+			}
+		}
+		result = (bytea *)palloc(HEX_LEN(len) + VARHDRSZ); /* */
+
+		bc = hex_decode(inputText + 2, hex_len, VARDATA(result));
+		SET_VARSIZE(result, HEX_LEN(len) > maxlen ? atttypmod : HEX_LEN(len) + VARHDRSZ);
+		PG_RETURN_BYTEA_P(result);
+	}
+	/* End - bug#z5465 */ 
+
+	/* Else, it's the traditional escaped style */
+	if (atttypmod >= (int32)VARHDRSZ && len > maxlen)
 	{
 		if (is_strict_mode())
 		{
@@ -325,18 +357,6 @@ varbinary_in(PG_FUNCTION_ARGS)
 		}
 	}
 
-	/* Recognize hex input */
-	if (inputText[0] == '\\' && inputText[1] == 'x')
-	{
-		bc = (len - 2) / 2 + VARHDRSZ; /* maximum possible length */
-		result = palloc(bc);
-		bc = hex_decode(inputText + 2, len - 2, VARDATA(result));
-		SET_VARSIZE(result, bc + VARHDRSZ); /* actual length */
-
-		PG_RETURN_BYTEA_P(result);
-	}
-
-	/* Else, it's the traditional escaped style */
 	for (bc = 0, tp = inputText; *tp != '\0'; bc++)
 	{
 		if (tp[0] != '\\')

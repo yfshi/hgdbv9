@@ -31,7 +31,6 @@
 #include "utils/sortsupport.h"
 #include "utils/varlena.h"
 
-#define BINARY_LEN(len)     ((len - 2) / 2)
 #define BINARY_DEFAULT_LEN  1
 
 static Datum 
@@ -131,10 +130,49 @@ binary_in(PG_FUNCTION_ARGS)
 	char *tp = NULL;
 	char *rp = NULL;
 	size_t len = strlen(inputText);
+	size_t hex_len = 0;
 	bytea *result;
 	size_t maxlen = atttypmod - VARHDRSZ;
 	size_t maxmblen = pg_mbcharcliplen(inputText, len, maxlen); // actual save length
 
+	/* Recognize hex input */
+	/* Begin - bug#z5465 */ 
+	if (inputText[0] == '\\' && inputText[1] == 'x')
+	{
+		hex_len = len - 2;
+		if (atttypmod < VARHDRSZ)
+		{
+			bc = HEX_LEN(len) + VARHDRSZ; /* maximum possible length */
+			result = (bytea *)palloc(bc);
+		}
+		else
+		{
+			if (HEX_LEN(len) > maxlen)
+			{
+				if (is_strict_mode())
+				{
+					ereport(ERROR, 
+						(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+							errmsg("value too long for type binary(%d)", atttypmod - VARHDRSZ)));
+				}
+				else
+				{
+					hex_len = maxlen * 2;
+					ereport(WARNING, 
+						(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+							errmsg("value too long for type binary(%d)", atttypmod - VARHDRSZ)));
+				}
+			}
+			result = (bytea *)palloc0(atttypmod); /* palloc0, pad with zero */
+		}
+
+		bc = hex_decode(inputText + 2, hex_len, VARDATA(result));
+		SET_VARSIZE(result, atttypmod < VARHDRSZ ? bc + VARHDRSZ : atttypmod);
+		PG_RETURN_BYTEA_P(result);
+	}
+	/* End - bug#z5465 */ 
+
+	/* Else, it's the traditional escaped style */
 	if (len > maxlen)
 	{
 		char *new_text;
@@ -158,31 +196,6 @@ binary_in(PG_FUNCTION_ARGS)
 		PG_RETURN_BYTEA_P(DirectFunctionCall1(byteain, CStringGetDatum(new_text)));
 	}
 
-	/* Recognize hex input */
-	if (inputText[0] == '\\' && inputText[1] == 'x')
-	{
-		if (atttypmod < VARHDRSZ)
-		{
-			bc = (len - 2) / 2 + VARHDRSZ; /* maximum possible length */
-			result = (bytea *)palloc(bc);
-		}
-		else
-		{
-			if (BINARY_LEN(len) > (size_t)(atttypmod - VARHDRSZ))
-			{
-				ereport(ERROR, 
-					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-						errmsg("value too long for type binary(%d)", atttypmod - VARHDRSZ)));
-			}
-			result = (bytea *)palloc0(atttypmod); /* palloc0, pad with zero */
-		}
-
-		bc = hex_decode(inputText + 2, len - 2, VARDATA(result));
-		SET_VARSIZE(result, atttypmod < VARHDRSZ ? bc + VARHDRSZ : atttypmod);
-		PG_RETURN_BYTEA_P(result);
-	}
-
-	/* Else, it's the traditional escaped style */
 	bc = 0;
 	tp = inputText;
 	while (*tp != '\0')

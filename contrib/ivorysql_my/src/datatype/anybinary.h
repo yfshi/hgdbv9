@@ -19,6 +19,7 @@
 #include "utils/guc.h"
 
 #define VAL(CH)			((CH) - '0')
+#define HEX_LEN(len)		((len - 2 + 1) / 2)
 
 extern bytea *truncate_bytea_with_len(const bytea *b, int len);
 extern Datum varbinary2bool(PG_FUNCTION_ARGS);
