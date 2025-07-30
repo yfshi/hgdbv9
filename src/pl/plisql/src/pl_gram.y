@@ -268,7 +268,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 
 /* Begin - ReqID:SRS-PLSQL-EXCEPTION */
 %type <str>		exception_any_identifier
-%type <ival> 	exception_error_code
+%type <ival> 	SignedIconst
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 
@@ -345,6 +345,10 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %type <recorditem>	record_arg_item
 /* End - ReqID:SRS-PLSQL-RECORD */
 
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+%type <dtype>	subtype_basetype
+%type <list>	subtype_range
+/* End - ReqID:SRS-PLSQL-SUBTYPE */
 
 /*
  * Basic non-keyword token types.  These are hard-wired into the core lexer.
@@ -504,6 +508,9 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 /* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_QUERY
 %token <keyword>	K_RAISE
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+%token <keyword>	K_RANGE
+/* End - ReqID:SRS-PLSQL-SUBTYPE */
 /* Begin - ReqID:SRS-PLSQL-RECORD */
 %token <keyword>	K_RECORD
 /* End - ReqID:SRS-PLSQL-RECORD */
@@ -532,6 +539,9 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_SQLSTATE
 %token <keyword>	K_STACKED
 %token <keyword>	K_STRICT
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+%token <keyword>	K_SUBTYPE
+/* End - ReqID:SRS-PLSQL-SUBTYPE */
 %token <keyword>	K_TABLE
 %token <keyword>	K_TABLE_NAME
 %token <keyword>	K_THEN
@@ -560,6 +570,10 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %left K_CURSOR
 %nonassoc K_ALIAS K_COLLATE K_CONSTANT K_DEFAULT K_NO K_SCROLL
 /* End - ReqID:SRS-PLSQL-CURSOR */
+
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+%nonassoc K_SUBTYPE
+/* End - ReqID:SRS-PLSQL-SUBTYPE */
 
 %%
 
@@ -970,7 +984,7 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 										   $4->itemno, $1.name);
 					}
 				/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
-				| K_PRAGMA K_EXCEPTION_INIT '(' any_identifier ',' exception_error_code ')' ';'
+				| K_PRAGMA K_EXCEPTION_INIT '(' any_identifier ',' SignedIconst ')' ';'
 					{
 						PLiSQL_var *exception_var;
 						PLiSQL_nsitem *nsi;
@@ -1216,7 +1230,33 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						plisql_build_ora_rec_type($2.name, $2.lineno, $6);
 					}
 				/* End - ReqID:SRS-PLSQL-RECORD */
+				/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+				| K_SUBTYPE decl_varname K_IS subtype_basetype subtype_range decl_notnull ';'
+					{
+						plisql_build_subtype($2.name, $2.lineno, $4, $5, $6);
+					}
+				/* End - ReqID:SRS-PLSQL-SUBTYPE */
 				;
+
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+subtype_basetype: decl_datatype
+				{
+					$$ = $1;
+				}
+			;
+
+subtype_range : 
+				{
+					$$ = NULL;
+				}
+			| K_RANGE SignedIconst DOT_DOT SignedIconst
+				{
+
+					$$ = list_make2_int($2, $4);
+				}
+			;
+
+/* End - ReqID:SRS-PLSQL-SUBTYPE */
 
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 cursor_heading: ora_function_name opt_scrollable K_CURSOR decl_cursor_args
@@ -3991,7 +4031,7 @@ exception_any_identifier	: T_WORD
 					}
 				;
 
-exception_error_code:	'-' ICONST	{$$ = 0 - $2;}
+SignedIconst:	'-' ICONST	{$$ = 0 - $2;}
 						|'+' ICONST	{$$ = $2;}
 						|ICONST { $$ = $1;}
 						;
@@ -4097,6 +4137,7 @@ unreserved_keyword	:
 				| K_PRIOR
 				| K_QUERY
 				| K_RAISE
+				| K_RANGE	/* ReqID:SRS-PLSQL-SUBTYPE */
 				/* Begin - ReqID:SRS-PLSQL-CURSOR */
 				| K_REF
 				/* End - ReqID:SRS-PLSQL-CURSOR */
@@ -4118,6 +4159,7 @@ unreserved_keyword	:
 				| K_SLICE
 				| K_SQLSTATE
 				| K_STACKED
+				| K_SUBTYPE	/* ReqID:SRS-PLSQL-SUBTYPE */
 				| K_TABLE
 				| K_TABLE_NAME
 				/* Begin - SRS-PLSQL-SUBPROC */
@@ -4216,6 +4258,7 @@ unit_name_keyword:
 				| K_PRIOR
 				| K_QUERY
 				| K_RAISE
+				| K_RANGE	/* ReqID:SRS-PLSQL-SUBTYPE */
 				/* Begin - ReqID:SRS-PLSQL-CURSOR */
 				| K_REF
 				/* End - ReqID:SRS-PLSQL-CURSOR */
@@ -4235,6 +4278,7 @@ unit_name_keyword:
 				| K_SLICE
 				| K_SQLSTATE
 				| K_STACKED
+				| K_SUBTYPE	/* ReqID:SRS-PLSQL-SUBTYPE */
 				| K_TABLE
 				| K_TABLE_NAME
 				| K_USE_COLUMN
@@ -4648,6 +4692,10 @@ read_datatype(int tok)
 			tok == K_PIPELINED) && parenlevel == 0)
 			break;
 		/* End - SRS-PLSQL-SUBPROC */
+		/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+		if (tok == K_RANGE && parenlevel == 0)
+			break;
+		/* End - ReqID:SRS-PLSQL-SUBTYPE */
 		if (tok == '(')
 			parenlevel++;
 		else if (tok == ')')

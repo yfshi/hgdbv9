@@ -124,8 +124,11 @@ typedef enum PLiSQL_type_type
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 	PLISQL_TTYPE_PSEUDO,		/* pseudotypes */
 	/* Begin - ReqID:SRS-PLSQL-RECORD */
-	PLISQL_TTYPE_ORARECORD_TYPE		/* Oracle compatible record type or other types */
+	PLISQL_TTYPE_ORARECORD_TYPE,		/* Oracle compatible record type or other types */
 	/* End - ReqID:SRS-PLSQL-RECORD */
+	/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+	PLISQL_TTYPE_SUBTYPE
+	/* End - ReqID:SRS-PLSQL-SUBTYPE */
 } PLiSQL_type_type;
 
 /*
@@ -1467,7 +1470,9 @@ extern void plisql_finish_datums(PLiSQL_function *function);
 /* Begin - ReqID:SRS-PLSQL-EXCEPTION */
 extern const char * plisql_recognize_err_message_int(int oraerrcode);
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
-
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+extern PLiSQL_datum *plisql_copy_base_datatype(PLiSQL_type *in, char *subtypnme, int lineno);
+/* End - ReqID:SRS-PLSQL-SUBTYPE */
 
 
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */

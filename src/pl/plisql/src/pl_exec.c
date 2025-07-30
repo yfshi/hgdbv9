@@ -6044,6 +6044,26 @@ exec_assign_value(PLiSQL_execstate *estate,
 							 errmsg("null value cannot be assigned to variable \"%s\" declared NOT NULL",
 									var->refname)));
 
+				/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+				if (var->datatype->ttype == PLISQL_TTYPE_SUBTYPE) 
+				{
+					PLiSQL_subtype_type *subtype = (PLiSQL_subtype_type *)var->datatype;
+					if (subtype->setRange) 
+					{
+						/* 
+						 * In fact, we should also check the type of "newvalue" here. However, since "setRange"
+						 * has already performed a numeric type check, it seems that the check on "newvalue"
+						 * can be directly handed over to the type conversion check above.
+						 */
+						if (DirectFunctionCall2(int4lt, newvalue, Int32GetDatum(subtype->lower)) ||
+							DirectFunctionCall2(int4gt, newvalue, Int32GetDatum(subtype->upper))) 
+						{
+								elog(ERROR, "numeric or value error");
+						}
+					}
+				}
+				/* End - ReqID:SRS-PLSQL-SUBTYPE */
+
 				/* Begin - ReqID:SRS-PLSQL-CURSOR */
 				/* strong refcursor should change its type */
 				if (!isNull &&

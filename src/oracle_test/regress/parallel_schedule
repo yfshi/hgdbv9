@@ -242,3 +242,7 @@ test: ora_copy_gbk_2_utf8
 #/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
 test: ora_connectby
 #/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+#/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+test: subtype
+#/* End - ReqID:SRS-PLSQL-SUBTYPE */
