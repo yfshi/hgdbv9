@@ -19585,7 +19585,7 @@ my_strnxfrm_gb18030(const CHARSET_INFO *cs, uchar *dst,
         }
     }
 
-    return my_strxfrm_pad(cs, ds, dst, de, nweights, flags);
+    return my_strxfrm_pad_desc_and_reverse(cs, ds, dst, de, nweights, flags, 0);
 }
 
 static size_t

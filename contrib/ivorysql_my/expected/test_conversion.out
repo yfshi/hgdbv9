@@ -1040,17 +1040,11 @@ LINE 1: SELECT         c1::datetime       FROM my_binary_t07;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_binary_t07;
-ERROR:  cannot cast type binary to numeric
-LINE 1: SELECT  cast(c1 as decimal(4, 0)) FROM my_binary_t07;
-                ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 SELECT convert(c1, decimal(4, 0)) FROM my_binary_t07;
-ERROR:  cannot cast type binary to numeric
-LINE 1: SELECT convert(c1, decimal(4, 0)) FROM my_binary_t07;
-               ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 SELECT         c1::decimal(4, 0)  FROM my_binary_t07;
-ERROR:  cannot cast type binary to numeric
-LINE 1: SELECT         c1::decimal(4, 0)  FROM my_binary_t07;
-                         ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_binary_t07;
@@ -1457,17 +1451,11 @@ LINE 1: SELECT         c1::datetime       FROM my_blob_t09;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_blob_t09;
-ERROR:  cannot cast type blob to numeric
-LINE 1: SELECT  cast(c1 as decimal(4, 0)) FROM my_blob_t09;
-                ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 SELECT convert(c1, decimal(4, 0)) FROM my_blob_t09;
-ERROR:  cannot cast type blob to numeric
-LINE 1: SELECT convert(c1, decimal(4, 0)) FROM my_blob_t09;
-               ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 SELECT         c1::decimal(4, 0)  FROM my_blob_t09;
-ERROR:  cannot cast type blob to numeric
-LINE 1: SELECT         c1::decimal(4, 0)  FROM my_blob_t09;
-                         ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_blob_t09;
@@ -1615,17 +1603,11 @@ LINE 1: SELECT         c1::datetime       FROM my_tinyblob_t10;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_tinyblob_t10;
-ERROR:  cannot cast type tinyblob to numeric
-LINE 1: SELECT  cast(c1 as decimal(4, 0)) FROM my_tinyblob_t10;
-                ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 SELECT convert(c1, decimal(4, 0)) FROM my_tinyblob_t10;
-ERROR:  cannot cast type tinyblob to numeric
-LINE 1: SELECT convert(c1, decimal(4, 0)) FROM my_tinyblob_t10;
-               ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 SELECT         c1::decimal(4, 0)  FROM my_tinyblob_t10;
-ERROR:  cannot cast type tinyblob to numeric
-LINE 1: SELECT         c1::decimal(4, 0)  FROM my_tinyblob_t10;
-                         ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_tinyblob_t10;
@@ -1773,17 +1755,11 @@ LINE 1: SELECT         c1::datetime       FROM my_mediumblob_t11;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_mediumblob_t11;
-ERROR:  cannot cast type mediumblob to numeric
-LINE 1: SELECT  cast(c1 as decimal(4, 0)) FROM my_mediumblob_t11;
-                ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 SELECT convert(c1, decimal(4, 0)) FROM my_mediumblob_t11;
-ERROR:  cannot cast type mediumblob to numeric
-LINE 1: SELECT convert(c1, decimal(4, 0)) FROM my_mediumblob_t11;
-               ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 SELECT         c1::decimal(4, 0)  FROM my_mediumblob_t11;
-ERROR:  cannot cast type mediumblob to numeric
-LINE 1: SELECT         c1::decimal(4, 0)  FROM my_mediumblob_t11;
-                         ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_mediumblob_t11;
@@ -1931,17 +1907,11 @@ LINE 1: SELECT         c1::datetime       FROM my_longblob_t12;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_longblob_t12;
-ERROR:  cannot cast type longblob to numeric
-LINE 1: SELECT  cast(c1 as decimal(4, 0)) FROM my_longblob_t12;
-                ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 SELECT convert(c1, decimal(4, 0)) FROM my_longblob_t12;
-ERROR:  cannot cast type longblob to numeric
-LINE 1: SELECT convert(c1, decimal(4, 0)) FROM my_longblob_t12;
-               ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 SELECT         c1::decimal(4, 0)  FROM my_longblob_t12;
-ERROR:  cannot cast type longblob to numeric
-LINE 1: SELECT         c1::decimal(4, 0)  FROM my_longblob_t12;
-                         ^
+ERROR:  invalid input syntax for type numeric: "abcd"
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_longblob_t12;

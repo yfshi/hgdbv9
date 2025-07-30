@@ -49,6 +49,7 @@ PG_FUNCTION_INFO_V1(varbinary2int8);
 PG_FUNCTION_INFO_V1(varbinary2uint2);
 PG_FUNCTION_INFO_V1(varbinary2uint4);
 PG_FUNCTION_INFO_V1(varbinary2uint8);
+PG_FUNCTION_INFO_V1(varbinary2numeric);
 PG_FUNCTION_INFO_V1(varbinary2date);
 PG_FUNCTION_INFO_V1(varbinary2time);
 PG_FUNCTION_INFO_V1(varbinary2datetime);
@@ -148,13 +149,15 @@ varbinary2int2(PG_FUNCTION_ARGS)
 	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
 	int16	  	ret = 0;
 	char		num[64];
+	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
 
-	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	if (!extract_leading_integer_str(src, num, sizeof(num)))
 	{
 		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+				errmsg("Truncated incorrect INTEGER value: '%s'", src));
 	}
 
+	pfree(src);
 
 	ret = DatumGetInt16(DirectFunctionCall1(int2in,
 											CStringGetDatum(num)));
@@ -168,13 +171,15 @@ varbinary2int4(PG_FUNCTION_ARGS)
 	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
 	int32	  	ret = 0;
 	char		num[64];
+	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
 
-	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	if (!extract_leading_integer_str(src, num, sizeof(num)))
 	{
 		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+				errmsg("Truncated incorrect INTEGER value: '%s'", src));
 	}
 
+	pfree(src);
 
 	ret = DatumGetInt32(DirectFunctionCall1(int4in,
 											CStringGetDatum(num)));
@@ -188,13 +193,15 @@ varbinary2int8(PG_FUNCTION_ARGS)
 	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
 	int64	  	ret = 0;
 	char		num[64];
+	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
 
-	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	if (!extract_leading_integer_str(src, num, sizeof(num)))
 	{
 		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+				errmsg("Truncated incorrect INTEGER value: '%s'", src));
 	}
 
+	pfree(src);
 
 	ret = DatumGetInt64(DirectFunctionCall1(int8in,
 											CStringGetDatum(num)));
@@ -210,13 +217,15 @@ varbinary2uint2(PG_FUNCTION_ARGS)
 	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
 	uint16	  	ret = 0;
 	char		num[64];
+	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
 
-	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	if (!extract_leading_integer_str(src, num, sizeof(num)))
 	{
 		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+				errmsg("Truncated incorrect INTEGER value: '%s'", src));
 	}
 
+	pfree(src);
 
 	ret = DatumGetUInt16(DirectFunctionCall1(mysuint2_in,
 											 CStringGetDatum(num)));
@@ -230,13 +239,15 @@ varbinary2uint4(PG_FUNCTION_ARGS)
 	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
 	uint32	  	ret = 0;
 	char		num[64];
+	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
 
-	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	if (!extract_leading_integer_str(src, num, sizeof(num)))
 	{
 		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+				errmsg("Truncated incorrect INTEGER value: '%s'", src));
 	}
 
+	pfree(src);
 
 	ret = DatumGetUInt32(DirectFunctionCall1(mysuint4_in,
 											 CStringGetDatum(num)));
@@ -250,13 +261,15 @@ varbinary2uint8(PG_FUNCTION_ARGS)
 	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
 	uint64	  	ret = 0;
 	char		num[64];
+	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
 
-	if (!extract_leading_integer_str(VARDATA_ANY(arg), num, sizeof(num)))
+	if (!extract_leading_integer_str(src, num, sizeof(num)))
 	{
 		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", VARDATA_ANY(arg)));
+				errmsg("Truncated incorrect INTEGER value: '%s'", src));
 	}
 
+	pfree(src);
 
 	ret = DatumGetUInt64(DirectFunctionCall1(mysuint8_in,
 											 CStringGetDatum(num)));
@@ -264,6 +277,23 @@ varbinary2uint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(ret);
 }
 /* End - bug#z5400 */
+
+Datum
+varbinary2numeric(PG_FUNCTION_ARGS)
+{
+	Datum		ret;
+	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
+	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
+
+	ret = DirectFunctionCall3(numeric_in, 
+							  CStringGetDatum(src),
+							  ObjectIdGetDatum(InvalidOid),
+							  Int32GetDatum(-1));
+
+	pfree(src);
+
+	return ret;
+}
 
 // reference from varchar.c function varcharin() and varlena.c function byteain()
 Datum 
@@ -275,31 +305,25 @@ varbinary_in(PG_FUNCTION_ARGS)
 	int 	bc, 
 			zero_cnt = 0,
 			atttypmod = PG_GETARG_INT32(2);
-	size_t 	len = strlen(inputText),
-			maxlen = atttypmod - VARHDRSZ,
-			maxmblen = pg_mbcharcliplen(inputText, len, maxlen); // actual save length
+	size_t 	len = strlen(inputText); // actual save length
 	bytea 	*result;
 	
-	if (atttypmod >= (int32)VARHDRSZ && len > maxlen)
+	if (atttypmod >= (int32)VARHDRSZ)
 	{
 		if (is_strict_mode())
 		{
 			ereport(ERROR,
 					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					 errmsg("value too long for type varbinary(%lu)",
-							maxlen)));
+					 errmsg("value too long for type varbinary")));
 			PG_RETURN_VOID();
 		}
 		else
 		{
 			ereport(WARNING,
 					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					 errmsg("value too long for type varbinary(%ld), data truncated",
-							maxlen)));
+					 errmsg("value too long for type varbinary, data truncated")));
 		}
 	}
-
-	result = cstring_to_text_with_len(inputText, maxmblen);
 
 	/* Recognize hex input */
 	if (inputText[0] == '\\' && inputText[1] == 'x')

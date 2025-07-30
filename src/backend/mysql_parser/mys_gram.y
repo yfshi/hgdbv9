@@ -174,6 +174,11 @@ typedef struct ShowFilter
 
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 
+#define MY_STRXFRM_NLEVELS			6 /* Number of possible levels*/
+#define MY_STRXFRM_DESC_SHIFT		8
+#define MY_STRXFRM_REVERSE_SHIFT	16
+
+
 #define parser_yyerror(msg)  mys_scanner_yyerror(msg, yyscanner)
 #define parser_errposition(pos)  mys_scanner_errposition(pos, yyscanner)
 
@@ -659,7 +664,7 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 %type <ival>	opt_timezone
 
 %type <ival>	Iconst SignedIconst
-%type <str>		Sconst comment_text notify_payload
+%type <str>		Sconst comment_text notify_payload opt_sconst
 %type <str>		RoleId opt_boolean_or_string
 %type <list>	var_list
 %type <str>		ColId ColLabel BareColLabel name_const_label /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
@@ -729,6 +734,9 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 %type <lval>		mysql_datatype_length
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
+%type <ival>		level_flag_desc level_flag_reverse level_flags opt_levels level_list
+					level_list_item level_number level_range level_list_or_range
 
 
 /*
@@ -826,7 +834,7 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
-	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
+	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVERSE REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWS RULE
 
 	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
@@ -844,7 +852,7 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 	UNLISTEN UNLOGGED UNSIGNED UNTIL UPDATE USE USER USING UTC_DATE UTC_TIME UTC_TIMESTAMP /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARBINARY VARCHAR VARIADIC VARYING
-	VERBOSE VERSION_P VIEW VIEWS VOLATILE
+	VERBOSE VERSION_P VIEW VIEWS VOLATILE WEIGHT_STRING
 
 	WEEK_P WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
 
@@ -17185,10 +17193,147 @@ func_expr_common_subexpr:
 					n->location = @1;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			| ISNULL '(' a_expr ')'
+				{
+					NullTest *nt;
+					ResTarget *res;
+					
+					nt = makeNode(NullTest);
+					nt->arg = (Expr *)$3;
+					nt->nulltesttype = IS_NULL;
+					
+					res = makeNode(ResTarget);
+					res->name = "isnull";
+					res->indirection = NIL;
+					res->val = makeTypeCast((Node *) nt, SystemTypeName("int4"), @3);;
+					res->location = @1;
+
+					$$ = (Node *) res;
+					
+				}
+			| WEIGHT_STRING  '(' a_expr opt_levels ')'
+				{
+					FuncCall *n = makeNode(FuncCall);
+					n->funcname = MysqlSystemFuncName("weight_string");
+					n->args = list_make4($3, makeIntConst($4, @4),
+											 makeIntConst(WEIGHT_STRING_AS_UNUSE, -1),
+											 makeIntConst(-1, -1));
+					n->agg_order = NIL;
+					n->agg_star = false;
+					n->agg_distinct = false;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			| WEIGHT_STRING  '(' a_expr AS CHAR_P '(' Iconst ')' opt_levels ')'
+				{
+					FuncCall *n;
+					if ($7 == 0)
+					{
+						ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("syntax error at or near 'char(0)'")));
+					}
+					n = makeNode(FuncCall);
+					n->funcname = MysqlSystemFuncName("weight_string");
+					n->args = list_make4($3, makeIntConst($9, @9),
+											 makeIntConst(WEIGHT_STRING_AS_CHAR, -1),
+											 makeIntConst($7, @7));
+					n->agg_order = NIL;
+					n->agg_star = false;
+					n->agg_distinct = false;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			| WEIGHT_STRING  '(' a_expr AS BINARY '(' Iconst ')' ')'
+				{
+					FuncCall *n;
+					if ($7 == 0)
+					{
+						ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("syntax error at or near 'binary(0)'")));
+					}
+					n = makeNode(FuncCall);
+					n->funcname = MysqlSystemFuncName("weight_string");
+					n->args = list_make4($3, makeIntConst(-1, -1),
+											 makeIntConst(WEIGHT_STRING_AS_BINARY, -1),
+											 makeIntConst($7, @7));
+					n->agg_order = NIL;
+					n->agg_star = false;
+					n->agg_distinct = false;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 		;
+
 opt_brackets: '(' ')'
 			| /*EMPTY*/
 		;
+
+level_flag_desc:
+			ASC { $$= 0; }
+			| DESC { $$= 1 << MY_STRXFRM_DESC_SHIFT; }
+		;
+
+level_flag_reverse:
+			REVERSE { $$= 1 << MY_STRXFRM_REVERSE_SHIFT; }
+		;
+
+level_flags:
+			/* empty */ { $$= 0; }
+			| level_flag_desc { $$= $1; }
+			| level_flag_desc level_flag_reverse { $$= $1 | $2; }
+			| level_flag_reverse { $$= $1 ; }
+		;
+
+level_number:
+			Iconst
+			{
+				$$= $1 < 1 ? 1 : ($1 > MY_STRXFRM_NLEVELS ? MY_STRXFRM_NLEVELS : $1);
+				$$--;
+			}
+		;
+
+level_list_item:
+			level_number level_flags
+			{
+				$$= (1 | $2) << $1;
+			}
+		;
+
+level_list:
+			level_list_item { $$= $1; }
+			| level_list ',' level_list_item { $$|= $3; }
+		;
+
+level_range:
+			level_number '-' level_number
+			{
+				int start = $1;
+				int end = $3;
+				for ($$ = 0; start <= end; start++)
+					$$|= (1 << start);
+			}
+		;
+
+level_list_or_range:
+			level_list { $$= $1; }
+			| level_range { $$= $1; }
+		;
+
+opt_levels:
+			/* empty*/ { $$ = 0; }
+			| LEVEL level_list_or_range { $$= $2; }
+		;
+
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 /*
@@ -17842,6 +17987,24 @@ case_expr:	CASE case_arg when_clause_list case_default END_P
 					c->location = @1;
 					$$ = (Node *)c;
 				}
+			/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			| IF_P '(' a_expr ',' a_expr ',' a_expr ')'
+				{
+					CaseExpr *c = makeNode(CaseExpr);
+					CaseWhen *w = makeNode(CaseWhen);
+
+					w->expr = (Expr *) $3;
+					w->result = (Expr *) $5;
+
+					c->casetype = InvalidOid; /* not analyzed yet */
+					c->arg = NULL;
+					c->args = list_make1(w);
+					c->defresult = (Expr *) $7;
+					c->location = @1;
+					
+					$$ = (Node *)c;
+				}
+			/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 		;
 
 when_clause_list:
@@ -18178,12 +18341,42 @@ AexprConst: Iconst
 					t->typmods = $3;
 					$$ = makeStringConstCast($2, @2, t);
 				}
-			| ConstInterval '(' Iconst ')' Sconst
+			| ConstInterval '(' expr_list ')' opt_sconst
 				{
-					TypeName *t = $1;
-					t->typmods = list_make2(makeIntConst(INTERVAL_FULL_RANGE, -1),
-											makeIntConst($3, @3));
-					$$ = makeStringConstCast($5, @5, t);
+					List *args = $3;
+
+					if (list_length(args) == 1 && $5)
+					{
+						TypeName *t = $1;
+						t->typmods = list_make2(makeIntConst(INTERVAL_FULL_RANGE, -1),
+												linitial($3));
+						$$ = makeStringConstCast($5, @5, t);
+					}
+					else
+					{
+						List *newargs = NIL;
+						ListCell *lc;
+						ResTarget *rt = makeNode(ResTarget);
+
+						foreach (lc, args)
+						{
+							Node *arg = lfirst(lc);
+							
+							newargs = lappend(newargs, makeTypeCast(arg, 
+											  		   				SystemTypeName("numeric"), 
+													   				exprLocation(arg)));
+						}
+
+						rt->name = pstrdup("interval");
+						rt->indirection = NIL;
+						rt->val = (Node *) makeFuncCall(MysqlSystemFuncName("interval"),
+														newargs,
+														COERCE_SQL_SYNTAX,
+														@1);
+						rt->location = @1;
+
+						$$ = (Node *)rt;
+					}
 				}
 			| TRUE_P
 				{
@@ -18198,6 +18391,11 @@ AexprConst: Iconst
 					$$ = makeNullAConst(@1);
 				}
 		;
+
+opt_sconst:
+		Sconst			{ $$ = $1; }
+		| /*EMPTY*/		{ $$ = NULL; }
+	;
 
 Iconst:		ICONST									{ $$ = $1; };
 Sconst:		SCONST									{ $$ = $1; };
@@ -18568,7 +18766,6 @@ unreserved_keyword:
 			| HOLD
 			| HOUR_P
 			| IDENTITY_P
-			| IF_P
 			| IMMEDIATE
 			| IMMUTABLE
 			| IMPLICIT_P
@@ -18684,6 +18881,7 @@ unreserved_keyword:
 			| RESTRICT
 			| RETURN
 			| RETURNS
+			| REVERSE
 			| REVOKE
 			| ROLE
 			| ROLLBACK
@@ -18844,6 +19042,7 @@ col_name_keyword:
 			| VALUES
 			| VARBINARY	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| VARCHAR
+			| WEIGHT_STRING
 			| XMLATTRIBUTES
 			| XMLCONCAT
 			| XMLELEMENT
@@ -18946,6 +19145,7 @@ reserved_keyword:
 			| GROUP_P
 			| HAVING
 			| HIGH_PRIORITY	/* ReqID:SRS-MYSQL-SQL-INSERT */
+			| IF_P
 			| IGNORE_P	/* ReqID:SRS-MYSQL-UPDATE */
 			| IN_P
 			| INITIALLY
@@ -19329,6 +19529,7 @@ bare_label_keyword:
 			| RESTRICT
 			| RETURN
 			| RETURNS
+			| REVERSE
 			| REVOKE
 			| RIGHT
 			| ROLE
@@ -19437,6 +19638,7 @@ bare_label_keyword:
 			| VIEW
 			| VIEWS
 			| VOLATILE
+			| WEIGHT_STRING
 			| WHEN
 			| WHITESPACE_P
 			| WORK

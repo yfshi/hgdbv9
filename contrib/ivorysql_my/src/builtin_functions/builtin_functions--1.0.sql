@@ -2550,3 +2550,395 @@ LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+CREATE FUNCTION ivymy.replace(int8, int8, int8)
+RETURNS varchar
+AS $$
+    select replace($1::text, $2::text, $3::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.replace(int4, int4, int4)
+RETURNS varchar
+AS $$
+    select replace($1::text, $2::text, $3::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.replace(numeric, numeric, numeric)
+RETURNS varchar
+AS $$
+    select replace($1::text, $2::text, $3::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.conv(text, int4, int4)
+RETURNS varchar
+AS 'MODULE_PATHNAME', 'conv'
+LANGUAGE C
+IMMUTABLE
+STRICT;
+
+CREATE FUNCTION ivymy.conv(numeric, int4, int4)
+RETURNS varchar
+AS $$
+    select ivymy.conv($1::text, $2, $3);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+
+-- strcmp
+
+CREATE FUNCTION ivymy.strcmp(text, text)
+RETURNS int
+AS 'MODULE_PATHNAME','mys_strcmp'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.strcmp(int4, int4)
+RETURNS int
+AS $$
+    select ivymy.strcmp($1::text, $2::text);
+$$
+LANGUAGE SQL
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.strcmp(int8, int8)
+RETURNS int
+AS $$
+    select ivymy.strcmp($1::text, $2::text);
+$$
+LANGUAGE SQL
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.strcmp(numeric, numeric)
+RETURNS int
+AS $$
+    select ivymy.strcmp($1::text, $2::text);
+$$
+LANGUAGE SQL
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.strcmp(date, date)
+RETURNS int
+AS $$
+	select ivymy.strcmp($1::text, $2::text);
+$$
+LANGUAGE SQL
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.strcmp(float8, float8)
+RETURNS int
+AS $$
+	select ivymy.strcmp($1::text, $2::text);
+$$
+LANGUAGE SQL
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.strcmp(binary, binary)
+RETURNS int
+AS $$
+	select ivymy.strcmp($1::text, $2::text);
+$$
+LANGUAGE SQL
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.strcmp(varbinary, varbinary)
+RETURNS int
+AS $$
+	select ivymy.strcmp($1::text, $2::text);
+$$
+LANGUAGE SQL
+STRICT
+IMMUTABLE;
+
+
+CREATE FUNCTION ivymy.unhex(text)
+RETURNS varbinary
+AS 'MODULE_PATHNAME','unhex'
+LANGUAGE C
+IMMUTABLE
+PARALLEL
+SAFE
+STRICT;
+
+CREATE FUNCTION ivymy.unhex(numeric)
+RETURNS varbinary
+AS $$
+    select ivymy.unhex($1::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- weight_string(input, flags, type, nweights)
+CREATE FUNCTION ivymy.weight_string(text, int4, int4, int4)
+RETURNS varbinary
+AS 'MODULE_PATHNAME', 'weight_string'
+LANGUAGE C
+STABLE
+STRICT;
+
+CREATE FUNCTION ivymy.weight_string(boolean, int4, int4, int4)
+RETURNS varbinary
+AS 'MODULE_PATHNAME', 'weight_string_boolean'
+LANGUAGE C
+STABLE
+STRICT;
+
+CREATE FUNCTION ivymy.weight_string(date, int4, int4, int4)
+RETURNS varbinary
+AS $$
+	select ivymy.weight_string($1::text, $2, $3, $4);
+$$
+LANGUAGE SQL
+STABLE
+STRICT;
+
+CREATE FUNCTION ivymy.weight_string(time, int4, int4, int4)
+RETURNS varbinary
+AS $$
+	select ivymy.weight_string($1::text, $2, $3, $4);
+$$
+LANGUAGE SQL
+STABLE
+STRICT;
+
+CREATE FUNCTION ivymy.weight_string(datetime, int4, int4, int4)
+RETURNS varbinary
+AS $$
+	select ivymy.weight_string($1::text, $2, $3, $4);
+$$
+LANGUAGE SQL
+STABLE
+STRICT;
+
+CREATE FUNCTION ivymy.weight_string(mystimestamp, int4, int4, int4)
+RETURNS varbinary
+AS $$
+	select ivymy.weight_string($1::text, $2, $3, $4);
+$$
+LANGUAGE SQL
+STABLE
+STRICT;
+
+CREATE FUNCTION ivymy.weight_string(numeric, int4, int4, int4)
+RETURNS varbinary AS
+$$
+BEGIN
+    RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE FUNCTION ivymy.weight_string(float8, int4, int4, int4)
+RETURNS varbinary AS
+$$
+BEGIN
+    RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+-- instr
+
+CREATE FUNCTION ivymy.instr(text, text)
+RETURNS integer
+AS $$
+	SELECT ivymy.locate($2, $1);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.instr(int4, int4)
+RETURNS integer
+AS $$
+	SELECT ivymy.locate($2::text, $1::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.instr(int8, int8)
+RETURNS integer
+AS $$
+	SELECT ivymy.locate($2::text, $1::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.instr(numeric, numeric)
+RETURNS integer
+AS $$
+	SELECT ivymy.locate($2::text, $1::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.instr(binary, binary)
+RETURNS integer
+AS $$
+	SELECT ivymy.locate($2::text, $1::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+-- interval
+CREATE OR REPLACE FUNCTION ivymy.interval(VARIADIC numeric[])
+RETURNS int 
+as 'MODULE_PATHNAME', 'interval'
+LANGUAGE C 
+STABLE;
+
+
+-- ifnull
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(tinyint, tinyint)
+RETURNS tinyint
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(int2, int2)
+RETURNS int2
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(int4, int4)
+RETURNS int4
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(int8, int8)
+RETURNS int8
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(bool, bool)
+RETURNS bool
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(text, text)
+RETURNS text
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(varchar, varchar)
+RETURNS varchar
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(char, char)
+RETURNS char
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(float, float)
+RETURNS float
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(float8, float8)
+RETURNS float8
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(numeric, numeric)
+RETURNS numeric
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(time, time)
+RETURNS time
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(date, date)
+RETURNS date
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE OR REPLACE FUNCTION ivymy.ifnull(timestamp, timestamp)
+RETURNS timestamp
+LANGUAGE sql
+AS $$ SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END; $$;
+
+CREATE FUNCTION ivymy.ifnull(p1 pg_catalog.bool, p2 text)
+RETURNS text IMMUTABLE AS $$
+SELECT coalesce(p1::text, p2);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.ifnull(p1 text, p2 int4)
+RETURNS text IMMUTABLE AS $$
+SELECT coalesce(p1, p2::text);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.ifnull(p1 int2, p2 text)
+RETURNS text IMMUTABLE AS $$
+SELECT coalesce(p1::text, p2);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.ifnull(p1 int4, p2 text)
+RETURNS text IMMUTABLE AS $$
+SELECT coalesce(p1::text, p2);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.ifnull(p1 bigint, p2 text)
+RETURNS text IMMUTABLE AS $$
+SELECT coalesce(p1::text, p2);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.ifnull(p1 numeric, p2 text)
+RETURNS text IMMUTABLE AS $$
+SELECT coalesce(p1::text, p2);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.ifnull(p1 date, p2 text)
+RETURNS timestamp IMMUTABLE AS $$
+SELECT coalesce(p1::text, p2);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.ifnull(p1 time, p2 text)
+RETURNS timestamp IMMUTABLE AS $$
+SELECT coalesce(p1::text, p2);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.ifnull(p1 timestamp, p2 text)
+RETURNS timestamp IMMUTABLE AS $$
+SELECT coalesce(p1::text, p2);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.ifnull(p1 timestamptz, p2 text)
+RETURNS timestamptz IMMUTABLE AS $$
+SELECT coalesce(p1::text, p2);
+$$ LANGUAGE sql;

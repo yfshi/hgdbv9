@@ -738,4 +738,13 @@ extern PGDLLIMPORT bool  enable_character_blob;
 extern PGDLLIMPORT bool aggregates_without_group_by;
 /* End - BUG#Z4610 */
 
+/* BEGIN - SRS-MYSQL-BUILDINFUNCTION */
+typedef enum WeightStringAS
+{
+	WEIGHT_STRING_AS_UNUSE,
+	WEIGHT_STRING_AS_CHAR,
+	WEIGHT_STRING_AS_BINARY
+} WeightStringAS;
+/* End - SRS-MYSQL-BUILDINFUNCTION */
+
 #endif							/* GUC_H */

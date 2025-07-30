@@ -3580,7 +3580,7 @@ my_strnxfrm_gbk(const CHARSET_INFO *cs, uchar *dst, size_t dstlen,
         else
             *dst++ = sort_order ? sort_order[*src++] : *src++;
     }
-    return my_strxfrm_pad(cs, d0, dst, de, nweights, flags);
+    return my_strxfrm_pad_desc_and_reverse(cs, d0, dst, de, nweights, flags, 0);
 }
 
 static size_t

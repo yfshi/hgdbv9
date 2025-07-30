@@ -333,3 +333,162 @@ DROP TABLE t1;
 -- POSITION
 select position('bar' IN 'foobarbar'); -- 4
 select position('xbar' IN  'foobar'); -- 0
+
+
+-- CONV
+SELECT conv(NULL    , 10,  2) AS result;  -- NULL
+SELECT conv('123'   , NULL, 2) AS result;  -- NULL
+SELECT conv('123'   , 10,  NULL) AS result; -- NULL
+SELECT conv('123', 1,  10) AS result;  -- NULL  (from_base<2)
+SELECT conv('123', 37, 10) AS result;  -- NULL  (from_base>36)
+SELECT conv('123', 10, 1) AS result;   -- NULL  (to_base<2)
+SELECT conv('123', 10, 37) AS result;  -- NULL  (to_base>36)
+SELECT conv('0', 10, 2)    AS result;  -- '0'
+SELECT conv('1', 10, 2)    AS result;  -- '1'
+SELECT conv('10', 10, 2)   AS result;  -- '1010'
+SELECT conv('FF', 16, 10)  AS result;  -- '255'
+SELECT conv('255', 10, 16) AS result;  -- 'FF'
+SELECT conv('aBc', 16, 10) AS result;  -- '2748'
+SELECT conv('  15  ', 10, 2) AS result; -- '1111'
+SELECT conv('+15', 10, 2) AS result;    -- '1111'
+SELECT conv('+0F',16,2)  AS result;    -- '1111'
+SELECT conv('12X3', 10, 2) AS result;   -- '1100'
+SELECT conv('D2X3', 10, 2) AS result;   -- '0'
+SELECT conv('18446744073709551615', 10, 10) AS result;  -- '18446744073709551615'
+SELECT conv('18446744073709551616', 10, 10) AS result;  -- '18446744073709551615'
+SELECT conv('-18446744073709551616', 10, 10) AS result; -- '18446744073709551615'
+SELECT conv('1844674407370955161511', 10, 10) AS result;  -- '18446744073709551615'
+SELECT conv('-1844674407370955161511', 10, 10) AS result;  -- '18446744073709551615'
+SELECT conv('-18446744073709551615', 10, 10) AS result; -- '1'
+SELECT conv('-18446744073709551614', 10, 10) AS result; -- '2'
+SELECT conv('-18446744073709551613', 10, 10) AS result; -- '3'
+SELECT conv('-1',   10, 2)   AS result;  -- '1111111111111111111111111111111111111111111111111111111111111111'
+SELECT conv('-1',   10, -2)  AS result;  -- '-1'
+SELECT conv('-17', -10, 2)   AS result;  -- '1111111111111111111111111111111111111111111111111111111111101111'
+SELECT right(conv('-17', -10, 2), 8) AS result; -- '11101111' (-17 mod 256 = 239)
+SELECT conv('-17', 10, -18)  AS result;  -- '-H'
+SELECT conv('17', 10, -18)   AS result;  -- 'H'
+SELECT conv('ZZZZZZZZ', 36, 10) AS result;  -- '2821109907455'
+SELECT conv((10 + '10'::int + '10'::int + x'0a'::int)::text, 10, 10) AS result;  -- '40'
+SELECT conv('101010', 2, 3) AS result;  -- '1120'
+SELECT conv('Z', 36, 10) AS result;   -- '35'
+SELECT conv('123ABCxyz', 36, 16) AS result; -- '2B6FF6839FB'
+SELECT conv('-0', 10, 2)  AS result;  -- '0'
+SELECT conv('+0', 10, 2)  AS result;  -- '0'
+
+-- unhex
+
+SET bytea_output = 'hex';
+SELECT unhex('');       -- '\x'
+SELECT unhex('123');    -- '\x0123'
+SELECT unhex(123);      -- '\x0123'
+SELECT unhex(+123);     -- '\x0123'
+SELECT unhex(-123);     -- '\x'
+SELECT unhex(123.1);    -- '\x'
+SELECT unhex('GG');     -- '\x'
+SELECT unhex('4D7953514C'); -- '\x4D7953514C'
+
+SET bytea_output = 'escape';
+SELECT unhex('');       -- ''
+SELECT unhex('123');    -- '\001#'
+SELECT unhex(123);      -- '\001#'
+SELECT unhex(+123);     -- '\001#'
+SELECT unhex(-123);     -- 'NULL'
+SELECT unhex(123.1);    -- 'NULL'
+SELECT unhex('GG');     -- 'NULL'
+SELECT unhex('4D7953514C'); -- 'MySQL'
+
+-- strmcp
+select strcmp(null, null);
+select strcmp(null, 'other');
+select strcmp('other', null);
+select strcmp('something','other');
+select strcmp('something','something');
+select strcmp(null, 321);
+select strcmp(321, null);
+select strcmp(321, 321);
+select strcmp(321, 123);
+select strcmp(null, 321::int2);
+select strcmp(321::int2, null);
+select strcmp(321::int2, 321::int2);
+select strcmp(321::int2, 123::int2);
+select strcmp(null, 321::int4);
+select strcmp(321::int4, null);
+select strcmp(321::int4, 321::int4);
+select strcmp(321::int4, 123::int4);
+select strcmp(null, 321::int8);
+select strcmp(321::int8, null);
+select strcmp(321::int8, 321::int8);
+select strcmp(321::int8, 123::int8);
+select strcmp(null, 321::float4);
+select strcmp(321::float4, null);
+select strcmp(321::float4, 321::float4);
+select strcmp(321::float4, 123::float4);
+select strcmp(null, 321::float8);
+select strcmp(321::float8, null);
+select strcmp(321::float8, 321::float8);
+select strcmp(321::float8, 123::float8);
+
+select strcmp(null,'something'::text);
+select strcmp('something'::text,null);
+select strcmp('something'::text,'something'::text);
+select strcmp('something'::text,'other'::text);
+
+select strcmp(null, '2001-01-01 01:01:01.3654'::date);
+select strcmp('2001-01-01 01:01:01.3654'::date, null);
+select strcmp('2001-01-01 01:01:01.3654'::date, '2001-01-01 01:01:01.3654'::date);
+select strcmp('2001-01-01 01:01:01.3654'::date, '1999-01-01 01:01:01.3654'::date);
+
+-- instr
+
+select instr(null,null);
+select instr(null,'bc');
+select instr('abcd12abc',null);
+select instr('abcd12abc','bc');
+select instr('abcd12abc','BC');
+select instr('abcd12abc' collate utf8_general_ci,'BC' collate utf8_general_ci);
+select instr('abcd12abc','ff');
+select instr(1234, 23);
+select instr(1234.5, 34.5);
+
+-- ifnull
+
+select ifnull(null, null);
+select ifnull(null, 'other');
+select ifnull('something','other');
+select ifnull(null,321);
+select ifnull(123,'321');
+select ifnull(123::int2,321::int2);
+select ifnull(123::int4,321::int4);
+select ifnull(123::int8,321::int8);
+select ifnull(123::float4,321::float4);
+select ifnull(123::float8,321::float8);
+select ifnull('2001-01-01 01:01:01.3654'::date,'2012-08-02 15:57:54.6365'::date);
+
+--ifnull(unknown, int)
+SELECT ifnull('j', 1);
+--ifnull(int, unknown)
+SELECT ifnull(1, 'k');
+SELECT ifnull(1, '6');
+--ifnull(char, int)
+SELECT ifnull('o'::char, 1);
+--ifnull(int, char)
+SELECT ifnull(1, 'o'::char);
+--ifnull(text, int2)
+SELECT ifnull('hello!'::text, '100'::int2);
+SELECT ifnull('100'::int2, 'hello!'::text);
+--ifnull(text, int4)
+SELECT ifnull('hello!'::text, '100'::int4);
+SELECT ifnull('100'::int4, 'hello!'::text);
+--ifnull(text, int8)
+SELECT ifnull('hello!'::text, '100'::int8);
+SELECT ifnull('100'::int8, 'hello!'::text);
+--ifnull(text, float4)
+SELECT ifnull('hello!'::text, '100.001'::float4);
+SELECT ifnull('100.001'::float4, 'hello!'::text);
+--ifnull(text, float8)
+SELECT ifnull('hello!'::text, '100.001'::float8);
+SELECT ifnull('100.001'::float8, 'hello!'::text);
+--ifnull(text, number)
+SELECT ifnull('hello!'::text, '100.001'::numeric);
+SELECT ifnull('100.001'::numeric, 'hello!'::text);

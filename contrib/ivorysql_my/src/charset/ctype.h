@@ -235,8 +235,6 @@ int my_strnncollsp_mb_bin(const CHARSET_INFO *cs,
                           const uchar *a, size_t a_length, const uchar *b,
                           size_t b_length);
 void my_fill_8bit(const CHARSET_INFO *cs, char *s, size_t l, int fill);
-size_t my_strxfrm_pad(const CHARSET_INFO *cs, uchar *str, uchar *frmend, 
-                      uchar *strend, uint nweights, uint flags);
 void my_hash_sort_simple(const CHARSET_INFO *cs, const uchar *key, size_t len, uint64 *nr1, uint64 *nr2);
 void my_hash_sort_mb_bin(const CHARSET_INFO *cs,
                          const uchar *key, size_t len, uint64 *nr1,
@@ -245,6 +243,10 @@ size_t my_strnxfrmlen_simple(const CHARSET_INFO *cs, size_t len);
 Datum do_mysql_hash(const unsigned char *key, int32_t len, Oid coll);
 void do_import_mysql_collation(void);
 int do_mysql_strcoll(uchar *arg1, int len1, uchar *arg2, int len2, Oid collid, bool trim);
+size_t do_mysql_strnxfrm(unsigned char *dst, size_t dstlen,
+							 uint nweights, const unsigned char *src, size_t srclen,
+							 uint flags, Oid coll);
+size_t do_mysql_strnxfrmlen(size_t srclen, uint nweights, Oid coll);
 int my_strnncoll_simple(const CHARSET_INFO *cs, const uchar *s, size_t slen, const uchar *t, size_t tlen, bool t_is_prefix);
 int my_strnncollsp_simple(const CHARSET_INFO *cs, const uchar *a, size_t a_length, const uchar *b, size_t b_length);
 size_t
@@ -259,5 +261,8 @@ size_t
 my_strnxfrm_simple(const CHARSET_INFO *cs,
                    uchar *dst, size_t dstlen, uint nweights,
                    const uchar *src, size_t srclen, uint flags);
+
+void my_strxfrm_desc_and_reverse(uchar *str, uchar *strend,
+                                 uint flags, uint level);
 
 #endif

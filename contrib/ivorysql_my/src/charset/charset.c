@@ -129,6 +129,7 @@ add_compiled_collation(const CHARSET_INFO *cs)
 static CHARSET_INFO *
 search_charset_info_by_coll_id(Oid coll)
 {
+	char *collname = NULL;
     MysqlCharsetInfoHashEntry *entry;
 
     if (MysqlCharsetInfoHash == NULL)
@@ -143,12 +144,12 @@ search_charset_info_by_coll_id(Oid coll)
     }
 
     entry = hash_search(MysqlCharsetInfoHash, &coll, HASH_FIND, NULL);
+	collname = get_collation_name(coll);
 
     if (entry == NULL)
     {
-        char *collname = get_collation_name(coll);
-        
         entry = hash_search(MysqlCharsetInfoHash, &coll, HASH_ENTER, NULL);
+        entry->cs = NULL;
 
         for (int i = 0; i < lengthof(all_cs); i++)
         {
@@ -160,13 +161,15 @@ search_charset_info_by_coll_id(Oid coll)
         }
 
         entry = hash_search(MysqlCharsetInfoHash, &coll, HASH_FIND, NULL);
-
-        if (collname)
-            pfree(collname);
     }
 
     assert(entry);
-    assert(entry->cs);
+
+	if (entry->cs == NULL)
+		ereport(ERROR,
+				errmsg("The collation \"%s\" is not sepported in MySQL mode.", collname));
+	if (collname)
+		pfree(collname);
 
     return entry->cs;
 }
@@ -177,6 +180,24 @@ do_mysql_strcoll(unsigned char *arg1, int len1, unsigned char *arg2, int len2, O
     CHARSET_INFO   *cs = search_charset_info_by_coll_id(coll);
 
     return cs->coll->strnncoll(cs, arg1, len1, arg2, len2, trim);
+}
+
+size_t
+do_mysql_strnxfrm(unsigned char *dst, size_t dstlen, uint nweights,
+						 const unsigned char *src, size_t srclen,
+						 uint flags, Oid coll)
+{
+	CHARSET_INFO   *cs = search_charset_info_by_coll_id(coll);
+
+	return cs->coll->strnxfrm(cs, dst, dstlen, nweights, src, srclen, flags);
+}
+
+size_t
+do_mysql_strnxfrmlen(size_t srclen, uint nweights, Oid coll)
+{
+	CHARSET_INFO	*cs = search_charset_info_by_coll_id(coll);
+
+	return cs->coll->strnxfrmlen(cs, Max(srclen, nweights) * cs->mbmaxlen);
 }
 
 Datum

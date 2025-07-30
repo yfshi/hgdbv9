@@ -152,7 +152,7 @@ my_strnxfrm_mb(const CHARSET_INFO *cs, uchar *dst, size_t dstlen,
     }
 
 pad:
-    return my_strxfrm_pad(cs, d0, dst, de, nweights, flags);
+    return my_strxfrm_pad_desc_and_reverse(cs, d0, dst, de, nweights, flags, 0);
 }
 
 MY_COLLATION_HANDLER my_collation_mb_bin_handler = {

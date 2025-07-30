@@ -1047,6 +1047,20 @@ CREATE CAST (ivymy.varbinary AS uint8)
 WITH FUNCTION ivymy.varbinary2uint8(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
 
+-- cast varbinary to numeric
+CREATE FUNCTION ivymy.varbinary2numeric(ivymy.varbinary, integer, boolean)
+RETURNS numeric
+AS 'MODULE_PATHNAME','varbinary2numeric'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS numeric)
+WITH FUNCTION ivymy.varbinary2numeric(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+
 -- cast varbinary to date
 CREATE FUNCTION ivymy.varbinary2date(ivymy.varbinary, integer, boolean)
 RETURNS date
@@ -4357,3 +4371,68 @@ DEFAULT FOR TYPE ivymy.longblob USING hash AS
   OPERATOR 1 = (ivymy.longblob, ivymy.longblob),
   FUNCTION 1 ivymy.longblob_hash(ivymy.longblob),
   FUNCTION 2 ivymy.longblob_hash_extended(ivymy.longblob, bigint);
+
+-- cast binary to numeric
+CREATE FUNCTION ivymy.varbinary2numeric(ivymy.binary, integer, boolean)
+RETURNS numeric
+AS 'MODULE_PATHNAME','varbinary2numeric'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.binary AS numeric)
+WITH FUNCTION ivymy.varbinary2numeric(ivymy.binary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast blob to numeric
+CREATE FUNCTION ivymy.varbinary2numeric(ivymy.myblob, integer, boolean)
+RETURNS numeric
+AS 'MODULE_PATHNAME','varbinary2numeric'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.myblob AS numeric)
+WITH FUNCTION ivymy.varbinary2numeric(ivymy.myblob, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast tinyblob to numeric
+CREATE FUNCTION ivymy.varbinary2numeric(ivymy.tinyblob, integer, boolean)
+RETURNS numeric
+AS 'MODULE_PATHNAME','varbinary2numeric'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.tinyblob AS numeric)
+WITH FUNCTION ivymy.varbinary2numeric(ivymy.tinyblob, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast mediumblob to numeric
+CREATE FUNCTION ivymy.varbinary2numeric(ivymy.mediumblob, integer, boolean)
+RETURNS numeric
+AS 'MODULE_PATHNAME','varbinary2numeric'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.mediumblob AS numeric)
+WITH FUNCTION ivymy.varbinary2numeric(ivymy.mediumblob, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast longblob to numeric
+CREATE FUNCTION ivymy.varbinary2numeric(ivymy.longblob, integer, boolean)
+RETURNS numeric
+AS 'MODULE_PATHNAME','varbinary2numeric'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.longblob AS numeric)
+WITH FUNCTION ivymy.varbinary2numeric(ivymy.longblob, integer, boolean)
+AS ASSIGNMENT;
