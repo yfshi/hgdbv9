@@ -822,7 +822,7 @@ static bool isAconstNode(Node *node);
 	SQL_P STABLE STANDALONE_P
 	START STATEMENT STATISTICS STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC
-	SYSID SYSTEM_P
+	SYSDATE /* OA-REQ-1604 */ SYSID SYSTEM_P SYSTIMESTAMP /* OA-REQ-1604 */
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TASKID /* ReqID:SRS-MISC-BULKLOAD*/ TEMP TEMPLATE TEMPORARY TEXT_P THEN
 	TIES TIME TIMESTAMP TO TRAILING TRANSACTION TRANSFORM
@@ -18609,6 +18609,36 @@ func_expr_common_subexpr:
 								 errmsg("invalid USERENV parameter.")));
 				}
 			/* End - BUGID:0000830 */
+			/* Begin - OA-REQ-1604 */
+			| SYSDATE
+				{
+					if (ORA_PARSER == compatible_db)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("sysdate"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else
+						$$ = makeSQLValueFunction(SVFOP_CURRENT_DATE, -1, @1);
+				}
+			| SYSDATE '(' ')'
+				{
+					if (ORA_PARSER == compatible_db)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("sysdate"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else
+						$$ = makeSQLValueFunction(SVFOP_CURRENT_DATE, -1, @1);
+				}
+			| SYSTIMESTAMP
+				{
+					if (ORA_PARSER == compatible_db)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("systimestamp"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else
+						$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP, -1, @1);
+				}
+			| SYSTIMESTAMP '(' ')'
+				{
+					if (ORA_PARSER == compatible_db)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("systimestamp"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else
+						$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP, -1, @1);
+				}
+			/* End - OA-REQ-1604 */
 		;
 
 /* Begin - ReqID:SRS-SQL-XML */
@@ -20953,6 +20983,10 @@ reserved_keyword:
 			| SOME
 			| START /* ReqID:SRS-SQL-HierarchicalQueries */
 			| SYMMETRIC
+			/* Begin - OA-REQ-1604 */
+			| SYSDATE
+			| SYSTIMESTAMP
+			/* End - OA-REQ-1604 */
 			| TABLE
 			| THEN
 			| TO
@@ -21421,8 +21455,10 @@ bare_label_keyword:
 			| SUBSTRING
 			| SUPPORT
 			| SYMMETRIC
+			| SYSDATE /* OA-REQ-1604 */
 			| SYSID
 			| SYSTEM_P
+			| SYSTIMESTAMP /* OA-REQ-1604 */
 			| TABLE
 			| TABLES
 			| TABLESAMPLE
