@@ -359,6 +359,9 @@ struct DropRelationCallbackState
 #define		ATT_PARTITIONED_INDEX	0x0040
 #define		ATT_SEQUENCE			0x0080
 
+/* ReqID:RSR-SQL-Partition-interval */
+#define		GEN_INTERVAL_QUERY		"(auto generated interval partition)"
+
 /*
  * ForeignTruncateInfo
  *
@@ -673,6 +676,10 @@ static OnCommitAction gtt_oncommit_option(List *options);	/* ReqID:SRS-SQL-GTT *
 /* Begin - ReqID:SRS-SQL-NLSSORT */
 static ObjectAddress ATExecDefaultCollation(Relation relation, char *collname);
 /* End - ReqID:SRS-SQL-NLSSORT */
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+static void ATExecSetPartitionInterval(Relation rel, PartitionInterval *partInterval,
+									   AlterTableUtilityContext *context);
+/* End - ReqID:RSR-SQL-Partition-interval */
 
 /* ----------------------------------------------------------------
  *		DefineRelation
@@ -728,6 +735,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	char	   *orirelname = NULL;
 	/* End - ReqID:SRS-MYSQL-CASE */
 	Oid			objectOwner = OidIsValid(ownerId) ? ownerId : GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
+	bool		defIntervalPartition = false;	/* ReqID:RSR-SQL-Partition-interval */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (stmt->relation->relname != NULL)
@@ -801,8 +809,21 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 * lock on the parent because its partition descriptor will be changed by
 	 * addition of the new partition.
 	 */
-	parentLockmode = (stmt->partbound != NULL ? AccessExclusiveLock :
+	/*
+	 * Begin - ReqID:RSR-SQL-Partition-interval
+	 *
+	 * Here, if it is the process of automatically creating interval partition,
+	 * the lock on the parent partitioned table will be downgraded from
+	 * AccessExclusiveLock to ShareUpdateExclusiveLock to reduce the situation
+	 * of concurrent transaction lock waiting. Since the critical metadata of
+	 * the parent table is not modified, the lock downgrade will not lead to
+	 * unacceptable consequences.
+	 */
+	parentLockmode = (stmt->partbound != NULL ?
+					  ((strcmp(queryString, GEN_INTERVAL_QUERY) == 0) ?
+					   ShareUpdateExclusiveLock : AccessExclusiveLock) :
 					  ShareUpdateExclusiveLock);
+	/* End - ReqID:RSR-SQL-Partition-interval */
 
 	/* Determine the list of OIDs of the parents. */
 	inheritOids = NIL;
@@ -1377,6 +1398,54 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 		StorePartitionKey(rel, strategy, partnatts, partattrs, partexprs,
 						  partopclass, partcollation);
 
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
+		/*
+		 * We need to transform the raw parsetrees conrresponding to interval
+		 * expressions into executable expression trees.
+		 */
+		if (ORA_PARSER == compatible_db &&
+			stmt->partspec->partInterval != NULL &&
+			strategy == PARTITION_STRATEGY_RANGE)
+		{
+			char   *attname;
+			Oid		atttypid;
+			int32	atttypmod;
+			Oid		attcollation;
+
+			/* interval partition can only be used as a root partitioned table */
+			if (stmt->partbound)
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("cannot create a partition of table with INTERVAL clause"),
+						 parser_errposition(pstate, exprLocation(stmt->partspec->partInterval))));
+
+			if (partattrs[0] == 0)
+			{
+				List *dplist;
+				Node *expr;
+				if (list_length(partexprs) == 0)
+					elog(ERROR, "wrong number of partition key expressions");
+				expr = linitial(partexprs);
+				dplist = deparse_context_for(RelationGetRelationName(rel), rel->rd_id);
+				attname = deparse_expression(expr, dplist, false, false);
+				atttypid = exprType(expr);
+				atttypmod = exprTypmod(expr);
+				attcollation = exprCollation(expr);
+			}
+			else
+			{
+				attname = get_attname(rel->rd_id, partattrs[0], false);
+				atttypid = rel->rd_att->attrs[partattrs[0] - 1].atttypid;
+				atttypmod = rel->rd_att->attrs[partattrs[0] - 1].atttypmod;
+				attcollation = rel->rd_att->attrs[partattrs[0] - 1].attcollation;
+			}
+
+			TransformPartitionTableInterval(pstate, (PartitionInterval *) stmt->partspec->partInterval,
+											attname, atttypid, atttypmod, attcollation);
+			defIntervalPartition = true;
+		}
+		/* End - ReqID:RSR-SQL-Partition-interval */
+
 		/* make it all visible */
 		CommandCounterIncrement();
 	}
@@ -1598,6 +1667,14 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 		SetRelationCollation(relname, namespaceId, relColl, address);
 	}
+
+	/* Begin - ReqID:RSR-SQL-Partition-interval */
+	if (relkind == RELKIND_PARTITIONED_TABLE && defIntervalPartition)
+	{
+		CommandCounterIncrement();
+		StorePartitionInterval(rel, (PartitionInterval *) stmt->partspec->partInterval);
+	}
+	/* End - ReqID:RSR-SQL-Partition-interval */
 
 	return address;
 }
@@ -4562,7 +4639,7 @@ CheckTableNotInUse(Relation rel, const char *stmt)
 	int			expected_refcnt;
 
 	expected_refcnt = rel->rd_isnailed ? 2 : 1;
-	if (rel->rd_refcnt != expected_refcnt)
+	if (rel->rd_refcnt != expected_refcnt && !rel->definterval)	/* ReqID:RSR-SQL-Partition-interval allow automatic creation or partition */
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_IN_USE),
 		/* translator: first %s is a SQL command, eg ALTER TABLE */
@@ -5032,6 +5109,11 @@ AlterTableGetLockLevel(List *cmds)
 				cmd_lockmode = AccessShareLock; // there is not operator on user table, just update PG_OBJECT
 				break;
 			/* End - ReqID:SRS-SQL-NLSSORT */
+			/* Begin - ReqID:RSR-SQL-Partition-interval */
+			case AT_SetInterval:
+				cmd_lockmode = AccessExclusiveLock;
+				break;
+			/* End - ReqID:RSR-SQL-Partition-interval */
 			default:			/* oops */
 				elog(ERROR, "unrecognized alter table type: %d",
 					 (int) cmd->subtype);
@@ -5496,6 +5578,12 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 				pass = AT_PASS_MISC;
 				break;
 		/* End - ReqID:SRS-SQL-NLSSORT */
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
+		case AT_SetInterval:		/* ALTAR TABLE SET INTERVAL */
+			ATSimplePermissions(rel, ATT_TABLE);
+			pass = AT_PASS_MISC;
+			break;
+		/* End - ReqID:RSR-SQL-Partition-interval */
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
 				 (int) cmd->subtype);
@@ -5966,6 +6054,11 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 				ATExecDefaultCollation(rel, cmd->name);
 				break;
 		/* End - ReqID:SRS-SQL-NLSSORT */
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
+		case AT_SetInterval:
+			ATExecSetPartitionInterval(rel, (PartitionInterval *) cmd->def, context);
+			break;
+		/* End - ReqID:RSR-SQL-Partition-interval */
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
 				 (int) cmd->subtype);
@@ -18637,6 +18730,7 @@ transformPartitionSpec(Relation rel, PartitionSpec *partspec, char *strategy)
 
 	newspec->strategy = partspec->strategy;
 	newspec->partParams = NIL;
+	newspec->partInterval = partspec->partInterval;	/* ReqID:RSR-SQL-Partition-interval */
 	newspec->location = partspec->location;
 
 	/* Parse partitioning strategy name */
@@ -19354,6 +19448,15 @@ ATExecAttachPartition(List **wqueue, Relation rel, PartitionCmd *cmd,
 				 errmsg("trigger \"%s\" prevents table \"%s\" from becoming a partition",
 						trigger_name, RelationGetRelationName(attachrel)),
 				 errdetail("ROW triggers with transition tables are not supported on partitions")));
+
+	/* Begin - ReqID:RSR-SQL-Partition-interval */
+	/* interval partition can only be used as a root partitioned table */
+	if (attachrel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE &&
+		(RelationGetPartitionDesc(attachrel, true))->intervalinfo != NULL)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("An unsupported partitioning method was specified in this context")));
+	/* End - ReqID:RSR-SQL-Partition-interval */
 
 	/*
 	 * Check that the new partition's bound is valid and does not overlap any
@@ -21176,3 +21279,274 @@ UpdateIndexPersistence(Oid reloid, char persistence)
 }
 
 /* End - BUG:M0000325 */
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * DefinePartitionInterval - Create interval partition.
+ */
+int
+DefinePartitionInterval(Relation parent, Datum *values, PartitionDirectory partdirectory)
+{
+	int		res;
+	bool	equal;
+	char	*nspname,
+			*parent_relname,
+			*part_relname;
+	List	*lowerupper;
+	ParseState	*pstate;
+	PlannedStmt	*pstmt;
+	CreateStmt	*cstmt;
+	RangeVar	*parent_rv,
+				*part_rv;
+	PartitionBoundSpec	*part_bound;
+	PartitionKey	partkey = RelationGetPartitionKey(parent);
+	PartitionDesc	partdesc = RelationGetPartitionDesc(parent, true);
+	ResourceOwner	old_rsowner = CurrentResourceOwner;
+	MemoryContext	old_cxt = CurrentMemoryContext;
+
+	Assert(partdesc->intervalinfo != NULL);
+	Assert(partdesc->intervalinfo->base != NULL);
+	Assert(partdesc->intervalinfo->interval!= NULL);
+
+	/*
+	 * The value to be inserted must be larger or equal to basevalue.
+	 */
+	if (DatumGetInt32(FunctionCall2Coll(&partkey->partsupfunc[0],
+										partkey->partcollation[0],
+										partdesc->intervalinfo->base->constvalue,
+										values[0])) > 0)
+	{
+		Assert(OidIsValid(RelationGetRelid(parent)));
+		ereport(ERROR,
+				(errcode(ERRCODE_CHECK_VIOLATION),
+				 errmsg("no partition of relation \"%s\" found for row less than base value",
+						RelationGetRelationName(parent)),
+				 errtable(parent)));
+	}
+
+	nspname = get_namespace_name(RelationGetNamespace(parent));
+	parent_relname = pstrdup(RelationGetRelationName(parent));
+
+	/* RangeVar of partitioned table */
+	parent_rv = makeRangeVar(nspname, parent_relname, -1);
+	parent_rv->relpersistence = parent->rd_rel->relpersistence;
+
+	/* RangeVar of interval partition */
+	part_relname =
+		ChooseRelationName(parent_relname, "sys", "p", RelationGetNamespace(parent), false);
+	part_rv = makeRangeVar(nspname, part_relname, -1);
+	part_rv->relpersistence = parent->rd_rel->relpersistence;
+
+	/* Create a dummy ParseState for GetPartitionIntervalRange */
+	pstate = make_parsestate(NULL);
+
+	/* Caculate the lower and upper by a target value */
+	lowerupper = calc_new_interval_partition_rbound(pstate, partkey, partdesc, values, &equal);
+	Assert(list_length(lowerupper) == 2);
+
+	/* Create partition range boundary */
+	part_bound = makeNode(PartitionBoundSpec);
+	part_bound->strategy = partkey->strategy;
+	part_bound->is_default = false;
+	part_bound->lowerdatums = list_make1(linitial(lowerupper));
+	part_bound->upperdatums = list_make1(lsecond(lowerupper));
+	part_bound->location = -1;
+
+	/* Create "CreaetStmt" node */
+	cstmt = makeNode(CreateStmt);
+	cstmt->relation = part_rv;
+	cstmt->tableElts= NIL;
+	cstmt->inhRelations = list_make1(parent_rv);
+	cstmt->partbound = part_bound;
+	cstmt->partspec = NULL;
+	cstmt->ofTypename = NULL;
+	cstmt->constraints = NIL;
+	cstmt->options = NIL;
+	cstmt->oncommit = ONCOMMIT_NOOP;
+	cstmt->tablespacename = NULL;
+	cstmt->accessMethod = NULL;
+	cstmt->if_not_exists = true;
+	cstmt->with_rowid_seq = false;
+	cstmt->collname = NULL;
+
+	/* Create "PlannedStmt" node */
+	pstmt = makeNode(PlannedStmt);
+	pstmt->commandType = CMD_UTILITY;
+	pstmt->canSetTag = false;
+	pstmt->utilityStmt = (Node *) cstmt;
+
+	parent->definterval = true;
+
+	/* Remove then partition directory and recreate it outside. */
+	if (partdirectory != NULL)
+		PartitionDirectoryRemove(partdirectory, parent);
+
+	/*
+	 * The operation to create interval parition will be placed in sub-transaction
+	 * for execution, so that the lock can be released after completion.
+	 *
+	 * Here, TRY-CATCH is used to prevent the issue of being unable to exit after
+	 * a concurrent sub-transaction fails.
+	 */
+	PG_TRY();
+	{
+		BeginInternalSubTransaction(NULL);
+
+		ProcessUtility(pstmt, GEN_INTERVAL_QUERY, false,
+					   PROCESS_UTILITY_SUBCOMMAND, NULL,
+					   NULL, None_Receiver, NULL);
+
+		ReleaseCurrentSubTransaction();
+
+		MemoryContextSwitchTo(old_cxt);
+
+		res = partdesc->nparts;
+	}
+	PG_CATCH();
+	{
+		ErrorData *edata;
+
+		RollbackAndReleaseCurrentSubTransaction();
+
+		MemoryContextSwitchTo(old_cxt);
+
+		edata = CopyErrorData();
+		FlushErrorState();
+
+		ereport(LOG,
+				(errcode(edata->sqlerrcode),
+				 errmsg("%s", edata->message),
+				 edata->detail ? errdetail("%s", edata->message) : 0,
+				 edata->hint ? errhint("%s", edata->hint) : 0));
+
+		FreeErrorData(edata);
+
+		res = -1;
+	}
+	PG_END_TRY();
+
+	parent->definterval = false;
+
+	CurrentMemoryContext = old_cxt;
+	CurrentResourceOwner = old_rsowner;
+
+	return res;
+}
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * ATExecSetPartitionInterval -
+ *     ALTER TABLE <name> SET INTERVAL ([interval_expr])
+ *
+ * If interval_expr does not exist, the interval partitioned table will
+ * be converted into a range partitioned table.
+ * If interval_expr exists, then:
+ *   - if the target table is a range, convert it to interval.
+ *   - if the target table is an interval, update the interval value.
+ */
+static void
+ATExecSetPartitionInterval(Relation rel, PartitionInterval *partInterval,
+						   AlterTableUtilityContext *context)
+{
+	ParseState	   *pstate;
+	PartitionKey	partkey;
+	PartitionDesc	partdesc;
+	char		   *attname;
+	Oid				atttypid;
+	int32			atttypmod;
+	Oid				attcollation;
+	Datum			highest;
+
+	/*
+	 * Create a dummy ParseState and insert the target relation as its sole
+	 * rangetable entry.  We need a ParseState for transformExpr.
+	 */
+	pstate = make_parsestate(NULL);
+	pstate->p_sourcetext = context->queryString;
+
+	partkey = RelationGetPartitionKey(rel);
+	partdesc = RelationGetPartitionDesc(rel, true);
+
+	/*
+	 * Non-range partitioned table or range partitioned table with non-unique
+	 * partion key columns do not support SET INTERVAL.
+	 */
+	if (partkey->strategy != PARTITION_STRATEGY_RANGE || /* not range partition */
+		partkey->partnatts > 1 ||						 /* partition key > 1 */
+		partdesc->boundinfo->default_index != -1 ||		 /* has default partition */
+		(partdesc->nparts > 0 &&						 /* has MAXVALUE partition */
+		 partdesc->boundinfo->kind[partdesc->boundinfo->ndatums - 1][0] == PARTITION_RANGE_DATUM_MAXVALUE))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("SET INTERVAL is not legal on this table"),
+				 parser_errposition(pstate, exprLocation((Node *) partInterval))));
+
+	/*
+	 * Convert the interval partitioned table to range, and an error will
+	 * be reported if the target table is already a range partitioned table.
+	 */
+	if (partInterval == NULL)
+	{
+		if (partdesc->intervalinfo == NULL)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("Table is already a range partitioned table"),
+					 parser_errposition(pstate, exprLocation((Node *) partInterval))));
+
+		RemovePartitionInterval(rel);
+		return;
+	}
+
+	Assert(partInterval->interval != NULL);
+	Assert(partInterval->base == NULL);
+
+	if (partkey->partattrs[0] == 0)
+	{
+		List *dplist;
+		Node *expr;
+
+		if (list_length(partkey->partexprs) == 0)
+			elog(ERROR, "wrong number of partition key expressions");
+
+		expr = linitial(partkey->partexprs);
+		dplist = deparse_context_for(RelationGetRelationName(rel), RelationGetRelid(rel));
+		attname = deparse_expression(expr, dplist, false, false);
+		atttypid = exprType(expr);
+		atttypmod = exprTypmod(expr);
+		attcollation = exprCollation(expr);
+	}
+	else
+	{
+		attname = get_attname(RelationGetRelid(rel), partkey->partattrs[0], false);
+		atttypid = rel->rd_att->attrs[partkey->partattrs[0] - 1].atttypid;
+		atttypmod = rel->rd_att->attrs[partkey->partattrs[0] - 1].atttypmod;
+		attcollation = rel->rd_att->attrs[partkey->partattrs[0] - 1].attcollation;
+	}
+
+	/*
+	 * To prevent the boundary values of existing partitions from not matching
+	 * then new interval value after modifyingthe interval, set the base value
+	 * to the highest value of the existing partitions.
+	 */
+	if (partdesc->nparts > 0)
+	{
+		highest = partdesc->boundinfo->datums[partdesc->boundinfo->ndatums - 1][0];
+		partInterval->base = (Node *) makeConst(partkey->parttypid[0], partkey->parttypmod[0],
+												partkey->partcollation[0], partkey->parttyplen[0],
+												highest, false, partkey->parttypbyval[0]);
+	}
+	else if (partdesc->intervalinfo != NULL)
+		partInterval->base = (Node *) partdesc->intervalinfo->base;
+
+	TransformPartitionTableInterval(pstate, partInterval, attname,
+									atttypid, atttypmod, attcollation);
+
+	/* If the interval value is unchanged, do nothing. */
+	if (partdesc->intervalinfo != NULL &&
+		equal(partdesc->intervalinfo->interval, partInterval->interval))
+		return;
+
+	StorePartitionInterval(rel, partInterval);
+}

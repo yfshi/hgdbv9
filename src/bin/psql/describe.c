@@ -1836,6 +1836,7 @@ describeOneTableDetails(const char *schemaname,
 		bool		hasoids;
 		bool		hasrowid;	/* ReqID:SRS-SQL-ROWID */
 		bool		ispartition;
+		bool		isinterval;	/* ReqID:RSR-SQL-Partition-interval */
 		Oid			tablespace;
 		char	   *reloptions;
 		char	   *reloftype;
@@ -1856,6 +1857,7 @@ describeOneTableDetails(const char *schemaname,
 	/* Get general table info */
 	if (pset.sversion >= 120000)
 	{
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
 		/* Begin - BUG#M229 */
 		if (DB_ORACLE == db_mode)
 			printfPQExpBuffer(&buf,
@@ -1863,15 +1865,18 @@ describeOneTableDetails(const char *schemaname,
 						  "c.relhastriggers, c.relrowsecurity, c.relforcerowsecurity, "
 						  "false AS relhasoids, c.relispartition, %s, c.reltablespace, "
 						  "CASE WHEN c.reloftype = 0 THEN '' ELSE c.reloftype::pg_catalog.regtype::pg_catalog.text END, "
-						  "c.relpersistence, c.relreplident, am.amname, c.relhasrowid\n"
+						  "c.relpersistence, c.relreplident, am.amname, c.relhasrowid, "
+						  "CASE WHEN ob.option->>'INTERVAL' IS NOT NULL THEN true ELSE false END AS relisinterval \n"
 						  "FROM pg_catalog.pg_class c\n "
 						  "LEFT JOIN pg_catalog.pg_class tc ON (c.reltoastrelid = tc.oid)\n"
 						  "LEFT JOIN pg_catalog.pg_am am ON (c.relam = am.oid)\n"
+						  "LEFT JOIN pg_catalog.pg_object ob ON (c.oid = ob.obj_oid and ob.refclassid=%u)\n"
 						  "WHERE c.oid = '%s';",
 						  (verbose ?
 						   "pg_catalog.array_to_string(c.reloptions || "
 						   "array(select 'toast.' || x from pg_catalog.unnest(tc.reloptions) x), ', ')\n"
 						   : "''"),
+						  RelationRelationId,
 						  oid);
 		/* End - BUG#M229 */
 
@@ -1882,7 +1887,7 @@ describeOneTableDetails(const char *schemaname,
 						  "c.relhastriggers, c.relrowsecurity, c.relforcerowsecurity, "
 						  "false AS relhasoids, c.relispartition, %s, c.reltablespace, "
 						  "CASE WHEN c.reloftype = 0 THEN '' ELSE c.reloftype::pg_catalog.regtype::pg_catalog.text END, "
-						  "c.relpersistence, c.relreplident, am.amname, false as relhasrowid\n"
+						  "c.relpersistence, c.relreplident, am.amname, false as relhasrowid, false as relisinterval \n"
 						  "FROM pg_catalog.pg_class c\n "
 						  "LEFT JOIN pg_catalog.pg_class tc ON (c.reltoastrelid = tc.oid)\n"
 						  "LEFT JOIN pg_catalog.pg_am am ON (c.relam = am.oid)\n"
@@ -1898,7 +1903,7 @@ describeOneTableDetails(const char *schemaname,
 						  "c.relhastriggers, c.relrowsecurity, c.relforcerowsecurity, "
 						  "false AS relhasoids, c.relispartition, %s, c.reltablespace, "
 						  "CASE WHEN c.reloftype = 0 THEN '' ELSE c.reloftype::pg_catalog.regtype::pg_catalog.text END, "
-						  "c.relpersistence, c.relreplident, am.amname, false as relhasrowid\n"
+						  "c.relpersistence, c.relreplident, am.amname, false as relhasrowid, false as relisinterval \n"
 						  "FROM pg_catalog.pg_class c\n "
 						  "LEFT JOIN pg_catalog.pg_class tc ON (c.reltoastrelid = tc.oid)\n"
 						  "LEFT JOIN pg_catalog.pg_am am ON (c.relam = am.oid)\n"
@@ -1908,6 +1913,7 @@ describeOneTableDetails(const char *schemaname,
 						   "array(select 'toast.' || x from pg_catalog.unnest(tc.reloptions) x), ', ')\n"
 						   : "''"),
 						  oid);
+			/* End - ReqID:RSR-SQL-Partition-interval */
 	}
 	else if (pset.sversion >= 100000)
 	{
@@ -2081,6 +2087,12 @@ describeOneTableDetails(const char *schemaname,
 	else
 		tableinfo.hasrowid = false;
 	/* End - ReqID:SRS-SQL-ROWID */
+	/* Begin - ReqID:RSR-SQL-Partition-interval */
+	if(pset.sversion >= 120000)
+		tableinfo.isinterval = strcmp(PQgetvalue(res, 0, 16), "t") == 0;
+	else
+		tableinfo.isinterval = false;
+	/* End - ReqID:RSR-SQL-Partition-interval */
 
 	PQclear(res);
 	res = NULL;
@@ -2644,6 +2656,27 @@ describeOneTableDetails(const char *schemaname,
 			printTableAddFooter(&cont, tmpbuf.data);
 		}
 		PQclear(result);
+
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
+		if (tableinfo.isinterval)
+		{
+			printfPQExpBuffer(&buf,
+							  "SELECT sys.pg_get_partinterval_def('%s'::pg_catalog.oid);",
+							  oid);
+			result = PSQLexec(buf.data);
+			if (!result)
+				goto error_return;
+
+			if (PQntuples(result) == 1)
+			{
+				char *val = PQgetvalue(result, 0, 0);
+
+				printfPQExpBuffer(&tmpbuf, _("Range interval: %s"), val);
+				printTableAddFooter(&cont, tmpbuf.data);
+			}
+			PQclear(result);
+		}
+		/* End - ReqID:RSR-SQL-Partition-interval */
 	}
 
 	if (tableinfo.relkind == RELKIND_TOASTVALUE)

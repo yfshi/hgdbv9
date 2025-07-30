@@ -36,13 +36,24 @@ typedef struct PartitionDescData
 								 * the corresponding 'oids' element belongs to
 								 * a leaf partition or not */
 	PartitionBoundInfo boundinfo;	/* collection of partition bounds */
+	/* Begin - ReqID:RSR-SQL-Partition-interval */
+	PartitionIntervalInfo intervalinfo;	/* partition interval */
+	/* End - ReqID:RSR-SQL-Partition-interval */
 } PartitionDescData;
 
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+typedef struct PartitionIntervalInfoData
+{
+	Const	*base;		/* base value of interval partition */
+	Const	*interval;	/* interval value of interval parition */
+} PartitionIntervalInfoData;
+/* End - ReqID:RSR-SQL-Partition-interval */
 
 extern PartitionDesc RelationGetPartitionDesc(Relation rel, bool omit_detached);
 
 extern PartitionDirectory CreatePartitionDirectory(MemoryContext mcxt, bool omit_detached);
 extern PartitionDesc PartitionDirectoryLookup(PartitionDirectory, Relation);
+extern void PartitionDirectoryRemove(PartitionDirectory pdir, Relation rel);	/* ReqID:RSR-SQL-Partition-interval */
 extern void DestroyPartitionDirectory(PartitionDirectory pdir);
 
 extern Oid	get_default_oid_from_partdesc(PartitionDesc partdesc);

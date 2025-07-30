@@ -125,4 +125,9 @@ extern int	partition_range_datum_bsearch(FmgrInfo *partsupfunc,
 extern int	partition_hash_bsearch(PartitionBoundInfo boundinfo,
 								   int modulus, int remainder);
 
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+extern List *calc_new_interval_partition_rbound(ParseState *pstate, PartitionKey partkey,
+												PartitionDesc partdesc, Datum *values, bool *equal);
+/* End - ReqID:RSR-SQL-Partition-interval */
+
 #endif							/* PARTBOUNDS_H */

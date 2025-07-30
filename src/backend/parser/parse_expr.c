@@ -192,6 +192,13 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 				break;
 			}
 
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
+		/* Do nothing for const */
+		case T_Const:
+			result = expr;
+			break;
+		/* End - ReqID:RSR-SQL-Partition-interval */
+
 		case T_A_Indirection:
 			result = transformIndirection(pstate, (A_Indirection *) expr);
 			break;

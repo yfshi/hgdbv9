@@ -3383,11 +3383,24 @@ _equalPartitionElem(const PartitionElem *a, const PartitionElem *b)
 	return true;
 }
 
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+static bool
+_equalPartitionInterval(const PartitionInterval *a, const PartitionInterval *b)
+{
+	COMPARE_NODE_FIELD(interval);
+	COMPARE_NODE_FIELD(base);
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+/* End - ReqID:RSR-SQL-Partition-interval */
+
 static bool
 _equalPartitionSpec(const PartitionSpec *a, const PartitionSpec *b)
 {
 	COMPARE_STRING_FIELD(strategy);
 	COMPARE_NODE_FIELD(partParams);
+	COMPARE_NODE_FIELD(partInterval);	/* ReqID:RSR-SQL-Partition-interval */
 	COMPARE_LOCATION_FIELD(location);
 
 	return true;
@@ -4400,6 +4413,11 @@ equal(const void *a, const void *b)
 		case T_PartitionElem:
 			retval = _equalPartitionElem(a, b);
 			break;
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
+		case T_PartitionInterval:
+			retval = _equalPartitionInterval(a, b);
+			break;
+		/* End - ReqID:RSR-SQL-Partition-interval */
 		case T_PartitionSpec:
 			retval = _equalPartitionSpec(a, b);
 			break;

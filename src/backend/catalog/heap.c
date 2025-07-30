@@ -4179,3 +4179,47 @@ DeleteForceViewAttinPgobject(Oid viewid)
 	table_close(attrel, RowExclusiveLock);
 }
 /* End - BUGM354 */
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * StorePartitionInterval
+ *		Update pg_object tuple of rel to store the partition interval.
+ *
+ * Also, invalidate the parent's relcache, so that the next rebuild will load
+ * the new partition's info into its partition descriptor.  If there is a
+ * default partition, we must invalidate its relcache entry as well.
+ */
+void
+StorePartitionInterval(Relation rel, PartitionInterval *partinterval)
+{
+	SetRelationInterval(RelationGetRelid(rel), RelationGetRelationName(rel),
+						RelationGetNamespace(rel), rel->rd_rel->relkind,
+						nodeToString(partinterval));
+
+	/* Make these updates visible */
+	CommandCounterIncrement();
+
+	CacheInvalidateRelcache(rel);
+}
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * RemovePartitionInterval
+ *		Delete the partition inteval.
+ *
+ * Also, invalidate the parent's relcache, so that the next rebuild will load
+ * the new partition's info into its partition descriptor.  If there is a
+ * default partition, we must invalidate its relcache entry as well.
+ */
+void
+RemovePartitionInterval(Relation rel)
+{
+	DeleteRelationInterval(RelationGetRelid(rel));
+
+	/* Make these updates visible */
+	CommandCounterIncrement();
+
+	CacheInvalidateRelcache(rel);
+}

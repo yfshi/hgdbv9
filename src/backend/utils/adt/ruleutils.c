@@ -53,6 +53,7 @@
 #include "nodes/nodeFuncs.h"
 #include "nodes/pathnodes.h"
 #include "optimizer/optimizer.h"
+#include "parser/pg_object_hook.h"	/* ReqID:RSR-SQL-Partition-interval */
 #include "parser/parse_agg.h"
 #include "parser/parse_func.h"
 #include "parser/parse_node.h"
@@ -10312,6 +10313,25 @@ get_rule_expr(Node *node, deparse_context *context,
 			}
 			break;
 
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
+		case T_PartitionInterval:
+			{
+				PartitionInterval *pinterval = (PartitionInterval *) node;
+
+				appendStringInfoString(buf, "INTERVAL (");
+				get_const_expr((Const *) pinterval->interval, context, showimplicit);
+				appendStringInfoString(buf, ")");
+
+				if (pinterval->base != NULL)
+				{
+					appendStringInfoString(buf, " BASEVALUE (");
+					get_const_expr((Const *) pinterval->base, context, showimplicit);
+					appendStringInfoString(buf, ")");
+				}
+			}
+			break;
+		/* End - ReqID:RSR-SQL-Partition-interval */
+
 		case T_List:
 			{
 				char	   *sep;
@@ -13549,3 +13569,33 @@ mysquote_qualified_identifierrestrict(const char *qualifier,
 		return buf.data;
 }
 /* End - ReqID:SRS-MYSQL-CASE */
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * pg_get_partinterval_def
+ *
+ * Returns the partition interval as a C-string for the input relation, with
+ * the given relation.
+ */
+char *
+pg_get_partinterval_def_string(Oid relid)
+{
+	List			   *context;
+	char			   *consrc;
+	char			   *intervalstr;
+	PartitionInterval  *pinterval;
+
+	intervalstr = GetRelationInterval(relid);
+
+	/* Quick exit if no partition interval */
+	if (intervalstr == NULL)
+		return NULL;
+
+	pinterval = stringToNode(intervalstr);
+
+	context = deparse_context_for(get_relation_name(relid), relid);
+	consrc = deparse_expression_pretty((Node *) pinterval, context, false, false, false, 0);
+
+	return consrc;
+}

@@ -530,6 +530,7 @@ typedef enum NodeTag
 	T_RoleSpec,
 	T_TriggerTransition,
 	T_PartitionElem,
+	T_PartitionInterval,	/* ReqID:RSR-SQL-Partition-interval */
 	T_PartitionSpec,
 	T_PartitionBoundSpec,
 	T_PartitionRangeDatum,

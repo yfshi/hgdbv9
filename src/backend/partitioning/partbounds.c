@@ -17,6 +17,7 @@
 #include "access/relation.h"
 #include "access/table.h"
 #include "access/tableam.h"
+#include "catalog/heap.h"			/* ReqID:RSR-SQL-Partition-interval */
 #include "catalog/partition.h"
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_type.h"
@@ -27,7 +28,10 @@
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "nodes/pathnodes.h"
+#include "optimizer/optimizer.h"	/* ReqID:RSR-SQL-Partition-interval */
 #include "parser/parse_coerce.h"
+#include "parser/parse_expr.h"		/* ReqID:RSR-SQL-Partition-interval */
+#include "parser/parse_utilcmd.h"	/* ReqID:RSR-SQL-Partition-interval */
 #include "partitioning/partbounds.h"
 #include "partitioning/partdesc.h"
 #include "partitioning/partprune.h"
@@ -239,6 +243,11 @@ static void get_range_key_properties(PartitionKey key, int keynum,
 									 Expr **keyCol,
 									 Const **lower_val, Const **upper_val);
 static List *get_range_nulltest(PartitionKey key);
+
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+static void check_new_interval_partition(char *relname, Relation parent,
+										 PartitionBoundSpec *spec, ParseState *pstate);
+/* End - ReqID:RSR-SQL-Partition-interval */
 
 /*
  * get_qual_from_partbound
@@ -2806,6 +2815,14 @@ check_new_partition_bound(char *relname, Relation parent,
 
 	if (spec->is_default)
 	{
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
+		if (key->strategy == PARTITION_STRATEGY_RANGE && partdesc->intervalinfo != NULL)
+			ereport(ERROR,
+				   (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					errmsg("interval partition table does not allow adding default partition"),
+					parser_errposition(pstate, spec->location)));
+		/* End - ReqID:RSR-SQL-Partition-interval */
+
 		/*
 		 * The default partition bound never conflicts with any other
 		 * partition's; if that's what we're attaching, the only possible
@@ -3032,6 +3049,10 @@ check_new_partition_bound(char *relname, Relation parent,
 									   get_range_partbound_string(spec->upperdatums)),
 							 parser_errposition(pstate, datum->location)));
 				}
+
+				/* Begin - ReqID:RSR-SQL-Partition-interval */
+				check_new_interval_partition(relname, parent, spec, pstate);
+				/* End - ReqID:RSR-SQL-Partition-interval */
 
 				if (partdesc->nparts > 0)
 				{
@@ -4886,4 +4907,465 @@ satisfies_hash_partition(PG_FUNCTION_ARGS)
 	}
 
 	PG_RETURN_BOOL(rowHash % modulus == remainder);
+}
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * make_one_interval_partition_rbound -
+ *     make a bound value by lower or upper.
+ *
+ * base: the base value.
+ * interval: interval value.
+ * lower2upper:
+ *     return "base + interval" if true.
+ *     return "base - interval" if false.
+ */
+static Const *
+make_one_interval_partition_rbound(ParseState *pstate, Const *base, Const *interval, bool lower2upper)
+{
+	Node *n;
+
+	n = (Node *) makeSimpleA_Expr(EXPR_KIND_NONE,
+								  lower2upper ? "+" : "-",
+								  (Node *)base,
+								  (Node *)interval,
+								  -1);
+
+	n = transformExpr(pstate, n, EXPR_KIND_PARTITION_BOUND);
+	if (!IsA(n, Const))
+		n = (Node *)expression_planner((Expr *)n);
+	if (!IsA(n, Const))
+		elog(ERROR, "could not evaluate interval expression");
+
+	return (Const *)n;
+}
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * calc_interval_range -
+ *     calcuate a interval partition range containing special value.
+ *
+ * Return a list which length is 2, the first is lower boundary and
+ * the second is upper boudary (lower <= values < upper).
+ *
+ * arges:
+ *   - base: base lower value.
+ *   - incremental: incremental calculation base on "base"?
+ *   - interval: interval value.
+ *   - values: target value.
+ *   - equal: targe value equel to lower?
+ *
+ * Based on the "base" value, add/sub "interval" each time until it
+ * exceeds the target value.
+ */
+static List *
+calc_interval_range(ParseState *pstate, Const *base,
+					bool incremental, Const *interval,
+					Datum *values,PartitionKey partkey,
+					bool *equal)
+{
+#define BOUNDCMP(key, v1, v2)                                 \
+	(DatumGetInt32(FunctionCall2Coll(&(key)->partsupfunc[0],  \
+									 (key)->partcollation[0], \
+									 (v1),                    \
+									 (v2))))
+	uint64	i;
+	int		cmpval;
+	Const   *prev,
+			*post;
+	MemoryContext	oldcxt,
+					newcxt;
+
+	Assert(base != NULL);
+	Assert(interval != NULL);
+
+	*equal = false;
+
+	/*
+	 * For incremental mode, base must be less than or equal to target value.
+	 * For decremental mode, base must be greater than or equal to target value.
+	 */
+	cmpval = BOUNDCMP(partkey, base->constvalue, values[0]);
+	if (incremental ? cmpval > 0 : cmpval < 0)
+		ereport(ERROR,
+				errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				errmsg("target value does not match base value"));
+	else if (cmpval == 0)
+	{
+		/*
+		 * Return a range: [base, base + interval) which base is
+		 * equal to target "values".
+		 */
+		*equal = true;
+		prev = copyObject(base);
+		post = make_one_interval_partition_rbound(pstate, prev, interval, true);
+		return list_make2(prev, post);
+	}
+
+	/*
+	 * Use a separate memory context to avoid memory overflow caused
+	 * by excessive loop iterations.
+	 */
+	newcxt = AllocSetContextCreate(CurrentMemoryContext,
+								   "CalcPartitionIntervalRange",
+								   ALLOCSET_DEFAULT_SIZES);
+
+	oldcxt = MemoryContextSwitchTo(newcxt);
+
+	*equal = false;
+	prev = base;
+	post = make_one_interval_partition_rbound(pstate, prev, interval, incremental);
+	for (i = 1;; i++)
+	{
+		cmpval = DatumGetInt32(FunctionCall2Coll(&partkey->partsupfunc[0],
+												 partkey->partcollation[0],
+												 post->constvalue,
+												 values[0]));
+		if (cmpval == 0)
+		{
+			*equal = true;
+			if (incremental)
+			{
+				prev = post;
+				post = make_one_interval_partition_rbound(pstate, prev, interval, true);
+			}
+			break;
+		}
+
+		if (incremental ? cmpval > 0 : cmpval < 0)
+			break;
+
+		/* increase or decrease an interval value each time */
+		prev = post;
+		post = make_one_interval_partition_rbound(pstate, prev, interval, incremental);
+
+		/*
+		 * To prevent too many calculations form causing memory overflow,
+		 * the memory is released every 100 times.
+		 */
+		if (i % 100 == 0)
+		{
+			MemoryContextSwitchTo(oldcxt);
+			prev = copyObject(prev);
+			post = copyObject(post);
+			MemoryContextSwitchTo(newcxt);
+			MemoryContextReset(newcxt);
+		}
+	}
+	MemoryContextSwitchTo(oldcxt);
+	prev = copyObject(prev);
+	post = copyObject(post);
+	MemoryContextDelete(newcxt);
+
+	return (incremental ? list_make2(prev, post) : list_make2(post, prev));
+}
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * check_new_interval_partition -
+ *     check when create or attatch a new interval partition
+ *
+ * Checks if the new partition's bound overlaps any of the existing partitions
+ * of parent.  Also performs additional checks as necessary per strategy.
+ */
+static void
+check_new_interval_partition(char *relname, Relation parent,
+							 PartitionBoundSpec *spec, ParseState *pstate)
+{
+#define BOUNDCMP(key, v1, v2)                                 \
+	(DatumGetInt32(FunctionCall2Coll(&(key)->partsupfunc[0],  \
+									 (key)->partcollation[0], \
+									 (v1),                    \
+									 (v2))))
+	PartitionKey key = RelationGetPartitionKey(parent);
+	PartitionDesc partdesc = RelationGetPartitionDesc(parent, false);
+	PartitionRangeBound *lower, *upper;
+	List *lowerrange, *upperrange;
+	int cmpval;
+	Const *base, *interval;
+	bool	is_equal;
+
+	if (key->strategy != PARTITION_STRATEGY_RANGE ||
+		partdesc->intervalinfo == NULL)
+		return;
+
+	if (parent->definterval)
+	{
+		Assert(partdesc->nparts > 0);
+		return;
+	}
+
+	if (spec->is_default)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("interval partition table does not allow adding default partition"),
+				 parser_errposition(pstate, spec->location)));
+
+	lower = make_one_partition_rbound(key, -1, spec->lowerdatums, true);
+	upper = make_one_partition_rbound(key, -1, spec->upperdatums, false);
+
+	if (upper->kind[0] == PARTITION_RANGE_DATUM_MAXVALUE)
+		elog(ERROR, "MAXVALUE partition cannot be specified for INTERVAL parititoned objects");
+
+	base = partdesc->intervalinfo->base;
+	interval = partdesc->intervalinfo->interval;
+
+	/* Is the first partition and base value does not exists ? */
+	if (base == NULL)
+	{
+		/*
+		 * No partition and interval basevalue exists.
+		 *
+		 * Set interval base if it does not exists.
+		 */
+		char				*attname;
+		PartitionRangeDatum	*upperdatum;
+		PartitionInterval	*partinterval;
+
+		Assert(partdesc->nparts == 0);
+
+		upperdatum = castNode(PartitionRangeDatum, linitial(spec->upperdatums));
+		partinterval = makeNode(PartitionInterval);
+
+		partinterval->base = copyObject(upperdatum->value);
+		partinterval->interval = copyObject((Node *) interval);
+		partinterval->location = -1;
+
+		if (key->partattrs[0] == 0)
+		{
+			List *dplist;
+			Node *expr;
+
+			if (list_length(key->partexprs) == 0)
+			elog(ERROR, "wrong number of partition key expressions");
+
+			expr = linitial(key->partexprs);
+			dplist = deparse_context_for(RelationGetRelationName(parent), RelationGetRelid(parent));
+			attname = deparse_expression(expr, dplist, false, false);
+		}
+		else
+			attname = get_attname(RelationGetRelid(parent), key->partattrs[0], false);
+
+		TransformPartitionTableInterval(pstate, partinterval,
+										attname, key->parttypid[0],
+										key->parttypmod[0],	key->partcollation[0]);
+
+		StorePartitionInterval(parent, partinterval);
+		return;
+	}
+
+	/* Upper boundary value less than base value, do nothing. */
+	cmpval = BOUNDCMP(key, base->constvalue, upper->datums[0]);
+	if (cmpval >= 0)
+		return;
+
+	/*
+	 * if lower != MINVALUE and lower > basevalue, caculate the boundary
+	 * range of lower.
+	 */
+	if (lower->kind[0] != PARTITION_RANGE_DATUM_MINVALUE &&
+		BOUNDCMP(key, base->constvalue, lower->datums[0]) < 0)
+	{
+		is_equal = false;
+		lowerrange = calc_new_interval_partition_rbound(pstate, key, partdesc, lower->datums, &is_equal);
+		if (!is_equal)
+		{
+			/*
+			 * Update lower value to match interval boundary.
+			 */
+			PartitionRangeDatum	*datum;
+
+			Assert(list_length(lowerrange) == 2);
+
+			datum = castNode(PartitionRangeDatum, linitial(spec->lowerdatums));
+			datum->value = linitial(lowerrange);
+		}
+		/* > basevalue */
+	}
+
+	upperrange = calc_new_interval_partition_rbound(pstate, key, partdesc, upper->datums, &is_equal);
+	if (!is_equal)
+	{
+		/*
+		 * Update upper value to match interval boundary.
+		 */
+		PartitionRangeDatum *datum;
+
+		Assert(list_length(upperrange) == 2);
+
+		datum = castNode(PartitionRangeDatum, linitial(spec->upperdatums));
+		datum->value = lsecond(upperrange);
+	}
+
+	/*
+	 * Recheck if the resulting range would be empty with
+	 * specified lower and upper bounds.  partition_rbound_cmp
+	 * cannot return zero here, since the lower-bound flags are
+	 * different.
+	 */
+	cmpval = partition_rbound_cmp(key->partnatts,
+								  key->partsupfunc,
+								  key->partcollation,
+								  lower->datums, lower->kind,
+								  true, upper);
+	Assert(cmpval != 0);
+	if (cmpval > 0)
+	{
+		/* Point to problematic key in the lower datums list. */
+		PartitionRangeDatum *datum = list_nth(spec->lowerdatums,
+											  cmpval - 1);
+
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				 errmsg("empty range bound specified for partition \"%s\"",
+						relname),
+				 errdetail("Specified lower bound %s is greater than or equal to upper bound %s.",
+						   get_range_partbound_string(spec->lowerdatums),
+						   get_range_partbound_string(spec->upperdatums)),
+				 parser_errposition(pstate, datum->location)));
+	}
+}
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * calc_new_interval_partition_rbound -
+ *     caculate a range boundary for a new interval partition.
+ *
+ * Caculate a range boudary including target "values", return a list
+ * which first is the lower boundary and second is the upper boundary,
+ * as follows:
+ *   upper = lower + interval
+ *   lower <= values < upper
+ */
+List *
+calc_new_interval_partition_rbound(ParseState *pstate, PartitionKey partkey,
+								   PartitionDesc partdesc, Datum *values, bool *equal)
+{
+#define BOUNDCMP(key, v1, v2)                                 \
+	(DatumGetInt32(FunctionCall2Coll(&(key)->partsupfunc[0],  \
+									 (key)->partcollation[0], \
+									 (v1),                    \
+									 (v2))))
+	int32	cmpval;
+	Node   *n;
+	Const  *base,
+		   *interval;
+	Const  *lower_base,
+		   *upper_base,
+		   *target;
+
+	Assert(partkey->partnatts == 1);
+	Assert(partdesc->intervalinfo->base != NULL);
+	Assert(partdesc->intervalinfo->interval != NULL);
+
+	base = partdesc->intervalinfo->base;
+	interval = partdesc->intervalinfo->interval;
+
+	/*
+	 * Use the base value as the lower boudary if it is
+	 * equal to the target value.
+	 */
+	cmpval = BOUNDCMP(partkey, base->constvalue, values[0]);
+	if (cmpval == 0)
+	{
+		lower_base = copyObject(base);
+		upper_base = make_one_interval_partition_rbound(pstate, lower_base, interval, true);
+		return list_make2(lower_base, upper_base);
+	}
+
+	lower_base = copyObject(base);
+	upper_base = NULL;
+
+	/*
+	 * Search the the greatest range bound that is less than or
+	 * equal to the given value.
+	 * -1 is set if all of the range bounds are greater.
+	 */
+	if (partdesc->nparts > 0)
+	{
+		int		off = -1;
+		bool	equal = false;
+
+		off = partition_range_datum_bsearch(partkey->partsupfunc,
+											partkey->partcollation,
+											partdesc->boundinfo,
+											partkey->partnatts,
+											values,
+											&equal);
+
+		/*
+		 * Find a suitable boudary value in current partitions, set it
+		 * as the lower, and the upper is: lower + interval.
+		 */
+		if (equal)
+		{
+			lower_base->constvalue = partdesc->boundinfo->datums[off][0];
+			upper_base = make_one_interval_partition_rbound(pstate, lower_base, interval, true);
+			return list_make2(lower_base, upper_base);
+		}
+
+		if (off >= 0)
+		{
+			/*
+			 * Basic value is: max(basevalue, lower).
+			 */
+			if (partdesc->boundinfo->kind[off][0] != PARTITION_RANGE_DATUM_MINVALUE &&
+				BOUNDCMP(partkey, lower_base->constvalue, partdesc->boundinfo->datums[off][0]) < 0)
+				lower_base->constvalue = partdesc->boundinfo->datums[off][0];
+
+			if (off < partdesc->boundinfo->ndatums - 1)
+			{
+				upper_base = copyObject(base);
+				upper_base->constvalue = partdesc->boundinfo->datums[off + 1][0];
+			}
+		}
+	}
+
+	/*
+	 * If the target value is greater than all parts, caculate
+	 * the boundary value from lower to upper.
+	 */
+	if (upper_base == NULL)
+		return calc_interval_range(pstate, lower_base, true, interval, values, partkey, equal);
+
+	target = makeConst(base->consttype, base->consttypmod,
+					   base->constcollid, base->constlen,
+					   values[0], false, base->constbyval);
+
+	/*
+	 * Make a expr and check.
+	 *
+	 * if (upper - target) > (target - lower):
+	 *     caculate boundary value from lower to upper
+	 * else
+	 *     caculate boundary value from upper to lower
+	 */
+	n = (Node *) makeSimpleA_Expr(EXPR_KIND_NONE,
+								  ">",
+								  (Node *) makeSimpleA_Expr(EXPR_KIND_NONE,
+															"-",
+															(Node *) upper_base,
+															(Node *) target,
+															-1),
+								  (Node *) makeSimpleA_Expr(EXPR_KIND_NONE,
+															"-",
+															(Node *) target,
+															(Node *) lower_base,
+															-1),
+								  -1);
+	n = transformExpr(pstate, n, EXPR_KIND_PARTITION_BOUND);
+	if (!IsA(n, Const))
+		n = (Node *)expression_planner((Expr *)n);
+	if (!IsA(n, Const))
+		elog(ERROR, "could not evaluate interval expression");
+
+	/* "n" is a boolean const now */
+	if (((Const *) n)->constvalue == 0)
+		return calc_interval_range(pstate, upper_base, false, interval, values, partkey, equal);
+	else
+		return calc_interval_range(pstate, lower_base, true, interval, values, partkey, equal);
 }

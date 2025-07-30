@@ -24,6 +24,7 @@
 #include "utils/numeric.h"
 /* Begin - Bug#Z1064 */
 #include "utils/builtins.h"
+#include "utils/ruleutils.h"	/* ReqID:RSR-SQL-Partition-interval */
 #include "access/transam.h"
 /* End - Bug#Z1064 */
 #include "lib/stringinfo.h" /* BUG#M0000457 */
@@ -36,6 +37,7 @@ PG_FUNCTION_INFO_V1(orafce_listagg1_transfn);
 PG_FUNCTION_INFO_V1(orafce_listagg2_transfn);
 PG_FUNCTION_INFO_V1(orafce_listagg_finalfn);
 /* End - BUG#M0000457 */
+PG_FUNCTION_INFO_V1(pg_get_partinterval_def);	/* ReqID:RSR-SQL-Partition-interval */
 
 
 /* Begin - bug0000459 */
@@ -124,3 +126,22 @@ orafce_listagg_finalfn(PG_FUNCTION_ARGS)
 	return string_agg_finalfn(fcinfo);
 }
 /* End - BUG#M0000457 */
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * pg_get_partinterval_def - get define of partition interval.
+ */
+Datum
+pg_get_partinterval_def(PG_FUNCTION_ARGS)
+{
+	Oid		relid = PG_GETARG_OID(0);
+	char   *res;
+
+	res = pg_get_partinterval_def_string(relid);
+
+	if (res == NULL)
+		PG_RETURN_NULL();
+
+	PG_RETURN_TEXT_P(CStringGetTextDatum(res));
+}

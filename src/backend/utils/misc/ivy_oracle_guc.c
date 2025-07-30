@@ -231,6 +231,9 @@ bool enable_strict_view_def = false; /* OA-REQ-1558 */
 bool enable_compatible_type_shippable = true;
 /* End - OA#00001554 */
 
+/* Begin - RSR-SQL-Partition-interval */
+int		max_interval_partition_failures = 10;
+/* End - RSR-SQL-Partition-interval */
 
 
 #endif
@@ -1062,7 +1065,18 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - wai BUG#Z00001678 */
-	/* End - ReqID:SRS-SQL-DBLINK */	
+	/* End - ReqID:SRS-SQL-DBLINK */
+	/* Begin - RSR-SQL-Partition-interval */
+	{
+		{"ivorysql.max_interval_partition_failures", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Set the maxinum number of failures allowed during creation an interval partition."),
+			NULL
+		},
+		&max_interval_partition_failures,
+		10, -1, INT32_MAX,
+		NULL, NULL, NULL
+	},
+	/* End - RSR-SQL-Partition-interval */
 #endif
 #if 0
 	/* End-of-list marker */

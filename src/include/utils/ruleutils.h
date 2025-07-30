@@ -52,5 +52,8 @@ extern char *pg_get_statisticsobjdef_string(Oid statextid);
 extern char *ivy_get_query_def(Query *query);
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
 
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+extern char *pg_get_partinterval_def_string(Oid relid);
+/* End - ReqID:RSR-SQL-Partition-interval */
 
 #endif							/* RULEUTILS_H */

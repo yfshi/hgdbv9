@@ -16463,6 +16463,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 	else
 	{
 		char	   *partkeydef = NULL;
+		char	   *partintervaldef = NULL;	/* ReqID:RSR-SQL-Partition-interval */
 		char	   *ftoptions = NULL;
 		char	   *srvname = NULL;
 		char	   *foreign = "";
@@ -16489,6 +16490,18 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 					res = ExecuteSqlQueryForSingleRow(fout, query->data);
 					partkeydef = pg_strdup(PQgetvalue(res, 0, 0));
 					PQclear(res);
+					/* Begin - ReqID:RSR-SQL-Partition-interval */
+					if (db_mode == DB_ORACLE)
+					{
+						resetPQExpBuffer(query);
+						appendPQExpBuffer(query,
+										  "SELECT pg_get_partinterval_def('%u')",
+										  tbinfo->dobj.catId.oid);
+						res = ExecuteSqlQueryForSingleRow(fout, query->data);
+						partintervaldef = pg_strdup(PQgetvalue(res, 0, 0));
+						PQclear(res);
+					}
+					/* End - ReqID:RSR-SQL-Partition-interval */
 					destroyPQExpBuffer(query);
 					break;
 				}
@@ -16751,7 +16764,13 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			}
 
 			if (tbinfo->relkind == RELKIND_PARTITIONED_TABLE)
+			{
 				appendPQExpBuffer(q, "\nPARTITION BY %s", partkeydef);
+				/* Begin - ReqID:RSR-SQL-Partition-interval */
+				if (db_mode == DB_ORACLE&& partintervaldef != NULL && strlen(partintervaldef) > 0)
+					appendPQExpBuffer(q, " %s", partintervaldef);
+				/* End - ReqID:RSR-SQL-Partition-interval */
+			}
 
 			if (tbinfo->relkind == RELKIND_FOREIGN_TABLE)
 				appendPQExpBuffer(q, "\nSERVER %s", fmtId(srvname));

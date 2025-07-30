@@ -289,6 +289,8 @@ typedef struct RelationData
 	Oid			relCollation;	/* BUG:M0000393 */
 	ItemPointer	rd_conflictTid; /* ReqID:SRS-MYSQL-SQL-INSERT */
 	bool		rd_onduplicate; /* ReqID:SRS-MYSQL-SQL-REPLACE */
+
+	bool		definterval;	/* ReqID:RSR-SQL-Partition-interval */
 } RelationData;
 
 

@@ -658,6 +658,9 @@ static bool isAconstNode(Node *node);
 %type <partboundspec> PartitionBoundSpec
 %type <list>		hash_partbound
 %type <defelt>		hash_partbound_elem
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+%type <node>		opt_partition_interval opt_set_partition_interval interval_expr interval_base_expr
+/* End - ReqID:RSR-SQL-Partition-interval */
 
 %type <list>	identity_clause identity_options drop_identity	/* Bug#m0000070 */
 %type <boolean>	opt_with opt_by	/* BUG#Z030 */
@@ -741,6 +744,7 @@ static bool isAconstNode(Node *node);
 	AUTHORIZATION
 
 	BACKWARD BADFILE /* ReqID:SRS-MISC-BULKLOAD */ BADTABLE /* ReqID:SRS-MISC-BULKLOAD */
+	BASEVALUE
 	BEFORE BEGIN_P BETWEEN BIGINT BINARY BINARY_DOUBLE /* ReqID:SRS-GKC-DATATYPE_001 */
 	BINARY_FLOAT /* ReqID:SRS-GKC-DATATYPE_001 */ BIT BODY /* ReqID:SRS-SQL-PACKAGE */
 	BOOLEAN_P BOTH BREADTH BY BYTE_P /* ReqID:SRS-GKC-DATATYPE_001 */
@@ -2571,6 +2575,16 @@ partition_cmd:
 					n->def = (Node *) cmd;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:RSR-SQL-Partition-interval */
+			| SET opt_set_partition_interval
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+
+					n->subtype = AT_SetInterval;
+					n->def = (Node *) $2;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:RSR-SQL-Partition-interval */
 		;
 
 index_partition_cmd:
@@ -4984,10 +4998,32 @@ PartitionSpec: PARTITION BY ColId '(' part_params ')'
 
 					n->strategy = $3;
 					n->partParams = $5;
+					n->partInterval = NULL;	/* ReqID:RSR-SQL-Partition-interval */
 					n->location = @1;
 
 					$$ = n;
 				}
+				/* Begin - ReqID:RSR-SQL-Partition-interval */
+				| PARTITION BY RANGE '(' part_params ')' opt_partition_interval
+				{
+					PartitionSpec *n = makeNode(PartitionSpec);
+
+					if ($7 != NULL && list_length($5) != 1)
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								errmsg("Range partitioned table with INTERVAL clause has more than one column"),
+								parser_errposition(@3)));
+					}
+
+					n->strategy = pstrdup($3);
+					n->partParams = $5;
+					n->partInterval = $7;
+					n->location = @1;
+
+					$$ = n;
+				}
+				/* End - ReqID:RSR-SQL-Partition-interval */
 		;
 
 part_params:	part_elem						{ $$ = list_make1($1); }
@@ -5028,6 +5064,40 @@ part_elem: ColId opt_collate opt_class
 					$$ = n;
 				}
 		;
+
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+opt_partition_interval:	INTERVAL '(' interval_expr ')' interval_base_expr
+				{
+					PartitionInterval *n = makeNode(PartitionInterval);
+
+					n->interval = $3;
+					n->base = $5;
+					n->location = @1;
+					$$ = (Node *) n;
+				}
+			| /* EMPTY */						{ $$ = NULL; }
+		;
+
+opt_set_partition_interval:
+			INTERVAL '(' interval_expr ')'
+				{
+					PartitionInterval *n = makeNode(PartitionInterval);
+
+					n->interval = $3;
+					n->base = NULL;
+					n->location = @1;
+					$$ = (Node *) n;
+				}
+			| INTERVAL '(' ')'					{ $$ = NULL; }
+		;
+
+interval_expr: a_expr							{ $$ = $1; }
+		;
+
+interval_base_expr: BASEVALUE '(' a_expr ')'	{ $$ = $3; }
+				| /* EMPTY */					{ $$ = NULL; }
+		;
+/* End - ReqID:RSR-SQL-Partition-interval */
 
 table_access_method_clause:
 			USING name							{ $$ = $2; }
@@ -20427,6 +20497,7 @@ unreserved_keyword:
 			| BACKWARD
 			| BADFILE /* ReqID:SRS-MISC-BULKLOAD */
 			| BADTABLE /* ReqID:SRS-MISC-BULKLOAD */
+			| BASEVALUE	/* ReqID:RSR-SQL-Partition-interval */
 			| BEFORE
 			| BEGIN_P
 			| BODY		/* ReqID:SRS-SQL-PACKAGE */
@@ -21046,6 +21117,7 @@ bare_label_keyword:
 			| BACKWARD
 			| BADFILE /* ReqID:SRS-MISC-BULKLOAD */
 			| BADTABLE /* ReqID:SRS-MISC-BULKLOAD */
+			| BASEVALUE	/* ReqID:RSR-SQL-Partition-interval */
 			| BEFORE
 			| BEGIN_P
 			| BETWEEN
