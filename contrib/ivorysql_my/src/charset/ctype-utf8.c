@@ -1995,16 +1995,15 @@ my_strnncollsp_utf8mb4(const CHARSET_INFO *cs, const uchar *s,
     return res;
 }
 
-static size_t 
-my_strnxfrm_unicode_full_bin(const CHARSET_INFO *cs, uchar *dst,
-                             size_t dstlen, uint nweights,
-                             const uchar *src, size_t srclen,
-                             uint flags)
+static size_t
+my_strnxfrm_unicode_full_bin(const CHARSET_INFO *cs,
+                             uchar *dst, size_t dstlen, uint nweights,
+                             const uchar *src, size_t srclen, uint flags)
 {
     my_wc_t wc = 0;
-    uchar *dst0 = dst;
-    uchar *de = dst + dstlen;
-    const uchar *se = src + srclen;
+    uchar *const dst0 = dst;
+    const uchar *const de = dst + dstlen;
+    const uchar *const se = src + srclen;
 
     assert(src);
     assert(cs->state & MY_CS_BINSORT);
@@ -2024,10 +2023,19 @@ my_strnxfrm_unicode_full_bin(const CHARSET_INFO *cs, uchar *dst,
         }
     }
 
-    if (flags & MY_STRXFRM_PAD_TO_MAXLEN)
+    if (flags & MY_STRXFRM_PAD_WITH_SPACE)
     {
-        // Pad with an infinite amount of spaces.
-        while (dst < de)
+        const uchar *const weightend = dst + (nweights * 3);
+        const uchar *const end = (weightend < de) ? weightend : de;
+
+        while (dst < end - 2)
+        {
+            *dst++ = 0x00;
+            *dst++ = 0x00;
+            *dst++ = 0x20;
+            nweights--;
+        }
+        if (dst < de && nweights > 0)
         {
             *dst++ = 0x00;
             if (dst < de)
@@ -2038,10 +2046,18 @@ my_strnxfrm_unicode_full_bin(const CHARSET_INFO *cs, uchar *dst,
             }
         }
     }
-    else
+
+    my_strxfrm_desc_and_reverse(dst0, dst, flags, 0);
+
+    if (flags & MY_STRXFRM_PAD_TO_MAXLEN)
     {
-        // Regular PAD SPACE behavior.
-        for (; dst < de && nweights; nweights--)
+        while (dst < de - 2)
+        {
+            *dst++ = 0x00;
+            *dst++ = 0x00;
+            *dst++ = 0x20;
+        }
+        if (dst < de)
         {
             *dst++ = 0x00;
             if (dst < de)
@@ -2061,142 +2077,95 @@ my_strnxfrmlen_unicode_full_bin(const CHARSET_INFO *cs, size_t len)
     return ((len + 3) / cs->mbmaxlen) * 3;
 }
 
-static size_t 
-my_strxfrm_pad_nweights_unicode(uchar *str, uchar *strend, size_t nweights)
-{
-    uchar *str0 = str;
-    size_t blocks_fast_path;
-    // Write 16 bytes of padding at a time. (Constant-sized memcpy
-    // usually gets optimized to large, unaligned writes.)
-    static char pattern[16] = {0, 0x20, 0, 0x20, 0, 0x20, 0, 0x20,
-                                         0, 0x20, 0, 0x20, 0, 0x20, 0, 0x20};
-
-    assert(str && str <= strend);
-
-    strend = Min(strend, str + nweights+ nweights);
-    blocks_fast_path = (strend - str) / sizeof(pattern);
-
-    for (size_t i = 0; i < blocks_fast_path; ++i)
-    {
-        memcpy(str, pattern, sizeof(pattern));
-        str += sizeof(pattern);
-    }
-
-    memcpy(str, pattern, strend - str);
-    
-    return strend - str0;
-}
-
 static size_t
-my_strxfrm_pad_unicode(uchar *str, uchar *strend)
+my_strxfrm_pad_nweights_unicode(uchar *str,
+                                const uchar *const strend,
+                                size_t nweights)
 {
-    uchar *str0 = str;
-    
+    const uchar *const str0 = str;
+    const uchar *const weightend = str + (nweights * 2);
+    const uchar *const end = (weightend < strend) ? weightend : strend;
     assert(str && str <= strend);
 
-    for (; str < strend;)
+    while (str < end - 3)
     {
         *str++ = 0x00;
-        if (str < strend)
-            *str++ = 0x20;
+        *str++ = 0x20;
+        *str++ = 0x00;
+        *str++ = 0x20;
     }
-    
+    if (str < end - 1)
+    {
+        *str++ = 0x00;
+        *str++ = 0x20;
+    }
+    if (str < end)
+    {
+        *str++ = 0x00;
+    }
     return str - str0;
 }
 
-static inline
-size_t my_strnxfrm_unicode_tmpl(const CHARSET_INFO *cs, uchar *dst,
-                                size_t dstlen, uint nweights,
-                                const uchar *src, size_t srclen,
-                                uint flags)
+static size_t
+my_strxfrm_pad_unicode(uchar *str, const uchar *const strend)
 {
-    uchar *dst0 = dst;
-    uchar *de = dst + dstlen;
-    const uchar *se = src + srclen;
+    const uchar *const str0 = str;
+    assert(str && str <= strend);
 
-    assert(src);
-
-    // We manually hoist this if test out of the loop; seemingly GCC
-    // (at least 6.1.1) isn't smart enough to do it on its own.
-    if (cs->state & MY_CS_BINSORT)
+    while (str < strend - 3)
     {
-        // Do as many whole characters as we can.
-        const size_t nweights_fast_path = Min((de - dst) / 2, nweights);
-        for (size_t i = 0; i < nweights_fast_path; ++i, --nweights)
-        {
-            my_wc_t wc;
-            int res = cs->cset->mb_wc(cs, &wc, src, se);
-            if (res <= 0) // End of string, or invalid character.
-                goto pad;
-            src += res;
-            dst = store16be(dst, wc);
-        }
-
-        // Leftover single byte, if any.
-        if (dst < de && nweights)
-        {
-            my_wc_t wc;
-            int res = cs->cset->mb_wc(cs, &wc, src, se);
-            if (res > 0)
-            {
-                src += res;
-                *dst++ = (uchar)(wc >> 8);
-            }
-        }
+        *str++ = 0x00;
+        *str++ = 0x20;
+        *str++ = 0x00;
+        *str++ = 0x20;
     }
-    else
+    if (str < strend - 1)
     {
-        const MY_UNICASE_INFO *uni_plane = cs->caseinfo;
-
-        // Do as many whole characters as we can.
-        const size_t nweights_fast_path = Min((de - dst) / 2, nweights);
-
-        for (size_t i = 0; i < nweights_fast_path; ++i, --nweights)
-        {
-            my_wc_t wc;
-            int res = cs->cset->mb_wc(cs, &wc, src, se);
-            if (res <= 0) // End of string, or invalid character.
-                goto pad;
-            src += res;
-
-            my_tosort_unicode(uni_plane, &wc, cs->state);
-
-            dst = store16be(dst, wc);
-        }
-
-        // Leftover single byte, if any.
-        if (dst < de && nweights)
-        {
-            my_wc_t wc;
-            int res = cs->cset->mb_wc(cs, &wc, src, se);
-            if (res > 0)
-            {
-                my_tosort_unicode(uni_plane, &wc, cs->state);
-                src += res;
-                *dst++ = (uchar)(wc >> 8);
-            }
-        }
+        *str++ = 0x00;
+        *str++ = 0x20;
     }
-
-pad:
-    if (dst < de && nweights) // PAD SPACE behavior.
-        dst += my_strxfrm_pad_nweights_unicode(dst, de, nweights);
-
-    if ((flags & MY_STRXFRM_PAD_TO_MAXLEN) && dst < de)
-        dst += my_strxfrm_pad_unicode(dst, de);
-
-    return dst - dst0;
+    if (str < strend)
+    {
+        *str++ = 0x00;
+    }
+    return str - str0;
 }
 
 static size_t
-my_strnxfrm_unicode(const CHARSET_INFO *cs, uchar *dst, size_t dstlen,
-                    uint nweights, const uchar *src, size_t srclen,
-                    uint flags)
+my_strnxfrm_unicode(const CHARSET_INFO *cs,
+                    uchar *dst, size_t dstlen, uint nweights,
+                    const uchar *src, size_t srclen, uint flags)
 {
-    // Fallback using a function pointer (which the compiler is unlikely
-    // to be able to optimize away).
-    return my_strnxfrm_unicode_tmpl(cs, dst, dstlen, nweights, src,
-                                    srclen, flags);
+    my_wc_t wc = 0;
+    int res;
+    uchar *const dst0 = dst;
+    const uchar *const de = dst + dstlen;
+    const uchar *const se = src + srclen;
+    const MY_UNICASE_INFO *uni_plane = (cs->state & MY_CS_BINSORT) ? NULL : cs->caseinfo;
+    assert(src);
+
+    for (; dst < de && nweights; nweights--)
+    {
+        if ((res = cs->cset->mb_wc(cs, &wc, src, se)) <= 0)
+            break;
+        src += res;
+
+        if (uni_plane)
+            my_tosort_unicode(uni_plane, &wc, cs->state);
+
+        *dst++ = (uchar)(wc >> 8);
+        if (dst < de)
+            *dst++ = (uchar)(wc & 0xFF);
+    }
+
+    if (dst < de && nweights && (flags & MY_STRXFRM_PAD_WITH_SPACE))
+        dst += my_strxfrm_pad_nweights_unicode(dst, de, nweights);
+
+    my_strxfrm_desc_and_reverse(dst0, dst, flags, 0);
+
+    if ((flags & MY_STRXFRM_PAD_TO_MAXLEN) && dst < de)
+        dst += my_strxfrm_pad_unicode(dst, de);
+    return dst - dst0;
 }
 
 static size_t

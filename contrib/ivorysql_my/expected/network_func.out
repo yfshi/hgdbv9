@@ -1,0 +1,152 @@
+-- IPv4 Tests: INET_ATON and INET_NTOA
+-- Basic valid IPv4
+SELECT INET_ATON('127.0.0.1');
+ INET_ATON  
+------------
+ 2130706433
+(1 row)
+
+SELECT INET_NTOA(2130706433);
+ INET_NTOA 
+-----------
+ 127.0.0.1
+(1 row)
+
+SELECT INET_ATON('192.168.1.1');
+ INET_ATON  
+------------
+ 3232235777
+(1 row)
+
+SELECT INET_NTOA(3232235777);
+  INET_NTOA  
+-------------
+ 192.168.1.1
+(1 row)
+
+select INET_ATON(true),INET_ATON(false),INET_NTOA(true),INET_NTOA(false);
+ INET_ATON | INET_ATON | INET_NTOA | INET_NTOA 
+-----------+-----------+-----------+-----------
+         1 |         0 | 0.0.0.1   | 0.0.0.0
+(1 row)
+
+-- Compressed format
+SELECT INET_ATON('10.1');
+ INET_ATON 
+-----------
+ 167772161
+(1 row)
+
+SELECT INET_ATON('10.1.2');
+ INET_ATON 
+-----------
+ 167837698
+(1 row)
+
+SELECT INET_ATON('10');
+ INET_ATON 
+-----------
+        10
+(1 row)
+
+-- Boundary values
+SELECT INET_ATON('255.255.255.255');
+ INET_ATON  
+------------
+ 4294967295
+(1 row)
+
+SELECT INET_NTOA(4294967295);
+    INET_NTOA    
+-----------------
+ 255.255.255.255
+(1 row)
+
+SELECT INET_ATON('0.0.0.0');
+ INET_ATON 
+-----------
+         0
+(1 row)
+
+SELECT INET_NTOA(0);
+ INET_NTOA 
+-----------
+ 0.0.0.0
+(1 row)
+
+-- Invalid format and edge cases
+SELECT INET_ATON('256.1.1.1');
+ INET_ATON 
+-----------
+          
+(1 row)
+
+SELECT INET_ATON('999.999.999.999');
+ INET_ATON 
+-----------
+          
+(1 row)
+
+SELECT INET_ATON('abc');
+ INET_ATON 
+-----------
+          
+(1 row)
+
+SELECT INET_ATON('');
+ INET_ATON 
+-----------
+          
+(1 row)
+
+SELECT INET_ATON(NULL);
+ INET_ATON 
+-----------
+          
+(1 row)
+
+-- IPv6 Tests: INET6_ATON and INET6_NTOA
+-- Reversibility tests
+SELECT INET6_NTOA(INET6_ATON('::1'));
+ INET6_NTOA 
+------------
+ ::1
+(1 row)
+
+SELECT INET6_NTOA(INET6_ATON('2001:db8::dead'));
+   INET6_NTOA   
+----------------
+ 2001:db8::dead
+(1 row)
+
+-- Invalid IPv6
+SELECT INET6_ATON(':::1');
+ INET6_ATON 
+------------
+ 
+(1 row)
+
+SELECT INET6_ATON('GGGG::1');
+ INET6_ATON 
+------------
+ 
+(1 row)
+
+SELECT INET6_ATON('2001:db8');
+ INET6_ATON 
+------------
+ 
+(1 row)
+
+SELECT INET6_ATON(NULL);
+ INET6_ATON 
+------------
+ 
+(1 row)
+
+SELECT INET6_NTOA(NULL);
+ INET6_NTOA 
+------------
+ 
+(1 row)
+

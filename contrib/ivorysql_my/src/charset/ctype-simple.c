@@ -5,28 +5,6 @@ void my_fill_8bit(const CHARSET_INFO *cs, char *s, size_t l, int fill)
     memset(s, fill, l);
 }
 
-size_t
-my_strxfrm_pad(const CHARSET_INFO *cs, uchar *str, uchar *frmend,
-               uchar *strend, uint nweights, uint flags)
-{
-    if (nweights && frmend < strend)
-    {
-        // PAD SPACE behavior.
-        uint fill_length = Min(strend - frmend, nweights * cs->mbminlen);
-        cs->cset->fill(cs, (char *)frmend, fill_length, cs->pad_char);
-        frmend += fill_length;
-    }
-
-    if ((flags & MY_STRXFRM_PAD_TO_MAXLEN) && frmend < strend)
-    {
-        size_t fill_length = strend - frmend;
-        cs->cset->fill(cs, (char *)frmend, fill_length, cs->pad_char);
-        frmend = strend;
-    }
-
-    return frmend - str;
-}
-
 void my_hash_sort_simple(const CHARSET_INFO *cs, const uchar *key, size_t len,
                          uint64 *nr1, uint64 *nr2)
 {
@@ -119,7 +97,7 @@ int my_strnncollsp_simple(const CHARSET_INFO *cs, const uchar *a, size_t a_lengt
     return res;
 }
 
-static void
+void
 my_strxfrm_desc_and_reverse(uchar *str, uchar *strend,
                             uint flags, uint level)
 {

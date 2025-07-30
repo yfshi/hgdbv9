@@ -49,7 +49,9 @@ OBJS = \
 	src/charset/ctype-extra.o \
 	src/builtin_functions/datetime_func.o \
 	src/builtin_functions/character_func.o \
-	src/builtin_functions/mys_locale.o
+	src/builtin_functions/interval.o \
+	src/builtin_functions/mys_locale.o \
+	src/builtin_functions/network_func.o
 
 EXTENSION = ivorysql_my
 
@@ -126,7 +128,10 @@ MYS_REGRESS = multi_update \
 			  mys-char-varchar \
 			  character_func \
 			  time_func	\
+			  flow_control \
 			  hex_string \
+			  network_func \
+			  weight_string \
 			  operator \
 			  aggregates_without_group_by
 

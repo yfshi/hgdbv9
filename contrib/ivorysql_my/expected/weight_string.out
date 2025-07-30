@@ -1,0 +1,257 @@
+-- benchmark test
+select hex(WEIGHT_STRING('aa' collate utf8_general_ci as char(3)));
+     hex      
+--------------
+ 004100410020
+(1 row)
+
+select hex(WEIGHT_STRING('a' collate utf8_general_ci as char(1)));
+ hex  
+------
+ 0041
+(1 row)
+
+select hex(WEIGHT_STRING('ab' collate utf8_general_ci as char(1)));
+ hex  
+------
+ 0041
+(1 row)
+
+select hex(WEIGHT_STRING('aa' collate utf8_general_ci as binary(3)));
+  hex   
+--------
+ 616100
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as binary(2)));
+WARNING:  Truncated incorrect BINARY(2) value: 'abc~@'
+ hex  
+------
+ 6162
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as char(2) LEVEL 1 ));
+   hex    
+----------
+ 00410042
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as char(2) LEVEL 1 ASC));
+   hex    
+----------
+ 00410042
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as char(2) LEVEL 1 DESC));
+   hex    
+----------
+ FFBEFFBD
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as char(2) LEVEL 1 REVERSE));
+   hex    
+----------
+ 42004100
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as char(2) LEVEL 1 DESC REVERSE));
+   hex    
+----------
+ BDFFBEFF
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as char(2) LEVEL 1 DESC, 1 REVERSE));
+   hex    
+----------
+ BDFFBEFF
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as char(2) LEVEL 1 DESC, 2 REVERSE));
+   hex    
+----------
+ FFBEFFBD
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as char(2) LEVEL 2 DESC, 1 REVERSE));
+   hex    
+----------
+ 42004100
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as char(2) LEVEL 2 DESC  REVERSE));
+   hex    
+----------
+ 00410042
+(1 row)
+
+select hex(WEIGHT_STRING('abc' collate utf8_general_ci as char(2) LEVEL 2,3,5 REVERSE));
+   hex    
+----------
+ 00410042
+(1 row)
+
+select hex(WEIGHT_STRING(123));
+ hex 
+-----
+ 
+(1 row)
+
+select hex(WEIGHT_STRING(123.25));
+ hex 
+-----
+ 
+(1 row)
+
+-- literal
+SELECT hex(WEIGHT_STRING('123456789'::integer as char(10)));
+ hex 
+-----
+ 
+(1 row)
+
+SELECT hex(WEIGHT_STRING('123456789.0'::real as char(20)));
+ hex 
+-----
+ 
+(1 row)
+
+SELECT hex(WEIGHT_STRING('123456789.0'::double precision as char(20)));
+ hex 
+-----
+ 
+(1 row)
+
+SELECT hex(WEIGHT_STRING('1'::boolean as char(10)));
+ hex 
+-----
+ 
+(1 row)
+
+SELECT hex(WEIGHT_STRING('123456789'::integer as binary(10)));
+ hex 
+-----
+ 
+(1 row)
+
+SELECT hex(WEIGHT_STRING('123456789.0'::real as binary (20)));
+ hex 
+-----
+ 
+(1 row)
+
+SELECT hex(WEIGHT_STRING('123456789.0'::double precision as binary (20)));
+ hex 
+-----
+ 
+(1 row)
+
+SELECT hex(WEIGHT_STRING('1'::boolean as binary(10)));
+         hex          
+----------------------
+ 31000000000000000000
+(1 row)
+
+SELECT hex(WEIGHT_STRING('123456789'::character(9) as binary (20)));
+                   hex                    
+------------------------------------------
+ 3132333435363738390000000000000000000000
+(1 row)
+
+SELECT hex(WEIGHT_STRING('123456789'::text as binary (20)));
+                   hex                    
+------------------------------------------
+ 3132333435363738390000000000000000000000
+(1 row)
+
+SELECT hex(WEIGHT_STRING('2023-06-01 00:23:59'::date as binary (20)));
+                   hex                    
+------------------------------------------
+ 323032332D30362D303100000000000000000000
+(1 row)
+
+SELECT hex(WEIGHT_STRING('2023-06-01 00:23:59'::datetime as binary (20)));
+                   hex                    
+------------------------------------------
+ 323032332D30362D30312030303A32333A353900
+(1 row)
+
+SELECT hex(WEIGHT_STRING('2023-06-01 00:23:59'::time as binary (20)));
+                   hex                    
+------------------------------------------
+ 30303A32333A3539000000000000000000000000
+(1 row)
+
+SELECT hex(WEIGHT_STRING(date '2021-12-31' as binary (10)));
+         hex          
+----------------------
+ 323032312D31322D3331
+(1 row)
+
+-- NULL
+select hex(WEIGHT_STRING(NULL));
+ hex 
+-----
+ 
+(1 row)
+
+select hex(WEIGHT_STRING(NULL as binary(10)));
+ hex 
+-----
+ 
+(1 row)
+
+select hex(WEIGHT_STRING(NULL as char(10)));
+ hex 
+-----
+ 
+(1 row)
+
+select hex(WEIGHT_STRING('test' as char(NULL)));
+ERROR:  syntax error at or near "NULL"
+LINE 1: select hex(WEIGHT_STRING('test' as char(NULL)));
+                                                ^
+-- invalid parameters
+select hex(WEIGHT_STRING('a' as char(-1)));
+ERROR:  syntax error at or near "-"
+LINE 1: select hex(WEIGHT_STRING('a' as char(-1)));
+                                             ^
+select hex(WEIGHT_STRING('abc' as char(2) LEVEL 2-5 DESC));
+ERROR:  syntax error at or near "DESC"
+LINE 1: select hex(WEIGHT_STRING('abc' as char(2) LEVEL 2-5 DESC));
+                                                            ^
+SELECT hex(WEIGHT_STRING('abc' as char(cast ( '10' as integer )) LEVEL '1'::numeric REVERSE));
+ERROR:  syntax error at or near "cast"
+LINE 1: SELECT hex(WEIGHT_STRING('abc' as char(cast ( '10' as intege...
+                                               ^
+SELECT hex(WEIGHT_STRING('ab' AS CHAR(1E+308)));
+ERROR:  syntax error at or near "1E+308"
+LINE 1: SELECT hex(WEIGHT_STRING('ab' AS CHAR(1E+308)));
+                                              ^
+SELECT hex(WEIGHT_STRING('ab' AS BINARY(1E+308)));
+ERROR:  syntax error at or near "1E+308"
+LINE 1: SELECT hex(WEIGHT_STRING('ab' AS BINARY(1E+308)));
+                                                ^
+SELECT hex(WEIGHT_STRING('ab' AS CHAR(1E+309)));
+ERROR:  syntax error at or near "1E+309"
+LINE 1: SELECT hex(WEIGHT_STRING('ab' AS CHAR(1E+309)));
+                                              ^
+SELECT hex(WEIGHT_STRING('ab' AS BINARY(1E+309)));
+ERROR:  syntax error at or near "1E+309"
+LINE 1: SELECT hex(WEIGHT_STRING('ab' AS BINARY(1E+309)));
+                                                ^
+select hex(WEIGHT_STRING('a' as char(0)));
+ERROR:  syntax error at or near 'char(0)'
+select hex(WEIGHT_STRING('a' as binary(0)));
+ERROR:  syntax error at or near 'binary(0)'
+select hex(WEIGHT_STRING('a' as char(-1)));
+ERROR:  syntax error at or near "-"
+LINE 1: select hex(WEIGHT_STRING('a' as char(-1)));
+                                             ^
+select hex(WEIGHT_STRING('a' as binary(-1)));
+ERROR:  syntax error at or near "-"
+LINE 1: select hex(WEIGHT_STRING('a' as binary(-1)));
+                                               ^
+SELECT hex(WEIGHT_STRING('Hello' LEVEL -1));
+ERROR:  syntax error at or near "-"
+LINE 1: SELECT hex(WEIGHT_STRING('Hello' LEVEL -1));
+                                               ^

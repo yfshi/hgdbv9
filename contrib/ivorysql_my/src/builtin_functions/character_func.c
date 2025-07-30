@@ -40,7 +40,9 @@
 #include "utils/numeric.h"
 #include "utils/datetime.h"
 
+
 #include "../include/ivorysql_my.h"
+#include "../charset/ctype.h"
 
 
 /*
@@ -78,6 +80,13 @@ static const int8 b64lookup[128] = {
 #define SOUNDEX_LEN 4
 #define SOUND_THRESHOLD 4
 
+/*
+ * Maximum number of digits required to represent a 64-bit unsigned integer
+ * in binary (base 2), which is the longest possible representation needed
+ * for base conversions. For example, UINT64_MAX in base 2 has 64 digits.
+ */
+#define MAX_BASE_CONV_DIGITS 64
+
 /* ABCDEFGHIJKLMNOPQRSTUVWXYZ */
 static const char *soundex_table = "01230120022455012623010202";
 
@@ -103,9 +112,14 @@ PG_FUNCTION_INFO_V1(bin_num);
 PG_FUNCTION_INFO_V1(bin_text);
 PG_FUNCTION_INFO_V1(soundex);
 PG_FUNCTION_INFO_V1(export_set);
-
 PG_FUNCTION_INFO_V1(base64_decode);
 PG_FUNCTION_INFO_V1(base64_encode);
+PG_FUNCTION_INFO_V1(conv);
+PG_FUNCTION_INFO_V1(unhex);
+PG_FUNCTION_INFO_V1(weight_string);
+PG_FUNCTION_INFO_V1(weight_string_boolean);
+PG_FUNCTION_INFO_V1(mys_strcmp);
+
 
 static char
 soundex_code(char letter)
@@ -912,4 +926,514 @@ mys_text_length(PG_FUNCTION_ARGS)
 
 	/* We need not detoast the input at all */
 	PG_RETURN_INT32(toast_raw_datum_size(str) - VARHDRSZ);
+}
+
+
+/**
+ * Convert a character to its corresponding digit value.
+ *
+ * @param c Character to convert
+ * @return Digit value (0-35) or -1 if invalid
+ */
+static int
+char_to_digit(char c)
+{
+	if (c >= '0' && c <= '9') return c - '0';
+	if (c >= 'a' && c <= 'z') return c - 'a' + 10;
+	if (c >= 'A' && c <= 'Z') return c - 'A' + 10;
+	return -1;
+}
+
+/**
+ * Convert a digit value to its corresponding character representation.
+ *
+ * @param d Digit value (0-35)
+ * @return Character representation or '?' if invalid
+ */
+static char
+digit_to_char(int d)
+{
+	if (d >= 0 && d <= 9) return '0' + d;
+	if (d >= 10 && d < 36) return 'A' + (d - 10);
+	return '?';
+}
+
+/**
+ * Convert numbers between different bases (2-36), with MySQL-compatible behavior.
+ *
+ * Function signature: conv(n text, from_base integer, to_base integer) returns text
+ *
+ * Features:
+ * - Supports both signed (negative base) and unsigned (positive base) conversions
+ * - Handles leading/trailing whitespace and explicit +/- signs
+ * - Stops conversion at first invalid digit for given base
+ * - Implements MySQL's uint64 wraparound behavior for overflow
+ * - Returns NULL for invalid bases (outside 2-36 range) or NULL inputs
+ *
+ * Special cases:
+ * - Negative bases indicate signed number conversion
+ * - Overflowing values wrap to UINT64_MAX
+ * - Empty/non-convertible strings return '0'
+ * - INT64_MIN is handled specially to avoid overflow during conversion
+ *
+ * @param PG_FUNCTION_ARGS Function arguments structure containing:
+ *   n_text: Input number as text
+ *   from_base: Source base (absolute value 2-36, sign indicates signed/unsigned)
+ *   to_base: Target base (absolute value 2-36, sign indicates signed/unsigned)
+ * @return Converted number as text, or NULL for invalid inputs
+ */
+Datum
+conv(PG_FUNCTION_ARGS)
+{
+	text *n_text;
+	int from_base;
+	int to_base;
+	int base_abs = 0;
+	int i;
+	char *n_cstr;
+	char *p;
+	char *first_digit;
+	uint64_t value = 0;
+	uint64_t uval;
+	uint64_t outval;
+	bool negative = false;
+	bool has_digits = false;
+	bool overflow_to_zero = false;
+	bool output_negative = false;
+	bool overflowed = false;
+	char buf[MAX_BASE_CONV_DIGITS+1];
+
+	/* Return NULL if any input is NULL */
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1) || PG_ARGISNULL(2))
+		PG_RETURN_NULL();
+
+	n_text = PG_GETARG_TEXT_PP(0);
+	from_base = PG_GETARG_INT32(1);
+	to_base = PG_GETARG_INT32(2);
+
+	/* Validate base ranges (absolute value 2-36) */
+	if (abs(from_base) < 2 || abs(from_base) > 36 ||
+		abs(to_base) < 2 || abs(to_base) > 36)
+		PG_RETURN_NULL();
+
+	n_cstr = text_to_cstring(n_text);
+	p = n_cstr;
+
+	/* Skip leading whitespace */
+	while (isspace((unsigned char)*p)) p++;
+
+	/* Process sign character */
+	negative = false;
+	if (*p == '+' || *p == '-')
+	{
+		if (*p == '-') negative = true;
+		p++;
+	}
+
+	/* Remember first digit position for overflow detection */
+	first_digit = p;
+
+	/* Parse the numeric value */
+	base_abs = abs(from_base);  /* Absolute value of base */
+	while (*p)
+	{
+		uint64_t new_value;
+		int d = char_to_digit(*p);
+		/* Stop at first invalid digit */
+		if (d < 0 || d >= base_abs)
+		{
+			break;
+		}
+		has_digits = true;
+
+		/* Check for multiplication overflow */
+		if (value > UINT64_MAX / base_abs)
+		{
+			overflowed = true;
+			break;
+		}
+		new_value = value * base_abs;
+
+		/* Check for addition overflow */
+		if (new_value > UINT64_MAX - d)
+		{
+			overflowed = true;
+			break;
+		}
+		value = new_value + d;
+
+		p++;
+	}
+
+	if (overflowed)
+	{
+		value = UINT64_MAX;  /* Set to max value */
+
+		/* Skip remaining valid digits */
+		while (*p)
+		{
+			int d = char_to_digit(*p);
+			if (d < 0 || d >= base_abs)
+			{
+				break;
+			}
+			p++;
+		}
+	}
+
+	/* Return '0' for strings with no valid digits */
+	if (!has_digits)
+	{
+		pfree(n_cstr);
+		PG_RETURN_VARCHAR_P(cstring_to_text("0"));
+	}
+
+	/* Detect overflow-to-zero: non-zero input parsed as zero */
+	overflow_to_zero = (has_digits && value == 0 && *first_digit != '0');
+
+	/* Unsigned input (from_base > 0) */
+	if (from_base > 0)
+	{
+		if (overflow_to_zero || overflowed)
+		{
+			/* Set to max value on overflow */
+			uval = UINT64_MAX;
+		}
+		else
+		{
+			if (negative)
+			{
+				/* Two's complement representation for negatives */
+				uval = 0 - value;
+			}
+			else
+			{
+				/* Direct value for positives */
+				uval = value;
+			}
+		}
+	}
+	/* Signed input (from_base < 0) */
+	else
+	{
+		if (negative)
+		{
+			/* Two's complement for negatives */
+			uval = 0 - value;
+		}
+		else
+		{
+			/* Direct value for positives */
+			uval = value;
+		}
+	}
+
+	/* Prepare output value */
+	if (to_base < 0)
+	{
+		int64_t sval = (int64_t)uval;
+		if (sval < 0)
+		{
+			output_negative = true;
+			/* Special handling for INT64_MIN to avoid overflow */
+			if (sval == INT64_MIN)
+				outval = (uint64_t)INT64_MAX + 1;
+			else
+				outval = (uint64_t)(-sval);
+		}
+		else
+		{
+			outval = (uint64_t)sval;
+		}
+	}
+	else
+	{
+		/* Unsigned output */
+		outval = uval;
+	}
+
+	/* Short-circuit for zero output */
+	if (outval == 0)
+	{
+		pfree(n_cstr);
+		PG_RETURN_VARCHAR_P(cstring_to_text("0"));
+	}
+
+	/* Convert to target base */
+	i = MAX_BASE_CONV_DIGITS;
+	buf[i] = '\0';
+
+	while (outval > 0 && i > 0)
+	{
+		int rem = outval % abs(to_base);
+		buf[--i] = digit_to_char(rem);
+		outval /= abs(to_base);
+	}
+
+	/* Add negative sign if needed */
+	if (output_negative && i > 0)
+		buf[--i] = '-';
+
+	pfree(n_cstr);
+	PG_RETURN_VARCHAR_P(cstring_to_text(&buf[i]));
+}
+
+/*
+ * Function: unhex
+ *
+ * Description:
+ *   Converts a hexadecimal-encoded string into its binary representation.
+ *   For a given input string `str`, UNHEX(str) interprets each consecutive
+ *   pair of hexadecimal characters as a byte and returns the resulting
+ *   binary string.
+ *
+ * Behavior:
+ *   - The input string must consist of valid hexadecimal digits:
+ *     characters '0'..'9', 'A'..'F', or 'a'..'f'.
+ *   - The input length must be even; each pair of characters is decoded
+ *     into one byte.
+ *   - If the input contains any non-hexadecimal characters or the length
+ *     is odd, the function returns NULL.
+ *
+ * Parameters:
+ *   - str: A text string containing an even number of valid hexadecimal digits.
+ *
+ * Returns:
+ *   - A binary string (bytea) representing the decoded bytes,
+ *     or NULL if the input is invalid.
+ */
+Datum
+unhex(PG_FUNCTION_ARGS)
+{
+	text       *input_text;
+	char       *input_str;
+	size_t      input_len;
+	bytea      *result;
+	char       *result_data;
+	char       *p;
+	size_t      result_len;
+	size_t      i = 0;
+	bool        odd_length = false;
+
+	if (PG_ARGISNULL(0))
+	PG_RETURN_NULL();
+
+	input_text = PG_GETARG_TEXT_PP(0);
+	input_str = text_to_cstring(input_text);
+	input_len = strlen(input_str);
+
+	/* Empty string handling */
+	if (input_len == 0)
+	{
+		pfree(input_str);
+		result = (bytea *) palloc(VARHDRSZ);
+		SET_VARSIZE(result, VARHDRSZ);
+		PG_RETURN_BYTEA_P(result);
+	}
+
+	/* Handle illegal characters */
+	for (i = 0; i < input_len; i++)
+	{
+		if (!isxdigit((unsigned char) input_str[i]))
+		{
+			elog(WARNING, "Incorrect string value: ''%s'' for function unhex", input_str);
+			pfree(input_str);
+			PG_RETURN_NULL();
+		}
+	}
+
+	odd_length = input_len % 2;
+
+	/* Allocate result memory */
+	result_len = odd_length ? ((input_len + 1)/2) : (input_len / 2);
+	result = (bytea *) palloc(VARHDRSZ + result_len);
+	SET_VARSIZE(result, VARHDRSZ + result_len);
+	result_data = VARDATA(result);
+
+	p = input_str;
+	if (odd_length)
+	{
+		*result_data++ = mys_get_hex(p++);
+		input_len--;
+	}
+	mys_hex_decode(p, input_len, result_data);
+
+	pfree(input_str);
+	PG_RETURN_BYTEA_P(result);
+}
+
+/*
+ * Function: weight_string
+ *
+ * Description:
+ *   This function implements the core logic for the MySQL-compatible
+ *   WEIGHT_STRING() expression, which is defined in the parser (mys_gram.y)
+ *   as:
+ *     WEIGHT_STRING(str [AS {CHAR|BINARY}(N)] [LEVEL levels] [flags])
+ *
+ *   The parameters are passed as:
+ *     - str:      the input string expression
+ *     - levels:   weight level or -1
+ *     - type:     target type after AS (CHAR or BINARY)
+ *     - length:   length N specified after CHAR(N) or BINARY(N)
+ *
+ * Behavior:
+ *   - If type is BINARY:
+ *     - Validate the string length and weight level compatibility.
+ *     - Output the raw byte representation of the input string (as bytea).
+ *
+ *   - If type is CHAR:
+ *     - Validate the string length and weight level compatibility.
+ *     - Determine the maximum output length based on collation, string length, and weight levels.
+ *     - Process the input string according to collation rules and the specified flags.
+ *     - Output the processed string as bytea.
+ */
+Datum
+weight_string(PG_FUNCTION_ARGS)
+{
+	#define SINGLE_BYTE_LENGTH 1
+
+	bytea *result;
+	text *input = PG_GETARG_TEXT_PP(0);
+	char * input_str = VARDATA_ANY(input);
+	size_t input_len = VARSIZE_ANY_EXHDR(input);
+
+	size_t flags = PG_GETARG_UINT32(1);
+	size_t type = PG_GETARG_UINT32(2);
+	size_t nweights = PG_GETARG_UINT32(3);
+	int err_level = is_strict_mode() ? ERROR : WARNING;
+
+	if (type == WEIGHT_STRING_AS_UNUSE)
+		nweights = input_len;
+
+	if (type == WEIGHT_STRING_AS_BINARY)
+	{
+		if (Max(nweights, input_len) > max_allowed_packet)
+		{
+			ereport(err_level, (errmsg("weight_string output too large")));
+			PG_RETURN_NULL();
+		}
+
+		if (input_len > nweights)
+			ereport(WARNING,
+					errmsg("Truncated incorrect BINARY(%lu) value: '%s'", nweights, input_str));
+
+		result = (bytea *)palloc0(VARHDRSZ + nweights + SINGLE_BYTE_LENGTH);
+		memcpy((char *)VARDATA(result), input_str, input_len);
+		SET_VARSIZE(result, VARHDRSZ + nweights);
+		PG_RETURN_BYTEA_P(result);
+	}
+	else if (type == WEIGHT_STRING_AS_CHAR ||
+			 type == WEIGHT_STRING_AS_UNUSE)
+	{
+		char *result_data;
+		size_t actual_len, max_output_len;
+
+		max_output_len = do_mysql_strnxfrmlen(input_len, nweights, PG_GET_COLLATION());
+		if (max_output_len > max_allowed_packet)
+		{
+			ereport(err_level, (errmsg("weight_string output too large")));
+			PG_RETURN_NULL();
+		}
+
+		result = (bytea *)palloc(VARHDRSZ + max_output_len);
+		result_data = (char *)VARDATA(result);
+		actual_len = do_mysql_strnxfrm((unsigned char*)result_data, max_output_len, nweights,
+									   (unsigned char*)input_str, input_len,
+									   flags | MY_STRXFRM_PAD_WITH_SPACE, PG_GET_COLLATION());
+		SET_VARSIZE(result, VARHDRSZ + actual_len);
+
+		PG_RETURN_BYTEA_P(result);
+	}
+	else
+	{
+		ereport(err_level,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					errmsg("weight_string function does not support syntax other than 'AS CHAR' and 'AS BINARY'.")));
+	}
+
+	PG_RETURN_NULL();
+}
+
+/*
+ * Function: weight_string_boolean
+ *
+ * Description:
+ *   This function implements the core logic for the MySQL-compatible
+ *   WEIGHT_STRING() expression, which is defined in the parser (mys_gram.y)
+ *   as:
+ *     WEIGHT_STRING(str [AS {CHAR|BINARY}(N)] [LEVEL levels] [flags])
+ *
+ *   The parameters are passed as:
+ *     - str:      the input string expression
+ *     - levels:   weight level or -1
+ *     - type:     target type after AS (CHAR or BINARY)
+ *     - length:   length N specified after CHAR(N) or BINARY(N)
+ *
+ * Behavior:
+ *   - If type is BINARY:
+ *     - Validate the string length and weight level compatibility.
+ *     - Output the raw byte representation of the input string (as bytea).
+ *
+ *   - If type is Others:
+ *     - Return NULL.
+ */
+Datum
+weight_string_boolean(PG_FUNCTION_ARGS)
+{
+	size_t type = PG_GETARG_UINT32(2);
+
+	if (type == WEIGHT_STRING_AS_BINARY)
+	{
+		bool istrue = PG_GETARG_BOOL(0);
+		size_t data_len = PG_GETARG_UINT32(3);
+		bytea *result = (bytea *)palloc0(VARHDRSZ + data_len);
+		*((char *)VARDATA(result)) = istrue ? '1' : '0';
+		SET_VARSIZE(result, VARHDRSZ + data_len);
+		PG_RETURN_BYTEA_P(result);
+	}
+	else
+	{
+		PG_RETURN_NULL();
+	}
+}
+
+/*
+ * Function: mys_strcmp
+ *
+ * Description:
+ *   Compares two string expressions `expr1` and `expr2` according to their
+ *   collation rules.
+ *
+ * Behavior:
+ *   - Returns 0 if the two strings are equal.
+ *   - Returns -1 if expr1 is less than expr2 according to the current collation.
+ *   - Returns 1 if expr1 is greater than expr2 according to the current collation.
+ *
+ * Notes:
+ *   - The comparison respects the collation of the input arguments, which may
+ *     affect case sensitivity, accent sensitivity, and language-specific rules.
+ *   - NULL inputs are not allowed and should be handled separately if needed.
+ */
+Datum
+mys_strcmp(PG_FUNCTION_ARGS)
+{
+	int32 ret = 0;
+	text *dt0 = PG_GETARG_TEXT_PP(0);
+	text *dt1 = PG_GETARG_TEXT_PP(1);
+	char *str0 = VARDATA_ANY(dt0);
+	char *str1 = VARDATA_ANY(dt1);
+	size_t len0 = VARSIZE_ANY_EXHDR(dt0);
+	size_t len1 = VARSIZE_ANY_EXHDR(dt1);
+
+	ret = varstr_cmp(str0, len0, str1, len1, PG_GET_COLLATION());
+
+	if (ret > 0)
+		ret = 1;
+	else if (ret < 0)
+		ret = -1;
+	else
+		ret = 0;
+
+	PG_RETURN_INT32(ret);
 }

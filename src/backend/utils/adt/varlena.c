@@ -1507,7 +1507,7 @@ text_position_next_internal(char *start_ptr, TextPositionState *state)
 		while (hptr < haystack_end)
 		{
 			/* Begin - BUG#Z1464 */
-			if (compatible_db == ORA_PARSER && varstr_cmp(hptr, 1, &nchar, 1, coll) == 0)
+			if (compatible_db != PG_PARSER && varstr_cmp(hptr, 1, &nchar, 1, coll) == 0)
 				return (char *) hptr;
 			/* End - BUG#Z1464 */
 
@@ -1530,8 +1530,9 @@ text_position_next_internal(char *start_ptr, TextPositionState *state)
 
 			nptr = needle_last;
 			p = hptr;
+			
 			/* Begin - BUG#Z1464 */
-			if (compatible_db == ORA_PARSER)
+			if (compatible_db != PG_PARSER)
 			{
 				while (varstr_cmp(nptr, 1, p, 1, coll) == 0)
 				{
