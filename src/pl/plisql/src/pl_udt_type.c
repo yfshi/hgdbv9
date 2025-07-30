@@ -1070,8 +1070,52 @@ plisql_parse_udt_rowtype(const char *ident, bool byval)
 			nse->itemtype == PLISQL_NSTYPE_TYPE &&
 			typeName->arrayBounds == NIL /* BUG#Z1672 */)
 		{
-			PLiSQL_datum_udt_type *udt_type = (PLiSQL_datum_udt_type *) plisql_Datums[nse->itemno];
-			return udt_type->udt_type;
+			/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+			PLiSQL_datum *datum_type = plisql_Datums[nse->itemno];
+			PLiSQL_type *basetype = NULL;
+
+			/* 
+			 * The subtype now suppots record as a base type, so cases where the record type
+			 * appears here need to be handled. 
+			 */
+			if (datum_type->dtype == PLISQL_DTYPE_REC) {
+				basetype = ((PLiSQL_rec*)datum_type)->datatype;
+			} else {
+				basetype = ((PLiSQL_datum_udt_type*)datum_type)->udt_type;
+			}
+
+			/* 
+			 * Set the typmod for each variable.
+			 * 
+			 * NB: These code was added for feature "subtype", But the setting of typmod 
+			 * should not only take effect on the "subtype" type.
+			 */
+			if (basetype && typeName->typmods != NULL) {
+				PLiSQL_type *new_basetype;
+				Oid type_id;
+				int32 typmod;
+
+				/*
+				* Each scalar variable may specify a different typmod, so it is necessary
+				* to palloc a new PLiSQL_type for each variable.
+				*/
+				new_basetype = palloc0(sizeof(PLiSQL_type));
+				memcpy(new_basetype, basetype, sizeof(PLiSQL_type));
+
+				/* 
+				* We set "names" to be NULL and specified the "typeOid". This allows
+				* the corresponding type to be correctly identified in the
+				* "LookupTypeNameExtended" function.
+				*/
+				typeName->names = NULL;
+				typeName->typeOid = new_basetype->typoid;
+				typenameTypeIdAndMod(NULL, typeName, &type_id, &typmod);
+				new_basetype->atttypmod = typmod;
+				basetype = new_basetype;
+			}
+
+			return basetype;
+			/* End - ReqID:SRS-PLSQL-SUBTYPE */
 		}
 	}
 
@@ -1145,3 +1189,83 @@ plisql_build_record_for_cursorrowtype(const char *refname,
 	return rec;
 }
 
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+/* 
+ * Build a subtype and set its constraints. 
+ */
+void
+plisql_build_subtype(char *subtypnme, int lineno, PLiSQL_type* btype_p, List *range_list, bool isNotNull)
+{
+	PLiSQL_datum *datum_type;
+
+	/* It is only necessary to create a *real* subtype when setting the RANGE constraint. */
+	if (range_list != NULL)
+	{
+		Oid basetypeid;
+		PLiSQL_type *basetype;
+		PLiSQL_subtype_type *range_subtype;
+		PLiSQL_datum_udt_type *datum_udt_type;
+
+		/* syntax: RANGE xx..yy */
+		Assert(list_length(range_list) == 2);
+		/* 
+		 * Only support int4 because in Oracle it only support 
+		 * PLS_INTEGER, BINARY_INTEGER and SIMPLE_INTEGER.
+		 */
+		basetypeid = getBaseType(btype_p->typoid);
+		if (basetypeid != INT4OID)
+			elog(ERROR, "improper constraint form used");
+
+		basetype = plisql_build_datatype(basetypeid, -1, InvalidOid, NULL);
+		range_subtype = (PLiSQL_subtype_type *) palloc0(sizeof(PLiSQL_subtype_type));
+		memcpy(&range_subtype->type, basetype, sizeof(PLiSQL_type));
+		pfree(basetype);
+		range_subtype->type.ttype = PLISQL_TTYPE_SUBTYPE;
+
+		/* Set notnull and typmod constraint. */
+		if (isNotNull)
+			range_subtype->type.notnull = true;
+		range_subtype->type.atttypmod = btype_p->atttypmod;
+
+		/* Set RANGE constraint. */
+		range_subtype->setRange = true;
+		range_subtype->lower = linitial_int(range_list);
+		range_subtype->upper = lsecond_int(range_list);
+
+		datum_udt_type = palloc0(sizeof(PLiSQL_datum_udt_type));
+		datum_udt_type->dtype = PLISQL_DTYPE_TYPE;
+		datum_udt_type->udt_type = (PLiSQL_type *) range_subtype;
+		datum_udt_type->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+		datum_type = (PLiSQL_datum *)datum_udt_type;
+	}
+	else
+	{
+		PLiSQL_type *basetype;
+
+		/* Duplicate a base datatype. */
+		datum_type = plisql_copy_base_datatype(btype_p, subtypnme, lineno);
+
+		if (btype_p->ttype == PLISQL_TTYPE_REC)
+		{
+			basetype = ((PLiSQL_rec *)datum_type)->datatype;
+		}
+		else
+		{
+			basetype = ((PLiSQL_datum_udt_type *)datum_type)->udt_type;
+		}
+
+		/* Set notnull and typmod constraint. */
+		if (isNotNull)
+			basetype->notnull = true;
+		basetype->atttypmod = btype_p->atttypmod;
+	}
+
+	/* add it to namespace. */
+	plisql_adddatum(datum_type);
+	/* 
+	 * To enable the subtype to support record type as a base type, the record type has
+	 * also been added to PLISQL_NSTYPE_TYPE.
+	 */
+	plisql_ns_additem(PLISQL_NSTYPE_TYPE, datum_type->dno, subtypnme);
+}
+/* End - ReqID:SRS-PLSQL-SUBTYPE */

@@ -1644,7 +1644,8 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 			/* (build_variable would do this, but wrong message) */
 			if (argdtype->ttype != PLISQL_TTYPE_SCALAR &&
 				argdtype->ttype != PLISQL_TTYPE_REC &&
-				argdtype->ttype != PLISQL_TTYPE_UDT_REF_CURSOR) /* ReqID:SRS-PLSQL-CURSOR */
+				argdtype->ttype != PLISQL_TTYPE_UDT_REF_CURSOR && /* ReqID:SRS-PLSQL-CURSOR */
+				argdtype->ttype != PLISQL_TTYPE_SUBTYPE) /* ReqID:SRS-PLSQL-SUBTYPE */
 				ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				errmsg("PLI/SQL functions cannot accept type %s",
@@ -3907,6 +3908,7 @@ plisql_build_variable(const char *refname, int lineno, PLiSQL_type *dtype,
 	switch (dtype->ttype)
 	{
 		case PLISQL_TTYPE_UDT_REF_CURSOR: /* ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_TTYPE_SUBTYPE: /* ReqID:SRS-PLSQL-SUBTYPE */
 		case PLISQL_TTYPE_SCALAR:
 			{
 				/* Ordinary scalar datatype */
@@ -5452,3 +5454,128 @@ plisql_recognize_err_message_int(int oraerrcode)
 }
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+/*
+ * To dumplicate a basetype so that we can independently configure
+ * the typmod and NOT NULL constraints.
+ * 
+ * Return a PLiSQL_datum.
+ */
+PLiSQL_datum*
+plisql_copy_base_datatype(PLiSQL_type *in, char *subtypnme, int lineno)
+{
+	PLiSQL_datum *out;
+
+	switch (in->ttype)
+	{
+		case PLISQL_TTYPE_SCALAR:
+		case PLISQL_TTYPE_PSEUDO:
+			{
+				PLiSQL_type *basetype;
+				PLiSQL_datum_udt_type *datum_type;
+
+				basetype = (PLiSQL_type *)palloc0(sizeof(PLiSQL_type));
+				memcpy(basetype, in, sizeof(PLiSQL_type));
+
+				datum_type = palloc0(sizeof(PLiSQL_datum_udt_type));
+				datum_type->dtype = PLISQL_DTYPE_TYPE;
+				datum_type->udt_type = basetype;
+				datum_type->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+
+				out = (PLiSQL_datum *)datum_type;
+				break;
+			}
+		case PLISQL_TTYPE_REC:
+			{
+				PLiSQL_type *basetype;
+				PLiSQL_rec *out_rec;
+
+				basetype = (PLiSQL_type *)palloc0(sizeof(PLiSQL_type));
+				memcpy(basetype, in, sizeof(PLiSQL_type));
+
+				out_rec = (PLiSQL_rec *)palloc0(sizeof(PLiSQL_rec));
+				out_rec->dtype = PLISQL_DTYPE_REC;
+				out_rec->refname = pstrdup(subtypnme);
+				out_rec->lineno = lineno;
+				out_rec->datatype = basetype;
+				out_rec->rectypeid = in->typoid;
+				out_rec->firstfield = -1;
+				out_rec->erh = NULL;
+				out_rec->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+				plisql_expand_rec_field(out_rec);
+
+				out = (PLiSQL_datum *)out_rec;
+				break;
+			}
+		case PLISQL_TTYPE_EXPLICIT_CURSOR:
+			{
+				PLiSQL_explicit_cursor_type *out_cursor_type;
+				PLiSQL_datum_udt_type *datum_type;
+
+				out_cursor_type = (PLiSQL_explicit_cursor_type *)palloc0(sizeof(PLiSQL_explicit_cursor_type));
+				memcpy(out_cursor_type, in, sizeof(PLiSQL_explicit_cursor_type));
+
+				datum_type = palloc0(sizeof(PLiSQL_datum_udt_type));
+				datum_type->dtype = PLISQL_DTYPE_TYPE;
+				datum_type->udt_type = (PLiSQL_type *) out_cursor_type;
+				datum_type->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+
+				out = (PLiSQL_datum *)datum_type;
+				break;
+			}
+		case PLISQL_TTYPE_UDT_REF_CURSOR:
+			{
+				PLiSQL_ref_cursor_type *out_cursor_type;
+				PLiSQL_datum_udt_type *datum_type;
+
+				out_cursor_type = (PLiSQL_ref_cursor_type *) palloc0(sizeof(PLiSQL_ref_cursor_type));
+				memcpy(out_cursor_type, in, sizeof(PLiSQL_ref_cursor_type));
+
+				datum_type = palloc0(sizeof(PLiSQL_datum_udt_type));
+				datum_type->dtype = PLISQL_DTYPE_TYPE;
+				datum_type->udt_type = (PLiSQL_type *) out_cursor_type;
+				datum_type->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+
+				out = (PLiSQL_datum *)datum_type;
+				break;
+			}
+		case PLISQL_TTYPE_ORARECORD_TYPE:
+			{
+				PLiSQL_ora_record_type *out_ora_rec;
+				PLiSQL_datum_udt_type *datum_type;
+
+				out_ora_rec = (PLiSQL_ora_record_type *) palloc0(sizeof(PLiSQL_ora_record_type));
+				memcpy(out_ora_rec, in, sizeof(PLiSQL_ora_record_type));
+
+				datum_type = palloc0(sizeof(PLiSQL_datum_udt_type));
+				datum_type->dtype = PLISQL_DTYPE_TYPE;
+				datum_type->udt_type = (PLiSQL_type *) out_ora_rec;
+				datum_type->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+
+				out = (PLiSQL_datum *)datum_type;
+				break;
+			}
+		case PLISQL_TTYPE_SUBTYPE:
+			{
+				PLiSQL_subtype_type *out_sub_type;
+				PLiSQL_datum_udt_type *datum_type;
+
+				out_sub_type = (PLiSQL_subtype_type *) palloc0(sizeof(PLiSQL_subtype_type));
+				memcpy(out_sub_type, in, sizeof(PLiSQL_subtype_type));
+
+				datum_type = palloc0(sizeof(PLiSQL_datum_udt_type));
+				datum_type->dtype = PLISQL_DTYPE_TYPE;
+				datum_type->udt_type = (PLiSQL_type *) out_sub_type;
+				datum_type->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+
+				out = (PLiSQL_datum *)datum_type;
+				break;
+			}		
+		default:
+			elog(ERROR, "unrecognized ttype: %d", in->ttype);
+			break;
+	}
+
+	return out;
+}
+/* End - ReqID:SRS-PLSQL-SUBTYPE */

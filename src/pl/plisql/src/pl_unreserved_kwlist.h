@@ -129,6 +129,9 @@ PG_KEYWORD("print_strict_params", K_PRINT_STRICT_PARAMS)
 PG_KEYWORD("prior", K_PRIOR)
 PG_KEYWORD("query", K_QUERY)
 PG_KEYWORD("raise", K_RAISE)
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+PG_KEYWORD("range", K_RANGE)
+/* End - ReqID:SRS-PLSQL-SUBTYPE */
 /* Begin - ReqID:SRS-PLSQL-RECORD */
 PG_KEYWORD("record", K_RECORD)
 /* End - ReqID:SRS-PLSQL-RECORD */
@@ -156,6 +159,9 @@ PG_KEYWORD("select", K_SELECT)
 PG_KEYWORD("slice", K_SLICE)
 PG_KEYWORD("sqlstate", K_SQLSTATE)
 PG_KEYWORD("stacked", K_STACKED)
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+PG_KEYWORD("subtype", K_SUBTYPE)
+/* End - ReqID:SRS-PLSQL-SUBTYPE */
 PG_KEYWORD("table", K_TABLE)
 PG_KEYWORD("table_name", K_TABLE_NAME)
 /* Begin - SRS-PLSQL-SUBPROC */

@@ -103,6 +103,16 @@ typedef struct PLiSQL_ora_record_type
 #define PLISQL_MAXNUM_NESTED_RECORD		100
 /* End - BUG#Z1322 */
 
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+typedef struct PLiSQL_subtype_type
+{
+	PLiSQL_type type;	/* type base type */
+	bool	setRange;	/* subtype has range constraint? */
+	int		lower;		/* used for range constraint, int32 */
+	int 	upper;		/* used for range constraint, int32 */
+} PLiSQL_subtype_type;
+/* End - ReqID:SRS-PLSQL-SUBTYPE */
+
 extern int plisql_check_cursor_define(PLiSQL_var *var,
 							PLiSQL_type *rettype,
 							List *arglist);
@@ -164,6 +174,9 @@ extern TupleDesc plisql_build_tupdesc_from_recordtype(PLiSQL_ora_record_type *or
 /* Begin - BUG#Z1322 */
 extern void plisql_check_maxnum_record_nest(int num_nested, int record_begin_pos);
 /* End - BUG#Z1322 */
+/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
+extern void plisql_build_subtype(char *subtypnme, int lineno, PLiSQL_type* btype_p, List *range_list, bool isNotNull);
+/* End - ReqID:SRS-PLSQL-SUBTYPE */
 
 #endif
 
