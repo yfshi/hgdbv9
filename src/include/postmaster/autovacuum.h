@@ -28,7 +28,7 @@ typedef enum
 
 /* GUC variables */
 extern bool autovacuum_start_daemon;
-extern int	autovacuum_max_workers;
+extern PGDLLIMPORT int	autovacuum_max_workers; /* ReqID:SRS-MISC-PDR */
 extern int	autovacuum_work_mem;
 extern int	autovacuum_naptime;
 extern int	autovacuum_vac_thresh;

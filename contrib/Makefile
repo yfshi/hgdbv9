@@ -61,7 +61,6 @@ SUBDIRS = \
 		uuid-ossp \
                 hg_misc
 
-
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo
 else
@@ -112,6 +111,10 @@ endif
 # Begin - ReqID:SRS-SECURITY-IDENTITYAUTH
 SUBDIRS += credcheck
 # End - ReqID:SRS-SECURITY-IDENTITYAUTH
+
+# /* Begin - ReqID:SRS-MISC-PDR */
+SUBDIRS += pg_wait_sampling worker_pg_pdr
+# /* End - ReqID:SRS-MISC-PDR */
 
 # Missing:
 #		start-scripts	\ (does not have a makefile)

@@ -1,0 +1,909 @@
+
+<html lang="en"><head><title>PDR Report for DB: $dbname$, Snaps: $snapbegin$-$snapend$</title>
+<style type="text/css">
+body.awr {font:bold 10pt Arial,Helvetica,Geneva,sans-serif;color:black; background:White;}
+pre.awr  {font:8pt Courier;color:black; background:White;}
+h1.awr   {font:bold 20pt Arial,Helvetica,Geneva,sans-serif;color:#336699;background-color:White;border-bottom:1px solid #cccc99;margin-top:0pt; margin-bottom:0pt;padding:0px 0px 0px 0px;}
+h2.awr   {font:bold 18pt Arial,Helvetica,Geneva,sans-serif;color:#336699;background-color:White;margin-top:4pt; margin-bottom:0pt;}
+h3.awr {font:bold 16pt Arial,Helvetica,Geneva,sans-serif;color:#336699;background-color:White;margin-top:4pt; margin-bottom:0pt;}
+li.awr {font: 8pt Arial,Helvetica,Geneva,sans-serif; color:black; background:White;}
+th.awrnobg {font:bold 8pt Arial,Helvetica,Geneva,sans-serif; color:black; background:White;padding-left:4px; padding-right:4px;padding-bottom:2px}
+th.awrbg {font:bold 8pt Arial,Helvetica,Geneva,sans-serif; color:White; background:#0066CC;padding-left:4px; padding-right:4px;padding-bottom:2px}
+td.awrnc {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:White;vertical-align:top;}
+td.awrc    {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:#FFFFCC; vertical-align:top;}
+td.awrnclb {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:White;vertical-align:top;border-left: thin solid black;}
+td.awrncbb {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:White;vertical-align:top;border-left: thin solid black;border-right: thin solid black;}
+td.awrncrb {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:White;vertical-align:top;border-right: thin solid black;}
+td.awrcrb    {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:#FFFFCC; vertical-align:top;border-right: thin solid black;}
+td.awrclb    {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:#FFFFCC; vertical-align:top;border-left: thin solid black;}
+td.awrcbb    {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:#FFFFCC; vertical-align:top;border-left: thin solid black;border-right: thin solid black;}
+a.awr {font:bold 8pt Arial,Helvetica,sans-serif;color:#663300; vertical-align:top;margin-top:0pt; margin-bottom:0pt;}
+td.awrnct {font:8pt Arial,Helvetica,Geneva,sans-serif;border-top: thin solid black;color:black;background:White;vertical-align:top;}
+td.awrct   {font:8pt Arial,Helvetica,Geneva,sans-serif;border-top: thin solid black;color:black;background:#FFFFCC; vertical-align:top;}
+td.awrnclbt  {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:White;vertical-align:top;border-top: thin solid black;border-left: thin solid black;}
+td.awrncbbt  {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:White;vertical-align:top;border-left: thin solid black;border-right: thin solid black;border-top: thin solid black;}
+td.awrncrbt {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:White;vertical-align:top;border-top: thin solid black;border-right: thin solid black;}
+td.awrcrbt     {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:#FFFFCC; vertical-align:top;border-top: thin solid black;border-right: thin solid black;}
+td.awrclbt     {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:#FFFFCC; vertical-align:top;border-top: thin solid black;border-left: thin solid black;}
+td.awrcbbt   {font:8pt Arial,Helvetica,Geneva,sans-serif;color:black;background:#FFFFCC; vertical-align:top;border-top: thin solid black;border-left: thin solid black;border-right: thin solid black;}
+table.tdiff {  border_collapse: collapse; } 
+.hidden   {position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;}
+.pad   {margin-left:17px;}
+.doublepad {margin-left:34px;}
+</style></head><body class="awr">
+<h1 class="awr">
+PERFORMANCE DIAGNOSIS REPORT
+
+</h1>
+<p />
+<table border="1" width="500" summary="This table displays database instance information">
+<tr><th class="awrbg" scope="col">DB Name</th><th class="awrbg" scope="col">DB Id</th><th class="awrbg" scope="col">Startup Time</th><th class="awrbg" scope="col">Release</th></tr>
+<tr><td scope="row" class='awrnc'>$dbname$</td><td align="right" class='awrnc'>$dboid$</td><td class='awrnc'>$databasestarttime$</td><td class='awrnc'>$databaseversion$</td></tr>
+</table>
+<p />
+<p />
+<table border="1" width="500" summary="This table displays host information">
+<tr><th class="awrbg" scope="col">Host Name</th><th class="awrbg" scope="col">Platform</th><th class="awrbg" scope="col">Cores</th><th class="awrbg" scope="col">Memory (GB)</th></tr>
+<tr><td scope="row" class='awrnc'>$databasehost$</td><td class='awrnc'>$databaseplatform$</td><td align="right" class='awrnc'>$dbcpus$</td><td align="right" class='awrnc'>$dbmemory$</td></tr>
+</table>
+<p /> 
+<table border="1" width="500" summary="This table displays snapshot information">
+<tr><th class="awrnobg" scope="col"></th><th class="awrbg" scope="col">Snap Id</th><th class="awrbg" scope="col">Snap Time</th></tr>
+<tr><td scope="row" class='awrnc'>Begin Snap:</td><td align="right" class='awrnc'>$snapbegin$</td><td align="center" class='awrnc'>$snapbegintime$</td></tr>
+<tr><td scope="row" class='awrc'>End Snap:</td><td align="right" class='awrc'>$snapend$</td><td align="center" class='awrc'>$snapendtime$</td></tr>
+<tr><td scope="row" class='awrnc'>Elapsed:</td><td class='awrnc'>&#160;</td><td align="center" class='awrnc'> $dbelapsed$</td></tr>
+<tr><td scope="row" class='awrc'>DB Time:</td><td class='awrc'>&#160;</td><td align="center" class='awrc'> $dbdbtime$</td></tr>
+</table>
+<p />  
+<h3 class="awr"><a class="awr" name="99999"></a>Report Summary</h3>
+<p />Load Profile<p />
+<table border="1" width="500" summary="This table displays load profile">
+<tr><th class="awrnobg" scope="col"></th><th class="awrbg" scope="col">count</th><th class="awrbg" scope="col">Per Second</th><th class="awrbg" scope="col">Per Transaction</th></tr>
+<tr><td scope="row" class='awrc'>Transactions:</td><td align="right" class='awrc'>$Transactions_cnt$</td><td align="right" class='awrc'>$Transactions_sec$</td><td align="right" class='awrc'>$Transactions_xac$</td></tr>
+<tr><td scope="row" class='awrnc'>Rollback:</td><td align="right" class='awrnc'>$Rollback_cnt$</td><td align="right" class='awrnc'>$Rollback_sec$</td><td align="right" class='awrnc'>$Rollback_xac$</td></tr>
+<tr><td scope="row" class='awrc'>Blocks fetched:</td><td align="right" class='awrc'>$Blocks_fetched_cnt$</td><td align="right" class='awrc'>$Blocks_fetched_sec$</td><td align="right" class='awrc'>$Blocks_fetched_xac$</td></tr>
+<tr><td scope="row" class='awrnc'>Blocks hit:</td><td align="right" class='awrnc'>$Blocks_hit_cnt$</td><td align="right" class='awrnc'>$Blocks_hit_sec$</td><td align="right" class='awrnc'>$Blocks_hit_xac$</td></tr>
+<tr><td scope="row" class='awrc'>Tuples returned:</td><td align="right" class='awrc'>$Tuples_returned_cnt$</td><td align="right" class='awrc'>$Tuples_returned_sec$</td><td align="right" class='awrc'>$Tuples_returned_xac$</td></tr>
+<tr><td scope="row" class='awrnc'>Tuples fetched:</td><td align="right" class='awrnc'>$Tuples_fetched_cnt$</td><td align="right" class='awrnc'>$Tuples_fetched_sec$</td><td align="right" class='awrnc'>$Tuples_fetched_xac$</td></tr>
+<tr><td scope="row" class='awrc'>Tuples inserted:</td><td align="right" class='awrc'>$Tuples_inserted_cnt$</td><td align="right" class='awrc'>$Tuples_inserted_sec$</td><td align="right" class='awrc'>$Tuples_inserted_xac$</td></tr>
+<tr><td scope="row" class='awrnc'>Tuples updated:</td><td align="right" class='awrnc'>$Tuples_updated_cnt$</td><td align="right" class='awrnc'>$Tuples_updated_sec$</td><td align="right" class='awrnc'>$Tuples_updated_xac$</td></tr>
+<tr><td scope="row" class='awrc'>Tuples deleted:</td><td align="right" class='awrc'>$Tuples_deleted_cnt$</td><td align="right" class='awrc'>$Tuples_deleted_sec$</td><td align="right" class='awrc'>$Tuples_deleted_xac$</td></tr>
+<tr><td scope="row" class='awrnc'>Conflict tablespace:</td><td align="right" class='awrnc'>$Conflict_tablespace_cnt$</td><td align="right" class='awrnc'>$Conflict_tablespace_sec$</td><td align="right" class='awrnc'>$Conflict_tablespace_xac$</td></tr>
+<tr><td scope="row" class='awrc'>Conflict lock:</td><td align="right" class='awrc'>$Conflict_lock_cnt$</td><td align="right" class='awrc'>$Conflict_lock_sec$</td><td align="right" class='awrc'>$Conflict_lock_xac$</td></tr>
+<tr><td scope="row" class='awrnc'>Conflict snapshot:</td><td align="right" class='awrnc'>$Conflict_snapshot_cnt$</td><td align="right" class='awrnc'>$Conflict_snapshot_sec$</td><td align="right" class='awrnc'>$Conflict_snapshot_xac$</td></tr>
+<tr><td scope="row" class='awrc'>Conflict bufferpin:</td><td align="right" class='awrc'>$Conflict_bufferpin_cnt$</td><td align="right" class='awrc'>$Conflict_bufferpin_sec$</td><td align="right" class='awrc'>$Conflict_bufferpin_xac$</td></tr>
+<tr><td scope="row" class='awrnc'>Conflict deadlock:</td><td align="right" class='awrnc'>$Conflict_deadlock_cnt$</td><td align="right" class='awrnc'>$Conflict_deadlock_sec$</td><td align="right" class='awrnc'>$Conflict_deadlock_xac$</td></tr>
+<tr><td scope="row" class='awrc'>Temp files:</td><td align="right" class='awrc'>$Temp_files_cnt$</td><td align="right" class='awrc'>$Temp_files_sec$</td><td align="right" class='awrc'>$Temp_files_xac$</td></tr>
+<tr><td scope="row" class='awrnc'>Temp bytes:</td><td align="right" class='awrnc'>$Temp_bytes_cnt$</td><td align="right" class='awrnc'>$Temp_bytes_sec$</td><td align="right" class='awrnc'>$Temp_bytes_xac$</td></tr>
+<tr><td scope="row" class='awrc'>Deadlocks:</td><td align="right" class='awrc'>$Deadlocks_cnt$</td><td align="right" class='awrc'>$Deadlocks_sec$</td><td align="right" class='awrc'>$Deadlocks_xac$</td></tr>
+<tr><td scope="row" class='awrnc'>Block read time(s):</td><td align="right" class='awrnc'>$Block_read_time_cnt$</td><td align="right" class='awrnc'>$Block_read_time_sec$</td><td align="right" class='awrnc'>$Block_read_time_xac$</td></tr>
+<tr><td scope="row" class='awrc'>Block write time(s):</td><td align="right" class='awrc'>$Block_write_time_cnt$</td><td align="right"class='awrc'>$Block_write_time_sec$</td><td align="right" class='awrc'>$Block_write_time_xac$</td></tr>
+</table>
+<p />
+<p />Top 10 Timed Foreground Events<p />
+<ul>
+</ul>
+<table border="1" summary="Top 10 Timed Foreground Events"><tr><th class="awrbg" scope="col">Event</th><th class="awrbg" scope="col">Time(s)</th><th class="awrbg" scope="col">% wait time</th><th class="awrbg" scope="col">Wait Class</th></tr>
+<tr><td scope="row" class='awrc'>$wait_top10_name_1$</td><td align="right" class='awrc'>$wait_top10_time_1$</td><td align="right" class='awrc'>$wait_top10_percent_1$</td><td align="right" class='awrc'>$wait_top10_type_1$</td></tr>
+<tr><td scope="row" class='awrnc'>$wait_top10_name_2$</td><td align="right" class='awrnc'>$wait_top10_time_2$</td><td align="right" class='awrnc'>$wait_top10_percent_2$</td><td align="right" class='awrnc'>$wait_top10_type_2$</td></tr>
+<tr><td scope="row" class='awrc'>$wait_top10_name_3$</td><td align="right" class='awrc'>$wait_top10_time_3$</td><td align="right" class='awrc'>$wait_top10_percent_3$</td><td align="right" class='awrc'>$wait_top10_type_3$</td></tr>
+<tr><td scope="row" class='awrnc'>$wait_top10_name_4$</td><td align="right" class='awrnc'>$wait_top10_time_4$</td><td align="right" class='awrnc'>$wait_top10_percent_4$</td><td align="right" class='awrnc'>$wait_top10_type_4$</td></tr>
+<tr><td scope="row" class='awrc'>$wait_top10_name_5$</td><td align="right" class='awrc'>$wait_top10_time_5$</td><td align="right" class='awrc'>$wait_top10_percent_5$</td><td align="right" class='awrc'>$wait_top10_type_5$</td></tr>
+<tr><td scope="row" class='awrnc'>$wait_top10_name_6$</td><td align="right" class='awrnc'>$wait_top10_time_6$</td><td align="right" class='awrnc'>$wait_top10_percent_6$</td><td align="right" class='awrnc'>$wait_top10_type_6$</td></tr>
+<tr><td scope="row" class='awrc'>$wait_top10_name_7$</td><td align="right" class='awrc'>$wait_top10_time_7$</td><td align="right" class='awrc'>$wait_top10_percent_7$</td><td align="right" class='awrc'>$wait_top10_type_7$</td></tr>
+<tr><td scope="row" class='awrnc'>$wait_top10_name_8$</td><td align="right" class='awrnc'>$wait_top10_time_8$</td><td align="right" class='awrnc'>$wait_top10_percent_8$</td><td align="right" class='awrnc'>$wait_top10_type_8$</td></tr>
+<tr><td scope="row" class='awrc'>$wait_top10_name_9$</td><td align="right" class='awrc'>$wait_top10_time_9$</td><td align="right" class='awrc'>$wait_top10_percent_9$</td><td align="right" class='awrc'>$wait_top10_type_9$</td></tr>
+<tr><td scope="row" class='awrnc'>$wait_top10_name_10$</td><td align="right" class='awrnc'>$wait_top10_time_10$</td><td align="right" class='awrnc'>$wait_top10_percent_10$</td><td align="right" class='awrnc'>$wait_top10_type_10$</td></tr>
+</table><p />
+<a class="awr" name="top"></a>
+<h2 class="awr">
+Main Report
+</h2>
+<ul>  
+<li class="awr"><a class="awr" href="#99999">Report Summary</a></li>
+<li class="awr"><a class="awr" href="#21">Wait Events Statistics</a></li>
+<li class="awr"><a class="awr" href="#22">SQL Statistics</a></li>
+<li class="awr"><a class="awr" href="#23">Instance Activity Statistics</a></li>
+<li class="awr"><a class="awr" href="#24">IO Stats</a></li>
+<li class="awr"><a class="awr" href="#30">Segment Statistics</a></li>
+</ul>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="21"></a>
+<h2 class="awr">
+Wait Events Statistics
+</h2>
+<ul>
+<li class="awr"><a class="awr" href="#1500">LWLock Wait Statistics</a></li>
+<li class="awr"><a class="awr" href="#1510">Lock Wait Statistics</a></li>
+<li class="awr"><a class="awr" href="#1520">BufferPin Wait Statistics</a></li>
+<li class="awr"><a class="awr" href="#1540">Client Wait Statistics</a></li>
+<li class="awr"><a class="awr" href="#1550">Extension Wait Statistics</a></li>
+<li class="awr"><a class="awr" href="#1560">IPC Wait Statistics</a></li>
+<li class="awr"><a class="awr" href="#1570">Timeout Wait Statistics</a></li>
+<li class="awr"><a class="awr" href="#1580">IO Wait Statistics</a></li>
+</ul> 
+<a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="1500"></a>
+<h3 class="awr">LWLock Wait Statistics</h3>
+<table border="1" summary="This table displays different time model statistics. For each statistic, time and % of DB time are displayed"><tr><th class="awrbg" scope="col">Statistic Name</th><th class="awrbg" scope="col">Time (s)</th><th class="awrbg" scope="col">% of Wait Time</th></tr>
+<tr><td scope="row" class='awrc'>ShmemIndexLock</td><td align="right" class='awrc'>$ShmemIndexLock_time$</td><td align="right" class='awrc'>$ShmemIndexLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>OidGenLock</td><td align="right" class='awrnc'>$OidGenLock_time$</td><td align="right" class='awrnc'>$OidGenLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>XidGenLock</td><td align="right" class='awrc'>$XidGenLock_time$</td><td align="right" class='awrc'>$XidGenLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ProcArrayLock</td><td align="right" class='awrnc'>$ProcArrayLock_time$</td><td align="right" class='awrnc'>$ProcArrayLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>SInvalReadLock</td><td align="right" class='awrc'>$SInvalReadLock_time$</td><td align="right" class='awrc'>$SInvalReadLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SInvalWriteLock</td><td align="right" class='awrnc'>$SInvalWriteLock_time$</td><td align="right" class='awrnc'>$SInvalWriteLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>WALBufMappingLock</td><td align="right" class='awrc'>$WALBufMappingLock_time$</td><td align="right" class='awrc'>$WALBufMappingLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WALWriteLock</td><td align="right" class='awrnc'>$WALWriteLock_time$</td><td align="right" class='awrnc'>$WALWriteLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>ControlFileLock</td><td align="right" class='awrc'>$ControlFileLock_time$</td><td align="right" class='awrc'>$ControlFileLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>XactSLRULock</td><td align="right" class='awrc'>$XactSLRULock_time$</td><td align="right" class='awrc'>$XactSLRULock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SubtransSLRULock</td><td align="right" class='awrnc'>$SubtransSLRULock_time$</td><td align="right" class='awrnc'>$SubtransSLRULock_total$</td></tr>
+<tr><td scope="row" class='awrc'>MultiXactGenLock</td><td align="right" class='awrc'>$MultiXactGenLock_time$</td><td align="right" class='awrc'>$MultiXactGenLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>MultiXactOffsetSLRULock</td><td align="right" class='awrnc'>$MultiXactOffsetSLRULock_time$</td><td align="right" class='awrnc'>$MultiXactOffsetSLRULock_total$</td></tr>
+<tr><td scope="row" class='awrc'>MultiXactMemberSLRULock</td><td align="right" class='awrc'>$MultiXactMemberSLRULock_time$</td><td align="right" class='awrc'>$MultiXactMemberSLRULock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>RelCacheInitLock</td><td align="right" class='awrnc'>$RelCacheInitLock_time$</td><td align="right" class='awrnc'>$RelCacheInitLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>CheckpointerCommLock</td><td align="right" class='awrc'>$CheckpointerCommLock_time$</td><td align="right" class='awrc'>$CheckpointerCommLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>TwoPhaseStateLock</td><td align="right" class='awrnc'>$TwoPhaseStateLock_time$</td><td align="right" class='awrnc'>$TwoPhaseStateLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>TablespaceCreateLock</td><td align="right" class='awrc'>$TablespaceCreateLock_time$</td><td align="right" class='awrc'>$TablespaceCreateLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>BtreeVacuumLock</td><td align="right" class='awrnc'>$BtreeVacuumLock_time$</td><td align="right" class='awrnc'>$BtreeVacuumLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>AddinShmemInitLock</td><td align="right" class='awrc'>$AddinShmemInitLock_time$</td><td align="right" class='awrc'>$AddinShmemInitLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>AutovacuumLock</td><td align="right" class='awrnc'>$AutovacuumLock_time$</td><td align="right" class='awrnc'>$AutovacuumLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>AutovacuumScheduleLock</td><td align="right" class='awrc'>$AutovacuumScheduleLock_time$</td><td align="right" class='awrc'>$AutovacuumScheduleLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SyncScanLock</td><td align="right" class='awrnc'>$SyncScanLock_time$</td><td align="right" class='awrnc'>$SyncScanLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>RelationMappingLock</td><td align="right" class='awrc'>$RelationMappingLock_time$</td><td align="right" class='awrc'>$RelationMappingLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>NotifySLRULock</td><td align="right" class='awrnc'>$NotifySLRULock_time$</td><td align="right" class='awrnc'>$NotifySLRULock_total$</td></tr>
+<tr><td scope="row" class='awrc'>NotifyQueueLock</td><td align="right" class='awrc'>$NotifyQueueLock_time$</td><td align="right" class='awrc'>$NotifyQueueLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SerializableXactHashLock</td><td align="right" class='awrnc'>$SerializableXactHashLock_time$</td><td align="right" class='awrnc'>$SerializableXactHashLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>SerializableFinishedListLock</td><td align="right" class='awrc'>$SerializableFinishedListLock_time$</td><td align="right" class='awrc'>$SerializableFinishedListLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SerializablePredicateLockListLock</td><td align="right" class='awrnc'>$SerializablePredicateLockListLock_time$</td><td align="right" class='awrnc'>$SerializablePredicateLockListLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>SerialSLRULock</td><td align="right" class='awrc'>$SerialSLRULock_time$</td><td align="right" class='awrc'>$SerialSLRULock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SyncRepLock</td><td align="right" class='awrnc'>$SyncRepLock_time$</td><td align="right" class='awrnc'>$SyncRepLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>BackgroundWorkerLock</td><td align="right" class='awrc'>$BackgroundWorkerLock_time$</td><td align="right" class='awrc'>$BackgroundWorkerLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>DynamicSharedMemoryControlLock</td><td align="right" class='awrnc'>$DynamicSharedMemoryControlLock_time$</td><td align="right" class='awrnc'>$DynamicSharedMemoryControlLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>AutoFileLock</td><td align="right" class='awrc'>$AutoFileLock_time$</td><td align="right" class='awrc'>$AutoFileLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ReplicationSlotAllocationLock</td><td align="right" class='awrnc'>$ReplicationSlotAllocationLock_time$</td><td align="right" class='awrnc'>$ReplicationSlotAllocationLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>ReplicationSlotControlLock</td><td align="right" class='awrc'>$ReplicationSlotControlLock_time$</td><td align="right" class='awrc'>$ReplicationSlotControlLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>CommitTsSLRULock</td><td align="right" class='awrnc'>$CommitTsSLRULock_time$</td><td align="right" class='awrnc'>$CommitTsSLRULock_total$</td></tr>
+<tr><td scope="row" class='awrc'>CommitTsLock</td><td align="right" class='awrc'>$CommitTsLock_time$</td><td align="right" class='awrc'>$CommitTsLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ReplicationOriginLock</td><td align="right" class='awrnc'>$ReplicationOriginLock_time$</td><td align="right" class='awrnc'>$ReplicationOriginLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>MultiXactTruncationLock</td><td align="right" class='awrc'>$MultiXactTruncationLock_time$</td><td align="right" class='awrc'>$MultiXactTruncationLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>OldSnapshotTimeMapLock</td><td align="right" class='awrnc'>$OldSnapshotTimeMapLock_time$</td><td align="right" class='awrnc'>$OldSnapshotTimeMapLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>LogicalRepWorkerLock</td><td align="right" class='awrc'>$LogicalRepWorkerLock_time$</td><td align="right" class='awrc'>$LogicalRepWorkerLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>XactTruncationLock</td><td align="right" class='awrnc'>$XactTruncationLock_time$</td><td align="right" class='awrnc'>$XactTruncationLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>WrapLimitsVacuumLock</td><td align="right" class='awrc'>$WrapLimitsVacuumLock_time$</td><td align="right" class='awrc'>$WrapLimitsVacuumLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>NotifyQueueTailLock</td><td align="right" class='awrnc'>$NotifyQueueTailLock_time$</td><td align="right" class='awrnc'>$NotifyQueueTailLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>FdwXactLock</td><td align="right" class='awrc'>$FdwXactLock_time$</td><td align="right" class='awrc'>$FdwXactLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>FdwXactResolverLock</td><td align="right" class='awrnc'>$FdwXactResolverLock_time$</td><td align="right" class='awrnc'>$FdwXactResolverLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>BadfileWriteLock</td><td align="right" class='awrc'>$BadfileWriteLock_time$</td><td align="right" class='awrc'>$BadfileWriteLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ResGroupLock</td><td align="right" class='awrnc'>$ResGroupLock_time$</td><td align="right" class='awrnc'>$ResGroupLock_total$</td></tr>
+<tr><td scope="row" class='awrc'>SessionStateLock</td><td align="right" class='awrc'>$SessionStateLock_time$</td><td align="right" class='awrc'>$SessionStateLock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>XactBuffer</td><td align="right" class='awrnc'>$XactBuffer_time$</td><td align="right" class='awrnc'>$XactBuffer_total$</td></tr>
+<tr><td scope="row" class='awrc'>CommitTsBuffer</td><td align="right" class='awrc'>$CommitTsBuffer_time$</td><td align="right" class='awrc'>$CommitTsBuffer_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SubtransBuffer</td><td align="right" class='awrnc'>$SubtransBuffer_time$</td><td align="right" class='awrnc'>$SubtransBuffer_total$</td></tr>
+<tr><td scope="row" class='awrc'>MultiXactOffsetBuffer</td><td align="right" class='awrc'>$MultiXactOffsetBuffer_time$</td><td align="right" class='awrc'>$MultiXactOffsetBuffer_total$</td></tr>
+<tr><td scope="row" class='awrnc'>MultiXactMemberBuffer</td><td align="right" class='awrnc'>$MultiXactMemberBuffer_time$</td><td align="right" class='awrnc'>$MultiXactMemberBuffer_total$</td></tr>
+<tr><td scope="row" class='awrc'>NotifyBuffer</td><td align="right" class='awrc'>$NotifyBuffer_time$</td><td align="right" class='awrc'>$NotifyBuffer_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SerialBuffer</td><td align="right" class='awrnc'>$SerialBuffer_time$</td><td align="right" class='awrnc'>$SerialBuffer_total$</td></tr>
+<tr><td scope="row" class='awrc'>WALInsert</td><td align="right" class='awrc'>$WALInsert_time$</td><td align="right" class='awrc'>$WALInsert_total$</td></tr>
+<tr><td scope="row" class='awrnc'>BufferContent</td><td align="right" class='awrnc'>$BufferContent_time$</td><td align="right" class='awrnc'>$BufferContent_total$</td></tr>
+<tr><td scope="row" class='awrc'>ReplicationOriginState</td><td align="right" class='awrc'>$ReplicationOriginState_time$</td><td align="right" class='awrc'>$ReplicationOriginState_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ReplicationSlotIO</td><td align="right" class='awrnc'>$ReplicationSlotIO_time$</td><td align="right" class='awrnc'>$ReplicationSlotIO_total$</td></tr>
+<tr><td scope="row" class='awrc'>LockFastPath</td><td align="right" class='awrc'>$LockFastPath_time$</td><td align="right" class='awrc'>$LockFastPath_total$</td></tr>
+<tr><td scope="row" class='awrnc'>BufferMapping</td><td align="right" class='awrnc'>$BufferMapping_time$</td><td align="right" class='awrnc'>$BufferMapping_total$</td></tr>
+<tr><td scope="row" class='awrc'>LockManager</td><td align="right" class='awrc'>$LockManager_time$</td><td align="right" class='awrc'>$LockManager_total$</td></tr>
+<tr><td scope="row" class='awrnc'>PredicateLockManager</td><td align="right" class='awrnc'>$PredicateLockManager_time$</td><td align="right" class='awrnc'>$PredicateLockManager_total$</td></tr>
+<tr><td scope="row" class='awrc'>ParallelHashJoin</td><td align="right" class='awrc'>$ParallelHashJoin_time$</td><td align="right" class='awrc'>$ParallelHashJoin_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ParallelQueryDSA</td><td align="right" class='awrnc'>$ParallelQueryDSA_time$</td><td align="right" class='awrnc'>$ParallelQueryDSA_total$</td></tr>
+<tr><td scope="row" class='awrc'>PerSessionDSA</td><td align="right" class='awrc'>$PerSessionDSA_time$</td><td align="right" class='awrc'>$PerSessionDSA_total$</td></tr>
+<tr><td scope="row" class='awrnc'>PerSessionRecordType_append</td><td align="right" class='awrnc'>$PerSessionRecordType_time$</td><td align="right" class='awrnc'>$PerSessionRecordType_total$</td></tr>
+<tr><td scope="row" class='awrc'>PerSessionRecordTypmod</td><td align="right" class='awrc'>$PerSessionRecordTypmod_time$</td><td align="right" class='awrc'>$PerSessionRecordTypmod_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SharedTupleStore</td><td align="right" class='awrnc'>$SharedTupleStore_time$</td><td align="right" class='awrnc'>$SharedTupleStore_total$</td></tr>
+<tr><td scope="row" class='awrc'>SharedTidBitmap</td><td align="right" class='awrc'>$SharedTidBitmap_time$</td><td align="right" class='awrc'>$SharedTidBitmap_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ParallelAppend</td><td align="right" class='awrnc'>$ParallelAppend_time$</td><td align="right" class='awrnc'>$ParallelAppend_total$</td></tr>
+<tr><td scope="row" class='awrc'>PerXactPredicateList</td><td align="right" class='awrc'>$PerXactPredicateList_time$</td><td align="right" class='awrc'>$PerXactPredicateList_total$</td></tr>
+<tr><td scope="row" class='awrnc'>GlobalTempTableControl</td><td align="right" class='awrnc'>$GlobalTempTableControl_time$</td><td align="right" class='awrnc'>$GlobalTempTableControl_total$</td></tr>
+</table><p />
+<a class="awr" href="#21">Back to Wait Events Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="1510"></a>
+<h3 class="awr">Lock Wait Statistics</h3>
+<table border="1" summary="This table displays different time model statistics. For each statistic, time and % of DB time are displayed"><tr><th class="awrbg" scope="col">Statistic Name</th><th class="awrbg" scope="col">Time (s)</th><th class="awrbg" scope="col">% of Wait Time</th></tr>
+<tr><td scope="row" class='awrc'>relation</td><td align="right" class='awrc'>$relation_time$</td><td align="right" class='awrc'>$relation_total$</td></tr>
+<tr><td scope="row" class='awrnc'>extend</td><td align="right" class='awrnc'>$extend_time$</td><td align="right" class='awrnc'>$extend_total$</td></tr>
+<tr><td scope="row" class='awrnc'>frozenid</td><td align="right" class='awrnc'>$frozenid_time$</td><td align="right" class='awrnc'>$frozenid_total$</td></tr>
+<tr><td scope="row" class='awrc'>page</td><td align="right" class='awrc'>$page_time$</td><td align="right" class='awrc'>$page_total$</td></tr>
+<tr><td scope="row" class='awrnc'>tuple</td><td align="right" class='awrnc'>$tuple_time$</td><td align="right" class='awrnc'>$tuple_total$</td></tr>
+<tr><td scope="row" class='awrc'>transactionid</td><td align="right" class='awrc'>$transactionid_time$</td><td align="right" class='awrc'>$transactionid_total$</td></tr>
+<tr><td scope="row" class='awrnc'>virtualxid</td><td align="right" class='awrnc'>$virtualxid_time$</td><td align="right" class='awrnc'>$virtualxid_total$</td></tr>
+<tr><td scope="row" class='awrc'>spectoken</td><td align="right" class='awrc'>$spectoken_time$</td><td align="right" class='awrc'>$spectoken_total$</td></tr>
+<tr><td scope="row" class='awrnc'>object</td><td align="right" class='awrnc'>$object_time$</td><td align="right" class='awrnc'>$object_total$</td></tr>
+<tr><td scope="row" class='awrc'>userlock</td><td align="right" class='awrc'>$userlock_time$</td><td align="right" class='awrc'>$userlock_total$</td></tr>
+<tr><td scope="row" class='awrnc'>advisory</td><td align="right" class='awrnc'>$advisory_time$</td><td align="right" class='awrnc'>$advisory_total$</td></tr>
+</table><p />
+<a class="awr" href="#21">Back to Wait Events Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="1520"></a>
+<h3 class="awr">BufferPin Wait Statistics</h3>
+<table border="1" summary="This table displays different time model statistics. For each statistic, time and % of DB time are displayed"><tr><th class="awrbg" scope="col">Statistic Name</th><th class="awrbg" scope="col">Time (s)</th><th class="awrbg" scope="col">% of Wait Time</th></tr>
+<tr><td scope="row" class='awrc'>BufferPin</td><td align="right" class='awrc'>$BufferPin_time$</td><td align="right" class='awrc'>$BufferPin_total$</td></tr>
+</table><p />
+<a class="awr" href="#21">Back to Wait Events Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="1540"></a>
+<h3 class="awr">Client Wait Statistics</h3>
+<table border="1" summary="This table displays different time model statistics. For each statistic, time and % of DB time are displayed"><tr><th class="awrbg" scope="col">Statistic Name</th><th class="awrbg" scope="col">Time (s)</th><th class="awrbg" scope="col">% of Wait Time</th></tr>
+<tr><td scope="row" class='awrc'>ClientRead</td><td align="right" class='awrc'>$ClientRead_time$</td><td align="right" class='awrc'>$ClientRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ClientWrite</td><td align="right" class='awrnc'>$ClientWrite_time$</td><td align="right" class='awrnc'>$ClientWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>GSSOpenServer</td><td align="right" class='awrnc'>$GSSOpenServer_time$</td><td align="right" class='awrnc'>$GSSOpenServer_total$</td></tr>
+<tr><td scope="row" class='awrc'>LibPQWalReceiverConnect</td><td align="right" class='awrc'>$LibPQWalReceiverConnect_time$</td><td align="right" class='awrc'>$LibPQWalReceiverConnect_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LibPQWalReceiverReceive</td><td align="right" class='awrnc'>$LibPQWalReceiverReceive_time$</td><td align="right" class='awrnc'>$LibPQWalReceiverReceive_total$</td></tr>
+<tr><td scope="row" class='awrc'>SSLOpenServer</td><td align="right" class='awrc'>$SSLOpenServer_time$</td><td align="right" class='awrc'>$SSLOpenServer_total$</td></tr>
+<tr><td scope="row" class='awrc'>WalSenderWaitForWAL</td><td align="right" class='awrc'>$WalSenderWaitForWAL_time$</td><td align="right" class='awrc'>$WalSenderWaitForWAL_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WalSenderWriteData</td><td align="right" class='awrnc'>$WalSenderWriteData_time$</td><td align="right" class='awrnc'>$WalSenderWriteData_total$</td></tr>
+</table><p /> 
+<a class="awr" href="#21">Back to Wait Events Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="1550"></a>
+<h3 class="awr">Extension Wait Statistics</h3>
+<table border="1" summary="This table displays different time model statistics. For each statistic, time and % of DB time are displayed"><tr><th class="awrbg" scope="col">Statistic Name</th><th class="awrbg" scope="col">Time (s)</th><th class="awrbg" scope="col">% of Wait Time</th></tr>
+<tr><td scope="row" class='awrc'>Extension</td><td align="right" class='awrc'>$Extension_time$</td><td align="right" class='awrc'>$Extension_total$</td></tr>
+</table><p />
+<a class="awr" href="#21">Back to Wait Events Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="1560"></a>
+<h3 class="awr">IPC Wait Statistics</h3>
+<table border="1" summary="This table displays different time model statistics. For each statistic, time and % of DB time are displayed"><tr><th class="awrbg" scope="col">Statistic Name</th><th class="awrbg" scope="col">Time (s)</th><th class="awrbg" scope="col">% of Wait Time</th></tr>
+<tr><td scope="row" class='awrc'>AppendReady</td><td align="right" class='awrc'>$AppendReady_time$</td><td align="right" class='awrc'>$AppendReady_total$</td></tr>
+<tr><td scope="row" class='awrnc'>BackendTermination</td><td align="right" class='awrnc'>$BackendTermination_time$</td><td align="right" class='awrnc'>$BackendTermination_total$</td></tr>
+<tr><td scope="row" class='awrc'>BackupWaitWalArchive</td><td align="right" class='awrc'>$BackupWaitWalArchive_time$</td><td align="right" class='awrc'>$BackupWaitWalArchive_total$</td></tr>
+<tr><td scope="row" class='awrnc'>BgWorkerShutdown</td><td align="right" class='awrnc'>$BgWorkerShutdown_time$</td><td align="right" class='awrnc'>$BgWorkerShutdown_total$</td></tr>
+<tr><td scope="row" class='awrc'>BgWorkerStartup</td><td align="right" class='awrc'>$BgWorkerStartup_time$</td><td align="right" class='awrc'>$BgWorkerStartup_total$</td></tr>
+<tr><td scope="row" class='awrnc'>BtreePage</td><td align="right" class='awrnc'>$BtreePage_time$</td><td align="right" class='awrnc'>$BtreePage_total$</td></tr>
+<tr><td scope="row" class='awrc'>BufferIO</td><td align="right" class='awrc'>$BufferIO_time$</td><td align="right" class='awrc'>$BufferIO_total$</td></tr>
+<tr><td scope="row" class='awrnc'>CheckpointDone</td><td align="right" class='awrnc'>$CheckpointDone_time$</td><td align="right" class='awrnc'>$CheckpointDone_total$</td></tr>
+<tr><td scope="row" class='awrnc'>CheckpointStart</td><td align="right" class='awrnc'>$CheckpointStart_time$</td><td align="right" class='awrnc'>$CheckpointStart_total$</td></tr>
+<tr><td scope="row" class='awrc'>ExecuteGather</td><td align="right" class='awrc'>$ExecuteGather_time$</td><td align="right" class='awrc'>$ExecuteGather_total$</td></tr>
+<tr><td scope="row" class='awrnc'>HashBatchAllocate</td><td align="right" class='awrnc'>$HashBatchAllocate_time$</td><td align="right" class='awrnc'>$HashBatchAllocate_total$</td></tr>
+<tr><td scope="row" class='awrc'>HashBatchElect</td><td align="right" class='awrc'>$HashBatchElect_time$</td><td align="right" class='awrc'>$HashBatchElect_total$</td></tr>
+<tr><td scope="row" class='awrnc'>HashBatchLoad</td><td align="right" class='awrnc'>$HashBatchLoad_time$</td><td align="right" class='awrnc'>$HashBatchLoad_total$</td></tr>
+<tr><td scope="row" class='awrc'>HashBuildAllocate</td><td align="right" class='awrc'>$HashBuildAllocate_time$</td><td align="right" class='awrc'>$HashBuildAllocate_total$</td></tr>
+<tr><td scope="row" class='awrnc'>HashBuildElect</td><td align="right" class='awrnc'>$HashBuildElect_time$</td><td align="right" class='awrnc'>$HashBuildElect_total$</td></tr>
+<tr><td scope="row" class='awrc'>HashBuildHashInner</td><td align="right" class='awrc'>$HashBuildHashInner_time$</td><td align="right" class='awrc'>$HashBuildHashInner_total$</td></tr>
+<tr><td scope="row" class='awrnc'>HashBuildHashOuter</td><td align="right" class='awrnc'>$HashBuildHashOuter_time$</td><td align="right" class='awrnc'>$HashBuildHashOuter_total$</td></tr>
+<tr><td scope="row" class='awrc'>HashGrowBatchesAllocate</td><td align="right" class='awrc'>$HashGrowBatchesAllocate_time$</td><td align="right" class='awrc'>$HashGrowBatchesAllocate_total$</td></tr>
+<tr><td scope="row" class='awrnc'>HashGrowBatchesDecide</td><td align="right" class='awrnc'>$HashGrowBatchesDecide_time$</td><td align="right" class='awrnc'>$HashGrowBatchesDecide_total$</td></tr>
+<tr><td scope="row" class='awrc'>HashGrowBatchesElect</td><td align="right" class='awrc'>$HashGrowBatchesElect_time$</td><td align="right" class='awrc'>$HashGrowBatchesElect_total$</td></tr>
+<tr><td scope="row" class='awrnc'>HashGrowBatchesFinish</td><td align="right" class='awrnc'>$HashGrowBatchesFinish_time$</td><td align="right" class='awrnc'>$HashGrowBatchesFinish_total$</td></tr>
+<tr><td scope="row" class='awrc'>HashGrowBatchesRepartition</td><td align="right" class='awrc'>$HashGrowBatchesRepartition_time$</td><td align="right" class='awrc'>$HashGrowBatchesRepartition_total$</td></tr>
+<tr><td scope="row" class='awrnc'>HashGrowBucketsAllocate</td><td align="right" class='awrnc'>$HashGrowBucketsAllocate_time$</td><td align="right" class='awrnc'>$HashGrowBucketsAllocate_total$</td></tr>
+<tr><td scope="row" class='awrc'>HashGrowBucketsElect</td><td align="right" class='awrc'>$HashGrowBucketsElect_time$</td><td align="right" class='awrc'>$HashGrowBucketsElect_total$</td></tr>
+<tr><td scope="row" class='awrnc'>HashGrowBucketsReinsert</td><td align="right" class='awrnc'>$HashGrowBucketsReinsert_time$</td><td align="right" class='awrnc'>$HashGrowBucketsReinsert_total$</td></tr>
+<tr><td scope="row" class='awrc'>LogicalSyncData</td><td align="right" class='awrc'>$LogicalSyncData_time$</td><td align="right" class='awrc'>$LogicalSyncData_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LogicalSyncStateChange</td><td align="right" class='awrnc'>$LogicalSyncStateChange_time$</td><td align="right" class='awrnc'>$LogicalSyncStateChange_total$</td></tr>
+<tr><td scope="row" class='awrc'>MessageQueueInternal</td><td align="right" class='awrc'>$MessageQueueInternal_time$</td><td align="right" class='awrc'>$MessageQueueInternal_total$</td></tr>
+<tr><td scope="row" class='awrnc'>MessageQueuePutMessage</td><td align="right" class='awrnc'>$MessageQueuePutMessage_time$</td><td align="right" class='awrnc'>$MessageQueuePutMessage_total$</td></tr>
+<tr><td scope="row" class='awrc'>MessageQueueReceive</td><td align="right" class='awrc'>$MessageQueueReceive_time$</td><td align="right" class='awrc'>$MessageQueueReceive_total$</td></tr>
+<tr><td scope="row" class='awrnc'>MessageQueueSend</td><td align="right" class='awrnc'>$MessageQueueSend_time$</td><td align="right" class='awrnc'>$MessageQueueSend_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ParallelBitmapScan</td><td align="right" class='awrnc'>$ParallelBitmapScan_time$</td><td align="right" class='awrnc'>$ParallelBitmapScan_total$</td></tr>
+<tr><td scope="row" class='awrc'>ParallelCreateIndexScan</td><td align="right" class='awrc'>$ParallelCreateIndexScan_time$</td><td align="right" class='awrc'>$ParallelCreateIndexScan_total$</td></tr>
+<tr><td scope="row" class='awrc'>ParallelFinish</td><td align="right" class='awrc'>$ParallelFinish_time$</td><td align="right" class='awrc'>$ParallelFinish_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ProcArrayGroupUpdate</td><td align="right" class='awrnc'>$ProcArrayGroupUpdate_time$</td><td align="right" class='awrnc'>$ProcArrayGroupUpdate_total$</td></tr>
+<tr><td scope="row" class='awrc'>ProcSignalBarrier</td><td align="right" class='awrc'>$ProcSignalBarrier_time$</td><td align="right" class='awrc'>$ProcSignalBarrier_total$</td></tr>
+<tr><td scope="row" class='awrnc'>Promote</td><td align="right" class='awrnc'>$Promote_time$</td><td align="right" class='awrnc'>$Promote_total$</td></tr>
+<tr><td scope="row" class='awrc'>RecoveryConflictSnapshot</td><td align="right" class='awrc'>$RecoveryConflictSnapshot_time$</td><td align="right" class='awrc'>$RecoveryConflictSnapshot_total$</td></tr>
+<tr><td scope="row" class='awrnc'>RecoveryConflictTablespace</td><td align="right" class='awrnc'>$RecoveryConflictTablespace_time$</td><td align="right" class='awrnc'>$RecoveryConflictTablespace_total$</td></tr>
+<tr><td scope="row" class='awrc'>RecoveryPause</td><td align="right" class='awrc'>$RecoveryPause_time$</td><td align="right" class='awrc'>$RecoveryPause_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ReplicationOriginDrop</td><td align="right" class='awrnc'>$ReplicationOriginDrop_time$</td><td align="right" class='awrnc'>$ReplicationOriginDrop_total$</td></tr>
+<tr><td scope="row" class='awrc'>ReplicationSlotDrop</td><td align="right" class='awrc'>$ReplicationSlotDrop_time$</td><td align="right" class='awrc'>$ReplicationSlotDrop_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SafeSnapshot</td><td align="right" class='awrnc'>$SafeSnapshot_time$</td><td align="right" class='awrnc'>$SafeSnapshot_total$</td></tr>
+<tr><td scope="row" class='awrc'>SyncRep</td><td align="right" class='awrc'>$SyncRep_time$</td><td align="right" class='awrc'>$SyncRep_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WalReceiverExit</td><td align="right" class='awrnc'>$WalReceiverExit_time$</td><td align="right" class='awrnc'>$WalReceiverExit_total$</td></tr>
+<tr><td scope="row" class='awrc'>WalReceiverWaitStart</td><td align="right" class='awrc'>$WalReceiverWaitStart_time$</td><td align="right" class='awrc'>$WalReceiverWaitStart_total$</td></tr>
+<tr><td scope="row" class='awrnc'>XactGroupUpdate</td><td align="right" class='awrnc'>$XactGroupUpdate_time$</td><td align="right" class='awrnc'>$XactGroupUpdate_total$</td></tr>
+</table><p />
+<a class="awr" href="#21">Back to Wait Events Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="1570"></a>
+<h3 class="awr">Timeout Wait Statistics</h3>
+<table border="1" summary="This table displays different time model statistics. For each statistic, time and % of DB time are displayed"><tr><th class="awrbg" scope="col">Statistic Name</th><th class="awrbg" scope="col">Time (s)</th><th class="awrbg" scope="col">% of Wait Time</th></tr>
+<tr><td scope="row" class='awrc'>BaseBackupThrottle</td><td align="right" class='awrc'>$BaseBackupThrottle_time$</td><td align="right" class='awrc'>$BaseBackupThrottle_total$</td></tr>
+<tr><td scope="row" class='awrnc'>CheckpointWriteDelay</td><td align="right" class='awrnc'>$CheckpointWriteDelay_time$</td><td align="right" class='awrnc'>$CheckpointWriteDelay_total$</td></tr>
+<tr><td scope="row" class='awrnc'>PgSleep</td><td align="right" class='awrnc'>$PgSleep_time$</td><td align="right" class='awrnc'>$PgSleep_total$</td></tr>
+<tr><td scope="row" class='awrc'>RecoveryApplyDelay</td><td align="right" class='awrc'>$RecoveryApplyDelay_time$</td><td align="right" class='awrc'>$RecoveryApplyDelay_total$</td></tr>
+<tr><td scope="row" class='awrc'>RecoveryRetrieveRetryInterval</td><td align="right" class='awrc'>$RecoveryRetrieveRetryInterval_time$</td><td align="right" class='awrc'>$RecoveryRetrieveRetryInterval_total$</td></tr>
+<tr><td scope="row" class='awrnc'>RegisterSyncRequest</td><td align="right" class='awrnc'>$RegisterSyncRequest_time$</td><td align="right" class='awrnc'>$RegisterSyncRequest_total$</td></tr>
+<tr><td scope="row" class='awrc'>VacuumDelay</td><td align="right" class='awrc'>$VacuumDelay_time$</td><td align="right" class='awrc'>$VacuumDelay_total$</td></tr>
+</table><p />
+<a class="awr" href="#21">Back to Wait Events Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="1580"></a>
+<h3 class="awr">IO Wait Statistics</h3>
+<table border="1" summary="This table displays different time model statistics. For each statistic, time and % of DB time are displayed"><tr><th class="awrbg" scope="col">Statistic Name</th><th class="awrbg" scope="col">Time (s)</th><th class="awrbg" scope="col">% of Wait Time</th></tr>
+<tr><td scope="row" class='awrc'>BaseBackupRead</td><td align="right" class='awrc'>$BaseBackupRead_time$</td><td align="right" class='awrc'>$BaseBackupRead_total$</td></tr>
+<tr><td scope="row" class='awrc'>BufFileRead</td><td align="right" class='awrc'>$BufFileRead_time$</td><td align="right" class='awrc'>$BufFileRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>BufFileWrite</td><td align="right" class='awrnc'>$BufFileWrite_time$</td><td align="right" class='awrnc'>$BufFileWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>BufFileTruncate</td><td align="right" class='awrc'>$BufFileTruncate_time$</td><td align="right" class='awrc'>$BufFileTruncate_total$</td></tr>
+<tr><td scope="row" class='awrc'>ControlFileRead</td><td align="right" class='awrc'>$ControlFileRead_time$</td><td align="right" class='awrc'>$ControlFileRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ControlFileSync</td><td align="right" class='awrnc'>$ControlFileSync_time$</td><td align="right" class='awrnc'>$ControlFileSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>ControlFileSyncUpdate</td><td align="right" class='awrc'>$ControlFileSyncUpdate_time$</td><td align="right" class='awrc'>$ControlFileSyncUpdate_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ControlFileWrite</td><td align="right" class='awrnc'>$ControlFileWrite_time$</td><td align="right" class='awrnc'>$ControlFileWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>ControlFileWriteUpdate</td><td align="right" class='awrc'>$ControlFileWriteUpdate_time$</td><td align="right" class='awrc'>$ControlFileWriteUpdate_total$</td></tr>
+<tr><td scope="row" class='awrnc'>CopyFileRead</td><td align="right" class='awrnc'>$CopyFileRead_time$</td><td align="right" class='awrnc'>$CopyFileRead_total$</td></tr>
+<tr><td scope="row" class='awrc'>CopyFileWrite</td><td align="right" class='awrc'>$CopyFileWrite_time$</td><td align="right" class='awrc'>$CopyFileWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>DataFileExtend</td><td align="right" class='awrnc'>$DataFileExtend_time$</td><td align="right" class='awrnc'>$DataFileExtend_total$</td></tr>
+<tr><td scope="row" class='awrc'>DataFileFlush</td><td align="right" class='awrc'>$DataFileFlush_time$</td><td align="right" class='awrc'>$DataFileFlush_total$</td></tr>
+<tr><td scope="row" class='awrnc'>DataFileImmediateSync</td><td align="right" class='awrnc'>$DataFileImmediateSync_time$</td><td align="right" class='awrnc'>$DataFileImmediateSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>DataFilePrefetch</td><td align="right" class='awrc'>$DataFilePrefetch_time$</td><td align="right" class='awrc'>$DataFilePrefetch_total$</td></tr>
+<tr><td scope="row" class='awrnc'>DataFileRead</td><td align="right" class='awrnc'>$DataFileRead_time$</td><td align="right" class='awrnc'>$DataFileRead_total$</td></tr>
+<tr><td scope="row" class='awrc'>DataFileSync</td><td align="right" class='awrc'>$DataFileSync_time$</td><td align="right" class='awrc'>$DataFileSync_total$</td></tr>
+<tr><td scope="row" class='awrnc'>DataFileTruncate</td><td align="right" class='awrnc'>$DataFileTruncate_time$</td><td align="right" class='awrnc'>$DataFileTruncate_total$</td></tr>
+<tr><td scope="row" class='awrc'>DataFileWrite</td><td align="right" class='awrc'>$DataFileWrite_time$</td><td align="right" class='awrc'>$DataFileWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>DSMFillZeroWrite</td><td align="right" class='awrnc'>$DSMFillZeroWrite_time$</td><td align="right" class='awrnc'>$DSMFillZeroWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>LockFileAddToDataDirRead</td><td align="right" class='awrc'>$LockFileAddToDataDirRead_time$</td><td align="right" class='awrc'>$LockFileAddToDataDirRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LockFileAddToDataDirSync</td><td align="right" class='awrnc'>$LockFileAddToDataDirSync_time$</td><td align="right" class='awrnc'>$LockFileAddToDataDirSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>LockFileAddToDataDirWrite</td><td align="right" class='awrc'>$LockFileAddToDataDirWrite_time$</td><td align="right" class='awrc'>$LockFileAddToDataDirWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LockFileCreateRead</td><td align="right" class='awrnc'>$LockFileCreateRead_time$</td><td align="right" class='awrnc'>$LockFileCreateRead_total$</td></tr>
+<tr><td scope="row" class='awrc'>LockFileCreateSync</td><td align="right" class='awrc'>$LockFileCreateSync_time$</td><td align="right" class='awrc'>$LockFileCreateSync_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LockFileCreateWrite</td><td align="right" class='awrnc'>$LockFileCreateWrite_time$</td><td align="right" class='awrnc'>$LockFileCreateWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>LockFileReCheckDataDirRead</td><td align="right" class='awrc'>$LockFileReCheckDataDirRead_time$</td><td align="right" class='awrc'>$LockFileReCheckDataDirRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LogicalRewriteCheckpointSync</td><td align="right" class='awrnc'>$LogicalRewriteCheckpointSync_time$</td><td align="right" class='awrnc'>$LogicalRewriteCheckpointSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>LogicalRewriteMappingSync</td><td align="right" class='awrc'>$LogicalRewriteMappingSync_time$</td><td align="right" class='awrc'>$LogicalRewriteMappingSync_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LogicalRewriteMappingWrite</td><td align="right" class='awrnc'>$LogicalRewriteMappingWrite_time$</td><td align="right" class='awrnc'>$LogicalRewriteMappingWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>LogicalRewriteSync</td><td align="right" class='awrc'>$LogicalRewriteSync_time$</td><td align="right" class='awrc'>$LogicalRewriteSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>LogicalRewriteTruncate</td><td align="right" class='awrc'>$LogicalRewriteTruncate_time$</td><td align="right" class='awrc'>$LogicalRewriteTruncate_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LogicalRewriteWrite</td><td align="right" class='awrnc'>$LogicalRewriteWrite_time$</td><td align="right" class='awrnc'>$LogicalRewriteWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>RelationMapRead</td><td align="right" class='awrc'>$RelationMapRead_time$</td><td align="right" class='awrc'>$RelationMapRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>RelationMapSync</td><td align="right" class='awrnc'>$RelationMapSync_time$</td><td align="right" class='awrnc'>$RelationMapSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>RelationMapWrite</td><td align="right" class='awrc'>$RelationMapWrite_time$</td><td align="right" class='awrc'>$RelationMapWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ReorderBufferRead</td><td align="right" class='awrnc'>$ReorderBufferRead_time$</td><td align="right" class='awrnc'>$ReorderBufferRead_total$</td></tr>
+<tr><td scope="row" class='awrc'>ReorderBufferWrite</td><td align="right" class='awrc'>$ReorderBufferWrite_time$</td><td align="right" class='awrc'>$ReorderBufferWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ReorderLogicalMappingRead</td><td align="right" class='awrnc'>$ReorderLogicalMappingRead_time$</td><td align="right" class='awrnc'>$ReorderLogicalMappingRead_total$</td></tr>
+<tr><td scope="row" class='awrc'>ReplicationSlotRead</td><td align="right" class='awrc'>$ReplicationSlotRead_time$</td><td align="right" class='awrc'>$ReplicationSlotRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ReplicationSlotRestoreSync</td><td align="right" class='awrnc'>$ReplicationSlotRestoreSync_time$</td><td align="right" class='awrnc'>$ReplicationSlotRestoreSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>ReplicationSlotSync</td><td align="right" class='awrc'>$ReplicationSlotSync_time$</td><td align="right" class='awrc'>$ReplicationSlotSync_total$</td></tr>
+<tr><td scope="row" class='awrnc'>ReplicationSlotWrite</td><td align="right" class='awrnc'>$ReplicationSlotWrite_time$</td><td align="right" class='awrnc'>$ReplicationSlotWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>SLRUFlushSync</td><td align="right" class='awrc'>$SLRUFlushSync_time$</td><td align="right" class='awrc'>$SLRUFlushSync_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SLRURead</td><td align="right" class='awrnc'>$SLRURead_time$</td><td align="right" class='awrnc'>$SLRURead_total$</td></tr>
+<tr><td scope="row" class='awrc'>SLRUSync</td><td align="right" class='awrc'>$SLRUSync_time$</td><td align="right" class='awrc'>$SLRUSync_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SLRUWrite</td><td align="right" class='awrnc'>$SLRUWrite_time$</td><td align="right" class='awrnc'>$SLRUWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>SnapbuildRead</td><td align="right" class='awrc'>$SnapbuildRead_time$</td><td align="right" class='awrc'>$SnapbuildRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>SnapbuildSync</td><td align="right" class='awrnc'>$SnapbuildSync_time$</td><td align="right" class='awrnc'>$SnapbuildSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>SnapbuildWrite</td><td align="right" class='awrc'>$SnapbuildWrite_time$</td><td align="right" class='awrc'>$SnapbuildWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>TimelineHistoryFileSync</td><td align="right" class='awrnc'>$TimelineHistoryFileSync_time$</td><td align="right" class='awrnc'>$TimelineHistoryFileSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>TimelineHistoryFileWrite</td><td align="right" class='awrc'>$TimelineHistoryFileWrite_time$</td><td align="right" class='awrc'>$TimelineHistoryFileWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>TimelineHistoryRead</td><td align="right" class='awrnc'>$TimelineHistoryRead_time$</td><td align="right" class='awrnc'>$TimelineHistoryRead_total$</td></tr>
+<tr><td scope="row" class='awrc'>TimelineHistorySync</td><td align="right" class='awrc'>$TimelineHistorySync_time$</td><td align="right" class='awrc'>$TimelineHistorySync_total$</td></tr>
+<tr><td scope="row" class='awrnc'>TimelineHistoryWrite</td><td align="right" class='awrnc'>$TimelineHistoryWrite_time$</td><td align="right" class='awrnc'>$TimelineHistoryWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>TwophaseFileRead</td><td align="right" class='awrc'>$TwophaseFileRead_time$</td><td align="right" class='awrc'>$TwophaseFileRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>TwophaseFileSync</td><td align="right" class='awrnc'>$TwophaseFileSync_time$</td><td align="right" class='awrnc'>$TwophaseFileSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>TwophaseFileWrite</td><td align="right" class='awrc'>$TwophaseFileWrite_time$</td><td align="right" class='awrc'>$TwophaseFileWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WALSenderTimelineHistoryRead</td><td align="right" class='awrnc'>$WALSenderTimelineHistoryRead_time$</td><td align="right" class='awrnc'>$WALSenderTimelineHistoryRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WALBootstrapSync</td><td align="right" class='awrnc'>$WALBootstrapSync_time$</td><td align="right" class='awrnc'>$WALBootstrapSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>WALBootstrapWrite</td><td align="right" class='awrc'>$WALBootstrapWrite_time$</td><td align="right" class='awrc'>$WALBootstrapWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WALCopyRead</td><td align="right" class='awrnc'>$WALCopyRead_time$</td><td align="right" class='awrnc'>$WALCopyRead_total$</td></tr>
+<tr><td scope="row" class='awrc'>WALCopySync</td><td align="right" class='awrc'>$WALCopySync_time$</td><td align="right" class='awrc'>$WALCopySync_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WALCopyWrite</td><td align="right" class='awrnc'>$WALCopyWrite_time$</td><td align="right" class='awrnc'>$WALCopyWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>WALInitSync</td><td align="right" class='awrc'>$WALInitSync_time$</td><td align="right" class='awrc'>$WALInitSync_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WALInitWrite</td><td align="right" class='awrnc'>$WALInitWrite_time$</td><td align="right" class='awrnc'>$WALInitWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>WALRead</td><td align="right" class='awrc'>$WALRead_time$</td><td align="right" class='awrc'>$WALRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WALSync</td><td align="right" class='awrnc'>$WALSync_time$</td><td align="right" class='awrnc'>$WALSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>WALSyncMethodAssign</td><td align="right" class='awrc'>$WALSyncMethodAssign_time$</td><td align="right" class='awrc'>$WALSyncMethodAssign_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WALWrite</td><td align="right" class='awrnc'>$WALWrite_time$</td><td align="right" class='awrnc'>$WALWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>LogicalChangesRead</td><td align="right" class='awrc'>$LogicalChangesRead_time$</td><td align="right" class='awrc'>$LogicalChangesRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LogicalChangesWrite</td><td align="right" class='awrnc'>$LogicalChangesWrite_time$</td><td align="right" class='awrnc'>$LogicalChangesWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>LogicalSubxactRead</td><td align="right" class='awrc'>$LogicalSubxactRead_time$</td><td align="right" class='awrc'>$LogicalSubxactRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LogicalSubxactWrite</td><td align="right" class='awrnc'>$LogicalSubxactWrite_time$</td><td align="right" class='awrnc'>$LogicalSubxactWrite_total$</td></tr>
+<tr><td scope="row" class='awrc'>FdwXactFileRead</td><td align="right" class='awrc'>$FdwXactFileRead_time$</td><td align="right" class='awrc'>$FdwXactFileRead_total$</td></tr>
+<tr><td scope="row" class='awrnc'>FdwXactFileSync</td><td align="right" class='awrnc'>$FdwXactFileSync_time$</td><td align="right" class='awrnc'>$FdwXactFileSync_total$</td></tr>
+<tr><td scope="row" class='awrc'>FdwXactFileWrite</td><td align="right" class='awrc'>$FdwXactFileWrite_time$</td><td align="right" class='awrc'>$FdwXactFileWrite_total$</td></tr>
+<tr><td scope="row" class='awrnc'>FdwXactLauncherMain</td><td align="right" class='awrnc'>$FdwXactLauncherMain_time$</td><td align="right" class='awrnc'>$FdwXactLauncherMain_total$</td></tr>
+<tr><td scope="row" class='awrc'>FdwXactResolverMain</td><td align="right" class='awrc'>$FdwXactResolverMain_time$</td><td align="right" class='awrc'>$FdwXactResolverMain_total$</td></tr>
+</table><p />
+<a class="awr" href="#21">Back to Wait Events Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<p />
+
+<a class="awr" name="23"></a>
+<h2 class="awr">
+Instance Activity Statistics
+</h2>
+<ul>
+<li class="awr"><a class="awr" href="#1200">Key Instance Activity Stats</a></li>
+</ul> 
+<a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="1200"></a>
+<h3 class="awr">Key Instance Activity Stats</h3>
+<ul>
+<li class="awr"> Ordered by statistic name</li>
+</ul>
+<table border="1" summary="This table displays different time model statistics. For each statistic, time and % of DB time are displayed"><tr><th class="awrbg" scope="col">Statistic Name</th><th class="awrbg" scope="col">Time (s)</th><th class="awrbg" scope="col">% of Wait Time</th></tr>
+<tr><td scope="row" class='awrc'>ArchiverMain</td><td align="right" class='awrc'>$ArchiverMain_time$</td><td align="right" class='awrc'>$ArchiverMain_total$</td></tr>
+<tr><td scope="row" class='awrnc'>AutoVacuumMain</td><td align="right" class='awrnc'>$AutoVacuumMain_time$</td><td align="right" class='awrnc'>$AutoVacuumMain_total$</td></tr>
+<tr><td scope="row" class='awrc'>BgWriterHibernate</td><td align="right" class='awrc'>$BgWriterHibernate_time$</td><td align="right" class='awrc'>$BgWriterHibernate_total$</td></tr>
+<tr><td scope="row" class='awrnc'>BgWriterMain</td><td align="right" class='awrnc'>$BgWriterMain_time$</td><td align="right" class='awrnc'>$BgWriterMain_total$</td></tr>
+<tr><td scope="row" class='awrc'>CheckpointerMain</td><td align="right" class='awrc'>$CheckpointerMain_time$</td><td align="right" class='awrc'>$CheckpointerMain_total$</td></tr>
+<tr><td scope="row" class='awrc'>LogicalApplyMain</td><td align="right" class='awrc'>$LogicalApplyMain_time$</td><td align="right" class='awrc'>$LogicalApplyMain_total$</td></tr>
+<tr><td scope="row" class='awrnc'>LogicalLauncherMain</td><td align="right" class='awrnc'>$LogicalLauncherMain_time$</td><td align="right" class='awrnc'>$LogicalLauncherMain_total$</td></tr>
+<tr><td scope="row" class='awrc'>PgStatMain</td><td align="right" class='awrc'>$PgStatMain_time$</td><td align="right" class='awrc'>$PgStatMain_total$</td></tr>
+<tr><td scope="row" class='awrnc'>RecoveryWalStream</td><td align="right" class='awrnc'>$RecoveryWalStream_time$</td><td align="right" class='awrnc'>$RecoveryWalStream_total$</td></tr>
+<tr><td scope="row" class='awrc'>SysLoggerMain</td><td align="right" class='awrc'>$SysLoggerMain_time$</td><td align="right" class='awrc'>$SysLoggerMain_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WalReceiverMain</td><td align="right" class='awrnc'>$WalReceiverMain_time$</td><td align="right" class='awrnc'>$WalReceiverMain_total$</td></tr>
+<tr><td scope="row" class='awrc'>WalSenderMain</td><td align="right" class='awrc'>$WalSenderMain_time$</td><td align="right" class='awrc'>$WalSenderMain_total$</td></tr>
+<tr><td scope="row" class='awrnc'>WalWriterMain</td><td align="right" class='awrnc'>$WalWriterMain_time$</td><td align="right" class='awrnc'>$WalWriterMain_total$</td></tr>
+</table><p />
+<a class="awr" href="#23">Back to Instance Activity Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<p />
+
+<a class="awr" name="22"></a>
+<h2 class="awr">
+SQL Statistics
+</h2> 
+<ul> 
+<li class="awr"><a class="awr" href="#400">SQL ordered by Elapsed Time</a></li>
+<li class="awr"><a class="awr" href="#500">SQL ordered by CPU Time</a></li>
+<li class="awr"><a class="awr" href="#550">SQL ordered by User I/O Wait Time</a></li>
+<li class="awr"><a class="awr" href="#600">SQL ordered by Gets</a></li>
+<li class="awr"><a class="awr" href="#700">SQL ordered by Reads</a></li>
+<li class="awr"><a class="awr" href="#800">SQL ordered by Executions</a></li>
+<li class="awr"><a class="awr" href="#99997">Complete List of SQL Text</a></li>
+</ul> 
+<a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="400"></a>
+<h3 class="awr">SQL ordered by Elapsed Time</h3>
+<ul>
+<li class="awr"> Resources reported for PL/SQL code includes the resources used by all SQL     statements called by the code. </li>
+<li class="awr"> % Total DB Time is the Elapsed Time of the SQL statement divided     into the Total Database Time multiplied by 100 </li>
+<li class="awr"> %Total - Elapsed Time  as a percentage of Total DB time </li>
+<li class="awr"> %CPU   - CPU Time      as a percentage of Elapsed Time </li>
+<li class="awr"> %IO    - User I/O Time as a percentage of Elapsed Time</li>
+</ul>
+<table border="1" summary="This table displays top SQL by elapsed time"><tr><th class="awrbg" scope="col">Elapsed  Time (s)</th><th class="awrbg" scope="col">Executions </th><th class="awrbg" scope="col">Elapsed Time per Exec (s) </th><th class="awrbg" scope="col">%Total</th><th class="awrbg" scope="col">%CPU</th><th class="awrbg" scope="col">%IO</th><th class="awrbg" scope="col">   SQL Id</th><th class="awrbg" scope="col">SQL Module</th><th class="awrbg" scope="col">SQL Text</th></tr>
+<tr><td align="right" class='awrc'>$sql_total_time_1$</td><td align="right" class='awrc'>$sql_calls_1$</td><td align="right" class='awrc'>$sql_mean_time_1$</td><td align="right" class='awrc'>$sql_total_percent_1$</td><td align="right" class='awrc'>$sql_cpu_percent_1$</td><td align="right" class='awrc'>$sql_io_percent_1$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_queryid_1$">$sql_queryid_1$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_time_sql_text_1$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_total_time_2$</td><td align="right" class='awrnc'>$sql_calls_2$</td><td align="right" class='awrnc'>$sql_mean_time_2$</td><td align="right" class='awrnc'>$sql_total_percent_2$</td><td align="right" class='awrnc'>$sql_cpu_percent_2$</td><td align="right" class='awrnc'>$sql_io_percent_2$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_queryid_2$">$sql_queryid_2$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_time_sql_text_2$</td></tr>
+<tr><td align="right" class='awrc'>$sql_total_time_3$</td><td align="right" class='awrc'>$sql_calls_3$</td><td align="right" class='awrc'>$sql_mean_time_3$</td><td align="right" class='awrc'>$sql_total_percent_3$</td><td align="right" class='awrc'>$sql_cpu_percent_3$</td><td align="right" class='awrc'>$sql_io_percent_3$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_queryid_3$">$sql_queryid_3$</a></td>
+<td class='awrc'>
+</td>
+<td class='awrc'>$sql_time_sql_text_3$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_total_time_4$</td><td align="right" class='awrnc'>$sql_calls_4$</td><td align="right" class='awrnc'>$sql_mean_time_4$</td><td align="right" class='awrnc'>$sql_total_percent_4$</td><td align="right" class='awrnc'>$sql_cpu_percent_4$</td><td align="right" class='awrnc'>$sql_io_percent_4$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_queryid_4$">$sql_queryid_4$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_time_sql_text_4$</td></tr>
+<tr><td align="right" class='awrc'>$sql_total_time_5$</td><td align="right" class='awrc'>$sql_calls_5$</td><td align="right" class='awrc'>$sql_mean_time_5$</td><td align="right" class='awrc'>$sql_total_percent_5$</td><td align="right" class='awrc'>$sql_cpu_percent_5$</td><td align="right" class='awrc'>$sql_io_percent_5$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_queryid_5$">$sql_queryid_5$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_time_sql_text_5$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_total_time_6$</td><td align="right" class='awrnc'>$sql_calls_6$</td><td align="right" class='awrnc'>$sql_mean_time_6$</td><td align="right" class='awrnc'>$sql_total_percent_6$</td><td align="right" class='awrnc'>$sql_cpu_percent_6$</td><td align="right" class='awrnc'>$sql_io_percent_6$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_queryid_6$">$sql_queryid_6$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_time_sql_text_6$</td></tr>
+<tr><td align="right" class='awrc'>$sql_total_time_7$</td><td align="right" class='awrc'>$sql_calls_7$</td><td align="right" class='awrc'>$sql_mean_time_7$</td><td align="right" class='awrc'>$sql_total_percent_7$</td><td align="right" class='awrc'>$sql_cpu_percent_7$</td><td align="right" class='awrc'>$sql_io_percent_7$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_queryid_7$">$sql_queryid_7$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_time_sql_text_7$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_total_time_8$</td><td align="right" class='awrnc'>$sql_calls_8$</td><td align="right" class='awrnc'>$sql_mean_time_8$</td><td align="right" class='awrnc'>$sql_total_percent_8$</td><td align="right" class='awrnc'>$sql_cpu_percent_8$</td><td align="right" class='awrnc'>$sql_io_percent_8$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_queryid_8$">$sql_queryid_8$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_time_sql_text_8$</td></tr>
+<tr><td align="right" class='awrc'>$sql_total_time_9$</td><td align="right" class='awrc'>$sql_calls_9$</td><td align="right" class='awrc'>$sql_mean_time_9$</td><td align="right" class='awrc'>$sql_total_percent_9$</td><td align="right" class='awrc'>$sql_cpu_percent_9$</td><td align="right" class='awrc'>$sql_io_percent_9$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_queryid_9$">$sql_queryid_9$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_time_sql_text_9$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_total_time_10$</td><td align="right" class='awrnc'>$sql_calls_10$</td><td align="right" class='awrnc'>$sql_mean_time_10$</td><td align="right" class='awrnc'>$sql_total_percent_10$</td><td align="right" class='awrnc'>$sql_cpu_percent_10$</td><td align="right" class='awrnc'>$sql_io_percent_10$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_queryid_10$">$sql_queryid_10$</a></td>
+<td class='awrnc'>&#160;
+</td> 
+<td class='awrnc'>$sql_time_sql_text_10$</td></tr>
+</table><p />
+<a class="awr" href="#22">Back to SQL Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="500"></a>
+<h3 class="awr">SQL ordered by CPU Time</h3>
+<ul>
+<li class="awr"> Resources reported for PL/SQL code includes the resources used by all SQL     statements called by the code. </li>
+<li class="awr"> %Total - CPU Time      as a percentage of Total DB CPU </li>
+<li class="awr"> %CPU   - CPU Time      as a percentage of Elapsed Time </li>
+<li class="awr"> %IO    - User I/O Time as a percentage of Elapsed Time</li>
+</ul>
+<table border="1" summary="This table displays top SQL by CPU time"><tr><th class="awrbg" scope="col">CPU    Time (s)</th><th class="awrbg" scope="col">Executions </th><th class="awrbg" scope="col">CPU per  Exec (s)</th><th class="awrbg" scope="col">%Total</th><th class="awrbg" scope="col">Elapsed  Time (s)</th><th class="awrbg" scope="col">%CPU</th><th class="awrbg" scope="col">%IO</th><th class="awrbg" scope="col">   SQL Id</th><th class="awrbg" scope="col">SQL Module</th><th class="awrbg" scope="col">SQL Text</th></tr>
+<tr><td align="right" class='awrc'>$sql_cpu_time_1$</td><td align="right" class='awrc'>$sql_cpu_calls_1$</td><td align="right" class='awrc'>$sql_cpu_mean_time_1$</td><td align="right" class='awrc'>$sql_cpu_total_percent_1$</td><td align="right" class='awrc'>$sql_cpu_total_time_1$</td><td align="right" class='awrc'>$sql_cpu_cpu_percent_1$</td><td align="right" class='awrc'>$sql_cpu_io_percent_1$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_cpu_queryid_1$">$sql_cpu_queryid_1$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_cpu_sql_text_1$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_cpu_time_2$</td><td align="right" class='awrnc'>$sql_cpu_calls_2$</td><td align="right" class='awrnc'>$sql_cpu_mean_time_2$</td><td align="right" class='awrnc'>$sql_cpu_total_percent_2$</td><td align="right" class='awrnc'>$sql_cpu_total_time_2$</td><td align="right" class='awrnc'>$sql_cpu_cpu_percent_2$</td><td align="right" class='awrnc'>$sql_cpu_io_percent_2$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_cpu_queryid_2$">$sql_cpu_queryid_2$</a></td>
+<td class='awrnc'>
+</td>
+<td class='awrnc'>$sql_cpu_sql_text_2$</td></tr>
+<tr><td align="right" class='awrc'>$sql_cpu_time_3$</td><td align="right" class='awrc'>$sql_cpu_calls_3$</td><td align="right" class='awrc'>$sql_cpu_mean_time_3$</td><td align="right" class='awrc'>$sql_cpu_total_percent_3$</td><td align="right" class='awrc'>$sql_cpu_total_time_3$</td><td align="right" class='awrc'>$sql_cpu_cpu_percent_3$</td><td align="right" class='awrc'>$sql_cpu_io_percent_3$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_cpu_queryid_3$">$sql_cpu_queryid_3$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_cpu_sql_text_3$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_cpu_time_4$</td><td align="right" class='awrnc'>$sql_cpu_calls_4$</td><td align="right" class='awrnc'>$sql_cpu_mean_time_4$</td><td align="right" class='awrnc'>$sql_cpu_total_percent_4$</td><td align="right" class='awrnc'>$sql_cpu_total_time_4$</td><td align="right" class='awrnc'>$sql_cpu_cpu_percent_4$</td><td align="right" class='awrnc'>$sql_cpu_io_percent_4$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_cpu_queryid_4$">$sql_cpu_queryid_4$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_cpu_sql_text_4$</td></tr>
+<tr><td align="right" class='awrc'>$sql_cpu_time_5$</td><td align="right" class='awrc'>$sql_cpu_calls_5$</td><td align="right" class='awrc'>$sql_cpu_mean_time_5$</td><td align="right" class='awrc'>$sql_cpu_total_percent_5$</td><td align="right" class='awrc'>$sql_cpu_total_time_5$</td><td align="right" class='awrc'>$sql_cpu_cpu_percent_5$</td><td align="right" class='awrc'>$sql_cpu_io_percent_5$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_cpu_queryid_5$">$sql_cpu_queryid_5$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_cpu_sql_text_5$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_cpu_time_6$</td><td align="right" class='awrnc'>$sql_cpu_calls_6$</td><td align="right" class='awrnc'>$sql_cpu_mean_time_6$</td><td align="right" class='awrnc'>$sql_cpu_total_percent_6$</td><td align="right" class='awrnc'>$sql_cpu_total_time_6$</td><td align="right" class='awrnc'>$sql_cpu_cpu_percent_6$</td><td align="right" class='awrnc'>$sql_cpu_io_percent_6$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_cpu_queryid_6$">$sql_cpu_queryid_6$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_cpu_sql_text_6$</td></tr>
+<tr><td align="right" class='awrc'>$sql_cpu_time_7$</td><td align="right" class='awrc'>$sql_cpu_calls_7$</td><td align="right" class='awrc'>$sql_cpu_mean_time_7$</td><td align="right" class='awrc'>$sql_cpu_total_percent_7$</td><td align="right" class='awrc'>$sql_cpu_total_time_7$</td><td align="right" class='awrc'>$sql_cpu_cpu_percent_7$</td><td align="right" class='awrc'>$sql_cpu_io_percent_7$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_cpu_queryid_7$">$sql_cpu_queryid_7$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_cpu_sql_text_7$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_cpu_time_8$</td><td align="right" class='awrnc'>$sql_cpu_calls_8$</td><td align="right" class='awrnc'>$sql_cpu_mean_time_8$</td><td align="right" class='awrnc'>$sql_cpu_total_percent_8$</td><td align="right" class='awrnc'>$sql_cpu_total_time_8$</td><td align="right" class='awrnc'>$sql_cpu_cpu_percent_8$</td><td align="right" class='awrnc'>$sql_cpu_io_percent_8$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_cpu_queryid_8$">$sql_cpu_queryid_8$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_cpu_sql_text_8$</td></tr>
+<tr><td align="right" class='awrc'>$sql_cpu_time_9$</td><td align="right" class='awrc'>$sql_cpu_calls_9$</td><td align="right" class='awrc'>$sql_cpu_mean_time_9$</td><td align="right" class='awrc'>$sql_cpu_total_percent_9$</td><td align="right" class='awrc'>$sql_cpu_total_time_9$</td><td align="right" class='awrc'>$sql_cpu_cpu_percent_9$</td><td align="right" class='awrc'>$sql_cpu_io_percent_9$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_cpu_queryid_9$">$sql_cpu_queryid_9$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_cpu_sql_text_9$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_cpu_time_10$</td><td align="right" class='awrnc'>$sql_cpu_calls_10$</td><td align="right" class='awrnc'>$sql_cpu_mean_time_10$</td><td align="right" class='awrnc'>$sql_cpu_total_percent_10$</td><td align="right" class='awrnc'>$sql_cpu_total_time_10$</td><td align="right" class='awrnc'>$sql_cpu_cpu_percent_10$</td><td align="right" class='awrnc'>$sql_cpu_io_percent_10$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_cpu_queryid_10$">$sql_cpu_queryid_10$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_cpu_sql_text_10$</td></tr>
+</table><p />
+<a class="awr" href="#22">Back to SQL Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="550"></a>
+<h3 class="awr">SQL ordered by User I/O Wait Time</h3>
+<ul>
+<li class="awr"> Resources reported for PL/SQL code includes the resources used by all SQL     statements called by the code. </li>
+<li class="awr"> %Total - User I/O Time as a percentage of Total User I/O Wait time </li>
+<li class="awr"> %CPU   - CPU Time      as a percentage of Elapsed Time </li>
+<li class="awr"> %IO    - User I/O Time as a percentage of Elapsed Time</li>
+</ul>
+<table border="1" summary="This table displays top SQL by user I/O time"><tr><th class="awrbg" scope="col">User I/O Time (s)</th><th class="awrbg" scope="col">Executions </th><th class="awrbg" scope="col">UIO per  Exec (s)</th><th class="awrbg" scope="col">%Total</th><th class="awrbg" scope="col">Elapsed  Time (s)</th><th class="awrbg" scope="col">%CPU</th><th class="awrbg" scope="col">%IO</th><th class="awrbg" scope="col">   SQL Id</th><th class="awrbg" scope="col">SQL Module</th><th class="awrbg" scope="col">SQL Text</th></tr>
+<tr><td align="right" class='awrc'>$sql_io_time_1$</td><td align="right" class='awrc'>$sql_io_calls_1$</td><td align="right" class='awrc'>$sql_io_mean_time_1$</td><td align="right" class='awrc'>$sql_io_total_percent_1$</td><td align="right" class='awrc'>$sql_io_total_time_1$</td><td align="right" class='awrc'>$sql_io_cpu_percent_1$</td><td align="right" class='awrc'>$sql_io_io_percent_1$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_io_queryid_1$">$sql_io_queryid_1$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_io_sql_text_1$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_io_time_2$</td><td align="right" class='awrnc'>$sql_io_calls_2$</td><td align="right" class='awrnc'>$sql_io_mean_time_2$</td><td align="right" class='awrnc'>$sql_io_total_percent_2$</td><td align="right" class='awrnc'>$sql_io_total_time_2$</td><td align="right" class='awrnc'>$sql_io_cpu_percent_2$</td><td align="right" class='awrnc'>$sql_io_io_percent_2$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_io_queryid_2$">$sql_io_queryid_2$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_io_sql_text_2$</td></tr>
+<tr><td align="right" class='awrc'>$sql_io_time_3$</td><td align="right" class='awrc'>$sql_io_calls_3$</td><td align="right" class='awrc'>$sql_io_mean_time_3$</td><td align="right" class='awrc'>$sql_io_total_percent_3$</td><td align="right" class='awrc'>$sql_io_total_time_3$</td><td align="right" class='awrc'>$sql_io_cpu_percent_3$</td><td align="right" class='awrc'>$sql_io_io_percent_3$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_io_queryid_3$">$sql_io_queryid_3$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_io_sql_text_3$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_io_time_4$</td><td align="right" class='awrnc'>$sql_io_calls_4$</td><td align="right" class='awrnc'>$sql_io_mean_time_4$</td><td align="right" class='awrnc'>$sql_io_total_percent_4$</td><td align="right" class='awrnc'>$sql_io_total_time_4$</td><td align="right" class='awrnc'>$sql_io_cpu_percent_4$</td><td align="right" class='awrnc'>$sql_io_io_percent_4$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_io_queryid_4$">$sql_io_queryid_4$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_io_sql_text_4$</td></tr>
+<tr><td align="right" class='awrc'>$sql_io_time_5$</td><td align="right" class='awrc'>$sql_io_calls_5$</td><td align="right" class='awrc'>$sql_io_mean_time_5$</td><td align="right" class='awrc'>$sql_io_total_percent_5$</td><td align="right" class='awrc'>$sql_io_total_time_5$</td><td align="right" class='awrc'>$sql_io_cpu_percent_5$</td><td align="right" class='awrc'>$sql_io_io_percent_5$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_io_queryid_5$">$sql_io_queryid_5$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_io_sql_text_5$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_io_time_6$</td><td align="right" class='awrnc'>$sql_io_calls_6$</td><td align="right" class='awrnc'>$sql_io_mean_time_6$</td><td align="right" class='awrnc'>$sql_io_total_percent_6$</td><td align="right" class='awrnc'>$sql_io_total_time_6$</td><td align="right" class='awrnc'>$sql_io_cpu_percent_6$</td><td align="right" class='awrnc'>$sql_io_io_percent_6$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_io_queryid_6$">$sql_io_queryid_6$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_io_sql_text_6$</td></tr>
+<tr><td align="right" class='awrc'>$sql_io_time_7$</td><td align="right" class='awrc'>$sql_io_calls_7$</td><td align="right" class='awrc'>$sql_io_mean_time_7$</td><td align="right" class='awrc'>$sql_io_total_percent_7$</td><td align="right" class='awrc'>$sql_io_total_time_7$</td><td align="right" class='awrc'>$sql_io_cpu_percent_7$</td><td align="right" class='awrc'>$sql_io_io_percent_7$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_io_queryid_7$">$sql_io_queryid_7$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_io_sql_text_7$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_io_time_8$</td><td align="right" class='awrnc'>$sql_io_calls_8$</td><td align="right" class='awrnc'>$sql_io_mean_time_8$</td><td align="right" class='awrnc'>$sql_io_total_percent_8$</td><td align="right" class='awrnc'>$sql_io_total_time_8$</td><td align="right" class='awrnc'>$sql_io_cpu_percent_8$</td><td align="right" class='awrnc'>$sql_io_io_percent_8$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_io_queryid_8$">$sql_io_queryid_8$</a></td>
+<td class='awrnc'>
+</td>
+<td class='awrnc'>$sql_io_sql_text_8$</td></tr>
+<tr><td align="right" class='awrc'>$sql_io_time_9$</td><td align="right" class='awrc'>$sql_io_calls_9$</td><td align="right" class='awrc'>$sql_io_mean_time_9$</td><td align="right" class='awrc'>$sql_io_total_percent_9$</td><td align="right" class='awrc'>$sql_io_total_time_9$</td><td align="right" class='awrc'>$sql_io_cpu_percent_9$</td><td align="right" class='awrc'>$sql_io_io_percent_9$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_io_queryid_9$">$sql_io_queryid_9$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_io_sql_text_9$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_io_time_10$</td><td align="right" class='awrnc'>$sql_io_calls_10$</td><td align="right" class='awrnc'>$sql_io_mean_time_10$</td><td align="right" class='awrnc'>$sql_io_total_percent_10$</td><td align="right" class='awrnc'>$sql_io_total_time_10$</td><td align="right" class='awrnc'>$sql_io_cpu_percent_10$</td><td align="right" class='awrnc'>$sql_io_io_percent_10$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_io_queryid_10$">$sql_io_queryid_10$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_io_sql_text_10$</td></tr>
+</table><p />
+<a class="awr" href="#22">Back to SQL Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="600"></a>
+<h3 class="awr">SQL ordered by Gets</h3>
+<ul>
+<li class="awr"> Resources reported for PL/SQL code includes the resources used by all SQL     statements called by the code. </li>
+<li class="awr"> %Total - Buffer Gets   as a percentage of Total Buffer Gets </li>
+<li class="awr"> %CPU   - CPU Time      as a percentage of Elapsed Time </li>
+<li class="awr"> %IO    - User I/O Time as a percentage of Elapsed Time</li>
+</ul>
+<table border="1" summary="This table displays top SQL by buffer gets"><tr><th class="awrbg" scope="col">Buffer Gets </th><th class="awrbg" scope="col">Executions</th><th class="awrbg" scope="col">Gets     per Exec  </th><th class="awrbg" scope="col">%Total</th><th class="awrbg" scope="col">Elapsed  Time (s)</th><th class="awrbg" scope="col"> %CPU</th><th class="awrbg" scope="col">  %IO</th><th class="awrbg" scope="col">   SQL Id</th><th class="awrbg" scope="col">SQL Module</th><th class="awrbg" scope="col">SQL Text</th></tr>
+<tr><td align="right" class='awrc'>$sql_buffer_gets_1$</td><td align="right" class='awrc'>$sql_gets_calls_1$</td><td align="right" class='awrc'>$sql_gets_mean_1$</td><td align="right" class='awrc'>$sql_gets_total_percent_1$</td><td align="right" class='awrc'>$sql_gets_total_time_1$</td><td class='awrc'>$sql_gets_cpu_percent_1$</td><td class='awrc'>$sql_gets_io_percent_1$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_gets_queryid_1$">$sql_gets_queryid_1$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_buffer_sql_text_1$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_buffer_gets_2$</td><td align="right" class='awrnc'>$sql_gets_calls_2$</td><td align="right" class='awrnc'>$sql_gets_mean_2$</td><td align="right" class='awrnc'>$sql_gets_total_percent_2$</td><td align="right" class='awrnc'>$sql_gets_total_time_2$</td><td class='awrnc'>$sql_gets_cpu_percent_2$</td><td class='awrnc'>$sql_gets_io_percent_2$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_gets_queryid_2$">$sql_gets_queryid_2$</a></td>
+<td class='awrnc'>
+</td>
+<td class='awrnc'>$sql_buffer_sql_text_2$</td></tr>
+<tr><td align="right" class='awrc'>$sql_buffer_gets_3$</td><td align="right" class='awrc'>$sql_gets_calls_3$</td><td align="right" class='awrc'>$sql_gets_mean_3$</td><td align="right" class='awrc'>$sql_gets_total_percent_3$</td><td align="right" class='awrc'>$sql_gets_total_time_3$</td><td class='awrc'>$sql_gets_cpu_percent_3$</td><td class='awrc'>$sql_gets_io_percent_3$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_gets_queryid_3$">$sql_gets_queryid_3$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_buffer_sql_text_3$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_buffer_gets_4$</td><td align="right" class='awrnc'>$sql_gets_calls_4$</td><td align="right" class='awrnc'>$sql_gets_mean_4$</td><td align="right" class='awrnc'>$sql_gets_total_percent_4$</td><td align="right" class='awrnc'>$sql_gets_total_time_4$</td><td class='awrnc'>$sql_gets_cpu_percent_4$</td><td class='awrnc'>$sql_gets_io_percent_4$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_gets_queryid_4$">$sql_gets_queryid_4$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_buffer_sql_text_4$</td></tr>
+<tr><td align="right" class='awrc'>$sql_buffer_gets_5$</td><td align="right" class='awrc'>$sql_gets_calls_5$</td><td align="right" class='awrc'>$sql_gets_mean_5$</td><td align="right" class='awrc'>$sql_gets_total_percent_5$</td><td align="right" class='awrc'>$sql_gets_total_time_5$</td><td class='awrc'>$sql_gets_cpu_percent_5$</td><td class='awrc'>$sql_gets_io_percent_5$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_gets_queryid_5$">$sql_gets_queryid_5$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_buffer_sql_text_5$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_buffer_gets_6$</td><td align="right" class='awrnc'>$sql_gets_calls_6$</td><td align="right" class='awrnc'>$sql_gets_mean_6$</td><td align="right" class='awrnc'>$sql_gets_total_percent_6$</td><td align="right" class='awrnc'>$sql_gets_total_time_6$</td><td class='awrnc'>$sql_gets_cpu_percent_6$</td><td class='awrnc'>$sql_gets_io_percent_6$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_gets_queryid_6$">$sql_gets_queryid_6$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_buffer_sql_text_6$</td></tr>
+<tr><td align="right" class='awrc'>$sql_buffer_gets_7$</td><td align="right" class='awrc'>$sql_gets_calls_7$</td><td align="right" class='awrc'>$sql_gets_mean_7$</td><td align="right" class='awrc'>$sql_gets_total_percent_7$</td><td align="right" class='awrc'>$sql_gets_total_time_7$</td><td class='awrc'>$sql_gets_cpu_percent_7$</td><td class='awrc'>$sql_gets_io_percent_7$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_gets_queryid_7$">$sql_gets_queryid_7$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_buffer_sql_text_7$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_buffer_gets_8$</td><td align="right" class='awrnc'>$sql_gets_calls_8$</td><td align="right" class='awrnc'>$sql_gets_mean_8$</td><td align="right" class='awrnc'>$sql_gets_total_percent_8$</td><td align="right" class='awrnc'>$sql_gets_total_time_8$</td><td class='awrnc'>$sql_gets_cpu_percent_8$</td><td class='awrnc'>$sql_gets_io_percent_8$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_gets_queryid_8$">$sql_gets_queryid_8$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_buffer_sql_text_8$</td></tr>
+<tr><td align="right" class='awrc'>$sql_buffer_gets_9$</td><td align="right" class='awrc'>$sql_gets_calls_9$</td><td align="right" class='awrc'>$sql_gets_mean_9$</td><td align="right" class='awrc'>$sql_gets_total_percent_9$</td><td align="right" class='awrc'>$sql_gets_total_time_9$</td><td class='awrc'>$sql_gets_cpu_percent_9$</td><td class='awrc'>$sql_gets_io_percent_9$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_gets_queryid_9$">$sql_gets_queryid_9$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_buffer_sql_text_9$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_buffer_gets_10$</td><td align="right" class='awrnc'>$sql_gets_calls_10$</td><td align="right" class='awrnc'>$sql_gets_mean_10$</td><td align="right" class='awrnc'>$sql_gets_total_percent_10$</td><td align="right" class='awrnc'>$sql_gets_total_time_10$</td><td class='awrnc'>$sql_gets_cpu_percent_10$</td><td class='awrnc'>$sql_gets_io_percent_10$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_gets_queryid_10$">$sql_gets_queryid_10$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_buffer_sql_text_10$</td></tr>
+</table><p />
+<a class="awr" href="#22">Back to SQL Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="700"></a>
+<h3 class="awr">SQL ordered by Reads</h3>
+<ul>
+<li class="awr"> %Total - Physical Reads as a percentage of Total Disk Reads </li>
+<li class="awr"> %CPU   - CPU Time      as a percentage of Elapsed Time </li>
+<li class="awr"> %IO    - User I/O Time as a percentage of Elapsed Time</li>
+</ul>
+<table border="1" summary="This table displays top SQL by physical reads"><tr><th class="awrbg" scope="col">Physical Reads</th><th class="awrbg" scope="col">Executions</th><th class="awrbg" scope="col">Reads     per Exec  </th><th class="awrbg" scope="col">%Total</th><th class="awrbg" scope="col">Elapsed  Time (s)</th><th class="awrbg" scope="col">%CPU</th><th class="awrbg" scope="col">%IO</th><th class="awrbg" scope="col">   SQL Id</th><th class="awrbg" scope="col">SQL Module</th><th class="awrbg" scope="col">SQL Text</th></tr>
+<tr><td align="right" class='awrc'>$sql_disk_reads_1$</td><td align="right" class='awrc'>$sql_reads_calls_1$</td><td align="right" class='awrc'>$sql_reads_mean_1$</td><td align="right" class='awrc'>$sql_reads_total_percent_1$</td><td align="right" class='awrc'>$sql_reads_total_time_1$</td><td align="right" class='awrc'>$sql_reads_cpu_percent_1$</td><td align="right" class='awrc'>$sql_reads_io_percent_1$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_reads_queryid_1$">$sql_reads_queryid_1$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_disk_sql_text_1$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_disk_reads_2$</td><td align="right" class='awrnc'>$sql_reads_calls_2$</td><td align="right" class='awrnc'>$sql_reads_mean_2$</td><td align="right" class='awrnc'>$sql_reads_total_percent_2$</td><td align="right" class='awrnc'>$sql_reads_total_time_2$</td><td align="right" class='awrnc'>$sql_reads_cpu_percent_2$</td><td align="right" class='awrnc'>$sql_reads_io_percent_2$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_reads_queryid_2$">$sql_reads_queryid_2$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_disk_sql_text_2$</td></tr>
+<tr><td align="right" class='awrc'>$sql_disk_reads_3$</td><td align="right" class='awrc'>$sql_reads_calls_3$</td><td align="right" class='awrc'>$sql_reads_mean_3$</td><td align="right" class='awrc'>$sql_reads_total_percent_3$</td><td align="right" class='awrc'>$sql_reads_total_time_3$</td><td align="right" class='awrc'>$sql_reads_cpu_percent_3$</td><td align="right" class='awrc'>$sql_reads_io_percent_3$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_reads_queryid_3$">$sql_reads_queryid_3$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_disk_sql_text_3$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_disk_reads_4$</td><td align="right" class='awrnc'>$sql_reads_calls_4$</td><td align="right" class='awrnc'>$sql_reads_mean_4$</td><td align="right" class='awrnc'>$sql_reads_total_percent_4$</td><td align="right" class='awrnc'>$sql_reads_total_time_4$</td><td align="right" class='awrnc'>$sql_reads_cpu_percent_4$</td><td align="right" class='awrnc'>$sql_reads_io_percent_4$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_reads_queryid_4$">$sql_reads_queryid_4$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_disk_sql_text_4$</td></tr>
+<tr><td align="right" class='awrc'>$sql_disk_reads_5$</td><td align="right" class='awrc'>$sql_reads_calls_5$</td><td align="right" class='awrc'>$sql_reads_mean_5$</td><td align="right" class='awrc'>$sql_reads_total_percent_5$</td><td align="right" class='awrc'>$sql_reads_total_time_5$</td><td align="right" class='awrc'>$sql_reads_cpu_percent_5$</td><td align="right" class='awrc'>$sql_reads_io_percent_5$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_reads_queryid_5$">$sql_reads_queryid_5$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_disk_sql_text_5$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_disk_reads_6$</td><td align="right" class='awrnc'>$sql_reads_calls_6$</td><td align="right" class='awrnc'>$sql_reads_mean_6$</td><td align="right" class='awrnc'>$sql_reads_total_percent_6$</td><td align="right" class='awrnc'>$sql_reads_total_time_6$</td><td align="right" class='awrnc'>$sql_reads_cpu_percent_6$</td><td align="right" class='awrnc'>$sql_reads_io_percent_6$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_reads_queryid_6$">$sql_reads_queryid_6$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_disk_sql_text_6$</td></tr>
+<tr><td align="right" class='awrc'>$sql_disk_reads_7$</td><td align="right" class='awrc'>$sql_reads_calls_7$</td><td align="right" class='awrc'>$sql_reads_mean_7$</td><td align="right" class='awrc'>$sql_reads_total_percent_7$</td><td align="right" class='awrc'>$sql_reads_total_time_7$</td><td align="right" class='awrc'>$sql_reads_cpu_percent_7$</td><td align="right" class='awrc'>$sql_reads_io_percent_7$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_reads_queryid_7$">$sql_reads_queryid_7$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_disk_sql_text_7$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_disk_reads_8$</td><td align="right" class='awrnc'>$sql_reads_calls_8$</td><td align="right" class='awrnc'>$sql_reads_mean_8$</td><td align="right" class='awrnc'>$sql_reads_total_percent_8$</td><td align="right" class='awrnc'>$sql_reads_total_time_8$</td><td align="right" class='awrnc'>$sql_reads_cpu_percent_8$</td><td align="right" class='awrnc'>$sql_reads_io_percent_8$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_reads_queryid_8$">$sql_reads_queryid_8$</a></td>
+<td class='awrnc'>
+</td>
+<td class='awrnc'>$sql_disk_sql_text_8$</td></tr>
+<tr><td align="right" class='awrc'>$sql_disk_reads_9$</td><td align="right" class='awrc'>$sql_reads_calls_9$</td><td align="right" class='awrc'>$sql_reads_mean_9$</td><td align="right" class='awrc'>$sql_reads_total_percent_9$</td><td align="right" class='awrc'>$sql_reads_total_time_9$</td><td align="right" class='awrc'>$sql_reads_cpu_percent_9$</td><td align="right" class='awrc'>$sql_reads_io_percent_9$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_reads_queryid_9$">$sql_reads_queryid_9$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_disk_sql_text_9$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_disk_reads_10$</td><td align="right" class='awrnc'>$sql_reads_calls_10$</td><td align="right" class='awrnc'>$sql_reads_mean_10$</td><td align="right" class='awrnc'>$sql_reads_total_percent_10$</td><td align="right" class='awrnc'>$sql_reads_total_time_10$</td><td align="right" class='awrnc'>$sql_reads_cpu_percent_10$</td><td align="right" class='awrnc'>$sql_reads_io_percent_10$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_reads_queryid_10$">$sql_reads_queryid_10$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_disk_sql_text_10$</td></tr>
+</table><p />
+<a class="awr" href="#22">Back to SQL Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="800"></a>
+<h3 class="awr">SQL ordered by Executions</h3>
+<ul>
+<li class="awr"> %CPU   - CPU Time      as a percentage of Elapsed Time </li>
+<li class="awr"> %IO    - User I/O Time as a percentage of Elapsed Time</li>
+</ul>
+<table border="1" summary="This table displays top SQL by number of executions"><tr><th class="awrbg" scope="col">Executions </th><th class="awrbg" scope="col">Rows Processed</th><th class="awrbg" scope="col">Rows per Exec</th><th class="awrbg" scope="col">Elapsed  Time (s)</th><th class="awrbg" scope="col"> %CPU</th><th class="awrbg" scope="col">  %IO</th><th class="awrbg" scope="col">   SQL Id</th><th class="awrbg" scope="col">SQL Module</th><th class="awrbg" scope="col">SQL Text</th></tr>
+<tr><td align="right" class='awrc'>$sql_executions_1$</td><td align="right" class='awrc'>$sql_exec_rows_1$</td><td align="right" class='awrc'>$sql_exec_mean_row_1$</td><td align="right" class='awrc'>$sql_exec_total_time_1$</td><td class='awrc'>$sql_exec_cpu_percent_1$</td><td class='awrc'>$sql_exec_io_percent_1$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_exec_queryid_1$">$sql_exec_queryid_1$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_exec_sql_text_1$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_executions_2$</td><td align="right" class='awrnc'>$sql_exec_rows_2$</td><td align="right" class='awrnc'>$sql_exec_mean_row_2$</td><td align="right" class='awrnc'>$sql_exec_total_time_2$</td><td class='awrnc'>$sql_exec_cpu_percent_2$</td><td class='awrnc'>$sql_exec_io_percent_2$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_exec_queryid_2$">$sql_exec_queryid_2$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_exec_sql_text_2$</td></tr>
+<tr><td align="right" class='awrc'>$sql_executions_3$</td><td align="right" class='awrc'>$sql_exec_rows_3$</td><td align="right" class='awrc'>$sql_exec_mean_row_3$</td><td align="right" class='awrc'>$sql_exec_total_time_3$</td><td class='awrc'>$sql_exec_cpu_percent_3$</td><td class='awrc'>$sql_exec_io_percent_3$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_exec_queryid_3$">$sql_exec_queryid_3$</a></td>
+<td class='awrc'>&#160;
+</td> 
+<td class='awrc'>$sql_exec_sql_text_3$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_executions_4$</td><td align="right" class='awrnc'>$sql_exec_rows_4$</td><td align="right" class='awrnc'>$sql_exec_mean_row_4$</td><td align="right" class='awrnc'>$sql_exec_total_time_4$</td><td class='awrnc'>$sql_exec_cpu_percent_4$</td><td class='awrnc'>$sql_exec_io_percent_4$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_exec_queryid_4$">$sql_exec_queryid_4$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_exec_sql_text_4$</td></tr>
+<tr><td align="right" class='awrc'>$sql_executions_5$</td><td align="right" class='awrc'>$sql_exec_rows_5$</td><td align="right" class='awrc'>$sql_exec_mean_row_5$</td><td align="right" class='awrc'>$sql_exec_total_time_5$</td><td class='awrc'>$sql_exec_cpu_percent_5$</td><td class='awrc'>$sql_exec_io_percent_5$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_exec_queryid_5$">$sql_exec_queryid_5$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_exec_sql_text_5$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_executions_6$</td><td align="right" class='awrnc'>$sql_exec_rows_6$</td><td align="right" class='awrnc'>$sql_exec_mean_row_6$</td><td align="right" class='awrnc'>$sql_exec_total_time_6$</td><td class='awrnc'>$sql_exec_cpu_percent_6$</td><td class='awrnc'>$sql_exec_io_percent_6$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_exec_queryid_6$">$sql_exec_queryid_6$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_exec_sql_text_6$</td></tr>
+<tr><td align="right" class='awrc'>$sql_executions_7$</td><td align="right" class='awrc'>$sql_exec_rows_7$</td><td align="right" class='awrc'>$sql_exec_mean_row_7$</td><td align="right" class='awrc'>$sql_exec_total_time_7$</td><td class='awrc'>$sql_exec_cpu_percent_7$</td><td class='awrc'>$sql_exec_io_percent_7$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_exec_queryid_7$">$sql_exec_queryid_7$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_exec_sql_text_7$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_executions_8$</td><td align="right" class='awrnc'>$sql_exec_rows_8$</td><td align="right" class='awrnc'>$sql_exec_mean_row_8$</td><td align="right" class='awrnc'>$sql_exec_total_time_8$</td><td class='awrnc'>$sql_exec_cpu_percent_8$</td><td class='awrnc'>$sql_exec_io_percent_8$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_exec_queryid_8$">$sql_exec_queryid_8$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_exec_sql_text_8$</td></tr>
+<tr><td align="right" class='awrc'>$sql_executions_9$</td><td align="right" class='awrc'>$sql_exec_rows_9$</td><td align="right" class='awrc'>$sql_exec_mean_row_9$</td><td align="right" class='awrc'>$sql_exec_total_time_9$</td><td class='awrc'>$sql_exec_cpu_percent_9$</td><td class='awrc'>$sql_exec_io_percent_9$</td><td scope="row" class='awrc'><a class="awr" href="#$sql_exec_queryid_9$">$sql_exec_queryid_9$</a></td>
+<td class='awrc'>&#160;
+</td>
+<td class='awrc'>$sql_exec_sql_text_9$</td></tr>
+<tr><td align="right" class='awrnc'>$sql_executions_10$</td><td align="right" class='awrnc'>$sql_exec_rows_10$</td><td align="right" class='awrnc'>$sql_exec_mean_row_10$</td><td align="right" class='awrnc'>$sql_exec_total_time_10$</td><td class='awrnc'>$sql_exec_cpu_percent_10$</td><td class='awrnc'>$sql_exec_io_percent_10$</td><td scope="row" class='awrnc'><a class="awr" href="#$sql_exec_queryid_10$">$sql_exec_queryid_10$</a></td>
+<td class='awrnc'>&#160;
+</td>
+<td class='awrnc'>$sql_exec_sql_text_10$</td></tr>
+</table><p />
+<a class="awr" href="#22">Back to SQL Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="99997"></a>
+<p /> 
+<h3 class="awr">Complete List of SQL Text</h3><p />
+<table border="1" summary="This table displays the text of the SQL statements which have been
+      referred to in the report"> 
+<tr><th class="awrbg" scope="col">SQL Id</th><th class="awrbg" scope="col">SQL Text</th></tr>
+$sql_all_sql_text_list$
+</table> 
+<p />   
+<a class="awr" href="#22">Back to SQL Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<p />  
+<a class="awr" name="24"></a>
+<h2 class="awr">
+IO Stats
+</h2>
+<ul>
+<li class="awr"><a class="awr" href="#8760">IOStat by Function summary</a></li>
+<li class="awr"><a class="awr" href="#8770">IOStat by Filetype summary</a></li>
+<li class="awr"><a class="awr" href="#8780">IOStat by Function/Filetype summary</a></li>
+</ul>
+<a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="8760"></a>
+<h3 class="awr">IOStat by Function summary</h3>
+<ul>
+<li class="awr"> 'Data' columns suffixed with M,G,T,P are in multiples of 1024      </li>
+<li class="awr"> ordered by (Data Read + Write) desc</li>
+</ul>  
+<table border="1" summary="This table displays the IO Statistics for different functions. IO stats includes amount of reads and writes, requests per second, data per second, wait count and average wait time"><tr><th class="awrbg" scope="col">Function Name</th><th class="awrbg" scope="col">Read Data</th><th class="awrbg" scope="col">Read per sec</th><th class="awrbg" scope="col">Read Total%</th><th class="awrbg" scope="col">Write Data</th><th class="awrbg" scope="col">Write Reqs</th><th class="awrbg" scope="col">Write per sec</th><th class="awrbg" scope="col">Write Total%</th></tr>
+<tr><td scope="row" class='awrc'>FILENODE</td><td class='awrc'>$node_read_data$</td><td class='awrc'>$node_read_per_sec$</td><td class='awrc'>$node_read_total$</td><td align="right" class='awrc'>$node_write_data$</td><td class='awrc'>$node_write_reqs$</td><td class='awrc'>$node_write_per_sec$</td><td align="right" class='awrc'>$node_write_total$</td></tr>
+<tr><td scope="row" class='awrc'>Buffer Cache</td><td class='awrc'>$buf_read_data$</td><td class='awrc'>$buf_read_per_sec$</td><td class='awrc'>$buf_read_total$</td><td align="right" class='awrc'>$buf_write_data$</td><td class='awrc'>$buf_write_reqs$</td><td class='awrc'>$buf_write_per_sec$</td><td align="right" class='awrc'>$buf_write_total$</td></tr>
+<tr><td scope="row" class='awrc'>TOTAL:</td><td class='awrc'>$total_read_data$</td><td class='awrc'>$total_read_per_sec$</td><td class='awrc'>$total_read_total$</td><td align="right" class='awrc'>$total_write_data$</td><td class='awrc'>$total_write_reqs$</td><td class='awrc'>$total_write_per_sec$</td><td align="right" class='awrc'>$total_write_total$</td></tr>
+</table><p />
+<a class="awr" href="#24">Back to IO Stats</a> 
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="8770"></a>
+<h3 class="awr">IOStat by Memory summary</h3>
+<ul>
+<li class="awr"> 'Data' columns suffixed with M,G,T,P are in multiples of 1024      </li>
+<li class="awr"> Small Read and Large Read are average service times, in milliseconds </li>
+<li class="awr"> Ordered by (Data Read + Write) desc</li>
+</ul>
+<table border="1" summary="This table displays IO Statistics for different file types, such as data files, control files, log files and temp files. IO Statistics include amount of reads and writes, requests per second, data per second, wait count and average wait time"><tr><th class="awrbg" scope="col">Memory</th><th class="awrbg" scope="col">Read Data</th><th class="awrbg" scope="col">Read per sec</th><th class="awrbg" scope="col">Read Total%</th><th class="awrbg" scope="col">Write Data</th><th class="awrbg" scope="col">Write Reqs</th><th class="awrbg" scope="col">Write per sec</th><th class="awrbg" scope="col">Write Total%</th></tr>
+<tr><td scope="row" class='awrc'>Shared</td><td class='awrc'>$catalog_read_data$</td><td align="right" class='awrc'>$catalog_read_per_sec$</td><td class='awrc'>$catalog_read_total$</td><td class='awrc'>$catalog_write_data$</td><td align="right" class='awrc'>$catalog_write_reqs$</td><td class='awrc'>$catalog_write_per_sec$</td><td align="right" class='awrc'>$catalog_write_total$</td></tr>
+<tr><td scope="row" class='awrnc'>Local</td><td class='awrnc'>$relation_read_data$</td><td align="right" class='awrnc'>$relation_read_per_sec$</td><td class='awrnc'>$relation_read_total$</td><td class='awrnc'>$relation_write_data$</td><td align="right" class='awrnc'>$relation_write_reqs$</td><td class='awrnc'>$relation_write_per_sec$</td><td align="right" class='awrnc'>$relation_write_total$</td></tr>
+<tr><td scope="row" class='awrc'>Temp</td><td class='awrc'>$temp_read_data$</td><td align="right" class='awrc'>$temp_read_per_sec$</td><td class='awrc'>$temp_read_total$</td><td class='awrc'>$temp_write_data$</td><td align="right" class='awrc'>$temp_write_reqs$</td><td class='awrc'>$temp_write_per_sec$</td><td align="right" class='awrc'>$temp_write_total$</td></tr>
+<tr><td scope="row" class='awrnc'>TOTAL:</td><td class='awrnc'>$rel_total_read_data$</td><td align="right" class='awrnc'>$rel_total_read_per_sec$</td><td class='awrnc'>$rel_total_read_total$</td><td class='awrnc'>$rel_total_write_data$</td><td align="right" class='awrnc'>$rel_total_write_reqs$</td><td class='awrnc'>$rel_total_write_per_sec$</td><td align="right" class='awrnc'>$rel_total_write_total$</td></tr>
+</table><p />  
+<a class="awr" href="#24">Back to IO Stats</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="8780"></a>
+<h3 class="awr">IOStat by Reltype summary</h3>
+<ul>
+<li class="awr"> 'Data' columns suffixed with M,G,T,P are in multiples of 1024      </li>
+<li class="awr"> Ordered by (Data Read + Write) desc for each function</li>
+</ul>
+<table border="1" summary="IOStat by Function/Filetype summary. . 'Data' columns suffixed with M,G,T,P are in multiples of 1024 . Ordered by (Data Read + Write) desc for each function"><tr><th class="awrbg" scope="col">Reltype</th><th class="awrbg" scope="col">Read Data</th><th class="awrbg" scope="col">Read per sec</th><th class="awrbg" scope="col">Total%</th><th class="awrbg" scope="col">Buffer Read</th><th class="awrbg" scope="col">Buffer read per sec</th><th class="awrbg" scope="col">Disk Read</th><th class="awrbg" scope="col">Disk Read per sec</th></tr> 
+<tr><td scope="row" class='awrc'>
+Relation
+</td><td class='awrc'>$io_rel_read$</td><td align="right" class='awrc'>$io_rel_read_per_sec$</td><td class='awrc'>$io_rel_read_total$</td><td class='awrc'>$io_rel_read_buf$</td><td align="right" class='awrc'>$io_rel_read_buf_per_sec$</td><td class='awrc'>$io_rel_read_disk$</td><td class='awrc'>$io_rel_read_disk_per_sec$</td></tr>
+<tr><td scope="row" class='awrnc'>
+ Index
+</td><td class='awrnc'>$io_index_read$</td><td align="right" class='awrnc'>$io_index_read_per_sec$</td><td class='awrnc'>$io_index_read_total$</td><td class='awrnc'>$io_index_read_buf$</td><td align="right" class='awrnc'>$io_index_read_buf_per_sec$</td><td class='awrnc'>$io_index_read_disk$</td><td class='awrnc'>$io_index_read_disk_per_sec$</td></tr>
+<tr><td scope="row" class='awrc'>
+Sequence
+</td><td class='awrc'>$io_seq_read$</td><td align="right" class='awrc'>$io_seq_read_per_sec$</td><td class='awrc'>$io_seq_read_total$</td><td class='awrc'>$io_seq_read_buf$</td><td align="right" class='awrc'>$io_seq_read_buf_per_sec$</td><td class='awrc'>$io_seq_read_disk$</td><td class='awrc'>$io_seq_read_disk_per_sec$</td></tr>
+<tr><td scope="row" class='awrnc'>
+ View
+</td><td class='awrnc'>$io_view_read$</td><td align="right" class='awrnc'>$io_view_read_per_sec$</td><td class='awrnc'>$io_view_read_total$</td><td class='awrnc'>$io_view_read_buf$</td><td align="right" class='awrnc'>$io_view_read_buf_per_sec$</td><td class='awrnc'>$io_view_read_disk$</td><td class='awrnc'>$io_view_read_disk_per_sec$</td></tr>
+<tr><td scope="row" class='awrc'>
+Material view
+</td><td class='awrc'>$io_mv_read$</td><td align="right" class='awrc'>$io_mv_read_per_sec$</td><td class='awrc'>.$io_mv_read_total$</td><td class='awrc'>$io_mv_read_buf$</td><td align="right" class='awrc'>$io_mv_read_buf_per_sec$</td><td class='awrc'>$io_mv_read_disk$</td><td class='awrc'>$io_mv_read_disk_per_sec$</td></tr>
+<tr><td scope="row" class='awrnc'>
+ Combine
+</td><td class='awrnc'>$io_comb_read$</td><td align="right" class='awrnc'>$io_comb_read_per_sec$</td><td class='awrnc'>$io_comb_read_total$</td><td class='awrnc'>$io_comb_read_buf$</td><td align="right" class='awrnc'>$io_comb_read_buf_per_sec$</td><td class='awrnc'>$io_comb_read_disk$</td><td class='awrnc'>$io_comb_read_disk_per_sec$</td></tr>
+<tr><td scope="row" class='awrc'>
+TOAST
+</td><td class='awrc'>$io_toast_read$</td><td align="right" class='awrc'>$io_toast_read_per_sec$</td><td class='awrc'>$io_toast_read_total$</td><td class='awrc'>$io_toast_read_buf$</td><td align="right" class='awrc'>$io_toast_read_buf_per_sec$</td><td class='awrc'>$io_toast_read_disk$</td><td class='awrc'>$io_toast_read_disk_per_sec$</td></tr>
+<tr><td scope="row" class='awrnc'>
+ Foreign
+</td><td class='awrnc'>$io_foreign_read$</td><td align="right" class='awrnc'>$io_foreign_read_per_sec$</td><td class='awrnc'>$io_foreign_read_total$</td><td class='awrnc'>$io_foreign_read_buf$</td><td align="right" class='awrnc'>$io_foreign_read_buf_per_sec$</td><td class='awrnc'>$io_foreign_read_disk$</td><td class='awrnc'>$io_foreign_read_disk_per_sec$</td></tr>
+<tr><td scope="row" class='awrc'>
+TOTAL:
+</td><td class='awrc'>$io_total_read$</td><td align="right" class='awrc'>$io_total_read_per_sec$</td><td class='awrc'>$io_total_read_total$</td><td class='awrc'>$io_total_read_buf$</td><td align="right" class='awrc'>$io_total_read_buf_per_sec$</td><td class='awrc'>$io_total_read_disk$</td><td class='awrc'>$io_total_read_disk_per_sec$</td></tr>
+</table><p />
+<a class="awr" href="#24">Back to IO Stats</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="30"></a>
+<h2 class="awr">
+Segment Statistics
+</h2>  
+<ul>  
+<li class="awr"><a class="awr" href="#4000">Segments by Logical Reads</a></li>
+<li class="awr"><a class="awr" href="#4100">Segments by Physical Reads</a></li>
+<li class="awr"><a class="awr" href="#4140">Segments by Table Scans</a></li>
+</ul>
+<a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="4000"></a>
+<h3 class="awr">Segments by Logical Reads</h3>
+<table border="1" summary="This table displays top segments by logical reads. Owner, tablespace name, object type, logical read, etc. are displayed for each segment"><tr><th class="awrbg" scope="col">DBID</th><th class="awrbg" scope="col">Database</th><th class="awrbg" scope="col">Relation</th><th class="awrbg" scope="col">Obj. Type</th><th class="awrbg" scope="col">Logical Reads</th><th class="awrbg" scope="col">%Total</th></tr>
+<tr><td class='awrc'>$seg_db_oid_1$</td><td class='awrc'>$seg_db_name_1$</td><td class='awrc'>$seg_table_oid_1$</td><td class='awrc'>$seg_logical_table_type_1$</td><td align="right" class='awrc'>$seg_logical_reads_1$</td><td align="right" class='awrc'>$seg_logical_reads_total_1$</td></tr>
+<tr><td class='awrnc'>$seg_db_oid_2$</td><td class='awrnc'>$seg_db_name_2$</td><td class='awrnc'>$seg_table_oid_2$</td><td class='awrnc'>$seg_logical_table_type_2$</td><td align="right" class='awrnc'>$seg_logical_reads_2$</td><td align="right" class='awrnc'>$seg_logical_reads_total_2$</td></tr>
+<tr><td class='awrc'>$seg_db_oid_3$</td><td class='awrc'>$seg_db_name_3$</td><td class='awrc'>$seg_table_oid_3$</td><td class='awrc'>$seg_logical_table_type_3$</td><td align="right" class='awrc'>$seg_logical_reads_3$</td><td align="right" class='awrc'>$seg_logical_reads_total_3$</td></tr>
+<tr><td class='awrnc'>$seg_db_oid_4$</td><td class='awrnc'>$seg_db_name_4$</td><td class='awrnc'>$seg_table_oid_4$</td><td class='awrnc'>$seg_logical_table_type_4$</td><td align="right" class='awrnc'>$seg_logical_reads_4$</td><td align="right" class='awrnc'>$seg_logical_reads_total_4$</td></tr>
+<tr><td class='awrc'>$seg_db_oid_5$</td><td class='awrc'>$seg_db_name_5$</td><td class='awrc'>$seg_table_oid_5$</td><td class='awrc'>$seg_logical_table_type_5$</td><td align="right" class='awrc'>$seg_logical_reads_5$</td><td align="right" class='awrc'>$seg_logical_reads_total_5$</td></tr>
+<tr><td class='awrnc'>$seg_db_oid_6$</td><td class='awrnc'>$seg_db_name_6$</td><td class='awrnc'>$seg_table_oid_6$</td><td class='awrnc'>$seg_logical_table_type_6$</td><td align="right" class='awrnc'>$seg_logical_reads_6$</td><td align="right" class='awrnc'>$seg_logical_reads_total_6$</td></tr>
+<tr><td class='awrc'>$seg_db_oid_7$</td><td class='awrc'>$seg_db_name_7$</td><td class='awrc'>$seg_table_oid_7$</td><td class='awrc'>$seg_logical_table_type_7$</td><td align="right" class='awrc'>$seg_logical_reads_7$</td><td align="right" class='awrc'>$seg_logical_reads_total_7$</td></tr>
+<tr><td class='awrnc'>$seg_db_oid_8$</td><td class='awrnc'>$seg_db_name_8$</td><td class='awrnc'>$seg_table_oid_8$</td><td class='awrnc'>$seg_logical_table_type_8$</td><td align="right" class='awrnc'>$seg_logical_reads_8$</td><td align="right" class='awrnc'>$seg_logical_reads_total_8$</td></tr>
+<tr><td class='awrc'>$seg_db_oid_9$</td><td class='awrc'>$seg_db_name_9$</td><td class='awrc'>$seg_table_oid_9$</td><td class='awrc'>$seg_logical_table_type_9$</td><td align="right" class='awrc'>$seg_logical_reads_9$</td><td align="right" class='awrc'>$seg_logical_reads_total_9$</td></tr>
+<tr><td class='awrc'>$seg_db_oid_10$</td><td class='awrc'>$seg_db_name_10$</td><td class='awrc'>$seg_table_oid_10$</td><td class='awrc'>$seg_logical_table_type_10$</td><td align="right" class='awrc'>$seg_logical_reads_10$</td><td align="right" class='awrc'>$seg_logical_reads_total_10$</td></tr>
+</table><p /> 
+<a class="awr" href="#30">Back to Segment Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="4100"></a>
+<h3 class="awr">Segments by Physical Reads</h3>
+<table border="1" summary="This table displays top segments by physical reads. Owner, tablespace name, object type, physical reads, etc. are displayed for each segment "><tr><th class="awrbg" scope="col">DBID</th><th class="awrbg" scope="col">Database</th><th class="awrbg" scope="col">Relation</th><th class="awrbg" scope="col">Obj. Type</th><th class="awrbg" scope="col">Physical Reads</th><th class="awrbg" scope="col">%Total</th></tr>
+<tr><td class='awrc'>$seg_physical_db_oid_1$</td><td class='awrc'>$seg_physical_db_name_1$</td><td class='awrc'>$seg_physical_table_oid_1$</td><td class='awrc'>$seg_physical_table_type_1$</td><td align="right" class='awrc'>$seg_physical_reads_1$</td><td align="right" class='awrc'>$seg_physical_reads_total_1$</td></tr>
+<tr><td class='awrnc'>$seg_physical_db_oid_2$</td><td class='awrnc'>$seg_physical_db_name_2$</td><td class='awrnc'>$seg_physical_table_oid_2$</td><td class='awrnc'>$seg_physical_table_type_2$</td><td align="right" class='awrnc'>$seg_physical_reads_2$</td><td align="right" class='awrnc'>$seg_physical_reads_total_2$</td></tr>
+<tr><td class='awrc'>$seg_physical_db_oid_3$</td><td class='awrc'>$seg_physical_db_name_3$</td><td class='awrc'>$seg_physical_table_oid_3$</td><td class='awrc'>$seg_physical_table_type_3$</td><td align="right" class='awrc'>$seg_physical_reads_3$</td><td align="right" class='awrc'>$seg_physical_reads_total_3$</td></tr>
+<tr><td class='awrnc'>$seg_physical_db_oid_4$</td><td class='awrnc'>$seg_physical_db_name_4$</td><td class='awrnc'>$seg_physical_table_oid_4$</td><td class='awrnc'>$seg_physical_table_type_4$</td><td align="right" class='awrnc'>$seg_physical_reads_4$</td><td align="right" class='awrnc'>$seg_physical_reads_total_4$</td></tr>
+<tr><td class='awrc'>$seg_physical_db_oid_5$</td><td class='awrc'>$seg_physical_db_name_5$</td><td class='awrc'>$seg_physical_table_oid_5$</td><td class='awrc'>$seg_physical_table_type_5$</td><td align="right" class='awrc'>$seg_physical_reads_5$</td><td align="right" class='awrc'>$seg_physical_reads_total_5$</td></tr>
+<tr><td class='awrnc'>$seg_physical_db_oid_6$</td><td class='awrnc'>$seg_physical_db_name_6$</td><td class='awrnc'>$seg_physical_table_oid_6$</td><td class='awrnc'>$seg_physical_table_type_6$</td><td align="right" class='awrnc'>$seg_physical_reads_6$</td><td align="right" class='awrnc'>$seg_physical_reads_total_6$</td></tr>
+<tr><td class='awrc'>$seg_physical_db_oid_7$</td><td class='awrc'>$seg_physical_db_name_7$</td><td class='awrc'>$seg_physical_table_oid_7$</td><td class='awrc'>$seg_physical_table_type_7$</td><td align="right" class='awrc'>$seg_physical_reads_7$</td><td align="right" class='awrc'>$seg_physical_reads_total_7$</td></tr>
+<tr><td class='awrnc'>$seg_physical_db_oid_8$</td><td class='awrnc'>$seg_physical_db_name_8$</td><td class='awrnc'>$seg_physical_table_oid_8$</td><td class='awrnc'>$seg_physical_table_type_8$</td><td align="right" class='awrnc'>$seg_physical_reads_8$</td><td align="right" class='awrnc'>$seg_physical_reads_total_8$</td></tr>
+<tr><td class='awrc'>$seg_physical_db_oid_9$</td><td class='awrc'>$seg_physical_db_name_9$</td><td class='awrc'>$seg_physical_table_oid_9$</td><td class='awrc'>$seg_physical_table_type_9$</td><td align="right" class='awrc'>$seg_physical_reads_9$</td><td align="right" class='awrc'>$seg_physical_reads_total_9$</td></tr>
+<tr><td class='awrc'>$seg_physical_db_oid_10$</td><td class='awrc'>$seg_physical_db_name_10$</td><td class='awrc'>$seg_physical_table_oid_10$</td><td class='awrc'>$seg_physical_table_type_10$</td><td align="right" class='awrc'>$seg_physical_reads_10$</td><td align="right" class='awrc'>$seg_physical_reads_total_10$</td></tr>
+</table><p />
+<a class="awr" href="#30">Back to Segment Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<a class="awr" name="4140"></a>
+<h3 class="awr">Segments by Table Scans</h3> 
+<table border="1" summary="This table displays top segments by table scans. Owner, tablespace name, object type, table scans, etc. are displayed for each segment"><tr><th class="awrbg" scope="col">DBID</th><th class="awrbg" scope="col">Database</th><th class="awrbg" scope="col">Relation</th><th class="awrbg" scope="col">Obj. Type</th><th class="awrbg" scope="col">Table Scans</th><th class="awrbg" scope="col">%Total</th></tr>
+<tr><td class='awrc'>$seg_scans_db_oid_1$</td><td class='awrc'>$seg_scans_db_name_1$</td><td class='awrc'>$seg_scans_table_oid_1$</td><td class='awrc'>$seg_scans_table_type_1$</td><td align="right" class='awrc'>$seg_scans_num_1$</td><td align="right" class='awrc'>$seg_scans_total_1$</td></tr>
+<tr><td class='awrnc'>$seg_scans_db_oid_2$</td><td class='awrnc'>$seg_scans_db_name_2$</td><td class='awrnc'>$seg_scans_table_oid_2$</td><td class='awrnc'>$seg_scans_table_type_2$</td><td align="right" class='awrnc'>$seg_scans_num_2$</td><td align="right" class='awrnc'>$seg_scans_total_2$</td></tr>
+<tr><td class='awrc'>$seg_scans_db_oid_3$</td><td class='awrc'>$seg_scans_db_name_3$</td><td class='awrc'>$seg_scans_table_oid_3$</td><td class='awrc'>$seg_scans_table_type_3$</td><td align="right" class='awrc'>$seg_scans_num_3$</td><td align="right" class='awrc'>$seg_scans_total_3$</td></tr>
+<tr><td class='awrnc'>$seg_scans_db_oid_4$</td><td class='awrnc'>$seg_scans_db_name_4$</td><td class='awrnc'>$seg_scans_table_oid_4$</td><td class='awrnc'>$seg_scans_table_type_4$</td><td align="right" class='awrnc'>$seg_scans_num_4$</td><td align="right" class='awrnc'>$seg_scans_total_4$</td></tr>
+<tr><td class='awrc'>$seg_scans_db_oid_5$</td><td class='awrc'>$seg_scans_db_name_5$</td><td class='awrc'>$seg_scans_table_oid_5$</td><td class='awrc'>$seg_scans_table_type_5$</td><td align="right" class='awrc'>$seg_scans_num_5$</td><td align="right" class='awrc'>$seg_scans_total_5$</td></tr>
+<tr><td class='awrnc'>$seg_scans_db_oid_6$</td><td class='awrnc'>$seg_scans_db_name_6$</td><td class='awrnc'>$seg_scans_table_oid_6$</td><td class='awrnc'>$seg_scans_table_type_6$</td><td align="right" class='awrnc'>$seg_scans_num_6$</td><td align="right" class='awrnc'>$seg_scans_total_6$</td></tr>
+<tr><td class='awrc'>$seg_scans_db_oid_7$</td><td class='awrc'>$seg_scans_db_name_7$</td><td class='awrc'>$seg_scans_table_oid_7$</td><td class='awrc'>$seg_scans_table_type_7$</td><td align="right" class='awrc'>$seg_scans_num_7$</td><td align="right" class='awrc'>$seg_scans_total_7$</td></tr>
+<tr><td class='awrnc'>$seg_scans_db_oid_8$</td><td class='awrnc'>$seg_scans_db_name_8$</td><td class='awrnc'>$seg_scans_table_oid_8$</td><td class='awrnc'>$seg_scans_table_type_8$</td><td align="right" class='awrnc'>$seg_scans_num_8$</td><td align="right" class='awrnc'>$seg_scans_total_8$</td></tr>
+<tr><td class='awrc'>$seg_scans_db_oid_9$</td><td class='awrc'>$seg_scans_db_name_9$</td><td class='awrc'>$seg_scans_table_oid_9$</td><td class='awrc'>$seg_scans_table_type_9$</td><td align="right" class='awrc'>$seg_scans_num_9$</td><td align="right" class='awrc'>$seg_scans_total_9$</td></tr>
+<tr><td class='awrc'>$seg_scans_db_oid_10$</td><td class='awrc'>$seg_scans_db_name_10$</td><td class='awrc'>$seg_scans_table_oid_10$</td><td class='awrc'>$seg_scans_table_type_10$</td><td align="right" class='awrc'>$seg_scans_num_10$</td><td align="right" class='awrc'>$seg_scans_total_10$</td></tr>
+</table><p /> 
+<a class="awr" href="#30">Back to Segment Statistics</a>
+<br /><a class="awr" href="#top">Back to Top</a><p />
+<p />
+
+End of Report
+</body></html>

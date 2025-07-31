@@ -836,6 +836,10 @@
 /* Define to 1 if you have the `__strtoull' function. */
 #undef HAVE___STRTOULL
 
+/* ReqID:SRS-MISC-PDR */
+/* A string containing the version number */
+#undef HG_PLATFORM_STR
+
 /* Define to the appropriate printf length modifier for 64-bit ints. */
 #undef INT64_MODIFIER
 

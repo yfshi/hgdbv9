@@ -417,7 +417,7 @@ typedef enum ProcessingMode
 	NormalProcessing			/* normal processing */
 } ProcessingMode;
 
-extern ProcessingMode Mode;
+extern PGDLLIMPORT ProcessingMode Mode;	/* ReqID:SRS-MISC-PDR */
 
 
 #define IsBootstrapProcessingMode() (Mode == BootstrapProcessing)

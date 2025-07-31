@@ -31,7 +31,7 @@ extern bool am_db_walsender;
 extern bool wake_wal_senders;
 
 /* user-settable parameters */
-extern int	max_wal_senders;
+extern PGDLLIMPORT int	max_wal_senders; /* ReqID:SRS-MISC-PDR */
 extern int	wal_sender_timeout;
 extern bool log_replication_commands;
 
