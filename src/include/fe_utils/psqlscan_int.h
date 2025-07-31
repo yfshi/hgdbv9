@@ -178,15 +178,27 @@ typedef struct psqlplus_cmd_execute
 typedef enum sys_var_type
 {
 	SVT_NONE = 0,
+	/* SCALAR */
 	SVT_BOOL,
 	SVT_INTEGER,
-	SVT_STRING
+	SVT_STRING,
+	/* COMPOSITE VARIABLE */
+	SVT_COMPOSITE
 } sys_var_type;
+
+/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+/* subtype for SVT_COMPOSITE system variable */
+typedef enum composite_sys_var_tag
+{
+	CSV_NONE = 0,
+	CSV_SERVEROUTPUT
+} composite_sys_var_tag;
+/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 
 typedef union sys_var_value
 {
 	int64	ival;
-	char   *string;
+	char   *string;	/* ReqID:SRS-PLSQL-DBMS_OUTPUT: reuse for composite system var */
 	bool	on;
 } sys_var_value;
 
@@ -215,6 +227,26 @@ typedef struct sys_var_list
 	sys_var   **sysvars;
 	int			length;
 } sys_var_list;
+
+/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+typedef struct csv_node
+{
+	composite_sys_var_tag	tag;
+} csv_node;
+
+typedef struct csv_serveroutput_node
+{
+	composite_sys_var_tag csv_tag;
+	bool	enable;
+	int		size;
+	//enum	format; /* TODO */
+} csv_serveroutput_node;
+
+#define SV_SERVEROUT_BUFSIZE_MIN			2000
+#define SV_SERVEROUT_BUFSIZE_MAX			1000000
+#define SV_SERVEROUT_BUFSIZE_UNLIMITED		-1	/* unlimit size */
+#define SV_SERVEROUT_NO_SIZE_OPTION			-2	/* no SIZE option */
+/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 
 typedef struct psqlplus_cmd_sv
 {
@@ -378,7 +410,7 @@ extern void ora_psqlscan_test_variable(PsqlScanState state, const char *txt, int
 /* Begin - ReqID:SRS-SQL-SYSFUNC */
 extern system_variable GetSysVariable(const char *name);
 extern bool ShowSysVariable(sys_var_list *list);
-extern bool SetSysVariable(sys_var_list *list);
+extern bool SetSysVariable(sys_var_list *list, bool *serveroutput_set /* ReqID:SRS-PLSQL-DBMS_OUTPUT */);
 /* End - ReqID:SRS-SQL-SYSFUNC */
 
 /* Begin - ReqID:SRS-MISC-MYSQL-FRAME */

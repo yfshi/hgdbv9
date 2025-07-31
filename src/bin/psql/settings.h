@@ -140,6 +140,7 @@ typedef struct _psqlSettings
 	/* Begin - BUG#M000411 */
 	bool		send_space_one_comments;
 	/* End - BUG#M0000411 */
+	bool		suppress_query_print_out; /* ReqID:SRS-PLSQL-DBMS_OUTPUT */
 	int			fetch_count;
 	int			histsize;
 	int			ignoreeof;

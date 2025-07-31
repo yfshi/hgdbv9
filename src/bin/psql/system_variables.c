@@ -37,7 +37,17 @@ static struct system_variable_data system_variables[] =
 		{-1},			/* XXX disable, not allowed int SQL*PLUS */
 		3,				/* must be greater than 0 */
 		(void *) &system_variables_int[0][0]
+	},
+
+	/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+	{
+		"serveroutput",
+		SVT_COMPOSITE,
+		{0},
+		9,				/* must be greater than 0 */
+		NULL
 	}
+	/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 };
 
 system_variable
@@ -96,6 +106,45 @@ ShowSysVariable(sys_var_list *list)
 			case SVT_STRING:
 				printf("%s %s\n", var->name, var->value.string);
 				break;
+			/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+			case SVT_COMPOSITE:
+				{
+					if (var->value.string)
+					{
+						csv_node	*csv = (csv_node *) var->value.string;
+
+						switch(csv->tag)
+						{
+							case CSV_SERVEROUTPUT:
+								{
+									csv_serveroutput_node	*val = (csv_serveroutput_node *) var->value.string;
+
+									if (val->enable)
+									{
+										if (val->size == SV_SERVEROUT_BUFSIZE_UNLIMITED)
+											printf("%s ON SIZE UNLIMITED\n", var->name);
+										else
+											printf("%s ON SIZE %d\n", var->name, val->size);
+									}
+									else
+										printf("%s OFF\n", var->name);
+									
+								}
+								break;
+							default:
+								pg_log_error("Invalid composite system varibale type.");
+						}
+					}
+					else
+					{
+						/* serveroutput default is off */
+						if (pg_strcasecmp(var->name, "serveroutput") == 0)
+							printf("%s OFF\n", var->name);
+						/* Followed by else if for other SVT_COMPOSITE */
+					}
+				}
+				break;
+			/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 			default:
 				/* because var is the one found */
 				Assert(SVT_NONE < var->type && var->type <= SVT_STRING);
@@ -107,7 +156,7 @@ ShowSysVariable(sys_var_list *list)
 }
 
 bool
-SetSysVariable(sys_var_list *list)
+SetSysVariable(sys_var_list *list, bool *serveroutput_set /* ReqID:SRS-PLSQL-DBMS_OUTPUT */)
 {
 	int	i;
 
@@ -154,6 +203,71 @@ SetSysVariable(sys_var_list *list)
 			case SVT_STRING:
 				var->value.string = pg_strdup(sv->sv_value.string);
 				break;
+			/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+			case SVT_COMPOSITE:
+				{
+					csv_node	*csv = (csv_node *) sv->sv_value.string;
+
+					switch(csv->tag)
+					{
+						case CSV_SERVEROUTPUT:
+						{
+							csv_serveroutput_node	*val = (csv_serveroutput_node *) sv->sv_value.string;
+							csv_serveroutput_node	*new;
+
+							/*
+							 * psqlplusparse.y ensures that val->size < 0 in only two cases,
+							 * unlimited and without SIZE option.
+							 */
+							if (val->size >= 0 &&
+								(val->size < SV_SERVEROUT_BUFSIZE_MIN ||
+								val->size > SV_SERVEROUT_BUFSIZE_MAX))
+							{
+								pg_log_error("%s option %d out of range (%d through %d)",
+											var->name, val->size, SV_SERVEROUT_BUFSIZE_MIN, SV_SERVEROUT_BUFSIZE_MAX);
+								if(serveroutput_set)
+									*serveroutput_set = false;
+								return true;
+							}
+							new = (csv_serveroutput_node *) pg_malloc0(sizeof(csv_serveroutput_node));
+							new->csv_tag = val->csv_tag;
+							new->enable = val->enable;
+
+							/*
+							 * Compatible Oracle:
+							 * if the SIZE option is omitted then use the previous
+							 * SET SERVEROUTPUT ON SIZE n or uses default values if
+							 * no SET SERVEROUTPUT command was previously issued in
+							 * the current connection.
+							 */
+							if (val->size != SV_SERVEROUT_NO_SIZE_OPTION)	/* exist SIZE option */
+								new->size = val->size;
+							else
+							{
+								/* first time to SET SERVEROUTPUT command in the current connection */
+								if (!var->value.string)
+									new->size = SV_SERVEROUT_BUFSIZE_UNLIMITED;
+								else
+									/* keep old value of serveroutput size */
+									new->size = ((csv_serveroutput_node *) var->value.string)->size;
+							}
+
+							if (var->value.string)
+								pfree(var->value.string);
+
+							var->value.string = (char *) new;
+							pfree(sv->sv_value.string);
+							if(serveroutput_set)
+								*serveroutput_set = true;
+						}
+						break;
+						default:
+							pg_log_error("Invalid composite system varibale type.");
+							return true;
+					}
+				}
+				break;
+			/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 			default:
 				/* the type of system variable's value must be specified */
 				Assert(SVT_NONE < sv->sv_type && sv->sv_type <= SVT_STRING);

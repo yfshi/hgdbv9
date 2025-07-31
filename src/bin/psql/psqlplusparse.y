@@ -88,6 +88,13 @@ static print_list *merge_print_list(print_list *list1, print_list *list2);
 %token <keyword>				K_OFF K_ON K_SET K_SHOW
 /* End - ReqID:SRS-SQL-SYSFUNC */
 
+/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+%type <keyword>		serveroutput_keyword
+%token <keyword>	K_SERVEROUT K_SERVEROUTP K_SERVEROUTPU K_SERVEROUTPUT K_SIZE K_UNL K_UNLIMITED
+%type <ival>		opt_serveroutput_size
+%type <str>			show_system_variable
+/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
 %%
 
 psqlplus_toplevel_stmt:
@@ -573,12 +580,22 @@ system_variable_stmt:
 			}
 	;
 
+/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+show_system_variable:
+		IDENT				{ $$ = $1; }
+		| K_SERVEROUT		{ $$ = pg_strdup($1); }
+		| K_SERVEROUTP		{ $$ = pg_strdup($1); }
+		| K_SERVEROUTPU		{ $$ = pg_strdup($1); }
+		| K_SERVEROUTPUT	{ $$ = pg_strdup($1); }
+	;
+/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
 show_system_variable_list:
-		IDENT
+		show_system_variable
 			{
 				$$ = sv_list_make1(make_system_variable($1));
 			}
-		| show_system_variable_list IDENT
+		| show_system_variable_list show_system_variable
 			{
 				$$ = sv_list_append($1, make_system_variable($2));
 			}
@@ -631,14 +648,52 @@ set_system_variable:
 				sv->sv_value.ival = -$3;
 				$$ = sv;
 			}
+		/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+		| serveroutput_keyword system_variable_on_off opt_serveroutput_size
+			{
+				sys_var *sv = make_system_variable("serveroutput");
+				csv_serveroutput_node	*data = (csv_serveroutput_node *) pg_malloc0(sizeof(csv_serveroutput_node));
+				data->csv_tag = CSV_SERVEROUTPUT;
+				data->enable = $2;
+				data->size = $3;
+				sv->sv_type = SVT_COMPOSITE;
+				sv->sv_value.string = (char *)data;
+				$$ = sv;
+			}
+		/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 	;
+
+/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+serveroutput_keyword:
+		K_SERVEROUT
+		| K_SERVEROUTP
+		| K_SERVEROUTPU
+		| K_SERVEROUTPUT
+	;
+
+/*
+ * Keep in sync with dbms_output.c, that is, -1=unlimited.
+ *
+ * Oracle say:
+ * ON uses the SIZE and FORMAT of the previous SET SERVEROUTPUT ON SIZE n FORMAT f,
+ * or uses default values if no SET SERVEROUTPUT command was previously issued in
+ * the current connection.
+ * therefore, we return -2 for the case where the size option is omitted, and -1 is
+ * used to indicate unlimited.
+ */
+opt_serveroutput_size:
+		K_SIZE ICONST			{ $$ = $2; }
+		| K_SIZE K_UNL			{ $$ = SV_SERVEROUT_BUFSIZE_UNLIMITED; }
+		| K_SIZE K_UNLIMITED	{ $$ = SV_SERVEROUT_BUFSIZE_UNLIMITED; }
+		| /* empty */			{ $$ = SV_SERVEROUT_NO_SIZE_OPTION; }
+	;
+/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 
 system_variable_on_off:
 		K_ON				{ $$ = true; }
 		| K_OFF				{ $$ = false; }
 	;
 /* End - ReqID:SRS-SQL-SYSFUNC */
-
 
 /*
  * Single quotes and double quotes have different semantics 

@@ -74,6 +74,7 @@
 
 #include "access/transam.h"
 #include "access/xact.h"
+#include "funcapi.h"	/* ReqID:SRS-PLSQL-DBMS_OUTPUT */
 #include "libpq/libpq.h"
 #include "libpq/pqformat.h"
 #include "mb/pg_wchar.h"
@@ -368,6 +369,13 @@ errstart(int elevel, const char *domain)
 	 */
 	if (elevel >= ERROR)
 	{
+		/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+		if(enable_serveroutput && dbmsoutput_sendbuffer_hook)
+		{
+			(*dbmsoutput_sendbuffer_hook)();
+		}
+		/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
 		/*
 		 * If we are inside a critical section, all errors become PANIC
 		 * errors.  See miscadmin.h.

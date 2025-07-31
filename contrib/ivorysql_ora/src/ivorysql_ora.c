@@ -63,6 +63,11 @@ static ora_updatexml_hook_type pre_ora_updatexml_hook = NULL;
 void _PG_init(void);
 void _PG_fini(void);
 
+/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+void _dbms_output_PG_init(void);
+void _dbms_output_PG_fini(void);
+/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
 /*
  * Module initialization function.
  */
@@ -107,6 +112,8 @@ _PG_init(void)
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	orarefcursor_init_internal();
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+
+	_dbms_output_PG_init(); /* ReqID:SRS-PLSQL-DBMS_OUTPUT */
 }
 
 /*
@@ -140,4 +147,6 @@ _PG_fini(void)
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	orarefcursor_funcs.loadstate = UNLOADED;
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+
+	_dbms_output_PG_fini(); /* ReqID:SRS-PLSQL-DBMS_OUTPUT */
 }

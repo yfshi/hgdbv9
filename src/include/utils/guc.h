@@ -443,6 +443,8 @@ extern PGDLLIMPORT bool	alter_database_set_special;  /* BUG#M0000475 */
 extern bool package_security_define_compare_user;	/* BUG#M496 */
 
 extern PGDLLIMPORT bool enable_ora_user_schema;		/* ReqID:SRS-SQL-SCHEMA */
+extern PGDLLIMPORT int dbms_output_discard_buffer_limit; /* ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
 
 /* Begin - BUG#M0000414 */
 extern bool enable_store_nullterminator_char;

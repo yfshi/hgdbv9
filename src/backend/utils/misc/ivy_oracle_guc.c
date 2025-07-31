@@ -202,6 +202,7 @@ bool allow_forupdate_in_subquery = true;
 
 bool enable_pg_interval_datatype = false; /* BUG#M0000475 */
 bool alter_database_set_special = false; /* BUG#M0000475 */
+int	dbms_output_discard_buffer_limit = 65536; /* ReqID:SRS-PLSQL-DBMS_OUTPUT */
 
 bool package_security_define_compare_user = true; /* BUG#M496 */
 
@@ -1089,7 +1090,21 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		10, -1, INT32_MAX,
 		NULL, NULL, NULL
 	},
-	/* End - RSR-SQL-Partition-interval */
+	/* End - RSR-SQL-Partition-interval */	
+
+	/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+	{
+		{"ivorysql.dbms_output_discard_buffer_limit", PGC_USERSET, RESOURCES_MEM,
+			gettext_noop("Set whether to free memory when DBMS_OUTPUT reset the buffer."),
+			gettext_noop("When the DBMS_OUTPUT buffer exceeds this much memory, "
+						 "the buffer reset operation release the memory."),
+			GUC_UNIT_BYTE
+		},
+		&dbms_output_discard_buffer_limit,
+		64*1024*1024, 8*1024, MaxAllocSize,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 #endif
 #if 0
 	/* End-of-list marker */

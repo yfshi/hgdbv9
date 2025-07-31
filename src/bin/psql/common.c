@@ -1340,6 +1340,15 @@ PrintQueryResults(PGresult *results, bool quiet, bool isoracall /* ReqID:SRS-SQL
 			/* Begin - ReqID:SRS-CMD-PSQL */
 			cmdstatus = PQcmdStatus(results);
 
+			/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+			if (db_mode == DB_ORACLE && pset.suppress_query_print_out)
+			{
+				pset.suppress_query_print_out = false;
+				success = true;
+				break;
+			}
+			/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
 			/*
 			 * DO and CALL stmt with OUT parameters will generate result
 			 * tuples, we expect to suppress the output of result tuples.
@@ -1394,6 +1403,16 @@ PrintQueryResults(PGresult *results, bool quiet, bool isoracall /* ReqID:SRS-SQL
 		case PGRES_COMMAND_OK:
 			/* Begin - ReqID:SRS-CMD-PSQL */
 			cmdstatus = PQcmdStatus(results);
+
+			/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+			if (db_mode == DB_ORACLE && pset.suppress_query_print_out)
+			{
+				pset.suppress_query_print_out = false;
+				success = true;
+				break;
+			}
+			/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
 			/* Begin - ReqID:SRS-SQL-CALL */
 			if (db_mode == DB_ORACLE && isoracall && strncmp(cmdstatus, "DO", 2) == 0)
 				PrintQueryStatus2(results, "\nCall completed.\n");
