@@ -25,7 +25,7 @@
 
 /* Bigen ReqID:SRS-SECURITY-IDENTITYAUTH */
 #ifdef USE_GMSSL
-#include <gmssl/sm3.h>
+#include <gmssl/gm_sm3.h>
 #endif
 /* End ReqID:SRS-SECURITY-IDENTITYAUTH */
 
@@ -178,7 +178,7 @@ pg_cryptohash_init(pg_cryptohash_ctx *ctx)
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #ifdef USE_GMSSL
 		case PG_SM3:
-			sm3_init(&ctx->sm3ctx);
+			gm_sm3_init(&ctx->sm3ctx);
 			status = 1;
 			break;
 #endif
@@ -208,7 +208,7 @@ pg_cryptohash_update(pg_cryptohash_ctx *ctx, const uint8 *data, size_t len)
 #ifdef USE_GMSSL
 	if (ctx->type == PG_SM3)
 	{
-		sm3_update(&ctx->sm3ctx, (const uint8_t *)data, (size_t)len);
+		gm_sm3_update(&ctx->sm3ctx, (const uint8_t *)data, (size_t)len);
 		return 0;
 	}
 #endif
@@ -275,7 +275,7 @@ pg_cryptohash_final(pg_cryptohash_ctx *ctx, uint8 *dest, size_t len)
 #ifdef USE_GMSSL
 	if (ctx->type == PG_SM3)
 	{
-		sm3_finish(&ctx->sm3ctx, dest);
+		gm_sm3_finish(&ctx->sm3ctx, dest);
 		return 0;
 	}
 #endif

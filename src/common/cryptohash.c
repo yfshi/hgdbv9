@@ -30,7 +30,7 @@
 
 #ifdef USE_GMSSL
 #include "common/sm3.h" // ReqID:SRS-SECURITY-IDENTITYAUTH
-#include <gmssl/sm3.h>
+#include <gmssl/gm_sm3.h>
 #endif
 
 /*
@@ -128,7 +128,7 @@ pg_cryptohash_init(pg_cryptohash_ctx *ctx)
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #ifdef USE_GMSSL
 		case PG_SM3:
-			sm3_init((SM3_CTX *)&ctx->data.sm3);
+			gm_sm3_init((SM3_CTX *)&ctx->data.sm3);
 			break;
 #endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -173,7 +173,7 @@ pg_cryptohash_update(pg_cryptohash_ctx *ctx, const uint8 *data, size_t len)
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #ifdef USE_GMSSL
 		case PG_SM3:
-			sm3_update((SM3_CTX *)&ctx->data.sm3, (const uint8_t *)data, (size_t)len);
+			gm_sm3_update((SM3_CTX *)&ctx->data.sm3, (const uint8_t *)data, (size_t)len);
 			break;
 #endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -233,7 +233,7 @@ pg_cryptohash_final(pg_cryptohash_ctx *ctx, uint8 *dest, size_t len)
 		case PG_SM3:
 			if (len < PG_SM3_DIGEST_LENGTH)
 				return -1;
-			sm3_finish((SM3_CTX *)&ctx->data.sm3, (uint8_t*)dest);
+			gm_sm3_finish((SM3_CTX *)&ctx->data.sm3, (uint8_t*)dest);
 			break;
 #endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */

@@ -36,7 +36,7 @@
 #include <openssl/rand.h>
 
 #ifdef USE_GMSSL
-#include <gmssl/sm3.h>
+#include <gmssl/gm_sm3.h>
 #include <gmssl/sm4.h>
 #endif
 
@@ -280,7 +280,7 @@ digest_reset_sm3(PX_MD *h)
 {
 	SM3_CTX *ctx = (SM3_CTX *) h->p.ptr;
 
-	return sm3_init(ctx);
+	return gm_sm3_init(ctx);
 }
 
 static void
@@ -289,7 +289,7 @@ digest_update_sm3(PX_MD *h, const uint8 *data, unsigned dlen)
 	size_t datalen = dlen;
 	SM3_CTX *ctx = (SM3_CTX *) h->p.ptr;
 
-	return sm3_update(ctx, data, datalen);
+	return gm_sm3_update(ctx, data, datalen);
 }
 
 static void
@@ -297,7 +297,7 @@ digest_finish_sm3(PX_MD *h, uint8 *dst)
 {
 	SM3_CTX *ctx = (SM3_CTX *) h->p.ptr;
 
-	return sm3_finish(ctx, dst);
+	return gm_sm3_finish(ctx, dst);
 }
 
 static void
@@ -321,7 +321,7 @@ px_find_digest_sm3(PX_MD **res)
 		return -1;
 	}
 
-	sm3_init(ctx);
+	gm_sm3_init(ctx);
 
 	/* The PX_MD object is allocated in the current memory context. */
 	h = palloc0(sizeof(PX_MD));
