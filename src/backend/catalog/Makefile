@@ -45,7 +45,8 @@ OBJS = \
 	pg_type.o \
 	storage.o \
 	storage_gtt.o \
-	toasting.o
+	toasting.o \
+	pg_recyclebin.o
 
 include $(top_srcdir)/src/backend/common.mk
 
@@ -72,7 +73,8 @@ CATALOG_HEADERS := \
 	pg_sequence.h pg_publication.h pg_publication_rel.h pg_subscription.h \
 	pg_subscription_rel.h pg_package.h pg_package_body.h pg_force_view.h \
 	pg_object.h pg_mfaid.h \
-	pg_resgroup.h pg_resgroupcapability.h
+	pg_resgroup.h pg_resgroupcapability.h \
+	pg_recyclebin.h
 
 GENERATED_HEADERS := $(CATALOG_HEADERS:%.h=%_d.h) schemapg.h system_fk_info.h
 

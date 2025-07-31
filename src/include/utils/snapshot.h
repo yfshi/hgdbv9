@@ -115,7 +115,29 @@ typedef enum SnapshotType
 	 * For visibility checks snapshot->min must have been set up with the xmin
 	 * horizon to use.
 	 */
-	SNAPSHOT_NON_VACUUMABLE
+	SNAPSHOT_NON_VACUUMABLE,
+
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	/*
+	 * The visibility check is consistent with SNAPSHOT_MVCC,
+	 * but avoids some optimization paths, such as SO_ALLOW_PAGEMODE.
+	 */
+	SNAPSHOT_FLASHBACK_MVCC,
+
+	/*
+	 * A tuple is visible if the tuple is invalid for the given snapshot, and
+	 * is valid for TransactionSnapshot. the pseudocode as follow:
+	 * !TupleIsVisible(SNAPSHOT_MVCC) && TupleIsVisible(GetTransactionSnapshot())
+	 */
+	SNAPSHOT_DELTA,
+
+	/*
+	 * A tuple is visible if the tuple is valid for the given snapshot, and
+	 * is invalid for TransactionSnapshot. the pseudocode as follow:
+	 * TupleIsVisible(SNAPSHOT_MVCC) && !TupleIsVisible(GetTransactionSnapshot())
+	 */
+	SNAPSHOT_LOST
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 } SnapshotType;
 
 typedef struct SnapshotData *Snapshot;

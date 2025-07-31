@@ -103,6 +103,10 @@ IndexNext(IndexScanState *node)
 	econtext = node->ss.ps.ps_ExprContext;
 	slot = node->ss.ss_ScanTupleSlot;
 
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	ExecAsofTimestamp(&node->ss);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 	if (scandesc == NULL)
 	{
 		/*
@@ -111,7 +115,11 @@ IndexNext(IndexScanState *node)
 		 */
 		scandesc = index_beginscan(node->ss.ss_currentRelation,
 								   node->iss_RelationDesc,
+								/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+								   node->ss.flashback_snapshot ?
+								   node->ss.flashback_snapshot :
 								   estate->es_snapshot,
+								/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 								   node->iss_NumScanKeys,
 								   node->iss_NumOrderByKeys);
 
@@ -206,7 +214,11 @@ IndexNextWithReorder(IndexScanState *node)
 		 */
 		scandesc = index_beginscan(node->ss.ss_currentRelation,
 								   node->iss_RelationDesc,
+								/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+								   node->ss.flashback_snapshot ?
+								   node->ss.flashback_snapshot :
 								   estate->es_snapshot,
+								/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 								   node->iss_NumScanKeys,
 								   node->iss_NumOrderByKeys);
 
@@ -553,6 +565,9 @@ ExecIndexScan(PlanState *pstate)
 void
 ExecReScanIndexScan(IndexScanState *node)
 {
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	node->ss.flashback_snapshot_set = false;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	/*
 	 * If we are doing runtime key calculations (ie, any of the index key
 	 * values weren't simple Consts), compute the new key values.  But first,
@@ -959,6 +974,23 @@ ExecInitIndexScan(IndexScan *node, EState *estate, int eflags)
 		ExecInitQual(node->indexqualorig, (PlanState *) indexstate);
 	indexstate->indexorderbyorig =
 		ExecInitExprList(node->indexorderbyorig, (PlanState *) indexstate);
+
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	/*
+	 * Initlialize AS OF expression of any
+	 */
+	if (node->scan.asof_expr)
+	{
+		indexstate->ss.asofExpr = ExecInitExpr((Expr *) node->scan.asof_expr,
+											&indexstate->ss.ps);
+		indexstate->ss.flashback_snapshot_set = false;
+	}
+	else
+	{
+		indexstate->ss.asofExpr = NULL;
+	}
+	indexstate->ss.flashback_snapshot = InvalidSnapshot;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/*
 	 * If we are just doing EXPLAIN (ie, aren't going to run the plan), stop
@@ -1662,7 +1694,11 @@ ExecIndexScanEstimate(IndexScanState *node,
 	EState	   *estate = node->ss.ps.state;
 
 	node->iss_PscanLen = index_parallelscan_estimate(node->iss_RelationDesc,
+													/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+													 node->ss.flashback_snapshot ?
+													 node->ss.flashback_snapshot :
 													 estate->es_snapshot);
+													/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	shm_toc_estimate_chunk(&pcxt->estimator, node->iss_PscanLen);
 	shm_toc_estimate_keys(&pcxt->estimator, 1);
 }
@@ -1679,11 +1715,25 @@ ExecIndexScanInitializeDSM(IndexScanState *node,
 {
 	EState	   *estate = node->ss.ps.state;
 	ParallelIndexScanDesc piscan;
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	Scan* scan = (Scan*)node->ss.ps.plan;
+	if (scan->asof_expr)
+	{
+		node->ss.asofExpr = ExecInitExpr((Expr *) scan->asof_expr,
+									  &node->ss.ps);
+		node->ss.flashback_snapshot_set = false;
+		ExecAsofTimestamp(&node->ss);
+	}
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	piscan = shm_toc_allocate(pcxt->toc, node->iss_PscanLen);
 	index_parallelscan_initialize(node->ss.ss_currentRelation,
 								  node->iss_RelationDesc,
+								/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+								  node->ss.flashback_snapshot ?
+								  node->ss.flashback_snapshot :
 								  estate->es_snapshot,
+								/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 								  piscan);
 	shm_toc_insert(pcxt->toc, node->ss.ps.plan->plan_node_id, piscan);
 	node->iss_ScanDesc =

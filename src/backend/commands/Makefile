@@ -62,6 +62,7 @@ OBJS = \
 	vacuum.o \
 	variable.o \
 	view.o \
-	packagecmds.o
+	packagecmds.o \
+	flashback.o
 
 include $(top_srcdir)/src/backend/common.mk

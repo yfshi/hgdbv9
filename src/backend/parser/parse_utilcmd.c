@@ -5309,3 +5309,35 @@ TransformPartitionTableInterval(ParseState *pstate, PartitionInterval *partInter
 
 	checkIntervalBasevalueLega(pstate, (Const *) partInterval->base, (Const *) partInterval->interval);
 }
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+FlashbackStmt *
+transformFlashbackStmt(FlashbackStmt *stmt, const char *queryString)
+{
+	ParseState *pstate;
+	Node* timepointExpr;
+
+	if (stmt->kind != FLASHBACK_TIMEPOINT)
+		return stmt;
+
+	/* Set up pstate */
+	pstate = make_parsestate(NULL);
+	pstate->p_sourcetext = queryString;
+
+	/* transform expr and set type */
+	timepointExpr = transformExpr(pstate, stmt->timepoint, EXPR_KIND_ASOF);
+	timepointExpr = coerce_to_specific_type(pstate, timepointExpr, TIMESTAMPTZOID, "AS OF");
+	free_parsestate(pstate);
+
+	/* evaluate the value */
+	timepointExpr = (Node *) evaluate_expr((Expr *) timepointExpr, exprType(timepointExpr), 
+            					exprTypmod(timepointExpr), exprCollation(timepointExpr));
+	if (!IsA(timepointExpr, Const))
+		elog(ERROR, "could not evaluate timestamp expression of flashback");
+
+	/* now we get the real value in const node */
+	stmt->timepoint = timepointExpr;
+
+	return stmt;
+}
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */

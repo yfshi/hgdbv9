@@ -101,6 +101,14 @@
 #include "parser/pg_object_hook.h"
 #include "utils/jsonb.h"
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+#include "access/heapam.h"
+#include "commands/flashback.h"
+#include "catalog/pg_recyclebin.h"
+#include "catalog/catalog.h"
+#include "utils/builtins.h"
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 /*
  * Deletion processing requires additional state for each ObjectAddress that
  * it's planning to delete.  For simplicity and code-sharing we make the
@@ -3476,3 +3484,139 @@ DeleteInitPrivs(const ObjectAddress *object)
 
 	table_close(relation, RowExclusiveLock);
 }
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+
+/*
+ * The routing for deletion of different types of objects to the recycle bin.
+ */
+static void 
+sweepOneObjectToTrash(RbObjDesc *baseDesc, ObjectAddress *object, 
+									Relation *depRel, int flags)
+{
+	switch (getObjectClass(object))
+	{
+		case OCLASS_CLASS: 
+		{
+			char relKind = get_rel_relkind(object->objectId);
+			if (relKind == RELKIND_RELATION ||
+				relKind == RELKIND_INDEX ||
+				relKind == RELKIND_TOASTVALUE)
+			{
+				RbRenameClass(baseDesc, object, relKind, baseDesc->name);
+			}
+			else
+			{
+				elog(NOTICE, "Not support relation kind %c in recyclebin", relKind);
+				deleteOneObject(object, depRel, flags);
+			}
+			break;
+		}
+
+		default:
+			deleteOneObject(object, depRel, flags);
+			break;
+	}
+
+	/*
+	 * CommandCounterIncrement here to ensure that preceding changes are all
+	 * visible to the next deletion step.
+	 */
+	CommandCounterIncrement();
+
+	return;
+}
+
+/*
+ * Move the object and its dependencies to the recycle bin and record the information.
+ */
+void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, int flags)
+{
+	Relation depRel;
+	Relation baseRel;
+	RbObjDesc baseDesc;
+	ObjectAddresses *targetObjects = NULL;
+	ObjectAddress *baseObj = objects->refs;
+	bool useRecycle = false;
+	ObjectFunOrPkgSets *depTypeObjects = NULL;
+
+	depTypeObjects = ObjectFunOrPkgSetsInit();
+
+	/* for now, only the table recovery is supported. */
+	if (getObjectClass(baseObj) == OCLASS_CLASS)
+	{
+		char relKind = get_rel_relkind(baseObj->objectId);
+		if (relKind == RELKIND_RELATION)
+		{
+			useRecycle = true;
+		}
+	}
+
+	if (!useRecycle)
+	{
+		/* really delete */
+		performMultipleDeletions(objects, behavior, flags);
+		return;
+	}
+
+	/*
+	 * We save some cycles by opening pg_depend just once and passing the
+	 * Relation pointer down to all the recursive deletion steps.
+	 */
+	depRel = table_open(DependRelationId, RowExclusiveLock);
+
+	/*
+	 * Construct a list of objects to delete (ie, the given objects plus
+	 * everything directly or indirectly dependent on them).  Note that
+	 * because we pass the whole objects list as pendingObjects context, we
+	 * won't get a failure from trying to delete an object that is internally
+	 * dependent on another one in the list; we'll just skip that object and
+	 * delete it when we reach its owner.
+	 */
+	targetObjects = new_object_addresses();
+
+	/*
+	 * Acquire deletion lock on each target object.  (Ideally the caller
+	 * has done this already, but many places are sloppy about it.)
+	 */
+	AcquireDeletionLock(baseObj, 0);
+
+	/*
+	 * Finds all subobjects that reference the base table recursively.
+	 */
+	findDependentObjects(baseObj, DEPFLAG_ORIGINAL, flags, NULL, /* empty stack */
+						 targetObjects, depTypeObjects, objects, &depRel);
+	ObjectFunOrPkgSetsDestroy(&depTypeObjects);
+
+	/*
+	 * Check if deletion is allowed, and report about cascaded deletes.
+	 *
+	 * If there's exactly one object being deleted, report it the same way as
+	 * in performDeletion(), else we have to be vaguer.
+	 */
+	reportDependentObjects(targetObjects, behavior, NOTICE, baseObj, NULL);
+
+	/*
+	 * Initialize the baseDesc structure so that the logic dropped subobjects
+	 * can be correctly processed when renamed or placed in recycle bin. Notice
+	 * that base object already locked.
+	 */
+	baseRel = relation_open(baseObj->objectId, NoLock);
+	RbDescInit(baseRel, &baseDesc, RCYOPERATION_DROP, RB_OBJ_TABLE);
+	baseDesc.id = baseDesc.baseid = RecyclebinWrite(&baseDesc, InvalidOid);
+	relation_close(baseRel, NoLock);
+
+	/*
+	 * Drop all the objects in the proper order.
+	 */
+	for (int i = 0; i < targetObjects->numrefs; i++)
+	{
+		ObjectAddress *thisobj = targetObjects->refs + i;
+		sweepOneObjectToTrash(&baseDesc, thisobj, &depRel, flags);
+	}
+
+	/* And clean up */
+	free_object_addresses(targetObjects);
+	table_close(depRel, RowExclusiveLock);
+}
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */

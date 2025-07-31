@@ -371,6 +371,9 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token			QUESTION_MARK;
 /* End - BUG#M0000201: support question marks as binding variables */	
 %token			OUTER_JOIN	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+%token			AS_LA
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /*
  * Other tokens recognized by plisql's lexer interface layer (pl_scanner.c).

@@ -690,6 +690,9 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 		/* Begin: Req:SRS-SQL-NLSSORT */
 		case EXPR_KIND_GROUP_BY_DISTINCT:
 		/* End: Req:SRS-SQL-NLSSORT */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case EXPR_KIND_ASOF:
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 			/* okay */
 			break;
 
@@ -3115,6 +3118,9 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 		/* Begin: Req:SRS-SQL-NLSSORT */
 		case EXPR_KIND_GROUP_BY_DISTINCT:
 		/* End: Req:SRS-SQL-NLSSORT */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case EXPR_KIND_ASOF:
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 			/* okay */
 			break;
 		case EXPR_KIND_CHECK_CONSTRAINT:
@@ -4770,6 +4776,10 @@ ParseExprKindName(ParseExprKind exprKind)
 		case EXPR_KIND_GROUP_BY_DISTINCT:
 			return "distinct ORDER BY";
 		/* End: Req:SRS-SQL-NLSSORT */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case EXPR_KIND_ASOF:
+			return "AS OF";
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 			/*
 			 * There is intentionally no default: case here, so that the
 			 * compiler will warn if we add a new ParseExprKind without

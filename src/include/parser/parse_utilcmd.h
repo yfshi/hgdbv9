@@ -40,6 +40,9 @@ extern IndexStmt *generateClonedIndexStmt(RangeVar *heapRel,
 										  Relation source_idx,
 										  const struct AttrMap *attmap,
 										  Oid *constraintOid);
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+extern FlashbackStmt *transformFlashbackStmt(FlashbackStmt *stmt, const char *queryString);
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /* Begin - ReqID:RSR-SQL-Partition-interval */
 void TransformPartitionTableInterval(ParseState *pstate, PartitionInterval *partInterval,

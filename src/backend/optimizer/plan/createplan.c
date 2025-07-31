@@ -576,6 +576,9 @@ create_scan_plan(PlannerInfo *root, Path *best_path, int flags)
 	List	   *gating_clauses;
 	List	   *tlist;
 	Plan	   *plan;
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	RangeTblEntry *rte;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/*
 	 * Extract the relevant restriction clauses from the parent relation. The
@@ -797,6 +800,15 @@ create_scan_plan(PlannerInfo *root, Path *best_path, int flags)
 			plan = NULL;		/* keep compiler quiet */
 			break;
 	}
+
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	if (plan != NULL && plan->type != T_Result)
+	{
+		rte = planner_rt_fetch(rel->relid, root);
+		if (rte != NULL && rte->asofTimestamp != NULL)
+			((Scan*)plan)->asof_expr = rte->asofTimestamp;
+	}
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/*
 	 * If there are any pseudoconstant clauses attached to this node, insert a

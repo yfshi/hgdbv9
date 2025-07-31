@@ -246,3 +246,7 @@ test: ora_connectby
 #/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
 test: subtype
 #/* End - ReqID:SRS-PLSQL-SUBTYPE */
+
+#/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+test: flashback
+#/* End - ReqID:SRS-RECOVERY-FLASHBACK */

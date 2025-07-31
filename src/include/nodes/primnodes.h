@@ -81,6 +81,9 @@ typedef struct RangeVar
 	List	   *colnamelist;
 	List	   *partitionnamelist;
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	Node       *asofTimestamp;  /* for flashback queries */
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 } RangeVar;
 
 /*

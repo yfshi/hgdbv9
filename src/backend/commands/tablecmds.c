@@ -131,7 +131,9 @@
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
-
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+#include "commands/flashback.h"
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 #include "catalog/dependency.h" /* BUG#Z1279 */
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "pg_contrib_audit.h"
@@ -1970,7 +1972,29 @@ RemoveRelations(DropStmt *drop)
 		/* End - BUG#Z1279 */
 	}
 
-	performMultipleDeletions(objects, drop->behavior, flags);
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	if (EnableRecycleBin() && !drop->is_purge)
+	{
+		if (drop->behavior != DROP_RESTRICT)
+		{
+			elog(NOTICE, "The recycle bin feature currently does not support "
+						 "collecting objects dropped not in RESTRICT mode.");
+			performMultipleDeletions(objects, drop->behavior, flags);
+		}
+		else
+		{
+			/* move object to recycle bin */
+			sweepObjectsToTrash(objects, drop->behavior, flags);
+		}
+		
+	}
+	else
+	{
+		/* really delete */
+		performMultipleDeletions(objects, drop->behavior, flags);
+	}
+
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	free_object_addresses(objects);
 }
@@ -2248,8 +2272,29 @@ ExecuteTruncate(TruncateStmt *stmt)
 					 errhint("Do not specify the ONLY keyword, or use TRUNCATE ONLY on the partitions directly.")));
 	}
 
-	ExecuteTruncateGuts(rels, relids, relids_logged,
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	if (EnableRecycleBin()) {
+		if (stmt->behavior != DROP_RESTRICT)
+		{
+			elog(NOTICE, "The recycle bin feature currently does not support "
+						 "collecting objects truncated not in RESTRICT mode.");
+			ExecuteTruncateGuts(rels, relids, relids_logged,
 						stmt->behavior, stmt->restart_seqs);
+		}
+		else
+		{
+			/* Move the filenode to recycle bin. */
+			RbTruncate(rels, relids, relids_logged,
+						stmt->behavior, stmt->restart_seqs);
+		}
+		
+    }
+	else
+	{
+		ExecuteTruncateGuts(rels, relids, relids_logged,
+						stmt->behavior, stmt->restart_seqs);
+	}
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/* And close the rels */
 	foreach(cell, rels)
@@ -21550,3 +21595,49 @@ ATExecSetPartitionInterval(Relation rel, PartitionInterval *partInterval,
 
 	StorePartitionInterval(rel, partInterval);
 }
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+/*
+ * 	FLASHBACK :
+ * 		FLASHBACK TABLE { table_name } TO TIMESTAMP expression
+ * 		FLASHBACK TABLE { table_name } TO BEFORE DROP [RENAME TO new_tablename]
+ * 		FLASHBACK TABLE { table_name } TO BEFORE TRUNCATE
+ */
+void 
+ExecuteFlashback(FlashbackStmt *stmt)
+{
+	switch (stmt->kind)
+	{
+		case FLASHBACK_TIMEPOINT:
+			FlashbackToTimepoint(stmt);
+			break;
+
+		case FLASHBACK_DROP:
+			FlashbackBeforeDrop(stmt);
+			break;
+
+		case FLASHBACK_TRUNCATE:
+			FlashbackBeforeTruncate(stmt);
+			break;
+
+		default:
+			elog(ERROR, "unrecognized flashback type: %d", (int)stmt->kind);
+	}
+}
+
+/*
+ * PURGE :
+ *      PURGE TABLE { table_name } 
+ *      PURGE RECYCLEBIN
+ */
+void 
+ExecutePurge(PurgeStmt *stmt)
+{
+	if (!stmt->purge_all)
+	{
+		PurgeObject(stmt->relation);
+	} else {
+		PurgeAllObjects();
+	}
+}
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */

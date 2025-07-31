@@ -110,6 +110,10 @@ extern void check_function_depend_on_relation_column(Oid relid, AttrNumber attnu
 extern void UpdatePersistence(Oid relid,char relkind, char persistence);
 extern void UpdateIndexPersistence(Oid reloid, char persistence);
 /* End - BUG:M0000325 */
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+extern void ExecuteFlashback(FlashbackStmt *stmt);
+extern void ExecutePurge(PurgeStmt *stmt);
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 extern int DefinePartitionInterval(Relation parent, Datum *values, PartitionDirectory partdirectory);
 

@@ -1259,6 +1259,9 @@ typedef struct RangeTblEntry
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	bool		isexcluded;		/* the rel is the EXCLUDED relation for UPSERT */
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	Node       *asofTimestamp;  /* for flashback queries */
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 } RangeTblEntry;
 
 /*
@@ -3175,6 +3178,7 @@ typedef struct DropStmt
 	DropBehavior behavior;		/* RESTRICT or CASCADE behavior */
 	bool		missing_ok;		/* skip error if object is missing? */
 	bool		concurrent;		/* drop index concurrently? */
+	bool		is_purge;		/* purge mode? ReqID:SRS-RECOVERY-FLASHBACK */
 } DropStmt;
 
 /* ----------------------
@@ -4258,5 +4262,30 @@ typedef struct AlterPackageStmt
 } AlterPackageStmt;
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+/* ----------------------
+ *	FLASHBACK Statement
+ * ----------------------
+ */
+typedef enum FlashbackKind {
+    FLASHBACK_TIMEPOINT,
+    FLASHBACK_DROP,
+    FLASHBACK_TRUNCATE,
+} FlashbackKind;
+
+typedef struct FlashbackStmt {
+    NodeTag type;
+    FlashbackKind kind;
+    RangeVar *relation;
+    char *new_relname;
+    Node *timepoint;
+} FlashbackStmt;
+
+typedef struct PurgeStmt {
+	NodeTag type;
+	RangeVar *relation;
+	bool purge_all;
+} PurgeStmt;
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 #endif							/* PARSENODES_H */

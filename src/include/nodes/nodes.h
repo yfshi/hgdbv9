@@ -474,6 +474,10 @@ typedef enum NodeTag
 	T_ConnectByRoot,
 	T_PriorAexpr,
 	/* End - ReqID:SRS-SQL-HierarchicalQueries */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	T_FlashbackStmt,		
+	T_PurgeStmt,
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/*
 	 * TAGS FOR PARSE TREE NODES (parsenodes.h)

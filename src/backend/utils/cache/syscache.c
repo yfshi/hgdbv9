@@ -85,6 +85,7 @@
 #include "catalog/pg_package_body.h"
 /* End - SRS-SQL-PACKAGE */
 #include "catalog/pg_object.h"	/* ReqID:SRS-SQL-Object */
+#include "catalog/pg_recyclebin.h" /* ReqID:SRS-RECOVERY-FLASHBACK */
 
 #include "catalog/pg_mfaid.h"  /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 
@@ -811,6 +812,19 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		4
 	},
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	{RecyclebinRelationId,			/* RECYCLEBINOID */
+		RecyclebinOidIndexId,
+		1,
+		{
+			Anum_pg_recyclebin_oid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	{RelationRelationId,		/* RELNAMENSP */
 		ClassNameNspIndexId,
 		2,

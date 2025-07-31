@@ -1,0 +1,335 @@
+-- 1. test flashback table to before drop.
+create table foo(a int, b text);
+insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+create index on foo using btree(a);
+CREATE OR REPLACE FUNCTION handle_truncate()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'TRUNCATE trigger';
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+/
+CREATE TRIGGER before_truncate_trigger
+BEFORE TRUNCATE ON foo
+FOR EACH STATEMENT
+EXECUTE FUNCTION handle_truncate();
+drop table foo;
+flashback table foo to before drop; --failed
+ERROR:  recycle object "foo" does not exist
+HINT:  Make sure the configuration parameter "ivorysql.enable_recycle_bin" is set before "DROP".
+set ivorysql.enable_recycle_bin = on;
+create table foo(a int, b text);
+insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+create index on foo using btree(a);
+CREATE OR REPLACE FUNCTION handle_truncate()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'TRUNCATE trigger';
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+/
+CREATE TRIGGER before_truncate_trigger
+BEFORE TRUNCATE ON foo
+FOR EACH STATEMENT
+EXECUTE FUNCTION handle_truncate();
+drop table foo;
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ d            |       0
+ d            |       1
+ d            |       2
+ d            |       3
+(4 rows)
+
+flashback table foo to before drop;
+select a, left(b, 10), length(b) from foo;  --success
+  a  |    left    | length 
+-----+------------+--------
+ 123 | test123rnd | 160010
+(1 row)
+
+drop table foo;  -- more than once.
+flashback table foo to before drop;
+drop table foo;
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ d            |       0
+ d            |       1
+ d            |       2
+ d            |       3
+(4 rows)
+
+flashback table foo to before drop;
+select a, left(b, 10), length(b) from foo;
+  a  |    left    | length 
+-----+------------+--------
+ 123 | test123rnd | 160010
+(1 row)
+
+drop table foo;  -- more than one table.
+create table foo(a int, b text, c int);
+insert into foo select 456, 'test456rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+create index on foo using btree(a);
+CREATE OR REPLACE FUNCTION handle_truncate()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'TRUNCATE trigger';
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+/
+CREATE TRIGGER before_truncate_trigger
+BEFORE TRUNCATE ON foo
+FOR EACH STATEMENT
+EXECUTE FUNCTION handle_truncate();
+select a, left(b, 10), length(b), c from foo;
+  a  |    left    | length | c 
+-----+------------+--------+---
+ 456 | test456rnd | 160010 |  
+(1 row)
+
+drop table foo;
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ d            |       0
+ d            |       0
+ d            |       1
+ d            |       1
+ d            |       2
+ d            |       2
+ d            |       3
+ d            |       3
+(8 rows)
+
+flashback table foo to before drop;
+select a, left(b, 10), length(b), c from foo;
+  a  |    left    | length | c 
+-----+------------+--------+---
+ 456 | test456rnd | 160010 |  
+(1 row)
+
+drop table foo;
+PURGE table foo;  -- purge table
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ d            |       0
+ d            |       1
+ d            |       2
+ d            |       3
+(4 rows)
+
+flashback table foo to before drop;
+select a, left(b, 10), length(b) from foo;
+  a  |    left    | length 
+-----+------------+--------
+ 456 | test456rnd | 160010
+(1 row)
+
+drop table foo purge;  -- drop with purge
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+(0 rows)
+
+set ivorysql.enable_recycle_bin = off;
+-- 2. test flashback table to before truncate.
+create table foo(a int, b text);
+insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+create index on foo using btree(a);
+CREATE OR REPLACE FUNCTION handle_truncate()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'TRUNCATE trigger';
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+/
+CREATE TRIGGER before_truncate_trigger
+BEFORE TRUNCATE ON foo
+FOR EACH STATEMENT
+EXECUTE FUNCTION handle_truncate();
+truncate foo;
+NOTICE:  TRUNCATE trigger
+flashback table foo to before truncate; --failed
+ERROR:  recycle object "foo" does not exist
+HINT:  Make sure the configuration parameter "ivorysql.enable_recycle_bin" is set before "TRUNCATE".
+set ivorysql.enable_recycle_bin = on;
+insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+truncate foo; --warning
+NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ t            |       0
+ t            |       2
+(2 rows)
+
+insert into foo select 456, 'test456rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+truncate foo; --warning
+NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ t            |       0
+ t            |       0
+ t            |       2
+ t            |       2
+(4 rows)
+
+insert into foo select 789, 'test789rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+select a, left(b, 10), length(b) from foo;  --success
+  a  |    left    | length 
+-----+------------+--------
+ 789 | test789rnd | 160010
+(1 row)
+
+flashback table foo to before truncate;
+select a, left(b, 10), length(b) from foo;  --success
+  a  |    left    | length 
+-----+------------+--------
+ 456 | test456rnd | 160010
+(1 row)
+
+flashback table foo to before truncate;
+select a, left(b, 10), length(b) from foo;  --success
+  a  |    left    | length 
+-----+------------+--------
+ 123 | test123rnd | 160010
+(1 row)
+
+truncate foo;  -- more than once.
+NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
+flashback table foo to before truncate;
+truncate foo;
+NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ t            |       0
+ t            |       2
+(2 rows)
+
+flashback table foo to before truncate;
+select a, left(b, 10), length(b) from foo;
+  a  |    left    | length 
+-----+------------+--------
+ 123 | test123rnd | 160010
+(1 row)
+
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+(0 rows)
+
+insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+truncate foo; --warning
+NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ t            |       0
+ t            |       2
+(2 rows)
+
+insert into foo select 456, 'test456rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+truncate foo; --warning
+NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ t            |       0
+ t            |       0
+ t            |       2
+ t            |       2
+(4 rows)
+
+insert into foo select 789, 'test789rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+truncate foo; --warning
+NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ t            |       0
+ t            |       0
+ t            |       0
+ t            |       2
+ t            |       2
+ t            |       2
+(6 rows)
+
+purge table foo;  -- purge table
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ t            |       0
+ t            |       0
+ t            |       2
+ t            |       2
+(4 rows)
+
+purge table foo;
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ t            |       0
+ t            |       2
+(2 rows)
+
+flashback table foo to before truncate;
+select a, left(b, 10), length(b) from foo;
+  a  |    left    | length 
+-----+------------+--------
+ 789 | test789rnd | 160010
+(1 row)
+
+set ivorysql.enable_recycle_bin = off;
+drop table foo;
+-- 3. test purge recyclebin.
+set ivorysql.enable_recycle_bin = on;
+create table foo(a int, b text);
+insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+create index on foo using btree(a);
+CREATE OR REPLACE FUNCTION handle_truncate()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'TRUNCATE trigger';
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+/
+CREATE TRIGGER before_truncate_trigger
+BEFORE TRUNCATE ON foo
+FOR EACH STATEMENT
+EXECUTE FUNCTION handle_truncate();
+truncate foo;
+NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
+drop table foo;
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+ d            |       0
+ d            |       1
+ d            |       2
+ d            |       3
+ t            |       0
+ t            |       2
+(6 rows)
+
+purge recyclebin;
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+(0 rows)
+
+set ivorysql.enable_recycle_bin = off;
+select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+ rcyoperation | rcytype 
+--------------+---------
+(0 rows)
+

@@ -122,6 +122,9 @@ _equalRangeVar(const RangeVar *a, const RangeVar *b)
 	COMPARE_NODE_FIELD(colnamelist);
 	COMPARE_NODE_FIELD(partitionnamelist);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	COMPARE_NODE_FIELD(asofTimestamp);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	return true;
 }
@@ -1430,6 +1433,9 @@ _equalDropStmt(const DropStmt *a, const DropStmt *b)
 	COMPARE_SCALAR_FIELD(behavior);
 	COMPARE_SCALAR_FIELD(missing_ok);
 	COMPARE_SCALAR_FIELD(concurrent);
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	COMPARE_SCALAR_FIELD(is_purge);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	return true;
 }
@@ -2332,6 +2338,27 @@ _equalPriorAexpr(const PriorAexpr *a, const PriorAexpr *b)
 
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
 
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+static bool
+_equalFlashbackStmt(const FlashbackStmt *a, const FlashbackStmt *b)
+{
+	COMPARE_SCALAR_FIELD(kind);
+    COMPARE_NODE_FIELD(relation);
+    COMPARE_STRING_FIELD(new_relname);
+    COMPARE_NODE_FIELD(timepoint);
+
+	return true;
+}
+
+static bool
+_equalPurgeStmt(const PurgeStmt *a, const PurgeStmt *b)
+{
+	COMPARE_NODE_FIELD(relation);
+	COMPARE_SCALAR_FIELD(purge_all);
+
+	return true;
+}
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 static bool
 _equalCreateTransformStmt(const CreateTransformStmt *a, const CreateTransformStmt *b)
@@ -3125,6 +3152,9 @@ _equalRangeTblEntry(const RangeTblEntry *a, const RangeTblEntry *b)
 	COMPARE_BITMAPSET_FIELD(updatedCols);
 	COMPARE_BITMAPSET_FIELD(extraUpdatedCols);
 	COMPARE_NODE_FIELD(securityQuals);
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	COMPARE_NODE_FIELD(asofTimestamp);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	return true;
 }
@@ -4149,6 +4179,14 @@ equal(const void *a, const void *b)
 			retval = _equalPriorAexpr(a, b);
 			break;
 		/* End - ReqID:SRS-SQL-HierarchicalQueries */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case T_FlashbackStmt:
+			retval = _equalFlashbackStmt(a, b);
+			break;
+		case T_PurgeStmt:
+			retval = _equalPurgeStmt(a, b);
+			break;
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 		case T_CreateTransformStmt:
 			retval = _equalCreateTransformStmt(a, b);
 			break;

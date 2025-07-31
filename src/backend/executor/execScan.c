@@ -21,7 +21,12 @@
 #include "executor/executor.h"
 #include "miscadmin.h"
 #include "utils/memutils.h"
-
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+#include "utils/rel.h"
+#include "utils/timestamp.h"
+#include "utils/snapmgr.h"
+#include "storage/procarray.h"
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 
 /*
@@ -344,3 +349,51 @@ ExecScanReScan(ScanState *node)
 		}
 	}
 }
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+/*
+ * Evaluate ASOF timestamp and assign it to snapshot.
+ */
+void 
+ExecAsofTimestamp(ScanState* ss)
+{
+	if (ss->asofExpr)
+	{
+		if (!ss->flashback_snapshot_set)
+		{
+			Datum		val;
+			bool		isNull;
+
+			val = ExecEvalExprSwitchContext(ss->asofExpr,
+											ss->ps.ps_ExprContext,
+											&isNull);
+			if (isNull)
+			{
+				/* Interpret NULL timestamp as no timestamp */
+				ss->flashback_snapshot = InvalidSnapshot;
+			}
+			else
+			{
+				TimestampTz asofTimestamp = DatumGetTimestampTz(val);
+
+				ss->flashback_snapshot = TimestampGetSnapshot(asofTimestamp);
+
+				/*
+				 * Once the data has been cleaned up by VACUUM, 
+				 * we can no longer access the historical data correctly.
+				 */
+				if (ss->ss_currentRelation != NULL && 
+					TransactionIdPrecedes(ss->flashback_snapshot->xmin, 
+						GetOldestNonRemovableTransactionId(ss->ss_currentRelation)))
+				{
+					ereport(ERROR,
+						errcode(ERRCODE_SNAPSHOT_TOO_OLD),
+						errmsg_internal("The flashback timepoint is older than XidHorizon of the table."),
+						errdetail_internal("Make sure the parameter vacuum_defer_cleanup_age is set to a appropriate value."));
+				}
+			}
+			ss->flashback_snapshot_set = true;
+		}
+	}
+}
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */

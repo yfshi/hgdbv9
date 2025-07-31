@@ -70,7 +70,9 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
-
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+#include "access/commit_ts.h"
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /*
  * GUC parameters
@@ -2366,3 +2368,52 @@ XidInMVCCSnapshot(TransactionId xid, Snapshot snapshot)
 
 	return false;
 }
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+/*
+ * Get the XID status from the timestamp and 
+ * construct it to a Snapshot.
+ */
+Snapshot
+TimestampGetSnapshot(TimestampTz ts)
+{
+	TransactionId xmin;
+	TransactionId xmax;
+	List *active_xlist;
+	int			i, j;
+	Snapshot snapshot;
+	Snapshot activeSnap;
+
+	active_xlist = NULL;
+	if (!TimestampGetTransactinIds(ts, &xmin, &xmax, &active_xlist))
+		elog(ERROR, "failed get the snapshot.");
+
+	/* We also need get active xids from current snapshot. */
+	activeSnap = GetActiveSnapshot();
+
+	/*
+	 * Construct a snapshot struct by parsing the file content.
+	 */
+	snapshot = (Snapshot)palloc0(sizeof(SnapshotData));
+
+	snapshot->snapshot_type = SNAPSHOT_FLASHBACK_MVCC;
+	snapshot->xmin = xmin;
+	snapshot->xmax = xmax;
+	snapshot->xcnt = list_length(active_xlist) + activeSnap->xcnt;
+	snapshot->xip = (TransactionId *) palloc(snapshot->xcnt * sizeof(TransactionId));
+	for (i = 0, j = 0; i < snapshot->xcnt; i++)
+	{
+		if (i < list_length(active_xlist))
+			snapshot->xip[i] = (TransactionId)list_nth_int(active_xlist, i);
+		else
+			snapshot->xip[i] = activeSnap->xip[j++];
+	}
+
+	snapshot->suboverflowed = false;
+	snapshot->subxcnt = 0;
+	snapshot->subxip = NULL;
+	snapshot->takenDuringRecovery = false;
+
+	return snapshot;
+}
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */

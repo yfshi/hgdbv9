@@ -435,6 +435,9 @@ CopyScanFields(const Scan *from, Scan *newnode)
 	CopyPlanFields((const Plan *) from, (Plan *) newnode);
 
 	COPY_SCALAR_FIELD(scanrelid);
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	COPY_NODE_FIELD(asof_expr);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 }
 
 /*
@@ -1430,6 +1433,9 @@ _copyRangeVar(const RangeVar *from)
 	COPY_NODE_FIELD(colnamelist);
 	COPY_NODE_FIELD(partitionnamelist);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	COPY_NODE_FIELD(asofTimestamp);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	return newnode;
 }
@@ -2592,6 +2598,9 @@ _copyRangeTblEntry(const RangeTblEntry *from)
 	COPY_BITMAPSET_FIELD(updatedCols);
 	COPY_BITMAPSET_FIELD(extraUpdatedCols);
 	COPY_NODE_FIELD(securityQuals);
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	COPY_NODE_FIELD(asofTimestamp);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	return newnode;
 }
@@ -3851,6 +3860,9 @@ _copyDropStmt(const DropStmt *from)
 	COPY_SCALAR_FIELD(behavior);
 	COPY_SCALAR_FIELD(missing_ok);
 	COPY_SCALAR_FIELD(concurrent);
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	COPY_SCALAR_FIELD(is_purge);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	return newnode;
 }
@@ -4825,6 +4837,31 @@ _copyPriorAexpr(const PriorAexpr *from)
 
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
 
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+static FlashbackStmt *
+_copyFlashbackStmt(const FlashbackStmt * from)
+{
+	FlashbackStmt *newnode = makeNode(FlashbackStmt);
+
+	COPY_SCALAR_FIELD(kind);
+    COPY_NODE_FIELD(relation);
+    COPY_STRING_FIELD(new_relname);
+    COPY_NODE_FIELD(timepoint);
+
+	return newnode;
+}
+
+static PurgeStmt *
+_copyPurgeStmt(const PurgeStmt * from)
+{
+	PurgeStmt *newnode = makeNode(PurgeStmt);
+
+	COPY_NODE_FIELD(relation);
+	COPY_SCALAR_FIELD(purge_all);
+
+	return newnode;
+}
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 static CreateTransformStmt *
 _copyCreateTransformStmt(const CreateTransformStmt *from)
@@ -6264,6 +6301,14 @@ copyObjectImpl(const void *from)
 			retval = _copyPriorAexpr(from);
 			break;
 		/* End - ReqID:SRS-SQL-HierarchicalQueries */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case T_FlashbackStmt:
+			retval = _copyFlashbackStmt(from);
+			break;
+		case T_PurgeStmt:
+			retval = _copyPurgeStmt(from);
+			break;
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 		case T_CreateTransformStmt:
 			retval = _copyCreateTransformStmt(from);
 			break;

@@ -316,4 +316,8 @@ extern void shdepReassignOwned(List *relids, Oid newrole);
 
 extern void ivy_check_rowid_seq_depend(Oid seqid, char *seqname); /* BUG#Z1279 */
 
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+extern void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, int flags);
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 #endif							/* DEPENDENCY_H */
