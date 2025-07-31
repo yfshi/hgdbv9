@@ -1696,3 +1696,25 @@ INSERT INTO my_binary_t1 VALUES ('123', '123', '1234', 'abcd', 'ABCD', '', ' ', 
 
 -- should get (0, 0, 0, 0, 1, 0, 0, 0, NULL, NULL)
 select c1 XOR c1, c1 XOR c2, c1 XOR c3, c2 XOR c3, c3 XOR c4, c4 XOR c5, c5 XOR c6, c6 XOR c7, c4 XOR c8, c6 XOR c8 from my_binary_t1;
+
+/* Begin - bug#z5465 */
+RESET sql_mode;
+create table tb_binary(c1 binary(5));
+COPY public.tb_binary (c1) FROM stdin;
+\\x313233
+\.
+COPY public.tb_binary (c1) FROM stdin;
+\\x3132333435
+\.
+select * from tb_binary;
+COPY public.tb_binary (c1) FROM stdin;
+\\x313233343536
+\.
+select * from tb_binary;
+SET sql_mode='';
+COPY public.tb_binary (c1) FROM stdin;
+\\x313233343536
+\.
+select * from tb_binary;
+RESET sql_mode;
+/* End - bug#z5465 */

@@ -2020,4 +2020,39 @@ WARNING:  Truncated incorrect INTEGER value: 'q1w2'
 (4 rows)
 
 drop table tb_varbinary;
-/* Begin - bug#z5411 */
+/* End - bug#z5411 */
+/* Begin - bug#z5465 */
+RESET sql_mode;
+create table tb_varbinary(c1 varbinary(5));
+COPY public.tb_varbinary (c1) FROM stdin;
+COPY public.tb_varbinary (c1) FROM stdin;
+select * from tb_varbinary;
+  c1   
+-------
+ 123
+ 12345
+(2 rows)
+
+COPY public.tb_varbinary (c1) FROM stdin;
+ERROR:  value too long for type varbinary(5)
+CONTEXT:  COPY tb_varbinary, line 1, column c1: "\x313233343536"
+select * from tb_varbinary;
+  c1   
+-------
+ 123
+ 12345
+(2 rows)
+
+SET sql_mode='';
+COPY public.tb_varbinary (c1) FROM stdin;
+WARNING:  value too long for type varbinary(5)
+select * from tb_varbinary;
+  c1   
+-------
+ 123
+ 12345
+ 12345
+(3 rows)
+
+RESET sql_mode;
+/* End - bug#z5465 */

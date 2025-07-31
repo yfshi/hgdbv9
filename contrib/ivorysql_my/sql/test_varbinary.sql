@@ -1724,4 +1724,26 @@ insert into tb_varbinary values('1234'), ('abcd'), ('1q2w'), ('q1w2');
 select cast(c1 as unsigned) from tb_varbinary;
 select convert(c1, unsigned) from tb_varbinary;
 drop table tb_varbinary;
-/* Begin - bug#z5411 */
+/* End - bug#z5411 */
+
+/* Begin - bug#z5465 */
+RESET sql_mode;
+create table tb_varbinary(c1 varbinary(5));
+COPY public.tb_varbinary (c1) FROM stdin;
+\\x313233
+\.
+COPY public.tb_varbinary (c1) FROM stdin;
+\\x3132333435
+\.
+select * from tb_varbinary;
+COPY public.tb_varbinary (c1) FROM stdin;
+\\x313233343536
+\.
+select * from tb_varbinary;
+SET sql_mode='';
+COPY public.tb_varbinary (c1) FROM stdin;
+\\x313233343536
+\.
+select * from tb_varbinary;
+RESET sql_mode;
+/* End - bug#z5465 */
