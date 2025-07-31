@@ -1552,6 +1552,14 @@ typedef struct ScanState
 	Relation	ss_currentRelation;
 	struct TableScanDescData *ss_currentScanDesc;
 	TupleTableSlot *ss_ScanTupleSlot;
+
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	ExprState  *asofExpr;	      /* AS OF expression */
+
+	/* Cache the flashback snapshot during a single scan. */
+	bool        flashback_snapshot_set;
+	Snapshot	flashback_snapshot;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 } ScanState;
 
 /* ----------------

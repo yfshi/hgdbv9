@@ -3560,6 +3560,9 @@ _outRangeTblEntry(StringInfo str, const RangeTblEntry *node)
 	WRITE_BITMAPSET_FIELD(updatedCols);
 	WRITE_BITMAPSET_FIELD(extraUpdatedCols);
 	WRITE_NODE_FIELD(securityQuals);
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	WRITE_NODE_FIELD(asofTimestamp);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 }
 
 static void

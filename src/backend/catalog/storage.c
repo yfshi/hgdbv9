@@ -1284,3 +1284,27 @@ GTTInPendingDeletes(Relation rel, bool isCommit)
 
 	return false;
 }
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+/*
+ * FilenodeAppendIntoPendingList
+ * Schedule unlinking of physical storage at transaction commit.
+ */
+void
+FilenodeAppendIntoPendingList(RelFileNode *rnode)
+{
+	PendingRelDelete *pending;
+
+	/* Add the filenode to delete at commit */
+	pending = (PendingRelDelete *)
+		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDelete));
+	pending->relnode = *rnode;
+	pending->backend = InvalidBackendId;
+	pending->temprelOid = InvalidOid;
+	pending->atCommit = true;	/* delete if commit */
+	pending->setlog = false;
+	pending->nestLevel = GetCurrentTransactionNestLevel();
+	pending->next = pendingDeletes;
+	pendingDeletes = pending;
+}
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */

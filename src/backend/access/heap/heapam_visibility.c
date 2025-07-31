@@ -908,6 +908,20 @@ HeapTupleSatisfiesMVCC(HeapTuple htup, Snapshot snapshot,
 					   Buffer buffer)
 {
 	HeapTupleHeader tuple = htup->t_data;
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	static void (*SetHintBits_function_ptr)(HeapTupleHeader, Buffer, uint16, TransactionId) = SetHintBits;
+	bool snapReadOnly = (snapshot->snapshot_type == SNAPSHOT_FLASHBACK_MVCC ||
+						snapshot->snapshot_type == SNAPSHOT_DELTA ||
+						snapshot->snapshot_type == SNAPSHOT_LOST);
+
+#define SetHintBits(tuple, buffer, infomask, xid) \
+	do { \
+		if (!snapReadOnly) \
+			SetHintBits_function_ptr(tuple, buffer, infomask, xid); \
+	   } while(0)
+
+	
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	Assert(ItemPointerIsValid(&htup->t_self));
 	Assert(htup->t_tableOid != InvalidOid);
@@ -1087,6 +1101,10 @@ HeapTupleSatisfiesMVCC(HeapTuple htup, Snapshot snapshot,
 	}
 
 	/* xmax transaction committed */
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+#undef SetHintBits
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	return false;
 }
@@ -1700,6 +1718,37 @@ HeapTupleSatisfiesHistoricMVCC(HeapTuple htup, Snapshot snapshot,
 		return true;
 }
 
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+/*
+ * HeapTupleSatisfiesDelta
+ *
+ * Used for `FLASHBACK TABLE TO TIMESTAMP expr` stmt.
+ * Tuple is visiable if inserted after `snapshot` until TransactionSnapshot.
+ */
+static bool
+HeapTupleSatisfiesDelta(HeapTuple htup, Snapshot snapshot,
+						Buffer buffer)
+{
+	return (!HeapTupleSatisfiesMVCC(htup, snapshot, buffer) && 
+		HeapTupleSatisfiesMVCC(htup, GetTransactionSnapshot(), buffer));
+}
+
+/*
+ * HeapTupleSatisfiesLost
+ *
+ * Used for `FLASHBACK TABLE TO TIMESTAMP expr` stmt.
+ * Tuple is visiable if inserted before `snapshot` and deleted after `snapshot` 
+ * until TransactionSnapshot.
+ */
+static bool
+HeapTupleSatisfiesLost(HeapTuple htup, Snapshot snapshot,
+						Buffer buffer)
+{
+	return (HeapTupleSatisfiesMVCC(htup, snapshot, buffer) && 
+		!HeapTupleSatisfiesMVCC(htup, GetTransactionSnapshot(), buffer));
+}
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+
 /*
  * HeapTupleSatisfiesVisibility
  *		True iff heap tuple satisfies a time qual.
@@ -1716,6 +1765,9 @@ HeapTupleSatisfiesVisibility(HeapTuple tup, Snapshot snapshot, Buffer buffer)
 	switch (snapshot->snapshot_type)
 	{
 		case SNAPSHOT_MVCC:
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case SNAPSHOT_FLASHBACK_MVCC:
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 			return HeapTupleSatisfiesMVCC(tup, snapshot, buffer);
 			break;
 		case SNAPSHOT_SELF:
@@ -1736,6 +1788,14 @@ HeapTupleSatisfiesVisibility(HeapTuple tup, Snapshot snapshot, Buffer buffer)
 		case SNAPSHOT_NON_VACUUMABLE:
 			return HeapTupleSatisfiesNonVacuumable(tup, snapshot, buffer);
 			break;
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case SNAPSHOT_DELTA:
+			return HeapTupleSatisfiesDelta(tup, snapshot, buffer);
+			break;
+		case SNAPSHOT_LOST:
+			return HeapTupleSatisfiesLost(tup, snapshot, buffer);
+			break;
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	}
 
 	return false;				/* keep compiler quiet */

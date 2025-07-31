@@ -807,6 +807,11 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			cur_token_length = 8;
 			break;
 		/* End - ReqID:SRS-SQL-DBLINK */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case AS:
+			cur_token_length = 2;
+			break;
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 		default:
 			return cur_token;
 	}
@@ -1018,6 +1023,12 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			}
 			break;
 		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case AS:
+			if (next_token == OF)
+				cur_token = AS_LA;
+			break;
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	}
 
 	return cur_token;

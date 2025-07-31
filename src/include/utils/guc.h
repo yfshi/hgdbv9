@@ -465,6 +465,7 @@ extern PGDLLIMPORT bool enable_strict_view_def; /* OA-REQ-1558 */
 /* Begin - OA#00001554 */
 extern PGDLLIMPORT bool enable_compatible_type_shippable;
 /* End - OA#00001554 */
+extern bool enable_flashback_recycle_bin;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 
 /* Begin - RSR-SQL-Partition-interval */
 extern PGDLLIMPORT int max_interval_partition_failures;

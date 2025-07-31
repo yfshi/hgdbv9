@@ -1725,6 +1725,9 @@ _readRangeTblEntry(void)
 	READ_BITMAPSET_FIELD(updatedCols);
 	READ_BITMAPSET_FIELD(extraUpdatedCols);
 	READ_NODE_FIELD(securityQuals);
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	READ_NODE_FIELD(asofTimestamp);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	READ_DONE();
 }

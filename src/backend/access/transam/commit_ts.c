@@ -36,6 +36,10 @@
 #include "utils/builtins.h"
 #include "utils/snapmgr.h"
 #include "utils/timestamp.h"
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+#include "storage/procarray.h"
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 
 /*
  * Defines for CommitTs page sizes.  A page is the same BLCKSZ as is used
@@ -1030,3 +1034,130 @@ committssyncfiletag(const FileTag *ftag, char *path)
 {
 	return SlruSyncFileTag(CommitTsCtl, ftag, path);
 }
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+/*
+ * Fetch xid by time from commit_ts files.
+ */
+bool
+TimestampGetTransactinIds(TimestampTz ts, TransactionId *xmin, 
+						TransactionId *xmax, List **active_xlist)
+{
+	TransactionId oldestCommitTsXid;
+	TransactionId newestCommitTsXid;
+	TransactionId iter_xid;
+	TimestampTz	iter_ts;
+
+	LWLockAcquire(CommitTsLock, LW_SHARED);
+
+	/* Error if module not enabled */
+	if (!commitTsShared->commitTsActive)
+		error_commit_ts_disabled();
+
+	oldestCommitTsXid = ShmemVariableCache->oldestCommitTsXid;
+	newestCommitTsXid = ShmemVariableCache->newestCommitTsXid;
+
+	/* 
+	 * 1. Search sequentially according to the order of XIDs, 
+	 * the first uncommitted transaction is the xmin. 
+	 */
+	*xmin = InvalidTransactionId;
+	iter_xid = oldestCommitTsXid;
+	while (TransactionIdPrecedesOrEquals(iter_xid, newestCommitTsXid))
+	{
+		if (TransactionIdGetCommitTsData(iter_xid, &iter_ts, NULL))
+		{
+			if (timestamptz_cmp_internal(iter_ts, ts) > 0)
+			{
+				if (iter_xid == oldestCommitTsXid)
+				{
+					/* If the timestamp is earlier than the commit time of the 
+					 * oldest transaction, it means that the commit_ts of target 
+					 * transaction has already been cleaned up. */
+					elog(ERROR, "could not get commit timestamp data earlier than oldestCommitTsXid.");
+				}
+				
+				if (!TransactionIdIsValid(*xmin))
+				{
+					*xmin = iter_xid;
+					break;
+				}	
+			}
+		}
+		TransactionIdAdvance(iter_xid);
+	}
+	/*
+	 * If all transactions at the specified timestamp have already been committed, 
+	 * then xmin is set to the next XID after the last committed transaction.
+	 */
+	if (!TransactionIdIsValid(*xmin))
+	{
+		*xmin = newestCommitTsXid;
+		TransactionIdAdvance(*xmin);
+	}
+
+	/*
+	 * 2. Search in reverse order of XIDs, the next transaction 
+	 * after the last committed transaction is the xmax.
+	 */
+	*xmax = InvalidTransactionId;
+	iter_xid = XidFromFullTransactionId(ShmemVariableCache->nextXid);
+	while (TransactionIdPrecedesOrEquals(oldestCommitTsXid, iter_xid))
+	{
+		if (TransactionIdGetCommitTsData(iter_xid, &iter_ts, NULL))
+		{
+			if (timestamptz_cmp_internal(iter_ts, ts) > 0)
+			{
+				*xmax = iter_xid;
+			}
+			else
+			{
+				/* Already setted the xmax in the previous iteration. */
+				break;
+			}
+		}
+		iter_xid--; 
+		if (iter_xid < FirstNormalTransactionId) 
+			iter_xid = FirstNormalTransactionId; 
+	}
+	/*
+	 * If all transactions at the specified timestamp have already been committed, 
+	 * then xmax is set to the next unassigned XID.
+	 */
+	if (!TransactionIdIsValid(*xmax))
+	{
+		*xmax = XidFromFullTransactionId(ShmemVariableCache->nextXid);
+	}
+
+	if (TransactionIdPrecedes(*xmax, *xmin))
+		ereport(ERROR,
+				errcode(ERRCODE_SNAPSHOT_TOO_OLD),
+				errmsg_internal("failed to retrieve the historical snapshot."),
+				errdetail_internal("This may be due to the snapshot being too old "
+					"or the parameter track_commit_timestamp not being enabled during that period."));
+
+	/* 3. Record the active XIDs between xmin and xmax. */
+	iter_xid = *xmin;
+	while (TransactionIdPrecedes(iter_xid, *xmax))
+	{
+		if (TransactionIdGetCommitTsData(iter_xid, &iter_ts, NULL))
+		{
+			if (timestamptz_cmp_internal(iter_ts, ts) > 0)
+			{
+				*active_xlist = lappend_int(*active_xlist, iter_xid);
+			}
+		}
+		TransactionIdAdvance(iter_xid);
+	}
+
+	LWLockRelease(CommitTsLock);
+
+	if (!TransactionIdIsValid(*xmin) ||
+		!TransactionIdIsValid(*xmax) ||
+		TransactionIdPrecedes(*xmax, *xmin) ||
+		list_length(*active_xlist) > GetMaxSnapshotXidCount())
+		return false;
+	else 
+		return true;
+}
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */

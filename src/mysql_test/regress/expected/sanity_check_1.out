@@ -142,6 +142,7 @@ pg_proc|t
 pg_publication|t
 pg_publication_rel|t
 pg_range|t
+pg_recyclebin|t
 pg_replication_origin|t
 pg_resgroup|t
 pg_resgroupcapability|t

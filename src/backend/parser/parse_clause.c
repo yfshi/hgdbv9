@@ -663,7 +663,25 @@ static ParseNamespaceItem *
 transformTableEntry(ParseState *pstate, RangeVar *r)
 {
 	/* addRangeTableEntry does all the work */
-	return addRangeTableEntry(pstate, r, r->alias, r->inh, true);
+	ParseNamespaceItem *nsitem = addRangeTableEntry(pstate, r, r->alias, r->inh, true);
+
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	if (nsitem->p_rte->asofTimestamp)
+	{
+		Relation rel;
+		Node* asof;
+
+		rel = table_openrv(r, NoLock);
+		if (rel->rd_rel->relkind != RELKIND_RELATION ||
+			rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT)
+			elog(ERROR, "Flashback only support simple table");
+		table_close(rel, NoLock);
+		asof = transformExpr(pstate, r->asofTimestamp, EXPR_KIND_ASOF);
+		nsitem->p_rte->asofTimestamp = coerce_to_specific_type(pstate, asof, TIMESTAMPTZOID, "AS OF");
+	}
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
+	return nsitem;
 }
 
 /*

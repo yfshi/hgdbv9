@@ -41,6 +41,9 @@
 #include "utils/ora_compatible.h"
 #include "nodes/parsenodes.h"
 /* End - ReqID:SRS-MYSQL-UPDATE */
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+#include "parser/parsetree.h"
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 
 /* XXX see PartCollMatchesExprColl */
@@ -912,6 +915,9 @@ build_index_paths(PlannerInfo *root, RelOptInfo *rel,
 	bool		index_is_ordered;
 	bool		index_only_scan;
 	int			indexcol;
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	RangeTblEntry *rte;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/*
 	 * Check that index supports the desired scan type(s)
@@ -1057,8 +1063,12 @@ build_index_paths(PlannerInfo *root, RelOptInfo *rel,
 	 * plain indexscans, this isn't relevant since bitmap scans don't support
 	 * index data retrieval anyway.
 	 */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	rte = planner_rt_fetch(rel->relid, root);
 	index_only_scan = (scantype != ST_BITMAPSCAN &&
+					   rte->asofTimestamp == NULL &&
 					   check_index_only(rel, index));
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/*
 	 * 4. Generate an indexscan path if there are relevant restriction clauses

@@ -235,6 +235,7 @@ bool enable_compatible_type_shippable = true;
 int		max_interval_partition_failures = 10;
 /* End - RSR-SQL-Partition-interval */
 
+bool enable_flashback_recycle_bin = false; /* ReqID:SRS-RECOVERY-FLASHBACK */
 
 #endif
 
@@ -946,6 +947,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - OA#00001554 */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	{
+		{"ivorysql.enable_recycle_bin", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Whether to enable the flashback feature for DROP/TRUNCATE operations."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&enable_flashback_recycle_bin,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 #endif
 #if 0
 	/* End-of-list marker */

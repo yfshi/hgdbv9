@@ -247,6 +247,10 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_SecLabelStmt:
 		case T_TruncateStmt:
 		case T_ViewStmt:
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case T_FlashbackStmt:
+		case T_PurgeStmt:
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 			{
 				/* DDL is not read-only, and neither is TRUNCATE. */
 				return COMMAND_IS_NOT_READ_ONLY;
@@ -1124,6 +1128,25 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 					ExecSecLabelStmt(stmt);
 				break;
 			}
+
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case T_FlashbackStmt:
+			{
+				FlashbackStmt *fbstmt;
+				/* Run parse analysis ... */
+				fbstmt = transformFlashbackStmt((FlashbackStmt *) parsetree,
+													queryString);
+				ExecuteFlashback(fbstmt);
+			}
+			break;
+		
+		case T_PurgeStmt:
+			{
+				PurgeStmt *prstmt = (PurgeStmt *) parsetree;
+				ExecutePurge(prstmt);
+			}
+			break;
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 		default:
 			/* All other statement types have event trigger support */
@@ -3427,6 +3450,14 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_DROP_DATABASE_LINK;
 			break;
 		/* End - ReqID:SRS-SQL-DBLINK */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case T_FlashbackStmt:
+			tag = CMDTAG_FLASHBACK;
+			break;
+		case T_PurgeStmt:
+			tag = CMDTAG_PURGE;
+			break;
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 		default:
 			elog(WARNING, "unrecognized node type: %d",

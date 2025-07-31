@@ -2666,6 +2666,11 @@ range_table_entry_walker(RangeTblEntry *rte,
 	if (walker(rte->securityQuals, context))
 		return true;
 
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	if (walker(rte->asofTimestamp, context))
+		return true;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 	if (flags & QTW_EXAMINE_RTES_AFTER)
 		if (walker(rte, context))
 			return true;
@@ -3613,6 +3618,9 @@ range_table_mutator(List *rtable,
 				break;
 		}
 		MUTATE(newrte->securityQuals, rte->securityQuals, List *);
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		MUTATE(newrte->asofTimestamp, rte->asofTimestamp, Node *);
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 		newrt = lappend(newrt, newrte);
 	}
 	return newrt;

@@ -2038,6 +2038,9 @@ addRangeTableEntry(ParseState *pstate,
 
 	rte->rtekind = RTE_RELATION;
 	rte->alias = alias;
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	rte->asofTimestamp = relation->asofTimestamp;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/*
 	 * Identify the type of lock we'll need on this relation.  It's not the

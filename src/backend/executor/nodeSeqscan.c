@@ -33,6 +33,8 @@
 #include "executor/nodeSeqscan.h"
 #include "utils/rel.h"
 
+#include "utils/snapmgr.h"
+
 static TupleTableSlot *SeqNext(SeqScanState *node);
 
 /* ----------------------------------------------------------------
@@ -62,6 +64,10 @@ SeqNext(SeqScanState *node)
 	direction = estate->es_direction;
 	slot = node->ss.ss_ScanTupleSlot;
 
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	ExecAsofTimestamp(&node->ss);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 	if (scandesc == NULL)
 	{
 		/*
@@ -69,7 +75,11 @@ SeqNext(SeqScanState *node)
 		 * executing a scan that was planned to be parallel.
 		 */
 		scandesc = table_beginscan(node->ss.ss_currentRelation,
+								/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+								   node->ss.flashback_snapshot ?
+								   node->ss.flashback_snapshot :
 								   estate->es_snapshot,
+								/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 								   0, NULL);
 		node->ss.ss_currentScanDesc = scandesc;
 	}
@@ -171,6 +181,23 @@ ExecInitSeqScan(SeqScan *node, EState *estate, int eflags)
 	scanstate->ss.ps.qual =
 		ExecInitQual(node->plan.qual, (PlanState *) scanstate);
 
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	/*
+	 * Initlialize AS OF expression of any
+	 */
+	if (node->asof_expr)
+	{
+		scanstate->ss.asofExpr = ExecInitExpr((Expr *) node->asof_expr,
+											&scanstate->ss.ps);
+		scanstate->ss.flashback_snapshot_set = false;
+	}
+	else
+	{
+		scanstate->ss.asofExpr = NULL;
+	}
+	scanstate->ss.flashback_snapshot = InvalidSnapshot;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 	return scanstate;
 }
 
@@ -227,6 +254,10 @@ ExecReScanSeqScan(SeqScanState *node)
 
 	scan = node->ss.ss_currentScanDesc;
 
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	node->ss.flashback_snapshot_set = false;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 	if (scan != NULL)
 		table_rescan(scan,		/* scan desc */
 					 NULL);		/* new scan keys */
@@ -253,7 +284,11 @@ ExecSeqScanEstimate(SeqScanState *node,
 	EState	   *estate = node->ss.ps.state;
 
 	node->pscan_len = table_parallelscan_estimate(node->ss.ss_currentRelation,
+												/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+												  node->ss.flashback_snapshot ?
+												  node->ss.flashback_snapshot :
 												  estate->es_snapshot);
+												/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	shm_toc_estimate_chunk(&pcxt->estimator, node->pscan_len);
 	shm_toc_estimate_keys(&pcxt->estimator, 1);
 }
@@ -270,11 +305,26 @@ ExecSeqScanInitializeDSM(SeqScanState *node,
 {
 	EState	   *estate = node->ss.ps.state;
 	ParallelTableScanDesc pscan;
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	Scan* scan = (Scan*)node->ss.ps.plan;
+
+	if (scan->asof_expr)
+	{
+		node->ss.asofExpr = ExecInitExpr((Expr *) scan->asof_expr,
+										 &node->ss.ps);
+		node->ss.flashback_snapshot_set = false;
+		ExecAsofTimestamp(&node->ss);
+	}
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	pscan = shm_toc_allocate(pcxt->toc, node->pscan_len);
 	table_parallelscan_initialize(node->ss.ss_currentRelation,
 								  pscan,
+								/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+								  node->ss.flashback_snapshot ?
+								  node->ss.flashback_snapshot :
 								  estate->es_snapshot);
+								/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	shm_toc_insert(pcxt->toc, node->ss.ps.plan->plan_node_id, pscan);
 	node->ss.ss_currentScanDesc =
 		table_beginscan_parallel(node->ss.ss_currentRelation, pscan);
@@ -291,6 +341,10 @@ ExecSeqScanReInitializeDSM(SeqScanState *node,
 						   ParallelContext *pcxt)
 {
 	ParallelTableScanDesc pscan;
+
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	ExecAsofTimestamp(&node->ss);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	pscan = node->ss.ss_currentScanDesc->rs_parallel;
 	table_parallelscan_reinitialize(node->ss.ss_currentRelation, pscan);

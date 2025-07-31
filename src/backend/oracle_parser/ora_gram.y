@@ -696,6 +696,12 @@ static bool isAconstNode(Node *node);
 %type <boolean> opt_nocycle
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
 
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+%type <node> opt_asof_clause FlashbackStmt
+%type <str> opt_flashback_rename
+%type <node> PurgeStmt
+%type <boolean> opt_purge
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
@@ -728,7 +734,9 @@ static bool isAconstNode(Node *node);
 %token			QUESTION_MARK;
 /* End - BUG#M0000201: support question marks as binding variables */
 %token			OUTER_JOIN	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+%token			AS_LA
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /*
  * If you want to make any keyword changes, update the keyword table in
@@ -772,7 +780,8 @@ static bool isAconstNode(Node *node);
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION EXTEND	/* ReqID:SRS-SQL-SEQ */
 	EXTENSION EXTERNAL
 
-	FALSE_P FAMILY FETCH FILENAME /* ReqID:SRS-MISC-BULKLOAD */ FILTER FINALIZE FIRST_P FLOAT_P FOLLOWING FOR
+	FALSE_P FAMILY FETCH FILENAME /* ReqID:SRS-MISC-BULKLOAD */ FILTER FINALIZE FIRST_P 
+	FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */ FLOAT_P FOLLOWING FOR
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
 
 	GENERATED GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
@@ -813,7 +822,8 @@ static bool isAconstNode(Node *node);
 
 	QUOTE QUOTES /* BUG#M0000414 */
 
-	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
+	RANGE READ REAL REASSIGN RECHECK RECURSIVE RECYCLEBIN /* ReqID:SRS-RECOVERY-FLASHBACK */
+	REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWID ROWNUM /* ReqID:SRS-SQL-ROWNUM */ ROWS ROWTYPE /* ReqID:SRS-PLSQL-TYPE */ RULE
@@ -1273,6 +1283,7 @@ stmt:
 			| ExecuteStmt
 			| ExplainStmt
 			| FetchStmt
+			| FlashbackStmt	/* ReqID:SRS-RECOVERY-FLASHBACK */
 			| GrantStmt
 			| GrantRoleStmt
 			| ImportForeignSchemaStmt
@@ -1313,6 +1324,9 @@ stmt:
 			/* Begin - BUG#M0000201: support question marks as binding variables */
 			| jdbc_call_function
 			/* End - BUG#M0000201: support question marks as binding variables */
+			/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+			| PurgeStmt
+			/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 			| /*EMPTY*/
 				{ $$ = NULL; }
 		;
@@ -3211,12 +3225,16 @@ alter_column_default:
 opt_drop_behavior:
 			CASCADE						{ $$ = DROP_CASCADE; }
 			| RESTRICT					{ $$ = DROP_RESTRICT; }
-			/* Begin - BUG:M0000118 */
-			| PURGE						{ $$ = DROP_RESTRICT; }
-			| CASCADE PURGE				{ $$ = DROP_CASCADE; }
-			/* End - BUG:M0000118 */
 			| /* EMPTY */				{ $$ = DROP_RESTRICT; /* default */ }
 		;
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+opt_purge:
+			PURGE						{ $$ = true; }
+			| /* EMPTY */				{ $$ = false; }
+		;
+
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 opt_collate_clause:
 			COLLATE any_name
@@ -3999,6 +4017,73 @@ default_collation_option:
 			{ 
 				$$ = NULL;
 			}
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+/*****************************************************************************
+ *
+ *      FLASHBACK :
+ *          FLASHBACK TABLE { table_name } TO TIMESTAMP expression
+ *          FLASHBACK TABLE { table_name } TO BEFORE DROP [RENAME TO new_tablename]
+ *          FLASHBACK TABLE { table_name } TO BEFORE TRUNCATE
+ *
+ *****************************************************************************/
+ 
+FlashbackStmt:
+		FLASHBACK TABLE qualified_name TO TIMESTAMP a_expr 
+			{
+				FlashbackStmt *n = makeNode(FlashbackStmt);
+				n->relation = $3;
+				n->kind = FLASHBACK_TIMEPOINT;
+				n->timepoint = $6;
+				$$ = (Node *) n;
+			}
+		| FLASHBACK TABLE qualified_name TO BEFORE DROP opt_flashback_rename
+			{
+				FlashbackStmt *n = makeNode(FlashbackStmt);
+				n->relation = $3;
+				n->kind = FLASHBACK_DROP;
+				n->new_relname = $7;
+				$$ = (Node *) n;
+			}
+		| FLASHBACK TABLE qualified_name TO BEFORE TRUNCATE
+			{
+				FlashbackStmt *n = makeNode(FlashbackStmt);
+				n->relation = $3;
+				n->kind = FLASHBACK_TRUNCATE;
+				$$ = (Node *) n;
+			}
+		;
+
+opt_flashback_rename:
+		RENAME TO name					{ $$ = $3; }
+		| /* EMPTY */					{ $$ = NULL; }
+	;
+
+/*****************************************************************************
+ *
+ *      PURGE :
+ *          PURGE TABLE { table_name } 
+ *          PURGE RECYCLEBIN
+ *
+ *****************************************************************************/
+PurgeStmt:
+		PURGE TABLE qualified_name
+			{
+				PurgeStmt *n = makeNode(PurgeStmt);
+				n->relation = $3;
+				n->purge_all = false;
+				$$ = (Node *) n;
+			}
+		| PURGE RECYCLEBIN
+			{
+				PurgeStmt *n = makeNode(PurgeStmt);
+				n->relation = NULL;
+				n->purge_all = true;
+				$$ = (Node *) n;
+			}
+		;
+
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /*****************************************************************************
  *
@@ -7619,7 +7704,7 @@ opclass_drop:
 
 
 DropOpClassStmt:
-			DROP OPERATOR CLASS any_name USING name opt_drop_behavior
+			DROP OPERATOR CLASS any_name USING name opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->objects = list_make1(lcons(makeString($6), $4));
@@ -7627,9 +7712,10 @@ DropOpClassStmt:
 					n->behavior = $7;
 					n->missing_ok = false;
 					n->concurrent = false;
+					n->is_purge = $8;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
-			| DROP OPERATOR CLASS IF_P EXISTS any_name USING name opt_drop_behavior
+			| DROP OPERATOR CLASS IF_P EXISTS any_name USING name opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->objects = list_make1(lcons(makeString($8), $6));
@@ -7637,12 +7723,13 @@ DropOpClassStmt:
 					n->behavior = $9;
 					n->missing_ok = true;
 					n->concurrent = false;
+					n->is_purge = $10;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
 		;
 
 DropOpFamilyStmt:
-			DROP OPERATOR FAMILY any_name USING name opt_drop_behavior
+			DROP OPERATOR FAMILY any_name USING name opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->objects = list_make1(lcons(makeString($6), $4));
@@ -7650,9 +7737,10 @@ DropOpFamilyStmt:
 					n->behavior = $7;
 					n->missing_ok = false;
 					n->concurrent = false;
+					n->is_purge = $8;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
-			| DROP OPERATOR FAMILY IF_P EXISTS any_name USING name opt_drop_behavior
+			| DROP OPERATOR FAMILY IF_P EXISTS any_name USING name opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->objects = list_make1(lcons(makeString($8), $6));
@@ -7660,6 +7748,7 @@ DropOpFamilyStmt:
 					n->behavior = $9;
 					n->missing_ok = true;
 					n->concurrent = false;
+					n->is_purge = $10;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
 		;
@@ -7702,7 +7791,7 @@ ReassignOwnedStmt:
  *
  *****************************************************************************/
 
-DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
+DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = $2;
@@ -7710,9 +7799,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $5;
 					n->behavior = $6;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP object_type_any_name any_name_list opt_drop_behavior
+			| DROP object_type_any_name any_name_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = $2;
@@ -7720,9 +7810,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $3;
 					n->behavior = $4;
 					n->concurrent = false;
+					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP drop_type_name IF_P EXISTS name_list opt_drop_behavior
+			| DROP drop_type_name IF_P EXISTS name_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = $2;
@@ -7730,9 +7821,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $5;
 					n->behavior = $6;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP drop_type_name name_list opt_drop_behavior
+			| DROP drop_type_name name_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = $2;
@@ -7740,10 +7832,11 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $3;
 					n->behavior = $4;
 					n->concurrent = false;
+					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
 			/* Begin - SRS-SQL-DBLINK */
-			| DROP FOREIGN TEMP TABLE ColId Op ColId opt_drop_behavior
+			| DROP FOREIGN TEMP TABLE ColId Op ColId opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					char    *lnktbname = NULL;
@@ -7762,11 +7855,12 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = lappend(n->objects, list_make1(makeString(lnktbname)));
 					n->behavior = $8;
 					n->concurrent = false;
+					n->is_purge = $9;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
 			/* End - SRS-SQL-DBLINK */
 			/* Begin - ReqID:SRS-SQL-PACKAGE  */
-			| DROP package_type IF_P EXISTS package_names_list opt_drop_behavior
+			| DROP package_type IF_P EXISTS package_names_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = $2;
@@ -7774,9 +7868,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $5;
 					n->behavior = $6;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP package_type package_names_list opt_drop_behavior
+			| DROP package_type package_names_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = $2;
@@ -7784,10 +7879,11 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $3;
 					n->behavior = $4;
 					n->concurrent = false;
+					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
 			/* End - ReqID:SRS-SQL-PACKAGE  */
-			| DROP object_type_name_on_any_name name ON any_name opt_drop_behavior
+			| DROP object_type_name_on_any_name name ON any_name opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = $2;
@@ -7795,9 +7891,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->behavior = $6;
 					n->missing_ok = false;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
-			| DROP object_type_name_on_any_name IF_P EXISTS name ON any_name opt_drop_behavior
+			| DROP object_type_name_on_any_name IF_P EXISTS name ON any_name opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = $2;
@@ -7805,9 +7902,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->behavior = $8;
 					n->missing_ok = true;
 					n->concurrent = false;
+					n->is_purge = $9;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
-			| DROP TYPE_P type_name_list opt_drop_behavior
+			| DROP TYPE_P type_name_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_TYPE;
@@ -7815,9 +7913,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $3;
 					n->behavior = $4;
 					n->concurrent = false;
+					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
-			| DROP TYPE_P IF_P EXISTS type_name_list opt_drop_behavior
+			| DROP TYPE_P IF_P EXISTS type_name_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_TYPE;
@@ -7825,9 +7924,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $5;
 					n->behavior = $6;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
-			| DROP DOMAIN_P type_name_list opt_drop_behavior
+			| DROP DOMAIN_P type_name_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_DOMAIN;
@@ -7835,9 +7935,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $3;
 					n->behavior = $4;
 					n->concurrent = false;
+					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
-			| DROP DOMAIN_P IF_P EXISTS type_name_list opt_drop_behavior
+			| DROP DOMAIN_P IF_P EXISTS type_name_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_DOMAIN;
@@ -7845,9 +7946,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $5;
 					n->behavior = $6;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
-			| DROP INDEX CONCURRENTLY any_name_list opt_drop_behavior
+			| DROP INDEX CONCURRENTLY any_name_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_INDEX;
@@ -7855,9 +7957,10 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $4;
 					n->behavior = $5;
 					n->concurrent = true;
+					n->is_purge = $6;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP INDEX CONCURRENTLY IF_P EXISTS any_name_list opt_drop_behavior
+			| DROP INDEX CONCURRENTLY IF_P EXISTS any_name_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_INDEX;
@@ -7865,6 +7968,7 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->objects = $6;
 					n->behavior = $7;
 					n->concurrent = true;
+					n->is_purge = $8;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
 		;
@@ -10368,7 +10472,7 @@ opt_restrict:
  *****************************************************************************/
 
 RemoveFuncStmt:
-			DROP FUNCTION function_with_argtypes_list opt_drop_behavior
+			DROP FUNCTION function_with_argtypes_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_FUNCTION;
@@ -10376,9 +10480,10 @@ RemoveFuncStmt:
 					n->behavior = $4;
 					n->missing_ok = false;
 					n->concurrent = false;
+					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP FUNCTION IF_P EXISTS function_with_argtypes_list opt_drop_behavior
+			| DROP FUNCTION IF_P EXISTS function_with_argtypes_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_FUNCTION;
@@ -10386,9 +10491,10 @@ RemoveFuncStmt:
 					n->behavior = $6;
 					n->missing_ok = true;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP PROCEDURE function_with_argtypes_list opt_drop_behavior
+			| DROP PROCEDURE function_with_argtypes_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_PROCEDURE;
@@ -10396,9 +10502,10 @@ RemoveFuncStmt:
 					n->behavior = $4;
 					n->missing_ok = false;
 					n->concurrent = false;
+					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP PROCEDURE IF_P EXISTS function_with_argtypes_list opt_drop_behavior
+			| DROP PROCEDURE IF_P EXISTS function_with_argtypes_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_PROCEDURE;
@@ -10406,9 +10513,10 @@ RemoveFuncStmt:
 					n->behavior = $6;
 					n->missing_ok = true;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP ROUTINE function_with_argtypes_list opt_drop_behavior
+			| DROP ROUTINE function_with_argtypes_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_ROUTINE;
@@ -10416,9 +10524,10 @@ RemoveFuncStmt:
 					n->behavior = $4;
 					n->missing_ok = false;
 					n->concurrent = false;
+					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP ROUTINE IF_P EXISTS function_with_argtypes_list opt_drop_behavior
+			| DROP ROUTINE IF_P EXISTS function_with_argtypes_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_ROUTINE;
@@ -10426,12 +10535,13 @@ RemoveFuncStmt:
 					n->behavior = $6;
 					n->missing_ok = true;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
 		;
 
 RemoveAggrStmt:
-			DROP AGGREGATE aggregate_with_argtypes_list opt_drop_behavior
+			DROP AGGREGATE aggregate_with_argtypes_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_AGGREGATE;
@@ -10439,9 +10549,10 @@ RemoveAggrStmt:
 					n->behavior = $4;
 					n->missing_ok = false;
 					n->concurrent = false;
+					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP AGGREGATE IF_P EXISTS aggregate_with_argtypes_list opt_drop_behavior
+			| DROP AGGREGATE IF_P EXISTS aggregate_with_argtypes_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_AGGREGATE;
@@ -10449,12 +10560,13 @@ RemoveAggrStmt:
 					n->behavior = $6;
 					n->missing_ok = true;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
 		;
 
 RemoveOperStmt:
-			DROP OPERATOR operator_with_argtypes_list opt_drop_behavior
+			DROP OPERATOR operator_with_argtypes_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_OPERATOR;
@@ -10462,9 +10574,10 @@ RemoveOperStmt:
 					n->behavior = $4;
 					n->missing_ok = false;
 					n->concurrent = false;
+					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
-			| DROP OPERATOR IF_P EXISTS operator_with_argtypes_list opt_drop_behavior
+			| DROP OPERATOR IF_P EXISTS operator_with_argtypes_list opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_OPERATOR;
@@ -10472,6 +10585,7 @@ RemoveOperStmt:
 					n->behavior = $6;
 					n->missing_ok = true;
 					n->concurrent = false;
+					n->is_purge = $7;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
 		;
@@ -10906,7 +11020,7 @@ cast_context:  AS IMPLICIT_P					{ $$ = COERCION_IMPLICIT; }
 		;
 
 
-DropCastStmt: DROP CAST opt_if_exists '(' Typename AS Typename ')' opt_drop_behavior
+DropCastStmt: DROP CAST opt_if_exists '(' Typename AS Typename ')' opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_CAST;
@@ -10914,6 +11028,7 @@ DropCastStmt: DROP CAST opt_if_exists '(' Typename AS Typename ')' opt_drop_beha
 					n->behavior = $9;
 					n->missing_ok = $3;
 					n->concurrent = false;
+					n->is_purge = $10;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
 		;
@@ -10960,13 +11075,14 @@ transform_element_list: FROM SQL_P WITH FUNCTION function_with_argtypes ',' TO S
 		;
 
 
-DropTransformStmt: DROP TRANSFORM opt_if_exists FOR Typename LANGUAGE name opt_drop_behavior
+DropTransformStmt: DROP TRANSFORM opt_if_exists FOR Typename LANGUAGE name opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_TRANSFORM;
 					n->objects = list_make1(list_make2($5, makeString($7)));
 					n->behavior = $8;
 					n->missing_ok = $3;
+					n->is_purge = $9;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *)n;
 				}
 		;
@@ -14986,9 +15102,15 @@ from_list:
 /*
  * table_ref is where an alias clause can be attached.
  */
-table_ref:	relation_expr opt_alias_clause
+table_ref:	relation_expr opt_alias_clause 
+			/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+			opt_asof_clause
+			/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 				{
 					$1->alias = $2;
+					/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+					$1->asofTimestamp = $3;
+					/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) $1;
 				}
 			| relation_expr opt_alias_clause tablesample_clause
@@ -15113,6 +15235,11 @@ table_ref:	relation_expr opt_alias_clause
 				}
 		;
 
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+opt_asof_clause: AS_LA OF a_expr                    { $$ = $3; }
+			| /*EMPTY*/								{ $$ = NULL; }
+		;
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /*
  * It may seem silly to separate joined_table from table_ref, but there is
@@ -20586,6 +20713,7 @@ unreserved_keyword:
 			| FILTER
 			| FINALIZE
 			| FIRST_P
+			| FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */
 			| FOLLOWING
 			| FORCE
 			| FORWARD
@@ -20733,6 +20861,7 @@ unreserved_keyword:
 			| REASSIGN
 			| RECHECK
 			| RECURSIVE
+			| RECYCLEBIN /* ReqID:SRS-RECOVERY-FLASHBACK */
 			| REF_P
 			| REFERENCING
 			| REFRESH
@@ -21252,6 +21381,7 @@ bare_label_keyword:
 			| FILENAME /* ReqID:SRS-MISC-BULKLOAD */
 			| FINALIZE
 			| FIRST_P
+			| FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */
 			| FLOAT_P
 			| FOLLOWING
 			| FORCE
@@ -21445,6 +21575,7 @@ bare_label_keyword:
 			| REASSIGN
 			| RECHECK
 			| RECURSIVE
+			| RECYCLEBIN /* ReqID:SRS-RECOVERY-FLASHBACK */
 			| REF_P
 			| REFERENCES
 			| REFERENCING

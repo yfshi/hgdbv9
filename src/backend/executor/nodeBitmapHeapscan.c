@@ -93,6 +93,9 @@ BitmapHeapNext(BitmapHeapScanState *node)
 	else
 		shared_tbmiterator = node->shared_tbmiterator;
 	tbmres = node->tbmres;
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	ExecAsofTimestamp(&node->ss);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/*
 	 * If we haven't yet performed the underlying index scan, do it, and begin
@@ -603,6 +606,10 @@ ExecReScanBitmapHeapScan(BitmapHeapScanState *node)
 {
 	PlanState  *outerPlan = outerPlanState(node);
 
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	node->ss.flashback_snapshot_set = false;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 	/* rescan to release any page pin */
 	table_rescan(node->ss.ss_currentScanDesc, NULL);
 
@@ -764,7 +771,10 @@ ExecInitBitmapHeapScan(BitmapHeapScan *node, EState *estate, int eflags)
 	 * most cases it's probably not worth working harder than that.
 	 */
 	scanstate->can_skip_fetch = (node->scan.plan.qual == NIL &&
-								 node->scan.plan.targetlist == NIL);
+								 node->scan.plan.targetlist == NIL &&
+								 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+								 node->scan.asof_expr== NULL);
+								 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 #endif
 
 	/*
@@ -805,6 +815,23 @@ ExecInitBitmapHeapScan(BitmapHeapScan *node, EState *estate, int eflags)
 	scanstate->bitmapqualorig =
 		ExecInitQual(node->bitmapqualorig, (PlanState *) scanstate);
 
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+ 	/*
+	 * Initlialize AS OF expression of any
+	 */
+	if (node->scan.asof_expr)
+	{
+		scanstate->ss.asofExpr = ExecInitExpr((Expr *) node->scan.asof_expr,
+										   &scanstate->ss.ps);
+		scanstate->ss.flashback_snapshot_set = false;
+	}
+	else
+	{
+		scanstate->ss.asofExpr = NULL;
+	}
+	scanstate->ss.flashback_snapshot = InvalidSnapshot;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 	/*
 	 * Maximum number of prefetches for the tablespace if configured,
 	 * otherwise the current value of the effective_io_concurrency GUC.
@@ -815,7 +842,11 @@ ExecInitBitmapHeapScan(BitmapHeapScan *node, EState *estate, int eflags)
 	scanstate->ss.ss_currentRelation = currentRelation;
 
 	scanstate->ss.ss_currentScanDesc = table_beginscan_bm(currentRelation,
+														/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+														  scanstate->ss.flashback_snapshot ?
+														  scanstate->ss.flashback_snapshot :
 														  estate->es_snapshot,
+														/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 														  0,
 														  NULL);
 
@@ -875,7 +906,12 @@ ExecBitmapHeapEstimate(BitmapHeapScanState *node,
 
 	node->pscan_len = add_size(offsetof(ParallelBitmapHeapState,
 										phs_snapshot_data),
-							   EstimateSnapshotSpace(estate->es_snapshot));
+							   EstimateSnapshotSpace(
+							/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+								node->ss.flashback_snapshot ?
+								node->ss.flashback_snapshot :
+								estate->es_snapshot));
+							/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	shm_toc_estimate_chunk(&pcxt->estimator, node->pscan_len);
 	shm_toc_estimate_keys(&pcxt->estimator, 1);
@@ -894,10 +930,23 @@ ExecBitmapHeapInitializeDSM(BitmapHeapScanState *node,
 	ParallelBitmapHeapState *pstate;
 	EState	   *estate = node->ss.ps.state;
 	dsa_area   *dsa = node->ss.ps.state->es_query_dsa;
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	Scan* scan = (Scan*)node->ss.ps.plan;
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/* If there's no DSA, there are no workers; initialize nothing. */
 	if (dsa == NULL)
 		return;
+
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	if (scan->asof_expr)
+	{
+		node->ss.asofExpr = ExecInitExpr((Expr *) scan->asof_expr,
+										 &node->ss.ps);
+		node->ss.flashback_snapshot_set = false;
+		ExecAsofTimestamp(&node->ss);
+	}
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	pstate = shm_toc_allocate(pcxt->toc, node->pscan_len);
 
@@ -911,7 +960,13 @@ ExecBitmapHeapInitializeDSM(BitmapHeapScanState *node,
 	pstate->state = BM_INITIAL;
 
 	ConditionVariableInit(&pstate->cv);
-	SerializeSnapshot(estate->es_snapshot, pstate->phs_snapshot_data);
+	SerializeSnapshot(
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		node->ss.flashback_snapshot ?
+		node->ss.flashback_snapshot :
+		estate->es_snapshot, 
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		pstate->phs_snapshot_data);
 
 	shm_toc_insert(pcxt->toc, node->ss.ps.plan->plan_node_id, pstate);
 	node->pstate = pstate;

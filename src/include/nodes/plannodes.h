@@ -364,6 +364,10 @@ typedef struct Scan
 {
 	Plan		plan;
 	Index		scanrelid;		/* relid is index into the range table */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	Node       *asof_expr;  /* for flashback queries */
+	
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 } Scan;
 
 /* ----------------

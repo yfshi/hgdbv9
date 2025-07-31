@@ -586,6 +586,11 @@ check_agglevels_and_constraints(ParseState *pstate, Node *expr)
 			/* okay */
 			break;
 		/* End: Req:SRS-SQL-NLSSORT */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case EXPR_KIND_ASOF:
+			errkind = true;
+			break;
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	}
 
 	if (err)
@@ -993,6 +998,11 @@ transformWindowFuncCall(ParseState *pstate, WindowFunc *wfunc,
 			/* okay */
 			break;
 		/* End: Req:SRS-SQL-NLSSORT */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case EXPR_KIND_ASOF:
+			errkind = true;
+			break;
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	}
 	if (err)
 		ereport(ERROR,

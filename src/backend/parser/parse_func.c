@@ -3237,6 +3237,11 @@ check_srf_call_placement(ParseState *pstate, Node *last_srf, int location)
 		case EXPR_KIND_CYCLE_MARK:
 			errkind = true;
 			break;
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case EXPR_KIND_ASOF:
+			errkind = true;
+			break;
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 			/*
 			 * There is intentionally no default: case here, so that the

@@ -75,4 +75,9 @@ extern void commit_ts_redo(XLogReaderState *record);
 extern void commit_ts_desc(StringInfo buf, XLogReaderState *record);
 extern const char *commit_ts_identify(uint8 info);
 
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+extern bool TimestampGetTransactinIds(TimestampTz ts, TransactionId *xmin, 
+									TransactionId *xmax, List **active_xlist);
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 #endif							/* COMMIT_TS_H */

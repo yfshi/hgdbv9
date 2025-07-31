@@ -47,6 +47,9 @@ extern void PostPrepare_smgr(void);
 /* Begin - BUG:M0000325 */
 extern void RelationDropStorageSetLog(Relation rel);
 /* End - BUG:M0000325 */
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+extern void FilenodeAppendIntoPendingList(RelFileNode *rnode);
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 extern bool GTTInPendingDeletes(Relation rel, bool isCommit);
 
