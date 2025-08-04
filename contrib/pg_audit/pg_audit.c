@@ -5595,69 +5595,16 @@ audit_set_sqlite_path(void)
 		}
 	}
 
-	/* when se_feature.mode is on, there is no permission to update pg_foreign_server */
-	if (se_feature.mode)
+	initStringInfo(&buf);
+	pgstat_report_activity(STATE_RUNNING, buf.data);
+	appendStringInfo(&buf, "update pg_foreign_server set srvoptions='{database=%s}' where srvname = 'sqlite_server'", audit_GUC.audit_sqlitedbpath);
+	ret = SPI_execute(buf.data, false, 0);
+	
+	if (ret != SPI_OK_UPDATE)
 	{
-		char *username;
-		
-		username = GetUserNameFromId(10, true);
-
-		/* switch to syssso and disable se_feature.mode */
-		initStringInfo(&buf);
-		pgstat_report_activity(STATE_RUNNING, buf.data);
-		appendStringInfo(&buf, "set session authorization syssso;");
-		SPI_execute(buf.data, false, 0);
-
-		initStringInfo(&buf);
-        pgstat_report_activity(STATE_RUNNING, buf.data);
-        appendStringInfo(&buf, "alter database %s set se_feature.mode to off;", DatabaseName);
-        SPI_execute(buf.data, false, 0);
-
-		initStringInfo(&buf);
-		pgstat_report_activity(STATE_RUNNING, buf.data);
-		appendStringInfo(&buf, "set se_feature.mode to off");
-		SPI_execute(buf.data, false, 0);
-
-		/* connect to the defalut database update pg_foreign_server */
-		initStringInfo(&buf);
-		pgstat_report_activity(STATE_RUNNING, buf.data);
-		appendStringInfo(&buf, "set session authorization %s;", username);
-		SPI_execute(buf.data, false, 0);
-
-		initStringInfo(&buf);
-		pgstat_report_activity(STATE_RUNNING, buf.data);
-		appendStringInfo(&buf, "update pg_foreign_server set srvoptions='{database=%s}' where srvname = 'sqlite_server'", audit_GUC.audit_sqlitedbpath);
-		SPI_execute(buf.data, false, 0);
-
-		/* switch back to syssso and enable se_feature.mode */
-		initStringInfo(&buf);
-		pgstat_report_activity(STATE_RUNNING, buf.data);
-		appendStringInfo(&buf, "set session authorization syssso;");
-		SPI_execute(buf.data, false, 0);
-
-		initStringInfo(&buf);
-		pgstat_report_activity(STATE_RUNNING, buf.data);
-		appendStringInfo(&buf, "set se_feature.mode to on");
-		SPI_execute(buf.data, false, 0);
-
-		initStringInfo(&buf);
-        pgstat_report_activity(STATE_RUNNING, buf.data);
-        appendStringInfo(&buf, "alter database %s set se_feature.mode to on;", DatabaseName);
-        SPI_execute(buf.data, false, 0);
-	}
-	else
-	{
-		initStringInfo(&buf);
-		pgstat_report_activity(STATE_RUNNING, buf.data);
-		appendStringInfo(&buf, "update pg_foreign_server set srvoptions='{database=%s}' where srvname = 'sqlite_server'", audit_GUC.audit_sqlitedbpath);
-		ret = SPI_execute(buf.data, false, 0);
-		
-		if (ret != SPI_OK_UPDATE)
-		{
-			internalStatement = false;
-			elog(WARNING, "cannot update srvoptions of sqlite_server: error code %d", ret);
-			return;
-		}
+		internalStatement = false;
+		elog(WARNING, "cannot update srvoptions of sqlite_server: error code %d", ret);
+		return;
 	}
 	
 	SPI_finish();
