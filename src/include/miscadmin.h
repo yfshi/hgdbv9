@@ -506,7 +506,9 @@ extern void CancelBackup(void);
 extern size_t get_hash_memory_limit(void);
 extern int	get_hash_mem(void);
 
-extern PGDLLIMPORT int hg_connect_size;		/* BUG#M0000527 */
-extern PGDLLIMPORT int hg_connect_delay;	/* BUG#M0000527 */
+/* Begin - BUG#Z5597 */
+extern PGDLLIMPORT int	hg_pool_size;
+extern PGDLLIMPORT int	hg_pool_timeout;
+/* End - BUG#Z5597 */
 
 #endif							/* MISCADMIN_H */
