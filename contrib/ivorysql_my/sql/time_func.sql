@@ -1100,8 +1100,36 @@ select get_format(DATE, null);
 --error
 select get_format(abc, 'EUR');
 
+/* Begin - BUG#Z5533 */
+SELECT GET_FORMAT(DATE, 'EUR') AS result;
+SELECT GET_FORMAT(DATETIME, 'EUR') AS result;
+SELECT GET_FORMAT(TIME, 'USA') AS result;
+SELECT GET_FORMAT(TIME, 'USA') AS result;
+CREATE TABLE test as SELECT GET_FORMAT(TIME, 'USA') AS result;
+\d+ test;
+DROP TABLE test;
+
+select dayname(101);
+CREATE TABLE test as SELECT dayname(101);
+\d+ test;
+DROP TABLE test;
+
+select monthname(950501);
+CREATE TABLE test as SELECT monthname(950501);
+\d+ test;
+DROP TABLE test;
+/* End - BUG#Z5533 */
+
+
 /* Begin - bug#z5367 */
 select timestampadd(month, 1, '2019-1-30');     -- 2019-02-28
 select timestampadd(month, 13, '2019-1-30');    -- 2020-02-29
 select timestampadd(month, -1, '2019-3-30');    -- 2019-02-28
 /* End - bug#z5367 */
+
+/* Begin - BUG#Z5527 */
+SET lc_time_names = 'zh_CN';
+SELECT DAYNAME('2025-04-17');
+SET lc_time_names = 'en_US';
+SELECT DAYNAME('2025-04-17');
+/* End - BUG#Z5527 */
