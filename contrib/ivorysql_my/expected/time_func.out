@@ -4058,6 +4058,34 @@ CREATE TABLE test as SELECT GET_FORMAT(TIME, 'USA') AS result;
  result | character varying |           |          |         | extended |              | 
 
 DROP TABLE test;
+select dayname(101);
+ dayname  
+----------
+ Saturday
+(1 row)
+
+CREATE TABLE test as SELECT dayname(101);
+\d+ test;
+                                         Table "public.test"
+ Column  |       Type        | Collation | Nullable | Default | Storage  | Stats target | Description 
+---------+-------------------+-----------+----------+---------+----------+--------------+-------------
+ dayname | character varying |           |          |         | extended |              | 
+
+DROP TABLE test;
+select monthname(950501);
+ monthname 
+-----------
+ May
+(1 row)
+
+CREATE TABLE test as SELECT monthname(950501);
+\d+ test;
+                                          Table "public.test"
+  Column   |       Type        | Collation | Nullable | Default | Storage  | Stats target | Description 
+-----------+-------------------+-----------+----------+---------+----------+--------------+-------------
+ monthname | character varying |           |          |         | extended |              | 
+
+DROP TABLE test;
 /* End - BUG#Z5533 */
 /* Begin - bug#z5367 */
 select timestampadd(month, 1, '2019-1-30');     -- 2019-02-28

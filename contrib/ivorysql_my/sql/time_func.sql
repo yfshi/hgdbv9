@@ -1108,6 +1108,16 @@ SELECT GET_FORMAT(TIME, 'USA') AS result;
 CREATE TABLE test as SELECT GET_FORMAT(TIME, 'USA') AS result;
 \d+ test;
 DROP TABLE test;
+
+select dayname(101);
+CREATE TABLE test as SELECT dayname(101);
+\d+ test;
+DROP TABLE test;
+
+select monthname(950501);
+CREATE TABLE test as SELECT monthname(950501);
+\d+ test;
+DROP TABLE test;
 /* End - BUG#Z5533 */
 
 

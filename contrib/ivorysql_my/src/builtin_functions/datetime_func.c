@@ -2786,6 +2786,7 @@ utc_timestamp_func(PG_FUNCTION_ARGS)
 Datum
 dayname(PG_FUNCTION_ARGS)
 {
+	VarChar    *result; /* BUGZ5533 */
 	long		weekday;
 	char	   *weekname = NULL;
 	MyLocale   *locale = NULL;
@@ -2803,12 +2804,16 @@ dayname(PG_FUNCTION_ARGS)
 		locale = MyLocaleSearch(lc_time_names);
 	weekname = locale->day_names[weekday];
 
-	PG_RETURN_TEXT_P(cstring_to_text(weekname));
+	/* Begin - BUGZ5533 */
+	result = DatumGetVarCharP(DirectFunctionCall1(varcharin, CStringGetDatum(pstrdup(weekname))));
+	PG_RETURN_VARCHAR_P(result);
+	/* End - BUGZ5533 */
 }
 
 Datum
 monthname(PG_FUNCTION_ARGS)
 {
+	VarChar    *result; /* BUGZ5533 */
 	char	   *monthname = NULL;
 	MyLocale   *locale = NULL;
 	struct	pg_tm tt, *tm = &tt;
@@ -2827,7 +2832,10 @@ monthname(PG_FUNCTION_ARGS)
 		locale = MyLocaleSearch(lc_time_names);
 	monthname = locale->month_names[tm->tm_mon - 1];
 
-	PG_RETURN_TEXT_P(cstring_to_text(monthname));
+	/* Begin - BUGZ5533 */
+	result = DatumGetVarCharP(DirectFunctionCall1(varcharin, CStringGetDatum(pstrdup(monthname))));
+	PG_RETURN_VARCHAR_P(result);
+	/* End - BUGZ5533 */
 }
 
 Datum

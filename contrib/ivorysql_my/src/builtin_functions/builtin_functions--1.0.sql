@@ -1428,9 +1428,10 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - BUG#Z5533 */
 --dayname
 CREATE FUNCTION ivymy.dayname(date)
-RETURNS text
+RETURNS varchar
 AS 'MODULE_PATHNAME','dayname'
 LANGUAGE C
 STRICT
@@ -1438,7 +1439,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.dayname(datetime)
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.dayname($1::date);
 $$ LANGUAGE SQL
@@ -1447,7 +1448,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.dayname(datetime(6))
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.dayname($1::date);
 $$ LANGUAGE SQL
@@ -1456,7 +1457,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.dayname(numeric)
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.dayname($1::date);
 $$ LANGUAGE SQL
@@ -1465,7 +1466,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.dayname(time)
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.dayname($1::date);
 $$ LANGUAGE SQL
@@ -1474,7 +1475,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.dayname(time(6))
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.dayname($1::date);
 $$ LANGUAGE SQL
@@ -1483,7 +1484,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.dayname(text)
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.dayname($1::date);
 $$ LANGUAGE SQL
@@ -1492,7 +1493,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.dayname(timestamp)
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.dayname($1::date);
 $$ LANGUAGE SQL
@@ -1501,7 +1502,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.dayname(timestamp(6))
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.dayname($1::date);
 $$ LANGUAGE SQL
@@ -1511,7 +1512,7 @@ IMMUTABLE;
 
 --month
 CREATE FUNCTION ivymy.monthname(date)
-RETURNS text
+RETURNS varchar
 AS 'MODULE_PATHNAME','monthname'
 LANGUAGE C
 STRICT
@@ -1519,7 +1520,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.monthname(datetime)
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.monthname($1::date);
 $$ LANGUAGE SQL
@@ -1528,7 +1529,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.monthname(datetime(6))
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.monthname($1::date);
 $$ LANGUAGE SQL
@@ -1537,7 +1538,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.monthname(numeric)
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.monthname($1::date);
 $$ LANGUAGE SQL
@@ -1546,7 +1547,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.monthname(time)
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.monthname($1::date);
 $$ LANGUAGE SQL
@@ -1555,7 +1556,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.monthname(time(6))
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.monthname($1::date);
 $$ LANGUAGE SQL
@@ -1564,7 +1565,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.monthname(text)
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.monthname($1::date);
 $$ LANGUAGE SQL
@@ -1573,7 +1574,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.monthname(timestamp)
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.monthname($1::date);
 $$ LANGUAGE SQL
@@ -1582,13 +1583,14 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.monthname(timestamp(6))
-RETURNS text
+RETURNS varchar
 AS $$
 	select ivymy.monthname($1::date);
 $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+/* End - BUG#Z5533 */
 
 --time_to_sec
 CREATE FUNCTION ivymy.time_to_sec(time(6))
