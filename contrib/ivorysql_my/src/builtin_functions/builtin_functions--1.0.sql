@@ -2544,7 +2544,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.get_format(int, text)
-RETURNS text
+RETURNS varchar /* BUG#Z5533 */
 AS 'MODULE_PATHNAME','get_format'
 LANGUAGE C
 STRICT

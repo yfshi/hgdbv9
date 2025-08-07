@@ -3034,6 +3034,7 @@ convert_tz(PG_FUNCTION_ARGS)
 Datum
 get_format(PG_FUNCTION_ARGS)
 {
+	VarChar    *result; /* BUGZ5533 */
 	int32		time_type = PG_GETARG_INT32(0);
 	text	   *units = PG_GETARG_TEXT_PP(1);
 	const char *result_str = NULL;
@@ -3069,5 +3070,8 @@ get_format(PG_FUNCTION_ARGS)
 			break;
 	}
 
-	PG_RETURN_DATUM(CStringGetTextDatum(result_str));
+	/* Begin - BUGZ5533 */
+	result = DatumGetVarCharP(DirectFunctionCall1(varcharin, CStringGetDatum(pstrdup(result_str))));
+	PG_RETURN_VARCHAR_P(result);
+	/* End - BUGZ5533 */
 }

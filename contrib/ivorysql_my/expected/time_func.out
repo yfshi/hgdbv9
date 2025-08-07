@@ -4025,6 +4025,40 @@ select get_format(abc, 'EUR');
 ERROR:  syntax error at or near "abc"
 LINE 1: select get_format(abc, 'EUR');
                           ^
+/* Begin - BUG#Z5533 */
+SELECT GET_FORMAT(DATE, 'EUR') AS result;
+  result  
+----------
+ %d.%m.%Y
+(1 row)
+
+SELECT GET_FORMAT(DATETIME, 'EUR') AS result;
+      result       
+-------------------
+ %Y-%m-%d %H.%i.%s
+(1 row)
+
+SELECT GET_FORMAT(TIME, 'USA') AS result;
+   result    
+-------------
+ %h:%i:%s %p
+(1 row)
+
+SELECT GET_FORMAT(TIME, 'USA') AS result;
+   result    
+-------------
+ %h:%i:%s %p
+(1 row)
+
+CREATE TABLE test as SELECT GET_FORMAT(TIME, 'USA') AS result;
+\d+ test;
+                                         Table "public.test"
+ Column |       Type        | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-------------------+-----------+----------+---------+----------+--------------+-------------
+ result | character varying |           |          |         | extended |              | 
+
+DROP TABLE test;
+/* End - BUG#Z5533 */
 /* Begin - bug#z5367 */
 select timestampadd(month, 1, '2019-1-30');     -- 2019-02-28
     timestampadd     
@@ -4045,3 +4079,19 @@ select timestampadd(month, -1, '2019-3-30');    -- 2019-02-28
 (1 row)
 
 /* End - bug#z5367 */
+/* Begin - BUG#Z5527 */
+SET lc_time_names = 'zh_CN';
+SELECT DAYNAME('2025-04-17');
+ DAYNAME 
+---------
+ 星期四
+(1 row)
+
+SET lc_time_names = 'en_US';
+SELECT DAYNAME('2025-04-17');
+ DAYNAME  
+----------
+ Thursday
+(1 row)
+
+/* End - BUG#Z5527 */

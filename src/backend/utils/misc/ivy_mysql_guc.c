@@ -31,7 +31,6 @@
 	/* End - qID: SRS-MYSQL-NUMBERICTYPE */	
 	static void assign_regress_test_default_value(bool newval, void *extra);
 	/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
-	static void assign_lc_time_names(const char *target, void *extra);
 	static bool check_lc_time_names(char **target, void **extra, GucSource source);
 	static int lc_time_names_Search(const char *target);
 	static bool check_default_week_format(int *newval, void **extra, GucSource source);
@@ -301,7 +300,7 @@ int			default_week_format = 0;
 		},
 		&lc_time_names,
 		"en_US",
-		check_lc_time_names, assign_lc_time_names, NULL
+		check_lc_time_names, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 #endif
@@ -707,17 +706,6 @@ static char *mys_lc_time_names[] =
 };
 
 int LC_TIME_NMAES_NUM = sizeof(mys_lc_time_names)/sizeof(mys_lc_time_names[0]);
-
-/*
- * assign_lc_time_names
- * Set the lc_time_names variable value.
- */
-static void
-assign_lc_time_names(const char *target, void *extra)
-{
-	int		result = lc_time_names_Search(target);
-	lc_time_names = mys_lc_time_names[result];
-}
 
 /*
  * check_lc_time_names
