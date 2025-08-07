@@ -15,6 +15,7 @@
  * 		ReqID:SRS-MISC-LICENSE
  * 		ReqID:SRS-MISC-LICENSE-ClientTool
  *		ReqID:SRS-MISC-LICENSE-ENCODING
+ *		ReqID:SRS-MISC-LICENSE-TECC
  *------------------------------------------------------------------
  */
 #include <stdio.h>
@@ -56,6 +57,10 @@ static bool  is_get_max_connections = false;
 static bool  is_specify_encoding = false; 	/* Command line specifies encoding flag */
 static bool  is_specify_language = false;	/* Command line specifies language flag */
 /* End - ReqID:SRS-MISC-LICENSE-ENCODING */
+/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
+static bool  is_get_start_time = false;		/* acquire the start time */
+static bool  is_get_final_time = false;		/* acquire the deadline time */
+/* End - ReqID:SRS-MISC-LICENSE-TECC */
 
 static void  printLicenseData(void);
 static void  _printFuncList(void);
@@ -117,6 +122,10 @@ int main(int argc, char **argv)
 		{ "set-encoding", required_argument, NULL, 's' },
 		{ "set-language", required_argument, NULL, 'e' },
 		/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
+		/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
+		{ "start-time", no_argument, NULL, 't' },
+		{ "final-time", no_argument, NULL, 'T' },
+		/* End - ReqID:SRS-MISC-LICENSE-TECC */
 		{ "version" , no_argument      , NULL, 'V' },
 		{ "help"    , no_argument      , NULL, '?' },
 		{  NULL     , 0                , NULL,  0  }
@@ -183,12 +192,12 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("licchk DB V1.5.4");
+			puts("licchk DB V1.5.5");
 			exit(0);
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSdms:e:", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSdms:e:Tt", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -255,6 +264,16 @@ int main(int argc, char **argv)
 				break;
 			/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
 
+			/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
+			case 't':
+				is_get_start_time = true;
+				break;
+
+			case 'T':
+				is_get_final_time = true;
+				break;
+			/* End - ReqID:SRS-MISC-LICENSE-TECC */
+
 			case 'v':
 				is_view = true;
 				break;
@@ -307,6 +326,16 @@ int main(int argc, char **argv)
 			printf("%s\n", hg_get_maxConnection());
 		}
 		/* End - fix Bug#M0000329 */
+		/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
+		else if (is_get_start_time)
+		{
+			printf("%s\n", hg_get_createTime());
+		}
+		else if (is_get_final_time)
+		{
+			printf("%s\n", hg_get_finalTime());
+		}
+		/* End - ReqID:SRS-MISC-LICENSE-TECC */
 		else
 		{
 			printLicenseData();
@@ -343,6 +372,16 @@ int main(int argc, char **argv)
 			printf("%s\n", hg_get_maxConnection());
 		}
 		/* End - fix Bug#M0000334 */
+		/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
+		else if (is_get_start_time)
+		{
+			printf("%s\n", hg_get_createTime());
+		}
+		else if (is_get_final_time)
+		{
+			printf("%s\n", hg_get_finalTime());
+		}
+		/* End - ReqID:SRS-MISC-LICENSE-TECC */
 		else
 		{
 			printLicenseData();
@@ -465,6 +504,10 @@ usage(const char *progname)
 	printf(_("  -s, --set-encoding          set license character encoding.\n"));
 	printf(_("  -e, --set-language          set display language(ch or en).\n"));
 	/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
+	/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
+	printf(_("  -t, --get-start-time        get authorization start time.\n"));
+	printf(_("  -T, --get-final-time        get authorization final time.\n"));
+	/* End - ReqID:SRS-MISC-LICENSE-TECC */
 	printf(_("  -V, --version               output version information, then exit\n"));
 	printf(_("  -?, --help                  show this help, then exit\n"));
 }

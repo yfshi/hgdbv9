@@ -4242,7 +4242,7 @@ main(int argc, char *argv[])
 /* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
 		// get from license
-		username = (char *)hg_get_defaultDBuser();
+		username = pg_strdup((char *)hg_get_defaultDBuser()); // ReqID:SRS-MISC-LICENSE-TECC
 #else
 		username = effective_user;
 #endif
