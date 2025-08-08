@@ -6440,6 +6440,11 @@ text_left(PG_FUNCTION_ARGS)
 {
 	int			n = PG_GETARG_INT32(1);
 
+	/* Begin - BUG#Z5490 */
+	if (n < 0 && compatible_db == MYS_PARSER)
+		n = 0;
+	/* End - BUG#Z5490 */
+
 	if (n < 0)
 	{
 		text	   *str = PG_GETARG_TEXT_PP(0);
@@ -6467,6 +6472,11 @@ text_right(PG_FUNCTION_ARGS)
 	int			len = VARSIZE_ANY_EXHDR(str);
 	int			n = PG_GETARG_INT32(1);
 	int			off;
+
+	/* Begin - BUG#Z5491 */
+	if (n < 0 && compatible_db == MYS_PARSER)
+		n = 0;
+	/* End - BUG#Z5491 */
 
 	if (n < 0)
 		n = -n;

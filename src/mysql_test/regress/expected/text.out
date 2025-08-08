@@ -108,9 +108,9 @@ select i, left('ahoj', i), right('ahoj', i) from generate_series(-5, 5) t(i) ord
 ----+------+-------
  -5 |      | 
  -4 |      | 
- -3 | a    | j
- -2 | ah   | oj
- -1 | aho  | hoj
+ -3 |      | 
+ -2 |      | 
+ -1 |      | 
   0 |      | 
   1 | a    | j
   2 | ah   | oj

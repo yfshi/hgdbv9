@@ -622,6 +622,54 @@ SELECT FIND_IN_SET('ab', 'abc,ab,1'); -- 2
            2
 (1 row)
 
+SELECT FIND_IN_SET('a,b','a,b,c'); -- 0
+ FIND_IN_SET 
+-------------
+           0
+(1 row)
+
+SELECT FIND_IN_SET('a,b','"a,b",c,d'); -- 0
+ FIND_IN_SET 
+-------------
+           0
+(1 row)
+
+SELECT FIND_IN_SET('a\,b','a\,b,c,d'); -- 0
+ FIND_IN_SET 
+-------------
+           0
+(1 row)
+
+SELECT FIND_IN_SET(',',',a,b'); -- 0
+ FIND_IN_SET 
+-------------
+           0
+(1 row)
+
+SELECT FIND_IN_SET('Orange', 'Apple,Banana,Cherry'); -- 0
+ FIND_IN_SET 
+-------------
+           0
+(1 row)
+
+SELECT FIND_IN_SET('banana', 'Apple,Banana,Cherry'); -- 2
+ FIND_IN_SET 
+-------------
+           2
+(1 row)
+
+SELECT FIND_IN_SET('Apple', ''); -- 0
+ FIND_IN_SET 
+-------------
+           0
+(1 row)
+
+SELECT FIND_IN_SET('Banana', 'Apple, Banana ,Cherry'); -- 0
+ FIND_IN_SET 
+-------------
+           0
+(1 row)
+
 -- HEX
 SELECT HEX('abc'); -- 616263
   HEX   
@@ -705,6 +753,18 @@ SELECT HEX(false); -- 0
  HEX 
 -----
  0
+(1 row)
+
+select HEX(X'4D7953516C'); -- 4D7953516C
+    HEX     
+------------
+ 4D7953516C
+(1 row)
+
+select HEX(FROM_BASE64(TO_BASE64(0xF8))); -- F8
+ HEX 
+-----
+ F8
 (1 row)
 
 -- SPACE
@@ -1222,6 +1282,30 @@ SELECT LEFT('abcd', false); -- ''
  
 (1 row)
 
+select LEFT('zxcvbnm',1.4); -- 'z'
+ left 
+------
+ z
+(1 row)
+
+select LEFT('zxcvbnm',1.5); -- 'zx'
+ left 
+------
+ zx
+(1 row)
+
+select LEFT('zxcvbnm', -6); -- NULL
+ left 
+------
+ 
+(1 row)
+
+select LEFT('zxcvbnm', '-6'); -- NULL
+ left 
+------
+ 
+(1 row)
+
 SELECT RIGHT('abcdef', 3); -- 'def'
  right 
 -------
@@ -1277,6 +1361,30 @@ SELECT RIGHT('abcd', true); -- 'd'
 (1 row)
 
 SELECT RIGHT('abcd', false); -- ''
+ right 
+-------
+ 
+(1 row)
+
+select RIGHT('zxcvbnm',1.4); -- 'm'
+ right 
+-------
+ m
+(1 row)
+
+select RIGHT('zxcvbnm',1.5); -- 'nm'
+ right 
+-------
+ nm
+(1 row)
+
+select RIGHT('zxcvbnm', -6); -- NULL
+ right 
+-------
+ 
+(1 row)
+
+select RIGHT('zxcvbnm', '-6'); -- NULL
  right 
 -------
  
@@ -1630,6 +1738,50 @@ SELECT conv('+0', 10, 2)  AS result;  -- '0'
  result 
 --------
  0
+(1 row)
+
+SELECT conv('',   10, 2) AS result;  -- NULL
+ result 
+--------
+ 
+(1 row)
+
+SELECT conv(2,    '', 2) AS result;  -- NULL
+WARNING:  Truncated incorrect INTEGER value: ''
+ result 
+--------
+ 
+(1 row)
+
+SELECT conv(2,   10, '') AS result;  -- NULL
+WARNING:  Truncated incorrect INTEGER value: ''
+ result 
+--------
+ 
+(1 row)
+
+SELECT conv('AB',16.5,32) AS result; -- '5L'
+ result 
+--------
+ 5L
+(1 row)
+
+SELECT conv('AB',16.4,32) AS result; -- '5B'
+ result 
+--------
+ 5B
+(1 row)
+
+SELECT conv('AB',32,16.5) AS result; -- '128'
+ result 
+--------
+ 128
+(1 row)
+
+SELECT conv('AB',32,16.4) AS result; -- '14B'
+ result 
+--------
+ 14B
 (1 row)
 
 -- unhex

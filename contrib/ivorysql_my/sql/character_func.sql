@@ -152,6 +152,14 @@ SELECT FIND_IN_SET(NULL, 'a,b,c'); -- NULL
 SELECT FIND_IN_SET('a', NULL); -- NULL
 SELECT FIND_IN_SET(1, 'a,2,1'); -- 3
 SELECT FIND_IN_SET('ab', 'abc,ab,1'); -- 2
+SELECT FIND_IN_SET('a,b','a,b,c'); -- 0
+SELECT FIND_IN_SET('a,b','"a,b",c,d'); -- 0
+SELECT FIND_IN_SET('a\,b','a\,b,c,d'); -- 0
+SELECT FIND_IN_SET(',',',a,b'); -- 0
+SELECT FIND_IN_SET('Orange', 'Apple,Banana,Cherry'); -- 0
+SELECT FIND_IN_SET('banana', 'Apple,Banana,Cherry'); -- 2
+SELECT FIND_IN_SET('Apple', ''); -- 0
+SELECT FIND_IN_SET('Banana', 'Apple, Banana ,Cherry'); -- 0
 
 -- HEX
 SELECT HEX('abc'); -- 616263
@@ -168,6 +176,8 @@ SELECT HEX(cast('111112111.1.29' as datetime)); -- 323031312D31312D31322031313A3
 SELECT HEX(cast('10:57:11' as time)); -- 31303A35373A3131
 SELECT HEX(true); -- 1
 SELECT HEX(false); -- 0
+select HEX(X'4D7953516C'); -- 4D7953516C
+select HEX(FROM_BASE64(TO_BASE64(0xF8))); -- F8
 
 -- SPACE
 SELECT CONCAT('A', SPACE(3), 'B'); -- 'A   B'
@@ -293,6 +303,10 @@ SELECT LEFT(true, 1); -- 1
 SELECT LEFT(false, 1); -- 0
 SELECT LEFT('abcd', true); -- 'a'
 SELECT LEFT('abcd', false); -- ''
+select LEFT('zxcvbnm',1.4); -- 'z'
+select LEFT('zxcvbnm',1.5); -- 'zx'
+select LEFT('zxcvbnm', -6); -- NULL
+select LEFT('zxcvbnm', '-6'); -- NULL
 SELECT RIGHT('abcdef', 3); -- 'def'
 SELECT RIGHT('abcdef', '3'); -- 'def'
 SELECT RIGHT(1234, '3'); -- 234
@@ -303,6 +317,10 @@ SELECT RIGHT(true, 1); -- 1
 SELECT RIGHT(false, 1); -- 0
 SELECT RIGHT('abcd', true); -- 'd'
 SELECT RIGHT('abcd', false); -- ''
+select RIGHT('zxcvbnm',1.4); -- 'm'
+select RIGHT('zxcvbnm',1.5); -- 'nm'
+select RIGHT('zxcvbnm', -6); -- NULL
+select RIGHT('zxcvbnm', '-6'); -- NULL
 
 -- NAME_CONST
 SELECT NAME_CONST('test', NOW()); --error ER_WRONG_ARGUMENTS
@@ -375,6 +393,13 @@ SELECT conv('Z', 36, 10) AS result;   -- '35'
 SELECT conv('123ABCxyz', 36, 16) AS result; -- '2B6FF6839FB'
 SELECT conv('-0', 10, 2)  AS result;  -- '0'
 SELECT conv('+0', 10, 2)  AS result;  -- '0'
+SELECT conv('',   10, 2) AS result;  -- NULL
+SELECT conv(2,    '', 2) AS result;  -- NULL
+SELECT conv(2,   10, '') AS result;  -- NULL
+SELECT conv('AB',16.5,32) AS result; -- '5L'
+SELECT conv('AB',16.4,32) AS result; -- '5B'
+SELECT conv('AB',32,16.5) AS result; -- '128'
+SELECT conv('AB',32,16.4) AS result; -- '14B'
 
 -- unhex
 
