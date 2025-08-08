@@ -24,6 +24,7 @@
 #include "utils/inet.h"
 #include "utils/guc.h"
 #include "utils/palloc.h"
+#include "utils/numeric.h"
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -675,7 +676,41 @@ inetntop(PG_FUNCTION_ARGS)
 	if (!OidIsValid(argtypeid) || argtypeid == YEAROID || argtypeid == JSONOID)
 	{
 		ereport(is_strict_mode() ? ERROR : WARNING,
-				(errmsg("Incorrect string value for function inet6_ntoa")));
+				(errmsg("Incorrect string value: '' for function inet6_ntoa")));
+		PG_RETURN_NULL();
+	}
+
+	/* numeric int8 int4, return NULL */
+	if ( argtypeid == INT8OID || argtypeid == INT4OID)
+	{
+		int64 num = PG_GETARG_INT64(0);
+
+		if (num < 0)
+			ereport(WARNING,
+					(errmsg("Incorrect string value: '-(%ld)' for function inet6_ntoa", -num)));
+		else
+			ereport(WARNING,
+					(errmsg("Incorrect string value: '%ld' for function inet6_ntoa", num)));
+		PG_RETURN_NULL();
+	}
+	else if (argtypeid == NUMERICOID)
+	{
+		Numeric		num = PG_GETARG_NUMERIC(0);
+		char	   *tmp = DatumGetCString(DirectFunctionCall1(numeric_out,
+															  NumericGetDatum(num)));
+		if (tmp[0] == '-')
+			ereport(WARNING,
+					errmsg("Incorrect string value: '-(%s)' for function inet6_ntoa", tmp+1));
+		else
+			ereport(WARNING,
+					errmsg("Incorrect string value: '%s' for function inet6_ntoa", tmp));
+		PG_RETURN_NULL();
+	}
+	else if (argtypeid == TEXTOID)
+	{
+		ereport(WARNING,
+					errmsg("Incorrect string value: ''%s'' for function inet6_ntoa",
+						   text_to_cstring(PG_GETARG_TEXT_PP(0))));
 		PG_RETURN_NULL();
 	}
 

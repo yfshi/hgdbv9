@@ -24,7 +24,33 @@ SELECT INET_NTOA(3232235777);
  192.168.1.1
 (1 row)
 
-select INET_ATON(true),INET_ATON(false),INET_NTOA(true),INET_NTOA(false);
+SELECT INET_NTOA(1.99);
+ INET_NTOA 
+-----------
+ 0.0.0.2
+(1 row)
+
+SELECT INET_NTOA(NULL);
+ INET_NTOA 
+-----------
+ 
+(1 row)
+
+SELECT INET_NTOA('asssc');
+WARNING:  Truncated incorrect INTEGER value: 'asssc'
+ INET_NTOA 
+-----------
+ 0.0.0.0
+(1 row)
+
+SELECT INET_NTOA('1csqcccccdddcc');
+WARNING:  Truncated incorrect INTEGER value: '1csqcccccdddcc'
+ INET_NTOA 
+-----------
+ 0.0.0.1
+(1 row)
+
+SELECT INET_ATON(true),INET_ATON(false),INET_NTOA(true),INET_NTOA(false);
  INET_ATON | INET_ATON | INET_NTOA | INET_NTOA 
 -----------+-----------+-----------+-----------
          1 |         0 | 0.0.0.1   | 0.0.0.0
@@ -117,6 +143,60 @@ SELECT INET6_NTOA(INET6_ATON('2001:db8::dead'));
    INET6_NTOA   
 ----------------
  2001:db8::dead
+(1 row)
+
+SELECT pg_typeof(INET6_ATON('192.168.94.70'));
+ pg_typeof 
+-----------
+ varbinary
+(1 row)
+
+SELECT INET6_NTOA(UNHEX('00000000000000000000000000000000'));
+ INET6_NTOA 
+------------
+ ::
+(1 row)
+
+SELECT INET6_NTOA(-1);
+WARNING:  Incorrect string value: '-(1)' for function inet6_ntoa
+ INET6_NTOA 
+------------
+ 
+(1 row)
+
+SELECT INET6_NTOA(4294967296);
+WARNING:  Incorrect string value: '4294967296' for function inet6_ntoa
+ INET6_NTOA 
+------------
+ 
+(1 row)
+
+SELECT INET6_NTOA(4294967295.5);
+WARNING:  Incorrect string value: '4294967295.5' for function inet6_ntoa
+ INET6_NTOA 
+------------
+ 
+(1 row)
+
+SELECT INET6_NTOA('csqcccccdddcc');
+WARNING:  Incorrect string value: ''csqcccccdddcc'' for function inet6_ntoa
+ INET6_NTOA 
+------------
+ 
+(1 row)
+
+SELECT INET6_NTOA('csqccc12ccdddcc');
+WARNING:  Incorrect string value: ''csqccc12ccdddcc'' for function inet6_ntoa
+ INET6_NTOA 
+------------
+ 
+(1 row)
+
+SELECT INET6_NTOA('1csqcccccdddcc');
+WARNING:  Incorrect string value: ''1csqcccccdddcc'' for function inet6_ntoa
+ INET6_NTOA 
+------------
+ 
 (1 row)
 
 -- Invalid IPv6

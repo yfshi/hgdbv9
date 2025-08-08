@@ -913,6 +913,14 @@ AS $$
 select hex($1::binary);
 $$ LANGUAGE SQL IMMUTABLE STRICT;
 
+/* Begin - BUG#Z5524 */
+CREATE OR REPLACE FUNCTION ivymy.hex(bit)
+RETURNS varchar
+AS $$
+select hex($1::int8);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+/* End - BUG#Z5524 */
+
 -- space
 
 CREATE FUNCTION ivymy.space(int8)
@@ -1061,6 +1069,16 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - BUG#Z5524 */
+CREATE FUNCTION ivymy.to_base64(varbinary)
+RETURNS varchar
+AS $$
+select to_base64($1::text);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - BUG#Z5524 */
 
 -- length
 CREATE FUNCTION ivymy.length(text)
@@ -1191,6 +1209,14 @@ AS $$
 select left($1, $2::int4);
 $$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
 
+/* Begin - BUG#Z5492 */
+CREATE OR REPLACE FUNCTION ivymy.left(text, numeric)
+RETURNS varchar
+AS $$
+select left($1, $2::int4);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+/* End - BUG#Z5492 */
+
 CREATE OR REPLACE FUNCTION ivymy.left(text, bool)
 RETURNS varchar
 AS $$
@@ -1217,6 +1243,14 @@ RETURNS varchar
 AS $$
 select right($1, $2::int4);
 $$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+/* Begin - BUG#Z5495 */
+CREATE OR REPLACE FUNCTION ivymy.right(text, numeric)
+RETURNS varchar
+AS $$
+select right($1, $2::int4);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+/* End - BUG#Z5495 */
 
 CREATE OR REPLACE FUNCTION ivymy.right(text, bool)
 RETURNS varchar
@@ -2590,6 +2624,28 @@ LANGUAGE C
 IMMUTABLE
 STRICT;
 
+/* Begin - BUG#Z5509 */
+CREATE FUNCTION ivymy.conv(text, numeric, numeric)
+RETURNS varchar
+AS $$
+    select ivymy.conv($1, round($2)::int4, round($3)::int4);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.conv(text, float8, float8)
+RETURNS varchar
+AS $$
+    select ivymy.conv($1, $2::numeric, $3::numeric);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - BUG#Z5509 */
+
 CREATE FUNCTION ivymy.conv(numeric, int4, int4)
 RETURNS varchar
 AS $$
@@ -2600,6 +2656,68 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - BUG#Z5507 BUG#Z5508 */
+CREATE FUNCTION ivymy.conv(text, text, text)
+RETURNS varchar
+AS $$
+    select conv($1, $2::int4, $3::int4);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.conv(text, int4, text)
+RETURNS varchar
+AS $$
+    select conv($1, $2, $3::int4);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.conv(text, text, int4)
+RETURNS varchar
+AS $$
+    select conv($1, $2::int4, $3);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.conv(numeric, text, text)
+RETURNS varchar
+AS $$
+    select conv($1::text, $2::int4, $3::int4);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.conv(numeric, int4, text)
+RETURNS varchar
+AS $$
+    select conv($1::text, $2, $3::int4);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.conv(numeric, text, int4)
+RETURNS varchar
+AS $$
+    select conv($1::text, $2::int4, $3);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+/* End - BUG#Z5507 BUG#Z5508 */
 
 -- strcmp
 

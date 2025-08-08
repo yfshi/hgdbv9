@@ -39,7 +39,7 @@
 #include "utils/float.h"
 #include "utils/numeric.h"
 #include "utils/datetime.h"
-
+#include "utils/formatting.h"
 
 #include "../include/ivorysql_my.h"
 #include "../charset/ctype.h"
@@ -586,44 +586,61 @@ Datum
 find_in_set(PG_FUNCTION_ARGS)
 {
 	char 		*str,
-				*strlist;
+				*strlist,
+				*lower_str,
+				*lower_strlist;
 	ArrayType 	*arr;
 	Datum  		*values;
 	int 		 nvalues;
-	int			 ret = 0, 
-				 len_str;
+	int			 i = 0,
+				 len_str,
+				 len_strlist;
 	text		*raw;
 
 	raw = PG_GETARG_TEXT_PP(0);
 	str = VARDATA_ANY(raw);
 	len_str = VARSIZE_ANY_EXHDR(raw);
 
+	/* Begin - BUG#Z5520 */
+	if (strchr(str, ',') != NULL)
+		PG_RETURN_INT32(0);
+	/* End - BUG#Z5520 */
+
 	raw = PG_GETARG_TEXT_PP(1);
 	strlist = VARDATA_ANY(raw);
+	/* Begin - BUG#Z5519 */
+	len_strlist = VARSIZE_ANY_EXHDR(raw);
+	if (len_strlist == 0)
+		PG_RETURN_INT32(0);
+	/* End - BUG#Z5519 */
 
+	lower_str = asc_tolower(str, len_str);
+	lower_strlist = asc_tolower(strlist, len_strlist);
 	arr = DatumGetArrayTypeP(
 			DirectFunctionCall2Coll(text_to_array,
 									PG_GET_COLLATION(),
-									CStringGetTextDatum(strlist),
+									CStringGetTextDatum(lower_strlist),
 									CStringGetTextDatum(",")));
 
 	deconstruct_array(arr, TEXTOID, -1, false, TYPALIGN_INT, 
 					  &values, NULL, &nvalues);
 
-	for (int i = 0; i < nvalues; i++)
+	for (i = 0; i < nvalues; i++)
 	{
-		char 	*target = VARDATA_ANY(values[i]);
-		int 	 len_target = VARSIZE_ANY_EXHDR(values[i]);
+		char	*target = VARDATA_ANY(values[i]);
+		int		 len_target = VARSIZE_ANY_EXHDR(values[i]);
 
-		if (varstr_cmp(str, len_str, target, len_target, PG_GET_COLLATION()) == 0)
+		if (varstr_cmp(lower_str, len_str, target, len_target, PG_GET_COLLATION()) == 0)
 		{
-			PG_RETURN_INT32(ret + 1);			
+			pfree(lower_str);
+			pfree(lower_strlist);
+			PG_RETURN_INT32(i + 1);
 		}
-
-		ret++;
 	}
-	
-	PG_RETURN_INT32(ret);
+
+	pfree(lower_str);
+	pfree(lower_strlist);
+	PG_RETURN_INT32(0);
 }
 
 Datum
@@ -1018,6 +1035,12 @@ conv(PG_FUNCTION_ARGS)
 
 	n_cstr = text_to_cstring(n_text);
 	p = n_cstr;
+
+	/* Begin - BUG#Z5506 */
+	/* Return NULL if any input is empty string */
+	if (*n_cstr == '\0')
+		PG_RETURN_NULL();
+	/* End - BUG#Z5506 */
 
 	/* Skip leading whitespace */
 	while (isspace((unsigned char)*p)) p++;
