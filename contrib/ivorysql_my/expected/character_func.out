@@ -522,15 +522,38 @@ SELECT ELT('1', 'a', 'b'); -- NULL
 (1 row)
 
 SELECT ELT('c', 'a', 'b'); -- NULL
-ERROR:  invalid input syntax for type bigint: "c"
-LINE 1: SELECT ELT('c', 'a', 'b');
-                   ^
+WARNING:  Truncated incorrect INTEGER value: 'c'
+ elt 
+-----
+ 
+(1 row)
+
 SELECT ELT(1, 2, 3); -- 2
  elt 
 -----
  2
 (1 row)
 
+SELECT ELT(3, 'Apple', 'Banana', 'Cherry'); -- 'Cherry'
+  elt   
+--------
+ Cherry
+(1 row)
+
+SELECT ELT(-1, 'Apple', 'Banana', 'Cherry'); -- NULL
+ elt 
+-----
+ 
+(1 row)
+
+SELECT ELT(2.5, 'Apple', 'Banana', 'Cherry'); -- 'Cherry'
+  elt   
+--------
+ Cherry
+(1 row)
+
+SELECT ELT(1); -- error
+ERROR:  Incorrect parameter count in the call to native function 'elt'
 CREATE TABLE t_elt as SELECT ELT(2, 'a', 'b', 'c');
 \d t_elt
                     Table "public.t_elt"
@@ -1212,6 +1235,30 @@ SELECT OCTET_LENGTH(false); -- 1
             1
 (1 row)
 
+SELECT OCTET_LENGTH(binary 'Hello'); -- 5
+ OCTET_LENGTH 
+--------------
+            5
+(1 row)
+
+SET standard_conforming_strings to OFF;
+SELECT OCTET_LENGTH('Hello\tWorld\n'); -- 12
+WARNING:  nonstandard use of escape in a string literal
+LINE 1: SELECT OCTET_LENGTH('Hello\tWorld\n');
+                            ^
+HINT:  Use the escape string syntax for escapes, e.g., E'\r\n'.
+ OCTET_LENGTH 
+--------------
+           12
+(1 row)
+
+SET standard_conforming_strings to ON;
+SELECT OCTET_LENGTH('Hello\tWorld\n'); -- 14
+ OCTET_LENGTH 
+--------------
+           14
+(1 row)
+
 -- CONVERT
 --SELECT CONVERT('你好' USING latin1); -- likely garbled
 --SELECT CONVERT(NULL USING utf8mb4); -- NULL
@@ -1837,6 +1884,12 @@ SELECT unhex('4D7953514C'); -- '\x4D7953514C'
  \x4d7953514c
 (1 row)
 
+SELECT unhex(BINARY '414243'); -- '\x414243'
+  unhex   
+----------
+ \x414243
+(1 row)
+
 SET bytea_output = 'escape';
 SELECT unhex('');       -- ''
  unhex 
@@ -1887,6 +1940,12 @@ SELECT unhex('4D7953514C'); -- 'MySQL'
  unhex 
 -------
  MySQL
+(1 row)
+
+SELECT unhex(BINARY '414243'); -- 'ABC'
+ unhex 
+-------
+ ABC
 (1 row)
 
 -- strmcp

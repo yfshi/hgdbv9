@@ -16261,6 +16261,12 @@ a_expr:		c_expr									{ $$ = $1; }
 											   @2);
 					$$ = (Node *)n;
 				}
+			/* Begin - BUG#Z5513 */
+			| ELT '(' a_expr ')'
+				{
+					ereport(ERROR,(errmsg("Incorrect parameter count in the call to native function 'elt'")));
+				}
+			/* End - BUG#Z5513 */
 			| ELT '(' a_expr ',' field_func_args_list ')'
 				{
 					FuncCall *n = makeFuncCall(MysqlSystemFuncName("elt"),

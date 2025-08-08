@@ -127,7 +127,10 @@ SELECT ELT(NULL, 'a', 'b'); -- NULL
 SELECT ELT('1', 'a', 'b'); -- NULL
 SELECT ELT('c', 'a', 'b'); -- NULL
 SELECT ELT(1, 2, 3); -- 2
-
+SELECT ELT(3, 'Apple', 'Banana', 'Cherry'); -- 'Cherry'
+SELECT ELT(-1, 'Apple', 'Banana', 'Cherry'); -- NULL
+SELECT ELT(2.5, 'Apple', 'Banana', 'Cherry'); -- 'Cherry'
+SELECT ELT(1); -- error
 CREATE TABLE t_elt as SELECT ELT(2, 'a', 'b', 'c');
 \d t_elt
 drop table t_elt;
@@ -280,6 +283,11 @@ SELECT OCTET_LENGTH(cast('111112111.1.29' as datetime)); --19
 SELECT OCTET_LENGTH(cast('10:57:11' as time)); -- 8
 SELECT OCTET_LENGTH(true); -- 1
 SELECT OCTET_LENGTH(false); -- 1
+SELECT OCTET_LENGTH(binary 'Hello'); -- 5
+SET standard_conforming_strings to OFF;
+SELECT OCTET_LENGTH('Hello\tWorld\n'); -- 12
+SET standard_conforming_strings to ON;
+SELECT OCTET_LENGTH('Hello\tWorld\n'); -- 14
 
 -- CONVERT
 --SELECT CONVERT('你好' USING latin1); -- likely garbled
@@ -412,6 +420,7 @@ SELECT unhex(-123);     -- '\x'
 SELECT unhex(123.1);    -- '\x'
 SELECT unhex('GG');     -- '\x'
 SELECT unhex('4D7953514C'); -- '\x4D7953514C'
+SELECT unhex(BINARY '414243'); -- '\x414243'
 
 SET bytea_output = 'escape';
 SELECT unhex('');       -- ''
@@ -422,6 +431,7 @@ SELECT unhex(-123);     -- 'NULL'
 SELECT unhex(123.1);    -- 'NULL'
 SELECT unhex('GG');     -- 'NULL'
 SELECT unhex('4D7953514C'); -- 'MySQL'
+SELECT unhex(BINARY '414243'); -- 'ABC'
 
 -- strmcp
 select strcmp(null, null);
