@@ -272,7 +272,7 @@ HandleSlashCmds(PsqlScanState scan_state,
 	 * If we are in "restricted" mode, the only allowable backslash command is
 	 * \unrestrict (to exit restricted mode).
 	 */
-	if (restricted && strcmp(cmd, "unrestrict") != 0)
+	if (restricted && strcmp(cmd, "unrestrict") != 0 && strcmp(cmd, "parser") != 0)
 	{
 		pg_log_error("backslash commands are restricted; only \\unrestrict is allowed");
 		status = PSQL_CMD_ERROR;
