@@ -1133,3 +1133,19 @@ SELECT DAYNAME('2025-04-17');
 SET lc_time_names = 'en_US';
 SELECT DAYNAME('2025-04-17');
 /* End - BUG#Z5527 */
+
+/* Begin - BUG#Z5532 */
+SELECT CONVERT_TZ('2025-02-30 12:00:00', '+00:00', '+08:00');
+SELECT CONVERT_TZ('2023-01-01 12:00:00', 'Invalid', '+08:00');
+SELECT CONVERT_TZ('2023-01-01 12:00:00', '+00:00', 'Invalid');
+/* End - BUG#Z5532 */
+
+/* Begin - BUG#Z5530 */
+select yearweek('2023-01-01', NULL);
+select yearweek(NULL, NULL);
+/* End - BUG#Z5530 */
+
+/* Begin - BUG#Z5528 */
+select week('2023-01-01', NULL);
+select week(NULL, NULL);
+/* End - BUG#Z5528 */

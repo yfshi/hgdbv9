@@ -1942,11 +1942,11 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - BUG#Z5528 */
 CREATE FUNCTION ivymy.week(date, int)
 RETURNS int
 AS 'MODULE_PATHNAME','mys_week_mode'
 LANGUAGE C
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -1955,7 +1955,6 @@ RETURNS int
 AS $$
 	select ivymy.week($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -1964,7 +1963,6 @@ RETURNS int
 AS $$
 	select ivymy.week($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -1973,7 +1971,6 @@ RETURNS int
 AS $$
 	select ivymy.week($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -1982,7 +1979,6 @@ RETURNS int
 AS $$
 	select ivymy.week($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -1991,7 +1987,6 @@ RETURNS int
 AS $$
 	select ivymy.week($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2000,7 +1995,6 @@ RETURNS int
 AS $$
 	select ivymy.week($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2009,7 +2003,6 @@ RETURNS int
 AS $$
 	select ivymy.week($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2018,16 +2011,16 @@ RETURNS int
 AS $$
 	select ivymy.week($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
+/* End - BUG#Z5528 */
 
+/* Begin - BUG#Z5530 */
 --yearweek
 CREATE FUNCTION ivymy.yearweek(date, int)
 RETURNS bigint
 AS 'MODULE_PATHNAME','yearweek'
 LANGUAGE C
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2036,7 +2029,6 @@ RETURNS bigint
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2045,7 +2037,6 @@ RETURNS bigint
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2054,7 +2045,6 @@ RETURNS bigint
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2063,7 +2053,6 @@ RETURNS bigint
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2072,7 +2061,6 @@ RETURNS bigint
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2081,7 +2069,6 @@ RETURNS bigint
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2090,7 +2077,6 @@ RETURNS int
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
@@ -2099,9 +2085,9 @@ RETURNS bigint
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
-STRICT
 PARALLEL SAFE
 IMMUTABLE;
+/* End - BUG#Z5530 */
 
 CREATE FUNCTION ivymy.yearweek(date)
 RETURNS int
