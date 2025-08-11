@@ -2915,9 +2915,18 @@ mys_week_mode(PG_FUNCTION_ARGS)
 	int		result = 0;
 	int		flag = TIME_NO_ZERO_DATE;
 
-	DateADT		date = PG_GETARG_DATEADT(0);
-	int			mode = PG_GETARG_INT32(1);
+	/* Begin - BUG#Z5528 */
+	DateADT		date;
+	int			mode;
 
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	if (PG_ARGISNULL(1))
+		mode = default_week_format;
+	else
+		mode = PG_GETARG_INT32(1);
+	date = PG_GETARG_DATEADT(0);
+	/* End - BUG#Z5528 */
 	if (!get_date_from_int(date, tm, &fsec, flag))
 		PG_RETURN_NULL();
 	result = calc_week(tm, week_mode(mode), &(tm->tm_year));
@@ -2932,9 +2941,17 @@ yearweek(PG_FUNCTION_ARGS)
 	int		result = 0;
 	int		flag = TIME_NO_ZERO_DATE;
 
-	DateADT		date = PG_GETARG_DATEADT(0);
-	int			mode = PG_GETARG_INT32(1);
-
+	/* Begin - BUG#Z5530 */
+	DateADT		date;
+	int			mode;
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	if (PG_ARGISNULL(1))
+		mode = 0;
+	else
+		mode = PG_GETARG_INT32(1);
+	date = PG_GETARG_DATEADT(0);
+	/* End - BUG#Z5530 */
 	if (mode > 7)
 		mode = 7;
 	else if (mode < 0)
@@ -2996,9 +3013,15 @@ convert_tz(PG_FUNCTION_ARGS)
 	int			dec = 0;
 	text	   *arg1;
 	text	   *arg2;
+	Numeric		datetime; /* BUG#Z5532 */
 	char		buf[MAXDATELEN + 1] = {0};
 
-	Numeric datetime = PG_GETARG_NUMERIC(0);
+	/* Begin - BUG#Z5532 */
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+	/* End - BUG#Z5532 */
+
+	datetime = PG_GETARG_NUMERIC(0);
 	if (!get_datetime_from_numeric(datetime, tm, &fsec, flag, &dec))
 		PG_RETURN_NULL();
 
@@ -3006,6 +3029,11 @@ convert_tz(PG_FUNCTION_ARGS)
 	arg2 = PG_GETARG_TEXT_PP(2);
 	str1 = text_to_cstring(arg1);
 	str2 = text_to_cstring(arg2);
+	/* Begin - BUG#Z5532 */
+	if (!strcasecmp(str1, "Invalid") ||
+		!strcasecmp(str2, "Invalid"))
+		PG_RETURN_NULL();
+	/* End - BUG#Z5532 */
 	/* if the digital time zone does not have a +/- sign. */
 	if (!parse_timezone(tm, str1, &tz1))
 		PG_RETURN_NULL();
