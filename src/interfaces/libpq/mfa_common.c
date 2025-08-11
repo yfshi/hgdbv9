@@ -38,7 +38,8 @@
 #endif
 
 #ifdef USE_GMSSL
-#include <gmssl/sm2.h>
+#include <gmssl/gm_sm3.h>
+#include <gmssl/gm_sm2.h>
 #include <gmssl/base64.h>
 #endif
 
@@ -210,15 +211,15 @@ pkey_sign_gmssl(const char *privateKeyBase64,
 		goto end;
 	}
 
-	sm3_init(&sm3);
-	sm3_update(&sm3, (const uint8_t *)message, 16);
-	sm3_finish(&sm3, dgst);
+	gm_sm3_init(&sm3);
+	gm_sm3_update(&sm3, (const uint8_t *)message, 16);
+	gm_sm3_finish(&sm3, dgst);
 
 	sig = (unsigned char *)malloc(256);
 	if (!sig)
 		goto end;
 
-	if (sm2_sign(&sign_key, dgst, sig, sig_len) != 1)
+	if (gm_sm2_sign(&sign_key, dgst, sig, sig_len) != 1)
 		goto end;
 
 	return sig;
@@ -339,7 +340,7 @@ cert_sign_gmssl(const char *privateKeyFile, const char *optsalt, size_t *sig_len
 	if (!sig)
 		goto end;
 
-	if (sm2_sign(&client_key, dgst, sig, sig_len) != 1)
+	if (gm_sm2_sign(&client_key, dgst, sig, sig_len) != 1)
 		goto end;
 
 end:

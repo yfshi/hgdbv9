@@ -67,7 +67,8 @@
 #endif
 
 #ifdef USE_GMSSL
-#include <gmssl/sm2.h>
+#include <gmssl/gm_sm3.h>
+#include <gmssl/gm_sm2.h>
 #include <gmssl/base64.h>
 #include <gmssl/x509.h>
 #include <gmssl/pem.h>
@@ -491,14 +492,14 @@ pkey_signature_verify_gmssl(const char *publicKeyBase64,
 	if (priv_derlen <= 1)
 		goto end;
 
-	sm3_init(&sm3);
-	sm3_update(&sm3, (const uint8_t *)message, 16);
-	sm3_finish(&sm3, dgst);
+	gm_sm3_init(&sm3);
+	gm_sm3_update(&sm3, (const uint8_t *)message, 16);
+	gm_sm3_finish(&sm3, dgst);
 
 	if (sm2_public_key_info_from_der(&verify_key, &p, &plen) != 1)
 		goto end;
 
-	if (sm2_verify(&verify_key, dgst, sig, sig_len) != 1)
+	if (gm_sm2_verify(&verify_key, dgst, sig, sig_len) != 1)
 		goto end;
 
 	ret = 1;
@@ -670,7 +671,7 @@ cert_signature_verify_gmssl(const char *cert_data, size_t cert_data_len,
 	if (x509_cert_get_subject_public_key(client_cert, client_cert_len, &client_pubkey) != 1)
 		goto end;
 
-	if (sm2_verify(&client_pubkey, dgst, sig, sig_len) != 1)
+	if (gm_sm2_verify(&client_pubkey, dgst, sig, sig_len) != 1)
 		goto end;
 
 	ret = 1;
