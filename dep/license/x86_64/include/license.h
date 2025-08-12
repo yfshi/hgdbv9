@@ -3,12 +3,13 @@
  * File: license.h
  *	  API for IvorySQL Pro to access license.dat.
  *
- * Copyright (c) 2023, Highgo Software Co.,Ltd. All rights reserved.
+ * Copyright (c) 2025, Highgo Software Co.,Ltd. All rights reserved.
  *
  * src/libsrc/interface/license.h
  * 
  * Requirement description:
  * 		ReqID:SRS-MISC-LICENSE
+ * 		ReqID:SRS-MISC-LICENSE-TECC
  *-------------------------------------------------------------------------
  */
 

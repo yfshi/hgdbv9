@@ -3260,6 +3260,12 @@ SIGHUP_handler(SIGNAL_ARGS)
 	PG_SETMASK(&UnBlockSig);
 #endif
 
+/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
+#ifdef USE_LICENSE
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE-TECC */
+
 	errno = save_errno;
 }
 
