@@ -66,12 +66,16 @@ makeParamList(int numParams)
 	retval->numParams = numParams;
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	retval->outparamSetup = NULL;
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	retval->paramCheck = NULL;
+	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/* set all the params mode to IN and typmod is -1 */
 	for (i = 0; i < numParams; i++)
 	{
 		retval->params[i].pmode = PROARGMODE_IN;
 		retval->params[i].ptypmod = -1; /* ReqID:SRS-CMD-PSQL */
+		retval->params[i].pdatatype = NULL; /* ReqID:SRS-PLSQL-DSQL */
 	}
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 

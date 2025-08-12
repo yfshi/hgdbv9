@@ -504,6 +504,9 @@ static TupleDesc plisql_get_tupledesc_fromvar(PLiSQL_execstate *estate,
 								PLiSQL_variable *variable);
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 
+/* Begin - ReqID:SRS-PLSQL-DSQL */
+static void plisql_param_check(ParamListInfo params, FuncExpr *fexpr);
+/* End - ReqID:SRS-PLSQL-DSQL */
 
 /* ----------
  * plisql_exec_function	Called by the call handler for
@@ -1048,6 +1051,7 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 				}
 					break;
 				case PLISQL_DTYPE_ROW:
+				case PLISQL_DTYPE_ORA_RECORD: /* ReqID:SRS-PLSQL-DSQL */
 					fcinfo->args[i].isnull = false;
 					break;
 				default:
@@ -4747,6 +4751,9 @@ plisql_estate_setup(PLiSQL_execstate *estate,
 	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
 	estate->paramLI->paramnames = NULL;
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	estate->paramLI->paramCheck = func->paramCheck;
+	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/* set up for use of appropriate simple-expression EState and cast hash */
 	if (simple_eval_estate)
@@ -5181,6 +5188,10 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 	/* Begin - BUG#M0000264 */
 	int param_level;
 	/* End - BUG#M0000264 */
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	ListCell *lc;
+	int		pno;
+	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/*
 	 * First we evaluate the string expression after the EXECUTE keyword. Its
@@ -5204,6 +5215,32 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 	 * Execute the query without preparing a saved plan.
 	 */
 	paramLI = exec_eval_using_params(estate, stmt->params);
+
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	if (paramLI)
+	{
+		paramLI->paramCheck = (ParamCheckHook) plisql_param_check;
+		Assert(stmt->params->length == paramLI->numParams);
+	}
+	pno = 0;
+	foreach(lc, stmt->params)
+	{
+		PLiSQL_expr *pexpr = (PLiSQL_expr *) lfirst(lc);
+
+		if (!paramLI->haveout && 
+			(pexpr->info == PROARGMODE_OUT || pexpr->info == PROARGMODE_INOUT))
+		{
+			/*
+			 * In the *plisql_inline_handler* function, there are some codes for
+			 * binding OUT parameters added for anonymous block. Here we setting
+			 * the *haveout* flag can help us obtain the values of the OUT parameters.
+			 */
+			paramLI->haveout = true;
+		}
+
+		paramLI->params[pno++].pmode = pexpr->info;
+	}
+	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	memset(&options, 0, sizeof(options));
 	options.params = paramLI;
@@ -8206,6 +8243,7 @@ plisql_param_fetch(ParamListInfo params,
 		prm->isnull = true;
 		prm->pflags = 0;
 		prm->ptype = InvalidOid;
+		prm->pdatatype = NULL;
 		return prm;
 	}
 
@@ -8213,6 +8251,18 @@ plisql_param_fetch(ParamListInfo params,
 	exec_eval_datum(estate, datum,
 					&prm->ptype, &prmtypmod,
 					&prm->value, &prm->isnull);
+
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	/* Set paramter's in/out mode manually. */
+	if (datum->dtype == PLISQL_DTYPE_VAR)
+	{
+		prm->pmode = ((PLiSQL_var *) datum)->info;
+	}
+	else if (datum->dtype == PLISQL_DTYPE_ORA_RECORD)
+	{
+		prm->pmode = ((PLiSQL_row *) datum)->info;
+	}
+	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	/* It is forbidden to convert parameter to constants if set OutparamAssign */
@@ -11249,6 +11299,26 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 				prm->value = datumCopy(prm->value, typByVal, typLen);
 		}
 
+		/* Begin - ReqID:SRS-PLSQL-DSQL */
+		/* Store the original datatype used for new ora record variable. */
+		if (param->datum_dno > -1 && param->datum_dno < estate->ndatums)
+		{
+			PLiSQL_datum *datum = (PLiSQL_datum*)estate->datums[param->datum_dno];
+			PLiSQL_row *row = NULL;
+
+			if (datum->dtype == PLISQL_DTYPE_ORA_RECORD)
+				row = (PLiSQL_row*)datum;
+			else if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM && 
+					 ((PLiSQL_pkg_datum*)datum)->pkgvar->dtype == PLISQL_DTYPE_ORA_RECORD)
+				row = (PLiSQL_row*)((PLiSQL_pkg_datum*)datum)->pkgvar;
+			else
+				row = NULL;
+
+			if (row != NULL)
+				prm->pdatatype = row->datatype;
+		}
+		/* End - ReqID:SRS-PLSQL-DSQL */
+
 		MemoryContextSwitchTo(oldcontext);
 
 		exec_eval_cleanup(estate);
@@ -11546,6 +11616,14 @@ plisql_anonymous_return_out_parameter(PLiSQL_execstate *estate, PLiSQL_function 
 				((PLiSQL_var *)argvariable)->info == PROARGMODE_INOUT)
 				out_variables[j++] = (PLiSQL_variable *) estate->datums[func->fn_argvarnos[i]];
 		}
+		/* Begin - ReqID:SRS-PLSQL-DSQL */
+		else if (argvariable->dtype == PLISQL_DTYPE_ORA_RECORD)
+		{
+			if (((PLiSQL_row *)argvariable)->info == PROARGMODE_OUT ||
+				((PLiSQL_row *)argvariable)->info == PROARGMODE_INOUT)
+				out_variables[j++] = (PLiSQL_variable *) estate->datums[func->fn_argvarnos[i]];
+		}
+		/* End - ReqID:SRS-PLSQL-DSQL */
 		else
 		{
 			Assert(argvariable->dtype == PLISQL_DTYPE_REC);
@@ -12028,3 +12106,136 @@ plisql_get_tupledesc_fromvar(PLiSQL_execstate *estate,
 	return retdesc;
 }
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
+
+/* Begin - ReqID:SRS-PLSQL-DSQL */
+/*
+ * Check whether the parameters are used correctly in the call statement block.
+ */
+static void
+plisql_param_check(ParamListInfo params, FuncExpr *fexpr)
+{
+	char	   *argmodes = NULL;
+
+	if (params->paramFetch == NULL ||
+		list_length(fexpr->args) < 1)
+		return;
+
+	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
+	{
+		HeapTuple	proctup;
+		Datum		proargmodes;
+		bool		isNull;
+
+		/*
+		 * If the called function is PG functions, then retrieve its parameter
+		 * IN/OUT attributes from the system table pg_proc.
+		 */
+		proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(fexpr->funcid));
+		if (!HeapTupleIsValid(proctup))
+			elog(ERROR, "cache lookup failed for function %u", fexpr->funcid);
+
+		/* Fetch proargmodes; if it's null, there are no output args */
+		proargmodes = SysCacheGetAttr(PROCOID, proctup,
+									Anum_pg_proc_proargmodes,
+									&isNull);
+		if (!isNull)
+		{
+			ArrayType  *arr;
+			int			numargs;
+
+			arr = DatumGetArrayTypeP(proargmodes);	/* ensure not toasted */
+			numargs = list_length(fexpr->args);
+			if (ARR_NDIM(arr) != 1 ||
+				ARR_DIMS(arr)[0] != numargs ||
+				ARR_HASNULL(arr) ||
+				ARR_ELEMTYPE(arr) != CHAROID)
+				elog(ERROR, "proargmodes is not a 1-D char array of length %d or it contains nulls",
+					numargs);
+			argmodes = palloc0(numargs + 1);
+			memcpy(argmodes, ARR_DATA_PTR(arr), numargs);
+		}
+		ReleaseSysCache(proctup);
+	}
+	else
+	{
+		PLiSQL_function *function = get_parent_func(fexpr);
+		PLiSQL_subproc_function *subfunc;
+		int	numargs;
+		int	nth_arg;
+
+		if (function == NULL || function->subprocfuncs == NULL || fexpr->funcid < 0)
+			return;
+
+		/*
+		 * If the function being called is within a package, then retrieve its parameter
+		 * IN/OUT attributes from argmode of PLiSQL_function_argitem.
+		 */
+		subfunc = function->subprocfuncs[fexpr->funcid];
+		numargs = list_length(subfunc->arg);
+
+		if (numargs < 1)
+			return;
+
+		/* Construct a list of parameter IN/OUT attribute in string format. */
+		argmodes = palloc0(numargs + 1);
+		for (nth_arg = 0; nth_arg < numargs; nth_arg++)
+		{
+			PLiSQL_function_argitem *argitem = (PLiSQL_function_argitem *) list_nth(subfunc->arg, nth_arg);
+
+			switch (argitem->argmode)
+			{
+				case ARGMODE_IN:
+					argmodes[nth_arg] = PROARGMODE_IN;
+					break;
+				case ARGMODE_OUT:
+					argmodes[nth_arg] = PROARGMODE_OUT;
+					break;
+				case ARGMODE_INOUT:
+					argmodes[nth_arg] = PROARGMODE_INOUT;
+					break;
+				default:
+					break;
+			}
+		}
+	}
+
+	/*
+	 * Now we got the IN/OUT attributes of the parameters in the function definition,
+	 * we can then check whether the attributes of the bound paramters match their definitions.
+	 */
+	if (argmodes)
+	{
+		int	i;
+
+		for (i = 0; i < list_length(fexpr->args); i++)
+		{
+			Param *param = list_nth(fexpr->args, i);
+			ParamExternData prmdata;
+
+			if (!IsA(param, Param))
+				continue;
+
+			if (param->paramid > 0 && param->paramid <= params->numParams)
+			{
+				(void)params->paramFetch(params, param->paramid, false, &prmdata);
+
+				/*
+				* Parameters have three types: IN, OUT, INOUT.
+				* Errors should only be reported in the following four scenarios.
+				*/
+				if (prmdata.pmode == PROARGMODE_OUT && argmodes[i] == PROARGMODE_IN)
+					elog(ERROR, "OUT variable is bound to IN position");
+				else if (prmdata.pmode == PROARGMODE_OUT && argmodes[i] == PROARGMODE_INOUT)
+					elog(ERROR, "OUT variable is bound to INOUT position");
+				else if (prmdata.pmode == PROARGMODE_IN && argmodes[i] == PROARGMODE_OUT)
+					elog(ERROR, "IN variable is bound to OUT position");
+				else if (prmdata.pmode == PROARGMODE_IN && argmodes[i] == PROARGMODE_INOUT)
+					elog(ERROR, "IN variable is bound to INOUT position");
+			}
+		}
+		pfree(argmodes);
+	}
+
+	return;
+}
+/* End - ReqID:SRS-PLSQL-DSQL */

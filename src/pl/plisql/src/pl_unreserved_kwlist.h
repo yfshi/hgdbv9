@@ -145,6 +145,9 @@ PG_KEYWORD("result_cache", K_RESULT_CACHE)
 /* End - SRS-PLSQL-SUBPROC*/
 PG_KEYWORD("return", K_RETURN)
 PG_KEYWORD("returned_sqlstate", K_RETURNED_SQLSTATE)
+/* Begin - ReqID:SRS-PLSQL-DSQL */
+PG_KEYWORD("returning", K_RETURNING)
+/* End - ReqID:SRS-PLSQL-DSQL */
 PG_KEYWORD("reverse", K_REVERSE)
 PG_KEYWORD("rollback", K_ROLLBACK)
 PG_KEYWORD("row_count", K_ROW_COUNT)

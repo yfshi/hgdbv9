@@ -19,7 +19,9 @@ struct Bitmapset;
 struct ExprState;
 struct Param;
 struct ParseState;
-
+/* Begin - ReqID:SRS-PLSQL-DSQL */
+struct FuncExpr;
+/* End - ReqID:SRS-PLSQL-DSQL */
 
 /*
  *	  ParamListInfo
@@ -102,6 +104,9 @@ typedef struct ParamExternData
 	char 		pmode;			/* parameter's mode, IN, OUT, or INOUT */
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 	int32		ptypmod;		/* the typmod of parameter's datatype, or -1 for types that do not need typmod */ /* ReqID:SRS-CMD-PSQL */
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	struct PLiSQL_type *pdatatype;		/* reference to datatype, for composite types such as ora record */
+	/* End - ReqID:SRS-PLSQL-DSQL */
 } ParamExternData;
 
 typedef struct ParamListInfoData *ParamListInfo;
@@ -119,6 +124,10 @@ typedef void (*ParserSetupHook) (struct ParseState *pstate, void *arg);
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 typedef void (*OutParamSetupHook) (void *scratch);
 /* End - ReqID:SRS-SQL-FUNCOUT */
+
+/* Begin - ReqID:SRS-PLSQL-DSQL */
+typedef ParamExternData *(*ParamCheckHook) (ParamListInfo params, struct FuncExpr *fexpr);
+/* End - ReqID:SRS-PLSQL-DSQL */
 
 typedef struct ParamListInfoData
 {
@@ -141,6 +150,9 @@ typedef struct ParamListInfoData
 	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
 	char		**paramnames;
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	ParamCheckHook paramCheck;	/* parameter check hook */
+	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/*
 	 * params[] may be of length zero if paramFetch is supplied; otherwise it
