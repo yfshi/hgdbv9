@@ -837,7 +837,12 @@ other			.
 
 					BEGIN(INITIAL);
 					if (yyextra->literallen == 0)
-						yyerror("zero-length delimited identifier");
+					{
+						/* Begin - BUG#Z5565 */
+						if (has_sql_mode(MODE_ANSI_QUOTES))
+							yyerror("zero-length delimited identifier");
+						/* End - BUG#Z5565 */
+					}
 					ident = litbufdup(yyscanner);
 					if (yyextra->literallen >= NAMEDATALEN)
 						truncate_identifier(ident, yyextra->literallen, true);

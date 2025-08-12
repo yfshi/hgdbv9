@@ -1177,3 +1177,20 @@ SELECT CONVERT_TZ('1990-01-01 00:00:01', ' +00:00','+10:00');
 SELECT CONVERT_TZ('1990-01-01 00:00:01', '+00:00 ','+10:00');
 SELECT CONVERT_TZ( '1990-01-01 00:00:01', ' +00:00 ','+10:00' );
 /* End - BUG#Z5583 */
+
+/* Begin - BUG#Z5564 */
+create table test as select utc_timestamp(6);
+\d+ test;
+drop table test;
+/* End - BUG#Z5564 */
+
+/* Begin - BUG#Z5565 */
+set sql_mode = '';
+select dayname(" ");
+select dayname("");
+set sql_mode to default;
+/* End - BUG#Z5565 */
+
+/* Begin - BUG#Z5567 */
+SELECT time_to_sec('4294967295:59:59');
+/* End - BUG#Z5567 */

@@ -1455,7 +1455,7 @@ IMMUTABLE;
 
 --utc_timestamp
 CREATE FUNCTION ivymy.utc_timestamp(int)
-RETURNS timestamp(6)
+RETURNS datetime(6) /* BUG#Z5564 */
 AS 'MODULE_PATHNAME','utc_timestamp_func'
 LANGUAGE C
 STRICT
