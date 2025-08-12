@@ -44,6 +44,10 @@ ifeq ($(with_gmssl),yes)
 SUBDIRS += mfa-gmssl
 endif
 
+ifeq ($(with_ssl),openssl)
+SUBDIRS += tde
+endif
+
 # We don't build or execute these by default, but we do want "make
 # clean" etc to recurse into them.  (We must filter out those that we
 # have conditionally included into SUBDIRS above, else there will be
