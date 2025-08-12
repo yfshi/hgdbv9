@@ -256,6 +256,8 @@ mfa_totp_verify(const char *role, const char *show_otp,
 
 	if (user_totp == generated_otp)
 		return STATUS_OK;
+	
+	*logdetail = psprintf(_("the client password is incorrect"));
 
 	return STATUS_ERROR;
 }
@@ -524,12 +526,16 @@ mfa_pkey_verify(const char *role, const char *show_otp,
 	int user_otp_len = strlen(user_otp);
 	unsigned char *sig = palloc0(user_otp_len);
 	if (!sig)
+	{
+		*logdetail = psprintf(_("There is not enough memory allocated for the signature"));
 		return STATUS_ERROR;
+	}
 
 	sig_len = pg_b64_decode(user_otp, user_otp_len, (char *)sig, user_otp_len);
 	if (sig_len <= 0)
 	{
 		pfree(sig);
+		*logdetail = psprintf(_("Client signature decoding error"));
 		return STATUS_ERROR;
 	}
 

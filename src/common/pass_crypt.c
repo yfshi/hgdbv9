@@ -56,17 +56,22 @@
 static const char _base64[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 
-static void pass_hmac(const unsigned char *msg, size_t msg_len, const unsigned char *key, unsigned char *digest)
+static bool pass_hmac(const unsigned char *msg, size_t msg_len, const unsigned char *key, unsigned char *digest)
 {
 #ifdef USE_GMSSL
 	pg_hmac_ctx *ctx = pg_hmac_create(PG_SM3);
 #else
 	pg_hmac_ctx *ctx = pg_hmac_create(PG_SHA256);
 #endif
+	if (!ctx)
+		return false;
+
 	pg_hmac_init(ctx, key, 16);
 	pg_hmac_update(ctx, msg, msg_len);
 	pg_hmac_final(ctx, digest, PG_DIGEST_LENGTH);
 	pg_hmac_free(ctx);
+
+	return true;
 }
 
 static ControlFileData *
@@ -337,11 +342,21 @@ bool pass_is_encrypted(const char *passwd)
 
 	if (strspn(passwd, _base64) != strlen(passwd))
 	{
+#ifndef FRONTEND
+		elog(WARNING, _("IsEncrypt:Non-base64 encoding"));
+#else
+		printf(_("WARNING:IsEncryptNon-base64 encoding.\n"));
+#endif
 		return false;
 	}
 	b64_dec_len = pg_b64_decode(passwd, strlen(passwd), (char *)b64_dec, sizeof(b64_dec));
 	if (b64_dec_len <= 0 || b64_dec_len < 64 || b64_dec_len % 16 != 0)
 	{
+#ifndef FRONTEND
+		elog(WARNING, _("IsEncrypt:The length of the ciphertext should be a multiple of 16 and not less than 64(%d)"), b64_dec_len);
+#else
+		printf(_("WARNING:IsEncrypt:The length of the ciphertext should be a multiple of 16 and not less than 64(%d).\n"), b64_dec_len);
+#endif
 		return false;
 	}
 
@@ -375,7 +390,15 @@ bool pass_encrypt(const char *passwd, const unsigned char *key, const unsigned c
 	memcpy(out_enc + SYMM_IV_SIZE, passwd, strlen(passwd));
 	out_len += strlen(passwd) > PWD_MAX_SIZE ? PWD_MAX_SIZE : strlen(passwd);
 
-	pass_hmac(out_enc, out_len, hmac_key, out_enc + out_len);
+	if(!pass_hmac(out_enc, out_len, hmac_key, out_enc + out_len))
+	{
+#ifndef FRONTEND
+		elog(WARNING, _("Encrypt:Failed to generate the plaintext check code"));
+#else
+		printf(_("WARNING:Encrypt:Failed to generate the plaintext check code.\n"));
+#endif
+		return false;
+	}
 	out_len += 16;
 
 	memcpy(buf_plain, out_enc + SYMM_IV_SIZE, out_len - SYMM_IV_SIZE);
@@ -413,6 +436,11 @@ bool pass_decrypt(const char *passwd, const unsigned char *key, const unsigned c
 	pass_dec_len = pg_b64_decode(passwd, strlen(passwd), (char *)pass_dec, sizeof(pass_dec));
 	if (pass_dec_len <= 0 || pass_dec_len < 64 || pass_dec_len % 16 != 0)
 	{
+#ifndef FRONTEND
+		elog(WARNING, _("Decrypt:Non-base64 encoding"));
+#else
+		printf(_("WARNING:Decrypt:Non-base64 encoding.\n"));
+#endif
 		return false;
 	}
 	pass_dec_len -= 16;
@@ -427,7 +455,14 @@ bool pass_decrypt(const char *passwd, const unsigned char *key, const unsigned c
 	pass_dec_len -= 16;
 	pass_hmac(pass_dec, pass_dec_len + SYMM_IV_SIZE, hmac_key, digst);
 	if (memcmp(digst, pass_dec + SYMM_IV_SIZE + pass_dec_len, 16) != 0)
+	{
+#ifndef FRONTEND
+		elog(WARNING, _("Decrypt:The plaintext password verification failed(hmac)"));
+#else
+		printf(_("WARNING:Decrypt:The plaintext password verification failed(hmac).\n"));
+#endif
 		return false;
+	}
 
 	memcpy(out, pass_dec + SYMM_IV_SIZE, pass_dec_len);
 	out[pass_dec_len] = '\0';
@@ -458,11 +493,19 @@ bool pass_gen_key(char *DataDir, char *Interface, char *CustomKey, unsigned char
 		ControlFile = get_identifier(DataDir, &crc_ok);
 
 		if (!ControlFile){
-			printf(_("WARNING: The identifier was requested, but failed to obtain it.\n\n"));
+#ifndef FRONTEND
+			elog(WARNING, _("GenKey:The identifier was requested, but failed to obtain it."));
+#else
+			printf(_("WARNING:GenKey:The identifier was requested, but failed to obtain it.\n"));
+#endif
 			return false;
 		}
 		if (!crc_ok){
-			printf(_("WARNING: The identifier was requested, but failed to obtain it.\n\n"));
+#ifndef FRONTEND
+			elog(WARNING, _("GenKey:The identifier was requested, but failed to obtain it(crc check failed)"));
+#else
+			printf(_("WARNING:GenKey:The identifier was requested, but failed to obtain it(crc check failed).\n"));
+#endif
 			pfree(ControlFile);
 			return false;
 		}
@@ -478,7 +521,11 @@ bool pass_gen_key(char *DataDir, char *Interface, char *CustomKey, unsigned char
 	{
 		ret = pg_get_mac_address(Interface, mac);
 		if(!ret){
-			printf(_("WARNING: The mac was requested, but failed to obtain it.\n\n"));
+#ifndef FRONTEND
+			elog(WARNING, _("GenKey:The mac was requested, but failed to obtain it."));
+#else
+			printf(_("WARNING:GenKey:The mac was requested, but failed to obtain it.\n"));
+#endif
 			return false;
 		}
 		mac_len = 12;

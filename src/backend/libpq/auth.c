@@ -1325,13 +1325,18 @@ CheckTOTPAuth(Port *port, char *shadow_otp, char **logdetail)
 
 	passwd = recv_password_packet(port);
 	if (passwd == NULL)
-		return STATUS_EOF;		/* client wouldn't send password */
+	{
+		ereport(FATAL,
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("TOTP authentication failed:client wouldn't send password")));
+		return STATUS_EOF; /* client wouldn't send password */
+	}
 
 	user_totp = atoi(passwd);
-	if(user_totp <= 0)
+	if (user_totp <= 0)
 		ereport(FATAL,
-			(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-				 errmsg("TOTP authentication failed")));
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("TOTP authentication failed:the client password is illegal")));
 
 	result = mfa_totp_verify(port->user_name, shadow_otp, user_totp,
 							  otpSalt, 6, logdetail);
@@ -1340,8 +1345,8 @@ CheckTOTPAuth(Port *port, char *shadow_otp, char **logdetail)
 
 	if(result == STATUS_ERROR)
 		ereport(FATAL,
-			(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-				 errmsg("TOTP authentication failed")));
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("TOTP authentication failed:%s", *logdetail)));
 
 	return result;
 }
@@ -1350,32 +1355,37 @@ CheckTOTPAuth(Port *port, char *shadow_otp, char **logdetail)
 static int
 CheckPKEYAuth(Port *port, char *shadow_otp, char **logdetail)
 {
-    char        otpSalt[16];        /* Password salt */
-    char       *passwd;
-    int         result;
+	char        otpSalt[16];        /* Password salt */
+	char       *passwd;
+	int         result;
 
-    if (!pg_strong_random(otpSalt, sizeof(otpSalt)))
-    {
-        ereport(LOG,
-                (errmsg("could not generate random PKEY salt")));
-        return STATUS_ERROR;
-    }
+	if (!pg_strong_random(otpSalt, sizeof(otpSalt)))
+	{
+		ereport(LOG,
+				(errmsg("PKEY authentication failed:could not generate random PKEY salt")));
+		return STATUS_ERROR;
+	}
 
-    sendAuthRequest(port, AUTH_REQ_PKEY, otpSalt, sizeof(otpSalt));
+	sendAuthRequest(port, AUTH_REQ_PKEY, otpSalt, sizeof(otpSalt));
 
-    passwd = recv_password_packet(port);
-    if (passwd == NULL)
-        return STATUS_EOF;
+	passwd = recv_password_packet(port);
+	if (passwd == NULL)
+	{
+		ereport(FATAL,
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("PKEY authentication failed:client wouldn't send signature")));
+		return STATUS_EOF;
+	}
 
-    result = mfa_pkey_verify(port->user_name, shadow_otp, passwd,
-                             otpSalt, sizeof(otpSalt), logdetail);
+	result = mfa_pkey_verify(port->user_name, shadow_otp, passwd,
+				otpSalt, sizeof(otpSalt), logdetail);
 
-    pfree(passwd);
+	pfree(passwd);
 
-    if (result == STATUS_ERROR)
-        ereport(FATAL,
-                (errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-                 errmsg("PKEY authentication failed %s", *logdetail)));
+	if (result == STATUS_ERROR)
+		ereport(FATAL,
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("PKEY authentication failed:%s", *logdetail)));
 
     return result;
 }
@@ -1399,14 +1409,25 @@ CheckCERTAuth(Port *port, char *shadow_otp, char **logdetail)
 	sendAuthRequest(port, AUTH_REQ_CERT_CERT, otpSalt, 0);
 
 	cert = recv_password_packet(port);
+
 	if (cert == NULL)
-		return STATUS_EOF;		/* client wouldn't send password */
+	{
+		ereport(FATAL,
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("CERT authentication failed:client wouldn't send certificate")));
+		return STATUS_EOF; /* client wouldn't send certificate */
+	}
 
 	sendAuthRequest(port, AUTH_REQ_CERT_SIGN, otpSalt, sizeof(otpSalt));
 
 	sign = recv_password_packet(port);
 	if (sign == NULL)
-		return STATUS_EOF;		/* client wouldn't send password */
+	{
+		ereport(FATAL,
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg("CERT authentication failed:client wouldn't send signature")));
+		return STATUS_EOF; /* client wouldn't send signature */
+	}
 
 	result = mfa_cert_verify(port->user_name, cert, sign, shadow_otp, 
 								  otpSalt, sizeof(otpSalt), logdetail);

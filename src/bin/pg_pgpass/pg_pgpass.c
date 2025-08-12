@@ -360,7 +360,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		pg_log_warning("Failed to %s", isEncrypt?"encrypt":"decrypt");
+		pg_log_error("Failed to %s", isEncrypt?"encrypt":"decrypt");
 	}
 
 	return 0;
