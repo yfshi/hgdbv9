@@ -3238,7 +3238,8 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 		/* End - BUG#M0000264 */
 
 		/* Anonymous block has out parameters, its return value will be not NULL */
-		if (result != 0 && dest != NULL && stmt->paramsmode != NIL)
+		if (result != 0 && dest != NULL && 
+			params && params->haveout) /* Begin - ReqID:SRS-PLSQL-DSQL */
 		{
 			HeapTupleHeader td;
 			TupleDesc		tupdesc;
@@ -3429,6 +3430,22 @@ SKIP_PG_PROC_CHECK:
 	estate = CreateExecutorState();
 	estate->es_param_list_info = params;
 	econtext = CreateExprContext(estate);
+
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	if (ORA_PARSER == compatible_db)
+	{
+		ParamListInfo paramInfo = econtext->ecxt_param_list_info;
+
+		/*
+		 * Here we have funcid and param list. Before actually executing the
+		 * function, check whether the parameters are used correctly.
+		 */
+		if (paramInfo && paramInfo->paramCheck)
+		{
+			(void)paramInfo->paramCheck(paramInfo, fexpr);
+		}
+	}
+	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/*
 	 * If we're called in non-atomic context, we also have to ensure that the

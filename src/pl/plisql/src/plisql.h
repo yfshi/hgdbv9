@@ -303,6 +303,11 @@ typedef struct PLiSQL_expr
 	ExprState  *expr_simple_state;	/* eval tree for expr_simple_expr */
 	bool		expr_simple_in_use; /* true if eval tree is active */
 	LocalTransactionId expr_simple_lxid;
+
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	char		info;	/* record the argument mode which may be IN, OUT or IN OUT */
+	int			datum_dno;	/* dno of referenced datum, or -1 if none */
+	/* End - ReqID:SRS-PLSQL-DSQL */
 } PLiSQL_expr;
 
 /*
@@ -1159,6 +1164,9 @@ typedef struct PLiSQL_function
 	bool		fn_hasudtype;	/* the function arguments have an Oracle record type or another udt type? */
 	PLiSQL_type	*rettype;		/* NOT NULL if function return'type is from a package */
 	/* End - ReqID:SRS-PLSQL-RECORD */
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	void 		*paramCheck;		/* parameter check hook */
+	/* End - ReqID:SRS-PLSQL-DSQL */
 } PLiSQL_function;
 
 /* Begin - SRS-PLSQL-SUBPROC */

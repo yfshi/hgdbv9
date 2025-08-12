@@ -475,6 +475,10 @@ do_compile(FunctionCallInfo fcinfo,
 	function->namelabel = pstrdup(NameStr(procStruct->proname));
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	function->paramCheck = NULL;
+	/* End - ReqID:SRS-PLSQL-DSQL */
+
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
 	check_referenced_objects = true;
 	plisql_referenced_objects = NIL;
@@ -1579,6 +1583,9 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	/* Begin - ReqID:SRS-PLSQL-RECORD */
 	function->fn_hasudtype = false;
 	/* End - ReqID:SRS-PLSQL-RECORD */
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	function->paramCheck = NULL;
+	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/*
 	 * Remember if function is STABLE/IMMUTABLE.  XXX would it be better to
@@ -1599,6 +1606,9 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 		/* Begin - ReqID:SRS-SQL-LIBPQOUT */
 		function->paramnames = inparams->paramnames;
 		/* End - ReqID:SRS-SQL-LIBPQOUT */
+		/* Begin - ReqID:SRS-PLSQL-DSQL */
+		function->paramCheck = inparams->paramCheck;
+		/* End - ReqID:SRS-PLSQL-DSQL */
 
 		/* Begin - BUG#Z0001268 */
 		/*
@@ -1633,11 +1643,25 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 			/* End - ReqID:SRS-SQL-LIBPQOUT */
 				snprintf(buf, sizeof(buf), "$%d", i + 1);
 
-			/* Create datatype info */
-			argdtype = plisql_build_datatype(argtypeid,
-										param->ptypmod, /* ReqID:SRS-CMD-PSQL */
-										function->fn_input_collation,
-										NULL);
+			/* Begin - ReqID:SRS-PLSQL-DSQL */
+			if (param->pdatatype)
+			{
+				/* 
+				 * For the ora record type, when we building a new datatype 
+				 * by typeid, we can't set its record arglist. So, we reference 
+				 * its datatype to original one for the new variable. 
+				 */
+				argdtype = param->pdatatype;
+			}
+			else
+			/* End - ReqID:SRS-PLSQL-DSQL */
+			{
+				/* Create datatype info */
+				argdtype = plisql_build_datatype(argtypeid,
+											param->ptypmod, /* ReqID:SRS-CMD-PSQL */
+											function->fn_input_collation,
+											NULL);
+			}
 
 			/* Disallow pseudotype argument */
 			/* (note we already replaced polymorphic types) */
@@ -1645,7 +1669,8 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 			if (argdtype->ttype != PLISQL_TTYPE_SCALAR &&
 				argdtype->ttype != PLISQL_TTYPE_REC &&
 				argdtype->ttype != PLISQL_TTYPE_UDT_REF_CURSOR && /* ReqID:SRS-PLSQL-CURSOR */
-				argdtype->ttype != PLISQL_TTYPE_SUBTYPE) /* ReqID:SRS-PLSQL-SUBTYPE */
+				argdtype->ttype != PLISQL_TTYPE_SUBTYPE && /* ReqID:SRS-PLSQL-SUBTYPE */
+				argdtype->ttype != PLISQL_TTYPE_ORARECORD_TYPE) /* ReqID:SRS-PLSQL-DSQL */
 				ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				errmsg("PLI/SQL functions cannot accept type %s",
@@ -1662,6 +1687,13 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 				((PLiSQL_var *)argvariable)->info = param->pmode;
 				/* End - ReqID:SRS-SQL-ANONYOUT */
 			}
+			/* Begin - ReqID:SRS-PLSQL-DSQL */
+			else if (argvariable->dtype == PLISQL_DTYPE_ORA_RECORD)
+			{
+				argitemtype = PLISQL_NSTYPE_ORA_RECORD;
+				((PLiSQL_row *)argvariable)->info = param->pmode;
+			}
+			/* End - ReqID:SRS-PLSQL-DSQL */
 			else
 			{
 				Assert(argvariable->dtype == PLISQL_DTYPE_REC);
@@ -1680,6 +1712,14 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 			}
 			/* End - ReqID:SRS-PLSQL-CURSOR */
 			function->fn_argvarnos[i] = argvariable->dno;
+
+			/* Begin - ReqID:SRS-PLSQL-DSQL */
+			if (!function->fn_hasudtype)
+			{
+				if (argvariable->dtype == PLISQL_DTYPE_ORA_RECORD)
+					function->fn_hasudtype = true;
+			}
+			/* End - ReqID:SRS-PLSQL-DSQL */
 		}
 		if (inparams->numParams> 0)
 			function->fn_prokind = PROKIND_ANONYMOUS_BLOCK;
@@ -5053,6 +5093,9 @@ plisql_compile_inline_internal(char *proc_source)
 	/* Begin - ReqID:SRS-PLSQL-RECORD */
 	function->fn_hasudtype = false;
 	/* End - ReqID:SRS-PLSQL-RECORD */
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	function->paramCheck = NULL;
+	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/*
 	 * Remember if function is STABLE/IMMUTABLE.  XXX would it be better to

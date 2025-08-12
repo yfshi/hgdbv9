@@ -618,7 +618,19 @@ tts_minimal_copy_heap_tuple(TupleTableSlot *slot)
 	if (!mslot->mintuple)
 		tts_minimal_materialize(slot);
 
-	return heap_tuple_from_minimal_tuple(mslot->mintuple);
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	/*
+	 * if the tupdesc column contains Oracle record type,
+	 * use heap_copy_orarec_tuple_as_datum to copy the tuple.
+	 */
+	if (tupledesc_has_udt_type(slot->tts_tupleDescriptor))
+	{
+		HeapTuple htup = heap_tuple_from_minimal_tuple(mslot->mintuple);
+		return heap_copy_orarec_tuple_as_datum(htup, slot->tts_tupleDescriptor);
+	}
+	else
+	/* End - ReqID:SRS-PLSQL-DSQL */
+		return heap_tuple_from_minimal_tuple(mslot->mintuple);
 }
 
 static MinimalTuple

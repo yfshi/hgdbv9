@@ -99,7 +99,8 @@ static	PLiSQL_expr	*read_sql_construct(int until,
 											bool valid_sql,
 											bool trim,
 											int *startloc,
-											int *endtoken);
+											int *endtoken,
+											bool check_assignable_datum); /* ReqID:SRS-PLSQL-DSQL */
 static	PLiSQL_expr	*read_sql_expression(int until,
 											 const char *expected);
 static	PLiSQL_expr	*read_sql_expression2(int until, int until2,
@@ -527,6 +528,9 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 /* End - SRS-PLSQL-SUBPROC*/
 %token <keyword>	K_RETURN
 %token <keyword>	K_RETURNED_SQLSTATE
+/* Begin - ReqID:SRS-PLSQL-DSQL */
+%token <keyword>	K_RETURNING
+/* End - ReqID:SRS-PLSQL-DSQL */
 %token <keyword>	K_REVERSE
 %token <keyword>	K_ROLLBACK
 %token <keyword>	K_ROW_COUNT
@@ -2005,7 +2009,7 @@ stmt_perform	: K_PERFORM
 						new->expr = read_sql_construct(';', 0, 0, ";",
 													   RAW_PARSE_DEFAULT,
 													   false, false, true,
-													   &startloc, NULL);
+													   &startloc, NULL, false); 
 						/* overwrite "perform" ... */
 						memcpy(new->expr->query, " SELECT", 7);
 						/* left-justify to get rid of the leading space */
@@ -2098,7 +2102,7 @@ stmt_assign		: T_DATUM
 						new->expr = read_sql_construct(';', 0, 0, ";",
 													   pmode,
 													   false, true, true,
-													   NULL, NULL);
+													   NULL, NULL, false);
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
@@ -2651,7 +2655,8 @@ for_control		: for_variable K_IN
 													   false,
 													   true,
 													   &expr1loc,
-													   &tok);
+													   &tok,
+													   false);
 
 							if (tok == DOT_DOT)
 							{
@@ -3097,7 +3102,7 @@ stmt_raise		: K_RAISE
 															  ", or ; or USING",
 															  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 															  true, true, true,
-															  NULL, &tok);
+															  NULL, &tok, false);
 									new->params = lappend(new->params, expr);
 								}
 							}
@@ -3254,6 +3259,10 @@ stmt_dynexecute : K_EXECUTE
 						PLiSQL_stmt_dynexecute *new;
 						PLiSQL_expr *expr;
 						int endtoken;
+						/* Begin - ReqID:SRS-PLSQL-DSQL */
+						bool has_returning = false;
+						int num_out_param = 0;
+						/* End - ReqID:SRS-PLSQL-DSQL */
 
 						/* Begin - BUG#Z1438 */
 						int	tok;
@@ -3268,7 +3277,7 @@ stmt_dynexecute : K_EXECUTE
 												  "INTO or USING or ;",
 												  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 												  true, true, true,
-												  NULL, &endtoken);
+												  NULL, &endtoken, false);
 
 						new = palloc(sizeof(PLiSQL_stmt_dynexecute));
 						new->cmd_type = PLISQL_STMT_DYNEXECUTE;
@@ -3307,19 +3316,130 @@ stmt_dynexecute : K_EXECUTE
 									yyerror("syntax error");
 								do
 								{
+									/* Begin - ReqID:SRS-PLSQL-DSQL */
+									char	param_info = PROARGMODE_IN;
+									bool	is_out_param = false;
+
+									/*
+									 * USING [IN] [OUT] variable 
+									 */
+									tok = yylex();
+									if (tok == K_IN)
+									{
+										tok = yylex();
+										if (tok == K_OUT)
+										{
+											param_info = PROARGMODE_INOUT;
+											is_out_param = true;
+										}
+										else
+										{
+											plisql_push_back_token(tok);
+										}
+									}
+									else if (tok == K_OUT) 
+									{
+										param_info = PROARGMODE_OUT;
+										is_out_param = true;
+									}
+									else
+									{
+										plisql_push_back_token(tok);
+									}
+									/* End - ReqID:SRS-PLSQL-DSQL */
+
 									expr = read_sql_construct(',', ';', K_INTO,
 															  ", or ; or INTO",
 															  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 															  true, true, true,
-															  NULL, &endtoken);
+															  NULL, &endtoken, is_out_param);
+									/* Begin - ReqID:SRS-PLSQL-DSQL */
+									expr->info = param_info;
+									num_out_param += is_out_param;
+									/* End - ReqID:SRS-PLSQL-DSQL */
 									new->params = lappend(new->params, expr);
 								} while (endtoken == ',');
 							}
+							/* Begin - ReqID:SRS-PLSQL-DSQL */
+							else if (endtoken == K_RETURN || endtoken == K_RETURNING)
+							{
+								ListCell *lc;
+
+								tok = yylex();
+								/* Eat INTO otherwise put token back into read-ahead stack */
+								if(tok != K_INTO)
+									plisql_push_back_token(tok);
+
+								if (has_returning)		/* multiple RETURN|RETURNING */
+									yyerror("syntax error");
+
+								/* Already have OUT param? */
+								foreach(lc, new->params)
+								{
+									PLiSQL_expr *prm = (PLiSQL_expr *)lfirst(lc);
+									if (prm->info == PROARGMODE_OUT || prm->info == PROARGMODE_INOUT)
+										elog(ERROR, "could not use OUT or IN/OUT mode when using returning clause");
+								}
+
+								has_returning = true;
+								do
+								{
+									expr = read_sql_construct(',', ';', K_INTO,
+															  ", or ; or INTO",
+															  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
+															  true, true, true,
+															  NULL, &endtoken, true);
+									expr->info = PROARGMODE_OUT;
+									num_out_param++;
+									new->params = lappend(new->params, expr);
+								} while (endtoken == ',');
+							}
+							/* End - ReqID:SRS-PLSQL-DSQL */
 							else if (endtoken == ';')
 								break;
 							else
 								yyerror("syntax error");
 						}
+
+						/* Begin - ReqID:SRS-PLSQL-DSQL */
+						/*
+						 * Considering that "INTO", "USING OUT" and "RETURNING INTO" couldn't appear
+						 * at the same time, we treat the "OUT" parameters in the last two cases as
+						 * the "INTO" target, and thus we can reuse the codes.
+						 */
+						if (num_out_param > 0)
+						{
+							PLiSQL_row *row = palloc0(sizeof(PLiSQL_row));
+							ListCell *lc;
+							int	nfield = 0;
+
+							row->dtype = PLISQL_DTYPE_ROW;
+							row->refname = "(unnamed row)";
+							row->lineno = plisql_location_to_lineno(yylloc);
+							row->rowtupdesc = NULL;
+							row->nfields = num_out_param;
+							row->fieldnames = palloc(sizeof(char *) * num_out_param);
+							row->varnos = palloc(sizeof(int) * num_out_param);
+							foreach (lc, new->params)
+							{
+								PLiSQL_expr *f_expr = (PLiSQL_expr *)lfirst(lc);
+
+								if (f_expr->info != PROARGMODE_OUT && f_expr->info != PROARGMODE_INOUT)
+									continue;
+								
+								if (nfield >= num_out_param)
+									yyerror("num of out param not mismatched");
+
+								row->fieldnames[nfield] = pstrdup(f_expr->query);
+								row->varnos[nfield++] = f_expr->datum_dno;
+							}
+							Assert(nfield == num_out_param);
+
+							plisql_adddatum((PLiSQL_datum *)row);
+							new->into = true;
+							new->target = (PLiSQL_variable*) row;
+						}
+						/* End - ReqID:SRS-PLSQL-DSQL */
 
 						$$ = (PLiSQL_stmt *)new;
 					}
@@ -3449,7 +3569,7 @@ stmt_open		: K_OPEN cursor_variable
 								new->query = read_sql_construct(';', K_USING, 0, ";",
 												RAW_PARSE_DEFAULT,
 												false, true, true,
-												NULL, &endtoken);
+												NULL, &endtoken, false);
 								if (endtoken == K_USING)
 									endtoken = yylex();
 								if (endtoken != ';')
@@ -4371,7 +4491,7 @@ read_sql_expression(int until, const char *expected)
 {
 	return read_sql_construct(until, 0, 0, expected,
 							  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
-							  true, true, true, NULL, NULL);
+							  true, true, true, NULL, NULL, false);
 }
 
 /* Convenience routine to read an expression with two possible terminators */
@@ -4381,7 +4501,7 @@ read_sql_expression2(int until, int until2, const char *expected,
 {
 	return read_sql_construct(until, until2, 0, expected,
 							  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
-							  true, true, true, NULL, endtoken);
+							  true, true, true, NULL, endtoken, false);
 }
 
 /* Convenience routine to read a SQL statement that must end with ';' */
@@ -4390,7 +4510,7 @@ read_sql_stmt(void)
 {
 	return read_sql_construct(';', 0, 0, ";",
 							  RAW_PARSE_DEFAULT,
-							  false, true, true, NULL, NULL);
+							  false, true, true, NULL, NULL, false);
 }
 
 /*
@@ -4418,7 +4538,8 @@ read_sql_construct(int until,
 				   bool valid_sql,
 				   bool trim,
 				   int *startloc,
-				   int *endtoken)
+				   int *endtoken,
+				   bool check_assignable_datum) /* ReqID:SRS-PLSQL-DSQL */
 {
 	int					tok;
 	StringInfoData		ds;
@@ -4431,6 +4552,7 @@ read_sql_construct(int until,
 	bool				pre_token_isoracursor = false;
 	bool				pre_token_is_explicitcursor = false;
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+	int					datum_dno = -1;
 
 	initStringInfo(&ds);
 
@@ -4449,6 +4571,12 @@ read_sql_construct(int until,
 			break;
 		if (tok == until3 && parenlevel == 0)
 			break;
+		/* Begin - ReqID:SRS-PLSQL-DSQL */
+		if (parsemode == RAW_PARSE_PLISQL_EXPR && 
+			(tok == K_RETURN || tok == K_RETURNING) && 
+			parenlevel == 0)
+			break;
+		/* End - ReqID:SRS-PLSQL-DSQL */
 		if (tok == '(' || tok == '[')
 			parenlevel++;
 		else if (tok == ')' || tok == ']')
@@ -4510,6 +4638,14 @@ read_sql_construct(int until,
 				pre_token_is_explicitcursor = cursor_var->is_explicit_cursor;
 				pre_token_isoracursor = true;
 			}
+
+			/* Begin - ReqID:SRS-PLSQL-DSQL */
+			datum_dno = yylval.wdatum.datum->dno;
+
+			/* Check OUT/INOUT datum. */
+			if (check_assignable_datum)
+				check_assignable(datum, yylloc);
+			/* End - ReqID:SRS-PLSQL-DSQL */
 		}
 		else
 		{
@@ -4556,6 +4692,7 @@ read_sql_construct(int until,
 	expr->paramnos		= NULL;
 	expr->target_param	= -1;
 	expr->ns			= plisql_ns_top();
+	expr->datum_dno		= datum_dno;
 	pfree(ds.data);
 
 	if (valid_sql)
@@ -4830,6 +4967,7 @@ make_execsql_stmt(int firsttoken, int location)
 	expr->paramnos		= NULL;
 	expr->target_param	= -1;
 	expr->ns			= plisql_ns_top();
+	expr->datum_dno		= -1;
 	pfree(ds.data);
 
 	check_sql_expr(expr->query, expr->parseMode, location);
@@ -6020,7 +6158,7 @@ read_cursor_args(PLiSQL_var *cursor, int until, int *outrowno) /* ReqID:SRS-PLSQ
 								  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 								  true, true,
 								  false, /* do not trim */
-								  NULL, &endtoken);
+								  NULL, &endtoken, false);
 			/* out parameter assign its null */
 			if (argitem->argmode == ARGMODE_OUT)
 				argv[argpos] = pstrdup("NULL");
@@ -6034,7 +6172,7 @@ read_cursor_args(PLiSQL_var *cursor, int until, int *outrowno) /* ReqID:SRS-PLSQ
 								  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 								  true, true,
 								  false, /* do not trim */
-								  NULL, &endtoken);
+								  NULL, &endtoken, false);
 
 			argv[argpos] = item->query;
 		}
@@ -6095,6 +6233,7 @@ finish_args_query:
 	expr->paramnos		= NULL;
 	expr->target_param	= -1;
 	expr->ns            = plisql_ns_top();
+	expr->datum_dno		= -1;
 	pfree(ds.data);
 
 	/* Next we'd better find the until token */
@@ -6510,6 +6649,7 @@ build_call_expr(int firsttoken,const char *str, int location)
 	expr->paramnos		= NULL;
 	expr->target_param	= -1;
 	expr->ns			= plisql_ns_top();
+	expr->datum_dno		= -1;
 	pfree(ds.data);
 
 	check_sql_expr(expr->query, expr->parseMode, location);

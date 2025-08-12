@@ -703,6 +703,10 @@ static bool isAconstNode(Node *node);
 %type <boolean> opt_purge
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
+/* Begin - ReqID:SRS-PLSQL-DSQL */
+%type <list> opt_returning_into_clause
+/* End - ReqID:SRS-PLSQL-DSQL */
+
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
  * They must be listed first so that their numeric codes do not depend on
@@ -13947,10 +13951,18 @@ opt_conf_expr:
 		;
 
 returning_clause:
-			RETURNING target_list		{ $$ = $2; }
+			RETURNING target_list
+			opt_returning_into_clause		/* ReqID:SRS-PLSQL-DSQL */
+				{ $$ = $2; }
 			| /* EMPTY */				{ $$ = NIL; }
 		;
 
+/* Begin - ReqID:SRS-PLSQL-DSQL */
+opt_returning_into_clause:
+			INTO target_list			{ $$ = $2; }
+			| /* EMPTY */				{ $$ = NIL; }
+		;
+/* End - ReqID:SRS-PLSQL-DSQL */
 
 /*****************************************************************************
  *

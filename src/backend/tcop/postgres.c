@@ -1087,6 +1087,9 @@ exec_simple_query(const char *query_string)
 			paramsinfo->numParams = nargs;
 			paramsinfo->outctext = NULL;
 			paramsinfo->haveout = true;
+			/* Begin - ReqID:SRS-PLSQL-DSQL */
+			paramsinfo->paramCheck = NULL;
+			/* End - ReqID:SRS-PLSQL-DSQL */
 
 			/* Begin - ReqID:SRS-SQL-LIBPQOUT */
 			paramsinfo->paramnames = NULL;
@@ -1100,6 +1103,7 @@ exec_simple_query(const char *query_string)
 				paramsinfo->params[i].ptype = 23;
 				paramsinfo->params[i].pmode = 'o';
 				paramsinfo->params[i].ptypmod = -1;	/* ReqID:SRS-CMD-PSQL */
+				paramsinfo->params[i].pdatatype = NULL; /* ReqID:SRS-PLSQL-DSQL */
 				paramtypes[i] = 23;
 			}
 

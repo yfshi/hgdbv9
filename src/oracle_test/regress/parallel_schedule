@@ -250,3 +250,7 @@ test: subtype
 #/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 test: flashback
 #/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
+#/* Begin - ReqID:SRS-PLSQL-DSQL */
+test: ora_dynamic_sql
+#/* End - ReqID:SRS-PLSQL-DSQL */
