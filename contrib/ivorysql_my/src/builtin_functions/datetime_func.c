@@ -2638,9 +2638,20 @@ determine_precision(int micro)
 static bool
 parse_timezone(struct pg_tm *tm, char *str, int *tz)
 {
-	if (isdigit((unsigned char) *str))
+	char   *tmpstr = str + 1; /* BUG#Z5582 */
+	/* Begin - BUG#Z5583 */
+	if (!(str[0] == '-' || str[0] == '+'))
 		return false;
-
+	/* End - BUG#Z5583 */
+	/* Begin - BUG#Z5582 */
+	/* Parse timezone to see if there are any non-numeric vlaues other than : */
+	while(*tmpstr)
+	{
+		if (!isdigit((unsigned char) *tmpstr) && *tmpstr != ':')
+			return false;
+		tmpstr++;
+	}
+	/* End - BUG#Z5582 */
 	*tz = mys_parse_sane_timezone(tm, cstring_to_text(str));
 	if (str[0] == '-' || str[0] == '+')
 	{
@@ -2952,10 +2963,13 @@ yearweek(PG_FUNCTION_ARGS)
 		mode = PG_GETARG_INT32(1);
 	date = PG_GETARG_DATEADT(0);
 	/* End - BUG#Z5530 */
+
+	/* Begin - BUG#Z5575 */
 	if (mode > 7)
-		mode = 7;
+		mode = mode %8;
 	else if (mode < 0)
-		mode = 0;
+		mode = -(mode % 8);
+	/* End - BUG#Z5575 */
 
 	if (!get_date_from_int(date, tm, &fsec, flag))
 		PG_RETURN_NULL();
@@ -3034,6 +3048,10 @@ convert_tz(PG_FUNCTION_ARGS)
 		!strcasecmp(str2, "Invalid"))
 		PG_RETURN_NULL();
 	/* End - BUG#Z5532 */
+	/* Begin - BUG#Z5581 */
+	if (!strlen(str1) || !strlen(str2))
+		PG_RETURN_NULL();
+	/* End - BUG#Z5581 */
 	/* if the digital time zone does not have a +/- sign. */
 	if (!parse_timezone(tm, str1, &tz1))
 		PG_RETURN_NULL();

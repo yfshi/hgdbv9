@@ -3439,6 +3439,38 @@ ERROR:  function yearweek(integer, integer, integer) does not exist
 LINE 1: select yearweek(1, 2, 3);
                ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+/* Begin - BUG#Z5575 */
+select yearweek('2023-01-01',-3);
+ yearweek 
+----------
+   202252
+(1 row)
+
+select yearweek('2023-01-01',-1);
+ yearweek 
+----------
+   202252
+(1 row)
+
+select yearweek('2023-01-01',-13);
+ yearweek 
+----------
+   202252
+(1 row)
+
+select yearweek('2023-01-01',-20);
+ yearweek 
+----------
+   202301
+(1 row)
+
+select yearweek('2023-01-01',-1000);
+ yearweek 
+----------
+   202301
+(1 row)
+
+/* End - BUG#Z5575 */
 --datediff
 select datediff('2007-12-31 23:59:59', '2007-12-30');--1
  datediff 
@@ -4172,3 +4204,89 @@ select week(NULL, NULL);
 (1 row)
 
 /* End - BUG#Z5528 */
+/* Begin - BUG#Z5581 */
+SELECT CONVERT_TZ(' ', '+00:00', '+08:00');
+WARNING:  Incorrect datetime value: ' '
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+SELECT CONVERT_TZ('', '+00:00', '+08:00');
+WARNING:  Incorrect datetime value: ''
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+SELECT CONVERT_TZ('2023-01-01 12:00:00', ' ', '+08:00');
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+SELECT CONVERT_TZ('2023-01-01 12:00:00', '', '+08:00');
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+SELECT CONVERT_TZ('2023-01-01 12:00:00', ' ', ' ');
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+SELECT CONVERT_TZ('2023-01-01 12:00:00', '', '');
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+/* End - BUG#Z5581 */
+/* Begin - BUG#Z5582 */
+SELECT CONVERT_TZ('1979-01-01 00:00:01', '+00:00','+01:00qaz');
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+SELECT CONVERT_TZ('1979-01-01 00:00:01', '+00:00','axc+01:00');
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+SELECT CONVERT_TZ('1979-01-01 00:00:01', '+00:00','abc+01:00qaz');
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+SELECT CONVERT_TZ('1979-01-01 00:00:01', '+00:00','a01:00');
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+/* End - BUG#Z5582 */
+/* Begin - BUG#Z5583 */
+SELECT CONVERT_TZ('1990-01-01 00:00:01', ' +00:00','+10:00');
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+SELECT CONVERT_TZ('1990-01-01 00:00:01', '+00:00 ','+10:00');
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+SELECT CONVERT_TZ( '1990-01-01 00:00:01', ' +00:00 ','+10:00' );
+ CONVERT_TZ 
+------------
+ 
+(1 row)
+
+/* End - BUG#Z5583 */

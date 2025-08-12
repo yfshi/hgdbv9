@@ -990,7 +990,13 @@ select yearweek(cast(20121212182822.5999999 as datetime), 4);--201250
 select yearweek(cast('2025-04-21 10:12:12.6999992' as datetime(6)), 4);--202517
 select yearweek(NULL, NULL);--NULL
 select yearweek(1, 2, 3);--error
-
+/* Begin - BUG#Z5575 */
+select yearweek('2023-01-01',-3);
+select yearweek('2023-01-01',-1);
+select yearweek('2023-01-01',-13);
+select yearweek('2023-01-01',-20);
+select yearweek('2023-01-01',-1000);
+/* End - BUG#Z5575 */
 --datediff
 select datediff('2007-12-31 23:59:59', '2007-12-30');--1
 select datediff('2007-11-30 23:59:59', '2007-12-31');---31
@@ -1149,3 +1155,25 @@ select yearweek(NULL, NULL);
 select week('2023-01-01', NULL);
 select week(NULL, NULL);
 /* End - BUG#Z5528 */
+
+/* Begin - BUG#Z5581 */
+SELECT CONVERT_TZ(' ', '+00:00', '+08:00');
+SELECT CONVERT_TZ('', '+00:00', '+08:00');
+SELECT CONVERT_TZ('2023-01-01 12:00:00', ' ', '+08:00');
+SELECT CONVERT_TZ('2023-01-01 12:00:00', '', '+08:00');
+SELECT CONVERT_TZ('2023-01-01 12:00:00', ' ', ' ');
+SELECT CONVERT_TZ('2023-01-01 12:00:00', '', '');
+/* End - BUG#Z5581 */
+
+/* Begin - BUG#Z5582 */
+SELECT CONVERT_TZ('1979-01-01 00:00:01', '+00:00','+01:00qaz');
+SELECT CONVERT_TZ('1979-01-01 00:00:01', '+00:00','axc+01:00');
+SELECT CONVERT_TZ('1979-01-01 00:00:01', '+00:00','abc+01:00qaz');
+SELECT CONVERT_TZ('1979-01-01 00:00:01', '+00:00','a01:00');
+/* End - BUG#Z5582 */
+
+/* Begin - BUG#Z5583 */
+SELECT CONVERT_TZ('1990-01-01 00:00:01', ' +00:00','+10:00');
+SELECT CONVERT_TZ('1990-01-01 00:00:01', '+00:00 ','+10:00');
+SELECT CONVERT_TZ( '1990-01-01 00:00:01', ' +00:00 ','+10:00' );
+/* End - BUG#Z5583 */
