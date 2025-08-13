@@ -11898,6 +11898,11 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proparallel => 'r', prorettype => 'void', proargtypes => 'oid',
   prosrc => 'binary_upgrade_set_next_sequence_pg_class_oid' },
 # /* End - BUGZ1641 */
+# /* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+{ oid => '9105', descr => 'enable or disable serveroutput client system variable for dbms_output package',
+  proname => 'dbms_output_serveroutput', procost => '10', provolatile => 's',
+  prorettype => 'bool', proargtypes => 'bool int4', prosrc => 'dbms_output_serveroutput' },
+# /* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 /*END Oracle Compatibility Metadatas*/
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */

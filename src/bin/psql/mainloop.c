@@ -94,6 +94,8 @@ MainLoop(FILE *source)
 	pset.lineno = 0;
 	pset.stmt_lineno = 1;
 
+	pset.suppress_query_print_out = false; /* ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
 	/* Create working state */
 	scan_state = psql_scan_create(&psqlscan_callbacks);
 	cond_stack = conditional_stack_create();
@@ -132,6 +134,7 @@ MainLoop(FILE *source)
 	while (successResult == EXIT_SUCCESS)
 	{
 		bool	exec_dostmt = false; /* ReqID:SRS-CMD-PSQL */
+		bool	no_save_line_history = false; /* ReqID:SRS-PLSQL-DBMS_OUTPUT */
 
 		/*
 		 * Clean up after a previous Control-C
@@ -690,11 +693,62 @@ MainLoop(FILE *source)
 					/* Begin - ReqID:SRS-SQL-SYSFUNC */
 					case PSQLPLUS_CMD_SET:
 						{
+							bool	serveroutput_set_done = false; /* ReqID:SRS-PLSQL-DBMS_OUTPUT */
 							psqlplus_cmd_sv *set;
 
 							set = (psqlplus_cmd_sv *) pstate->psqlpluscmd;
-							if (!SetSysVariable(set->sv_list))
+							if (!SetSysVariable(set->sv_list, &serveroutput_set_done /* ReqID:SRS-PLSQL-DBMS_OUTPUT */))
 								goto non_psqlplus_cmd;
+							
+							/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+							if (serveroutput_set_done)
+							{
+								PQExpBuffer newline_buf;
+								system_variable	var = GetSysVariable("serveroutput");
+								csv_serveroutput_node	*val = (csv_serveroutput_node *) var->value.string;
+
+								newline_buf = createPQExpBuffer();
+								if (PQExpBufferBroken(newline_buf))
+								{
+									pg_log_error("out of memory");
+									exit(EXIT_FAILURE);
+								}
+
+								/*
+								 * If there are multiple system variables that need to interact with
+								 * the server in the future, do not call dbms_output_serveroutput in
+								 * functions, stored procedures, or anonymous blocks in the plisql language.
+								 * Otherwise, the side effect is that the client command SET SERVEROUTPUT ON
+								 * will cause the DBMS_OUTPUT buffer to be refreshed, which is inconsistent
+								 * with Oracle.
+								 */
+								appendPQExpBuffer(newline_buf, "SELECT dbms_output_serveroutput(%s, %d);",
+												val->enable ? "true" : "false", val->size);
+
+								/* save client command in history */
+								if (pset.cur_cmd_interactive)
+								{
+									pg_append_history(psqlplus_line, history_buf);
+									pg_send_history(history_buf);
+								}
+
+								/* rescan */
+								ora_psql_scan_finish(ora_scan_state);
+								free(line);
+								line = pg_strdup(newline_buf->data);
+								destroyPQExpBuffer(newline_buf);
+								/* reset parsing state since we are rewritten query */
+								ora_psql_scan_reset(ora_scan_state);
+								ora_psql_scan_setup(ora_scan_state, line, strlen(line),
+												pset.encoding, standard_strings());
+
+								pset.suppress_query_print_out = true;
+								no_save_line_history = true;
+								/* the query after rewriting is no longer a psqlplus command */
+								goto non_psqlplus_cmd;
+								
+							}
+							/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 						}
 						break;
 					case PSQLPLUS_CMD_SHOW:
@@ -1097,6 +1151,14 @@ non_psqlplus_cmd:
 						ora_psql_scan_reset(ora_scan_state);
 					}
 					/* End - ReqID:SRS-CMD-PSQL */
+
+					/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+					if (no_save_line_history)
+					{
+						line_saved_in_history = true;
+						no_save_line_history = false;
+					}
+					/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 
 					/*
 					 * Save line in history.  We use history_buf to accumulate

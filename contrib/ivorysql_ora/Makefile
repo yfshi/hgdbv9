@@ -34,7 +34,8 @@ OBJS = \
 	src/orarefcursor/orarefcursor.o \
 	src/builtin_packages/dbms_job/ora_dbms_job.o \
 	src/builtin_packages/dbms_job/ora_dbms_jobparse.o \
-	src/datatype/orachar_varchar.o
+	src/datatype/orachar_varchar.o \
+	src/builtin_packages/dbms_output/dbms_output.o
 
 EXTENSION = ivorysql_ora
 
@@ -101,7 +102,8 @@ ORA_REGRESS = \
 	ora_dbms_job \
 	decode \
 	ora_dbms_metadata \
-	aggregates_without_group_by
+	aggregates_without_group_by \
+	ora_dbms_output
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

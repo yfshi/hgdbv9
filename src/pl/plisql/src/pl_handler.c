@@ -431,6 +431,13 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	if ((rc = SPI_finish()) != SPI_OK_FINISH)
 		elog(ERROR, "SPI_finish failed: %s", SPI_result_code_string(rc));
 
+	/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+	if(enable_serveroutput && dbmsoutput_sendbuffer_hook && SPI_get_connected() < 0)
+	{
+		(*dbmsoutput_sendbuffer_hook)();
+	}
+	/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
 	return retval;
 }
 
@@ -700,6 +707,13 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	 */
 	if ((rc = SPI_finish()) != SPI_OK_FINISH)
 		elog(ERROR, "SPI_finish failed: %s", SPI_result_code_string(rc));
+
+	/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+	if(enable_serveroutput && dbmsoutput_sendbuffer_hook && SPI_get_connected() < 0)
+	{
+		(*dbmsoutput_sendbuffer_hook)();
+	}
+	/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 
 	return retval;
 }

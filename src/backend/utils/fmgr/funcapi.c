@@ -65,7 +65,12 @@ NULL, NULL, NULL, NULL, NULL, false}; /* ReqID:SRS-SQL-PACKAGE */
 orarefcursor_funcs_call orarefcursor_funcs = {NULL, NULL, NULL, NULL, NULL, UNLOADED};
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
-
+/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+/* Hook for DBMS_OUTPUT Package */
+dbmsoutput_sendbuffer_hook_type dbmsoutput_sendbuffer_hook = NULL;
+dbmsoutput_severoutput_hook_type dbmsoutput_severoutput_hook = NULL;
+bool	enable_serveroutput = false;
+/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 
 static void shutdown_MultiFuncCall(Datum arg);
 static TypeFuncClass internal_get_result_type(Oid funcid,
@@ -2930,3 +2935,22 @@ get_subproc_deterministic(FuncExpr *funcexpr)
 	return plisql_internal_funcs.get_subproc_deterministic(funcexpr);
 }
 /* ENd - BUG#M0000432 */
+
+/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+Datum
+dbms_output_serveroutput(PG_FUNCTION_ARGS)
+{
+	bool	enable = PG_GETARG_BOOL(0);
+	int32	size = PG_GETARG_INT32(1);
+
+	if(dbmsoutput_severoutput_hook)
+		(*dbmsoutput_severoutput_hook)(enable, size);
+
+	if (enable)
+		enable_serveroutput = true;
+	else
+		enable_serveroutput = false;
+
+	PG_RETURN_BOOL(true);
+}
+/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
