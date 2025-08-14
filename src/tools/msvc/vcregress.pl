@@ -549,6 +549,8 @@ sub contribcheck
 		next if ($module eq "ivorysql_ora");
 		# Native PostgreSQL does not perform the test of ivorysql_my.
 		next if ($module eq "ivorysql_my");
+		# Native PostgreSQL does not perform the test of ora_synonym.
+		next if ($module eq "ora_synonym");
 		# /* Begin - ReqID:SRS-SECURITY-POWERS */
 
 		subdircheck($module);

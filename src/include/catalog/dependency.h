@@ -138,11 +138,14 @@ typedef enum ObjectClass
 	OCLASS_TRANSFORM,			/* pg_transform */
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	OCLASS_PACKAGE,				/* pg_package */
-	OCLASS_PACKAGE_BODY			/* pg_package_body */
+	OCLASS_PACKAGE_BODY,			/* pg_package_body */
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	OCLASS_SYNONYM				/* pg_synonym */
+	/* End - ReqID:SRS-SQL-SYNONYM */
 } ObjectClass;
 
-#define LAST_OCLASS		OCLASS_PACKAGE_BODY
+#define LAST_OCLASS		OCLASS_SYNONYM
 
 /* flag bits for performDeletion/performMultipleDeletions: */
 #define PERFORM_DELETION_INTERNAL			0x0001	/* internal action */

@@ -61,6 +61,7 @@ static FuncDetailCode parse_package_func(ParseState *pstate, PackageCacheKey *pk
 										 bool has_udt_type);
 										 /* End - ReqID:SRS-PLSQL-RECORD */
 
+SynnameGetPkgoid_recursive_hook_type SynnameGetPkgoid_recursive_hook = NULL;	/* ReqID:SRS-SQL-SYNONYM */
 
 /*
  * reslove to find name in a package
@@ -89,15 +90,30 @@ package_resolve_names(List *names, PackageCacheKey *pkey, int *pkgname_startloc)
 		case 2:
 			 {
 				 /* must be pkgname and typename */
-				 pkgoid = PkgnameGetPkgid(strVal(linitial(names)));
-				 if (OidIsValid(pkgoid))
-				 {
-					 *pkey = pkgoid;
-					 *pkgname_startloc = 1;
-					 return true;
-				 }
-				 else
-					 return false;
+				pkgoid = PkgnameGetPkgid(strVal(linitial(names)));
+				if (OidIsValid(pkgoid))
+				{
+					*pkey = pkgoid;
+					*pkgname_startloc = 1;
+					return true;
+				}
+				else
+				/* Begin - ReqID:SRS-SQL-SYNONYM */
+				{
+					List *synlist = NIL;
+					if (SynnameGetPkgoid_recursive_hook)
+						pkgoid = SynnameGetPkgoid(strVal(linitial(names)), NULL, &synlist);
+					if (OidIsValid(pkgoid))
+					{
+						*pkey = pkgoid;
+						*pkgname_startloc = 1;
+						return true;
+					}
+
+					list_free(synlist);
+					return false;
+				}
+				/* End - ReqID:SRS-SQL-SYNONYM */
 			 }
 			break;
 		default:
@@ -114,6 +130,20 @@ package_resolve_names(List *names, PackageCacheKey *pkey, int *pkgname_startloc)
 		*pkgname_startloc = 1;
 		return true;
 	}
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	else
+	{
+		List *synlist = NIL;
+		if (SynnameGetPkgoid_recursive_hook)
+			pkgoid = SynnameGetPkgoid(first_name, NULL, &synlist);
+		if (OidIsValid(pkgoid))
+		{
+			*pkey = pkgoid;
+			*pkgname_startloc = 1;
+			return true;
+		}
+	}
+	/* End - ReqID:SRS-SQL-SYNONYM */
 
 	/* treate first name as schema name and second as package name */
 	tmp = lappend(list_make1(linitial(names)), lsecond(names));
@@ -125,6 +155,21 @@ package_resolve_names(List *names, PackageCacheKey *pkey, int *pkgname_startloc)
 		*pkgname_startloc = 2;
 		return true;
 	}
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	else
+	{
+		List *synlist = NIL;
+		if (SynnameGetPkgoid_recursive_hook)
+			pkgoid = SynnameGetPkgoid(strVal(lsecond(names)), strVal(linitial(names)), &synlist);
+		if (OidIsValid(pkgoid))
+		{
+			*pkey = pkgoid;
+			*pkgname_startloc = 2;
+			return true;
+		}
+	}
+	/* End - ReqID:SRS-SQL-SYNONYM */
+
 	list_free(tmp);
 
 	/* first name is the database'name */
@@ -142,6 +187,20 @@ package_resolve_names(List *names, PackageCacheKey *pkey, int *pkgname_startloc)
 				list_free(tmp);
 				return true;
 			}
+			/* Begin - ReqID:SRS-SQL-SYNONYM */
+			else
+			{
+				List *synlist = NIL;
+				if (SynnameGetPkgoid_recursive_hook)
+					pkgoid = SynnameGetPkgoid(strVal(lthird(names)), strVal(lsecond(names)), &synlist);
+				if (OidIsValid(pkgoid))
+				{
+					*pkey = pkgoid;
+					*pkgname_startloc = 3;
+					return true;
+				}
+			}
+			/* End - ReqID:SRS-SQL-SYNONYM */
 			list_free(tmp);
 			return false;
 		}

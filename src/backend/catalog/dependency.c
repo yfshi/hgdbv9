@@ -66,6 +66,7 @@
 #include "catalog/pg_package_body.h"
 #include "commands/packagecmds.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+#include "catalog/pg_synonym.h"	/* ReqID:SRS-SQL-SYNONYM */
 #include "commands/comment.h"
 #include "commands/defrem.h"
 #include "commands/event_trigger.h"
@@ -213,8 +214,9 @@ static const Oid object_classes[] = {
 	TransformRelationId,		/* OCLASS_TRANSFORM */
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	PackageRelationId,			/* OCLASS_PACKAGE */
-	PackageBodyRelationId		/* OCLASS_PACKAGE_BODY */
+	PackageBodyRelationId,		/* OCLASS_PACKAGE_BODY */
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	SynonymRelationId			/* OCLASS_SYNONYM */ /* ReqID:SRS-SQL-SYNONYM */
 };
 
 
@@ -250,6 +252,8 @@ static bool stack_address_present_add_flags(const ObjectAddress *object,
 											int flags,
 											ObjectAddressStack *stack);
 static void DeleteInitPrivs(const ObjectAddress *object);
+static void DropSynonymById(Oid synonymid);	/* ReqID:SRS-SQL-SYNONYM */
+
 
 
 /*
@@ -1789,6 +1793,12 @@ doDeletion(const ObjectAddress *object, int flags)
 			DropPackageBodyById(object->objectId);
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+
+		/* Begin - ReqID:SRS-SQL-SYNONYM */
+		case OCLASS_SYNONYM:
+			DropSynonymById(object->objectId);
+			break;
+		/* End - ReqID:SRS-SQL-SYNONYM */
 
 		case OCLASS_TYPE:
 			RemoveTypeById(object->objectId);
@@ -3434,6 +3444,11 @@ getObjectClass(const ObjectAddress *object)
 		case PackageBodyRelationId:
 			return OCLASS_PACKAGE_BODY;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+
+		/* Begin - ReqID:SRS-SQL-SYNONYM */
+		case SynonymRelationId:
+			return OCLASS_SYNONYM;
+		/* End - ReqID:SRS-SQL-SYNONYM */
 	}
 
 	/* shouldn't get here */
@@ -3620,3 +3635,23 @@ void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, 
 	table_close(depRel, RowExclusiveLock);
 }
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+/* delete synonym by oid */
+static void
+DropSynonymById(Oid synonymid)
+{
+	Relation        synrel;
+	HeapTuple       tup;
+
+	synrel = table_open(SynonymRelationId, RowExclusiveLock);
+	tup = SearchSysCache1(SYNONYMOID, ObjectIdGetDatum(synonymid));
+	if (!HeapTupleIsValid(tup))
+		elog(ERROR, "cache lookup failed for package %u", synonymid);
+
+	CatalogTupleDelete(synrel, &tup->t_self);
+
+	ReleaseSysCache(tup);
+	table_close(synrel, RowExclusiveLock);
+}
+/* End - ReqID:SRS-SQL-SYNONYM */

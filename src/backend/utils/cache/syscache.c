@@ -86,6 +86,7 @@
 /* End - SRS-SQL-PACKAGE */
 #include "catalog/pg_object.h"	/* ReqID:SRS-SQL-Object */
 #include "catalog/pg_recyclebin.h" /* ReqID:SRS-RECOVERY-FLASHBACK */
+#include "catalog/pg_synonym.h"	/* ReqID:SRS-SQL-SYNONYM */
 
 #include "catalog/pg_mfaid.h"  /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 
@@ -1003,6 +1004,30 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		64
 	},
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	{SynonymRelationId,         /* SYNONYMNAMENSP */
+		SynonymNameNspIndexId,
+		3,
+		{
+			Anum_pg_synonym_synname,
+			Anum_pg_synonym_synnamespace,
+			Anum_pg_synonym_synispub,
+			0
+		},
+		8
+	},
+	{SynonymRelationId,         /* SYNONYMOID */
+		SynonymOidIndexId,
+		1,
+		{
+			Anum_pg_synonym_oid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	/* End - ReqID:SRS-SQL-SYNONYM */
 	{TableSpaceRelationId,		/* TABLESPACEOID */
 		TablespaceOidIndexId,
 		1,

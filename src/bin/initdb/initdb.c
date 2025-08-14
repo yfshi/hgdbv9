@@ -360,6 +360,7 @@ static void load_dbms_job_pgagent(FILE *cmdfd);
 /* End - ReqID:SRS-PLSQL-DBMS_JOB */
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 static void load_pg_audit(FILE *cmdfd);
+static void load_oracle_synonym(FILE *cmdfd);  /* ReqID:SRS-SQL-SYNONYM */
 #ifdef USE_SQLITE
 static void load_sqlite_fdw(FILE *cmdfd);
 #endif
@@ -1463,9 +1464,9 @@ setup_config(void)
 	{
         char *token = "shared_preload_libraries = 'gb18030_2022'";
 #ifdef USE_SQLITE
-        char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw, credcheck, ora_synonym'"; //ReqID:SRS-SECURITY-AUDIT	/* ReqID:SRS-SQL-SYNONYM */
 #else
-		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, credcheck, ora_synonym'"; //ReqID:SRS-SECURITY-AUDIT	/* ReqID:SRS-SQL-SYNONYM */
 #endif
         conflines = replace_token(conflines,token, replacement);
 	}
@@ -1510,14 +1511,14 @@ setup_config(void)
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
 		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		{
-            		char *token = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object'";
+			char *token = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym'";
 #ifdef USE_SQLITE
-            		char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+			char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
 #else
-					char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, restricted_dba, pg_audit, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+			char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
 #endif
-            		conflines = replace_token(conflines,token, replacement);
-        	}
+			conflines = replace_token(conflines,token, replacement);
+		}
 		/* End - ReqID:SRS-SECURITY-POWERS */
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
@@ -2435,6 +2436,17 @@ create_audit_tbls(FILE *cmdfd)
 	sprintf(create_tbls, "CREATE TABLESPACE audtblspc LOCATION '%s';\n\n", auditDir);
 	PG_CMD_PUTS(create_tbls);
 }
+
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+/*
+ * load ora_synonym
+ */
+static void
+load_oracle_synonym(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION ora_synonym;\n\n");
+}
+/* End - ReqID:SRS-SQL-SYNONYM */
 
 /*
  * load pg_audit
@@ -3717,6 +3729,7 @@ initialize_data_directory(void)
 		setup_run_file(cmdfd, preload_ora_misc);	/* BUG#M0000195 */
 		load_plisql(cmdfd);
 		load_dbms_job_pgagent(cmdfd);/* ReqID:SRS-PLSQL-DBMS_JOB */
+		load_oracle_synonym(cmdfd);	/* ReqID:SRS-SQL-SYNONYM */
 		load_ivorysql_ora(cmdfd);	/* ReqID:SRS-GKC-DATATYPE_001 */
 		/*When the mysql framework is merged, the extension
 		  creation of dblink is moved here. It was previously

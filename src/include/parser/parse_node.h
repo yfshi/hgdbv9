@@ -127,6 +127,22 @@ typedef Node * (*ParseOraRecordConstructHook) (ParseState *pstate, List *recname
 typedef TupleDesc (*ParseParamTupleDescHook) (ParseState *pstate, Param *param);
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+typedef Oid (*SynnameGetRelname_hook_type)(const char *synname,
+													const char *synnsp,
+													char **objschema,
+													char **objname,
+													char **objdblnksrv,
+													List **synoids);
+typedef bool (*SynnameGetFuncInfo_hook_type)(const char *synname,const char *synnsp, char **funcname,char **funcnsp, List **synoids);
+typedef Oid (*SynnameGetPkgoid_recursive_hook_type)(const char *synname, Oid nspkg, List **synoids);
+typedef void (*SynIdGetname_hook_type)(Oid synid, char **synname, char **synnsp);
+
+extern PGDLLIMPORT SynnameGetRelname_hook_type SynnameGetRelname_hook;
+extern PGDLLIMPORT SynnameGetFuncInfo_hook_type SynnameGetFuncInfo_hook;
+extern PGDLLEXPORT SynnameGetPkgoid_recursive_hook_type SynnameGetPkgoid_recursive_hook;
+extern PGDLLEXPORT SynIdGetname_hook_type SynIdGetname_hook;
+/* End - ReqID:SRS-SQL-SYNONYM */
 
 
 /*

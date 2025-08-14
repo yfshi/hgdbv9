@@ -307,7 +307,7 @@ static bool isAconstNode(Node *node);
 		AlterObjectDependsStmt AlterObjectSchemaStmt AlterOwnerStmt
 		AlterOperatorStmt AlterTypeStmt AlterSeqStmt AlterSessionCloseDblinkStmt AlterSystemStmt AlterTableStmt
 		AlterTblSpcStmt AlterExtensionStmt AlterExtensionContentsStmt
-		AlterCompositeTypeStmt AlterUserMappingStmt
+		AlterCompositeTypeStmt AlterUserMappingStmt AlterSynoStmt
 		AlterRoleStmt AlterRoleSetStmt AlterPolicyStmt AlterStatsStmt
 		AlterDefaultPrivilegesStmt DefACLAction
 		AnalyzeStmt CallStmt ClosePortalStmt ClusterStmt CommentStmt
@@ -322,7 +322,7 @@ static bool isAconstNode(Node *node);
 		DropDatabaseLinkStmt DropOpClassStmt DropOpFamilyStmt DropForeignServerStmt DropStmt
 		DropCastStmt DropRoleStmt
 		DropdbStmt DropTableSpaceStmt
-		DropTransformStmt
+		DropTransformStmt DropSynonym
 		DropUserMappingStmt ExplainStmt FetchStmt
 		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt
 		ListenStmt LoadStmt LockStmt MergeStmt NotifyStmt ExplainableStmt PreparableStmt
@@ -741,6 +741,8 @@ static bool isAconstNode(Node *node);
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 %token			AS_LA
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+%token			PUBLIC_SYNO	/* ReqID:SRS-SQL-SYNONYM */
+
 
 /*
  * If you want to make any keyword changes, update the keyword table in
@@ -839,7 +841,7 @@ static bool isAconstNode(Node *node);
 	SIMILAR SIMPLE SKIP SKIPBAD /* BUG#Z1616 */ SKIPLIST /* BUG:M0000368*/ SMALLINT SNAPSHOT SOME SPECIFICATION /* ReqID:SRS-SQL-PACKAGE */
 	SQL_P STABLE STANDALONE_P
 	START STATEMENT STATISTICS STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
-	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC
+	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYNONYM	/* ReqID:SRS-SQL-SYNONYM */
 	SYSDATE /* OA-REQ-1604 */ SYSID SYSTEM_P SYSTIMESTAMP /* OA-REQ-1604 */
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TASKID /* ReqID:SRS-MISC-BULKLOAD*/ TEMP TEMPLATE TEMPORARY TEXT_P THEN
@@ -952,6 +954,8 @@ static bool isAconstNode(Node *node);
 %type <node>	ora_alter_view_cmd
 %type <list>	ora_alter_view_cmds
 /* End - ReqID:SRS-SQL-FORCEVIEW */
+
+%type <node> CreateSynonymStmt /* ReqID:SRS-SQL-SYNONYM */
 
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
@@ -1213,6 +1217,7 @@ stmt:
 			| AlterSeqStmt
 			| AlterSessionCloseDblinkStmt	/* ReqID:SRS-SQL-DBLINK */
 			| AlterSystemStmt
+			| AlterSynoStmt			/* ReqID:SRS-SQL-SYNONYM */
 			| AlterTableStmt
 			| AlterTblSpcStmt
 			| AlterCompositeTypeStmt
@@ -1257,6 +1262,7 @@ stmt:
 			| CreateStmt
 			| CreateSubscriptionStmt
 			| CreateStatsStmt
+			| CreateSynonymStmt	/* ReqID:SRS-SQL-SYNONYM */
 			| CreateTableSpaceStmt
 			| CreateTransformStmt
 			| CreateTrigStmt
@@ -1284,6 +1290,7 @@ stmt:
 			| DropRoleStmt
 			| DropUserMappingStmt
 			| DropdbStmt
+			| DropSynonym	/* ReqID:SRS-SQL-SYNONYM */
 			| ExecuteStmt
 			| ExplainStmt
 			| FetchStmt
@@ -12160,6 +12167,16 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					$$ = (Node *)n;
 				}
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-SQL-SYNONYM */
+			| ALTER SYNONYM any_name OWNER TO RoleSpec
+				{
+					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
+					n->objectType = OBJECT_SYNONYM;
+					n->object = (Node *) $3;
+					n->newowner = $6;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-SYNONYM */
 			| ALTER CONVERSION_P any_name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
@@ -12857,6 +12874,99 @@ opt_transaction_chain:
 			| AND NO CHAIN	{ $$ = false; }
 			| /* EMPTY */	{ $$ = false; }
 		;
+
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+CreateSynonymStmt:
+			CREATE opt_or_replace opt_ora_editioned SYNONYM relation_expr
+				opt_ora_sharing_clause FOR relation_expr
+				{
+					CreateSynonymStmt *n = makeNode(CreateSynonymStmt);
+					n->replace = $2;
+					n->synispub = false;
+					n->synonym =$5;
+					n->object = $8;
+					n->editable = $3;
+					$$ = (Node *)n;
+				}
+			| CREATE opt_or_replace opt_ora_editioned PUBLIC_SYNO SYNONYM relation_expr
+				opt_ora_sharing_clause FOR relation_expr
+				{
+					CreateSynonymStmt *n = makeNode(CreateSynonymStmt);
+					n->replace = $2;
+					n->synispub = true;
+					n->synonym =$6;
+					n->object = $9;
+					n->editable = $3;
+					if ($6->schemaname)
+						ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("missing keyword."),
+									parser_errposition(@6)));
+					$$ = (Node *)n;
+				}
+		;
+
+DropSynonym:
+			DROP SYNONYM relation_expr OptViewForce
+				{
+					DropSynStmt *n = makeNode(DropSynStmt);
+					n->synname = $3;
+					n->ispub = false;
+					$$ = (Node *)n;
+				}
+			| DROP PUBLIC_SYNO SYNONYM relation_expr OptViewForce
+				{
+					DropSynStmt *n = makeNode(DropSynStmt);
+					n->synname = $4;
+					n->ispub = true;
+					if ($4->schemaname)
+						ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("SQL command not properly ended"),
+									parser_errposition(@4)));
+					$$ = (Node *)n;
+				}
+		;
+
+AlterSynoStmt:
+			ALTER SYNONYM any_name opt_ora_editioned
+				{
+					AlterSynonymStmt *n = makeNode(AlterSynonymStmt);
+					n->ispub = false;
+					n->synname = $3;
+					n->editable = $4;
+
+					$$ = (Node *)n;
+				}
+			| ALTER PUBLIC_SYNO SYNONYM any_name opt_ora_editioned
+				{
+					AlterSynonymStmt *n = makeNode(AlterSynonymStmt);
+					n->ispub = true;
+					n->synname = $4;
+					n->editable = $5;
+
+					$$ = (Node *)n;
+				}
+			| ALTER SYNONYM any_name COMPILE
+				{
+					AlterSynonymStmt *n = makeNode(AlterSynonymStmt);
+					n->ispub = false;
+					n->synname = $3;
+					n->compile_flag = true;
+
+					$$ = (Node *)n;
+				}
+			| ALTER PUBLIC_SYNO SYNONYM any_name COMPILE
+				{
+					AlterSynonymStmt *n = makeNode(AlterSynonymStmt);
+					n->ispub = true;
+					n->synname = $4;
+					n->compile_flag = true;
+
+					$$ = (Node *)n;
+				}
+		;
+/* End - ReqID:SRS-SQL-SYNONYM */
 
 
 /*****************************************************************************
@@ -21195,6 +21305,7 @@ reserved_keyword:
 			| SOME
 			| START /* ReqID:SRS-SQL-HierarchicalQueries */
 			| SYMMETRIC
+			| SYNONYM	/* ReqID:SRS-SQL-SYNONYM */
 			/* Begin - OA-REQ-1604 */
 			| SYSDATE
 			| SYSTIMESTAMP

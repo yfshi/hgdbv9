@@ -195,6 +195,7 @@ int	numTypes;
 int	numPkgs;
 /* End - ReqID:SRS-SQL-PACKAGE */
 int	numFuncs;
+int numSyns;	/* ReqID:SRS-SQL-SYNONYM */
 int	numOperators;
 int	numCollations;
 int	numNamespaces;

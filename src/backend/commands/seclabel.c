@@ -94,6 +94,7 @@ SecLabelSupportsObjectType(ObjectType objtype)
 		case OBJECT_PACKAGE:
 		case OBJECT_PACKAGE_BODY:
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		case OBJECT_SYNONYM:	/* ReqID:SRS-SQL-SYNONYM */
 			return false;
 
 			/*

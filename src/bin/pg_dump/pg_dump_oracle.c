@@ -173,6 +173,7 @@ static void dumpFunc(Archive *fout, const FuncInfo *finfo);
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 static void dumpPackage(Archive *fout, const PkgInfo *pkginfo);
 /* End - ReqID:SRS-SQL-PACKAGE */
+static void dumpSynonym(Archive *fout, const SynInfo *syninfo);	/* ReqID:SRS-SQL-SYNONYM */
 static void dumpCast(Archive *fout, const CastInfo *cast);
 static void dumpTransform(Archive *fout, const TransformInfo *transform);
 static void dumpOpr(Archive *fout, const OprInfo *oprinfo);
@@ -5926,6 +5927,98 @@ reloptions_on_commit_parse(char *reloptions, char **on_commit)
 }
 /* End BUG#Z378 */
 
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+/*
+ * getSynonyms:
+ *	  read all the user-defined synonyms in the system catalogs and
+ * return them in the SyncInfo* structure
+ *
+ * numSyns is set to the number of synonyms read in
+ */
+SynInfo *
+getSynonyms(Archive *fout, int *numSyns)
+{
+	PGresult   *res;
+	int			ntups;
+	int			i;
+	PQExpBuffer query = createPQExpBuffer();
+	SynInfo	   *syninfo;
+	int			i_tableoid;
+	int			i_oid;
+	int			i_synname;
+	int			i_synnamespace;
+	int			i_synowner;
+	int			i_synispub;
+	int			i_synisedit;
+	int			i_table_namespace;
+	int			i_objname;
+	int			i_db_link;
+
+	if ((DumpM != NULL && (strcmp(DumpM, "o") == 0 || strcmp(DumpM, "oracle") == 0)) || DumpM == NULL)
+	{
+		appendPQExpBuffer(query,
+						  "SELECT s.tableoid, s.oid, s.synname, s.synnamespace, "
+						  "(%s synowner) AS synowner, s.synispub, s.synisedit, s.table_namespace, "
+						  "s.objname, "
+						  "s.db_link "
+						  "FROM pg_synonym s",
+						   username_subquery);
+
+		res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+		ntups = PQntuples(res);
+
+		*numSyns = ntups;
+
+		syninfo = (SynInfo *) pg_malloc0(ntups * sizeof(SynInfo));
+
+		i_tableoid = PQfnumber(res, "tableoid");
+		i_oid = PQfnumber(res, "oid");
+		i_synname = PQfnumber(res, "synname");
+		i_synnamespace = PQfnumber(res, "synnamespace");
+		i_synowner = PQfnumber(res, "synowner");
+		i_synispub = PQfnumber(res, "synispub");
+		i_synisedit = PQfnumber(res, "synisedit");
+		i_table_namespace = PQfnumber(res, "table_namespace");
+		i_objname = PQfnumber(res, "objname");
+		i_db_link = PQfnumber(res, "db_link");
+
+		for (i = 0; i < ntups; i++)
+		{
+			syninfo[i].dobj.objType = DO_SYN;
+			syninfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
+			syninfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_oid));
+			AssignDumpId(&syninfo[i].dobj);
+			syninfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_synname));
+			syninfo[i].dobj.namespace =
+				findNamespace(atooid(PQgetvalue(res, i, i_synnamespace)));
+			syninfo[i].rolname = pg_strdup(PQgetvalue(res, i, i_synowner));
+			syninfo[i].ispub = *(PQgetvalue(res, i, i_synispub)) == 't';
+			syninfo[i].isisedit = *(PQgetvalue(res, i, i_synisedit)) == 't';
+
+			syninfo[i].objschema = pg_strdup(PQgetvalue(res, i, i_table_namespace));
+			syninfo[i].objname = pg_strdup(PQgetvalue(res, i, i_objname));
+			syninfo[i].dblink = pg_strdup(PQgetvalue(res, i, i_db_link));
+
+			/* Decide whether we want to dump it */
+			selectDumpableObject(&(syninfo[i].dobj), fout);
+
+			if (strlen(syninfo[i].rolname) == 0)
+				pg_log_warning("owner of function \"%s\" appears to be invalid",
+							   syninfo[i].dobj.name);
+		}
+
+		PQclear(res);
+
+		destroyPQExpBuffer(query);
+
+		return syninfo;
+	}
+
+	return NULL;
+}
+/* End - ReqID:SRS-SQL-SYNONYM */
+
 /*
  * getTables
  *	  read all the tables (no indexes)
@@ -10443,6 +10536,11 @@ dumpDumpableObjectOracle(Archive *fout, const DumpableObject *dobj)
 			dumpPackage(fout, (const PkgInfo *) dobj);
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-SYNONYM */
+		case DO_SYN:
+			dumpSynonym(fout, (const SynInfo *) dobj);
+			break;
+		/* End - ReqID:SRS-SQL-SYNONYM */
 		case DO_FUNC:
 			dumpFunc(fout, (const FuncInfo *) dobj);
 			break;
@@ -12902,6 +13000,77 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		free(configitems);
 }
 
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+static void
+dumpSynonym(Archive *fout, const SynInfo *syninfo)
+{
+	DumpOptions *dopt = fout->dopt;
+	PQExpBuffer q;
+	PQExpBuffer delqry;
+	char       *synname;
+
+	/* Skip if not to be dumped */
+	if (!syninfo->dobj.dump || fout->remoteVersion < 120000)
+	   return;
+
+	q = createPQExpBuffer();
+	delqry = createPQExpBuffer();
+
+	synname = pg_strdup(fmtId(syninfo->dobj.name));
+
+	if (syninfo->ispub)
+	   appendPQExpBuffer(delqry, "DROP PUBLIC SYNONYM %s;\n", synname);
+	else
+	   appendPQExpBuffer(delqry, "DROP SYNONYM %s;\n", synname);
+
+	if (syninfo->isisedit)
+		appendPQExpBuffer(q, "CREATE EDITIONABLE ");
+	else
+		appendPQExpBuffer(q, "CREATE ");
+
+	if (syninfo->ispub)
+	   appendPQExpBuffer(q, "PUBLIC SYNONYM ");
+	else
+	   appendPQExpBuffer(q, "SYNONYM ");
+
+	if (syninfo->dobj.namespace)
+	{
+	   appendPQExpBuffer(q, " %s.", fmtId(syninfo->dobj.namespace->dobj.name));
+	}
+
+	appendPQExpBuffer(q, "%s FOR ", synname);
+
+	if (syninfo->objschema)
+	{
+	   appendPQExpBuffer(q, " %s.", fmtId(syninfo->objschema));
+	}
+
+	if (syninfo->objname)
+	   appendPQExpBuffer(q, "%s ;\n", fmtId(syninfo->objname));
+
+	appendPQExpBuffer(q, "ALTER SYNONYM %s.%s OWNER TO %s ;\n",
+					fmtId(syninfo->dobj.namespace->dobj.name),  synname, syninfo->rolname);
+
+	if (dopt->binary_upgrade)
+		binary_upgrade_extension_member(q, &syninfo->dobj,
+										"SYNONYM", synname, NULL);
+
+	if (syninfo->dobj.dump & DUMP_COMPONENT_DEFINITION)
+	   ArchiveEntry(fout, syninfo->dobj.catId, syninfo->dobj.dumpId,
+					ARCHIVE_OPTS(.tag = syninfo->dobj.name,
+								.namespace = syninfo->dobj.namespace->dobj.name,
+								.owner = syninfo->rolname,
+								.description = "SYNONYM",
+								.section = SECTION_PRE_DATA,
+								.createStmt = q->data,
+								.dropStmt = delqry->data));
+
+	free(synname);
+
+	destroyPQExpBuffer(q);
+	destroyPQExpBuffer(delqry);
+}
+/* End - ReqID:SRS-SQL-SYNONYM */
 
 /*
  * Dump a user-defined cast
@@ -19542,6 +19711,7 @@ addBoundaryDependenciesOracle(DumpableObject **dobjs, int numObjs,
 			/* Begin - ReqID:SRS-SQL-PACKAGE */
 			case DO_PACKAGE:
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			case DO_SYN:	/* ReqID:SRS-SQL-SYNONYM */
 			case DO_FUNC:
 			case DO_AGG:
 			case DO_OPERATOR:
@@ -19905,6 +20075,14 @@ getSchemaDataOracle(Archive *fout, int *numTablesPtr)
 	}
 	/* End- BUG#M229 */
 	/* End - ReqID:SRS-SQL-PACKAGE */
+
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	if (DB_ORACLE == database_mode)
+	{
+		pg_log_info("reading synonyms");
+		getSynonyms(fout, &numSyns);
+	}
+	/* End - ReqID:SRS-SQL-SYNONYM */
 
 	/*
 	 * getTables should be done as soon as possible, so as to minimize the

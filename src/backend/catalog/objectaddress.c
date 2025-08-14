@@ -66,6 +66,7 @@
 #include "catalog/pg_package_body.h"
 #include "commands/packagecmds.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+#include "catalog/pg_synonym.h"	/* ReqID:SRS-SQL-SYNONYM */
 #include "commands/dbcommands.h"
 #include "commands/defrem.h"
 #include "commands/event_trigger.h"
@@ -122,6 +123,8 @@ typedef struct
 									 * considered a unique identifier for an
 									 * object of this class? */
 } ObjectPropertyType;
+
+SynIdGetname_hook_type SynIdGetname_hook = NULL;
 
 static const ObjectPropertyType ObjectProperty[] =
 {
@@ -653,6 +656,22 @@ static const ObjectPropertyType ObjectProperty[] =
 		false
 	},
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	{
+		"synonym",
+		SynonymRelationId,
+		SynonymOidIndexId,
+		SYNONYMOID,
+		SYNONYMNAMENSP,
+		Anum_pg_synonym_oid,
+		Anum_pg_synonym_synname,
+		Anum_pg_synonym_synnamespace,
+		Anum_pg_synonym_synowner,
+		InvalidAttrNumber,
+		OBJECT_SYNONYM,
+		true
+	},
+	/* End - ReqID:SRS-SQL-SYNONYM */
 };
 
 /*
@@ -1187,6 +1206,15 @@ get_object_address(ObjectType objtype, Node *object,
 				address.objectSubId = 0;
 				break;
 			/* End - ReqID:SRS-SQL-PACKAGE */
+
+			/* Begin - ReqID:SRS-SQL-SYNONYM */
+			case OBJECT_SYNONYM:
+				address.classId = SynonymRelationId;
+				address.objectId = LookupSynonymByNames(castNode(List, object), missing_ok);
+				address.objectSubId = 0;
+				break;
+			/* End - ReqID:SRS-SQL-SYNONYM */
+
 			default:
 				elog(ERROR, "unrecognized objtype: %d", (int) objtype);
 				/* placate compiler, in case it thinks elog might return */
@@ -2385,6 +2413,7 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		case OBJECT_PACKAGE:
 		case OBJECT_PACKAGE_BODY:
+		case OBJECT_SYNONYM:	/* ReqID:SRS-SQL-SYNONYM */
 			objnode = (Node *) name;
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
@@ -4082,6 +4111,27 @@ getObjectDescription(const ObjectAddress *object, bool missing_ok)
 			}
 		/* End - ReqID:SRS-SQL-PACKAGE */
 
+		/* Begin - ReqID:SRS-SQL-SYNONYM */
+		case OCLASS_SYNONYM:
+			{
+				if (SynIdGetname_hook)
+				{
+					char *synnsp;
+					char *syn_name;
+
+					SynIdGetname_hook(object->objectId, &syn_name, &synnsp);
+					appendStringInfo(&buffer, _("synonym %s.%s"), synnsp, syn_name);
+					pfree(synnsp);
+					pfree(syn_name);
+					break;
+				}
+				else
+					elog(ERROR, "There is no synonym feature");
+
+				break;
+			}
+		/* End - ReqID:SRS-SQL-SYNONYM */
+
 			/*
 			 * There's intentionally no default: case here; we want the
 			 * compiler to warn if a new OCLASS hasn't been handled above.
@@ -4638,6 +4688,12 @@ getObjectTypeDescription(const ObjectAddress *object, bool missing_ok)
 			appendStringInfoString(&buffer, "package body");
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+
+		/* Begin - ReqID:SRS-SQL-SYNONYM */
+		case OCLASS_SYNONYM:
+			appendStringInfoString(&buffer, "synonym");
+			break;
+		/* End - ReqID:SRS-SQL-SYNONYM */
 
 			/*
 			 * There's intentionally no default: case here; we want the
@@ -5954,6 +6010,26 @@ getObjectIdentityParts(const ObjectAddress *object,
 			}
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+
+		/* Begin - ReqID:SRS-SQL-SYNONYM */
+		case OCLASS_SYNONYM:
+			{
+				if (SynIdGetname_hook)
+				{
+					char *synnsp;
+					char *syn_name;
+
+					SynIdGetname_hook(object->objectId, &syn_name, &synnsp);
+					appendStringInfo(&buffer, "%s.%s", synnsp, syn_name);
+					if (syn_name)
+						*objname = lappend(list_make1(pstrdup(synnsp)),
+							list_make1(pstrdup(syn_name)));
+				}
+				else
+					elog(ERROR, "There is no synonym feature");
+			}
+			break;
+		/* End - ReqID:SRS-SQL-SYNONYM */
 
 			/*
 			 * There's intentionally no default: case here; we want the

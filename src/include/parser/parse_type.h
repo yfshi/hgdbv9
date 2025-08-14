@@ -67,5 +67,10 @@ extern Type LookupOraTypeNameExtended(ParseState *pstate,
 					   const TypeName *typeName, int32 *typmod_p,
 					   bool temp_ok, bool missing_ok);
 /* End - ReqID:SRS-PLSQL-TYPE */
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+
+typedef Type (*SynnameGettype_hook_type)(ParseState *pstate, const TypeName *typeName, int32 *typmod_p, List **synoids, bool missing_ok);
+extern PGDLLIMPORT SynnameGettype_hook_type SynnameGettype_hook;
+/* End - ReqID:SRS-SQL-SYNONYM */
 
 #endif							/* PARSE_TYPE_H */

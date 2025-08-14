@@ -101,6 +101,18 @@ extern Oid	RelnameGetRelid(const char *relname);
 extern Oid PkgnameGetPkgid(const char *pkgname);
 extern bool PackageIsVisible(Oid pkgoid);
 /* End - ReqID:SRS-SQL-PACKAGE */
+
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+extern Oid synnameGetSynid(const char *synname);
+extern Oid SynnameGetSynnsp(const char *synname);
+
+extern Oid get_synonym_synid(const char *synname, Oid synnamespace);
+extern Oid LookupSynonymByNames(List *synname, bool missing_ok);
+extern Oid SynnameGetPkgoid(const char *synname, char *nspname, List **synoids);
+
+extern Oid SynnameGetRelname(const char *synname, const char *synnsp, char **objschema, char **objname, char **objdblnksrv, List **synoids);
+/* End - ReqID:SRS-SQL-SYNONYM */
+
 extern bool RelationIsVisible(Oid relid);
 
 extern Oid	TypenameGetTypid(const char *typname);

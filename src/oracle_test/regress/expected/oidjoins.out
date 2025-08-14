@@ -270,3 +270,5 @@ NOTICE:  checking pg_package {pkgnamespace} => pg_namespace {oid}
 NOTICE:  checking pg_package {pkgowner} => pg_authid {oid}
 NOTICE:  checking pg_package_body {pkgoid} => pg_package {oid}
 NOTICE:  checking pg_resgroupcapability {resgroupid} => pg_resgroup {oid}
+NOTICE:  checking pg_synonym {synnamespace} => pg_namespace {oid}
+NOTICE:  checking pg_synonym {synowner} => pg_authid {oid}

@@ -2118,8 +2118,9 @@ typedef enum ObjectType
 	OBJECT_VIEW,
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	OBJECT_PACKAGE,
-	OBJECT_PACKAGE_BODY
+	OBJECT_PACKAGE_BODY,
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	OBJECT_SYNONYM	/* ReqID:SRS-SQL-SYNONYM */
 } ObjectType;
 
 /* Begin - ReqID: SRS-MYSQL-SQL-USE */
@@ -4239,6 +4240,35 @@ typedef struct CreatePackageBodyStmt
 	editionable_flag	editable; /* BUG#Z206 Z208 */
 	/* End - BUG#M0000257 */
 } CreatePackageBodyStmt;
+
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+typedef struct CreateSynonymStmt
+{
+	NodeTag         type;
+	bool            replace;			/* T => replace if already exists */
+	bool            synispub;		/* T => it is a public synonym */
+	editionable_flag editable;		/* T => it is a editabel synonym */
+	RangeVar        *synonym;		/* the synonym to create */
+	RangeVar        *object;			/* the associated object to create */
+	char            *dblinkname;		/* linked database name */
+} CreateSynonymStmt;
+
+typedef struct DropSynStmt
+{
+	NodeTag			type;
+	RangeVar	   *synname;
+	bool			ispub;
+}DropSynStmt;
+
+typedef struct AlterSynonymStmt
+{
+	NodeTag				type;
+	List				*synname;
+	editionable_flag	editable;
+	bool				compile_flag;
+	bool				ispub;
+}AlterSynonymStmt;
+/* End - ReqID:SRS-SQL-SYNONYM */
 
 typedef enum package_alter_flag
 {

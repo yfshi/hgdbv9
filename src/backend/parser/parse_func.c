@@ -51,6 +51,7 @@
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
 
+SynnameGetFuncInfo_hook_type SynnameGetFuncInfo_hook = NULL;	/* ReqID:SRS-SQL-SYNONYM */
 
 /* Possible error codes from LookupFuncNameInternal */
 typedef enum
@@ -415,6 +416,61 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 							   &nvargs, &vatype,
 							   &declared_arg_types, &argdefaults);
 	/* End - SRS-PLSQL-SUBPROC */
+
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	if(ORA_PARSER == compatible_db && fdresult == FUNCDETAIL_NOTFOUND && SynnameGetFuncInfo_hook)
+	{
+		char	   *schemaname = NULL;
+		char	   *objname = NULL;
+		char	   *funcnm;
+		char	   *funcnsp;
+		List	   *synoids = NIL;
+		Value	   *fstval;
+		Value	   *lstval;
+		List	   *newfuncname;
+		bool		result;
+
+		switch (list_length(funcname))
+		{
+			case 1:
+				objname = strVal(linitial(funcname));
+				break;
+			case 2:
+				schemaname = strVal(linitial(funcname));
+				objname = strVal(lsecond(funcname));
+				break;
+			case 3:
+				schemaname = strVal(lsecond(funcname));
+				objname = strVal(lthird(funcname));
+				break;
+			default:
+				elog(ERROR, "too many dot!");
+		}
+
+		while(1)
+		{
+			result = SynnameGetFuncInfo_hook(objname, schemaname, &funcnm, &funcnsp, &synoids);
+			if (!result)
+				break;
+			lstval = makeString(funcnm);
+			fstval = makeString(funcnsp);
+			newfuncname = list_make2(fstval, lstval);
+			fdresult = func_get_detail(newfuncname, fargs, argnames, nargs,
+										actual_arg_types,
+										!func_variadic, true, proc_call,
+										&funcid, &rettype, &retset,
+										&nvargs, &vatype,
+										&declared_arg_types, &argdefaults);
+			if (fdresult != FUNCDETAIL_NOTFOUND)
+				break;
+
+			/* Maybe it is also synonym, update it's name */
+			objname = strVal(lsecond(newfuncname));
+			schemaname = strVal(linitial(newfuncname));
+
+		}
+	}
+	/* End - ReqID:SRS-SQL-SYNONYM */
 
 	cancel_parser_errposition_callback(&pcbstate);
 

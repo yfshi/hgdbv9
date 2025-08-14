@@ -10464,6 +10464,7 @@ dumpDumpableObjectMysql(Archive *fout, const DumpableObject *dobj)
 		case DO_PRE_DATA_BOUNDARY:
 		case DO_POST_DATA_BOUNDARY:
 		case DO_PACKAGE:
+		case DO_SYN:	/* ReqID:SRS-SQL-SYNONYM */
 			/* never dumped, nothing to do */
 			break;
 	}
@@ -18885,6 +18886,11 @@ addBoundaryDependenciesMysql(DumpableObject **dobjs, int numObjs,
 			case DO_PACKAGE:
 				/* nothing to do */
 				break;
+			/* Begin - ReqID:SRS-SQL-SYNONYM */
+			case DO_SYN:
+				/* nothing to do */
+				break;
+			/* End - ReqID:SRS-SQL-SYNONYM */
 		}
 	}
 }

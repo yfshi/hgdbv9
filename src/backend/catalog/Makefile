@@ -74,7 +74,7 @@ CATALOG_HEADERS := \
 	pg_subscription_rel.h pg_package.h pg_package_body.h pg_force_view.h \
 	pg_object.h pg_mfaid.h \
 	pg_resgroup.h pg_resgroupcapability.h \
-	pg_recyclebin.h
+	pg_recyclebin.h pg_synonym.h
 
 GENERATED_HEADERS := $(CATALOG_HEADERS:%.h=%_d.h) schemapg.h system_fk_info.h
 
