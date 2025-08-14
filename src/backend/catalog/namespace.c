@@ -55,6 +55,7 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "parser/parse_package.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+#include "catalog/pg_synonym.h"	/* ReqID:SRS-SQL-SYNONYM */
 #include "storage/ipc.h"
 #include "storage/lmgr.h"
 #include "storage/sinvaladt.h"
@@ -187,6 +188,7 @@ typedef struct
 } OverrideStackEntry;
 
 static List *overrideStack = NIL;
+
 
 /*
  * myTempNamespace is InvalidOid until and unless a TEMP namespace is set up
@@ -354,6 +356,27 @@ RangeVarGetRelidExtended(const RangeVar *relation, LOCKMODE lockmode,
 		{
 			relId = RelnameGetRelid(relation->relname);
 		}
+
+		/* Begin - ReqID:SRS-SQL-SYNONYM */
+		/* Check for synonyms */
+		if (ORA_PARSER == compatible_db && !OidIsValid(relId) && SynnameGetRelname_hook)
+		{
+			List		*synoids = NIL;
+			char *objschema;
+			char *objname;
+			char *objdblnksrv;
+			Oid 		synoid;
+			Oid 		nspid;
+
+			synoid = SynnameGetRelname_hook(relation->relname, relation->schemaname, &objschema, &objname, &objdblnksrv, &synoids);
+			if (OidIsValid(synoid))
+			{
+				nspid = LookupExplicitNamespace(objschema, missing_ok);
+				if (OidIsValid(nspid))
+					relId = get_relname_relid(objname, nspid);
+			}
+		}
+		/* End - ReqID:SRS-SQL-SYNONYM */
 
 		/*
 		 * Invoke caller-supplied callback, if any.
@@ -751,6 +774,141 @@ PkgnameGetPkgid(const char *pkgname)
 	return InvalidOid;
 }
 
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+/*
+ * Get synonym oid according to its name
+ */
+Oid
+synnameGetSynid(const char *synname)
+{
+	Oid 		sysoid;
+	ListCell   *l;
+
+	recomputeNamespacePath();
+
+	foreach(l, activeSearchPath)
+	{
+		Oid 		namespaceId = lfirst_oid(l);
+
+		sysoid = get_synonym_synid(synname, namespaceId);
+		if (OidIsValid(sysoid))
+			return sysoid;
+	}
+
+	/* Not found in path */
+	return InvalidOid;
+}
+
+Oid
+SynnameGetSynnsp(const char *synname)
+{
+	Oid 		sysoid;
+	ListCell   *l;
+
+	recomputeNamespacePath();
+
+	foreach(l, activeSearchPath)
+	{
+		Oid 		namespaceId = lfirst_oid(l);
+
+		sysoid = get_synonym_synid(synname, namespaceId);
+		if (OidIsValid(sysoid))
+			return namespaceId;
+	}
+
+	/* Not found in path */
+	return InvalidOid;
+}
+
+/*
+ * Get synonym oid according to name and namespace
+ */
+Oid
+get_synonym_synid(const char *synname, Oid synnamespace)
+{
+	Oid sysoid;
+	sysoid = GetSysCacheOid3(SYNONYMNAMENSP, Anum_pg_synonym_oid,
+						   PointerGetDatum(synname),
+						   ObjectIdGetDatum(synnamespace),
+						   BoolGetDatum(false));
+	if (!OidIsValid(sysoid))
+		sysoid = GetSysCacheOid3(SYNONYMNAMENSP, Anum_pg_synonym_oid,
+						   PointerGetDatum(synname),
+						   ObjectIdGetDatum(synnamespace),
+						   BoolGetDatum(true));
+	return sysoid;
+}
+
+/*
+ * Get synonym oid from name list
+ */
+Oid
+LookupSynonymByNames(List *synname, bool missing_ok)
+{
+	char *schemaname;
+	char *s_name;
+	Oid namespaceId;
+	Oid synOid;
+
+	/* deconstruct the name list */
+	DeconstructQualifiedName(synname, &schemaname, &s_name);
+
+	if (schemaname != NULL)
+	{
+		namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
+		if (!OidIsValid(namespaceId))
+			return InvalidOid;
+
+		synOid = get_synonym_synid(s_name, namespaceId);
+	}
+	else
+		synOid =  synnameGetSynid(s_name);
+
+	if (!OidIsValid(synOid) && !missing_ok)
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("synonym \"%s\" does not exist", s_name)));
+
+	return synOid;
+}
+
+/*
+ * Check if it is a synonym and get the package oid by name.
+ */
+Oid
+SynnameGetPkgoid(const char *synname, char *nspname, List **synoids)
+{
+	Oid			pkgid;
+	Oid			nspoid;
+	ListCell   *l;
+
+	if (nspname)
+	{
+		nspoid = LookupExplicitNamespace(nspname, true);
+		if (!OidIsValid(nspoid))
+			return InvalidOid;
+		pkgid = SynnameGetPkgoid_recursive_hook(synname, nspoid, synoids);
+		if (OidIsValid(pkgid))
+			return pkgid;
+	}
+	else
+	{
+		recomputeNamespacePath();
+
+		foreach(l, activeSearchPath)
+		{
+			Oid			namespaceId = lfirst_oid(l);
+
+			pkgid = SynnameGetPkgoid_recursive_hook(synname, namespaceId, synoids);
+			if (OidIsValid(pkgid))
+				return pkgid;
+		}
+	}
+
+	/* Not found package */
+	return InvalidOid;
+}
+/* End - ReqID:SRS-SQL-SYNONYM */
 
 /*
  * like RelationIsVisible,we check package is visible

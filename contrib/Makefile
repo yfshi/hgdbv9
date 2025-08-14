@@ -59,7 +59,8 @@ SUBDIRS = \
 		mys_btree_gist \
 		mys_btree_gin	\
 		uuid-ossp \
-                hg_misc
+		hg_misc	\
+		ora_synonym
 
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo

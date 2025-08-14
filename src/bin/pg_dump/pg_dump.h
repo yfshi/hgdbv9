@@ -47,6 +47,7 @@ typedef enum
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	DO_PACKAGE,
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	DO_SYN,						/* ReqID:SRS-SQL-SYNONYM */
 	DO_FUNC,
 	DO_AGG,
 	DO_OPERATOR,
@@ -244,6 +245,19 @@ typedef struct _funcInfo
 	char	   *initrproacl;
 	bool		postponed_def;	/* function must be postponed into post-data */
 } FuncInfo;
+
+/* Begin - ReqID:SRS-SQL-SYNONYM */
+typedef struct _synInfo
+{
+	DumpableObject dobj;
+	char	   *rolname;		/* name of owner, or empty string */
+	bool		ispub;
+	bool		isisedit;
+	char	   *objschema;
+	char	   *objname;
+	char	   *dblink;
+} SynInfo;
+/* End - ReqID:SRS-SQL-SYNONYM */
 
 /* AggInfo is a superset of FuncInfo */
 typedef struct _aggInfo
@@ -821,6 +835,7 @@ extern int	numTables;
 extern int	numTypes;
 extern int	numPkgs;
 extern int	numFuncs;
+extern int	numSyns;	/* ReqID:SRS-SQL-SYNONYM */
 extern int	numOperators;
 extern int	numCollations;
 extern int	numNamespaces;

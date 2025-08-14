@@ -158,6 +158,11 @@ select * from it4@ivyconned;
 
 select * from it5@spglink; -- error, open_links default is 4
 
+--test synonym
+create synonym a for it1@ivyfuplnk;
+select * from a;
+drop synonym a;
+
 
 -- access remote view
 select * from vit1@ivyfuplnk;

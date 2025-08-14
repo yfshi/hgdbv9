@@ -14272,6 +14272,11 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				 * compiler to warn if a new OCLASS hasn't been handled above.
 				 */
 			/* End - ReqID:SRS-SQL-PACKAGE */
+
+			/* Begin - ReqID:SRS-SQL-SYNONYM */
+			case OCLASS_SYNONYM:
+				break;
+			/* End - ReqID:SRS-SQL-SYNONYM */
 		}
 	}
 

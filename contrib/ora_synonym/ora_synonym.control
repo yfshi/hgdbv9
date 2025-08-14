@@ -1,0 +1,9 @@
+# ora_synonym extension
+comment = 'compatible with oracle synonym'
+default_version = '1.0'
+module_pathname = '$libdir/ora_synonym'
+relocatable = true
+trusted = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

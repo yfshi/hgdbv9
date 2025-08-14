@@ -5324,6 +5324,7 @@ _getObjectDescription(PQExpBuffer buf, TocEntry *te)
 	if (strcmp(type, "AGGREGATE") == 0 ||
 		strcmp(type, "FUNCTION") == 0 ||
 		strcmp(type, "PACKAGE") == 0 || /* ReqID:SRS-SQL-PACKAGE */
+		strcmp(type, "SYNONYM") == 0 ||	/* ReqID:SRS-SQL-SYNONYM */
 		strcmp(type, "OPERATOR") == 0 ||
 		strcmp(type, "OPERATOR CLASS") == 0 ||
 		strcmp(type, "OPERATOR FAMILY") == 0 ||
@@ -5530,7 +5531,8 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			/* switch ivorysql.compatible_mode to oracle for package. If pg_object */
 			/* records package information in the future, the following code needs */
 			/* to be deleted. */
-			if (strcmp(te->desc, "PACKAGE") == 0 && compatible_mode != ORA_PARSER)
+			if ((strcmp(te->desc, "PACKAGE") == 0  || strcmp(te->desc, "SYNONYM") == 0 )	/* ReqID:SRS-SQL-SYNONYM */
+											&& compatible_mode != ORA_PARSER)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
 				compatible_mode = ORA_PARSER;
@@ -5620,6 +5622,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			strcmp(te->desc, "DOMAIN") == 0 ||
 			strcmp(te->desc, "FUNCTION") == 0 ||
 			strcmp(te->desc, "PACKAGE") == 0 || /* ReqID:SRS-SQL-PACKAGE */
+			strcmp(te->desc, "SYNONYM") == 0 ||	/* ReqID:SRS-SQL-SYNONYM */
 			strcmp(te->desc, "OPERATOR") == 0 ||
 			strcmp(te->desc, "OPERATOR CLASS") == 0 ||
 			strcmp(te->desc, "OPERATOR FAMILY") == 0 ||

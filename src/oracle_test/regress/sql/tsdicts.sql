@@ -139,27 +139,27 @@ CREATE TEXT SEARCH DICTIONARY hunspell_err (
 );
 
 -- Synonym dictionary
-CREATE TEXT SEARCH DICTIONARY synonym (
+CREATE TEXT SEARCH DICTIONARY synonym1 (
 						Template=synonym,
 						Synonyms=synonym_sample
 );
 
-SELECT ts_lexize('synonym', 'PoStGrEs');
-SELECT ts_lexize('synonym', 'Gogle');
-SELECT ts_lexize('synonym', 'indices');
+SELECT ts_lexize('synonym1', 'PoStGrEs');
+SELECT ts_lexize('synonym1', 'Gogle');
+SELECT ts_lexize('synonym1', 'indices');
 
 -- test altering boolean parameters
-SELECT dictinitoption FROM pg_ts_dict WHERE dictname = 'synonym';
+SELECT dictinitoption FROM pg_ts_dict WHERE dictname = 'synonym1';
 
-ALTER TEXT SEARCH DICTIONARY synonym (CaseSensitive = 1);
-SELECT ts_lexize('synonym', 'PoStGrEs');
-SELECT dictinitoption FROM pg_ts_dict WHERE dictname = 'synonym';
+ALTER TEXT SEARCH DICTIONARY synonym1 (CaseSensitive = 1);
+SELECT ts_lexize('synonym1', 'PoStGrEs');
+SELECT dictinitoption FROM pg_ts_dict WHERE dictname = 'synonym1';
 
-ALTER TEXT SEARCH DICTIONARY synonym (CaseSensitive = 2);  -- fail
+ALTER TEXT SEARCH DICTIONARY synonym1 (CaseSensitive = 2);  -- fail
 
-ALTER TEXT SEARCH DICTIONARY synonym (CaseSensitive = off);
-SELECT ts_lexize('synonym', 'PoStGrEs');
-SELECT dictinitoption FROM pg_ts_dict WHERE dictname = 'synonym';
+ALTER TEXT SEARCH DICTIONARY synonym1 (CaseSensitive = off);
+SELECT ts_lexize('synonym1', 'PoStGrEs');
+SELECT dictinitoption FROM pg_ts_dict WHERE dictname = 'synonym1';
 
 -- Create and simple test thesaurus dictionary
 -- More tests in configuration checks because ts_lexize()
@@ -223,7 +223,7 @@ CREATE TEXT SEARCH CONFIGURATION synonym_tst (
 
 ALTER TEXT SEARCH CONFIGURATION synonym_tst ALTER MAPPING FOR
 	asciiword, hword_asciipart, asciihword
-	WITH synonym, english_stem;
+	WITH synonym1, english_stem;
 
 SELECT to_tsvector('synonym_tst', 'Postgresql is often called as postgres or pgsql and pronounced as postgre');
 SELECT to_tsvector('synonym_tst', 'Most common mistake is to write Gogle instead of Google');
@@ -238,7 +238,7 @@ CREATE TEXT SEARCH CONFIGURATION thesaurus_tst (
 
 ALTER TEXT SEARCH CONFIGURATION thesaurus_tst ALTER MAPPING FOR
 	asciiword, hword_asciipart, asciihword
-	WITH synonym, thesaurus, english_stem;
+	WITH synonym1, thesaurus, english_stem;
 
 SELECT to_tsvector('thesaurus_tst', 'one postgres one two one two three one');
 SELECT to_tsvector('thesaurus_tst', 'Supernovae star is very new star and usually called supernovae (abbreviation SN)');

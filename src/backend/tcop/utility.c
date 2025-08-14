@@ -199,6 +199,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_AlterPackageStmt:
 		/* End - ReqID:SRS-SQL-PACKAGE */
 		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case T_CreateSynonymStmt:	/* ReqID:SRS-SQL-SYNONYM */
 		case T_CreateDatabaseLinkStmt:
 		case T_AlterDatabaseLinkStmt:
 		case T_AlterSessionCloseDblinkStmt:
@@ -236,6 +237,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_DropTableSpaceStmt:
 		case T_DropUserMappingStmt:
 		case T_DropdbStmt:
+		case T_DropSynStmt:	/* ReqID:SRS-SQL-SYNONYM */
 		case T_GrantRoleStmt:
 		case T_GrantStmt:
 		case T_ImportForeignSchemaStmt:
@@ -2492,6 +2494,11 @@ AlterObjectTypeCommandTag(ObjectType objtype)
 			tag = CMDTAG_ALTER_PACKAGE;
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-SYNONYM */
+		case OBJECT_SYNONYM:
+			tag = CMDTAG_ALTER_SYNONYM;
+			break;
+		/* End - ReqID:SRS-SQL-SYNONYM */
 		default:
 			tag = CMDTAG_UNKNOWN;
 			break;
@@ -2814,6 +2821,11 @@ CreateCommandTag(Node *parsetree)
 					tag = CMDTAG_DROP_PACKAGE_BODY;
 					break;
 				/* End - ReqID:SRS-SQL-PACKAGE */
+				/* Begin - ReqID:SRS-SQL-SYNONYM */
+				case OBJECT_SYNONYM:
+					tag = CMDTAG_DROP_SYNONYM;
+					break;
+				/* End - ReqID:SRS-SQL-SYNONYM */
 				default:
 					tag = CMDTAG_UNKNOWN;
 			}
@@ -3458,7 +3470,17 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_PURGE;
 			break;
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
-
+		/* Begin - ReqID:SRS-SQL-SYNONYM */
+		case T_CreateSynonymStmt:
+			tag = CMDTAG_CREATE_SYNONYM;
+			break;
+		case T_AlterSynonymStmt:
+			tag = CMDTAG_ALTER_SYNONYM;
+			break;
+		case T_DropSynStmt:
+			tag = CMDTAG_DROP_SYNONYM;
+			break;
+		/* End - ReqID:SRS-SQL-SYNONYM */
 		default:
 			elog(WARNING, "unrecognized node type: %d",
 				 (int) nodeTag(parsetree));

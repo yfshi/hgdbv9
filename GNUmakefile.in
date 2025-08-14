@@ -14,9 +14,9 @@ top_builddir = .
 include $(top_builddir)/src/Makefile.global
  
 ifeq ($(with_sqlite),yes)
-$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck)	# SRS-MISC-GB18030	# BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck contrib/ora_synonym)	# SRS-MISC-GB18030	# BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH #/* ReqID:SRS-SQL-SYNONYM */
 else
-$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/pg_track_settings contrib/credcheck)    # SRS-MISC-GB18030      # BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/pg_track_settings contrib/credcheck contrib/ora_synonym)    # SRS-MISC-GB18030      # BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH # /* ReqID:SRS-SQL-SYNONYM */
 endif
 
 #/* Begin - BUG#Z00004703 */
@@ -46,6 +46,8 @@ all-contrib/pg_track_settings-recurse: all-src-recurse
 install-contrib/pg_track_settings-recurse: install-src-recurse
 all-contrib/credcheck-recurse: all-src-recurse
 install-contrib/credcheck-recurse: install-src-recurse
+all-contrib/ora_synonym-recurse: all-src-recurse
+install-contrib/ora_synonym-recurse: install-src-recurse
 #/* End - BUG#Z00004703 */
 
 

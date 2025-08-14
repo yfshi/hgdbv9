@@ -83,6 +83,7 @@ typedef struct
 
 #define MAX_FUZZY_DISTANCE				3
 
+SynnameGetRelname_hook_type SynnameGetRelname_hook = NULL;	/* ReqID:SRS-SQL-SYNONYM */
 
 static ParseNamespaceItem *scanNameSpaceForRefname(ParseState *pstate,
 												   const char *refname,
@@ -2049,6 +2050,36 @@ addRangeTableEntry(ParseState *pstate,
 	 * AccessShareLock otherwise.
 	 */
 	lockmode = isLockedRefname(pstate, refname) ? RowShareLock : AccessShareLock;
+
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	/* Dealing with dblink related issues */
+	if (ORA_PARSER == compatible_db && relation->srvname == NULL && SynnameGetRelname_hook)
+	{
+		rel = table_openrv_extended(relation, lockmode, true);
+		if (rel == NULL)
+		{
+			List		*synoids = NIL;
+			char *objschema;
+			char *objname;
+			char *objdblnksrv;
+			Oid			synoid;
+
+			synoid = SynnameGetRelname_hook(relation->relname, relation->schemaname, &objschema, &objname, &objdblnksrv, &synoids);
+			if (OidIsValid(synoid))
+			{
+				if (pg_strcasecmp(objschema, "") != 0)
+					relation->schemaname = objschema;
+				relation->relname = objname;
+				if (objdblnksrv && pg_strcasecmp(objdblnksrv, "") != 0)
+					relation->srvname = objdblnksrv;
+				else
+					relation->srvname = NULL;
+			}
+		}
+		else
+			table_close(rel, NoLock);
+	}
+	/* End - ReqID:SRS-SQL-SYNONYM */
 
 	/*
 	 * Get the rel's OID.  This access also ensures that we have an up-to-date

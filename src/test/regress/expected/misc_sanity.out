@@ -133,7 +133,8 @@ ORDER BY 1;
  pg_object
  pg_resgroupcapability
  pg_shdepend
-(5 rows)
+ pg_synonym
+(6 rows)
 
 -- system catalog unique indexes not wrapped in a constraint
 -- (There should be none.)

@@ -736,6 +736,7 @@ AlterObjectNamespace_oid(Oid classId, Oid objid, Oid nspOid,
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		case OCLASS_PACKAGE:
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		case OCLASS_SYNONYM:	/* ReqID:SRS-SQL-SYNONYM */
 			{
 				Relation	catalog;
 
@@ -997,6 +998,7 @@ ExecAlterOwnerStmt(AlterOwnerStmt *stmt)
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		case OBJECT_PACKAGE:
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		case OBJECT_SYNONYM:	/* ReqID:SRS-SQL-SYNONYM */
 		case OBJECT_LANGUAGE:
 		case OBJECT_LARGEOBJECT:
 		case OBJECT_OPERATOR:

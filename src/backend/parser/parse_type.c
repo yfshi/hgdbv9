@@ -37,10 +37,12 @@
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
+#include "parser/parse_type.h"	/* ReqID:SRS-SQL-SYNONYM */
 
 static int32 typenameTypeMod(ParseState *pstate, const TypeName *typeName,
 							 Type typ);
 
+SynnameGettype_hook_type SynnameGettype_hook = NULL;	/* ReqID:SRS-SQL-SYNONYM */
 
 /*
  * LookupTypeName
@@ -50,8 +52,19 @@ Type
 LookupTypeName(ParseState *pstate, const TypeName *typeName,
 			   int32 *typmod_p, bool missing_ok)
 {
-	return LookupTypeNameExtended(pstate,
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	Type tup;
+	List	*synoids = NIL;
+
+	tup = LookupTypeNameExtended(pstate,
 								  typeName, typmod_p, true, missing_ok);
+
+	if (ORA_PARSER == compatible_db && tup == NULL && SynnameGettype_hook)
+		tup = SynnameGettype_hook(pstate, typeName, typmod_p, &synoids, true);
+
+	list_free(synoids);
+	return tup;
+	/* End - ReqID:SRS-SQL-SYNONYM */
 }
 
 /*

@@ -458,6 +458,11 @@ typedef enum NodeTag
 	T_CreatePackageBodyStmt,
 	T_AlterPackageStmt,
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	T_CreateSynonymStmt,
+	T_AlterSynonymStmt,
+	T_DropSynStmt,
+	/* End - ReqID:SRS-SQL-SYNONYM */
 	/* Begin - ReqID:SRS-SQL-DBLINK */
 	T_CreateDatabaseLinkStmt,
 	T_DropDatabaseLinkStmt,

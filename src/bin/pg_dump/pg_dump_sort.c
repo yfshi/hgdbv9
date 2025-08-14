@@ -71,6 +71,7 @@ enum dbObjectTypePriorities
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	PRIO_PACKAGE,
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	PRIO_SYNONYM,	/* ReqID:SRS-SQL-SYNONYM */
 	PRIO_FUNC,
 	PRIO_AGG,
 	PRIO_ACCESS_METHOD,
@@ -119,6 +120,9 @@ static const int dbObjectTypePriority[] =
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	PRIO_PACKAGE,				/* DO_PACKAGE */
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-SYNONYM */
+	PRIO_SYNONYM,				/* DO_SYN */
+	/* End - ReqID:SRS-SQL-SYNONYM */
 	PRIO_FUNC,					/* DO_FUNC */
 	PRIO_AGG,					/* DO_AGG */
 	PRIO_OPERATOR,				/* DO_OPERATOR */
@@ -1504,6 +1508,13 @@ describeDumpableObject(DumpableObject *obj, char *buf, int bufsize)
 					 "FUNCTION %s  (ID %d OID %u)",
 					 obj->name, obj->dumpId, obj->catId.oid);
 			return;
+		/* Begin - ReqID:SRS-SQL-SYNONYM */
+		case DO_SYN:
+			snprintf(buf, bufsize,
+					 "SYNONYM %s  (ID %d OID %u)",
+					 obj->name, obj->dumpId, obj->catId.oid);
+			return;
+		/* End - ReqID:SRS-SQL-SYNONYM */
 		case DO_AGG:
 			snprintf(buf, bufsize,
 					 "AGGREGATE %s  (ID %d OID %u)",

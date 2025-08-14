@@ -41,6 +41,7 @@ extern FuncInfo *getFuncs(Archive *fout, int *numFuncs);
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 extern PkgInfo *getPackages(Archive *fout, int *numPkgs);
 /* End - ReqID:SRS-SQL-PACKAGE */
+extern SynInfo *getSynonyms(Archive *fout, int *numSyns);	/* ReqID:SRS-SQL-SYNONYM */
 extern AggInfo *getAggregates(Archive *fout, int *numAggregates);
 extern OprInfo *getOperators(Archive *fout, int *numOperators);
 extern AccessMethodInfo *getAccessMethods(Archive *fout, int *numAccessMethods);
