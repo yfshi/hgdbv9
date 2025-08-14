@@ -471,11 +471,17 @@ elt(PG_FUNCTION_ARGS)
 	Datum	*args;
 	Oid		*types;
 	bool	*nulls;
+	int		nargs;
 
-	if (num < 1 || num > PG_NARGS())
+	if (num < 1)
 		PG_RETURN_NULL();
 
-	extract_variadic_args(fcinfo, 1, false, &args, &types, &nulls);
+	nargs = extract_variadic_args(fcinfo, 1, false, &args, &types, &nulls);
+
+	/* Begin - BUG#Z5513 */
+	if (num > nargs)
+		PG_RETURN_NULL();
+	/* End - BUG#Z5513 */
 
 	PG_RETURN_DATUM(args[num - 1]);
 }

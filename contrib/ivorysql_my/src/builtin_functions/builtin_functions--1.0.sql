@@ -823,6 +823,32 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - BUG#Z5513 */
+CREATE FUNCTION ivymy.elt(text, VARIADIC text[])
+RETURNS VARCHAR
+AS 'select ivymy.elt($1::bigint, VARIADIC $2)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.elt(numeric, VARIADIC text[])
+RETURNS VARCHAR
+AS 'select ivymy.elt($1::bigint, VARIADIC $2)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.elt(float8, VARIADIC text[])
+RETURNS VARCHAR
+AS 'select ivymy.elt($1::bigint, VARIADIC $2)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - BUG#Z5513 */
+
 -- field
 CREATE FUNCTION ivymy.field(VARIADIC arr text[])
 RETURNS int
@@ -1162,6 +1188,16 @@ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - BUG#Z5537 */
+CREATE FUNCTION ivymy.octet_length(binary)
+RETURNS int4
+AS 'select length($1::bytea)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - BUG#Z5537 */
 
 -- bit_length
 
@@ -2777,6 +2813,7 @@ LANGUAGE SQL
 STRICT
 IMMUTABLE;
 
+-- unhex
 
 CREATE FUNCTION ivymy.unhex(text)
 RETURNS varbinary
@@ -2786,6 +2823,17 @@ IMMUTABLE
 PARALLEL
 SAFE
 STRICT;
+
+/* Begin - BUG#Z5543 */
+CREATE FUNCTION ivymy.unhex(binary)
+RETURNS varbinary
+AS 'MODULE_PATHNAME','unhex'
+LANGUAGE C
+IMMUTABLE
+PARALLEL
+SAFE
+STRICT;
+/* End - BUG#Z5543 */
 
 CREATE FUNCTION ivymy.unhex(numeric)
 RETURNS varbinary
