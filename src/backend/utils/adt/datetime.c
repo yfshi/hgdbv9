@@ -4050,7 +4050,7 @@ mystime_rounded_seconds(struct pg_tm *tm, int *fsec, int *warn, int dec)
 int mysstr_to_time(const char *str, size_t length, struct pg_tm *tm, int flag,
 				   fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int *neg)
 {
-	int date[5];
+	int64 date[5]; /* BUG#Z5567 */
 	int64 value;
 	const char *end = str + length, *end_of_days;
 	bool found_days, found_hours;
@@ -4226,8 +4226,12 @@ fractional:
 	tm->tm_year = 0; /* For protocol::store_time */
 	tm->tm_mon = 0;
 	tm->tm_mday = 0;
-	tm->tm_hour = date[1] + date[0] * 24; /* Mix days and hours */
-
+	/* Begin - BUG#Z5567 */
+	if ((date[1] + date[0] * 24) > TIME_MAX_HOUR)
+		tm->tm_hour = TIME_MAX_HOUR + 1;
+	else
+		tm->tm_hour = date[1] + date[0] * 24; /* Mix days and hours */
+	/* End - BUG#Z5567 */
 	tm->tm_min = date[2];
 	tm->tm_sec = date[3];
 	*fsec = date[4];

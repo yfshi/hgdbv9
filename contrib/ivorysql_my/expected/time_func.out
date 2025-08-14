@@ -4290,3 +4290,40 @@ SELECT CONVERT_TZ( '1990-01-01 00:00:01', ' +00:00 ','+10:00' );
 (1 row)
 
 /* End - BUG#Z5583 */
+/* Begin - BUG#Z5564 */
+create table test as select utc_timestamp(6);
+\d+ test;
+                                       Table "public.test"
+    Column     |   Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+---------------+----------+-----------+----------+---------+---------+--------------+-------------
+ utc_timestamp | datetime |           |          |         | main    |              | 
+
+drop table test;
+/* End - BUG#Z5564 */
+/* Begin - BUG#Z5565 */
+set sql_mode = '';
+select dayname(" ");
+WARNING:  Incorrect datetime value: ' '
+ dayname 
+---------
+ 
+(1 row)
+
+select dayname("");
+WARNING:  Incorrect datetime value: ''
+ dayname 
+---------
+ 
+(1 row)
+
+set sql_mode to default;
+/* End - BUG#Z5565 */
+/* Begin - BUG#Z5567 */
+SELECT time_to_sec('4294967295:59:59');
+WARNING:  Truncated incorrect time value: '4294967295:59:59'
+ time_to_sec 
+-------------
+     3020399
+(1 row)
+
+/* End - BUG#Z5567 */
