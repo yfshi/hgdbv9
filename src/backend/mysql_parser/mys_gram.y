@@ -611,7 +611,7 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 %type <list>	rowsfrom_item rowsfrom_list opt_col_def_list
 %type <boolean> opt_ordinality
 %type <list>	ExclusionConstraintList ExclusionConstraintElem
-%type <list>	func_arg_list func_arg_list_opt field_func_args_list /* ReqID:SRS-MYSQL-BINARYTYPE */
+%type <list>	func_arg_list func_arg_list_opt elt_func_args_list /* ReqID:SRS-MYSQL-BINARYTYPE */ /* BUG#Z5516 */
 %type <node>	func_arg_expr
 %type <list>	row explicit_row implicit_row type_list array_expr_list
 %type <node>	case_expr case_arg when_clause case_default
@@ -16253,7 +16253,7 @@ a_expr:		c_expr									{ $$ = $1; }
 
 					$$ = (Node *)n;
 				}
-			| FIELD '(' field_func_args_list ')'
+			| FIELD '(' func_arg_list_opt ')'  /* BUG#Z5516 */
 				{
 					FuncCall *n = makeFuncCall(MysqlSystemFuncName("field"),
 											   $3,
@@ -16267,7 +16267,7 @@ a_expr:		c_expr									{ $$ = $1; }
 					ereport(ERROR,(errmsg("Incorrect parameter count in the call to native function 'elt'")));
 				}
 			/* End - BUG#Z5513 */
-			| ELT '(' a_expr ',' field_func_args_list ')'
+			| ELT '(' a_expr ',' elt_func_args_list ')' /* BUG#Z5516 */
 				{
 					FuncCall *n = makeFuncCall(MysqlSystemFuncName("elt"),
 											   lcons($3, $5),
@@ -16310,13 +16310,13 @@ name_const_label:
 				}
 		;
 
-field_func_args_list:
+elt_func_args_list: /* BUG#Z5516 */
 			a_expr
 				{
 					Node *n = makeTypeCast($1, SystemTypeName("text"), @1);
 					$$ = list_make1(n);
 				}
-			| field_func_args_list ',' a_expr
+			| elt_func_args_list ',' a_expr  /* BUG#Z5516 */
 				{
 					Node *n = makeTypeCast($3, SystemTypeName("text"), @3);
 					$$ = lappend($1, n);

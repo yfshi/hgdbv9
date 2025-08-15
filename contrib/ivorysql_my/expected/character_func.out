@@ -606,6 +606,147 @@ SELECT FIELD(1::int1 unsigned, 3::int2 unsigned, 2::int4 unsigned, 1::int8 unsig
      3
 (1 row)
 
+/*Begin BUG#Z5516 */
+SELECT FIELD(2-2, 1, TRUE, 0);
+ field 
+-------
+     3
+(1 row)
+
+SELECT FIELD(TRUE, '1', 'TRUE', '0');
+ field 
+-------
+     1
+(1 row)
+
+SELECT FIELD(2-2, 1, 2, 0);
+ field 
+-------
+     3
+(1 row)
+
+SELECT FIELD(2-1, '1', 'TRUE', '0');
+ field 
+-------
+     1
+(1 row)
+
+SELECT FIELD(2-2, NULL, 'TRUE', '0');
+WARNING:  Truncated incorrect DOUBLE value: TRUE
+ field 
+-------
+     2
+(1 row)
+
+SELECT FIELD('banana', 'Apple', 'Banana', 'Cherry');
+ field 
+-------
+     2
+(1 row)
+
+SELECT FIELD('Apple', NULL, 'Apple', 'Banana');
+ field 
+-------
+     2
+(1 row)
+
+SELECT FIELD(2-1, 'TRUE', '0', '1');
+WARNING:  Truncated incorrect DOUBLE value: TRUE
+ field 
+-------
+     3
+(1 row)
+
+SELECT FIELD('1', 'TRUE', '0', '1');
+ field 
+-------
+     3
+(1 row)
+
+SELECT FIELD('0', 'TRUE', '0', '1');
+ field 
+-------
+     2
+(1 row)
+
+SELECT FIELD(0, 'TRUE', '0', '1');
+WARNING:  Truncated incorrect DOUBLE value: TRUE
+ field 
+-------
+     1
+(1 row)
+
+SELECT FIELD('0', 'FALSE', '0', '1');
+ field 
+-------
+     2
+(1 row)
+
+SELECT FIELD(0, 'FALSE', '0', '1');
+WARNING:  Truncated incorrect DOUBLE value: FALSE
+ field 
+-------
+     1
+(1 row)
+
+SELECT FIELD('0', '12a','FALSE', 0, '23a');
+WARNING:  Truncated incorrect DOUBLE value: 12a
+WARNING:  Truncated incorrect DOUBLE value: FALSE
+ field 
+-------
+     2
+(1 row)
+
+SELECT FIELD(23, '12a','FALSE', 0, '23a');
+WARNING:  Truncated incorrect DOUBLE value: 12a
+WARNING:  Truncated incorrect DOUBLE value: FALSE
+WARNING:  Truncated incorrect DOUBLE value: 23a
+ field 
+-------
+     4
+(1 row)
+
+SELECT FIELD(NULL, NULL, '1', '1.1');
+ field 
+-------
+     0
+(1 row)
+
+SELECT FIELD(1.1, NULL, '1', '1.1');
+ field 
+-------
+     3
+(1 row)
+
+SELECT FIELD('a'::char, NULL, '1', 'a');
+ field 
+-------
+     3
+(1 row)
+
+SELECT FIELD(' ', 'a',' ', 0, '23a');
+WARNING:  Truncated incorrect DOUBLE value: a
+ field 
+-------
+     1
+(1 row)
+
+create table t1 (id int,str text);
+insert into t1 values (1, 'ab');
+SELECT FIELD(id, 1, 2, 0) from t1;
+ field 
+-------
+     1
+(1 row)
+
+SELECT FIELD(str, '1', 'abc', 'ab') from t1;
+ field 
+-------
+     3
+(1 row)
+
+drop table t1;
+/*End BUG#Z5516 */
 create table t_field as SELECT FIELD('b', 'a', 'b', 'c');;
 \d t_field
               Table "public.t_field"

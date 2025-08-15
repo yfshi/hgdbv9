@@ -98,6 +98,7 @@ PG_FUNCTION_INFO_V1(locate);
 PG_FUNCTION_INFO_V1(insert);
 PG_FUNCTION_INFO_V1(elt);
 PG_FUNCTION_INFO_V1(field);
+PG_FUNCTION_INFO_V1(field_any);  /*  BUG#Z5516 */
 PG_FUNCTION_INFO_V1(substring_index);
 PG_FUNCTION_INFO_V1(ord);
 PG_FUNCTION_INFO_V1(mys_text_length);
@@ -546,6 +547,9 @@ field(PG_FUNCTION_ARGS)
 	bool	*nulls;
 	char 	*first_arg,
 			*match_arg;
+	/* Begin - BUG#Z5516 */
+	char 	*lower_left = NULL,*lower_right = NULL;
+	/* End - BUG#Z5516 */
 	int		 first_len,
 			 match_len;
 	text	*raw;
@@ -559,20 +563,25 @@ field(PG_FUNCTION_ARGS)
 			errmsg("Incorrect parameter count in the call to native function 'field'")));
 	}
 
-	if (PG_ARGISNULL(0))
+	/* Begin - BUG#Z5516 */
+	if (nulls[0])
 		PG_RETURN_INT32(0);
-
-	if (args[0] == (Datum)0)
-		PG_RETURN_INT32(0);
+	/* End - BUG#Z5516 */
 
 	raw = DatumGetTextP(args[0]);
 	first_arg = VARDATA_ANY(raw);
 	first_len = VARSIZE_ANY_EXHDR(raw);
 
+	/* Begin - BUG#Z5516 */
+	lower_left = asc_tolower(first_arg, first_len);
+	/* End - BUG#Z5516 */
+
 	for (int i = 1; i < nargs; i++)
 	{
-		if (args[i] == (Datum)0)
-			PG_RETURN_INT32(0);
+		/* Begin - BUG#Z5516 */
+		if (nulls[i])
+			continue;
+		/* End - BUG#Z5516 */
 
 		raw = DatumGetTextP(args[i]);
 		match_arg = VARDATA_ANY(raw);
@@ -581,12 +590,94 @@ field(PG_FUNCTION_ARGS)
 		if (match_arg == NULL)
 			continue;
 
-		if (varstr_cmp(first_arg, first_len, match_arg, match_len, PG_GET_COLLATION()) == 0)
+		/* Begin - BUG#Z5516 */
+		lower_right = asc_tolower(match_arg, match_len);
+
+		if (varstr_cmp(lower_left, first_len, lower_right, match_len, PG_GET_COLLATION()) == 0)
 			PG_RETURN_INT64(i);
+		/* End - BUG#Z5516 */
 	}
 
 	PG_RETURN_INT32(0);
 }
+
+/* Begin - BUG#Z5516 */
+Datum
+field_any(PG_FUNCTION_ARGS)
+{
+	Datum	*args;
+	Oid		*types;
+	bool	*nulls;
+	int		 nargs;
+	double arg0 = 0.0;
+	double argi = 0.0;
+	char *endptr = NULL;
+	char *str = NULL;
+
+	Oid	typeOutput;
+	bool	typIsVarlena;
+
+	if (PG_NARGS() < 2)
+	{
+		ereport(ERROR, (errcode(ERRCODE_UNDEFINED_PARAMETER),
+			errmsg("Incorrect parameter count in the call to native function 'field'")));
+	}
+
+	nargs = extract_variadic_args(fcinfo, 0, false, &args, &types, &nulls);
+
+	if (nulls[0])
+		PG_RETURN_INT32(0);
+
+	for (int i = 0; i < nargs;i++)
+	{
+		endptr = NULL;
+
+		if (nulls[i])
+			continue;
+
+		switch(types[i])
+		{
+			case BOOLOID:
+				if (i == 0)
+					arg0 = args[i] ? 1 : 0;
+				else
+					argi = args[i] ? 1 : 0;
+				break;
+
+			default:
+				getTypeOutputInfo(types[i], &typeOutput, &typIsVarlena);
+				str = OidOutputFunctionCall(typeOutput, args[i]);
+
+				if (i == 0)
+				{
+					arg0 = strtod(str, &endptr);
+				}
+				else
+				{
+					argi = strtod(str, &endptr);
+				}
+
+				/* The string contains only spaces */
+				if (endptr == str && *endptr == ' ')
+					break;
+
+				if (*endptr != '\0')
+				{
+					ereport(WARNING,
+						errmsg("Truncated incorrect DOUBLE value: %s", str));
+				}
+				break;
+		}
+
+		if (i >= 1 && arg0 == argi)
+		{
+			PG_RETURN_INT32(i);
+		}
+	}
+
+	PG_RETURN_INT32(0);
+}
+/* End - BUG#Z5516 */
 
 Datum
 find_in_set(PG_FUNCTION_ARGS)
