@@ -5,8 +5,33 @@
 
 #分支历史记录
 1、新增特性
-
+	1、将与openssl冲突的gmssl方法增加前缀gm_；
+	2、新增ReleaseNotes；
+	3、升级license库为1.5.5，新增两个参数用于获取license时间的功能，并支持reload生效；
+	4、新增动态sql功能；
+	5、新增兼容Oracle系统包dbms_output；
+	6、安全特性新增一些debug日志；
+	7、新增兼容Oracle同义词功能；
 2、修复问题
+	1、修复了MySQL兼容，SET lc_time_names等参数异常断开的问题，bug#5527；
+	2、修复了MySQL兼容，get_format返回类型不正确的问题，bug#5533；
+	3、修改了dayname和monthname返回类型；
+	4、修复了MySQL兼容系统函数的一些bug，bug#5490/5491/5492/5495/5496/5497/5498/5500/5501/5502/5506/5507/5508/5509/5519/5520/5524;
+	5、修复了week/yearweek函数第二个参数为空返回值错误的问题，bug#5528/5530；
+	6、修复了convert_tz函数为无效参数返回null的问题，bug#5532;
+	7、修复了用户名为空的license导致初始化coredump的问题；
+	8、修复了MySQL兼容函数中mode取值处理不正确的问题，bug#5575;
+	9、修复了MySQL兼容convert_tz函数参数为空时错误的问题，bug#5581;
+	10、修复了MySQL兼容convert_tz函数参数为数字、字母组合时错误的问题，bug#5582;
+	11、修复了MySQL兼容convert_tz函数参数前后带空格时错误的问题，bug#5583;
+	12、修复了MySQL兼容utc_timestamp返回类型不正确的问题，bug#5564;
+	13、修复了MySQL兼容时间相关的内置函数参数为空串时报错的问题，bug#5565;
+	14、修复了MySQL兼容time_to_sec函数参数超过最大值返回不正确的问题，bug#5567;
+	15、修复了MySQL兼容elt函数返回值不正确的问题，bug#5513;
+	16、修复了MySQL兼容octet_length函数某些参数返回不正确的问题，bug#5537;
+	17、修复了MySQL兼容unhex函数返回不正确的问题，bug#5543;
+	18、修复了merge into的bug，OA-REQ-1669；
+	19、修复了MySQL兼容field函数返回不正确的问题，bug#5516;
 
 V9.0.4.1，禅道版本ID：4647-2025/08/08
 1、新增特性
