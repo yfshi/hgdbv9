@@ -144,6 +144,35 @@ SELECT FIELD('B','A','B'); -- 2
 SELECT FIELD('1','3','2',1); -- 3
 SELECT FIELD(1, 3, 2, 1); -- 3
 SELECT FIELD(1::int1 unsigned, 3::int2 unsigned, 2::int4 unsigned, 1::int8 unsigned);
+/*Begin BUG#Z5516 */
+SELECT FIELD(2-2, 1, TRUE, 0);
+SELECT FIELD(TRUE, '1', 'TRUE', '0');
+SELECT FIELD(2-2, 1, 2, 0);
+SELECT FIELD(2-1, '1', 'TRUE', '0');
+SELECT FIELD(2-2, NULL, 'TRUE', '0');
+SELECT FIELD('banana', 'Apple', 'Banana', 'Cherry');
+SELECT FIELD('Apple', NULL, 'Apple', 'Banana');
+
+SELECT FIELD(2-1, 'TRUE', '0', '1');
+SELECT FIELD('1', 'TRUE', '0', '1');
+SELECT FIELD('0', 'TRUE', '0', '1');
+SELECT FIELD(0, 'TRUE', '0', '1');
+
+SELECT FIELD('0', 'FALSE', '0', '1');
+SELECT FIELD(0, 'FALSE', '0', '1');
+SELECT FIELD('0', '12a','FALSE', 0, '23a');
+SELECT FIELD(23, '12a','FALSE', 0, '23a');
+SELECT FIELD(NULL, NULL, '1', '1.1');
+SELECT FIELD(1.1, NULL, '1', '1.1');
+SELECT FIELD('a'::char, NULL, '1', 'a');
+SELECT FIELD(' ', 'a',' ', 0, '23a');
+
+create table t1 (id int,str text);
+insert into t1 values (1, 'ab');
+SELECT FIELD(id, 1, 2, 0) from t1;
+SELECT FIELD(str, '1', 'abc', 'ab') from t1;
+drop table t1;
+/*End BUG#Z5516 */
 
 create table t_field as SELECT FIELD('b', 'a', 'b', 'c');;
 \d t_field

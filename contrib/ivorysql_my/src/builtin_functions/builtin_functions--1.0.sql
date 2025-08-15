@@ -857,6 +857,15 @@ LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - BUG#Z5516 */
+CREATE FUNCTION ivymy.field(VARIADIC "any")
+RETURNS int
+AS 'MODULE_PATHNAME','field_any'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+/* End - BUG#Z5516 */
+
 -- find_in_set
 
 CREATE FUNCTION ivymy.find_in_set(text, text)
