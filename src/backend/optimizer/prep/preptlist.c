@@ -183,7 +183,8 @@ preprocess_targetlist(PlannerInfo *root)
 	}
 	else
 	{
-		if ((command_type == CMD_UPDATE || command_type == CMD_DELETE) &&
+		if ((command_type == CMD_UPDATE || command_type == CMD_DELETE ||
+			 command_type == CMD_MERGE) &&		/* OA-REQ-1669 */
 			!target_rte->inh)
 		{
 			/* row-identity logic expects to add stuff to processed_tlist */
@@ -196,22 +197,14 @@ preprocess_targetlist(PlannerInfo *root)
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/*
-	 * For MERGE we need to handle the target list for the target relation,
-	 * and also target list for each action (only INSERT/UPDATE matter).
+	 * For MERGE we need to handle the target list for each INSERT and UPDATE
+	 * action separately. In addition, we examine the qual for each action
+	 * and add any Vars there (other than those of the target rel) to the
+	 * subplan targetlist.
 	 */
 	if (command_type == CMD_MERGE)
 	{
 		ListCell   *l;
-
-		/*
-		 * For MERGE, add any junk column(s) needed to allow the executor to
-		 * identify the rows to be inserted or updated.
-		 */
-		root->processed_tlist = tlist;
-		add_row_identity_columns(root, result_relation,
-								 target_rte, target_relation);
-
-		tlist = root->processed_tlist;
 
 		/*
 		 * For MERGE, handle targetlist of each MergeAction separately. Give
@@ -222,6 +215,10 @@ preprocess_targetlist(PlannerInfo *root)
 		foreach(l, parse->mergeActionList)
 		{
 			MergeAction *action = (MergeAction *) lfirst(l);
+			/* Begin - OA-REQ-1669 */
+			List		*vars;
+			ListCell	*l2;
+			/* End - OA-REQ-1669 */
 
 			if (action->commandType == CMD_INSERT)
 				action->targetList = expand_insert_targetlist(root, action->targetList,
@@ -229,6 +226,35 @@ preprocess_targetlist(PlannerInfo *root)
 			else if (action->commandType == CMD_UPDATE)
 				action->updateColnos =
 					extract_update_targetlist_colnos(action->targetList);
+
+			/* Begin - OA-REQ-1669 */
+			/*
+			 * Add resjunk entries for any Vars and PlaceHolderVars used in each action's
+			 * targetlist and WHEN condition that belong to relations other than the target
+			 * We don't expect to see any aggregates or window functions here.
+			 */
+			vars = pull_var_clause((Node *)
+									list_concat_copy((List *) action->qual,
+													  action->targetList),
+									PVC_INCLUDE_PLACEHOLDERS);
+			foreach(l2, vars)
+			{
+				Var			*var = (Var *) lfirst(l2);
+				TargetEntry *tle;
+
+				if (IsA(var, Var) && var->varno == result_relation)
+					continue;	/* don't need it */
+
+				if (tlist_member((Expr *) var, tlist))
+					continue;
+
+				tle = makeTargetEntry((Expr *) var,
+									  list_length(tlist) + 1,
+									  NULL, true);
+				tlist = lappend(tlist, tle);
+			}
+			list_free(vars);
+			/* End - OA-REQ-1669 */
 		}
 	}
 
