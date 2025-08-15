@@ -206,9 +206,13 @@ transformMergeStmt(ParseState *pstate, MergeStmt *stmt)
 					   pstate->p_target_nsitem->p_names->aliasname),
 				errdetail("The name is used both as MERGE target table and data source."));
 
-	qry->targetList = expandNSItemAttrs(pstate, nsitem, 0, false,
-										exprLocation(stmt->sourceRelation));
-
+	/* Begin - OA-REQ-1669 */
+	/*
+	 * There's no need for a targetlist here; it'll be set up by
+	 * preprocess_targetlist later.
+	 */
+	qry->targetList = NIL;
+	/* End - OA-REQ-1669 */
 	qry->rtable = pstate->p_rtable;
 
 	/*
