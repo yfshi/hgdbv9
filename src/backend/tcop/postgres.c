@@ -5025,24 +5025,64 @@ PostgresMain(int argc, char *argv[],
 			(*audit_CommandStart_hook)();
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
-		/* Begin - BUG#M0000527 */
-
+		/* Begin - BUG#Z5597 */
 		/*
 		 * MyProc->pgxactoff is the index of current PROC in procArray->pgprocnos[]
 		 * procArray->pgprocnos[] store all active proc sorted by pgprocnos
-		 * keep first hg_connect_size of BEs active in procArray->pgprocnos[]
-		 * let the reset sleep connect_delay_time(ms)
+		 * keep first hg_pool_size of BEs active in procArray->pgprocnos[]
+		 * let the reset sleep hg_pool_timeout(ms)
 		 */
-		if (hg_connect_size > 0 && hg_connect_delay > 0)
+		if (hg_pool_size > 0 && hg_pool_timeout > 0)
 		{
-			if (MyProc->pgxactoff > hg_connect_size &&
-					MyProc->lxid == 0 )
+			/*
+			 * MyProc->lxid == 0 used to handle explicit TXN
+			 * case 1: Begin;Insert;Update;Commit; -- sleep when received B message, did not sleep for I,U,C
+			 * case 2: Insert; Update; -- sleep before I and sleep before U
+			 */
+			if (MyProc->pgxactoff > hg_pool_size && (MyProc->lxid == 0))
 			{
-				pg_usleep(hg_connect_delay * 1000L);
-				// WaitLatch(MyLatch, xxx);
+				/*
+				 * wait 1000ms every cycle
+				 * when wait timeout, check if need wait again by MyProc->pgxactoff <= hg_pool_size
+				 * if no this check, coming a B message at the last of tpcc, this BE will wait more time
+				 */
+				int wait_times = hg_pool_timeout / 1000;
+				int wait_left = hg_pool_timeout % 1000;
+				int rc;
+
+				for (int i = 0; i < wait_times; i++)
+				{
+					/* check if need wait again */
+					if (MyProc->pgxactoff <= hg_pool_size)
+						break;
+
+					rc = WaitLatch(MyLatch,
+							WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
+							1000L,
+							WAIT_EVENT_PG_SLEEP);
+
+					if (rc & WL_POSTMASTER_DEATH)
+						proc_exit(1);
+
+					ResetLatch(MyLatch);
+				}
+
+				if (wait_left != 0 && (MyProc->pgxactoff > hg_pool_size))
+				{
+
+					rc = WaitLatch(MyLatch,
+							WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
+							wait_left,
+							WAIT_EVENT_PG_SLEEP);
+
+					if (rc & WL_POSTMASTER_DEATH)
+						proc_exit(1);
+
+					ResetLatch(MyLatch);
+				}
 			}
 		}
-		/* End - BUG#M0000527 */
+		/* End - BUG#Z5597 */
 
 		switch (firstchar)
 		{
