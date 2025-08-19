@@ -1927,7 +1927,7 @@ mysuint8_andmysuint8(PG_FUNCTION_ARGS)
 	uint64		val1 = PG_GETARG_INT64(0);
 	uint64		val2 = PG_GETARG_INT64(1);
 
-	PG_RETURN_UINT64(val1 && val2);
+	PG_RETURN_INT32(val1 && val2);
 }
 Datum
 mysuint8_andint2(PG_FUNCTION_ARGS)
@@ -1986,7 +1986,7 @@ mysuint8_ormysuint8(PG_FUNCTION_ARGS)
 	uint64		val1 = PG_GETARG_INT64(0);
 	uint64		val2 = PG_GETARG_INT64(1);
 
-	PG_RETURN_UINT64(val1 || val2);
+	PG_RETURN_INT32(val1 || val2);
 }
 Datum
 mysuint8_orint2(PG_FUNCTION_ARGS)

@@ -206,7 +206,7 @@ CREATE TEMPORARY TABLE bitwise_test(
   i8 INT8,
   i INTEGER,
   x INT2,
-  y BIT(4)
+  y pg_catalog.bit(4)
 );
 
 -- empty case

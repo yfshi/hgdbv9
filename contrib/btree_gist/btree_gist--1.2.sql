@@ -1406,12 +1406,12 @@ ALTER OPERATOR FAMILY gist_numeric_ops USING gist ADD
 
 --
 --
--- bit ops
+-- pg_catalog.bit ops
 --
 --
 --
 -- define the GiST support methods
-CREATE FUNCTION gbt_bit_consistent(internal,bit,int2,oid,internal)
+CREATE FUNCTION gbt_bit_consistent(internal,pg_catalog.bit,int2,oid,internal)
 RETURNS bool
 AS 'MODULE_PATHNAME'
 LANGUAGE C IMMUTABLE STRICT;
@@ -1443,14 +1443,14 @@ LANGUAGE C IMMUTABLE STRICT;
 
 -- Create the operator class
 CREATE OPERATOR CLASS gist_bit_ops
-DEFAULT FOR TYPE bit USING gist
+DEFAULT FOR TYPE pg_catalog.bit USING gist
 AS
 	OPERATOR	1	<  ,
 	OPERATOR	2	<= ,
 	OPERATOR	3	=  ,
 	OPERATOR	4	>= ,
 	OPERATOR	5	>  ,
-	FUNCTION	1	gbt_bit_consistent (internal, bit, int2, oid, internal),
+	FUNCTION	1	gbt_bit_consistent (internal, pg_catalog.bit, int2, oid, internal),
 	FUNCTION	2	gbt_bit_union (internal, internal),
 	FUNCTION	3	gbt_bit_compress (internal),
 	FUNCTION	4	gbt_var_decompress (internal),
@@ -1460,8 +1460,8 @@ AS
 	STORAGE			gbtreekey_var;
 
 ALTER OPERATOR FAMILY gist_bit_ops USING gist ADD
-	OPERATOR	6	<> (bit, bit) ,
-	FUNCTION	9 (bit, bit) gbt_var_fetch (internal) ;
+	OPERATOR	6	<> (pg_catalog.bit, pg_catalog.bit) ,
+	FUNCTION	9 (pg_catalog.bit, pg_catalog.bit) gbt_var_fetch (internal) ;
 
 
 -- Create the operator class
@@ -1473,7 +1473,7 @@ AS
 	OPERATOR	3	=  ,
 	OPERATOR	4	>= ,
 	OPERATOR	5	>  ,
-	FUNCTION	1	gbt_bit_consistent (internal, bit, int2, oid, internal),
+	FUNCTION	1	gbt_bit_consistent (internal, pg_catalog.bit, int2, oid, internal),
 	FUNCTION	2	gbt_bit_union (internal, internal),
 	FUNCTION	3	gbt_bit_compress (internal),
 	FUNCTION	4	gbt_var_decompress (internal),

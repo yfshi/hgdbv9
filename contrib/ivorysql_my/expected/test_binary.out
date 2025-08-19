@@ -26,9 +26,9 @@ NOTICE:  table "my_binary_t6" does not exist, skipping
 NOTICE:  table "my_binary_t7" does not exist, skipping
 NOTICE:  table "my_binary_t8" does not exist, skipping
 CREATE TABLE my_binary_t1(c1 binary(-1)); -- should error
-ERROR:  syntax error at or near "-"
+ERROR:  You have an error in you SQL syntax in binary( ... 
 LINE 1: CREATE TABLE my_binary_t1(c1 binary(-1));
-                                            ^
+                                     ^
 CREATE TABLE my_binary_t2(c1 binary(0)); -- should ok
 \d my_binary_t2;
              Table "public.my_binary_t2"
@@ -119,25 +119,25 @@ SELECT * FROM my_binary_t7;
 (1 row)
 
 CREATE TABLE my_binary_t8(c1 binary('5'));  -- should error
-ERROR:  syntax error at or near "'5'"
+ERROR:  You have an error in you SQL syntax in binary( ... 
 LINE 1: CREATE TABLE my_binary_t8(c1 binary('5'));
-                                            ^
+                                     ^
 CREATE TABLE my_binary_t8(c1 binary(a));    -- should error
-ERROR:  syntax error at or near "a"
+ERROR:  You have an error in you SQL syntax in binary( ... 
 LINE 1: CREATE TABLE my_binary_t8(c1 binary(a));
-                                            ^
+                                     ^
 CREATE TABLE my_binary_t8(c1 binary('a'));  -- should error
-ERROR:  syntax error at or near "'a'"
+ERROR:  You have an error in you SQL syntax in binary( ... 
 LINE 1: CREATE TABLE my_binary_t8(c1 binary('a'));
-                                            ^
+                                     ^
 CREATE TABLE my_binary_t8(c1 binary(''));   -- should error
-ERROR:  syntax error at or near "''"
+ERROR:  You have an error in you SQL syntax in binary( ... 
 LINE 1: CREATE TABLE my_binary_t8(c1 binary(''));
-                                            ^
+                                     ^
 CREATE TABLE my_binary_t8(c1 binary(null)); -- should error
-ERROR:  syntax error at or near "null"
+ERROR:  You have an error in you SQL syntax in binary( ... 
 LINE 1: CREATE TABLE my_binary_t8(c1 binary(null));
-                                            ^
+                                     ^
 CREATE TABLE my_binary_t9(c1 binary(4), c2 binary(5) default 'test'); -- should ok
 \d my_binary_t9;
                   Table "public.my_binary_t9"

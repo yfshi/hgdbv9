@@ -36,16 +36,16 @@ SELECT v, b, (v || b) AS concat
        ORDER BY 3;
 
 -- Length
-SELECT b, length(b) AS lb
+SELECT b, length(b::pg_catalog.bit(11)) AS lb
        FROM BIT_TABLE;
 SELECT v, length(v) AS lv
        FROM VARBIT_TABLE;
 
 -- Substring
 SELECT b,
-       SUBSTRING(b FROM 2 FOR 4) AS sub_2_4,
-       SUBSTRING(b FROM 7 FOR 13) AS sub_7_13,
-       SUBSTRING(b FROM 6) AS sub_6
+       SUBSTRING(b::pg_catalog.bit(11) FROM 2 FOR 4) AS sub_2_4,
+       SUBSTRING(b::pg_catalog.bit(11) FROM 7 FOR 13) AS sub_7_13,
+       SUBSTRING(b::pg_catalog.bit(11) FROM 6) AS sub_6
        FROM BIT_TABLE;
 SELECT v,
        SUBSTRING(v FROM 2 FOR 4) AS sub_2_4,
@@ -54,9 +54,9 @@ SELECT v,
        FROM VARBIT_TABLE;
 
 -- test overflow cases
-SELECT SUBSTRING('01010101'::bit(8) FROM 2 FOR 2147483646) AS "1010101";
-SELECT SUBSTRING('01010101'::bit(8) FROM -10 FOR 2147483646) AS "01010101";
-SELECT SUBSTRING('01010101'::bit(8) FROM -10 FOR -2147483646) AS "error";
+SELECT SUBSTRING(b'01010101'::pg_catalog.bit(8) FROM 2 FOR 2147483646) AS "1010101";
+SELECT SUBSTRING(b'01010101'::pg_catalog.bit(8) FROM -10 FOR 2147483646) AS "01010101";
+SELECT SUBSTRING(b'01010101'::pg_catalog.bit(8) FROM -10 FOR -2147483646) AS "error";
 SELECT SUBSTRING('01010101'::varbit FROM 2 FOR 2147483646) AS "1010101";
 SELECT SUBSTRING('01010101'::varbit FROM -10 FOR 2147483646) AS "01010101";
 SELECT SUBSTRING('01010101'::varbit FROM -10 FOR -2147483646) AS "error";
@@ -87,7 +87,7 @@ DROP TABLE varbit_table;
 
 --- Bit operations
 DROP TABLE bit_table;
-CREATE TABLE bit_table (a BIT(16), b BIT(16));
+CREATE TABLE bit_table (a pg_catalog.bit(16), b pg_catalog.bit(16));
 COPY bit_table FROM stdin;
 X0F00	X1000
 X1F00	X1100
@@ -172,8 +172,8 @@ INSERT INTO BIT_SHIFT_TABLE SELECT b>>1 FROM BIT_SHIFT_TABLE;
 INSERT INTO BIT_SHIFT_TABLE SELECT b>>2 FROM BIT_SHIFT_TABLE;
 INSERT INTO BIT_SHIFT_TABLE SELECT b>>4 FROM BIT_SHIFT_TABLE;
 INSERT INTO BIT_SHIFT_TABLE SELECT b>>8 FROM BIT_SHIFT_TABLE;
-SELECT POSITION(B'1101' IN b),
-       POSITION(B'11011' IN b),
+SELECT POSITION(B'1101' IN b::pg_catalog.bit(16)),
+       POSITION(B'11011' IN b::pg_catalog.bit(16)),
        b
        FROM BIT_SHIFT_TABLE ;
 SELECT b, b >> 1 AS bsr, b << 1 AS bsl
@@ -221,7 +221,7 @@ SELECT bit_count(B'1111111111'::bit(10));
 
 -- This table is intentionally left around to exercise pg_dump/pg_upgrade
 CREATE TABLE bit_defaults(
-  b1 bit(4) DEFAULT '1001',
+  b1 bit(4) DEFAULT B'1001',
   b2 bit(4) DEFAULT B'0101',
   b3 bit varying(5) DEFAULT '1001',
   b4 bit varying(5) DEFAULT B'0101'

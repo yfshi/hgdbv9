@@ -1523,7 +1523,7 @@ IMMUTABLE;
 
 ----function &&
 CREATE FUNCTION ivymy.mysuint8_and(ivymy.uint8, ivymy.uint8)
-RETURNS pg_catalog.int8
+RETURNS pg_catalog.int4
 AS 'MODULE_PATHNAME','mysuint8_andmysuint8'
 LANGUAGE C
 PARALLEL SAFE
@@ -1587,7 +1587,7 @@ LEAKPROOF;
 
 ----function or
 CREATE FUNCTION ivymy.mysuint8_or(ivymy.uint8, ivymy.uint8)
-RETURNS pg_catalog.int8
+RETURNS pg_catalog.int4
 AS 'MODULE_PATHNAME','mysuint8_ormysuint8'
 LANGUAGE C
 PARALLEL SAFE

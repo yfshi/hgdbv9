@@ -515,9 +515,9 @@ INSERT INTO caster (citext)        VALUES ('((0,0),2)'::circle);
 
 -- Cannot cast to bit on assignment.
 INSERT INTO caster (bit)           VALUES ('101'::text);
-INSERT INTO caster (text)          VALUES ('101'::bit);
+INSERT INTO caster (text)          VALUES ('101'::pg_catalog.bit);
 INSERT INTO caster (bit)           VALUES ('101'::citext);
-INSERT INTO caster (citext)        VALUES ('101'::bit);
+INSERT INTO caster (citext)        VALUES ('101'::pg_catalog.bit);
 
 -- Cannot cast to bit varying on assignment.
 INSERT INTO caster (bitv)          VALUES ('101'::text);

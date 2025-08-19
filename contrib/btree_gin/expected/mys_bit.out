@@ -1,10 +1,10 @@
 set enable_seqscan=off;
 CREATE TABLE test_bit (
-	i bit(3)
+	i pg_catalog.bit(3)
 );
 INSERT INTO test_bit VALUES ('001'),('010'),('011'),('100'),('101'),('110');
 CREATE INDEX idx_bit ON test_bit USING gin (i);
-SELECT * FROM test_bit WHERE i<'100'::bit(3) ORDER BY i;
+SELECT * FROM test_bit WHERE i<'100'::pg_catalog.bit(3) ORDER BY i;
   i  
 -----
  001
@@ -12,7 +12,7 @@ SELECT * FROM test_bit WHERE i<'100'::bit(3) ORDER BY i;
  011
 (3 rows)
 
-SELECT * FROM test_bit WHERE i<='100'::bit(3) ORDER BY i;
+SELECT * FROM test_bit WHERE i<='100'::pg_catalog.bit(3) ORDER BY i;
   i  
 -----
  001
@@ -21,13 +21,13 @@ SELECT * FROM test_bit WHERE i<='100'::bit(3) ORDER BY i;
  100
 (4 rows)
 
-SELECT * FROM test_bit WHERE i='100'::bit(3) ORDER BY i;
+SELECT * FROM test_bit WHERE i='100'::pg_catalog.bit(3) ORDER BY i;
   i  
 -----
  100
 (1 row)
 
-SELECT * FROM test_bit WHERE i>='100'::bit(3) ORDER BY i;
+SELECT * FROM test_bit WHERE i>='100'::pg_catalog.bit(3) ORDER BY i;
   i  
 -----
  100
@@ -35,7 +35,7 @@ SELECT * FROM test_bit WHERE i>='100'::bit(3) ORDER BY i;
  110
 (3 rows)
 
-SELECT * FROM test_bit WHERE i>'100'::bit(3) ORDER BY i;
+SELECT * FROM test_bit WHERE i>'100'::pg_catalog.bit(3) ORDER BY i;
   i  
 -----
  101

@@ -121,7 +121,7 @@ ALTER OPERATOR FAMILY gist_numeric_ops USING gist ADD
 	FUNCTION	9 (numeric, numeric) gbt_var_fetch (internal) ;
 
 ALTER OPERATOR FAMILY gist_bit_ops USING gist ADD
-	FUNCTION	9 (bit, bit) gbt_var_fetch (internal) ;
+	FUNCTION	9 (pg_catalog.bit, pg_catalog.bit) gbt_var_fetch (internal) ;
 
 ALTER OPERATOR FAMILY gist_vbit_ops USING gist ADD
 	FUNCTION	9 (varbit, varbit) gbt_var_fetch (internal) ;

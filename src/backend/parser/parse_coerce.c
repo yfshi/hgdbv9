@@ -3211,6 +3211,8 @@ coerce_type(ParseState *pstate, Node *node,
 		else if (MYS_PARSER == compatible_db )
 		{
 			bool mysdateflag = false;
+			int is_insert = 0;
+
 			//error:select cast('1.1111' as timestamp);
 			if (con->location != (-2) && COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
 			{
@@ -3218,24 +3220,24 @@ coerce_type(ParseState *pstate, Node *node,
 					"You have an error in your SQL syntax;"
 					"check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
 			}
+
+			is_insert = (pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
+						(pstate && (pstate->p_is_insert || pstate->p_myscreateastmt));
+
 			mysdateflag = (baseTypeId == MYSDATEOID  || 
 							baseTypeId == MYSDATETIMEOID || baseTypeId == MYSDATETIMESOID ||
 							baseTypeId == MYSTIMESTAMPOID || baseTypeId == MYSTIMESTAMPSOID ||
 							baseTypeId == MYSTIMEOID || baseTypeId == MYSTIMESOID);
+
 			/*
 			 * 1. date'1111-11-11'
 			 * 2. insert into tb values ('1111-11-11')
 			 * 3. cast
 			 */
-			if ( (COERCION_IMPLICIT == ccontext || con->location == -1)    ||
-				(COERCION_ASSIGNMENT == ccontext || con->location == (-2)) || 
-				(mysdateflag && pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
-				(mysdateflag && pstate && pstate->p_is_insert  && COERCION_EXPLICIT != ccontext) ||
-				(mysdateflag && pstate && pstate->p_myscreateastmt))
+			if ( (COERCION_IMPLICIT == ccontext || con->location == -1)  ||
+				(COERCION_ASSIGNMENT == ccontext || con->location == -2) || 
+				(mysdateflag && is_insert))
 			{
-				int is_insert = (pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
-								(pstate && (pstate->p_is_insert || pstate->p_myscreateastmt));
-
 				switch ( baseTypeId )
 				{
 					case  MYSDATEOID :
@@ -3345,6 +3347,19 @@ coerce_type(ParseState *pstate, Node *node,
 					con->constisnull = true;
 				}
 			}
+			/* Begin - ReqID:SRS-MYSQL-BITTYPE */
+			if ((baseTypeId == MYSBITOID) && is_insert) 
+			{
+				if (!con->constisnull)
+					newcon->constvalue = stringTypeDatum(baseType,
+													DatumGetCString(con->constvalue),
+														baseTypeMod);
+				else
+					newcon->constvalue = stringTypeDatum(baseType,
+														NULL,
+														inputTypeMod);
+			}
+			/* End - ReqID:SRS-MYSQL-BITTYPE */
 		}
 		else
 		{
@@ -3490,8 +3505,8 @@ coerce_type(ParseState *pstate, Node *node,
 			baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
 
 			result = build_coercion_expression(node, pathtype, funcId,
-											   baseTypeId, baseTypeMod,
-											   ccontext, cformat, location);
+											baseTypeId, baseTypeMod,
+											ccontext, cformat, location);
 
 			/*
 			 * If domain, coerce to the domain type and relabel with domain

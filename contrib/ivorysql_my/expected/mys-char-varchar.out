@@ -161,7 +161,12 @@ a int primary key,
 b char(0),
 c bit(1)
 );
-insert into t1 values(1, '', '0'),(2, '', '1'),(3, '', NULL),(4, NULL, '0'),(5, NULL, '1'),(6, NULL, NULL);
+insert into t1 values(1, '', 0),
+(2, '', 1),
+(3, '', NULL),
+(4, NULL, 0),
+(5, NULL, 1),
+(6, NULL, NULL);
 select a,b,bin(c) from t1 where b = '' and c is null order by a;
  a | b | bin 
 ---+---+-----
@@ -175,25 +180,29 @@ select a,b,bin(c) from t1 where b is null and c is null order by a;
 (1 row)
 
 select a,b,bin(c) from t1 where b = '' and c = 0 order by a;
-ERROR:  operator does not exist: bit = integer
-LINE 1: select a,b,bin(c) from t1 where b = '' and c = 0 order by a;
-                                                     ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 1 |   | 0
+(1 row)
+
 select a,b,bin(c) from t1 where b is null and c = 0 order by a;
-ERROR:  operator does not exist: bit = integer
-LINE 1: select a,b,bin(c) from t1 where b is null and c = 0 order by...
-                                                        ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 4 |   | 0
+(1 row)
+
 select a,b,bin(c) from t1 where b = '' and c = 1 order by a;
-ERROR:  operator does not exist: bit = integer
-LINE 1: select a,b,bin(c) from t1 where b = '' and c = 1 order by a;
-                                                     ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 2 |   | 1
+(1 row)
+
 select a,b,bin(c) from t1 where b is null and c = 1 order by a;
-ERROR:  operator does not exist: bit = integer
-LINE 1: select a,b,bin(c) from t1 where b is null and c = 1 order by...
-                                                        ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 5 |   | 1
+(1 row)
+
 drop table t1;
 create table t1 (
 a int primary key,
@@ -303,11 +312,11 @@ create table t1 (
   c bit(1)
 );
 --echo #testing insertion
-insert into t1 values(1, '', '0'),
-                     (2, '', '1'),
+insert into t1 values(1, '', 0),
+                     (2, '', 1),
                      (3, '', NULL),
-                     (4, NULL, '0'),
-                     (5, NULL, '1'),
+                     (4, NULL, 0),
+                     (5, NULL, 1),
                      (6, NULL, NULL);
 --echo #verify data in table
 select a,b,bin(c) from t1 where b = '' and c is null order by a;
@@ -323,25 +332,29 @@ select a,b,bin(c) from t1 where b is null and c is null order by a;
 (1 row)
 
 select a,b,bin(c) from t1 where b = '' and c = 0 order by a;
-ERROR:  operator does not exist: bit = integer
-LINE 1: select a,b,bin(c) from t1 where b = '' and c = 0 order by a;
-                                                     ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 1 |   | 0
+(1 row)
+
 select a,b,bin(c) from t1 where b is null and c = 0 order by a;
-ERROR:  operator does not exist: bit = integer
-LINE 1: select a,b,bin(c) from t1 where b is null and c = 0 order by...
-                                                        ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 4 |   | 0
+(1 row)
+
 select a,b,bin(c) from t1 where b = '' and c = 1 order by a;
-ERROR:  operator does not exist: bit = integer
-LINE 1: select a,b,bin(c) from t1 where b = '' and c = 1 order by a;
-                                                     ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 2 |   | 1
+(1 row)
+
 select a,b,bin(c) from t1 where b is null and c = 1 order by a;
-ERROR:  operator does not exist: bit = integer
-LINE 1: select a,b,bin(c) from t1 where b is null and c = 1 order by...
-                                                        ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ a | b | bin 
+---+---+-----
+ 5 |   | 1
+(1 row)
+
 drop table t1;
 create table t1 (
   a int primary key,
@@ -1189,20 +1202,20 @@ create table t6 (
 create index t6idx on t6(b); --err
 ERROR:  The used storage engine can't index column 'b' 
 --echo #testing insertion
-insert into t6 values(1, '', '0'),
-                     (2, '', '1'),
+insert into t6 values(1, '', 0),
+                     (2, '', 1),
                      (3, '', NULL),
-                     (4, NULL, '0'),
-                     (5, NULL, '1'),
+                     (4, NULL, 0),
+                     (5, NULL, 1),
                      (6, NULL, NULL);
 select * from t6;
- a | b | c 
----+---+---
- 1 |   | 0
- 2 |   | 1
+ a | b |  c   
+---+---+------
+ 1 |   | 0x00
+ 2 |   | 0x01
  3 |   | 
- 4 |   | 0
- 5 |   | 1
+ 4 |   | 0x00
+ 5 |   | 0x01
  6 |   | 
 (6 rows)
 
@@ -2155,7 +2168,7 @@ ERROR:  syntax error at or near ")"
 LINE 1: create table tb3(col char(-));
                                    ^
 create table tb4(col char());	--err
-ERROR:  You have an error in you SQL syntax,in char( ... 
+ERROR:  You have an error in you SQL syntax in char( ... 
 LINE 1: create table tb4(col char());
                              ^
 create table tb4(col char(-1));	--err

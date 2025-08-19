@@ -1253,6 +1253,7 @@ FROM pg_operator AS p1, pg_amop p
 WHERE amopopr = p1.oid
   AND amopmethod = (SELECT oid FROM pg_am WHERE amname = 'btree')
   AND amopstrategy = 3
+  AND p1.oprnamespace != 9800
   AND NOT p1.oprcanmerge;
  oid | oprname | amopfamily 
 -----+---------+------------
@@ -1769,7 +1770,7 @@ WHERE
 -- We expect to find entries for bool_and, bool_or, every, max, and min.
 SELECT DISTINCT proname, oprname
 FROM pg_operator AS o, pg_aggregate AS a, pg_proc AS p
-WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid
+WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND o.oprnamespace != 9800
 ORDER BY 1, 2;
  proname  | oprname 
 ----------+---------
@@ -1783,7 +1784,7 @@ ORDER BY 1, 2;
 -- Check datatypes match
 SELECT a.aggfnoid::oid, o.oid
 FROM pg_operator AS o, pg_aggregate AS a, pg_proc AS p
-WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND
+WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND o.oprnamespace != 9800 AND 
     (oprkind != 'b' OR oprresult != 'boolean'::regtype
      OR oprleft != p.proargtypes[0] OR oprright != p.proargtypes[0]);
  aggfnoid | oid 
@@ -1793,7 +1794,7 @@ WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND
 -- Check operator is a suitable btree opfamily member
 SELECT a.aggfnoid::oid, o.oid
 FROM pg_operator AS o, pg_aggregate AS a, pg_proc AS p
-WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND
+WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND o.oprnamespace != 9800 AND 
     NOT EXISTS(SELECT 1 FROM pg_amop
                WHERE amopmethod = (SELECT oid FROM pg_am WHERE amname = 'btree')
                      AND amopopr = o.oid
@@ -2220,43 +2221,44 @@ LEFT JOIN pg_amproc AS amp ON amp.amprocfamily = opf.oid AND
 WHERE am.amname = 'btree' AND
     amp.amproc IS DISTINCT FROM 'btequalimage'::regproc
 ORDER BY 1, 2, 3;
-        proc        |     opfamily_name     |   opclass_name    |    opcintype     
---------------------+-----------------------+-------------------+------------------
- btvarstrequalimage | bpchar_ops            | bpchar_ops        | character
- btvarstrequalimage | text_ops              | name_ops          | name
- btvarstrequalimage | text_ops              | text_ops          | text
- btvarstrequalimage | text_ops              | varchar_ops       | text
-                    | array_ops             | array_ops         | anyarray
-                    | binary_ops            | binary_ops        | binary
-                    | float_ops             | float4_ops        | real
-                    | float_ops             | float8_ops        | double precision
-                    | integer_ops           | mysuint1_ops      | ivymy.uint1
-                    | integer_ops           | mysuint2_ops      | ivymy.uint2
-                    | integer_ops           | mysuint4_class    | ivymy.uint4
-                    | integer_ops           | mysuint8_ops      | ivymy.uint8
-                    | interval_ops          | interval_ops      | interval
-                    | jsonb_ops             | jsonb_ops         | jsonb
-                    | longblob_ops          | longblob_ops      | longblob
-                    | mediumblob_ops        | mediumblob_ops    | mediumblob
-                    | multirange_ops        | multirange_ops    | anymultirange
-                    | myblob_ops            | myblob_ops        | blob
-                    | mysdatetime_ops       | mysdate_ops       | date
-                    | mysdatetimestime_ops  | mysdatetimes_ops  | datetime
-                    | mysdatetimetime_ops   | mysdatetime_ops   | datetime
-                    | mystimestampstime_ops | mystimestamps_ops | timestamp
-                    | mystimestamptime_ops  | mystimestamp_ops  | timestamp
-                    | mystimestime_ops      | mystimes_ops      | time
-                    | mystimetime_ops       | mystime_ops       | time
-                    | numeric_ops           | numeric_ops       | numeric
-                    | range_ops             | range_ops         | anyrange
-                    | record_image_ops      | record_image_ops  | record
-                    | record_ops            | record_ops        | record
-                    | tinyblob_ops          | tinyblob_ops      | tinyblob
-                    | tsquery_ops           | tsquery_ops       | tsquery
-                    | tsvector_ops          | tsvector_ops      | tsvector
-                    | varbinary_ops         | varbinary_ops     | varbinary
-                    | year_ops              | year_ops          | ivymy.year
-(34 rows)
+         proc          |     opfamily_name     |   opclass_name    |    opcintype     
+-----------------------+-----------------------+-------------------+------------------
+ btvarstrequalimage    | bpchar_ops            | bpchar_ops        | character
+ btvarstrequalimage    | text_ops              | name_ops          | name
+ btvarstrequalimage    | text_ops              | text_ops          | text
+ btvarstrequalimage    | text_ops              | varchar_ops       | text
+ ivymy.btmysequalimage | bit_ops               | bit_ops           | ivymy.mysbit
+                       | array_ops             | array_ops         | anyarray
+                       | binary_ops            | binary_ops        | binary
+                       | float_ops             | float4_ops        | real
+                       | float_ops             | float8_ops        | double precision
+                       | integer_ops           | mysuint1_ops      | ivymy.uint1
+                       | integer_ops           | mysuint2_ops      | ivymy.uint2
+                       | integer_ops           | mysuint4_class    | ivymy.uint4
+                       | integer_ops           | mysuint8_ops      | ivymy.uint8
+                       | interval_ops          | interval_ops      | interval
+                       | jsonb_ops             | jsonb_ops         | jsonb
+                       | longblob_ops          | longblob_ops      | longblob
+                       | mediumblob_ops        | mediumblob_ops    | mediumblob
+                       | multirange_ops        | multirange_ops    | anymultirange
+                       | myblob_ops            | myblob_ops        | blob
+                       | mysdatetime_ops       | mysdate_ops       | date
+                       | mysdatetimestime_ops  | mysdatetimes_ops  | datetime
+                       | mysdatetimetime_ops   | mysdatetime_ops   | datetime
+                       | mystimestampstime_ops | mystimestamps_ops | timestamp
+                       | mystimestamptime_ops  | mystimestamp_ops  | timestamp
+                       | mystimestime_ops      | mystimes_ops      | time
+                       | mystimetime_ops       | mystime_ops       | time
+                       | numeric_ops           | numeric_ops       | numeric
+                       | range_ops             | range_ops         | anyrange
+                       | record_image_ops      | record_image_ops  | record
+                       | record_ops            | record_ops        | record
+                       | tinyblob_ops          | tinyblob_ops      | tinyblob
+                       | tsquery_ops           | tsquery_ops       | tsquery
+                       | tsvector_ops          | tsvector_ops      | tsvector
+                       | varbinary_ops         | varbinary_ops     | varbinary
+                       | year_ops              | year_ops          | ivymy.year
+(35 rows)
 
 -- **************** pg_index ****************
 -- Look for illegal values in pg_index fields.

@@ -949,7 +949,15 @@ select hex($1::binary);
 $$ LANGUAGE SQL IMMUTABLE STRICT;
 
 /* Begin - BUG#Z5524 */
-CREATE OR REPLACE FUNCTION ivymy.hex(bit)
+CREATE OR REPLACE FUNCTION ivymy.hex(pg_catalog.bit)
+RETURNS varchar
+AS $$
+select hex($1::int8);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+/* End - BUG#Z5524 */
+
+/* Begin - BUG#Z5524 */
+CREATE OR REPLACE FUNCTION ivymy.hex(ivymy.mysbit)
 RETURNS varchar
 AS $$
 select hex($1::int8);

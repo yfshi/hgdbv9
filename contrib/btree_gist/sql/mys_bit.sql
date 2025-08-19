@@ -1,6 +1,6 @@
 -- bit check
 
-CREATE TABLE bittmp (a bit(33));
+CREATE TABLE bittmp (a pg_catalog.bit(33));
 
 \copy bittmp from 'data/bit.data'
 
