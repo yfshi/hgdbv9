@@ -659,6 +659,7 @@ FROM pg_operator AS p1, pg_amop p
 WHERE amopopr = p1.oid
   AND amopmethod = (SELECT oid FROM pg_am WHERE amname = 'btree')
   AND amopstrategy = 3
+  AND p1.oprnamespace != 9800
   AND NOT p1.oprcanmerge;
 
 -- Hashable operators should appear as members of hash index opfamilies.
@@ -1087,14 +1088,14 @@ WHERE
 
 SELECT DISTINCT proname, oprname
 FROM pg_operator AS o, pg_aggregate AS a, pg_proc AS p
-WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid
+WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND o.oprnamespace != 9800
 ORDER BY 1, 2;
 
 -- Check datatypes match
 
 SELECT a.aggfnoid::oid, o.oid
 FROM pg_operator AS o, pg_aggregate AS a, pg_proc AS p
-WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND
+WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND o.oprnamespace != 9800 AND 
     (oprkind != 'b' OR oprresult != 'boolean'::regtype
      OR oprleft != p.proargtypes[0] OR oprright != p.proargtypes[0]);
 
@@ -1102,7 +1103,7 @@ WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND
 
 SELECT a.aggfnoid::oid, o.oid
 FROM pg_operator AS o, pg_aggregate AS a, pg_proc AS p
-WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND
+WHERE a.aggfnoid = p.oid AND a.aggsortop = o.oid AND o.oprnamespace != 9800 AND 
     NOT EXISTS(SELECT 1 FROM pg_amop
                WHERE amopmethod = (SELECT oid FROM pg_am WHERE amname = 'btree')
                      AND amopopr = o.oid

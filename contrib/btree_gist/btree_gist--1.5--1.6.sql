@@ -156,7 +156,7 @@ ALTER FUNCTION gbt_numeric_penalty(internal, internal, internal) PARALLEL SAFE;
 ALTER FUNCTION gbt_numeric_picksplit(internal, internal) PARALLEL SAFE;
 ALTER FUNCTION gbt_numeric_union(internal, internal) PARALLEL SAFE;
 ALTER FUNCTION gbt_numeric_same(gbtreekey_var, gbtreekey_var, internal) PARALLEL SAFE;
-ALTER FUNCTION gbt_bit_consistent(internal, bit, smallint, oid, internal) PARALLEL SAFE;
+ALTER FUNCTION gbt_bit_consistent(internal, pg_catalog.bit, smallint, oid, internal) PARALLEL SAFE;
 ALTER FUNCTION gbt_bit_compress(internal) PARALLEL SAFE;
 ALTER FUNCTION gbt_bit_penalty(internal, internal, internal) PARALLEL SAFE;
 ALTER FUNCTION gbt_bit_picksplit(internal, internal) PARALLEL SAFE;

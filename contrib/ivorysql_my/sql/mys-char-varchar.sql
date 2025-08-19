@@ -93,7 +93,12 @@ a int primary key,
 b char(0),
 c bit(1)
 );
-insert into t1 values(1, '', '0'),(2, '', '1'),(3, '', NULL),(4, NULL, '0'),(5, NULL, '1'),(6, NULL, NULL);
+insert into t1 values(1, '', 0),
+(2, '', 1),
+(3, '', NULL),
+(4, NULL, 0),
+(5, NULL, 1),
+(6, NULL, NULL);
 select a,b,bin(c) from t1 where b = '' and c is null order by a;
 select a,b,bin(c) from t1 where b is null and c is null order by a;
 select a,b,bin(c) from t1 where b = '' and c = 0 order by a;
@@ -152,11 +157,11 @@ create table t1 (
   c bit(1)
 );
 --echo #testing insertion
-insert into t1 values(1, '', '0'),
-                     (2, '', '1'),
+insert into t1 values(1, '', 0),
+                     (2, '', 1),
                      (3, '', NULL),
-                     (4, NULL, '0'),
-                     (5, NULL, '1'),
+                     (4, NULL, 0),
+                     (5, NULL, 1),
                      (6, NULL, NULL);
 
 --echo #verify data in table
@@ -378,11 +383,11 @@ create table t6 (
 );
 create index t6idx on t6(b); --err
 --echo #testing insertion
-insert into t6 values(1, '', '0'),
-                     (2, '', '1'),
+insert into t6 values(1, '', 0),
+                     (2, '', 1),
                      (3, '', NULL),
-                     (4, NULL, '0'),
-                     (5, NULL, '1'),
+                     (4, NULL, 0),
+                     (5, NULL, 1),
                      (6, NULL, NULL);
 select * from t6;
 DROP TABLE t6;

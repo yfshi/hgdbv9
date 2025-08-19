@@ -33,20 +33,20 @@ SELECT uuid_ns_x500();
 -- this is actually timestamp concatenated with clock sequence, per RFC 4122
 CREATE FUNCTION uuid_timestamp_bits(uuid) RETURNS varbit AS
 $$ SELECT ('x' || substr($1::text, 15, 4) || substr($1::text, 10, 4) ||
-           substr($1::text, 1, 8) || substr($1::text, 20, 4))::bit(80)
+           substr($1::text, 1, 8) || substr($1::text, 20, 4))::pg_catalog.bit(80)
           & x'0FFFFFFFFFFFFFFF3FFF' $$
 LANGUAGE SQL STRICT IMMUTABLE;
 CREATE FUNCTION uuid_version_bits(uuid) RETURNS varbit AS
-$$ SELECT ('x' || substr($1::text, 15, 2))::bit(8) & '11110000' $$
+$$ SELECT ('x' || substr($1::text, 15, 2))::pg_catalog.bit(8) & '11110000' $$
 LANGUAGE SQL STRICT IMMUTABLE;
 CREATE FUNCTION uuid_reserved_bits(uuid) RETURNS varbit AS
-$$ SELECT ('x' || substr($1::text, 20, 2))::bit(8) & '11000000' $$
+$$ SELECT ('x' || substr($1::text, 20, 2))::pg_catalog.bit(8) & '11000000' $$
 LANGUAGE SQL STRICT IMMUTABLE;
 CREATE FUNCTION uuid_multicast_bit(uuid) RETURNS bool AS
-$$ SELECT (('x' || substr($1::text, 25, 2))::bit(8) & '00000001') != '00000000' $$
+$$ SELECT (('x' || substr($1::text, 25, 2))::pg_catalog.bit(8) & '00000001') != '00000000' $$
 LANGUAGE SQL STRICT IMMUTABLE;
 CREATE FUNCTION uuid_local_admin_bit(uuid) RETURNS bool AS
-$$ SELECT (('x' || substr($1::text, 25, 2))::bit(8) & '00000010') != '00000000' $$
+$$ SELECT (('x' || substr($1::text, 25, 2))::pg_catalog.bit(8) & '00000010') != '00000000' $$
 LANGUAGE SQL STRICT IMMUTABLE;
 CREATE FUNCTION uuid_node(uuid) RETURNS text AS
 $$ SELECT substr($1::text, 25) $$

@@ -2692,7 +2692,7 @@ my %tests = (
 			\n\s+\Qcol1 integer,\E
 			\n\s+\Qcol2 boolean,\E
 			\n\s+\Qcol3 boolean,\E
-			\n\s+\Qcol4 bit(5),\E
+			\n\s+\Qcol4 pg_catalog.bit(5),\E
 			\n\s+\Qcol5 double precision\E
 			\n\);
 			/xm,

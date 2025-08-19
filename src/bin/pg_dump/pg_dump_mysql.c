@@ -1630,6 +1630,13 @@ dumpTableData_insert(Archive *fout, const void *dcontext)
 								   PQgetvalue(res, tuple, field));
 						break;
 
+					/* Begin - ReqID:SRS-MYSQL-BITTYPE */
+					case MYSBITOID:
+						archprintf(fout, "%s",
+								   PQgetvalue(res, tuple, field));
+						break;
+					/* End - ReqID:SRS-MYSQL-BITTYPE */
+
 					case BOOLOID:
 						if (strcmp(PQgetvalue(res, tuple, field), "t") == 0)
 							archputs("true", fout);
@@ -8771,6 +8778,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 							 "a.attlen,\n"
 							 "a.attalign,\n"
 							 "a.attislocal,\n"
+							 "t.typnamespace,\n"
 							 "pg_catalog.format_type(t.oid, a.atttypmod) AS atttypname,\n");
 
 		if (fout->remoteVersion >= 90000)
@@ -8874,11 +8882,23 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 
 		for (int j = 0; j < ntups; j++)
 		{
+			const char *atttypname = PQgetvalue(res, j, PQfnumber(res, "atttypname"));
+			
 			if (j + 1 != atoi(PQgetvalue(res, j, PQfnumber(res, "attnum"))))
 				fatal("invalid column numbering in table \"%s\"",
 					  tbinfo->dobj.name);
 			tbinfo->attnames[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "attname")));
-			tbinfo->atttypnames[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "atttypname")));
+			/* prevent miss bit have typmode; prevent matching bit varying*/
+			if (strncmp(atttypname, "bit", 3) == 0 && strncmp(atttypname, "bit varying", 11) != 0)
+			{
+				Oid typnamespace = atooid(PQgetvalue(res, j, PQfnumber(res, "typnamespace")));
+				NamespaceInfo *tmpnamespace = findNamespace(typnamespace);
+				tbinfo->atttypnames[j] = psprintf("%s.%s", tmpnamespace->dobj.name, atttypname);
+			}
+			else
+			{
+				tbinfo->atttypnames[j] = pg_strdup(atttypname);
+			}
 			tbinfo->atttypmod[j] = atoi(PQgetvalue(res, j, PQfnumber(res, "atttypmod")));
 			tbinfo->attstattarget[j] = atoi(PQgetvalue(res, j, PQfnumber(res, "attstattarget")));
 			tbinfo->attstorage[j] = *(PQgetvalue(res, j, PQfnumber(res, "attstorage")));

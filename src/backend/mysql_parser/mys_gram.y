@@ -262,6 +262,8 @@ static TypeName *MySQLSystemTypeName(char *name);
 static void CheckIconstType(Node* node);
 /*End - ReqID:  SRS-MYSQL-BUILDINFUNCTION */
 
+static int64 CheckAConstTypeLength(Node* node);
+
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 static int parse_typmod(Node *node);
 static int MySQLIntegerCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscanner);
@@ -14904,10 +14906,25 @@ ConstBit:	BitWithLength
 BitWithLength:
 			BIT opt_varying '(' expr_list ')'
 				{
-					char *typname;
-
-					typname = $2 ? "varbit" : "bit";
-					$$ = SystemTypeName(typname);
+					if ($2)
+					{
+						$$ = SystemTypeName("varbit");
+					}
+					else
+					{
+						List	*typmods = $4;
+						A_Const *node_const = NULL;
+						node_const = (A_Const *) linitial(typmods);
+						if (nodeTag(&node_const->val) != T_Integer ||
+							node_const->val.val.ival < 0 || node_const->val.val.ival > 64)
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("out of range for bit length"),
+									 parser_errposition(@2)));
+						}
+						$$ = MySQLSystemTypeName("mysbit");
+					}
 					$$->typmods = $4;
 					$$->location = @1;
 				}
@@ -14923,7 +14940,7 @@ BitWithoutLength:
 					}
 					else
 					{
-						$$ = SystemTypeName("bit");
+						$$ = MySQLSystemTypeName("mysbit");
 						$$->typmods = list_make1(makeIntConst(1, -1));
 					}
 					$$->location = @1;
@@ -14971,42 +14988,13 @@ CharacterWithLength:  character '(' Iconst ')'
 				/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 				| CHAR_P '(' func_arg_list_opt ')'
 				{
-					Node	*node;
-					double	length = 0;
-
-					if (list_length($3) != 1)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("You have an error in you SQL syntax,in char( ... "),
-									 parser_errposition(@1)));
-
-					node = linitial($3);
-					if (IsA(node, A_Const))
-					{
-						A_Const *con = (A_Const *)node;
-
-						if (((Value *)(&con->val))->type == T_Integer)
-							length = intVal(&con->val);
-						else if (((Value *)(&con->val))->type == T_Float)
-							length = floatVal(&con->val);
-						else
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("You have an error in you SQL syntax in char( ... "),
-									 parser_errposition(@1)));
-					}
-					else
-						ereport(ERROR,
-								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("You have an error in you SQL syntax in char( ... "),
-								 parser_errposition(@1)));
-					/* Begin - BUG#Z00005405 */
+					int64 length = 0;
+					length = CheckAConstTypeLength($3);
 					if (length < 0)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
 								 errmsg("You have an error in you SQL syntax in char( ... "),
 								 parser_errposition(@1)));
-					/* End - BUG#Z00005405 */
 					$$ = makeTypeNameFromNameList(list_make1(makeString("bpchar")));
 					$$->typmods = list_make1(makeIntConst(length, @3));
 					$$->location = @1;
@@ -15025,37 +15013,14 @@ CharacterWithLength:  character '(' Iconst ')'
 				/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 				| TEXT_P '(' func_arg_list_opt ')'
 				{
-					Node	*node;
-					double	length = 0;
-
-					if (list_length($3) != 1)
-							ereport(ERROR,
-											(errcode(ERRCODE_SYNTAX_ERROR),
-											 errmsg("You have an error in you SQL syntax,in text( ... "),
-											 parser_errposition(@1)));
-
-					node = linitial($3);
-					if (IsA(node, A_Const))
-					{
-							A_Const *con = (A_Const *)node;
-
-							if (((Value *)(&con->val))->type == T_Integer)
-									length = intVal(&con->val);
-							else if (((Value *)(&con->val))->type == T_Float)
-									length = floatVal(&con->val);
-							else
-									ereport(ERROR,
-											(errcode(ERRCODE_SYNTAX_ERROR),
-											 errmsg("You have an error in you SQL syntax in text( ... "),
-											 parser_errposition(@1)));
-					}
-					else
-							ereport(ERROR,
-											(errcode(ERRCODE_SYNTAX_ERROR),
-											 errmsg("You have an error in you SQL syntax in text( ... "),
-											 parser_errposition(@1)));
-
-					if (length < 0 || length > 4294967295)
+					int64 length = 0;
+					length = CheckAConstTypeLength($3);
+					if (length < 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("You have an error in you SQL syntax in binary( ... "),
+								 parser_errposition(@1)));
+					if (length > PG_UINT32_MAX)
 							ereport(ERROR,
 											(errcode(ERRCODE_SYNTAX_ERROR),
 											 errmsg("Display width out of range for text length ( 0 <= length <= 4294967295)"),	/* BUG#Z00005157 */
@@ -15166,10 +15131,17 @@ mysql_datatype_length:
 		;
 
 BinaryWithLength:
-			BINARY  '(' mysql_datatype_length ')'
+			BINARY  '(' func_arg_list_opt ')'
 				{
+					int64 length = 0;
+					length = CheckAConstTypeLength($3);
+					if (length < 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("You have an error in you SQL syntax in binary( ... "),
+								 parser_errposition(@1))); 
 					$$ = MySQLSystemTypeName("binary");
-					$$->typmods = list_make1(makeIntConst($3, @3));
+					$$->typmods = list_make1(makeIntConst(length, @3));
 					$$->location = @1;
 				}
 		  | VARBINARY '(' mysql_datatype_length ')'
@@ -16253,6 +16225,16 @@ a_expr:		c_expr									{ $$ = $1; }
 
 					$$ = (Node *)n;
 				}
+			/* Begin:ReqID:SRS-MYSQL-BITTYPE */
+			| BINARY '(' func_arg_list_opt ')'
+				{
+					FuncCall *n = makeFuncCall(MysqlSystemFuncName("binary"),
+							$3,
+							COERCE_EXPLICIT_CALL,
+							@2);
+					$$ = (Node *)n;
+				}
+			/* End:ReqID:SRS-MYSQL-BITTYPE */
 			| FIELD '(' func_arg_list_opt ')'  /* BUG#Z5516 */
 				{
 					FuncCall *n = makeFuncCall(MysqlSystemFuncName("field"),
@@ -16864,11 +16846,6 @@ func_expr_common_subexpr:
 			| BINARY_F SCONST
 				{
 					$$ = makeTypeCast(makeStringConst($2, @1), MySQLSystemTypeName("binary"), @1);
-				}
-
-			| BINARY '(' SCONST ')'
-				{
-					$$ = makeTypeCast(makeStringConst($3, @1), MySQLSystemTypeName("binary"), @1);
 				}
 			/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 			| EXTRACT '(' extract_list ')'
@@ -20965,3 +20942,27 @@ static void CheckIconstType(Node* node)
 	}
 }
 /* End - ReqID: SRS-MYSQL-BUILDINFUNCTION */
+
+/* Begin - ReqID: SRS-MYSQL-BITTYPE */
+static int64 CheckAConstTypeLength(Node* node) 
+{
+	// Check bpchar\text\binary types length. If out of range, report an error.
+	double	length = -1;
+
+	if (list_length(node) != 1)
+		return -1;
+
+	node = linitial(node);
+	if (IsA(node, A_Const))
+	{
+		A_Const *con = (A_Const *)node;
+
+		if (((Value *)(&con->val))->type == T_Integer)
+			length = intVal(&con->val);
+		else if (((Value *)(&con->val))->type == T_Float)
+			length = floatVal(&con->val);
+	}
+
+	return length;
+}
+/* End - ReqID: SRS-MYSQL-BITTYPE */

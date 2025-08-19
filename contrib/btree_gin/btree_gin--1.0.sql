@@ -593,35 +593,35 @@ AS
     FUNCTION        5       gin_compare_prefix_bytea(bytea,bytea,int2, internal),
 STORAGE         bytea;
 
-CREATE FUNCTION gin_extract_value_bit(bit, internal)
+CREATE FUNCTION gin_extract_value_bit(pg_catalog.bit, internal)
 RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT IMMUTABLE;
 
-CREATE FUNCTION gin_compare_prefix_bit(bit, bit, int2, internal)
+CREATE FUNCTION gin_compare_prefix_bit(pg_catalog.bit, pg_catalog.bit, int2, internal)
 RETURNS int4
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT IMMUTABLE;
 
-CREATE FUNCTION gin_extract_query_bit(bit, internal, int2, internal, internal)
+CREATE FUNCTION gin_extract_query_bit(pg_catalog.bit, internal, int2, internal, internal)
 RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT IMMUTABLE;
 
 CREATE OPERATOR CLASS bit_ops
-DEFAULT FOR TYPE bit USING gin
+DEFAULT FOR TYPE pg_catalog.bit USING gin
 AS
     OPERATOR        1       <,
     OPERATOR        2       <=,
     OPERATOR        3       =,
     OPERATOR        4       >=,
     OPERATOR        5       >,
-    FUNCTION        1       bitcmp(bit,bit),
-    FUNCTION        2       gin_extract_value_bit(bit, internal),
-    FUNCTION        3       gin_extract_query_bit(bit, internal, int2, internal, internal),
+    FUNCTION        1       bitcmp(pg_catalog.bit,pg_catalog.bit),
+    FUNCTION        2       gin_extract_value_bit(pg_catalog.bit, internal),
+    FUNCTION        3       gin_extract_query_bit(pg_catalog.bit, internal, int2, internal, internal),
     FUNCTION        4       gin_btree_consistent(internal, int2, anyelement, int4, internal, internal),
-    FUNCTION        5       gin_compare_prefix_bit(bit,bit,int2, internal),
-STORAGE         bit;
+    FUNCTION        5       gin_compare_prefix_bit(pg_catalog.bit,pg_catalog.bit,int2, internal),
+STORAGE         pg_catalog.bit;
 
 CREATE FUNCTION gin_extract_value_varbit(varbit, internal)
 RETURNS internal

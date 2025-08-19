@@ -31,6 +31,7 @@ OBJS = \
 	src/datatype/binary_gin.o \
 	src/datatype/mystext.o	\
 	src/datatype/myschar.o	\
+	src/datatype/mysbit.o \
 	src/charset/charset.o \
 	src/charset/ctype-bin.o \
 	src/charset/ctype-mb.o \
@@ -125,6 +126,7 @@ MYS_REGRESS = multi_update \
 			  mys_int8	\
 			  mys_float \
 			  mys_numeric \
+			  mys_bit \
 			  mys-char-varchar \
 			  character_func \
 			  time_func	\

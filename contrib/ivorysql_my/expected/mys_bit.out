@@ -1,0 +1,867 @@
+create table t (c bit);
+\d t;
+                  Table "public.t"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ c      | mysbit(1) |           |          | 
+
+drop table t;
+create table t (c bit(0));
+ERROR:  length for type bit must be at least 1
+LINE 1: create table t (c bit(0));
+                          ^
+create table t (c bit(65));
+ERROR:  out of range for bit length
+create table t (c bit(32));
+\d t;
+                   Table "public.t"
+ Column |    Type    | Collation | Nullable | Default 
+--------+------------+-----------+----------+---------
+ c      | mysbit(32) |           |          | 
+
+insert into t values(1234);
+insert into t values('abcd');
+insert into t values(true);
+insert into t values('11');
+insert into t values(0x12345678);
+insert into t values(0x12005678);
+COPY t FROM stdin;
+select * from t;
+     c      
+------------
+ 0x000004D2
+ 0x61626364
+ 0x00000001
+ 0x00003131
+ 0x12345678
+ 0x12005678
+ 0x00000012
+ 0x00001234
+ 0x12340078
+ 0x12345678
+(10 rows)
+
+select c > c from t;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c >= c from t;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c < c from t;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c <> c from t;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c <= c from t;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c <=> c from t;
+ ?column? 
+----------
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | integer
+(1 row)
+
+select c = c from t;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c like c from t;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c not like c from t;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c & c from t;
+  ?column?  
+------------
+ 1234
+ 1633837924
+ 1
+ 12593
+ 305419896
+ 302012024
+ 18
+ 4660
+ 305397880
+ 305419896
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select c >> c from t;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select c << c from t;
+ ?column? 
+----------
+ 0
+ 0
+ 2
+ 0
+ 0
+ 0
+ 4718592
+ 0
+ 0
+ 0
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select c ^ c from t;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select c | c from t;
+  ?column?  
+------------
+ 1234
+ 1633837924
+ 1
+ 12593
+ 305419896
+ 302012024
+ 18
+ 4660
+ 305397880
+ 305419896
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select ~c from t;
+       ?column?       
+----------------------
+ 18446744073709550381
+ 18446744072075713691
+ 18446744073709551614
+ 18446744073709539022
+ 18446744073404131719
+ 18446744073407539591
+ 18446744073709551597
+ 18446744073709546955
+ 18446744073404153735
+ 18446744073404131719
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select bit_count(c) from t;
+ bit_count 
+-----------
+         5
+        13
+         1
+         6
+        13
+        10
+         2
+         5
+         9
+        13
+(10 rows)
+
+select BIT_COUNT(c) from t;
+ BIT_COUNT 
+-----------
+         5
+        13
+         1
+         6
+        13
+        10
+         2
+         5
+         9
+        13
+(10 rows)
+
+select +c from t;
+  ?column?  
+------------
+ 0x000004D2
+ 0x61626364
+ 0x00000001
+ 0x00003131
+ 0x12345678
+ 0x12005678
+ 0x00000012
+ 0x00001234
+ 0x12340078
+ 0x12345678
+(10 rows)
+
+\gdesc
+  Column  |  Type  
+----------+--------
+ ?column? | mysbit
+(1 row)
+
+select -c from t;
+  ?column?   
+-------------
+       -1234
+ -1633837924
+          -1
+      -12593
+  -305419896
+  -302012024
+         -18
+       -4660
+  -305397880
+  -305419896
+(10 rows)
+
+\gdesc
+  Column  |  Type  
+----------+--------
+ ?column? | bigint
+(1 row)
+
+select c % c from t;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select c mod c from t;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select c + c from t;
+  ?column?  
+------------
+ 2468
+ 3267675848
+ 2
+ 25186
+ 610839792
+ 604024048
+ 36
+ 9320
+ 610795760
+ 610839792
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select c - c from t;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select c / c from t;
+ ?column? 
+----------
+   1.0000
+   1.0000
+   1.0000
+   1.0000
+   1.0000
+   1.0000
+   1.0000
+   1.0000
+   1.0000
+   1.0000
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | numeric
+(1 row)
+
+select c div c from t;
+ ?column? 
+----------
+ 1
+ 1
+ 1
+ 1
+ 1
+ 1
+ 1
+ 1
+ 1
+ 1
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select c * c from t;
+      ?column?       
+---------------------
+ 1522756
+ 2669426361900629776
+ 1
+ 158583649
+ 93281312872650816
+ 91211262640576576
+ 324
+ 21715600
+ 93267865108494400
+ 93281312872650816
+(10 rows)
+
+\gdesc
+  Column  | Type  
+----------+-------
+ ?column? | uint8
+(1 row)
+
+select c and c from t;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c && c from t;
+ ?column? 
+----------
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | integer
+(1 row)
+
+select !c from t;
+ ?column? 
+----------
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | integer
+(1 row)
+
+select not c from t;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c or c from t;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select c || c from t;
+ ?column? 
+----------
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | integer
+(1 row)
+
+select c xor c from t;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+(10 rows)
+
+\gdesc
+  Column  |  Type   
+----------+---------
+ ?column? | boolean
+(1 row)
+
+select binary(c) from t;
+   binary   
+------------
+ \x000004d2
+ \x61626364
+ \x00000001
+ \x00003131
+ \x12345678
+ \x12005678
+ \x00000012
+ \x00001234
+ \x12340078
+ \x12345678
+(10 rows)
+
+select c + 0 from t;
+  ?column?  
+------------
+ 1234
+ 1633837924
+ 1
+ 12593
+ 305419896
+ 302012024
+ 18
+ 4660
+ 305397880
+ 305419896
+(10 rows)
+
+select c is true from t;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+(10 rows)
+
+select c is false from t;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+(10 rows)
+
+select c is not true from t;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+ f
+(10 rows)
+
+select c is not false from t;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+(10 rows)
+
+drop table t;
+create table t (c bit(5));
+insert into t values(b'1010');
+insert into t values('a');
+ERROR:  bit string length 8 does not match type bit(5)
+LINE 1: insert into t values('a');
+                             ^
+select * from t;
+  c   
+------
+ 0x0A
+(1 row)
+
+drop table t;
+create table t (c bit(10));
+insert into t values(b'1010');
+insert into t values('a');
+select * from t;
+   c    
+--------
+ 0x000A
+ 0x0061
+(2 rows)
+
+drop table t;
+create table t (c bit(18));
+insert into t values(b'1010');
+insert into t values('ab');
+select * from t;
+    c     
+----------
+ 0x00000A
+ 0x006162
+(2 rows)
+
+drop table t;
+CREATE TABLE BIT_TABLE(b BIT(11));
+INSERT INTO BIT_TABLE VALUES (B'10'); -- too short
+INSERT INTO BIT_TABLE VALUES (B'00000000000');
+INSERT INTO BIT_TABLE VALUES (B'11011000000');
+INSERT INTO BIT_TABLE VALUES (B'01010101010');
+INSERT INTO BIT_TABLE VALUES (B'101011111010'); -- too long
+ERROR:  bit string length 12 does not match type bit(11)
+SELECT * FROM BIT_TABLE;
+   b    
+--------
+ 0x0002
+ 0x0000
+ 0x06C0
+ 0x02AA
+(4 rows)
+
+drop table BIT_TABLE;

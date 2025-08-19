@@ -61,7 +61,10 @@
 #include "lib/stringinfo.h"
 #include "catalog/pg_trigger.h"
 /* End - ReqID:SRS-MISC-BULKLOAD */
-
+#include "utils/catcache.h"
+#include "utils/syscache.h"
+#include "catalog/pg_proc.h"
+#include "utils/builtins.h"
 
 /*
  * No more than this many tuples per CopyMultiInsertBuffer
@@ -1979,6 +1982,14 @@ BeginCopyFrom(ParseState *pstate,
 		}
 		
 		/* End - BUG#M0000414 */
+
+		/* Begin - ReqID:SRS-MYSQL-BITTYPE */
+		if (att->atttypid == MYSBITOID)
+		{
+			getTypeInputInfo(MYSBIT_2OID,
+						&in_func_oid, &typioparams[attnum - 1]);
+		}
+		/* End - ReqID:SRS-MYSQL-BITTYPE */
 
 		fmgr_info(in_func_oid, &in_functions[attnum - 1]);
 

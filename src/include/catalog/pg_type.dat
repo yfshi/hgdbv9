@@ -1142,6 +1142,25 @@
 
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
+/* Begin - ReqID:SRS-MYSQL-BITTYPE */
+{ oid => '9220', array_type_oid => '9221',
+  descr => 'mysql bit',
+  typname => 'mysbit', typnamespace => 'ivymy', typlen => '-1', 
+  typbyval => 'f', typtype => 'b',
+  typcategory => 'V', typinput => '-', typoutput => '-', 
+  typreceive => '-', typsend => '-', 
+  typalign => 'c' , 
+  typmodin => '-', typmodout => '-' },
+{ oid => '9222', array_type_oid => '9223',
+  descr => 'mysql bit datatype, only for the copy from',
+  typname => 'mysbit_2', typnamespace => 'ivymy', typlen => '-1', 
+  typbyval => 'f', typtype => 'b',
+  typcategory => 'V', typinput => '-', typoutput => '-', 
+  typreceive => '-', typsend => '-', 
+  typalign => 'c' , 
+  typmodin => '-', typmodout => '-' },
+/* End - ReqID:SRS-MYSQL-BITTYPE */
+
 /* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 { oid => '9264', array_type_oid => '9265',
   descr => 'MySQL TINYTEXT datatype',  typnamespace => 'ivymy',

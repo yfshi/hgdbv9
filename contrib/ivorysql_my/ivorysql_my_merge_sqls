@@ -17,6 +17,7 @@ src/datatype/script/time
 src/datatype/script/binary
 src/datatype/script/numeric
 src/datatype/script/character
+src/datatype/script/bit
 src/builtin_functions/builtin_functions
 src/builtin_functions/network_functions
 src/sysview/sysview
