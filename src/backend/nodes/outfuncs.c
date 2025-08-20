@@ -1570,6 +1570,7 @@ _outCaseWhen(StringInfo str, const CaseWhen *node)
 	WRITE_NODE_TYPE("WHEN");
 
 	WRITE_NODE_FIELD(expr);
+	WRITE_NODE_FIELD(orig_expr);	/* OA#1682 */
 	WRITE_NODE_FIELD(result);
 	WRITE_LOCATION_FIELD(location);
 }

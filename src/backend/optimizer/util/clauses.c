@@ -3188,6 +3188,8 @@ eval_const_expressions_mutator(Node *node,
 				 * expression when executing the CASE, since any contained
 				 * CaseTestExprs that might have referred to it will have been
 				 * replaced by the constant.
+				 *
+				 * OA#1682: simplify DECODE clause based on CASE expression.
 				 *----------
 				 */
 				CaseExpr   *caseexpr = (CaseExpr *) node;
@@ -3207,11 +3209,8 @@ eval_const_expressions_mutator(Node *node,
 				save_case_val = context->case_val;
 				if (newarg && IsA(newarg, Const))
 				{
-					if (!caseexpr->is_decode)	/* ReqID:SRS-GKC-DATATYPE_001 */
-					{
-						context->case_val = newarg;
-						newarg = NULL;	/* not needed anymore, see above */
-					}
+					context->case_val = newarg;
+					newarg = NULL;	/* not needed anymore, see above */
 				}
 				else
 					context->case_val = NULL;
@@ -3224,179 +3223,26 @@ eval_const_expressions_mutator(Node *node,
 					CaseWhen   *oldcasewhen = lfirst_node(CaseWhen, arg);
 					Node	   *casecond = NULL;		/* ReqID:SRS-GKC-DATATYPE_001 */
 					Node	   *caseresult;
-					Node	   *orig_casecond = NULL;	/* ReqID:SRS-GKC-DATATYPE_001 */
 
-					if (!caseexpr->is_decode)	/* ReqID:SRS-GKC-DATATYPE_001 */
+					/* Simplify this alternative's test condition */
+					casecond = eval_const_expressions_mutator((Node *) oldcasewhen->expr,
+															  context);
+
+					/*
+					 * If the test condition is constant FALSE (or NULL), then
+					 * drop this WHEN clause completely, without processing
+					 * the result.
+					 */
+					if (casecond && IsA(casecond, Const))
 					{
-						/* Simplify this alternative's test condition */
-						casecond = eval_const_expressions_mutator((Node *) oldcasewhen->expr,
-																  context);
+						Const	   *const_input = (Const *) casecond;
 
-						/*
-						 * If the test condition is constant FALSE (or NULL), then
-						 * drop this WHEN clause completely, without processing
-						 * the result.
-						 */
-						if (casecond && IsA(casecond, Const))
-						{
-							Const	   *const_input = (Const *) casecond;
-
-							if (const_input->constisnull ||
-								!DatumGetBool(const_input->constvalue))
-								continue;	/* drop alternative with FALSE cond */
-							/* Else it's constant TRUE */
-							const_true_cond = true;
-						}
+						if (const_input->constisnull ||
+							!DatumGetBool(const_input->constvalue))
+							continue;	/* drop alternative with FALSE cond */
+						/* Else it's constant TRUE */
+						const_true_cond = true;
 					}
-					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					else
-					{
-						orig_casecond = eval_const_expressions_mutator((Node *) oldcasewhen->orig_expr,
-																  context);
-
-						/*
-						 * If the test condition is constant FALSE (or NULL), then
-						 * drop this WHEN clause completely, without processing
-						 * the result.
-						 */
-						if (orig_casecond && IsA(orig_casecond, Const))
-						{
-							/* Begin - BUG:0000589 */
-							Const	   *orig_const_input = (Const *) orig_casecond;
-							/* End - BUG:0000589 */
-
-							if (!caseexpr->is_decode)
-							{
-								/* Begin - BUG:0000589 */
-								if (orig_const_input->constisnull ||
-									!DatumGetBool(orig_const_input->constvalue))
-								/* End - BUG:0000589 */
-									continue;	/* drop alternative with FALSE cond */
-							}
-							else
-							{
-								/* Begin - BUG:0000589 */
-								if (!orig_const_input->constisnull)
-								/* End - BUG:0000589 */
-								{
-									if (IsA(caseexpr->arg, Const) && ((Const *) caseexpr->arg)->constisnull)
-										continue;
-									else if (IsA(caseexpr->arg, CoerceViaIO))
-									{
-										Node *n = (Node *)((CoerceViaIO *) caseexpr->arg)->arg;
-								
-										if (IsA(n, Const) && ((Const *) n)->constisnull)
-											continue;
-										else
-											goto eval_whenexpr1;
-									}
-									else
-										goto eval_whenexpr1;
-								}
-								else if (orig_const_input->constisnull) /*	BUG:0000589 */
-								{
-									if (IsA(caseexpr->arg, Const))
-									{
-										if (((Const *) caseexpr->arg)->constisnull)
-										{
-											/* Begin - BUG:0000589 */
-											orig_const_input->constvalue = BoolGetDatum(true);
-											/* End - BUG:0000589 */
-											const_true_cond = true;
-										}
-										else
-											continue;
-									}
-									else if (IsA(caseexpr->arg, CoerceViaIO))
-									{
-										Node *n = (Node *)((CoerceViaIO *) caseexpr->arg)->arg;
-
-										if (IsA(n, Const))
-										{
-											if (((Const *) n)->constisnull)
-											{
-												/* Begin - BUG:0000589 */
-												orig_const_input->constvalue = BoolGetDatum(true);
-												/* End - BUG:0000589 */
-												const_true_cond = true;
-											}
-											else
-												continue;
-										}
-										else
-											goto eval_whenexpr1;
-									}
-									else
-										goto eval_whenexpr1;
-								}
-								else
-								{
-eval_whenexpr1:
-									casecond = eval_const_expressions_mutator((Node *) oldcasewhen->expr,
-																  context);
-									/*
-									 * If the test condition is constant FALSE (or NULL), then
-									 * drop this WHEN clause completely, without processing
-									 * the result.
-									 */
-									if (casecond && IsA(casecond, Const))
-									{
-										Const	   *const_input = (Const *) casecond;
-
-										if (!orig_const_input->constisnull) /* BUG:0000589 */
-										{
-											if (const_input->constisnull ||
-												!DatumGetBool(const_input->constvalue))
-												continue;	/* drop alternative with FALSE cond */
-											/* Else it's constant TRUE */
-											const_true_cond = true;
-										}
-									}
-								}
-							}
-						}
-						else
-						{
-							if (IsA(caseexpr->arg, Const) && ((Const *) caseexpr->arg)->constisnull)
-								continue;
-							else if (IsA(caseexpr->arg, CoerceViaIO))
-							{
-								/* Begin - ReqID:SRS-SQL-SYSFUNC: there deal with decode null value, when the value from
-								 * column.
-								 */
-
-								/*Node *n = (Node *)((CoerceViaIO *) caseexpr->arg)->arg;
-
-								if (IsA(n, Const) && ((Const *) n)->constisnull)
-									continue;
-								else*/
-								/* End - ReqID:SRS-SQL-SYSFUNC:*/
-								goto eval_whenexpr2;
-							}
-							else
-							{
-eval_whenexpr2:
-								casecond = eval_const_expressions_mutator((Node *) oldcasewhen->expr,
-																			context);
-								/*
-								 * If the test condition is constant FALSE (or NULL), then
-								 * drop this WHEN clause completely, without processing
-								 * the result.
-								 */
-								if (casecond && IsA(casecond, Const))
-								{
-									Const	   *const_input = (Const *) casecond;
-								
-									if (const_input->constisnull ||
-										!DatumGetBool(const_input->constvalue))
-										continue;	/* drop alternative with FALSE cond */
-									/* Else it's constant TRUE */
-									const_true_cond = true;
-								}
-							}
-						}
-					}
-					/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 					/* Simplify this alternative's result value */
 					caseresult = eval_const_expressions_mutator((Node *) oldcasewhen->result,
@@ -3408,7 +3254,7 @@ eval_whenexpr2:
 						CaseWhen   *newcasewhen = makeNode(CaseWhen);
 
 						newcasewhen->expr = (Expr *) casecond;
-						newcasewhen->orig_expr = (Expr *) orig_casecond;	/* ReqID:SRS-GKC-DATATYPE_001 */
+						newcasewhen->orig_expr = (Expr *) oldcasewhen->orig_expr;        /* ReqID:SRS-GKC-DATATYPE_001 */
 						newcasewhen->result = (Expr *) caseresult;
 						newcasewhen->location = oldcasewhen->location;
 						newargs = lappend(newargs, newcasewhen);

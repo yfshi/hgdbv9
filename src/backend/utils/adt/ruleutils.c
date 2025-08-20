@@ -508,6 +508,7 @@ static void get_opclass_name(Oid opclass, Oid actual_datatype,
 							 StringInfo buf);
 static Node *processIndirection(Node *node, deparse_context *context);
 static void printSubscripts(SubscriptingRef *sbsref, deparse_context *context);
+static void get_decode_expr(CaseExpr *caseexpr, deparse_context *context);	/* OA#1682 */
 static char *get_relation_name(Oid relid);
 static char *generate_relation_name(Oid relid, List *namespaces);
 static char *generate_qualified_relation_name(Oid relid);
@@ -9630,6 +9631,15 @@ get_rule_expr(Node *node, deparse_context *context,
 				CaseExpr   *caseexpr = (CaseExpr *) node;
 				ListCell   *temp;
 
+				/* Begin - OA#1682 */
+				if (caseexpr->is_decode)
+				{
+					Assert(caseexpr->arg != NULL);
+					get_decode_expr(caseexpr, context);
+					break;
+				}
+				/* Begin - OA#1682 */
+
 				appendContextKeyword(context, "CASE",
 									 0, PRETTYINDENT_VAR, 0);
 				if (caseexpr->arg)
@@ -12383,6 +12393,46 @@ printSubscripts(SubscriptingRef *sbsref, deparse_context *context)
 		get_rule_expr((Node *) lfirst(uplist_item), context, false);
 		appendStringInfoChar(buf, ']');
 	}
+}
+
+/*
+ * OA#1682 - parse back a DECODE clause
+ */
+static void
+get_decode_expr(CaseExpr *caseexpr, deparse_context *context)
+{
+	StringInfo	buf = context->buf;
+	ListCell   *whencell;
+
+	Assert(caseexpr->arg != NULL);
+	Assert(list_length(caseexpr->args) > 0);
+	Assert(caseexpr->defresult != NULL);
+
+	/* DECODE( */
+	appendStringInfoString(buf, "DECODE(");
+
+	/* DECODE(arg */
+	get_rule_expr((Node *) caseexpr->arg, context, true);
+
+	/* DECODE(arg, search1, value1, ... */
+	foreach(whencell, caseexpr->args)
+	{
+		CaseWhen	*when = (CaseWhen *) lfirst(whencell);
+		Node		*w = (Node *) when->orig_expr;
+		Node		*r = (Node *) when->result;
+
+		appendStringInfoString(buf, ", ");
+		get_rule_expr(w, context, true);
+		appendStringInfoString(buf, ", ");
+		get_rule_expr(r, context, true);
+	}
+
+	/* DECODE(arg, search1, value1, ..., defvalue */
+	appendStringInfoString(buf, ", ");
+	get_rule_expr((Node *) caseexpr->defresult, context, true);
+
+	/* DECODE(arg, search1, value1, ..., defvalue) */
+	appendStringInfoString(buf, ")");
 }
 
 /*

@@ -2537,6 +2537,28 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 /* Begin - BUGID:0000543 */
 /* ReqID:SRS-SQL-SYSFUNC: change function name, 
  * transformCaseExpr_for_decode to transformdecodeexpr
+ *
+ * OA#1682
+ * Refactor the function to support sublink and optimize performance
+ * by using placeholder. eg.
+ *   decode(expr, s1, v1, s2, v2)
+ *   == ora_gram.y ==>
+ *     case expr
+ *       when s1 then v1
+ *       when s2 then v2
+ *       else null
+ *     end
+ *   == transformdecodeexpr ==>
+ *     case expr
+ *       when ($1 = s1) or ($1 is null and s1 is null) then v1
+ *       when ($1 = s2) or ($1 is null and s2 is null) then v2
+ *       else null
+ *     end
+ * $1 is the placeholder of expr.
+ *
+ * Record the historical bugs fixed or feature before refactoring:
+ *   BUGID:0000543, BUG#Z4593, ReqID:SRS-SQL-OUTERJOIN(+),
+ *   ReqID:SRS-SQL-SYSFUNC, ReqID:SRS-SQL-HierarchicalQueries
  */
 static Node *
 transformdecodeexpr(ParseState *pstate, CaseExpr *c)
@@ -2550,7 +2572,6 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	Node	   *defresult;
 	Oid			ptype = InvalidOid;
 	Oid			restype = InvalidOid;
-	List	   *whenexprs;
 	CaseWhen   *first_when; /* BUG#Z4593 */
 	bool		first_is_numeric = false; /* BUG#Z4593 */
 
@@ -2619,12 +2640,12 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 		ptype = exprType(arg);
 	/* End - BUG#Z4593 */
 
-	whenexprs = NIL;
 	if (database_mode == DB_ORACLE)
 	{
 		int			args_cnt = 0; /* BUG#Z4593 */
 		List	   *whenresults = NIL; /* BUG#Z4593 */
 		ListCell   *result_cell;
+		List	   *whenexprs = NIL;
 
 		foreach(l, c->args)
 		{
@@ -2723,6 +2744,11 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	/* generate placeholder for test expression */
 	if (arg)
 	{
+		if (OidIsValid(ptype))
+			arg = coerce_to_common_type(pstate,
+									  (Node *) arg,
+									  ptype,
+									  "DECODE");
 		/*
 		 * If test expression is an untyped literal, force it to text. We have
 		 * to do something now because we won't be able to do this coercion on
@@ -2730,7 +2756,7 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 		 * and before, but it's good enough to handle the sort of silly coding
 		 * commonly seen.
 		 */
-		if (exprType(arg) == UNKNOWNOID)
+		else if (exprType(arg) == UNKNOWNOID)
 		{
 			if (compatible_db == PG_PARSER)
 				arg = coerce_to_common_type(pstate, arg, TEXTOID, "DECODE");
@@ -2746,12 +2772,6 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 					arg = coerce_to_common_type(pstate, arg, ORAVARCHARCHAROID, "DECODE");
 			}
 		}
-
-		if (OidIsValid(ptype))
-			arg = coerce_to_common_type(pstate,
-									  (Node *) arg,
-									  ptype,
-									  "DECODE");
 
 		/*
 		 * Run collation assignment on the test expression so that we know
@@ -2805,174 +2825,76 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 			/* Begin - ReqID:SRS-SQL-SYSFUNC: Here you need to consider dealing 
 			 * with decode null values, so the original method was changed.
 			 */
-			CaseExpr	*innernewexpr;
-			CaseWhen	*innerneww;
-			NullTest	*innernulltest;
-			List		*blist = NIL;
-			List		*blist1 = NIL;
+			TypeCast	*expr_cast;
+			TypeCast	*search_cast;
+			NullTest	*nulltest;
+			List		*nulltest_list = NIL;
 			A_Expr 		*aexpr = NULL;
-				
+			Expr		*bexpr = NULL;
+			List		*blist = NIL;
+
 			if (placeholder)
 			{
-				/* decode(a, b, c) ==>> 
-						case when
-							case when a is null and b is null then true  --first step
-								 when a is not null and b is not null and a = b then true --second step
-								 else false
-							end
-							then c
-						end;
+				/*
+				 * decode(expr, s1, v1)
+				 * == parser ==>
+				 *   case expr
+				 *     when s1 then v1
+				 *     then null
+				 *   end
+				 * == tansfrom ==>
+				 *   case expr
+				 *     when ($1 = b) or (a is null and $1 is null) then c
+				 *   end;
+				 * $1 is the placeholder of expr.
 				 */
-				A_Const *ac = makeNode(A_Const);
-				A_Const *ac1 = makeNode(A_Const);
-				TypeCast *tc = makeNode(TypeCast);
-				TypeCast *tc1 = makeNode(TypeCast);
-				TypeCast *expr_cast = makeNode(TypeCast); /* BUG#Z4593 */
-				TypeCast *search_cast = makeNode(TypeCast); /* BUG#Z4593 */
-				
-				innernewexpr = makeNode(CaseExpr);
-				innerneww = makeNode(CaseWhen);
-					
-				/* 
-				 * first step: 
-				 *  case when a is null and b is null then true
-				 *  current step: a is null
-				 */
-				innernulltest = makeNode(NullTest);
-				innernulltest->arg = copyObject(c->arg);
-				innernulltest->nulltesttype = IS_NULL;
-				innernulltest->location = -1;
-				blist = lappend(blist, innernulltest);
 
-				/* 
-				 * first step: 
-				 *  case when a is null and b is null then true
-				 *  current step: b is null
+				/*
+				 * when ($1 = b) or (a is null and $1 is null) then c
+				 *   step: ($1 = b)
 				 */
-				innernulltest = makeNode(NullTest);
-				innernulltest->arg = copyObject(w->expr);
-				innernulltest->nulltesttype = IS_NULL;
-				innernulltest->location = -1;
-				blist = lappend(blist, innernulltest);				
+				expr_cast = makeNode(TypeCast);
+				search_cast = makeNode(TypeCast);
 
-				/* 
-				 * first step: 
-				 *  case when a is null and b is null then true
-				 *  current step: a is null and b is null 
-				 */
-				innerneww->expr =  makeBoolExpr(AND_EXPR, blist, false, -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-
-				/* 
-				 * first step: 
-				 *  case when a is null and b is null then true
-				 *  current step: then true
-				 */
-				ac->val.type = T_String;
-				ac->val.val.str = "t";
-				ac->location = -1;
-				tc->arg = (Node*)ac;
-				tc->typeName = makeTypeNameFromNameList(list_make2(makeString("pg_catalog"), 
-											makeString("bool")));
-				tc->location = -1;
-				
-				innerneww->result = (Expr *)tc;
-				innerneww->location = -1;
-
-				/* 
-				 * first step: 
-				 *  case when a is null and b is null then true
-				 *  current step: case when a is null and b is null then true
-				 */
-				innernewexpr->args = lappend(innernewexpr->args, innerneww);
-				
-				/* 
-				 * second step: 
-				 *  case when a is not null and b is not null and a = b then true
-				 *  current step: a is not null
-				 */
-				innernulltest = makeNode(NullTest);
-				innernulltest->arg = copyObject(c->arg);
-				innernulltest->nulltesttype = IS_NOT_NULL;
-				innernulltest->location = -1;
-				blist1 = lappend(blist1, innernulltest);
-
-				/* 
-				 * second step: 
-				 *  case when a is not null and b is not null and a = b then true
-				 *  current step: b is not null
-				 */
-				innernulltest = makeNode(NullTest);
-				innernulltest->arg = copyObject(w->expr);
-				innernulltest->nulltesttype = IS_NOT_NULL;
-				innernulltest->location = -1;
-				blist1 = lappend(blist1, innernulltest);			
-
-				/* 
-				 * second step: 
-				 *  case when a is not null and b is not null and a = b then true
-				 *  current step: a = b
-				 */
-				/* Begin - BUG#Z4593 */
 				search_cast->arg = (Node*) warg;
 				search_cast->typeName = makeTypeNameFromOid(ptype, -1);
 				search_cast->location = -1;
 
-				expr_cast->arg = (Node*) c->arg;
+				expr_cast->arg = (Node*) placeholder;
 				expr_cast->typeName = makeTypeNameFromOid(ptype, -1);
 				expr_cast->location = -1;
-				/* End - BUG#Z4593 */
 				aexpr = makeSimpleA_Expr(AEXPR_OP, "=",
-												 (Node *) expr_cast, /* BUG#Z4593 */
-												 (Node *) search_cast, /* BUG#Z4593 */
-												 w->location);
-				blist1 = lappend(blist1, aexpr);
+										 (Node *) expr_cast,
+										 (Node *) search_cast,
+										 w->location);
 
-				/* 
-				 * second step: 
-				 *  case when a is not null and b is not null and a = b then true
-				 *  current step: a is not null and b is not null and a = b
+				/*
+				 * when ($1 = b) or (a is null and $1 is null) then c
+				 *   step: (a is null and $1 is null)
 				 */
-				innerneww = makeNode(CaseWhen);
-				innerneww->expr =  makeBoolExpr(AND_EXPR, blist1, false, -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+				nulltest = makeNode(NullTest);
+				nulltest->arg = (Expr *) placeholder;
+				nulltest->nulltesttype = IS_NULL;
+				nulltest->location = -1;
+				nulltest_list = lappend(nulltest_list, nulltest);
 
-				/* 
-				 * second step: 
-				 *  case when a is not null and b is not null and a = b then true
-				 *  current step: then true
-				 */
-				innerneww->result = (Expr *)tc;
-				innerneww->location = -1;
+				nulltest = makeNode(NullTest);
+				nulltest->arg = copyObject(w->expr);
+				nulltest->nulltesttype = IS_NULL;
+				nulltest->location = -1;
+				nulltest_list = lappend(nulltest_list, nulltest);
 
-				/* 
-				 * second step: 
-				 *  case when a is not null and b is not null and a = b then true
-				 *  current step: case when a is not null and b is not null and a = b then true
-				 */
-				innernewexpr->args = lappend(innernewexpr->args, innerneww);
-			
-				/* 
-				 * third step: 
-				 *  else false, default value (true of false)
-				 *  current step: else false
-				 */
-				ac1->val.type = T_String;
-				ac1->val.val.str = "f";
-				ac1->location = -1;
-				tc1->arg = (Node*)ac1;
-				tc1->typeName = makeTypeNameFromNameList(list_make2(makeString("pg_catalog"), 
-											makeString("bool")));
-				tc1->location = -1;
+				bexpr = makeBoolExpr(AND_EXPR, nulltest_list, false, -1);
 
-				/* 
-				 * last step: new case expr
+				/*
+				 * when ($1 = b) or (a is null and $1 is null) then c
+				 *   step: ($1 = b) or (a is null and $1 is null)
 				 */
-				innernewexpr->defresult = (Expr *)tc1;					
-				innernewexpr->location = -1;
-				
-				warg = (Node *)innernewexpr;
-				
-				/* End - ReqID:SRS-SQL-SYSFUNC:*/
+				blist = lappend(blist, aexpr);
+				blist = lappend(blist, bexpr);
+				warg = (Node *) makeBoolExpr(OR_EXPR, blist, false, -1);
 			}
+
 			neww->expr = (Expr *) transformExprRecurse(pstate, warg);
 
 			neww->expr = (Expr *) coerce_to_boolean(pstate,

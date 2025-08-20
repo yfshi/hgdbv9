@@ -8,16 +8,7 @@ create or replace view v_test_case_number as select decode(a,0,'') from test_cas
 --------+----------------+-----------+----------+---------+----------+-------------
  decode | varchar2(4000) |           |          |         | extended | 
 View definition:
- SELECT
-        CASE
-            WHEN
-            CASE
-                WHEN test_case_number.a IS NULL AND 0 IS NULL THEN true
-                WHEN test_case_number.a IS NOT NULL AND 0 IS NOT NULL AND test_case_number.a = 0::number THEN true
-                ELSE false
-            END THEN NULL::varchar2(4000)
-            ELSE NULL::varchar2(4000)
-        END AS "decode"
+ SELECT DECODE(test_case_number.a, 0::number, NULL::varchar2(4000), NULL::varchar2(4000)) AS "decode"
    FROM test_case_number;
 
 select * from v_test_case_number;

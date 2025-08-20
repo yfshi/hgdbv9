@@ -361,6 +361,15 @@ LANGUAGE C
 PARALLEL SAFE	-- BUG#M0000422
 IMMUTABLE;
 
+/* Begin - BUG#5603 */
+CREATE FUNCTION sys.replace(text, text, text default NULL)
+RETURNS text
+AS 'MODULE_PATHNAME','ora_replace'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+/* End - BUG#5603 */
+
 /* Begin - ReqID:SRS-SQL-SYSFUNC: modify text and varchar to varchar2 */
 CREATE FUNCTION sys.instrb(varchar2, varchar2, number default 1, number default 1)
 RETURNS int

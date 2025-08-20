@@ -1148,6 +1148,7 @@ _readCaseWhen(void)
 	READ_LOCALS(CaseWhen);
 
 	READ_NODE_FIELD(expr);
+	READ_NODE_FIELD(orig_expr);	/* OA#1682 */
 	READ_NODE_FIELD(result);
 	READ_LOCATION_FIELD(location);
 
