@@ -12,6 +12,8 @@
 	5、新增兼容Oracle系统包dbms_output；
 	6、安全特性新增一些debug日志；
 	7、新增兼容Oracle同义词功能；
+	8、新增两个性能参数，hg_pool_size 和 hg_pool_timeout；
+	9、新增兼容MySQL的bit类型；
 2、修复问题
 	1、修复了MySQL兼容，SET lc_time_names等参数异常断开的问题，bug#5527；
 	2、修复了MySQL兼容，get_format返回类型不正确的问题，bug#5533；
@@ -30,7 +32,7 @@
 	15、修复了MySQL兼容elt函数返回值不正确的问题，bug#5513;
 	16、修复了MySQL兼容octet_length函数某些参数返回不正确的问题，bug#5537;
 	17、修复了MySQL兼容unhex函数返回不正确的问题，bug#5543;
-	18、修复了merge into的bug，OA-REQ-1669；
+	18、修复了merge语句targetlist获取不完整的问题，OA-REQ-1669；
 	19、修复了MySQL兼容field函数返回不正确的问题，bug#5516;
 
 V9.0.4.1，禅道版本ID：4647-2025/08/08
