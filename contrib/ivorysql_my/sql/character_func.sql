@@ -556,3 +556,12 @@ SELECT ifnull('100.001'::float8, 'hello!'::text);
 --ifnull(text, number)
 SELECT ifnull('hello!'::text, '100.001'::numeric);
 SELECT ifnull('100.001'::numeric, 'hello!'::text);
+
+-- replace
+
+SELECT replace (123,3,'highgo') as test1; -- '12highgo'
+SELECT replace (123.5,3,'highgo') as test1; -- '12highgo.5'
+SELECT replace ('helloworld','world',1) as test1; -- 'hello1'
+SELECT replace ('helloworld','world',1.55) as test1; -- 'hello1.55'
+SELECT replace ('helloworld','world','1970-01-01 10:10:10') as test1; -- 'hello1970-01-01 10:10:10'
+SELECT replace ('1970-01-01 10:10:10',7,'highgo') as test1; -- '19highgo0-01-01 10:10:10'

@@ -2042,6 +2042,65 @@ transformFuncCall(ParseState *pstate, FuncCall *fn)
 													(Node *) lfirst(args)));
 	}
 
+	/* Begin - BUG #Z5517 #Z5518 */
+	if (MYS_PARSER == compatible_db && fn->funcname != NIL && targs != NIL)
+	{
+		if (list_length(fn->funcname) == 1 ||
+			(list_length(fn->funcname) == 2 && IsA(linitial(fn->funcname), String) &&
+			 !pg_strcasecmp(strVal(linitial(fn->funcname)), "pg_catalog")))
+		{
+			Node *funcname = llast(fn->funcname);
+
+			if (IsA(funcname, String) &&
+				(!pg_strcasecmp(strVal(funcname), "replace")))
+			{
+				List * new_targs_list = NIL;
+				foreach(args, targs)
+				{
+					/*
+					 * For the bool type,it must first be cast to `int` and then to `text`;
+					 * other data types can be directly cast to `text`.
+					 * -- bool  -> int -> text
+					 * -- true  ->  1  -> '1'
+					 * -- false ->  0  -> '0'
+					 */
+					Node *new_arg;
+
+					if (exprType(lfirst(args)) == BOOLOID)
+					{
+						new_arg = coerce_to_target_type(pstate, lfirst(args), exprType(lfirst(args)),
+														INT4OID, -1,
+														COERCION_EXPLICIT,
+														COERCE_IMPLICIT_CAST,
+														-1);
+						new_arg = coerce_to_target_type(pstate, new_arg, exprType(new_arg),
+														TEXTOID, -1,
+														COERCION_EXPLICIT,
+														COERCE_IMPLICIT_CAST,
+														-1);
+						new_targs_list = lappend(new_targs_list, new_arg);
+					}
+					else if (exprType(lfirst(args)) == TEXTOID)
+					{
+						new_targs_list = lappend(new_targs_list, lfirst(args));
+					}
+					else
+					{
+						new_arg = coerce_to_target_type(pstate, lfirst(args), exprType(lfirst(args)),
+														TEXTOID, -1,
+														COERCION_EXPLICIT,
+														COERCE_IMPLICIT_CAST,
+														-1);
+						new_targs_list = lappend(new_targs_list, new_arg);
+					}
+				}
+				list_free(targs);
+				targs = new_targs_list;
+			}
+		}
+	}
+	/* End - BUG #Z5517 #Z5518 */
+
 	/*
 	 * When WITHIN GROUP is used, we treat its ORDER BY expressions as
 	 * additional arguments to the function, for purposes of function lookup
