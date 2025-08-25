@@ -87,11 +87,40 @@ static const int8 b64lookup[128] = {
  */
 #define MAX_BASE_CONV_DIGITS 64
 
-/* ABCDEFGHIJKLMNOPQRSTUVWXYZ */
-static const char *soundex_table = "01230120022455012623010202";
+				/* ABCDEFGHIJKLMNOPQRSTUVWXYZ */
+				/* :::::::::::::::::::::::::: */
+const char *soundex_map = "01230120022455012623010202";
 
-static void set_sound(const char *instr, char *outstr, int size);
-static char soundex_code(char letter);
+#define BYTE_4 0xFF000000L
+#define BYTE_3 0xFF0000L
+#define BYTE_2 0xFF00L
+
+
+#define storeBytes1(BYTES, T, A) \
+	if (1 == BYTES) { \
+		T[0] = (char)A; \
+	}
+#define storeBytes2(BYTES, T, A) \
+	if (2 == BYTES) { \
+		unsigned int tmpValue = (unsigned int) (A) ; \
+		((unsigned char*) (T))[1] = (unsigned char)(tmpValue); \
+		((unsigned char*) (T))[0] = (unsigned char)(tmpValue >> 8); \
+	}
+#define storeBytes3(BYTES, T, A) \
+	if (3 == BYTES) { \
+		unsigned long int tmpValue = (unsigned long int) (A); \
+		((unsigned char*) (T))[2] = (unsigned char) (tmpValue); \
+		((unsigned char*) (T))[1] = (unsigned char) (tmpValue >> 8); \
+		((unsigned char*) (T))[0] = (unsigned char) (tmpValue >> 16); \
+	}
+#define storeBytes4(BYTES, T, A) \
+	if (4 == BYTES) { \
+		unsigned long int tmpValue = (unsigned long int) (A); \
+		((unsigned char*) (T))[3] = (unsigned char) (tmpValue); \
+		((unsigned char*) (T))[2] = (unsigned char) (tmpValue >> 8); \
+		((unsigned char*) (T))[1] = (unsigned char) (tmpValue >> 16); \
+		((unsigned char*) (T))[0] = (unsigned char) (tmpValue >> 24); \
+	}
 
 
 PG_FUNCTION_INFO_V1(locate);
@@ -120,68 +149,6 @@ PG_FUNCTION_INFO_V1(weight_string);
 PG_FUNCTION_INFO_V1(weight_string_boolean);
 PG_FUNCTION_INFO_V1(mys_strcmp);
 
-
-static char
-soundex_code(char letter)
-{
-	letter = toupper((unsigned char) letter);
-	/* Defend against non-ASCII letters */
-	if (letter >= 'A' && letter <= 'Z')
-		return soundex_table[letter - 'A'];
-	return letter;
-}
-
-
-static void
-set_sound(const char *instr, char *outstr, int size)
-{
-	int			count;
-
-	AssertArg(instr);
-	AssertArg(outstr);
-
-	/* Skip leading non-alphabetic characters */
-	while (*instr && !isalpha((unsigned char) *instr))
-		++instr;
-
-	/* If no string left, return all-zeroes buffer */
-	if (!*instr)
-	{
-		memset(outstr, '\0', size);
-		return;
-	}
-
-	/* Take the first letter as is */
-	*outstr++ = (char) toupper((unsigned char) *instr++);
-
-	count = 1;
-	while (*instr)
-	{
-		if (isalpha((unsigned char)*instr) &&
-					  soundex_code(*instr) != soundex_code(*(instr - 1)) &&
-					  soundex_code(*instr) != soundex_code(*(outstr - 1)))
-		{
-			if (soundex_code(instr[0]) != '0' && soundex_code(*instr) != *(outstr - 1))
-			{
-				*outstr = soundex_code(instr[0]);
-				++outstr;
-				++count;
-			}
-		}
-		++instr;
-	}
-
-	/* Fill with 0's */
-	while (count < SOUNDEX_LEN)
-	{
-		*outstr = '0';
-		++outstr;
-		++count;
-	}
-
-	/* And null-terminate */
-	*outstr = '\0';
-}
 
 static unsigned
 b64_decode(const char* src, unsigned len, char* dst, bool flag)
@@ -393,75 +360,17 @@ base64_encode(PG_FUNCTION_ARGS)
 	PG_RETURN_TEXT_P(result);
 }
 
-/*
- * Workhorse for to_bin, to_oct, and to_hex.  Note that base must be > 1 and <=
- * 16.
- */
-static inline text *
-convert_to_base(uint64 value, int base)
-{
-	const char *digits = "0123456789abcdef";
-
-	/* We size the buffer for to_bin's longest possible return value. */
-	char		buf[sizeof(uint64) * BITS_PER_BYTE];
-	char	   *const end = buf + sizeof(buf);
-	char	   *ptr = end;
-
-	Assert(base > 1);
-	Assert(base <= 16);
-
-	do
-	{
-		*--ptr = digits[value % base];
-		value /= base;
-	} while (ptr > buf && value);
-
-	return cstring_to_text_with_len(ptr, end - ptr);
-}
-
-/*
- * Convert an integer to a string containing a base-2 (binary) representation
- * of the number.
- */
-Datum
-to_bin64(PG_FUNCTION_ARGS)
-{
-	uint64		value = (uint64) PG_GETARG_INT64(0);
-
-	PG_RETURN_TEXT_P(convert_to_base(value, 2));
-}
-
-Datum
-bin_num(PG_FUNCTION_ARGS)
-{
-	uint64  value;
-	Numeric num;
-
-	num = PG_GETARG_NUMERIC(0);
-	
-	// mysql will do round off in bin(numeric)
-	value = conv_numeric_uint64(num, false);
-
-	PG_RETURN_TEXT_P(convert_to_base(value, 2));
-}
-
 Datum
 bin_text(PG_FUNCTION_ARGS)
 {
-	char 		*arg = text_to_cstring(PG_GETARG_TEXT_PP(0));
-	char	  	num[64];
-	uint64 		value;
+	text *result;
+	Datum newval = PG_GETARG_DATUM(0);
 
-	extract_leading_integer_str(arg, num, sizeof(num));
-
-	value = DirectFunctionCall3(mysuint8_in,
-								CStringGetDatum(num),
-								ObjectIdGetDatum(InvalidOid),
-								Int32GetDatum(-1));
-
-	pfree(arg);
-
-	return DirectFunctionCall1(to_bin64, UInt64GetDatum(value));
+	result = DatumGetTextP(DirectFunctionCall3(conv, newval, 10, 2));
+	if (result)
+		PG_RETURN_TEXT_P(result);
+	else
+		PG_RETURN_TEXT_P(cstring_to_text("0"));
 }
 
 Datum
@@ -756,14 +665,36 @@ myschar(PG_FUNCTION_ARGS)
 
 	for (int i = 0; i < nargs; ++i)
 	{
-		text *str;
+		text	*str;
+		int		 bytes;
+		uint64	 value;
+		unsigned char *wch;
 
 		if (nulls[i])
 			continue;
-		
-		str = DatumGetTextPP(DirectFunctionCall1(chr, args[i]));
-		
+
+		value = DatumGetUInt64(args[i]);
+
+		if (value & BYTE_4)
+			bytes = 4;
+		else if (value & BYTE_3)
+			bytes = 3;
+		else if (value & BYTE_2)
+			bytes = 2;
+		else
+			bytes = 1;
+
+		str = (text *) palloc(VARHDRSZ + bytes);
+		SET_VARSIZE(str, VARHDRSZ + bytes);
+		wch = (unsigned char *) VARDATA(str);
+
+		storeBytes1(bytes, wch, value);
+		storeBytes2(bytes, wch, value);
+		storeBytes3(bytes, wch, value);
+		storeBytes4(bytes, wch, value);
+
 		appendBinaryStringInfo(&buf, VARDATA_ANY(str), VARSIZE_ANY_EXHDR(str));
+		pfree(str);
 	}
 
 	ret = cstring_to_text_with_len(buf.data, buf.len);
@@ -831,34 +762,204 @@ space(PG_FUNCTION_ARGS)
 }
 
 /*
+ * If alpha, map input letter to soundex code.
+ * If not alpha and remove_garbage is set then skip to next char
+ * else return 0
+ */
+static int
+soundex_toupper(int ch)
+{
+	return (ch >= 'a' && ch <= 'z') ? ch - 'a' + 'A' : ch;
+}
+
+static char
+get_scode(int wc)
+{
+	int ch= soundex_toupper(wc);
+	if (ch < 'A' || ch > 'Z')
+	{
+				// Thread extended alfa (country spec)
+		return '0';				// as vokal
+	}
+	return(soundex_map[ch-'A']);
+}
+
+static bool
+my_uni_isalpha(int wc)
+{
+	/*
+	 * Return true for all Basic Latin letters: a..z A..Z.
+	 * Return true for all Unicode characters with code higher than U+00C0:
+	 * - characters between 'z' and U+00C0 are controls and punctuations.
+	 * - "U+00C0 LATIN CAPITAL LETTER A WITH GRAVE" is the first letter after 'z'.
+	 */
+	return (wc >= 'a' && wc <= 'z') ||
+		   (wc >= 'A' && wc <= 'Z') ||
+		   (wc >= 0xC0);
+}
+
+/*
+ * Soundex implementation using PostgreSQL multibyte APIs.
+ *
+ * input	   : UTF-8 (or database encoding) string
+ * input_len : length in bytes
+ * out_len   : length of result string (excluding NUL terminator)
+ *
+ * Returns a malloc'ed, NUL-terminated string (caller must free).
+ */
+static char *
+_soundex_valstr(const char *input, size_t input_len, size_t *out_len)
+{
+	int			rc;
+	my_wc_t		wc;
+	char		last_ch = 0, ch = 0;
+	uint		nchars = 0;
+	size_t		alloc_len = 0;
+	size_t		result_len = 0;
+	char		*buf = NULL;
+	unsigned char *to;
+	const unsigned char *from, *end;
+
+	if (out_len)
+		*out_len = 0;
+	if (!input || input_len == 0)
+		return NULL;
+
+	/* Allocate output buffer: at least 4 characters (worst case multibyte) */
+	alloc_len = input_len > (size_t)(4 * MAX_MULTIBYTE_CHAR_LEN)
+				   ? input_len
+				   : (size_t)(4 * MAX_MULTIBYTE_CHAR_LEN);
+	buf = (char *) palloc(alloc_len + 1);
+	if (!buf)
+		return NULL;
+
+	to = (unsigned char *) buf;
+
+	from = (const unsigned char *) input;
+	end = from + input_len;
+
+	/* --- Find the first alphabetic character --- */
+	for (;;)
+	{
+		pg_wchar tmp_wc;
+
+		if (from >= end)
+		{
+			buf[0] = '\0';
+			if (out_len)
+				*out_len = 0;
+			return buf;
+		}
+
+		rc = pg_mblen((const char *)from);  /* number of bytes for this char */
+		pg_mb2wchar_with_len((const char *)from, &tmp_wc, rc);
+		wc = (my_wc_t) tmp_wc;
+
+		if (rc == 1 && isalpha(*from))
+		{
+			/* single-byte alphabetic */
+			last_ch = get_scode((my_wc_t)(unsigned char)(*from));
+			*to++ = (unsigned char) (char) soundex_toupper((my_wc_t)(unsigned char)(*from));
+			from++;
+			nchars = 1;
+			break;
+		}
+		else
+		{
+			from += rc;
+			if (my_uni_isalpha(wc))
+			{
+				pg_wchar tmp_wc2;
+				int wrote;
+
+				wc = soundex_toupper(wc);
+				last_ch = get_scode(wc);
+				tmp_wc2 = (pg_wchar) wc;
+				wrote = pg_wchar2mb_with_len(&tmp_wc2, (char *)to, 1);
+				if (wrote <= 0)
+				{
+					pfree(buf);
+					return NULL;
+				}
+				to += wrote;
+				nchars = 1;
+				break;
+			}
+		}
+	}
+
+	/* --- Process remaining characters --- */
+	for (;;)
+	{
+		pg_wchar tmp_wc;
+
+		if (from >= end)
+			break;
+
+		rc = pg_mblen((const char *)from);
+		pg_mb2wchar_with_len((const char *)from, &tmp_wc, rc);
+		wc = (my_wc_t) tmp_wc;
+
+		if (rc == 1 && isalpha(*from))
+		{
+			from++;
+		}
+		else
+		{
+			from += rc;
+			if (!my_uni_isalpha(wc))
+				continue;
+		}
+
+		ch = get_scode(wc);
+
+		if ((ch != '0') && (ch != last_ch))
+		{
+			pg_wchar tmp_wc2 = (pg_wchar) ch;
+			int wrote = pg_wchar2mb_with_len(&tmp_wc2, (char *)to, 1);
+			if (wrote <= 0)
+				break;
+			to += wrote;
+			nchars++;
+			last_ch = ch;
+		}
+	}
+
+	/* --- Pad with '0' if less than 4 characters --- */
+	if (nchars < 4)
+	{
+		uint need = 4 - nchars;
+		memset(to, '0', need);  /* always ASCII '0' */
+		to += need;
+	}
+
+	result_len = (size_t)(to - (unsigned char *) buf);
+	buf[result_len] = '\0';
+	if (out_len)
+		*out_len = result_len;
+
+	return buf;
+}
+
+/*
  * soundex
  */
 Datum
 soundex(PG_FUNCTION_ARGS)
 {
-	text 	   *raw = PG_GETARG_TEXT_PP(0);
-	char	   *arg = VARDATA_ANY(raw);
-	int			strLen = VARSIZE_ANY_EXHDR(raw) + 1;
-	int			minSoundLen;
-	char	   *outstr = NULL;
-	text	   *ret;
-	size_t		size;
+	text		*raw = PG_GETARG_TEXT_PP(0);
+	char		*input = VARDATA_ANY(raw);
+	int			 input_len = VARSIZE_ANY_EXHDR(raw) + 1;
+	char		*outstr = NULL;
+	text		*ret;
+	size_t		 size = 0;
 
-	minSoundLen = pg_encoding_max_length(GetDatabaseEncoding()) + SOUND_THRESHOLD;
-	
-	size = Max(strLen, minSoundLen);
-
-	outstr = (char *) palloc0(size);
-	
-	set_sound(arg, outstr, size);
-
+	outstr = _soundex_valstr(input, input_len, &size);
 	ret = cstring_to_text(outstr);
-
 	pfree(outstr);
-	
+
 	PG_RETURN_TEXT_P(ret);
 }
-
 
 Datum
 substring_index(PG_FUNCTION_ARGS)

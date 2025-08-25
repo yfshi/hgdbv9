@@ -2427,13 +2427,7 @@ Num2Mysuint8(Const *con, Oid inputTypeId)
 	else
 	{
 		int64 tempval = con->constvalue;
-		val1 = tempval;
-		if (tempval < 0 || tempval > PG_UINT64_MAX)
-		{
-			ereport(WARNING, (errmsg("integer unsigned out of range")));
-			val1 = tempval < 0 ? 0 : PG_UINT64_MAX;
-		}
-
+		val1 = (uint64)tempval;
 	}
 	return val1;
 }
