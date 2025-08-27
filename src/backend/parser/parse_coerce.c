@@ -3335,7 +3335,11 @@ coerce_type(ParseState *pstate, Node *node,
 				if (newcon->constvalue == 0 && 
 					(baseTypeId == MYSDATETIMESOID ||
 					 baseTypeId == MYSTIMESTAMPSOID ||
-					 baseTypeId == MYSTIMESOID))
+					 baseTypeId == MYSTIMESOID ||
+					 /* Begin - BUG#Z5569 */
+					 baseTypeId == MYSDATETIMEOID ||
+					 baseTypeId == MYSDATEOID))
+					 /* End - BUG#Z5569 */
 				{
 					newcon->constisnull = true;
 					con->constisnull = true;
