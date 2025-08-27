@@ -746,7 +746,7 @@ swsds_failure(void)
 /*
  * Get the Algorithm ID from <swsds> library.
  */
-SGD_UINT32
+unsigned int
 HSM_GetAlgID(int pg_cipher_id)
 {
 	SGD_UINT32 retAlgID = -1;
@@ -778,7 +778,7 @@ HSM_GetAlgID(int pg_cipher_id)
  * Get the HSM device handle.
  * If it does not exist one, try to open a new handle.
  */
-SGD_HANDLE
+void*
 HSM_GetDeviceHandle(bool force_new)
 {
 	SGD_RV rv = 0;
@@ -806,8 +806,8 @@ HSM_GetDeviceHandle(bool force_new)
  * If it does not exist one, try to open a new handle.
  * If open a new session failed, retry using a new device handle.
  */
-SGD_HANDLE
-HSM_GetSessionHandle(SGD_HANDLE *phSessionHandle, bool force_new)
+void*
+HSM_GetSessionHandle(void* *phSessionHandle, bool force_new)
 {
 	unsigned int rv;
 	bool	retry = false;
@@ -844,11 +844,11 @@ retry_hsm_open_session:
  * Generate a session key wrapped with KEK from HSM.
  * If generate a new key failed, retry using a new session handle.
  */
-SGD_HANDLE
-HSM_GenerateSessionKey(SGD_HANDLE *phSessionHandle, SGD_UINT32 uiKeyBits,
-					   SGD_UINT32 uiAlgID, SGD_UINT32 uiKEKIndex,
-					   SGD_UCHAR *pucKey, SGD_UINT32 *puiKeyLength,
-					   SGD_HANDLE *phKeyHandle)
+void*
+HSM_GenerateSessionKey(void* *phSessionHandle, unsigned int uiKeyBits,
+					   unsigned int uiAlgID, unsigned int uiKEKIndex,
+					   unsigned char *pucKey, unsigned int *puiKeyLength,
+					   void* *phKeyHandle)
 {
 	unsigned int rv;
 	bool	retry = false;
@@ -881,8 +881,8 @@ retry_hsm_generate_key:
  * If it does not exist one, try to import wrapped session key with kek.
  * If import session key failed, retry using a new session handle.
  */
-SGD_HANDLE
-HSM_GetKeyHandle(SGD_HANDLE *phSessionHandle, SGD_HANDLE *phKeyHandle,
+void*
+HSM_GetKeyHandle(void* *phSessionHandle, void* *phKeyHandle,
 				 const CryptoKey *key, unsigned int kekid, bool force_new)
 {
 	unsigned int rv;
@@ -918,7 +918,7 @@ retry_hsm_get_key:
  * If destroy session key failed, retry using a new session handle.
  */
 void
-HSM_DestroyKey(SGD_HANDLE *phSessionHandle, SGD_HANDLE hKeyHandle)
+HSM_DestroyKey(void* *phSessionHandle, void* hKeyHandle)
 {
 	unsigned int rv;
 	bool	retry = false;
@@ -947,7 +947,7 @@ retry_hsm_destroy_key:
  * If encrypt data failed, retry using a new session key handle.
  */
 bool
-HSM_Encrypt(SGD_HANDLE *phSessionHandle, SGD_HANDLE *phKeyHandle,
+HSM_Encrypt(void* *phSessionHandle, void* *phKeyHandle,
 			const CryptoKey *key, unsigned int kekid,
 			unsigned int uiAlgID, unsigned char *iv, 
 			unsigned char *plaintext, unsigned int inlen,
@@ -992,7 +992,7 @@ retry_hsm_encrypt:
  * If decrypt data failed, retry using a new session key handle.
  */
 bool
-HSM_Decrypt(SGD_HANDLE *phSessionHandle, SGD_HANDLE *phKeyHandle,
+HSM_Decrypt(void* *phSessionHandle, void* *phKeyHandle,
 			const CryptoKey *key, unsigned int kekid,
 			unsigned int uiAlgID, unsigned char *iv, 
 			unsigned char *ciphertext, unsigned int inlen,
@@ -1037,7 +1037,7 @@ retry_hsm_decrypt:
  * If generate random string failed, retry using a new session handle.
  */
 void
-HSM_Generate_Random(SGD_HANDLE *phSessionHandle, unsigned int len, unsigned char *pucRandom)
+HSM_Generate_Random(void* *phSessionHandle, unsigned int len, unsigned char *pucRandom)
 {
 	unsigned int rv;
 	bool	retry = false;
@@ -1066,7 +1066,7 @@ retry_hsm_random:
  * If hash failed, retry using a new session handle.
  */
 void
-HSM_Hash(SGD_HANDLE *phSessionHandle, unsigned int AlgId,
+HSM_Hash(void* *phSessionHandle, unsigned int AlgId,
 		 unsigned char *indata, unsigned int inlen,
 		 unsigned char *outdata, unsigned int *outlen)
 {
@@ -1122,8 +1122,8 @@ retry_hsm_hash:
  * If generate keys failed, retry using a new session handle.
  */
 void
-HSM_Generate_Key_Pair(SGD_HANDLE *phSessionHandle, SGD_UINT32 uiKeyBits,
-					  SGD_UINT32 uiAlgID, void *pubKey, void *priKey)
+HSM_Generate_Key_Pair(void* *phSessionHandle, unsigned int uiKeyBits,
+					  unsigned int uiAlgID, void *pubKey, void *priKey)
 {
 	SGD_HANDLE hSessionHandle = NULL;
 	unsigned int rv;
@@ -1169,7 +1169,7 @@ retry_hsm_generate_key_pair:
  * If encrypt failed, retry using a new session handle.
  */
 void
-HSM_Pub_Encrypt(SGD_HANDLE *phSessionHandle, unsigned int AlgId, 
+HSM_Pub_Encrypt(void* *phSessionHandle, unsigned int AlgId, 
 				unsigned int keyIndex, void *key, 
 				unsigned char *indata, unsigned int inlen,
 				unsigned char *outdata, unsigned int *outlen)
@@ -1224,7 +1224,7 @@ retry_hsm_pub_encrypt:
  * If decrypt failed, retry using a new session handle.
  */
 void
-HSM_Pub_Decrypt(SGD_HANDLE *phSessionHandle, unsigned int AlgId, 
+HSM_Pub_Decrypt(void* *phSessionHandle, unsigned int AlgId, 
 				unsigned int keyIndex, void *key, 
 				unsigned char *indata, unsigned int inlen,
 				unsigned char *outdata, unsigned int *outlen,
@@ -1309,7 +1309,7 @@ PKCS1v15_Signature_Pad(const unsigned char *hash, unsigned int hash_len,
  * If sign failed, retry using a new session handle.
  */
 void
-HSM_Sign(SGD_HANDLE *phSessionHandle, unsigned int AlgId, 
+HSM_Sign(void* *phSessionHandle, unsigned int AlgId, 
 				unsigned int keyIndex, void *key, unsigned int keylen,
 				unsigned char *indata, unsigned int inlen,
 				unsigned char *signature, unsigned int *siglen,
@@ -1383,7 +1383,7 @@ retry_hsm_sign:
  * If verify failed, retry using a new session handle.
  */
 void
-HSM_Verify(SGD_HANDLE *phSessionHandle, unsigned int AlgId, 
+HSM_Verify(void* *phSessionHandle, unsigned int AlgId, 
 				unsigned int keyIndex, void *key, unsigned int keylen,
 				unsigned char *indata, unsigned int inlen,
 				unsigned char *signature, unsigned int siglen)

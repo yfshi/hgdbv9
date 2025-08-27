@@ -34,8 +34,8 @@ static PgCipherCtx *BufEncCtx = NULL;
 static PgCipherCtx *BufDecCtx = NULL;
 
 #ifdef USE_SWSDS
-static SGD_HANDLE hSessionHandle = NULL;
-static SGD_HANDLE hKeyHandle = NULL;
+static void* hSessionHandle = NULL;
+static void* hKeyHandle = NULL;
 #endif
 
 static void set_buffer_encryption_iv(Page page, BlockNumber blkno,

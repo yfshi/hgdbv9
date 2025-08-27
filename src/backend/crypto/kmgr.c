@@ -45,6 +45,10 @@
 #include "utils/memutils.h"
 #include "utils/timestamp.h"
 
+#ifdef USE_SWSDS
+#include <swsds.h>
+#endif
+
 /* Struct stores file encryption keys in plaintext format */
 typedef struct KmgrShmemData
 {
@@ -59,6 +63,12 @@ CryptoKey	bootstrap_keys[KMGR_NUM_DATA_KEYS];
 
 extern char *bootstrap_old_key_datadir;
 extern int	bootstrap_file_encryption_method;
+
+#ifdef USE_SWSDS
+#define HSM_KWP_ALGORITHM_ID	SGD_SMS4_ECB
+#else
+#define HSM_KWP_ALGORITHM_ID 0
+#endif
 
 static void bzeroKmgrKeys(int status, Datum arg);
 static void KmgrWriteCryptoKeys(const char *dir, unsigned char **keys, int *key_lens);
