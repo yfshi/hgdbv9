@@ -22,6 +22,10 @@
 #include "funcapi.h"
 
 #ifdef USE_SWSDS
+#include <swsds.h>
+#endif
+
+#ifdef USE_SWSDS
 static HTAB        *HSM_session_keys_hash = NULL;
 static SGD_HANDLE   hSessionHandle = NULL;
 static unsigned int SessionKeyId = 1;
