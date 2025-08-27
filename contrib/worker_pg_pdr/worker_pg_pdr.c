@@ -54,6 +54,13 @@
 #include "utils/fmgroids.h"
 #include "access/xlog.h"
 #include "miscadmin.h"
+
+/* Begin- BUG#Z5608 */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - BUG#Z5608 */
+
 #ifdef WIN32
 #include <windows.h>
 #include <process.h>
@@ -523,7 +530,6 @@ pg_pdr_main(Datum main_arg)
 	time_t		last_snap_time = 0;
 #endif
 	long		sleep_time = pg_pdr_naptime * 60 * 1000L;
-	HASHCTL		hash_ctl;
 	FILE		*fpin;
 	char		statfile[MAXPGPATH];
 	pdr_new_snap_info *shmem_snapinfo=NULL;
@@ -539,30 +545,16 @@ pg_pdr_main(Datum main_arg)
 	BackgroundWorkerUnblockSignals();
 
 	/* Connect to our database */
+	elog(DEBUG1,"performance diagnosis collector, initialize connection"); /* BUG#Z5608 */
 	BackgroundWorkerInitializeConnection(pg_pdr_napdb, NULL, 0);
 
 	pgpdr_setup_memcxt();
 	old_context = MemoryContextSwitchTo(pgPdrLocalContext);
 	
 	/* init first */ 
+	elog(DEBUG1,"performance diagnosis collector, initialize SPI"); /* BUG#Z5608 */
 	initialize_worker_spi();
-	memset(&hash_ctl, 0, sizeof(hash_ctl));
-	hash_ctl.keysize = sizeof(Oid);
-	hash_ctl.entrysize = sizeof(PgStat_StatTabEntry);
-	hash_ctl.hcxt = pgPdrLocalContext;
-	localtables = hash_create("Per-database table",
-						  512,
-						  &hash_ctl,
-						  HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
-			
-	hash_ctl.keysize = sizeof(Oid);
-	hash_ctl.entrysize = sizeof(PgStat_StatFuncEntry);
-	hash_ctl.hcxt = pgPdrLocalContext;
-	localfuncs = hash_create("Per-database function",
-						 512,
-						 &hash_ctl,
-						 HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
-	
+
 	get_dbstat_filename(false, false, MyDatabaseId, statfile, MAXPGPATH);
 	while((fpin = AllocateFile(statfile, PG_BINARY_R)) == NULL)
 	{
@@ -577,41 +569,12 @@ pg_pdr_main(Datum main_arg)
 		FreeFile(fpin);
 	}
 
-#ifdef WIN32
-	memset(&mySysTime,0x00,sizeof(SYSTEMTIME));
-	GetSystemTime(&mySysTime);
-	last_snap_time = SystemTimeToTimet(mySysTime);
-#else
-	last_snap_time = time(NULL);
-#endif
-
 	/*
 	 * Main loop: do this until the SIGTERM handler tells us to terminate
 	 */
 	while (!got_sigterm)
 	{
-		int			rc;
-		
-		/*
-		 * Background workers mustn't call usleep() or any direct equivalent:
-		 * instead, they may wait on their process latch, which sleeps as
-		 * necessary, but is awakened if postmaster dies.  That way the
-		 * background process goes away immediately in an emergency.
-		 */
-		rc = WaitLatch(MyLatch, WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH, sleep_time, PG_WAIT_EXTENSION);
-		ResetLatch(MyLatch);
-
-		if (RecoveryInProgress())
-			pgpdr_exit(1);
-
-		/* emergency bailout if postmaster has died */
-		if (rc & WL_POSTMASTER_DEATH)
-			pgpdr_exit(1);
-
-		if (got_sigterm)
-			pgpdr_exit(1);
-
-		CHECK_FOR_INTERRUPTS();
+		int	rc = 0;
 
 		/*
 		 * In case of a SIGHUP
@@ -624,6 +587,11 @@ pg_pdr_main(Datum main_arg)
 #else
 		curtime = time(NULL);
 #endif
+
+		/*
+		 * if wake up by SIGHUP
+		 */
+		elog(DEBUG1, "performance diagnosis collector, got_sighup=%d, rc=%d", got_sighup, rc); /* BUG#5608 */
 		if (got_sighup)
 		{
 			/* test shmem pdr_new_snap_info */
@@ -642,10 +610,25 @@ pg_pdr_main(Datum main_arg)
 			if (sleep_time < 0)
 				sleep_time = 1;
 		}
+		/* Begin - BUG#Z5608 */
+		/*
+		 * if wake up by a latch, but not sighup
+		 * wait the remaining time
+		 */
+		else if (rc & WL_LATCH_SET)
+		{
+			sleep_time = (pg_pdr_naptime * 60 * 1000L)-((curtime - last_snap_time)*1000L);
+			if (sleep_time < 0)
+				sleep_time = 1;
+
+			goto wait_again;
+		}
+		/* End - BUG#Z5608 */
 		else
 		{
 			last_snap_time = curtime;
 		}
+
 		/*
 		 * Start a transaction on which we can run queries.  Note that each
 		 * StartTransactionCommand() call should be preceded by a
@@ -690,6 +673,33 @@ pg_pdr_main(Datum main_arg)
 		CommitTransactionCommand();
 		pgstat_report_stat(false);
 		pgstat_report_activity(STATE_IDLE, NULL);
+
+		/* Begin - BUG#5608 */
+                elog(DEBUG1, "performance diagnosis collector, waiting %ld", sleep_time);
+wait_again:
+                /*
+                 * Background workers mustn't call usleep() or any direct equivalent:
+                 * instead, they may wait on their process latch, which sleeps as
+                 * necessary, but is awakened if postmaster dies.  That way the
+                 * background process goes away immediately in an emergency.
+                 */
+                rc = WaitLatch(MyLatch, WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH, sleep_time, PG_WAIT_EXTENSION);
+                ResetLatch(MyLatch);
+                elog(DEBUG1, "performance diagnosis collector, Wait return %d", rc);
+
+                if (RecoveryInProgress())
+                        pgpdr_exit(1);
+
+                /* emergency bailout if postmaster has died */
+                if (rc & WL_POSTMASTER_DEATH)
+                        pgpdr_exit(1);
+
+                if (got_sigterm)
+                        pgpdr_exit(1);
+
+                CHECK_FOR_INTERRUPTS();
+		/* End - BUG#Z5608 */
+
 	}
 	MemoryContextSwitchTo(old_context);
 	MemoryContextReset(pgPdrLocalContext);
@@ -735,6 +745,7 @@ insert_new_snap(void)
 	PgStat_StatDBEntry *dbentry=NULL;
 
 	bool	found;
+	HASHCTL	hash_ctl; /* BUG#Z5608 */
 
 	/* database system and hardware information */
 	char 	tmpgetvalue[256];
@@ -755,6 +766,7 @@ insert_new_snap(void)
 	char 	dbmem_tmp[17];
 	pid_t	pdrpid = 0;
 	int	length_val = 0;
+	const char *hgdb_version; /* BUG#Z5608 */
 	
 #ifdef WIN32
 	SYSTEM_INFO sSysInfo;
@@ -965,42 +977,19 @@ insert_new_snap(void)
 
 	platform_noother = strtok(platform,"~");
 
-	memset(tmpgetvalue,0x00,sizeof(tmpgetvalue));
-	resetStringInfo(&buf);
+	/* Begin - BUG#Z5608 */
+	/*
+	 * Highgo database need running under license feature
+	 * set a default value in case when build without --enable-license
+	 */
+#ifdef USE_LICENSE
+	hgdb_version = hg_get_highgoVersion();
+	snprintf(dbver, sizeof(dbver), "%s", hgdb_version);
+#else
+	snprintf(dbver, sizeof(dbver), "%s", "Highgo Database");
+#endif
+	/* End - BUG#Z5608 */
 
-	/* ReqID:SRS-MISC-PDR */
-	/* get highgo_version() length */
-	appendStringInfo(&buf,"select octet_length(trim(highgo_version()));");
-	ret = SPI_execute(buf.data, true, 0);
-	if (ret != SPI_OK_SELECT)
-	{
-		elog(FATAL, "SPI_execute failed, %s : error code %d", buf.data, ret);
-	}
-	if (SPI_processed > 0 && SPI_tuptable != NULL)
-	{
-		bool	isnull;
-		TupleDesc tupdesc = SPI_tuptable->tupdesc;
-		length_val = DatumGetInt32(SPI_getbinval(SPI_tuptable->vals[0],tupdesc,1,&isnull));
-	}
-
-	/* get the highgo_version() */
-	resetStringInfo(&buf);
-	appendStringInfo(&buf,"select highgo_version()");
-	ret = SPI_execute(buf.data, true, 0);
-	if (ret != SPI_OK_SELECT)
-	{
-		elog(FATAL, "SPI_execute failed, %s : error code %d", buf.data, ret);
-	}
-
-	if (SPI_processed > 0 && SPI_tuptable != NULL)
-	{
-		bool	isnull;
-		TupleDesc tupdesc = SPI_tuptable->tupdesc;
-
-		strncpy(tmpgetvalue,DatumGetCString(SPI_getbinval(SPI_tuptable->vals[0],tupdesc,1,&isnull))+1,length_val);
-	}
-	strcpy(dbver,tmpgetvalue);
-		
 	dbver_noother = strtok(dbver,"~");
 
 	/* pg_postmaster_start_time() */
@@ -1067,8 +1056,9 @@ insert_new_snap(void)
 	sprintf(tmpgetvalue,"%lu",dbmem);
 	memcpy(dbmem_tmp + (sizeof(dbmem_tmp) - strlen(tmpgetvalue) - 1),tmpgetvalue,strlen(tmpgetvalue));
 	sprintf(dbsysinfo,"%s%s%s%s%s%s",dbtime_tmp,dbver_tmp,dbhost_tmp,platform_tmp,cpus_tmp,dbmem_tmp);
-	
-	//this is the first snap
+
+	/* used to insert the sql info to the pdrsql table */	
+	/* this is the first snap */
 	if (sid < 0)
 	{
 		resetStringInfo(&buf);
@@ -1150,7 +1140,12 @@ insert_new_snap(void)
 			elog(FATAL, "SPI_execute failed, %s : error code %d", buf.data, ret);
 		}
 	}
-		
+
+	/*
+	 * insert database  info to the pdrdb table
+	 * insert table info to the pdrtable table
+	 * save the info from the stat* file
+	 */
 	resetStringInfo(&buf);
 	appendStringInfo(&buf,"select oid from pg_database where datistemplate='f';");
 	/* We can now execute queries via SPI */
@@ -1168,7 +1163,7 @@ insert_new_snap(void)
 		bool		isnull;
 
 		dbcnt = 0;
-		//get dboid and add to db hash
+		/* get dboid and add to dboid[] */
 		for (j = 0; j < SPI_processed && j < PGPDR_DB_HASH_SIZE; j++)
 		{
 			dboid[j] = DatumGetObjectId(SPI_getbinval(SPI_tuptable->vals[j],tupdesc,1,&isnull));
@@ -1205,7 +1200,7 @@ insert_new_snap(void)
 		
 		if (dbentry)
 		{
-			//this is the first snap
+			/* this is the first snap */
 			if (sid < 0)
 			{
 				resetStringInfo(&buf);
@@ -1260,20 +1255,58 @@ insert_new_snap(void)
 					elog(FATAL, "SPI_execute failed, %s: error code %d", buf.data, ret);
 				}
 			}
-			/* save each table infomation to pdrtable */
+
+			/*
+			 * for each database
+			 * save each table infomation to pdrtable
+			 */
 			/* this is the first snap */
 			if (sid < 0)
 			{
+				/*
+				 * get the table info from stat* file
+				 */
 				if (dbentry->databaseid != MyDatabaseId)
 				{
-					pdr_pgstat_read_db_statsfile(dbentry->databaseid, localtables, localfuncs, false);
-					hash_seq_init(&tstat, localtables);
+					/* Begin - BUG#Z5608 */
+					/*
+				 	 * need init table and func hash for each database
+				 	 * read the table just now, not over history
+				 	 */
+					Assert(dbentry->tables == NULL);
+					Assert(dbentry->functions == NULL);
+
+					memset(&hash_ctl, 0, sizeof(hash_ctl));
+					hash_ctl.keysize = sizeof(Oid);
+					hash_ctl.entrysize = sizeof(PgStat_StatTabEntry);
+					hash_ctl.hcxt = pgPdrLocalContext;
+					dbentry->tables = hash_create("Per-database table",
+										  512,
+										  &hash_ctl,
+										  HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+				
+					hash_ctl.keysize = sizeof(Oid);
+					hash_ctl.entrysize = sizeof(PgStat_StatFuncEntry);
+					hash_ctl.hcxt = pgPdrLocalContext;
+					dbentry->functions = hash_create("Per-database function",
+										 512,
+										 &hash_ctl,
+										 HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+
+					Assert(dbentry->tables != NULL);
+					Assert(dbentry->functions != NULL);
+
+					pdr_pgstat_read_db_statsfile(dbentry->databaseid, dbentry->tables, dbentry->functions, false);
+					hash_seq_init(&tstat, dbentry->tables);
+					/* End - BUG#5608 */
 				}
-				else 
+				else
 				{
+ 					Assert(dbentry->tables != NULL); /* BUG#5608 */
 					hash_seq_init(&tstat, dbentry->tables);
 				}
 
+				/* put the table info into table */
 				while ((tabentry = (PgStat_StatTabEntry *) hash_seq_search(&tstat)) != NULL)
 				{
 					resetStringInfo(&buf);
@@ -1303,11 +1336,41 @@ insert_new_snap(void)
 			{					
 				if (dbentry->databaseid != MyDatabaseId)
 				{
-					pdr_pgstat_read_db_statsfile(dbentry->databaseid, localtables, localfuncs, false);
-					hash_seq_init(&tstat, localtables);
+					/* Begin - BUG#Z5608 */
+					/*
+					 * need init table and func hash for each database
+					 * read the table just now, not over history
+					 */
+
+					Assert(dbentry->tables == NULL);
+                                        Assert(dbentry->functions == NULL);
+
+                                        memset(&hash_ctl, 0, sizeof(hash_ctl));
+                                        hash_ctl.keysize = sizeof(Oid);
+                                        hash_ctl.entrysize = sizeof(PgStat_StatTabEntry);
+                                        hash_ctl.hcxt = pgPdrLocalContext;
+                                        dbentry->tables = hash_create("Per-database table",
+                                                                                 512,
+                                                                                  &hash_ctl,
+                                                                                  HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+
+                                        hash_ctl.keysize = sizeof(Oid);
+                                        hash_ctl.entrysize = sizeof(PgStat_StatFuncEntry);
+                                        hash_ctl.hcxt = pgPdrLocalContext;
+                                        dbentry->functions = hash_create("Per-database function",
+                                                                                 512,
+                                                                                 &hash_ctl,
+                                                                                 HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+					Assert(dbentry->tables != NULL);
+					Assert(dbentry->functions != NULL);
+
+					pdr_pgstat_read_db_statsfile(dbentry->databaseid, dbentry->tables, dbentry->functions, false);
+					hash_seq_init(&tstat, dbentry->tables);
+					/* End - BUG#Z5608 */
 				}
 				else
 				{
+					Assert(dbentry->tables != NULL);	/* BUG#Z5608 */
 					hash_seq_init(&tstat, dbentry->tables);
 				}
 
@@ -1438,6 +1501,8 @@ insert_new_snap(void)
 	SPI_finish();
 	PopActiveSnapshot();
 	isSnaping = false;
+
+	elog(INFO,"performance diagnosis collector, insert new snap %ld", sid+1);	/* BUG#z5608 */
 
 	return true;
 }
@@ -1579,10 +1644,10 @@ bgworker_conn4once(void)
 	PushActiveSnapshot(GetTransactionSnapshot());
 	pgstat_report_activity(STATE_RUNNING, buf.data);
 	
-	appendStringInfo(&buf,"select Platform_for_pdr()");
+	appendStringInfo(&buf,"select version()"); /* BUG#Z5608 */
 	ret = SPI_execute(buf.data, true, 0);
 	if (ret != SPI_OK_SELECT)
-		elog(FATAL, "cannot run select Platform_for_pdr(): error code %d", ret);
+		elog(FATAL, "cannot run select version(): error code %d", ret); /* BUG#Z5608 */
 
 	if (SPI_processed > 0 && SPI_tuptable != NULL)
 	{
@@ -1600,7 +1665,6 @@ bgworker_conn4once(void)
 	MemoryContextSwitchTo(old_context);
 	MemoryContextReset(pgPdrLocalContext_once);
 }
-
 
 PG_FUNCTION_INFO_V1(worker_spi_launch);
 /*
