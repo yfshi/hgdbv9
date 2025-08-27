@@ -1220,3 +1220,10 @@ SELECT instr('abcdefabcdefabc','bc');
 SELECT instr('abcdefabcdefabc','bc',3);
 SELECT instr('abcdefabcdefabc','bc',1,5);
 /* End - BUG:M0000084 */
+
+/* Begin - BUG#5603 */
+-- replace(...) --> sys.replace(...)
+select REPLACE(('21.23.25.98'), '''', '');
+select REPLACE(('21.23.25.98')::varchar, '''', '');
+select REPLACE(('21.23.25.98')::char(100), '''', '');
+/* End - BUG#5603 */

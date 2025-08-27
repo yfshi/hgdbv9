@@ -17209,13 +17209,11 @@ select * from toj1,toj2 where toj1.id(+) in (1,2,null) connect by nocycle prior 
 select * from toj1,toj2 where toj1.id = toj1.id(+) connect by nocycle prior toj1.id = toj2.id;
 ERROR:  two tables cannot be outer-joined to each other
 select * from toj1,toj2 where toj1.id in toj1.id(+) connect by nocycle prior toj1.id = toj2.id;
-ERROR:  syntax error at or near "toj1"
+ERROR:  syntax error at or near "("
 LINE 1: select * from toj1,toj2 where toj1.id in toj1.id(+) connect ...
-                                                 ^
+                                                        ^
 select * from toj1,toj2 where toj1.id(+) in toj1.id connect by nocycle prior toj1.id = toj2.id;
-ERROR:  syntax error at or near "toj1"
-LINE 1: select * from toj1,toj2 where toj1.id(+) in toj1.id connect ...
-                                                    ^
+ERROR:  two tables cannot be outer-joined to each other
 select * from toj1,toj2 where toj1.id between toj1.id(+) and 1 connect by nocycle prior toj1.id = toj2.id;
 ERROR:  two tables cannot be outer-joined to each other
 select * from toj1,toj2 where toj1.id(+) between toj1.id and 1 connect by nocycle prior toj1.id = toj2.id;
@@ -17286,23 +17284,15 @@ ERROR:  a predicate may reference only one outer-joined table
 select * from toj1,toj2 where 1 in ( toj1.id(+) + toj2.id(+)) connect by nocycle prior toj1.id = toj2.id;
 ERROR:  a predicate may reference only one outer-joined table
 select * from toj1,toj2 where toj1.id(+) + toj2.id(+) in 1 connect by nocycle prior toj1.id = toj2.id;
-ERROR:  syntax error at or near "1"
-LINE 1: ...* from toj1,toj2 where toj1.id(+) + toj2.id(+) in 1 connect ...
-                                                             ^
+ERROR:  a predicate may reference only one outer-joined table
 select * from toj1,toj2,toj3 where toj1.id(+) + toj2.id(+) in toj3.id connect by nocycle prior toj1.id = toj2.id;
-ERROR:  syntax error at or near "toj3"
-LINE 1: ...m toj1,toj2,toj3 where toj1.id(+) + toj2.id(+) in toj3.id co...
-                                                             ^
+ERROR:  a predicate may reference only one outer-joined table
 select * from toj1,toj2 where 1 not in (toj1.id(+) + toj2.id(+)) connect by nocycle prior toj1.id = toj2.id;
 ERROR:  a predicate may reference only one outer-joined table
 select * from toj1,toj2 where toj1.id(+) + toj2.id(+) not in 1 connect by nocycle prior toj1.id = toj2.id;
-ERROR:  syntax error at or near "1"
-LINE 1: ...om toj1,toj2 where toj1.id(+) + toj2.id(+) not in 1 connect ...
-                                                             ^
+ERROR:  a predicate may reference only one outer-joined table
 select * from toj1,toj2,toj3 where toj1.id(+) + toj2.id(+) not in toj3.id connect by nocycle prior toj1.id = toj2.id;
-ERROR:  syntax error at or near "toj3"
-LINE 1: ...j1,toj2,toj3 where toj1.id(+) + toj2.id(+) not in toj3.id co...
-                                                             ^
+ERROR:  a predicate may reference only one outer-joined table
 select * from toj1,toj2 where toj1.id(+) + toj1.id2(+) between toj2.id(+) and 2 connect by nocycle prior toj1.id = toj2.id;
 ERROR:  a predicate may reference only one outer-joined table
 --bug0000322

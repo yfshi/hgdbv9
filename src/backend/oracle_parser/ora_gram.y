@@ -543,6 +543,7 @@ static bool isAconstNode(Node *node);
 				a_expr b_expr c_expr AexprConst indirection_el opt_slice_bound
 				columnref in_expr having_clause func_table xmltable array_expr
 				OptWhereClause operator_def_arg
+%type <node>	in_c_expr in_a_expr /* OA#1682 */
 %type <list>	rowsfrom_item rowsfrom_list opt_col_def_list
 %type <boolean> opt_ordinality
 %type <list>	ExclusionConstraintList ExclusionConstraintElem
@@ -811,6 +812,7 @@ static bool isAconstNode(Node *node);
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE /* ReqID:SRS-SQL-MERGE */
 	METHOD MINUTE_P MINVALUE MODE MODIFY MONTH_P MOVE /* ReqID:SRS-SQL-IDENTCOL */
+	MINUS		/* OA#1682 */
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NOCACHE NOCYCLE /* ReqID:SRS-SQL-IDENTCOL */
 	NOMAXVALUE NOMINVALUE NONE NOORDER /* ReqID:SRS-SQL-IDENTCOL */
@@ -1006,7 +1008,7 @@ static bool isAconstNode(Node *node);
 %nonassoc	NOCYCLE
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
 
-%left		UNION EXCEPT
+%left		UNION EXCEPT MINUS	/* OA#1682 */
 %left		INTERSECT
 %left		OR
 %left		AND
@@ -14615,6 +14617,12 @@ simple_select:
 				{
 					$$ = makeSetOp(SETOP_EXCEPT, $3 == SET_QUANTIFIER_ALL, $1, $4);
 				}
+			/* Begin - OA#1682 */
+			| select_clause MINUS set_quantifier select_clause
+				{
+					$$ = makeSetOp(SETOP_EXCEPT, $3 == SET_QUANTIFIER_ALL, $1, $4);
+				}
+			/* End - OA#1682 */
 		;
 
 /*
@@ -19735,6 +19743,61 @@ trim_list:	a_expr FROM expr_list					{ $$ = lappend($3, $1); }
 			| expr_list								{ $$ = $1; }
 		;
 
+/*
+ * Begin - OA#1682
+ *   in_expr support: IN expr
+ */
+in_c_expr:	ColId
+				{
+					ColumnRefOrFuncCall *crorfc = makeNode(ColumnRefOrFuncCall);
+					crorfc->func = makeFuncCall(list_make1(makeString($1)), NIL, COERCE_EXPLICIT_CALL, @1);
+					crorfc->cref = (ColumnRef *) makeColumnRef($1, NIL, @1, yyscanner);
+					$$ = (Node *) crorfc;
+				}
+			| ColId indirection
+				{
+					ColumnRefOrFuncCall *crorfc = makeNode(ColumnRefOrFuncCall);
+					crorfc->func = makeFuncCall(list_make1(makeString($1)), NIL, COERCE_EXPLICIT_CALL, @1);
+					crorfc->cref = (ColumnRef *) makeColumnRef($1, $2, @1, yyscanner);
+					$$ = (Node *) crorfc;
+				}
+			| AexprConst							{ $$ = $1; }
+			| case_expr
+				{ $$ = $1; }
+			| func_expr
+				{ $$ = $1; }
+		;
+
+in_a_expr:	in_c_expr								{ $$ = $1; }
+			| in_a_expr TYPECAST Typename
+					{ $$ = makeTypeCast($1, $3, @2); }
+			| in_a_expr COLLATE any_name
+				{
+					CollateClause *n = makeNode(CollateClause);
+					n->arg = $1;
+					n->collname = $3;
+					n->location = @2;
+					$$ = (Node *) n;
+				}
+			| '+' in_a_expr					%prec UMINUS
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "+", NULL, $2, @1); }
+			| '-' in_a_expr					%prec UMINUS
+				{ $$ = doNegate($2, @1); }
+			| in_a_expr '+' in_a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "+", $1, $3, @2); }
+			| in_a_expr '-' in_a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "-", $1, $3, @2); }
+			| in_a_expr '*' in_a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "*", $1, $3, @2); }
+			| in_a_expr '/' in_a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", $1, $3, @2); }
+			| in_a_expr '%' in_a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "%", $1, $3, @2); }
+			| in_a_expr '^' in_a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "^", $1, $3, @2); }
+		;
+/* End - OA#1682 */
+
 in_expr:	select_with_parens
 				{
 					SubLink *n = makeNode(SubLink);
@@ -19743,6 +19806,7 @@ in_expr:	select_with_parens
 					$$ = (Node *)n;
 				}
 			| '(' expr_list ')'						{ $$ = (Node *)$2; }
+			| in_a_expr					%prec Op	{ $$ = (Node *)list_make1($1); }	/* OA#1682 */
 		;
 
 /*
@@ -21285,6 +21349,7 @@ reserved_keyword:
 			| LISTAGG /* BUG#M0000457 */
 			| LOCALTIME
 			| LOCALTIMESTAMP
+			| MINUS	/* OA#1682 */
 			| NAN_P	/* BUG:Z093 */
 			| NOCOPY /* ReqID:SRS-SQL-PROC */
 			| NOT

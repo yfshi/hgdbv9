@@ -3232,3 +3232,24 @@ SELECT instr('abcdefabcdefabc','bc',1,5);
 (1 row)
 
 /* End - BUG:M0000084 */
+/* Begin - BUG#5603 */
+-- replace(...) --> sys.replace(...)
+select REPLACE(('21.23.25.98'), '''', '');
+   replace   
+-------------
+ 21.23.25.98
+(1 row)
+
+select REPLACE(('21.23.25.98')::varchar, '''', '');
+   replace   
+-------------
+ 21.23.25.98
+(1 row)
+
+select REPLACE(('21.23.25.98')::char(100), '''', '');
+   replace   
+-------------
+ 21.23.25.98
+(1 row)
+
+/* End - BUG#5603 */

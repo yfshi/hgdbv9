@@ -2488,3 +2488,34 @@ select decode(c_dt, c_char, 'A', c_dt, 'B', 'C') from tb_datatype;
 select decode(c_num, c_byflt, 'A', c_bydbl, 'B', 'C') from tb_datatype;
 drop table tb_datatype;
 /* End - BUG#Z4593 */
+
+/* Begin - OA#1682 */
+-- decode(substring, ...)
+create table test_decode_a(id varchar2(20), category varchar2(20));
+create table test_decode_b(id varchar2(20), category varchar2(20));
+INSERT INTO test_decode_a(id) VALUES ('2023001'),('2023002'),('2023003');
+insert into test_decode_b values ('2023001', '1'),('2023002', '2'),('2023003', '3');
+SELECT
+	a.id,
+	decode((SELECT category
+            FROM test_decode_b b
+            WHERE b.id = a.id
+            LIMIT 1),
+           '1', 'catone',
+           '2', 'cattwo',
+           '3', 'catthree') AS category
+FROM test_decode_a a;
+EXPLAIN (costs off) SELECT
+	a.id,
+	decode((SELECT category
+            FROM test_decode_b b
+            WHERE b.id = a.id
+            LIMIT 1),
+           '1', 'catone',
+           '2', 'cattwo',
+           '3', 'catthree') AS category
+FROM test_decode_a a;
+
+drop table test_decode_a;
+drop table test_decode_b;
+/* End - OA#1682 */

@@ -271,3 +271,15 @@ drop table public.test_id_bugm542;
 drop table sys.test_idx_bugm542;
 drop sequence sys.test_seq_bugm542;
 drop sequence public.test_seq_bugm542;
+
+
+/* Begin - OA#1682 */
+-- support in condition without '()'
+select x from (values (1), (2), (3)) _(x) where x in 1;
+select x from (values (1), (2), (3)) _(x) where x in 1 + 3 - 2;
+select x from (values (1), (2), (3)) _(x) where x in 3 % 2;
+select x from (values (1), (2), (3)) _(x) where x in int4(1) * int8(2);
+
+-- support minus
+select x from (values (row(1, 2)), (row(1, 3))) _(x) minus select x from (values (row(1, 2)), (row(1, 4))) _(x);
+/* End - OA#1682 */

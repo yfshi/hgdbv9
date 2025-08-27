@@ -257,10 +257,10 @@ SELECT d.f1 AS "timestamp", t.f1 AS "interval", d.f1 + t.f1 AS plus
   FROM TEMP_TIMESTAMP d, INTERVAL_TBL t
   ORDER BY plus, "timestamp", "interval";
 
-SELECT d.f1 AS "timestamp", t.f1 AS "interval", d.f1 - t.f1 AS minus
+SELECT d.f1 AS "timestamp", t.f1 AS "interval", d.f1 - t.f1 AS diff
   FROM TEMP_TIMESTAMP d, INTERVAL_TBL t
   WHERE isfinite(d.f1)
-  ORDER BY minus, "timestamp", "interval";
+  ORDER BY diff, "timestamp", "interval";
 
 SELECT d.f1 AS "timestamp",
    timestamp with time zone '1980-01-06 00:00 GMT' AS gpstime_zero,
