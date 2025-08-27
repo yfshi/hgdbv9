@@ -14989,7 +14989,7 @@ CharacterWithLength:  character '(' Iconst ')'
 				| CHAR_P '(' func_arg_list_opt ')'
 				{
 					int64 length = 0;
-					length = CheckAConstTypeLength($3);
+					length = CheckAConstTypeLength((Node*) $3);
 					if (length < 0)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
@@ -15014,7 +15014,7 @@ CharacterWithLength:  character '(' Iconst ')'
 				| TEXT_P '(' func_arg_list_opt ')'
 				{
 					int64 length = 0;
-					length = CheckAConstTypeLength($3);
+					length = CheckAConstTypeLength((Node *) $3);
 					if (length < 0)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
@@ -15134,7 +15134,7 @@ BinaryWithLength:
 			BINARY  '(' func_arg_list_opt ')'
 				{
 					int64 length = 0;
-					length = CheckAConstTypeLength($3);
+					length = CheckAConstTypeLength((Node *) $3);
 					if (length < 0)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
@@ -20949,10 +20949,10 @@ static int64 CheckAConstTypeLength(Node* node)
 	// Check bpchar\text\binary types length. If out of range, report an error.
 	double	length = -1;
 
-	if (list_length(node) != 1)
+	if (list_length((List *) node) != 1)
 		return -1;
 
-	node = linitial(node);
+	node = linitial((List *) node);
 	if (IsA(node, A_Const))
 	{
 		A_Const *con = (A_Const *)node;

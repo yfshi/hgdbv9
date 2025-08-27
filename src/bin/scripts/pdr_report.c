@@ -698,7 +698,7 @@ void replace_sql_elapsed(char* buf)
 			{
 				memset(tmp,0,sizeof(tmp));
 				strncpy(tmp,dbbuf.sql_elapsed[i].query,30);
-				strncat(tmp, "...",3);
+				strcat(tmp, "...");
 				replace_string(buf,name,tmp);
 			}
 		}
@@ -819,7 +819,7 @@ void replace_sql_cpu(char* buf)
 			{
 				memset(tmp,0,sizeof(tmp));
 				strncpy(tmp,dbbuf.sql_cpu[i].query,30);
-				strncat(tmp, "...",3);
+				strcat(tmp, "...");
 				replace_string(buf,name,tmp);
 			}
 		}
@@ -943,7 +943,7 @@ void replace_sql_io(char* buf)
 			{
 				memset(tmp,0,sizeof(tmp));
 				strncpy(tmp,dbbuf.sql_io[i].query,30);
-				strncat(tmp, "...",3);
+				strcat(tmp, "...");
 				replace_string(buf,name,tmp);
 			}
 		}
@@ -1064,7 +1064,7 @@ void replace_sql_gets(char* buf)
 			{
 				memset(tmp,0,sizeof(tmp));
 				strncpy(tmp,dbbuf.sql_gets[i].query,30);
-				strncat(tmp, "...",3);
+				strcat(tmp, "...");
 				replace_string(buf,name,tmp);
 			}
 		}
@@ -1188,7 +1188,7 @@ void replace_sql_reads(char* buf)
 			{
 				memset(tmp,0,sizeof(tmp));
 				strncpy(tmp,dbbuf.sql_reads[i].query,30);
-				strncat(tmp, "...",3);
+				strcat(tmp, "...");
 				replace_string(buf,name,tmp);
 			}
 		}
@@ -1307,7 +1307,7 @@ void replace_sql_exec(char* buf)
 			{
 				memset(tmp,0,sizeof(tmp));
 				strncpy(tmp,dbbuf.sql_exec[i].query,30);
-				strncat(tmp, "...",3);
+				strcat(tmp, "...");
 				replace_string(buf,name,tmp);
 			}
 		}
