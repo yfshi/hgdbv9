@@ -54,6 +54,7 @@ extern DBUser	CurUser;		/* ReqID:SRS-CMD-PGDUMP */
 extern const char *DumpM;	/* ReqID:SRS-CMD-PGDUMP */
 extern int caselowernum;	/* ReqID:SRS-MYSQL-CASE */
 
+extern char *sanitize_line(const char *str, bool want_hyphen);
 extern bool buildACLCommands(const char *name, const char *subname, const char *nspname,
 							 const char *type, const char *acls, const char *racls,
 							 const char *owner, const char *prefix, int remoteVersion,
