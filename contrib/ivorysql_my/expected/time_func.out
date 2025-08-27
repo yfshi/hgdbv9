@@ -1891,7 +1891,6 @@ WARNING:  Incorrect datetime value: '5373485'
 
 select to_days(1);--NULL warning
 WARNING:  Incorrect datetime value: '1'
-WARNING:  Incorrect datetime value: '0'
  to_days 
 ---------
         
@@ -1899,7 +1898,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select to_days(100);--NULL warning
 WARNING:  Incorrect datetime value: '100'
-WARNING:  Incorrect datetime value: '0'
  to_days 
 ---------
         
@@ -1920,7 +1918,6 @@ WARNING:  Incorrect datetime value: '20000012'
 
 select to_days(20001111250000);--NULL warning
 WARNING:  Incorrect datetime value: '20001111250000'
-WARNING:  Incorrect datetime value: '0'
  to_days 
 ---------
         
@@ -2101,7 +2098,6 @@ select dayname('2007-10-07');--Sunday
 
 select dayname(1);--NULL warning
 WARNING:  Incorrect datetime value: '1'
-WARNING:  Incorrect datetime value: '0'
  dayname 
 ---------
  
@@ -2109,7 +2105,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select dayname(100);--NULL warning
 WARNING:  Incorrect datetime value: '100'
-WARNING:  Incorrect datetime value: '0'
  dayname 
 ---------
  
@@ -2136,7 +2131,6 @@ WARNING:  Incorrect datetime value: '20000012'
 
 select dayname(20001111250000);--NULL warning
 WARNING:  Incorrect datetime value: '20001111250000'
-WARNING:  Incorrect datetime value: '0'
  dayname 
 ---------
  
@@ -2507,51 +2501,50 @@ select date(101);--2000-01-01
 
 select date(10);--NULL warning
 WARNING:  Incorrect datetime value: '10'
-    date    
-------------
- 0000-00-00
-(1 row)
-
-select date(1);--NULL warning
-WARNING:  Incorrect datetime value: '1'
-    date    
-------------
- 0000-00-00
-(1 row)
-
-select date(1.2);--NULL warning
-WARNING:  Incorrect datetime value: '1.2'
-    date    
-------------
- 0000-00-00
-(1 row)
-
-select date(0);--0000-00-00
-WARNING:  Incorrect datetime value: '5373485'
  date 
 ------
  
 (1 row)
 
-select date(89);--NULL warning
-WARNING:  Incorrect datetime value: '89'
+select date(1);--NULL warning
+WARNING:  Incorrect datetime value: '1'
+ date 
+------
+ 
+(1 row)
+
+select date(1.2);--NULL warning
+WARNING:  Incorrect datetime value: '1.2'
+ date 
+------
+ 
+(1 row)
+
+select date(0);--0000-00-00
     date    
 ------------
  0000-00-00
+(1 row)
+
+select date(89);--NULL warning
+WARNING:  Incorrect datetime value: '89'
+ date 
+------
+ 
 (1 row)
 
 select date(8.9);--NULL warning
 WARNING:  Incorrect datetime value: '8.9'
-    date    
-------------
- 0000-00-00
+ date 
+------
+ 
 (1 row)
 
 select date(12128.9);--NULL warning
 WARNING:  Incorrect datetime value: '12128.9'
-    date    
-------------
- 0000-00-00
+ date 
+------
+ 
 (1 row)
 
 select date(950501);--1995-05-01
@@ -2574,9 +2567,9 @@ select date('2008-02-03');--2008-02-03
 
 select date(100);--NULL warning
 WARNING:  Incorrect datetime value: '100'
-    date    
-------------
- 0000-00-00
+ date 
+------
+ 
 (1 row)
 
 select date(101.6);--2000-01-01
@@ -2593,9 +2586,9 @@ select date(20000012);--2000-00-12
 
 select date(20001111250000);--NULL warning
 WARNING:  Incorrect datetime value: '20001111250000'
-    date    
-------------
- 0000-00-00
+ date 
+------
+ 
 (1 row)
 
 select date(200011112323233242424242456565);--NULL warning
@@ -2690,7 +2683,6 @@ select week(101);--0
 
 select week(10);--NULL warning
 WARNING:  Incorrect datetime value: '10'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2698,7 +2690,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select week(1);--NULL warning
 WARNING:  Incorrect datetime value: '1'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2706,7 +2697,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select week(1.2);--NULL warning
 WARNING:  Incorrect datetime value: '1.2'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2721,7 +2711,6 @@ WARNING:  Incorrect datetime value: '5373485'
 
 select week(89);--NULL warning
 WARNING:  Incorrect datetime value: '89'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2729,7 +2718,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select week(8.9);--NULL warning
 WARNING:  Incorrect datetime value: '8.9'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2737,7 +2725,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select week(12128.9);--NULL warning
 WARNING:  Incorrect datetime value: '12128.9'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2763,7 +2750,6 @@ select week('2008-02-03');--5
 
 select week(100);--NULL warning
 WARNING:  Incorrect datetime value: '100'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2784,7 +2770,6 @@ WARNING:  Incorrect datetime value: '20000012'
 
 select week(20001111250000);--NULL warning
 WARNING:  Incorrect datetime value: '20001111250000'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2884,7 +2869,6 @@ select week(101, 2);--52
 
 select week(10, 2);--NULL warning
 WARNING:  Incorrect datetime value: '10'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2892,7 +2876,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select week(1, 2);--NULL warning
 WARNING:  Incorrect datetime value: '1'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2900,7 +2883,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select week(1.2, 2);--NULL warning
 WARNING:  Incorrect datetime value: '1.2'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2915,7 +2897,6 @@ WARNING:  Incorrect datetime value: '5373485'
 
 select week(89, 2);--NULL warning
 WARNING:  Incorrect datetime value: '89'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2923,7 +2904,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select week(8.9, 2);--NULL warning
 WARNING:  Incorrect datetime value: '8.9'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2931,7 +2911,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select week(12128.9, 2);--NULL warning
 WARNING:  Incorrect datetime value: '12128.9'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2957,7 +2936,6 @@ select week('2008-02-03', 2);--5
 
 select week(100, 2);--NULL warning
 WARNING:  Incorrect datetime value: '100'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2978,7 +2956,6 @@ WARNING:  Incorrect datetime value: '20000012'
 
 select week(20001111250000, 2);--NULL warning
 WARNING:  Incorrect datetime value: '20001111250000'
-WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -3075,7 +3052,6 @@ select yearweek(101);--199952
 
 select yearweek(10);--NULL warning
 WARNING:  Incorrect datetime value: '10'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3083,7 +3059,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select yearweek(1);--NULL warning
 WARNING:  Incorrect datetime value: '1'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3091,7 +3066,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select yearweek(1.2);--NULL warning
 WARNING:  Incorrect datetime value: '1.2'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3106,7 +3080,6 @@ WARNING:  Incorrect datetime value: '5373485'
 
 select yearweek(89);--NULL warning
 WARNING:  Incorrect datetime value: '89'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3114,7 +3087,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select yearweek(8.9);--NULL warning
 WARNING:  Incorrect datetime value: '8.9'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3122,7 +3094,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select yearweek(12128.9);--NULL warning
 WARNING:  Incorrect datetime value: '12128.9'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3148,7 +3119,6 @@ select yearweek('2008-02-03');--200805
 
 select yearweek(100);--NULL warning
 WARNING:  Incorrect datetime value: '100'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3169,7 +3139,6 @@ WARNING:  Incorrect datetime value: '20000012'
 
 select yearweek(20001111250000);--NULL warning
 WARNING:  Incorrect datetime value: '20001111250000'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3264,7 +3233,6 @@ select yearweek(101, 4);--199952
 
 select yearweek(10, 4);--NULL warning
 WARNING:  Incorrect datetime value: '10'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3272,7 +3240,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select yearweek(1, 4);--NULL warning
 WARNING:  Incorrect datetime value: '1'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3280,7 +3247,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select yearweek(1.2, 4);--NULL warning
 WARNING:  Incorrect datetime value: '1.2'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3295,7 +3261,6 @@ WARNING:  Incorrect datetime value: '5373485'
 
 select yearweek(89, 4);--NULL warning
 WARNING:  Incorrect datetime value: '89'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3303,7 +3268,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select yearweek(8.9, 4);--NULL warning
 WARNING:  Incorrect datetime value: '8.9'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3311,7 +3275,6 @@ WARNING:  Incorrect datetime value: '0'
 
 select yearweek(12128.9, 4);--NULL warning
 WARNING:  Incorrect datetime value: '12128.9'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3337,7 +3300,6 @@ select yearweek('2008-02-03', 4);--200806
 
 select yearweek(100, 4);--NULL warning
 WARNING:  Incorrect datetime value: '100'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3358,7 +3320,6 @@ WARNING:  Incorrect datetime value: '20000012'
 
 select yearweek(20001111250000, 4);--NULL warning
 WARNING:  Incorrect datetime value: '20001111250000'
-WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -4327,3 +4288,269 @@ WARNING:  Truncated incorrect time value: '4294967295:59:59'
 (1 row)
 
 /* End - BUG#Z5567 */
+/* Begin - BUG#Z5566 */
+SELECT TIME_TO_SEC(CAST('2:61:10' AS time));
+WARNING:  Incorrect time value: '2:61:10'
+LINE 3: SELECT TIME_TO_SEC(CAST('2:61:10' AS time));
+                                ^
+ TIME_TO_SEC 
+-------------
+            
+(1 row)
+
+SELECT TIME_TO_SEC(CAST('2:20:60' AS TIME));
+WARNING:  Incorrect time value: '2:20:60'
+LINE 1: SELECT TIME_TO_SEC(CAST('2:20:60' AS TIME));
+                                ^
+ TIME_TO_SEC 
+-------------
+            
+(1 row)
+
+/* End - BUG#Z5566 */
+/* Begin - BUG#Z5568 */
+create table test as SELECT time_to_sec(cast('2025-04-17' as date));
+\d+ test;
+                                      Table "public.test"
+   Column    |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+-------------+---------+-----------+----------+---------+---------+--------------+-------------
+ time_to_sec | integer |           |          |         | plain   |              | 
+
+drop table test;
+/* End - BUG#Z5568 */
+/* Begin - BUG#Z5569 */
+SELECT TIME_TO_SEC(cast('20250517 14:30:00' as datetime));
+WARNING:  Incorrect datetime value: '20250517 14:30:00'
+LINE 3: SELECT TIME_TO_SEC(cast('20250517 14:30:00' as datetime));
+                                ^
+ TIME_TO_SEC 
+-------------
+            
+(1 row)
+
+SELECT TIME_TO_SEC(cast('20250517 14:30:00' as date));
+WARNING:  Incorrect datetime value: '20250517 14:30:00'
+LINE 1: SELECT TIME_TO_SEC(cast('20250517 14:30:00' as date));
+                                ^
+ TIME_TO_SEC 
+-------------
+            
+(1 row)
+
+/* End - BUG#Z5569 */
+/* Begin - BUG#Z5571 */
+select month(0);
+ month 
+-------
+     0
+(1 row)
+
+SELECT month(20250228251203);
+WARNING:  Incorrect datetime value: '20250228251203'
+ month 
+-------
+      
+(1 row)
+
+SELECT month(20250228206003);
+WARNING:  Incorrect datetime value: '20250228206003'
+ month 
+-------
+      
+(1 row)
+
+SELECT month(20250228201260);
+WARNING:  Incorrect datetime value: '20250228201260'
+ month 
+-------
+      
+(1 row)
+
+SELECT month(999990220);
+WARNING:  Incorrect datetime value: '999990220'
+ month 
+-------
+      
+(1 row)
+
+SELECT month(20251301);
+WARNING:  Incorrect datetime value: '20251301'
+ month 
+-------
+      
+(1 row)
+
+SELECT month(20250230);
+WARNING:  Incorrect datetime value: '20250230'
+ month 
+-------
+      
+(1 row)
+
+select month(-20251201.999);
+WARNING:  Incorrect datetime value: '-20251201.999'
+ month 
+-------
+      
+(1 row)
+
+select month(-20251201.0);
+WARNING:  Incorrect datetime value: '-20251201.0'
+ month 
+-------
+      
+(1 row)
+
+select month(-20251218142030.9999);
+WARNING:  Incorrect datetime value: '-20251218142030.9999'
+ month 
+-------
+      
+(1 row)
+
+select month(-20251218142030.01);
+WARNING:  Incorrect datetime value: '-20251218142030.01'
+ month 
+-------
+      
+(1 row)
+
+select date(0);
+    date    
+------------
+ 0000-00-00
+(1 row)
+
+SELECT date(20250228251203);
+WARNING:  Incorrect datetime value: '20250228251203'
+ date 
+------
+ 
+(1 row)
+
+SELECT date(20250228206003);
+WARNING:  Incorrect datetime value: '20250228206003'
+ date 
+------
+ 
+(1 row)
+
+SELECT date(20250228201260);
+WARNING:  Incorrect datetime value: '20250228201260'
+ date 
+------
+ 
+(1 row)
+
+SELECT date(999990220);
+WARNING:  Incorrect datetime value: '999990220'
+ date 
+------
+ 
+(1 row)
+
+SELECT date(20251301);
+WARNING:  Incorrect datetime value: '20251301'
+ date 
+------
+ 
+(1 row)
+
+SELECT date(20250230);
+WARNING:  Incorrect datetime value: '20250230'
+ date 
+------
+ 
+(1 row)
+
+select date(-20251201.999);
+WARNING:  Incorrect datetime value: '-20251201.999'
+ date 
+------
+ 
+(1 row)
+
+select date(-20251201.0);
+WARNING:  Incorrect datetime value: '-20251201.0'
+ date 
+------
+ 
+(1 row)
+
+select date(-20251218142030.9999);
+WARNING:  Incorrect datetime value: '-20251218142030.9999'
+ date 
+------
+ 
+(1 row)
+
+select date(-20251218142030.01);
+WARNING:  Incorrect datetime value: '-20251218142030.01'
+ date 
+------
+ 
+(1 row)
+
+/* End - BUG#Z5571 */
+/* Begin - BUG#Z5572 */
+SELECT month('2025-04-31'::date);
+WARNING:  Incorrect datetime value: '2025-04-31'
+LINE 3: SELECT month('2025-04-31'::date);
+                     ^
+ month 
+-------
+      
+(1 row)
+
+SELECT month('20251301'::date);
+WARNING:  Incorrect datetime value: '20251301'
+LINE 1: SELECT month('20251301'::date);
+                     ^
+ month 
+-------
+      
+(1 row)
+
+SELECT month('20251301'::date);
+WARNING:  Incorrect datetime value: '20251301'
+LINE 1: SELECT month('20251301'::date);
+                     ^
+ month 
+-------
+      
+(1 row)
+
+SELECT month('100000805'::date);
+WARNING:  Incorrect datetime value: '100000805'
+LINE 1: SELECT month('100000805'::date);
+                     ^
+ month 
+-------
+      
+(1 row)
+
+/* End - BUG#Z5572 */
+/* Begin - BUG#Z5576 */
+create table test as select YEARWEEK(20250730::int);
+\d+ test;
+                                    Table "public.test"
+  Column  |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+----------+---------+-----------+----------+---------+---------+--------------+-------------
+ YEARWEEK | integer |           |          |         | plain   |              | 
+
+drop table test;
+/* End - BUG#Z5576 */
+/* Begin - BUG#Z5578 */
+select DATEDIFF('9999-12-31','0001-01-01');
+ DATEDIFF 
+----------
+  3652058
+(1 row)
+
+select to_days('0001-01-01'); /* BUG#5607 */
+ to_days 
+---------
+     366
+(1 row)
+
+/* End - BUG#Z5578 */

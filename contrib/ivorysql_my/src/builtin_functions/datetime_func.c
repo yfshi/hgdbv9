@@ -2383,6 +2383,11 @@ get_time_from_num(Numeric num, struct pg_tm *tm, fsec_t *fsec, int flag, int *de
 	}
 	timetemp = (neg != 1 ? timetemp : -timetemp);
 
+	/* Begin - BUG#Z5566 */
+	if (timetemp == MYSQL_NULL_TIME)
+		return false;
+	/* End - BUG#Z5566 */
+
 	/* First obtain nanosecond accuracy, then obtain dec accuracy */
 	dterr = mysnumber_to_time(timetemp, tm, flag, fsec, &ftype, &warn, &neg);
 	*fsec = (nanofsec + 500) / 1000;
@@ -2676,15 +2681,25 @@ Datum
 to_days(PG_FUNCTION_ARGS)
 {
 	struct	pg_tm tt, *tm = &tt;
+	struct	pg_tm tt1, *tm1 = &tt1;
 	fsec_t	fsec = 0;
 	int64	result = 0;
 	int		flag = TIME_NO_ZERO_DATE;
 
 	DateADT	date = PG_GETARG_DATEADT(0);
-
-	if (!get_date_from_int(date, tm, &fsec, flag))
+	/* Begin - BUG#Z5578 */
+	if (date == 0)
 		PG_RETURN_NULL();
+	else if (date == MYSQL_ZERO_DATE)
+	{
+		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
+		PG_RETURN_NULL();
+	}
 
+	if (!get_date_from_int(date, tm1, &fsec, flag))
+		PG_RETURN_NULL();
+	mys_date2tm(date, tm);
+	/* End - BUG#Z5578 */
 	result = calc_day(tm->tm_year, tm->tm_mon, tm->tm_mday);
 	PG_RETURN_INT64(result);
 }
@@ -2802,13 +2817,24 @@ dayname(PG_FUNCTION_ARGS)
 	char	   *weekname = NULL;
 	MyLocale   *locale = NULL;
 	struct	pg_tm tt, *tm = &tt;
+	struct	pg_tm tt1, *tm1 = &tt1; /* BUG#Z5578 */
 	fsec_t		fsec = 0;
 	int			flag = TIME_NO_ZERO_DATE;
 
 	DateADT		date = PG_GETARG_DATEADT(0);
-
-	if (!get_date_from_int(date, tm, &fsec, flag))
+	/* Begin - BUG#Z5578 */
+	if (date == 0)
 		PG_RETURN_NULL();
+	else if (date == MYSQL_ZERO_DATE)
+	{
+		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
+		PG_RETURN_NULL();
+	}
+
+	if (!get_date_from_int(date, tm1, &fsec, flag))
+		PG_RETURN_NULL();
+	mys_date2tm(date, tm);
+	/* End - BUG#Z5578 */
 	weekday = calc_weekday(calc_day(tm->tm_year, tm->tm_mon, tm->tm_mday), false);
 
 	if (locale == NULL)
@@ -2816,7 +2842,9 @@ dayname(PG_FUNCTION_ARGS)
 	weekname = locale->day_names[weekday];
 
 	/* Begin - BUGZ5533 */
-	result = DatumGetVarCharP(DirectFunctionCall1(varcharin, CStringGetDatum(pstrdup(weekname))));
+	result = DatumGetVarCharP(DirectFunctionCall3(varcharin, CStringGetDatum(pstrdup(weekname)),
+															  ObjectIdGetDatum(InvalidOid),
+															  Int32GetDatum(-1)));
 	PG_RETURN_VARCHAR_P(result);
 	/* End - BUGZ5533 */
 }
@@ -2832,7 +2860,15 @@ monthname(PG_FUNCTION_ARGS)
 	int			flag = TIME_FUZZY_DATE;
 
 	DateADT		date = PG_GETARG_DATEADT(0);
-
+	/* Begin - BUG#Z5578 */
+	if (date == 0)
+		PG_RETURN_NULL();
+	else if (date == MYSQL_ZERO_DATE)
+	{
+		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
+		PG_RETURN_NULL();
+	}
+	/* End - BUG#Z5578 */
 	if (!get_date_from_int(date, tm, &fsec, flag))
 		PG_RETURN_NULL();
 
@@ -2844,7 +2880,9 @@ monthname(PG_FUNCTION_ARGS)
 	monthname = locale->month_names[tm->tm_mon - 1];
 
 	/* Begin - BUGZ5533 */
-	result = DatumGetVarCharP(DirectFunctionCall1(varcharin, CStringGetDatum(pstrdup(monthname))));
+	result = DatumGetVarCharP(DirectFunctionCall3(varcharin, CStringGetDatum(pstrdup(monthname)),
+															  ObjectIdGetDatum(InvalidOid),
+															  Int32GetDatum(-1)));
 	PG_RETURN_VARCHAR_P(result);
 	/* End - BUGZ5533 */
 }
@@ -2875,6 +2913,12 @@ mys_month(PG_FUNCTION_ARGS)
 
 	DateADT		date = PG_GETARG_DATEADT(0);
 
+	/* Begin - BUG#Z5571 */
+	if (date == 0)
+		PG_RETURN_NULL();
+	else if (date == MYSQL_ZERO_DATE)
+		PG_RETURN_INT32(0);
+	/* End - BUG#Z5571 */
 	if (!get_date_from_int(date, tm, &fsec, flag))
 		PG_RETURN_NULL();
 
@@ -2885,13 +2929,22 @@ Datum
 mys_date(PG_FUNCTION_ARGS)
 {
 	struct	pg_tm tt, *tm = &tt;
+	struct	pg_tm tt1, *tm1 = &tt1; /* BUG#Z5578 */
 	fsec_t	fsec = 0;
 	DateADT	result = 0;
 	int		flag = TIME_FUZZY_DATE | TIME_NO_DATE_FRAC_WARN;
 
-	DateADT 	date = PG_GETARG_DATEADT(0);
-	if (!get_date_from_int(date, tm, &fsec, flag))
+	DateADT	date = PG_GETARG_DATEADT(0);
+
+	/* Begin - BUG#Z5571 */
+	if (date == 0)
 		PG_RETURN_NULL();
+	else if (date == MYSQL_ZERO_DATE)
+		PG_RETURN_INT32(MYSQL_ZERO_DATE);
+	/* End - BUG#Z5571 */
+	if (!get_date_from_int(date, tm1, &fsec, flag))
+		PG_RETURN_NULL();
+	mys_date2tm(date, tm); /* BUG#Z5578 */
 
 	if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
 		result = MYSQL_ZERO_DATE;
@@ -2905,15 +2958,26 @@ Datum
 mys_week(PG_FUNCTION_ARGS)
 {
 	struct	pg_tm tt, *tm = &tt;
+	struct	pg_tm tt1, *tm1 = &tt1; /* BUG#Z5578 */
 	fsec_t	fsec = 0;
 	int		result = 0;
 	int		mode = default_week_format;
 	int		flag = TIME_NO_ZERO_DATE;
 
 	DateADT		date = PG_GETARG_DATEADT(0);
-
-	if (!get_date_from_int(date, tm, &fsec, flag))
+	/* Begin - BUG#Z5578 */
+	if (date == 0)
 		PG_RETURN_NULL();
+	else if (date == MYSQL_ZERO_DATE)
+	{
+		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
+		PG_RETURN_NULL();
+	}
+
+	if (!get_date_from_int(date, tm1, &fsec, flag))
+		PG_RETURN_NULL();
+	mys_date2tm(date, tm);
+	/* End - BUG#Z5578 */
 	result = calc_week(tm, week_mode(mode), &(tm->tm_year));
 	PG_RETURN_INT32(result);
 }
@@ -2922,6 +2986,7 @@ Datum
 mys_week_mode(PG_FUNCTION_ARGS)
 {
 	struct	pg_tm tt, *tm = &tt;
+	struct	pg_tm tt1, *tm1 = &tt1; /* BUG#Z5578 */
 	fsec_t	fsec = 0;
 	int		result = 0;
 	int		flag = TIME_NO_ZERO_DATE;
@@ -2938,8 +3003,18 @@ mys_week_mode(PG_FUNCTION_ARGS)
 		mode = PG_GETARG_INT32(1);
 	date = PG_GETARG_DATEADT(0);
 	/* End - BUG#Z5528 */
-	if (!get_date_from_int(date, tm, &fsec, flag))
+	/* Begin - BUG#Z5578 */
+	if (date == 0)
 		PG_RETURN_NULL();
+	else if (date == MYSQL_ZERO_DATE)
+	{
+		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
+		PG_RETURN_NULL();
+	}
+	if (!get_date_from_int(date, tm1, &fsec, flag))
+		PG_RETURN_NULL();
+	mys_date2tm(date, tm);
+	/* End - BUG#Z5578 */
 	result = calc_week(tm, week_mode(mode), &(tm->tm_year));
 	PG_RETURN_INT32(result);
 }
@@ -2948,6 +3023,7 @@ Datum
 yearweek(PG_FUNCTION_ARGS)
 {
 	struct	pg_tm tt, *tm = &tt;
+	struct	pg_tm tt1, *tm1 = &tt1;
 	fsec_t	fsec = 0;
 	int		result = 0;
 	int		flag = TIME_NO_ZERO_DATE;
@@ -2963,7 +3039,19 @@ yearweek(PG_FUNCTION_ARGS)
 		mode = PG_GETARG_INT32(1);
 	date = PG_GETARG_DATEADT(0);
 	/* End - BUG#Z5530 */
+	/* Begin - BUG#Z5578 */
+	if (date == 0)
+		PG_RETURN_NULL();
+	else if (date == MYSQL_ZERO_DATE)
+	{
+		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
+		PG_RETURN_NULL();
+	}
 
+	if (!get_date_from_int(date, tm1, &fsec, flag))
+		PG_RETURN_NULL();
+	mys_date2tm(date, tm);
+/* End - BUG#Z5578 */
 	/* Begin - BUG#Z5575 */
 	if (mode > 7)
 		mode = mode %8;
@@ -2971,12 +3059,9 @@ yearweek(PG_FUNCTION_ARGS)
 		mode = -(mode % 8);
 	/* End - BUG#Z5575 */
 
-	if (!get_date_from_int(date, tm, &fsec, flag))
-		PG_RETURN_NULL();
-
 	result = calc_week(tm, week_mode(mode) | WEEK_YEAR, &(tm->tm_year));
 	result += tm->tm_year * 100;
-	PG_RETURN_INT64(result);
+	PG_RETURN_INT32(result); /* BUG#Z5576 */
 }
 
 Datum
@@ -3125,7 +3210,9 @@ get_format(PG_FUNCTION_ARGS)
 	}
 
 	/* Begin - BUGZ5533 */
-	result = DatumGetVarCharP(DirectFunctionCall1(varcharin, CStringGetDatum(pstrdup(result_str))));
+	result = DatumGetVarCharP(DirectFunctionCall3(varcharin, CStringGetDatum(pstrdup(result_str)),
+															  ObjectIdGetDatum(InvalidOid),
+															  Int32GetDatum(-1)));
 	PG_RETURN_VARCHAR_P(result);
 	/* End - BUGZ5533 */
 }

@@ -1194,3 +1194,63 @@ set sql_mode to default;
 /* Begin - BUG#Z5567 */
 SELECT time_to_sec('4294967295:59:59');
 /* End - BUG#Z5567 */
+
+/* Begin - BUG#Z5566 */
+SELECT TIME_TO_SEC(CAST('2:61:10' AS time));
+SELECT TIME_TO_SEC(CAST('2:20:60' AS TIME));
+/* End - BUG#Z5566 */
+
+/* Begin - BUG#Z5568 */
+create table test as SELECT time_to_sec(cast('2025-04-17' as date));
+\d+ test;
+drop table test;
+/* End - BUG#Z5568 */
+
+/* Begin - BUG#Z5569 */
+SELECT TIME_TO_SEC(cast('20250517 14:30:00' as datetime));
+SELECT TIME_TO_SEC(cast('20250517 14:30:00' as date));
+/* End - BUG#Z5569 */
+
+/* Begin - BUG#Z5571 */
+select month(0);
+SELECT month(20250228251203);
+SELECT month(20250228206003);
+SELECT month(20250228201260);
+SELECT month(999990220);
+SELECT month(20251301);
+SELECT month(20250230);
+select month(-20251201.999);
+select month(-20251201.0);
+select month(-20251218142030.9999);
+select month(-20251218142030.01);
+
+select date(0);
+SELECT date(20250228251203);
+SELECT date(20250228206003);
+SELECT date(20250228201260);
+SELECT date(999990220);
+SELECT date(20251301);
+SELECT date(20250230);
+select date(-20251201.999);
+select date(-20251201.0);
+select date(-20251218142030.9999);
+select date(-20251218142030.01);
+/* End - BUG#Z5571 */
+
+/* Begin - BUG#Z5572 */
+SELECT month('2025-04-31'::date);
+SELECT month('20251301'::date);
+SELECT month('20251301'::date);
+SELECT month('100000805'::date);
+/* End - BUG#Z5572 */
+
+/* Begin - BUG#Z5576 */
+create table test as select YEARWEEK(20250730::int);
+\d+ test;
+drop table test;
+/* End - BUG#Z5576 */
+
+/* Begin - BUG#Z5578 */
+select DATEDIFF('9999-12-31','0001-01-01');
+select to_days('0001-01-01'); /* BUG#5607 */
+/* End - BUG#Z5578 */

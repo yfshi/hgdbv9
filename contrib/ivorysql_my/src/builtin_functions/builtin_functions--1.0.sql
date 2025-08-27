@@ -1700,9 +1700,10 @@ PARALLEL SAFE
 IMMUTABLE;
 /* End - BUG#Z5533 */
 
+/* Begin - BUG#Z5568 */
 --time_to_sec
 CREATE FUNCTION ivymy.time_to_sec(time(6))
-RETURNS bigint
+RETURNS int
 AS 'MODULE_PATHNAME','time_to_sec'
 LANGUAGE C
 STRICT
@@ -1710,7 +1711,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.time_to_sec(time)
-RETURNS bigint
+RETURNS int
 AS $$
 	select ivymy.time_to_sec($1::time(6));
 $$ LANGUAGE SQL
@@ -1719,7 +1720,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.time_to_sec(text)
-RETURNS bigint
+RETURNS int
 AS $$
 	select ivymy.time_to_sec($1::time(6));
 $$ LANGUAGE SQL
@@ -1728,7 +1729,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.time_to_sec(numeric)
-RETURNS bigint
+RETURNS int
 AS $$
 	select ivymy.time_to_sec($1::time(6));
 $$ LANGUAGE SQL
@@ -1737,7 +1738,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.time_to_sec(datetime)
-RETURNS bigint
+RETURNS int
 AS $$
 	select ivymy.time_to_sec($1::time(6));
 $$ LANGUAGE SQL
@@ -1746,7 +1747,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.time_to_sec(datetime(6))
-RETURNS bigint
+RETURNS int
 AS $$
 	select ivymy.time_to_sec($1::time(6));
 $$ LANGUAGE SQL
@@ -1755,7 +1756,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.time_to_sec(timestamp)
-RETURNS bigint
+RETURNS int
 AS $$
 	select ivymy.time_to_sec($1::time(6));
 $$ LANGUAGE SQL
@@ -1764,14 +1765,14 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.time_to_sec(timestamp(6))
-RETURNS bigint
+RETURNS int
 AS $$
 	select ivymy.time_to_sec($1::time(6));
 $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
-
+/* End - BUG#Z5568 */
 
 --month
 CREATE FUNCTION ivymy.month(date)
@@ -2092,14 +2093,14 @@ IMMUTABLE;
 /* Begin - BUG#Z5530 */
 --yearweek
 CREATE FUNCTION ivymy.yearweek(date, int)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS 'MODULE_PATHNAME','yearweek'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(datetime, int)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
@@ -2107,7 +2108,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(datetime(6), int)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
@@ -2115,7 +2116,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(numeric, int)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
@@ -2123,7 +2124,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(time, int)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
@@ -2131,7 +2132,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(time(6), int)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
@@ -2139,7 +2140,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(text, int)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
@@ -2147,7 +2148,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(timestamp, int)
-RETURNS int
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
@@ -2155,7 +2156,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(timestamp(6), int)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1::date, $2);
 $$ LANGUAGE SQL
@@ -2164,7 +2165,7 @@ IMMUTABLE;
 /* End - BUG#Z5530 */
 
 CREATE FUNCTION ivymy.yearweek(date)
-RETURNS int
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1, 0);
 $$ LANGUAGE SQL
@@ -2173,7 +2174,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(datetime)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1, 0);
 $$ LANGUAGE SQL
@@ -2182,7 +2183,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(datetime(6))
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1, 0);
 $$ LANGUAGE SQL
@@ -2191,7 +2192,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(numeric)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1, 0);
 $$ LANGUAGE SQL
@@ -2200,7 +2201,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(time)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1, 0);
 $$ LANGUAGE SQL
@@ -2209,7 +2210,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(time(6))
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1, 0);
 $$ LANGUAGE SQL
@@ -2218,7 +2219,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(text)
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1, 0);
 $$ LANGUAGE SQL
@@ -2227,7 +2228,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(timestamp)
-RETURNS int
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1, 0);
 $$ LANGUAGE SQL
@@ -2236,7 +2237,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.yearweek(timestamp(6))
-RETURNS bigint
+RETURNS int /* BUG#Z5576 */
 AS $$
 	select ivymy.yearweek($1, 0);
 $$ LANGUAGE SQL
