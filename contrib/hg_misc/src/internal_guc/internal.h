@@ -11,6 +11,8 @@ extern Oid  special_index_oid;
 extern bool get_snapshot_fast_release_lwlock;
 extern int  clog_multiple_number;
 
+extern bool enable_autoset; /* OA#1640 */
+
 extern void FastReleaseProcArrayLockAcquire(LWLockMode mode);
 extern void FastReleaseProcArrayLockRelease(void);
 extern void HeapPagePruneWithThreshold(Relation relation, Buffer buffer,
@@ -20,7 +22,6 @@ extern void HeapPagePruneWithThreshold(Relation relation, Buffer buffer,
 extern bool SkipSpecialIndexOid(IndexScanDesc scan);
 extern Size CLOGShmemBuffersHook(void);
 extern bool PDBGIfPrintLog(void);
-extern void PDBGVacuum(Relation rel);
+extern void PDBGAutoset(AutosetMode mode);
 
 #endif /* INTERNAL_H */
-/* End - ReqID:SRS-Performance-GUC */

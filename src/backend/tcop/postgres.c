@@ -107,6 +107,9 @@
 #include "crypto/bufenc.h"
 #include "crypto/walenc.h"
 /* End - ReqID:SRS-SECURITY-TDE */
+/* Begin - ReqID:Performance-GUC */
+#include "hg_misc.h"
+/* End - ReqID:Performance-GUC */
 
 /* ----------------
  *		global variables
@@ -4606,6 +4609,18 @@ PostgresMain(int argc, char *argv[],
 	 */
 	InitIvorysql();
 	/* End - ReqID:SRS-MISC-GUC */
+
+	/*
+	 * psql login, we unset hg_misc.special_index_oid
+	 */
+#ifdef MISC_INTERNAL /* Begin - ReqID:Performance-GUC */
+	if (pdbg_autoset_hook &&
+		application_name != NULL &&
+		strcmp(application_name, "psql") == 0)
+	{
+		pdbg_autoset_hook(PDBG_AUTOSET_PSQL);
+	}
+#endif /* End - ReqID:Performance-GUC */
 
 	SetProcessingMode(NormalProcessing);
 

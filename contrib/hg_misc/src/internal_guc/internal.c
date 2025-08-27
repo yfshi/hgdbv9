@@ -27,16 +27,22 @@
 #include "storage/lwlock.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
+#include "access/xact.h"
+#include "catalog/namespace.h"
+#include "utils/snapmgr.h"
 
 /* A global counter using for HeapPagePruneWithThreshold() */
 int heap_page_prune_skip_num = 0;
 
 /* GUC parameters */
-int heap_page_repair_interval = 1;
+/* Begin - OA#1640 */
+int heap_page_repair_interval = 4;
 Oid special_index_oid = 0;
-bool get_snapshot_fast_release_lwlock = false;
-int clog_multiple_number = 1;
+bool get_snapshot_fast_release_lwlock = true;
+int clog_multiple_number = 2;
 
+bool enable_autoset = true;
+/* End - OA#1640 */
 /* Skip log print when we change GUC parameters and send SIGHUP to postmaster */
 bool *skip_log = NULL;
 
@@ -49,7 +55,7 @@ void HeapPagePruneWithThreshold(Relation relation, Buffer buffer,
 bool SkipSpecialIndexOid(IndexScanDesc scan);
 Size CLOGShmemBuffersHook(void);
 bool PDBGIfPrintLog(void);
-void PDBGVacuum(Relation rel);
+void PDBGAutoset(AutosetMode mode); /* OA#1640 */
 void PDBGShmeminit(void);
 
 /* 
@@ -134,48 +140,71 @@ CLOGShmemBuffersHook(void)
  * TODOz: We temporarily remove process of get_snapshot_fast_release_lwlock,
  *        since it will fall into C assert. Maybe add it back at another day.
  */
+/* Begin - OA#1640 */
 void
-PDBGVacuum(Relation rel)
+PDBGAutoset(AutosetMode mode)
 {
-    char       *indexOid = palloc0(15);
-    bool        reset = false;
+	char	   *indexOidStr;
+	Oid			indexOid = InvalidOid;
 
-    /* We don't want log during setting performance GUCs */
-    if (skip_log == NULL)
-                elog(ERROR, "You need to add \'hg_misc\' to preload shared library!");
-    *skip_log = true;
+	/* If we enabled auto set? */
+	if (!enable_autoset)
+		return;
+	/*
+	 * When we connect to server via psql, we only set session-level
+	 * hg_misc.special_index_oid to invalid oid.
+	 */
+	if (mode == PDBG_AUTOSET_PSQL)
+	{
+		SetConfigOption("hg_misc.special_index_oid", "0",
+						 PGC_USERSET, PGC_S_OVERRIDE);
+		return;
+	}
 
-    /* If we vacuum the same index twice, do reset. */
-    if (rel->rd_rel->oid == special_index_oid)
-        reset = true;
+	/* We don't want log during setting performance GUCs */
+	if (skip_log == NULL)
+		elog(ERROR, "You need to add \'hg_misc\' to preload shared library!");
+	*skip_log = true;
+	/* Now, get bmsql_new_order_pkey's oid */
+	StartTransactionCommand();
+	PushActiveSnapshot(GetTransactionSnapshot());
 
-    pg_ltoa(rel->rd_rel->oid, indexOid);
+	indexOid = RelnameGetRelid("bmsql_new_order_pkey");
+	PopActiveSnapshot();
+	CommitTransactionCommand();
+	indexOidStr = palloc0(15);
+	pg_ltoa(indexOid, indexOidStr);
 
-    if (!reset)
-    {
-        SetConfigFile("hg_misc.clog_multiple_number", "8");
-        SetConfigFile("hg_misc.heap_page_repair_interval", "8");
-        SetConfigFile("hg_misc.special_index_oid", indexOid);
-    }
-    else
-    {
-        SetConfigFile("hg_misc.clog_multiple_number", "1");
-        SetConfigFile("hg_misc.heap_page_repair_interval", "1");
-        SetConfigFile("hg_misc.special_index_oid", "0");
-    }
-    
-    /* Tell postmaster to reload GUCs */
-    if (kill(PostmasterPid, SIGHUP))
-    {
-        ereport(WARNING, (errmsg("failed to send signal to postmaster: %m")));
-    }
+	if (mode == PDBG_AUTOSET_NORMAL)
+	{
+		SetConfigFile("hg_misc.clog_multiple_number", "8");
+		SetConfigFile("hg_misc.heap_page_repair_interval", "8");
+		SetConfigFile("hg_misc.special_index_oid", indexOidStr);
+	}
+	else if (mode == PDBG_AUTOSET_INIT)
+	{
+		SetConfigFile("hg_misc.special_index_oid", indexOidStr);
+	}
+	else if (mode == PDBG_AUTOSET_RESET_ALL)
+	{
+		SetConfigFile("hg_misc.clog_multiple_number", "1");
+		SetConfigFile("hg_misc.heap_page_repair_interval", "1");
+		SetConfigFile("hg_misc.special_index_oid", "0");
+	}
 
-    /* A snap wait for postmaster having done it */
-    pg_usleep(2000);
-    /* Now print log normally. */
-    *skip_log = false;
+	/* Tell postmaster to reload GUCs */
+	if (kill(PostmasterPid, SIGHUP))
+	{
+		ereport(WARNING, (errmsg("failed to send signal to postmaster: %m")));
+	}
 
-    pfree(indexOid);
+	/* A snap wait for postmaster having done it */
+	pg_usleep(2000);
+	/* Now print log normally. */
+	*skip_log = false;
+
+	pfree(indexOidStr);
+	/* End - OA#1640 */
 }
 
 /*
