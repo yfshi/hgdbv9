@@ -1,3 +1,48 @@
+alter system set audit.retentiondays TO -1;
+ERROR:  -1 is outside the valid range for parameter "audit.retentiondays" (1 .. 2147483647)
+alter system set audit.retentiondays TO 0;
+ERROR:  0 is outside the valid range for parameter "audit.retentiondays" (1 .. 2147483647)
+alter system set audit.retentiondays TO 1;
+alter system set audit.retentiondays TO 2147483647;
+alter system set audit.retentiondays TO 2147483648;
+ERROR:  invalid value for parameter "audit.retentiondays": "2147483648"
+HINT:  Value exceeds integer range.
+alter system set audit.detectiontime TO -1;
+ERROR:  -1 is outside the valid range for parameter "audit.detectiontime" (1 .. 2147483647)
+alter system set audit.detectiontime TO 0;
+ERROR:  0 is outside the valid range for parameter "audit.detectiontime" (1 .. 2147483647)
+alter system set audit.detectiontime TO 2147483647;
+alter system set audit.detectiontime TO 2147483648;
+ERROR:  invalid value for parameter "audit.detectiontime": "2147483648"
+HINT:  Value exceeds integer range.
+alter system set audit.spacealarm = '';
+alter system set audit.spacealarm = '-20%';
+ERROR:  invalid value for parameter "audit.spacealarm": "-20%"
+alter system set audit.spacealarm = '0%';
+alter system set audit.spacealarm = '100%';
+ERROR:  invalid value for parameter "audit.spacealarm": "100%"
+alter system set audit.spacealarm = '101%';
+ERROR:  invalid value for parameter "audit.spacealarm": "101%"
+alter system set audit.spacealarm = '10%';
+alter system set audit.spacealarm = '10a%';
+ERROR:  invalid value for parameter "audit.spacealarm": "10a%"
+alter system set audit.spacealarm = 'a10%';
+ERROR:  invalid value for parameter "audit.spacealarm": "a10%"
+alter system set audit.spacealarm = '10';
+ERROR:  invalid value for parameter "audit.spacealarm": "10"
+alter system set audit.spacealarm = '10.1%';
+alter system set audit.spacealarm = '.10%';
+ERROR:  invalid value for parameter "audit.spacealarm": ".10%"
+alter system set audit.spacealarm = 0;
+alter system set audit.spacealarm = -0.2;
+ERROR:  invalid value for parameter "audit.spacealarm": "-0.2"
+alter system set audit.spacealarm = 1;
+ERROR:  invalid value for parameter "audit.spacealarm": "1"
+alter system set audit.spacealarm = 1.1;
+ERROR:  invalid value for parameter "audit.spacealarm": "1.1"
+alter system set audit.spacealarm = 0.1;
+alter system set audit.spacealarm = .1;
+ERROR:  invalid value for parameter "audit.spacealarm": ".1"
 select pg_audit_privilege('create role','all');
                pg_audit_privilege                
 -------------------------------------------------
@@ -1112,4 +1157,3 @@ select count(*) from pg_audit_log;
 -------
      2
 (1 row)
-

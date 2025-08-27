@@ -51,7 +51,9 @@
 #define PG_RESTORE_S	"PG_RESTORE"
 #define PG_BASEBACKUP_S "PG_BASEBACKUP"
 #define PG_PERMISSION_S "PERMISSION"
-
+#define AUDIT_SPACE_ALARM_S "SPACE ALARM"
+#define AUDIT_SPACE_LIMIT_S "SPACE LIMIT"
+#define AUDIT_DISK_FULL_S "DISK FULL"
 
 #define AUDIT_PRIVILEGE_SYSTEM_S "SYSTEM"
 #define AUDIT_PRIVILEGE_DATABASE_S "DATABASE"
@@ -60,6 +62,7 @@
 #define AUDIT_PRIVILEGE_INSTANCE_S	"INSTANCE"
 /* End - BUG#00004718 */
 
+#define AUDIT_LAUNCHER_S "pg_audit launcher"
 
 typedef enum AuditSystemEvent
 {
@@ -80,6 +83,8 @@ typedef enum AuditSystemEvent
 	SYSTEMAUDIT_PG_RESTORE,
 	SYSTEMAUDIT_PG_BASEBACKUP,
 	SYSTEMAUDIT_AUDIT_STORAGE_INVALID,
+	SYSTEMAUDIT_AUDIT_SPACE_LIMIT,
+	SYSTEMAUDIT_AUDIT_DISK_FULL,
 	MANDATORY_AUDIT_ON, //It must be the second to last one
 	MANDATORY_AUDIT_OFF //It must be the last one
 }AuditSystemEvent;
@@ -349,6 +354,7 @@ typedef struct AduitSwitchGUC
 	char *audit_sqlitedbpath;
 #endif
 	AuditSwitch track_settings;
+	bool *audit_pause;    //use share buffer
 }AduitSwitchGUC;
 
 extern bool receive_sighup;

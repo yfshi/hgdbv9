@@ -2871,6 +2871,7 @@ usage(const char *progname)
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  -E, --encoding=ENCODING   set default encoding for new databases\n"));
+	printf(_("  -a, --audit-path          the audit log tablespace path\n"));
 	printf(_("  -g, --allow-group-access  allow group read/execute on data directory\n"));
 	printf(_("  -k, --data-checksums      use data page checksums\n"));
 	printf(_("      --locale=LOCALE       set default locale for new databases\n"));

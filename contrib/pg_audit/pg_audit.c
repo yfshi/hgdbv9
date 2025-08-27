@@ -49,6 +49,11 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/statvfs.h>
+#endif
 
 #include "access/xlog.h"
 #include "access/xlog_internal.h"
@@ -175,6 +180,7 @@ AuditSwitch pg_audit = AUDIT_OFF;
 AduitSwitchGUC audit_GUC;
 int audit_spacelimit = 10240; //G
 char *audit_alarmemail = NULL;
+char *audit_space_alarm = NULL;
 
 /*
  * Role with sysdba permissions
@@ -217,6 +223,8 @@ static ExecutorStart_hook_type next_ExecutorStart_hook = NULL;
 static ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
 static ExecutorCheckPerms_hook_type next_ExecutorCheckPerms_hook = NULL;
 static object_access_hook_type next_object_access_hook = NULL;
+static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
+
 
 static MemoryContext pgAuditLocalContext = NULL;
 MemoryContext	old_context;
@@ -238,7 +246,7 @@ static void audit_register_br(void);
 static void audit_define_GUC(void);
 static void audit_change_GUC(void);
 static void audit_append_hook(void);
-static bool audit_real_check_hook(double *newvalue, void **extra, GucSource source);
+static bool audit_real_check_hook(char **newvalue, void **extra, GucSource source);
 static bool audit_logdir_check_hook(char **newvalue, void **extra, GucSource source);
 #ifdef USE_SQLITE
 static bool audit_sqlite_check_hook(char **newvalue, void **extra, GucSource source);
@@ -331,6 +339,14 @@ void audit_ddl_command_end(PG_FUNCTION_ARGS, const char *query);
 void pg_audit_launch(void);
 void _PG_init(void);
 void _PG_fini(void);
+static void audit_choice_retentionpolicy_mode(void);
+static void audit_delete_log(TimestampTz del_time);
+static int64 audit_get_total_log_size(char *table);
+static int is_valid_string(const char *str);
+static void get_disk_space(const char *path, uint64 *total, uint64 *free);
+static void audit_disk_full(void);
+static void AuditShememInit(void);
+static bool is_exceeded_disklimit(void);
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
@@ -358,6 +374,7 @@ PG_FUNCTION_INFO_V1(pg_drop_secmon_threshold);
 PG_FUNCTION_INFO_V1(current_is_syssao);
 PG_FUNCTION_INFO_V1(current_is_syssso);
 PG_FUNCTION_INFO_V1(current_is_superuser);
+PG_FUNCTION_INFO_V1(audit_show_diskinfo);
 
 
 Datum
@@ -810,18 +827,16 @@ static void audit_define_GUC(void)
 					 NULL,
 					 NULL);
 	/* space usage exceeding threshold alarm */
-	DefineCustomRealVariable("audit.spacealarm",
-							 "0.8 alarm",
-							 NULL,
-							 &(audit_GUC.audit_spacealarm),
-							 0.8,
-							 0.0,
-							 1.0,
-							 PGC_POSTMASTER,
-							 0,
-							 audit_real_check_hook,
-							 NULL,
-							 NULL);
+	 DefineCustomStringVariable("audit.spacealarm",
+					  "set audit space alarm",
+					  NULL,
+					  &audit_space_alarm,
+					  "0.8",
+					  PGC_POSTMASTER,
+					  0,
+					  audit_real_check_hook,
+					  NULL,
+					  NULL);
 	/* archive Path */
 	DefineCustomStringVariable("audit.archdir",
 					 "set audit arch path",
@@ -1128,6 +1143,12 @@ audit_get_privilege(char *type)
 static void
 audit_insert_all_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 {
+	if (*audit_GUC.audit_pause)
+		return ;
+
+	if(is_exceeded_disklimit())
+		return;
+
 	PG_TRY();
 	{
 		/* insert audit events into pg_audit_log */
@@ -3142,7 +3163,7 @@ audit_register_br(void)
 	worker.bgw_flags = BGWORKER_SHMEM_ACCESS | BGWORKER_BACKEND_DATABASE_CONNECTION;
 	worker.bgw_start_time = BgWorkerStart_RecoveryFinished;
 	/* BGW_NEVER_RESTART connect once */
-	worker.bgw_restart_time = BGW_NEVER_RESTART;
+	worker.bgw_restart_time = 5;
 	snprintf(worker.bgw_library_name, BGW_MAXLEN, "pg_audit");
 	snprintf(worker.bgw_function_name, BGW_MAXLEN, "pg_audit_launch");
 	worker.bgw_notify_pid = 0;
@@ -3151,7 +3172,7 @@ audit_register_br(void)
 	/*
 	 * Now fill in worker-specific data, and do the actual registrations.
 	 */
-	snprintf(worker.bgw_name, BGW_MAXLEN, "pg_audit launcher");
+	snprintf(worker.bgw_name, BGW_MAXLEN, AUDIT_LAUNCHER_S);
 	RegisterBackgroundWorker(&worker);
 }
 
@@ -4314,8 +4335,7 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 	char	   *tmp = NULL;
 	char	   *timestr = NULL;
 
-	
-	if ((audit_GUC.audit_enable != AUDIT_ON || audit_GUC.audit_systemopers == AUDIT_OPER_OFF)
+	if ((audit_GUC.audit_enable != AUDIT_ON || audit_GUC.audit_systemopers == AUDIT_OPER_OFF || *audit_GUC.audit_pause)
 			&& event < MANDATORY_AUDIT_ON)
 	{
 		return;
@@ -4339,7 +4359,7 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 
 	/* make 'LIKE' of SQLite case sensitive like PostgreSQL */
 	actionname = malloc(32);
-	privilege = malloc(10);
+	privilege = malloc(16);
 	
 	switch(event)
 	{
@@ -4423,6 +4443,21 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 
 		case SYSTEMAUDIT_PERMISSION:
 			strcpy(actionname, PG_PERMISSION_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_SPACE_ALARM:
+			strcpy(actionname, AUDIT_SPACE_ALARM_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_AUDIT_SPACE_LIMIT:
+			strcpy(actionname, AUDIT_SPACE_LIMIT_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_AUDIT_DISK_FULL:
+			strcpy(actionname, AUDIT_DISK_FULL_S);
 			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
 			break;
 
@@ -4698,6 +4733,18 @@ generateSystemEvent(AuditSystemEvent event, AuditResult result)
 			strcpy(actionname, PG_PERMISSION_S);
 			break;
 
+		case SYSTEMAUDIT_SPACE_ALARM:
+			strcpy(actionname, AUDIT_SPACE_ALARM_S);
+			break;
+
+		case SYSTEMAUDIT_AUDIT_SPACE_LIMIT:
+			strcpy(actionname, AUDIT_SPACE_LIMIT_S);
+			break;
+
+		case SYSTEMAUDIT_AUDIT_DISK_FULL:
+			strcpy(actionname, AUDIT_DISK_FULL_S);
+			break;
+
 		default:
 			break;
 	}
@@ -4775,7 +4822,7 @@ deal_with_system_event(AuditSystemEvent event, AuditResult result)
 	AuditEvent *auditevent = NULL;
 	bool is_fail = false;
 
-	if (audit_GUC.audit_enable != AUDIT_ON)
+	if (audit_GUC.audit_enable != AUDIT_ON || *audit_GUC.audit_pause)
 		return;
 
 #ifdef USE_SQLITE
@@ -4925,11 +4972,10 @@ audit_cmd(void)
 static void 
 audit_system_event_info(bool flag, int sqlerrcode)
 {
-	if (audit_GUC.audit_enable != AUDIT_ON || audit_GUC.audit_systemopers == AUDIT_OPER_OFF)
+	if (audit_GUC.audit_enable != AUDIT_ON || audit_GUC.audit_systemopers == AUDIT_OPER_OFF || *audit_GUC.audit_pause)
 	{
 		return;
 	}
-		
 
 	if (flag)
 	{
@@ -4968,6 +5014,10 @@ audit_system_event_info(bool flag, int sqlerrcode)
 				break;
 			case 8:
 				deal_with_system_event(SYSTEMAUDIT_ALTER_GUC, AUDIT_SUCCESS);
+				break;
+
+			case 9:
+				deal_with_system_event(SYSTEMAUDIT_SPACE_ALARM, AUDIT_SUCCESS);
 				break;
 
 			default:
@@ -5032,6 +5082,9 @@ audit_append_hook(void)
 	sqlite_open_db_for_audit_hook = sqlite_open_db_for_audit;
 #endif
 
+	prev_shmem_startup_hook = shmem_startup_hook;
+	shmem_startup_hook = AuditShememInit;
+
 }
 
 static void
@@ -5044,6 +5097,17 @@ pg_audit_sighup(SIGNAL_ARGS)
 
 	errno = save_errno;
 }
+
+static void
+pg_audit_wakeup(SIGNAL_ARGS)
+{
+	int			save_errno = errno;
+
+	SetLatch(MyLatch);
+
+	errno = save_errno;
+}
+
 
 static void
 pg_audit_sigterm(SIGNAL_ARGS)
@@ -5616,6 +5680,516 @@ audit_set_sqlite_path(void)
 }
 #endif
 
+static void audit_delete_log(TimestampTz del_time)
+{
+	StringInfoData query;
+	char *time;
+
+	if (SPI_connect() != SPI_OK_CONNECT)
+		elog(ERROR, "SPI_connect failed");
+
+	time = DatumGetCString(DirectFunctionCall1(timestamptz_out, TimestampTzGetDatum(del_time)));
+	initStringInfo(&query);
+	appendStringInfo(&query, "delete from pg_audit_log where audittime <\' %s\'", time);
+
+	if (SPI_execute(query.data, false, 0) != SPI_OK_DELETE)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("invalid query")));
+	}
+
+	if (SPI_finish() != SPI_OK_FINISH)
+		elog(ERROR, "SPI_finish failed");
+
+	return;
+}
+
+static int64 audit_get_total_log_size(char *table)
+{
+	int64 res;
+
+	res =  Int64GetDatum(DirectFunctionCall1(pg_total_relation_size, RelnameGetRelid(table)));
+
+	return res;
+}
+
+static void get_disk_space(const char *path, uint64 *total, uint64 *free)
+{
+#ifdef _WIN32
+	ULARGE_INTEGER free_bytes, total_bytes, total_free_bytes;
+	if (path == NULL || total == NULL || free == NULL)
+		return ;
+
+	if (GetDiskFreeSpaceExA(path, &free_bytes, &total_bytes, &total_free_bytes))
+	{
+		*total = (uint64)vfs.f_blocks * vfs.f_frsize;
+		*free = (uint64)vfs.f_bfree * vfs.f_frsize;
+	}
+	else
+	{
+		ereport(ERROR, errmsg("call system function \"statvfs\" fail:error code:%lu\n", GetLastError()));
+	}
+#else
+	struct statvfs vfs;
+	if (path == NULL || total == NULL || free == NULL)
+		return ;
+
+	if (statvfs(path, &vfs) == 0)
+	{
+		*total = (unsigned long long)vfs.f_blocks * vfs.f_frsize;
+		*free = (unsigned long long)vfs.f_bfree * vfs.f_frsize;
+	}
+	else
+	{
+		ereport(ERROR, errmsg("call system function \"statvfs\" fail"));
+	}
+#endif
+}
+
+static int
+audit_get_tablespace_path(StringInfoData *space_path)
+{
+	StringInfoData buf;
+	uint64          proc;
+	int                     ret;
+	int flag = -1;
+	MemoryContext oldcontext = CurrentMemoryContext;
+
+	if (RecoveryInProgress())
+		return flag;
+
+	internalStatement = true;
+
+	if (SPI_connect() != SPI_OK_CONNECT)
+		elog(ERROR, "SPI_connect failed");
+
+	initStringInfo(&buf);
+	appendStringInfo(&buf, "SELECT pg_tablespace_location(oid) AS location FROM pg_tablespace WHERE spcname = 'audtblspc';");
+	ret = SPI_execute(buf.data, true, 0);
+
+	if (ret != SPI_OK_SELECT)
+	{
+		internalStatement = false;
+		elog(WARNING, "cannot select srvoptions of sqlite_server: error code %d", ret);
+		return flag;
+	}
+	else
+	{
+		proc = SPI_processed;
+
+		if (proc == 1)
+		{
+			SPITupleTable *spi_tuptable = SPI_tuptable;
+			TupleDesc       spi_tupdesc = spi_tuptable->tupdesc;
+			char       *srvoptions;
+
+			srvoptions = SPI_getvalue(spi_tuptable->vals[0], spi_tupdesc, 1);
+
+			MemoryContextSwitchTo(oldcontext);
+			initStringInfo(space_path);
+			appendStringInfo(space_path, "%s", srvoptions);
+			flag = 1;
+		}
+		else if (proc == 0)
+		{
+			flag = 0;
+		}
+	}
+
+	internalStatement = false;
+
+	if (SPI_finish() != SPI_OK_FINISH)
+		elog(ERROR, "SPI_finish failed");
+
+	return flag;
+}
+
+static bool is_disk_full(void)
+{
+	uint64 totle = 0;
+	uint64 free = 0;
+	StringInfoData buf;
+	int ret = -1;
+	bool is_full = false;
+
+	/* get custom tablespace path*/
+	ret = audit_get_tablespace_path(&buf);
+	if (ret >= 0)
+	{
+		if (ret == 1)
+		{
+			/*get size of disk where the custom tablespace is located.*/
+			get_disk_space(buf.data, &totle, &free);
+		}
+		else
+		{
+			/* The tablespace is not defined, so get datadir path */
+			get_disk_space(DataDir, &totle, &free);
+		}
+
+		if (free < 2048)
+		{
+			is_full = true;
+		}
+	}
+
+	return is_full;
+}
+
+
+static void audit_disk_full(void)
+{
+	uint64 totle = 0;
+	uint64 free = 0;
+	StringInfoData buf;
+	int ret = -1;
+
+	/* get custom tablespace path*/
+	ret = audit_get_tablespace_path(&buf);
+	if (ret >= 0)
+	{
+		if (ret == 1)
+		{
+			/*get size of disk where the custom tablespace is located.*/
+			get_disk_space(buf.data, &totle, &free);
+		}
+		else
+		{
+			/* The tablespace is not defined, so get datadir path */
+			get_disk_space(DataDir, &totle, &free);
+		}
+
+		if (free < 2048 && *audit_GUC.audit_pause == false)
+		{
+
+#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+			{
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_DISK_FULL, AUDIT_SUCCESS, NULL, NULL);
+			}
+#endif
+			*audit_GUC.audit_pause = true;
+			ereport(WARNING,(errcode(ERRCODE_DISK_FULL),errmsg("Disk space is almost full and pause audit")));
+		}
+		else if (free >= 2048 &&*audit_GUC.audit_pause == true)
+		{
+				*audit_GUC.audit_pause = false;
+				ereport(INFO,(errmsg("Disk space is enough and recover audit")));
+		}
+
+	}
+}
+
+static void send_signal_launch_proc()
+{
+	slist_mutable_iter iter;
+	slist_foreach_modify(iter, &BackgroundWorkerList)
+	{
+		RegisteredBgWorker *rw;
+
+		rw = slist_container(RegisteredBgWorker, rw_lnode, iter.cur);
+
+		if (rw->rw_pid != getpid() && strncmp(rw->rw_worker.bgw_name, AUDIT_LAUNCHER_S, strlen(AUDIT_LAUNCHER_S) + 1) == 0)
+		{
+			kill(rw->rw_pid, SIGUSR2);
+			break;
+		}
+	}
+}
+
+static bool is_exceeded_disklimit(void)
+{
+	static bool is_alarmed = false;
+	static bool is_limited = false;
+	uint64 table_size = 0;
+	bool audit_pause = *audit_GUC.audit_pause;
+
+	if (audit_GUC.audit_enable != AUDIT_ON || *audit_GUC.audit_pause)
+		return true;
+
+	if (audit_GUC.audit_retentionpolicy_switch == RETEN_TIME)
+	{
+		PushActiveSnapshot(GetTransactionSnapshot());
+		if (is_disk_full())
+			audit_pause = true;
+		PopActiveSnapshot();
+	}
+	else if (audit_GUC.audit_retentionpolicy_switch == RETEN_SPACE)
+	{
+		PushActiveSnapshot(GetTransactionSnapshot());
+		/* get table 'hg_audit_log' total size */
+		table_size = audit_get_total_log_size("pg_audit_log");
+
+		/* threshold alarm */
+		if (audit_GUC.audit_spacealarm > 0 && !is_alarmed && table_size >= audit_GUC.audit_spacealarm * audit_GUC.audit_spacelimit
+			&& table_size < audit_GUC.audit_spacelimit)
+		{
+			is_alarmed = true;
+			send_signal_launch_proc();
+		}
+		else if (!is_limited && table_size >= audit_GUC.audit_spacelimit)
+		{
+			is_limited = true;
+			audit_pause = true;
+		}
+		else if (table_size < audit_GUC.audit_spacelimit && *audit_GUC.audit_pause == true)
+		{
+			audit_pause = false;
+			is_limited = false;
+		}
+
+		if (is_disk_full())
+		{
+			audit_pause = true;
+		}
+
+		PopActiveSnapshot();
+
+	}
+
+	if (audit_pause)
+	{
+		send_signal_launch_proc();
+		return true;
+	}
+	else
+		return false;
+}
+
+
+
+/*
+ * Description:
+ *      Perform differentiated checks based on temporal and spatial patterns, then delete the logs
+ *
+ */
+static void audit_choice_retentionpolicy_mode(void)
+{
+	static bool is_alarmed = false;
+	static bool is_limited = false;
+	static TimestampTz pre_check_time = 0;
+	TimestampTz cur_time = 0;
+	TimestampTz del_time = 0;
+	uint64 table_size = 0;
+
+	if (audit_GUC.audit_enable != AUDIT_ON)
+		return;
+
+	if (audit_GUC.audit_retentionpolicy_switch == RETEN_TIME)
+	{
+		cur_time = GetCurrentTimestamp();
+
+		SetCurrentStatementStartTimestamp();
+		StartTransactionCommand();
+		PushActiveSnapshot(GetTransactionSnapshot());
+
+		if ((pre_check_time == 0 || (cur_time - audit_GUC.audit_detectiontime * USECS_PER_DAY) > pre_check_time))
+		{
+			pre_check_time = cur_time;
+			del_time = cur_time - audit_GUC.audit_retentiondays * USECS_PER_DAY;
+
+			/* delete hg_audit_log */
+			audit_delete_log(del_time);
+		}
+
+		audit_disk_full();
+
+		PopActiveSnapshot();
+		CommitTransactionCommand();
+	}
+	else if (audit_GUC.audit_retentionpolicy_switch == RETEN_SPACE)
+	{
+		SetCurrentStatementStartTimestamp();
+		StartTransactionCommand();
+		PushActiveSnapshot(GetTransactionSnapshot());
+
+		/* get table 'hg_audit_log' total size */
+		table_size = audit_get_total_log_size("pg_audit_log");
+
+		/* threshold alarm */
+		if (audit_GUC.audit_spacealarm > 0 && !is_alarmed && table_size >= audit_GUC.audit_spacealarm * audit_GUC.audit_spacelimit
+				&& table_size < audit_GUC.audit_spacelimit)
+		{
+			is_alarmed = true;
+			ereport(WARNING,
+					errmsg("The log totle size Execeed alarm"));
+
+			#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_SPACE_ALARM, AUDIT_SUCCESS, NULL, NULL);
+			#endif
+		}
+		else if (!is_limited && table_size >= audit_GUC.audit_spacelimit)
+		{
+			is_limited = true;
+
+			#ifdef USE_SQLITE
+				if (sqlite_open_db_for_audit_hook)
+				{
+						sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_SPACE_LIMIT, AUDIT_SUCCESS, NULL, NULL);
+				}
+			#endif
+
+			*audit_GUC.audit_pause = true;
+			ereport(WARNING,(errcode(ERRCODE_DISK_FULL),
+					errmsg("Disk space is almost full and pause audit, table_size:%lu >= table_limit:%lu", table_size, audit_GUC.audit_spacelimit)));
+		}
+		else if (table_size < audit_GUC.audit_spacelimit && *audit_GUC.audit_pause == true && !is_disk_full())
+		{
+			*audit_GUC.audit_pause = false;
+			is_limited = false;
+			ereport(WARNING,(errmsg("Disk space is enough and recover audit")));
+		}
+
+		if (!*audit_GUC.audit_pause)
+		{
+				audit_disk_full();
+		}
+
+		PopActiveSnapshot();
+		CommitTransactionCommand();
+
+	}
+}
+
+#define LOG_ATTR_NUMS 8
+
+static TupleDesc create_diskinfo_tuple_desc()
+{
+	TupleDesc tupdesc;
+
+	tupdesc = CreateTemplateTupleDesc(LOG_ATTR_NUMS, false);
+
+	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "disk_size",
+				TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "disk_used",
+				TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 3, "disk_used%",
+				TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 4, "limit",
+				TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 5, "table_used",
+				TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 6, "avail",
+				TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 7, "table_use%",
+				TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 8, "alarm",
+				TEXTOID, -1, 0);
+
+	return tupdesc;
+}
+
+static void audit_get_disk_info(uint64 *totle, uint64 *free)
+{
+	StringInfoData buf;
+	int ret = -1;
+
+	/* get custom tablespace path*/
+	ret = audit_get_tablespace_path(&buf);
+	if (ret >= 0)
+	{
+		if (ret == 1)
+		{
+			/*get size of disk where the custom tablespace is located.*/
+			get_disk_space(buf.data, totle, free);
+		}
+		else
+		{
+			/* The tablespace is not defined, so get datadir path */
+			get_disk_space(DataDir, totle, free);
+		}
+
+		//pfree(buf.data);
+	}
+}
+
+Datum
+audit_show_diskinfo(PG_FUNCTION_ARGS)
+{
+	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
+	TupleDesc	   tupdesc;
+	Tuplestorestate *tupstore;
+	MemoryContext oldcontext;
+	uint64 totle = 0;
+	uint64 free = 0;
+	char buffer[21];
+	int64 table_size = 0;
+
+	Datum	  values[LOG_ATTR_NUMS];
+	bool 		   nulls[LOG_ATTR_NUMS];
+
+	/* permission check */
+	check_audit_sao_permission(GetUserId(), false);
+
+	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
+		   ereport(ERROR,
+						   (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							errmsg("set-valued function called in context that cannot accept a set")));
+
+	if (!(rsinfo->allowedModes & SFRM_Materialize))
+			ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("materialize mode required, but it is not allowed in this context")));
+
+	MemSet(values, 0, sizeof(values));
+	MemSet(nulls, 0, sizeof(nulls));
+
+
+	oldcontext = MemoryContextSwitchTo(rsinfo->econtext->ecxt_per_query_memory);
+	tupdesc = create_diskinfo_tuple_desc();
+	tupstore =
+			tuplestore_begin_heap(rsinfo->allowedModes & SFRM_Materialize_Random,
+											   false, work_mem);
+	MemoryContextSwitchTo(oldcontext);
+
+	audit_get_disk_info(&totle, &free);
+
+	MemSet(buffer, 0, sizeof(buffer));
+	snprintf(buffer, sizeof(buffer), "%lu", totle);
+	values[0] = PointerGetDatum(cstring_to_text(buffer));
+
+	MemSet(buffer, 0, sizeof(buffer));
+	snprintf(buffer, sizeof(buffer), "%lu", totle - free);
+	values[1] = PointerGetDatum(cstring_to_text(buffer));
+
+	MemSet(buffer, 0, sizeof(buffer));
+	snprintf(buffer, sizeof(buffer), "%.2f%%", (((double)(totle - free))/totle)*100);
+	values[2] = PointerGetDatum(cstring_to_text(buffer));
+
+	MemSet(buffer, 0, sizeof(buffer));
+	snprintf(buffer, sizeof(buffer), "%lu", audit_GUC.audit_spacelimit);
+	values[3] = PointerGetDatum(cstring_to_text(buffer));
+
+	table_size = audit_get_total_log_size("pg_audit_log");
+	MemSet(buffer, 0, sizeof(buffer));
+	snprintf(buffer, sizeof(buffer), "%ld", table_size);
+	values[4] = PointerGetDatum(cstring_to_text(buffer));
+
+	MemSet(buffer, 0, sizeof(buffer));
+	snprintf(buffer, sizeof(buffer), "%ld", audit_GUC.audit_spacelimit - table_size);
+	values[5] = PointerGetDatum(cstring_to_text(buffer));
+
+	MemSet(buffer, 0, sizeof(buffer));
+	snprintf(buffer, sizeof(buffer), "%.2f%%", (((double)(table_size))/audit_GUC.audit_spacelimit)*100);
+	values[6] = PointerGetDatum(cstring_to_text(buffer));
+
+	MemSet(buffer, 0, sizeof(buffer));
+	snprintf(buffer, sizeof(buffer), "%lu", (uint64)(audit_GUC.audit_spacealarm * audit_GUC.audit_spacelimit));
+	values[7] = PointerGetDatum(cstring_to_text(buffer));
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_donestoring(tupstore);
+
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	PG_RETURN_NULL();
+}
+
+
 /* Functions of backend precess */
 void
 pg_audit_launch(void)
@@ -5624,6 +6198,7 @@ pg_audit_launch(void)
 	pqsignal(SIGHUP, pg_audit_sighup);//wakeup latch
 	pqsignal(SIGTERM, pg_audit_sigterm);//backend
 	pqsignal(SIGUSR1, procsignal_sigusr1_handler);
+	pqsignal(SIGUSR2, pg_audit_wakeup);
 
 	/* We're now ready to receive signals */
 	BackgroundWorkerUnblockSignals();
@@ -5669,6 +6244,8 @@ pg_audit_launch(void)
 		 */
 		while (!got_sigterm)
 		{
+			/* check based on time or space*/
+			audit_choice_retentionpolicy_mode();
 
 			/*
 			 * In case of a SIGHUP, just reload the configuration.
@@ -5709,10 +6286,71 @@ pg_audit_launch(void)
 	proc_exit(1);
 }
 
+/**
+ * Validates a string against the following rules:
+ * - Composition: Only digits (0-9), at most one decimal point (.),
+ *   and optionally one percent sign (%) at the end
+ * - Percent Sign: If present, must be the last character and unique
+ * - Decimal Point: Prohibited at the start, allowed only once
+ */
+static int is_valid_string(const char *str)
+{
+	bool has_percent = false;
+	int dot_count = 0;
+
+	int length = strlen(str);
+	if (length == 0)
+		return -1;
+
+	// check the last char is %
+	if (str[length - 1] == '%')
+	{
+		has_percent = true;
+		length--;
+
+		if (length == 0)
+			return false;
+	}
+
+	for (int i = 0; i < length; i++)
+	{
+		char c = str[i];
+
+		// check allow num
+		if (c >= '0' && c <= '9')
+		{
+			continue;
+		}
+		// check dot
+		else if (c == '.')
+		{
+			dot_count++;
+			if (dot_count > 1 || i == 0 ||(i == length - 1))
+				return -1;
+		}
+		// other char is invalid
+		else
+		{
+			return -1;
+		}
+	}
+
+	if (has_percent)
+	{
+		if (str[length] != '%')
+			return -1;
+		else
+			return 1;
+	}
+
+	return 0;
+}
 
 static bool
-audit_real_check_hook(double *newvalue, void **extra, GucSource source)
+audit_real_check_hook(char **newvalue, void **extra, GucSource source)
 {
+	double num = 0;
+	int re = 0;
 #if 0
 	if (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort))
 	{
@@ -5720,10 +6358,32 @@ audit_real_check_hook(double *newvalue, void **extra, GucSource source)
 			return false;
 	}
 #endif
-	
-	if (*newvalue == 1)
+	if (*newvalue == NULL || *newvalue[0]== '\0')
+	{
+		audit_GUC.audit_spacealarm = 0;
+		return true;
+	}
+	re = is_valid_string(*newvalue);
+
+	if (re < 0)
 	{
 		return false;
+	}
+
+	num = atof(*newvalue);
+	if (re == 0)
+	{
+		if (num < 0 || num >= 1)
+			return false;
+
+		audit_GUC.audit_spacealarm = num;
+	}
+	else
+	{
+		if (num < 0 || num >= 100)
+			return false;
+
+		audit_GUC.audit_spacealarm = num / 100;
 	}
 
 	return true;
@@ -9368,4 +10028,23 @@ pg_drop_secmon_threshold(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(true);
 }
 
+static void AuditShememInit(void)
+{
+	bool found_ctl_buf;
 
+	if (prev_shmem_startup_hook)
+		prev_shmem_startup_hook();
+
+	audit_GUC.audit_pause = (bool *)
+		ShmemInitStruct("Audit signal parmater",
+						sizeof(bool), &found_ctl_buf);
+
+	if (found_ctl_buf)
+	{
+		Assert(found_ctl_buf);
+	}
+
+	*audit_GUC.audit_pause = false;
+
+	return ;
+}

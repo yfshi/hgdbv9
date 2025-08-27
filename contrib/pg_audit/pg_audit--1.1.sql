@@ -630,7 +630,24 @@ CREATE FUNCTION public.pg_drop_secmon_threshold( )
 		RETURNS  bool
 		AS 'MODULE_PATHNAME', 'pg_drop_secmon_threshold'
 LANGUAGE C STRICT;
-  
+
+CREATE FUNCTION public.audit_show_diskinfo()
+	RETURNS  TABLE (
+		disk_size        text,
+		disk_used         text,
+		"disk_used%"         text,
+		space_limit text,
+		table_used  text,
+		avail text,
+		"table_used%" text,
+		alarm	text
+		)
+	AS 'MODULE_PATHNAME', 'audit_show_diskinfo'
+LANGUAGE C STRICT;
+
+create view public.show_audit_diskinfo as select * from audit_show_diskinfo();
+alter view  show_audit_diskinfo owner to  syssao; --BUG Z4802
+
 GRANT ALL ON TABLE pg_track_settings_list TO PUBLIC;
 GRANT ALL ON TABLE pg_track_settings_history TO PUBLIC;
 GRANT ALL ON TABLE pg_track_db_role_settings_list TO PUBLIC;

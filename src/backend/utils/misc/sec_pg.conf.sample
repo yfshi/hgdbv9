@@ -2,8 +2,8 @@
 #PG_AUDIT GUC parameters
 #------------------------------------------------------------------------------
 audit.enable = off   							# audit switch, off or on
-audit.retentionpolicy = time						# save audit logs by time or space
-audit.retentiondays = 30						# audit log retention days
+audit.retentionpolicy = space						# save audit logs by time or space
+audit.retentiondays = 180						# audit log retention days
 audit.detectiontime = 1							# audit log delete detection time, in days
 audit.spacelimit = 10GB							# support MB
 audit.spacealarm = 0.8							# using space

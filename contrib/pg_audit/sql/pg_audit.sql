@@ -1,3 +1,33 @@
+alter system set audit.retentiondays TO -1;
+alter system set audit.retentiondays TO 0;
+alter system set audit.retentiondays TO 1;
+alter system set audit.retentiondays TO 2147483647;
+alter system set audit.retentiondays TO 2147483648;
+
+alter system set audit.detectiontime TO -1;
+alter system set audit.detectiontime TO 0;
+alter system set audit.detectiontime TO 2147483647;
+alter system set audit.detectiontime TO 2147483648;
+
+alter system set audit.spacealarm = '';
+alter system set audit.spacealarm = '-20%';
+alter system set audit.spacealarm = '0%';
+alter system set audit.spacealarm = '100%';
+alter system set audit.spacealarm = '101%';
+alter system set audit.spacealarm = '10%';
+alter system set audit.spacealarm = '10a%';
+alter system set audit.spacealarm = 'a10%';
+alter system set audit.spacealarm = '10';
+alter system set audit.spacealarm = '10.1%';
+alter system set audit.spacealarm = '.10%';
+
+alter system set audit.spacealarm = 0;
+alter system set audit.spacealarm = -0.2;
+alter system set audit.spacealarm = 1;
+alter system set audit.spacealarm = 1.1;
+alter system set audit.spacealarm = 0.1;
+alter system set audit.spacealarm = .1;
+
 select pg_audit_privilege('create role','all');
 create role us1;
 
