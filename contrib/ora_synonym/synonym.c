@@ -223,7 +223,7 @@ CreateSynonym(CreateSynonymStmt *stmt)
 	bool		nulls[Natts_pg_synonym];
 	Datum		values[Natts_pg_synonym];
 	bool		replaces[Natts_pg_synonym];
-	Oid			objOwner;
+	Oid			objOwner = InvalidOid;
 	Oid			synOwner = GetUserId();
 
 	Assert(stmt->synonym);

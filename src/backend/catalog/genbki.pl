@@ -1175,8 +1175,36 @@ sub lookup_oids
 				and $bki_values->{typname} ne 'oracharbyte_2'
 				and $bki_values->{typname} ne 'oravarcharchar_2'
 				and $bki_values->{typname} ne 'oravarcharbyte_2'
-				and $bki_values->{typname} ne 'year')
+				and $bki_values->{typname} ne 'year'
 				# End - BUG#M0000512
+				# Begin - MySQL DataType
+				and $bki_values->{typname} ne 'mysdate'
+				and $bki_values->{typname} ne 'mysdatetime'
+				and $bki_values->{typname} ne 'mysdatetimes'
+				and $bki_values->{typname} ne 'tinyblob'
+				and $bki_values->{typname} ne 'myblob'
+				and $bki_values->{typname} ne 'mediumblob'
+				and $bki_values->{typname} ne 'longblob'
+				and $bki_values->{typname} ne 'binary'
+				and $bki_values->{typname} ne 'varbinary'
+				and $bki_values->{typname} ne 'mystimestamp'
+				and $bki_values->{typname} ne 'mystimestamps'
+				and $bki_values->{typname} ne 'mystime'
+				and $bki_values->{typname} ne 'mystimes'
+				and $bki_values->{typname} ne 'mediumint'
+				and $bki_values->{typname} ne 'tinyint'
+				and $bki_values->{typname} ne 'uint1'
+				and $bki_values->{typname} ne 'uint2'
+				and $bki_values->{typname} ne 'uint3'
+				and $bki_values->{typname} ne 'uint4'
+				and $bki_values->{typname} ne 'uint8'
+				and $bki_values->{typname} ne 'mysbit'
+				and $bki_values->{typname} ne 'mysbit_2'
+				and $bki_values->{typname} ne 'tinytext'
+				and $bki_values->{typname} ne 'mediumtext'
+				and $bki_values->{typname} ne 'longtext'
+				# End - MySQL DataType
+				)
 				{
 					warn sprintf
 					  "invalid zero OID reference in %s.dat field %s line %s\n",

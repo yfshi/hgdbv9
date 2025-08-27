@@ -61,10 +61,6 @@
 #include "lib/stringinfo.h"
 #include "catalog/pg_trigger.h"
 /* End - ReqID:SRS-MISC-BULKLOAD */
-#include "utils/catcache.h"
-#include "utils/syscache.h"
-#include "catalog/pg_proc.h"
-#include "utils/builtins.h"
 
 /*
  * No more than this many tuples per CopyMultiInsertBuffer
