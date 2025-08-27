@@ -89,9 +89,4 @@ extern bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to);
 extern bool is_numeric_neg(Numeric num);
 /* End - SRS-MYSQL-BUILDINFUNCTION */
 
-/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
-extern uint64 conv_numeric_uint64(Numeric num, bool isround);
-extern int mys_numeric_sign(Numeric num);
-/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
-
 #endif							/* _PG_NUMERIC_H_ */

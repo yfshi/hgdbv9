@@ -16206,22 +16206,40 @@ a_expr:		c_expr									{ $$ = $1; }
 			/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| CHAR_P '(' func_arg_list_opt ')'
 				{
-					FuncCall *n = makeFuncCall(MysqlSystemFuncName("char"),
-											   $3,
+					ListCell *cell;
+					List	 *arg_list = $3;
+					List	 *new_arg_list = NIL;
+					FuncCall *n;
+
+					foreach(cell, arg_list)
+					{
+						Node *node = makeTypeCast(lfirst(cell), MySQLSystemTypeName("uint8"), @1);
+						new_arg_list = lappend(new_arg_list, node);
+					}
+					n = makeFuncCall(MysqlSystemFuncName("char"),
+											   new_arg_list,
 											   COERCE_EXPLICIT_CALL,
 											   @2);
 					$$ = (Node *)n;
 				}
 			| CHAR_P '(' func_arg_list_opt USING any_name ')'
 				{
+					ListCell *cell;
+					List	 *arg_list = $3;
+					List	 *new_arg_list = NIL;
 					FuncCall *n;
 
 					ereport(WARNING, (errmsg("Ignore USING syntax in char() function")));
 
+					foreach(cell, arg_list)
+					{
+						Node *node = makeTypeCast(lfirst(cell), MySQLSystemTypeName("uint8"), @1);
+						new_arg_list = lappend(new_arg_list, node);
+					}
 					n = makeFuncCall(MysqlSystemFuncName("char"),
-									 $3,
-									 COERCE_EXPLICIT_CALL,
-									 @2);
+											   new_arg_list,
+											   COERCE_EXPLICIT_CALL,
+											   @2);
 
 					$$ = (Node *)n;
 				}

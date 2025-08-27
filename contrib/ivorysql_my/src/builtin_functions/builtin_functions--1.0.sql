@@ -762,29 +762,6 @@ IMMUTABLE;
 
 -- bin
 
-CREATE FUNCTION ivymy.bin(int8)
-RETURNS varchar
-AS 'MODULE_PATHNAME','to_bin64'
-LANGUAGE C
-STRICT
-PARALLEL SAFE
-IMMUTABLE;
-
--- cannot cast numeric to int8, because mysql will do round off
-CREATE FUNCTION ivymy.bin(numeric)
-RETURNS varchar
-AS 'MODULE_PATHNAME','bin_num'
-LANGUAGE C
-STRICT
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE FUNCTION ivymy.bin(int4)
-RETURNS varchar
-AS $$
-select ivymy.bin($1::int8);
-$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
-
 CREATE FUNCTION ivymy.bin(text)
 RETURNS varchar
 AS 'MODULE_PATHNAME','bin_text'
@@ -793,11 +770,55 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.bin(datetime)
+CREATE FUNCTION ivymy.bin(numeric)
 RETURNS varchar
 AS $$
 select ivymy.bin($1::text);
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION ivymy.bin(int8)
+RETURNS varchar
+AS $$
+select ivymy.bin($1::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION ivymy.bin(int4)
+RETURNS varchar
+AS $$
+select ivymy.bin($1::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+/* Begin - BUG#Z5504 */
+CREATE FUNCTION ivymy.bin(mysdatetime)
+RETURNS varchar
+AS $$
+select ivymy.bin(mysdatetime_out($1)::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION ivymy.bin(mysdatetimes)
+RETURNS varchar
+AS $$
+select ivymy.bin(mysdatetimes_out($1)::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION ivymy.bin(bool)
+RETURNS varchar
+AS $$
+select ivymy.bin($1::int4);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION ivymy.bin(float4)
+RETURNS varchar
+AS $$
+select ivymy.bin($1::int8);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION ivymy.bin(float8)
+RETURNS varchar
+AS $$
+select ivymy.bin($1::int8);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+/* End - BUG#Z5504 */
 
 CREATE FUNCTION ivymy.bin(bit)
 RETURNS varchar
@@ -807,7 +828,7 @@ $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 
 -- char
 
-CREATE FUNCTION ivymy.char(VARIADIC int[])
+CREATE FUNCTION ivymy.char(VARIADIC uint8[])
 RETURNS varbinary
 AS 'MODULE_PATHNAME','myschar'
 LANGUAGE C
@@ -993,7 +1014,7 @@ $$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
 -- soundex
 
 CREATE FUNCTION ivymy.soundex(text)
-RETURNS VARCHAR
+RETURNS varchar
 AS 'MODULE_PATHNAME','soundex'
 LANGUAGE C
 STRICT
@@ -1001,7 +1022,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.soundex(bit)
-RETURNS VARCHAR
+RETURNS varchar
 AS $$
     SELECT ''
 $$
@@ -1011,7 +1032,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.soundex(bool)
-RETURNS VARCHAR
+RETURNS varchar
 AS $$
     SELECT ''
 $$
@@ -1021,7 +1042,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.soundex(numeric)
-RETURNS VARCHAR
+RETURNS varchar
 AS $$
     SELECT ''
 $$
