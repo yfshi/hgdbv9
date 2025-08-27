@@ -141,7 +141,8 @@ void FlashbackToTimepoint(FlashbackStmt *stmt)
     }
 
     if (rel->rd_rel->relkind != RELKIND_RELATION ||
-        rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT)
+        (rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT &&
+         rel->rd_rel->relpersistence != RELPERSISTENCE_UNLOGGED))
         elog(ERROR, "Flashback only support simple table");
 
     /*
@@ -684,9 +685,10 @@ RbTruncate(List *explicit_rels, List *relids, List *relids_logged,
     rel = table_open(relid, AccessExclusiveLock);
 
     if (list_length(explicit_rels) != 1 ||
-        rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT ||
         restart_seqs == true ||
-        rel->rd_rel->relkind != RELKIND_RELATION)
+        rel->rd_rel->relkind != RELKIND_RELATION ||
+        (rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT &&
+         rel->rd_rel->relpersistence != RELPERSISTENCE_UNLOGGED))
     {
         ExecuteTruncateGuts(explicit_rels, relids, relids_logged,
                             behavior, restart_seqs);

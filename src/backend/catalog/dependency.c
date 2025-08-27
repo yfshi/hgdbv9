@@ -3527,6 +3527,10 @@ sweepOneObjectToTrash(RbObjDesc *baseDesc, ObjectAddress *object,
 			}
 			break;
 		}
+		/* Here are some objects that we need not remove */
+		case OCLASS_CONSTRAINT:
+		case OCLASS_DEFAULT:
+			break;
 
 		default:
 			deleteOneObject(object, depRel, flags);
@@ -3563,7 +3567,11 @@ void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, 
 		char relKind = get_rel_relkind(baseObj->objectId);
 		if (relKind == RELKIND_RELATION)
 		{
-			useRecycle = true;
+			Relation rel = table_open(baseObj->objectId, NoLock);
+			if (rel->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT ||
+				rel->rd_rel->relpersistence == RELPERSISTENCE_UNLOGGED)
+				useRecycle = true;
+			table_close(rel, NoLock);
 		}
 	}
 

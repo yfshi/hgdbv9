@@ -1,7 +1,7 @@
 -- 1. test flashback table to before drop.
-create table foo(a int, b text);
-insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
-create index on foo using btree(a);
+create table foo(a int primary key, b int, c text);
+insert into foo select generate_series(1,100), random() * 100, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+create index on foo using btree(b);
 CREATE OR REPLACE FUNCTION handle_truncate()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -19,9 +19,9 @@ flashback table foo to before drop; --failed
 ERROR:  recycle object "foo" does not exist
 HINT:  Make sure the configuration parameter "ivorysql.enable_recycle_bin" is set before "DROP".
 set ivorysql.enable_recycle_bin = on;
-create table foo(a int, b text);
-insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
-create index on foo using btree(a);
+create table foo(a int primary key, b int, c text);
+insert into foo select generate_series(1,100), random() * 100, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+create index on foo using btree(b);
 CREATE OR REPLACE FUNCTION handle_truncate()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -40,15 +40,16 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 --------------+---------
  d            |       0
  d            |       1
+ d            |       1
  d            |       2
  d            |       3
-(4 rows)
+(5 rows)
 
 flashback table foo to before drop;
-select a, left(b, 10), length(b) from foo;  --success
-  a  |    left    | length 
------+------------+--------
- 123 | test123rnd | 160010
+select a, left(c, 10), length(c) from foo order by a limit 1;  --success
+ a |    left    | length 
+---+------------+--------
+ 1 | test123rnd | 160010
 (1 row)
 
 drop table foo;  -- more than once.
@@ -59,21 +60,22 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 --------------+---------
  d            |       0
  d            |       1
+ d            |       1
  d            |       2
  d            |       3
-(4 rows)
+(5 rows)
 
 flashback table foo to before drop;
-select a, left(b, 10), length(b) from foo;
-  a  |    left    | length 
------+------------+--------
- 123 | test123rnd | 160010
+select a, left(c, 10), length(c) from foo order by a limit 1;
+ a |    left    | length 
+---+------------+--------
+ 1 | test123rnd | 160010
 (1 row)
 
 drop table foo;  -- more than one table.
-create table foo(a int, b text, c int);
-insert into foo select 456, 'test456rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
-create index on foo using btree(a);
+create table foo(a int primary key, b text, c int);
+insert into foo select generate_series(200,300), 'test456rnd' || string_agg(md5(random()::text || clock_timestamp()::text), ''), random() * 100 from generate_series(1, 5000);
+create index on foo using btree(c);
 CREATE OR REPLACE FUNCTION handle_truncate()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -86,10 +88,10 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
-select a, left(b, 10), length(b), c from foo;
-  a  |    left    | length | c 
------+------------+--------+---
- 456 | test456rnd | 160010 |  
+select a, left(b, 10), length(b) from foo order by a limit 1;
+  a  |    left    | length 
+-----+------------+--------
+ 200 | test456rnd | 160010
 (1 row)
 
 drop table foo;
@@ -100,17 +102,19 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
  d            |       0
  d            |       1
  d            |       1
+ d            |       1
+ d            |       1
  d            |       2
  d            |       2
  d            |       3
  d            |       3
-(8 rows)
+(10 rows)
 
 flashback table foo to before drop;
-select a, left(b, 10), length(b), c from foo;
-  a  |    left    | length | c 
------+------------+--------+---
- 456 | test456rnd | 160010 |  
+select a, left(b, 10), length(b) from foo order by a limit 1;
+  a  |    left    | length 
+-----+------------+--------
+ 200 | test456rnd | 160010
 (1 row)
 
 drop table foo;
@@ -120,15 +124,16 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 --------------+---------
  d            |       0
  d            |       1
+ d            |       1
  d            |       2
  d            |       3
-(4 rows)
+(5 rows)
 
 flashback table foo to before drop;
-select a, left(b, 10), length(b) from foo;
+select a, left(b, 10), length(b) from foo order by a limit 1;
   a  |    left    | length 
 -----+------------+--------
- 456 | test456rnd | 160010
+ 200 | test456rnd | 160010
 (1 row)
 
 drop table foo purge;  -- drop with purge
@@ -139,9 +144,9 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 
 set ivorysql.enable_recycle_bin = off;
 -- 2. test flashback table to before truncate.
-create table foo(a int, b text);
-insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
-create index on foo using btree(a);
+create table foo(a int primary key, b int, c text);
+insert into foo select 123, random() * 100, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+create index on foo using btree(b);
 CREATE OR REPLACE FUNCTION handle_truncate()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -160,7 +165,7 @@ flashback table foo to before truncate; --failed
 ERROR:  recycle object "foo" does not exist
 HINT:  Make sure the configuration parameter "ivorysql.enable_recycle_bin" is set before "TRUNCATE".
 set ivorysql.enable_recycle_bin = on;
-insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+insert into foo select 123, random() * 100, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
 truncate foo; --warning
 NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
@@ -170,7 +175,7 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
  t            |       2
 (2 rows)
 
-insert into foo select 456, 'test456rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+insert into foo select 456, random() * 100, 'test456rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
 truncate foo; --warning
 NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
@@ -182,22 +187,22 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
  t            |       2
 (4 rows)
 
-insert into foo select 789, 'test789rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
-select a, left(b, 10), length(b) from foo;  --success
+insert into foo select 789, random() * 100, 'test789rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+select a, left(c, 10), length(c) from foo;  --success
   a  |    left    | length 
 -----+------------+--------
  789 | test789rnd | 160010
 (1 row)
 
 flashback table foo to before truncate;
-select a, left(b, 10), length(b) from foo;  --success
+select a, left(c, 10), length(c) from foo;  --success
   a  |    left    | length 
 -----+------------+--------
  456 | test456rnd | 160010
 (1 row)
 
 flashback table foo to before truncate;
-select a, left(b, 10), length(b) from foo;  --success
+select a, left(c, 10), length(c) from foo;  --success
   a  |    left    | length 
 -----+------------+--------
  123 | test123rnd | 160010
@@ -216,7 +221,7 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 (2 rows)
 
 flashback table foo to before truncate;
-select a, left(b, 10), length(b) from foo;
+select a, left(c, 10), length(c) from foo;
   a  |    left    | length 
 -----+------------+--------
  123 | test123rnd | 160010
@@ -227,7 +232,6 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 --------------+---------
 (0 rows)
 
-insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
 truncate foo; --warning
 NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
@@ -237,7 +241,7 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
  t            |       2
 (2 rows)
 
-insert into foo select 456, 'test456rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+insert into foo select 456, random() * 100, 'test456rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
 truncate foo; --warning
 NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
@@ -249,7 +253,7 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
  t            |       2
 (4 rows)
 
-insert into foo select 789, 'test789rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+insert into foo select 789, random() * 100, 'test789rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
 truncate foo; --warning
 NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
@@ -282,7 +286,7 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 (2 rows)
 
 flashback table foo to before truncate;
-select a, left(b, 10), length(b) from foo;
+select a, left(c, 10), length(c) from foo;
   a  |    left    | length 
 -----+------------+--------
  789 | test789rnd | 160010
@@ -292,9 +296,9 @@ set ivorysql.enable_recycle_bin = off;
 drop table foo;
 -- 3. test purge recyclebin.
 set ivorysql.enable_recycle_bin = on;
-create table foo(a int, b text);
-insert into foo select 123, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
-create index on foo using btree(a);
+create table foo(a int primary key, b int, c text);
+insert into foo select 123, random() * 100, 'test123rnd' || string_agg(md5(random()::text || clock_timestamp()::text), '') from generate_series(1, 5000);
+create index on foo using btree(b);
 CREATE OR REPLACE FUNCTION handle_truncate()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -315,11 +319,12 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 --------------+---------
  d            |       0
  d            |       1
+ d            |       1
  d            |       2
  d            |       3
  t            |       0
  t            |       2
-(6 rows)
+(7 rows)
 
 purge recyclebin;
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
