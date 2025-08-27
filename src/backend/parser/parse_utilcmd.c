@@ -5205,7 +5205,7 @@ TransformPartitionTableInterval(ParseState *pstate, PartitionInterval *partInter
 		case INT4OID:
 		case INT8OID:
 			i_typ = INT4OID;
-			i_typmod = -1;
+			i_typmod = colTypmod;	/* BUG#5652 */
 			constlen = 4;
 			constbyval = true;
 			constvalue = Int32GetDatum(0);
@@ -5214,7 +5214,7 @@ TransformPartitionTableInterval(ParseState *pstate, PartitionInterval *partInter
 		case FLOAT4OID:
 		case FLOAT8OID:
 			i_typ = FLOAT4OID;
-			i_typmod = -1;
+			i_typmod = colTypmod;	/* BUG#5652 */
 			constlen = 4;
 			constbyval = true;
 			constvalue = Int32GetDatum(0);
@@ -5223,7 +5223,7 @@ TransformPartitionTableInterval(ParseState *pstate, PartitionInterval *partInter
 		case NUMERICOID:
 		case NUMBEROID:
 			i_typ = basetype;
-			i_typmod = -1;
+			i_typmod = colTypmod;	/* BUG#5652 */
 			constlen = -1;
 			constbyval = false;
 			constvalue = NumericGetDatum(int64_to_numeric(0));

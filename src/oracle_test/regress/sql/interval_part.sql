@@ -345,3 +345,33 @@ INSERT INTO i_partitioned VALUES (5555);
 \d+ i_partitioned
 
 DROP TABLE i_partitioned;
+
+/* Begin - BUG#5647 */
+CREATE TABLE i_partitioned (id int, dt date) PARTITION BY RANGE (id) INTERVAL (10);
+CREATE TABLE i_partitioned_p1 PARTITION OF i_partitioned(dt) FOR VALUES FROM (MINVALUE) TO (10);
+\d+ i_partitioned
+INSERT INTO i_partitioned VALUES(31,'2000-01-01');
+\d+ i_partitioned
+INSERT INTO i_partitioned VALUES(11,'2000-01-01');
+\d+ i_partitioned
+UPDATE i_partitioned SET id=21 WHERE id=11;
+\d+ i_partitioned
+SELECT * FROM i_partitioned;
+SELECT * FROM i_partitioned_p1;
+SELECT * FROM i_partitioned_sys_p;
+SELECT * FROM i_partitioned_sys_p1;
+SELECT * FROM i_partitioned_sys_p2;
+
+DROP TABLE i_partitioned;
+/* End - BUG#5647 */
+
+/* Begin - BUG#5652 */
+CREATE TABLE i_partitioned (id numeric(4,2), dt date) PARTITION BY RANGE(id) INTERVAL (10.2345);
+CREATE TABLE i_partitioned_p1 PARTITION OF i_partitioned(id) FOR VALUES FROM (MINVALUE) TO (10);
+\d+ i_partitioned
+INSERT INTO i_partitioned VALUES(11, '2000-01-01');
+\d+ i_partitioned
+SELECT * FROM i_partitioned_sys_p;
+
+DROP TABLE i_partitioned;
+/* End - BUG#5652 */

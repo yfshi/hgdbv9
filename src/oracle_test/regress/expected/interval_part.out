@@ -506,3 +506,119 @@ Partitions: i_partitioned_init FOR VALUES FROM (MINVALUE) TO (1000), PARTITIONED
             i_partitioned_sys_p FOR VALUES FROM (5550) TO (5560)
 
 DROP TABLE i_partitioned;
+/* Begin - BUG#5647 */
+CREATE TABLE i_partitioned (id int, dt date) PARTITION BY RANGE (id) INTERVAL (10);
+CREATE TABLE i_partitioned_p1 PARTITION OF i_partitioned(dt) FOR VALUES FROM (MINVALUE) TO (10);
+\d+ i_partitioned
+                         Partitioned table "public.i_partitioned"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ dt     | date    |           |          |         | plain   |              | 
+Partition key: RANGE (id)
+Range interval: INTERVAL (10) BASEVALUE (10)
+Partitions: i_partitioned_p1 FOR VALUES FROM (MINVALUE) TO (10)
+
+INSERT INTO i_partitioned VALUES(31,'2000-01-01');
+\d+ i_partitioned
+                         Partitioned table "public.i_partitioned"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ dt     | date    |           |          |         | plain   |              | 
+Partition key: RANGE (id)
+Range interval: INTERVAL (10) BASEVALUE (10)
+Partitions: i_partitioned_p1 FOR VALUES FROM (MINVALUE) TO (10),
+            i_partitioned_sys_p FOR VALUES FROM (30) TO (40)
+
+INSERT INTO i_partitioned VALUES(11,'2000-01-01');
+\d+ i_partitioned
+                         Partitioned table "public.i_partitioned"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ dt     | date    |           |          |         | plain   |              | 
+Partition key: RANGE (id)
+Range interval: INTERVAL (10) BASEVALUE (10)
+Partitions: i_partitioned_p1 FOR VALUES FROM (MINVALUE) TO (10),
+            i_partitioned_sys_p FOR VALUES FROM (30) TO (40),
+            i_partitioned_sys_p1 FOR VALUES FROM (10) TO (20)
+
+UPDATE i_partitioned SET id=21 WHERE id=11;
+\d+ i_partitioned
+                         Partitioned table "public.i_partitioned"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ dt     | date    |           |          |         | plain   |              | 
+Partition key: RANGE (id)
+Range interval: INTERVAL (10) BASEVALUE (10)
+Partitions: i_partitioned_p1 FOR VALUES FROM (MINVALUE) TO (10),
+            i_partitioned_sys_p FOR VALUES FROM (30) TO (40),
+            i_partitioned_sys_p1 FOR VALUES FROM (10) TO (20),
+            i_partitioned_sys_p2 FOR VALUES FROM (20) TO (30)
+
+SELECT * FROM i_partitioned;
+ id |     dt     
+----+------------
+ 21 | 2000-01-01
+ 31 | 2000-01-01
+(2 rows)
+
+SELECT * FROM i_partitioned_p1;
+ id | dt 
+----+----
+(0 rows)
+
+SELECT * FROM i_partitioned_sys_p;
+ id |     dt     
+----+------------
+ 31 | 2000-01-01
+(1 row)
+
+SELECT * FROM i_partitioned_sys_p1;
+ id | dt 
+----+----
+(0 rows)
+
+SELECT * FROM i_partitioned_sys_p2;
+ id |     dt     
+----+------------
+ 21 | 2000-01-01
+(1 row)
+
+DROP TABLE i_partitioned;
+/* End - BUG#5647 */
+/* Begin - BUG#5652 */
+CREATE TABLE i_partitioned (id numeric(4,2), dt date) PARTITION BY RANGE(id) INTERVAL (10.2345);
+CREATE TABLE i_partitioned_p1 PARTITION OF i_partitioned(id) FOR VALUES FROM (MINVALUE) TO (10);
+\d+ i_partitioned
+                           Partitioned table "public.i_partitioned"
+ Column |     Type     | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+--------------+-----------+----------+---------+---------+--------------+-------------
+ id     | numeric(4,2) |           |          |         | main    |              | 
+ dt     | date         |           |          |         | plain   |              | 
+Partition key: RANGE (id)
+Range interval: INTERVAL (10.23::numeric(4,2)) BASEVALUE (10.00::numeric(4,2))
+Partitions: i_partitioned_p1 FOR VALUES FROM (MINVALUE) TO (10.00)
+
+INSERT INTO i_partitioned VALUES(11, '2000-01-01');
+\d+ i_partitioned
+                           Partitioned table "public.i_partitioned"
+ Column |     Type     | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+--------------+-----------+----------+---------+---------+--------------+-------------
+ id     | numeric(4,2) |           |          |         | main    |              | 
+ dt     | date         |           |          |         | plain   |              | 
+Partition key: RANGE (id)
+Range interval: INTERVAL (10.23::numeric(4,2)) BASEVALUE (10.00::numeric(4,2))
+Partitions: i_partitioned_p1 FOR VALUES FROM (MINVALUE) TO (10.00),
+            i_partitioned_sys_p FOR VALUES FROM (10.00) TO (20.23)
+
+SELECT * FROM i_partitioned_sys_p;
+  id   |     dt     
+-------+------------
+ 11.00 | 2000-01-01
+(1 row)
+
+DROP TABLE i_partitioned;
+/* End - BUG#5652 */

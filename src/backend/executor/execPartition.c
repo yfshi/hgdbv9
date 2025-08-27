@@ -262,7 +262,7 @@ UpdatePartitionTableDispatch(PartitionDispatch partdispatch, PartitionDesc partd
 	partdispatch->partdesc = partdesc;
 	partdispatch->indexes = repalloc(partdispatch->indexes, partdesc->nparts * sizeof(int));
 
-	for (i = partdispatch->indexnum; i < partdesc->nparts; i++)
+	for (i = 0; i < partdesc->nparts; i++)	/* BUG#5647 */
 		partdispatch->indexes[i] = -1;
 	partdispatch->indexnum = partdesc->nparts;
 }
@@ -453,6 +453,11 @@ ExecFindPartition(ModifyTableState *mtstate,
 			}
 
 			Assert(partdesc->nparts > 0);
+
+			/* Begin - BUG#5647 */
+			trycnt = 0;
+			continue;	/* try to refind partition */
+			/* End - BUG#5647 */
 			/* End - ReqID:RSR-SQL-Partition-interval */
 		}
 
