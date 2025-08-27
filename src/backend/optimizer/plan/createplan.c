@@ -3010,6 +3010,7 @@ create_count_plan(PlannerInfo *root, CountPath *best_path)
 	Plan		*plan;
 	List		*count_clauses;
 	List		*stopKeys;
+	List 		*gating_quals = NIL;
 
 	subplan = create_plan_recurse(root, best_path->subpath, CP_SMALL_TLIST);
 
@@ -3035,9 +3036,9 @@ create_count_plan(PlannerInfo *root, CountPath *best_path)
 	 * gating Result node that evaluates the pseudoconstants as one-time
 	 * quals.
 	 */
-	if (extract_actual_clauses(best_path->restrict_clauses, true))
-		plan = create_gating_plan(root, (Path *)best_path, plan,
-								  best_path->restrict_clauses);
+	gating_quals = get_gating_quals(root, best_path->restrict_clauses);
+	if (gating_quals)
+		plan = create_gating_plan(root, (Path *)best_path, plan, gating_quals);
 
 	return plan;
 }

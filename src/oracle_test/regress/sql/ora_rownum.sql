@@ -650,3 +650,31 @@ drop function test_inquote;
 drop function test_f;
 drop package pkg_rownum;
 /* End - BUG#M0000450 and BUG#M0000451 */
+
+/* Begin - OA-REQ-1698 */
+drop table if exists empg;
+CREATE TABLE empg (
+    emp_id NUMBER,
+    name VARCHAR2(100),
+    salary NUMBER,
+    hire_date DATE
+);
+
+INSERT INTO empg VALUES (7380,'JODEN',900, to_date('22-09-1989','dd-mm-yyyy'));
+INSERT INTO empg VALUES (7380,NULL,900, to_date('23-09-1989','dd-mm-yyyy'));
+INSERT INTO empg VALUES (7380,'HADEN',NULL, to_date('24-09-1989','dd-mm-yyyy'));
+
+set ivorysql.enable_emptystring_to_null to on;
+
+select * from empg where rownum <= 1 and emp_id = 7380 and salary = '';
+select * from empg where rownum <= 1 and emp_id = 7380 and salary = NULL;
+select * from empg where rownum <= 1 and salary IS NULL;
+
+set ivorysql.enable_emptystring_to_null to off;
+select * from empg where rownum <= 1 and emp_id = 7380 and salary = '';
+select * from empg where rownum <= 1 and emp_id = 7380 and salary = NULL;
+select * from empg where rownum <= 1 and salary IS NULL;
+
+reset ivorysql.enable_emptystring_to_null;
+drop table empg;
+/* End - OA-REQ-1698 */

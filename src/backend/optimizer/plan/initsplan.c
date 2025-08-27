@@ -2884,14 +2884,24 @@ split_rels_qual(PlannerInfo *root, Node *quals, Relids qualscope,
 	{
 		Node	*clause = lfirst(l);
 		Relids	relids = pull_varnos(root, clause);
+		bool	is_null = false;
+
+		/* Begin - OA-REQ-1698 */
+		if (nodeTag(clause) == T_Const)
+		{
+			Const *con = (Const *)clause;
+			if (con->consttype == BOOLOID && con->constvalue == 0)
+				is_null = true;
+		}
+		/* End - OA-REQ-1698 */
 
 		if (contain_oracompat_expr(clause, OCE_COUNT))
 			relids = bms_add_member(relids, root->countRI);
 
 		/* It seems volatile function can be put here directly. */
-		if (bms_is_empty(relids)
+		if ((bms_is_empty(relids)
 			|| bms_is_empty(qualscope)
-			|| bms_is_subset(qualscope, relids))
+			|| bms_is_subset(qualscope, relids)) && !is_null) /* OA-REQ-1698 */
 		{
 			List	*vars;
 			bool	isPseudoConstant;
