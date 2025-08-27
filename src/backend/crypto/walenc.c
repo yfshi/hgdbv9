@@ -31,8 +31,8 @@ static PgCipherCtx *XLogEncCtx = NULL;
 static PgCipherCtx *XLogDecCtx = NULL;
 
 #ifdef USE_SWSDS
-static SGD_HANDLE hSessionHandle = NULL;
-static SGD_HANDLE hKeyHandle = NULL;
+static void* hSessionHandle = NULL;
+static void* hKeyHandle = NULL;
 #endif
 
 #ifdef FRONTEND

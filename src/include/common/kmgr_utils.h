@@ -14,9 +14,6 @@
 #define KMGR_UTILS_H
 
 #include "common/cipher.h"
-#ifdef USE_SWSDS
-#include <swsds.h>
-#endif
 
 /* Current version number */
 #define KMGR_VERSION 1
@@ -64,12 +61,8 @@
 
 #ifdef USE_SWSDS
 #define KMGR_USE_HSM_MODE		(hsm_get_kek_id() != INVALID_HSM_KEK_ID)
-#define HSM_KWP_ALGORITHM_ID	SGD_SMS4_ECB
-#define HSM_SM3_HASH_LEN		32
-#define HSM_ECC_DATA_LEN		32
 #else
 #define KMGR_USE_HSM_MODE false
-#define HSM_KWP_ALGORITHM_ID 0
 #endif
 
 /*
@@ -172,47 +165,47 @@ extern bool kmgr_get_keycmd_conf(char *dataDir, char **cluster_key_command,
 						  		 int *file_encryption_method, int *encryption_target_mode);
 
 #ifdef USE_SWSDS
-extern SGD_UINT32 HSM_GetAlgID(int pg_cipher_id);
-extern SGD_HANDLE HSM_GetDeviceHandle(bool force_new);
-extern SGD_HANDLE HSM_GetSessionHandle(SGD_HANDLE *phSessionHandle, bool force_new);
-extern SGD_HANDLE HSM_GenerateSessionKey(SGD_HANDLE *phSessionHandle, SGD_UINT32 uiKeyBits,
-										 SGD_UINT32 uiAlgID, SGD_UINT32 uiKEKIndex,
-										 SGD_UCHAR *pucKey, SGD_UINT32 *puiKeyLength,
-										 SGD_HANDLE *phKeyHandle);
-extern SGD_HANDLE HSM_GetKeyHandle(SGD_HANDLE *phSessionHandle, SGD_HANDLE *phKeyHandle,
+extern unsigned int HSM_GetAlgID(int pg_cipher_id);
+extern void* HSM_GetDeviceHandle(bool force_new);
+extern void* HSM_GetSessionHandle(void* *phSessionHandle, bool force_new);
+extern void* HSM_GenerateSessionKey(void* *phSessionHandle, unsigned int uiKeyBits,
+										 unsigned int uiAlgID, unsigned int uiKEKIndex,
+										 unsigned char *pucKey, unsigned int *puiKeyLength,
+										 void* *phKeyHandle);
+extern void* HSM_GetKeyHandle(void* *phSessionHandle, void* *phKeyHandle,
 								   const CryptoKey *key, unsigned int kekid, bool force_new);
-extern void HSM_DestroyKey(SGD_HANDLE *phSessionHandle, SGD_HANDLE hKeyHandle);
-extern bool HSM_Encrypt(SGD_HANDLE *phSessionHandle, SGD_HANDLE *phKeyHandle,
+extern void HSM_DestroyKey(void* *phSessionHandle, void* hKeyHandle);
+extern bool HSM_Encrypt(void* *phSessionHandle, void* *phKeyHandle,
 						const CryptoKey *key, unsigned int kekid,
 						unsigned int uiAlgID, unsigned char *iv, 
 						unsigned char *plaintext, unsigned int inlen,
 						unsigned char *ciphertext, unsigned int *outlen);
-extern bool HSM_Decrypt(SGD_HANDLE *phSessionHandle, SGD_HANDLE *phKeyHandle,
+extern bool HSM_Decrypt(void* *phSessionHandle, void* *phKeyHandle,
 						const CryptoKey *key, unsigned int kekid,
 						unsigned int uiAlgID, unsigned char *iv, 
 						unsigned char *ciphertext, unsigned int inlen,
 						unsigned char *plaintext, unsigned int *outlen);
-extern void HSM_Generate_Random(SGD_HANDLE *phSessionHandle, unsigned int len, unsigned char *pucRandom);
-extern void HSM_Hash(SGD_HANDLE *phSessionHandle, unsigned int AlgId,
+extern void HSM_Generate_Random(void* *phSessionHandle, unsigned int len, unsigned char *pucRandom);
+extern void HSM_Hash(void* *phSessionHandle, unsigned int AlgId,
 					 unsigned char *indata, unsigned int inlen,
 					 unsigned char *outdata, unsigned int *outlen);
-extern void HSM_Generate_Key_Pair(SGD_HANDLE *phSessionHandle, SGD_UINT32 uiKeyBits,
-								  SGD_UINT32 uiAlgID, void *pubKey, void *priKey);
-extern void HSM_Pub_Encrypt(SGD_HANDLE *phSessionHandle, unsigned int AlgId, 
+extern void HSM_Generate_Key_Pair(void* *phSessionHandle, unsigned int uiKeyBits,
+								  unsigned int uiAlgID, void *pubKey, void *priKey);
+extern void HSM_Pub_Encrypt(void* *phSessionHandle, unsigned int AlgId, 
 							unsigned int keyIndex, void *key, 
 							unsigned char *indata, unsigned int inlen,
 							unsigned char *outdata, unsigned int *outlen);
-extern void HSM_Pub_Decrypt(SGD_HANDLE *phSessionHandle, unsigned int AlgId, 
+extern void HSM_Pub_Decrypt(void* *phSessionHandle, unsigned int AlgId, 
 							unsigned int keyIndex, void *key, 
 							unsigned char *indata, unsigned int inlen,
 							unsigned char *outdata, unsigned int *outlen,
 							unsigned char *passwd);
-extern void HSM_Sign(SGD_HANDLE *phSessionHandle, unsigned int AlgId, 
+extern void HSM_Sign(void* *phSessionHandle, unsigned int AlgId, 
 					 unsigned int keyIndex, void *key, unsigned int keylen,
 					 unsigned char *indata, unsigned int inlen,
 					 unsigned char *signature, unsigned int *siglen,
 					 unsigned char *passwd);
-extern void HSM_Verify(SGD_HANDLE *phSessionHandle, unsigned int AlgId, 
+extern void HSM_Verify(void* *phSessionHandle, unsigned int AlgId, 
 					   unsigned int keyIndex, void *key, unsigned int keylen,
 					   unsigned char *indata, unsigned int inlen,
 					   unsigned char *signature, unsigned int siglen);
