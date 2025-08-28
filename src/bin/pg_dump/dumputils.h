@@ -97,4 +97,7 @@ extern AssignDumpMode  getDumpMode(const char *dumpmode);		/*  bug#M0000261 */
 extern void GetMySQLCompPara(Archive *AHX);
 /* End - ReqID:SRS-MYSQL-CASE */
 
+extern char *generate_restrict_key(void);
+extern bool valid_restrict_key(const char *restrict_key);
+
 #endif							/* DUMPUTILS_H */
