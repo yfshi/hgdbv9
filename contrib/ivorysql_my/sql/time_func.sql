@@ -1254,3 +1254,39 @@ drop table test;
 select DATEDIFF('9999-12-31','0001-01-01');
 select to_days('0001-01-01'); /* BUG#5607 */
 /* End - BUG#Z5578 */
+
+/* Begin - BUG#Z5604 */
+set sql_mode=default;
+select month(00000000);--0
+select month('0000-00-00');--NULL warning
+select date(00000000);--0000-00-00
+select date('0000-00-00');--NULL warning
+select monthname(00000000);--NULL
+select monthname('0000-00-00');--NULL warning
+select to_days(00000000);--NULL warning
+select to_days('0000-00-00');--NULL warning
+select dayname(00000000);--NULL warning
+select dayname('0000-00-00');--NULL warning
+select week(00000000);--NULL warning
+select week('0000-00-00');--NULL warning
+select yearweek(00000000);--NULL warning
+select yearweek('0000-00-00');--NULL warning
+/* End - BUG#Z5604 */
+
+/* Begin - BUG#Z5605 */
+set sql_mode='';
+select month(00000000);--0
+select month('0000-00-00');--0
+select date(00000000);--0000-00-00
+select date('0000-00-00');--0000-00-00
+select monthname(00000000);--NULL
+select monthname('0000-00-00');--NULL
+select to_days(00000000);--NULL warning
+select to_days('0000-00-00');--NULL warning
+select dayname(00000000);--NULL warning
+select dayname('0000-00-00');--NULL warning
+select week(00000000);--NULL warning
+select week('0000-00-00');--NULL warning
+select yearweek(00000000);--NULL warning
+select yearweek('0000-00-00');--NULL warning
+/* End - BUG#Z5605 */

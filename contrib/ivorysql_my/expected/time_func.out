@@ -1883,7 +1883,6 @@ select to_days(950501);--728779
 (1 row)
 
 select to_days(0);--NULL warning
-WARNING:  Incorrect datetime value: '5373485'
  to_days 
 ---------
         
@@ -2703,7 +2702,6 @@ WARNING:  Incorrect datetime value: '1.2'
 (1 row)
 
 select week(0);--NULL warning
-WARNING:  Incorrect datetime value: '5373485'
  week 
 ------
      
@@ -2889,7 +2887,6 @@ WARNING:  Incorrect datetime value: '1.2'
 (1 row)
 
 select week(0, 2);--NULL warning
-WARNING:  Incorrect datetime value: '5373485'
  week 
 ------
      
@@ -3072,7 +3069,6 @@ WARNING:  Incorrect datetime value: '1.2'
 (1 row)
 
 select yearweek(0);--NULL warning
-WARNING:  Incorrect datetime value: '5373485'
  yearweek 
 ----------
          
@@ -3253,7 +3249,6 @@ WARNING:  Incorrect datetime value: '1.2'
 (1 row)
 
 select yearweek(0, 4);--NULL warning
-WARNING:  Incorrect datetime value: '5373485'
  yearweek 
 ----------
          
@@ -4554,3 +4549,184 @@ select to_days('0001-01-01'); /* BUG#5607 */
 (1 row)
 
 /* End - BUG#Z5578 */
+/* Begin - BUG#Z5604 */
+set sql_mode=default;
+select month(00000000);--0
+ month 
+-------
+     0
+(1 row)
+
+select month('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+ month 
+-------
+      
+(1 row)
+
+select date(00000000);--0000-00-00
+    date    
+------------
+ 0000-00-00
+(1 row)
+
+select date('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+ date 
+------
+ 
+(1 row)
+
+select monthname(00000000);--NULL
+ monthname 
+-----------
+ 
+(1 row)
+
+select monthname('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+ monthname 
+-----------
+ 
+(1 row)
+
+select to_days(00000000);--NULL warning
+ to_days 
+---------
+        
+(1 row)
+
+select to_days('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+ to_days 
+---------
+        
+(1 row)
+
+select dayname(00000000);--NULL warning
+ dayname 
+---------
+ 
+(1 row)
+
+select dayname('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+ dayname 
+---------
+ 
+(1 row)
+
+select week(00000000);--NULL warning
+ week 
+------
+     
+(1 row)
+
+select week('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+ week 
+------
+     
+(1 row)
+
+select yearweek(00000000);--NULL warning
+ yearweek 
+----------
+         
+(1 row)
+
+select yearweek('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+ yearweek 
+----------
+         
+(1 row)
+
+/* End - BUG#Z5604 */
+/* Begin - BUG#Z5605 */
+set sql_mode='';
+select month(00000000);--0
+ month 
+-------
+     0
+(1 row)
+
+select month('0000-00-00');--0
+ month 
+-------
+     0
+(1 row)
+
+select date(00000000);--0000-00-00
+    date    
+------------
+ 0000-00-00
+(1 row)
+
+select date('0000-00-00');--0000-00-00
+    date    
+------------
+ 0000-00-00
+(1 row)
+
+select monthname(00000000);--NULL
+ monthname 
+-----------
+ 
+(1 row)
+
+select monthname('0000-00-00');--NULL
+ monthname 
+-----------
+ 
+(1 row)
+
+select to_days(00000000);--NULL warning
+ to_days 
+---------
+        
+(1 row)
+
+select to_days('0000-00-00');--NULL warning
+ to_days 
+---------
+        
+(1 row)
+
+select dayname(00000000);--NULL warning
+ dayname 
+---------
+ 
+(1 row)
+
+select dayname('0000-00-00');--NULL warning
+ dayname 
+---------
+ 
+(1 row)
+
+select week(00000000);--NULL warning
+ week 
+------
+     
+(1 row)
+
+select week('0000-00-00');--NULL warning
+ week 
+------
+     
+(1 row)
+
+select yearweek(00000000);--NULL warning
+ yearweek 
+----------
+         
+(1 row)
+
+select yearweek('0000-00-00');--NULL warning
+ yearweek 
+----------
+         
+(1 row)
+
+/* End - BUG#Z5605 */
