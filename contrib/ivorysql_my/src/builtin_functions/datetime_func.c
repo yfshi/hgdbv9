@@ -2436,17 +2436,20 @@ get_datetime_from_numeric(Numeric numvalue, struct pg_tm *tm, fsec_t *fsec, int 
 	}
 
 	/* Calculate the time */
-	str++; /* jump '.' */
-	for(int i = 0; i < 9; i++)
+	if (*str == '.') /* BUGZ#5610 */
 	{
-		int numtemp = 0;
-		if(*str != '\0')
+		str++; /* jump '.' */
+		for(int i = 0; i < 9; i++)
 		{
-			numtemp = *str - '0';
-			str++;
-			(*dec)++;
+			int numtemp = 0;
+			if(*str != '\0')
+			{
+				numtemp = *str - '0';
+				str++;
+				(*dec)++;
+			}
+			nanoseconds = nanoseconds * 10 + numtemp;
 		}
-		nanoseconds = nanoseconds * 10 + numtemp;
 	}
 
 	if(datetimetemp == 0)

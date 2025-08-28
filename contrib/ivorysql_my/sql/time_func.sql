@@ -1290,3 +1290,7 @@ select week('0000-00-00');--NULL warning
 select yearweek(00000000);--NULL warning
 select yearweek('0000-00-00');--NULL warning
 /* End - BUG#Z5605 */
+
+/* Begin - BUG#Z5610 */
+SELECT CONVERT_TZ(2.0230101120000E13, '+00:00', '+08:00');
+/* End - BUG#Z5610 */
