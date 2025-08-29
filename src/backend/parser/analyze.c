@@ -226,6 +226,10 @@ parse_analyze(RawStmt *parseTree, const char *sourceText,
 
 	pgstat_report_query_id(query->queryId, false);
 
+	/* SRS-MISC-HSH */
+	pgstat_report_query_type(query->commandType, false);
+
+
 	return query;
 }
 
@@ -270,6 +274,9 @@ parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
 	free_parsestate(pstate);
 
 	pgstat_report_query_id(query->queryId, false);
+
+	/* SRS-MISC-HSH */
+        pgstat_report_query_type(query->commandType, false);
 
 	return query;
 }

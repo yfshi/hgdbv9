@@ -1,0 +1,10 @@
+# hsh extension
+comment = 'Highgo Session History'
+default_version = '1.0'
+module_pathname = '$libdir/hsh'
+requires = 'pg_stat_statements'
+schema = _hg_perf_
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676
+

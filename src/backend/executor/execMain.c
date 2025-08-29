@@ -150,6 +150,9 @@ ExecutorStart(QueryDesc *queryDesc, int eflags)
 	 */
 	pgstat_report_query_id(queryDesc->plannedstmt->queryId, false);
 
+	/* SRS-MISC-HSH */
+	pgstat_report_query_type(queryDesc->plannedstmt->commandType, false);
+
 	if (ExecutorStart_hook)
 		(*ExecutorStart_hook) (queryDesc, eflags);
 	else

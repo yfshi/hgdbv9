@@ -15,6 +15,9 @@
 #include "miscadmin.h"			/* for BackendType */
 #include "utils/backend_progress.h"
 
+/* ReqID:SRS-MISC-HSH */
+#include "nodes/nodes.h"
+
 
 /* ----------
  * Backend states
@@ -30,7 +33,6 @@ typedef enum BackendState
 	STATE_IDLEINTRANSACTION_ABORTED,
 	STATE_DISABLED
 } BackendState;
-
 
 /* ----------
  * Shared-memory data structures
@@ -78,6 +80,20 @@ typedef struct PgBackendGSSStatus
 	bool		gss_enc;		/* If encryption is being used */
 
 } PgBackendGSSStatus;
+
+/* Begin - ReqID:SRS-MISC-HSH */
+/*
+ * used to indentify which phase of this query
+ */
+typedef enum QueryPhaseKind
+{
+	QUERY_PHASE_UNKNOWN = 0,
+	QUERY_PHASE_PARSER,	/* parse */
+	QUERY_PHASE_BIND,	/* bind */
+	QUERY_PHASE_PLAN,	/* plan */
+	QUERY_PHASE_EXEC	/* exec */
+} QueryPhaseKind;
+/* End - ReqD:SRS-MISC-HSH */
 
 
 /* ----------
@@ -168,6 +184,18 @@ typedef struct PgBackendStatus
 
 	/* query identifier, optionally computed using post_parse_analyze_hook */
 	uint64		st_query_id;
+
+	/* Begin: ReqID:SRS-MISC-HSH */
+	/*
+	 * SQL type, refer to global CmdType
+	 */
+	CmdType		st_cmd_type;
+	/*
+	 * phase of this query
+	 */
+	QueryPhaseKind  st_query_phase;
+	/* End - ReqID:SRS-MISC-HSH */
+
 } PgBackendStatus;
 
 
@@ -317,5 +345,10 @@ extern PgBackendStatus *pgstat_fetch_stat_beentry(int beid);
 extern LocalPgBackendStatus *pgstat_fetch_stat_local_beentry(int beid);
 extern char *pgstat_clip_activity(const char *raw_activity);
 
+/* Begin - ReqID:SRS-MISC-HSH */
+extern void pgstat_report_query_type(CmdType stCmdType, bool force);
+
+extern void pgstat_report_query_phase(QueryPhaseKind stQueryPhase);
+/* End - ReqID:SRS-MISC-HSH */
 
 #endif							/* BACKEND_STATUS_H */
