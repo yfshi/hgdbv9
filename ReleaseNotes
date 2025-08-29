@@ -14,6 +14,9 @@
 	7、新增兼容Oracle同义词功能；
 	8、新增两个性能参数，hg_pool_size 和 hg_pool_timeout；
 	9、新增兼容MySQL的bit类型；
+	10、新增磁盘管理审计功能；
+	11、新增远程归档功能；
+	12、审计事件新增审计 rollback prepare 语句；
 2、修复问题
 	1、修复了MySQL兼容，SET lc_time_names等参数异常断开的问题，bug#5527；
 	2、修复了MySQL兼容，get_format返回类型不正确的问题，bug#5533；
@@ -34,6 +37,23 @@
 	17、修复了MySQL兼容unhex函数返回不正确的问题，bug#5543;
 	18、修复了merge语句targetlist获取不完整的问题，OA-REQ-1669；
 	19、修复了MySQL兼容field函数返回不正确的问题，bug#5516;
+	20、修复了pdr生成快照时的警告问题， bug#5608;
+	21、修复了replace函数结果不正确等4个问题，bug#5603,OA-REQ-1682;
+	22、修复了MySQL bin函数对负数的处理不正确，bug#5504；
+	23、修复了MySQL char对某些整数的处理不正确，bug#5510；
+	24、修复了MySQL soundex函数处理中文和mysql返回结果不一致，bug#5535；
+	25、消除了一些warnings；
+	26、修改了hg_misc一些相关的函数，OA-REQ-1640;
+	27、去掉了插件编译时对swsds.h的依赖；
+	28、修复了在带有rownum的查询中where字句中条件有xxx=''时报错问题，OA-REQ-1698;
+	29、修复了元组被插入到错误间隔分区的问题, bug#5647	
+	30、修复了在创建间隔分区时未对值做正确转换类型的问题, bug#5652.
+	31、修复了MySQL TIME_TO_SEC函数的一些问题，bug#5566、bug#5568、bug#5569;
+	32、修复了MySQL MONTH函数的一些问题，bug#5571、bug#5572、bug#5604、bug#5605;
+	33、修复了MySQL YEARWEEK函数返回类型不一致的问题，bug#5576;
+	34、修复了MySQL DATEDIFF函数结果不正确的问题，bug#5578;
+	35、修复了闪回在清除recyclebin时有些记录未被清理掉的问题，bug#5609；
+	36、闪回支持临时表，bug#5646;
 
 V9.0.4.1，禅道版本ID：4647-2025/08/08
 1、新增特性
