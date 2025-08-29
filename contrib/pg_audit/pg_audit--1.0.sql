@@ -462,6 +462,14 @@ CREATE FUNCTION public.pg_audit_file_archive( )
 		AS 'MODULE_PATHNAME', 'pg_audit_file_archive'
 LANGUAGE C STRICT;
 
+CREATE OR REPLACE FUNCTION public.copy_file_to_remot_srv(text, text)
+RETURNS void
+AS 'MODULE_PATHNAME','copy_file_to_remot_srv'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
 CREATE FUNCTION public.pg_audit_privilege(statement_opts text)
 		RETURNS  text
 		AS 'MODULE_PATHNAME', 'pg_audit_privilege'

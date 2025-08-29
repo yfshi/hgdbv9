@@ -1024,6 +1024,7 @@ ORDER BY
 --------+-------------------------------------+--------------------------+------------------------------------------------------------------------------------------------------------------------+------
  public | audit_show_diskinfo                 | record                   |                                                                                                                        | func
  public | check_se_param_change               | text                     |                                                                                                                        | func
+ public | copy_file_to_remot_srv              | void                     | text, text                                                                                                             | func
  public | current_is_superuser                | boolean                  |                                                                                                                        | func
  public | current_is_syssao                   | boolean                  |                                                                                                                        | func
  public | current_is_syssso                   | boolean                  |                                                                                                                        | func
@@ -1093,7 +1094,7 @@ ORDER BY
  public | reset_all_se_param                  | text                     |                                                                                                                        | func
  public | set_backend_se_param                | text                     | oid, text, boolean                                                                                                     | func
  public | user_expiration_info                | record                   | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                                           | func
-(71 rows)
+(72 rows)
 
 \do
                              List of operators
@@ -1135,6 +1136,7 @@ ORDER BY
 --------+-------------------------------------+--------------------------+------------------------------------------------------------------------------------------------------------------------+------
  public | audit_show_diskinfo                 | record                   |                                                                                                                        | func
  public | check_se_param_change               | text                     |                                                                                                                        | func
+ public | copy_file_to_remot_srv              | void                     | text, text                                                                                                             | func
  public | current_is_superuser                | boolean                  |                                                                                                                        | func
  public | current_is_syssao                   | boolean                  |                                                                                                                        | func
  public | current_is_syssso                   | boolean                  |                                                                                                                        | func
@@ -1204,7 +1206,7 @@ ORDER BY
  public | reset_all_se_param                  | text                     |                                                                                                                        | func
  public | set_backend_se_param                | text                     | oid, text, boolean                                                                                                     | func
  public | user_expiration_info                | record                   | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                                           | func
-(71 rows)
+(72 rows)
 
 \do public.*
                              List of operators
@@ -1269,6 +1271,7 @@ ORDER BY
 --------+-------------------------------------+--------------------------+------------------------------------------------------------------------------------------------------------------------+------
  public | audit_show_diskinfo                 | record                   |                                                                                                                        | func
  public | check_se_param_change               | text                     |                                                                                                                        | func
+ public | copy_file_to_remot_srv              | void                     | text, text                                                                                                             | func
  public | current_is_superuser                | boolean                  |                                                                                                                        | func
  public | current_is_syssao                   | boolean                  |                                                                                                                        | func
  public | current_is_syssso                   | boolean                  |                                                                                                                        | func
@@ -1338,7 +1341,7 @@ ORDER BY
  public | reset_all_se_param                  | text                     |                                                                                                                        | func
  public | set_backend_se_param                | text                     | oid, text, boolean                                                                                                     | func
  public | user_expiration_info                | record                   | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                                           | func
-(71 rows)
+(72 rows)
 
 \do public.*
                              List of operators

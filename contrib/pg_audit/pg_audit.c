@@ -375,7 +375,7 @@ PG_FUNCTION_INFO_V1(current_is_syssao);
 PG_FUNCTION_INFO_V1(current_is_syssso);
 PG_FUNCTION_INFO_V1(current_is_superuser);
 PG_FUNCTION_INFO_V1(audit_show_diskinfo);
-
+PG_FUNCTION_INFO_V1(copy_file_to_remot_srv);
 
 Datum
 current_is_syssao(PG_FUNCTION_ARGS)
@@ -846,6 +846,17 @@ static void audit_define_GUC(void)
 					 PGC_POSTMASTER,
 					 0,
 					 audit_logdir_check_hook,
+					 NULL,
+					 NULL);
+	/* remote path */
+	DefineCustomStringVariable("audit.remote_archdir",
+					 "set audit remote arch path",
+					 NULL,
+					 &audit_GUC.remote_archdir,
+					 "",
+					 PGC_POSTMASTER,
+					 0,
+					 NULL,
 					 NULL,
 					 NULL);
 	/* safety monitoring switch */
@@ -2059,7 +2070,7 @@ audit_get_actionname_from_tree(Node *parsetree, char *buf)
 						break;
 
 					case TRANS_STMT_ROLLBACK_PREPARED:
-				//		type = ROLLBACK PREPARED;
+						strcpy(buf, ROLLBACK_PREPARE_S);
 						break;
 
 					default:
@@ -5443,6 +5454,7 @@ audit_arch_job(void)
 		char   *time_str;
 		char	timec[20];
 		char   *archpath;
+		char   *archfile;
 		char	copysql[MAXPGPATH] = {0};
 		/* Begin - BUG#00004708 */
 		char	connstr[MAXPGPATH] = {0};
@@ -5457,16 +5469,33 @@ audit_arch_job(void)
 		timec[19] = '\0';
 
 		archpath = palloc(MAXPGPATH);
+		archfile = palloc(MAXPGPATH);
 		
-		sprintf(archpath, "%s/%d", audit_GUC.audit_archdir, oids[elemno]);
-		sprintf(copysql, "COPY pg_audit_log TO ''%s/%d.csv''", archpath, oids[elemno]);
-
-		ret = audit_mkdirs(archpath);
-		if (ret < 0)
+		snprintf(archpath, sizeof(archpath), "%s/%d", audit_GUC.audit_archdir, oids[elemno]);
+		if ((audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0) &&
+							(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir)))
 		{
-			internalStatement = false;
-			elog(WARNING, "could not create directory:%s :%m", archpath);
-			return;
+			snprintf(archfile, sizeof(archfile), "%s/%d.csv", archpath, oids[elemno]);
+			snprintf(copysql, sizeof(copysql), "COPY pg_audit_log TO ''%s/%d.csv'';select public.copy_file_to_remot_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);
+		}
+		else if ((audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0) &&
+								(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir) == 0))
+		{
+			snprintf(archfile, sizeof(archfile), "%s/%d.csv", DataDir, oids[elemno]);
+			snprintf(copysql, sizeof(copysql), "COPY pg_audit_log TO ''%s/%d.csv'';select public.copy_file_to_remot_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir);
+		}
+		else if(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
+			snprintf(copysql, sizeof(copysql), "COPY pg_audit_log TO ''%s/%d.csv''", archpath, oids[elemno]);
+
+		if (audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
+		{
+			ret = audit_mkdirs(archpath);
+			if (ret < 0)
+			{
+				internalStatement = false;
+				elog(WARNING, "could not create directory:%s :%m", archpath);
+				return;
+			}
 		}
 
 		/* Begin - BUG#00004708 */
@@ -6221,11 +6250,11 @@ pg_audit_launch(void)
 	/* When audit_enable is on and the archvie path is not empty, 
 	 * pagent scheduled task needs to be initiated for archiving
 	 */
-	if (audit_GUC.audit_enable == AUDIT_ON && audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir) > 0)
+	if (audit_GUC.audit_enable == AUDIT_ON && ((audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir) > 0) ||
+						(audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0)))
 	{
 		audit_arch_job();
 	}
-
 #ifdef USE_SQLITE
 	/* If the path of sqlite is modified, the path also
 	 * needs to be modified in pg_foreign_server
@@ -7211,6 +7240,9 @@ audit_stmttype_to_string(AuditStmtType type)
 		case ROLLBACK_TO_T:
 			tag = ROLLBACK_TO_S;
 			break;
+		case ROLLBACK_PREPARE_T:
+			tag = ROLLBACK_PREPARE_S;
+			break;
 		case RELEASE_T:
 			tag = RELEASE_S;
 			break;
@@ -7458,6 +7490,8 @@ audit_get_stmt_type(char *statment, bool is_obj, ObjectType objtype)
 		type = SAVEPOINT_T;
 	else if (pg_strcasecmp(statment, ROLLBACK_TO_S) == 0)
 		type = ROLLBACK_TO_T;
+	else if (pg_strcasecmp(statment, ROLLBACK_PREPARE_S) == 0)
+		type = ROLLBACK_PREPARE_T;
 	else if (pg_strcasecmp(statment, RELEASE_S) == 0 || pg_strcasecmp(statment, RELEASE_SAVEPOINT_S) == 0)
 		type = RELEASE_T;
 	else if (pg_strcasecmp(statment, MANDATORY_AUDIT_ON_S) == 0)
@@ -9538,6 +9572,31 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 	internalStatement = false;
 
 	PG_RETURN_BOOL(true);
+}
+
+Datum
+copy_file_to_remot_srv(PG_FUNCTION_ARGS)
+{
+	text    *sourcevar = PG_GETARG_TEXT_P(0);
+	text    *destvar = PG_GETARG_TEXT_P(1);
+	StringInfoData buf;
+	int			rc;
+
+	/* permission check */
+	check_audit_sao_permission(GetUserId(), false);
+
+	initStringInfo(&buf);
+
+	appendStringInfo(&buf, "scp ");
+	appendBinaryStringInfo(&buf, VARDATA_ANY(sourcevar), VARSIZE_ANY_EXHDR(sourcevar));
+	appendStringInfoSpaces(&buf, 1);
+	appendBinaryStringInfo(&buf, VARDATA_ANY(destvar), VARSIZE_ANY_EXHDR(destvar));
+
+	rc = system(buf.data);
+	if (rc == 127 || rc == -1 || rc ==256)
+		elog(ERROR, "copy audit log to remote server failed");
+
+	PG_RETURN_VOID();
 }
 
 Datum

@@ -194,6 +194,7 @@ typedef enum AuditStmtType
 	ROLLBACK_T,
 	SAVEPOINT_T,
 	ROLLBACK_TO_T,
+	ROLLBACK_PREPARE_T,
 	RELEASE_T,
 	START_T,
 	STOP_T,
@@ -346,6 +347,7 @@ typedef struct AduitSwitchGUC
 	uint64 audit_spacelimit;
 	double audit_spacealarm;
 	char *audit_archdir;
+	char *remote_archdir;
 	AuditSwitch audit_monitoring;
 	char *audit_mail;
 	int audit_privimode;
