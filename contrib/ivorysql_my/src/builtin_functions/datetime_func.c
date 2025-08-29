@@ -2688,13 +2688,15 @@ to_days(PG_FUNCTION_ARGS)
 
 	DateADT	date = PG_GETARG_DATEADT(0);
 	/* Begin - BUG#Z5578 */
-	if (date == 0)
+	/* When the parameter is the value 0 or the character '0000-00-00',and 
+	 * sql_mode is default or empty, the conversion calls the int_mysdate function
+	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
+	 * appears because the original input parameter cannot be obtained.
+	 * Therefore,ensur the result is correct and omit the warning message.
+	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
+	 */
+	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
 		PG_RETURN_NULL();
-	else if (date == MYSQL_ZERO_DATE)
-	{
-		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
-		PG_RETURN_NULL();
-	}
 
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
@@ -2823,13 +2825,15 @@ dayname(PG_FUNCTION_ARGS)
 
 	DateADT		date = PG_GETARG_DATEADT(0);
 	/* Begin - BUG#Z5578 */
-	if (date == 0)
+	/* When the parameter is the value 0 or the character '0000-00-00',and 
+	 * sql_mode is default or empty, the conversion calls the int_mysdate function
+	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
+	 * appears because the original input parameter cannot be obtained.
+	 * Therefore,ensur the result is correct and omit the warning message.
+	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
+	 */
+	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
 		PG_RETURN_NULL();
-	else if (date == MYSQL_ZERO_DATE)
-	{
-		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
-		PG_RETURN_NULL();
-	}
 
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
@@ -2861,13 +2865,15 @@ monthname(PG_FUNCTION_ARGS)
 
 	DateADT		date = PG_GETARG_DATEADT(0);
 	/* Begin - BUG#Z5578 */
-	if (date == 0)
+	/* When the parameter is the value 0 or the character '0000-00-00',and 
+	 * sql_mode is default or empty, the conversion calls the int_mysdate function
+	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
+	 * appears because the original input parameter cannot be obtained.
+	 * Therefore,ensur the result is correct and omit the warning message.
+	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
+	 */
+	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
 		PG_RETURN_NULL();
-	else if (date == MYSQL_ZERO_DATE)
-	{
-		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
-		PG_RETURN_NULL();
-	}
 	/* End - BUG#Z5578 */
 	if (!get_date_from_int(date, tm, &fsec, flag))
 		PG_RETURN_NULL();
@@ -2966,13 +2972,15 @@ mys_week(PG_FUNCTION_ARGS)
 
 	DateADT		date = PG_GETARG_DATEADT(0);
 	/* Begin - BUG#Z5578 */
-	if (date == 0)
+	/* When the parameter is the value 0 or the character '0000-00-00',and 
+	 * sql_mode is default or empty, the conversion calls the int_mysdate function
+	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
+	 * appears because the original input parameter cannot be obtained.
+	 * Therefore,ensur the result is correct and omit the warning message.
+	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
+	 */
+	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
 		PG_RETURN_NULL();
-	else if (date == MYSQL_ZERO_DATE)
-	{
-		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
-		PG_RETURN_NULL();
-	}
 
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
@@ -3004,13 +3012,15 @@ mys_week_mode(PG_FUNCTION_ARGS)
 	date = PG_GETARG_DATEADT(0);
 	/* End - BUG#Z5528 */
 	/* Begin - BUG#Z5578 */
-	if (date == 0)
+	/* When the parameter is the value 0 or the character '0000-00-00',and 
+	 * sql_mode is default or empty, the conversion calls the int_mysdate function
+	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
+	 * appears because the original input parameter cannot be obtained.
+	 * Therefore,ensur the result is correct and omit the warning message.
+	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
+	 */
+	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
 		PG_RETURN_NULL();
-	else if (date == MYSQL_ZERO_DATE)
-	{
-		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
-		PG_RETURN_NULL();
-	}
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
 	mys_date2tm(date, tm);
@@ -3040,18 +3050,20 @@ yearweek(PG_FUNCTION_ARGS)
 	date = PG_GETARG_DATEADT(0);
 	/* End - BUG#Z5530 */
 	/* Begin - BUG#Z5578 */
-	if (date == 0)
+	/* When the parameter is the value 0 or the character '0000-00-00',and 
+	 * sql_mode is default or empty, the conversion calls the int_mysdate function
+	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
+	 * appears because the original input parameter cannot be obtained.
+	 * Therefore,ensur the result is correct and omit the warning message.
+	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
+	 */
+	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
 		PG_RETURN_NULL();
-	else if (date == MYSQL_ZERO_DATE)
-	{
-		ereport(WARNING, (errmsg("Incorrect datetime value: '%d'", MYSQL_ZERO_DATE)));
-		PG_RETURN_NULL();
-	}
 
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
 	mys_date2tm(date, tm);
-/* End - BUG#Z5578 */
+	/* End - BUG#Z5578 */
 	/* Begin - BUG#Z5575 */
 	if (mode > 7)
 		mode = mode %8;
