@@ -51,6 +51,9 @@
 #include "storage/spin.h"
 #include "utils/guc.h"
 #include "utils/ps_status.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 
 /* ----------
@@ -588,6 +591,16 @@ pgarch_archiveXlog(char *xlog)
 
 		if (WIFEXITED(rc))
 		{
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			#ifdef USE_SQLITE
+				if (sqlite_open_db_for_audit_hook)
+				{
+					char *errstr = "execute command error or disk full";
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EXEC_FAIL, AUDIT_FAIL, NULL, errstr);
+				}
+			#endif
+			/* End - ReqID:SRS-SECURITY-AUDIT */
+
 			ereport(lev,
 					(errmsg("archive command failed with exit code %d",
 							WEXITSTATUS(rc)),

@@ -93,6 +93,9 @@
 #include "utils/ps_status.h"
 #include "utils/timeout.h"
 #include "utils/timestamp.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /*
  * Maximum data payload in a WAL data message.  Must be >= XLOG_BLCKSZ.
@@ -370,6 +373,12 @@ WalSndShutdown(void)
 	 */
 	if (whereToSendOutput == DestRemote)
 		whereToSendOutput = DestNone;
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
+		if (sqlite_open_db_for_audit_hook)
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_WALSENDER_EXIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+#endif
+	/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	proc_exit(0);
 	abort();					/* keep the compiler quiet */
@@ -583,6 +592,13 @@ StartReplication(StartReplicationCmd *cmd)
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("IDENTIFY_SYSTEM has not been run before START_REPLICATION")));
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
+	if (sqlite_open_db_for_audit_hook)
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_WALSENDER_CONN, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/* create xlogreader for physical replication */
 	xlogreader =
@@ -1169,6 +1185,13 @@ StartLogicalReplication(StartReplicationCmd *cmd)
 				 errmsg("cannot read from logical replication slot \"%s\"",
 						cmd->slotname),
 				 errdetail("This slot has been invalidated because it exceeded the maximum reserved size.")));
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
+	 if (sqlite_open_db_for_audit_hook)
+		 sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_WALSENDER_CONN, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/*
 	 * Force a disconnect, so that the decoding code doesn't need to care
@@ -1791,6 +1814,14 @@ ProcessRepliesIfAny(void)
 			ereport(COMMERROR,
 					(errcode(ERRCODE_PROTOCOL_VIOLATION),
 					 errmsg("unexpected EOF on standby connection")));
+
+		 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+		#ifdef USE_SQLITE
+			 if (sqlite_open_db_for_audit_hook)
+				 sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_WALSENDER_EXIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+		#endif
+		 /* End - ReqID:SRS-SECURITY-AUDIT */
+
 			proc_exit(0);
 		}
 		if (r == 0)
@@ -1811,6 +1842,14 @@ ProcessRepliesIfAny(void)
 				maxmsglen = PQ_SMALL_MESSAGE_LIMIT;
 				break;
 			default:
+
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			#ifdef USE_SQLITE
+				if (sqlite_open_db_for_audit_hook)
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_WALSENDER_EXIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+			#endif
+			/* End - ReqID:SRS-SECURITY-AUDIT */
+
 				ereport(FATAL,
 						(errcode(ERRCODE_PROTOCOL_VIOLATION),
 						 errmsg("invalid standby message type \"%c\"",
@@ -1826,6 +1865,14 @@ ProcessRepliesIfAny(void)
 			ereport(COMMERROR,
 					(errcode(ERRCODE_PROTOCOL_VIOLATION),
 					 errmsg("unexpected EOF on standby connection")));
+
+			 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+			 #ifdef USE_SQLITE
+				 if (sqlite_open_db_for_audit_hook)
+					 sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_WALSENDER_EXIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+			#endif
+			 /* End - ReqID:SRS-SECURITY-AUDIT */
+
 			proc_exit(0);
 		}
 
@@ -1859,6 +1906,12 @@ ProcessRepliesIfAny(void)
 				 * 'X' means that the standby is closing down the socket.
 				 */
 			case 'X':
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			#ifdef USE_SQLITE
+				if (sqlite_open_db_for_audit_hook)
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_WALSENDER_EXIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+			#endif
+			/* End - ReqID:SRS-SECURITY-AUDIT */
 				proc_exit(0);
 
 			default:
@@ -2361,7 +2414,15 @@ WalSndLoop(WalSndSendDataCallback send_data)
 		 */
 		if (streamingDoneReceiving && streamingDoneSending &&
 			!pq_is_send_pending())
+			{
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			#ifdef USE_SQLITE
+				if (sqlite_open_db_for_audit_hook)
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_WALSENDER_EXIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+			#endif
+			/* End - ReqID:SRS-SECURITY-AUDIT */
 			break;
+			}
 
 		/*
 		 * If we don't have any pending data in the output buffer, try to send
@@ -3013,6 +3074,12 @@ WalSndDone(WalSndSendDataCallback send_data)
 		SetQueryCompletion(&qc, CMDTAG_COPY, 0);
 		EndCommand(&qc, DestRemote, false);
 		pq_flush();
+		/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_WALSENDER_EXIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+		#endif
+		/* End - ReqID:SRS-SECURITY-AUDIT */
 
 		proc_exit(0);
 	}
@@ -3214,7 +3281,16 @@ WalSndWait(uint32 socket_events, long timeout, uint32 wait_event)
 	ModifyWaitEvent(FeBeWaitSet, FeBeWaitSetSocketPos, socket_events, NULL);
 	if (WaitEventSetWait(FeBeWaitSet, timeout, &event, 1, wait_event) == 1 &&
 		(event.events & WL_POSTMASTER_DEATH))
+	{
+
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	#ifdef USE_SQLITE
+		if (sqlite_open_db_for_audit_hook)
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_WALSENDER_EXIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+	#endif
+	/* End - ReqID:SRS-SECURITY-AUDIT */
 		proc_exit(1);
+	}
 }
 
 /*

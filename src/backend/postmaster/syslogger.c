@@ -51,6 +51,9 @@
 #include "utils/guc.h"
 #include "utils/ps_status.h"
 #include "utils/timestamp.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /*
  * We read() into a temp buffer twice as big as a chunk, so that any fragment
@@ -1106,7 +1109,17 @@ write_syslogger_file(const char *buffer, int count, int destination)
 	 * to our input pipe which would result in a different sort of looping.
 	 */
 	if (rc != count)
+	{
 		write_stderr("could not write to log file: %s\n", strerror(errno));
+		/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+			{
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOG_DISK_FULL, AUDIT_FAIL, NULL, strerror(errno));
+			}
+		#endif
+		/* End - ReqID:SRS-SECURITY-AUDIT */
+	}
 }
 
 #ifdef WIN32

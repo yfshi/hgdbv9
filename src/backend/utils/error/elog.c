@@ -616,11 +616,6 @@ errfinish(const char *filename, int lineno, const char *funcname)
 
 		CritSectionCount = 0;	/* should be unnecessary, but... */
 
-/* Begin - ReqID:SRS-SECURITY-AUDIT */
-		if (audit_system_event_hook)
-			audit_system_event_hook(false, edata->sqlerrcode);
-/* End - ReqID:SRS-SECURITY-AUDIT */
-
 		/*
 		 * Note that we leave CurrentMemoryContext set to ErrorContext. The
 		 * handler should reset it to something else soon.
@@ -638,7 +633,12 @@ errfinish(const char *filename, int lineno, const char *funcname)
 		}
 #endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
-		
+
+		/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			if (audit_system_event_hook)
+				audit_system_event_hook(false, edata->sqlerrcode);
+		/* End - ReqID:SRS-SECURITY-AUDIT */
+
 		PG_RE_THROW();
 	}
 
