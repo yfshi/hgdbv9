@@ -7741,16 +7741,19 @@ numeric_mysdatetimes(PG_FUNCTION_ARGS)
 	}
 
 	/* Calculate the time */
-	str++; /* jump '.' */
-	for(int i=0; i<9; i++)
+	if (*str == '.') /* BUGZ#5610 */
 	{
-		int numtemp = 0;
-		if(*str != '\0')
+		str++; /* jump '.' */
+		for(int i=0; i<9; i++)
 		{
-			numtemp = *str - '0';
-			str++;
+			int numtemp = 0;
+			if(*str != '\0')
+			{
+				numtemp = *str - '0';
+				str++;
+			}
+			nanoseconds = nanoseconds * 10 + numtemp;
 		}
-		nanoseconds = nanoseconds * 10 + numtemp;
 	}
 
 	if(datetimetemp == 0)
@@ -15510,16 +15513,19 @@ numeric_mystimestamps(PG_FUNCTION_ARGS)
 	}
 
 	/* Calculate the time */
-	str++; /* jump '.' */
-	for(int i=0; i<6; i++)
+	if (*str == '.') /* BUGZ#5610 */
 	{
-		int num = 0;
-		if(*str != '\0')
+		str++; /* jump '.' */
+		for(int i=0; i<6; i++)
 		{
-			num = *str - '0';
-			str++;
+			int num = 0;
+			if(*str != '\0')
+			{
+				num = *str - '0';
+				str++;
+			}
+			fsec = fsec * 10 + num;
 		}
-		fsec = fsec * 10 + num;
 	}
 
 	if(timestamptemp == 0)

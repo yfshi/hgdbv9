@@ -4730,3 +4730,11 @@ select yearweek('0000-00-00');--NULL warning
 (1 row)
 
 /* End - BUG#Z5605 */
+/* Begin - BUG#Z5610 */
+SELECT CONVERT_TZ(2.0230101120000E13, '+00:00', '+08:00');
+         CONVERT_TZ         
+----------------------------
+ 2023-01-01 20:00:00.000000
+(1 row)
+
+/* End - BUG#Z5610 */
