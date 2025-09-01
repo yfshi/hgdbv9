@@ -23,6 +23,7 @@
 #include "catalog/pg_force_view.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "catalog/pg_rewrite.h"		/* ReqID:SRS-SQL-FORCEVIEW */
 #include "commands/defrem.h"
+#include "commands/event_trigger.h"	/* BUG#5707 */
 #include "commands/tablecmds.h"
 #include "commands/view.h"
 #include "miscadmin.h"
@@ -1366,8 +1367,12 @@ compile_force_view(Oid viewoid)
 	 * We don't use PG_TRY() here for now, even though the function may emit an error message.
 	 * We want to emit rather than ignore the error that the view creation check fails, which
 	 * helps to analyze the problem for user.
+	 *
+	 * BUG#5707: collect SCT_AlterTable command for event trigger.
 	 */
+	EventTriggerAlterTableStart(node);
 	res = compile_force_view_internal((ViewStmt *) node, fview_querystring, viewoid);
+	EventTriggerAlterTableEnd();
 
 	AtEOXact_GUC(false, save_nestlevel); /* OA-REQ-1459 */
 	pfree(fview_querystring);
