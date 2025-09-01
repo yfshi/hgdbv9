@@ -2648,36 +2648,6 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.replace(int8, int8, int8)
-RETURNS varchar
-AS $$
-    select replace($1::text, $2::text, $3::text);
-$$
-LANGUAGE SQL
-STRICT
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE FUNCTION ivymy.replace(int4, int4, int4)
-RETURNS varchar
-AS $$
-    select replace($1::text, $2::text, $3::text);
-$$
-LANGUAGE SQL
-STRICT
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE FUNCTION ivymy.replace(numeric, numeric, numeric)
-RETURNS varchar
-AS $$
-    select replace($1::text, $2::text, $3::text);
-$$
-LANGUAGE SQL
-STRICT
-PARALLEL SAFE
-IMMUTABLE;
-
 CREATE FUNCTION ivymy.conv(text, int4, int4)
 RETURNS varchar
 AS 'MODULE_PATHNAME', 'conv'

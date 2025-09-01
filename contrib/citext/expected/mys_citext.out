@@ -2010,7 +2010,7 @@ SELECT replace('abcdefabcdef'::citext, 'cd', 'XX') = 'abXXefabXXef' AS t;
 SELECT replace('abcdefabcdef'::citext, 'CD', 'XX') = 'abXXefabXXef' AS t;
  t 
 ---
- t
+ f
 (1 row)
 
 SELECT replace('ab^is$abcdef'::citext, '^is$', 'XX') = 'abXXabcdef' AS t;
@@ -2028,7 +2028,7 @@ SELECT replace('abcdefabcdef', 'cd'::citext, 'XX') = 'abXXefabXXef' AS t;
 SELECT replace('abcdefabcdef', 'CD'::citext, 'XX') = 'abXXefabXXef' AS t;
  t 
 ---
- t
+ f
 (1 row)
 
 SELECT replace('ab^is$abcdef', '^is$'::citext, 'XX') = 'abXXabcdef' AS t;
@@ -2046,7 +2046,7 @@ SELECT replace('abcdefabcdef'::citext, 'cd'::citext, 'XX') = 'abXXefabXXef' AS t
 SELECT replace('abcdefabcdef'::citext, 'CD'::citext, 'XX') = 'abXXefabXXef' AS t;
  t 
 ---
- t
+ f
 (1 row)
 
 SELECT replace('ab^is$abcdef'::citext, '^is$'::citext, 'XX') = 'abXXabcdef' AS t;

@@ -2661,3 +2661,40 @@ SELECT ifnull('100.001'::numeric, 'hello!'::text);
  100.001
 (1 row)
 
+-- replace
+SELECT replace (123,3,'highgo') as test1; -- '12highgo'
+  test1   
+----------
+ 12highgo
+(1 row)
+
+SELECT replace (123.5,3,'highgo') as test1; -- '12highgo.5'
+   test1    
+------------
+ 12highgo.5
+(1 row)
+
+SELECT replace ('helloworld','world',1) as test1; -- 'hello1'
+ test1  
+--------
+ hello1
+(1 row)
+
+SELECT replace ('helloworld','world',1.55) as test1; -- 'hello1.55'
+   test1   
+-----------
+ hello1.55
+(1 row)
+
+SELECT replace ('helloworld','world','1970-01-01 10:10:10') as test1; -- 'hello1970-01-01 10:10:10'
+          test1           
+--------------------------
+ hello1970-01-01 10:10:10
+(1 row)
+
+SELECT replace ('1970-01-01 10:10:10',7,'highgo') as test1; -- '19highgo0-01-01 10:10:10'
+          test1           
+--------------------------
+ 19highgo0-01-01 10:10:10
+(1 row)
+
