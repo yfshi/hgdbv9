@@ -54,6 +54,7 @@ extern DBUser	CurUser;		/* ReqID:SRS-CMD-PGDUMP */
 extern const char *DumpM;	/* ReqID:SRS-CMD-PGDUMP */
 extern int caselowernum;	/* ReqID:SRS-MYSQL-CASE */
 
+extern char *sanitize_line(const char *str, bool want_hyphen);
 extern bool buildACLCommands(const char *name, const char *subname, const char *nspname,
 							 const char *type, const char *acls, const char *racls,
 							 const char *owner, const char *prefix, int remoteVersion,
@@ -95,5 +96,8 @@ extern AssignDumpMode  getDumpMode(const char *dumpmode);		/*  bug#M0000261 */
 /* Begin - ReqID:SRS-MYSQL-CASE */
 extern void GetMySQLCompPara(Archive *AHX);
 /* End - ReqID:SRS-MYSQL-CASE */
+
+extern char *generate_restrict_key(void);
+extern bool valid_restrict_key(const char *restrict_key);
 
 #endif							/* DUMPUTILS_H */
