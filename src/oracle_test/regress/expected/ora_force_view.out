@@ -378,3 +378,23 @@ drop view oa_req_1558.vtest;
 drop table oa_req_1558.test;
 drop schema oa_req_1558;
 /* End - OA-REQ-1558 */
+/* Begin - BUG#5707 */
+create or replace force view bug_5707_fvt(id) as select id from bug_5707_t;
+WARNING:  View created with compilation errors
+create table bug_5707_t(id int);
+create or replace package bug_5707_ppp as
+	procedure xxx();
+end;
+/
+create or replace package body bug_5707_ppp as
+	procedure xxx as
+		cursor ccc is select id from bug_5707_fvt;
+		ddd ccc%ROWTYPE;
+	begin
+	end;
+end bug_5707_ppp;
+/
+drop package bug_5707_ppp;
+drop view bug_5707_fvt;
+drop table bug_5707_t;
+/* End - BUG#5707 */
