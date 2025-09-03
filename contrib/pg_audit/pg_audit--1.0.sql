@@ -656,6 +656,11 @@ LANGUAGE C STRICT;
 create view public.show_audit_diskinfo as select * from audit_show_diskinfo();
 alter view  show_audit_diskinfo owner to  syssao; --BUG Z4802
 
+CREATE FUNCTION public.pg_audit_switch_primary(int)
+		RETURNS  bool
+		AS 'MODULE_PATHNAME', 'pg_audit_switch_primary'
+LANGUAGE C STRICT;
+
 GRANT ALL ON TABLE pg_track_settings_list TO PUBLIC;
 GRANT ALL ON TABLE pg_track_settings_history TO PUBLIC;
 GRANT ALL ON TABLE pg_track_db_role_settings_list TO PUBLIC;

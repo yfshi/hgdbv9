@@ -13749,8 +13749,8 @@ CheckForStandbyTrigger(void)
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 		if (audit_system_event_hook)
-			audit_system_event_hook(true, 2);
-/* End - ReqID:SRS-SECURITY-AUDIT */		
+			audit_system_event_hook(true, 13);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 		return true;
 	}
 

@@ -653,6 +653,11 @@ CREATE FUNCTION public.audit_show_diskinfo()
 	AS 'MODULE_PATHNAME', 'audit_show_diskinfo'
 LANGUAGE C STRICT;
 
+CREATE FUNCTION public.pg_audit_switch_primary(int)
+		RETURNS  bool
+		AS 'MODULE_PATHNAME', 'pg_audit_switch_primary'
+LANGUAGE C STRICT;
+
 create view public.show_audit_diskinfo as select * from audit_show_diskinfo();
 alter view  show_audit_diskinfo owner to  syssao; --BUG Z4802
 

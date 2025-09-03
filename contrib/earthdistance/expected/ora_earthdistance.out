@@ -1044,6 +1044,7 @@ ORDER BY
  public | pg_audit_privilege                  | text                     | text, text                                                                                                             | func
  public | pg_audit_stmt                       | text                     | statement_opts text                                                                                                    | func
  public | pg_audit_stmt                       | text                     | text, text                                                                                                             | func
+ public | pg_audit_switch_primary             | boolean                  | integer                                                                                                                | func
  public | pg_audit_user                       | text                     | statement_opts text, username text                                                                                     | func
  public | pg_audit_user                       | text                     | text, text, text                                                                                                       | func
  public | pg_banned_role                      | record                   | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                                        | func
@@ -1099,7 +1100,7 @@ ORDER BY
  public | reset_all_se_param                  | text                     |                                                                                                                        | func
  public | set_backend_se_param                | text                     | oid, text, boolean                                                                                                     | func
  public | user_expiration_info                | record                   | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                                           | func
-(77 rows)
+(78 rows)
 
 \do
                              List of operators
@@ -1161,6 +1162,7 @@ ORDER BY
  public | pg_audit_privilege                  | text                     | text, text                                                                                                             | func
  public | pg_audit_stmt                       | text                     | statement_opts text                                                                                                    | func
  public | pg_audit_stmt                       | text                     | text, text                                                                                                             | func
+ public | pg_audit_switch_primary             | boolean                  | integer                                                                                                                | func
  public | pg_audit_user                       | text                     | statement_opts text, username text                                                                                     | func
  public | pg_audit_user                       | text                     | text, text, text                                                                                                       | func
  public | pg_banned_role                      | record                   | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                                        | func
@@ -1216,7 +1218,7 @@ ORDER BY
  public | reset_all_se_param                  | text                     |                                                                                                                        | func
  public | set_backend_se_param                | text                     | oid, text, boolean                                                                                                     | func
  public | user_expiration_info                | record                   | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                                           | func
-(77 rows)
+(78 rows)
 
 \do public.*
                              List of operators
@@ -1301,6 +1303,7 @@ ORDER BY
  public | pg_audit_privilege                  | text                     | text, text                                                                                                             | func
  public | pg_audit_stmt                       | text                     | statement_opts text                                                                                                    | func
  public | pg_audit_stmt                       | text                     | text, text                                                                                                             | func
+ public | pg_audit_switch_primary             | boolean                  | integer                                                                                                                | func
  public | pg_audit_user                       | text                     | statement_opts text, username text                                                                                     | func
  public | pg_audit_user                       | text                     | text, text, text                                                                                                       | func
  public | pg_banned_role                      | record                   | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                                        | func
@@ -1356,7 +1359,7 @@ ORDER BY
  public | reset_all_se_param                  | text                     |                                                                                                                        | func
  public | set_backend_se_param                | text                     | oid, text, boolean                                                                                                     | func
  public | user_expiration_info                | record                   | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                                           | func
-(77 rows)
+(78 rows)
 
 \do public.*
                              List of operators

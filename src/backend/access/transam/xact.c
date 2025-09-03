@@ -2790,9 +2790,7 @@ AbortTransaction(void)
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 	if (audit_aborted_hook)
 	{
-		s->state = TRANS_INPROGRESS;
 		(*audit_aborted_hook)();
-		s->state = TRANS_ABORT;
 	}
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
@@ -3160,6 +3158,12 @@ CommitTransactionCommand(void)
 			 * already-aborted transaction and return to the idle state.
 			 */
 		case TBLOCK_ABORT_END:
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			if (audit_aborted_hook)
+			{
+				(*audit_aborted_hook)();
+			}
+			/* End - ReqID:SRS-SECURITY-AUDIT */
 			CleanupTransaction();
 			s->blockState = TBLOCK_DEFAULT;
 			if (s->chain)
