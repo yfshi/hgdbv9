@@ -437,3 +437,24 @@ discard all;
 
 drop table t_tmp_drr_call_out;
 /* End - OA-REQ-1481 */
+
+/* Begin - OA-REQ-1702 */
+create global temporary table g_tmp_noop(a int);
+
+create or replace procedure mult_truncate_gtt()
+is
+	v_sql varchar2(4000);
+begin
+	execute immediate 'truncate table g_tmp_noop';
+
+	v_sql := 'insert into g_tmp_noop values(generate_series(1, 10000))';
+
+	execute immediate v_sql;
+end;
+/
+
+call mult_truncate_gtt();
+
+drop procedure mult_truncate_gtt();
+drop table g_tmp_noop;
+/* End - OA-REQ-1702 */
