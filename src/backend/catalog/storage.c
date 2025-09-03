@@ -226,6 +226,25 @@ void
 RelationDropStorage(Relation rel)
 {
 	PendingRelDelete *pending;
+	/* Begin - OA-REQ-1702 */
+	PendingRelDelete *cur;
+
+	if (RELATION_IS_GLOBAL_TEMP(rel))
+	{
+		/* Check if an entry with the same(relnode+backend) already exists */
+		for (cur = pendingDeletes; cur != NULL; cur = cur->next)
+		{
+			/* Only consider the scenario of atCommit = ture */
+			if (RelFileNodeEquals(cur->relnode, rel->rd_node) &&
+				cur->backend == rel->rd_backend && cur->atCommit == true)
+			{
+				/* Already in the pendingDeletes, return directly without adding again */
+				RelationCloseSmgr(rel);
+				return;
+			}
+		}
+	}
+	/* End - OA-REQ-1702 */
 
 	/* Add the relation to the list of stuff to delete at commit */
 	pending = (PendingRelDelete *)
@@ -826,7 +845,7 @@ smgrDoPendingDeletes(bool isCommit)
 
 			/* Delete global temporary table info in localhash */
 			if (gtt_storage_attached(reloids[i]))
-				forget_gtt_storage_info(reloids[i], srels[i]->smgr_rnode.node, false);
+				forget_gtt_storage_info(reloids[i], srels[i]->smgr_rnode.node, isCommit);
 		}
 
 		pfree(srels);
