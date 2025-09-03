@@ -304,7 +304,7 @@ DROP PACKAGE my_pkg;
 
 --3. range constraint
 DECLARE
-  SUBTYPE my_subtype1 IS INTEGER RANGE -9..9;
+  SUBTYPE my_subtype1 IS PLS_INTEGER RANGE -9..9;
   val1 my_subtype1 := 5;
 BEGIN
   NULL;
@@ -312,7 +312,7 @@ END;
 /
 
 DECLARE
-  SUBTYPE my_subtype1 IS INTEGER RANGE -9..9;
+  SUBTYPE my_subtype1 IS PLS_INTEGER RANGE -9..9;
   val1 my_subtype1 := -5;
 BEGIN
   NULL;
@@ -320,7 +320,7 @@ END;
 /
 
 DECLARE
-  SUBTYPE my_subtype1 IS INTEGER RANGE -9..9;
+  SUBTYPE my_subtype1 IS PLS_INTEGER RANGE -9..9;
   val1 my_subtype1 := 10;
 BEGIN
   NULL;
@@ -328,7 +328,7 @@ END;
 /
 
 DECLARE
-  SUBTYPE my_subtype1 IS INTEGER RANGE 9..-9;
+  SUBTYPE my_subtype1 IS PLS_INTEGER RANGE 9..-9;
   val1 my_subtype1 := 10;
 BEGIN
   NULL;
@@ -336,7 +336,7 @@ END;
 /
 
 DECLARE
-  SUBTYPE my_subtype1 IS INTEGER RANGE -9..9;
+  SUBTYPE my_subtype1 IS PLS_INTEGER RANGE -9..9;
   SUBTYPE my_subtype2 IS my_subtype1;
   val1 my_subtype2 := 10;
 BEGIN
@@ -345,7 +345,7 @@ END;
 /
 
 DECLARE
-  SUBTYPE my_subtype1 IS INTEGER;
+  SUBTYPE my_subtype1 IS PLS_INTEGER;
   SUBTYPE my_subtype2 IS my_subtype1 RANGE -9..9;
   val1 my_subtype2 := 10;
 BEGIN
