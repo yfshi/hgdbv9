@@ -21,6 +21,7 @@
 #include "lib/stringinfo.h"
 #include "miscadmin.h"	/* BUG#M0000344 */
 #include "nodes/nodeFuncs.h"
+#include "nodes/makefuncs.h"
 #include "parser/parse_coerce.h"
 #include "parser/parse_func.h"
 #include "parser/parse_oper.h"
@@ -294,23 +295,25 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 	Oid			result;
 	bool		was_unknown = false;
 
-
-	/* Begin - BUG#5123 */
-	if (MYS_PARSER == compatible_db && arg2 == UNKNOWNOID &&
-		(arg1 == UINT1OID || arg1 == UINT2OID || arg1 == UINT3OID || arg1 == UINT4OID || arg1 == UINT8OID))
+	if (MYS_PARSER == compatible_db)
 	{
-		char	*schemaname;
-		char	*opername;
-
-		/* Get operator name */
-		DeconstructQualifiedName(opname, &schemaname, &opername);
-		if ((strcmp(opername, "~~") == 0) || (strcmp(opername, "!~~") == 0))
+		/* Begin - BUG#5123 */
+		if (type_is_numeric(arg1) && arg2 == UNKNOWNOID)
 		{
-			arg2 = TEXTOID;
+			char *schemaname;
+			char *opername;
+
+			/* Get operator name */
+			/* like operator use text type perform calc*/
+			DeconstructQualifiedName(opname, &schemaname, &opername);
+			if (strcmp(opername, "~~") == 0 || strcmp(opername, "!~~") == 0)
+			{
+				arg2 = TEXTOID;
+			}
 		}
+		/* End - BUG#5123 */
 	}
-	/* End - BUG#5123 */
-		
+	
 	/* Unspecified type for one of the arguments? then use the other */
 	if ((arg1 == UNKNOWNOID) && (arg2 != InvalidOid))
 	{
@@ -826,65 +829,87 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 		/* otherwise, binary operator */
 		ltypeId = exprType(ltree);
 		rtypeId = exprType(rtree);
-		/* 
-		 * Begin - SRS-MISC-COMPATDM-SQL
-		 * replace the comparison opname as needed when enable_blankspace_compare is off,
-		 * this ignore triled spaces in some querys,except(distinct,group by,set operation).
+
+		/** 
+		 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+		 * If both left and right expressions are enum type, we trans it to ANYENUM;
+		 * If one of left and right expreessions is enum type, and the other is UNKNOWN,
+		 * we trans the UNKNOWN to text.
 		 */
-		if(!enable_blankspace_compare && ORA_PARSER == compatible_db && (opkind == AEXPR_OP || opkind == AEXPR_IN || opkind == ROWCOMPARISONOP) )
+		if (compatible_db == MYS_PARSER)
 		{
-			List * opname_rewrite = needReplaceOpname(opname,ltypeId,rtypeId);
-			if(opname_rewrite)
-				opname = opname_rewrite;
+			if (type_is_enum(ltypeId) && type_is_enum(rtypeId))
+			{
+				save_origltypeId = ltypeId;
+				save_origrtypeId = rtypeId;
+				has_change_type = true;
+				ltypeId = ANYENUMOID;
+				rtypeId = ANYENUMOID;
+			}
 		}
-		/* End - SRS-MISC-COMPATDM-SQL */
-		/* Begin - BUG#M000411 */
-		/*
-		 * there if const integer operater const integer
-		 * we convert it to const number operater const number
-		 * so that it like oracle, because oracle integer is number(38,0)
-		 */
-		if (ORA_PARSER == compatible_db &&
-			enable_compatible_const_integer_operator &&
-			ltypeId == INT4OID &&
-			nodeTag(ltree) == T_Const &&
-			rtypeId == INT4OID &&
-			nodeTag(rtree) == T_Const)
+		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
+		if (ORA_PARSER == compatible_db)
 		{
+			/* 
+			 * Begin - SRS-MISC-COMPATDM-SQL
+			 * replace the comparison opname as needed when enable_blankspace_compare is off,
+			 * this ignore triled spaces in some querys,except(distinct,group by,set operation).
+			 */
+			if(!enable_blankspace_compare && (opkind == AEXPR_OP || opkind == AEXPR_IN || opkind == ROWCOMPARISONOP) )
+			{
+				List * opname_rewrite = needReplaceOpname(opname,ltypeId,rtypeId);
+				if(opname_rewrite)
+					opname = opname_rewrite;
+			}
+			/* End - SRS-MISC-COMPATDM-SQL */
+			/* Begin - BUG#M000411 */
+			/*
+			 * there if const integer operater const integer
+			 * we convert it to const number operater const number
+			 * so that it like oracle, because oracle integer is number(38,0)
+			 */
+			if (enable_compatible_const_integer_operator &&
+				ltypeId == INT4OID &&
+				nodeTag(ltree) == T_Const &&
+				rtypeId == INT4OID &&
+				nodeTag(rtree) == T_Const)
+			{
+				/* Begin - BUG#Z0001452 */
+				save_origltypeId = ltypeId;
+				save_origrtypeId = rtypeId;
+				/* End - BUG#Z00001452 */
+				ltypeId = NUMBEROID;
+				rtypeId = NUMBEROID;
+				has_change_type = true;
+			}
 			/* Begin - BUG#Z0001452 */
-			save_origltypeId = ltypeId;
-			save_origrtypeId = rtypeId;
+			/*
+			 * At least one of the parties is of numeric type,
+			 * we use number / number
+			 */
+			else if (enable_compatible_numeric_division_result &&
+					((ltypeId == INT4OID ||
+					ltypeId == INT2OID ||
+					ltypeId == INT8OID ||
+					ltypeId == UNKNOWNOID) &&
+					(rtypeId == INT4OID ||
+					rtypeId == INT2OID ||
+					rtypeId == INT8OID ||
+					rtypeId == UNKNOWNOID)) &&
+					list_length(opname) == 1 &&
+					strcmp(strVal(linitial(opname)), "/") == 0)
+			{
+				save_origltypeId = ltypeId;
+				save_origrtypeId = rtypeId;
+				has_change_type = true;
+				ltypeId = NUMBEROID;
+				rtypeId = NUMBEROID;
+			}
 			/* End - BUG#Z00001452 */
-			ltypeId = NUMBEROID;
-			rtypeId = NUMBEROID;
-			has_change_type = true;
+			/* End - BUG#M0000411 */
 		}
-		/* Begin - BUG#Z0001452 */
-		/*
-		 * At least one of the parties is of numeric type,
-		 * we use number / number
-		 */
-		else if (ORA_PARSER == compatible_db &&
-				enable_compatible_numeric_division_result &&
-				((ltypeId == INT4OID ||
-				ltypeId == INT2OID ||
-				ltypeId == INT8OID ||
-				ltypeId == UNKNOWNOID) &&
-				(rtypeId == INT4OID ||
-				rtypeId == INT2OID ||
-				rtypeId == INT8OID ||
-				rtypeId == UNKNOWNOID)) &&
-				list_length(opname) == 1 &&
-				strcmp(strVal(linitial(opname)), "/") == 0)
-		{
-			save_origltypeId = ltypeId;
-			save_origrtypeId = rtypeId;
-			has_change_type = true;
-			ltypeId = NUMBEROID;
-			rtypeId = NUMBEROID;
-		}
-		/* End - BUG#Z00001452 */
-		/* End - BUG#M0000411 */
+		
 		tup = oper(pstate, opname, ltypeId, rtypeId, false, location);
 		/* Begin - BUG#M000411 */
 		if (has_change_type)

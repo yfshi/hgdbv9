@@ -1692,7 +1692,7 @@ transformAExprIn(ParseState *pstate, A_Expr *a)
 	 * ScalarArrayOpExpr is only going to be useful if there's more than one
 	 * non-Var righthand item.
 	 */
-	if (list_length(rnonvars) > 1)
+	if (list_length(rnonvars) > 1 && !type_is_enum(exprType(lexpr)) /* ReqID:SRS-MYSQL-ENUMTYPE */)
 	{
 		List	   *allexprs;
 		Oid			scalar_type;
@@ -1805,6 +1805,82 @@ transformAExprIn(ParseState *pstate, A_Expr *a)
 	return result;
 }
 
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+static Node *
+makeTypeCast(Node *arg, TypeName *typename, int location)
+{
+	TypeCast *n = makeNode(TypeCast);
+
+	n->arg = arg;
+	n->typeName = typename;
+	n->location = location;
+
+	return (Node *)n;
+}
+
+/* ReplaceEnumExpr
+ * when comparing an enum type with a numeric type, the comparison is performed using
+ * the enum index value. the enum node is wrapped in a function call node that coverts
+ * the enum to its float8 index representation.
+ */
+static Node *
+ReplaceEnumExpr(Oid typeoid, Node *expr)
+{
+	if (type_is_enum(typeoid))
+		return makeTypeCast(expr, makeTypeName("float8"), exprLocation(expr));
+
+	if (typeoid == UNKNOWNOID)
+		return makeTypeCast(expr, makeTypeName("text"), exprLocation(expr));
+
+	return expr;
+}
+
+/**
+ * modify between and expression
+ *
+ * Note: when the input comparison type has enum and numeric types, covert enum to 
+ * 		 double tupe and unknown type cast to text(subsequently rely on text-<int to 
+ * 		 convert text to int type).
+ *       subsequent comparison of double and int types.
+ */
+static void
+CheckAndReplaceEnumExpr(ParseState *pstate, Node **paexpr, Node **pbexpr, Node **pcexpr)
+{
+	Oid 	oidaexpr,
+			oidbexpr,
+			oidcexpr;
+	Node 	*transaexpr = NULL,
+			*transbexpr = NULL,
+			*transcexpr = NULL;
+	Node 	*aexpr = *paexpr,
+			*bexpr = *pbexpr,
+			*cexpr = *pcexpr;
+
+	transaexpr = transformExprRecurse(pstate, copyObject(aexpr));
+	transbexpr = transformExprRecurse(pstate, copyObject(bexpr));
+	transcexpr = transformExprRecurse(pstate, copyObject(cexpr));
+
+	/* get expr oid */
+	oidaexpr = exprType(transaexpr);
+	oidbexpr = exprType(transbexpr);
+	oidcexpr = exprType(transcexpr);
+
+	/**
+	 * In BETWEEN expression, if one of arguments is enum and one of arguments
+	 * is number, we treat all argument as DOUBLE.
+	 */
+	if ((type_is_enum(oidaexpr) || type_is_enum(oidbexpr) || type_is_enum(oidcexpr)) &&
+		(type_is_numeric(oidaexpr) || type_is_numeric(oidbexpr) || type_is_numeric(oidcexpr)))
+	{
+		*paexpr = ReplaceEnumExpr(oidaexpr, aexpr);
+		*pbexpr = ReplaceEnumExpr(oidbexpr, bexpr);
+		*pcexpr = ReplaceEnumExpr(oidcexpr, cexpr);
+	}
+
+	return;
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 static Node *
 transformAExprBetween(ParseState *pstate, A_Expr *a)
 {
@@ -1822,6 +1898,13 @@ transformAExprBetween(ParseState *pstate, A_Expr *a)
 	Assert(list_length(args) == 2);
 	bexpr = (Node *) linitial(args);
 	cexpr = (Node *) lsecond(args);
+
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		CheckAndReplaceEnumExpr(pstate, &aexpr, &bexpr, &cexpr);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	/*
 	 * Build the equivalent comparison expression.  Make copies of
@@ -4181,7 +4264,7 @@ transformTypeCast(ParseState *pstate, TypeCast *tc)
 			 * When cast to date/time/datetime, we treat hex string as varbinary.
 			 * Other target type, we treat as unsigned bigint.
 			 */
-			if (isMysNumericType(targetType))
+			if (type_is_numeric(targetType))
 			{
 				arg = make_bigint_const_from_hex(arg);
 			}

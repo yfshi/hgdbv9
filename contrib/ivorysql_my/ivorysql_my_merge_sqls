@@ -11,6 +11,7 @@ src/datatype/script/uint1_index
 src/datatype/script/uint2_index
 src/datatype/script/uint4_index
 src/datatype/script/uint8_index
+src/datatype/script/enum
 src/datatype/script/float
 src/datatype/script/year
 src/datatype/script/time

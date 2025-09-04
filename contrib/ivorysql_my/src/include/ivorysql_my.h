@@ -38,6 +38,16 @@
 #define A_GREATER_THAN_B                (1)
 #define A_EQUAL_B                       (0)
 
+#define MYSQL_CHECK_DIVISION_BY_ZERO(val)                                                       \
+	{                                                                                           \
+		if (val == 0)                                                                           \
+		{                                                                                       \
+			if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))                                  \
+				ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0"))); \
+			PG_RETURN_NULL();                                                                   \
+		}                                                                                       \
+	}
+
 typedef unsigned char uchar;
 
 extern Datum hexstring_varbinary(const char *value);/* BUG#5048 5070 */
@@ -63,4 +73,5 @@ extern Datum mysdatetime_in(PG_FUNCTION_ARGS);
 extern Datum mysdatetime_out(PG_FUNCTION_ARGS);
 extern Datum mystimestamp_out(PG_FUNCTION_ARGS);
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 #endif	/* IVORYSQL_MYS_H_ */

@@ -68,6 +68,7 @@ select 'xyy' ~ '(?<![xy])yy+';
 select 'zyy' ~ '(?<![xy])yy+';
 
 -- Test conversion of regex patterns to indexable conditions
+set enable_bitmapscan =false;
 explain (costs off) select * from pg_proc where proname ~ 'abc';
 explain (costs off) select * from pg_proc where proname ~ '^abc';
 explain (costs off) select * from pg_proc where proname ~ '^abc$';
@@ -77,7 +78,7 @@ explain (costs off) select * from pg_proc where proname ~ '^(abc)(def)';
 explain (costs off) select * from pg_proc where proname ~ '^(abc)$';
 explain (costs off) select * from pg_proc where proname ~ '^(abc)?d';
 explain (costs off) select * from pg_proc where proname ~ '^abcd(x|(?=\w\w)q)';
-
+set enable_bitmapscan =true;
 -- Test for infinite loop in pullback() (CVE-2007-4772)
 select 'a' ~ '($|^)*';
 

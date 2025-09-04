@@ -57,6 +57,7 @@
 #include "catalog/pg_default_acl_d.h"
 #include "catalog/pg_largeobject_d.h"
 #include "catalog/pg_largeobject_metadata_d.h"
+#include "catalog/pg_namespace_d.h"
 #include "catalog/pg_proc_d.h"
 #include "catalog/pg_trigger_d.h"
 #include "catalog/pg_type_d.h"
@@ -4591,6 +4592,45 @@ getExtensions(Archive *fout, int *numExtensions)
 	return extinfo;
 }
 
+/**
+ * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+ * Anonymous enum was created in CreateStmt with MySQL syntax,
+ * such as CREATE TABLE T (col enum('a', 'b')).
+ */
+static bool
+is_anonymous_enum(Archive *fout, const TypeInfo *tyinfo)
+{
+	PGresult   *res;
+	int			num;
+	PQExpBuffer query = createPQExpBuffer();
+	bool		ret = false;
+
+	appendPQExpBuffer(query, "SELECT obj_oid "
+							 "FROM pg_object "
+							 "WHERE obj_oid = '%u' "
+							 "AND option['anonymous'] = 'true'",
+							 tyinfo->dobj.catId.oid);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+	num = PQntuples(res);
+
+	if (num > 0)
+	{
+		if (num != 1)
+		{
+			pg_log_warning("there are more than one records in pg_object for anonymous enum(%u)",
+						   tyinfo->dobj.catId.oid);
+		}
+
+		ret = true;
+	}
+
+	PQclear(res);
+	pfree(query);
+	return ret;
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 /*
  * getTypes:
  *	  read all types in the system catalogs and return them in the
@@ -4838,6 +4878,10 @@ getTypes(Archive *fout, int *numTypes)
 		if (strlen(tyinfo[i].rolname) == 0)
 			pg_log_warning("owner of data type \"%s\" appears to be invalid",
 						   tyinfo[i].dobj.name);
+
+		/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+		tyinfo[i].is_anonymous_enum = is_anonymous_enum(fout, &tyinfo[i]);
+		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 	}
 
 	*numTypes = ntups;
@@ -8782,7 +8826,9 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 							 "a.attalign,\n"
 							 "a.attislocal,\n"
 							 "t.typnamespace,\n"
-							 "pg_catalog.format_type(t.oid, a.atttypmod) AS atttypname,\n");
+							 "pg_catalog.format_type(t.oid, a.atttypmod) AS atttypname,\n"
+							 "ivymy.format_anonymous_enum(t.oid) AS anonymous_enum,\n" /* ReqID:SRS-MYSQL-ENUMTYPE */
+						);
 
 		if (fout->remoteVersion >= 90000)
 			appendPQExpBufferStr(q,
@@ -8863,6 +8909,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		tbinfo->numatts = ntups;
 		tbinfo->attnames = (char **) pg_malloc(ntups * sizeof(char *));
 		tbinfo->atttypnames = (char **) pg_malloc(ntups * sizeof(char *));
+		tbinfo->anonymous_enums = (char **) pg_malloc(ntups * sizeof(char *));
 		tbinfo->atttypmod = (int *) pg_malloc(ntups * sizeof(int));
 		tbinfo->attstattarget = (int *) pg_malloc(ntups * sizeof(int));
 		tbinfo->attstorage = (char *) pg_malloc(ntups * sizeof(char));
@@ -8886,22 +8933,51 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		for (int j = 0; j < ntups; j++)
 		{
 			const char *atttypname = PQgetvalue(res, j, PQfnumber(res, "atttypname"));
+			Oid typnamespace = atooid(PQgetvalue(res, j, PQfnumber(res, "typnamespace")));
 			
 			if (j + 1 != atoi(PQgetvalue(res, j, PQfnumber(res, "attnum"))))
 				fatal("invalid column numbering in table \"%s\"",
 					  tbinfo->dobj.name);
 			tbinfo->attnames[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "attname")));
-			/* prevent miss bit have typmode; prevent matching bit varying*/
-			if (strncmp(atttypname, "bit", 3) == 0 && strncmp(atttypname, "bit varying", 11) != 0)
+
+			/**
+			 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+			 * This typename are same as PG's, which may conflict without namespace
+			 * prefix when doing dump & restore.
+			 * prevent miss bit have typmode; prevent matching bit varying
+			 */
+			if (typnamespace != PG_IVYMY_NAMESPACE)
 			{
-				Oid typnamespace = atooid(PQgetvalue(res, j, PQfnumber(res, "typnamespace")));
-				NamespaceInfo *tmpnamespace = findNamespace(typnamespace);
-				tbinfo->atttypnames[j] = psprintf("%s.%s", tmpnamespace->dobj.name, atttypname);
+				char 	*typname = pstrdup(atttypname);
+				char 	*bracker = strchr(typname, '(');
+
+				if (bracker)
+					*bracker = '\0';
+
+				if ((strcmp(typname, "bit") == 0)  ||
+					(strcmp(typname, "date") == 0) ||
+					(strcmp(typname, "time") == 0 && !strstr(atttypname, "time zone")) ||
+					(strcmp(typname, "timestamp") == 0 && !strstr(atttypname, "time zone")))
+				{
+					NamespaceInfo *tmpnamespace = findNamespace(typnamespace);
+					tbinfo->atttypnames[j] = psprintf("%s.%s", tmpnamespace->dobj.name, atttypname);
+
+					pg_log_info("typname = %s, atttypname = %s", typname, atttypname);
+				}
+				else
+					tbinfo->atttypnames[j] = pg_strdup(atttypname);
 			}
 			else
 			{
 				tbinfo->atttypnames[j] = pg_strdup(atttypname);
 			}
+			
+			if (!PQgetisnull(res, j, PQfnumber(res, "anonymous_enum")))
+				tbinfo->anonymous_enums[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "anonymous_enum")));
+			else
+				tbinfo->anonymous_enums[j] = NULL;
+			/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+			
 			tbinfo->atttypmod[j] = atoi(PQgetvalue(res, j, PQfnumber(res, "atttypmod")));
 			tbinfo->attstattarget[j] = atoi(PQgetvalue(res, j, PQfnumber(res, "attstattarget")));
 			tbinfo->attstorage[j] = *(PQgetvalue(res, j, PQfnumber(res, "attstorage")));
@@ -10733,6 +10809,17 @@ dumpEnumType(Archive *fout, const TypeInfo *tyinfo)
 	char	   *qtypname;
 	char	   *qualtypname;
 	char	   *label;
+
+	/** 
+	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+	 * If the enum is created in CreateStmt with MySQL syntax,
+	 * we do not dump it with CREATE TYPE.
+	 */
+	if (tyinfo->is_anonymous_enum)
+	{
+		return;
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	if (fout->remoteVersion >= 90100)
 		appendPQExpBuffer(query, "SELECT oid, enumlabel "
@@ -16236,8 +16323,17 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 					 */
 					if (dopt->binary_upgrade || !OidIsValid(tbinfo->reloftype))
 					{
-						appendPQExpBuffer(q, " %s",
-										  tbinfo->atttypnames[j]);
+						/**
+						 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+						 * Dump type name of enum attribute as enum('a', 'b', 'c').
+						 */
+						if (tbinfo->anonymous_enums[j])
+							appendPQExpBuffer(q, " %s",
+											  tbinfo->anonymous_enums[j]);
+						/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+						else
+							appendPQExpBuffer(q, " %s",
+											  tbinfo->atttypnames[j]);
 					}
 
 					if (print_default)

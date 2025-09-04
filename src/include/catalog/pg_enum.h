@@ -20,7 +20,7 @@
 
 #include "catalog/genbki.h"
 #include "catalog/pg_enum_d.h"
-
+#include "fmgr.h"
 #include "nodes/pg_list.h"
 
 /* ----------------
@@ -53,6 +53,7 @@ DECLARE_UNIQUE_INDEX(pg_enum_typid_sortorder_index, 3534, on pg_enum using btree
 /*
  * prototypes for functions in pg_enum.c
  */
+extern int	sort_order_cmp(const void *p1, const void *p2);
 extern void EnumValuesCreate(Oid enumTypeOid, List *vals);
 extern void EnumValuesDelete(Oid enumTypeOid);
 extern void AddEnumLabel(Oid enumTypeOid, const char *newVal,
@@ -65,5 +66,16 @@ extern Size EstimateUncommittedEnumsSpace(void);
 extern void SerializeUncommittedEnums(void *space, Size size);
 extern void RestoreUncommittedEnums(void *space);
 extern void AtEOXact_Enum(void);
+
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+extern int  compare_two_enum_value(Oid oid1, Oid oid2);
+extern int  enum_cmp_internal(Oid arg1, Oid arg2, FunctionCallInfo fcinfo);
+extern Oid  get_enum_oid(Oid enumtypid, int enumsortorder);
+extern Oid  get_enum_oid_by_label(Oid enumtypid, const char *enumlabel);
+extern Oid  get_enum_enumtypid(Oid oid);
+extern bool enum_is_equal(Oid enumOid1, Oid enumOid2);
+extern char *get_enum_label(Oid oid);
+extern float get_enum_sortorder(Oid oid);
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 #endif							/* PG_ENUM_H */

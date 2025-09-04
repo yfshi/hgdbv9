@@ -31,6 +31,8 @@
  */
 #include "postgres.h"
 
+#include <assert.h>
+
 #include "access/genam.h"
 #include "access/heapam.h"
 #include "access/htup_details.h"
@@ -64,11 +66,13 @@
 #include "parser/parse_expr.h"
 #include "parser/parse_func.h"
 #include "parser/parse_type.h"
+#include "parser/pg_object_hook.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
 #include "utils/inval.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"
 #include "utils/rel.h"
 #include "utils/ruleutils.h"
 #include "utils/snapmgr.h"
@@ -1279,6 +1283,30 @@ DefineEnum(CreateEnumStmt *stmt)
 			   InvalidOid);		/* type's collation */
 
 	pfree(enumArrayName);
+
+	/** 
+	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+	 * Record into pg_object is the enum is anonymous, who created
+	 * in CreateStmt with mysql syntax.
+	 */
+	if (compatible_db == MYS_PARSER)
+	{
+		if (pg_object_create_obj_hook && stmt->anonymous_enum == true)
+		{
+			/**
+			 * We record anonymous enum created in CreateStmt with MySQL syntax,
+			 * and set option['anonymous'] = 'true'.
+			 */
+			pg_object_create_obj_hook(enumName,
+									  enumNamespace,
+									  false,
+									  PG_OBJECT_ENUM,
+									  enumTypeAddr,
+									  DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum("{\"anonymous\" : true}"))),
+									  NULL);
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	return enumTypeAddr;
 }
@@ -4587,3 +4615,72 @@ AlterTypeRecurse(Oid typeOid, bool isImplicitArray,
 
 	systable_endscan(scan);
 }
+
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+/*
+ * CreateEnumTypeForAlterTable
+ *		create new enum type when modify table.
+ */
+void
+CreateEnumTypeForAlterTable(Form_pg_attribute attTup, char *relname, char *colname, TypeName *typname)
+{
+	Oid 	enumoid = InvalidOid;
+	char 	*enumName = NULL;
+	char 	*enumTypeName = NULL;
+	char 	*enumnspstr = NULL;
+	Oid 	enumnspoid;
+	ObjectAddress myself, referenced;
+
+	assert(typename_is_enum(typname));
+	
+	enumnspoid = QualifiedNameGetCreationNamespace(typname->names, &enumName);
+
+	enumnspstr = get_namespace_name(enumnspoid);
+
+	/* get enum type name*/
+	enumTypeName = ChooseTypeName(relname, colname, "anonymous_enum", enumnspoid, false);
+
+	typname->names = lcons(makeString(enumnspstr), typname->names);
+	strVal(llast(typname->names)) = enumTypeName;
+
+	enumoid = DefineAnonymousEnum(typname);
+
+	/* no need insert pg_object , write the pg_depend table directly */
+	/* Add dependency info */
+	ObjectAddressSubSet(myself, RelationRelationId, attTup->attrelid, attTup->attnum + 1);
+	ObjectAddressSet(referenced, TypeRelationId, enumoid);
+	/* add dependencies on their datatypes and collations */
+	recordDependencyOn(&referenced, &myself, DEPENDENCY_AUTO);
+
+	/* CommandCounterIncrement here to ensure that preceding changes are all
+	 * visible to the type checking step.
+	 */
+	CommandCounterIncrement();
+}
+
+/*
+ * DefineAnonymousEnum
+ *		Registers a new anoymous enum without an array type, using the given name.
+ */
+Oid
+DefineAnonymousEnum(TypeName *typname)
+{
+	CreateEnumStmt *stmt;
+	ObjectAddress address;
+
+	stmt = makeNode(CreateEnumStmt);
+	stmt->typeName = typname->names;
+	stmt->vals = typname->typmods;
+	stmt->anonymous_enum = true;
+
+	address = DefineEnum(stmt);
+
+	/**
+	 * CommandCounterIncrement here to ensure that preceding changes are all
+	 * visible to the type checking step.
+	 */
+	CommandCounterIncrement();
+
+	return address.objectId;
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */

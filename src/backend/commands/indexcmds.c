@@ -2594,6 +2594,47 @@ ChooseRelationName(const char *name1, const char *name2,
 	return relname;
 }
 
+/**
+ * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+ * ChooseTypeName
+ *	   Registers a new type name.
+ * look: ChooseRelationName function
+ */
+char *
+ChooseTypeName(const char *name1, const char *name2,
+			   const char *label, Oid namespaceid,
+			   bool isconstraint)
+{
+	int 		pass = 0;
+	char 		*typname = NULL;
+	char 		modlabel[NAMEDATALEN];
+	Relation 	pg_type_desc = table_open(TypeRelationId, AccessShareLock);
+
+	/* try the unmodified label first */
+	strlcpy(modlabel, label, sizeof(modlabel));
+
+	for (;;)
+	{
+		typname = makeObjectName(name1, name2, modlabel);
+
+		if (!SearchSysCacheExists2(TYPENAMENSP, 
+								   CStringGetDatum(typname), 
+								   ObjectIdGetDatum(namespaceid)))
+		{
+			break;
+		}
+
+		/* found a conflict, so try a new name component */
+		pfree(typname);
+		snprintf(modlabel, sizeof(modlabel), "%s%d", label, ++pass);
+	}
+	
+	table_close(pg_type_desc, AccessShareLock);
+
+	return typname;
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 /*
  * Select the name to be used for an index.
  *

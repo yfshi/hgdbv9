@@ -46,6 +46,7 @@
 #define  PG_OBJECT_COLUMN 'c'				/* column, used by zerofill */
 #define  PG_OBJECT_DBLINK 'l'				/* compatible Oracle DBLINK */
 #define  PG_OBJECT_RESGROUP 'g'				/* resource group of role */ /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+#define  PG_OBJECT_ENUM 'e'					/* anonymous_enum */ /* ReqID:SRS-MYSQL-ENUMTYPE */
 
 typedef struct pg_object_ori_infor
 {

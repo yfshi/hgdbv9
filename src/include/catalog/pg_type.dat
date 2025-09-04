@@ -1155,7 +1155,7 @@
   descr => 'mysql bit datatype, only for the copy from',
   typname => 'mysbit_2', typnamespace => 'ivymy', typlen => '-1', 
   typbyval => 'f', typtype => 'b',
-  typcategory => 'V', typinput => '-', typoutput => '-', 
+  typcategory => 'Z', typinput => '-', typoutput => '-', 
   typreceive => '-', typsend => '-', 
   typalign => 'c' , 
   typmodin => '-', typmodout => '-' },

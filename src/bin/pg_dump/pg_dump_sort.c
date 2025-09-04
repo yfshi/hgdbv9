@@ -16,6 +16,7 @@
 #include "postgres_fe.h"
 
 #include "catalog/pg_class_d.h"
+#include "catalog/pg_type_d.h"
 #include "pg_backup_archiver.h"
 #include "pg_backup_utils.h"
 #include "pg_dump.h"
@@ -951,6 +952,27 @@ repairTypeFuncLoop(DumpableObject *typeobj, DumpableObject *funcobj)
 	}
 }
 
+/** Begin - ReqID:SRS-MYSQL-ENUMTYPE
+ * Anonymous enum was created in CreateStmt with mysql syntax, such
+ * as CREATE TABLE t (col ENUM('a', 'b')).
+ * We create this dependence in AddNewAttributeTuples() to delete anonymous 
+ * enum type when drop table.
+ * Just ignore this dependence when dump the table, because we will rebuild
+ * it with Create Table when do restore.
+ */
+static void
+repairAnonymousEnumTypeTableLoop(DumpableObject *tableobj, DumpableObject *typeobj)
+{
+	TypeInfo   *typeInfo = (TypeInfo *) typeobj;
+	
+	if (typeInfo->typtype == TYPTYPE_ENUM &&
+		typeInfo->is_anonymous_enum)
+	{
+		removeObjectDependency(typeobj, tableobj->dumpId);
+	}
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 /*
  * Because we force a view to depend on its ON SELECT rule, while there
  * will be an implicit dependency in the other direction, we need to break
@@ -1420,6 +1442,19 @@ repairDependencyLoop(DumpableObject **loop,
 			return;
 		}
 	}
+
+	/** 
+	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+	 * Loop of table with anonymous enum type --- just ignore it.
+	 */
+	if (nLoop == 2 &&
+		loop[0]->objType == DO_TABLE &&
+		loop[1]->objType == DO_TYPE)
+	{
+		repairAnonymousEnumTypeTableLoop(loop[0], loop[1]);
+		return;
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	/*
 	 * If all the objects are TABLE_DATA items, what we must have is a

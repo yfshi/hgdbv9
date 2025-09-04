@@ -1790,6 +1790,7 @@ _equalCreateEnumStmt(const CreateEnumStmt *a, const CreateEnumStmt *b)
 {
 	COMPARE_NODE_FIELD(typeName);
 	COMPARE_NODE_FIELD(vals);
+	COMPARE_SCALAR_FIELD(anonymous_enum);
 
 	return true;
 }

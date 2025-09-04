@@ -18,21 +18,6 @@
 /* Begin BUG#5048 5070 */
 #define exprIsHexConstant(n) \
 		  (((n) && IsA((n), A_Const) && ((A_Const *) (n))->val.type == T_HexString))
-
-#define isMysNumericType(targetType) \
-					  ((targetType == TINYINTOID 	|| \
-						targetType == INT2OID 	 	|| \
-						targetType == MEDIUMINTOID 	|| \
-						targetType == INT4OID 		|| \
-						targetType == INT8OID 		|| \
-						targetType == UINT1OID 		|| \
-						targetType == UINT2OID 		|| \
-						targetType == UINT3OID 		|| \
-						targetType == UINT4OID 		|| \
-						targetType == UINT8OID 		|| \
-						targetType == FLOAT4OID 	|| \
-						targetType == FLOAT8OID 	|| \
-						targetType == NUMERICOID))
 /* End BUG#5048 5070 */
 
 /* GUC parameters */

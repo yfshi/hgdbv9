@@ -38,6 +38,7 @@
 #include "catalog/pg_am.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_constraint.h"
+#include "catalog/pg_enum.h"
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_proc.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
@@ -48,6 +49,7 @@
 #include "commands/sequence.h"
 #include "commands/tablecmds.h"
 #include "commands/tablespace.h"
+#include "commands/typecmds.h" /* ReqID:SRS-MYSQL-ENUMTYPE */
 #include "funcapi.h"			/* ReqID:SRS-SQL-INVISIBLECOL */
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
@@ -869,6 +871,38 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 										column->typeName->location)));
 	}
 
+	/**
+	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE 
+	 * If column type is mysql enum, we create anonymous enum
+	 * firsr.
+	 */
+	if (compatible_db == MYS_PARSER &&
+		typename_is_enum(column->typeName))
+	{
+		Oid 		enumnspoid;
+		char 		*enumTypeName = NULL;
+		char 		*enumnspstr = NULL;
+
+		if (cxt->rel)
+		{
+			enumnspoid = RelationGetNamespace(cxt->rel);
+		}
+		else
+		{
+			enumnspoid = RangeVarGetCreationNamespace(cxt->relation);
+			RangeVarAdjustRelationPersistence(cxt->relation, enumnspoid);
+		}
+
+		enumnspstr = get_namespace_name(enumnspoid);
+
+		enumTypeName = ChooseTypeName(cxt->relation->relname, column->colname, "anonymous_enum", enumnspoid, false);		
+		column->typeName->names = lcons(makeString(enumnspstr), column->typeName->names);
+		strVal(llast(column->typeName->names)) = enumTypeName;
+
+		DefineAnonymousEnum(column->typeName);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 	/* Do necessary work on the column type declaration */
 	if (column->typeName)
 		transformColumnType(cxt, column);
@@ -1369,8 +1403,34 @@ transformTableLikeClause(CreateStmtContext *cxt, TableLikeClause *table_like_cla
 		 */
 		def = makeNode(ColumnDef);
 		def->colname = pstrdup(attributeName);
-		def->typeName = makeTypeNameFromOid(attribute->atttypid,
-											attribute->atttypmod);
+
+		/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+		if (type_is_enum(attribute->atttypid) && type_is_anonymous_enum(attribute->atttypid))
+		{
+			TypeName 	*enumtype = NULL;
+			const char 	*colname = attribute->attname.data;
+			RangeVar 	*rel = cxt->relation;
+			char		*enumTypeName;
+			Oid			enumnspoid = InvalidOid;
+
+			enumnspoid = RangeVarGetCreationNamespace(rel);
+
+			enumTypeName = ChooseTypeName(rel->relname, colname, "anonymous_enum", 
+										  enumnspoid, false);
+			enumtype = makeTypeNameFromNameList(
+				list_make2(
+					makeString(get_namespace_name(enumnspoid)),
+					makeString(enumTypeName)));
+			enumtype->typmods = copy_enum_label(attribute->atttypid);
+			enumtype->typemod = -1;
+
+			def->typeName = makeTypeNameFromOid(DefineAnonymousEnum(enumtype),
+												attribute->atttypmod);
+		}
+		else
+		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+			def->typeName = makeTypeNameFromOid(attribute->atttypid,
+												attribute->atttypmod);
 		def->inhcount = 0;
 		def->is_local = true;
 		def->is_not_null = attribute->attnotnull;
@@ -3651,6 +3711,44 @@ transformRuleStmt(RuleStmt *stmt, const char *queryString,
 	table_close(rel, NoLock);
 }
 
+/**
+ * Begin - ReqID:SRS-MYSQL-ENUMTYPE 
+ * add node to alist, drop the enum type when drop the table
+ */
+static void
+DropTypeOwnedByTable(CreateStmtContext *cxt, char *colname)
+{
+	Oid atttypid = 0;
+	char *typname = NULL;
+
+	/* Look up the attribute type id */
+	HeapTuple attTuple = SearchSysCache2(ATTNAME, ObjectIdGetDatum(RelationGetRelid(cxt->rel)),
+										 PointerGetDatum(colname));
+
+	if (!HeapTupleIsValid(attTuple))
+		return;
+
+	atttypid = ((Form_pg_attribute) GETSTRUCT(attTuple))->atttypid;
+	
+	typname = get_typename(atttypid);
+
+	/* get depend */
+	if (type_is_enum(atttypid) && type_is_anonymous_enum(atttypid))
+	{
+		char 	*nspace = get_typenamespace(atttypid);
+		DropStmt *stmt = makeNode(DropStmt);
+
+		stmt->removeType = OBJECT_TYPE;
+		stmt->missing_ok = true;
+		stmt->objects = list_make1(makeTypeNameFromNameList(list_make2(makeString(nspace), makeString(typname))));
+		stmt->behavior = DROP_CASCADE;
+		stmt->concurrent = false;
+
+		cxt->alist = lappend(cxt->alist, stmt);
+	}
+
+	ReleaseSysCache(attTuple);
+}
 
 /*
  * transformAlterTableStmt -
@@ -3854,6 +3952,17 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 				{
 					ColumnDef  *def = castNode(ColumnDef, cmd->def);
 					AttrNumber	attnum;
+
+					/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+					if (compatible_db == MYS_PARSER)
+					{
+						/** 
+						 * When alter column's type, if target type is enum, 
+						 * then drop then enum type
+						 */
+						DropTypeOwnedByTable(&cxt, cmd->name);
+					}
+					/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 					/*
 					 * For ALTER COLUMN TYPE, transform the USING clause if
@@ -5315,7 +5424,7 @@ FlashbackStmt *
 transformFlashbackStmt(FlashbackStmt *stmt, const char *queryString)
 {
 	ParseState *pstate;
-	Node* timepointExpr;
+	Node *timepointExpr;
 
 	if (stmt->kind != FLASHBACK_TIMEPOINT)
 		return stmt;
@@ -5330,8 +5439,10 @@ transformFlashbackStmt(FlashbackStmt *stmt, const char *queryString)
 	free_parsestate(pstate);
 
 	/* evaluate the value */
-	timepointExpr = (Node *) evaluate_expr((Expr *) timepointExpr, exprType(timepointExpr), 
-            					exprTypmod(timepointExpr), exprCollation(timepointExpr));
+	timepointExpr = (Node *) evaluate_expr((Expr *) timepointExpr, 
+											exprType(timepointExpr), 
+            								exprTypmod(timepointExpr), 
+											exprCollation(timepointExpr));
 	if (!IsA(timepointExpr, Const))
 		elog(ERROR, "could not evaluate timestamp expression of flashback");
 

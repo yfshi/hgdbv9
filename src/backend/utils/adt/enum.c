@@ -17,19 +17,305 @@
 #include "access/htup_details.h"
 #include "access/table.h"
 #include "catalog/pg_enum.h"
+#include "common/int.h"
 #include "libpq/pqformat.h"
+#include "parser/parse_coerce.h"
 #include "storage/procarray.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
+#include "utils/catcache.h"
 #include "utils/fmgroids.h"
+#include "utils/guc.h"
+#include "utils/lsyscache.h"
+#include "utils/numeric.h"
+#include "utils/ora_compatible.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 
-
 static Oid	enum_endpoint(Oid enumtypoid, ScanDirection direction);
 static ArrayType *enum_range_internal(Oid enumtypoid, Oid lower, Oid upper);
 
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+/* covert a string to a number */
+static uint64
+my_strntoul_8bit(const char *str, size_t length, int base, char **endptr, int *err)
+{
+	int 			negative;
+	uint32 			cutoff;
+	unsigned int 	cutlim;
+	uint32 			i = 0;
+	unsigned char 	c;
+	const char 		*save, *s, *e;
+	int 			overflow = 0;
+
+	*err = 0; /* Initialize error indicator */
+
+	s = str;
+	e = str + length;
+
+	for (; s < e && (*str == ' ' || *str == '\t'); s++)
+		;
+
+	if (s == e)
+	{
+		goto noconv;
+	}
+
+	if (*s == '-')
+	{
+		negative = 1;
+		++s;
+	}
+	else if (*s == '+')
+	{
+		negative = 0;
+		++s;
+	}
+	else
+	{
+		negative = 0;
+	}
+
+	save = s;
+	cutoff = ((uint32) ~0L) / (uint32) base;
+	cutlim = (unsigned int) (((uint32) ~0L) % (uint32) base);
+
+	for (c = *s; s != e; c = *++s)
+	{
+		if (c >= '0' && c <= '9')
+			c -= '0';
+		else if (c >= 'A' && c <= 'Z')
+			c = c - 'A' + 10;
+		else if (c >= 'a' && c <= 'z')
+			c = c - 'a' + 10;
+		else
+			break;
+
+		if (c >= base)
+			break;
+
+		if (i > cutoff || (i == cutoff && c > cutlim))
+			overflow = 1;
+		else
+		{
+			i *= (uint32) base;
+			i += c;
+		}
+	}
+
+	if (s == save)
+		goto noconv;
+
+	if (endptr != NULL)
+		*endptr = (char *)s;
+
+	if (overflow)
+	{
+		err[0] = ERANGE;
+		return (~(uint32) 0);
+	}
+
+	return (negative ? -((long) i) : (long) i);
+
+noconv:
+	err[0] = EDOM;
+	if (endptr != NULL)
+		*endptr = (char *) str;
+
+	return 0L;
+}
+
+static int32 
+myenum_atoi_int4(const char *s, bool *iswarning)
+{
+	int 	tmp = 0;
+	int 	save_errno = 0;
+	char 	*from = (char *) s,
+			*end = NULL;
+	int64 	length = strlen(s);
+
+	tmp = my_strntoul_8bit(s, length, 10, &end, &save_errno);
+
+	if (save_errno || end != from + length)
+	{
+		tmp = 0;
+		*iswarning = true;
+	}
+
+	return (int32) tmp;
+}
+
+/* get enum oid by enumtypid and enumsortorder */
+Oid
+get_enum_oid(Oid enumtypid, int enumsortorder)
+{
+	Relation 	enum_rel;
+	ScanKeyData skey;
+	SysScanDesc scan;
+	HeapTuple 	maptup;
+
+	if (enumsortorder <= 0)
+		return InvalidOid;
+
+	enum_rel = table_open(EnumRelationId, AccessShareLock);
+
+	ScanKeyInit(&skey,
+				Anum_pg_enum_enumtypid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(enumtypid));
+
+	scan = systable_beginscan(enum_rel,
+							  EnumTypIdLabelIndexId,
+							  true, NULL,
+							  1, &skey);
+
+	while (HeapTupleIsValid(maptup = systable_getnext(scan)))
+	{
+		Form_pg_enum en = (Form_pg_enum) GETSTRUCT(maptup);
+
+		/* If this is the target superclass, we're done */
+		if (enumsortorder == en->enumsortorder)
+		{
+			Oid		resultoid = en->oid;
+			systable_endscan(scan);
+			table_close(enum_rel, AccessShareLock);
+			return resultoid;
+		}
+	}
+
+	systable_endscan(scan);
+
+	table_close(enum_rel, AccessShareLock);
+
+	return InvalidOid;
+}
+
+/* get enum oid by enumtypid and enumlabel */
+Oid
+get_enum_oid_by_label(Oid enumtypid, const char *enumlabel)
+{
+	Relation 	enum_rel;
+	ScanKeyData skey;
+	SysScanDesc scan;
+	HeapTuple 	maptup;
+
+	enum_rel = table_open(EnumRelationId, AccessShareLock);
+
+	ScanKeyInit(&skey,
+				Anum_pg_enum_enumtypid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(enumtypid));
+
+	scan = systable_beginscan(enum_rel,
+							  EnumTypIdLabelIndexId,
+							  true, NULL,
+							  1, &skey);
+
+	while (HeapTupleIsValid(maptup = systable_getnext(scan)))
+	{
+		Form_pg_enum en = (Form_pg_enum) GETSTRUCT(maptup);
+
+		/* If this is the target superclass, we're done */
+		if (strcmp(en->enumlabel.data, enumlabel) == 0)
+		{
+			Oid		resultoid = en->oid;
+			systable_endscan(scan);
+			table_close(enum_rel, AccessShareLock);
+			return resultoid;
+		}
+	}
+
+	systable_endscan(scan);
+
+	table_close(enum_rel, AccessShareLock);
+
+	return InvalidOid;
+}
+
+/* get enumsortorder by oid */
+float4
+get_enum_sortorder(Oid oid)
+{
+	HeapTuple tup;
+	Form_pg_enum en;
+	float4 enumsortorder;
+
+	tup = SearchSysCache1(ENUMOID, ObjectIdGetDatum(oid));
+	if (!HeapTupleIsValid(tup))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
+				 errmsg("invalid internal value for enum: %u",
+						oid)));
+	en = (Form_pg_enum)GETSTRUCT(tup);
+
+	enumsortorder = en->enumsortorder;
+
+	ReleaseSysCache(tup);
+
+	return enumsortorder;
+}
+
+/* get enumtypid by oid */
+Oid
+get_enum_enumtypid(Oid oid)
+{
+	HeapTuple tup;
+	Form_pg_enum en;
+	Oid enumtypid;
+
+	tup = SearchSysCache1(ENUMOID, ObjectIdGetDatum(oid));
+	if (!HeapTupleIsValid(tup))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
+				 errmsg("invalid internal value for enum: %u",
+						oid)));
+	en = (Form_pg_enum)GETSTRUCT(tup);
+
+	enumtypid = en->enumtypid;
+
+	ReleaseSysCache(tup);
+
+	return enumtypid;
+}
+
+/* get enum enumlabel by oid  */
+char *
+get_enum_label(Oid oid)
+{
+	char 			*enumlabel = NULL;
+	Form_pg_enum 	en;
+	HeapTuple 		tup = SearchSysCache1(ENUMOID, ObjectIdGetDatum(oid));
+	
+	if (!HeapTupleIsValid(tup))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
+				 errmsg("invalid internal value for enum: %u",
+						oid)));
+	}
+
+	en = (Form_pg_enum) GETSTRUCT(tup);
+
+	enumlabel = pstrdup(NameStr(en->enumlabel));
+	ReleaseSysCache(tup);
+
+	return enumlabel;
+}
+
+/* compare two enum value by oid*/
+int
+compare_two_enum_value(Oid oid1, Oid oid2)
+{
+	char *val1 = NULL;
+	char *val2 = NULL;
+
+	val1 = get_enum_label(oid1);
+	val2 = get_enum_label(oid2);
+
+	return strcmp(val1, val2);
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 /*
  * Disallow use of an uncommitted pg_enum tuple.
@@ -112,25 +398,76 @@ enum_in(PG_FUNCTION_ARGS)
 	Oid			enumtypoid = PG_GETARG_OID(1);
 	Oid			enumoid;
 	HeapTuple	tup;
+	Oid 		result = InvalidOid;
 
-	/* must check length to prevent Assert failure within SearchSysCache */
-	if (strlen(name) >= NAMEDATALEN)
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input value for enum %s: \"%s\"",
-						format_type_be(enumtypoid),
-						name)));
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		int32 	enumidx = 0;
+		bool 	iswarnins = false;
+		int 	err_flag = is_strict_mode() ? ERROR : WARNING;
+		/* must check length to prevent Assert failure within SearchSysCache */
+		if (strlen(name) >= NAMEDATALEN)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					 errmsg("invalid input value for enum %s: \"%s\"",
+							format_type_be(enumtypoid),
+							name)));
 
-	tup = SearchSysCache2(ENUMTYPOIDNAME,
-						  ObjectIdGetDatum(enumtypoid),
-						  CStringGetDatum(name));
-	if (!HeapTupleIsValid(tup))
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input value for enum %s: \"%s\"",
-						format_type_be(enumtypoid),
-						name)));
+		tup = SearchSysCache2(ENUMTYPOIDNAME,
+							  ObjectIdGetDatum(enumtypoid),
+							  CStringGetDatum(name));
 
+		if (!HeapTupleIsValid(tup))
+		{
+			/* 3rd: can not get enum oid by name , alter converting the string to a numeric type
+			 *      it is queried in pg_enum table according to typmod method
+			 */
+			enumidx = myenum_atoi_int4(name, &iswarnins);
+
+			if (!iswarnins)
+			{
+				if (0 == enumidx)
+					PG_RETURN_NULL();
+
+				result = get_enum_oid(enumtypoid, enumidx);
+
+				if (InvalidOid != result)
+					PG_RETURN_OID(result);
+			}
+
+			ereport(err_flag,
+					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					 errmsg("invalid input value for enum %s: \"%s\"",
+							format_type_be(enumtypoid),
+							name)));
+
+			PG_RETURN_NULL();
+		}
+	}
+	else /* End - ReqID:SRS-MYSQL-ENUMTYPE */
+	{
+		/* must check length to prevent Assert failure within SearchSysCache */
+		if (strlen(name) >= NAMEDATALEN)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					 errmsg("invalid input value for enum %s: \"%s\"",
+							format_type_be(enumtypoid),
+							name)));
+
+		tup = SearchSysCache2(ENUMTYPOIDNAME,
+							  ObjectIdGetDatum(enumtypoid),
+							  CStringGetDatum(name));
+		if (!HeapTupleIsValid(tup))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					 errmsg("invalid input value for enum %s: \"%s\"",
+							format_type_be(enumtypoid),
+							name)));
+		}
+	}
+	
 	/* check it's safe to use in SQL */
 	check_safe_enum_use(tup);
 
@@ -152,6 +489,14 @@ enum_out(PG_FUNCTION_ARGS)
 	char	   *result;
 	HeapTuple	tup;
 	Form_pg_enum en;
+
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		if (enumval == InvalidOid)
+			PG_RETURN_NULL();
+	}
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	tup = SearchSysCache1(ENUMOID, ObjectIdGetDatum(enumval));
 	if (!HeapTupleIsValid(tup))
@@ -242,7 +587,7 @@ enum_send(PG_FUNCTION_ARGS)
  * functions, except for enum_eq and enum_ne which can just check for OID
  * equality directly.
  */
-static int
+int
 enum_cmp_internal(Oid arg1, Oid arg2, FunctionCallInfo fcinfo)
 {
 	TypeCacheEntry *tcache;
@@ -302,6 +647,13 @@ enum_lt(PG_FUNCTION_ARGS)
 	Oid			a = PG_GETARG_OID(0);
 	Oid			b = PG_GETARG_OID(1);
 
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db) 
+	{
+		PG_RETURN_BOOL(compare_two_enum_value(a, b) < 0);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 	PG_RETURN_BOOL(enum_cmp_internal(a, b, fcinfo) < 0);
 }
 
@@ -310,6 +662,13 @@ enum_le(PG_FUNCTION_ARGS)
 {
 	Oid			a = PG_GETARG_OID(0);
 	Oid			b = PG_GETARG_OID(1);
+
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		PG_RETURN_BOOL(compare_two_enum_value(a, b) <= 0);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	PG_RETURN_BOOL(enum_cmp_internal(a, b, fcinfo) <= 0);
 }
@@ -320,6 +679,13 @@ enum_eq(PG_FUNCTION_ARGS)
 	Oid			a = PG_GETARG_OID(0);
 	Oid			b = PG_GETARG_OID(1);
 
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		PG_RETURN_BOOL(!compare_two_enum_value(a, b));
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 	PG_RETURN_BOOL(a == b);
 }
 
@@ -328,6 +694,13 @@ enum_ne(PG_FUNCTION_ARGS)
 {
 	Oid			a = PG_GETARG_OID(0);
 	Oid			b = PG_GETARG_OID(1);
+
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		PG_RETURN_BOOL(compare_two_enum_value(a, b) != 0);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	PG_RETURN_BOOL(a != b);
 }
@@ -338,6 +711,13 @@ enum_ge(PG_FUNCTION_ARGS)
 	Oid			a = PG_GETARG_OID(0);
 	Oid			b = PG_GETARG_OID(1);
 
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		PG_RETURN_BOOL(compare_two_enum_value(a, b) >= 0);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 	PG_RETURN_BOOL(enum_cmp_internal(a, b, fcinfo) >= 0);
 }
 
@@ -346,6 +726,13 @@ enum_gt(PG_FUNCTION_ARGS)
 {
 	Oid			a = PG_GETARG_OID(0);
 	Oid			b = PG_GETARG_OID(1);
+
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		PG_RETURN_BOOL(compare_two_enum_value(a, b) > 0);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	PG_RETURN_BOOL(enum_cmp_internal(a, b, fcinfo) > 0);
 }
@@ -608,3 +995,649 @@ enum_range_internal(Oid enumtypoid, Oid lower, Oid upper)
 
 	return result;
 }
+
+
+/**
+ * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+ *
+ * Check whether the enum type Oid1 and Oid2 are consistent
+ */
+bool
+enum_is_equal(Oid enumOid1, Oid enumOid2)
+{
+	
+	bool 			isEquivalent = true;
+	Relation 		enumRel;
+	CatCList 		*items1 = NULL;
+	CatCList 		*items2 = NULL;
+	int 			nelems = 0;
+	HeapTuple		*existing1 = NULL;
+	HeapTuple		*existing2 = NULL;
+	int				i = 0;
+
+	if (!type_is_enum(enumOid1) || !type_is_enum(enumOid2))
+	{
+		return false;
+	}
+
+	if (enumOid1 == enumOid2)
+	{
+		return true;
+	}
+
+	enumRel = table_open(EnumRelationId, AccessShareLock);
+	items1 = SearchSysCacheList1(ENUMTYPOIDNAME, ObjectIdGetDatum(enumOid1));
+	items2 = SearchSysCacheList1(ENUMTYPOIDNAME, ObjectIdGetDatum(enumOid2));
+	nelems = items1->n_members;
+
+	if (items1->n_members != items2->n_members)
+	{
+		ReleaseSysCacheList(items1);
+		ReleaseSysCacheList(items2);
+		table_close(enumRel, AccessShareLock);
+		return false;
+	}
+	/* Sort the existing members by enumsortorder */
+	existing1 = (HeapTuple *) palloc(nelems * sizeof(HeapTuple));
+	for (i = 0; i < nelems; i++)
+		existing1[i] = &(items1->members[i]->tuple);
+
+	qsort(existing1, nelems, sizeof(HeapTuple), sort_order_cmp);
+
+	/* Sort the existing members by enumsortorder */
+	existing2 = (HeapTuple *) palloc(nelems * sizeof(HeapTuple));
+	for (i = 0; i < nelems; i++)
+		existing2[i] = &(items2->members[i]->tuple);
+
+	qsort(existing2, nelems, sizeof(HeapTuple), sort_order_cmp);
+
+	for (int i = 0; i < nelems; ++i)
+	{
+		HeapTuple	enumTup1 = existing1[i];
+		HeapTuple	enumTup2 = existing2[i];
+		Form_pg_enum exists_en1 = (Form_pg_enum) GETSTRUCT(enumTup1);
+		Form_pg_enum exists_en2 = (Form_pg_enum) GETSTRUCT(enumTup2);
+		char 			*enumlabel1 = NameStr(exists_en1->enumlabel);
+		char 			*enumlabel2 = NameStr(exists_en2->enumlabel);
+
+		if (strcmp(enumlabel1, enumlabel2))
+		{
+			isEquivalent = false;
+			break;
+		}
+	}
+
+	pfree(existing1);
+	pfree(existing2);
+	ReleaseSysCacheList(items1);
+	ReleaseSysCacheList(items2);
+	
+	table_close(enumRel, AccessShareLock);
+
+	return isEquivalent;
+}
+
+inline static void 
+ENUM_INSERT_CHECK(Oid enumelenmentoid)
+{
+	if (OidIsValid(enumelenmentoid))
+		return;
+
+	ereport(is_strict_mode() ? ERROR : WARNING,
+			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				errmsg("Data truncated for column")));
+}
+
+static bool 
+number_2_enum_interel(Oid enumtypeoid, uint64 num, Oid* penumelenmentoid)
+{
+	int32 tempvalue = (int32)num;
+	if (tempvalue <= 0)
+	{
+		int err_flag = is_strict_mode() ? ERROR : WARNING;
+		ereport(err_flag,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input value for enum %s: \"%lu\"",
+						format_type_be(enumtypeoid),
+						num)));
+		
+		return false;
+	}
+	else
+	{
+		*penumelenmentoid = get_enum_oid(enumtypeoid, tempvalue);
+
+		ENUM_INSERT_CHECK(*penumelenmentoid);
+	}
+
+	return true;
+}
+
+Datum
+enum_to_enum(PG_FUNCTION_ARGS)
+{
+	Oid			oid = PG_GETARG_OID(0);
+	Oid	enumtypeoid = PG_GETARG_OID(1);
+	Oid	enumelenmentoid;
+	float8		val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = get_enum_sortorder(oid);
+	}
+
+	enumelenmentoid = get_enum_oid(enumtypeoid, (int32) val);
+
+	ENUM_INSERT_CHECK(enumelenmentoid);
+
+	if (0 != compare_two_enum_value(oid, enumelenmentoid))
+	{
+		ereport(ERROR, (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+						errmsg("invalid input value for enum %s", format_type_be(enumtypeoid))));
+	}
+	
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_int2(PG_FUNCTION_ARGS)
+{
+	Oid			oid = PG_GETARG_OID(0);
+	int16		val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = (int16) get_enum_sortorder(oid);
+	}
+
+	PG_RETURN_INT16(val);
+}
+
+Datum
+int2_to_enum(PG_FUNCTION_ARGS)
+{
+	int16 	num = PG_GETARG_INT16(0);
+	Oid 	enumtypeoid = PG_GETARG_OID(1);
+	Oid 	enumelenmentoid = InvalidOid;
+
+	if (num <= 0)
+	{
+		ereport(is_strict_mode() ? ERROR : WARNING,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input value for enum %s: \"%d\"",
+						format_type_be(enumtypeoid),
+						num)));
+		
+		PG_RETURN_NULL();
+	}
+	else
+	{
+		enumelenmentoid = get_enum_oid(enumtypeoid, (int32) num);
+		
+		ENUM_INSERT_CHECK(enumelenmentoid);
+	}
+
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+int4_to_enum(PG_FUNCTION_ARGS)
+{
+	int32 	num = PG_GETARG_INT32(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid 	enumelenmentoid = InvalidOid;
+
+	if (num <= 0)
+	{
+		ereport(is_strict_mode() ? ERROR : WARNING,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input value for enum %s: \"%d\"",
+						format_type_be(enumtypeoid),
+						num)));
+
+		PG_RETURN_NULL();
+	}
+	else
+	{
+		enumelenmentoid = get_enum_oid(enumtypeoid, (int32) num);
+
+		ENUM_INSERT_CHECK(enumelenmentoid);
+	}
+	
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_int4(PG_FUNCTION_ARGS)
+{
+	Oid			oid = PG_GETARG_OID(0);
+	int32		val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = (int32) get_enum_sortorder(oid);
+	}
+
+	PG_RETURN_INT32(val);
+}
+
+Datum
+int8_to_enum(PG_FUNCTION_ARGS)
+{
+	int64 	num = PG_GETARG_INT64(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid		enumelenmentoid;
+
+	if (num <= 0 || num > PG_INT32_MAX)
+	{
+		ereport(is_strict_mode() ? ERROR : WARNING, 
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input value for enum %s: \"%ld\"", 
+						format_type_be(enumtypeoid), 
+						num)));
+		
+		PG_RETURN_NULL();
+	}
+	else
+	{
+		enumelenmentoid = get_enum_oid(enumtypeoid, (int32) num);
+
+		ENUM_INSERT_CHECK(enumelenmentoid);
+	}
+
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_int8(PG_FUNCTION_ARGS)
+{
+	Oid			oid = PG_GETARG_OID(0);
+	int64		val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = (int64) get_enum_sortorder(oid);
+	}
+
+	PG_RETURN_INT64(val);
+}
+
+Datum
+float4_to_enum(PG_FUNCTION_ARGS)
+{
+	float4 	num = PG_GETARG_FLOAT4(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid 	enumelenmentoid = InvalidOid;
+
+	if (num <= 0)
+	{
+		ereport(is_strict_mode() ? ERROR : WARNING,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input value for enum %s: \"%f\"",
+						format_type_be(enumtypeoid),
+						num)));
+
+		PG_RETURN_NULL();
+	}
+	else
+	{
+		enumelenmentoid = get_enum_oid(enumtypeoid, (int32) num);
+
+		ENUM_INSERT_CHECK(enumelenmentoid);
+	}
+	
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_float4(PG_FUNCTION_ARGS)
+{
+	Oid			oid = PG_GETARG_OID(0);
+	float4		val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = (float4) get_enum_sortorder(oid);
+	}
+
+	PG_RETURN_FLOAT4(val);
+}
+
+Datum
+enum_to_float8(PG_FUNCTION_ARGS)
+{
+	Oid			oid = PG_GETARG_OID(0);
+	float8		val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = get_enum_sortorder(oid);
+	}
+
+	PG_RETURN_FLOAT8(val);
+}
+
+Datum
+float8_to_enum(PG_FUNCTION_ARGS)
+{
+	float8 	num = PG_GETARG_FLOAT8(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid 	enumelenmentoid = InvalidOid;
+
+	if (num <= 0)
+	{
+		ereport(is_strict_mode() ? ERROR : WARNING,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input value for enum %s: \"%f\"",
+						format_type_be(enumtypeoid),
+						num)));
+
+		PG_RETURN_NULL();
+	}
+	else
+	{
+		enumelenmentoid = get_enum_oid(enumtypeoid, (int32) num);
+
+		ENUM_INSERT_CHECK(enumelenmentoid);
+	}
+	
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+numeric_to_enum(PG_FUNCTION_ARGS)
+{
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid 	enumelenmentoid = InvalidOid;
+	
+	Numeric num = DatumGetNumeric(DirectFunctionCall2(numeric_sub, 
+													  PG_GETARG_DATUM(0),
+											  		  DirectFunctionCall1(float8_numeric, 
+																		  Float8GetDatum(0.5))));
+	Datum	retValue = DatumGetInt32(DirectFunctionCall1(numeric_int4, NumericGetDatum(num)));
+
+	if (retValue <= 0)
+	{
+		ereport(is_strict_mode() ? ERROR : WARNING,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input value for enum %s: \"%d\"",
+						format_type_be(enumtypeoid),
+						DatumGetInt32(retValue))));
+
+		PG_RETURN_NULL();
+	}
+	else
+	{
+		enumelenmentoid = get_enum_oid(enumtypeoid, DatumGetInt32(retValue));
+
+		ENUM_INSERT_CHECK(enumelenmentoid);
+	}
+	
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_numeric(PG_FUNCTION_ARGS)
+{
+	Numeric		result;
+	Oid			oid = PG_GETARG_OID(0);
+	float8		val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = get_enum_sortorder(oid);
+	}
+
+	result = DatumGetNumeric(DirectFunctionCall1(float8_numeric, Float8GetDatum(val)));
+
+	PG_RETURN_NUMERIC(result);
+}
+
+Datum
+uint1_to_enum(PG_FUNCTION_ARGS)
+{
+	uint8	num = PG_GETARG_UINT32(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid 	enumelenmentoid = InvalidOid;
+
+	if (!number_2_enum_interel(enumtypeoid, num, &enumelenmentoid))
+	{
+		PG_RETURN_NULL();
+	}
+	
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_uint1(PG_FUNCTION_ARGS)
+{
+	Oid			oid = PG_GETARG_OID(0);
+	uint8		val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = (uint8) get_enum_sortorder(oid);
+	}
+
+	PG_RETURN_UINT8(val);
+}
+
+Datum
+uint2_to_enum(PG_FUNCTION_ARGS)
+{
+	uint16	num = PG_GETARG_UINT32(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid 	enumelenmentoid = InvalidOid;
+
+	if (!number_2_enum_interel(enumtypeoid, num, &enumelenmentoid))
+	{
+		PG_RETURN_NULL();
+	}
+	
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_uint2(PG_FUNCTION_ARGS)
+{
+	Oid			oid = PG_GETARG_OID(0);
+	uint16		val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = (uint16) get_enum_sortorder(oid);
+	}
+
+	PG_RETURN_UINT16(val);
+}
+
+Datum
+enum_to_uint4(PG_FUNCTION_ARGS)
+{
+	Oid oid = PG_GETARG_OID(0);
+	uint32 val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = (uint32) get_enum_sortorder(oid);
+	}
+
+	PG_RETURN_UINT32(val);
+}
+
+Datum
+uint4_to_enum(PG_FUNCTION_ARGS)
+{
+	uint32	num = PG_GETARG_UINT32(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid		enumelenmentoid = InvalidOid;
+
+	if (!number_2_enum_interel(enumtypeoid, num, &enumelenmentoid))
+	{
+		PG_RETURN_NULL();
+	}
+	
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+uint8_to_enum(PG_FUNCTION_ARGS)
+{
+	uint64	num = PG_GETARG_UINT64(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid		enumelenmentoid;
+
+	if (!number_2_enum_interel(enumtypeoid, num, &enumelenmentoid))
+	{
+		PG_RETURN_NULL();
+	}
+
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_uint8(PG_FUNCTION_ARGS)
+{
+	Oid oid = PG_GETARG_OID(0);
+	uint64 val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = (uint64) get_enum_sortorder(oid);
+	}
+
+	PG_RETURN_UINT64(val);
+}
+
+static Oid
+check_enumlabel_value(Oid enumtypid, char *enumlabel)
+{
+	HeapTuple tup;
+	Form_pg_enum en;
+	Oid enumoid;
+
+	tup = SearchSysCache2(ENUMTYPOIDNAME, ObjectIdGetDatum(enumtypid), CStringGetDatum(enumlabel));
+	if (!HeapTupleIsValid(tup))
+	{
+		return InvalidOid;
+	}
+	en = (Form_pg_enum) GETSTRUCT(tup);
+
+	enumoid = en->oid;
+	ReleaseSysCache(tup);
+
+	return enumoid;
+}
+
+Datum
+text_to_enum(PG_FUNCTION_ARGS)
+{
+	text	*val = PG_GETARG_TEXT_P(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	char	*str1 = text_to_cstring(val);
+	Oid 	enumelenmentoid = check_enumlabel_value(enumtypeoid, str1);
+
+	if (enumelenmentoid == InvalidOid)
+	{
+		// this hook target to pg_atoi_uint
+		int32  idx = mysql_uint_datatype_in_hook(str1, '\0', 32, true);
+
+		if (idx <= 0 || idx > PG_INT32_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, 
+					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					 errmsg("invalid input value for enum %s: \"%u\"", 
+							format_type_be(enumtypeoid), 
+							idx)));
+
+			PG_RETURN_NULL();
+		}
+		else
+		{
+			enumelenmentoid = get_enum_oid(enumtypeoid, idx);
+
+			ENUM_INSERT_CHECK(enumelenmentoid);
+		}
+	}
+
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_text(PG_FUNCTION_ARGS)
+{
+	Oid 	oid = PG_GETARG_OID(0);
+	char 	*enumlabel = get_enum_label(oid);
+
+	PG_RETURN_TEXT_P(cstring_to_text(enumlabel));
+}
+
+Datum
+bool_to_enum(PG_FUNCTION_ARGS)
+{
+	bool 	val = PG_GETARG_BOOL(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid enumelenmentoid = get_enum_oid(enumtypeoid, val ? 1 : 0);
+
+	ENUM_INSERT_CHECK(enumelenmentoid);
+	
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_bool(PG_FUNCTION_ARGS)
+{
+	Oid oid1 = PG_GETARG_OID(0);
+
+	if (0 == oid1)
+	{
+		PG_RETURN_BOOL(false);
+	}
+
+	PG_RETURN_BOOL(true);
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */

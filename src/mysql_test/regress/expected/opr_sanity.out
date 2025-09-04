@@ -322,8 +322,8 @@ WHERE p1.prorettype IN
      'anyrange'::regtype = ANY (p1.proargtypes) OR
      'anymultirange'::regtype = ANY (p1.proargtypes))
 ORDER BY 2;
- oid  |    proname     
-------+----------------
+ oid  |     proname     
+------+-----------------
  2296 | anyarray_in
  2502 | anyarray_recv
  2312 | anyelement_in
@@ -331,9 +331,21 @@ ORDER BY 2;
  2777 | anynonarray_in
   750 | array_in
  2400 | array_recv
+ 6043 | bool_to_enum
  3506 | enum_in
  3532 | enum_recv
-(9 rows)
+ 6027 | float4_to_enum
+ 6029 | float8_to_enum
+ 6021 | int2_to_enum
+ 6023 | int4_to_enum
+ 6025 | int8_to_enum
+ 6031 | numeric_to_enum
+ 6041 | text_to_enum
+ 6033 | uint1_to_enum
+ 6035 | uint2_to_enum
+ 6037 | uint4_to_enum
+ 6039 | uint8_to_enum
+(21 rows)
 
 -- anyrange and anymultirange are tighter than the rest, can only resolve
 -- from each other
@@ -1905,9 +1917,12 @@ WHERE p1.oid != p2.oid AND
 -- Ask access methods to validate opclasses
 -- (this replaces a lot of SQL-level checks that used to be done in this file)
 SELECT oid, opcname FROM pg_opclass WHERE NOT amvalidate(oid);
- oid | opcname 
------+---------
-(0 rows)
+INFO:  operator family "enum_ops" of access method btree is missing operator(s) for types anyenum and text
+INFO:  operator family "enum_ops" of access method btree is missing cross-type operator(s)
+  oid  | opcname  
+-------+----------
+ 10069 | enum_ops
+(1 row)
 
 -- **************** pg_am ****************
 -- Look for illegal values in pg_am fields

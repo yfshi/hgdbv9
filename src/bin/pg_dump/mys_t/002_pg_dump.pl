@@ -2551,7 +2551,7 @@ my %tests = (
 			\Q--\E\n\n
 			\QCREATE TABLE dump_test.measurement (\E\n
 			\s+\Qcity_id integer NOT NULL,\E\n
-			\s+\Qlogdate date NOT NULL,\E\n
+			\s+\Qlogdate pg_catalog.date NOT NULL,\E\n
 			\s+\Qpeaktemp integer,\E\n
 			\s+\Qunitsales integer,\E\n
 			\s+\QCONSTRAINT measurement_peaktemp_check CHECK ((peaktemp >= '-460'::integer))\E\n
@@ -2577,7 +2577,7 @@ my %tests = (
 		regexp => qr/^
 			\QCREATE TABLE dump_test_second_schema.measurement_y2006m2 (\E\n
 			\s+\Qcity_id integer DEFAULT nextval('dump_test.measurement_city_id_seq'::regclass) NOT NULL,\E\n
-			\s+\Qlogdate date NOT NULL,\E\n
+			\s+\Qlogdate pg_catalog.date NOT NULL,\E\n
 			\s+\Qpeaktemp integer,\E\n
 			\s+\Qunitsales integer DEFAULT 0,\E\n
 			\s+\QCONSTRAINT measurement_peaktemp_check CHECK ((peaktemp >= '-460'::integer)),\E\n

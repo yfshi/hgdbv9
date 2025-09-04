@@ -288,6 +288,7 @@ select 'zyy' ~ '(?<![xy])yy+';
 (1 row)
 
 -- Test conversion of regex patterns to indexable conditions
+set enable_bitmapscan =false;
 explain (costs off) select * from pg_proc where proname ~ 'abc';
             QUERY PLAN             
 -----------------------------------
@@ -358,6 +359,7 @@ explain (costs off) select * from pg_proc where proname ~ '^abcd(x|(?=\w\w)q)';
    Filter: (proname ~ '^abcd(x|(?=\w\w)q)'::text)
 (3 rows)
 
+set enable_bitmapscan =true;
 -- Test for infinite loop in pullback() (CVE-2007-4772)
 select 'a' ~ '($|^)*';
  ?column? 

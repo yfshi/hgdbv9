@@ -426,6 +426,15 @@ typenameTypeMod(ParseState *pstate, const TypeName *typeName, Type typ)
 	if (typeName->typmods == NIL)
 		return typeName->typemod;
 
+	/**
+	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE 
+	 * Add for Alter table alter column's type,
+	 * such as alter type from text to enum.
+	 */
+	if (compatible_db == MYS_PARSER && type_is_enum(((Form_pg_type) GETSTRUCT(typ))->oid))
+		return typeName->typemod;
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 	/*
 	 * Else, type had better accept typmods.  We give a special error message
 	 * for the shell-type case, since a shell couldn't possibly have a

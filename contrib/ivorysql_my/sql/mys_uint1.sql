@@ -455,8 +455,12 @@ create table idx_2 (idx tinyint UNSIGNED);
 create index idx2 on idx_2 using hash (idx);
 vacuum full analyze idx_2;
 insert into idx_2 values (11),(22),(33);
-explain (COSTS OFF) select * from idx_2 where idx = 11;
-explain (COSTS OFF) select * from idx_2 where idx > 22;
+set enable_bitmapscan =false;
+set enable_seqscan =false;
+explain (COSTS OFF) select * from idx_2 where idx = cast(11 as tinyint UNSIGNED);
+explain (COSTS OFF) select * from idx_2 where idx > cast(11 as tinyint UNSIGNED);
+set enable_seqscan =true;
+set enable_bitmapscan =true;
 
 drop table idx_1,idx_2;
 

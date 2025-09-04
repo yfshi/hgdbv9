@@ -232,38 +232,28 @@ SELECT * FROM enumtest WHERE col <> 'orange' ORDER BY col;
 (5 rows)
 
 SELECT * FROM enumtest WHERE col > 'yellow' ORDER BY col;
-  col   
---------
- green
- blue
- purple
-(3 rows)
+ col 
+-----
+(0 rows)
 
 SELECT * FROM enumtest WHERE col >= 'yellow' ORDER BY col;
   col   
 --------
  yellow
- green
- blue
- purple
-(4 rows)
+(1 row)
 
 SELECT * FROM enumtest WHERE col < 'green' ORDER BY col;
-  col   
---------
- red
- orange
- yellow
-(3 rows)
+ col  
+------
+ blue
+(1 row)
 
 SELECT * FROM enumtest WHERE col <= 'green' ORDER BY col;
-  col   
---------
- red
- orange
- yellow
+  col  
+-------
  green
-(4 rows)
+ blue
+(2 rows)
 
 --
 -- Cast to/from text
@@ -296,9 +286,9 @@ SELECT max(col) FROM enumtest;
 (1 row)
 
 SELECT max(col) FROM enumtest WHERE col < 'green';
-  max   
---------
- yellow
+ max  
+------
+ blue
 (1 row)
 
 --
@@ -327,38 +317,28 @@ SELECT * FROM enumtest WHERE col <> 'orange' ORDER BY col;
 (5 rows)
 
 SELECT * FROM enumtest WHERE col > 'yellow' ORDER BY col;
-  col   
---------
- green
- blue
- purple
-(3 rows)
+ col 
+-----
+(0 rows)
 
 SELECT * FROM enumtest WHERE col >= 'yellow' ORDER BY col;
   col   
 --------
  yellow
- green
- blue
- purple
-(4 rows)
+(1 row)
 
 SELECT * FROM enumtest WHERE col < 'green' ORDER BY col;
-  col   
---------
- red
- orange
- yellow
-(3 rows)
+ col  
+------
+ blue
+(1 row)
 
 SELECT * FROM enumtest WHERE col <= 'green' ORDER BY col;
-  col   
---------
- red
- orange
- yellow
+  col  
+-------
  green
-(4 rows)
+ blue
+(2 rows)
 
 SELECT min(col) FROM enumtest;
  min 
@@ -373,9 +353,9 @@ SELECT max(col) FROM enumtest;
 (1 row)
 
 SELECT max(col) FROM enumtest WHERE col < 'green';
-  max   
---------
- yellow
+ max  
+------
+ blue
 (1 row)
 
 DROP INDEX enumtest_btree;

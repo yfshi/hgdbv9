@@ -42,6 +42,7 @@
 #include "catalog/pg_collation.h"
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_depend.h"
+#include "catalog/pg_enum.h"
 #include "catalog/pg_foreign_table.h"
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_namespace.h"
@@ -7830,6 +7831,30 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 	table_close(attrdesc, RowExclusiveLock);
 
+	/**
+	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+	 * Build dependence between new anonymous enum type and this table.
+	 * Same logical as AddNewAttributeTuples.
+	 */
+	if (MYS_PARSER == compatible_db)
+	{
+		for (int i = 0; i < tupdesc->natts; i++)
+		{
+			Form_pg_attribute attrs = TupleDescAttr(tupdesc, i);
+
+			if (type_is_enum(attrs->atttypid) && type_is_anonymous_enum(attrs->atttypid))
+			{
+				ObjectAddress myself, referenced;
+				/* Add dependency info */
+				ObjectAddressSubSet(myself, RelationRelationId, myrelid, attrs->attnum);
+				ObjectAddressSet(referenced, TypeRelationId, attrs->atttypid);
+				/* add dependencies on their datatypes and collations */
+				recordDependencyOn(&referenced, &myself, DEPENDENCY_AUTO);
+			}
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 	/*
 	 * Update pg_class tuple as appropriate
 	 */
@@ -13366,6 +13391,18 @@ ATPrepAlterColumnType(List **wqueue,
 				 errmsg("cannot alter column \"%s\" because it is part of the partition key of relation \"%s\"",
 						colName, RelationGetRelationName(rel))));
 
+	/**
+	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+	 * "enum" is type name flag set in mys_gram.y
+	 * alter enum column type, create new enum type.
+	 */
+	if (compatible_db == MYS_PARSER &&
+		typename_is_enum(typeName))
+	{
+		CreateEnumTypeForAlterTable(attTup, RelationGetRelationName(rel), colName, typeName);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 	/* Look up the target type */
 	typenameTypeIdAndMod(NULL, typeName, &targettype, &targettypmod);
 
@@ -14187,6 +14224,26 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				break;
 
 			case OCLASS_TYPE:
+				/**
+				 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+				 * Remove anonymous type depend on the column.
+				 */
+				if (MYS_PARSER == compatible_db)
+				{
+					Oid 	enumOid = foundObject.objectId;
+					
+					if (type_is_enum(enumOid) && type_is_anonymous_enum(enumOid))
+					{
+						deleteDependencyRecordsForSpecific(RelationRelationId,
+														   RelationGetRelid(rel),
+														   DEPENDENCY_AUTO,
+														   foundObject.classId,
+														   foundObject.objectId);
+						break;
+					}
+				}
+				// fallthrough
+				/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 			case OCLASS_CAST:
 			case OCLASS_COLLATION:
 			case OCLASS_CONVERSION:
