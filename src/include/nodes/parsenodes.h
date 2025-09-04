@@ -3652,6 +3652,7 @@ typedef struct CreateEnumStmt
 	NodeTag		type;
 	List	   *typeName;		/* qualified name (list of Value strings) */
 	List	   *vals;			/* enum values (list of Value strings) */
+	bool		anonymous_enum;
 } CreateEnumStmt;
 
 /* ----------------------

@@ -209,6 +209,7 @@ typedef struct _typeInfo
 	/* If it's a domain, we store links to its constraints here: */
 	int			nDomChecks;
 	struct _constraintInfo *domChecks;
+	bool		is_anonymous_enum; /* ReqID:SRS-MYSQL-ENUMTYPE */
 } TypeInfo;
 
 typedef struct _shellTypeInfo
@@ -359,6 +360,7 @@ typedef struct _tableInfo
 	int			numatts;		/* number of attributes */
 	char	  **attnames;		/* the attribute names */
 	char	  **atttypnames;	/* attribute type names */
+	char	  **anonymous_enums;/* ReqID:SRS-MYSQL-ENUMTYPE */
 	int		   *atttypmod;		/* type-specific type modifiers */
 	int		   *attstattarget;	/* attribute statistics targets */
 	char	   *attstorage;		/* attribute storage scheme */

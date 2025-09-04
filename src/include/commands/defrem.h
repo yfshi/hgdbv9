@@ -43,6 +43,11 @@ extern char *makeObjectName(const char *name1, const char *name2,
 extern char *ChooseRelationName(const char *name1, const char *name2,
 								const char *label, Oid namespaceid,
 								bool isconstraint);
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+extern char *ChooseTypeName(const char *name1, const char *name2,
+								const char *label, Oid namespaceid,
+								bool isconstraint);
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 extern bool CheckIndexCompatible(Oid oldId,
 								 const char *accessMethodName,
 								 List *attributeList,

@@ -19,13 +19,13 @@ select a, count(*) from enumtmp group by a order by 1;
 SELECT count(*) FROM enumtmp WHERE a <  'g'::rainbow;
  count 
 -------
-   227
+    77
 (1 row)
 
 SELECT count(*) FROM enumtmp WHERE a <= 'g'::rainbow;
  count 
 -------
-   302
+   152
 (1 row)
 
 SELECT count(*) FROM enumtmp WHERE a  = 'g'::rainbow;
@@ -37,13 +37,13 @@ SELECT count(*) FROM enumtmp WHERE a  = 'g'::rainbow;
 SELECT count(*) FROM enumtmp WHERE a >= 'g'::rainbow;
  count 
 -------
-   305
+   455
 (1 row)
 
 SELECT count(*) FROM enumtmp WHERE a >  'g'::rainbow;
  count 
 -------
-   230
+   380
 (1 row)
 
 CREATE INDEX enumidx ON enumtmp USING gist ( a );
@@ -51,13 +51,13 @@ SET enable_seqscan=off;
 SELECT count(*) FROM enumtmp WHERE a <  'g'::rainbow;
  count 
 -------
-   227
+    77
 (1 row)
 
 SELECT count(*) FROM enumtmp WHERE a <= 'g'::rainbow;
  count 
 -------
-   302
+   152
 (1 row)
 
 SELECT count(*) FROM enumtmp WHERE a  = 'g'::rainbow;
@@ -69,13 +69,13 @@ SELECT count(*) FROM enumtmp WHERE a  = 'g'::rainbow;
 SELECT count(*) FROM enumtmp WHERE a >= 'g'::rainbow;
  count 
 -------
-   305
+   455
 (1 row)
 
 SELECT count(*) FROM enumtmp WHERE a >  'g'::rainbow;
  count 
 -------
-   230
+   380
 (1 row)
 
 EXPLAIN (COSTS OFF)

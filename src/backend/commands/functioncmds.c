@@ -42,6 +42,8 @@
 #include "catalog/objectaccess.h"
 #include "catalog/pg_aggregate.h"
 #include "catalog/pg_cast.h"
+#include "catalog/pg_collation.h"
+#include "catalog/pg_enum.h"
 #include "catalog/pg_language.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_proc.h"
@@ -51,6 +53,7 @@
 #include "commands/defrem.h"
 #include "commands/extension.h"
 #include "commands/proclang.h"
+#include "commands/typecmds.h"
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "commands/packagecmds.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
@@ -75,6 +78,7 @@
 #include "tcop/utility.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/catcache.h"
 /* Begin - ReqID:SRS-PLSQL-RECORD */
 #include "utils/datum.h"
 /* End - ReqID:SRS-PLSQL-RECORD */
@@ -1490,6 +1494,225 @@ interpret_AS_clause(Oid languageOid, const char *languageName,
 	}
 }
 
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+/*
+ * get_func_list
+ *		get function list by funcname.
+ */
+static List *
+get_func_list(const char * funcnamespace, const char *funcname)
+{
+	CatCList 	*catlist = NULL;
+	Oid 		funcnamespaceoid = InvalidOid;
+	List		*ret = NIL;
+
+	funcnamespaceoid = get_namespace_oid(funcnamespace, true);
+	if (!OidIsValid(funcnamespaceoid))
+	{
+		return InvalidOid;
+	}
+
+	catlist = SearchSysCacheList1(PROCNAMEARGSNSP, CStringGetDatum(funcname));
+
+	for (int i = 0; i < catlist->n_members; i++)
+	{
+		HeapTuple	proctup = &catlist->members[i]->tuple;
+		Form_pg_proc procform = (Form_pg_proc) GETSTRUCT(proctup);
+
+		/* Consider only procs in specified namespace */
+		if (procform->pronamespace != funcnamespaceoid)
+		{
+			continue;
+		}
+
+		ret = lappend_oid(ret, procform->oid);
+	}
+
+	ReleaseSysCacheList(catlist);
+
+	return ret;
+}
+
+/*
+ * CreateEnumTypeForFunction
+ *		create new enum type when create function (enum()).
+ */
+static List *
+CreateEnumTypeForFunction(List *parameters, Oid namespaceId, char *funcName, bool isreplace)
+{
+	ListCell 	*lc = NULL;
+	List 		*oids = NIL;
+	char 		*namespaceName = get_namespace_name(namespaceId);
+	Oid		  	*argtypes = NULL;
+	char	  	*argmodes = NULL;
+	char	 	**argnames = NULL;
+	List		*funcs = NIL;
+	Oid			funcid = InvalidOid;
+	bool		parameters_have_enum = false;
+
+	/**
+	 * Check if there are mysql anonymous enum in parameters list.
+	 * If it exists, repalce it with actual anonymous enum.
+	 */
+	foreach (lc, parameters)
+	{
+		FunctionParameter *fp = (FunctionParameter *) lfirst(lc);
+		TypeName 	*t = fp->argType;
+		
+		if (typename_is_enum(t))
+		{
+			if (list_length(t->names) == 1)
+				t->names = lcons(makeString(get_namespace_name(namespaceId)), t->names);
+
+			strVal(llast(t->names)) = ChooseTypeName(funcName, "", "anonymous_enum", namespaceId, false);
+			
+			DefineAnonymousEnum(t);
+
+			parameters_have_enum = true;
+		}
+	}
+
+	if (!parameters_have_enum)
+	{
+		return NIL;
+	}
+
+	if (isreplace)
+	{
+		funcs = get_func_list(namespaceName, funcName);
+
+		/**
+		 * Get best candidate func with same name and same arguments 
+		 * if isreplace is true.
+		 */
+		foreach (lc, funcs)
+		{
+			Oid 		 candidate = lfirst_oid(lc);
+			HeapTuple	 proctup;
+			Form_pg_proc procform;
+			int 		 nargs;
+			bool		 find = true;
+			
+			proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(candidate));
+			procform = (Form_pg_proc) GETSTRUCT(proctup);
+			nargs = procform->pronargs;
+
+			if (nargs != list_length(parameters))
+			{
+				ReleaseSysCache(proctup);
+				continue;
+			}
+
+			get_func_arg_info(proctup, &argtypes, &argnames, &argmodes);
+
+			ReleaseSysCache(proctup);
+
+			for (int i = 0; i < nargs; i++)
+			{
+				FunctionParameter *fp = (FunctionParameter *) list_nth(parameters, i);
+				TypeName   *t = fp->argType;
+				Type 	typtup = LookupTypeName(NULL, t, NULL, false);
+
+				if (typtup)
+				{
+					Oid 	oldtype = argtypes[i];
+					Oid 	newtype = typeTypeId(typtup);
+
+					if (oldtype != newtype && !enum_is_equal(newtype, oldtype))
+					{
+						find = false;
+					}
+
+					ReleaseSysCache(typtup);
+				}
+				else
+					find = false;
+			}
+			
+			if (find)
+			{
+				funcid = candidate;
+				break;
+			}
+		}
+	}
+	
+	for (int i = 0; i < list_length(parameters); i++)
+	{
+		FunctionParameter *fp = (FunctionParameter *) list_nth(parameters, i);
+		TypeName 	*t = fp->argType;
+		Type 	typtup = LookupTypeName(NULL, t, NULL, false);
+		Oid 	newtype;
+
+		if (typtup == NULL)
+			continue;
+
+		newtype = typeTypeId(typtup);
+		
+		ReleaseSysCache(typtup);
+
+		if (type_is_enum(newtype) && type_is_anonymous_enum(newtype))
+		{
+			if (isreplace && OidIsValid(funcid))
+			{
+				Oid	oldtype = argtypes[i];
+
+				/**
+				 * If new enum is not equal to old, we treat it as new type and
+				 * will create a new function with diffent parameter type.
+				 */
+				if (enum_is_equal(newtype, oldtype))
+				{
+					DropStmt *stmt = makeNode(DropStmt);
+					stmt->removeType = OBJECT_TYPE;
+					stmt->missing_ok = false;
+					stmt->objects = list_make1(t);
+					stmt->behavior = DROP_RESTRICT;
+					stmt->concurrent = false;
+
+					// new enum is same as old enum, so new enum is useless.
+					RemoveObjects(stmt);
+
+					// set parameter's type name to old enum.
+					strVal(llast(t->names)) = get_typename(oldtype);
+					
+					CommandCounterIncrement();
+
+					continue;
+				}
+			}
+
+			oids = lappend_oid(oids, newtype);
+		}
+	}
+
+	return oids;
+}
+
+/*
+ * create depend : enum ==> function
+ */
+static void
+RecordDependencyForEnumAndFunction(List *enumOids, Oid funcId)
+{
+	ListCell *lc = NULL;
+	ObjectAddress depender;
+	ObjectAddress referencer;
+
+	referencer.classId = ProcedureRelationId;
+	referencer.objectId = funcId;
+	referencer.objectSubId = 0;
+
+	depender.classId = TypeRelationId;
+	depender.objectSubId = 0;
+
+	foreach (lc, enumOids)
+	{
+		depender.objectId = lfirst_oid(lc);
+		recordMultipleDependencies(&depender, &referencer, 1, DEPENDENCY_AUTO);
+	}
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 /*
  * CreateFunction
@@ -1542,6 +1765,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	ObjectAddress address;	/* ReqID:SRS-CMD-PGDUMP */
 	char	   *orifuncname = NULL;	/* ReqID:SRS-MYSQL-CASE */
 	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
+	List	   *enumOids = NIL; /* ReqID:SRS-MYSQL-ENUMTYPE */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (stmt->funcname != NIL && IsA(llast(stmt->funcname), String))
@@ -1671,6 +1895,13 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 			trftypes_list = lappend_oid(trftypes_list, typeid);
 		}
 	}
+
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		enumOids = CreateEnumTypeForFunction(stmt->parameters, namespaceId, funcname, stmt->replace);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	/*
 	 * Convert remaining parameters of CREATE to form wanted by
@@ -1871,6 +2102,16 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 
 		pfree(buf.data);
 	}
+
+	/** 
+	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE 
+	 * record dependence for the function if there are enum parameters.
+	 */
+	if (MYS_PARSER == compatible_db)
+	{
+		RecordDependencyForEnumAndFunction(enumOids, address.objectId);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	return address;
 	/* END - ReqID:SRS-CMD-PGDUMP */

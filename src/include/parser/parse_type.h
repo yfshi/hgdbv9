@@ -16,6 +16,11 @@
 #include "access/htup.h"
 #include "parser/parse_node.h"
 
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+/* mysql schema.enum('xxx') is not supported, so the list length is 1 */
+#define typename_is_enum(T) \
+			((T && T->names && (list_length(T->names)==1) && strcmp(strVal(llast(T->names)), "enum") == 0))
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 typedef HeapTuple Type;
 

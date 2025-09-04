@@ -32,7 +32,6 @@
 #include "mysql_parser/mys_case_sensitive.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_class.h"
-
 /* End - ReqID:SRS-MYSQL-CASE */
 
 static char *printTypmod(const char *typname, int32 typmod, Oid typmodout);

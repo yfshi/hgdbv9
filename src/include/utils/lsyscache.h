@@ -226,10 +226,18 @@ extern bool get_index_isclustered(Oid index_oid);
 extern Relation get_rel_oid_from_relname(char *relname, LOCKMODE lockmode, AclMode aclmode);
 /* End - ReqID:SRS-SQL-DBLINK */
 
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+extern char* get_typenamespace(Oid typid);
+extern bool type_is_anonymous_enum(Oid typid);
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 #define type_is_array(typid)  (get_element_type(typid) != InvalidOid)
 /* type_is_array_domain accepts both plain arrays and domains over arrays */
 #define type_is_array_domain(typid)  (get_base_element_type(typid) != InvalidOid)
 
 #define TypeIsToastable(typid)	(get_typstorage(typid) != TYPSTORAGE_PLAIN)
 
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+extern bool type_is_numeric(Oid typid);
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 #endif							/* LSYSCACHE_H */

@@ -733,6 +733,7 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 
 %type <list>		opt_table_target_list table_name_list opt_Iconst_arg
 
+%type <typnam>		EnumType /* ReqID:SRS-MYSQL-ENUMTYPE */
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 %type <lval>		mysql_datatype_length
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
@@ -14647,6 +14648,13 @@ SimpleTypename:
 					$$->typmods = list_make2(makeIntConst(INTERVAL_FULL_RANGE, -1),
 											 makeIntConst($3, @3));
 				}
+			/* Begin -ReqID:SRS-MYSQL-ENUMTYPE */
+			| EnumType  '(' opt_enum_val_list ')'
+				{
+					$$ = $1;
+					$$->typmods = $3;
+				}
+			/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 		;
 
 /* We have a separate ConstTypename to allow defaulting fixed-length
@@ -14709,6 +14717,15 @@ GenericType:
 					$$->location = @1;
 				}
 		;
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+EnumType:
+			ENUM_P
+				{
+					$$ = makeTypeName("enum");
+					$$->location = @1;
+				}
+		;
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 opt_type_modifiers: '(' expr_list ')'				{ $$ = $2; }
 					| /* EMPTY */					{ $$ = NIL; }
@@ -18738,7 +18755,6 @@ unreserved_keyword:
 			| ENABLE_P
 			| ENCODING
 			| ENCRYPTED
-			| ENUM_P
 			| ESCAPE
 			| EVENT
 			| EXCLUDE
@@ -18996,6 +19012,7 @@ col_name_keyword:
 			| DECIMAL_P
 			| DOUBLE_P
 			| ELT                 /* ReqID:SRS-MYSQL-BINARYTYPE */
+			| ENUM_P
 			| EXISTS
 			| EXTRACT
 			| FIELD               /* ReqID:SRS-MYSQL-BINARYTYPE */

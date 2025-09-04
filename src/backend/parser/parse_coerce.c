@@ -14,10 +14,12 @@
  */
 #include "postgres.h"
 
+#include "access/table.h"
 #include "catalog/pg_cast.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_collation.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "catalog/pg_inherits.h"
+#include "catalog/pg_enum.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "nodes/makefuncs.h"
@@ -26,6 +28,7 @@
 #include "parser/parse_relation.h"
 #include "parser/parse_type.h"
 #include "utils/builtins.h"
+#include "utils/catcache.h"
 #include "utils/date.h"			/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/datetime.h"		/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/datum.h"		/* needed for datumIsEqual() */
@@ -58,6 +61,7 @@ typedef enum datetime
 	MYS_TIMES_FLG
 } mys_datetime;
 /* End - ReqID:SRS-MYSQL-DATETYPE */
+
 PGDLLIMPORT ora_raw_input_hook_type ora_raw_input_hook;
 
 static Node *coerce_type_typmod(Node *node,
@@ -2558,281 +2562,272 @@ coerce_type(ParseState *pstate, Node *node,
 		}
 	}
 
-	if (MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext && IsA(node, Const) &&
-		(inputTypeId == INT4OID || inputTypeId == NUMERICOID ||
-		 inputTypeId == INT8OID || inputTypeId == INT2OID) &&
-		(targetTypeId == UINT1OID || targetTypeId == UINT2OID || 
-		 targetTypeId == UINT3OID || targetTypeId == UINT4OID || targetTypeId == UINT8OID) )
+	if (MYS_PARSER == compatible_db)
 	{
-		/*
-		 * use cast(int as uint)
-		 * cast does not reised an error, to distinguish the error handling mechanism from the inout function
-		 * preprocessing is performed on the cast
-		 */
-		ParseCallbackState pcbstate;
-		Type		baseType;
-		uint64		tempvalue = 0;
-
-		Oid			baseTypeId;
-		int32		baseTypeMod;
-		Const	   *con = (Const *) node;
-		Const	   *newcon = makeNode(Const);
-
-		baseTypeMod = targetTypeMod;
-		baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
-		baseType = typeidType(baseTypeId);
-
-		newcon->consttype = baseTypeId;
-		newcon->consttypmod = baseTypeMod;
-		newcon->constcollid = typeTypeCollation(baseType);
-		newcon->constlen = typeLen(baseType);
-		newcon->constbyval = typeByVal(baseType);
-		newcon->constisnull = con->constisnull;
-		newcon->location = con->location;
-
-		if (targetTypeId == UINT8OID)
-		{
-			tempvalue = Num2Mysuint8(con, inputTypeId);
-			newcon->constvalue = TimeADTGetDatum(tempvalue);
-		}
-		else
-		{
-			tempvalue = Num2Mysuint1234(con, inputTypeId, targetTypeId);
-			newcon->constvalue = Int64GetDatum(tempvalue);
-		}
-
-		setup_parser_errposition_callback(&pcbstate, pstate, con->location);
-
-		result = (Node *) newcon;
-		ReleaseSysCache(baseType);
-		cancel_parser_errposition_callback(&pcbstate);
-		
-		return result;
-	}
-
-	if (MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext &&
-		inputTypeId == UNKNOWNOID && IsA(node, Const) &&
-		(targetTypeId == UINT1OID || targetTypeId == UINT2OID || 
-		 targetTypeId == UINT3OID || targetTypeId == UINT4OID || targetTypeId == UINT8OID) )
-	{
-		/*
-		 * use cast(unknown as uint)
-		 * cast does not reised an error, to distinguish the error handling mechanism from the inout function
-		 * preprocessing is performed on the cast
-		 */
-		ParseCallbackState pcbstate;
-		Type		baseType;
-		uint64		tempvalue = 0;
-
-		Oid			baseTypeId;
-		int32		baseTypeMod;
-		Const	   *con = (Const *) node;
-		Const	   *newcon = makeNode(Const);
-
-		baseTypeMod = targetTypeMod;
-		baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
-		baseType = typeidType(baseTypeId);
-
-		newcon->consttype = baseTypeId;
-		newcon->consttypmod = baseTypeMod;
-		newcon->constcollid = typeTypeCollation(baseType);
-		newcon->constlen = typeLen(baseType);
-		newcon->constbyval = typeByVal(baseType);
-		newcon->constisnull = con->constisnull;
-		newcon->location = con->location;
-
-		tempvalue = Str2Mysuint12348(con, newcon, targetTypeId);
-		newcon->constvalue = UInt32GetDatum(tempvalue);
-
-		setup_parser_errposition_callback(&pcbstate, pstate, con->location);
-
-		result = (Node *) newcon;
-		ReleaseSysCache(baseType);
-		cancel_parser_errposition_callback(&pcbstate);
-		
-		return result;
-	}
-	/* 
-	 * When an integer or numeric is inserted as a date type column in mysql,
-	 * type conversion needs to be processed.
-	 */
-	/* Begin - ReqID:SRS-MYSQL-DATETYPE*/
-	if ((inputTypeId == INT4OID ||
-		inputTypeId == NUMERICOID ||
-		inputTypeId == INT8OID ||
-		inputTypeId == INT2OID) &&
-		IsA(node, Const) &&
-		MYS_PARSER == compatible_db)
-	{
-		Oid			baseTypeId;
-		int32		baseTypeMod;
-		mys_datetime		dateflg = MYS_ZERO_FLG;
-		bool is_insert = false;
-
-		baseTypeMod = targetTypeMod;
-		baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
-		//error:select cast('1.1111' as timestamp);
-		if (COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
-		{
-			elog(ERROR,
-				"You have an error in your SQL syntax;"
-				"check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
-		}
+		bool 	is_insert = false;
 
 		if ((pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
 			(pstate && (pstate->p_is_insert || pstate->p_myscreateastmt)))
 		{
 			is_insert = true;
-			if (baseTypeId == MYSDATEOID)
+		}
+
+		if (COERCION_EXPLICIT == ccontext && IsA(node, Const) &&
+			(targetTypeId == UINT1OID || targetTypeId == UINT2OID || 
+			 targetTypeId == UINT3OID || targetTypeId == UINT4OID || targetTypeId == UINT8OID))
+		{
+			if (inputTypeId == UNKNOWNOID)
 			{
-				dateflg = MYS_DATE_FLG;
+				/*
+				 * use cast(unknown as uint)
+				 * cast does not reised an error, to distinguish the error handling mechanism from the inout function
+				 * preprocessing is performed on the cast
+				 */
+				Type		baseType;
+				uint64		tempvalue = 0;
+
+				Oid			baseTypeId;
+				int32		baseTypeMod;
+				Const	   *con = (Const *) node;
+				Const	   *newcon = makeNode(Const);
+
+				baseTypeMod = targetTypeMod;
+				baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
+				baseType = typeidType(baseTypeId);
+
+				newcon->consttype = baseTypeId;
+				newcon->consttypmod = baseTypeMod;
+				newcon->constcollid = typeTypeCollation(baseType);
+				newcon->constlen = typeLen(baseType);
+				newcon->constbyval = typeByVal(baseType);
+				newcon->constisnull = con->constisnull;
+				newcon->location = con->location;
+
+				tempvalue = Str2Mysuint12348(con, newcon, targetTypeId);
+				newcon->constvalue = UInt32GetDatum(tempvalue);
+
+				result = (Node *) newcon;
+				ReleaseSysCache(baseType);
+				
+				return result;
 			}
-			else if (baseTypeId == MYSDATETIMEOID)
+
+			if (inputTypeId == INT4OID || inputTypeId == NUMERICOID ||
+				inputTypeId == INT8OID || inputTypeId == INT2OID)
 			{
-				dateflg = MYS_DATETIME_FLG;
-			}
-			else if (baseTypeId == MYSDATETIMESOID)
-			{
-				dateflg = MYS_DATETIMES_FLG;
-			}
-			else if (baseTypeId == MYSTIMESTAMPOID)
-			{
-				dateflg = MYS_TIMESTAMP_FLG;
-			}
-			else if (baseTypeId == MYSTIMESTAMPSOID)
-			{
-				dateflg = MYS_TIMESTAMPS_FLG;
-			}
-			else if (baseTypeId == MYSTIMEOID)
-			{
-				dateflg = MYS_TIME_FLG;
-			}
-			else if (baseTypeId == MYSTIMESOID)
-			{
-				dateflg = MYS_TIMES_FLG;
+				/*
+				 * use cast(int as uint)
+				 * cast does not reised an error, to distinguish the error handling mechanism from the inout function
+				 * preprocessing is performed on the cast
+				 */
+				Type		baseType;
+				uint64		tempvalue = 0;
+
+				Oid			baseTypeId;
+				int32		baseTypeMod;
+				Const	   *con = (Const *) node;
+				Const	   *newcon = makeNode(Const);
+
+				baseTypeMod = targetTypeMod;
+				baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
+				baseType = typeidType(baseTypeId);
+
+				newcon->consttype = baseTypeId;
+				newcon->consttypmod = baseTypeMod;
+				newcon->constcollid = typeTypeCollation(baseType);
+				newcon->constlen = typeLen(baseType);
+				newcon->constbyval = typeByVal(baseType);
+				newcon->constisnull = con->constisnull;
+				newcon->location = con->location;
+
+				if (targetTypeId == UINT8OID)
+				{
+					tempvalue = Num2Mysuint8(con, inputTypeId);
+					newcon->constvalue = TimeADTGetDatum(tempvalue);
+				}
+				else
+				{
+					tempvalue = Num2Mysuint1234(con, inputTypeId, targetTypeId);
+					newcon->constvalue = Int64GetDatum(tempvalue);
+				}
+
+				result = (Node *) newcon;
+				ReleaseSysCache(baseType);
+				
+				return result;
 			}
 		}
 
-		if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATEOID)
-			dateflg = MYS_DATE_FLG;
-		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATETIMEOID)
-			dateflg = MYS_DATETIME_FLG;
-		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATETIMESOID)
-			dateflg = MYS_DATETIMES_FLG;
-		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESTAMPOID)
-			dateflg = MYS_TIMESTAMP_FLG;
-		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESTAMPSOID)
-			dateflg = MYS_TIMESTAMPS_FLG;
-		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMEOID)
-			dateflg = MYS_TIME_FLG;
-		else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESOID)
-			dateflg = MYS_TIMES_FLG;
-
-		if (dateflg)
+		/**
+		 * Begin - ReqID:SRS-MYSQL-DATETYPE
+		 * When an integer or numeric is inserted as a date type column in mysql,
+		 * type conversion needs to be processed.
+		 */
+		if (IsA(node, Const) &&
+			(inputTypeId == INT4OID ||
+			 inputTypeId == NUMERICOID ||
+			 inputTypeId == INT8OID ||
+			 inputTypeId == INT2OID))
 		{
-			DateADT		date;
-			TimeADT		datetime;
-			TimeADT		time;
+			Oid				baseTypeId;
+			int32			baseTypeMod;
+			mys_datetime	dateflg = MYS_ZERO_FLG;
+			
+			baseTypeMod = targetTypeMod;
+			baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
+
+			if (is_insert)
+			{
+				if (baseTypeId == MYSDATEOID)
+				{
+					dateflg = MYS_DATE_FLG;
+				}
+				else if (baseTypeId == MYSDATETIMEOID)
+				{
+					dateflg = MYS_DATETIME_FLG;
+				}
+				else if (baseTypeId == MYSDATETIMESOID)
+				{
+					dateflg = MYS_DATETIMES_FLG;
+				}
+				else if (baseTypeId == MYSTIMESTAMPOID)
+				{
+					dateflg = MYS_TIMESTAMP_FLG;
+				}
+				else if (baseTypeId == MYSTIMESTAMPSOID)
+				{
+					dateflg = MYS_TIMESTAMPS_FLG;
+				}
+				else if (baseTypeId == MYSTIMEOID)
+				{
+					dateflg = MYS_TIME_FLG;
+				}
+				else if (baseTypeId == MYSTIMESOID)
+				{
+					dateflg = MYS_TIMES_FLG;
+				}
+			}
+
+			if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATEOID)
+				dateflg = MYS_DATE_FLG;
+			else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATETIMEOID)
+				dateflg = MYS_DATETIME_FLG;
+			else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATETIMESOID)
+				dateflg = MYS_DATETIMES_FLG;
+			else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESTAMPOID)
+				dateflg = MYS_TIMESTAMP_FLG;
+			else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESTAMPSOID)
+				dateflg = MYS_TIMESTAMPS_FLG;
+			else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMEOID)
+				dateflg = MYS_TIME_FLG;
+			else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESOID)
+				dateflg = MYS_TIMES_FLG;
+
+			if (dateflg)
+			{
+				DateADT		date;
+				TimeADT		datetime;
+				TimeADT		time;
+				Type		baseType;
+				ParseCallbackState pcbstate;
+				Const	   *con = (Const *) node;
+				Const	   *newcon = makeNode(Const);
+				baseType = typeidType(baseTypeId);
+
+				newcon->consttype = baseTypeId;
+				newcon->consttypmod = baseTypeMod;
+				newcon->constcollid = typeTypeCollation(baseType);
+				newcon->constlen = typeLen(baseType);
+				newcon->constbyval = typeByVal(baseType);
+				newcon->constisnull = con->constisnull;
+
+				newcon->location = con->location;
+				/*
+				* Set up to point at the constant's text if the input routine throws
+				* an error.
+				*/
+				setup_parser_errposition_callback(&pcbstate, pstate, con->location);
+
+				if (dateflg == MYS_DATE_FLG)
+				{
+					date = Num2Mysdate(con, inputTypeId);
+					newcon->constvalue = DateADTGetDatum(date);
+				}
+				else if (dateflg == MYS_DATETIME_FLG)
+				{
+					datetime = Num2Mysdatetime(con, inputTypeId);
+					newcon->constvalue = TimeADTGetDatum(datetime);
+				}
+				else if (dateflg == MYS_DATETIMES_FLG)
+				{
+					Datum		timestamps;
+					timestamps = Num2Mysdatetimes(con, inputTypeId, targetTypeMod, is_insert);
+					newcon->constvalue = timestamps;
+				}
+				else if (dateflg == MYS_TIMESTAMP_FLG)
+				{
+					datetime = Num2Mystimestamp(con, inputTypeId);
+					newcon->constvalue = TimeADTGetDatum(datetime);
+				}
+				else if (dateflg == MYS_TIMESTAMPS_FLG)
+				{
+					Datum		timestamps;
+					timestamps = Num2Mystimestamps(con, inputTypeId, targetTypeMod, is_insert);
+					newcon->constvalue = timestamps;
+				}
+				else if (dateflg == MYS_TIME_FLG)
+				{
+					time = Num2Mystime(con, inputTypeId, is_insert);
+					newcon->constvalue = TimeADTGetDatum(time);
+				}
+				else if (dateflg == MYS_TIMES_FLG)
+				{
+					time = Num2Mystimes(con, inputTypeId, targetTypeMod, is_insert);
+					newcon->constvalue = TimeADTGetDatum(time);
+				}
+
+				result = (Node *) newcon;
+				ReleaseSysCache(baseType);
+				cancel_parser_errposition_callback(&pcbstate);
+				return result;
+			}
+			
+		}
+		/* End - ReqID:SRS-MYSQL-DATETYPE */
+
+		/* Begin - BUG#5392 */
+		if (is_insert && IsA(node, Const) &&
+			inputTypeId == BOOLOID && 
+			(targetTypeId == INT4OID || targetTypeId == MEDIUMINTOID))
+		{
+			Oid			baseTypeId;
+			int32		baseTypeMod;
 			Type		baseType;
 			ParseCallbackState pcbstate;
 			Const	   *con = (Const *) node;
 			Const	   *newcon = makeNode(Const);
+			
+			baseTypeMod = targetTypeMod;
+			baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
 			baseType = typeidType(baseTypeId);
 
-			newcon->consttype = baseTypeId;
+			newcon->consttype = targetTypeId;
 			newcon->consttypmod = baseTypeMod;
 			newcon->constcollid = typeTypeCollation(baseType);
 			newcon->constlen = typeLen(baseType);
 			newcon->constbyval = typeByVal(baseType);
 			newcon->constisnull = con->constisnull;
 
-			newcon->location = con->location;
-			/*
-			 * Set up to point at the constant's text if the input routine throws
-			 * an error.
-			 */
 			setup_parser_errposition_callback(&pcbstate, pstate, con->location);
-
-			if (dateflg == MYS_DATE_FLG)
-			{
-				date = Num2Mysdate(con, inputTypeId);
-				newcon->constvalue = DateADTGetDatum(date);
-			}
-			else if (dateflg == MYS_DATETIME_FLG)
-			{
-				datetime = Num2Mysdatetime(con, inputTypeId);
-				newcon->constvalue = TimeADTGetDatum(datetime);
-			}
-			else if (dateflg == MYS_DATETIMES_FLG)
-			{
-				Datum		timestamps;
-				timestamps = Num2Mysdatetimes(con, inputTypeId, targetTypeMod, is_insert);
-				newcon->constvalue = timestamps;
-			}
-			else if (dateflg == MYS_TIMESTAMP_FLG)
-			{
-				datetime = Num2Mystimestamp(con, inputTypeId);
-				newcon->constvalue = TimeADTGetDatum(datetime);
-			}
-			else if (dateflg == MYS_TIMESTAMPS_FLG)
-			{
-				Datum		timestamps;
-				timestamps = Num2Mystimestamps(con, inputTypeId, targetTypeMod, is_insert);
-				newcon->constvalue = timestamps;
-			}
-			else if (dateflg == MYS_TIME_FLG)
-			{
-				time = Num2Mystime(con, inputTypeId, is_insert);
-				newcon->constvalue = TimeADTGetDatum(time);
-			}
-			else if (dateflg == MYS_TIMES_FLG)
-			{
-				time = Num2Mystimes(con, inputTypeId, targetTypeMod, is_insert);
-				newcon->constvalue = TimeADTGetDatum(time);
-			}
+			newcon->constvalue = Int32GetDatum(con->constvalue ? 1 : 0);
 
 			result = (Node *) newcon;
 			ReleaseSysCache(baseType);
 			cancel_parser_errposition_callback(&pcbstate);
 			return result;
 		}
-		
+		/* End - BUG#5392 */
 	}
-	/* End - ReqID:SRS-MYSQL-DATETYPE */
-
-	/* Begin - BUG#5392 */
-	if (inputTypeId == BOOLOID && (targetTypeId == INT4OID || targetTypeId == MEDIUMINTOID)
-		&& IsA(node, Const) && MYS_PARSER == compatible_db
-		&& ((pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) 
-			|| (pstate && (pstate->p_is_insert || pstate->p_myscreateastmt)))) 
-	{
-		Oid			baseTypeId;
-		int32		baseTypeMod;
-		Type		baseType;
-		ParseCallbackState pcbstate;
-		Const	   *con = (Const *) node;
-		Const	   *newcon = makeNode(Const);
-		
-		baseTypeMod = targetTypeMod;
-		baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
-		baseType = typeidType(baseTypeId);
-
-		newcon->consttype = targetTypeId;
-		newcon->consttypmod = baseTypeMod;
-		newcon->constcollid = typeTypeCollation(baseType);
-		newcon->constlen = typeLen(baseType);
-		newcon->constbyval = typeByVal(baseType);
-		newcon->constisnull = con->constisnull;
-
-		setup_parser_errposition_callback(&pcbstate, pstate, con->location);
-		newcon->constvalue = Int32GetDatum(con->constvalue ? 1 : 0);
-
-		result = (Node *) newcon;
-		ReleaseSysCache(baseType);
-		cancel_parser_errposition_callback(&pcbstate);
-		return result;
-	}
-	/* End - BUG#5392 */
 
 	if (inputTypeId == UNKNOWNOID && IsA(node, Const))
 	{
@@ -2934,7 +2929,8 @@ coerce_type(ParseState *pstate, Node *node,
 			* TODO: 
 			*	Perhaps we should add a field to the Const struct instead of relying on -2.
 			*/
-			if (con->location == (-2)) {
+			if (con->location == (-2)) 
+			{
 				/* date'1990-1-1' input format */
 				if (baseTypeId == ORADATEOID)
 				{
@@ -3202,7 +3198,7 @@ coerce_type(ParseState *pstate, Node *node,
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
 		/* Begin - ReqID:SRS-MYSQL-DATETYPE */
 		/* date'2222-22-22' */
-		else if (MYS_PARSER == compatible_db )
+		else if (MYS_PARSER == compatible_db)
 		{
 			bool mysdateflag = false;
 			int is_insert = 0;
@@ -3228,7 +3224,7 @@ coerce_type(ParseState *pstate, Node *node,
 			 * 2. insert into tb values ('1111-11-11')
 			 * 3. cast
 			 */
-			if ( (COERCION_IMPLICIT == ccontext || con->location == -1)  ||
+			if ((COERCION_IMPLICIT == ccontext || con->location == -1)  ||
 				(COERCION_ASSIGNMENT == ccontext || con->location == -2) || 
 				(mysdateflag && is_insert))
 			{
@@ -3308,8 +3304,7 @@ coerce_type(ParseState *pstate, Node *node,
 				if (baseTypeId == MYSDATETIMEOID || baseTypeId == MYSDATETIMESOID ||
 					baseTypeId == MYSTIMESTAMPOID || baseTypeId == MYSTIMESTAMPSOID ||
 					baseTypeId == MYSTIMESOID || baseTypeId == MYSDATETIMESOID ||
-					baseTypeId == MYSDATEOID
-					)
+					baseTypeId == MYSDATEOID)
 				{
 					if (!con->constisnull)
 						newcon->constvalue = stringTypeDatum(baseType,
@@ -3431,8 +3426,7 @@ coerce_type(ParseState *pstate, Node *node,
 		return result;
 	}
 
-	/* Begin - ReqID:SRS-MYSQL-DATETYPE*/
-	//error:select cast('1.1111' as timestamp);
+	/* Begin - ReqID:SRS-MYSQL-DATETYPE */
 	if (MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext && 
 		(targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
 	{
@@ -3754,6 +3748,17 @@ can_coerce_type(int nargs, const Oid *input_typeids, const Oid *target_typeids,
 			|| typeIsOfTypedTable(inputTypeId, targetTypeId))
 			continue;
 
+		/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+		if (MYS_PARSER == compatible_db)
+		{
+			/*
+			 * if target type is enum, accept
+			 */
+			if (type_is_enum(targetTypeId))
+				continue;
+		}
+		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
 		/* Begin - BUG#5392 */
 		if (MYS_PARSER == compatible_db && inputTypeId == BOOLOID && 
 			(targetTypeId == INT4OID || targetTypeId == MEDIUMINTOID))
@@ -3991,8 +3996,10 @@ build_coercion_expression(Node *node,
 		Assert(procstruct->prokind == PROKIND_FUNCTION);
 		nargs = procstruct->pronargs;
 		Assert(nargs >= 1 && nargs <= 3);
+
 		/* Assert(procstruct->proargtypes.values[0] == exprType(node)); */
-		Assert(nargs < 2 || procstruct->proargtypes.values[1] == INT4OID);
+		Assert(nargs < 2 || procstruct->proargtypes.values[1] == INT4OID || 
+			   procstruct->proargtypes.values[1] == OIDOID /* ReqID:SRS-MYSQL-ENUMTYPE */);
 		Assert(nargs < 3 || procstruct->proargtypes.values[2] == BOOLOID);
 
 		ReleaseSysCache(tp);
@@ -4011,14 +4018,30 @@ build_coercion_expression(Node *node,
 
 		if (nargs >= 2)
 		{
-			/* Pass target typmod as an int4 constant */
-			cons = makeConst(INT4OID,
-							 -1,
-							 InvalidOid,
-							 sizeof(int32),
-							 Int32GetDatum(targetTypMod),
-							 false,
-							 true);
+			/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+			if (MYS_PARSER == compatible_db && type_is_enum(targetTypeId))
+			{
+				/* set enum type oid */
+				cons = makeConst(OIDOID,
+								 -1,
+								 InvalidOid,
+								 sizeof(Oid),
+								 ObjectIdGetDatum(targetTypeId),
+								 false,
+								 true);
+			}
+			/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+			else
+			{
+				/* Pass target typmod as an int4 constant */
+				cons = makeConst(INT4OID,
+								 -1,
+								 InvalidOid,
+								 sizeof(int32),
+								 Int32GetDatum(targetTypMod),
+								 false,
+								 true);
+			}
 
 			args = lappend(args, cons);
 		}
@@ -5558,13 +5581,18 @@ enforce_generic_type_consistency(const Oid *actual_arg_types,
 			}
 			if (allow_poly && decl_type == actual_type)
 				continue;		/* no new information here */
-			if (OidIsValid(elem_typeid) && actual_type != elem_typeid)
-				ereport(ERROR,
-						(errcode(ERRCODE_DATATYPE_MISMATCH),
-						 errmsg("arguments declared \"%s\" are not all alike", "anyelement"),
-						 errdetail("%s versus %s",
-								   format_type_be(elem_typeid),
-								   format_type_be(actual_type))));
+			
+			if (MYS_PARSER != compatible_db || !type_is_enum(elem_typeid))
+			{
+				if (OidIsValid(elem_typeid) && actual_type != elem_typeid)
+					ereport(ERROR,
+							(errcode(ERRCODE_DATATYPE_MISMATCH),
+							 errmsg("arguments declared \"%s\" are not all alike", "anyelement"),
+							 errdetail("%s versus %s",
+									   format_type_be(elem_typeid),
+									   format_type_be(actual_type))));
+			}
+
 			elem_typeid = actual_type;
 		}
 		else if (decl_type == ANYARRAYOID)
@@ -6522,6 +6550,29 @@ find_coercion_pathway(Oid targetTypeId, Oid sourceTypeId,
 	/* Domains are always coercible to and from their base type */
 	if (sourceTypeId == targetTypeId)
 		return COERCION_PATH_RELABELTYPE;
+
+	if (MYS_PARSER == compatible_db)
+	{
+		/**
+		 * if two enum type is same, return .:
+		 * equal enum have internal elements, such as:
+		 * 		enum1('a', 'b',...)
+		 * 		enum2('a', 'b',...)
+		 */
+		if (enum_is_equal(sourceTypeId, targetTypeId))
+			return COERCION_PATH_COERCEVIAIO;
+
+		/**
+		 * if sourceTypeId or targetTypeId is enum type
+		 * covert a enum type oid to an virtual enum type oid
+		 * because enum type donot hava built-in cast operter
+		 */
+		if (type_is_enum(sourceTypeId))
+			sourceTypeId = ANYENUMOID;
+
+		if (type_is_enum(targetTypeId))
+			targetTypeId = ANYENUMOID;
+	}
 
 	/* Look in pg_cast */
 	tuple = SearchSysCache2(CASTSOURCETARGET,

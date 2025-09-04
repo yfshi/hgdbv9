@@ -14,6 +14,7 @@ $node->append_conf('postgresql.conf',
 	"shared_preload_libraries = 'auto_explain'");
 $node->append_conf('postgresql.conf', "auto_explain.log_min_duration = 0");
 $node->append_conf('postgresql.conf', "auto_explain.log_analyze = on");
+$node->append_conf('postgresql.conf', "enable_bitmapscan = off");
 $node->start;
 
 # run a couple of queries

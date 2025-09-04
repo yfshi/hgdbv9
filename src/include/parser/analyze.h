@@ -63,4 +63,7 @@ extern List *BuildOnConflictExcludedTargetlist(Relation targetrel,
 
 extern SortGroupClause *makeSortGroupClauseForSetOp(Oid rescoltype, bool require_hash);
 
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+extern List *copy_enum_label(Oid enumOid);
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 #endif							/* ANALYZE_H */

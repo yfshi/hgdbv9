@@ -9,6 +9,7 @@ OBJS = \
 	src/case_sensitive/casefunc.o \
 	src/datatype/strtoll.o \
 	src/datatype/myyear.o \
+	src/datatype/mysenum.o \
 	src/datatype/mysdate.o \
 	src/datatype/mysint1.o \
 	src/datatype/mysint2.o \
@@ -85,6 +86,7 @@ cleansql:
 # REGRESS_OPTS mainly used for installcheck or debug.
 #REGRESS_OPTS = --port=3306
 MYS_REGRESS = multi_update \
+			  mys_enum	\
 			  mys_text \
 			  mys_tinytext \
 			  mys_mediumtext \

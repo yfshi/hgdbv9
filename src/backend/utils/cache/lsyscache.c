@@ -51,10 +51,11 @@
 #include "utils/typcache.h"
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "funcapi.h"
+#include "parser/parse_coerce.h"
 #include "parser/parse_package.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
 #include "parser/parse_type.h"	/* ReqID:SRS-PLSQL-TYPE */
-
+#include "parser/pg_object_hook.h"
 /* Begin - ReqID:SRS-SQL-DBLINK */
 #include "catalog/pg_foreign_table.h"
 #include "access/table.h"
@@ -2982,8 +2983,7 @@ get_typename(Oid typid)
 	else
 	{
 		initStringInfo(&buf);
-		appendStringInfo(&buf, "%s.%s",
-						 nspname,
+		appendStringInfo(&buf, "%s",
 						 NameStr(typeForm->typname));
 		result = pstrdup(buf.data);
 		pfree(buf.data);
@@ -2995,6 +2995,33 @@ get_typename(Oid typid)
 	return result;
 }
 /* End - ReqID:SRS-SQL-DBLINK */
+
+/**
+ * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+ * get_range_subtype
+ *		Returns the namespace of a given typeid
+ */
+char*
+get_typenamespace(Oid typid)
+{
+	HeapTuple 		tuple;
+	Form_pg_type 	typeForm;
+	char			*result = NULL;
+
+	tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(typid));
+
+	if (!HeapTupleIsValid(tuple))
+	{
+		ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT), errmsg("cache lookup failed for type %u", typid)));
+	}
+	
+	typeForm = (Form_pg_type) GETSTRUCT(tuple);
+	result = pstrdup(get_namespace_name(typeForm->typnamespace));
+	ReleaseSysCache(tuple);
+
+	return result;
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 /*
  * type_is_rowtype
@@ -3034,6 +3061,49 @@ type_is_enum(Oid typid)
 {
 	return (get_typtype(typid) == TYPTYPE_ENUM);
 }
+
+/** Begin - ReqID:SRS-MYSQL-ENUMTYPE
+ * Returns true if the given type is an anonymous enum type, who
+ * created by CreateStmt with MySQL syntax.
+ */
+bool
+type_is_anonymous_enum(Oid typid)
+{
+	PgObjectInfo    	info;
+	ObjectAddress 		address;
+	JsonbValue	     	key;
+	JsonbValue      	*val = NULL;
+
+	#define ANONYMOUS_KEY_VAL 	"anonymous"
+	#define ANONYMOUS_KEY_LEN 	9
+
+	/**
+	 * If compatition mode is PG, it will not load pg_object.
+	 */
+	if (pg_object_get_ori_infor_hook == NULL)
+		return false;
+	
+	ObjectAddressSet(address, TypeRelationId, typid);
+
+	info = pg_object_get_ori_infor_hook(address);
+
+	if (info == NULL || info->orioption == NULL)
+		return false;
+
+	key.type = jbvString;
+	key.val.string.val = ANONYMOUS_KEY_VAL;
+	key.val.string.len = ANONYMOUS_KEY_LEN;
+
+	val = findJsonbValueFromContainer(&info->orioption->root,
+									  JB_FOBJECT,
+									  &key);
+
+	if (val == NULL || val->type == jbvNull)
+		return false;
+	
+	return val->val.boolean;
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 /*
  * type_is_range
@@ -4134,3 +4204,16 @@ get_rel_oid_from_relname(char *relname, LOCKMODE lockmode, AclMode aclmode)
 	return rel;
 }
 /* End - ReqID:SRS-SQL-DBLINK */
+
+/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+bool
+type_is_numeric(Oid typid)
+{
+	TYPCATEGORY typcategory;
+	bool		typispreferred;
+
+	get_type_category_preferred(typid, &typcategory, &typispreferred);
+
+	return typcategory == TYPCATEGORY_NUMERIC;
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */

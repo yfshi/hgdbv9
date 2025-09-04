@@ -1557,20 +1557,24 @@ create table idx_2 (idx tinyint UNSIGNED);
 create index idx2 on idx_2 using hash (idx);
 vacuum full analyze idx_2;
 insert into idx_2 values (11),(22),(33);
-explain (COSTS OFF) select * from idx_2 where idx = 11;
-      QUERY PLAN      
-----------------------
- Seq Scan on idx_2
-   Filter: (idx = 11)
+set enable_bitmapscan =false;
+set enable_seqscan =false;
+explain (COSTS OFF) select * from idx_2 where idx = cast(11 as tinyint UNSIGNED);
+            QUERY PLAN             
+-----------------------------------
+ Index Scan using idx2 on idx_2
+   Index Cond: (idx = '11'::uint1)
 (2 rows)
 
-explain (COSTS OFF) select * from idx_2 where idx > 22;
-      QUERY PLAN      
-----------------------
+explain (COSTS OFF) select * from idx_2 where idx > cast(11 as tinyint UNSIGNED);
+          QUERY PLAN           
+-------------------------------
  Seq Scan on idx_2
-   Filter: (idx > 22)
+   Filter: (idx > '11'::uint1)
 (2 rows)
 
+set enable_seqscan =true;
+set enable_bitmapscan =true;
 drop table idx_1,idx_2;
 create table tb1 (a tinyint UNSIGNED);
 create or replace procedure proc1()

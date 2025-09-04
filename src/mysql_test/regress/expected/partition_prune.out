@@ -3577,7 +3577,7 @@ explain (costs off) select * from pp_enumpart where a = 'blue';
                 QUERY PLAN                
 ------------------------------------------
  Seq Scan on pp_enumpart_blue pp_enumpart
-   Filter: (a = 'blue'::pp_colors)
+   Filter: (a = 'blue'::text)
 (2 rows)
 
 explain (costs off) select * from pp_enumpart where a = 'black';

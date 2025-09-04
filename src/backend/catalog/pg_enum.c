@@ -28,8 +28,10 @@
 #include "utils/builtins.h"
 #include "utils/catcache.h"
 #include "utils/fmgroids.h"
+#include "utils/guc.h"
 #include "utils/hsearch.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"
 #include "utils/syscache.h"
 
 /* Potentially set by pg_upgrade_support functions */
@@ -48,8 +50,6 @@ Oid			binary_upgrade_next_pg_enum_oid = InvalidOid;
 static HTAB *uncommitted_enums = NULL;
 
 static void RenumberEnumType(Relation pg_enum, HeapTuple *existing, int nelems);
-static int	sort_order_cmp(const void *p1, const void *p2);
-
 
 /*
  * EnumValuesCreate
@@ -132,6 +132,16 @@ EnumValuesCreate(Oid enumTypeOid, List *vals)
 		values[Anum_pg_enum_oid - 1] = ObjectIdGetDatum(oids[elemno]);
 		values[Anum_pg_enum_enumtypid - 1] = ObjectIdGetDatum(enumTypeOid);
 		values[Anum_pg_enum_enumsortorder - 1] = Float4GetDatum(elemno + 1);
+
+		/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+		if (MYS_PARSER == compatible_db)
+		{
+			/* trim the right space for set label */
+			Datum trimtxt = DirectFunctionCall1(rtrim1, CStringGetTextDatum(lab));
+			lab = TextDatumGetCString(trimtxt);
+		}
+		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+		
 		namestrcpy(&enumlabel, lab);
 		values[Anum_pg_enum_enumlabel - 1] = NameGetDatum(&enumlabel);
 
@@ -675,7 +685,7 @@ RenumberEnumType(Relation pg_enum, HeapTuple *existing, int nelems)
 
 
 /* qsort comparison function for tuples by sort order */
-static int
+int
 sort_order_cmp(const void *p1, const void *p2)
 {
 	HeapTuple	v1 = *((const HeapTuple *) p1);

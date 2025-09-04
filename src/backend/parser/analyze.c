@@ -33,9 +33,13 @@
 #include "postgres.h"
 
 #include "access/sysattr.h"
+#include "access/xact.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_enum.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
+#include "commands/defrem.h"
+#include "commands/typecmds.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
@@ -55,9 +59,11 @@
 #include "parser/parse_target.h"
 #include "parser/parse_type.h"
 #include "parser/parsetree.h"
+#include "parser/pg_object_hook.h"
 #include "rewrite/rewriteManip.h"
 #include "utils/backend_status.h"
 #include "utils/builtins.h"
+#include "utils/catcache.h"
 #include "utils/guc.h"
 #include "utils/queryjumble.h"
 #include "utils/rel.h"
@@ -162,7 +168,6 @@ static void applyLockingTable(Query *qry, Oid relid,
 /* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
 static void transformGetpartionRelationOid(Query            *qry, RangeVar  *relation);
 static void transformGetpartionRelationOids(Query *qry, List *relations);
-
 /* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
 
@@ -1666,7 +1671,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 						int			attno = lfirst_int(attnos);
 						Oid 		targetType = attnumTypeId(rd, attno);
 						
-						if (isMysNumericType(targetType))
+						if (type_is_numeric(targetType))
 						{
 							lfirst(lc) = make_bigint_const_from_hex(n);
 						}
@@ -4661,7 +4666,7 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 			{
 				Oid targetType = attnumTypeId(pstate->p_target_relation, attrno);
 				
-				if (isMysNumericType(targetType))
+				if (type_is_numeric(targetType))
 				{
 					Node *tc = make_bigint_const_from_hex(origTarget->val);
 					tle->expr = (Expr *) transformExpr(pstate, tc, EXPR_KIND_UPDATE_SOURCE);
@@ -5139,6 +5144,155 @@ transformExplainStmt(ParseState *pstate, ExplainStmt *stmt)
 	return result;
 }
 
+/**
+ * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+ * copy_enum_label
+ *		copy the old enum's label.
+ */
+List *
+copy_enum_label(Oid enumOid)
+{
+	HeapTuple		*existing = NULL;
+	int				i = 0;
+	List 			*result = NIL;
+	CatCList 		*items = SearchSysCacheList1(ENUMTYPOIDNAME, ObjectIdGetDatum(enumOid));
+	int 			nelems = items->n_members;
+
+	/* Sort the existing members by enumsortorder */
+	existing = (HeapTuple *) palloc(nelems * sizeof(HeapTuple));
+	for (i = 0; i < nelems; i++)
+		existing[i] = &(items->members[i]->tuple);
+
+	qsort(existing, nelems, sizeof(HeapTuple), sort_order_cmp);
+
+	for (i = 0; i < nelems; i++)
+	{
+		HeapTuple	exists_tup = existing[i];
+		Form_pg_enum exists_en = (Form_pg_enum) GETSTRUCT(exists_tup);
+		char 			*enumlabel = NameStr(exists_en->enumlabel);
+
+		result = lappend(result, (Node *) makeString(pstrdup(enumlabel)));
+	}
+
+	pfree(existing);
+	ReleaseSysCacheList(items);
+
+	return result;
+}
+
+/*
+ * create_ctas_enum_col
+ *		create an enum type and set its elements and dependencies.
+ */
+static Oid
+create_ctas_enum_col(Oid oldenumoid, RangeVar *rel, char *colname)
+{
+	char 		*enumTypeName = NULL;
+	TypeName 	*enumtype = NULL;
+	Oid 		enumnspoid;
+	Oid 		enumtypeoid;
+
+	enumnspoid = RangeVarGetCreationNamespace(rel);
+	RangeVarAdjustRelationPersistence(rel, enumnspoid);
+
+	/* get enum type name*/
+	enumTypeName = ChooseTypeName(rel->relname, colname, "anonymous_enum", enumnspoid, false);
+
+	enumtype = makeTypeNameFromNameList(
+		list_make2(
+			makeString(get_namespace_name(enumnspoid)),
+			makeString(enumTypeName)));
+
+	/* set pg_enum */
+	enumtype->typmods = copy_enum_label(oldenumoid);
+	enumtype->typemod = -1;
+	enumtypeoid = DefineAnonymousEnum(enumtype);
+
+	/* CommandCounterIncrement here to ensure that preceding changes are all
+	 * visible to the type checking step.
+	 */
+	CommandCounterIncrement();
+
+	return enumtypeoid;
+}
+
+/**
+ * create_ctas_enum_expr
+ *		create a new enum expression with the as statement.
+ *		and wrap the old target type with an additional function
+ *		interface to convert oldenum to newenum.
+ */
+static Node *
+create_ctas_enum_expr(ParseState *pstate, CreateTableAsStmt *stmt, Query *query)
+{
+	ListCell 		*tlistitem;
+	Query 			*newquery;
+	List 			*colnames = NIL;
+	RangeTblEntry 	*rte;
+	RangeTblRef 	*rtr;
+	bool 			isenumtype = false;
+
+	/* Most of the upper Query struct can be left as zeroes/nulls */
+	newquery = makeNode(Query);
+
+	/* We need a moderately realistic colnames list for the subquery RTE */
+	newquery->targetList = copyObject(query->targetList);
+
+	foreach (tlistitem, newquery->targetList)
+	{
+		TargetEntry *te = (TargetEntry *) lfirst(tlistitem);
+		Node 	*expr = (Node *) te->expr;
+		Oid 	type = exprType(expr);
+
+		if (te->resjunk)
+			continue;
+
+		colnames = lappend(colnames, expr);
+
+		if (type_is_enum(type) && type_is_anonymous_enum(type))
+		{
+			Oid newenumoid = create_ctas_enum_col(type, stmt->into->rel, te->resname);
+
+			expr = coerce_type(pstate, expr, type, newenumoid, -1, COERCION_EXPLICIT, COERCE_EXPLICIT_CALL, exprLocation(expr));
+			
+			te->expr = (Expr *) expr;
+			isenumtype = true;
+		}
+	}
+
+	if (!isenumtype)
+	{
+		pfree(newquery);
+		return (Node *) query;
+	}
+
+	newquery->commandType = CMD_SELECT;
+	newquery->querySource = query->querySource;
+	newquery->canSetTag = true;
+
+	/* Build a suitable RTE for the subquery */
+	rte = makeNode(RangeTblEntry);
+	rte->rtekind = RTE_SUBQUERY;
+	rte->subquery = query;
+	rte->eref = rte->alias = makeAlias("*SELECT*", colnames);
+	rte->lateral = false;
+	rte->inh = false;
+	rte->inFromCl = true;
+	newquery->rtable = list_make1(rte);
+
+	rtr = makeNode(RangeTblRef);
+	rtr->rtindex = 1;
+	newquery->jointree = makeFromExpr(list_make1(rtr), NULL);
+
+	/*
+	 * Make sure the new query is marked as having row security if the
+	 * original one does.
+	 */
+	newquery->hasRowSecurity = query->hasRowSecurity;
+
+	return (Node *) newquery;
+}
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 /*
  * transformCreateTableAsStmt -
@@ -5159,6 +5313,14 @@ transformCreateTableAsStmt(ParseState *pstate, CreateTableAsStmt *stmt)
 	/* transform contained query, not allowing SELECT INTO */
 	query = transformStmt(pstate, stmt->query);
 	stmt->query = (Node *) query;
+
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		/* Replace original query in the correct element of the query list */
+		stmt->query = create_ctas_enum_expr(pstate, stmt, query);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	/* additional work needed for CREATE MATERIALIZED VIEW */
 	if (stmt->objtype == OBJECT_MATVIEW)
