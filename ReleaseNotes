@@ -17,6 +17,8 @@
 	10、新增磁盘管理审计功能；
 	11、新增远程归档功能；
 	12、审计事件新增审计 rollback prepare 语句；
+	13、新增了一些审计事件例如log disk full、archive command disk full、too many connect、hghac sync guc(need hghac modification) 、walsender connect & exit 、support rollback 、support dead lock、support open file fail、failover and switchover；
+	14、增加了兼容MySQL enum 类型；
 2、修复问题
 	1、修复了MySQL兼容，SET lc_time_names等参数异常断开的问题，bug#5527；
 	2、修复了MySQL兼容，get_format返回类型不正确的问题，bug#5533；
@@ -54,6 +56,13 @@
 	34、修复了MySQL DATEDIFF函数结果不正确的问题，bug#5578;
 	35、修复了闪回在清除recyclebin时有些记录未被清理掉的问题，bug#5609；
 	36、闪回支持临时表，bug#5646;
+	37、修复CVE漏洞 CVE-2025-8713、CVE-2025-8714 和 CVE-2025-8715；
+	38、修复了MySQL兼容REPLACE函数使用字符串替换整数类型时执行报错的问题，bug#5517；
+	39、修复了MySQL兼容REPLACE函数传入时间参数时无法处理报错的问题，bug#5518；
+	40、修复了MySQL兼容CONVERT_TZ函数传入科学记数法结果不对的问题，bug#5610；
+	41、修复了创建包体时重新解析失效的force view引起core的问题，bug#5707；
+	42、修复了全局临时表在事务中多次truncate时，表信息重复添加到了pendingDeletes链表中导致smgrclose报错的问题，OA-REQ-1702；
+	43、新增了支持Oracle subtype的range范围的类型，bug#5706;
 
 V9.0.4.1，禅道版本ID：4647-2025/08/08
 1、新增特性
