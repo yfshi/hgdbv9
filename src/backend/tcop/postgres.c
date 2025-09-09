@@ -232,6 +232,7 @@ pgaudit_Command_hook_type audit_WriteRecord_hook = NULL;
 audit_drop_pg_audit audit_drop_pg_audit_hook = NULL;
 audit_alter_pg_audit_log audit_alter_pg_audit_log_hook = NULL;
 audit_privi_model audit_privi_mode_hook = NULL;
+is_audit_enable_hook is_audit_enable = NULL;
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 
@@ -3302,6 +3303,21 @@ die(SIGNAL_ARGS)
 {
 	int			save_errno = errno;
 
+#ifdef ENABLE_AUDIT_EVENT
+	if (audit_aborted_hook)
+		(*audit_aborted_hook)();
+
+	if (is_audit_enable && (*is_audit_enable)() && IsTransactionOrTransactionBlock())
+	{
+		AbortCurrentTransaction();
+		StartTransactionCommand();
+		UserAbortTransactionBlock(false);
+		CommitTransactionCommand();
+	}
+	if (audit_WriteRecord_hook)
+		(*audit_WriteRecord_hook)();
+#endif
+
 	/* Don't joggle the elbow of proc_exit */
 	if (!proc_exit_inprogress)
 	{
@@ -4626,7 +4642,7 @@ PostgresMain(int argc, char *argv[],
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 	if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
-		audit_system_event_hook(true, 3);
+		audit_system_event_hook(true, SYSTEM_EVENT_LOGIN_SUCC);
 #ifdef USE_SQLITE
 	else if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
 		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
@@ -5326,7 +5342,7 @@ PostgresMain(int argc, char *argv[],
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 				if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
-					audit_system_event_hook(true, 4);
+					audit_system_event_hook(true, SYSTEM_EVENT_LOGOUT_SUCC);
 #ifdef USE_SQLITE
 				else if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
 					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_SUCCESS, MyProcPort->user_name, NULL);

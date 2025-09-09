@@ -64,6 +64,18 @@
 #define FAILOVER_S				"FAILOVER"
 #define PROMOTE_S			"PROMOTE"
 
+#define SYSTEMAUDIT_CHANNEL_S "CHANNEL"
+#define START_PGAGENT "START PGAGENT"
+#define STOP_PGAGENT "STOP PGAGENT"
+#define SYSTEMAUDIT_LOCK_USER_S "LOCK USER"
+#define SYSTEMAUDIT_UNLOCK_USER_S "UNLOCK USER"
+#define SYSTEMAUDIT_CERT_VERIFY_S "CERT VERFIY"
+
+#define AUDIT_RECOVERY_S "RECOVERY DATA"
+#define AUDIT_LOCK_SESSION "LOCK SESSION"
+#define AUDIT_UNLOCK_SESSION "UNLOCK SESSION"
+#define AUDIT_RESOURCE_MONITOR "RESOURCE MONITOR"
+
 #define AUDIT_PRIVILEGE_SYSTEM_S "SYSTEM"
 #define AUDIT_PRIVILEGE_DATABASE_S "DATABASE"
 #define AUDIT_PRIVILEGE_SCHEMAOBJECT_S "SCHEMAOBJECT"
@@ -103,6 +115,16 @@ typedef enum AuditSystemEvent
 	SYSTEMAUDIT_OPEN_FILE_FAIL,
 	SYSTEMAUDIT_PROMOTE,
 	SYSTEMAUDIT_FAILOVER,
+	SYSTEMAUDIT_AUDIT_RECOVERY,
+	SYSTEMAUDIT_AUDIT_LOCK_SESSION,
+	SYSTEMAUDIT_AUDIT_UNLOCK_SESSION,
+	SYSTEMAUDIT_AUDIT_RESOURCE_MONITOR,
+	SYSTEMAUDIT_CHANNEL,
+	SYSTEMAUDIT_START_PGAGENT,
+	SYSTEMAUDIT_STOP_PGAGENT,
+	SYSTEMAUDIT_LOCK_USER,
+	SYSTEMAUDIT_UNLOCK_USER,
+	SYSTEMAUDIT_CERT_VERIFY,
 	MANDATORY_AUDIT_ON, //It must be the second to last one
 	MANDATORY_AUDIT_OFF //It must be the last one
 }AuditSystemEvent;
@@ -255,6 +277,28 @@ typedef enum AuditCmdResult
 	CMD_PG_BASEBACK_SUC = 7,
 	CMD_PG_BASEBACK_FAIL = 8
 }AuditCmdResult;
+
+typedef enum SystemEventType
+{
+	SYSTEM_EVENT_START_SUCC = 0,
+	SYSTEM_EVENT_START_FAIL,
+	SYSTEM_EVENT_SWITCHOVER_SUCC,
+	SYSTEM_EVENT_LOGIN_SUCC,
+	SYSTEM_EVENT_LOGOUT_SUCC,
+	SYSTEM_EVENT_RELOAD_SUCC,
+	SYSTEM_EVENT_STOP_SUCC,
+	SYSTEM_EVENT_BASEBACKUP_FAIL,
+	SYSTEM_EVENT_ALTER_GUC,
+	SYSTEM_EVENT_SPACE_ALARM,
+	SYSTEM_EVENT_RECOVERY_SUCC,
+	SYSTEM_EVENT_LOCK_SESSION,
+	SYSTEM_EVENT_UNLOCK_SESSION,
+	SYSTEM_EVENT_WALSENDER_CONN,
+	SYSTEM_EVENT_WALSENDER_EXIT,
+	SYSTEM_EVENT_FAILOVER_SUCC,
+	SYSTEM_EVENT_PROMOTE_SUCC,
+	SYSTEM_EVENT_CHANEL
+}SystemEventType;
 
 typedef struct ClientInfo
 {
@@ -410,7 +454,7 @@ extern PGDLLIMPORT pgaudit_StopPgagent_hook_type audit_StopPgagent_hook;
 typedef void  (*pgaudit_Object_hook_type)(Oid oid,Relation rel);
 extern PGDLLIMPORT pgaudit_Object_hook_type audit_object_hook;
 
-typedef void  (*audit_system_err)(bool flag, int sqlerrcode);
+typedef void  (*audit_system_err)(bool flag, SystemEventType sqlerrcode);
 extern PGDLLIMPORT audit_system_err audit_system_event_hook;
 
 #ifdef USE_SQLITE
@@ -432,6 +476,8 @@ typedef int (*get_children_num) (int target);
 typedef void  (*audit_backend_normal)(int shutdown, int shutdown_target, get_children_num children_num, int target);
 extern PGDLLIMPORT audit_backend_normal audit_normal_process_hook;
 
+typedef bool (*is_audit_enable_hook)(void);
+extern PGDLLIMPORT is_audit_enable_hook is_audit_enable;
 
 extern void deal_with_system_event_temp(AuditSystemEvent event,AuditResult result);
 

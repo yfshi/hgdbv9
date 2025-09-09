@@ -348,6 +348,8 @@ static void audit_disk_full(void);
 static void AuditShememInit(void);
 static void audit_hghac_sync_guc(Relation	audit_log, AuditEvent *auditevent);
 static bool is_exceeded_disklimit(void);
+static bool is_enable_audit(void);
+
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
@@ -3544,6 +3546,12 @@ audit_stop_pgagent(void)
 	rc = system(cmd);
 	if (rc != 0)
 		return;
+#ifdef USE_SQLITE
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (sqlite_open_db_for_audit_hook)
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_STOP_PGAGENT, AUDIT_SUCCESS, NULL, NULL);
+	/* End - ReqID:SRS-SECURITY-AUDIT */
+#endif
 }
 
 /* Not used, can be deleted later */
@@ -4559,6 +4567,55 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 			strcpy(privilege, AUDIT_PRIVILEGE_INSTANCE_S);
 			break;
 
+		case SYSTEMAUDIT_AUDIT_RECOVERY:
+			strcpy(actionname, AUDIT_RECOVERY_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_AUDIT_LOCK_SESSION:
+			strcpy(actionname, AUDIT_LOCK_SESSION);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_AUDIT_UNLOCK_SESSION:
+			strcpy(actionname, AUDIT_UNLOCK_SESSION);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_AUDIT_RESOURCE_MONITOR:
+			strcpy(actionname, AUDIT_RESOURCE_MONITOR);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_CHANNEL:
+			strcpy(actionname, SYSTEMAUDIT_CHANNEL_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_START_PGAGENT:
+			strcpy(actionname, START_PGAGENT);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_STOP_PGAGENT:
+			strcpy(actionname, STOP_PGAGENT);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_LOCK_USER:
+			strcpy(actionname, SYSTEMAUDIT_LOCK_USER_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_UNLOCK_USER:
+			strcpy(actionname, SYSTEMAUDIT_UNLOCK_USER_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_CERT_VERIFY:
+			strcpy(actionname, SYSTEMAUDIT_CERT_VERIFY_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
 		default:
 			break;
 	}
@@ -4595,8 +4652,10 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 
 	if (username == NULL)
 	{
-		if (useroid != InvalidOid)
+		if (useroid != InvalidOid && event != SYSTEMAUDIT_AUDIT_LOCK_SESSION)
 			tmp = GetUserNameFromId(useroid, true);
+		else if (event == SYSTEMAUDIT_AUDIT_LOCK_SESSION)
+			tmp = pstrdup("");
 	}
 
 	/* Begin - BUG#00004776 */
@@ -4879,6 +4938,33 @@ generateSystemEvent(AuditSystemEvent event, AuditResult result)
 			strcpy(actionname, PROMOTE_S);
 			break;
 
+		case SYSTEMAUDIT_AUDIT_RECOVERY:
+			strcpy(actionname, AUDIT_RECOVERY_S);
+			break;
+
+		case SYSTEMAUDIT_AUDIT_LOCK_SESSION:
+			strcpy(actionname, AUDIT_LOCK_SESSION);
+			break;
+
+		case SYSTEMAUDIT_AUDIT_UNLOCK_SESSION:
+			strcpy(actionname, AUDIT_UNLOCK_SESSION);
+			break;
+
+		case SYSTEMAUDIT_AUDIT_RESOURCE_MONITOR:
+			strcpy(actionname, AUDIT_RESOURCE_MONITOR);
+			break;
+
+		case SYSTEMAUDIT_CHANNEL:
+			strcpy(actionname, SYSTEMAUDIT_CHANNEL_S);
+			break;
+
+		case SYSTEMAUDIT_LOCK_USER:
+			strcpy(actionname, SYSTEMAUDIT_LOCK_USER_S);
+			break;
+		case SYSTEMAUDIT_UNLOCK_USER:
+			strcpy(actionname, SYSTEMAUDIT_UNLOCK_USER_S);
+			break;
+
 		default:
 			break;
 	}
@@ -5106,7 +5192,7 @@ audit_cmd(void)
 
 
 static void 
-audit_system_event_info(bool flag, int sqlerrcode)
+audit_system_event_info(bool flag, SystemEventType sqlerrcode)
 {
 	if (audit_GUC.audit_enable != AUDIT_ON || audit_GUC.audit_systemopers == AUDIT_OPER_OFF || *audit_GUC.audit_pause)
 	{
@@ -5117,58 +5203,70 @@ audit_system_event_info(bool flag, int sqlerrcode)
 	{
 		switch(sqlerrcode)
 		{
-			case 0:
+			case SYSTEM_EVENT_START_SUCC:
 				deal_with_system_event(SYSTEMAUDIT_START, AUDIT_SUCCESS);
 				break;
 
-			case 1:
+			case SYSTEM_EVENT_START_FAIL:
 				deal_with_system_event(SYSTEMAUDIT_START, AUDIT_FAIL);
 				break;
 
-			case 2:
+			case SYSTEM_EVENT_SWITCHOVER_SUCC:
 				deal_with_system_event(SYSTEMAUDIT_SWITCHOVER, AUDIT_SUCCESS);
 				break;
 
-			case 3:
+			case SYSTEM_EVENT_LOGIN_SUCC:
 				deal_with_system_event(SYSTEMAUDIT_LOGIN, AUDIT_SUCCESS);
 				break;
 
-			case 4:
+			case SYSTEM_EVENT_LOGOUT_SUCC:
 				deal_with_system_event(SYSTEMAUDIT_LOGOUT, AUDIT_SUCCESS);
 				break;
 
-			case 5:
+			case SYSTEM_EVENT_RELOAD_SUCC:
 				deal_with_system_event(SYSTEMAUDIT_RELOAD, AUDIT_SUCCESS);
 				break;
 
-			case 6:
+			case SYSTEM_EVENT_STOP_SUCC:
 				deal_with_system_event(SYSTEMAUDIT_STOP, AUDIT_SUCCESS);
 				break;
-			case 7:
+			case SYSTEM_EVENT_BASEBACKUP_FAIL:
 				clientInfo.pg_dump_restore = CMD_PG_BASEBACK_FAIL;
 				deal_with_system_event(SYSTEMAUDIT_PG_BASEBACKUP, AUDIT_FAIL);
 				break;
-			case 8:
+			case SYSTEM_EVENT_ALTER_GUC:
 				deal_with_system_event(SYSTEMAUDIT_ALTER_GUC, AUDIT_SUCCESS);
 				break;
 
-			case 9:
+			case SYSTEM_EVENT_SPACE_ALARM:
 				deal_with_system_event(SYSTEMAUDIT_SPACE_ALARM, AUDIT_SUCCESS);
 				break;
 
-			case 10:
+			case SYSTEM_EVENT_RECOVERY_SUCC:
+				deal_with_system_event(SYSTEMAUDIT_AUDIT_RECOVERY, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_LOCK_SESSION:
+				deal_with_system_event(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_UNLOCK_SESSION:
+				deal_with_system_event(SYSTEMAUDIT_AUDIT_UNLOCK_SESSION, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_WALSENDER_CONN:
 				deal_with_system_event(SYSTEMAUDIT_AUDIT_WALSENDER_CONN, AUDIT_SUCCESS);
 				break;
 
-			case 11:
+			case SYSTEM_EVENT_WALSENDER_EXIT:
 				deal_with_system_event(SYSTEMAUDIT_AUDIT_WALSENDER_EXIT, AUDIT_SUCCESS);
 				break;
 
-			case 12:
+			case SYSTEM_EVENT_FAILOVER_SUCC:
 				deal_with_system_event(SYSTEMAUDIT_FAILOVER, AUDIT_SUCCESS);
 				break;
 
-			case 13:
+			case SYSTEM_EVENT_PROMOTE_SUCC:
 				deal_with_system_event(SYSTEMAUDIT_PROMOTE, AUDIT_SUCCESS);
 				break;
 
@@ -5257,6 +5355,7 @@ audit_append_hook(void)
 	prev_shmem_startup_hook = shmem_startup_hook;
 	shmem_startup_hook = AuditShememInit;
 
+	is_audit_enable = is_enable_audit;
 }
 
 static void
@@ -5762,10 +5861,17 @@ audit_arch_job(void)
 
 			if (rc != 0)
 			{
+#ifdef USE_SQLITE
+				if (sqlite_open_db_for_audit_hook)
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START_PGAGENT, AUDIT_FAIL, NULL, NULL);
+#endif
 				elog(WARNING, "cannot start pgagent service");
 				continue;
 			}
-			
+#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START_PGAGENT, AUDIT_SUCCESS, NULL, NULL);
+#endif
 		}
 	}
 	
@@ -6839,6 +6945,15 @@ audit_privi_mode(Node *n, bool iswhereclase)
 	}
 
 	return n;
+}
+
+static bool
+is_enable_audit(void)
+{
+	if (audit_GUC.audit_enable != AUDIT_ON)
+		return false;
+	else
+		return true;
 }
 
 /* Determine whether is is an audit log table */

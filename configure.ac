@@ -1139,6 +1139,14 @@ AC_MSG_RESULT([$with_sqlite])
 AC_SUBST(with_sqlite)
 
 #
+# audit event
+#
+AC_MSG_CHECKING([whether to build with some audit event support])
+PGAC_ARG_BOOL(enable, audit-event, no,
+             [enable some audit event],
+              [AC_DEFINE([ENABLE_AUDIT_EVENT], 1, [Define to 1 to build with audit event. (--enable-audit-event)])])
+
+#
 # PAM
 #
 AC_MSG_CHECKING([whether to build with PAM support])
