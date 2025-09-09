@@ -1215,6 +1215,19 @@ process_settings(Oid databaseid, Oid roleid)
 static void
 ShutdownPostgres(int code, Datum arg)
 {
+	/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+	/* 
+	 * If we are inside a transaction block, try to commit the transaction
+	 * before shutdown the postgres.
+	 */
+	if (enable_ora_commit_before_desconnect && IsTransactionState())
+	{
+		StartTransactionCommand();
+		EndTransactionBlock(false);
+		CommitTransactionCommand();
+	}
+	/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+
 	/* Make sure we've killed any active transaction */
 	AbortOutOfAnyTransaction();
 	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */

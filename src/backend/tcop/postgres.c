@@ -4427,6 +4427,7 @@ PostgresMain(int argc, char *argv[],
 	volatile bool send_ready_for_query = true;
 	volatile bool idle_in_transaction_timeout_enabled = false;
 	volatile bool idle_session_timeout_enabled = false;
+	volatile bool has_savepoint = false;	/* ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 
 	/* Initialize startup process environment if necessary. */
 	if (!IsUnderPostmaster)
@@ -4795,6 +4796,19 @@ PostgresMain(int argc, char *argv[],
 		 * Abort the current transaction in order to recover.
 		 */
 		AbortCurrentTransaction();
+
+		/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+		/*
+		 * After abort the current failed transaction, we rollback to
+		 * the savepoint that was set at last succeed statement.
+		 */
+		if (enable_ora_statement_level_rollback &&
+			has_savepoint && 
+			IsAbortedTransactionBlockState())
+		{
+			RollbackToAutoSavepoint(AUTO_SAVEPOINT_NAME);
+		}
+		/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 
 		if (am_walsender)
 			WalSndErrorCleanup();
@@ -5359,6 +5373,18 @@ PostgresMain(int argc, char *argv[],
 						 errmsg("invalid frontend message type %d",
 								firstchar)));
 		}
+
+		/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+		/*
+		 * If we are inside a transaction block, we set a savepoint
+		 * automatically after each successful statement.
+		 */
+		if (enable_ora_statement_level_rollback &&
+			IsTransactionState())
+		{
+			has_savepoint = SetAutoSavepoint(AUTO_SAVEPOINT_NAME);
+		}
+		/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 	}							/* end of input-reading loop */
 }
 

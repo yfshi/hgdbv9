@@ -330,6 +330,11 @@ static SubXactCallbackItem *SubXact_callbacks = NULL;
 static XactCallbackItem *Xact_callbacks_once = NULL;
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
+/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+bool enable_ora_statement_level_rollback = false;
+bool enable_ora_commit_before_desconnect = false;
+/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+
 /* local function prototypes */
 static void AssignTransactionId(TransactionState s);
 static void AbortTransaction(void);
@@ -6359,3 +6364,62 @@ MarkSubTransactionAssigned(void)
 
 	CurrentTransactionState->assigned = true;
 }
+
+/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+/*
+ * Set a savepoint using a repeated name.
+ */
+bool
+SetAutoSavepoint(const char *sp_name)
+{
+	TransactionState s = CurrentTransactionState;
+
+	/* Set the auto savepoint only inprogress state. */
+	if (s->blockState != TBLOCK_INPROGRESS &&
+		s->blockState != TBLOCK_SUBINPROGRESS)
+		return false;
+
+	/* Release the old one. */
+	if (s->name != NULL && 
+		strcmp(s->name, sp_name) == 0)
+	{
+		StartTransactionCommand();
+		ReleaseSavepoint(sp_name);
+		CommitTransactionCommand();
+	}
+
+	/* Set new savepoint */
+	StartTransactionCommand();
+	DefineSavepoint(sp_name);
+	CommitTransactionCommand();
+
+	return true;
+}
+
+/*
+ * Rollback to the lasted auto savepoint
+ */
+bool
+RollbackToAutoSavepoint(const char *sp_name)
+{
+	TransactionState s = CurrentTransactionState;
+	TransactionState target;
+
+	for (target = s; PointerIsValid(target); target = target->parent)
+	{
+		if (PointerIsValid(target->name) && strcmp(target->name, sp_name) == 0)
+			break;
+	}
+
+	/* Not found the savepoint */
+	if (!PointerIsValid(target))
+		return false;
+
+	/* Rollback to savepoint */
+	StartTransactionCommand();
+	RollbackToSavepoint(sp_name);
+	CommitTransactionCommand();
+
+	return true;
+}
+/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */

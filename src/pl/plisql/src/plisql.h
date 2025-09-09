@@ -1266,6 +1266,9 @@ typedef struct PLiSQL_execstate
                                  * a Oracle record type or other udt type
                                  */
 	/* End - ReqID:SRS-PLSQL-RECORD */
+	/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+	int			set_savepoint;	/* > 0 when we should set auto savepoint in exec_stmts. */
+	/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 } PLiSQL_execstate;
 
 /*
