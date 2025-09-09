@@ -960,6 +960,28 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+	{
+		{"ivorysql.ora_statement_level_rollback", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+		gettext_noop("Enable statement level rollback."),
+		NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_ora_statement_level_rollback,
+		false,
+		NULL, NULL, NULL
+	},
+	{
+		{"ivorysql.ora_commit_before_disconnect", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+		gettext_noop("Enable auto commit transaction before disconnect."),
+		NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_ora_commit_before_desconnect,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 #endif
 #if 0
 	/* End-of-list marker */

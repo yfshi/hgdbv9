@@ -2166,6 +2166,9 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
 		int			current_error_deep = get_current_error_stack_deep();
 		/* End - ReqID:SRS-PLSQL-EXCEPTION */
+		/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+		int			set_savepoint = enable_ora_statement_level_rollback ? GetCurrentTransactionNestLevel() : 0;
+		/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 
 		estate->err_text = gettext_noop("during statement block entry");
 
@@ -2195,6 +2198,9 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 			plisql_create_econtext(estate);
 
 			estate->err_text = NULL;
+			/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+			estate->set_savepoint = set_savepoint;
+			/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 
 			/* Run the block's statements */
 			rc = exec_stmts(estate, block->body);
@@ -2244,8 +2250,39 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 			edata = CopyErrorData();
 			FlushErrorState();
 
-			/* Abort the inner transaction */
-			RollbackAndReleaseCurrentSubTransaction();
+			/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+			/*
+			 * When we get an exception in a PLiSQL block, try to 
+			 * rollback to the latest savepoint.
+			 */
+			if (set_savepoint > 0)
+			{
+				char savepoint_name[NAMEDATALEN];
+
+				sprintf(savepoint_name, "%s_%d", AUTO_SAVEPOINT_NAME, set_savepoint);
+				if (RollbackToAutoSavepoint(savepoint_name))
+				{
+					/* Back to the upper layer transaction where the savepoint is not set. */
+					StartTransactionCommand();
+					ReleaseSavepoint(savepoint_name);
+					CommitTransactionCommand();
+
+					/* Abort the inner transaction */
+					ReleaseCurrentSubTransaction();
+				}
+				else
+				{
+					/* Abort the inner transaction */
+					RollbackAndReleaseCurrentSubTransaction();
+				}
+			}
+			else
+			{
+				/* Abort the inner transaction */
+				RollbackAndReleaseCurrentSubTransaction();
+			}
+			/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+
 			MemoryContextSwitchTo(oldcontext);
 			CurrentResourceOwner = oldowner;
 
@@ -2445,6 +2482,12 @@ exec_stmts(PLiSQL_execstate *estate, List *stmts)
 {
 	PLiSQL_stmt *save_estmt = estate->err_stmt;
 	ListCell   *s;
+	/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+	bool		has_savepoint = false;
+	int 		set_savepoint = estate->set_savepoint;
+
+	estate->set_savepoint = 0;
+	/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 
 	if (stmts == NIL)
 	{
@@ -2596,7 +2639,28 @@ exec_stmts(PLiSQL_execstate *estate, List *stmts)
 			estate->err_stmt = save_estmt;
 			return rc;
 		}
+
+		/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+		/*
+		 * Set a savepoint after each statement in PLiSQL block.
+		 */
+		if (set_savepoint > 0)
+		{
+			char savepoint_name[NAMEDATALEN];
+
+			sprintf(savepoint_name, "%s_%d", AUTO_SAVEPOINT_NAME, set_savepoint);
+			has_savepoint = SetAutoSavepoint(savepoint_name);
+		}
+		/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 	}							/* end of loop over statements */
+
+	/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+	if (set_savepoint > 0 && has_savepoint)
+	{
+		/* Back to the upper layer transaction where the savepoint is not set. */
+		ReleaseCurrentSubTransaction();
+	}
+	/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 
 	estate->err_stmt = save_estmt;
 	return PLISQL_RC_OK;
@@ -4818,6 +4882,10 @@ plisql_estate_setup(PLiSQL_execstate *estate,
 	/* Begin - ReqID:SRS-PLSQL-RECORD */
 	estate->rettuple_hasudt = func->fn_hasudtype;
 	/* End - ReqID:SRS-PLSQL-RECORD */
+
+	/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+	estate->set_savepoint = 0;
+	/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 
 	/*
 	 * Create an EState and ExprContext for evaluation of simple expressions.
