@@ -24,6 +24,10 @@ LDFLAGS_INTERNAL += $(libpq_pgport)
 SUBMAKE_LIBPQ := submake-libpq
 endif
 
+ifeq ($(with_sqlite), yes)
+LDFLAGS_INTERNAL += -lsqlite3
+endif
+
 OBJS = \
 	$(WIN32RES) \
 	pg_ctl.o

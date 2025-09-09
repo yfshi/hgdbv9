@@ -8073,7 +8073,15 @@ StartupXLOG(void)
 				/* Else, try to fetch the next WAL record */
 				record = ReadRecord(xlogreader, LOG, false);
 			} while (record != NULL);
-
+#ifdef USE_SQLITE
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			if (sqlite_open_db_for_audit_hook && !StandbyModeRequested)
+			{
+				char *errstr = "replay the wal";
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_RECOVERY, AUDIT_SUCCESS, NULL, errstr);
+			}
+			/* End - ReqID:SRS-SECURITY-AUDIT */
+#endif
 			/*
 			 * end of main redo apply loop
 			 */
@@ -13749,7 +13757,7 @@ CheckForStandbyTrigger(void)
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 		if (audit_system_event_hook)
-			audit_system_event_hook(true, 13);
+			audit_system_event_hook(true, SYSTEM_EVENT_PROMOTE_SUCC);
 /* End - ReqID:SRS-SECURITY-AUDIT */
 		return true;
 	}

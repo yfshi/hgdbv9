@@ -716,9 +716,9 @@ with_systemd
 with_selinux
 with_license
 with_ldap
+with_sqlite
 with_swsds
 with_gmssl
-with_sqlite
 with_krb_srvnam
 krb_srvtab
 with_gssapi
@@ -878,6 +878,7 @@ with_krb_srvnam
 with_gmssl
 with_swsds
 with_sqlite
+enable_audit_event
 with_pam
 with_bsd_auth
 with_ldap
@@ -1562,6 +1563,7 @@ Optional Features:
   --disable-thread-safety disable thread-safety in client libraries
   --enable-numa           enable NUMA performance
   --enable-internal-guc   enable internal GUC performance
+  --enable-audit-event    enable some audit event
   --disable-largefile     omit support for large files
 
 Optional Packages:
@@ -1607,7 +1609,7 @@ Optional Packages:
                           [postgres]
   --with-gmssl            build with GmSSL support
   --with-swsds            build with swsds support
-  --with_sqlite		  build with SQLite support
+  --with-sqlite           build with SQLite support
   --with-pam              build with PAM support
   --with-bsd-auth         build with BSD Authentication support
   --with-ldap             build with LDAP support
@@ -9318,6 +9320,14 @@ fi
 $as_echo "$with_swsds" >&6; }
 
 
+#
+# SQLite
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with SQLite support" >&5
+$as_echo_n "checking whether to build with SQLite support... " >&6; }
+
+
+
 # Check whether --with-sqlite was given.
 if test "${with_sqlite+set}" = set; then :
   withval=$with_sqlite;
@@ -9343,6 +9353,37 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_sqlite" >&5
 $as_echo "$with_sqlite" >&6; }
+
+
+#
+# audit event
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with some audit event support" >&5
+$as_echo_n "checking whether to build with some audit event support... " >&6; }
+
+
+# Check whether --enable-audit-event was given.
+if test "${enable_audit_event+set}" = set; then :
+  enableval=$enable_audit_event;
+  case $enableval in
+    yes)
+
+$as_echo "#define ENABLE_AUDIT_EVENT 1" >>confdefs.h
+
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --enable-audit-event option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  enable_audit_event=no
+
+fi
+
 
 
 #
@@ -14283,7 +14324,6 @@ fi
 
 fi
 
-
 if test "$with_pam" = yes ; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pam_start in -lpam" >&5
 $as_echo_n "checking for pam_start in -lpam... " >&6; }
@@ -15215,19 +15255,22 @@ done
 
 fi
 
-
 if test "$with_sqlite" = yes ; then
+  for ac_header in sqlite3.h
+do :
   ac_fn_c_check_header_mongrel "$LINENO" "sqlite3.h" "ac_cv_header_sqlite3_h" "$ac_includes_default"
 if test "x$ac_cv_header_sqlite3_h" = xyes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_SQLITE3_H 1
 _ACEOF
+
 else
-  as_fn_error $? "header file <sqlite3.h> is required for SQLite support" "$LINENO" 5
+  as_fn_error $? "header file <sqlite3.h> is required for SQLite" "$LINENO" 5
 fi
 
-fi
+done
 
+fi
 
 if test "$with_pam" = yes ; then
   for ac_header in security/pam_appl.h
@@ -21076,6 +21119,13 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
+# ReqID:SRS-MISC-PDR
+
+cat >>confdefs.h <<_ACEOF
+#define HG_PLATFORM_STR "`uname -m`"
+_ACEOF
+
+
 # Supply a numeric version string for use by 3rd party add-ons
 # awk -F is a regex on some platforms, and not on others, so make "." a tab
 PG_VERSION_NUM="`echo $PG_MAJORVERSION $PG_MINORVERSION |
@@ -21085,10 +21135,6 @@ cat >>confdefs.h <<_ACEOF
 #define PG_VERSION_NUM $PG_VERSION_NUM
 _ACEOF
 
-# ReqID:SRS-MISC-PDR 
-cat >>confdefs.h <<_ACEOF
-#define HG_PLATFORM_STR "`uname -m`"
-_ACEOF
 
 
 # If we are inserting PG_SYSROOT into CPPFLAGS, do so symbolically not

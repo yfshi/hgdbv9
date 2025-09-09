@@ -704,7 +704,7 @@ perform_base_backup(basebackup_options *opt)
 				{
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 					if (audit_system_event_hook)
-						audit_system_event_hook(true, 7);
+						audit_system_event_hook(true, SYSTEM_EVENT_BASEBACKUP_FAIL);
 /* End - ReqID:SRS-SECURITY-AUDIT */
 					ereport(ERROR,
 							(errmsg("base backup could not send data, aborting backup")));
@@ -1960,7 +1960,7 @@ sendFile(const char *readfilename, const char *tarfilename,
 		{
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 			if (audit_system_event_hook)
-				audit_system_event_hook(true, 7);
+				audit_system_event_hook(true, SYSTEM_EVENT_BASEBACKUP_FAIL);
 /* End - ReqID:SRS-SECURITY-AUDIT */
 			ereport(ERROR,
 					(errmsg("base backup could not send data, aborting backup")));
