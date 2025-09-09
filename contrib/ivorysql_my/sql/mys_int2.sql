@@ -292,3 +292,10 @@ insert into tb_test values (0xffffffffffffffff);
 select * from tb_test;
 drop table tb_test;
 set sql_mode = default;
+
+-- BUG#5478
+set div_precision_increment=50;
+create table t1 (a int1,b int2);
+insert into t1 values (4,4);
+select a/2 ,b/2 ,8/a, 8/b from t1;
+drop table t1;

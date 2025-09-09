@@ -525,9 +525,14 @@ varbinary_and(PG_FUNCTION_ARGS)
 			*end2;
 	bytea 	*arg1, *arg2;
 
-	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+	/* Begin - BUG#5655 */
+	if (PG_ARGISNULL(0) && PG_ARGISNULL(1))
 		PG_RETURN_NULL();
 
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+		PG_RETURN_BOOL(false);
+	/* End - BUG#5655 */
+	
 	arg1 = PG_GETARG_BYTEA_PP(0);
 	arg2 = PG_GETARG_BYTEA_PP(1);
 

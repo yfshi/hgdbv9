@@ -316,7 +316,12 @@ WARNING:  Division by 0
 (1 row)
 
 select 1/0::int2;
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 select 1::numeric/0;
 ERROR:  division by zero
 select 1/0::numeric;

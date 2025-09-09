@@ -2893,6 +2893,16 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+CREATE FUNCTION ivymy.unhex(ivymy.mysbit)
+RETURNS varbinary
+AS $$
+    select ivymy.unhex($1::text);
+$$
+LANGUAGE SQL
+PARALLEL
+SAFE
+STRICT;
+
 -- weight_string(input, flags, type, nweights)
 CREATE FUNCTION ivymy.weight_string(text, int4, int4, int4)
 RETURNS varbinary

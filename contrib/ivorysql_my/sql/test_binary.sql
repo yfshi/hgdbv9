@@ -1718,3 +1718,10 @@ COPY public.tb_binary (c1) FROM stdin;
 select * from tb_binary;
 RESET sql_mode;
 /* End - bug#z5465 */
+
+-- bug 5655
+create table tb1(c1 binary(10), c2 binary(10), c3 binary(10));
+insert into tb1 values('abcd', '', null);
+select c1 AND c3, c2 AND c3 from tb1;
+select c1 && c3, c2 && c3 from tb1;
+drop table tb1;

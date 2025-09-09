@@ -15155,23 +15155,21 @@ BitWithLength:
 					if ($2)
 					{
 						$$ = SystemTypeName("varbit");
+						$$->typmods = $4;
 					}
 					else
 					{
-						List	*typmods = $4;
-						A_Const *node_const = NULL;
-						node_const = (A_Const *) linitial(typmods);
-						if (nodeTag(&node_const->val) != T_Integer ||
-							node_const->val.val.ival < 0 || node_const->val.val.ival > 64)
-						{
+						int64 length = 0;
+						length = CheckAConstTypeLength((Node *) $4);
+						if ((length < 0) || (length > 64))
 							ereport(ERROR,
 									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("out of range for bit length"),
-									 parser_errposition(@2)));
-						}
+								 	errmsg("You have an error in you SQL syntax in bit( ... "),
+								 	parser_errposition(@1))); 
 						$$ = MySQLSystemTypeName("mysbit");
+						$$->typmods = list_make1(makeIntConst(length, @3));
+						$$->location = @1;
 					}
-					$$->typmods = $4;
 					$$->location = @1;
 				}
 		;
@@ -15264,7 +15262,7 @@ CharacterWithLength:  character '(' Iconst ')'
 					if (length < 0)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("You have an error in you SQL syntax in binary( ... "),
+								 errmsg("You have an error in you SQL syntax in text( ... "),
 								 parser_errposition(@1)));
 					if (length > PG_UINT32_MAX)
 							ereport(ERROR,

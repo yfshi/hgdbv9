@@ -127,7 +127,7 @@ STABLE;
 
 CREATE CAST (pg_catalog.bit AS ivymy.mysbit)
 WITH FUNCTION ivymy.pgbit_mysbit(pg_catalog.bit, pg_catalog.int4)
-AS ASSIGNMENT;
+AS IMPLICIT;
 
 --bool to mysbit
 CREATE FUNCTION ivymy.bool_mysbit(pg_catalog.bool, pg_catalog.int4)
@@ -158,8 +158,9 @@ AS ASSIGNMENT;
 --int4 to mysbit
 CREATE FUNCTION ivymy.int4_mysbit(pg_catalog.int4, pg_catalog.int4)
 RETURNS ivymy.mysbit
-AS 'bitfromint4'
-LANGUAGE INTERNAL
+AS 'MODULE_PATHNAME','bitfromuint8'
+LANGUAGE C
+PARALLEL SAFE
 IMMUTABLE
 STRICT;
 
@@ -170,8 +171,9 @@ AS ASSIGNMENT;
 --int8 to mysbit
 CREATE FUNCTION ivymy.int8_mysbit(pg_catalog.int8, pg_catalog.int4)
 RETURNS ivymy.mysbit
-AS 'bitfromint8'
-LANGUAGE INTERNAL
+AS 'MODULE_PATHNAME','bitfromuint8'
+LANGUAGE C
+PARALLEL SAFE
 IMMUTABLE
 STRICT;
 
@@ -242,6 +244,19 @@ CREATE CAST (ivymy.mysbit AS ivymy.uint8)
 WITH FUNCTION ivymy.mysbit_uint8(ivymy.mysbit, pg_catalog.int4)
 AS IMPLICIT;
 
+--mysbit to text
+CREATE FUNCTION ivymy.mysbit_text(ivymy.mysbit, pg_catalog.int4)
+RETURNS text
+AS 'MODULE_PATHNAME','bittotext'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE
+STRICT;
+
+CREATE CAST (ivymy.mysbit AS text)
+WITH FUNCTION ivymy.mysbit_text(ivymy.mysbit, pg_catalog.int4)
+AS ASSIGNMENT;
+
 --
 -- CREATE OPERATOR
 --
@@ -249,8 +264,8 @@ AS IMPLICIT;
 -- index need
 CREATE FUNCTION ivymy.mysbit_lt(ivymy.mysbit, ivymy.mysbit)
 RETURNS pg_catalog.bool
-AS 'bitlt'
-LANGUAGE INTERNAL
+AS 'MODULE_PATHNAME','mysbit_lt'
+LANGUAGE C
 IMMUTABLE
 STRICT;
 
@@ -268,8 +283,8 @@ CREATE OPERATOR < (
 -- index need
 CREATE FUNCTION ivymy.mysbit_le(ivymy.mysbit, ivymy.mysbit)
 RETURNS pg_catalog.bool
-AS 'bitle'
-LANGUAGE INTERNAL
+AS 'MODULE_PATHNAME','mysbit_le'
+LANGUAGE C
 IMMUTABLE
 STRICT;
 
@@ -287,8 +302,8 @@ CREATE OPERATOR <= (
 -- index need
 CREATE FUNCTION ivymy.mysbit_eq(ivymy.mysbit, ivymy.mysbit)
 RETURNS pg_catalog.bool
-AS 'biteq'
-LANGUAGE INTERNAL
+AS 'MODULE_PATHNAME','mysbit_eq'
+LANGUAGE C
 IMMUTABLE
 STRICT;
 
@@ -306,8 +321,8 @@ CREATE OPERATOR = (
 -- index need
 CREATE FUNCTION ivymy.mysbit_ne(ivymy.mysbit, ivymy.mysbit)
 RETURNS pg_catalog.bool
-AS 'bitne'
-LANGUAGE INTERNAL
+AS 'MODULE_PATHNAME','mysbit_ne'
+LANGUAGE C
 IMMUTABLE
 STRICT;
 
@@ -325,8 +340,8 @@ CREATE OPERATOR <> (
 -- index need
 CREATE FUNCTION ivymy.mysbit_ge(ivymy.mysbit, ivymy.mysbit)
 RETURNS pg_catalog.bool
-AS 'bitge'
-LANGUAGE INTERNAL
+AS 'MODULE_PATHNAME','mysbit_ge'
+LANGUAGE C
 IMMUTABLE
 STRICT;
 
@@ -344,8 +359,8 @@ CREATE OPERATOR >= (
 -- index need
 CREATE FUNCTION ivymy.mysbit_gt(ivymy.mysbit, ivymy.mysbit)
 RETURNS pg_catalog.bool
-AS 'bitgt'
-LANGUAGE INTERNAL
+AS 'MODULE_PATHNAME','mysbit_gt'
+LANGUAGE C
 IMMUTABLE
 STRICT;
 
@@ -388,6 +403,23 @@ CREATE OPERATOR ivymy.& (
 	leftarg = ivymy.mysbit,
 	rightarg = ivymy.mysbit,
 	commutator = &
+);
+
+
+--  "^"
+CREATE FUNCTION ivymy.mysbit_bit_xor(ivymy.mysbit, ivymy.mysbit)
+RETURNS ivymy.uint8
+AS 'MODULE_PATHNAME','mysbit_bit_xor'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.^ (
+	procedure = ivymy.mysbit_bit_xor,
+	leftarg = ivymy.mysbit,
+	rightarg = ivymy.mysbit,
+	commutator = ^
 );
 
 --  "#"
@@ -455,7 +487,7 @@ CREATE OPERATOR ivymy.+ (
 -- CREATE FUNCTION 
 --
 CREATE FUNCTION ivymy.binary(ivymy.mysbit)
-RETURNS bytea
+RETURNS ivymy.varbinary
 AS 'MODULE_PATHNAME','bittobinary'
 LANGUAGE C
 PARALLEL SAFE
@@ -562,4 +594,28 @@ CREATE OPERATOR CLASS ivymy.bit_ops
 		OPERATOR		5		> (ivymy.mysbit, ivymy.mysbit),
 		FUNCTION		1		ivymy.bit_cmp(ivymy.mysbit, ivymy.mysbit),
 		FUNCTION		4		ivymy.btmysequalimage(oid);
+
+/* hash index support procedure */
+CREATE FUNCTION ivymy.mysbit_hash(ivymy.mysbit)
+RETURNS integer
+AS 'MODULE_PATHNAME','mysbit_hash'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.mysbit_hash_extended(ivymy.mysbit, bigint)
+RETURNS bigint
+AS 'MODULE_PATHNAME','mysbit_hash_extended'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+
+CREATE OPERATOR CLASS ivymy.mysbit_ops
+	DEFAULT FOR TYPE ivymy.mysbit USING hash AS
+		OPERATOR		1		= (ivymy.mysbit, ivymy.mysbit),
+		FUNCTION		1		ivymy.mysbit_hash(ivymy.mysbit),
+		FUNCTION		2		ivymy.mysbit_hash_extended(ivymy.mysbit, bigint);
 

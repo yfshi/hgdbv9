@@ -90,13 +90,13 @@ SELECT citext_cmp('AARDVARK'::citext, 'AARDVARK'::citext) AS zero;
 SELECT citext_cmp('B'::citext, 'a'::citext) > 0 AS true;
 
 -- Check the citext_hash() and citext_hash_extended() function explicitly.
-SELECT v as value, citext_hash(v)::bit(32) as standard,
-       citext_hash_extended(v, 0)::bit(32) as extended0,
-       citext_hash_extended(v, 1)::bit(32) as extended1
+SELECT v as value, citext_hash(v)::pg_catalog.bit(32) as standard,
+       citext_hash_extended(v, 0)::pg_catalog.bit(32) as extended0,
+       citext_hash_extended(v, 1)::pg_catalog.bit(32) as extended1
 FROM   (VALUES (NULL::citext), ('PostgreSQL'), ('eIpUEtqmY89'), ('AXKEJBTK'),
        ('muop28x03'), ('yi3nm0d73')) x(v)
-WHERE  citext_hash(v)::bit(32) != citext_hash_extended(v, 0)::bit(32)
-       OR citext_hash(v)::bit(32) = citext_hash_extended(v, 1)::bit(32);
+WHERE  citext_hash(v)::pg_catalog.bit(32) != citext_hash_extended(v, 0)::pg_catalog.bit(32)
+       OR citext_hash(v)::pg_catalog.bit(32) = citext_hash_extended(v, 1)::pg_catalog.bit(32);
 
 -- Do some tests using a table and index.
 
@@ -286,7 +286,7 @@ SELECT '((0,0),(1,1))'::citext::polygon ~= '((0,0),(1,1))'::polygon AS t;
 SELECT '((0,0),2)'::circle::citext = '((0,0),2)'::circle::text AS t;
 SELECT '((0,0),2)'::citext::circle ~= '((0,0),2)'::text::circle AS t;
 
-SELECT '101'::bit::citext = '101'::bit::text AS t;
+SELECT '101'::pg_catalog.bit::citext = '101'::pg_catalog.bit::text AS t;
 SELECT '101'::citext::bit = '101'::text::bit AS t;
 SELECT '101'::bit varying::citext = '101'::bit varying::text AS t;
 SELECT '101'::citext::bit varying = '101'::text::bit varying AS t;

@@ -382,7 +382,7 @@ select c1 AND c1, c1 AND c2, c1 AND c3, c2 AND c3, c3 AND c4, c4 AND c5, c5 AND 
 select c1 && c1, c1 && c2, c1 && c3, c2 && c3, c3 && c4, c4 && c5, c5 && c6, c6 && c7, c4 && c8, c6 && c8 from my_binary_t1;
  ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
 ----------+----------+----------+----------+----------+----------+----------+----------+----------+----------
- t        | t        | t        | t        | f        | f        | f        | f        | NULL     | NULL
+ t        | t        | t        | t        | f        | f        | f        | f        | f        | f
 (1 row)
 
 DISCARD ALL;
@@ -2089,3 +2089,19 @@ select * from tb_binary;
 
 RESET sql_mode;
 /* End - bug#z5465 */
+-- bug 5655
+create table tb1(c1 binary(10), c2 binary(10), c3 binary(10));
+insert into tb1 values('abcd', '', null);
+select c1 AND c3, c2 AND c3 from tb1;
+ ?column? | ?column? 
+----------+----------
+ f        | f
+(1 row)
+
+select c1 && c3, c2 && c3 from tb1;
+ ?column? | ?column? 
+----------+----------
+ f        | f
+(1 row)
+
+drop table tb1;
