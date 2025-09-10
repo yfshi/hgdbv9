@@ -52,6 +52,7 @@
 
 /* This configuration variable is used to set the lock table size */
 int			max_locks_per_xact; /* set by guc.c */
+float8 		waitTime;	// ReqID: SRS-PLSQL-DBMS_LOCK
 
 #define NLOCKENTS() \
 	mul_size(max_locks_per_xact, add_size(MaxBackends, max_prepared_xacts))
@@ -144,13 +145,68 @@ static const LockMethodData user_lockmethod = {
 #endif
 };
 
+/* Begin - ReqID: SRS-PLSQL-DBMS_LOCK */
+static const LOCKMASK OraLockConflicts[] = {
+	0,
+	/* NullLock */
+	0,
+
+	/* OraSubSharedLock */
+	LOCKBIT_ON(OraExecusiveLock),
+
+	/* OraSubExecusiveLock */
+	LOCKBIT_ON(OraExecusiveLock) | LOCKBIT_ON(OraSharedSubExecusiveLock) |
+	LOCKBIT_ON(OraSharedLock),
+
+	/* OraSharedLock */
+	LOCKBIT_ON(OraExecusiveLock) | LOCKBIT_ON(OraSharedSubExecusiveLock) |
+	LOCKBIT_ON(OraSubExecusiveLock),
+
+	/* OraSharedSubExecusiveLock */
+	LOCKBIT_ON(OraExecusiveLock) | LOCKBIT_ON(OraSharedSubExecusiveLock) |
+	LOCKBIT_ON(OraSharedLock) | LOCKBIT_ON(OraSubExecusiveLock),
+
+	/* OraExecusiveLock */
+	LOCKBIT_ON(OraExecusiveLock) | LOCKBIT_ON(OraSharedSubExecusiveLock) |
+	LOCKBIT_ON(OraSharedLock) | LOCKBIT_ON(OraSubExecusiveLock) |
+	LOCKBIT_ON(OraSubSharedLock),
+
+	0,
+	0
+};
+
+static const char *const ora_dbms_lock_mode_names[] = {
+	"",
+	"OraNullLock",
+	"OraSubSharedLock",
+	"OraSubExecusiveLock",
+	"OraSharedLock",
+	"OraSharedSubExecusiveLock",
+	"OraExecusiveLock",
+	"",
+	""
+};
+
+static const LockMethodData ora_dbms_lock_lockmethod = {
+	OraExecusiveLock,		/* highest valid lock mode number */
+	OraLockConflicts,
+	ora_dbms_lock_mode_names,
+#ifdef LOCK_DEBUG
+	&Trace_userlocks
+#else
+	&Dummy_trace
+#endif
+};
+/* End - ReqID: SRS-PLSQL-DBMS_LOCK*/
+
 /*
  * map from lock method id to the lock table data structures
  */
 static const LockMethod LockMethods[] = {
 	NULL,
 	&default_lockmethod,
-	&user_lockmethod
+	&user_lockmethod,	// ReqID: SRS-PLSQL-DBMS_LOCK
+	&ora_dbms_lock_lockmethod	// ReqID: SRS-PLSQL-DBMS_LOCK
 };
 
 
@@ -1131,7 +1187,7 @@ LockAcquireExtended(const LOCKTAG *locktag,
 		 * Check the proclock entry status, in case something in the ipc
 		 * communication doesn't work correctly.
 		 */
-		if (!(proclock->holdMask & LOCKBIT_ON(lockmode)))
+		if (lock->tag.locktag_type != LOCKTAG_DBMS_LOCK && (!(proclock->holdMask & LOCKBIT_ON(lockmode))))	// ReqID: SRS-PLSQL-DBMS_LOCK
 		{
 			AbortStrongLockAcquire();
 			PROCLOCK_PRINT("LockAcquire: INCONSISTENT", proclock);
@@ -1865,7 +1921,12 @@ WaitOnLock(LOCALLOCK *locallock, ResourceOwner owner)
 	 */
 	PG_TRY();
 	{
-		if (ProcSleep(locallock, lockMethodTable) != PROC_WAIT_STATUS_OK)
+		/* Begin - ReqID: SRS-PLSQL-DBMS_LOCK */
+		ProcWaitStatus status = ProcSleep(locallock, lockMethodTable);
+		// we do not need to remove myproc from wait queue, besauce it did when deadlock detected
+		if (locallock->tag.lock.locktag_type != LOCKTAG_DBMS_LOCK &&
+			status != PROC_WAIT_STATUS_OK)
+		/* End - ReqID: SRS-PLSQL-DBMS_LOCK */
 		{
 			/*
 			 * We failed as a result of a deadlock, see CheckDeadLock(). Quit

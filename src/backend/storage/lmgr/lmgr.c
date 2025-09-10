@@ -1212,6 +1212,16 @@ DescribeLockTag(StringInfo buf, const LOCKTAG *tag)
 							 tag->locktag_field3,
 							 tag->locktag_field4);
 			break;
+		/* Begin - ReqID: SRS-PLSQL-DBMS_LOCK */
+		case LOCKTAG_DBMS_LOCK:
+			appendStringInfo(buf,
+								_("dbms_lock [%u,%u,%u,%u]"),
+								tag->locktag_field1,
+								tag->locktag_field2,
+								tag->locktag_field3,
+								tag->locktag_field4);
+			break;
+		/* End - ReqID: SRS-PLSQL-DBMS_LOCK */
 		default:
 			appendStringInfo(buf,
 							 _("unrecognized locktag type %d"),

@@ -34,6 +34,7 @@ typedef enum TimeoutId
 	IDLE_SESSION_TIMEOUT,
 	IDLE_SESSION_NOINPUT, /* ReqID: LOCK-SESSION */
 	CLIENT_CONNECTION_CHECK_TIMEOUT,
+	DBMSLOCK_TIMEOUT,		/* ReqID: SRS-PLSQL-DBMS_LOCK */
 	/* First user-definable timeout reason */
 	USER_TIMEOUT,
 	/* Maximum number of timeout reasons */

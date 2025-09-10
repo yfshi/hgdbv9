@@ -638,6 +638,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		RegisterTimeout(IDLE_SESSION_TIMEOUT, IdleSessionTimeoutHandler);
 		RegisterTimeout(IDLE_SESSION_NOINPUT, IdleSessionNoinputHandler); /* ReqID: LOCK-SESSION */
 		RegisterTimeout(CLIENT_CONNECTION_CHECK_TIMEOUT, ClientCheckTimeoutHandler);
+		RegisterTimeout(DBMSLOCK_TIMEOUT, DbmsLockTimeoutHandler);		/* ReqID: SRS-PLSQL-DBMS_LOCK */
 	}
 
 	/*
@@ -1248,6 +1249,10 @@ ShutdownPostgres(int code, Datum arg)
 	 * them explicitly.
 	 */
 	LockReleaseAll(USER_LOCKMETHOD, true);
+	/* Begin - ReqID: SRS-PLSQL-DBMS_LOCK */
+	if (IsUnderPostmaster && MyProc != NULL)
+		LockReleaseAll(ORA_DBMS_LOCK_LOCKMETHOD, true);
+	/* End - ReqID: SRS-PLSQL-DBMS_LOCK */
 }
 
 

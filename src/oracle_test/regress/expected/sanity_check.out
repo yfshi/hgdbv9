@@ -37,6 +37,7 @@ copy_tbl|f
 d|f
 d_star|f
 date_tbl|f
+dbms_lock_allocated|t
 default_tbl|f
 defaultexpr_tbl|f
 dept|f
