@@ -35,6 +35,12 @@
 #include "utils/builtins.h"
 #include "utils/snapmgr.h"
 #include "utils/timestamp.h"
+/* Begin - ReqID:SRS-MYSQL-SET */
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+#include "mysql_parser/mys_set_hook.h"
+#include "parser/parser.h"
+/* End - ReqID:SRS-MYSQL-SET */
 
 
 /*
@@ -75,14 +81,50 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 				(errcode(ERRCODE_INVALID_PSTATEMENT_DEFINITION),
 				 errmsg("invalid statement name: must not be empty")));
 
-	/*
-	 * Need to wrap the contained statement in a RawStmt node to pass it to
-	 * parse analysis.
-	 */
-	rawstmt = makeNode(RawStmt);
-	rawstmt->stmt = stmt->query;
-	rawstmt->stmt_location = stmt_location;
-	rawstmt->stmt_len = stmt_len;
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	if (compatible_db == MYS_PARSER && stmt->query != NULL &&
+		nodeTag(stmt->query) == T_VarRef)
+	{
+		Const	   *con;
+		char	   *oristring = NULL;
+		Oid			typOutput;
+		bool		typIsVarlena;
+		List	   *raw_parsetree_list = NIL;
+
+		if (uservariable_hash_search_hook)
+			con = (Const *)uservariable_hash_search_hook(pstate, (VarRef *)(stmt->query));
+		else
+			ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PSTATEMENT_DEFINITION),
+				 errmsg("invalid statement name: must not be empty")));
+
+		if (con == NULL || (con != NULL && con->constisnull))
+			ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("You have an error in your SQL syntax; check the manual that corresponds to you MySQL server version for the rigth syntax to use near 'NULL'")));
+
+		getTypeOutputInfo(con->consttype , &typOutput, &typIsVarlena);
+		oristring = OidOutputFunctionCall(typOutput, con->constvalue);
+		raw_parsetree_list = raw_parser(oristring, RAW_PARSE_DEFAULT);
+
+		rawstmt = (RawStmt *)linitial(raw_parsetree_list);
+		rawstmt->stmt_location = stmt_location;
+		rawstmt->stmt_len = stmt_len;
+
+		stmt->query = rawstmt->stmt;
+	}
+	else
+	{
+		/*
+		 * Need to wrap the contained statement in a RawStmt node to pass it to
+		 * parse analysis.
+		 */
+		rawstmt = makeNode(RawStmt);
+		rawstmt->stmt = stmt->query;
+		rawstmt->stmt_location = stmt_location;
+		rawstmt->stmt_len = stmt_len;
+	}
+	/* End - ReqID:SRS-MYSQL-SET */
 
 	/*
 	 * Create the CachedPlanSource before we do parse analysis, since it needs

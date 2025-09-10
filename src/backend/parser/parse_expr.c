@@ -50,6 +50,11 @@
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
+/* Begin - ReqID:SRS-MYSQL-SET */
+#include "mysql_parser/mys_set_hook.h"
+#include "parser/parser.h"
+/* End - ReqID:SRS-MYSQL-SET */
+
 
 /* GUC parameters */
 bool		Transform_null_equals = false;
@@ -110,6 +115,9 @@ static Node *transformColumnRefOrFunCall(ParseState *pstate, ColumnRefOrFuncCall
 static Node *transformPseudoColumnRef(ParseState *pstate, PseudoColumnRef *pcr);
 /* End - ReqID:SRS-SQL-ROWNUM */
 static Node *mysmakeIntConst(int val, int location);	/* BUG#M533 */
+/* Begin - ReqID:SRS-MYSQL-SET */
+static Node *transformVarRef(ParseState *pstate, VarRef *varref);
+/* End - ReqID:SRS-MYSQL-SET */
 
 /* Begin - Bug#Z167 */
 static inline void
@@ -458,7 +466,14 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 			elog(ERROR, "SYS_CONNECT_BY_PATH function is not allowed here");
 			break;
 		/* End - ReqID:SRS-SQL-HierarchicalQueries */
-
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_VarAssign:
+			result = transformVarAssign(pstate, (VarAssign *)expr, false);
+			break;
+		case T_VarRef:
+			result = transformVarRef(pstate, (VarRef *)expr);
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 		default:
 			/* should not reach here */
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
@@ -4867,3 +4882,175 @@ mysmakeIntConst(int val, int location)
 	return (Node *)n;
 }
 /* End - BUG#M533 */
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+/* transformVarAssign
+ *
+ * transform VarAssign node to function node.
+ */
+Node *
+transformVarAssign(ParseState *pstate, VarAssign *var, bool returnquery)
+{
+	List		   *funcName;
+	List		   *argList;
+	Node		   *funcCall;
+	char		   *funcname = NULL;
+	Node		   *node = var->value;
+	Node		   *retnode;
+	Query		   *result;
+
+	/*
+	 * If the value is a SELECT node,
+	 * it needs to be transformed.
+	 */
+	if (nodeTag(node) == T_SelectStmt)
+	{
+		node = (Node *)transformStmt(pstate, node);
+	}
+
+	if (var->setkind == SET_GLOBALVAR)
+		funcname = "mys_set_global_variable";
+	else if (var->setkind == SET_SESSIONVAR)
+		funcname = "mys_set_session_variable";
+	else if (var->setkind == SET_LOCALVAR)
+		funcname = "mys_set_local_variable";
+	else if (var->setkind == SET_USERVAR)
+	{
+		if (var->ret == RET_VALUE)
+		{
+			funcname = "mys_set_user_var_in_expr";
+
+			/*
+			 * if set user variable in expr, such as:
+			 * SELECT @var := value; if the value is a string,
+			 * need to change the type to varchar(n), n is
+			 * string length.
+			 */
+			if (nodeTag(var->value) == T_A_Const && ((A_Const *)var->value)->val.type == T_String)
+			{
+				int stringlen;
+				TypeName *typname;
+				A_Const *aconst = (A_Const *)var->value;
+
+				stringlen = strlen(aconst->val.val.str);
+				typname = SystemTypeName("varchar");
+				typname->typmods = list_make1(ivy_makeIntConst(stringlen, var->location));
+				typname->location = var->location;
+				typname->typemod = stringlen;
+				node = ivy_makeTypeCast(node, typname, var->location);
+			}
+		}
+		else
+		{
+			funcname = "mys_set_user_var";
+
+			/*
+			 * if set user variable in SET, such as:
+			 * SET @var = value; if the value is a string,
+			 * need to change the type to longtext.
+			 */
+			if (nodeTag(var->value) == T_A_Const && ((A_Const *)var->value)->val.type == T_String)
+			{
+				TypeName *typname;
+
+				typname = makeTypeNameFromNameList(list_make2(makeString(pstrdup("ivymy")),
+													   makeString(pstrdup("longtext"))));
+				typname->typmods = NIL;
+				typname->location = var->location;
+				node = ivy_makeTypeCast(node, typname, var->location);
+
+			}
+		}
+	}
+
+	/* Construct the function and it arguments list */
+	funcName = list_make2(makeString(pstrdup("ivymy")),
+						  makeString(pstrdup(funcname)));
+	argList = NIL;
+	if (IsA(var->value, SetToDefault))
+		argList = list_make2(ivy_makeStringConst(var->varname,var->location), ivy_makeNullAConst(var->location));
+	else
+		argList = list_make2(ivy_makeStringConst(var->varname, var->location), node);
+
+	if (var->setkind != SET_USERVAR)
+	{
+		if (IsA(var->value, SetToDefault))
+			argList = lappend(argList, ivy_makeBoolAConst(true));
+		else
+			argList = lappend(argList, ivy_makeBoolAConst(false));
+	}
+
+	funcCall = (Node *) makeFuncCall(funcName, argList, COERCE_EXPLICIT_CALL, var->location);
+
+	/* transform function node */
+	retnode = transformExprRecurse(pstate, funcCall);
+
+	/*
+	 * If this is a SET statement, it needs
+	 * to be built as a query node
+	 */
+	if (returnquery)
+	{
+		result = makeNode(Query);
+		result->commandType = CMD_UTILITY;
+		result->utilityStmt = retnode;
+
+		return (Node *)result;
+	}
+
+	return retnode;
+}
+
+/* transformVarRef
+ *
+ * get the value of GUC parameter, and user defined variable;
+ * if varref node is get user define variable, and the node in
+ * SET command, get the current value, else return VarRef node.
+ */
+static Node *
+transformVarRef(ParseState *pstate, VarRef *varref)
+{
+	Node		   *funcCall = NULL;
+	A_Const		   *n = (A_Const *)ivy_makeStringConst(varref->varname, varref->location);
+
+	/* prevent compilation loops */
+	if (varref->compiled)
+		return (Node *)varref;
+
+	/* set a flag, it means VarRef node has been parsed. */
+	pstate->p_hasuservar = true;
+
+	if (varref->varkind == SYSTEM_VAR)
+	{
+		funcCall = (Node *)makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_setting")),
+										 list_make1(n),
+										 COERCE_EXPLICIT_CALL,
+										 -1);
+	}
+	else if (varref->varkind == USER_VAR)
+	{
+		/* set a flag prevent infinite recursion when parsing VarRef node */
+		varref->compiled = true;
+
+		/* Get current of value of user define variable */
+		varref->value = (Const *)uservariable_hash_search_hook(pstate, varref);
+
+		/*
+		 * if this Node appears in a SET statement, return it's value,
+		 * otherwise, return the VarRef node itself.
+		 */
+		if (pstate->p_myssetvar)
+			return (Node *)varref->value;
+
+		return (Node *)varref;
+	}
+	else
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("Undefined VarRef node")));
+	}
+
+	return transformExprRecurse(pstate, funcCall);
+}
+/* End - ReqID:SRS-MYSQL-SET */

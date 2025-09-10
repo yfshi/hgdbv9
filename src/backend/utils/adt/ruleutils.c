@@ -10364,6 +10364,15 @@ get_rule_expr(Node *node, deparse_context *context,
 		case T_NonDefValNode:
 			break;
 
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_VarRef:
+		{
+			VarRef *varref = (VarRef *)node;
+			appendStringInfo(buf, "@%s", varref->varname);
+			break;
+		}
+		/* End - ReqID:SRS-MYSQL-SET */
+
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(node));
 			break;

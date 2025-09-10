@@ -3425,6 +3425,65 @@ coerce_type(ParseState *pstate, Node *node,
 
 		return result;
 	}
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	else if (compatible_db == MYS_PARSER && inputTypeId == UNKNOWNOID && IsA(node, VarRef))
+	{
+		/*
+		 * Handle the case of SELECT on non-existent
+		 * user defined variable, If the variable does
+		 * not exist, its NULL node needs to be converted.
+		 */
+		VarRef	   *ref = (VarRef *)node;
+		Const	   *tempconst = (Const *)ref->value;
+		Oid 					baseTypeId = getBaseType(inputTypeId);
+		int32			baseTypeMod = targetTypeMod;
+		int32			inputTypeMod;
+		Type			baseType;
+		Const	   *newcon = makeNode(Const);
+
+		/*
+		 * Assign an initial value, which is
+		 * the value of the node itself
+		 */
+		result = (Node *)ref->value;
+
+		/*
+		 * if the current VarRef node refers to a
+		 * non-existent user defined variable,
+		 * convert this NULL node into the target
+		 * type node.
+		 */
+		baseType = typeidType(baseTypeId);
+		inputTypeMod = -1;
+
+		newcon->consttype = baseTypeId;
+		newcon->consttypmod = inputTypeMod;
+		newcon->constcollid = typeTypeCollation(baseType);
+		newcon->constlen = typeLen(baseType);
+		newcon->constbyval = typeByVal(baseType);
+		newcon->location = -1;
+		newcon->constisnull = tempconst->constisnull;
+
+		if (!tempconst->constisnull)
+				newcon->constvalue = stringTypeDatum(baseType,
+													 DatumGetCString(tempconst->constvalue),
+													 inputTypeMod);
+		else
+				newcon->constvalue = stringTypeDatum(baseType,
+													 NULL,
+													 inputTypeMod);
+
+		if (baseTypeId != targetTypeId)
+				result = coerce_to_domain((Node *)newcon,
+										  baseTypeId, baseTypeMod,
+										  targetTypeId,
+										  ccontext, cformat, location,
+										  false);
+		ReleaseSysCache(baseType);
+		ref->value = newcon;
+		return result;
+	}
+	/* End - ReqID:SRS-MYSQL-SET */
 
 	/* Begin - ReqID:SRS-MYSQL-DATETYPE */
 	if (MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext && 

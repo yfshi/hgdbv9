@@ -55,6 +55,7 @@ make_parsestate(ParseState *parentParseState)
 	/* Fill in fields that don't start at null/false/zero */
 	pstate->p_next_resno = 1;
 	pstate->p_resolve_unknowns = true;
+	pstate->p_myssetvar = false;	/* ReqID:SRS-MYSQL-SET */
 
 	if (parentParseState)
 	{
@@ -81,6 +82,7 @@ make_parsestate(ParseState *parentParseState)
 		pstate->p_not_set_oraparammode = parentParseState->p_not_set_oraparammode;
 		pstate->p_not_transform_funcCall = parentParseState->p_not_transform_funcCall;
 		/* End - BUG#M0000376 */
+		pstate->p_myssetvar = parentParseState->p_myssetvar;	/* ReqID:SRS-MYSQL-SET */
 	}
 
 	return pstate;

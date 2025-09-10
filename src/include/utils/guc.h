@@ -523,6 +523,8 @@ extern PGDLLIMPORT char *lc_time_names;
 extern PGDLLIMPORT int default_week_format;
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
+extern PGDLLIMPORT bool at_or_atat;		/* ReqID:SRS-MYSQL-SET */
+
 /*
  * Functions exported by guc.c
  */
@@ -687,6 +689,10 @@ extern void assign_search_path(const char *newval, void *extra);
 /* in access/transam/xlog.c */
 extern bool check_wal_buffers(int *newval, void **extra, GucSource source);
 extern void assign_xlog_sync_method(int new_sync_method, void *extra);
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+extern bool guc_list_input_check(const char *varname);
+/* End - ReqID:SRS-MYSQL-SET */
 
 /* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 #define MODE_REAL_AS_FLOAT              ((1ULL << 0))

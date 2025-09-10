@@ -157,12 +157,12 @@ select * from whereami;
 select whoami();
 
 -- can list temp first explicitly, but it still doesn't affect functions
-set search_path = pg_temp, public;
+set search_path = 'pg_temp, public';
 select * from whereami;
 select whoami();
 
 -- or put it last for security
-set search_path = public, pg_temp;
+set search_path = 'public, pg_temp';
 select * from whereami;
 select whoami();
 
@@ -172,7 +172,7 @@ select pg_temp.whoami();
 drop table public.whereami;
 
 -- types in temp schema
-set search_path = pg_temp, public;
+set search_path = 'pg_temp, public';
 create domain pg_temp.nonempty as text check (value <> '');
 -- function-syntax invocation of types matches rules for functions
 select nonempty('');

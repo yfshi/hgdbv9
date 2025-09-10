@@ -48,9 +48,12 @@ typedef enum
 	RAW_PARSE_PLISQL_ASSIGN2,
 	RAW_PARSE_PLISQL_ASSIGN3,
 	/* Begin - ReqID:SRS-PLSQL-RECORD */
-	RAW_PARSE_PLISQL_ASSIGNN
+	RAW_PARSE_PLISQL_ASSIGNN,
 	/* End - ReqID:SRS-PLSQL-RECORD */
 	/* End - BUG:M0000079 */
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	RAW_PARSE_PLMYSQL_EXPR
+	/* End - ReqID:SRS-MYSQL-SET */
 } RawParseMode;
 
 /* Values for the backslash_quote GUC */

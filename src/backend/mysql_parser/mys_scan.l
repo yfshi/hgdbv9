@@ -140,6 +140,7 @@ static void addunicode(pg_wchar c, yyscan_t yyscanner);
 
 static void check_string_escape_warning(unsigned char ychar, mys_core_yyscan_t yyscanner);
 static void check_escape_warning(mys_core_yyscan_t yyscanner);
+static int mys_uservariable_name(mys_core_yyscan_t yyscanner, YYSTYPE *lval);		/* ReqID:SRS-MYSQL-SET */
 
 /*
  * Work around a bug in flex 2.5.35: it emits a couple of functions that
@@ -209,6 +210,11 @@ extern void mys_core_yyset_column(int column_no, yyscan_t yyscanner);
 %x xbq
 %x xzh
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
+/* Begin - ReqID:SRS-MYSQL-SET */
+%x xbat
+%x xbatq
+%x xbatd
+/* End - ReqID:SRS-MYSQL-SET */
 
 /*
  * In order to make the world safe for Windows and Mac clients as well as
@@ -421,6 +427,38 @@ realfail1		({integer}|{decimal})[Ee]
 realfail2		({integer}|{decimal})[Ee][-+]
 
 param			\${integer}
+
+/* Begin - ReqID:SRS-MYSQL-SET
+ * Mysql User Variable
+ * @var_name(@'var_name' @"var_name" @`var_name`)
+ */
+MysqlUserVariable_cont		[A-Za-z\200-\377_0-9\.\$]
+set_user_escape_quote		[^']+
+set_user_escape_atquote		\'
+set_user_escape_datquote	[^"]+
+set_user_escape_dtquote		\"
+set_user_escape_bquote		[^`]+
+set_user_escape_batquote	\`
+
+/* ' @var */
+MysqlUserVariable			@({MysqlUserVariable_cont}+)
+
+/* @'var' */
+xbatqstart					@{set_user_escape_atquote}
+xbatqstop					{set_user_escape_atquote}
+
+/* @"var" */
+xbatdstart					@{set_user_escape_dtquote}
+xbatdstop					{set_user_escape_dtquote}
+
+/* @`var` */
+xbatqqstart					@{set_user_escape_batquote}
+xbatqqstop					{set_user_escape_batquote}
+
+MysSysVar_start		"@@"
+MysSysVar_cont		[A-Za-z\200-\377_0-9\$\.]
+MysSysVar			{MysSysVar_start}{MysSysVar_cont}+
+/* End - ReqID:SRS-MYSQL-SET */
 
 other			.
 
@@ -818,6 +856,27 @@ other			.
 					startlit();
 					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				}
+{xbatqqstart}		{
+					/* Begin - ReqID:SRS-MYSQL-SET */
+					SET_YYLLOC();
+					BEGIN(xbatq);
+					startlit();
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
+{xbatqstart}		{
+					/* Begin - ReqID:SRS-MYSQL-SET */
+					SET_YYLLOC();
+					BEGIN(xbat);
+					startlit();
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
+{xbatdstart}		{
+					/* Begin - ReqID:SRS-MYSQL-SET */
+					SET_YYLLOC();
+					BEGIN(xbatd);
+					startlit();
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
 <xbq>{xbqstop}	{
 					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 					char	   *ident;
@@ -854,6 +913,24 @@ other			.
 					return SCONST;
 					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				}
+<xbatq>{xbatqqstop}	{
+					/* Begin - ReqID:SRS-MYSQL-SET */
+					BEGIN(INITIAL);
+					return mys_uservariable_name(yyscanner, yylval);
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
+<xbat>{xbatqstop}	{
+					/* Begin - ReqID:SRS-MYSQL-SET */
+					BEGIN(INITIAL);
+					return mys_uservariable_name(yyscanner, yylval);
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
+<xbatd>{xbatdstop}	{
+					/* Begin - ReqID:SRS-MYSQL-SET */
+					BEGIN(INITIAL);
+					return  mys_uservariable_name(yyscanner, yylval);
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
 <xui>{dquote}	{
 					BEGIN(INITIAL);
 					if (yyextra->literallen == 0)
@@ -878,6 +955,36 @@ other			.
 					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 					yyerror("unterminated quoted identifier");
 					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+				}
+<xbatq>{set_user_escape_bquote}	{
+					/* Begin - ReqID:SRS-MYSQL-SET  @`var` */
+					addlit(yytext, yyleng, yyscanner);
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
+<xbatq><<EOF>>	{
+					/* Begin - ReqID:SRS-MYSQL-SET  @`var` */
+					yyerror("unterminated quoted identifier");
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
+<xbat>{set_user_escape_quote} {
+					/* Begin - ReqID:SRS-MYSQL-SET @'var' */
+					addlit(yytext, yyleng, yyscanner);
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
+<xbat><<EOF>>	{
+					/* Begin - ReqID:SRS-MYSQL-SET @'var' */
+					yyerror("unterminated quoted identifier");
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
+<xbatd>{set_user_escape_datquote} {
+					/* Begin - ReqID:SRS-MYSQL-SET @'var' */
+					addlit(yytext, yyleng, yyscanner);
+					/* End - ReqID:SRS-MYSQL-SET */
+				}
+<xbatd><<EOF>>	{
+					/* Begin - ReqID:SRS-MYSQL-SET @'var' */
+					yyerror("unterminated quoted identifier");
+					/* End - ReqID:SRS-MYSQL-SET */
 				}
 {xufailed}	{
 					char	   *ident;
@@ -962,6 +1069,24 @@ other			.
 						slashstar = dashdash;
 					if (slashstar)
 						nchars = slashstar - yytext;
+
+					/* Begin - ReqID:SRS-MYSQL-SET */
+					if (at_or_atat)
+					{
+						if (nchars > 2 && yytext[nchars - 1] == '@')
+						{
+							nchars--;
+							if (yytext[nchars - 1] == '@')
+							{
+								nchars--;
+							}
+						}
+						else if (nchars == 2 && yytext[1] == '@' && yytext[0] != '@')
+						{
+							nchars--;
+						}
+					}
+					/* End - ReqID:SRS-MYSQL-SET */
 
 					/*
 					 * For SQL compatibility, '+' and '-' cannot be the
@@ -1119,6 +1244,41 @@ other			.
 					yylval->str = ident;
 					return IDENT;
 				}
+
+{MysqlUserVariable} {
+						/* Begin - ReqID:SRS-MYSQL-SET */
+						SET_YYLLOC();
+						/* delete '@' */
+						if (at_or_atat)
+						{
+							yylval->str = pstrdup(yytext + 1);
+							return USER_VARIABLE_NAME;
+						}
+						else
+						{
+							yyless(1);
+							yylval->str = pstrdup(yytext);
+							return Op;
+						}
+						/* End - ReqID:SRS-MYSQL-SET */
+					}
+{MysSysVar} {
+				/* Begin - ReqID:SRS-MYSQL-SET */
+				SET_YYLLOC();
+				/* delete'@@' */
+				if (at_or_atat)
+				{
+					yylval->str = pstrdup(yytext + 2);
+					return SYSTEM_OR_SESSION_VARIABLE;
+				}
+				else
+				{
+					yyless(1);
+					yylval->str = pstrdup(yytext);
+					return Op;
+				}
+				/* End - ReqID:SRS-MYSQL-SET */
+			}
 
 {other}			{
 					SET_YYLLOC();
@@ -1513,3 +1673,21 @@ mys_core_yyfree(void *ptr, mys_core_yyscan_t yyscanner)
 	if (ptr)
 		pfree(ptr);
 }
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+static int
+mys_uservariable_name(mys_core_yyscan_t yyscanner, YYSTYPE *lval)
+{
+	char	   *ident;
+
+	if (yyextra->literallen == 0)
+		yyerror("zero-length delimited identifier");
+
+	ident = litbufdup(yyscanner);
+	if (yyextra->literallen >= NAMEDATALEN)
+		truncate_identifier(ident, yyextra->literallen, true);
+	lval->str = ident;
+
+	return USER_VARIABLE_NAME;
+}
+/* End - ReqID:SRS-MYSQL-SET */

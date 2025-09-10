@@ -33,7 +33,9 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
-
+/* Begin - ReqID:SRS-MYSQL-SET */
+#include "mysql_parser/mys_set_hook.h"
+/* End - ReqID:SRS-MYSQL-SET */
 
 static bool expression_returns_set_walker(Node *node, void *context);
 static int	leftmostLoc(int loc1, int loc2);
@@ -300,7 +302,24 @@ exprType(const Node *expr)
 				type = ORAVARCHARCHAROID;
 			break;
 		/* End - ReqID:SRS-SQL-HierarchicalQueries */
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_VarRef:
+			{
+				VarRef *varref = (VarRef *) expr;
 
+				if (varref->value != NULL)
+				{
+					type = varref->value->consttype;
+				}
+				else
+				{
+					Const *tmpconst = (Const *)uservariable_hash_search_hook(NULL, varref);
+					varref->value = tmpconst;
+					type = tmpconst->consttype;
+				}
+			}
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			type = InvalidOid;	/* keep compiler quiet */
@@ -537,6 +556,19 @@ exprTypmod(const Node *expr)
 			return ((const SetToDefault *) expr)->typeMod;
 		case T_PlaceHolderVar:
 			return exprTypmod((Node *) ((const PlaceHolderVar *) expr)->phexpr);
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_VarRef:
+		{
+			VarRef *varref = (VarRef *) expr;
+
+			if (varref->value == NULL)
+			{
+				Const *tmpconst = (Const *)uservariable_hash_search_hook(NULL, varref);
+				varref->value = tmpconst;
+			}
+			return varref->value->consttypmod;
+		}
+		/* End - ReqID:SRS-MYSQL-SET */
 		default:
 			break;
 	}
@@ -1024,6 +1056,11 @@ exprCollation(const Node *expr)
 		case T_PlaceHolderVar:
 			coll = exprCollation((Node *) ((const PlaceHolderVar *) expr)->phexpr);
 			break;
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_VarRef:
+			coll = ((VarRef *)expr)->value->constcollid;
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			coll = InvalidOid;	/* keep compiler quiet */
@@ -1241,6 +1278,10 @@ exprSetCollation(Node *expr, Oid collation)
 			/* not use a collation */
 			break;
 		/* End - ReqID:SRS-SQL-HierarchicalQueries */
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_VarRef:
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			break;
@@ -2465,7 +2506,18 @@ expression_tree_walker(Node *node,
 			}
 			break;
 		/* End - ReqID:SRS-SQL-HierarchicalQueries */
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_VarRef:
+			{
+				VarRef *varf = (VarRef *)node;
+				if (varf->varname != NULL)
+					varf->value = (Const *)uservariable_hash_search_hook(NULL, varf);
 
+				if (walker((Node *)varf->value, context))
+					return true;
+			}
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));
@@ -3438,6 +3490,17 @@ expression_tree_mutator(Node *node,
 				return (Node *) newnode;
 			}
 			break;
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_VarRef:
+			{
+				VarRef *rf = (VarRef *)node;
+				VarRef *newnode;
+
+				FLATCOPY(newnode, rf, VarRef);
+				return (Node *) newnode;
+			}
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));

@@ -276,6 +276,10 @@ typedef enum ExprEvalOp
 	EEOP_NVL_FETCH,
 	/* End - BUG#Z4591 */
 
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	EEOP_VARREF,
+	/* End - ReqID:SRS-MYSQL-SET */
+
 	/* non-existent operation, used e.g. to check array lengths */
 	EEOP_LAST
 } ExprEvalOp;
@@ -724,6 +728,16 @@ typedef struct ExprEvalStep
 			int			expr3_step;
 		}			nvl_val_fetchstep;
 		/* End - BUG#Z4591 */
+
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		struct
+		{
+			/* constant's value */
+			char		*varname;
+			Const		*value;
+			Oid			rettype;
+		}			varref;
+		/* End - ReqID:SRS-MYSQL-SET */
 	}			d;
 } ExprEvalStep;
 

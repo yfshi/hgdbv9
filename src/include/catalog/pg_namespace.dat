@@ -35,6 +35,11 @@
 { oid => '9800', oid_symbol => 'PG_IVYMY_NAMESPACE',
   descr => 'Similar mysql sys schema',
   nspname => 'ivymy', nspacl => '_null_' },
+# Begin - ReqID:SRS-MYSQL-SET
+{ oid => '9801', oid_symbol => 'PERFORMANCE_SCHEMA_NAMESPACE',
+  descr => 'Compatible MySQL performance_schema schema',
+  nspname => 'performance_schema', nspacl => '_null_' },
+# End - ReqID:SRS-MYSQL-SET
 /*END MySQL Compatibility Metadatas*/
 #End - ReqID:SRS-MISC-MYSQL-FRAME
 ]

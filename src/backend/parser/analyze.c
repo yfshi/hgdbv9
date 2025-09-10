@@ -85,6 +85,11 @@
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
+/* Begin - ReqID:SRS-MYSQL-SET */
+#include "mysql_parser/mys_set_hook.h"
+#include "utils/varlena.h"
+#include "parser/parser.h"
+/* End - ReqID:SRS-MYSQL-SET */
 
 /* Hook for plugins to get control at end of parse analysis */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
@@ -170,6 +175,11 @@ static void transformGetpartionRelationOid(Query            *qry, RangeVar  *rel
 static void transformGetpartionRelationOids(Query *qry, List *relations);
 /* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
+/* Begin - ReqID:SRS-MYSQL-SET */
+static Query *transformMysVariableSetStmt(ParseState *pstate, MysVariableSetStmt *stmt);
+static Query *transformSelectIntoUservarStmt(ParseState *pstate, SelectIntoUserVarStmt *stmt);
+/* End - ReqID:SRS-MYSQL-SET */
+
 
 /*
  * parse_analyze
@@ -201,6 +211,10 @@ parse_analyze(RawStmt *parseTree, const char *sourceText,
 	pstate->p_queryEnv = queryEnv;
 
 	query = transformTopLevelStmt(pstate, parseTree);
+
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	query->hasuservar = pstate->p_hasuservar;
+	/* End - ReqID:SRS-MYSQL-SET */
 
 	if (IsQueryIdEnabled())
 		jstate = JumbleQuery(query, sourceText);
@@ -331,6 +345,48 @@ transformOptionalSelectInto(ParseState *pstate, Node *parseTree)
 		{
 			CreateTableAsStmt *ctas = makeNode(CreateTableAsStmt);
 
+			/* Begin - ReqID:SRS-MYSQL-SET */
+			if (compatible_db == MYS_PARSER && stmt->intoClause->colNames != NIL)
+			{
+				ListCell *cell;
+
+				if (IsA(linitial(stmt->intoClause->colNames), VarRef))
+				{
+					bool	usevarflg = true;
+					foreach(cell, stmt->intoClause->colNames)
+					{
+						if (IsA(lfirst(cell), VarRef))
+						{
+							VarRef *ref = (VarRef *)lfirst(cell);
+
+							if (ref->varkind != USER_VAR)
+							{
+								usevarflg = false;
+								break;
+							}
+						}
+						else
+						{
+							usevarflg = false;
+							break;
+						}
+					}
+
+					if (usevarflg)
+					{
+						SelectIntoUserVarStmt *newStmt;
+						newStmt = makeNode(SelectIntoUserVarStmt);
+						newStmt->target = stmt->intoClause->colNames;
+						newStmt->expr = parseTree;
+						stmt->intoClause = NULL;
+
+						parseTree = (Node *) newStmt;
+						return transformStmt(pstate, parseTree);
+					}
+				}
+			}
+			/* End - ReqID:SRS-MYSQL-SET */
+
 			ctas->query = parseTree;
 			ctas->into = stmt->intoClause;
 			ctas->objtype = OBJECT_TABLE;
@@ -449,6 +505,21 @@ transformStmt(ParseState *pstate, Node *parseTree)
 			result = transformCallStmt(pstate,
 									   (CallStmt *) parseTree);
 			break;
+
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_MysVariableSetStmt:
+			result = transformMysVariableSetStmt(pstate,
+										(MysVariableSetStmt *) parseTree);
+			break;
+
+		case T_SelectIntoUserVarStmt:
+			result = transformSelectIntoUservarStmt(pstate, (SelectIntoUserVarStmt *) parseTree);
+			break;
+
+		case T_VarAssign:
+			result = (Query *)transformVarAssign(pstate, (VarAssign *)parseTree, true);
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 
 		default:
 
@@ -6491,3 +6562,373 @@ applyLockingTable(Query *qry, Oid relid,
 	return;
 }
 /* End - BUG#M0000470: SELECT FOR UPDATE OF column */
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+/* makeStringConst
+ *
+ * make a String Const node.
+ */
+Node *
+ivy_makeStringConst(char *str, int location)
+{
+	A_Const *n = makeNode(A_Const);
+
+	n->val.type = T_String;
+	n->val.val.str = str;
+	n->location = location;
+
+	return (Node *)n;
+}
+
+/* ivy_makeIntConst
+ *
+ * make IntConst.
+ */
+Node *
+ivy_makeIntConst(int val, int location)
+{
+	A_Const *n = makeNode(A_Const);
+
+	n->val.type = T_Integer;
+	n->val.val.ival = val;
+	n->location = location;
+
+	return (Node *)n;
+}
+
+/* ivy_makeFloatConst
+ *
+ * make FloatConst.
+ */
+Node *
+ivy_makeFloatConst(char *str, int location)
+{
+	A_Const *n = makeNode(A_Const);
+
+	n->val.type = T_Float;
+	n->val.val.str = str;
+	n->location = location;
+
+	return (Node *)n;
+}
+
+/* ivy_makeAConst
+ *
+ * make a Const.
+ */
+Node *
+ivy_makeAConst(Value *v, int location)
+{
+	Node *n;
+
+	switch (v->type)
+	{
+		case T_Float:
+			n = ivy_makeFloatConst(v->val.str, location);
+			break;
+
+		case T_Integer:
+			n = ivy_makeIntConst(v->val.ival, location);
+			break;
+
+		case T_String:
+		default:
+			n = ivy_makeStringConst(v->val.str, location);
+			break;
+	}
+
+	return n;
+}
+
+Node *
+ivy_makeNullAConst(int location)
+{
+	A_Const *n = makeNode(A_Const);
+
+	n->val.type = T_Null;
+	n->location = location;
+
+	return (Node *)n;
+}
+
+/* ivy_makeTypeCast
+ *
+ * make a type cast.
+ */
+Node *
+ivy_makeTypeCast(Node *arg, TypeName *typename, int location)
+{
+	TypeCast *n = makeNode(TypeCast);
+
+	n->arg = arg;
+	n->typeName = typename;
+	n->location = location;
+
+	return (Node *)n;
+}
+
+/* ivy_makeBoolAConst
+ *
+ * make a Const to bool cast.
+ */
+Node *
+ivy_makeBoolAConst(bool state)
+{
+	A_Const *n = makeNode(A_Const);
+
+	n->val.type = T_String;
+	n->val.val.str = (state ? "t" : "f");
+
+	return ivy_makeTypeCast((Node *)n, SystemTypeName("bool"), -1);
+}
+
+/* trans_MysVariable_to_VariableSet
+ *
+ * transform Mysql Set clause,If there is only one set, it is
+ * a VariableSetStmt node, Otherwise, it is a query node.
+ */
+VariableSetStmt *
+trans_MysVariable_to_VariableSet(ParseState *pstate, MysVariableSetStmt *stmt)
+{
+	VariableSetStmt *variableSetStmt = NULL;
+
+	/* If this is a Select node, determine the number of
+	 * target list on the select, it there is only one node,
+	 * determin whether it is a function,if it's a funtion
+	 * and the function name is also a parameter setting
+	 * function, then determine whether the second parameter
+	 * is a simple value, if so, it is a VariableSetStmt node,
+	 * otherwise return a MysVariableSetStmt node.
+	 */
+	if (nodeTag(stmt->varSetStmt) == T_SelectStmt)
+	{
+		SelectStmt *selstmt = (SelectStmt *)stmt->varSetStmt;
+
+		if (list_length(selstmt->targetList) == 1 &&
+			IsA(linitial(selstmt->targetList), VarAssign))
+		{
+			VarAssign *var = (VarAssign *)linitial(selstmt->targetList);
+
+			if (var->setkind == SET_LOCALVAR || var->setkind == SET_GLOBALVAR ||
+				var->setkind == SET_SESSIONVAR)
+			{
+				char	   *varValue = NULL;
+				List	   *vallist = NIL;
+
+				variableSetStmt = makeNode(VariableSetStmt);
+				if (IsA(var->value, SetToDefault))
+					variableSetStmt->kind = VAR_SET_DEFAULT;
+				else
+					variableSetStmt->kind = VAR_SET_VALUE;
+
+				variableSetStmt->name = var->varname;
+				if (var->setkind == SET_LOCALVAR)
+					variableSetStmt->is_local = true;
+				else
+					variableSetStmt->is_local = false;
+
+				if (IsA(var->value, A_Const))
+				{
+					A_Const *aconst = (A_Const *)var->value;
+
+					if (aconst->val.type == T_String)
+						varValue = aconst->val.val.str;
+					else
+						vallist = list_make1(ivy_makeAConst(&aconst->val, var->location));
+				}
+				else if (IsA(var->value, ColumnRef))
+				{
+					ColumnRef *cref = (ColumnRef *)var->value;
+					ListCell *cell;
+
+					foreach(cell, cref->fields)
+					{
+						if (IsA(lfirst(cell), String))
+						{
+							vallist = lappend(vallist, ivy_makeAConst((Value *)lfirst(cell), var->location));
+						}
+					}
+				}
+				else if (IsA(var->value, TypeCast))
+				{
+					TypeCast *typcast = (TypeCast *)var->value;
+
+					if (typcast->typeName != NULL)
+					{
+						if (list_length(typcast->typeName->names) == 2)
+						{
+							if (IsA(linitial(typcast->typeName->names), String) &&
+								IsA(llast(typcast->typeName->names), String))
+							{
+								if (strcmp(strVal(linitial(typcast->typeName->names)), "pg_catalog") == 0 &&
+									strcmp(strVal(llast(typcast->typeName->names)), "bool") == 0)
+								{
+									if (IsA(typcast->arg, A_Const))
+									{
+										A_Const *aconst = (A_Const *)typcast->arg;
+
+										if (aconst->val.type == T_String)
+										{
+											if (strcmp((aconst->val.val.str), "f") == 0)
+												vallist = lappend(vallist, ivy_makeStringConst("false", var->location));
+											else if (strcmp((aconst->val.val.str), "t") == 0)
+												vallist = lappend(vallist, ivy_makeStringConst("true", var->location));
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				else
+				{
+					return NULL;
+				}
+
+				if (variableSetStmt->kind != VAR_SET_DEFAULT && varValue != NULL &&
+					guc_list_input_check(var->varname))
+				{
+					List	   *namelist;
+					ListCell   *cell;
+
+					SplitIdentifierString(varValue, ',', &namelist);
+					foreach(cell, namelist)
+					{
+						vallist = lappend(vallist, ivy_makeStringConst((char *)lfirst(cell), var->location));
+					}
+				}
+				else
+				{
+					if (varValue != NULL && vallist == NIL)
+						vallist = list_make1(ivy_makeStringConst(varValue, var->location));
+				}
+				variableSetStmt->args = vallist;
+
+			}
+		}
+	}
+
+	return variableSetStmt;
+}
+
+/* transformMysVariableSetStmt
+ *
+ * transform Mysql Set clause,If there is only one set, it is
+ * a VariableSetStmt node, Otherwise, it is a query node.
+ */
+static Query *
+transformMysVariableSetStmt(ParseState *pstate, MysVariableSetStmt *stmt)
+{
+	Query *qry;
+	VariableSetStmt *setvar = NULL;
+
+	/* If this is a Select node, determine the number of
+	 * target list on the select, it there is only one node,
+	 * determin whether it is a function,if it's a funtion
+	 * and the function name is also a parameter setting
+	 * function, then determine whether the second parameter
+	 * is a simple value, if so, it is a VariableSetStmt node,
+	 * otherwise return a MysVariableSetStmt node.
+	 */
+	setvar = trans_MysVariable_to_VariableSet(pstate, stmt);
+	if (setvar != NULL)
+	{
+		qry = makeNode(Query);
+		qry->commandType = CMD_UTILITY;
+		qry->utilityStmt = (Node *) setvar;
+		return qry;
+	}
+
+	/* this is a SET statement, set p_myssetvar to true */
+	pstate->p_myssetvar = true;
+
+	if (nodeTag(stmt->varSetStmt) == T_SelectStmt)
+	{
+		SelectStmt	   *selstmt = (SelectStmt *)stmt->varSetStmt;
+		ListCell	   *cell;
+		List		   *newtargetlist = NIL;
+
+		/* Transform VarAssign node to a ResTarget node */
+		foreach(cell, selstmt->targetList)
+		{
+			if (IsA(lfirst(cell), VarAssign))
+			{
+				ResTarget	   *result;
+				VarAssign	   *var;
+
+				var = (VarAssign *)lfirst(cell);
+				result = makeNode(ResTarget);
+				result->name = NULL;
+				result->indirection = NIL;
+				result->val = (Node *)var;
+				result->location = var->location;
+
+				newtargetlist = lappend(newtargetlist, result);
+			}
+		}
+
+		if (newtargetlist != NIL)
+			selstmt->targetList = newtargetlist;
+	}
+
+	/* transform contained query(SelectStmt) */
+	stmt->varSetStmt = (Node *) transformOptionalSelectInto(pstate, stmt->varSetStmt);
+
+	/* represent the command as a utility Query */
+	qry = makeNode(Query);
+	qry->commandType = CMD_UTILITY;
+	qry->utilityStmt = (Node *) stmt;
+
+	return qry;
+}
+
+/* transformSelectIntoUservarStmt
+ *
+ * For select into,
+ * stored procedures have their own process, can't reach here
+ */
+static Query *
+transformSelectIntoUservarStmt(ParseState *pstate, SelectIntoUserVarStmt *stmt)
+{
+	Query *result;
+	ListCell *lc;
+	int targetNum = list_length(stmt->target);
+
+	foreach(lc, stmt->target)
+	{
+		if (!IsA(lfirst(lc), VarRef))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("Undeclared variable")));
+		}
+	}
+
+	/* transform contained query(SelectStmt) */
+	stmt->expr = (Node *) transformStmt(pstate, stmt->expr);
+
+	foreach(lc, ((Query *)(stmt->expr))->targetList)
+	{
+		TargetEntry *n = (TargetEntry *)lfirst(lc);
+
+		if (n->resjunk == false)
+		{
+			targetNum--;
+		}
+	}
+
+	if (targetNum != 0)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("The used SELECT statements have a different number of columns")));
+	}
+
+	/* represent the command as a utility Query */
+	result = makeNode(Query);
+	result->commandType = CMD_UTILITY;
+	result->utilityStmt = (Node *) stmt;
+
+	return result;
+}
+/* End - ReqID:SRS-MYSQL-SET */

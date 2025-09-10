@@ -68,6 +68,7 @@
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
+#include "mysql_parser/mys_set_hook.h"	/* ReqID:SRS-MYSQL-SET */
 
 
 typedef struct ExprSetupInfo
@@ -2765,6 +2766,25 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
+
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_VarRef:
+			{
+				VarRef	   *ref = (VarRef *) node;
+
+				ref->varkind = USER_VAR;
+				if (ref->varname != NULL)
+				{
+					scratch.opcode = EEOP_VARREF;
+					scratch.d.varref.varname = ref->varname;
+					scratch.d.varref.value = ref->value;
+					scratch.d.varref.rettype = ref->rettype;
+
+					ExprEvalPushStep(state, &scratch);
+				}
+				break;
+			}
+		/* End - ReqID:SRS-MYSQL-SET */
 
 		default:
 			elog(ERROR, "unrecognized node type: %d",

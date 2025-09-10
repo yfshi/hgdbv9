@@ -1,0 +1,123 @@
+--set names
+--original
+set names ucs2;	--err
+ERROR:  invalid value for parameter "client_encoding": "ucs2"
+set names utf16;	--err
+ERROR:  invalid value for parameter "client_encoding": "utf16"
+set names utf16le;	--err
+ERROR:  invalid value for parameter "client_encoding": "utf16le"
+set names utf16le;	--err
+ERROR:  invalid value for parameter "client_encoding": "utf16le"
+set names utf32;	--err
+ERROR:  invalid value for parameter "client_encoding": "utf32"
+set names utf8;
+set names default;
+--compatible
+set names ucs2 COLLATE 'xxx';	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'ucs2' 
+set names utf16 COLLATE 'xxx';	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16' 
+set names utf16le COLLATE 'xxx';	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16le' 
+set names utf16le COLLATE 'xxx';	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16le' 
+set names utf32 COLLATE 'xxx';	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf32' 
+set names utf8 COLLATE default;
+set names ucs2 COLLATE xxx;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'ucs2' 
+set names utf16 COLLATE xxx;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16' 
+set names utf16le COLLATE xxx;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16le' 
+set names utf16le COLLATE xxx;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16le' 
+set names utf32 COLLATE xxx;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf32' 
+set names utf8 COLLATE default;
+set mysql.at_or_atat = on;
+--TC_IVYSQL_MYSQL_SET_ NAMES_001
+set NAMES 'utf8mb4';
+show client_encoding;  --UTF8
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+--TC_IVYSQL_MYSQL_SET_ NAMES_002
+set NAMES 'utf8wertet'; --err
+ERROR:  invalid value for parameter "client_encoding": "utf8wertet"
+--TC_IVYSQL_MYSQL_SET_ NAMES_003
+set NAMES 'utf8mb4'; --UTF8
+set NAMES "gbk";	--GBK
+set NAMES utf8;	--UTF8
+--TC_IVYSQL_MYSQL_SET_ NAMES_004
+SET NAMES 'utf8mb4';
+select @@client_encoding;
+ ?column? 
+----------
+ UTF8
+(1 row)
+
+SET NAMES 'gbk';
+select @@client_encoding;
+ ?column? 
+----------
+ GBK
+(1 row)
+
+--TC_IVYSQL_MYSQL_SET_ NAMES_005 --no set
+SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';
+select @@client_encoding;
+ ?column? 
+----------
+ GBK
+(1 row)
+
+SET NAMES 'utf8mb4' COLLATE 'utf32_unicode_ci';
+select @@client_encoding;
+ ?column? 
+----------
+ GBK
+(1 row)
+
+--TC_IVYSQL_MYSQL_SET_ NAMES_006 --no set
+set NAMES 'utf8mb4' COLLATE  'utf8mb4_unicode_ci';
+select @@client_encoding;
+ ?column? 
+----------
+ GBK
+(1 row)
+
+set NAMES 'utf8mb4' COLLATE  "utf8mb4_general_ci";
+select @@client_encoding;
+ ?column? 
+----------
+ GBK
+(1 row)
+
+set NAMES 'utf8mb4' COLLATE  utf8mb4_unicode_ci;
+select @@client_encoding;
+ ?column? 
+----------
+ GBK
+(1 row)
+
+--TC_IVYSQL_MYSQL_SET_ NAMES_007
+set NAMES DEFAULT;
+select @@client_encoding;  --UTF8
+ ?column? 
+----------
+ UTF8
+(1 row)
+
+--TC_IVYSQL_MYSQL_SET_ NAMES_008
+set NAMES ucs2;  --err
+ERROR:  invalid value for parameter "client_encoding": "ucs2"
+set NAMES utf16; --err
+ERROR:  invalid value for parameter "client_encoding": "utf16"
+set NAMES utf16le; --err
+ERROR:  invalid value for parameter "client_encoding": "utf16le"
+set NAMES utf32; --err
+ERROR:  invalid value for parameter "client_encoding": "utf32"
+set mysql.at_or_atat = off;

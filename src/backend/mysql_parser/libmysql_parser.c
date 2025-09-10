@@ -176,7 +176,14 @@ mysql_raw_parser(const char *str, RawParseMode mode)
 			MODE_PLPGSQL_EXPR,	/* RAW_PARSE_PLPGSQL_EXPR */
 			MODE_PLPGSQL_ASSIGN1,	/* RAW_PARSE_PLPGSQL_ASSIGN1 */
 			MODE_PLPGSQL_ASSIGN2,	/* RAW_PARSE_PLPGSQL_ASSIGN2 */
-			MODE_PLPGSQL_ASSIGN3	/* RAW_PARSE_PLPGSQL_ASSIGN3 */
+			MODE_PLPGSQL_ASSIGN3,	/* RAW_PARSE_PLPGSQL_ASSIGN3 */
+			/* pad with 0 as a placeholder for oracle-added values to correctly fetch MySQL value */
+			0,						/* RAW_PARSE_PLISQL_EXPR */
+			0,						/* RAW_PARSE_PLISQL_ASSIGN1 */
+			0,						/* RAW_PARSE_PLISQL_ASSIGN2 */
+			0,						/* RAW_PARSE_PLISQL_ASSIGN3 */
+			0,						/* RAW_PARSE_PLISQL_ASSIGNN */
+			MODE_PLMYSQL_EXPR		/* RAW_PLMYSQL_EXPR, set user defined variable in PL */
 		};
 
 		yyextra.have_lookahead = true;

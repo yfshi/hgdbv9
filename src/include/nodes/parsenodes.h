@@ -203,6 +203,13 @@ typedef struct Query
 	List	   *partOids;
 	List	   *partreloids;
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	/* Begin - ReqID:SRS-MYSQL-SET
+	 * If the value is set to true, it means
+	 * VarRef node has been parsed. the value
+	 * from ParseState's p_hasuservar.
+	 */
+	bool		hasuservar;
+	/* End - ReqID:SRS-MYSQL-SET */
 	/*
 	 * The following two fields identify the portion of the source text string
 	 * containing this query.  They are typically only populated in top-level
@@ -4318,5 +4325,63 @@ typedef struct PurgeStmt {
 	bool purge_all;
 } PurgeStmt;
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+typedef enum SetKindType
+{
+	SET_UNKNOW,			/* unknow */
+	SET_GLOBALVAR,		/* set global variable */
+	SET_SESSIONVAR,		/* set session variable */
+	SET_LOCALVAR,		/* set local variable */
+	SET_USERVAR			/* set user defined variable */
+} SetKindType;
+
+typedef enum SetReturn
+{
+	RET_NONE,			/* no return */
+	RET_VALUE			/* need return */
+} SetReturn;
+
+typedef enum VarKind
+{
+	UNKNOW_VAR,			/* unknow variable */
+	SYSTEM_VAR,			/* System variable at the time of retrieval */
+	USER_VAR			/* user defined variable at the time of retrieval */
+} VarKind;
+
+typedef struct MysVariableSetStmt
+{
+	NodeTag type;
+	Node *varSetStmt;	/* SelectStmt */
+} MysVariableSetStmt;
+
+typedef struct SelectIntoUserVarStmt
+{
+	NodeTag type;
+	List *target;
+	Node *expr;		/* SelectStmt */
+} SelectIntoUserVarStmt;
+
+typedef struct VarAssign
+{
+	NodeTag			type;
+	char		   *varname;	/* variable name */
+	Node		   *value;		/* variable value */
+	SetKindType		setkind;	/* variable kind */
+	SetReturn		ret;		/* whether a return is needed */
+	int				location;
+} VarAssign;
+
+typedef struct VarRef
+{
+	NodeTag		type;
+	char	   *varname;	/* variable name */
+	VarKind		varkind;	/* variable kind */
+	bool		compiled;	/* prevent compilation loops */
+	Const	   *value;		/* user defined variable value */
+	Oid			rettype;	/* the first type of user defined variable, when make op.*/
+	int			location;
+} VarRef;
+/* End - ReqID:SRS-MYSQL-SET */
 
 #endif							/* PARSENODES_H */

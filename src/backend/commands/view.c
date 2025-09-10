@@ -614,6 +614,17 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	}
 	PG_END_TRY();
 
+	/* Begin - ReqID:SRS-MYSQL-SET
+	 * Create a view cannot include user defined variable.
+	 */
+	if (MYS_PARSER == compatible_db && viewParse->hasuservar)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("View's SELECT contains a variable or parameter")));
+	}
+	/* End - ReqID:SRS-MYSQL-SET */
+
 	/*
 	 * There are three situations where force view compile fail:
 	 *	1. If there is no view with the same name, we create a placeholder

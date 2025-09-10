@@ -990,6 +990,28 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 
 	ReleaseSysCache(tup);
 
+	/* Begin - ReqID:SRS-MYSQL-SET
+	 * if both sides of the operator are user defined variable,
+	 * determine the target type for conversion and store it.
+	 */
+	if (ltree != NULL && nodeTag(ltree) == T_VarRef)
+	{
+		VarRef *lref;
+
+		lref = (VarRef *)ltree;
+		lref->rettype = exprType((Node *)linitial(result->args));
+		linitial(result->args) = lref;
+	}
+	if (rtree != NULL && nodeTag(rtree) == T_VarRef)
+	{
+		VarRef *rref;
+
+		rref = (VarRef *)rtree;
+		rref->rettype = exprType((Node *)llast(result->args));
+		llast(result->args) = rref;
+	}
+	/* End - ReqID:SRS-MYSQL-SET */
+
 	return (Expr *) result;
 }
 

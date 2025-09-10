@@ -71,6 +71,8 @@ char	   *lc_time_names = NULL;
 int			default_week_format = 0;
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
+bool		at_or_atat = false;		/* ReqID:SRS-MYSQL-SET */
+
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
 #define MAX_LOWER_NUM 2
@@ -189,6 +191,17 @@ int			default_week_format = 0;
 		false,
 		NULL, NULL, NULL
 	},
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	{
+		{"mysql.at_or_atat", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("MySQL user/global/session variable switch."),
+			NULL
+		},
+		&at_or_atat,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-SET */
 
 #endif
 

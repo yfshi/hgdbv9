@@ -111,6 +111,9 @@
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
+/* Begin - ReqID:SRS-MYSQL-SET */
+#include "mysql_parser/mys_set_hook.h"
+/* End - ReqID:SRS-MYSQL-SET */
 
 /*
  *	 Examine the RETURNS clause of the CREATE FUNCTION statement
@@ -3744,6 +3747,11 @@ SKIP_PG_PROC_CHECK:
 		HeapTupleData	newrettupdata;
 		Datum		newretvalue;
 		/* End - ReqID:SRS-PLSQL-RECORD */
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		HeapTuple		tuple = NULL;
+		Datum			proargmodesDatum;
+		bool			isNull;
+		/* End - ReqID:SRS-MYSQL-SET */
 
 		if (fcinfo->isnull)
 			elog(ERROR, "procedure returned null record");
@@ -3791,6 +3799,93 @@ SKIP_PG_PROC_CHECK:
 		/* End - ReqID:SRS-PLSQL-RECORD */
 			slot = ExecStoreHeapTuple(&rettupdata, tstate->slot, false);
 		tstate->dest->receiveSlot(slot, tstate->dest);
+
+		/* Begin - ReqID:SRS-MYSQL-SET
+		 *
+		 * Check if the stored procedure defines any OUT parametes.
+		 * if present, determine their positions and inspect the corresponding
+		 * input arguments. for each argument that is a user defined variable,
+		 * assign the value of the OUT parameter to that user defined variable.
+		 */
+		if (compatible_db == MYS_PARSER)
+		{
+			if (OidIsValid(fexpr->funcid))
+				tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(fexpr->funcid));
+
+			if (HeapTupleIsValid(tuple))
+			{
+				ArrayType	   *arr;
+				int				ndim;
+				Datum		   *elem_values;
+				bool		   *elem_nulls;
+				int				nelems;
+				int				j = 0;
+
+				proargmodesDatum = SysCacheGetAttr(PROCOID, tuple, Anum_pg_proc_proargmodes,
+									   &isNull);
+				if (!isNull)
+				{
+					/* proargmodes is a char array, get array value */
+					arr = DatumGetArrayTypeP(proargmodesDatum);
+					ndim = ARR_NDIM(arr);
+
+					/* The array must be one-dimensional */
+					if (ndim != 1)
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("only one-dimensional char arrays are supported")));
+
+					/*
+					 * Convert the array values into the elem_values and elem_nulls,
+					 * and compute the number of elements, storing the result in nelems,
+					 */
+					deconstruct_array(arr, CHAROID, 1, true, TYPALIGN_CHAR, &elem_values, &elem_nulls, &nelems);
+
+					/* Interate over and check OUT parameters */
+					for (i = 0; i < nelems; i++)
+					{
+						if (!elem_nulls[i])
+						{
+							char c = DatumGetChar(elem_values[i]);
+
+							/*
+							 * if the parameter is an OUT parameter  and the passed-in argument
+							 * is a user-defined variable, assign the value of the OUT parameter
+							 * to that variable.
+							 */
+							if (c == PROARGMODE_OUT && IsA(lfirst(list_nth_cell(stmt->funccall->args, i)), VarRef))
+							{
+								Datum			value;
+								bool			isNull;
+								VarRef		   *userVar;
+								Oid 			valTypeOid;
+								int32			typmod;
+								Oid 			colloid;
+								int 			typlen;
+								bool			attbyval;
+
+								/*
+								 * Get the name, value, type, collate and typlen, typbyval
+								 * of each user variable.
+								 */
+								userVar = (VarRef *)lfirst(list_nth_cell(stmt->funccall->args, i));
+								valTypeOid = TupleDescAttr(retdesc, j)->atttypid;
+								typmod =  TupleDescAttr(retdesc, j)->atttypmod;
+								colloid = TupleDescAttr(retdesc, j)->attcollation;
+								typlen = TupleDescAttr(retdesc, j)->attlen;
+								attbyval = TupleDescAttr(retdesc, j)->attbyval;
+								value = slot_getattr(slot, ++j, &isNull);
+
+								if (setuservarinternal_hook)
+									setuservarinternal_hook(userVar->varname, valTypeOid, typmod, colloid, typlen, value, isNull, attbyval);
+							}
+						}
+					}
+				}
+				ReleaseSysCache(tuple);
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-SET */
 
 		end_tup_output(tstate);
 

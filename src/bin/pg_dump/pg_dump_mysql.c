@@ -931,6 +931,7 @@ selectDumpableNamespace(NamespaceInfo *nsinfo, Archive *fout)
 	else if (strncmp(nsinfo->dobj.name, "pg_", 3) == 0 ||
 			 strcmp(nsinfo->dobj.name, "information_schema") == 0 ||
 			 strcmp(nsinfo->dobj.name, "ivymy") == 0 ||
+			 strcmp(nsinfo->dobj.name, "performance_schema") == 0 ||	/* ReqID:SRS-MYSQL-SET, Do not back up objects in schema performance_schema */
 			 strcmp(nsinfo->dobj.name, "pgagent") == 0) /* ReqID:SRS-SECURITY-AUDIT */
 	{
 		/* Other system schemas don't get dumped */

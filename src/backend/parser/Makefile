@@ -37,7 +37,8 @@ OBJS = \
 	scansup.o \
 	parse_package.o \
 	pg_object_hook.o \
-	parse_connectby.o
+	parse_connectby.o \
+	../mysql_parser/mys_set_hook.o
 
 include $(top_srcdir)/src/backend/common.mk
 

@@ -101,6 +101,7 @@ PG_KEYWORD("rowtype", K_ROWTYPE)
 PG_KEYWORD("schema", K_SCHEMA)
 PG_KEYWORD("schema_name", K_SCHEMA_NAME)
 PG_KEYWORD("scroll", K_SCROLL)
+PG_KEYWORD("set", K_SET)		/* ReqID:SRS-MYSQL-SET */
 PG_KEYWORD("slice", K_SLICE)
 PG_KEYWORD("sqlstate", K_SQLSTATE)
 PG_KEYWORD("stacked", K_STACKED)
