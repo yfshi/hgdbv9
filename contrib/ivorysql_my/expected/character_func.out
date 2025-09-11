@@ -604,6 +604,113 @@ SELECT CHAR(1114111),CHAR(1114112),CHAR(4294967295); -- '\x10FFFF \x110000 \xFFF
  \x10ffff | \x110000 | \xffffffff
 (1 row)
 
+SELECT CHAR(128); -- '\x80'
+ char 
+------
+ \x80
+(1 row)
+
+SELECT CHAR(255); -- '\xff'
+ char 
+------
+ \xff
+(1 row)
+
+SELECT CHAR(65536); -- '\x010000'
+   char   
+----------
+ \x010000
+(1 row)
+
+SELECT CHAR(11111111); -- '\xa98ac7'
+   char   
+----------
+ \xa98ac7
+(1 row)
+
+SELECT CHAR(111111111111); -- '\xdebd01c7'
+    char    
+------------
+ \xdebd01c7
+(1 row)
+
+SELECT CHAR(1111111111111111); -- '\xb71571c7'
+    char    
+------------
+ \xb71571c7
+(1 row)
+
+SELECT CHAR(-2); -- '\xfffffffe'
+    char    
+------------
+ \xfffffffe
+(1 row)
+
+SELECT CHAR(-3, 95, -6); -- '\xfffffffd5ffffffffa'
+         char         
+----------------------
+ \xfffffffd5ffffffffa
+(1 row)
+
+SELECT CHAR(6.1); -- '\x06'
+ char 
+------
+ \x06
+(1 row)
+
+SELECT CHAR(-4.5); -- '\xfffffffb'
+    char    
+------------
+ \xfffffffb
+(1 row)
+
+SELECT CHAR(100, -27, 3.82); -- '\x64ffffffe504'
+      char      
+----------------
+ \x64ffffffe504
+(1 row)
+
+select char('100'); -- '\x64'
+ char 
+------
+ \x64
+(1 row)
+
+SELECT CHAR('10.7'); -- '\x0a'
+ERROR:  invalid input syntax for type bigint: "10.7"
+LINE 1: SELECT CHAR('10.7');
+                    ^
+-- CONCAT
+SELECT CONCAT(20, 30, 40); -- '203040'
+ CONCAT 
+--------
+ 203040
+(1 row)
+
+SELECT CONCAT('A', 'B', 'C'); -- 'ABC'
+ CONCAT 
+--------
+ ABC
+(1 row)
+
+SELECT CONCAT(100, 'a', 200); -- '100a200'
+ CONCAT  
+---------
+ 100a200
+(1 row)
+
+SELECT CONCAT(20, NULL, 30); -- NULL
+ CONCAT 
+--------
+ 
+(1 row)
+
+SELECT CONCAT('a', 50, NULL, true); -- NULL
+ CONCAT 
+--------
+ 
+(1 row)
+
 -- ELT
 SELECT ELT(2, 'a', 'b', 'c'); -- 'b'
  elt 
@@ -1065,6 +1172,12 @@ WARNING:  Truncated incorrect INTEGER value: 'a'
  AB
 (1 row)
 
+SELECT CONCAT('A', SPACE(NULL), 'B'); -- NULL
+ CONCAT 
+--------
+ 
+(1 row)
+
 -- SOUNDEX
 SELECT SOUNDEX('hello'); -- 'H400'
  SOUNDEX 
@@ -1152,6 +1265,30 @@ WARNING:  Truncated incorrect INTEGER value: 'a'
  N,N,N,N
 (1 row)
 
+SELECT EXPORT_SET(8, 'Y', 'N', 9, 8); -- 'N9N9N9Y9N9N9N9N'
+   EXPORT_SET    
+-----------------
+ N9N9N9Y9N9N9N9N
+(1 row)
+
+SELECT EXPORT_SET(8, 'Y', 'N', -1, 4); -- 'N-1N-1N-1Y'
+ EXPORT_SET 
+------------
+ N-1N-1N-1Y
+(1 row)
+
+SELECT EXPORT_SET(255, 'Y', 'N', ',', 4.9); -- 'Y,Y,Y,Y,Y'
+ EXPORT_SET 
+------------
+ Y,Y,Y,Y,Y
+(1 row)
+
+SELECT EXPORT_SET(8, 'Y', 'N', ',', 12.36); -- 'N,N,N,Y,N,N,N,N,N,N,N,N'
+       EXPORT_SET        
+-------------------------
+ N,N,N,Y,N,N,N,N,N,N,N,N
+(1 row)
+
 -- ORD
 SELECT ORD('A'); -- 65
  ORD 
@@ -1163,6 +1300,30 @@ SELECT ORD(NULL); -- NULL
  ORD 
 -----
     
+(1 row)
+
+SELECT ORD(char(10)); -- 10
+ ORD 
+-----
+  10
+(1 row)
+
+SELECT ORD(char(255)); -- 255
+ ORD 
+-----
+ 255
+(1 row)
+
+SELECT ORD(char(-2)); -- 255
+ ORD 
+-----
+ 255
+(1 row)
+
+SELECT ORD(char(6.66)); -- 7
+ ORD 
+-----
+   7
 (1 row)
 
 -- SUBSTRING_INDEX

@@ -16230,7 +16230,7 @@ a_expr:		c_expr									{ $$ = $1; }
 
 					foreach(cell, arg_list)
 					{
-						Node *node = makeTypeCast(lfirst(cell), MySQLSystemTypeName("uint8"), @1);
+						Node *node = makeTypeCast(lfirst(cell), SystemTypeName("int8"), @1);
 						new_arg_list = lappend(new_arg_list, node);
 					}
 					n = makeFuncCall(MysqlSystemFuncName("char"),
@@ -16250,7 +16250,7 @@ a_expr:		c_expr									{ $$ = $1; }
 
 					foreach(cell, arg_list)
 					{
-						Node *node = makeTypeCast(lfirst(cell), MySQLSystemTypeName("uint8"), @1);
+						Node *node = makeTypeCast(lfirst(cell), SystemTypeName("int8"), @1);
 						new_arg_list = lappend(new_arg_list, node);
 					}
 					n = makeFuncCall(MysqlSystemFuncName("char"),
