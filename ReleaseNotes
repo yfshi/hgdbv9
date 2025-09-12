@@ -19,6 +19,9 @@
 	12、审计事件新增审计 rollback prepare 语句；
 	13、新增了一些审计事件例如log disk full、archive command disk full、too many connect、hghac sync guc(need hghac modification) 、walsender connect & exit 、support rollback 、support dead lock、support open file fail、failover and switchover；
 	14、增加了兼容MySQL enum 类型；
+	15、新增最小审计事件功能；
+	16、新增语句级回滚功能；
+	17、MySQL兼容新增set语句；
 2、修复问题
 	1、修复了MySQL兼容，SET lc_time_names等参数异常断开的问题，bug#5527；
 	2、修复了MySQL兼容，get_format返回类型不正确的问题，bug#5533；
@@ -63,6 +66,8 @@
 	41、修复了创建包体时重新解析失效的force view引起core的问题，bug#5707；
 	42、修复了全局临时表在事务中多次truncate时，表信息重复添加到了pendingDeletes链表中导致smgrclose报错的问题，OA-REQ-1702；
 	43、新增了支持Oracle subtype的range范围的类型，bug#5706;
+	44、修复了MySQL兼容export_set函数对参数类型支持不够的问题；
+	45、修复了MySQL兼容ord函数对参数类型支持不够的问题；
 
 V9.0.4.1，禅道版本ID：4647-2025/08/08
 1、新增特性
