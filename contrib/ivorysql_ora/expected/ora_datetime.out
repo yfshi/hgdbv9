@@ -826,7 +826,7 @@ SET NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';	-- now, can not suppo
 SELECT date'2016-11-26' - date'2015-10-26';
  ?column? 
 ----------
- 397
+      397
 (1 row)
 
 -- oradate - oratimestamp
