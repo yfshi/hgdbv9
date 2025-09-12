@@ -25,7 +25,11 @@ include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
 ifeq ($(with_sqlite), yes)
+ifeq ($(enable_dky_beta_feature), yes)
+override DATA := pg_audit--1.2.sql pg_audit--1.1--1.2-sqlite.sql pg_audit--1.1.sql pg_audit--1.0--1.1-sqlite.sql sqlite.db
+else
 override DATA := pg_audit--1.1.sql pg_audit--1.0--1.1-sqlite.sql sqlite.db
+endif
 endif
 
 #SHLIB_LINK += -L$(top_builddir)/src/port -lpgport -lpgport_shlib -lpgport_srv

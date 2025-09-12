@@ -716,6 +716,7 @@ with_systemd
 with_selinux
 with_license
 with_ldap
+enable_dky_beta_feature
 with_sqlite
 with_swsds
 with_gmssl
@@ -878,7 +879,7 @@ with_krb_srvnam
 with_gmssl
 with_swsds
 with_sqlite
-enable_audit_event
+enable_dky_beta_feature
 with_pam
 with_bsd_auth
 with_ldap
@@ -1563,7 +1564,8 @@ Optional Features:
   --disable-thread-safety disable thread-safety in client libraries
   --enable-numa           enable NUMA performance
   --enable-internal-guc   enable internal GUC performance
-  --enable-audit-event    enable some audit event
+  --enable-dky_beta_feature
+                          enable some audit event
   --disable-largefile     omit support for large files
 
 Optional Packages:
@@ -9362,28 +9364,31 @@ $as_echo "$with_sqlite" >&6; }
 $as_echo_n "checking whether to build with some audit event support... " >&6; }
 
 
-# Check whether --enable-audit-event was given.
-if test "${enable_audit_event+set}" = set; then :
-  enableval=$enable_audit_event;
+# Check whether --enable-dky_beta_feature was given.
+if test "${enable_dky_beta_feature+set}" = set; then :
+  enableval=$enable_dky_beta_feature;
   case $enableval in
     yes)
 
-$as_echo "#define ENABLE_AUDIT_EVENT 1" >>confdefs.h
+$as_echo "#define ENABLE_DKY_BETA_FEATURE 1" >>confdefs.h
 
       ;;
     no)
       :
       ;;
     *)
-      as_fn_error $? "no argument expected for --enable-audit-event option" "$LINENO" 5
+      as_fn_error $? "no argument expected for --enable-dky_beta_feature option" "$LINENO" 5
       ;;
   esac
 
 else
-  enable_audit_event=no
+  enable_dky_beta_feature=no
 
 fi
 
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_dky_beta_feature" >&5
+$as_echo "$enable_dky_beta_feature" >&6; }
 
 
 #

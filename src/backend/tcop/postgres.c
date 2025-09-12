@@ -3303,7 +3303,7 @@ die(SIGNAL_ARGS)
 {
 	int			save_errno = errno;
 
-#ifdef ENABLE_AUDIT_EVENT
+#ifdef ENABLE_DKY_BETA_FEATURE
 	if (audit_aborted_hook)
 		(*audit_aborted_hook)();
 

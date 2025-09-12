@@ -87,7 +87,7 @@
 #undef HG_HGDB_VERSION
 /* End - BUG#Z00005371 */
 /* Define to 1 to build with audit event. (--enable-audit-event) */
-#undef ENABLE_AUDIT_EVENT
+#undef ENABLE_DKY_BETA_FEATURE
 
 /* Define to build with GSSAPI support. (--with-gssapi) */
 #undef ENABLE_GSS

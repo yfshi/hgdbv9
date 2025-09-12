@@ -39,7 +39,7 @@
 #include "license.h"
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
-#ifdef ENABLE_AUDIT_EVENT
+#ifdef ENABLE_DKY_BETA_FEATURE
 #include "sqliteaudit.h"
 #endif
 /* PID can be negative for standalone backend */
@@ -1062,7 +1062,7 @@ do_start(void)
 				print_msg(_(" stopped waiting\n"));
 				write_stderr(_("%s: server did not start in time\n"),
 							 progname);
-#if defined (ENABLE_AUDIT_EVENT) && defined (USE_SQLITE)
+#if defined (ENABLE_DKY_BETA_FEATURE) && defined (USE_SQLITE)
 				audit_tools(pg_data, "pg_ctl", 'f', 'y', "START", "pg_ctl: server did not start in time");
 #endif
 				exit(1);
@@ -1072,7 +1072,7 @@ do_start(void)
 				write_stderr(_("%s: could not start server\n"
 							   "Examine the log output.\n"),
 							 progname);
-#if defined (ENABLE_AUDIT_EVENT) && defined (USE_SQLITE)
+#if defined (ENABLE_DKY_BETA_FEATURE) && defined (USE_SQLITE)
 				audit_tools(pg_data, "pg_ctl", 'f', 'y', "START", "pg_ctl: could not start server");
 #endif
 				exit(1);

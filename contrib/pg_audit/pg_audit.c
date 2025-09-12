@@ -145,13 +145,17 @@
 #include "se_features_interface.h"
 
 
-
-
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
 #endif
 
-
+static const struct config_enum_entry audit_policy_options[] = {
+	{"pause", AUDIT_PAUSE, false},
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+	{"cycle", AUDIT_CYCLE, false},
+#endif
+	{NULL, 0, false}
+};
 
 static const struct config_enum_entry audit_turn_options[] = {
 	{"off", AUDIT_OFF, false},
@@ -196,6 +200,8 @@ char *audit_space_alarm = NULL;
 #define SYS_SYSSAO		"syssao_role"
 /* common user */
 #define SYS_COMMON		"common"
+
+#define CACHE_SPACE 8192
 
 #define IsSpace(c)		(isspace((unsigned char)(c)))
 
@@ -347,7 +353,19 @@ static void get_disk_space(const char *path, uint64 *total, uint64 *free);
 static void audit_disk_full(void);
 static void AuditShememInit(void);
 static void audit_hghac_sync_guc(Relation	audit_log, AuditEvent *auditevent);
-static bool is_exceeded_disklimit(void);
+static bool is_exceeded_disklimit(char relkind);
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+static void audit_drop_table_partition(void);
+static void audit_die(SIGNAL_ARGS);
+static void audit_register_all_db_work(AuditTable flag);
+void pg_audit_launch_create_table(Datum main_arg);
+void pg_audit_launch_drop_table(Datum main_arg);
+static bool is_db_changes(List      *sublist);
+static bool is_table_exits(TimestampTz time_cur);
+static bool check_disk_size(void);
+#endif
+
+static void send_signal_launch_proc(void);
 static bool is_enable_audit(void);
 
 
@@ -940,6 +958,18 @@ static void audit_define_GUC(void)
 						 NULL,
 						 NULL,
 						 NULL);
+
+	DefineCustomEnumVariable("audit.logpolicy",
+						  "choice audit log policy",
+						  NULL,
+						  (int *)&(audit_GUC.logpolicy),
+						  AUDIT_PAUSE,
+						  audit_policy_options,
+						  PGC_POSTMASTER,
+						  0,
+						  NULL,
+						  NULL,
+						  NULL);
 }
 
 /*
@@ -1161,8 +1191,13 @@ audit_insert_all_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, in
 	if (*audit_GUC.audit_pause)
 		return ;
 
-	if(is_exceeded_disklimit())
-		return;
+	if(is_exceeded_disklimit(log->rd_rel->relkind))
+	{
+		if (audit_GUC.logpolicy == AUDIT_PAUSE)
+		{
+			return ;
+		}
+	}
 
 	PG_TRY();
 	{
@@ -1449,8 +1484,37 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 
 	tuple = heap_form_tuple(RelationGetDescr(log), values, nulls);
 
-	simple_heap_insert(log, tuple);
-	//targetBlock = RelationGetTargetBlock(log);
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+
+	if (log->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+	{
+		char   *date_str = NULL;
+		Oid 		relOid;
+		StringInfoData buf;
+		Relation	audit_log;
+
+		date_str = text_to_cstring(DatumGetTextP(DirectFunctionCall2(timestamptz_to_char,
+													TimestampTzGetDatum(event->audittime),
+													PointerGetDatum(cstring_to_text("YYYYMMDD")))));
+		initStringInfo(&buf);
+		appendStringInfo(&buf, "%s_%s", PG_AUDIT_LOG, date_str);
+
+		relOid = get_relname_relid(buf.data, log->rd_rel->relnamespace);
+		if (relOid == InvalidOid)
+			elog(ERROR, " could not get oid of relation %s", buf.data);
+
+		audit_log = table_open(relOid, RowExclusiveLock);
+
+		simple_heap_insert(audit_log, tuple);
+		table_close(audit_log, RowExclusiveLock);
+		audit_log = NULL;
+	}
+	else
+#endif
+	{
+		simple_heap_insert(log, tuple);
+		//targetBlock = RelationGetTargetBlock(log);
+	}
 
 	if(values)
 		pfree(values);
@@ -1473,9 +1537,14 @@ audit_write_record_list(void)
 {
 	ListCell *listcell;
 	Oid			relOid;
-	Relation	audit_log;
+	Relation	audit_log = NULL;
 	bool		need_check_alteruser = false;
 	bool		need_check_dropuser = false;
+
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+	if (!check_disk_size())
+		return ;
+#endif
 
 	StartTransactionCommand();
 	
@@ -1483,7 +1552,7 @@ audit_write_record_list(void)
 	if (relOid == InvalidOid)
 		elog(ERROR, " could not get oid of relation pg_audit_log");
 
-	audit_log = table_open(relOid, AccessExclusiveLock);
+	audit_log = table_open(relOid, RowExclusiveLock);
 
 	foreach(listcell, auditlist)
 	{
@@ -1493,6 +1562,13 @@ audit_write_record_list(void)
 		Form_pg_audit_config audit_form;
 		char	objectItem[NAMEDATALEN] = {0};
 		int 	n_members = 0;
+
+		#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+		if (pg_strcasecmp(auditevent->actionname, CREATE_DATABASE_S) == 0)
+		{
+			send_signal_launch_proc();
+		}
+		#endif
 
 		audit_hghac_sync_guc(audit_log, auditevent);
 
@@ -1655,7 +1731,7 @@ audit_write_record_list(void)
 		MemoryContextDelete(auditevent->auditContext);	
 	}
 	
-	table_close(audit_log, AccessExclusiveLock);
+	table_close(audit_log, RowExclusiveLock);
 	audit_log = NULL;
 
 	CommitTransactionCommand();
@@ -1673,17 +1749,22 @@ audit_write_record_system(AuditEvent *event)
 	Oid			relOid;
 	Relation	audit_log;
 
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+		if (!check_disk_size())
+			return ;
+#endif
+
 	StartTransactionCommand();
 	
 	relOid = get_relname_relid(PG_AUDIT_LOG, PG_PUBLIC_NAMESPACE);
 	if (relOid == InvalidOid)
 		elog(ERROR, " could not get oid of relation pg_audit_log");
 	
-	audit_log = table_open(relOid, AccessExclusiveLock);
+	audit_log = table_open(relOid, RowExclusiveLock);
 	
 	audit_insert_all_log(audit_log, event, NULL, -1);
 	
-	table_close(audit_log, AccessExclusiveLock);
+	table_close(audit_log, RowExclusiveLock);
 	audit_log = NULL;
 
 	CommitTransactionCommand();
@@ -3341,6 +3422,11 @@ audit_alter_set_guc(List *parsetreeList)
 
 		internalStatement = true;
 
+	#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+		if (!check_disk_size())
+			return ;
+	#endif
+
 		StartTransactionCommand();
 
 		/* Connect to SPI manager */
@@ -3385,7 +3471,7 @@ audit_alter_set_guc(List *parsetreeList)
 				return;
 			}
 
-			audit_log = table_open(relOid, AccessExclusiveLock);
+			audit_log = table_open(relOid, RowExclusiveLock);
 			
 			for (i = 0; i < proc; i++)
 			{
@@ -3434,7 +3520,7 @@ audit_alter_set_guc(List *parsetreeList)
 				audit_insert_all_log(audit_log, auditevent, NULL, -1);
 			}
 
-			table_close(audit_log, AccessExclusiveLock);
+			table_close(audit_log, RowExclusiveLock);
 			audit_log = NULL;
 		}
 		
@@ -5424,7 +5510,6 @@ audit_postmaster_sighup_guc(char *context)
 
 	internalStatement = true;
 
-	
 	audittime = GetCurrentTimestamp();
 	time = timestamptz_to_str(audittime);
 	strncpy(timec, time, 19);
@@ -5498,7 +5583,7 @@ audit_postmaster_sighup_guc(char *context)
 			return;
 		}
 
-		audit_log = table_open(relOid, AccessExclusiveLock);
+		audit_log = table_open(relOid, RowExclusiveLock);
 		
 		for (i = 0; i < proc; i++)
 		{
@@ -5579,7 +5664,7 @@ audit_postmaster_sighup_guc(char *context)
 
 		}
 
-		table_close(audit_log, AccessExclusiveLock);
+		table_close(audit_log, RowExclusiveLock);
 		audit_log = NULL;	
 	}
 	
@@ -5590,7 +5675,6 @@ audit_postmaster_sighup_guc(char *context)
 	pgstat_report_activity(STATE_IDLE, NULL);
 	internalStatement = false;
 }
-
 
 /* When configuring the archive path, after restarting,
  * it is necessary to enable pagent scheduled tasks to
@@ -6139,7 +6223,7 @@ static bool is_disk_full(void)
 			get_disk_space(DataDir, &totle, &free);
 		}
 
-		if (free < 2048)
+		if (free < CACHE_SPACE)
 		{
 			is_full = true;
 		}
@@ -6148,13 +6232,13 @@ static bool is_disk_full(void)
 	return is_full;
 }
 
-
 static void audit_disk_full(void)
 {
 	uint64 totle = 0;
 	uint64 free = 0;
 	StringInfoData buf;
 	int ret = -1;
+	static bool disk_full = false;
 
 	/* get custom tablespace path*/
 	ret = audit_get_tablespace_path(&buf);
@@ -6171,30 +6255,48 @@ static void audit_disk_full(void)
 			get_disk_space(DataDir, &totle, &free);
 		}
 
-		if (free < 2048 && *audit_GUC.audit_pause == false)
+		if (free < CACHE_SPACE && *audit_GUC.audit_pause == false)
 		{
 
 #ifdef USE_SQLITE
-			if (sqlite_open_db_for_audit_hook)
+			if (sqlite_open_db_for_audit_hook && (audit_GUC.logpolicy== AUDIT_PAUSE || (!disk_full && audit_GUC.logpolicy== AUDIT_CYCLE)))
 			{
 				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_DISK_FULL, AUDIT_SUCCESS, NULL, NULL);
 			}
 #endif
-			*audit_GUC.audit_pause = true;
-			ereport(WARNING,(errcode(ERRCODE_DISK_FULL),errmsg("Disk space is almost full and pause audit")));
+			if (audit_GUC.logpolicy == AUDIT_PAUSE)
+				*audit_GUC.audit_pause = true;
+		#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+			else if (audit_GUC.logpolicy == AUDIT_CYCLE)
+			{
+				audit_register_all_db_work(AUDIT_DROP);
+			}
+		#endif
+
+			if (!disk_full)
+			{
+				disk_full = true;
+				ereport(WARNING,(errcode(ERRCODE_DISK_FULL),errmsg("Disk space is almost full and pause audit")));
+			}
 		}
-		else if (free >= 2048 &&*audit_GUC.audit_pause == true)
+		else if (free >= CACHE_SPACE && *audit_GUC.audit_pause == true)
 		{
 				*audit_GUC.audit_pause = false;
+				disk_full = false;
 				ereport(INFO,(errmsg("Disk space is enough and recover audit")));
 		}
-
 	}
 }
 
-static void send_signal_launch_proc()
+static void send_signal_launch_proc(void)
 {
 	slist_mutable_iter iter;
+
+	if (!IsUnderPostmaster)
+	{
+		return;
+	}
+
 	slist_foreach_modify(iter, &BackgroundWorkerList)
 	{
 		RegisteredBgWorker *rw;
@@ -6207,9 +6309,63 @@ static void send_signal_launch_proc()
 			break;
 		}
 	}
+	return ;
 }
 
-static bool is_exceeded_disklimit(void)
+static uint64 get_partiton_table_size(char *table)
+{
+	int ret = 0;
+	StringInfoData buf;
+	uint64 proc;
+	uint64 table_size = 0;
+
+	internalStatement = true;
+
+	if (SPI_connect() != SPI_OK_CONNECT)
+		elog(ERROR, "SPI_connect failed");
+
+	initStringInfo(&buf);
+	appendStringInfo(&buf, "select SUM(pg_total_relation_size(child.oid)) from pg_inherits "
+							"join pg_class parent on pg_inherits.inhparent= parent.oid "
+							"join pg_class child on pg_inherits.inhrelid= child.oid where parent.relname='%s';", table);
+	ret = SPI_execute(buf.data, false, 0);
+
+	pfree(buf.data);
+
+	if (ret != SPI_OK_SELECT)
+	{
+		internalStatement = false;
+		elog(WARNING, "cannot select pg_database: error code %d", ret);
+		SPI_finish();
+		return 0;
+	}
+	proc = SPI_processed;
+
+	if (proc == 1)
+	{
+		SPITupleTable *spi_tuptable = SPI_tuptable;
+		TupleDesc		spi_tupdesc = spi_tuptable->tupdesc;
+		char *str = SPI_getvalue(spi_tuptable->vals[0], spi_tupdesc, 1);
+
+		if (str != NULL)
+			table_size = strtoul(str, NULL, 10);
+		else
+			table_size = 0;
+	}
+	else if (proc != 1)
+	{
+		internalStatement = false;
+		elog(ERROR, "get partition table:pg_audit_log size fail! ");
+	}
+	internalStatement = false;
+
+	if (SPI_finish() != SPI_OK_FINISH)
+		elog(ERROR, "SPI_finish failed");
+
+	return table_size;
+}
+
+static bool is_exceeded_disklimit(char relkind)
 {
 	static bool is_alarmed = false;
 	static bool is_limited = false;
@@ -6230,7 +6386,10 @@ static bool is_exceeded_disklimit(void)
 	{
 		PushActiveSnapshot(GetTransactionSnapshot());
 		/* get table 'hg_audit_log' total size */
-		table_size = audit_get_total_log_size("pg_audit_log");
+		if (relkind == RELKIND_PARTITIONED_TABLE)
+			table_size = get_partiton_table_size(PG_AUDIT_LOG);
+		else
+			table_size = audit_get_total_log_size(PG_AUDIT_LOG);
 
 		/* threshold alarm */
 		if (audit_GUC.audit_spacealarm > 0 && !is_alarmed && table_size >= audit_GUC.audit_spacealarm * audit_GUC.audit_spacelimit
@@ -6248,6 +6407,11 @@ static bool is_exceeded_disklimit(void)
 		{
 			audit_pause = false;
 			is_limited = false;
+		}
+		else if (audit_GUC.logpolicy == AUDIT_CYCLE && table_size >= audit_GUC.audit_spacelimit)
+		{
+			is_limited = true;
+			audit_pause = true;
 		}
 
 		if (is_disk_full())
@@ -6268,8 +6432,6 @@ static bool is_exceeded_disklimit(void)
 		return false;
 }
 
-
-
 /*
  * Description:
  *      Perform differentiated checks based on temporal and spatial patterns, then delete the logs
@@ -6280,6 +6442,7 @@ static void audit_choice_retentionpolicy_mode(void)
 	static bool is_alarmed = false;
 	static bool is_limited = false;
 	static TimestampTz pre_check_time = 0;
+	static char relkind = '\0';
 	TimestampTz cur_time = 0;
 	TimestampTz del_time = 0;
 	uint64 table_size = 0;
@@ -6303,7 +6466,6 @@ static void audit_choice_retentionpolicy_mode(void)
 			/* delete hg_audit_log */
 			audit_delete_log(del_time);
 		}
-
 		audit_disk_full();
 
 		PopActiveSnapshot();
@@ -6316,7 +6478,25 @@ static void audit_choice_retentionpolicy_mode(void)
 		PushActiveSnapshot(GetTransactionSnapshot());
 
 		/* get table 'hg_audit_log' total size */
-		table_size = audit_get_total_log_size("pg_audit_log");
+		if (relkind == '\0')
+		{
+			Relation audit_log;
+			Oid relOid = InvalidOid;
+
+			relOid = get_relname_relid(PG_AUDIT_LOG, PG_PUBLIC_NAMESPACE);
+			if (relOid == InvalidOid)
+				elog(ERROR, " could not get oid of relation pg_audit_log");
+
+			audit_log = table_open(relOid, AccessShareLock);
+			relkind = audit_log->rd_rel->relkind;
+			table_close(audit_log, AccessShareLock);
+			audit_log = NULL;
+		}
+
+		if (relkind == RELKIND_PARTITIONED_TABLE)
+			table_size = get_partiton_table_size(PG_AUDIT_LOG);
+		else
+			table_size = audit_get_total_log_size(PG_AUDIT_LOG);
 
 		/* threshold alarm */
 		if (audit_GUC.audit_spacealarm > 0 && !is_alarmed && table_size >= audit_GUC.audit_spacealarm * audit_GUC.audit_spacelimit
@@ -6333,7 +6513,6 @@ static void audit_choice_retentionpolicy_mode(void)
 		}
 		else if (!is_limited && table_size >= audit_GUC.audit_spacelimit)
 		{
-			is_limited = true;
 
 			#ifdef USE_SQLITE
 				if (sqlite_open_db_for_audit_hook)
@@ -6342,7 +6521,17 @@ static void audit_choice_retentionpolicy_mode(void)
 				}
 			#endif
 
-			*audit_GUC.audit_pause = true;
+			if (audit_GUC.logpolicy == AUDIT_PAUSE)
+			{
+				*audit_GUC.audit_pause = true;
+				is_limited = true;
+			}
+		#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+			else if (audit_GUC.logpolicy == AUDIT_CYCLE)
+			{
+				audit_register_all_db_work(AUDIT_DROP);
+			}
+		#endif
 			ereport(WARNING,(errcode(ERRCODE_DISK_FULL),
 					errmsg("Disk space is almost full and pause audit, table_size:%lu >= table_limit:%lu", table_size, audit_GUC.audit_spacelimit)));
 		}
@@ -6360,7 +6549,6 @@ static void audit_choice_retentionpolicy_mode(void)
 
 		PopActiveSnapshot();
 		CommitTransactionCommand();
-
 	}
 }
 
@@ -6500,7 +6688,6 @@ audit_show_diskinfo(PG_FUNCTION_ARGS)
 	PG_RETURN_NULL();
 }
 
-
 /* Functions of backend precess */
 void
 pg_audit_launch(void)
@@ -6518,7 +6705,16 @@ pg_audit_launch(void)
 
 	/* Connect to our database */
 	BackgroundWorkerInitializeConnection(DatabaseName, NULL, 0);
-	
+
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+
+	/* create partition table first. mandatory audit must use table */
+	StartTransactionCommand();
+	PushActiveSnapshot(GetTransactionSnapshot());
+	audit_register_all_db_work(AUDIT_CREATE);
+	PopActiveSnapshot();
+	CommitTransactionCommand();
+#endif
 
 	/* If audit_GUC.track_settings is off then pg_track_settings_snapshot
 	 * function will not be called to prevent it from affecting regress
@@ -6556,7 +6752,16 @@ pg_audit_launch(void)
 		while (!got_sigterm)
 		{
 			/* check based on time or space*/
-			audit_choice_retentionpolicy_mode();
+				audit_choice_retentionpolicy_mode();
+
+			#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+				/* create partition table first. mandatory audit must use table */
+				StartTransactionCommand();
+				PushActiveSnapshot(GetTransactionSnapshot());
+				audit_register_all_db_work(AUDIT_CREATE);
+				PopActiveSnapshot();
+				CommitTransactionCommand();
+			#endif
 
 			/*
 			 * In case of a SIGHUP, just reload the configuration.
@@ -10421,3 +10626,658 @@ pg_audit_switch_primary(PG_FUNCTION_ARGS)
 
 	PG_RETURN_BOOL(true);
 }
+
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+static bool check_disk_size(void)
+{
+	StartTransactionCommand();
+	if(is_exceeded_disklimit(RELKIND_PARTITIONED_TABLE))
+	{
+		if (audit_GUC.logpolicy == AUDIT_PAUSE)
+		{
+			CommitTransactionCommand();
+			return false;
+		}
+	}
+	CommitTransactionCommand();
+
+	return true;
+}
+
+static void audit_drop_table_partition(void)
+{
+	uint64		proc;
+	int			ret;
+	char	   *table = NULL;
+	StringInfoData buf;
+	TimestampTz time_cur;
+	char *date_str = NULL;
+	Oid save_userid;
+	Oid syssao_oid;
+	int save_sec_context;
+
+	SetCurrentStatementStartTimestamp();
+	StartTransactionCommand();
+	PushActiveSnapshot(GetTransactionSnapshot());
+
+	syssao_oid = get_role_oid("syssao", false);
+	GetUserIdAndSecContext(&save_userid, &save_sec_context);
+	SetUserIdAndSecContext(syssao_oid,
+						save_sec_context | SECURITY_RESTRICTED_OPERATION);
+
+	if (SPI_connect() != SPI_OK_CONNECT)
+	{
+		ereport(ERROR, errmsg("SPI_connect failed"));
+	}
+
+	internalStatement = true;
+
+	initStringInfo(&buf);
+	pgstat_report_activity(STATE_RUNNING, buf.data);
+	appendStringInfo(&buf, "select relid::regclass as child_table from pg_partition_tree('pg_audit_log');");
+	ret = SPI_execute(buf.data, false, 0);
+
+	if (ret != SPI_OK_SELECT)
+	{
+		internalStatement = false;
+		SPI_finish();
+		ereport(ERROR, errmsg("cannot select pg_database: error code %d", ret));
+	}
+
+	proc = SPI_processed;
+	if (proc > 0)
+	{
+		SPITupleTable *spi_tuptable = SPI_tuptable;
+		TupleDesc	spi_tupdesc = spi_tuptable->tupdesc;
+		int64		i;
+		char date[9];
+		int32 datenum=0;
+		int64 del_num = -1;
+		HeapTuple	spi_tuple;
+
+		for (i = 0; i < proc; i++)
+		{
+			spi_tuple = spi_tuptable->vals[i];
+			table = SPI_getvalue(spi_tuple, spi_tupdesc, 1);
+
+			if (pg_strcasecmp(table, PG_AUDIT_LOG) == 0)
+				continue;
+
+			memset(date, 0, sizeof(date));
+			memcpy(date, table + strlen(PG_AUDIT_LOG) + 1, 9 - 1);
+
+			/* choice oldest date table */
+			if (del_num == -1 || datenum > atoi(date))
+			{
+				datenum = atoi(date);
+				del_num = i;
+			}
+		}
+
+		/* get current date */
+		time_cur = GetCurrentTimestamp();
+		date_str = text_to_cstring(DatumGetTextP(DirectFunctionCall2(timestamptz_to_char,
+													TimestampTzGetDatum(time_cur),
+													PointerGetDatum(cstring_to_text("YYYYMMDD")))));
+		spi_tuple = spi_tuptable->vals[del_num];
+		table = SPI_getvalue(spi_tuple, spi_tupdesc, 1);
+
+		if (datenum != atoi(date_str))
+		{
+			if (del_num != -1 && pg_strcasecmp(table, PG_AUDIT_LOG) != 0)
+			{
+				initStringInfo(&buf);
+				appendStringInfo(&buf, "SELECT relowner FROM pg_class WHERE relname='%s' and relnamespace=%d;", table, PG_PUBLIC_NAMESPACE);
+				ret = SPI_execute(buf.data, false, 0);
+
+				if (ret != SPI_OK_SELECT)
+				{
+					internalStatement = false;
+					SPI_finish();
+					ereport(ERROR, errmsg("cannot select pg_database: error code %d", ret));
+				}
+
+				proc = SPI_processed;
+				if (proc == 1)
+				{
+					SPITupleTable *spi_tuptable = SPI_tuptable;
+					TupleDesc	spi_tupdesc = spi_tuptable->tupdesc;
+					Oid  owner_oid;
+
+					owner_oid = atooid(SPI_getvalue(spi_tuptable->vals[0], spi_tupdesc, 1));
+
+					if (!IS_SYSSAO(owner_oid))
+					{
+						char tablename[1024] = {'\0'};
+
+						internalStatement = false;
+						strncpy(tablename, table, 1024);
+						SPI_finish();
+						ereport(ERROR,
+								 errmsg("permission denied:must be owner of table %s", tablename));
+					}
+				}
+
+				initStringInfo(&buf);
+				appendStringInfo(&buf, "DROP TABLE IF EXISTS %s;", table);
+
+				if (buf.len > 0)
+				{
+					bool old_mode = se_feature.mode;
+					se_feature.mode = false;
+
+					PG_TRY();
+					{
+						ret = SPI_execute(buf.data, false, 0);
+					}
+					PG_FINALLY();
+					{
+						se_feature.mode = old_mode;
+					}
+					PG_END_TRY();
+				}
+			}
+		}
+		else
+			ereport(INFO, errmsg("Forbidden drop table %s, this is current partition table ", table));
+	}
+
+	if (SPI_finish() != SPI_OK_FINISH)
+	{
+		internalStatement = false;
+		ereport(ERROR, errmsg("SPI_finish failed"));
+	}
+	/* Restore userid and security context */
+	SetUserIdAndSecContext(save_userid, save_sec_context);
+
+	PopActiveSnapshot();
+	CommitTransactionCommand();
+	internalStatement = false;
+
+	return;
+}
+
+static bool table_count_changes(void)
+{
+	StringInfoData buf;
+	uint64		proc;
+	int			ret;
+	int table_num = 0;
+	static int pre_table_num = 0;
+	bool flag = false;
+
+	if (SPI_connect() != SPI_OK_CONNECT)
+	{
+		elog(ERROR, "SPI_connect failed");
+	}
+
+	initStringInfo(&buf);
+	appendStringInfo(&buf, "select count(relid::regclass) as child_num from pg_partition_tree('pg_audit_log');");
+	ret = SPI_execute(buf.data, false, 0);
+
+	if (ret != SPI_OK_SELECT)
+	{
+		SPI_finish();
+		ereport(ERROR, errmsg("cannot select pg_database: error code %d", ret));
+	}
+
+	proc = SPI_processed;
+	if (proc == 1)
+	{
+		SPITupleTable *spi_tuptable = SPI_tuptable;
+		TupleDesc	spi_tupdesc = spi_tuptable->tupdesc;
+		table_num = atoi(SPI_getvalue(spi_tuptable->vals[0], spi_tupdesc, 1));
+
+		if (pre_table_num == 0)
+			pre_table_num = table_num;
+
+		if (pre_table_num != table_num)
+		{
+			flag = true;
+			pre_table_num = table_num;
+		}
+		else
+			flag = false;
+	}
+
+	if (SPI_finish() != SPI_OK_FINISH)
+	{
+		elog(ERROR, "SPI_finish failed");
+	}
+
+	return flag;
+}
+
+static bool is_table_exits(TimestampTz time_cur)
+{
+	bool is_exist = false;
+	int			ret;
+	char *date_cur1 = NULL;
+	StringInfoData buf;
+	uint64		proc;
+
+	if (SPI_connect() != SPI_OK_CONNECT)
+	{
+		elog(ERROR, "SPI_connect failed");
+	}
+
+	/* current day */
+	date_cur1 = text_to_cstring(DatumGetTextP(DirectFunctionCall2(timestamptz_to_char,
+											TimestampTzGetDatum(time_cur),
+											PointerGetDatum(cstring_to_text("YYYYMMDD")))));
+
+	initStringInfo(&buf);
+	appendStringInfo(&buf, "SELECT EXISTS (SELECT FROM pg_tables where schemaname='public' and tablename='pg_audit_log_%s');", date_cur1);
+	ret = SPI_execute(buf.data, false, 0);
+
+	if (ret != SPI_OK_SELECT)
+	{
+		SPI_finish();
+		ereport(ERROR, errmsg("cannot select pg_database: error code %d", ret));
+	}
+
+	proc = SPI_processed;
+	if (proc == 1)
+	{
+		SPITupleTable *spi_tuptable = SPI_tuptable;
+		TupleDesc	spi_tupdesc = spi_tuptable->tupdesc;
+		char *c = SPI_getvalue(spi_tuptable->vals[0], spi_tupdesc, 1);
+
+		if (c[0] == 't')
+			is_exist = true;
+	}
+
+	if (SPI_finish() != SPI_OK_FINISH)
+	{
+		elog(ERROR, "SPI_finish failed");
+	}
+
+	return is_exist;
+}
+
+static void audit_create_table_partition(TimestampTz time_cur)
+{
+	char *date_next_str1 = NULL;
+	char *date_cur1 = NULL;
+	TimestampTz time_next;
+	StringInfoData buf;
+
+	if (RecoveryInProgress())
+		return;
+
+	internalStatement = true;
+
+	StartTransactionCommand();
+	PushActiveSnapshot(GetTransactionSnapshot());
+
+	if (is_table_exits(time_cur))
+	{
+		internalStatement = false;
+		PopActiveSnapshot();
+		CommitTransactionCommand();
+		return;
+	}
+
+	time_next = time_cur + USECS_PER_DAY;
+
+	/* current day */
+	date_cur1 = text_to_cstring(DatumGetTextP(DirectFunctionCall2(timestamptz_to_char,
+											TimestampTzGetDatum(time_cur),
+											PointerGetDatum(cstring_to_text("YYYYMMDD")))));
+
+	date_next_str1 = text_to_cstring(DatumGetTextP(DirectFunctionCall2(timestamptz_to_char,
+											TimestampTzGetDatum(time_next),
+											PointerGetDatum(cstring_to_text("YYYYMMDD")))));
+
+	initStringInfo(&buf);
+
+	if (SPI_connect() != SPI_OK_CONNECT)
+	{
+		PopActiveSnapshot();
+		CommitTransactionCommand();
+		elog(ERROR, "SPI_connect failed");
+	}
+	appendStringInfo(&buf, "CREATE TABLE IF NOT EXISTS public.pg_audit_log_%s PARTITION OF pg_audit_log (audittime) FOR VALUES FROM ('%s') TO ('%s');"
+						"ALTER TABLE public.pg_audit_log_%s OWNER TO syssao;"
+						"GRANT SELECT ON public.pg_audit_log_%s TO syssso;"
+						"GRANT SELECT ON public.pg_audit_log_%s to syssao_role;"
+						"GRANT SELECT ON public.pg_audit_log_%s to syssso_role;",
+						date_cur1, date_cur1, date_next_str1, date_cur1,
+						date_cur1, date_cur1, date_cur1);
+
+	if (buf.len > 0)
+	{
+		bool old_mode = se_feature.mode;
+		se_feature.mode = false;
+		PG_TRY();
+		{
+			SPI_execute(buf.data, false, 0);
+		}
+		PG_FINALLY();
+		{
+			se_feature.mode = old_mode;
+		}
+		PG_END_TRY();
+	}
+
+	if (SPI_finish() != SPI_OK_FINISH)
+	{
+		internalStatement = false;
+		PopActiveSnapshot();
+		CommitTransactionCommand();
+		elog(ERROR, "SPI_finish failed");
+	}
+
+	internalStatement = false;
+
+	PopActiveSnapshot();
+	CommitTransactionCommand();
+}
+
+static List *
+audit_get_database_list(void)
+{
+	List	*res = NIL;
+	Relation	rel;
+	TableScanDesc scan;
+	HeapTuple	tup;
+	MemoryContext resultcxt;
+
+	/* This is the context that we will allocate our output data in */
+	resultcxt = CurrentMemoryContext;
+
+	/*
+	 * Start a transaction so we can access pg_database, and get a snapshot.
+	 * We don't have a use for the snapshot itself, but we're interested in
+	 * the secondary effect that it sets RecentGlobalXmin.  (This is critical
+	 * for anything that reads heap pages, because HOT may decide to prune
+	 * them even if the process doesn't attempt to modify any tuples.)
+	 *
+	 * FIXME: This comment is inaccurate / the code buggy. A snapshot that is
+	 * not pushed/active does not reliably prevent HOT pruning (->xmin could
+	 * e.g. be cleared when cache invalidations are processed).
+	 */
+	//StartTransactionCommand();
+	(void) GetTransactionSnapshot();
+
+	rel = table_open(DatabaseRelationId, AccessShareLock);
+	scan = table_beginscan_catalog(rel, 0, NULL);
+
+	while (HeapTupleIsValid(tup = heap_getnext(scan, ForwardScanDirection)))
+	{
+		Form_pg_database subform = (Form_pg_database) GETSTRUCT(tup);
+		dbinfo *sub;
+		MemoryContext oldcxt;
+
+		/*
+		 * Allocate our results in the caller's context, not the
+		 * transaction's. We do this inside the loop, and restore the original
+		 * context at the end, so that leaky things like heap_getnext() are
+		 * not called in a potentially long-lived context.
+		 */
+		oldcxt = MemoryContextSwitchTo(resultcxt);
+
+		sub = (dbinfo *) palloc0(sizeof(dbinfo));
+		sub->dbid = subform->oid;
+		sub->datistemplate = subform->datistemplate;
+		sub->datallowconn = subform->datallowconn;
+		/* We don't fill fields we are not interested in. */
+
+		res = lappend(res, sub);
+		MemoryContextSwitchTo(oldcxt);
+	}
+
+	table_endscan(scan);
+	table_close(rel, AccessShareLock);
+
+	return res;
+}
+
+
+static void
+audit_register_db_work(Oid dbid, AuditTable flag)
+{
+	BackgroundWorker worker;
+	BackgroundWorkerHandle *bgw_handle;
+
+	if (flag == AUDIT_CREATE)
+	{
+		memset(&worker, 0, sizeof(worker));
+		worker.bgw_flags = BGWORKER_SHMEM_ACCESS | BGWORKER_BACKEND_DATABASE_CONNECTION;
+		worker.bgw_start_time = BgWorkerStart_RecoveryFinished;
+		/* BGW_NEVER_RESTART connect once */
+		worker.bgw_restart_time = BGW_NEVER_RESTART;
+		snprintf(worker.bgw_library_name, BGW_MAXLEN, "pg_audit");
+		snprintf(worker.bgw_function_name, BGW_MAXLEN, "pg_audit_launch_create_table");
+		worker.bgw_notify_pid = 0;
+		snprintf(worker.bgw_type, BGW_MAXLEN, "pg_audit_launch_create_table");
+		worker.bgw_main_arg = Int32GetDatum(dbid);
+	}
+	else if (flag == AUDIT_DROP)
+	{
+		memset(&worker, 0, sizeof(worker));
+		worker.bgw_flags = BGWORKER_SHMEM_ACCESS | BGWORKER_BACKEND_DATABASE_CONNECTION;
+		worker.bgw_start_time = BgWorkerStart_RecoveryFinished;
+		/* BGW_NEVER_RESTART connect once */
+		worker.bgw_restart_time = BGW_NEVER_RESTART;
+		snprintf(worker.bgw_library_name, BGW_MAXLEN, "pg_audit");
+		snprintf(worker.bgw_function_name, BGW_MAXLEN, "pg_audit_launch_drop_table");
+		worker.bgw_notify_pid = 0;
+		snprintf(worker.bgw_type, BGW_MAXLEN, "pg_audit_launch_drop_table");
+		worker.bgw_main_arg = Int32GetDatum(dbid);
+	}
+
+	/*
+	 * Now fill in worker-specific data, and do the actual registrations.
+	 */
+	snprintf(worker.bgw_name, BGW_MAXLEN, AUDIT_LAUNCHER_DB_S, dbid);
+	if (!RegisterDynamicBackgroundWorker(&worker, &bgw_handle))
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_CONFIGURATION_LIMIT_EXCEEDED),
+				 errmsg("out of background worker slots"),
+				 errhint("You might need to increase max_worker_processes.")));
+		return;
+	}
+}
+
+static bool is_new_day(void)
+{
+	TimestampTz time_cur = 0;
+	static int day_pre = 0;
+	int day = 0;
+	char *date_cur1 = NULL;
+
+	time_cur = GetCurrentTimestamp();
+
+	/* current day */
+	date_cur1 = text_to_cstring(DatumGetTextP(DirectFunctionCall2(timestamptz_to_char,
+											TimestampTzGetDatum(time_cur),
+											PointerGetDatum(cstring_to_text("YYYYMMDD")))));
+	day = atoi(date_cur1);
+
+	if (day == day_pre)
+	{
+		return false;
+	}
+
+	day_pre = day;
+	return true;
+}
+
+static bool is_db_changes(List      *sublist)
+{
+	int i = 0;
+	int eq_num = 0;
+	static int length = 0;
+	static Oid *db_oid = NULL;
+	MemoryContext oldctx;
+	ListCell   *lc;
+
+	if (length == list_length(sublist))
+	{
+		if (length == 0 || db_oid == NULL)
+			return false;
+
+		/* check the database change or not */
+		foreach(lc, sublist)
+		{
+			dbinfo *sub = (dbinfo *) lfirst(lc);
+			for (i = 0; i < length; i++)
+			{
+				if (db_oid[i] == sub->dbid)
+				{
+					eq_num++;
+					continue;
+				}
+			}
+		}
+
+		if (eq_num != length)
+		{
+			i = 0;
+			/* save new db oid */
+			foreach(lc, sublist)
+			{
+				dbinfo *sub = (dbinfo *) lfirst(lc);
+				db_oid[i++] = sub->dbid;
+			}
+		}
+		/* db oid not change */
+		else
+			return false;
+	}
+	/* save db oid */
+	else
+	{
+		if (length != list_length(sublist))
+		{
+			if (db_oid != NULL)
+				pfree(db_oid);
+			db_oid = NULL;
+		}
+
+		oldctx = MemoryContextSwitchTo(pgAuditLocalContext);
+		db_oid = palloc0(sizeof(Oid) * list_length(sublist));
+		MemoryContextSwitchTo(oldctx);
+
+		i = 0;
+		foreach(lc, sublist)
+		{
+			dbinfo *sub = (dbinfo *) lfirst(lc);
+			db_oid[i++] = sub->dbid;
+		}
+		length = list_length(sublist);
+	}
+
+	return true;
+}
+
+static void
+audit_register_all_db_work(AuditTable flag)
+{
+	List	   *sublist;
+	ListCell   *lc;
+	MemoryContext subctx;
+	MemoryContext oldctx;
+
+	TimestampTz time_cur;
+	static TimestampTz pre_time = 0;
+	int times;
+
+	if (RecoveryInProgress())
+		return;
+
+	/* get current date */
+	time_cur = GetCurrentTimestamp();
+
+	if (flag == AUDIT_DROP)
+	{
+		if (pre_time != 0 && pre_time + USECS_PER_SEC > time_cur)
+		{
+			return;
+		}
+		pre_time = time_cur;
+	}
+
+	subctx = AllocSetContextCreate(TopMemoryContext,
+								   "all database sublist",
+								   ALLOCSET_DEFAULT_SIZES);
+	oldctx = MemoryContextSwitchTo(subctx);
+
+	sublist = audit_get_database_list();
+
+	if ((flag == AUDIT_CREATE && (is_db_changes(sublist) || is_new_day()))
+		|| (flag == AUDIT_DROP && !table_count_changes()))
+	{
+		foreach(lc, sublist)
+		{
+			dbinfo *sub = (dbinfo *) lfirst(lc);
+			if (sub->datallowconn && !sub->datistemplate)
+			{
+				audit_register_db_work(sub->dbid, flag);
+			}
+		}
+	}
+
+	if (flag == AUDIT_CREATE)
+	{
+		do
+		{
+			if (is_table_exits(time_cur))
+				break;
+			pg_usleep(5000);
+			times++;
+		}while(times < 10);
+	}
+
+	/* Switch back to original memory context. */
+	MemoryContextSwitchTo(oldctx);
+	/* Clean the temporary memory. */
+	MemoryContextDelete(subctx);
+
+	return;
+}
+
+static void
+audit_die(SIGNAL_ARGS)
+{
+	exit(1);
+}
+
+void pg_audit_launch_create_table(Datum main_arg)
+{
+	Oid dbid = DatumGetInt32(main_arg);
+	/* Establish signal handlers before unblocking signals. */
+	pqsignal(SIGTERM, audit_die);
+
+	BackgroundWorkerUnblockSignals();
+
+	/* Connect to our database. */
+	BackgroundWorkerInitializeConnectionByOid(dbid, InvalidOid, 0);
+
+	/* create partition table */
+	audit_create_table_partition(GetCurrentTimestamp());
+	audit_create_table_partition(GetCurrentTimestamp() + USECS_PER_DAY);
+
+	exit(0);
+}
+
+void pg_audit_launch_drop_table(Datum main_arg)
+{
+	Oid dbid = DatumGetInt32(main_arg);
+
+	/* Establish signal handlers before unblocking signals. */
+	pqsignal(SIGTERM, audit_die);
+
+	BackgroundWorkerUnblockSignals();
+
+	/* Connect to our database. */
+	BackgroundWorkerInitializeConnectionByOid(dbid, InvalidOid, 0);
+
+	/* drop partiton table */
+	audit_drop_table_partition();
+
+	exit(0);
+}
+#endif

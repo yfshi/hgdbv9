@@ -2455,7 +2455,11 @@ static void
 load_pg_audit(FILE *cmdfd)
 {
 #ifdef USE_SQLITE
+#ifndef ENABLE_DKY_BETA_FEATURE
 	PG_CMD_PUTS("CREATE EXTENSION pg_audit WITH SCHEMA public;\n\n");
+#else
+	PG_CMD_PUTS("CREATE EXTENSION pg_audit VERSION '1.2' SCHEMA public;\n\n");
+#endif
 #else
 	PG_CMD_PUTS("CREATE EXTENSION pg_audit VERSION '1.0' SCHEMA public;\n\n");
 #endif

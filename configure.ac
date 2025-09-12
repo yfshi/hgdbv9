@@ -1142,9 +1142,11 @@ AC_SUBST(with_sqlite)
 # audit event
 #
 AC_MSG_CHECKING([whether to build with some audit event support])
-PGAC_ARG_BOOL(enable, audit-event, no,
+PGAC_ARG_BOOL(enable, dky_beta_feature, no,
              [enable some audit event],
-              [AC_DEFINE([ENABLE_AUDIT_EVENT], 1, [Define to 1 to build with audit event. (--enable-audit-event)])])
+              [AC_DEFINE([ENABLE_DKY_BETA_FEATURE], 1, [Define to 1 to build with audit event. (--enable-dky-beta-feature)])])
+AC_MSG_RESULT([$enable_dky_beta_feature])
+AC_SUBST(enable_dky_beta_feature)
 
 #
 # PAM
