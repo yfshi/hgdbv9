@@ -67,6 +67,18 @@ select concat(1,2,3,'hello',true, false, to_date('20100309','YYYYMMDD'));
  123hellotf03-09-2010
 (1 row)
 
+select concat(20,30,NULL);
+ concat 
+--------
+ 
+(1 row)
+
+select concat('A',100,space(NULL),true);
+ concat 
+--------
+ 
+(1 row)
+
 select concat_ws('#','one');
  concat_ws 
 -----------

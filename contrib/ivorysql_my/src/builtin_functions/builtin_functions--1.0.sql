@@ -828,12 +828,22 @@ $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 
 -- char
 
-CREATE FUNCTION ivymy.char(VARIADIC uint8[])
+CREATE FUNCTION ivymy.char(VARIADIC int8[])
 RETURNS varbinary
 AS 'MODULE_PATHNAME','myschar'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - BUG#Z5545 */
+CREATE FUNCTION ivymy.concat(VARIADIC "any")
+RETURNS text
+AS 'text_concat'
+LANGUAGE internal
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - BUG#Z5545 */
 
 -- elt
 CREATE FUNCTION ivymy.elt(bigint, VARIADIC text[])
@@ -1065,6 +1075,25 @@ AS $$
     select export_set($1::int8, $2, $3, $4, $5);
 $$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
 
+/* Begin - BUG#Z5515 */
+CREATE FUNCTION ivymy.export_set(int8, text, text, text, numeric)
+RETURNS varchar
+AS $$
+    select export_set($1, $2, $3, $4, ROUND($5)::int);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.export_set(int8, text, text, numeric, int)
+RETURNS varchar
+AS $$
+    select export_set($1, $2, $3, $4::text, $5);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.export_set(int8, text, text, numeric)
+RETURNS varchar
+AS $$
+    select export_set($1, $2, $3, $4::text, 64);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+/* End - BUG#Z5515 */
 
 -- ord
 CREATE FUNCTION ivymy.ord(text)
@@ -1082,6 +1111,16 @@ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - BUG#Z5536 */
+CREATE FUNCTION ivymy.ord(varbinary)
+RETURNS bigint
+AS 'select ivymy.ord($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - BUG#Z5536 */
 
 -- substring_index
 CREATE FUNCTION ivymy.substring_index(text, text, bigint)

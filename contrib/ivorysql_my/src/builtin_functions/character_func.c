@@ -91,37 +91,6 @@ static const int8 b64lookup[128] = {
 				/* :::::::::::::::::::::::::: */
 const char *soundex_map = "01230120022455012623010202";
 
-#define BYTE_4 0xFF000000L
-#define BYTE_3 0xFF0000L
-#define BYTE_2 0xFF00L
-
-
-#define storeBytes1(BYTES, T, A) \
-	if (1 == BYTES) { \
-		T[0] = (char)A; \
-	}
-#define storeBytes2(BYTES, T, A) \
-	if (2 == BYTES) { \
-		unsigned int tmpValue = (unsigned int) (A) ; \
-		((unsigned char*) (T))[1] = (unsigned char)(tmpValue); \
-		((unsigned char*) (T))[0] = (unsigned char)(tmpValue >> 8); \
-	}
-#define storeBytes3(BYTES, T, A) \
-	if (3 == BYTES) { \
-		unsigned long int tmpValue = (unsigned long int) (A); \
-		((unsigned char*) (T))[2] = (unsigned char) (tmpValue); \
-		((unsigned char*) (T))[1] = (unsigned char) (tmpValue >> 8); \
-		((unsigned char*) (T))[0] = (unsigned char) (tmpValue >> 16); \
-	}
-#define storeBytes4(BYTES, T, A) \
-	if (4 == BYTES) { \
-		unsigned long int tmpValue = (unsigned long int) (A); \
-		((unsigned char*) (T))[3] = (unsigned char) (tmpValue); \
-		((unsigned char*) (T))[2] = (unsigned char) (tmpValue >> 8); \
-		((unsigned char*) (T))[1] = (unsigned char) (tmpValue >> 16); \
-		((unsigned char*) (T))[0] = (unsigned char) (tmpValue >> 24); \
-	}
-
 
 PG_FUNCTION_INFO_V1(locate);
 PG_FUNCTION_INFO_V1(insert);
@@ -755,37 +724,26 @@ myschar(PG_FUNCTION_ARGS)
 	nargs = extract_variadic_args(fcinfo, 0, false, &args, &types, &nulls);
 
 	for (int i = 0; i < nargs; ++i)
-	{
-		text	*str;
-		int		 bytes;
-		uint64	 value;
-		unsigned char *wch;
-
+	{	
+		/* Begin - BUG#Z5536 */
+		uint32 uchar_code;
+		
 		if (nulls[i])
 			continue;
+	
+		uchar_code = (uint32) DatumGetInt64(args[i]);
 
-		value = DatumGetUInt64(args[i]);
+		if (uchar_code > 0xffffff)
+			appendStringInfoChar(&buf, (char)((uchar_code >> 24) & 0xFF));
 
-		if (value & BYTE_4)
-			bytes = 4;
-		else if (value & BYTE_3)
-			bytes = 3;
-		else if (value & BYTE_2)
-			bytes = 2;
-		else
-			bytes = 1;
+		if (uchar_code > 0xffff)
+			appendStringInfoChar(&buf, (char)((uchar_code >> 16) & 0xFF));
 
-		str = (text *) palloc(VARHDRSZ + bytes);
-		SET_VARSIZE(str, VARHDRSZ + bytes);
-		wch = (unsigned char *) VARDATA(str);
+		if (uchar_code > 0xff)
+			appendStringInfoChar(&buf, (char)((uchar_code >> 8) & 0xFF));
 
-		storeBytes1(bytes, wch, value);
-		storeBytes2(bytes, wch, value);
-		storeBytes3(bytes, wch, value);
-		storeBytes4(bytes, wch, value);
-
-		appendBinaryStringInfo(&buf, VARDATA_ANY(str), VARSIZE_ANY_EXHDR(str));
-		pfree(str);
+		appendStringInfoChar(&buf, (char)(uchar_code & 0xFF));
+		/* End - BUG#Z5536 */
 	}
 
 	ret = cstring_to_text_with_len(buf.data, buf.len);

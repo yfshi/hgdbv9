@@ -136,6 +136,26 @@ SELECT CHAR(-1),CHAR(65536); -- '\xFFFFFFFF \x010000'
 SELECT CHAR(0),CHAR(127); -- '\x00 \x7F'
 SELECT CHAR(-1),CHAR(128); -- '\xFFFFFFFF \x80'
 SELECT CHAR(1114111),CHAR(1114112),CHAR(4294967295); -- '\x10FFFF \x110000 \xFFFFFFFF'
+SELECT CHAR(128); -- '\x80'
+SELECT CHAR(255); -- '\xff'
+SELECT CHAR(65536); -- '\x010000'
+SELECT CHAR(11111111); -- '\xa98ac7'
+SELECT CHAR(111111111111); -- '\xdebd01c7'
+SELECT CHAR(1111111111111111); -- '\xb71571c7'
+SELECT CHAR(-2); -- '\xfffffffe'
+SELECT CHAR(-3, 95, -6); -- '\xfffffffd5ffffffffa'
+SELECT CHAR(6.1); -- '\x06'
+SELECT CHAR(-4.5); -- '\xfffffffb'
+SELECT CHAR(100, -27, 3.82); -- '\x64ffffffe504'
+select char('100'); -- '\x64'
+SELECT CHAR('10.7'); -- '\x0a'
+
+-- CONCAT
+SELECT CONCAT(20, 30, 40); -- '203040'
+SELECT CONCAT('A', 'B', 'C'); -- 'ABC'
+SELECT CONCAT(100, 'a', 200); -- '100a200'
+SELECT CONCAT(20, NULL, 30); -- NULL
+SELECT CONCAT('a', 50, NULL, true); -- NULL
 
 -- ELT
 SELECT ELT(2, 'a', 'b', 'c'); -- 'b'
@@ -233,6 +253,7 @@ SELECT CONCAT('A', SPACE(3), 'B'); -- 'A   B'
 SELECT SPACE(-1); -- ''
 SELECT CONCAT('A', SPACE('4'), 'B'); -- 'A    B'
 SELECT CONCAT('A', SPACE('a'), 'B'); -- 'AB'
+SELECT CONCAT('A', SPACE(NULL), 'B'); -- NULL
 
 -- SOUNDEX
 SELECT SOUNDEX('hello'); -- 'H400'
@@ -251,11 +272,18 @@ SELECT EXPORT_SET('5', 'Y', 'N', ',', 4); -- 'Y,N,Y,N'
 SELECT EXPORT_SET('5', 'Y', 'N', ','); --'Y,N,Y,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N'
 SELECT EXPORT_SET('5', 'Y', 'N'); -- 'Y,N,Y,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N'
 SELECT EXPORT_SET('a', 'Y', 'N', ',', 4); -- 'N,N,N,N'
-
+SELECT EXPORT_SET(8, 'Y', 'N', 9, 8); -- 'N9N9N9Y9N9N9N9N'
+SELECT EXPORT_SET(8, 'Y', 'N', -1, 4); -- 'N-1N-1N-1Y'
+SELECT EXPORT_SET(255, 'Y', 'N', ',', 4.9); -- 'Y,Y,Y,Y,Y'
+SELECT EXPORT_SET(8, 'Y', 'N', ',', 12.36); -- 'N,N,N,Y,N,N,N,N,N,N,N,N'
 
 -- ORD
 SELECT ORD('A'); -- 65
 SELECT ORD(NULL); -- NULL
+SELECT ORD(char(10)); -- 10
+SELECT ORD(char(255)); -- 255
+SELECT ORD(char(-2)); -- 255
+SELECT ORD(char(6.66)); -- 7
 
 -- SUBSTRING_INDEX
 SELECT SUBSTRING_INDEX('a,b,c,d', ',', 2); -- 'a,b'
