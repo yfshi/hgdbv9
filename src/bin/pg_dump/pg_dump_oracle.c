@@ -13036,7 +13036,7 @@ dumpSynonym(Archive *fout, const SynInfo *syninfo)
 	else
 	   appendPQExpBuffer(q, "SYNONYM ");
 
-	if (syninfo->dobj.namespace)
+	if (syninfo->dobj.namespace && !syninfo->ispub)	/* Bug#Z5794 */
 	{
 	   appendPQExpBuffer(q, " %s.", fmtId(syninfo->dobj.namespace->dobj.name));
 	}

@@ -472,7 +472,12 @@ DropSynonym(DropSynStmt *stmt)
 	Oid		namespaceId;
 
 	rel = table_open(SynonymRelationId, RowExclusiveLock);
-	namespaceId = RangeVarGetAndCheckCreationNamespace(stmt->synname, NoLock, NULL);
+	/* Begin - BUG#Z5790 */
+	if (stmt->ispub)
+		namespaceId = PG_PUBLIC_NAMESPACE;
+	else
+		namespaceId = RangeVarGetAndCheckCreationNamespace(stmt->synname, NoLock, NULL);
+	/* End - BUG#Z5790 */
 	synname = stmt->synname->relname;
 	tup = SearchSysCache3(SYNONYMNAMENSP, PointerGetDatum(synname),
 								ObjectIdGetDatum(namespaceId), BoolGetDatum(stmt->ispub));
