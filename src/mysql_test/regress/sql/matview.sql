@@ -50,7 +50,7 @@ CREATE SCHEMA mvtest_mvschema;
 ALTER MATERIALIZED VIEW mvtest_tvm SET SCHEMA mvtest_mvschema;
 \d+ mvtest_tvm
 \d+ mvtest_tvmm
-SET search_path = mvtest_mvschema, public;
+SET search_path = 'mvtest_mvschema, public';
 \d+ mvtest_tvm
 
 -- modify the underlying table data

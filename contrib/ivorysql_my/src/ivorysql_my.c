@@ -25,6 +25,10 @@
 #include "include/casesensitive.h"
 #include "utils/varlena.h"
 #include "parser/parse_coerce.h"
+/* Begin - ReqID:SRS-MYSQL-SET */
+#include "mysql_parser/mys_set_hook.h"
+#include "include/mysset.h"
+/* End - ReqID:SRS-MYSQL-SET */
 
 /* Only include it once in any C file */
 PG_MODULE_MAGIC;
@@ -61,6 +65,12 @@ Mysql_check_for_column_name_collision_hook_type pre_mysql_check_for_column_name_
 /* Begin BUG#5048 5070 */
 static mysql_hexstring_to_varbinary_hook_type pre_mysql_hexstring_to_varbinary_hook = NULL;
 /* End BUG#5048 5070 */
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+static uservariable_hash_search_hook_type pre_uservariable_hash_search_hook = NULL;
+static SetUserVarInternal_hook_type pre_setuservarinternal_hook = NULL;
+
+/* End - ReqID:SRS-MYSQL-SET */
 
 void _PG_init(void);
 void _PG_fini(void);
@@ -133,6 +143,13 @@ _PG_init(void)
 	pre_mysql_hexstring_to_varbinary_hook = mysql_hexstring_to_varbinary_hook;
 	mysql_hexstring_to_varbinary_hook = hexstring_varbinary;
 	/* End BUG#5048 5070 */
+
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	pre_uservariable_hash_search_hook = uservariable_hash_search_hook;
+	uservariable_hash_search_hook = userVariable_Hash_Search;
+	pre_setuservarinternal_hook = setuservarinternal_hook;
+	setuservarinternal_hook = mysSetUserVarInternal;
+	/* End - ReqID:SRS-MYSQL-SET */
 }
 
 /*
@@ -181,4 +198,9 @@ _PG_fini(void)
 	/* Begin BUG#5048 5070 */
 	mysql_hexstring_to_varbinary_hook = pre_mysql_hexstring_to_varbinary_hook;
 	/* End BUG#5048 5070 */
+
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	uservariable_hash_search_hook = pre_uservariable_hash_search_hook;
+	setuservarinternal_hook = pre_setuservarinternal_hook;
+	/* End - ReqID:SRS-MYSQL-SET */
 }

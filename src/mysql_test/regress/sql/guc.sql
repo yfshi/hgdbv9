@@ -137,7 +137,7 @@ SELECT '2006-08-13 12:34:56'::timestamptz;
 -- Test RESET.  We use datestyle because the reset value is forced by
 -- pg_regress, so it doesn't depend on the installation's configuration.
 --
-SET datestyle = iso, ymd;
+SET datestyle = 'iso, ymd';
 SHOW datestyle;
 SELECT '2006-08-13 12:34:56'::timestamptz;
 RESET datestyle;
@@ -205,7 +205,7 @@ DROP ROLE regress_guc_user;
 -- search_path should react to changes in pg_namespace
 --
 
-set search_path = foo, public, not_there_initially;
+set search_path = 'foo, public, not_there_initially';
 select current_schemas(false);
 create schema not_there_initially;
 select current_schemas(false);

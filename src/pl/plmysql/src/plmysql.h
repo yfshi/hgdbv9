@@ -518,6 +518,7 @@ typedef struct PLmySQL_stmt_assign
 	unsigned int stmtid;
 	int			varno;
 	PLmySQL_expr *expr;
+	char		 *varname;	 /* ReqID:SRS-MYSQL-SET */
 } PLmySQL_stmt_assign;
 
 /*

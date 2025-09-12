@@ -65,6 +65,7 @@
 #include "utils/numeric.h"
 #include "utils/xml.h"
 #include "utils/builtins.h"
+#include "utils/varlena.h"		/* ReqID:SRS-MYSQL-SET */
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */ /* Begin - ReqID:SRS-MYSQL-DATETYPE */
 #include "utils/guc.h"
@@ -74,6 +75,7 @@
 #include "mysql_parser/mys_case_sensitive.h"
 #include "nodes/pg_list.h"
 /* End - ReqID:SRS-MYSQL-CASE */
+#include "parser/analyze.h"
 
 /*
  * Location tracking support --- simpler than bison's default, since we only
@@ -269,6 +271,10 @@ static int parse_typmod(Node *node);
 static int MySQLIntegerCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscanner);
 static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscanner);
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+/* Begin - ReqID:SRS-MYSQL-SET */
+static Node *makeVarAssgin(char *varname, Node *value, SetKindType kind, SetReturn setret, int location);
+static Node *makeVarRef(char *varname, VarKind kind, int location);
+/* End - ReqID:SRS-MYSQL-SET */
 
 %}
 
@@ -741,6 +747,12 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 %type <ival>		level_flag_desc level_flag_reverse level_flags opt_levels level_list
 					level_list_item level_number level_range level_list_or_range
 
+/* Begin - ReqID:SRS-MYSQL-SET */
+%type <node>		mysql_system_variable mysql_user_variable set_variable value_a_expr
+%type <list>		set_variables user_var_list
+%type <node>		VariableMultiSetStmt user_var
+%type <str>			set_names_collate multi_encoding
+/* End - ReqID:SRS-MYSQL-SET */
 
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
@@ -759,6 +771,7 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS
 %token <str>	HCONST /* Begin BUG#5048 5070 */
+%token <str>   USER_VARIABLE_NAME SYSTEM_OR_SESSION_VARIABLE	/* ReqID:SRS-MYSQL-SET */
 
 /*
  * If you want to make any keyword changes, update the keyword table in
@@ -902,6 +915,8 @@ static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yysca
 %token		MODE_PLISQL_ASSIGN2
 %token		MODE_PLISQL_ASSIGN3
 /* End - BUG:M0000079 */
+%token		MODE_PLMYSQL_EXPR	/* ReqID:SRS-MYSQL-SET */
+
 %nonassoc	BINARY
 
 /* Precedence: lowest to highest */
@@ -1019,6 +1034,13 @@ parse_toplevel:
 				pg_yyget_extra(yyscanner)->parsetree =
 					list_make1(makeRawStmt((Node *) n, 0));
 			}
+			/* Begin - ReqID:SRS-MYSQL-SET */
+			| MODE_PLMYSQL_EXPR PLAssignStmt
+			{
+				pg_yyget_extra(yyscanner)->parsetree =
+					list_make1(makeRawStmt((Node *) $2, 0));
+			}
+			/* End - ReqID:SRS-MYSQL-SET */
 		;
 
 /*
@@ -1184,6 +1206,7 @@ stmt:
 			| UpdateStmt
 			| VacuumStmt
 			| VariableResetStmt
+			| VariableMultiSetStmt	/* ReqID:SRS-MYSQL-SET */
 			| VariableSetStmt
 			| VariableShowStmt
 			| ViewStmt
@@ -1712,22 +1735,7 @@ generic_set:
 					n->args = $3;
 					$$ = n;
 				}
-			| var_name '=' var_list
-				{
-					VariableSetStmt *n = makeNode(VariableSetStmt);
-					n->kind = VAR_SET_VALUE;
-					n->name = $1;
-					n->args = $3;
-					$$ = n;
-				}
 			| var_name TO DEFAULT
-				{
-					VariableSetStmt *n = makeNode(VariableSetStmt);
-					n->kind = VAR_SET_DEFAULT;
-					n->name = $1;
-					$$ = n;
-				}
-			| var_name '=' DEFAULT
 				{
 					VariableSetStmt *n = makeNode(VariableSetStmt);
 					n->kind = VAR_SET_DEFAULT;
@@ -1844,6 +1852,167 @@ var_value:	opt_boolean_or_string
 				{ $$ = makeAConst($1, @1); }
 		;
 
+/* Begin - ReqID:SRS-MYSQL-SET */
+VariableMultiSetStmt:
+			SET set_variables
+				{
+					MysVariableSetStmt *rt = makeNode(MysVariableSetStmt);
+					SelectStmt *result = makeNode(SelectStmt);
+					result->targetList = $2;
+					rt->varSetStmt = (Node *)result;
+					$$ = (Node *) rt;
+				}
+			| SET NAMES multi_encoding set_names_collate
+				{
+					ResTarget *result = makeNode(ResTarget);
+					MysVariableSetStmt *rt = makeNode(MysVariableSetStmt);
+					SelectStmt *res = makeNode(SelectStmt);
+					List *argList;
+					Node *funcCall;
+					List *funcName = list_make2(makeString(pstrdup("ivymy")),
+												makeString(pstrdup("mys_set_names")));
+					if ($3 == NULL)
+						argList = list_make2(makeStringConst($3, @3), makeStringConst("true", @3));
+					else
+						argList = list_make2(makeStringConst($3, @3), makeStringConst("false", @3));
+					funcCall = (Node *) makeFuncCall(funcName, argList, COERCE_EXPLICIT_CALL, @1);
+					result->name = NULL;
+					result->indirection = NIL;
+					result->val = funcCall;
+					result->location = @1;
+					res->targetList = list_make1(result);
+					rt->varSetStmt = (Node *)res;
+					$$ = (Node *) rt;
+				}
+			| SET multi_charset multi_encoding
+				{
+					ResTarget *result = makeNode(ResTarget);
+					MysVariableSetStmt *rt = makeNode(MysVariableSetStmt);
+					SelectStmt *res = makeNode(SelectStmt);
+					List *argList;
+					Node *funcCall;
+					List *funcName = list_make2(makeString(pstrdup("ivymy")),
+												makeString(pstrdup("mys_set_charset")));
+					if ($3 == NULL)
+					{
+						argList = list_make2(makeStringConst("", @3), makeStringConst("true", @3));
+					}
+					else
+					{
+						argList = list_make2(makeStringConst($3, @3), makeStringConst("false", @3));
+					}
+
+					funcCall = (Node *) makeFuncCall(funcName, argList, COERCE_EXPLICIT_CALL, @1);
+					result->name = NULL;
+					result->indirection = NIL;
+					result->val = funcCall;
+					result->location = @1;
+					res->targetList = list_make1(result);
+					rt->varSetStmt = (Node *)res;
+					$$ = (Node *) rt;
+				}
+		;
+
+set_variables:
+			set_variable
+				{ $$ = list_make1($1); }
+			| set_variables ',' set_variable
+				{ $$ = lappend($1, $3); }
+		;
+
+set_variable:
+			mysql_user_variable
+				{ $$ = $1; }
+			| mysql_system_variable
+				{ $$ = $1; }
+		;
+
+mysql_user_variable:
+			USER_VARIABLE_NAME plassign_equals a_expr
+				{
+					$$ = makeVarAssgin($1, $3, SET_USERVAR, RET_NONE, @1);
+				}
+		;
+
+mysql_system_variable:
+			var_name plassign_equals value_a_expr
+				{
+					$$ = makeVarAssgin($1, $3, SET_SESSIONVAR, RET_NONE, @1);
+				}
+			|SESSION var_name plassign_equals value_a_expr
+				{
+					$$ = makeVarAssgin($2, $4, SET_SESSIONVAR, RET_NONE, @1);
+				}
+			| LOCAL var_name plassign_equals value_a_expr
+				{
+					$$ = makeVarAssgin($2, $4, SET_LOCALVAR, RET_NONE, @1);
+				}
+			| GLOBAL var_name plassign_equals value_a_expr
+				{
+					$$ = makeVarAssgin($2, $4, SET_GLOBALVAR, RET_NONE, @1);
+				}
+			| SYSTEM_OR_SESSION_VARIABLE plassign_equals value_a_expr
+				{
+					SetKindType		kind;
+					char		   *varname = NULL;
+
+					if (strncasecmp($1, "local.", 6) == 0)
+					{
+						varname = pstrdup($1 + 6);
+						kind = SET_SESSIONVAR;
+					}
+					else if (strncasecmp($1, "global.", 7) == 0)
+					{
+						varname = pstrdup($1 + 7);
+						kind = SET_GLOBALVAR;
+					}
+					else if (strncasecmp($1, "session.", 8) == 0)
+					{
+						varname = pstrdup($1 + 8);
+						kind = SET_SESSIONVAR;
+					}
+					else
+					{
+						varname = pstrdup($1);
+						kind = SET_SESSIONVAR;
+					}
+
+					$$ = makeVarAssgin(varname, $3, kind, RET_NONE, @1);
+				}
+		;
+
+
+value_a_expr:
+			ON
+				{
+					$$ = makeStringConst("on", @1);
+				}
+			| a_expr
+				{
+					$$ = $1;
+				}
+		;
+
+set_names_collate:
+			COLLATE ColId						{ $$ = $2; }
+			| COLLATE SCONST					{ $$ = $2; }
+			| COLLATE DEFAULT					{ $$ = "default"; }
+		;
+
+multi_charset:
+			CHARACTER SET { /* EMTPY */ }
+			| CHARSET { /* EMTPY */ }
+			;
+
+multi_encoding:
+			Sconst									{ $$ = $1; }
+			| BINARY								{ $$ = (char*)$1; } /* ReqID:SRS-MYSQL-BINARYTYPE */
+			| IDENT 								{ $$ = $1; }	/* ReqID:SRS-MYSQL-SET */
+			| DEFAULT								{ $$ = NULL; }
+					;
+
+/* End - ReqID:SRS-MYSQL-SET */
+
 iso_level:	READ UNCOMMITTED						{ $$ = "read uncommitted"; }
 			| READ COMMITTED						{ $$ = "read committed"; }
 			| REPEATABLE READ						{ $$ = "repeatable read"; }
@@ -1909,6 +2078,7 @@ zone_value:
 opt_encoding:
 			Sconst									{ $$ = $1; }
 			| BINARY								{ $$ = (char*)$1; } /* ReqID:SRS-MYSQL-BINARYTYPE */
+			| IDENT									{ $$ = $1; }	/* ReqID:SRS-MYSQL-SET */
 			| DEFAULT								{ $$ = NULL; }
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
@@ -1967,12 +2137,24 @@ generic_reset:
 SetResetClause:
 			SET set_rest					{ $$ = $2; }
 			| VariableResetStmt				{ $$ = (VariableSetStmt *) $1; }
+			/* Begin - ReqID:SRS-MYSQL-SET */
+			| VariableMultiSetStmt
+					{
+						$$ = trans_MysVariable_to_VariableSet(NULL, (MysVariableSetStmt *)$1);
+					}
+			/* End - ReqID:SRS-MYSQL-SET */
 		;
 
 /* SetResetClause allows SET or RESET without LOCAL */
 FunctionSetResetClause:
 			SET set_rest_more				{ $$ = $2; }
 			| VariableResetStmt				{ $$ = (VariableSetStmt *) $1; }
+			/* Begin - ReqID:SRS-MYSQL-SET */
+			| VariableMultiSetStmt
+					{
+						$$ = trans_MysVariable_to_VariableSet(NULL, (MysVariableSetStmt *)$1);
+					}
+			/* End - ReqID:SRS-MYSQL-SET */
 		;
 
 /* Begin - Req: SRS-MYSQL-CHARSET */
@@ -11429,6 +11611,14 @@ AlterSystemStmt:
 					n->setstmt = $4;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-SET */
+			| ALTER SYSTEM_P VariableMultiSetStmt
+				{
+					AlterSystemStmt *n = makeNode(AlterSystemStmt);
+					n->setstmt = trans_MysVariable_to_VariableSet(NULL, (MysVariableSetStmt *)$3);
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-MYSQL-SET */
 		;
 
 
@@ -11898,6 +12088,7 @@ ExplainableStmt:
 			| CreateMatViewStmt
 			| RefreshMatViewStmt
 			| ExecuteStmt					/* by default all are $$=$1 */
+			| VariableMultiSetStmt			/* ReqID:SRS-MYSQL-SET */
 		;
 
 /*****************************************************************************
@@ -11927,6 +12118,12 @@ PreparableStmt:
 			| UpdateStmt
 			| DeleteStmt
 			| MergeStmt						/* by default all are $$=$1 */
+			/* Begin - ReqID:SRS-MYSQL-SET */
+			| USER_VARIABLE_NAME
+				{
+					$$ = makeVarRef($1, USER_VAR, @1);
+				}
+			/* End - ReqID:SRS-MYSQL-SET */
 		;
 
 /*****************************************************************************
@@ -13164,9 +13361,41 @@ into_clause:
 					$$->viewQuery = NULL;
 					$$->skipData = false;
 				}
+			/* Begin - ReqID:SRS-MYSQL-SET */
+			| INTO user_var_list
+				{
+					$$ = makeNode(IntoClause);
+					$$->rel = NULL;
+					$$->colNames = $2;
+					$$->options = NIL;
+					$$->onCommit = ONCOMMIT_NOOP;
+					$$->tableSpaceName = NULL;
+					$$->viewQuery = NULL;
+					$$->skipData = false;
+				}
+			/* End - ReqID:SRS-MYSQL-SET */
 			| /*EMPTY*/
 				{ $$ = NULL; }
 		;
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+user_var_list:
+			user_var
+				{
+					$$ = list_make1($1);
+				}
+			| user_var_list ',' user_var
+				{
+					$$ = lappend($1, $3);
+				}
+		;
+
+user_var:
+			USER_VARIABLE_NAME
+				{
+					$$ = makeVarRef($1, USER_VAR, @1);
+				}
+/* End - ReqID:SRS-MYSQL-SET */
 
 /*
  * Redundancy here is needed to avoid shift/reduce conflicts,
@@ -16545,6 +16774,39 @@ c_expr:		columnref				%prec UMINUS	{ $$ = $1; }
 				  g->location = @1;
 				  $$ = (Node *)g;
 			  }
+			/* Begin - ReqID:SRS-MYSQL-SET */
+			| USER_VARIABLE_NAME COLON_EQUALS a_expr	%prec SET
+				{
+					$$ = makeVarAssgin($1, $3, SET_USERVAR, RET_VALUE, @1);
+				}
+			| USER_VARIABLE_NAME
+				{
+					$$ = makeVarRef($1, USER_VAR, @1);
+				}
+			| SYSTEM_OR_SESSION_VARIABLE
+				{
+					char	   *varname = NULL;
+
+					if (strncasecmp($1, "local.", 6) == 0)
+					{
+						varname = pstrdup($1 + 6);
+					}
+					else if (strncasecmp($1, "global.", 7) == 0)
+					{
+						varname = pstrdup($1 + 7);
+					}
+					else if (strncasecmp($1, "session.", 8) == 0)
+					{
+						varname = pstrdup($1 + 8);
+					}
+					else
+					{
+						varname = pstrdup($1);
+					}
+
+					$$ = makeVarRef(varname, SYSTEM_VAR, @1);
+				}
+			/* End - ReqID:SRS-MYSQL-SET */
 		;
 
 func_application: func_name '(' ')'
@@ -18596,6 +18858,24 @@ PLAssignStmt: plassign_target opt_indirection plassign_equals PLpgSQL_Expr
 					n->location = @1;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-SET
+			 * In a PL block, setting the value of a user defind
+			 * variable is parsed here by directly transforming
+			 * is into a function call.
+			 */
+			| USER_VARIABLE_NAME plassign_equals a_expr
+				{
+					SelectStmt	   *result = makeNode(SelectStmt);
+					ResTarget	   *restgt = makeNode(ResTarget);
+
+					restgt->name = $1;
+					restgt->indirection = NIL;
+					restgt->val = makeVarAssgin($1, $3, SET_USERVAR, RET_NONE, @1);
+					restgt->location = @1;
+					result->targetList = list_make1(restgt);
+					$$ = (Node *) result;
+				}
+			/* End - ReqID:SRS-MYSQL-SET */
 		;
 
 plassign_target: ColId							{ $$ = $1; }
@@ -21001,3 +21281,40 @@ static int64 CheckAConstTypeLength(Node* node)
 	return length;
 }
 /* End - ReqID: SRS-MYSQL-BITTYPE */
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+/* makeVarAssgin
+ *
+ * Construct a VarAssign node.
+ */
+static Node *
+makeVarAssgin(char *varname, Node *value, SetKindType kind, SetReturn setret, int location)
+{
+	VarAssign *var = makeNode(VarAssign);
+
+	var->varname = varname;
+	var->value = value;
+	var->setkind = kind;
+	var->ret = setret,
+	var->location = location;
+	return (Node *) var;
+}
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+/* makeVarRef
+ *
+ * Construct a VarRef node.
+ */
+static Node *
+makeVarRef(char *varname, VarKind kind, int location)
+{
+	
+	VarRef *var = makeNode(VarRef);
+
+	var->varname = varname;
+	var->varkind = kind;
+	var->location = location;
+	return (Node *) var;
+}
+
+/* End - ReqID:SRS-MYSQL-SET */

@@ -153,7 +153,7 @@ View definition:
  SELECT sum(mvtest_tvm.totamt) AS grandtot
    FROM mvtest_mvschema.mvtest_tvm;
 
-SET search_path = mvtest_mvschema, public;
+SET search_path = 'mvtest_mvschema, public';
 \d+ mvtest_tvm
                       Materialized view "mvtest_mvschema.mvtest_tvm"
  Column |  Type   | Collation | Nullable | Default | Storage  | Stats target | Description 

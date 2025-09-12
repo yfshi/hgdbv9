@@ -113,6 +113,20 @@ static	PLmySQL_expr	*read_cursor_args(PLmySQL_var *cursor,
 										  int until);
 static	List			*read_raise_options(void);
 static	void			check_raise_parameters(PLmySQL_stmt_raise *stmt);
+/* Begin - ReqID:SRS-MYSQL-SET */
+static bool plmysql_is_token_match(int token);
+static PLmySQL_expr *
+read_sql_constructassign(int until,
+				  int until2,
+				  int until3,
+				  const char *expected,
+				  RawParseMode parsemode,
+				  bool isexpression,
+				  bool valid_sql,
+				  bool trim,
+				  int *startloc,
+				  int *endtoken);
+/* End - ReqID:SRS-MYSQL-SET */
 
 %}
 
@@ -239,6 +253,7 @@ static	void			check_raise_parameters(PLmySQL_stmt_raise *stmt);
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS
 %token <str>	HCONST /* BUG#5048 5070 */
+%token <str>	USER_VARIABLE_NAME	/* ReqID:SRS-MYSQL-SET */
 
 /*
  * Other tokens recognized by plmysql's lexer interface layer (pl_scanner.c).
@@ -344,6 +359,7 @@ static	void			check_raise_parameters(PLmySQL_stmt_raise *stmt);
 %token <keyword>	K_SCHEMA
 %token <keyword>	K_SCHEMA_NAME
 %token <keyword>	K_SCROLL
+%token <keyword>	K_SET		/* ReqID:SRS-MYSQL-SET */
 %token <keyword>	K_SLICE
 %token <keyword>	K_SQLSTATE
 %token <keyword>	K_STACKED
@@ -1011,13 +1027,42 @@ stmt_assign		: T_DATUM
 						new->varno = $1.datum->dno;
 						/* Push back the head name to include it in the stmt */
 						plmysql_push_back_token(T_DATUM);
-						new->expr = read_sql_construct(';', 0, 0, ";",
-													   pmode,
-													   false, true, true,
-													   NULL, NULL);
+						new->expr = read_sql_constructassign(',', ';', 0, ", or ;",		/* ReqID:SRS-MYSQL-SET */
+												   pmode,
+												   false, true, true,
+												   NULL, NULL);
 
 						$$ = (PLmySQL_stmt *)new;
 					}
+			/* Begin - ReqID:SRS-MYSQL-SET */
+			| USER_VARIABLE_NAME
+					{
+						/*
+						 * This part of the code implement SET for user define variable
+						 * in PL blocks, The variable's index is set to -1, and the
+						 * variable's name is set to the user defined variable's identifier.
+						 */
+						PLmySQL_stmt_assign *new;
+						RawParseMode pmode;
+
+						/* see how many names identify the datum */
+						pmode = RAW_PARSE_PLMYSQL_EXPR;
+						new = palloc0(sizeof(PLmySQL_stmt_assign));
+						new->cmd_type = PLMYSQL_STMT_ASSIGN;
+						new->lineno   = plmysql_location_to_lineno(-1);
+						new->stmtid = ++plmysql_curr_compile->nstatements;
+						new->varno = -1;
+						new->varname = pstrdup($1);
+						/* Push back the head name to include it in the stmt */
+						plmysql_push_back_token(USER_VARIABLE_NAME);
+
+						new->expr = read_sql_constructassign(',', ';', 0, ", or ;",
+													   pmode,
+													   false, true, true,
+													   NULL, NULL);
+						$$ = (PLmySQL_stmt *)new;
+					}
+			/* End - ReqID:SRS-MYSQL-SET */
 				;
 
 stmt_getdiag	: K_GET getdiag_area_opt K_DIAGNOSTICS getdiag_list ';'
@@ -2039,6 +2084,23 @@ stmt_execsql	: K_IMPORT
 							cword_is_not_variable(&($1), @1);
 						$$ = make_execsql_stmt(T_CWORD, @1);
 					}
+				/* Begin - ReqID:SRS-MYSQL-SET */
+				| K_SET
+					{
+						/*
+						 * Added support for the SET keyword.
+						 * If the target is a parameter, local
+						 * variable, or user defined variable,
+						 * no action is taken.
+						 */
+						if (plmysql_is_token_match(T_DATUM) || plmysql_is_token_match(USER_VARIABLE_NAME))
+						{
+							$$ = NULL;
+						}
+						else
+							$$ = make_execsql_stmt(K_SET, @1);
+					}
+				/* End - ReqID:SRS-MYSQL-SET */
 				;
 
 stmt_dynexecute : K_EXECUTE
@@ -3079,7 +3141,7 @@ make_execsql_stmt(int firsttoken, int location)
 
 	plmysql_IdentifierLookup = save_IdentifierLookup;
 
-	if (have_into)
+	if (have_into && target != NULL)	/* ReqID:SRS-MYSQL-SET */
 	{
 		/*
 		 * Insert an appropriate number of spaces corresponding to the
@@ -3565,6 +3627,17 @@ read_into_target(PLmySQL_variable **target, bool *strict)
 			}
 			break;
 
+		/* Begin - ReqID:SRS-MYSQL-SET
+		 * Implement SELECT INTO for user defined variables in PL blocks.
+		 */
+		case USER_VARIABLE_NAME:
+			{
+				*target = (PLmySQL_variable *)
+					read_into_scalar_list(yylval.str, NULL, yylloc);
+			}
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
+
 		default:
 			/* just to give a better message than "syntax error" */
 			current_token_is_not_variable(tok);
@@ -3588,9 +3661,18 @@ read_into_scalar_list(char *initial_name,
 	PLmySQL_row		*row;
 	int				 tok;
 
-	check_assignable(initial_datum, initial_location);
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	if (initial_datum == NULL)
+	{
+		varnos[0] = -1;
+	}
+	else
+	{
+		check_assignable(initial_datum, initial_location);
+		varnos[0]	  = initial_datum->dno;
+	}
+	/* End - ReqID:SRS-MYSQL-SET */
 	fieldnames[0] = initial_name;
-	varnos[0]	  = initial_datum->dno;
 	nfields		  = 1;
 
 	while ((tok = yylex()) == ',')
@@ -3617,6 +3699,17 @@ read_into_scalar_list(char *initial_name,
 				fieldnames[nfields] = NameOfDatum(&(yylval.wdatum));
 				varnos[nfields++]	= yylval.wdatum.datum->dno;
 				break;
+
+			/* Begin - ReqID:SRS-MYSQL-SET
+			 * This part implements SELECT INTO for user defined variables.
+			 * The variable's index is set to -1 (since function parameters start from0),
+			 * and the variable's name is assigned as the user defined variable's identifier.
+			 */
+			case USER_VARIABLE_NAME:
+				fieldnames[nfields] = yylval.str;
+				varnos[nfields++]	= -1;
+				break;
+			/* Begin - ReqID:SRS-MYSQL-SET */
 
 			default:
 				/* just to give a better message than "syntax error" */
@@ -4174,3 +4267,156 @@ make_case(int location, PLmySQL_expr *t_expr,
 
 	return (PLmySQL_stmt *) new;
 }
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+static bool plmysql_is_token_match(int token)
+{
+	int tok = plmysql_yylex();
+
+	plmysql_push_back_token(tok);
+
+	return (tok == token);
+}
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+/*
+ * Read a SQL construct and build a PLmySQL_expr for it.
+ *
+ * until:		token code for expected terminator
+ * until2:		token code for alternate terminator (pass 0 if none)
+ * until3:		token code for another alternate terminator (pass 0 if none)
+ * expected:	text to use in complaining that terminator was not found
+ * parsemode:	raw_parser() mode to use
+ * isexpression:	whether to say we're reading an "expression" or a "statement"
+ * valid_sql:	whether to check the syntax of the expr
+ * trim: 		trim trailing whitespace
+ * startloc:	if not NULL, location of first token is stored at *startloc
+ * endtoken:	if not NULL, ending token is stored at *endtoken
+ *				(this is only interesting if until2 or until3 isn't zero)
+ */
+static PLmySQL_expr *
+read_sql_constructassign(int until,
+				  int until2,
+				  int until3,
+				  const char *expected,
+				  RawParseMode parsemode,
+				  bool isexpression,
+				  bool valid_sql,
+				  bool trim,
+				  int *startloc,
+				  int *endtoken)
+{
+	int				   tok;
+	StringInfoData	   ds;
+	IdentifierLookup    save_IdentifierLookup;
+	int				   startlocation = -1;
+	int				   parenlevel = 0;
+	PLmySQL_expr 	   *expr;
+
+	initStringInfo(&ds);
+
+	/* special lookup mode for identifiers within the SQL text */
+	save_IdentifierLookup = plmysql_IdentifierLookup;
+	plmysql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
+
+	for (;;)
+	{
+		tok = yylex();
+		if (startlocation < 0)		   /* remember loc of first token */
+			startlocation = yylloc;
+		if (tok == until && parenlevel == 0)
+		{
+			if (until == ',')
+			{
+				int		tmptok;
+				int		beforelocal = yylloc;
+
+				plmysql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
+				tmptok = plmysql_yylex();
+				plmysql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
+				if (tmptok == T_DATUM || tmptok == USER_VARIABLE_NAME)
+				{
+					plmysql_push_back_token(tmptok);
+					yylloc = beforelocal;
+					break;
+				}
+			}
+			else
+				break;
+		}
+		if (tok == until2 && parenlevel == 0)
+			break;
+		if (tok == until3 && parenlevel == 0)
+			break;
+		if (tok == '(' || tok == '[')
+			parenlevel++;
+		else if (tok == ')' || tok == ']')
+		{
+			parenlevel--;
+			if (parenlevel < 0)
+				yyerror("mismatched parentheses");
+		}
+		/*
+		* End of function definition is an error, and we don't expect to
+		* hit a semicolon either (unless it's the until symbol, in which
+		* case we should have fallen out above).
+		*/
+		if (tok == 0 || tok == ';')
+		{
+			if (parenlevel != 0)
+				yyerror("mismatched parentheses");
+			if (isexpression)
+				ereport(ERROR,
+					   (errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("missing \"%s\" at end of SQL expression",
+							   expected),
+						parser_errposition(yylloc)));
+		   else
+			   ereport(ERROR,
+					   (errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("missing \"%s\" at end of SQL statement",
+							   expected),
+						parser_errposition(yylloc)));
+		}
+	}
+
+	plmysql_IdentifierLookup = save_IdentifierLookup;
+
+	if (startloc)
+		*startloc = startlocation;
+	if (endtoken)
+		*endtoken = tok;
+
+	/* give helpful complaint about empty input */
+	if (startlocation >= yylloc)
+	{
+		if (isexpression)
+			yyerror("missing expression");
+		else
+			yyerror("missing SQL statement");
+	}
+
+	plmysql_append_source_text(&ds, startlocation, yylloc);
+
+	/* trim any trailing whitespace, for neatness */
+	if (trim)
+	{
+	   while (ds.len > 0 && scanner_isspace(ds.data[ds.len - 1]))
+		   ds.data[--ds.len] = '\0';
+	}
+
+	expr = palloc0(sizeof(PLmySQL_expr));
+	expr->query		   = pstrdup(ds.data);
+	expr->parseMode	   = parsemode;
+	expr->plan		   = NULL;
+	expr->paramnos	   = NULL;
+	expr->target_param  = -1;
+	expr->ns 		   = plmysql_ns_top();
+	pfree(ds.data);
+
+	if (valid_sql)
+	   check_sql_expr(expr->query, expr->parseMode, startlocation);
+
+	return expr;
+}
+/* End - ReqID:SRS-MYSQL-SET */

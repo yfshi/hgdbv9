@@ -1,0 +1,50 @@
+--set character
+set CHARACTER SET ucs2;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'ucs2' 
+set CHARACTER SET utf16;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16' 
+set CHARACTER SET utf16le;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16le' 
+set CHARACTER SET utf16le;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16le' 
+set CHARACTER SET utf32;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf32' 
+set CHARACTER SET utf8;
+set CHARACTER SET default;
+set CHARSET ucs2;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'ucs2' 
+set CHARSET utf16;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16' 
+set CHARSET utf16le;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16le' 
+set CHARSET utf16le;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16le' 
+set CHARSET utf32;	--err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf32' 
+set CHARSET utf8;
+set CHARSET default;
+set mysql.at_or_atat = on;
+--TC_IVYSQL_MYSQL_SET_ CHARACTER_001
+SET CHARACTER SET utf8mb4;
+SET CHARSET gbk;
+--TC_IVYSQL_MYSQL_SET_ CHARACTER_002
+SET CHARACTER SET  'utf8wertet'; --err
+ERROR:   'utf8wertet' is an unavailable character set 
+SET CHARSET  'utf8wertet'; --err
+ERROR:   'utf8wertet' is an unavailable character set 
+--TC_IVYSQL_MYSQL_SET_ CHARACTER_003
+set CHARACTER SET 'utf8mb4';
+set CHARACTER SET "gbk";
+set CHARACTER SET 'utf8';
+--TC_IVYSQL_MYSQL_SET_ CHARACTER_004
+set CHARACTER SET DEFAULT;
+--TC_IVYSQL_MYSQL_SET_ CHARACTER_005
+set CHARACTER SET ucs2; --err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'ucs2' 
+set CHARACTER SET utf16; --err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16' 
+set CHARACTER SET utf16le; --err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf16le' 
+set CHARACTER SET utf32; --err
+ERROR:  Variable 'character_set_client' can't be set to the value of 'utf32' 
+set mysql.at_or_atat = off;

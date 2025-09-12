@@ -3607,7 +3607,53 @@ _equalIndexHintRelationData(const IndexHintRelationData* a, const IndexHintRelat
 	return true;
 }
 /* End - ReqID:SRS-MYSQL-UPDATE */
+/* Begin - ReqID:SRS-MYSQL-SET */
+static bool
+_equalMysVariableSetStmt(const MysVariableSetStmt *a, const MysVariableSetStmt *b)
+{
+	COMPARE_NODE_FIELD(varSetStmt);
 
+	return true;
+}
+
+static bool
+_equalMysSelectIntoStmt(const SelectIntoUserVarStmt *a, const SelectIntoUserVarStmt *b)
+{
+	COMPARE_NODE_FIELD(target);
+	COMPARE_NODE_FIELD(expr);
+
+	return true;
+}
+
+static bool
+_equalVarAssign(const VarAssign *a, const VarAssign *b)
+{
+	COMPARE_STRING_FIELD(varname);
+	COMPARE_NODE_FIELD(value);
+	COMPARE_SCALAR_FIELD(setkind);
+	COMPARE_SCALAR_FIELD(ret);
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+
+static bool
+_equalVarRef(const VarRef *a, const VarRef *b)
+{
+	COMPARE_STRING_FIELD(varname);
+	COMPARE_SCALAR_FIELD(varkind);
+	COMPARE_LOCATION_FIELD(location);
+	COMPARE_SCALAR_FIELD(compiled);
+	if (a->value != NULL && b->value != NULL)
+		_equalConst(a->value, b->value);
+	else
+		return false;
+
+	COMPARE_SCALAR_FIELD(rettype);
+	return true;
+}
+
+/* End - ReqID:SRS-MYSQL-SET */
 
 /*
  * equal
@@ -4495,6 +4541,20 @@ equal(const void *a, const void *b)
 			retval = _equalUpsertExpr(a, b);
 			break;
 		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_MysVariableSetStmt:
+			_equalMysVariableSetStmt(a, b);
+			break;
+		case T_SelectIntoUserVarStmt:
+			_equalMysSelectIntoStmt(a, b);
+			break;
+		case T_VarAssign:
+			_equalVarAssign(a, b);
+			break;
+		case T_VarRef:
+			_equalVarRef(a, b);
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(a));

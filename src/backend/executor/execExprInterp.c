@@ -91,6 +91,12 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-XML */
+/* Begin - ReqID:SRS-MYSQL-SET */
+#include "mysql_parser/mys_set_hook.h"
+#include "parser/parse_coerce.h"
+#include "optimizer/optimizer.h"
+#include "catalog/pg_cast.h"
+/* End - ReqID:SRS-MYSQL-SET */
 
 /*
  * Use computed-goto-based opcode dispatch when computed gotos are available.
@@ -192,6 +198,9 @@ static pg_attribute_always_inline void ExecAggPlainTransByRef(AggState *aggstate
 															  AggStatePerGroup pergroup,
 															  ExprContext *aggcontext,
 															  int setno);
+/* Begin - ReqID:SRS-MYSQL-SET */
+static Datum mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid);
+/* End - ReqID:SRS-MYSQL-SET */
 
 /*
  * ScalarArrayOpExprHashEntry
@@ -517,6 +526,9 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		/* Begin - BUG#Z4591 */
 		&&CASE_EEOP_NVL_FETCH,
 		/* End - BUG#Z4591 */
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		&&CASE_EEOP_VARREF,
+		/* End - ReqID:SRS-MYSQL-SET */
 		&&CASE_EEOP_LAST
 	};
 
@@ -1891,6 +1903,41 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			EEO_NEXT();
 		}
 		/* End - BUG#Z4591 */
+
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		EEO_CASE(EEOP_VARREF)
+		{
+			VarRef	   *ref = makeNode(VarRef);
+
+			ref->varname = op->d.varref.varname;
+			ref->varkind = USER_VAR;
+			if (uservariable_hash_search_hook)
+			{
+				Const *currentval = (Const *)uservariable_hash_search_hook(NULL, ref);
+
+				*op->resnull = currentval->constisnull;
+
+				/* If a user defined variable appears in an expression, its value
+				 * must be recalculated and converted to the type determind during
+				 * expression parsing.
+				 */
+				if (OidIsValid(op->d.varref.rettype))
+				{
+					*op->resvalue = mys_convert_current_const_to_target_const(currentval, op->d.varref.rettype);
+				}
+				else
+				{
+					*op->resvalue = currentval->constvalue;
+				}
+			}
+			else
+			{
+				*op->resvalue = op->d.varref.value->constvalue;
+			}
+
+			EEO_NEXT();
+		}
+		/* End - ReqID:SRS-MYSQL-SET */
 
 		EEO_CASE(EEOP_LAST)
 		{
@@ -4540,3 +4587,45 @@ ExecAggPlainTransByRef(AggState *aggstate, AggStatePerTrans pertrans,
 
 	MemoryContextSwitchTo(oldContext);
 }
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+/*
+ * mys_convert_current_const_to_target_const:
+ *	transform current Const node to target type Const node.
+ *
+ * Parameters
+ *	currentconst: current const node.
+ *	targetoid: target oid.
+ *
+ * Returns:
+ *	the value of target type.
+ */
+static Datum
+mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid)
+{
+	Datum			retdatum;
+
+	/*
+	 * If the type of the user defined variable does not match the target type,
+	 * perform an explicit cast to the target type, others return current value.
+	 */
+	if (targetoid != currentconst->consttype)
+	{
+		Node		   *result = NULL;
+		Const		   *newconst = NULL;
+
+		result = coerce_type(NULL, (Node *)currentconst, currentconst->consttype,
+							 targetoid,
+							 -1, COERCION_EXPLICIT, COERCE_EXPLICIT_CAST,
+							 -1);
+		newconst = (Const *)eval_const_expressions(NULL, result);
+		retdatum = newconst->constvalue;
+	}
+	else
+	{
+		retdatum = currentconst->constvalue;
+	}
+
+	return retdatum;
+}
+/* End - ReqID:SRS-MYSQL-SET */

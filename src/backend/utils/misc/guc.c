@@ -13371,6 +13371,42 @@ check_default_with_oids(bool *newval, void **extra, GucSource source)
 
 	return true;
 }
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+/*
+ * guc_list_input_check:
+ *   Check whether the GUC parameter has the GUC_LIST_INPUT flg.
+ *
+ * Parameters
+ *   GUC parameter name.
+ *
+ * Returns:
+ *   true, if the GUC parameter has the GUC_LIST_INPUT flg,
+ *   otherwith return false.
+ */
+bool
+guc_list_input_check(const char *varname)
+{
+	struct config_generic *conf_genic;
+
+	/*
+	 * sql_mode should treat the string as a whole,
+	 * it must not be split.
+	 */
+	if (pg_strcasecmp(varname, "sql_mode") == 0)
+		return false;
+
+	conf_genic = find_option(varname, false, true, ERROR);
+	if (conf_genic != NULL)
+	{
+		if ((conf_genic->flags & GUC_LIST_INPUT) != 0)
+			return true;
+	}
+
+	return false;
+}
+/* End - ReqID:SRS-MYSQL-SET */
+
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DEFINE
 #include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */

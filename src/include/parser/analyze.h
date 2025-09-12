@@ -66,4 +66,17 @@ extern SortGroupClause *makeSortGroupClauseForSetOp(Oid rescoltype, bool require
 /* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
 extern List *copy_enum_label(Oid enumOid);
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+extern VariableSetStmt *trans_MysVariable_to_VariableSet(ParseState *pstate, MysVariableSetStmt *stmt);
+extern Node *ivy_makeStringConst(char *str, int location);
+extern Node *ivy_makeIntConst(int val, int location);
+extern Node *ivy_makeFloatConst(char *str, int location);
+extern Node *ivy_makeAConst(Value *v, int location);
+extern Node *ivy_makeNullAConst(int location);
+extern Node *ivy_makeTypeCast(Node *arg, TypeName *typename, int location);
+extern Node *ivy_makeBoolAConst(bool state);
+extern Node *transformVarAssign(ParseState *pstate, VarAssign *var, bool returnquery);
+/* End - ReqID:SRS-MYSQL-SET */
+
 #endif							/* ANALYZE_H */

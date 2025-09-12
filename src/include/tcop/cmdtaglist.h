@@ -248,3 +248,6 @@ PG_CMDTAG(CMDTAG_TRUNCATE_TABLE, "TRUNCATE TABLE", false, false, false)
 PG_CMDTAG(CMDTAG_UNLISTEN, "UNLISTEN", false, false, false)
 PG_CMDTAG(CMDTAG_UPDATE, "UPDATE", false, false, true)
 PG_CMDTAG(CMDTAG_VACUUM, "VACUUM", false, false, false)
+/* Begin - ReqID:SRS-MYSQL-SET */
+PG_CMDTAG(CMDTAG_SET_MULTISET, "SET", true, false, false)
+/* End - ReqID:SRS-MYSQL-SET */

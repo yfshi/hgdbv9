@@ -33,6 +33,7 @@ OBJS = \
 	src/datatype/mystext.o	\
 	src/datatype/myschar.o	\
 	src/datatype/mysbit.o \
+	src/datatype/mysvarchar.o \
 	src/charset/charset.o \
 	src/charset/ctype-bin.o \
 	src/charset/ctype-mb.o \
@@ -53,7 +54,11 @@ OBJS = \
 	src/builtin_functions/character_func.o \
 	src/builtin_functions/interval.o \
 	src/builtin_functions/mys_locale.o \
-	src/builtin_functions/network_func.o
+	src/builtin_functions/network_func.o \
+	src/set/set_user_var.o \
+	src/set/set_global_session_var.o \
+	src/set/set_names.o \
+	src/set/set_charset.o
 
 EXTENSION = ivorysql_my
 
@@ -137,7 +142,11 @@ MYS_REGRESS = multi_update \
 			  network_func \
 			  weight_string \
 			  operator \
-			  aggregates_without_group_by
+			  aggregates_without_group_by \
+			  set-user-var \
+			  set_global_session_var \
+			  set_charset \
+			  set_names
 
 
 ifdef USE_PGXS

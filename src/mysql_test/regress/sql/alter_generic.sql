@@ -20,7 +20,7 @@ CREATE SCHEMA alt_nsp2;
 
 GRANT ALL ON SCHEMA alt_nsp1, alt_nsp2 TO public;
 
-SET search_path = alt_nsp1, public;
+SET search_path = 'alt_nsp1, public';
 
 --
 -- Function and Aggregate

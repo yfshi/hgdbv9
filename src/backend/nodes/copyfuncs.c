@@ -5565,6 +5565,62 @@ _copyIndexHintDefinition(const IndexHintDefinition* from)
 }
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
+/* Begin - ReqID:SRS-MYSQL-SET */
+static MysVariableSetStmt *
+_copyMysVariableSetStmt(const MysVariableSetStmt *from)
+{
+	MysVariableSetStmt *newnode = makeNode(MysVariableSetStmt);
+
+	COPY_NODE_FIELD(varSetStmt);
+
+	return newnode;
+}
+
+static SelectIntoUserVarStmt *
+_copyMysSelectIntoStmt(const SelectIntoUserVarStmt *from)
+{
+	SelectIntoUserVarStmt *newnode = makeNode(SelectIntoUserVarStmt);
+
+	COPY_NODE_FIELD(target);
+	COPY_NODE_FIELD(expr);
+
+	return newnode;
+}
+
+static VarAssign *
+_copyVarAssign(const VarAssign *from)
+{
+	VarAssign *newnode = makeNode(VarAssign);
+
+	COPY_STRING_FIELD(varname);
+	COPY_NODE_FIELD(value);
+	COPY_SCALAR_FIELD(setkind);
+	COPY_SCALAR_FIELD(ret);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+
+static VarRef *
+_copyVarRef(const VarRef *from)
+{
+	VarRef *newnode = makeNode(VarRef);
+
+	COPY_STRING_FIELD(varname);
+	COPY_SCALAR_FIELD(varkind);
+	COPY_LOCATION_FIELD(location);
+	COPY_SCALAR_FIELD(compiled);
+	if (from->value)
+		newnode->value = _copyConst(from->value);
+	else
+		newnode->value = NULL;
+
+	COPY_SCALAR_FIELD(rettype);
+
+	return newnode;
+}
+/* End - ReqID:SRS-MYSQL-SET */
+
 /*
  * copyObjectImpl -- implementation of copyObject(); see nodes/nodes.h
  *
@@ -6618,6 +6674,20 @@ copyObjectImpl(const void *from)
 			retval = _copyUpsertExpr(from);
 			break;
 		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_MysVariableSetStmt:
+			retval = _copyMysVariableSetStmt(from);
+			break;
+		case T_SelectIntoUserVarStmt:
+			retval = _copyMysSelectIntoStmt(from);
+			break;
+		case T_VarAssign:
+			retval = _copyVarAssign(from);
+			break;
+		case T_VarRef:
+			retval = _copyVarRef(from);
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(from));
 			retval = 0;			/* keep compiler quiet */

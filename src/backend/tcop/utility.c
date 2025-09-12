@@ -83,6 +83,13 @@
 #include "foreign/foreign.h"	/* ReqID:SRS-SQL-DBLINK */
 
 #include "commands/resgroupcmds.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/* Begin - ReqID:SRS-MYSQL-SET */
+#include "mysql_parser/mys_set_hook.h"
+#include "rewrite/rewriteHandler.h"
+#include "utils/snapmgr.h"
+#include "executor/tstoreReceiver.h"
+#include "parser/scansup.h"
+/* End - ReqID:SRS-MYSQL-SET */
 
 /* Hook for plugins to get control in ProcessUtility() */
 ProcessUtility_hook_type ProcessUtility_hook = NULL;
@@ -99,7 +106,16 @@ static void ProcessUtilitySlow(ParseState *pstate,
 							   QueryCompletion *qc);
 static void ExecDropStmt(DropStmt *stmt, bool isTopLevel);
 static int process_utility_nesting_level = 0; /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
-
+/* Begin - ReqID:SRS-MYSQL-SET */
+static void MysExecSetVariableStmt(ParseState *pstate,
+								   MysVariableSetStmt *parsetree,
+								   ParamListInfo params,
+								   bool isTopLevel);
+static void MysExecSelectIntoUserVarStmt(ParseState *pstate,
+							   SelectIntoUserVarStmt *parsetree,
+							   ParamListInfo params,
+							   QueryCompletion *qc);
+/* End - ReqID:SRS-MYSQL-SET */
 /*
  * CommandIsReadOnly: is an executable query read-only?
  *
@@ -308,6 +324,10 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_PrepareStmt:
 		case T_UnlistenStmt:
 		case T_VariableSetStmt:
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_MysVariableSetStmt:
+		case T_SelectIntoUserVarStmt:
+		/* End - ReqID:SRS-MYSQL-SET */
 			{
 				/*
 				 * These modify only backend-local state, so they're OK to run
@@ -925,6 +945,20 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 		case T_VariableSetStmt:
 			ExecSetVariableStmt((VariableSetStmt *) parsetree, isTopLevel);
 			break;
+
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_MysVariableSetStmt:
+			{
+				MysExecSetVariableStmt(pstate, (MysVariableSetStmt *) parsetree, params, isTopLevel);
+			}
+			break;
+
+		case T_SelectIntoUserVarStmt:
+			{
+				MysExecSelectIntoUserVarStmt(pstate, (SelectIntoUserVarStmt *) parsetree, params, qc);
+			}
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 
 		case T_VariableShowStmt:
 			{
@@ -3481,6 +3515,14 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_DROP_SYNONYM;
 			break;
 		/* End - ReqID:SRS-SQL-SYNONYM */
+		/* Begin - ReqID:SRS-MYSQL-SET */
+		case T_MysVariableSetStmt:
+			tag = CMDTAG_SET_MULTISET;
+			break;
+		case T_VarAssign:
+			tag = CMDTAG_SET_MULTISET;
+			break;
+		/* End - ReqID:SRS-MYSQL-SET */
 		default:
 			elog(WARNING, "unrecognized node type: %d",
 				 (int) nodeTag(parsetree));
@@ -4052,3 +4094,200 @@ utility_nested(void)
 	return process_utility_nesting_level >= 2;
 }
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
+/* Begin - ReqID:SRS-MYSQL-SET */
+/* MysExecSetVariableStmt
+ *
+ * Now each set is a query statement,
+ * and each query statement is execute here.
+ */
+static void
+MysExecSetVariableStmt(ParseState *pstate,
+							   MysVariableSetStmt *parsetree,
+							   ParamListInfo params,
+							   bool isTopLevel)
+{
+	Query *query = (Query *)parsetree->varSetStmt;
+	PlannedStmt *plan;
+	QueryDesc *queryDesc;
+	DestReceiver *treceiver;
+	List *rewritten;
+
+	Assert(query->commandType == CMD_SELECT);
+
+	/* All output from varSetStmt goes to the bit bucket */
+	treceiver = CreateDestReceiver(DestNone);
+
+	rewritten = QueryRewrite(query);
+
+	/* SELECT should never rewrite to more or less than one SELECT query */
+	if (list_length(rewritten) != 1)
+		ereport(ERROR,
+				errcode(ERRCODE_CARDINALITY_VIOLATION),
+				errmsg("unexpected rewrite result for setUserVariable"));
+
+	query = linitial_node(Query, rewritten);
+	Assert(query->commandType == CMD_SELECT);
+
+	/* plan the query */
+	plan = pg_plan_query(query, pstate->p_sourcetext,
+						 CURSOR_OPT_PARALLEL_OK, params);
+
+	/*
+	* Use a snapshot with an updated command ID to ensure this query sees
+	* results of any previously executed queries.  (This could only
+	* matter if the planner executed an allegedly-stable function that
+	* changed the database contents, but let's do it anyway to be
+	* parallel to the EXPLAIN code path.)
+	*/
+	PushCopiedSnapshot(GetActiveSnapshot());
+	UpdateActiveSnapshotCommandId();
+
+	/* Create a QueryDesc, redirecting output to our tuple receiver */
+	queryDesc = CreateQueryDesc(plan, pstate->p_sourcetext,
+								GetActiveSnapshot(), InvalidSnapshot,
+								treceiver, params, pstate->p_queryEnv, 0);
+
+	/* call ExecutorStart to prepare the plan for execution */
+	ExecutorStart(queryDesc, 0);
+
+	/* run the plan to completion */
+	ExecutorRun(queryDesc, ForwardScanDirection, 0L, true);
+
+	/* and clean up */
+	ExecutorFinish(queryDesc);
+	ExecutorEnd(queryDesc);
+
+	FreeQueryDesc(queryDesc);
+
+	PopActiveSnapshot();
+}
+
+/* MysExecSelectIntoUserVarStmt
+ *
+ * Insert a value into a user defined variable at the SQL statment.
+ */
+static void
+MysExecSelectIntoUserVarStmt(ParseState *pstate,
+							 SelectIntoUserVarStmt *parsetree,
+							 ParamListInfo params,
+							 QueryCompletion *qc)
+{
+	Query *query = (Query *)parsetree->expr;
+	PlannedStmt *plan;
+	QueryDesc *queryDesc;
+	Tuplestorestate *tupleStore;
+	DestReceiver *dreceiver;
+	List *rewritten;
+
+	Assert(query->commandType == CMD_SELECT);
+
+	tupleStore = tuplestore_begin_heap(false, false, work_mem);
+	dreceiver = CreateDestReceiver(DestTuplestore);
+	SetTuplestoreDestReceiverParams(dreceiver,
+									tupleStore,
+									CurrentMemoryContext,
+									false,
+									NULL,
+									NULL);
+
+	rewritten = QueryRewrite(query);
+
+	/* SELECT should never rewrite to more or less than one SELECT query */
+	if (list_length(rewritten) != 1)
+		ereport(ERROR,
+				errcode(ERRCODE_CARDINALITY_VIOLATION),
+				errmsg("unexpected rewrite result for setUserVariable"));
+
+	query = linitial_node(Query, rewritten);
+	Assert(query->commandType == CMD_SELECT);
+
+	/* plan the query */
+	plan = pg_plan_query(query, pstate->p_sourcetext,
+						 CURSOR_OPT_PARALLEL_OK, params);
+
+	/*
+	 * Use a snapshot with an updated command ID to ensure this query sees
+	 * results of any previously executed queries.	(This could only
+	 * matter if the planner executed an allegedly-stable function that
+	 * changed the database contents, but let's do it anyway to be
+	 * parallel to the EXPLAIN code path.)
+	 */
+	PushCopiedSnapshot(GetActiveSnapshot());
+	UpdateActiveSnapshotCommandId();
+
+	/* Create a QueryDesc, redirecting output to our tuple receiver */
+	queryDesc = CreateQueryDesc(plan, pstate->p_sourcetext,
+								GetActiveSnapshot(), InvalidSnapshot,
+								dreceiver, params, pstate->p_queryEnv, 0);
+
+	/* call ExecutorStart to prepare the plan for execution */
+	ExecutorStart(queryDesc, 0);
+
+	/* run the plan to completion */
+	ExecutorRun(queryDesc, ForwardScanDirection, 0L, true);
+
+	if (tuplestore_tuple_count(tupleStore) > 1)
+	{
+		ereport(ERROR,
+				errcode(ERRCODE_CARDINALITY_VIOLATION),
+				errmsg("Result consisted of more than one row"));
+	}
+	else if (tuplestore_tuple_count(tupleStore) == 0)
+	{
+		ereport(WARNING,
+				errcode(ERRCODE_NO_DATA),
+				errmsg("No data - zero rows fetched, selected, or processed"));
+	}
+	else
+	{
+		TupleTableSlot *slot;
+		int i;
+
+		slot = MakeSingleTupleTableSlot(queryDesc->tupDesc, &TTSOpsMinimalTuple);
+		tuplestore_gettupleslot(tupleStore, true, false, slot);
+
+		for (i = 0; i < list_length(parsetree->target); i++)
+		{
+			Datum			value;
+			bool			isNull;
+			VarRef		   *userVar;
+			Oid 			valTypeOid;
+			int32			typmod;
+			Oid 			colloid;
+			int 			typlen;
+			bool			attbyval;
+
+			/*
+			 * Get the name, value, type, collate and typlen, typbyval
+			 * of each user variable.
+			 */
+			userVar = (VarRef *)lfirst(list_nth_cell(parsetree->target, i));
+			valTypeOid = TupleDescAttr(queryDesc->tupDesc, i)->atttypid;
+			typmod =  TupleDescAttr(queryDesc->tupDesc, i)->atttypmod;
+			colloid = TupleDescAttr(queryDesc->tupDesc, i)->attcollation;
+			typlen = TupleDescAttr(queryDesc->tupDesc, i)->attlen;
+			attbyval = TupleDescAttr(queryDesc->tupDesc, i)->attbyval;
+			value = slot_getattr(slot, i + 1, &isNull);
+			if (setuservarinternal_hook)
+				setuservarinternal_hook(userVar->varname, valTypeOid, typmod, colloid, typlen, value, isNull, attbyval);
+		}
+
+		ExecDropSingleTupleTableSlot(slot);
+	}
+
+	if (qc)
+	{
+		SetQueryCompletion(qc, CMDTAG_SELECT, tuplestore_tuple_count(tupleStore));
+	}
+
+	/* and clean up */
+	ExecutorFinish(queryDesc);
+	ExecutorEnd(queryDesc);
+
+	FreeQueryDesc(queryDesc);
+	tuplestore_end(tupleStore);
+
+	PopActiveSnapshot();
+}
+/* End - ReqID:SRS-MYSQL-SET */

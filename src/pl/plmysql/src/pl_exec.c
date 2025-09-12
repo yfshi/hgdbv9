@@ -53,6 +53,10 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+#include "executor/spi_priv.h"	/* ReqID:SRS-MYSQL-SET */
+/* Begin - ReqID:SRS-MYSQL-SET */
+#include "mysql_parser/mys_set_hook.h"
+/* End - ReqID:SRS-MYSQL-SET */
 
 /*
  * All plmysql function executions within a single transaction share the same
@@ -2130,6 +2134,21 @@ exec_stmts(PLmySQL_execstate *estate, List *stmts)
 static int
 exec_stmt_assign(PLmySQL_execstate *estate, PLmySQL_stmt_assign *stmt)
 {
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	if (stmt->varname != NULL)
+	{
+		bool		isnull;
+		Oid			valtype;
+		int32		valtypmod;
+
+		exec_prepare_plan(estate, stmt->expr, 0);
+		exec_eval_expr(estate, stmt->expr, &isnull, &valtype, &valtypmod);
+
+		exec_eval_cleanup(estate);
+		return PLMYSQL_RC_OK;
+	}
+	/* End - ReqID:SRS-MYSQL-SET */
+
 	Assert(stmt->varno >= 0);
 
 	exec_assign_expr(estate, estate->datums[stmt->varno], stmt->expr);
@@ -4177,6 +4196,10 @@ exec_stmt_execsql(PLmySQL_execstate *estate,
 	int			rc;
 	PLmySQL_expr *expr = stmt->sqlstmt;
 	int			too_many_rows_level = 0;
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	List		*rawparserlist = NIL;
+	bool		equalassignvalue = false;
+	/* End - ReqID:SRS-MYSQL-SET */
 
 	if (plmysql_extra_errors & PLMYSQL_XCHECK_TOOMANYROWS)
 		too_many_rows_level = ERROR;
@@ -4312,6 +4335,43 @@ exec_stmt_execsql(PLmySQL_execstate *estate,
 	/* All variants should save result info for GET DIAGNOSTICS */
 	estate->eval_processed = SPI_processed;
 
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	if (expr->query != NULL)
+	{
+		/* Re-parse the string to check whether
+		 * the node is an assignment to user defined
+		 * variable
+		 */
+		rawparserlist = raw_parser(expr->query, RAW_PARSE_DEFAULT);
+		if (rawparserlist != NIL && list_length(rawparserlist) == 1)
+		{
+			if (IsA(linitial(rawparserlist), RawStmt))
+			{
+				RawStmt *raws = (RawStmt *)linitial(rawparserlist);
+
+				if (nodeTag(raws->stmt) == T_SelectStmt)
+				{
+					SelectStmt *selectstmt;
+					ListCell *cell;
+
+					selectstmt = (SelectStmt *)raws->stmt;
+					foreach(cell, selectstmt->targetList)
+					{
+						if (IsA(lfirst(cell), ResTarget))
+						{
+							ResTarget *restag = (ResTarget *)lfirst(cell);
+
+							if (nodeTag(restag->val) == T_VarAssign)
+								equalassignvalue = true;
+						}
+					}
+				}
+			}
+		}
+		list_free(rawparserlist);
+	}
+	/* End - ReqID:SRS-MYSQL-SET */
+
 	/* Process INTO if present */
 	if (stmt->into)
 	{
@@ -4380,6 +4440,17 @@ exec_stmt_execsql(PLmySQL_execstate *estate,
 		exec_eval_cleanup(estate);
 		SPI_freetuptable(SPI_tuptable);
 	}
+	/* Begin - ReqID:SRS-MYSQL-SET */
+	else if (equalassignvalue)
+	{
+		/*
+		 * Skip error for user defined variable assignment,
+		 * and clean up.
+		 */
+		exec_eval_cleanup(estate);
+		SPI_freetuptable(SPI_tuptable);
+	}
+	/* End - ReqID:SRS-MYSQL-SET */
 	else
 	{
 		/* If the statement returned a tuple table, complain */
@@ -7168,43 +7239,77 @@ exec_move_row_from_fields(PLmySQL_execstate *estate,
 			Oid			valtype;
 			int32		valtypmod;
 
-			var = (PLmySQL_var *) (estate->datums[row->varnos[fnum]]);
-
-			while (anum < td_natts &&
-				   TupleDescAttr(tupdesc, anum)->attisdropped)
-				anum++;			/* skip dropped column in tuple */
-
-			if (anum < td_natts)
+			/* Begin - ReqID:SRS-MYSQL-SET */
+			if (row->varnos[fnum] == -1 && row->fieldnames[fnum] != NULL && fnum <= row->nfields)
 			{
+				/* select into user defined variable */
+				char			*uservarname = NULL;
+				Oid 			colloid;
+				int 			typlen;
+				bool			attbyval;
+
+				while (anum < td_natts &&
+					   TupleDescAttr(tupdesc, anum)->attisdropped)
+					anum++;			/* skip dropped column in tuple */
+
+				/*
+				 * Get the name, value, type, collate and typlen, typbyval
+				 * of each user variable.
+				 */
 				value = values[anum];
 				isnull = nulls[anum];
+				uservarname = row->fieldnames[fnum];
 				valtype = TupleDescAttr(tupdesc, anum)->atttypid;
-				valtypmod = TupleDescAttr(tupdesc, anum)->atttypmod;
+				valtypmod =  TupleDescAttr(tupdesc, anum)->atttypmod;
+				colloid = TupleDescAttr(tupdesc, anum)->attcollation;
+				typlen = TupleDescAttr(tupdesc, anum)->attlen;
+				attbyval = TupleDescAttr(tupdesc, anum)->attbyval;
 				anum++;
+
+				if (setuservarinternal_hook)
+					setuservarinternal_hook(uservarname, valtype, valtypmod, colloid, typlen, value, isnull, attbyval);
 			}
 			else
 			{
-				/* no source for destination column */
-				value = (Datum) 0;
-				isnull = true;
-				valtype = UNKNOWNOID;
-				valtypmod = -1;
+				var = (PLmySQL_var *) (estate->datums[row->varnos[fnum]]);
 
-				if (strict_multiassignment_level)
-					ereport(strict_multiassignment_level,
-							(errcode(ERRCODE_DATATYPE_MISMATCH),
-							 errmsg("number of source and target fields in assignment does not match"),
-					/* translator: %s represents a name of an extra check */
-							 errdetail("%s check of %s is active.",
-									   "strict_multi_assignment",
-									   strict_multiassignment_level == ERROR ? "extra_errors" :
-									   "extra_warnings"),
-							 errhint("Make sure the query returns the exact list of columns.")));
+				while (anum < td_natts &&
+					   TupleDescAttr(tupdesc, anum)->attisdropped)
+					anum++;			/* skip dropped column in tuple */
+
+				if (anum < td_natts)
+				{
+					value = values[anum];
+					isnull = nulls[anum];
+					valtype = TupleDescAttr(tupdesc, anum)->atttypid;
+					valtypmod = TupleDescAttr(tupdesc, anum)->atttypmod;
+					anum++;
+				}
+				else
+				{
+					/* no source for destination column */
+					value = (Datum) 0;
+					isnull = true;
+					valtype = UNKNOWNOID;
+					valtypmod = -1;
+
+					if (strict_multiassignment_level)
+						ereport(strict_multiassignment_level,
+								(errcode(ERRCODE_DATATYPE_MISMATCH),
+								 errmsg("number of source and target fields in assignment does not match"),
+						/* translator: %s represents a name of an extra check */
+								 errdetail("%s check of %s is active.",
+										   "strict_multi_assignment",
+										   strict_multiassignment_level == ERROR ? "extra_errors" :
+										   "extra_warnings"),
+								 errhint("Make sure the query returns the exact list of columns.")));
+				}
+
+				exec_assign_value(estate, (PLmySQL_datum *) var,
+								  value, isnull, valtype, valtypmod);
 			}
-
-			exec_assign_value(estate, (PLmySQL_datum *) var,
-							  value, isnull, valtype, valtypmod);
 		}
+		/* Begin - ReqID:SRS-MYSQL-SET */
 
 		/*
 		 * When strict_multiassignment extra check is active, ensure there are

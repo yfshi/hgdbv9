@@ -238,3 +238,17 @@ IMMUTABLE;
 
 CREATE CAST(varchar as pg_catalog.int8) WITH FUNCTION ivymy.mys_varchar2int8(varchar) AS ASSIGNMENT;
 
+-- Begin - ReqID:SRS-MYSQL-SET
+--
+-- cast (varchar as numeric)
+--
+create or replace function ivymy.mysvarchar_to_numeric(var pg_catalog.varchar)
+returns pg_catalog.numeric
+as 'MODULE_PATHNAME', 'mysvarchar_to_numeric'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (pg_catalog.varchar AS pg_catalog.numeric) WITH FUNCTION ivymy.mysvarchar_to_numeric(var pg_catalog.varchar) AS ASSIGNMENT;
+-- End - ReqID:SRS-MYSQL-SET
