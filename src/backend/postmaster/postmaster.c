@@ -968,17 +968,6 @@ PostmasterMain(int argc, char *argv[])
 		ExitPostmaster(1);
 	}
 
-	/* Begin - BUG#Z00004645 */
-	/* set database_style here */
-	/*
-	 * there, we set identifier_case_switch to value
-	 * get from pg_control before SelectConfigFiles, so
-	 * that confgilre file value overwrite the default value
-	 * from pg_control
-	 */
-	SetCaseGucOption(userDoption);
-	/* End - BUG#Z00004645 */
-
 	/*
 	 * Locate the proper configuration files and data directory, and read
 	 * postgresql.conf for the first time.
@@ -1008,6 +997,17 @@ PostmasterMain(int argc, char *argv[])
 
 	/* And switch working directory into it */
 	ChangeToDataDir();
+
+	/* Begin - BUG#Z00004645 */
+	/* set database_style here */
+	/*
+	 * there, we set identifier_case_switch to value
+	 * get from pg_control before SelectConfigFiles, so
+	 * that confgilre file value overwrite the default value
+	 * from pg_control
+	 */
+	SetCaseGucOption(DataDir);
+	/* End - BUG#Z00004645 */
 
 /* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
@@ -7406,17 +7406,17 @@ SetCaseGucOption(char* path)
 		if (casemode == NORMAL)
 		{
 			SetConfigOption("ivorysql.identifier_case_switch", "normal",
-				PGC_POSTMASTER, PGC_S_DYNAMIC_DEFAULT);	/* ReqID:SRS-MISC-GUC */ /* BUG#Z00004645 */
+				PGC_USERSET, PGC_S_DYNAMIC_DEFAULT);	/* ReqID:SRS-MISC-GUC */ /* BUG#Z00004645 */
 		}
 		else if (casemode == INTERCHANGE)
 		{
 			SetConfigOption("ivorysql.identifier_case_switch", "interchange",
-				PGC_POSTMASTER, PGC_S_DYNAMIC_DEFAULT);	/* ReqID:SRS-MISC-GUC */ /* BUG#Z00004645 */
+				PGC_USERSET, PGC_S_DYNAMIC_DEFAULT);	/* ReqID:SRS-MISC-GUC */ /* BUG#Z00004645 */
 		}
 		else if (casemode == LOWERCASE)
 		{
 			SetConfigOption("ivorysql.identifier_case_switch", "lowercase",
-				PGC_POSTMASTER, PGC_S_DYNAMIC_DEFAULT);	/* ReqID:SRS-MISC-GUC */ /* BUG#Z00004645 */
+				PGC_USERSET, PGC_S_DYNAMIC_DEFAULT);	/* ReqID:SRS-MISC-GUC */ /* BUG#Z00004645 */
 		}
 		else
 			ereport(FATAL,
