@@ -5706,7 +5706,6 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			strcmp(te->desc, "DOMAIN") == 0 ||
 			strcmp(te->desc, "FUNCTION") == 0 ||
 			strcmp(te->desc, "PACKAGE") == 0 || /* ReqID:SRS-SQL-PACKAGE */
-			strcmp(te->desc, "SYNONYM") == 0 ||	/* ReqID:SRS-SQL-SYNONYM */
 			strcmp(te->desc, "OPERATOR") == 0 ||
 			strcmp(te->desc, "OPERATOR CLASS") == 0 ||
 			strcmp(te->desc, "OPERATOR FAMILY") == 0 ||
@@ -5745,6 +5744,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 				 strcmp(te->desc, "DATABASE PROPERTIES") == 0 ||
 				 strcmp(te->desc, "DEFAULT") == 0 ||
 				 strcmp(te->desc, "FK CONSTRAINT") == 0 ||
+				 strcmp(te->desc, "SYNONYM") == 0 ||	/* Bug#Z5794 */
 				 strcmp(te->desc, "INDEX") == 0 ||
 				 strcmp(te->desc, "RULE") == 0 ||
 				 strcmp(te->desc, "TRIGGER") == 0 ||

@@ -2895,6 +2895,14 @@ audit_get_actionname_from_tree(Node *parsetree, char *buf)
 //		case T_DropRedactionPolicyStmt:
 //		case T_AlterRedactionPolicyStmt:
 //			break;
+		/* Begin - BUG#Z5791 */
+		case T_CreateSynonymStmt:
+			break;
+		case T_AlterSynonymStmt:
+			break;
+		case T_DropSynStmt:
+			break;
+		/* End - BUG#Z5791 */
 		default:
 			elog(WARNING, "unrecognized node type: %d",
 				 (int) nodeTag(parsetree));

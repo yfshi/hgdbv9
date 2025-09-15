@@ -12945,6 +12945,13 @@ AlterSynoStmt:
 					AlterSynonymStmt *n = makeNode(AlterSynonymStmt);
 					n->ispub = true;
 					n->synname = $4;
+					/* Begin - BUG#Z5793 */
+					if ($5 != FLAG_NOREFERENCED)
+						ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("The EDITIONABLE property of an editioned object cannot be altered."),
+									parser_errposition(@5)));
+					/* End - BUG#Z5793 */
 					n->editable = $5;
 
 					$$ = (Node *)n;
