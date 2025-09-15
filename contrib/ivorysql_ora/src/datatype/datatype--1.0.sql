@@ -8330,7 +8330,7 @@ CREATE AGGREGATE sys.min(sys.dsinterval) (
 --
 /* oradate - oradate */
 CREATE FUNCTION sys.oradate_mi(sys.oradate, sys.oradate)
-RETURNS sys.number
+RETURNS float8
 AS 'MODULE_PATHNAME','oradate_mi'
 LANGUAGE C
 PARALLEL SAFE

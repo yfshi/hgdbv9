@@ -1021,7 +1021,7 @@ oradate_mi(PG_FUNCTION_ARGS)
 
 	result = result / USECS_PER_DAY;
 
-	PG_RETURN_DATUM(DirectFunctionCall1(float8_numeric, Float8GetDatum(result)));
+	PG_RETURN_FLOAT8(result);
 }
 
 /*
