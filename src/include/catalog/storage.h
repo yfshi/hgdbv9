@@ -51,6 +51,4 @@ extern void RelationDropStorageSetLog(Relation rel);
 extern void FilenodeAppendIntoPendingList(RelFileNode *rnode);
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
-extern bool GTTInPendingDeletes(Relation rel, bool isCommit);
-
 #endif							/* STORAGE_H */

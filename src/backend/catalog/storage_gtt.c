@@ -96,7 +96,7 @@ typedef struct gtt_fnode
 } gtt_fnode;
 
 /* record this global temporary table in which backends are being used */
-typedef struct
+typedef struct gtt_shared_hash_entry
 {
 	gtt_fnode	rnode;
 	Bitmapset	*map;
@@ -107,33 +107,28 @@ typedef struct
  * The Global temporary table's local hash table data structure
  */
 /* Record the storage information and statistical information of the global temporary table */
-typedef struct
+typedef struct gtt_relfilenode
 {
-	Oid			relfilenode;
+	Oid			relnode;
 	Oid			spcnode;
-
 	/* pg_class relstat */
 	int32		relpages;
 	float4		reltuples;
 	int32		relallvisible;
 	TransactionId relfrozenxid;
 	TransactionId relminmxid;
-
 	/* pg_statistic column stat */
 	int			natts;
 	int			*attnum;
 	HeapTuple	*att_stat_tups;
 } gtt_relfilenode;
 
-typedef struct
+typedef struct gtt_local_hash_entry
 {
 	Oid			relid;
-
 	List		*relfilenode_list;
-
 	char		relkind;
 	bool		on_commit_delete;
-
 	Oid			oldrelid;			/* remember the source of relid, before the switch relfilenode. */
 } gtt_local_hash_entry;
 
@@ -423,7 +418,7 @@ is_other_backend_use_gtt(Oid relid)
 void
 remember_gtt_storage_info(RelFileNode rnode, Relation rel)
 {
-	gtt_local_hash_entry	*entry;
+	gtt_local_hash_entry	*entry = NULL;
 	MemoryContext			oldcontext;
 	gtt_relfilenode			*new_node = NULL;
 	Oid						relid = RelationGetRelid(rel);
@@ -467,8 +462,9 @@ remember_gtt_storage_info(RelFileNode rnode, Relation rel)
 	Assert(gtt_info_context);
 	oldcontext = MemoryContextSwitchTo(gtt_info_context);
 
+	/* Search from gtt local hash table */
 	entry = gtt_search_by_relid(relid, true);
-	if (!entry)
+	if (entry == NULL)
 	{
 		bool		found = false;
 
@@ -489,26 +485,19 @@ remember_gtt_storage_info(RelFileNode rnode, Relation rel)
 		entry->on_commit_delete = false;
 		entry->oldrelid = InvalidOid;
 
-		if (entry->relkind == RELKIND_RELATION)
-		{
-			/* record the on commit clause */
-			if (RELATION_GTT_ON_COMMIT_DELETE(rel))
-			{
-				entry->on_commit_delete = true;
-				register_on_commit_action(relid, ONCOMMIT_DELETE_ROWS);
-			}
-		}
+		/*
+		 * on_commit_delete_rows = true is a transaction level gtt
+		 * on_commit_delete_rows = false is a session level gtt
+		 */
+		if (rel->rd_rel->relkind == RELKIND_RELATION && RELATION_GTT_ON_COMMIT_DELETE(rel))
+			register_on_commit_action(relid, ONCOMMIT_DELETE_ROWS);
 
-		if (entry->relkind == RELKIND_RELATION ||
-			entry->relkind == RELKIND_SEQUENCE)
-		{
-			gtt_storage_checkin(relid);
-		}
+		gtt_storage_checkin(relid);
 	}
 
 	/* record storage info relstat columnstats and transaction info to relfilenode list */
 	new_node = palloc0(sizeof(gtt_relfilenode));
-	new_node->relfilenode = rnode.relNode;
+	new_node->relnode = rnode.relNode;
 	new_node->spcnode = rnode.spcNode;
 	new_node->relpages = 0;
 	new_node->reltuples = 0;
@@ -532,7 +521,6 @@ remember_gtt_storage_info(RelFileNode rnode, Relation rel)
 		new_node->relfrozenxid = RecentXmin;
 		new_node->relminmxid = GetOldestMultiXactId();
 
-		/**/
 		insert_gtt_relfrozenxid_to_ordered_list(new_node->relfrozenxid);
 		set_gtt_session_relfrozenxid();
 	}
@@ -561,6 +549,7 @@ forget_gtt_storage_info(Oid relid, RelFileNode rnode, bool isCommit)
 	if (max_active_gtt <= 0)
 		return;
 
+	/* Search from gtt local hash table */
 	entry = gtt_search_by_relid(relid, true);
 	if (entry == NULL)
 	{
@@ -586,10 +575,10 @@ forget_gtt_storage_info(Oid relid, RelFileNode rnode, bool isCommit)
 			 */
 			entry2 = gtt_search_by_relid(entry->oldrelid, false);
 			gttnode2 = gtt_search_relfilenode(entry2, rnode.relNode, false);
-			Assert(gttnode2->relfilenode == rnode.relNode);
+			Assert(gttnode2->relnode == rnode.relNode);
 			Assert(list_length(entry->relfilenode_list) == 1);
 			/* rollback switch relfilenode */
-			gtt_switch_rel_relfilenode(entry2->relid, gttnode2->relfilenode,
+			gtt_switch_rel_relfilenode(entry2->relid, gttnode2->relnode,
 									   entry->relid, gtt_fetch_current_relfilenode(entry->relid),
 									   false);
 			/* clean up footprint */
@@ -714,7 +703,7 @@ gtt_storage_removeall(int code, Datum arg)
 
 			rnode.spcNode = gtt_rnode->spcnode;
 			rnode.dbNode = MyDatabaseId;
-			rnode.relNode = gtt_rnode->relfilenode;
+			rnode.relNode = gtt_rnode->relnode;
 			srel = smgropen(rnode, MyBackendId);
 
 			if (maxfiles == 0)
@@ -765,9 +754,7 @@ gtt_storage_removeall(int code, Datum arg)
 		for (i = 0; i < nrels; i++)
 		{
 			/* tell shared hash */
-			if (relkinds[i] == RELKIND_RELATION ||
-				relkinds[i] == RELKIND_SEQUENCE)
-				gtt_storage_checkout(relids[i], true, false);
+			gtt_storage_checkout(relids[i], true, false);
 		}
 		LWLockRelease(&gtt_shared_ctl->lock);
 
@@ -1581,7 +1568,7 @@ gtt_fetch_current_relfilenode(Oid relid)
 	if (gtt_rnode == NULL)
 		return InvalidOid;
 
-	return gtt_rnode->relfilenode;
+	return gtt_rnode->relnode;
 }
 
 /*
@@ -1640,7 +1627,7 @@ gtt_search_relfilenode(gtt_local_hash_entry	*entry, Oid relfilenode, bool missin
 	foreach(lc, entry->relfilenode_list)
 	{
 		gtt_relfilenode	*gtt_rnode = lfirst(lc);
-		if (gtt_rnode->relfilenode == relfilenode)
+		if (gtt_rnode->relnode == relfilenode)
 		{
 			rnode = gtt_rnode;
 			break;

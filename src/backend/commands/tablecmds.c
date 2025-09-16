@@ -1867,41 +1867,6 @@ RemoveRelations(DropStmt *drop)
 										  RangeVarCallbackForDropRelation,
 										  (void *) &state);
 
-		/* Begin - ReqID:SRS-SQL-GTT */
-		if (!is_other_backend_use_gtt(relOid) && gtt_storage_attached(relOid))
-		{
-			tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relOid));
-			if (HeapTupleIsValid(tuple))
-			{
-				reloptions = SysCacheGetAttr(RELOID, tuple, Anum_pg_class_reloptions, &isNull);
-				ReleaseSysCache(tuple);
-				if (!isNull)
-				{
-					if (PointerIsValid(DatumGetPointer(reloptions)))
-					{
-						ArrayType  *array = DatumGetArrayTypeP(reloptions);
-						Datum	   *oldoptions;
-						int			noldoptions;
-						int			i;
-
-						deconstruct_array(array, TEXTOID, -1, false, TYPALIGN_INT,
-										  &oldoptions, NULL, &noldoptions);
-
-						for (i = 0; i < noldoptions; i++)
-						{
-							char	   *text_str = VARDATA(oldoptions[i]);
-							if (strstr(text_str, "on_commit_delete_rows"))
-							{
-								if (strstr(text_str, "false"))
-									elog(ERROR, "attempt to create, alter or drop an index on temporary table already in use");
-							}
-						}
-					}
-				}
-			}
-		}
-		/* End - ReqID:SRS-SQL-GTT */
-
 		/* Not there? */
 		if (!OidIsValid(relOid))
 		{
@@ -2522,15 +2487,15 @@ ExecuteTruncateGuts(List *explicit_rels,
 			 */
 			ft_info->rels = lappend(ft_info->rels, rel);
 			continue;
-
-			/*
-			 * Skip the global temporary table that is not initialized for storage
-			 * in current backend.
-			 */
-			if (RELATION_IS_GLOBAL_TEMP(rel) &&
-				!gtt_storage_attached(RelationGetRelid(rel)))
-				continue;
 		}
+
+		/*
+		 * Skip the global temporary table that is not initialized for storage
+		 * in current backend.
+		 */
+		if (RELATION_IS_GLOBAL_TEMP(rel) &&
+			!gtt_storage_attached(RelationGetRelid(rel)))
+			continue;
 
 		/*
 		 * Normally, we need a transaction-safe truncation here.  However, if

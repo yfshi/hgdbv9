@@ -11,13 +11,14 @@ insert into g_tmp_noop values(generate_series(1, 10000));
 insert into g_tmp_noop values(1);
 ERROR:  duplicate key value violates unique constraint "u_idx"
 DETAIL:  Key (a)=(1) already exists.
-select * from g_tmp_noop where a < 5;
+select * from g_tmp_noop where rownum < 5;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 end;
-select * from g_tmp_noop where a = 5;
- a 
----
-(0 rows)
+select count(*) from g_tmp_noop;
+ count 
+-------
+     0
+(1 row)
 
 begin;
 insert into g_tmp_noop values(generate_series(1, 10000));
@@ -82,7 +83,6 @@ explain (costs off) select * from g_tmp_pr where a = 100;
    Index Cond: (a = 100)
 (2 rows)
 
-truncate table g_tmp_pr;
 drop table g_tmp_pr;
 create global temporary table g_tmp_pr(a int primary key) ON COMMIT PRESERVE ROWS;
 insert into g_tmp_pr values(generate_series(1, 10000));
@@ -106,55 +106,72 @@ explain (costs off) select * from g_tmp_pr where a = 100;
    Index Cond: (a = 100)
 (2 rows)
 
-truncate table g_tmp_pr;
 drop table g_tmp_pr;
 create global temporary table g_tmp_pr(a int) ON COMMIT PRESERVE ROWS;
 alter table g_tmp_pr add b int;
 insert into g_tmp_pr values(generate_series(1, 10000), generate_series(10, 10000));
-drop table g_tmp_pr; -- error
-ERROR:  attempt to create, alter or drop an index on temporary table already in use
-truncate table g_tmp_pr;
+select * from g_tmp_pr where rownum < 5;
+ a | b  
+---+----
+ 1 | 10
+ 2 | 11
+ 3 | 12
+ 4 | 13
+(4 rows)
+
 drop table g_tmp_pr;
 create global temp table g_tmp_pr(a int, b text) ON COMMIT PRESERVE ROWS;
 insert into g_tmp_pr values(generate_series(1, 10000));
-create unique index u_idx on g_tmp_pr(a); -- error
-ERROR:  attempt to create, alter or drop an index on temporary table already in use
-truncate table g_tmp_pr;
-create unique index u_idx on g_tmp_pr(a);
 alter table g_tmp_pr add c int;
 alter table g_tmp_pr add primary key(a);
 insert into g_tmp_pr(a, b) values(1, 'abc'), (2, 'abc');
+ERROR:  duplicate key value violates unique constraint "g_tmp_pr_pkey"
+DETAIL:  Key (a)=(1) already exists.
 insert into g_tmp_pr(a) values(1); -- error
-ERROR:  duplicate key value violates unique constraint "u_idx"
+ERROR:  duplicate key value violates unique constraint "g_tmp_pr_pkey"
 DETAIL:  Key (a)=(1) already exists.
 insert into g_tmp_pr(a, b) values(null, 1); -- error
 ERROR:  null value in column "a" of relation "g_tmp_pr" violates not-null constraint
 DETAIL:  Failing row contains (null, 1, null).
 insert into g_tmp_pr values(1, 'abc', 1); -- error
-ERROR:  duplicate key value violates unique constraint "u_idx"
+ERROR:  duplicate key value violates unique constraint "g_tmp_pr_pkey"
 DETAIL:  Key (a)=(1) already exists.
-select * from g_tmp_pr;
- a |  b  | c 
----+-----+---
- 1 | abc |  
- 2 | abc |  
-(2 rows)
+select * from g_tmp_pr where rownum < 5;
+ a | b | c 
+---+---+---
+ 1 |   |  
+ 2 |   |  
+ 3 |   |  
+ 4 |   |  
+(4 rows)
 
 update g_tmp_pr set b = 'def';
-select * from g_tmp_pr;
+select * from g_tmp_pr where rownum < 5;
  a |  b  | c 
 ---+-----+---
  1 | def |  
  2 | def |  
-(2 rows)
+ 3 | def |  
+ 4 | def |  
+(4 rows)
 
 delete from g_tmp_pr;
-select * from g_tmp_pr;
+select * from g_tmp_pr where rownum < 5;
  a | b | c 
 ---+---+---
 (0 rows)
 
 truncate table g_tmp_pr;
+insert into g_tmp_pr values(generate_series(1, 10000));
+select * from g_tmp_pr where rownum < 5;
+ a | b | c 
+---+---+---
+ 1 |   |  
+ 2 |   |  
+ 3 |   |  
+ 4 |   |  
+(4 rows)
+
 drop table g_tmp_pr;
 --
 -- 3. global temporary table on commit delete rows
@@ -704,3 +721,121 @@ call mult_truncate_gtt();
 drop procedure mult_truncate_gtt();
 drop table g_tmp_noop;
 /* End - OA-REQ-1702 */
+/* Begin - BUG#Z5712 */
+create global temporary table g_tmp_noop(a int);
+begin;
+insert into g_tmp_noop values(generate_series(1, 10000));
+select * from g_tmp_noop where rownum < 5;
+ a 
+---
+ 1
+ 2
+ 3
+ 4
+(4 rows)
+
+truncate table g_tmp_noop;
+select * from g_tmp_noop where rownum < 5;
+ a 
+---
+(0 rows)
+
+insert into g_tmp_noop values(generate_series(1, 10000));
+select * from g_tmp_noop where rownum < 5;
+ a 
+---
+ 1
+ 2
+ 3
+ 4
+(4 rows)
+
+truncate table g_tmp_noop;
+select * from g_tmp_noop where rownum < 5;
+ a 
+---
+(0 rows)
+
+end;
+select * from g_tmp_noop where rownum = 5;
+ a 
+---
+(0 rows)
+
+begin;
+savepoint a;
+truncate table g_tmp_noop;
+savepoint b;
+insert into g_tmp_noop values(generate_series(1, 10000));
+select * from g_tmp_noop where rownum < 5;
+ a 
+---
+ 1
+ 2
+ 3
+ 4
+(4 rows)
+
+truncate table g_tmp_noop;
+select * from g_tmp_noop where rownum < 5;
+ a 
+---
+(0 rows)
+
+rollback to a;
+select * from g_tmp_noop where rownum < 5;
+ a 
+---
+(0 rows)
+
+commit;
+drop table g_tmp_noop;
+create global temp table g_tmp_pr(a int, b text);
+begin;
+insert into g_tmp_pr values(generate_series(1, 10000));
+alter table g_tmp_pr add c int;
+alter table g_tmp_pr add primary key(a);
+select * from g_tmp_pr where rownum < 5;
+ a | b | c 
+---+---+---
+ 1 |   |  
+ 2 |   |  
+ 3 |   |  
+ 4 |   |  
+(4 rows)
+
+truncate table g_tmp_pr;
+insert into g_tmp_pr values(1, 'abc', 1);
+select * from g_tmp_pr where rownum < 5;
+ a |  b  | c 
+---+-----+---
+ 1 | abc | 1
+(1 row)
+
+update g_tmp_pr set b = 'def';
+select * from g_tmp_pr where rownum < 5;
+ a |  b  | c 
+---+-----+---
+ 1 | def | 1
+(1 row)
+
+delete from g_tmp_pr;
+select * from g_tmp_pr where rownum < 5;
+ a | b | c 
+---+---+---
+(0 rows)
+
+truncate table g_tmp_pr;
+insert into g_tmp_pr values(generate_series(1, 10000));
+select * from g_tmp_pr where rownum < 5;
+ a | b | c 
+---+---+---
+ 1 |   |  
+ 2 |   |  
+ 3 |   |  
+ 4 |   |  
+(4 rows)
+
+commit;
+drop table g_tmp_pr;
+/* End - BUG#Z5712 */

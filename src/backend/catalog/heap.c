@@ -2137,13 +2137,10 @@ heap_drop_with_catalog(Oid relid)
 	 * Global temporary table is allowed to be dropped only when the
 	 * current session is using it.
 	 */
-	if (RELATION_IS_GLOBAL_TEMP(rel))
+	if (RELATION_IS_GLOBAL_TEMP(rel) && is_other_backend_use_gtt(relid))
 	{
-		if (is_other_backend_use_gtt(RelationGetRelid(rel)))
-			ereport(ERROR,
-				(errcode(ERRCODE_DEPENDENT_OBJECTS_STILL_EXIST),
-				 errmsg("cannot drop global temporary table %s when other backend attached it.",
-						RelationGetRelationName(rel))));
+		elog(ERROR, "cannot drop global temporary table %s when other backend in use",
+			 get_rel_name(relid));
 	}
 
 	/*

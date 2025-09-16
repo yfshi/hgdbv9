@@ -3837,45 +3837,29 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 	MultiXactId minmulti = InvalidMultiXactId;
 	TransactionId freezeXid = InvalidTransactionId;
 	RelFileNode newrnode;
-	/*
-	 * For global temporary table, storage information for the table is
-	 * maintained locally, not in catalog.
-	 */
-	bool		update_catalog = !RELATION_IS_GLOBAL_TEMP(relation);
 
 	/* Allocate a new relfilenode */
-	/* Begin - ReqID:SRS-SQL-GTT */
-	if (persistence != RELPERSISTENCE_GLOBAL_TEMP)
-		newrelfilenode = GetNewRelFileNode(relation->rd_rel->reltablespace, NULL, persistence);
-	/* End - ReqID:SRS-SQL-GTT */
+	newrelfilenode = GetNewRelFileNode(relation->rd_rel->reltablespace, NULL,
+									   persistence);
 
-	memset(&classform, 0, sizeof(classform));
+	/*
+	 * Get a writable copy of the pg_class tuple for the given relation.
+	 */
+	pg_class = table_open(RelationRelationId, RowExclusiveLock);
 
-	if (update_catalog)
-	{
-		/*
-		 * Get a writable copy of the pg_class tuple for the given relation.
-		 */
-		pg_class = table_open(RelationRelationId, RowExclusiveLock);
-
-		tuple = SearchSysCacheLockedCopy1(RELOID,
-									ObjectIdGetDatum(RelationGetRelid(relation)));
-		if (!HeapTupleIsValid(tuple))
-			elog(ERROR, "could not find tuple for relation %u",
-				 RelationGetRelid(relation));
-		otid = tuple->t_self;
-		classform = (Form_pg_class) GETSTRUCT(tuple);
-	}
+	tuple = SearchSysCacheLockedCopy1(RELOID,
+									  ObjectIdGetDatum(RelationGetRelid(relation)));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "could not find tuple for relation %u",
+			 RelationGetRelid(relation));
+	otid = tuple->t_self;
+	classform = (Form_pg_class) GETSTRUCT(tuple);
 
 	/*
 	 * Schedule unlinking of the old storage at transaction commit.
-	 *
-	 * Prevent a global temporary table file from being deleted
-	 * multiple times in a transaction.
 	 */
-	if (persistence != RELPERSISTENCE_GLOBAL_TEMP ||
-		!GTTInPendingDeletes(relation, true))
-		RelationDropStorage(relation);
+	RelationDropStorage(relation);
+
 	/*
 	 * Create storage for the main fork of the new relfilenode.  If it's a
 	 * table-like object, call into the table AM to do so, which'll also
@@ -3884,11 +3868,8 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 	 * NOTE: If relevant for the AM, any conflict in relfilenode value will be
 	 * caught here, if GetNewRelFileNode messes up for any reason.
 	 */
-	if (persistence != RELPERSISTENCE_GLOBAL_TEMP) /* ReqID:SRS-SQL-GTT */
-	{
-		newrnode = relation->rd_node;
-		newrnode.relNode = newrelfilenode;
-	}
+	newrnode = relation->rd_node;
+	newrnode.relNode = newrelfilenode;
 
 	switch (relation->rd_rel->relkind)
 	{
@@ -3897,10 +3878,6 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 			{
 				/* handle these directly, at least for now */
 				SMgrRelation srel;
-				/* Begin - ReqID:SRS-SQL-GTT */
-				if (persistence == RELPERSISTENCE_GLOBAL_TEMP)
-					break;
-				/* End - ReqID:SRS-SQL-GTT */
 
 				srel = RelationCreateStorage(newrnode, persistence, relation);
 				smgrclose(srel);
@@ -3910,10 +3887,6 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 		case RELKIND_RELATION:
 		case RELKIND_TOASTVALUE:
 		case RELKIND_MATVIEW:
-			/* Begin - ReqID:SRS-SQL-GTT */
-			if (persistence == RELPERSISTENCE_GLOBAL_TEMP)
-				break;
-			/* End - ReqID:SRS-SQL-GTT */
 			table_relation_set_new_filenode(relation, &newrnode,
 											persistence,
 											&freezeXid, &minmulti);
@@ -3926,13 +3899,6 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 			break;
 	}
 
-	/* For global temporary table */
-	if (!update_catalog)
-	{
-		/* Make cache invalid and set new relnode to local cache. */
-		CacheInvalidateRelcache(relation);
-	}
-
 	/*
 	 * If we're dealing with a mapped index, pg_class.relfilenode doesn't
 	 * change; instead we have to send the update to the relation mapper.
@@ -3942,7 +3908,7 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 	 * possibly-inaccurate values of relpages etc, but those will be fixed up
 	 * later.
 	 */
-	else if (RelationIsMapped(relation))
+	if (persistence != RELPERSISTENCE_GLOBAL_TEMP && RelationIsMapped(relation))
 	{
 		/* This case is only supported for indexes */
 		Assert(relation->rd_rel->relkind == RELKIND_INDEX);
@@ -3982,21 +3948,28 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 			classform->reltuples = -1;
 			classform->relallvisible = 0;
 		}
-		classform->relfrozenxid = freezeXid;
-		classform->relminmxid = minmulti;
+
+		/* Begin - BUG#Z5712 */
+		if (persistence == RELPERSISTENCE_GLOBAL_TEMP)
+		{
+			classform->relfrozenxid = InvalidTransactionId;
+			classform->relminmxid = InvalidMultiXactId;
+		} /* End - BUG#Z5712 */
+		else
+		{
+			classform->relfrozenxid = freezeXid;
+			classform->relminmxid = minmulti;
+		}
+
 		classform->relpersistence = persistence;
 
 		CatalogTupleUpdate(pg_class, &otid, tuple);
 	}
 
-	if (update_catalog)
-	{
-		UnlockTuple(pg_class, &otid, InplaceUpdateTupleLock);
-		
-		heap_freetuple(tuple);
+	UnlockTuple(pg_class, &otid, InplaceUpdateTupleLock);
+	heap_freetuple(tuple);
 
-		table_close(pg_class, RowExclusiveLock);
-	}
+	table_close(pg_class, RowExclusiveLock);
 
 	/*
 	 * Make the pg_class row change or relation map change visible.  This will
@@ -4004,8 +3977,7 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 	 */
 	CommandCounterIncrement();
 
-	if (persistence != RELPERSISTENCE_GLOBAL_TEMP)	/* ReqID:SRS-SQL-GTT */
-		RelationAssumeNewRelfilenode(relation);
+	RelationAssumeNewRelfilenode(relation);
 }
 
 /*

@@ -118,6 +118,7 @@
 
 #include "catalog/storage.h"
 #include "catalog/storage_gtt.h"
+#include "access/table.h"	/* BUG#Z5712 */
 
 /* waitMode argument to check_exclusion_or_unique_constraint() */
 typedef enum
@@ -201,8 +202,11 @@ ExecOpenIndices(ResultRelInfo *resultRelInfo, bool speculative)
 
 		indexDesc = index_open(indexOid, RowExclusiveLock);
 		/* Begin - ReqID:SRS-SQL-GTT */
-		if (RELATION_IS_GLOBAL_TEMP(indexDesc) && indexDesc->rd_node.relNode == 0)
-			indexDesc->rd_node.relNode = indexOid;
+		if (RELATION_IS_GLOBAL_TEMP(indexDesc) && !gtt_storage_attached(indexOid))
+		{
+			if (indexDesc->rd_node.relNode == 0)
+				indexDesc->rd_node.relNode = indexOid;
+		}
 		/* End - ReqID:SRS-SQL-GTT */
 
 		/* extract index key information from the index's pg_index info */
@@ -340,6 +344,24 @@ ExecInsertIndexTuples(ResultRelInfo *resultRelInfo,
 			continue;
 
 		indexInfo = indexInfoArray[i];
+
+		/* Begin - BUG#Z5712 */
+		if (RELATION_IS_GLOBAL_TEMP(indexRelation))
+		{
+			if (indexRelation->rd_node.relNode == 0)
+				indexRelation->rd_node.relNode = indexRelation->rd_id;
+
+			if (!gtt_storage_attached(RelationGetRelid(indexRelation)))
+			{
+				Relation 	rel;
+				RelationCreateStorage(indexRelation->rd_node, RELPERSISTENCE_GLOBAL_TEMP, indexRelation);
+				force_enable_gtt_index(indexRelation);
+				rel = table_open(heapRelation->rd_id, ShareUpdateExclusiveLock);
+				index_build(heapRelation, indexRelation, indexInfo, false, true);
+				table_close(rel, ShareUpdateExclusiveLock);
+			}
+		}
+		/* End - BUG#Z5712 */
 
 		/* If the index is marked as read-only, ignore it */
 		if (!indexInfo->ii_ReadyForInserts)
