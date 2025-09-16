@@ -17880,6 +17880,11 @@ dumpEventTrigger(Archive *fout, const EventTriggerInfo *evtinfo)
 					NULL, evtinfo->evtowner,
 					evtinfo->dobj.catId, 0, evtinfo->dobj.dumpId);
 
+	if (evtinfo->dobj.dump & DUMP_COMPONENT_SECLABEL)
+		dumpSecLabel(fout, "EVENT TRIGGER", qevtname,
+					 NULL, evtinfo->evtowner,
+					 evtinfo->dobj.catId, 0, evtinfo->dobj.dumpId);
+
 	destroyPQExpBuffer(query);
 	destroyPQExpBuffer(delqry);
 	free(qevtname);
