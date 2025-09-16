@@ -1402,13 +1402,6 @@ ProcessUtilitySlow(ParseState *pstate,
 						EventTriggerAlterTableStart(parsetree);
 						EventTriggerAlterTableRelid(relid);
 
-						/* Begin - ReqID:SRS-SQL-GTT */
-						if (gtt_storage_attached(relid))
-						{
-							elog(ERROR, "attempt to access a transactional temp table already in use");
-						}
-						/* End - ReqID:SRS-SQL-GTT */
-
 						/* ... and do it */
 						AlterTable(atstmt, lockmode, &atcontext);
 

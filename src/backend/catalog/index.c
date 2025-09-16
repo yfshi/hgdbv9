@@ -782,10 +782,6 @@ index_create(Relation heapRelation,
 			skip_create_storage = true;
 			flags |= INDEX_CREATE_SKIP_BUILD;
 		}
-		else
-		{
-			elog(ERROR, "attempt to create, alter or drop an index on temporary table already in use");
-		}
 	}
 
 	/* constraint flags can only be set when a constraint is requested */
@@ -2249,10 +2245,12 @@ index_drop(Oid indexId, bool concurrent, bool concurrent_lock_mode)
 	 * Allow to drop index on global temporary table when only current
 	 * backend use it.
 	 */
-	if (RELATION_IS_GLOBAL_TEMP(userHeapRelation) &&
-		is_other_backend_use_gtt(RelationGetRelid(userHeapRelation)))
+	if (RELATION_IS_GLOBAL_TEMP(userIndexRelation) &&
+		is_other_backend_use_gtt(RelationGetRelid(userIndexRelation)))
 	{
-		elog(ERROR, "attempt to create, alter or drop an index on temporary table already in use");
+		elog(ERROR, "cannot drop index %s on global temporary table %s when other backend in use",
+			 RelationGetRelationName(userIndexRelation),
+			 get_rel_name(heapId));
 	}
 	/* End - ReqID:SRS-SQL-GTT */
 
@@ -3864,10 +3862,7 @@ reindex_index(Oid indexId, bool skip_constraint_checks, char persistence,
 
 	/* Initialize the index and rebuild */
 	/* Note: we do not need to re-establish pkey setting */
-	/* Begin - ReqID:SRS-SQL-GTT */
-	if (persistence != RELPERSISTENCE_GLOBAL_TEMP)
-		index_build(heapRelation, iRel, indexInfo, true, true);
-	/* End - ReqID:SRS-SQL-GTT */
+	index_build(heapRelation, iRel, indexInfo, true, true);
 
 	/* Re-allow use of target index */
 	ResetReindexProcessing();

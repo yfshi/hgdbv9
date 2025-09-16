@@ -10,9 +10,9 @@ create unique index u_idx on g_tmp_noop(a);
 begin;
 insert into g_tmp_noop values(generate_series(1, 10000));
 insert into g_tmp_noop values(1);
-select * from g_tmp_noop where a < 5;
+select * from g_tmp_noop where rownum < 5;
 end;
-select * from g_tmp_noop where a = 5;
+select count(*) from g_tmp_noop;
 
 begin;
 insert into g_tmp_noop values(generate_series(1, 10000));
@@ -47,7 +47,6 @@ insert into g_tmp_pr values(1); -- error
 set enable_seqscan = false;
 select * from g_tmp_pr where a = 100;
 explain (costs off) select * from g_tmp_pr where a = 100;
-truncate table g_tmp_pr;
 drop table g_tmp_pr;
 
 create global temporary table g_tmp_pr(a int primary key) ON COMMIT PRESERVE ROWS;
@@ -57,33 +56,30 @@ insert into g_tmp_pr values(null); -- error
 set enable_seqscan = false;
 select * from g_tmp_pr where a = 100;
 explain (costs off) select * from g_tmp_pr where a = 100;
-truncate table g_tmp_pr;
 drop table g_tmp_pr;
 
 create global temporary table g_tmp_pr(a int) ON COMMIT PRESERVE ROWS;
 alter table g_tmp_pr add b int;
 insert into g_tmp_pr values(generate_series(1, 10000), generate_series(10, 10000));
-drop table g_tmp_pr; -- error
-truncate table g_tmp_pr;
+select * from g_tmp_pr where rownum < 5;
 drop table g_tmp_pr;
 
 create global temp table g_tmp_pr(a int, b text) ON COMMIT PRESERVE ROWS;
 insert into g_tmp_pr values(generate_series(1, 10000));
-create unique index u_idx on g_tmp_pr(a); -- error
-truncate table g_tmp_pr;
-create unique index u_idx on g_tmp_pr(a);
 alter table g_tmp_pr add c int;
 alter table g_tmp_pr add primary key(a);
 insert into g_tmp_pr(a, b) values(1, 'abc'), (2, 'abc');
 insert into g_tmp_pr(a) values(1); -- error
 insert into g_tmp_pr(a, b) values(null, 1); -- error
 insert into g_tmp_pr values(1, 'abc', 1); -- error
-select * from g_tmp_pr;
+select * from g_tmp_pr where rownum < 5;
 update g_tmp_pr set b = 'def';
-select * from g_tmp_pr;
+select * from g_tmp_pr where rownum < 5;
 delete from g_tmp_pr;
-select * from g_tmp_pr;
+select * from g_tmp_pr where rownum < 5;
 truncate table g_tmp_pr;
+insert into g_tmp_pr values(generate_series(1, 10000));
+select * from g_tmp_pr where rownum < 5;
 drop table g_tmp_pr;
 
 --
@@ -458,3 +454,53 @@ call mult_truncate_gtt();
 drop procedure mult_truncate_gtt();
 drop table g_tmp_noop;
 /* End - OA-REQ-1702 */
+
+/* Begin - BUG#Z5712 */
+create global temporary table g_tmp_noop(a int);
+
+begin;
+insert into g_tmp_noop values(generate_series(1, 10000));
+select * from g_tmp_noop where rownum < 5;
+truncate table g_tmp_noop;
+select * from g_tmp_noop where rownum < 5;
+insert into g_tmp_noop values(generate_series(1, 10000));
+select * from g_tmp_noop where rownum < 5;
+truncate table g_tmp_noop;
+select * from g_tmp_noop where rownum < 5;
+end;
+select * from g_tmp_noop where rownum = 5;
+
+begin;
+savepoint a;
+truncate table g_tmp_noop;
+savepoint b;
+insert into g_tmp_noop values(generate_series(1, 10000));
+select * from g_tmp_noop where rownum < 5;
+truncate table g_tmp_noop;
+select * from g_tmp_noop where rownum < 5;
+rollback to a;
+select * from g_tmp_noop where rownum < 5;
+commit;
+
+drop table g_tmp_noop;
+
+create global temp table g_tmp_pr(a int, b text);
+begin;
+insert into g_tmp_pr values(generate_series(1, 10000));
+alter table g_tmp_pr add c int;
+alter table g_tmp_pr add primary key(a);
+select * from g_tmp_pr where rownum < 5;
+truncate table g_tmp_pr;
+insert into g_tmp_pr values(1, 'abc', 1);
+select * from g_tmp_pr where rownum < 5;
+update g_tmp_pr set b = 'def';
+select * from g_tmp_pr where rownum < 5;
+delete from g_tmp_pr;
+select * from g_tmp_pr where rownum < 5;
+truncate table g_tmp_pr;
+insert into g_tmp_pr values(generate_series(1, 10000));
+select * from g_tmp_pr where rownum < 5;
+commit;
+
+drop table g_tmp_pr;
+/* End - BUG#Z5712 */
