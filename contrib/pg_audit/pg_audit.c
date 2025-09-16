@@ -2089,7 +2089,7 @@ audit_get_actionname_from_tree(Node *parsetree, char *buf)
 						break;
 
 					case TRANS_STMT_ROLLBACK_PREPARED:
-						strcpy(buf, ROLLBACK_PREPARE_S);
+						strcpy(buf, ROLLBACK_PREPARED_S);
 						break;
 
 					default:
@@ -7539,8 +7539,8 @@ audit_stmttype_to_string(AuditStmtType type)
 		case ROLLBACK_TO_T:
 			tag = ROLLBACK_TO_S;
 			break;
-		case ROLLBACK_PREPARE_T:
-			tag = ROLLBACK_PREPARE_S;
+		case ROLLBACK_PREPARED_T:
+			tag = ROLLBACK_PREPARED_S;
 			break;
 		case RELEASE_T:
 			tag = RELEASE_S;
@@ -7789,8 +7789,8 @@ audit_get_stmt_type(char *statment, bool is_obj, ObjectType objtype)
 		type = SAVEPOINT_T;
 	else if (pg_strcasecmp(statment, ROLLBACK_TO_S) == 0)
 		type = ROLLBACK_TO_T;
-	else if (pg_strcasecmp(statment, ROLLBACK_PREPARE_S) == 0)
-		type = ROLLBACK_PREPARE_T;
+	else if (pg_strcasecmp(statment, ROLLBACK_PREPARED_S) == 0)
+		type = ROLLBACK_PREPARED_T;
 	else if (pg_strcasecmp(statment, RELEASE_S) == 0 || pg_strcasecmp(statment, RELEASE_SAVEPOINT_S) == 0)
 		type = RELEASE_T;
 	else if (pg_strcasecmp(statment, MANDATORY_AUDIT_ON_S) == 0)
