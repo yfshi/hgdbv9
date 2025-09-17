@@ -217,6 +217,7 @@ CreateSynonym(CreateSynonymStmt *stmt)
 	NameData	pg_objnsp;
 	NameData	pg_objname;
 	NameData	pg_dblinkname;
+	NameData	pg_dblinkschema;	/* Bug#Z5823 */
 	ObjectAddress myself,
 				referenced;
 	int			i;
@@ -338,6 +339,16 @@ CreateSynonym(CreateSynonymStmt *stmt)
 	{
 		namestrcpy(&pg_dblinkname, stmt->object->srvname);
 		values[Anum_pg_synonym_db_link - 1] = NameGetDatum(&pg_dblinkname);
+		/* Begin - BUG#Z5823 */
+		if (stmt->object->schemaname != NULL)
+			values[Anum_pg_synonym_table_namespace - 1] = CStringGetDatum(stmt->object->schemaname);
+		else
+		{
+			/* If no schem is specified in the dblink, it should be null */
+			namestrcpy(&pg_dblinkschema, "");
+			values[Anum_pg_synonym_table_namespace - 1] = NameGetDatum(&pg_dblinkschema);
+		}
+		/* End - BUG#Z5823 */
 	}
 	else
 	{

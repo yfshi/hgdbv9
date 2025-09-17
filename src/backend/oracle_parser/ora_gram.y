@@ -12899,7 +12899,7 @@ CreateSynonymStmt:
 					n->synonym =$6;
 					n->object = $9;
 					n->editable = $3;
-					if ($6->schemaname)
+					if ($6->schemaname || $6->srvname)	/* Bug#Z5824 */
 						ereport(ERROR,
 									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 									errmsg("missing keyword."),
