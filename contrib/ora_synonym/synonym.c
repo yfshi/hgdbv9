@@ -494,7 +494,27 @@ DropSynonym(DropSynStmt *stmt)
 								ObjectIdGetDatum(namespaceId), BoolGetDatum(stmt->ispub));
 	if (HeapTupleIsValid(tup))
 	{
-		CatalogTupleDelete(rel, &tup->t_self);
+		/* Begin - BUG#Z5798 */
+		ObjectAddresses *objects;
+		Relation	relation = NULL;
+		ObjectAddress address;
+
+		/* Lock and validate each relation; build a list of object addresses */
+		objects = new_object_addresses();
+
+		address = get_object_address(OBJECT_SYNONYM,
+									(Node *)list_make2(makeString(get_namespace_name(namespaceId)), makeString(synname)),
+									&relation,
+									AccessExclusiveLock,
+									true);
+		Assert(relation == NULL);
+		add_exact_object_address(&address, objects);
+
+		/* really delete */
+		performMultipleDeletions(objects, DROP_RESTRICT, 0);
+
+		free_object_addresses(objects);
+		/* End - BUG#Z5798 */
 		ReleaseSysCache(tup);
 	}
 	else
