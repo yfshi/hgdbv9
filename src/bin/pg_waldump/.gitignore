@@ -1,4 +1,5 @@
 /pg_waldump
+/walenc.c
 
 # Source files copied from src/backend/access/rmgrdesc/
 /brindesc.c
