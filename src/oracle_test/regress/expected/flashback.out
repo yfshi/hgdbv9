@@ -35,6 +35,8 @@ BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
 drop table foo;
+drop table if exists foo;
+NOTICE:  table "foo" does not exist, skipping
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
  rcyoperation | rcytype 
 --------------+---------

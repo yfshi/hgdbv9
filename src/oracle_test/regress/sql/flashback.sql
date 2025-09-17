@@ -36,6 +36,7 @@ FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
 
 drop table foo;
+drop table if exists foo;
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 flashback table foo to before drop;
 select a, left(c, 10), length(c) from foo order by a limit 1;  --success
