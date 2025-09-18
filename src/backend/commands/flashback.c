@@ -119,6 +119,7 @@ table_insert_lost(Relation rel, Snapshot snapshot)
     }
 
     ExecCloseResultRelations(estate);
+    ExecCloseRangeTableRelations(estate);
     FreeExecutorState(estate);
 
     ExecDropSingleTupleTableSlot(slot);

@@ -3559,6 +3559,10 @@ void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, 
 	bool useRecycle = false;
 	ObjectFunOrPkgSets *depTypeObjects = NULL;
 
+	/* No work if no objects... */
+	if (objects->numrefs <= 0)
+		return;
+
 	depTypeObjects = ObjectFunOrPkgSetsInit();
 
 	/* for now, only the table recovery is supported. */
