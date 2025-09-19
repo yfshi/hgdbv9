@@ -2192,6 +2192,12 @@ RestoreArchiveMysql(Archive *AHX)
 			ahprintf(AH, "set lower_case_table_names = %d;\n",
 					 AH->caselowernum);
 		}
+		/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+		/* referening mysql, disable strict mode during export,and
+		 * import the related data using a non-strict mode
+		 */
+		ahprintf(AH, "set sql_mode = 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';\n");
+		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 	}
 	/* End - ReqID:SRS-MYSQL-CASE */
 

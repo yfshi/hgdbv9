@@ -2675,6 +2675,41 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
+CREATE FUNCTION ivymy.check_is_anonymous_enum(oid)
+RETURNS bool
+AS 'MODULE_PATHNAME','check_is_anonymous_enum'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION format_func_args(p_oid oid)
+RETURNS text
+LANGUAGE sql
+AS $$
+SELECT string_agg(
+         format(
+           '%s %s',
+           COALESCE(n.argnames, 'arg'::text ||i),
+           CASE
+             WHEN check_is_anonymous_enum(u.argtypes) THEN format_anonymous_enum(u.argtypes)
+             ELSE t.typname
+           END
+         ),
+         ', ' ORDER BY i
+       ) AS args_str
+FROM pg_proc p
+CROSS JOIN LATERAL unnest(p.proargtypes) WITH ORDINALITY AS u(argtypes, i)
+LEFT JOIN LATERAL unnest(p.proargnames) WITH ORDINALITY AS n(argnames, j) ON j = i
+LEFT JOIN pg_type t ON t.oid = u.argtypes
+LEFT JOIN (
+    SELECT DISTINCT enumtypid
+    FROM pg_enum
+) e ON e.enumtypid = u.argtypes
+WHERE p.oid = p_oid
+GROUP BY p.oid, p.proname;
+$$;
+
 CREATE FUNCTION ivymy.enum_cmp(anyenum, text)
 RETURNS int
 AS 'MODULE_PATHNAME','enum_cmp_text'

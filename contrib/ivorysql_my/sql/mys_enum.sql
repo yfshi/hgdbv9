@@ -463,8 +463,8 @@ set enable_bitmapscan =true;
 drop procedure proc1;
 drop table tb1;
 
-CREATE TABLE t2(m1 enum('a','b'));
-INSERT INTO t2 VALUES ('a'),('a'),('b');
+CREATE TABLE t2(m1 enum('a','b','z','y','aa'));
+INSERT INTO t2 VALUES ('a'),('a'),('b'),('aa'),('z'),('aa'),('z'), (NULL);
 SELECT * FROM t2;
 SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t2;
 SELECT AVG(m1) AS avg_value FROM t2;
@@ -679,6 +679,7 @@ select a / 1 from enum_test_table;
 
 drop table enum_test_table;
 
+create table test_enum_d(ssl_type enum('any','X509','SPECIFIED') not null default '');
 create table test_enum_d(ssl_type enum('','any','X509','SPECIFIED') not null default '');
 SELECT enumsortorder,enumlabel FROM pg_enum;
 \d test_enum_d
@@ -1244,3 +1245,78 @@ create table table_like_test_2 (like table_like_test);
 drop table table_like_test;
 drop table table_like_test_2;
 SELECT typname FROM pg_type WHERE typname like '%anonymous_enum%';
+
+create table enum_space (val enum('apple ','banana  ','      pear'));
+insert into enum_space values('apple '),('banana');
+insert into enum_space values('apple   '),('banana');
+select *from enum_space;
+drop table enum_space;
+
+create table enum_int_binary_ops ( enum_col enum('a', 'b', 'c', 'd'), sm_int smallint, int_val int, big_int bigint );
+insert into enum_int_binary_ops values ('a', 1, 1, 1), ('b', 2, 2, 2), ('c', 3, 3, 3), ('d', 4, 4, 5),
+(null, null, null, null);
+
+SELECT enum_col, sm_int, int_val,big_int,
+  (sm_int >> enum_col) AS enum_bitrshift_sm,
+  (int_val >> enum_col) AS enum_bitrshift_int4,
+  (big_int >> enum_col) AS enum_bitrshift_int8
+FROM enum_int_binary_ops;
+SELECT 
+  enum_col, sm_int, int_val,big_int,
+  (sm_int << enum_col) AS enum_bitrshift_sm, 
+  (int_val << enum_col) AS enum_bitrshift_int4,
+  (big_int << enum_col) AS enum_bitrshift_int8
+FROM enum_int_binary_ops;
+drop table enum_int_binary_ops;
+
+create table enum_aggregate ( status enum('正常', '异常', 'pending', '已删除', '乱码....!@#$%'));
+insert into enum_aggregate values('正常'),('异常'),('pending'),('已删除'),('乱码....!@#$%'),('正常'),('异常'),('pending'),(null);
+select count(status) as total_count from enum_aggregate;
+select count(distinct status) as distinct_count from enum_aggregate;
+select min(status) as min_status from enum_aggregate;
+select max(status) as max_status from enum_aggregate;
+select sum(status) as sum_status from enum_aggregate;
+select avg(status) as avg_status from enum_aggregate;
+drop table enum_aggregate;
+
+create table users (
+  username varchar(50),
+  status enum('active','inactive','locked')
+);
+insert into users (username, status) values('zhangsan', 'active'),
+('lisi', 'inactive'),('wangwu', 'locked'),('zhaoliu', 'active');
+select  username, status from  users where find_in_set(status, 'active,locked') ;
+drop table users;
+
+set SQL_MODE='';
+create table t_enum_dump_restore(col_1 enum('apple','香蕉','西瓜','pear'));
+insert into t_enum_dump_restore values('');
+insert into t_enum_dump_restore values('  ');
+insert into t_enum_dump_restore values(0);
+insert into t_enum_dump_restore values('0');
+insert into t_enum_dump_restore values('0aa');
+insert into t_enum_dump_restore values('1');
+insert into t_enum_dump_restore values('1aa');
+insert into t_enum_dump_restore values(NULL);
+select * from t_enum_dump_restore where col_1 = ' ';
+select * from t_enum_dump_restore where col_1 = '';
+select * from t_enum_dump_restore where col_1 IS NULL;
+select * from t_enum_dump_restore where col_1 = 0;
+select * from t_enum_dump_restore;
+drop table t_enum_dump_restore;
+set SQL_MODE=default;
+create table t_enum_dump_restore(col_1 enum('apple','香蕉','西瓜','pear'));
+insert into t_enum_dump_restore values('');
+insert into t_enum_dump_restore values('  ');
+insert into t_enum_dump_restore values(0);
+insert into t_enum_dump_restore values('0');
+insert into t_enum_dump_restore values('0aa');
+insert into t_enum_dump_restore values('1');
+insert into t_enum_dump_restore values('1aa');
+insert into t_enum_dump_restore values(NULL);
+select * from t_enum_dump_restore where col_1 = ' ';
+select * from t_enum_dump_restore where col_1 = '';
+select * from t_enum_dump_restore where col_1 IS NULL;
+select * from t_enum_dump_restore where col_1 = 0;
+select * from t_enum_dump_restore;
+drop table t_enum_dump_restore;

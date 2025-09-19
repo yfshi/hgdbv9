@@ -915,6 +915,14 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+CREATE FUNCTION ivymy.find_in_set(anyenum, text)
+RETURNS int
+AS 'select ivymy.find_in_set($1::text, $2)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
 -- hex
 CREATE OR REPLACE FUNCTION ivymy.hex(text)
 RETURNS varchar

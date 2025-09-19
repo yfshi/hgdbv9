@@ -285,8 +285,15 @@ get_enum_label(Oid oid)
 {
 	char 			*enumlabel = NULL;
 	Form_pg_enum 	en;
-	HeapTuple 		tup = SearchSysCache1(ENUMOID, ObjectIdGetDatum(oid));
-	
+	HeapTuple 		tup;
+
+	if (InvalidOid == oid)
+	{
+		enumlabel = pstrdup("");
+		return enumlabel;
+	}
+
+	tup = SearchSysCache1(ENUMOID, ObjectIdGetDatum(oid));
 	if (!HeapTupleIsValid(tup))
 	{
 		ereport(ERROR,
@@ -399,6 +406,7 @@ enum_in(PG_FUNCTION_ARGS)
 	Oid			enumoid;
 	HeapTuple	tup;
 	Oid 		result = InvalidOid;
+	char	   *trimname = NULL;
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
 	if (MYS_PARSER == compatible_db)
@@ -406,8 +414,13 @@ enum_in(PG_FUNCTION_ARGS)
 		int32 	enumidx = 0;
 		bool 	iswarnins = false;
 		int 	err_flag = is_strict_mode() ? ERROR : WARNING;
+
+		/* trim the right space for set label */
+		Datum trimtxt = DirectFunctionCall1(rtrim1, CStringGetTextDatum(name));
+		trimname = TextDatumGetCString(trimtxt);
+
 		/* must check length to prevent Assert failure within SearchSysCache */
-		if (strlen(name) >= NAMEDATALEN)
+		if (strlen(trimname) >= NAMEDATALEN)
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
 					 errmsg("invalid input value for enum %s: \"%s\"",
@@ -416,10 +429,17 @@ enum_in(PG_FUNCTION_ARGS)
 
 		tup = SearchSysCache2(ENUMTYPOIDNAME,
 							  ObjectIdGetDatum(enumtypoid),
-							  CStringGetDatum(name));
+							  CStringGetDatum(trimname));
 
 		if (!HeapTupleIsValid(tup))
 		{
+			if (strlen(trimname) == 0)
+			{
+				ereport(err_flag,
+					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+						 errmsg(" Data truncated for column")));
+				PG_RETURN_NULL();
+			}
 			/* 3rd: can not get enum oid by name , alter converting the string to a numeric type
 			 *      it is queried in pg_enum table according to typmod method
 			 */
@@ -494,7 +514,7 @@ enum_out(PG_FUNCTION_ARGS)
 	if (MYS_PARSER == compatible_db)
 	{
 		if (enumval == InvalidOid)
-			PG_RETURN_NULL();
+			PG_RETURN_CSTRING("");
 	}
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
 
@@ -742,6 +762,12 @@ enum_smaller(PG_FUNCTION_ARGS)
 {
 	Oid			a = PG_GETARG_OID(0);
 	Oid			b = PG_GETARG_OID(1);
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		PG_RETURN_OID(compare_two_enum_value(a, b) < 0 ? a : b);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	PG_RETURN_OID(enum_cmp_internal(a, b, fcinfo) < 0 ? a : b);
 }
@@ -751,6 +777,12 @@ enum_larger(PG_FUNCTION_ARGS)
 {
 	Oid			a = PG_GETARG_OID(0);
 	Oid			b = PG_GETARG_OID(1);
+	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+	if (MYS_PARSER == compatible_db)
+	{
+		PG_RETURN_OID(compare_two_enum_value(a, b) > 0 ? a : b);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	PG_RETURN_OID(enum_cmp_internal(a, b, fcinfo) > 0 ? a : b);
 }
@@ -1137,7 +1169,7 @@ enum_to_enum(PG_FUNCTION_ARGS)
 	if (0 != compare_two_enum_value(oid, enumelenmentoid))
 	{
 		ereport(ERROR, (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-						errmsg("invalid input value for enum %s", format_type_be(enumtypeoid))));
+						errmsg("Data truncated for column")));
 	}
 	
 	PG_RETURN_OID(enumelenmentoid);
@@ -1203,7 +1235,7 @@ int4_to_enum(PG_FUNCTION_ARGS)
 						format_type_be(enumtypeoid),
 						num)));
 
-		PG_RETURN_NULL();
+		PG_RETURN_VOID();
 	}
 	else
 	{

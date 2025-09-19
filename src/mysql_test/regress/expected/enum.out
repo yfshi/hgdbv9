@@ -274,15 +274,15 @@ SELECT 'red'::text::rainbow = 'red'::rainbow;
 -- Aggregates
 --
 SELECT min(col) FROM enumtest;
- min 
------
- red
+ min  
+------
+ blue
 (1 row)
 
 SELECT max(col) FROM enumtest;
   max   
 --------
- purple
+ yellow
 (1 row)
 
 SELECT max(col) FROM enumtest WHERE col < 'green';
