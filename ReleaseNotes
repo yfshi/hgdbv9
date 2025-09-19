@@ -66,8 +66,8 @@
 	41、修复了创建包体时重新解析失效的force view引起core的问题，bug#5707；
 	42、修复了全局临时表在事务中多次truncate时，表信息重复添加到了pendingDeletes链表中导致smgrclose报错的问题，OA-REQ-1702；
 	43、新增了支持Oracle subtype的range范围的类型，bug#5706;
-	44、修复了MySQL兼容export_set函数对参数类型支持不够的问题；
-	45、修复了MySQL兼容ord函数对参数类型支持不够的问题；
+	44、修复了MySQL兼容export_set函数对参数类型支持不够的问题，bug#5515；
+	45、修复了MySQL兼容ord函数对参数类型支持不够的问题,bug#5536；
 
 V9.0.4.1，禅道版本ID：4647-2025/08/08
 1、新增特性
