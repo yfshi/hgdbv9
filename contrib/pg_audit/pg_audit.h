@@ -163,7 +163,13 @@ typedef enum Auditcheck
 	AUDIT_NOT_SUCC_CAS
 }Auditcheck;
 
-
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+typedef enum AuditTable
+{
+	AUDIT_CREATE = 0,
+	AUDIT_DROP = 1
+}AuditTable;
+#endif
 
 typedef struct AuditObjects
 {
@@ -221,5 +227,15 @@ typedef struct AuditedOid
 	struct AuditedOid *next;//下一个节点
 }AuditedOid;
 
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+typedef struct db_info
+{
+	Oid			dbid;			/* Oid of the database which subscription is
+								 * in */
+	bool		 datistemplate;
+	bool		 datallowconn;
+	AuditTable flag;
+} dbinfo;
+#endif
 
 #endif

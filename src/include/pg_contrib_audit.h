@@ -84,6 +84,9 @@
 /* End - BUG#00004718 */
 
 #define AUDIT_LAUNCHER_S "pg_audit launcher"
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+#define AUDIT_LAUNCHER_DB_S "pg_audit launcher %u"
+#endif
 
 typedef enum AuditSystemEvent
 {
@@ -398,6 +401,12 @@ typedef enum AuditSwitch
 	AUDIT_ON		/* enabled while server is running normally */
 } AuditSwitch;
 
+typedef enum AuditPolicy
+{
+	AUDIT_POLICY_INVALID = -1,
+	AUDIT_PAUSE = 0,		/* disabled */
+	AUDIT_CYCLE		/* enabled while server is running normally */
+} AuditPolicy;
 
 typedef struct AduitSwitchGUC
 {
@@ -419,6 +428,7 @@ typedef struct AduitSwitchGUC
 #endif
 	AuditSwitch track_settings;
 	bool *audit_pause;    //use share buffer
+	AuditPolicy logpolicy;  //chioce log policy,when disk full
 }AduitSwitchGUC;
 
 extern bool receive_sighup;
