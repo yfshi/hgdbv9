@@ -2801,9 +2801,9 @@ alter view my_locks reset (autovacuum_enabled);
 begin;
 alter view my_locks set (security_barrier=off);
 select * from my_locks order by 1;
- relname  |    max_lockmode     
-----------+---------------------
- my_locks | AccessExclusiveLock
+ relname  |  max_lockmode   
+----------+-----------------
+ my_locks | AccessShareLock
 (1 row)
 
 alter view my_locks reset (security_barrier);
@@ -2814,9 +2814,9 @@ rollback;
 begin;
 alter table my_locks set (security_barrier=off);
 select * from my_locks order by 1;
- relname  |    max_lockmode     
-----------+---------------------
- my_locks | AccessExclusiveLock
+ relname  |  max_lockmode   
+----------+-----------------
+ my_locks | AccessShareLock
 (1 row)
 
 alter table my_locks reset (security_barrier);

@@ -2,7 +2,7 @@ set SQL_MODE=default;
 create table test(color enum('aaa', 'bbb', 'ccc', 'ddd', 'eee'));
 insert into test values(NULL);
 insert into test values('');
-ERROR:  invalid input value for enum test_color_anonymous_enum: ""
+ERROR:   Data truncated for column
 LINE 1: insert into test values('');
                                 ^
 insert into test values('aaa');
@@ -34,7 +34,7 @@ set SQL_MODE='';
 create table test(color enum('aaa', 'bbb', 'ccc', 'ddd', 'eee'));
 insert into test values(NULL);
 insert into test values('');
-WARNING:  invalid input value for enum test_color_anonymous_enum: ""
+WARNING:   Data truncated for column
 LINE 1: insert into test values('');
                                 ^
 insert into test values('aaa');
@@ -286,11 +286,11 @@ create table test(id enum('a','b'));
 insert into test values('a');
 insert into test values('b');
 insert into test values('');
-ERROR:  invalid input value for enum test_id_anonymous_enum: ""
+ERROR:   Data truncated for column
 LINE 1: insert into test values('');
                                 ^
 insert into test values(' ');
-ERROR:  invalid input value for enum test_id_anonymous_enum: " "
+ERROR:   Data truncated for column
 LINE 1: insert into test values(' ');
                                 ^
 insert into test values(NULL);
@@ -326,11 +326,11 @@ create table test(id enum('a','b'));
 insert into test values('a');
 insert into test values('b');
 insert into test values('');
-WARNING:  invalid input value for enum test_id_anonymous_enum: ""
+WARNING:   Data truncated for column
 LINE 1: insert into test values('');
                                 ^
 insert into test values(' ');
-WARNING:  invalid input value for enum test_id_anonymous_enum: " "
+WARNING:   Data truncated for column
 LINE 1: insert into test values(' ');
                                 ^
 insert into test values(NULL);
@@ -968,7 +968,7 @@ select !b from t2;
 set sql_mode='';
 insert into t2 values('a', NULL);
 insert into t2 values('b', '');
-WARNING:  invalid input value for enum t2_b_anonymous_enum: ""
+WARNING:   Data truncated for column
 LINE 1: insert into t2 values('b', '');
                                    ^
 insert into t2 values('c', 'b');
@@ -1606,7 +1606,7 @@ set SQL_MODE='';
 CREATE TABLE t2 (id1 enum('a','b'), id2 enum('c','d'));
 insert into t2 values('a', 'c');
 insert into t2 values('a', ' ');
-WARNING:  invalid input value for enum t2_id2_anonymous_enum: " "
+WARNING:   Data truncated for column
 LINE 1: insert into t2 values('a', ' ');
                                    ^
 insert into t2 values('a', NULL);
@@ -2060,32 +2060,37 @@ set enable_bitmapscan =true;
 drop procedure proc1;
 ERROR:  could not find a procedure named "proc1"
 drop table tb1;
-CREATE TABLE t2(m1 enum('a','b'));
-INSERT INTO t2 VALUES ('a'),('a'),('b');
+CREATE TABLE t2(m1 enum('a','b','z','y','aa'));
+INSERT INTO t2 VALUES ('a'),('a'),('b'),('aa'),('z'),('aa'),('z'), (NULL);
 SELECT * FROM t2;
  m1 
 ----
  a
  a
  b
-(3 rows)
+ aa
+ z
+ aa
+ z
+ 
+(8 rows)
 
 SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t2;
  total_rows | min_value | max_value 
 ------------+-----------+-----------
-          3 | a         | b
+          8 | a         | z
 (1 row)
 
 SELECT AVG(m1) AS avg_value FROM t2;
-     avg_value      
---------------------
- 1.3333333333333333
+     avg_value     
+-------------------
+ 2.857142857142857
 (1 row)
 
 SELECT SUM(m1) AS sum_value FROM t2;
  sum_value 
 -----------
-         4
+        20
 (1 row)
 
 DROP TABLE t2;
@@ -2527,6 +2532,10 @@ select a / 1 from enum_test_table;
 (3 rows)
 
 drop table enum_test_table;
+create table test_enum_d(ssl_type enum('any','X509','SPECIFIED') not null default '');
+ERROR:   Data truncated for column
+LINE 1: ...sl_type enum('any','X509','SPECIFIED') not null default '');
+                                                                   ^
 create table test_enum_d(ssl_type enum('','any','X509','SPECIFIED') not null default '');
 SELECT enumsortorder,enumlabel FROM pg_enum;
  enumsortorder | enumlabel 
@@ -3063,7 +3072,7 @@ SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
 
 insert into t_enum_column_alter_type values(11, 'a', 'c');
 alter table t_enum_column_alter_type alter c2 type enum('aaaa', 'bbbb'); -- enum to enum
-ERROR:  invalid input value for enum t_enum_column_alter_type_c2_anonymous_enum1
+ERROR:  Data truncated for column
 \d t_enum_column_alter_type
                        Table "public.t_enum_column_alter_type"
  Column |                    Type                    | Collation | Nullable | Default 
@@ -3320,7 +3329,7 @@ create type alterenum3 as enum('ddddd','sssss');
 CREATE TABLE test_alter_col (age INT, myjob alterenum1);
 insert into test_alter_col values(1, 'a');
 alter table test_alter_col alter myjob type alterenum2;
-ERROR:  invalid input value for enum alterenum2
+ERROR:  Data truncated for column
 SELECT typname FROM pg_type WHERE typname like '%alterenum%';
    typname   
 -------------
@@ -3413,7 +3422,7 @@ insert into test_alter_col values(1, 'x');
 insert into test_alter_col values(2, 'y');
 insert into test_alter_col values(4, 'y');
 alter table test_alter_col alter myjob type alterenum;
-ERROR:  invalid input value for enum alterenum
+ERROR:  Data truncated for column
 drop table test_alter_col;
 drop type alterenum;
 set SQL_MODE='';
@@ -3432,7 +3441,7 @@ insert into test_alter_col values(1, 'x');
 insert into test_alter_col values(2, 'y');
 insert into test_alter_col values(4, 'y');
 alter table test_alter_col alter myjob type alterenum;
-ERROR:  invalid input value for enum alterenum
+ERROR:  Data truncated for column
 drop table test_alter_col;
 drop type alterenum;
 set SQL_MODE=default;
@@ -3920,6 +3929,8 @@ LINE 1: select insert_data2('aaa', 'yyy', 'xxx');
 WARNING:  invalid input value for enum insert_data2__anonymous_enum1: "xxx"
 LINE 1: select insert_data2('aaa', 'yyy', 'xxx');
                                           ^
+WARNING:   Data truncated for column
+WARNING:   Data truncated for column
  insert_data2 
 --------------
  
@@ -4224,3 +4235,235 @@ SELECT typname FROM pg_type WHERE typname like '%anonymous_enum%';
 ---------
 (0 rows)
 
+create table enum_space (val enum('apple ','banana  ','      pear'));
+insert into enum_space values('apple '),('banana');
+insert into enum_space values('apple   '),('banana');
+select *from enum_space;
+  val   
+--------
+ apple
+ banana
+ apple
+ banana
+(4 rows)
+
+drop table enum_space;
+create table enum_int_binary_ops ( enum_col enum('a', 'b', 'c', 'd'), sm_int smallint, int_val int, big_int bigint );
+insert into enum_int_binary_ops values ('a', 1, 1, 1), ('b', 2, 2, 2), ('c', 3, 3, 3), ('d', 4, 4, 5),
+(null, null, null, null);
+SELECT enum_col, sm_int, int_val,big_int,
+  (sm_int >> enum_col) AS enum_bitrshift_sm,
+  (int_val >> enum_col) AS enum_bitrshift_int4,
+  (big_int >> enum_col) AS enum_bitrshift_int8
+FROM enum_int_binary_ops;
+ enum_col | sm_int | int_val | big_int | enum_bitrshift_sm | enum_bitrshift_int4 | enum_bitrshift_int8 
+----------+--------+---------+---------+-------------------+---------------------+---------------------
+ a        |      1 |       1 |       1 | 0                 | 0                   | 0
+ b        |      2 |       2 |       2 | 0                 | 0                   | 0
+ c        |      3 |       3 |       3 | 0                 | 0                   | 0
+ d        |      4 |       4 |       5 | 0                 | 0                   | 0
+          |        |         |         |                   |                     | 
+(5 rows)
+
+SELECT 
+  enum_col, sm_int, int_val,big_int,
+  (sm_int << enum_col) AS enum_bitrshift_sm, 
+  (int_val << enum_col) AS enum_bitrshift_int4,
+  (big_int << enum_col) AS enum_bitrshift_int8
+FROM enum_int_binary_ops;
+ enum_col | sm_int | int_val | big_int | enum_bitrshift_sm | enum_bitrshift_int4 | enum_bitrshift_int8 
+----------+--------+---------+---------+-------------------+---------------------+---------------------
+ a        |      1 |       1 |       1 | 2                 | 2                   | 2
+ b        |      2 |       2 |       2 | 8                 | 8                   | 8
+ c        |      3 |       3 |       3 | 24                | 24                  | 24
+ d        |      4 |       4 |       5 | 64                | 64                  | 80
+          |        |         |         |                   |                     | 
+(5 rows)
+
+drop table enum_int_binary_ops;
+create table enum_aggregate ( status enum('正常', '异常', 'pending', '已删除', '乱码....!@#$%'));
+insert into enum_aggregate values('正常'),('异常'),('pending'),('已删除'),('乱码....!@#$%'),('正常'),('异常'),('pending'),(null);
+select count(status) as total_count from enum_aggregate;
+ total_count 
+-------------
+           8
+(1 row)
+
+select count(distinct status) as distinct_count from enum_aggregate;
+ distinct_count 
+----------------
+              5
+(1 row)
+
+select min(status) as min_status from enum_aggregate;
+ min_status 
+------------
+ pending
+(1 row)
+
+select max(status) as max_status from enum_aggregate;
+ max_status 
+------------
+ 正常
+(1 row)
+
+select sum(status) as sum_status from enum_aggregate;
+ sum_status 
+------------
+         21
+(1 row)
+
+select avg(status) as avg_status from enum_aggregate;
+ avg_status 
+------------
+      2.625
+(1 row)
+
+drop table enum_aggregate;
+create table users (
+  username varchar(50),
+  status enum('active','inactive','locked')
+);
+insert into users (username, status) values('zhangsan', 'active'),
+('lisi', 'inactive'),('wangwu', 'locked'),('zhaoliu', 'active');
+select  username, status from  users where find_in_set(status, 'active,locked') ;
+ username | status 
+----------+--------
+ zhangsan | active
+ wangwu   | locked
+ zhaoliu  | active
+(3 rows)
+
+drop table users;
+set SQL_MODE='';
+create table t_enum_dump_restore(col_1 enum('apple','香蕉','西瓜','pear'));
+insert into t_enum_dump_restore values('');
+WARNING:   Data truncated for column
+LINE 1: insert into t_enum_dump_restore values('');
+                                               ^
+insert into t_enum_dump_restore values('  ');
+WARNING:   Data truncated for column
+LINE 1: insert into t_enum_dump_restore values('  ');
+                                               ^
+insert into t_enum_dump_restore values(0);
+WARNING:  invalid input value for enum t_enum_dump_restore_col_1_anonymous_enum: "0"
+insert into t_enum_dump_restore values('0');
+insert into t_enum_dump_restore values('0aa');
+WARNING:  invalid input value for enum t_enum_dump_restore_col_1_anonymous_enum: "0aa"
+LINE 1: insert into t_enum_dump_restore values('0aa');
+                                               ^
+insert into t_enum_dump_restore values('1');
+insert into t_enum_dump_restore values('1aa');
+WARNING:  invalid input value for enum t_enum_dump_restore_col_1_anonymous_enum: "1aa"
+LINE 1: insert into t_enum_dump_restore values('1aa');
+                                               ^
+insert into t_enum_dump_restore values(NULL);
+select * from t_enum_dump_restore where col_1 = ' ';
+ col_1 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+(6 rows)
+
+select * from t_enum_dump_restore where col_1 = '';
+ col_1 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+(6 rows)
+
+select * from t_enum_dump_restore where col_1 IS NULL;
+ col_1 
+-------
+ 
+(1 row)
+
+select * from t_enum_dump_restore where col_1 = 0;
+ col_1 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+(6 rows)
+
+select * from t_enum_dump_restore;
+ col_1 
+-------
+ 
+ 
+ 
+ 
+ 
+ apple
+ 
+ 
+(8 rows)
+
+drop table t_enum_dump_restore;
+set SQL_MODE=default;
+create table t_enum_dump_restore(col_1 enum('apple','香蕉','西瓜','pear'));
+insert into t_enum_dump_restore values('');
+ERROR:   Data truncated for column
+LINE 1: insert into t_enum_dump_restore values('');
+                                               ^
+insert into t_enum_dump_restore values('  ');
+ERROR:   Data truncated for column
+LINE 1: insert into t_enum_dump_restore values('  ');
+                                               ^
+insert into t_enum_dump_restore values(0);
+ERROR:  invalid input value for enum t_enum_dump_restore_col_1_anonymous_enum: "0"
+insert into t_enum_dump_restore values('0');
+insert into t_enum_dump_restore values('0aa');
+ERROR:  invalid input value for enum t_enum_dump_restore_col_1_anonymous_enum: "0aa"
+LINE 1: insert into t_enum_dump_restore values('0aa');
+                                               ^
+insert into t_enum_dump_restore values('1');
+insert into t_enum_dump_restore values('1aa');
+ERROR:  invalid input value for enum t_enum_dump_restore_col_1_anonymous_enum: "1aa"
+LINE 1: insert into t_enum_dump_restore values('1aa');
+                                               ^
+insert into t_enum_dump_restore values(NULL);
+select * from t_enum_dump_restore where col_1 = ' ';
+ col_1 
+-------
+ 
+(1 row)
+
+select * from t_enum_dump_restore where col_1 = '';
+ col_1 
+-------
+ 
+(1 row)
+
+select * from t_enum_dump_restore where col_1 IS NULL;
+ col_1 
+-------
+ 
+(1 row)
+
+select * from t_enum_dump_restore where col_1 = 0;
+ col_1 
+-------
+ 
+(1 row)
+
+select * from t_enum_dump_restore;
+ col_1 
+-------
+ 
+ apple
+ 
+(3 rows)
+
+drop table t_enum_dump_restore;

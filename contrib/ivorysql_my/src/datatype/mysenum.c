@@ -259,6 +259,7 @@ PG_FUNCTION_INFO_V1(enum_to_uint8);
 PG_FUNCTION_INFO_V1(enum_to_text);
 PG_FUNCTION_INFO_V1(enum_2_boolean);
 PG_FUNCTION_INFO_V1(format_anonymous_enum);
+PG_FUNCTION_INFO_V1(check_is_anonymous_enum);
 
 inline static void 
 ENUM_INSERT_CHECK(Oid enumelenmentoid)
@@ -269,6 +270,22 @@ ENUM_INSERT_CHECK(Oid enumelenmentoid)
 	ereport(is_strict_mode() ? ERROR : WARNING,
 			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
 				errmsg("Data truncated for column")));
+}
+
+inline static int 
+ENUM_STRCMP(char* str1, char * str2)
+{
+	char	   *trimstr1 = NULL;
+	char	   *trimstr2 = NULL;
+	Datum		trimtxt;
+
+	trimtxt = DirectFunctionCall1(rtrim1, CStringGetTextDatum(str1));
+	trimstr1 = TextDatumGetCString(trimtxt);
+
+	trimtxt = DirectFunctionCall1(rtrim1, CStringGetTextDatum(str2));
+	trimstr2 = TextDatumGetCString(trimtxt);
+
+	return strcmp(trimstr1, trimstr2);
 }
 
 Datum
@@ -395,7 +412,7 @@ anyenum_eqtext(PG_FUNCTION_ARGS)
 
 	str1 = get_enum_label(oid);
 
-	PG_RETURN_BOOL(strcmp(str1, str2) == 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) == 0);
 }
 
 Datum
@@ -407,7 +424,7 @@ text_eqanyenum(PG_FUNCTION_ARGS)
 	char		*str2 = text_to_cstring(tvalue);
 
 	str1 = get_enum_label(oid);
-	PG_RETURN_BOOL(strcmp(str2, str1) == 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) == 0);
 }
 
 Datum
@@ -532,7 +549,7 @@ anyenum_netext(PG_FUNCTION_ARGS)
 	text	    *tvalue = PG_GETARG_TEXT_P(1);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(strcmp(str1, str2) != 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) != 0);
 }
 
 Datum
@@ -543,7 +560,7 @@ text_neanyenum(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(0);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(strcmp(str2, str1) != 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) != 0);
 }
 
 Datum
@@ -671,7 +688,7 @@ anyenum_lttext(PG_FUNCTION_ARGS)
 	text	   	*tvalue = PG_GETARG_TEXT_P(1);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(strcmp(str1, str2) < 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) < 0);
 }
 
 Datum
@@ -682,7 +699,7 @@ text_ltanyenum(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(0);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(strcmp(str2, str1) < 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) < 0);
 }
 
 Datum
@@ -807,7 +824,7 @@ anyenum_letext(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(1);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(strcmp(str1, str2) <= 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) <= 0);
 }
 
 Datum
@@ -818,7 +835,7 @@ text_leanyenum(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(0);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(strcmp(str2, str1) <= 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) <= 0);
 }
 
 Datum
@@ -943,7 +960,7 @@ anyenum_gttext(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(1);
 	char		*str2 = text_to_cstring(tvalue);
 	
-	PG_RETURN_BOOL(strcmp(str1, str2) > 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) > 0);
 }
 
 Datum
@@ -954,7 +971,7 @@ text_gtanyenum(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(0);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(strcmp(str2, str1) > 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) > 0);
 }
 
 Datum
@@ -1079,7 +1096,7 @@ anyenum_getext(PG_FUNCTION_ARGS)
 	text		*tvalue = PG_GETARG_TEXT_P(1);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(strcmp(str1, str2) >= 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) >= 0);
 }
 
 Datum
@@ -1090,7 +1107,7 @@ text_geanyenum(PG_FUNCTION_ARGS)
 	text	 	*tvalue = PG_GETARG_TEXT_P(0);
 	char		*str2 = text_to_cstring(tvalue);
 	
-	PG_RETURN_BOOL(strcmp(str2, str1) >= 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) >= 0);
 }
 
 Datum
@@ -2700,10 +2717,9 @@ anyenum_rightmovint8(PG_FUNCTION_ARGS)
 Datum
 int2_rightmovanyenum(PG_FUNCTION_ARGS)
 {
-	Oid			oid1 = PG_GETARG_OID(0);
-	Oid			oid2 = PG_GETARG_OID(1);
+	Oid			oid1 = PG_GETARG_OID(1);
+	int16		val2 = PG_GETARG_INT16(0);
 	float8		val1;
-	float8		val2;
 
 	if (oid1 == InvalidOid)
 	{
@@ -2712,15 +2728,6 @@ int2_rightmovanyenum(PG_FUNCTION_ARGS)
 	else
 	{
 		val1 = get_enum_sortorder(oid1);
-	}
-	
-	if (oid2 == InvalidOid)
-	{
-		val2 = 0;
-	}
-	else
-	{
-		val2 = get_enum_sortorder(oid2);
 	}
 
 	if (val1 > sizeof(int64) * 8)
@@ -2915,10 +2922,9 @@ int2_leftmovanyenum(PG_FUNCTION_ARGS)
 Datum
 int4_leftmovanyenum(PG_FUNCTION_ARGS)
 {
-	Oid			oid1 = PG_GETARG_OID(0);
-	Oid			oid2 = PG_GETARG_OID(1);
+	Oid			oid1 = PG_GETARG_OID(1);
+	int32		val2 = PG_GETARG_INT32(0);
 	float8		val1;
-	float8		val2;
 
 	if (oid1 == InvalidOid)
 	{
@@ -2927,15 +2933,6 @@ int4_leftmovanyenum(PG_FUNCTION_ARGS)
 	else
 	{
 		val1 = get_enum_sortorder(oid1);
-	}
-
-	if (oid2 == InvalidOid)
-	{
-		val2 = 0;
-	}
-	else
-	{
-		val2 = get_enum_sortorder(oid2);
 	}
 
 	if (val1 > sizeof(int64) * 8)
@@ -3438,13 +3435,19 @@ anyenum_avg_accum(PG_FUNCTION_ARGS)
 {
 	ArrayType  *transarray = PG_GETARG_ARRAYTYPE_P(0);
 	Oid			oid = PG_GETARG_OID(1);
-	float8		newval = get_enum_sortorder(oid);
+	float8		newval = 0.0;
 
 	float8	   *transvalues;
 	float8		N,
 				Sx,
 				Sxx,
 				tmp;
+
+	if (oid == InvalidOid)
+	{
+		PG_RETURN_ARRAYTYPE_P(transarray);
+	}
+	newval = get_enum_sortorder(oid);
 
 	transvalues = (float8 *) ARR_DATA_PTR(transarray);
 	N = transvalues[0];
@@ -3617,6 +3620,16 @@ format_anonymous_enum(PG_FUNCTION_ARGS)
 	ReleaseCatCacheList(list);
 
 	PG_RETURN_TEXT_P(CStringGetTextDatum(buf.data));
+}
+
+Datum
+check_is_anonymous_enum(PG_FUNCTION_ARGS)
+{
+	Oid 		typoid = PG_GETARG_OID(0);
+
+	if (type_is_anonymous_enum(typoid))
+		PG_RETURN_BOOL(true);
+	PG_RETURN_BOOL(false);
 }
 
 Datum
