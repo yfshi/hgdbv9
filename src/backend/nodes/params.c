@@ -68,6 +68,7 @@ makeParamList(int numParams)
 	retval->outparamSetup = NULL;
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
 	retval->paramCheck = NULL;
+	retval->numParamCheck = 0;
 	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/* set all the params mode to IN and typmod is -1 */

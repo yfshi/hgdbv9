@@ -1838,9 +1838,6 @@ RemoveRelations(DropStmt *drop)
 		RangeVar   *rel = makeRangeVarFromNameList((List *) lfirst(cell));
 		Oid			relOid;
 		ObjectAddress obj;
-		HeapTuple	tuple;
-		Datum		reloptions;
-		bool		isNull;
 		struct DropRelationCallbackState state;
 
 		/*

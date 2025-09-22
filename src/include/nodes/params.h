@@ -126,7 +126,7 @@ typedef void (*OutParamSetupHook) (void *scratch);
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 /* Begin - ReqID:SRS-PLSQL-DSQL */
-typedef void (*ParamCheckHook) (ParamListInfo params, struct FuncExpr *fexpr);
+typedef void (*ParamCheckHook) (ParamListInfo params, struct FuncExpr *fexpr, int numParamCheck);
 /* End - ReqID:SRS-PLSQL-DSQL */
 
 typedef struct ParamListInfoData
@@ -152,6 +152,7 @@ typedef struct ParamListInfoData
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
 	ParamCheckHook 		paramCheck;	/* parameter check hook */
+	int			numParamCheck;
 	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/*
