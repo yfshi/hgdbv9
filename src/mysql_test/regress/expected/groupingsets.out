@@ -991,8 +991,23 @@ select sum(ten) from onek group by rollup(four::text), two order by 1;
 set enable_hashagg = true;
 -- failure cases
 select count(*) from gstest4 group by rollup(unhashable_col,unsortable_col);
-ERROR:  could not implement GROUP BY
-DETAIL:  Some of the datatypes only support hashing, while others only support sorting.
+ count 
+-------
+     8
+     1
+     1
+     1
+     1
+     1
+     1
+     1
+     1
+     2
+     2
+     2
+     2
+(13 rows)
+
 select array_agg(v order by v) from gstest4 group by grouping sets ((id,unsortable_col),(id));
 ERROR:  could not implement GROUP BY
 DETAIL:  Some of the datatypes only support hashing, while others only support sorting.
@@ -1114,13 +1129,11 @@ explain (costs off)
 ------------------------------------------------------------------
  Sort
    Sort Key: (GROUPING(unhashable_col, unsortable_col)), (sum(v))
-   ->  MixedAggregate
+   ->  HashAggregate
          Hash Key: unsortable_col
-         Group Key: unhashable_col
-         ->  Sort
-               Sort Key: unhashable_col
-               ->  Seq Scan on gstest4
-(8 rows)
+         Hash Key: unhashable_col
+         ->  Seq Scan on gstest4
+(6 rows)
 
 select unhashable_col, unsortable_col,
        grouping(unhashable_col, unsortable_col),
@@ -1157,13 +1170,11 @@ explain (costs off)
 ------------------------------------------------------------------
  Sort
    Sort Key: (GROUPING(unhashable_col, unsortable_col)), (sum(v))
-   ->  MixedAggregate
+   ->  HashAggregate
          Hash Key: v, unsortable_col
-         Group Key: v, unhashable_col
-         ->  Sort
-               Sort Key: v, unhashable_col
-               ->  Seq Scan on gstest4
-(8 rows)
+         Hash Key: v, unhashable_col
+         ->  Seq Scan on gstest4
+(6 rows)
 
 -- empty input: first is 0 rows, second 1, third 3 etc.
 select a, b, sum(v), count(*) from gstest_empty group by grouping sets ((a,b),a);

@@ -17,8 +17,11 @@
  * 
  *------------------------------------------------------------------
  */
+
+#include <math.h>
 #include "postgres.h"
 #include "fmgr.h"
+#include "common/hashfn.h"
 #include "common/int.h"
 #include "lib/stringinfo.h"
 #include "libpq/pqformat.h"
@@ -50,6 +53,20 @@
 #define VARBIT_CORRECTLY_PADDED(vb) ((void) 0)
 #endif
 
+#define MYSBIT_MAX_VALUE(typmod) \
+		(typmod == 64 ? ULLONG_MAX : (1ULL << typmod) - 1)
+
+#define mi_int4store(T,A) { ulong def_temp = (ulong) (A);\
+		((uchar*) (T))[3]= (uchar) (def_temp);\
+		((uchar*) (T))[2]= (uchar) (def_temp >> 8);\
+		((uchar*) (T))[1]= (uchar) (def_temp >> 16);\
+		((uchar*) (T))[0]= (uchar) (def_temp >> 24); }
+
+#define mi_int8store(T,A) { ulong def_temp3 = (ulong) (A),\
+		def_temp4 = (ulong) ((A) >> 32);\
+		mi_int4store((uchar*) (T) + 0, def_temp4);\
+		mi_int4store((uchar*) (T) + 4, def_temp3); }
+
 PG_FUNCTION_INFO_V1(mysql_bit_in);
 PG_FUNCTION_INFO_V1(mysql_bit_in2);
 PG_FUNCTION_INFO_V1(mysql_bit_out);
@@ -60,6 +77,13 @@ PG_FUNCTION_INFO_V1(bitfromvarbinary);
 PG_FUNCTION_INFO_V1(bittobool);
 PG_FUNCTION_INFO_V1(bittobinary);
 PG_FUNCTION_INFO_V1(bittouint8);
+PG_FUNCTION_INFO_V1(bittotext);
+PG_FUNCTION_INFO_V1(mysbit_eq);
+PG_FUNCTION_INFO_V1(mysbit_ne);
+PG_FUNCTION_INFO_V1(mysbit_lt);
+PG_FUNCTION_INFO_V1(mysbit_le);
+PG_FUNCTION_INFO_V1(mysbit_ge);
+PG_FUNCTION_INFO_V1(mysbit_gt);
 PG_FUNCTION_INFO_V1(mysbit_safeeq);
 PG_FUNCTION_INFO_V1(mysbit_bit_and);
 PG_FUNCTION_INFO_V1(mysbit_left_shift_mysbit);
@@ -76,6 +100,8 @@ PG_FUNCTION_INFO_V1(mysbit_and);
 PG_FUNCTION_INFO_V1(mysbit_not);
 PG_FUNCTION_INFO_V1(mysbit_like);
 PG_FUNCTION_INFO_V1(mysbit_notlike);
+PG_FUNCTION_INFO_V1(mysbit_hash);
+PG_FUNCTION_INFO_V1(mysbit_hash_extended);
 
 static Datum
 string_to_varbit(char *sp, int atttypmod, int slen)
@@ -84,6 +110,7 @@ string_to_varbit(char *sp, int atttypmod, int slen)
 			delta = 0,
 			pre = 0,
 			i = 0;
+	int 	bitlen = 0;
 	bits8	x = 0,
 			y = 0;
 	VarBit	*result;	/* The resulting bit string */
@@ -101,17 +128,82 @@ string_to_varbit(char *sp, int atttypmod, int slen)
 	* Finally, clear the remaining pre bits of the last byte and append it to the end.
 	*/
 	
+	if (slen > 0)
+	{
+		/* insert bit 0x0000...... , skip leading 0x00 */
+		while (1)
+		{
+			y = (bits8) *sp;
+			if ((y | 0) == 0)
+			{
+				sp++;
+				slen--;
+			}
+			else
+				break;
+		}
+
+		bitlen = slen * BITS_PER_BYTE;
+		pre = BITS_PER_BYTE - 1;
+
+		/* Ignore the leading 0 in the first byte. */
+		while (1)
+		{
+			y = (bits8) *sp;
+			if ((y >> pre | 0) == 0)
+			{
+				bitlen--;
+				pre--;
+			}
+			else
+				break;
+		}
+	}
+
+	if (bitlen > atttypmod)
+	{
+		if (is_strict_mode())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
+					errmsg("bit string length %d does not match type bit(%d)",
+							bitlen, atttypmod)));
+		}
+
+		ereport(WARNING,
+				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+					errmsg("value too long for type bit(%d)",
+						atttypmod)));
+
+		PG_RETURN_VARBIT_P(DatumGetVarBitP(DirectFunctionCall2(bitfromuint8, 
+											UInt64GetDatum(MYSBIT_MAX_VALUE(atttypmod)),
+											Int64GetDatum(atttypmod))));
+	}
+
 	len = VARBITTOTALLEN(atttypmod);
 	/* set to 0 so that *r is always initialised and string is zero-padded */
 	result = (VarBit *) palloc0(len); 
 	SET_VARSIZE(result, len);
 	VARBITLEN(result) = atttypmod;
 
+	if (slen == 0)
+	{
+		PG_RETURN_VARBIT_P(result);
+	}
+
 	r = VARBITS(result);
 
 	delta = atttypmod / BITS_PER_BYTE - slen;
 	pre = atttypmod % BITS_PER_BYTE;
-	
+
+	/* insert 0x1 into bit(3) */
+	if (atttypmod < BITS_PER_BYTE)
+	{
+		y = (bits8) *sp;
+		*r = (y << (BITS_PER_BYTE - pre)) | 0;
+		PG_RETURN_VARBIT_P(result);
+	}
+
 	for (i = 0; i < delta; i++)
 	{
 		*r++ = 0;
@@ -137,6 +229,31 @@ string_to_varbit(char *sp, int atttypmod, int slen)
 	}
 
 	PG_RETURN_VARBIT_P(result);
+}
+
+
+static uint64
+bit_to_uint64(VarBit *arg)
+{
+	uint64		result;
+	bits8	   *r;
+
+	/* Check that the bit string is not too long */
+	if (VARBITLEN(arg) > sizeof(result) * BITS_PER_BYTE)
+		ereport(ERROR,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+				 errmsg("bigint out of range")));
+
+	result = 0;
+	for (r = VARBITS(arg); r < VARBITEND(arg); r++)
+	{
+		result <<= BITS_PER_BYTE;
+		result |= *r;
+	}
+	/* Now shift the result to take account of the padding at the end */
+	result >>= VARBITPAD(arg);
+
+	return result;
 }
 
 Datum
@@ -165,10 +282,24 @@ mysql_bit_in(PG_FUNCTION_ARGS)
 	if (atttypmod <= 0)
 		atttypmod = bitlen;
 	else if (bitlen > atttypmod)
-		ereport(ERROR,
-				(errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
-				 errmsg("bit string length %d does not match type bit(%d)",
-						bitlen, atttypmod)));
+	{
+		if (is_strict_mode())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
+					errmsg("bit string length %d does not match type bit(%d)",
+							bitlen, atttypmod)));
+		}
+
+		ereport(WARNING,
+				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+					errmsg("value too long for type bit(%d)",
+						atttypmod)));
+
+		PG_RETURN_VARBIT_P(DatumGetVarBitP(DirectFunctionCall2(bitfromuint8, 
+											UInt64GetDatum(MYSBIT_MAX_VALUE(atttypmod)),
+											Int64GetDatum(atttypmod))));
+	}
 
 	PG_RETURN_VARBIT_P(string_to_varbit(sp, atttypmod, slen));
 }
@@ -263,10 +394,25 @@ mysbitfrompgbit(PG_FUNCTION_ARGS)
 		PG_RETURN_VARBIT_P(arg);
 	
 	if (typmod <= VARBITLEN(arg))
-		ereport(ERROR,
-		(errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
-			errmsg("bit string length %d does not match type bit(%d)",
-				VARBITLEN(arg), typmod)));
+	{
+		if (is_strict_mode())
+		{
+
+			ereport(ERROR,
+			(errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
+				errmsg("bit string length %d does not match type bit(%d)",
+					VARBITLEN(arg), typmod)));
+		}
+
+		ereport(WARNING,
+			(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+				errmsg("value too long for type bit(%d)",
+					typmod)));
+
+		PG_RETURN_VARBIT_P(DatumGetVarBitP(DirectFunctionCall2(bitfromuint8, 
+											UInt64GetDatum(MYSBIT_MAX_VALUE(typmod)),
+											Int64GetDatum(typmod))));
+	}
 
 	rlen = VARBITTOTALLEN(typmod);
 	/* set to 0 so that string is zero-padded */
@@ -378,24 +524,38 @@ bittouint8(PG_FUNCTION_ARGS)
 {
 	VarBit	   *arg = PG_GETARG_VARBIT_P(0);
 	uint64		result;
-	bits8	   *r;
 
-	/* Check that the bit string is not too long */
-	if (VARBITLEN(arg) > sizeof(result) * BITS_PER_BYTE)
-		ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-				 errmsg("bigint out of range")));
-
-	result = 0;
-	for (r = VARBITS(arg); r < VARBITEND(arg); r++)
-	{
-		result <<= BITS_PER_BYTE;
-		result |= *r;
-	}
-	/* Now shift the result to take account of the padding at the end */
-	result >>= VARBITPAD(arg);
+	result = bit_to_uint64(arg);
 
 	PG_RETURN_UINT64(result);
+}
+
+Datum
+bittotext(PG_FUNCTION_ARGS)
+{
+	VarBit	   *arg = PG_GETARG_VARBIT_P(0);
+	int 		bit_len, char_len;
+	uint64		tmp = bit_to_uint64(arg);
+
+	char buff[sizeof(int64)];
+	char *valbuffer;
+
+	if (tmp == 0)
+	{
+		char_len = 1;
+	}
+	else 
+	{
+		bit_len = (int) (floor(log2(tmp)) + 1);
+		char_len = (bit_len + 7) / 8;
+	}
+
+	valbuffer = (char *)palloc(char_len); 
+
+	mi_int8store(buff, tmp);
+	memcpy(valbuffer, buff + sizeof(int64) - char_len, char_len);
+	
+	PG_RETURN_TEXT_P(cstring_to_text_with_len(valbuffer, char_len));
 }
 
 Datum
@@ -405,12 +565,48 @@ bitfromuint8(PG_FUNCTION_ARGS)
 	int32		typmod = PG_GETARG_INT32(1);
 	VarBit	   *result;
 	bits8	   *r;
+	uint64		value_max; 
 	int			rlen;
 	int			destbitsleft,
 				srcbitsleft;
 
 	if (typmod <= 0 || typmod > VARBITMAXLEN)
 		typmod = 1;				/* default bit length */
+
+	if (typmod > 64)
+	{
+		ereport(ERROR,
+			(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+				errmsg("value too long for type bit(%d)",
+						typmod)));
+	}
+
+	if (typmod == 64)
+	{
+		value_max = ULLONG_MAX;
+	}
+	else 
+	{
+		value_max = (1ULL << (typmod)) - 1;
+	}
+
+	if (arg > value_max)
+	{
+		if (is_strict_mode())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+						errmsg("value too long for type bit(%d)",
+							typmod)));
+			PG_RETURN_VOID();
+		}
+
+		ereport(WARNING,
+				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+					errmsg("value too long for type bit(%d)",
+						typmod)));
+		arg = value_max;
+	}
 
 	rlen = VARBITTOTALLEN(typmod);
 	result = (VarBit *) palloc(rlen);
@@ -454,7 +650,7 @@ bitfromuint8(PG_FUNCTION_ARGS)
 Datum
 bitfromvarbinary(PG_FUNCTION_ARGS)
 {
-	int32		atttypmod = PG_NARGS() == 2 ? PG_GETARG_INT32(1) : PG_GETARG_INT32(2);
+	int32	atttypmod = PG_NARGS() == 2 ? PG_GETARG_INT32(1) : PG_GETARG_INT32(2);
 	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
 	char	*sp = VARDATA_ANY(arg);	
 	int 	slen = VARSIZE_ANY_EXHDR(arg);
@@ -490,6 +686,90 @@ mysql_bit_in2(PG_FUNCTION_ARGS)
 	result = DatumGetVarBitP(DirectFunctionCall2(bitfromvarbinary, PointerGetDatum(tmp), atttypmod));
 
 	PG_RETURN_VARBIT_P(result);
+}
+
+/* operator mysbit = mysbit */
+Datum 
+mysbit_eq(PG_FUNCTION_ARGS)
+{
+	VarBit		*arg0 = PG_GETARG_VARBIT_P(0);
+	VarBit		*arg1 = PG_GETARG_VARBIT_P(1);
+	uint64		num0, num1;
+
+	num0 = bit_to_uint64(arg0);
+	num1 = bit_to_uint64(arg1);
+
+	PG_RETURN_BOOL(num0 == num1);
+}
+
+/* operator mysbit <> mysbit */
+Datum 
+mysbit_ne(PG_FUNCTION_ARGS)
+{
+	VarBit		*arg0 = PG_GETARG_VARBIT_P(0);
+	VarBit		*arg1 = PG_GETARG_VARBIT_P(1);
+	uint64		num0, num1;
+
+	num0 = bit_to_uint64(arg0);
+	num1 = bit_to_uint64(arg1);
+
+	PG_RETURN_BOOL(num0 != num1);
+}
+
+/* operator mysbit < mysbit */
+Datum 
+mysbit_lt(PG_FUNCTION_ARGS)
+{
+	VarBit		*arg0 = PG_GETARG_VARBIT_P(0);
+	VarBit		*arg1 = PG_GETARG_VARBIT_P(1);
+	uint64		num0, num1;
+
+	num0 = bit_to_uint64(arg0);
+	num1 = bit_to_uint64(arg1);
+
+	PG_RETURN_BOOL(num0 < num1);
+}
+
+/* operator mysbit <= mysbit */
+Datum 
+mysbit_le(PG_FUNCTION_ARGS)
+{
+	VarBit		*arg0 = PG_GETARG_VARBIT_P(0);
+	VarBit		*arg1 = PG_GETARG_VARBIT_P(1);
+	uint64		num0, num1;
+
+	num0 = bit_to_uint64(arg0);
+	num1 = bit_to_uint64(arg1);
+
+	PG_RETURN_BOOL(num0 <= num1);
+}
+
+/* operator mysbit >= mysbit */
+Datum 
+mysbit_ge(PG_FUNCTION_ARGS)
+{
+	VarBit		*arg0 = PG_GETARG_VARBIT_P(0);
+	VarBit		*arg1 = PG_GETARG_VARBIT_P(1);
+	uint64		num0, num1;
+
+	num0 = bit_to_uint64(arg0);
+	num1 = bit_to_uint64(arg1);
+
+	PG_RETURN_BOOL(num0 >= num1);
+}
+
+/* operator mysbit > mysbit */
+Datum 
+mysbit_gt(PG_FUNCTION_ARGS)
+{
+	VarBit		*arg0 = PG_GETARG_VARBIT_P(0);
+	VarBit		*arg1 = PG_GETARG_VARBIT_P(1);
+	uint64		num0, num1;
+
+	num0 = bit_to_uint64(arg0);
+	num1 = bit_to_uint64(arg1);
+
+	PG_RETURN_BOOL(num0 > num1);
 }
 
 /* operator mysbit <=> int2 
@@ -827,4 +1107,21 @@ mysbit_notlike(PG_FUNCTION_ARGS)
 	result = DatumGetBool(DirectFunctionCall2(textlike, PointerGetDatum(ret0), PointerGetDatum(ret1)));
 
 	PG_RETURN_BOOL(!result);
+}
+
+Datum
+mysbit_hash(PG_FUNCTION_ARGS)
+{
+	VarBit	   *key = PG_GETARG_VARBIT_P(0);
+
+	return hash_any((unsigned char *) VARBITS(key), VARBITLEN(key));
+}
+
+Datum
+mysbit_hash_extended(PG_FUNCTION_ARGS)
+{
+	VarBit	   *key = PG_GETARG_VARBIT_P(0);
+
+	return hash_any_extended((unsigned char *) VARBITS(key), VARBITLEN(key),
+							 PG_GETARG_INT64(1));
 }

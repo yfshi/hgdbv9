@@ -2920,3 +2920,15 @@ CREATE AGGREGATE ivymy.sum(ivymy.uint8) (
   SFUNC = ivymy.mysuint8_sum,
   STYPE = pg_catalog.numeric
 );
+
+--
+-- CREATE FUNCTION
+--
+CREATE FUNCTION ivymy.MOD(ivymy.uint8, ivymy.uint8)
+RETURNS  ivymy.uint8
+AS 'MODULE_PATHNAME','mysuint8_modmysuint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
