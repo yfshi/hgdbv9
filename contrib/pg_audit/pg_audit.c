@@ -5823,17 +5823,17 @@ audit_arch_job(void)
 		archpath = palloc(MAXPGPATH);
 		archfile = palloc(MAXPGPATH);
 		
-		snprintf(archpath, sizeof(archpath), "%s/%d", audit_GUC.audit_archdir, oids[elemno]);
+		snprintf(archpath, MAXPGPATH, "%s/%d", audit_GUC.audit_archdir, oids[elemno]);	/* Bug#Z5840 */
 		if ((audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0) &&
 							(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir)))
 		{
-			snprintf(archfile, sizeof(archfile), "%s/%d.csv", archpath, oids[elemno]);
+			snprintf(archfile, MAXPGPATH, "%s/%d.csv", archpath, oids[elemno]);	/* Bug#Z5840 */
 			snprintf(copysql, sizeof(copysql), "COPY pg_audit_log TO ''%s/%d.csv'';select public.copy_file_to_remot_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);
 		}
 		else if ((audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0) &&
 								(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir) == 0))
 		{
-			snprintf(archfile, sizeof(archfile), "%s/%d.csv", DataDir, oids[elemno]);
+			snprintf(archfile, MAXPGPATH, "%s/%d.csv", DataDir, oids[elemno]);	/* Bug#Z5840 */
 			snprintf(copysql, sizeof(copysql), "COPY pg_audit_log TO ''%s/%d.csv'';select public.copy_file_to_remot_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir);
 		}
 		else if(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
