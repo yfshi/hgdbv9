@@ -1093,6 +1093,7 @@ exec_simple_query(const char *query_string)
 			paramsinfo->haveout = true;
 			/* Begin - ReqID:SRS-PLSQL-DSQL */
 			paramsinfo->paramCheck = NULL;
+			paramsinfo->numParamCheck = 0;
 			/* End - ReqID:SRS-PLSQL-DSQL */
 
 			/* Begin - ReqID:SRS-SQL-LIBPQOUT */

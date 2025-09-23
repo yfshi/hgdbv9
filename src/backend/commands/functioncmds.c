@@ -3686,7 +3686,7 @@ SKIP_PG_PROC_CHECK:
 		 */
 		if (paramInfo && paramInfo->paramCheck)
 		{
-			(void)paramInfo->paramCheck(paramInfo, fexpr);
+			(void)paramInfo->paramCheck(paramInfo, fexpr, paramInfo->numParamCheck);
 		}
 	}
 	/* End - ReqID:SRS-PLSQL-DSQL */

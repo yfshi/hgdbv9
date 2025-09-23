@@ -100,6 +100,32 @@ BEGIN
 END;
 /
 
+--error: OUT bound to ALL IN
+CREATE OR REPLACE PROCEDURE create_stu_2 (
+  stuid IN NUMBER,
+  name  IN VARCHAR2,
+  score IN NUMBER
+) AUTHID DEFINER AS
+BEGIN
+  INSERT INTO dyn_student VALUES (stuid, name, score);
+END;
+/
+
+DECLARE
+  plsql_block VARCHAR2(500);
+  new_stuid  NUMBER(4) := 11;
+  new_name   VARCHAR2(30) := 'xx';
+  new_score   NUMBER;
+BEGIN
+  plsql_block := 'BEGIN create_stu_2(:a, :b, :c); END;';
+  EXECUTE IMMEDIATE plsql_block
+    USING IN new_stuid, IN new_name, OUT new_score;
+  RAISE NOTICE 'stuid is %, score is %', new_stuid, new_score;
+END;
+/
+
+DROP PROCEDURE create_stu_2;
+
 -- success: INOUT bound to OUT
 DECLARE
   plsql_block VARCHAR2(500);
@@ -242,6 +268,16 @@ BEGIN
   plsql_block := 'BEGIN pro_add_int(:x, :x, :y, :x); END;';
   EXECUTE IMMEDIATE plsql_block USING a, b;
   EXECUTE IMMEDIATE plsql_block USING b, a;
+END;
+/
+
+DECLARE
+  a INTEGER := 1;
+  b INTEGER := 2;
+  plsql_block VARCHAR2(100);
+BEGIN
+  plsql_block := 'BEGIN pro_add_int(:x, :x, :y, :x); END;';
+  EXECUTE IMMEDIATE plsql_block USING a, a, b, a; --failed
 END;
 /
 

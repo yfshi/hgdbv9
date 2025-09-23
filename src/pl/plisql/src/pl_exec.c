@@ -505,7 +505,7 @@ static TupleDesc plisql_get_tupledesc_fromvar(PLiSQL_execstate *estate,
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 /* Begin - ReqID:SRS-PLSQL-DSQL */
-static void plisql_param_check(ParamListInfo params, FuncExpr *fexpr);
+static void plisql_param_check(ParamListInfo params, FuncExpr *fexpr, int numParamCheck);
 /* End - ReqID:SRS-PLSQL-DSQL */
 
 /* ----------
@@ -4817,6 +4817,7 @@ plisql_estate_setup(PLiSQL_execstate *estate,
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
 	estate->paramLI->paramCheck = func->paramCheck;
+	estate->paramLI->numParamCheck = func->numParamCheck;
 	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/* set up for use of appropriate simple-expression EState and cast hash */
@@ -5288,6 +5289,7 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 	if (paramLI)
 	{
 		paramLI->paramCheck = (ParamCheckHook) plisql_param_check;
+		paramLI->numParamCheck = paramLI->numParams;
 		Assert(stmt->params->length == paramLI->numParams);
 	}
 	pno = 0;
@@ -12180,7 +12182,7 @@ plisql_get_tupledesc_fromvar(PLiSQL_execstate *estate,
  * Check whether the parameters are used correctly in the call statement block.
  */
 static void
-plisql_param_check(ParamListInfo params, FuncExpr *fexpr)
+plisql_param_check(ParamListInfo params, FuncExpr *fexpr, int numParamCheck)
 {
 	char	   *argmodes = NULL;
 
@@ -12221,6 +12223,14 @@ plisql_param_check(ParamListInfo params, FuncExpr *fexpr)
 					numargs);
 			argmodes = palloc0(numargs + 1);
 			memcpy(argmodes, ARR_DATA_PTR(arr), numargs);
+		}
+		else
+		{
+			/* If not found, set all paramter's mode "IN" */
+			int numargs = list_length(fexpr->args);
+
+			argmodes = palloc0(numargs + 1);
+			memset(argmodes, PROARGMODE_IN, numargs + 1);
 		}
 		ReleaseSysCache(proctup);
 	}
@@ -12274,6 +12284,7 @@ plisql_param_check(ParamListInfo params, FuncExpr *fexpr)
 	if (argmodes)
 	{
 		int	i;
+		int max_id = 0;
 
 		for (i = 0; i < list_length(fexpr->args); i++)
 		{
@@ -12286,6 +12297,7 @@ plisql_param_check(ParamListInfo params, FuncExpr *fexpr)
 			if (param->paramid > 0 && param->paramid <= params->numParams)
 			{
 				(void)params->paramFetch(params, param->paramid, false, &prmdata);
+				max_id = Max(max_id, param->paramid);
 
 				/*
 				* Parameters have three types: IN, OUT, INOUT.
@@ -12301,6 +12313,10 @@ plisql_param_check(ParamListInfo params, FuncExpr *fexpr)
 					elog(ERROR, "IN variable is bound to INOUT position");
 			}
 		}
+
+		if (max_id < numParamCheck)
+			elog(ERROR, "the number of parameters do not match");
+
 		pfree(argmodes);
 	}
 

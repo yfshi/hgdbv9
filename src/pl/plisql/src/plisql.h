@@ -1165,7 +1165,8 @@ typedef struct PLiSQL_function
 	PLiSQL_type	*rettype;		/* NOT NULL if function return'type is from a package */
 	/* End - ReqID:SRS-PLSQL-RECORD */
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
-	void 		*paramCheck;		/* parameter check hook */
+	void 	   *paramCheck;		/* parameter check hook */
+	int			numParamCheck;
 	/* End - ReqID:SRS-PLSQL-DSQL */
 } PLiSQL_function;
 
