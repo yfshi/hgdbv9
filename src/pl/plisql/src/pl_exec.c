@@ -505,7 +505,7 @@ static TupleDesc plisql_get_tupledesc_fromvar(PLiSQL_execstate *estate,
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 /* Begin - ReqID:SRS-PLSQL-DSQL */
-static void plisql_param_check(ParamListInfo params, FuncExpr *fexpr, int numParamCheck);
+static void plisql_param_check(ParamListInfo params, FuncExpr *fexpr, void *paramArg);
 /* End - ReqID:SRS-PLSQL-DSQL */
 
 /* ----------
@@ -4817,7 +4817,7 @@ plisql_estate_setup(PLiSQL_execstate *estate,
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
 	estate->paramLI->paramCheck = func->paramCheck;
-	estate->paramLI->numParamCheck = func->numParamCheck;
+	estate->paramLI->oraCallParamCheck = func->oraCallParamCheck;
 	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/* set up for use of appropriate simple-expression EState and cast hash */
@@ -5289,7 +5289,7 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 	if (paramLI)
 	{
 		paramLI->paramCheck = (ParamCheckHook) plisql_param_check;
-		paramLI->numParamCheck = paramLI->numParams;
+		paramLI->oraCallParamCheck = paramLI->numParams;
 		Assert(stmt->params->length == paramLI->numParams);
 	}
 	pno = 0;
@@ -12182,9 +12182,10 @@ plisql_get_tupledesc_fromvar(PLiSQL_execstate *estate,
  * Check whether the parameters are used correctly in the call statement block.
  */
 static void
-plisql_param_check(ParamListInfo params, FuncExpr *fexpr, int numParamCheck)
+plisql_param_check(ParamListInfo params, FuncExpr *fexpr, void *paramArg)
 {
 	char	   *argmodes = NULL;
+	int 		oraCallParamCheck = *(int*)paramArg;
 
 	if (params->paramFetch == NULL ||
 		list_length(fexpr->args) < 1)
@@ -12314,7 +12315,7 @@ plisql_param_check(ParamListInfo params, FuncExpr *fexpr, int numParamCheck)
 			}
 		}
 
-		if (max_id < numParamCheck)
+		if (max_id < oraCallParamCheck)
 			elog(ERROR, "the number of parameters do not match");
 
 		pfree(argmodes);

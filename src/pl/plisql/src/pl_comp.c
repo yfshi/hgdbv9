@@ -477,7 +477,7 @@ do_compile(FunctionCallInfo fcinfo,
 
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
 	function->paramCheck = NULL;
-	function->numParamCheck = 0;
+	function->oraCallParamCheck = -1;
 	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
@@ -1586,7 +1586,7 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	/* End - ReqID:SRS-PLSQL-RECORD */
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
 	function->paramCheck = NULL;
-	function->numParamCheck = 0;
+	function->oraCallParamCheck = -1;
 	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/*
@@ -1610,7 +1610,7 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 		/* End - ReqID:SRS-SQL-LIBPQOUT */
 		/* Begin - ReqID:SRS-PLSQL-DSQL */
 		function->paramCheck = inparams->paramCheck;
-		function->numParamCheck = inparams->numParamCheck;
+		function->oraCallParamCheck = inparams->oraCallParamCheck;
 		/* End - ReqID:SRS-PLSQL-DSQL */
 
 		/* Begin - BUG#Z0001268 */
@@ -5098,7 +5098,7 @@ plisql_compile_inline_internal(char *proc_source)
 	/* End - ReqID:SRS-PLSQL-RECORD */
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
 	function->paramCheck = NULL;
-	function->numParamCheck = 0;
+	function->oraCallParamCheck = -1;
 	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	/*

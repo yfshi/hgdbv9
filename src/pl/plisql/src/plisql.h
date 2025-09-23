@@ -1166,7 +1166,7 @@ typedef struct PLiSQL_function
 	/* End - ReqID:SRS-PLSQL-RECORD */
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
 	void 	   *paramCheck;		/* parameter check hook */
-	int			numParamCheck;
+	int			oraCallParamCheck;
 	/* End - ReqID:SRS-PLSQL-DSQL */
 } PLiSQL_function;
 

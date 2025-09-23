@@ -2523,6 +2523,16 @@ _SPI_execute_plan(SPIPlanPtr plan, const SPIExecuteOptions *options,
 	CachedPlan *cplan = NULL;
 	ListCell   *lc1;
 
+	/* Begin - ReqID:SRS-PLSQL-DSQL */
+	if (ORA_PARSER == compatible_db && 
+		options && options->params && 
+		options->params->oraCallParamCheck > -1 &&
+		plan && list_length(plan->plancache_list) > 1)
+	{
+		elog(ERROR, "Dynamic SQL only support one query.");
+	}
+	/* End - ReqID:SRS-PLSQL-DSQL */
+
 	/*
 	 * We allow nonatomic behavior only if options->allow_nonatomic is set
 	 * *and* the SPI_OPT_NONATOMIC flag was given when connecting and we are
