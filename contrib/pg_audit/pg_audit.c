@@ -3350,7 +3350,7 @@ static void audit_hghac_sync_guc(Relation	audit_log, AuditEvent *auditevent)
 	AuditEvent auditevent_guc;
 
 	if (MyProcPort && MyProcPort->application_name && pg_strcasecmp(MyProcPort->application_name, "Patroni ctl") == 0
-		&& auditevent->actionname && pg_strcasecmp(auditevent->actionname, ALTER_SYSTEM_S) == 0)
+		&& pg_strcasecmp(auditevent->actionname, ALTER_SYSTEM_S) == 0)
 	{
 		memcpy(&auditevent_guc, auditevent, sizeof(AuditEvent));
 		strcpy(auditevent_guc.actionname, SYSTEMAUDIT_HGHAC_SYNC_GUC_S);
