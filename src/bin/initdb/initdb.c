@@ -3984,7 +3984,10 @@ main(int argc, char *argv[])
 				}
 				else
 				{
-					printf(_("UnKnow case conversion mode, use the default interchange.\n"));
+					/* Begin - BUG#Z5850 */
+					fprintf(stderr, _("UnKnow case conversion mode, use the default interchange.\n"));
+					exit(1);
+					/* End - BUG#Z5850 */
 				}
 
 				break;
