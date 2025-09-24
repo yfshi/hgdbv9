@@ -6677,7 +6677,16 @@ ivy_makeBoolAConst(bool state)
 	A_Const *n = makeNode(A_Const);
 
 	n->val.type = T_String;
-	n->val.val.str = (state ? "t" : "f");
+	/* Begin - BUG#Z5838 */
+	if (MYS_PARSER == compatible_db && use_mysql_bool == true)
+	{
+		n->val.val.str = (state ? "1" : "0");
+	}
+	else
+	{
+		n->val.val.str = (state ? "t" : "f");
+	}
+	/* End - BUG#Z5838 */
 
 	return ivy_makeTypeCast((Node *)n, SystemTypeName("bool"), -1);
 }
@@ -6780,6 +6789,12 @@ trans_MysVariable_to_VariableSet(ParseState *pstate, MysVariableSetStmt *stmt)
 						}
 					}
 				}
+				/* Begin - BUG#Z5838 */
+				else if (IsA(var->value, SetToDefault))
+				{
+					vallist = lappend(vallist, ivy_makeStringConst("default", var->location));
+				}
+				/* End - BUG#Z5838 */
 				else
 				{
 					return NULL;

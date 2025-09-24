@@ -223,3 +223,9 @@ set @@GLOBAL.sql_mode='',@@SESSION.work_mem='6MB',@@div_precision_increment=5,ma
 select @@max_sort_length,@@global.max_sort_length; -- 1024
 
 set mysql.at_or_atat = off;
+
+--fix bug 5838
+set mysql.use_mysql_bool TO on ;
+set sql_mode=default;
+reset mysql.use_mysql_bool;
+reset sql_mode;
