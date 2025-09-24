@@ -5364,6 +5364,10 @@ audit_system_event_info(bool flag, SystemEventType sqlerrcode)
 				deal_with_system_event(SYSTEMAUDIT_PROMOTE, AUDIT_SUCCESS);
 				break;
 
+			case SYSTEM_EVENT_CHANEL:
+				deal_with_system_event(SYSTEMAUDIT_CHANNEL, AUDIT_FAIL);
+				break;
+
 			default:
 				deal_with_system_event(SYSTEMAUDIT_LOGOUT, AUDIT_SUCCESS);
 				break;
