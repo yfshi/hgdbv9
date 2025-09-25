@@ -100,7 +100,7 @@ BEGIN
 END;
 /
 
---error: OUT bound to ALL IN
+-- error: OUT bound to ALL IN
 CREATE OR REPLACE PROCEDURE create_stu_2 (
   stuid IN NUMBER,
   name  IN VARCHAR2,
@@ -134,6 +134,20 @@ DECLARE
   new_score   NUMBER;
 BEGIN
   plsql_block := 'BEGIN create_stu(:a, :b, :c); END;';
+  EXECUTE IMMEDIATE plsql_block
+    USING IN OUT new_stuid, new_name, IN OUT new_score;
+  RAISE NOTICE 'stuid is %, score is %', new_stuid, new_score;
+END;
+/
+
+-- error: multi query
+DECLARE
+  plsql_block VARCHAR2(500);
+  new_stuid  NUMBER(4);
+  new_name   VARCHAR2(30) := 'xx';
+  new_score   NUMBER;
+BEGIN
+  plsql_block := 'BEGIN create_stu(:a, :b, :c); END;BEGIN create_stu(:a, :b, :c); END;';
   EXECUTE IMMEDIATE plsql_block
     USING IN OUT new_stuid, new_name, IN OUT new_score;
   RAISE NOTICE 'stuid is %, score is %', new_stuid, new_score;
