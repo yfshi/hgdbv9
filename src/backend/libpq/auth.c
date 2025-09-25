@@ -717,11 +717,13 @@ ClientAuthentication(Port *port)
 	if (audit_Save_ConnectAuthMethod_hook)
 		(*audit_Save_ConnectAuthMethod_hook)(port);
 
+#ifdef USE_SQLITE
 	if (EnableSSL && !port->ssl_in_use && status == STATUS_OK && sqlite_open_db_for_audit_hook)
 	{
 		char	*errtext="not use trust channel!";
 		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_CHANNEL, AUDIT_FAIL, port->user_name, errtext);
 	}
+#endif
 	/* End - ReqID:SRS-SECURITY-AUDIT */
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (status == STATUS_OK && port->hba->mfa_auth_method != uaNONE)
