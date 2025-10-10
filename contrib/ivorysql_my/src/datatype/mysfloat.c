@@ -47,7 +47,6 @@ PG_FUNCTION_INFO_V1(mysfloat4_moddiv);
 PG_FUNCTION_INFO_V1(mysfloat8_moddiv);
 PG_FUNCTION_INFO_V1(mysfloat8_mod);
 PG_FUNCTION_INFO_V1(mysfloat8_logic_and);
-PG_FUNCTION_INFO_V1(mysfloat8_logic_or);
 PG_FUNCTION_INFO_V1(mysfloat4_boolean);
 PG_FUNCTION_INFO_V1(mysfloat8_boolean);
 /* Begin - BUG#Z5204 */
@@ -451,31 +450,6 @@ mysfloat8_logic_and(PG_FUNCTION_ARGS)
 	}
 
 	if (bool1 && bool2)
-	{
-		PG_RETURN_BOOL(true);
-	}
-
-	PG_RETURN_BOOL(false);
-}
-
-/*
- * mysfloat8_logic_and - float8 || float8.
- */
-Datum
-mysfloat8_logic_or(PG_FUNCTION_ARGS)
-{
-	float8	arg1 = PG_GETARG_FLOAT8(0);
-	float8	arg2 = PG_GETARG_FLOAT8(1);
-
-	bool	bool1 = (arg1 != 0.0 ? true : false);
-	bool	bool2 = (arg2 != 0.0 ? true : false);
-
-	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-	{
-		PG_RETURN_NULL();
-	}
-
-	if (bool1 || bool2)
 	{
 		PG_RETURN_BOOL(true);
 	}

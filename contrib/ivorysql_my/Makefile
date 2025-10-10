@@ -31,9 +31,9 @@ OBJS = \
 	src/datatype/varbinary.o \
 	src/datatype/binary_gin.o \
 	src/datatype/mystext.o	\
-	src/datatype/myschar.o	\
 	src/datatype/mysbit.o \
 	src/datatype/mysvarchar.o \
+	src/datatype/hex.o	\
 	src/charset/charset.o \
 	src/charset/ctype-bin.o \
 	src/charset/ctype-mb.o \
@@ -90,7 +90,10 @@ cleansql:
 
 # REGRESS_OPTS mainly used for installcheck or debug.
 #REGRESS_OPTS = --port=3306
-MYS_REGRESS = multi_update \
+MYS_REGRESS = cast_to_number \
+			  hex_literal \
+			  pipes_as_concat \
+			  multi_update \
 			  mys_enum	\
 			  mys_text \
 			  mys_tinytext \
@@ -138,7 +141,6 @@ MYS_REGRESS = multi_update \
 			  character_func \
 			  time_func	\
 			  flow_control \
-			  hex_string \
 			  network_func \
 			  weight_string \
 			  operator \

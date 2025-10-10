@@ -19,8 +19,11 @@
  */
 
 #include <math.h>
+
+#include <math.h>
 #include "postgres.h"
 #include "fmgr.h"
+#include "common/hashfn.h"
 #include "common/hashfn.h"
 #include "common/int.h"
 #include "lib/stringinfo.h"
@@ -102,135 +105,109 @@ PG_FUNCTION_INFO_V1(mysbit_like);
 PG_FUNCTION_INFO_V1(mysbit_notlike);
 PG_FUNCTION_INFO_V1(mysbit_hash);
 PG_FUNCTION_INFO_V1(mysbit_hash_extended);
+PG_FUNCTION_INFO_V1(bit_uint8);
 
-static Datum
-string_to_varbit(char *sp, int atttypmod, int slen)
+static int
+get_bit_length(uint8 *s, int len)
 {
-	int		len = 0, /* Length of the whole data structure */
-			delta = 0,
-			pre = 0,
-			i = 0;
 	int 	bitlen = 0;
-	bits8	x = 0,
-			y = 0;
-	VarBit	*result;	/* The resulting bit string */
-	bits8	*r;		/* pointer into the result */
+	uint8 	*e = s + len;
 
-	/*
-	* attypmod is target bit length, slen is source string byte length.
-	*
-	* First, pad the insufficient bytes with zeros (delta bytes).
-	* 
-	* Then, for each byte in the source string, shift and combine them according to bits,
-	* retain the lower pre bits of the previous byte, and combine them with the higher 8-pre
-	* bits of the current byte fom a new byte.
-	* 
-	* Finally, clear the remaining pre bits of the last byte and append it to the end.
-	*/
-	
-	if (slen > 0)
+	while(*s == 0x00 && s < e) 
 	{
-		/* insert bit 0x0000...... , skip leading 0x00 */
-		while (1)
-		{
-			y = (bits8) *sp;
-			if ((y | 0) == 0)
-			{
-				sp++;
-				slen--;
-			}
-			else
-				break;
-		}
-
-		bitlen = slen * BITS_PER_BYTE;
-		pre = BITS_PER_BYTE - 1;
-
-		/* Ignore the leading 0 in the first byte. */
-		while (1)
-		{
-			y = (bits8) *sp;
-			if ((y >> pre | 0) == 0)
-			{
-				bitlen--;
-				pre--;
-			}
-			else
-				break;
-		}
-	}
-
-	if (bitlen > atttypmod)
-	{
-		if (is_strict_mode())
-		{
-			ereport(ERROR,
-					(errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
-					errmsg("bit string length %d does not match type bit(%d)",
-							bitlen, atttypmod)));
-		}
-
-		ereport(WARNING,
-				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					errmsg("value too long for type bit(%d)",
-						atttypmod)));
-
-		PG_RETURN_VARBIT_P(DatumGetVarBitP(DirectFunctionCall2(bitfromuint8, 
-											UInt64GetDatum(MYSBIT_MAX_VALUE(atttypmod)),
-											Int64GetDatum(atttypmod))));
-	}
-
-	len = VARBITTOTALLEN(atttypmod);
-	/* set to 0 so that *r is always initialised and string is zero-padded */
-	result = (VarBit *) palloc0(len); 
-	SET_VARSIZE(result, len);
-	VARBITLEN(result) = atttypmod;
-
-	if (slen == 0)
-	{
-		PG_RETURN_VARBIT_P(result);
-	}
-
-	r = VARBITS(result);
-
-	delta = atttypmod / BITS_PER_BYTE - slen;
-	pre = atttypmod % BITS_PER_BYTE;
-
-	/* insert 0x1 into bit(3) */
-	if (atttypmod < BITS_PER_BYTE)
-	{
-		y = (bits8) *sp;
-		*r = (y << (BITS_PER_BYTE - pre)) | 0;
-		PG_RETURN_VARBIT_P(result);
-	}
-
-	for (i = 0; i < delta; i++)
-	{
-		*r++ = 0;
+		s++;
+		len--;
 	}
 	
-	x = (bits8) *sp;
-	*r = (x >> pre);
-	r++;
-	sp++;
+	// all bytes is 0x00
+	if (s == e)
+		return 0;
+	
+	bitlen = len * BITS_PER_BYTE;
 
-	for (i = 1; i < slen; sp++, i++)
+	/* Ignore the leading 0 in the first byte. */
+	for (int i = 0; i < BITS_PER_BYTE; i++)
 	{
-		x = (bits8) *sp;
-		y = (bits8) *(sp - 1);
-		*r = (y << (BITS_PER_BYTE - pre)) | (x >> pre);
-		r++;
+		uint8 probe = HIGHBIT >> i;
+
+		if ((*s & probe) != 0)
+			break;
+		
+		bitlen--;
 	}
 
-	if (pre != 0)
-	{
-		y = (bits8) *(sp - 1);
-		*r = (y << (BITS_PER_BYTE - pre)) | 0;
-	}
-
-	PG_RETURN_VARBIT_P(result);
+	return bitlen;
 }
 
+static void
+fill_mysbit(VarBit *bit, uint8 *s, int len, bool is_insert)
+{
+	int 	atttypmod = VARBITLEN(bit);
+	int 	bytes = VARBITBYTES(bit);
+	int 	pad = VARBITPAD(bit);
+	int 	bits = get_bit_length(s, len);
+	uint8 	*e = s + len - 1, 
+			*dst = VARBITS(bit) + bytes - 1;
+
+	if (bits == 0)
+		return;
+
+	if (bits > atttypmod)
+	{
+		if (is_insert)
+		{
+			if (is_strict_mode())
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
+						 errmsg("Data too long for column")));
+			}
+			else
+			{
+				ereport(WARNING,
+						(errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
+					 	 errmsg("Out of range value for column")));
+			}
+		}
+		else
+		{
+			ereport(WARNING,
+					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+					 errmsg("value too long for type bit(%d)", atttypmod)));
+		}
+
+		// full fill with 1
+		memset(VARBITS(bit), 0xff, bytes);
+
+		VARBIT_PAD(bit);
+
+		return;
+	}
+
+	*(dst--) = *e << pad;
+
+	while (s < e)
+	{
+		*(dst--) = (*(e - 1) << pad) | (*e >> (BITS_PER_BYTE - pad));
+		e--;
+	}
+
+	*dst |= *e >> (BITS_PER_BYTE - pad);
+}
+
+static VarBit *
+string_to_varbit(char *s, int atttypmod, int slen, bool is_insert)
+{
+	int		size = VARBITTOTALLEN(atttypmod);
+	VarBit	*result = (VarBit *) palloc0(size);
+
+	SET_VARSIZE(result, size);
+	VARBITLEN(result) = atttypmod;
+
+	fill_mysbit(result, (uint8 *) s, slen, is_insert);
+
+	return result;
+}
 
 static uint64
 bit_to_uint64(VarBit *arg)
@@ -259,49 +236,19 @@ bit_to_uint64(VarBit *arg)
 Datum
 mysql_bit_in(PG_FUNCTION_ARGS)
 {
-	char	   *input_string = PG_GETARG_CSTRING(0);
+	char	*input_string = PG_GETARG_CSTRING(0);	
+	int		atttypmod = PG_GETARG_INT32(2);
+	int		slen = strlen(input_string);
+	bool	is_insert = CALL_IN_INSERT();
 
-#ifdef NOT_USED
-	Oid			typelem = PG_GETARG_OID(1);
-#endif
-	
-	int32		atttypmod = PG_GETARG_INT32(2);
-	
-	char	   *sp;				/* pointer into the character string  */
-	int			bitlen,			/* Number of bits in the bit string   */
-				slen;			/* Length of the input string		  */		
-
-	sp = input_string;
-	slen = strlen(sp);
-	bitlen = slen * 8;	//8 bits for ascii code of each character	
-	
 	/*
 	 * Sometimes atttypmod is not supplied. If it is supplied we need to make
 	 * sure that the bitstring fits.
 	 */
 	if (atttypmod <= 0)
-		atttypmod = bitlen;
-	else if (bitlen > atttypmod)
-	{
-		if (is_strict_mode())
-		{
-			ereport(ERROR,
-					(errcode(ERRCODE_STRING_DATA_LENGTH_MISMATCH),
-					errmsg("bit string length %d does not match type bit(%d)",
-							bitlen, atttypmod)));
-		}
-
-		ereport(WARNING,
-				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					errmsg("value too long for type bit(%d)",
-						atttypmod)));
-
-		PG_RETURN_VARBIT_P(DatumGetVarBitP(DirectFunctionCall2(bitfromuint8, 
-											UInt64GetDatum(MYSBIT_MAX_VALUE(atttypmod)),
-											Int64GetDatum(atttypmod))));
-	}
-
-	PG_RETURN_VARBIT_P(string_to_varbit(sp, atttypmod, slen));
+		atttypmod = slen * BITS_PER_BYTE;
+	
+	PG_RETURN_VARBIT_P(string_to_varbit(input_string, atttypmod, slen, is_insert));
 }
 
 Datum
@@ -319,7 +266,7 @@ mysql_bit_out(PG_FUNCTION_ARGS)
 	int pad_len = 8 - (input_len % 8); // The number of digits to padding zeros
 
 	if (pad_len == 8)
-			pad_len = 0;
+		pad_len = 0;
 	
 	result_len = input_len + pad_len;
 
@@ -410,8 +357,8 @@ mysbitfrompgbit(PG_FUNCTION_ARGS)
 					typmod)));
 
 		PG_RETURN_VARBIT_P(DatumGetVarBitP(DirectFunctionCall2(bitfromuint8, 
-											UInt64GetDatum(MYSBIT_MAX_VALUE(typmod)),
-											Int64GetDatum(typmod))));
+															   UInt64GetDatum(MYSBIT_MAX_VALUE(typmod)),
+															   Int64GetDatum(typmod))));
 	}
 
 	rlen = VARBITTOTALLEN(typmod);
@@ -511,11 +458,19 @@ Datum
 bittobinary(PG_FUNCTION_ARGS)
 {
     VarBit* s = PG_GETARG_VARBIT_P(0);
-
+	uint64  num = bit_to_uint64(s);
 	StringInfoData buf;
 
 	pq_begintypsend(&buf);
-	pq_sendbytes(&buf, (char *) VARBITS(s), VARBITBYTES(s));
+
+	/* Begin - bug#z5768 */
+	for (int i = 56; i >= 0; i -= 8)
+	{
+		if (VARBITLEN(s) > i)
+			appendStringInfoChar(&buf, (char)((num >> i) & 0xFF));	
+	}
+	/* End - bug#z5768 */
+	
 	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
 }
 
@@ -598,7 +553,6 @@ bitfromuint8(PG_FUNCTION_ARGS)
 					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
 						errmsg("value too long for type bit(%d)",
 							typmod)));
-			PG_RETURN_VOID();
 		}
 
 		ereport(WARNING,
@@ -650,28 +604,26 @@ bitfromuint8(PG_FUNCTION_ARGS)
 Datum
 bitfromvarbinary(PG_FUNCTION_ARGS)
 {
-	int32	atttypmod = PG_NARGS() == 2 ? PG_GETARG_INT32(1) : PG_GETARG_INT32(2);
+	int32	atttypmod = PG_GETARG_INT32(1);
 	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
 	char	*sp = VARDATA_ANY(arg);	
 	int 	slen = VARSIZE_ANY_EXHDR(arg);
+	bool	is_insert = CALL_IN_INSERT();
 	
-	PG_RETURN_VARBIT_P(string_to_varbit(sp, atttypmod, slen));
+	PG_RETURN_VARBIT_P(string_to_varbit(sp, atttypmod, slen, is_insert));
 }
 
 Datum
 mysql_bit_in2(PG_FUNCTION_ARGS)
 {
-	char	   *arg = PG_GETARG_CSTRING(0);
+	char		*arg = PG_GETARG_CSTRING(0);
 	char		*input_string = arg + 2;
 	VarBit		*result;
-	int32		atttypmod = PG_NARGS() == 2 ? PG_GETARG_INT32(1) : PG_GETARG_INT32(2);
-	
-
-	int 	len = strlen(input_string);
-	int 	bc = (len + 1) / 2  + VARHDRSZ;
-
-	bytea	*tmp = palloc0(bc);
-	char	*dst = VARDATA(tmp);
+	int32		atttypmod = PG_GETARG_INT32(2);
+	int 		len = strlen(input_string);
+	int 		bc = (len + 1) / 2  + VARHDRSZ;
+	bytea		*tmp = palloc0(bc);
+	char		*dst = VARDATA(tmp);
 
 	if (len % 2)
 	{
@@ -1125,3 +1077,47 @@ mysbit_hash_extended(PG_FUNCTION_ARGS)
 	return hash_any_extended((unsigned char *) VARBITS(key), VARBITLEN(key),
 							 PG_GETARG_INT64(1));
 }
+
+/* Begin - bug#z5805 */
+Datum
+bit_uint8(PG_FUNCTION_ARGS)
+{
+	VarBit	   *arg = PG_GETARG_VARBIT_P(0);
+	uint64		result;
+	bits8	   *r;
+	bool		is_insert = CALL_IN_INSERT();
+
+	/* Check that the bit string is not too long */
+	if (VARBITLEN(arg) > sizeof(result) * BITS_PER_BYTE)
+	{
+		if (is_insert)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+				 	 errmsg("Out of range value for column")));
+			
+			PG_RETURN_UINT64(UINT64_MAX);
+		}
+		else
+		{
+			ereport(WARNING,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+				 	 errmsg("Truncated incorrect BINARY value")));
+			
+			PG_RETURN_UINT64(UINT64_MAX);
+		}
+	}
+
+	result = 0;
+	for (r = VARBITS(arg); r < VARBITEND(arg); r++)
+	{
+		result <<= BITS_PER_BYTE;
+		result |= *r;
+	}
+
+	/* Now shift the result to take account of the padding at the end */
+	result >>= VARBITPAD(arg);
+
+	PG_RETURN_UINT64(result);
+}
+/* End - bug#z5805 */

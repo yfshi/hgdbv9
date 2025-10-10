@@ -21,14 +21,19 @@
 #define COMMON_INT_H
 
 /* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
-typedef int16 (*Mysql_int2_datatype_in_hook_type) (const char *str);
-extern PGDLLIMPORT Mysql_int2_datatype_in_hook_type mysql_int2_datatype_in_hook;
+typedef int16 (*mysql_int2_datatype_in_hook_type) (const char *str, bool is_insert);
+extern PGDLLIMPORT mysql_int2_datatype_in_hook_type mysql_int2_datatype_in_hook;
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 
 /* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
-typedef int32 (*Mysql_int4_datatype_in_hook_type) (const char *str);
-extern PGDLLIMPORT Mysql_int4_datatype_in_hook_type mysql_int4_datatype_in_hook;
+typedef int32 (*mysql_int4_datatype_in_hook_type) (const char *str, bool is_insert);
+extern PGDLLIMPORT mysql_int4_datatype_in_hook_type mysql_int4_datatype_in_hook;
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+typedef int64 (*mysql_int8_datatype_in_hook_type) (const char *str, bool is_insert);
+extern PGDLLIMPORT mysql_int8_datatype_in_hook_type mysql_int8_datatype_in_hook;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 /*---------
  * The following guidelines apply to all the routines:

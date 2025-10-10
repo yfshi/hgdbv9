@@ -1184,6 +1184,12 @@
   typstorage => 'x', typnotnull =>'f', typbasetype =>'text', typtypmod => '-1', typcollation => 'default' },
 /* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 
+{ oid => '9270', array_type_oid => '9272', 
+  descr => 'mysql hex literal', typnamespace => 'ivymy',
+  typname => 'ivy_hex', typlen => '-1', typbyval => 'f', typcategory => 'U',
+  typinput => '-', typoutput => '-', typreceive => '-',
+  typsend => '-', typalign => 'i', typstorage => 'x' },
+
 /*END MySQL Compatibility Metadatas*/
 
 ]

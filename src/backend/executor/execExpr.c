@@ -1858,7 +1858,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 
 				/* lookup the result type's input function */
 				scratch.d.iocoerce.finfo_in = palloc0(sizeof(FmgrInfo));
-				scratch.d.iocoerce.fcinfo_data_in = palloc0(SizeForFunctionCallInfo(3));
+				scratch.d.iocoerce.fcinfo_data_in = palloc0(SizeForFunctionCallInfo(4));
 
 				getTypeInputInfo(iocoerce->resulttype,
 								 &iofunc, &typioparam);
@@ -1866,7 +1866,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				fmgr_info_set_expr((Node *) node, scratch.d.iocoerce.finfo_in);
 				InitFunctionCallInfoData(*scratch.d.iocoerce.fcinfo_data_in,
 										 scratch.d.iocoerce.finfo_in,
-										 3, InvalidOid, NULL, NULL);
+										 4, InvalidOid, NULL, NULL);
 
 				/*
 				 * We can preload the second and third arguments for the input
@@ -1877,6 +1877,14 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				fcinfo_in->args[1].isnull = false;
 				fcinfo_in->args[2].value = Int32GetDatum(-1);
 				fcinfo_in->args[2].isnull = false;
+				
+				/* Begin - SRS-MYSQL-HEX-LITERAL */
+				if (compatible_db == MYS_PARSER)
+				{
+					fcinfo_in->args[3].value = Int64GetDatum(iocoerce->flag);
+					fcinfo_in->args[3].isnull = false;
+				}
+				/* End - SRS-MYSQL-HEX-LITERAL */
 
 				ExprEvalPushStep(state, &scratch);
 				break;

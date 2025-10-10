@@ -1323,74 +1323,18 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function or
-CREATE FUNCTION ivymy.anyenum_or(anyenum, anyenum)
-RETURNS int4
-AS 'MODULE_PATHNAME','anyenum_oranyenum'
-LANGUAGE C
+CREATE FUNCTION ivymy.anyenum_cat(anyenum, anyenum)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.anyenum_or(anyenum, int2)
-RETURNS int4
-AS 'MODULE_PATHNAME','anyenum_orint2'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.anyenum_or(anyenum, int4)
-RETURNS int4
-AS 'MODULE_PATHNAME','anyenum_orint4'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.anyenum_or(anyenum, int8)
-RETURNS int4
-AS 'MODULE_PATHNAME','anyenum_orint8'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.anyenum_or(int2, anyenum)
-RETURNS int4
-AS 'MODULE_PATHNAME','int2_oranyenum'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.anyenum_or(int4, anyenum)
-RETURNS int4
-AS 'MODULE_PATHNAME','int4_oranyenum'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.anyenum_or(int8, anyenum)
-RETURNS int4
-AS 'MODULE_PATHNAME','int8_oranyenum'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.anyenum_or(anyenum, bool)
-RETURNS bool
-AS 'MODULE_PATHNAME','anyenum_orbool'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.anyenum_or(bool, anyenum)
-RETURNS bool
-AS 'MODULE_PATHNAME','bool_oranyenum'
-LANGUAGE C
+CREATE FUNCTION ivymy.anyenum_cat(anyenum, int8)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -2482,57 +2426,15 @@ CREATE OPERATOR && (
 
 --operator ||
 CREATE OPERATOR || (
-	procedure = ivymy.anyenum_or,
+	procedure = ivymy.anyenum_cat,
 	leftarg = anyenum,
 	rightarg = anyenum
 );
 
 CREATE OPERATOR || (
-	procedure = ivymy.anyenum_or,
-	leftarg = anyenum,
-	rightarg = int2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.anyenum_or,
-	leftarg = anyenum,
-	rightarg = int4
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.anyenum_or,
+	procedure = ivymy.anyenum_cat,
 	leftarg = anyenum,
 	rightarg = int8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.anyenum_or,
-	leftarg = int2,
-	rightarg = anyenum
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.anyenum_or,
-	leftarg = int4,
-	rightarg = anyenum
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.anyenum_or,
-	leftarg = int8,
-	rightarg = anyenum
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.anyenum_or,
-	leftarg = anyenum,
-	rightarg = bool
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.anyenum_or,
-	leftarg = bool,
-	rightarg = anyenum
 );
 
 --operator !

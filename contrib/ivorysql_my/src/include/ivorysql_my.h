@@ -22,6 +22,7 @@
 
 #include "postgres.h"
 #include "fmgr.h" /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
+#include "utils/guc.h"
 #include "utils/varbit.h"
 
 #define SIGNED_FLAG                     0
@@ -50,12 +51,18 @@
 
 typedef unsigned char uchar;
 
-extern Datum hexstring_varbinary(const char *value);/* BUG#5048 5070 */
+extern int8   my_atoi_int8(const char *s,  bool is_insert);
+extern int16  my_atoi_int16(const char *s, bool is_insert);
+extern int32  my_atoi_int32(const char *s, bool is_insert);
+extern int64  my_atoi_int64(const char *s, bool is_insert);
+extern uint8  my_atoi_uint8(const char *s, bool is_insert);
+extern uint16 my_atoi_uint16(const char *s, bool is_insert);
+extern uint32 my_atoi_uint32(const char *s, bool is_insert);
+extern uint64 my_atoi_uint64(const char *s, bool is_insert);
+
+
+extern Datum parse_hexstring(const char *value);/* BUG#5048 5070 */
 extern char *my_bit_out(VarBit *s, int32 atttypmod);
-extern int16 my_atoi_int2(const char *s);
-extern int32 my_atoi_int4(const char *s);
-extern uint64 my_strntoull10rnd_8bit(const char *str, size_t length, int unsigned_flag, char **endptr, int *error);
-extern uint64 pg_atoi_uint(const char *s,int c, int sizenum, bool seterr);
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 extern Datum pgtime_mystimes(PG_FUNCTION_ARGS);
 extern Datum pgtimestamp_mystimestamps(PG_FUNCTION_ARGS);
@@ -74,4 +81,6 @@ extern Datum mysdatetime_out(PG_FUNCTION_ARGS);
 extern Datum mystimestamp_out(PG_FUNCTION_ARGS);
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
+extern char mys_get_hex(const char *cp);
+extern uint64 mys_hex_decode(const char *src, size_t len, char *dst);
 #endif	/* IVORYSQL_MYS_H_ */

@@ -1,0 +1,611 @@
+create table hex_test as select 0x11;
+\d hex_test
+                Table "public.hex_test"
+  Column   |   Type    | Collation | Nullable | Default 
+-----------+-----------+-----------+----------+---------
+ varbinary | varbinary |           |          | 
+
+drop table hex_test;
+set mysql.cast_to_char = on;
+select 0x;
+ERROR:  column "0x" does not exist
+LINE 1: select 0x;
+               ^
+select 0X;
+ERROR:  column "0X" does not exist
+LINE 1: select 0X;
+               ^
+select 0x1;
+ varbinary 
+-----------
+ \x01
+(1 row)
+
+select 0X1; -- parse as column
+ERROR:  column "0X1" does not exist
+LINE 1: select 0X1;
+               ^
+select 0xg; -- parse as column
+ERROR:  column "0xg" does not exist
+LINE 1: select 0xg;
+               ^
+select 0Xg; -- parse as column
+ERROR:  column "0Xg" does not exist
+LINE 1: select 0Xg;
+               ^
+select cast(0x3233 as char);                    -- 23
+ varchar 
+---------
+ 23
+(1 row)
+
+select cast(0x3233 as nchar);                   -- 23
+ varchar 
+---------
+ 23
+(1 row)
+
+select cast(0x11 as signed);                    -- 17
+ int8 
+------
+   17
+(1 row)
+
+select cast(0x11 as unsigned);                  -- 17
+ uint8 
+-------
+ 17
+(1 row)
+
+select cast(0x11 as decimal);                   -- 17
+ numeric 
+---------
+      17
+(1 row)
+
+select cast(0x11 as binary);                    -- \x11
+ binary 
+--------
+ \x11
+(1 row)
+
+select cast(0x3230323231323132 as date);        -- 2022-12-12
+  mysdate   
+------------
+ 2022-12-12
+(1 row)
+
+select cast(0x20203230323231323132 as date);    -- 2022-12-12
+  mysdate   
+------------
+ 2022-12-12
+(1 row)
+
+select cast(0x3230323231323132 as datetime);    -- 2022-12-12 00:00:00
+     mysdatetime     
+---------------------
+ 2022-12-12 00:00:00
+(1 row)
+
+select cast(0x313231323132 as time);            -- 12:12:12
+ mystime  
+----------
+ 12:12:12
+(1 row)
+
+select cast(0x8000000000000000 as signed);      -- -9223372036854775808
+         int8         
+----------------------
+ -9223372036854775808
+(1 row)
+
+select cast(0x000000000000000000000000000000000000000001 as signed);        -- 1
+ int8 
+------
+    1
+(1 row)
+
+select cast(0x100000000000000000000000000000000000000001 as signed);        -- -1 and warning
+WARNING:  Truncated incorrect BINARY value: x'100000000000000000000000000000000000000001'
+ int8 
+------
+   -1
+(1 row)
+
+select cast(0x100000000000000000000000000000000000000001 as unsigned);
+WARNING:  Truncated incorrect BINARY value: x'100000000000000000000000000000000000000001'
+        uint8         
+----------------------
+ 18446744073709551615
+(1 row)
+
+select cast(0x100000000000000000000000000000000000000001 as decimal(64));
+WARNING:  Truncated incorrect BINARY value: x'100000000000000000000000000000000000000001'
+       numeric        
+----------------------
+ 18446744073709551615
+(1 row)
+
+select cast(0x00 as signed);    -- 0
+ int8 
+------
+    0
+(1 row)
+
+select cast(0x00 as unsigned);  -- 0
+ uint8 
+-------
+ 0
+(1 row)
+
+select cast(0x11111111111111111 as signed);     -- -1
+WARNING:  Truncated incorrect BINARY value: x'011111111111111111'
+ int8 
+------
+   -1
+(1 row)
+
+select cast(0x11111111111111111 as unsigned);   -- 18446744073709551615
+WARNING:  Truncated incorrect BINARY value: x'011111111111111111'
+        uint8         
+----------------------
+ 18446744073709551615
+(1 row)
+
+create table hex_test(ii int1, i2 int2, i3 int3, i4 int4, i8 int8);
+insert into hex_test values (0x3, 0x3, 0x3, 0x3, 0x3);
+select * from hex_test;
+ ii | i2 | i3 | i4 | i8 
+----+----+----+----+----
+  3 |  3 |  3 |  3 |  3
+(1 row)
+
+drop table hex_test;
+create table hex_test(u1 uint1, u2 uint2, u3 uint3, u4 uint4, u8 uint8);
+insert into hex_test values (0x3, 0x3, 0x3, 0x3, 0x3);
+select * from hex_test;
+ u1 | u2 | u3 | u4 | u8 
+----+----+----+----+----
+ 3  | 3  | 3  | 3  | 3
+(1 row)
+
+drop table hex_test;
+create table hex_test(a int, b text, c char(10), d varchar(10), e varbinary(111), f float4, g float8);
+insert into hex_test values (0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3);
+insert into hex_test values (0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+insert into hex_test values (0x003, 0x003, 0x003, 0x003, 0x003, 0x003, 0x003);
+insert into hex_test values (0x033, 0x033, 0x033, 0x033, 0x033, 0x033, 0x033);
+insert into hex_test values (0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33);
+select * from hex_test;
+ a  |  b   |       c       |  d   |   e    | f  | g  
+----+------+---------------+------+--------+----+----
+  3 | \x03 | \x03          | \x03 | \x03   |  3 |  3
+  0 |      |               |      | \x00   |  0 |  0
+  3 |      |               |      | \x0003 |  3 |  3
+ 51 |      |               |      | \x0033 | 51 | 51
+ 51 | 3    | 3             | 3    | \x33   | 51 | 51
+(5 rows)
+
+drop table hex_test;
+/* Begin - bug#z5411 */
+create table t1(id int3 unsigned);
+insert into t1 values(0x123);
+select * from t1;
+ id  
+-----
+ 291
+(1 row)
+
+create table t2(a int2 unsigned);
+insert into t2 values(0x123);
+select * from t2;
+  a  
+-----
+ 291
+(1 row)
+
+create table t3(a int4 unsigned);
+insert into t3 values(0x123);
+select * from t3;
+  a  
+-----
+ 291
+(1 row)
+
+create table t4(a int8 unsigned);
+insert into t4 values(0x123);
+select * from t4;
+  a  
+-----
+ 291
+(1 row)
+
+drop table t1, t2, t3, t4;
+/* End - bug#z5411 */
+select 0x7fffffffffffffff + 1;  -- 9223372036854775808
+      ?column?       
+---------------------
+ 9223372036854775808
+(1 row)
+
+select 0xfffffffffffffffe + 1;  -- 18446744073709551615
+       ?column?       
+----------------------
+ 18446744073709551615
+(1 row)
+
+select 0xffffffffffffffff + 1;  -- should be out-of-range error
+ ?column? 
+----------
+ 0
+(1 row)
+
+set sql_mode = '';
+select 0x323232323232323232323232323232 || '1';    -- waring, and result is 1
+WARNING:  Truncated incorrect BINARY value: x'323232323232323232323232323232'
+ ?column? 
+----------
+ t
+(1 row)
+
+set sql_mode = 'pipes_as_concat';
+select 0x323232323232323232323232323232 || 'a';    -- no warning, and result is 1
+     ?column?     
+------------------
+ 222222222222222a
+(1 row)
+
+reset sql_mode;
+select 0x11111111111111111;     -- no warning
+      varbinary       
+----------------------
+ \x011111111111111111
+(1 row)
+
+select !0x11111111111111111;    -- 1 warning
+WARNING:  Truncated incorrect BINARY value: x'011111111111111111'
+ ?column? 
+----------
+        0
+(1 row)
+
+select 0x11111111111111111 and 0x22222222222222222;     -- 2 warnings for bool express
+WARNING:  Truncated incorrect BINARY value: x'011111111111111111'
+WARNING:  Truncated incorrect BINARY value: x'022222222222222222'
+ ?column? 
+----------
+ t
+(1 row)
+
+select 0x11111111111111111 and !0x22222222222222222;    -- 2 warnings
+WARNING:  Truncated incorrect BINARY value: x'011111111111111111'
+WARNING:  Truncated incorrect BINARY value: x'022222222222222222'
+ ?column? 
+----------
+ f
+(1 row)
+
+select 0x22222222222222222 and !0x11111111111111111;    -- 2 warnings
+WARNING:  Truncated incorrect BINARY value: x'022222222222222222'
+WARNING:  Truncated incorrect BINARY value: x'011111111111111111'
+ ?column? 
+----------
+ f
+(1 row)
+
+select !0x11111111111111111 and 0x22222222222222222;    -- mysql only 1 warning
+WARNING:  Truncated incorrect BINARY value: x'011111111111111111'
+ ?column? 
+----------
+ f
+(1 row)
+
+select !0x11111111111111111 and !0x22222222222222222;   -- mysql only 1 warning
+WARNING:  Truncated incorrect BINARY value: x'011111111111111111'
+ ?column? 
+----------
+ f
+(1 row)
+
+select 0x222222222222222224  = 0x222222222222222224;    -- no warning, return true
+ ?column? 
+----------
+        1
+(1 row)
+
+select 0x222222222222222224  = 0x0222222222222222224;   -- no warning, return false for length mismatch
+ ?column? 
+----------
+        0
+(1 row)
+
+select 0x00222222222222222224  = 0x0222222222222222224; -- no warning, return true
+ ?column? 
+----------
+        1
+(1 row)
+
+select 0x222222222222222223  = 0x222222222222222224;    -- no warning, return false
+ ?column? 
+----------
+        0
+(1 row)
+
+select 0x222222222222222223 != 0x222222222222222224;    -- no warning, return true
+ ?column? 
+----------
+        1
+(1 row)
+
+-- test function parameter with hex
+select to_days(0x313131313131313131313131);         -- as binary, no warning
+ to_days 
+---------
+  734817
+(1 row)
+
+select to_seconds(0x313131313131313131313131);      -- as binary, no warning
+ to_seconds  
+-------------
+ 63488229071
+(1 row)
+
+select dayname(0x313131313131313131313131);         -- as binary, no warning
+ dayname 
+---------
+ Friday
+(1 row)
+
+select monthname(0x313131313131313131313131);       -- as binary, no warning
+ monthname 
+-----------
+ November
+(1 row)
+
+select time_to_sec(0x313131313131313131313131);     -- as binary, no warning
+ time_to_sec 
+-------------
+       40271
+(1 row)
+
+select date(0x313131313131313131313131);            -- as binary, no warning
+    date    
+------------
+ 2011-11-11
+(1 row)
+
+select week(0x313131313131313131313131);            -- as binary, no warning
+ week 
+------
+   45
+(1 row)
+
+select yearweek(0x313131313131313131313131);        -- as binary, no warning
+ yearweek 
+----------
+   201145
+(1 row)
+
+select from_days(0x313131313131313131313131);       -- as number, warning
+WARNING:  Truncated incorrect BINARY value: x'313131313131313131313131'
+ from_days  
+------------
+ 0000-00-00
+(1 row)
+
+SELECT lcase(0x313131313131313131313131);           -- as binary, no warning
+    lcase     
+--------------
+ 111111111111
+(1 row)
+
+SELECT ucase(0x313131313131313131313131);           -- as binary, no warning
+    ucase     
+--------------
+ 111111111111
+(1 row)
+
+select bin(0x313131313131313131313131);             -- as binary, no warning
+                  bin                  
+---------------------------------------
+ 1100111011110101111010000000111000111
+(1 row)
+
+select char(0x313131313131313131313131);            -- as number, warning
+WARNING:  Truncated incorrect BINARY value: x'313131313131313131313131'
+    char    
+------------
+ \xffffffff
+(1 row)
+
+select hex(0x313131313131313131313131);             -- as binary, no warning
+           hex            
+--------------------------
+ 313131313131313131313131
+(1 row)
+
+select SPACE(0x31);                                 -- as number
+                       SPACE                       
+---------------------------------------------------
+                                                  
+(1 row)
+
+SELECT ORD(0x313131313131313131313131);             -- as binary, no warning
+ ORD 
+-----
+  49
+(1 row)
+
+SELECT SOUNDEX(0x313131313131313131313131);         -- as binary, no warning
+ SOUNDEX 
+---------
+ 
+(1 row)
+
+SELECT LENGTH(0x313131313131313131313131);          -- as binary, no warning
+ LENGTH 
+--------
+     12
+(1 row)
+
+SELECT BIT_LENGTH(0x313131313131313131313131);      -- as binary, no warning
+ BIT_LENGTH 
+------------
+         96
+(1 row)
+
+SELECT OCTET_LENGTH(0x313131313131313131313131);    -- as binary, no warning
+ OCTET_LENGTH 
+--------------
+           12
+(1 row)
+
+select get_format(DATE, 0x455552);                  -- as binary, no warning
+ get_format 
+------------
+ %d.%m.%Y
+(1 row)
+
+select elt(0x313131313131313131313131, 'Aa', 'Bb', 'Cc', 'Dd'); -- as number
+WARNING:  Truncated incorrect BINARY value: x'313131313131313131313131'
+ elt 
+-----
+ 
+(1 row)
+
+select elt(1, 0x4161, 0x4262, 0x4363, 0x4164);      -- as binary, no warning
+ elt 
+-----
+ Aa
+(1 row)
+
+SELECT find_in_set(0x62, 'a,b,c');                  -- as binary, no warning
+ find_in_set 
+-------------
+           2
+(1 row)
+
+SELECT find_in_set(0x62, 0x612C622C63);             -- as binary, no warning
+ find_in_set 
+-------------
+           2
+(1 row)
+
+SELECT from_base64(0x614756736247383D);             -- as binary, no warning
+ from_base64 
+-------------
+ hello
+(1 row)
+
+SELECT to_base64(0x68656C6C6F);                     -- as binary, no warning
+ to_base64 
+-----------
+ aGVsbG8=
+(1 row)
+
+SELECT left('abcdef', 0x03);                        -- as number
+ left 
+------
+ abc
+(1 row)
+
+SELECT left(0x616263646566, 3);                     -- as binary, no warning
+ left 
+------
+ abc
+(1 row)
+
+SELECT left(0x616263646566, 0x03);
+ left 
+------
+ abc
+(1 row)
+
+SELECT right('abcdef', 0x03);                       -- as number
+ right 
+-------
+ def
+(1 row)
+
+SELECT right(0x616263646566, 3);                    -- as binary, no warning
+ right 
+-------
+ def
+(1 row)
+
+SELECT right(0x616263646566, 0x03);
+ right 
+-------
+ def
+(1 row)
+
+select datediff(0x323030372D31322D33312032333A35393A3539, 0x323030372D31322D3330); -- as binary, no warning
+ datediff 
+----------
+        1
+(1 row)
+
+select timestampadd(month, 0x01, 0x323031392D312D3330); -- as binary, no warning
+    timestampadd     
+---------------------
+ 2019-02-28 00:00:00
+(1 row)
+
+-- operator
+select
+    case 0xffffffffffffffffff
+        when '1'
+            then true 
+        when 2
+            then false 
+        else null 
+    end as x;
+WARNING:  Truncated incorrect BINARY value: x'ffffffffffffffffff'
+ x 
+---
+ 
+(1 row)
+
+select
+    case 0xffffffffffffffffff
+        when '1'
+            then true 
+        when '2'
+            then false 
+        else null 
+    end as x;
+ x 
+---
+ 
+(1 row)
+
+-- other
+select cast(-1 as signed);
+ int8 
+------
+   -1
+(1 row)
+
+select cast(-1 as unsigned);
+        uint8         
+----------------------
+ 18446744073709551615
+(1 row)
+
+select x'1';
+ERROR:  You have an error in your SQL syntax.
+select X'1';
+ERROR:  You have an error in your SQL syntax.
+select x'01';
+ varbinary 
+-----------
+ \x01
+(1 row)
+
+select X'01';
+ varbinary 
+-----------
+ \x01
+(1 row)
+
+reset mysql.cast_to_char;

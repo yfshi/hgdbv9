@@ -1064,6 +1064,7 @@ _readCoerceViaIO(void)
 	READ_OID_FIELD(resultcollid);
 	READ_ENUM_FIELD(coerceformat, CoercionForm);
 	READ_LOCATION_FIELD(location);
+	READ_UINT64_FIELD(flag); // SRS-MYSQL-HEX-LITERAL
 
 	READ_DONE();
 }

@@ -3101,7 +3101,7 @@ ERROR:  relation "child1" does not exist
 LINE 1: insert into child1 values ('AAA', 42);
                     ^
 insert into child2 values (42, 'BBB');
-ERROR:  invalid input syntax for type integer: "BBB"
+ERROR:  Incorrect integer value: 'BBB' for column.
 LINE 1: insert into child2 values (42, 'BBB');
                                        ^
 insert into child3 values ('CCC', 42, 'foo');
@@ -3122,7 +3122,7 @@ ERROR:  relation "child1" does not exist
 LINE 1: insert into child1 values ('AAA', 42);
                     ^
 insert into child2 values (42, 'BBB');
-ERROR:  invalid input syntax for type integer: "BBB"
+ERROR:  Incorrect integer value: 'BBB' for column.
 LINE 1: insert into child2 values (42, 'BBB');
                                        ^
 insert into child3 values ('CCC', 42, 'foo');

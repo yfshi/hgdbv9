@@ -1822,24 +1822,21 @@ create function rngfunc1(n integer, out a text, out b text)
   returns setof record
   language sql
   as $$ select 'foo ' || i, 'bar ' || i from generate_series(1,$1) i $$;
-ERROR:  operator is not unique: unknown || integer
-LINE 4:   as $$ select 'foo ' || i, 'bar ' || i from generate_series...
-                              ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 set work_mem='64kB';
 select t.a, t, t.a from rngfunc1(10000) t limit 1;
-ERROR:  function rngfunc1(integer) does not exist
-LINE 1: select t.a, t, t.a from rngfunc1(10000) t limit 1;
-                                ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+   a   |         t         |   a   
+-------+-------------------+-------
+ foo 1 | ("foo 1","bar 1") | foo 1
+(1 row)
+
 reset work_mem;
 select t.a, t, t.a from rngfunc1(10000) t limit 1;
-ERROR:  function rngfunc1(integer) does not exist
-LINE 1: select t.a, t, t.a from rngfunc1(10000) t limit 1;
-                                ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+   a   |         t         |   a   
+-------+-------------------+-------
+ foo 1 | ("foo 1","bar 1") | foo 1
+(1 row)
+
 drop function rngfunc1(n integer);
-ERROR:  function rngfunc1(integer) does not exist
 -- test use of SQL functions returning record
 -- this is supported in some cases where the query doesn't specify
 -- the actual record type ...

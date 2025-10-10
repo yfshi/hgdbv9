@@ -243,16 +243,6 @@ PG_FUNCTION_INFO_V1(int4_andmysdate);
 PG_FUNCTION_INFO_V1(int8_andmysdate);
 PG_FUNCTION_INFO_V1(num_andmysdate);
 
-PG_FUNCTION_INFO_V1(mysdate_ordate);
-PG_FUNCTION_INFO_V1(mysdate_orint2);
-PG_FUNCTION_INFO_V1(mysdate_orint4);
-PG_FUNCTION_INFO_V1(mysdate_orint8);
-PG_FUNCTION_INFO_V1(mysdate_ornum);
-PG_FUNCTION_INFO_V1(int2_ormysdate);
-PG_FUNCTION_INFO_V1(int4_ormysdate);
-PG_FUNCTION_INFO_V1(int8_ormysdate);
-PG_FUNCTION_INFO_V1(num_ormysdate);
-
 PG_FUNCTION_INFO_V1(mysdate_invertmysdate);
 
 PG_FUNCTION_INFO_V1(mysdate_boolean);
@@ -450,60 +440,16 @@ mysdate_send(PG_FUNCTION_ARGS)
 	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
 }
 
-/* numeric_mysdate()
- * Convert numeric to mysql date data type.
- */
-Datum
-numeric_mysdate(PG_FUNCTION_ARGS)
+static DateADT
+int_mysdate_internal(int64 arg, bool is_insert, char *msg)
 {
-	Numeric		num = PG_GETARG_NUMERIC(0);
-	int64		n = 0;
-	int64		len;
-	DateADT		date = 0;
-	char	   *str, *tmpstr;;
-
-	/* Calculate the length of the input data and return NULL if the integer part exceeds 14 digits. */
-	len = 0;
-	str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
-	tmpstr = pstrdup(str);
-	while(*str && *str != '.')
-	{
-		len++;
-		if(len > 14)
-		{
-			ereport(WARNING, (errmsg("Incorrect datetime value: '%s'", tmpstr)));
-			PG_RETURN_NULL();
-		}
-		n = n * 10 + *str - '0';
-		str++;
-	}
-
-	date = DatumGetDateADT(DirectFunctionCall2(int_mysdate, Int64GetDatum(n), CStringGetDatum(tmpstr)));
-	PG_RETURN_DATEADT(date);
-}
-
-
-/* int_mysdate()
- * Convert integer to mysql date data type.
- */
-Datum
-int_mysdate(PG_FUNCTION_ARGS)
-{
-	int64		arg = PG_GETARG_INT64(0);
 	DateADT		date = 0;
 	fsec_t		fsec = 0;
 	int			dterr, flag, warn = 0;	
 	mysql_dttype ftype;
 	struct pg_tm tt, *tm = &tt;
 
-	/* Begin - bug#z5068 */
-	char 	 	*raw = NULL;
-
-	if (PG_NARGS() > 1)
-		raw = PG_GETARG_CSTRING(1);
-
 	MYS_ZERO_tm(tm);
-	/* End - bug#z5068 */
 
 	if(arg == 0)
 	{
@@ -511,7 +457,7 @@ int_mysdate(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		if (is_insert)
 		{
 			bool	is_strict_mode = false;
 			flag = 1;
@@ -592,8 +538,8 @@ int_mysdate(PG_FUNCTION_ARGS)
 			if (dterr < 0 || warn)
 			{
 				/* Begin - bug#z5068 */
-				if (raw)
-					ereport(WARNING, (errmsg("Incorrect datetime value: '%s'", raw)));
+				if (msg)
+					ereport(WARNING, (errmsg("Incorrect datetime value: '%s'", msg)));
 				/* End - bug#z5068 */
 				else
 				{
@@ -604,13 +550,67 @@ int_mysdate(PG_FUNCTION_ARGS)
 					#endif
 				}
 				if(dterr < 0)
-					PG_RETURN_NULL();
+					return -1;
 			}
 			date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
 		}
 	}
 
-	PG_RETURN_DATEADT(date);
+	return date;
+}
+
+
+/* int_mysdate()
+ * Convert integer to mysql date data type.
+ */
+Datum
+int_mysdate(PG_FUNCTION_ARGS)
+{
+	int64		arg = PG_GETARG_INT64(0);
+	bool		is_insert = CALL_IN_INSERT();
+	DateADT		ret;
+
+	ret = int_mysdate_internal(arg, is_insert, NULL);
+
+	if (ret == -1)
+		PG_RETURN_NULL();
+
+	PG_RETURN_DATEADT(ret);
+}
+
+/* numeric_mysdate()
+ * Convert numeric to mysql date data type.
+ */
+Datum
+numeric_mysdate(PG_FUNCTION_ARGS)
+{
+	Numeric		num = PG_GETARG_NUMERIC(0);
+	int64		n = 0;
+	int64		len;
+	DateADT		ret = 0;
+	char	   *str, *tmpstr;;
+
+	/* Calculate the length of the input data and return NULL if the integer part exceeds 14 digits. */
+	len = 0;
+	str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
+	tmpstr = pstrdup(str);
+	while(*str && *str != '.')
+	{
+		len++;
+		if(len > 14)
+		{
+			ereport(WARNING, (errmsg("Incorrect datetime value: '%s'", tmpstr)));
+			PG_RETURN_NULL();
+		}
+		n = n * 10 + *str - '0';
+		str++;
+	}
+
+	ret = int_mysdate_internal(n, false, tmpstr);
+	if (ret == -1)
+		PG_RETURN_NULL();
+
+	PG_RETURN_DATEADT(ret);
 }
 
 /*****************************************************************************
@@ -3238,124 +3238,6 @@ Datum num_andmysdate(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(res && dateVal1);
 }
 
-// or ||
-Datum mysdate_ordate(PG_FUNCTION_ARGS)
-{
-	DateADT		dateVal1 = PG_GETARG_DATEADT(0);
-	DateADT		dateVal2 = PG_GETARG_DATEADT(1);
-
-	if(!dateVal1 || !dateVal2)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATE)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mysdate_orint2(PG_FUNCTION_ARGS)
-{
-	DateADT		dateVal1 = PG_GETARG_DATEADT(0);
-	int16		dateVal2 = PG_GETARG_INT16(1);
-
-	if(!dateVal1 )
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATE)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mysdate_orint4(PG_FUNCTION_ARGS)
-{
-	DateADT		dateVal1 = PG_GETARG_DATEADT(0);
-	int32		dateVal2 = PG_GETARG_INT32(1);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATE)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mysdate_orint8(PG_FUNCTION_ARGS)
-{
-	DateADT		dateVal1 = PG_GETARG_DATEADT(0);
-	int64		dateVal2 = PG_GETARG_INT64(1);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATE)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mysdate_ornum(PG_FUNCTION_ARGS)
-{
-	DateADT		dateVal1 = PG_GETARG_DATEADT(0);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
-	int64		res;
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATE)
-		dateVal1 = 0;
-
-	res = DatumGetInt64(DirectFunctionCall1(numeric_int8,
-											   NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(dateVal1 || res);
-}
-Datum int2_ormysdate(PG_FUNCTION_ARGS)
-{
-	DateADT		dateVal1 = PG_GETARG_DATEADT(1);
-	int16		dateVal2 = PG_GETARG_INT16(0);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATE)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum int4_ormysdate(PG_FUNCTION_ARGS)
-{
-	DateADT		dateVal1 = PG_GETARG_DATEADT(1);
-	int32		dateVal2 = PG_GETARG_INT32(0);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATE)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum int8_ormysdate(PG_FUNCTION_ARGS)
-{
-	DateADT		dateVal1 = PG_GETARG_DATEADT(1);
-	int64		dateVal2 = PG_GETARG_INT64(0);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATE)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum num_ormysdate(PG_FUNCTION_ARGS)
-{
-	DateADT		dateVal1 = PG_GETARG_DATEADT(1);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(0);
-	int64		res;
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATE)
-		dateVal1 = 0;
-
-	res = DatumGetInt64(DirectFunctionCall1(numeric_int8,
-											   NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(res || dateVal1);
-}
-
 // invert ! 
 Datum mysdate_invertmysdate(PG_FUNCTION_ARGS)
 {
@@ -3754,16 +3636,6 @@ PG_FUNCTION_INFO_V1(int4_andmysdatetime);
 PG_FUNCTION_INFO_V1(int8_andmysdatetime);
 PG_FUNCTION_INFO_V1(num_andmysdatetime);
 
-PG_FUNCTION_INFO_V1(mysdatetime_ordatetime);
-PG_FUNCTION_INFO_V1(mysdatetime_orint2);
-PG_FUNCTION_INFO_V1(mysdatetime_orint4);
-PG_FUNCTION_INFO_V1(mysdatetime_orint8);
-PG_FUNCTION_INFO_V1(mysdatetime_ornum);
-PG_FUNCTION_INFO_V1(int2_ormysdatetime);
-PG_FUNCTION_INFO_V1(int4_ormysdatetime);
-PG_FUNCTION_INFO_V1(int8_ormysdatetime);
-PG_FUNCTION_INFO_V1(num_ormysdatetime);
-
 PG_FUNCTION_INFO_V1(mysdatetime_invertmysdatetime);
 
 PG_FUNCTION_INFO_V1(mysdatetime_boolean);
@@ -3984,7 +3856,11 @@ numeric_mysdatetime(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+	
+		if (is_insert)
 		{
 			dterr = mysnumber_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
@@ -4116,7 +3992,11 @@ int_mysdatetime(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+
+		if (is_insert)
 		{
 			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
@@ -6914,124 +6794,6 @@ Datum num_andmysdatetime(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(res && dateVal1);
 }
 
-// or ||
-Datum mysdatetime_ordatetime(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	TimeADT		dateVal2 = PG_GETARG_TIMEADT(1);
-
-	if(!dateVal1 || !dateVal2)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATETIME)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mysdatetime_orint2(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	int16		dateVal2 = PG_GETARG_INT16(1);
-
-	if(!dateVal1 )
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATETIME)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mysdatetime_orint4(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	int32		dateVal2 = PG_GETARG_INT32(1);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATETIME)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mysdatetime_orint8(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	int64		dateVal2 = PG_GETARG_INT64(1);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATETIME)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mysdatetime_ornum(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
-	int64		res;
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATETIME)
-		dateVal1 = 0;
-
-	res = DatumGetInt64(DirectFunctionCall1(numeric_int8,
-											   NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(dateVal1 || res);
-}
-Datum int2_ormysdatetime(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	int16		dateVal2 = PG_GETARG_INT16(0);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATETIME)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum int4_ormysdatetime(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	int32		dateVal2 = PG_GETARG_INT32(0);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATETIME)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum int8_ormysdatetime(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	int64		dateVal2 = PG_GETARG_INT64(0);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATETIME)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum num_ormysdatetime(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(0);
-	int64		res;
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_DATETIME)
-		dateVal1 = 0;
-
-	res = DatumGetInt64(DirectFunctionCall1(numeric_int8,
-											   NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(res || dateVal1);
-}
-
 // invert ! 
 Datum mysdatetime_invertmysdatetime(PG_FUNCTION_ARGS)
 {
@@ -7438,16 +7200,6 @@ PG_FUNCTION_INFO_V1(int4_andmysdatetimes);
 PG_FUNCTION_INFO_V1(int8_andmysdatetimes);
 PG_FUNCTION_INFO_V1(num_andmysdatetimes);
 
-PG_FUNCTION_INFO_V1(mysdatetimes_ordatetime);
-PG_FUNCTION_INFO_V1(mysdatetimes_orint2);
-PG_FUNCTION_INFO_V1(mysdatetimes_orint4);
-PG_FUNCTION_INFO_V1(mysdatetimes_orint8);
-PG_FUNCTION_INFO_V1(mysdatetimes_ornum);
-PG_FUNCTION_INFO_V1(int2_ormysdatetimes);
-PG_FUNCTION_INFO_V1(int4_ormysdatetimes);
-PG_FUNCTION_INFO_V1(int8_ormysdatetimes);
-PG_FUNCTION_INFO_V1(num_ormysdatetimes);
-
 PG_FUNCTION_INFO_V1(mysdatetimes_invertmysdatetimes);
 
 PG_FUNCTION_INFO_V1(mysdatetimes_boolean);
@@ -7460,6 +7212,11 @@ PG_FUNCTION_INFO_V1(mysdatetimes2_notlike);
 PG_FUNCTION_INFO_V1(mysdatetimes_text_notlike);
 PG_FUNCTION_INFO_V1(mysdatetimes_int8_notlike);
 PG_FUNCTION_INFO_V1(mysdatetimes_numeric_notlike);
+
+PG_FUNCTION_INFO_V1(time2int8);
+PG_FUNCTION_INFO_V1(datetime2int8);
+PG_FUNCTION_INFO_V1(datetimes2int8);
+
 /*****************************************************************************
  *	 Date ADT
  *****************************************************************************/
@@ -7762,7 +7519,11 @@ numeric_mysdatetimes(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+
+		if (is_insert)
 		{
 			dterr = mysnumber_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
@@ -7937,7 +7698,11 @@ int_mysdatetimes(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+
+		if (is_insert)
 		{
 			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
@@ -11039,116 +10804,6 @@ Datum num_andmysdatetimes(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(val1 && val2);
 }
 
-// or ||
-Datum mysdatetimes_ordatetime(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mysdatetimes_orint2(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	int16		dateVal2 = PG_GETARG_INT16(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mysdatetimes_orint4(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	int32		dateVal2 = PG_GETARG_INT32(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mysdatetimes_orint8(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	int64		dateVal2 = PG_GETARG_INT64(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mysdatetimes_ornum(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum int2_ormysdatetimes(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	int16		dateVal2 = PG_GETARG_INT16(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum int4_ormysdatetimes(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	int32		dateVal2 = PG_GETARG_INT32(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum int8_ormysdatetimes(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	int64		dateVal2 = PG_GETARG_INT64(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum num_ormysdatetimes(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(val1 || val2);
-}
-
 // invert ! 
 Datum mysdatetimes_invertmysdatetimes(PG_FUNCTION_ARGS)
 {
@@ -11578,16 +11233,6 @@ PG_FUNCTION_INFO_V1(int4_andmystimestamp);
 PG_FUNCTION_INFO_V1(int8_andmystimestamp);
 PG_FUNCTION_INFO_V1(num_andmystimestamp);
 
-PG_FUNCTION_INFO_V1(mystimestamp_ortimestamp);
-PG_FUNCTION_INFO_V1(mystimestamp_orint2);
-PG_FUNCTION_INFO_V1(mystimestamp_orint4);
-PG_FUNCTION_INFO_V1(mystimestamp_orint8);
-PG_FUNCTION_INFO_V1(mystimestamp_ornum);
-PG_FUNCTION_INFO_V1(int2_ormystimestamp);
-PG_FUNCTION_INFO_V1(int4_ormystimestamp);
-PG_FUNCTION_INFO_V1(int8_ormystimestamp);
-PG_FUNCTION_INFO_V1(num_ormystimestamp);
-
 PG_FUNCTION_INFO_V1(mystimestamp_invertmystimestamp);
 
 PG_FUNCTION_INFO_V1(mystimestamp_boolean);
@@ -11812,7 +11457,11 @@ numeric_mystimestamp(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+			
+		if (is_insert)
 		{
 			dterr = mysnumber_to_datetime(timestamptemp, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
@@ -11944,7 +11593,11 @@ int_mystimestamp(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+			
+		if (is_insert)
 		{
 			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
@@ -14698,124 +14351,6 @@ Datum num_andmystimestamp(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(res && dateVal1);
 }
 
-// or ||
-Datum mystimestamp_ortimestamp(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	TimeADT		dateVal2 = PG_GETARG_TIMEADT(1);
-
-	if(!dateVal1 || !dateVal2)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_TIMESTAMP)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mystimestamp_orint2(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	int16		dateVal2 = PG_GETARG_INT16(1);
-
-	if(!dateVal1 )
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_TIMESTAMP)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mystimestamp_orint4(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	int32		dateVal2 = PG_GETARG_INT32(1);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_TIMESTAMP)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mystimestamp_orint8(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	int64		dateVal2 = PG_GETARG_INT64(1);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_TIMESTAMP)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mystimestamp_ornum(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
-	int64		res;
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_TIMESTAMP)
-		dateVal1 = 0;
-
-	res = DatumGetInt64(DirectFunctionCall1(numeric_int8,
-											   NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(dateVal1 || res);
-}
-Datum int2_ormystimestamp(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	int16		dateVal2 = PG_GETARG_INT16(0);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_TIMESTAMP)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum int4_ormystimestamp(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	int32		dateVal2 = PG_GETARG_INT32(0);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_TIMESTAMP)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum int8_ormystimestamp(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	int64		dateVal2 = PG_GETARG_INT64(0);
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_TIMESTAMP)
-		dateVal1 = 0;
-
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum num_ormystimestamp(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(0);
-	int64		res;
-
-	if(!dateVal1)
-		PG_RETURN_NULL();
-	if(dateVal1 == MYSQL_ZERO_TIMESTAMP)
-		dateVal1 = 0;
-
-	res = DatumGetInt64(DirectFunctionCall1(numeric_int8,
-											   NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(res || dateVal1);
-}
-
 // invert ! 
 Datum mystimestamp_invertmystimestamp(PG_FUNCTION_ARGS)
 {
@@ -15223,16 +14758,6 @@ PG_FUNCTION_INFO_V1(int4_andmystimestamps);
 PG_FUNCTION_INFO_V1(int8_andmystimestamps);
 PG_FUNCTION_INFO_V1(num_andmystimestamps);
 
-PG_FUNCTION_INFO_V1(mystimestamps_ortimestamp);
-PG_FUNCTION_INFO_V1(mystimestamps_orint2);
-PG_FUNCTION_INFO_V1(mystimestamps_orint4);
-PG_FUNCTION_INFO_V1(mystimestamps_orint8);
-PG_FUNCTION_INFO_V1(mystimestamps_ornum);
-PG_FUNCTION_INFO_V1(int2_ormystimestamps);
-PG_FUNCTION_INFO_V1(int4_ormystimestamps);
-PG_FUNCTION_INFO_V1(int8_ormystimestamps);
-PG_FUNCTION_INFO_V1(num_ormystimestamps);
-
 PG_FUNCTION_INFO_V1(mystimestamps_invertmystimestamps);
 
 PG_FUNCTION_INFO_V1(mystimestamps_boolean);
@@ -15534,7 +15059,11 @@ numeric_mystimestamps(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+			
+		if (is_insert)
 		{
 			dterr = mysnumber_to_datetime(timestamptemp, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
@@ -15674,7 +15203,11 @@ int_mystimestamps(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+			
+		if (is_insert)
 		{
 			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
@@ -18783,116 +18316,6 @@ Datum num_andmystimestamps(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(val1 && val2);
 }
 
-// or ||
-Datum mystimestamps_ortimestamp(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mystimestamps_orint2(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	int16		dateVal2 = PG_GETARG_INT16(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mystimestamps_orint4(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	int32		dateVal2 = PG_GETARG_INT32(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mystimestamps_orint8(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	int64		dateVal2 = PG_GETARG_INT64(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mystimestamps_ornum(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum int2_ormystimestamps(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	int16		dateVal2 = PG_GETARG_INT16(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum int4_ormystimestamps(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	int32		dateVal2 = PG_GETARG_INT32(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum int8_ormystimestamps(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	int64		dateVal2 = PG_GETARG_INT64(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum num_ormystimestamps(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(val1 || val2);
-}
-
 // invert ! 
 Datum mystimestamps_invertmystimestamps(PG_FUNCTION_ARGS)
 {
@@ -19331,16 +18754,6 @@ PG_FUNCTION_INFO_V1(int4_andmystime);
 PG_FUNCTION_INFO_V1(int8_andmystime);
 PG_FUNCTION_INFO_V1(num_andmystime);
 
-PG_FUNCTION_INFO_V1(mystime_ortime);
-PG_FUNCTION_INFO_V1(mystime_orint2);
-PG_FUNCTION_INFO_V1(mystime_orint4);
-PG_FUNCTION_INFO_V1(mystime_orint8);
-PG_FUNCTION_INFO_V1(mystime_ornum);
-PG_FUNCTION_INFO_V1(int2_ormystime);
-PG_FUNCTION_INFO_V1(int4_ormystime);
-PG_FUNCTION_INFO_V1(int8_ormystime);
-PG_FUNCTION_INFO_V1(num_ormystime);
-
 PG_FUNCTION_INFO_V1(mystime_invertmystime);
 
 PG_FUNCTION_INFO_V1(mystime_boolean);
@@ -19507,7 +18920,7 @@ int_mystime(PG_FUNCTION_ARGS)
 	int 		flag = 0;
 	int			warn = 0;
 	TimeOffset	time = 0;
-	int neg = 0;
+	int 		neg = 0;
 
 	if(arg == 0)
 	{
@@ -19515,7 +18928,11 @@ int_mystime(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+
+		if (is_insert)
 		{
 			dterr = mysnumber_to_time(arg, tm, flag, &fsec, &ftype, &warn, &neg);
 
@@ -19660,7 +19077,11 @@ numeric_mystime(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+			
+		if (is_insert)
 		{
 			dterr = mysnumber_to_time(timetemp, tm, flag, &fsec, &ftype, &warn, &neg);
 
@@ -22198,106 +21619,6 @@ Datum num_andmystime(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(res && dateVal1);
 }
 
-// or ||
-Datum mystime_ortime(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	TimeADT		dateVal2 = PG_GETARG_TIMEADT(1);
-	if(dateVal1 == MYSQL_NULL_TIME || dateVal2 == MYSQL_NULL_TIME)
-	{
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mystime_orint2(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	int16		dateVal2 = PG_GETARG_INT16(1);
-	if(dateVal1 == MYSQL_NULL_TIME)
-	{
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mystime_orint4(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	int32		dateVal2 = PG_GETARG_INT32(1);
-	if(dateVal1 == MYSQL_NULL_TIME)
-	{
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mystime_orint8(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	int64		dateVal2 = PG_GETARG_INT64(1);
-	if(dateVal1 == MYSQL_NULL_TIME)
-	{
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_INT64(dateVal1 || dateVal2);
-}
-Datum mystime_ornum(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
-	int64		res;
-	if(dateVal1 == MYSQL_NULL_TIME)
-	{
-		PG_RETURN_NULL();
-	}
-	res = DatumGetInt64(DirectFunctionCall1(numeric_int8,
-											   NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(dateVal1 || res);
-}
-Datum int2_ormystime(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	int16		dateVal2 = PG_GETARG_INT16(0);
-	if(dateVal1 == MYSQL_NULL_TIME)
-	{
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum int4_ormystime(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	int32		dateVal2 = PG_GETARG_INT32(0);
-	if(dateVal1 == MYSQL_NULL_TIME)
-	{
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum int8_ormystime(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	int64		dateVal2 = PG_GETARG_INT64(0);
-	if(dateVal1 == MYSQL_NULL_TIME)
-	{
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_INT64(dateVal2 || dateVal1);
-}
-Datum num_ormystime(PG_FUNCTION_ARGS)
-{
-	TimeADT		dateVal1 = PG_GETARG_TIMEADT(1);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(0);
-	int64		res;
-	if(dateVal1 == MYSQL_NULL_TIME)
-	{
-		PG_RETURN_NULL();
-	}
-	res = DatumGetInt64(DirectFunctionCall1(numeric_int8,
-											   NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(res || dateVal1);
-}
-
 // invert ! 
 Datum mystime_invertmystime(PG_FUNCTION_ARGS)
 {
@@ -22721,16 +22042,6 @@ PG_FUNCTION_INFO_V1(int4_andmystimes);
 PG_FUNCTION_INFO_V1(int8_andmystimes);
 PG_FUNCTION_INFO_V1(num_andmystimes);
 
-PG_FUNCTION_INFO_V1(mystimes_ordatetime);
-PG_FUNCTION_INFO_V1(mystimes_orint2);
-PG_FUNCTION_INFO_V1(mystimes_orint4);
-PG_FUNCTION_INFO_V1(mystimes_orint8);
-PG_FUNCTION_INFO_V1(mystimes_ornum);
-PG_FUNCTION_INFO_V1(int2_ormystimes);
-PG_FUNCTION_INFO_V1(int4_ormystimes);
-PG_FUNCTION_INFO_V1(int8_ormystimes);
-PG_FUNCTION_INFO_V1(num_ormystimes);
-
 PG_FUNCTION_INFO_V1(mystimes_invertmystimes);
 
 PG_FUNCTION_INFO_V1(mystimes_boolean);
@@ -23028,7 +22339,11 @@ numeric_mystimes(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+	
+		if (is_insert)
 		{
 			dterr = mysnumber_to_time(timetemp, tm, flag, &fsec, &ftype, &warn, &neg);
 			/*if (non_zero_time(tm, fsec))
@@ -23161,7 +22476,11 @@ int_mystimes(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		if(fcinfo->flinfo && fcinfo->flinfo->fn_insert)
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		bool		is_insert = CALL_IN_INSERT();
+		/* End - SRS-MYSQL-HEX-LITERAL */
+	
+		if (is_insert)
 		{
 			dterr = mysnumber_to_time(arg, tm, flag, &fsec, &ftype, &warn, &neg);
 
@@ -26205,116 +25524,6 @@ Datum num_andmystimes(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(val1 && val2);
 }
 
-// or ||
-Datum mystimes_ordatetime(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mystimes_orint2(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	int16		dateVal2 = PG_GETARG_INT16(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mystimes_orint4(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	int32		dateVal2 = PG_GETARG_INT32(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mystimes_orint8(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	int64		dateVal2 = PG_GETARG_INT64(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum mystimes_ornum(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum int2_ormystimes(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	int16		dateVal2 = PG_GETARG_INT16(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum int4_ormystimes(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	int32		dateVal2 = PG_GETARG_INT32(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum int8_ormystimes(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	int64		dateVal2 = PG_GETARG_INT64(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = dateVal2;
-
-	PG_RETURN_INT64(val1 || val2);
-}
-Datum num_ormystimes(PG_FUNCTION_ARGS)
-{
-	Numeric		dateVal1 = PG_GETARG_NUMERIC(1);
-	Numeric		dateVal2 = PG_GETARG_NUMERIC(0);
-	int64		val1;
-	int64		val2;
-	
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal1)));
-	val2 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(dateVal2)));
-
-	PG_RETURN_INT64(val1 || val2);
-}
-
 // invert ! 
 Datum mystimes_invertmystimes(PG_FUNCTION_ARGS)
 {
@@ -27124,4 +26333,27 @@ Datum mystimes_mystimestamps(PG_FUNCTION_ARGS)
 
 
 	PG_RETURN_NUMERIC(num);
+}
+
+Datum
+time2int8(PG_FUNCTION_ARGS)
+{
+	TimeADT		timeVal = PG_GETARG_TIMEADT(0);
+	PG_RETURN_INT64((int64) timeVal);
+}
+
+Datum
+datetime2int8(PG_FUNCTION_ARGS)
+{
+	TimeADT dateTimeVal = PG_GETARG_TIMEADT(0);
+	PG_RETURN_INT64((int64) dateTimeVal);
+}
+
+Datum
+datetimes2int8(PG_FUNCTION_ARGS)
+{
+	Numeric		dateTimeVal = PG_GETARG_NUMERIC(0);
+	int64 		retValue = DatumGetInt64(DirectFunctionCall1(numeric_int8,
+															 NumericGetDatum(dateTimeVal)));
+	PG_RETURN_INT64(retValue);
 }

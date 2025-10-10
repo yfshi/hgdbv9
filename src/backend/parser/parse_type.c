@@ -817,6 +817,18 @@ stringTypeDatum(Type tp, char *string, int32 atttypmod)
 	return OidInputFunctionCall(typinput, string, typioparam, atttypmod);
 }
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+Datum
+stringTypeDatum_mysql(Type tp, char *string, int32 atttypmod, int64 flag)
+{
+	Form_pg_type typform = (Form_pg_type) GETSTRUCT(tp);
+	Oid			typinput = typform->typinput;
+	Oid			typioparam = getTypeIOParam(tp);
+
+	return OidInputFunctionCall_mysql(typinput, string, typioparam, atttypmod, flag);
+}
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 /*
  * Given a typeid, return the type's typrelid (associated relation), if any.
  * Returns InvalidOid if type is not a composite type.

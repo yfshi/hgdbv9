@@ -2863,10 +2863,28 @@ CreateCast(CreateCastStmt *stmt)
 
 		procstruct = (Form_pg_proc) GETSTRUCT(tuple);
 		nargs = procstruct->pronargs;
-		if (nargs < 1 || nargs > 3)
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
-					 errmsg("cast function must take one to three arguments")));
+		
+		if (compatible_db == MYS_PARSER)
+		{
+			/**
+			 * Begin - SRS-MYSQL-HEX-LITERAL
+			 * Add 4th argument to flag whether the function called in 
+			 * INSERT/UPDATE context, which affected by sql mode's STRICT mode.
+			 */
+			if (nargs < 1 || nargs > 4)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+						errmsg("cast function must take one to four arguments with MySQL")));
+			/* End - SRS-MYSQL-HEX-LITERAL */
+		}
+		else
+		{
+			if (nargs < 1 || nargs > 3)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+						 errmsg("cast function must take one to three arguments")));
+		}
+
 		if (!IsBinaryCoercible(sourcetypeid, procstruct->proargtypes.values[0]))
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),

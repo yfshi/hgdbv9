@@ -11891,58 +11891,66 @@ select cast('221222222222' as datetime(3)) && 1.5; --1
 (1 row)
 
 -- ||
+set sql_mode = '';
 select cast('111111111111' as datetime(3)) || cast('111111111110' as datetime(3)); --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
 select cast('111111111111' as datetime(3)) || 111; --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
 select cast('221222222222' as datetime(3)) || 111.1; --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
 select cast('111111111111' as datetime(3)) || 0; --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
 select 111111111111 || cast('221222222220' as datetime(3)); --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
 select 111111111111.111 || cast('221222222220' as datetime(3)); --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
 select 0 || cast('221222222220' as datetime(3)); --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
 select cast('221222222222' as datetime(3)) || 1.4; --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
 select cast('221222222222' as datetime(3)) || 1.5; --1
  ?column? 
 ----------
-        1
+ t
+(1 row)
+
+reset sql_mode;
+select cast('111111111111' as datetime(3)) || cast('111111111110' as datetime(3)); --1
+                    ?column?                    
+------------------------------------------------
+ 2011-11-11 11:11:11.0002011-11-11 11:11:10.000
 (1 row)
 
 -- !

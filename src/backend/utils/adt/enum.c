@@ -1612,11 +1612,11 @@ text_to_enum(PG_FUNCTION_ARGS)
 	Oid		enumtypeoid = PG_GETARG_OID(1);
 	char	*str1 = text_to_cstring(val);
 	Oid 	enumelenmentoid = check_enumlabel_value(enumtypeoid, str1);
+	bool	is_insert = CALL_IN_INSERT();
 
 	if (enumelenmentoid == InvalidOid)
 	{
-		// this hook target to pg_atoi_uint
-		int32  idx = mysql_uint_datatype_in_hook(str1, '\0', 32, true);
+		int32  idx = mysql_int4_datatype_in_hook(str1, is_insert);
 
 		if (idx <= 0 || idx > PG_INT32_MAX)
 		{
@@ -1673,3 +1673,14 @@ enum_to_bool(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(true);
 }
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
+/* Begin - bug#z5768 */
+Datum
+enum_to_varbinary(PG_FUNCTION_ARGS)
+{
+	Oid 	oid = PG_GETARG_OID(0);
+	char 	*enumlabel = get_enum_label(oid);
+
+	PG_RETURN_BYTEA_P(cstring_to_text(enumlabel));
+}
+/* End - bug#z5768 */

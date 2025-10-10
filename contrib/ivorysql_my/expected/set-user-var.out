@@ -1223,48 +1223,42 @@ select @VAR;
 (1 row)
 
 select X'41';
- ?column? 
-----------
- 01000001
+ varbinary 
+-----------
+ \x41
 (1 row)
 
 set @v1 = X'41';
 select @v1;
  ?column? 
 ----------
- 01000001
+ A
 (1 row)
 
 select X'41' + 0;
-ERROR:  operator does not exist: bit + integer
-LINE 1: select X'41' + 0;
-                     ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ ?column? 
+----------
+ 65
+(1 row)
+
 set @v2 = X'41' + 0;
-ERROR:  operator does not exist: bit + integer
-LINE 1: set @v2 = X'41' + 0;
-                        ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 select @v2;
  ?column? 
 ----------
- 
+ 65
 (1 row)
 
 set @v3 = cast(X'41' AS UNSIGNED);
-ERROR:  cannot cast type bit to uint8
-LINE 1: set @v3 = cast(X'41' AS UNSIGNED);
-                  ^
 select @v3;
  ?column? 
 ----------
- 
+ 65
 (1 row)
 
 select @v1, @v2, @v3;
  ?column? | ?column? | ?column? 
 ----------+----------+----------
- 01000001 |          | 
+ A        | 65       | 65
 (1 row)
 
 set @t1 = 1, @t2 = 2, @t3 = 4;
@@ -1296,7 +1290,8 @@ select VARIABLE_NAME, VARIABLE_VALUE from performance_schema.user_variable_by_th
  var_11        | 9999.111
  a             | 1
  t3            | 4
- v1            | 01000001
+ v2            | 65
+ v1            | A
  varc          | 4
  var_a         | 1
  var_$         | 2
@@ -1311,7 +1306,8 @@ select VARIABLE_NAME, VARIABLE_VALUE from performance_schema.user_variable_by_th
  name          | 43
  var           | 1
  vard          | 5
-(19 rows)
+ v3            | 65
+(21 rows)
 
 --test explain analyze
 set @varname = 'zhangsan';
@@ -2020,7 +2016,6 @@ drop table time_data_types;
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_017
 set @int_num=2,@str_num ='25.00';
 set @result1=@int_num *@str_num;
-WARNING:  Truncated incorrect INTEGER value: '25.00'
 select @result1;	--50
  ?column? 
 ----------
@@ -2028,7 +2023,6 @@ select @result1;	--50
 (1 row)
 
 set @result2=@int_num < @str_num;
-WARNING:  Truncated incorrect INTEGER value: '25.00'
 select @result2;	--t
  ?column? 
 ----------

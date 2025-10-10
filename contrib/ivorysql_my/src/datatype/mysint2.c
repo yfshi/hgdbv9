@@ -35,7 +35,6 @@ PG_FUNCTION_INFO_V1(myint2_div_int4); /* bug#z5166 */
 PG_FUNCTION_INFO_V1(myint2_exact_div);
 PG_FUNCTION_INFO_V1(myint2_mod);
 PG_FUNCTION_INFO_V1(myint2_bit_xor);
-PG_FUNCTION_INFO_V1(myint2_or);
 PG_FUNCTION_INFO_V1(myint2_and);
 PG_FUNCTION_INFO_V1(myint2_safeeq);
 PG_FUNCTION_INFO_V1(myint2_not);
@@ -44,121 +43,6 @@ PG_FUNCTION_INFO_V1(myint2_positive);
 PG_FUNCTION_INFO_V1(myint2_negative);
 PG_FUNCTION_INFO_V1(myint2_boolean);
 PG_FUNCTION_INFO_V1(boolean_myint2);
-
-int16 
-my_atoi_int2(const char *s)
-{
-	long l;
-	char *badp;
-	int save_errno = 0;
-	int flag = SIGNED_FLAG;
-
-	/* skip leading spaces */
-	while (likely(*s) && isspace((unsigned char) *s))
-		s++;
-
-	/*
-	 * Some versions of strtol treat the empty string as an error, but some
-	 * seem not to.  Make an explicit test to be sure we catch it.
-	 */
-	if (s == NULL)
-		ereport(ERROR,
-			(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
-				errmsg("invalid input syntax for type smallint")));
-	if (*s == 0)
-	{
-		if (!is_strict_mode())
-		{
-			ereport(WARNING,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input syntax for type %s: \"%s\"",
-						"smallint", s)));
-
-			return 0;
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input syntax for type %s: \"%s\"",
-						"smallint", s)));
-		}
-	}
-
-	errno = 0;
-	l = my_strntoull10rnd_8bit(s, strlen(s), flag, &badp, &save_errno);
-
-	/* We made no progress parsing the string, so bail out */
-	if (s == badp)
-	{
-		if (!is_strict_mode())
-		{
-			ereport(WARNING,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input syntax for type %s: \"%s\"",
-						"smallint", s)));
-
-			return 0;
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input syntax for type %s: \"%s\"",
-						"smallint", s)));
-		}
-	}
-
-	if (save_errno == ERANGE || l < PG_INT16_MIN || l > PG_INT16_MAX)
-	{
-		if(!is_strict_mode())
-		{
-			if(l < PG_INT16_MIN)
-			{
-				l = PG_INT16_MIN;
-			}
-			else
-			{
-				l = PG_INT16_MAX;
-			}
-
-			ereport(WARNING,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("value \"%s\" is out of range for type smallint", s)));
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					errmsg("value \"%s\" is out of range for type smallint", s)));
-		}
-	}
-
-	/*
-	 * Skip any trailing whitespace; if anything but whitespace remains before
-	 * the terminating character, bail out
-	 */
-	while (*badp && *badp != '\0' && isspace((unsigned char)*badp))
-		badp++;
-
-	if (*badp && *badp != '\0')
-	{
-		if(!is_strict_mode())
-		{
-			ereport(WARNING,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-					errmsg("invalid input syntax for type smallint: \"%s\"", s)));
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-					errmsg("invalid input syntax for type smallint: \"%s\"", s)));
-		}
-	}
-
-	return (int16)l;
-}
 
 /* operator int2 & int2*/
 Datum 
@@ -342,30 +226,6 @@ myint2_bit_xor(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT64(arg1 ^ arg2);
 }
-
-/* Begin - BUG#5051 */
-/* operator int2 || int2 */
-Datum 
-myint2_or(PG_FUNCTION_ARGS)
-{
-	int64 arg0 = 0;
-	int64 arg1 = 0;
-
-	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-	{
-		PG_RETURN_NULL();
-	}
-
-	arg0 = PG_GETARG_INT64(0);
-	arg1 = PG_GETARG_INT64(1);
-
-	if ((arg0 != 0) || (arg1 != 0))
-	{
-		PG_RETURN_INT32(1);
-	}
-	PG_RETURN_INT32(0);
-}
-/* End - BUG#5051 */
 
 /* Begin - BUG#5050 */
 /* operator int2 && int2 */

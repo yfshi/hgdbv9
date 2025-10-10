@@ -4,8 +4,9 @@
 --
 -- Build tables for testing
 --
-CREATE TABLE BIT_TABLE(b BIT(11));
+CREATE TABLE BIT_TABLE(b pg_catalog.BIT(11));
 INSERT INTO BIT_TABLE VALUES (B'10'); -- too short
+ERROR:  bit string length 2 does not match type bit(11)
 INSERT INTO BIT_TABLE VALUES (B'00000000000');
 INSERT INTO BIT_TABLE VALUES (B'11011000000');
 INSERT INTO BIT_TABLE VALUES (B'01010101010');
@@ -14,13 +15,12 @@ ERROR:  bit string length 12 does not match type bit(11)
 --INSERT INTO BIT_TABLE VALUES ('X554');
 --INSERT INTO BIT_TABLE VALUES ('X555');
 SELECT * FROM BIT_TABLE;
-   b    
---------
- 0x0002
- 0x0000
- 0x06C0
- 0x02AA
-(4 rows)
+      b      
+-------------
+ 00000000000
+ 11011000000
+ 01010101010
+(3 rows)
 
 CREATE TABLE VARBIT_TABLE(v BIT VARYING(11));
 INSERT INTO VARBIT_TABLE VALUES (B'');
@@ -44,20 +44,31 @@ SELECT * FROM VARBIT_TABLE;
 SELECT v, b, (v || b) AS concat
        FROM BIT_TABLE, VARBIT_TABLE
        ORDER BY 3;
-ERROR:  operator does not exist: bit varying || mysbit
-LINE 1: SELECT v, b, (v || b) AS concat
-                        ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+      v      |      b      |         concat         
+-------------+-------------+------------------------
+             | 00000000000 | 00000000000
+ 0           | 00000000000 | 000000000000
+ 0           | 01010101010 | 001010101010
+ 010101      | 00000000000 | 01010100000000000
+             | 01010101010 | 01010101010
+ 01010101010 | 00000000000 | 0101010101000000000000
+ 01010101010 | 01010101010 | 0101010101001010101010
+ 010101      | 01010101010 | 01010101010101010
+ 01010101010 | 11011000000 | 0101010101011011000000
+ 010101      | 11011000000 | 01010111011000000
+ 0           | 11011000000 | 011011000000
+             | 11011000000 | 11011000000
+(12 rows)
+
 -- Length
 SELECT b, length(b::pg_catalog.bit(11)) AS lb
        FROM BIT_TABLE;
-   b    | lb 
---------+----
- 0x0002 | 11
- 0x0000 | 11
- 0x06C0 | 11
- 0x02AA | 11
-(4 rows)
+      b      | lb 
+-------------+----
+ 00000000000 | 11
+ 11011000000 | 11
+ 01010101010 | 11
+(3 rows)
 
 SELECT v, length(v) AS lv
        FROM VARBIT_TABLE;
@@ -75,13 +86,12 @@ SELECT b,
        SUBSTRING(b::pg_catalog.bit(11) FROM 7 FOR 13) AS sub_7_13,
        SUBSTRING(b::pg_catalog.bit(11) FROM 6) AS sub_6
        FROM BIT_TABLE;
-   b    | sub_2_4 | sub_7_13 | sub_6  
---------+---------+----------+--------
- 0x0002 | 0000    | 00010    | 000010
- 0x0000 | 0000    | 00000    | 000000
- 0x06C0 | 1011    | 00000    | 000000
- 0x02AA | 1010    | 01010    | 101010
-(4 rows)
+      b      | sub_2_4 | sub_7_13 | sub_6  
+-------------+---------+----------+--------
+ 00000000000 | 0000    | 00000    | 000000
+ 11011000000 | 1011    | 00000    | 000000
+ 01010101010 | 1010    | 01010    | 101010
+(3 rows)
 
 SELECT v,
        SUBSTRING(v FROM 2 FOR 4) AS sub_2_4,

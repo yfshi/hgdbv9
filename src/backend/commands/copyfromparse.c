@@ -1441,6 +1441,16 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 										  cstate->raw_fields_lens[m]);
 			}
 			/* End - BUG#M0000414 */
+			/* Begin - SRS-MYSQL-HEX-LITERAL */
+			else if (compatible_db == MYS_PARSER)
+			{
+				values[m] = InputFunctionCall_mysql(&in_functions[m],
+													string,
+													typioparams[m],
+													att->atttypmod,
+													TRANSFORM_FLAG_IN_INSERT);
+			}
+			/* End - SRS-MYSQL-HEX-LITERAL */
 			else 
 			{
 				values[m] = InputFunctionCall(&in_functions[m],

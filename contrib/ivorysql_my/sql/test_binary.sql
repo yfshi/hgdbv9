@@ -1725,3 +1725,7 @@ insert into tb1 values('abcd', '', null);
 select c1 AND c3, c2 AND c3 from tb1;
 select c1 && c3, c2 && c3 from tb1;
 drop table tb1;
+
+-- bug#z5800
+select convert('Hello World', binary(5));
+select convert(123, binary),convert(123.456, binary);

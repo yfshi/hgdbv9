@@ -1213,7 +1213,7 @@ select * from def_test;
 
 -- set defaults to an incorrect type: this should fail
 alter table def_test alter column c1 set default 'wrong_datatype';
-ERROR:  invalid input syntax for type integer: "wrong_datatype"
+ERROR:  Incorrect integer value: 'wrong_datatype' for column.
 alter table def_test alter column c2 set default 20;
 -- set defaults on a non-existent column: this should fail
 alter table def_test alter column c3 set default 30;
@@ -1866,8 +1866,7 @@ select f3,max(f1) from foo group by f3;
 
 -- Simple tests for alter table column type
 alter table foo alter f1 TYPE integer; -- fails
-WARNING:  Truncated incorrect INTEGER value: 'bb'
-WARNING:  Truncated incorrect INTEGER value: 'qq'
+ERROR:  Incorrect integer value: 'bb' for column.
 alter table foo alter f1 TYPE varchar(10);
 create table anothertab (atcol1 serial8, atcol2 boolean,
 	constraint anothertab_chk check (atcol1 <= 3));

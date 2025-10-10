@@ -3,7 +3,7 @@
  * MySQL uint8 type support
  *
 ***************************************************************/
-CREATE FUNCTION ivymy.mysuint8_in(pg_catalog.cstring)
+CREATE FUNCTION ivymy.mysuint8_in(pg_catalog.cstring, oid, integer, bigint)
 RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','mysuint8_in'
 LANGUAGE C
@@ -19,7 +19,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.mysuint8_recv(internal)
+CREATE FUNCTION ivymy.mysuint8_recv(internal, oid, integer, bigint)
 RETURNS ivymy.uint8
 AS 'MODULE_PATHNAME','mysuint8_recv'
 LANGUAGE C
@@ -93,158 +93,158 @@ SET typmodout=(SELECT oid FROM pg_proc WHERE proname='mysuint8_typmodout')
 WHERE oid = 9219;
 
 ---------- Compatible MySQL Cast ----------
-CREATE FUNCTION ivymy.int_mysuint8(pg_catalog.int8)
+CREATE FUNCTION ivymy.int_uint8(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','int_mysuint8'
+AS 'MODULE_PATHNAME','int_uint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.uint8)
-WITH FUNCTION ivymy.int_mysuint8(pg_catalog.int8)
+WITH FUNCTION ivymy.int_uint8(pg_catalog.int8, int, bool, int8)
 AS ASSIGNMENT;
 
 
-CREATE FUNCTION ivymy.int_mysuint8(pg_catalog.int2)
+CREATE FUNCTION ivymy.int_uint8(pg_catalog.int2, int, bool, int8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','int_mysuint8'
+AS 'MODULE_PATHNAME','int_uint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int2 AS ivymy.uint8)
-WITH FUNCTION ivymy.int_mysuint8(pg_catalog.int2)
+WITH FUNCTION ivymy.int_uint8(pg_catalog.int2, int, bool, int8)
 AS ASSIGNMENT;
 
-CREATE FUNCTION ivymy.int_mysuint8(pg_catalog.int4)
+CREATE FUNCTION ivymy.int_uint8(pg_catalog.int4, int, bool, int8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','int_mysuint8'
+AS 'MODULE_PATHNAME','int_uint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.uint8)
-WITH FUNCTION ivymy.int_mysuint8(pg_catalog.int4)
+WITH FUNCTION ivymy.int_uint8(pg_catalog.int4, int, bool, int8)
 AS ASSIGNMENT;
 
-CREATE FUNCTION ivymy.numeric_mysuint8(pg_catalog.numeric)
+CREATE FUNCTION ivymy.numeric_uint8(pg_catalog.numeric, int, bool, int8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','numeric_mysuint8'
+AS 'MODULE_PATHNAME','numeric_uint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.numeric AS ivymy.uint8)
-WITH FUNCTION ivymy.numeric_mysuint8(pg_catalog.numeric)
+WITH FUNCTION ivymy.numeric_uint8(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
 /* Begin BUG#5048 5070 */
 -- cast uint8 to int2
-CREATE FUNCTION ivymy.mys_uint82int2(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_int2(ivymy.uint8, int, bool, int8)
 RETURNS pg_catalog.int2
-AS 'MODULE_PATHNAME','mys_uint82int2'
+AS 'MODULE_PATHNAME','uint8_int2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (ivymy.uint8 as pg_catalog.int2)
-WITH FUNCTION ivymy.mys_uint82int2(ivymy.uint8)
+WITH FUNCTION ivymy.uint8_int2(ivymy.uint8, int, bool, int8)
 AS ASSIGNMENT;
 
 -- cast uint8 to int4
-CREATE FUNCTION ivymy.mys_uint82int4(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_int4(ivymy.uint8, int, bool, int8)
 RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME','mys_uint82int4'
+AS 'MODULE_PATHNAME','uint8_int4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (ivymy.uint8 as pg_catalog.int4)
-WITH FUNCTION ivymy.mys_uint82int4(ivymy.uint8)
+WITH FUNCTION ivymy.uint8_int4(ivymy.uint8, int, bool, int8)
 AS ASSIGNMENT;
 
 -- cast uint8 to int8
-CREATE FUNCTION ivymy.mys_uint82int8(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_int8(ivymy.uint8, int, bool, int8)
 RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mys_uint82int8'
+AS 'MODULE_PATHNAME','uint8_int8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (ivymy.uint8 as pg_catalog.int8)
-WITH FUNCTION ivymy.mys_uint82int8(ivymy.uint8)
+WITH FUNCTION ivymy.uint8_int8(ivymy.uint8, int, bool, int8)
 AS ASSIGNMENT;
 
 -- cast uint8 to uint1
-CREATE FUNCTION ivymy.mys_uint82uint1(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_uint1(ivymy.uint8, int, bool, int8)
 RETURNS uint1
-AS 'MODULE_PATHNAME','mys_uint82uint1'
+AS 'MODULE_PATHNAME','uint8_uint1'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (ivymy.uint8 as uint1)
-WITH FUNCTION ivymy.mys_uint82uint1(ivymy.uint8)
+WITH FUNCTION ivymy.uint8_uint1(ivymy.uint8, int, bool, int8)
 AS ASSIGNMENT;
 
 -- cast uint8 to uint2
-CREATE FUNCTION ivymy.mys_uint82uint2(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_uint2(ivymy.uint8, int, bool, int8)
 RETURNS uint2
-AS 'MODULE_PATHNAME','mys_uint82uint2'
+AS 'MODULE_PATHNAME','uint8_uint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (ivymy.uint8 as uint2)
-WITH FUNCTION ivymy.mys_uint82uint2(ivymy.uint8)
+WITH FUNCTION ivymy.uint8_uint2(ivymy.uint8, int, bool, int8)
 AS ASSIGNMENT;
 
 -- cast uint8 to uint4
-CREATE FUNCTION ivymy.mys_uint82uint4(uint8)
+CREATE FUNCTION ivymy.uint8_uint4(uint8, int, bool, int8)
 RETURNS uint4
-AS 'MODULE_PATHNAME','mys_uint82uint4'
+AS 'MODULE_PATHNAME','uint8_uint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (uint8 as uint4)
-WITH FUNCTION ivymy.mys_uint82uint4(uint8)
+WITH FUNCTION ivymy.uint8_uint4(uint8, int, bool, int8)
 AS ASSIGNMENT;
 
 -- cast uint8 to float4
-CREATE FUNCTION ivymy.mys_uint82float4(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_float4(ivymy.uint8, int, bool, int8)
 RETURNS float4
-AS 'MODULE_PATHNAME','mys_uint82float4'
+AS 'MODULE_PATHNAME','uint8_float4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (ivymy.uint8 as float4)
-WITH FUNCTION ivymy.mys_uint82float4(ivymy.uint8)
+WITH FUNCTION ivymy.uint8_float4(ivymy.uint8, int, bool, int8)
 AS ASSIGNMENT;
 
 -- cast uint8 to float8
-CREATE FUNCTION ivymy.mys_uint82float8(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_float8(ivymy.uint8, int, bool, int8)
 RETURNS float8
-AS 'MODULE_PATHNAME','mys_uint82float8'
+AS 'MODULE_PATHNAME','uint8_float8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (ivymy.uint8 as float8)
-WITH FUNCTION ivymy.mys_uint82float8(ivymy.uint8)
+WITH FUNCTION ivymy.uint8_float8(ivymy.uint8, int, bool, int8)
 AS ASSIGNMENT;
 /* End BUG#5048 5070 */
 
@@ -262,76 +262,61 @@ AS ASSIGNMENT;
 --
 -- cast (varchar as uint8)
 --
-CREATE FUNCTION ivymy.mystext2mysuint8(pg_catalog.varchar)
+CREATE FUNCTION ivymy.text_uint8(pg_catalog.varchar, int, bool, int8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME', 'mystext2mysuint8'
+AS 'MODULE_PATHNAME', 'varlena_uint8'
 LANGUAGE C 
 STRICT 
 PARALLEL SAFE 
 IMMUTABLE;
 
 CREATE CAST(pg_catalog.varchar as ivymy.uint8) 
-WITH FUNCTION ivymy.mystext2mysuint8(pg_catalog.varchar) 
-AS ASSIGNMENT;
-
---
--- cast (char as uint8)
---
-CREATE FUNCTION ivymy.mystext2mysuint8(pg_catalog.char)
-RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME', 'mystext2mysuint8'
-LANGUAGE C 
-STRICT 
-PARALLEL SAFE 
-IMMUTABLE;
-
-CREATE CAST(pg_catalog.char as ivymy.uint8) 
-WITH FUNCTION ivymy.mystext2mysuint8(pg_catalog.char) 
+WITH FUNCTION ivymy.text_uint8(pg_catalog.varchar, int, bool, int8)
 AS ASSIGNMENT;
 
 --
 -- cast (bpchar as uint8)
 --
-CREATE FUNCTION ivymy.mystext2mysuint8(pg_catalog.bpchar)
+CREATE FUNCTION ivymy.text_uint8(pg_catalog.bpchar, int, bool, int8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME', 'mystext2mysuint8'
+AS 'MODULE_PATHNAME', 'varlena_uint8'
 LANGUAGE C 
 STRICT 
 PARALLEL SAFE 
 IMMUTABLE;
 
 CREATE CAST(pg_catalog.bpchar as ivymy.uint8) 
-WITH FUNCTION ivymy.mystext2mysuint8(pg_catalog.bpchar) 
+WITH FUNCTION ivymy.text_uint8(pg_catalog.bpchar, int, bool, int8)
 AS ASSIGNMENT;
 
 --
 -- cast (text as uint8)
 --
-CREATE FUNCTION ivymy.mystext2mysuint8(pg_catalog.text)
+CREATE FUNCTION ivymy.text_uint8(pg_catalog.text, int, bool, int8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME', 'mystext2mysuint8'
+AS 'MODULE_PATHNAME', 'varlena_uint8'
 LANGUAGE C 
 STRICT 
 PARALLEL SAFE 
 IMMUTABLE;
 
 CREATE CAST(pg_catalog.text as ivymy.uint8) 
-WITH FUNCTION ivymy.mystext2mysuint8(pg_catalog.text) 
+WITH FUNCTION ivymy.text_uint8(pg_catalog.text, int, bool, int8)
 AS ASSIGNMENT;
 
 --
 -- cast (bool as uint8)
 --
-CREATE FUNCTION ivymy.boolean_mysuint8(pg_catalog.bool) 
+CREATE FUNCTION ivymy.boolean_uint8(pg_catalog.bool) 
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','boolean_mysuint8'
+AS 'MODULE_PATHNAME','boolean_uint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
 CREATE CAST (pg_catalog.bool AS ivymy.uint8)
-WITH FUNCTION ivymy.boolean_mysuint8(pg_catalog.bool)
+WITH FUNCTION ivymy.boolean_uint8(pg_catalog.bool)
 AS ASSIGNMENT;
 
 /* CREATE CAST */
@@ -1586,58 +1571,11 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function or
-CREATE FUNCTION ivymy.mysuint8_or(ivymy.uint8, ivymy.uint8)
-RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME','mysuint8_ormysuint8'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
+CREATE FUNCTION ivymy.uint8cat(uint8, uint8)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
 
-CREATE FUNCTION ivymy.mysuint8_or(ivymy.uint8, pg_catalog.int2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint8_orint2'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint8_or(ivymy.uint8, pg_catalog.int4)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint8_orint4'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint8_or(ivymy.uint8, pg_catalog.int8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint8_orint8'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint8_or(pg_catalog.int2, ivymy.uint8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int2_ormysuint8'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint8_or(pg_catalog.int4, ivymy.uint8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int4_ormysuint8'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint8_or(pg_catalog.int8, ivymy.uint8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int8_ormysuint8'
-LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -2711,48 +2649,12 @@ CREATE OPERATOR && (
 
 --operator ||
 CREATE OPERATOR || (
-	procedure = ivymy.mysuint8_or,
-	leftarg = ivymy.uint8,
-	rightarg = ivymy.uint8
+	procedure = ivymy.uint8cat,
+	leftarg = uint8,
+	rightarg = uint8
 );
 
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint8_or,
-	leftarg = ivymy.uint8,
-	rightarg = pg_catalog.int2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint8_or,
-	leftarg = ivymy.uint8,
-	rightarg = pg_catalog.int4
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint8_or,
-	leftarg = ivymy.uint8,
-	rightarg = pg_catalog.int8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint8_or,
-	leftarg = pg_catalog.int2,
-	rightarg = ivymy.uint8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint8_or,
-	leftarg = pg_catalog.int4,
-	rightarg = ivymy.uint8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint8_or,
-	leftarg = pg_catalog.int8,
-	rightarg = ivymy.uint8
-);
-
---operator ||
+--operator !
 CREATE OPERATOR ! (
 	procedure = ivymy.mysuint8_invert,
 	rightarg = ivymy.uint8

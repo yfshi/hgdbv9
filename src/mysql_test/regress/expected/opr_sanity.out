@@ -971,7 +971,7 @@ WHERE c.castfunc = p.oid AND p.pronargs < 2 AND castsource = casttarget;
 SELECT c.*
 FROM pg_cast c, pg_proc p
 WHERE c.castfunc = p.oid AND
-    (p.pronargs < 1 OR p.pronargs > 3
+    (p.pronargs < 1 OR p.pronargs > 4
      OR NOT (binary_coercible(c.castsource, p.proargtypes[0])
              OR (c.castsource = 'character'::regtype AND
                  p.proargtypes[0] = 'text'::regtype))
@@ -1031,7 +1031,14 @@ WHERE c.castmethod = 'b' AND
  longblob          | bytea             |        0 | i
  binary            | bytea             |        0 | i
  varbinary         | bytea             |        0 | i
-(21 rows)
+ ivy_hex           | text              |        0 | a
+ ivy_hex           | tinyblob          |        0 | a
+ ivy_hex           | blob              |        0 | a
+ ivy_hex           | mediumblob        |        0 | a
+ ivy_hex           | longblob          |        0 | a
+ ivy_hex           | binary            |        0 | a
+ ivy_hex           | varbinary         |        0 | a
+(28 rows)
 
 -- **************** pg_conversion ****************
 -- Look for illegal values in pg_conversion fields.

@@ -245,32 +245,8 @@ PG_FUNCTION_INFO_V1(anyenum_avg_accum);
 PG_FUNCTION_INFO_V1(anyenum_avg);
 PG_FUNCTION_INFO_V1(anyenum_sum);
 
-PG_FUNCTION_INFO_V1(uint1_to_enum);
-PG_FUNCTION_INFO_V1(uint2_to_enum);
-PG_FUNCTION_INFO_V1(uint4_to_enum);
-PG_FUNCTION_INFO_V1(uint8_to_enum);
-PG_FUNCTION_INFO_V1(text_to_enum);
-PG_FUNCTION_INFO_V1(bool_to_enum);
-
-PG_FUNCTION_INFO_V1(enum_to_uint1);
-PG_FUNCTION_INFO_V1(enum_to_uint2);
-PG_FUNCTION_INFO_V1(enum_to_uint4);
-PG_FUNCTION_INFO_V1(enum_to_uint8);
-PG_FUNCTION_INFO_V1(enum_to_text);
-PG_FUNCTION_INFO_V1(enum_2_boolean);
 PG_FUNCTION_INFO_V1(format_anonymous_enum);
 PG_FUNCTION_INFO_V1(check_is_anonymous_enum);
-
-inline static void 
-ENUM_INSERT_CHECK(Oid enumelenmentoid)
-{
-	if (OidIsValid(enumelenmentoid))
-		return;
-
-	ereport(is_strict_mode() ? ERROR : WARNING,
-			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				errmsg("Data truncated for column")));
-}
 
 inline static int 
 ENUM_STRCMP(char* str1, char * str2)

@@ -27,6 +27,7 @@
 #include "parser/parse_coerce.h"
 #include "parser/parse_relation.h"
 #include "parser/parse_type.h"
+#include "tsearch/ts_locale.h"
 #include "utils/builtins.h"
 #include "utils/catcache.h"
 #include "utils/date.h"			/* ReqID:SRS-GKC-DATATYPE_001 */
@@ -36,17 +37,10 @@
 #include "utils/formatting.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/guc.h"			/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/lsyscache.h"
+#include "utils/numeric.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
-/* Begin - ReqID:SRS-MYSQL-DATETYPE */
 #include "utils/syscache.h"
 #include "utils/typcache.h"
-#include "utils/numeric.h"
-/*End - ReqID:SRS-MYDSQL-DATATYPE */
-#include "tsearch/ts_locale.h"/* ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-
-/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
-Mysql_uint_datatype_in_hook_type mysql_uint_datatype_in_hook = NULL;
-/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
 
 /* Begin - ReqID:SRS-MYSQL-DATETYPE */
 typedef enum datetime
@@ -75,7 +69,7 @@ static Node *build_coercion_expression(Node *node,
 									   Oid funcId,
 									   Oid targetTypeId, int32 targetTypMod,
 									   CoercionContext ccontext, CoercionForm cformat,
-									   int location);
+									   int location, int64 flag);
 static Node *coerce_record_to_complex(ParseState *pstate, Node *node,
 									  Oid targetTypeId,
 									  CoercionContext ccontext,
@@ -109,16 +103,6 @@ static int64 Str2Mystime(Const *con, Const *newcon, bool is_insert);
 static Datum Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert);
 static Datum Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert);
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
-
-static uint32 pg_atoi_uint4_check(const char *s,int c);/* ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-static uint64 Num2Mysuint1234(Const *con, Oid inputTypeId, Oid targetTypeId);
-static uint64 Str2Mysuint12348(Const *con, Const *newcon, Oid targetTypeId);
-/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-
-/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-static uint64 Num2Mysuint8(Const *con, Oid inputTypeId);
-/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
 /*
  * coerce_to_target_type()
@@ -198,7 +182,7 @@ coerce_to_target_type(ParseState *pstate, Node *expr, Oid exprtype,
 }
 
 /* Begin - ReqID:SRS-MYSQL-DATETYPE */
-int msec_round_add[7]=
+static int msec_round_add[7] =
 {
 	500000000,
 	50000000,
@@ -208,7 +192,8 @@ int msec_round_add[7]=
 	5000,
 	0
 };
-int64 log_10_int[20]=
+
+static int64 log_10_int[20] =
 {
 	1, 10, 100, 1000, 10000UL, 100000UL, 1000000UL, 10000000UL,
 	100000000ULL, 1000000000ULL, 10000000000ULL, 100000000000ULL,
@@ -1757,8 +1742,10 @@ Num2Mystime(Const *con, Oid inputTypeId , bool is_insert)
 
 	//First obtain nanosecond accuracy, then obtain dec accuracy
 	dterr = mysnumber_to_time(timetemp, tm, flag, &fsec, &ftype, &warn, &neg);
-	(void)mystime_add_nanoseconds_with_round(tm, &fsec, nanofsec, &warn);
-	(void)mystime_rounded_seconds(tm, &fsec,&warn, 0);
+	
+	mystime_add_nanoseconds_with_round(tm, &fsec, nanofsec, &warn);
+	mystime_rounded_seconds(tm, &fsec,&warn, 0);
+
 	if (is_insert)
 	{
 		if (non_zero_date(tm))
@@ -2178,264 +2165,7 @@ Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert)
 
 	return NumericGetDatum(num);
 }
-
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
-
-/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
-/*
- * str to mysuint
- * use C-lib strtoll function
- */
-static uint32 
-pg_atoi_uint4_check(const char *s,int c)
-{
-	long long l;
-	char *badp;
-
-	/*
-	 * Some versions of strtol treat the empty string as an error, but some
-	 * seem not to.  Make an explicit test to be sure we catch it.
-	 */
-	if (s == NULL)
-		elog(ERROR, "NULL pointer");
-	if (*s == 0)
-	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-		l = 0;
-		return l;
-	}
-
-	errno = 0;
-
-	l = strtoll(s, &badp, 10);
-
-	/* We made no progress parsing the string, so bail out */
-	if (s == badp)
-	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-		l = 0;
-		return l;
-	}
-
-	if (errno == ERANGE || l < 0 || l > PG_UINT32_MAX)
-	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("value \"%s\" is out of range for unsigned 32-bit integer", s)));
-		l = l < 0 ? 0 : PG_UINT32_MAX;
-		return l;
-	}
-
-	/*
-	 * Skip any trailing whitespace; if anything but whitespace remains before
-	 * the terminating character, bail out
-	 */
-	while (*badp && *badp != c && isspace((unsigned char)*badp))
-		badp++;
-
-	if (*badp && *badp != c)
-	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-	}
-	return (uint32)l;
-}
-
-/*
- * numeric to uint4 uint3, mysuint(domain uint4)
- * con     : str const value
- * newcon  : new const value
- * sizenum : size (3byte 4byte)
- */
-static uint64 
-Num2Mysuint1234(Const *con, Oid inputTypeId, Oid targetTypeId)
-{
-	uint32		val2 = 0;
-	uint64		maxvalue = 0;
-
-	switch ( targetTypeId )
-	{
-		case UINT1OID:
-		{
-			maxvalue = PG_UINT8_MAX;
-			break;
-		}
-		case UINT2OID:
-		{
-			maxvalue = PG_UINT16_MAX;
-			break;
-		}
-		case UINT3OID:
-		{
-			maxvalue = PG_UINT24_MAX;
-			break;
-		}
-		case UINT4OID:
-		{
-			maxvalue = PG_UINT32_MAX;
-			break;
-		}
-		case UINT8OID:
-		{
-			maxvalue = PG_UINT64_MAX;
-			break;
-		}
-		default:
-		{
-			break;
-		}
-	}
-
-	if (inputTypeId == NUMERICOID)
-	{
-		int64		val1 = 0;
-		val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(con->constvalue)));
-		val2 = val1;
-		if (val1 < 0 || val1 > maxvalue)
-		{
-			ereport(WARNING, (errmsg("integer unsigned out of range")));
-			val2 = val1 < 0 ? 0 : maxvalue;
-		}
-	}
-	else
-	{
-		int64		val1 = 0;
-		val1 = con->constvalue;
-		val2 = val1;
-		if (val1 < 0 || val1 > maxvalue)
-		{
-			ereport(WARNING, (errmsg("integer unsigned out of range")));
-			val2 = val1 < 0 ? 0 : maxvalue;
-		}
-	}
-	return val2;
-}
-
-/*
- * str to mysuint
- * con     : str const value
- * newcon  : new const value
- * sizenum : size (1byte 2byte 3byte 4byte 8byte)
- */
-static uint64 
-Str2Mysuint12348(Const *con, Const *newcon, Oid targetTypeId)
-{
-	char *num = NULL;
-	uint64 temp = 0;
-	int sizenum = 0;
-
-	if (con->constisnull)
-	{
-		newcon->constisnull = true;
-		return temp;
-	}
-
-	switch ( targetTypeId )
-	{
-		case UINT1OID:
-		{
-			sizenum = 1;
-			break;
-		}
-		case UINT2OID:
-		{
-			sizenum = 2;
-			break;
-		}
-		case UINT3OID:
-		{
-			sizenum = 3;
-			break;
-		}
-		case UINT4OID:
-		{
-			sizenum = 4;
-			break;
-		}
-		case UINT8OID:
-		{
-			sizenum = 8;
-			break;
-		}
-		default:
-		{
-			break;
-		}
-	}
-
-	num = DatumGetCString(con->constvalue);
-
-	/* call the mysql callback processing function, and call the C-lib function when system fault
-	 * the two exception scenatios for handing strings are inconsistent.
-	 */
-	if (mysql_uint_datatype_in_hook)
-	{
-		temp = (*mysql_uint_datatype_in_hook)(num, '\0', sizenum, false);
-	}
-	else
-	{
-		temp = pg_atoi_uint4_check(num, '\0');
-	}
-
-	return temp;
-
-}
-/* End - SRS-MYSQL-NUMBERICTYPE-UINT4 */
-
-/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-static uint64 
-Num2Mysuint8(Const *con, Oid inputTypeId)
-{
-	uint64		val1 = 0;
-
-	if (inputTypeId == NUMERICOID)
-	{
-		Numeric		uint8maxnum = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-										CStringGetDatum("18446744073709551615"),
-										ObjectIdGetDatum(InvalidOid),
-										Int32GetDatum(-1)));
-
-		if (DatumGetBool(DirectFunctionCall2(
-			numeric_gt, NumericGetDatum(con->constvalue), NumericGetDatum(uint8maxnum))))
-		{
-			ereport(WARNING, (errmsg("integer unsigned out of range")));
-			return PG_UINT64_MAX;
-		}
-		if (DatumGetBool(DirectFunctionCall2(
-				numeric_lt, NumericGetDatum(con->constvalue), NumericGetDatum(int64_to_numeric(0)))))
-		{
-			ereport(WARNING, (errmsg("integer unsigned out of range")));
-			return 0;
-		}
-
-		val1 = DatumGetInt64(DirectFunctionCall1(numeric_uint8, NumericGetDatum(con->constvalue)));
-
-		if (val1 < 0 || val1 > PG_UINT64_MAX)
-		{
-			ereport(WARNING, (errmsg("integer unsigned out of range")));
-			val1 = val1 < 0 ? 0 : PG_UINT64_MAX;
-		}
-	}
-	else
-	{
-		int64 tempval = con->constvalue;
-		val1 = (uint64)tempval;
-	}
-	return val1;
-}
-/* End - SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
 /*
  * coerce_type()
@@ -2467,6 +2197,20 @@ coerce_type(ParseState *pstate, Node *node,
 	Node	   *result;
 	CoercionPathType pathtype;
 	Oid			funcId;
+	bool 		is_insert = false;
+
+	if (MYS_PARSER == compatible_db)
+	{
+		/* Begin - SRS-MYSQL-HEX-LITERAL */
+		if ((pstate) && 
+			((pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
+			 (pstate->p_isupdate || pstate->p_is_insert || pstate->p_createastmt || 
+			  pstate->p_cook_default || pstate->p_alter_column_type)))
+		{
+			is_insert = true;
+		}
+		/* End - SRS-MYSQL-HEX-LITERAL */
+	}
 
 	if (targetTypeId == inputTypeId ||
 		node == NULL)
@@ -2478,8 +2222,8 @@ coerce_type(ParseState *pstate, Node *node,
 			if (COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
 			{
 				elog(ERROR,
-					"You have an error in your SQL syntax;"
-					"check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
+					 "You have an error in your SQL syntax;"
+					 "check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
 			}
 			if ((targetTypeId == MYSDATETIMESOID || targetTypeId == MYSTIMESTAMPSOID || targetTypeId == MYSTIMESOID) &&
 				targetTypeMod != -1 && COERCION_EXPLICIT == ccontext)
@@ -2564,110 +2308,16 @@ coerce_type(ParseState *pstate, Node *node,
 
 	if (MYS_PARSER == compatible_db)
 	{
-		bool 	is_insert = false;
-
-		if ((pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
-			(pstate && (pstate->p_is_insert || pstate->p_myscreateastmt)))
-		{
-			is_insert = true;
-		}
-
-		if (COERCION_EXPLICIT == ccontext && IsA(node, Const) &&
-			(targetTypeId == UINT1OID || targetTypeId == UINT2OID || 
-			 targetTypeId == UINT3OID || targetTypeId == UINT4OID || targetTypeId == UINT8OID))
-		{
-			if (inputTypeId == UNKNOWNOID)
-			{
-				/*
-				 * use cast(unknown as uint)
-				 * cast does not reised an error, to distinguish the error handling mechanism from the inout function
-				 * preprocessing is performed on the cast
-				 */
-				Type		baseType;
-				uint64		tempvalue = 0;
-
-				Oid			baseTypeId;
-				int32		baseTypeMod;
-				Const	   *con = (Const *) node;
-				Const	   *newcon = makeNode(Const);
-
-				baseTypeMod = targetTypeMod;
-				baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
-				baseType = typeidType(baseTypeId);
-
-				newcon->consttype = baseTypeId;
-				newcon->consttypmod = baseTypeMod;
-				newcon->constcollid = typeTypeCollation(baseType);
-				newcon->constlen = typeLen(baseType);
-				newcon->constbyval = typeByVal(baseType);
-				newcon->constisnull = con->constisnull;
-				newcon->location = con->location;
-
-				tempvalue = Str2Mysuint12348(con, newcon, targetTypeId);
-				newcon->constvalue = UInt32GetDatum(tempvalue);
-
-				result = (Node *) newcon;
-				ReleaseSysCache(baseType);
-				
-				return result;
-			}
-
-			if (inputTypeId == INT4OID || inputTypeId == NUMERICOID ||
-				inputTypeId == INT8OID || inputTypeId == INT2OID)
-			{
-				/*
-				 * use cast(int as uint)
-				 * cast does not reised an error, to distinguish the error handling mechanism from the inout function
-				 * preprocessing is performed on the cast
-				 */
-				Type		baseType;
-				uint64		tempvalue = 0;
-
-				Oid			baseTypeId;
-				int32		baseTypeMod;
-				Const	   *con = (Const *) node;
-				Const	   *newcon = makeNode(Const);
-
-				baseTypeMod = targetTypeMod;
-				baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
-				baseType = typeidType(baseTypeId);
-
-				newcon->consttype = baseTypeId;
-				newcon->consttypmod = baseTypeMod;
-				newcon->constcollid = typeTypeCollation(baseType);
-				newcon->constlen = typeLen(baseType);
-				newcon->constbyval = typeByVal(baseType);
-				newcon->constisnull = con->constisnull;
-				newcon->location = con->location;
-
-				if (targetTypeId == UINT8OID)
-				{
-					tempvalue = Num2Mysuint8(con, inputTypeId);
-					newcon->constvalue = TimeADTGetDatum(tempvalue);
-				}
-				else
-				{
-					tempvalue = Num2Mysuint1234(con, inputTypeId, targetTypeId);
-					newcon->constvalue = Int64GetDatum(tempvalue);
-				}
-
-				result = (Node *) newcon;
-				ReleaseSysCache(baseType);
-				
-				return result;
-			}
-		}
-
 		/**
 		 * Begin - ReqID:SRS-MYSQL-DATETYPE
 		 * When an integer or numeric is inserted as a date type column in mysql,
 		 * type conversion needs to be processed.
 		 */
 		if (IsA(node, Const) &&
-			(inputTypeId == INT4OID ||
-			 inputTypeId == NUMERICOID ||
+			(inputTypeId == INT2OID ||
+			 inputTypeId == INT4OID ||
 			 inputTypeId == INT8OID ||
-			 inputTypeId == INT2OID))
+			 inputTypeId == NUMERICOID))
 		{
 			Oid				baseTypeId;
 			int32			baseTypeMod;
@@ -2929,7 +2579,7 @@ coerce_type(ParseState *pstate, Node *node,
 			* TODO: 
 			*	Perhaps we should add a field to the Const struct instead of relying on -2.
 			*/
-			if (con->location == (-2)) 
+			if (con->location == (-2))
 			{
 				/* date'1990-1-1' input format */
 				if (baseTypeId == ORADATEOID)
@@ -3201,23 +2851,19 @@ coerce_type(ParseState *pstate, Node *node,
 		else if (MYS_PARSER == compatible_db)
 		{
 			bool mysdateflag = false;
-			int is_insert = 0;
 
 			//error:select cast('1.1111' as timestamp);
 			if (con->location != (-2) && COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
 			{
 				elog(ERROR,
-					"You have an error in your SQL syntax;"
-					"check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
+					 "You have an error in your SQL syntax;"
+					 "check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
 			}
 
-			is_insert = (pstate && pstate->parentParseState && pstate->parentParseState->p_is_insert) ||
-						(pstate && (pstate->p_is_insert || pstate->p_myscreateastmt));
-
-			mysdateflag = (baseTypeId == MYSDATEOID  || 
-							baseTypeId == MYSDATETIMEOID || baseTypeId == MYSDATETIMESOID ||
-							baseTypeId == MYSTIMESTAMPOID || baseTypeId == MYSTIMESTAMPSOID ||
-							baseTypeId == MYSTIMEOID || baseTypeId == MYSTIMESOID);
+			mysdateflag = (baseTypeId == MYSDATEOID ||
+						   baseTypeId == MYSDATETIMEOID || baseTypeId == MYSDATETIMESOID ||
+						   baseTypeId == MYSTIMESTAMPOID || baseTypeId == MYSTIMESTAMPSOID ||
+						   baseTypeId == MYSTIMEOID || baseTypeId == MYSTIMESOID);
 
 			/*
 			 * 1. date'1111-11-11'
@@ -3228,53 +2874,53 @@ coerce_type(ParseState *pstate, Node *node,
 				(COERCION_ASSIGNMENT == ccontext || con->location == -2) || 
 				(mysdateflag && is_insert))
 			{
-				switch ( baseTypeId )
+				switch (baseTypeId)
 				{
-					case  MYSDATEOID :
+					case MYSDATEOID:
 					{
-						DateADT		date;
+						DateADT date;
 						date = Str2Mysdate(con, newcon);
 						newcon->constvalue = DateADTGetDatum(date);
 						break;
 					}
-					case  MYSDATETIMEOID :
+					case MYSDATETIMEOID:
 					{
-						TimeADT		datetime;
+						TimeADT datetime;
 						datetime = Str2Mysdatetime(con, newcon);
 						newcon->constvalue = TimeADTGetDatum(datetime);
 						break;
 					}
-					case  MYSDATETIMESOID :
+					case MYSDATETIMESOID:
 					{
-						Datum		datetime;
+						Datum datetime;
 						datetime = Str2Mysdatetimes(con, newcon, targetTypeMod, is_insert);
 						newcon->constvalue = datetime;
 						break;
 					}
-					case  MYSTIMESTAMPOID :
+					case MYSTIMESTAMPOID:
 					{
-						TimeADT		datetime;
+						TimeADT datetime;
 						datetime = Str2Mystimestamp(con, newcon);
 						newcon->constvalue = TimeADTGetDatum(datetime);
 						break;
 					}
-					case  MYSTIMESTAMPSOID :
+					case MYSTIMESTAMPSOID:
 					{
-						Datum		datetime;
+						Datum datetime;
 						datetime = Str2Mystimestamps(con, newcon, targetTypeMod, is_insert);
 						newcon->constvalue = datetime;
 						break;
 					}
-					case  MYSTIMEOID :
+					case MYSTIMEOID:
 					{
-						TimeADT		time;
+						TimeADT time;
 						time = Str2Mystime(con, newcon, is_insert);
 						newcon->constvalue = TimeADTGetDatum(time);
 						break;
 					}
-					case  MYSTIMESOID :
+					case MYSTIMESOID:
 					{
-						Datum		time;
+						Datum time;
 						time = Str2Mystimes(con, newcon, targetTypeMod, is_insert);
 						newcon->constvalue = time;
 						break;
@@ -3283,17 +2929,19 @@ coerce_type(ParseState *pstate, Node *node,
 					default:
 					{
 						/*
-						* We assume here that UNKNOWN's internal representation is the same
-						* as CSTRING.
-						*/
+						 * We assume here that UNKNOWN's internal representation is the same
+						 * as CSTRING.
+						 */
 						if (!con->constisnull)
-							newcon->constvalue = stringTypeDatum(baseType,
-															DatumGetCString(con->constvalue),
-																inputTypeMod);
+							newcon->constvalue = stringTypeDatum_mysql(baseType,
+																 	   DatumGetCString(con->constvalue),
+																	   inputTypeMod, 
+																	   is_insert ? TRANSFORM_FLAG_IN_INSERT : 0);
 						else
-							newcon->constvalue = stringTypeDatum(baseType,
-																NULL,
-																inputTypeMod);
+							newcon->constvalue = stringTypeDatum_mysql(baseType,
+																	   NULL,
+																	   inputTypeMod,
+																	   0);
 
 						break;
 					}
@@ -3307,24 +2955,28 @@ coerce_type(ParseState *pstate, Node *node,
 					baseTypeId == MYSDATEOID)
 				{
 					if (!con->constisnull)
-						newcon->constvalue = stringTypeDatum(baseType,
-														DatumGetCString(con->constvalue),
-															 targetTypeMod);
+						newcon->constvalue = stringTypeDatum_mysql(baseType,
+																   DatumGetCString(con->constvalue),
+																   targetTypeMod, 
+																   0);
 					else
-						newcon->constvalue = stringTypeDatum(baseType,
-															 NULL,
-															targetTypeMod);
+						newcon->constvalue = stringTypeDatum_mysql(baseType,
+																   NULL,
+																   targetTypeMod, 
+																   0);
 				}
 				else
 				{
 					if (!con->constisnull)
-						newcon->constvalue = stringTypeDatum(baseType,
-														DatumGetCString(con->constvalue),
-															 inputTypeMod);
+						newcon->constvalue = stringTypeDatum_mysql(baseType,
+																   DatumGetCString(con->constvalue),
+																   inputTypeMod, 
+																   0);
 					else
-						newcon->constvalue = stringTypeDatum(baseType,
-															 NULL,
-														 	inputTypeMod);
+						newcon->constvalue = stringTypeDatum_mysql(baseType,
+																   NULL,
+																   inputTypeMod, 
+																   0);
 				}
 
 				if (newcon->constvalue == 0 && 
@@ -3340,17 +2992,20 @@ coerce_type(ParseState *pstate, Node *node,
 					con->constisnull = true;
 				}
 			}
+			
 			/* Begin - ReqID:SRS-MYSQL-BITTYPE */
-			if ((baseTypeId == MYSBITOID) && is_insert) 
+			if (baseTypeId == MYSBITOID && is_insert) 
 			{
 				if (!con->constisnull)
-					newcon->constvalue = stringTypeDatum(baseType,
-													DatumGetCString(con->constvalue),
-														baseTypeMod);
+					newcon->constvalue = stringTypeDatum_mysql(baseType,
+															   DatumGetCString(con->constvalue),
+															   baseTypeMod, 
+															   TRANSFORM_FLAG_IN_INSERT);
 				else
-					newcon->constvalue = stringTypeDatum(baseType,
-														NULL,
-														inputTypeMod);
+					newcon->constvalue = stringTypeDatum_mysql(baseType,
+															   NULL,
+															   inputTypeMod,
+															   TRANSFORM_FLAG_IN_INSERT);
 			}
 			/* End - ReqID:SRS-MYSQL-BITTYPE */
 		}
@@ -3362,12 +3017,12 @@ coerce_type(ParseState *pstate, Node *node,
 			 */
 			if (!con->constisnull)
 				newcon->constvalue = stringTypeDatum(baseType,
-												DatumGetCString(con->constvalue),
+													 DatumGetCString(con->constvalue),
 													 inputTypeMod);
 			else
 				newcon->constvalue = stringTypeDatum(baseType,
 													 NULL,
-													inputTypeMod);
+													 inputTypeMod);
 		}
 
 		/* End - ReqID:SRS-MYSQL-DATETYPE */
@@ -3435,10 +3090,10 @@ coerce_type(ParseState *pstate, Node *node,
 		 */
 		VarRef	   *ref = (VarRef *)node;
 		Const	   *tempconst = (Const *)ref->value;
-		Oid 					baseTypeId = getBaseType(inputTypeId);
-		int32			baseTypeMod = targetTypeMod;
-		int32			inputTypeMod;
-		Type			baseType;
+		Oid 		baseTypeId = getBaseType(inputTypeId);
+		int32		baseTypeMod = targetTypeMod;
+		int32		inputTypeMod;
+		Type		baseType;
 		Const	   *newcon = makeNode(Const);
 
 		/*
@@ -3465,20 +3120,22 @@ coerce_type(ParseState *pstate, Node *node,
 		newcon->constisnull = tempconst->constisnull;
 
 		if (!tempconst->constisnull)
-				newcon->constvalue = stringTypeDatum(baseType,
-													 DatumGetCString(tempconst->constvalue),
-													 inputTypeMod);
+			newcon->constvalue = stringTypeDatum_mysql(baseType,
+													   DatumGetCString(tempconst->constvalue),
+													   inputTypeMod, 
+													   0);
 		else
-				newcon->constvalue = stringTypeDatum(baseType,
-													 NULL,
-													 inputTypeMod);
+			newcon->constvalue = stringTypeDatum_mysql(baseType,
+													   NULL,
+													   inputTypeMod, 
+													   0);
 
 		if (baseTypeId != targetTypeId)
-				result = coerce_to_domain((Node *)newcon,
-										  baseTypeId, baseTypeMod,
-										  targetTypeId,
-										  ccontext, cformat, location,
-										  false);
+			result = coerce_to_domain((Node *)newcon,
+									  baseTypeId, baseTypeMod,
+									  targetTypeId,
+									  ccontext, cformat, location,
+									  false);
 		ReleaseSysCache(baseType);
 		ref->value = newcon;
 		return result;
@@ -3556,8 +3213,9 @@ coerce_type(ParseState *pstate, Node *node,
 			baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
 
 			result = build_coercion_expression(node, pathtype, funcId,
-											baseTypeId, baseTypeMod,
-											ccontext, cformat, location);
+											   baseTypeId, baseTypeMod,
+											   ccontext, cformat, location,
+											   is_insert ? TRANSFORM_FLAG_IN_INSERT : 0);
 
 			/*
 			 * If domain, coerce to the domain type and relabel with domain
@@ -3806,26 +3464,26 @@ can_coerce_type(int nargs, const Oid *input_typeids, const Oid *target_typeids,
 		if (typeInheritsFrom(inputTypeId, targetTypeId)
 			|| typeIsOfTypedTable(inputTypeId, targetTypeId))
 			continue;
-
-		/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+		
 		if (MYS_PARSER == compatible_db)
 		{
 			/*
+			 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
 			 * if target type is enum, accept
 			 */
 			if (type_is_enum(targetTypeId))
 				continue;
-		}
-		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+			/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
-		/* Begin - BUG#5392 */
-		if (MYS_PARSER == compatible_db && inputTypeId == BOOLOID && 
-			(targetTypeId == INT4OID || targetTypeId == MEDIUMINTOID))
-		{
-			/* Coerce a bool type to int*/
-			continue;
-		}
-		/* End - BUG#5392 */
+			/* Begin - BUG#5392 */
+			if (inputTypeId == BOOLOID && 
+				(targetTypeId == INT4OID || targetTypeId == MEDIUMINTOID))
+			{
+				/* Coerce a bool type to int*/
+				continue;
+			}
+			/* End - BUG#5392 */
+		}		
 
 		/*
 		 * Else, cannot coerce at this argument position
@@ -3969,7 +3627,7 @@ coerce_type_typmod(Node *node, Oid targetTypeId, int32 targetTypMod,
 	{
 		node = build_coercion_expression(node, pathtype, funcId,
 										 targetTypeId, targetTypMod,
-										 ccontext, cformat, location);
+										 ccontext, cformat, location, 0);
 	}
 	else
 	{
@@ -4030,7 +3688,7 @@ build_coercion_expression(Node *node,
 						  Oid funcId,
 						  Oid targetTypeId, int32 targetTypMod,
 						  CoercionContext ccontext, CoercionForm cformat,
-						  int location)
+						  int location, int64 flag)
 {
 	int			nargs = 0;
 
@@ -4054,12 +3712,15 @@ build_coercion_expression(Node *node,
 		Assert(!procstruct->proretset);
 		Assert(procstruct->prokind == PROKIND_FUNCTION);
 		nargs = procstruct->pronargs;
-		Assert(nargs >= 1 && nargs <= 3);
+		
+		Assert(nargs >= 1 && nargs <= 4 /* SRS-MYSQL-HEX-LITERAL */);
 
 		/* Assert(procstruct->proargtypes.values[0] == exprType(node)); */
-		Assert(nargs < 2 || procstruct->proargtypes.values[1] == INT4OID || 
-			   procstruct->proargtypes.values[1] == OIDOID /* ReqID:SRS-MYSQL-ENUMTYPE */);
+		Assert(nargs < 2 || procstruct->proargtypes.values[1] == INT4OID 
+						 || procstruct->proargtypes.values[1] == OIDOID /* ReqID:SRS-MYSQL-ENUMTYPE */);
 		Assert(nargs < 3 || procstruct->proargtypes.values[2] == BOOLOID);
+		Assert(nargs < 4 || procstruct->proargtypes.values[3] == INT8OID); /* SRS-MYSQL-HEX-LITERAL */
+		
 
 		ReleaseSysCache(tp);
 	}
@@ -4105,7 +3766,7 @@ build_coercion_expression(Node *node,
 			args = lappend(args, cons);
 		}
 
-		if (nargs == 3)
+		if (nargs >= 3)
 		{
 			/* Pass it a boolean isExplicit parameter, too */
 			cons = makeConst(BOOLOID,
@@ -4113,6 +3774,25 @@ build_coercion_expression(Node *node,
 							 InvalidOid,
 							 sizeof(bool),
 							 BoolGetDatum(ccontext == COERCION_EXPLICIT),
+							 false,
+							 true);
+
+			args = lappend(args, cons);
+		}
+
+		/**
+		 * Add parameter used for MySQL compatibility mode to
+		 * distinguish whether the cast function is called in
+		 * INSERT/UPDATE context.
+		 */
+		if (nargs == 4)
+		{
+			/* Pass it a bigint flag parameter, too */
+			cons = makeConst(INT8OID,
+							 -1,
+							 InvalidOid,
+							 sizeof(int64),
+							 Int64GetDatum(flag),
 							 false,
 							 true);
 
@@ -4196,6 +3876,10 @@ build_coercion_expression(Node *node,
 		/* resultcollid will be set by parse_collate.c */
 		iocoerce->coerceformat = cformat;
 		iocoerce->location = location;
+
+		/* SRS-MYSQL-HEX-LITERAL */
+		if (compatible_db == MYS_PARSER)
+			iocoerce->flag = flag;
 
 		return (Node *) iocoerce;
 	}

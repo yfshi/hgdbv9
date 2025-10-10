@@ -58,6 +58,7 @@ city|f
 dept|f
 dupindexcols|t
 equipment_r|f
+extra_wide_table|f
 fast_emp4000|t
 firstparent|f
 func_index_heap|t

@@ -53,7 +53,7 @@ SET typsend=(SELECT oid FROM pg_proc WHERE proname='mysdate_send')
 WHERE oid = 9281;
 
 ---------- Compatible MySQL Cast ----------
-CREATE FUNCTION ivymy.int_mysdate(pg_catalog.int8)
+CREATE FUNCTION ivymy.int_mysdate(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.mysdate
 AS 'MODULE_PATHNAME','int_mysdate'
 LANGUAGE C
@@ -61,7 +61,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mysdate(pg_catalog.int4)
+CREATE FUNCTION ivymy.int_mysdate(pg_catalog.int4, int, bool, int8)
 RETURNS ivymy.mysdate
 AS 'MODULE_PATHNAME','int_mysdate'
 LANGUAGE C
@@ -69,7 +69,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mysdate(pg_catalog.int2)
+CREATE FUNCTION ivymy.int_mysdate(pg_catalog.int2, int, bool, int8)
 RETURNS ivymy.mysdate
 AS 'MODULE_PATHNAME','int_mysdate'
 LANGUAGE C
@@ -86,15 +86,15 @@ STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.mysdate)
-WITH FUNCTION ivymy.int_mysdate(pg_catalog.int8)
+WITH FUNCTION ivymy.int_mysdate(pg_catalog.int8, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.mysdate)
-WITH FUNCTION ivymy.int_mysdate(pg_catalog.int4)
+WITH FUNCTION ivymy.int_mysdate(pg_catalog.int4, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int2 AS ivymy.mysdate)
-WITH FUNCTION ivymy.int_mysdate(pg_catalog.int2)
+WITH FUNCTION ivymy.int_mysdate(pg_catalog.int2, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.numeric AS ivymy.mysdate)
@@ -1702,82 +1702,10 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function or
-CREATE FUNCTION ivymy.mysdate_or(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_ordate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdate_or(ivymy.mysdate, pg_catalog.int2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_orint2'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdate_or(ivymy.mysdate, pg_catalog.int4)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_orint4'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdate_or(ivymy.mysdate, pg_catalog.int8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_orint8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdate_or(ivymy.mysdate, pg_catalog.numeric)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_ornum'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdate_or(pg_catalog.int2, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int2_ormysdate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdate_or(pg_catalog.int4, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int4_ormysdate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdate_or(pg_catalog.int8, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int8_ormysdate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdate_or(pg_catalog.numeric, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','num_ormysdate'
-LANGUAGE C
+CREATE FUNCTION ivymy.mysdate_cat(ivymy.mysdate, ivymy.mysdate)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE
@@ -3099,60 +3027,12 @@ CREATE OPERATOR && (
 
 --operator ||
 CREATE OPERATOR || (
-	procedure = ivymy.mysdate_or,
+	procedure = ivymy.mysdate_cat,
 	leftarg = ivymy.mysdate,
 	rightarg = ivymy.mysdate
 );
 
-CREATE OPERATOR || (
-	procedure = ivymy.mysdate_or,
-	leftarg = ivymy.mysdate,
-	rightarg = pg_catalog.int2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdate_or,
-	leftarg = ivymy.mysdate,
-	rightarg = pg_catalog.int4
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdate_or,
-	leftarg = ivymy.mysdate,
-	rightarg = pg_catalog.int8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdate_or,
-	leftarg = ivymy.mysdate,
-	rightarg = pg_catalog.numeric
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdate_or,
-	leftarg = pg_catalog.int2,
-	rightarg = ivymy.mysdate
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdate_or,
-	leftarg = pg_catalog.int4,
-	rightarg = ivymy.mysdate
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdate_or,
-	leftarg = pg_catalog.int8,
-	rightarg = ivymy.mysdate
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdate_or,
-	leftarg = pg_catalog.numeric,
-	rightarg = ivymy.mysdate
-);
-
---operator ||
+--operator !
 CREATE OPERATOR ! (
 	procedure = ivymy.mysdate_invert,
 	rightarg = ivymy.mysdate
@@ -3365,7 +3245,7 @@ SET typsend=(SELECT oid FROM pg_proc WHERE proname='mysdatetime_send')
 WHERE oid = 9283;
 
 ---------- Compatible MySQL Cast ----------
-CREATE FUNCTION ivymy.int_mysdatetime(pg_catalog.int8)
+CREATE FUNCTION ivymy.int_mysdatetime(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.mysdatetime
 AS 'MODULE_PATHNAME','int_mysdatetime'
 LANGUAGE C
@@ -3373,7 +3253,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mysdatetime(pg_catalog.int4)
+CREATE FUNCTION ivymy.int_mysdatetime(pg_catalog.int4, int, bool, int8)
 RETURNS ivymy.mysdatetime
 AS 'MODULE_PATHNAME','int_mysdatetime'
 LANGUAGE C
@@ -3381,7 +3261,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mysdatetime(pg_catalog.int2)
+CREATE FUNCTION ivymy.int_mysdatetime(pg_catalog.int2, int, bool, int8)
 RETURNS ivymy.mysdatetime
 AS 'MODULE_PATHNAME','int_mysdatetime'
 LANGUAGE C
@@ -3389,7 +3269,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.numeric_mysdatetime(pg_catalog.numeric)
+CREATE FUNCTION ivymy.numeric_mysdatetime(pg_catalog.numeric, int, bool, int8)
 RETURNS ivymy.mysdatetime
 AS 'MODULE_PATHNAME','numeric_mysdatetime'
 LANGUAGE C
@@ -3398,19 +3278,19 @@ STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.mysdatetime)
-WITH FUNCTION ivymy.int_mysdatetime(pg_catalog.int8)
+WITH FUNCTION ivymy.int_mysdatetime(pg_catalog.int8, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.mysdatetime)
-WITH FUNCTION ivymy.int_mysdatetime(pg_catalog.int4)
+WITH FUNCTION ivymy.int_mysdatetime(pg_catalog.int4, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int2 AS ivymy.mysdatetime)
-WITH FUNCTION ivymy.int_mysdatetime(pg_catalog.int2)
+WITH FUNCTION ivymy.int_mysdatetime(pg_catalog.int2, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.numeric AS ivymy.mysdatetime)
-WITH FUNCTION ivymy.numeric_mysdatetime(pg_catalog.numeric)
+WITH FUNCTION ivymy.numeric_mysdatetime(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
 /* CREATE CAST */
@@ -5021,86 +4901,15 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function or
-CREATE FUNCTION ivymy.mysdatetime_or(ivymy.mysdatetime, ivymy.mysdatetime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdatetime_ordatetime'
-LANGUAGE C
+CREATE FUNCTION ivymy.mysdatetime_cat(ivymy.mysdatetime, ivymy.mysdatetime)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysdatetime_or(ivymy.mysdatetime, pg_catalog.int2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdatetime_orint2'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetime_or(ivymy.mysdatetime, pg_catalog.int4)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdatetime_orint4'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetime_or(ivymy.mysdatetime, pg_catalog.int8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdatetime_orint8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetime_or(ivymy.mysdatetime, pg_catalog.numeric)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdatetime_ornum'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetime_or(pg_catalog.int2, ivymy.mysdatetime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int2_ormysdatetime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetime_or(pg_catalog.int4, ivymy.mysdatetime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int4_ormysdatetime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetime_or(pg_catalog.int8, ivymy.mysdatetime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int8_ormysdatetime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetime_or(pg_catalog.numeric, ivymy.mysdatetime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','num_ormysdatetime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
 
 ----operator invert !
 CREATE FUNCTION ivymy.mysdatetime_invert(ivymy.mysdatetime)
@@ -6419,60 +6228,12 @@ CREATE OPERATOR && (
 
 --operator ||
 CREATE OPERATOR || (
-	procedure = ivymy.mysdatetime_or,
+	procedure = ivymy.mysdatetime_cat,
 	leftarg = ivymy.mysdatetime,
 	rightarg = ivymy.mysdatetime
 );
 
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetime_or,
-	leftarg = ivymy.mysdatetime,
-	rightarg = pg_catalog.int2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetime_or,
-	leftarg = ivymy.mysdatetime,
-	rightarg = pg_catalog.int4
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetime_or,
-	leftarg = ivymy.mysdatetime,
-	rightarg = pg_catalog.int8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetime_or,
-	leftarg = ivymy.mysdatetime,
-	rightarg = pg_catalog.numeric
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetime_or,
-	leftarg = pg_catalog.int2,
-	rightarg = ivymy.mysdatetime
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetime_or,
-	leftarg = pg_catalog.int4,
-	rightarg = ivymy.mysdatetime
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetime_or,
-	leftarg = pg_catalog.int8,
-	rightarg = ivymy.mysdatetime
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetime_or,
-	leftarg = pg_catalog.numeric,
-	rightarg = ivymy.mysdatetime
-);
-
---operator ||
+--operator !
 CREATE OPERATOR ! (
 	procedure = ivymy.mysdatetime_invert,
 	rightarg = ivymy.mysdatetime
@@ -6722,7 +6483,7 @@ UPDATE pg_type
 SET typmodout=(SELECT oid FROM pg_proc WHERE proname='mysdatetimes_typmodout')
 WHERE oid = 9286;
 ---------- Compatible MySQL Cast ----------
-CREATE FUNCTION ivymy.int_mysdatetimes(pg_catalog.int8, integer)
+CREATE FUNCTION ivymy.int_mysdatetimes(pg_catalog.int8, integer, bool, int8)
 RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','int_mysdatetimes'
 LANGUAGE C
@@ -6730,7 +6491,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mysdatetimes(pg_catalog.int4, integer)
+CREATE FUNCTION ivymy.int_mysdatetimes(pg_catalog.int4, integer, bool, int8)
 RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','int_mysdatetimes'
 LANGUAGE C
@@ -6738,7 +6499,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mysdatetimes(pg_catalog.int2, integer)
+CREATE FUNCTION ivymy.int_mysdatetimes(pg_catalog.int2, integer, bool, int8)
 RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','int_mysdatetimes'
 LANGUAGE C
@@ -6746,7 +6507,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.numeric_mysdatetimes(pg_catalog.numeric, integer)
+CREATE FUNCTION ivymy.numeric_mysdatetimes(pg_catalog.numeric, integer, bool, int8)
 RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','numeric_mysdatetimes'
 LANGUAGE C
@@ -6755,19 +6516,19 @@ STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.mysdatetimes)
-WITH FUNCTION ivymy.int_mysdatetimes(pg_catalog.int8, integer)
+WITH FUNCTION ivymy.int_mysdatetimes(pg_catalog.int8, integer, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.mysdatetimes)
-WITH FUNCTION ivymy.int_mysdatetimes(pg_catalog.int4, integer)
+WITH FUNCTION ivymy.int_mysdatetimes(pg_catalog.int4, integer, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int2 AS ivymy.mysdatetimes)
-WITH FUNCTION ivymy.int_mysdatetimes(pg_catalog.int2, integer)
+WITH FUNCTION ivymy.int_mysdatetimes(pg_catalog.int2, integer, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.numeric AS ivymy.mysdatetimes)
-WITH FUNCTION ivymy.numeric_mysdatetimes(pg_catalog.numeric, integer)
+WITH FUNCTION ivymy.numeric_mysdatetimes(pg_catalog.numeric, integer, bool, int8)
 AS ASSIGNMENT;
 
 /* CREATE CAST */
@@ -8402,82 +8163,10 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function or
-CREATE FUNCTION ivymy.mysdatetimes_or(ivymy.mysdatetimes, ivymy.mysdatetimes)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdatetimes_ordatetime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetimes_or(ivymy.mysdatetimes, pg_catalog.int2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdatetimes_orint2'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetimes_or(ivymy.mysdatetimes, pg_catalog.int4)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdatetimes_orint4'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetimes_or(ivymy.mysdatetimes, pg_catalog.int8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdatetimes_orint8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetimes_or(ivymy.mysdatetimes, pg_catalog.numeric)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdatetimes_ornum'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetimes_or(pg_catalog.int2, ivymy.mysdatetimes)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int2_ormysdatetimes'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetimes_or(pg_catalog.int4, ivymy.mysdatetimes)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int4_ormysdatetimes'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetimes_or(pg_catalog.int8, ivymy.mysdatetimes)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int8_ormysdatetimes'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysdatetimes_or(pg_catalog.numeric, ivymy.mysdatetimes)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','num_ormysdatetimes'
-LANGUAGE C
+CREATE FUNCTION ivymy.mysdatetimes_cat(ivymy.mysdatetimes, ivymy.mysdatetimes)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE
@@ -9800,60 +9489,12 @@ CREATE OPERATOR && (
 
 --operator ||
 CREATE OPERATOR || (
-	procedure = ivymy.mysdatetimes_or,
+	procedure = ivymy.mysdatetimes_cat,
 	leftarg = ivymy.mysdatetimes,
 	rightarg = ivymy.mysdatetimes
 );
 
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetimes_or,
-	leftarg = ivymy.mysdatetimes,
-	rightarg = pg_catalog.int2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetimes_or,
-	leftarg = ivymy.mysdatetimes,
-	rightarg = pg_catalog.int4
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetimes_or,
-	leftarg = ivymy.mysdatetimes,
-	rightarg = pg_catalog.int8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetimes_or,
-	leftarg = ivymy.mysdatetimes,
-	rightarg = pg_catalog.numeric
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetimes_or,
-	leftarg = pg_catalog.int2,
-	rightarg = ivymy.mysdatetimes
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetimes_or,
-	leftarg = pg_catalog.int4,
-	rightarg = ivymy.mysdatetimes
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetimes_or,
-	leftarg = pg_catalog.int8,
-	rightarg = ivymy.mysdatetimes
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysdatetimes_or,
-	leftarg = pg_catalog.numeric,
-	rightarg = ivymy.mysdatetimes
-);
-
---operator ||
+--operator !
 CREATE OPERATOR ! (
 	procedure = ivymy.mysdatetimes_invert,
 	rightarg = ivymy.mysdatetimes
@@ -10095,7 +9736,7 @@ SET typsend=(SELECT oid FROM pg_proc WHERE proname='mystimestamp_send')
 WHERE oid = 9287;
 
 ---------- Compatible MySQL Cast ----------
-CREATE FUNCTION ivymy.int_mystimestamp(pg_catalog.int8)
+CREATE FUNCTION ivymy.int_mystimestamp(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.mystimestamp
 AS 'MODULE_PATHNAME','int_mystimestamp'
 LANGUAGE C
@@ -10103,7 +9744,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mystimestamp(pg_catalog.int4)
+CREATE FUNCTION ivymy.int_mystimestamp(pg_catalog.int4, int, bool, int8)
 RETURNS ivymy.mystimestamp
 AS 'MODULE_PATHNAME','int_mystimestamp'
 LANGUAGE C
@@ -10111,7 +9752,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mystimestamp(pg_catalog.int2)
+CREATE FUNCTION ivymy.int_mystimestamp(pg_catalog.int2, int, bool, int8)
 RETURNS ivymy.mystimestamp
 AS 'MODULE_PATHNAME','int_mystimestamp'
 LANGUAGE C
@@ -10119,7 +9760,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.numeric_mystimestamp(pg_catalog.numeric)
+CREATE FUNCTION ivymy.numeric_mystimestamp(pg_catalog.numeric, int, bool, int8)
 RETURNS ivymy.mystimestamp
 AS 'MODULE_PATHNAME','numeric_mystimestamp'
 LANGUAGE C
@@ -10128,19 +9769,19 @@ STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.mystimestamp)
-WITH FUNCTION ivymy.int_mystimestamp(pg_catalog.int8)
+WITH FUNCTION ivymy.int_mystimestamp(pg_catalog.int8, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.mystimestamp)
-WITH FUNCTION ivymy.int_mystimestamp(pg_catalog.int4)
+WITH FUNCTION ivymy.int_mystimestamp(pg_catalog.int4, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int2 AS ivymy.mystimestamp)
-WITH FUNCTION ivymy.int_mystimestamp(pg_catalog.int2)
+WITH FUNCTION ivymy.int_mystimestamp(pg_catalog.int2, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.numeric AS ivymy.mystimestamp)
-WITH FUNCTION ivymy.numeric_mystimestamp(pg_catalog.numeric)
+WITH FUNCTION ivymy.numeric_mystimestamp(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
 /* CREATE CAST */
@@ -11750,88 +11391,6 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
-----function or
-CREATE FUNCTION ivymy.mystimestamp_or(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_ortimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamp_or(ivymy.mystimestamp, pg_catalog.int2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_orint2'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamp_or(ivymy.mystimestamp, pg_catalog.int4)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_orint4'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamp_or(ivymy.mystimestamp, pg_catalog.int8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_orint8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamp_or(ivymy.mystimestamp, pg_catalog.numeric)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_ornum'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamp_or(pg_catalog.int2, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int2_ormystimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamp_or(pg_catalog.int4, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int4_ormystimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamp_or(pg_catalog.int8, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int8_ormystimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamp_or(pg_catalog.numeric, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','num_ormystimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
 ----operator invert !
 CREATE FUNCTION ivymy.mystimestamp_invert(ivymy.mystimestamp)
 RETURNS pg_catalog.int8
@@ -13147,62 +12706,7 @@ CREATE OPERATOR && (
 	rightarg = ivymy.mystimestamp
 );
 
---operator ||
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamp_or,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamp_or,
-	leftarg = ivymy.mystimestamp,
-	rightarg = pg_catalog.int2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamp_or,
-	leftarg = ivymy.mystimestamp,
-	rightarg = pg_catalog.int4
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamp_or,
-	leftarg = ivymy.mystimestamp,
-	rightarg = pg_catalog.int8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamp_or,
-	leftarg = ivymy.mystimestamp,
-	rightarg = pg_catalog.numeric
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamp_or,
-	leftarg = pg_catalog.int2,
-	rightarg = ivymy.mystimestamp
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamp_or,
-	leftarg = pg_catalog.int4,
-	rightarg = ivymy.mystimestamp
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamp_or,
-	leftarg = pg_catalog.int8,
-	rightarg = ivymy.mystimestamp
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamp_or,
-	leftarg = pg_catalog.numeric,
-	rightarg = ivymy.mystimestamp
-);
-
---operator ||
+--operator !
 CREATE OPERATOR ! (
 	procedure = ivymy.mystimestamp_invert,
 	rightarg = ivymy.mystimestamp
@@ -13453,7 +12957,7 @@ SET typmodout=(SELECT oid FROM pg_proc WHERE proname='mystimestamps_typmodout')
 WHERE oid = 9290;
 
 ---------- Compatible MySQL Cast ----------
-CREATE FUNCTION ivymy.int_mystimestamps(pg_catalog.int8)
+CREATE FUNCTION ivymy.int_mystimestamps(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.mystimestamps
 AS 'MODULE_PATHNAME','int_mystimestamps'
 LANGUAGE C
@@ -13461,7 +12965,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mystimestamps(pg_catalog.int4)
+CREATE FUNCTION ivymy.int_mystimestamps(pg_catalog.int4, int, bool, int8)
 RETURNS ivymy.mystimestamps
 AS 'MODULE_PATHNAME','int_mystimestamps'
 LANGUAGE C
@@ -13469,7 +12973,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mystimestamps(pg_catalog.int2)
+CREATE FUNCTION ivymy.int_mystimestamps(pg_catalog.int2, int, bool, int8)
 RETURNS ivymy.mystimestamps
 AS 'MODULE_PATHNAME','int_mystimestamps'
 LANGUAGE C
@@ -13477,7 +12981,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.numeric_mystimestamps(pg_catalog.numeric)
+CREATE FUNCTION ivymy.numeric_mystimestamps(pg_catalog.numeric, int, bool, int8)
 RETURNS ivymy.mystimestamps
 AS 'MODULE_PATHNAME','numeric_mystimestamps'
 LANGUAGE C
@@ -13486,19 +12990,19 @@ STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.mystimestamps)
-WITH FUNCTION ivymy.int_mystimestamps(pg_catalog.int8)
+WITH FUNCTION ivymy.int_mystimestamps(pg_catalog.int8, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.mystimestamps)
-WITH FUNCTION ivymy.int_mystimestamps(pg_catalog.int4)
+WITH FUNCTION ivymy.int_mystimestamps(pg_catalog.int4, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int2 AS ivymy.mystimestamps)
-WITH FUNCTION ivymy.int_mystimestamps(pg_catalog.int2)
+WITH FUNCTION ivymy.int_mystimestamps(pg_catalog.int2, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.numeric AS ivymy.mystimestamps)
-WITH FUNCTION ivymy.numeric_mystimestamps(pg_catalog.numeric)
+WITH FUNCTION ivymy.numeric_mystimestamps(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
 /* CREATE CAST */
@@ -15133,82 +14637,10 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function or
-CREATE FUNCTION ivymy.mystimestamps_or(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_ortimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamps_or(ivymy.mystimestamps, pg_catalog.int2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_orint2'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamps_or(ivymy.mystimestamps, pg_catalog.int4)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_orint4'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamps_or(ivymy.mystimestamps, pg_catalog.int8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_orint8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamps_or(ivymy.mystimestamps, pg_catalog.numeric)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_ornum'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamps_or(pg_catalog.int2, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int2_ormystimestamps'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamps_or(pg_catalog.int4, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int4_ormystimestamps'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamps_or(pg_catalog.int8, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int8_ormystimestamps'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimestamps_or(pg_catalog.numeric, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','num_ormystimestamps'
-LANGUAGE C
+CREATE FUNCTION ivymy.mystimestamps_cat(ivymy.mystimestamps, ivymy.mystimestamps)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE
@@ -16531,65 +15963,16 @@ CREATE OPERATOR && (
 
 --operator ||
 CREATE OPERATOR || (
-	procedure = ivymy.mystimestamps_or,
+	procedure = ivymy.mystimestamps_cat,
 	leftarg = ivymy.mystimestamps,
 	rightarg = ivymy.mystimestamps
 );
 
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamps_or,
-	leftarg = ivymy.mystimestamps,
-	rightarg = pg_catalog.int2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamps_or,
-	leftarg = ivymy.mystimestamps,
-	rightarg = pg_catalog.int4
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamps_or,
-	leftarg = ivymy.mystimestamps,
-	rightarg = pg_catalog.int8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamps_or,
-	leftarg = ivymy.mystimestamps,
-	rightarg = pg_catalog.numeric
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamps_or,
-	leftarg = pg_catalog.int2,
-	rightarg = ivymy.mystimestamps
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamps_or,
-	leftarg = pg_catalog.int4,
-	rightarg = ivymy.mystimestamps
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamps_or,
-	leftarg = pg_catalog.int8,
-	rightarg = ivymy.mystimestamps
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimestamps_or,
-	leftarg = pg_catalog.numeric,
-	rightarg = ivymy.mystimestamps
-);
-
---operator ||
+--operator !
 CREATE OPERATOR ! (
 	procedure = ivymy.mystimestamps_invert,
 	rightarg = ivymy.mystimestamps
 );
-
 
 ----operator ~~ like
 CREATE  OR REPLACE FUNCTION ivymy.mystimestamps_like(ivymy.mystimestamps, ivymy.mystimestamps)
@@ -16826,7 +16209,7 @@ SET typsend=(SELECT oid FROM pg_proc WHERE proname='mystime_send')
 WHERE oid = 9291;
 
 ---------- Compatible MySQL Cast ----------
-CREATE FUNCTION ivymy.int_mystime(pg_catalog.int8)
+CREATE FUNCTION ivymy.int_mystime(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.mystime
 AS 'MODULE_PATHNAME','int_mystime'
 LANGUAGE C
@@ -16834,7 +16217,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mystime(pg_catalog.int4)
+CREATE FUNCTION ivymy.int_mystime(pg_catalog.int4, int, bool, int8)
 RETURNS ivymy.mystime
 AS 'MODULE_PATHNAME','int_mystime'
 LANGUAGE C
@@ -16842,7 +16225,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mystime(pg_catalog.int2)
+CREATE FUNCTION ivymy.int_mystime(pg_catalog.int2, int, bool, int8)
 RETURNS ivymy.mystime
 AS 'MODULE_PATHNAME','int_mystime'
 LANGUAGE C
@@ -16850,7 +16233,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.numeric_mystime(pg_catalog.numeric)
+CREATE FUNCTION ivymy.numeric_mystime(pg_catalog.numeric, int, bool, int8)
 RETURNS ivymy.mystime
 AS 'MODULE_PATHNAME','numeric_mystime'
 LANGUAGE C
@@ -16859,19 +16242,19 @@ STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.mystime)
-WITH FUNCTION ivymy.int_mystime(pg_catalog.int8)
+WITH FUNCTION ivymy.int_mystime(pg_catalog.int8, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.mystime)
-WITH FUNCTION ivymy.int_mystime(pg_catalog.int4)
+WITH FUNCTION ivymy.int_mystime(pg_catalog.int4, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int2 AS ivymy.mystime)
-WITH FUNCTION ivymy.int_mystime(pg_catalog.int2)
+WITH FUNCTION ivymy.int_mystime(pg_catalog.int2, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.numeric AS ivymy.mystime)
-WITH FUNCTION ivymy.numeric_mystime(pg_catalog.numeric)
+WITH FUNCTION ivymy.numeric_mystime(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE FUNCTION ivymy.mystime_numeric(ivymy.mystime)
@@ -16899,6 +16282,7 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
 CREATE CAST (pg_catalog.date AS ivymy.mystime)
 WITH FUNCTION ivymy.pgdate_mystime(pg_catalog.date)
 AS ASSIGNMENT;
@@ -16910,6 +16294,7 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
 CREATE CAST (pg_catalog.timestamp AS ivymy.mystime)
 WITH FUNCTION ivymy.pgtimestamp_mystime(pg_catalog.timestamp)
 AS ASSIGNMENT;
@@ -16921,6 +16306,7 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
 CREATE CAST (pg_catalog.timestamptz AS ivymy.mystime)
 WITH FUNCTION ivymy.pgtimestamptz_mystime(pg_catalog.timestamptz)
 AS ASSIGNMENT;
@@ -16928,6 +16314,7 @@ AS ASSIGNMENT;
 CREATE CAST (pg_catalog.time AS ivymy.mystime)
 WITH INOUT
 AS ASSIGNMENT;
+
 /* CREATE OPERATOR */
 ----function eq
 CREATE FUNCTION ivymy.mystime_eq(ivymy.mystime, ivymy.mystime)
@@ -18510,82 +17897,10 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function or
-CREATE FUNCTION ivymy.mystime_or(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_ortime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystime_or(ivymy.mystime, pg_catalog.int2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_orint2'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystime_or(ivymy.mystime, pg_catalog.int4)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_orint4'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystime_or(ivymy.mystime, pg_catalog.int8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_orint8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystime_or(ivymy.mystime, pg_catalog.numeric)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_ornum'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystime_or(pg_catalog.int2, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int2_ormystime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystime_or(pg_catalog.int4, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int4_ormystime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystime_or(pg_catalog.int8, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int8_ormystime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystime_or(pg_catalog.numeric, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','num_ormystime'
-LANGUAGE C
+CREATE FUNCTION ivymy.mystime_cat(ivymy.mystime, ivymy.mystime)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE
@@ -19908,60 +19223,12 @@ CREATE OPERATOR && (
 
 --operator ||
 CREATE OPERATOR || (
-	procedure = ivymy.mystime_or,
+	procedure = ivymy.mystime_cat,
 	leftarg = ivymy.mystime,
 	rightarg = ivymy.mystime
 );
 
-CREATE OPERATOR || (
-	procedure = ivymy.mystime_or,
-	leftarg = ivymy.mystime,
-	rightarg = pg_catalog.int2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystime_or,
-	leftarg = ivymy.mystime,
-	rightarg = pg_catalog.int4
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystime_or,
-	leftarg = ivymy.mystime,
-	rightarg = pg_catalog.int8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystime_or,
-	leftarg = ivymy.mystime,
-	rightarg = pg_catalog.numeric
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystime_or,
-	leftarg = pg_catalog.int2,
-	rightarg = ivymy.mystime
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystime_or,
-	leftarg = pg_catalog.int4,
-	rightarg = ivymy.mystime
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystime_or,
-	leftarg = pg_catalog.int8,
-	rightarg = ivymy.mystime
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystime_or,
-	leftarg = pg_catalog.numeric,
-	rightarg = ivymy.mystime
-);
-
---operator ||
+--operator !
 CREATE OPERATOR ! (
 	procedure = ivymy.mystime_invert,
 	rightarg = ivymy.mystime
@@ -20240,7 +19507,7 @@ SET typmodout=(SELECT oid FROM pg_proc WHERE proname='mystimes_typmodout')
 WHERE oid = 9294;
 
 ---------- Compatible MySQL Cast ----------
-CREATE FUNCTION ivymy.int_mystimes(pg_catalog.int8, integer)
+CREATE FUNCTION ivymy.int_mystimes(pg_catalog.int8, integer, bool, int8)
 RETURNS ivymy.mystimes
 AS 'MODULE_PATHNAME','int_mystimes'
 LANGUAGE C
@@ -20248,7 +19515,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mystimes(pg_catalog.int4, integer)
+CREATE FUNCTION ivymy.int_mystimes(pg_catalog.int4, integer, bool, int8)
 RETURNS ivymy.mystimes
 AS 'MODULE_PATHNAME','int_mystimes'
 LANGUAGE C
@@ -20256,7 +19523,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.int_mystimes(pg_catalog.int2, integer)
+CREATE FUNCTION ivymy.int_mystimes(pg_catalog.int2, integer, bool, int8)
 RETURNS ivymy.mystimes
 AS 'MODULE_PATHNAME','int_mystimes'
 LANGUAGE C
@@ -20264,7 +19531,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.numeric_mystimes(pg_catalog.numeric, integer)
+CREATE FUNCTION ivymy.numeric_mystimes(pg_catalog.numeric, integer, bool, int8)
 RETURNS ivymy.mystimes
 AS 'MODULE_PATHNAME','numeric_mystimes'
 LANGUAGE C
@@ -20273,19 +19540,19 @@ STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.mystimes)
-WITH FUNCTION ivymy.int_mystimes(pg_catalog.int8, integer)
+WITH FUNCTION ivymy.int_mystimes(pg_catalog.int8, integer, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.mystimes)
-WITH FUNCTION ivymy.int_mystimes(pg_catalog.int4, integer)
+WITH FUNCTION ivymy.int_mystimes(pg_catalog.int4, integer, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.int2 AS ivymy.mystimes)
-WITH FUNCTION ivymy.int_mystimes(pg_catalog.int2, integer)
+WITH FUNCTION ivymy.int_mystimes(pg_catalog.int2, integer, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.numeric AS ivymy.mystimes)
-WITH FUNCTION ivymy.numeric_mystimes(pg_catalog.numeric, integer)
+WITH FUNCTION ivymy.numeric_mystimes(pg_catalog.numeric, integer, bool, int8)
 AS ASSIGNMENT;
 
 CREATE FUNCTION ivymy.mystimes_numeric(ivymy.mystimes, integer)
@@ -20300,13 +19567,10 @@ CREATE CAST (ivymy.mystimes AS pg_catalog.numeric)
 WITH FUNCTION ivymy.mystimes_numeric(ivymy.mystimes, integer)
 AS ASSIGNMENT;
 
-/*CREATE CAST (ivymy.mystime AS ivymy.mystimes)
-WITH INOUT
-AS IMPLICIT;*/
 CREATE CAST (ivymy.mystimes AS ivymy.mystime)
 WITH INOUT
 AS ASSIGNMENT;
-/* CREATE CAST */
+
 ---------- Compatible Postgresql Cast ----------
 CREATE CAST (ivymy.mystimes AS pg_catalog.timestamp)
 WITH INOUT
@@ -21938,82 +21202,10 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function or
-CREATE FUNCTION ivymy.mystimes_or(ivymy.mystimes, ivymy.mystimes)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimes_ordatetime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimes_or(ivymy.mystimes, pg_catalog.int2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimes_orint2'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimes_or(ivymy.mystimes, pg_catalog.int4)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimes_orint4'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimes_or(ivymy.mystimes, pg_catalog.int8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimes_orint8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimes_or(ivymy.mystimes, pg_catalog.numeric)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimes_ornum'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimes_or(pg_catalog.int2, ivymy.mystimes)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int2_ormystimes'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimes_or(pg_catalog.int4, ivymy.mystimes)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int4_ormystimes'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimes_or(pg_catalog.int8, ivymy.mystimes)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int8_ormystimes'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mystimes_or(pg_catalog.numeric, ivymy.mystimes)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','num_ormystimes'
-LANGUAGE C
+CREATE FUNCTION ivymy.mystimes_cat(ivymy.mystimes, ivymy.mystimes)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE
@@ -23336,60 +22528,12 @@ CREATE OPERATOR && (
 
 --operator ||
 CREATE OPERATOR || (
-	procedure = ivymy.mystimes_or,
+	procedure = ivymy.mystimes_cat,
 	leftarg = ivymy.mystimes,
 	rightarg = ivymy.mystimes
 );
 
-CREATE OPERATOR || (
-	procedure = ivymy.mystimes_or,
-	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.int2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimes_or,
-	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.int4
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimes_or,
-	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.int8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimes_or,
-	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.numeric
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimes_or,
-	leftarg = pg_catalog.int2,
-	rightarg = ivymy.mystimes
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimes_or,
-	leftarg = pg_catalog.int4,
-	rightarg = ivymy.mystimes
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimes_or,
-	leftarg = pg_catalog.int8,
-	rightarg = ivymy.mystimes
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mystimes_or,
-	leftarg = pg_catalog.numeric,
-	rightarg = ivymy.mystimes
-);
-
---operator ||
+--operator !
 CREATE OPERATOR ! (
 	procedure = ivymy.mystimes_invert,
 	rightarg = ivymy.mystimes
@@ -23652,9 +22796,6 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
-CREATE CAST (ivymy.mystime AS ivymy.mysdatetime)
-WITH FUNCTION ivymy.mystime_mysdatetime(ivymy.mystime)
-AS IMPLICIT;
 
 CREATE FUNCTION ivymy.mystime_mystimestamp(ivymy.mystime) 
 RETURNS ivymy.mystimestamp 
@@ -23663,11 +22804,10 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+
 CREATE CAST (ivymy.mystime AS ivymy.mystimestamp)
 WITH FUNCTION ivymy.mystime_mystimestamp(ivymy.mystime)
 AS ASSIGNMENT;
-
---CREATE CAST (ivymy.mystimes AS ivymy.mystime)      WITH INOUT AS IMPLICIT;
 
 CREATE FUNCTION ivymy.mystimes_mysdate(ivymy.mystimes) 
 RETURNS ivymy.mysdate 
@@ -23687,6 +22827,7 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+
 CREATE CAST (ivymy.mystimes AS ivymy.mysdatetime)
 WITH FUNCTION ivymy.mystimes_mysdatetime(ivymy.mystimes)
 AS IMPLICIT;
@@ -23879,9 +23020,11 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+
 CREATE CAST (ivymy.mystime AS ivymy.mystimes)
 WITH FUNCTION ivymy.mystime_mystimes(ivymy.mystime, integer)
-AS ASSIGNMENT;
+AS IMPLICIT;
+
 -- mystimes to datetimes timestamps
 CREATE FUNCTION ivymy.mystimes_mysdatetimes(ivymy.mystimes, integer) 
 RETURNS ivymy.mysdatetimes
@@ -24055,3 +23198,39 @@ LANGUAGE C STABLE STRICT PARALLEL SAFE;
 CREATE CAST (ivymy.mystimestamps as year)
 WITH FUNCTION ivymy.timestamps2year(ivymy.mystimestamps) AS ASSIGNMENT;
 -- Fix Bug#Z5406 end
+
+-- cast time as bigint
+CREATE FUNCTION ivymy.time2int8(ivymy.mystime)
+RETURNS bigint
+AS 'MODULE_PATHNAME','time2int8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+STABLE;
+
+CREATE CAST (ivymy.mystime as bigint)
+WITH FUNCTION ivymy.time2int8(ivymy.mystime);
+
+-- cast datetime as bigint
+CREATE FUNCTION ivymy.datetime2int8(ivymy.mysdatetime)
+RETURNS bigint
+AS 'MODULE_PATHNAME','datetime2int8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+STABLE;
+
+CREATE CAST (ivymy.mysdatetime as bigint)
+WITH FUNCTION ivymy.datetime2int8(ivymy.mysdatetime);
+
+-- cast datetime(x) as bigint
+CREATE FUNCTION ivymy.datetimes2int8(ivymy.mysdatetimes)
+RETURNS bigint
+AS 'MODULE_PATHNAME','datetimes2int8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+STABLE;
+
+CREATE CAST (ivymy.mysdatetimes as bigint)
+WITH FUNCTION ivymy.datetimes2int8(ivymy.mysdatetimes);

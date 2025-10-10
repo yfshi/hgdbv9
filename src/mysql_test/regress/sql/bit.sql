@@ -6,7 +6,7 @@
 -- Build tables for testing
 --
 
-CREATE TABLE BIT_TABLE(b BIT(11));
+CREATE TABLE BIT_TABLE(b pg_catalog.BIT(11));
 
 INSERT INTO BIT_TABLE VALUES (B'10'); -- too short
 INSERT INTO BIT_TABLE VALUES (B'00000000000');

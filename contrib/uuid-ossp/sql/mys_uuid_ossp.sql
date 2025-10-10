@@ -12,7 +12,7 @@ SELECT uuid_ns_x500();
 CREATE FUNCTION uuid_timestamp_bits(uuid) RETURNS varbit AS
 $$ SELECT ('x' || substr($1::text, 15, 4) || substr($1::text, 10, 4) ||
            substr($1::text, 1, 8) || substr($1::text, 20, 4))::pg_catalog.bit(80)
-          & x'0FFFFFFFFFFFFFFF3FFF' $$
+          & x'0FFFFFFFFFFFFFFF3FFF'::pg_catalog.bit(80) $$
 LANGUAGE SQL STRICT IMMUTABLE;
 
 CREATE FUNCTION uuid_version_bits(uuid) RETURNS varbit AS

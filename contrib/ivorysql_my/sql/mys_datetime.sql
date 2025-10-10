@@ -2526,6 +2526,7 @@ select cast('221222222222' as datetime(3)) && 1.4; --1
 select cast('221222222222' as datetime(3)) && 1.5; --1
 
 -- ||
+set sql_mode = '';
 select cast('111111111111' as datetime(3)) || cast('111111111110' as datetime(3)); --1
 select cast('111111111111' as datetime(3)) || 111; --1
 select cast('221222222222' as datetime(3)) || 111.1; --1
@@ -2535,6 +2536,9 @@ select 111111111111.111 || cast('221222222220' as datetime(3)); --1
 select 0 || cast('221222222220' as datetime(3)); --1
 select cast('221222222222' as datetime(3)) || 1.4; --1
 select cast('221222222222' as datetime(3)) || 1.5; --1
+
+reset sql_mode;
+select cast('111111111111' as datetime(3)) || cast('111111111110' as datetime(3)); --1
 
 -- !
 select !cast('111111111111' as datetime(3)) ;--0

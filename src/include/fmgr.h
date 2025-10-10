@@ -69,7 +69,6 @@ typedef struct FmgrInfo
 	Oid			fn_pkgoid;		/* OID of pakcage or object type */
 	/* End - BUG#M0000227 */
 	/* End - BUG#M0000257 */
-	bool		fn_insert;		/* ReqID:SRS-MYSQL-DATETYPE */
 } FmgrInfo;
 
 /*
@@ -703,7 +702,7 @@ extern Datum InputFunctionCall(FmgrInfo *flinfo, char *str,
 
 /* Begin - BUG#M0000414 */
 extern Datum InputFunctionCall_2(FmgrInfo *flinfo, char *str,
-					Oid typioparam, int32 typmod, int32 lens);
+								 Oid typioparam, int32 typmod, int32 lens);
 /* End - BUG#M0000414 */
 
 extern Datum OidInputFunctionCall(Oid functionId, char *str,
@@ -799,5 +798,14 @@ extern PGDLLIMPORT fmgr_hook_type fmgr_hook;
 
 #define FmgrHookIsNeeded(fn_oid)							\
 	(!needs_fmgr_hook ? false : (*needs_fmgr_hook)(fn_oid))
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+#define TRANSFORM_FLAG_IN_INSERT 	1
+
+#define CALL_IN_INSERT()	(PG_NARGS() > 3 ? (PG_GETARG_INT64(3) & TRANSFORM_FLAG_IN_INSERT) : false)
+
+extern Datum InputFunctionCall_mysql(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, int64 flag);
+extern Datum OidInputFunctionCall_mysql(Oid functionId, char *str, Oid typioparam, int32 typmod, int64 flag);
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 #endif							/* FMGR_H */

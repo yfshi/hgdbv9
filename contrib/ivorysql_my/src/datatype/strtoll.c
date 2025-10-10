@@ -22,437 +22,349 @@
  
 #include "../include/ivorysql_my.h"
 #include "utils/guc.h"
+#include "utils/fmgrprotos.h"
+#include "utils/ora_compatible.h"
 
-#include <limits.h>
-
-#define CUTOFF  (ULLONG_MAX / 10)
-#define CUTLIM  (ULLONG_MAX % 10)
-#define DIGITS_IN_ULONGLONG 20
-
-static uint64 d10[DIGITS_IN_ULONGLONG] =
+static char *
+trim_space(const char *src)
 {
-	1,
-	10,
-	100,
-	1000,
-	10000,
-	100000,
-	1000000,
-	10000000,
-	100000000,
-	1000000000,
-	10000000000ULL,
-	100000000000ULL,
-	1000000000000ULL,
-	10000000000000ULL,
-	100000000000000ULL,
-	1000000000000000ULL,
-	10000000000000000ULL,
-	100000000000000000ULL,
-	1000000000000000000ULL,
-	10000000000000000000ULL
-};
+	char *s = pstrdup(src);
+	char *e = s + strlen(s) - 1;
+	
+	while (isspace(*s))
+		s++;
 
-/*
+	// src is empty or all character is space
+	if (*s == '\0')
+		return s;
 
-  Convert a string to unsigned long long integer value
-  with rounding.
-  
-  SYNOPSYS
-    my_strntoull10_8bit()
-      cs              in      pointer to character set
-      str             in      pointer to the string to be converted
-      length          in      string length
-      unsigned_flag   in      whether the number is unsigned
-      endptr          out     pointer to the stop character
-      error           out     returned error code
+	while (isspace(*e))
+		*(e--) = 0;
 
-  DESCRIPTION
-    This function takes the decimal representation of integer number
-    from string str and converts it to an signed or unsigned
-    long long integer value.
-    Space characters and tab are ignored.
-    A sign character might precede the digit characters.
-    The number may have any number of pre-zero digits.
-    The number may have decimal point and exponent.
-    Rounding is always done in "away from zero" style:
-      0.5  ->   1
-     -0.5  ->  -1
-
-    The function stops reading the string str after "length" bytes
-    or at the first character that is not a part of correct number syntax:
-
-    <signed numeric literal> ::=
-      [ <sign> ] <exact numeric literal> [ E [ <sign> ] <unsigned integer> ]
-
-    <exact numeric literal> ::=
-                        <unsigned integer> [ <period> [ <unsigned integer> ] ]
-                      | <period> <unsigned integer>
-    <unsigned integer>   ::= <digit>...
-     
-  RETURN VALUES
-    Value of string as a signed/unsigned longlong integer
-
-    endptr cannot be NULL. The function will store the end pointer
-    to the stop character here.
-
-    The error parameter contains information how things went:
-    0	     ok
-    ERANGE   If the the value of the converted number is out of range
-    In this case the return value is:
-    - ULLONG_MAX if unsigned_flag and the number was too big
-    - 0 if unsigned_flag and the number was negative
-    - LLONG_MAX if no unsigned_flag and the number is too big
-    - LLONG_MIN if no unsigned_flag and the number it too big negative
-    
-    EDOM If the string didn't contain any digits.
-    In this case the return value is 0.
-*/
-uint64 
-my_strntoull10rnd_8bit(const char *str, size_t length, int unsigned_flag, char **endptr, int *error)
-{
-	const char *dot, *end9, *beg, *end = str + length;
-	uint64 ull;
-	uint64 ul;
-	uchar ch;
-	int shift = 0, digits = 0, negative, addon;
-
-	/* Skip leading spaces and tabs */
-	for (; str < end && (*str == ' ' || *str == '\t'); str++)
-		;
-
-	if (str >= end)
-		goto ret_edom;
-
-	if ((negative = (*str == '-')) || *str == '+') /* optional sign */
-	{
-		if (++str == end)
-			goto ret_edom;
-	}
-
-	beg = str;
-	end9 = (str + 9) > end ? end : (str + 9);
-	/* Accumulate small number into uint64, for performance purposes */
-	for (ul = 0; str < end9 && (ch = (uchar)(*str - '0')) < 10; str++)
-	{
-		ul = ul * 10 + ch;
-	}
-
-	if (str >= end) /* Small number without dots and expanents */
-	{
-		*endptr = (char *)str;
-		if (negative)
-		{
-			if (unsigned_flag)
-			{
-				*error = ul ? ERANGE : 0;
-				return 0;
-			}
-			else
-			{
-				*error = 0;
-				return (uint64)(int64) - (long)ul;
-			}
-		}
-		else
-		{
-			*error = 0;
-			return (uint64)ul;
-		}
-	}
-
-	digits = (int)(str - beg);
-
-	/* Continue to accumulate into uint64 */
-	for (dot = NULL, ull = ul; str < end; str++)
-	{
-		if ((ch = (uchar)(*str - '0')) < 10)
-		{
-			if (ull < CUTOFF || (ull == CUTOFF && ch <= CUTLIM))
-			{
-				ull = ull * 10 + ch;
-				digits++;
-				continue;
-			}
-			/**
-			 * Adding the next digit would overflow.
-			 * Remember the next digit in "addon", for rounding.
-			 * Scan all digits with an optional single dot.
-			 */
-			if (ull == CUTOFF)
-			{
-				ull = ULLONG_MAX;
-				addon = 1;
-				str++;
-			}
-			else
-				addon = (*str >= '5');
-			if (!dot)
-			{
-				for (; str < end && (ch = (uchar)(*str - '0')) < 10; shift++, str++)
-					;
-				if (str < end && *str == '.')
-				{
-					str++;
-					for (; str < end && (ch = (uchar)(*str - '0')) < 10; str++)
-						;
-				}
-			}
-			else
-			{
-				shift = (int)(dot - str);
-				for (; str < end && (ch = (uchar)(*str - '0')) < 10; str++)
-					;
-			}
-			goto exp;
-		}
-
-		if (*str == '.')
-		{
-			if (dot)
-			{
-				/* The second dot character */
-				addon = 0;
-				goto exp;
-			}
-			else
-			{
-				dot = str + 1;
-			}
-			continue;
-		}
-
-		/* Unknown character, exit the loop */
-		break;
-	}
-	shift = dot ? (int)(dot - str) : 0; /* Right shift */
-	addon = 0;
-
-exp: /* [ E [ <sign> ] <unsigned integer> ] */
-
-	if (!digits)
-	{
-		str = beg;
-		goto ret_edom;
-	}
-
-	if (str < end && (*str == 'e' || *str == 'E'))
-	{
-		str++;
-		if (str < end)
-		{
-			int negative_exp, exponent;
-			if ((negative_exp = (*str == '-')) || *str == '+')
-			{
-				if (++str == end)
-					goto ret_sign;
-			}
-			for (exponent = 0;
-				 str < end && (ch = (uchar)(*str - '0')) < 10;
-				 str++)
-			{
-				exponent = exponent * 10 + ch;
-			}
-			shift += negative_exp ? -exponent : exponent;
-		}
-	}
-
-	if (shift == 0) /* No shift, check addon digit */
-	{
-		if (addon)
-		{
-			if (ull == ULLONG_MAX)
-				goto ret_too_big;
-			ull++;
-		}
-		goto ret_sign;
-	}
-
-	if (shift < 0) /* Right shift */
-	{
-		uint64 d, r;
-
-		if (-shift >= DIGITS_IN_ULONGLONG)
-			goto ret_zero; /* Exponent is a big negative number, return 0 */
-
-		d = d10[-shift];
-		r = (ull % d) * 2;
-		ull /= d;
-		if (r >= d)
-			ull++;
-		goto ret_sign;
-	}
-
-	if (shift > DIGITS_IN_ULONGLONG) /* Huge left shift */
-	{
-		if (!ull)
-			goto ret_sign;
-		goto ret_too_big;
-	}
-
-	for (; shift > 0; shift--, ull *= 10) /* Left shift */
-	{
-		if (ull > CUTOFF)
-			goto ret_too_big; /* Overflow, number too big */
-	}
-
-ret_sign:
-	*endptr = (char *)str;
-
-	if (!unsigned_flag)
-	{
-		if (negative)
-		{
-			if (ull > (uint64)LLONG_MIN)
-			{
-				*error = ERANGE;
-				return (uint64)LLONG_MIN;
-			}
-			*error = 0;
-			return (uint64) - (int64)ull;
-		}
-		else
-		{
-			if (ull > (uint64)LLONG_MAX)
-			{
-				*error = ERANGE;
-				return (uint64)LLONG_MAX;
-			}
-			*error = 0;
-			return ull;
-		}
-	}
-
-	/* Unsigned number */
-	if (negative && ull)
-	{
-		*error = ERANGE;
-		return 0;
-	}
-	*error = 0;
-	return ull;
-
-ret_zero:
-	*endptr = (char *)str;
-	*error = 0;
-	return 0;
-
-ret_edom:
-	*endptr = (char *)str;
-	*error = EDOM;
-	return 0;
-
-ret_too_big:
-	*endptr = (char *)str;
-	*error = ERANGE;
-	return unsigned_flag ? ULLONG_MAX : negative ? (uint64)LLONG_MIN
-												 : (uint64)LLONG_MAX;
+	return s;
 }
 
-/*
- * The in function does not need to determine the sql_mode
- * return warning.  
+/**
+ * Mysql will do round off in insert context if input number is decimal,
+ * but not in other context.
  */
-uint64 pg_atoi_uint(const char *s,int c, int sizenum, bool seterr)
+static int64
+cstring_to_signed(const char *src, int64 min_val, int64 max_val, bool is_insert)
 {
-	unsigned long long l;
-	char *badp;
-	int save_errno = 0;
-	uint64	maxvalue = 0;
-	int flag = UNSIGNED_FLAG;
-	int EREPORT_LEVEL = 0;
+	int64		ret;
+	char		*endptr = NULL;
+	bool		negative = (src[0] == '-');
+	
+	src = trim_space(src);
 
-	if (seterr)
+	negative = (src[0] == '-');
+
+	errno = 0;
+	ret = strtoll(src, &endptr, 10);
+
+	if (ret > max_val)
 	{
-		EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ret = max_val;
+		errno = ERANGE;
+	}
+
+	if (ret < min_val)
+	{
+		ret = min_val;
+		errno = ERANGE;
+	}
+
+	if (is_insert)
+	{
+		if (endptr == src && *endptr != '.')
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, 
+					(errmsg("Incorrect integer value: '%s' for column.", src)));
+		}
+		else if (errno == ERANGE)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, 
+					(errmsg("Out of range value for column.")));
+			
+			if (negative)
+				ret = min_val;
+			else
+				ret = max_val;
+		}
+		else if (*endptr != '\0')
+		{
+			// do round off
+			if (*endptr == '.')
+			{
+				uint8 next;
+
+				if (*(endptr + 1) == '\0')
+					next = 0;
+				else
+					next = *(endptr + 1) - '0';
+
+				// Check there are illegal character
+				strtoull(endptr + 1, &endptr, 10);
+				
+				/** 
+				 * Next char is not digit or larger than 4, 
+				 * or the integral part is MAX,
+				 * or input number like '-0.9'.
+				 */
+				if ((next > 4 && next < 10) &&
+					((errno == ERANGE) ||
+					 (ret == min_val) ||
+					 (ret == max_val)))
+				{
+					ereport(is_strict_mode() ? ERROR : WARNING, 
+							(errmsg("Out of range value for column.")));
+				}
+				else if (next > 4 && next < 10)
+				{
+					if (ret > 0)
+						ret++;
+
+					if (ret < 0)
+						ret--;
+
+					if (ret == 0)
+					{
+						if (negative)
+							ret--;
+						else
+							ret++;
+					}
+				}
+			}
+
+			if (*endptr != '\0')
+				ereport(is_strict_mode() ? ERROR : WARNING, 
+						(errmsg("Data truncated for column.")));
+		}
 	}
 	else
 	{
-		EREPORT_LEVEL =  WARNING;
-	}
-	switch (sizenum)
-	{
-		case  1:
-			maxvalue = PG_UINT8_MAX;
-		break;
-		case  2:
-			maxvalue = PG_UINT16_MAX;
-		break;
-		case  3:
-			maxvalue = PG_UINT24_MAX;
-		break;
-		case  4:
-			maxvalue = PG_UINT32_MAX;
-		break;
-		case  8:
-			maxvalue = PG_UINT64_MAX;
-		break;
-		default:
-			maxvalue = PG_UINT64_MAX;
-		break;
-	}
-	/*
-	 * Some versions of strtol treat the empty string as an error, but some
-	 * seem not to.  Make an explicit test to be sure we catch it.
-	 */
-	if (s == NULL)
-		elog(ERROR, "NULL pointer");
-	if (*s == 0)
-	{
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-		l = 0;
-		return l;
+		/**
+		 * If src-number larger than INT64_MAX, strtoll() will return INT64_MAX.
+		 * We use strtoull() to distinguish whether src-number is larger than INT64_MAX.
+		 */
+		if (ret == INT64_MAX)
+		{
+			errno = 0;
+			ret = (int64) strtoull(src, &endptr, 10);
+		}
+		
+		if (errno == ERANGE || *endptr != '\0' || endptr == src)
+		{
+			ereport(WARNING, 
+					(errmsg("Truncated incorrect INTEGER value: '%s'", src)));
+		}
+		
+		/**
+		 * Input is positive, but result is negative.
+		 * And input cannnot be out of range for strtoull().
+		 */
+		if (!negative && ret < 0 && errno != ERANGE)
+		{
+			ereport(WARNING, 
+					(errmsg("Cast to signed converted positive out-of-range integer to it's negative complement")));
+		}
 	}
 
-	if (seterr)
+	return ret;
+}
+
+/**
+ * Mysql will do round off in insert context if input number is decimal,
+ * but not in other context, which is same as cstring_to_signed().
+ */
+static uint64
+cstring_to_unsigned(const char *src, uint64 max_val, bool is_insert)
+{
+	uint64		ret;
+	char		*endptr = NULL;
+	bool 		negative;
+
+	src = trim_space(src);
+
+	negative = (src[0] == '-');
+	
+	errno = 0;
+	
+	if (negative)
 	{
-		errno = 0;
-		l = my_strntoull10rnd_8bit(s, strlen(s), flag, &badp, &save_errno);
+		ret = (uint64) strtoll(src, &endptr, 10);
 	}
 	else
 	{
-		errno = 0;
-		l = strtoull(s, &badp, 10);
-		save_errno = errno;
+		ret = strtoull(src, &endptr, 10);
 	}
 
-	/* We made no progress parsing the string, so bail out */
-	if (s == badp)
+	// If src is negative, such as '-1', strtoull() will not not errno to ERANGE.
+	if (ret > max_val)
 	{
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
-		l = 0;
-		return l;
+		ret = max_val;
+		errno = ERANGE;
 	}
 
-	if (save_errno == ERANGE || l < 0 || l > maxvalue)
-	{
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("value \"%s\" is out of range for unsigned %d-bit integer", s, sizenum*8)));
-		l = l < 0 ? 0 : maxvalue;
-		return l;
-	}
-
-	/*
-	 * Skip any trailing whitespace; if anything but whitespace remains before
-	 * the terminating character, bail out
+	/**
+	 * When in insert stmt, '-0' is the same as '0', which is not negative.
+	 * But in other stmt, '-0' is negative number.
 	 */
-	while (*badp && *badp != c && isspace((unsigned char)*badp))
-		badp++;
-
-	if (*badp && *badp != c)
+	if (is_insert)
 	{
-		ereport(EREPORT_LEVEL,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-			 errmsg("invalid input syntax for type %s: \"%s\"",
-					"integer", s)));
+		if (endptr == src && *endptr != '.')
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, 
+					(errmsg("Incorrect integer value: '%s' for column.", src)));
+		}
+		/**
+		 * String with prefix minus sign, such as '-0', '-0a', '-a', 
+		 * they is not negative.
+		 */
+		else if (negative && ret != 0)
+		{
+			uint64 dcheck;
+			
+			errno = 0;
+			dcheck = strtoull(src, &endptr, 10);
+
+			ereport(is_strict_mode() ? ERROR : WARNING, 
+					(errmsg("Out of range value for column.")));
+			
+			/**
+			 * If src number is small than -18446744073709551615, 
+			 * set ret to MAX, else set ret to 0.
+			 * 
+			 * If src number is negative and is small than -18446744073709551615, 
+			 * strtoull() will return UINT64_MAX, which can be used to distinguish
+			 * wether src number is small than -18446744073709551615.
+			 */
+			if (errno != ERANGE || dcheck != UINT64_MAX)
+				ret = 0;
+			else
+				ret = max_val;
+		}
+		else if (errno == ERANGE)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, 
+					(errmsg("Out of range value for column.")));
+		}
+		else if (*endptr != '\0')
+		{
+			// do round off
+			if (*endptr == '.')
+			{
+				uint8 next;
+
+				if (*(endptr + 1) == '\0')
+					next = 0;
+				else
+					next = *(endptr + 1) - '0';
+				
+				// Check there are illegal character
+				strtoull(endptr + 1, &endptr, 10);
+
+				/** 
+				 * Next char is not digit or larger than 4, 
+				 * or the integral part is MAX,
+				 * or input number like '-0.9'.
+				 */
+				if ((next > 4 && next < 10) &&
+					((errno == ERANGE) ||
+					 (ret == max_val) ||
+					 (ret == 0 && negative)))
+				{
+					ereport(is_strict_mode() ? ERROR : WARNING, 
+							(errmsg("Out of range value for column.")));
+				}
+				else if (next > 4 && next < 10)
+				{
+					if (ret >= 0)
+						ret++;
+
+					if (ret < 0)
+						ret--;
+				}
+			}
+
+			if (*endptr != '\0')
+				ereport(is_strict_mode() ? ERROR : WARNING, 
+						(errmsg("Data truncated for column.")));
+		}
+	}
+	else
+	{
+		/**
+		 * Such as '-0', '-0a' is negative,
+		 * but '-a' is not negative.
+		 */
+		negative = negative && (ret != 0 || endptr != src);
+
+		if (errno == ERANGE || *endptr != '\0' || endptr == src)
+		{
+			ereport(WARNING, 
+					(errmsg("Truncated incorrect INTEGER value: '%s'", src)));
+		}
+
+		// There is a leading minus and the number is not out of range
+		if (negative && ret >= 0 && errno != ERANGE)
+		{
+			ereport(WARNING, 
+					(errmsg("Cast to unsigned converted negative integer to it's positive complement")));
+		}
 	}
 
-	return (uint64)l;
+	return ret;
+}
+
+int8
+my_atoi_int8(const char *s, bool is_insert)
+{
+	return (int8) cstring_to_signed(s, INT8_MIN, INT8_MAX, is_insert);
+}
+
+int16
+my_atoi_int16(const char *s, bool is_insert)
+{
+	if (compatible_db != MYS_PARSER)
+		return DirectFunctionCall1(int2in, CStringGetDatum(s));
+
+	return (int16) cstring_to_signed(s, INT16_MIN, INT16_MAX, is_insert);
+}
+
+int32
+my_atoi_int32(const char *s, bool is_insert)
+{
+	return (int32) cstring_to_signed(s, INT32_MIN, INT32_MAX, is_insert);
+}
+
+int64
+my_atoi_int64(const char *s, bool is_insert)
+{
+	return (int64) cstring_to_signed(s, INT64_MIN, INT64_MAX, is_insert);
+}
+
+uint8
+my_atoi_uint8(const char *s, bool is_insert)
+{
+	return (uint8) cstring_to_unsigned(s, UINT8_MAX, is_insert);
+}
+
+uint16
+my_atoi_uint16(const char *s, bool is_insert)
+{
+	return (uint16) cstring_to_unsigned(s, UINT16_MAX, is_insert);
+}
+
+uint32
+my_atoi_uint32(const char *s, bool is_insert)
+{
+	return (uint32) cstring_to_unsigned(s, UINT32_MAX, is_insert);
+}
+
+uint64
+my_atoi_uint64(const char *s, bool is_insert)
+{
+	return (uint64) cstring_to_unsigned(s, UINT64_MAX, is_insert);
 }

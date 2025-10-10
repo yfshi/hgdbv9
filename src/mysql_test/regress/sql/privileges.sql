@@ -1176,18 +1176,18 @@ SET SESSION AUTHORIZATION regress_priv_user2;
 SELECT lo_create(2001);
 SELECT lo_create(2002);
 
-SELECT loread(lo_open(1001, x'20000'::int), 32);	-- allowed, for now
-SELECT lowrite(lo_open(1001, x'40000'::int), 'abcd');	-- fail, wrong mode
+SELECT loread(lo_open(1001, x'020000'::int), 32);	-- allowed, for now
+SELECT lowrite(lo_open(1001, x'040000'::int), 'abcd');	-- fail, wrong mode
 
-SELECT loread(lo_open(1001, x'40000'::int), 32);
-SELECT loread(lo_open(1002, x'40000'::int), 32);	-- to be denied
-SELECT loread(lo_open(1003, x'40000'::int), 32);
-SELECT loread(lo_open(1004, x'40000'::int), 32);
+SELECT loread(lo_open(1001, x'040000'::int), 32);
+SELECT loread(lo_open(1002, x'040000'::int), 32);	-- to be denied
+SELECT loread(lo_open(1003, x'040000'::int), 32);
+SELECT loread(lo_open(1004, x'040000'::int), 32);
 
-SELECT lowrite(lo_open(1001, x'20000'::int), 'abcd');
-SELECT lowrite(lo_open(1002, x'20000'::int), 'abcd');	-- to be denied
-SELECT lowrite(lo_open(1003, x'20000'::int), 'abcd');	-- to be denied
-SELECT lowrite(lo_open(1004, x'20000'::int), 'abcd');
+SELECT lowrite(lo_open(1001, x'020000'::int), 'abcd');
+SELECT lowrite(lo_open(1002, x'020000'::int), 'abcd');	-- to be denied
+SELECT lowrite(lo_open(1003, x'020000'::int), 'abcd');	-- to be denied
+SELECT lowrite(lo_open(1004, x'020000'::int), 'abcd');
 
 GRANT SELECT ON LARGE OBJECT 1005 TO regress_priv_user3;
 GRANT UPDATE ON LARGE OBJECT 1006 TO regress_priv_user3;	-- to be denied
@@ -1203,21 +1203,21 @@ SELECT oid, pg_get_userbyid(lomowner) ownername, lomacl FROM pg_largeobject_meta
 
 SET SESSION AUTHORIZATION regress_priv_user3;
 
-SELECT loread(lo_open(1001, x'40000'::int), 32);
-SELECT loread(lo_open(1003, x'40000'::int), 32);	-- to be denied
-SELECT loread(lo_open(1005, x'40000'::int), 32);
+SELECT loread(lo_open(1001, x'040000'::int), 32);
+SELECT loread(lo_open(1003, x'040000'::int), 32);	-- to be denied
+SELECT loread(lo_open(1005, x'040000'::int), 32);
 
-SELECT lo_truncate(lo_open(1005, x'20000'::int), 10);	-- to be denied
-SELECT lo_truncate(lo_open(2001, x'20000'::int), 10);
+SELECT lo_truncate(lo_open(1005, x'020000'::int), 10);	-- to be denied
+SELECT lo_truncate(lo_open(2001, x'020000'::int), 10);
 
 -- compatibility mode in largeobject permission
 \c -
 SET lo_compat_privileges = false;	-- default setting
 SET SESSION AUTHORIZATION regress_priv_user4;
 
-SELECT loread(lo_open(1002, x'40000'::int), 32);	-- to be denied
-SELECT lowrite(lo_open(1002, x'20000'::int), 'abcd');	-- to be denied
-SELECT lo_truncate(lo_open(1002, x'20000'::int), 10);	-- to be denied
+SELECT loread(lo_open(1002, x'040000'::int), 32);	-- to be denied
+SELECT lowrite(lo_open(1002, x'020000'::int), 'abcd');	-- to be denied
+SELECT lo_truncate(lo_open(1002, x'020000'::int), 10);	-- to be denied
 SELECT lo_put(1002, 1, 'abcd');				-- to be denied
 SELECT lo_unlink(1002);					-- to be denied
 SELECT lo_export(1001, '/dev/null');			-- to be denied
@@ -1228,9 +1228,9 @@ SELECT lo_import('/dev/null', 2003);			-- to be denied
 SET lo_compat_privileges = true;	-- compatibility mode
 SET SESSION AUTHORIZATION regress_priv_user4;
 
-SELECT loread(lo_open(1002, x'40000'::int), 32);
-SELECT lowrite(lo_open(1002, x'20000'::int), 'abcd');
-SELECT lo_truncate(lo_open(1002, x'20000'::int), 10);
+SELECT loread(lo_open(1002, x'040000'::int), 32);
+SELECT lowrite(lo_open(1002, x'020000'::int), 'abcd');
+SELECT lo_truncate(lo_open(1002, x'020000'::int), 10);
 SELECT lo_unlink(1002);
 SELECT lo_export(1001, '/dev/null');			-- to be denied
 

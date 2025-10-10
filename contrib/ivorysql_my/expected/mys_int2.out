@@ -17,13 +17,23 @@ select '32767'::smallint;
 (1 row)
 
 select '-32769'::smallint;
-ERROR:  value "-32769" is out of range for type smallint
+WARNING:  Truncated incorrect INTEGER value: '-32769'
 LINE 1: select '-32769'::smallint;
                ^
+  int2  
+--------
+ -32768
+(1 row)
+
 select '32768'::smallint;
-ERROR:  value "32768" is out of range for type smallint
+WARNING:  Truncated incorrect INTEGER value: '32768'
 LINE 1: select '32768'::smallint;
                ^
+ int2  
+-------
+ 32767
+(1 row)
+
 --smallint[(M)]
 create table t1 (a smallint[-1]); --fail
 ERROR:  syntax error at or near "-"
@@ -150,7 +160,7 @@ INSERT INTO t1 VALUES ('0.1');
 INSERT INTO t1 VALUES ('0.5');
 INSERT INTO t1 VALUES ('32767.4');
 INSERT INTO t1 VALUES ('32767.5');
-ERROR:  value "32767.5" is out of range for type smallint
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO t1 VALUES ('32767.5');
                                ^
 INSERT INTO t1 VALUES ('-0.1');
@@ -159,7 +169,7 @@ INSERT INTO t1 VALUES ('-32767.4');
 INSERT INTO t1 VALUES ('-32767.5');
 INSERT INTO t1 VALUES ('-32768.4');
 INSERT INTO t1 VALUES ('-32768.5');
-ERROR:  value "-32768.5" is out of range for type smallint
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO t1 VALUES ('-32768.5');
                                ^
 SELECT * FROM t1;
@@ -196,12 +206,12 @@ LINE 1: INSERT INTO t1 (col2) VALUES(65536);
                         ^
 --error 1264
 INSERT INTO t1 (col1) VALUES('-32769');
-ERROR:  value "-32769" is out of range for type smallint
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO t1 (col1) VALUES('-32769');
                                      ^
 --error 1264
 INSERT INTO t1 (col1) VALUES('32768');
-ERROR:  value "32768" is out of range for type smallint
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO t1 (col1) VALUES('32768');
                                      ^
 --error 1264
@@ -211,15 +221,15 @@ ERROR:  smallint out of range
 INSERT INTO t1 (col1) VALUES(32768.0);
 ERROR:  smallint out of range
 INSERT INTO t1 (col1) VALUES ('');
-ERROR:  invalid input syntax for type smallint: ""
+ERROR:  Incorrect integer value: '' for column.
 LINE 1: INSERT INTO t1 (col1) VALUES ('');
                                       ^
 INSERT INTO t1 (col1) VALUES ('a59b');
-ERROR:  invalid input syntax for type smallint: "a59b"
+ERROR:  Incorrect integer value: 'a59b' for column.
 LINE 1: INSERT INTO t1 (col1) VALUES ('a59b');
                                       ^
 INSERT INTO t1 (col1) VALUES ('1a');
-ERROR:  invalid input syntax for type smallint: "1a"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO t1 (col1) VALUES ('1a');
                                       ^
 SELECT * FROM t1;
@@ -383,11 +393,20 @@ select col1 ^ col2 from t1; --BUG#5056
  18446744073709551492
 (2 rows)
 
+set sql_mode = '';
+select col1 || col2 from t1;
+ ?column? 
+----------
+ t
+ t
+(2 rows)
+
+reset sql_mode;
 select col1 || col2 from t1; --BUG#5051
  ?column? 
 ----------
-        1
-        1
+ 1123
+ 1-123
 (2 rows)
 
 select col1 or col2 from t1; --BUG#5051
@@ -672,9 +691,14 @@ select cast('32767'::pg_catalog.numeric as smallint);
 (1 row)
 
 select cast('32768'::pg_catalog.int2 as smallint);
-ERROR:  value "32768" is out of range for type smallint
+WARNING:  Truncated incorrect INTEGER value: '32768'
 LINE 1: select cast('32768'::pg_catalog.int2 as smallint);
                     ^
+ int2  
+-------
+ 32767
+(1 row)
+
 select cast('32768'::pg_catalog.int4 as smallint);
 ERROR:  smallint out of range
 select cast('32768'::pg_catalog.int8 as smallint);
@@ -722,9 +746,14 @@ select cast('-32768'::pg_catalog.numeric as smallint);
 (1 row)
 
 select cast('-32769'::pg_catalog.int2 as smallint);
-ERROR:  value "-32769" is out of range for type smallint
+WARNING:  Truncated incorrect INTEGER value: '-32769'
 LINE 1: select cast('-32769'::pg_catalog.int2 as smallint);
                     ^
+  int2  
+--------
+ -32768
+(1 row)
+
 select cast('-32769'::pg_catalog.int4 as smallint);
 ERROR:  smallint out of range
 select cast('-32769'::pg_catalog.int8 as smallint);
@@ -786,12 +815,12 @@ drop table t1;
 create table tb_test(id int2);
 set sql_mode = default;
 insert into tb_test values ('123abc');
-ERROR:  invalid input syntax for type smallint: "123abc"
+ERROR:  Data truncated for column.
 LINE 1: insert into tb_test values ('123abc');
                                     ^
 set sql_mode = '';
 insert into tb_test values ('123abc');
-WARNING:  invalid input syntax for type smallint: "123abc"
+WARNING:  Data truncated for column.
 LINE 1: insert into tb_test values ('123abc');
                                     ^
 select * from tb_test;

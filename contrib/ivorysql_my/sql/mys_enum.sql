@@ -217,6 +217,10 @@ select b && a from t2;
 select b && 11 from t2;
 
 --"||"
+set sql_mode = '';
+select b || a from t2;
+select b || 11 from t2;
+reset sql_mode;
 select b || a from t2;
 select b || 11 from t2;
 
@@ -876,7 +880,7 @@ drop type alterenum3;
 set SQL_MODE=default;
 create type alterenum as enum('a','b');
 CREATE TABLE test_alter_col (age INT, myjob enum('x','y'));
-SELECT typname FROM pg_type WHERE typname like '%test_alter_col%';
+SELECT typname FROM pg_type WHERE typname like '%test_alter_col%' order by 1;
 insert into test_alter_col values(1, 'x');
 insert into test_alter_col values(2, 'y');
 insert into test_alter_col values(4, 'y');
@@ -887,7 +891,7 @@ drop type alterenum;
 set SQL_MODE='';
 create type alterenum as enum('a','b');
 CREATE TABLE test_alter_col (age INT, myjob enum('x','y'));
-SELECT typname FROM pg_type WHERE typname like '%test_alter_col%';
+SELECT typname FROM pg_type WHERE typname like '%test_alter_col%' order by 1;
 insert into test_alter_col values(1, 'x');
 insert into test_alter_col values(2, 'y');
 insert into test_alter_col values(4, 'y');
@@ -1320,3 +1324,10 @@ select * from t_enum_dump_restore where col_1 IS NULL;
 select * from t_enum_dump_restore where col_1 = 0;
 select * from t_enum_dump_restore;
 drop table t_enum_dump_restore;
+
+-- bug#z5768
+create table enum_operator (status enum('1', 'hello'));
+insert into enum_operator values (1);
+insert into enum_operator values (2);
+select binary(status) from enum_operator;
+drop table enum_operator;

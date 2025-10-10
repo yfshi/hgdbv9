@@ -682,25 +682,48 @@ select c or c from t;
  ?column? | boolean
 (1 row)
 
+set sql_mode = 'ANSI_QUOTES';
 select c || c from t;
  ?column? 
 ----------
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
 (10 rows)
 
 \gdesc
   Column  |  Type   
 ----------+---------
- ?column? | integer
+ ?column? | boolean
+(1 row)
+
+reset sql_mode;
+select c || c from t;
+       ?column?       
+----------------------
+ 12341234
+ 16338379241633837924
+ 11
+ 1259312593
+ 305419896305419896
+ 302012024302012024
+ 1818
+ 46604660
+ 305397880305397880
+ 305419896305419896
+(10 rows)
+
+\gdesc
+  Column  |       Type        
+----------+-------------------
+ ?column? | character varying
 (1 row)
 
 select c xor c from t;
@@ -725,7 +748,7 @@ select c xor c from t;
 (1 row)
 
 select binary(c) from t;
-   binary   
+     c      
 ------------
  \x000004d2
  \x61626364
@@ -818,7 +841,7 @@ drop table t;
 create table t (c bit(5));
 insert into t values(b'1010');
 insert into t values('a');
-ERROR:  bit string length 8 does not match type bit(5)
+ERROR:  Data too long for column
 LINE 1: insert into t values('a');
                              ^
 insert into t values('');
@@ -873,23 +896,81 @@ SELECT * FROM BIT_TABLE;
 (4 rows)
 
 drop table BIT_TABLE;
+create table t_bit(a bit(8));
+set sql_mode = '';
+insert into t_bit values (0xffff);  -- warning
+WARNING:  Out of range value for column
+set sql_mode = default;
+insert into t_bit values (0xffff);  -- error
+ERROR:  Data too long for column
+select hex(a) from t_bit;           -- 0xFF
+ hex 
+-----
+ FF
+(1 row)
+
+drop table t_bit;
+create table t_bit(a bit(13));
+set sql_mode = '';
+insert into t_bit values (0xffff);  -- warning
+WARNING:  Out of range value for column
+set sql_mode = default;
+insert into t_bit values (0xffff);  -- error
+ERROR:  Data too long for column
+select hex(a) from t_bit;           -- 0x1FFF
+ hex  
+------
+ 1FFF
+(1 row)
+
+drop table t_bit;
+create table t_bit(a bit(8));
+set sql_mode = '';
+insert into t_bit values (0xffff);  -- warning
+WARNING:  Out of range value for column
+set sql_mode = default;
+insert into t_bit values (0xffff);  -- error
+ERROR:  Data too long for column
+select hex(a) from t_bit;           -- 0xFF
+ hex 
+-----
+ FF
+(1 row)
+
+drop table t_bit;
+create table t_bit(a bit(13));
+set sql_mode = '';
+insert into t_bit values (0xffff);  -- warning
+WARNING:  Out of range value for column
+set sql_mode = default;
+insert into t_bit values (0xffff);  -- error
+ERROR:  Data too long for column
+select hex(a) from t_bit;           -- 0x1FFF
+ hex  
+------
+ 1FFF
+(1 row)
+
+drop table t_bit;
 -- bug 5691
 create table t_bit_function (b1 BIT(8), b2 bit(17), b3 BIT(32), b4 BIT(63),b5 BIT(1));
 insert into t_bit_function values ('A', 1234, b'101010',0x1234,true);
+insert into t_bit_function values (b'0', b'0', b'0', b'0', b'0');
 select binary(b1), binary(b2), binary(b3), binary(b4), binary(b5) from t_bit_function;
- binary |  binary  |   binary   |       binary       | binary 
---------+----------+------------+--------------------+--------
- \x41   | \x026900 | \x0000002a | \x0000000000002468 | \x80
-(1 row)
+  b1  |    b2    |     b3     |         b4         |  b5  
+------+----------+------------+--------------------+------
+ \x41 | \x0004d2 | \x0000002a | \x0000000000001234 | \x01
+ \x00 | \x000000 | \x00000000 | \x0000000000000000 | \x00
+(2 rows)
 
 \gdesc
  Column |   Type    
 --------+-----------
- binary | varbinary
- binary | varbinary
- binary | varbinary
- binary | varbinary
- binary | varbinary
+ b1     | varbinary
+ b2     | varbinary
+ b3     | varbinary
+ b4     | varbinary
+ b5     | varbinary
 (5 rows)
 
 drop table t_bit_function;
@@ -994,12 +1075,12 @@ create table t_index_brin (id serial primary key, flag bit(64));
 insert into t_index_brin (flag) select (i % 65536) from generate_series(1, 100000) as i;
 set enable_seqscan = off;
 create index idx_brin on t_index_brin using brin (flag);
-explain select * from t_index_brin where flag=b'1010';
-                                 QUERY PLAN                                  
------------------------------------------------------------------------------
- Bitmap Heap Scan on t_index_brin  (cost=12.29..2149.29 rows=500 width=36)
+explain (costs off) select * from t_index_brin where flag=b'1010';
+                      QUERY PLAN                      
+------------------------------------------------------
+ Bitmap Heap Scan on t_index_brin
    Recheck Cond: (flag = ('1010'::"bit")::mysbit)
-   ->  Bitmap Index Scan on idx_brin  (cost=0.00..12.16 rows=100000 width=0)
+   ->  Bitmap Index Scan on idx_brin
          Index Cond: (flag = ('1010'::"bit")::mysbit)
 (4 rows)
 
@@ -1009,12 +1090,12 @@ drop table t_index_brin;
 create table t_index_btree (id serial primary key, flag bit(64));
 insert into t_index_btree (flag) select (i % 65536) from generate_series(1, 100000) as i;
 create index  idx_btree on t_index_btree  (flag);
-explain select * from t_index_btree where flag=b'1010';
-                                QUERY PLAN                                 
----------------------------------------------------------------------------
- Bitmap Heap Scan on t_index_btree  (cost=12.29..647.89 rows=500 width=36)
+explain (costs off) select * from t_index_btree where flag=b'1010';
+                      QUERY PLAN                      
+------------------------------------------------------
+ Bitmap Heap Scan on t_index_btree
    Recheck Cond: (flag = ('1010'::"bit")::mysbit)
-   ->  Bitmap Index Scan on idx_btree  (cost=0.00..12.17 rows=500 width=0)
+   ->  Bitmap Index Scan on idx_btree
          Index Cond: (flag = ('1010'::"bit")::mysbit)
 (4 rows)
 
@@ -1148,9 +1229,9 @@ drop table t_bit;
 set sql_mode = '';
 create table t_bit_sql_mode (b1 BIT(8), b2 bit(17), b3 BIT(32), b4 BIT(63), b5 BIT(1));
 insert into t_bit_sql_mode values (0b101010101010,'这是一条测试数据',X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF','@#!@#!%^&*特殊字符',10);
-ERROR:  syntax error at or near "b101010101010"
+ERROR:  column "0b101010101010" does not exist
 LINE 1: insert into t_bit_sql_mode values (0b101010101010,'这是一条...
-                                            ^
+                                           ^
 select * from t_bit_sql_mode;
  b1 | b2 | b3 | b4 | b5 
 ----+----+----+----+----
@@ -1162,10 +1243,10 @@ drop table t_bit_sql_mode;
 set sql_mode = '';
 create table t_bit(b1 BIT(8), b2 bit(15), b3 BIT(32), b4 bit(63));
 insert into t_bit(b1) value(0xFFFFFFFFFFFFFFFFFFFFFFF);
-WARNING:  value too long for type bit(8)
+WARNING:  Out of range value for column
 set sql_mode = default;
 insert into t_bit(b1) value(0xFFFFFFFFFFFFFFFFFFFFFFF);
-ERROR:  bit string length 92 does not match type bit(8)
+ERROR:  Data too long for column
 select * from t_bit;
   b1  | b2 | b3 | b4 
 ------+----+----+----
@@ -1178,27 +1259,27 @@ create table t_index_hash(id serial primary key, flag bit(64));
 insert into t_index_hash (flag) select (i % 65536) from generate_series(1, 100000) as i;
 set enable_seqscan = off;
 create index idx_hash on t_index_hash using hash(flag);
-explain select * from t_index_hash where flag = '0x12';
-                                QUERY PLAN                                
---------------------------------------------------------------------------
- Bitmap Heap Scan on t_index_hash  (cost=15.88..650.22 rows=500 width=36)
+explain (costs off) select * from t_index_hash where flag = '0x12';
+                    QUERY PLAN                     
+---------------------------------------------------
+ Bitmap Heap Scan on t_index_hash
    Recheck Cond: (flag = '0x30783132'::mysbit)
-   ->  Bitmap Index Scan on idx_hash  (cost=0.00..15.75 rows=500 width=0)
+   ->  Bitmap Index Scan on idx_hash
          Index Cond: (flag = '0x30783132'::mysbit)
 (4 rows)
 
 drop index idx_hash;
 drop table t_index_hash;
--- bug 5692
-create table t_bit_function (b1 BIT(8), b2 bit(17), b3 BIT(32), b4 BIT(63), b5 BIT(1));
-insert into t_bit_function values ('A', 1234, b'101010',0x1234,true);
-select unhex(b1),unhex(b2),unhex(b3),unhex(b4) from t_bit_function;
-WARNING:  Incorrect string value: ''�'' for function unhex
-WARNING:  Incorrect string value: ''*'' for function unhex
-WARNING:  Incorrect string value: ''4'' for function unhex
- unhex | unhex | unhex | unhex 
--------+-------+-------+-------
- \x0a  |       |       | 
+-- bug 5805
+select convert('2023-08-20', unsigned),convert('2025-03-24 20:47:35', unsigned),convert(b'1101', unsigned);
+WARNING:  Truncated incorrect INTEGER value: '2023-08-20'
+LINE 1: select convert('2023-08-20', unsigned),convert('2025-03-24 2...
+                       ^
+WARNING:  Truncated incorrect INTEGER value: '2025-03-24 20:47:35'
+LINE 1: select convert('2023-08-20', unsigned),convert('2025-03-24 2...
+                                                       ^
+ uint8 | uint8 | uint8 
+-------+-------+-------
+ 2023  | 2025  | 13
 (1 row)
 
-drop table t_bit_function;

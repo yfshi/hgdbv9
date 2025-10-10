@@ -170,16 +170,16 @@ CREATE OPERATOR ivymy.^ (
 );
 
 --  "||"
-CREATE FUNCTION ivymy.myint2_or(pg_catalog.int2, pg_catalog.int2)
-RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME','myint2_or'
-LANGUAGE C
+CREATE FUNCTION ivymy.int2cat(int2, int2)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
 CREATE OPERATOR ivymy.|| (
-	procedure = ivymy.myint2_or,
+	procedure = ivymy.int2cat,
 	leftarg = pg_catalog.int2,
 	rightarg = pg_catalog.int2,
 	commutator = ||

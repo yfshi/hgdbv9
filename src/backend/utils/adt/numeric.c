@@ -45,6 +45,8 @@
 #include "utils/pg_lsn.h"
 #include "utils/sortsupport.h"
 
+PG_FUNCTION_INFO_V1(numeric_uint8);
+
 /* ----------
  * Uncomment the following to enable compilation of dump_numeric()
  * and dump_var() and to get a dump of any result produced by make_result().

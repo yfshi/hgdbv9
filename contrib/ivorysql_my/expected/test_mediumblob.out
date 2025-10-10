@@ -1561,7 +1561,7 @@ select c1 OR c1, c1 OR c2, c1 OR c3, c2 OR c3, c3 OR c4, c4 OR c5, c5 OR c6, c6 
 select c1 || c1, c1 || c2, c1 || c3, c2 || c3, c3 || c4, c4 || c5, c5 || c6, c6 || c7, c4 || c8, c6 || c8 from my_mediumblob_t1;
  ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
 ----------+----------+----------+----------+----------+----------+----------+----------+----------+----------
- t        | t        | t        | t        | t        | f        | f        | f        | NULL     | NULL
+ 123123   | 123123   | 1231234  | 1231234  | 1234abcd | abcdABCD | ABCD     |          | NULL     | NULL
 (1 row)
 
 DISCARD ALL;

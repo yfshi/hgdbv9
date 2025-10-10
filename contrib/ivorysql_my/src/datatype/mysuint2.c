@@ -15,2042 +15,1838 @@
  *------------------------------------------------------------------
  */
 
- #include "postgres.h"
- #include <ctype.h>
- #include <math.h>
- #include <float.h>
- #include "fmgr.h"
- #include <limits.h>
- #include <sys/time.h>
- #include "access/hash.h"
- #include "access/xact.h"
- #include "catalog/pg_type.h"
- #include "funcapi.h"
- #include "libpq/pqformat.h"
- #include "miscadmin.h"
- #include "pgtime.h"
- #include "nodes/makefuncs.h"
- #include "nodes/nodeFuncs.h"
- #include "parser/scansup.h"
- #include "utils/array.h"
- #include "utils/builtins.h"
- #include "utils/datetime.h"
- #include "utils/formatting.h"
- #include "utils/guc.h"
- #include "utils/timestamp.h"
- #include "utils/varlena.h"
- #include "utils/numeric.h"
+#include "postgres.h"
+#include <ctype.h>
+#include <math.h>
+#include <float.h>
+#include "fmgr.h"
+#include <limits.h>
+#include <sys/time.h>
+#include "access/hash.h"
+#include "access/xact.h"
+#include "catalog/pg_type.h"
+#include "funcapi.h"
+#include "libpq/pqformat.h"
+#include "miscadmin.h"
+#include "pgtime.h"
+#include "nodes/makefuncs.h"
+#include "nodes/nodeFuncs.h"
+#include "parser/scansup.h"
+#include "utils/array.h"
+#include "utils/builtins.h"
+#include "utils/datetime.h"
+#include "utils/formatting.h"
+#include "utils/guc.h"
+#include "utils/timestamp.h"
+#include "utils/varlena.h"
+#include "utils/numeric.h"
 #include "../include/ivorysql_my.h"
  
- /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-uint2 */
- typedef struct Int8TransTypeData
- {
-	 int64		count;
-	 int64		sum;
- } Int8TransTypeData;
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-uint2 */
+typedef struct Int8TransTypeData
+{
+	int64		count;
+	int64		sum;
+} Int8TransTypeData;
  
- PG_FUNCTION_INFO_V1(mysuint2_in);
- PG_FUNCTION_INFO_V1(mysuint2_out);
- PG_FUNCTION_INFO_V1(mysuint2_recv);
- PG_FUNCTION_INFO_V1(mysuint2_send);
- PG_FUNCTION_INFO_V1(mysuint2_typmodin);
- PG_FUNCTION_INFO_V1(mysuint2_typmodout);
- PG_FUNCTION_INFO_V1(mysuint2_scale);
- 
- PG_FUNCTION_INFO_V1(int_mysuint2);
- PG_FUNCTION_INFO_V1(numeric_mysuint2);
- PG_FUNCTION_INFO_V1(boolean_mysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_eq);
- PG_FUNCTION_INFO_V1(mysuint2_eqint2);
- PG_FUNCTION_INFO_V1(mysuint2_eqint4);
- PG_FUNCTION_INFO_V1(mysuint2_eqint8);
- PG_FUNCTION_INFO_V1(int2_eqmysuint2);
- PG_FUNCTION_INFO_V1(int4_eqmysuint2);
- PG_FUNCTION_INFO_V1(int8_eqmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_ne);
- PG_FUNCTION_INFO_V1(mysuint2_neint2);
- PG_FUNCTION_INFO_V1(mysuint2_neint4);
- PG_FUNCTION_INFO_V1(mysuint2_neint8);
- PG_FUNCTION_INFO_V1(int2_nemysuint2);
- PG_FUNCTION_INFO_V1(int4_nemysuint2);
- PG_FUNCTION_INFO_V1(int8_nemysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_lt);
- PG_FUNCTION_INFO_V1(mysuint2_ltint2);
- PG_FUNCTION_INFO_V1(mysuint2_ltint4);
- PG_FUNCTION_INFO_V1(mysuint2_ltint8);
- PG_FUNCTION_INFO_V1(int2_ltmysuint2);
- PG_FUNCTION_INFO_V1(int4_ltmysuint2);
- PG_FUNCTION_INFO_V1(int8_ltmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_gt);
- PG_FUNCTION_INFO_V1(mysuint2_gtint2);
- PG_FUNCTION_INFO_V1(mysuint2_gtint4);
- PG_FUNCTION_INFO_V1(mysuint2_gtint8);
- PG_FUNCTION_INFO_V1(int2_gtmysuint2);
- PG_FUNCTION_INFO_V1(int4_gtmysuint2);
- PG_FUNCTION_INFO_V1(int8_gtmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_le);
- PG_FUNCTION_INFO_V1(mysuint2_leint2);
- PG_FUNCTION_INFO_V1(mysuint2_leint4);
- PG_FUNCTION_INFO_V1(mysuint2_leint8);
- PG_FUNCTION_INFO_V1(int2_lemysuint2);
- PG_FUNCTION_INFO_V1(int4_lemysuint2);
- PG_FUNCTION_INFO_V1(int8_lemysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_ge);
- PG_FUNCTION_INFO_V1(mysuint2_geint2);
- PG_FUNCTION_INFO_V1(mysuint2_geint4);
- PG_FUNCTION_INFO_V1(mysuint2_geint8);
- PG_FUNCTION_INFO_V1(int2_gemysuint2);
- PG_FUNCTION_INFO_V1(int4_gemysuint2);
- PG_FUNCTION_INFO_V1(int8_gemysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_seq);
- PG_FUNCTION_INFO_V1(mysuint2_seqint2);
- PG_FUNCTION_INFO_V1(mysuint2_seqint4);
- PG_FUNCTION_INFO_V1(mysuint2_seqint8);
- PG_FUNCTION_INFO_V1(int2_seqmysuint2);
- PG_FUNCTION_INFO_V1(int4_seqmysuint2);
- PG_FUNCTION_INFO_V1(int8_seqmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_addmysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_addint2);
- PG_FUNCTION_INFO_V1(mysuint2_addint4);
- PG_FUNCTION_INFO_V1(mysuint2_addint8);
- PG_FUNCTION_INFO_V1(int2_addmysuint2);
- PG_FUNCTION_INFO_V1(int4_addmysuint2);
- PG_FUNCTION_INFO_V1(int8_addmysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_in);
+PG_FUNCTION_INFO_V1(mysuint2_out);
+PG_FUNCTION_INFO_V1(mysuint2_recv);
+PG_FUNCTION_INFO_V1(mysuint2_send);
+PG_FUNCTION_INFO_V1(mysuint2_typmodin);
+PG_FUNCTION_INFO_V1(mysuint2_typmodout);
+PG_FUNCTION_INFO_V1(mysuint2_scale);
 
- PG_FUNCTION_INFO_V1(mysuint2_negative);
+PG_FUNCTION_INFO_V1(int_mysuint2);
+PG_FUNCTION_INFO_V1(numeric_mysuint2);
+PG_FUNCTION_INFO_V1(boolean_mysuint2);
 
- PG_FUNCTION_INFO_V1(mysuint2_submysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_subint2);
- PG_FUNCTION_INFO_V1(mysuint2_subint4);
- PG_FUNCTION_INFO_V1(mysuint2_subint8);
- PG_FUNCTION_INFO_V1(int2_submysuint2);
- PG_FUNCTION_INFO_V1(int4_submysuint2);
- PG_FUNCTION_INFO_V1(int8_submysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_mulmysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_mulint2);
- PG_FUNCTION_INFO_V1(mysuint2_mulint4);
- PG_FUNCTION_INFO_V1(mysuint2_mulint8);
- PG_FUNCTION_INFO_V1(int2_mulmysuint2);
- PG_FUNCTION_INFO_V1(int4_mulmysuint2);
- PG_FUNCTION_INFO_V1(int8_mulmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_divmysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_divint2);
- PG_FUNCTION_INFO_V1(mysuint2_divint4);
- PG_FUNCTION_INFO_V1(mysuint2_divint8);
- PG_FUNCTION_INFO_V1(int2_divmysuint2);
- PG_FUNCTION_INFO_V1(int4_divmysuint2);
- PG_FUNCTION_INFO_V1(int8_divmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_exact_divmysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_exact_divint2);
- PG_FUNCTION_INFO_V1(mysuint2_exact_divint4);
- PG_FUNCTION_INFO_V1(mysuint2_exact_divint8);
- PG_FUNCTION_INFO_V1(int2_exact_divmysuint2);
- PG_FUNCTION_INFO_V1(int4_exact_divmysuint2);
- PG_FUNCTION_INFO_V1(int8_exact_divmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_modmysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_modint2);
- PG_FUNCTION_INFO_V1(mysuint2_modint4);
- PG_FUNCTION_INFO_V1(mysuint2_modint8);
- PG_FUNCTION_INFO_V1(int2_modmysuint2);
- PG_FUNCTION_INFO_V1(int4_modmysuint2);
- PG_FUNCTION_INFO_V1(int8_modmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_bitandmysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_bitandint2);
- PG_FUNCTION_INFO_V1(mysuint2_bitandint4);
- PG_FUNCTION_INFO_V1(mysuint2_bitandint8);
- PG_FUNCTION_INFO_V1(int2_bitandmysuint2);
- PG_FUNCTION_INFO_V1(int4_bitandmysuint2);
- PG_FUNCTION_INFO_V1(int8_bitandmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_bitormysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_bitorint2);
- PG_FUNCTION_INFO_V1(mysuint2_bitorint4);
- PG_FUNCTION_INFO_V1(mysuint2_bitorint8);
- PG_FUNCTION_INFO_V1(int2_bitormysuint2);
- PG_FUNCTION_INFO_V1(int4_bitormysuint2);
- PG_FUNCTION_INFO_V1(int8_bitormysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_negamysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_bitxormysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_bitxorint2);
- PG_FUNCTION_INFO_V1(mysuint2_bitxorint4);
- PG_FUNCTION_INFO_V1(mysuint2_bitxorint8);
- PG_FUNCTION_INFO_V1(int2_bitxormysuint2);
- PG_FUNCTION_INFO_V1(int4_bitxormysuint2);
- PG_FUNCTION_INFO_V1(int8_bitxormysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_rightmovmysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_rightmovint2);
- PG_FUNCTION_INFO_V1(mysuint2_rightmovint4);
- PG_FUNCTION_INFO_V1(mysuint2_rightmovint8);
- PG_FUNCTION_INFO_V1(int2_rightmovmysuint2);
- PG_FUNCTION_INFO_V1(int4_rightmovmysuint2);
- PG_FUNCTION_INFO_V1(int8_rightmovmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_leftmovmysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_leftmovint2);
- PG_FUNCTION_INFO_V1(mysuint2_leftmovint4);
- PG_FUNCTION_INFO_V1(mysuint2_leftmovint8);
- PG_FUNCTION_INFO_V1(int2_leftmovmysuint2);
- PG_FUNCTION_INFO_V1(int4_leftmovmysuint2);
- PG_FUNCTION_INFO_V1(int8_leftmovmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_bit_count);
- 
- PG_FUNCTION_INFO_V1(mysuint2_andmysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_andint2);
- PG_FUNCTION_INFO_V1(mysuint2_andint4);
- PG_FUNCTION_INFO_V1(mysuint2_andint8);
- PG_FUNCTION_INFO_V1(int2_andmysuint2);
- PG_FUNCTION_INFO_V1(int4_andmysuint2);
- PG_FUNCTION_INFO_V1(int8_andmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_ormysuint2);
- PG_FUNCTION_INFO_V1(mysuint2_orint2);
- PG_FUNCTION_INFO_V1(mysuint2_orint4);
- PG_FUNCTION_INFO_V1(mysuint2_orint8);
- PG_FUNCTION_INFO_V1(int2_ormysuint2);
- PG_FUNCTION_INFO_V1(int4_ormysuint2);
- PG_FUNCTION_INFO_V1(int8_ormysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_invertmysuint2);
- 
- PG_FUNCTION_INFO_V1(mysuint2_boolean);
- 
- PG_FUNCTION_INFO_V1(mysuint2_like);
- PG_FUNCTION_INFO_V1(mysuint2_int8_like);
- PG_FUNCTION_INFO_V1(mysuint2_text_like);
- PG_FUNCTION_INFO_V1(mysuint2_notlike);
- PG_FUNCTION_INFO_V1(mysuint2_int8_notlike);
- PG_FUNCTION_INFO_V1(mysuint2_text_notlike);
- 
- PG_FUNCTION_INFO_V1(mysuint2_larger);
- PG_FUNCTION_INFO_V1(mysuint2_smaller);
- 
- PG_FUNCTION_INFO_V1(mysuint2_avg_accum);
- PG_FUNCTION_INFO_V1(mysuint2_sum);
- 
- /*****************************************************************************
-  *	 uint2 ADT
-  *****************************************************************************/
- 
- /* 
-  * mysuint2_in
-  * Given uint2 text string, convert to internal uint2 format.
-  */
- Datum
- mysuint2_in(PG_FUNCTION_ARGS)
- {
-	 char *num = PG_GETARG_CSTRING(0);
- 
-	 uint32 temp = pg_atoi_uint(num, '\0', 2, true);
- 
-	 PG_RETURN_UINT32(temp);
- }
- 
- /* 
-  * mysuint2_out
-  * Given internal format uint2, convert to text string.
-  */
- Datum
- mysuint2_out(PG_FUNCTION_ARGS)
- {
-	 uint16 arg1 = PG_GETARG_UINT32(0);
-	 char *str = (char *)palloc(256); /* sign, 11 digits, '\0' */
- 
-	 pg_lltoa(arg1, str);
- 
-	 PG_RETURN_CSTRING(str);
- }
- 
- /*
-  *mysuint2_recv			- converts external binary format to uint2
-  */
- Datum
- mysuint2_recv(PG_FUNCTION_ARGS)
- {
-	 StringInfo buf = (StringInfo)PG_GETARG_POINTER(0);
- 
-	 PG_RETURN_UINT32((uint32)pq_getmsgint(buf, sizeof(uint32)));
- }
- 
- /*
-  *mysuint2_send			- converts uint2 to binary format
-  */
- Datum
- mysuint2_send(PG_FUNCTION_ARGS)
- {
-	 uint32 arg1 = PG_GETARG_UINT32(0);
-	 StringInfoData buf;
- 
-	 pq_begintypsend(&buf);
-	 pq_sendint32(&buf, arg1);
-	 PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
- }
- 
- /* common code for mysdatetime_typmodin */
- Datum
- mysuint2_typmodin(PG_FUNCTION_ARGS)
- {
-	 ArrayType  *ta = PG_GETARG_ARRAYTYPE_P(0);
-	 int32	   *tl = NULL;
-	 int			n = 0;
- 
-	 tl = ArrayGetIntegerTypmods(ta, &n);
- 
-	 PG_RETURN_INT32(*tl);
- }
- 
- 
- /* common code for mysdatetimetypmodout and mysdatetimetypmodout */
- Datum
- mysuint2_typmodout(PG_FUNCTION_ARGS)
- {
-	 int32		typmod = PG_GETARG_INT32(0);
-	 char	   *res = (char *) palloc(64);
- 
-	 if (typmod >= 0)
-		 snprintf(res, 64, "(%d)",typmod);
-	 else
-		 *res = '\0';
- 
-	 PG_RETURN_CSTRING(res);
- }
- 
- Datum
- mysuint2_scale(PG_FUNCTION_ARGS)
- {
-	 int64		num = PG_GETARG_INT64(0);
- 
-	 PG_RETURN_UINT32(num);
- }
- 
- Datum
- int_mysuint2(PG_FUNCTION_ARGS)
- {
-	 int64		val1 = PG_GETARG_INT64(0);
-	 
-	 if (val1 < 0 || val1 > PG_UINT16_MAX)
-	 {
-		 int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		 ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
-		 val1 = val1 < 0 ? 0 : PG_UINT16_MAX;
-	 }
- 
-	 PG_RETURN_UINT32(val1);
- }
- 
- Datum
- numeric_mysuint2(PG_FUNCTION_ARGS)
- {
-	 Numeric		num = PG_GETARG_NUMERIC(0);
-	 uint32		val2 = 0;
-	 int64		val1 = 0;
- 
-	 val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(num)));
-	 if (val1 < 0 || val1 > PG_UINT16_MAX)
-	 {
-		 int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		 ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
-		 val1 = val1 < 0 ? 0 : PG_UINT16_MAX;
-	 }
-	 val2 = val1;
- 
-	 PG_RETURN_UINT32(val2);
- }
+PG_FUNCTION_INFO_V1(mysuint2_eq);
+PG_FUNCTION_INFO_V1(mysuint2_eqint2);
+PG_FUNCTION_INFO_V1(mysuint2_eqint4);
+PG_FUNCTION_INFO_V1(mysuint2_eqint8);
+PG_FUNCTION_INFO_V1(int2_eqmysuint2);
+PG_FUNCTION_INFO_V1(int4_eqmysuint2);
+PG_FUNCTION_INFO_V1(int8_eqmysuint2);
 
- Datum
-boolean_mysuint2(PG_FUNCTION_ARGS)
+PG_FUNCTION_INFO_V1(mysuint2_ne);
+PG_FUNCTION_INFO_V1(mysuint2_neint2);
+PG_FUNCTION_INFO_V1(mysuint2_neint4);
+PG_FUNCTION_INFO_V1(mysuint2_neint8);
+PG_FUNCTION_INFO_V1(int2_nemysuint2);
+PG_FUNCTION_INFO_V1(int4_nemysuint2);
+PG_FUNCTION_INFO_V1(int8_nemysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_lt);
+PG_FUNCTION_INFO_V1(mysuint2_ltint2);
+PG_FUNCTION_INFO_V1(mysuint2_ltint4);
+PG_FUNCTION_INFO_V1(mysuint2_ltint8);
+PG_FUNCTION_INFO_V1(int2_ltmysuint2);
+PG_FUNCTION_INFO_V1(int4_ltmysuint2);
+PG_FUNCTION_INFO_V1(int8_ltmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_gt);
+PG_FUNCTION_INFO_V1(mysuint2_gtint2);
+PG_FUNCTION_INFO_V1(mysuint2_gtint4);
+PG_FUNCTION_INFO_V1(mysuint2_gtint8);
+PG_FUNCTION_INFO_V1(int2_gtmysuint2);
+PG_FUNCTION_INFO_V1(int4_gtmysuint2);
+PG_FUNCTION_INFO_V1(int8_gtmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_le);
+PG_FUNCTION_INFO_V1(mysuint2_leint2);
+PG_FUNCTION_INFO_V1(mysuint2_leint4);
+PG_FUNCTION_INFO_V1(mysuint2_leint8);
+PG_FUNCTION_INFO_V1(int2_lemysuint2);
+PG_FUNCTION_INFO_V1(int4_lemysuint2);
+PG_FUNCTION_INFO_V1(int8_lemysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_ge);
+PG_FUNCTION_INFO_V1(mysuint2_geint2);
+PG_FUNCTION_INFO_V1(mysuint2_geint4);
+PG_FUNCTION_INFO_V1(mysuint2_geint8);
+PG_FUNCTION_INFO_V1(int2_gemysuint2);
+PG_FUNCTION_INFO_V1(int4_gemysuint2);
+PG_FUNCTION_INFO_V1(int8_gemysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_seq);
+PG_FUNCTION_INFO_V1(mysuint2_seqint2);
+PG_FUNCTION_INFO_V1(mysuint2_seqint4);
+PG_FUNCTION_INFO_V1(mysuint2_seqint8);
+PG_FUNCTION_INFO_V1(int2_seqmysuint2);
+PG_FUNCTION_INFO_V1(int4_seqmysuint2);
+PG_FUNCTION_INFO_V1(int8_seqmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_addmysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_addint2);
+PG_FUNCTION_INFO_V1(mysuint2_addint4);
+PG_FUNCTION_INFO_V1(mysuint2_addint8);
+PG_FUNCTION_INFO_V1(int2_addmysuint2);
+PG_FUNCTION_INFO_V1(int4_addmysuint2);
+PG_FUNCTION_INFO_V1(int8_addmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_negative);
+
+PG_FUNCTION_INFO_V1(mysuint2_submysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_subint2);
+PG_FUNCTION_INFO_V1(mysuint2_subint4);
+PG_FUNCTION_INFO_V1(mysuint2_subint8);
+PG_FUNCTION_INFO_V1(int2_submysuint2);
+PG_FUNCTION_INFO_V1(int4_submysuint2);
+PG_FUNCTION_INFO_V1(int8_submysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_mulmysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_mulint2);
+PG_FUNCTION_INFO_V1(mysuint2_mulint4);
+PG_FUNCTION_INFO_V1(mysuint2_mulint8);
+PG_FUNCTION_INFO_V1(int2_mulmysuint2);
+PG_FUNCTION_INFO_V1(int4_mulmysuint2);
+PG_FUNCTION_INFO_V1(int8_mulmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_divmysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_divint2);
+PG_FUNCTION_INFO_V1(mysuint2_divint4);
+PG_FUNCTION_INFO_V1(mysuint2_divint8);
+PG_FUNCTION_INFO_V1(int2_divmysuint2);
+PG_FUNCTION_INFO_V1(int4_divmysuint2);
+PG_FUNCTION_INFO_V1(int8_divmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_exact_divmysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_exact_divint2);
+PG_FUNCTION_INFO_V1(mysuint2_exact_divint4);
+PG_FUNCTION_INFO_V1(mysuint2_exact_divint8);
+PG_FUNCTION_INFO_V1(int2_exact_divmysuint2);
+PG_FUNCTION_INFO_V1(int4_exact_divmysuint2);
+PG_FUNCTION_INFO_V1(int8_exact_divmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_modmysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_modint2);
+PG_FUNCTION_INFO_V1(mysuint2_modint4);
+PG_FUNCTION_INFO_V1(mysuint2_modint8);
+PG_FUNCTION_INFO_V1(int2_modmysuint2);
+PG_FUNCTION_INFO_V1(int4_modmysuint2);
+PG_FUNCTION_INFO_V1(int8_modmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_bitandmysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_bitandint2);
+PG_FUNCTION_INFO_V1(mysuint2_bitandint4);
+PG_FUNCTION_INFO_V1(mysuint2_bitandint8);
+PG_FUNCTION_INFO_V1(int2_bitandmysuint2);
+PG_FUNCTION_INFO_V1(int4_bitandmysuint2);
+PG_FUNCTION_INFO_V1(int8_bitandmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_bitormysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_bitorint2);
+PG_FUNCTION_INFO_V1(mysuint2_bitorint4);
+PG_FUNCTION_INFO_V1(mysuint2_bitorint8);
+PG_FUNCTION_INFO_V1(int2_bitormysuint2);
+PG_FUNCTION_INFO_V1(int4_bitormysuint2);
+PG_FUNCTION_INFO_V1(int8_bitormysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_negamysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_bitxormysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_bitxorint2);
+PG_FUNCTION_INFO_V1(mysuint2_bitxorint4);
+PG_FUNCTION_INFO_V1(mysuint2_bitxorint8);
+PG_FUNCTION_INFO_V1(int2_bitxormysuint2);
+PG_FUNCTION_INFO_V1(int4_bitxormysuint2);
+PG_FUNCTION_INFO_V1(int8_bitxormysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_rightmovmysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_rightmovint2);
+PG_FUNCTION_INFO_V1(mysuint2_rightmovint4);
+PG_FUNCTION_INFO_V1(mysuint2_rightmovint8);
+PG_FUNCTION_INFO_V1(int2_rightmovmysuint2);
+PG_FUNCTION_INFO_V1(int4_rightmovmysuint2);
+PG_FUNCTION_INFO_V1(int8_rightmovmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_leftmovmysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_leftmovint2);
+PG_FUNCTION_INFO_V1(mysuint2_leftmovint4);
+PG_FUNCTION_INFO_V1(mysuint2_leftmovint8);
+PG_FUNCTION_INFO_V1(int2_leftmovmysuint2);
+PG_FUNCTION_INFO_V1(int4_leftmovmysuint2);
+PG_FUNCTION_INFO_V1(int8_leftmovmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_bit_count);
+
+PG_FUNCTION_INFO_V1(mysuint2_andmysuint2);
+PG_FUNCTION_INFO_V1(mysuint2_andint2);
+PG_FUNCTION_INFO_V1(mysuint2_andint4);
+PG_FUNCTION_INFO_V1(mysuint2_andint8);
+PG_FUNCTION_INFO_V1(int2_andmysuint2);
+PG_FUNCTION_INFO_V1(int4_andmysuint2);
+PG_FUNCTION_INFO_V1(int8_andmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_invertmysuint2);
+
+PG_FUNCTION_INFO_V1(mysuint2_boolean);
+
+PG_FUNCTION_INFO_V1(mysuint2_like);
+PG_FUNCTION_INFO_V1(mysuint2_int8_like);
+PG_FUNCTION_INFO_V1(mysuint2_text_like);
+PG_FUNCTION_INFO_V1(mysuint2_notlike);
+PG_FUNCTION_INFO_V1(mysuint2_int8_notlike);
+PG_FUNCTION_INFO_V1(mysuint2_text_notlike);
+
+PG_FUNCTION_INFO_V1(mysuint2_larger);
+PG_FUNCTION_INFO_V1(mysuint2_smaller);
+
+PG_FUNCTION_INFO_V1(mysuint2_avg_accum);
+PG_FUNCTION_INFO_V1(mysuint2_sum);
+ 
+/*****************************************************************************
+ *	 uint2 ADT
+ *****************************************************************************/
+ 
+/* 
+ * mysuint2_in
+ * Given uint2 text string, convert to internal uint2 format.
+ */
+Datum
+mysuint2_in(PG_FUNCTION_ARGS)
+{
+	int64 	flag = 0;
+	char 	*num = PG_GETARG_CSTRING(0);
+	uint16 	ret;
+
+	if (PG_NARGS() > 3)
+		flag = PG_GETARG_INT64(3);
+
+	ret = my_atoi_uint16(num, flag & TRANSFORM_FLAG_IN_INSERT);
+
+	PG_RETURN_UINT16(ret);
+}
+ 
+/* 
+ * mysuint2_out
+ * Given internal format uint2, convert to text string.
+ */
+Datum
+mysuint2_out(PG_FUNCTION_ARGS)
+{
+	uint16 arg1 = PG_GETARG_UINT32(0);
+	char *str = (char *)palloc(256); /* sign, 11 digits, '\0' */
+
+	pg_lltoa(arg1, str);
+
+	PG_RETURN_CSTRING(str);
+}
+
+/*
+ *mysuint2_recv			- converts external binary format to uint2
+ */
+Datum mysuint2_recv(PG_FUNCTION_ARGS)
+{
+	StringInfo buf = (StringInfo)PG_GETARG_POINTER(0);
+
+	PG_RETURN_UINT32((uint32)pq_getmsgint(buf, sizeof(uint32)));
+}
+
+/*
+ *mysuint2_send			- converts uint2 to binary format
+ */
+Datum mysuint2_send(PG_FUNCTION_ARGS)
+{
+	uint32 arg1 = PG_GETARG_UINT32(0);
+	StringInfoData buf;
+
+	pq_begintypsend(&buf);
+	pq_sendint32(&buf, arg1);
+	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
+}
+
+/* common code for mysdatetime_typmodin */
+Datum mysuint2_typmodin(PG_FUNCTION_ARGS)
+{
+	ArrayType *ta = PG_GETARG_ARRAYTYPE_P(0);
+	int32 *tl = NULL;
+	int n = 0;
+
+	tl = ArrayGetIntegerTypmods(ta, &n);
+
+	PG_RETURN_INT32(*tl);
+}
+
+/* common code for mysdatetimetypmodout and mysdatetimetypmodout */
+Datum mysuint2_typmodout(PG_FUNCTION_ARGS)
+{
+	int32 typmod = PG_GETARG_INT32(0);
+	char *res = (char *)palloc(64);
+
+	if (typmod >= 0)
+		snprintf(res, 64, "(%d)", typmod);
+	else
+		*res = '\0';
+
+	PG_RETURN_CSTRING(res);
+}
+
+Datum mysuint2_scale(PG_FUNCTION_ARGS)
+{
+	int64 num = PG_GETARG_INT64(0);
+
+	PG_RETURN_UINT32(num);
+}
+
+Datum int_mysuint2(PG_FUNCTION_ARGS)
+{
+	int64 val1 = PG_GETARG_INT64(0);
+
+	if (val1 < 0 || val1 > PG_UINT16_MAX)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+		val1 = val1 < 0 ? 0 : PG_UINT16_MAX;
+	}
+
+	PG_RETURN_UINT32(val1);
+}
+
+Datum numeric_mysuint2(PG_FUNCTION_ARGS)
+{
+	Numeric num = PG_GETARG_NUMERIC(0);
+	uint32 val2 = 0;
+	int64 val1 = 0;
+
+	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(num)));
+	if (val1 < 0 || val1 > PG_UINT16_MAX)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+		val1 = val1 < 0 ? 0 : PG_UINT16_MAX;
+	}
+	val2 = val1;
+
+	PG_RETURN_UINT32(val2);
+}
+
+Datum boolean_mysuint2(PG_FUNCTION_ARGS)
 {
 	PG_RETURN_UINT32(PG_GETARG_BOOL(0));
 }
- /*****************************************************************************
-  *	 Operator Function														 *
-  *****************************************************************************/
- Datum
- mysuint2_eq(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_BOOL(val1 == val2);
- }
- 
- Datum
- mysuint2_eqint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
- 
-	 PG_RETURN_BOOL(val1 == val2);
- }
- 
- Datum
- mysuint2_eqint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 
-	 PG_RETURN_BOOL(val1 == val2);
- }
- 
- Datum
- mysuint2_eqint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 
-	 PG_RETURN_BOOL(val1 == val2);
- }
- 
- Datum
- int2_eqmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
- 
-	 PG_RETURN_BOOL(val2 == val1);
- }
- 
- Datum
- int4_eqmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 
-	 PG_RETURN_BOOL(val2 == val1);
- }
- 
- Datum
- int8_eqmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
- 
-	 PG_RETURN_BOOL(val2 == val1);
- }
- 
- 
- Datum
- mysuint2_ne(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_BOOL(val1 != val2);
- }
- 
- Datum
- mysuint2_neint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
- 
-	 PG_RETURN_BOOL(val1 != val2);
- }
- 
- 
- Datum
- mysuint2_neint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
- 
-	 PG_RETURN_BOOL(val1 != val2);
- }
- 
- Datum
- mysuint2_neint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
- 
-	 PG_RETURN_BOOL(val1 != val2);
- }
- 
- 
-Datum
-int2_nemysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
- 
-	 PG_RETURN_BOOL(val2 != val1);
- }
- 
-Datum
-int4_nemysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
- 
-	 PG_RETURN_BOOL(val2 != val1);
- }
- 
-Datum
-int8_nemysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
- 
-	 PG_RETURN_BOOL(val2 != val1);
- }
- 
- 
- Datum
- mysuint2_lt(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_BOOL(val1 < val2);
- }
- 
- Datum
- mysuint2_ltint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val1 < val2);
- }
- 
- 
- Datum
- mysuint2_ltint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val1 < val2);
- }
- 
- Datum
- mysuint2_ltint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val1 < val2);
- }
- 
- 
- Datum
- int2_ltmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
- 
-	 PG_RETURN_BOOL(val2 < val1);
- }
- 
- Datum
- int4_ltmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
- 
-	 PG_RETURN_BOOL(val2 < val1);
- }
- 
- Datum
- int8_ltmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
- 
-	 PG_RETURN_BOOL(val2 < val1);
- }
- 
- Datum
- mysuint2_le(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_BOOL(val1 <= val2);
- }
- 
- Datum
- mysuint2_leint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
-	 
-	 PG_RETURN_BOOL(val1 <= val2);
- }
- 
- Datum
- mysuint2_leint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val1 <= val2);
- }
- 
- Datum
- mysuint2_leint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val1 <= val2);
- }
- 
- Datum
- int2_lemysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
- 
-	 PG_RETURN_BOOL(val2 <= val1);
- }
- 
- Datum
- int4_lemysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
- 
-	 PG_RETURN_BOOL(val2 <= val1);
- }
- 
- Datum
- int8_lemysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
- 
-	 PG_RETURN_BOOL(val2 <= val1);
- }
- 
- 
- Datum
- mysuint2_gt(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_BOOL(val1 > val2);
- }
- 
- Datum
- mysuint2_gtint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
-	 
-	 PG_RETURN_BOOL(val1 > val2);
- }
- 
- Datum
- mysuint2_gtint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
-	 
-	 PG_RETURN_BOOL(val1 > val2);
- }
- 
- Datum
- mysuint2_gtint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
- 
-	 PG_RETURN_BOOL(val1 > val2);
- }
- 
- Datum
- int2_gtmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val2 > val1);
- }
- 
- Datum
- int4_gtmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val2 > val1);
- }
- 
- Datum
- int8_gtmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val2 > val1);
- }
- 
- 
- Datum
- mysuint2_ge(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_BOOL(val1 >= val2);
- }
- 
- Datum
- mysuint2_geint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
-	 
-	 PG_RETURN_BOOL(val1 >= val2);
- }
- 
- Datum
- mysuint2_geint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
-	 
-	 PG_RETURN_BOOL(val1 >= val2);
- }
- 
- Datum
- mysuint2_geint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 if (val2 < 0) PG_RETURN_BOOL(true);
- 
-	 PG_RETURN_BOOL(val1 >= val2);
- }
- 
- 
- Datum
- int2_gemysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val2 >= val1);
- }
- 
- Datum
- int4_gemysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val2 >= val1);
- }
- 
- Datum
- int8_gemysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
-	 if (val2 < 0) PG_RETURN_BOOL(false);
- 
-	 PG_RETURN_BOOL(val2 < val1);
- }
- 
- Datum
- mysuint2_seq(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_BOOL(val1 == val2);
- }
- 
- Datum
- mysuint2_seqint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
- 
-	 PG_RETURN_BOOL(val1 == val2);
- }
- 
- Datum
- mysuint2_seqint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
- 
-	 PG_RETURN_BOOL(val1 == val2);
- }
- 
- Datum
- mysuint2_seqint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
- 
-	 PG_RETURN_BOOL(val1 == val2);
- }
- 
- Datum
- int2_seqmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
- 
-	 PG_RETURN_BOOL(val2 == val1);
- }
- 
- Datum
- int4_seqmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
- 
-	 PG_RETURN_BOOL(val2 == val1);
- }
- 
- Datum
- int8_seqmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
- 
-	 PG_RETURN_BOOL(val2 == val1);
- }
- 
- Datum
- mysuint2_addmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
-	 if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT32(val1 + val2);
- }
- 
- Datum
- mysuint2_addint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
-	 if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT32(val1 + val2);
- }
- 
- Datum
- mysuint2_addint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT32(val1 + val2);
- }
- 
- Datum
- mysuint2_addint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT64(val1 + val2);
- }
- 
- Datum
- int2_addmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
-	 if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT32(val1 + val2);
- }
- 
- Datum
- int4_addmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT32(val1 + val2);
- }
- 
- Datum
- int8_addmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
-	 if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }	
-	 PG_RETURN_UINT64(val1 + val2);
- }
- 
- Datum
-mysuint2_negative(PG_FUNCTION_ARGS)
+/*****************************************************************************
+ *	 Operator Function														 *
+ *****************************************************************************/
+Datum mysuint2_eq(PG_FUNCTION_ARGS)
 {
-	uint16		val1 = PG_GETARG_UINT32(0);
-	int32		tempvalue = (int32)val1;
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum mysuint2_eqint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum mysuint2_eqint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum mysuint2_eqint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum int2_eqmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+
+	PG_RETURN_BOOL(val2 == val1);
+}
+
+Datum int4_eqmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+
+	PG_RETURN_BOOL(val2 == val1);
+}
+
+Datum int8_eqmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+
+	PG_RETURN_BOOL(val2 == val1);
+}
+
+Datum mysuint2_ne(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_BOOL(val1 != val2);
+}
+
+Datum mysuint2_neint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+
+	PG_RETURN_BOOL(val1 != val2);
+}
+
+Datum mysuint2_neint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+
+	PG_RETURN_BOOL(val1 != val2);
+}
+
+Datum mysuint2_neint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+
+	PG_RETURN_BOOL(val1 != val2);
+}
+
+Datum int2_nemysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+
+	PG_RETURN_BOOL(val2 != val1);
+}
+
+Datum int4_nemysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+
+	PG_RETURN_BOOL(val2 != val1);
+}
+
+Datum int8_nemysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+
+	PG_RETURN_BOOL(val2 != val1);
+}
+
+Datum mysuint2_lt(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_BOOL(val1 < val2);
+}
+
+Datum mysuint2_ltint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val1 < val2);
+}
+
+Datum mysuint2_ltint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val1 < val2);
+}
+
+Datum mysuint2_ltint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val1 < val2);
+}
+
+Datum int2_ltmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val2 < val1);
+}
+
+Datum int4_ltmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val2 < val1);
+}
+
+Datum int8_ltmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val2 < val1);
+}
+
+Datum mysuint2_le(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_BOOL(val1 <= val2);
+}
+
+Datum mysuint2_leint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val1 <= val2);
+}
+
+Datum mysuint2_leint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val1 <= val2);
+}
+
+Datum mysuint2_leint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val1 <= val2);
+}
+
+Datum int2_lemysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val2 <= val1);
+}
+
+Datum int4_lemysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val2 <= val1);
+}
+
+Datum int8_lemysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val2 <= val1);
+}
+
+Datum mysuint2_gt(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_BOOL(val1 > val2);
+}
+
+Datum mysuint2_gtint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val1 > val2);
+}
+
+Datum mysuint2_gtint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val1 > val2);
+}
+
+Datum mysuint2_gtint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val1 > val2);
+}
+
+Datum int2_gtmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val2 > val1);
+}
+
+Datum int4_gtmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val2 > val1);
+}
+
+Datum int8_gtmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val2 > val1);
+}
+
+Datum mysuint2_ge(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_BOOL(val1 >= val2);
+}
+
+Datum mysuint2_geint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val1 >= val2);
+}
+
+Datum mysuint2_geint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val1 >= val2);
+}
+
+Datum mysuint2_geint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	if (val2 < 0)
+		PG_RETURN_BOOL(true);
+
+	PG_RETURN_BOOL(val1 >= val2);
+}
+
+Datum int2_gemysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val2 >= val1);
+}
+
+Datum int4_gemysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val2 >= val1);
+}
+
+Datum int8_gemysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+	if (val2 < 0)
+		PG_RETURN_BOOL(false);
+
+	PG_RETURN_BOOL(val2 < val1);
+}
+
+Datum mysuint2_seq(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum mysuint2_seqint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum mysuint2_seqint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum mysuint2_seqint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum int2_seqmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+
+	PG_RETURN_BOOL(val2 == val1);
+}
+
+Datum int4_seqmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+
+	PG_RETURN_BOOL(val2 == val1);
+}
+
+Datum int8_seqmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+
+	PG_RETURN_BOOL(val2 == val1);
+}
+
+Datum mysuint2_addmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT32(val1 + val2);
+}
+
+Datum mysuint2_addint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT32(val1 + val2);
+}
+
+Datum mysuint2_addint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT32(val1 + val2);
+}
+
+Datum mysuint2_addint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(val1 + val2);
+}
+
+Datum int2_addmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT32(val1 + val2);
+}
+
+Datum int4_addmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT32(val1 + val2);
+}
+
+Datum int8_addmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(val1 + val2);
+}
+
+Datum mysuint2_negative(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 tempvalue = (int32)val1;
 	PG_RETURN_INT32(-tempvalue);
 }
 
- Datum
- mysuint2_submysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
-	 if ((val1 < val2) || (val1 - val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
- 
-	 PG_RETURN_UINT32(val1 - val2);
- }
- 
- Datum
- mysuint2_subint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
-	 if ((val1 - val2) < 0 || (val1 - val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT32(val1 - val2);
- }
- 
- Datum
- mysuint2_subint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 if ((val1 - val2) < 0 || (val1 - val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT32(val1 - val2);
- }
- 
- Datum
- mysuint2_subint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 if ((val1 - val2) < 0 || (val1 - val2) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT64(val1 - val2);
- }
- 
- Datum
- int2_submysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
-	 if (val2 < 0 || (val2 - val1) < 0 || (val2 - val1) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT32(val2 - val1);
- }
- 
- Datum
- int4_submysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 if (val2 < 0 || (val2 - val1) < 0 || (val2 - val1) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT32(val2 - val1);
- }
- 
- Datum
- int8_submysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
-	 if (val2 < 0 || (val2 - val1) < 0 || (val2 - val1) > PG_UINT32_MAX)
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT64(val2 - val1);
- }
- 
- // *
- Datum
-mysuint2_mulmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
-	 uint32		res = val1*val2;
-	 if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT64(res);
- }
- Datum
-mysuint2_mulint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
-	 uint32		res = val1*val2;
-	 if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT64(res);
- }
- Datum
-mysuint2_mulint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 uint32		res = val1*val2;
-	 if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT64(res);
- }
- Datum
-mysuint2_mulint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 uint32		res = val1*val2;
-	 if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT64(res);
- }
- 
- Datum
-int2_mulmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
-	 uint32		res = val2*val1;
-	 if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT64(res);
- }
- Datum
-int4_mulmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 uint32		res = val2*val1;
-	 if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT64(res);
- }
- Datum
-int8_mulmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
-	 uint32		res = val2*val1;
-	 if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 PG_RETURN_UINT64(res);
- }
- 
- // div
- Datum
-mysuint2_divmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
-	 Numeric		res;
- 
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val1)),
-						 NumericGetDatum(int64_to_numeric(val2))));
- 
-	 PG_RETURN_NUMERIC(res);
-	 
- }
- Datum
-mysuint2_divint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
-	 Numeric		res;
- 
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val1)),
-						 NumericGetDatum(int64_to_numeric(val2))));
- 
-	 PG_RETURN_NUMERIC(res);
- }
- Datum
-mysuint2_divint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 Numeric		res;
- 
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val1)),
-						 NumericGetDatum(int64_to_numeric(val2))));
- 
-	 PG_RETURN_NUMERIC(res);
- }
- Datum
-mysuint2_divint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 Numeric		res;
- 
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val1)),
-						 NumericGetDatum(int64_to_numeric(val2))));
- 
-	 PG_RETURN_NUMERIC(res);
- }
- 
- Datum
-int2_divmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
-	 Numeric		res;
- 
-	 if (val1 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val2)),
-						 NumericGetDatum(int64_to_numeric(val1))));
- 
-	 PG_RETURN_NUMERIC(res);
- }
- Datum
-int4_divmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 Numeric		res;
- 
-	 if (val1 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val2)),
-						 NumericGetDatum(int64_to_numeric(val1))));
- 
-	 PG_RETURN_NUMERIC(res);
- }
- Datum
-int8_divmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
-	 Numeric		res;
- 
-	 if (val1 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val2)),
-						 NumericGetDatum(int64_to_numeric(val1))));
- 
-	 PG_RETURN_NUMERIC(res);
- }
- 
- // exact_div
- Datum
-mysuint2_exact_divmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
-	 if (val2 < 0 )
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 
-	 PG_RETURN_UINT32(val1 / val2);
- }
- Datum
-mysuint2_exact_divint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
-	 if (val2 < 0 )
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }	
-	 PG_RETURN_UINT32(val1 / val2);
- }
- Datum
-mysuint2_exact_divint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 if (val2 < 0 )
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
- 
-	 PG_RETURN_UINT32(val1 / val2);
- }
- Datum
-mysuint2_exact_divint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 if (val2 < 0 )
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }	
-	 PG_RETURN_UINT64(val1 / val2);
- }
- 
- Datum
-int2_exact_divmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
-	 if (val2 < 0 )
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 if (val1 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }	
- 
-	 PG_RETURN_UINT32(val2 / val1);
- }
- Datum
-int4_exact_divmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 if (val2 < 0 )
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 if (val1 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 
-	 PG_RETURN_UINT32(val2 / val1);
- }
- Datum
-int8_exact_divmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
-	 if (val2 < 0 )
-	 {
-		 ereport(ERROR, (errmsg("integer unsigned out of range")));
-	 }
-	 if (val1 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 
-	 PG_RETURN_UINT64(val2 / val1);
- }
- 
- 
- // mod
- Datum
-mysuint2_modmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
-	 if (val2 < 0 )
-	 {
-		 PG_RETURN_UINT32(0);
-	 }
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 PG_RETURN_UINT32(val1 % val2);
- }
- Datum
-mysuint2_modint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
-	 if (val2 < 0 )
-	 {
-		 PG_RETURN_UINT32(0);
-	 }
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
- 
-	 PG_RETURN_UINT32(val1 % val2);
- }
- Datum
-mysuint2_modint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
-	 if (val2 < 0 )
-	 {
-		 PG_RETURN_UINT32(0);
-	 }
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 PG_RETURN_UINT32(val1 % val2);
- }
- Datum
-mysuint2_modint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 if (val2 < 0 )
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 if (val2 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 PG_RETURN_UINT64(val1 % val2);
- }
- 
- Datum
-int2_modmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
-	 if (val2 < 0 )
-	 {
-		 PG_RETURN_INT64(0);
-	 }
-	 if (val1 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
- 
-	 PG_RETURN_INT64(val2 % val1);
- }
- Datum
-int4_modmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
-	 if (val2 < 0 )
-	 {
-		 PG_RETURN_INT64(0);
-	 }
-	 if (val1 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 PG_RETURN_INT64(val2 % val1);
- }
- Datum
-int8_modmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
-	 if (val2 < 0 )
-	 {
-		 PG_RETURN_INT64(0);
-	 }
-	 if (val1 == 0)
-	 {
-		 if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			 ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		 PG_RETURN_NULL();
-	 }
-	 PG_RETURN_INT64(val2 % val1);
- }
- 
- // bitand
- Datum
-mysuint2_bitandmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_UINT64(val1 & val2);
- }
- Datum
-mysuint2_bitandint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
- 
- 
-	 PG_RETURN_UINT64(val1 & val2);
- }
- Datum
-mysuint2_bitandint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
- 
-	 PG_RETURN_UINT64(val1 & val2);
- }
- Datum
-mysuint2_bitandint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
- 
-	 PG_RETURN_UINT64(val1 & val2);
- }
- 
- Datum
-int2_bitandmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
- 
-	 PG_RETURN_UINT64(val2 & val1);
- }
- Datum
-int4_bitandmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
- 
-	 PG_RETURN_UINT64(val2 & val1);
- }
- Datum
-int8_bitandmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
- 
-	 PG_RETURN_UINT64(val2 & val1);
- }
- 
- // bitor
- Datum
-mysuint2_bitormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_UINT64(val1 | val2);
- }
- Datum
-mysuint2_bitorint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
- 
-	 PG_RETURN_UINT64(val1 | val2);
- }
- Datum
-mysuint2_bitorint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
- 
-	 PG_RETURN_UINT64(val1 | val2);
- }
- Datum
-mysuint2_bitorint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
- 
-	 PG_RETURN_UINT64(val1 | val2);
- }
- 
- Datum
-int2_bitormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
- 
-	 PG_RETURN_UINT64(val2 | val1);
- }
- Datum
-int4_bitormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
- 
-	 PG_RETURN_UINT64(val2 | val1);
- }
- Datum
-int8_bitormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
- 
-	 PG_RETURN_UINT64(val2 | val1);
- }
- 
- 
- // nega
- Datum
-mysuint2_negamysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint64		res;
- 
-	 res = ~(uint64)val1;
-	 PG_RETURN_UINT64(res);
- }
- 
- // bitxor
- Datum
-mysuint2_bitxormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_UINT64(val1 ^ val2);
- }
- Datum
-mysuint2_bitxorint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
- 
-	 PG_RETURN_UINT64(val1 ^ val2);
- }
- Datum
-mysuint2_bitxorint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
- 
-	 PG_RETURN_UINT64(val1 ^ val2);
- }
- Datum
-mysuint2_bitxorint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
- 
-	 PG_RETURN_UINT64(val1 ^ val2);
- }
- 
- Datum
-int2_bitxormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
- 
-	 PG_RETURN_UINT64(val2 ^ val1);
- }
- Datum
-int4_bitxormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
- 
-	 PG_RETURN_UINT64(val2 ^ val1);
- }
- Datum
-int8_bitxormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
- 
-	 PG_RETURN_UINT64(val2 ^ val1);
- }
- 
- 
- // right move
- Datum
-mysuint2_rightmovmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 if (val2 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
- 
-	 PG_RETURN_UINT64((uint64)val1 >> val2);
- }
- Datum
-mysuint2_rightmovint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
- 
-	 if (val2 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64((uint64)val1 >> val2);
- }
- Datum
-mysuint2_rightmovint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
- 
-	 if (val2 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64((uint64)val1 >> val2);
- }
- Datum
-mysuint2_rightmovint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
- 
-	 if (val2 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64((uint64)val1 >> val2);
- }
- 
- Datum
-int2_rightmovmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
- 
-	 if (val1 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64(val2 >> val1);
- }
- Datum
-int4_rightmovmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
- 
-	 if (val1 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64(val2 >> val1);
- }
- Datum
-int8_rightmovmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
- 
-	 if (val1 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64(val2 >> val1);
- }
- 
- 
- // left move
- Datum
-mysuint2_leftmovmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 if (val2 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64((uint64)val1 << val2);
- }
- Datum
-mysuint2_leftmovint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
- 
-	 if (val2 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64((uint64)val1 << val2);
- }
- Datum
-mysuint2_leftmovint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
- 
-	 if (val2 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64((uint64)val1 << val2);
- }
- Datum
-mysuint2_leftmovint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
- 
-	 if (val2 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64((uint64)val1 << val2);
- }
- 
- Datum
-int2_leftmovmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
- 
-	 if (val1 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64(val2 << val1);
- }
- Datum
-int4_leftmovmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
- 
-	 if (val1 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64(val2 << val1);
- }
- Datum
-int8_leftmovmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
- 
-	 if (val1 > sizeof(int64)*8)
-	 {
-		 PG_RETURN_UINT64(0);
-	 }
-	 PG_RETURN_UINT64(val2 << val1);
- }
- 
- //BIT_COUNT
- Datum
-mysuint2_bit_count(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint32			count = 0;
- 
-	 while (val1)
-	 {
-		 count += val1 & 1;
-		 val1 >>= 1;
-	 }
- 
-	 PG_RETURN_UINT32(count);
- }
- 
- // and &&
- Datum
-mysuint2_andmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_UINT32(val1 && val2);
- }
- Datum
-mysuint2_andint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
- 
-	 PG_RETURN_UINT32(val1 && val2);
- }
- Datum
-mysuint2_andint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
- 
-	 PG_RETURN_UINT32(val1 && val2);
- }
- Datum
-mysuint2_andint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
- 
-	 PG_RETURN_UINT32(val1 && val2);
- }
- 
- Datum
-int2_andmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
- 
-	 PG_RETURN_UINT32(val2 && val1);
- }
- Datum
-int4_andmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
- 
-	 PG_RETURN_UINT32(val2 && val1);
- }
- Datum
-int8_andmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
- 
-	 PG_RETURN_UINT32(val2 && val1);
- }
- 
- // or ||
- Datum
-mysuint2_ormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_UINT32(val1 || val2);
- }
- Datum
-mysuint2_orint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int16		val2 = PG_GETARG_INT16(1);
- 
-	 PG_RETURN_UINT32(val1 || val2);
- }
- Datum
-mysuint2_orint4(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int32		val2 = PG_GETARG_INT32(1);
- 
-	 PG_RETURN_UINT32(val1 || val2);
- }
- Datum
-mysuint2_orint8(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
- 
-	 PG_RETURN_UINT32(val1 || val2);
- }
- 
- Datum
-int2_ormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int16		val2 = PG_GETARG_INT16(0);
- 
-	 PG_RETURN_UINT32(val2 || val1);
- }
- Datum
-int4_ormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int32		val2 = PG_GETARG_INT32(0);
- 
-	 PG_RETURN_UINT32(val2 || val1);
- }
- Datum
-int8_ormysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(1);
-	 int64		val2 = PG_GETARG_INT64(0);
- 
-	 PG_RETURN_UINT32(val2 || val1);
- }
- 
- 
- // invert ! 
- Datum
-mysuint2_invertmysuint2(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
- 
-	 PG_RETURN_UINT32(!val1);
- }
- 
- // uint2 to boolean
-Datum
-mysuint2_boolean(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
- 
-	 PG_RETURN_BOOL(val1 != 0);
- }
-  
- //like
- Datum
-mysuint2_like(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_BOOL(val1 == val2);
- }
- 
- Datum
-mysuint2_int8_like(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 if ( val2 < 0)
-	 {
-		 PG_RETURN_BOOL(false);
-	 }
-	 PG_RETURN_BOOL(val1 == val2);
- }
- 
- Datum
-mysuint2_text_like(PG_FUNCTION_ARGS)
+Datum mysuint2_submysuint2(PG_FUNCTION_ARGS)
 {
-	uint32		val1 = PG_GETARG_UINT32(0);
-	Datum		val2 = PG_GETARG_DATUM(1);
-	text		*val1text = NULL;
-	bool		result =false;
-	char		*val1str = (char *)palloc(256); /* sign, 11 digits, '\0' */
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+	if ((val1 < val2) || (val1 - val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+
+	PG_RETURN_UINT32(val1 - val2);
+}
+
+Datum mysuint2_subint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+	if ((val1 - val2) < 0 || (val1 - val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT32(val1 - val2);
+}
+
+Datum mysuint2_subint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+	if ((val1 - val2) < 0 || (val1 - val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT32(val1 - val2);
+}
+
+Datum mysuint2_subint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	if ((val1 - val2) < 0 || (val1 - val2) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(val1 - val2);
+}
+
+Datum int2_submysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+	if (val2 < 0 || (val2 - val1) < 0 || (val2 - val1) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT32(val2 - val1);
+}
+
+Datum int4_submysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+	if (val2 < 0 || (val2 - val1) < 0 || (val2 - val1) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT32(val2 - val1);
+}
+
+Datum int8_submysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+	if (val2 < 0 || (val2 - val1) < 0 || (val2 - val1) > PG_UINT32_MAX)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(val2 - val1);
+}
+
+// *
+Datum mysuint2_mulmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+	uint32 res = val1 * val2;
+	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(res);
+}
+Datum mysuint2_mulint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+	uint32 res = val1 * val2;
+	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(res);
+}
+Datum mysuint2_mulint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+	uint32 res = val1 * val2;
+	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(res);
+}
+Datum mysuint2_mulint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	uint32 res = val1 * val2;
+	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(res);
+}
+
+Datum int2_mulmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+	uint32 res = val2 * val1;
+	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(res);
+}
+Datum int4_mulmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+	uint32 res = val2 * val1;
+	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(res);
+}
+Datum int8_mulmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+	uint32 res = val2 * val1;
+	if (val2 < 0 || val2 > (PG_UINT32_MAX / val1))
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	PG_RETURN_UINT64(res);
+}
+
+// div
+Datum mysuint2_divmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+	Numeric res;
+
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val1)),
+											  NumericGetDatum(int64_to_numeric(val2))));
+
+	PG_RETURN_NUMERIC(res);
+}
+Datum mysuint2_divint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+	Numeric res;
+
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val1)),
+											  NumericGetDatum(int64_to_numeric(val2))));
+
+	PG_RETURN_NUMERIC(res);
+}
+Datum mysuint2_divint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+	Numeric res;
+
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val1)),
+											  NumericGetDatum(int64_to_numeric(val2))));
+
+	PG_RETURN_NUMERIC(res);
+}
+Datum mysuint2_divint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	Numeric res;
+
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val1)),
+											  NumericGetDatum(int64_to_numeric(val2))));
+
+	PG_RETURN_NUMERIC(res);
+}
+
+Datum int2_divmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+	Numeric res;
+
+	if (val1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val2)),
+											  NumericGetDatum(int64_to_numeric(val1))));
+
+	PG_RETURN_NUMERIC(res);
+}
+Datum int4_divmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+	Numeric res;
+
+	if (val1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val2)),
+											  NumericGetDatum(int64_to_numeric(val1))));
+
+	PG_RETURN_NUMERIC(res);
+}
+Datum int8_divmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+	Numeric res;
+
+	if (val1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(val2)),
+											  NumericGetDatum(int64_to_numeric(val1))));
+
+	PG_RETURN_NUMERIC(res);
+}
+
+// exact_div
+Datum mysuint2_exact_divmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+	if (val2 < 0)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	PG_RETURN_UINT32(val1 / val2);
+}
+Datum mysuint2_exact_divint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+	if (val2 < 0)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	PG_RETURN_UINT32(val1 / val2);
+}
+Datum mysuint2_exact_divint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+	if (val2 < 0)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	PG_RETURN_UINT32(val1 / val2);
+}
+Datum mysuint2_exact_divint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	if (val2 < 0)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	PG_RETURN_UINT64(val1 / val2);
+}
+
+Datum int2_exact_divmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+	if (val2 < 0)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	if (val1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	PG_RETURN_UINT32(val2 / val1);
+}
+Datum int4_exact_divmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+	if (val2 < 0)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	if (val1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	PG_RETURN_UINT32(val2 / val1);
+}
+Datum int8_exact_divmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+	if (val2 < 0)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	if (val1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	PG_RETURN_UINT64(val2 / val1);
+}
+
+// mod
+Datum mysuint2_modmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+	if (val2 < 0)
+	{
+		PG_RETURN_UINT32(0);
+	}
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	PG_RETURN_UINT32(val1 % val2);
+}
+Datum mysuint2_modint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+	if (val2 < 0)
+	{
+		PG_RETURN_UINT32(0);
+	}
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	PG_RETURN_UINT32(val1 % val2);
+}
+Datum mysuint2_modint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+	if (val2 < 0)
+	{
+		PG_RETURN_UINT32(0);
+	}
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	PG_RETURN_UINT32(val1 % val2);
+}
+Datum mysuint2_modint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	if (val2 < 0)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	PG_RETURN_UINT64(val1 % val2);
+}
+
+Datum int2_modmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+	if (val2 < 0)
+	{
+		PG_RETURN_INT64(0);
+	}
+	if (val1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	PG_RETURN_INT64(val2 % val1);
+}
+Datum int4_modmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+	if (val2 < 0)
+	{
+		PG_RETURN_INT64(0);
+	}
+	if (val1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	PG_RETURN_INT64(val2 % val1);
+}
+Datum int8_modmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+	if (val2 < 0)
+	{
+		PG_RETURN_INT64(0);
+	}
+	if (val1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	PG_RETURN_INT64(val2 % val1);
+}
+
+// bitand
+Datum mysuint2_bitandmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_UINT64(val1 & val2);
+}
+Datum mysuint2_bitandint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+
+	PG_RETURN_UINT64(val1 & val2);
+}
+Datum mysuint2_bitandint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+
+	PG_RETURN_UINT64(val1 & val2);
+}
+Datum mysuint2_bitandint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+
+	PG_RETURN_UINT64(val1 & val2);
+}
+
+Datum int2_bitandmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+
+	PG_RETURN_UINT64(val2 & val1);
+}
+Datum int4_bitandmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+
+	PG_RETURN_UINT64(val2 & val1);
+}
+Datum int8_bitandmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+
+	PG_RETURN_UINT64(val2 & val1);
+}
+
+// bitor
+Datum mysuint2_bitormysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_UINT64(val1 | val2);
+}
+Datum mysuint2_bitorint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+
+	PG_RETURN_UINT64(val1 | val2);
+}
+Datum mysuint2_bitorint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+
+	PG_RETURN_UINT64(val1 | val2);
+}
+Datum mysuint2_bitorint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+
+	PG_RETURN_UINT64(val1 | val2);
+}
+
+Datum int2_bitormysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+
+	PG_RETURN_UINT64(val2 | val1);
+}
+Datum int4_bitormysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+
+	PG_RETURN_UINT64(val2 | val1);
+}
+Datum int8_bitormysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+
+	PG_RETURN_UINT64(val2 | val1);
+}
+
+// nega
+Datum mysuint2_negamysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint64 res;
+
+	res = ~(uint64)val1;
+	PG_RETURN_UINT64(res);
+}
+
+// bitxor
+Datum mysuint2_bitxormysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_UINT64(val1 ^ val2);
+}
+Datum mysuint2_bitxorint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+
+	PG_RETURN_UINT64(val1 ^ val2);
+}
+Datum mysuint2_bitxorint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+
+	PG_RETURN_UINT64(val1 ^ val2);
+}
+Datum mysuint2_bitxorint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+
+	PG_RETURN_UINT64(val1 ^ val2);
+}
+
+Datum int2_bitxormysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+
+	PG_RETURN_UINT64(val2 ^ val1);
+}
+Datum int4_bitxormysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+
+	PG_RETURN_UINT64(val2 ^ val1);
+}
+Datum int8_bitxormysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+
+	PG_RETURN_UINT64(val2 ^ val1);
+}
+
+// right move
+Datum mysuint2_rightmovmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	if (val2 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+
+	PG_RETURN_UINT64((uint64)val1 >> val2);
+}
+Datum mysuint2_rightmovint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+
+	if (val2 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64((uint64)val1 >> val2);
+}
+Datum mysuint2_rightmovint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+
+	if (val2 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64((uint64)val1 >> val2);
+}
+Datum mysuint2_rightmovint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+
+	if (val2 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64((uint64)val1 >> val2);
+}
+
+Datum int2_rightmovmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+
+	if (val1 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64(val2 >> val1);
+}
+Datum int4_rightmovmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+
+	if (val1 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64(val2 >> val1);
+}
+Datum int8_rightmovmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+
+	if (val1 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64(val2 >> val1);
+}
+
+// left move
+Datum mysuint2_leftmovmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	if (val2 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64((uint64)val1 << val2);
+}
+Datum mysuint2_leftmovint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+
+	if (val2 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64((uint64)val1 << val2);
+}
+Datum mysuint2_leftmovint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+
+	if (val2 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64((uint64)val1 << val2);
+}
+Datum mysuint2_leftmovint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+
+	if (val2 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64((uint64)val1 << val2);
+}
+
+Datum int2_leftmovmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+
+	if (val1 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64(val2 << val1);
+}
+Datum int4_leftmovmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+
+	if (val1 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64(val2 << val1);
+}
+Datum int8_leftmovmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+
+	if (val1 > sizeof(int64) * 8)
+	{
+		PG_RETURN_UINT64(0);
+	}
+	PG_RETURN_UINT64(val2 << val1);
+}
+
+// BIT_COUNT
+Datum mysuint2_bit_count(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint32 count = 0;
+
+	while (val1)
+	{
+		count += val1 & 1;
+		val1 >>= 1;
+	}
+
+	PG_RETURN_UINT32(count);
+}
+
+// and &&
+Datum mysuint2_andmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_UINT32(val1 && val2);
+}
+Datum mysuint2_andint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int16 val2 = PG_GETARG_INT16(1);
+
+	PG_RETURN_UINT32(val1 && val2);
+}
+Datum mysuint2_andint4(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int32 val2 = PG_GETARG_INT32(1);
+
+	PG_RETURN_UINT32(val1 && val2);
+}
+Datum mysuint2_andint8(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+
+	PG_RETURN_UINT32(val1 && val2);
+}
+
+Datum int2_andmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int16 val2 = PG_GETARG_INT16(0);
+
+	PG_RETURN_UINT32(val2 && val1);
+}
+Datum int4_andmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int32 val2 = PG_GETARG_INT32(0);
+
+	PG_RETURN_UINT32(val2 && val1);
+}
+Datum int8_andmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(1);
+	int64 val2 = PG_GETARG_INT64(0);
+
+	PG_RETURN_UINT32(val2 && val1);
+}
+
+// invert !
+Datum mysuint2_invertmysuint2(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+
+	PG_RETURN_UINT32(!val1);
+}
+
+// uint2 to boolean
+Datum mysuint2_boolean(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+
+	PG_RETURN_BOOL(val1 != 0);
+}
+
+// like
+Datum mysuint2_like(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum mysuint2_int8_like(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	if (val2 < 0)
+	{
+		PG_RETURN_BOOL(false);
+	}
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum mysuint2_text_like(PG_FUNCTION_ARGS)
+{
+	uint32 val1 = PG_GETARG_UINT32(0);
+	Datum val2 = PG_GETARG_DATUM(1);
+	text *val1text = NULL;
+	bool result = false;
+	char *val1str = (char *)palloc(256); /* sign, 11 digits, '\0' */
 
 	pg_lltoa(val1, val1str);
 
@@ -2060,35 +1856,32 @@ mysuint2_text_like(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(result);
 }
 
- Datum
-mysuint2_notlike(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_BOOL(val1 != val2);
- }
- 
- Datum
-mysuint2_int8_notlike(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 int64		val2 = PG_GETARG_INT64(1);
-	 if ( val2 < 0)
-	 {
-		 PG_RETURN_BOOL(true);
-	 }
-	 PG_RETURN_BOOL(val1 != val2);
- }
- 
- Datum
-mysuint2_text_notlike(PG_FUNCTION_ARGS)
+Datum mysuint2_notlike(PG_FUNCTION_ARGS)
 {
-	uint32		val1 = PG_GETARG_UINT32(0);
-	Datum		val2 = PG_GETARG_DATUM(1);
-	text		*val1text = NULL;
-	bool		result =false;
-	char		*val1str = (char *)palloc(256); /* sign, 11 digits, '\0' */
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_BOOL(val1 != val2);
+}
+
+Datum mysuint2_int8_notlike(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	int64 val2 = PG_GETARG_INT64(1);
+	if (val2 < 0)
+	{
+		PG_RETURN_BOOL(true);
+	}
+	PG_RETURN_BOOL(val1 != val2);
+}
+
+Datum mysuint2_text_notlike(PG_FUNCTION_ARGS)
+{
+	uint32 val1 = PG_GETARG_UINT32(0);
+	Datum val2 = PG_GETARG_DATUM(1);
+	text *val1text = NULL;
+	bool result = false;
+	char *val1str = (char *)palloc(256); /* sign, 11 digits, '\0' */
 
 	pg_lltoa(val1, val1str);
 
@@ -2098,85 +1891,81 @@ mysuint2_text_notlike(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(result);
 }
 
- /* AGGREGATE */
- Datum
-mysuint2_larger(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_UINT32(val1 > val2 ? val1 : val2);
- }
- 
- Datum
-mysuint2_smaller(PG_FUNCTION_ARGS)
- {
-	 uint16		val1 = PG_GETARG_UINT32(0);
-	 uint16		val2 = PG_GETARG_UINT32(1);
- 
-	 PG_RETURN_UINT32(val1 < val2 ? val1 : val2);
- }
- 
- Datum
-mysuint2_avg_accum(PG_FUNCTION_ARGS)
- {
-	 ArrayType  *transarray;
-	 uint16		newval = 0;
-	 Int8TransTypeData *transdata = NULL;
- 
-	 /*
-	  * If we're invoked as an aggregate, we can cheat and modify our first
-	  * parameter in-place to reduce palloc overhead. Otherwise we need to make
-	  * a copy of it before scribbling on it.
-	  */
-	 if (AggCheckCallContext(fcinfo, NULL))
-		 transarray = PG_GETARG_ARRAYTYPE_P(0);
-	 else
-		 transarray = PG_GETARG_ARRAYTYPE_P_COPY(0);
- 
-	 if (PG_ARGISNULL(1))
-	 {
-		 PG_RETURN_ARRAYTYPE_P(transarray);
-	 }
-	 newval = PG_GETARG_UINT32(1);
- 
-	 if (ARR_HASNULL(transarray) ||
-		 ARR_SIZE(transarray) != ARR_OVERHEAD_NONULLS(1) + sizeof(Int8TransTypeData))
-		 elog(ERROR, "expected 2-element int8 array");
- 
-	 transdata = (Int8TransTypeData *) ARR_DATA_PTR(transarray);
-	 transdata->count++;
-	 transdata->sum += newval;
- 
-	 PG_RETURN_ARRAYTYPE_P(transarray);
- }
- 
- Datum
-mysuint2_sum(PG_FUNCTION_ARGS)
- {
-	uint16		newval;
- 
+/* AGGREGATE */
+Datum mysuint2_larger(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_UINT32(val1 > val2 ? val1 : val2);
+}
+
+Datum mysuint2_smaller(PG_FUNCTION_ARGS)
+{
+	uint16 val1 = PG_GETARG_UINT32(0);
+	uint16 val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_UINT32(val1 < val2 ? val1 : val2);
+}
+
+Datum mysuint2_avg_accum(PG_FUNCTION_ARGS)
+{
+	ArrayType *transarray;
+	uint16 newval = 0;
+	Int8TransTypeData *transdata = NULL;
+
+	/*
+	 * If we're invoked as an aggregate, we can cheat and modify our first
+	 * parameter in-place to reduce palloc overhead. Otherwise we need to make
+	 * a copy of it before scribbling on it.
+	 */
+	if (AggCheckCallContext(fcinfo, NULL))
+		transarray = PG_GETARG_ARRAYTYPE_P(0);
+	else
+		transarray = PG_GETARG_ARRAYTYPE_P_COPY(0);
+
+	if (PG_ARGISNULL(1))
+	{
+		PG_RETURN_ARRAYTYPE_P(transarray);
+	}
+	newval = PG_GETARG_UINT32(1);
+
+	if (ARR_HASNULL(transarray) ||
+		ARR_SIZE(transarray) != ARR_OVERHEAD_NONULLS(1) + sizeof(Int8TransTypeData))
+		elog(ERROR, "expected 2-element int8 array");
+
+	transdata = (Int8TransTypeData *)ARR_DATA_PTR(transarray);
+	transdata->count++;
+	transdata->sum += newval;
+
+	PG_RETURN_ARRAYTYPE_P(transarray);
+}
+
+Datum mysuint2_sum(PG_FUNCTION_ARGS)
+{
+	uint16 newval;
+
 	if (PG_ARGISNULL(0))
 	{
 		/* No non-null input seen so far... */
 		if (PG_ARGISNULL(1))
-			PG_RETURN_NULL();	/* still no non-null */
+			PG_RETURN_NULL(); /* still no non-null */
 		/* This is the first non-null input. */
 		newval = PG_GETARG_UINT32(1);
 		PG_RETURN_INT64(newval);
 	}
 
 	/*
-	* If we're invoked as an aggregate, we can cheat and modify our first
-	* parameter in-place to avoid palloc overhead. If not, we need to return
-	* the new value of the transition variable. (If int8 is pass-by-value,
-	* then of course this is useless as well as incorrect, so just ifdef it
-	* out.)
-	*/
- #ifndef USE_FLOAT8_BYVAL		/* controls int8 too */
+	 * If we're invoked as an aggregate, we can cheat and modify our first
+	 * parameter in-place to avoid palloc overhead. If not, we need to return
+	 * the new value of the transition variable. (If int8 is pass-by-value,
+	 * then of course this is useless as well as incorrect, so just ifdef it
+	 * out.)
+	 */
+#ifndef USE_FLOAT8_BYVAL /* controls int8 too */
 	if (AggCheckCallContext(fcinfo, NULL))
 	{
-		int64	   *oldsum = (int64 *) PG_GETARG_POINTER(0);
+		int64 *oldsum = (int64 *)PG_GETARG_POINTER(0);
 
 		/* Leave the running sum unchanged in the new input is null */
 		if (!PG_ARGISNULL(1))
@@ -2185,9 +1974,9 @@ mysuint2_sum(PG_FUNCTION_ARGS)
 		PG_RETURN_POINTER(oldsum);
 	}
 	else
- #endif
+#endif
 	{
-		int64		oldsum = PG_GETARG_INT64(0);
+		int64 oldsum = PG_GETARG_INT64(0);
 
 		/* Leave sum unchanged if new input is null. */
 		if (PG_ARGISNULL(1))
@@ -2199,6 +1988,5 @@ mysuint2_sum(PG_FUNCTION_ARGS)
 
 		PG_RETURN_INT64(oldsum);
 	}
- }
- /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-uint2 */
- 
+}
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-uint2 */

@@ -4474,13 +4474,6 @@
 { oid => '6103', descr => 'convert numeric to pg_lsn',
   proname => 'pg_lsn', prorettype => 'pg_lsn', proargtypes => 'numeric',
   prosrc => 'numeric_pg_lsn' },
-
-# Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 
-{ oid => '9117', descr => 'convert numeric to uint8',
-  proname => 'numeric_uint8', prorettype => 'int8', proargtypes => 'numeric',
-  prosrc => 'numeric_uint8' },
-# End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 
-
 { oid => '3556', descr => 'convert jsonb to boolean',
   proname => 'bool', prorettype => 'bool', proargtypes => 'jsonb',
   prosrc => 'jsonb_bool' },
@@ -12006,7 +11999,7 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proargtypes => 'anyenum', prosrc => 'enum_to_uint8' },
 { oid => '6041', descr => 'Cast text to enum for MySQL.',
   proname => 'text_to_enum', provolatile => 's', prorettype => 'anyenum',
-  proargtypes => 'text int4', prosrc => 'text_to_enum' },
+  proargtypes => 'text int4 bool int8', prosrc => 'text_to_enum' },
 { oid => '6042', descr => 'Cast enum to text for MySQL.',
   proname => 'enum_to_text', provolatile => 's', prorettype => 'text',
   proargtypes => 'anyenum', prosrc => 'enum_to_text' },
@@ -12016,6 +12009,9 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
 { oid => '6044', descr => 'Cast enum to bool for MySQL.',
   proname => 'enum_to_bool', provolatile => 's', prorettype => 'bool',
   proargtypes => 'anyenum', prosrc => 'enum_to_bool' },
+{ oid => '6045', descr => 'Cast enum to varbinary for MySQL.',
+  proname => 'enum_to_varbinary', provolatile => 's', prorettype => 'varbinary',
+  proargtypes => 'anyenum', prosrc => 'enum_to_varbinary' },
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 /*END MySQL Compatibility Metadatas*/
 ]

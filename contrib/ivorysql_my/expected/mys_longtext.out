@@ -962,125 +962,245 @@ insert into tb1 values ('Sam');
 insert into tb1 values ('sam');
 insert into tb1 values ('am');
 select * from tb1 where col like binary 'a%';  -- abc,abcd,abcdefg,am
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary 'a%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col   
+---------
+ abc
+ abcd
+ abcdefg
+ am
+(4 rows)
+
 select * from tb1 where col like binary ' %';  -- bc
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary ' %';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+  bc
+(1 row)
+
 select * from tb1 where col like binary '%d';  -- abcd
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary '%d';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col  
+------
+ abcd
+(1 row)
+
 select * from tb1 where col like binary '%e%';  -- bem,abcdefg
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary '%e%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col   
+---------
+ bem
+ abcdefg
+(2 rows)
+
 select * from tb1 where col like binary '%';  -- all
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary '%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(10 rows)
+
 select * from tb1 where col like binary '_m';  -- am
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary '_m';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+ am
+(1 row)
+
 select * from tb1 where col like binary 'be_';  -- bem
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary 'be_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+ bem
+(1 row)
+
 select * from tb1 where col like binary '_b_';  -- bc,abc
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary '_b_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+  bc
+ abc
+(2 rows)
+
 select * from tb1 where col like binary '%_';  -- all rows
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary '%_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(10 rows)
+
 select * from tb1 where col like binary '_%';  -- all rows
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary '_%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(10 rows)
+
 select * from tb1 where col like binary '%人%';  -- 小巷人家
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary '%人%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+ 小巷人家
+(1 row)
+
 select * from tb1 where col like binary 'S%';  -- Sam
-ERROR:  operator does not exist: longtext ~~ binary
-LINE 1: select * from tb1 where col like binary 'S%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+ Sam
+(1 row)
+
 select * from tb1 where col not like binary 'a%';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary 'a%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ bem
+ 小巷人家
+ 三体
+ Sam
+ sam
+(6 rows)
+
 select * from tb1 where col not like binary ' %';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary ' %';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
 select * from tb1 where col not like binary '%d';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary '%d';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
 select * from tb1 where col not like binary '%e%';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary '%e%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(8 rows)
+
 select * from tb1 where col not like binary '%';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary '%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+(0 rows)
+
 select * from tb1 where col not like binary '_m';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary '_m';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+(9 rows)
+
 select * from tb1 where col not like binary 'be_';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary 'be_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
 select * from tb1 where col not like binary '_b_';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary '_b_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(8 rows)
+
 select * from tb1 where col not like binary '%_';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary '%_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+(0 rows)
+
 select * from tb1 where col not like binary '_%';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary '_%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+(0 rows)
+
 select * from tb1 where col not like binary '%人%';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary '%人%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col   
+---------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
 select * from tb1 where col not like binary 'S%';
-ERROR:  operator does not exist: longtext !~~ binary
-LINE 1: select * from tb1 where col not like binary 'S%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ sam
+ am
+(9 rows)
+
 drop table if exists tb1;
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_OPER_009
 create table tb1(col longtext);
@@ -1452,14 +1572,14 @@ set mysql.cast_to_char = on;
 create table tb (col longtext);
 insert into tb values('abc');
 select convert('abc' using gbk);  -- success
-WARNING:   Syntax support only
+WARNING:  Syntax support only
  ?column? 
 ----------
  abc
 (1 row)
 
 select convert('abc' using gb18030);  -- success
-WARNING:   Syntax support only
+WARNING:  Syntax support only
  ?column? 
 ----------
  abc
@@ -1730,7 +1850,7 @@ insert into tb values(1,'abc');
 insert into tb values(2,'123');
 insert into tb values(3,'123.4');
 select convert(col ,unsigned) from tb where id=1;  -- 0
-WARNING:  invalid input syntax for type integer: "abc"
+WARNING:  Truncated incorrect INTEGER value: 'abc'
  col 
 -----
  0
@@ -1743,7 +1863,7 @@ select convert(col , unsigned) from tb where id=2;  -- 123
 (1 row)
 
 select convert(col , unsigned) from tb where id=3;  -- 123
-WARNING:  invalid input syntax for type integer: "123.4"
+WARNING:  Truncated incorrect INTEGER value: '123.4'
  col 
 -----
  123

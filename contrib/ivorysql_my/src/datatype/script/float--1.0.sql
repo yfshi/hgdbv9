@@ -211,21 +211,6 @@ CREATE OPERATOR ivymy.&& (
 	rightarg = float8
 );
 
--- ||
-CREATE FUNCTION ivymy.mysfloat8_logic_or(float8, float8)
-RETURNS bool
-AS 'MODULE_PATHNAME','mysfloat8_logic_or'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE;
-
-CREATE OPERATOR ivymy.||(
-	procedure = ivymy.mysfloat8_logic_or,
-	leftarg = float8,
-	rightarg = float8
-);
-
 -- /
 CREATE FUNCTION ivymy.mysfloat48_div(float4, float8)
 RETURNS float8
@@ -366,7 +351,6 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
-
 
 CREATE CAST (float4 AS boolean)
 WITH FUNCTION ivymy.mysfloat4_boolean(float4)

@@ -140,6 +140,9 @@ select col1 % col2 from t1;
 select col1 & col2 from t1; --BUG#5053
 select col1 | col2 from t1; --BUG#5054
 select col1 ^ col2 from t1; --BUG#5056
+set sql_mode = '';
+select col1 || col2 from t1;
+reset sql_mode;
 select col1 || col2 from t1; --BUG#5051
 select col1 or col2 from t1; --BUG#5051
 select col1 && col2 from t1; --BUG#5050

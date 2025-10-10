@@ -36,7 +36,7 @@ BEGIN;
 --   INV_WRITE = 0x40000
 -- The return value is a file descriptor-like value which remains valid for the
 -- transaction.
-UPDATE lotest_stash_values SET fd = lo_open(loid, CAST(x'20000' | x'40000' AS integer));
+UPDATE lotest_stash_values SET fd = lo_open(loid, CAST(x'020000' | x'040000' AS integer));
 
 -- loread/lowrite names are wonky, different from other functions which are lo_*
 -- lowrite(fd integer, data bytea) returns integer
@@ -91,7 +91,7 @@ COMMENT ON LARGE OBJECT :newloid IS 'I Wandered Lonely as a Cloud';
 
 -- Read out a portion
 BEGIN;
-UPDATE lotest_stash_values SET fd=lo_open(loid, CAST(x'20000' | x'40000' AS integer));
+UPDATE lotest_stash_values SET fd=lo_open(loid, CAST(x'020000' | x'040000' AS integer));
 
 -- lo_lseek(fd integer, offset integer, whence integer) returns integer
 -- offset is in bytes, whence is one of three values:
@@ -121,7 +121,7 @@ END;
 
 -- Test resource management
 BEGIN;
-SELECT lo_open(loid, x'40000'::int) from lotest_stash_values;
+SELECT lo_open(loid, x'040000'::int) from lotest_stash_values;
 ABORT;
 
 DO $$
@@ -137,7 +137,7 @@ $$;
 
 -- Test truncation.
 BEGIN;
-UPDATE lotest_stash_values SET fd=lo_open(loid, CAST(x'20000' | x'40000' AS integer));
+UPDATE lotest_stash_values SET fd=lo_open(loid, CAST(x'020000' | x'040000' AS integer));
 
 SELECT lo_truncate(fd, 11) FROM lotest_stash_values;
 SELECT loread(fd, 15) FROM lotest_stash_values;
@@ -156,7 +156,7 @@ END;
 
 -- Test 64-bit large object functions.
 BEGIN;
-UPDATE lotest_stash_values SET fd = lo_open(loid, CAST(x'20000' | x'40000' AS integer));
+UPDATE lotest_stash_values SET fd = lo_open(loid, CAST(x'020000' | x'040000' AS integer));
 
 SELECT lo_lseek64(fd, 4294967296, 0) FROM lotest_stash_values;
 SELECT lowrite(fd, 'offset:4GB') FROM lotest_stash_values;
@@ -186,7 +186,7 @@ TRUNCATE lotest_stash_values;
 INSERT INTO lotest_stash_values (loid) SELECT lo_import('@abs_srcdir@/data/tenk.data');
 
 BEGIN;
-UPDATE lotest_stash_values SET fd=lo_open(loid, CAST(x'20000' | x'40000' AS integer));
+UPDATE lotest_stash_values SET fd=lo_open(loid, CAST(x'020000' | x'040000' AS integer));
 
 -- verify length of large object
 SELECT lo_lseek(fd, 0, 2) FROM lotest_stash_values;

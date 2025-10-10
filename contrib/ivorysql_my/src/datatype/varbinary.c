@@ -43,12 +43,6 @@ PG_FUNCTION_INFO_V1(varbinary2bool);
 PG_FUNCTION_INFO_V1(varbinary2text);
 PG_FUNCTION_INFO_V1(varbinary2bpchar);
 PG_FUNCTION_INFO_V1(varbinary2varchar);
-PG_FUNCTION_INFO_V1(varbinary2int2);
-PG_FUNCTION_INFO_V1(varbinary2int4);
-PG_FUNCTION_INFO_V1(varbinary2int8);
-PG_FUNCTION_INFO_V1(varbinary2uint2);
-PG_FUNCTION_INFO_V1(varbinary2uint4);
-PG_FUNCTION_INFO_V1(varbinary2uint8);
 PG_FUNCTION_INFO_V1(varbinary2numeric);
 PG_FUNCTION_INFO_V1(varbinary2date);
 PG_FUNCTION_INFO_V1(varbinary2time);
@@ -58,7 +52,6 @@ PG_FUNCTION_INFO_V1(varbinary_in);
 PG_FUNCTION_INFO_V1(varbinary_recv);
 PG_FUNCTION_INFO_V1(varbinary_and);
 PG_FUNCTION_INFO_V1(varbinary_not);
-PG_FUNCTION_INFO_V1(varbinary_or);
 PG_FUNCTION_INFO_V1(varbinary_bitand);
 PG_FUNCTION_INFO_V1(varbinary_bitor);
 PG_FUNCTION_INFO_V1(varbinary_bitxor);
@@ -141,142 +134,6 @@ varbinary2bool(PG_FUNCTION_ARGS)
 
 	PG_RETURN_BOOL(ret);
 }
-
-/* Begin BUG#5048 5070 */
-Datum 
-varbinary2int2(PG_FUNCTION_ARGS)
-{
-	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
-	int16	  	ret = 0;
-	char		num[64];
-	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
-
-	if (!extract_leading_integer_str(src, num, sizeof(num)))
-	{
-		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", src));
-	}
-
-	pfree(src);
-
-	ret = DatumGetInt16(DirectFunctionCall1(int2in,
-											CStringGetDatum(num)));
-
-	PG_RETURN_INT16(ret);
-}
-
-Datum 
-varbinary2int4(PG_FUNCTION_ARGS)
-{
-	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
-	int32	  	ret = 0;
-	char		num[64];
-	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
-
-	if (!extract_leading_integer_str(src, num, sizeof(num)))
-	{
-		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", src));
-	}
-
-	pfree(src);
-
-	ret = DatumGetInt32(DirectFunctionCall1(int4in,
-											CStringGetDatum(num)));
-
-	PG_RETURN_INT32(ret);
-}
-
-Datum 
-varbinary2int8(PG_FUNCTION_ARGS)
-{
-	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
-	int64	  	ret = 0;
-	char		num[64];
-	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
-
-	if (!extract_leading_integer_str(src, num, sizeof(num)))
-	{
-		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", src));
-	}
-
-	pfree(src);
-
-	ret = DatumGetInt64(DirectFunctionCall1(int8in,
-											CStringGetDatum(num)));
-
-	PG_RETURN_INT64(ret);
-}
-/* End BUG#5048 5070 */
-
-/* Begin - bug#z5400 */
-Datum 
-varbinary2uint2(PG_FUNCTION_ARGS)
-{
-	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
-	uint16	  	ret = 0;
-	char		num[64];
-	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
-
-	if (!extract_leading_integer_str(src, num, sizeof(num)))
-	{
-		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", src));
-	}
-
-	pfree(src);
-
-	ret = DatumGetUInt16(DirectFunctionCall1(mysuint2_in,
-											 CStringGetDatum(num)));
-
-	PG_RETURN_UINT16(ret);
-}
-
-Datum 
-varbinary2uint4(PG_FUNCTION_ARGS)
-{
-	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
-	uint32	  	ret = 0;
-	char		num[64];
-	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
-
-	if (!extract_leading_integer_str(src, num, sizeof(num)))
-	{
-		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", src));
-	}
-
-	pfree(src);
-
-	ret = DatumGetUInt32(DirectFunctionCall1(mysuint4_in,
-											 CStringGetDatum(num)));
-
-	PG_RETURN_UINT32(ret);
-}
-
-Datum 
-varbinary2uint8(PG_FUNCTION_ARGS)
-{
-	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
-	uint64	  	ret = 0;
-	char		num[64];
-	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
-
-	if (!extract_leading_integer_str(src, num, sizeof(num)))
-	{
-		ereport(WARNING, 
-				errmsg("Truncated incorrect INTEGER value: '%s'", src));
-	}
-
-	pfree(src);
-
-	ret = DatumGetUInt64(DirectFunctionCall1(mysuint8_in,
-											 CStringGetDatum(num)));
-
-	PG_RETURN_UINT64(ret);
-}
-/* End - bug#z5400 */
 
 Datum
 varbinary2numeric(PG_FUNCTION_ARGS)
@@ -444,33 +301,6 @@ varbinary_in(PG_FUNCTION_ARGS)
 	PG_RETURN_BYTEA_P(result);
 }
 
-/**
- * Begin BUG#5048 5070 
- * Hex value without '0x' prefix
- */
-Datum
-hexstring_varbinary(const char *src)
-{
-	int 	len = strlen(src);
-	int 	bc = (len + 1) / 2  + VARHDRSZ;
-
-	bytea	*result = palloc0(bc);
-	char	*dst = VARDATA(result);
-
-	if (len % 2)
-	{
-		*dst++ = mys_get_hex(src++);
-		len--;
-	}
-
-	mys_hex_decode(src, len, dst);
-
-	SET_VARSIZE(result, bc);
-
-	PG_RETURN_BYTEA_P(result);
-}
-/* End BUG#5048 5070 */
-
 // reference from varchar.c function varcharrecv() and varlena.c function bytearecv()
 Datum 
 varbinary_recv(PG_FUNCTION_ARGS)
@@ -543,31 +373,6 @@ varbinary_and(PG_FUNCTION_ARGS)
 	end2 = VARDATA_ANY(arg1) + len2;
 
 	return ((my_strtod_8bit(VARDATA_ANY(arg1), len1, &end1, &error) != 0.0) && (my_strtod_8bit(VARDATA_ANY(arg2), len2, &end2, &error) != 0.0));
-}
-
-Datum 
-varbinary_or(PG_FUNCTION_ARGS)
-{
-	int 	len1,
-			len2,
-			error;
-	char 	*end1,
-			*end2;
-	bytea 	*arg1, *arg2;
-
-	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-		PG_RETURN_NULL();
-
-	arg1 = PG_GETARG_BYTEA_PP(0);
-	arg2 = PG_GETARG_BYTEA_PP(1);
-
-	len1 = VARSIZE_ANY_EXHDR(arg1);
-	len2 = VARSIZE_ANY_EXHDR(arg2);
-
-	end1 = VARDATA_ANY(arg1) + len1;
-	end2 = VARDATA_ANY(arg1) + len2;
-
-	return ((my_strtod_8bit(VARDATA_ANY(arg1), len1, &end1, &error) != 0.0) || (my_strtod_8bit(VARDATA_ANY(arg2), len2, &end2, &error) != 0.0));
 }
 
 static bool 

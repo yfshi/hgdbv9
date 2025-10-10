@@ -41,13 +41,11 @@
 #include "parser/parser.h"		/* only needed for GUC variables */
 #include "parser/scansup.h"
 #include "mb/pg_wchar.h"
-/* BEGIN - case sensitive indentify */
+#include "mysql_parser/mys_case_sensitive.h"
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
-/* END - case sensitive indentify */
-/* BEGIN - mysql case sensitive indentify */
-#include "mysql_parser/mys_case_sensitive.h"
-/* END - mysql case sensitive indentify */
+#include "utils/varlena.h"
+
 }
 
 %{
@@ -208,7 +206,6 @@ extern void mys_core_yyset_column(int column_no, yyscan_t yyscanner);
 %x xeu
 /* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 %x xbq
-%x xzh
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
 /* Begin - ReqID:SRS-MYSQL-SET */
 %x xbat
@@ -282,12 +279,6 @@ xbinside		[^']*
 /* Hexadecimal number */
 xhstart			[xX]{quote}
 xhinside		[^']*
-
-/* Begin BUG#5048 5070 */
-xzhstart 		0[xX]
-xzhinside		[0-9A-Fa-f]*
-xzhinsidefail	[^0-9A-Fa-f]+
-/* End BUG#5048 5070 */
 
 /* National character */
 xnstart			[nN]{quote}
@@ -371,7 +362,7 @@ xcstop			\*+\/
 xcinside		[^*/]+
 
 digit			[0-9]
-ident_start		[A-Za-z\200-\377_]
+ident_start		[0-9A-Za-z\200-\377_]
 ident_cont		[A-Za-z\200-\377_0-9\$]
 
 identifier		{ident_start}{ident_cont}*
@@ -552,22 +543,6 @@ other			.
 					addlitchar('x', yyscanner);
 				}
 <xh><<EOF>>		{ yyerror("unterminated hexadecimal string literal"); }
-
-{xzhstart}		{
-					SET_YYLLOC();
-					BEGIN(xzh);
-					startlit();
-				}
-
-<xzh>{xzhinside} {
-					addlit(yytext, yyleng, yyscanner);
-					BEGIN(INITIAL);
-					yylval->str = litbufdup(yyscanner);
-					return HCONST;
-				}
-
-<xzh>{xzhinsidefail} |
-<xzh><<EOF>>		{ yyerror("unterminated hexadecimal string literal"); }
 
 {xnstart}		{
 					/* National character.
@@ -1232,6 +1207,17 @@ other			.
 														 yyextra->keywordlist);
 						return yyextra->keyword_tokens[kwnum];
 					}
+
+					/* Begin - SRS-MYSQL-HEX-LITERAL */
+					if (yytext[0] == '0')
+					{
+						if (yytext[1] == 'x' && yyleng > 2 && isxdigits_n(yytext + 2, yyleng - 2))
+						{
+							yylval->str = pstrdup(yytext + 2);
+							return HCONST;
+						}
+					}
+					/* End - SRS-MYSQL-HEX-LITERAL */
 
 					/*
 					 * No.  Convert the identifier to lower case, and truncate

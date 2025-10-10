@@ -7,10 +7,6 @@ SET extra_float_digits = 0;
 -- messages
 CREATE TABLE base_tbl (a int PRIMARY KEY, b text DEFAULT 'Unspecified');
 INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_series(-2, 2) g(i);
-ERROR:  operator is not unique: unknown || integer
-LINE 1: INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_ser...
-                                              ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 CREATE VIEW ro_view1 AS SELECT DISTINCT a, b FROM base_tbl; -- DISTINCT not supported
 CREATE VIEW ro_view2 AS SELECT a, b FROM base_tbl GROUP BY a, b; -- GROUP BY not supported
 CREATE VIEW ro_view3 AS SELECT 1 FROM base_tbl HAVING max(a) > 0; -- HAVING not supported
@@ -198,10 +194,15 @@ ERROR:  cannot update column "ctid" of view "rw_view14"
 DETAIL:  View columns that refer to system columns are not updatable.
 UPDATE rw_view14 SET b='ROW 3' WHERE a=3; -- should be OK
 SELECT * FROM base_tbl;
- a |   b   
----+-------
- 3 | ROW 3
-(1 row)
+ a  |   b    
+----+--------
+ -2 | Row -2
+ -1 | Row -1
+  0 | Row 0
+  1 | Row 1
+  2 | Row 2
+  3 | ROW 3
+(6 rows)
 
 DELETE FROM rw_view14 WHERE a=3; -- should be OK
 -- Partially updatable view
@@ -211,39 +212,64 @@ DETAIL:  View columns that are not columns of their base relation are not updata
 INSERT INTO rw_view15 (a) VALUES (3); -- should be OK
 INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT DO NOTHING; -- succeeds
 SELECT * FROM rw_view15;
- a |    upper    
----+-------------
- 3 | UNSPECIFIED
-(1 row)
+ a  |    upper    
+----+-------------
+ -2 | ROW -2
+ -1 | ROW -1
+  0 | ROW 0
+  1 | ROW 1
+  2 | ROW 2
+  3 | UNSPECIFIED
+(6 rows)
 
 INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a) DO NOTHING; -- succeeds
 SELECT * FROM rw_view15;
- a |    upper    
----+-------------
- 3 | UNSPECIFIED
-(1 row)
+ a  |    upper    
+----+-------------
+ -2 | ROW -2
+ -1 | ROW -1
+  0 | ROW 0
+  1 | ROW 1
+  2 | ROW 2
+  3 | UNSPECIFIED
+(6 rows)
 
 INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a) DO UPDATE set a = excluded.a; -- succeeds
 SELECT * FROM rw_view15;
- a |    upper    
----+-------------
- 3 | UNSPECIFIED
-(1 row)
+ a  |    upper    
+----+-------------
+ -2 | ROW -2
+ -1 | ROW -1
+  0 | ROW 0
+  1 | ROW 1
+  2 | ROW 2
+  3 | UNSPECIFIED
+(6 rows)
 
 INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a) DO UPDATE set upper = 'blarg'; -- fails
 ERROR:  cannot insert into column "upper" of view "rw_view15"
 DETAIL:  View columns that are not columns of their base relation are not updatable.
 SELECT * FROM rw_view15;
- a |    upper    
----+-------------
- 3 | UNSPECIFIED
-(1 row)
+ a  |    upper    
+----+-------------
+ -2 | ROW -2
+ -1 | ROW -1
+  0 | ROW 0
+  1 | ROW 1
+  2 | ROW 2
+  3 | UNSPECIFIED
+(6 rows)
 
 SELECT * FROM rw_view15;
- a |    upper    
----+-------------
- 3 | UNSPECIFIED
-(1 row)
+ a  |    upper    
+----+-------------
+ -2 | ROW -2
+ -1 | ROW -1
+  0 | ROW 0
+  1 | ROW 1
+  2 | ROW 2
+  3 | UNSPECIFIED
+(6 rows)
 
 ALTER VIEW rw_view15 ALTER COLUMN upper SET DEFAULT 'NOT SET';
 INSERT INTO rw_view15 (a) VALUES (4); -- should fail
@@ -257,10 +283,15 @@ ERROR:  cannot update column "upper" of view "rw_view15"
 DETAIL:  View columns that are not columns of their base relation are not updatable.
 UPDATE rw_view15 SET a=4 WHERE a=3; -- should be OK
 SELECT * FROM base_tbl;
- a |      b      
----+-------------
- 4 | Unspecified
-(1 row)
+ a  |      b      
+----+-------------
+ -2 | Row -2
+ -1 | Row -1
+  0 | Row 0
+  1 | Row 1
+  2 | Row 2
+  4 | Unspecified
+(6 rows)
 
 DELETE FROM rw_view15 WHERE a=4; -- should be OK
 -- Partially updatable view
@@ -271,10 +302,15 @@ UPDATE rw_view16 SET a=3, aa=-3 WHERE a=3; -- should fail
 ERROR:  multiple assignments to same column "a"
 UPDATE rw_view16 SET aa=-3 WHERE a=3; -- should be OK
 SELECT * FROM base_tbl;
- a  |   b   
-----+-------
+ a  |   b    
+----+--------
+ -2 | Row -2
+ -1 | Row -1
+  0 | Row 0
+  1 | Row 1
+  2 | Row 2
  -3 | Row 3
-(1 row)
+(6 rows)
 
 DELETE FROM rw_view16 WHERE a=-3; -- should be OK
 -- Read-only views
@@ -339,10 +375,6 @@ NOTICE:  drop cascades to view ro_view19
 -- simple updatable view
 CREATE TABLE base_tbl (a int PRIMARY KEY, b text DEFAULT 'Unspecified');
 INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_series(-2, 2) g(i);
-ERROR:  operator is not unique: unknown || integer
-LINE 1: INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_ser...
-                                              ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 CREATE VIEW rw_view1 AS SELECT * FROM base_tbl WHERE a>0;
 SELECT table_name, is_insertable_into
   FROM information_schema.tables
@@ -375,11 +407,15 @@ INSERT INTO rw_view1 (a) VALUES (4);
 UPDATE rw_view1 SET a=5 WHERE a=4;
 DELETE FROM rw_view1 WHERE b='Row 2';
 SELECT * FROM base_tbl;
- a |      b      
----+-------------
- 3 | Row 3
- 5 | Unspecified
-(2 rows)
+ a  |      b      
+----+-------------
+ -2 | Row -2
+ -1 | Row -1
+  0 | Row 0
+  1 | Row 1
+  3 | Row 3
+  5 | Unspecified
+(6 rows)
 
 EXPLAIN (costs off) UPDATE rw_view1 SET a=6 WHERE a=5;
                     QUERY PLAN                    
@@ -424,10 +460,6 @@ DROP TABLE base_tbl_hist;
 -- view on top of view
 CREATE TABLE base_tbl (a int PRIMARY KEY, b text DEFAULT 'Unspecified');
 INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_series(-2, 2) g(i);
-ERROR:  operator is not unique: unknown || integer
-LINE 1: INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_ser...
-                                              ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 CREATE VIEW rw_view1 AS SELECT b AS bb, a AS aa FROM base_tbl WHERE a>0;
 CREATE VIEW rw_view2 AS SELECT aa AS aaa, bb AS bbb FROM rw_view1 WHERE aa<10;
 SELECT table_name, is_insertable_into
@@ -461,18 +493,21 @@ INSERT INTO rw_view2 (aaa) VALUES (4);
 SELECT * FROM rw_view2;
  aaa |     bbb     
 -----+-------------
+   1 | Row 1
+   2 | Row 2
    3 | Row 3
    4 | Unspecified
-(2 rows)
+(4 rows)
 
 UPDATE rw_view2 SET bbb='Row 4' WHERE aaa=4;
 DELETE FROM rw_view2 WHERE aaa=2;
 SELECT * FROM rw_view2;
  aaa |  bbb  
 -----+-------
+   1 | Row 1
    3 | Row 3
    4 | Row 4
-(2 rows)
+(3 rows)
 
 EXPLAIN (costs off) UPDATE rw_view2 SET aaa=5 WHERE aaa=4;
                        QUERY PLAN                       
@@ -497,10 +532,6 @@ drop cascades to view rw_view2
 -- view on top of view with rules
 CREATE TABLE base_tbl (a int PRIMARY KEY, b text DEFAULT 'Unspecified');
 INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_series(-2, 2) g(i);
-ERROR:  operator is not unique: unknown || integer
-LINE 1: INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_ser...
-                                              ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 CREATE VIEW rw_view1 AS SELECT * FROM base_tbl WHERE a>0 OFFSET 0; -- not updatable without rules/triggers
 CREATE VIEW rw_view2 AS SELECT * FROM rw_view1 WHERE a<10;
 SELECT table_name, is_insertable_into
@@ -652,8 +683,10 @@ UPDATE rw_view2 SET b='Row three' WHERE a=3 RETURNING *;
 SELECT * FROM rw_view2;
  a |     b     
 ---+-----------
+ 1 | Row 1
+ 2 | Row 2
  3 | Row three
-(1 row)
+(3 rows)
 
 DELETE FROM rw_view2 WHERE a=3 RETURNING *;
  a |     b     
@@ -662,9 +695,11 @@ DELETE FROM rw_view2 WHERE a=3 RETURNING *;
 (1 row)
 
 SELECT * FROM rw_view2;
- a | b 
----+---
-(0 rows)
+ a |   b   
+---+-------
+ 1 | Row 1
+ 2 | Row 2
+(2 rows)
 
 EXPLAIN (costs off) UPDATE rw_view2 SET a=3 WHERE a=2;
                            QUERY PLAN                           
@@ -703,10 +738,6 @@ drop cascades to view rw_view2
 -- view on top of view with triggers
 CREATE TABLE base_tbl (a int PRIMARY KEY, b text DEFAULT 'Unspecified');
 INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_series(-2, 2) g(i);
-ERROR:  operator is not unique: unknown || integer
-LINE 1: INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_ser...
-                                              ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 CREATE VIEW rw_view1 AS SELECT * FROM base_tbl WHERE a>0 OFFSET 0; -- not updatable without rules/triggers
 CREATE VIEW rw_view2 AS SELECT * FROM rw_view1 WHERE a<10;
 SELECT table_name, is_insertable_into
@@ -883,8 +914,10 @@ UPDATE rw_view2 SET b='Row three' WHERE a=3 RETURNING *;
 SELECT * FROM rw_view2;
  a |     b     
 ---+-----------
+ 1 | Row 1
+ 2 | Row 2
  3 | Row three
-(1 row)
+(3 rows)
 
 DELETE FROM rw_view2 WHERE a=3 RETURNING *;
  a |     b     
@@ -893,9 +926,11 @@ DELETE FROM rw_view2 WHERE a=3 RETURNING *;
 (1 row)
 
 SELECT * FROM rw_view2;
- a | b 
----+---
-(0 rows)
+ a |   b   
+---+-------
+ 1 | Row 1
+ 2 | Row 2
+(2 rows)
 
 EXPLAIN (costs off) UPDATE rw_view2 SET a=3 WHERE a=2;
                         QUERY PLAN                        
@@ -929,23 +964,25 @@ DROP FUNCTION rw_view1_trig_fn();
 -- update using whole row from view
 CREATE TABLE base_tbl (a int PRIMARY KEY, b text DEFAULT 'Unspecified');
 INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_series(-2, 2) g(i);
-ERROR:  operator is not unique: unknown || integer
-LINE 1: INSERT INTO base_tbl SELECT i, 'Row ' || i FROM generate_ser...
-                                              ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 CREATE VIEW rw_view1 AS SELECT b AS bb, a AS aa FROM base_tbl;
 CREATE FUNCTION rw_view1_aa(x rw_view1)
   RETURNS int AS $$ SELECT x.aa $$ LANGUAGE sql;
 UPDATE rw_view1 v SET bb='Updated row 2' WHERE rw_view1_aa(v)=2
   RETURNING rw_view1_aa(v), v.bb;
- rw_view1_aa | bb 
--------------+----
-(0 rows)
+ rw_view1_aa |      bb       
+-------------+---------------
+           2 | Updated row 2
+(1 row)
 
 SELECT * FROM base_tbl;
- a | b 
----+---
-(0 rows)
+ a  |       b       
+----+---------------
+ -2 | Row -2
+ -1 | Row -1
+  0 | Row 0
+  1 | Row 1
+  2 | Updated row 2
+(5 rows)
 
 EXPLAIN (costs off)
 UPDATE rw_view1 v SET bb='Updated row 2' WHERE rw_view1_aa(v)=2
@@ -2413,25 +2450,9 @@ ERROR:  invalid input syntax for type real: "ONE"
 LINE 1: UPDATE v2 SET b = 'ONE' WHERE a = 1;
                           ^
 UPDATE v2 SET a = -1 WHERE a = 1; -- not allowed
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
 UPDATE v2 SET c = 30 WHERE a = 1; -- not allowed
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
 DELETE FROM v2 WHERE a = 2; -- ok
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
 SELECT * FROM v2;
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
-WARNING:  Truncated incorrect INTEGER value: 't1'
  a | b | c 
 ---+---+---
 (0 rows)

@@ -423,7 +423,7 @@ BEGIN
   RAISE NOTICE '%', v_Text;
 END;
 $$;
-ERROR:  procedure parameter "v_text" is an output parameter but corresponding argument is not writable
+ERROR:  procedure parameter "v_Text" is an output parameter but corresponding argument is not writable
 CONTEXT:  PL/mySQL function inline_code_block line 6 at CALL
 DO $$
 DECLARE

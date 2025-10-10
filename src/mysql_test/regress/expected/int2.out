@@ -11,31 +11,31 @@ INSERT INTO INT2_TBL(f1) VALUES ('32767');
 INSERT INTO INT2_TBL(f1) VALUES ('-32767');
 -- bad input values -- should give errors
 INSERT INTO INT2_TBL(f1) VALUES ('100000');
-ERROR:  value "100000" is out of range for type smallint
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO INT2_TBL(f1) VALUES ('100000');
                                          ^
 INSERT INTO INT2_TBL(f1) VALUES ('asdf');
-ERROR:  invalid input syntax for type smallint: "asdf"
+ERROR:  Incorrect integer value: 'asdf' for column.
 LINE 1: INSERT INTO INT2_TBL(f1) VALUES ('asdf');
                                          ^
 INSERT INTO INT2_TBL(f1) VALUES ('    ');
-ERROR:  invalid input syntax for type smallint: ""
+ERROR:  Incorrect integer value: '' for column.
 LINE 1: INSERT INTO INT2_TBL(f1) VALUES ('    ');
                                          ^
 INSERT INTO INT2_TBL(f1) VALUES ('- 1234');
-ERROR:  invalid input syntax for type smallint: "- 1234"
+ERROR:  Incorrect integer value: '- 1234' for column.
 LINE 1: INSERT INTO INT2_TBL(f1) VALUES ('- 1234');
                                          ^
 INSERT INTO INT2_TBL(f1) VALUES ('4 444');
-ERROR:  invalid input syntax for type smallint: "4 444"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO INT2_TBL(f1) VALUES ('4 444');
                                          ^
 INSERT INTO INT2_TBL(f1) VALUES ('123 dt');
-ERROR:  invalid input syntax for type smallint: "123 dt"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO INT2_TBL(f1) VALUES ('123 dt');
                                          ^
 INSERT INTO INT2_TBL(f1) VALUES ('');
-ERROR:  invalid input syntax for type smallint: ""
+ERROR:  Incorrect integer value: '' for column.
 LINE 1: INSERT INTO INT2_TBL(f1) VALUES ('');
                                          ^
 SELECT * FROM INT2_TBL;

@@ -34,7 +34,7 @@
 static void pcb_error_callback(void *arg);
 
 /* Begin BUG#5048 5070 */
-mysql_hexstring_to_varbinary_hook_type mysql_hexstring_to_varbinary_hook = NULL;
+mysql_hexstring_parse_hook_type mysql_hexstring_parse_hook = NULL;
 /* End BUG#5048 5070 */
 
 /*
@@ -460,9 +460,9 @@ make_const(ParseState *pstate, Value *value, int location)
 		/* Begin BUG#5048 5070 */		
 		case T_HexString:
 			setup_parser_errposition_callback(&pcbstate, pstate, location);
-			if (mysql_hexstring_to_varbinary_hook)
+			if (mysql_hexstring_parse_hook)
 			{
-				val = mysql_hexstring_to_varbinary_hook(strVal(value));
+				val = mysql_hexstring_parse_hook(strVal(value));
 			}
 			else
 			{
@@ -470,7 +470,7 @@ make_const(ParseState *pstate, Value *value, int location)
 				return NULL;		/* keep compiler quiet */
 			}
 			cancel_parser_errposition_callback(&pcbstate);
-			typeid = VARBINARYOID;
+			typeid = IVY_HEXOID;
 			typelen = -1;
 			typebyval = false;
 			break;

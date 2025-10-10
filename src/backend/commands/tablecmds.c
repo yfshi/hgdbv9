@@ -13301,6 +13301,9 @@ ATPrepAlterColumnType(List **wqueue,
 	AclResult	aclresult;
 	bool		is_expr;
 
+	/* SRS-MYSQL-HEX-LITERAL */
+	pstate->p_alter_column_type = true;
+
 	if (rel->rd_rel->reloftype && !recursing)
 		ereport(ERROR,
 				(errcode(ERRCODE_WRONG_OBJECT_TYPE),

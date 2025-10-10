@@ -7228,7 +7228,7 @@ unicode_is_normalized(PG_FUNCTION_ARGS)
 /*
  * Check if first n chars are hexadecimal digits
  */
-static bool
+bool
 isxdigits_n(const char *instr, size_t n)
 {
 	for (size_t i = 0; i < n; i++)

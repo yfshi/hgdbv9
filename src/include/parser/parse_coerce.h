@@ -114,8 +114,4 @@ extern CoercionPathType find_coercion_pathway(Oid targetTypeId,
 extern CoercionPathType find_typmod_coercion_function(Oid typeId,
 													  Oid *funcid);
 
-/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
-typedef uint64 (*Mysql_uint_datatype_in_hook_type) (const char *s,int c, int sizenum, bool seterr);
-extern PGDLLIMPORT Mysql_uint_datatype_in_hook_type mysql_uint_datatype_in_hook;
-/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
 #endif							/* PARSE_COERCE_H */

@@ -775,21 +775,6 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			int			nargs = op->d.func.nargs;
 			Datum		d;
 
-			/* Begin - ReqID:SRS-MYSQL-DATETYPE */
-			if (compatible_db == MYS_PARSER && state->parent && state->parent->state)
-			{
-				if (state->parent->state->es_plannedstmt)
-				{
-					if (state->parent->state->es_plannedstmt->commandType == CMD_INSERT ||
-						state->parent->state->es_plannedstmt->commandType == CMD_UPDATE)
-						fcinfo->flinfo->fn_insert = true;
-				}
-				
-				if (state->parent->state->es_createtbas)
-					fcinfo->flinfo->fn_insert = true;
-			}
-			/* End - ReqID:SRS-MYSQL-DATETYPE */
-
 			/* strict function, so check for NULL args */
 			for (int argno = 0; argno < nargs; argno++)
 			{

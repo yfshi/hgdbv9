@@ -187,20 +187,13 @@ DROP TABLE ctv_data;
 -- check error reporting (bug #14476)
 CREATE TABLE ctv_data (x int, y int, v text);
 INSERT INTO ctv_data SELECT 1, x, '*' || x FROM generate_series(1,10) x;
-ERROR:  operator is not unique: unknown || integer
-LINE 1: INSERT INTO ctv_data SELECT 1, x, '*' || x FROM generate_ser...
-                                              ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 SELECT * FROM ctv_data \crosstabview
- x 
----
-(0 rows)
+ x | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10  
+---+----+----+----+----+----+----+----+----+----+-----
+ 1 | *1 | *2 | *3 | *4 | *5 | *6 | *7 | *8 | *9 | *10
+(1 row)
 
 INSERT INTO ctv_data VALUES (1, 10, '*'); -- duplicate data to cause error
 SELECT * FROM ctv_data \crosstabview
- x | 10 
----+----
- 1 | *
-(1 row)
-
+\crosstabview: query result contains multiple data values for row "1", column "10"
 DROP TABLE ctv_data;

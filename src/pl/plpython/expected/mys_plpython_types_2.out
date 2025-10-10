@@ -679,9 +679,12 @@ CREATE FUNCTION test_type_conversion_array_mixed2() RETURNS int[] AS $$
 return [123, 'abc']
 $$ LANGUAGE plpython3u;
 SELECT * FROM test_type_conversion_array_mixed2();
-ERROR:  invalid input syntax for type integer: "abc"
-CONTEXT:  while creating return value
-PL/Python function "test_type_conversion_array_mixed2"
+WARNING:  Truncated incorrect INTEGER value: 'abc'
+ test_type_conversion_array_mixed2 
+-----------------------------------
+ {123,0}
+(1 row)
+
 -- check output of multi-dimensional arrays
 CREATE FUNCTION test_type_conversion_md_array_out() RETURNS text[] AS $$
 return [['a'], ['b'], ['c']]

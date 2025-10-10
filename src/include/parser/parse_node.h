@@ -325,7 +325,7 @@ struct ParseState
 	bool		p_isreplace; /* BUG#Z1626 */
 
 	/* Begin - ReqID:SRS-MYSQL-DATETYPE */
-	bool		p_myscreateastmt;
+	bool		p_createastmt;
 	/* End - ReqID:SRS-MYSQL-DATETYPE */
 
 	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
@@ -344,6 +344,20 @@ struct ParseState
 	 */
 	bool		p_hasuservar;
 	/* ReqID:SRS-MYSQL-SET */
+
+	/** SRS-MYSQL-HEX-LITERAL
+	 * If column's default value need cast to target type, 
+	 * we set p_cook_default to true to set 4th 'is_insert' flag
+	 * in cast function.
+	 */
+	bool		p_cook_default;
+
+	/** SRS-MYSQL-HEX-LITERAL
+	 * Mark there is alter column type context.
+	 * When alter column type, such as alter text to int,
+	 * cast function will be called in INSERT context.
+	 */
+	bool		p_alter_column_type;
 };
 
 /*
@@ -471,7 +485,7 @@ extern Const *make_const(ParseState *pstate, Value *value, int location);
 /* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 /* Begin BUG#5048 5070 */
-typedef Datum (*mysql_hexstring_to_varbinary_hook_type) (const char *str);
-extern PGDLLIMPORT mysql_hexstring_to_varbinary_hook_type mysql_hexstring_to_varbinary_hook;
+typedef Datum (* mysql_hexstring_parse_hook_type) (const char *str);
+extern PGDLLIMPORT mysql_hexstring_parse_hook_type mysql_hexstring_parse_hook;
 /* End BUG#5048 5070 */
 #endif							/* PARSE_NODE_H */

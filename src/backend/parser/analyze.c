@@ -1722,35 +1722,6 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 		else
 		/* End - ReqID:SRS-PLSQL-TYPE */
 		{
-			/** 
-			 * Begin BUG#5048 5070 
-			 * When insert hex sting like '0x32' into table, 
-			 * we decide parse hex string to uint64 or varbinary data
-			 * occording to target type.
-			 */
-			if (compatible_db == MYS_PARSER)
-			{
-				ListCell   *attnos;
-				Relation	rd = pstate->p_target_relation;
-
-				forboth (lc, (List *) linitial(valuesLists), attnos, attrnos)
-				{
-					Node 		*n = (Node *) lfirst(lc);
-
-					if (exprIsHexConstant(n))
-					{
-						int			attno = lfirst_int(attnos);
-						Oid 		targetType = attnumTypeId(rd, attno);
-						
-						if (type_is_numeric(targetType))
-						{
-							lfirst(lc) = make_bigint_const_from_hex(n);
-						}
-					}
-				}
-			}
-			/* End BUG#5048 5070 */
-
 			/*
 			 * Do basic expression transformation (same as a ROW() expr, but allow
 			 * SetToDefault at top level)
@@ -4730,22 +4701,6 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 			}
 		}
 
-		if (compatible_db == MYS_PARSER)
-		{
-			/* Begin BUG#5048 5070 */
-			if (exprIsHexConstant(origTarget->val))
-			{
-				Oid targetType = attnumTypeId(pstate->p_target_relation, attrno);
-				
-				if (type_is_numeric(targetType))
-				{
-					Node *tc = make_bigint_const_from_hex(origTarget->val);
-					tle->expr = (Expr *) transformExpr(pstate, tc, EXPR_KIND_UPDATE_SOURCE);
-				}
-			}
-			/* End BUG#5048 5070 */
-		}
-
 		if (colname_temp)
 		{
 			updateTargetListEntry(pstate, tle, colname_temp,
@@ -5378,8 +5333,8 @@ transformCreateTableAsStmt(ParseState *pstate, CreateTableAsStmt *stmt)
 	Query	   *result;
 	Query	   *query;
 
-	if(compatible_db == MYS_PARSER)
-		pstate->p_myscreateastmt = true;
+	if (compatible_db == MYS_PARSER)
+		pstate->p_createastmt = true;
 
 	/* transform contained query, not allowing SELECT INTO */
 	query = transformStmt(pstate, stmt->query);

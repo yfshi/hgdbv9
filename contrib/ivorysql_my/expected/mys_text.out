@@ -1113,125 +1113,245 @@ insert into tb1 values ('Sam');
 insert into tb1 values ('sam');
 insert into tb1 values ('am');
 select * from tb1 where col like binary 'a%';  -- abc,abcd,abcdefg,am
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary 'a%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col   
+---------
+ abc
+ abcd
+ abcdefg
+ am
+(4 rows)
+
 select * from tb1 where col like binary ' %';  -- bc
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary ' %';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+  bc
+(1 row)
+
 select * from tb1 where col like binary '%d';  -- abcd
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary '%d';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col  
+------
+ abcd
+(1 row)
+
 select * from tb1 where col like binary '%e%';  -- bem,abcdefg
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary '%e%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col   
+---------
+ bem
+ abcdefg
+(2 rows)
+
 select * from tb1 where col like binary '%';  -- all
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary '%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(10 rows)
+
 select * from tb1 where col like binary '_m';  -- am
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary '_m';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+ am
+(1 row)
+
 select * from tb1 where col like binary 'be_';  -- bem
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary 'be_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+ bem
+(1 row)
+
 select * from tb1 where col like binary '_b_';  -- bc,abc
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary '_b_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+  bc
+ abc
+(2 rows)
+
 select * from tb1 where col like binary '%_';  -- all rows
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary '%_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(10 rows)
+
 select * from tb1 where col like binary '_%';  -- all rows
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary '_%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(10 rows)
+
 select * from tb1 where col like binary '%人%';  -- 小巷人家
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary '%人%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+ 小巷人家
+(1 row)
+
 select * from tb1 where col like binary 'S%';  -- Sam
-ERROR:  operator does not exist: text ~~ binary
-LINE 1: select * from tb1 where col like binary 'S%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+ Sam
+(1 row)
+
 select * from tb1 where col not like binary 'a%';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary 'a%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ bem
+ 小巷人家
+ 三体
+ Sam
+ sam
+(6 rows)
+
 select * from tb1 where col not like binary ' %';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary ' %';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
 select * from tb1 where col not like binary '%d';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary '%d';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
 select * from tb1 where col not like binary '%e%';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary '%e%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(8 rows)
+
 select * from tb1 where col not like binary '%';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary '%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+(0 rows)
+
 select * from tb1 where col not like binary '_m';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary '_m';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+(9 rows)
+
 select * from tb1 where col not like binary 'be_';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary 'be_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
 select * from tb1 where col not like binary '_b_';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary '_b_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(8 rows)
+
 select * from tb1 where col not like binary '%_';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary '%_';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+(0 rows)
+
 select * from tb1 where col not like binary '_%';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary '_%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ col 
+-----
+(0 rows)
+
 select * from tb1 where col not like binary '%人%';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary '%人%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col   
+---------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
 select * from tb1 where col not like binary 'S%';
-ERROR:  operator does not exist: text !~~ binary
-LINE 1: select * from tb1 where col not like binary 'S%';
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ sam
+ am
+(9 rows)
+
 drop table if exists tb1;
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_OPER_009
 create table tb1(col text);
@@ -1603,14 +1723,14 @@ set mysql.cast_to_char = on;
 create table tb (col text);
 insert into tb values('abc');
 select convert('abc' using gbk);  -- success
-WARNING:   Syntax support only
+WARNING:  Syntax support only
  ?column? 
 ----------
  abc
 (1 row)
 
 select convert('abc' using gb18030);  -- success
-WARNING:   Syntax support only
+WARNING:  Syntax support only
  ?column? 
 ----------
  abc
@@ -1881,7 +2001,7 @@ insert into tb values(1,'abc');
 insert into tb values(2,'123');
 insert into tb values(3,'123.4');
 select convert(col ,unsigned) from tb where id=1;  -- 0
-WARNING:  invalid input syntax for type integer: "abc"
+WARNING:  Truncated incorrect INTEGER value: 'abc'
  col 
 -----
  0
@@ -1894,7 +2014,7 @@ select convert(col , unsigned) from tb where id=2;  -- 123
 (1 row)
 
 select convert(col , unsigned) from tb where id=3;  -- 123
-WARNING:  invalid input syntax for type integer: "123.4"
+WARNING:  Truncated incorrect INTEGER value: '123.4'
  col 
 -----
  123
@@ -1971,18 +2091,18 @@ WARNING:  Truncated incorrect INTEGER value: '24.5'
  25 | 24 | 24
 (3 rows)
 
-select a, cast(b as int unsigned), cast(c as int unsigned) from tb10;   -- [-1, 4294967295, 4294967295], [24, 24, 24], [25, 24, 24]
-WARNING:  value "-1" is out of range for unsigned 32-bit integer
-WARNING:  value "-1" is out of range for unsigned 32-bit integer
-WARNING:  invalid input syntax for type integer: "24.4"
-WARNING:  invalid input syntax for type integer: "24.4"
-WARNING:  invalid input syntax for type integer: "24.5"
-WARNING:  invalid input syntax for type integer: "24.5"
- a  |     b      |     c      
-----+------------+------------
- -1 | 4294967295 | 4294967295
- 24 | 24         | 24
- 25 | 24         | 24
+select a, cast(b as unsigned), cast(c as unsigned) from tb10;   -- [-1, 4294967295, 4294967295], [24, 24, 24], [25, 24, 24]
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Truncated incorrect INTEGER value: '24.4'
+WARNING:  Truncated incorrect INTEGER value: '24.4'
+WARNING:  Truncated incorrect INTEGER value: '24.5'
+WARNING:  Truncated incorrect INTEGER value: '24.5'
+ a  |          b           |          c           
+----+----------------------+----------------------
+ -1 | 18446744073709551615 | 18446744073709551615
+ 24 | 24                   | 24
+ 25 | 24                   | 24
 (3 rows)
 
 select a, cast(b as int8), cast(c as int8) from tb10;                   -- [-1, -1, -1], [24, 24, 24], [25, 24, 24]
@@ -1998,10 +2118,12 @@ WARNING:  Truncated incorrect INTEGER value: '24.5'
 (3 rows)
 
 select a, cast(b as int8 unsigned), cast(c as int8 unsigned) from tb10; -- [-1, 18446744073709551615, 18446744073709551615], [24, 24, 24], [25, 24, 24]
-WARNING:  invalid input syntax for type integer: "24.4"
-WARNING:  invalid input syntax for type integer: "24.4"
-WARNING:  invalid input syntax for type integer: "24.5"
-WARNING:  invalid input syntax for type integer: "24.5"
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Truncated incorrect INTEGER value: '24.4'
+WARNING:  Truncated incorrect INTEGER value: '24.4'
+WARNING:  Truncated incorrect INTEGER value: '24.5'
+WARNING:  Truncated incorrect INTEGER value: '24.5'
  a  |          b           |          c           
 ----+----------------------+----------------------
  -1 | 18446744073709551615 | 18446744073709551615
@@ -2010,3 +2132,75 @@ WARNING:  invalid input syntax for type integer: "24.5"
 (3 rows)
 
 drop table tb10;
+-- text to uint1
+create table t_text(a text);
+create table t_utinyint(a tinyint unsigned);
+insert into t_text values ('a');
+set sql_mode = '';
+insert into t_utinyint select * from t_text;
+WARNING:  Incorrect integer value: 'a' for column.
+set sql_mode = default;
+insert into t_utinyint select * from t_text;
+ERROR:  Incorrect integer value: 'a' for column.
+select * from t_utinyint;
+ a 
+---
+ 0
+(1 row)
+
+drop table t_text;
+drop table t_utinyint;
+-- text to uint2
+create table t_text(a text);
+create table t_uint2_1(a smallint unsigned);
+insert into t_text values ('a');
+set sql_mode = '';
+insert into t_uint2_1 select * from t_text;
+WARNING:  Incorrect integer value: 'a' for column.
+set sql_mode = default;
+insert into t_uint2_1 select * from t_text;
+ERROR:  Incorrect integer value: 'a' for column.
+select * from t_uint2_1;
+ a 
+---
+ 0
+(1 row)
+
+drop table t_text;
+drop table t_uint2_1;
+-- text to uint4
+create table t_text(a text);
+create table t_uint4_1(a int unsigned);
+insert into t_text values ('a');
+set sql_mode = '';
+insert into t_uint4_1 select * from t_text;
+WARNING:  Incorrect integer value: 'a' for column.
+set sql_mode = default;
+insert into t_uint4_1 select * from t_text;
+ERROR:  Incorrect integer value: 'a' for column.
+select * from t_uint4_1;
+ a 
+---
+ 0
+(1 row)
+
+drop table t_text;
+drop table t_uint4_1;
+-- text to uint8
+create table t_text(a text);
+create table t_uint8_1(a bigint unsigned);
+insert into t_text values ('a');
+set sql_mode = '';
+insert into t_uint8_1 select * from t_text;
+WARNING:  Incorrect integer value: 'a' for column.
+set sql_mode = default;
+insert into t_uint8_1 select * from t_text;
+ERROR:  Incorrect integer value: 'a' for column.
+select * from t_uint8_1;
+ a 
+---
+ 0
+(1 row)
+
+drop table t_text;
+drop table t_uint8_1;
