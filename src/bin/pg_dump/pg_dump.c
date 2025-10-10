@@ -185,6 +185,7 @@ DumpableObject **tblinfoindex;
 DumpableObject **typinfoindex;
 DumpableObject **funinfoindex;
 DumpableObject **oprinfoindex;
+DumpableObject **aminfoindex;
 DumpableObject **collinfoindex;
 DumpableObject **nspinfoindex;
 DumpableObject **extinfoindex;
@@ -197,6 +198,7 @@ int	numPkgs;
 int	numFuncs;
 int numSyns;	/* ReqID:SRS-SQL-SYNONYM */
 int	numOperators;
+int	numAccessMethods;
 int	numCollations;
 int	numNamespaces;
 int	numExtensions;
