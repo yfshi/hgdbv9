@@ -21,7 +21,7 @@ MYS_REGRESS = mys_ddl mys_xact mys_rewrite mys_toast mys_permissions mys_decodin
 ISOLATION = mxact delayed_startup ondisk_startup concurrent_ddl_dml \
 	oldest_xmin snapshot_transfer subxact_without_top concurrent_stream \
 	twophase_snapshot catalog_change_snapshot skip_snapshot_restore \
-	invalidation_distrubution
+	invalidation_distribution
 ORA_ISOLATION = mxact delayed_startup ondisk_startup \
        oldest_xmin snapshot_transfer subxact_without_top concurrent_stream \
        twophase_snapshot catalog_change_snapshot skip_snapshot_restore

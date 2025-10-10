@@ -17,6 +17,7 @@
 
 #include <ctype.h>
 
+#include "catalog/pg_am_d.h"
 #include "catalog/pg_class_d.h"
 #include "fe_utils/string_utils.h"
 #include "pg_backup_archiver.h"
@@ -736,6 +737,17 @@ OprInfo *
 findOprByOid(Oid oid)
 {
 	return (OprInfo *) findObjectByOid(oid, oprinfoindex, numOperators);
+}
+
+/*
+ * findAccessMethodByOid
+ *	  finds the DumpableObject for the access method with the given oid
+ *	  returns NULL if not found
+ */
+AccessMethodInfo *
+findAccessMethodByOid(Oid oid)
+{
+	return (AccessMethodInfo *) findObjectByOid(oid, aminfoindex, numAccessMethods);
 }
 
 /*

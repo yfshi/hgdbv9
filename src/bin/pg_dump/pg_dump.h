@@ -272,6 +272,8 @@ typedef struct _oprInfo
 	DumpableObject dobj;
 	char	   *rolname;
 	char		oprkind;
+	Oid			oprleft;
+	Oid			oprright;
 	Oid			oprcode;
 } OprInfo;
 
@@ -285,12 +287,14 @@ typedef struct _accessMethodInfo
 typedef struct _opclassInfo
 {
 	DumpableObject dobj;
+	Oid			opcmethod;
 	char	   *rolname;
 } OpclassInfo;
 
 typedef struct _opfamilyInfo
 {
 	DumpableObject dobj;
+	Oid			opfmethod;
 	char	   *rolname;
 } OpfamilyInfo;
 
@@ -298,6 +302,7 @@ typedef struct _collInfo
 {
 	DumpableObject dobj;
 	char	   *rolname;
+	int			collencoding;
 } CollInfo;
 
 typedef struct _convInfo
@@ -829,6 +834,7 @@ extern DumpableObject **tblinfoindex;
 extern DumpableObject **typinfoindex;
 extern DumpableObject **funinfoindex;
 extern DumpableObject **oprinfoindex;
+extern DumpableObject **aminfoindex;
 extern DumpableObject **collinfoindex;
 extern DumpableObject **nspinfoindex;
 extern DumpableObject **extinfoindex;
@@ -839,6 +845,7 @@ extern int	numPkgs;
 extern int	numFuncs;
 extern int	numSyns;	/* ReqID:SRS-SQL-SYNONYM */
 extern int	numOperators;
+extern int	numAccessMethods;
 extern int	numCollations;
 extern int	numNamespaces;
 extern int	numExtensions;
@@ -881,6 +888,7 @@ extern TableInfo *findTableByOid(Oid oid);
 extern TypeInfo *findTypeByOid(Oid oid);
 extern FuncInfo *findFuncByOid(Oid oid);
 extern OprInfo *findOprByOid(Oid oid);
+extern AccessMethodInfo *findAccessMethodByOid(Oid oid);
 extern CollInfo *findCollationByOid(Oid oid);
 extern NamespaceInfo *findNamespaceByOid(Oid oid);
 extern ExtensionInfo *findExtensionByOid(Oid oid);
