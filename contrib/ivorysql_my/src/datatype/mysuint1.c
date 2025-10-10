@@ -219,14 +219,6 @@ PG_FUNCTION_INFO_V1(int2_andmysuint1);
 PG_FUNCTION_INFO_V1(int4_andmysuint1);
 PG_FUNCTION_INFO_V1(int8_andmysuint1);
 
-PG_FUNCTION_INFO_V1(mysuint1_ormysuint1);
-PG_FUNCTION_INFO_V1(mysuint1_orint2);
-PG_FUNCTION_INFO_V1(mysuint1_orint4);
-PG_FUNCTION_INFO_V1(mysuint1_orint8);
-PG_FUNCTION_INFO_V1(int2_ormysuint1);
-PG_FUNCTION_INFO_V1(int4_ormysuint1);
-PG_FUNCTION_INFO_V1(int8_ormysuint1);
-
 PG_FUNCTION_INFO_V1(mysuint1_invertmysuint1);
 
 PG_FUNCTION_INFO_V1(mysuint1_boolean);
@@ -255,11 +247,16 @@ PG_FUNCTION_INFO_V1(mysuint1_sum);
 Datum
 mysuint1_in(PG_FUNCTION_ARGS)
 {
-	char *num = PG_GETARG_CSTRING(0);
+	int64 	flag = 0;
+	char 	*num = PG_GETARG_CSTRING(0);
+	uint8 	ret;
 
-	uint32 temp = pg_atoi_uint(num, '\0', 1, true);
+	if (PG_NARGS() > 3)
+		flag = PG_GETARG_INT64(3);
 
-	PG_RETURN_UINT32(temp);
+	ret = my_atoi_uint8(num, flag & TRANSFORM_FLAG_IN_INSERT);
+
+	PG_RETURN_UINT8(ret);
 }
 
 /* 
@@ -1946,66 +1943,6 @@ int8_andmysuint1(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT32(val2 && val1);
 }
-
-// or ||
-Datum
-mysuint1_ormysuint1(PG_FUNCTION_ARGS)
-{
-	uint8		val1 = PG_GETARG_UINT32(0);
-	uint8		val2 = PG_GETARG_UINT32(1);
-
-	PG_RETURN_UINT32(val1 || val2);
-}
-Datum
-mysuint1_orint2(PG_FUNCTION_ARGS)
-{
-	uint8		val1 = PG_GETARG_UINT32(0);
-	int16		val2 = PG_GETARG_INT16(1);
-
-	PG_RETURN_UINT32(val1 || val2);
-}
-Datum
-mysuint1_orint4(PG_FUNCTION_ARGS)
-{
-	uint8		val1 = PG_GETARG_UINT32(0);
-	int32		val2 = PG_GETARG_INT32(1);
-
-	PG_RETURN_UINT32(val1 || val2);
-}
-Datum
-mysuint1_orint8(PG_FUNCTION_ARGS)
-{
-	uint8		val1 = PG_GETARG_UINT32(0);
-	int64		val2 = PG_GETARG_INT64(1);
-
-	PG_RETURN_UINT32(val1 || val2);
-}
-
-Datum
-int2_ormysuint1(PG_FUNCTION_ARGS)
-{
-	uint8		val1 = PG_GETARG_UINT32(1);
-	int16		val2 = PG_GETARG_INT16(0);
-
-	PG_RETURN_UINT32(val2 || val1);
-}
-Datum
-int4_ormysuint1(PG_FUNCTION_ARGS)
-{
-	uint8		val1 = PG_GETARG_UINT32(1);
-	int32		val2 = PG_GETARG_INT32(0);
-
-	PG_RETURN_UINT32(val2 || val1);
-}
-Datum
-int8_ormysuint1(PG_FUNCTION_ARGS)
-{
-	uint8		val1 = PG_GETARG_UINT32(1);
-	int64		val2 = PG_GETARG_INT64(0);
-
-	PG_RETURN_UINT32(val2 || val1);
-}
-
 
 // invert ! 
 Datum

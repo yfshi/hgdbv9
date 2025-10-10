@@ -2045,14 +2045,14 @@ drop table tb;
 create table tb (col char(10)); 
 insert into tb values('abc');
 select convert('abc' using gbk);
-WARNING:   Syntax support only
+WARNING:  Syntax support only
  ?column? 
 ----------
  abc
 (1 row)
 
 select convert('abc' using gb18030);
-WARNING:   Syntax support only
+WARNING:  Syntax support only
  ?column? 
 ----------
  abc
@@ -2065,7 +2065,7 @@ insert into tb values(1,'abc');
 insert into tb values(2,'123'); 
 insert into tb values(3,'123.4');
 select convert(col ,unsigned) from tb where id=1;  --0
-WARNING:  invalid input syntax for type integer: "abc       "
+WARNING:  Truncated incorrect INTEGER value: 'abc'
  col 
 -----
  0
@@ -2078,7 +2078,7 @@ select convert(col , unsigned) from tb where id=2; --123
 (1 row)
 
 select convert(col , unsigned) from tb where id=3; --123
-WARNING:  invalid input syntax for type integer: "123.4     "
+WARNING:  Truncated incorrect INTEGER value: '123.4'
  col 
 -----
  123
@@ -2133,7 +2133,7 @@ insert into tb values(1,'abc');
 insert into tb values(2,'123');
 insert into tb values(3,'123.4');
 select convert(col ,unsigned) from tb where id=1; --0
-WARNING:  invalid input syntax for type integer: "abc"
+WARNING:  Truncated incorrect INTEGER value: 'abc'
  col 
 -----
  0
@@ -2146,7 +2146,7 @@ select convert(col , unsigned) from tb where id=2; --123
 (1 row)
 
 select convert(col , unsigned) from tb where id=3; --123
-WARNING:  invalid input syntax for type integer: "123.4"
+WARNING:  Truncated incorrect INTEGER value: '123.4'
  col 
 -----
  123

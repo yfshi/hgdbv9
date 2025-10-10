@@ -184,8 +184,6 @@ fmgr_subproc_info_cxt_security(Oid functionId, FmgrInfo *finfo,
 
 	finfo->fn_strict = false; /* inline function is awalys not strict */
 
-	finfo->fn_insert = false; /* ReqID:SRS-MYSQL-DATETYPE */
-
 	/*
 	 * handle invoke define from package or type
 	 */
@@ -1788,6 +1786,56 @@ InputFunctionCall(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod)
 	return result;
 }
 
+/**
+ * Begin - SRS-MYSQL-HEX-LITERAL
+ * Copy from InputFunctionCall.
+ * Add 4th 'is_insert' argument to mark whether it is called
+ * in an INSERT context.
+ */
+Datum
+InputFunctionCall_mysql(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, int64 flag)
+{
+	LOCAL_FCINFO(fcinfo, 4);
+	Datum		result;
+
+	if (str == NULL && flinfo->fn_strict)
+		return (Datum) 0;		/* just return null result */
+
+	InitFunctionCallInfoData(*fcinfo, flinfo, 4, InvalidOid, NULL, NULL);
+
+	fcinfo->args[0].value = CStringGetDatum(str);
+	fcinfo->args[0].isnull = false;
+	fcinfo->args[1].value = ObjectIdGetDatum(typioparam);
+	fcinfo->args[1].isnull = false;
+	fcinfo->args[2].value = Int32GetDatum(typmod);
+	fcinfo->args[2].isnull = false;
+	fcinfo->args[3].value = Int64GetDatum(flag);
+	fcinfo->args[3].isnull = false;
+
+	result = FunctionCallInvoke(fcinfo);
+
+	/* Should get null result if and only if str is NULL */
+	if (str == NULL)
+	{
+		if (!fcinfo->isnull)
+			elog(ERROR, "input function %u returned non-NULL",
+				 flinfo->fn_oid);
+	}
+	else
+	{
+		if(compatible_db != MYS_PARSER) /* ReqID:SRS-MYSQL-DATETYPE */
+		{
+			if (fcinfo->isnull)
+				elog(ERROR, "input function %u returned NULL",
+					 flinfo->fn_oid);
+		}
+
+	}
+
+	return result;
+}
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 /* Begin - BUG#M0000414 */
 Datum
 InputFunctionCall_2(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, int32 lens)
@@ -1807,7 +1855,7 @@ InputFunctionCall_2(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, i
 	fcinfo->args[2].value = Int32GetDatum(typmod);
 	fcinfo->args[2].isnull = false;
 	fcinfo->args[3].value = Int32GetDatum(lens);
-	fcinfo->args[2].isnull = false;
+	fcinfo->args[3].isnull = false;
 
 
 	result = FunctionCallInvoke(fcinfo);
@@ -1927,6 +1975,17 @@ OidInputFunctionCall(Oid functionId, char *str, Oid typioparam, int32 typmod)
 	fmgr_info(functionId, &flinfo);
 	return InputFunctionCall(&flinfo, str, typioparam, typmod);
 }
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+Datum
+OidInputFunctionCall_mysql(Oid functionId, char *str, Oid typioparam, int32 typmod, int64 flag)
+{
+	FmgrInfo	flinfo;
+
+	fmgr_info(functionId, &flinfo);
+	return InputFunctionCall_mysql(&flinfo, str, typioparam, typmod, flag);
+}
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 char *
 OidOutputFunctionCall(Oid functionId, Datum val)

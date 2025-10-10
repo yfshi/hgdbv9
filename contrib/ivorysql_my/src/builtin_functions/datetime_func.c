@@ -3098,9 +3098,8 @@ from_days(PG_FUNCTION_ARGS)
 {
 	struct	pg_tm tt, *tm = &tt;
 	DateADT	result = 0;
-	int64	num = 0;
+	int64	num = PG_GETARG_INT64(0);
 
-	num = DatumGetInt64(DirectFunctionCall1(numeric_int8, PG_GETARG_DATUM(0)));
 	get_date_from_day(num, tm);
 	if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
 		result = MYSQL_ZERO_DATE;

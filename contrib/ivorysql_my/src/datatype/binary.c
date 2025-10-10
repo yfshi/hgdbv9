@@ -51,7 +51,7 @@ copy_binary(Datum source, int typmod, bool target_is_var)
 
 	if (length == 0)
 	{
-			PG_RETURN_POINTER(result);
+		PG_RETURN_POINTER(result);
 	}
 	
 	rp = VARDATA(result);
@@ -66,48 +66,45 @@ PG_FUNCTION_INFO_V1(binary_in);
 PG_FUNCTION_INFO_V1(bytea_binary);
 PG_FUNCTION_INFO_V1(binary_sortsupport);
 
-// reference from og
 Datum 
 binary(PG_FUNCTION_ARGS)
 {
 	bytea *source = PG_GETARG_BYTEA_P(0);
 	int32 typmod = PG_GETARG_INT32(1);
 	bool isExplicit = PG_GETARG_BOOL(2);
-	int32 length, maxlen;
-
-	length = VARSIZE_ANY_EXHDR(source);
-	maxlen = typmod - VARHDRSZ;
+	int32 length = VARSIZE_ANY_EXHDR(source);
+	int32 maxlen = typmod - VARHDRSZ;
 
 	if (typmod == VARHDRSZ)
 	{
-			if (length == 0)
-			{
-					PG_RETURN_NULL();
-			}
-			
-			if (!isExplicit)
-			{
-					ereport(ERROR, 
-									(errmsg("The input length:%d exceeds the maximum length:%d.", length, maxlen)));
-			}
-			
-			ereport(WARNING, 
-							(errmsg("The input length:%d exceeds the maximum length:%d, data truncated", length, maxlen)));
-							
-			PG_RETURN_BYTEA_P(truncate_bytea_with_len(source, maxlen));
+		if (length == 0)
+		{
+			PG_RETURN_NULL();
+		}
+		
+		if (!isExplicit)
+		{
+			ereport(ERROR, 
+					(errmsg("The input length:%d exceeds the maximum length:%d.", length, maxlen)));
+		}
+		
+		ereport(WARNING, 
+				(errmsg("The input length:%d exceeds the maximum length:%d, data truncated", length, maxlen)));
+						
+		PG_RETURN_BYTEA_P(truncate_bytea_with_len(source, maxlen));
 	}
 
 	if (maxlen > 0 && length > maxlen)
 	{
-			if (is_strict_mode() && !isExplicit)
-			{
-					ereport(ERROR, (errmsg("The input length:%d exceeds the maximum length:%d.", length, maxlen)));
-			}
-			else
-			{
-					ereport(WARNING, (errmsg("The input length:%d exceeds the maximum length:%d, data truncated", length, maxlen)));
-					PG_RETURN_BYTEA_P(truncate_bytea_with_len(source, maxlen));
-			}
+		if (is_strict_mode() && !isExplicit)
+		{
+			ereport(ERROR, (errmsg("The input length:%d exceeds the maximum length:%d.", length, maxlen)));
+		}
+		else
+		{
+			ereport(WARNING, (errmsg("The input length:%d exceeds the maximum length:%d, data truncated", length, maxlen)));
+			PG_RETURN_BYTEA_P(truncate_bytea_with_len(source, maxlen));
+		}
 	}
 
 	return copy_binary(PointerGetDatum(source), typmod, false);
@@ -119,21 +116,19 @@ binary2bool(PG_FUNCTION_ARGS)
 	return varbinary2bool(fcinfo);
 }
 
-// reference from og
 Datum 
 binary_in(PG_FUNCTION_ARGS)
 {
-	char *inputText = PG_GETARG_CSTRING(0);
-	int32 atttypmod = PG_GETARG_INT32(2);
-	int bc;
-	int cl;
-	char *tp = NULL;
-	char *rp = NULL;
-	size_t len = strlen(inputText);
-	size_t hex_len = 0;
-	bytea *result;
-	size_t maxlen = atttypmod - VARHDRSZ;
-	size_t maxmblen = pg_mbcharcliplen(inputText, len, maxlen); // actual save length
+	char 	*inputText = PG_GETARG_CSTRING(0);
+	int32 	atttypmod = PG_GETARG_INT32(2),
+			bc, cl;
+	char 	*tp = NULL,
+			*rp = NULL;
+	size_t 	len = strlen(inputText),
+			hex_len = 0,
+			maxlen = atttypmod - VARHDRSZ;
+	bytea 	*result;
+	bool	is_insert = CALL_IN_INSERT();
 
 	/* Recognize hex input */
 	/* Begin - bug#z5465 */ 
@@ -143,31 +138,44 @@ binary_in(PG_FUNCTION_ARGS)
 		if (atttypmod < VARHDRSZ)
 		{
 			bc = HEX_LEN(len) + VARHDRSZ; /* maximum possible length */
-			result = (bytea *)palloc(bc);
+			result = (bytea *) palloc(bc);
 		}
 		else
 		{
 			if (HEX_LEN(len) > maxlen)
 			{
-				if (is_strict_mode())
+				/* Begin - bug#z5800 */
+				if (is_insert)
 				{
-					ereport(ERROR, 
-						(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-							errmsg("value too long for type binary(%d)", atttypmod - VARHDRSZ)));
+					if (is_strict_mode())
+					{
+						ereport(ERROR,
+								(errmsg("Data too long for column")));
+					}
+					else
+					{
+						ereport(WARNING,
+								(errmsg("Data truncated for column")));
+						
+						hex_len = maxlen * 2;
+					}
 				}
 				else
 				{
+					ereport(WARNING,
+							(errmsg("Truncated incorrect BINARY(%d) value: (%s)", atttypmod - VARHDRSZ, inputText)));
+
 					hex_len = maxlen * 2;
-					ereport(WARNING, 
-						(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-							errmsg("value too long for type binary(%d)", atttypmod - VARHDRSZ)));
 				}
+				/* End - bug#z5800 */
 			}
-			result = (bytea *)palloc0(atttypmod); /* palloc0, pad with zero */
+
+			result = (bytea *) palloc0(atttypmod); /* palloc0, pad with zero */
 		}
 
 		bc = hex_decode(inputText + 2, hex_len, VARDATA(result));
 		SET_VARSIZE(result, atttypmod < VARHDRSZ ? bc + VARHDRSZ : atttypmod);
+
 		PG_RETURN_BYTEA_P(result);
 	}
 	/* End - bug#z5465 */ 
@@ -177,27 +185,35 @@ binary_in(PG_FUNCTION_ARGS)
 	{
 		char *new_text;
 
-		if (is_strict_mode())
+		/* Begin - bug#z5800 */
+		if (is_insert)
 		{
-			ereport(ERROR,
-				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					errmsg("value too long for type binary(%lu)", maxlen)));
+			if (is_strict_mode())
+			{
+				ereport(ERROR,
+						(errmsg("Data too long for column")));
+			}
+			else
+			{
+				ereport(WARNING,
+						(errmsg("Data truncated for column")));
+			}
 		}
 		else
 		{
 			ereport(WARNING,
-				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					errmsg("value too long for type binary(%lu), data truncated", maxlen)));
+					(errmsg("Truncated incorrect BINARY(%d) value: (%s)", atttypmod - VARHDRSZ, inputText)));			
 		}
+		/* End - bug#z5800 */
 
-		maxmblen = maxlen;
-		new_text = (char *)palloc0(len);
-		memcpy(new_text, inputText, maxmblen);
-		PG_RETURN_BYTEA_P(DirectFunctionCall1(byteain, CStringGetDatum(new_text)));
+		new_text = pnstrdup(inputText, maxlen);
+
+		return DirectFunctionCall1(byteain, CStringGetDatum(new_text));
 	}
 
 	bc = 0;
 	tp = inputText;
+
 	while (*tp != '\0')
 	{
 		if (tp[0] != '\\')
@@ -233,7 +249,7 @@ binary_in(PG_FUNCTION_ARGS)
 	if (atttypmod < VARHDRSZ)
 	{
 		bc += VARHDRSZ;
-		result = (bytea *)palloc(bc);
+		result = (bytea *) palloc(bc);
 		SET_VARSIZE(result, bc);
 	}
 	else
@@ -241,15 +257,17 @@ binary_in(PG_FUNCTION_ARGS)
 		if (bc > atttypmod - VARHDRSZ)
 		{
 			ereport(ERROR,
-				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					errmsg("value too long for type binary(%d)", atttypmod - VARHDRSZ)));
+					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+					 errmsg("value too long for type binary(%d)", atttypmod - VARHDRSZ)));
 		}
-		result = (bytea *)palloc0(atttypmod); /* palloc0, pad with zero */
+
+		result = (bytea *) palloc0(atttypmod); /* palloc0, pad with zero */
 		SET_VARSIZE(result, atttypmod);
 	}
 
 	tp = inputText;
 	rp = VARDATA(result);
+	
 	while (*tp != '\0')
 	{
 		if (tp[0] != '\\')

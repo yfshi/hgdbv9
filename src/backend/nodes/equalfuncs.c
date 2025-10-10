@@ -558,6 +558,7 @@ _equalCoerceViaIO(const CoerceViaIO *a, const CoerceViaIO *b)
 	COMPARE_SCALAR_FIELD(resultcollid);
 	COMPARE_COERCIONFORM_FIELD(coerceformat);
 	COMPARE_LOCATION_FIELD(location);
+	COMPARE_SCALAR_FIELD(flag); // SRS-MYSQL-HEX-LITERAL
 
 	return true;
 }

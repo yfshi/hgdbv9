@@ -30,7 +30,7 @@ SELECT * FROM subtransaction_tbl;
 
 TRUNCATE subtransaction_tbl;
 SELECT subtransaction_ctx_test('SPI');
-ERROR:  spiexceptions.InvalidTextRepresentation: invalid input syntax for type integer: "oops"
+ERROR:  spiexceptions.InternalError: Incorrect integer value: 'oops' for column.
 LINE 1: INSERT INTO subtransaction_tbl VALUES ('oops')
                                                ^
 QUERY:  INSERT INTO subtransaction_tbl VALUES ('oops')
@@ -257,8 +257,8 @@ except plpy.SPIError:
     plpy.warning("Caught a SPI error")
 $$ LANGUAGE plpythonu;
 SELECT subtransaction_mix_explicit_and_implicit();
-WARNING:  Caught a SPI error from an explicit subtransaction
-WARNING:  Caught a SPI error
+WARNING:  Truncated incorrect INTEGER value: 'wrong'
+WARNING:  Truncated incorrect INTEGER value: 'wrong'
  subtransaction_mix_explicit_and_implicit 
 ------------------------------------------
  
@@ -269,7 +269,11 @@ SELECT * FROM subtransaction_tbl;
 ---
  1
  2
-(2 rows)
+ 0
+ 1
+ 2
+ 0
+(6 rows)
 
 TRUNCATE subtransaction_tbl;
 -- Alternative method names for Python <2.6

@@ -41,15 +41,16 @@ select 'four: '::text || 2+2;
 (1 row)
 
 select 'four: ' || 2+2;
-ERROR:  operator is not unique: unknown || bigint
-LINE 1: select 'four: ' || 2+2;
-                        ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
+ ?column? 
+----------
+ four: 4
+(1 row)
+
 -- but not this:
 select 3 || 4.0;
  ?column? 
 ----------
- t
+ 34.0
 (1 row)
 
 /*

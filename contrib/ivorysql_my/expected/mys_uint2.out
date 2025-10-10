@@ -14,21 +14,21 @@ ERROR:  integer unsigned out of range
 insert into t1 values(4294967295);
 ERROR:  integer unsigned out of range
 insert into t1 values('a111') ;
-ERROR:  invalid input syntax for type integer: "a111"
+ERROR:  Incorrect integer value: 'a111' for column.
 LINE 1: insert into t1 values('a111') ;
                               ^
 insert into t1 values('111a') ;
-ERROR:  invalid input syntax for type integer: "111a"
+ERROR:  Data truncated for column.
 LINE 1: insert into t1 values('111a') ;
                               ^
 insert into t1 values('.111') ;
 insert into t1 values('0111') ;
 insert into t1 values('#111') ;
-ERROR:  invalid input syntax for type integer: "#111"
+ERROR:  Incorrect integer value: '#111' for column.
 LINE 1: insert into t1 values('#111') ;
                               ^
 insert into t1 values('111#') ;
-ERROR:  invalid input syntax for type integer: "111#"
+ERROR:  Data truncated for column.
 LINE 1: insert into t1 values('111#') ;
                               ^
 insert into t1 values('111.') ;
@@ -332,21 +332,21 @@ WARNING:  integer unsigned out of range
 insert into t1 values(4294967295);
 WARNING:  integer unsigned out of range
 insert into t1 values('a111') ;
-WARNING:  invalid input syntax for type integer: "a111"
+WARNING:  Incorrect integer value: 'a111' for column.
 LINE 1: insert into t1 values('a111') ;
                               ^
 insert into t1 values('111a') ;
-WARNING:  invalid input syntax for type integer: "111a"
+WARNING:  Data truncated for column.
 LINE 1: insert into t1 values('111a') ;
                               ^
 insert into t1 values('.111') ;
 insert into t1 values('0111') ;
 insert into t1 values('#111') ;
-WARNING:  invalid input syntax for type integer: "#111"
+WARNING:  Incorrect integer value: '#111' for column.
 LINE 1: insert into t1 values('#111') ;
                               ^
 insert into t1 values('111#') ;
-WARNING:  invalid input syntax for type integer: "111#"
+WARNING:  Data truncated for column.
 LINE 1: insert into t1 values('111#') ;
                               ^
 insert into t1 values('111.') ;
@@ -1723,7 +1723,7 @@ explain (COSTS OFF) select * from t_index where id BETWEEN 65::uint2 and 70::uin
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Scan using index_id_btree on t_index
-   Index Cond: ((id >= '65'::uint2) AND (id <= '70'::uint2))
+   Index Cond: ((id >= (65)::uint2) AND (id <= (70)::uint2))
 (2 rows)
 
 drop table t_index;

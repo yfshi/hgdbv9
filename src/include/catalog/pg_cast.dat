@@ -601,6 +601,8 @@
   castcontext => 'a', castmethod => 'f' },
 { castsource => 'anyenum', casttarget => 'bool', castfunc => 'enum_to_bool',
   castcontext => 'a', castmethod => 'f' },
+{ castsource => 'anyenum', casttarget => 'varbinary', castfunc => 'enum_to_varbinary',
+  castcontext => 'a', castmethod => 'f' },
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 /*END MySQL Compatibility Metadatas*/
 ]

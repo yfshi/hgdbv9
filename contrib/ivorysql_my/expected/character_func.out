@@ -677,9 +677,14 @@ select char('100'); -- '\x64'
 (1 row)
 
 SELECT CHAR('10.7'); -- '\x0a'
-ERROR:  invalid input syntax for type bigint: "10.7"
+WARNING:  Truncated incorrect INTEGER value: '10.7'
 LINE 1: SELECT CHAR('10.7');
                     ^
+ char 
+------
+ \x0a
+(1 row)
+
 -- CONCAT
 SELECT CONCAT(20, 30, 40); -- '203040'
  CONCAT 
@@ -2771,7 +2776,6 @@ SELECT ifnull('100'::int4, 'hello!'::text);
 
 --ifnull(text, int8)
 SELECT ifnull('hello!'::text, '100'::int8);
-WARNING:  Truncated incorrect INTEGER value: 'hello!'
  ifnull 
 --------
       0

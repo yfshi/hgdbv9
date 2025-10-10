@@ -24,6 +24,7 @@
 #include "nodes/supportnodes.h"
 #include "optimizer/optimizer.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 #include "utils/int8.h"
 #include "utils/ora_compatible.h"	/* BUG#M0000194 */
 
@@ -141,6 +142,17 @@ int8in(PG_FUNCTION_ARGS)
 	if (ora_strtoint64((const char *) str, "bigint", &result))
 		PG_RETURN_INT64(result);
 	/* End - BUG#M0000194 */
+
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	if (MYS_PARSER == compatible_db && mysql_int8_datatype_in_hook)
+	{
+		bool is_insert = CALL_IN_INSERT();
+
+		result = mysql_int8_datatype_in_hook(str, is_insert);
+
+		PG_RETURN_INT64(result);
+	}
+	/* End - SRS-MYSQL-HEX-LITERAL */
 
 	(void) scanint8(str, false, &result);
 	PG_RETURN_INT64(result);

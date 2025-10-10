@@ -12,10 +12,15 @@ select cast(1111.8 as int UNSIGNED) ;
 (1 row)
 
 select cast(4294967297.8 as int UNSIGNED) ;
-WARNING:  integer unsigned out of range
-   uint4    
+ uint4 
+-------
+ 2
+(1 row)
+
+select cast(4294967297.8 as UNSIGNED);
+   uint8    
 ------------
- 4294967295
+ 4294967298
 (1 row)
 
 select cast('1111' as int UNSIGNED) ;
@@ -31,28 +36,36 @@ select cast('4294967295' as int UNSIGNED) ;
 (1 row)
 
 select cast('4294967297' as int UNSIGNED) ;
-WARNING:  value "4294967297" is out of range for unsigned 32-bit integer
+WARNING:  Truncated incorrect INTEGER value: '4294967297'
+LINE 1: select cast('4294967297' as int UNSIGNED) ;
+                    ^
    uint4    
 ------------
  4294967295
 (1 row)
 
 select cast('a111' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: "a111"
+WARNING:  Truncated incorrect INTEGER value: 'a111'
+LINE 1: select cast('a111' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  0
 (1 row)
 
 select cast('111a' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: "111a"
+WARNING:  Truncated incorrect INTEGER value: '111a'
+LINE 1: select cast('111a' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  111
 (1 row)
 
 select cast('.111' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: ".111"
+WARNING:  Truncated incorrect INTEGER value: '.111'
+LINE 1: select cast('.111' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  0
@@ -65,21 +78,27 @@ select cast('0111' as int UNSIGNED) ;
 (1 row)
 
 select cast('#111' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: "#111"
+WARNING:  Truncated incorrect INTEGER value: '#111'
+LINE 1: select cast('#111' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  0
 (1 row)
 
 select cast('111#' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: "111#"
+WARNING:  Truncated incorrect INTEGER value: '111#'
+LINE 1: select cast('111#' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  111
 (1 row)
 
 select cast('111.' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: "111."
+WARNING:  Truncated incorrect INTEGER value: '111.'
+LINE 1: select cast('111.' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  111
@@ -153,10 +172,15 @@ select cast(1111.8 as int UNSIGNED) ;
 (1 row)
 
 select cast(4294967297.8 as int UNSIGNED) ;
-WARNING:  integer unsigned out of range
-   uint4    
+ uint4 
+-------
+ 2
+(1 row)
+
+select cast(4294967297.8 as UNSIGNED);
+   uint8    
 ------------
- 4294967295
+ 4294967298
 (1 row)
 
 select cast('1111' as int UNSIGNED) ;
@@ -172,28 +196,36 @@ select cast('4294967295' as int UNSIGNED) ;
 (1 row)
 
 select cast('4294967297' as int UNSIGNED) ;
-WARNING:  value "4294967297" is out of range for unsigned 32-bit integer
+WARNING:  Truncated incorrect INTEGER value: '4294967297'
+LINE 1: select cast('4294967297' as int UNSIGNED) ;
+                    ^
    uint4    
 ------------
  4294967295
 (1 row)
 
 select cast('a111' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: "a111"
+WARNING:  Truncated incorrect INTEGER value: 'a111'
+LINE 1: select cast('a111' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  0
 (1 row)
 
 select cast('111a' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: "111a"
+WARNING:  Truncated incorrect INTEGER value: '111a'
+LINE 1: select cast('111a' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  111
 (1 row)
 
 select cast('.111' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: ".111"
+WARNING:  Truncated incorrect INTEGER value: '.111'
+LINE 1: select cast('.111' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  0
@@ -206,21 +238,27 @@ select cast('0111' as int UNSIGNED) ;
 (1 row)
 
 select cast('#111' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: "#111"
+WARNING:  Truncated incorrect INTEGER value: '#111'
+LINE 1: select cast('#111' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  0
 (1 row)
 
 select cast('111#' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: "111#"
+WARNING:  Truncated incorrect INTEGER value: '111#'
+LINE 1: select cast('111#' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  111
 (1 row)
 
 select cast('111.' as int UNSIGNED) ;
-WARNING:  invalid input syntax for type integer: "111."
+WARNING:  Truncated incorrect INTEGER value: '111.'
+LINE 1: select cast('111.' as int UNSIGNED) ;
+                    ^
  uint4 
 -------
  111
@@ -294,21 +332,21 @@ insert into t1 values(-2147483649);
 ERROR:  integer unsigned out of range
 insert into t1 values(4294967295);
 insert into t1 values('a111') ;
-ERROR:  invalid input syntax for type integer: "a111"
+ERROR:  Incorrect integer value: 'a111' for column.
 LINE 1: insert into t1 values('a111') ;
                               ^
 insert into t1 values('111a') ;
-ERROR:  invalid input syntax for type integer: "111a"
+ERROR:  Data truncated for column.
 LINE 1: insert into t1 values('111a') ;
                               ^
 insert into t1 values('.111') ;
 insert into t1 values('0111') ;
 insert into t1 values('#111') ;
-ERROR:  invalid input syntax for type integer: "#111"
+ERROR:  Incorrect integer value: '#111' for column.
 LINE 1: insert into t1 values('#111') ;
                               ^
 insert into t1 values('111#') ;
-ERROR:  invalid input syntax for type integer: "111#"
+ERROR:  Data truncated for column.
 LINE 1: insert into t1 values('111#') ;
                               ^
 insert into t1 values('111.') ;

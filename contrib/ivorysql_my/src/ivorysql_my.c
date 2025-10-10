@@ -20,15 +20,13 @@
 #include "commands/collationcmds.h"
 #include "common/int.h"
 #include "fmgr.h"
-#include "mysql_parser/mys_case_sensitive.h"
 #include "include/ivorysql_my.h"
 #include "include/casesensitive.h"
-#include "utils/varlena.h"
-#include "parser/parse_coerce.h"
-/* Begin - ReqID:SRS-MYSQL-SET */
-#include "mysql_parser/mys_set_hook.h"
 #include "include/mysset.h"
-/* End - ReqID:SRS-MYSQL-SET */
+#include "parser/parse_coerce.h"
+#include "mysql_parser/mys_case_sensitive.h"
+#include "mysql_parser/mys_set_hook.h"
+#include "utils/varlena.h"
 
 /* Only include it once in any C file */
 PG_MODULE_MAGIC;
@@ -49,21 +47,23 @@ static Mysql_casesensitive_get_typoid_hook_type premysql_get_typoid_hook = NULL;
 /* End - ReqID:SRS-MYSQL-CASE */
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
-static Mysql_int2_datatype_in_hook_type pre_mysql_int2_datatype_in_hook = NULL;
+static mysql_int2_datatype_in_hook_type pre_mysql_int2_datatype_in_hook = NULL;
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
-static Mysql_int4_datatype_in_hook_type pre_mysql_int4_datatype_in_hook = NULL;
+static mysql_int4_datatype_in_hook_type pre_mysql_int4_datatype_in_hook = NULL;
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 
-/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE_UIN123 */
-static Mysql_uint_datatype_in_hook_type pre_mysql_uint_datatype_in_hook = NULL;
-/* End - ReqID:SRS-MYSQL-NUMBERICTYPE_UIN123 */
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+static mysql_int8_datatype_in_hook_type pre_mysql_int8_datatype_in_hook = NULL;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 /* Begin - BUG#Z00004315/4316 */
 Mysql_check_for_column_name_collision_hook_type pre_mysql_check_for_column_name_collision = NULL;
 /* End - BUG#Z00004315/4316 */
 
 /* Begin BUG#5048 5070 */
-static mysql_hexstring_to_varbinary_hook_type pre_mysql_hexstring_to_varbinary_hook = NULL;
+static mysql_hexstring_parse_hook_type pre_mysql_hexstring_parse_hook = NULL;
 /* End BUG#5048 5070 */
 
 /* Begin - ReqID:SRS-MYSQL-SET */
@@ -123,25 +123,28 @@ _PG_init(void)
 
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
 	pre_mysql_int2_datatype_in_hook = mysql_int2_datatype_in_hook;
-	mysql_int2_datatype_in_hook = my_atoi_int2;
+	mysql_int2_datatype_in_hook = my_atoi_int16;
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2*/
+
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 	pre_mysql_int4_datatype_in_hook = mysql_int4_datatype_in_hook;
-	mysql_int4_datatype_in_hook = my_atoi_int4;
+	mysql_int4_datatype_in_hook = my_atoi_int32;
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 
-	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
-	pre_mysql_uint_datatype_in_hook = mysql_uint_datatype_in_hook;
-	mysql_uint_datatype_in_hook = pg_atoi_uint;
-	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	pre_mysql_int8_datatype_in_hook = mysql_int8_datatype_in_hook;
+	mysql_int8_datatype_in_hook = my_atoi_int64;
+	/* End - SRS-MYSQL-HEX-LITERAL */
+
 	pre_mysql_check_for_column_name_collision = mysql_check_for_column_name_collision;
+
 	/* Begin - BUG#Z00004315/4316 */
 	mysql_check_for_column_name_collision = mys_check_for_column_name_collision;
 	/* End - BUG#Z00004315/4316 */
 
 	/* Begin BUG#5048 5070 */
-	pre_mysql_hexstring_to_varbinary_hook = mysql_hexstring_to_varbinary_hook;
-	mysql_hexstring_to_varbinary_hook = hexstring_varbinary;
+	pre_mysql_hexstring_parse_hook = mysql_hexstring_parse_hook;
+	mysql_hexstring_parse_hook = parse_hexstring;
 	/* End BUG#5048 5070 */
 
 	/* Begin - ReqID:SRS-MYSQL-SET */
@@ -184,19 +187,21 @@ _PG_fini(void)
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
 	mysql_int2_datatype_in_hook = pre_mysql_int2_datatype_in_hook;
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 	mysql_int4_datatype_in_hook = pre_mysql_int4_datatype_in_hook;
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 
-	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
-	mysql_uint_datatype_in_hook = pre_mysql_uint_datatype_in_hook;
-	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE_UINT123 */
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	mysql_int8_datatype_in_hook = pre_mysql_int8_datatype_in_hook;
+	/* End - SRS-MYSQL-HEX-LITERAL */
+
 	/* Begin - BUG#Z00004315/4316 */
 	mysql_check_for_column_name_collision = pre_mysql_check_for_column_name_collision;
 	/* End - BUG#Z00004315/4316 */
 
 	/* Begin BUG#5048 5070 */
-	mysql_hexstring_to_varbinary_hook = pre_mysql_hexstring_to_varbinary_hook;
+	mysql_hexstring_parse_hook = pre_mysql_hexstring_parse_hook;
 	/* End BUG#5048 5070 */
 
 	/* Begin - ReqID:SRS-MYSQL-SET */

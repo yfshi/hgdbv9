@@ -151,6 +151,30 @@ transformTargetList(ParseState *pstate, List *targetlist,
 	{
 		ResTarget  *res = (ResTarget *) lfirst(o_target);
 
+		if (compatible_db == MYS_PARSER)
+		{
+			/** 
+			 * Begin - SRS-MYSQL-HEX-LITERAL
+			 * Special handling for HEX as target entry.
+			 */
+			if (exprKind == EXPR_KIND_SELECT_TARGET)
+			{
+				Node *n = (Node *) res->val;
+
+				if (exprIsHexConstant(n))
+				{
+					TypeCast *tc = makeNode(TypeCast);
+
+					tc->arg = (Node*) n;
+					tc->typeName = makeTypeNameFromNameList(list_make2(makeString("ivymy"), makeString("varbinary")));
+					tc->location = exprLocation(n);
+					
+					res->val = (Node *) tc;
+				}
+			}
+			/* End - SRS-MYSQL-HEX-LITERAL */
+		}
+
 		/*
 		 * Check for "something.*".  Depending on the complexity of the
 		 * "something", the star could appear as the last field in ColumnRef,

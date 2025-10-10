@@ -7,7 +7,7 @@
 
 -- datatype bit
 -- ALTER DOMAIN ivymy.mysbit ADD CONSTRAINT mysbit_check CHECK(length(VALUE) <= 64);
-CREATE FUNCTION ivymy.mysbit_in(pg_catalog.cstring)
+CREATE FUNCTION ivymy.mysbit_in(pg_catalog.cstring, oid, int, int8)
 RETURNS ivymy.mysbit
 AS 'MODULE_PATHNAME','mysql_bit_in'
 LANGUAGE C
@@ -23,7 +23,7 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION ivymy.mysbit_recv(internal)
+CREATE FUNCTION ivymy.mysbit_recv(internal, oid, int, int8)
 RETURNS ivymy.mysbit
 AS 'bit_recv'
 LANGUAGE INTERNAL
@@ -182,7 +182,7 @@ WITH FUNCTION ivymy.int8_mysbit(pg_catalog.int8, pg_catalog.int4)
 AS ASSIGNMENT;
 
 --varbinary to mysbit
-CREATE FUNCTION ivymy.varbinary_mysbit(ivymy.varbinary, pg_catalog.int4)
+CREATE FUNCTION ivymy.varbinary_mysbit(ivymy.varbinary, pg_catalog.int4, bool, int8)
 RETURNS ivymy.mysbit
 AS 'MODULE_PATHNAME','bitfromvarbinary'
 LANGUAGE C
@@ -191,7 +191,7 @@ IMMUTABLE
 STRICT;
 
 CREATE CAST (ivymy.varbinary AS ivymy.mysbit)
-WITH FUNCTION ivymy.varbinary_mysbit(ivymy.varbinary, pg_catalog.int4)
+WITH FUNCTION ivymy.varbinary_mysbit(ivymy.varbinary, pg_catalog.int4, bool, int8)
 AS ASSIGNMENT;
 
 --mysbit to pgbit
@@ -256,6 +256,34 @@ STRICT;
 CREATE CAST (ivymy.mysbit AS text)
 WITH FUNCTION ivymy.mysbit_text(ivymy.mysbit, pg_catalog.int4)
 AS ASSIGNMENT;
+
+/* Begin - bug#z5805 */
+--pg bit to uint8
+CREATE FUNCTION ivymy.bit_uint8(pg_catalog.bit, int4, bool, int8)
+RETURNS uint8
+AS 'MODULE_PATHNAME','bit_uint8'
+LANGUAGE C
+IMMUTABLE
+STRICT;
+
+CREATE CAST (pg_catalog.bit AS uint8)
+WITH FUNCTION ivymy.bit_uint8(pg_catalog.bit, int4, bool, int8)
+AS ASSIGNMENT;
+/* End - bug#z5805 */
+
+/* Begin - bug#z5768 */
+CREATE FUNCTION ivymy.mysbit_varbinary(ivymy.mysbit, int)
+RETURNS ivymy.varbinary
+AS 'MODULE_PATHNAME','bittobinary'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.mysbit AS varbinary)
+WITH FUNCTION ivymy.mysbit_varbinary(ivymy.mysbit, int4)
+AS ASSIGNMENT;
+/* End - bug#z5768 */
 
 --
 -- CREATE OPERATOR
@@ -455,20 +483,6 @@ CREATE OPERATOR ivymy.| (
 	commutator = |
 );
 
---  "~"
--- CREATE FUNCTION ivymy.mysbit_bit_neg(ivymy.mysbit)
--- RETURNS ivymy.uint8
--- AS 'MODULE_PATHNAME','mysbit_bit_neg'
--- LANGUAGE C
--- PARALLEL SAFE
--- STRICT
--- IMMUTABLE;
-
--- CREATE OPERATOR ivymy.~ (
--- 	procedure = ivymy.mysbit_bit_neg,
--- 	rightarg = ivymy.mysbit
--- );
-
 --"sign +"
 CREATE FUNCTION ivymy.mysbit_positive(ivymy.mysbit)
 RETURNS ivymy.mysbit
@@ -483,16 +497,6 @@ CREATE OPERATOR ivymy.+ (
 	rightarg = ivymy.mysbit
 );
 
---
--- CREATE FUNCTION 
---
-CREATE FUNCTION ivymy.binary(ivymy.mysbit)
-RETURNS ivymy.varbinary
-AS 'MODULE_PATHNAME','bittobinary'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE;
 
 --
 -- CREATE AGGREGATE 

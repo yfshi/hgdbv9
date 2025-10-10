@@ -292,18 +292,13 @@ DEALLOCATE select1;
 -- create an extra wide table to test for issues related to that
 -- (temporarily hide query, to avoid the long CREATE TABLE stmt)
 \set ECHO none
-ERROR:  operator is not unique: unknown || integer
-LINE 1: ...ble(firstc text, '|| array_to_string(array_agg('c'||i||' boo...
-                                                             ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 INSERT INTO extra_wide_table(firstc, lastc) VALUES('first col', 'last col');
-ERROR:  relation "extra_wide_table" does not exist
-LINE 1: INSERT INTO extra_wide_table(firstc, lastc) VALUES('first co...
-                    ^
 SELECT firstc, lastc FROM extra_wide_table;
-ERROR:  relation "extra_wide_table" does not exist
-LINE 1: SELECT firstc, lastc FROM extra_wide_table;
-                                  ^
+  firstc   |  lastc   
+-----------+----------
+ first col | last col
+(1 row)
+
 -- check that tables with oids cannot be created anymore
 CREATE TABLE withoid() WITH OIDS;
 ERROR:  syntax error at or near "OIDS"

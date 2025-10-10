@@ -951,6 +951,7 @@ typedef struct CoerceViaIO
 	Oid			resultcollid;	/* OID of collation, or InvalidOid if none */
 	CoercionForm coerceformat;	/* how to display this node */
 	int			location;		/* token location, or -1 if unknown */
+	int64		flag;			/* SRS-MYSQL-HEX-LITERAL, same as 4th argument in cast function */
 } CoerceViaIO;
 
 /* ----------------

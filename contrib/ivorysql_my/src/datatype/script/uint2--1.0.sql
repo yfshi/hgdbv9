@@ -91,6 +91,7 @@ WHERE oid = 9207;
 UPDATE pg_type
 SET typmodout=(SELECT oid FROM pg_proc WHERE proname='mysuint2_typmodout')
 WHERE oid = 9207;
+
 ---------- Compatible MySQL Cast ----------
 CREATE FUNCTION ivymy.int_mysuint2(pg_catalog.int8)
 RETURNS ivymy.uint2
@@ -99,10 +100,10 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
 CREATE CAST (pg_catalog.int8 AS ivymy.uint2)
 WITH FUNCTION ivymy.int_mysuint2(pg_catalog.int8)
 AS ASSIGNMENT;
-
 
 CREATE FUNCTION ivymy.int_mysuint2(pg_catalog.int2)
 RETURNS ivymy.uint2
@@ -111,6 +112,7 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
 CREATE CAST (pg_catalog.int2 AS ivymy.uint2)
 WITH FUNCTION ivymy.int_mysuint2(pg_catalog.int2)
 AS ASSIGNMENT;
@@ -134,6 +136,7 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
 CREATE CAST (pg_catalog.numeric AS ivymy.uint2)
 WITH FUNCTION ivymy.numeric_mysuint2(pg_catalog.numeric)
 AS ASSIGNMENT;
@@ -151,61 +154,46 @@ AS ASSIGNMENT;
 --
 -- cast (varchar as uint2)
 --
-CREATE FUNCTION ivymy.mystext2mysuint2(pg_catalog.varchar)
+CREATE FUNCTION ivymy.text_uint2(pg_catalog.varchar, int, bool, int8)
 RETURNS ivymy.uint2
-AS 'MODULE_PATHNAME', 'mystext2mysuint2'
+AS 'MODULE_PATHNAME', 'varlena_uint2'
 LANGUAGE C 
 STRICT 
 PARALLEL SAFE 
 IMMUTABLE;
 
 CREATE CAST(pg_catalog.varchar as ivymy.uint2) 
-WITH FUNCTION ivymy.mystext2mysuint2(pg_catalog.varchar) 
-AS ASSIGNMENT;
-
---
--- cast (char as uint2)
---
-CREATE FUNCTION ivymy.mystext2mysuint2(pg_catalog.char)
-RETURNS ivymy.uint2
-AS 'MODULE_PATHNAME', 'mystext2mysuint2'
-LANGUAGE C 
-STRICT 
-PARALLEL SAFE 
-IMMUTABLE;
-
-CREATE CAST(pg_catalog.char as ivymy.uint2) 
-WITH FUNCTION ivymy.mystext2mysuint2(pg_catalog.char) 
+WITH FUNCTION ivymy.text_uint2(pg_catalog.varchar, int, bool, int8)
 AS ASSIGNMENT;
 
 --
 -- cast (bpchar as uint2)
 --
-CREATE FUNCTION ivymy.mystext2mysuint2(pg_catalog.bpchar)
+CREATE FUNCTION ivymy.text_uint2(pg_catalog.bpchar, int, bool, int8)
 RETURNS ivymy.uint2
-AS 'MODULE_PATHNAME', 'mystext2mysuint2'
+AS 'MODULE_PATHNAME', 'varlena_uint2'
 LANGUAGE C 
 STRICT 
 PARALLEL SAFE 
 IMMUTABLE;
 
 CREATE CAST(pg_catalog.bpchar as ivymy.uint2) 
-WITH FUNCTION ivymy.mystext2mysuint2(pg_catalog.bpchar) 
+WITH FUNCTION ivymy.text_uint2(pg_catalog.bpchar, int, bool, int8)
 AS ASSIGNMENT;
 
 --
 -- cast (text as uint2)
 --
-CREATE FUNCTION ivymy.mystext2mysuint2(pg_catalog.text)
+CREATE FUNCTION ivymy.text_uint2(pg_catalog.text, int, bool, int8)
 RETURNS ivymy.uint2
-AS 'MODULE_PATHNAME', 'mystext2mysuint2'
+AS 'MODULE_PATHNAME', 'varlena_uint2'
 LANGUAGE C 
 STRICT 
 PARALLEL SAFE 
 IMMUTABLE;
 
 CREATE CAST(pg_catalog.text as ivymy.uint2) 
-WITH FUNCTION ivymy.mystext2mysuint2(pg_catalog.text) 
+WITH FUNCTION ivymy.text_uint2(pg_catalog.text, int, bool, int8)
 AS ASSIGNMENT;
 
 --
@@ -222,9 +210,11 @@ IMMUTABLE;
 CREATE CAST (pg_catalog.bool AS ivymy.uint2)
 WITH FUNCTION ivymy.boolean_mysuint2(pg_catalog.bool)
 AS ASSIGNMENT;
-/* CREATE CAST */
----------- Compatible Postgresql Cast ----------
-CREATE CAST (ivymy.uint2 AS ivymy.uint4) WITH INOUT AS IMPLICIT;
+
+--
+-- cast (uint2 as uint8)
+--
+CREATE CAST (ivymy.uint2 AS ivymy.uint8) WITH INOUT AS IMPLICIT;
 
 /* CREATE OPERATOR */
 ----function eq
@@ -1473,63 +1463,6 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
-----function or
-CREATE FUNCTION ivymy.mysuint2_or(ivymy.uint2, ivymy.uint2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint2_ormysuint2'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint2_or(ivymy.uint2, pg_catalog.int2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint2_orint2'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint2_or(ivymy.uint2, pg_catalog.int4)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint2_orint4'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint2_or(ivymy.uint2, pg_catalog.int8)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint2_orint8'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint2_or(pg_catalog.int2, ivymy.uint2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int2_ormysuint2'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint2_or(pg_catalog.int4, ivymy.uint2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int4_ormysuint2'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint2_or(pg_catalog.int8, ivymy.uint2)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int8_ormysuint2'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
 ----operator invert !
 CREATE FUNCTION ivymy.mysuint2_invert(ivymy.uint2)
 RETURNS pg_catalog.int8
@@ -2572,50 +2505,7 @@ CREATE OPERATOR && (
 	rightarg = ivymy.uint2
 );
 
---operator ||
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint2_or,
-	leftarg = ivymy.uint2,
-	rightarg = ivymy.uint2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint2_or,
-	leftarg = ivymy.uint2,
-	rightarg = pg_catalog.int2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint2_or,
-	leftarg = ivymy.uint2,
-	rightarg = pg_catalog.int4
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint2_or,
-	leftarg = ivymy.uint2,
-	rightarg = pg_catalog.int8
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint2_or,
-	leftarg = pg_catalog.int2,
-	rightarg = ivymy.uint2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint2_or,
-	leftarg = pg_catalog.int4,
-	rightarg = ivymy.uint2
-);
-
-CREATE OPERATOR || (
-	procedure = ivymy.mysuint2_or,
-	leftarg = pg_catalog.int8,
-	rightarg = ivymy.uint2
-);
-
---operator ||
+--operator !
 CREATE OPERATOR ! (
 	procedure = ivymy.mysuint2_invert,
 	rightarg = ivymy.uint2

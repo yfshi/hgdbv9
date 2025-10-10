@@ -1838,7 +1838,7 @@ insert into func_test(functionName, result) values('TIMESTAMPADD(MINUTE,-1.6,''2
 insert into func_test(functionName, result) values('TIMESTAMPADD(HOUR,1,date''2022-04-05'')', TIMESTAMPADD(HOUR,1,date'2022-04-05'));
 insert into func_test(functionName, result) values('TIMESTAMPADD(DAY,1,cast(''2022-04-05'' as datetime))', TIMESTAMPADD(day,1,cast('2022-04-05' as datetime)));
 insert into func_test(functionName, result) values('TIMESTAMPADD(YEAR,''abc'',''0001-01-01'')', TIMESTAMPADD(year,'abc','0001-01-01'));
-WARNING:  invalid input syntax for type integer: "abc"
+WARNING:  Truncated incorrect INTEGER value: 'abc'
 LINE 1: ...(YEAR,''abc'',''0001-01-01'')', TIMESTAMPADD(year,'abc','000...
                                                              ^
 select * from func_test;
@@ -3647,6 +3647,7 @@ select from_days(20001111250000);--0000-00-00
 
 select from_days(200011112323233242424242456565);--0000-00-00 warning
 ERROR:  bigint out of range
+CONTEXT:  SQL function "from_days" statement 1
 select from_days(121212.22);--0331-11-14
  from_days  
 ------------
@@ -3723,37 +3724,30 @@ LINE 1: select from_days(cast(2011 as year));
                ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select from_days(cast(201212128182822.222 as datetime));--NULL warning
-ERROR:  cannot cast type datetime to numeric
-LINE 2:  select ivymy.from_days($1::numeric);
-                                  ^
-QUERY:  
-	select ivymy.from_days($1::numeric);
+WARNING:  Incorrect datetime value: '201212128182822.222'
+ from_days 
+-----------
+ 
+(1 row)
 
-CONTEXT:  SQL function "from_days" during inlining
 select from_days(cast(20121212182822.222 as datetime));--0000-00-00
-ERROR:  cannot cast type datetime to numeric
-LINE 2:  select ivymy.from_days($1::numeric);
-                                  ^
-QUERY:  
-	select ivymy.from_days($1::numeric);
+ from_days  
+------------
+ 0000-00-00
+(1 row)
 
-CONTEXT:  SQL function "from_days" during inlining
 select from_days(cast(20121212182822.5999999 as datetime));--0000-00-00
-ERROR:  cannot cast type datetime to numeric
-LINE 2:  select ivymy.from_days($1::numeric);
-                                  ^
-QUERY:  
-	select ivymy.from_days($1::numeric);
+ from_days  
+------------
+ 0000-00-00
+(1 row)
 
-CONTEXT:  SQL function "from_days" during inlining
 select from_days(cast('2025-04-21 10:12:12.6999992' as datetime(6)));--0000-00-00
-ERROR:  cannot cast type datetime to numeric
-LINE 2:  select ivymy.from_days($1::numeric);
-                                  ^
-QUERY:  
-	select ivymy.from_days($1::numeric);
+ from_days  
+------------
+ 0000-00-00
+(1 row)
 
-CONTEXT:  SQL function "from_days" during startup
 select from_days();--error
 ERROR:  function from_days() does not exist
 LINE 1: select from_days();

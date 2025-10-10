@@ -63,12 +63,7 @@ CREATE TABLE gtest_err_4 (a int PRIMARY KEY, b double precision GENERATED ALWAYS
 ERROR:  generation expression is not immutable
 -- ... but be sure that the immutability test is accurate
 CREATE TABLE gtest2 (a int, b text GENERATED ALWAYS AS (a || ' sec') STORED);
-ERROR:  operator is not unique: integer || unknown
-LINE 1: ...ABLE gtest2 (a int, b text GENERATED ALWAYS AS (a || ' sec')...
-                                                             ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 DROP TABLE gtest2;
-ERROR:  table "gtest2" does not exist
 -- cannot have default/identity and generated
 CREATE TABLE gtest_err_5a (a int PRIMARY KEY, b int DEFAULT 5 GENERATED ALWAYS AS (a * 2) STORED);
 ERROR:  both default and generation expression specified for column "b" of table "gtest_err_5a"

@@ -3331,6 +3331,14 @@ cookDefault(ParseState *pstate,
 
 	Assert(raw_default != NULL);
 
+	/**
+	 * Begin - SRS-MYSQL-HEX-LITERAL
+	 * set 4th argument 'is_insert' of cast function to true.
+	 */
+	if (compatible_db == MYS_PARSER)
+		pstate->p_cook_default = true;
+	/* End - SRS-MYSQL-HEX-LITERAL */
+
 	/*
 	 * Transform raw parsetree to executable expression.
 	 */

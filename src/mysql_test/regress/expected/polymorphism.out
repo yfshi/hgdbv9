@@ -2045,6 +2045,9 @@ select x, pg_typeof(x) from anyctest(11, '12') x;
 (1 row)
 
 select x, pg_typeof(x) from anyctest(11, '12.2') x;  -- fail
+WARNING:  Truncated incorrect INTEGER value: '12.2'
+LINE 1: select x, pg_typeof(x) from anyctest(11, '12.2') x;
+                                                 ^
     x    | pg_typeof 
 ---------+-----------
  {11,12} | integer[]

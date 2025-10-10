@@ -359,15 +359,28 @@ select a or b from test1; --BUG#5051
  t
 (6 rows)
 
+set sql_mode = '';
 select a || b from test1; --BUG#5051
  ?column? 
 ----------
-         
-        1
-        1
-        1
-        1
-        1
+ t
+ t
+ t
+ t
+ t
+ t
+(6 rows)
+
+reset sql_mode;
+select a || b from test1; --BUG#5051
+ ?column? 
+----------
+ 
+ 53
+ 53
+ 14
+ 63
+ 71
 (6 rows)
 
 select a ^ b from test1; --BUG#5056
@@ -550,12 +563,12 @@ drop table tb_test;
 create table tb_test(id int1);
 set sql_mode = default;
 insert into tb_test values ('123abc');
-ERROR:  invalid input syntax for type smallint: "123abc"
+ERROR:  Data truncated for column.
 LINE 1: insert into tb_test values ('123abc');
                                     ^
 set sql_mode = '';
 insert into tb_test values ('123abc');
-WARNING:  invalid input syntax for type smallint: "123abc"
+WARNING:  Data truncated for column.
 LINE 1: insert into tb_test values ('123abc');
                                     ^
 select * from tb_test;

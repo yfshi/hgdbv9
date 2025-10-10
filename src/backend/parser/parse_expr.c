@@ -1354,44 +1354,6 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 	Node	   *rexpr = a->rexpr;
 	Node	   *result;
 
-	/** 
-	 * Begin BUG#5048 5070 
-	 * When do caculate with hex string, we parse it to uint64 almost,
-	 * except lexpr and rexpr both are hex string and operator is '=' or '!='.
-	 */
-	if (compatible_db == MYS_PARSER)
-	{
-		char	*oprname = strVal(linitial(a->name));
-		bool 	l_is_hex = exprIsHexConstant(lexpr),
-				r_is_hex = exprIsHexConstant(rexpr);
-
-		/* Begin - bug#z5414 */
-		if (l_is_hex && r_is_hex)
-		{
-			// operator '!=' will be replaced by '<>' actually
-			if (strcmp(oprname, "=") == 0 || strcmp(oprname, "<>") == 0)
-			{
-				/**
-				 * do nothing, trans hex string to varbinary.
-				 * We set l_is_hex and r_is_hex to false just to skip the following logic.
-				 */ 
-				l_is_hex = r_is_hex = false;
-			}
-		}
-		/* End - bug#z5414 */
-
-		if (l_is_hex)
-		{
-			lexpr = make_bigint_const_from_hex(lexpr);
-		}
-
-		if (r_is_hex)
-		{
-			rexpr = make_bigint_const_from_hex(rexpr);
-		}
-	}
-	/* End BUG#5048 5070 */
-
 	/*
 	 * Special-case "foo = NULL" and "NULL = foo" for compatibility with
 	 * standards-broken products (like Microsoft's).  Turn these into IS NULL
@@ -2025,19 +1987,6 @@ transformBoolExpr(ParseState *pstate, BoolExpr *a)
 	foreach(lc, a->args)
 	{
 		Node	   *arg = (Node *) lfirst(lc);
-
-		if (MYS_PARSER == compatible_db)
-		{
-			/** 
-			 * Begin BUG#5048 5070 
-			 * Treate hex string in bool context as uint64.
-			 */
-			if (exprIsHexConstant(arg))
-			{
-				arg = make_bigint_const_from_hex(arg);
-			}
-			/* End BUG#5048 5070 */
-		}
 
 		arg = transformExprRecurse(pstate, arg);
 		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
@@ -4145,106 +4094,6 @@ transformWholeRowRef(ParseState *pstate, ParseNamespaceItem *nsitem,
 	}
 }
 
-/* Begin BUG#5048 5070 */
-static int64
-parse_hex_string_to_int64(char *src)
-{
-	int64	value = 0;
-	int 	len = strlen(src);
-	char 	*end = src + len;
-	char	bytes[64], *dst = bytes;
-	size_t	size = 0;
-
-	if (len > 2 * sizeof(int64))
-	{
-		const char *lost_end = end - 2 * sizeof(int64);
-		for (char *p = src; p < lost_end; p++)
-		{
-			if (*p != '\0')
-			{				
-				char errbuff[512], *errptr= errbuff;
-
-				*errptr++ = 'x';
-				*errptr++ = '\'';
-
-				if (len % 2)
-					*errptr++ = '0';
-				
-				for (p = src; p < end; p++)
-				{
-					if (errptr > errbuff + sizeof(errbuff) - 4)
-						break;
-					*errptr++ = *p;
-				}
-
-				*errptr++ = '\'';
-				*errptr++ = '\0';
-
-				ereport(WARNING,
-						errmsg("Truncated incorrect BINARY value: %s", errbuff));
-
-				return -1;
-			}
-		}
-	}
-
-	if (len % 2)
-	{
-		*dst++ = mys_get_hex(src++);
-		len--;
-		size++;
-	}
-
-	size += mys_hex_decode(src, len, dst);
-
-	for (int i = 0; i < size; i++)
-	{
-		value = (value << 8) + (uint8) bytes[i];
-	}
-
-	return value;
-}
-
-/**
- * Use TypeCast node to convert hex to unsigned bigint.
- */
-Node *
-make_bigint_const_from_hex(Node *n)
-{
-	char		buf[64];
-	char 		*hex;
-	A_Const 	*aconst;
-	int64 		value;
-	TypeCast 	*tc;
-
-	assert(exprIsHexConstant(n));
-
-	aconst = (A_Const *) n;
-
-	hex = aconst->val.val.str; // without prefix '0x'
-
-	// remove prefix zero
-	while (*hex == '0')
-		hex++;
-	
-	value = parse_hex_string_to_int64(hex);
-
-	snprintf(buf, sizeof(buf), "%ld", value);
-
-	aconst = makeNode(A_Const);
-	aconst->val.type = T_String;
-	aconst->val.val.str = pstrdup(buf);
-	aconst->location = exprLocation(n);
-
-	tc = makeNode(TypeCast);
-	tc->arg = (Node *) aconst;
-	tc->typeName = makeTypeNameFromNameList(list_make2(makeString("ivymy"), makeString("uint8")));
-	tc->location = exprLocation(n);
-	
-	return (Node *) tc;
-}
-/* End BUG#5048 5070 */
-
 /*
  * Handle an explicit CAST construct.
  *
@@ -4272,20 +4121,6 @@ transformTypeCast(ParseState *pstate, TypeCast *tc)
 	 */
 	if (MYS_PARSER == compatible_db)
 	{
-		/* Begin BUG#5048 5070 */
-		if (exprIsHexConstant(arg))
-		{
-			/**
-			 * When cast to date/time/datetime, we treat hex string as varbinary.
-			 * Other target type, we treat as unsigned bigint.
-			 */
-			if (type_is_numeric(targetType))
-			{
-				arg = make_bigint_const_from_hex(arg);
-			}
-		}
-		/* End BUG#5048 5070 */
-
 		if (cast_to_char && targetType == BPCHAROID)
 		{
 			int32		tmptargetTypmod = -1;

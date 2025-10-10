@@ -1511,6 +1511,7 @@ _outCoerceViaIO(StringInfo str, const CoerceViaIO *node)
 	WRITE_OID_FIELD(resultcollid);
 	WRITE_ENUM_FIELD(coerceformat, CoercionForm);
 	WRITE_LOCATION_FIELD(location);
+	WRITE_UINT64_FIELD(flag); // SRS-MYSQL-HEX-LITERAL
 }
 
 static void

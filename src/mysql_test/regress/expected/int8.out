@@ -10,31 +10,31 @@ INSERT INTO INT8_TBL VALUES(+4567890123456789,'4567890123456789');
 INSERT INTO INT8_TBL VALUES('+4567890123456789','-4567890123456789');
 -- bad inputs
 INSERT INTO INT8_TBL(q1) VALUES ('      ');
-ERROR:  invalid input syntax for type bigint: "      "
+ERROR:  Incorrect integer value: '' for column.
 LINE 1: INSERT INTO INT8_TBL(q1) VALUES ('      ');
                                          ^
 INSERT INTO INT8_TBL(q1) VALUES ('xxx');
-ERROR:  invalid input syntax for type bigint: "xxx"
+ERROR:  Incorrect integer value: 'xxx' for column.
 LINE 1: INSERT INTO INT8_TBL(q1) VALUES ('xxx');
                                          ^
 INSERT INTO INT8_TBL(q1) VALUES ('3908203590239580293850293850329485');
-ERROR:  value "3908203590239580293850293850329485" is out of range for type bigint
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO INT8_TBL(q1) VALUES ('39082035902395802938502938...
                                          ^
 INSERT INTO INT8_TBL(q1) VALUES ('-1204982019841029840928340329840934');
-ERROR:  value "-1204982019841029840928340329840934" is out of range for type bigint
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO INT8_TBL(q1) VALUES ('-1204982019841029840928340...
                                          ^
 INSERT INTO INT8_TBL(q1) VALUES ('- 123');
-ERROR:  invalid input syntax for type bigint: "- 123"
+ERROR:  Incorrect integer value: '- 123' for column.
 LINE 1: INSERT INTO INT8_TBL(q1) VALUES ('- 123');
                                          ^
 INSERT INTO INT8_TBL(q1) VALUES ('  345     5');
-ERROR:  invalid input syntax for type bigint: "  345     5"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO INT8_TBL(q1) VALUES ('  345     5');
                                          ^
 INSERT INTO INT8_TBL(q1) VALUES ('');
-ERROR:  invalid input syntax for type bigint: ""
+ERROR:  Incorrect integer value: '' for column.
 LINE 1: INSERT INTO INT8_TBL(q1) VALUES ('');
                                          ^
 SELECT * FROM INT8_TBL;
@@ -638,9 +638,14 @@ select '-9223372036854775808'::int8;
 (1 row)
 
 select '-9223372036854775809'::int8;
-ERROR:  value "-9223372036854775809" is out of range for type bigint
+WARNING:  Truncated incorrect INTEGER value: '-9223372036854775809'
 LINE 1: select '-9223372036854775809'::int8;
                ^
+         int8         
+----------------------
+ -9223372036854775808
+(1 row)
+
 select '9223372036854775807'::int8;
         int8         
 ---------------------
@@ -648,9 +653,14 @@ select '9223372036854775807'::int8;
 (1 row)
 
 select '9223372036854775808'::int8;
-ERROR:  value "9223372036854775808" is out of range for type bigint
+WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
 LINE 1: select '9223372036854775808'::int8;
                ^
+         int8         
+----------------------
+ -9223372036854775808
+(1 row)
+
 select -('-9223372036854775807'::int8);
       ?column?       
 ---------------------

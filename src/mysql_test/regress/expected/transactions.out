@@ -765,7 +765,7 @@ SHOW transaction_deferrable;
 (1 row)
 
 INSERT INTO trans_abc VALUES ('error');
-ERROR:  invalid input syntax for type integer: "error"
+ERROR:  Incorrect integer value: 'error' for column.
 LINE 1: INSERT INTO trans_abc VALUES ('error');
                                       ^
 INSERT INTO trans_abc VALUES (3);  -- check it's really aborted
@@ -812,7 +812,7 @@ SHOW transaction_deferrable;
 
 SAVEPOINT x;
 INSERT INTO trans_abc VALUES ('error');
-ERROR:  invalid input syntax for type integer: "error"
+ERROR:  Incorrect integer value: 'error' for column.
 LINE 1: INSERT INTO trans_abc VALUES ('error');
                                       ^
 COMMIT AND CHAIN;  -- TBLOCK_ABORT_PENDING
@@ -957,7 +957,7 @@ SHOW transaction_deferrable;
 (1 row)
 
 INSERT INTO trans_abc VALUES ('error');
-ERROR:  invalid input syntax for type integer: "error"
+ERROR:  Incorrect integer value: 'error' for column.
 LINE 1: INSERT INTO trans_abc VALUES ('error');
                                       ^
 ROLLBACK AND CHAIN;  -- TBLOCK_ABORT_END

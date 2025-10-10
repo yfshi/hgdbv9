@@ -11,31 +11,31 @@ INSERT INTO INT4_TBL(f1) VALUES ('2147483647');
 INSERT INTO INT4_TBL(f1) VALUES ('-2147483647');
 -- bad input values -- should give errors
 INSERT INTO INT4_TBL(f1) VALUES ('1000000000000');
-ERROR:  value "1000000000000" is out of range for type integer
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('1000000000000');
                                          ^
 INSERT INTO INT4_TBL(f1) VALUES ('asdf');
-ERROR:  invalid input syntax for type integer: "asdf"
+ERROR:  Incorrect integer value: 'asdf' for column.
 LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('asdf');
                                          ^
 INSERT INTO INT4_TBL(f1) VALUES ('     ');
-ERROR:  invalid input syntax for type integer: ""
+ERROR:  Incorrect integer value: '' for column.
 LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('     ');
                                          ^
 INSERT INTO INT4_TBL(f1) VALUES ('   asdf   ');
-ERROR:  invalid input syntax for type integer: "asdf   "
+ERROR:  Incorrect integer value: 'asdf' for column.
 LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('   asdf   ');
                                          ^
 INSERT INTO INT4_TBL(f1) VALUES ('- 1234');
-ERROR:  invalid input syntax for type integer: "- 1234"
+ERROR:  Incorrect integer value: '- 1234' for column.
 LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('- 1234');
                                          ^
 INSERT INTO INT4_TBL(f1) VALUES ('123       5');
-ERROR:  invalid input syntax for type integer: "123       5"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('123       5');
                                          ^
 INSERT INTO INT4_TBL(f1) VALUES ('');
-ERROR:  invalid input syntax for type integer: ""
+ERROR:  Incorrect integer value: '' for column.
 LINE 1: INSERT INTO INT4_TBL(f1) VALUES ('');
                                          ^
 SELECT * FROM INT4_TBL;

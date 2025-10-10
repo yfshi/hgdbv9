@@ -2869,12 +2869,7 @@ SELECT * FROM y;
 
 -- data-modifying WITH containing INSERT...ON CONFLICT DO UPDATE
 CREATE TABLE withz AS SELECT i AS k, (i || ' v')::text v FROM generate_series(1, 16, 3) i;
-ERROR:  operator is not unique: integer || unknown
-LINE 1: CREATE TABLE withz AS SELECT i AS k, (i || ' v')::text v FRO...
-                                                ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 ALTER TABLE withz ADD UNIQUE (k);
-ERROR:  relation "withz" does not exist
 WITH t AS (
     INSERT INTO withz SELECT i, 'insert'
     FROM generate_series(0, 16) i
@@ -2882,9 +2877,12 @@ WITH t AS (
     RETURNING *
 )
 SELECT * FROM t JOIN y ON t.k = y.a ORDER BY a, k;
-ERROR:  relation "withz" does not exist
-LINE 2:     INSERT INTO withz SELECT i, 'insert'
-                        ^
+ k |   v    | a 
+---+--------+---
+ 0 | insert | 0
+ 0 | insert | 0
+(2 rows)
+
 -- Test EXCLUDED.* reference within CTE
 WITH aa AS (
     INSERT INTO withz VALUES(1, 5) ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v
@@ -2892,14 +2890,33 @@ WITH aa AS (
     RETURNING *
 )
 SELECT * FROM aa;
-ERROR:  relation "withz" does not exist
-LINE 2:     INSERT INTO withz VALUES(1, 5) ON CONFLICT (k) DO UPDATE...
-                        ^
+ k | v 
+---+---
+(0 rows)
+
 -- New query/snapshot demonstrates side-effects of previous query.
 SELECT * FROM withz ORDER BY k;
-ERROR:  relation "withz" does not exist
-LINE 1: SELECT * FROM withz ORDER BY k;
-                      ^
+ k  |        v         
+----+------------------
+  0 | insert
+  1 | 1 v, now update
+  2 | insert
+  3 | insert
+  4 | 4 v, now update
+  5 | insert
+  6 | insert
+  7 | 7 v, now update
+  8 | insert
+  9 | insert
+ 10 | 10 v, now update
+ 11 | insert
+ 12 | insert
+ 13 | 13 v, now update
+ 14 | insert
+ 15 | insert
+ 16 | 16 v, now update
+(17 rows)
+
 --
 -- Ensure subqueries within the update clause work, even if they
 -- reference outside values
@@ -2907,33 +2924,18 @@ LINE 1: SELECT * FROM withz ORDER BY k;
 WITH aa AS (SELECT 1 a, 2 b)
 INSERT INTO withz VALUES(1, 'insert')
 ON CONFLICT (k) DO UPDATE SET v = (SELECT b || ' update' FROM aa WHERE a = 1 LIMIT 1);
-ERROR:  relation "withz" does not exist
-LINE 2: INSERT INTO withz VALUES(1, 'insert')
-                    ^
 WITH aa AS (SELECT 1 a, 2 b)
 INSERT INTO withz VALUES(1, 'insert')
 ON CONFLICT (k) DO UPDATE SET v = ' update' WHERE withz.k = (SELECT a FROM aa);
-ERROR:  relation "withz" does not exist
-LINE 2: INSERT INTO withz VALUES(1, 'insert')
-                    ^
 WITH aa AS (SELECT 1 a, 2 b)
 INSERT INTO withz VALUES(1, 'insert')
 ON CONFLICT (k) DO UPDATE SET v = (SELECT b || ' update' FROM aa WHERE a = 1 LIMIT 1);
-ERROR:  relation "withz" does not exist
-LINE 2: INSERT INTO withz VALUES(1, 'insert')
-                    ^
 WITH aa AS (SELECT 'a' a, 'b' b UNION ALL SELECT 'a' a, 'b' b)
 INSERT INTO withz VALUES(1, 'insert')
 ON CONFLICT (k) DO UPDATE SET v = (SELECT b || ' update' FROM aa WHERE a = 'a' LIMIT 1);
-ERROR:  relation "withz" does not exist
-LINE 2: INSERT INTO withz VALUES(1, 'insert')
-                    ^
 WITH aa AS (SELECT 1 a, 2 b)
 INSERT INTO withz VALUES(1, (SELECT b || ' insert' FROM aa WHERE a = 1 ))
 ON CONFLICT (k) DO UPDATE SET v = (SELECT b || ' update' FROM aa WHERE a = 1 LIMIT 1);
-ERROR:  relation "withz" does not exist
-LINE 2: INSERT INTO withz VALUES(1, (SELECT b || ' insert' FROM aa W...
-                    ^
 -- Update a row more than once, in different parts of a wCTE. That is
 -- an allowed, presumably very rare, edge case, but since it was
 -- broken in the past, having a test seems worthwhile.
@@ -2946,19 +2948,14 @@ upsert_cte AS (
 INSERT INTO withz VALUES(2, 'Red') ON CONFLICT (k) DO
 UPDATE SET (k, v) = (SELECT k, v FROM upsert_cte WHERE upsert_cte.k = withz.k)
 RETURNING k, v;
-ERROR:  relation "withz" does not exist
-LINE 4:   INSERT INTO withz VALUES(2, 'Blue') ON CONFLICT (k) DO
-                      ^
+ k | v 
+---+---
+(0 rows)
+
 DROP TABLE withz;
-ERROR:  table "withz" does not exist
 -- WITH referenced by MERGE statement
 CREATE TABLE m AS SELECT i AS k, (i || ' v')::text v FROM generate_series(1, 16, 3) i;
-ERROR:  operator is not unique: integer || unknown
-LINE 1: CREATE TABLE m AS SELECT i AS k, (i || ' v')::text v FROM ge...
-                                            ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 ALTER TABLE m ADD UNIQUE (k);
-ERROR:  relation "m" does not exist
 WITH RECURSIVE cte_basic AS (SELECT 1 a, 'cte_basic val' b)
 MERGE INTO m USING (select 0 k, 'merge source SubPlan' v) o ON m.k=o.k
 WHEN MATCHED THEN UPDATE SET v = (SELECT b || ' merge update' FROM cte_basic WHERE cte_basic.a = m.k LIMIT 1)
@@ -2969,69 +2966,126 @@ WITH cte_basic AS MATERIALIZED (SELECT 1 a, 'cte_basic val' b)
 MERGE INTO m USING (select 0 k, 'merge source SubPlan' v offset 0) o ON m.k=o.k
 WHEN MATCHED THEN UPDATE SET v = (SELECT b || ' merge update' FROM cte_basic WHERE cte_basic.a = m.k LIMIT 1)
 WHEN NOT MATCHED THEN INSERT VALUES(o.k, o.v);
-ERROR:  relation "m" does not exist
-LINE 2: MERGE INTO m USING (select 0 k, 'merge source SubPlan' v off...
-                   ^
 -- Examine
 SELECT * FROM m where k = 0;
-ERROR:  relation "m" does not exist
-LINE 1: SELECT * FROM m where k = 0;
-                      ^
+ k |          v           
+---+----------------------
+ 0 | merge source SubPlan
+(1 row)
+
 -- See EXPLAIN output for same query:
 EXPLAIN (VERBOSE, COSTS OFF)
 WITH cte_basic AS MATERIALIZED (SELECT 1 a, 'cte_basic val' b)
 MERGE INTO m USING (select 0 k, 'merge source SubPlan' v offset 0) o ON m.k=o.k
 WHEN MATCHED THEN UPDATE SET v = (SELECT b || ' merge update' FROM cte_basic WHERE cte_basic.a = m.k LIMIT 1)
 WHEN NOT MATCHED THEN INSERT VALUES(o.k, o.v);
-ERROR:  relation "m" does not exist
-LINE 3: MERGE INTO m USING (select 0 k, 'merge source SubPlan' v off...
-                   ^
+                           QUERY PLAN                           
+----------------------------------------------------------------
+ Merge on public.m
+   CTE cte_basic
+     ->  Result
+           Output: 1, 'cte_basic val'::text
+   ->  Hash Right Join
+         Output: m.ctid, (0), ('merge source SubPlan'::text)
+         Hash Cond: (m.k = (0))
+         ->  Seq Scan on public.m
+               Output: m.ctid, m.k
+         ->  Hash
+               Output: (0), ('merge source SubPlan'::text)
+               ->  Result
+                     Output: 0, 'merge source SubPlan'::text
+   SubPlan 2
+     ->  Limit
+           Output: ((cte_basic.b || ' merge update'::text))
+           ->  CTE Scan on cte_basic
+                 Output: (cte_basic.b || ' merge update'::text)
+                 Filter: (cte_basic.a = m.k)
+(19 rows)
+
 -- InitPlan
 WITH cte_init AS MATERIALIZED (SELECT 1 a, 'cte_init val' b)
 MERGE INTO m USING (select 1 k, 'merge source InitPlan' v offset 0) o ON m.k=o.k
 WHEN MATCHED THEN UPDATE SET v = (SELECT b || ' merge update' FROM cte_init WHERE a = 1 LIMIT 1)
 WHEN NOT MATCHED THEN INSERT VALUES(o.k, o.v);
-ERROR:  relation "m" does not exist
-LINE 2: MERGE INTO m USING (select 1 k, 'merge source InitPlan' v of...
-                   ^
 -- Examine
 SELECT * FROM m where k = 1;
-ERROR:  relation "m" does not exist
-LINE 1: SELECT * FROM m where k = 1;
-                      ^
+ k |             v             
+---+---------------------------
+ 1 | cte_init val merge update
+(1 row)
+
 -- See EXPLAIN output for same query:
 EXPLAIN (VERBOSE, COSTS OFF)
 WITH cte_init AS MATERIALIZED (SELECT 1 a, 'cte_init val' b)
 MERGE INTO m USING (select 1 k, 'merge source InitPlan' v offset 0) o ON m.k=o.k
 WHEN MATCHED THEN UPDATE SET v = (SELECT b || ' merge update' FROM cte_init WHERE a = 1 LIMIT 1)
 WHEN NOT MATCHED THEN INSERT VALUES(o.k, o.v);
-ERROR:  relation "m" does not exist
-LINE 3: MERGE INTO m USING (select 1 k, 'merge source InitPlan' v of...
-                   ^
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Merge on public.m
+   CTE cte_init
+     ->  Result
+           Output: 1, 'cte_init val'::text
+   InitPlan 2 (returns $1)
+     ->  Limit
+           Output: ((cte_init.b || ' merge update'::text))
+           ->  CTE Scan on cte_init
+                 Output: (cte_init.b || ' merge update'::text)
+                 Filter: (cte_init.a = 1)
+   ->  Hash Right Join
+         Output: m.ctid, (1), ('merge source InitPlan'::text)
+         Hash Cond: (m.k = (1))
+         ->  Seq Scan on public.m
+               Output: m.ctid, m.k
+         ->  Hash
+               Output: (1), ('merge source InitPlan'::text)
+               ->  Result
+                     Output: 1, 'merge source InitPlan'::text
+(19 rows)
+
 -- MERGE source comes from CTE:
 WITH merge_source_cte AS MATERIALIZED (SELECT 15 a, 'merge_source_cte val' b)
 MERGE INTO m USING (select * from merge_source_cte) o ON m.k=o.a
 WHEN MATCHED THEN UPDATE SET v = (SELECT b || merge_source_cte.*::text || ' merge update' FROM merge_source_cte WHERE a = 15)
 WHEN NOT MATCHED THEN INSERT VALUES(o.a, o.b || (SELECT merge_source_cte.*::text || ' merge insert' FROM merge_source_cte));
-ERROR:  relation "m" does not exist
-LINE 2: MERGE INTO m USING (select * from merge_source_cte) o ON m.k...
-                   ^
 -- Examine
 SELECT * FROM m where k = 15;
-ERROR:  relation "m" does not exist
-LINE 1: SELECT * FROM m where k = 15;
-                      ^
+ k  |                              v                               
+----+--------------------------------------------------------------
+ 15 | merge_source_cte val(15,"merge_source_cte val") merge insert
+(1 row)
+
 -- See EXPLAIN output for same query:
 EXPLAIN (VERBOSE, COSTS OFF)
 WITH merge_source_cte AS MATERIALIZED (SELECT 15 a, 'merge_source_cte val' b)
 MERGE INTO m USING (select * from merge_source_cte) o ON m.k=o.a
 WHEN MATCHED THEN UPDATE SET v = (SELECT b || merge_source_cte.*::text || ' merge update' FROM merge_source_cte WHERE a = 15)
 WHEN NOT MATCHED THEN INSERT VALUES(o.a, o.b || (SELECT merge_source_cte.*::text || ' merge insert' FROM merge_source_cte));
-ERROR:  relation "m" does not exist
-LINE 3: MERGE INTO m USING (select * from merge_source_cte) o ON m.k...
-                   ^
+                                             QUERY PLAN                                              
+-----------------------------------------------------------------------------------------------------
+ Merge on public.m
+   CTE merge_source_cte
+     ->  Result
+           Output: 15, 'merge_source_cte val'::text
+   InitPlan 2 (returns $1)
+     ->  CTE Scan on merge_source_cte merge_source_cte_1
+           Output: ((merge_source_cte_1.b || (merge_source_cte_1.*)::text) || ' merge update'::text)
+           Filter: (merge_source_cte_1.a = 15)
+   InitPlan 3 (returns $2)
+     ->  CTE Scan on merge_source_cte merge_source_cte_2
+           Output: ((merge_source_cte_2.*)::text || ' merge insert'::text)
+   ->  Hash Right Join
+         Output: m.ctid, merge_source_cte.a, merge_source_cte.b
+         Hash Cond: (m.k = merge_source_cte.a)
+         ->  Seq Scan on public.m
+               Output: m.ctid, m.k
+         ->  Hash
+               Output: merge_source_cte.a, merge_source_cte.b
+               ->  CTE Scan on merge_source_cte
+                     Output: merge_source_cte.a, merge_source_cte.b
+(20 rows)
+
 DROP TABLE m;
-ERROR:  table "m" does not exist
 -- check that run to completion happens in proper ordering
 TRUNCATE TABLE y;
 INSERT INTO y SELECT generate_series(1, 3);
@@ -3231,7 +3285,7 @@ ERROR:  relation "child1" does not exist
 LINE 1: INSERT INTO child1 VALUES ( 11, 'c11' ),( 12, 'c12' );
                     ^
 INSERT INTO child2 VALUES ( 23, 'c21' ),( 24, 'c22' );
-ERROR:  invalid input syntax for type integer: "c21"
+ERROR:  Incorrect integer value: 'c21' for column.
 LINE 1: INSERT INTO child2 VALUES ( 23, 'c21' ),( 24, 'c22' );
                                         ^
 WITH rcte AS ( SELECT sum(id) AS totalid FROM parent )
@@ -3265,7 +3319,7 @@ SELECT * FROM parent;
 
 WITH wcte AS ( INSERT INTO child2 VALUES ( 42, 'new2' ) RETURNING id AS newid )
 DELETE FROM parent USING wcte WHERE id = newid;
-ERROR:  invalid input syntax for type integer: "new2"
+ERROR:  Incorrect integer value: 'new2' for column.
 LINE 1: WITH wcte AS ( INSERT INTO child2 VALUES ( 42, 'new2' ) RETU...
                                                        ^
 SELECT * FROM parent;

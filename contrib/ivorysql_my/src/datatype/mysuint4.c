@@ -59,9 +59,9 @@ PG_FUNCTION_INFO_V1(mysuint4_typmodin);
 PG_FUNCTION_INFO_V1(mysuint4_typmodout);
 PG_FUNCTION_INFO_V1(mysuint4_scale);
 
-PG_FUNCTION_INFO_V1(int_mysuint4);
-PG_FUNCTION_INFO_V1(numeric_mysuint4);
-PG_FUNCTION_INFO_V1(boolean_mysuint4);
+PG_FUNCTION_INFO_V1(int_uint4);
+PG_FUNCTION_INFO_V1(numeric_uint4);
+PG_FUNCTION_INFO_V1(boolean_uint4);
 
 PG_FUNCTION_INFO_V1(mysuint4_eq);
 PG_FUNCTION_INFO_V1(mysuint4_eqint2);
@@ -221,14 +221,6 @@ PG_FUNCTION_INFO_V1(int2_andmysuint4);
 PG_FUNCTION_INFO_V1(int4_andmysuint4);
 PG_FUNCTION_INFO_V1(int8_andmysuint4);
 
-PG_FUNCTION_INFO_V1(mysuint4_ormysuint4);
-PG_FUNCTION_INFO_V1(mysuint4_orint2);
-PG_FUNCTION_INFO_V1(mysuint4_orint4);
-PG_FUNCTION_INFO_V1(mysuint4_orint8);
-PG_FUNCTION_INFO_V1(int2_ormysuint4);
-PG_FUNCTION_INFO_V1(int4_ormysuint4);
-PG_FUNCTION_INFO_V1(int8_ormysuint4);
-
 PG_FUNCTION_INFO_V1(mysuint4_invertmysuint4);
 
 PG_FUNCTION_INFO_V1(mysuint4_boolean);
@@ -257,11 +249,11 @@ PG_FUNCTION_INFO_V1(mysuint4_sum);
 Datum
 mysuint4_in(PG_FUNCTION_ARGS)
 {
-	char *num = PG_GETARG_CSTRING(0);
+	char 	*num = PG_GETARG_CSTRING(0);
+	bool	is_insert = CALL_IN_INSERT();
+	uint32 	ret = my_atoi_uint32(num, is_insert);
 
-	uint32 temp = pg_atoi_uint(num, '\0', 4, true);
-
-	PG_RETURN_UINT32(temp);
+	PG_RETURN_UINT32(ret);
 }
 
 /* 
@@ -342,7 +334,7 @@ mysuint4_scale(PG_FUNCTION_ARGS)
 }
 
 Datum
-int_mysuint4(PG_FUNCTION_ARGS)
+int_uint4(PG_FUNCTION_ARGS)
 {
 	int64		val1 = PG_GETARG_INT64(0);
 	
@@ -357,26 +349,39 @@ int_mysuint4(PG_FUNCTION_ARGS)
 }
 
 Datum
-numeric_mysuint4(PG_FUNCTION_ARGS)
+numeric_uint4(PG_FUNCTION_ARGS)
 {
 	Numeric		num = PG_GETARG_NUMERIC(0);
-	uint32		val2 = 0;
 	int64		val1 = 0;
+	uint32		val2 = 0;
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	bool		is_insert = CALL_IN_INSERT();
 
 	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(num)));
-	if (val1 < 0 || val1 > PG_UINT32_MAX)
+	
+	val2 = (uint32) val1;
+
+	if (is_insert)
 	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
-		val1 = val1 < 0 ? 0 : PG_UINT32_MAX;
+		if (val1 > UINT32_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = UINT32_MAX;
+		}
+
+		if (val1 < 0)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = 0;
+		}
 	}
-	val2 = val1;
+	/* End - SRS-MYSQL-HEX-LITERAL */
 
 	PG_RETURN_UINT32(val2);
 }
 
 Datum
-boolean_mysuint4(PG_FUNCTION_ARGS)
+boolean_uint4(PG_FUNCTION_ARGS)
 {
 	PG_RETURN_UINT32(PG_GETARG_BOOL(0));
 }
@@ -1944,66 +1949,6 @@ int8_andmysuint4(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT32(val2 && val1);
 }
-
-// or ||
-Datum
-mysuint4_ormysuint4(PG_FUNCTION_ARGS)
-{
-	uint32		val1 = PG_GETARG_UINT32(0);
-	uint32		val2 = PG_GETARG_UINT32(1);
-
-	PG_RETURN_UINT32(val1 || val2);
-}
-Datum
-mysuint4_orint2(PG_FUNCTION_ARGS)
-{
-	uint32		val1 = PG_GETARG_UINT32(0);
-	int16		val2 = PG_GETARG_INT16(1);
-
-	PG_RETURN_UINT32(val1 || val2);
-}
-Datum
-mysuint4_orint4(PG_FUNCTION_ARGS)
-{
-	uint32		val1 = PG_GETARG_UINT32(0);
-	int32		val2 = PG_GETARG_INT32(1);
-
-	PG_RETURN_UINT32(val1 || val2);
-}
-Datum
-mysuint4_orint8(PG_FUNCTION_ARGS)
-{
-	uint32		val1 = PG_GETARG_UINT32(0);
-	int64		val2 = PG_GETARG_INT64(1);
-
-	PG_RETURN_UINT32(val1 || val2);
-}
-
-Datum
-int2_ormysuint4(PG_FUNCTION_ARGS)
-{
-	uint32		val1 = PG_GETARG_UINT32(1);
-	int16		val2 = PG_GETARG_INT16(0);
-
-	PG_RETURN_UINT32(val2 || val1);
-}
-Datum
-int4_ormysuint4(PG_FUNCTION_ARGS)
-{
-	uint32		val1 = PG_GETARG_UINT32(1);
-	int32		val2 = PG_GETARG_INT32(0);
-
-	PG_RETURN_UINT32(val2 || val1);
-}
-Datum
-int8_ormysuint4(PG_FUNCTION_ARGS)
-{
-	uint32		val1 = PG_GETARG_UINT32(1);
-	int64		val2 = PG_GETARG_INT64(0);
-
-	PG_RETURN_UINT32(val2 || val1);
-}
-
 
 // invert ! 
 Datum

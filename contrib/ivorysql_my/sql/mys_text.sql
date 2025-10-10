@@ -605,7 +605,72 @@ insert into tb10 values ('24.4', '24.4', '24.4');
 insert into tb10 values ('24.5', '24.5', '24.5');
 
 select a, cast(b as int), cast(c as int) from tb10;                     -- [-1, -1, -1], [24, 24, 24], [25, 24, 24]
-select a, cast(b as int unsigned), cast(c as int unsigned) from tb10;   -- [-1, 4294967295, 4294967295], [24, 24, 24], [25, 24, 24]
+select a, cast(b as unsigned), cast(c as unsigned) from tb10;   -- [-1, 4294967295, 4294967295], [24, 24, 24], [25, 24, 24]
 select a, cast(b as int8), cast(c as int8) from tb10;                   -- [-1, -1, -1], [24, 24, 24], [25, 24, 24]
 select a, cast(b as int8 unsigned), cast(c as int8 unsigned) from tb10; -- [-1, 18446744073709551615, 18446744073709551615], [24, 24, 24], [25, 24, 24]
 drop table tb10;
+
+-- text to uint1
+create table t_text(a text);
+create table t_utinyint(a tinyint unsigned);
+insert into t_text values ('a');
+
+set sql_mode = '';
+insert into t_utinyint select * from t_text;
+
+set sql_mode = default;
+insert into t_utinyint select * from t_text;
+
+select * from t_utinyint;
+
+drop table t_text;
+drop table t_utinyint;
+
+
+-- text to uint2
+create table t_text(a text);
+create table t_uint2_1(a smallint unsigned);
+insert into t_text values ('a');
+
+set sql_mode = '';
+insert into t_uint2_1 select * from t_text;
+
+set sql_mode = default;
+insert into t_uint2_1 select * from t_text;
+
+select * from t_uint2_1;
+
+drop table t_text;
+drop table t_uint2_1;
+
+-- text to uint4
+create table t_text(a text);
+create table t_uint4_1(a int unsigned);
+insert into t_text values ('a');
+
+set sql_mode = '';
+insert into t_uint4_1 select * from t_text;
+
+set sql_mode = default;
+insert into t_uint4_1 select * from t_text;
+
+select * from t_uint4_1;
+
+drop table t_text;
+drop table t_uint4_1;
+
+-- text to uint8
+create table t_text(a text);
+create table t_uint8_1(a bigint unsigned);
+insert into t_text values ('a');
+
+set sql_mode = '';
+insert into t_uint8_1 select * from t_text;
+
+set sql_mode = default;
+insert into t_uint8_1 select * from t_text;
+
+select * from t_uint8_1;
+
+drop table t_text;
+drop table t_uint8_1;

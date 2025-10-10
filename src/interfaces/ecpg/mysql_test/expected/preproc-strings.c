@@ -65,7 +65,7 @@ int main(void)
 
   printf("%s %s %s %s %s %s\n", s1, s2, s3, s4, s5, s6);
 
-  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "select b'0010' , x'019ABcd'", ECPGt_EOIT, 
+  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "select b'0010' , x'0019ABcd'", ECPGt_EOIT, 
 	ECPGt_char,&(s7),(long)0,(long)1,(1)*sizeof(char), 
 	ECPGt_NO_INDICATOR, NULL , 0L, 0L, 0L, 
 	ECPGt_char,&(s8),(long)0,(long)1,(1)*sizeof(char), 

@@ -133,6 +133,9 @@ select a AND b from test1; --BUG#5050
 select a && b from test1; --BUG#5050
 
 select a or b from test1; --BUG#5051
+set sql_mode = '';
+select a || b from test1; --BUG#5051
+reset sql_mode;
 select a || b from test1; --BUG#5051
 
 select a ^ b from test1; --BUG#5056

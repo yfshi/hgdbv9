@@ -78,4 +78,7 @@ typedef Type (*SynnameGettype_hook_type)(ParseState *pstate, const TypeName *typ
 extern PGDLLIMPORT SynnameGettype_hook_type SynnameGettype_hook;
 /* End - ReqID:SRS-SQL-SYNONYM */
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+extern Datum stringTypeDatum_mysql(Type tp, char *string, int32 atttypmod, int64 flag);
+/* End - SRS-MYSQL-HEX-LITERAL */
 #endif							/* PARSE_TYPE_H */

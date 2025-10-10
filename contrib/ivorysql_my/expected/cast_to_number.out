@@ -1,0 +1,980 @@
+create table src (s text);
+insert into src values ('');
+insert into src values ('a');
+insert into src values ('-a');
+insert into src values ('-0');
+insert into src values ('-0abc');
+insert into src values ('-00009');
+insert into src values ('-1');
+insert into src values ('-10');
+insert into src values ('99999999999999999999999');
+insert into src values ('99999999999999999999999abc');
+insert into src values ('-9999999');
+insert into src values ('-9999999abc');
+insert into src values ('-99999999999999999999999');
+insert into src values ('-99999999999999999999999abc');
+-- int1
+insert into src values ('-128');
+insert into src values ('-129');
+insert into src values ('127');
+insert into src values ('128');
+insert into src values ('255');
+insert into src values ('256');
+-- int2
+insert into src values ('-32768');
+insert into src values ('-32769');
+insert into src values ('32767');
+insert into src values ('32768');
+insert into src values ('65535');
+insert into src values ('65536');
+-- int3
+insert into src values ('-8388608');
+insert into src values ('-8388609');
+insert into src values ('8388607');
+insert into src values ('8388608');
+insert into src values ('16777215');
+insert into src values ('16777216');
+-- int4
+insert into src values ('-2147483648');
+insert into src values ('-2147483649');
+insert into src values ('2147483647');
+insert into src values ('2147483648');
+insert into src values ('4294967295');
+insert into src values ('4294967296');
+-- int8
+insert into src values ('-9223372036854775808');
+insert into src values ('-9223372036854775809');
+insert into src values ('9223372036854775807');
+insert into src values ('9223372036854775808');
+insert into src values ('18446744073709551615');
+insert into src values ('18446744073709551616');
+-- special
+insert into src values ('-9223372036854775809');
+insert into src values ('-18446744073709551614');
+insert into src values ('-18446744073709551615');
+insert into src values ('-18446744073709551616');
+insert into src values ('-18446744073709551617');
+insert into src values ('-99999999999999999999999');
+insert into src values ('-9999999999999999999999998');
+insert into src values ('-9999999999999999999999999');
+--
+-- text to uint8
+--
+select s, cast(s as unsigned) from src; -- 35 warnings
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: 'a'
+WARNING:  Truncated incorrect INTEGER value: '-a'
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Truncated incorrect INTEGER value: '-0abc'
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Truncated incorrect INTEGER value: '99999999999999999999999'
+WARNING:  Truncated incorrect INTEGER value: '99999999999999999999999abc'
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Truncated incorrect INTEGER value: '-9999999abc'
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Truncated incorrect INTEGER value: '-99999999999999999999999'
+WARNING:  Truncated incorrect INTEGER value: '-99999999999999999999999abc'
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+WARNING:  Truncated incorrect INTEGER value: '-9223372036854775809'
+WARNING:  Truncated incorrect INTEGER value: '18446744073709551616'
+WARNING:  Truncated incorrect INTEGER value: '-9223372036854775809'
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551614'
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551615'
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551616'
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551617'
+WARNING:  Truncated incorrect INTEGER value: '-99999999999999999999999'
+WARNING:  Truncated incorrect INTEGER value: '-9999999999999999999999998'
+WARNING:  Truncated incorrect INTEGER value: '-9999999999999999999999999'
+              s              |          s           
+-----------------------------+----------------------
+                             | 0
+ a                           | 0
+ -a                          | 0
+ -0                          | 0
+ -0abc                       | 0
+ -00009                      | 18446744073709551607
+ -1                          | 18446744073709551615
+ -10                         | 18446744073709551606
+ 99999999999999999999999     | 18446744073709551615
+ 99999999999999999999999abc  | 18446744073709551615
+ -9999999                    | 18446744073699551617
+ -9999999abc                 | 18446744073699551617
+ -99999999999999999999999    | 9223372036854775808
+ -99999999999999999999999abc | 9223372036854775808
+ -128                        | 18446744073709551488
+ -129                        | 18446744073709551487
+ 127                         | 127
+ 128                         | 128
+ 255                         | 255
+ 256                         | 256
+ -32768                      | 18446744073709518848
+ -32769                      | 18446744073709518847
+ 32767                       | 32767
+ 32768                       | 32768
+ 65535                       | 65535
+ 65536                       | 65536
+ -8388608                    | 18446744073701163008
+ -8388609                    | 18446744073701163007
+ 8388607                     | 8388607
+ 8388608                     | 8388608
+ 16777215                    | 16777215
+ 16777216                    | 16777216
+ -2147483648                 | 18446744071562067968
+ -2147483649                 | 18446744071562067967
+ 2147483647                  | 2147483647
+ 2147483648                  | 2147483648
+ 4294967295                  | 4294967295
+ 4294967296                  | 4294967296
+ -9223372036854775808        | 9223372036854775808
+ -9223372036854775809        | 9223372036854775808
+ 9223372036854775807         | 9223372036854775807
+ 9223372036854775808         | 9223372036854775808
+ 18446744073709551615        | 18446744073709551615
+ 18446744073709551616        | 18446744073709551615
+ -9223372036854775809        | 9223372036854775808
+ -18446744073709551614       | 9223372036854775808
+ -18446744073709551615       | 9223372036854775808
+ -18446744073709551616       | 9223372036854775808
+ -18446744073709551617       | 9223372036854775808
+ -99999999999999999999999    | 9223372036854775808
+ -9999999999999999999999998  | 9223372036854775808
+ -9999999999999999999999999  | 9223372036854775808
+(52 rows)
+
+create table dst(s text, v int8 unsigned);
+set sql_mode = '';
+insert into dst select s, s from src;      -- 32 warnings
+WARNING:  Incorrect integer value: '' for column.
+WARNING:  Incorrect integer value: 'a' for column.
+WARNING:  Incorrect integer value: '-a' for column.
+WARNING:  Data truncated for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+select * from dst;
+              s              |          v           
+-----------------------------+----------------------
+                             | 0
+ a                           | 0
+ -a                          | 0
+ -0                          | 0
+ -0abc                       | 0
+ -00009                      | 0
+ -1                          | 0
+ -10                         | 0
+ 99999999999999999999999     | 18446744073709551615
+ 99999999999999999999999abc  | 18446744073709551615
+ -9999999                    | 0
+ -9999999abc                 | 0
+ -99999999999999999999999    | 18446744073709551615
+ -99999999999999999999999abc | 18446744073709551615
+ -128                        | 0
+ -129                        | 0
+ 127                         | 127
+ 128                         | 128
+ 255                         | 255
+ 256                         | 256
+ -32768                      | 0
+ -32769                      | 0
+ 32767                       | 32767
+ 32768                       | 32768
+ 65535                       | 65535
+ 65536                       | 65536
+ -8388608                    | 0
+ -8388609                    | 0
+ 8388607                     | 8388607
+ 8388608                     | 8388608
+ 16777215                    | 16777215
+ 16777216                    | 16777216
+ -2147483648                 | 0
+ -2147483649                 | 0
+ 2147483647                  | 2147483647
+ 2147483648                  | 2147483648
+ 4294967295                  | 4294967295
+ 4294967296                  | 4294967296
+ -9223372036854775808        | 0
+ -9223372036854775809        | 0
+ 9223372036854775807         | 9223372036854775807
+ 9223372036854775808         | 9223372036854775808
+ 18446744073709551615        | 18446744073709551615
+ 18446744073709551616        | 18446744073709551615
+ -9223372036854775809        | 0
+ -18446744073709551614       | 0
+ -18446744073709551615       | 0
+ -18446744073709551616       | 18446744073709551615
+ -18446744073709551617       | 18446744073709551615
+ -99999999999999999999999    | 18446744073709551615
+ -9999999999999999999999998  | 18446744073709551615
+ -9999999999999999999999999  | 18446744073709551615
+(52 rows)
+
+set sql_mode = default;
+drop table dst;
+--
+-- text to uint4
+--
+--select s, cast(s as uint4) from src;
+create table dst(s text, v int4 unsigned);
+set sql_mode = '';
+insert into dst select s, s from src;      -- 36 warnings
+WARNING:  Incorrect integer value: '' for column.
+WARNING:  Incorrect integer value: 'a' for column.
+WARNING:  Incorrect integer value: '-a' for column.
+WARNING:  Data truncated for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+select * from dst;
+              s              |     v      
+-----------------------------+------------
+                             | 0
+ a                           | 0
+ -a                          | 0
+ -0                          | 0
+ -0abc                       | 0
+ -00009                      | 0
+ -1                          | 0
+ -10                         | 0
+ 99999999999999999999999     | 4294967295
+ 99999999999999999999999abc  | 4294967295
+ -9999999                    | 0
+ -9999999abc                 | 0
+ -99999999999999999999999    | 4294967295
+ -99999999999999999999999abc | 4294967295
+ -128                        | 0
+ -129                        | 0
+ 127                         | 127
+ 128                         | 128
+ 255                         | 255
+ 256                         | 256
+ -32768                      | 0
+ -32769                      | 0
+ 32767                       | 32767
+ 32768                       | 32768
+ 65535                       | 65535
+ 65536                       | 65536
+ -8388608                    | 0
+ -8388609                    | 0
+ 8388607                     | 8388607
+ 8388608                     | 8388608
+ 16777215                    | 16777215
+ 16777216                    | 16777216
+ -2147483648                 | 0
+ -2147483649                 | 0
+ 2147483647                  | 2147483647
+ 2147483648                  | 2147483648
+ 4294967295                  | 4294967295
+ 4294967296                  | 4294967295
+ -9223372036854775808        | 0
+ -9223372036854775809        | 0
+ 9223372036854775807         | 4294967295
+ 9223372036854775808         | 4294967295
+ 18446744073709551615        | 4294967295
+ 18446744073709551616        | 4294967295
+ -9223372036854775809        | 0
+ -18446744073709551614       | 0
+ -18446744073709551615       | 0
+ -18446744073709551616       | 4294967295
+ -18446744073709551617       | 4294967295
+ -99999999999999999999999    | 4294967295
+ -9999999999999999999999998  | 4294967295
+ -9999999999999999999999999  | 4294967295
+(52 rows)
+
+set sql_mode = default;
+drop table dst;
+--
+-- text to uint2
+--
+--select s, cast(s as uint2) from src;
+create table dst(s text, v int2 unsigned);
+set sql_mode = '';
+insert into dst select s, s from src;      -- 44 warnings
+WARNING:  Incorrect integer value: '' for column.
+WARNING:  Incorrect integer value: 'a' for column.
+WARNING:  Incorrect integer value: '-a' for column.
+WARNING:  Data truncated for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+select * from dst;
+              s              |   v   
+-----------------------------+-------
+                             | 0
+ a                           | 0
+ -a                          | 0
+ -0                          | 0
+ -0abc                       | 0
+ -00009                      | 0
+ -1                          | 0
+ -10                         | 0
+ 99999999999999999999999     | 65535
+ 99999999999999999999999abc  | 65535
+ -9999999                    | 0
+ -9999999abc                 | 0
+ -99999999999999999999999    | 65535
+ -99999999999999999999999abc | 65535
+ -128                        | 0
+ -129                        | 0
+ 127                         | 127
+ 128                         | 128
+ 255                         | 255
+ 256                         | 256
+ -32768                      | 0
+ -32769                      | 0
+ 32767                       | 32767
+ 32768                       | 32768
+ 65535                       | 65535
+ 65536                       | 65535
+ -8388608                    | 0
+ -8388609                    | 0
+ 8388607                     | 65535
+ 8388608                     | 65535
+ 16777215                    | 65535
+ 16777216                    | 65535
+ -2147483648                 | 0
+ -2147483649                 | 0
+ 2147483647                  | 65535
+ 2147483648                  | 65535
+ 4294967295                  | 65535
+ 4294967296                  | 65535
+ -9223372036854775808        | 0
+ -9223372036854775809        | 0
+ 9223372036854775807         | 65535
+ 9223372036854775808         | 65535
+ 18446744073709551615        | 65535
+ 18446744073709551616        | 65535
+ -9223372036854775809        | 0
+ -18446744073709551614       | 0
+ -18446744073709551615       | 0
+ -18446744073709551616       | 65535
+ -18446744073709551617       | 65535
+ -99999999999999999999999    | 65535
+ -9999999999999999999999998  | 65535
+ -9999999999999999999999999  | 65535
+(52 rows)
+
+set sql_mode = default;
+drop table dst;
+--
+-- text to uint1
+--
+--select s, cast(s as uint1) from src;
+create table dst(s text, v tinyint unsigned);
+set sql_mode = '';
+insert into dst select s, s from src;      -- 48 warnings
+WARNING:  Incorrect integer value: '' for column.
+WARNING:  Incorrect integer value: 'a' for column.
+WARNING:  Incorrect integer value: '-a' for column.
+WARNING:  Data truncated for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+select * from dst;
+              s              |  v  
+-----------------------------+-----
+                             | 0
+ a                           | 0
+ -a                          | 0
+ -0                          | 0
+ -0abc                       | 0
+ -00009                      | 0
+ -1                          | 0
+ -10                         | 0
+ 99999999999999999999999     | 255
+ 99999999999999999999999abc  | 255
+ -9999999                    | 0
+ -9999999abc                 | 0
+ -99999999999999999999999    | 255
+ -99999999999999999999999abc | 255
+ -128                        | 0
+ -129                        | 0
+ 127                         | 127
+ 128                         | 128
+ 255                         | 255
+ 256                         | 255
+ -32768                      | 0
+ -32769                      | 0
+ 32767                       | 255
+ 32768                       | 255
+ 65535                       | 255
+ 65536                       | 255
+ -8388608                    | 0
+ -8388609                    | 0
+ 8388607                     | 255
+ 8388608                     | 255
+ 16777215                    | 255
+ 16777216                    | 255
+ -2147483648                 | 0
+ -2147483649                 | 0
+ 2147483647                  | 255
+ 2147483648                  | 255
+ 4294967295                  | 255
+ 4294967296                  | 255
+ -9223372036854775808        | 0
+ -9223372036854775809        | 0
+ 9223372036854775807         | 255
+ 9223372036854775808         | 255
+ 18446744073709551615        | 255
+ 18446744073709551616        | 255
+ -9223372036854775809        | 0
+ -18446744073709551614       | 0
+ -18446744073709551615       | 0
+ -18446744073709551616       | 255
+ -18446744073709551617       | 255
+ -99999999999999999999999    | 255
+ -9999999999999999999999998  | 255
+ -9999999999999999999999999  | 255
+(52 rows)
+
+set sql_mode = default;
+drop table dst;
+--
+-- text to int8
+--
+select s, cast(s as signed) from src;      -- 21 warnings
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: 'a'
+WARNING:  Truncated incorrect INTEGER value: '-a'
+WARNING:  Truncated incorrect INTEGER value: '-0abc'
+WARNING:  Truncated incorrect INTEGER value: '99999999999999999999999'
+WARNING:  Truncated incorrect INTEGER value: '99999999999999999999999abc'
+WARNING:  Truncated incorrect INTEGER value: '-9999999abc'
+WARNING:  Truncated incorrect INTEGER value: '-99999999999999999999999'
+WARNING:  Truncated incorrect INTEGER value: '-99999999999999999999999abc'
+WARNING:  Truncated incorrect INTEGER value: '-9223372036854775809'
+WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
+WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
+WARNING:  Truncated incorrect INTEGER value: '18446744073709551616'
+WARNING:  Truncated incorrect INTEGER value: '-9223372036854775809'
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551614'
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551615'
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551616'
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551617'
+WARNING:  Truncated incorrect INTEGER value: '-99999999999999999999999'
+WARNING:  Truncated incorrect INTEGER value: '-9999999999999999999999998'
+WARNING:  Truncated incorrect INTEGER value: '-9999999999999999999999999'
+              s              |          s           
+-----------------------------+----------------------
+                             |                    0
+ a                           |                    0
+ -a                          |                    0
+ -0                          |                    0
+ -0abc                       |                    0
+ -00009                      |                   -9
+ -1                          |                   -1
+ -10                         |                  -10
+ 99999999999999999999999     |                   -1
+ 99999999999999999999999abc  |                   -1
+ -9999999                    |             -9999999
+ -9999999abc                 |             -9999999
+ -99999999999999999999999    | -9223372036854775808
+ -99999999999999999999999abc | -9223372036854775808
+ -128                        |                 -128
+ -129                        |                 -129
+ 127                         |                  127
+ 128                         |                  128
+ 255                         |                  255
+ 256                         |                  256
+ -32768                      |               -32768
+ -32769                      |               -32769
+ 32767                       |                32767
+ 32768                       |                32768
+ 65535                       |                65535
+ 65536                       |                65536
+ -8388608                    |             -8388608
+ -8388609                    |             -8388609
+ 8388607                     |              8388607
+ 8388608                     |              8388608
+ 16777215                    |             16777215
+ 16777216                    |             16777216
+ -2147483648                 |          -2147483648
+ -2147483649                 |          -2147483649
+ 2147483647                  |           2147483647
+ 2147483648                  |           2147483648
+ 4294967295                  |           4294967295
+ 4294967296                  |           4294967296
+ -9223372036854775808        | -9223372036854775808
+ -9223372036854775809        | -9223372036854775808
+ 9223372036854775807         |  9223372036854775807
+ 9223372036854775808         | -9223372036854775808
+ 18446744073709551615        |                   -1
+ 18446744073709551616        |                   -1
+ -9223372036854775809        | -9223372036854775808
+ -18446744073709551614       | -9223372036854775808
+ -18446744073709551615       | -9223372036854775808
+ -18446744073709551616       | -9223372036854775808
+ -18446744073709551617       | -9223372036854775808
+ -99999999999999999999999    | -9223372036854775808
+ -9999999999999999999999998  | -9223372036854775808
+ -9999999999999999999999999  | -9223372036854775808
+(52 rows)
+
+create table dst(s text, v int8);
+set sql_mode = '';
+insert into dst select s, s from src;      -- 21 warnings
+WARNING:  Incorrect integer value: '' for column.
+WARNING:  Incorrect integer value: 'a' for column.
+WARNING:  Incorrect integer value: '-a' for column.
+WARNING:  Data truncated for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Data truncated for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+select * from dst;
+              s              |          v           
+-----------------------------+----------------------
+                             |                    0
+ a                           |                    0
+ -a                          |                    0
+ -0                          |                    0
+ -0abc                       |                    0
+ -00009                      |                   -9
+ -1                          |                   -1
+ -10                         |                  -10
+ 99999999999999999999999     |  9223372036854775807
+ 99999999999999999999999abc  |  9223372036854775807
+ -9999999                    |             -9999999
+ -9999999abc                 |             -9999999
+ -99999999999999999999999    | -9223372036854775808
+ -99999999999999999999999abc | -9223372036854775808
+ -128                        |                 -128
+ -129                        |                 -129
+ 127                         |                  127
+ 128                         |                  128
+ 255                         |                  255
+ 256                         |                  256
+ -32768                      |               -32768
+ -32769                      |               -32769
+ 32767                       |                32767
+ 32768                       |                32768
+ 65535                       |                65535
+ 65536                       |                65536
+ -8388608                    |             -8388608
+ -8388609                    |             -8388609
+ 8388607                     |              8388607
+ 8388608                     |              8388608
+ 16777215                    |             16777215
+ 16777216                    |             16777216
+ -2147483648                 |          -2147483648
+ -2147483649                 |          -2147483649
+ 2147483647                  |           2147483647
+ 2147483648                  |           2147483648
+ 4294967295                  |           4294967295
+ 4294967296                  |           4294967296
+ -9223372036854775808        | -9223372036854775808
+ -9223372036854775809        | -9223372036854775808
+ 9223372036854775807         |  9223372036854775807
+ 9223372036854775808         |  9223372036854775807
+ 18446744073709551615        |  9223372036854775807
+ 18446744073709551616        |  9223372036854775807
+ -9223372036854775809        | -9223372036854775808
+ -18446744073709551614       | -9223372036854775808
+ -18446744073709551615       | -9223372036854775808
+ -18446744073709551616       | -9223372036854775808
+ -18446744073709551617       | -9223372036854775808
+ -99999999999999999999999    | -9223372036854775808
+ -9999999999999999999999998  | -9223372036854775808
+ -9999999999999999999999999  | -9223372036854775808
+(52 rows)
+
+set sql_mode = default;
+drop table dst;
+--
+-- text to int4
+--
+--select s, cast(s as signed) from src;
+create table dst(s text, v int);
+set sql_mode = '';
+insert into dst select s, s from src;      -- 27 warnings
+WARNING:  Incorrect integer value: '' for column.
+WARNING:  Incorrect integer value: 'a' for column.
+WARNING:  Incorrect integer value: '-a' for column.
+WARNING:  Data truncated for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Data truncated for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+select * from dst;
+              s              |      v      
+-----------------------------+-------------
+                             |           0
+ a                           |           0
+ -a                          |           0
+ -0                          |           0
+ -0abc                       |           0
+ -00009                      |          -9
+ -1                          |          -1
+ -10                         |         -10
+ 99999999999999999999999     |  2147483647
+ 99999999999999999999999abc  |  2147483647
+ -9999999                    |    -9999999
+ -9999999abc                 |    -9999999
+ -99999999999999999999999    | -2147483648
+ -99999999999999999999999abc | -2147483648
+ -128                        |        -128
+ -129                        |        -129
+ 127                         |         127
+ 128                         |         128
+ 255                         |         255
+ 256                         |         256
+ -32768                      |      -32768
+ -32769                      |      -32769
+ 32767                       |       32767
+ 32768                       |       32768
+ 65535                       |       65535
+ 65536                       |       65536
+ -8388608                    |    -8388608
+ -8388609                    |    -8388609
+ 8388607                     |     8388607
+ 8388608                     |     8388608
+ 16777215                    |    16777215
+ 16777216                    |    16777216
+ -2147483648                 | -2147483648
+ -2147483649                 | -2147483648
+ 2147483647                  |  2147483647
+ 2147483648                  |  2147483647
+ 4294967295                  |  2147483647
+ 4294967296                  |  2147483647
+ -9223372036854775808        | -2147483648
+ -9223372036854775809        | -2147483648
+ 9223372036854775807         |  2147483647
+ 9223372036854775808         |  2147483647
+ 18446744073709551615        |  2147483647
+ 18446744073709551616        |  2147483647
+ -9223372036854775809        | -2147483648
+ -18446744073709551614       | -2147483648
+ -18446744073709551615       | -2147483648
+ -18446744073709551616       | -2147483648
+ -18446744073709551617       | -2147483648
+ -99999999999999999999999    | -2147483648
+ -9999999999999999999999998  | -2147483648
+ -9999999999999999999999999  | -2147483648
+(52 rows)
+
+set sql_mode = default;
+drop table dst;
+--
+-- text to int2
+--
+--select s, cast(s as signed) from src;
+create table dst(s text, v int2);
+set sql_mode = '';
+insert into dst select s, s from src;      -- 40 warnings
+WARNING:  Incorrect integer value: '' for column.
+WARNING:  Incorrect integer value: 'a' for column.
+WARNING:  Incorrect integer value: '-a' for column.
+WARNING:  Data truncated for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+select * from dst;
+              s              |   v    
+-----------------------------+--------
+                             |      0
+ a                           |      0
+ -a                          |      0
+ -0                          |      0
+ -0abc                       |      0
+ -00009                      |     -9
+ -1                          |     -1
+ -10                         |    -10
+ 99999999999999999999999     |  32767
+ 99999999999999999999999abc  |  32767
+ -9999999                    | -32768
+ -9999999abc                 | -32768
+ -99999999999999999999999    | -32768
+ -99999999999999999999999abc | -32768
+ -128                        |   -128
+ -129                        |   -129
+ 127                         |    127
+ 128                         |    128
+ 255                         |    255
+ 256                         |    256
+ -32768                      | -32768
+ -32769                      | -32768
+ 32767                       |  32767
+ 32768                       |  32767
+ 65535                       |  32767
+ 65536                       |  32767
+ -8388608                    | -32768
+ -8388609                    | -32768
+ 8388607                     |  32767
+ 8388608                     |  32767
+ 16777215                    |  32767
+ 16777216                    |  32767
+ -2147483648                 | -32768
+ -2147483649                 | -32768
+ 2147483647                  |  32767
+ 2147483648                  |  32767
+ 4294967295                  |  32767
+ 4294967296                  |  32767
+ -9223372036854775808        | -32768
+ -9223372036854775809        | -32768
+ 9223372036854775807         |  32767
+ 9223372036854775808         |  32767
+ 18446744073709551615        |  32767
+ 18446744073709551616        |  32767
+ -9223372036854775809        | -32768
+ -18446744073709551614       | -32768
+ -18446744073709551615       | -32768
+ -18446744073709551616       | -32768
+ -18446744073709551617       | -32768
+ -99999999999999999999999    | -32768
+ -9999999999999999999999998  | -32768
+ -9999999999999999999999999  | -32768
+(52 rows)
+
+set sql_mode = default;
+drop table dst;
+drop table src;
+select cast('-0'::text as signed);      -- no warning
+ int8 
+------
+    0
+(1 row)
+
+select cast('-0a'::text as signed);     -- warning: truncated
+WARNING:  Truncated incorrect INTEGER value: '-0a'
+ int8 
+------
+    0
+(1 row)
+
+select cast('-a'::text as signed);      -- warning: truncated
+WARNING:  Truncated incorrect INTEGER value: '-a'
+ int8 
+------
+    0
+(1 row)
+
+select cast('-0'::text as unsigned);    -- warning: cast
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+ uint8 
+-------
+ 0
+(1 row)
+
+select cast('-0a'::text as unsigned);   -- 2 warings: truncate & cast
+WARNING:  Truncated incorrect INTEGER value: '-0a'
+WARNING:  Cast to unsigned converted negative integer to it's positive complement
+ uint8 
+-------
+ 0
+(1 row)
+
+select cast('-a'::text as unsigned);    -- warning: truncated
+WARNING:  Truncated incorrect INTEGER value: '-a'
+ uint8 
+-------
+ 0
+(1 row)
+

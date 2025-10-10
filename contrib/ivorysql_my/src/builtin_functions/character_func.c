@@ -487,12 +487,11 @@ field_any(PG_FUNCTION_ARGS)
 	Oid		*types;
 	bool	*nulls;
 	int		 nargs;
-	double arg0 = 0.0;
-	double argi = 0.0;
-	char *endptr = NULL;
-	char *str = NULL;
-
-	Oid	typeOutput;
+	double 	arg0 = 0.0;
+	double 	argi = 0.0;
+	char 	*str = NULL;
+	char 	*endptr = NULL;
+	Oid		typeOutput;
 	bool	typIsVarlena;
 
 	if (PG_NARGS() < 2)

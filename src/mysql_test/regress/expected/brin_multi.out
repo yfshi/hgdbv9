@@ -487,18 +487,10 @@ SET datestyle TO iso;
 INSERT INTO brin_timestamp_test
 SELECT '4713-01-01 00:00:01 BC'::timestamptz + (i || ' seconds')::interval
   FROM generate_series(1,30) s(i);
-ERROR:  operator is not unique: integer || unknown
-LINE 2: SELECT '4713-01-01 00:00:01 BC'::timestamptz + (i || ' secon...
-                                                          ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 -- values close to timetamp maximum
 INSERT INTO brin_timestamp_test
 SELECT '294276-12-01 00:00:01'::timestamptz + (i || ' seconds')::interval
   FROM generate_series(1,30) s(i);
-ERROR:  operator is not unique: integer || unknown
-LINE 2: SELECT '294276-12-01 00:00:01'::timestamptz + (i || ' second...
-                                                         ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 CREATE INDEX ON brin_timestamp_test USING brin (a timestamptz_minmax_multi_ops) WITH (pages_per_range=1);
 DROP TABLE brin_timestamp_test;
 -- test overflows during CREATE INDEX with extreme date values
@@ -586,15 +578,7 @@ RESET datestyle;
 -- test handling of overflow for interval values
 CREATE TABLE brin_interval_test(a INTERVAL);
 INSERT INTO brin_interval_test SELECT (i || ' years')::interval FROM generate_series(-178000000, -177999980) s(i);
-ERROR:  operator is not unique: integer || unknown
-LINE 1: INSERT INTO brin_interval_test SELECT (i || ' years')::inter...
-                                                 ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 INSERT INTO brin_interval_test SELECT (i || ' years')::interval FROM generate_series( 177999980,  178000000) s(i);
-ERROR:  operator is not unique: integer || unknown
-LINE 1: INSERT INTO brin_interval_test SELECT (i || ' years')::inter...
-                                                 ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 CREATE INDEX ON brin_interval_test USING brin (a interval_minmax_multi_ops) WITH (pages_per_range=1);
 SET enable_seqscan = off;
 EXPLAIN (ANALYZE, TIMING OFF, COSTS OFF, SUMMARY OFF)

@@ -253,10 +253,6 @@ CREATE TABLE vacparted_i1 PARTITION OF vacparted_i
 CREATE TABLE vacparted_i2 PARTITION OF vacparted_i
   FOR VALUES WITH (MODULUS 2, REMAINDER 1);
 INSERT INTO vacparted_i SELECT i, 'test_'|| i from generate_series(1,10) i;
-ERROR:  operator is not unique: unknown || integer
-LINE 1: INSERT INTO vacparted_i SELECT i, 'test_'|| i from generate_...
-                                                 ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 VACUUM (ANALYZE) vacparted_i;
 VACUUM (FULL) vacparted_i;
 VACUUM (FREEZE) vacparted_i;

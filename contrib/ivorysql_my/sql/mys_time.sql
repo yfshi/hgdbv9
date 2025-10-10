@@ -2658,6 +2658,7 @@ select cast('222222' as time(5)) && 1.4; --1
 select cast('222222' as time(5)) && 1.5; --1
 select cast('222222.555555' as time(3)) && 1.5;--1
 
+set sql_mode = '';
 -- ||
 select cast('111111.5555555' as time(5)) || cast('111110' as time(5)); --1
 select cast('111111' as time(5)) || 111; --1
@@ -2669,6 +2670,8 @@ select 0 || cast('222220' as time(5)); --1
 select cast('222222' as time(5)) || 1.4; --1
 select cast('222222' as time(5)) || 1.5; --1
 select cast('222222.555555' as time(3)) || 1.5;--1
+reset sql_mode;
+select cast('111111.5555555' as time(5)) || cast('111110' as time(5)); --1
 
 -- !
 select !cast('111111' as time(5)) ;--0

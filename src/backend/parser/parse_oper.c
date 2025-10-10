@@ -335,7 +335,7 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 
 		/* Get operator name */
 		DeconstructQualifiedName(opname, &schemaname, &opername);
-		if(!strcmp(opername, "<=>") ||
+		if (!strcmp(opername, "<=>") ||
 			!strcmp(opername, "+") ||
 			!strcmp(opername, "-") ||
 			!strcmp(opername, "*") ||
@@ -838,6 +838,8 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 		 */
 		if (compatible_db == MYS_PARSER)
 		{
+			const char *op_name = strVal(linitial(opname));
+
 			if (type_is_enum(ltypeId) && type_is_enum(rtypeId))
 			{
 				save_origltypeId = ltypeId;
@@ -846,6 +848,36 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 				ltypeId = ANYENUMOID;
 				rtypeId = ANYENUMOID;
 			}
+
+			/**
+			 * Begin - SRS-MYSQL-HEX-LITERAL
+			 * When PIPES_AS_CONCAT is on, cast hex to text.
+			 */
+			if (!strcmp(op_name, "||") && has_sql_mode(MODE_PIPES_AS_CONCAT))
+			{
+				if (ltypeId == IVY_HEXOID)
+				{
+					ltree = coerce_type(pstate,
+										ltree, IVY_HEXOID,
+										TEXTOID, -1,
+										COERCION_EXPLICIT, COERCE_EXPLICIT_CALL,
+										exprLocation(ltree));
+
+					ltypeId = TEXTOID;
+				}
+
+				if (rtypeId == IVY_HEXOID)
+				{
+					rtree = coerce_type(pstate,
+										rtree, IVY_HEXOID,
+										TEXTOID, -1,
+										COERCION_EXPLICIT, COERCE_EXPLICIT_CALL,
+										exprLocation(rtree));
+							
+					rtypeId = TEXTOID;
+				}
+			}
+			/* End - SRS-MYSQL-HEX-LITERAL */
 		}
 		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
@@ -858,8 +890,8 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 			 */
 			if(!enable_blankspace_compare && (opkind == AEXPR_OP || opkind == AEXPR_IN || opkind == ROWCOMPARISONOP) )
 			{
-				List * opname_rewrite = needReplaceOpname(opname,ltypeId,rtypeId);
-				if(opname_rewrite)
+				List *opname_rewrite = needReplaceOpname(opname, ltypeId, rtypeId);
+				if (opname_rewrite)
 					opname = opname_rewrite;
 			}
 			/* End - SRS-MISC-COMPATDM-SQL */
@@ -870,10 +902,8 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 			 * so that it like oracle, because oracle integer is number(38,0)
 			 */
 			if (enable_compatible_const_integer_operator &&
-				ltypeId == INT4OID &&
-				nodeTag(ltree) == T_Const &&
-				rtypeId == INT4OID &&
-				nodeTag(rtree) == T_Const)
+				ltypeId == INT4OID && nodeTag(ltree) == T_Const &&
+				rtypeId == INT4OID && nodeTag(rtree) == T_Const)
 			{
 				/* Begin - BUG#Z0001452 */
 				save_origltypeId = ltypeId;
@@ -889,14 +919,14 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 			 * we use number / number
 			 */
 			else if (enable_compatible_numeric_division_result &&
-					((ltypeId == INT4OID ||
-					ltypeId == INT2OID ||
-					ltypeId == INT8OID ||
-					ltypeId == UNKNOWNOID) &&
-					(rtypeId == INT4OID ||
-					rtypeId == INT2OID ||
-					rtypeId == INT8OID ||
-					rtypeId == UNKNOWNOID)) &&
+					((ltypeId == INT2OID ||
+					  ltypeId == INT4OID ||
+					  ltypeId == INT8OID ||
+					  ltypeId == UNKNOWNOID) &&
+					 (rtypeId == INT2OID ||
+					  rtypeId == INT4OID ||
+					  rtypeId == INT8OID ||
+					  rtypeId == UNKNOWNOID)) &&
 					list_length(opname) == 1 &&
 					strcmp(strVal(linitial(opname)), "/") == 0)
 			{

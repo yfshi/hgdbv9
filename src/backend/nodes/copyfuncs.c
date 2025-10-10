@@ -1930,6 +1930,7 @@ _copyCoerceViaIO(const CoerceViaIO *from)
 	COPY_SCALAR_FIELD(resultcollid);
 	COPY_SCALAR_FIELD(coerceformat);
 	COPY_LOCATION_FIELD(location);
+	COPY_SCALAR_FIELD(flag); // SRS-MYSQL-HEX-LITERAL
 
 	return newnode;
 }

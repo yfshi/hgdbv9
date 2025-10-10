@@ -53,17 +53,17 @@ PG_FUNCTION_INFO_V1(mysuint8_typmodin);
 PG_FUNCTION_INFO_V1(mysuint8_typmodout);
 PG_FUNCTION_INFO_V1(mysuint8_scale);
 
-PG_FUNCTION_INFO_V1(int_mysuint8);
-PG_FUNCTION_INFO_V1(numeric_mysuint8);
-PG_FUNCTION_INFO_V1(boolean_mysuint8);
-PG_FUNCTION_INFO_V1(mys_uint82int2);
-PG_FUNCTION_INFO_V1(mys_uint82int4);
-PG_FUNCTION_INFO_V1(mys_uint82int8);
-PG_FUNCTION_INFO_V1(mys_uint82uint1);
-PG_FUNCTION_INFO_V1(mys_uint82uint2);
-PG_FUNCTION_INFO_V1(mys_uint82uint4);
-PG_FUNCTION_INFO_V1(mys_uint82float4);
-PG_FUNCTION_INFO_V1(mys_uint82float8);
+PG_FUNCTION_INFO_V1(int_uint8);
+PG_FUNCTION_INFO_V1(numeric_uint8);
+PG_FUNCTION_INFO_V1(boolean_uint8);
+PG_FUNCTION_INFO_V1(uint8_int2);
+PG_FUNCTION_INFO_V1(uint8_int4);
+PG_FUNCTION_INFO_V1(uint8_int8);
+PG_FUNCTION_INFO_V1(uint8_uint1);
+PG_FUNCTION_INFO_V1(uint8_uint2);
+PG_FUNCTION_INFO_V1(uint8_uint4);
+PG_FUNCTION_INFO_V1(uint8_float4);
+PG_FUNCTION_INFO_V1(uint8_float8);
 
 PG_FUNCTION_INFO_V1(mysuint8_eq);
 PG_FUNCTION_INFO_V1(mysuint8_eqint2);
@@ -223,14 +223,6 @@ PG_FUNCTION_INFO_V1(int2_andmysuint8);
 PG_FUNCTION_INFO_V1(int4_andmysuint8);
 PG_FUNCTION_INFO_V1(int8_andmysuint8);
 
-PG_FUNCTION_INFO_V1(mysuint8_ormysuint8);
-PG_FUNCTION_INFO_V1(mysuint8_orint2);
-PG_FUNCTION_INFO_V1(mysuint8_orint4);
-PG_FUNCTION_INFO_V1(mysuint8_orint8);
-PG_FUNCTION_INFO_V1(int2_ormysuint8);
-PG_FUNCTION_INFO_V1(int4_ormysuint8);
-PG_FUNCTION_INFO_V1(int8_ormysuint8);
-
 PG_FUNCTION_INFO_V1(mysuint8_invertmysuint8);
 
 PG_FUNCTION_INFO_V1(int8_boolean);
@@ -262,11 +254,11 @@ PG_FUNCTION_INFO_V1(mysuint8_sum);
 Datum
 mysuint8_in(PG_FUNCTION_ARGS)
 {
-	char *num = PG_GETARG_CSTRING(0);
+	char 	*num = PG_GETARG_CSTRING(0);
+	bool 	is_insert = CALL_IN_INSERT();
+	uint64 	ret = my_atoi_uint64(num, is_insert);
 
-	uint64 temp = pg_atoi_uint(num, '\0', 8, true);
-
-	PG_RETURN_UINT64(temp);
+	PG_RETURN_UINT64(ret);
 }
 
 /* 
@@ -351,60 +343,78 @@ mysuint8_scale(PG_FUNCTION_ARGS)
 }
 
 Datum
-int_mysuint8(PG_FUNCTION_ARGS)
+int_uint8(PG_FUNCTION_ARGS)
 {
 	int64		val1 = PG_GETARG_INT64(0);
 	uint64		val2 = val1;
+	bool		is_insert = CALL_IN_INSERT();
+
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
 	
-	if (val1 < 0 || val1 > PG_UINT64_MAX)
+	if (is_insert)
 	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
-		val2 = val1 < 0 ? 0 : PG_UINT64_MAX;
+		if (val1 < 0)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = 0;
+		}
 	}
+	/* End - SRS-MYSQL-HEX-LITERAL */
 
 	PG_RETURN_UINT64(val2);
 }
 
 Datum
-numeric_mysuint8(PG_FUNCTION_ARGS)
+numeric_uint8(PG_FUNCTION_ARGS)
 {
 	Numeric		num = PG_GETARG_NUMERIC(0);
 	uint64		val2 = 0;
 	uint64		val1 = 0;
-	int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+	Numeric 	uint8maxnum;
+	bool		is_insert = CALL_IN_INSERT();
+	int 		level = WARNING;
 
-	Numeric		uint8maxnum = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-										CStringGetDatum("18446744073709551615"),
-										ObjectIdGetDatum(InvalidOid),
-										Int32GetDatum(-1)));
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	if (is_insert)
+		level = !is_strict_mode() ? WARNING : ERROR;
+	/* End - SRS-MYSQL-HEX-LITERAL */
 
-	if(DatumGetBool(DirectFunctionCall2(
-		numeric_gt, NumericGetDatum(num), NumericGetDatum(uint8maxnum)))
-		)
+	uint8maxnum = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+													  CStringGetDatum("18446744073709551615"),
+													  ObjectIdGetDatum(InvalidOid),
+													  Int32GetDatum(-1)));
+
+	if (DatumGetBool(DirectFunctionCall2(numeric_gt,
+										 NumericGetDatum(num),
+										 NumericGetDatum(uint8maxnum))))
 	{
-		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+		ereport(level, (errmsg("integer unsigned out of range")));
 		PG_RETURN_UINT64(PG_UINT64_MAX);
 	}
-	if(DatumGetBool(DirectFunctionCall2(
-			numeric_lt, NumericGetDatum(num), NumericGetDatum(int64_to_numeric(0)))))
+
+	if (DatumGetBool(DirectFunctionCall2(numeric_lt,
+										 NumericGetDatum(num),
+										 NumericGetDatum(int64_to_numeric(0)))))
 	{
-		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+		ereport(level, (errmsg("integer unsigned out of range")));
 		PG_RETURN_UINT64(0);
 	}
+
 	val1 = DatumGetInt64(DirectFunctionCall1(numeric_uint8, NumericGetDatum(num)));
+
 	if (val1 < 0 || val1 > PG_UINT64_MAX)
 	{
-		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+		ereport(level, (errmsg("integer unsigned out of range")));
 		val1 = val1 < 0 ? 0 : PG_UINT64_MAX;
 	}
+
 	val2 = val1;
 
 	PG_RETURN_UINT64(val2);
 }
 
 Datum
-boolean_mysuint8(PG_FUNCTION_ARGS)
+boolean_uint8(PG_FUNCTION_ARGS)
 {
 	PG_RETURN_UINT64(PG_GETARG_BOOL(0));
 }
@@ -1979,65 +1989,6 @@ int8_andmysuint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(val2 && val1);
 }
 
-// or ||
-Datum
-mysuint8_ormysuint8(PG_FUNCTION_ARGS)
-{
-	uint64		val1 = PG_GETARG_INT64(0);
-	uint64		val2 = PG_GETARG_INT64(1);
-
-	PG_RETURN_INT32(val1 || val2);
-}
-Datum
-mysuint8_orint2(PG_FUNCTION_ARGS)
-{
-	uint64		val1 = PG_GETARG_INT64(0);
-	int16		val2 = PG_GETARG_INT16(1);
-
-	PG_RETURN_UINT64(val1 || val2);
-}
-Datum
-mysuint8_orint4(PG_FUNCTION_ARGS)
-{
-	uint64		val1 = PG_GETARG_INT64(0);
-	int32		val2 = PG_GETARG_INT32(1);
-
-	PG_RETURN_UINT64(val1 || val2);
-}
-Datum
-mysuint8_orint8(PG_FUNCTION_ARGS)
-{
-	uint64		val1 = PG_GETARG_INT64(0);
-	int64		val2 = PG_GETARG_INT64(1);
-
-	PG_RETURN_UINT64(val1 || val2);
-}
-
-Datum
-int2_ormysuint8(PG_FUNCTION_ARGS)
-{
-	uint64		val1 = PG_GETARG_INT64(1);
-	int16		val2 = PG_GETARG_INT16(0);
-
-	PG_RETURN_UINT64(val2 || val1);
-}
-Datum
-int4_ormysuint8(PG_FUNCTION_ARGS)
-{
-	uint64		val1 = PG_GETARG_INT64(1);
-	int32		val2 = PG_GETARG_INT32(0);
-
-	PG_RETURN_UINT64(val2 || val1);
-}
-Datum
-int8_ormysuint8(PG_FUNCTION_ARGS)
-{
-	uint64		val1 = PG_GETARG_INT64(1);
-	int64		val2 = PG_GETARG_INT64(0);
-
-	PG_RETURN_UINT64(val2 || val1);
-}
-
 // invert ! 
 Datum
 mysuint8_invertmysuint8(PG_FUNCTION_ARGS)
@@ -2285,118 +2236,170 @@ mysuint8_sum(PG_FUNCTION_ARGS)
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
 /* Begin BUG#5048 5070 */
-#define InsertGreaterLimitCheck(BASE, LIMIT, RET) \
-	do { \
-		if (fcinfo->flinfo->fn_insert) \
-		{ \
-			if (BASE > LIMIT) \
-			{ \
-				ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column"))); \
-				RET = LIMIT; \
-			} \
-		} \
-	} while(0);
-
 Datum
-mys_uint82int2(PG_FUNCTION_ARGS)
+uint8_int2(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	int16		val2 = val1;
-	
-	/**
-	 * val1 is unsigned int64, it is greater than 0, 
-	 * need not check PG_INT16_MIN.
-	 */
-	InsertGreaterLimitCheck(val1, PG_INT16_MAX, val2);
+	bool		is_insert = CALL_IN_INSERT();
+
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	if (is_insert)
+	{
+		if (val1 > INT16_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = INT16_MAX;
+		}
+	}
+	/* End - SRS-MYSQL-HEX-LITERAL */
 
 	PG_RETURN_INT16(val2);
 }
 
 Datum
-mys_uint82int4(PG_FUNCTION_ARGS)
+uint8_int4(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	int32		val2 = val1;
+	bool		is_insert = CALL_IN_INSERT();
 
-	InsertGreaterLimitCheck(val1, PG_INT32_MAX, val2);
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	if (is_insert)
+	{
+		if (val1 > INT32_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = INT32_MAX;
+		}
+	}
+	/* End - SRS-MYSQL-HEX-LITERAL */
 	
 	PG_RETURN_INT32(val2);
 }
 
 Datum
-mys_uint82int8(PG_FUNCTION_ARGS)
+uint8_int8(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	int64		val2 = val1;
+	bool		is_insert = CALL_IN_INSERT();
 
-	InsertGreaterLimitCheck(val1, PG_INT64_MAX, val2);
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	if (is_insert)
+	{
+		if (val1 > INT64_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = INT64_MAX;
+		}
+	}
+	/* End - SRS-MYSQL-HEX-LITERAL */
 
 	PG_RETURN_INT64(val2);
 }
 
 Datum
-mys_uint82uint1(PG_FUNCTION_ARGS)
+uint8_uint1(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	uint8		val2 = val1;
-	
-	/**
-	 * val1 is unsigned int64, it is greater than 0, 
-	 * need not check PG_UINT8_MIN.
-	 */
-	InsertGreaterLimitCheck(val1, PG_UINT8_MAX, val2);
+	bool		is_insert = CALL_IN_INSERT();
+
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	if (is_insert)
+	{
+		if (val1 > UINT8_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = UINT8_MAX;
+		}
+	}
+	/* End - SRS-MYSQL-HEX-LITERAL */
 	
 	PG_RETURN_UINT8(val2);
 }
 
 Datum
-mys_uint82uint2(PG_FUNCTION_ARGS)
+uint8_uint2(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	uint16		val2 = val1;
-	
-	/**
-	 * val1 is unsigned int64, it is greater than 0, 
-	 * need not check PG_UINT16_MIN.
-	 */
-	InsertGreaterLimitCheck(val1, PG_UINT16_MAX, val2);
+	bool		is_insert = CALL_IN_INSERT();
+
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	if (is_insert)
+	{
+		if (val1 > UINT16_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = UINT16_MAX;
+		}
+	}
+	/* End - SRS-MYSQL-HEX-LITERAL */
 
 	PG_RETURN_UINT16(val2);
 }
 
 Datum
-mys_uint82uint4(PG_FUNCTION_ARGS)
+uint8_uint4(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint32		val2 = val1;
-	
-	/**
-	 * val1 is unsigned int64, it is greater than 0, 
-	 * need not check PG_UINT16_MIN.
-	 */
-	InsertGreaterLimitCheck(val1, PG_UINT32_MAX, val2);
+	int32		val2 = val1;
+	bool		is_insert = CALL_IN_INSERT();
 
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	if (is_insert)
+	{
+		if (val1 > UINT32_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = UINT32_MAX;
+		}
+	}
+	/* End - SRS-MYSQL-HEX-LITERAL */
+	
 	PG_RETURN_UINT32(val2);
 }
 
 Datum
-mys_uint82float4(PG_FUNCTION_ARGS)
+uint8_float4(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	float		val2 = val1;
+	bool		is_insert = CALL_IN_INSERT();
 
-	InsertGreaterLimitCheck(val1, FLT_MAX, val2);
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	if (is_insert)
+	{
+		if (val1 > FLT_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = FLT_MAX;
+		}
+	}
+	/* End - SRS-MYSQL-HEX-LITERAL */
 	
 	PG_RETURN_FLOAT4(val2);
 }
 
 Datum
-mys_uint82float8(PG_FUNCTION_ARGS)
+uint8_float8(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	double		val2 = val1;
+	bool		is_insert = CALL_IN_INSERT();
 
-	InsertGreaterLimitCheck(val1, DBL_MAX, val2);
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	if (is_insert)
+	{
+		if (val1 > DBL_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = DBL_MAX;
+		}
+	}
+	/* End - SRS-MYSQL-HEX-LITERAL */
 
 	PG_RETURN_FLOAT8(val2);
 }

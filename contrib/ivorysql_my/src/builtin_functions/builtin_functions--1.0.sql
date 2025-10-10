@@ -697,6 +697,13 @@ AS $$
 select lcase($1::text);
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.lcase(ivy_hex)
+RETURNS varchar
+AS $$
+select lcase($1::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 -- ucase
 
@@ -719,6 +726,14 @@ RETURNS varchar
 AS $$
 select ucase($1::text);
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.ucase(ivy_hex)
+RETURNS varchar
+AS $$
+select ucase($1::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 -- insert
 
@@ -826,6 +841,14 @@ AS $$
 select ivymy.bin($1::int8);
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.bin(ivy_hex)
+RETURNS varchar
+AS $$
+select ivymy.bin($1::text);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 -- char
 
 CREATE FUNCTION ivymy.char(VARIADIC int8[])
@@ -880,6 +903,16 @@ PARALLEL SAFE
 IMMUTABLE;
 /* End - BUG#Z5513 */
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.elt(uint8, VARIADIC text[])
+RETURNS VARCHAR
+AS 'select ivymy.elt($1::bigint, VARIADIC $2)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 -- field
 CREATE FUNCTION ivymy.field(VARIADIC arr text[])
 RETURNS int
@@ -923,76 +956,135 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.find_in_set(uint8, text)
+RETURNS int
+AS 'select ivymy.find_in_set($1::text, $2)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.find_in_set(ivy_hex, text)
+RETURNS int
+AS 'select ivymy.find_in_set($1::text, $2)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.find_in_set(ivy_hex, ivy_hex)
+RETURNS int
+AS 'select ivymy.find_in_set($1::text, $2::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 -- hex
 CREATE OR REPLACE FUNCTION ivymy.hex(text)
 RETURNS varchar
 AS 'MODULE_PATHNAME', 'hex_str'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE
+IMMUTABLE STRICT;
 
 CREATE FUNCTION ivymy.hex(int8)
 RETURNS varchar
 AS 'MODULE_PATHNAME','hex_num'
-LANGUAGE C PARALLEL SAFE IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE 
+IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION ivymy.hex(int4)
 RETURNS varchar
 AS $$
 select hex($1::int8);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ 
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION ivymy.hex(numeric)
 RETURNS varchar
 AS $$
 select hex($1::int8);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ 
+LANGUAGE SQL 
+PARALLEL SAFE
+IMMUTABLE STRICT;
 
 CREATE FUNCTION ivymy.hex(bool)
 RETURNS varchar
 AS $$
 select hex($1::int);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ 
+LANGUAGE SQL 
+PARALLEL SAFE
+IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION ivymy.hex(float8)
 RETURNS varchar
 AS $$
 select hex($1::int8);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ 
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION ivymy.hex(date)
 RETURNS varchar
 AS $$
 select hex($1::text);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ 
+LANGUAGE SQL 
+PARALLEL SAFE
+IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION ivymy.hex(datetime)
 RETURNS varchar
 AS $$
 select hex($1::text);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ 
+LANGUAGE SQL 
+PARALLEL SAFE
+IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION ivymy.hex(time)
 RETURNS varchar
 AS $$
 select hex($1::text);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ 
+LANGUAGE SQL 
+PARALLEL SAFE
+IMMUTABLE STRICT;
 
 CREATE FUNCTION ivymy.hex(binary)
 RETURNS varchar
 AS 'MODULE_PATHNAME','hex_bytea'
-LANGUAGE C PARALLEL SAFE IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE 
+IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION ivymy.hex(varbinary)
 RETURNS varchar
 AS $$
 select hex($1::binary);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$
+LANGUAGE SQL 
+PARALLEL SAFE
+IMMUTABLE STRICT;
 
 /* Begin - BUG#Z5524 */
 CREATE OR REPLACE FUNCTION ivymy.hex(pg_catalog.bit)
 RETURNS varchar
 AS $$
 select hex($1::int8);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ 
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE STRICT;
 /* End - BUG#Z5524 */
 
 /* Begin - BUG#Z5524 */
@@ -1000,8 +1092,22 @@ CREATE OR REPLACE FUNCTION ivymy.hex(ivymy.mysbit)
 RETURNS varchar
 AS $$
 select hex($1::int8);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ 
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE STRICT;
 /* End - BUG#Z5524 */
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE OR REPLACE FUNCTION ivymy.hex(ivy_hex)
+RETURNS varchar
+AS $$
+select hex($1::binary);
+$$
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE STRICT;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 -- space
 
@@ -1028,6 +1134,13 @@ AS $$
 select space($1::int8);
 $$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE OR REPLACE FUNCTION ivymy.space(ivy_hex)
+RETURNS varchar
+AS $$
+select space($1::int8);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 -- soundex
 
@@ -1069,6 +1182,17 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.soundex(ivy_hex)
+RETURNS varchar
+AS $$
+    SELECT ''
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 -- export_set
 
@@ -1130,6 +1254,16 @@ PARALLEL SAFE
 IMMUTABLE;
 /* End - BUG#Z5536 */
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.ord(ivy_hex)
+RETURNS bigint
+AS 'select ivymy.ord($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 -- substring_index
 CREATE FUNCTION ivymy.substring_index(text, text, bigint)
 RETURNS varchar
@@ -1169,6 +1303,17 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.from_base64(ivy_hex)
+RETURNS varchar
+AS $$
+    SELECT ivymy.from_base64($1::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 -- to_base64
 
@@ -1190,6 +1335,17 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 /* End - BUG#Z5524 */
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.to_base64(ivy_hex)
+RETURNS varchar
+AS $$
+select to_base64($1::text);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 -- length
 CREATE FUNCTION ivymy.length(text)
@@ -1217,6 +1373,14 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.length(date)
+RETURNS int
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.length(ivy_hex)
 RETURNS int
 AS 'select length($1::text)'
 LANGUAGE SQL
@@ -1284,6 +1448,16 @@ PARALLEL SAFE
 IMMUTABLE;
 /* End - BUG#Z5537 */
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.octet_length(ivy_hex)
+RETURNS int4
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 -- bit_length
 
 CREATE FUNCTION ivymy.bit_length(int)
@@ -1315,6 +1489,18 @@ LANGUAGE sql
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.bit_length(ivy_hex)
+RETURNS bigint
+AS $$
+    select bit_length($1::text);
+$$
+LANGUAGE sql
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 -- left
 
@@ -1350,6 +1536,25 @@ AS $$
 select left($1::int4::text, $2);
 $$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE OR REPLACE FUNCTION ivymy.left(ivy_hex, int4)
+RETURNS varchar
+AS $$
+select left($1::text, $2);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.left(text, ivy_hex)
+RETURNS varchar
+AS $$
+select left($1, $2::int);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.left(ivy_hex, ivy_hex)
+RETURNS varchar
+AS $$
+select left($1::text, $2::int);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 -- right
 
@@ -1384,6 +1589,26 @@ RETURNS varchar
 AS $$
 select right($1::int4::text, $2);
 $$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE OR REPLACE FUNCTION ivymy.right(ivy_hex, int4)
+RETURNS varchar
+AS $$
+select right($1::text, $2);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.right(text, ivy_hex)
+RETURNS varchar
+AS $$
+select right($1, $2::int);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION ivymy.right(ivy_hex, ivy_hex)
+RETURNS varchar
+AS $$
+select right($1::text, $2::int);
+$$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 --to_days
 CREATE FUNCTION ivymy.to_days(date)
@@ -1466,6 +1691,17 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.to_days(ivy_hex)
+RETURNS bigint
+AS $$
+	select ivymy.to_days($1::text);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 --to_seconds
 CREATE FUNCTION ivymy.to_seconds(datetime(6))
 RETURNS bigint
@@ -1546,6 +1782,17 @@ $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.to_seconds(ivy_hex)
+RETURNS bigint
+AS $$
+	select ivymy.to_seconds($1::text);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 --unix_timestamp
 CREATE FUNCTION ivymy.unix_timestamp()
@@ -1665,6 +1912,17 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.dayname(ivy_hex)
+RETURNS varchar
+AS $$
+	select ivymy.dayname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 --month
 CREATE FUNCTION ivymy.monthname(date)
 RETURNS varchar
@@ -1747,6 +2005,17 @@ PARALLEL SAFE
 IMMUTABLE;
 /* End - BUG#Z5533 */
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.monthname(ivy_hex)
+RETURNS varchar
+AS $$
+	select ivymy.monthname($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 /* Begin - BUG#Z5568 */
 --time_to_sec
 CREATE FUNCTION ivymy.time_to_sec(time(6))
@@ -1820,6 +2089,17 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 /* End - BUG#Z5568 */
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.time_to_sec(ivy_hex)
+RETURNS int
+AS $$
+	select ivymy.time_to_sec($1::time(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 --month
 CREATE FUNCTION ivymy.month(date)
@@ -1983,6 +2263,17 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.date(ivy_hex)
+RETURNS date
+AS $$
+	select ivymy.date($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 --week
 CREATE FUNCTION ivymy.week(date)
 RETURNS int
@@ -2063,6 +2354,17 @@ $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.week(ivy_hex)
+RETURNS int
+AS $$
+	select ivymy.week($1::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 /* Begin - BUG#Z5528 */
 CREATE FUNCTION ivymy.week(date, int)
@@ -2291,6 +2593,18 @@ $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.yearweek(ivy_hex)
+RETURNS int /* BUG#Z5576 */
+AS $$
+	select ivymy.yearweek($1::date, 0);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 
 --datediff
 CREATE FUNCTION ivymy.datediff(date, date)
@@ -2553,11 +2867,41 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.datediff(ivy_hex, ivy_hex)
+RETURNS bigint
+AS $$
+	select ivymy.datediff($1::date, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
+
 --from_days
-CREATE FUNCTION ivymy.from_days(numeric)
+CREATE FUNCTION ivymy.from_days(bigint)
 RETURNS date
 AS 'MODULE_PATHNAME','from_days'
 LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(int)
+RETURNS date
+AS $$
+	select ivymy.from_days($1::bigint);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(numeric)
+RETURNS date
+AS $$
+	select ivymy.from_days($1::bigint);
+$$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
@@ -2583,7 +2927,7 @@ IMMUTABLE;
 CREATE FUNCTION ivymy.from_days(datetime(6))
 RETURNS date
 AS $$
-	select ivymy.from_days($1::numeric);
+	select ivymy.from_days($1::bigint);
 $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
@@ -2592,7 +2936,7 @@ IMMUTABLE;
 CREATE FUNCTION ivymy.from_days(datetime)
 RETURNS date
 AS $$
-	select ivymy.from_days($1::numeric);
+	select ivymy.from_days($1::bigint);
 $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
@@ -2601,7 +2945,7 @@ IMMUTABLE;
 CREATE FUNCTION ivymy.from_days(timestamp)
 RETURNS date
 AS $$
-	select ivymy.from_days($1::numeric);
+	select ivymy.from_days($1::bigint);
 $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
@@ -2610,7 +2954,7 @@ IMMUTABLE;
 CREATE FUNCTION ivymy.from_days(timestamp(6))
 RETURNS date
 AS $$
-	select ivymy.from_days($1::numeric);
+	select ivymy.from_days($1::bigint);
 $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
@@ -2619,7 +2963,7 @@ IMMUTABLE;
 CREATE FUNCTION ivymy.from_days(time)
 RETURNS date
 AS $$
-	select ivymy.from_days($1::numeric);
+	select ivymy.from_days($1::numeric::bigint);
 $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
@@ -2628,7 +2972,16 @@ IMMUTABLE;
 CREATE FUNCTION ivymy.from_days(time(6))
 RETURNS date
 AS $$
-	select ivymy.from_days($1::numeric);
+	select ivymy.from_days($1::numeric::bigint);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.from_days(uint8)
+RETURNS date
+AS $$
+	select ivymy.from_days($1::bigint);
 $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
@@ -2694,6 +3047,18 @@ LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+CREATE FUNCTION ivymy.get_format(int, ivy_hex)
+RETURNS varchar /* BUG#Z5533 */
+AS $$
+	select ivymy.get_format($1, $2::text);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 
 CREATE FUNCTION ivymy.conv(text, int4, int4)
 RETURNS varchar

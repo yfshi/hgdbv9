@@ -150,59 +150,67 @@ CREATE OPERATOR ivymy.^ (
 --
 -- cast (text as bool)
 --
-CREATE OR REPLACE FUNCTION ivymy.mystext2bool(text)
+CREATE OR REPLACE FUNCTION ivymy.text_bool(text, int) 
 	RETURNS bool
-	AS 'MODULE_PATHNAME', 'mystext2bool'
+	AS 'MODULE_PATHNAME', 'text_bool'
 	LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
 
-CREATE CAST(text as bool) WITH FUNCTION ivymy.mystext2bool(text) AS ASSIGNMENT;
+CREATE CAST(text as bool) 
+WITH FUNCTION ivymy.text_bool(text, int) 
+AS ASSIGNMENT;
 
 --
 -- cast (text as int2)
 --
-CREATE FUNCTION ivymy.mystext2int2(text)
+CREATE FUNCTION ivymy.text_int2(text, int, bool, int8) 
 	RETURNS pg_catalog.int2
-	AS 'MODULE_PATHNAME', 'mystext2int2'
+	AS 'MODULE_PATHNAME', 'varlena_int2'
 	LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
 
-CREATE CAST(text as pg_catalog.int2) WITH FUNCTION ivymy.mystext2int2(text) AS ASSIGNMENT;
+CREATE CAST(text as pg_catalog.int2)
+WITH FUNCTION ivymy.text_int2(text, int, bool, int8) 
+AS ASSIGNMENT;
 
 --
 -- cast (text as int4)
 --
-CREATE FUNCTION ivymy.mystext2int4(text)
+CREATE FUNCTION ivymy.text_int4(text, int, bool, int8) 
 	RETURNS pg_catalog.int4
-	AS 'MODULE_PATHNAME', 'mystext2int4'
+	AS 'MODULE_PATHNAME', 'varlena_int4'
 	LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
 
-CREATE CAST(text as pg_catalog.int4) WITH FUNCTION ivymy.mystext2int4(text) AS ASSIGNMENT;
+CREATE CAST(text as pg_catalog.int4)
+WITH FUNCTION ivymy.text_int4(text, int, bool, int8) 
+AS ASSIGNMENT;
 
 --
 -- cast (text as int8)
 --
-CREATE FUNCTION ivymy.mystext2int8(text)
+CREATE FUNCTION ivymy.text_int8(text, int, bool, int8)
 	RETURNS pg_catalog.int8
-	AS 'MODULE_PATHNAME', 'mystext2int8'
+	AS 'MODULE_PATHNAME', 'varlena_int8'
 	LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
 
-CREATE CAST(text as pg_catalog.int8) WITH FUNCTION ivymy.mystext2int8(text) AS IMPLICIT;
+CREATE CAST(text as pg_catalog.int8) 
+WITH FUNCTION ivymy.text_int8(text, int, bool, int8) 
+AS ASSIGNMENT;
 
 --
 -- cast (text as float8)
 --
-CREATE OR REPLACE FUNCTION ivymy.mystext2float8(text)
+CREATE OR REPLACE FUNCTION ivymy.text_float8(text)
 	RETURNS pg_catalog.float8
-	AS 'MODULE_PATHNAME', 'mystext2float8'
+	AS 'MODULE_PATHNAME', 'text_float8'
 	LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
 
-CREATE CAST(text as pg_catalog.float8) WITH FUNCTION ivymy.mystext2float8(text) AS IMPLICIT;
+CREATE CAST(text as pg_catalog.float8) WITH FUNCTION ivymy.text_float8(text) AS IMPLICIT;
 
 --
 -- cast (varchar as int2)
 --
 CREATE FUNCTION ivymy.mys_varchar2int2(varchar)
 RETURNS int2
-AS 'MODULE_PATHNAME', 'mys_varchar2int2'
+AS 'MODULE_PATHNAME', 'varlena_int2'
 LANGUAGE C 
 STRICT 
 PARALLEL SAFE 
@@ -217,7 +225,7 @@ AS ASSIGNMENT;
 --
 CREATE FUNCTION ivymy.mys_varchar2int4(varchar)
 RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME', 'mys_varchar2int4'
+AS 'MODULE_PATHNAME', 'varlena_int4'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
@@ -230,7 +238,7 @@ CREATE CAST(varchar as pg_catalog.int4) WITH FUNCTION ivymy.mys_varchar2int4(var
 --
 CREATE FUNCTION ivymy.mys_varchar2int8(varchar)
 RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME', 'mys_varchar2int8'
+AS 'MODULE_PATHNAME', 'varlena_int8'
 LANGUAGE C
 STRICT
 PARALLEL SAFE

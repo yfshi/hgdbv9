@@ -37,7 +37,7 @@ CREATE TABLE my_binary_t2(c1 binary(0)); -- should ok
  c1     | binary(0) |           |          | 
 
 INSERT INTO my_binary_t2 VALUES('a'); -- should error
-ERROR:  value too long for type binary(0)
+ERROR:  Data too long for column
 LINE 1: INSERT INTO my_binary_t2 VALUES('a');
                                         ^
 CREATE TABLE my_binary_t3(c1 binary); -- should ok
@@ -88,7 +88,7 @@ CREATE TABLE my_binary_t7(c1 binary(3)); -- should ok
  c1     | binary(3) |           |          | 
 
 INSERT INTO my_binary_t7 VALUES('abcd'); -- should error
-ERROR:  value too long for type binary(3)
+ERROR:  Data too long for column
 LINE 1: INSERT INTO my_binary_t7 VALUES('abcd');
                                         ^
 SELECT * FROM my_binary_t7;
@@ -98,7 +98,7 @@ SELECT * FROM my_binary_t7;
 
 SET sql_mode = '';
 INSERT INTO my_binary_t7 VALUES('abcd'); -- should warning
-WARNING:  value too long for type binary(3), data truncated
+WARNING:  Data truncated for column
 LINE 1: INSERT INTO my_binary_t7 VALUES('abcd');
                                         ^
 SELECT * FROM my_binary_t7;
@@ -109,7 +109,7 @@ SELECT * FROM my_binary_t7;
 
 RESET sql_mode;
 INSERT INTO my_binary_t7 VALUES('abcd'); -- should error
-ERROR:  value too long for type binary(3)
+ERROR:  Data too long for column
 LINE 1: INSERT INTO my_binary_t7 VALUES('abcd');
                                         ^
 SELECT * FROM my_binary_t7;
@@ -171,15 +171,15 @@ CREATE TABLE my_binary_t8 (c1 binary(8));
 INSERT  INTO my_binary_t8 values ('HGDB');
 INSERT  INTO my_binary_t8 values ('Database');
 INSERT  INTO my_binary_t8 values ('Database1');
-WARNING:  value too long for type binary(8), data truncated
+WARNING:  Data truncated for column
 LINE 1: INSERT  INTO my_binary_t8 values ('Database1');
                                           ^
 INSERT  INTO my_binary_t8 values ('Database ');
-WARNING:  value too long for type binary(8), data truncated
+WARNING:  Data truncated for column
 LINE 1: INSERT  INTO my_binary_t8 values ('Database ');
                                           ^
 INSERT  INTO my_binary_t8 values ('数据库');
-WARNING:  value too long for type binary(8), data truncated
+WARNING:  Data truncated for column
 LINE 1: INSERT  INTO my_binary_t8 values ('数据库');
                                           ^
 SELECT * FROM my_binary_t8;
@@ -1826,7 +1826,7 @@ select
 from my_binary_t1;
  ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
 ----------+----------+----------+----------+----------+----------+----------+----------+----------+----------
- t        | t        | t        | t        | t        | f        | f        | f        | NULL     | NULL
+ 123      | 123      | 123      | 123      | 1234     | abcd     | ABCD     |          | NULL     | NULL
 (1 row)
 
 DISCARD ALL;
@@ -2067,7 +2067,7 @@ select * from tb_binary;
 (2 rows)
 
 COPY public.tb_binary (c1) FROM stdin;
-ERROR:  value too long for type binary(5)
+ERROR:  Data too long for column
 CONTEXT:  COPY tb_binary, line 1, column c1: "\x313233343536"
 select * from tb_binary;
   c1   
@@ -2078,7 +2078,7 @@ select * from tb_binary;
 
 SET sql_mode='';
 COPY public.tb_binary (c1) FROM stdin;
-WARNING:  value too long for type binary(5)
+WARNING:  Data truncated for column
 select * from tb_binary;
   c1   
 -------
@@ -2105,3 +2105,19 @@ select c1 && c3, c2 && c3 from tb1;
 (1 row)
 
 drop table tb1;
+-- bug#z5800
+select convert('Hello World', binary(5));
+WARNING:  Truncated incorrect BINARY(5) value: (Hello World)
+LINE 1: select convert('Hello World', binary(5));
+                       ^
+ binary 
+--------
+ Hello
+(1 row)
+
+select convert(123, binary),convert(123.456, binary);
+ binary | binary  
+--------+---------
+ 123    | 123.456
+(1 row)
+

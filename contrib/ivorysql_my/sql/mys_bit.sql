@@ -84,6 +84,10 @@ select not c from t;
 \gdesc
 select c or c from t;
 \gdesc
+set sql_mode = 'ANSI_QUOTES';
+select c || c from t;
+\gdesc
+reset sql_mode;
 select c || c from t;
 \gdesc
 select c xor c from t;
@@ -127,9 +131,43 @@ INSERT INTO BIT_TABLE VALUES (B'101011111010'); -- too long
 SELECT * FROM BIT_TABLE;
 drop table BIT_TABLE;
 
+create table t_bit(a bit(8));
+set sql_mode = '';
+insert into t_bit values (0xffff);  -- warning
+set sql_mode = default;
+insert into t_bit values (0xffff);  -- error
+select hex(a) from t_bit;           -- 0xFF
+drop table t_bit;
+
+create table t_bit(a bit(13));
+set sql_mode = '';
+insert into t_bit values (0xffff);  -- warning
+set sql_mode = default;
+insert into t_bit values (0xffff);  -- error
+select hex(a) from t_bit;           -- 0x1FFF
+drop table t_bit;
+
+
+create table t_bit(a bit(8));
+set sql_mode = '';
+insert into t_bit values (0xffff);  -- warning
+set sql_mode = default;
+insert into t_bit values (0xffff);  -- error
+select hex(a) from t_bit;           -- 0xFF
+drop table t_bit;
+
+create table t_bit(a bit(13));
+set sql_mode = '';
+insert into t_bit values (0xffff);  -- warning
+set sql_mode = default;
+insert into t_bit values (0xffff);  -- error
+select hex(a) from t_bit;           -- 0x1FFF
+drop table t_bit;
+
 -- bug 5691
 create table t_bit_function (b1 BIT(8), b2 bit(17), b3 BIT(32), b4 BIT(63),b5 BIT(1));
 insert into t_bit_function values ('A', 1234, b'101010',0x1234,true);
+insert into t_bit_function values (b'0', b'0', b'0', b'0', b'0');
 select binary(b1), binary(b2), binary(b3), binary(b4), binary(b5) from t_bit_function;
 \gdesc
 drop table t_bit_function;
@@ -181,7 +219,7 @@ create table t_index_brin (id serial primary key, flag bit(64));
 insert into t_index_brin (flag) select (i % 65536) from generate_series(1, 100000) as i;
 set enable_seqscan = off;
 create index idx_brin on t_index_brin using brin (flag);
-explain select * from t_index_brin where flag=b'1010';
+explain (costs off) select * from t_index_brin where flag=b'1010';
 drop index idx_brin;
 drop table t_index_brin;
 
@@ -189,7 +227,7 @@ drop table t_index_brin;
 create table t_index_btree (id serial primary key, flag bit(64));
 insert into t_index_btree (flag) select (i % 65536) from generate_series(1, 100000) as i;
 create index  idx_btree on t_index_btree  (flag);
-explain select * from t_index_btree where flag=b'1010';
+explain (costs off) select * from t_index_btree where flag=b'1010';
 drop index idx_btree;
 drop table t_index_btree;
 
@@ -273,12 +311,9 @@ create table t_index_hash(id serial primary key, flag bit(64));
 insert into t_index_hash (flag) select (i % 65536) from generate_series(1, 100000) as i;
 set enable_seqscan = off;
 create index idx_hash on t_index_hash using hash(flag);
-explain select * from t_index_hash where flag = '0x12';
+explain (costs off) select * from t_index_hash where flag = '0x12';
 drop index idx_hash;
 drop table t_index_hash;
 
--- bug 5692
-create table t_bit_function (b1 BIT(8), b2 bit(17), b3 BIT(32), b4 BIT(63), b5 BIT(1));
-insert into t_bit_function values ('A', 1234, b'101010',0x1234,true);
-select unhex(b1),unhex(b2),unhex(b3),unhex(b4) from t_bit_function;
-drop table t_bit_function;
+-- bug 5805
+select convert('2023-08-20', unsigned),convert('2025-03-24 20:47:35', unsigned),convert(b'1101', unsigned);

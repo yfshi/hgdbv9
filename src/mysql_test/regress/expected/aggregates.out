@@ -2060,9 +2060,14 @@ LINE 1: select rank(3) within group (order by stringu1,stringu2) fro...
                ^
 HINT:  To use the hypothetical-set aggregate rank, the number of hypothetical direct arguments (here 1) must match the number of ordering columns (here 2).
 select rank('fred') within group (order by x) from generate_series(1,5) x;
-ERROR:  invalid input syntax for type integer: "fred"
+WARNING:  Truncated incorrect INTEGER value: 'fred'
 LINE 1: select rank('fred') within group (order by x) from generate_...
                     ^
+ rank 
+------
+    1
+(1 row)
+
 select rank('adam'::text collate "C") within group (order by x collate "POSIX")
   from (values ('fred'),('jim')) v(x);
 ERROR:  collation mismatch between explicit collations "C" and "POSIX"

@@ -16,7 +16,7 @@ LANGUAGE C STRICT IMMUTABLE;
  *
  ***************************************************************/
 
-CREATE FUNCTION ivymy.binary_in(CSTRING)
+CREATE FUNCTION ivymy.binary_in(CSTRING, oid, int, int8)
 RETURNS ivymy.binary
 AS 'MODULE_PATHNAME','binary_in'
 LANGUAGE C
@@ -31,7 +31,7 @@ LANGUAGE INTERNAL
 IMMUTABLE
 STRICT;
 
-CREATE FUNCTION ivymy.binary_recv(internal)
+CREATE FUNCTION ivymy.binary_recv(internal, oid, int, int8)
 RETURNS ivymy.binary
 AS 'bytearecv'
 LANGUAGE INTERNAL
@@ -417,22 +417,6 @@ LEAKPROOF;
 ----operator &&
 CREATE OPERATOR ivymy.&& (
 	procedure = ivymy.binary_and,
-	leftarg   = ivymy.binary,
-	rightarg  = ivymy.binary
-);
-
-----function or
-CREATE OR REPLACE FUNCTION ivymy.binary_or(ivymy.binary, ivymy.binary)
-RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_or'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-----operator ||
-CREATE OPERATOR ivymy.|| (
-	procedure = ivymy.binary_or,
 	leftarg   = ivymy.binary,
 	rightarg  = ivymy.binary
 );
@@ -941,7 +925,7 @@ IMMUTABLE;
 
 CREATE CAST (ivymy.varbinary AS text)
 WITH FUNCTION ivymy.varbinary2text(ivymy.varbinary, integer, boolean)
-AS ASSIGNMENT;
+AS IMPLICIT;
 
 -- cast varbinary to bpchar
 CREATE FUNCTION ivymy.varbinary2bpchar(ivymy.varbinary, integer, boolean)
@@ -970,81 +954,81 @@ WITH FUNCTION ivymy.varbinary2varchar(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
 
 -- cast varbinary to int2
-CREATE FUNCTION ivymy.varbinary2int2(ivymy.varbinary, integer, boolean)
+CREATE FUNCTION ivymy.varbinary2int2(ivymy.varbinary, integer, boolean, int8)
 RETURNS pg_catalog.int2
-AS 'MODULE_PATHNAME','varbinary2int2'
+AS 'MODULE_PATHNAME','varlena_int2'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.varbinary AS pg_catalog.int2)
-WITH FUNCTION ivymy.varbinary2int2(ivymy.varbinary, integer, boolean)
+WITH FUNCTION ivymy.varbinary2int2(ivymy.varbinary, integer, boolean, int8)
 AS ASSIGNMENT;
 
 -- cast varbinary to int4
-CREATE FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean)
+CREATE FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean, int8)
 RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME','varbinary2int4'
+AS 'MODULE_PATHNAME','varlena_int4'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.varbinary AS pg_catalog.int4)
-WITH FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean)
+WITH FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean, int8)
 AS ASSIGNMENT;
 
 -- cast varbinary to int8
-CREATE FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean)
+CREATE FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean, int8)
 RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','varbinary2int8'
+AS 'MODULE_PATHNAME','varlena_int8'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.varbinary AS pg_catalog.int8)
-WITH FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean)
+WITH FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean, int8)
 AS ASSIGNMENT;
 
 -- cast varbinary to uint2
-CREATE FUNCTION ivymy.varbinary2uint2(ivymy.varbinary, integer, boolean)
+CREATE FUNCTION ivymy.varbinary2uint2(ivymy.varbinary, integer, boolean, int8)
 RETURNS uint2
-AS 'MODULE_PATHNAME','varbinary2uint2'
+AS 'MODULE_PATHNAME','varlena_uint2'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.varbinary AS uint2)
-WITH FUNCTION ivymy.varbinary2uint2(ivymy.varbinary, integer, boolean)
+WITH FUNCTION ivymy.varbinary2uint2(ivymy.varbinary, integer, boolean, int8)
 AS ASSIGNMENT;
 
 -- cast varbinary to uint4
-CREATE FUNCTION ivymy.varbinary2uint4(ivymy.varbinary, integer, boolean)
+CREATE FUNCTION ivymy.varbinary2uint4(ivymy.varbinary, integer, boolean, int8)
 RETURNS uint4
-AS 'MODULE_PATHNAME','varbinary2uint4'
+AS 'MODULE_PATHNAME','varlena_uint4'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.varbinary AS uint4)
-WITH FUNCTION ivymy.varbinary2uint4(ivymy.varbinary, integer, boolean)
+WITH FUNCTION ivymy.varbinary2uint4(ivymy.varbinary, integer, boolean, int8)
 AS ASSIGNMENT;
 
 -- cast varbinary to uint8
-CREATE FUNCTION ivymy.varbinary2uint8(ivymy.varbinary, integer, boolean)
+CREATE FUNCTION ivymy.varbinary2uint8(ivymy.varbinary, integer, boolean, int8)
 RETURNS uint8
-AS 'MODULE_PATHNAME','varbinary2uint8'
+AS 'MODULE_PATHNAME','varlena_uint8'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.varbinary AS uint8)
-WITH FUNCTION ivymy.varbinary2uint8(ivymy.varbinary, integer, boolean)
+WITH FUNCTION ivymy.varbinary2uint8(ivymy.varbinary, integer, boolean, int8)
 AS ASSIGNMENT;
 
 -- cast varbinary to numeric
@@ -1192,15 +1176,6 @@ $$ LANGUAGE SQL IMMUTABLE STRICT;
 CREATE OR REPLACE FUNCTION ivymy.varbinary_and(ivymy.varbinary, ivymy.varbinary)
 RETURNS boolean
 AS 'MODULE_PATHNAME','varbinary_and'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-----function or
-CREATE OR REPLACE FUNCTION ivymy.varbinary_or(ivymy.varbinary, ivymy.varbinary)
-RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_or'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE
@@ -1367,13 +1342,6 @@ CREATE OPERATOR ivymy.!~~ (
 ----operator &&
 CREATE OPERATOR ivymy.&& (
 	procedure = ivymy.varbinary_and,
-	leftarg   = ivymy.varbinary,
-	rightarg  = ivymy.varbinary
-);
-
-----operator ||
-CREATE OPERATOR ivymy.|| (
-	procedure = ivymy.varbinary_or,
 	leftarg   = ivymy.varbinary,
 	rightarg  = ivymy.varbinary
 );
@@ -1969,21 +1937,6 @@ CREATE OPERATOR ivymy.&& (
 	rightarg  = ivymy.myblob
 );
 
-----function or
-CREATE OR REPLACE FUNCTION ivymy.myblob_or(ivymy.myblob, ivymy.myblob)
-RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_or'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-----operator ||
-CREATE OPERATOR ivymy.|| (
-	procedure = ivymy.myblob_or,
-	leftarg   = ivymy.myblob,
-	rightarg  = ivymy.myblob
-);
 
 ----function not
 CREATE OR REPLACE FUNCTION ivymy.myblob_not(ivymy.myblob)
@@ -2665,21 +2618,6 @@ CREATE OPERATOR ivymy.&& (
 	rightarg  = ivymy.tinyblob
 );
 
-----function or
-CREATE OR REPLACE FUNCTION ivymy.tinyblob_or(ivymy.tinyblob, ivymy.tinyblob)
-RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_or'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-----operator ||
-CREATE OPERATOR ivymy.|| (
-	procedure = ivymy.tinyblob_or,
-	leftarg   = ivymy.tinyblob,
-	rightarg  = ivymy.tinyblob
-);
 
 ----function not
 CREATE OR REPLACE FUNCTION ivymy.tinyblob_not(ivymy.tinyblob)
@@ -3356,22 +3294,6 @@ LEAKPROOF;
 ----operator &&
 CREATE OPERATOR ivymy.&& (
 	procedure = ivymy.mediumblob_and,
-	leftarg   = ivymy.mediumblob,
-	rightarg  = ivymy.mediumblob
-);
-
-----function or
-CREATE OR REPLACE FUNCTION ivymy.mediumblob_or(ivymy.mediumblob, ivymy.mediumblob)
-RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_or'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-----operator ||
-CREATE OPERATOR ivymy.|| (
-	procedure = ivymy.mediumblob_or,
 	leftarg   = ivymy.mediumblob,
 	rightarg  = ivymy.mediumblob
 );
@@ -4056,22 +3978,6 @@ CREATE OPERATOR ivymy.&& (
 	rightarg  = ivymy.longblob
 );
 
-----function or
-CREATE OR REPLACE FUNCTION ivymy.longblob_or(ivymy.longblob, ivymy.longblob)
-RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_or'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE
-LEAKPROOF;
-
-----operator ||
-CREATE OPERATOR ivymy.|| (
-	procedure = ivymy.longblob_or,
-	leftarg   = ivymy.longblob,
-	rightarg  = ivymy.longblob
-);
-
 ----function not
 CREATE OR REPLACE FUNCTION ivymy.longblob_not(ivymy.longblob)
 RETURNS boolean
@@ -4436,3 +4342,31 @@ IMMUTABLE;
 CREATE CAST (ivymy.longblob AS numeric)
 WITH FUNCTION ivymy.varbinary2numeric(ivymy.longblob, integer, boolean)
 AS ASSIGNMENT;
+
+/* Begin - bug#z5800 */
+-- cast int to binary
+CREATE FUNCTION ivymy.int_binary(int)
+RETURNS ivymy.binary
+AS 'select $1::text::binary;'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (int AS ivymy.binary)
+WITH FUNCTION ivymy.int_binary(int)
+AS ASSIGNMENT;
+
+-- cast numeric to binary
+CREATE FUNCTION ivymy.numeric_binary(numeric)
+RETURNS ivymy.binary
+AS 'select $1::text::binary;'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (numeric AS ivymy.binary)
+WITH FUNCTION ivymy.numeric_binary(numeric)
+AS ASSIGNMENT;
+/* End - bug#z5800 */

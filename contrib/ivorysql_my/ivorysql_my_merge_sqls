@@ -1,12 +1,15 @@
 src/datatype/script/datatype
+src/datatype/script/bool
 src/datatype/script/int
 src/datatype/script/int2
 src/datatype/script/int4
+src/datatype/script/int8
 src/datatype/script/uint1
 src/datatype/script/uint2
 src/datatype/script/uint4
 src/datatype/script/uint3
 src/datatype/script/uint8
+src/datatype/script/numeric
 src/datatype/script/uint1_index
 src/datatype/script/uint2_index
 src/datatype/script/uint4_index
@@ -16,9 +19,9 @@ src/datatype/script/float
 src/datatype/script/year
 src/datatype/script/time
 src/datatype/script/binary
-src/datatype/script/numeric
 src/datatype/script/character
 src/datatype/script/bit
+src/datatype/script/hex
 src/builtin_functions/builtin_functions
 src/builtin_functions/network_functions
 src/sysview/sysview

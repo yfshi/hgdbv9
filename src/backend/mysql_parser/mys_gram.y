@@ -545,7 +545,7 @@ static Node *makeVarRef(char *varname, VarKind kind, int location);
 %type <defelt>	createfunc_opt_item common_func_opt_item dostmt_opt_item
 %type <fun_param> func_arg func_arg_with_default table_func_column aggr_arg
 %type <fun_param_mode> arg_class
-%type <typnam>	func_return func_type
+%type <typnam>	func_return func_type cast_type
 
 %type <boolean>  opt_trusted opt_restart_seqs
 %type <ival>	 OptTemp
@@ -2198,14 +2198,9 @@ OptShowFilter:
 				}
 
 MysqlShowStmt:
-			SHOW CHARSET OptShowFilter
+			SHOW multi_charset OptShowFilter
 				{
 					SelectStmt *selectStmt = makeShowCharsetStmt($3);
-		    		$$ = (Node *) selectStmt;
-				}
-			| SHOW CHARACTER SET OptShowFilter
-				{
-					SelectStmt *selectStmt = makeShowCharsetStmt($4);
 		    		$$ = (Node *) selectStmt;
 				}
 			| SHOW COLLATION OptShowFilter
@@ -8601,15 +8596,15 @@ func_type:	Typename								{ $$ = $1; }
 			/* Begin - BUG#5401 */
 			/* We make vabinary as function return type */
 			| VARBINARY
-			{
-				$$ = MySQLSystemTypeName("varbinary");
-				if (strcmp($1, "varbinary") == 0)
 				{
-					$$->typmods = NIL;
-					$$->typemod = -1;
+					$$ = MySQLSystemTypeName("varbinary");
+					if (strcmp($1, "varbinary") == 0)
+					{
+						$$->typmods = NIL;
+						$$->typemod = -1;
+					}
+					$$->location = @1;
 				}
-				$$->location = @1;
-			}
 			/* End - BUG#5401 */
 		;
 
@@ -9159,13 +9154,30 @@ dostmt_opt_item:
 				}
 		;
 
+cast_type:
+			Typename
+				{
+					$$ = $1;
+				}
+			| VARBINARY
+				{
+					$$ = MySQLSystemTypeName("varbinary");
+					if (strcmp($1, "varbinary") == 0)
+					{
+						$$->typmods = NIL;
+						$$->typemod = -1;
+					}
+					$$->location = @1;
+				}
+		;
+
 /*****************************************************************************
  *
  *		CREATE CAST / DROP CAST
  *
  *****************************************************************************/
 
-CreateCastStmt: CREATE CAST '(' Typename AS Typename ')'
+CreateCastStmt: CREATE CAST '(' cast_type AS cast_type ')'
 					WITH FUNCTION function_with_argtypes cast_context
 				{
 					CreateCastStmt *n = makeNode(CreateCastStmt);
@@ -9176,7 +9188,7 @@ CreateCastStmt: CREATE CAST '(' Typename AS Typename ')'
 					n->inout = false;
 					$$ = (Node *)n;
 				}
-			| CREATE CAST '(' Typename AS Typename ')'
+			| CREATE CAST '(' cast_type AS cast_type ')'
 					WITHOUT FUNCTION cast_context
 				{
 					CreateCastStmt *n = makeNode(CreateCastStmt);
@@ -9187,7 +9199,7 @@ CreateCastStmt: CREATE CAST '(' Typename AS Typename ')'
 					n->inout = false;
 					$$ = (Node *)n;
 				}
-			| CREATE CAST '(' Typename AS Typename ')'
+			| CREATE CAST '(' cast_type AS cast_type ')'
 					WITH INOUT cast_context
 				{
 					CreateCastStmt *n = makeNode(CreateCastStmt);
@@ -12691,12 +12703,6 @@ UpdateStmt: opt_with_clause UPDATE opt_lowpriority opt_ignore from_list	/* ReqID
 					n->limitClause = (Node*)list_nth($11, 1);
 					if (MYS_PARSER == compatible_db)
 					{
-//						if ($8)
-//							ereport(ERROR,
-//							(errcode(ERRCODE_SYNTAX_ERROR),
-//							 errmsg("multi-relation update is not supported from clause."),
-//							 errhint("Please note whether it's compatible with MySQL mode.")));
-
 						if (list_length($5) > 1)
 						{
 							n->relationClause = $5;
@@ -12743,31 +12749,6 @@ set_clause:
 					$$ = list;
 					/* End - ReqID:SRS-MYSQL-CASE */
 				}
-			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-			/*| set_target '='  VALUES '(' columnref ')'
-				{
-					ColumnRef	   *c = NULL;
-					int				nfields = 0;
-					if (IsA($5, ColumnRef))
-						c = (ColumnRef *) $5;
-					else if (IsA($5, A_Indirection))
-						c = (ColumnRef *)(((A_Indirection *)$5)->arg);
-
-					nfields = list_length(c->fields);
-					/* only allow col.*, col[...], col */
-					/*if (nfields > 1)
-					{
-						ereport(ERROR,
-								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("only allow column name within VALUES"),
-								 parser_errposition(@5)));
-					}
-
-					c->fields = lcons((Node *)makeString("excluded"), c->fields);
-					$1->val = (Node *) $5;
-					$$ = list_make1($1);
-				}*/
-			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 			| '(' set_target_list ')' '=' a_expr
 				{
 					int ncolumns = list_length($2);
@@ -15987,12 +15968,10 @@ a_expr:		c_expr									{ $$ = $1; }
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "*", $1, $3, @2); }
 			| a_expr '/' a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", $1, $3, @2); }
-
-/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+			/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 			| a_expr DIV a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "//", $1, $3, @2); }
-/* End - ReqID:SRS-MYSQL-BINARYTYPE */
-
+			/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 			| a_expr '%' a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "%", $1, $3, @2); }
 			/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
@@ -16406,33 +16385,6 @@ a_expr:		c_expr									{ $$ = $1; }
 														   @2),
 									 @2);
 				}
-			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-			/*
-			 * Support insert ...on duplicate key update column = values().
-			 */
-			| VALUES '(' columnref ')'
-				{
-
-					ColumnRef	   *c = NULL;
-					int				nfields = 0;
-					if (IsA($3, ColumnRef))
-						c = (ColumnRef *) $3;
-					else if (IsA($3, A_Indirection))
-						c = (ColumnRef *)(((A_Indirection *)$3)->arg);
-					nfields = list_length(c->fields);
-					/* only allow col.*, col[...], col */
-					if (nfields > 1)
-					{
-						ereport(ERROR,
-								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("only allow column name within VALUES"),
-								 parser_errposition(@3)));
-					}
-
-					c->fields = lcons((Node *)makeString("excluded"), c->fields);
-					$$ = (Node *) $3;
-				}
-			/* End - ReqID:SRS-MYSQL-SQL-INSERT  */
 			| DEFAULT
 				{
 					/*
@@ -16447,93 +16399,34 @@ a_expr:		c_expr									{ $$ = $1; }
 					n->location = @1;
 					$$ = (Node *)n;
 				}
-			/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
-			| CHAR_P '(' func_arg_list_opt ')'
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT
+			 * Support insert ...on duplicate key update column = values().
+			 */
+			| VALUES '(' columnref ')'
 				{
-					ListCell *cell;
-					List	 *arg_list = $3;
-					List	 *new_arg_list = NIL;
-					FuncCall *n;
+					ColumnRef	   *c = NULL;
+					int				nfields = 0;
 
-					foreach(cell, arg_list)
+					if (IsA($3, ColumnRef))
+						c = (ColumnRef *) $3;
+					else if (IsA($3, A_Indirection))
+						c = (ColumnRef *)(((A_Indirection *)$3)->arg);
+					
+					nfields = list_length(c->fields);
+					
+					/* only allow col.*, col[...], col */
+					if (nfields > 1)
 					{
-						Node *node = makeTypeCast(lfirst(cell), SystemTypeName("int8"), @1);
-						new_arg_list = lappend(new_arg_list, node);
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("only allow column name within VALUES"),
+								 parser_errposition(@3)));
 					}
-					n = makeFuncCall(MysqlSystemFuncName("char"),
-											   new_arg_list,
-											   COERCE_EXPLICIT_CALL,
-											   @2);
-					$$ = (Node *)n;
-				}
-			| CHAR_P '(' func_arg_list_opt USING any_name ')'
-				{
-					ListCell *cell;
-					List	 *arg_list = $3;
-					List	 *new_arg_list = NIL;
-					FuncCall *n;
 
-					ereport(WARNING, (errmsg("Ignore USING syntax in char() function")));
-
-					foreach(cell, arg_list)
-					{
-						Node *node = makeTypeCast(lfirst(cell), SystemTypeName("int8"), @1);
-						new_arg_list = lappend(new_arg_list, node);
-					}
-					n = makeFuncCall(MysqlSystemFuncName("char"),
-											   new_arg_list,
-											   COERCE_EXPLICIT_CALL,
-											   @2);
-
-					$$ = (Node *)n;
+					c->fields = lcons((Node *) makeString("excluded"), c->fields);
+					$$ = (Node *) $3;
 				}
-			/* Begin:ReqID:SRS-MYSQL-BITTYPE */
-			| BINARY '(' func_arg_list_opt ')'
-				{
-					FuncCall *n = makeFuncCall(MysqlSystemFuncName("binary"),
-							$3,
-							COERCE_EXPLICIT_CALL,
-							@2);
-					$$ = (Node *)n;
-				}
-			/* End:ReqID:SRS-MYSQL-BITTYPE */
-			| FIELD '(' func_arg_list_opt ')'  /* BUG#Z5516 */
-				{
-					FuncCall *n = makeFuncCall(MysqlSystemFuncName("field"),
-											   $3,
-											   COERCE_EXPLICIT_CALL,
-											   @2);
-					$$ = (Node *)n;
-				}
-			/* Begin - BUG#Z5513 */
-			| ELT '(' a_expr ')'
-				{
-					ereport(ERROR,(errmsg("Incorrect parameter count in the call to native function 'elt'")));
-				}
-			/* End - BUG#Z5513 */
-			| ELT '(' a_expr ',' elt_func_args_list ')' /* BUG#Z5516 */
-				{
-					FuncCall *n = makeFuncCall(MysqlSystemFuncName("elt"),
-											   lcons($3, $5),
-											   COERCE_EXPLICIT_CALL,
-											   @2);
-					$$ = (Node *)n;
-				}
-			| NAME_CONST '(' name_const_label ',' a_expr ')'
-				{
-					ResTarget 	*res = NULL;
-
-					if (!IsA($5, A_Const))
-						elog(ERROR, "Incorrect arguments to NAME_CONST");
-
-					res = makeNode(ResTarget);
-					res->name = $3;
-					res->indirection = NIL;
-					res->val = (Node *) $5;
-					res->location = @1;
-					$$ = (Node *)res;
-				}
-			/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			/* End - ReqID:SRS-MYSQL-SQL-INSERT  */
 		;
 
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
@@ -16961,19 +16854,33 @@ cast_expr:
 				{ 				
 					$$ = makeTypeCast($3, MySQLSystemTypeName("uint4"), @1);
 				}
+			| BINARY_F SCONST
+				{
+					$$ = makeTypeCast(makeStringConst($2, @1), MySQLSystemTypeName("varbinary"), @1);
+				}
+			| BINARY '(' func_arg_list_opt ')'
+				{
+					/* Begin - bug#z5768 */
+					Node *n = linitial($3);
+					
+					if (list_length($3) != 1)
+					{
+						ereport(ERROR,
+								errmsg("Operand should contain 1 column(s)"));
+					}
+
+					$$ = makeTypeCast(n, MySQLSystemTypeName("varbinary"), @1);
+					/* End - bug#z5768 */
+				}
 		;
 
 convert_expr:
 			CONVERT '(' a_expr USING any_name ')'
 				{
-					ereport(WARNING, (errmsg(" Syntax support only")));
+					ereport(WARNING, (errmsg("Syntax support only")));
 					$$ = $3;
 				}
-			| CONVERT '(' a_expr ',' Typename CHARSET any_name ')'
-				{
-					$$ = makeTypeCast($3, $5, @1);
-				}
-			| CONVERT '(' a_expr ',' Typename CHARACTER SET any_name ')'
+			| CONVERT '(' a_expr ',' Typename multi_charset any_name ')'
 				{
 					$$ = makeTypeCast($3, $5, @1);
 				}
@@ -17137,12 +17044,6 @@ func_expr_common_subexpr:
 				{
 					$$ = $1;
 				}
-			/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-			| BINARY_F SCONST
-				{
-					$$ = makeTypeCast(makeStringConst($2, @1), MySQLSystemTypeName("binary"), @1);
-				}
-			/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 			| EXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
@@ -17548,6 +17449,80 @@ func_expr_common_subexpr:
 					n->over = NULL;
 					n->location = @1;
 					$$ = (Node *)n;
+				}
+			| CHAR_P '(' func_arg_list_opt ')'
+				{
+					ListCell *cell;
+					List	 *arg_list = $3;
+					List	 *new_arg_list = NIL;
+					FuncCall *n;
+
+					foreach(cell, arg_list)
+					{
+						Node *node = makeTypeCast(lfirst(cell), SystemTypeName("int8"), @1);
+						new_arg_list = lappend(new_arg_list, node);
+					}
+					n = makeFuncCall(MysqlSystemFuncName("char"),
+									 new_arg_list,
+									 COERCE_EXPLICIT_CALL,
+									 @2);
+					$$ = (Node *) n;
+				}
+			| CHAR_P '(' func_arg_list_opt USING any_name ')'
+				{
+					ListCell *cell;
+					List	 *arg_list = $3;
+					List	 *new_arg_list = NIL;
+					FuncCall *n;
+
+					ereport(WARNING, (errmsg("Ignore USING syntax in char() function")));
+
+					foreach(cell, arg_list)
+					{
+						Node *node = makeTypeCast(lfirst(cell), SystemTypeName("int8"), @1);
+						new_arg_list = lappend(new_arg_list, node);
+					}
+
+					n = makeFuncCall(MysqlSystemFuncName("char"),
+									 new_arg_list,
+									 COERCE_EXPLICIT_CALL,
+									 @2);
+
+					$$ = (Node *) n;
+				}
+			| FIELD '(' func_arg_list_opt ')'
+				{
+					FuncCall *n = makeFuncCall(MysqlSystemFuncName("field"),
+											   $3,
+											   COERCE_EXPLICIT_CALL,
+											   @2);
+					$$ = (Node *)n;
+				}
+			| ELT '(' a_expr ')'
+				{
+					ereport(ERROR,(errmsg("Incorrect parameter count in the call to native function 'elt'")));
+				}
+			| ELT '(' a_expr ',' elt_func_args_list ')' /* BUG#Z5516 */
+				{
+					FuncCall *n = makeFuncCall(MysqlSystemFuncName("elt"),
+											   lcons($3, $5),
+											   COERCE_EXPLICIT_CALL,
+											   @2);
+					$$ = (Node *)n;
+				}
+			| NAME_CONST '(' name_const_label ',' a_expr ')'
+				{
+					ResTarget 	*res = NULL;
+
+					if (!IsA($5, A_Const))
+						elog(ERROR, "Incorrect arguments to NAME_CONST");
+
+					res = makeNode(ResTarget);
+					res->name = $3;
+					res->indirection = NIL;
+					res->val = (Node *) $5;
+					res->location = @1;
+					$$ = (Node *)res;
 				}
 			/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 		;
@@ -18551,20 +18526,37 @@ AexprConst: Iconst
 				{
 					$$ = makeBitStringConst($1, @1);
 				}
-			/* Begin BUG#5048 5070 */
+			/* Begin - SRS-MYSQL-HEX-LITERAL */
 			| HCONST
 				{
 					$$ = makeHexStringConst($1, @1);
 				}
-			/* End BUG#5048 5070 */
+			/* End - SRS-MYSQL-HEX-LITERAL */
 			| XCONST
 				{
+					#if NOT_USED
 					/* This is a bit constant per SQL99:
 					 * Without Feature F511, "BIT data type",
 					 * a <general literal> shall not be a
 					 * <bit string literal> or a <hex string literal>.
 					 */
 					$$ = makeBitStringConst($1, @1);
+					#endif
+
+					/* Begin - SRS-MYSQL-HEX-LITERAL */
+					char *input = $1;
+
+					/**
+					 * If length of input string without prefix 'X' or 'x' is odd, 
+					 * then through syntax error.
+					 */
+					if (strlen(input) % 2 == 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("You have an error in your SQL syntax.")));
+				
+					$$ = makeHexStringConst(input + 1, @1);
+					/* End - SRS-MYSQL-HEX-LITERAL */
 				}
 			| func_name Sconst
 				{

@@ -913,38 +913,74 @@ select b && 11 from t2;
 (12 rows)
 
 --"||"
+set sql_mode = '';
 select b || a from t2;
  ?column? 
 ----------
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
 (12 rows)
 
 select b || 11 from t2;
  ?column? 
 ----------
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
-        1
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+(12 rows)
+
+reset sql_mode;
+select b || a from t2;
+ ?column? 
+----------
+ aa
+ ba
+ ca
+ da
+ ab
+ bb
+ cb
+ db
+ ae
+ be
+ ce
+ de
+(12 rows)
+
+select b || 11 from t2;
+ ?column? 
+----------
+ a11
+ b11
+ c11
+ d11
+ a11
+ b11
+ c11
+ d11
+ a11
+ b11
+ c11
+ d11
 (12 rows)
 
 --"!"
@@ -3025,7 +3061,7 @@ select * from t_enum_column_alter_type;
 (3 rows)
 
 alter table t_enum_column_alter_type alter c2 type enum('aaaa', 'bbbb'); -- err 'xxxx' not cast to enum
-ERROR:  invalid input syntax for type integer: "a"
+ERROR:  Incorrect integer value: 'a' for column.
 \d t_enum_column_alter_type
                        Table "public.t_enum_column_alter_type"
  Column |                    Type                    | Collation | Nullable | Default 
@@ -3409,13 +3445,13 @@ drop type alterenum3;
 set SQL_MODE=default;
 create type alterenum as enum('a','b');
 CREATE TABLE test_alter_col (age INT, myjob enum('x','y'));
-SELECT typname FROM pg_type WHERE typname like '%test_alter_col%';
+SELECT typname FROM pg_type WHERE typname like '%test_alter_col%' order by 1;
                typname                
 --------------------------------------
- test_alter_col_myjob_anonymous_enum
+ _test_alter_col
  _test_alter_col_myjob_anonymous_enum
  test_alter_col
- _test_alter_col
+ test_alter_col_myjob_anonymous_enum
 (4 rows)
 
 insert into test_alter_col values(1, 'x');
@@ -3428,13 +3464,13 @@ drop type alterenum;
 set SQL_MODE='';
 create type alterenum as enum('a','b');
 CREATE TABLE test_alter_col (age INT, myjob enum('x','y'));
-SELECT typname FROM pg_type WHERE typname like '%test_alter_col%';
+SELECT typname FROM pg_type WHERE typname like '%test_alter_col%' order by 1;
                typname                
 --------------------------------------
- test_alter_col_myjob_anonymous_enum
+ _test_alter_col
  _test_alter_col_myjob_anonymous_enum
  test_alter_col
- _test_alter_col
+ test_alter_col_myjob_anonymous_enum
 (4 rows)
 
 insert into test_alter_col values(1, 'x');
@@ -4467,3 +4503,15 @@ select * from t_enum_dump_restore;
 (3 rows)
 
 drop table t_enum_dump_restore;
+-- bug#z5768
+create table enum_operator (status enum('1', 'hello'));
+insert into enum_operator values (1);
+insert into enum_operator values (2);
+select binary(status) from enum_operator;
+    status    
+--------------
+ \x31
+ \x68656c6c6f
+(2 rows)
+
+drop table enum_operator;

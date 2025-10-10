@@ -64,4 +64,7 @@ extern text *text_substring(Datum str, int32 start, int32 length, bool length_no
 extern text *text_catenate(text *t1, text *t2);
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+extern bool isxdigits_n(const char *instr, size_t n);
+/* End - SRS-MYSQL-HEX-LITERAL */
 #endif
