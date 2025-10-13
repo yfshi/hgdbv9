@@ -1719,7 +1719,6 @@ pg_pdr_new_snap(PG_FUNCTION_ARGS)
 {
 	pid_t	pdrpid = 0;
 	pdr_new_snap_info *shmem_snapinfo = NULL;
-	int	i = 0;
 	int64	pdr_new_sid = -1;
 	bool	newsnapid_shmem;
 	if (!pg_pdr_naptime)
@@ -1763,7 +1762,17 @@ pg_pdr_new_snap(PG_FUNCTION_ARGS)
 	}
 	kill(pdrpid, SIGHUP);
 
-	for (i = 1; i < 100; i++)
+        /*
+	 * BUG #Z5753
+	 * when run the sql select pg_pdr_new_snap()
+	 * the A-BE(run pg_pdr_new_snap()) notice B-BE(PDR background) to insert a new snap using kill(B-BE-pid, SIGHUP)
+	 * its a 'Asynchronous Behavior'
+	 * B-BE will set the shared buffer when finish the work
+	 * A-BE loop the shared buffer to decide the result
+	 * when the load is high, B-BE did not finish the work in a short time
+	 * let A-BE wait until B-BE set the shared buffer
+	 */
+	do
 	{
 		/* test shmem pdr_new_snap_info */
 		shmem_snapinfo = (pdr_new_snap_info *)
@@ -1784,7 +1793,7 @@ pg_pdr_new_snap(PG_FUNCTION_ARGS)
 		}
 		pg_usleep(10000);
 		
-	}
+	}while(true);
 
 	shmem_snapinfo->flag = 0;
 	

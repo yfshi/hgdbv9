@@ -5769,7 +5769,15 @@ main(int argc, char **argv)
 
 	//str_run_tv
 	/* str_run_tv db_totaltime includes both db_cpu and db_wait..round(dbbuf.db_totaliotime) db_totaliotime*/
-	sprintf(sql,"select date_trunc('second',age(timestamp 'epoch' + %.2f  * INTERVAL '1 second','1970-01-01'));", round(dbbuf.db_totaltime));
+	/*
+	 * BUG#Z5777
+	 * "DB Time" is the all time for database running
+	 * its not the same as "Elapsed" time
+	 * for multi cores system, DB Time = sum(every core's DB time)
+	 * so it maybe longer than "Elapsed" time, but must smaller than "Elapsed" time * cores
+	 * dbbuf.db_totaltime is millisecond, DB time is second 
+	 * */
+	sprintf(sql,"select date_trunc('second',age(timestamp 'epoch' + %.2f  * INTERVAL '1 second','1970-01-01'));", round(dbbuf.db_totaltime/1000.0)); /* BUG#Z5777 */
 	res = PQexec(conn, sql);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
