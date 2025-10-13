@@ -131,7 +131,7 @@ order by 1;
 
 -- to_json, timestamps
 
-select to_json(timestamp '2014-05-28 12:22:35.614298');
+select to_json(pg_catalog.timestamp '2014-05-28 12:22:35.614298');
 
 BEGIN;
 SET LOCAL TIME ZONE 10.5;
@@ -144,8 +144,8 @@ select to_json(date '2014-05-28');
 
 select to_json(date 'Infinity');
 select to_json(date '-Infinity');
-select to_json(timestamp 'Infinity');
-select to_json(timestamp '-Infinity');
+select to_json(pg_catalog.timestamp 'Infinity');
+select to_json(pg_catalog.timestamp '-Infinity');
 select to_json(timestamptz 'Infinity');
 select to_json(timestamptz '-Infinity');
 
@@ -403,7 +403,7 @@ select json_array_elements_text('[1,true,[1,[2,3]],null,{"f1":1,"f2":[7,8,9]},fa
 select * from json_array_elements_text('[1,true,[1,[2,3]],null,{"f1":1,"f2":[7,8,9]},false,"stringy"]') q;
 
 -- populate_record
-create type jpop as (a text, b int, c timestamp);
+create type jpop as (a text, b int, c pg_catalog.timestamp);
 
 CREATE DOMAIN js_int_not_null  AS int     NOT NULL;
 CREATE DOMAIN js_int_array_1d  AS int[]   CHECK(array_length(VALUE, 1) = 3);
@@ -424,7 +424,7 @@ CREATE TYPE jsrec AS (
 	ta	text[],
 	c	char(10),
 	ca	char(10)[],
-	ts	timestamp,
+	ts	pg_catalog.timestamp,
 	js	json,
 	jsb	jsonb,
 	jsa	json[],

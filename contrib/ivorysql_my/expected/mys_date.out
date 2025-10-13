@@ -5978,13 +5978,17 @@ select cast(cast('11-11-11 11:11:11.111111' as datetime(4)) as date );
 (1 row)
 
 select cast(cast('11-11-11 11:11:11.111111' as timestamp) as date );
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: select cast(cast('11-11-11 11:11:11.111111' as timestamp) as...
-                         ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
 select cast(cast('11-11-11 11:11:11.111111' as timestamp(4)) as date );
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: select cast(cast('11-11-11 11:11:11.111111' as timestamp(4))...
-                         ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
 --select cast(cast('11-11-11 11:11:11.111111' as time) as date );
 --select cast(cast('11-11-11 11:11:11.111111' as time(4)) as date );
 select cast(cast('11-11-11 11:11:11.111111' as date) as date);
@@ -6006,9 +6010,17 @@ select cast(cast('11-11-11 11:11:11.111111' as date) as datetime(3));
 (1 row)
 
 select cast(cast('11-11-11 11:11:11.111111' as date) as timestamp);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+    mystimestamp     
+---------------------
+ 2011-11-11 00:00:00
+(1 row)
+
 select cast(cast('11-11-11 11:11:11.111111' as date) as timestamp(4));
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+      mystimestamps       
+--------------------------
+ 2011-11-11 00:00:00.0000
+(1 row)
+
 select cast(cast('11-11-11 11:11:11.111111' as date) as time);
  mystime  
 ----------
@@ -6025,52 +6037,74 @@ select cast(cast('11-11-11 11:11:11.111111' as date) as time(4));
 select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as datetime);
     ?column?    
 ----------------
- 40222222111111
+ 20111131222222
 (1 row)
 
 select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as timestamp);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: ...t cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 ...
-                                                             ^
---select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as time);
-select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as datetime(3));
     ?column?    
 ----------------
- 40222222111111
+ 20111131222222
+(1 row)
+
+--select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as time);
+select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as datetime(3));
+      ?column?      
+--------------------
+ 20111131222222.111
 (1 row)
 
 select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as timestamp(3));
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: ...t cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 ...
-                                                             ^
+      ?column?      
+--------------------
+ 20111131222222.111
+(1 row)
+
 --select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as time(3));
 select cast('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 11:11:11.111111' as timestamp);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: ...st('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 ...
-                                                             ^
+    ?column?    
+----------------
+ 40222222222222
+(1 row)
+
 --select cast('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 11:11:11.111111' as time);
 select cast('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 11:11:11.111111' as timestamp(3));
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: ...st('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 ...
-                                                             ^
+      ?column?      
+--------------------
+ 40222222222222.111
+(1 row)
+
 --select cast('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 11:11:11.111111' as time(3));
 select cast('11-11-11 11:11:11.111111' as timestamp) + cast('11-11-11 11:11:11.111111' as time);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: select cast('11-11-11 11:11:11.111111' as timestamp) + cast(...
-                    ^
+    ?column?    
+----------------
+ 20111111222222
+(1 row)
+
 select cast('11-11-11 11:11:11.111111' as timestamp) + cast('11-11-11 11:11:11.111111' as datetime(3));
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: select cast('11-11-11 11:11:11.111111' as timestamp) + cast(...
-                    ^
+      ?column?      
+--------------------
+ 40222222222222.111
+(1 row)
+
 select cast('11-11-11 11:11:11.111111' as timestamp) + cast('11-11-11 11:11:11.111111' as time(3));
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: select cast('11-11-11 11:11:11.111111' as timestamp) + cast(...
-                    ^
+      ?column?      
+--------------------
+ 20111111222222.111
+(1 row)
+
 --select cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 11:11:11.111111' as datetime(3));
 select cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 11:11:11.111111' as timestamp(3));
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: ...t cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 ...
-                                                             ^
+      ?column?      
+--------------------
+ 20111111222222.111
+(1 row)
+
+select cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 11:11:11.111111' as timestamp);
+    ?column?    
+----------------
+ 20111111222222
+(1 row)
+
 create table date_01(a1 date);
 set sql_mode ='';
 insert into date_01 values('1111111111111.1');

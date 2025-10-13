@@ -2904,16 +2904,14 @@ select cast(cast('11-11-11 11:11:11.111111' as time(5)) as time(4) );
 --select cast(cast('11-11-11 11:11:11.111111' as time) as date);
 --select cast(cast('11-11-11 11:11:11.111111' as time) as datetime);
 --select cast(cast('11-11-11 11:11:11.111111' as time) as datetime(3));
-select cast(cast('11-11-11 11:11:11.111111' as time) as timestamp);
-select cast(cast('11-11-11 11:11:11.111111' as time) as timestamp(4));
+
 select cast(cast('11-11-11 11:11:11.111111' as time) as time);
 select cast(cast('11-11-11 11:11:11.111111' as time) as time(4));
 
 --select cast(cast('11-11-11 11:11:11.111111' as time(5)) as date);
 --select cast(cast('11-11-11 11:11:11.111111' as time(5)) as datetime);
 --select cast(cast('11-11-11 11:11:11.111111' as time(5)) as datetime(3));
-select cast(cast('11-11-11 11:11:11.111111' as time(5)) as timestamp);
-select cast(cast('11-11-11 11:11:11.111111' as time(5)) as timestamp(4));
+
 select cast(cast('11-11-11 11:11:11.111111' as time(5)) as time);
 select cast(cast('11-11-11 11:11:11.111111' as time(5)) as time(4));
 

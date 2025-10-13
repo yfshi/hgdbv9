@@ -2852,14 +2852,6 @@ coerce_type(ParseState *pstate, Node *node,
 		{
 			bool mysdateflag = false;
 
-			//error:select cast('1.1111' as timestamp);
-			if (con->location != (-2) && COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
-			{
-				elog(ERROR,
-					 "You have an error in your SQL syntax;"
-					 "check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
-			}
-
 			mysdateflag = (baseTypeId == MYSDATEOID ||
 						   baseTypeId == MYSDATETIMEOID || baseTypeId == MYSDATETIMESOID ||
 						   baseTypeId == MYSTIMESTAMPOID || baseTypeId == MYSTIMESTAMPSOID ||
@@ -3141,16 +3133,6 @@ coerce_type(ParseState *pstate, Node *node,
 		return result;
 	}
 	/* End - ReqID:SRS-MYSQL-SET */
-
-	/* Begin - ReqID:SRS-MYSQL-DATETYPE */
-	if (MYS_PARSER == compatible_db && COERCION_EXPLICIT == ccontext && 
-		(targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
-	{
-		elog(ERROR,
-			"You have an error in your SQL syntax;"
-			"check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1");
-	}
-	/* End - ReqID:SRS-MYSQL-DATETYPE*/
 
 	if (IsA(node, Param) &&
 		pstate != NULL && pstate->p_coerce_param_hook != NULL)

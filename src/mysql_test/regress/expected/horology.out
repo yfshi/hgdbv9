@@ -269,40 +269,52 @@ SELECT time with time zone 'T040506.789 -08';
 
 SET DateStyle = 'Postgres, MDY';
 -- Check Julian dates BC
-SELECT date 'J1520447' AS "Confucius' Birthday";
-ERROR:  Incorrect DATE value: 'J1520447'
-SELECT date 'J0' AS "Julian Epoch";
-ERROR:  Incorrect DATE value: 'J0'
+SELECT pg_catalog.date 'J1520447' AS "Confucius' Birthday";
+ Confucius' Birthday 
+---------------------
+ 09-28-0551 BC
+(1 row)
+
+SELECT pg_catalog.date 'J0' AS "Julian Epoch";
+ Julian Epoch  
+---------------
+ 11-24-4714 BC
+(1 row)
+
 --
 -- date, time arithmetic
 --
 --SELECT date '1981-02-03' + time '04:05:06' AS "Date + Time";
-SELECT date '1991-02-03' + time with time zone '04:05:06 PST' AS "Date + Time PST";
-ERROR:  operator does not exist: date + time with time zone
-LINE 1: SELECT date '1991-02-03' + time with time zone '04:05:06 PST...
-                                 ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
-SELECT date '2001-02-03' + time with time zone '04:05:06 UTC' AS "Date + Time UTC";
-ERROR:  operator does not exist: date + time with time zone
-LINE 1: SELECT date '2001-02-03' + time with time zone '04:05:06 UTC...
-                                 ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
-SELECT date '1991-02-03' + interval '2 years' AS "Add Two Years";
-ERROR:  operator does not exist: date + interval
-LINE 1: SELECT date '1991-02-03' + interval '2 years' AS "Add Two Ye...
-                                 ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
-SELECT date '2001-12-13' - interval '2 years' AS "Subtract Two Years";
-ERROR:  operator does not exist: date - interval
-LINE 1: SELECT date '2001-12-13' - interval '2 years' AS "Subtract T...
-                                 ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+SELECT pg_catalog.date '1991-02-03' + time with time zone '04:05:06 PST' AS "Date + Time PST";
+       Date + Time PST        
+------------------------------
+ Sun Feb 03 04:05:06 1991 PST
+(1 row)
+
+SELECT pg_catalog.date '2001-02-03' + time with time zone '04:05:06 UTC' AS "Date + Time UTC";
+       Date + Time UTC        
+------------------------------
+ Fri Feb 02 20:05:06 2001 PST
+(1 row)
+
+SELECT pg_catalog.date '1991-02-03' + interval '2 years' AS "Add Two Years";
+      Add Two Years       
+--------------------------
+ Wed Feb 03 00:00:00 1993
+(1 row)
+
+SELECT pg_catalog.date '2001-12-13' - interval '2 years' AS "Subtract Two Years";
+    Subtract Two Years    
+--------------------------
+ Mon Dec 13 00:00:00 1999
+(1 row)
+
 -- subtract time from date should not make sense; use interval instead
 -- SELECT date '1991-02-03' - time '04:05:06' AS "Subtract Time";
-SELECT date '1991-02-03' - time with time zone '04:05:06 UTC' AS "Subtract Time UTC";
+SELECT pg_catalog.date '1991-02-03' - time with time zone '04:05:06 UTC' AS "Subtract Time UTC";
 ERROR:  operator does not exist: date - time with time zone
-LINE 1: SELECT date '1991-02-03' - time with time zone '04:05:06 UTC...
-                                 ^
+LINE 1: SELECT pg_catalog.date '1991-02-03' - time with time zone '0...
+                                            ^
 HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 --
 -- timestamp, interval arithmetic
@@ -425,16 +437,18 @@ SELECT (timestamp without time zone 'tomorrow' > 'now') as "True";
 -- to enable support for SQL99 timestamp type syntax.
 --SELECT date '1994-01-01' + time '11:00' AS "Jan_01_1994_11am";
 --SELECT date '1994-01-01' + time '10:00' AS "Jan_01_1994_10am";
-SELECT date '1994-01-01' + timetz '11:00-5' AS "Jan_01_1994_8am";
-ERROR:  operator does not exist: date + time with time zone
-LINE 1: SELECT date '1994-01-01' + timetz '11:00-5' AS "Jan_01_1994_...
-                                 ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
-SELECT timestamptz(date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
-ERROR:  function timestamptz(date, time with time zone) does not exist
-LINE 1: SELECT timestamptz(date '1994-01-01', time with time zone '1...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+SELECT pg_catalog.date '1994-01-01' + timetz '11:00-5' AS "Jan_01_1994_8am";
+       Jan_01_1994_8am        
+------------------------------
+ Sat Jan 01 08:00:00 1994 PST
+(1 row)
+
+SELECT timestamptz(pg_catalog.date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
+       Jan_01_1994_8am        
+------------------------------
+ Sat Jan 01 08:00:00 1994 PST
+(1 row)
+
 SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMP_TBL;
           one_year           
 -----------------------------
@@ -653,31 +667,34 @@ SELECT timestamp with time zone '2005-04-03 12:00-06' - interval '24 hours' as "
 (1 row)
 
 RESET TIME ZONE;
-SELECT timestamptz(date '1994-01-01', time '11:00') AS "Jan_01_1994_10am";
+SELECT timestamptz(pg_catalog.date '1994-01-01', time '11:00') AS "Jan_01_1994_10am";
 ERROR:  function timestamptz(date, time) does not exist
-LINE 1: SELECT timestamptz(date '1994-01-01', time '11:00') AS "Jan_...
+LINE 1: SELECT timestamptz(pg_catalog.date '1994-01-01', time '11:00...
                ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-SELECT timestamptz(date '1994-01-01', time '10:00') AS "Jan_01_1994_9am";
+SELECT timestamptz(pg_catalog.date '1994-01-01', time '10:00') AS "Jan_01_1994_9am";
 ERROR:  function timestamptz(date, time) does not exist
-LINE 1: SELECT timestamptz(date '1994-01-01', time '10:00') AS "Jan_...
+LINE 1: SELECT timestamptz(pg_catalog.date '1994-01-01', time '10:00...
                ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-SELECT timestamptz(date '1994-01-01', time with time zone '11:00-8') AS "Jan_01_1994_11am";
-ERROR:  function timestamptz(date, time with time zone) does not exist
-LINE 1: SELECT timestamptz(date '1994-01-01', time with time zone '1...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-SELECT timestamptz(date '1994-01-01', time with time zone '10:00-8') AS "Jan_01_1994_10am";
-ERROR:  function timestamptz(date, time with time zone) does not exist
-LINE 1: SELECT timestamptz(date '1994-01-01', time with time zone '1...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-SELECT timestamptz(date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
-ERROR:  function timestamptz(date, time with time zone) does not exist
-LINE 1: SELECT timestamptz(date '1994-01-01', time with time zone '1...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+SELECT timestamptz(pg_catalog.date '1994-01-01', time with time zone '11:00-8') AS "Jan_01_1994_11am";
+       Jan_01_1994_11am       
+------------------------------
+ Sat Jan 01 11:00:00 1994 PST
+(1 row)
+
+SELECT timestamptz(pg_catalog.date '1994-01-01', time with time zone '10:00-8') AS "Jan_01_1994_10am";
+       Jan_01_1994_10am       
+------------------------------
+ Sat Jan 01 10:00:00 1994 PST
+(1 row)
+
+SELECT timestamptz(pg_catalog.date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
+       Jan_01_1994_8am        
+------------------------------
+ Sat Jan 01 08:00:00 1994 PST
+(1 row)
+
 SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMPTZ_TBL;
             one_year             
 ---------------------------------
@@ -876,12 +893,18 @@ SELECT time with time zone '02:30-08' + interval '36:01' AS "14:31:00-08";
 -- SELECT time with time zone '01:30' + interval '02:01' AS "03:31:00-08";
 -- SELECT time with time zone '03:30' + interval '1 month 04:01' AS "07:31:00-08";
 -- Try the following two tests instead, as a poor substitute
-SELECT CAST(CAST(date 'today' + time with time zone '05:30'
+SELECT CAST(CAST(pg_catalog.date 'today' + time with time zone '05:30'
             + interval '02:01' AS time with time zone) AS time) AS "07:31:00";
-ERROR:  Incorrect DATE value: 'today'
-SELECT CAST(cast(date 'today' + time with time zone '03:30'
+ERROR:  cannot cast type time with time zone to time
+LINE 1: SELECT CAST(CAST(pg_catalog.date 'today' + time with time zo...
+               ^
+SELECT CAST(cast(pg_catalog.date 'today' + time with time zone '03:30'
   + interval '1 month 04:01' as timestamp without time zone) AS time) AS "07:31:00";
-ERROR:  Incorrect DATE value: 'today'
+ 07:31:00 
+----------
+ 07:31:00
+(1 row)
+
 SELECT t.d1 AS t, i.f1 AS i, t.d1 + i.f1 AS "add", t.d1 - i.f1 AS "subtract"
   FROM TIMESTAMP_TBL t, INTERVAL_TBL i
   WHERE t.d1 BETWEEN '1990-01-01' AND '2001-01-01'
@@ -1901,7 +1924,7 @@ SELECT d1.f1 AS timestamp1, d2.f1 AS timestamp2, d1.f1 - d2.f1 AS difference
 --
 SELECT f1 AS "timestamp", date(f1) AS date
   FROM TEMP_TIMESTAMP
-  WHERE f1 <> timestamp 'now'
+  WHERE f1 <> pg_catalog.timestamp 'now'
   ORDER BY date, "timestamp";
 ERROR:  function ivymy.date(timestamp with time zone) does not exist
 LINE 1: SELECT f1 AS "timestamp", date(f1) AS date
@@ -1911,85 +1934,68 @@ DROP TABLE TEMP_TIMESTAMP;
 --
 -- Comparisons between datetime types, especially overflow cases
 ---
-SELECT '2202020-10-05'::date::timestamp;  -- fail
-WARNING:  Incorrect datetime value: '2202020-10-05'
-LINE 1: SELECT '2202020-10-05'::date::timestamp;
-               ^
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-SELECT '2202020-10-05'::date > '2020-10-05'::timestamp as t;
-WARNING:  Incorrect datetime value: '2202020-10-05'
-LINE 1: SELECT '2202020-10-05'::date > '2020-10-05'::timestamp as t;
-               ^
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2202020-10-05'::date > '2020-10-05'::timestamp as t;
-                                       ^
-SELECT '2020-10-05'::timestamp > '2202020-10-05'::date as f;
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2020-10-05'::timestamp > '2202020-10-05'::date as f;
-               ^
-SELECT '2202020-10-05'::date::timestamptz;  -- fail
-WARNING:  Incorrect datetime value: '2202020-10-05'
-LINE 1: SELECT '2202020-10-05'::date::timestamptz;
-               ^
-ERROR:  cannot cast type date to timestamp with time zone
-LINE 1: SELECT '2202020-10-05'::date::timestamptz;
-                                    ^
-SELECT '2202020-10-05'::date > '2020-10-05'::timestamptz as t;
-WARNING:  Incorrect datetime value: '2202020-10-05'
-LINE 1: SELECT '2202020-10-05'::date > '2020-10-05'::timestamptz as ...
-               ^
-ERROR:  operator does not exist: date > timestamp with time zone
-LINE 1: SELECT '2202020-10-05'::date > '2020-10-05'::timestamptz as ...
-                                     ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
-SELECT '2020-10-05'::timestamptz > '2202020-10-05'::date as f;
-WARNING:  Incorrect datetime value: '2202020-10-05'
-LINE 1: SELECT '2020-10-05'::timestamptz > '2202020-10-05'::date as ...
-                                           ^
-ERROR:  operator does not exist: timestamp with time zone > date
-LINE 1: SELECT '2020-10-05'::timestamptz > '2202020-10-05'::date as ...
-                                         ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+SELECT '2202020-10-05'::pg_catalog.date::pg_catalog.timestamp;  -- fail
+ERROR:  date out of range for timestamp
+SELECT '2202020-10-05'::pg_catalog.date > '2020-10-05'::pg_catalog.timestamp as t;
+ t 
+---
+ t
+(1 row)
+
+SELECT '2020-10-05'::pg_catalog.timestamp > '2202020-10-05'::pg_catalog.date as f;
+ f 
+---
+ f
+(1 row)
+
+SELECT '2202020-10-05'::pg_catalog.date::timestamptz;  -- fail
+ERROR:  date out of range for timestamp
+SELECT '2202020-10-05'::pg_catalog.date > '2020-10-05'::timestamptz as t;
+ t 
+---
+ t
+(1 row)
+
+SELECT '2020-10-05'::timestamptz > '2202020-10-05'::pg_catalog.date as f;
+ f 
+---
+ f
+(1 row)
+
 -- This conversion may work depending on timezone
-SELECT '4714-11-24 BC'::date::timestamptz;
-WARNING:  Truncated incorrect datetime value: '4714-11-24 BC'
-LINE 1: SELECT '4714-11-24 BC'::date::timestamptz;
-               ^
-ERROR:  cannot cast type date to timestamp with time zone
-LINE 1: SELECT '4714-11-24 BC'::date::timestamptz;
-                                    ^
+SELECT '4714-11-24 BC'::pg_catalog.date::timestamptz;
+           timestamptz           
+---------------------------------
+ Mon Nov 24 00:00:00 4714 LMT BC
+(1 row)
+
 SET TimeZone = 'UTC-2';
-SELECT '4714-11-24 BC'::date::timestamptz;  -- fail
-WARNING:  Truncated incorrect datetime value: '4714-11-24 BC'
-LINE 1: SELECT '4714-11-24 BC'::date::timestamptz;
-               ^
-ERROR:  cannot cast type date to timestamp with time zone
-LINE 1: SELECT '4714-11-24 BC'::date::timestamptz;
-                                    ^
-SELECT '4714-11-24 BC'::date < '2020-10-05'::timestamptz as t;
-WARNING:  Truncated incorrect datetime value: '4714-11-24 BC'
-LINE 1: SELECT '4714-11-24 BC'::date < '2020-10-05'::timestamptz as ...
-               ^
-ERROR:  operator does not exist: date < timestamp with time zone
-LINE 1: SELECT '4714-11-24 BC'::date < '2020-10-05'::timestamptz as ...
-                                     ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
-SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::date as t;
-WARNING:  Truncated incorrect datetime value: '4714-11-24 BC'
-LINE 1: SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::date as...
-                                            ^
-ERROR:  operator does not exist: timestamp with time zone >= date
-LINE 1: SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::date as...
-                                         ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
-SELECT '4714-11-24 BC'::timestamp < '2020-10-05'::timestamptz as t;
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '4714-11-24 BC'::timestamp < '2020-10-05'::timestampt...
-               ^
-SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::timestamp as t;
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::timesta...
-                                            ^
+SELECT '4714-11-24 BC'::pg_catalog.date::timestamptz;  -- fail
+ERROR:  date out of range for timestamp
+SELECT '4714-11-24 BC'::pg_catalog.date < '2020-10-05'::timestamptz as t;
+ t 
+---
+ t
+(1 row)
+
+SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::pg_catalog.date as t;
+ t 
+---
+ t
+(1 row)
+
+SELECT '4714-11-24 BC'::pg_catalog.timestamp < '2020-10-05'::timestamptz as t;
+ t 
+---
+ t
+(1 row)
+
+SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::pg_catalog.timestamp as t;
+ t 
+---
+ t
+(1 row)
+
 RESET TimeZone;
 --
 -- Formats

@@ -2545,118 +2545,174 @@ SELECT '2014-10-26 02:00:00 MSK'::timestamptz;
  Sat Oct 25 23:00:00 2014 UTC
 (1 row)
 
-SELECT '2011-03-27 00:00:00'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 00:00:00'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2011-03-27 01:00:00'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 01:00:00'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2011-03-27 01:59:59'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 01:59:59'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2011-03-27 02:00:00'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 02:00:00'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2011-03-27 02:00:01'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 02:00:01'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2011-03-27 02:59:59'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 02:59:59'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2011-03-27 03:00:00'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 03:00:00'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2011-03-27 03:00:01'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 03:00:01'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2011-03-27 04:00:00'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 04:00:00'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2011-03-27 00:00:00'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 00:00:00'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2011-03-27 01:00:00'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 01:00:00'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2011-03-27 01:59:59'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 01:59:59'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2011-03-27 02:00:00'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 02:00:00'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2011-03-27 02:00:01'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 02:00:01'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2011-03-27 02:59:59'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 02:59:59'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2011-03-27 03:00:00'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 03:00:00'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2011-03-27 03:00:01'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 03:00:01'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2011-03-27 04:00:00'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2011-03-27 04:00:00'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2014-10-26 00:00:00'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2014-10-26 00:00:00'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2014-10-26 00:59:59'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2014-10-26 00:59:59'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2014-10-26 01:00:00'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2014-10-26 01:00:00'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2014-10-26 01:00:01'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2014-10-26 01:00:01'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2014-10-26 02:00:00'::timestamp AT TIME ZONE 'Europe/Moscow';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2014-10-26 02:00:00'::timestamp AT TIME ZONE 'Europe...
-               ^
-SELECT '2014-10-26 00:00:00'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2014-10-26 00:00:00'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2014-10-26 00:59:59'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2014-10-26 00:59:59'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2014-10-26 01:00:00'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2014-10-26 01:00:00'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2014-10-26 01:00:01'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2014-10-26 01:00:01'::timestamp AT TIME ZONE 'MSK';
-               ^
-SELECT '2014-10-26 02:00:00'::timestamp AT TIME ZONE 'MSK';
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '2014-10-26 02:00:00'::timestamp AT TIME ZONE 'MSK';
-               ^
+SELECT '2011-03-27 00:00:00'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Mar 26 21:00:00 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 01:00:00'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Mar 26 22:00:00 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 01:59:59'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Mar 26 22:59:59 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 02:00:00'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Mar 26 23:00:00 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 02:00:01'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Mar 26 23:00:01 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 02:59:59'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Mar 26 23:59:59 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 03:00:00'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Mar 26 23:00:00 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 03:00:01'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Mar 26 23:00:01 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 04:00:00'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sun Mar 27 00:00:00 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 00:00:00'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Mar 26 21:00:00 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 01:00:00'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Mar 26 22:00:00 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 01:59:59'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Mar 26 22:59:59 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 02:00:00'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Mar 26 22:00:00 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 02:00:01'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Mar 26 22:00:01 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 02:59:59'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Mar 26 22:59:59 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 03:00:00'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Mar 26 23:00:00 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 03:00:01'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Mar 26 23:00:01 2011 UTC
+(1 row)
+
+SELECT '2011-03-27 04:00:00'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sun Mar 27 00:00:00 2011 UTC
+(1 row)
+
+SELECT '2014-10-26 00:00:00'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Oct 25 20:00:00 2014 UTC
+(1 row)
+
+SELECT '2014-10-26 00:59:59'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Oct 25 20:59:59 2014 UTC
+(1 row)
+
+SELECT '2014-10-26 01:00:00'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Oct 25 22:00:00 2014 UTC
+(1 row)
+
+SELECT '2014-10-26 01:00:01'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Oct 25 22:00:01 2014 UTC
+(1 row)
+
+SELECT '2014-10-26 02:00:00'::pg_catalog.timestamp AT TIME ZONE 'Europe/Moscow';
+           timezone           
+------------------------------
+ Sat Oct 25 23:00:00 2014 UTC
+(1 row)
+
+SELECT '2014-10-26 00:00:00'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Oct 25 20:00:00 2014 UTC
+(1 row)
+
+SELECT '2014-10-26 00:59:59'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Oct 25 20:59:59 2014 UTC
+(1 row)
+
+SELECT '2014-10-26 01:00:00'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Oct 25 22:00:00 2014 UTC
+(1 row)
+
+SELECT '2014-10-26 01:00:01'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Oct 25 22:00:01 2014 UTC
+(1 row)
+
+SELECT '2014-10-26 02:00:00'::pg_catalog.timestamp AT TIME ZONE 'MSK';
+           timezone           
+------------------------------
+ Sat Oct 25 23:00:00 2014 UTC
+(1 row)
+
 SELECT make_timestamptz(2014, 10, 26, 0, 0, 0, 'MSK');
        make_timestamptz       
 ------------------------------

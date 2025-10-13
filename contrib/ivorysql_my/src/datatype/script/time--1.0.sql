@@ -705,6 +705,42 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
+CREATE FUNCTION ivymy.mysdate_add(ivymy.mysdate, ivymy.mysdatetime)
+RETURNS pg_catalog.int8
+AS 'SELECT $1::int4 + $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysdate_add(ivymy.mysdate, ivymy.mysdatetimes)
+RETURNS pg_catalog.numeric
+AS 'SELECT $1::int4 + $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysdate_add(ivymy.mysdate, ivymy.mystimestamp)
+RETURNS pg_catalog.int8
+AS 'SELECT $1::int4 + $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysdate_add(ivymy.mysdate, ivymy.mystimestamps)
+RETURNS pg_catalog.numeric
+AS 'SELECT $1::int4 + $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
 CREATE FUNCTION ivymy.mysdate_add(ivymy.mysdate, pg_catalog.int2)
 RETURNS pg_catalog.int8
 AS 'MODULE_PATHNAME','mysdate_addint2'
@@ -736,6 +772,42 @@ CREATE FUNCTION ivymy.mysdate_add(ivymy.mysdate, pg_catalog.numeric)
 RETURNS pg_catalog.numeric
 AS 'MODULE_PATHNAME','mysdate_addnum'
 LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysdate_add(ivymy.mysdatetime, ivymy.mysdate)
+RETURNS pg_catalog.int8
+AS 'SELECT $1::int8 + $2::int4'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysdate_add(ivymy.mysdatetimes, ivymy.mysdate)
+RETURNS pg_catalog.numeric
+AS 'SELECT $1::numeric + $2::int4'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysdate_add(ivymy.mystimestamp, ivymy.mysdate)
+RETURNS pg_catalog.int8
+AS 'SELECT $1::int8 + $2::int4'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysdate_add(ivymy.mystimestamps, ivymy.mysdate)
+RETURNS pg_catalog.numeric
+AS 'SELECT $1::numeric + $2::int4'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE
@@ -2358,10 +2430,37 @@ CREATE OPERATOR + (
 CREATE OPERATOR + (
 	procedure = ivymy.mysdate_add,
 	leftarg = ivymy.mysdate,
-	rightarg = pg_catalog.int2,
+	rightarg = ivymy.mysdatetime,
 	commutator = +
 );
 
+CREATE OPERATOR + (
+	procedure = ivymy.mysdate_add,
+	leftarg = ivymy.mysdate,
+	rightarg = ivymy.mysdatetimes,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdate_add,
+	leftarg = ivymy.mysdate,
+	rightarg = ivymy.mystimestamp,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdate_add,
+	leftarg = ivymy.mysdate,
+	rightarg = ivymy.mystimestamps,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdate_add,
+	leftarg = ivymy.mysdate,
+	rightarg = pg_catalog.int2,
+	commutator = +
+);
 
 CREATE OPERATOR + (
 	procedure = ivymy.mysdate_add,
@@ -2381,6 +2480,34 @@ CREATE OPERATOR + (
 	procedure = ivymy.mysdate_add,
 	leftarg = ivymy.mysdate,
 	rightarg = pg_catalog.numeric,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdate_add,
+	leftarg = ivymy.mysdatetime,
+	rightarg = ivymy.mysdate,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdate_add,
+	leftarg = ivymy.mysdatetimes,
+	rightarg = ivymy.mysdate,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdate_add,
+	leftarg = ivymy.mystimestamp,
+	rightarg = ivymy.mysdate,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdate_add,
+	leftarg = ivymy.mystimestamps,
+	rightarg = ivymy.mysdate,
 	commutator = +
 );
 
@@ -3904,6 +4031,24 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
+CREATE FUNCTION ivymy.mysdatetime_add(ivymy.mysdatetime, ivymy.mystimestamp)
+RETURNS pg_catalog.int8
+AS 'SELECT $1::int8 + $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysdatetime_add(ivymy.mysdatetime, ivymy.mystimestamps)
+RETURNS pg_catalog.numeric
+AS 'SELECT $1::int8 + $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
 CREATE FUNCTION ivymy.mysdatetime_add(ivymy.mysdatetime, pg_catalog.int2)
 RETURNS pg_catalog.int8
 AS 'MODULE_PATHNAME','mysdatetime_addint2'
@@ -4017,6 +4162,24 @@ CREATE FUNCTION ivymy.mysdatetime_sub(ivymy.mysdatetime, pg_catalog.numeric)
 RETURNS pg_catalog.numeric
 AS 'MODULE_PATHNAME','mysdatetime_subnum'
 LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysdatetime_add(ivymy.mystimestamp, ivymy.mysdatetime)
+RETURNS pg_catalog.int8
+AS 'SELECT $1::int8 + $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysdatetime_add(ivymy.mystimestamps, ivymy.mysdatetime)
+RETURNS pg_catalog.numeric
+AS 'SELECT $1::numeric + $2::int8'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE
@@ -5559,6 +5722,20 @@ CREATE OPERATOR + (
 CREATE OPERATOR + (
 	procedure = ivymy.mysdatetime_add,
 	leftarg = ivymy.mysdatetime,
+	rightarg = ivymy.mystimestamp,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdatetime_add,
+	leftarg = ivymy.mysdatetime,
+	rightarg = ivymy.mystimestamps,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdatetime_add,
+	leftarg = ivymy.mysdatetime,
 	rightarg = pg_catalog.int2,
 	commutator = +
 );
@@ -5582,6 +5759,20 @@ CREATE OPERATOR + (
 	procedure = ivymy.mysdatetime_add,
 	leftarg = ivymy.mysdatetime,
 	rightarg = pg_catalog.numeric,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdatetime_add,
+	leftarg = ivymy.mystimestamp,
+	rightarg = ivymy.mysdatetime,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mysdatetime_add,
+	leftarg = ivymy.mystimestamps,
+	rightarg = ivymy.mysdatetime,
 	commutator = +
 );
 
@@ -8197,6 +8388,10 @@ CREATE CAST (ivymy.mysdatetimes AS boolean)
 WITH FUNCTION ivymy.mysdatetimes_boolean(ivymy.mysdatetimes)
 AS ASSIGNMENT;
 
+--datetime to numeric
+CREATE CAST (ivymy.mysdatetimes AS pg_catalog.numeric) 
+WITHOUT FUNCTION AS ASSIGNMENT;
+
 ----operator =
 CREATE OPERATOR = (
 	procedure = ivymy.mysdatetimes_eq,
@@ -9768,6 +9963,14 @@ PARALLEL SAFE
 STRICT
 STABLE;
 
+CREATE FUNCTION ivymy.mystimestamp_numeric(ivymy.mystimestamp)
+RETURNS numeric
+AS 'MODULE_PATHNAME','mystimestamp_numeric'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+STABLE;
+
 CREATE CAST (pg_catalog.int8 AS ivymy.mystimestamp)
 WITH FUNCTION ivymy.int_mystimestamp(pg_catalog.int8, int, bool, int8)
 AS ASSIGNMENT;
@@ -9783,6 +9986,13 @@ AS ASSIGNMENT;
 CREATE CAST (pg_catalog.numeric AS ivymy.mystimestamp)
 WITH FUNCTION ivymy.numeric_mystimestamp(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
+
+CREATE CAST (ivymy.mystimestamp AS pg_catalog.numeric)
+WITH FUNCTION ivymy.mystimestamp_numeric(ivymy.mystimestamp)
+AS ASSIGNMENT;
+
+CREATE CAST (ivymy.mystimestamp AS pg_catalog.int8) 
+WITHOUT FUNCTION AS ASSIGNMENT;
 
 /* CREATE CAST */
 ---------- Compatible Postgresql Cast ----------
@@ -10395,6 +10605,33 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
+CREATE FUNCTION ivymy.mystimestamp_add(ivymy.mystimestamp, ivymy.mystime)
+RETURNS int8
+AS 'MODULE_PATHNAME','mystimestamp_addmystime'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mystimestamp_add(ivymy.mystimestamp, ivymy.mystimes)
+RETURNS numeric
+AS 'SELECT $1::numeric + $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mystimestamp_add(ivymy.mystimestamp, ivymy.mysdatetimes)
+RETURNS numeric
+AS 'SELECT $1::numeric + $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
 CREATE FUNCTION ivymy.mystimestamp_add(ivymy.mystimestamp, pg_catalog.int2)
 RETURNS pg_catalog.int8
 AS 'MODULE_PATHNAME','mystimestamp_addint2'
@@ -10426,6 +10663,33 @@ CREATE FUNCTION ivymy.mystimestamp_add(ivymy.mystimestamp, pg_catalog.numeric)
 RETURNS pg_catalog.numeric
 AS 'MODULE_PATHNAME','mystimestamp_addnum'
 LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mystimestamp_add(ivymy.mystime, ivymy.mystimestamp)
+RETURNS int8
+AS 'MODULE_PATHNAME','mystime_addmystimestamp'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mystimestamp_add(ivymy.mystimes, ivymy.mystimestamp)
+RETURNS numeric
+AS 'SELECT $1::numeric + $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mystimestamp_add(ivymy.mysdatetimes, ivymy.mystimestamp)
+RETURNS numeric
+AS 'SELECT $1::numeric + $2::numeric'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE
@@ -12021,12 +12285,6 @@ CREATE OPERATOR <=> (
 	rightarg = ivymy.mystimestamp
 );
 
-/*
-CREATE OPERATOR <=> (
-	procedure = ivymy.mystimestamp_seq,
-	leftarg = text,
-	rightarg = text
-);*/
 
 --operator +
 CREATE OPERATOR + (
@@ -12039,10 +12297,30 @@ CREATE OPERATOR + (
 CREATE OPERATOR + (
 	procedure = ivymy.mystimestamp_add,
 	leftarg = ivymy.mystimestamp,
-	rightarg = pg_catalog.int2,
+	rightarg = ivymy.mystime,
 	commutator = +
 );
 
+CREATE OPERATOR + (
+	procedure = ivymy.mystimestamp_add,
+	leftarg = ivymy.mystimestamp,
+	rightarg = ivymy.mystimes,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mystimestamp_add,
+	leftarg = ivymy.mystimestamp,
+	rightarg = ivymy.mysdatetimes,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mystimestamp_add,
+	leftarg = ivymy.mystimestamp,
+	rightarg = pg_catalog.int2,
+	commutator = +
+);
 
 CREATE OPERATOR + (
 	procedure = ivymy.mystimestamp_add,
@@ -12062,6 +12340,27 @@ CREATE OPERATOR + (
 	procedure = ivymy.mystimestamp_add,
 	leftarg = ivymy.mystimestamp,
 	rightarg = pg_catalog.numeric,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mystimestamp_add,
+	leftarg = ivymy.mystime,
+	rightarg = ivymy.mystimestamp,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mystimestamp_add,
+	leftarg = ivymy.mystimes,
+	rightarg = ivymy.mystimestamp,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mystimestamp_add,
+	leftarg = ivymy.mysdatetimes,
+	rightarg = ivymy.mystimestamp,
 	commutator = +
 );
 
@@ -14656,8 +14955,6 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
---operator xor or and
-
 --timestamp to boolean
 CREATE FUNCTION ivymy.mystimestamps_boolean(ivymy.mystimestamps) 
 RETURNS boolean 
@@ -16900,6 +17197,15 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
+CREATE FUNCTION ivymy.mystime_add(ivymy.mystime, ivymy.mystimestamps)
+RETURNS numeric
+AS 'SELECT $1::numeric + $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
 CREATE FUNCTION ivymy.mystime_add(ivymy.mystime, pg_catalog.int2)
 RETURNS pg_catalog.int8
 AS 'MODULE_PATHNAME','mystime_addint2'
@@ -16931,6 +17237,15 @@ CREATE FUNCTION ivymy.mystime_add(ivymy.mystime, pg_catalog.numeric)
 RETURNS pg_catalog.numeric
 AS 'MODULE_PATHNAME','mystime_addnum'
 LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mystime_add(ivymy.mystimestamps, ivymy.mystime)
+RETURNS numeric
+AS 'SELECT $1::numeric + $2::numeric'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
 IMMUTABLE
@@ -18554,6 +18869,13 @@ CREATE OPERATOR + (
 CREATE OPERATOR + (
 	procedure = ivymy.mystime_add,
 	leftarg = ivymy.mystime,
+	rightarg = ivymy.mystimestamps,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mystime_add,
+	leftarg = ivymy.mystime,
 	rightarg = pg_catalog.int2,
 	commutator = +
 );
@@ -18577,6 +18899,13 @@ CREATE OPERATOR + (
 	procedure = ivymy.mystime_add,
 	leftarg = ivymy.mystime,
 	rightarg = pg_catalog.numeric,
+	commutator = +
+);
+
+CREATE OPERATOR + (
+	procedure = ivymy.mystime_add,
+	leftarg = ivymy.mystimestamps,
+	rightarg = ivymy.mystime,
 	commutator = +
 );
 
@@ -22761,10 +23090,12 @@ AS ASSIGNMENT;
 
 CREATE CAST (ivymy.mysdate AS ivymy.mysdatetime)  WITH INOUT AS IMPLICIT;
 CREATE CAST (ivymy.mysdate AS ivymy.mystimestamp) WITH INOUT AS ASSIGNMENT;
+CREATE CAST (ivymy.mysdate AS pg_catalog.int4) WITHOUT FUNCTION AS ASSIGNMENT;
 
 CREATE CAST (ivymy.mysdatetime AS ivymy.mysdate)      WITH INOUT AS ASSIGNMENT;
 CREATE CAST (ivymy.mysdatetime AS ivymy.mystimestamp) WITH INOUT AS ASSIGNMENT;
 CREATE CAST (ivymy.mysdatetime AS ivymy.mystime)      WITH INOUT AS ASSIGNMENT;
+CREATE CAST (ivymy.mysdatetime AS pg_catalog.int8) WITHOUT FUNCTION AS ASSIGNMENT;
 CREATE CAST (ivymy.mysdatetimes AS ivymy.mysdatetime)  WITH INOUT AS IMPLICIT;
 CREATE CAST (ivymy.mysdatetimes AS ivymy.mysdate)      WITH INOUT AS ASSIGNMENT;
 CREATE CAST (ivymy.mysdatetimes AS ivymy.mystimestamp) WITH INOUT AS ASSIGNMENT;
@@ -22777,6 +23108,7 @@ CREATE CAST (ivymy.mystimestamps AS ivymy.mystimestamp) WITH INOUT AS ASSIGNMENT
 CREATE CAST (ivymy.mystimestamps AS ivymy.mysdate)     WITH INOUT AS ASSIGNMENT;
 CREATE CAST (ivymy.mystimestamps AS ivymy.mysdatetime) WITH INOUT AS IMPLICIT;
 CREATE CAST (ivymy.mystimestamps AS ivymy.mystime)     WITH INOUT AS ASSIGNMENT;
+CREATE CAST (ivymy.mystimestamps AS pg_catalog.numeric) WITHOUT FUNCTION AS ASSIGNMENT;
 
 CREATE FUNCTION ivymy.mystime_mysdate(ivymy.mystime) 
 RETURNS ivymy.mysdate 
@@ -23210,18 +23542,6 @@ STABLE;
 
 CREATE CAST (ivymy.mystime as bigint)
 WITH FUNCTION ivymy.time2int8(ivymy.mystime);
-
--- cast datetime as bigint
-CREATE FUNCTION ivymy.datetime2int8(ivymy.mysdatetime)
-RETURNS bigint
-AS 'MODULE_PATHNAME','datetime2int8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-STABLE;
-
-CREATE CAST (ivymy.mysdatetime as bigint)
-WITH FUNCTION ivymy.datetime2int8(ivymy.mysdatetime);
 
 -- cast datetime(x) as bigint
 CREATE FUNCTION ivymy.datetimes2int8(ivymy.mysdatetimes)

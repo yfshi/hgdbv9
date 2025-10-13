@@ -725,8 +725,8 @@ drop table tb1;
 set sql_mode to default;
 
 -- timestamp(3)
-select cast(111 as timestamp(3)); --ERROR
-select cast('111.11.11.23.34.50' as timestamp(3)); --ERROR
+select cast(111 as timestamp(3));
+select cast('111.11.11.23.34.50' as timestamp(3));
 
 create table test(dt timestamp(3));
 insert into test values('2100-00-04 12:13:14.444444');

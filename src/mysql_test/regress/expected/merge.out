@@ -1724,9 +1724,20 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (slogts::timestamp, sid, delta, 'inserted by merge');
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
 SELECT * FROM pa_target ORDER BY tid;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+        logts        | tid | balance |           val            
+---------------------+-----+---------+--------------------------
+ 2017-01-31 00:00:00 |   1 |     110 | initial updated by merge
+ 2017-02-28 00:00:00 |   2 |     220 | initial updated by merge
+ 2017-01-15 00:00:00 |   3 |      30 | inserted by merge
+ 2017-01-31 00:00:00 |   4 |     440 | initial updated by merge
+ 2017-02-28 00:00:00 |   5 |     550 | initial updated by merge
+ 2017-01-15 00:00:00 |   6 |      60 | inserted by merge
+ 2017-01-31 00:00:00 |   7 |     770 | initial updated by merge
+ 2017-02-28 00:00:00 |   8 |     880 | initial updated by merge
+ 2017-01-15 00:00:00 |   9 |      90 | inserted by merge
+(9 rows)
+
 ROLLBACK;
 DROP TABLE pa_source;
 DROP TABLE pa_target CASCADE;

@@ -410,7 +410,6 @@ drop sequence ttdummy_seq;
 -- tests for per-statement triggers
 --
 CREATE TABLE log_table (tstamp timestamp default timeofday()::timestamp);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
 CREATE TABLE main_table (a int unique, b int);
 COPY main_table (a,b) FROM stdin;
 CREATE FUNCTION trigger_func() RETURNS trigger LANGUAGE plpgsql AS '

@@ -199,6 +199,17 @@ STRICT
 PARALLEL SAFE;
 /* End - bug#z5093 */
 
+/* Begin - bug#z5587 */
+CREATE OR REPLACE FUNCTION ivymy.hour(time)
+RETURNS int
+AS $$
+    SELECT ivymy.hour(cast($1 as time(6)));
+$$ 
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE;
+/* End - bug#z5587 */
+
 /*MICROSECOND*/
 CREATE OR REPLACE FUNCTION ivymy.microsecond(time(6))
 RETURNS int8 
@@ -236,6 +247,17 @@ LANGUAGE SQL
 STRICT 
 PARALLEL SAFE;
 /* End - bug#z5093 */
+
+/* Begin - bug#z5585 */
+CREATE OR REPLACE FUNCTION ivymy.microsecond(datetime) 
+RETURNS int8
+AS $$
+    SELECT ivymy.microsecond(cast($1 as time(6)));
+$$ 
+LANGUAGE SQL 
+STRICT 
+PARALLEL SAFE;
+/* End - bug#z5585 */
 
 /*MINUTE*/
 CREATE OR REPLACE FUNCTION ivymy.minute(time(6)) 
@@ -275,6 +297,16 @@ STRICT
 PARALLEL SAFE;
 /* End - bug#z5096 */
 
+/* Begin - bug#z5588 */
+CREATE OR REPLACE FUNCTION ivymy.minute(datetime) 
+RETURNS int8
+AS $$
+    SELECT ivymy.minute(cast($1 as time(6)));
+$$ 
+LANGUAGE SQL 
+STRICT 
+PARALLEL SAFE;
+/* End - bug#z5588 */
 
 /*SECOND*/
 CREATE OR REPLACE FUNCTION ivymy.second(time(6))
@@ -2608,7 +2640,7 @@ IMMUTABLE;
 
 --datediff
 CREATE FUNCTION ivymy.datediff(date, date)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS 'MODULE_PATHNAME','datediff'
 LANGUAGE C
 STRICT
@@ -2616,7 +2648,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(datetime, datetime)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2625,7 +2657,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(datetime(6), datetime(6))
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2634,7 +2666,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(time, time)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2643,7 +2675,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(time(6), time(6))
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2652,7 +2684,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(text, text)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2661,7 +2693,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(numeric, numeric)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::ivymy.mysdate, $2::ivymy.mysdate);
 $$ LANGUAGE SQL
@@ -2670,7 +2702,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(date, numeric)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1, $2::date);
 $$ LANGUAGE SQL
@@ -2679,7 +2711,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(numeric, date)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2);
 $$ LANGUAGE SQL
@@ -2688,7 +2720,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(datetime, numeric)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2697,7 +2729,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(numeric, datetime)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2706,7 +2738,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(datetime(6), numeric)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2715,7 +2747,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(numeric, datetime(6))
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2724,7 +2756,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(ivymy.mystime, numeric)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::ivymy.mysdate, $2::ivymy.mysdate);
 $$ LANGUAGE SQL
@@ -2733,7 +2765,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(numeric, time)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2742,7 +2774,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(time(6), numeric)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2751,7 +2783,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(numeric, time(6))
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2760,7 +2792,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(date, text)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1, $2::date);
 $$ LANGUAGE SQL
@@ -2769,7 +2801,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(text, date)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2);
 $$ LANGUAGE SQL
@@ -2778,7 +2810,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(datetime, text)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2787,7 +2819,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(text, ivymy.mysdatetime)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2796,7 +2828,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(datetime(6), text)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2805,7 +2837,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(text, datetime(6))
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2814,7 +2846,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(time, text)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2823,7 +2855,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(text, time)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2832,7 +2864,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(time(6), text)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2841,7 +2873,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(text, time(6))
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2850,7 +2882,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(numeric, text)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL
@@ -2859,7 +2891,7 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.datediff(text, numeric)
-RETURNS bigint
+RETURNS int /* BUG#Z5751 */
 AS $$
 	select ivymy.datediff($1::date, $2::date);
 $$ LANGUAGE SQL

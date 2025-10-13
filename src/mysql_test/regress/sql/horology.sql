@@ -59,21 +59,21 @@ SELECT time with time zone 'T040506.789 +08';
 SELECT time with time zone 'T040506.789 -08';
 SET DateStyle = 'Postgres, MDY';
 -- Check Julian dates BC
-SELECT date 'J1520447' AS "Confucius' Birthday";
-SELECT date 'J0' AS "Julian Epoch";
+SELECT pg_catalog.date 'J1520447' AS "Confucius' Birthday";
+SELECT pg_catalog.date 'J0' AS "Julian Epoch";
 
 --
 -- date, time arithmetic
 --
 
 --SELECT date '1981-02-03' + time '04:05:06' AS "Date + Time";
-SELECT date '1991-02-03' + time with time zone '04:05:06 PST' AS "Date + Time PST";
-SELECT date '2001-02-03' + time with time zone '04:05:06 UTC' AS "Date + Time UTC";
-SELECT date '1991-02-03' + interval '2 years' AS "Add Two Years";
-SELECT date '2001-12-13' - interval '2 years' AS "Subtract Two Years";
+SELECT pg_catalog.date '1991-02-03' + time with time zone '04:05:06 PST' AS "Date + Time PST";
+SELECT pg_catalog.date '2001-02-03' + time with time zone '04:05:06 UTC' AS "Date + Time UTC";
+SELECT pg_catalog.date '1991-02-03' + interval '2 years' AS "Add Two Years";
+SELECT pg_catalog.date '2001-12-13' - interval '2 years' AS "Subtract Two Years";
 -- subtract time from date should not make sense; use interval instead
 -- SELECT date '1991-02-03' - time '04:05:06' AS "Subtract Time";
-SELECT date '1991-02-03' - time with time zone '04:05:06 UTC' AS "Subtract Time UTC";
+SELECT pg_catalog.date '1991-02-03' - time with time zone '04:05:06 UTC' AS "Subtract Time UTC";
 
 --
 -- timestamp, interval arithmetic
@@ -108,8 +108,8 @@ SELECT (timestamp without time zone 'tomorrow' > 'now') as "True";
 -- to enable support for SQL99 timestamp type syntax.
 --SELECT date '1994-01-01' + time '11:00' AS "Jan_01_1994_11am";
 --SELECT date '1994-01-01' + time '10:00' AS "Jan_01_1994_10am";
-SELECT date '1994-01-01' + timetz '11:00-5' AS "Jan_01_1994_8am";
-SELECT timestamptz(date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
+SELECT pg_catalog.date '1994-01-01' + timetz '11:00-5' AS "Jan_01_1994_8am";
+SELECT timestamptz(pg_catalog.date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
 
 SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMP_TBL;
 SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMP_TBL;
@@ -135,11 +135,11 @@ SELECT timestamp with time zone '2005-04-03 12:00-06' - interval '24 hours' as "
 RESET TIME ZONE;
 
 
-SELECT timestamptz(date '1994-01-01', time '11:00') AS "Jan_01_1994_10am";
-SELECT timestamptz(date '1994-01-01', time '10:00') AS "Jan_01_1994_9am";
-SELECT timestamptz(date '1994-01-01', time with time zone '11:00-8') AS "Jan_01_1994_11am";
-SELECT timestamptz(date '1994-01-01', time with time zone '10:00-8') AS "Jan_01_1994_10am";
-SELECT timestamptz(date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
+SELECT timestamptz(pg_catalog.date '1994-01-01', time '11:00') AS "Jan_01_1994_10am";
+SELECT timestamptz(pg_catalog.date '1994-01-01', time '10:00') AS "Jan_01_1994_9am";
+SELECT timestamptz(pg_catalog.date '1994-01-01', time with time zone '11:00-8') AS "Jan_01_1994_11am";
+SELECT timestamptz(pg_catalog.date '1994-01-01', time with time zone '10:00-8') AS "Jan_01_1994_10am";
+SELECT timestamptz(pg_catalog.date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
 
 SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMPTZ_TBL;
 SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMPTZ_TBL;
@@ -165,10 +165,10 @@ SELECT time with time zone '02:30-08' + interval '36:01' AS "14:31:00-08";
 -- SELECT time with time zone '03:30' + interval '1 month 04:01' AS "07:31:00-08";
 -- Try the following two tests instead, as a poor substitute
 
-SELECT CAST(CAST(date 'today' + time with time zone '05:30'
+SELECT CAST(CAST(pg_catalog.date 'today' + time with time zone '05:30'
             + interval '02:01' AS time with time zone) AS time) AS "07:31:00";
 
-SELECT CAST(cast(date 'today' + time with time zone '03:30'
+SELECT CAST(cast(pg_catalog.date 'today' + time with time zone '03:30'
   + interval '1 month 04:01' as timestamp without time zone) AS time) AS "07:31:00";
 
 SELECT t.d1 AS t, i.f1 AS i, t.d1 + i.f1 AS "add", t.d1 - i.f1 AS "subtract"
@@ -278,7 +278,7 @@ SELECT d1.f1 AS timestamp1, d2.f1 AS timestamp2, d1.f1 - d2.f1 AS difference
 
 SELECT f1 AS "timestamp", date(f1) AS date
   FROM TEMP_TIMESTAMP
-  WHERE f1 <> timestamp 'now'
+  WHERE f1 <> pg_catalog.timestamp 'now'
   ORDER BY date, "timestamp";
 
 DROP TABLE TEMP_TIMESTAMP;
@@ -287,24 +287,24 @@ DROP TABLE TEMP_TIMESTAMP;
 -- Comparisons between datetime types, especially overflow cases
 ---
 
-SELECT '2202020-10-05'::date::timestamp;  -- fail
-SELECT '2202020-10-05'::date > '2020-10-05'::timestamp as t;
-SELECT '2020-10-05'::timestamp > '2202020-10-05'::date as f;
+SELECT '2202020-10-05'::pg_catalog.date::pg_catalog.timestamp;  -- fail
+SELECT '2202020-10-05'::pg_catalog.date > '2020-10-05'::pg_catalog.timestamp as t;
+SELECT '2020-10-05'::pg_catalog.timestamp > '2202020-10-05'::pg_catalog.date as f;
 
-SELECT '2202020-10-05'::date::timestamptz;  -- fail
-SELECT '2202020-10-05'::date > '2020-10-05'::timestamptz as t;
-SELECT '2020-10-05'::timestamptz > '2202020-10-05'::date as f;
+SELECT '2202020-10-05'::pg_catalog.date::timestamptz;  -- fail
+SELECT '2202020-10-05'::pg_catalog.date > '2020-10-05'::timestamptz as t;
+SELECT '2020-10-05'::timestamptz > '2202020-10-05'::pg_catalog.date as f;
 
 -- This conversion may work depending on timezone
-SELECT '4714-11-24 BC'::date::timestamptz;
+SELECT '4714-11-24 BC'::pg_catalog.date::timestamptz;
 SET TimeZone = 'UTC-2';
-SELECT '4714-11-24 BC'::date::timestamptz;  -- fail
+SELECT '4714-11-24 BC'::pg_catalog.date::timestamptz;  -- fail
 
-SELECT '4714-11-24 BC'::date < '2020-10-05'::timestamptz as t;
-SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::date as t;
+SELECT '4714-11-24 BC'::pg_catalog.date < '2020-10-05'::timestamptz as t;
+SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::pg_catalog.date as t;
 
-SELECT '4714-11-24 BC'::timestamp < '2020-10-05'::timestamptz as t;
-SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::timestamp as t;
+SELECT '4714-11-24 BC'::pg_catalog.timestamp < '2020-10-05'::timestamptz as t;
+SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::pg_catalog.timestamp as t;
 
 RESET TimeZone;
 

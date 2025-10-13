@@ -1272,6 +1272,7 @@ select cast('11-11-11 11:11:11.111111' as timestamp) + cast('11-11-11 11:11:11.1
 
 --select cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 11:11:11.111111' as datetime(3));
 select cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 11:11:11.111111' as timestamp(3));
+select cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 11:11:11.111111' as timestamp);
 
 
 create table date_01(a1 date);

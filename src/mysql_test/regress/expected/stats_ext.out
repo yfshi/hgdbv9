@@ -251,7 +251,7 @@ SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinp GROUP BY 1, 2');
 
 DROP TABLE stxdinp;
 -- basic test for statistics on expressions
-CREATE TABLE ab1 (a INTEGER, b INTEGER, c TIMESTAMP, d TIMESTAMPTZ);
+CREATE TABLE ab1 (a INTEGER, b INTEGER, c pg_catalog.TIMESTAMP, d TIMESTAMPTZ);
 -- expression stats may be built on a single expression column
 CREATE STATISTICS ab1_exprstat_1 ON (a+b) FROM ab1;
 -- with a single expression, we only enable expression statistics
@@ -274,28 +274,21 @@ SELECT stxkind FROM pg_statistic_ext WHERE stxname = 'ab1_exprstat_3';
 CREATE STATISTICS ab1_exprstat_4 ON date_trunc('day', d) FROM ab1;
 -- date_trunc on timestamp is immutable
 CREATE STATISTICS ab1_exprstat_5 ON date_trunc('day', c) FROM ab1;
-ERROR:  function date_trunc(unknown, timestamp) does not exist
-LINE 1: CREATE STATISTICS ab1_exprstat_5 ON date_trunc('day', c) FRO...
-                                            ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 -- check use of a boolean-returning expression
 CREATE STATISTICS ab1_exprstat_6 ON
   (case a when 1 then true else false end), b FROM ab1;
 -- insert some data and run analyze, to test that these cases build properly
 INSERT INTO ab1
 SELECT x / 10, x / 3,
-    '2020-10-01'::timestamp + x * interval '1 day',
+    '2020-10-01'::pg_catalog.timestamp + x * interval '1 day',
     '2020-10-01'::timestamptz + x * interval '1 day'
 FROM generate_series(1, 100) x;
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 3:     '2020-10-01'::timestamp + x * interval '1 day',
-            ^
 ANALYZE ab1;
 -- apply some stats
 SELECT * FROM check_estimated_rows('SELECT * FROM ab1 WHERE (case a when 1 then true else false end) AND b=2');
  estimated | actual 
 -----------+--------
-         1 |      0
+         3 |      3
 (1 row)
 
 DROP TABLE ab1;

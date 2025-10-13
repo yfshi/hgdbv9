@@ -182,6 +182,12 @@ WARNING:  Incorrect datetime value: '203840'
            
 (1 row)
 
+select dayofmonth('2025-07-25 15:30:00'::timestamp);    -- bug#z5586
+ dayofmonth 
+------------
+         25
+(1 row)
+
 /*DAYOFWEEK*/
 SELECT dayofweek('2022-10-09 09:55:28.12345');
  dayofweek 
@@ -348,6 +354,12 @@ select hour(0);         -- bug#z5086
     0
 (1 row)
 
+select hour(cast('14:12:12' as time));         -- bug#z5587
+ hour 
+------
+   14
+(1 row)
+
 create table test_hour(hour int);
 insert into test_hour select hour('-838:59:59');
 insert into test_hour select hour('838:59:59');
@@ -512,6 +524,12 @@ select microsecond(0);          -- bug#z5093
            0
 (1 row)
 
+select microsecond(cast('2024-03-15 12:34:56' as datetime));        -- bug#z5585
+ microsecond 
+-------------
+           0
+(1 row)
+
 /*MINUTE*/
 select MINUTE(datetime '2021-11-4 16:30:44.341191');
 ERROR:  Unknown column 'datetime' in 'field list' 
@@ -582,6 +600,12 @@ select minute(0);       -- bug#z5096
  minute 
 --------
       0
+(1 row)
+
+select minute(cast('2024-03-15 12:34:56' as datetime));     -- bug#z5588
+ minute 
+--------
+     34
 (1 row)
 
 /*SECOND*/
@@ -3542,6 +3566,26 @@ ERROR:  function datediff() does not exist
 LINE 1: select datediff();
                ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+/* Begin - bug#z5751 */
+select pg_typeof(datediff(20231010::int,20231009::int));
+ pg_typeof 
+-----------
+ integer
+(1 row)
+
+select pg_typeof(datediff('2023-10-10 12:34:56'::datetime,'2023-10-09 08:00:00'::datetime));
+ pg_typeof 
+-----------
+ integer
+(1 row)
+
+select pg_typeof(datediff('2023-10-10 12:34:56','2023-10-09 08:00:00'));
+ pg_typeof 
+-----------
+ integer
+(1 row)
+
+/* End - bug#z5751 */
 --from_days
 select from_days(101);--0000-00-00
  from_days  
