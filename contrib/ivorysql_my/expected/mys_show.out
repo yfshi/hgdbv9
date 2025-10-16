@@ -1,0 +1,572 @@
+--show variables
+show global variables where VARIABLE_NAME = 'sql_mode';
+ Variable_name |                                                                                        Value                                                                                        
+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+(1 row)
+
+show session variables where VARIABLE_NAME = 'sql_mode';
+ Variable_name |                                                                                        Value                                                                                        
+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+(1 row)
+
+show global variables where VARIABLE_NAME like 'sql_mod%';
+ Variable_name |                                                                                        Value                                                                                        
+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+(1 row)
+
+show session variables where VARIABLE_NAME like 'sql_mod%';
+ Variable_name |                                                                                        Value                                                                                        
+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+(1 row)
+
+show variables where VARIABLE_NAME like 'sql_mod%';
+ Variable_name |                                                                                        Value                                                                                        
+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+(1 row)
+
+show variables where VARIABLE_NAME like 'sql_mo%';
+ Variable_name |                                                                                        Value                                                                                        
+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+(1 row)
+
+show global variables where VARIABLE_NAME = 'sql_quote_show_create';
+     Variable_name     | Value 
+-----------------------+-------
+ sql_quote_show_create | on
+(1 row)
+
+show session variables where VARIABLE_NAME = 'sql_quote_show_create';
+     Variable_name     | Value 
+-----------------------+-------
+ sql_quote_show_create | on
+(1 row)
+
+show variables where VARIABLE_NAME like 'sql_quote_show_%';
+     Variable_name     | Value 
+-----------------------+-------
+ sql_quote_show_create | on
+(1 row)
+
+show variables where VARIABLE_NAME like 'sql_quote%';
+     Variable_name     | Value 
+-----------------------+-------
+ sql_quote_show_create | on
+(1 row)
+
+--show global variables;
+--show create database
+create database aa;
+show create database aa;
+ database |    Create Database     
+----------+------------------------
+ aa       | CREATE DATABASE  `aa` 
+(1 row)
+
+set sql_quote_show_create = false;
+show create database aa;
+ database |   Create Database    
+----------+----------------------
+ aa       | CREATE DATABASE  aa 
+(1 row)
+
+show create database if not exists aa;
+ database |                Create Database                
+----------+-----------------------------------------------
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  aa 
+(1 row)
+
+show create schema aa;
+ database |   Create Database    
+----------+----------------------
+ aa       | CREATE DATABASE  aa 
+(1 row)
+
+show create schema if not exists aa;
+ database |                Create Database                
+----------+-----------------------------------------------
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  aa 
+(1 row)
+
+reset sql_quote_show_create;
+drop schema aa;
+create database aa CHARACTER SET = UTF8;
+WARNING:   COLLATE or CHARACTER SET nonsupport : 'UTF8'
+show create database aa;
+ database |                       Create Database                        
+----------+--------------------------------------------------------------
+ aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+(1 row)
+
+show create database if not exists aa;
+ database |                                    Create Database                                    
+----------+---------------------------------------------------------------------------------------
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+(1 row)
+
+show create schema aa;
+ database |                       Create Database                        
+----------+--------------------------------------------------------------
+ aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+(1 row)
+
+show create schema if not exists aa;
+ database |                                    Create Database                                    
+----------+---------------------------------------------------------------------------------------
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+(1 row)
+
+drop schema aa;
+create database aa CHARACTER SET UTF8;
+WARNING:   COLLATE or CHARACTER SET nonsupport : 'UTF8'
+show create database aa;
+ database |                       Create Database                        
+----------+--------------------------------------------------------------
+ aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+(1 row)
+
+show create database if not exists aa;
+ database |                                    Create Database                                    
+----------+---------------------------------------------------------------------------------------
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+(1 row)
+
+show create schema aa;
+ database |                       Create Database                        
+----------+--------------------------------------------------------------
+ aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+(1 row)
+
+show create schema if not exists aa;
+ database |                                    Create Database                                    
+----------+---------------------------------------------------------------------------------------
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+(1 row)
+
+drop schema aa;
+CREATE database aa COLLATE  = "collatetest";
+WARNING:   COLLATE or CHARACTER SET nonsupport : 'collatetest'
+show create database aa;
+ database |                        Create Database                        
+----------+---------------------------------------------------------------
+ aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT COLLATE collatetest */
+(1 row)
+
+show create database if not exists aa;
+ database |                                    Create Database                                     
+----------+----------------------------------------------------------------------------------------
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT COLLATE collatetest */
+(1 row)
+
+show create schema aa;
+ database |                        Create Database                        
+----------+---------------------------------------------------------------
+ aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT COLLATE collatetest */
+(1 row)
+
+show create schema if not exists aa;
+ database |                                    Create Database                                     
+----------+----------------------------------------------------------------------------------------
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT COLLATE collatetest */
+(1 row)
+
+drop schema aa;
+CREATE database aa COLLATE "collatetest";
+WARNING:   COLLATE or CHARACTER SET nonsupport : 'collatetest'
+show create database aa;
+ database |                        Create Database                        
+----------+---------------------------------------------------------------
+ aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT COLLATE collatetest */
+(1 row)
+
+show create database if not exists aa;
+ database |                                    Create Database                                     
+----------+----------------------------------------------------------------------------------------
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT COLLATE collatetest */
+(1 row)
+
+show create schema aa;
+ database |                        Create Database                        
+----------+---------------------------------------------------------------
+ aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT COLLATE collatetest */
+(1 row)
+
+show create schema if not exists aa;
+ database |                                    Create Database                                     
+----------+----------------------------------------------------------------------------------------
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT COLLATE collatetest */
+(1 row)
+
+drop schema aa;
+--show databases
+create database aa;
+create database bb;
+create database cc;
+show databases where database = 'aa' or database = 'bb' or database = 'cc';
+ Database 
+----------
+ aa
+ bb
+ cc
+(3 rows)
+
+show databases like 'a%';
+ Database 
+----------
+ aa
+(1 row)
+
+show databases like 'b%';
+ Database 
+----------
+ bb
+(1 row)
+
+show databases like 'cc%';
+ Database 
+----------
+ cc
+(1 row)
+
+show schemas where database = 'aa' or database = 'bb' or database = 'cc';
+ Database 
+----------
+ aa
+ bb
+ cc
+(3 rows)
+
+show schemas like 'a%';
+ Database 
+----------
+ aa
+(1 row)
+
+show schemas like 'b%';
+ Database 
+----------
+ bb
+(1 row)
+
+show schemas like 'cc%';
+ Database 
+----------
+ cc
+(1 row)
+
+drop schema aa;
+drop schema bb;
+drop schema cc;
+show databases where database = 'aa' or database = 'bb' or database = 'cc';
+ Database 
+----------
+(0 rows)
+
+show databases like 'a%';
+ Database 
+----------
+(0 rows)
+
+show databases like 'b%';
+ Database 
+----------
+(0 rows)
+
+show databases like 'cc%';
+ Database 
+----------
+(0 rows)
+
+show schemas where database = 'aa' or database = 'bb' or database = 'cc';
+ Database 
+----------
+(0 rows)
+
+show schemas like 'a%';
+ Database 
+----------
+(0 rows)
+
+show schemas like 'b%';
+ Database 
+----------
+(0 rows)
+
+show schemas like 'c%';
+ Database  
+-----------
+ credcheck
+(1 row)
+
+--show columns
+create table tb(id int);
+create table test(id int, name text, addr text);
+show full columns from tb;
+ Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+(1 row)
+
+show full fields in tb;
+ Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+(1 row)
+
+show full columns from tb from public;
+ Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+(1 row)
+
+show full columns from tb in public;
+ Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+(1 row)
+
+show full columns from tb where Field = 'name';
+ Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment 
+-------+------+-----------+------+-----+---------+-------+------------+---------
+(0 rows)
+
+show full columns from tb like 'na%';
+ Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment 
+-------+------+-----------+------+-----+---------+-------+------------+---------
+(0 rows)
+
+show full fields in tb like 'na%';
+ Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment 
+-------+------+-----------+------+-----+---------+-------+------------+---------
+(0 rows)
+
+show full fields in tb where Field = 'name';
+ Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment 
+-------+------+-----------+------+-----+---------+-------+------------+---------
+(0 rows)
+
+show columns from tb from public where Field = 'name';
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+(0 rows)
+
+show columns from tb in public like 'na%';
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+(0 rows)
+
+drop table tb;
+drop table test;
+--show create view
+--create table tb(id int, name text);
+--create view v_tb as select * from tb;
+--create view v_tb1 as select id from tb;
+--create view v_tb2 as select name from tb;
+--show create view v_tb;
+--show create view v_tb1;
+--show create view v_tb2;
+--drop view v_tb;
+--drop view v_tb1;
+--drop view v_tb2;
+--drop table tb;
+--create view vtb as select 1 + 1;
+--show create view vtb;
+--drop view vtb;
+--show index
+create table tb(id int, name text);
+create index on tb(id);
+show index from tb;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show indexes from tb;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show keys from tb;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show index in tb;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show indexes in tb;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show keys in tb;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show index from tb from public;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show index from tb from public where "Table" = 'tb';
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show index from tb in public;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show index from tb in public where "Table" = 'tb';
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show indexes from tb;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show indexes from tb from public where "Table" = 'tb';
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show indexes from tb in public;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show indexes from tb in public where "Table" = 'tb';
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show keys from tb;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show keys from tb from public where "Table" = 'tb';
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show keys from tb in public;
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+show keys from tb in public where "Table" = 'tb';
+ Table | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          1 | tb_id_idx |            1 | id          | A         |             |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table tb;
+--
+--show table status
+--because have time, time is always change,so don't test these.
+--
+--create table tb(id int, name text);
+--show table status;
+--show table status from public;
+--show table status in public;
+--show table status from public like 'tb';
+--show table status in public like 'tb';
+--show table status from public where Name = 'tb';
+--show table status in public where Name = 'tb';
+--drop table tb;
+--show tables;
+create table tb(id int, name text);
+create temporary table tb1(id int, name text);
+create table logs (id serial primary key, message text) with (autovacuum_enabled = false);
+create foreign data wrapper dummy;
+create server s0 foreign data wrapper dummy;
+create foreign table ft1 (
+	c1 integer options ("param 1" 'val1') not null,
+	c2 text options (param2 'val2', param3 'val3') check (c2 <> ''),
+	c3 date,
+	check (c3 between '1994-01-01'::date and '1994-01-31'::date)
+) server s0 options (delimiter ',', quote '"', "be quoted" 'value');
+create table tab_part_create (a int) partition by list (a);
+show tables where Tables_public = 'tb';
+ Tables_public 
+---------------
+ tb
+(1 row)
+
+show full tables where Tables_public = 'tb1';
+ Tables_public | Table_type 
+---------------+------------
+(0 rows)
+
+show full tables from public where Tables_public = 'logs';
+ Tables_public | Table_type 
+---------------+------------
+ logs          | BASE TABLE
+(1 row)
+
+show full tables in public where Tables_public = 'ft1';
+ Tables_public |  Table_type   
+---------------+---------------
+ ft1           | FOREIGN TABLE
+(1 row)
+
+show full tables in public where Tables_public = 'tab_part_create';
+  Tables_public  | Table_type 
+-----------------+------------
+ tab_part_create | BASE TABLE
+(1 row)
+
+drop table tb;
+drop table tb1;
+drop table logs;
+drop foreign table ft1;
+drop server s0;
+drop foreign data wrapper dummy;
+drop table tab_part_create;
+--show triggers
+--CREATE TABLE trig_tbl (id int, val text);
+--CREATE FUNCTION trig_func()
+--RETURNS trigger LANGUAGE plpgsql AS $$
+--BEGIN
+--  NEW.val := upper(NEW.val);
+--  RETURN NEW;
+--END;$$;
+--CREATE TRIGGER before_ins BEFORE INSERT ON trig_tbl
+--FOR EACH ROW EXECUTE FUNCTION trig_func();
+--
+--SHOW TRIGGERS from public;
+--SHOW TRIGGERS in public like 'trig_tbl';
+--SHOW TRIGGERS in public like 'trig_tb%';
+--SHOW TRIGGERS in public where Trigger = 'before_ins';
+--
+--drop  TRIGGER before_ins ON trig_tbl;
+--drop FUNCTION trig_func;
+--drop TABLE trig_tbl;

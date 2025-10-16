@@ -1434,6 +1434,29 @@ transformRelInfromOrusingcluase(List *relist, RangeVar *rv, ColumnRef **colref)
 }
 /* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
+/* Begin - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
+bool
+IsMysInformationSchemaView(char *view_name)
+{
+	static char *mys_views[] = {"tables", "table_privileges", "partitions", "column_privileges", "columns", "views",
+							   "key_column_usage", "routines", "triggers", "table_constraints", "schemata",
+							   "schema_privileges", "tablespaces", "statistics", "collations","character_sets"};
+	size_t	count = sizeof(mys_views) / sizeof(mys_views[0]);
+	int		i = 0;
+
+	if (!view_name)
+		return false;
+
+	for (i = 0; i < count; i++)
+	{
+		if (pg_strcasecmp(view_name, mys_views[i]) == 0)
+			return true;
+	}
+
+	return false;
+}
+/* End - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
+
 /*
  * transformFromClauseItem -
  *	  Transform a FROM-clause item, adding any required entries to the
@@ -1482,6 +1505,28 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 				rv->lnkrelname = psprintf("%s@%s", rv->relname, rv->srvname);
 		}
 		/* End - BUG#M0000489 */
+
+		/* Begin - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
+		/*
+		 * convert views from the compatible information_schema
+		 * schema to ivymy schema.
+		 */
+		if (rv->schemaname == NULL && compatible_db == MYS_PARSER)
+		{
+			LOCAL_FCINFO(fcinfo, 0);
+			char	*nspname = NameStr(*(DatumGetName(current_schema(fcinfo))));
+			if (nspname && memcmp(nspname, "information_schema", 18) == 0)
+			{
+				if (IsMysInformationSchemaView(rv->relname))
+				{
+					if (enable_mysql_information_schema)
+						rv->schemaname = pstrdup("ivymy");
+					else
+						rv->schemaname = pstrdup("information_schema");
+				}
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
 
 		/* Check if it's a CTE or tuplestore reference */
 		nsitem = getNSItemForSpecialRelationTypes(pstate, rv);

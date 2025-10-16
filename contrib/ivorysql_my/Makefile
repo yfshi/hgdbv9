@@ -58,7 +58,8 @@ OBJS = \
 	src/set/set_user_var.o \
 	src/set/set_global_session_var.o \
 	src/set/set_names.o \
-	src/set/set_charset.o
+	src/set/set_charset.o \
+	src/show/show.o
 
 EXTENSION = ivorysql_my
 
@@ -91,6 +92,7 @@ cleansql:
 # REGRESS_OPTS mainly used for installcheck or debug.
 #REGRESS_OPTS = --port=3306
 MYS_REGRESS = cast_to_number \
+			  mys_information_schema \
 			  hex_literal \
 			  pipes_as_concat \
 			  multi_update \
@@ -148,7 +150,9 @@ MYS_REGRESS = cast_to_number \
 			  set-user-var \
 			  set_global_session_var \
 			  set_charset \
-			  set_names
+			  set_names \
+			  show_create_table \
+			  mys_show
 
 
 ifdef USE_PGXS

@@ -66,12 +66,15 @@ bool		cast_to_char = true;
 /* End - BUG#M533 */
 bool		use_mysql_bool = false;
 
+bool		enable_mysql_information_schema = false;
+
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 char	   *lc_time_names = NULL;
 int			default_week_format = 0;
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 bool		at_or_atat = false;		/* ReqID:SRS-MYSQL-SET */
+bool		sql_quote_show_create = true;	/* ReqID:SRS-MYSQL-SHOW */
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
@@ -117,6 +120,16 @@ bool		at_or_atat = false;		/* ReqID:SRS-MYSQL-SET */
 		NULL, NULL, NULL
 	},
 	/* End - BUG#Z1434 */
+	{
+		{"ivorysql.enable_mysql_information_schema", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("whether enable information schema feature in mysql compatible mode."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_mysql_information_schema,
+		false,
+		NULL, NULL, NULL
+	},
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	{
 		{"mysql.enable_case_switch", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
@@ -202,6 +215,17 @@ bool		at_or_atat = false;		/* ReqID:SRS-MYSQL-SET */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-SET */
+	/* Begin - ReqID:SRS-MYSQL-SHOW */
+	{
+		{"sql_quote_show_create", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+				gettext_noop("MySQL Parameter show create command."),
+				NULL
+		},
+		&sql_quote_show_create,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-SHOW */
 
 #endif
 

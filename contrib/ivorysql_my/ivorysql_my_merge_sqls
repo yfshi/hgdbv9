@@ -26,5 +26,6 @@ src/builtin_functions/builtin_functions
 src/builtin_functions/network_functions
 src/sysview/sysview
 src/case_sensitive/case_sensitive
-src/charset/mys_charset
+src/show/show
+src/information_schema/mys_information_schema
 src/set/set

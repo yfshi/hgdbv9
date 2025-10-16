@@ -518,12 +518,15 @@ extern PGDLLIMPORT bool cast_to_char;
 /* End - BUG#M533 */
 extern PGDLLIMPORT bool use_mysql_bool;
 
+extern PGDLLIMPORT bool enable_mysql_information_schema;
+
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 extern PGDLLIMPORT char *lc_time_names;
 extern PGDLLIMPORT int default_week_format;
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 extern PGDLLIMPORT bool at_or_atat;		/* ReqID:SRS-MYSQL-SET */
+extern PGDLLIMPORT bool sql_quote_show_create;	/* ReqID:SRS-MYSQL-SHOW */
 
 /*
  * Functions exported by guc.c

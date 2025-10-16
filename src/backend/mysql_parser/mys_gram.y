@@ -276,6 +276,24 @@ static Node *makeVarAssgin(char *varname, Node *value, SetKindType kind, SetRetu
 static Node *makeVarRef(char *varname, VarKind kind, int location);
 /* End - ReqID:SRS-MYSQL-SET */
 
+/* Begin - ReqID:SRS-MYSQL-SHOW */
+static ResTarget *makeShowResTarget(char *ailasstr, Node *columnref, int location);
+static RangeSubselect *makeShowRangeSubselect(Node *subquery, char *alias);
+static ColumnRef *makeShowAllColumnRef(void);
+static SelectStmt *makeShowSelectStmt(List *targetList, List *fromClause, Node *whereClause);
+static SelectStmt *makeShowTriggersStmt(Node *db_name, ShowFilter *filter);
+static SelectStmt *makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter);
+static SelectStmt *makeShowTableStatusStmt(Node *db_name, ShowFilter *filter);
+static SelectStmt *makeShowViewStmt(RangeVar *view_name);
+static SelectStmt *makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full);
+static SelectStmt *makeShowSchemasStmt(ShowFilter *filter);
+static SelectStmt *makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool full);
+static Node *makeShowCreateDatabaseStmt(const char *showname, bool existflg);
+static Node *makeShowVariableStmt(const char *glob_or_session, ShowFilter *filter);
+static ResTarget *makeRestaget(Node *val, char *alias);
+static Node *makeShowCreateTableStmt(RangeVar *rvar);
+/* End - ReqID:SRS-MYSQL-SHOW */
+
 %}
 
 %pure-parser
@@ -754,6 +772,11 @@ static Node *makeVarRef(char *varname, VarKind kind, int location);
 %type <str>			set_names_collate multi_encoding
 /* End - ReqID:SRS-MYSQL-SET */
 
+/* Begin - ReqID:SRS-MYSQL-SHOW */
+%type <node>		opt_db
+%type <node>		mys_show_table
+/* End - ReqID:SRS-MYSQL-SHOW */
+
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
  * They must be listed first so that their numeric codes do not depend on
@@ -797,7 +820,7 @@ static Node *makeVarRef(char *varname, VarKind kind, int location);
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CURTIME CYCLE
 
-	DATA_P DATABASE DATE_P DATETIME_P DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
+	DATA_P DATABASE DATABASES /* ReqID:SRS-MYSQL-SHOW */ DATE_P DATETIME_P DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELAYED DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT 
 	DISTINCTROW /* BUG#Z4610*/ 
@@ -808,7 +831,7 @@ static Node *makeVarRef(char *varname, VarKind kind, int location);
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
 	EXTENSION EXTERNAL EXTRACT
 
-	FALSE_P FAMILY FETCH FIELD /* ReqID:SRS-MYSQL-BINARYTYPE */ FILTER FINALIZE FIRST_P
+	FALSE_P FAMILY FETCH FIELD /* ReqID:SRS-MYSQL-BINARYTYPE */ FIELDS /* ReqID:SRS-MYSQL-SHOW */ FILTER FINALIZE FIRST_P
 	FIXED /* bug#z5409 */
 	FLOAT_P FOLLOWING FOR
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
@@ -824,7 +847,7 @@ static Node *makeVarRef(char *varname, VarKind kind, int location);
 
 	JOIN
 
-	KEY
+	KEY KEYS /* ReqID:SRS-MYSQL-SHOW */
 
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
@@ -856,18 +879,18 @@ static Node *makeVarRef(char *varname, VarKind kind, int location);
 	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHOW
 	SIGNED SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SQL_P STABLE STANDALONE_P
-	START STATEMENT STATISTICS STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
+	START STATEMENT STATISTICS STATUS /* ReqID:SRS-MYSQL-SHOW */ STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TEMP TEMPLATE TEMPORARY TEXT_P THEN
 	TIES TIME TIMESTAMP TIMESTAMPADD TINYBLOB TINYINT TO TRAILING TRANSACTION TRANSFORM
-	TREAT TRIGGER TRIM TRUE_P
+	TREAT TRIGGER TRIGGERS /* ReqID:SRS-MYSQL-SHOW */ TRIM TRUE_P
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
 	UESCAPE UNBOUNDED UNCOMMITTED UNENCRYPTED UNION UNIQUE UNKNOWN
 	UNLISTEN UNLOGGED UNSIGNED UNTIL UPDATE USE USER USING UTC_DATE UTC_TIME UTC_TIMESTAMP /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
-	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARBINARY VARCHAR VARIADIC VARYING
+	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARBINARY VARCHAR VARIABLES /* ReqID:SRS-MYSQL-SHOW */ VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VOLATILE WEIGHT_STRING
 
 	WEEK_P WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
@@ -2197,6 +2220,41 @@ OptShowFilter:
 					$$ = NULL; 
 				}
 
+/* Begin - Req: SRS-MYSQL-SHOW */
+opt_db:
+						from_in IDENT
+								{
+										$$ = makeStringConst($2, @2);
+								}
+						|/* empty */  { $$ = NULL; }
+						;
+
+mys_show_table:
+						from_in qualified_name { $$ = (Node *) $2; }
+						;
+
+index_or_indexes_or_keys:
+						INDEX
+						| INDEXES
+						| KEYS
+						;
+
+databases_or_schemas:
+						DATABASES
+						| SCHEMAS
+						;
+
+columns_or_fields:
+						COLUMNS
+						| FIELDS
+						;
+
+database:
+						DATABASE { /* EMTPY */ }
+						| SCHEMA { /* EMTPY */ }
+						;
+/* End - Req: SRS-MYSQL-SHOW */
+
 MysqlShowStmt:
 			SHOW multi_charset OptShowFilter
 				{
@@ -2208,8 +2266,63 @@ MysqlShowStmt:
 					SelectStmt * selectStmt = makeShowCollationStmt($3);
 					$$ = (Node *) selectStmt;
 				}
-			;
 /* End - Req: SRS-MYSQL-CHARSET */
+/* Begin - Req: SRS-MYSQL-SHOW */
+			| SHOW TRIGGERS opt_db OptShowFilter
+				{
+					$$ = (Node *)makeShowTriggersStmt($3, $4);
+				}
+			| SHOW index_or_indexes_or_keys mys_show_table opt_db OptShowFilter
+				{
+					$$ = (Node *)makeShowIndexStmt((RangeVar *)$3, $4, $5);
+				}
+			| SHOW TABLE STATUS opt_db OptShowFilter
+				{
+					$$ = (Node *)makeShowTableStatusStmt($4, $5);
+				}
+			| SHOW opt_full TABLES opt_db OptShowFilter
+				{
+					$$ = (Node *)makeShowTablesStmt($4, $5, $2);
+				}
+			| SHOW CREATE VIEW qualified_name
+				{
+					$$ = (Node *)makeShowViewStmt($4);
+				}
+			| SHOW databases_or_schemas OptShowFilter
+				{
+					$$ = (Node *)makeShowSchemasStmt($3);
+				}
+			| SHOW opt_full columns_or_fields mys_show_table opt_db OptShowFilter
+				{
+					$$ = (Node *)makeShowColumnsStmt((RangeVar *)$4, $5, $6, $2);
+				}
+			| SHOW CREATE database ColId
+				{
+					$$ = makeShowCreateDatabaseStmt($4, false);
+				}
+			| SHOW CREATE database IF_P NOT EXISTS ColId
+				{
+					$$ = makeShowCreateDatabaseStmt($7, true);
+				}
+			| SHOW CREATE TABLE qualified_name
+				{
+					$$ = makeShowCreateTableStmt($4);
+				}
+			| SHOW VARIABLES OptShowFilter
+				{
+					$$ = makeShowVariableStmt("session", $3);
+				}
+			| SHOW GLOBAL VARIABLES OptShowFilter
+				{
+					$$ = makeShowVariableStmt($2, $4);
+				}
+			| SHOW SESSION VARIABLES OptShowFilter
+				{
+					$$ = makeShowVariableStmt($2, $4);
+				}
+/* End - Req: SRS-MYSQL-SHOW */
+			;
+
 
 VariableShowStmt:
 			SHOW var_name
@@ -18453,6 +18566,20 @@ qualified_name:
 							$$->catalogname = NULL;
 							$$->schemaname = $1;
 							$$->relname = strVal(linitial($2));
+							/* Begin - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
+							/*
+							 * convert views from the compatible information_schema
+							 * schema to ivymy schema.
+							 */
+							if (enable_mysql_information_schema &&
+								memcmp($$->schemaname, "information_schema", 18) == 0)
+							{
+								if (IsMysInformationSchemaView($$->relname))
+								{
+									$$->schemaname = pstrdup("ivymy");
+								}
+							}
+							/* End - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
 							/* Begin - ReqID:SRS-MYSQL-CASE */
 							$$->schemaname = MYS_LOWERONE_STRING_CASE($$->schemaname);
 							/* End - ReqID:SRS-MYSQL-CASE */
@@ -18979,7 +19106,6 @@ unreserved_keyword:
 			| CLASS
 			| CLOSE
 			| CLUSTER
-			| COLUMNS
 			| COMMENT
 			| COMMENTS
 			| COMMIT
@@ -19072,6 +19198,7 @@ unreserved_keyword:
 			| INVOKER
 			| ISOLATION
 			| KEY
+			| KEYS /* ReqID: SRS-MYSQL-SHOW */
 			| LABEL
 			| LANGUAGE
 			| LARGE_P
@@ -19179,7 +19306,6 @@ unreserved_keyword:
 			| RULE
 			| SAVEPOINT
 			| SCHEMA
-			| SCHEMAS
 			| SCROLL
 			| SEARCH
 			| SECOND_P
@@ -19202,6 +19328,7 @@ unreserved_keyword:
 			| START
 			| STATEMENT
 			| STATISTICS
+			| STATUS /* ReqID: SRS-MYSQL-SHOW */
 			| STDIN
 			| STDOUT
 			| STORAGE
@@ -19212,7 +19339,6 @@ unreserved_keyword:
 			| SUPPORT
 			| SYSID
 			| SYSTEM_P
-			| TABLES
 			| TABLESPACE
 			| TEMP
 			| TEMPLATE
@@ -19404,6 +19530,7 @@ reserved_keyword:
 			| CHECK
 			| COLLATE
 			| COLUMN
+			| COLUMNS /* ReqID: SRS-MYSQL-SHOW */
 			| CONSTRAINT
 			| CONVERT
 			| CREATE
@@ -19414,6 +19541,7 @@ reserved_keyword:
 			| CURRENT_TIMESTAMP
 			| CURRENT_USER
 			| CURTIME
+			| DATABASES /* ReqID: SRS-MYSQL-SHOW */
 			| DEFAULT
 			| DEFERRABLE
 			| DELAYED	/* ReqID:SRS-MYSQL-SQL-INSERT */
@@ -19426,6 +19554,7 @@ reserved_keyword:
 			| EXCEPT
 			| FALSE_P
 			| FETCH
+			| FIELDS /* ReqID: SRS-MYSQL-SHOW */
 			| FOR
 			| FOREIGN
 			| FROM
@@ -19457,14 +19586,17 @@ reserved_keyword:
 			| QUICK
 			| REFERENCES
 			| RETURNING
+			| SCHEMAS /* ReqID: SRS-MYSQL-SHOW */
 			| SELECT
 			| SESSION_USER
 			| SOME
 			| SYMMETRIC
 			| TABLE
+			| TABLES /* ReqID: SRS-MYSQL-SHOW */
 			| THEN
 			| TO
 			| TRAILING
+			| TRIGGERS /* ReqID: SRS-MYSQL-SHOW */
 			| TRUE_P
 			| UNION
 			| UNIQUE
@@ -19474,6 +19606,7 @@ reserved_keyword:
 			| UTC_DATE /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| UTC_TIME /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| UTC_TIMESTAMP /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			| VARIABLES /* ReqID: SRS-MYSQL-SHOW */
 			| VARIADIC
 			| WHEN
 			| WHERE
@@ -19583,6 +19716,7 @@ bare_label_keyword:
 			| CYCLE
 			| DATA_P
 			| DATABASE
+			| DATABASES			/* ReqID: SRS-MYSQL-SHOW */
 			| DATE_P			/* ReqID:SRS-MYSQL-DATETYPE */
 			| DATETIME_P          /* ReqID:SRS-MYSQL-DATETIMETYPE */
 			| DEALLOCATE
@@ -19637,6 +19771,7 @@ bare_label_keyword:
 			| FALSE_P
 			| FAMILY
 			| FIELD 		/* ReqID:SRS-MYSQL-BINARYTYPE */
+			| FIELDS		/* ReqID: SRS-MYSQL-SHOW */
 			| FINALIZE
 			| FIRST_P
 			| FIXED			/* bug#z5409 */
@@ -19694,6 +19829,7 @@ bare_label_keyword:
 			| ISOLATION
 			| JOIN
 			| KEY
+			| KEYS /* ReqID: SRS-MYSQL-SHOW */
 			| LABEL
 			| LANGUAGE
 			| LARGE_P
@@ -19858,6 +19994,7 @@ bare_label_keyword:
 			| START
 			| STATEMENT
 			| STATISTICS
+			| STATUS	/* ReqID: SRS-MYSQL-SHOW */
 			| STDIN
 			| STDOUT
 			| STORAGE
@@ -19890,6 +20027,7 @@ bare_label_keyword:
 			| TRANSFORM
 			| TREAT
 			| TRIGGER
+			| TRIGGERS	/* ReqID: SRS-MYSQL-SHOW */
 			| TRIM
 			| TRUE_P
 			| TRUNCATE
@@ -19920,6 +20058,7 @@ bare_label_keyword:
 			| VALUES
 			| VARBINARY
 			| VARCHAR
+			| VARIABLES /* ReqID: SRS-MYSQL-SHOW */
 			| VARIADIC
 			| VERBOSE
 			| VERSION_P
@@ -21172,6 +21311,608 @@ makeShowCollationStmt(ShowFilter *filter)
 }
 /* End - Req: SRS-MYSQL-CHARSET */
 
+/* Begin - ReqID:SRS-MYSQL-SHOW */
+/* makeShowResTarget
+ *
+ * Construct a ResTarget Node.
+ */
+static ResTarget *
+makeShowResTarget(char *ailasstr, Node *columnref, int location)
+{
+	ResTarget *rt = makeNode(ResTarget);
+
+	rt->name = ailasstr;
+	rt->val = columnref;
+	rt->indirection = NIL;
+	rt->location = location;
+
+	return rt;
+}
+
+/* makeShowRangeSubselect
+ *
+ * Construct a RangeSubselect Node.
+ */
+static RangeSubselect *
+makeShowRangeSubselect(Node *subquery, char *alias)
+{
+	RangeSubselect *rss = makeNode(RangeSubselect);
+
+	rss->subquery = subquery;
+	rss->alias = makeAlias(alias, NIL);
+
+	return rss;
+}
+
+/* makeShowAllColumnRef
+ *
+ * Construct a ColumnRef Node.
+ */
+static ColumnRef *
+makeShowAllColumnRef(void)
+{
+	ColumnRef *cref = makeNode(ColumnRef);
+
+	cref->fields = list_make1(makeNode(A_Star));
+	cref->location = -1;
+
+	return cref;
+}
+
+/* makeShowSelectStmt
+ *
+ * Construct a SelectStmt Node.
+ */
+static SelectStmt *
+makeShowSelectStmt(List *targetList, List *fromClause, Node *whereClause)
+{
+	SelectStmt	*outer = makeNode(SelectStmt);
+
+	outer->targetList = targetList;  /* SELECT * */
+	outer->fromClause = fromClause; /* FROM (subq) */
+	outer->whereClause = whereClause;  /* [LIKE 'pattern' | WHERE expr] */
+
+	return outer;
+}
+
+/* makeShowTriggersStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the triggers's result.
+ */
+static SelectStmt *
+makeShowTriggersStmt(Node *db_name, ShowFilter *filter)
+{
+	#define		TRIGGERS_COLUMN_NUMS 11
+
+	char		colnames[TRIGGERS_COLUMN_NUMS][32]
+							= {"TRIGGER_NAME", "EVENT_MANIPULATION", "EVENT_OBJECT_TABLE", "ACTION_STATEMENT",
+							   "ACTION_TIMING", "CREATED", "SQL_MODE", "DEFINER", "CHARACTER_SET_CLIENT",
+							   "COLLATION_CONNECTION", "DATABASE_COLLATION"};
+	char		ailas[TRIGGERS_COLUMN_NUMS][32]
+							= {"Trigger", "Event", "Table", "Statement", "Timing", "Created", "sql_mode",
+							   "Definer", "character_set_client", "collation_connection", "Database Collation"};
+	int			i = 0;
+	SelectStmt	*outer;
+	SelectStmt	*inner = makeNode(SelectStmt);
+	ResTarget	*rt;
+	ColumnRef	*cref;
+	Node		*col_db;
+	RangeSubselect *rss;
+
+	/* make subselect targetlist */
+	for (i = 0; i < TRIGGERS_COLUMN_NUMS; i++)
+	{
+		rt = makeShowResTarget(pstrdup(ailas[i]),
+							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
+							   -1);
+		inner->targetList = lappend(inner->targetList, rt);
+	}
+
+	/* make subselect fromClause */
+	inner->fromClause = list_make1(makeRangeVar("ivymy", "triggers", -1));
+
+	/*
+	 * make subselect whereClause
+	 */
+	col_db = makeColumnRef("trigger_schema", NIL, -1, 0); /* [{FROM | IN} db_name] */
+	if (db_name)
+	{
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", col_db, db_name, -1);
+	}
+	else /* current schema */
+	{
+		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
+											NIL,
+											COERCE_EXPLICIT_CALL,
+											-1);
+
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
+													   col_db,
+													   (Node *)funcCall,
+													   -1);
+	}
+
+	/* make outerselect */
+	rss = makeShowRangeSubselect((Node *)inner, "subq");
+	cref = makeShowAllColumnRef();
+	rt = makeShowResTarget(NULL, (Node *) cref, -1);
+	/* [LIKE 'pattern' | WHERE expr] */
+	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter("Table", filter));
+
+	return outer;
+}
+
+/* makeShowIndexStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the index of table.
+ */
+static SelectStmt *
+makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
+{
+	#define		INDEXES_COLUMN_NUMS 13
+
+	char		colnames[INDEXES_COLUMN_NUMS][32]
+						= {"TABLE_NAME", "NON_UNIQUE","INDEX_NAME", "SEQ_IN_INDEX", "COLUMN_NAME", "COLLATION",
+						   "CARDINALITY", "SUB_PART", "PACKED", "NULLABLE", "INDEX_TYPE", "COMMENT", "INDEX_COMMENT"};
+
+	char		ailas[INDEXES_COLUMN_NUMS][32]
+						= {"Table", "Non_unique", "Key_name", "Seq_in_index", "Column_name", "Collation",
+						   "Cardinality", "Sub_part", "Packed", "Null", "Index_type", "Comment", "Index_comment"};
+	int			i = 0;
+	SelectStmt	*outer;
+	SelectStmt	*inner = makeNode(SelectStmt);
+	ResTarget	*rt;
+	ColumnRef	*cref;
+	Node		*col_db;
+	RangeSubselect *rss;
+	Node		*col_tb;
+	A_Expr		*lexpr;
+	Node		*whereClause = NULL;
+
+	/* make subselect targetlist */
+	for (i = 0; i < INDEXES_COLUMN_NUMS; i++)
+	{
+		rt = makeShowResTarget(pstrdup(ailas[i]),
+							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
+							   -1);
+		inner->targetList = lappend(inner->targetList, rt);
+	}
+
+	/* make subselect fromClause */
+	inner->fromClause = list_make1(makeRangeVar("ivymy", "statistics", -1));
+
+	/*
+	 * make subselect whereClause
+	 *
+	 * [{FROM | IN} db_name]
+	 */
+	col_db = makeColumnRef("index_schema", NIL, -1, 0);
+	if (db_name) /* {FROM | IN} schema */
+	{
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", col_db, db_name, -1);
+	}
+	else if (tb_name && tb_name->schemaname) /* schema.index_name */
+	{
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
+													   col_db,
+													   makeStringConst(tb_name->schemaname, -1),
+													   -1);
+	}
+	else /* current schema */
+	{
+		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
+											NIL,
+											COERCE_EXPLICIT_CALL,
+											-1);
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
+													   col_db,
+													   (Node *)funcCall,
+													   -1);
+	}
+
+	/* make outerselect */
+	rss = makeShowRangeSubselect((Node *)inner, "subq");
+	cref = makeShowAllColumnRef();
+	rt = makeShowResTarget(NULL, (Node *) cref, -1);
+
+	/*
+	 * make outerselect whereClause
+	 *
+	 * {FROM | IN} tbl_name
+	 * [WHERE expr]
+	 */
+	col_tb = makeColumnRef("Table", NIL, -1, 0);
+	lexpr = makeSimpleA_Expr(AEXPR_OP, "=", col_tb, makeStringConst(tb_name->relname, -1), -1);
+	if (filter && filter->node)
+		whereClause = (Node *)makeBoolExpr(AND_EXPR, list_make2((Node *)lexpr, filter->node), false, -1);
+	else
+		whereClause = (Node *)lexpr;
+
+	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), whereClause);
+
+	return outer;
+}
+
+/* makeShowTableStatusStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the table status.
+ */
+static SelectStmt *
+makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
+{
+	#define		TABLE_STATUS_COLUMN_NUMS 18
+
+	char		colnames[TABLE_STATUS_COLUMN_NUMS][32]
+						= {"TABLE_NAME", "ENGINE","VERSION", "ROW_FORMAT", "TABLE_ROWS", "AVG_ROW_LENGTH", "DATA_LENGTH",
+						   "MAX_DATA_LENGTH", "INDEX_LENGTH", "DATA_FREE", "AUTO_INCREMENT", "CREATE_TIME",
+						   "UPDATE_TIME", "CHECK_TIME", "TABLE_COLLATION", "CHECKSUM", "CREATE_OPTIONS", "TABLE_COMMENT"};
+
+	char		ailas[TABLE_STATUS_COLUMN_NUMS][32]
+						= {"Name", "Engine", "Version", "Row_format", "Rows", "Avg_row_length", "Data_length",
+						   "Max_data_length", "Index_length", "Data_free", "Auto_increment", "Create_time",
+						   "Update_time","Check_time","Collation","Checksum","Create_options","Comment"};
+	int			i = 0;
+	SelectStmt	*outer;
+	SelectStmt	*inner = makeNode(SelectStmt);
+	ResTarget	*rt;
+	ColumnRef	*cref;
+	Node		*col_db;
+	RangeSubselect *rss;
+
+	/* make subselect targetlist */
+	for (i = 0; i < TABLE_STATUS_COLUMN_NUMS; i++)
+	{
+		rt = makeShowResTarget(pstrdup(ailas[i]),
+							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
+							   -1);
+		inner->targetList = lappend(inner->targetList, rt);
+	}
+
+	/* make subselect fromClause */
+	inner->fromClause = list_make1(makeRangeVar("ivymy", "tables", -1));
+
+	/*
+	 * make subselect whereClause
+	 *
+	 * [{FROM | IN} db_name]
+	 */
+	col_db = makeColumnRef("table_schema", NIL, -1, 0);
+	if (db_name) /* {FROM | IN} schema */
+	{
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", col_db, db_name, -1);
+	}
+	else /* current schema */
+	{
+		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
+											NIL,
+											COERCE_EXPLICIT_CALL,
+											-1);
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
+													   col_db,
+													   (Node *)funcCall,
+													   -1);
+	}
+
+	/* make outerselect */
+	rss = makeShowRangeSubselect((Node *)inner, "subq");
+	cref = makeShowAllColumnRef();
+	rt = makeShowResTarget(NULL, (Node *) cref, -1);
+	/* [LIKE 'pattern' | WHERE expr] */
+	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter("Name", filter));
+
+	return outer;
+}
+
+/* makeShowViewStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the view's information.
+ */
+static SelectStmt *
+makeShowViewStmt(RangeVar *view_name)
+{
+	#define		VIEW_COLUMN_NUMS 4
+
+	char		colnames[VIEW_COLUMN_NUMS][32]
+						= {"TABLE_NAME", "VIEW_DEFINITION","CHARACTER_SET_CLIENT", "COLLATION_CONNECTION"};
+
+	char		ailas[VIEW_COLUMN_NUMS][32]
+						= {"View", "Create View", "character_set_client", "collation_connection"};
+	int			i = 0;
+	SelectStmt	*outer;
+	SelectStmt	*inner = makeNode(SelectStmt);
+	ResTarget	*rt;
+	ColumnRef	*cref;
+	Node		*col_db;
+	RangeSubselect *rss;
+	Node		*col_tb;
+	A_Expr		*lexpr;
+	Node		*whereClause = NULL;
+
+	/* make subselect targetlist */
+	for (i = 0; i < VIEW_COLUMN_NUMS; i++)
+	{
+		rt = makeShowResTarget(pstrdup(ailas[i]),
+							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
+							   -1);
+		inner->targetList = lappend(inner->targetList, rt);
+	}
+
+	/* make subselect fromClause */
+	inner->fromClause = list_make1(makeRangeVar("ivymy", "views", -1));
+
+	/*
+	 * make subselect whereClause
+	 */
+	col_db = makeColumnRef("table_schema", NIL, -1, 0);
+	if (view_name && view_name->schemaname) /* schema.view_name */
+	{
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
+													   col_db,
+													   makeStringConst(view_name->schemaname, -1),
+													   -1);
+	}
+	else /* current schema */
+	{
+		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
+											NIL,
+											COERCE_EXPLICIT_CALL,
+											-1);
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
+													   col_db,
+													   (Node *)funcCall,
+													   -1);
+	}
+
+	/* make outerselect */
+	rss = makeShowRangeSubselect((Node *)inner, "subq");
+	cref = makeShowAllColumnRef();
+	rt = makeShowResTarget(NULL, (Node *) cref, -1);
+
+	/*
+	 * make outerselect whereClause
+	 */
+	if (view_name && view_name->relname)
+	{
+		col_tb = makeColumnRef("View", NIL, -1, 0);
+		lexpr = makeSimpleA_Expr(AEXPR_OP, "=", col_tb, makeStringConst(view_name->relname, -1), -1);
+		whereClause = (Node *)lexpr;
+	}
+
+	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), whereClause);
+
+	return outer;
+}
+
+/* makeShowTablesStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns all tables.
+ */
+static SelectStmt *
+makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
+{
+#define		TABLES_COLUMN_NUMS 2
+
+	char		colnames[TABLE_STATUS_COLUMN_NUMS][16]
+						= {"TABLE_NAME", "TABLE_TYPE"};
+
+	char		ailas[TABLE_STATUS_COLUMN_NUMS][16]
+						= {"Tables", "Table_type"};
+	SelectStmt	*outer;
+	SelectStmt	*inner = makeNode(SelectStmt);
+	ResTarget	*rt;
+	ResTarget	*rt2;
+	ColumnRef	*cref;
+	Node		*col_db;
+	RangeSubselect *rss;
+	char		*schema = NULL;
+	char		*like_name;
+	char		*rtname = NULL;
+
+	/* make subselect fromClause */
+	inner->fromClause = list_make1(makeRangeVar("ivymy", "tables", -1));
+
+	/*
+	 * make subselect whereClause
+	 *
+	 * [{FROM | IN} db_name]
+	 */
+	col_db = makeColumnRef("table_schema", NIL, -1, 0);
+	if (db_name) /* {FROM | IN} schema */
+	{
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", col_db, db_name, -1);
+		if (nodeTag(db_name) == T_A_Const)
+		{
+			A_Const *node  = (A_Const *)db_name;
+			schema = strVal(&node->val);
+		}
+	}
+	else /* current schema */
+	{
+		/* The current schema myst be determined first;
+		 * otherwise, the correct value cannot be retrieved later.
+		 */
+		LOCAL_FCINFO(fcinfo, 0);
+		schema = NameStr(*(DatumGetName(current_schema(fcinfo))));
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
+													   col_db,
+													   makeStringConst(schema, -1),
+													   -1);
+	}
+
+	/* make subselect targetlist */
+	if (schema)
+		rtname = psprintf("%s_%s", ailas[0], schema);
+	else
+		rtname = pstrdup(ailas[0]);
+
+	rt = makeShowResTarget(pstrdup(rtname),
+							   (Node *)makeColumnRef(pstrdup(colnames[0]), NIL, -1, 0),
+							   -1);
+	inner->targetList = lappend(inner->targetList, rt);
+	like_name = rt->name;
+
+	if (full == true) /* display Table_type */
+	{
+		ResTarget	*rt1;
+
+		rt1 = makeShowResTarget(pstrdup(ailas[1]),
+							   (Node *)makeColumnRef(pstrdup(colnames[1]), NIL, -1, 0),
+							   -1);
+		inner->targetList = lappend(inner->targetList, rt1);
+	}
+
+	/* make outerselect */
+	rss = makeShowRangeSubselect((Node *)inner, "subq");
+	cref = makeShowAllColumnRef();
+	rt2 = makeShowResTarget(NULL, (Node *) cref, -1);
+	/* [LIKE 'pattern' | WHERE expr] */
+	outer = makeShowSelectStmt(list_make1(rt2), list_make1(rss), makeShowFilter(like_name, filter));
+
+	return outer;
+}
+
+/* makeShowSchemasStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns all database.
+ */
+static SelectStmt *
+makeShowSchemasStmt(ShowFilter *filter)
+{
+	char		*colnames = "SCHEMA_NAME";
+	char		*ailas = "Database";
+	SelectStmt	*outer;
+	SelectStmt	*inner = makeNode(SelectStmt);
+	ResTarget	*rt;
+	ColumnRef	*cref;
+	RangeSubselect *rss;
+
+	/* make subselect targetlist */
+	rt = makeShowResTarget(pstrdup(ailas),
+							   (Node *)makeColumnRef(pstrdup(colnames), NIL, -1, 0),
+							   -1);
+	inner->targetList = lappend(inner->targetList, rt);
+
+	/* make subselect fromClause */
+	inner->fromClause = list_make1(makeRangeVar("ivymy", "schemata", -1));
+
+	/* make outerselect */
+	rss = makeShowRangeSubselect((Node *)inner, "subq");
+	cref = makeShowAllColumnRef();
+	rt = makeShowResTarget(NULL, (Node *) cref, -1);
+	/* [LIKE 'pattern' | WHERE expr] */
+	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter(ailas, filter));
+
+	return outer;
+}
+
+/* makeShowColumnsStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns all cloumns of a table.
+ */
+static SelectStmt *
+makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool full)
+{
+	#define		COLUMNS_COLUMN_NUMS 6
+	#define		FULL_COLUMNS_COLUMN_NUMS 9
+
+	char		full_colnames[FULL_COLUMNS_COLUMN_NUMS][16]
+						= {"COLUMN_NAME", "DATA_TYPE","COLLATION_NAME", "IS_NULLABLE", "COLUMN_KEY",
+						   "COLUMN_DEFAULT", "EXTRA", "PRIVILEGES", "COLUMN_COMMENT"};
+
+	char		full_ailas[FULL_COLUMNS_COLUMN_NUMS][16]
+						= {"Field", "Type", "Collation", "Null", "Key",
+						   "Default", "Extra", "Privileges", "Comment"};
+
+	char		colnames[COLUMNS_COLUMN_NUMS][16]
+						= {"COLUMN_NAME", "DATA_TYPE", "IS_NULLABLE", "COLUMN_KEY", "COLUMN_DEFAULT", "EXTRA"};
+	char		ailas[COLUMNS_COLUMN_NUMS][16]
+						= {"Field", "Type",  "Null", "Key", "Default", "Extra"};
+	int			 i = 0;
+	ResTarget	*rt;
+	ColumnRef	*cref;
+	Node		*col_db, *col_tb;
+	RangeSubselect *rss;
+	A_Expr		*lexpr, *rexpr;
+	SelectStmt	*outer;
+	SelectStmt	*inner = makeNode(SelectStmt);
+
+	/* make subselect targetlist */
+	if (full)
+	{
+		for (i = 0; i < FULL_COLUMNS_COLUMN_NUMS; i++)
+		{
+			rt = makeShowResTarget(pstrdup(full_ailas[i]),
+							   (Node *)makeColumnRef(pstrdup(full_colnames[i]), NIL, -1, 0),
+							   -1);
+			inner->targetList = lappend(inner->targetList, rt);
+		}
+	}
+	else
+	{
+		for (i = 0; i < COLUMNS_COLUMN_NUMS; i++)
+		{
+			rt = makeShowResTarget(pstrdup(ailas[i]),
+							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
+							   -1);
+			inner->targetList = lappend(inner->targetList, rt);
+		}
+	}
+
+	/* make subselect fromClause */
+	inner->fromClause = list_make1(makeRangeVar("ivymy", "columns", -1));
+
+	/*
+	 * make subselect whereClause
+	 *
+	 * [{FROM | IN} tbl_name]
+	 * [{FROM | IN} db_name]
+	 */
+	col_db = makeColumnRef("table_schema", NIL, -1, 0);
+	if (db_name) /* {FROM | IN} schema */
+	{
+		lexpr = makeSimpleA_Expr(AEXPR_OP, "=", col_db, db_name, -1);
+	}
+	else if (tb_name && tb_name->schemaname) /* schema.table_name */
+	{
+		lexpr = makeSimpleA_Expr(AEXPR_OP, "=",
+								 col_db,
+								 makeStringConst(tb_name->schemaname, -1),
+								 -1);
+	}
+	else /* current schema */
+	{
+		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
+											NIL,
+											COERCE_EXPLICIT_CALL,
+											-1);
+		lexpr = makeSimpleA_Expr(AEXPR_OP, "=",
+								 col_db,
+								 (Node *)funcCall,
+								 -1);
+	}
+
+	col_tb = makeColumnRef("table_name", NIL, -1, 0);
+	rexpr = makeSimpleA_Expr(AEXPR_OP, "=", col_tb, makeStringConst(tb_name->relname, -1), -1);
+
+	inner->whereClause = (Node *)makeBoolExpr(AND_EXPR, list_make2((Node *)lexpr, (Node *)rexpr), false, -1);
+
+	/* make outerselect */
+	rss = makeShowRangeSubselect((Node *)inner, "subq");
+	cref = makeShowAllColumnRef();
+	rt = makeShowResTarget(NULL, (Node *) cref, -1);
+	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter("Field", filter));
+
+	return outer;
+}
+/* Begin - ReqID:SRS-MYSQL-SHOW */
+
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 static int32
 GetTypeNameTypeMod(const TypeName *typeName)
@@ -21306,5 +22047,131 @@ makeVarRef(char *varname, VarKind kind, int location)
 	var->location = location;
 	return (Node *) var;
 }
-
 /* End - ReqID:SRS-MYSQL-SET */
+
+/* Begin - ReqID:SRS-MYSQL-SHOW */
+/* makeShowCreateDatabaseStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the function's result.
+ */
+static Node *
+makeShowCreateDatabaseStmt(const char *showname, bool existflg)
+{
+	SelectStmt		   *selectStmt = makeNode(SelectStmt);
+	ColumnRef		   *columnRef = makeNode(ColumnRef);
+	ResTarget		   *resTarget = makeNode(ResTarget);
+	RangeFunction	   *rangeFunction = makeNode(RangeFunction);
+	FuncCall		   *funcCall = makeFuncCall(list_make2(makeString("ivymy"), makeString("mys_show_create_database")),
+												list_make2(makeStringConst(pstrdup(showname), -1), makeBoolAConst(existflg, -1)),
+												COERCE_EXPLICIT_CALL,
+												-1);
+
+	/* Construct a query whose result comes from a function */
+	rangeFunction->functions = list_make1(list_make2(funcCall, NIL));
+	selectStmt->fromClause = list_make1(rangeFunction);
+	columnRef->fields = list_make1(makeNode(A_Star));
+	resTarget->val = (Node *)columnRef;
+	selectStmt->targetList = list_make1(resTarget);
+
+	return (Node *) selectStmt;
+}
+
+/* makeRestaget
+ *
+ * Construct a ResTarget node.
+ */
+static ResTarget *
+makeRestaget(Node *val, char *alias)
+{
+	ResTarget	   *res;
+	res = makeNode(ResTarget);
+	res->name = alias;
+	res->indirection = NIL;
+	res->val = val;
+	res->location = -1;
+	return res;
+}
+
+/* makeShowCreateTableStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the function's result.
+ */
+static Node *
+makeShowCreateTableStmt(RangeVar *rvar)
+{
+	SelectStmt 	   *selectStmt = makeNode(SelectStmt);
+	ResTarget 	   *resTarget;
+	ResTarget 	   *resTargetcreate;
+	Oid				reloid = InvalidOid;
+	FuncCall	   *funcCall;
+	reloid = RangeVarGetRelid(rvar, NoLock, false);
+	funcCall = makeFuncCall(list_make2(makeString("ivymy"), makeString("mys_show_create_table")),
+											 list_make1(makeIntConst(reloid, -1)),
+											 COERCE_EXPLICIT_CALL,
+											 -1);
+	/* Construct a query whose result comes from a function,
+	 * result named "Create Table", table named "Table".
+	 */
+	resTargetcreate = makeRestaget((Node *)funcCall, "Create Table");
+	resTarget = makeRestaget(makeStringConst(rvar->relname, -1), "Table");
+	selectStmt->targetList = list_make2(resTarget, resTargetcreate);
+	return (Node *) selectStmt;
+}
+
+/* makeShowVariableStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the view's result.
+ */
+static Node *
+makeShowVariableStmt(const char *glob_or_session, ShowFilter *filter)
+{
+	SelectStmt	   *selectStmt = makeNode(SelectStmt);
+	ResTarget 	   *resvariablename;
+	ResTarget 	   *resvariablevalue;
+	Node		   *where = NULL;
+	char		   *viewstr = NULL;
+
+	/* get system view's name */
+	if (glob_or_session != NULL )
+	{
+		if (pg_strcasecmp(glob_or_session, "global") == 0)
+		{
+			viewstr = pstrdup("global_variables");
+		}
+		else if (pg_strcasecmp(glob_or_session, "session") == 0 ||
+				 pg_strcasecmp(glob_or_session, "variables") == 0)
+		{
+			viewstr = pstrdup("session_variables");
+		}
+		else
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg(" unrecognized configuration parameter %s ", glob_or_session)));
+		}
+	}
+	else
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("unrecognized configuration parameter")));
+	}
+
+	/* A condition or a Like expression */
+	where = makeShowFilter(pstrdup("VARIABLE_NAME"), filter);
+
+	/* Return two columns */
+	resvariablename = makeRestaget(makeColumnRef("VARIABLE_NAME", NIL, -1, 0), "Variable_name");
+	resvariablevalue = makeRestaget(makeColumnRef("VARIABLE_VALUE", NIL, -1, 0), "Value");
+
+	/* Construct a SelectStmt statement */
+	selectStmt->targetList = list_make2(resvariablename, resvariablevalue);
+	selectStmt->fromClause = list_make1(makeRangeVar("ivymy", viewstr, -1));
+	selectStmt->whereClause = where;
+
+	return (Node *) selectStmt;
+}
+/* End - ReqID:SRS-MYSQL-SHOW */
