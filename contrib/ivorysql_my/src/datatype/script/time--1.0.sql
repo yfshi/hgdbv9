@@ -3299,8 +3299,16 @@ CREATE CAST (ivymy.mysdatetime AS pg_catalog.timestamp)
 WITH INOUT
 AS ASSIGNMENT;
 
+CREATE OR REPLACE FUNCTION ivymy.timestamp_mysdatetime(pg_catalog.timestamp)
+RETURNS ivymy.mysdatetime
+AS $$
+    SELECT to_char($1, 'YYYY-MM-DD HH24:MI:SS.MS')::ivymy.mysdatetime;
+$$
+LANGUAGE SQL
+STRICT PARALLEL SAFE;
+
 CREATE CAST (pg_catalog.timestamp AS ivymy.mysdatetime)
-WITH INOUT
+WITH FUNCTION ivymy.timestamp_mysdatetime(pg_catalog.timestamp)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.date AS ivymy.mysdatetime)
