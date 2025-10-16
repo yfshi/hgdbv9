@@ -134,6 +134,37 @@ DETAIL:  cannot grant privilege of syssso_role/syssao_role member to anyone
 grant all on function func_syssao_u1 to u1;
 ERROR:  permission denied
 DETAIL:  cannot grant privilege of syssso_role/syssao_role member to anyone
+---- CALL FUNCTION
+------ pass
+select public.func_sysdba_u1_f1(1,1);
+ func_sysdba_u1_f1 
+-------------------
+                 2
+(1 row)
+
+select sch_sysdba_u1.func_sysdba_u1_f1(1,1);
+ func_sysdba_u1_f1 
+-------------------
+                 2
+(1 row)
+
+select sch_u1.func_sysdba_u1_f1(1,1);
+ func_sysdba_u1_f1 
+-------------------
+                 2
+(1 row)
+
+select sch_syssso_u2.func_sysdba_u1_f1(1,1);
+ func_sysdba_u1_f1 
+-------------------
+                 2
+(1 row)
+
+------ fail
+select func_syssso_u1(1,1);
+ERROR:  permission denied for function func_syssso_u1
+select func_syssao_u1(1,1);
+ERROR:  permission denied for function func_syssao_u1
 ---- DROP FUNCTION
 ------ pass
 drop function public.func_sysdba_u1_f1;

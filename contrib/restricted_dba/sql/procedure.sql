@@ -104,6 +104,16 @@ grant all on procedure func_syssso_u1 to u1;
 grant all on procedure func_syssao_u1 to sysdba_u1;
 grant all on procedure func_syssao_u1 to u1;
 
+---- CALL PROCEDURE
+------ pass
+call public.func_sysdba_u1_f1(1,1);
+call sch_sysdba_u1.func_sysdba_u1_f1(1,1);
+call sch_u1.func_sysdba_u1_f1(1,1);
+call sch_syssso_u2.func_sysdba_u1_f1(1,1);
+------ fail
+call func_syssso_u1(1,1);
+call func_syssao_u1(1,1);
+
 ---- DROP PROCEDURE
 ------ pass
 drop procedure public.func_sysdba_u1_f1;

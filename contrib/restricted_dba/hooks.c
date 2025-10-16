@@ -61,6 +61,7 @@ static object_access_hook_type next_object_access_hook = NULL;
 static ExecutorCheckPerms_hook_type next_exec_check_perms_hook = NULL;
 static ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
+static needs_fmgr_hook_type next_needs_fmgr_hook = NULL;
 
 /*chengxi marks: just a fake guc param*/
 static bool fake_restricted_dba;
@@ -740,6 +741,77 @@ object_access_check(ObjectAccessType access,
 	if (next_object_access_hook)
 		(*next_object_access_hook) (access, classId, objectId, subId, arg);
 }
+
+
+/*
+ * Function execution check for se_feature check
+ * 
+ * This function is attached on needs_fmgr_hook, it used to check whewher
+ * a function need to call an extra fmgr handler. it will be called for all
+ * function. but we only care some of them.
+ */
+static bool
+func_execute_check(Oid proc_oid)
+{
+	bool result = false;
+	HeapTuple	tuple;
+	Form_pg_proc procForm;
+	Oid			ownerId;
+
+	/* get origin result */
+	if (next_needs_fmgr_hook)
+		result = next_needs_fmgr_hook(proc_oid);
+
+	/* if se_feature.mode is off, just return */
+	if (!se_feature.mode)
+		return result;
+
+	/*
+	 * we only care about tuple valid case
+	 */
+	tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(proc_oid));
+	if (HeapTupleIsValid(tuple))
+	{
+		procForm = (Form_pg_proc) GETSTRUCT(tuple);
+		ownerId = procForm->proowner;
+
+		/* currently we only care procedure and  */
+		if (procForm->prokind != PROKIND_FUNCTION &&
+			procForm->prokind != PROKIND_PROCEDURE)
+		{
+			result = true;
+		}
+		else if (IS_SYSSSO(ownerId) || IS_SYSSAO(ownerId))
+		{
+			ObjectType	obj_type = OBJECT_FUNCTION;
+			AclResult	aclresult = pg_proc_aclcheck_nosuper(proc_oid, GetUserId(), ACL_EXECUTE);
+
+			if (procForm->prokind == PROKIND_FUNCTION)
+				obj_type = OBJECT_FUNCTION;
+			else if (procForm->prokind == PROKIND_PROCEDURE)
+				obj_type = OBJECT_PROCEDURE;
+
+			if (aclresult != ACLCHECK_OK)
+			{
+				aclcheck_error(aclresult, obj_type,
+							   get_func_name(proc_oid));
+			}
+			else
+			{
+				result = true;
+			}	
+		}
+		else
+		{
+			result = true;
+		}
+
+		ReleaseSysCache(tuple);
+	}
+
+	return result;
+}
+
 /*
  * Module load/unload callback
  */
@@ -815,6 +887,9 @@ _PG_init(void)
 	/* ProcessUtility hook */
 	next_ProcessUtility_hook = ProcessUtility_hook;
 	ProcessUtility_hook = restricted_utility;
+
+	next_needs_fmgr_hook = needs_fmgr_hook;
+	needs_fmgr_hook = func_execute_check;
 
 	// /* init contextual info */
 	// memset(&sepgsql_context_info, 0, sizeof(sepgsql_context_info));

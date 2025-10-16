@@ -20,14 +20,12 @@
 #include "postgres.h"
 
 
-
-
 typedef struct 
 {
 	bool mode;
 	bool restricted_dba;
 	Oid tmp_superuser_oid;
-	/*use it with caution, it may make a normal user a superuser,maybe changed latter*/
+	/* use it with caution, it may make a normal user a superuser,maybe changed latter*/
 }SeFeature;
 
 extern PGDLLIMPORT SeFeature se_feature;

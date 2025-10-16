@@ -1858,7 +1858,7 @@ get_su_pwd(void)
 		printf("\n");
 		fflush(stdout);
 		/* Begin - ReqID:SRS-SECURITY-POWERS Bug#z4747 */
-		pwd1 = simple_prompt("Enter new dba user password: ", false);
+		pwd1 = simple_prompt("Enter default dba user password: ", false);
 		/* End - ReqID:SRS-SECURITY-POWERS Bug#z4747 */
 		pwd2 = simple_prompt("Enter it again: ", false);
 		if (strcmp(pwd1, pwd2) != 0)
