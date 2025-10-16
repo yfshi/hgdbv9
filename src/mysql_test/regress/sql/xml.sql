@@ -55,8 +55,8 @@ SET xmlbinary TO hex;
 SELECT xmlelement(name foo, bytea 'bar');
 
 SELECT xmlelement(name foo, xmlattributes(true as bar));
-SELECT xmlelement(name foo, xmlattributes('2009-04-09 00:24:37'::timestamp as bar));
-SELECT xmlelement(name foo, xmlattributes('infinity'::timestamp as bar));
+SELECT xmlelement(name foo, xmlattributes('2009-04-09 00:24:37'::pg_catalog.timestamp as bar));
+SELECT xmlelement(name foo, xmlattributes('infinity'::pg_catalog.timestamp as bar));
 SELECT xmlelement(name foo, xmlattributes('<>&"''' as funny, xml 'b<a/>r' as funnier));
 
 
@@ -385,7 +385,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM xmltableview1;
 EXPLAIN (COSTS OFF, VERBOSE) SELECT * FROM xmltableview1;
 
 -- errors
-SELECT * FROM XMLTABLE (ROW () PASSING null COLUMNS v1 timestamp) AS f (v1, v2);
+SELECT * FROM XMLTABLE (ROW () PASSING null COLUMNS v1 pg_catalog.timestamp) AS f (v1, v2);
 
 -- XMLNAMESPACES tests
 SELECT * FROM XMLTABLE(XMLNAMESPACES('http://x.y' AS zz),

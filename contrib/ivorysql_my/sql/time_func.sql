@@ -86,6 +86,7 @@ SELECT dayofmonth('2022-10-09 09:55:28.12345');
 SELECT dayofmonth(20221009);
 select dayofmonth('20:38:40');
 select dayofmonth(203840);
+select dayofmonth('2025-07-25 15:30:00'::timestamp);    -- bug#z5586
 
 /*DAYOFWEEK*/
 SELECT dayofweek('2022-10-09 09:55:28.12345');
@@ -125,6 +126,7 @@ select hour('2022-10-09');
 select hour(true);      -- bug#z5086
 select hour(false);     -- bug#z5086
 select hour(0);         -- bug#z5086
+select hour(cast('14:12:12' as time));         -- bug#z5587
 
 create table test_hour(hour int);
 insert into test_hour select hour('-838:59:59');
@@ -180,6 +182,7 @@ select microsecond('2022-10-09');
 select microsecond(true);       -- bug#z5093
 select microsecond(false);      -- bug#z5093
 select microsecond(0);          -- bug#z5093
+select microsecond(cast('2024-03-15 12:34:56' as datetime));        -- bug#z5585
 
 /*MINUTE*/
 select MINUTE(datetime '2021-11-4 16:30:44.341191');
@@ -194,6 +197,7 @@ select minute('2022-10-09');
 select minute(true);    -- bug#z5096
 select minute(false);   -- bug#z5096
 select minute(0);       -- bug#z5096
+select minute(cast('2024-03-15 12:34:56' as datetime));     -- bug#z5588
 
 /*SECOND*/
 SELECT second('2022-10-09 09:55:28.12345');
@@ -1019,6 +1023,12 @@ select datediff(cast(20121212182822.222 as date), cast(20121112182822.222 as dat
 select datediff(NULL, NULL);--NULL
 select datediff('2007-12-31 23:59:59');--error
 select datediff();--error
+
+/* Begin - bug#z5751 */
+select pg_typeof(datediff(20231010::int,20231009::int));
+select pg_typeof(datediff('2023-10-10 12:34:56'::datetime,'2023-10-09 08:00:00'::datetime));
+select pg_typeof(datediff('2023-10-10 12:34:56','2023-10-09 08:00:00'));
+/* End - bug#z5751 */
 
 --from_days
 select from_days(101);--0000-00-00

@@ -7214,7 +7214,6 @@ PG_FUNCTION_INFO_V1(mysdatetimes_int8_notlike);
 PG_FUNCTION_INFO_V1(mysdatetimes_numeric_notlike);
 
 PG_FUNCTION_INFO_V1(time2int8);
-PG_FUNCTION_INFO_V1(datetime2int8);
 PG_FUNCTION_INFO_V1(datetimes2int8);
 
 /*****************************************************************************
@@ -11042,6 +11041,7 @@ PG_FUNCTION_INFO_V1(mystimestamp_recv);
 PG_FUNCTION_INFO_V1(mystimestamp_send);
 PG_FUNCTION_INFO_V1(int_mystimestamp);
 PG_FUNCTION_INFO_V1(numeric_mystimestamp);
+PG_FUNCTION_INFO_V1(mystimestamp_numeric);
 PG_FUNCTION_INFO_V1(timestamptz_mystimestamp);
 PG_FUNCTION_INFO_V1(mystimestamp_eq);
 PG_FUNCTION_INFO_V1(mystimestamp_eqint2);
@@ -11116,6 +11116,7 @@ PG_FUNCTION_INFO_V1(int2_addmystimestamp);
 PG_FUNCTION_INFO_V1(int4_addmystimestamp);
 PG_FUNCTION_INFO_V1(int8_addmystimestamp);
 PG_FUNCTION_INFO_V1(num_addmystimestamp);
+PG_FUNCTION_INFO_V1(mystimestamp_addmystime);
 PG_FUNCTION_INFO_V1(mystimestamp_subtimestamp);
 PG_FUNCTION_INFO_V1(mystimestamp_subint2);
 PG_FUNCTION_INFO_V1(mystimestamp_subint4);
@@ -11569,6 +11570,16 @@ numeric_mystimestamp(PG_FUNCTION_ARGS)
 	PG_RETURN_TIMEADT(timestamp);
 }
 
+/* mystimestamp_numeric()
+ * Convert mysql timestamp to numeric data type.
+ */
+Datum
+mystimestamp_numeric(PG_FUNCTION_ARGS)
+{
+	TimeADT	dateVal = PG_GETARG_TIMEADT(0);
+
+	PG_RETURN_NUMERIC(int64_to_numeric(dateVal));
+}
 
 /* int_mystimestamp()
  * Convert integer to mysql timestamp data type.
@@ -12840,6 +12851,15 @@ num_addmystimestamp(PG_FUNCTION_ARGS)
 	res = DatumGetNumeric(DirectFunctionCall2(numeric_add, NumericGetDatum(dateVal2),
 						   NumericGetDatum(int64_to_numeric(dateVal1))));
 	PG_RETURN_NUMERIC(res);
+}
+
+Datum
+mystimestamp_addmystime(PG_FUNCTION_ARGS)
+{
+	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
+	TimeADT		dateVal2 = PG_GETARG_TIMEADT(1);
+
+	PG_RETURN_INT64(dateVal1 + dateVal2);
 }
 
 Datum
@@ -14782,10 +14802,7 @@ Datum
 mystimestamps_in(PG_FUNCTION_ARGS)
 {
 	char	   *str = PG_GETARG_CSTRING(0);
-#ifdef NOT_USED
-	Oid			typelem = PG_GETARG_OID(1);
-#endif
-
+	int32		typmod = PG_GETARG_INT32(2);
 	TimeADT		timestamp = -1;
 	fsec_t		fsec = 0;
 	struct pg_tm tt,
@@ -14800,6 +14817,7 @@ mystimestamps_in(PG_FUNCTION_ARGS)
 	int64 datetemp = 0;
 	Numeric		num ;
 	int			fsec_len = 0;
+	char		buf[MAXDATELEN + 1] = {0};
 
 	if(has_sql_mode(MODE_NO_ZERO_DATE))
 		flag |= TIME_NO_ZERO_DATE;
@@ -14851,12 +14869,16 @@ mystimestamps_in(PG_FUNCTION_ARGS)
 	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	timestamp = datetemp + time;
 
-	num = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(int64_to_numeric(timestamp)),
-						   NumericGetDatum(int64_to_numeric(1000000))));
-	num = DatumGetNumeric(DirectFunctionCall2(numeric_add, NumericGetDatum(num),
-						   NumericGetDatum(int64_to_numeric(fsec))));
-	num = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(num),
-						   NumericGetDatum(int64_to_numeric(1000000))));
+#ifdef WIN32
+	snprintf(buf, MAXDATELEN, "%lld.%06d", timestamp, fsec);
+#else
+	snprintf(buf, MAXDATELEN, "%ld.%06d", timestamp, fsec);
+#endif
+
+	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+											  CStringGetDatum(buf),
+											  ObjectIdGetDatum(InvalidOid),
+											  Int32GetDatum((((14 + typmod) << 16) | typmod) + VARHDRSZ)));
 
 	PG_RETURN_NUMERIC(num);
 }
@@ -15186,6 +15208,7 @@ Datum
 int_mystimestamps(PG_FUNCTION_ARGS)
 {
 	int64		arg = PG_GETARG_INT64(0);
+	int32		typmod = PG_GETARG_INT32(1);
 	TimeADT		timestamp = 0;
 	fsec_t		fsec = 0;
 	struct pg_tm tt,
@@ -15196,6 +15219,7 @@ int_mystimestamps(PG_FUNCTION_ARGS)
 	int			warn = 0;
 	TimeOffset	time = 0;
 	Numeric		res;
+	char		buf[MAXDATELEN + 1] = {0};
 
 	if(arg == 0)
 	{
@@ -15320,12 +15344,16 @@ int_mystimestamps(PG_FUNCTION_ARGS)
 		}
 	}
 
-	res = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(int64_to_numeric(timestamp)),
-						   NumericGetDatum(int64_to_numeric(1000000))));
-	res = DatumGetNumeric(DirectFunctionCall2(numeric_add, NumericGetDatum(res),
-						   NumericGetDatum(int64_to_numeric(fsec))));
-	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(res),
-						   NumericGetDatum(int64_to_numeric(1000000))));
+#ifdef WIN32
+	snprintf(buf, MAXDATELEN, "%lld.%06d", timestamp, fsec);
+#else
+	snprintf(buf, MAXDATELEN, "%ld.%06d", timestamp, fsec);
+#endif
+
+	res = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+											  CStringGetDatum(buf),
+											  ObjectIdGetDatum(InvalidOid),
+											  Int32GetDatum((((14 + typmod) << 16) | typmod) + VARHDRSZ)));
 
 	PG_RETURN_NUMERIC(res);
 }
@@ -15342,6 +15370,8 @@ Datum pgdate_mystimestamps(PG_FUNCTION_ARGS)
 	Numeric		num;
 	int			warn = 0;
 	int			is_strict_mode = 0;
+
+	MemSet(tm, 0, sizeof(struct pg_tm));
 
 	if((has_sql_mode(MODE_STRICT_TRANS_TABLES)) ||
 	   (has_sql_mode(MODE_STRICT_ALL_TABLES)))
@@ -18629,6 +18659,8 @@ PG_FUNCTION_INFO_V1(int8_seqmystime);
 PG_FUNCTION_INFO_V1(num_seqmystime);
 PG_FUNCTION_INFO_V1(mystime_seqstr);
 PG_FUNCTION_INFO_V1(mystime_addtime);
+PG_FUNCTION_INFO_V1(mystime_addmystimestamp);
+PG_FUNCTION_INFO_V1(mystime_addmystimestamps);
 PG_FUNCTION_INFO_V1(mystime_addint2);
 PG_FUNCTION_INFO_V1(mystime_addint4);
 PG_FUNCTION_INFO_V1(mystime_addint8);
@@ -20069,6 +20101,15 @@ mystime_addtime(PG_FUNCTION_ARGS)
 	{
 		PG_RETURN_NULL();
 	}
+	PG_RETURN_INT64(dateVal1 + dateVal2);
+}
+
+Datum
+mystime_addmystimestamp(PG_FUNCTION_ARGS)
+{
+	TimeADT		dateVal1 = PG_GETARG_TIMEADT(0);
+	TimeADT		dateVal2 = PG_GETARG_TIMEADT(1);
+
 	PG_RETURN_INT64(dateVal1 + dateVal2);
 }
 
@@ -26340,13 +26381,6 @@ time2int8(PG_FUNCTION_ARGS)
 {
 	TimeADT		timeVal = PG_GETARG_TIMEADT(0);
 	PG_RETURN_INT64((int64) timeVal);
-}
-
-Datum
-datetime2int8(PG_FUNCTION_ARGS)
-{
-	TimeADT dateTimeVal = PG_GETARG_TIMEADT(0);
-	PG_RETURN_INT64((int64) dateTimeVal);
 }
 
 Datum

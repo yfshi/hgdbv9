@@ -34,7 +34,7 @@ INSERT INTO brintest_multi SELECT
 	cidr '10.2.3/24' + tenthous,
 	date '1995-08-15' + tenthous,
 	time '01:20:30' + thousand * interval '18.5 second',
-	timestamp '1942-07-23 03:05:09' + tenthous * interval '36.38 hours',
+	pg_catalog.timestamp '1942-07-23 03:05:09' + tenthous * interval '36.38 hours',
 	timestamptz '1972-10-10 03:00' + thousand * interval '1 hour',
 	justify_days(justify_hours(tenthous * interval '12 minutes')),
 	timetz '01:30:20+02' + hundred * interval '15 seconds',
@@ -331,7 +331,7 @@ INSERT INTO brintest_multi SELECT
 	inet '10.2.3.4' + tenthous,
 	cidr '10.2.3/24' + tenthous,
 	time '01:20:30' + thousand * interval '18.5 second',
-	timestamp '1942-07-23 03:05:09' + tenthous * interval '36.38 hours',
+	pg_catalog.timestamp '1942-07-23 03:05:09' + tenthous * interval '36.38 hours',
 	timestamptz '1972-10-10 03:00' + thousand * interval '1 hour',
 	justify_days(justify_hours(tenthous * interval '12 minutes')),
 	timetz '01:30:20' + hundred * interval '15 seconds',
@@ -453,21 +453,21 @@ DROP TABLE brin_date_test;
 RESET enable_seqscan;
 
 -- test handling of infinite timestamp values
-CREATE TABLE brin_timestamp_test(a TIMESTAMP);
+CREATE TABLE brin_timestamp_test(a pg_catalog.TIMESTAMP);
 
 INSERT INTO brin_timestamp_test VALUES ('-infinity'), ('infinity');
 INSERT INTO brin_timestamp_test
-SELECT i FROM generate_series('2000-01-01'::timestamp, '2000-02-09'::timestamp, '1 day'::interval) s(i);
+SELECT i FROM generate_series('2000-01-01'::pg_catalog.timestamp, '2000-02-09'::pg_catalog.timestamp, '1 day'::interval) s(i);
 
 CREATE INDEX ON brin_timestamp_test USING brin (a timestamp_minmax_multi_ops) WITH (pages_per_range=1);
 
 SET enable_seqscan = off;
 
 EXPLAIN (ANALYZE, TIMING OFF, COSTS OFF, SUMMARY OFF)
-SELECT * FROM brin_timestamp_test WHERE a = '2023-01-01'::timestamp;
+SELECT * FROM brin_timestamp_test WHERE a = '2023-01-01'::pg_catalog.timestamp;
 
 EXPLAIN (ANALYZE, TIMING OFF, COSTS OFF, SUMMARY OFF)
-SELECT * FROM brin_timestamp_test WHERE a = '1900-01-01'::timestamp;
+SELECT * FROM brin_timestamp_test WHERE a = '1900-01-01'::pg_catalog.timestamp;
 
 DROP TABLE brin_timestamp_test;
 RESET enable_seqscan;

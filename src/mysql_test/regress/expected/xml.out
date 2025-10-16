@@ -168,14 +168,15 @@ SELECT xmlelement(name foo, xmlattributes(true as bar));
  <foo bar="true"/>
 (1 row)
 
-SELECT xmlelement(name foo, xmlattributes('2009-04-09 00:24:37'::timestamp as bar));
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT xmlelement(name foo, xmlattributes('2009-04-09 00:24:...
-                                                  ^
-SELECT xmlelement(name foo, xmlattributes('infinity'::timestamp as bar));
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT xmlelement(name foo, xmlattributes('infinity'::timest...
-                                                  ^
+SELECT xmlelement(name foo, xmlattributes('2009-04-09 00:24:37'::pg_catalog.timestamp as bar));
+            xmlelement            
+----------------------------------
+ <foo bar="2009-04-09T00:24:37"/>
+(1 row)
+
+SELECT xmlelement(name foo, xmlattributes('infinity'::pg_catalog.timestamp as bar));
+ERROR:  timestamp out of range
+DETAIL:  XML does not support infinite timestamp values.
 SELECT xmlelement(name foo, xmlattributes('<>&"''' as funny, xml 'b<a/>r' as funnier));
                          xmlelement                         
 ------------------------------------------------------------
@@ -1114,7 +1115,7 @@ EXPLAIN (COSTS OFF, VERBOSE) SELECT * FROM xmltableview1;
 (7 rows)
 
 -- errors
-SELECT * FROM XMLTABLE (ROW () PASSING null COLUMNS v1 timestamp) AS f (v1, v2);
+SELECT * FROM XMLTABLE (ROW () PASSING null COLUMNS v1 pg_catalog.timestamp) AS f (v1, v2);
 ERROR:  XMLTABLE function has 1 columns available but 2 columns specified
 -- XMLNAMESPACES tests
 SELECT * FROM XMLTABLE(XMLNAMESPACES('http://x.y' AS zz),

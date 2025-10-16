@@ -145,7 +145,7 @@ SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinp GROUP BY 1, 2');
 DROP TABLE stxdinp;
 
 -- basic test for statistics on expressions
-CREATE TABLE ab1 (a INTEGER, b INTEGER, c TIMESTAMP, d TIMESTAMPTZ);
+CREATE TABLE ab1 (a INTEGER, b INTEGER, c pg_catalog.TIMESTAMP, d TIMESTAMPTZ);
 
 -- expression stats may be built on a single expression column
 CREATE STATISTICS ab1_exprstat_1 ON (a+b) FROM ab1;
@@ -171,7 +171,7 @@ CREATE STATISTICS ab1_exprstat_6 ON
 -- insert some data and run analyze, to test that these cases build properly
 INSERT INTO ab1
 SELECT x / 10, x / 3,
-    '2020-10-01'::timestamp + x * interval '1 day',
+    '2020-10-01'::pg_catalog.timestamp + x * interval '1 day',
     '2020-10-01'::timestamptz + x * interval '1 day'
 FROM generate_series(1, 100) x;
 ANALYZE ab1;

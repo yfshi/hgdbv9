@@ -138,10 +138,10 @@ INSERT INTO TIMESTAMP_TBL VALUES ('Feb 16 17:32:01 5097 BC');
 SELECT d1 FROM TIMESTAMP_TBL;
 
 -- Check behavior at the boundaries of the timestamp range
-SELECT '4714-11-24 00:00:00 BC'::timestamp;
-SELECT '4714-11-23 23:59:59 BC'::timestamp;  -- out of range
-SELECT '294276-12-31 23:59:59'::timestamp;
-SELECT '294277-01-01 00:00:00'::timestamp;  -- out of range
+SELECT '4714-11-24 00:00:00 BC'::pg_catalog.timestamp;
+SELECT '4714-11-23 23:59:59 BC'::pg_catalog.timestamp;  -- out of range
+SELECT '294276-12-31 23:59:59'::pg_catalog.timestamp;
+SELECT '294277-01-01 00:00:00'::pg_catalog.timestamp;  -- out of range
 
 -- Demonstrate functions and operators
 SELECT d1 FROM TIMESTAMP_TBL
@@ -165,7 +165,7 @@ SELECT d1 FROM TIMESTAMP_TBL
 SELECT d1 - timestamp without time zone '1997-01-02' AS diff
    FROM TIMESTAMP_TBL WHERE d1 BETWEEN '1902-01-01' AND '2038-01-01';
 
-SELECT date_trunc( 'week', timestamp '2004-02-29 15:44:17.71393' ) AS week_trunc;
+SELECT date_trunc( 'week', pg_catalog.timestamp '2004-02-29 15:44:17.71393' ) AS week_trunc;
 
 -- verify date_bin behaves the same as date_trunc for relevant intervals
 
@@ -173,7 +173,7 @@ SELECT date_trunc( 'week', timestamp '2004-02-29 15:44:17.71393' ) AS week_trunc
 SELECT
   str,
   interval,
-  date_trunc(str, ts) = date_bin(interval::interval, ts, timestamp '2001-01-01') AS equal
+  date_trunc(str, ts) = date_bin(interval::interval, ts, pg_catalog.timestamp '2001-01-01') AS equal
 FROM (
   VALUES
   ('week', '7 d'),
@@ -184,13 +184,13 @@ FROM (
   ('millisecond', '1 ms'),
   ('microsecond', '1 us')
 ) intervals (str, interval),
-(VALUES (timestamp '2020-02-29 15:44:17.71393')) ts (ts);
+(VALUES (pg_catalog.timestamp '2020-02-29 15:44:17.71393')) ts (ts);
 
 -- case 2: BC dates, origin < input
 SELECT
   str,
   interval,
-  date_trunc(str, ts) = date_bin(interval::interval, ts, timestamp '2000-01-01 BC') AS equal
+  date_trunc(str, ts) = date_bin(interval::interval, ts, pg_catalog.timestamp '2000-01-01 BC') AS equal
 FROM (
   VALUES
   ('week', '7 d'),
@@ -201,13 +201,13 @@ FROM (
   ('millisecond', '1 ms'),
   ('microsecond', '1 us')
 ) intervals (str, interval),
-(VALUES (timestamp '0055-6-10 15:44:17.71393 BC')) ts (ts);
+(VALUES (pg_catalog.timestamp '0055-6-10 15:44:17.71393 BC')) ts (ts);
 
 -- case 3: AD dates, origin > input
 SELECT
   str,
   interval,
-  date_trunc(str, ts) = date_bin(interval::interval, ts, timestamp '2020-03-02') AS equal
+  date_trunc(str, ts) = date_bin(interval::interval, ts, pg_catalog.timestamp '2020-03-02') AS equal
 FROM (
   VALUES
   ('week', '7 d'),
@@ -218,13 +218,13 @@ FROM (
   ('millisecond', '1 ms'),
   ('microsecond', '1 us')
 ) intervals (str, interval),
-(VALUES (timestamp '2020-02-29 15:44:17.71393')) ts (ts);
+(VALUES (pg_catalog.timestamp '2020-02-29 15:44:17.71393')) ts (ts);
 
 -- case 4: BC dates, origin > input
 SELECT
   str,
   interval,
-  date_trunc(str, ts) = date_bin(interval::interval, ts, timestamp '0055-06-17 BC') AS equal
+  date_trunc(str, ts) = date_bin(interval::interval, ts, pg_catalog.timestamp '0055-06-17 BC') AS equal
 FROM (
   VALUES
   ('week', '7 d'),
@@ -235,7 +235,7 @@ FROM (
   ('millisecond', '1 ms'),
   ('microsecond', '1 us')
 ) intervals (str, interval),
-(VALUES (timestamp '0055-6-10 15:44:17.71393 BC')) ts (ts);
+(VALUES (pg_catalog.timestamp '0055-6-10 15:44:17.71393 BC')) ts (ts);
 
 -- bin timestamps into arbitrary intervals
 SELECT
@@ -253,29 +253,29 @@ FROM (
   ('100 milliseconds'),
   ('250 microseconds')
 ) intervals (interval),
-(VALUES (timestamp '2020-02-11 15:44:17.71393')) ts (ts),
-(VALUES (timestamp '2001-01-01')) origin (origin);
+(VALUES (pg_catalog.timestamp '2020-02-11 15:44:17.71393')) ts (ts),
+(VALUES (pg_catalog.timestamp '2001-01-01')) origin (origin);
 
 -- shift bins using the origin parameter:
-SELECT date_bin('5 min'::interval, timestamp '2020-02-01 01:01:01', timestamp '2020-02-01 00:02:30');
+SELECT date_bin('5 min'::interval, pg_catalog.timestamp '2020-02-01 01:01:01', pg_catalog.timestamp '2020-02-01 00:02:30');
 
 -- test roundoff edge case when source < origin
-SELECT date_bin('30 minutes'::interval, timestamp '2024-02-01 15:00:00', timestamp '2024-02-01 17:00:00');
+SELECT date_bin('30 minutes'::interval, pg_catalog.timestamp '2024-02-01 15:00:00', pg_catalog.timestamp '2024-02-01 17:00:00');
 
 -- disallow intervals with months or years
-SELECT date_bin('5 months'::interval, timestamp '2020-02-01 01:01:01', timestamp '2001-01-01');
-SELECT date_bin('5 years'::interval,  timestamp '2020-02-01 01:01:01', timestamp '2001-01-01');
+SELECT date_bin('5 months'::interval, pg_catalog.timestamp '2020-02-01 01:01:01', pg_catalog.timestamp '2001-01-01');
+SELECT date_bin('5 years'::interval, pg_catalog.timestamp '2020-02-01 01:01:01', pg_catalog.timestamp '2001-01-01');
 
 -- disallow zero intervals
-SELECT date_bin('0 days'::interval, timestamp '1970-01-01 01:00:00' , timestamp '1970-01-01 00:00:00');
+SELECT date_bin('0 days'::interval, pg_catalog.timestamp '1970-01-01 01:00:00' , pg_catalog.timestamp '1970-01-01 00:00:00');
 
 -- disallow negative intervals
-SELECT date_bin('-2 days'::interval, timestamp '1970-01-01 01:00:00' , timestamp '1970-01-01 00:00:00');
+SELECT date_bin('-2 days'::interval, pg_catalog.timestamp '1970-01-01 01:00:00' , pg_catalog.timestamp '1970-01-01 00:00:00');
 
 -- test overflow cases
-select date_bin('15 minutes'::interval, timestamp '294276-12-30', timestamp '4000-12-20 BC');
-select date_bin('200000000 days'::interval, '2024-02-01'::timestamp, '2024-01-01'::timestamp);
-select date_bin('365000 days'::interval, '4400-01-01 BC'::timestamp, '4000-01-01 BC'::timestamp);
+select date_bin('15 minutes'::interval, pg_catalog.timestamp '294276-12-30', pg_catalog.timestamp '4000-12-20 BC');
+select date_bin('200000000 days'::interval, '2024-02-01'::pg_catalog.timestamp, '2024-01-01'::pg_catalog.timestamp);
+select date_bin('365000 days'::interval, '4400-01-01 BC'::pg_catalog.timestamp, '4000-01-01 BC'::pg_catalog.timestamp);
 
 -- Test casting within a BETWEEN qualifier
 SELECT d1 - timestamp without time zone '1997-01-02' AS diff
@@ -320,10 +320,10 @@ SELECT d1 as "timestamp",
    FROM TIMESTAMP_TBL;
 
 -- value near upper bound uses special case in code
-SELECT date_part('epoch', '294270-01-01 00:00:00'::timestamp);
-SELECT extract(epoch from '294270-01-01 00:00:00'::timestamp);
+SELECT date_part('epoch', '294270-01-01 00:00:00'::pg_catalog.timestamp);
+SELECT extract(epoch from '294270-01-01 00:00:00'::pg_catalog.timestamp);
 -- another internal overflow test case
-SELECT extract(epoch from '5000-01-01 00:00:00'::timestamp);
+SELECT extract(epoch from '5000-01-01 00:00:00'::pg_catalog.timestamp);
 
 -- TO_CHAR()
 SELECT to_char(d1, 'DAY Day day DY Dy dy MONTH Month month RM MON Mon mon')
@@ -361,7 +361,7 @@ SELECT to_char(d1, 'FMIYYY FMIYY FMIY FMI FMIW FMIDDD FMID')
 
 SELECT to_char(d, 'FF1 FF2 FF3 FF4 FF5 FF6  ff1 ff2 ff3 ff4 ff5 ff6  MS US')
    FROM (VALUES
-       ('2018-11-02 12:34:56'::timestamp),
+       ('2018-11-02 12:34:56'::pg_catalog.timestamp),
        ('2018-11-02 12:34:56.78'),
        ('2018-11-02 12:34:56.78901'),
        ('2018-11-02 12:34:56.78901234')
@@ -380,15 +380,15 @@ SELECT make_timestamp(-44, 3, 15, 12, 30, 15);
 select make_timestamp(0, 7, 15, 12, 30, 15);
 
 -- generate_series for timestamp
-select * from generate_series('2020-01-01 00:00'::timestamp,
-                              '2020-01-02 03:00'::timestamp,
+select * from generate_series('2020-01-01 00:00'::pg_catalog.timestamp,
+                              '2020-01-02 03:00'::pg_catalog.timestamp,
                               '1 hour'::interval);
 -- the LIMIT should allow this to terminate in a reasonable amount of time
 -- (but that unfortunately doesn't work yet for SELECT * FROM ...)
-select generate_series('2022-01-01 00:00'::timestamp,
-                       'infinity'::timestamp,
+select generate_series('2022-01-01 00:00'::pg_catalog.timestamp,
+                       'infinity'::pg_catalog.timestamp,
                        '1 month'::interval) limit 10;
 -- errors
-select * from generate_series('2020-01-01 00:00'::timestamp,
-                              '2020-01-02 03:00'::timestamp,
+select * from generate_series('2020-01-01 00:00'::pg_catalog.timestamp,
+                              '2020-01-02 03:00'::pg_catalog.timestamp,
                               '0 hour'::interval);

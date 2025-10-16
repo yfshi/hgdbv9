@@ -46,7 +46,11 @@ SELECT length(current_timestamp::text) >= length(current_timestamp(0)::text);
 
 -- localtimestamp
 SELECT pg_catalog.now()::timestamp::text = localtimestamp::text;
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+ ?column? 
+----------
+ f
+(1 row)
+
 -- current_role/user/user is tested in rolenames.sql
 -- current database / catalog
 SELECT current_catalog = current_database();

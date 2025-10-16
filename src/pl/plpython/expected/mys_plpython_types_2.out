@@ -586,9 +586,12 @@ SELECT * FROM test_type_conversion_array_timestamp(ARRAY[[['2016-09-21 15:34:24.
             [NULL,'2016-10-21 11:34:25.078792-04','2016-10-21 11:34:24.098792-04']],
             [[NULL,'2016-01-21 11:34:24.078792-04','2016-11-21 11:34:24.108792-04'],
             ['2015-09-21 11:34:24.079792-04','2014-09-21 11:34:24.078792-04','2013-09-21 11:34:24.078792-04']]]::timestamp[]);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: ...FROM test_type_conversion_array_timestamp(ARRAY[[['2016-09-2...
-                                                             ^
+INFO:  ([[['2016-09-21 15:34:24', '2016-10-22 11:34:24', None], [None, '2016-10-21 11:34:25', '2016-10-21 11:34:24']], [[None, '2016-01-21 11:34:24', '2016-11-21 11:34:24'], ['2015-09-21 11:34:24', '2014-09-21 11:34:24', '2013-09-21 11:34:24']]], <class 'list'>)
+                                                                                                test_type_conversion_array_timestamp                                                                                                
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {{{"2016-09-21 15:34:24","2016-10-22 11:34:24",NULL},{NULL,"2016-10-21 11:34:25","2016-10-21 11:34:24"}},{{NULL,"2016-01-21 11:34:24","2016-11-21 11:34:24"},{"2015-09-21 11:34:24","2014-09-21 11:34:24","2013-09-21 11:34:24"}}}
+(1 row)
+
 CREATE OR REPLACE FUNCTION pyreturnmultidemint4(h int4, i int4, j int4, k int4 ) RETURNS int4[] AS $BODY$
 m = [[[[x for x in range(h)] for y in range(i)] for z in range(j)] for w in range(k)]
 plpy.info(m, type(m))

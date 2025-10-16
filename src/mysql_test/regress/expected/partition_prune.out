@@ -3210,70 +3210,101 @@ drop table listp;
 --
 -- check that stable query clauses are only used in run-time pruning
 --
-create table stable_qual_pruning (a timestamp) partition by range (a);
+create table stable_qual_pruning (a pg_catalog.timestamp) partition by range (a);
 create table stable_qual_pruning1 partition of stable_qual_pruning
   for values from ('2000-01-01') to ('2000-02-01');
 create table stable_qual_pruning2 partition of stable_qual_pruning
   for values from ('2000-02-01') to ('2000-03-01');
 create table stable_qual_pruning3 partition of stable_qual_pruning
   for values from ('3000-02-01') to ('3000-03-01');
-ERROR:  Incorrect DATETIME value: '3000-02-01'
-LINE 2:   for values from ('3000-02-01') to ('3000-03-01');
-                           ^
 -- comparison against a stable value requires run-time pruning
 explain (analyze, costs off, summary off, timing off)
 select * from stable_qual_pruning where a < localtimestamp;
-ERROR:  operator does not exist: timestamp < timestamp without time zone
-LINE 2: select * from stable_qual_pruning where a < localtimestamp;
-                                                  ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                                      QUERY PLAN                                      
+--------------------------------------------------------------------------------------
+ Append (actual rows=0 loops=1)
+   Subplans Removed: 1
+   ->  Seq Scan on stable_qual_pruning1 stable_qual_pruning_1 (actual rows=0 loops=1)
+         Filter: (a < LOCALTIMESTAMP)
+   ->  Seq Scan on stable_qual_pruning2 stable_qual_pruning_2 (actual rows=0 loops=1)
+         Filter: (a < LOCALTIMESTAMP)
+(6 rows)
+
 -- timestamp < timestamptz comparison is only stable, not immutable
 explain (analyze, costs off, summary off, timing off)
 select * from stable_qual_pruning where a < '2000-02-01'::timestamptz;
-ERROR:  operator does not exist: timestamp < timestamp with time zone
-LINE 2: select * from stable_qual_pruning where a < '2000-02-01'::ti...
-                                                  ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                                      QUERY PLAN                                      
+--------------------------------------------------------------------------------------
+ Append (actual rows=0 loops=1)
+   Subplans Removed: 2
+   ->  Seq Scan on stable_qual_pruning1 stable_qual_pruning_1 (actual rows=0 loops=1)
+         Filter: (a < 'Tue Feb 01 00:00:00 2000 PST'::timestamp with time zone)
+(4 rows)
+
 -- check ScalarArrayOp cases
 explain (analyze, costs off, summary off, timing off)
 select * from stable_qual_pruning
-  where a = any(array['2010-02-01', '2020-01-01']::timestamp[]);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 3:   where a = any(array['2010-02-01', '2020-01-01']::timestamp...
-                              ^
+  where a = any(array['2010-02-01', '2020-01-01']::pg_catalog.timestamp[]);
+           QUERY PLAN           
+--------------------------------
+ Result (actual rows=0 loops=1)
+   One-Time Filter: false
+(2 rows)
+
 explain (analyze, costs off, summary off, timing off)
 select * from stable_qual_pruning
-  where a = any(array['2000-02-01', '2010-01-01']::timestamp[]);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 3:   where a = any(array['2000-02-01', '2010-01-01']::timestamp...
-                              ^
+  where a = any(array['2000-02-01', '2010-01-01']::pg_catalog.timestamp[]);
+                                                   QUERY PLAN                                                   
+----------------------------------------------------------------------------------------------------------------
+ Seq Scan on stable_qual_pruning2 stable_qual_pruning (actual rows=0 loops=1)
+   Filter: (a = ANY ('{"Tue Feb 01 00:00:00 2000","Fri Jan 01 00:00:00 2010"}'::timestamp without time zone[]))
+(2 rows)
+
 explain (analyze, costs off, summary off, timing off)
 select * from stable_qual_pruning
-  where a = any(array['2000-02-01', localtimestamp]::timestamp[]);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 3:   where a = any(array['2000-02-01', localtimestamp]::timesta...
-                              ^
+  where a = any(array['2000-02-01', localtimestamp]::pg_catalog.timestamp[]);
+                                                 QUERY PLAN                                                 
+------------------------------------------------------------------------------------------------------------
+ Append (actual rows=0 loops=1)
+   Subplans Removed: 2
+   ->  Seq Scan on stable_qual_pruning2 stable_qual_pruning_1 (actual rows=0 loops=1)
+         Filter: (a = ANY (ARRAY['Tue Feb 01 00:00:00 2000'::timestamp without time zone, LOCALTIMESTAMP]))
+(4 rows)
+
 explain (analyze, costs off, summary off, timing off)
 select * from stable_qual_pruning
   where a = any(array['2010-02-01', '2020-01-01']::timestamptz[]);
-ERROR:  operator does not exist: timestamp = timestamp with time zone
-LINE 3:   where a = any(array['2010-02-01', '2020-01-01']::timestamp...
-                  ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+           QUERY PLAN           
+--------------------------------
+ Append (actual rows=0 loops=1)
+   Subplans Removed: 3
+(2 rows)
+
 explain (analyze, costs off, summary off, timing off)
 select * from stable_qual_pruning
   where a = any(array['2000-02-01', '2010-01-01']::timestamptz[]);
-ERROR:  operator does not exist: timestamp = timestamp with time zone
-LINE 3:   where a = any(array['2000-02-01', '2010-01-01']::timestamp...
-                  ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                                                        QUERY PLAN                                                         
+---------------------------------------------------------------------------------------------------------------------------
+ Append (actual rows=0 loops=1)
+   Subplans Removed: 2
+   ->  Seq Scan on stable_qual_pruning2 stable_qual_pruning_1 (actual rows=0 loops=1)
+         Filter: (a = ANY ('{"Tue Feb 01 00:00:00 2000 PST","Fri Jan 01 00:00:00 2010 PST"}'::timestamp with time zone[]))
+(4 rows)
+
 explain (analyze, costs off, summary off, timing off)
 select * from stable_qual_pruning
   where a = any(null::timestamptz[]);
-ERROR:  operator does not exist: timestamp = timestamp with time zone
-LINE 3:   where a = any(null::timestamptz[]);
-                  ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                                      QUERY PLAN                                      
+--------------------------------------------------------------------------------------
+ Append (actual rows=0 loops=1)
+   ->  Seq Scan on stable_qual_pruning1 stable_qual_pruning_1 (actual rows=0 loops=1)
+         Filter: (a = ANY (NULL::timestamp with time zone[]))
+   ->  Seq Scan on stable_qual_pruning2 stable_qual_pruning_2 (actual rows=0 loops=1)
+         Filter: (a = ANY (NULL::timestamp with time zone[]))
+   ->  Seq Scan on stable_qual_pruning3 stable_qual_pruning_3 (actual rows=0 loops=1)
+         Filter: (a = ANY (NULL::timestamp with time zone[]))
+(7 rows)
+
 drop table stable_qual_pruning;
 --
 -- Check that pruning with composite range partitioning works correctly when

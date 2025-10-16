@@ -462,7 +462,7 @@ INSERT INTO arrtest2 VALUES(
   ARRAY[[['aaa','aab'],['aba','abb'],['aca','acb']],[['baa','bab'],['bba','bbb'],['bca','bcb']]],
   ARRAY['19620326','19931223','19970117']::timestamp[]
 );
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+ERROR:  Incorrect DATETIME value: '19620326'
 LINE 6:   ARRAY['19620326','19931223','19970117']::timestamp[]
                 ^
 -- some more test data
