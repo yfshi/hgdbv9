@@ -12,6 +12,7 @@
  *
  *-------------------------------------------------------------------------
  */
+#include <limits.h>
 
 #include "postgres.h"
 
@@ -22,9 +23,7 @@
 #include "parser/parse_oper.h"
 #include "libpq/pqformat.h"
 #include "lib/stringinfo.h"
-#include <limits.h>
 #include "miscadmin.h"
-#include "strtod.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/bytea.h"
@@ -38,20 +37,16 @@
 
 PG_FUNCTION_INFO_V1(varbinary);
 PG_FUNCTION_INFO_V1(varbinary2);
-PG_FUNCTION_INFO_V1(varbinary2bool);
 /* Begin BUG#5048 5070 */
 PG_FUNCTION_INFO_V1(varbinary2text);
 PG_FUNCTION_INFO_V1(varbinary2bpchar);
 PG_FUNCTION_INFO_V1(varbinary2varchar);
-PG_FUNCTION_INFO_V1(varbinary2numeric);
 PG_FUNCTION_INFO_V1(varbinary2date);
 PG_FUNCTION_INFO_V1(varbinary2time);
 PG_FUNCTION_INFO_V1(varbinary2datetime);
 /* End BUG#5048 5070 */
 PG_FUNCTION_INFO_V1(varbinary_in);
 PG_FUNCTION_INFO_V1(varbinary_recv);
-PG_FUNCTION_INFO_V1(varbinary_and);
-PG_FUNCTION_INFO_V1(varbinary_not);
 PG_FUNCTION_INFO_V1(varbinary_bitand);
 PG_FUNCTION_INFO_V1(varbinary_bitor);
 PG_FUNCTION_INFO_V1(varbinary_bitxor);
@@ -111,45 +106,6 @@ Datum
 varbinary2(PG_FUNCTION_ARGS)
 {
 	return varbinary_internel(fcinfo, true);
-}
-
-Datum 
-varbinary2bool(PG_FUNCTION_ARGS)
-{
-	bytea 	*arg1;
-	char 	*end1;
-	int 	len1;
-	int 	error;
-	bool	ret;
-
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
-	arg1 = PG_GETARG_BYTEA_PP(0);
-
-	len1 = VARSIZE_ANY_EXHDR(arg1);
-	end1 = VARDATA_ANY(arg1) + len1;
-
-	ret = (my_strtod_8bit(VARDATA_ANY(arg1), len1, &end1, &error) != 0.0);
-
-	PG_RETURN_BOOL(ret);
-}
-
-Datum
-varbinary2numeric(PG_FUNCTION_ARGS)
-{
-	Datum		ret;
-	bytea 		*arg = PG_GETARG_BYTEA_PP(0);
-	char		*src = pnstrdup(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
-
-	ret = DirectFunctionCall3(numeric_in, 
-							  CStringGetDatum(src),
-							  ObjectIdGetDatum(InvalidOid),
-							  Int32GetDatum(-1));
-
-	pfree(src);
-
-	return ret;
 }
 
 // reference from varchar.c function varcharin() and varlena.c function byteain()
@@ -344,58 +300,6 @@ varbinary_recv(PG_FUNCTION_ARGS)
 /*****************************************************************************
  *	 Operator Function														 *
  *****************************************************************************/
-
-Datum 
-varbinary_and(PG_FUNCTION_ARGS)
-{
-	int 	len1,
-			len2,
-			error;
-	char 	*end1,
-			*end2;
-	bytea 	*arg1, *arg2;
-
-	/* Begin - BUG#5655 */
-	if (PG_ARGISNULL(0) && PG_ARGISNULL(1))
-		PG_RETURN_NULL();
-
-	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-		PG_RETURN_BOOL(false);
-	/* End - BUG#5655 */
-	
-	arg1 = PG_GETARG_BYTEA_PP(0);
-	arg2 = PG_GETARG_BYTEA_PP(1);
-
-	len1 = VARSIZE_ANY_EXHDR(arg1);
-	len2 = VARSIZE_ANY_EXHDR(arg2);
-
-	end1 = VARDATA_ANY(arg1) + len1;
-	end2 = VARDATA_ANY(arg1) + len2;
-
-	return ((my_strtod_8bit(VARDATA_ANY(arg1), len1, &end1, &error) != 0.0) && (my_strtod_8bit(VARDATA_ANY(arg2), len2, &end2, &error) != 0.0));
-}
-
-static bool 
-mys_get_varbinary_bool(bytea *arg)
-{
-	int len;
-	char *end;
-	int error;
-
-	len = VARSIZE_ANY_EXHDR(arg);
-	end = VARDATA_ANY(arg) + len;
-	return ((my_strtod_8bit(VARDATA_ANY(arg), len, &end, &error) == 0.0) ? 1 : 0);
-}
-
-Datum 
-varbinary_not(PG_FUNCTION_ARGS)
-{
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
-	return mys_get_varbinary_bool(PG_GETARG_BYTEA_PP(0));
-}
-
 Datum 
 varbinary_bitand(PG_FUNCTION_ARGS)
 {

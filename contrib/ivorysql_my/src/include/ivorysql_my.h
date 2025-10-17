@@ -23,6 +23,7 @@
 #include "postgres.h"
 #include "fmgr.h" /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 #include "utils/guc.h"
+#include "utils/numeric.h"
 #include "utils/varbit.h"
 
 #define SIGNED_FLAG                     0
@@ -59,7 +60,9 @@ extern uint8  my_atoi_uint8(const char *s, bool is_insert);
 extern uint16 my_atoi_uint16(const char *s, bool is_insert);
 extern uint32 my_atoi_uint32(const char *s, bool is_insert);
 extern uint64 my_atoi_uint64(const char *s, bool is_insert);
-
+extern float  my_atof(const char *src, bool is_insert);
+extern double my_atod(const char *src, bool is_insert);
+extern Numeric my_aton(const char *src, int typmod, bool is_insert);
 
 extern Datum parse_hexstring(const char *value);/* BUG#5048 5070 */
 extern char *my_bit_out(VarBit *s, int32 atttypmod);

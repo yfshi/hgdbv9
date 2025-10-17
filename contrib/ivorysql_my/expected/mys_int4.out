@@ -103,9 +103,9 @@ insert into t1 values(-1);
 insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 insert into t1 values(true);--BUG#5392
 insert into t1 values(false);--BUG#5392
 select * from t1;
@@ -132,9 +132,9 @@ insert into t1 values(-1);
 insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 select * from t1;
      c1      
 -------------
@@ -155,9 +155,9 @@ insert into t1 values(-1);
 insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 select * from t1;
      c1      
 -------------
@@ -176,9 +176,9 @@ insert into t1 values(-1);
 insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 select * from t1;
      c1      
 -------------
@@ -197,9 +197,9 @@ insert into t1 values(-1);
 insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 select * from t1;
      c1      
 -------------
@@ -218,9 +218,9 @@ insert into t1 values(-1);
 insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 select * from t1;
      c1      
 -------------
@@ -235,12 +235,12 @@ drop table t1;
 CREATE TABLE t1 (col1 INT);
 INSERT INTO t1 VALUES(-2147483648),(0),(2147483647),('-2147483648'),('2147483647'),(-2147483648.0),(2147483647.0);
 INSERT INTO t1 (col1) VALUES(-2147483649);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 INSERT INTO t1 (col1) VALUES(2147643648);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 INSERT INTO t1 (col1) VALUES(-1);
 INSERT INTO t1 (col1) VALUES(4294967296);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 INSERT INTO t1 (col1) VALUES('-2147483649');
 ERROR:  Out of range value for column.
 LINE 1: INSERT INTO t1 (col1) VALUES('-2147483649');
@@ -262,9 +262,9 @@ INSERT INTO t1 (col1) VALUES(-1.0);
 INSERT INTO t1 (col1) VALUES(4294967296.0);
 ERROR:  integer out of range
 UPDATE t1 SET col1 = col1 - 50 WHERE col1 < 0;
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 UPDATE t1 SET col1 =col1 + 50 WHERE col1 > 0;
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 UPDATE t1 SET col1 =col1 / 0 WHERE col1 > 0;
 WARNING:  Division by 0
 WARNING:  Division by 0
@@ -289,7 +289,7 @@ LINE 1: INSERT INTO t1 (col1) VALUES ('2a');
 INSERT INTO t1 values (1/0);
 WARNING:  Division by 0
 INSERT INTO t1 values (-2147483649),(2147643648);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 INSERT INTO t1 values ('-2147483649'),('2147643648');
 ERROR:  Out of range value for column.
 LINE 1: INSERT INTO t1 values ('-2147483649'),('2147643648');

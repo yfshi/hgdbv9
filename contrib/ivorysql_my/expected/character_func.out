@@ -2776,6 +2776,7 @@ SELECT ifnull('100'::int4, 'hello!'::text);
 
 --ifnull(text, int8)
 SELECT ifnull('hello!'::text, '100'::int8);
+WARNING:  Truncated incorrect DOUBLE value: 'hello!'
  ifnull 
 --------
       0
@@ -2789,12 +2790,14 @@ SELECT ifnull('100'::int8, 'hello!'::text);
 
 --ifnull(text, float4)
 SELECT ifnull('hello!'::text, '100.001'::float4);
+WARNING:  Truncated incorrect DOUBLE value: 'hello!'
  ifnull 
 --------
       0
 (1 row)
 
 SELECT ifnull('100.001'::float4, 'hello!'::text);
+WARNING:  Truncated incorrect DOUBLE value: 'hello!'
       ifnull       
 -------------------
  100.0009994506836
@@ -2802,12 +2805,14 @@ SELECT ifnull('100.001'::float4, 'hello!'::text);
 
 --ifnull(text, float8)
 SELECT ifnull('hello!'::text, '100.001'::float8);
+WARNING:  Truncated incorrect DOUBLE value: 'hello!'
  ifnull 
 --------
       0
 (1 row)
 
 SELECT ifnull('100.001'::float8, 'hello!'::text);
+WARNING:  Truncated incorrect DOUBLE value: 'hello!'
  ifnull  
 ---------
  100.001
@@ -2815,6 +2820,7 @@ SELECT ifnull('100.001'::float8, 'hello!'::text);
 
 --ifnull(text, number)
 SELECT ifnull('hello!'::text, '100.001'::numeric);
+WARNING:  Truncated incorrect DOUBLE value: 'hello!'
  ifnull 
 --------
       0

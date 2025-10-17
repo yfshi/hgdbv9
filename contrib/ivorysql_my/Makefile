@@ -15,6 +15,7 @@ OBJS = \
 	src/datatype/mysint2.o \
 	src/datatype/mysint3.o \
 	src/datatype/mysint4.o \
+	src/datatype/mysint8.o \
 	src/datatype/mysuint1.o \
 	src/datatype/mysuint2.o \
 	src/datatype/mysuint4.o \
@@ -24,7 +25,7 @@ OBJS = \
 	src/datatype/mysuint4_index.o \
 	src/datatype/mysuint8_index.o \
 	src/datatype/mysfloat.o \
-	src/datatype/strtod.o \
+	src/datatype/mysnumeric.o \
 	src/datatype/anyblob.o \
 	src/datatype/anybinary.o \
 	src/datatype/binary.o \
@@ -32,7 +33,6 @@ OBJS = \
 	src/datatype/binary_gin.o \
 	src/datatype/mystext.o	\
 	src/datatype/mysbit.o \
-	src/datatype/mysvarchar.o \
 	src/datatype/hex.o	\
 	src/charset/charset.o \
 	src/charset/ctype-bin.o \

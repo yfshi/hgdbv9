@@ -97,9 +97,9 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.binary2bool(ivymy.binary, integer, boolean)
+CREATE FUNCTION ivymy.binary_bool(ivymy.binary, integer, boolean, int8)
 RETURNS pg_catalog.bool
-AS 'MODULE_PATHNAME','binary2bool'
+AS 'MODULE_PATHNAME','binary_bool'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
@@ -160,7 +160,7 @@ WITH FUNCTION ivymy.binary(ivymy.binary, integer, boolean)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.binary AS pg_catalog.bool)
-WITH FUNCTION ivymy.binary2bool(ivymy.binary, integer, boolean)
+WITH FUNCTION ivymy.binary_bool(ivymy.binary, integer, boolean, int8)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.binary AS bytea)
@@ -408,8 +408,8 @@ CREATE OPERATOR ivymy./ (
 ----function and
 CREATE OR REPLACE FUNCTION ivymy.binary_and(ivymy.binary, ivymy.binary)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_and'
-LANGUAGE C
+AS 'select $1::double and $2::double'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -424,8 +424,8 @@ CREATE OPERATOR ivymy.&& (
 ----function not
 CREATE OR REPLACE FUNCTION ivymy.binary_not(ivymy.binary)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_not'
-LANGUAGE C
+AS 'select !($1::double)'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -815,9 +815,9 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.varbinary2bool(ivymy.varbinary, integer, boolean)
+CREATE FUNCTION ivymy.varbinary_bool(ivymy.varbinary, integer, boolean, int8)
 RETURNS pg_catalog.bool
-AS 'MODULE_PATHNAME','varbinary2bool'
+AS 'MODULE_PATHNAME','binary_bool'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
@@ -878,7 +878,7 @@ WITH FUNCTION ivymy.varbinary(ivymy.varbinary, integer, boolean)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.varbinary AS pg_catalog.bool)
-WITH FUNCTION ivymy.varbinary2bool(ivymy.varbinary, integer, boolean)
+WITH FUNCTION ivymy.varbinary_bool(ivymy.varbinary, integer, boolean, int8)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.varbinary AS bytea)
@@ -1032,16 +1032,16 @@ WITH FUNCTION ivymy.varbinary2uint8(ivymy.varbinary, integer, boolean, int8)
 AS ASSIGNMENT;
 
 -- cast varbinary to numeric
-CREATE FUNCTION ivymy.varbinary2numeric(ivymy.varbinary, integer, boolean)
+CREATE FUNCTION ivymy.varbinary_numeric(ivymy.varbinary, integer, boolean)
 RETURNS numeric
-AS 'MODULE_PATHNAME','varbinary2numeric'
+AS 'MODULE_PATHNAME','varlena_numeric'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.varbinary AS numeric)
-WITH FUNCTION ivymy.varbinary2numeric(ivymy.varbinary, integer, boolean)
+WITH FUNCTION ivymy.varbinary_numeric(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
 
 
@@ -1175,8 +1175,8 @@ $$ LANGUAGE SQL IMMUTABLE STRICT;
 ----function and
 CREATE OR REPLACE FUNCTION ivymy.varbinary_and(ivymy.varbinary, ivymy.varbinary)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_and'
-LANGUAGE C
+AS 'select $1::double and $2::double'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -1184,8 +1184,8 @@ LEAKPROOF;
 ----function not
 CREATE OR REPLACE FUNCTION ivymy.varbinary_not(ivymy.varbinary)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_not'
-LANGUAGE C
+AS 'select !($1::double)'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -1638,9 +1638,9 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.myblob2bool(ivymy.myblob, integer, boolean)
+CREATE FUNCTION ivymy.myblob_bool(ivymy.myblob, integer, boolean, int8)
 RETURNS pg_catalog.bool
-AS 'MODULE_PATHNAME','myblob2bool'
+AS 'MODULE_PATHNAME','binary_bool'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
@@ -1709,7 +1709,7 @@ WITH FUNCTION ivymy.myblob(ivymy.myblob, integer, boolean)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.myblob AS pg_catalog.bool)
-WITH FUNCTION ivymy.myblob2bool(ivymy.myblob, integer, boolean)
+WITH FUNCTION ivymy.myblob_bool(ivymy.myblob, integer, boolean, int8)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.myblob AS bytea)
@@ -1924,8 +1924,8 @@ CREATE OPERATOR ivymy.!~~ (
 ----function and
 CREATE OR REPLACE FUNCTION ivymy.myblob_and(ivymy.myblob, ivymy.myblob)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_and'
-LANGUAGE C
+AS 'select $1::double and $2::double'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -1941,8 +1941,8 @@ CREATE OPERATOR ivymy.&& (
 ----function not
 CREATE OR REPLACE FUNCTION ivymy.myblob_not(ivymy.myblob)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_not'
-LANGUAGE C
+AS 'select !($1::double)'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -2327,9 +2327,9 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.tinyblob2bool(ivymy.tinyblob, integer, boolean)
+CREATE FUNCTION ivymy.tinyblob_bool(ivymy.tinyblob, integer, boolean, int8)
 RETURNS pg_catalog.bool
-AS 'MODULE_PATHNAME','tinyblob2bool'
+AS 'MODULE_PATHNAME','binary_bool'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
@@ -2390,7 +2390,7 @@ WITH FUNCTION ivymy.tinyblob(ivymy.tinyblob, integer, boolean)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.tinyblob AS pg_catalog.bool)
-WITH FUNCTION ivymy.tinyblob2bool(ivymy.tinyblob, integer, boolean)
+WITH FUNCTION ivymy.tinyblob_bool(ivymy.tinyblob, integer, boolean, int8)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.tinyblob AS bytea)
@@ -2605,8 +2605,8 @@ CREATE OPERATOR ivymy.!~~ (
 ----function and
 CREATE OR REPLACE FUNCTION ivymy.tinyblob_and(ivymy.tinyblob, ivymy.tinyblob)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_and'
-LANGUAGE C
+AS 'select $1::double and $2::double'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -2622,8 +2622,8 @@ CREATE OPERATOR ivymy.&& (
 ----function not
 CREATE OR REPLACE FUNCTION ivymy.tinyblob_not(ivymy.tinyblob)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_not'
-LANGUAGE C
+AS 'select !($1::double)'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -3008,9 +3008,9 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.mediumblob2bool(ivymy.mediumblob, integer, boolean)
+CREATE FUNCTION ivymy.mediumblob_bool(ivymy.mediumblob, integer, boolean, int8)
 RETURNS pg_catalog.bool
-AS 'MODULE_PATHNAME','mediumblob2bool'
+AS 'MODULE_PATHNAME','binary_bool'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
@@ -3071,7 +3071,7 @@ WITH FUNCTION ivymy.mediumblob(ivymy.mediumblob, integer, boolean)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.mediumblob AS pg_catalog.bool)
-WITH FUNCTION ivymy.mediumblob2bool(ivymy.mediumblob, integer, boolean)
+WITH FUNCTION ivymy.mediumblob_bool(ivymy.mediumblob, integer, boolean, int8)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.mediumblob AS bytea)
@@ -3285,8 +3285,8 @@ CREATE OPERATOR ivymy.!~~ (
 ----function and
 CREATE OR REPLACE FUNCTION ivymy.mediumblob_and(ivymy.mediumblob, ivymy.mediumblob)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_and'
-LANGUAGE C
+AS 'select $1::double and $2::double'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -3301,8 +3301,8 @@ CREATE OPERATOR ivymy.&& (
 ----function not
 CREATE OR REPLACE FUNCTION ivymy.mediumblob_not(ivymy.mediumblob)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_not'
-LANGUAGE C
+AS 'select !($1::double)'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -3687,9 +3687,9 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.longblob2bool(ivymy.longblob, integer, boolean)
+CREATE FUNCTION ivymy.longblob_bool(ivymy.longblob, integer, boolean, int8)
 RETURNS pg_catalog.bool
-AS 'MODULE_PATHNAME','longblob2bool'
+AS 'MODULE_PATHNAME','binary_bool'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
@@ -3750,7 +3750,7 @@ WITH FUNCTION ivymy.longblob(ivymy.longblob, integer, boolean)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.longblob AS pg_catalog.bool)
-WITH FUNCTION ivymy.longblob2bool(ivymy.longblob, integer, boolean)
+WITH FUNCTION ivymy.longblob_bool(ivymy.longblob, integer, boolean, int8)
 AS IMPLICIT;
 
 CREATE CAST (ivymy.longblob AS bytea)
@@ -3965,8 +3965,8 @@ CREATE OPERATOR ivymy.!~~ (
 ----function and
 CREATE OR REPLACE FUNCTION ivymy.longblob_and(ivymy.longblob, ivymy.longblob)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_and'
-LANGUAGE C
+AS 'select $1::double and $2::double'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -3981,8 +3981,8 @@ CREATE OPERATOR ivymy.&& (
 ----function not
 CREATE OR REPLACE FUNCTION ivymy.longblob_not(ivymy.longblob)
 RETURNS boolean
-AS 'MODULE_PATHNAME','varbinary_not'
-LANGUAGE C
+AS 'select !($1::double)'
+LANGUAGE SQL
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
@@ -4279,68 +4279,68 @@ DEFAULT FOR TYPE ivymy.longblob USING hash AS
   FUNCTION 2 ivymy.longblob_hash_extended(ivymy.longblob, bigint);
 
 -- cast binary to numeric
-CREATE FUNCTION ivymy.varbinary2numeric(ivymy.binary, integer, boolean)
+CREATE FUNCTION ivymy.binary_numeric(ivymy.binary, integer, boolean)
 RETURNS numeric
-AS 'MODULE_PATHNAME','varbinary2numeric'
+AS 'MODULE_PATHNAME','varlena_numeric'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.binary AS numeric)
-WITH FUNCTION ivymy.varbinary2numeric(ivymy.binary, integer, boolean)
+WITH FUNCTION ivymy.binary_numeric(ivymy.binary, integer, boolean)
 AS ASSIGNMENT;
 
 -- cast blob to numeric
-CREATE FUNCTION ivymy.varbinary2numeric(ivymy.myblob, integer, boolean)
+CREATE FUNCTION ivymy.blob_numeric(ivymy.myblob, integer, boolean)
 RETURNS numeric
-AS 'MODULE_PATHNAME','varbinary2numeric'
+AS 'MODULE_PATHNAME','varlena_numeric'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.myblob AS numeric)
-WITH FUNCTION ivymy.varbinary2numeric(ivymy.myblob, integer, boolean)
+WITH FUNCTION ivymy.blob_numeric(ivymy.myblob, integer, boolean)
 AS ASSIGNMENT;
 
 -- cast tinyblob to numeric
-CREATE FUNCTION ivymy.varbinary2numeric(ivymy.tinyblob, integer, boolean)
+CREATE FUNCTION ivymy.tinyblob_numeric(ivymy.tinyblob, integer, boolean)
 RETURNS numeric
-AS 'MODULE_PATHNAME','varbinary2numeric'
+AS 'MODULE_PATHNAME','varlena_numeric'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.tinyblob AS numeric)
-WITH FUNCTION ivymy.varbinary2numeric(ivymy.tinyblob, integer, boolean)
+WITH FUNCTION ivymy.tinyblob_numeric(ivymy.tinyblob, integer, boolean)
 AS ASSIGNMENT;
 
 -- cast mediumblob to numeric
-CREATE FUNCTION ivymy.varbinary2numeric(ivymy.mediumblob, integer, boolean)
+CREATE FUNCTION ivymy.mediumblob_numeric(ivymy.mediumblob, integer, boolean)
 RETURNS numeric
-AS 'MODULE_PATHNAME','varbinary2numeric'
+AS 'MODULE_PATHNAME','varlena_numeric'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.mediumblob AS numeric)
-WITH FUNCTION ivymy.varbinary2numeric(ivymy.mediumblob, integer, boolean)
+WITH FUNCTION ivymy.mediumblob_numeric(ivymy.mediumblob, integer, boolean)
 AS ASSIGNMENT;
 
 -- cast longblob to numeric
-CREATE FUNCTION ivymy.varbinary2numeric(ivymy.longblob, integer, boolean)
+CREATE FUNCTION ivymy.longblob_numeric(ivymy.longblob, integer, boolean)
 RETURNS numeric
-AS 'MODULE_PATHNAME','varbinary2numeric'
+AS 'MODULE_PATHNAME','varlena_numeric'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST (ivymy.longblob AS numeric)
-WITH FUNCTION ivymy.varbinary2numeric(ivymy.longblob, integer, boolean)
+WITH FUNCTION ivymy.longblob_numeric(ivymy.longblob, integer, boolean)
 AS ASSIGNMENT;
 
 /* Begin - bug#z5800 */
@@ -4370,3 +4370,81 @@ CREATE CAST (numeric AS ivymy.binary)
 WITH FUNCTION ivymy.numeric_binary(numeric)
 AS ASSIGNMENT;
 /* End - bug#z5800 */
+
+-- cast binary to double
+CREATE FUNCTION ivymy.binary_double(ivymy.binary, integer, boolean, int8)
+RETURNS double
+AS 'MODULE_PATHNAME','varlena_float8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.binary AS double)
+WITH FUNCTION ivymy.binary_double(ivymy.binary, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast varbinary to double
+CREATE FUNCTION ivymy.varbinary_double(ivymy.varbinary, integer, boolean, int8)
+RETURNS double
+AS 'MODULE_PATHNAME','varlena_float8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS double)
+WITH FUNCTION ivymy.varbinary_double(ivymy.varbinary, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast myblob to double
+CREATE FUNCTION ivymy.myblob_double(ivymy.myblob, integer, boolean, int8)
+RETURNS double
+AS 'MODULE_PATHNAME','varlena_float8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.myblob AS double)
+WITH FUNCTION ivymy.myblob_double(ivymy.myblob, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast tinyblob to double
+CREATE FUNCTION ivymy.tinyblob_double(ivymy.tinyblob, integer, boolean, int8)
+RETURNS double
+AS 'MODULE_PATHNAME','varlena_float8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.tinyblob AS double)
+WITH FUNCTION ivymy.tinyblob_double(ivymy.tinyblob, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast mediumblob to double
+CREATE FUNCTION ivymy.mediumblob_double(ivymy.mediumblob, integer, boolean, int8)
+RETURNS double
+AS 'MODULE_PATHNAME','varlena_float8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.mediumblob AS double)
+WITH FUNCTION ivymy.mediumblob_double(ivymy.mediumblob, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast longblob to double
+CREATE FUNCTION ivymy.longblob_double(ivymy.longblob, integer, boolean, int8)
+RETURNS double
+AS 'MODULE_PATHNAME','varlena_float8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.longblob AS double)
+WITH FUNCTION ivymy.longblob_double(ivymy.longblob, integer, boolean, int8)
+AS ASSIGNMENT;

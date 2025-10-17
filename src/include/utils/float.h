@@ -353,4 +353,12 @@ float8_max(const float8 val1, const float8 val2)
 	return float8_gt(val1, val2) ? val1 : val2;
 }
 
+/* Begin - bug#z5590 */
+typedef float4 (*mysql_float4_datatype_in_hook_type) (const char *str, bool is_insert);
+extern PGDLLIMPORT mysql_float4_datatype_in_hook_type mysql_float4_datatype_in_hook;
+
+typedef double (*mysql_float8_datatype_in_hook_type) (const char *str, bool is_insert);
+extern PGDLLIMPORT mysql_float8_datatype_in_hook_type mysql_float8_datatype_in_hook;
+/* End - bug#z5590 */
+
 #endif							/* FLOAT_H */

@@ -1043,11 +1043,10 @@ WHERE c.castmethod = 'b' AND
  ivymy.ivy_hex     | binary            |        0 | a
  ivymy.ivy_hex     | varbinary         |        0 | a
  date              | integer           |        0 | a
- datetime          | bigint            |        0 | a
  datetime          | numeric           |        0 | a
  timestamp         | bigint            |        0 | a
  timestamp         | numeric           |        0 | a
-(33 rows)
+(32 rows)
 
 -- **************** pg_conversion ****************
 -- Look for illegal values in pg_conversion fields.

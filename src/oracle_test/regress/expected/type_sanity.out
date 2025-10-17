@@ -134,7 +134,7 @@ WHERE p1.typinput = p2.oid AND NOT
      (p2.pronargs = 4 AND p2.proargtypes[0] = 'cstring'::regtype AND
       p2.proargtypes[1] = 'oid'::regtype AND
       p2.proargtypes[2] = 'int4'::regtype AND
-      p2.proargtypes[3] = 'int4'::regtype));
+      p2.proargtypes[3] = 'int8'::regtype));
  oid | typname | oid | proname 
 -----+---------+-----+---------
 (0 rows)
@@ -287,7 +287,11 @@ WHERE p1.typreceive = p2.oid AND NOT
       p2.proargtypes[1] = 'oid'::regtype) OR
      (p2.pronargs = 3 AND p2.proargtypes[0] = 'internal'::regtype AND
       p2.proargtypes[1] = 'oid'::regtype AND
-      p2.proargtypes[2] = 'int4'::regtype));
+      p2.proargtypes[2] = 'int4'::regtype) OR
+     (p2.pronargs = 4 AND p2.proargtypes[0] = 'internal'::regtype AND
+      p2.proargtypes[1] = 'oid'::regtype AND
+      p2.proargtypes[2] = 'int4'::regtype AND
+      p2.proargtypes[3] = 'int8'::regtype));
  oid | typname | oid | proname 
 -----+---------+-----+---------
 (0 rows)

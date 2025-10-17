@@ -1304,3 +1304,22 @@ select yearweek('0000-00-00');--NULL warning
 /* Begin - BUG#Z5610 */
 SELECT CONVERT_TZ(2.0230101120000E13, '+00:00', '+08:00');
 /* End - BUG#Z5610 */
+
+select period_diff('!@#', '!@#');   /* bug#z5589 */
+
+/* Begin - bug#z5590 */
+select sec_to_time('!@#');      -- 00:00:00.000000
+select sec_to_time('123!@#');   -- 00:02:03.000000
+/* End - bug#z5590 */
+
+/* Begin - bug#z5125 */
+select sec_to_time('2023-10-09 12:00:00');
+select sec_to_time('2023-10-09 12:00:00 + 3600');
+/* End - bug#z5125 */
+
+/* Begin - bug#z5802 */
+select convert(NULL, decimal(10,2)),convert('', decimal(10,2));
+select convert('abc', decimal(10,2));
+select convert(9999999999.9999999999, decimal(66,31));
+select convert(9999999999.9999999999, decimal(65,31));
+/* End - bug#z5802 */

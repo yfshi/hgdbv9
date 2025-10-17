@@ -9,21 +9,41 @@ INSERT INTO FLOAT8_TBL(f1) VALUES ('1.2345678901234e+200');
 INSERT INTO FLOAT8_TBL(f1) VALUES ('1.2345678901234e-200');
 -- test for underflow and overflow handling
 SELECT '10e400'::float8;
-ERROR:  "10e400" is out of range for type double precision
+WARNING:  Truncated incorrect DOUBLE value: '10e400'
 LINE 1: SELECT '10e400'::float8;
                ^
+         float8          
+-------------------------
+ 1.7976931348623157e+308
+(1 row)
+
 SELECT '-10e400'::float8;
-ERROR:  "-10e400" is out of range for type double precision
+WARNING:  Truncated incorrect DOUBLE value: '-10e400'
 LINE 1: SELECT '-10e400'::float8;
                ^
+         float8          
+-------------------------
+ 2.2250738585072014e-308
+(1 row)
+
 SELECT '10e-400'::float8;
-ERROR:  "10e-400" is out of range for type double precision
+WARNING:  Truncated incorrect DOUBLE value: '10e-400'
 LINE 1: SELECT '10e-400'::float8;
                ^
+         float8          
+-------------------------
+ 1.7976931348623157e+308
+(1 row)
+
 SELECT '-10e-400'::float8;
-ERROR:  "-10e-400" is out of range for type double precision
+WARNING:  Truncated incorrect DOUBLE value: '-10e-400'
 LINE 1: SELECT '-10e-400'::float8;
                ^
+         float8          
+-------------------------
+ 2.2250738585072014e-308
+(1 row)
+
 -- test smallest normalized input
 SELECT float8send('2.2250738585072014E-308'::float8);
      float8send     
@@ -33,35 +53,35 @@ SELECT float8send('2.2250738585072014E-308'::float8);
 
 -- bad input
 INSERT INTO FLOAT8_TBL(f1) VALUES ('');
-ERROR:  invalid input syntax for type double precision: ""
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('');
                                            ^
 INSERT INTO FLOAT8_TBL(f1) VALUES ('     ');
-ERROR:  invalid input syntax for type double precision: "     "
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('     ');
                                            ^
 INSERT INTO FLOAT8_TBL(f1) VALUES ('xyz');
-ERROR:  invalid input syntax for type double precision: "xyz"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('xyz');
                                            ^
 INSERT INTO FLOAT8_TBL(f1) VALUES ('5.0.0');
-ERROR:  invalid input syntax for type double precision: "5.0.0"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('5.0.0');
                                            ^
 INSERT INTO FLOAT8_TBL(f1) VALUES ('5 . 0');
-ERROR:  invalid input syntax for type double precision: "5 . 0"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('5 . 0');
                                            ^
 INSERT INTO FLOAT8_TBL(f1) VALUES ('5.   0');
-ERROR:  invalid input syntax for type double precision: "5.   0"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('5.   0');
                                            ^
 INSERT INTO FLOAT8_TBL(f1) VALUES ('    - 3');
-ERROR:  invalid input syntax for type double precision: "    - 3"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('    - 3');
                                            ^
 INSERT INTO FLOAT8_TBL(f1) VALUES ('123           5');
-ERROR:  invalid input syntax for type double precision: "123           5"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('123           5');
                                            ^
 -- special inputs
@@ -97,17 +117,32 @@ SELECT '          -INFINiTY   '::float8;
 
 -- bad special inputs
 SELECT 'N A N'::float8;
-ERROR:  invalid input syntax for type double precision: "N A N"
+WARNING:  Truncated incorrect DOUBLE value: 'N A N'
 LINE 1: SELECT 'N A N'::float8;
                ^
+ float8 
+--------
+      0
+(1 row)
+
 SELECT 'NaN x'::float8;
-ERROR:  invalid input syntax for type double precision: "NaN x"
+WARNING:  Truncated incorrect DOUBLE value: 'NaN x'
 LINE 1: SELECT 'NaN x'::float8;
                ^
+ float8 
+--------
+      0
+(1 row)
+
 SELECT ' INFINITY    x'::float8;
-ERROR:  invalid input syntax for type double precision: " INFINITY    x"
+WARNING:  Truncated incorrect DOUBLE value: ' INFINITY    x'
 LINE 1: SELECT ' INFINITY    x'::float8;
                ^
+ float8 
+--------
+      0
+(1 row)
+
 SELECT 'Infinity'::float8 + 100.0;
  ?column? 
 ----------
@@ -583,9 +618,9 @@ ERROR:  value out of range: overflow
 SELECT f.f1 ^ '1e200' from FLOAT8_TBL f;
 ERROR:  bigint out of range
 SELECT 0 ^ 0 + 0 ^ 1 + 0 ^ 0.0 + 0 ^ 0.5;
-      ?column?      
---------------------
- 2.0000000000000000
+ ?column? 
+----------
+ 2
 (1 row)
 
 SELECT ln(f.f1) from FLOAT8_TBL f where f.f1 = '0.0' ;
@@ -754,19 +789,19 @@ SELECT atanh(float8 'nan');
 RESET extra_float_digits;
 -- test for over- and underflow
 INSERT INTO FLOAT8_TBL(f1) VALUES ('10e400');
-ERROR:  "10e400" is out of range for type double precision
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('10e400');
                                            ^
 INSERT INTO FLOAT8_TBL(f1) VALUES ('-10e400');
-ERROR:  "-10e400" is out of range for type double precision
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('-10e400');
                                            ^
 INSERT INTO FLOAT8_TBL(f1) VALUES ('10e-400');
-ERROR:  "10e-400" is out of range for type double precision
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('10e-400');
                                            ^
 INSERT INTO FLOAT8_TBL(f1) VALUES ('-10e-400');
-ERROR:  "-10e-400" is out of range for type double precision
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('-10e-400');
                                            ^
 -- maintain external table consistency across platforms

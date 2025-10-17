@@ -140,17 +140,16 @@ for row in plpy.cursor("SELECT * FROM test2 ORDER BY x"):
     plpy.execute("INSERT INTO test1 (a) VALUES (12/(%s-2))" % row['x'])
     plpy.commit()
 $$;
-ERROR:  spiexceptions.DivisionByZero: division by zero
-CONTEXT:  Traceback (most recent call last):
-  PL/Python anonymous code block, line 3, in <module>
-    plpy.execute("INSERT INTO test1 (a) VALUES (12/(%s-2))" % row['x'])
-PL/Python anonymous code block
+WARNING:  Division by 0
 SELECT * FROM test1;
   a  | b 
 -----+---
   -6 | 
  -12 | 
-(2 rows)
+     | 
+  12 | 
+   6 | 
+(5 rows)
 
 SELECT * FROM pg_cursors;
  name | statement | is_holdable | is_binary | is_scrollable | creation_time 

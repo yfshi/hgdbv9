@@ -45,6 +45,10 @@
 #include "utils/pg_lsn.h"
 #include "utils/sortsupport.h"
 
+/* Begin - bug#z5590 */
+mysql_numeric_datatype_in_hook_type mysql_numeric_datatype_in_hook = NULL;
+/* End - bug#z5590 */
+
 PG_FUNCTION_INFO_V1(numeric_uint8);
 
 /* ----------
@@ -687,6 +691,21 @@ numeric_in(PG_FUNCTION_ARGS)
 	int32		typmod = PG_GETARG_INT32(2);
 	Numeric		res;
 	const char *cp;
+
+	/* Begin - bug#z5590 */
+	if (MYS_PARSER == compatible_db && mysql_numeric_datatype_in_hook)
+	{
+		// Prevent the recursion from entering a cycle.
+		if (PG_NARGS() > 3)
+		{
+			bool	is_insert = CALL_IN_INSERT();
+
+			res = mysql_numeric_datatype_in_hook(str, typmod, is_insert);
+
+			PG_RETURN_NUMERIC(res);
+		}
+	}
+	/* End - bug#z5590 */
 
 	/* Skip leading spaces */
 	cp = str;
@@ -3062,8 +3081,34 @@ numeric_div(PG_FUNCTION_ARGS)
 	Numeric		num1 = PG_GETARG_NUMERIC(0);
 	Numeric		num2 = PG_GETARG_NUMERIC(1);
 	Numeric		res;
+	MemoryContext ccxt = CurrentMemoryContext;
 
-	res = numeric_div_opt_error(num1, num2, NULL);
+	PG_TRY();
+	{
+		res = numeric_div_opt_error(num1, num2, NULL);
+	}
+	PG_CATCH();
+	{
+		ErrorData  *errdata;
+
+		MemoryContextSwitchTo(ccxt);
+
+		errdata = CopyErrorData();
+
+		if (compatible_db == MYS_PARSER && errdata->sqlerrcode == ERRCODE_DIVISION_BY_ZERO)
+		{
+			FlushErrorState();
+			
+			if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+				ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+			PG_RETURN_NULL();
+		}
+		else
+			PG_RE_THROW();
+
+		FreeErrorData(errdata);
+	}
+	PG_END_TRY();
 
 	PG_RETURN_NUMERIC(res);
 }
@@ -11829,7 +11874,13 @@ bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to)
 	/*The range of decimal places is 0~(1 - 10^-8),tmp.weight == -2 means that the numeric is a fractional and in rang of 10^-4 to 10^-8*/
 	if (tmp.dscale > 0 && tmp.weight >= -2)
 	{
-		if (frac_group == 1)
+		/* Begin - bug#z5590 */
+		if (frac_group == 0)
+		{
+			to->rem = 0;
+		}
+		/* End - bug#z5590 */
+		else if (frac_group == 1)
 		{
 			if (tmp.weight == -2)
 			{

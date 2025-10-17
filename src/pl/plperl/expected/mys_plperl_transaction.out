@@ -131,14 +131,16 @@ while (defined($row = spi_fetchrow($sth))) {
     spi_commit();
 }
 $$;
-ERROR:  division by zero at line 5.
-CONTEXT:  PL/Perl anonymous code block
+WARNING:  Division by 0
 SELECT * FROM test1;
   a  | b 
 -----+---
   -6 | 
  -12 | 
-(2 rows)
+     | 
+  12 | 
+   6 | 
+(5 rows)
 
 SELECT * FROM pg_cursors;
  name | statement | is_holdable | is_binary | is_scrollable | creation_time 

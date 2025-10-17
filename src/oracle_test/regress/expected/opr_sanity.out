@@ -969,9 +969,10 @@ WHERE c.castfunc = p.oid AND
      OR NOT binary_coercible(p.prorettype, c.casttarget));
  castsource | casttarget | castfunc | castcontext | castmethod 
 ------------+------------+----------+-------------+------------
+         20 |         23 |      480 | a           | f
        1042 |         18 |      944 | a           | f
        1042 |        142 |     2896 | e           | f
-(2 rows)
+(3 rows)
 
 SELECT c.*
 FROM pg_cast c, pg_proc p

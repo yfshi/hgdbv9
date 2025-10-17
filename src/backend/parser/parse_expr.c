@@ -4870,6 +4870,8 @@ transformVarRef(ParseState *pstate, VarRef *varref)
 		/* Get current of value of user define variable */
 		varref->value = (Const *)uservariable_hash_search_hook(pstate, varref);
 
+		varref->rettype = varref->value->consttype;
+
 		/*
 		 * if this Node appears in a SET statement, return it's value,
 		 * otherwise, return the VarRef node itself.

@@ -18,12 +18,17 @@
  *------------------------------------------------------------------
  */
 
+#include <float.h>
+
 #include "postgres.h"
- 
-#include "../include/ivorysql_my.h"
+
+#include "fmgr.h"
+#include "utils/elog.h"
+#include "utils/float.h"
 #include "utils/guc.h"
 #include "utils/fmgrprotos.h"
 #include "utils/ora_compatible.h"
+#include "../include/ivorysql_my.h"
 
 static char *
 trim_space(const char *src)
@@ -368,3 +373,414 @@ my_atoi_uint64(const char *s, bool is_insert)
 {
 	return (uint64) cstring_to_unsigned(s, UINT64_MAX, is_insert);
 }
+
+/* Begin - bug#z5590 */
+static char *
+prepare_numeric_string(char *str)
+{
+	bool		have_dp = false;
+	char 		*cp = str;
+
+	/*
+	 * We first parse the string to extract decimal digits and determine the
+	 * correct decimal weight.  Then convert to NBASE representation.
+	 */
+	if (*cp == '+' || *cp == '-')
+	{
+		cp++;
+	}
+
+	if (*cp == '.')
+	{
+		have_dp = true;
+		cp++;
+	}
+
+	if (!isdigit((unsigned char) *cp))
+	{
+		// Truncated
+		return cp;
+	}
+
+	while (*cp)
+	{
+		if (isdigit((unsigned char) *cp))
+		{
+			cp++;
+		}
+		else if (*cp == '.')
+		{
+			if (have_dp)
+			{
+				// Truncated
+				return cp;
+			}
+
+			have_dp = true;
+			cp++;
+		}
+		else
+			break;
+	}
+
+	/* Handle exponent, if any */
+	if (*cp == 'e' || *cp == 'E')
+	{
+		long		exponent;
+		char	   *endptr;
+
+		cp++;
+		exponent = strtol(cp, &endptr, 10);
+		if (*endptr)
+		{
+			// Truncated
+			return cp;
+		}
+
+		cp = endptr;
+
+		/*
+		 * At this point, dweight and dscale can't be more than about
+		 * INT_MAX/2 due to the MaxAllocSize limit on string length, so
+		 * constraining the exponent similarly should be enough to prevent
+		 * integer overflow in this function.  If the value is too large to
+		 * fit in storage format, make_result() will complain about it later;
+		 * for consistency use the same ereport errcode/text as make_result().
+		 */
+		if (exponent >= INT_MAX / 2 || exponent <= -(INT_MAX / 2))
+		{
+			return NULL;
+		}
+	}
+
+	/* Return end+1 position for caller */
+	return cp;
+}
+
+float
+my_atof(const char *src, bool is_insert)
+{
+	float 	ret = 0;
+	bool	truncated = false,
+			out_of_range = false;
+	char 	*s, 
+			*endptr;
+	int 	log_level = WARNING;
+	MemoryContext ccxt = CurrentMemoryContext;
+
+	if (is_insert && is_strict_mode())
+		log_level = ERROR;
+	
+	s = trim_space(src);
+
+	if (pg_strcasecmp(s, "NaN") == 0 ||
+		pg_strcasecmp(s, "Infinity") == 0 ||
+		pg_strcasecmp(s, "+Infinity") == 0 ||
+		pg_strcasecmp(s, "-Infinity") == 0 ||
+		pg_strcasecmp(s, "inf") == 0 ||
+		pg_strcasecmp(s, "+inf") == 0 ||
+		pg_strcasecmp(s, "-inf") == 0)
+	{
+		return DatumGetFloat4(DirectFunctionCall1(float4in, CStringGetDatum(s)));
+	}
+	
+	endptr = prepare_numeric_string(s);
+
+	if (*endptr)
+	{
+		truncated = true;
+
+		// remove the illegal character
+		*endptr = '\0';
+	}
+
+	PG_TRY();
+	{
+		// Only one parameter needs to be passed
+		ret = DatumGetFloat4(DirectFunctionCall1(float4in, CStringGetDatum(s)));
+	}
+	PG_CATCH();
+	{
+		ErrorData  *errdata;
+
+		MemoryContextSwitchTo(ccxt);
+
+		errdata = CopyErrorData();
+		
+		switch (errdata->sqlerrcode)
+		{
+			// input is zero-length string
+			case ERRCODE_INVALID_TEXT_REPRESENTATION:
+				ret = 0;
+				truncated = true;
+				FlushErrorState();
+				break;
+			case ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE:
+				out_of_range = true;
+				FlushErrorState();
+				break;
+			default:
+				PG_RE_THROW();
+				break;
+		}
+
+		FreeErrorData(errdata);
+	}
+	PG_END_TRY();
+
+	if (truncated)
+	{
+		if (is_insert)
+			ereport(log_level, (errmsg("Data truncated for column.")));
+		else
+			ereport(log_level, (errmsg("Truncated incorrect FLOAT value: \'%s\'", src)));
+	}
+
+	if (out_of_range)
+	{
+		if (is_insert)
+			ereport(log_level, (errmsg("Out of range value for column.")));
+		else
+			ereport(log_level, (errmsg("Truncated incorrect FLOAT value: \'%s\'", src)));
+
+		if (s[0] == '-')
+			ret = FLT_MIN;
+		else
+			ret = FLT_MAX;
+	}
+
+	return ret;
+}
+
+double
+my_atod(const char *src, bool is_insert)
+{
+	double 	ret = 0;
+	bool	truncated = false,
+			out_of_range = false;
+	char 	*s, 
+			*endptr;
+	int 	log_level = WARNING;
+	MemoryContext ccxt = CurrentMemoryContext;
+
+	if (is_insert && is_strict_mode())
+		log_level = ERROR;
+	
+	s = trim_space(src);
+
+	if (pg_strcasecmp(s, "NaN") == 0 ||
+		pg_strcasecmp(s, "Infinity") == 0 ||
+		pg_strcasecmp(s, "+Infinity") == 0 ||
+		pg_strcasecmp(s, "-Infinity") == 0 ||
+		pg_strcasecmp(s, "inf") == 0 ||
+		pg_strcasecmp(s, "+inf") == 0 ||
+		pg_strcasecmp(s, "-inf") == 0)
+	{
+		return float8in_internal(s, NULL, "double precision", s);
+	}
+	
+	endptr = prepare_numeric_string(s);
+
+	if (*endptr)
+	{
+		truncated = true;
+
+		// remove the illegal character
+		*endptr = '\0';
+	}
+
+	PG_TRY();
+	{
+		ret = float8in_internal(s, NULL, "double precision", s);
+	}
+	PG_CATCH();
+	{
+		ErrorData  *errdata;
+
+		MemoryContextSwitchTo(ccxt);
+		
+		errdata = CopyErrorData();
+		
+		switch (errdata->sqlerrcode)
+		{
+			// input is zero-length string
+			case ERRCODE_INVALID_TEXT_REPRESENTATION:
+				ret = 0;
+				truncated = true;
+				FlushErrorState();
+				break;
+			case ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE:
+				out_of_range = true;
+				FlushErrorState();
+				break;
+			default:
+				PG_RE_THROW();
+				break;
+		}
+
+		FreeErrorData(errdata);
+	}
+	PG_END_TRY();
+
+	if (truncated)
+	{
+		if (is_insert)
+			ereport(log_level, (errmsg("Data truncated for column.")));
+		else
+			ereport(log_level, (errmsg("Truncated incorrect DOUBLE value: \'%s\'", src)));
+	}
+
+	if (out_of_range)
+	{
+		if (is_insert)
+			ereport(log_level, (errmsg("Out of range value for column.")));
+		else
+			ereport(log_level, (errmsg("Truncated incorrect DOUBLE value: \'%s\'", src)));
+
+		if (s[0] == '-')
+			ret = DBL_MIN;
+		else
+			ret = DBL_MAX;
+	}
+
+	return ret;
+}
+
+static Numeric
+make_max_numeric(int typmod, bool negative)
+{
+	int			precision;
+	int			scale;
+	int			maxdigits;
+	char		*buf = NULL,
+				*pos = NULL;
+
+	if (typmod < (int32) (VARHDRSZ))
+		typmod = (10 << 16) + VARHDRSZ;
+
+	typmod -= VARHDRSZ;
+	precision = (typmod >> 16) & 0xffff;
+	scale = typmod & 0xffff;
+	maxdigits = precision - scale;
+
+	// Apply additional space for: dot(.), negative sign(-) and NULL-terminal(\0)
+	pos = buf = palloc0(precision + 3);
+
+	if (negative)
+		*pos++ = '-';
+
+	for (int i = 0; i < maxdigits; i++)
+		*pos++ = '9';
+	
+	if (scale)
+		*pos++ = '.';
+
+	for (int i = 0; i < scale; i++)
+		*pos++ = '9';
+
+	return DatumGetNumeric(DirectFunctionCall3(numeric_in,
+											   CStringGetDatum(buf),
+											   ObjectIdGetDatum(InvalidOid),
+											   Int32GetDatum(typmod + VARHDRSZ)));
+}
+
+Numeric
+my_aton(const char *src, int typmod, bool is_insert)
+{
+	Numeric ret = 0;
+	bool	truncated = false,
+			out_of_range = false;
+	char 	*s, 
+			*endptr;
+	int 	log_level = WARNING;
+	MemoryContext ccxt = CurrentMemoryContext;
+
+	if (is_insert && is_strict_mode())
+		log_level = ERROR;
+	
+	s = trim_space(src);
+
+	if (pg_strcasecmp(s, "NaN") == 0 ||
+		pg_strcasecmp(s, "Infinity") == 0 ||
+		pg_strcasecmp(s, "+Infinity") == 0 ||
+		pg_strcasecmp(s, "-Infinity") == 0 ||
+		pg_strcasecmp(s, "inf") == 0 ||
+		pg_strcasecmp(s, "+inf") == 0 ||
+		pg_strcasecmp(s, "-inf") == 0)
+	{
+		return DatumGetNumeric(DirectFunctionCall3(numeric_in,
+												   CStringGetDatum(s),
+												   ObjectIdGetDatum(InvalidOid),
+												   Int32GetDatum(typmod)));
+	}
+	
+	endptr = prepare_numeric_string(s);
+
+	if (*endptr)
+	{
+		truncated = true;
+
+		// remove the illegal character
+		*endptr = '\0';
+	}
+
+	PG_TRY();
+	{
+		ret = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+												  CStringGetDatum(s),
+												  ObjectIdGetDatum(InvalidOid),
+												  Int32GetDatum(typmod)));
+	}
+	PG_CATCH();
+	{
+		ErrorData  *errdata;
+
+		MemoryContextSwitchTo(ccxt);
+		
+		errdata = CopyErrorData();
+		
+		switch (errdata->sqlerrcode)
+		{
+			// input is zero-length string
+			case ERRCODE_INVALID_TEXT_REPRESENTATION:
+				ret = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+														  CStringGetDatum("0"),
+														  ObjectIdGetDatum(InvalidOid),
+														  Int32GetDatum(typmod)));
+				truncated = true;
+				FlushErrorState();
+				break;
+			case ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE:
+				out_of_range = true;
+				FlushErrorState();
+				break;
+			default:
+				PG_RE_THROW();
+				break;
+		}
+
+		FreeErrorData(errdata);
+	}
+	PG_END_TRY();
+
+	if (truncated)
+	{
+		if (is_insert)
+			ereport(log_level, (errmsg("Incorrect decimal value: '%s' for column.", src)));
+		else if (strlen(s) == 0)
+			ereport(log_level, (errmsg("Truncated incorrect DECIMAL value: '%s'", src)));
+	}
+
+	if (out_of_range)
+	{
+		if (is_insert)
+			ereport(log_level, (errmsg("Out of range value for column.")));
+		else
+			ereport(log_level, (errmsg("Truncated incorrect DECIMAL value: '%s'", src)));
+
+		ret = make_max_numeric(typmod, s[0] == '-');
+	}
+
+	return ret;
+}
+/* End - bug#z5590 */

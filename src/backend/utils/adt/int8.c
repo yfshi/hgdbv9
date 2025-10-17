@@ -1310,11 +1310,42 @@ Datum
 int84(PG_FUNCTION_ARGS)
 {
 	int64		arg = PG_GETARG_INT64(0);
+	
+	/* Begin - bug#z5394 */
+	bool		is_insert = CALL_IN_INSERT();
+	int			log_level = WARNING;
+
+	if (is_insert && is_strict_mode())
+		log_level = ERROR;
+	/* End - bug#z5394 */
 
 	if (unlikely(arg < PG_INT32_MIN) || unlikely(arg > PG_INT32_MAX))
-		ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-				 errmsg("integer out of range")));
+	{
+		/* Begin - bug#z5394 */
+		if (compatible_db == MYS_PARSER)
+		{
+			if (is_insert)
+			{
+				ereport(log_level,
+						(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+						 errmsg("Out of range value for column")));
+				
+				if (arg < 0)
+					PG_RETURN_INT32(INT32_MIN);
+
+				PG_RETURN_INT32(INT32_MAX);
+			}
+			else
+				ereport(log_level,
+						(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+						 errmsg("Truncated incorrect INTEGER value: '%ld'", arg)));
+		}
+		/* End - bug#z5394 */
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg("integer out of range")));
+	}
 
 	PG_RETURN_INT32((int32) arg);
 }

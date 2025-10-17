@@ -133,7 +133,7 @@ oracharcharin_2(PG_FUNCTION_ARGS)
 #endif
 	int32           atttypmod = PG_GETARG_INT32(2);
 
-	uint32          lens = PG_GETARG_UINT32(3);
+	uint32          lens = PG_GETARG_UINT64(3);
 	BpChar     *result;
 
 	/* result = bpchar_input(s, strlen(s), atttypmod); */
@@ -220,7 +220,7 @@ oracharbytein_2(PG_FUNCTION_ARGS)
 	Oid			typelem = PG_GETARG_OID(1);
 #endif
 	int32		atttypmod = PG_GETARG_INT32(2);
-	uint32		lens = PG_GETARG_UINT32(3);
+	uint32		lens = PG_GETARG_UINT64(3);
 	BpChar	   *result;
 
 	/* result = bpchar_input(s, strlen(s), atttypmod); */
@@ -341,7 +341,7 @@ oravarcharcharin_2(PG_FUNCTION_ARGS)
 #endif
 	int32           atttypmod = PG_GETARG_INT32(2);
 
-	uint32           lens = PG_GETARG_UINT32(3);
+	uint32           lens = PG_GETARG_UINT64(3);
 
 	VarChar    *result;
 
@@ -413,7 +413,7 @@ oravarcharbytein_2(PG_FUNCTION_ARGS)
 	Oid			typelem = PG_GETARG_OID(1);
 #endif
 	int32		atttypmod = PG_GETARG_INT32(2);
-	uint32		lens = PG_GETARG_UINT32(3);
+	uint32		lens = PG_GETARG_UINT64(3);
 	VarChar    *result;
 
 	/* result = varchar_input(s, strlen(s), atttypmod); */

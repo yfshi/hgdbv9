@@ -1040,11 +1040,38 @@ LINE 1: SELECT         c1::datetime       FROM my_binary_t07;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_binary_t07;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT convert(c1, decimal(4, 0)) FROM my_binary_t07;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT         c1::decimal(4, 0)  FROM my_binary_t07;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_binary_t07;
@@ -1267,11 +1294,38 @@ WARNING:  Incorrect datetime value: 'q1w2'
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_varbinary_t08;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT convert(c1, decimal(4, 0)) FROM my_varbinary_t08;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT         c1::decimal(4, 0)  FROM my_varbinary_t08;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_varbinary_t08;
@@ -1451,11 +1505,38 @@ LINE 1: SELECT         c1::datetime       FROM my_blob_t09;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_blob_t09;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT convert(c1, decimal(4, 0)) FROM my_blob_t09;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT         c1::decimal(4, 0)  FROM my_blob_t09;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_blob_t09;
@@ -1603,11 +1684,38 @@ LINE 1: SELECT         c1::datetime       FROM my_tinyblob_t10;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_tinyblob_t10;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT convert(c1, decimal(4, 0)) FROM my_tinyblob_t10;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT         c1::decimal(4, 0)  FROM my_tinyblob_t10;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_tinyblob_t10;
@@ -1755,11 +1863,38 @@ LINE 1: SELECT         c1::datetime       FROM my_mediumblob_t11;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_mediumblob_t11;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT convert(c1, decimal(4, 0)) FROM my_mediumblob_t11;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT         c1::decimal(4, 0)  FROM my_mediumblob_t11;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_mediumblob_t11;
@@ -1907,11 +2042,38 @@ LINE 1: SELECT         c1::datetime       FROM my_longblob_t12;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_longblob_t12;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT convert(c1, decimal(4, 0)) FROM my_longblob_t12;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT         c1::decimal(4, 0)  FROM my_longblob_t12;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 -- EXPECT: ok
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_longblob_t12;

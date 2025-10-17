@@ -152,7 +152,7 @@ SELECT a, b FROM gtest1 WHERE b = 4 ORDER BY a;
 
 -- test that overflow error happens on write
 INSERT INTO gtest1 VALUES (2000000000);
-ERROR:  integer out of range
+ERROR:  Out of range value for column
 SELECT * FROM gtest1;
  a | b 
 ---+---

@@ -1426,7 +1426,7 @@ ANALYZE functional_dependencies;
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE a = 1 AND b = ''1'' AND c = 1');
  estimated | actual 
 -----------+--------
-        50 |     50
+        25 |     50
 (1 row)
 
 DROP STATISTICS func_deps_stat;
@@ -1546,7 +1546,7 @@ SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE (a * 2) = ANY (ARRAY[2, 4, 52, 54, 102, 104, 152, 154]) AND upper(b) = ANY (ARRAY[''1'', ''2'', ''26'', ''27'']) AND (c + 1) = ANY (ARRAY[2, 3])');
  estimated | actual 
 -----------+--------
-         1 |    400
+         2 |    400
 (1 row)
 
 -- ANY with inequalities should not benefit from functional dependencies
@@ -1607,7 +1607,7 @@ SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE (a * 2) = 2 AND upper(b) = ''1'' AND (c + 1) = 2');
  estimated | actual 
 -----------+--------
-        50 |     50
+        25 |     50
 (1 row)
 
 -- IN
@@ -1638,13 +1638,13 @@ SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE (a * 2) IN (2, 52, 102, 152) AND upper(b) IN (''1'', ''26'') AND (c + 1) = 2');
  estimated | actual 
 -----------+--------
-       200 |    200
+       100 |    200
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE (a * 2) IN (2, 52, 102, 152) AND upper(b) IN (''1'', ''26'') AND (c + 1) IN (2)');
  estimated | actual 
 -----------+--------
-       200 |    200
+       100 |    200
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE (a * 2) IN (2, 4, 52, 54, 102, 104, 152, 154) AND upper(b) IN (''1'', ''2'', ''26'', ''27'') AND (c + 1) IN (2, 3)');
@@ -1701,19 +1701,19 @@ SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE (a * 2) = ANY (ARRAY[2, 52, 102, 152]) AND upper(b) = ANY (ARRAY[''1'', ''26'']) AND (c + 1) = 2');
  estimated | actual 
 -----------+--------
-       200 |    200
+       100 |    200
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE (a * 2) = ANY (ARRAY[2, 52, 102, 152]) AND upper(b) = ANY (ARRAY[''1'', ''26'']) AND (c + 1) = ANY (ARRAY[2])');
  estimated | actual 
 -----------+--------
-       200 |    200
+       100 |    200
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE (a * 2) = ANY (ARRAY[2, 4, 52, 54, 102, 104, 152, 154]) AND upper(b) = ANY (ARRAY[''1'', ''2'', ''26'', ''27'']) AND (c + 1) = ANY (ARRAY[2, 3])');
  estimated | actual 
 -----------+--------
-       400 |    400
+       200 |    400
 (1 row)
 
 -- ANY with inequalities should not benefit from functional dependencies
@@ -2284,7 +2284,7 @@ SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) = 1 
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) = 1 OR mod(b::int,10) = 1 OR mod(c,25) = 1 OR d IS NOT NULL');
  estimated | actual 
 -----------+--------
-        15 |    120
+       505 |    120
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) IN (1, 2, 51, 52, NULL) AND mod(b::int,10) IN ( 1, 2, NULL)');
@@ -2343,13 +2343,13 @@ SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE 1 > mod(a,20) 
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) = 1 AND mod(b::int,10) = 1 AND mod(c,5) = 1');
  estimated | actual 
 -----------+--------
-         1 |     50
+         3 |     50
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) = 1 OR mod(b::int,10) = 1 OR mod(c,25) = 1 OR d IS NOT NULL');
  estimated | actual 
 -----------+--------
-       149 |    120
+       573 |    120
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) IN (1, 2, 51, 52, NULL) AND mod(b::int,10) IN ( 1, 2, NULL)');
@@ -2373,7 +2373,7 @@ SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) <= A
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) < ALL (ARRAY[4, 5]) AND mod(b::int,10) IN (1, 2, 3) AND mod(c,5) > ANY (ARRAY[1, 2, 3])');
  estimated | actual 
 -----------+--------
-        12 |    100
+         7 |    100
 (1 row)
 
 DROP STATISTICS mcv_lists_stats_1;
@@ -2409,13 +2409,13 @@ SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE 1 > mod(a,20) 
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) = 1 AND mod(b::int,10) = 1 AND mod(c,5) = 1');
  estimated | actual 
 -----------+--------
-        50 |     50
+        25 |     50
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) = 1 OR mod(b::int,10) = 1 OR mod(c,25) = 1 OR d IS NOT NULL');
  estimated | actual 
 -----------+--------
-       105 |    120
+       550 |    120
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) IN (1, 2, 51, 52, NULL) AND mod(b::int,10) IN ( 1, 2, NULL)');
@@ -2439,14 +2439,14 @@ SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) <= A
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) < ALL (ARRAY[4, 5]) AND mod(b::int,10) IN (1, 2, 3) AND mod(c,5) > ANY (ARRAY[1, 2, 3])');
  estimated | actual 
 -----------+--------
-       100 |    100
+        75 |    100
 (1 row)
 
 -- we can't use the statistic for OR clauses that are not fully covered (missing 'd' attribute)
 SELECT * FROM check_estimated_rows('SELECT * FROM mcv_lists WHERE mod(a,20) = 1 OR mod(b::int,10) = 1 OR mod(c,5) = 1 OR d IS NOT NULL');
  estimated | actual 
 -----------+--------
-       200 |    200
+       550 |    200
 (1 row)
 
 -- 100 distinct combinations with NULL values, all in the MCV list
@@ -3099,26 +3099,26 @@ insert into stts_t1 select i,i from generate_series(1,100) i;
 analyze stts_t1;
 set search_path to public, stts_s1, stts_s2, tststats;
 \dX
-                                                        List of extended statistics
-  Schema  |          Name          |                            Definition                            | Ndistinct | Dependencies |   MCV   
-----------+------------------------+------------------------------------------------------------------+-----------+--------------+---------
- public   | ctlt1_a_b_stat         | a, b FROM ctlt1                                                  | defined   | defined      | defined
- public   | ctlt1_expr_stat        | (a || b) FROM ctlt1                                              |           |              | 
- public   | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                               | defined   | defined      | defined
- public   | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                           |           |              | 
- public   | func_deps_stat         | (a * 2), upper(b), (c + 1::numeric) FROM functional_dependencies |           | defined      | 
- public   | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                                    |           |              | defined
- public   | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                                      |           |              | defined
- public   | mcv_lists_stats        | a, b, d FROM mcv_lists                                           |           |              | defined
- public   | stts_1                 | a, b FROM stts_t1                                                | defined   |              | 
- public   | stts_2                 | a, b FROM stts_t1                                                | defined   | defined      | 
- public   | stts_3                 | a, b FROM stts_t1                                                | defined   | defined      | defined
- public   | stts_4                 | b, c FROM stts_t2                                                | defined   | defined      | defined
- public   | stts_hoge              | col1, col2, col3 FROM stts_t3                                    | defined   | defined      | defined
- public   | stxdinh                | a, b FROM stxdinh                                                | defined   | defined      | defined
- stts_s1  | stts_foo               | col1, col2 FROM stts_t3                                          | defined   | defined      | defined
- stts_s2  | stts_yama              | col1, col3 FROM stts_t3                                          |           | defined      | defined
- tststats | priv_test_stats        | a, b FROM priv_test_tbl                                          |           |              | defined
+                                                   List of extended statistics
+  Schema  |          Name          |                       Definition                        | Ndistinct | Dependencies |   MCV   
+----------+------------------------+---------------------------------------------------------+-----------+--------------+---------
+ public   | ctlt1_a_b_stat         | a, b FROM ctlt1                                         | defined   | defined      | defined
+ public   | ctlt1_expr_stat        | (a || b) FROM ctlt1                                     |           |              | 
+ public   | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                      | defined   | defined      | defined
+ public   | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                  |           |              | 
+ public   | func_deps_stat         | (a * 2), upper(b), (c + 1) FROM functional_dependencies |           | defined      | 
+ public   | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                           |           |              | defined
+ public   | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                             |           |              | defined
+ public   | mcv_lists_stats        | a, b, d FROM mcv_lists                                  |           |              | defined
+ public   | stts_1                 | a, b FROM stts_t1                                       | defined   |              | 
+ public   | stts_2                 | a, b FROM stts_t1                                       | defined   | defined      | 
+ public   | stts_3                 | a, b FROM stts_t1                                       | defined   | defined      | defined
+ public   | stts_4                 | b, c FROM stts_t2                                       | defined   | defined      | defined
+ public   | stts_hoge              | col1, col2, col3 FROM stts_t3                           | defined   | defined      | defined
+ public   | stxdinh                | a, b FROM stxdinh                                       | defined   | defined      | defined
+ stts_s1  | stts_foo               | col1, col2 FROM stts_t3                                 | defined   | defined      | defined
+ stts_s2  | stts_yama              | col1, col3 FROM stts_t3                                 |           | defined      | defined
+ tststats | priv_test_stats        | a, b FROM priv_test_tbl                                 |           |              | defined
 (17 rows)
 
 \dX stts_?
@@ -3139,26 +3139,26 @@ set search_path to public, stts_s1, stts_s2, tststats;
 (1 row)
 
 \dX+
-                                                        List of extended statistics
-  Schema  |          Name          |                            Definition                            | Ndistinct | Dependencies |   MCV   
-----------+------------------------+------------------------------------------------------------------+-----------+--------------+---------
- public   | ctlt1_a_b_stat         | a, b FROM ctlt1                                                  | defined   | defined      | defined
- public   | ctlt1_expr_stat        | (a || b) FROM ctlt1                                              |           |              | 
- public   | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                               | defined   | defined      | defined
- public   | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                           |           |              | 
- public   | func_deps_stat         | (a * 2), upper(b), (c + 1::numeric) FROM functional_dependencies |           | defined      | 
- public   | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                                    |           |              | defined
- public   | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                                      |           |              | defined
- public   | mcv_lists_stats        | a, b, d FROM mcv_lists                                           |           |              | defined
- public   | stts_1                 | a, b FROM stts_t1                                                | defined   |              | 
- public   | stts_2                 | a, b FROM stts_t1                                                | defined   | defined      | 
- public   | stts_3                 | a, b FROM stts_t1                                                | defined   | defined      | defined
- public   | stts_4                 | b, c FROM stts_t2                                                | defined   | defined      | defined
- public   | stts_hoge              | col1, col2, col3 FROM stts_t3                                    | defined   | defined      | defined
- public   | stxdinh                | a, b FROM stxdinh                                                | defined   | defined      | defined
- stts_s1  | stts_foo               | col1, col2 FROM stts_t3                                          | defined   | defined      | defined
- stts_s2  | stts_yama              | col1, col3 FROM stts_t3                                          |           | defined      | defined
- tststats | priv_test_stats        | a, b FROM priv_test_tbl                                          |           |              | defined
+                                                   List of extended statistics
+  Schema  |          Name          |                       Definition                        | Ndistinct | Dependencies |   MCV   
+----------+------------------------+---------------------------------------------------------+-----------+--------------+---------
+ public   | ctlt1_a_b_stat         | a, b FROM ctlt1                                         | defined   | defined      | defined
+ public   | ctlt1_expr_stat        | (a || b) FROM ctlt1                                     |           |              | 
+ public   | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                      | defined   | defined      | defined
+ public   | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                  |           |              | 
+ public   | func_deps_stat         | (a * 2), upper(b), (c + 1) FROM functional_dependencies |           | defined      | 
+ public   | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                           |           |              | defined
+ public   | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                             |           |              | defined
+ public   | mcv_lists_stats        | a, b, d FROM mcv_lists                                  |           |              | defined
+ public   | stts_1                 | a, b FROM stts_t1                                       | defined   |              | 
+ public   | stts_2                 | a, b FROM stts_t1                                       | defined   | defined      | 
+ public   | stts_3                 | a, b FROM stts_t1                                       | defined   | defined      | defined
+ public   | stts_4                 | b, c FROM stts_t2                                       | defined   | defined      | defined
+ public   | stts_hoge              | col1, col2, col3 FROM stts_t3                           | defined   | defined      | defined
+ public   | stxdinh                | a, b FROM stxdinh                                       | defined   | defined      | defined
+ stts_s1  | stts_foo               | col1, col2 FROM stts_t3                                 | defined   | defined      | defined
+ stts_s2  | stts_yama              | col1, col3 FROM stts_t3                                 |           | defined      | defined
+ tststats | priv_test_stats        | a, b FROM priv_test_tbl                                 |           |              | defined
 (17 rows)
 
 \dX+ stts_?
@@ -3187,46 +3187,46 @@ set search_path to public, stts_s1, stts_s2, tststats;
 
 set search_path to public, stts_s1;
 \dX
-                                                       List of extended statistics
- Schema  |          Name          |                            Definition                            | Ndistinct | Dependencies |   MCV   
----------+------------------------+------------------------------------------------------------------+-----------+--------------+---------
- public  | ctlt1_a_b_stat         | a, b FROM ctlt1                                                  | defined   | defined      | defined
- public  | ctlt1_expr_stat        | (a || b) FROM ctlt1                                              |           |              | 
- public  | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                               | defined   | defined      | defined
- public  | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                           |           |              | 
- public  | func_deps_stat         | (a * 2), upper(b), (c + 1::numeric) FROM functional_dependencies |           | defined      | 
- public  | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                                    |           |              | defined
- public  | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                                      |           |              | defined
- public  | mcv_lists_stats        | a, b, d FROM mcv_lists                                           |           |              | defined
- public  | stts_1                 | a, b FROM stts_t1                                                | defined   |              | 
- public  | stts_2                 | a, b FROM stts_t1                                                | defined   | defined      | 
- public  | stts_3                 | a, b FROM stts_t1                                                | defined   | defined      | defined
- public  | stts_4                 | b, c FROM stts_t2                                                | defined   | defined      | defined
- public  | stts_hoge              | col1, col2, col3 FROM stts_t3                                    | defined   | defined      | defined
- public  | stxdinh                | a, b FROM stxdinh                                                | defined   | defined      | defined
- stts_s1 | stts_foo               | col1, col2 FROM stts_t3                                          | defined   | defined      | defined
+                                                   List of extended statistics
+ Schema  |          Name          |                       Definition                        | Ndistinct | Dependencies |   MCV   
+---------+------------------------+---------------------------------------------------------+-----------+--------------+---------
+ public  | ctlt1_a_b_stat         | a, b FROM ctlt1                                         | defined   | defined      | defined
+ public  | ctlt1_expr_stat        | (a || b) FROM ctlt1                                     |           |              | 
+ public  | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                      | defined   | defined      | defined
+ public  | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                  |           |              | 
+ public  | func_deps_stat         | (a * 2), upper(b), (c + 1) FROM functional_dependencies |           | defined      | 
+ public  | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                           |           |              | defined
+ public  | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                             |           |              | defined
+ public  | mcv_lists_stats        | a, b, d FROM mcv_lists                                  |           |              | defined
+ public  | stts_1                 | a, b FROM stts_t1                                       | defined   |              | 
+ public  | stts_2                 | a, b FROM stts_t1                                       | defined   | defined      | 
+ public  | stts_3                 | a, b FROM stts_t1                                       | defined   | defined      | defined
+ public  | stts_4                 | b, c FROM stts_t2                                       | defined   | defined      | defined
+ public  | stts_hoge              | col1, col2, col3 FROM stts_t3                           | defined   | defined      | defined
+ public  | stxdinh                | a, b FROM stxdinh                                       | defined   | defined      | defined
+ stts_s1 | stts_foo               | col1, col2 FROM stts_t3                                 | defined   | defined      | defined
 (15 rows)
 
 create role regress_stats_ext nosuperuser;
 set role regress_stats_ext;
 \dX
-                                                       List of extended statistics
- Schema |          Name          |                            Definition                            | Ndistinct | Dependencies |   MCV   
---------+------------------------+------------------------------------------------------------------+-----------+--------------+---------
- public | ctlt1_a_b_stat         | a, b FROM ctlt1                                                  | defined   | defined      | defined
- public | ctlt1_expr_stat        | (a || b) FROM ctlt1                                              |           |              | 
- public | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                               | defined   | defined      | defined
- public | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                           |           |              | 
- public | func_deps_stat         | (a * 2), upper(b), (c + 1::numeric) FROM functional_dependencies |           | defined      | 
- public | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                                    |           |              | defined
- public | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                                      |           |              | defined
- public | mcv_lists_stats        | a, b, d FROM mcv_lists                                           |           |              | defined
- public | stts_1                 | a, b FROM stts_t1                                                | defined   |              | 
- public | stts_2                 | a, b FROM stts_t1                                                | defined   | defined      | 
- public | stts_3                 | a, b FROM stts_t1                                                | defined   | defined      | defined
- public | stts_4                 | b, c FROM stts_t2                                                | defined   | defined      | defined
- public | stts_hoge              | col1, col2, col3 FROM stts_t3                                    | defined   | defined      | defined
- public | stxdinh                | a, b FROM stxdinh                                                | defined   | defined      | defined
+                                                  List of extended statistics
+ Schema |          Name          |                       Definition                        | Ndistinct | Dependencies |   MCV   
+--------+------------------------+---------------------------------------------------------+-----------+--------------+---------
+ public | ctlt1_a_b_stat         | a, b FROM ctlt1                                         | defined   | defined      | defined
+ public | ctlt1_expr_stat        | (a || b) FROM ctlt1                                     |           |              | 
+ public | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                      | defined   | defined      | defined
+ public | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                  |           |              | 
+ public | func_deps_stat         | (a * 2), upper(b), (c + 1) FROM functional_dependencies |           | defined      | 
+ public | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                           |           |              | defined
+ public | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                             |           |              | defined
+ public | mcv_lists_stats        | a, b, d FROM mcv_lists                                  |           |              | defined
+ public | stts_1                 | a, b FROM stts_t1                                       | defined   |              | 
+ public | stts_2                 | a, b FROM stts_t1                                       | defined   | defined      | 
+ public | stts_3                 | a, b FROM stts_t1                                       | defined   | defined      | defined
+ public | stts_4                 | b, c FROM stts_t2                                       | defined   | defined      | defined
+ public | stts_hoge              | col1, col2, col3 FROM stts_t3                           | defined   | defined      | defined
+ public | stxdinh                | a, b FROM stxdinh                                       | defined   | defined      | defined
 (14 rows)
 
 reset role;

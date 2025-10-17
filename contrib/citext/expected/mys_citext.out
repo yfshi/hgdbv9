@@ -1128,10 +1128,6 @@ HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (citext)        VALUES ('12.42'::float8);
 -- Cannot cast to float4 on assignment.
 INSERT INTO caster (float4)        VALUES ('12.42'::text);
-ERROR:  column "float4" is of type float4 but expression is of type text
-LINE 1: INSERT INTO caster (float4)        VALUES ('12.42'::text);
-                                                   ^
-HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (text)          VALUES ('12.42'::float4);
 INSERT INTO caster (float4)        VALUES ('12.42'::citext);
 ERROR:  column "float4" is of type float4 but expression is of type citext
@@ -1141,10 +1137,6 @@ HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (citext)        VALUES ('12.42'::float4);
 -- Cannot cast to numeric on assignment.
 INSERT INTO caster (numeric)       VALUES ('12.42'::text);
-ERROR:  column "numeric" is of type numeric but expression is of type text
-LINE 1: INSERT INTO caster (numeric)       VALUES ('12.42'::text);
-                                                   ^
-HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (text)          VALUES ('12.42'::numeric);
 INSERT INTO caster (numeric)       VALUES ('12.42'::citext);
 ERROR:  column "numeric" is of type numeric but expression is of type citext

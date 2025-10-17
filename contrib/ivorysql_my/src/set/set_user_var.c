@@ -284,8 +284,6 @@ mysSetUserVar(PG_FUNCTION_ARGS)
 	{
 		Datum	datumValue = PG_GETARG_DATUM(1);
 		Oid		varType = get_fn_expr_argtype(fcinfo->flinfo, 1);
-		Oid		typOutput;
-		bool	typIsVarlena;
 		int32	typmod = -1;
 		Oid		colloid = InvalidOid;
 		bool	typebyval = true;
@@ -296,7 +294,6 @@ mysSetUserVar(PG_FUNCTION_ARGS)
 		 * By value type, calculate type length, whether to
 		 * pass by value.
 		 */
-		getTypeOutputInfo(varType, &typOutput, &typIsVarlena);
 		argType = typeidType(varType);
 		typebyval = typeByVal(argType);
 		typlen = typeLen(argType);

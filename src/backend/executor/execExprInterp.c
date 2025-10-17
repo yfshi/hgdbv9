@@ -4599,11 +4599,16 @@ mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid)
 		Node		   *result = NULL;
 		Const		   *newconst = NULL;
 
-		result = coerce_type(NULL, (Node *)currentconst, currentconst->consttype,
+		result = coerce_type(NULL, (Node *) currentconst, currentconst->consttype,
 							 targetoid,
 							 -1, COERCION_EXPLICIT, COERCE_EXPLICIT_CAST,
 							 -1);
-		newconst = (Const *)eval_const_expressions(NULL, result);
+
+		result = eval_const_expressions(NULL, result);
+		
+		Assert(IsA(result, Const));
+
+		newconst = (Const *) result;
 		retdatum = newconst->constvalue;
 	}
 	else

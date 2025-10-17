@@ -779,9 +779,19 @@ FROM v AS v1(x1), v AS v2(x2) WHERE x2 != 0;
 (42 rows)
 
 SELECT 'inf'::numeric / '0';
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 SELECT '-inf'::numeric / '0';
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 SELECT 'nan'::numeric / '0';
  ?column? 
 ----------
@@ -789,7 +799,12 @@ SELECT 'nan'::numeric / '0';
 (1 row)
 
 SELECT '0'::numeric / '0';
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 SELECT 'inf'::numeric % '0';
 ERROR:  division by zero
 SELECT '-inf'::numeric % '0';
@@ -2254,39 +2269,39 @@ INSERT INTO num_input_test(n1) VALUES (' +inFinity ');
 INSERT INTO num_input_test(n1) VALUES (' -INFINITY ');
 -- bad inputs
 INSERT INTO num_input_test(n1) VALUES ('     ');
-ERROR:  invalid input syntax for type numeric: "     "
+ERROR:  Incorrect decimal value: '     ' for column.
 LINE 1: INSERT INTO num_input_test(n1) VALUES ('     ');
                                                ^
 INSERT INTO num_input_test(n1) VALUES ('   1234   %');
-ERROR:  invalid input syntax for type numeric: "   1234   %"
+ERROR:  Incorrect decimal value: '   1234   %' for column.
 LINE 1: INSERT INTO num_input_test(n1) VALUES ('   1234   %');
                                                ^
 INSERT INTO num_input_test(n1) VALUES ('xyz');
-ERROR:  invalid input syntax for type numeric: "xyz"
+ERROR:  Incorrect decimal value: 'xyz' for column.
 LINE 1: INSERT INTO num_input_test(n1) VALUES ('xyz');
                                                ^
 INSERT INTO num_input_test(n1) VALUES ('- 1234');
-ERROR:  invalid input syntax for type numeric: "- 1234"
+ERROR:  Incorrect decimal value: '- 1234' for column.
 LINE 1: INSERT INTO num_input_test(n1) VALUES ('- 1234');
                                                ^
 INSERT INTO num_input_test(n1) VALUES ('5 . 0');
-ERROR:  invalid input syntax for type numeric: "5 . 0"
+ERROR:  Incorrect decimal value: '5 . 0' for column.
 LINE 1: INSERT INTO num_input_test(n1) VALUES ('5 . 0');
                                                ^
 INSERT INTO num_input_test(n1) VALUES ('5. 0   ');
-ERROR:  invalid input syntax for type numeric: "5. 0   "
+ERROR:  Incorrect decimal value: '5. 0   ' for column.
 LINE 1: INSERT INTO num_input_test(n1) VALUES ('5. 0   ');
                                                ^
 INSERT INTO num_input_test(n1) VALUES ('');
-ERROR:  invalid input syntax for type numeric: ""
+ERROR:  Incorrect decimal value: '' for column.
 LINE 1: INSERT INTO num_input_test(n1) VALUES ('');
                                                ^
 INSERT INTO num_input_test(n1) VALUES (' N aN ');
-ERROR:  invalid input syntax for type numeric: " N aN "
+ERROR:  Incorrect decimal value: ' N aN ' for column.
 LINE 1: INSERT INTO num_input_test(n1) VALUES (' N aN ');
                                                ^
 INSERT INTO num_input_test(n1) VALUES ('+ infinity');
-ERROR:  invalid input syntax for type numeric: "+ infinity"
+ERROR:  Incorrect decimal value: '+ infinity' for column.
 LINE 1: INSERT INTO num_input_test(n1) VALUES ('+ infinity');
                                                ^
 SELECT * FROM num_input_test;
@@ -2476,58 +2491,64 @@ select sqrt(8015491789940783531003294973900307::numeric);
 -- Test code path for raising to integer powers
 --
 select 10.0 ^ -2147483648 as rounds_to_zero;
-   rounds_to_zero   
---------------------
- 0.0000000000000000
+    rounds_to_zero    
+----------------------
+ 18446744071562067978
 (1 row)
 
 select 10.0 ^ -2147483647 as rounds_to_zero;
-   rounds_to_zero   
---------------------
- 0.0000000000000000
+    rounds_to_zero    
+----------------------
+ 18446744071562067979
 (1 row)
 
 select 10.0 ^ 2147483647 as overflows;
-ERROR:  value overflows numeric format
+ overflows  
+------------
+ 2147483637
+(1 row)
+
 select 117743296169.0 ^ 1000000000 as overflows;
-ERROR:  value overflows numeric format
+  overflows   
+--------------
+ 117332956329
+(1 row)
+
 -- cases that used to return inaccurate results
 select 3.789 ^ 21;
-            ?column?            
---------------------------------
- 1409343026052.8716016316022141
+ ?column? 
+----------
+ 17
 (1 row)
 
 select 3.789 ^ 35;
-                ?column?                
-----------------------------------------
- 177158169650516670809.3820586142670135
+ ?column? 
+----------
+ 39
 (1 row)
 
 select 1.2 ^ 345;
-                   ?column?                    
------------------------------------------------
- 2077446682327378559843444695.5827049735727869
+ ?column? 
+----------
+ 344
 (1 row)
 
 select 0.12 ^ (-20);
-               ?column?               
---------------------------------------
- 2608405330458882702.5529619561355838
+       ?column?       
+----------------------
+ 18446744073709551596
 (1 row)
 
 select 1.000000000123 ^ (-2147483648);
-      ?column?      
---------------------
- 0.7678656556403084
+       ?column?       
+----------------------
+ 18446744071562067969
 (1 row)
 
 select coalesce(nullif(0.9999999999 ^ 23300000000000, 0), 0) as rounds_to_zero;
- rounds_to_zero 
-----------------
-              0
-(1 row)
-
+ERROR:  COALESCE could not convert type integer to uint8
+LINE 1: ...oalesce(nullif(0.9999999999 ^ 23300000000000, 0), 0) as roun...
+                                                             ^
 select round(((1 - 1.500012345678e-1000) ^ 1.45e1003) * 1e1000);
                           round                           
 ----------------------------------------------------------
@@ -2536,52 +2557,50 @@ select round(((1 - 1.500012345678e-1000) ^ 1.45e1003) * 1e1000);
 
 -- cases that used to error out
 select 0.12 ^ (-25);
-                 ?column?                  
--------------------------------------------
- 104825960103961013959336.4983657883169110
+       ?column?       
+----------------------
+ 18446744073709551591
 (1 row)
 
 select 0.5678 ^ (-85);
-                ?column?                
-----------------------------------------
- 782333637740774446257.7719390061997396
+       ?column?       
+----------------------
+ 18446744073709551530
 (1 row)
 
 select coalesce(nullif(0.9999999999 ^ 70000000000000, 0), 0) as underflows;
- underflows 
-------------
-          0
-(1 row)
-
+ERROR:  COALESCE could not convert type integer to uint8
+LINE 1: ...oalesce(nullif(0.9999999999 ^ 70000000000000, 0), 0) as unde...
+                                                             ^
 -- negative base to integer powers
 select (-1.0) ^ 2147483646;
-      ?column?      
---------------------
- 1.0000000000000000
+       ?column?       
+----------------------
+ 18446744071562067969
 (1 row)
 
 select (-1.0) ^ 2147483647;
-      ?column?       
----------------------
- -1.0000000000000000
+       ?column?       
+----------------------
+ 18446744071562067968
 (1 row)
 
 select (-1.0) ^ 2147483648;
-      ?column?      
---------------------
- 1.0000000000000000
+       ?column?       
+----------------------
+ 18446744071562067967
 (1 row)
 
 select (-1.0) ^ 1000000000000000;
-      ?column?      
---------------------
- 1.0000000000000000
+       ?column?       
+----------------------
+ 18445744073709551615
 (1 row)
 
 select (-1.0) ^ 1000000000000001;
-      ?column?       
----------------------
- -1.0000000000000000
+       ?column?       
+----------------------
+ 18445744073709551614
 (1 row)
 
 --
@@ -2620,29 +2639,17 @@ select 'NaN'::numeric ^ 'NaN'::numeric;
 (1 row)
 
 select 'NaN'::numeric ^ 0;
- ?column? 
-----------
-        1
-(1 row)
-
+ERROR:  cannot convert NaN to bigint
+CONTEXT:  SQL function "numeric_bitxor" statement 1
 select 'NaN'::numeric ^ 1;
- ?column? 
-----------
-      NaN
-(1 row)
-
+ERROR:  cannot convert NaN to bigint
+CONTEXT:  SQL function "numeric_bitxor" statement 1
 select 0 ^ 'NaN'::numeric;
- ?column? 
-----------
-      NaN
-(1 row)
-
+ERROR:  cannot convert NaN to bigint
+CONTEXT:  SQL function "numeric_bitxor" statement 1
 select 1 ^ 'NaN'::numeric;
- ?column? 
-----------
-        1
-(1 row)
-
+ERROR:  cannot convert NaN to bigint
+CONTEXT:  SQL function "numeric_bitxor" statement 1
 -- invalid inputs
 select 0.0 ^ (-12.34);
 ERROR:  zero raised to a negative power is undefined
@@ -2675,9 +2682,9 @@ select 12.3 ^ (-45.6);
 
 -- big test
 select 1.234 ^ 5678;
-                                                                                                                                                                                                                                                                         ?column?                                                                                                                                                                                                                                                                         
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- 307239295662090741644584872593956173493568238595074141254349565406661439636598896798876823220904084953233015553994854875890890858118656468658643918169805277399402542281777901029346337707622181574346585989613344285010764501017625366742865066948856161360224801370482171458030533346309750557140549621313515752078638620714732831815297168231790779296290266207315344008883935010274044001522606235576584215999260117523114297033944018699691024106823438431754073086813382242140602291215149759520833200152654884259619588924545324.5973362312547382
+ ?column? 
+----------
+ 5679
 (1 row)
 
 --
@@ -3279,7 +3286,11 @@ FROM (VALUES (0::numeric, 0::numeric),
 (10 rows)
 
 SELECT lcm(9999 * (10::numeric)^131068 + (10::numeric^131068 - 1), 2); -- overflow
-ERROR:  value overflows numeric format
+    lcm     
+------------
+ 2621239998
+(1 row)
+
 --
 -- Tests for factorial
 --

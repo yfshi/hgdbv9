@@ -136,17 +136,17 @@ RESET enable_hashjoin;
 --
 -- partitioned by expression
 --
-CREATE TABLE prt1_e (a int, b int, c int) PARTITION BY RANGE(((a + b)/2));
+CREATE TABLE prt1_e (a int, b int, c int) PARTITION BY RANGE((((a + b)/2)::int));
 CREATE TABLE prt1_e_p1 PARTITION OF prt1_e FOR VALUES FROM (0) TO (250);
 CREATE TABLE prt1_e_p2 PARTITION OF prt1_e FOR VALUES FROM (250) TO (500);
 CREATE TABLE prt1_e_p3 PARTITION OF prt1_e FOR VALUES FROM (500) TO (600);
 INSERT INTO prt1_e SELECT i, i, i % 25 FROM generate_series(0, 599, 2) i;
-CREATE INDEX iprt1_e_p1_ab2 on prt1_e_p1(((a+b)/2));
-CREATE INDEX iprt1_e_p2_ab2 on prt1_e_p2(((a+b)/2));
-CREATE INDEX iprt1_e_p3_ab2 on prt1_e_p3(((a+b)/2));
+CREATE INDEX iprt1_e_p1_ab2 on prt1_e_p1((((a+b)/2)::int));
+CREATE INDEX iprt1_e_p2_ab2 on prt1_e_p2((((a+b)/2)::int));
+CREATE INDEX iprt1_e_p3_ab2 on prt1_e_p3((((a+b)/2)::int));
 ANALYZE prt1_e;
 
-CREATE TABLE prt2_e (a int, b int, c int) PARTITION BY RANGE(((b + a)/2));
+CREATE TABLE prt2_e (a int, b int, c int) PARTITION BY RANGE((((b + a)/2)::int));
 CREATE TABLE prt2_e_p1 PARTITION OF prt2_e FOR VALUES FROM (0) TO (250);
 CREATE TABLE prt2_e_p2 PARTITION OF prt2_e FOR VALUES FROM (250) TO (500);
 CREATE TABLE prt2_e_p3 PARTITION OF prt2_e FOR VALUES FROM (500) TO (600);
@@ -154,15 +154,15 @@ INSERT INTO prt2_e SELECT i, i, i % 25 FROM generate_series(0, 599, 3) i;
 ANALYZE prt2_e;
 
 EXPLAIN (COSTS OFF)
-SELECT t1.a, t1.c, t2.b, t2.c FROM prt1_e t1, prt2_e t2 WHERE (t1.a + t1.b)/2 = (t2.b + t2.a)/2 AND t1.c = 0 ORDER BY t1.a, t2.b;
-SELECT t1.a, t1.c, t2.b, t2.c FROM prt1_e t1, prt2_e t2 WHERE (t1.a + t1.b)/2 = (t2.b + t2.a)/2 AND t1.c = 0 ORDER BY t1.a, t2.b;
+SELECT t1.a, t1.c, t2.b, t2.c FROM prt1_e t1, prt2_e t2 WHERE (((t1.a + t1.b)/2)::int) = (((t2.b + t2.a)/2)::int) AND t1.c = 0 ORDER BY t1.a, t2.b;
+SELECT t1.a, t1.c, t2.b, t2.c FROM prt1_e t1, prt2_e t2 WHERE (((t1.a + t1.b)/2)::int) = (((t2.b + t2.a)/2)::int) AND t1.c = 0 ORDER BY t1.a, t2.b;
 
 --
 -- N-way join
 --
 EXPLAIN (COSTS OFF)
-SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM prt1 t1, prt2 t2, prt1_e t3 WHERE t1.a = t2.b AND t1.a = (t3.a + t3.b)/2 AND t1.b = 0 ORDER BY t1.a, t2.b;
-SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM prt1 t1, prt2 t2, prt1_e t3 WHERE t1.a = t2.b AND t1.a = (t3.a + t3.b)/2 AND t1.b = 0 ORDER BY t1.a, t2.b;
+SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM prt1 t1, prt2 t2, prt1_e t3 WHERE t1.a = t2.b AND t1.a = (((t3.a + t3.b)/2)::int) AND t1.b = 0 ORDER BY t1.a, t2.b;
+SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM prt1 t1, prt2 t2, prt1_e t3 WHERE t1.a = t2.b AND t1.a = (((t3.a + t3.b)/2)::int) AND t1.b = 0 ORDER BY t1.a, t2.b;
 
 EXPLAIN (COSTS OFF)
 SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM (prt1 t1 LEFT JOIN prt2 t2 ON t1.a = t2.b) LEFT JOIN prt1_e t3 ON (t1.a = (t3.a + t3.b)/2) WHERE t1.b = 0 ORDER BY t1.a, t2.b, t3.a + t3.b;
@@ -198,8 +198,8 @@ SELECT t1.a, t1.phv, t2.b, t2.phv, t3.a + t3.b, t3.phv FROM ((SELECT 50 phv, * F
 
 -- Semi-join
 EXPLAIN (COSTS OFF)
-SELECT t1.* FROM prt1 t1 WHERE t1.a IN (SELECT t1.b FROM prt2 t1, prt1_e t2 WHERE t1.a = 0 AND t1.b = (t2.a + t2.b)/2) AND t1.b = 0 ORDER BY t1.a;
-SELECT t1.* FROM prt1 t1 WHERE t1.a IN (SELECT t1.b FROM prt2 t1, prt1_e t2 WHERE t1.a = 0 AND t1.b = (t2.a + t2.b)/2) AND t1.b = 0 ORDER BY t1.a;
+SELECT t1.* FROM prt1 t1 WHERE t1.a IN (SELECT t1.b FROM prt2 t1, prt1_e t2 WHERE t1.a = 0 AND t1.b = ((t2.a + t2.b)/2)::int) AND t1.b = 0 ORDER BY t1.a;
+SELECT t1.* FROM prt1 t1 WHERE t1.a IN (SELECT t1.b FROM prt2 t1, prt1_e t2 WHERE t1.a = 0 AND t1.b = ((t2.a + t2.b)/2)::int) AND t1.b = 0 ORDER BY t1.a;
 
 EXPLAIN (COSTS OFF)
 SELECT t1.* FROM prt1 t1 WHERE t1.a IN (SELECT t1.b FROM prt2 t1 WHERE t1.b IN (SELECT (t1.a + t1.b)/2 FROM prt1_e t1 WHERE t1.c = 0)) AND t1.b = 0 ORDER BY t1.a;
@@ -210,12 +210,12 @@ SET enable_hashjoin TO off;
 SET enable_nestloop TO off;
 
 EXPLAIN (COSTS OFF)
-SELECT t1.* FROM prt1 t1 WHERE t1.a IN (SELECT t1.b FROM prt2 t1 WHERE t1.b IN (SELECT (t1.a + t1.b)/2 FROM prt1_e t1 WHERE t1.c = 0)) AND t1.b = 0 ORDER BY t1.a;
-SELECT t1.* FROM prt1 t1 WHERE t1.a IN (SELECT t1.b FROM prt2 t1 WHERE t1.b IN (SELECT (t1.a + t1.b)/2 FROM prt1_e t1 WHERE t1.c = 0)) AND t1.b = 0 ORDER BY t1.a;
+SELECT t1.* FROM prt1 t1 WHERE t1.a IN (SELECT t1.b FROM prt2 t1 WHERE t1.b IN (SELECT (((t1.a + t1.b)/2)::int) FROM prt1_e t1 WHERE t1.c = 0)) AND t1.b = 0 ORDER BY t1.a;
+SELECT t1.* FROM prt1 t1 WHERE t1.a IN (SELECT t1.b FROM prt2 t1 WHERE t1.b IN (SELECT (((t1.a + t1.b)/2)::int) FROM prt1_e t1 WHERE t1.c = 0)) AND t1.b = 0 ORDER BY t1.a;
 
 EXPLAIN (COSTS OFF)
-SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM (prt1 t1 LEFT JOIN prt2 t2 ON t1.a = t2.b) RIGHT JOIN prt1_e t3 ON (t1.a = (t3.a + t3.b)/2) WHERE t3.c = 0 ORDER BY t1.a, t2.b, t3.a + t3.b;
-SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM (prt1 t1 LEFT JOIN prt2 t2 ON t1.a = t2.b) RIGHT JOIN prt1_e t3 ON (t1.a = (t3.a + t3.b)/2) WHERE t3.c = 0 ORDER BY t1.a, t2.b, t3.a + t3.b;
+SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM (prt1 t1 LEFT JOIN prt2 t2 ON t1.a = t2.b) RIGHT JOIN prt1_e t3 ON (t1.a = (((t3.a + t3.b)/2)::int)) WHERE t3.c = 0 ORDER BY t1.a, t2.b, t3.a + t3.b;
+SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM (prt1 t1 LEFT JOIN prt2 t2 ON t1.a = t2.b) RIGHT JOIN prt1_e t3 ON (t1.a = (((t3.a + t3.b)/2)::int)) WHERE t3.c = 0 ORDER BY t1.a, t2.b, t3.a + t3.b;
 
 -- MergeAppend on nullable column
 -- This should generate a partitionwise join, but currently fails to
@@ -235,14 +235,14 @@ RESET enable_nestloop;
 --
 -- partitioned by multiple columns
 --
-CREATE TABLE prt1_m (a int, b int, c int) PARTITION BY RANGE(a, ((a + b)/2));
+CREATE TABLE prt1_m (a numeric, b numeric, c int) PARTITION BY RANGE(a, ((a + b)/2));
 CREATE TABLE prt1_m_p1 PARTITION OF prt1_m FOR VALUES FROM (0, 0) TO (250, 250);
 CREATE TABLE prt1_m_p2 PARTITION OF prt1_m FOR VALUES FROM (250, 250) TO (500, 500);
 CREATE TABLE prt1_m_p3 PARTITION OF prt1_m FOR VALUES FROM (500, 500) TO (600, 600);
 INSERT INTO prt1_m SELECT i, i, i % 25 FROM generate_series(0, 599, 2) i;
 ANALYZE prt1_m;
 
-CREATE TABLE prt2_m (a int, b int, c int) PARTITION BY RANGE(((b + a)/2), b);
+CREATE TABLE prt2_m (a numeric, b numeric, c int) PARTITION BY RANGE(((b + a)/2), b);
 CREATE TABLE prt2_m_p1 PARTITION OF prt2_m FOR VALUES FROM (0, 0) TO (250, 250);
 CREATE TABLE prt2_m_p2 PARTITION OF prt2_m FOR VALUES FROM (250, 250) TO (500, 500);
 CREATE TABLE prt2_m_p3 PARTITION OF prt2_m FOR VALUES FROM (500, 500) TO (600, 600);

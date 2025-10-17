@@ -352,22 +352,22 @@ SELECT 2 + 2 / 2 AS three;
 (1 row)
 
 SELECT (2 + 2) / 2 AS two;
- two 
------
-   2
+  two   
+--------
+ 2.0000
 (1 row)
 
 -- corner case
 SELECT (-1::int4<<31)::text;
-    text     
--------------
- -2147483648
+         text         
+----------------------
+ 18446744071562067968
 (1 row)
 
 SELECT ((-1::int4<<31)+1)::text;
-    text     
--------------
- -2147483647
+         text         
+----------------------
+ 18446744071562067969
 (1 row)
 
 -- check sane handling of INT_MIN overflow cases

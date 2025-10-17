@@ -150,13 +150,13 @@ CREATE OPERATOR ivymy.^ (
 --
 -- cast (text as bool)
 --
-CREATE OR REPLACE FUNCTION ivymy.text_bool(text, int) 
+CREATE OR REPLACE FUNCTION ivymy.text_bool(text, int, bool, int8) 
 	RETURNS bool
 	AS 'MODULE_PATHNAME', 'text_bool'
 	LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
 
 CREATE CAST(text as bool) 
-WITH FUNCTION ivymy.text_bool(text, int) 
+WITH FUNCTION ivymy.text_bool(text, int, bool, int8) 
 AS ASSIGNMENT;
 
 --
@@ -198,17 +198,19 @@ AS ASSIGNMENT;
 --
 -- cast (text as float8)
 --
-CREATE OR REPLACE FUNCTION ivymy.text_float8(text)
-	RETURNS pg_catalog.float8
-	AS 'MODULE_PATHNAME', 'text_float8'
-	LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+CREATE OR REPLACE FUNCTION ivymy.text_float8(text, int, bool, int8)
+RETURNS pg_catalog.float8
+AS 'MODULE_PATHNAME', 'varlena_float8'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
 
-CREATE CAST(text as pg_catalog.float8) WITH FUNCTION ivymy.text_float8(text) AS IMPLICIT;
+CREATE CAST(text as pg_catalog.float8)
+WITH FUNCTION ivymy.text_float8(text, int, bool, int8)
+AS IMPLICIT;
 
 --
 -- cast (varchar as int2)
 --
-CREATE FUNCTION ivymy.mys_varchar2int2(varchar)
+CREATE FUNCTION ivymy.varchar_int2(varchar, int, bool, int8) 
 RETURNS int2
 AS 'MODULE_PATHNAME', 'varlena_int2'
 LANGUAGE C 
@@ -217,13 +219,13 @@ PARALLEL SAFE
 IMMUTABLE;
 
 CREATE CAST(varchar as int2) 
-WITH FUNCTION ivymy.mys_varchar2int2(varchar) 
+WITH FUNCTION ivymy.varchar_int2(varchar, int, bool, int8) 
 AS ASSIGNMENT;
 
 --
 -- cast (varchar as int4)
 --
-CREATE FUNCTION ivymy.mys_varchar2int4(varchar)
+CREATE FUNCTION ivymy.varchar_int4(varchar, int, bool, int8) 
 RETURNS pg_catalog.int4
 AS 'MODULE_PATHNAME', 'varlena_int4'
 LANGUAGE C
@@ -231,12 +233,14 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE CAST(varchar as pg_catalog.int4) WITH FUNCTION ivymy.mys_varchar2int4(varchar) AS ASSIGNMENT;
+CREATE CAST(varchar as pg_catalog.int4) 
+WITH FUNCTION ivymy.varchar_int4(varchar, int, bool, int8) 
+AS ASSIGNMENT;
 
 --
 -- cast (varchar as int8)
 --
-CREATE FUNCTION ivymy.mys_varchar2int8(varchar)
+CREATE FUNCTION ivymy.varchar_int8(varchar, int, bool, int8) 
 RETURNS pg_catalog.int8
 AS 'MODULE_PATHNAME', 'varlena_int8'
 LANGUAGE C
@@ -244,19 +248,37 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE CAST(varchar as pg_catalog.int8) WITH FUNCTION ivymy.mys_varchar2int8(varchar) AS ASSIGNMENT;
+CREATE CAST(varchar as pg_catalog.int8)
+WITH FUNCTION ivymy.varchar_int8(varchar, int, bool, int8) 
+AS ASSIGNMENT;
 
 -- Begin - ReqID:SRS-MYSQL-SET
 --
 -- cast (varchar as numeric)
 --
-create or replace function ivymy.mysvarchar_to_numeric(var pg_catalog.varchar)
-returns pg_catalog.numeric
-as 'MODULE_PATHNAME', 'mysvarchar_to_numeric'
+create or replace function ivymy.varchar_numeric(varchar, int, bool, int8) 
+returns numeric
+as 'MODULE_PATHNAME', 'varlena_numeric'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE CAST (pg_catalog.varchar AS pg_catalog.numeric) WITH FUNCTION ivymy.mysvarchar_to_numeric(var pg_catalog.varchar) AS ASSIGNMENT;
+CREATE CAST (varchar AS numeric)
+WITH FUNCTION ivymy.varchar_numeric(varchar, int, bool, int8)
+AS ASSIGNMENT;
 -- End - ReqID:SRS-MYSQL-SET
+
+/* Begin - bug#z5590 */
+create or replace function ivymy.text_numeric(text, int, bool, int8) 
+returns numeric
+as 'MODULE_PATHNAME', 'varlena_numeric'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (text AS numeric)
+WITH FUNCTION ivymy.text_numeric(text, int, bool, int8)
+AS ASSIGNMENT;
+/* End - bug#z5590 */
