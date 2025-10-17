@@ -3,18 +3,18 @@ Parsed test spec with 2 sessions
 starting permutation: merge1 c1 select2 c2
 step merge1: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge1' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge1' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-    UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+    UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 
 step c1: COMMIT;
 step select2: SELECT * FROM target;
-key|val                     
----+------------------------
-  2|setup1 updated by merge1
+k|val                     
+-+------------------------
+2|setup1 updated by merge1
 (1 row)
 
 step c2: COMMIT;
@@ -22,28 +22,28 @@ step c2: COMMIT;
 starting permutation: merge1 c1 merge2a select2 c2
 step merge1: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge1' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge1' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-    UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+    UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 
 step c1: COMMIT;
 step merge2a: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge2a' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge2a' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 
 step select2: SELECT * FROM target;
-key|val                     
----+------------------------
-  2|setup1 updated by merge1
-  1|merge2a                 
+k|val                     
+-+------------------------
+2|setup1 updated by merge1
+1|merge2a                 
 (2 rows)
 
 step c2: COMMIT;
@@ -51,29 +51,29 @@ step c2: COMMIT;
 starting permutation: merge1 merge2a c1 select2 c2
 step merge1: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge1' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge1' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-    UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+    UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 
 step merge2a: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge2a' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge2a' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
  <waiting ...>
 step c1: COMMIT;
 step merge2a: <... completed>
 step select2: SELECT * FROM target;
-key|val                     
----+------------------------
-  2|setup1 updated by merge1
-  1|merge2a                 
+k|val                     
+-+------------------------
+2|setup1 updated by merge1
+1|merge2a                 
 (2 rows)
 
 step c2: COMMIT;
@@ -81,28 +81,28 @@ step c2: COMMIT;
 starting permutation: merge1 merge2a a1 select2 c2
 step merge1: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge1' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge1' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-    UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+    UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 
 step merge2a: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge2a' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge2a' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
  <waiting ...>
 step a1: ABORT;
 step merge2a: <... completed>
 step select2: SELECT * FROM target;
-key|val                      
----+-------------------------
-  2|setup1 updated by merge2a
+k|val                      
+-+-------------------------
+2|setup1 updated by merge2a
 (1 row)
 
 step c2: COMMIT;
@@ -110,29 +110,29 @@ step c2: COMMIT;
 starting permutation: merge1 merge2b c1 select2 c2
 step merge1: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge1' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge1' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-    UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+    UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 
 step merge2b: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge2b' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge2b' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
-  WHEN MATCHED AND t.key < 2 THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	INSERT VALUES (s.k, s.val)
+  WHEN MATCHED AND t.k < 2 THEN
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
  <waiting ...>
 step c1: COMMIT;
 step merge2b: <... completed>
 step select2: SELECT * FROM target;
-key|val                     
----+------------------------
-  2|setup1 updated by merge1
-  1|merge2b                 
+k|val                     
+-+------------------------
+2|setup1 updated by merge1
+1|merge2b                 
 (2 rows)
 
 step c2: COMMIT;
@@ -140,29 +140,29 @@ step c2: COMMIT;
 starting permutation: merge1 merge2c c1 select2 c2
 step merge1: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge1' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge1' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-    UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+    UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 
 step merge2c: 
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge2c' as val) s
-  ON s.key = t.key AND t.key < 2
+  USING (SELECT 1 as k, 'merge2c' as val) s
+  ON s.k = t.k AND t.k < 2
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
  <waiting ...>
 step c1: COMMIT;
 step merge2c: <... completed>
 step select2: SELECT * FROM target;
-key|val                     
----+------------------------
-  2|setup1 updated by merge1
-  1|merge2c                 
+k|val                     
+-+------------------------
+2|setup1 updated by merge1
+1|merge2c                 
 (2 rows)
 
 step c2: COMMIT;
@@ -170,29 +170,29 @@ step c2: COMMIT;
 starting permutation: pa_merge1 pa_merge2a c1 pa_select2 c2
 step pa_merge1: 
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge1' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge1' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
     UPDATE set val = t.val || ' updated by ' || s.val;
 
 step pa_merge2a: 
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2a' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2a' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
  <waiting ...>
 step c1: COMMIT;
 step pa_merge2a: <... completed>
 step pa_select2: SELECT * FROM pa_target;
-key|val                                               
----+--------------------------------------------------
-  2|initial                                           
-  2|initial updated by pa_merge1 updated by pa_merge2a
+k|val                                               
+-+--------------------------------------------------
+2|initial                                           
+2|initial updated by pa_merge1 updated by pa_merge2a
 (2 rows)
 
 step c2: COMMIT;
@@ -200,21 +200,21 @@ step c2: COMMIT;
 starting permutation: pa_merge2 pa_merge2a c1 pa_select2 c2
 step pa_merge2: 
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-    UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+    UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 
 step pa_merge2a: 
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2a' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2a' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
  <waiting ...>
 step c1: COMMIT;
 step pa_merge2a: <... completed>
@@ -226,29 +226,29 @@ step c2: COMMIT;
 starting permutation: pa_merge2 c1 pa_merge2a pa_select2 c2
 step pa_merge2: 
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-    UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+    UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 
 step c1: COMMIT;
 step pa_merge2a: 
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2a' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2a' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 
 step pa_select2: SELECT * FROM pa_target;
-key|val                         
----+----------------------------
-  1|pa_merge2a                  
-  2|initial                     
-  2|initial updated by pa_merge2
+k|val                         
+-+----------------------------
+1|pa_merge2a                  
+2|initial                     
+2|initial updated by pa_merge2
 (3 rows)
 
 step c2: COMMIT;
@@ -256,29 +256,29 @@ step c2: COMMIT;
 starting permutation: pa_merge3 pa_merge2b_when c1 pa_select2 c2
 step pa_merge3: 
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
     UPDATE set val = 'prefix ' || t.val;
 
 step pa_merge2b_when: 
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2b_when' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2b_when' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED AND t.val like 'initial%' THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
  <waiting ...>
 step c1: COMMIT;
 step pa_merge2b_when: <... completed>
 step pa_select2: SELECT * FROM pa_target;
-key|val           
----+--------------
-  1|prefix initial
-  2|initial       
+k|val           
+-+--------------
+1|prefix initial
+2|initial       
 (2 rows)
 
 step c2: COMMIT;
@@ -286,29 +286,29 @@ step c2: COMMIT;
 starting permutation: pa_merge1 pa_merge2b_when c1 pa_select2 c2
 step pa_merge1: 
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge1' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge1' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
     UPDATE set val = t.val || ' updated by ' || s.val;
 
 step pa_merge2b_when: 
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2b_when' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2b_when' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED AND t.val like 'initial%' THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
  <waiting ...>
 step c1: COMMIT;
 step pa_merge2b_when: <... completed>
 step pa_select2: SELECT * FROM pa_target;
-key|val                                                    
----+-------------------------------------------------------
-  2|initial                                                
-  2|initial updated by pa_merge1 updated by pa_merge2b_when
+k|val                                                    
+-+-------------------------------------------------------
+2|initial                                                
+2|initial updated by pa_merge1 updated by pa_merge2b_when
 (2 rows)
 
 step c2: COMMIT;

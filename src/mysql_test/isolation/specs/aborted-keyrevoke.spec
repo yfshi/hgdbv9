@@ -5,7 +5,7 @@
 setup
 {
   CREATE TABLE foo (
-	key		int PRIMARY KEY,
+	k		int PRIMARY KEY,
 	value	int
   );
 
@@ -20,7 +20,7 @@ teardown
 session s1
 setup		{ BEGIN; }
 step s1s	{ SAVEPOINT f; }
-step s1u	{ UPDATE foo SET key = 2; }	# obtain KEY REVOKE
+step s1u	{ UPDATE foo SET k = 2; }	# obtain KEY REVOKE
 step s1r	{ ROLLBACK TO f; } # lose KEY REVOKE
 step s1l	{ SELECT * FROM foo FOR KEY SHARE; }
 step s1c	{ COMMIT; }

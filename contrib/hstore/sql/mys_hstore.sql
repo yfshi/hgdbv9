@@ -329,7 +329,7 @@ select count(*) from testhstore where h ?| ARRAY['public','disabled'];
 select count(*) from testhstore where h ?& ARRAY['public','disabled'];
 
 select count(*) from (select (each(h)).key from testhstore) as wow ;
-select key, count(*) from (select (each(h)).key from testhstore) as wow group by key order by count desc, key;
+select k, count(*) from (select (each(h)).key as k from testhstore) as wow group by k order by count desc, k;
 
 -- sort/hash
 select count(distinct h) from testhstore;

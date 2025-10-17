@@ -3,12 +3,12 @@
 setup
 {
    DROP TABLE IF EXISTS parttab;
-   CREATE TABLE parttab (col1 text, key INTEGER PRIMARY KEY, col2 text) PARTITION BY LIST (key);
-   CREATE TABLE parttab1 (key INTEGER PRIMARY KEY, col1 text, col2 text);
-   CREATE TABLE parttab2 (key INTEGER PRIMARY KEY, col1 text, col2 text);
+   CREATE TABLE parttab (col1 text, k INTEGER PRIMARY KEY, col2 text) PARTITION BY LIST (k);
+   CREATE TABLE parttab1 (k INTEGER PRIMARY KEY, col1 text, col2 text);
+   CREATE TABLE parttab2 (k INTEGER PRIMARY KEY, col1 text, col2 text);
    ALTER TABLE parttab ATTACH PARTITION parttab1 FOR VALUES IN (1);
    ALTER TABLE parttab ATTACH PARTITION parttab2 FOR VALUES IN (2);
-   INSERT INTO parttab (key, col1, col2) VALUES (1, 'a', 'b');
+   INSERT INTO parttab (k, col1, col2) VALUES (1, 'a', 'b');
 }
 
 teardown
@@ -18,8 +18,8 @@ teardown
 
 session s1
 step s1b               { BEGIN; }
-step s1update_nokey  { INSERT INTO parttab (key, col1, col2) VALUES (1, 'a', 'b') ON CONFLICT (key) DO UPDATE SET col1 = 'x', col2 = 'y'; }
-step s1update_key  { INSERT INTO parttab (key, col1, col2) VALUES (1, 'a', 'b') ON CONFLICT (key) DO UPDATE SET key=1; }
+step s1update_nokey  { INSERT INTO parttab (k, col1, col2) VALUES (1, 'a', 'b') ON CONFLICT (k) DO UPDATE SET col1 = 'x', col2 = 'y'; }
+step s1update_key  { INSERT INTO parttab (k, col1, col2) VALUES (1, 'a', 'b') ON CONFLICT (k) DO UPDATE SET k=1; }
 step s1c               { COMMIT; }
 
 session s2

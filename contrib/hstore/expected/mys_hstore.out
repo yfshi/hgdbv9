@@ -1434,8 +1434,8 @@ select count(*) from (select (each(h)).key from testhstore) as wow ;
   4781
 (1 row)
 
-select key, count(*) from (select (each(h)).key from testhstore) as wow group by key order by count desc, key;
-    key    | count 
+select k, count(*) from (select (each(h)).key as k from testhstore) as wow group by k order by count desc, k;
+     k     | count 
 -----------+-------
  line      |   884
  query     |   207

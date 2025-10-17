@@ -1,0 +1,200 @@
+-- rename user
+create user u1;
+rename user u1 to u2;
+select usename from pg_user where usename = 'u2';
+ usename 
+---------
+ u2
+(1 row)
+
+rename user u2 to u3, u3 to u4;
+select usename from pg_user where usename = 'u4';
+ usename 
+---------
+ u4
+(1 row)
+
+rename user 'u4'@'localhost' to 'u5'@'localhost';
+select usename from pg_user where usename = 'u5';
+ usename 
+---------
+ u5
+(1 row)
+
+rename user 'u5'@'localhost' to 'u6'@'localhost', 'u6'@'localhost' to 'u7'@'localhost';
+select usename from pg_user where usename = 'u7';
+ usename 
+---------
+ u7
+(1 row)
+
+drop role u7;
+create user ace;
+RENAME USER 'ace'@'127.0.0.1'TO 'ace1'@'127.0.0.1';
+select usename from pg_user where usename = 'ace1';
+ usename 
+---------
+ ace1
+(1 row)
+
+drop role ace1;
+create user u1;
+rename user 'u1'@'localhost' to 'U1'@'localhost';
+select usename from pg_user where usename = 'U1';
+ usename 
+---------
+ U1
+(1 row)
+
+drop role U1;
+create user u1;
+begin;
+rename user u1 to u2;
+rollback;
+select usename from pg_user where usename = 'u1';
+ usename 
+---------
+ u1
+(1 row)
+
+drop role u1;
+create user u1;
+rename user u1 to u2, u1 to u2, u2 to u3;
+ERROR:  role "u1" does not exist
+select usename from pg_user where usename = 'u1';
+ usename 
+---------
+ u1
+(1 row)
+
+drop role u2;
+ERROR:  role "u2" does not exist
+-- rename table
+create table t1 (c int);
+rename table t1 to t2;
+\d t1;
+\d t2;
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+rename table t2 to t3, t3 to t4;
+\d t2;
+\d t3;
+\d t4;
+                 Table "public.t4"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+drop table t4;
+create temporary table temp1(c int);
+select * from temp1;
+ c 
+---
+(0 rows)
+
+select * from temp2;
+ERROR:  relation "temp2" does not exist
+LINE 1: select * from temp2;
+                      ^
+rename table temp1 to temp2;
+select * from temp1;
+ERROR:  relation "temp1" does not exist
+LINE 1: select * from temp1;
+                      ^
+select * from temp2;
+ c 
+---
+(0 rows)
+
+drop table temp2;
+create table t1 (c int);
+set lower_case_table_names = 1;
+alter table t1 rename to T1;
+ERROR:  relation "t1" already exists
+\d t1;
+                 Table "public.t1"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+\d T1;
+                 Table "public.t1"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+set lower_case_table_names = 0;
+alter table t1 rename to T1;
+\d t1;
+\d T1;
+                 Table "public.T1"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+drop table T1;
+create table t1 (c int);
+begin;
+rename table t1 to t2;
+rollback;
+\d t1;
+                 Table "public.t1"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+\d t2;
+drop table t1;
+-- alter table rename index 
+create table t(c int);
+create index i1 on t(c);
+alter table t rename index i1 to i2;
+\d t;
+                 Table "public.t"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+Indexes:
+    "i2" btree (c)
+
+alter table t rename index i2 to i3;
+-- alter table rename tablename
+create table t(c int);
+ERROR:  relation "t" already exists
+alter table t rename to t1;
+\d t1;
+                 Table "public.t1"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+Indexes:
+    "i3" btree (c)
+
+alter table t1 rename as t2;
+\d t2;
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+Indexes:
+    "i3" btree (c)
+
+drop index i3;
+drop table t2;
+--toplevel_stmt
+create table t1(c int); insert into t1 values(1); rename table t1 to t2; select * from t2; drop table t2;
+ c 
+---
+ 1
+(1 row)
+
+create user user1;create user user2;rename user user1 to user3,user2 to user4;
+drop user user3;
+drop user user4;
+CREATE USER rename_test WITH superuser;
+\! psql -p $PGPORT -d postgres -p $PGPORT -U rename_test -c "create user user1;create user user2;rename user user1 to user3,user2 to user4;drop user user3, user4;"
+DROP ROLE
+drop user rename_test;

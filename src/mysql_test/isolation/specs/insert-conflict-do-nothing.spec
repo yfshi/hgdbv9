@@ -8,7 +8,7 @@
 
 setup
 {
-  CREATE TABLE ints (key int primary key, val text);
+  CREATE TABLE ints (k int primary key, val text);
 }
 
 teardown
@@ -21,7 +21,7 @@ setup
 {
   BEGIN ISOLATION LEVEL READ COMMITTED;
 }
-step donothing1 { INSERT INTO ints(key, val) VALUES(1, 'donothing1') ON CONFLICT DO NOTHING; }
+step donothing1 { INSERT INTO ints(k, val) VALUES(1, 'donothing1') ON CONFLICT DO NOTHING; }
 step c1 { COMMIT; }
 step a1 { ABORT; }
 
@@ -30,7 +30,7 @@ setup
 {
   BEGIN ISOLATION LEVEL READ COMMITTED;
 }
-step donothing2 { INSERT INTO ints(key, val) VALUES(1, 'donothing2') ON CONFLICT DO NOTHING; }
+step donothing2 { INSERT INTO ints(k, val) VALUES(1, 'donothing2') ON CONFLICT DO NOTHING; }
 step select2 { SELECT * FROM ints; }
 step c2 { COMMIT; }
 

@@ -92,10 +92,10 @@ select * from t1 where datum = 1.5;
 (1 row)
 
 drop table t1;
-create table t1 (a  decimal(7,3) not null, key (a));
+create table t1 (a  decimal(7,3) not null, k (a));
 ERROR:  syntax error at or near "("
-LINE 1: create table t1 (a  decimal(7,3) not null, key (a));
-                                                       ^
+LINE 1: create table t1 (a  decimal(7,3) not null, k (a));
+                                                     ^
 insert into t1 values ("0"),("-0.00"),("-0.01"),("-0.002"),("1");
 ERROR:  relation "t1" does not exist
 LINE 1: insert into t1 values ("0"),("-0.00"),("-0.01"),("-0.002"),(...
@@ -143,10 +143,10 @@ create table t1 (f float, f2 float(24), f3 float(6,2), d double, d2 float(53), d
 --replace_column 8 #
 --show full columns from t1;
 drop table t1;
-create table t1 (a  decimal(7,3) not null, key (a));
+create table t1 (a  decimal(7,3) not null, k (a));
 ERROR:  syntax error at or near "("
-LINE 1: create table t1 (a  decimal(7,3) not null, key (a));
-                                                       ^
+LINE 1: create table t1 (a  decimal(7,3) not null, k (a));
+                                                     ^
 insert into t1 values ("0"),("-0.00"),("-0.01"),("-0.002"),("1");
 ERROR:  relation "t1" does not exist
 LINE 1: insert into t1 values ("0"),("-0.00"),("-0.01"),("-0.002"),(...
@@ -361,10 +361,10 @@ select sum(b) s from t1 group by a having s <=> 0 order by s;
 ERROR:  column "s" does not exist
 LINE 1: select sum(b) s from t1 group by a having s <=> 0 order by s...
                                                   ^
-alter table t1 add key (a, b);
+alter table t1 add k (a, b);
 ERROR:  syntax error at or near "("
-LINE 1: alter table t1 add key (a, b);
-                               ^
+LINE 1: alter table t1 add k (a, b);
+                             ^
 --replace_result 27 26 25 26
 explain select sum(b) s from t1 group by a;
                          QUERY PLAN                          

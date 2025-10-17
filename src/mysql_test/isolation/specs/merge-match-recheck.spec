@@ -6,7 +6,7 @@
 
 setup
 {
-  CREATE TABLE target (key int primary key, balance integer, status text, val text);
+  CREATE TABLE target (k int primary key, balance integer, status text, val text);
   INSERT INTO target VALUES (1, 160, 's1', 'setup');
 }
 
@@ -23,8 +23,8 @@ setup
 step "merge_status"
 {
   MERGE INTO target t
-  USING (SELECT 1 as key) s
-  ON s.key = t.key
+  USING (SELECT 1 as k) s
+  ON s.k = t.k
   WHEN MATCHED AND status = 's1' THEN
 	UPDATE SET status = 's2', val = t.val || ' when1'
   WHEN MATCHED AND status = 's2' THEN
@@ -36,8 +36,8 @@ step "merge_status"
 step "merge_bal"
 {
   MERGE INTO target t
-  USING (SELECT 1 as key) s
-  ON s.key = t.key
+  USING (SELECT 1 as k) s
+  ON s.k = t.k
   WHEN MATCHED AND balance < 100 THEN
 	UPDATE SET balance = balance * 2, val = t.val || ' when1'
   WHEN MATCHED AND balance < 200 THEN
@@ -54,11 +54,11 @@ setup
 {
   BEGIN ISOLATION LEVEL READ COMMITTED;
 }
-step "update1" { UPDATE target t SET balance = balance + 10, val = t.val || ' updated by update1' WHERE t.key = 1; }
-step "update2" { UPDATE target t SET status = 's2', val = t.val || ' updated by update2' WHERE t.key = 1; }
-step "update3" { UPDATE target t SET status = 's3', val = t.val || ' updated by update3' WHERE t.key = 1; }
-step "update5" { UPDATE target t SET status = 's5', val = t.val || ' updated by update5' WHERE t.key = 1; }
-step "update_bal1" { UPDATE target t SET balance = 50, val = t.val || ' updated by update_bal1' WHERE t.key = 1; }
+step "update1" { UPDATE target t SET balance = balance + 10, val = t.val || ' updated by update1' WHERE t.k = 1; }
+step "update2" { UPDATE target t SET status = 's2', val = t.val || ' updated by update2' WHERE t.k = 1; }
+step "update3" { UPDATE target t SET status = 's3', val = t.val || ' updated by update3' WHERE t.k = 1; }
+step "update5" { UPDATE target t SET status = 's5', val = t.val || ' updated by update5' WHERE t.k = 1; }
+step "update_bal1" { UPDATE target t SET balance = 50, val = t.val || ' updated by update_bal1' WHERE t.k = 1; }
 step "c2" { COMMIT; }
 
 # merge_status sees concurrently updated row and rechecks WHEN conditions, but recheck passes and final status = 's2'

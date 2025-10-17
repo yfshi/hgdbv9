@@ -1301,7 +1301,7 @@ drop function trigger_ddl_func();
 -- Verify behavior of before and after triggers with INSERT...ON CONFLICT
 -- DO UPDATE
 --
-create table upsert (key int4 primary key, color text);
+create table upsert (k int4 primary key, color text);
 
 create function upsert_before_func()
   returns trigger language plpgsql as
@@ -1312,8 +1312,8 @@ begin
     raise warning 'before update (new): %', new.*::text;
   elsif (TG_OP = 'INSERT') then
     raise warning 'before insert (new): %', new.*::text;
-    if new.key % 2 = 0 then
-      new.key := new.key + 1;
+    if new.k % 2 = 0 then
+      new.k := new.k + 1;
       new.color := new.color || ' trig modified';
       raise warning 'before insert (new, modified): %', new.*::text;
     end if;
@@ -1340,14 +1340,14 @@ $$;
 create trigger upsert_after_trig after insert or update on upsert
   for each row execute procedure upsert_after_func();
 
-insert into upsert values(1, 'black') on conflict (key) do update set color = 'updated ' || upsert.color;
-insert into upsert values(2, 'red') on conflict (key) do update set color = 'updated ' || upsert.color;
-insert into upsert values(3, 'orange') on conflict (key) do update set color = 'updated ' || upsert.color;
-insert into upsert values(4, 'green') on conflict (key) do update set color = 'updated ' || upsert.color;
-insert into upsert values(5, 'purple') on conflict (key) do update set color = 'updated ' || upsert.color;
-insert into upsert values(6, 'white') on conflict (key) do update set color = 'updated ' || upsert.color;
-insert into upsert values(7, 'pink') on conflict (key) do update set color = 'updated ' || upsert.color;
-insert into upsert values(8, 'yellow') on conflict (key) do update set color = 'updated ' || upsert.color;
+insert into upsert values(1, 'black') on conflict (k) do update set color = 'updated ' || upsert.color;
+insert into upsert values(2, 'red') on conflict (k) do update set color = 'updated ' || upsert.color;
+insert into upsert values(3, 'orange') on conflict (k) do update set color = 'updated ' || upsert.color;
+insert into upsert values(4, 'green') on conflict (k) do update set color = 'updated ' || upsert.color;
+insert into upsert values(5, 'purple') on conflict (k) do update set color = 'updated ' || upsert.color;
+insert into upsert values(6, 'white') on conflict (k) do update set color = 'updated ' || upsert.color;
+insert into upsert values(7, 'pink') on conflict (k) do update set color = 'updated ' || upsert.color;
+insert into upsert values(8, 'yellow') on conflict (k) do update set color = 'updated ' || upsert.color;
 
 select * from upsert;
 

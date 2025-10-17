@@ -110,7 +110,7 @@ int main()
 
    if (sqlca.sqlcode) printf("%ld:%s\n",sqlca.sqlcode,sqlca.sqlerrm.sqlerrmc);
 
-   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create table test ( \"index\" numeric ( 3 ) primary key , \"payload\" int4 not null )", ECPGt_EOIT, ECPGt_EORT);}
+   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create table test ( \"idx\" numeric ( 3 ) primary key , \"payload\" int4 not null )", ECPGt_EOIT, ECPGt_EORT);}
 #line 20 "code100.pgc"
 
    if (sqlca.sqlcode) printf("%ld:%s\n",sqlca.sqlcode,sqlca.sqlerrm.sqlerrmc);
@@ -120,7 +120,7 @@ int main()
    if (sqlca.sqlcode) printf("%ld:%s\n",sqlca.sqlcode,sqlca.sqlerrm.sqlerrmc);
 
    for (index=0;index<10;++index)
-   {  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "insert into test ( payload , index ) values ( 0 , $1  )", 
+   {  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "insert into test ( payload , idx ) values ( 0 , $1  )", 
 	ECPGt_int,&(index),(long)1,(long)1,sizeof(int), 
 	ECPGt_NO_INDICATOR, NULL , 0L, 0L, 0L, ECPGt_EOIT, ECPGt_EORT);}
 #line 28 "code100.pgc"
@@ -132,17 +132,17 @@ int main()
 
    if (sqlca.sqlcode) printf("%ld:%s\n",sqlca.sqlcode,sqlca.sqlerrm.sqlerrmc);
 
-   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "update test set payload = payload + 1 where index = - 1", ECPGt_EOIT, ECPGt_EORT);}
+   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "update test set payload = payload + 1 where idx = - 1", ECPGt_EOIT, ECPGt_EORT);}
 #line 35 "code100.pgc"
 
    if (sqlca.sqlcode!=100) printf("%ld:%s\n",sqlca.sqlcode,sqlca.sqlerrm.sqlerrmc);
 
-   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "delete from test where index = - 1", ECPGt_EOIT, ECPGt_EORT);}
+   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "delete from test where idx = - 1", ECPGt_EOIT, ECPGt_EORT);}
 #line 38 "code100.pgc"
 
    if (sqlca.sqlcode!=100) printf("%ld:%s\n",sqlca.sqlcode,sqlca.sqlerrm.sqlerrmc);
 
-   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "insert into test ( select * from test where index = - 1 )", ECPGt_EOIT, ECPGt_EORT);}
+   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "insert into test ( select * from test where idx = - 1 )", ECPGt_EOIT, ECPGt_EORT);}
 #line 41 "code100.pgc"
 
    if (sqlca.sqlcode!=100) printf("%ld:%s\n",sqlca.sqlcode,sqlca.sqlerrm.sqlerrmc);

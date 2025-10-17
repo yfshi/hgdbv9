@@ -7,9 +7,9 @@
 setup
 {
   CREATE TABLE foo (
-	key		int,
+	k		int,
 	value	int,
-	PRIMARY KEY (key) INCLUDE (value)
+	PRIMARY KEY (k) INCLUDE (value)
   );
 
   INSERT INTO foo VALUES (1, 1);
@@ -28,11 +28,11 @@ step s1c	{ COMMIT; }
 
 session s2
 step s2b	{ BEGIN; }
-step s2u	{ UPDATE foo SET value = 2 WHERE key = 1; }
+step s2u	{ UPDATE foo SET value = 2 WHERE k = 1; }
 step s2c	{ COMMIT; }
-step s2d1	{ DELETE FROM foo WHERE key = 1; }
-step s2d2	{ UPDATE foo SET key = 3 WHERE key = 1; }
-step s2d3	{ UPDATE foo SET value = 3 WHERE key = 1; }
+step s2d1	{ DELETE FROM foo WHERE k = 1; }
+step s2d2	{ UPDATE foo SET k = 3 WHERE k = 1; }
+step s2d3	{ UPDATE foo SET value = 3 WHERE k = 1; }
 
 permutation s1b s2b s1s s2u s1l s2c s2d1 s1c
 permutation s1b s2b s1s s2u s1l s2c s2d2 s1c

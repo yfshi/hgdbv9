@@ -25,7 +25,7 @@ select * from t1 where datum > 1.5;
 select * from t1 where datum = 1.5;
 drop table t1;
 
-create table t1 (a  decimal(7,3) not null, key (a));
+create table t1 (a  decimal(7,3) not null, k (a));
 insert into t1 values ("0"),("-0.00"),("-0.01"),("-0.002"),("1");
 select a from t1 order by a;
 select min(a) from t1;
@@ -58,7 +58,7 @@ create table t1 (f float, f2 float(24), f3 float(6,2), d double, d2 float(53), d
 --show full columns from t1;
 drop table t1;
 
-create table t1 (a  decimal(7,3) not null, key (a));
+create table t1 (a  decimal(7,3) not null, k (a));
 insert into t1 values ("0"),("-0.00"),("-0.01"),("-0.002"),("1");
 select a from t1 order by a;
 select min(a) from t1;
@@ -167,7 +167,7 @@ select sum(b) s from t1 group by a having s <> 0;
 select sum(b) s from t1 group by a having s <> 0 order by s;
 select sum(b) s from t1 group by a having s <=> 0;
 select sum(b) s from t1 group by a having s <=> 0 order by s;
-alter table t1 add key (a, b);
+alter table t1 add k (a, b);
 --replace_result 27 26 25 26
 explain select sum(b) s from t1 group by a;
 select sum(b) s from t1 group by a;

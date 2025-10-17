@@ -774,21 +774,21 @@ SELECT typname FROM pg_type WHERE typname like '%t_enum_column_drop%';
 
 create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
 \d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 insert into t_enum_column_alter_type values(11, 'a', 'c');
 select * from t_enum_column_alter_type;
 insert into t_enum_column_alter_type values(22, 'yyyy', 'c');----err
 select * from t_enum_column_alter_type;
 drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 
 create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
 \d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 insert into t_enum_column_alter_type values(11, 'a', 'c');
 alter table t_enum_column_alter_type alter c2 type text;
 \d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 insert into t_enum_column_alter_type values(22, 'xxxx', 'c');
 select * from t_enum_column_alter_type;
 insert into t_enum_column_alter_type values(22, 'yyyy', 'c');
@@ -798,23 +798,23 @@ alter table t_enum_column_alter_type alter c2 type enum('aaaa', 'bbbb'); -- err 
 insert into t_enum_column_alter_type values(33, 'aaaa', 'c');
 select * from t_enum_column_alter_type;
 drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 
 create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
 \d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 insert into t_enum_column_alter_type values(11, 'a', 'c');
 alter table t_enum_column_alter_type alter c2 type enum('aaaa', 'bbbb'); -- enum to enum
 \d t_enum_column_alter_type
 insert into t_enum_column_alter_type values(33, 'aaaa', 'c');
 select * from t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 
 create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
 \d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 insert into t_enum_column_alter_type values(11, 'a', 'c');
 insert into t_enum_column_alter_type values(33, 'bbbb', 'c');
 alter table t_enum_column_alter_type alter c2 type enum('a', 'bbbb'); -- enum to enum
@@ -822,13 +822,13 @@ alter table t_enum_column_alter_type alter c2 type enum('a', 'bbbb'); -- enum to
 insert into t_enum_column_alter_type values(33, 'a', 'c');
 insert into t_enum_column_alter_type values(33, 'bbbb', 'c');
 select * from t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 
 create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
 \d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 insert into t_enum_column_alter_type values(11, 'a', 'c');
 alter table t_enum_column_alter_type add c4 enum('xxxx', 'yyyy');
 \d t_enum_column_alter_type
@@ -836,17 +836,17 @@ insert into t_enum_column_alter_type values(33, 'a', 'c', 'yyyy');
 select * from t_enum_column_alter_type;
 insert into t_enum_column_alter_type values(33, 'aaaa', 'c', 'yyyy');
 select * from t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 alter table t_enum_column_alter_type drop c4;
 select * from t_enum_column_alter_type;
 \d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 alter table t_enum_column_alter_type add c4 enum('xxxx', 'yyyy'), add c5 enum('xxxx', 'yyyy'), add c6 enum('xxxx', 'yyyy');
 select * from t_enum_column_alter_type;
 \d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 
 -- test drop table 
 create table t_enum_table_drop(c1 int, c2 enum('aa', 'bb'), c3 enum('aaa', 'bbb'), c4 enum('aaaaa', 'bbbb'));

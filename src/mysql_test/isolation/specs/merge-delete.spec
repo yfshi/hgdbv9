@@ -5,7 +5,7 @@
 
 setup
 {
-  CREATE TABLE target (key int primary key, val text);
+  CREATE TABLE target (k int primary key, val text);
   INSERT INTO target VALUES (1, 'setup1');
 }
 
@@ -20,7 +20,7 @@ setup
   BEGIN ISOLATION LEVEL READ COMMITTED;
 }
 step "delete" { DELETE FROM target t WHERE t.key = 1; }
-step "merge_delete" { MERGE INTO target t USING (SELECT 1 as key) s ON s.key = t.key WHEN MATCHED THEN DELETE; }
+step "merge_delete" { MERGE INTO target t USING (SELECT 1 as k) s ON s.k = t.k WHEN MATCHED THEN DELETE; }
 step "c1" { COMMIT; }
 
 session "s2"
@@ -28,8 +28,8 @@ setup
 {
   BEGIN ISOLATION LEVEL READ COMMITTED;
 }
-step "update1" { UPDATE target t SET val = t.val || ' updated by update1' WHERE t.key = 1; }
-step "merge2" { MERGE INTO target t USING (SELECT 1 as key, 'merge2a' as val) s ON s.key = t.key WHEN NOT MATCHED THEN INSERT VALUES (s.key, s.val) WHEN MATCHED THEN UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val; }
+step "update1" { UPDATE target t SET val = t.val || ' updated by update1' WHERE t.k = 1; }
+step "merge2" { MERGE INTO target t USING (SELECT 1 as k, 'merge2a' as val) s ON s.k = t.k WHEN NOT MATCHED THEN INSERT VALUES (s.k, s.val) WHEN MATCHED THEN UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val; }
 step "select2" { SELECT * FROM target; }
 step "c2" { COMMIT; }
 

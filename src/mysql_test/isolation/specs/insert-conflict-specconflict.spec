@@ -33,9 +33,9 @@ setup
 
     CREATE OR REPLACE FUNCTION ctoast_large_val() RETURNS TEXT LANGUAGE SQL AS 'select array_agg(md5(g::text))::text from generate_series(1, 256) g';
 
-    CREATE TABLE upserttest(key text, data text);
+    CREATE TABLE upserttest(k text, data text);
 
-    CREATE UNIQUE INDEX upserttest_key_uniq_idx ON upserttest((blurt_and_lock_123(key)));
+    CREATE UNIQUE INDEX upserttest_key_uniq_idx ON upserttest((blurt_and_lock_123(k)));
 }
 
 teardown
@@ -76,9 +76,9 @@ setup
     SET spec.session = 1;
 }
 step s1_begin  { BEGIN; }
-step s1_create_non_unique_index { CREATE INDEX upserttest_key_idx ON upserttest((blurt_and_lock_4(key))); }
+step s1_create_non_unique_index { CREATE INDEX upserttest_key_idx ON upserttest((blurt_and_lock_4(k))); }
 step s1_confirm_index_order { SELECT 'upserttest_key_uniq_idx'::regclass::int8 < 'upserttest_key_idx'::regclass::int8; }
-step s1_upsert { INSERT INTO upserttest(key, data) VALUES('k1', 'inserted s1') ON CONFLICT (blurt_and_lock_123(key)) DO UPDATE SET data = upserttest.data || ' with conflict update s1'; }
+step s1_upsert { INSERT INTO upserttest(k, data) VALUES('k1', 'inserted s1') ON CONFLICT (blurt_and_lock_123(k)) DO UPDATE SET data = upserttest.data || ' with conflict update s1'; }
 step s1_insert_toast { INSERT INTO upserttest VALUES('k2', ctoast_large_val()) ON CONFLICT DO NOTHING; }
 step s1_commit  { COMMIT; }
 step s1_noop    { }
@@ -90,7 +90,7 @@ setup
     SET spec.session = 2;
 }
 step s2_begin  { BEGIN; }
-step s2_upsert { INSERT INTO upserttest(key, data) VALUES('k1', 'inserted s2') ON CONFLICT (blurt_and_lock_123(key)) DO UPDATE SET data = upserttest.data || ' with conflict update s2'; }
+step s2_upsert { INSERT INTO upserttest(k, data) VALUES('k1', 'inserted s2') ON CONFLICT (blurt_and_lock_123(k)) DO UPDATE SET data = upserttest.data || ' with conflict update s2'; }
 step s2_insert_toast { INSERT INTO upserttest VALUES('k2', ctoast_large_val()) ON CONFLICT DO NOTHING; }
 step s2_commit  { COMMIT; }
 step s2_noop    { }

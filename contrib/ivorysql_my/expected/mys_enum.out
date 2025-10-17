@@ -2970,15 +2970,15 @@ create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd
  c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
  c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                   
 ---------------------------------------------
- t_enum_column_alter_type_c2_anonymous_enum
+ _t_enum_column_alter_type
  _t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
  _t_enum_column_alter_type_c3_anonymous_enum
  t_enum_column_alter_type
- _t_enum_column_alter_type
+ t_enum_column_alter_type_c2_anonymous_enum
+ t_enum_column_alter_type_c3_anonymous_enum
 (6 rows)
 
 insert into t_enum_column_alter_type values(11, 'a', 'c');
@@ -2999,7 +2999,7 @@ select * from t_enum_column_alter_type;
 (1 row)
 
 drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
  typname 
 ---------
 (0 rows)
@@ -3013,15 +3013,15 @@ create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd
  c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
  c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                   
 ---------------------------------------------
- t_enum_column_alter_type_c2_anonymous_enum
+ _t_enum_column_alter_type
  _t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
  _t_enum_column_alter_type_c3_anonymous_enum
  t_enum_column_alter_type
- _t_enum_column_alter_type
+ t_enum_column_alter_type_c2_anonymous_enum
+ t_enum_column_alter_type_c3_anonymous_enum
 (6 rows)
 
 insert into t_enum_column_alter_type values(11, 'a', 'c');
@@ -3034,13 +3034,13 @@ alter table t_enum_column_alter_type alter c2 type text;
  c2     | text                                       |           |          | 
  c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                   
 ---------------------------------------------
- t_enum_column_alter_type_c3_anonymous_enum
+ _t_enum_column_alter_type
  _t_enum_column_alter_type_c3_anonymous_enum
  t_enum_column_alter_type
- _t_enum_column_alter_type
+ t_enum_column_alter_type_c3_anonymous_enum
 (4 rows)
 
 insert into t_enum_column_alter_type values(22, 'xxxx', 'c');
@@ -3081,7 +3081,7 @@ select * from t_enum_column_alter_type;
 (4 rows)
 
 drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
  typname 
 ---------
 (0 rows)
@@ -3095,15 +3095,15 @@ create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd
  c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
  c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                   
 ---------------------------------------------
- t_enum_column_alter_type_c2_anonymous_enum
+ _t_enum_column_alter_type
  _t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
  _t_enum_column_alter_type_c3_anonymous_enum
  t_enum_column_alter_type
- _t_enum_column_alter_type
+ t_enum_column_alter_type_c2_anonymous_enum
+ t_enum_column_alter_type_c3_anonymous_enum
 (6 rows)
 
 insert into t_enum_column_alter_type values(11, 'a', 'c');
@@ -3127,19 +3127,19 @@ select * from t_enum_column_alter_type;
  11 | a  | c
 (1 row)
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                   
 ---------------------------------------------
- t_enum_column_alter_type_c2_anonymous_enum
+ _t_enum_column_alter_type
  _t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
  _t_enum_column_alter_type_c3_anonymous_enum
  t_enum_column_alter_type
- _t_enum_column_alter_type
+ t_enum_column_alter_type_c2_anonymous_enum
+ t_enum_column_alter_type_c3_anonymous_enum
 (6 rows)
 
 drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
  typname 
 ---------
 (0 rows)
@@ -3153,15 +3153,15 @@ create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd
  c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
  c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                   
 ---------------------------------------------
- t_enum_column_alter_type_c2_anonymous_enum
+ _t_enum_column_alter_type
  _t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
  _t_enum_column_alter_type_c3_anonymous_enum
  t_enum_column_alter_type
- _t_enum_column_alter_type
+ t_enum_column_alter_type_c2_anonymous_enum
+ t_enum_column_alter_type_c3_anonymous_enum
 (6 rows)
 
 insert into t_enum_column_alter_type values(11, 'a', 'c');
@@ -3188,19 +3188,19 @@ select * from t_enum_column_alter_type;
  33 | bbbb | c
 (3 rows)
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                    
 ----------------------------------------------
- t_enum_column_alter_type_c3_anonymous_enum
+ _t_enum_column_alter_type
+ _t_enum_column_alter_type_c2_anonymous_enum1
  _t_enum_column_alter_type_c3_anonymous_enum
  t_enum_column_alter_type
- _t_enum_column_alter_type
  t_enum_column_alter_type_c2_anonymous_enum1
- _t_enum_column_alter_type_c2_anonymous_enum1
+ t_enum_column_alter_type_c3_anonymous_enum
 (6 rows)
 
 drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
  typname 
 ---------
 (0 rows)
@@ -3214,15 +3214,15 @@ create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd
  c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
  c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                   
 ---------------------------------------------
- t_enum_column_alter_type_c2_anonymous_enum
+ _t_enum_column_alter_type
  _t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
  _t_enum_column_alter_type_c3_anonymous_enum
  t_enum_column_alter_type
- _t_enum_column_alter_type
+ t_enum_column_alter_type_c2_anonymous_enum
+ t_enum_column_alter_type_c3_anonymous_enum
 (6 rows)
 
 insert into t_enum_column_alter_type values(11, 'a', 'c');
@@ -3255,17 +3255,17 @@ select * from t_enum_column_alter_type;
  33 | a  | c  | yyyy
 (2 rows)
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                   
 ---------------------------------------------
- t_enum_column_alter_type_c2_anonymous_enum
- _t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
- _t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type
  _t_enum_column_alter_type
- t_enum_column_alter_type_c4_anonymous_enum
+ _t_enum_column_alter_type_c2_anonymous_enum
+ _t_enum_column_alter_type_c3_anonymous_enum
  _t_enum_column_alter_type_c4_anonymous_enum
+ t_enum_column_alter_type
+ t_enum_column_alter_type_c2_anonymous_enum
+ t_enum_column_alter_type_c3_anonymous_enum
+ t_enum_column_alter_type_c4_anonymous_enum
 (8 rows)
 
 alter table t_enum_column_alter_type drop c4;
@@ -3284,15 +3284,15 @@ select * from t_enum_column_alter_type;
  c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
  c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                   
 ---------------------------------------------
- t_enum_column_alter_type_c2_anonymous_enum
+ _t_enum_column_alter_type
  _t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
  _t_enum_column_alter_type_c3_anonymous_enum
  t_enum_column_alter_type
- _t_enum_column_alter_type
+ t_enum_column_alter_type_c2_anonymous_enum
+ t_enum_column_alter_type_c3_anonymous_enum
 (6 rows)
 
 alter table t_enum_column_alter_type add c4 enum('xxxx', 'yyyy'), add c5 enum('xxxx', 'yyyy'), add c6 enum('xxxx', 'yyyy');
@@ -3314,25 +3314,25 @@ select * from t_enum_column_alter_type;
  c5     | t_enum_column_alter_type_c5_anonymous_enum |           |          | 
  c6     | t_enum_column_alter_type_c6_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
                    typname                   
 ---------------------------------------------
- t_enum_column_alter_type_c2_anonymous_enum
- _t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
- _t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type
  _t_enum_column_alter_type
- t_enum_column_alter_type_c4_anonymous_enum
+ _t_enum_column_alter_type_c2_anonymous_enum
+ _t_enum_column_alter_type_c3_anonymous_enum
  _t_enum_column_alter_type_c4_anonymous_enum
- t_enum_column_alter_type_c5_anonymous_enum
  _t_enum_column_alter_type_c5_anonymous_enum
- t_enum_column_alter_type_c6_anonymous_enum
  _t_enum_column_alter_type_c6_anonymous_enum
+ t_enum_column_alter_type
+ t_enum_column_alter_type_c2_anonymous_enum
+ t_enum_column_alter_type_c3_anonymous_enum
+ t_enum_column_alter_type_c4_anonymous_enum
+ t_enum_column_alter_type_c5_anonymous_enum
+ t_enum_column_alter_type_c6_anonymous_enum
 (12 rows)
 
 drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
  typname 
 ---------
 (0 rows)

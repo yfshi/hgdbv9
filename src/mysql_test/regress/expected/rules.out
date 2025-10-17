@@ -1281,13 +1281,13 @@ drop table cchild;
 SELECT viewname, definition FROM pg_views
 WHERE schemaname IN ('pg_catalog', 'public')
 ORDER BY viewname;
-key_dependent_view| SELECT view_base_table.key,
+key_dependent_view| SELECT view_base_table.k,
     view_base_table.data
    FROM view_base_table
-  GROUP BY view_base_table.key;
+  GROUP BY view_base_table.k;
 key_dependent_view_no_cols| SELECT
    FROM view_base_table
-  GROUP BY view_base_table.key
+  GROUP BY view_base_table.k
  HAVING (length((view_base_table.data)::text) > 0);
 mvtest_tv| SELECT mvtest_t.type,
     sum(mvtest_t.amt) AS totamt
@@ -2572,7 +2572,7 @@ pg_stats_ext| SELECT cn.nspname AS schemaname,
             array_agg(pg_mcv_list_items.nulls) AS most_common_val_nulls,
             array_agg(pg_mcv_list_items.frequency) AS most_common_freqs,
             array_agg(pg_mcv_list_items.base_frequency) AS most_common_base_freqs
-           FROM pg_mcv_list_items(sd.stxdmcv) pg_mcv_list_items(index, "values", nulls, frequency, base_frequency)) m ON ((sd.stxdmcv IS NOT NULL)))
+           FROM pg_mcv_list_items(sd.stxdmcv) pg_mcv_list_items("index", "values", nulls, frequency, base_frequency)) m ON ((sd.stxdmcv IS NOT NULL)))
   WHERE (pg_has_role(c.relowner, 'USAGE'::text) AND ((c.relrowsecurity = false) OR (NOT row_security_active(c.oid))));
 pg_stats_ext_exprs| SELECT cn.nspname AS schemaname,
     c.relname AS tablename,
