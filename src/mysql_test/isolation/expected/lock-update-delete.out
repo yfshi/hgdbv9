@@ -7,8 +7,8 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
 step s2_blocker1: DELETE FROM foo;
 step s2_unlock: SELECT pg_advisory_unlock(0);
 pg_advisory_unlock
@@ -18,8 +18,8 @@ t
 
 step s2c: COMMIT;
 step s1l: <... completed>
-key|value
----+-----
+k|value
+-+-----
 (0 rows)
 
 
@@ -30,9 +30,9 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
-step s2_blocker2: UPDATE foo SET key = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
+step s2_blocker2: UPDATE foo SET k = 2 WHERE k = 1;
 step s2_unlock: SELECT pg_advisory_unlock(0);
 pg_advisory_unlock
 ------------------
@@ -41,8 +41,8 @@ t
 
 step s2c: COMMIT;
 step s1l: <... completed>
-key|value
----+-----
+k|value
+-+-----
 (0 rows)
 
 
@@ -53,9 +53,9 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
-step s2_blocker3: UPDATE foo SET value = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
+step s2_blocker3: UPDATE foo SET value = 2 WHERE k = 1;
 step s2_unlock: SELECT pg_advisory_unlock(0);
 pg_advisory_unlock
 ------------------
@@ -63,9 +63,9 @@ t
 (1 row)
 
 step s1l: <... completed>
-key|value
----+-----
-  1|    1
+k|value
+-+-----
+1|    1
 (1 row)
 
 step s2c: COMMIT;
@@ -77,8 +77,8 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
 step s2_blocker1: DELETE FROM foo;
 step s2_unlock: SELECT pg_advisory_unlock(0);
 pg_advisory_unlock
@@ -88,9 +88,9 @@ t
 
 step s2r: ROLLBACK;
 step s1l: <... completed>
-key|value
----+-----
-  1|    1
+k|value
+-+-----
+1|    1
 (1 row)
 
 
@@ -101,9 +101,9 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
-step s2_blocker2: UPDATE foo SET key = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
+step s2_blocker2: UPDATE foo SET k = 2 WHERE k = 1;
 step s2_unlock: SELECT pg_advisory_unlock(0);
 pg_advisory_unlock
 ------------------
@@ -112,9 +112,9 @@ t
 
 step s2r: ROLLBACK;
 step s1l: <... completed>
-key|value
----+-----
-  1|    1
+k|value
+-+-----
+1|    1
 (1 row)
 
 
@@ -125,9 +125,9 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
-step s2_blocker3: UPDATE foo SET value = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
+step s2_blocker3: UPDATE foo SET value = 2 WHERE k = 1;
 step s2_unlock: SELECT pg_advisory_unlock(0);
 pg_advisory_unlock
 ------------------
@@ -135,9 +135,9 @@ t
 (1 row)
 
 step s1l: <... completed>
-key|value
----+-----
-  1|    1
+k|value
+-+-----
+1|    1
 (1 row)
 
 step s2r: ROLLBACK;
@@ -149,8 +149,8 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
 step s2_blocker1: DELETE FROM foo;
 step s2c: COMMIT;
 step s2_unlock: SELECT pg_advisory_unlock(0);
@@ -160,8 +160,8 @@ t
 (1 row)
 
 step s1l: <... completed>
-key|value
----+-----
+k|value
+-+-----
 (0 rows)
 
 
@@ -172,9 +172,9 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
-step s2_blocker2: UPDATE foo SET key = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
+step s2_blocker2: UPDATE foo SET k = 2 WHERE k = 1;
 step s2c: COMMIT;
 step s2_unlock: SELECT pg_advisory_unlock(0);
 pg_advisory_unlock
@@ -183,8 +183,8 @@ t
 (1 row)
 
 step s1l: <... completed>
-key|value
----+-----
+k|value
+-+-----
 (0 rows)
 
 
@@ -195,9 +195,9 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
-step s2_blocker3: UPDATE foo SET value = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
+step s2_blocker3: UPDATE foo SET value = 2 WHERE k = 1;
 step s2c: COMMIT;
 step s2_unlock: SELECT pg_advisory_unlock(0);
 pg_advisory_unlock
@@ -206,9 +206,9 @@ t
 (1 row)
 
 step s1l: <... completed>
-key|value
----+-----
-  1|    1
+k|value
+-+-----
+1|    1
 (1 row)
 
 
@@ -219,8 +219,8 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
 step s2_blocker1: DELETE FROM foo;
 step s2r: ROLLBACK;
 step s2_unlock: SELECT pg_advisory_unlock(0);
@@ -230,9 +230,9 @@ t
 (1 row)
 
 step s1l: <... completed>
-key|value
----+-----
-  1|    1
+k|value
+-+-----
+1|    1
 (1 row)
 
 
@@ -243,9 +243,9 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
-step s2_blocker2: UPDATE foo SET key = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
+step s2_blocker2: UPDATE foo SET k = 2 WHERE k = 1;
 step s2r: ROLLBACK;
 step s2_unlock: SELECT pg_advisory_unlock(0);
 pg_advisory_unlock
@@ -254,9 +254,9 @@ t
 (1 row)
 
 step s1l: <... completed>
-key|value
----+-----
-  1|    1
+k|value
+-+-----
+1|    1
 (1 row)
 
 
@@ -267,9 +267,9 @@ pg_advisory_lock
 (1 row)
 
 step s2b: BEGIN;
-step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND key = 1 FOR KEY SHARE; <waiting ...>
-step s2u: UPDATE foo SET value = 2 WHERE key = 1;
-step s2_blocker3: UPDATE foo SET value = 2 WHERE key = 1;
+step s1l: SELECT * FROM foo WHERE pg_advisory_xact_lock(0) IS NOT NULL AND k = 1 FOR KEY SHARE; <waiting ...>
+step s2u: UPDATE foo SET value = 2 WHERE k = 1;
+step s2_blocker3: UPDATE foo SET value = 2 WHERE k = 1;
 step s2r: ROLLBACK;
 step s2_unlock: SELECT pg_advisory_unlock(0);
 pg_advisory_unlock
@@ -278,8 +278,8 @@ t
 (1 row)
 
 step s1l: <... completed>
-key|value
----+-----
-  1|    1
+k|value
+-+-----
+1|    1
 (1 row)
 

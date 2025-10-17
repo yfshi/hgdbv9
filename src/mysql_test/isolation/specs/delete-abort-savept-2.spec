@@ -2,7 +2,7 @@
 setup
 {
   CREATE TABLE foo (
-     key INT PRIMARY KEY,
+     k INT PRIMARY KEY,
      value INT
   );
 

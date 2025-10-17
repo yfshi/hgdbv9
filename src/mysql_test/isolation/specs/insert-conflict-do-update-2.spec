@@ -6,8 +6,8 @@
 
 setup
 {
-  CREATE TABLE upsert (key text not null, payload text);
-  CREATE UNIQUE INDEX ON upsert(lower(key)) INCLUDE (payload);
+  CREATE TABLE upsert (k text not null, payload text);
+  CREATE UNIQUE INDEX ON upsert(lower(k)) INCLUDE (payload);
 }
 
 teardown
@@ -20,7 +20,7 @@ setup
 {
   BEGIN ISOLATION LEVEL READ COMMITTED;
 }
-step insert1 { INSERT INTO upsert(key, payload) VALUES('FooFoo', 'insert1') ON CONFLICT (lower(key)) DO UPDATE set key = EXCLUDED.key, payload = upsert.payload || ' updated by insert1'; }
+step insert1 { INSERT INTO upsert(k, payload) VALUES('FooFoo', 'insert1') ON CONFLICT (lower(k)) DO UPDATE set k = EXCLUDED.k, payload = upsert.payload || ' updated by insert1'; }
 step c1 { COMMIT; }
 step a1 { ABORT; }
 
@@ -29,7 +29,7 @@ setup
 {
   BEGIN ISOLATION LEVEL READ COMMITTED;
 }
-step insert2 { INSERT INTO upsert(key, payload) VALUES('FOOFOO', 'insert2') ON CONFLICT (lower(key)) DO UPDATE set key = EXCLUDED.key, payload = upsert.payload || ' updated by insert2'; }
+step insert2 { INSERT INTO upsert(k, payload) VALUES('FOOFOO', 'insert2') ON CONFLICT (lower(k)) DO UPDATE set k = EXCLUDED.k, payload = upsert.payload || ' updated by insert2'; }
 step select2 { SELECT * FROM upsert; }
 step c2 { COMMIT; }
 

@@ -5,19 +5,19 @@ step delete: DELETE FROM target t WHERE t.key = 1;
 ERROR:  syntax error at or near "t"
 step c1: COMMIT;
 step select2: SELECT * FROM target;
-key|val   
----+------
-  1|setup1
+k|val   
+-+------
+1|setup1
 (1 row)
 
 step c2: COMMIT;
 
 starting permutation: merge_delete c1 select2 c2
-step merge_delete: MERGE INTO target t USING (SELECT 1 as key) s ON s.key = t.key WHEN MATCHED THEN DELETE;
+step merge_delete: MERGE INTO target t USING (SELECT 1 as k) s ON s.k = t.k WHEN MATCHED THEN DELETE;
 step c1: COMMIT;
 step select2: SELECT * FROM target;
-key|val
----+---
+k|val
+-+---
 (0 rows)
 
 step c2: COMMIT;
@@ -26,22 +26,22 @@ starting permutation: delete c1 update1 select2 c2
 step delete: DELETE FROM target t WHERE t.key = 1;
 ERROR:  syntax error at or near "t"
 step c1: COMMIT;
-step update1: UPDATE target t SET val = t.val || ' updated by update1' WHERE t.key = 1;
+step update1: UPDATE target t SET val = t.val || ' updated by update1' WHERE t.k = 1;
 step select2: SELECT * FROM target;
-key|val                      
----+-------------------------
-  1|setup1 updated by update1
+k|val                      
+-+-------------------------
+1|setup1 updated by update1
 (1 row)
 
 step c2: COMMIT;
 
 starting permutation: merge_delete c1 update1 select2 c2
-step merge_delete: MERGE INTO target t USING (SELECT 1 as key) s ON s.key = t.key WHEN MATCHED THEN DELETE;
+step merge_delete: MERGE INTO target t USING (SELECT 1 as k) s ON s.k = t.k WHEN MATCHED THEN DELETE;
 step c1: COMMIT;
-step update1: UPDATE target t SET val = t.val || ' updated by update1' WHERE t.key = 1;
+step update1: UPDATE target t SET val = t.val || ' updated by update1' WHERE t.k = 1;
 step select2: SELECT * FROM target;
-key|val
----+---
+k|val
+-+---
 (0 rows)
 
 step c2: COMMIT;
@@ -50,23 +50,23 @@ starting permutation: delete c1 merge2 select2 c2
 step delete: DELETE FROM target t WHERE t.key = 1;
 ERROR:  syntax error at or near "t"
 step c1: COMMIT;
-step merge2: MERGE INTO target t USING (SELECT 1 as key, 'merge2a' as val) s ON s.key = t.key WHEN NOT MATCHED THEN INSERT VALUES (s.key, s.val) WHEN MATCHED THEN UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+step merge2: MERGE INTO target t USING (SELECT 1 as k, 'merge2a' as val) s ON s.k = t.k WHEN NOT MATCHED THEN INSERT VALUES (s.k, s.val) WHEN MATCHED THEN UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 step select2: SELECT * FROM target;
-key|val                      
----+-------------------------
-  2|setup1 updated by merge2a
+k|val                      
+-+-------------------------
+2|setup1 updated by merge2a
 (1 row)
 
 step c2: COMMIT;
 
 starting permutation: merge_delete c1 merge2 select2 c2
-step merge_delete: MERGE INTO target t USING (SELECT 1 as key) s ON s.key = t.key WHEN MATCHED THEN DELETE;
+step merge_delete: MERGE INTO target t USING (SELECT 1 as k) s ON s.k = t.k WHEN MATCHED THEN DELETE;
 step c1: COMMIT;
-step merge2: MERGE INTO target t USING (SELECT 1 as key, 'merge2a' as val) s ON s.key = t.key WHEN NOT MATCHED THEN INSERT VALUES (s.key, s.val) WHEN MATCHED THEN UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+step merge2: MERGE INTO target t USING (SELECT 1 as k, 'merge2a' as val) s ON s.k = t.k WHEN NOT MATCHED THEN INSERT VALUES (s.k, s.val) WHEN MATCHED THEN UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 step select2: SELECT * FROM target;
-key|val    
----+-------
-  1|merge2a
+k|val    
+-+-------
+1|merge2a
 (1 row)
 
 step c2: COMMIT;
@@ -74,24 +74,24 @@ step c2: COMMIT;
 starting permutation: delete update1 c1 select2 c2
 step delete: DELETE FROM target t WHERE t.key = 1;
 ERROR:  syntax error at or near "t"
-step update1: UPDATE target t SET val = t.val || ' updated by update1' WHERE t.key = 1;
+step update1: UPDATE target t SET val = t.val || ' updated by update1' WHERE t.k = 1;
 step c1: COMMIT;
 step select2: SELECT * FROM target;
-key|val                      
----+-------------------------
-  1|setup1 updated by update1
+k|val                      
+-+-------------------------
+1|setup1 updated by update1
 (1 row)
 
 step c2: COMMIT;
 
 starting permutation: merge_delete update1 c1 select2 c2
-step merge_delete: MERGE INTO target t USING (SELECT 1 as key) s ON s.key = t.key WHEN MATCHED THEN DELETE;
-step update1: UPDATE target t SET val = t.val || ' updated by update1' WHERE t.key = 1; <waiting ...>
+step merge_delete: MERGE INTO target t USING (SELECT 1 as k) s ON s.k = t.k WHEN MATCHED THEN DELETE;
+step update1: UPDATE target t SET val = t.val || ' updated by update1' WHERE t.k = 1; <waiting ...>
 step c1: COMMIT;
 step update1: <... completed>
 step select2: SELECT * FROM target;
-key|val
----+---
+k|val
+-+---
 (0 rows)
 
 step c2: COMMIT;
@@ -99,25 +99,25 @@ step c2: COMMIT;
 starting permutation: delete merge2 c1 select2 c2
 step delete: DELETE FROM target t WHERE t.key = 1;
 ERROR:  syntax error at or near "t"
-step merge2: MERGE INTO target t USING (SELECT 1 as key, 'merge2a' as val) s ON s.key = t.key WHEN NOT MATCHED THEN INSERT VALUES (s.key, s.val) WHEN MATCHED THEN UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+step merge2: MERGE INTO target t USING (SELECT 1 as k, 'merge2a' as val) s ON s.k = t.k WHEN NOT MATCHED THEN INSERT VALUES (s.k, s.val) WHEN MATCHED THEN UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 step c1: COMMIT;
 step select2: SELECT * FROM target;
-key|val                      
----+-------------------------
-  2|setup1 updated by merge2a
+k|val                      
+-+-------------------------
+2|setup1 updated by merge2a
 (1 row)
 
 step c2: COMMIT;
 
 starting permutation: merge_delete merge2 c1 select2 c2
-step merge_delete: MERGE INTO target t USING (SELECT 1 as key) s ON s.key = t.key WHEN MATCHED THEN DELETE;
-step merge2: MERGE INTO target t USING (SELECT 1 as key, 'merge2a' as val) s ON s.key = t.key WHEN NOT MATCHED THEN INSERT VALUES (s.key, s.val) WHEN MATCHED THEN UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val; <waiting ...>
+step merge_delete: MERGE INTO target t USING (SELECT 1 as k) s ON s.k = t.k WHEN MATCHED THEN DELETE;
+step merge2: MERGE INTO target t USING (SELECT 1 as k, 'merge2a' as val) s ON s.k = t.k WHEN NOT MATCHED THEN INSERT VALUES (s.k, s.val) WHEN MATCHED THEN UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val; <waiting ...>
 step c1: COMMIT;
 step merge2: <... completed>
 step select2: SELECT * FROM target;
-key|val    
----+-------
-  1|merge2a
+k|val    
+-+-------
+1|merge2a
 (1 row)
 
 step c2: COMMIT;

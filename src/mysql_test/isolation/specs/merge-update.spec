@@ -7,14 +7,14 @@
 
 setup
 {
-  CREATE TABLE target (key int primary key, val text);
+  CREATE TABLE target (k int primary key, val text);
   INSERT INTO target VALUES (1, 'setup1');
 
-  CREATE TABLE pa_target (key integer, val text)
-	  PARTITION BY LIST (key);
-  CREATE TABLE part1 (key integer, val text);
-  CREATE TABLE part2 (val text, key integer);
-  CREATE TABLE part3 (key integer, val text);
+  CREATE TABLE pa_target (k integer, val text)
+	  PARTITION BY LIST (k);
+  CREATE TABLE part1 (k integer, val text);
+  CREATE TABLE part2 (val text, k integer);
+  CREATE TABLE part3 (k integer, val text);
 
   ALTER TABLE pa_target ATTACH PARTITION part1 FOR VALUES IN (1,4);
   ALTER TABLE pa_target ATTACH PARTITION part2 FOR VALUES IN (2,5,6);
@@ -38,40 +38,40 @@ setup
 step "merge1"
 {
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge1' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge1' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-    UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+    UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 }
 step "pa_merge1"
 {
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge1' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge1' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
     UPDATE set val = t.val || ' updated by ' || s.val;
 }
 step "pa_merge2"
 {
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-    UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+    UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 }
 step "pa_merge3"
 {
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
     UPDATE set val = 'prefix ' || t.val;
 }
@@ -86,53 +86,53 @@ setup
 step "merge2a"
 {
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge2a' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge2a' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 }
 step "merge2b"
 {
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge2b' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'merge2b' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
-  WHEN MATCHED AND t.key < 2 THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	INSERT VALUES (s.k, s.val)
+  WHEN MATCHED AND t.k < 2 THEN
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 }
 step "merge2c"
 {
   MERGE INTO target t
-  USING (SELECT 1 as key, 'merge2c' as val) s
-  ON s.key = t.key AND t.key < 2
+  USING (SELECT 1 as k, 'merge2c' as val) s
+  ON s.k = t.k AND t.k < 2
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 }
 step "pa_merge2a"
 {
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2a' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2a' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 }
 # MERGE proceeds only if 'val' unchanged
 step "pa_merge2b_when"
 {
   MERGE INTO pa_target t
-  USING (SELECT 1 as key, 'pa_merge2b_when' as val) s
-  ON s.key = t.key
+  USING (SELECT 1 as k, 'pa_merge2b_when' as val) s
+  ON s.k = t.k
   WHEN NOT MATCHED THEN
-	INSERT VALUES (s.key, s.val)
+	INSERT VALUES (s.k, s.val)
   WHEN MATCHED AND t.val like 'initial%' THEN
-	UPDATE set key = t.key + 1, val = t.val || ' updated by ' || s.val;
+	UPDATE set k = t.k + 1, val = t.val || ' updated by ' || s.val;
 }
 step "select2" { SELECT * FROM target; }
 step "pa_select2" { SELECT * FROM pa_target; }

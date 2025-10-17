@@ -95,6 +95,7 @@ MYS_REGRESS = cast_to_number \
 			  mys_information_schema \
 			  hex_literal \
 			  pipes_as_concat \
+			  rename \
 			  multi_update \
 			  mys_enum	\
 			  mys_text \

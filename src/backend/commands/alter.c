@@ -362,7 +362,7 @@ ExecRenameStmt(RenameStmt *stmt)
 
 		case OBJECT_ROLE:
 			return RenameRole(stmt->subname, stmt->newname);
-
+			 
 		case OBJECT_SCHEMA:
 		{
 			/* Begin - ReqID:SRS-MYSQL-CASE */

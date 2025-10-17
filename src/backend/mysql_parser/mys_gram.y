@@ -294,6 +294,11 @@ static ResTarget *makeRestaget(Node *val, char *alias);
 static Node *makeShowCreateTableStmt(RangeVar *rvar);
 /* End - ReqID:SRS-MYSQL-SHOW */
 
+/* Begin - ReqID:SRS-MYSQL-RENAME */
+static void CheckUserHostId(char* userName, char* hostId);
+bool IsValidIdentUsername(char *input);
+static void CheckHostId(char* hostId);
+/* End - ReqID:SRS-MYSQL-RENAME */
 %}
 
 %pure-parser
@@ -771,6 +776,8 @@ static Node *makeShowCreateTableStmt(RangeVar *rvar);
 %type <node>		VariableMultiSetStmt user_var
 %type <str>			set_names_collate multi_encoding
 /* End - ReqID:SRS-MYSQL-SET */
+%type <str>			UserId
+%type <list>		rename_user_clause rename_list rename_table_list rename_table_clause
 
 /* Begin - ReqID:SRS-MYSQL-SHOW */
 %type <node>		opt_db
@@ -1084,14 +1091,44 @@ stmtmulti:	stmtmulti ';' toplevel_stmt
 						updateRawStmtEnd(llast_node(RawStmt, $1), @2);
 					}
 					if ($3 != NULL)
-						$$ = lappend($1, makeRawStmt($3, @2 + 1));
+					{
+						/* Begin - ReqID:SRS-MYSQL-RENAME */
+						if (IsA($3, List))
+						{
+							ListCell   *lc;
+							List *ret = NIL;
+							foreach(lc, (List *) $3)
+							{
+								ret = lappend(ret, makeRawStmt(lfirst(lc), 0));
+							}
+							$$ = list_concat($1, ret);
+						}
+						/* End - ReqID:SRS-MYSQL-RENAME */
+						else
+							$$ = lappend($1, makeRawStmt($3, @2 + 1));
+					}
 					else
 						$$ = $1;
 				}
 			| toplevel_stmt
 				{
 					if ($1 != NULL)
-						$$ = list_make1(makeRawStmt($1, 0));
+					/* Begin - ReqID:SRS-MYSQL-RENAME */
+					{
+						if (IsA($1, List))
+						{
+							ListCell   *lc;
+							List *ret = NIL;
+							foreach(lc, (List *) $1)
+							{
+								ret = lappend(ret, makeRawStmt(lfirst(lc), 0));
+							}
+							$$ = ret;
+						}
+						else
+							$$ = list_make1(makeRawStmt($1, 0));
+					}
+					/* End - ReqID:SRS-MYSQL-RENAME */
 					else
 						$$ = NIL;
 				}
@@ -7153,6 +7190,37 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 				}
 		;
 
+/* Begin - ReqID:SRS-MYSQL-RENAME */
+rename_list:
+                       rename_user_clause		{$$ = list_make1($1);}
+                       | rename_list ',' rename_user_clause			{$$ = lappend($1, $3);}
+
+rename_user_clause:
+                       UserId TO UserId			{$$ = list_make2($1, $3); }
+
+UserId:
+			SCONST USER_VARIABLE_NAME
+					{
+						CheckUserHostId($1, $2);
+						$$ = $1;
+					}
+			| SCONST
+					{
+						if (strchr($1,'@'))
+							ereport(ERROR,(errcode(ERRCODE_INVALID_NAME),errmsg("@ can't be allowed in username")));
+						if (strlen($1) >= NAMEDATALEN) {
+							ereport(ERROR,(errcode(ERRCODE_INVALID_NAME),errmsg("String %s is too long for user name (should be no longer than 64)", $1)));
+						}
+						$$ = $1;
+					}
+			| RoleId
+					{
+						IsValidIdentUsername($1);
+						$$ = $1;
+					}
+		;
+/* End - ReqID:SRS-MYSQL-RENAME */
+
 /* object types taking any_name/any_name_list */
 object_type_any_name:
 			TABLE									{ $$ = OBJECT_TABLE; }
@@ -9717,6 +9785,21 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->missing_ok = false;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-RENAME */
+			| ALTER TABLE relation_expr RENAME AS name
+				{
+					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_ALTERTB_CASE($3, $6);
+					/* End - ReqID:SRS-MYSQL-CASE */
+					n->renameType = OBJECT_TABLE;
+					n->relation = $3;
+					n->subname = NULL;
+					n->newname = $6;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-MYSQL-RENAME */
 			| ALTER TABLE IF_P EXISTS relation_expr RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
@@ -9860,6 +9943,21 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->missing_ok = true;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-RENAME */
+			| ALTER TABLE relation_expr RENAME idx_key qualified_name TO name
+				{
+					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWERTWO_VARSCHECMA_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
+					n->renameType = OBJECT_INDEX;
+					n->relation = $6;
+					n->subname = NULL;
+					n->newname = $8;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-MYSQL-RENAME */
 			| ALTER TABLE relation_expr RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
@@ -10050,6 +10148,42 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->missing_ok = false;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-RENAME */
+			| RENAME USER rename_list
+				{
+					List *renamestmts = NIL;
+					ListCell *lc = NULL;
+					foreach (lc, $3) 
+					{
+						List *names = lfirst_node(List, lc);
+						RenameStmt *n = makeNode(RenameStmt);
+						n->renameType = OBJECT_ROLE;
+						n->subname = (char *) linitial(names);
+						n->newname = (char *) lsecond(names);
+						n->missing_ok = false;
+						renamestmts = lappend(renamestmts, (Node *) n);
+					}
+					$$ = (Node *)renamestmts;
+				}
+			| RENAME TABLE rename_table_list
+				{
+					List *renamestmts = NIL;
+					ListCell *lc = NULL;
+					
+					foreach (lc, $3) 
+					{
+						List *names = lfirst_node(List, lc);
+						RenameStmt *n = makeNode(RenameStmt);
+						n->renameType = OBJECT_TABLE;
+						n->relation = makeRangeVar(NULL, (char *) linitial(names), @3);
+						n->subname = NULL;
+						n->newname = (char *) lsecond(names);
+						n->missing_ok = true;
+						renamestmts = lappend(renamestmts, (Node *) n);
+					}
+					$$ = (Node *)renamestmts;
+				}
+			/* End - ReqID:SRS-MYSQL-RENAME */
 			| ALTER TABLESPACE name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
@@ -10126,6 +10260,15 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					$$ = (Node *)n;
 				}
 		;
+
+/* Begin - ReqID:SRS-MYSQL-RENAME */
+rename_table_list:
+			rename_table_clause		{$$ = list_make1($1);}
+			| rename_table_list ',' rename_table_clause		{$$ = lappend($1, $3);}
+
+rename_table_clause:
+			name TO name			{$$ = list_make2($1, $3); }
+/* End - ReqID:SRS-MYSQL-RENAME */
 
 opt_column: COLUMN
 			| /*EMPTY*/
@@ -19186,7 +19329,6 @@ unreserved_keyword:
 			| INCLUDE
 			| INCLUDING
 			| INCREMENT
-			| INDEX
 			| INDEXES
 			| INHERIT
 			| INHERITS
@@ -19197,7 +19339,6 @@ unreserved_keyword:
 			| INSTEAD
 			| INVOKER
 			| ISOLATION
-			| KEY
 			| KEYS /* ReqID: SRS-MYSQL-SHOW */
 			| LABEL
 			| LANGUAGE
@@ -19491,10 +19632,12 @@ type_func_name_keyword:
 			| FREEZE
 			| FULL
 			| ILIKE
+			| INDEX
 			| INNER_P
 			| IS
 			| ISNULL
 			| JOIN
+			| KEY
 			| LEFT
 			| LIKE
 			| NATURAL
@@ -22175,3 +22318,84 @@ makeShowVariableStmt(const char *glob_or_session, ShowFilter *filter)
 	return (Node *) selectStmt;
 }
 /* End - ReqID:SRS-MYSQL-SHOW */
+
+/* Begin - ReqID:SRS-MYSQL-RENAME */
+static void CheckUserHostId(char* userName, char* hostId)
+{
+	size_t userlen, hostidlen;
+	char* userHostId;
+
+	if (strchr(userName,'@'))
+		ereport(ERROR,(errcode(ERRCODE_INVALID_NAME), errmsg("Operation RENAME USER failed")));
+
+	if (*hostId == '\'' || *hostId == '`') 
+	{
+		userHostId = hostId + 1;
+		hostId[strlen(hostId)-1] = '\0';
+	} 
+	else 
+	{
+		userHostId = hostId;
+	}
+
+	if (strcasecmp("localhost", userHostId) != 0)
+		CheckHostId(userHostId);
+
+	userlen = strlen(userName);
+	hostidlen = strlen(hostId);	
+
+	if ((userlen + hostidlen + 2) >= 32) 
+	{
+		ereport(ERROR,(errcode(ERRCODE_INVALID_NAME),
+				errmsg("String %s @ %s is too long for user name (should be no longer than 32)", userName, hostId)));
+	}
+}
+
+/* judge if username is valid
+ * Only letters, numbers, dollar signs ($), number signs (#) and the underscore are allowed in name
+ * and The first character must be letter or underscore
+*/
+bool
+IsValidIdentUsername(char *input)
+{
+	int len;
+	char c = input[0];
+	
+	/*The first character id numbers or dollar*/
+	if ((c >= '0' && c <= '9') || c == '$')
+	{
+		ereport(ERROR,
+			(errcode(ERRCODE_SYNTAX_ERROR),
+			errmsg("invalid name: %s", input)));
+		return false;
+	}
+
+	len = strlen(input);
+	for (int i = 0; i < len; i++)
+	{
+		c = input[i];
+		if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '$' || c == '#')
+		{
+			continue;
+		}
+		else
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				errmsg("invalid name: %s", input)));
+			return false;
+		}
+	}
+	return true;
+}
+
+static void CheckHostId(char* hostId)
+{
+	char* tmp = hostId;
+	for (; *tmp != '\0'; tmp++) 
+	{
+		if (((*tmp < '0') || (*tmp > '9')) && (*tmp != '%') && (*tmp != '.'))
+			ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), errmsg("Operation RENAME USER failed")));
+	}
+}
+/* End - ReqID:SRS-MYSQL-RENAME */

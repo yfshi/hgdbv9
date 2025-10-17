@@ -157,7 +157,7 @@ SELECT * FROM clstr_1;
 -- Test MVCC-safety of cluster. There isn't much we can do to verify the
 -- results with a single backend...
 
-CREATE TABLE clustertest (key int PRIMARY KEY);
+CREATE TABLE clustertest (k int PRIMARY KEY);
 
 INSERT INTO clustertest VALUES (10);
 INSERT INTO clustertest VALUES (20);
@@ -169,15 +169,15 @@ INSERT INTO clustertest VALUES (50);
 BEGIN;
 
 -- Test update where the old row version is found first in the scan
-UPDATE clustertest SET key = 100 WHERE key = 10;
+UPDATE clustertest SET k = 100 WHERE k = 10;
 
 -- Test update where the new row version is found first in the scan
-UPDATE clustertest SET key = 35 WHERE key = 40;
+UPDATE clustertest SET k = 35 WHERE k = 40;
 
 -- Test longer update chain
-UPDATE clustertest SET key = 60 WHERE key = 50;
-UPDATE clustertest SET key = 70 WHERE key = 60;
-UPDATE clustertest SET key = 80 WHERE key = 70;
+UPDATE clustertest SET k = 60 WHERE k = 50;
+UPDATE clustertest SET k = 70 WHERE k = 60;
+UPDATE clustertest SET k = 80 WHERE k = 70;
 
 SELECT * FROM clustertest;
 CLUSTER clustertest_pkey ON clustertest;

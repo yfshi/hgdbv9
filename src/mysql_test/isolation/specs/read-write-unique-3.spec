@@ -4,13 +4,13 @@
 setup
 {
   CREATE TABLE test (
-    key   integer UNIQUE,
+    k1   integer UNIQUE,
     val   text
   );
 
   CREATE OR REPLACE FUNCTION insert_unique(k integer, v text) RETURNS void
   LANGUAGE SQL AS $$
-    INSERT INTO test (key, val) SELECT k, v WHERE NOT EXISTS (SELECT key FROM test WHERE key = k);
+    INSERT INTO test (k1, val) SELECT k, v WHERE NOT EXISTS (SELECT k1 FROM test WHERE k1 = k);
   $$;
 }
 

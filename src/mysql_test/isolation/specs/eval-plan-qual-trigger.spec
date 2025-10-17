@@ -1,6 +1,6 @@
 setup
 {
-    CREATE TABLE trigtest(key text primary key, data text);
+    CREATE TABLE trigtest(k text primary key, data text);
 
     CREATE FUNCTION noisy_oper(p_comment text, p_a anynonarray, p_op text, p_b anynonarray)
     RETURNS bool LANGUAGE plpgsql AS $body$
@@ -55,7 +55,7 @@ teardown
 
 
 session s0
-step s0_rep { SELECT * FROM trigtest ORDER BY key, data }
+step s0_rep { SELECT * FROM trigtest ORDER BY k, data }
 
 session s1
 #setup          {  }
@@ -75,35 +75,35 @@ step s1_ins_c { INSERT INTO trigtest VALUES ('key-c', 'val-c-s1') RETURNING *; }
 step s1_del_a {
     DELETE FROM trigtest
     WHERE
-        noisy_oper('upd', key, '=', 'key-a') AND
+        noisy_oper('upd', k, '=', 'key-a') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *
 }
 step s1_del_b {
     DELETE FROM trigtest
     WHERE
-        noisy_oper('upd', key, '=', 'key-b') AND
+        noisy_oper('upd', k, '=', 'key-b') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *
 }
 step s1_upd_a_data {
     UPDATE trigtest SET data = data || '-ups1'
     WHERE
-        noisy_oper('upd', key, '=', 'key-a') AND
+        noisy_oper('upd', k, '=', 'key-a') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *;
 }
 step s1_upd_b_data {
     UPDATE trigtest SET data = data || '-ups1'
     WHERE
-        noisy_oper('upd', key, '=', 'key-b') AND
+        noisy_oper('upd', k, '=', 'key-b') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *;
 }
 step s1_upd_a_tob {
-    UPDATE trigtest SET key = 'key-b', data = data || '-tobs1'
+    UPDATE trigtest SET k = 'key-b', data = data || '-tobs1'
     WHERE
-        noisy_oper('upk', key, '=', 'key-a') AND
+        noisy_oper('upk', k, '=', 'key-a') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *;
 }
@@ -118,37 +118,37 @@ step s2_ins_a { INSERT INTO trigtest VALUES ('key-a', 'val-a-s2') RETURNING *; }
 step s2_del_a {
     DELETE FROM trigtest
     WHERE
-        noisy_oper('upd', key, '=', 'key-a') AND
+        noisy_oper('upd', k, '=', 'key-a') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *
 }
 step s2_upd_a_data {
     UPDATE trigtest SET data = data || '-ups2'
     WHERE
-        noisy_oper('upd', key, '=', 'key-a') AND
+        noisy_oper('upd', k, '=', 'key-a') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *;
 }
 step s2_upd_b_data {
     UPDATE trigtest SET data = data || '-ups2'
     WHERE
-        noisy_oper('upd', key, '=', 'key-b') AND
+        noisy_oper('upd', k, '=', 'key-b') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *;
 }
 step s2_upd_all_data {
     UPDATE trigtest SET data = data || '-ups2'
     WHERE
-        noisy_oper('upd', key, '<>', 'mismatch') AND
+        noisy_oper('upd', k, '<>', 'mismatch') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *;
 }
 step s2_upsert_a_data {
     INSERT INTO trigtest VALUES ('key-a', 'val-a-upss2')
-    ON CONFLICT (key)
+    ON CONFLICT (k)
         DO UPDATE SET data = trigtest.data || '-upserts2'
         WHERE
-            noisy_oper('upd', trigtest.key, '=', 'key-a') AND
+            noisy_oper('upd', trigtest.k, '=', 'key-a') AND
             noisy_oper('upk', trigtest.data, '<>', 'mismatch')
     RETURNING *;
 }
@@ -161,14 +161,14 @@ step s3_r     { ROLLBACK; }
 step s3_del_a {
     DELETE FROM trigtest
     WHERE
-        noisy_oper('upd', key, '=', 'key-a') AND
+        noisy_oper('upd', k, '=', 'key-a') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *
 }
 step s3_upd_a_data {
     UPDATE trigtest SET data = data || '-ups3'
     WHERE
-        noisy_oper('upd', key, '=', 'key-a') AND
+        noisy_oper('upd', k, '=', 'key-a') AND
         noisy_oper('upk', data, '<>', 'mismatch')
     RETURNING *;
 }

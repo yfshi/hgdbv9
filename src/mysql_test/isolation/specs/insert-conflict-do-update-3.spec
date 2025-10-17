@@ -26,10 +26,10 @@
 
 setup
 {
-  CREATE TABLE colors (key int4 PRIMARY KEY, color text, is_active boolean);
-  INSERT INTO colors (key, color, is_active) VALUES(1, 'Red', false);
-  INSERT INTO colors (key, color, is_active) VALUES(2, 'Green', false);
-  INSERT INTO colors (key, color, is_active) VALUES(3, 'Blue', false);
+  CREATE TABLE colors (k int4 PRIMARY KEY, color text, is_active boolean);
+  INSERT INTO colors (k, color, is_active) VALUES(1, 'Red', false);
+  INSERT INTO colors (k, color, is_active) VALUES(2, 'Green', false);
+  INSERT INTO colors (k, color, is_active) VALUES(3, 'Blue', false);
 }
 
 teardown
@@ -44,13 +44,13 @@ setup
 }
 step insert1 {
     WITH t AS (
-        INSERT INTO colors(key, color, is_active)
+        INSERT INTO colors(k, color, is_active)
         VALUES(1, 'Brown', true), (2, 'Gray', true)
-        ON CONFLICT (key) DO UPDATE
+        ON CONFLICT (k) DO UPDATE
         SET color = EXCLUDED.color
         WHERE colors.is_active)
-    SELECT * FROM colors ORDER BY key;}
-step select1surprise { SELECT * FROM colors ORDER BY key; }
+    SELECT * FROM colors ORDER BY k;}
+step select1surprise { SELECT * FROM colors ORDER BY k; }
 step c1 { COMMIT; }
 
 session s2
@@ -58,7 +58,7 @@ setup
 {
   BEGIN ISOLATION LEVEL READ COMMITTED;
 }
-step update2 { UPDATE colors SET is_active = true WHERE key = 1; }
+step update2 { UPDATE colors SET is_active = true WHERE k = 1; }
 step c2 { COMMIT; }
 
 # Perhaps surprisingly, the session 1 MVCC-snapshot-visible tuple (the tuple

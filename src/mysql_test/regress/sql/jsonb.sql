@@ -858,7 +858,7 @@ SELECT count(*) from testjsonb  WHERE j->'array' @> '5'::jsonb;
 RESET enable_seqscan;
 
 SELECT count(*) FROM (SELECT (jsonb_each(j)).key FROM testjsonb) AS wow;
-SELECT key, count(*) FROM (SELECT (jsonb_each(j)).key FROM testjsonb) AS wow GROUP BY key ORDER BY count DESC, key;
+SELECT k, count(*) FROM (SELECT (jsonb_each(j)).key AS k FROM testjsonb) AS wow GROUP BY k ORDER BY count DESC, k;
 
 -- sort/hash
 SELECT count(distinct j) FROM testjsonb;

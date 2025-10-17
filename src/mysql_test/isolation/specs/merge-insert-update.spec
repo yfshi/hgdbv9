@@ -5,7 +5,7 @@
 
 setup
 {
-  CREATE TABLE target (key int primary key, val text);
+  CREATE TABLE target (k int primary key, val text);
 }
 
 teardown
@@ -18,8 +18,8 @@ setup
 {
   BEGIN ISOLATION LEVEL READ COMMITTED;
 }
-step "merge1" { MERGE INTO target t USING (SELECT 1 as key, 'merge1' as val) s ON s.key = t.key WHEN NOT MATCHED THEN INSERT VALUES (s.key, s.val) WHEN MATCHED THEN UPDATE set val = t.val || ' updated by merge1'; }
-step "delete1" { DELETE FROM target WHERE key = 1; }
+step "merge1" { MERGE INTO target t USING (SELECT 1 as k, 'merge1' as val) s ON s.k = t.k WHEN NOT MATCHED THEN INSERT VALUES (s.k, s.val) WHEN MATCHED THEN UPDATE set val = t.val || ' updated by merge1'; }
+step "delete1" { DELETE FROM target WHERE k = 1; }
 step "insert1" { INSERT INTO target VALUES (1, 'insert1'); }
 step "c1" { COMMIT; }
 step "a1" { ABORT; }
@@ -29,9 +29,9 @@ setup
 {
   BEGIN ISOLATION LEVEL READ COMMITTED;
 }
-step "merge2" { MERGE INTO target t USING (SELECT 1 as key, 'merge2' as val) s ON s.key = t.key WHEN NOT MATCHED THEN INSERT VALUES (s.key, s.val) WHEN MATCHED THEN UPDATE set val = t.val || ' updated by merge2'; }
+step "merge2" { MERGE INTO target t USING (SELECT 1 as k, 'merge2' as val) s ON s.k = t.k WHEN NOT MATCHED THEN INSERT VALUES (s.k, s.val) WHEN MATCHED THEN UPDATE set val = t.val || ' updated by merge2'; }
 
-step "merge2i" { MERGE INTO target t USING (SELECT 1 as key, 'merge2' as val) s ON s.key = t.key WHEN MATCHED THEN UPDATE set val = t.val || ' updated by merge2'; }
+step "merge2i" { MERGE INTO target t USING (SELECT 1 as k, 'merge2' as val) s ON s.k = t.k WHEN MATCHED THEN UPDATE set val = t.val || ' updated by merge2'; }
 
 step "select2" { SELECT * FROM target; }
 step "c2" { COMMIT; }
