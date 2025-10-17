@@ -586,6 +586,7 @@ SELECT oid, typname, typtype, typelem, typarray, typarray
   FROM pg_type t
   WHERE typtype NOT IN ('p', 'c') AND t.typnamespace != 9900 AND
     t.typnamespace != (select oid from pg_namespace where nspname = 'ivymy') AND
+    t.typname != 'seclabel' AND
     -- reg* types cannot be pg_upgraded, so discard them.
     oid != ALL(ARRAY['regproc', 'regprocedure', 'regoper',
                      'regoperator', 'regconfig', 'regdictionary',
