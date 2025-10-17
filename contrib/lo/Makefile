@@ -7,7 +7,7 @@ DATA = lo--1.1.sql lo--1.0--1.1.sql
 PGFILEDESC = "lo - management for large objects"
 
 REGRESS = lo
-ORA_REGRESS = lo
+ORA_REGRESS = ivy_lo
 #Begin - ReqID:SRS-MISC-MYSQL-FRAME
 MYS_REGRESS = mys_lo
 #End - ReqID:SRS-MISC-MYSQL-FRAME

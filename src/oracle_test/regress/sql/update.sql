@@ -278,6 +278,7 @@ $$;
 CREATE TRIGGER trans_updatetrig
   AFTER UPDATE ON range_parted REFERENCING OLD TABLE AS old_table NEW TABLE AS new_table
   FOR EACH STATEMENT EXECUTE PROCEDURE trans_updatetrigfunc();
+/
 
 UPDATE range_parted set c = (case when c = 96 then 110 else c + 1 end ) WHERE a = 'b' and b > 10 and c >= 96;
 :show_data;
@@ -289,9 +290,11 @@ UPDATE range_parted set c = (case when c = 96 then 110 else c + 1 end ) WHERE a 
 CREATE TRIGGER trans_deletetrig
   AFTER DELETE ON range_parted REFERENCING OLD TABLE AS old_table
   FOR EACH STATEMENT EXECUTE PROCEDURE trans_updatetrigfunc();
+/
 CREATE TRIGGER trans_inserttrig
   AFTER INSERT ON range_parted REFERENCING NEW TABLE AS new_table
   FOR EACH STATEMENT EXECUTE PROCEDURE trans_updatetrigfunc();
+/
 UPDATE range_parted set c = c + 50 WHERE a = 'b' and b > 10 and c >= 96;
 :show_data;
 DROP TRIGGER trans_deletetrig ON range_parted;
@@ -313,10 +316,13 @@ END $$ language plpgsql;
 /
 CREATE TRIGGER trig_c1_100 BEFORE UPDATE OR INSERT ON part_c_1_100
    FOR EACH ROW EXECUTE PROCEDURE func_parted_mod_b();
+/
 CREATE TRIGGER trig_d1_15 BEFORE UPDATE OR INSERT ON part_d_1_15
    FOR EACH ROW EXECUTE PROCEDURE func_parted_mod_b();
+/
 CREATE TRIGGER trig_d15_20 BEFORE UPDATE OR INSERT ON part_d_15_20
    FOR EACH ROW EXECUTE PROCEDURE func_parted_mod_b();
+/
 :init_range_parted;
 UPDATE range_parted set c = (case when c = 96 then 110 else c + 1 end) WHERE a = 'b' and b > 10 and c >= 96;
 :show_data;
@@ -362,6 +368,7 @@ END $$ LANGUAGE plpgsql;
 /
 CREATE TRIGGER trig_d_1_15 BEFORE INSERT ON part_d_1_15
    FOR EACH ROW EXECUTE PROCEDURE func_d_1_15();
+/
 
 :init_range_parted;
 SET SESSION AUTHORIZATION regress_range_parted_user;
@@ -438,33 +445,45 @@ $$;
 -- Triggers on root partition
 CREATE TRIGGER parent_delete_trig
   AFTER DELETE ON range_parted for each statement execute procedure trigfunc();
+/
 CREATE TRIGGER parent_update_trig
   AFTER UPDATE ON range_parted for each statement execute procedure trigfunc();
+/
 CREATE TRIGGER parent_insert_trig
   AFTER INSERT ON range_parted for each statement execute procedure trigfunc();
+/
 
 -- Triggers on leaf partition part_c_1_100
 CREATE TRIGGER c1_delete_trig
   AFTER DELETE ON part_c_1_100 for each statement execute procedure trigfunc();
+/
 CREATE TRIGGER c1_update_trig
   AFTER UPDATE ON part_c_1_100 for each statement execute procedure trigfunc();
+/
 CREATE TRIGGER c1_insert_trig
   AFTER INSERT ON part_c_1_100 for each statement execute procedure trigfunc();
+/
 
 -- Triggers on leaf partition part_d_1_15
 CREATE TRIGGER d1_delete_trig
   AFTER DELETE ON part_d_1_15 for each statement execute procedure trigfunc();
+/
 CREATE TRIGGER d1_update_trig
   AFTER UPDATE ON part_d_1_15 for each statement execute procedure trigfunc();
+/
 CREATE TRIGGER d1_insert_trig
   AFTER INSERT ON part_d_1_15 for each statement execute procedure trigfunc();
+/
 -- Triggers on leaf partition part_d_15_20
 CREATE TRIGGER d15_delete_trig
   AFTER DELETE ON part_d_15_20 for each statement execute procedure trigfunc();
+/
 CREATE TRIGGER d15_update_trig
   AFTER UPDATE ON part_d_15_20 for each statement execute procedure trigfunc();
+/
 CREATE TRIGGER d15_insert_trig
   AFTER INSERT ON part_d_15_20 for each statement execute procedure trigfunc();
+/
 
 -- Move all rows from part_c_100_200 to part_c_1_100. None of the delete or
 -- insert statement triggers should be fired.
@@ -603,6 +622,7 @@ END $$ LANGUAGE plpgsql;
 /
 CREATE TRIGGER parted_mod_b before update on sub_part1
    for each row execute procedure func_parted_mod_b();
+/
 
 SELECT tableoid::regclass::text, * FROM list_parted ORDER BY 1, 2, 3, 4;
 
@@ -623,6 +643,7 @@ END $$ LANGUAGE plpgsql;
 /
 CREATE TRIGGER trig_skip_delete before delete on sub_part2
    for each row execute procedure func_parted_mod_b();
+/
 UPDATE list_parted set b = 1 WHERE c = 70;
 SELECT tableoid::regclass::text, * FROM list_parted ORDER BY 1, 2, 3, 4;
 -- Drop the trigger. Now the row should be moved.

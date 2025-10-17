@@ -182,6 +182,7 @@ create trigger part_ins_trig
 	before insert on parted_copytest_a2
 	for each row
 	execute procedure part_ins_func();
+/
 
 copy parted_copytest from '@abs_builddir@/results/parted_copytest.csv';
 
@@ -249,6 +250,7 @@ create trigger check_after_tab_progress_reporting
 	after insert on tab_progress_reporting
 	for each statement
 	execute function notice_after_tab_progress_reporting();
+/
 
 -- Generate COPY FROM report with PIPE.
 copy tab_progress_reporting from stdin;

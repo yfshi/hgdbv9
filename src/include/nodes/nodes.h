@@ -469,6 +469,9 @@ typedef enum NodeTag
 	T_AlterDatabaseLinkStmt,
 	T_AlterSessionCloseDblinkStmt,
 	/* End - ReqID:SRS-SQL-DBLINK */
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	T_AlterOraTrigStmt,
+	/* End - ReqID:SRS-SQL-TRIGGER */
 	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
 	/*
 	 * support connect by

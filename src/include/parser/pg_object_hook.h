@@ -52,6 +52,8 @@ typedef struct pg_object_ori_infor
 {
 	char		*oriname;		/* The object name stored in pg_object */
 	Oid			orischema;		/* The object schema stored in pg_object */
+	char 		orikind;		/* The object kind */
+	char		oricompatible_mode;	/* The object compatible_mode */
 	Timestamp	*orimodifytime;	/* The object midify time stored in pg_object */
 	Jsonb		*orioption;		/* The object option stored in pg_object */
 }pg_object_ori_infor;

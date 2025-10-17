@@ -2120,19 +2120,10 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	/* END - ReqID:SRS-CMD-PGDUMP */
 }
 
-/* Begin - ReqID:SRS-SQL-PROC */
-/*
- * support oracle grammer like
- * alter function func editionable|noneditionable or compile
- * this function we doesn't consider function arguments and
- * search pg_proc directly, if we found more than one or less
- * than one, we report error.
- */
 ObjectAddress
-CompileFunction(CompileFunctionStmt *stmt)
+compileFunctionInternal(Oid funcOid, bool compile, ObjectType objtype)
 {
 	HeapTuple	tup;
-	Oid			funcOid;
 	Form_pg_proc procForm;
 	Relation	rel;
 	ObjectAddress address;
@@ -2160,14 +2151,12 @@ CompileFunction(CompileFunctionStmt *stmt)
 
 	rel = table_open(ProcedureRelationId, RowExclusiveLock);
 
-	funcOid = LookupFuncWithArgs(stmt->objtype, stmt->func, false);	/* BUG#Z106 */
-
 	tup = SearchSysCacheCopy1(PROCOID, ObjectIdGetDatum(funcOid));
 	if (!HeapTupleIsValid(tup)) /* should not happen */
 	{
-		if (stmt->objtype == OBJECT_PROCEDURE) /* BUG#Z106 */
+		if (objtype == OBJECT_PROCEDURE) /* BUG#Z106 */
 			elog(ERROR, "cache lookup failed for procedure %u", funcOid);
-		else if (stmt->objtype == OBJECT_FUNCTION) /* BUG#Z106 */
+		else if (objtype == OBJECT_FUNCTION) /* BUG#Z106 */
 			elog(ERROR, "cache lookup failed for function %u", funcOid);
 	}
 	procForm = (Form_pg_proc) GETSTRUCT(tup);
@@ -2184,7 +2173,7 @@ CompileFunction(CompileFunctionStmt *stmt)
 	 * alter editable|noneditionable, we only support grammer
 	 * we only compile plisql function
 	 */
-	if (!stmt->is_compile || strcmp(NameStr(langForm->lanname), "plisql"))
+	if (!compile || strcmp(NameStr(langForm->lanname), "plisql"))
 	{
 		InvokeObjectPostAlterHook(ProcedureRelationId, funcOid, 0);
 		ObjectAddressSet(address, ProcedureRelationId, funcOid);
@@ -2514,6 +2503,26 @@ CompileFunction(CompileFunctionStmt *stmt)
 	table_close(rel, NoLock);
 	heap_freetuple(tup);
 
+	return address;
+}
+
+/* Begin - ReqID:SRS-SQL-PROC */
+/*
+ * support oracle grammer like
+ * alter function func editionable|noneditionable or compile
+ * this function we doesn't consider function arguments and
+ * search pg_proc directly, if we found more than one or less
+ * than one, we report error.
+ */
+ObjectAddress
+CompileFunction(CompileFunctionStmt *stmt)
+{
+	Oid 	funcOid = InvalidOid;
+	ObjectAddress address;
+
+	funcOid = LookupFuncWithArgs(stmt->objtype, stmt->func, false);	/* BUG#Z106 */
+	if (OidIsValid(funcOid))
+		address = compileFunctionInternal(funcOid, stmt->is_compile, stmt->objtype);
 	return address;
 }
 /* End - ReqID:SRS-SQL-PROC */

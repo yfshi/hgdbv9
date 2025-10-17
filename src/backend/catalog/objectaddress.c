@@ -1507,24 +1507,74 @@ get_object_address_relobject(ObjectType objtype, List *object,
 	const char *depname;
 	List	   *relname;
 	Oid			reloid;
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	char 	   *schemaname = NULL;
+	Oid			trigoid = InvalidOid;
+	/* End - ReqID:SRS-SQL-TRIGGER */
+
 
 	/* Extract name of dependent object. */
-	depname = strVal(llast(object));
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	if (ORA_PARSER == compatible_db && objtype == OBJECT_TRIGGER && nodeTag(lfirst(list_tail(object))) == T_List)
+	{
+		RangeVar	*trigname = makeRangeVarFromNameList((List *)lfirst(list_tail(object)));
+		depname = trigname->relname;
+		schemaname = trigname->schemaname;
+	} /* End - ReqID:SRS-SQL-TRIGGER */
+	else
+		depname = strVal(llast(object));
 
 	/* Separate relation name from dependent object name. */
 	nnames = list_length(object);
 	if (nnames < 2)
-		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-				 errmsg("must specify relation and object name")));
+	{
+		/* Begin - ReqID:SRS-SQL-TRIGGER */
+		if (ORA_PARSER == compatible_db && objtype == OBJECT_TRIGGER)
+		{
+			trigoid = ivyGetTriggerOidReloidByName(depname, &reloid, missing_ok);
+		} /* End - ReqID:SRS-SQL-TRIGGER */
+		else
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("must specify relation and object name")));
+		}
 
-	/* Extract relation name and open relation. */
-	relname = list_truncate(list_copy(object), nnames - 1);
-	relation = table_openrv_extended(makeRangeVarFromNameList(relname),
-									 AccessShareLock,
-									 missing_ok);
+		/* Begin - ReqID:SRS-SQL-TRIGGER */
+		if (OidIsValid(trigoid))
+		{
+			if (schemaname != NULL)
+			{
+				Oid 	trgschema;
+				trgschema = LookupNamespaceNoError(schemaname);
+				/* Check schema if exist? */
+				if (!OidIsValid(trgschema))
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_TABLE),
+							 errmsg("schema \"%s\" does not exist", schemaname)));
+			}
+		}
+		/* End - ReqID:SRS-SQL-TRIGGER */
+	}
 
-	reloid = relation ? RelationGetRelid(relation) : InvalidOid;
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	if (ORA_PARSER == compatible_db && nnames < 2 && objtype == OBJECT_TRIGGER)
+	{
+		if (OidIsValid(reloid))
+			relation = table_open(reloid, AccessShareLock);
+		else
+			reloid = InvalidOid;
+	} /* End - ReqID:SRS-SQL-TRIGGER */
+	else
+	{
+		/* Extract relation name and open relation. */
+		relname = list_truncate(list_copy(object), nnames - 1);
+		relation = table_openrv_extended(makeRangeVarFromNameList(relname),
+										 AccessShareLock,
+										 missing_ok);
+
+		reloid = relation ? RelationGetRelid(relation) : InvalidOid;
+	}
 
 	switch (objtype)
 	{

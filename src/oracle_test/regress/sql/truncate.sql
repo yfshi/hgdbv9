@@ -151,6 +151,7 @@ CREATE TRIGGER t
 BEFORE TRUNCATE ON trunc_trigger_test
 FOR EACH STATEMENT
 EXECUTE PROCEDURE trunctrigger('before trigger truncate');
+/
 
 SELECT count(*) as "Row count in test table" FROM trunc_trigger_test;
 SELECT * FROM trunc_trigger_log;
@@ -169,6 +170,7 @@ CREATE TRIGGER tt
 AFTER TRUNCATE ON trunc_trigger_test
 FOR EACH STATEMENT
 EXECUTE PROCEDURE trunctrigger('after trigger truncate');
+/
 
 SELECT count(*) as "Row count in test table" FROM trunc_trigger_test;
 SELECT * FROM trunc_trigger_log;

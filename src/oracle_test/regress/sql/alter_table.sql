@@ -1804,6 +1804,7 @@ create trigger ttdummy
 	for each row
 	execute procedure
 	ttdummy (1, 1);
+/
 select * from my_locks order by 1;
 rollback;
 
@@ -3041,6 +3042,7 @@ create or replace function func_part_attach() returns trigger
 /
 create trigger trig_part_attach before insert on tab_part_attach
   for each statement execute procedure func_part_attach();
+/
 insert into tab_part_attach values (1);
 drop table tab_part_attach;
 drop function func_part_attach();
@@ -3097,6 +3099,7 @@ create trigger xtrig
   after update on bar1
   referencing old table as old
   for each statement execute procedure xtrig();
+/
 
 update bar1 set a = a + 1;
 

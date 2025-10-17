@@ -577,6 +577,7 @@ create trigger parted_conflict_update
     referencing new table as inserted
     for each statement
     execute procedure parted_conflict_update_func();
+/
 
 truncate parted_conflict;
 

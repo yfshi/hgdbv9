@@ -1038,7 +1038,7 @@ other			.
 					 * writing a full parser here, the following heuristic
 					 * should work.  First, we track whether the beginning of
 					 * the statement matches CREATE [OR REPLACE]
-					 * {FUNCTION|PROCEDURE}
+					 * {FUNCTION|PROCEDURE|PACKAGE|TRIGGER}
 					 */
 
 					if (cur_state->identifier_count == 0)
@@ -1048,6 +1048,7 @@ other			.
 						pg_strcasecmp(yytext, "function") == 0 ||
 						pg_strcasecmp(yytext, "procedure") == 0 ||
 						pg_strcasecmp(yytext, "package") == 0 || /* ReqID:SRS-SQL-PACKAGE */
+						pg_strcasecmp(yytext, "trigger") == 0 || /* ReqID:SRS-SQL-TRIGGER */
 						pg_strcasecmp(yytext, "or") == 0 ||
 						pg_strcasecmp(yytext, "replace") == 0)
 					{
@@ -1066,9 +1067,9 @@ other			.
 						cur_state->identifier_count++;
 
 					if (cur_state->identifiers[0] == 'c' &&
-						(cur_state->identifiers[1] == 'f' || cur_state->identifiers[1] == 'p' ||
+						(cur_state->identifiers[1] == 'f' || cur_state->identifiers[1] == 'p' || cur_state->identifiers[1] == 't' ||
 						 (cur_state->identifiers[1] == 'o' && cur_state->identifiers[2] == 'r' &&
-						  (cur_state->identifiers[3] == 'f' || cur_state->identifiers[3] == 'p'))) &&
+						  (cur_state->identifiers[3] == 'f' || cur_state->identifiers[3] == 'p' || cur_state->identifiers[3] == 't'))) &&
 						cur_state->paren_depth == 0)
 					{
 						/* Begin - ReqID:SRS-SQL-PROC */

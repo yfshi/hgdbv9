@@ -28,6 +28,10 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+#include "catalog/pg_proc.h"
+#include "catalog/pg_trigger.h"
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 static bool isObjectPinned(const ObjectAddress *object, Relation rel);
 
@@ -845,6 +849,53 @@ getAutoExtensionsOfObject(Oid classId, Oid objectId)
 
 	return result;
 }
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+/*
+ * Return the OraTrigger Oid, if function exist a DEPENDENCY_AUTO
+ * dependency with ora trigger oid.
+ */
+Oid
+checkAutoDepOnOraTrigAndTrigFunc(Oid funcOid)
+{
+	Oid			result = InvalidOid;
+	Relation	depRel;
+	ScanKeyData key[3];
+	SysScanDesc scan;
+	HeapTuple	tup;
+
+	depRel = table_open(DependRelationId, RowShareLock);
+
+	ScanKeyInit(&key[0],
+				Anum_pg_depend_classid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(ProcedureRelationId));
+	ScanKeyInit(&key[1],
+				Anum_pg_depend_objid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(funcOid));
+
+	scan = systable_beginscan(depRel, DependDependerIndexId, true,
+							  NULL, 2, key);
+
+	while (HeapTupleIsValid((tup = systable_getnext(scan))))
+	{
+		Form_pg_depend depform = (Form_pg_depend) GETSTRUCT(tup);
+
+		if (depform->deptype == DEPENDENCY_AUTO && depform->refclassid == TriggerRelationId)
+		{
+			result = depform->refobjid;
+			break;
+		}
+	}
+
+	systable_endscan(scan);
+
+	table_close(depRel, RowShareLock);
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 /*
  * Detect whether a sequence is marked as "owned" by a column

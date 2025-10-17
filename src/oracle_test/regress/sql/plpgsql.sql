@@ -141,6 +141,7 @@ end;
 
 create trigger tg_room_au after update
     on Room for each row execute procedure tg_room_au();
+/
 
 
 -- ************************************************************
@@ -157,6 +158,7 @@ end;
 
 create trigger tg_room_ad after delete
     on Room for each row execute procedure tg_room_ad();
+/
 
 
 -- ************************************************************
@@ -175,6 +177,7 @@ $$ language plpgsql;
 
 create trigger tg_wslot_biu before insert or update
     on WSlot for each row execute procedure tg_wslot_biu();
+/
 
 
 -- ************************************************************
@@ -193,6 +196,7 @@ end;
 
 create trigger tg_pfield_au after update
     on PField for each row execute procedure tg_pfield_au();
+/
 
 
 -- ************************************************************
@@ -209,6 +213,7 @@ end;
 
 create trigger tg_pfield_ad after delete
     on PField for each row execute procedure tg_pfield_ad();
+/
 
 
 -- ************************************************************
@@ -231,6 +236,7 @@ $proc$ language plpgsql;
 
 create trigger tg_pslot_biu before insert or update
     on PSlot for each row execute procedure tg_pslot_biu();
+/
 
 
 -- ************************************************************
@@ -249,6 +255,7 @@ end;
 
 create trigger tg_system_au after update
     on System for each row execute procedure tg_system_au();
+/
 
 
 -- ************************************************************
@@ -278,6 +285,7 @@ $$ language plpgsql;
 
 create trigger tg_iface_biu before insert or update
     on IFace for each row execute procedure tg_iface_biu();
+/
 
 
 -- ************************************************************
@@ -310,6 +318,7 @@ end;
 
 create trigger tg_hub_a after insert or update or delete
     on Hub for each row execute procedure tg_hub_a();
+/
 
 
 -- ************************************************************
@@ -378,6 +387,7 @@ end;
 
 create trigger tg_hslot_biu before insert or update
     on HSlot for each row execute procedure tg_hslot_biu();
+/
 
 
 -- ************************************************************
@@ -402,6 +412,7 @@ end;
 
 create trigger tg_hslot_bd before delete
     on HSlot for each row execute procedure tg_hslot_bd();
+/
 
 
 -- ************************************************************
@@ -420,18 +431,23 @@ end;
 
 create trigger tg_chkslotname before insert
     on PSlot for each row execute procedure tg_chkslotname('PS');
+/
 
 create trigger tg_chkslotname before insert
     on WSlot for each row execute procedure tg_chkslotname('WS');
+/
 
 create trigger tg_chkslotname before insert
     on PLine for each row execute procedure tg_chkslotname('PL');
+/
 
 create trigger tg_chkslotname before insert
     on IFace for each row execute procedure tg_chkslotname('IF');
+/
 
 create trigger tg_chkslotname before insert
     on PHone for each row execute procedure tg_chkslotname('PH');
+/
 
 
 -- ************************************************************
@@ -450,18 +466,23 @@ end;
 
 create trigger tg_chkslotlink before insert or update
     on PSlot for each row execute procedure tg_chkslotlink();
+/
 
 create trigger tg_chkslotlink before insert or update
     on WSlot for each row execute procedure tg_chkslotlink();
+/
 
 create trigger tg_chkslotlink before insert or update
     on IFace for each row execute procedure tg_chkslotlink();
+/
 
 create trigger tg_chkslotlink before insert or update
     on HSlot for each row execute procedure tg_chkslotlink();
+/
 
 create trigger tg_chkslotlink before insert or update
     on PHone for each row execute procedure tg_chkslotlink();
+/
 
 
 -- ************************************************************
@@ -480,12 +501,15 @@ end;
 
 create trigger tg_chkbacklink before insert or update
     on PSlot for each row execute procedure tg_chkbacklink();
+/
 
 create trigger tg_chkbacklink before insert or update
     on WSlot for each row execute procedure tg_chkbacklink();
+/
 
 create trigger tg_chkbacklink before insert or update
     on PLine for each row execute procedure tg_chkbacklink();
+/
 
 
 -- ************************************************************
@@ -516,6 +540,7 @@ end;
 
 create trigger tg_pslot_bu before update
     on PSlot for each row execute procedure tg_pslot_bu();
+/
 
 
 -- ************************************************************
@@ -546,6 +571,7 @@ end;
 
 create trigger tg_wslot_bu before update
     on WSlot for each row execute procedure tg_Wslot_bu();
+/
 
 
 -- ************************************************************
@@ -576,6 +602,7 @@ end;
 
 create trigger tg_pline_bu before update
     on PLine for each row execute procedure tg_pline_bu();
+/
 
 
 -- ************************************************************
@@ -606,6 +633,7 @@ end;
 
 create trigger tg_iface_bu before update
     on IFace for each row execute procedure tg_iface_bu();
+/
 
 
 -- ************************************************************
@@ -636,6 +664,7 @@ end;
 
 create trigger tg_hslot_bu before update
     on HSlot for each row execute procedure tg_hslot_bu();
+/
 
 
 -- ************************************************************
@@ -664,6 +693,7 @@ end;
 
 create trigger tg_phone_bu before update
     on PHone for each row execute procedure tg_phone_bu();
+/
 
 
 -- ************************************************************
@@ -708,12 +738,15 @@ end;
 
 create trigger tg_backlink_a after insert or update or delete
     on PSlot for each row execute procedure tg_backlink_a('PS');
+/
 
 create trigger tg_backlink_a after insert or update or delete
     on WSlot for each row execute procedure tg_backlink_a('WS');
+/
 
 create trigger tg_backlink_a after insert or update or delete
     on PLine for each row execute procedure tg_backlink_a('PL');
+/
 
 
 -- ************************************************************
@@ -863,18 +896,23 @@ end;
 
 create trigger tg_slotlink_a after insert or update or delete
     on PSlot for each row execute procedure tg_slotlink_a('PS');
+/
 
 create trigger tg_slotlink_a after insert or update or delete
     on WSlot for each row execute procedure tg_slotlink_a('WS');
+/
 
 create trigger tg_slotlink_a after insert or update or delete
     on IFace for each row execute procedure tg_slotlink_a('IF');
+/
 
 create trigger tg_slotlink_a after insert or update or delete
     on HSlot for each row execute procedure tg_slotlink_a('HS');
+/
 
 create trigger tg_slotlink_a after insert or update or delete
     on PHone for each row execute procedure tg_slotlink_a('PH');
+/
 
 
 -- ************************************************************
@@ -4545,12 +4583,14 @@ CREATE TRIGGER transition_table_base_ins_trig
   REFERENCING OLD TABLE AS oldtable NEW TABLE AS newtable
   FOR EACH STATEMENT
   EXECUTE PROCEDURE transition_table_base_ins_func();
+/
 
 CREATE TRIGGER transition_table_base_ins_trig
   AFTER INSERT ON transition_table_base
   REFERENCING NEW TABLE AS newtable
   FOR EACH STATEMENT
   EXECUTE PROCEDURE transition_table_base_ins_func();
+/
 
 INSERT INTO transition_table_base VALUES (1, 'One'), (2, 'Two');
 INSERT INTO transition_table_base VALUES (3, 'Three'), (4, 'Four');
@@ -4583,6 +4623,7 @@ CREATE TRIGGER transition_table_base_upd_trig
   REFERENCING OLD TABLE AS oldtable NEW TABLE AS newtable
   FOR EACH STATEMENT
   EXECUTE PROCEDURE transition_table_base_upd_func();
+/
 
 UPDATE transition_table_base
   SET val = '*' || val || '*'
@@ -4631,6 +4672,7 @@ CREATE TRIGGER transition_table_level1_ri_parent_del_trigger
   REFERENCING OLD TABLE AS p
   FOR EACH STATEMENT EXECUTE PROCEDURE
     transition_table_level1_ri_parent_del_func();
+/
 
 CREATE FUNCTION transition_table_level1_ri_parent_upd_func()
   RETURNS TRIGGER
@@ -4661,6 +4703,7 @@ CREATE TRIGGER transition_table_level1_ri_parent_upd_trigger
   REFERENCING OLD TABLE AS d NEW TABLE AS i
   FOR EACH STATEMENT EXECUTE PROCEDURE
     transition_table_level1_ri_parent_upd_func();
+/
 
 CREATE FUNCTION transition_table_level2_ri_child_insupd_func()
   RETURNS TRIGGER
@@ -4684,12 +4727,14 @@ CREATE TRIGGER transition_table_level2_ri_child_ins_trigger
   REFERENCING NEW TABLE AS i
   FOR EACH STATEMENT EXECUTE PROCEDURE
     transition_table_level2_ri_child_insupd_func();
+/
 
 CREATE TRIGGER transition_table_level2_ri_child_upd_trigger
   AFTER UPDATE ON transition_table_level2
   REFERENCING NEW TABLE AS i
   FOR EACH STATEMENT EXECUTE PROCEDURE
     transition_table_level2_ri_child_insupd_func();
+/
 
 -- create initial test data
 INSERT INTO transition_table_level1 (level1_no)
@@ -4729,6 +4774,7 @@ CREATE TRIGGER transition_table_level2_bad_usage_trigger
   REFERENCING OLD TABLE AS dx
   FOR EACH STATEMENT EXECUTE PROCEDURE
     transition_table_level2_bad_usage_func();
+/
 
 DELETE FROM transition_table_level2
   WHERE level2_no BETWEEN 301 AND 305;
@@ -4790,6 +4836,7 @@ CREATE TRIGGER alter_table_under_transition_tables_upd_trigger
   REFERENCING OLD TABLE AS d NEW TABLE AS i
   FOR EACH STATEMENT EXECUTE PROCEDURE
     alter_table_under_transition_tables_upd_func();
+/
 
 -- should work
 CREATE TRIGGER alter_table_under_transition_tables_upd_trigger
@@ -4797,6 +4844,7 @@ CREATE TRIGGER alter_table_under_transition_tables_upd_trigger
   REFERENCING OLD TABLE AS d NEW TABLE AS i
   FOR EACH STATEMENT EXECUTE PROCEDURE
     alter_table_under_transition_tables_upd_func();
+/
 
 INSERT INTO alter_table_under_transition_tables
   VALUES (1, '1'), (2, '2'), (3, '3');
@@ -4836,6 +4884,7 @@ END$$;
 CREATE TRIGGER my_trigger AFTER UPDATE ON multi_test
   REFERENCING NEW TABLE AS new_test OLD TABLE as old_test
   FOR EACH STATEMENT EXECUTE PROCEDURE multi_test_trig();
+/
 
 UPDATE multi_test SET i = i;
 

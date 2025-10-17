@@ -943,32 +943,38 @@ CREATE TRIGGER trigtest_before_stmt BEFORE INSERT OR UPDATE OR DELETE
 ON foreign_schema.foreign_table_1
 FOR EACH STATEMENT
 EXECUTE PROCEDURE dummy_trigger();
+/
 
 CREATE TRIGGER trigtest_after_stmt AFTER INSERT OR UPDATE OR DELETE
 ON foreign_schema.foreign_table_1
 FOR EACH STATEMENT
 EXECUTE PROCEDURE dummy_trigger();
+/
 
 CREATE TRIGGER trigtest_after_stmt_tt AFTER INSERT OR UPDATE OR DELETE -- ERROR
 ON foreign_schema.foreign_table_1
 REFERENCING NEW TABLE AS new_table
 FOR EACH STATEMENT
 EXECUTE PROCEDURE dummy_trigger();
+/
 
 CREATE TRIGGER trigtest_before_row BEFORE INSERT OR UPDATE OR DELETE
 ON foreign_schema.foreign_table_1
 FOR EACH ROW
 EXECUTE PROCEDURE dummy_trigger();
+/
 
 CREATE TRIGGER trigtest_after_row AFTER INSERT OR UPDATE OR DELETE
 ON foreign_schema.foreign_table_1
 FOR EACH ROW
 EXECUTE PROCEDURE dummy_trigger();
+/
 
 CREATE CONSTRAINT TRIGGER trigtest_constraint AFTER INSERT OR UPDATE OR DELETE
 ON foreign_schema.foreign_table_1
 FOR EACH ROW
 EXECUTE PROCEDURE dummy_trigger();
+/
 
 ALTER FOREIGN TABLE foreign_schema.foreign_table_1
 	DISABLE TRIGGER trigtest_before_stmt;

@@ -258,3 +258,7 @@ test: ora_dynamic_sql
 #/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 test: ora_statement_level_rollback
 #/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+
+#/* Begin - ReqID:SRS-SQL-TRIGGER */
+test: ora_trigger
+#/* End - ReqID:SRS-SQL-TRIGGER */

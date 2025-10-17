@@ -14,6 +14,7 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
+/
 drop table foo;
 flashback table foo to before drop; --failed
 ERROR:  recycle object "foo" does not exist
@@ -34,6 +35,7 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
+/
 drop table foo;
 drop table if exists foo;
 NOTICE:  table "foo" does not exist, skipping
@@ -90,6 +92,7 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
+/
 select a, left(b, 10), length(b) from foo order by a limit 1;
   a  |    left    | length 
 -----+------------+--------
@@ -161,6 +164,7 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
+/
 truncate foo;
 NOTICE:  TRUNCATE trigger
 flashback table foo to before truncate; --failed
@@ -313,6 +317,7 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
+/
 truncate foo;
 NOTICE:  Not support truncate triggers where use recyclebin features, requires manual truncate target table
 drop table foo;

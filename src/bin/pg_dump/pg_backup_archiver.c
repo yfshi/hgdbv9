@@ -5621,7 +5621,8 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			/* switch ivorysql.compatible_mode to oracle for package. If pg_object */
 			/* records package information in the future, the following code needs */
 			/* to be deleted. */
-			if ((strcmp(te->desc, "PACKAGE") == 0  || strcmp(te->desc, "SYNONYM") == 0 )	/* ReqID:SRS-SQL-SYNONYM */
+			if (database_mode != DB_MYSQL && (strcmp(te->desc, "PACKAGE") == 0  ||
+				 strcmp(te->desc, "SYNONYM") == 0 || strcmp(te->desc, "TRIGGER") == 0)	/* ReqID:SRS-SQL-SYNONYM */
 											&& compatible_mode != ORA_PARSER)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");

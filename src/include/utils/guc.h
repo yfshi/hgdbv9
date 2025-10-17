@@ -469,6 +469,8 @@ extern PGDLLIMPORT bool enable_compatible_type_shippable;
 /* End - OA#00001554 */
 extern bool enable_flashback_recycle_bin;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 
+extern bool	enable_coverwritten_ora_trigger;	/* ReqID:SRS-SQL-TRIGGER */
+
 /* Begin - RSR-SQL-Partition-interval */
 extern PGDLLIMPORT int max_interval_partition_failures;
 /* End - RSR-SQL-Partition-interval */

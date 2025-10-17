@@ -137,6 +137,7 @@ return "MODIFY";
 $$;
 /
 CREATE TRIGGER test4 BEFORE UPDATE ON test1 FOR EACH ROW EXECUTE PROCEDURE test4();
+/
 UPDATE test1 SET a = a;
 INFO:  $VAR1 = {'a' => '1','b' => {'aa' => 'bb','cc' => undef}};
 SELECT * FROM test1;

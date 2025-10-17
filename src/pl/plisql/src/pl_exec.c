@@ -67,6 +67,10 @@
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
 #include "parser/parse_param.h"
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+#include "parser/pg_object_hook.h"
+#include "catalog/pg_trigger.h"
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 
 /*
@@ -1334,6 +1338,7 @@ plisql_exec_trigger(PLiSQL_function *func,
 	 */
 	estate.err_text = NULL;
 	rc = exec_toplevel_block(&estate, func->action);
+
 	if (rc != PLISQL_RC_RETURN)
 	{
 		estate.err_text = NULL;

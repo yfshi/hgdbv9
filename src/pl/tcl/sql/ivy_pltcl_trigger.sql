@@ -127,20 +127,25 @@ $_$;
 CREATE TRIGGER show_trigger_data_trig
 BEFORE INSERT OR UPDATE OR DELETE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 CREATE TRIGGER statement_trigger
 BEFORE INSERT OR UPDATE OR DELETE OR TRUNCATE ON trigger_test
 FOR EACH STATEMENT EXECUTE PROCEDURE trigger_data(42,'statement trigger');
+/
 
 CREATE TRIGGER show_trigger_data_trig_before
 BEFORE INSERT OR UPDATE OR DELETE ON trigger_test_generated
 FOR EACH ROW EXECUTE PROCEDURE trigger_data();
+/
 CREATE TRIGGER show_trigger_data_trig_after
 AFTER INSERT OR UPDATE OR DELETE ON trigger_test_generated
 FOR EACH ROW EXECUTE PROCEDURE trigger_data();
+/
 
 CREATE TRIGGER show_trigger_data_view_trig
 INSTEAD OF INSERT OR UPDATE OR DELETE ON trigger_test_view
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(24,'skidoo view');
+/
 
 --
 -- Trigger function on every change to T_pkey1
@@ -233,6 +238,7 @@ create function trig_pkey1_before() returns trigger as E'
 create trigger pkey1_before before insert or update or delete on T_pkey1
 	for each row execute procedure
 	trig_pkey1_before();
+/
 
 
 --
@@ -274,6 +280,7 @@ create function trig_pkey2_before() returns trigger as E'
 create trigger pkey2_before before insert or update on T_pkey2
 	for each row execute procedure
 	trig_pkey2_before();
+/
 
 
 --
@@ -364,6 +371,7 @@ create function trig_pkey2_after() returns trigger as E'
 create trigger pkey2_after after update or delete on T_pkey2
 	for each row execute procedure
 	trig_pkey2_after();
+/
 
 
 --
@@ -462,11 +470,13 @@ create function check_primkey() returns trigger as E'
 create trigger dta1_before before insert or update on T_dta1
 	for each row execute procedure
 	check_primkey('ref1', 'ref2', 'T_pkey1', 'key1', 'key2');
+/
 
 
 create trigger dta2_before before insert or update on T_dta2
 	for each row execute procedure
 	check_primkey('ref1', 'ref2', 'T_pkey2', 'key1', 'key2');
+/
 
 
 insert into T_pkey1 values (1, 'key1-1', 'test key');
@@ -583,6 +593,7 @@ $$;
 CREATE TRIGGER a_t AFTER UPDATE ON transition_table_test
   REFERENCING OLD TABLE AS old_table NEW TABLE AS new_table
   FOR EACH STATEMENT EXECUTE PROCEDURE transition_table_test_f();
+/
 update transition_table_test set name = 'b';
 drop table transition_table_test;
 drop function transition_table_test_f();
@@ -600,6 +611,7 @@ $$;
 
 CREATE TRIGGER generated_test_trigger1 BEFORE INSERT ON trigger_test_generated
 FOR EACH ROW EXECUTE PROCEDURE generated_test_func1();
+/
 
 TRUNCATE trigger_test_generated;
 INSERT INTO trigger_test_generated (i) VALUES (1);

@@ -498,31 +498,37 @@ CREATE TRIGGER gtest1 BEFORE DELETE OR UPDATE ON gtest26
   FOR EACH ROW
   WHEN (OLD.b < 0)  -- ok
   EXECUTE PROCEDURE gtest_trigger_func();
+/
 
 CREATE TRIGGER gtest2a BEFORE INSERT OR UPDATE ON gtest26
   FOR EACH ROW
   WHEN (NEW.b < 0)  -- error
   EXECUTE PROCEDURE gtest_trigger_func();
+/
 
 CREATE TRIGGER gtest2b BEFORE INSERT OR UPDATE ON gtest26
   FOR EACH ROW
   WHEN (NEW.* IS NOT NULL)  -- error
   EXECUTE PROCEDURE gtest_trigger_func();
+/
 
 CREATE TRIGGER gtest2 BEFORE INSERT ON gtest26
   FOR EACH ROW
   WHEN (NEW.a < 0)
   EXECUTE PROCEDURE gtest_trigger_func();
+/
 
 CREATE TRIGGER gtest3 AFTER DELETE OR UPDATE ON gtest26
   FOR EACH ROW
   WHEN (OLD.b < 0)  -- ok
   EXECUTE PROCEDURE gtest_trigger_func();
+/
 
 CREATE TRIGGER gtest4 AFTER INSERT OR UPDATE ON gtest26
   FOR EACH ROW
   WHEN (NEW.b < 0)  -- ok
   EXECUTE PROCEDURE gtest_trigger_func();
+/
 
 INSERT INTO gtest26 (a) VALUES (-2), (0), (3);
 SELECT * FROM gtest26 ORDER BY a;
@@ -550,6 +556,7 @@ $$;
 CREATE TRIGGER gtest11 BEFORE UPDATE OF b ON gtest26
   FOR EACH ROW
   EXECUTE PROCEDURE gtest_trigger_func3();
+/
 
 UPDATE gtest26 SET a = 1 WHERE a = 0;
 
@@ -572,14 +579,17 @@ $$;
 CREATE TRIGGER gtest12_01 BEFORE UPDATE ON gtest26
   FOR EACH ROW
   EXECUTE PROCEDURE gtest_trigger_func();
+/
 
 CREATE TRIGGER gtest12_02 BEFORE UPDATE ON gtest26
   FOR EACH ROW
   EXECUTE PROCEDURE gtest_trigger_func4();
+/
 
 CREATE TRIGGER gtest12_03 BEFORE UPDATE ON gtest26
   FOR EACH ROW
   EXECUTE PROCEDURE gtest_trigger_func();
+/
 
 INSERT INTO gtest26 (a) VALUES (1);
 UPDATE gtest26 SET a = 11 WHERE a = 1;

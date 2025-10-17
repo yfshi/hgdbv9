@@ -530,6 +530,7 @@ end $$ language plpgsql;
 /
 create trigger tnoticetrigger after insert on tt for each row
 execute procedure noticetrigger();
+/
 
 select insert_tt2('foolme','barme') limit 1;
 select * from tt;

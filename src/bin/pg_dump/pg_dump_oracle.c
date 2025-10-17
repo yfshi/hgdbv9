@@ -85,6 +85,7 @@
 #include <sys/stat.h>
 /* END - ReqID:SRS-CMD-pg2highgo */
 
+
 typedef struct
 {
 	const char *descr;			/* comment for an object */
@@ -118,6 +119,10 @@ typedef enum OidOptions
 	fmtQualifiedId((obj)->dobj.namespace->dobj.name, \
 				   (obj)->dobj.name)
 
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+static void emit_trigger_order_dependencies(void);
+static TriggerInfo *findTriggerByTableAndName(TableInfo *tbl, const char *tgname);
+/* End - ReqID:SRS-SQL-TRIGGER */
 static void setup_connectionOracle(Archive *AH,
 							 const char *dumpencoding, const char *dumpsnapshot,
 							 char *use_role);
@@ -5576,6 +5581,9 @@ getFuncs(Archive *fout, int *numFuncs)
 							"\n  AND NOT EXISTS (SELECT 1 FROM pg_depend "
 							"WHERE classid = 'pg_proc'::regclass AND "
 							"objid = p.oid AND deptype = 'i')"
+							"\n  AND NOT EXISTS (SELECT 1 FROM pg_depend "	/* Begin -ReqID:SRS-SQL-TRIGGER */
+							"WHERE classid = 'pg_proc'::regclass AND "
+							"objid = p.oid AND deptype = 'a' AND refclassid = 'pg_trigger'::regclass )" /* End -ReqID:SRS-SQL-TRIGGER */
 							"\n  AND ("
 							"\n  pronamespace != "
 							"(SELECT oid FROM pg_namespace "
@@ -8202,8 +8210,13 @@ void
 getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 {
 	int			i,
-				j;
+				j,
+				k;	/* ReqID:SRS-SQL-TRIGGER */
 	PQExpBuffer query = createPQExpBuffer();
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	PQExpBuffer	objfollowsquery = createPQExpBuffer();
+	PGresult	*objfollowsres;
+	/* End - ReqID:SRS-SQL-TRIGGER */
 	PGresult   *res;
 	TriggerInfo *tginfo;
 	int			i_tableoid,
@@ -8223,6 +8236,12 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 				i_tginitdeferred,
 				i_tgdef;
 	int			ntups;
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	int 		i_obj_kind;
+	int			i_obj_compatible_mode;
+	int			i_follows_text;
+	int			nobjtups;
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	for (i = 0; i < numTables; i++)
 	{
@@ -8370,6 +8389,7 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 
 		for (j = 0; j < ntups; j++)
 		{
+			tginfo[j].tgfollows = pg_malloc0(sizeof(SimpleStringList));	/* ReqID:SRS-SQL-TRIGGER */
 			tginfo[j].dobj.objType = DO_TRIGGER;
 			tginfo[j].dobj.catId.tableoid = atooid(PQgetvalue(res, j, i_tableoid));
 			tginfo[j].dobj.catId.oid = atooid(PQgetvalue(res, j, i_oid));
@@ -8430,10 +8450,43 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 					tginfo[j].tgconstrrelname = NULL;
 				}
 			}
+			/* Begin - ReqID:SRS-SQL-TRIGGER */
+			resetPQExpBuffer(objfollowsquery);
+			appendPQExpBuffer(objfollowsquery,
+								"select objkind, compatible_mode, jsonb_array_elements_text(jsonb_object_field_text(option, 'follows')::jsonb) as follows FROM pg_object where obj_oid = %u ", tginfo[j].dobj.catId.oid);
+
+			objfollowsres = ExecuteSqlQuery(fout, objfollowsquery->data, PGRES_TUPLES_OK);
+			nobjtups= PQntuples(objfollowsres);
+
+			i_obj_kind = PQfnumber(objfollowsres, "objkind");
+			i_obj_compatible_mode = PQfnumber(objfollowsres, "compatible_mode");
+			i_follows_text = PQfnumber(objfollowsres, "follows");
+
+			for (k = 0; k < nobjtups; k++)
+			{
+				char	objkind;
+				char	objcompatible_mode;
+				char	*fname = NULL;
+
+				objkind = *PQgetvalue(objfollowsres, k, i_obj_kind);
+				objcompatible_mode = *PQgetvalue(objfollowsres, k, i_obj_compatible_mode);
+				fname = pg_strdup(PQgetvalue(objfollowsres, k, i_follows_text));
+
+				if (objkind == 't' && objcompatible_mode == 'o')
+					simple_string_list_append(tginfo[j].tgfollows, fname);
+			}
+
+			PQclear(objfollowsres);
+			/* End - ReqID:SRS-SQL-TRIGGER */
 		}
 
 		PQclear(res);
 	}
+
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	emit_trigger_order_dependencies();
+	destroyPQExpBuffer(objfollowsquery);
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	destroyPQExpBuffer(query);
 }
@@ -18826,6 +18879,11 @@ dumpTrigger(Archive *fout, const TriggerInfo *tginfo)
 	if (tginfo->tgdef)
 	{
 		appendPQExpBuffer(query, "%s;\n", tginfo->tgdef);
+		/* Begin - ReqID:SRS-SQL-TRIGGER */
+		if (((ArchiveHandle *) fout)->format == archNull &&
+			db_mode == DB_ORACLE)
+			appendPQExpBufferStr(query, "/\n");
+		/* End - ReqID:SRS-SQL-TRIGGER */
 	}
 	else
 	{
@@ -18938,6 +18996,11 @@ dumpTrigger(Archive *fout, const TriggerInfo *tginfo)
 		}
 		free(tgargs);
 		appendPQExpBufferStr(query, ");\n");
+		/* Begin - ReqID:SRS-SQL-TRIGGER */
+		if (((ArchiveHandle *) fout)->format == archNull &&
+			db_mode == DB_ORACLE)
+			appendPQExpBufferStr(query, "/\n");
+		/* End - ReqID:SRS-SQL-TRIGGER */
 	}
 
 	/* Triggers can depend on extensions */
@@ -20355,3 +20418,63 @@ get_usermapping_options_kv(char *umoptions, char *optname)
 	return NULL;
 }
 /* End - ReqID:SRS-SQL-DBLINK */
+
+/* Begin  - ReqID:SRS-SQL-TRIGGER */
+static TriggerInfo *
+findTriggerByTableAndName(TableInfo *tbl, const char *tgname)
+{
+	int		maxid =	 getMaxDumpId();
+	int		i;
+
+	for (i = 1; i <= maxid; i++)
+	{
+		TriggerInfo	 *t = NULL;
+		DumpableObject	*obj = findObjectByDumpId(i);
+
+		if (!obj)
+			continue;
+		if (obj->objType != DO_TRIGGER)
+			continue;
+
+		t = (TriggerInfo *) obj;
+
+		/* tgtable pointer equality should work because we used same TableInfo */
+		if (t->tgtable == tbl && strcmp(t->dobj.name, tgname) == 0)
+			return t;
+	}
+
+	return NULL;
+}
+
+static void
+emit_trigger_order_dependencies(void)
+{
+	int		maxid = getMaxDumpId();
+	int 	i;
+	SimpleStringListCell *cell;
+	TriggerInfo	 *tinfo;
+
+	for (i = 1; i <= maxid; i++)
+	{
+		DumpableObject	*obj = findObjectByDumpId(i);
+		if (!obj)
+			continue;
+		if (obj->objType != DO_TRIGGER)
+			continue;
+
+		tinfo = (TriggerInfo *) obj;
+
+		/* Process follows */
+		for (cell = tinfo->tgfollows->head; cell; cell = cell->next)
+		{
+			char *target_name = cell->val;
+			TriggerInfo *target = findTriggerByTableAndName(tinfo->tgtable, target_name);
+			if (target)
+			{
+				/* tinfo must come after target -> so add tinfo depends on target */
+				addObjectDependency((DumpableObject *) tinfo, target->dobj.dumpId);
+			}
+		}
+	}
+}
+/* End - ReqID:SRS-SQL-TRIGGER */

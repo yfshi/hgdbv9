@@ -2390,6 +2390,7 @@ _equalCreateTrigStmt(const CreateTrigStmt *a, const CreateTrigStmt *b)
 	COMPARE_SCALAR_FIELD(replace);
 	COMPARE_SCALAR_FIELD(isconstraint);
 	COMPARE_STRING_FIELD(trigname);
+	COMPARE_STRING_FIELD(ora_trigschema);	/* ReqID:SRS-SQL-TRIGGER */
 	COMPARE_NODE_FIELD(relation);
 	COMPARE_NODE_FIELD(funcname);
 	COMPARE_NODE_FIELD(args);
@@ -2402,6 +2403,15 @@ _equalCreateTrigStmt(const CreateTrigStmt *a, const CreateTrigStmt *b)
 	COMPARE_SCALAR_FIELD(deferrable);
 	COMPARE_SCALAR_FIELD(initdeferred);
 	COMPARE_NODE_FIELD(constrrel);
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	COMPARE_STRING_FIELD(ora_trfuncsrc);
+	COMPARE_NODE_FIELD(orderList);
+	COMPARE_STRING_FIELD(oldalias);
+	COMPARE_STRING_FIELD(newalias);
+	COMPARE_SCALAR_FIELD(ora_tgenabled);
+	COMPARE_SCALAR_FIELD(is_follows);
+	COMPARE_SCALAR_FIELD(is_ora_trig);
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	return true;
 }
@@ -3656,6 +3666,20 @@ _equalVarRef(const VarRef *a, const VarRef *b)
 
 /* End - ReqID:SRS-MYSQL-SET */
 
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+static bool
+_equalAlterOraTrigStmt(const AlterOraTrigStmt* a, const AlterOraTrigStmt*b)
+{
+	COMPARE_STRING_FIELD(trigname);
+	COMPARE_STRING_FIELD(ora_trigschema);
+	COMPARE_STRING_FIELD(rename);
+	COMPARE_NODE_FIELD(relation);
+	COMPARE_SCALAR_FIELD(editable);
+	COMPARE_SCALAR_FIELD(opt);
+	return true;
+}
+/* End - ReqID:SRS-SQL-TRIGGER */
+
 /*
  * equal
  *	  returns whether two nodes are equal
@@ -4556,6 +4580,11 @@ equal(const void *a, const void *b)
 			_equalVarRef(a, b);
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
+		/* Begin - ReqID:SRS-SQL-TRIGGER */
+		case T_AlterOraTrigStmt:
+			retval = _equalAlterOraTrigStmt(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-TRIGGER */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(a));

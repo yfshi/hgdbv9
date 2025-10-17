@@ -388,6 +388,7 @@ end$$;
 
 create trigger mutable_trig before update on mutable for each row
 execute procedure sillytrig();
+/
 
 insert into mutable values ('foo'), ('bar');
 update mutable set f2 = f2 || ' baz';

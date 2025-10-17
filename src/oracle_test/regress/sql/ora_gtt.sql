@@ -285,6 +285,7 @@ $$ LANGUAGE plpgsql;
 -- Statement level trigger
 CREATE TRIGGER t_after_tt_s AFTER INSERT ON admin_work_area_session
  FOR EACH STATEMENT EXECUTE PROCEDURE up_trigg_after_stement();
+/
 
 INSERT INTO admin_work_area_session VALUES(1056, 'class 22');
 SELECT * FROM admin_work_area_session;
@@ -306,6 +307,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER t_after_tt_r AFTER INSERT ON admin_work_area_session
   FOR EACH ROW EXECUTE PROCEDURE up_trigg_after_row();
+/
 
 INSERT INTO admin_work_area_session VALUES(1011, 'class 2');
 INSERT INTO admin_work_area_session VALUES(1056, 'class 22');

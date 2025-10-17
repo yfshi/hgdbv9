@@ -70,6 +70,7 @@ $$;
 CREATE TRIGGER show_trigger_data_trig
 BEFORE INSERT OR UPDATE OR DELETE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 insert into trigger_test values(1,'insert', '("(1)")');
 update trigger_test set v = 'update' where i = 1;
@@ -80,10 +81,12 @@ DROP TRIGGER show_trigger_data_trig on trigger_test;
 CREATE TRIGGER show_trigger_data_trig_before
 BEFORE INSERT OR UPDATE OR DELETE ON trigger_test_generated
 FOR EACH ROW EXECUTE PROCEDURE trigger_data();
+/
 
 CREATE TRIGGER show_trigger_data_trig_after
 AFTER INSERT OR UPDATE OR DELETE ON trigger_test_generated
 FOR EACH ROW EXECUTE PROCEDURE trigger_data();
+/
 
 insert into trigger_test_generated (i) values (1);
 update trigger_test_generated set i = 11 where i = 1;
@@ -98,6 +101,7 @@ CREATE VIEW trigger_test_view AS SELECT * FROM trigger_test;
 CREATE TRIGGER show_trigger_data_trig
 INSTEAD OF INSERT OR UPDATE OR DELETE ON trigger_test_view
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(24,'skidoo view');
+/
 
 insert into trigger_test_view values(2,'insert', '("(2)")');
 update trigger_test_view set v = 'update', foo = '("(3)")' where i = 1;
@@ -129,6 +133,7 @@ $$ LANGUAGE plperl;
 
 CREATE TRIGGER "test_valid_id_trig" BEFORE INSERT OR UPDATE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE "valid_id"();
+/
 
 INSERT INTO trigger_test (i, v, foo) VALUES (1,'first line', '("(1)")');
 INSERT INTO trigger_test (i, v, foo) VALUES (2,'second line', '("(2)")');
@@ -165,6 +170,7 @@ $$ LANGUAGE plperl;
 
 CREATE TRIGGER "test_trigger_recurse" BEFORE INSERT ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE "trigger_recurse"();
+/
 
 INSERT INTO trigger_test (i, v) values (10000, 'top');
 
@@ -184,6 +190,7 @@ $$ LANGUAGE plperl;
 
 CREATE TRIGGER "immortal_trig" BEFORE DELETE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE immortal('immortal');
+/
 
 DELETE FROM trigger_test;
 
@@ -224,6 +231,7 @@ $$;
 CREATE TRIGGER a_t AFTER UPDATE ON transition_table_test
   REFERENCING OLD TABLE AS old_table NEW TABLE AS new_table
   FOR EACH STATEMENT EXECUTE PROCEDURE transition_table_test_f();
+/
 UPDATE transition_table_test SET name = 'b';
 
 DROP TABLE transition_table_test;
@@ -263,6 +271,7 @@ $$;
 
 CREATE TRIGGER generated_test_trigger1 BEFORE INSERT ON trigger_test_generated
 FOR EACH ROW EXECUTE PROCEDURE generated_test_func1();
+/
 
 TRUNCATE trigger_test_generated;
 INSERT INTO trigger_test_generated (i) VALUES (1);

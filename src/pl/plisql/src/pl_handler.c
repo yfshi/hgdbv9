@@ -47,7 +47,7 @@
 #include "commands/packagecmds.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
 
-
+#include "catalog/dependency.h"
 
 static bool plisql_extra_checks_check_hook(char **newvalue, void **extra, GucSource source);
 static void plisql_extra_warnings_assign_hook(const char *newvalue, void *extra);

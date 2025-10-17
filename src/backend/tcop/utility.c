@@ -269,6 +269,9 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_FlashbackStmt:
 		case T_PurgeStmt:
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		/* Begin - ReqID:SRS-SQL-TRIGGER */
+		case T_AlterOraTrigStmt:
+		/* End - ReqID:SRS-SQL-TRIGGER */
 			{
 				/* DDL is not read-only, and neither is TRUNCATE. */
 				return COMMAND_IS_NOT_READ_ONLY;
@@ -2086,7 +2089,11 @@ ProcessUtilitySlow(ParseState *pstate,
 				address = AlterPackage((AlterPackageStmt *) parsetree);
 				break;
 			/* End - ReqID:SRS-SQL-PACKAGE */
-
+			/* Begin - ReqID:SRS-SQL-TRIGGER */
+			case T_AlterOraTrigStmt:
+				address = AlterOraTrigger((AlterOraTrigStmt *) parsetree);
+				break;
+			/* End - ReqID:SRS-SQL-TRIGGER */
 			default:
 				elog(ERROR, "unrecognized node type: %d",
 					 (int) nodeTag(parsetree));
@@ -2857,6 +2864,12 @@ CreateCommandTag(Node *parsetree)
 					tag = CMDTAG_UNKNOWN;
 			}
 			break;
+
+		/* Begin - ReqID:SRS-SQL-TRIGGER */
+		case T_AlterOraTrigStmt:
+			tag = CMDTAG_ALTER_TRIGGER;
+			break;
+		/* End - ReqID:SRS-SQL-TRIGGER */
 
 		case T_TruncateStmt:
 			tag = CMDTAG_TRUNCATE_TABLE;

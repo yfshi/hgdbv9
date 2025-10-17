@@ -81,8 +81,10 @@ $$ language plpgsql;
 /
 create trigger qqqbef before insert or update or delete on copydml_test
     for each row execute procedure qqq_trig();
+/
 create trigger qqqaf after insert or update or delete on copydml_test
     for each row execute procedure qqq_trig();
+/
 
 copy (insert into copydml_test (t) values ('f') returning id) to stdout;
 copy (update copydml_test set t = 'g' where t = 'f' returning id) to stdout;

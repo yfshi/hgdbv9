@@ -43,6 +43,10 @@ extern char *makeObjectName(const char *name1, const char *name2,
 extern char *ChooseRelationName(const char *name1, const char *name2,
 								const char *label, Oid namespaceid,
 								bool isconstraint);
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+extern char * ivyChooseFunctionName(const char * name1, const char *name2,
+							   const char *label, Oid namespaceid);
+/* End - ReqID:SRS-SQL-TRIGGER */
 /* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
 extern char *ChooseTypeName(const char *name1, const char *name2,
 								const char *label, Oid namespaceid,
@@ -64,6 +68,8 @@ extern ObjectAddress AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt);
 /* Begin - ReqID:SRS-SQL-PROC */
 extern ObjectAddress CompileFunction(CompileFunctionStmt *stmt);
 /* End - ReqID:SRS-SQL-PROC */
+extern ObjectAddress compileFunctionInternal(Oid funcOid, bool compile, ObjectType objtype);
+
 extern ObjectAddress CreateCast(CreateCastStmt *stmt);
 extern ObjectAddress CreateTransform(CreateTransformStmt *stmt);
 extern void IsThereFunctionInNamespace(const char *proname, int pronargs,

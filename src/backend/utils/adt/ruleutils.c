@@ -97,6 +97,12 @@
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
 
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+#include "utils/jsonb.h"
+#include "parser/pg_object_hook.h"
+#include "commands/trigger.h"
+/* End - ReqID:SRS-SQL-TRIGGER */
+
 /* ----------
  * Pretty formatting constants
  * ----------
@@ -359,6 +365,9 @@ static char *deparse_expression_pretty(Node *expr, List *dpcontext,
 static char *pg_get_viewdef_worker(Oid viewoid,
 								   int prettyFlags, int wrapColumn);
 static char *pg_get_triggerdef_worker(Oid trigid, bool pretty);
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+static char *ivy_get_ora_triggerdef(Oid trigid, bool pretty, Jsonb *option);
+/* End - ReqID:SRS-SQL-TRIGGER */
 static int	decompile_column_index_array(Datum column_index_array, Oid relId,
 										 StringInfo buf);
 static char *pg_get_ruledef_worker(Oid ruleoid, int prettyFlags);
@@ -525,6 +534,8 @@ static void get_reloptions(StringInfo buf, Datum reloptions);
 /* BEGIN - SQL PARSER */
 static const char *standard_quote_identifier(const char *ident);
 /* END - SQL PARSER */
+
+static char *trim_whitespace(char *str);
 
 Datum pg_get_functiondef_internal(PG_FUNCTION_ARGS); /* BUG:Z139 */
 
@@ -909,6 +920,20 @@ pg_get_triggerdef_worker(Oid trigid, bool pretty)
 	char	   *tgnewtable;
 	Datum		value;
 	bool		isnull;
+	ObjectAddress	object;
+	PgObjectInfo	objinfo;
+
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	/* Get this trigger in pg_object */
+	if (ORA_PARSER == compatible_db && pg_object_get_ori_infor_hook)
+	{
+		ObjectAddressSet(object, TriggerRelationId, trigid);
+		objinfo =  pg_object_get_ori_infor_hook(object);
+
+		if (objinfo && objinfo->oricompatible_mode == 'o')
+			return ivy_get_ora_triggerdef(trigid, pretty, objinfo->orioption);
+	}
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	/*
 	 * Fetch the pg_trigger tuple by the Oid of the trigger
@@ -1157,6 +1182,288 @@ pg_get_triggerdef_worker(Oid trigid, bool pretty)
 
 	return buf.data;
 }
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+static char *
+ivy_get_ora_triggerdef(Oid trigid, bool pretty, Jsonb *option)
+{
+	HeapTuple	ht_trig;
+	HeapTuple	proctup;
+	Form_pg_trigger trigrec;
+	StringInfoData buf;
+	Relation	tgrel;
+	ScanKeyData skey[1];
+	SysScanDesc tgscan;
+	int			findx = 0;
+	char	   *tgname;
+	const char *prosrc;
+	Datum		value;
+	Datum		tmp;
+	bool		isnull;
+
+
+	/*
+	 * Fetch the pg_trigger tuple by the Oid of the trigger
+	 */
+	tgrel = table_open(TriggerRelationId, AccessShareLock);
+
+	ScanKeyInit(&skey[0],
+				Anum_pg_trigger_oid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(trigid));
+
+	tgscan = systable_beginscan(tgrel, TriggerOidIndexId, true,
+								NULL, 1, skey);
+
+	ht_trig = systable_getnext(tgscan);
+
+	if (!HeapTupleIsValid(ht_trig))
+	{
+		systable_endscan(tgscan);
+		table_close(tgrel, AccessShareLock);
+		return NULL;
+	}
+
+	trigrec = (Form_pg_trigger) GETSTRUCT(ht_trig);
+
+	/*
+	 * Start the trigger definition. Note that the trigger's name should never
+	 * be schema-qualified, but the trigger rel's name may be.
+	 */
+	initStringInfo(&buf);
+
+	tgname = NameStr(trigrec->tgname);
+	appendStringInfo(&buf, "CREATE TRIGGER %s \n", quote_identifier(tgname));
+
+	if (TRIGGER_FOR_BEFORE(trigrec->tgtype))
+		appendStringInfoString(&buf, "BEFORE");
+	else if (TRIGGER_FOR_AFTER(trigrec->tgtype))
+		appendStringInfoString(&buf, "AFTER");
+	else if (TRIGGER_FOR_INSTEAD(trigrec->tgtype))
+		appendStringInfoString(&buf, "INSTEAD OF");
+	else
+		elog(ERROR, "unexpected tgtype value: %d", trigrec->tgtype);
+
+	if (TRIGGER_FOR_INSERT(trigrec->tgtype))
+	{
+		appendStringInfoString(&buf, " INSERT");
+		findx++;
+	}
+	if (TRIGGER_FOR_DELETE(trigrec->tgtype))
+	{
+		if (findx > 0)
+			appendStringInfoString(&buf, " OR DELETE");
+		else
+			appendStringInfoString(&buf, " DELETE");
+		findx++;
+	}
+	if (TRIGGER_FOR_UPDATE(trigrec->tgtype))
+	{
+		if (findx > 0)
+			appendStringInfoString(&buf, " OR UPDATE");
+		else
+			appendStringInfoString(&buf, " UPDATE");
+		findx++;
+		/* tgattr is first var-width field, so OK to access directly */
+		if (trigrec->tgattr.dim1 > 0)
+		{
+			int			i;
+
+			appendStringInfoString(&buf, " OF ");
+			for (i = 0; i < trigrec->tgattr.dim1; i++)
+			{
+				char	   *attname;
+
+				if (i > 0)
+					appendStringInfoString(&buf, ", ");
+				attname = get_attname(trigrec->tgrelid,
+									  trigrec->tgattr.values[i], false);
+				appendStringInfoString(&buf, quote_identifier(attname));
+			}
+		}
+	}
+
+	/*
+	 * In non-pretty mode, always schema-qualify the target table name for
+	 * safety.  In pretty mode, schema-qualify only if not visible.
+	 */
+	appendStringInfo(&buf, " ON %s \n",
+					 pretty ?
+					 generate_relation_name(trigrec->tgrelid, NIL) :
+					 generate_qualified_relation_name(trigrec->tgrelid));
+
+	/* Build REFERENCING clause */
+	if (option)
+	{
+		text 		*key;
+		JsonbValue  *v = NULL;
+		JsonbValue  vbuf ;
+		key = cstring_to_text("referencing");
+
+		v = getKeyJsonValueFromContainer(&option->root,
+										 VARDATA_ANY(key),
+										 VARSIZE_ANY_EXHDR(key),
+										 &vbuf);
+		if (v != NULL && v->type == jbvBinary)
+		{
+			char	*new_alias = NULL;
+			char	*old_alias = NULL;
+			char	*str = NULL;
+
+			str = JsonbToCString(NULL, v->val.binary.data, v->val.binary.len);
+			parse_referencing_string(str, &old_alias, &new_alias);
+
+			appendStringInfoString(&buf, " REFERENCING ");
+
+			if (new_alias)
+			{
+				if (old_alias)
+					appendStringInfo(&buf, "OLD AS %s NEW AS %s ", old_alias, new_alias);
+				else
+					appendStringInfo(&buf, "NEW AS %s ", new_alias);
+			}
+			else if (old_alias)
+			{
+				if (new_alias)
+					appendStringInfo(&buf, "OLD AS %s NEW AS %s ", old_alias, new_alias);
+				else
+					appendStringInfo(&buf, "OLD AS %s ", old_alias);
+			}
+
+			appendStringInfoChar(&buf, '\n');
+		}
+	}
+
+	if (TRIGGER_FOR_ROW(trigrec->tgtype))
+		appendStringInfoString(&buf, "FOR EACH ROW ");
+	else
+		appendStringInfoString(&buf, "FOR EACH STATEMENT ");
+
+	/* Build follows clause */
+	if (option)
+	{
+		List 		*follows;
+		ListCell	*lc;
+		JsonbValue	key;
+		JsonbValue 	*followsValue = NULL;
+		int			i = 0;
+
+		key.type = jbvString;
+		key.val.string.val = "follows";
+		key.val.string.len = strlen("follows");
+
+		followsValue = findJsonbValueFromContainer(&option->root, JB_FOBJECT, &key);
+		if (followsValue && followsValue->type == jbvBinary)
+		{
+			follows = ivy_extract_array_from_jbvBinary(followsValue);
+
+			appendStringInfoString(&buf, "FOLLOWS ");
+			foreach(lc, follows)
+			{
+				char	*val = (char *)lfirst(lc);
+
+				if (i > 0)
+					appendStringInfo(&buf, ", %s", val);
+				else
+					appendStringInfo(&buf, "%s", val);
+				i++;
+			}
+		}
+
+		appendStringInfoChar(&buf, '\n');
+	}
+	else
+	{
+		appendStringInfoChar(&buf, '\n');
+	}
+
+	/* If the trigger has a WHEN qualification, add that */
+	value = fastgetattr(ht_trig, Anum_pg_trigger_tgqual,
+						tgrel->rd_att, &isnull);
+	if (!isnull)
+	{
+		Node	   *qual;
+		char		relkind;
+		deparse_context context;
+		deparse_namespace dpns;
+		RangeTblEntry *oldrte;
+		RangeTblEntry *newrte;
+
+		appendStringInfoString(&buf, "WHEN (");
+
+		qual = stringToNode(TextDatumGetCString(value));
+
+		relkind = get_rel_relkind(trigrec->tgrelid);
+
+		/* Build minimal OLD and NEW RTEs for the rel */
+		oldrte = makeNode(RangeTblEntry);
+		oldrte->rtekind = RTE_RELATION;
+		oldrte->relid = trigrec->tgrelid;
+		oldrte->relkind = relkind;
+		oldrte->rellockmode = AccessShareLock;
+		oldrte->alias = makeAlias("old", NIL);
+		oldrte->eref = oldrte->alias;
+		oldrte->lateral = false;
+		oldrte->inh = false;
+		oldrte->inFromCl = true;
+
+		newrte = makeNode(RangeTblEntry);
+		newrte->rtekind = RTE_RELATION;
+		newrte->relid = trigrec->tgrelid;
+		newrte->relkind = relkind;
+		newrte->rellockmode = AccessShareLock;
+		newrte->alias = makeAlias("new", NIL);
+		newrte->eref = newrte->alias;
+		newrte->lateral = false;
+		newrte->inh = false;
+		newrte->inFromCl = true;
+
+		/* Build two-element rtable */
+		memset(&dpns, 0, sizeof(dpns));
+		dpns.rtable = list_make2(oldrte, newrte);
+		dpns.subplans = NIL;
+		dpns.ctes = NIL;
+		dpns.appendrels = NULL;
+		set_rtable_names(&dpns, NIL, NULL);
+		set_simple_column_names(&dpns);
+
+		/* Set up context with one-deep namespace stack */
+		context.buf = &buf;
+		context.namespaces = list_make1(&dpns);
+		context.windowClause = NIL;
+		context.windowTList = NIL;
+		context.varprefix = true;
+		context.prettyFlags = pretty ? (PRETTYFLAG_PAREN | PRETTYFLAG_INDENT | PRETTYFLAG_SCHEMA) : PRETTYFLAG_INDENT;
+		context.wrapColumn = WRAP_COLUMN_DEFAULT;
+		context.indentLevel = PRETTYINDENT_STD;
+		context.special_exprkind = EXPR_KIND_NONE;
+		context.appendparents = NULL;
+
+		get_rule_expr(qual, &context, false);
+
+		appendStringInfoString(&buf, ") ");
+	}
+
+	proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(trigrec->tgfoid));
+	if (!HeapTupleIsValid(proctup))
+		elog(ERROR, "trigger function not exit");
+
+	tmp = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prosrc, &isnull);
+	if (isnull)
+		elog(ERROR, "null prosrc");
+
+	prosrc = TextDatumGetCString(tmp);
+	appendStringInfoString(&buf, prosrc);
+	ReleaseSysCache(proctup);
+
+	/* Clean up */
+	systable_endscan(tgscan);
+
+	table_close(tgrel, AccessShareLock);
+
+	return buf.data;
+}
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 /* ----------
  * pg_get_indexdef			- Get the definition of an index
@@ -13668,3 +13975,109 @@ pg_get_partinterval_def_string(Oid relid)
 
 	return consrc;
 }
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+/*
+ * trim_whitespace
+ *
+ *	remove the string white space
+ */
+static char *
+trim_whitespace(char *str)
+{
+	char *end;
+
+	while (isspace((unsigned char)*str)) str++;
+
+	if (*str == 0)
+		return str;
+
+	end = str + strlen(str) - 1;
+	while (end > str && isspace((unsigned char)*end)) end--;
+
+	*(end + 1) = '\0';
+
+	return str;
+}
+
+void
+parse_referencing_string(const char *input, char **old_alias_out, char **new_alias_out)
+{
+	char 	*copy = NULL;
+	char 	*token = NULL;
+	char 	*end_quote = NULL;
+	size_t 	len;
+
+	*old_alias_out = NULL;
+	*new_alias_out = NULL;
+
+	if (!input || *input == '\0')
+		return;
+
+	copy = pstrdup(input);
+	if (!copy)
+		return;
+
+	len = strlen(copy);
+	if (copy[0] == '[' && copy[len - 1] == ']')
+	{
+		copy[len - 1] = '\0';
+		memmove(copy, copy + 1, len - 1);
+	}
+
+	token = strtok(copy, ",");
+	while (token)
+	{
+		token = trim_whitespace(token);
+
+		if (*token == '"')
+		{
+			token++;
+			end_quote = strchr(token, '"');
+			if (end_quote)
+				*end_quote = '\0';
+		}
+
+		if (pg_strncasecmp(token, "OLD AS", 6) == 0)
+		{
+			char *alias = trim_whitespace(token + 6);
+			if (*alias)
+				*old_alias_out = pstrdup(alias);
+		}
+		else if (pg_strncasecmp(token, "NEW AS", 6) == 0)
+		{
+			char *alias = trim_whitespace(token + 6);
+			if (*alias)
+				*new_alias_out = pstrdup(alias);
+		}
+
+		token = strtok(NULL, ",");
+	}
+
+	pfree(copy);
+}
+
+List *
+ivy_extract_array_from_jbvBinary(JsonbValue *jbv_binary)
+{
+	List	*rest = NIL;
+	JsonbIterator	*it;
+	JsonbValue		v;
+	JsonbIteratorToken	tok;
+
+	if (jbv_binary->type != jbvBinary)
+		return NIL;
+
+	it = JsonbIteratorInit(jbv_binary->val.binary.data);
+	while ((tok = JsonbIteratorNext(&it, &v, true)) != WJB_DONE)
+	{
+		if (tok == WJB_ELEM && v.type == jbvString)
+		{
+			char	*str = pnstrdup(v.val.string.val, v.val.string.len);
+			rest = lappend(rest, str);
+		}
+	}
+
+	return rest;
+}
+/* End - ReqID:SRS-SQL-TRIGGER */

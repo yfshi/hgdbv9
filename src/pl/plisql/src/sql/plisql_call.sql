@@ -378,6 +378,7 @@ $$;
 /
 
 CREATE TRIGGER t1 BEFORE INSERT ON test1 EXECUTE PROCEDURE triggerfunc1();
+/
 
 INSERT INTO test1 VALUES (1), (2), (3);
 

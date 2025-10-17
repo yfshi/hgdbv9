@@ -17,6 +17,7 @@ end$$;
 
 create trigger testtr_trigger before insert or delete or update on testtr
   for each row execute function testtr_trigger();
+/
 
 insert into testtr values (1, 'one'), (2, 'two');
 

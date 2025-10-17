@@ -1455,6 +1455,7 @@ $$ LANGUAGE plpgsql;
 /
 CREATE TRIGGER t1_br_insert BEFORE INSERT OR UPDATE
     ON "S 1"."T 1" FOR EACH ROW EXECUTE PROCEDURE "S 1".F_BRTRIG();
+/
 
 INSERT INTO ft2 (c1,c2,c3) VALUES (1208, 818, 'fff') RETURNING *;
 INSERT INTO ft2 (c1,c2,c3,c6) VALUES (1218, 818, 'ggg', '(--;') RETURNING *;
@@ -1554,6 +1555,7 @@ CREATE FUNCTION row_before_insupd_trigfunc() RETURNS trigger AS $$BEGIN NEW.a :=
 CREATE TABLE base_tbl (a int, b int);
 ALTER TABLE base_tbl SET (autovacuum_enabled = 'false');
 CREATE TRIGGER row_before_insupd_trigger BEFORE INSERT OR UPDATE ON base_tbl FOR EACH ROW EXECUTE PROCEDURE row_before_insupd_trigfunc();
+/
 CREATE FOREIGN TABLE foreign_tbl (a int, b int)
   SERVER loopback OPTIONS (table_name 'base_tbl');
 CREATE VIEW rw_view AS SELECT * FROM foreign_tbl
@@ -1593,6 +1595,7 @@ DROP TABLE base_tbl;
 CREATE TABLE child_tbl (a number(38,0), b number(38,0));
 ALTER TABLE child_tbl SET (autovacuum_enabled = 'false');
 CREATE TRIGGER row_before_insupd_trigger BEFORE INSERT OR UPDATE ON child_tbl FOR EACH ROW EXECUTE PROCEDURE row_before_insupd_trigfunc();
+/
 CREATE FOREIGN TABLE foreign_tbl (a number(38,0), b number(38,0))
   SERVER loopback OPTIONS (table_name 'child_tbl');
 
@@ -1724,8 +1727,10 @@ END;$$;
 
 CREATE TRIGGER trig_stmt_before BEFORE DELETE OR INSERT OR UPDATE ON rem1
 	FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func();
+/
 CREATE TRIGGER trig_stmt_after AFTER DELETE OR INSERT OR UPDATE ON rem1
 	FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func();
+/
 
 CREATE OR REPLACE FUNCTION trigger_data()  RETURNS trigger
 LANGUAGE plpgsql AS $$
@@ -1771,10 +1776,12 @@ $$;
 CREATE TRIGGER trig_row_before
 BEFORE INSERT OR UPDATE OR DELETE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 CREATE TRIGGER trig_row_after
 AFTER INSERT OR UPDATE OR DELETE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 delete from rem1;
 insert into rem1 values(1,'insert');
@@ -1794,10 +1801,12 @@ DELETE from rem1;
 CREATE TRIGGER trig_row_after1
 AFTER INSERT OR UPDATE OR DELETE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 CREATE TRIGGER trig_row_after2
 AFTER INSERT OR UPDATE OR DELETE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 insert into rem1 values(1,'insert');
 update rem1 set f2  = 'update' where f1 = 1;
@@ -1815,12 +1824,14 @@ BEFORE INSERT OR UPDATE ON rem1
 FOR EACH ROW
 WHEN (NEW.f2 like '%update%')
 EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 CREATE TRIGGER trig_row_after_insupd
 AFTER INSERT OR UPDATE ON rem1
 FOR EACH ROW
 WHEN (NEW.f2 like '%update%')
 EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 -- Insert or update not matching: nothing happens
 INSERT INTO rem1 values(1, 'insert');
@@ -1835,12 +1846,14 @@ BEFORE DELETE ON rem1
 FOR EACH ROW
 WHEN (OLD.f2 like '%update%')
 EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 CREATE TRIGGER trig_row_after_delete
 AFTER DELETE ON rem1
 FOR EACH ROW
 WHEN (OLD.f2 like '%update%')
 EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 -- Trigger is fired for f1=2, not for f1=1
 DELETE FROM rem1;
@@ -1865,6 +1878,7 @@ $$ language plpgsql;
 CREATE TRIGGER trig_row_before_insupd
 BEFORE INSERT OR UPDATE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trig_row_before_insupdate();
+/
 
 -- The new values should have 'triggered' appended
 INSERT INTO rem1 values(1, 'insert');
@@ -1888,6 +1902,7 @@ DELETE FROM rem1;
 CREATE TRIGGER trig_row_before_insupd2
 BEFORE INSERT OR UPDATE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trig_row_before_insupdate();
+/
 
 INSERT INTO rem1 values(1, 'insert');
 SELECT * from loc1;
@@ -1916,6 +1931,7 @@ $$ language plpgsql;
 CREATE TRIGGER trig_null
 BEFORE INSERT OR UPDATE OR DELETE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trig_null();
+/
 
 -- Nothing should have changed.
 INSERT INTO rem1 VALUES (2, 'test2');
@@ -1937,13 +1953,16 @@ DELETE from rem1;
 CREATE TRIGGER trig_row_before
 BEFORE INSERT OR UPDATE OR DELETE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 CREATE TRIGGER trig_row_after
 AFTER INSERT OR UPDATE OR DELETE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 CREATE TRIGGER trig_local_before BEFORE INSERT OR UPDATE ON loc1
 FOR EACH ROW EXECUTE PROCEDURE trig_row_before_insupdate();
+/
 
 INSERT INTO rem1(f2) VALUES ('test');
 UPDATE rem1 SET f2 = 'testo';
@@ -1968,6 +1987,7 @@ SET ivorysql.enable_emptystring_to_null to off;
 CREATE TRIGGER trig_stmt_before
 	BEFORE DELETE OR INSERT OR UPDATE ON rem1
 	FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func();
+/
 EXPLAIN (verbose, costs off)
 UPDATE rem1 set f2 = '';          -- can be pushed down
 EXPLAIN (verbose, costs off)
@@ -1977,6 +1997,7 @@ DROP TRIGGER trig_stmt_before ON rem1;
 CREATE TRIGGER trig_stmt_after
 	AFTER DELETE OR INSERT OR UPDATE ON rem1
 	FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func();
+/
 EXPLAIN (verbose, costs off)
 UPDATE rem1 set f2 = '';          -- can be pushed down
 EXPLAIN (verbose, costs off)
@@ -1988,6 +2009,7 @@ DROP TRIGGER trig_stmt_after ON rem1;
 CREATE TRIGGER trig_row_before_insert
 BEFORE INSERT ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 EXPLAIN (verbose, costs off)
 UPDATE rem1 set f2 = '';          -- can be pushed down
 EXPLAIN (verbose, costs off)
@@ -1997,6 +2019,7 @@ DROP TRIGGER trig_row_before_insert ON rem1;
 CREATE TRIGGER trig_row_after_insert
 AFTER INSERT ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 EXPLAIN (verbose, costs off)
 UPDATE rem1 set f2 = '';          -- can be pushed down
 EXPLAIN (verbose, costs off)
@@ -2007,6 +2030,7 @@ DROP TRIGGER trig_row_after_insert ON rem1;
 CREATE TRIGGER trig_row_before_update
 BEFORE UPDATE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 EXPLAIN (verbose, costs off)
 UPDATE rem1 set f2 = '';          -- can't be pushed down
 EXPLAIN (verbose, costs off)
@@ -2016,6 +2040,7 @@ DROP TRIGGER trig_row_before_update ON rem1;
 CREATE TRIGGER trig_row_after_update
 AFTER UPDATE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 EXPLAIN (verbose, costs off)
 UPDATE rem1 set f2 = '';          -- can't be pushed down
 EXPLAIN (verbose, costs off)
@@ -2026,6 +2051,7 @@ DROP TRIGGER trig_row_after_update ON rem1;
 CREATE TRIGGER trig_row_before_delete
 BEFORE DELETE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 EXPLAIN (verbose, costs off)
 UPDATE rem1 set f2 = '';          -- can be pushed down
 EXPLAIN (verbose, costs off)
@@ -2035,6 +2061,7 @@ DROP TRIGGER trig_row_before_delete ON rem1;
 CREATE TRIGGER trig_row_after_delete
 AFTER DELETE ON rem1
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 EXPLAIN (verbose, costs off)
 UPDATE rem1 set f2 = '';          -- can be pushed down
 EXPLAIN (verbose, costs off)
@@ -2212,10 +2239,12 @@ update bar set f2 = f2 + 100 returning *;
 CREATE TRIGGER trig_row_before
 BEFORE UPDATE OR DELETE ON bar2
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 CREATE TRIGGER trig_row_after
 AFTER UPDATE OR DELETE ON bar2
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 explain (verbose, costs off)
 update bar set f2 = f2 + 100;
@@ -2346,8 +2375,10 @@ $$ language plpgsql;
 /
 create trigger loct1_br_insert_trigger before insert on loct1
 	for each row execute procedure br_insert_trigfunc();
+/
 create trigger loct2_br_insert_trigger before insert on loct2
 	for each row execute procedure br_insert_trigfunc();
+/
 
 -- The new values are concatenated with ' triggered !'
 insert into itrtest values (1, 'foo') returning *;
@@ -2393,6 +2424,7 @@ update utrtest set a = 1 where b = 'foo';
 -- Test that remote triggers work with update tuple routing
 create trigger loct_br_insert_trigger before insert on loct
 	for each row execute procedure br_insert_trigfunc();
+/
 
 delete from utrtest;
 insert into utrtest values (2, 'qux');
@@ -2530,12 +2562,16 @@ delete from rem2;
 -- Test local triggers
 create trigger trig_stmt_before before insert on rem2
 	for each statement execute procedure trigger_func();
+/
 create trigger trig_stmt_after after insert on rem2
 	for each statement execute procedure trigger_func();
+/
 create trigger trig_row_before before insert on rem2
 	for each row execute procedure trigger_data(23,'skidoo');
+/
 create trigger trig_row_after after insert on rem2
 	for each row execute procedure trigger_data(23,'skidoo');
+/
 
 copy rem2 from stdin;
 1	foo
@@ -2552,6 +2588,7 @@ delete from rem2;
 
 create trigger trig_row_before_insert before insert on rem2
 	for each row execute procedure trig_row_before_insupdate();
+/
 
 -- The new values are concatenated with ' triggered !'
 copy rem2 from stdin;
@@ -2566,6 +2603,7 @@ delete from rem2;
 
 create trigger trig_null before insert on rem2
 	for each row execute procedure trig_null();
+/
 
 -- Nothing happens
 copy rem2 from stdin;
@@ -2581,6 +2619,7 @@ delete from rem2;
 -- Test remote triggers
 create trigger trig_row_before_insert before insert on loc2
 	for each row execute procedure trig_row_before_insupdate();
+/
 
 -- The new values are concatenated with ' triggered !'
 copy rem2 from stdin;
@@ -2595,6 +2634,7 @@ delete from rem2;
 
 create trigger trig_null before insert on loc2
 	for each row execute procedure trig_null();
+/
 
 -- Nothing happens
 copy rem2 from stdin;
@@ -2610,10 +2650,13 @@ delete from rem2;
 -- Test a combination of local and remote triggers
 create trigger rem2_trig_row_before before insert on rem2
 	for each row execute procedure trigger_data(23,'skidoo');
+/
 create trigger rem2_trig_row_after after insert on rem2
 	for each row execute procedure trigger_data(23,'skidoo');
+/
 create trigger loc2_trig_row_before_insert before insert on loc2
 	for each row execute procedure trig_row_before_insupdate();
+/
 
 copy rem2 from stdin;
 1	foo
@@ -3296,6 +3339,7 @@ SELECT COUNT(*) FROM ftable;
 ALTER FOREIGN TABLE ftable OPTIONS ( SET batch_size '10' );
 CREATE TRIGGER trig_row_before BEFORE INSERT ON ftable
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 EXPLAIN (VERBOSE, COSTS OFF) INSERT INTO ftable VALUES (3), (4);
 INSERT INTO ftable VALUES (3), (4);
 SELECT COUNT(*) FROM ftable;
@@ -3403,6 +3447,7 @@ $$;
 CREATE TRIGGER ftable_rowcount_trigger
 BEFORE INSERT OR UPDATE OR DELETE ON ltable
 FOR EACH ROW EXECUTE PROCEDURE ftable_rowcount_trigf();
+/
 
 WITH t AS (
 	INSERT INTO ltable VALUES ('AAA', 42), ('BBB', 42) RETURNING *
@@ -3450,6 +3495,7 @@ CREATE TABLE ltable
 CREATE TRIGGER ftable_rowcount_trigger
 BEFORE INSERT ON ltable
 FOR EACH ROW EXECUTE PROCEDURE ftable_rowcount_trigf();
+/
 
 INSERT INTO parent VALUES ('AAA', 42), ('BBB', 42), ('AAA', 42), ('BBB', 42);
 
