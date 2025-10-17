@@ -1,0 +1,483 @@
+SET hg_sysmac.global_on TO ON;
+-- check security label format
+SELECT 's0:c0.c2,c4.c6,c9'::seclabel;
+     seclabel      
+-------------------
+ s0:c0.c2,c4.c6.c9
+(1 row)
+
+SELECT 's16'::seclabel; -- error
+ERROR:  wrong format of seclable in 's16'
+LINE 1: SELECT 's16'::seclabel;
+               ^
+SELECT 's0:c1024'::seclabel; -- error
+ERROR:  wrong format of seclable in 's0:c1024'
+LINE 1: SELECT 's0:c1024'::seclabel;
+               ^
+SELECT 's0:c0!'::seclabel; -- error
+ERROR:  wrong format of seclable in 's0:c0!'
+LINE 1: SELECT 's0:c0!'::seclabel;
+               ^
+-- set the security label to user
+CREATE USER u1 with password 'Hello@123';
+SELECT set_user_seclabel('u1'::regrole, 's0');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT provider,label FROM pg_shseclabel WHERE objoid = 'u1'::regrole;
+ provider | label 
+----------+-------
+ sysmac   | s0
+(1 row)
+
+-- modify user security label
+SELECT set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT get_user_seclabel('u1'::regrole);
+ get_user_seclabel 
+-------------------
+ s1
+(1 row)
+
+-- set the security label to table
+SET ROLE u1;
+CREATE TABLE tb1(id int);
+RESET ROLE;
+SELECT set_table_seclabel('tb1'::regclass, 's2');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT get_table_seclabel('tb1'::regclass);
+ get_table_seclabel 
+--------------------
+ s2
+(1 row)
+
+-- when dropping a table,its security label should also be removed.
+SET ROLE u1;
+DROP TABLE tb1;
+RESET ROLE;
+SELECT * FROM pg_seclabel;
+ objoid | classoid | objsubid | provider | label 
+--------+----------+----------+----------+-------
+(0 rows)
+
+-- when dropping a user,its security label should also be removed.
+DROP USER u1;
+SELECT * FROM pg_shseclabel;
+ objoid | classoid | provider | label 
+--------+----------+----------+-------
+(0 rows)
+
+-- compare two security labels
+SELECT compare_seclabel('s1:c0.c1023', 's0:c0.c1023');
+ compare_seclabel 
+------------------
+                2
+(1 row)
+
+SELECT compare_seclabel('s0:c0.c1023', 's0:c0.c102');
+ compare_seclabel 
+------------------
+                2
+(1 row)
+
+SELECT compare_seclabel('s3:c0.c1023', 's3:c0.c1023');
+ compare_seclabel 
+------------------
+                1
+(1 row)
+
+SELECT compare_seclabel('s1:c0.c1023', 's3:c0.c102');
+ compare_seclabel 
+------------------
+                0
+(1 row)
+
+-- table-level security test
+CREATE USER u1 with password 'Hello@123';
+SET ROLE u1;
+CREATE TABLE tb1(id int);
+CREATE VIEW v_tb1 AS SELECT * FROM tb1;
+INSERT INTO tb1 VALUES (1),(2),(3);
+RESET ROLE;
+-- user-controlled table security label.
+SELECT set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_table_seclabel('tb1'::regclass, 's0');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT set_table_seclabel('v_tb1'::regclass, 's0');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SET hg_sysmac.global_table_level TO ON;
+SET hg_sysmac.global_on TO ON;
+SET ROLE u1;
+SELECT * FROM tb1;
+ id 
+----
+  1
+  2
+  3
+(3 rows)
+
+SELECT * FROM v_tb1;
+ id 
+----
+  1
+  2
+  3
+(3 rows)
+
+UPDATE tb1 SET id = 4 WHERE id = 1;
+ERROR:  permission deined: violate update rules on tb1
+DELETE FROM tb1 WHERE id = 1;
+ERROR:  permission deined: violate delete rules on tb1
+INSERT INTO tb1 VALUES (4);
+ERROR:  permission deined: violate insert rules on tb1
+-- user equals the table’s security label.
+RESET ROLE;
+SELECT set_table_seclabel('tb1'::regclass, 's0');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u1'::regrole, 's0');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO tb1 VALUES (4);
+DELETE FROM tb1 WHERE id = 1;
+UPDATE tb1 SET id = 5 WHERE id = 2;
+SELECT * FROM tb1;
+ id 
+----
+  3
+  4
+  5
+(3 rows)
+
+SELECT * FROM v_tb1;
+ id 
+----
+  3
+  4
+  5
+(3 rows)
+
+-- table-controlled user security label.
+RESET ROLE;
+SELECT set_table_seclabel('tb1'::regclass, 's1');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u1'::regrole, 's0');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO tb1 VALUES (1);
+SELECT * FROM tb1;
+ERROR:  permission deined: violate select rules on tb1
+SELECT * FROM v_tb1;
+ERROR:  permission deined: violate select rules on tb1
+UPDATE tb1 SET id = 5 WHERE id = 2;
+ERROR:  permission deined: violate select rules on tb1
+UPDATE v_tb1 SET id = 5 WHERE id = 2;
+ERROR:  permission deined: violate select rules on tb1
+DELETE FROM tb1 WHERE id = 1;
+ERROR:  permission deined: violate select rules on tb1
+DELETE FROM v_tb1 WHERE id = 1;
+ERROR:  permission deined: violate select rules on tb1
+-- user-controlled the column’s security label.
+CREATE TABLE tb2(id int);
+INSERT INTO tb2 VALUES (1),(2),(3);
+RESET ROLE;
+SELECT set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_table_seclabel('tb2'::regclass, 's1');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT set_column_seclabel('tb2'::regclass, 1, 's0');
+ set_column_seclabel 
+---------------------
+ set
+(1 row)
+
+SET hg_sysmac.global_table_level TO ON;
+SET hg_sysmac.global_on TO ON;
+SET hg_sysmac.global_column_level TO ON;
+SET ROLE u1;
+SELECT id FROM tb2;
+ id 
+----
+  1
+  2
+  3
+(3 rows)
+
+INSERT INTO tb2 VALUES (4);
+ERROR:  permission deined: violate insert rules on column id of table tb2
+UPDATE tb2 SET id = 6 WHERE id = 3;
+ERROR:  permission deined: violate update rules on column id of table tb2
+SELECT id FROM tb2;
+ id 
+----
+  1
+  2
+  3
+(3 rows)
+
+-- user equals the column’s security label.
+RESET ROLE;
+SELECT set_column_seclabel('tb2'::regclass, 1, 's1');
+ set_column_seclabel 
+---------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO tb2 VALUES (4);
+UPDATE tb2 SET id = 5 WHERE id = 1;
+DELETE FROM tb2 WHERE id = 2;
+SELECT id FROM tb2;
+ id 
+----
+  3
+  4
+  5
+(3 rows)
+
+-- column-controlled user security label.
+RESET ROLE;
+SELECT set_column_seclabel('tb2'::regclass, 1, 's2');
+ set_column_seclabel 
+---------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO tb2 VALUES (6);
+UPDATE tb2 SET id = 5 WHERE id = 1;
+ERROR:  permission deined: violate select rules on column id of table tb2
+DELETE FROM tb2 WHERE id = 2;
+ERROR:  permission deined: violate select rules on column id of table tb2
+SELECT id FROM tb2;
+ERROR:  permission deined: violate select rules on column id of table tb2
+DROP TABLE tb1,tb2 CASCADE;
+NOTICE:  drop cascades to view v_tb1
+RESET ROLE;
+DROP USER u1;
+-- row-level security testing.
+SET hg_sysmac.global_row_level TO ON;
+CREATE USER u1 with password 'Hello@123';
+CREATE USER u2 with password 'Hello@123';
+CREATE USER u3 with password 'Hello@123';
+SET ROLE u1;
+CREATE TABLE tb1(id int);
+GRANT ALL ON tb1 TO u1,u2,u3;
+SET ROLE syssso;
+SELECT set_table_seclabel('tb1'::regclass, 's3');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('tb1'::regclass, 'apply');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('tb1'::regclass, 'enable');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SET hg_sysmac.global_table_level TO OFF;
+SELECT set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u2'::regrole, 's2');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u3'::regrole, 's3');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO tb1 VALUES (1);
+RESET ROLE;
+SET ROLE u2;
+INSERT INTO tb1 VALUES (2);
+RESET ROLE;
+SET ROLE u3;
+INSERT INTO tb1 VALUES (3);
+RESET ROLE;
+SET ROLE u3;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+RESET ROLE;
+SET ROLE u2;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+(2 rows)
+
+RESET ROLE;
+SET ROLE u1;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+(1 row)
+
+SET ROLE u3;
+UPDATE tb1 SET id = 4 WHERE id = 1;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+UPDATE tb1 SET id = 5 WHERE id = 2;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+DELETE FROM tb1 WHERE id = 4;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+RESET ROLE;
+SET hg_sysmac.global_row_level TO OFF;
+SET ROLE u1;
+TRUNCATE TABLE tb1;
+INSERT INTO tb1 VALUES (1);
+RESET ROLE;
+SET ROLE u2;
+INSERT INTO tb1 VALUES (2);
+RESET ROLE;
+SET ROLE u3;
+INSERT INTO tb1 VALUES (3);
+RESET ROLE;
+SET ROLE u3;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+RESET ROLE;
+SET ROLE u2;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+RESET ROLE;
+SET ROLE u1;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+SET ROLE u1;
+UPDATE tb1 SET id = 4 WHERE id = 1;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s2              |  2
+ s3              |  3
+ s1              |  4
+(3 rows)
+
+UPDATE tb1 SET id = 5 WHERE id = 2;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s3              |  3
+ s1              |  4
+ s2              |  5
+(3 rows)
+
+DELETE FROM tb1 WHERE id = 4;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s3              |  3
+ s2              |  5
+(2 rows)
+
+DROP TABLE tb1;
+RESET ROLE;
+DROP USER u1,u2,u3;

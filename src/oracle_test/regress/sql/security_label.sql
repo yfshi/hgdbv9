@@ -2,6 +2,9 @@
 -- Test for facilities of security label
 --
 
+-- clean sysmac provider
+SELECT unregister_seclabel_provider('sysmac');
+
 -- initial setups
 SET client_min_messages TO 'warning';
 

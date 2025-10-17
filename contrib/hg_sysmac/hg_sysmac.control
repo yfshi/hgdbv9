@@ -1,0 +1,6 @@
+# hg_sysmac extension
+comment = 'hg_sysmac -- a label system that used in mandatory access contrl'
+default_version = '1.0'
+module_pathname = '$libdir/hg_sysmac'
+relocatable = true
+trusted = true

@@ -581,3 +581,22 @@ register_label_provider(const char *provider_name, check_object_relabel_type hoo
 	label_provider_list = lappend(label_provider_list, provider);
 	MemoryContextSwitchTo(oldcxt);
 }
+
+void
+unregister_label_provider(const char *provider_name)
+{
+	ListCell	*cell;
+	LabelProvider *provider = NULL;
+
+	foreach(cell, label_provider_list)
+	{
+		provider = (LabelProvider *) lfirst(cell);
+
+		if (strcmp(provider->provider_name, provider_name) == 0)
+		{
+			label_provider_list = list_delete_cell(label_provider_list, cell);
+			pfree(provider);
+			break;
+		}
+	}
+}

@@ -1,0 +1,785 @@
+SET hg_sysmac.global_on TO ON;
+SET hg_sysmac.global_table_level TO ON;
+CREATE USER u1 with password 'Hello@123';
+CREATE USER u2 with password 'Hello@123';
+CREATE USER u3 with password 'Hello@123';
+CREATE USER u4 with password 'Hello@123';
+-- Set the table-level security label only on the parent table.
+SET ROLE u1;
+CREATE TABLE part_parent (
+    id int,
+    tenant text
+) PARTITION BY RANGE (id);
+CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
+GRANT ALL ON part_parent TO u1,u2,u3;
+GRANT ALL ON part_child TO u1,u2,u3;
+SET ROLE syssso;
+SELECT set_table_seclabel('part_parent'::regclass, 's2');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u2'::regrole, 's2');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u3'::regrole, 's3');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO part_parent VALUES (1, 'alice');
+INSERT INTO part_child VALUES (11, 'aalice');
+SET ROLE u2;
+INSERT INTO part_parent VALUES (2, 'bob');
+INSERT INTO part_child VALUES (22, 'bbob');
+SET ROLE u3;
+INSERT INTO part_parent VALUES (3, 'tom');
+ERROR:  permission deined: violate insert rules on part_parent
+INSERT INTO part_child VALUES (33, 'ttom');
+SET ROLE u1;
+UPDATE part_parent SET id = 4 WHERE id = 1;
+ERROR:  permission deined: violate select rules on part_parent
+UPDATE part_child SET id = 44 WHERE id = 11;
+SET ROLE u2;
+UPDATE part_parent SET id = 5 WHERE id = 2;
+UPDATE part_child SET id = 55 WHERE id = 22;
+SET ROLE u3;
+UPDATE part_parent SET id = 6 WHERE id = 3;
+ERROR:  permission deined: violate update rules on part_parent
+UPDATE part_child SET id = 66 WHERE id = 33;
+SET ROLE u1;
+DELETE FROM part_parent WHERE id = 4;
+ERROR:  permission deined: violate select rules on part_parent
+DELETE FROM part_child WHERE id = 44;
+SET ROLE u2;
+DELETE FROM part_parent WHERE id = 5;
+DELETE FROM part_child WHERE id = 55;
+SET ROLE u3;
+DELETE FROM part_parent WHERE id = 6;
+ERROR:  permission deined: violate delete rules on part_parent
+DELETE FROM part_child WHERE id = 66;
+SET ROLE u1;
+SELECT * FROM part_parent;
+ERROR:  permission deined: violate select rules on part_parent
+SELECT * FROM part_child;
+ id | tenant 
+----+--------
+  1 | alice
+(1 row)
+
+SET ROLE u2;
+SELECT * FROM part_parent;
+ id | tenant 
+----+--------
+  1 | alice
+(1 row)
+
+SELECT * FROM part_child;
+ id | tenant 
+----+--------
+  1 | alice
+(1 row)
+
+SET ROLE u3;
+SELECT * FROM part_parent;
+ id | tenant 
+----+--------
+  1 | alice
+(1 row)
+
+SELECT * FROM part_child;
+ id | tenant 
+----+--------
+  1 | alice
+(1 row)
+
+-- Set the table-level security label only on the child table.
+SET ROLE u1;
+DROP TABLE part_parent CASCADE;
+CREATE TABLE part_parent (
+    id int,
+    tenant text
+) PARTITION BY RANGE (id);
+CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
+GRANT ALL ON part_parent TO u1,u2,u3;
+GRANT ALL ON part_child TO u1,u2,u3;
+SET ROLE syssso;
+SELECT set_table_seclabel('part_child'::regclass, 's2');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u2'::regrole, 's2');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u3'::regrole, 's3');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO part_parent VALUES (1, 'alice');
+INSERT INTO part_child VALUES (11, 'aalice');
+SET ROLE u2;
+INSERT INTO part_parent VALUES (2, 'bob');
+INSERT INTO part_child VALUES (22, 'bbob');
+SET ROLE u3;
+INSERT INTO part_parent VALUES (3, 'tom');
+INSERT INTO part_child VALUES (33, 'ttom');
+ERROR:  permission deined: violate insert rules on part_child
+SET ROLE u1;
+UPDATE part_parent SET id = 4 WHERE id = 1;
+ERROR:  permission deined: violate select rules on part_child
+UPDATE part_child SET id = 44 WHERE id = 11;
+ERROR:  permission deined: violate select rules on part_child
+SET ROLE u2;
+UPDATE part_parent SET id = 5 WHERE id = 2;
+UPDATE part_child SET id = 55 WHERE id = 22;
+SET ROLE u3;
+UPDATE part_parent SET id = 6 WHERE id = 3;
+ERROR:  permission deined: violate update rules on part_child
+UPDATE part_child SET id = 66 WHERE id = 33;
+ERROR:  permission deined: violate update rules on part_child
+SET ROLE u1;
+DELETE FROM part_parent WHERE id = 4;
+ERROR:  permission deined: violate select rules on part_child
+DELETE FROM part_child WHERE id = 44;
+ERROR:  permission deined: violate select rules on part_child
+SET ROLE u2;
+DELETE FROM part_parent WHERE id = 5;
+DELETE FROM part_child WHERE id = 55;
+SET ROLE u3;
+DELETE FROM part_parent WHERE id = 6;
+ERROR:  permission deined: violate delete rules on part_child
+DELETE FROM part_child WHERE id = 66;
+ERROR:  permission deined: violate delete rules on part_child
+SET ROLE u1;
+SELECT * FROM part_parent;
+ERROR:  permission deined: violate select rules on part_child
+SELECT * FROM part_child;
+ERROR:  permission deined: violate select rules on part_child
+RESET ROLE;
+SET ROLE u2;
+SELECT * FROM part_parent;
+ id | tenant 
+----+--------
+  1 | alice
+ 11 | aalice
+  3 | tom
+(3 rows)
+
+SELECT * FROM part_child;
+ id | tenant 
+----+--------
+  1 | alice
+ 11 | aalice
+  3 | tom
+(3 rows)
+
+RESET ROLE;
+SET ROLE u3;
+SELECT * FROM part_parent;
+ id | tenant 
+----+--------
+  1 | alice
+ 11 | aalice
+  3 | tom
+(3 rows)
+
+SELECT * FROM part_child;
+ id | tenant 
+----+--------
+  1 | alice
+ 11 | aalice
+  3 | tom
+(3 rows)
+
+-- Set the table-level security label on both the parent table and child tables.
+SET ROLE u1;
+DROP TABLE part_parent CASCADE;
+CREATE TABLE part_parent (
+    id int,
+    tenant text
+) PARTITION BY RANGE (id);
+CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
+GRANT ALL ON part_parent TO u1,u2,u3,u4;
+GRANT ALL ON part_child TO u1,u2,u3,u4;
+SET ROLE syssso;
+SELECT set_table_seclabel('part_parent'::regclass, 's2');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT set_table_seclabel('part_child'::regclass, 's3');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u2'::regrole, 's2');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u3'::regrole, 's3');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u4'::regrole, 's4');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO part_parent VALUES (1, 'alice');
+INSERT INTO part_child VALUES (11, 'aalice');
+SET ROLE u2;
+INSERT INTO part_parent VALUES (2, 'bob');
+INSERT INTO part_child VALUES (22, 'bbob');
+SET ROLE u3;
+INSERT INTO part_parent VALUES (3, 'tom');
+ERROR:  permission deined: violate insert rules on part_parent
+INSERT INTO part_child VALUES (33, 'ttom');
+SET ROLE u4;
+INSERT INTO part_parent VALUES (4, 'tim');
+ERROR:  permission deined: violate insert rules on part_parent
+INSERT INTO part_child VALUES (44, 'ttim');
+ERROR:  permission deined: violate insert rules on part_child
+SET ROLE u1;
+UPDATE part_parent SET id = 5 WHERE id = 1;
+ERROR:  permission deined: violate select rules on part_parent
+UPDATE part_child SET id = 55 WHERE id = 11;
+ERROR:  permission deined: violate select rules on part_child
+SET ROLE u2;
+UPDATE part_parent SET id = 6 WHERE id = 2;
+ERROR:  permission deined: violate select rules on part_child
+UPDATE part_child SET id = 66 WHERE id = 22;
+ERROR:  permission deined: violate select rules on part_child
+SET ROLE u3;
+UPDATE part_parent SET id = 7 WHERE id = 3;
+ERROR:  permission deined: violate update rules on part_parent
+UPDATE part_child SET id = 77 WHERE id = 33;
+SET ROLE u4;
+UPDATE part_parent SET id = 8 WHERE id = 4;
+ERROR:  permission deined: violate update rules on part_parent
+UPDATE part_child SET id = 88 WHERE id = 44;
+ERROR:  permission deined: violate update rules on part_child
+SET ROLE u1;
+DELETE FROM part_parent WHERE id = 5;
+ERROR:  permission deined: violate select rules on part_parent
+DELETE FROM part_child WHERE id = 55;
+ERROR:  permission deined: violate select rules on part_child
+SET ROLE u2;
+DELETE FROM part_parent WHERE id = 6;
+ERROR:  permission deined: violate select rules on part_child
+DELETE FROM part_child WHERE id = 66;
+ERROR:  permission deined: violate select rules on part_child
+SET ROLE u3;
+DELETE FROM part_parent WHERE id = 7;
+ERROR:  permission deined: violate delete rules on part_parent
+DELETE FROM part_child WHERE id = 77;
+SET ROLE u4;
+DELETE FROM part_parent WHERE id = 8;
+ERROR:  permission deined: violate delete rules on part_parent
+DELETE FROM part_child WHERE id = 88;
+ERROR:  permission deined: violate delete rules on part_child
+SET ROLE u1;
+SELECT * FROM part_parent;
+ERROR:  permission deined: violate select rules on part_parent
+SELECT * FROM part_child;
+ERROR:  permission deined: violate select rules on part_child
+RESET ROLE;
+SET ROLE u2;
+SELECT * FROM part_parent;
+ERROR:  permission deined: violate select rules on part_child
+SELECT * FROM part_child;
+ERROR:  permission deined: violate select rules on part_child
+RESET ROLE;
+SET ROLE u3;
+SELECT * FROM part_parent;
+ id | tenant 
+----+--------
+  1 | alice
+ 11 | aalice
+  2 | bob
+ 22 | bbob
+(4 rows)
+
+SELECT * FROM part_child;
+ id | tenant 
+----+--------
+  1 | alice
+ 11 | aalice
+  2 | bob
+ 22 | bbob
+(4 rows)
+
+SET ROLE u4;
+SELECT * FROM part_parent;
+ id | tenant 
+----+--------
+  1 | alice
+ 11 | aalice
+  2 | bob
+ 22 | bbob
+(4 rows)
+
+SELECT * FROM part_child;
+ id | tenant 
+----+--------
+  1 | alice
+ 11 | aalice
+  2 | bob
+ 22 | bbob
+(4 rows)
+
+SET ROLE syssso;
+SET hg_sysmac.global_on TO OFF;
+SET hg_sysmac.global_table_level TO OFF;
+SET ROLE u1;
+DROP TABLE part_parent CASCADE;
+-- Set the row-level security label only on the parent table.
+SET ROLE syssso;
+SET hg_sysmac.global_on TO ON;
+SET hg_sysmac.global_table_level TO OFF;
+SET hg_sysmac.global_row_level TO ON;
+SET ROLE u1;
+CREATE TABLE part_parent (
+    id int,
+    tenant text
+) PARTITION BY RANGE (id);
+CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
+GRANT ALL ON part_parent TO u1,u2,u3;
+GRANT ALL ON part_child TO u1,u2,u3;
+SET ROLE syssso;
+SELECT set_table_seclabel('part_parent'::regclass, 's2');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_parent'::regclass, 'apply');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_parent'::regclass, 'enable');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u2'::regrole, 's2');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u3'::regrole, 's3');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO part_parent VALUES (1, 'alice');
+INSERT INTO part_child VALUES (11, 'aalice');
+SET ROLE u2;
+INSERT INTO part_parent VALUES (2, 'bob');
+INSERT INTO part_child VALUES (22, 'bbob');
+SET ROLE u3;
+INSERT INTO part_parent VALUES (3, 'tom');
+ERROR:  new row violates row-level security policy for table "part_parent"
+INSERT INTO part_child VALUES (33, 'ttom');
+SET ROLE u1;
+SELECT __hg_seclabel__,* FROM part_parent;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              |  1 | alice
+ s1              | 11 | aalice
+(2 rows)
+
+SET ROLE u2;
+SELECT __hg_seclabel__,* FROM part_parent;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              |  1 | alice
+ s1              | 11 | aalice
+ s2              |  2 | bob
+ s2              | 22 | bbob
+(4 rows)
+
+SET ROLE u3;
+SELECT __hg_seclabel__,* FROM part_parent;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              |  1 | alice
+ s1              | 11 | aalice
+ s2              |  2 | bob
+ s2              | 22 | bbob
+ s3              | 33 | ttom
+(5 rows)
+
+-- Set the row-level security label only on the child table.
+SET ROLE syssso;
+SET hg_sysmac.global_on TO ON;
+SET hg_sysmac.global_table_level TO OFF;
+SET hg_sysmac.global_row_level TO ON;
+SET ROLE u1;
+DROP TABLE part_parent CASCADE;
+CREATE TABLE part_parent (
+    id int,
+    tenant text
+) PARTITION BY RANGE (id);
+CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
+GRANT ALL ON part_parent TO u1,u2,u3;
+GRANT ALL ON part_child TO u1,u2,u3;
+SET ROLE syssso;
+SELECT set_table_seclabel('part_child'::regclass, 's2');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_child'::regclass, 'apply');
+ERROR:  Mandatory access control row-level - partitioned tables must be applied to the parent before the child tables.
+SELECT apply_row_policy('part_parent'::regclass, 'apply');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_child'::regclass, 'apply');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_child'::regclass, 'enable');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u2'::regrole, 's2');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u3'::regrole, 's3');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO part_parent VALUES (1, 'alice');
+INSERT INTO part_child VALUES (11, 'aalice');
+SET ROLE u2;
+INSERT INTO part_parent VALUES (2, 'bob');
+INSERT INTO part_child VALUES (22, 'bbob');
+SET ROLE u3;
+INSERT INTO part_parent VALUES (3, 'tom');
+INSERT INTO part_child VALUES (33, 'ttom');
+ERROR:  new row violates row-level security policy for table "part_child"
+SET ROLE u1;
+SELECT __hg_seclabel__,* FROM part_child;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              |  1 | alice
+ s1              | 11 | aalice
+(2 rows)
+
+SET ROLE u2;
+SELECT __hg_seclabel__,* FROM part_child;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              |  1 | alice
+ s1              | 11 | aalice
+ s2              |  2 | bob
+ s2              | 22 | bbob
+(4 rows)
+
+SET ROLE u3;
+SELECT __hg_seclabel__,* FROM part_child;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              |  1 | alice
+ s1              | 11 | aalice
+ s2              |  2 | bob
+ s2              | 22 | bbob
+ s3              |  3 | tom
+(5 rows)
+
+-- Set the row-level security label on both the parent table and child tables.
+SET ROLE syssso;
+SET hg_sysmac.global_on TO ON;
+SET hg_sysmac.global_table_level TO OFF;
+SET hg_sysmac.global_row_level TO ON;
+SET ROLE u1;
+DROP TABLE part_parent CASCADE;
+CREATE TABLE part_parent (
+    id int,
+    tenant text
+) PARTITION BY RANGE (id);
+CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
+GRANT ALL ON part_parent TO u1,u2,u3;
+GRANT ALL ON part_child TO u1,u2,u3;
+SET ROLE syssso;
+SELECT set_table_seclabel('part_parent'::regclass, 's2');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT set_table_seclabel('part_child'::regclass, 's2');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u2'::regrole, 's2');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT set_user_seclabel('u3'::regrole, 's3');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_parent'::regclass, 'apply');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_parent'::regclass, 'enable');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_child'::regclass, 'apply');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_child'::regclass, 'enable');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SET ROLE u1;
+INSERT INTO part_parent VALUES (11, 'aalice');
+SET ROLE u2;
+INSERT INTO part_parent VALUES (22, 'bbob');
+SET ROLE u3;
+INSERT INTO part_parent VALUES (33, 'ttom');
+ERROR:  new row violates row-level security policy for table "part_parent"
+SET ROLE u1;
+SELECT __hg_seclabel__,* FROM part_parent;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              | 11 | aalice
+(1 row)
+
+SELECT __hg_seclabel__,* FROM part_child;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              | 11 | aalice
+(1 row)
+
+SET ROLE u2;
+SELECT __hg_seclabel__,* FROM part_parent;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              | 11 | aalice
+ s2              | 22 | bbob
+(2 rows)
+
+SELECT __hg_seclabel__,* FROM part_child;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              | 11 | aalice
+ s2              | 22 | bbob
+(2 rows)
+
+SET ROLE u3;
+SELECT __hg_seclabel__,* FROM part_parent;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              | 11 | aalice
+ s2              | 22 | bbob
+(2 rows)
+
+SELECT __hg_seclabel__,* FROM part_child;
+ __hg_seclabel__ | id | tenant 
+-----------------+----+--------
+ s1              | 11 | aalice
+ s2              | 22 | bbob
+(2 rows)
+
+SET ROLE u1;
+CREATE TABLE part_child3 (id int);
+GRANT ALL ON part_child3 TO u1,u2,u3;
+SET ROLE syssso;
+SELECT set_table_seclabel('part_child3'::regclass, 's2');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_child3'::regclass, 'apply');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT apply_row_policy('part_child3'::regclass, 'enable');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SET ROLE u1;
+ALTER TABLE part_child3 ADD COLUMN tenant text;
+INSERT INTO part_child3 VALUES (200, 'aaalice');
+SET ROLE u2;
+INSERT INTO part_child3 VALUES (250, 'bbbob');
+SET ROLE u3;
+INSERT INTO part_child3 VALUES (300, 'tttom');
+ERROR:  new row violates row-level security policy for table "part_child3"
+SET ROLE u1;
+ALTER TABLE part_parent ATTACH partition part_child3 FOR VALUES FROM (200) TO (300);
+SET ROLE u1;
+INSERT INTO part_parent VALUES (201, 'aalice');
+SET ROLE u2;
+INSERT INTO part_parent VALUES (222, 'bbob');
+SET ROLE u3;
+INSERT INTO part_parent VALUES (333, 'ttom');
+ERROR:  no partition of relation "part_parent" found for row
+SET ROLE u1;
+SELECT __hg_seclabel__,* FROM part_parent;
+ __hg_seclabel__ | id  | tenant  
+-----------------+-----+---------
+ s1              |  11 | aalice
+ s1              | 200 | aaalice
+ s1              | 201 | aalice
+(3 rows)
+
+SELECT __hg_seclabel__,* FROM part_child3;
+ __hg_seclabel__ | id  | tenant  
+-----------------+-----+---------
+ s1              | 200 | aaalice
+ s1              | 201 | aalice
+(2 rows)
+
+SET ROLE u2;
+SELECT __hg_seclabel__,* FROM part_parent;
+ __hg_seclabel__ | id  | tenant  
+-----------------+-----+---------
+ s1              |  11 | aalice
+ s2              |  22 | bbob
+ s1              | 200 | aaalice
+ s2              | 250 | bbbob
+ s1              | 201 | aalice
+ s2              | 222 | bbob
+(6 rows)
+
+SELECT __hg_seclabel__,* FROM part_child3;
+ __hg_seclabel__ | id  | tenant  
+-----------------+-----+---------
+ s1              | 200 | aaalice
+ s2              | 250 | bbbob
+ s1              | 201 | aalice
+ s2              | 222 | bbob
+(4 rows)
+
+SET ROLE u3;
+SELECT __hg_seclabel__,* FROM part_parent;
+ __hg_seclabel__ | id  | tenant  
+-----------------+-----+---------
+ s1              |  11 | aalice
+ s2              |  22 | bbob
+ s1              | 200 | aaalice
+ s2              | 250 | bbbob
+ s1              | 201 | aalice
+ s2              | 222 | bbob
+(6 rows)
+
+SELECT __hg_seclabel__,* FROM part_child3;
+ __hg_seclabel__ | id  | tenant  
+-----------------+-----+---------
+ s1              | 200 | aaalice
+ s2              | 250 | bbbob
+ s1              | 201 | aalice
+ s2              | 222 | bbob
+(4 rows)
+
+SET ROLE syssso;
+SET hg_sysmac.global_on TO OFF;
+SET hg_sysmac.global_table_level TO OFF;
+SET hg_sysmac.global_row_level TO OFF;
+SET ROLE u1;
+DROP TABLE part_parent CASCADE;
+RESET ROLE;
+DROP USER u1,u2,u3,u4;

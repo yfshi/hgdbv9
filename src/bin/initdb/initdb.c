@@ -1464,9 +1464,9 @@ setup_config(void)
 	{
         char *token = "shared_preload_libraries = 'gb18030_2022'";
 #ifdef USE_SQLITE
-		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw, credcheck, ora_synonym'"; //ReqID:SRS-SECURITY-AUDIT	/* ReqID:SRS-SQL-SYNONYM */
+		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw, credcheck, ora_synonym, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT	/* ReqID:SRS-SQL-SYNONYM */
 #else
-		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, credcheck, ora_synonym'"; //ReqID:SRS-SECURITY-AUDIT	/* ReqID:SRS-SQL-SYNONYM */
+		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, credcheck, ora_synonym, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT	/* ReqID:SRS-SQL-SYNONYM */
 #endif
         conflines = replace_token(conflines,token, replacement);
 	}
@@ -1513,9 +1513,9 @@ setup_config(void)
 		{
 			char *token = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym'";
 #ifdef USE_SQLITE
-			char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+			char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, sqlite_fdw, credcheck, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT
 #else
-			char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+			char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, credcheck, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT
 #endif
 			conflines = replace_token(conflines,token, replacement);
 		}
@@ -1544,9 +1544,9 @@ setup_config(void)
 		{
 	        char *token = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my'";
 #ifdef USE_SQLITE
-	        char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, sqlite_fdw, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+			char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, sqlite_fdw, credcheck, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT
 #else
-			char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, credcheck'"; //ReqID:SRS-SECURITY-AUDIT
+			char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, credcheck, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT
 #endif
 	        conflines = replace_token(conflines,token, replacement);
 		}
@@ -2490,6 +2490,16 @@ load_cred_check(FILE *cmdfd)
 	PG_CMD_PUTS("create extension credcheck WITH SCHEMA public;\n\n");
 }
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
+/*
+ * load hg_sysmac
+ */
+static void
+load_hg_sysmac(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION hg_sysmac WITH SCHEMA public;\n\n");
+}
+
 /*
  * clean everything up in template1
  */
@@ -3778,6 +3788,8 @@ initialize_data_directory(void)
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	load_cred_check(cmdfd);
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
+	load_hg_sysmac(cmdfd);
 
 	vacuum_db(cmdfd);
 

@@ -8,6 +8,8 @@
 -- it has a dependency on the cube extension.
 --
 
+DROP EXTENSION IF EXISTS hg_sysmac;
+
 CREATE EXTENSION earthdistance;  -- fail, must install cube first
 CREATE EXTENSION cube;
 CREATE EXTENSION earthdistance;

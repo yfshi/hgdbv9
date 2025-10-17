@@ -7,6 +7,7 @@
 -- guaranteed-available extensions.  earthdistance is a good test case because
 -- it has a dependency on the cube extension.
 --
+DROP EXTENSION IF EXISTS hg_sysmac;
 CREATE EXTENSION earthdistance;  -- fail, must install cube first
 ERROR:  required extension "cube" is not installed
 HINT:  Use CREATE EXTENSION ... CASCADE to install required extensions too.
