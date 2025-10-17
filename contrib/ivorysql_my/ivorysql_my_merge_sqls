@@ -18,6 +18,7 @@ src/datatype/script/enum
 src/datatype/script/float
 src/datatype/script/year
 src/datatype/script/time
+src/datatype/script/mystime
 src/datatype/script/binary
 src/datatype/script/character
 src/datatype/script/bit

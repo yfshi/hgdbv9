@@ -2419,12 +2419,10 @@ DROP TABLE tx3;
 -- Test handling of vars from correlated subqueries in quals from outer
 -- security barrier views, per bug #13988
 --
+drop table if exists t1,t2;
+NOTICE:  table "t2" does not exist, skipping
 CREATE TABLE t1 (a int, b text, c int);
-ERROR:  relation "t1" already exists
 INSERT INTO t1 VALUES (1, 'one', 10);
-ERROR:  invalid input syntax for type real: "one"
-LINE 1: INSERT INTO t1 VALUES (1, 'one', 10);
-                                  ^
 CREATE TABLE t2 (cc int);
 INSERT INTO t2 VALUES (10), (20);
 CREATE VIEW v1 WITH (security_barrier = true) AS
@@ -2434,28 +2432,25 @@ CREATE VIEW v2 WITH (security_barrier = true) AS
   SELECT * FROM v1 WHERE EXISTS (SELECT 1 FROM t2 WHERE t2.cc = v1.c)
   WITH CHECK OPTION;
 INSERT INTO v2 VALUES (2, 'two', 20); -- ok
-ERROR:  invalid input syntax for type real: "two"
-LINE 1: INSERT INTO v2 VALUES (2, 'two', 20);
-                                  ^
 INSERT INTO v2 VALUES (-2, 'minus two', 20); -- not allowed
-ERROR:  invalid input syntax for type real: "minus two"
-LINE 1: INSERT INTO v2 VALUES (-2, 'minus two', 20);
-                                   ^
+ERROR:  new row violates check option for view "v1"
+DETAIL:  Failing row contains (-2, minus two, 20).
 INSERT INTO v2 VALUES (3, 'three', 30); -- not allowed
-ERROR:  invalid input syntax for type real: "three"
-LINE 1: INSERT INTO v2 VALUES (3, 'three', 30);
-                                  ^
+ERROR:  new row violates check option for view "v2"
+DETAIL:  Failing row contains (3, three, 30).
 UPDATE v2 SET b = 'ONE' WHERE a = 1; -- ok
-ERROR:  invalid input syntax for type real: "ONE"
-LINE 1: UPDATE v2 SET b = 'ONE' WHERE a = 1;
-                          ^
 UPDATE v2 SET a = -1 WHERE a = 1; -- not allowed
+ERROR:  new row violates check option for view "v1"
+DETAIL:  Failing row contains (-1, ONE, 10).
 UPDATE v2 SET c = 30 WHERE a = 1; -- not allowed
+ERROR:  new row violates check option for view "v2"
+DETAIL:  Failing row contains (1, ONE, 30).
 DELETE FROM v2 WHERE a = 2; -- ok
 SELECT * FROM v2;
- a | b | c 
----+---+---
-(0 rows)
+ a |  b  | c  
+---+-----+----
+ 1 | ONE | 10
+(1 row)
 
 DROP VIEW v2;
 DROP VIEW v1;

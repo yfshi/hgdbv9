@@ -89,4 +89,9 @@ extern bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to);
 extern bool is_numeric_neg(Numeric num);
 /* End - SRS-MYSQL-BUILDINFUNCTION */
 
+/* Begin - bug#z5590 */
+typedef Numeric (*mysql_numeric_datatype_in_hook_type) (const char *str, int typmod, bool is_insert);
+extern PGDLLIMPORT mysql_numeric_datatype_in_hook_type mysql_numeric_datatype_in_hook;
+/* End - bug#z5590 */
+
 #endif							/* _PG_NUMERIC_H_ */

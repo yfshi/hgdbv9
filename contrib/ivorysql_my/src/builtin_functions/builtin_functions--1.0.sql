@@ -534,7 +534,7 @@ CREATE OR REPLACE FUNCTION ivymy.period_diff(numeric, numeric) returns int8 AS $
 $$ LANGUAGE SQL STRICT PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.period_diff(text, text) returns int8 AS $$
-    SELECT ivymy.period_diff(cast($1 as numeric), cast($2 as numeric));
+    SELECT ivymy.period_diff(cast($1 as int8), cast($2 as int8));
 $$ LANGUAGE SQL STRICT PARALLEL SAFE;
 
 /*SEC_TO_TIME */
@@ -548,7 +548,7 @@ STRICT;
 CREATE OR REPLACE FUNCTION ivymy.sec_to_time(text)
 RETURNS time(6) 
 AS $$
-    SELECT sec_to_time(cast($1 as numeric));
+    SELECT sec_to_time(cast($1 as numeric(99, 6)));
 $$
 LANGUAGE SQL
 STRICT

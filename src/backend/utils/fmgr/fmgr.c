@@ -1854,9 +1854,8 @@ InputFunctionCall_2(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, i
 	fcinfo->args[1].isnull = false;
 	fcinfo->args[2].value = Int32GetDatum(typmod);
 	fcinfo->args[2].isnull = false;
-	fcinfo->args[3].value = Int32GetDatum(lens);
+	fcinfo->args[3].value = Int64GetDatum(lens);
 	fcinfo->args[3].isnull = false;
-
 
 	result = FunctionCallInvoke(fcinfo);
 

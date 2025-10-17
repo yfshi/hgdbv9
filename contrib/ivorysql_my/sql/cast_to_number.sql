@@ -160,3 +160,6 @@ select cast('-a'::text as signed);      -- warning: truncated
 select cast('-0'::text as unsigned);    -- warning: cast
 select cast('-0a'::text as unsigned);   -- 2 warings: truncate & cast
 select cast('-a'::text as unsigned);    -- warning: truncated
+
+select cast('!@#' as decimal(6, 3));    -- 1 warning
+select cast('123!@#' as decimal(6, 3)); -- no warning

@@ -436,6 +436,15 @@ INSERT INTO my_blob_t1 VALUES ('123', '123', '1234', 'abcd', 'ABCD', '', ' ', nu
 --------------------------------------------------------------------------------
 -- should get (1, 1, 1, 1, 0, 0, 0, 0, 0, 0)
 select c1 AND c1, c1 AND c2, c1 AND c3, c2 AND c3, c3 AND c4, c4 AND c5, c5 AND c6, c6 AND c7, c4 AND c8, c6 AND c8 from my_blob_t1;
+WARNING:  Truncated incorrect INTEGER value: '1234'
+WARNING:  Truncated incorrect INTEGER value: '1234'
+WARNING:  Truncated incorrect INTEGER value: '1234'
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: 'ABCD'
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: ''
  ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
 ----------+----------+----------+----------+----------+----------+----------+----------+----------+----------
  t        | t        | t        | t        | f        | f        | f        | f        | f        | f
@@ -443,6 +452,12 @@ select c1 AND c1, c1 AND c2, c1 AND c3, c2 AND c3, c3 AND c4, c4 AND c5, c5 AND 
 
 -- should get (1, 1, 1, 1, 0, 0, 0, 0, 0, 0)
 select c1 && c1, c1 && c2, c1 && c3, c2 && c3, c3 && c4, c4 && c5, c5 && c6, c6 && c7, c4 && c8, c6 && c8 from my_blob_t1;
+WARNING:  Truncated incorrect DOUBLE value: 'abcd'
+WARNING:  Truncated incorrect DOUBLE value: 'abcd'
+WARNING:  Truncated incorrect DOUBLE value: 'ABCD'
+WARNING:  Truncated incorrect DOUBLE value: ''
+WARNING:  Truncated incorrect DOUBLE value: 'abcd'
+WARNING:  Truncated incorrect DOUBLE value: ''
  ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
 ----------+----------+----------+----------+----------+----------+----------+----------+----------+----------
  t        | t        | t        | t        | f        | f        | f        | f        | f        | f
@@ -1023,10 +1038,24 @@ INSERT INTO my_blob_t1 VALUES ('123', '121', 'abcd', '125', '', ' ', null);
 --------------------------------------------------------------------------------
 -- TODO[TD009]: should get '2', but get error, need to impl this function
 SELECT interval(c1, c2, c3, c4, c5, c6, c7) FROM my_blob_t1;
-ERROR:  invalid input syntax for type numeric: "abcd"
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: ''
+WARNING:  Truncated incorrect DECIMAL value: ' '
+ interval 
+----------
+        2
+(1 row)
+
 -- TODO[TD009]: should get '3', but get error, need to impl this function
 SELECT interval(c1, c7, c6, c5, c4, c3, c2) FROM my_blob_t1;
-ERROR:  invalid input syntax for type numeric: " "
+WARNING:  Truncated incorrect DECIMAL value: ' '
+WARNING:  Truncated incorrect DECIMAL value: ''
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+ interval 
+----------
+        3
+(1 row)
+
 DISCARD ALL;
 /*
  * test mysql blob type operator coalesce
@@ -1071,6 +1100,9 @@ INSERT INTO my_blob_t1 VALUES (1, '123'), (2, 'abc'), (3, ''), (4, ' '), (5, nul
 --------------------------------------------------------------------------------
 -- should get {(2, abc), (3, ), (4, ), (5, NULL)}
 select * from my_blob_t1 where c1 is not true;
+WARNING:  Truncated incorrect INTEGER value: 'abc'
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: ''
  id |  c1  
 ----+------
   2 | abc
@@ -1081,6 +1113,9 @@ select * from my_blob_t1 where c1 is not true;
 
 -- should get {(1, 123), (5, NULL)}
 select * from my_blob_t1 where c1 is not false;
+WARNING:  Truncated incorrect INTEGER value: 'abc'
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: ''
  id |  c1  
 ----+------
   1 | 123
@@ -1152,6 +1187,9 @@ INSERT INTO my_blob_t1 VALUES (1, '123'), (2, 'abc'), (3, ''), (4, ' '), (5, nul
 --------------------------------------------------------------------------------
 -- should get (1, 123)
 select * from my_blob_t1 where c1 is true;
+WARNING:  Truncated incorrect INTEGER value: 'abc'
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: ''
  id | c1  
 ----+-----
   1 | 123
@@ -1159,6 +1197,9 @@ select * from my_blob_t1 where c1 is true;
 
 -- should get {(2, abc), (3, ), (4, )}
 select * from my_blob_t1 where c1 is false;
+WARNING:  Truncated incorrect INTEGER value: 'abc'
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: ''
  id | c1  
 ----+-----
   2 | abc
@@ -1719,6 +1760,11 @@ INSERT INTO my_blob_t1 VALUES ('123', '123', '1234', 'abcd', 'ABCD', '', ' ', nu
 --------------------------------------------------------------------------------
 -- TODO[TD021]: should get (0, 0, 0, 1, 1, 1, 1, NULL) and warnings
 select not c1, not c2, not c3, not c4, not c5, not c6, not c7, not c8 from my_blob_t1;
+WARNING:  Truncated incorrect INTEGER value: '1234'
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: 'ABCD'
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: ''
  ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
 ----------+----------+----------+----------+----------+----------+----------+----------
  f        | f        | f        | t        | t        | t        | t        | NULL
@@ -1726,6 +1772,10 @@ select not c1, not c2, not c3, not c4, not c5, not c6, not c7, not c8 from my_bl
 
 -- TODO[TD021]: should get (0, 0, 0, 1, 1, 1, 1, NULL) and warnings
 select !c1, !c2, !c3, !c4, !c5, !c6, !c7, !c8 from my_blob_t1;
+WARNING:  Truncated incorrect DOUBLE value: 'abcd'
+WARNING:  Truncated incorrect DOUBLE value: 'ABCD'
+WARNING:  Truncated incorrect DOUBLE value: ''
+WARNING:  Truncated incorrect DOUBLE value: ' '
  ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
 ----------+----------+----------+----------+----------+----------+----------+----------
  f        | f        | f        | t        | t        | t        | t        | NULL
@@ -1755,6 +1805,15 @@ INSERT INTO my_blob_t1 VALUES ('123', '123', '1234', 'abcd', 'ABCD', '', ' ', nu
 --------------------------------------------------------------------------------
 -- should get (1, 1, 1, 1, 1, 0, 0, 0, NULL, NULL)
 select c1 OR c1, c1 OR c2, c1 OR c3, c2 OR c3, c3 OR c4, c4 OR c5, c5 OR c6, c6 OR c7, c4 OR c8, c6 OR c8 from my_blob_t1;
+WARNING:  Truncated incorrect INTEGER value: '1234'
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: 'ABCD'
+WARNING:  Truncated incorrect INTEGER value: 'ABCD'
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: ''
  ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
 ----------+----------+----------+----------+----------+----------+----------+----------+----------+----------
  t        | t        | t        | t        | t        | f        | f        | f        | NULL     | NULL
@@ -1898,6 +1957,21 @@ INSERT INTO my_blob_t1 VALUES ('123', '123', '1234', 'abcd', 'ABCD', '', ' ', nu
 --------------------------------------------------------------------------------
 -- should get (0, 0, 0, 0, 1, 0, 0, 0, NULL, NULL) and warnings
 select c1 XOR c1, c1 XOR c2, c1 XOR c3, c2 XOR c3, c3 XOR c4, c4 XOR c5, c5 XOR c6, c6 XOR c7, c4 XOR c8, c6 XOR c8 from my_blob_t1;
+WARNING:  Truncated incorrect INTEGER value: '1234'
+WARNING:  Truncated incorrect INTEGER value: '1234'
+WARNING:  Truncated incorrect INTEGER value: '1234'
+WARNING:  Truncated incorrect INTEGER value: '1234'
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: 'ABCD'
+WARNING:  Truncated incorrect INTEGER value: 'ABCD'
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: ''
+WARNING:  Truncated incorrect INTEGER value: ''
  ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
 ----------+----------+----------+----------+----------+----------+----------+----------+----------+----------
  f        | f        | f        | f        | t        | f        | f        | f        | NULL     | NULL

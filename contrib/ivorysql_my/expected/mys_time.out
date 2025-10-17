@@ -5826,7 +5826,7 @@ select cast('222222' as time) / 115; -- 1932.3652
 (1 row)
 
 select cast('222222' as time) / 0; -- NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -5839,9 +5839,9 @@ select 111111 / cast('222220' as time); --0.5000
 (1 row)
 
 select 111111.111 / cast('222220' as time);--0.5000050
- ?column? 
-----------
-   0.5000
+ ?column?  
+-----------
+ 0.5000050
 (1 row)
 
 select 0 / cast('222220' as time); --0.0000
@@ -5882,7 +5882,7 @@ select cast('222222' as time) div 115; -- 1932
 (1 row)
 
 select cast('222222' as time) div 0; -- NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -5944,7 +5944,7 @@ select cast('222222' as time) % 111.1; --22.0
 (1 row)
 
 select cast('111111' as time) % 0; --NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -5994,7 +5994,7 @@ select cast('222222' as time) mod 111.1; --22.0
 (1 row)
 
 select cast('111111' as time) mod 0; --NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -6040,49 +6040,49 @@ select cast('111111' as time) & cast('111110' as time); --111110
 select cast('111111' as time) & 111; --7
  ?column? 
 ----------
-        7
+ 7
 (1 row)
 
 select cast('222222' as time) & 111.1; --14
  ?column? 
 ----------
-       14
+ 14
 (1 row)
 
 select cast('111111' as time) & 0; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111 & cast('222220' as time); --73732
  ?column? 
 ----------
-    73732
+ 73732
 (1 row)
 
 select 111111.111 & cast('222220' as time); --73732
  ?column? 
 ----------
-    73732
+ 73732
 (1 row)
 
 select 0 & cast('222220' as time); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time) & 1.4; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time) & 1.5; --2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select cast('222222.444444' as time(5)) & 1.5;--2
@@ -6113,49 +6113,49 @@ select cast('111111' as time) | cast('111110' as time); --111111
 select cast('111111' as time) | 111; --111215
  ?column? 
 ----------
-   111215
+ 111215
 (1 row)
 
 select cast('222222' as time) | 111.1; --222319
  ?column? 
 ----------
-   222319
+ 222319
 (1 row)
 
 select cast('111111' as time) | 0; --111111
  ?column? 
 ----------
-   111111
+ 111111
 (1 row)
 
 select 111111 | cast('222220' as time); --259599
  ?column? 
 ----------
-   259599
+ 259599
 (1 row)
 
 select 111111.111 | cast('222220' as time); --259599
  ?column? 
 ----------
-   259599
+ 259599
 (1 row)
 
 select 0 | cast('222220' as time); --222220
  ?column? 
 ----------
-   222220
+ 222220
 (1 row)
 
 select cast('222222' as time) | 1.4; --222223
  ?column? 
 ----------
-   222223
+ 222223
 (1 row)
 
 select cast('222222' as time) | 1.5; --222222
  ?column? 
 ----------
-   222222
+ 222222
 (1 row)
 
 select cast('111111.77777' as time(3)) | cast('111110.4444' as time(2)); --111118
@@ -6182,49 +6182,49 @@ select cast('111111' as time) ^ cast('111110' as time); --1
 select cast('111111' as time) ^ 111; --111208
  ?column? 
 ----------
-   111208
+ 111208
 (1 row)
 
 select cast('222222' as time) ^ 111.1; --222305
  ?column? 
 ----------
-   222305
+ 222305
 (1 row)
 
 select cast('111111' as time) ^ 0; --111111
  ?column? 
 ----------
-   111111
+ 111111
 (1 row)
 
 select 111111 ^ cast('222220' as time); --185867
  ?column? 
 ----------
-   185867
+ 185867
 (1 row)
 
 select 111111.111 ^ cast('222220' as time); --185867
  ?column? 
 ----------
-   185867
+ 185867
 (1 row)
 
 select 0 ^ cast('222220' as time); --222220
  ?column? 
 ----------
-   222220
+ 222220
 (1 row)
 
 select cast('222222' as time) ^ 1.4; --222223
  ?column? 
 ----------
-   222223
+ 222223
 (1 row)
 
 select cast('222222' as time) ^ 1.5; --222220
  ?column? 
 ----------
-   222220
+ 222220
 (1 row)
 
 -- >>
@@ -6243,7 +6243,7 @@ select cast('111111' as time) >> 111; --0
 select cast('222222' as time) >> 111.1; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111' as time) >> 0; --111111
@@ -6255,31 +6255,31 @@ select cast('111111' as time) >> 0; --111111
 select 111111 >> cast('222220' as time); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111.111 >> cast('222220' as time); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 0 >> cast('222220' as time); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time) >> 1.4; --111111
  ?column? 
 ----------
-   111111
+ 111111
 (1 row)
 
 select cast('222222' as time) >> 1.5; --55555
  ?column? 
 ----------
-    55555
+ 55555
 (1 row)
 
 select cast('111111.7777' as time(3)) >> 2;--27778
@@ -6298,49 +6298,49 @@ select cast('111111' as time) << cast('111110' as time); --0
 select cast('111111' as time) << 111; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time) << 111.1; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111' as time) << 0; --111111
  ?column? 
 ----------
-   111111
+ 111111
 (1 row)
 
 select 111111 << cast('222220' as time); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111.111 << cast('222220' as time); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 0 << cast('222220' as time); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time) << 1.4; --444444
  ?column? 
 ----------
-   444444
+ 444444
 (1 row)
 
 select cast('222222' as time) << 1.5; --888888
  ?column? 
 ----------
-   888888
+ 888888
 (1 row)
 
 select cast('111111.7777' as time(3)) << 2;--444448
@@ -6396,49 +6396,49 @@ select cast('111111' as time) && cast('111110' as time); --1
 select cast('111111' as time) && 111; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('222222' as time) && 111.1; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111' as time) && 0; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111 && cast('222220' as time); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 111111.111 && cast('222220' as time); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 0 && cast('222220' as time); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time) && 1.4; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('222222' as time) && 1.5; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('222222.555555' as time(3)) && 1.5;--1

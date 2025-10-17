@@ -840,6 +840,25 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 		{
 			const char *op_name = strVal(linitial(opname));
 
+			/* Begin - ReqID:SRS-MYSQL-SET
+			 * if both sides of the operator are user defined variable,
+			 * determine the target type for conversion and store it.
+			 */
+			if (ltree != NULL && IsA(ltree, VarRef))
+			{
+				VarRef *lref = (VarRef *) ltree;
+
+				ltypeId = lref->rettype = TEXTOID;
+			}
+
+			if (rtree != NULL && IsA(rtree, VarRef))
+			{
+				VarRef *rref = (VarRef *) rtree;
+
+				rtypeId = rref->rettype = TEXTOID;
+			}
+			/* End - ReqID:SRS-MYSQL-SET */
+
 			if (type_is_enum(ltypeId) && type_is_enum(rtypeId))
 			{
 				save_origltypeId = ltypeId;
@@ -888,7 +907,7 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 			 * replace the comparison opname as needed when enable_blankspace_compare is off,
 			 * this ignore triled spaces in some querys,except(distinct,group by,set operation).
 			 */
-			if(!enable_blankspace_compare && (opkind == AEXPR_OP || opkind == AEXPR_IN || opkind == ROWCOMPARISONOP) )
+			if(!enable_blankspace_compare && (opkind == AEXPR_OP || opkind == AEXPR_IN || opkind == ROWCOMPARISONOP))
 			{
 				List *opname_rewrite = needReplaceOpname(opname, ltypeId, rtypeId);
 				if (opname_rewrite)
@@ -995,7 +1014,7 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 											   nargs,
 											   opform->oprresult,
 											   false);
-
+	
 	/* perform the necessary typecasting of arguments */
 	make_fn_arguments(pstate, args, actual_arg_types, declared_arg_types);
 
@@ -1019,28 +1038,6 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 	}
 
 	ReleaseSysCache(tup);
-
-	/* Begin - ReqID:SRS-MYSQL-SET
-	 * if both sides of the operator are user defined variable,
-	 * determine the target type for conversion and store it.
-	 */
-	if (ltree != NULL && nodeTag(ltree) == T_VarRef)
-	{
-		VarRef *lref;
-
-		lref = (VarRef *)ltree;
-		lref->rettype = exprType((Node *)linitial(result->args));
-		linitial(result->args) = lref;
-	}
-	if (rtree != NULL && nodeTag(rtree) == T_VarRef)
-	{
-		VarRef *rref;
-
-		rref = (VarRef *)rtree;
-		rref->rettype = exprType((Node *)llast(result->args));
-		llast(result->args) = rref;
-	}
-	/* End - ReqID:SRS-MYSQL-SET */
 
 	return (Expr *) result;
 }

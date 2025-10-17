@@ -4076,13 +4076,13 @@ SHOW CREATE TABLE part_column_drop;
 drop table part_column_drop;
 create table ts(a text, b numeric, c int, d numeric GENERATED ALWAYS AS (b * c) stored);
 show create table ts;
- Table |                              Create Table                               
--------+-------------------------------------------------------------------------
- ts    | CREATE TABLE `ts` (                                                    +
-       |     a text,                                                            +
-       |     b numeric,                                                         +
-       |     c integer,                                                         +
-       |     d numeric GENERATED ALWAYS AS (s) STORED DEFAULT (b * (c)::numeric)+
+ Table |                         Create Table                         
+-------+--------------------------------------------------------------
+ ts    | CREATE TABLE `ts` (                                         +
+       |     a text,                                                 +
+       |     b numeric,                                              +
+       |     c integer,                                              +
+       |     d numeric GENERATED ALWAYS AS (s) STORED DEFAULT (b * c)+
        | )
 (1 row)
 

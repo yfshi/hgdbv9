@@ -27,9 +27,15 @@
 #include "utils/array.h"
 #include "utils/float.h"
 #include "utils/fmgrprotos.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
 #include "utils/sortsupport.h"
 #include "utils/timestamp.h"
 
+/* Begin - bug#z5590 */
+mysql_float4_datatype_in_hook_type mysql_float4_datatype_in_hook = NULL;
+mysql_float8_datatype_in_hook_type mysql_float8_datatype_in_hook = NULL;
+/* End - bug#z5590 */
 
 /*
  * Configurable GUC parameter
@@ -165,6 +171,21 @@ float4in(PG_FUNCTION_ARGS)
 	char	   *orig_num;
 	float		val;
 	char	   *endptr;
+
+	/* Begin - bug#z5590 */
+	if (MYS_PARSER == compatible_db && mysql_float4_datatype_in_hook)
+	{
+		// Prevent the recursion from entering a cycle.
+		if (PG_NARGS() > 3)
+		{
+			bool	is_insert = CALL_IN_INSERT();
+
+			val = mysql_float4_datatype_in_hook(num, is_insert);
+
+			PG_RETURN_FLOAT4(val);
+		}
+	}
+	/* End - bug#z5590 */
 
 	/*
 	 * endptr points to the first character _after_ the sequence we recognized
@@ -339,6 +360,16 @@ Datum
 float8in(PG_FUNCTION_ARGS)
 {
 	char	   *num = PG_GETARG_CSTRING(0);
+
+	/* Begin - bug#z5590 */
+	if (MYS_PARSER == compatible_db && mysql_float8_datatype_in_hook)
+	{
+		bool	is_insert = CALL_IN_INSERT();
+		double 	val = mysql_float8_datatype_in_hook(num, is_insert);
+
+		PG_RETURN_FLOAT8(val);
+	}
+	/* End - bug#z5590 */
 
 	PG_RETURN_FLOAT8(float8in_internal(num, NULL, "double precision", num));
 }

@@ -898,12 +898,14 @@ drop table func_test;
 create table func_test(functionName varchar(256),result varchar(256));
 insert into func_test(functionName, result) values ('period_diff(''202101'', ''202102'')', period_diff('202101', '202102')); 
 insert into func_test(functionName, result) values ('period_diff(''202101.4'', ''202102.5'')', period_diff('202101.4', '202102.5')); 
+WARNING:  Truncated incorrect INTEGER value: '202101.4'
+WARNING:  Truncated incorrect INTEGER value: '202102.5'
 insert into func_test(functionName, result) values ('period_diff(202101.4, 202102.5)', period_diff(202101.4, 202102.5)); 
 select * from func_test;
             functionName             | result 
 -------------------------------------+--------
  period_diff('202101', '202102')     | -1
- period_diff('202101.4', '202102.5') | -2
+ period_diff('202101.4', '202102.5') | -1
  period_diff(202101.4, 202102.5)     | -2
 (3 rows)
 
@@ -948,11 +950,11 @@ insert into func_test(functionName, result) values ('sec_to_time(1000)', sec_to_
 insert into func_test(functionName, result) values ('sec_to_time(0)', sec_to_time(0));
 insert into func_test(functionName, result) values ('sec_to_time(-1000000)', sec_to_time(-1000000));
 select * from func_test;
-     functionName      |   result   
------------------------+------------
- sec_to_time('1000')   | 00:16:40
- sec_to_time('1000.5') | 00:16:40.5
- sec_to_time('-5231')  | -01:27:11
+     functionName      |      result      
+-----------------------+------------------
+ sec_to_time('1000')   | 00:16:40.000000
+ sec_to_time('1000.5') | 00:16:40.500000
+ sec_to_time('-5231')  | -01:27:11.000000
  sec_to_time(1000.5)   | 00:16:40.5
  sec_to_time(NULL)     | 
  sec_to_time(1000)     | 00:16:40
@@ -4776,3 +4778,72 @@ SELECT CONVERT_TZ(2.0230101120000E13, '+00:00', '+08:00');
 (1 row)
 
 /* End - BUG#Z5610 */
+select period_diff('!@#', '!@#');   /* bug#z5589 */
+WARNING:  Truncated incorrect INTEGER value: '!@#'
+WARNING:  Truncated incorrect INTEGER value: '!@#'
+ period_diff 
+-------------
+           0
+(1 row)
+
+/* Begin - bug#z5590 */
+select sec_to_time('!@#');      -- 00:00:00.000000
+WARNING:  Truncated incorrect DECIMAL value: '!@#'
+   sec_to_time   
+-----------------
+ 00:00:00.000000
+(1 row)
+
+select sec_to_time('123!@#');   -- 00:02:03.000000
+   sec_to_time   
+-----------------
+ 00:02:03.000000
+(1 row)
+
+/* End - bug#z5590 */
+/* Begin - bug#z5125 */
+select sec_to_time('2023-10-09 12:00:00');
+   sec_to_time   
+-----------------
+ 00:33:43.000000
+(1 row)
+
+select sec_to_time('2023-10-09 12:00:00 + 3600');
+   sec_to_time   
+-----------------
+ 00:33:43.000000
+(1 row)
+
+/* End - bug#z5125 */
+/* Begin - bug#z5802 */
+select convert(NULL, decimal(10,2)),convert('', decimal(10,2));
+WARNING:  Truncated incorrect DECIMAL value: ''
+LINE 3: select convert(NULL, decimal(10,2)),convert('', decimal(10,2...
+                                                    ^
+ numeric | numeric 
+---------+---------
+         |    0.00
+(1 row)
+
+select convert('abc', decimal(10,2));
+WARNING:  Truncated incorrect DECIMAL value: 'abc'
+LINE 1: select convert('abc', decimal(10,2));
+                       ^
+ numeric 
+---------
+    0.00
+(1 row)
+
+select convert(9999999999.9999999999, decimal(66,31));
+                  numeric                   
+--------------------------------------------
+ 9999999999.9999999999000000000000000000000
+(1 row)
+
+select convert(9999999999.9999999999, decimal(65,31));
+                  numeric                   
+--------------------------------------------
+ 9999999999.9999999999000000000000000000000
+(1 row)
+
+/* End - bug#z5802 */

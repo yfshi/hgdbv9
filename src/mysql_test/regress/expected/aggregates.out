@@ -293,53 +293,37 @@ select avg('NaN'::numeric) from generate_series(1,3);
 -- verify correct results for infinite inputs
 SELECT sum(x::float8), avg(x::float8), var_pop(x::float8)
 FROM (VALUES ('1'), ('infinity')) v(x);
-WARNING:  data truncated for type double precision: "infinity"
-WARNING:  data truncated for type double precision: "infinity"
- sum | avg | var_pop 
------+-----+---------
-   1 | 0.5 |    0.25
+   sum    |   avg    | var_pop 
+----------+----------+---------
+ Infinity | Infinity |     NaN
 (1 row)
 
 SELECT sum(x::float8), avg(x::float8), var_pop(x::float8)
 FROM (VALUES ('infinity'), ('1')) v(x);
-WARNING:  data truncated for type double precision: "infinity"
-WARNING:  data truncated for type double precision: "infinity"
- sum | avg | var_pop 
------+-----+---------
-   1 | 0.5 |    0.25
+   sum    |   avg    | var_pop 
+----------+----------+---------
+ Infinity | Infinity |     NaN
 (1 row)
 
 SELECT sum(x::float8), avg(x::float8), var_pop(x::float8)
 FROM (VALUES ('infinity'), ('infinity')) v(x);
-WARNING:  data truncated for type double precision: "infinity"
-WARNING:  data truncated for type double precision: "infinity"
-WARNING:  data truncated for type double precision: "infinity"
-WARNING:  data truncated for type double precision: "infinity"
- sum | avg | var_pop 
------+-----+---------
-   0 |   0 |       0
+   sum    |   avg    | var_pop 
+----------+----------+---------
+ Infinity | Infinity |     NaN
 (1 row)
 
 SELECT sum(x::float8), avg(x::float8), var_pop(x::float8)
 FROM (VALUES ('-infinity'), ('infinity')) v(x);
-WARNING:  data truncated for type double precision: "-infinity"
-WARNING:  data truncated for type double precision: "-infinity"
-WARNING:  data truncated for type double precision: "infinity"
-WARNING:  data truncated for type double precision: "infinity"
  sum | avg | var_pop 
 -----+-----+---------
-   0 |   0 |       0
+ NaN | NaN |     NaN
 (1 row)
 
 SELECT sum(x::float8), avg(x::float8), var_pop(x::float8)
 FROM (VALUES ('-infinity'), ('-infinity')) v(x);
-WARNING:  data truncated for type double precision: "-infinity"
-WARNING:  data truncated for type double precision: "-infinity"
-WARNING:  data truncated for type double precision: "-infinity"
-WARNING:  data truncated for type double precision: "-infinity"
- sum | avg | var_pop 
------+-----+---------
-   0 |   0 |       0
+    sum    |    avg    | var_pop 
+-----------+-----------+---------
+ -Infinity | -Infinity |     NaN
 (1 row)
 
 SELECT sum(x::numeric), avg(x::numeric), var_pop(x::numeric)

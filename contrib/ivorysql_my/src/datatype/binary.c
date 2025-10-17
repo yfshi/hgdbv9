@@ -23,15 +23,13 @@
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
 #include "parser/parse_oper.h"
-#include "strtod.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/elog.h"
 #include "utils/fmgrprotos.h"
 #include "utils/sortsupport.h"
 #include "utils/varlena.h"
-
-#define BINARY_DEFAULT_LEN  1
+#include "../include/ivorysql_my.h"
 
 static Datum 
 copy_binary(Datum source, int typmod, bool target_is_var)
@@ -61,10 +59,10 @@ copy_binary(Datum source, int typmod, bool target_is_var)
 }
 
 PG_FUNCTION_INFO_V1(binary);
-PG_FUNCTION_INFO_V1(binary2bool);
 PG_FUNCTION_INFO_V1(binary_in);
 PG_FUNCTION_INFO_V1(bytea_binary);
 PG_FUNCTION_INFO_V1(binary_sortsupport);
+PG_FUNCTION_INFO_V1(binary_bool);
 
 Datum 
 binary(PG_FUNCTION_ARGS)
@@ -108,12 +106,6 @@ binary(PG_FUNCTION_ARGS)
 	}
 
 	return copy_binary(PointerGetDatum(source), typmod, false);
-}
-
-Datum 
-binary2bool(PG_FUNCTION_ARGS)
-{
-	return varbinary2bool(fcinfo);
 }
 
 Datum 
@@ -369,4 +361,20 @@ binary_sortsupport(PG_FUNCTION_ARGS)
 	MemoryContextSwitchTo(oldcontext);
 
 	PG_RETURN_VOID();
+}
+
+Datum
+binary_bool(PG_FUNCTION_ARGS)
+{
+	text		*arg = PG_GETARG_TEXT_PP(0);
+	char		*src = (char *) text_to_cstring(arg);
+	int8		ret;
+	bool		is_insert = CALL_IN_INSERT();
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	ret = my_atoi_int8(src, is_insert);
+	
+	PG_RETURN_BOOL(ret != 0);
 }

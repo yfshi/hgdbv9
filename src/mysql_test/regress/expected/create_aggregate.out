@@ -224,9 +224,9 @@ SELECT aggfnoid, aggtransfn, aggcombinefn, aggtranstype::regtype,
        aggserialfn, aggdeserialfn, aggfinalmodify
 FROM pg_aggregate
 WHERE aggfnoid = 'myavg'::REGPROC;
- aggfnoid | aggtransfn  | aggcombinefn | aggtranstype | aggserialfn | aggdeserialfn | aggfinalmodify 
-----------+-------------+--------------+--------------+-------------+---------------+----------------
- myavg    | numeric_add | -            | numeric      | -           | -             | r
+ aggfnoid |       aggtransfn       | aggcombinefn | aggtranstype | aggserialfn | aggdeserialfn | aggfinalmodify 
+----------+------------------------+--------------+--------------+-------------+---------------+----------------
+ myavg    | pg_catalog.numeric_add | -            | numeric      | -           | -             | r
 (1 row)
 
 -- can't change return type:

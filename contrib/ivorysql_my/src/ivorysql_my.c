@@ -26,6 +26,7 @@
 #include "parser/parse_coerce.h"
 #include "mysql_parser/mys_case_sensitive.h"
 #include "mysql_parser/mys_set_hook.h"
+#include "utils/float.h"
 #include "utils/varlena.h"
 
 /* Only include it once in any C file */
@@ -57,6 +58,12 @@ static mysql_int4_datatype_in_hook_type pre_mysql_int4_datatype_in_hook = NULL;
 /* Begin - SRS-MYSQL-HEX-LITERAL */
 static mysql_int8_datatype_in_hook_type pre_mysql_int8_datatype_in_hook = NULL;
 /* End - SRS-MYSQL-HEX-LITERAL */
+
+/* Begin - bug#z5590 */
+static mysql_float4_datatype_in_hook_type  pre_mysql_float4_datatype_in_hook = NULL;
+static mysql_float8_datatype_in_hook_type  pre_mysql_float8_datatype_in_hook = NULL;
+static mysql_numeric_datatype_in_hook_type pre_mysql_numeric_datatype_in_hook = NULL;
+/* End - bug#z5590 */
 
 /* Begin - BUG#Z00004315/4316 */
 Mysql_check_for_column_name_collision_hook_type pre_mysql_check_for_column_name_collision = NULL;
@@ -135,6 +142,17 @@ _PG_init(void)
 	pre_mysql_int8_datatype_in_hook = mysql_int8_datatype_in_hook;
 	mysql_int8_datatype_in_hook = my_atoi_int64;
 	/* End - SRS-MYSQL-HEX-LITERAL */
+	
+	/* Begin - bug#z5590 */
+	pre_mysql_float4_datatype_in_hook = mysql_float4_datatype_in_hook;
+	mysql_float4_datatype_in_hook = my_atof;
+
+	pre_mysql_float8_datatype_in_hook = mysql_float8_datatype_in_hook;
+	mysql_float8_datatype_in_hook = my_atod;
+
+	pre_mysql_numeric_datatype_in_hook = mysql_numeric_datatype_in_hook;
+	mysql_numeric_datatype_in_hook = my_aton;
+	/* End - bug#z5590 */
 
 	pre_mysql_check_for_column_name_collision = mysql_check_for_column_name_collision;
 
@@ -195,6 +213,12 @@ _PG_fini(void)
 	/* Begin - SRS-MYSQL-HEX-LITERAL */
 	mysql_int8_datatype_in_hook = pre_mysql_int8_datatype_in_hook;
 	/* End - SRS-MYSQL-HEX-LITERAL */
+
+	/* Begin - bug#z5590 */
+	mysql_float4_datatype_in_hook = pre_mysql_float4_datatype_in_hook;
+	mysql_float8_datatype_in_hook = pre_mysql_float8_datatype_in_hook;
+	mysql_numeric_datatype_in_hook = pre_mysql_numeric_datatype_in_hook;
+	/* End - bug#z5590 */
 
 	/* Begin - BUG#Z00004315/4316 */
 	mysql_check_for_column_name_collision = pre_mysql_check_for_column_name_collision;

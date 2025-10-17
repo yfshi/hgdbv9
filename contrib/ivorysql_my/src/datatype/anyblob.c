@@ -120,25 +120,21 @@ anyblob_in(char *inputText, int64 max_length, const char *typname)
 
 PG_FUNCTION_INFO_V1(myblob);
 PG_FUNCTION_INFO_V1(myblob2);
-PG_FUNCTION_INFO_V1(myblob2bool);
 PG_FUNCTION_INFO_V1(myblob_in);
 PG_FUNCTION_INFO_V1(myblob_typmodin);
 PG_FUNCTION_INFO_V1(myblob_sortsupport);
 PG_FUNCTION_INFO_V1(tinyblob);
 PG_FUNCTION_INFO_V1(tinyblob2);
-PG_FUNCTION_INFO_V1(tinyblob2bool);
 PG_FUNCTION_INFO_V1(tinyblob_in);
 PG_FUNCTION_INFO_V1(tinyblob_typmodin);
 PG_FUNCTION_INFO_V1(tinyblob_sortsupport);
 PG_FUNCTION_INFO_V1(mediumblob);
 PG_FUNCTION_INFO_V1(mediumblob2);
-PG_FUNCTION_INFO_V1(mediumblob2bool);
 PG_FUNCTION_INFO_V1(mediumblob_in);
 PG_FUNCTION_INFO_V1(mediumblob_typmodin);
 PG_FUNCTION_INFO_V1(mediumblob_sortsupport);
 PG_FUNCTION_INFO_V1(longblob);
 PG_FUNCTION_INFO_V1(longblob2);
-PG_FUNCTION_INFO_V1(longblob2bool);
 PG_FUNCTION_INFO_V1(longblob_in);
 PG_FUNCTION_INFO_V1(longblob_typmodin);
 PG_FUNCTION_INFO_V1(longblob_sortsupport);
@@ -178,12 +174,6 @@ Datum
 myblob2(PG_FUNCTION_ARGS)
 {
 	return myblob_internel(fcinfo, true);
-}
-
-Datum
-myblob2bool(PG_FUNCTION_ARGS)
-{
-	return varbinary2bool(fcinfo);
 }
 
 // reference from varlena.c function byteain()
@@ -243,12 +233,6 @@ tinyblob2(PG_FUNCTION_ARGS)
 }
 
 Datum
-tinyblob2bool(PG_FUNCTION_ARGS)
-{
-	return varbinary2bool(fcinfo);
-}
-
-Datum
 tinyblob_in(PG_FUNCTION_ARGS)
 {
 	char   *inputText = PG_GETARG_CSTRING(0);
@@ -303,12 +287,6 @@ mediumblob2(PG_FUNCTION_ARGS)
 }
 
 Datum
-mediumblob2bool(PG_FUNCTION_ARGS)
-{
-	return varbinary2bool(fcinfo);
-}
-
-Datum
 mediumblob_in(PG_FUNCTION_ARGS)
 {
 	char   *inputText = PG_GETARG_CSTRING(0);
@@ -360,12 +338,6 @@ Datum
 longblob2(PG_FUNCTION_ARGS)
 {
 	return longblob_internel(fcinfo, true);
-}
-
-Datum
-longblob2bool(PG_FUNCTION_ARGS)
-{
-	return varbinary2bool(fcinfo);
 }
 
 Datum

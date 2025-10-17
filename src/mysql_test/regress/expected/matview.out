@@ -147,8 +147,8 @@ ALTER MATERIALIZED VIEW mvtest_tvm SET SCHEMA mvtest_mvschema;
 ----------+---------+-----------+----------+---------+---------+--------------+-------------
  grandtot | numeric |           |          |         | main    |              | 
 Indexes:
-    "mvtest_tvmm_expr" UNIQUE, btree ((grandtot > 0::numeric))
-    "mvtest_tvmm_pred" UNIQUE, btree (grandtot) WHERE grandtot < 0::numeric
+    "mvtest_tvmm_expr" UNIQUE, btree ((grandtot > 0))
+    "mvtest_tvmm_pred" UNIQUE, btree (grandtot) WHERE grandtot < 0
 View definition:
  SELECT sum(mvtest_tvm.totamt) AS grandtot
    FROM mvtest_mvschema.mvtest_tvm;

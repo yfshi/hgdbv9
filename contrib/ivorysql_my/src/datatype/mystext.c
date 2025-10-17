@@ -16,13 +16,15 @@
 
 #include "postgres.h"
 #include "utils/builtins.h"
+#include "utils/elog.h"
 #include "utils/float.h"
 #include "fmgr.h"
 #include "../include/ivorysql_my.h"
 
+#include <float.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
 
 PG_FUNCTION_INFO_V1(mystextfloat8_pl);
 PG_FUNCTION_INFO_V1(mystext_pl);
@@ -35,7 +37,6 @@ PG_FUNCTION_INFO_V1(mystext_xor);
 PG_FUNCTION_INFO_V1(mystext_logic_not);
 PG_FUNCTION_INFO_V1(mystext_logic_and);
 PG_FUNCTION_INFO_V1(text_bool);
-PG_FUNCTION_INFO_V1(text_float8);
 PG_FUNCTION_INFO_V1(varlena_int2);
 PG_FUNCTION_INFO_V1(varlena_int4);
 PG_FUNCTION_INFO_V1(varlena_int8);
@@ -44,6 +45,9 @@ PG_FUNCTION_INFO_V1(varlena_uint2);
 PG_FUNCTION_INFO_V1(varlena_uint4);
 PG_FUNCTION_INFO_V1(varlena_uint8);
 PG_FUNCTION_INFO_V1(mys_isnull);
+PG_FUNCTION_INFO_V1(varlena_float4);
+PG_FUNCTION_INFO_V1(varlena_float8);
+PG_FUNCTION_INFO_V1(varlena_numeric);
 
 /*
  * extract_leading_number_str:
@@ -541,31 +545,6 @@ text_bool(PG_FUNCTION_ARGS)
 }
 
 Datum
-text_float8(PG_FUNCTION_ARGS)
-{
-	char	   num[64];
-	text	  *arg;
-	char	  *arg_str;
-
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
-	arg = PG_GETARG_TEXT_PP(0);
-
-	arg_str = text_to_cstring(arg);
-	if (strcmp(arg_str, "infinity") == 0 || strcmp(arg_str, "-infinity") == 0)
-	{
-		ereport(WARNING,
-				errmsg("data truncated for type double precision: \"%s\"",
-						arg_str));
-	}
-
-	extract_leading_number_str(arg_str, num, sizeof(num));
-
-	PG_RETURN_DATUM(DirectFunctionCall1(float8in, CStringGetDatum(num)));
-}
-
-Datum
 mys_isnull(PG_FUNCTION_ARGS)
 {
 	if (PG_ARGISNULL(0))
@@ -685,3 +664,53 @@ varlena_uint8(PG_FUNCTION_ARGS)
 	
 	PG_RETURN_UINT64(ret);
 }
+
+/* Begin - bug#z5590 */
+Datum
+varlena_float4(PG_FUNCTION_ARGS)
+{
+	text		*arg = PG_GETARG_TEXT_PP(0);
+	char		*src = (char *) text_to_cstring(arg);
+	float		ret;
+	bool		is_insert = CALL_IN_INSERT();
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	ret = my_atof(src, is_insert);
+	
+	PG_RETURN_FLOAT4(ret);
+}
+
+Datum
+varlena_float8(PG_FUNCTION_ARGS)
+{
+	text		*arg = PG_GETARG_TEXT_PP(0);
+	char		*src = (char *) text_to_cstring(arg);
+	double		ret;
+	bool		is_insert = CALL_IN_INSERT();
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	ret = my_atod(src, is_insert);
+	
+	PG_RETURN_FLOAT8(ret);
+}
+
+Datum
+varlena_numeric(PG_FUNCTION_ARGS)
+{
+	Numeric		ret;
+	text		*arg = PG_GETARG_TEXT_PP(0);
+	char		*src = (char *) text_to_cstring(arg);
+	bool		is_insert = CALL_IN_INSERT();
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	ret = my_aton(src, PG_GETARG_INT32(1), is_insert);
+	
+	PG_RETURN_NUMERIC(ret);
+}
+/* End - bug#z5590 */

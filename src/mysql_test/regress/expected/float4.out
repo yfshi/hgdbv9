@@ -9,19 +9,19 @@ INSERT INTO FLOAT4_TBL(f1) VALUES ('1.2345678901234e+20');
 INSERT INTO FLOAT4_TBL(f1) VALUES ('1.2345678901234e-20');
 -- test for over and under flow
 INSERT INTO FLOAT4_TBL(f1) VALUES ('10e70');
-ERROR:  "10e70" is out of range for type real
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('10e70');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('-10e70');
-ERROR:  "-10e70" is out of range for type real
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('-10e70');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('10e-70');
-ERROR:  "10e-70" is out of range for type real
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('10e-70');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('-10e-70');
-ERROR:  "-10e-70" is out of range for type real
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('-10e-70');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('10e70'::float8);
@@ -33,52 +33,52 @@ ERROR:  value out of range: underflow
 INSERT INTO FLOAT4_TBL(f1) VALUES ('-10e-70'::float8);
 ERROR:  value out of range: underflow
 INSERT INTO FLOAT4_TBL(f1) VALUES ('10e400');
-ERROR:  "10e400" is out of range for type real
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('10e400');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('-10e400');
-ERROR:  "-10e400" is out of range for type real
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('-10e400');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('10e-400');
-ERROR:  "10e-400" is out of range for type real
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('10e-400');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('-10e-400');
-ERROR:  "-10e-400" is out of range for type real
+ERROR:  Out of range value for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('-10e-400');
                                            ^
 -- bad input
 INSERT INTO FLOAT4_TBL(f1) VALUES ('');
-ERROR:  invalid input syntax for type real: ""
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('       ');
-ERROR:  invalid input syntax for type real: "       "
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('       ');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('xyz');
-ERROR:  invalid input syntax for type real: "xyz"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('xyz');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('5.0.0');
-ERROR:  invalid input syntax for type real: "5.0.0"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('5.0.0');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('5 . 0');
-ERROR:  invalid input syntax for type real: "5 . 0"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('5 . 0');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('5.   0');
-ERROR:  invalid input syntax for type real: "5.   0"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('5.   0');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('     - 3.0');
-ERROR:  invalid input syntax for type real: "     - 3.0"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('     - 3.0');
                                            ^
 INSERT INTO FLOAT4_TBL(f1) VALUES ('123            5');
-ERROR:  invalid input syntax for type real: "123            5"
+ERROR:  Data truncated for column.
 LINE 1: INSERT INTO FLOAT4_TBL(f1) VALUES ('123            5');
                                            ^
 -- special inputs
@@ -114,17 +114,32 @@ SELECT '          -INFINiTY   '::float4;
 
 -- bad special inputs
 SELECT 'N A N'::float4;
-ERROR:  invalid input syntax for type real: "N A N"
+WARNING:  Truncated incorrect FLOAT value: 'N A N'
 LINE 1: SELECT 'N A N'::float4;
                ^
+ float4 
+--------
+      0
+(1 row)
+
 SELECT 'NaN x'::float4;
-ERROR:  invalid input syntax for type real: "NaN x"
+WARNING:  Truncated incorrect FLOAT value: 'NaN x'
 LINE 1: SELECT 'NaN x'::float4;
                ^
+ float4 
+--------
+      0
+(1 row)
+
 SELECT ' INFINITY    x'::float4;
-ERROR:  invalid input syntax for type real: " INFINITY    x"
+WARNING:  Truncated incorrect FLOAT value: ' INFINITY    x'
 LINE 1: SELECT ' INFINITY    x'::float4;
                ^
+ float4 
+--------
+      0
+(1 row)
+
 SELECT 'Infinity'::float4 + 100.0;
  ?column? 
 ----------

@@ -304,20 +304,7 @@ exprType(const Node *expr)
 		/* End - ReqID:SRS-SQL-HierarchicalQueries */
 		/* Begin - ReqID:SRS-MYSQL-SET */
 		case T_VarRef:
-			{
-				VarRef *varref = (VarRef *) expr;
-
-				if (varref->value != NULL)
-				{
-					type = varref->value->consttype;
-				}
-				else
-				{
-					Const *tmpconst = (Const *)uservariable_hash_search_hook(NULL, varref);
-					varref->value = tmpconst;
-					type = tmpconst->consttype;
-				}
-			}
+			type = ((VarRef *) expr)->rettype;
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
 		default:

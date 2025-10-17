@@ -20,7 +20,7 @@
 # reverse direction are assignment-only.
 { castsource => 'int8', casttarget => 'int2', castfunc => 'int2(int8)',
   castcontext => 'a', castmethod => 'f' },
-{ castsource => 'int8', casttarget => 'int4', castfunc => 'int4(int8)',
+{ castsource => 'int8', casttarget => 'int4', castfunc => 'int4(int8,int4,bool,int8)',
   castcontext => 'a', castmethod => 'f' },
 { castsource => 'int8', casttarget => 'float4', castfunc => 'float4(int8)',
   castcontext => 'i', castmethod => 'f' },

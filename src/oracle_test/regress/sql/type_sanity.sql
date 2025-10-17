@@ -108,7 +108,7 @@ WHERE p1.typinput = p2.oid AND NOT
      (p2.pronargs = 4 AND p2.proargtypes[0] = 'cstring'::regtype AND
       p2.proargtypes[1] = 'oid'::regtype AND
       p2.proargtypes[2] = 'int4'::regtype AND
-      p2.proargtypes[3] = 'int4'::regtype));
+      p2.proargtypes[3] = 'int8'::regtype));
 
 -- Check for type of the variadic array parameter's elements.
 -- provariadic should be ANYOID if the type of the last element is ANYOID,
@@ -209,7 +209,11 @@ WHERE p1.typreceive = p2.oid AND NOT
       p2.proargtypes[1] = 'oid'::regtype) OR
      (p2.pronargs = 3 AND p2.proargtypes[0] = 'internal'::regtype AND
       p2.proargtypes[1] = 'oid'::regtype AND
-      p2.proargtypes[2] = 'int4'::regtype));
+      p2.proargtypes[2] = 'int4'::regtype) OR
+     (p2.pronargs = 4 AND p2.proargtypes[0] = 'internal'::regtype AND
+      p2.proargtypes[1] = 'oid'::regtype AND
+      p2.proargtypes[2] = 'int4'::regtype AND
+      p2.proargtypes[3] = 'int8'::regtype));
 
 -- As of 7.4, this check finds refcursor, which is borrowing
 -- other types' I/O routines

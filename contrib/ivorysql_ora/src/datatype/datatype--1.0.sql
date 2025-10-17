@@ -12075,7 +12075,7 @@ AS IMPLICIT;
 
 /* begin - charchar */
 /* Basic I/O functions for char(byte) */
-CREATE FUNCTION sys.oracharcharin_2(cstring,oid,integer,integer)
+CREATE FUNCTION sys.oracharcharin_2(cstring,oid,integer,bigint)
 RETURNS sys.oracharchar_2
 AS 'MODULE_PATHNAME','oracharcharin_2'
 LANGUAGE C
@@ -12103,7 +12103,7 @@ WHERE oid = 9052;
 
 /* begin - charbyte */
 /* Basic I/O functions for char(byte) */
-CREATE FUNCTION sys.oracharbytein_2(cstring,oid,integer,integer)
+CREATE FUNCTION sys.oracharbytein_2(cstring,oid,integer,bigint)
 RETURNS sys.oracharbyte_2
 AS 'MODULE_PATHNAME','oracharbytein_2'
 LANGUAGE C
@@ -12130,7 +12130,7 @@ WHERE oid = 9054;
 /* end - charbyte */
 
 /* begin - varcharchar */
-CREATE FUNCTION sys.oravarcharcharin_2(cstring,oid,integer,integer)
+CREATE FUNCTION sys.oravarcharcharin_2(cstring,oid,integer,bigint)
 RETURNS sys.oravarcharchar_2
 AS 'MODULE_PATHNAME','oravarcharcharin_2'
 LANGUAGE C
@@ -12156,7 +12156,7 @@ WHERE oid = 9056;
 /* end - varcharchar */
 
 /* begin - varcharbyte */
-CREATE FUNCTION sys.oravarcharbytein_2(cstring,oid,integer,integer)
+CREATE FUNCTION sys.oravarcharbytein_2(cstring,oid,integer,bigint)
 RETURNS sys.oravarcharbyte_2
 AS 'MODULE_PATHNAME','oravarcharbytein_2'
 LANGUAGE C

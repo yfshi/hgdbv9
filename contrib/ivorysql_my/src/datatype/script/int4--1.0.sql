@@ -22,6 +22,20 @@ CREATE OPERATOR ivymy.& (
 	commutator = &
 );
 
+CREATE FUNCTION ivymy.int4_and(int2, int4)
+RETURNS ivymy.uint8
+AS 'select $1::int & $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.& (
+	procedure = ivymy.int4_and,
+	leftarg = int2,
+	rightarg = int4
+);
+
 --  "|"
 CREATE FUNCTION ivymy.myint4_bit_or(pg_catalog.int4, pg_catalog.int4)
 RETURNS ivymy.uint8
@@ -150,6 +164,37 @@ CREATE OPERATOR ivymy.% (
 	commutator = %
 );
 
+CREATE FUNCTION ivymy.myint4_mod(int2, int4)
+RETURNS pg_catalog.int4
+AS 'select $1::int4 % $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.% (
+	procedure = ivymy.myint4_mod,
+	leftarg = pg_catalog.int2,
+	rightarg = pg_catalog.int4,
+	commutator = %
+);
+
+CREATE FUNCTION ivymy.myint4_mod(int4, int2)
+RETURNS pg_catalog.int4
+AS 'select $1 % $2::int4'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.% (
+	procedure = ivymy.myint4_mod,
+	leftarg = pg_catalog.int4,
+	rightarg = pg_catalog.int2,
+	commutator = %
+);
+
+
 --  "^"
 CREATE FUNCTION ivymy.myint4_bit_xor(pg_catalog.int4, pg_catalog.int4)
 RETURNS ivymy.uint8
@@ -165,9 +210,6 @@ CREATE OPERATOR ivymy.^ (
 	rightarg = pg_catalog.int4,
 	commutator = ^
 );
-
---  "||"
--- cast to bool
 
 --  "&&"
 CREATE FUNCTION ivymy.myint4_and(pg_catalog.int4, pg_catalog.int4)
@@ -287,13 +329,13 @@ CREATE OPERATOR ivymy.- (
 	rightarg = pg_catalog.int4
 );
 
--- CREATE CAST
-
 -- to bpchar
 CREATE CAST (pg_catalog.int4 AS pg_catalog.bpchar) 
 WITH INOUT
 AS ASSIGNMENT;
+
 -- to varchar
 CREATE CAST (pg_catalog.int4 AS pg_catalog.varchar) 
 WITH INOUT
 AS ASSIGNMENT;
+

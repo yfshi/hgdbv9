@@ -305,9 +305,19 @@ WARNING:  Division by 0
 (1 row)
 
 select 1::int8/0;
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 select 1/0::int8;
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 select 1::int2/0;
 WARNING:  Division by 0
  ?column? 
@@ -323,9 +333,19 @@ WARNING:  Division by 0
 (1 row)
 
 select 1::numeric/0;
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 select 1/0::numeric;
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 select 1::float8/0;
 WARNING:  Division by 0
  ?column? 

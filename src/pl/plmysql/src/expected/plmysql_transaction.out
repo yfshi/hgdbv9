@@ -235,15 +235,16 @@ BEGIN
     END LOOP;
 END;
 $$;
-ERROR:  division by zero
-CONTEXT:  SQL statement "INSERT INTO test1 (a) VALUES (12/(r.x-2))"
-PL/mySQL function inline_code_block line 6 at SQL statement
+WARNING:  Division by 0
 SELECT * FROM test1;
   a  | b 
 -----+---
   -6 | 
  -12 | 
-(2 rows)
+     | 
+  12 | 
+   6 | 
+(5 rows)
 
 SELECT * FROM pg_cursors;
  name | statement | is_holdable | is_binary | is_scrollable | creation_time 
@@ -559,13 +560,12 @@ AS $$
 $$;
 TRUNCATE test1;
 CALL cursor_fail_during_commit();
-ERROR:  division by zero
-CONTEXT:  PL/mySQL function cursor_fail_during_commit() line 6 at COMMIT
+WARNING:  Division by 0
 -- note that error occurs during first COMMIT, hence nothing is in test1
 SELECT count(*) FROM test1;
  count 
 -------
-     0
+  1000
 (1 row)
 
 CREATE PROCEDURE cursor_fail_during_rollback()
@@ -581,8 +581,7 @@ AS $$
 $$;
 TRUNCATE test1;
 CALL cursor_fail_during_rollback();
-ERROR:  division by zero
-CONTEXT:  PL/mySQL function cursor_fail_during_rollback() line 6 at ROLLBACK
+WARNING:  Division by 0
 SELECT count(*) FROM test1;
  count 
 -------

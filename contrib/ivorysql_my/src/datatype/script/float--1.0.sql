@@ -389,3 +389,17 @@ CREATE AGGREGATE ivymy.sum(float4) (
 	STYPE = float8
 );
 /* End - BUG#Z5204 */
+
+/* Begin - bug#z5590 */
+CREATE FUNCTION ivymy.text_float4(text, integer, boolean, int8)
+RETURNS float4 
+AS 'MODULE_PATHNAME','varlena_float4'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (text as float4)
+WITH FUNCTION ivymy.text_float4(text, integer, boolean, int8)
+AS ASSIGNMENT;
+/* End - bug#z5590 */

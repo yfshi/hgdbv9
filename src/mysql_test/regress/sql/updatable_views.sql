@@ -1214,6 +1214,7 @@ DROP TABLE tx3;
 -- Test handling of vars from correlated subqueries in quals from outer
 -- security barrier views, per bug #13988
 --
+drop table if exists t1,t2;
 CREATE TABLE t1 (a int, b text, c int);
 INSERT INTO t1 VALUES (1, 'one', 10);
 

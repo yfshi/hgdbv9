@@ -1203,6 +1203,7 @@ sub lookup_oids
 				and $bki_values->{typname} ne 'tinytext'
 				and $bki_values->{typname} ne 'mediumtext'
 				and $bki_values->{typname} ne 'longtext'
+				and $bki_values->{typname} ne 'ivy_hex'
 				# End - MySQL DataType
 				)
 				{

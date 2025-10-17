@@ -986,9 +986,15 @@ LINE 1: SELECT a.f1 FROM (SELECT 'test' AS f1 FROM varchar_tbl) a
                                                    ^
 -- This should fail, but it should produce an error cursor
 SELECT '3.4'::numeric UNION SELECT 'foo';
-ERROR:  invalid input syntax for type numeric: "foo"
+WARNING:  Truncated incorrect DECIMAL value: 'foo'
 LINE 1: SELECT '3.4'::numeric UNION SELECT 'foo';
                                            ^
+ numeric 
+---------
+       0
+     3.4
+(2 rows)
+
 --
 -- Test that expression-index constraints can be pushed down through
 -- UNION or UNION ALL

@@ -978,3 +978,18 @@ WARNING:  Truncated incorrect INTEGER value: '-a'
  0
 (1 row)
 
+select cast('!@#' as decimal(6, 3));    -- 1 warning
+WARNING:  Truncated incorrect DECIMAL value: '!@#'
+LINE 1: select cast('!@#' as decimal(6, 3));
+                    ^
+ numeric 
+---------
+   0.000
+(1 row)
+
+select cast('123!@#' as decimal(6, 3)); -- no warning
+ numeric 
+---------
+ 123.000
+(1 row)
+

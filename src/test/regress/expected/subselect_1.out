@@ -827,6 +827,8 @@ select '1'::text in (select '1'::name union all select '1'::name);
 --
 -- this fails by default, of course
 select * from int8_tbl where q1 in (select c1 from inner_text);
+WARNING:  Truncated incorrect DOUBLE value: 'a'
+WARNING:  Truncated incorrect DOUBLE value: 'a'
  q1  |        q2        
 -----+------------------
  123 | 4567890123456789
