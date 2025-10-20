@@ -861,17 +861,17 @@ create type alterenum3 as enum('ddddd','sssss');
 CREATE TABLE test_alter_col (age INT, myjob alterenum1);
 insert into test_alter_col values(1, 'a');
 alter table test_alter_col alter myjob type alterenum2;
-SELECT typname FROM pg_type WHERE typname like '%alterenum%';
+SELECT typname FROM pg_type WHERE typname like '%alterenum%' order by 1;
 alter table test_alter_col alter myjob type text;
-SELECT typname FROM pg_type WHERE typname like '%alterenum%';
+SELECT typname FROM pg_type WHERE typname like '%alterenum%' order by 1;
 alter table test_alter_col drop myjob;
-SELECT typname FROM pg_type WHERE typname like '%alterenum%';
+SELECT typname FROM pg_type WHERE typname like '%alterenum%' order by 1;
 alter table test_alter_col add c3 alterenum3;
-SELECT typname FROM pg_type WHERE typname like '%alterenum%';
+SELECT typname FROM pg_type WHERE typname like '%alterenum%' order by 1;
 select * from test_alter_col;
 \d test_alter_col
 drop table test_alter_col;
-SELECT typname FROM pg_type WHERE typname like '%alterenum%';
+SELECT typname FROM pg_type WHERE typname like '%alterenum%' order by 1;
 
 drop type alterenum1;
 drop type alterenum2;

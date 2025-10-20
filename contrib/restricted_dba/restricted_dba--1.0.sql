@@ -30,3 +30,5 @@ CREATE FUNCTION reset_all_se_param()
 RETURNS text
 AS 'MODULE_PATHNAME', 'reset_all_se_param'
 LANGUAGE C STRICT;
+
+GRANT USAGE ON SCHEMA hg_secsch TO public;

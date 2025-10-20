@@ -42,4 +42,9 @@
 # End - ReqID:SRS-MYSQL-SET
 /*END MySQL Compatibility Metadatas*/
 #End - ReqID:SRS-MISC-MYSQL-FRAME
+# Begin - ReqID:SRS-SECURITY-POWERS
+{ oid => '9802', oid_symbol => 'SECURITY_SCHEMA_NAMESPACE',
+  descr => 'security function schema',
+  nspname => 'hg_secsch', nspacl => '_null_' },
+# End - ReqID:SRS-SECURITY-POWERS
 ]
