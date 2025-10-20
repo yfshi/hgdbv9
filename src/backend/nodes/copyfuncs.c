@@ -5465,6 +5465,46 @@ _copyAccessorItem(const AccessorItem *from)
 
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin - BUG#Z5924 */
+static CreateSynonymStmt *
+_copyCreateSynonymStmt(const CreateSynonymStmt *from)
+{
+	CreateSynonymStmt	*newnode = makeNode(CreateSynonymStmt);
+
+	COPY_SCALAR_FIELD(replace);
+	COPY_SCALAR_FIELD(synispub);
+	COPY_SCALAR_FIELD(editable);
+	COPY_NODE_FIELD(synonym);
+	COPY_NODE_FIELD(object);
+	COPY_STRING_FIELD(dblinkname);
+
+	return newnode;
+}
+
+static AlterSynonymStmt *
+_copyAlterSynoymStmt(const AlterSynonymStmt *from)
+{
+	AlterSynonymStmt	*newnode = makeNode(AlterSynonymStmt);
+
+	COPY_NODE_FIELD(synname);
+	COPY_SCALAR_FIELD(editable);
+	COPY_SCALAR_FIELD(compile_flag);
+	COPY_SCALAR_FIELD(ispub);
+
+	return newnode;
+}
+
+static DropSynStmt *
+_copyDropSynStmt(const DropSynStmt *from)
+{
+	DropSynStmt	*newnode = makeNode(DropSynStmt);
+
+	COPY_NODE_FIELD(synname);
+	COPY_SCALAR_FIELD(ispub);
+
+	return newnode;
+}
+/* End - BUG#Z5924 */
 
 /* ****************************************************************
  *					extensible.h copy functions
@@ -6187,6 +6227,17 @@ copyObjectImpl(const void *from)
 			retval = _copyAccessorItem(from);
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - BUG#Z5924 */
+		case T_CreateSynonymStmt:
+			retval = _copyCreateSynonymStmt(from);
+			break;
+		case T_AlterSynonymStmt:
+			retval = _copyAlterSynoymStmt(from);
+			break;
+		case T_DropSynStmt:
+			retval = _copyDropSynStmt(from);
+			break;
+		/* End - BUG#Z5924 */
 		case T_DoStmt:
 			retval = _copyDoStmt(from);
 			break;
