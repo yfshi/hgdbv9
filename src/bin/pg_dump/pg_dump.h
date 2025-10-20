@@ -491,6 +491,9 @@ typedef struct _triggerInfo
 	bool		tgdeferrable;
 	bool		tginitdeferred;
 	char	   *tgdef;
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	SimpleStringList	*tgfollows;	/* list of char * (trigger name) */
+	/* End - ReqID:SRS-SQL-TRIGGER */
 } TriggerInfo;
 
 typedef struct _evttriggerInfo

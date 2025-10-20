@@ -931,6 +931,7 @@ create or replace function func_part_create() returns trigger
 /
 create trigger trig_part_create before insert on tab_part_create
   for each statement execute procedure func_part_create();
+/
 insert into tab_part_create values (1);
 drop table tab_part_create;
 drop function func_part_create();

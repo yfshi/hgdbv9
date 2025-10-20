@@ -41,12 +41,15 @@ return None'
 
 CREATE TRIGGER users_insert_trig BEFORE INSERT ON users FOR EACH ROW
 	EXECUTE PROCEDURE users_insert ('willem');
+/
 
 CREATE TRIGGER users_update_trig BEFORE UPDATE ON users FOR EACH ROW
 	EXECUTE PROCEDURE users_update ('willem');
+/
 
 CREATE TRIGGER users_delete_trig BEFORE DELETE ON users FOR EACH ROW
 	EXECUTE PROCEDURE users_delete ('willem');
+/
 
 
 -- quick peek at the table
@@ -100,14 +103,17 @@ $$;
 CREATE TRIGGER show_trigger_data_trig_before
 BEFORE INSERT OR UPDATE OR DELETE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 CREATE TRIGGER show_trigger_data_trig_after
 AFTER INSERT OR UPDATE OR DELETE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 CREATE TRIGGER show_trigger_data_trig_stmt
 BEFORE INSERT OR UPDATE OR DELETE OR TRUNCATE ON trigger_test
 FOR EACH STATEMENT EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 insert into trigger_test values(1,'insert');
 update trigger_test set v = 'update' where i = 1;
@@ -121,10 +127,12 @@ DROP TRIGGER show_trigger_data_trig_after on trigger_test;
 CREATE TRIGGER show_trigger_data_trig_before
 BEFORE INSERT OR UPDATE OR DELETE ON trigger_test_generated
 FOR EACH ROW EXECUTE PROCEDURE trigger_data();
+/
 
 CREATE TRIGGER show_trigger_data_trig_after
 AFTER INSERT OR UPDATE OR DELETE ON trigger_test_generated
 FOR EACH ROW EXECUTE PROCEDURE trigger_data();
+/
 
 insert into trigger_test_generated (i) values (1);
 update trigger_test_generated set i = 11 where i = 1;
@@ -139,6 +147,7 @@ CREATE VIEW trigger_test_view AS SELECT * FROM trigger_test;
 CREATE TRIGGER show_trigger_data_trig
 INSTEAD OF INSERT OR UPDATE OR DELETE ON trigger_test_view
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(24,'skidoo view');
+/
 
 insert into trigger_test_view values(2,'insert');
 update trigger_test_view set v = 'update' where i = 1;
@@ -167,6 +176,7 @@ $$ LANGUAGE plpythonu;
 CREATE TRIGGER stupid_trigger1
 BEFORE INSERT ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE stupid1();
+/
 
 INSERT INTO trigger_test VALUES (1, 'one');
 
@@ -184,6 +194,7 @@ $$ LANGUAGE plpythonu;
 CREATE TRIGGER stupid_trigger2
 BEFORE DELETE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE stupid2();
+/
 
 DELETE FROM trigger_test WHERE i = 0;
 
@@ -203,6 +214,7 @@ $$ LANGUAGE plpythonu;
 CREATE TRIGGER stupid_trigger3
 BEFORE UPDATE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE stupid3();
+/
 
 UPDATE trigger_test SET v = 'null' WHERE i = 0;
 
@@ -220,6 +232,7 @@ $$ LANGUAGE plpythonu;
 CREATE TRIGGER stupid_trigger3
 BEFORE UPDATE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE stupid3u();
+/
 
 UPDATE trigger_test SET v = 'null' WHERE i = 0;
 
@@ -238,6 +251,7 @@ $$ LANGUAGE plpythonu;
 CREATE TRIGGER stupid_trigger4
 BEFORE UPDATE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE stupid4();
+/
 
 UPDATE trigger_test SET v = 'null' WHERE i = 0;
 
@@ -256,6 +270,7 @@ $$ LANGUAGE plpythonu;
 CREATE TRIGGER stupid_trigger5
 BEFORE UPDATE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE stupid5();
+/
 
 UPDATE trigger_test SET v = 'null' WHERE i = 0;
 
@@ -274,6 +289,7 @@ $$ LANGUAGE plpythonu;
 CREATE TRIGGER stupid_trigger6
 BEFORE UPDATE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE stupid6();
+/
 
 UPDATE trigger_test SET v = 'null' WHERE i = 0;
 
@@ -292,6 +308,7 @@ $$ LANGUAGE plpythonu;
 CREATE TRIGGER stupid_trigger7
 BEFORE UPDATE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE stupid7();
+/
 
 UPDATE trigger_test SET v = 'null' WHERE i = 0;
 
@@ -310,6 +327,7 @@ $$ LANGUAGE plpythonu;
 CREATE TRIGGER stupid_trigger7
 BEFORE UPDATE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE stupid7u();
+/
 
 UPDATE trigger_test SET v = 'null' WHERE i = 0;
 
@@ -337,6 +355,7 @@ $$ LANGUAGE plpythonu;
 CREATE TRIGGER test_null_trigger
 BEFORE UPDATE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE test_null();
+/
 
 UPDATE trigger_test SET v = 'null' WHERE i = 0;
 
@@ -362,6 +381,7 @@ CREATE TABLE pb (a TEXT, modif_time TIMESTAMP(0) WITHOUT TIME ZONE);
 
 CREATE TRIGGER set_modif_time BEFORE UPDATE ON pb
   FOR EACH ROW EXECUTE PROCEDURE set_modif_time();
+/
 
 INSERT INTO pb VALUES ('a', '2010-10-09 21:57:33.930486');
 SELECT * FROM pb;
@@ -385,6 +405,7 @@ $$ LANGUAGE plpythonu;
 
 CREATE TRIGGER composite_trigger BEFORE INSERT ON composite_trigger_test
   FOR EACH ROW EXECUTE PROCEDURE composite_trigger_f();
+/
 
 INSERT INTO composite_trigger_test VALUES (NULL, NULL);
 SELECT * FROM composite_trigger_test;
@@ -401,6 +422,7 @@ $$ LANGUAGE plpythonu;
 
 CREATE TRIGGER composite_trigger_noop BEFORE INSERT ON composite_trigger_noop_test
   FOR EACH ROW EXECUTE PROCEDURE composite_trigger_noop_f();
+/
 
 INSERT INTO composite_trigger_noop_test VALUES (NULL, NULL);
 INSERT INTO composite_trigger_noop_test VALUES (ROW(1, 'f'), NULL);
@@ -421,6 +443,7 @@ $$ LANGUAGE plpythonu;
 
 CREATE TRIGGER composite_trigger_nested BEFORE INSERT ON composite_trigger_nested_test
   FOR EACH ROW EXECUTE PROCEDURE composite_trigger_nested_f();
+/
 
 INSERT INTO composite_trigger_nested_test VALUES (NULL);
 INSERT INTO composite_trigger_nested_test VALUES (ROW(ROW(1, 'f'), NULL, 3));
@@ -438,7 +461,9 @@ CREATE TABLE a(data text);
 CREATE TABLE b(data int); -- different type conversion
 
 CREATE TRIGGER a_t BEFORE INSERT ON a FOR EACH ROW EXECUTE PROCEDURE trig1234();
+/
 CREATE TRIGGER b_t BEFORE INSERT ON b FOR EACH ROW EXECUTE PROCEDURE trig1234();
+/
 
 INSERT INTO a DEFAULT VALUES;
 SELECT * FROM a;
@@ -466,6 +491,7 @@ $$;
 CREATE TRIGGER a_t AFTER UPDATE ON transition_table_test
   REFERENCING OLD TABLE AS old_table NEW TABLE AS new_table
   FOR EACH STATEMENT EXECUTE PROCEDURE transition_table_test_f();
+/
 UPDATE transition_table_test SET name = 'b';
 
 DROP TABLE transition_table_test;
@@ -484,6 +510,7 @@ $$;
 
 CREATE TRIGGER generated_test_trigger1 BEFORE INSERT ON trigger_test_generated
 FOR EACH ROW EXECUTE PROCEDURE generated_test_func1();
+/
 
 TRUNCATE trigger_test_generated;
 INSERT INTO trigger_test_generated (i) VALUES (1);
@@ -509,6 +536,7 @@ $$;
 CREATE TRIGGER recursive_trigger_trig
   AFTER INSERT OR UPDATE ON recursive_trigger_test
   FOR EACH ROW EXECUTE PROCEDURE recursive_trigger_func();
+/
 
 INSERT INTO recursive_trigger_test VALUES (0, 0);
 UPDATE recursive_trigger_test SET a = 11 WHERE b = 0;

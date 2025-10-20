@@ -336,6 +336,7 @@ LANGUAGE plpgsql;
 
 CREATE TRIGGER rw_view1_ins_trig INSTEAD OF INSERT ON rw_view1
   FOR EACH ROW EXECUTE PROCEDURE rw_view1_trig_fn();
+/
 
 SELECT table_name, is_insertable_into
   FROM information_schema.tables
@@ -356,6 +357,7 @@ SELECT table_name, column_name, is_updatable
 
 CREATE TRIGGER rw_view1_upd_trig INSTEAD OF UPDATE ON rw_view1
   FOR EACH ROW EXECUTE PROCEDURE rw_view1_trig_fn();
+/
 
 SELECT table_name, is_insertable_into
   FROM information_schema.tables
@@ -376,6 +378,7 @@ SELECT table_name, column_name, is_updatable
 
 CREATE TRIGGER rw_view1_del_trig INSTEAD OF DELETE ON rw_view1
   FOR EACH ROW EXECUTE PROCEDURE rw_view1_trig_fn();
+/
 
 SELECT table_name, is_insertable_into
   FROM information_schema.tables
@@ -615,6 +618,7 @@ LANGUAGE plpgsql;
 
 CREATE TRIGGER rw_view1_ins_trig AFTER INSERT ON base_tbl
   FOR EACH ROW EXECUTE PROCEDURE rw_view1_trig_fn();
+/
 
 CREATE VIEW rw_view1 AS SELECT a AS aa, b AS bb FROM base_tbl;
 
@@ -924,6 +928,7 @@ LANGUAGE plpgsql;
 
 CREATE TRIGGER base_tbl_trig BEFORE INSERT OR UPDATE ON base_tbl
   FOR EACH ROW EXECUTE PROCEDURE base_tbl_trig_fn();
+/
 
 CREATE VIEW rw_view1 AS SELECT * FROM base_tbl WHERE a < b WITH CHECK OPTION;
 
@@ -962,6 +967,7 @@ LANGUAGE plpgsql;
 CREATE TRIGGER rw_view1_trig
   INSTEAD OF INSERT OR UPDATE OR DELETE ON rw_view1
   FOR EACH ROW EXECUTE PROCEDURE rw_view1_trig_fn();
+/
 
 CREATE VIEW rw_view2 AS
   SELECT * FROM rw_view1 WHERE a > 0 WITH LOCAL CHECK OPTION;
@@ -1509,6 +1515,7 @@ language plpgsql;
 /
 create trigger base_tab_def_view_instrig instead of insert on base_tab_def_view
   for each row execute function base_tab_def_view_instrig_func();
+/
 truncate base_tab_def;
 insert into base_tab_def values (1);
 insert into base_tab_def values (2), (3);

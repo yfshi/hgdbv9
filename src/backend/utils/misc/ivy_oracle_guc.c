@@ -238,6 +238,8 @@ int		max_interval_partition_failures = 10;
 
 bool enable_flashback_recycle_bin = false; /* ReqID:SRS-RECOVERY-FLASHBACK */
 
+bool enable_coverwritten_ora_trigger = true;	/* ReqID:SRS-SQL-TRIGGER */
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -982,6 +984,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	{
+		{"ivorysql.enable_coverwritten_ora_trigger", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("When enabled, a trigger with the same name created on the same table but in a different schema will be overwritten by the newly created one."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_coverwritten_ora_trigger,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-TRIGGER */
 #endif
 #if 0
 	/* End-of-list marker */

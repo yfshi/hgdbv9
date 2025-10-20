@@ -14,6 +14,7 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
+/
 
 drop table foo;
 flashback table foo to before drop; --failed
@@ -34,6 +35,7 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
+/
 
 drop table foo;
 drop table if exists foo;
@@ -64,6 +66,7 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
+/
 select a, left(b, 10), length(b) from foo order by a limit 1;
 
 drop table foo;
@@ -96,6 +99,7 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
+/
 
 truncate foo;
 flashback table foo to before truncate; --failed
@@ -157,6 +161,7 @@ CREATE TRIGGER before_truncate_trigger
 BEFORE TRUNCATE ON foo
 FOR EACH STATEMENT
 EXECUTE FUNCTION handle_truncate();
+/
 truncate foo;
 drop table foo;
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;

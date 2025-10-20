@@ -166,6 +166,7 @@ static void check_oraparam_mode(PLiSQL_datum *datum, int location, char mode);
 static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int location, char mode);
 /* End - BUG#M0000376 */
 
+
 %}
 
 %expect 0
@@ -429,6 +430,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_DATATYPE
 %token <keyword>	K_DEBUG
 %token <keyword>	K_DECLARE
+%token <keyword>	K_DELETING
 %token <keyword>	K_DEFAULT
 /* Begin - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_DEFINER
@@ -466,6 +468,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_IMMEDIATE	/* BUG#Z1438 */
 %token <keyword>	K_IMPORT
 %token <keyword>	K_IN
+%token <keyword>	K_INSERTING
 %token <keyword>	K_INFO
 %token <keyword>	K_INSERT
 %token <keyword>	K_INTO
@@ -557,6 +560,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_TRIGGER
 /* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_TYPE
+%token <keyword>	K_UPDATING
 %token <keyword>	K_USE_COLUMN
 %token <keyword>	K_USE_VARIABLE
 %token <keyword>	K_USING
@@ -2361,6 +2365,7 @@ case_when		: K_WHEN expr_until_then proc_sect
 						new->lineno	= plisql_location_to_lineno(@1);
 						new->expr	= $2;
 						new->stmts	= $3;
+
 						$$ = new;
 					}
 				;

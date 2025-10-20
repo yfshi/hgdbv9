@@ -63,6 +63,7 @@ OBJS = \
 	variable.o \
 	view.o \
 	packagecmds.o \
-	flashback.o
+	flashback.o \
+	ora_trigger_order.o
 
 include $(top_srcdir)/src/backend/common.mk

@@ -55,6 +55,7 @@ SELECT * FROM generate_series(1,10) id;
 CREATE EVENT TRIGGER has_volatile_rewrite
                   ON table_rewrite
    EXECUTE PROCEDURE log_rewrite();
+/
 -- only the last of these should trigger a rewrite
 ALTER TABLE has_volatile ADD col1 int;
 ALTER TABLE has_volatile ADD col2 int DEFAULT 1;
@@ -564,6 +565,7 @@ INSERT INTO t (a,b,c) VALUES (1,2,3);
 ALTER TABLE t ADD COLUMN x int NOT NULL DEFAULT 4;
 ALTER TABLE t ADD COLUMN y int NOT NULL DEFAULT 5;
 CREATE TRIGGER a BEFORE UPDATE ON t FOR EACH ROW EXECUTE PROCEDURE test_trigger();
+/
 SELECT * FROM t;
  id | a | b | c | x | y 
 ----+---+---+---+---+---
@@ -585,6 +587,7 @@ INSERT INTO t (a,b,c) VALUES (1,2,3);
 ALTER TABLE t ADD COLUMN x int NOT NULL DEFAULT 4;
 ALTER TABLE t ADD COLUMN y int;
 CREATE TRIGGER a BEFORE UPDATE ON t FOR EACH ROW EXECUTE PROCEDURE test_trigger();
+/
 SELECT * FROM t;
  id | a | b | c | x | y 
 ----+---+---+---+---+---
@@ -606,6 +609,7 @@ INSERT INTO t (a,b,c) VALUES (1,2,3);
 ALTER TABLE t ADD COLUMN x int;
 ALTER TABLE t ADD COLUMN y int NOT NULL DEFAULT 5;
 CREATE TRIGGER a BEFORE UPDATE ON t FOR EACH ROW EXECUTE PROCEDURE test_trigger();
+/
 SELECT * FROM t;
  id | a | b | c | x | y 
 ----+---+---+---+---+---
@@ -627,6 +631,7 @@ INSERT INTO t (a,b,c) VALUES (1,2,3);
 ALTER TABLE t ADD COLUMN x int;
 ALTER TABLE t ADD COLUMN y int;
 CREATE TRIGGER a BEFORE UPDATE ON t FOR EACH ROW EXECUTE PROCEDURE test_trigger();
+/
 SELECT * FROM t;
  id | a | b | c | x | y 
 ----+---+---+---+---+---
@@ -649,6 +654,7 @@ INSERT INTO t (a,b,c) VALUES (1,2,NULL);
 ALTER TABLE t ADD COLUMN x int NOT NULL DEFAULT 4;
 ALTER TABLE t ADD COLUMN y int NOT NULL DEFAULT 5;
 CREATE TRIGGER a BEFORE UPDATE ON t FOR EACH ROW EXECUTE PROCEDURE test_trigger();
+/
 SELECT * FROM t;
  id | a | b | c | x | y 
 ----+---+---+---+---+---
@@ -670,6 +676,7 @@ INSERT INTO t (a,b,c) VALUES (1,2,NULL);
 ALTER TABLE t ADD COLUMN x int NOT NULL DEFAULT 4;
 ALTER TABLE t ADD COLUMN y int;
 CREATE TRIGGER a BEFORE UPDATE ON t FOR EACH ROW EXECUTE PROCEDURE test_trigger();
+/
 SELECT * FROM t;
  id | a | b | c | x | y 
 ----+---+---+---+---+---
@@ -691,6 +698,7 @@ INSERT INTO t (a,b,c) VALUES (1,2,NULL);
 ALTER TABLE t ADD COLUMN x int;
 ALTER TABLE t ADD COLUMN y int NOT NULL DEFAULT 5;
 CREATE TRIGGER a BEFORE UPDATE ON t FOR EACH ROW EXECUTE PROCEDURE test_trigger();
+/
 SELECT * FROM t;
  id | a | b | c | x | y 
 ----+---+---+---+---+---
@@ -712,6 +720,7 @@ INSERT INTO t (a,b,c) VALUES (1,2,NULL);
 ALTER TABLE t ADD COLUMN x int;
 ALTER TABLE t ADD COLUMN y int;
 CREATE TRIGGER a BEFORE UPDATE ON t FOR EACH ROW EXECUTE PROCEDURE test_trigger();
+/
 SELECT * FROM t;
  id | a | b | c | x | y 
 ----+---+---+---+---+---

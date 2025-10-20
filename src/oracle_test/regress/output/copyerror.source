@@ -152,12 +152,14 @@ CREATE FUNCTION fn_x_after () RETURNS TRIGGER AS '
 -- if have enabled before row trigger: fail
 CREATE TRIGGER trg_x_before BEFORE INSERT ON x
 FOR EACH ROW EXECUTE PROCEDURE fn_x_before();
+/
 COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'trig12345' filename 'csv1.csv' badtable 'x_bad';
 ERROR:  Tolerate mode,not support before insert row trigger for relation "x"
 -- if have enabled after row trigger: fail
 DROP TRIGGER IF EXISTS trg_x_before on x;
 CREATE TRIGGER trg_x_after AFTER INSERT ON x
 FOR EACH ROW EXECUTE PROCEDURE fn_x_after();
+/
 COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'trig12345' filename 'csv1.csv' badtable 'x_bad';
 ERROR:  Tolerate mode,not support after insert row trigger(expect fk check trigger) for relation "x"
 -- if have trigger, but disabled: success
@@ -258,6 +260,7 @@ CREATE FUNCTION fn_xph2_before () RETURNS TRIGGER AS '
 /
 CREATE TRIGGER trg_xph2_before BEFORE INSERT ON xph_2
 FOR EACH ROW EXECUTE PROCEDURE fn_xph2_before();
+/
 -- the insert partition table have enabled trigger: fail
 COPY xph (a, b, c, d) from stdin with csv delimiter ',' taskid 'part1234' filename 'csv1.csv' badtable 'xph_bad';
 ERROR:  Tolerate mode,not support before insert row trigger for relation "xph"
@@ -381,6 +384,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trig_instead_of_insert_tbl_view
   INSTEAD OF INSERT ON instead_of_insert_tbl_view
   FOR EACH ROW EXECUTE PROCEDURE fun_instead_of_insert_tbl();
+/
 COPY instead_of_insert_tbl_view FROM stdin with csv delimiter ',' taskid 'view12' filename 'csv5.csv' badtable 'view_bad';
 ERROR:  tolerate mode,cannot copy to relation "instead_of_insert_tbl_view" as not base or partition table
 -- Output file
@@ -712,6 +716,7 @@ CREATE FUNCTION after_insert_row() RETURNS TRIGGER AS '
 /
 CREATE TRIGGER after_insert_row_tri AFTER INSERT ON fk_length_2000
 FOR EACH ROW EXECUTE FUNCTION after_insert_row();
+/
 COPY fk_length_2000 from stdin with csv delimiter ',' taskid 'fknotfk' filename 'fknotfk.csv' badtable 'x_bad';
 ERROR:  Tolerate mode,not support after insert row trigger(expect fk check trigger) for relation "fk_length_2000"
 -- NULL value handle

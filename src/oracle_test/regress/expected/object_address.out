@@ -250,8 +250,8 @@ WARNING:  error for rule,{addr_nsp,zwei},{}: relation "addr_nsp" does not exist
 WARNING:  error for rule,{addr_nsp,zwei},{integer}: relation "addr_nsp" does not exist
 WARNING:  error for rule,{eins,zwei,drei},{}: schema "eins" does not exist
 WARNING:  error for rule,{eins,zwei,drei},{integer}: schema "eins" does not exist
-WARNING:  error for trigger,{eins},{}: must specify relation and object name
-WARNING:  error for trigger,{eins},{integer}: must specify relation and object name
+WARNING:  error for trigger,{eins},{}: trigger "eins" does not exist
+WARNING:  error for trigger,{eins},{integer}: trigger "eins" does not exist
 WARNING:  error for trigger,{addr_nsp,zwei},{}: relation "addr_nsp" does not exist
 WARNING:  error for trigger,{addr_nsp,zwei},{integer}: relation "addr_nsp" does not exist
 WARNING:  error for trigger,{eins,zwei,drei},{}: schema "eins" does not exist

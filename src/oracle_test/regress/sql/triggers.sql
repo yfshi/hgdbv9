@@ -28,11 +28,13 @@ create trigger check_fkeys_pkey_exist
 	for each row
 	execute function
 	check_primary_key ('fkey1', 'fkey2', 'pkeys', 'pkey1', 'pkey2');
+/
 
 create trigger check_fkeys_pkey2_exist
 	before insert or update on fkeys
 	for each row
 	execute function check_primary_key ('fkey3', 'fkeys2', 'pkey23');
+/
 
 --
 -- For fkeys2:
@@ -43,6 +45,7 @@ create trigger check_fkeys2_pkey_exist
 	for each row
 	execute procedure
 	check_primary_key ('fkey21', 'fkey22', 'pkeys', 'pkey1', 'pkey2');
+/
 
 -- Test comments
 COMMENT ON TRIGGER check_fkeys2_pkey_bad ON fkeys2 IS 'wrong';
@@ -60,6 +63,7 @@ create trigger check_pkeys_fkey_cascade
 	execute procedure
 	check_foreign_key (2, 'cascade', 'pkey1', 'pkey2',
 	'fkeys', 'fkey1', 'fkey2', 'fkeys2', 'fkey21', 'fkey22');
+/
 
 --
 -- For fkeys2:
@@ -70,6 +74,7 @@ create trigger check_fkeys2_fkey_restrict
 	before delete or update on fkeys2
 	for each row
 	execute procedure check_foreign_key (1, 'restrict', 'pkey23', 'fkeys', 'fkey3');
+/
 
 insert into fkeys2 values (10, '1', 1);
 insert into fkeys2 values (30, '3', 2);
@@ -109,6 +114,7 @@ create table trigtest (f1 int, f2 text);
 create trigger trigger_return_old
 	before insert or delete or update on trigtest
 	for each row execute procedure trigger_return_old();
+/
 
 insert into trigtest values(1, 'foo');
 select * from trigtest;
@@ -125,6 +131,7 @@ $$ begin new.f1 := new.f1 * 10; return new; end $$ language plpgsql;
 create trigger trigger_alpha
 	before insert or update on trigtest
 	for each row execute procedure f1_times_10();
+/
 
 insert into trigtest values(1, 'foo');
 select * from trigtest;
@@ -136,6 +143,7 @@ select * from trigtest;
 create trigger trigger_zed
 	before insert or update on trigtest
 	for each row execute procedure f1_times_10();
+/
 
 insert into trigtest values(1, 'foo');
 select * from trigtest;
@@ -164,6 +172,7 @@ create table trigtest (
 create trigger trigger_return_old
 	before insert or delete or update on trigtest
 	for each row execute procedure trigger_return_old();
+/
 
 insert into trigtest values(1);
 select * from trigtest;
@@ -196,12 +205,14 @@ create trigger ttdummy
 	for each row
 	execute procedure
 	ttdummy (price_on, price_off);
+/
 
 create trigger ttserial
 	before insert or update on tttest
 	for each row
 	execute procedure
 	autoinc (price_on, ttdummy_seq);
+/
 
 insert into tttest values (1, 1, null);
 insert into tttest values (2, 2, null);
@@ -278,9 +289,11 @@ END;';
 
 CREATE TRIGGER before_ins_stmt_trig BEFORE INSERT ON main_table
 FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func('before_ins_stmt');
+/
 
 CREATE TRIGGER after_ins_stmt_trig AFTER INSERT ON main_table
 FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func('after_ins_stmt');
+/
 
 --
 -- if neither 'FOR EACH ROW' nor 'FOR EACH STATEMENT' was specified,
@@ -288,6 +301,7 @@ FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func('after_ins_stmt');
 --
 CREATE TRIGGER after_upd_stmt_trig AFTER UPDATE ON main_table
 EXECUTE PROCEDURE trigger_func('after_upd_stmt');
+/
 
 -- Both insert and update statement level triggers (before and after) should
 -- fire.  Doesn't fire UPDATE before trigger, but only because one isn't
@@ -297,6 +311,7 @@ INSERT INTO main_table (a, b) VALUES (5, 10) ON CONFLICT (a)
 
 CREATE TRIGGER after_upd_row_trig AFTER UPDATE ON main_table
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('after_upd_row');
+/
 
 INSERT INTO main_table DEFAULT VALUES;
 
@@ -321,16 +336,22 @@ SELECT * FROM main_table ORDER BY a, b;
 
 CREATE TRIGGER modified_a BEFORE UPDATE OF a ON main_table
 FOR EACH ROW WHEN (OLD.a <> NEW.a) EXECUTE PROCEDURE trigger_func('modified_a');
+/
 CREATE TRIGGER modified_any BEFORE UPDATE OF a ON main_table
 FOR EACH ROW WHEN (OLD.* IS DISTINCT FROM NEW.*) EXECUTE PROCEDURE trigger_func('modified_any');
+/
 CREATE TRIGGER insert_a AFTER INSERT ON main_table
 FOR EACH ROW WHEN (NEW.a = 123) EXECUTE PROCEDURE trigger_func('insert_a');
+/
 CREATE TRIGGER delete_a AFTER DELETE ON main_table
 FOR EACH ROW WHEN (OLD.a = 123) EXECUTE PROCEDURE trigger_func('delete_a');
+/
 CREATE TRIGGER insert_when BEFORE INSERT ON main_table
 FOR EACH STATEMENT WHEN (true) EXECUTE PROCEDURE trigger_func('insert_when');
+/
 CREATE TRIGGER delete_when AFTER DELETE ON main_table
 FOR EACH STATEMENT WHEN (true) EXECUTE PROCEDURE trigger_func('delete_when');
+/
 SELECT trigger_name, event_manipulation, event_object_schema, event_object_table,
        action_order, action_condition, action_orientation, action_timing,
        action_reference_old_table, action_reference_new_table
@@ -368,6 +389,7 @@ create trigger oid_unchanged_trig after update on table_with_oids
 	for each row
 	when (new.tableoid = old.tableoid AND new.tableoid <> 0)
 	execute procedure trigger_func('after_upd_oid_unchanged');
+/
 update table_with_oids set a = a + 1;
 drop table table_with_oids;
 
@@ -376,15 +398,20 @@ DROP TRIGGER after_upd_row_trig ON main_table;
 
 CREATE TRIGGER before_upd_a_row_trig BEFORE UPDATE OF a ON main_table
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('before_upd_a_row');
+/
 CREATE TRIGGER after_upd_b_row_trig AFTER UPDATE OF b ON main_table
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('after_upd_b_row');
+/
 CREATE TRIGGER after_upd_a_b_row_trig AFTER UPDATE OF a, b ON main_table
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('after_upd_a_b_row');
+/
 
 CREATE TRIGGER before_upd_a_stmt_trig BEFORE UPDATE OF a ON main_table
 FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func('before_upd_a_stmt');
+/
 CREATE TRIGGER after_upd_b_stmt_trig AFTER UPDATE OF b ON main_table
 FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func('after_upd_b_stmt');
+/
 
 SELECT pg_get_triggerdef(oid) FROM pg_trigger WHERE tgrelid = 'main_table'::regclass AND tgname = 'after_upd_a_b_row_trig';
 
@@ -406,12 +433,15 @@ $$ LANGUAGE plpgsql;
 /
 CREATE TRIGGER some_trig_before BEFORE UPDATE ON some_t FOR EACH ROW
   EXECUTE PROCEDURE dummy_update_func('before');
+/
 CREATE TRIGGER some_trig_aftera AFTER UPDATE ON some_t FOR EACH ROW
   WHEN (NOT OLD.some_col AND NEW.some_col)
   EXECUTE PROCEDURE dummy_update_func('aftera');
+/
 CREATE TRIGGER some_trig_afterb AFTER UPDATE ON some_t FOR EACH ROW
   WHEN (NOT NEW.some_col)
   EXECUTE PROCEDURE dummy_update_func('afterb');
+/
 INSERT INTO some_t VALUES (TRUE);
 UPDATE some_t SET some_col = TRUE;
 UPDATE some_t SET some_col = FALSE;
@@ -421,22 +451,29 @@ DROP TABLE some_t;
 -- bogus cases
 CREATE TRIGGER error_upd_and_col BEFORE UPDATE OR UPDATE OF a ON main_table
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('error_upd_and_col');
+/
 CREATE TRIGGER error_upd_a_a BEFORE UPDATE OF a, a ON main_table
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('error_upd_a_a');
+/
 CREATE TRIGGER error_ins_a BEFORE INSERT OF a ON main_table
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('error_ins_a');
+/
 CREATE TRIGGER error_ins_when BEFORE INSERT OR UPDATE ON main_table
 FOR EACH ROW WHEN (OLD.a <> NEW.a)
 EXECUTE PROCEDURE trigger_func('error_ins_old');
+/
 CREATE TRIGGER error_del_when BEFORE DELETE OR UPDATE ON main_table
 FOR EACH ROW WHEN (OLD.a <> NEW.a)
 EXECUTE PROCEDURE trigger_func('error_del_new');
+/
 CREATE TRIGGER error_del_when BEFORE INSERT OR UPDATE ON main_table
 FOR EACH ROW WHEN (NEW.tableoid <> 0)
 EXECUTE PROCEDURE trigger_func('error_when_sys_column');
+/
 CREATE TRIGGER error_stmt_when BEFORE UPDATE OF a ON main_table
 FOR EACH STATEMENT WHEN (OLD.* IS DISTINCT FROM NEW.*)
 EXECUTE PROCEDURE trigger_func('error_stmt_when');
+/
 
 -- check dependency restrictions
 ALTER TABLE main_table DROP COLUMN b;
@@ -463,12 +500,16 @@ end;$$ language plpgsql;
 
 create trigger trigtest_b_row_tg before insert or update or delete on trigtest
 for each row execute procedure trigtest();
+/
 create trigger trigtest_a_row_tg after insert or update or delete on trigtest
 for each row execute procedure trigtest();
+/
 create trigger trigtest_b_stmt_tg before insert or update or delete on trigtest
 for each statement execute procedure trigtest();
+/
 create trigger trigtest_a_stmt_tg after insert or update or delete on trigtest
 for each statement execute procedure trigtest();
+/
 
 insert into trigtest default values;
 alter table trigtest disable trigger trigtest_b_row_tg;
@@ -558,6 +599,7 @@ $$;
 CREATE TRIGGER show_trigger_data_trig
 BEFORE INSERT OR UPDATE OR DELETE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE trigger_data(23,'skidoo');
+/
 
 insert into trigger_test values(1,'insert');
 update trigger_test set v = 'update' where i = 1;
@@ -590,6 +632,7 @@ end$$;
 CREATE TRIGGER t
 BEFORE UPDATE ON trigger_test
 FOR EACH ROW EXECUTE PROCEDURE mytrigger();
+/
 
 INSERT INTO trigger_test VALUES(1, 'foo', 'bar');
 INSERT INTO trigger_test VALUES(2, 'baz', 'quux');
@@ -640,6 +683,7 @@ CREATE TABLE serializable_update_tab (
 
 CREATE TRIGGER serializable_update_trig BEFORE UPDATE ON serializable_update_tab
 	FOR EACH ROW EXECUTE PROCEDURE serializable_update_trig();
+/
 
 INSERT INTO serializable_update_tab SELECT a, repeat('xyzxz', 100), 'new'
 	FROM generate_series(1, 50) a;
@@ -663,6 +707,7 @@ INSERT INTO min_updates_test VALUES ('a',1,2),('b','2',null);
 CREATE TRIGGER z_min_update
 BEFORE UPDATE ON min_updates_test
 FOR EACH ROW EXECUTE PROCEDURE suppress_redundant_updates_trigger();
+/
 
 \set QUIET false
 
@@ -729,81 +774,104 @@ $$;
 -- Before row triggers aren't allowed on views
 CREATE TRIGGER invalid_trig BEFORE INSERT ON main_view
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('before_ins_row');
+/
 
 CREATE TRIGGER invalid_trig BEFORE UPDATE ON main_view
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('before_upd_row');
+/
 
 CREATE TRIGGER invalid_trig BEFORE DELETE ON main_view
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('before_del_row');
+/
 
 -- After row triggers aren't allowed on views
 CREATE TRIGGER invalid_trig AFTER INSERT ON main_view
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('before_ins_row');
+/
 
 CREATE TRIGGER invalid_trig AFTER UPDATE ON main_view
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('before_upd_row');
+/
 
 CREATE TRIGGER invalid_trig AFTER DELETE ON main_view
 FOR EACH ROW EXECUTE PROCEDURE trigger_func('before_del_row');
+/
 
 -- Truncate triggers aren't allowed on views
 CREATE TRIGGER invalid_trig BEFORE TRUNCATE ON main_view
 EXECUTE PROCEDURE trigger_func('before_tru_row');
+/
 
 CREATE TRIGGER invalid_trig AFTER TRUNCATE ON main_view
 EXECUTE PROCEDURE trigger_func('before_tru_row');
+/
 
 -- INSTEAD OF triggers aren't allowed on tables
 CREATE TRIGGER invalid_trig INSTEAD OF INSERT ON main_table
 FOR EACH ROW EXECUTE PROCEDURE view_trigger('instead_of_ins');
+/
 
 CREATE TRIGGER invalid_trig INSTEAD OF UPDATE ON main_table
 FOR EACH ROW EXECUTE PROCEDURE view_trigger('instead_of_upd');
+/
 
 CREATE TRIGGER invalid_trig INSTEAD OF DELETE ON main_table
 FOR EACH ROW EXECUTE PROCEDURE view_trigger('instead_of_del');
+/
 
 -- Don't support WHEN clauses with INSTEAD OF triggers
 CREATE TRIGGER invalid_trig INSTEAD OF UPDATE ON main_view
 FOR EACH ROW WHEN (OLD.a <> NEW.a) EXECUTE PROCEDURE view_trigger('instead_of_upd');
+/
 
 -- Don't support column-level INSTEAD OF triggers
 CREATE TRIGGER invalid_trig INSTEAD OF UPDATE OF a ON main_view
 FOR EACH ROW EXECUTE PROCEDURE view_trigger('instead_of_upd');
+/
 
 -- Don't support statement-level INSTEAD OF triggers
 CREATE TRIGGER invalid_trig INSTEAD OF UPDATE ON main_view
 EXECUTE PROCEDURE view_trigger('instead_of_upd');
+/
 
 -- Valid INSTEAD OF triggers
 CREATE TRIGGER instead_of_insert_trig INSTEAD OF INSERT ON main_view
 FOR EACH ROW EXECUTE PROCEDURE view_trigger('instead_of_ins');
+/
 
 CREATE TRIGGER instead_of_update_trig INSTEAD OF UPDATE ON main_view
 FOR EACH ROW EXECUTE PROCEDURE view_trigger('instead_of_upd');
+/
 
 CREATE TRIGGER instead_of_delete_trig INSTEAD OF DELETE ON main_view
 FOR EACH ROW EXECUTE PROCEDURE view_trigger('instead_of_del');
+/
 
 -- Valid BEFORE statement VIEW triggers
 CREATE TRIGGER before_ins_stmt_trig BEFORE INSERT ON main_view
 FOR EACH STATEMENT EXECUTE PROCEDURE view_trigger('before_view_ins_stmt');
+/
 
 CREATE TRIGGER before_upd_stmt_trig BEFORE UPDATE ON main_view
 FOR EACH STATEMENT EXECUTE PROCEDURE view_trigger('before_view_upd_stmt');
+/
 
 CREATE TRIGGER before_del_stmt_trig BEFORE DELETE ON main_view
 FOR EACH STATEMENT EXECUTE PROCEDURE view_trigger('before_view_del_stmt');
+/
 
 -- Valid AFTER statement VIEW triggers
 CREATE TRIGGER after_ins_stmt_trig AFTER INSERT ON main_view
 FOR EACH STATEMENT EXECUTE PROCEDURE view_trigger('after_view_ins_stmt');
+/
 
 CREATE TRIGGER after_upd_stmt_trig AFTER UPDATE ON main_view
 FOR EACH STATEMENT EXECUTE PROCEDURE view_trigger('after_view_upd_stmt');
+/
 
 CREATE TRIGGER after_del_stmt_trig AFTER DELETE ON main_view
 FOR EACH STATEMENT EXECUTE PROCEDURE view_trigger('after_view_del_stmt');
+/
 
 \set QUIET false
 
@@ -895,6 +963,7 @@ $$;
 
 CREATE TRIGGER city_insert_trig INSTEAD OF INSERT ON city_view
 FOR EACH ROW EXECUTE PROCEDURE city_insert();
+/
 
 CREATE FUNCTION city_delete() RETURNS trigger LANGUAGE plpgsql AS $$
 begin
@@ -907,6 +976,7 @@ $$;
 
 CREATE TRIGGER city_delete_trig INSTEAD OF DELETE ON city_view
 FOR EACH ROW EXECUTE PROCEDURE city_delete();
+/
 
 CREATE FUNCTION city_update() RETURNS trigger LANGUAGE plpgsql AS $$
 declare
@@ -938,6 +1008,7 @@ $$;
 
 CREATE TRIGGER city_update_trig INSTEAD OF UPDATE ON city_view
 FOR EACH ROW EXECUTE PROCEDURE city_update();
+/
 
 \set QUIET false
 
@@ -976,6 +1047,7 @@ AS 'begin RETURN NULL; end';
 
 CREATE TRIGGER no_op_trig INSTEAD OF INSERT OR UPDATE OR DELETE
 ON european_city_view FOR EACH ROW EXECUTE PROCEDURE no_op_trig_fn();
+/
 
 \set QUIET false
 
@@ -1052,6 +1124,7 @@ $$;
 /
 create trigger depth_a_tr before insert on depth_a
   for each row execute procedure depth_a_tf();
+/
 
 create function depth_b_tf() returns trigger
   language plpgsql as $$
@@ -1073,6 +1146,7 @@ $$;
 /
 create trigger depth_b_tr before insert on depth_b
   for each row execute procedure depth_b_tf();
+/
 
 create function depth_c_tf() returns trigger
   language plpgsql as $$
@@ -1088,6 +1162,7 @@ $$;
 /
 create trigger depth_c_tr before insert on depth_c
   for each row execute procedure depth_c_tf();
+/
 
 select pg_trigger_depth();
 insert into depth_a values (1);
@@ -1131,6 +1206,7 @@ $$;
 /
 create trigger parent_upd_trig before update on parent
   for each row execute procedure parent_upd_func();
+/
 
 create function parent_del_func()
   returns trigger language plpgsql as
@@ -1143,6 +1219,7 @@ $$;
 /
 create trigger parent_del_trig before delete on parent
   for each row execute procedure parent_del_func();
+/
 
 create function child_ins_func()
   returns trigger language plpgsql as
@@ -1155,6 +1232,7 @@ $$;
 /
 create trigger child_ins_trig after insert on child
   for each row execute procedure child_ins_func();
+/
 
 create function child_del_func()
   returns trigger language plpgsql as
@@ -1167,6 +1245,7 @@ $$;
 /
 create trigger child_del_trig after delete on child
   for each row execute procedure child_del_func();
+/
 
 insert into parent values (1, 'a', 'a', 'a', 'a', 0);
 insert into child values (10, 1, 'b');
@@ -1228,6 +1307,7 @@ $$;
 /
 create trigger self_ref_trigger_ins_trig before insert on self_ref_trigger
   for each row execute procedure self_ref_trigger_ins_func();
+/
 
 create function self_ref_trigger_del_func()
   returns trigger language plpgsql as
@@ -1243,6 +1323,7 @@ $$;
 /
 create trigger self_ref_trigger_del_trig before delete on self_ref_trigger
   for each row execute procedure self_ref_trigger_del_func();
+/
 
 insert into self_ref_trigger values (1, null, 'root');
 insert into self_ref_trigger values (2, 1, 'root child A');
@@ -1278,9 +1359,11 @@ $$ language plpgsql;
 create trigger before_stmt_trigger
 	before update on stmt_trig_on_empty_upd
 	execute procedure update_stmt_notice();
+/
 create trigger before_stmt_trigger
 	before update on stmt_trig_on_empty_upd1
 	execute procedure update_stmt_notice();
+/
 
 -- inherited no-op update
 update stmt_trig_on_empty_upd set a = a where false returning a+1 as aa;
@@ -1308,6 +1391,7 @@ end$$ language plpgsql;
 
 create trigger trigger_ddl_func before insert on trigger_ddl_table for each row
   execute procedure trigger_ddl_func();
+/
 
 insert into trigger_ddl_table values (1, 42);  -- fail
 
@@ -1350,6 +1434,7 @@ $$;
 /
 create trigger upsert_before_trig before insert or update on upsert
   for each row execute procedure upsert_before_func();
+/
 
 create function upsert_after_func()
   returns trigger language plpgsql as
@@ -1367,6 +1452,7 @@ $$;
 /
 create trigger upsert_after_trig after insert or update on upsert
   for each row execute procedure upsert_after_func();
+/
 
 insert into upsert values(1, 'black') on conflict (key) do update set color = 'updated ' || upsert.color;
 insert into upsert values(2, 'red') on conflict (key) do update set color = 'updated ' || upsert.color;
@@ -1394,6 +1480,7 @@ create function my_trigger_function() returns trigger as $$ begin end; $$ langua
 /
 create trigger my_trigger after update on my_view referencing old table as old_table
    for each statement execute procedure my_trigger_function();
+/
 drop function my_trigger_function();
 drop view my_view;
 drop table my_table;
@@ -1407,9 +1494,11 @@ create function trigger_nothing() returns trigger
 /
 create trigger failed instead of update on parted_trig
   for each row execute procedure trigger_nothing();
+/
 create trigger failed after update on parted_trig
   referencing old table as old_table
   for each row execute procedure trigger_nothing();
+/
 drop table parted_trig;
 
 --
@@ -1418,6 +1507,7 @@ drop table parted_trig;
 create table trigpart (a int, b int) partition by range (a);
 create table trigpart1 partition of trigpart for values from (0) to (1000);
 create trigger trg1 after insert on trigpart for each row execute procedure trigger_nothing();
+/
 create table trigpart2 partition of trigpart for values from (1000) to (2000);
 create table trigpart3 (like trigpart);
 alter table trigpart attach partition trigpart3 for values from (2000) to (3000);
@@ -1439,6 +1529,7 @@ select tgrelid::regclass, tgname, tgfoid::regproc from pg_trigger
 
 -- check detach behavior
 create trigger trg1 after insert on trigpart for each row execute procedure trigger_nothing();
+/
 \d trigpart3
 alter table trigpart detach partition trigpart3;
 drop trigger trg1 on trigpart3; -- fail due to "does not exist"
@@ -1454,13 +1545,16 @@ select tgrelid::regclass::text, tgname, tgfoid::regproc, tgenabled, tgisinternal
   where tgname ~ '^trg1' order by 1;
 create table trigpart3 (like trigpart);
 create trigger trg1 after insert on trigpart3 for each row execute procedure trigger_nothing();
+/
 \d trigpart3
 alter table trigpart attach partition trigpart3 FOR VALUES FROM (2000) to (3000); -- fail
 drop table trigpart3;
 
 -- check display of unrelated triggers
 create trigger samename after delete on trigpart execute function trigger_nothing();
+/
 create trigger samename after delete on trigpart1 execute function trigger_nothing();
+/
 \d trigpart1
 
 drop table trigpart;
@@ -1491,52 +1585,73 @@ create or replace function trigger_notice() returns trigger as $$
 -- insert/update/delete statement-level triggers on the parent
 create trigger trig_ins_before before insert on parted_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 create trigger trig_ins_after after insert on parted_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 create trigger trig_upd_before before update on parted_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 create trigger trig_upd_after after update on parted_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 create trigger trig_del_before before delete on parted_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 create trigger trig_del_after after delete on parted_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 
 -- insert/update/delete row-level triggers on the parent
 create trigger trig_ins_after_parent after insert on parted_stmt_trig
   for each row execute procedure trigger_notice();
+/
 create trigger trig_upd_after_parent after update on parted_stmt_trig
   for each row execute procedure trigger_notice();
+/
 create trigger trig_del_after_parent after delete on parted_stmt_trig
   for each row execute procedure trigger_notice();
+/
 
 -- insert/update/delete row-level triggers on the first partition
 create trigger trig_ins_before_child before insert on parted_stmt_trig1
   for each row execute procedure trigger_notice();
+/
 create trigger trig_ins_after_child after insert on parted_stmt_trig1
   for each row execute procedure trigger_notice();
+/
 create trigger trig_upd_before_child before update on parted_stmt_trig1
   for each row execute procedure trigger_notice();
+/
 create trigger trig_upd_after_child after update on parted_stmt_trig1
   for each row execute procedure trigger_notice();
+/
 create trigger trig_del_before_child before delete on parted_stmt_trig1
   for each row execute procedure trigger_notice();
+/
 create trigger trig_del_after_child after delete on parted_stmt_trig1
   for each row execute procedure trigger_notice();
+/
 
 -- insert/update/delete statement-level triggers on the parent
 create trigger trig_ins_before_3 before insert on parted2_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 create trigger trig_ins_after_3 after insert on parted2_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 create trigger trig_upd_before_3 before update on parted2_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 create trigger trig_upd_after_3 after update on parted2_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 create trigger trig_del_before_3 before delete on parted2_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 create trigger trig_del_after_3 after delete on parted2_stmt_trig
   for each statement execute procedure trigger_notice();
+/
 
 with ins (a) as (
   insert into parted2_stmt_trig values (1), (2) returning a
@@ -1574,10 +1689,15 @@ create table parted_trig_1 partition of parted_trig for values from (0) to (1000
 create table parted_trig_1_1 partition of parted_trig_1 for values from (0) to (100);
 create table parted_trig_2 partition of parted_trig for values from (1000) to (2000);
 create trigger zzz after insert on parted_trig for each row execute procedure trigger_notice();
+/
 create trigger mmm after insert on parted_trig_1_1 for each row execute procedure trigger_notice();
+/
 create trigger aaa after insert on parted_trig_1 for each row execute procedure trigger_notice();
+/
 create trigger bbb after insert on parted_trig for each row execute procedure trigger_notice();
+/
 create trigger qqq after insert on parted_trig_1_1 for each row execute procedure trigger_notice();
+/
 insert into parted_trig values (50), (1500);
 drop table parted_trig;
 
@@ -1597,6 +1717,7 @@ create or replace function trigger_notice() returns trigger as $$
 /
 create trigger aaa after insert on parted_trig
    for each row execute procedure trigger_notice('quirky', 1);
+/
 
 -- Verify propagation of trigger arguments to partitions attached after creating trigger
 create table parted_trig2 partition of parted_trig for values in (2);
@@ -1636,8 +1757,10 @@ alter table parted_irreg attach partition parted1_irreg
   for values from ('aaaa') to ('bbbb');
 create trigger parted_trig after insert on parted_irreg
   for each row execute procedure trigger_notice_ab();
+/
 create trigger parted_trig_odd after insert on parted_irreg for each row
   when (bark(new.b) AND new.a % 2 = 1) execute procedure trigger_notice_ab();
+/
 -- we should hear barking for every insert, but parted_trig_odd only emits
 -- noise for odd values of a. parted_trig does it for all inserts.
 insert into parted_irreg values (1, 'aardvark'), (2, 'aanimals');
@@ -1660,6 +1783,7 @@ $$;
 insert into parted values (1, 1, 'uno uno v1');    -- works
 create trigger t before insert or update or delete on parted
   for each row execute function parted_trigfunc();
+/
 insert into parted values (1, 1, 'uno uno v2');    -- fail
 update parted set c = c || 'v3';                   -- fail
 create or replace function parted_trigfunc() returns trigger language plpgsql as $$
@@ -1699,6 +1823,7 @@ $$;
 /
 create trigger t2 before update on parted
   for each row execute function parted_trigfunc2();
+/
 truncate table parted;
 insert into parted values (1, 1, 'uno uno v6');
 create table parted_3 partition of parted for values in (3);
@@ -1722,6 +1847,7 @@ create table parted_1 partition of parted for values in (1, 2);
 create table parted_2 partition of parted for values in (3, 4);
 create trigger t before insert or update on parted
   for each row execute function parted_trigfunc();
+/
 insert into parted values (0, 1, 'zero win');
 insert into parted values (1, 1, 'one fail');
 insert into parted values (1, 2, 'two fail');
@@ -1743,10 +1869,12 @@ alter table parted_constr attach partition parted1_constr
 create constraint trigger parted_trig after insert on parted_constr_ancestor
   deferrable
   for each row execute procedure trigger_notice_ab();
+/
 create constraint trigger parted_trig_two after insert on parted_constr
   deferrable initially deferred
   for each row when (bark(new.b) AND new.a % 2 = 1)
   execute procedure trigger_notice_ab();
+/
 
 -- The immediate constraint is fired immediately; the WHEN clause of the
 -- deferred constraint is also called immediately.  The deferred constraint
@@ -1775,6 +1903,7 @@ alter table parted_trigger_2 drop column drp;
 alter table parted_trigger attach partition parted_trigger_2 for values from (1000) to (2000);
 create trigger parted_trigger after update on parted_trigger
   for each row when (new.a % 2 = 1 and length(old.b) >= 2) execute procedure trigger_notice_ab();
+/
 create table parted_trigger_3 (b text, a int) partition by range (length(b));
 create table parted_trigger_3_1 partition of parted_trigger_3 for values from (1) to (3);
 create table parted_trigger_3_2 partition of parted_trigger_3 for values from (3) to (5);
@@ -1797,9 +1926,11 @@ alter table parted_trigger attach partition parted_trigger_2 for values from (10
 create constraint trigger parted_trigger after update on parted_trigger
   from parted_referenced
   for each row execute procedure trigger_notice_ab();
+/
 create constraint trigger parted_trigger after update on unparted_trigger
   from parted_referenced
   for each row execute procedure trigger_notice_ab();
+/
 create table parted_trigger_3 (b text, a int) partition by range (length(b));
 create table parted_trigger_3_1 partition of parted_trigger_3 for values from (1) to (3);
 create table parted_trigger_3_2 partition of parted_trigger_3 for values from (3) to (5);
@@ -1819,6 +1950,7 @@ alter table parted_trigger_2 drop column drp;
 alter table parted_trigger attach partition parted_trigger_2 for values from (1000) to (2000);
 create trigger parted_trigger after update of b on parted_trigger
   for each row execute procedure trigger_notice_ab();
+/
 create table parted_trigger_3 (b text, a int) partition by range (length(b));
 create table parted_trigger_3_1 partition of parted_trigger_3 for values from (1) to (4);
 create table parted_trigger_3_2 partition of parted_trigger_3 for values from (4) to (8);
@@ -1855,8 +1987,10 @@ create function trig_nothing() returns trigger language plpgsql
 /
 create trigger tg after insert on parent
   for each row execute function trig_nothing();
+/
 create trigger tg after insert on child1
   for each row execute function trig_nothing();
+/
 alter table parent disable trigger tg;
 select tgrelid::regclass, tgname, tgenabled from pg_trigger
   where tgrelid in ('parent'::regclass, 'child1'::regclass)
@@ -1871,6 +2005,7 @@ create table parent (a int) partition by list (a);
 create table child1 partition of parent for values in (1);
 create trigger tg after insert on parent
   for each row execute procedure trig_nothing();
+/
 select tgrelid::regclass, tgname, tgenabled from pg_trigger
   where tgrelid in ('parent'::regclass, 'child1'::regclass)
   order by tgrelid::regclass::text;
@@ -1908,6 +2043,7 @@ CREATE OR REPLACE FUNCTION tgf() RETURNS trigger LANGUAGE plpgsql
   AS $$ begin raise exception 'except'; end $$;
 /
 CREATE TRIGGER tg AFTER INSERT ON trgfire FOR EACH ROW EXECUTE FUNCTION tgf();
+/
 INSERT INTO trgfire VALUES (1);
 ALTER TABLE trgfire DISABLE TRIGGER tg;
 INSERT INTO trgfire VALUES (1);
@@ -2000,42 +2136,54 @@ alter table parent attach partition child3 for values in ('CCC');
 create trigger parent_insert_trig
   after insert on parent referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger parent_update_trig
   after update on parent referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 create trigger parent_delete_trig
   after delete on parent referencing old table as old_table
   for each statement execute procedure dump_delete();
+/
 
 create trigger child1_insert_trig
   after insert on child1 referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger child1_update_trig
   after update on child1 referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 create trigger child1_delete_trig
   after delete on child1 referencing old table as old_table
   for each statement execute procedure dump_delete();
+/
 
 create trigger child2_insert_trig
   after insert on child2 referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger child2_update_trig
   after update on child2 referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 create trigger child2_delete_trig
   after delete on child2 referencing old table as old_table
   for each statement execute procedure dump_delete();
+/
 
 create trigger child3_insert_trig
   after insert on child3 referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger child3_update_trig
   after update on child3 referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 create trigger child3_delete_trig
   after delete on child3 referencing old table as old_table
   for each statement execute procedure dump_delete();
+/
 
 SELECT trigger_name, event_manipulation, event_object_schema, event_object_table,
        action_order, action_condition, action_orientation, action_timing,
@@ -2107,6 +2255,7 @@ $$;
 create trigger intercept_insert_child3
   before insert on child3
   for each row execute procedure intercept_insert();
+/
 
 
 -- insert, parent trigger sees post-modification parent-format tuple
@@ -2133,6 +2282,7 @@ create table child partition of parent for values in ('AAA');
 create trigger child_row_trig
   after insert on child referencing new table as new_table
   for each row execute procedure dump_insert();
+/
 
 -- detaching it first works
 alter table parent detach partition child;
@@ -2140,6 +2290,7 @@ alter table parent detach partition child;
 create trigger child_row_trig
   after insert on child referencing new table as new_table
   for each row execute procedure dump_insert();
+/
 
 -- but now we're not allowed to reattach it
 alter table parent attach partition child for values in ('AAA');
@@ -2173,42 +2324,54 @@ create table child3 (c text) inherits (parent);
 create trigger parent_insert_trig
   after insert on parent referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger parent_update_trig
   after update on parent referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 create trigger parent_delete_trig
   after delete on parent referencing old table as old_table
   for each statement execute procedure dump_delete();
+/
 
 create trigger child1_insert_trig
   after insert on child1 referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger child1_update_trig
   after update on child1 referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 create trigger child1_delete_trig
   after delete on child1 referencing old table as old_table
   for each statement execute procedure dump_delete();
+/
 
 create trigger child2_insert_trig
   after insert on child2 referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger child2_update_trig
   after update on child2 referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 create trigger child2_delete_trig
   after delete on child2 referencing old table as old_table
   for each statement execute procedure dump_delete();
+/
 
 create trigger child3_insert_trig
   after insert on child3 referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger child3_update_trig
   after update on child3 referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 create trigger child3_delete_trig
   after delete on child3 referencing old table as old_table
   for each statement execute procedure dump_delete();
+/
 
 -- insert directly into children sees respective child-format tuples
 insert into child1 values ('AAA', 42);
@@ -2272,6 +2435,7 @@ create table child () inherits (parent);
 create trigger child_row_trig
   after insert on child referencing new table as new_table
   for each row execute procedure dump_insert();
+/
 
 -- disinheriting it first works
 alter table child no inherit parent;
@@ -2279,6 +2443,7 @@ alter table child no inherit parent;
 create trigger child_row_trig
   after insert on child referencing new table as new_table
   for each row execute procedure dump_insert();
+/
 
 -- but now we're not allowed to make it inherit anymore
 alter table child inherit parent;
@@ -2300,9 +2465,11 @@ create table table2 (a text);
 create trigger table1_trig
   after insert on table1 referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger table2_trig
   after insert on table2 referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 
 with wcte as (insert into table1 values (42))
   insert into table2 values ('hello world');
@@ -2325,9 +2492,11 @@ create table my_table (a int primary key, b text);
 create trigger my_table_insert_trig
   after insert on my_table referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger my_table_update_trig
   after update on my_table referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 
 -- inserts only
 insert into my_table values (1, 'AAA'), (2, 'BBB')
@@ -2356,9 +2525,11 @@ create table iocdu_tt_parted4 partition of iocdu_tt_parted for values in (4);
 create trigger iocdu_tt_parted_insert_trig
   after insert on iocdu_tt_parted referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger iocdu_tt_parted_update_trig
   after update on iocdu_tt_parted referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 
 -- inserts only
 insert into iocdu_tt_parted values (1, 'AAA'), (2, 'BBB')
@@ -2385,6 +2556,7 @@ drop table iocdu_tt_parted;
 create trigger my_table_multievent_trig
   after insert or update on my_table referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 
 --
 -- Verify that you can't create a trigger with transition tables with
@@ -2394,6 +2566,7 @@ create trigger my_table_multievent_trig
 create trigger my_table_col_update_trig
   after update of b on my_table referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 
 drop table my_table;
 
@@ -2409,15 +2582,19 @@ create table trig_table (a int, b text,
 create trigger trig_table_before_trig
   before insert or update or delete on trig_table
   for each statement execute procedure trigger_func('trig_table');
+/
 create trigger trig_table_insert_trig
   after insert on trig_table referencing new table as new_table
   for each statement execute procedure dump_insert();
+/
 create trigger trig_table_update_trig
   after update on trig_table referencing old table as old_table new table as new_table
   for each statement execute procedure dump_update();
+/
 create trigger trig_table_delete_trig
   after delete on trig_table referencing old table as old_table
   for each statement execute procedure dump_delete();
+/
 
 insert into refd_table values
   (1, 'one'),
@@ -2465,12 +2642,15 @@ create table self_ref (a int primary key,
 create trigger self_ref_before_trig
   before delete on self_ref
   for each statement execute procedure trigger_func('self_ref');
+/
 create trigger self_ref_r_trig
   after delete on self_ref referencing old table as old_table
   for each row execute procedure dump_delete();
+/
 create trigger self_ref_s_trig
   after delete on self_ref referencing old table as old_table
   for each statement execute procedure dump_delete();
+/
 
 insert into self_ref values (1, null), (2, 1), (3, 2);
 
@@ -2512,16 +2692,19 @@ end; $$ language plpgsql;
 create trigger my_trig
   after insert on my_table
   for each row execute procedure funcA();
+/
 
 create trigger my_trig
   before insert on my_table
   for each row execute procedure funcB();  -- should fail
+/
 
 insert into my_table values (1);
 
 create or replace trigger my_trig
   before insert on my_table
   for each row execute procedure funcB();  -- OK
+/
 
 insert into my_table values (2);  -- this insert should become a no-op
 
@@ -2542,20 +2725,24 @@ create table default_parted_trig partition of parted_trig default;
 create or replace trigger my_trig
   after insert on parted_trig
   for each row execute procedure funcA();
+/
 insert into parted_trig (a) values (50);
 create or replace trigger my_trig
   after insert on parted_trig
   for each row execute procedure funcB();
+/
 insert into parted_trig (a) values (50);
 
 -- test that child trigger cannot be replaced directly
 create or replace trigger my_trig
   after insert on parted_trig
   for each row execute procedure funcA();
+/
 insert into parted_trig (a) values (50);
 create or replace trigger my_trig
   after insert on parted_trig_1
   for each row execute procedure funcB();  -- should fail
+/
 insert into parted_trig (a) values (50);
 drop trigger my_trig on parted_trig;
 insert into parted_trig (a) values (50);
@@ -2564,14 +2751,17 @@ insert into parted_trig (a) values (50);
 create trigger my_trig
   after insert on parted_trig_1
   for each row execute procedure funcA();
+/
 insert into parted_trig (a) values (50);
 create trigger my_trig
   after insert on parted_trig
   for each row execute procedure funcB();  -- should fail
+/
 insert into parted_trig (a) values (50);
 create or replace trigger my_trig
   after insert on parted_trig
   for each row execute procedure funcB();
+/
 insert into parted_trig (a) values (50);
 
 -- cleanup
@@ -2586,6 +2776,7 @@ create function trigger_parted_trigfunc() returns trigger language plpgsql as
 /
 create trigger aft_row after insert or update on trigger_parted
   for each row execute function trigger_parted_trigfunc();
+/
 create table trigger_parted_p1 partition of trigger_parted for values in (1)
   partition by list (a);
 create table trigger_parted_p1_1 partition of trigger_parted_p1 for values in (1);
@@ -2635,6 +2826,7 @@ end; $$;
 create trigger but_trigger after update on convslot_test_child
 referencing new table as new_table
 for each statement execute function convslot_trig2();
+/
 
 update convslot_test_parent set col1 = col1 || '1';
 
@@ -2654,11 +2846,13 @@ end; $$;
 create trigger but_trigger2 after update on convslot_test_child
 referencing old table as old_table new table as new_table
 for each statement execute function convslot_trig3();
+/
 update convslot_test_parent set col1 = col1 || '1';
 
 create trigger bdt_trigger after delete on convslot_test_child
 referencing old table as old_table
 for each statement execute function convslot_trig1();
+/
 delete from convslot_test_parent;
 
 drop table convslot_test_child, convslot_test_parent;
@@ -2685,6 +2879,7 @@ create trigger convslot_test_parent_update
     after update on convslot_test_parent
     referencing old table as old_rows new table as new_rows
     for each statement execute procedure convslot_trig4();
+/
 
 insert into convslot_test_parent (id, val) values (1, 2);
 

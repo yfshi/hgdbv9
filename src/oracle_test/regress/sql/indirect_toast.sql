@@ -48,6 +48,7 @@ CREATE TRIGGER indtoasttest_update_indirect
         ON indtoasttest
         FOR EACH ROW
         EXECUTE PROCEDURE update_using_indirect();
+/
 
 -- modification without changing varlenas
 UPDATE indtoasttest SET cnt = cnt +1 RETURNING substring(indtoasttest::text, 1, 200);

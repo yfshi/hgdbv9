@@ -148,6 +148,12 @@ typedef struct GroupClause
 	List   *list;
 } GroupClause;
 
+typedef struct OraTrgOrder
+{
+	bool	is_follows;
+	List   *triglist;
+} OraTrgOrder;
+
 /* ConstraintAttributeSpec yields an integer bitmask of these flags: */
 #define CAS_NOT_DEFERRABLE			0x01
 #define CAS_DEFERRABLE				0x02
@@ -291,6 +297,7 @@ static bool isAconstNode(Node *node);
 	struct SelectLimit	*selectlimit;
 	SetQuantifier	 setquantifier;
 	struct GroupClause  *groupclause;
+	struct OraTrgOrder	*oratrgorder;
 	MergeWhenClause		*mergewhen;	/* ReqID:SRS-SQL-MERGE */
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	package_alter_flag	alter_flag;
@@ -305,7 +312,7 @@ static bool isAconstNode(Node *node);
 		AlterDatabaseStmt AlterDatabaseLinkStmt AlterDatabaseSetStmt AlterDomainStmt AlterEnumStmt
 		AlterFdwStmt AlterForeignServerStmt AlterGroupStmt
 		AlterObjectDependsStmt AlterObjectSchemaStmt AlterOwnerStmt
-		AlterOperatorStmt AlterTypeStmt AlterSeqStmt AlterSessionCloseDblinkStmt AlterSystemStmt AlterTableStmt
+		AlterOperatorStmt AlterOraTrigStmt AlterTypeStmt AlterSeqStmt AlterSessionCloseDblinkStmt AlterSystemStmt AlterTableStmt
 		AlterTblSpcStmt AlterExtensionStmt AlterExtensionContentsStmt
 		AlterCompositeTypeStmt AlterUserMappingStmt AlterSynoStmt
 		AlterRoleStmt AlterRoleSetStmt AlterPolicyStmt AlterStatsStmt
@@ -773,7 +780,7 @@ static bool isAconstNode(Node *node);
 	CONNECT_BY_ISCYCLE CONNECT_BY_ROOT
 	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
-	COST CREATE CROSS CSV CUBE CURRENT_P
+	COST CREATE CROSS CROSSEDITION CSV CUBE CURRENT_P
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_SHARD /* ReqID:SRS-MISC-BULKLOAD*/
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
@@ -788,7 +795,7 @@ static bool isAconstNode(Node *node);
 	EXTENSION EXTERNAL
 
 	FALSE_P FAMILY FETCH FILENAME /* ReqID:SRS-MISC-BULKLOAD */ FILTER FINALIZE FIRST_P 
-	FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */ FLOAT_P FOLLOWING FOR
+	FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */ FLOAT_P FOLLOWING FOLLOWS FOR
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
 
 	GENERATED GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
@@ -825,7 +832,7 @@ static bool isAconstNode(Node *node);
 	OVER OVERLAPS OVERLAY OVERRIDING OWNED OWNER PACKAGES /* ReqID:SRS-SQL-PACKAGE */
 
 	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD EXTRACT PLACING PLANS POLICY
-	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
+	POSITION PRECEDES PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
 	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROGRAM PUBLIC PUBLICATION PURGE	/* BUG:M0000118 */
 
 	QUOTE QUOTES /* BUG#M0000414 */
@@ -833,7 +840,7 @@ static bool isAconstNode(Node *node);
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE RECYCLEBIN /* ReqID:SRS-RECOVERY-FLASHBACK */
 	REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
-	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
+	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE REVERSE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWID ROWNUM /* ReqID:SRS-SQL-ROWNUM */ ROWS ROWTYPE /* ReqID:SRS-PLSQL-TYPE */ RULE
 
 	SAVEPOINT SCALE SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES	/* ReqID:SRS-SQL-SEQ */
@@ -958,6 +965,12 @@ static bool isAconstNode(Node *node);
 /* End - ReqID:SRS-SQL-FORCEVIEW */
 
 %type <node> CreateSynonymStmt /* ReqID:SRS-SQL-SYNONYM */
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+%type <oratrgorder> ora_trigger_order
+%type <boolean> ora_enable_trigger
+%type <node> ora_trg_on_table
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
@@ -1214,6 +1227,7 @@ stmt:
 			| AlterObjectSchemaStmt
 			| AlterOwnerStmt
 			| AlterOperatorStmt
+			| AlterOraTrigStmt
 			| AlterTypeStmt
 			| AlterPolicyStmt
 			| AlterSeqStmt
@@ -6955,28 +6969,103 @@ am_type:
  *****************************************************************************/
 
 CreateTrigStmt:
-			CREATE opt_or_replace TRIGGER name TriggerActionTime TriggerEvents ON
-			qualified_name TriggerReferencing TriggerForSpec TriggerWhen
+			CREATE opt_or_replace opt_ora_editioned TRIGGER qualified_name
+			OptSharing default_collation_option TriggerActionTime TriggerEvents ON
+			qualified_name TriggerReferencing TriggerForSpec ora_trigger_edition_clause
+			ora_trigger_order ora_enable_trigger TriggerWhen
 			EXECUTE FUNCTION_or_PROCEDURE func_name '(' TriggerFuncArgs ')'
 				{
 					CreateTrigStmt *n = makeNode(CreateTrigStmt);
 					n->replace = $2;
 					n->isconstraint = false;
-					n->trigname = $4;
-					n->relation = $8;
-					n->funcname = $14;
-					n->args = $16;
-					n->row = $10;
-					n->timing = $5;
-					n->events = intVal(linitial($6));
-					n->columns = (List *) lsecond($6);
-					n->whenClause = $11;
-					n->transitionRels = $9;
+					n->trigname = $5->relname;
+					n->relation = $11;
+					n->funcname = $20;
+					n->args = $22;
+					n->row = $13;
+					n->timing = $8;
+					n->events = intVal(linitial($9));
+					n->columns = (List *) lsecond($9);
+					n->whenClause = $17;
+					n->transitionRels = $12;
 					n->deferrable = false;
 					n->initdeferred = false;
 					n->constrrel = NULL;
+					n->is_ora_trig = false;
 					$$ = (Node *)n;
 				}
+		  /* Begin - ReqID:SRS-SQL-TRIGGER */
+		  |	CREATE opt_or_replace opt_ora_editioned TRIGGER qualified_name
+			OptSharing default_collation_option TriggerActionTime TriggerEvents ON
+			qualified_name TriggerReferencing TriggerForSpec ora_trigger_edition_clause
+			ora_trigger_order ora_enable_trigger TriggerWhen
+			ora_triger_call Sconst
+				{
+					ListCell    *lc;
+					CreateTrigStmt *n = makeNode(CreateTrigStmt);
+					n->replace = $2;
+					n->isconstraint = false;
+					n->trigname = $5->relname;
+					n->relation = $11;
+					n->funcname = NIL;
+					n->args = NIL;
+					n->timing = $8;
+					n->events = intVal(linitial($9));
+					n->columns = (List *) lsecond($9);
+					n->newalias = NULL;
+					n->oldalias = NULL;
+					if ($12)
+					{
+						if (list_length($12) > 2)
+							elog(ERROR, "referencing clause error");
+
+						foreach(lc, $12)
+						{
+							TriggerTransition *tt = lfirst_node(TriggerTransition, lc);
+
+							if (!tt->isTable && tt->isNew && tt->name)
+								n->newalias = psprintf("%s", tt->name);
+
+							if (!tt->isTable && !tt->isNew && tt->name)
+								n->oldalias = psprintf("%s", tt->name);
+						}
+					}
+					n->row = $13;
+					n->orderList = $15->triglist;
+					n->is_follows = $15->is_follows;
+					n->ora_tgenabled = $16;
+					n->whenClause = $17;
+					if ($19)
+					{
+						StringInfoData buf;
+
+						initStringInfo(&buf);
+						appendStringInfo(&buf, "%s", "BEGIN\n");
+						appendStringInfo(&buf, "%s", $19);
+						if (strchr($19, ';') == NULL)
+						{
+							appendStringInfoChar(&buf, ';');
+						}
+						appendStringInfo(&buf, "%s", "\nEND");
+						n->ora_trfuncsrc = buf.data;
+					}
+					n->transitionRels = NIL;
+					n->is_ora_trig = true;
+					/*
+					 * Error report -
+					 * ORA-25025: cannot specify PRECEDES clause
+					 * 25025. 00000 -  "cannot specify PRECEDES clause"
+					 * *Cause:	The PRECEDES clause was specified when creating a FORWARD
+					 *			CROSSEDITION trigger or a regular trigger.
+					 * *Action:	Do not create a FORWARD CROSSEDITION or a regular trigger with
+					 *			a PRECEDES clause.
+					 */
+					if (n->orderList && !n->is_follows)
+						elog(ERROR, "cannot specify PRECEDES clause");
+
+					$$ = (Node *)n;
+				}
+		  /* End - ReqID:SRS-SQL-TRIGGER */
 		  | CREATE opt_or_replace CONSTRAINT TRIGGER name AFTER TriggerEvents ON
 			qualified_name OptConstrFromTable ConstraintAttributeSpec
 			FOR EACH ROW TriggerWhen
@@ -7003,8 +7092,68 @@ CreateTrigStmt:
 								   &n->deferrable, &n->initdeferred, NULL,
 								   NULL, yyscanner);
 					n->constrrel = $10;
+					n->is_ora_trig = false;
 					$$ = (Node *)n;
 				}
+		  /* Begin - ReqID:SRS-SQL-TRIGGER */
+		  /* compatible Oracle simple_dml trigger grammer */
+		  | CREATE opt_or_replace opt_ora_editioned TRIGGER qualified_name OptSharing
+			default_collation_option TriggerActionTime TriggerEvents ON qualified_name
+			TriggerReferencing TriggerForSpec ora_trigger_edition_clause ora_trigger_order
+			ora_enable_trigger TriggerWhen ora_trigger_body Sconst
+				{
+					ListCell	*lc;
+					CreateTrigStmt *n = makeNode(CreateTrigStmt);
+					n->replace = $2;
+					n->isconstraint = false;
+					n->trigname = $5->relname;
+					n->ora_trigschema = $5->schemaname;
+					n->relation = $11;
+					n->funcname = NIL;
+					n->timing = $8;
+					n->events = intVal(linitial($9));
+					n->columns = (List *) lsecond($9);
+					n->newalias = NULL;
+					n->oldalias = NULL;
+					if ($12)
+					{
+						if (list_length($12) > 2)
+							elog(ERROR, "referencing clause error");
+
+						foreach(lc, $12)
+						{
+							TriggerTransition *tt = lfirst_node(TriggerTransition, lc);
+
+							if (!tt->isTable && tt->isNew && tt->name)
+								n->newalias = psprintf("%s", tt->name);
+
+							if (!tt->isTable && !tt->isNew && tt->name)
+								n->oldalias = psprintf("%s", tt->name);
+						}
+					}
+					n->row = $13;
+					n->orderList = $15->triglist;
+					n->is_follows = $15->is_follows;
+					n->ora_tgenabled = $16;
+					n->whenClause = $17;
+					n->ora_trfuncsrc = $19;
+					n->transitionRels = NIL;
+					n->is_ora_trig = true;
+					/*
+					 * Error report -
+					 * ORA-25025: cannot specify PRECEDES clause
+					 * 25025. 00000 -  "cannot specify PRECEDES clause"
+					 * *Cause:	The PRECEDES clause was specified when creating a FORWARD
+					 *			CROSSEDITION trigger or a regular trigger.
+					 * *Action:	Do not create a FORWARD CROSSEDITION or a regular trigger with
+					 *			a PRECEDES clause.
+					 */
+					if (n->orderList && !n->is_follows)
+						elog(ERROR, "cannot specify PRECEDES clause");
+
+					$$ = (Node *)n;
+				}
+		   /* End - ReqID:SRS-SQL-TRIGGER */
 		;
 
 TriggerActionTime:
@@ -7078,15 +7227,7 @@ TransitionOldOrNew:
 
 TransitionRowOrTable:
 			TABLE									{ $$ = true; }
-			/*
-			 * According to the standard, lack of a keyword here implies ROW.
-			 * Support for that would require prohibiting ROW entirely here,
-			 * reserving the keyword ROW, and/or requiring AS (instead of
-			 * allowing it to be optional, as the standard specifies) as the
-			 * next token.  Requiring ROW seems cleanest and easiest to
-			 * explain.
-			 */
-			| ROW									{ $$ = false; }
+			| /*EMPTY*/									{ $$ = false; }
 		;
 
 TransitionRelName:
@@ -7187,6 +7328,161 @@ ConstraintAttributeElem:
 			| NO INHERIT					{ $$ = CAS_NO_INHERIT; }
 		;
 
+ora_trigger_edition_clause:
+			 ora_trig_mode CROSSEDITION
+			| /*EMPTY*/
+		;
+
+ora_trig_mode:
+			FORWARD
+			| REVERSE
+		;
+
+ora_enable_trigger:
+				ENABLE_P					{ $$ = true; }
+				| DISABLE_P					{ $$ = false; }
+				|/*EMPTY*/					{ $$ = true; }
+		;
+
+ora_trigger_order:
+				/*EMPTY*/
+				{
+					OraTrgOrder 	*n = (OraTrgOrder *)palloc(sizeof(OraTrgOrder));
+					n->is_follows = false;
+					n->triglist = NIL;
+					$$ = n;
+				}
+				| FOLLOWS qualified_name_list
+					{
+						OraTrgOrder 	*n = (OraTrgOrder *)palloc(sizeof(OraTrgOrder));
+						n->is_follows = true;
+						n->triglist = $2;
+						$$ = n;
+					}
+				| PRECEDES qualified_name_list
+					{
+						OraTrgOrder 	*n = (OraTrgOrder *)palloc(sizeof(OraTrgOrder));
+						n->is_follows = false;
+						n->triglist = $2;
+						$$ = n;
+					}
+		;
+
+ora_trigger_body:
+				BEGIN_P
+					{
+						set_oracle_plsql_body(yyscanner, OraBody_MAYBE_ANONYMOUS_BLOCK_BEGIN);
+						set_oracle_plsql_bodystart(yyscanner, @1, 1);
+					}
+				| DECLARE
+					{
+						set_oracle_plsql_body(yyscanner, OraBody_MAYBE_ANONYMOUS_BLOCK_DECLARE);
+						set_oracle_plsql_bodystart(yyscanner, @1, 0);
+					}
+		;
+
+ora_triger_call: CALL
+					{
+						set_oracle_plsql_body(yyscanner, OraBody_ANONYMOUS_BLOCK);
+						set_oracle_plsql_bodystart(yyscanner, @1 + 4, 0);
+					}
+				;
+
+/*****************************************************************************
+*
+*	ALTER TRIGGER [ schema. ] trigger_name
+*		{ trigger_compile_clause
+*		| { ENABLE | DISABLE }
+*		| RENAME TO new_name
+*		| { EDITIONABLE | NONEDITIONABLE }
+*		}
+*		| ON table_name;
+*
+*	trigger_compile_clause:
+*
+*		COMPILE [ DEBUG ] [ compiler_parameters_clause ... ] [ REUSE SETTINGS ]
+*
+*	compiler_parameters_clause:
+*
+*		parameter_name = parameter_value
+*
+*****************************************************************************/
+
+AlterOraTrigStmt: ALTER TRIGGER qualified_name ENABLE_P ora_trg_on_table
+					{
+						AlterOraTrigStmt	*at = makeNode(AlterOraTrigStmt);
+
+						at->trigname = $3->relname;
+						at->ora_trigschema = $3->schemaname;
+						at->rename = NULL;
+						at->editable = FLAG_NOREFERENCED;
+						at->opt = 'e';
+						at->relation = $5;
+
+						$$=  (Node *) at;
+					}
+				| ALTER TRIGGER qualified_name DISABLE_P ora_trg_on_table
+					{
+						AlterOraTrigStmt	*at = makeNode(AlterOraTrigStmt);
+
+						at->trigname = $3->relname;
+						at->ora_trigschema = $3->schemaname;
+						at->rename = NULL;
+						at->editable = FLAG_NOREFERENCED;
+						at->opt = 'd';
+						at->relation = $5;
+
+						$$=  (Node *) at;
+					}
+				| ALTER TRIGGER qualified_name RENAME TO name ora_trg_on_table
+					{
+						AlterOraTrigStmt	*at = makeNode(AlterOraTrigStmt);
+
+						at->trigname = $3->relname;
+						at->ora_trigschema = $3->schemaname;
+						at->rename = $6;
+						at->editable = FLAG_NOREFERENCED;
+						at->opt = 'r';
+						at->relation = $7;
+
+						$$=  (Node *) at;
+					}
+				| ALTER TRIGGER qualified_name COMPILE debug_options
+					compiler_parameters_clause compiler_parameters_options ora_trg_on_table
+					{
+						AlterOraTrigStmt	*at = makeNode(AlterOraTrigStmt);
+
+						at->trigname = $3->relname;
+						at->ora_trigschema = $3->schemaname;
+						at->rename = NULL;
+						at->editable = FLAG_NOREFERENCED;
+						at->opt = 'c';
+						at->relation = $8;
+
+						$$=  (Node *) at;
+					}
+				| ALTER TRIGGER qualified_name ora_editioned ora_trg_on_table
+					{
+						AlterOraTrigStmt	*at = makeNode(AlterOraTrigStmt);
+
+						at->trigname = $3->relname;
+						at->ora_trigschema = $3->schemaname;
+						at->rename = NULL;
+						at->editable = $4;
+						at->relation = $5;
+
+						$$=  (Node *) at;
+					}
+		;
+
+ora_trg_on_table: ON qualified_name
+					{
+						RangeVar	*rv = makeNode(RangeVar);
+						rv = $2;
+						$$= (Node *) rv;
+					}
+				| /*EMPTY*/				{ $$ = NULL; }
+		;
 
 /*****************************************************************************
  *
@@ -7254,6 +7550,7 @@ enable_trigger:
 			| ENABLE_P REPLICA			{ $$ = TRIGGER_FIRES_ON_REPLICA; }
 			| ENABLE_P ALWAYS			{ $$ = TRIGGER_FIRES_ALWAYS; }
 			| DISABLE_P					{ $$ = TRIGGER_DISABLED; }
+
 		;
 
 /*****************************************************************************
@@ -7896,6 +8193,48 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior 
 					$$ = (Node *)n;
 				}
 			/* End - ReqID:SRS-SQL-PACKAGE  */
+			| DROP TRIGGER name ON any_name opt_drop_behavior
+				{
+					DropStmt *n = makeNode(DropStmt);
+					n->removeType = OBJECT_TRIGGER;
+					n->objects = list_make1(lappend($5, makeString($3)));
+					n->behavior = $6;
+					n->missing_ok = false;
+					n->concurrent = false;
+					$$ = (Node *) n;
+				}
+			| DROP TRIGGER IF_P EXISTS name ON any_name opt_drop_behavior
+				{
+					DropStmt *n = makeNode(DropStmt);
+					n->removeType = OBJECT_TRIGGER;
+					n->objects = list_make1(lappend($7, makeString($5)));
+					n->behavior = $8;
+					n->missing_ok = true;
+					n->concurrent = false;
+					$$ = (Node *) n;
+				}
+			/* Begin - ReqID:SRS-SQL-TRIGGER */
+			| DROP TRIGGER qualified_name opt_drop_behavior
+				{
+					DropStmt *n = makeNode(DropStmt);
+					n->removeType = OBJECT_TRIGGER;
+					n->objects = list_make1(list_make1(list_make2(makeString($3->schemaname), makeString($3->relname))));
+					n->behavior = $4;
+					n->missing_ok = false;
+					n->concurrent = false;
+					$$ = (Node *) n;
+				}
+			| DROP TRIGGER IF_P EXISTS qualified_name opt_drop_behavior
+				{
+					DropStmt *n = makeNode(DropStmt);
+					n->removeType = OBJECT_TRIGGER;
+					n->objects = list_make1(list_make1(list_make2(makeString($5->schemaname), makeString($5->relname))));
+					n->behavior = $6;
+					n->missing_ok = true;
+					n->concurrent = false;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-TRIGGER */
 			| DROP object_type_name_on_any_name name ON any_name opt_drop_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
@@ -8032,7 +8371,6 @@ drop_type_name:
 object_type_name_on_any_name:
 			POLICY									{ $$ = OBJECT_POLICY; }
 			| RULE									{ $$ = OBJECT_RULE; }
-			| TRIGGER								{ $$ = OBJECT_TRIGGER; }
 		;
 
 any_name_list:
@@ -8191,6 +8529,16 @@ CommentStmt:
 					n->comment = $8;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-SQL-TRIGGER */
+			| COMMENT ON TRIGGER name ON any_name IS comment_text
+				{
+					CommentStmt *n = makeNode(CommentStmt);
+					n->objtype = OBJECT_TRIGGER;
+					n->object = (Node *) lappend($6, makeString($4));
+					n->comment = $8;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-TRIGGER */
 			| COMMENT ON PROCEDURE function_with_argtypes IS comment_text
 				{
 					CommentStmt *n = makeNode(CommentStmt);
@@ -20853,6 +21201,7 @@ unreserved_keyword:
 			| COPY
 			| COST
 			| COUNT_P /* BUG#M0000457 */
+			| CROSSEDITION  /* ReqID:SRS-SQL-TRIGGER */
 			| CSV
 			| CUBE
 			| CURRENT_P
@@ -20908,6 +21257,7 @@ unreserved_keyword:
 			| FIRST_P
 			| FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */
 			| FOLLOWING
+			| FOLLOWS	/* ReqID:SRS-SQL-TRIGGER */
 			| FORCE
 			| FORWARD
 			| FUNCTION
@@ -21032,6 +21382,7 @@ unreserved_keyword:
 			| PLANS
 			| POLICY
 			| POLYMORPHIC /* ReqID:SRS-SQL-PROC */
+			| PRECEDES	/* ReqID:SRS-SQL-TRIGGER */
 			| PRECEDING
 			| PREPARE
 			| PREPARED
@@ -21073,6 +21424,7 @@ unreserved_keyword:
 			| RETURN
 			| RETURNS
 			| REUSE /* ReqID:SRS-SQL-PROC */
+			| REVERSE	/* ReqID:SRS-SQL-TRIGGER */
 			| REVOKE
 			| ROLE
 			| ROLLBACK
@@ -21504,6 +21856,7 @@ bare_label_keyword:
 			| COST
 			| COUNT_P /* BUG#M0000457 */
 			| CROSS
+			| CROSSEDITION /* ReqID:SRS-SQL-TRIGGER */
 			| CSV
 			| CUBE
 			| CURRENT_P
@@ -21579,6 +21932,7 @@ bare_label_keyword:
 			| FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */
 			| FLOAT_P
 			| FOLLOWING
+			| FOLLOWS	/* ReqID:SRS-SQL-TRIGGER */
 			| FORCE
 			| FOREIGN
 			| FORWARD
@@ -21745,6 +22099,7 @@ bare_label_keyword:
 			| POLICY
 			| POLYMORPHIC /* ReqID:SRS-SQL-PROC */
 			| POSITION
+			| PRECEDES	/* ReqID:SRS-SQL-TRIGGER */
 			| PRECEDING
 			| PREPARE
 			| PREPARED
@@ -21790,6 +22145,7 @@ bare_label_keyword:
 			| RETURN
 			| RETURNS
 			| REUSE /* ReqID:SRS-SQL-PROC */
+			| REVERSE	/* ReqID:SRS-SQL-TRIGGER */
 			| REVOKE
 			| RIGHT
 			| ROLE

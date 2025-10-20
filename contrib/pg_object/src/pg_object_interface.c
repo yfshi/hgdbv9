@@ -435,6 +435,12 @@ PgObjectInfo get_object_origin_info(ObjectAddress address)
 	/* get object schema */
 	objinfo->orischema = struct_object->schemaoid;
 
+	/* get object kinkd */
+	objinfo->orikind = struct_object->objkind;
+
+	/* get object compatible_mod */
+	objinfo->oricompatible_mode = struct_object->compatible_mode;
+
 	/* get object modify time */
 	{
 		objinfo->orimodifytime = palloc(sizeof(Timestamp));

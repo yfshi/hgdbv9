@@ -3041,6 +3041,7 @@ end; $$ language plisql;
 --ok
 create or replace trigger after_insert_trig1 after insert on test_trig_subproc
 EXECUTE PROCEDURE after_insert_trig();
+/
 
 --raise info var1:45 and 68
 insert into test_trig_subproc values(1,'xiexie');
@@ -3067,6 +3068,7 @@ end; $$ language plisql;
 
 create or replace trigger after_insert_trig1 after insert on test_trig_subproc
 for each row EXECUTE PROCEDURE after_insert_trig();
+/
 
 --info old name : new name : xiexie 24
 insert into test_trig_subproc values(1,'xiexie');
@@ -3095,6 +3097,7 @@ $$ language plisql;
 
 create event trigger regress_event_trigger on ddl_command_start
    execute procedure test_event_trigger();
+/
 
 create table test_subproc_system(id integer);
 

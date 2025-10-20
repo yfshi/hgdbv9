@@ -4899,6 +4899,7 @@ _copyCreateTrigStmt(const CreateTrigStmt *from)
 	COPY_SCALAR_FIELD(replace);
 	COPY_SCALAR_FIELD(isconstraint);
 	COPY_STRING_FIELD(trigname);
+	COPY_STRING_FIELD(ora_trigschema);	/* ReqID:SRS-SQL-TRIGGER */
 	COPY_NODE_FIELD(relation);
 	COPY_NODE_FIELD(funcname);
 	COPY_NODE_FIELD(args);
@@ -4911,6 +4912,15 @@ _copyCreateTrigStmt(const CreateTrigStmt *from)
 	COPY_SCALAR_FIELD(deferrable);
 	COPY_SCALAR_FIELD(initdeferred);
 	COPY_NODE_FIELD(constrrel);
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	COPY_STRING_FIELD(ora_trfuncsrc);
+	COPY_NODE_FIELD(orderList);
+	COPY_STRING_FIELD(oldalias);
+	COPY_STRING_FIELD(newalias);
+	COPY_SCALAR_FIELD(ora_tgenabled);
+	COPY_SCALAR_FIELD(is_follows);
+	COPY_SCALAR_FIELD(is_ora_trig);
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	return newnode;
 }
@@ -5621,6 +5631,23 @@ _copyVarRef(const VarRef *from)
 	return newnode;
 }
 /* End - ReqID:SRS-MYSQL-SET */
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+static AlterOraTrigStmt *
+_copyAlterOraTrigStmt(const AlterOraTrigStmt* from)
+{
+	AlterOraTrigStmt *newnode = makeNode(AlterOraTrigStmt);
+
+	COPY_STRING_FIELD(trigname);
+	COPY_STRING_FIELD(ora_trigschema);
+	COPY_STRING_FIELD(rename);
+	COPY_NODE_FIELD(relation);
+	COPY_SCALAR_FIELD(editable);
+	COPY_SCALAR_FIELD(opt);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 /*
  * copyObjectImpl -- implementation of copyObject(); see nodes/nodes.h
@@ -6689,6 +6716,11 @@ copyObjectImpl(const void *from)
 			retval = _copyVarRef(from);
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
+		/* Begin - ReqID:SRS-SQL-TRIGGER */
+		case T_AlterOraTrigStmt:
+			retval = _copyAlterOraTrigStmt(from);
+			break;
+		/* End - ReqID:SRS-SQL-TRIGGER */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(from));
 			retval = 0;			/* keep compiler quiet */

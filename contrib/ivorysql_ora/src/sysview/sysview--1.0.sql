@@ -2461,3 +2461,137 @@ FROM
     WHERE iu.rolname = current_user AND d.datname = current_database;
 GRANT SELECT ON SYS.dba_db_link_sources TO PUBLIC;
 /* End - ReqID:SRS-SQL-DBLINK */
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+--
+-- ALL_TRIGGERS
+--
+CREATE OR REPLACE VIEW sys.all_triggers AS
+SELECT
+    SYS.ORA_CASE_TRANS(usr.usename::varchar2)::varchar2(128) AS owner,
+    SYS.ORA_CASE_TRANS(trg.tgname::varchar2)::varchar2(128)  AS trigger_name,
+    CASE
+        WHEN cls.relkind = 'v' THEN 'INSTEAD OF'
+        WHEN trg.tgtype & 2 <> 0 THEN
+            CASE
+                WHEN trg.tgtype & 1 <> 0 THEN 'BEFORE EACH ROW'
+                ELSE 'BEFORE STATEMENT'
+            END
+        WHEN trg.tgtype & 2 = 0 THEN
+            CASE
+                WHEN trg.tgtype & 1 <> 0 THEN 'AFTER EACH ROW'
+                ELSE 'AFTER STATEMENT'
+            END
+        ELSE 'UNKNOWN'
+    END::varchar2(16)                       AS trigger_type,
+
+    TRIM(BOTH ' ' FROM
+        CONCAT_WS(' ',
+            CASE WHEN trg.tgtype & 4 <> 0 THEN 'INSERT' END,
+            CASE WHEN trg.tgtype & 8 <> 0 THEN 'DELETE' END,
+            CASE WHEN trg.tgtype & 16 <> 0 THEN 'UPDATE' END,
+            CASE WHEN trg.tgtype & 32 <> 0 THEN 'TRUNCATE' END
+        )
+    )::varchar2(246)                        AS triggering_event,
+
+    SYS.ORA_CASE_TRANS(usr.usename::varchar2)::varchar2(128)              AS table_owner,
+    'TABLE'::varchar2(18)                   AS base_object_type,
+    SYS.ORA_CASE_TRANS(cls.relname::varchar2)::varchar2(128)              AS table_name,
+
+    NULL::varchar2(4000)                    AS column_name,
+
+    CASE
+        WHEN obj.obj_oid IS NOT NULL AND jsonb_typeof(obj.option->'referencing') = 'array' THEN
+            CONCAT (
+                'REFERENCING ',
+                (
+                 SELECT string_agg(elem, ' ')
+                 FROM jsonb_array_elements_text(obj.option->'referencing') AS elem
+                )
+            )
+        ELSE NULL
+    END::varchar2(422) AS referencing_names,
+    pg_get_expr(trg.tgqual, trg.tgrelid)::varchar2(4000) AS when_clause,
+
+	CASE
+		WHEN trg.tgenabled = 'O' THEN 'ENABLED'
+		WHEN trg.tgenabled = 'A' THEN 'ENABLED'
+		WHEN trg.tgenabled = 'D' THEN 'DISABLED'
+		ELSE 'UNKNOWN'
+	END::varchar2(8) AS status,
+
+    CONCAT('TRIGGER ',
+      SYS.ORA_CASE_TRANS(trg.tgname::varchar2),
+      ' ON ',
+      SYS.ORA_CASE_TRANS(cls.relname::varchar2))::varchar2(4000) AS description,
+
+    SYS.ORA_CASE_TRANS(lang.lanname::varchar2)::varchar2(11)      AS action_type,
+    SYS.ORA_CASE_TRANS(p.prosrc::varchar2)::long                  AS trigger_body,
+
+    'NO'::varchar2(7)               AS crosedition,
+
+    CASE WHEN trg.tgtype & 2 <> 0 AND trg.tgtype & 1 = 0 THEN 'YES' ELSE 'NO' END::varchar2(3) AS before_statement,
+    CASE WHEN trg.tgtype & 2 <> 0 AND trg.tgtype & 1 <> 0 THEN 'YES' ELSE 'NO' END::varchar2(3) AS before_row,
+    CASE WHEN trg.tgtype & 2 = 0 AND trg.tgtype & 1 <> 0 THEN 'YES' ELSE 'NO' END::varchar2(3) AS after_row,
+    CASE WHEN trg.tgtype & 2 = 0 AND trg.tgtype & 1 = 0 THEN 'YES' ELSE 'NO' END::varchar2(3) AS after_statement,
+
+    CASE WHEN trg.tgisinternal = false AND cls.relkind = 'v' THEN 'YES' ELSE 'NO' END::varchar2(3) AS instead_of_row,
+
+    'YES'::varchar2(3)                 AS fire_once,
+    'NO'::varchar2(3)                  AS apply_server_only
+
+FROM
+    pg_trigger trg
+JOIN pg_class cls
+    ON trg.tgrelid = cls.oid
+JOIN pg_user usr
+    ON usr.usesysid = cls.relowner
+LEFT JOIN pg_proc p
+    ON trg.tgfoid = p.oid
+LEFT JOIN pg_language lang
+    ON p.prolang = lang.oid
+LEFT JOIN pg_object obj
+    ON obj.obj_oid = trg.oid
+WHERE
+    NOT trg.tgisinternal;
+
+GRANT SELECT ON sys.all_triggers TO PUBLIC;
+
+--
+-- USER_TRIGGERS
+--
+CREATE OR REPLACE VIEW sys.user_triggers AS
+ SELECT at.trigger_name AS trigger_name,
+	at.trigger_type AS trigger_type,
+	at.triggering_event AS triggering_event,
+	at.table_owner AS table_owner,
+	at.base_object_type AS base_object_type,
+	at.table_name AS table_name,
+	at.column_name AS column_name,
+	at.referencing_names AS referencing_names,
+	at.when_clause AS when_clause,
+	at.status AS status,
+	at.description AS description,
+	at.action_type AS action_type,
+	at.trigger_body AS trigger_body,
+	at.crosedition AS crosedition,
+	at.before_statement AS before_statement,
+	at.before_row AS before_row,
+	at.after_row AS after_row,
+	at.after_statement AS after_statement,
+	at.instead_of_row AS instead_of_row,
+	at.fire_once AS fire_once,
+	at.apply_server_only AS apply_server_only
+   FROM sys.all_triggers at
+ WHERE at.owner = current_user;
+
+GRANT SELECT ON sys.user_triggers TO PUBLIC;
+
+--
+-- DBA_TRIGGERS
+--
+CREATE OR REPLACE VIEW sys.dba_triggers AS
+ SELECT * FROM sys.all_triggers;
+
+GRANT SELECT ON sys.dba_triggers TO PUBLIC;
+/* End - ReqID:SRS-SQL-TRIGGER */

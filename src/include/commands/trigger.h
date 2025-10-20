@@ -21,6 +21,8 @@
 /* ReqID:SRS-MISC-BULKLOAD */
 #include "commands/copy.h"
 
+#include "utils/jsonb.h"	/* ReqID:SRS-SQL-TRIGGER */
+
 /*
  * TriggerData is the node type that is passed as fmgr "context" info
  * when a function is called by the trigger manager.
@@ -86,6 +88,20 @@ typedef struct TransitionCaptureState
 	 */
 	struct AfterTriggersTableData *tcs_private;
 } TransitionCaptureState;
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+typedef struct TriggerDepInfo
+{
+	List	*follows;	/* trigger follow names (List of char*) */
+} TriggerDepInfo;
+
+/* Mapping entries from trigger names to indexes */
+typedef struct TriggerNameMapEntry
+{
+	char 	tgname[NAMEDATALEN];	/* Trigger name */
+	int		index;					/* Index in the trigger array */
+} TriggerNameMapEntry;
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 /*
  * TriggerEvent bit flags
@@ -169,6 +185,10 @@ extern ObjectAddress CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *que
 
 extern void RemoveTriggerById(Oid trigOid);
 extern Oid	get_trigger_oid(Oid relid, const char *name, bool missing_ok);
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+extern Oid ivyGetTriggerOidReloidByName(const char *trigname, Oid *reloid, bool missing_ok);
+extern Trigger *ivyGetTriggerById(Oid trigOid);
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 extern ObjectAddress renametrig(RenameStmt *stmt);
 
@@ -286,6 +306,8 @@ extern bool RI_Initial_Check(Trigger *trigger,
 							 Relation fk_rel, Relation pk_rel);
 extern void RI_PartitionRemove_Check(Trigger *trigger, Relation fk_rel,
 									 Relation pk_rel);
+extern ObjectAddress AlterOraTrigger(AlterOraTrigStmt *at);
+
 
 /* result values for RI_FKey_trigger_type: */
 #define RI_TRIGGER_PK	1		/* is a trigger on the PK relation */
@@ -293,5 +315,13 @@ extern void RI_PartitionRemove_Check(Trigger *trigger, Relation fk_rel,
 #define RI_TRIGGER_NONE 0		/* is not an RI trigger function */
 
 extern int	RI_FKey_trigger_type(Oid tgfoid);
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+extern HTAB *CreateTriggerNameMap(Trigger *triggers, int numtrigs);
+extern void GetTriggerFollowsDependencies(Trigger *triggers, int numtrigs,
+												TriggerDepInfo *depInfo, HTAB *nameToIndex);
+extern int * TopologicalSortTriggers(Trigger *triggers, int numtrigs, TriggerDepInfo *depInfo, HTAB *nameToIndex);
+extern List *ivyExtractJsonbStringArray(JsonbValue *arrayValue);
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 #endif							/* TRIGGER_H */

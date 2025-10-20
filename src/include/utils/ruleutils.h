@@ -17,6 +17,8 @@
 #include "nodes/parsenodes.h"
 #include "nodes/pg_list.h"
 
+#include "utils/jsonb.h"
+
 struct Plan;					/* avoid including plannodes.h here */
 struct PlannedStmt;
 
@@ -55,5 +57,11 @@ extern char *ivy_get_query_def(Query *query);
 /* Begin - ReqID:RSR-SQL-Partition-interval */
 extern char *pg_get_partinterval_def_string(Oid relid);
 /* End - ReqID:RSR-SQL-Partition-interval */
+
+/* Begin - ReqID:RSR-SQL-TRIGGER */
+extern List *ivy_extract_array_from_jbvBinary(JsonbValue *jbv_binary);
+extern void parse_referencing_string(const char *input, char **old_alias_out,
+												char **new_alias_out);
+/* End - ReqID:RSR-SQL-TRIGGER */
 
 #endif							/* RULEUTILS_H */

@@ -169,6 +169,7 @@ CREATE OR REPLACE TRIGGER ttserial
 	FOR EACH ROW
 	EXECUTE FUNCTION
 	public.dummy_update_func();
+/
 
 select dbms_metadata.get_ddl('TRIGGER', 'TTSERIAL','PUBLIC') from dual;
 

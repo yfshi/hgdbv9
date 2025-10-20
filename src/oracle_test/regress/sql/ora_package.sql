@@ -93,6 +93,7 @@ DROP package test_pkg;
 --test ok
 create event trigger regress_event_trigger_end on ddl_command_end
    execute procedure test_event_trigger_f();
+/
 
 --use table to replace user defined record type
 CREATE TABLE mds(id integer,name varchar(23));
@@ -7491,6 +7492,7 @@ end;$$ language plisql;
 
 create trigger test_row_trig before insert or update or delete on test_trigs
 for each row execute procedure test_trig();
+/
 
 
 SET ivorysql.package_security_define_compare_user = true;
@@ -7517,6 +7519,7 @@ end;$$ language plisql;
 
 create trigger test_row_trig before insert or update or delete on test_trigs
 for each row execute procedure test_trig();
+/
 
 SET ivorysql.package_security_define_compare_user = true;
 

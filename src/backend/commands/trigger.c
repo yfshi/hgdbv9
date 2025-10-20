@@ -69,11 +69,16 @@
 #include "commands/copyfrom_internal.h"
 /* End - ReqID:SRS-MISC-BULKLOAD */
 
+#include "parser/pg_object_hook.h"
+#include "catalog/pg_depend.h"
+
+
 /* GUC variables */
 int			SessionReplicationRole = SESSION_REPLICATION_ROLE_ORIGIN;
 
 /* How many levels deep into trigger execution are we? */
 static int	MyTriggerDepth = 0;
+
 
 /* Local function prototypes */
 static void SetTriggerFlags(TriggerDesc *trigdesc, Trigger *trigger);
@@ -128,6 +133,12 @@ static void TransitionTableAddTuple(EState *estate,
 									TupleTableSlot *slot,
 									TupleTableSlot *original_insert_tuple,
 									Tuplestorestate *tuplestore);
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+static ObjectAddress renameOratrig(Oid relid, char *trigname, char *rename);
+static bool check_tableTriglist_has_follows(Trigger             *triggers, int numtrigs);
+/* End - ReqID:SRS-SQL-TRIGGER */
+
 
 /*
  * Create a trigger.  Returns the address of the created trigger.
@@ -228,11 +239,72 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 	bool		trigger_exists = false;
 	Oid			existing_constraint_oid = InvalidOid;
 	bool		existing_isInternal = false;
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	Oid 		otrigid = InvalidOid;
+	Oid 		trgschema = InvalidOid;
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	if (OidIsValid(relOid))
 		rel = table_open(relOid, ShareRowExclusiveLock);
 	else
 		rel = table_openrv(stmt->relation, ShareRowExclusiveLock);
+
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	/* check schema.trigger, schema if exist? */
+	otrigid = get_trigger_oid(rel->rd_rel->oid, stmt->trigname ,true);
+
+	if (stmt->ora_trigschema != NULL)
+	{
+		trgschema = LookupNamespaceNoError(stmt->ora_trigschema);
+		/* Check schema if exist? */
+		if (!OidIsValid(trgschema))
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_TABLE),
+					 errmsg("schema \"%s\" does not exist",
+							stmt->ora_trigschema)));
+
+		/*
+		 * If exist the same name trigger on same table and replace is true
+		 * we will cover the old
+		 */
+		if (OidIsValid(otrigid))
+		{
+			/*
+			 * A trigger with the same name created on the same table but in a
+			 * different schema will be overwritten by the newly created one.
+			 */
+			if (enable_coverwritten_ora_trigger || stmt->replace)
+			{
+				DropStmt 		*dptrig = NULL;
+				ObjectAddress	object;
+				PgObjectInfo	objinfo;
+
+				dptrig = makeNode(DropStmt);
+				dptrig->removeType = OBJECT_TRIGGER;
+				dptrig->objects = list_make1(lappend(list_make1(makeString(RelationGetRelationName(rel))), makeString(stmt->trigname)));
+				dptrig->behavior = DROP_RESTRICT;
+				dptrig->missing_ok = false;
+				dptrig->concurrent = false;
+
+				ObjectAddressSet(object, TriggerRelationId, otrigid);
+				objinfo =  pg_object_get_ori_infor_hook(object);
+				if (objinfo && objinfo->oricompatible_mode == 'o')
+				{
+					RemoveObjects(dptrig);
+					CommandCounterIncrement();
+				}
+			}
+			else
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_OBJECT),
+						 errmsg("trigger \"%s\" on \"%s\" table already exist",
+						 stmt->trigname,
+						 RelationGetRelationName(rel))));
+			}
+		}
+	}
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	/*
 	 * Triggers must be on tables or views, and there are additional
@@ -712,6 +784,61 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 		whenRtable = NIL;
 	}
 
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	/* check FOLLOWS clause */
+	if (stmt->orderList)
+	{
+		ListCell   *lc;
+
+		foreach(lc, stmt->orderList)
+		{
+			Oid 		followtrigOid = InvalidOid;
+			Trigger		*t;
+			RangeVar *rv = lfirst_node(RangeVar, lc);
+
+			followtrigOid = get_trigger_oid(rel->rd_rel->oid, rv->relname ,true);
+			if (!OidIsValid(followtrigOid))
+				elog(ERROR, "Trigger \"%s\" referenced in FOLLOWS or PRECEDES clause may not exist", rv->relname);
+
+			t = ivyGetTriggerById(followtrigOid);
+			if (t->tgtype != tgtype)
+				elog(ERROR, "cannot reference a trigger of a different type"); // ORA-25022:
+		}
+	}
+
+	/* Create the trigger function for ORA triggers */
+	if (stmt->ora_trfuncsrc != NULL)
+	{
+		ParseState *pstate;
+		CreateFunctionStmt	*tfunc;
+		ObjectAddress	objfunc;
+
+		if (OidIsValid(otrigid) && !stmt->replace)
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_OBJECT),
+					 errmsg("trigger \"%s\" for relation \"%s\" already exists",
+							stmt->trigname, RelationGetRelationName(rel))));
+
+		tfunc = makeNode(CreateFunctionStmt);
+		tfunc->is_procedure = false;
+		tfunc->replace = false;
+		tfunc->funcname = list_make1(makeString(ivyChooseFunctionName(stmt->trigname, RelationGetRelationName(rel), "func", RelationGetNamespace(rel))));
+		stmt->funcname = tfunc->funcname;
+		tfunc->parameters = NULL;
+		tfunc->returnType = makeTypeName("trigger");
+		tfunc->options = NIL;
+		tfunc->options = lappend(tfunc->options, makeDefElem("as", (Node*)list_make1(makeString(stmt->ora_trfuncsrc)), -1));
+		tfunc->options = lappend(tfunc->options, makeDefElem("language", (Node*)makeString("plisql"), -1));
+
+		pstate = make_parsestate(NULL);
+		objfunc = CreateFunction(pstate, tfunc);
+
+		funcoid = objfunc.objectId;
+
+		CommandCounterIncrement();
+	}
+	/* End - ReqID:SRS-SQL-TRIGGER */
+
 	/*
 	 * Find and validate the trigger function.
 	 */
@@ -898,7 +1025,16 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 															 CStringGetDatum(trigname));
 	values[Anum_pg_trigger_tgfoid - 1] = ObjectIdGetDatum(funcoid);
 	values[Anum_pg_trigger_tgtype - 1] = Int16GetDatum(tgtype);
-	values[Anum_pg_trigger_tgenabled - 1] = trigger_fires_when;
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	if (stmt->is_ora_trig)
+	{
+		if (stmt->ora_tgenabled)
+			values[Anum_pg_trigger_tgenabled - 1] = TRIGGER_FIRES_ALWAYS;
+		else
+			values[Anum_pg_trigger_tgenabled - 1] = TRIGGER_DISABLED;
+	} /* End - ReqID:SRS-SQL-TRIGGER */
+	else
+		values[Anum_pg_trigger_tgenabled - 1] = trigger_fires_when;
 	values[Anum_pg_trigger_tgisinternal - 1] = BoolGetDatum(isInternal || in_partition);
 	values[Anum_pg_trigger_tgconstrrelid - 1] = ObjectIdGetDatum(constrrelid);
 	values[Anum_pg_trigger_tgconstrindid - 1] = ObjectIdGetDatum(indexOid);
@@ -1077,7 +1213,17 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 	referenced.classId = ProcedureRelationId;
 	referenced.objectId = funcoid;
 	referenced.objectSubId = 0;
-	recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	if (stmt->is_ora_trig)
+	{
+		if (stmt->ora_trfuncsrc)
+			recordDependencyOn(&referenced, &myself, DEPENDENCY_AUTO);
+		else	/* ORA trigger CALL a function */
+			recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+	} /* End - ReqID:SRS-SQL-TRIGGER */
+	else
+		recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
 
 	if (isInternal && OidIsValid(constraintOid))
 	{
@@ -1265,9 +1411,90 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 	/* Keep lock on target rel until end of xact */
 	table_close(rel, NoLock);
 
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	/*
+	 * Inser a tuple in pg_object for ORA trigger
+	 */
+	if (stmt->is_ora_trig)
+	{
+		if (pg_object_create_obj_hook)
+		{
+			StringInfoData	str;
+
+			initStringInfo(&str);
+			appendStringInfo(&str, "{");
+
+			if (stmt->orderList)
+			{
+				ListCell   *lc;
+				int 	i = 0;
+
+				foreach(lc, stmt->orderList)
+				{
+					RangeVar *rv = lfirst_node(RangeVar, lc);
+
+					/* build follows clause */
+					if (stmt->is_follows)
+					{
+						if (i > 0)
+							appendStringInfo(&str, ",\"%s\"", rv->relname);
+						else
+							appendStringInfo(&str, "\"follows\":[\"%s\"", rv->relname);
+					}
+					i++;
+				}
+
+				if (i >= 1)
+					appendStringInfo(&str, "]");
+
+				if (stmt->newalias || stmt->oldalias)
+					appendStringInfo(&str, " , ");
+			}
+
+			/* build referencing clause */
+			if (stmt->oldalias)
+			{
+				if (stmt->newalias)
+					appendStringInfo(&str, "\"referencing\":[\"OLD AS %s\", \"NEW AS %s\"]",
+									stmt->oldalias, stmt->newalias);
+				else
+					appendStringInfo(&str, "\"referencing\":[\"OLD AS %s\"]", stmt->oldalias);
+			}
+			else if (stmt->newalias)
+			{
+				if (stmt->oldalias)
+					appendStringInfo(&str, "\"referencing\":[\"OLD AS %s\", \"NEW AS %s\"]",
+									stmt->oldalias, stmt->newalias);
+				else
+					appendStringInfo(&str, "\"referencing\":[\"NEW AS %s\"]", stmt->newalias);
+			}
+
+			/* ORA trigger CALL a function */
+			if (stmt->ora_trfuncsrc == NULL)
+			{
+				if (stmt->newalias || stmt->oldalias)
+					appendStringInfo(&str, " , ");
+
+				appendStringInfo(&str, "\"call\" : \"%s\"", NameListToString(stmt->funcname));
+			}
+
+			appendStringInfo(&str, "}");
+
+			pg_object_create_obj_hook(stmt->trigname,
+									  trgschema,
+									  false,
+									  PG_OBJECT_TRIGGER,
+									  myself,
+									  (stmt->orderList || stmt->newalias || stmt->oldalias) ? DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(str.data))) : NULL,
+									  NULL);
+
+			pfree(str.data);
+		}
+	}
+	/* End - ReqID:SRS-SQL-TRIGGER */
+
 	return myself;
 }
-
 
 /*
  * Guts of trigger deletion.
@@ -1281,6 +1508,10 @@ RemoveTriggerById(Oid trigOid)
 	HeapTuple	tup;
 	Oid			relid;
 	Relation	rel;
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	ObjectAddress	 object;
+	PgObjectInfo	objinfo;
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	tgrel = table_open(TriggerRelationId, RowExclusiveLock);
 
@@ -1342,6 +1573,18 @@ RemoveTriggerById(Oid trigOid)
 
 	/* Keep lock on trigger's rel until end of xact */
 	table_close(rel, NoLock);
+
+	ObjectAddressSet(object, TriggerRelationId, trigOid);
+
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	/* drop ORA triggers in pg_object */
+	if (pg_object_get_ori_infor_hook)
+	{
+		objinfo =  pg_object_get_ori_infor_hook(object);
+		if (objinfo && objinfo->oricompatible_mode == 'o')
+			pg_object_drop_obj_hook(object);
+	}
+	/* End - ReqID:SRS-SQL-TRIGGER */
 }
 
 /*
@@ -1396,6 +1639,182 @@ get_trigger_oid(Oid relid, const char *trigname, bool missing_ok)
 	table_close(tgrel, AccessShareLock);
 	return oid;
 }
+
+Oid
+ivyGetTriggerOidReloidByName(const char *trigname, Oid *reloid, bool missing_ok)
+{
+	Relation	pg_trigger;
+	HeapTuple	tuple;
+	SysScanDesc scan;
+	ScanKeyData skey[1];
+	Oid			oid = InvalidOid;
+	int			count = 0;
+
+	pg_trigger = table_open(TriggerRelationId, AccessShareLock);
+
+	ScanKeyInit(&skey[0],
+				Anum_pg_trigger_tgname,
+				BTEqualStrategyNumber, F_NAMEEQ,
+				CStringGetDatum(trigname));
+
+	scan = systable_beginscan(pg_trigger, InvalidOid, true, NULL, 1, skey);
+
+	while ((tuple = systable_getnext(scan)) != NULL)
+	{
+		count++;
+		if (count == 1)
+		{
+			Form_pg_trigger ftrigger = (Form_pg_trigger) GETSTRUCT(tuple);
+			*reloid = ftrigger->tgrelid;
+			oid = ftrigger->oid;
+		}
+		else if (count > 1)
+		{
+			systable_endscan(scan);
+			table_close(pg_trigger, AccessShareLock);
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					 errmsg("trigger \"%s\" is not unique, please use ON clause to specify the table",
+							trigname)));
+		}
+	}
+
+	if (count == 0)
+	{
+		if (!missing_ok)
+		{
+			systable_endscan(scan);
+			table_close(pg_trigger, AccessShareLock);
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					 errmsg("trigger \"%s\" does not exist", trigname)));
+		}
+		*reloid = InvalidOid;
+		oid = InvalidOid;
+	}
+
+	systable_endscan(scan);
+	table_close(pg_trigger, AccessShareLock);
+
+	return oid;
+}
+
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+Trigger *
+ivyGetTriggerById(Oid trigOid)
+{
+	HeapTuple		ht_trig;
+	Form_pg_trigger pg_trigger;
+	Relation		tgrel;
+	ScanKeyData 	skey[1];
+	SysScanDesc 	tgscan;
+	Trigger			*trigger = NULL;
+	Datum			datum;
+	bool			isnull;
+
+	/*
+	 * Fetch the pg_trigger tuple by the Oid of the trigger
+	 */
+	tgrel = table_open(TriggerRelationId, AccessShareLock);
+
+	ScanKeyInit(&skey[0],
+				Anum_pg_trigger_oid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(trigOid));
+
+	tgscan = systable_beginscan(tgrel, TriggerOidIndexId, true,
+								NULL, 1, skey);
+
+	ht_trig = systable_getnext(tgscan);
+
+	if (!HeapTupleIsValid(ht_trig))
+	{
+		systable_endscan(tgscan);
+		table_close(tgrel, AccessShareLock);
+		return NULL;
+	}
+
+	pg_trigger = (Form_pg_trigger) GETSTRUCT(ht_trig);
+
+	trigger = (Trigger *) palloc(sizeof(Trigger));
+	trigger->tgoid = pg_trigger->oid;
+	trigger->tgname = DatumGetCString(DirectFunctionCall1(nameout,
+														NameGetDatum(&pg_trigger->tgname)));
+	trigger->tgfoid = pg_trigger->tgfoid;
+	trigger->tgtype = pg_trigger->tgtype;
+	trigger->tgenabled = pg_trigger->tgenabled;
+	trigger->tgisinternal = pg_trigger->tgisinternal;
+	trigger->tgisclone = OidIsValid(pg_trigger->tgparentid);
+	trigger->tgconstrrelid = pg_trigger->tgconstrrelid;
+	trigger->tgconstrindid = pg_trigger->tgconstrindid;
+	trigger->tgconstraint = pg_trigger->tgconstraint;
+	trigger->tgdeferrable = pg_trigger->tgdeferrable;
+	trigger->tginitdeferred = pg_trigger->tginitdeferred;
+	trigger->tgnargs = pg_trigger->tgnargs;
+	/* tgattr is first var-width field, so OK to access directly */
+	trigger->tgnattr = pg_trigger->tgattr.dim1;
+	if (trigger->tgnattr > 0)
+	{
+		trigger->tgattr = (int16 *) palloc(trigger->tgnattr * sizeof(int16));
+		memcpy(trigger->tgattr, &(pg_trigger->tgattr.values),
+			   trigger->tgnattr * sizeof(int16));
+	}
+	else
+		trigger->tgattr = NULL;
+	if (trigger->tgnargs > 0)
+	{
+		bytea	   *val;
+		char	   *p;
+		int			i;
+
+		val = DatumGetByteaPP(fastgetattr(ht_trig,
+										  Anum_pg_trigger_tgargs,
+										  tgrel->rd_att, &isnull));
+		if (isnull)
+			elog(ERROR, "tgargs is null for trigger %u", trigOid);
+		p = (char *) VARDATA_ANY(val);
+		trigger->tgargs = (char **) palloc(trigger->tgnargs * sizeof(char *));
+		for (i = 0; i < trigger->tgnargs; i++)
+		{
+			trigger->tgargs[i] = pstrdup(p);
+			p += strlen(p) + 1;
+		}
+	}
+	else
+		trigger->tgargs = NULL;
+
+	datum = fastgetattr(ht_trig, Anum_pg_trigger_tgoldtable,
+						tgrel->rd_att, &isnull);
+	if (!isnull)
+		trigger->tgoldtable =
+			DatumGetCString(DirectFunctionCall1(nameout, datum));
+	else
+		trigger->tgoldtable = NULL;
+
+	datum = fastgetattr(ht_trig, Anum_pg_trigger_tgnewtable,
+						tgrel->rd_att, &isnull);
+	if (!isnull)
+		trigger->tgnewtable =
+			DatumGetCString(DirectFunctionCall1(nameout, datum));
+	else
+		trigger->tgnewtable = NULL;
+
+	datum = fastgetattr(ht_trig, Anum_pg_trigger_tgqual,
+						tgrel->rd_att, &isnull);
+	if (!isnull)
+		trigger->tgqual = TextDatumGetCString(datum);
+	else
+		trigger->tgqual = NULL;
+
+	/* Clean up */
+	systable_endscan(tgscan);
+
+	table_close(tgrel, AccessShareLock);
+
+	return trigger;
+}
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 /*
  * Perform permissions and integrity checks before acquiring a relation lock.
@@ -1562,6 +1981,122 @@ renametrig(RenameStmt *stmt)
 	return address;
 }
 
+static ObjectAddress
+renameOratrig(Oid relid, char *trigname, char *rename)
+{
+	Oid 		tgoid;
+	Relation	targetrel;
+	Relation	tgrel;
+	HeapTuple	tuple;
+	SysScanDesc tgscan;
+	ScanKeyData key[2];
+	ObjectAddress address;
+	bool		update_succeed = false;
+
+	/* Have lock already, so just need to build relcache entry. */
+	targetrel = relation_open(relid, AccessExclusiveLock);
+
+	/*
+	 * Scan pg_trigger twice for existing triggers on relation.  We do this in
+	 * order to ensure a trigger does not exist with newname (The unique index
+	 * on tgrelid/tgname would complain anyway) and to ensure a trigger does
+	 * exist with oldname.
+	 *
+	 * NOTE that this is cool only because we have AccessExclusiveLock on the
+	 * relation, so the trigger set won't be changing underneath us.
+	 */
+	tgrel = table_open(TriggerRelationId, RowExclusiveLock);
+
+	/*
+	 * First pass -- look for name conflict
+	 */
+	ScanKeyInit(&key[0],
+				Anum_pg_trigger_tgrelid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(relid));
+	ScanKeyInit(&key[1],
+				Anum_pg_trigger_tgname,
+				BTEqualStrategyNumber, F_NAMEEQ,
+				PointerGetDatum(rename));
+	tgscan = systable_beginscan(tgrel, TriggerRelidNameIndexId, true,
+								NULL, 2, key);
+	if (HeapTupleIsValid(tuple = systable_getnext(tgscan)))
+		ereport(ERROR,
+				(errcode(ERRCODE_DUPLICATE_OBJECT),
+				 errmsg("trigger \"%s\" for relation \"%s\" already exists",
+						rename, RelationGetRelationName(targetrel))));
+	systable_endscan(tgscan);
+
+	/*
+	 * Second pass -- look for trigger existing with oldname and update
+	 */
+	ScanKeyInit(&key[0],
+				Anum_pg_trigger_tgrelid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(relid));
+	ScanKeyInit(&key[1],
+				Anum_pg_trigger_tgname,
+				BTEqualStrategyNumber, F_NAMEEQ,
+				PointerGetDatum(trigname));
+	tgscan = systable_beginscan(tgrel, TriggerRelidNameIndexId, true,
+								NULL, 2, key);
+	if (HeapTupleIsValid(tuple = systable_getnext(tgscan)))
+	{
+		Form_pg_trigger trigform;
+
+		/*
+		 * Update pg_trigger tuple with new tgname.
+		 */
+		tuple = heap_copytuple(tuple);	/* need a modifiable copy */
+		trigform = (Form_pg_trigger) GETSTRUCT(tuple);
+		tgoid = trigform->oid;
+
+		namestrcpy(&trigform->tgname, rename);
+
+		CatalogTupleUpdate(tgrel, &tuple->t_self, tuple);
+
+		InvokeObjectPostAlterHook(TriggerRelationId,
+								  tgoid, 0);
+
+		/*
+		 * Invalidate relation's relcache entry so that other backends (and
+		 * this one too!) are sent SI message to make them rebuild relcache
+		 * entries.  (Ideally this should happen automatically...)
+		 */
+		CacheInvalidateRelcache(targetrel);
+		update_succeed = true;
+	}
+	else
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("trigger \"%s\" for table \"%s\" does not exist",
+						trigname, RelationGetRelationName(targetrel))));
+	}
+
+	ObjectAddressSet(address, TriggerRelationId, tgoid);
+
+	systable_endscan(tgscan);
+
+	table_close(tgrel, RowExclusiveLock);
+
+	/*
+	 * Close rel, but keep exclusive lock!
+	 */
+	relation_close(targetrel, NoLock);
+
+	/*
+	 * Update pg_object tuple with new tgname.
+	 */
+	if (pg_object_alter_obj_hook && update_succeed)
+	{
+		PgObjectInfo objinf;
+		if ((objinf = pg_object_get_ori_infor_hook(address)) != NULL)
+			pg_object_alter_obj_hook(address, rename, InvalidOid, objinf->orioption, NULL);
+	}
+
+	return address;
+}
 
 /*
  * EnableDisableTrigger()
@@ -1857,6 +2392,45 @@ RelationBuildTriggers(Relation relation)
 		pfree(triggers);
 		return;
 	}
+
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	if (numtrigs > 0 && compatible_db == ORA_PARSER)
+	{
+		TriggerDepInfo	*depInfo;
+		HTAB			*nameToIndex;
+		int				*sortedIndexes;
+		Trigger			*newTriggers;
+
+		if (check_tableTriglist_has_follows(triggers, numtrigs))
+		{
+			/* Initializing the dependency graph */
+			depInfo = (TriggerDepInfo *) palloc0(numtrigs * sizeof(TriggerDepInfo));
+			nameToIndex = CreateTriggerNameMap(triggers, numtrigs);
+
+			/* Get trigger follows */
+			GetTriggerFollowsDependencies(triggers, numtrigs, depInfo, nameToIndex);
+
+			/* Topo sort */
+			sortedIndexes = TopologicalSortTriggers(triggers, numtrigs, depInfo, nameToIndex);
+
+			/* Rebuild trigger array */
+			newTriggers = (Trigger *) palloc(numtrigs * sizeof(Trigger));
+
+			for (i = 0; i < numtrigs; i++)
+			{
+				newTriggers[i] = triggers[sortedIndexes[i]];
+			}
+
+			/* Replace the original array and clean up */
+			pfree(triggers);
+			triggers = newTriggers;
+
+			pfree(sortedIndexes);
+			pfree(depInfo);
+			hash_destroy(nameToIndex);
+		}
+	}
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	/* Build trigdesc */
 	trigdesc = (TriggerDesc *) palloc0(sizeof(TriggerDesc));
@@ -6890,4 +7464,156 @@ TransitionTableAddTuple(EState *estate,
 	}
 	else
 		tuplestore_puttupleslot(tuplestore, slot);
+}
+
+/*
+ * ALTER TRIGGER xxx enable | ON table_name
+ * ALTER TRIGGER xxx distable | ON table_name
+ * ALTER TRIGGER xxx compile | ON table_name
+ * ALTER TRIGGER xxx RENAME TO rename | ON table_name
+ */
+ObjectAddress
+AlterOraTrigger(AlterOraTrigStmt *at)
+{
+	ObjectAddress 	object;
+	PgObjectInfo 	objinfo = NULL;
+	Oid				trgschema = InvalidOid;
+	Oid				trigoid = InvalidOid;
+	Oid				baseReloid = InvalidOid;
+	Relation		baseRelation;
+	bool			have_on_clause = false;
+
+	/*
+	 * Check schema
+	 */
+	if (at->ora_trigschema)
+	{
+		trgschema = LookupNamespaceNoError(at->ora_trigschema);
+		/* Check schema if exist? */
+		if (!OidIsValid(trgschema))
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_TABLE),
+					 errmsg("schema \"%s\" does not exist",
+					 at->ora_trigschema)));
+	}
+
+	/*
+	 * Get trigger oid and base reloid
+	 */
+	if (at->relation)
+	{
+		baseReloid = RangeVarGetRelidExtended((RangeVar *) at->relation, AccessExclusiveLock,
+											  0,
+											  NULL,
+											  NULL);
+		trigoid = get_trigger_oid(baseReloid, at->trigname, false);
+		have_on_clause = true;
+	}
+	else
+		trigoid = ivyGetTriggerOidReloidByName(at->trigname, &baseReloid, false);
+
+	ObjectAddressSet(object, TriggerRelationId, trigoid);
+
+	/*
+	 * EDITIONABLE and NONEDITIONABLE are only grammer compatible.
+	 */
+	if (at->editable == FLAG_NOEDITIONABLE || at->editable == FLAG_EDITIONABLE)
+		return object;
+
+
+	/* Have lock already, so just need to build relcache entry. */
+	if (have_on_clause)
+		baseRelation = relation_open(baseReloid, NoLock);
+	else
+		baseRelation = relation_open(baseReloid, AccessExclusiveLock);
+
+	/*
+	 * Get trigger in pg_object
+	 */
+	if (pg_object_get_ori_infor_hook)
+		objinfo =  pg_object_get_ori_infor_hook(object);
+
+	if (objinfo && objinfo->oricompatible_mode == 'o')
+	{
+		switch(at->opt)
+		{
+			case 'e':	/* enable */
+				{
+					EnableDisableTrigger(baseRelation,
+										at->trigname,
+										'A',
+										true,
+										RowExclusiveLock);
+				}
+				break;
+			case 'd':	/* disable */
+				{
+					EnableDisableTrigger(baseRelation,
+										at->trigname,
+										'D',
+										true,
+										RowExclusiveLock);
+				}
+				break;
+			case 'c':	/* compile */
+				{
+					Trigger *trg;
+
+					trg = ivyGetTriggerById(trigoid);
+					object = compileFunctionInternal(trg->tgfoid, true, OBJECT_FUNCTION);
+				}
+				break;
+			case 'r':	/* rename */
+				{
+					object = renameOratrig(baseReloid, at->trigname, at->rename);
+				}
+				break;
+			default:
+				elog(ERROR, "Invalid alter trigger options");
+		}
+	}
+	else
+		elog(ERROR, "Trigger \"%s\" is not a compatible Oracle trigger.", at->trigname);
+
+	relation_close(baseRelation, NoLock);
+
+	return object;
+}
+
+/* End - ReqID:SRS-SQL-TRIGGER */
+static bool
+check_tableTriglist_has_follows(Trigger *triggers, int numtrigs)
+{
+	int 		i;
+	bool		result = false;
+
+	for (i = 0; i < numtrigs; i++)
+	{
+		ObjectAddress	object;
+		PgObjectInfo	objinfo;
+
+		object.classId = TriggerRelationId;
+		object.objectId = triggers[i].tgoid;
+		object.objectSubId = 0;
+
+		objinfo =  pg_object_get_ori_infor_hook(object);
+		if (objinfo && objinfo->oricompatible_mode == 'o' && objinfo->orioption)
+		{
+			JsonbValue  key;
+			JsonbValue *followsValue = NULL;
+
+			key.type = jbvString;
+			key.val.string.val = "follows";
+			key.val.string.len = strlen("follows");
+
+			followsValue = findJsonbValueFromContainer(&objinfo->orioption->root, JB_FOBJECT, &key);
+			if (followsValue)
+			{
+				result = true;
+				break;
+			}
+		}
+	}
+
+	return result;
 }

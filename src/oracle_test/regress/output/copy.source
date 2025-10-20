@@ -139,6 +139,7 @@ create trigger part_ins_trig
 	before insert on parted_copytest_a2
 	for each row
 	execute procedure part_ins_func();
+/
 copy parted_copytest from '@abs_builddir@/results/parted_copytest.csv';
 select tableoid::regclass,count(*),sum(a) from parted_copytest
 group by tableoid order by tableoid::regclass::name;
@@ -210,6 +211,7 @@ create trigger check_after_tab_progress_reporting
 	after insert on tab_progress_reporting
 	for each statement
 	execute function notice_after_tab_progress_reporting();
+/
 -- Generate COPY FROM report with PIPE.
 copy tab_progress_reporting from stdin;
 INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 3, "has_bytes_processed": true}

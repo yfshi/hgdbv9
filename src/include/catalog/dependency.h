@@ -323,4 +323,7 @@ extern void ivy_check_rowid_seq_depend(Oid seqid, char *seqname); /* BUG#Z1279 *
 extern void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, int flags);
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+extern Oid checkAutoDepOnOraTrigAndTrigFunc(Oid funcOid);
+/* End - ReqID:SRS-SQL-TRIGGER */
 #endif							/* DEPENDENCY_H */

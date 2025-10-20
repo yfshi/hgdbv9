@@ -30,7 +30,7 @@
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
 #include "nodes/params.h"
 /* End - ReqID:SRS-SQL-ANONYOUT */
-
+#include "utils/ora_compatible.h"
 
 typedef enum OverridingKind
 {
@@ -2957,6 +2957,7 @@ typedef struct CreateTrigStmt
 	bool		replace;		/* replace trigger if already exists */
 	bool		isconstraint;	/* This is a constraint trigger */
 	char	   *trigname;		/* TRIGGER's name */
+	char   	   *ora_trigschema;	/* ORA trigger's schema name */
 	RangeVar   *relation;		/* relation trigger is on */
 	List	   *funcname;		/* qual. name of function to call */
 	List	   *args;			/* list of (T_String) Values or NIL */
@@ -2973,6 +2974,15 @@ typedef struct CreateTrigStmt
 	bool		deferrable;		/* [NOT] DEFERRABLE */
 	bool		initdeferred;	/* INITIALLY {DEFERRED|IMMEDIATE} */
 	RangeVar   *constrrel;		/* opposite relation, if RI trigger */
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	char	   *ora_trfuncsrc;	/* ORA trigger function body */
+	List 	   *orderList;		/* ORA trigger order list */
+	char	   *oldalias;		/* ORA trigger referencing OLD alias */
+	char	   *newalias;		/* ORA trigger referencing NEW alias */
+	bool		ora_tgenabled;	/* ORA trigger enable? */
+	bool		is_follows;		/* ORA trigger follows or precedes */
+	bool		is_ora_trig;
+	/* End - ReqID:SRS-SQL-TRIGGER */
 } CreateTrigStmt;
 
 /* ----------------------
@@ -2999,6 +3009,23 @@ typedef struct AlterEventTrigStmt
 	char		tgenabled;		/* trigger's firing configuration WRT
 								 * session_replication_role */
 } AlterEventTrigStmt;
+
+/* Begin - ReqID:SRS-SQL-TRIGGER */
+/* ----------------------
+ *		Alter ORA TRIGGER Statement
+ * ----------------------
+ */
+typedef struct AlterOraTrigStmt
+{
+	NodeTag		type;
+	char 	   *trigname;		/* trigger name */
+	char   	   *ora_trigschema;	/* trigger scheam */
+	char	   *rename;			/* rename */
+	Node	   *relation;		/* on table clause */
+	int			editable;		/* editionable | noneditionable */
+	char		opt;			/* e - enable, d - disable, c - compile, r - rename */
+} AlterOraTrigStmt;
+/* End - ReqID:SRS-SQL-TRIGGER */
 
 /* ----------------------
  *		Create LANGUAGE Statements

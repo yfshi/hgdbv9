@@ -1236,8 +1236,20 @@ other			.
 
 {ora_param}     {
 					SET_YYLLOC();
-					yylval->str = pstrdup(yytext);
-					return ORAPARAM;
+
+					/* Begin - ReqID:SRS-SQL-TRIGGER */
+					if (SPI_get_connected() < 0 || getdynamic_parser())
+					{
+						yylval->str = pstrdup(yytext);
+						return ORAPARAM;
+					} /* End - ReqID:SRS-SQL-TRIGGER */
+					else
+					{
+						char 	*str = NULL;
+						str = downcase_identifier(pstrdup(yytext), strlen(pstrdup(yytext)), true, true);
+						yylval->str = str;
+						return IDENT;
+					}
 				}
 
 {integer}		{

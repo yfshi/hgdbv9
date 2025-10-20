@@ -61,6 +61,10 @@
 #include "parser/parse_param.h"
 /* End - BUG#M0000376 */
 
+#include "parser/pg_object_hook.h"
+#include "catalog/pg_trigger.h"
+#include "utils/ruleutils.h"
+
 /* ----------
  * Our own local and global variables
  * ----------
@@ -142,6 +146,8 @@ static void plisql_HashTableDelete(PLiSQL_function *function);
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 static void plisql_add_type_referenced_objects(TypeName *typeName);
 /* End - ReqID:SRS-PLSQL-TYPE */
+static void add_ora_trigfunc_return(PLiSQL_function *function, TriggerEvent tg_event);
+
 
 /* ----------
  * plisql_compile		Make an execution tree for a PL/iSQL function.
@@ -361,6 +367,15 @@ do_compile(FunctionCallInfo fcinfo,
 	/* Begin - ReqID:SRS-PLSQL-RECORD */
 	bool		has_udt_type = false;
 	/* End - ReqID:SRS-PLSQL-RECORD */
+
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	PgObjectInfo 	objinfo = NULL;
+	ObjectAddress 	address;
+	Trigger			*otg = NULL;
+	Oid				funcOid = fcinfo->flinfo->fn_oid;
+	Oid				trigoid = InvalidOid;
+	bool			is_ora_trig = false;
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	/*
 	 * Setup the scanner input and error info.  We assume that this function
@@ -1030,13 +1045,72 @@ do_compile(FunctionCallInfo fcinfo,
 						 errmsg("trigger functions cannot have declared arguments"),
 						 errhint("The arguments of the trigger can be accessed through TG_NARGS and TG_ARGV instead.")));
 
-			/* Add the record for referencing NEW ROW */
-			rec = plisql_build_record("new", 0, NULL, RECORDOID, true);
-			function->new_varno = rec->dno;
+			/* Begin - ReqID:SRS-SQL-TRIGGER */
+			/*
+			 * Get the dependency relationship and obtain the trigger
+			 * Oid that the function depends on
+			 */
+			trigoid = checkAutoDepOnOraTrigAndTrigFunc(funcOid);
+			if (OidIsValid(trigoid))
+			{
+				ObjectAddressSet(address, TriggerRelationId, trigoid);
+				objinfo =  pg_object_get_ori_infor_hook(address);
+				otg = ivyGetTriggerById(trigoid);
+				is_ora_trig = true;
+			}
 
-			/* Add the record for referencing OLD ROW */
-			rec = plisql_build_record("old", 0, NULL, RECORDOID, true);
-			function->old_varno = rec->dno;
+			if (objinfo && objinfo->oricompatible_mode == 'o')
+			{
+				char		*new_alias = NULL;
+				char		*old_alias = NULL;
+
+				if (objinfo->orioption)
+				{
+					text		*key;
+					JsonbValue	*v;
+					JsonbValue	vbuf;
+					key = cstring_to_text("referencing");
+
+					v = getKeyJsonValueFromContainer(&objinfo->orioption->root,
+													 VARDATA_ANY(key),
+													 VARSIZE_ANY_EXHDR(key),
+													 &vbuf);
+
+					if (v != NULL && v->type == jbvBinary)
+					{
+						char	*str = NULL;
+						str = JsonbToCString(NULL, v->val.binary.data, v->val.binary.len);
+						parse_referencing_string(str, &old_alias, &new_alias);
+					}
+				}
+
+				/* using the referencing NEW alias build the record */
+				rec = plisql_build_record("new", 0, NULL, RECORDOID, true);
+				if (new_alias)
+					add_parameter_name(PLISQL_NSTYPE_REC, rec->dno, psprintf(":%s", new_alias));
+				else
+					add_parameter_name(PLISQL_NSTYPE_REC, rec->dno, ":new");
+				function->new_varno = rec->dno;
+
+				/* using the referencing OLD alias build the record */
+				rec = plisql_build_record("old", 0, NULL, RECORDOID, true);
+				if (old_alias)
+					add_parameter_name(PLISQL_NSTYPE_REC, rec->dno, psprintf(":%s", old_alias));
+				else
+					add_parameter_name(PLISQL_NSTYPE_REC, rec->dno, ":old");
+				function->old_varno = rec->dno;
+			}
+			else
+			{
+				/* Add the record for referencing NEW ROW */
+				rec = plisql_build_record("new", 0, NULL, RECORDOID, true);
+				function->new_varno = rec->dno;
+
+				/* Add the record for referencing OLD ROW */
+				rec = plisql_build_record("old", 0, NULL, RECORDOID, true);
+				function->old_varno = rec->dno;
+			}
+			/* End - ReqID:SRS-SQL-TRIGGER */
 
 			/* Add the variable tg_name */
 			var = plisql_build_variable("tg_name", 0,
@@ -1266,6 +1340,14 @@ do_compile(FunctionCallInfo fcinfo,
 	if (num_out_args > 0 || function->fn_rettype == VOIDOID ||
 		function->fn_retset)
 		add_dummy_return(function);
+
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	/*
+	 * If ORA trigger function, here we add the RETURN clause
+	 */
+	if (is_ora_trig)
+		add_ora_trigfunc_return(function, otg->tgtype);
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	/*
 	 * Complete the function's info
@@ -1906,6 +1988,52 @@ add_dummy_return(PLiSQL_function *function)
 	}
 }
 
+static void
+add_ora_trigfunc_return(PLiSQL_function *function, TriggerEvent tg_event)
+{
+	/*
+	 * If the outer block has an EXCEPTION clause, we need to make a new outer
+	 * block, since the added RETURN shouldn't act like it is inside the
+	 * EXCEPTION clause.  Likewise, if it has a label, wrap it in a new outer
+	 * block so that EXIT doesn't skip the RETURN.
+	 */
+	if (function->action->exceptions != NULL ||
+		function->action->label != NULL)
+	{
+		PLiSQL_stmt_block *new;
+
+		new = palloc0(sizeof(PLiSQL_stmt_block));
+		new->cmd_type = PLISQL_STMT_BLOCK;
+		new->stmtid = ++function->nstatements;
+		new->body = list_make1(function->action);
+
+		function->action = new;
+	}
+	if (function->action->body == NIL ||
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		function->fn_ret_vardno != -1 ||
+		(function->fn_ret_vardno == -1 &&
+		/* End - ReqID:SRS-SQL-FUNCOUT */
+		((PLiSQL_stmt *) llast(function->action->body))->cmd_type != PLISQL_STMT_RETURN))
+	{
+		PLiSQL_stmt_return *new;
+
+		new = palloc0(sizeof(PLiSQL_stmt_return));
+		new->cmd_type = PLISQL_STMT_RETURN;
+		new->stmtid = ++function->nstatements;
+		new->expr = NULL;
+		if (TRIGGER_FIRED_FOR_ROW(tg_event) &&		/* INSERT and UPDATE */
+			(TRIGGER_FIRED_BY_INSERT(tg_event) || TRIGGER_FIRED_BY_UPDATE(tg_event)))
+			new->retvarno = function->new_varno;
+		else if (TRIGGER_FIRED_FOR_ROW(tg_event) &&	/* DELETE */
+				 TRIGGER_FIRED_BY_DELETE(tg_event))
+			new->retvarno = function->old_varno;
+		else
+			new->retvarno = function->out_param_varno;
+
+		function->action->body = lappend(function->action->body, new);
+	}
+}
 
 /*
  * plisql_parser_setup		set up parser hooks for dynamic parameters

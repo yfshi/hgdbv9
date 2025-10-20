@@ -12838,6 +12838,7 @@ CreateFKCheckTrigger(Oid myRelOid, Oid refRelOid, Constraint *fkconstraint,
 	fk_trigger->isconstraint = true;
 	fk_trigger->trigname = "RI_ConstraintTrigger_c";
 	fk_trigger->relation = NULL;
+	fk_trigger->is_ora_trig = false;
 
 	/* Either ON INSERT or ON UPDATE */
 	if (on_insert)

@@ -250,12 +250,16 @@ $$ LANGUAGE plpgsql;
 -- create statement-level trigger
 CREATE TRIGGER tri_update_be BEFORE UPDATE ON people_target
  FOR EACH STATEMENT EXECUTE PROCEDURE up_trigg_before();
+/
 CREATE TRIGGER tri_update_af AFTER UPDATE ON people_target
  FOR EACH STATEMENT EXECUTE PROCEDURE up_trigg_after();
+/
 CREATE TRIGGER tri_delete_be BEFORE DELETE ON people_target
  FOR EACH STATEMENT EXECUTE PROCEDURE del_trigg_before();
+/
 CREATE TRIGGER tri_delete_af AFTER DELETE ON people_target
  FOR EACH STATEMENT EXECUTE PROCEDURE del_trigg_after();
+/
 -- Merge statement
 BEGIN;
 MERGE INTO people_target pt
@@ -300,6 +304,7 @@ $$ LANGUAGE plpgsql;
 /
 CREATE TRIGGER row_tri_bef_up BEFORE UPDATE ON people_target
   FOR EACH ROW EXECUTE PROCEDURE trigger_test();
+/
 -- Merge statement
 BEGIN;
 MERGE INTO people_target pt
