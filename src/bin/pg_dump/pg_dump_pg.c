@@ -924,7 +924,8 @@ selectDumpableNamespace(NamespaceInfo *nsinfo, Archive *fout)
 	}
 	else if (strncmp(nsinfo->dobj.name, "pg_", 3) == 0 ||
 			 strcmp(nsinfo->dobj.name, "information_schema") == 0 ||
-			 strcmp(nsinfo->dobj.name, "pgagent") == 0) /* ReqID:SRS-SECURITY-AUDIT */
+			 strcmp(nsinfo->dobj.name, "pgagent") == 0 || /* ReqID:SRS-SECURITY-AUDIT */
+                         strcmp(nsinfo->dobj.name, "hg_secsch") == 0)
 	{
 		/* Other system schemas don't get dumped */
 		nsinfo->dobj.dump_contains = nsinfo->dobj.dump = DUMP_COMPONENT_NONE;
