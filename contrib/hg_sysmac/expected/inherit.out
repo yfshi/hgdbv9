@@ -16,25 +16,25 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT set_table_seclabel('inh_parent'::regclass, 's2');
+SELECT hg_secsch.set_table_seclabel('inh_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
@@ -118,25 +118,25 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT set_table_seclabel('inh_child'::regclass, 's2');
+SELECT hg_secsch.set_table_seclabel('inh_child'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
@@ -229,37 +229,37 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3,u4;
 GRANT ALL ON inh_child TO u1,u2,u3,u4;
 SET ROLE syssso;
-SELECT set_table_seclabel('inh_parent'::regclass, 's2');
+SELECT hg_secsch.set_table_seclabel('inh_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT set_table_seclabel('inh_child'::regclass, 's3');
+SELECT hg_secsch.set_table_seclabel('inh_child'::regclass, 's3');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u4'::regrole, 's4');
+SELECT hg_secsch.set_user_seclabel('u4'::regrole, 's4');
  set_user_seclabel 
 -------------------
  set
@@ -386,37 +386,37 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT set_table_seclabel('inh_parent'::regclass, 's2');
+SELECT hg_secsch.set_table_seclabel('inh_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT apply_row_policy('inh_parent'::regclass, 'apply');
+SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'apply');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT apply_row_policy('inh_parent'::regclass, 'enable');
+SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'enable');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
@@ -461,6 +461,13 @@ SELECT __hg_seclabel__,* FROM inh_parent;
  s3              | 33 | ttom
 (5 rows)
 
+SET ROLE syssso;
+SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'drop');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
 -- Set the row-level security label only on the child table.
 SET ROLE syssso;
 SET hg_sysmac.global_on TO ON;
@@ -479,37 +486,37 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT set_table_seclabel('inh_child'::regclass, 's2');
+SELECT hg_secsch.set_table_seclabel('inh_child'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT apply_row_policy('inh_child'::regclass, 'apply');
+SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'apply');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT apply_row_policy('inh_child'::regclass, 'enable');
+SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'enable');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
@@ -548,6 +555,13 @@ SELECT __hg_seclabel__,* FROM inh_child;
  s2              | 22 | bbob
 (2 rows)
 
+SET ROLE syssso;
+SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'drop');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
 -- Set the row-level security label on both the parent table and child tables.
 SET ROLE syssso;
 SET hg_sysmac.global_on TO ON;
@@ -566,43 +580,43 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT set_table_seclabel('inh_parent'::regclass, 's2');
+SELECT hg_secsch.set_table_seclabel('inh_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT set_table_seclabel('inh_child'::regclass, 's2');
+SELECT hg_secsch.set_table_seclabel('inh_child'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT apply_row_policy('inh_child'::regclass, 'apply');
+SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'apply');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT apply_row_policy('inh_child'::regclass, 'enable');
+SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'enable');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
@@ -639,14 +653,14 @@ SELECT __hg_seclabel__,* FROM inh_child;
 (2 rows)
 
 SET ROLE syssso;
-SELECT apply_row_policy('inh_parent'::regclass, 'apply');
+SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'apply');
 NOTICE:  merging definition of column "__hg_seclabel__" for child "inh_child"
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT apply_row_policy('inh_parent'::regclass, 'enable');
+SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'enable');
  apply_row_policy 
 ------------------
  set
@@ -688,6 +702,23 @@ SELECT __hg_seclabel__,* FROM inh_parent;
 (4 rows)
 
 SET ROLE syssso;
+SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'drop');
+ERROR:  cannot drop inherited column "__hg_seclabel__"
+CONTEXT:  SQL statement "alter table inh_child drop column __hg_seclabel__ cascade"
+PL/pgSQL function hg_secsch.drop_table_policy(text) line 14 at EXECUTE
+SQL statement "select hg_secsch.drop_table_policy('inh_child') "
+SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'drop');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'drop');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
 SET hg_sysmac.global_on TO OFF;
 SET hg_sysmac.global_table_level TO OFF;
 SET hg_sysmac.global_row_level TO OFF;
