@@ -110,6 +110,7 @@
 /* Begin - ReqID:Performance-GUC */
 #include "hg_misc.h"
 /* End - ReqID:Performance-GUC */
+#include "utils/restrict.h"		/* ReqID: SRS-CLIENT-AUTH */
 
 /* ----------------
  *		global variables
@@ -139,6 +140,11 @@ int			restrict_nonsystem_relation_kind;
 
 /* ReqID: LOCK-SESSION */
 bool should_lock_current_session;
+
+/* Begin ReqID: SRS-CLIENT-AUTH */
+bool enable_macandtime = false;
+check_connrules_hook_type check_rules_hook = NULL;
+/* End ReqID: SRS-CLIENT-AUTH */
 
 /* ----------------
  *		private typedefs etc
@@ -4812,6 +4818,18 @@ PostgresMain(int argc, char *argv[],
 	 */
 	if (!IsUnderPostmaster)
 		PgStartTime = GetCurrentTimestamp();
+
+	elog(DEBUG1, "Calling conn_restrict extension hook:%p, enable_macandtime:%d", check_rules_hook, enable_macandtime);
+	/* Begin ReqID: SRS-CLIENT-AUTH */
+	if (enable_macandtime && check_rules_hook && dbname != NULL && strlen(dbname))
+	{
+		StartTransactionCommand();
+		elog(DEBUG5, "Calling conn_restrict extension hook, user_name:%s, client_mac:%s", 
+					MyProcPort->user_name, MyProcPort->client_mac);
+		(*check_rules_hook)(MyProcPort->user_name, MyProcPort->client_mac);
+		CommitTransactionCommand();
+	}
+	/* End ReqID: SRS-CLIENT-AUTH */
 
 	/*
 	 * POSTGRES main processing loop begins here

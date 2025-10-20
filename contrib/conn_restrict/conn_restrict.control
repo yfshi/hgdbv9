@@ -1,0 +1,5 @@
+# conn_restrict extension
+comment = 'Restrict some use, like MAC address and connect time'
+default_version = '1.0'
+module_pathname = '$libdir/conn_restrict'
+relocatable = true
