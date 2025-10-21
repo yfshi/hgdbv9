@@ -484,11 +484,6 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 	pfree(query_attribute_str.data);
 	pfree(query_constraint_str.data);
 	pfree(constraint_resstr.data);
-
-	/* reset */
-	resetStringInfo(&query_attribute_str);
-	resetStringInfo(&query_constraint_str);
-	resetStringInfo(&constraint_resstr);
 }
 
 /*
@@ -693,7 +688,6 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 			elog(ERROR, "SPI_finish failed");
 
 		pfree(querybuf.data);
-		resetStringInfo(&querybuf);
 	}
 	else
 	{
@@ -760,7 +754,6 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 			elog(ERROR, "SPI_finish failed");
 
 		pfree(querybuf.data);
-		resetStringInfo(&querybuf);
 
 		/* Retrieve the column information of the table */
 		initStringInfo(&attrbuf);
@@ -768,7 +761,6 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 		appendStringInfoString(&relcreate, attrbuf.data);
 
 		pfree(attrbuf.data);
-		resetStringInfo(&attrbuf);
 
 		/* Retrieve the inherits information of the table */
 		initStringInfo(&inheritsbuf);
@@ -776,7 +768,6 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 		appendStringInfoString(&relcreate, inheritsbuf.data);
 
 		pfree(inheritsbuf.data);
-		resetStringInfo(&inheritsbuf);
 
 		/* Paritition table's partition information */
 		if (pgclass->relkind == RELKIND_PARTITIONED_TABLE)
@@ -806,11 +797,6 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 	pfree(srvname.data);
 	pfree(ftoptions.data);
 	pfree(reloptiondata.data);
-
-	/* reset */
-	resetStringInfo(&srvname);
-	resetStringInfo(&ftoptions);
-	resetStringInfo(&reloptiondata);
 
 	PG_RETURN_TEXT_P(cstring_to_text(relcreate.data));
 }

@@ -953,3 +953,31 @@ inv_truncate(LargeObjectDesc *obj_desc, int64 len)
 	 */
 	CommandCounterIncrement();
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_LargeObject
+ *   init large object api resource
+ */
+static void
+PostbackupAutonxIsoVars_LargeObject(void)
+{
+	lo_heap_r = NULL;
+	lo_index_r = NULL;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_LargeObject
+ *   register large object api resource
+ */
+void
+RegisterAutonxIsoVars_LargeObject(void)
+{
+	RegisterAutonxIsoVar("lo_heap_r", &lo_heap_r, sizeof(lo_heap_r), NULL, NULL);
+	RegisterAutonxIsoVar("lo_index_r", &lo_index_r, sizeof(lo_index_r), PostbackupAutonxIsoVars_LargeObject, NULL);
+	RegisterAutonxIsoVars_LargeObjectFsstub();
+}

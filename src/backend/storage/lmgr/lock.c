@@ -4774,3 +4774,57 @@ LockWaiterCount(const LOCKTAG *locktag)
 
 	return waiters;
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_Lock
+ *   init lock resource
+ */
+static void
+PostbackupAutonxIsoVars_Lock(void)
+{
+	HASHCTL		info;
+
+	info.keysize = sizeof(LOCALLOCKTAG);
+	info.entrysize = sizeof(LOCALLOCK);
+
+	LockMethodLocalHash = hash_create("LOCALLOCK hash",
+									  16,
+									  &info,
+									  HASH_ELEM | HASH_BLOBS);
+
+	FastPathLocalUseCount = 0;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PrerestoreAutonxIsoVars_Lock
+ *   finish lock resource
+ */
+static void
+PrerestoreAutonxIsoVars_Lock(void)
+{
+	if (LockMethodLocalHash != NULL)
+	{
+		hash_destroy(LockMethodLocalHash);
+		LockMethodLocalHash = NULL;
+	}
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Lock
+ *   register lock resource
+ */
+void
+RegisterAutonxIsoVars_Lock(void)
+{
+	RegisterAutonxIsoVar("FastPathLocalUseCount", &FastPathLocalUseCount,
+					sizeof(FastPathLocalUseCount), NULL, NULL);
+	RegisterAutonxIsoVar("LockMethodLocalHash", &LockMethodLocalHash,
+					sizeof(LockMethodLocalHash), PostbackupAutonxIsoVars_Lock, PrerestoreAutonxIsoVars_Lock);
+}

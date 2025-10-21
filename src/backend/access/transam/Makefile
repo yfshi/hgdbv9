@@ -35,7 +35,8 @@ OBJS = \
 	xlogfuncs.o \
 	xloginsert.o \
 	xlogreader.o \
-	xlogutils.o
+	xlogutils.o \
+	autonxiso.o
 
 include $(top_srcdir)/src/backend/common.mk
 

@@ -1282,3 +1282,29 @@ FilenodeAppendIntoPendingList(RelFileNode *rnode)
 	pendingDeletes = pending;
 }
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_Pending
+ *   init pending resource
+ */
+static void
+PostbackupAutonxIsoVars_Pending(void)
+{
+	pendingDeletes = NULL;
+	pendingSyncHash = NULL;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_PendingStorage
+ *   register pending resource
+ */
+void
+RegisterAutonxIsoVars_PendingStorage(void)
+{
+	RegisterAutonxIsoVar("pendingDeletes", &pendingDeletes, sizeof(pendingDeletes), NULL, NULL);
+	RegisterAutonxIsoVar("pendingSyncHash", &pendingSyncHash, sizeof(pendingSyncHash), PostbackupAutonxIsoVars_Pending, NULL);
+}

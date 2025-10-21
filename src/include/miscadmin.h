@@ -183,6 +183,12 @@ extern PGDLLIMPORT int MaxConnections;
 extern PGDLLIMPORT int max_worker_processes;
 extern PGDLLIMPORT int max_parallel_workers;
 
+/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+extern PGDLLIMPORT bool	AutonxEnabled;
+extern PGDLLIMPORT int	MaxAutonxs;
+extern PGDLLIMPORT int	AutonxNestingLevel;
+/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 extern PGDLLIMPORT int MyProcPid;
 extern PGDLLIMPORT pg_time_t MyStartTime;
 extern PGDLLIMPORT TimestampTz MyStartTimestamp;
@@ -510,5 +516,109 @@ extern int	get_hash_mem(void);
 extern PGDLLIMPORT int	hg_pool_size;
 extern PGDLLIMPORT int	hg_pool_timeout;
 /* End - BUG#Z5597 */
+
+
+/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
+/*****************************************************************************
+ *	  For autonomous transaction.                                            *
+ *****************************************************************************/
+
+extern int SetTopAutonTransactionState(int state);
+extern int SetTopAutonTransactionStateStarted(void);
+
+/* in transam/atstack.c */
+typedef void (*AutoxIsoVarsHookType) (void);
+extern AutoxIsoVarsHookType RegisterAutonxIsoVars_PlisqlHook;
+extern AutoxIsoVarsHookType RegisterAutonxIsoVars_PlpgsqlHook;
+
+extern void InitAutoxIsolationState(void);
+extern void RegisterAutonxIsoVar(const char *name, void *address, int len,
+							AutoxIsoVarsHookType init, AutoxIsoVarsHookType finish);
+extern void RegisterAutonxIsoVarExt(const char *name, void *address, int len,
+							   AutoxIsoVarsHookType init, AutoxIsoVarsHookType finish,
+							   AutoxIsoVarsHookType prebackup, AutoxIsoVarsHookType postrestore);
+extern void AutoxIsoStackPush(void);
+extern void AutoxIsoStackPop(void);
+
+/* in storage/lmgr/proc.c */
+extern void ReserveAutoTransactionProc(void);
+extern void ReleaseAutoTransactionProc(void);
+
+/*
+ * Isolation Resource.
+ */
+
+/* Xact - access/transam/xact.c */
+extern void RegisterAutonxIsoVars_Xact(void);
+
+/* MyProc - storage/lmgr/proc.c */
+extern void RegisterAutonxIsoVars_Process(void);
+
+/* LWLock - storage/lmgr/lwlock.c */
+extern void RegisterAutonxIsoVars_LWLock(void);
+
+/* Condition Variable - storage/lmgr/condition_variable.c */
+extern void RegisterAutonxIsoVars_CV(void);
+
+/* Lock - storage/lmgr/lock.c */
+extern void RegisterAutonxIsoVars_Lock(void);
+
+/* LockManager - storage/lmgr/lmgr.c */
+extern void RegisterAutonxIsoVars_Lmgr(void);
+
+/* PredLock - storage/lmgr/prediate.c */
+extern void RegisterAutonxIsoVars_PredLock(void);
+
+/* Snapshot - utils/time/snapmgr.c */
+extern void RegisterAutonxIsoVars_Snapmgr(void);
+
+/* LargeObject - libpq/be-fsstubs.c storage/large_object/inv_api.c */
+extern void RegisterAutonxIsoVars_LargeObjectFsstub(void);
+extern void RegisterAutonxIsoVars_LargeObject(void);
+
+/* Portal - tcop/pquery.c */
+extern void RegisterAutonxIsoVars_Portal(void);
+
+/* Hash Scan - utils/hash/dynahash.c */
+extern void RegisterAutonxIsoVars_HtabSeqScan(void);
+
+/* Trigger - commands/trigger.c */
+extern void RegisterAutonxIsoVars_Trigger(void);
+
+/* Notify - commands/async.c */
+extern void RegisterAutonxIsoVars_Notify(void);
+
+/* Smgr - storage/smgr.c */
+extern void RegisterAutonxIsoVars_Smgr(void);
+
+/* Files - storage/file/fd.c */
+extern void RegisterAutonxIsoVars_Files(void);
+
+/* Combocid - utils/time/combocid.c */
+extern void RegisterAutonxIsoVars_Combocid(void);
+
+/* PgStat - postmaster/pgstat.c */
+extern void RegisterAutonxIsoVars_PgStat(void);
+
+/* Enum - catalog/pg_enum.c */
+extern void RegisterAutonxIsoVars_Enum(void);
+
+/* Storage - catalog/storage.c */
+extern void RegisterAutonxIsoVars_PendingStorage(void);
+
+/* Relmapper - utils/cache/relmapper.c */
+extern void RegisterAutonxIsoVars_Relmapper(void);
+
+/* Relcache - utils/cache/relcache.c */
+extern void RegisterAutonxIsoVars_Relcache(void);
+
+/* Invalid messages - utils/cache/inval.c */
+extern void RegisterAutonxIsoVars_Inval(void);
+
+/* MultiXact - access/transam/multixact.c */
+extern void RegisterAutonxIsoVars_MultiXact(void);
+
+/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 #endif							/* MISCADMIN_H */

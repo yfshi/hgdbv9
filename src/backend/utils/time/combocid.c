@@ -362,3 +362,19 @@ RestoreComboCIDState(char *comboCIDstate)
 			elog(ERROR, "unexpected command ID while restoring combo CIDs");
 	}
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Combocid
+ *   register combo cid resource
+ */
+void
+RegisterAutonxIsoVars_Combocid(void)
+{
+	RegisterAutonxIsoVar("comboHash", &comboHash, sizeof(comboHash), NULL, NULL);
+	RegisterAutonxIsoVar("comboCids", &comboCids, sizeof(comboCids), NULL, NULL);
+	RegisterAutonxIsoVar("usedComboCids", &usedComboCids, sizeof(usedComboCids), NULL, NULL);
+	RegisterAutonxIsoVar("sizeComboCids", &sizeComboCids, sizeof(sizeComboCids), AtEOXact_ComboCid, NULL);
+}

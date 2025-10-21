@@ -2266,6 +2266,7 @@ plisql_push_compile_global_proper(void)
 	plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_nsubprocFuncs = plisql_nsubprocFuncs;
 	plisql_saved_compile_proper[plisql_curr_global_proper_level].subprocFuncs_alloc = subprocFuncs_alloc;
 	plisql_saved_compile_proper[plisql_curr_global_proper_level].cur_compile_func_level = cur_compile_func_level;
+
 	/*
 	 * there, we must make plisql_saved_compile[0] is valid,
 	 * because we use ite for some place
@@ -2339,6 +2340,7 @@ plisql_pop_compile_global_proper()
 	plisql_nsubprocFuncs = plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_nsubprocFuncs;
 	subprocFuncs_alloc = plisql_saved_compile_proper[plisql_curr_global_proper_level].subprocFuncs_alloc;
 	cur_compile_func_level = plisql_saved_compile_proper[plisql_curr_global_proper_level].cur_compile_func_level;
+
 	/*
 	 * there, we must make plisql_saved_compile[0] is valid,
 	 * because we use ite for some place

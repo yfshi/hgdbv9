@@ -362,3 +362,28 @@ ConditionVariableBroadcast(ConditionVariable *cv)
 			SetLatch(&proc->procLatch);
 	}
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_CV
+ *   init condition variable resource
+ */
+static void
+PostbackupAutonxIsoVars_CV(void)
+{
+	cv_sleep_target = NULL;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_CV
+ *   register condition variable resource
+ */
+void
+RegisterAutonxIsoVars_CV(void)
+{
+	RegisterAutonxIsoVar("cv_sleep_target", &cv_sleep_target, sizeof(cv_sleep_target), PostbackupAutonxIsoVars_CV, NULL);
+}

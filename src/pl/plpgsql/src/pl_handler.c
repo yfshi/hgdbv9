@@ -55,6 +55,9 @@ int			plpgsql_extra_errors;
 /* Hook for plugins */
 PLpgSQL_plugin **plpgsql_plugin_ptr = NULL;
 
+/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+static AutoxIsoVarsHookType	prev_RegisterAutonxIsoVars_PlpgsqlHook = NULL;
+
 
 static bool
 plpgsql_extra_checks_check_hook(char **newvalue, void **extra, GucSource source)
@@ -206,7 +209,22 @@ _PG_init(void)
 	/* Set up a rendezvous point with optional instrumentation plugin */
 	plpgsql_plugin_ptr = (PLpgSQL_plugin **) find_rendezvous_variable("PLpgSQL_plugin");
 
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	prev_RegisterAutonxIsoVars_PlpgsqlHook = RegisterAutonxIsoVars_PlpgsqlHook;
+	RegisterAutonxIsoVars_PlpgsqlHook = RegisterAutonxIsoVars_plpgsql_hook;
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 	inited = true;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ * unregister internel func
+ */
+void
+_PG_fini(void)
+{
+	RegisterAutonxIsoVars_PlpgsqlHook = prev_RegisterAutonxIsoVars_PlpgsqlHook;
 }
 
 /* ----------

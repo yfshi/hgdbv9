@@ -769,3 +769,16 @@ RestoreUncommittedEnums(void *space)
 		hash_search(uncommitted_enums, serialized++, HASH_ENTER, NULL);
 	} while (OidIsValid(*serialized));
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Enum
+ *   register enum resource
+ */
+void
+RegisterAutonxIsoVars_Enum(void)
+{
+	RegisterAutonxIsoVar("uncommitted_enums", &uncommitted_enums, sizeof(uncommitted_enums), AtEOXact_Enum, NULL);
+}

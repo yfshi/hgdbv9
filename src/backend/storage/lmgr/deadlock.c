@@ -89,6 +89,8 @@ static bool ExpandConstraints(EDGE *constraints, int nConstraints);
 static bool TopoSort(LOCK *lock, EDGE *constraints, int nConstraints,
 					 PGPROC **ordering);
 
+static bool AutoTransLockCheckConlicts(PGPROC *proc);	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 #ifdef DEBUG_DEADLOCK
 static void PrintLockQueue(LOCK *lock, const char *info);
 #endif
@@ -280,6 +282,24 @@ DeadLockCheck(PGPROC *proc)
 		return DS_SOFT_DEADLOCK;
 	else if (blocking_autovacuum_proc != NULL)
 		return DS_BLOCKED_BY_AUTOVACUUM;
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	else if (AutoTransLockCheckConlicts(proc))
+	{
+		/* fill deadlockDetails[] */
+		DEADLOCK_INFO *info = &deadlockDetails[0];
+
+		Assert(proc->waitLock != NULL);
+
+		info->locktag = proc->waitLock->tag;
+		info->lockmode = proc->waitLockMode;
+		info->pid = proc->pid;
+		nDeadlockDetails = 1;
+
+		TRACE_POSTGRESQL_DEADLOCK_FOUND();
+
+		return DS_HARD_DEADLOCK;
+	}
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	else
 		return DS_NO_DEADLOCK;
 }
@@ -1059,6 +1079,58 @@ TopoSort(LOCK *lock,
 
 	/* Done */
 	return true;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ * AutoTransLockCheckConflicts
+ *   check deadlock for autonomous transaction
+ */
+static bool
+AutoTransLockCheckConlicts(PGPROC *proc)
+{
+	LOCK	   *lock;
+	SHM_QUEUE  *procLocks;
+	PROCLOCK   *proclock;
+	LockMethod	lockMethodTable;
+	int			conflictMask;
+	int			numLockModes,
+				lm;
+
+	if (!AutonxCheckingDeadlocks ||
+		!proc->autonomous ||
+		proc->waitLock == NULL ||
+		proc->lockGroupLeader != NULL)
+		return false;
+
+	lock = proc->waitLock;
+	lockMethodTable = GetLocksMethodTable(lock);
+	numLockModes = lockMethodTable->numLockModes;
+	conflictMask = lockMethodTable->conflictTab[proc->waitLockMode];
+
+	procLocks = &lock->procLocks;
+	proclock = (PROCLOCK *) SHMQueueNext(procLocks, procLocks,
+										 offsetof(PROCLOCK, lockLink));
+
+	while (proclock != NULL && proclock != proc->waitProcLock)
+	{
+		if (proclock->tag.myProc->backendId == proc->backendId)
+		{
+			for (lm = 1; lm <= numLockModes; lm++)
+			{
+				if ((proclock->holdMask & LOCKBIT_ON(lm)) &&
+					(conflictMask & LOCKBIT_ON(lm)))
+				{
+					return true;
+				}
+			}
+		}
+
+		proclock = (PROCLOCK *) SHMQueueNext(procLocks, &proclock->lockLink,
+											 offsetof(PROCLOCK, lockLink));
+	}
+
+	return false;
 }
 
 #ifdef DEBUG_DEADLOCK

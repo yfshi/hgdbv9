@@ -19,6 +19,7 @@
 
 #include "access/xlog.h"
 #include "lib/ilist.h"
+#include "miscadmin.h"		/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 #include "storage/bufmgr.h"
 #include "storage/ipc.h"
 #include "storage/md.h"
@@ -778,3 +779,27 @@ smgrdounlinkallsetlog(SMgrRelationSetLog *rels, int nrels, bool isRedo)
 }
 /* End - BUG:M0000325 */
 
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Smgr
+ *   register smgr resource
+ */
+static void
+PostbackupAutonxIsoVars_Smgr(void)
+{
+	dlist_init(&unowned_relns);
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Smgr
+ *   register smgr resource
+ */
+void
+RegisterAutonxIsoVars_Smgr(void)
+{
+	RegisterAutonxIsoVar("unowned_relns", &unowned_relns, sizeof(unowned_relns), PostbackupAutonxIsoVars_Smgr, NULL);
+}

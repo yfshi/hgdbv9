@@ -344,7 +344,8 @@ standard_planner(Query *parse, const char *query_string, int cursorOptions,
 		(parse->commandType == CMD_SELECT || (is_parallel_allowed_for_modify(parse)&&enable_insertparallel)) &&
 		!parse->hasModifyingCTE &&
 		max_parallel_workers_per_gather > 0 &&
-		!IsParallelWorker())
+		!IsParallelWorker() &&
+		!IsTopAutonTransaction())	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	{
 		/* all the cheap tests pass, so scan the query tree */
 		glob->maxParallelHazard = max_parallel_hazard(parse);

@@ -1576,3 +1576,16 @@ LogLogicalInvalidations()
 		pfree(invalMessages);
 	}
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Inval
+ *   register invalid messages resource
+ */
+void
+RegisterAutonxIsoVars_Inval(void)
+{
+	RegisterAutonxIsoVar("transInvalInfo", &transInvalInfo, sizeof(transInvalInfo), NULL, NULL);
+}

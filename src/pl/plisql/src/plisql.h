@@ -1168,6 +1168,8 @@ typedef struct PLiSQL_function
 	void 	   *paramCheck;		/* parameter check hook */
 	int			oraCallParamCheck;
 	/* End - ReqID:SRS-PLSQL-DSQL */
+
+	bool		autonomous;		/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 } PLiSQL_function;
 
 /* Begin - SRS-PLSQL-SUBPROC */
@@ -1524,9 +1526,11 @@ extern Datum plisql_exec_function(PLiSQL_function *func,
 								   ResourceOwner procedure_resowner,
 								   bool atomic);
 extern HeapTuple plisql_exec_trigger(PLiSQL_function *func,
-									  TriggerData *trigdata);
+									 TriggerData *trigdata,
+									 bool atomic);	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 extern void plisql_exec_event_trigger(PLiSQL_function *func,
-									   EventTriggerData *trigdata);
+									  EventTriggerData *trigdata,
+									  bool atomic);	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 extern void plisql_xact_cb(XactEvent event, void *arg);
 extern void plisql_subxact_cb(SubXactEvent event, SubTransactionId mySubid,
 							   SubTransactionId parentSubid, void *arg);
@@ -1638,5 +1642,9 @@ extern void plisql_recover_yylex_global_proper(void *yylex_data);
  * Externs in gram.y
  */
 extern int	plisql_yyparse(void);
+
+
+/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+extern void RegisterAutonxIsoVars_plisql_hook(void);
 
 #endif							/* PLPGSQL_H */

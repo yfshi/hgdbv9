@@ -3433,3 +3433,20 @@ multixactmemberssyncfiletag(const FileTag *ftag, char *path)
 {
 	return SlruSyncFileTag(MultiXactMemberCtl, ftag, path);
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_MultiXact
+ *   register multi xact messages resource
+ */
+void
+RegisterAutonxIsoVars_MultiXact(void)
+{
+	RegisterAutonxIsoVar("OldestMemberMXactId[MyBackendId]", &OldestMemberMXactId[MyBackendId], sizeof(OldestMemberMXactId[MyBackendId]), NULL, NULL);
+	RegisterAutonxIsoVar("OldestVisibleMXactId[MyBackendId]", &OldestVisibleMXactId[MyBackendId], sizeof(OldestVisibleMXactId[MyBackendId]), NULL, NULL);
+	RegisterAutonxIsoVar("MXactContext", &MXactContext, sizeof(MXactContext), NULL, NULL);
+	RegisterAutonxIsoVar("MXactCache", &MXactCache, sizeof(MXactCache), NULL, NULL);
+	RegisterAutonxIsoVar("MXactCacheMembers", &MXactCacheMembers, sizeof(MXactCacheMembers), AtEOXact_MultiXact, NULL);
+}

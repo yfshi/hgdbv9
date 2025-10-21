@@ -143,6 +143,12 @@ int			max_worker_processes = 8;
 int			max_parallel_workers = 8;
 int			MaxBackends = 0;
 
+/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+bool        AutonxEnabled = true;
+int			MaxAutonxs = 32;
+int			AutonxNestingLevel = 16;
+/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 int			VacuumCostPageHit = 1;	/* GUC parameters for vacuum */
 int			VacuumCostPageMiss = 2;
 int			VacuumCostPageDirty = 20;

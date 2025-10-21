@@ -44,7 +44,8 @@ ORA_REGRESS = plisql_array plisql_call plisql_control plisql_copy plisql_domain 
 	plisql_record plisql_cache plisql_simple plisql_transaction \
 	plisql_trap plisql_trigger plisql_varprops plisql_nested_subproc \
 	plisql_nested_subproc2 plisql_out_parameter plisql_type_rowtype \
-	plisql_ora_cursor plisql_ora_cursor2 plisql_ora_record plisql_ora_exception
+	plisql_ora_cursor plisql_ora_cursor2 plisql_ora_record plisql_ora_exception \
+	plisql_autonomous_transaction
 # End - BUGM0000301
 
 # where to find ora_gen_keywordlist.pl and subsidiary files

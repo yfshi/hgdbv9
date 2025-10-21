@@ -7617,3 +7617,28 @@ check_tableTriglist_has_follows(Trigger *triggers, int numtrigs)
 
 	return result;
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_afterTriggers
+ *   init trigger source
+ */
+static void
+PostbackupAutonxIsoVars_afterTriggers(void)
+{
+	memset(&afterTriggers, 0, sizeof(afterTriggers));
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Trigger
+ *   register trigger resource
+ */
+void
+RegisterAutonxIsoVars_Trigger(void)
+{
+	RegisterAutonxIsoVar("afterTriggers", &afterTriggers, sizeof(afterTriggers), PostbackupAutonxIsoVars_afterTriggers, NULL);
+}

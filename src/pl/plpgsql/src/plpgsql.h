@@ -1249,6 +1249,7 @@ extern void plpgsql_HashTableInit(void);
  * Functions in pl_handler.c
  */
 extern void _PG_init(void);
+extern void _PG_fini(void);	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 /*
  * Functions in pl_exec.c
@@ -1321,5 +1322,8 @@ extern void plpgsql_scanner_finish(void);
  * Externs in gram.y
  */
 extern int	plpgsql_yyparse(void);
+
+/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+extern void RegisterAutonxIsoVars_plpgsql_hook(void);
 
 #endif							/* PLPGSQL_H */

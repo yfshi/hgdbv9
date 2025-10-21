@@ -5231,3 +5231,34 @@ AttachSerializableXact(SerializableXactHandle handle)
 	if (MySerializableXact != InvalidSerializableXact)
 		CreateLocalPredicateLockHash();
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_PredLock
+ *   init serializable resource
+ */
+static void
+PostbackupAutonxIsoVars_PredLock(void)
+{
+	LocalPredicateLockHash = NULL;
+	MySerializableXact = InvalidSerializableXact;
+	MyXactDidWrite = false;
+	SavedSerializableXact = NULL;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_PredLock
+ *   register serializable resource
+ */
+void
+RegisterAutonxIsoVars_PredLock(void)
+{
+	RegisterAutonxIsoVar("LocalPredicateLockHash", &LocalPredicateLockHash, sizeof(LocalPredicateLockHash), NULL, NULL);
+	RegisterAutonxIsoVar("MySerializableXact", &MySerializableXact, sizeof(MySerializableXact), NULL, NULL);
+	RegisterAutonxIsoVar("MyXactDidWrite", &MyXactDidWrite, sizeof(bool), NULL, NULL);
+	RegisterAutonxIsoVar("SavedSerializableXact", &SavedSerializableXact, sizeof(SavedSerializableXact), PostbackupAutonxIsoVars_PredLock, NULL);
+}

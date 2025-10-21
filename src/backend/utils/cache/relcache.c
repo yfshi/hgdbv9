@@ -6819,3 +6819,37 @@ RelationGetRelCollation(Relation relation)
 	return relation->relCollation;
 }
 /* End - BUG:M0000393 */
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_Relcache
+ *   init relation cache resource
+ */
+static void
+PostbackupAutonxIsoVars_Relcache(void)
+{
+	eoxact_list_overflowed = false;
+	eoxact_list_len = 0;
+	EOXactTupleDescArray = NULL;
+	NextEOXactTupleDescNum = 0;
+	EOXactTupleDescArrayLen = 0;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Relcache
+ *   register relation cache resource
+ */
+void
+RegisterAutonxIsoVars_Relcache(void)
+{
+	RegisterAutonxIsoVar("eoxact_list_overflowed", &eoxact_list_overflowed, sizeof(eoxact_list_overflowed), NULL, NULL);
+	RegisterAutonxIsoVar("eoxact_list", eoxact_list, sizeof(eoxact_list), NULL, NULL);
+	RegisterAutonxIsoVar("eoxact_list_len", &eoxact_list_len, sizeof(eoxact_list_len), NULL, NULL);
+	RegisterAutonxIsoVar("EOXactTupleDescArray", &EOXactTupleDescArray, sizeof(EOXactTupleDescArray), NULL, NULL);
+	RegisterAutonxIsoVar("NextEOXactTupleDescNum", &NextEOXactTupleDescNum, sizeof(NextEOXactTupleDescNum), NULL, NULL);
+	RegisterAutonxIsoVar("EOXactTupleDescArrayLen", &EOXactTupleDescArrayLen, sizeof(EOXactTupleDescArrayLen), PostbackupAutonxIsoVars_Relcache, NULL);
+}
