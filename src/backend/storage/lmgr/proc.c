@@ -63,6 +63,9 @@ int			LockTimeout = 0;
 int			IdleInTransactionSessionTimeout = 0;
 int			IdleSessionTimeout = 0;
 bool		log_lock_waits = false;
+/* Begin - SRS-PLSQL-AUTONOMOUSTRANSACTION */
+bool		AutonxCheckingDeadlocks = true;
+/* End - SRS-PLSQL-AUTONOMOUSTRANSACTION*/
 
 /* Pointer to this process's PGPROC struct, if any */
 PGPROC	   *MyProc = NULL;
@@ -210,6 +213,7 @@ InitProcGlobal(void)
 	ProcGlobal->autovacFreeProcs = NULL;
 	ProcGlobal->bgworkerFreeProcs = NULL;
 	ProcGlobal->walsenderFreeProcs = NULL;
+	ProcGlobal->autonxFreeProcs = NULL;		/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	ProcGlobal->startupProc = NULL;
 	ProcGlobal->startupProcPid = 0;
 	ProcGlobal->startupBufferPinWaitBufId = -1;
@@ -344,7 +348,7 @@ InitProcGlobal(void)
 #endif
 			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		}
-		else if (i < MaxBackends)
+		else if (i < MaxConnections + autovacuum_max_workers + 1 + max_worker_processes + max_wal_senders)
 		{
 			/* PGPROC for walsender, add to walsenderFreeProcs list */
 			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
@@ -359,6 +363,20 @@ InitProcGlobal(void)
 #endif
 			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		}
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		else if (i < MaxBackends)
+		{
+#ifdef PERF_NUMA
+			procs[i]->links.next = (SHM_QUEUE *) ProcGlobal->autonxFreeProcs;
+			ProcGlobal->autonxFreeProcs = procs[i];
+			procs[i]->procgloballist = &ProcGlobal->autonxFreeProcs;
+#else
+			procs[i].links.next = (SHM_QUEUE *) ProcGlobal->autonxFreeProcs;
+			ProcGlobal->autonxFreeProcs = &procs[i];
+			procs[i].procgloballist = &ProcGlobal->autonxFreeProcs;
+#endif
+		}
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 		/* Initialize myProcLocks[] shared memory queues. */
 		for (j = 0; j < NUM_LOCK_PARTITIONS; j++)
@@ -520,6 +538,7 @@ InitProcess(void)
 	MyProc->delayChkpt = false;
 	MyProc->delayChkptEnd = false;
 	MyProc->statusFlags = 0;
+	MyProc->autonomous = false;		/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	/* NB -- autovac launcher intentionally does not set IS_AUTOVACUUM */
 	if (IsAutoVacuumWorkerProcess())
 		MyProc->statusFlags |= PROC_IS_AUTOVACUUM;
@@ -722,6 +741,7 @@ InitAuxiliaryProcess(void)
 	MyProc->delayChkpt = false;
 	MyProc->delayChkptEnd = false;
 	MyProc->statusFlags = 0;
+	MyProc->autonomous = false;		/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	MyProc->lwWaiting = LW_WS_NOT_WAITING;
 	MyProc->lwWaitMode = 0;
 	MyProc->waitLock = NULL;
@@ -950,6 +970,17 @@ static void
 RemoveProcFromArray(int code, Datum arg)
 {
 	Assert(MyProc != NULL);
+
+	/*
+	 * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+	 *   RemoedProcFromArray will be called before process exiting, rollback
+	 * and release autonomous transaction recursively to prevent PGPROC leak.
+	 *   Note that autonomous transactions should be reclaimed here and not
+	 * processed in ProcKill(), as this function is called before ProcKill.
+	 */
+	if (code != 0)
+		RollbackAndReleaseAutonTransactionRecursively();
+
 	ProcArrayRemove(MyProc, InvalidTransactionId);
 }
 
@@ -2174,4 +2205,328 @@ BecomeLockGroupMember(PGPROC *leader, int pid)
 	LWLockRelease(leader_lwlock);
 
 	return ok;
+}
+
+
+static PGPROC *ReservedAutoProc = NULL;	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * ReserveAutoTransactionProc
+ *   reserve PGPROC for autonomous transaction
+ */
+void
+ReserveAutoTransactionProc(void)
+{
+	PGPROC	   *volatile *procgloballist;
+
+	Assert(ProcGlobal != NULL);
+	Assert(MyProc != NULL);
+
+	procgloballist = &ProcGlobal->autonxFreeProcs;
+
+	SpinLockAcquire(ProcStructLock);
+
+	ReservedAutoProc = *procgloballist;
+	if (ReservedAutoProc == NULL)
+	{
+		SpinLockRelease(ProcStructLock);
+		ereport(ERROR,
+			(errcode(ERRCODE_TOO_MANY_CONNECTIONS),
+			 errmsg("sorry, too many autonomous transactions already")));
+	}
+
+	*procgloballist = (PGPROC *) (*procgloballist)->links.next;
+	SpinLockRelease(ProcStructLock);
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * ReleaseAutoTransactionProc
+ *   release PGPROC for autonomous transaction
+ */
+void
+ReleaseAutoTransactionProc(void)
+{
+	PGPROC	   *volatile *procgloballist;
+
+	if (ReservedAutoProc != NULL)
+	{
+		procgloballist = ReservedAutoProc->procgloballist;
+
+		SpinLockAcquire(ProcStructLock);
+		ReservedAutoProc->links.next = (SHM_QUEUE *) *procgloballist;
+		*procgloballist = ReservedAutoProc;
+		ReservedAutoProc = NULL;
+		SpinLockRelease(ProcStructLock);
+	}
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PrebackupAutonxIsoVars_Process
+ *   backup process resource
+ */
+static void
+PrebackupAutonxIsoVars_Process(void)
+{
+	/*
+	 * Previously, reset MyLatch the process local one.
+	 */
+	SwitchBackToLocalLatch();
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_Process
+ *   init process resource
+ */
+static void
+PostbackupAutonxIsoVars_Process(void)
+{
+	PGPROC	*volatile *procgloballist;
+
+	/*
+	 * ProcGlobal should be set up already (if we are a backend, we inherit
+	 * this by fork() or EXEC_BACKEND mechanism from the postmaster).
+	 */
+	if (ProcGlobal == NULL)
+		elog(PANIC, "proc header uninitialized");
+
+	if (MyProc == NULL)
+		elog(ERROR, "your backend doesn't exist yet");
+
+	Assert(MyProc != NULL);
+
+	procgloballist = &ProcGlobal->autonxFreeProcs;
+
+	SpinLockAcquire(ProcStructLock);
+
+	set_spins_per_delay(ProcGlobal->spins_per_delay);
+
+	MyProc = ReservedAutoProc;
+	ReservedAutoProc = NULL;
+
+	SpinLockRelease(ProcStructLock);
+
+	/*
+	 * Cross-check that the PGPROC is of the type we expect; if this were not
+	 * the case, it would get returned to the wrong list.
+	 */
+	Assert(MyProc->procgloballist == procgloballist);
+
+	/*
+	 * Initialize all fields of MyProc, except for those previously
+	 * initialized by InitProcGlobal.
+	 */
+	SHMQueueElemInit(&(MyProc->links));
+	MyProc->waitStatus = PROC_WAIT_STATUS_OK;
+	MyProc->lxid = InvalidLocalTransactionId;
+	MyProc->fpVXIDLock = false;
+	MyProc->fpLocalTransactionId = InvalidLocalTransactionId;
+	MyProc->xid = InvalidTransactionId;
+	MyProc->xmin = InvalidTransactionId;
+	MyProc->pid = MyProcPid;
+	/* backendId, databaseId and roleId */
+	MyProc->backendId = MyBackendId;
+	MyProc->databaseId = MyDatabaseId;
+	MyProc->roleId = GetAuthenticatedUserId();
+	MyProc->tempNamespaceId = InvalidOid;
+	MyProc->isBackgroundWorker = IsBackgroundWorker;
+	MyProc->delayChkpt = false;
+	MyProc->delayChkptEnd = false;
+	MyProc->statusFlags = 0;
+	MyProc->autonomous = true;
+	MyProc->lwWaiting = LW_WS_NOT_WAITING;
+	MyProc->lwWaitMode = 0;
+	MyProc->waitLock = NULL;
+	MyProc->waitProcLock = NULL;
+	pg_atomic_write_u64(&MyProc->waitStart, 0);
+	MyProc->recoveryConflictPending = false;
+
+	/* Initialize fields for sync rep */
+	MyProc->waitLSN = 0;
+	MyProc->syncRepState = SYNC_REP_NOT_WAITING;
+	SHMQueueElemInit(&(MyProc->syncRepLinks));
+
+	/* Initialize fields for group XID clearing. */
+	MyProc->procArrayGroupMember = false;
+	MyProc->procArrayGroupMemberXid = InvalidTransactionId;
+	Assert(pg_atomic_read_u32(&MyProc->procArrayGroupNext) == INVALID_PGPROCNO);
+
+	/* Check that group locking fields are in a proper initial state. */
+	Assert(MyProc->lockGroupLeader == NULL);
+	Assert(dlist_is_empty(&MyProc->lockGroupMembers));
+
+	/* Initialize wait event information. */
+	MyProc->wait_event_info = 0;
+
+	/* Initialize fields for group transaction status update. */
+	MyProc->clogGroupMember = false;
+	MyProc->clogGroupMemberXid = InvalidTransactionId;
+	MyProc->clogGroupMemberXidStatus = TRANSACTION_STATUS_IN_PROGRESS;
+	MyProc->clogGroupMemberPage = -1;
+	MyProc->clogGroupMemberLsn = InvalidXLogRecPtr;
+	Assert(pg_atomic_read_u32(&MyProc->clogGroupNext) == INVALID_PGPROCNO);
+
+	MyProc->autonomous = true;
+
+	/*
+	 * Acquire ownership of the PGPROC's latch, so that we can use WaitLatch
+	 * on it.  That allows us to repoint the process latch, which so far
+	 * points to process local one, to the shared one.
+	 */
+	OwnLatch(&MyProc->procLatch);
+	SwitchToSharedLatch();
+
+	/* now that we have a proc, report wait events to shared memory */
+	pgstat_set_wait_event_storage(&MyProc->wait_event_info);
+
+	/*
+	 * We might be reusing a semaphore that belonged to a failed process. So
+	 * be careful and reinitialize its value here.  (This is not strictly
+	 * necessary anymore, but seems like a good idea for cleanliness.)
+	 */
+	PGSemaphoreReset(MyProc->sem);
+
+	ProcArrayAdd(MyProc);
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PrerestoreAutonxIsoVars_Process
+ *   finish process resource
+ */
+static void
+PrerestoreAutonxIsoVars_Process(void)
+{
+	PGPROC	   *proc;
+	PGPROC	   *volatile *procgloballist;
+
+	Assert(MyProc != NULL);
+
+	/* not safe if forked by system(), etc. */
+	if (MyProc->pid != (int) getpid())
+		elog(PANIC, "ReleaseAutoTransactionProc() called in child process");
+
+	RemoveProcFromArray(0, 0);
+
+	/* Make sure we're out of the sync rep lists */
+	SyncRepCleanupAtProcExit();
+
+	/*
+	 * Release any LW locks I am holding.  There really shouldn't be any, but
+	 * it's cheap to check again before we cut the knees off the LWLock
+	 * facility by releasing our PGPROC ...
+	 */
+	LWLockReleaseAll();
+
+	/* Cancel any pending condition variable sleep, too */
+	ConditionVariableCancelSleep();
+
+	/*
+	 * Detach from any lock group of which we are a member.  If the leader
+	 * exist before all other group members, its PGPROC will remain allocated
+	 * until the last group process exits; that process must return the
+	 * leader's PGPROC to the appropriate list.
+	 */
+	if (MyProc->lockGroupLeader != NULL)
+	{
+		PGPROC	   *leader = MyProc->lockGroupLeader;
+		LWLock	   *leader_lwlock = LockHashPartitionLockByProc(leader);
+
+		LWLockAcquire(leader_lwlock, LW_EXCLUSIVE);
+		Assert(!dlist_is_empty(&leader->lockGroupMembers));
+		dlist_delete(&MyProc->lockGroupLink);
+		if (dlist_is_empty(&leader->lockGroupMembers))
+		{
+			leader->lockGroupLeader = NULL;
+			if (leader != MyProc)
+			{
+				procgloballist = leader->procgloballist;
+
+				/* Leader exited first; return its PGPROC. */
+				SpinLockAcquire(ProcStructLock);
+				leader->links.next = (SHM_QUEUE *) *procgloballist;
+				*procgloballist = leader;
+				SpinLockRelease(ProcStructLock);
+			}
+		}
+		else if (leader != MyProc)
+			MyProc->lockGroupLeader = NULL;
+		LWLockRelease(leader_lwlock);
+	}
+
+	/*
+	 * Reset MyLatch to the process local one.  This is so that signal
+	 * handlers et al can continue using the latch after the shared latch
+	 * isn't ours anymore.
+	 *
+	 * Similarly, stop reporting wait events to MyProc->wait_event_info.
+	 *
+	 * After that clear MyProc and disown the shared latch.
+	 */
+	SwitchBackToLocalLatch();
+	pgstat_reset_wait_event_storage();
+
+	proc = MyProc;
+	MyProc = proc->parent;
+	DisownLatch(&proc->procLatch);
+
+	procgloballist = proc->procgloballist;
+	SpinLockAcquire(ProcStructLock);
+
+	/*
+	 * If we're still a member of a locking group, that means we're a leader
+	 * which has somehow exited before its children.  The last remaining child
+	 * will release our PGPROC.  Otherwise, release it now.
+	 */
+	if (proc->lockGroupLeader == NULL)
+	{
+		/* Since lockGroupLeader is NULL, lockGroupMembers should be empty. */
+		Assert(dlist_is_empty(&proc->lockGroupMembers));
+
+		/* Return PGPROC structure (and semaphore) to appropriate freelist */
+		proc->links.next = (SHM_QUEUE *) *procgloballist;
+		*procgloballist = proc;
+	}
+
+	/* Update shared estimate of spins_per_delay */
+	ProcGlobal->spins_per_delay = update_spins_per_delay(ProcGlobal->spins_per_delay);
+
+	SpinLockRelease(ProcStructLock);
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostrestoreAutonxIsoVars_Process
+ *   restore process resource
+ */
+static void
+PostrestoreAutonxIsoVars_Process(void)
+{
+	/*
+	 * Finally, reset MyLatch as shared.
+	 */
+	SwitchToSharedLatch();
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Process
+ *   register process resource
+ */
+void
+RegisterAutonxIsoVars_Process(void)
+{
+	RegisterAutonxIsoVarExt("MyProc", &MyProc, sizeof(MyProc),
+					   PostbackupAutonxIsoVars_Process, PrerestoreAutonxIsoVars_Process,
+					   PrebackupAutonxIsoVars_Process, PostrestoreAutonxIsoVars_Process);
 }

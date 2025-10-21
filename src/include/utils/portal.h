@@ -251,4 +251,16 @@ extern bool ThereAreNoReadyPortals(void);
 extern void HoldPinnedPortals(void);
 extern void ForgetPortalSnapshots(void);
 
+
+/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+extern void HoldPinnedPortalsExt(SubTransactionId mySubid);
+extern void ForgetPortalSnapshotsExt(SubTransactionId mySubid);
+
+extern void AutonPrestartPortals(void);
+
+extern bool AtAutonCommit_Portals(SubTransactionId mySubid);
+extern void AtAutonAbort_Portals(SubTransactionId mySubid);
+extern void AtAutonCleanup_Portals(SubTransactionId mySubid);
+/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 #endif							/* PORTAL_H */

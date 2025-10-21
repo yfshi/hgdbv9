@@ -1043,3 +1043,34 @@ relmap_redo(XLogReaderState *record)
 	else
 		elog(PANIC, "relmap_redo: unknown op code %u", info);
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_Relmapper
+ *   init serializable resource
+ */
+static void
+PostbackupAutonxIsoVars_Relmapper(void)
+{
+	active_shared_updates.num_mappings = 0;
+	active_local_updates.num_mappings = 0;
+	pending_shared_updates.num_mappings = 0;
+	pending_local_updates.num_mappings = 0;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Relmapper
+ *   register serializable resource
+ */
+void
+RegisterAutonxIsoVars_Relmapper(void)
+{
+	RegisterAutonxIsoVar("active_shared_updates", &active_shared_updates, sizeof(active_shared_updates), NULL, NULL);
+	RegisterAutonxIsoVar("active_local_updates", &active_local_updates, sizeof(active_local_updates), NULL, NULL);
+	RegisterAutonxIsoVar("pending_shared_updates", &pending_shared_updates, sizeof(pending_shared_updates), NULL, NULL);
+	RegisterAutonxIsoVar("pending_local_updates", &pending_local_updates, sizeof(pending_local_updates), PostbackupAutonxIsoVars_Relmapper, NULL);
+}

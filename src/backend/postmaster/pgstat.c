@@ -2413,7 +2413,10 @@ AtEOXact_PgStat(bool isCommit, bool parallel)
 			PgStat_TableStatus *tabstat;
 
 			Assert(trans->nest_level == 1);
-			Assert(trans->upper == NULL);
+			/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+			/* The trans->upper may be the outter transaction. */
+			Assert(trans->upper == NULL || IsTopAutonTransaction());
+			/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			tabstat = trans->parent;
 			Assert(tabstat->trans == trans);
 			/* restore pre-truncate stats (if any) in case of aborted xact */
@@ -2450,7 +2453,12 @@ AtEOXact_PgStat(bool isCommit, bool parallel)
 					trans->tuples_inserted + trans->tuples_updated;
 				/* an aborted xact generates no changed_tuple events */
 			}
-			tabstat->trans = NULL;
+			/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+			if (IsTopAutonTransaction() && tabstat->trans->upper)
+				tabstat->trans = tabstat->trans->upper;
+			else
+				tabstat->trans = NULL;
+			/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 		}
 	}
 	pgStatXactStack = NULL;
@@ -5864,4 +5872,29 @@ void
 pgstat_count_slru_truncate(int slru_idx)
 {
 	slru_entry(slru_idx)->m_truncate += 1;
+}
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_PgStat
+ *   init pgstat resource
+ */
+static void
+PostbackupAutonxIsoVars_PgStat(void)
+{
+	pgStatXactStack = NULL;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * dRegisterAutonxIsoVars_PgStat
+ *   register pgstat resource
+ */
+void
+RegisterAutonxIsoVars_PgStat(void)
+{
+	RegisterAutonxIsoVar("pgStatXactStack", &pgStatXactStack, sizeof(pgStatXactStack), PostbackupAutonxIsoVars_PgStat, NULL);
 }

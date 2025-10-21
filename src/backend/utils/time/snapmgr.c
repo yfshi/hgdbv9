@@ -1081,13 +1081,24 @@ AtEOXact_Snapshot(bool isCommit, bool resetXmin)
 	if (isCommit)
 	{
 		ActiveSnapshotElt *active;
+		bool at_top_active = IsTopAutonTransaction();	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 		if (!pairingheap_is_empty(&RegisteredSnapshots))
 			elog(WARNING, "registered snapshots seem to remain after cleanup");
 
 		/* complain about unpopped active snapshots */
 		for (active = ActiveSnapshot; active != NULL; active = active->as_next)
+		{
+			/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+			/* autonomous transaction may be has a top active snapshot */
+			if (at_top_active)
+			{
+				at_top_active = false;
+				continue;
+			}
+			/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			elog(WARNING, "snapshot %p still active", active);
+		}
 	}
 
 	/*
@@ -2417,3 +2428,70 @@ TimestampGetSnapshot(TimestampTz ts)
 	return snapshot;
 }
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
+/*
+ * ReqID:
+ *
+ * PostbackupAutonxIsoVars_Snapmgr
+ *   init snapshot manager resource
+ */
+static void
+PostbackupAutonxIsoVars_Snapmgr(void)
+{
+	CurrentSnapshotData.snapshot_type = SNAPSHOT_MVCC;
+	SecondarySnapshotData.snapshot_type = SNAPSHOT_MVCC;
+	CatalogSnapshotData.snapshot_type = SNAPSHOT_MVCC;
+
+	CurrentSnapshot = NULL;
+	SecondarySnapshot = NULL;
+	CatalogSnapshot = NULL;
+	HistoricSnapshot = NULL;
+
+	TransactionXmin = FirstNormalTransactionId;
+	RecentXmin = FirstNormalTransactionId;
+
+	tuplecid_data = NULL;
+	ActiveSnapshot = NULL;
+	OldestActiveSnapshot = NULL;
+
+	RegisteredSnapshots = (pairingheap) {&xmin_cmp, NULL, NULL};
+	FirstSnapshotSet = false;
+	FirstXactSnapshot = NULL;
+
+	exportedSnapshots = NIL;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_Snapmgr
+ *   register snapshot manager resource
+ */
+void
+RegisterAutonxIsoVars_Snapmgr(void)
+{
+	RegisterAutonxIsoVar("CurrentSnapshotData", &CurrentSnapshotData, sizeof(SnapshotData), NULL, NULL);
+	RegisterAutonxIsoVar("SecondarySnapshotData", &SecondarySnapshotData, sizeof(SnapshotData), NULL, NULL);
+	RegisterAutonxIsoVar("CatalogSnapshotData", &CatalogSnapshotData, sizeof(SnapshotData), NULL, NULL);
+
+	RegisterAutonxIsoVar("CurrentSnapshot", &CurrentSnapshot, sizeof(CurrentSnapshot), NULL, NULL);
+	RegisterAutonxIsoVar("SecondarySnapshot", &SecondarySnapshot, sizeof(SecondarySnapshot), NULL, NULL);
+	RegisterAutonxIsoVar("CatalogSnapshot", &CatalogSnapshot, sizeof(CatalogSnapshot), NULL, NULL);
+	RegisterAutonxIsoVar("HistoricSnapshot", &HistoricSnapshot, sizeof(HistoricSnapshot), NULL, NULL);
+
+	RegisterAutonxIsoVar("TransactionXmin", &TransactionXmin, sizeof(TransactionXmin), NULL, NULL);
+	RegisterAutonxIsoVar("RecentXmin", &RecentXmin, sizeof(RecentXmin), NULL, NULL);
+
+	RegisterAutonxIsoVar("tuplecid_data", &tuplecid_data, sizeof(tuplecid_data), NULL, NULL);
+
+	RegisterAutonxIsoVar("ActiveSnapshot", &ActiveSnapshot, sizeof(ActiveSnapshot), NULL, NULL);
+	RegisterAutonxIsoVar("OldestActiveSnapshot", &OldestActiveSnapshot, sizeof(OldestActiveSnapshot), NULL, NULL);
+
+	RegisterAutonxIsoVar("RegisteredSnapshots", &RegisteredSnapshots, sizeof(RegisteredSnapshots), NULL, NULL);
+	RegisterAutonxIsoVar("FirstSnapshotSet", &FirstSnapshotSet, sizeof(FirstSnapshotSet), NULL, NULL);
+	RegisterAutonxIsoVar("FirstXactSnapshot", &FirstXactSnapshot, sizeof(FirstXactSnapshot), NULL, NULL);
+
+	RegisterAutonxIsoVar("exportedSnapshots", &exportedSnapshots, sizeof(exportedSnapshots), NULL, NULL);
+
+	RegisterAutonxIsoVar("PostbackupAutonxIsoVars_Snapmgr()", NULL, 0, PostbackupAutonxIsoVars_Snapmgr, NULL);
+}

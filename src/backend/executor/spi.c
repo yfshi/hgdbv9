@@ -270,6 +270,11 @@ _SPI_commit(bool chain)
 	/* Catch any error occurring during the COMMIT */
 	PG_TRY();
 	{
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		SubTransactionId mySubid =
+			IsTopAutonTransaction() ? GetCurrentSubTransactionId() : InvalidSubTransactionId;
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 		/* Protect current SPI stack entry against deletion */
 		_SPI_current->internal_xact = true;
 
@@ -278,10 +283,10 @@ _SPI_commit(bool chain)
 		 * this before changing transaction state, since this will run
 		 * user-defined code that might throw an error.
 		 */
-		HoldPinnedPortals();
+		HoldPinnedPortalsExt(mySubid);			/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 		/* Release snapshots associated with portals */
-		ForgetPortalSnapshots();
+		ForgetPortalSnapshotsExt(mySubid);		/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 		/* Do the deed */
 		CommitTransactionCommand();
@@ -361,6 +366,11 @@ _SPI_rollback(bool chain)
 	/* Catch any error occurring during the ROLLBACK */
 	PG_TRY();
 	{
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		SubTransactionId mySubid =
+			IsTopAutonTransaction() ? GetCurrentSubTransactionId() : InvalidSubTransactionId;
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 		/* Protect current SPI stack entry against deletion */
 		_SPI_current->internal_xact = true;
 
@@ -370,10 +380,10 @@ _SPI_rollback(bool chain)
 		 * user-defined code that might throw an error, and in any case
 		 * couldn't be run in an already-aborted transaction.
 		 */
-		HoldPinnedPortals();
+		HoldPinnedPortalsExt(mySubid);			/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 		/* Release snapshots associated with portals */
-		ForgetPortalSnapshots();
+		ForgetPortalSnapshotsExt(mySubid);		/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 		/* Do the deed */
 		AbortCurrentTransaction();
@@ -3608,3 +3618,22 @@ SPI_is_first_plisql(void)
 }
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * SPI_switch_atomic
+ *   switch atomic in autonomous and normal transaction
+ */
+void
+SPI_switch_atomic(bool atomic)
+{
+	MemoryContext t_context = TopTransactionContext;
+	bool t_atomic = !atomic;
+
+	if (!t_atomic)
+		t_context = PortalContext;
+
+	MemoryContextSetParent(_SPI_current->procCxt, t_context);
+	MemoryContextSetParent(_SPI_current->execCxt, _SPI_current->procCxt);
+	_SPI_current->atomic = t_atomic;
+}

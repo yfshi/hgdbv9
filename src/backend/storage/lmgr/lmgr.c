@@ -1232,3 +1232,17 @@ GetLockNameFromTagType(uint16 locktag_type)
 		return "???";
 	return LockTagTypeNames[locktag_type];
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Lmgr
+ *   register lock manager resource
+ */
+void
+RegisterAutonxIsoVars_Lmgr(void)
+{
+	/* maybe unused */
+	RegisterAutonxIsoVar("speculativeInsertionToken", &speculativeInsertionToken, sizeof(speculativeInsertionToken), NULL, NULL);
+}

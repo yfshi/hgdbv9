@@ -3618,9 +3618,13 @@ heap_truncate(List *relids)
 		/*
 		 * Truncate global temporary table only clears local data,
 		 * so only low-level locks need to be held.
+		 *
+		 * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+		 * Downgrade the lock level to of the temporary table to
+		 * ShareUpdateExclusiveLock.
 		 */
-		if (get_rel_persistence(rid) == RELPERSISTENCE_GLOBAL_TEMP)
-			lockmode = RowExclusiveLock;
+		if (RelpersistenceTsTemp(get_rel_persistence(rid)))
+			lockmode = ShareUpdateExclusiveLock;
 
 		rel = table_open(rid, lockmode);
 		relations = lappend(relations, rel);
@@ -3680,6 +3684,15 @@ heap_truncate_one_rel(Relation rel)
 		 */
 		lockmode = RowExclusiveLock;
 	}
+
+	/*
+	 * Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+	 *
+	 * Downgrade the lock level of the temporary table to ShareUpdateExclusiveLock.
+	 */
+	if (RELATION_IS_TEMP(rel))
+		lockmode = ShareUpdateExclusiveLock;
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 	/* Truncate the underlying relation */
 	table_relation_nontransactional_truncate(rel);

@@ -3773,3 +3773,38 @@ pg_pwritev_with_retry(int fd, const struct iovec *iov, int iovcnt, off_t offset)
 
 	return sum;
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_Files
+ *   register files resource
+ */
+static void
+PostbackupAutonxIsoVars_Files(void)
+{
+	have_xact_temporary_files = false;
+	numAllocatedDescs = 0;
+	maxAllocatedDescs = 0;
+	allocatedDescs = NULL;
+	tempTableSpaces = NULL;
+	numTempTableSpaces = -1;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Files
+ *   register files resource
+ */
+void
+RegisterAutonxIsoVars_Files(void)
+{
+	RegisterAutonxIsoVar("have_xact_temporary_files", &have_xact_temporary_files, sizeof(have_xact_temporary_files), NULL, NULL);
+	RegisterAutonxIsoVar("numAllocatedDescs", &numAllocatedDescs, sizeof(numAllocatedDescs), NULL, NULL);
+	RegisterAutonxIsoVar("maxAllocatedDescs", &maxAllocatedDescs, sizeof(maxAllocatedDescs), NULL, NULL);
+	RegisterAutonxIsoVar("allocatedDescs", &allocatedDescs, sizeof(allocatedDescs), NULL, NULL);
+	RegisterAutonxIsoVar("tempTableSpaces", &tempTableSpaces, sizeof(tempTableSpaces), NULL, NULL);
+	RegisterAutonxIsoVar("numTempTableSpaces", &numTempTableSpaces, sizeof(numTempTableSpaces), PostbackupAutonxIsoVars_Files, NULL);
+}

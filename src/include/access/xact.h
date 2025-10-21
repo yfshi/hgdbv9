@@ -523,4 +523,14 @@ extern bool SetAutoSavepoint(const char *sp_name);
 extern bool RollbackToAutoSavepoint(const char *sp_name);
 /* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 
+/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+extern void BeginInternalAutonTransaction(const char *name);
+extern void ReleaseCurrentAutonTransaction(void);
+extern void RollbackAndReleaseCurrentAutonTransaction(void);
+extern void RollbackAndReleaseAutonTransactionRecursively(void);
+
+extern bool IsAutonTransaction(void);
+extern bool IsTopAutonTransaction(void);
+/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 #endif							/* XACT_H */

@@ -2467,3 +2467,17 @@ ClearPendingActionsAndNotifies(void)
 	pendingActions = NULL;
 	pendingNotifies = NULL;
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_Notify
+ *   register notify resource
+ */
+void
+RegisterAutonxIsoVars_Notify(void)
+{
+	RegisterAutonxIsoVar("pendingActions", &pendingActions, sizeof(pendingActions), NULL, NULL);
+	RegisterAutonxIsoVar("pendingNotifies", &pendingNotifies, sizeof(pendingNotifies), ClearPendingActionsAndNotifies, NULL);
+}

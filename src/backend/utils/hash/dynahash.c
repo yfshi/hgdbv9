@@ -98,6 +98,7 @@
 
 #include "access/xact.h"
 #include "common/hashfn.h"
+#include "miscadmin.h"	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 #include "port/pg_bitutils.h"
 #include "storage/shmem.h"
 #include "storage/spin.h"
@@ -1927,4 +1928,31 @@ AtEOSubXact_HashTables(bool isCommit, int nestDepth)
 			num_seq_scans--;
 		}
 	}
+}
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_HtabSeqScan
+ *   init hash table seqscan resource
+ */
+static void
+PostbackupAutonxIsoVars_HtabSeqScan(void)
+{
+	num_seq_scans = 0;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_HtabSeqScan
+ *   register hash table seqscan resource
+ */
+void
+RegisterAutonxIsoVars_HtabSeqScan(void)
+{
+	RegisterAutonxIsoVar("seq_scan_tables", seq_scan_tables, sizeof(seq_scan_tables), NULL, NULL);
+	RegisterAutonxIsoVar("seq_scan_level", seq_scan_level, sizeof(seq_scan_level), NULL, NULL);
+	RegisterAutonxIsoVar("num_seq_scans", &num_seq_scans, sizeof(num_seq_scans), PostbackupAutonxIsoVars_HtabSeqScan, NULL);
 }

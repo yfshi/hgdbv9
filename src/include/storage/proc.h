@@ -220,6 +220,9 @@ struct PGPROC
 								 * ProcGlobal->statusFlags[pgxactoff] */
 	bool		delayChkptEnd;	/* true if this proc delays checkpoint end */
 
+	bool		autonomous;		/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+								 * true if this proc is for autontransaction */
+
 	/*
 	 * Info to allow us to wait for synchronous replication, if needed.
 	 * waitLSN is InvalidXLogRecPtr if not waiting; set only by user backend.
@@ -294,6 +297,9 @@ struct PGPROC
 	PGPROC	   *lockGroupLeader;	/* lock group leader, if I'm a member */
 	dlist_head	lockGroupMembers;	/* list of members, if I'm a leader */
 	dlist_node	lockGroupLink;	/* my member link, if I'm a member */
+
+	PGPROC	   *parent;			/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+								 * autontrans's parent PGPROC */
 
 /* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 #ifdef PERF_NUMA
@@ -398,6 +404,8 @@ typedef struct PROC_HDR
 	PGPROC	   *bgworkerFreeProcs;
 	/* Head of list of walsender free PGPROC structures */
 	PGPROC	   *walsenderFreeProcs;
+	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION Head of list of autonx's free PGPROC structures */
+	PGPROC	   *autonxFreeProcs;
 	/* First pgproc waiting for group XID clear */
 	pg_atomic_uint32 procArrayGroupFirst;
 	/* First pgproc waiting for group transaction status update */
@@ -450,6 +458,9 @@ extern PGDLLIMPORT int LockTimeout;
 extern PGDLLIMPORT int IdleInTransactionSessionTimeout;
 extern PGDLLIMPORT int IdleSessionTimeout;
 extern bool log_lock_waits;
+/* Begin - SRS-PLSQL-AUTONOMOUSTRANSACTION */
+extern bool AutonxCheckingDeadlocks;
+/* End - SRS-PLSQL-AUTONOMOUSTRANSACTION*/
 
 
 /*

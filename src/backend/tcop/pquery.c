@@ -1844,6 +1844,17 @@ EnsurePortalSnapshotExists(void)
 	if (ActiveSnapshotSet())
 		return;
 
+	/*
+	 * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+	 *   In autonomous transaction, ActivePortal may be NULL and push a
+	 * active snashot.
+	 */
+	if (IsTopAutonTransaction() && ActivePortal == NULL)
+	{
+		PushActiveSnapshot(GetTransactionSnapshot());
+		return;
+	}
+
 	/* Otherwise, we'd better have an active Portal */
 	portal = ActivePortal;
 	if (unlikely(portal == NULL))
@@ -1920,3 +1931,28 @@ CreateTupleDescFromParams(ParamListInfo params)
 	}
 }
 /* End - ReqID:SRS-SQL-ANONYOUT */
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_Portal
+ *   init portal resource
+ */
+static void
+PostbackupAutonxIsoVars_Portal(void)
+{
+	ActivePortal = NULL;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_Portal
+ *   register portal resource
+ */
+void
+RegisterAutonxIsoVars_Portal(void)
+{
+	RegisterAutonxIsoVar("ActivePortal", &ActivePortal,	sizeof(ActivePortal), PostbackupAutonxIsoVars_Portal, NULL);
+}

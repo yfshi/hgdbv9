@@ -1220,7 +1220,8 @@ coerce_function_result_tuple(PLiSQL_execstate *estate, TupleDesc tupdesc)
  */
 HeapTuple
 plisql_exec_trigger(PLiSQL_function *func,
-					 TriggerData *trigdata)
+					TriggerData *trigdata,
+					bool atomic)	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 {
 	PLiSQL_execstate estate;
 	ErrorContextCallback plerrcontext;
@@ -1235,6 +1236,7 @@ plisql_exec_trigger(PLiSQL_function *func,
 	 */
 	plisql_estate_setup(&estate, func, NULL, NULL, NULL);
 	estate.trigdata = trigdata;
+	estate.atomic = atomic;	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 	/*
 	 * Setup error traceback support for ereport()
@@ -1460,7 +1462,7 @@ plisql_exec_trigger(PLiSQL_function *func,
  * ----------
  */
 void
-plisql_exec_event_trigger(PLiSQL_function *func, EventTriggerData *trigdata)
+plisql_exec_event_trigger(PLiSQL_function *func, EventTriggerData *trigdata, bool atomic)	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 {
 	PLiSQL_execstate estate;
 	ErrorContextCallback plerrcontext;
@@ -1471,6 +1473,7 @@ plisql_exec_event_trigger(PLiSQL_function *func, EventTriggerData *trigdata)
 	 */
 	plisql_estate_setup(&estate, func, NULL, NULL, NULL);
 	estate.evtrigdata = trigdata;
+	estate.atomic = atomic;	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 	/*
 	 * Setup error traceback support for ereport()
@@ -5982,25 +5985,45 @@ exec_stmt_close(PLiSQL_execstate *estate, PLiSQL_stmt_close *stmt)
  * exec_stmt_commit
  *
  * Commit the transaction.
+ *
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *   Switch to TBLOCK_AUTONSTARTED before commit.
  */
 static int
 exec_stmt_commit(PLiSQL_execstate *estate, PLiSQL_stmt_commit *stmt)
 {
-	if (stmt->chain)
-		SPI_commit_and_chain();
-	else
+	int ostate = -1;
+
+	if (IsTopAutonTransaction())
 	{
-		SPI_commit();
-		SPI_start_transaction();
+		Assert(!estate->atomic);
+		ostate = SetTopAutonTransactionStateStarted();	/* set to TBLOCK_AUTONSTARTED */
 	}
 
-	/*
-	 * We need to build new simple-expression infrastructure, since the old
-	 * data structures are gone.
-	 */
-	estate->simple_eval_estate = NULL;
-	estate->simple_eval_resowner = NULL;
-	plisql_create_econtext(estate);
+	PG_TRY();
+	{
+		if (stmt->chain)
+			SPI_commit_and_chain();
+		else
+		{
+			SPI_commit();
+			SPI_start_transaction();
+		}
+
+		/*
+		* We need to build new simple-expression infrastructure, since the old
+		* data structures are gone.
+		*/
+		estate->simple_eval_estate = NULL;
+		estate->simple_eval_resowner = NULL;
+		plisql_create_econtext(estate);
+	}
+	PG_FINALLY();
+	{
+		if (IsTopAutonTransaction())
+			SetTopAutonTransactionState(ostate);
+	}
+	PG_END_TRY();
 
 	return PLISQL_RC_OK;
 }
@@ -6009,25 +6032,45 @@ exec_stmt_commit(PLiSQL_execstate *estate, PLiSQL_stmt_commit *stmt)
  * exec_stmt_rollback
  *
  * Abort the transaction.
+ *
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *   Switch to TBLOCK_AUTOSTARTED before rollback.
  */
 static int
 exec_stmt_rollback(PLiSQL_execstate *estate, PLiSQL_stmt_rollback *stmt)
 {
-	if (stmt->chain)
-		SPI_rollback_and_chain();
-	else
+	int ostate = -1;
+
+	if (IsTopAutonTransaction())
 	{
-		SPI_rollback();
-		SPI_start_transaction();
+		Assert(!estate->atomic);
+		ostate = SetTopAutonTransactionStateStarted();	/* set to TBLOCK_AUTONSTARTED */
 	}
 
-	/*
-	 * We need to build new simple-expression infrastructure, since the old
-	 * data structures are gone.
-	 */
-	estate->simple_eval_estate = NULL;
-	estate->simple_eval_resowner = NULL;
-	plisql_create_econtext(estate);
+	PG_TRY();
+	{
+		if (stmt->chain)
+			SPI_rollback_and_chain();
+		else
+		{
+			SPI_rollback();
+			SPI_start_transaction();
+		}
+
+		/*
+		* We need to build new simple-expression infrastructure, since the old
+		* data structures are gone.
+		*/
+		estate->simple_eval_estate = NULL;
+		estate->simple_eval_resowner = NULL;
+		plisql_create_econtext(estate);
+	}
+	PG_FINALLY();
+	{
+		if (IsTopAutonTransaction())
+			SetTopAutonTransactionState(ostate);
+	}
+	PG_END_TRY();
 
 	return PLISQL_RC_OK;
 }
@@ -12329,3 +12372,31 @@ plisql_param_check(ParamListInfo params, FuncExpr *fexpr, void *paramArg)
 	return;
 }
 /* End - ReqID:SRS-PLSQL-DSQL */
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_plisql_hook
+ *   initial autonomous transaction isolation vars for plisql.
+ */
+static void
+PostbackupAutonxIsoVars_plisql_hook(void)
+{
+	simple_econtext_stack = NULL;
+	shared_simple_eval_estate = NULL;
+	shared_simple_eval_resowner = NULL;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_plisql_hook
+ *   register autonomous transaction isolation vars for plisql.
+ */
+void
+RegisterAutonxIsoVars_plisql_hook(void)
+{
+	RegisterAutonxIsoVar("plisql_simple_econtext_stack", &simple_econtext_stack, sizeof(void *), NULL, NULL);
+	RegisterAutonxIsoVar("plisql_shared_simple_eval_estate", &shared_simple_eval_estate, sizeof(void *), NULL, NULL);
+	RegisterAutonxIsoVar("plisql_shared_simple_eval_resowner", &shared_simple_eval_resowner, sizeof(void *), PostbackupAutonxIsoVars_plisql_hook, NULL);
+}

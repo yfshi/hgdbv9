@@ -1984,3 +1984,29 @@ LWLockHeldByMeInMode(LWLock *l, LWLockMode mode)
 	}
 	return false;
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_LWLock
+ *   init lwlock resource
+ */
+static void
+PostbackupAutonxIsoVars_LWLock(void)
+{
+	num_held_lwlocks = 0;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_LWLock
+ *   register lwlock resource
+ */
+void
+RegisterAutonxIsoVars_LWLock(void)
+{
+	RegisterAutonxIsoVar("held_lwlocks", held_lwlocks, sizeof(held_lwlocks), NULL, NULL);
+	RegisterAutonxIsoVar("num_held_lwlocks", &num_held_lwlocks, sizeof(num_held_lwlocks), PostbackupAutonxIsoVars_LWLock, NULL);
+}

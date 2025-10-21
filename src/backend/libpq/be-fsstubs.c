@@ -858,3 +858,34 @@ be_lo_put(PG_FUNCTION_ARGS)
 
 	PG_RETURN_VOID();
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_CV
+ *   init condition variable resource
+ */
+static void
+PostbackupAutonxIsoVars_LargeObjectFsstub(void)
+{
+	cookies = NULL;
+	cookies_size = 0;
+	lo_cleanup_needed = false;
+	fscxt = NULL;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * RegisterAutonxIsoVars_CV
+ *   register condition variable resource
+ */
+void
+RegisterAutonxIsoVars_LargeObjectFsstub(void)
+{
+	RegisterAutonxIsoVar("cookies", &cookies, sizeof(cookies), NULL, NULL);
+	RegisterAutonxIsoVar("cookies_size", &cookies_size, sizeof(cookies_size), NULL, NULL);
+	RegisterAutonxIsoVar("lo_cleanup_needed", &lo_cleanup_needed, sizeof(lo_cleanup_needed), NULL, NULL);
+	RegisterAutonxIsoVar("fscxt", &fscxt, sizeof(fscxt), PostbackupAutonxIsoVars_LargeObjectFsstub, NULL);
+}

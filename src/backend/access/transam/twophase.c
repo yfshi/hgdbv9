@@ -490,6 +490,7 @@ MarkAsPreparingGuts(GlobalTransaction gxact, TransactionId xid, const char *gid,
 	proc->delayChkpt = false;
 	proc->statusFlags = 0;
 	proc->delayChkptEnd = false;
+	proc->autonomous = false;	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	proc->pid = 0;
 	proc->databaseId = databaseid;
 	proc->roleId = owner;

@@ -230,4 +230,8 @@ extern MemoryContext Ora_spi_saved_memorycontext(void);
 extern bool SPI_is_first_plisql(void);
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+extern void SPI_switch_atomic(bool atomic);
+/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 #endif							/* SPI_H */

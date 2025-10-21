@@ -380,6 +380,8 @@ static bool dblink_using_fdw_check(char **newval, void **extra, GucSource source
 static bool plsql_warnings_check(char **newval, void **extra, GucSource source);
 /* End - BUG#Z00001310 */
 
+static bool check_autontrans_nesting_level(int *newval, void **extra, GucSource source);
+
 #endif
 
 #if 0
@@ -996,6 +998,29 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-TRIGGER */
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	{
+		{"ivorysql.autonomous_transaction", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Whether allow autonomous transaction."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&AutonxEnabled,
+		true,
+		NULL, NULL, NULL
+	},
+	{
+		{"ivorysql.check_autontrans_deadlocks", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Whether check session deadlocks in autonomous transaction."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&AutonxCheckingDeadlocks,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 #endif
 #if 0
 	/* End-of-list marker */
@@ -1141,6 +1166,27 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	{
+		{"ivorysql.max_autonomous_transactions", PGC_POSTMASTER, UNGROUPED,
+			gettext_noop("Sets the maximum number of autonomous transactions."),
+			NULL
+		},
+		&MaxAutonxs,
+		32, 1, MAX_BACKENDS,
+		NULL, NULL, NULL
+	},
+	{
+		{"ivorysql.autontrans_nesting_level", PGC_USERSET, UNGROUPED,
+			gettext_noop("Sets the maximum nesting level of autonomous transactions."),
+			NULL
+		},
+		&AutonxNestingLevel,
+		16, 1, 64,
+		check_autontrans_nesting_level, NULL, NULL
+	},
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	/* End - ReqID:SRS-SQL-DBLINK */	
 #endif
 #if 0
 	/* End-of-list marker */
@@ -2113,5 +2159,19 @@ plsql_warnings_check(char **newval, void **extra, GucSource source)
 	return true;
 }
 /* End - BUG#Z00001310 */
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * check_autontrans_nesting_level
+ *   check "autontrans_nesting_level"
+ */
+static bool
+check_autontrans_nesting_level(int *newval, void **extra, GucSource source)
+{
+	if (*newval > MaxAutonxs)
+		return false;
+	return true;
+}
 
 #endif

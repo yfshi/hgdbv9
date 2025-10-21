@@ -102,3 +102,6 @@ test: serializable-parallel
 test: serializable-parallel-2
 test: serializable-parallel-3
 test: for-update-column
+## Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+test: plisql-autonx-deadlock
+## End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION

@@ -33,6 +33,7 @@
 #include "storage/proc.h"
 #include "common/hashfn.h"
 /* End - ReqID:SRS-PLSQL-CURSOR */
+#include "tcop/pquery.h"	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 
 /*
@@ -1426,14 +1427,29 @@ ThereAreNoReadyPortals(void)
 void
 HoldPinnedPortals(void)
 {
+	HoldPinnedPortalsExt(InvalidSubTransactionId);
+}
+
+void
+HoldPinnedPortalsExt(SubTransactionId mySubid)
+{
 	HASH_SEQ_STATUS status;
 	PortalHashEnt *hentry;
+
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	Assert(mySubid == InvalidSubTransactionId || IsAutonTransaction());
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 	hash_seq_init(&status, PortalHashTable);
 
 	while ((hentry = (PortalHashEnt *) hash_seq_search(&status)) != NULL)
 	{
 		Portal		portal = hentry->portal;
+
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		if (mySubid != InvalidSubTransactionId && portal->createSubid != mySubid)
+			continue;
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 		if (portal->portalPinned && !portal->autoHeld)
 		{
@@ -1475,10 +1491,20 @@ HoldPinnedPortals(void)
 void
 ForgetPortalSnapshots(void)
 {
+	ForgetPortalSnapshotsExt(InvalidSubTransactionId);
+}
+
+void
+ForgetPortalSnapshotsExt(SubTransactionId mySubid)
+{
 	HASH_SEQ_STATUS status;
 	PortalHashEnt *hentry;
 	int			numPortalSnaps = 0;
 	int			numActiveSnaps = 0;
+
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	Assert(mySubid == InvalidSubTransactionId || IsAutonTransaction());
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 	/* First, scan PortalHashTable and clear portalSnapshot fields */
 	hash_seq_init(&status, PortalHashTable);
@@ -1486,6 +1512,16 @@ ForgetPortalSnapshots(void)
 	while ((hentry = (PortalHashEnt *) hash_seq_search(&status)) != NULL)
 	{
 		Portal		portal = hentry->portal;
+
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		/*
+		 * ActivePortal's snapshot is assigned by autonomous
+		 * transaction and would be clear.
+		 */
+		if (mySubid != InvalidSubTransactionId &&
+			portal->createSubid != mySubid)
+			continue;
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 		if (portal->portalSnapshot != NULL)
 		{
@@ -1507,7 +1543,272 @@ ForgetPortalSnapshots(void)
 		numActiveSnaps++;
 	}
 
-	if (numPortalSnaps != numActiveSnaps)
+	/*
+	 * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+	 *   A snapshot may have beed created in EnsurePortalSnapshotExists(),
+	 * resulting in: (numPortalSnaps + 1 = numActiveSnaps).
+	 */
+	if (numPortalSnaps != numActiveSnaps && !IsTopAutonTransaction())
 		elog(ERROR, "portal snapshots (%d) did not account for all active snapshots (%d)",
 			 numPortalSnaps, numActiveSnaps);
+}
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * AutonPrestartPortals
+ *   Hold all holdable portals before autonomous transaction starting.
+ *
+ * Holdable cursors need to be converted to materialized form, since we
+ * may be going to close it in autonomos transaction.
+ */
+void
+AutonPrestartPortals(void)
+{
+	HASH_SEQ_STATUS status;
+	PortalHashEnt *hentry;
+
+	hash_seq_init(&status, PortalHashTable);
+
+	while ((hentry = (PortalHashEnt *) hash_seq_search(&status)) != NULL)
+	{
+		Portal		portal = hentry->portal;
+
+		if (portal->cursorOptions & CURSOR_OPT_HOLD && portal->status == PORTAL_READY)
+		{
+			/*
+			 * Doing transaction control, especially abort, inside a cursor
+			 * loop that is not read-only, for example using UPDATE ...
+			 * RETURNING, has weird semantics issues.  Also, this
+			 * implementation wouldn't work, because such portals cannot be
+			 * held.  (The core grammar enforces that only SELECT statements
+			 * can drive a cursor, but for example PL/pgSQL does not restrict
+			 * it.)
+			 */
+			if (portal->strategy != PORTAL_ONE_SELECT)
+				ereport(ERROR,
+						(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+						 errmsg("cannot perform transaction commands inside a cursor loop that is not read-only")));
+
+			HoldPortal(portal);
+		}
+	}
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * AtAutonCommit_Portals
+ *   Commit processing for portals.
+ *
+ * Holdable cursors created in this transaction need to be converted to
+ * materialized form, since we are going to close down the executor and
+ * release locks.  Non-holdable portals created in this transaction are
+ * simply removed.  Portals remaining from prior transactions should be
+ * left untouched.
+ *
+ * Only process portals with createSubid is "mySubid".
+ *
+ * Returns true if any portals changed state (possibly causing user-defined
+ * code to be run), false if not.
+ */
+bool
+AtAutonCommit_Portals(SubTransactionId mySubid)
+{
+	bool		result = false;
+	HASH_SEQ_STATUS status;
+	PortalHashEnt *hentry;
+
+	hash_seq_init(&status, PortalHashTable);
+
+	while ((hentry = (PortalHashEnt *) hash_seq_search(&status)) != NULL)
+	{
+		Portal		portal = hentry->portal;
+
+		if (portal->createSubid != mySubid)
+			continue;
+
+		/*
+		 * There should be no pinned portals anymore. Complain if someone
+		 * leaked one. Auto-held portals are allowed; we assume that whoever
+		 * pinned them is managing them.
+		 */
+		if (portal->portalPinned && !portal->autoHeld)
+			elog(ERROR, "cannot commit while a portal is pinned");
+
+		/* Is it a holdable portal created in the current xact? */
+		if ((portal->cursorOptions & CURSOR_OPT_HOLD) &&
+			portal->status == PORTAL_READY)
+		{
+			/*
+			 * We are exiting the transaction that created a holdable cursor.
+			 * Instead of dropping the portal, prepare it for access by later
+			 * transactions.
+			 */
+			HoldPortal(portal);
+
+			/* Report we changed state */
+			result = true;
+		}
+		else
+		{
+			/* Zap all non-holdable portals */
+			PortalDrop(portal, true);
+
+			/* Report we changed state */
+			result = true;
+		}
+
+		/*
+		 * After either freezing or dropping a portal, we have to restart the
+		 * iteration, because we could have invoked user-defined code that
+		 * caused a drop of the next portal in the hash chain.
+		 */
+		hash_seq_term(&status);
+		hash_seq_init(&status, PortalHashTable);
+	}
+
+	return result;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * AtAutonAbort_Portals
+ *   Abort processing for portals.
+ *
+ * At this point we run the cleanup hook if present, but we can't release the
+ * portal's memory until the cleanup call.
+ */
+void
+AtAutonAbort_Portals(SubTransactionId mySubid)
+{
+	HASH_SEQ_STATUS status;
+	PortalHashEnt *hentry;
+
+	hash_seq_init(&status, PortalHashTable);
+
+	while ((hentry = (PortalHashEnt *) hash_seq_search(&status)) != NULL)
+	{
+		Portal		portal = hentry->portal;
+
+		/*
+		 * When elog(FATAL) is progress, we need to set the active portal to
+		 * failed, so that PortalCleanup() doesn't run the executor shutdown.
+		 */
+		if (portal->status == PORTAL_ACTIVE && shmem_exit_inprogress)
+			MarkPortalFailed(portal);
+
+		/*
+		 * Do nothing else to cursors held over from a previous transaction.
+		 */
+		if (portal->createSubid == InvalidSubTransactionId)
+			continue;
+
+		if (portal->createSubid != mySubid)
+			continue;
+
+		/*
+		 * If it was created in the current transaction, we can't do normal
+		 * shutdown on a READY portal either; it might refer to objects
+		 * created in the failed transaction.  See comments in
+		 * AtSubAbort_Portals.
+		 */
+		if (portal->status == PORTAL_READY)
+			MarkPortalFailed(portal);
+
+		/*
+		 * Allow portalcmds.c to clean up the state it knows about, if we
+		 * haven't already.
+		 */
+		if (PointerIsValid(portal->cleanup))
+		{
+			portal->cleanup(portal);
+			portal->cleanup = NULL;
+		}
+
+		/* drop cached plan reference, if any */
+		PortalReleaseCachedPlan(portal);
+
+		/*
+		 * Any resources belonging to the portal will be released in the
+		 * upcoming transaction-wide cleanup; they will be gone before we run
+		 * PortalDrop.
+		 */
+		portal->resowner = NULL;
+
+		/*
+		 * Although we can't delete the portal data structure proper, we can
+		 * release any memory in subsidiary contexts, such as executor state.
+		 * The cleanup hook was the last thing that might have needed data
+		 * there.  But leave active portals alone.
+		 */
+		if (portal->status != PORTAL_ACTIVE)
+			MemoryContextDeleteChildren(portal->portalContext);
+	}
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * AtAutonCleanup_Portals
+ *   Post-abort cleanup for portals.
+ *
+ * Delete all portals not held over from prior auto transactions.
+ */
+void
+AtAutonCleanup_Portals(SubTransactionId mySubid)
+{
+	HASH_SEQ_STATUS status;
+	PortalHashEnt *hentry;
+
+	hash_seq_init(&status, PortalHashTable);
+
+	while ((hentry = (PortalHashEnt *) hash_seq_search(&status)) != NULL)
+	{
+		Portal		portal = hentry->portal;
+
+		if (portal->createSubid != mySubid)
+			continue;
+
+		/*
+		 * Do not touch active portals --- this can only happen in the case of
+		 * a multi-transaction command.
+		 */
+		if (portal->status == PORTAL_ACTIVE)
+			continue;
+
+		/*
+		 * Do nothing to cursors held over from a previous transaction or
+		 * auto-held ones.
+		 */
+		if (portal->createSubid == InvalidSubTransactionId || portal->autoHeld)
+		{
+			Assert(portal->status != PORTAL_ACTIVE);
+			Assert(portal->resowner == NULL);
+			continue;
+		}
+
+		/*
+		 * If a portal is still pinned, forcibly unpin it. PortalDrop will not
+		 * let us drop the portal otherwise. Whoever pinned the portal was
+		 * interrupted by the abort too and won't try to use it anymore.
+		 */
+		if (portal->portalPinned)
+			portal->portalPinned = false;
+
+		/*
+		 * We had better not call any user-defined code during cleanup, so if
+		 * the cleanup hook hasn't been run yet, too bad; we'll just skip it.
+		 */
+		if (PointerIsValid(portal->cleanup))
+		{
+			elog(WARNING, "skipping cleanup for portal \"%s\"", portal->name);
+			portal->cleanup = NULL;
+		}
+
+		/* Zap it. */
+		PortalDrop(portal, false);
+	}
 }

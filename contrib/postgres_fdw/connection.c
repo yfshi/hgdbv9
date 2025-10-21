@@ -135,6 +135,11 @@ GetConnection(UserMapping *user, bool will_prep_stmt, PgFdwConnState **state)
 	ConnCacheEntry *entry;
 	MemoryContext ccxt = CurrentMemoryContext;
 
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	if (IsTopAutonTransaction())
+		elog(ERROR, "FDW does not support autonomous transaction");
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 	/* Set flag that we did GetConnection during the current transaction */
 	xact_got_connection = true;
 

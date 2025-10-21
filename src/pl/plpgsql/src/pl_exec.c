@@ -8808,3 +8808,37 @@ format_preparedparamsdata(PLpgSQL_execstate *estate,
 
 	return paramstr.data;
 }
+
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *
+ * PostbackupAutonxIsoVars_plisql_hook
+ *   initial autonomous transaction isolation vars for plpgsql.
+ */
+static void
+PostbackupAutonxIsoVars_plpgsql_hook(void)
+{
+	simple_econtext_stack = NULL;
+	shared_simple_eval_estate = NULL;
+	shared_simple_eval_resowner = NULL;
+}
+
+/*
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ * PostbackupAutonxIsoVars_plisql_hook
+ *   register autonomous transaction isolation vars for plpgsql.
+ */
+void
+RegisterAutonxIsoVars_plpgsql_hook(void)
+{
+	static bool registerred = false;
+
+	if (registerred)
+		return;
+
+	RegisterAutonxIsoVar("plpgsql_simple_econtext_stack", &simple_econtext_stack, sizeof(void *), NULL, NULL);
+	RegisterAutonxIsoVar("plpgsql_shared_simple_eval_estate", &shared_simple_eval_estate, sizeof(void *), NULL, NULL);
+	RegisterAutonxIsoVar("plpgsql_shared_simple_eval_resowner", &shared_simple_eval_resowner, sizeof(void *), PostbackupAutonxIsoVars_plpgsql_hook, NULL);
+	registerred = true;
+}

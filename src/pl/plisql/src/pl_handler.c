@@ -34,9 +34,11 @@
 /* Begin - ReqID:SRS-PLSQL-EXCEPTION */
 #include "pl_udt_exception.h"
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
+#include "storage/proc.h"	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 #include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
+#include "utils/snapmgr.h"	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
@@ -90,6 +92,8 @@ bool		plisql_default_into_strict = true;
 /* Hook for plugins */
 PLiSQL_plugin **plisql_plugin_ptr = NULL;
 
+/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+static AutoxIsoVarsHookType	prev_RegisterAutonxIsoVars_PlisqlHook = NULL;
 
 static bool
 plisql_extra_checks_check_hook(char **newvalue, void **extra, GucSource source)
@@ -287,6 +291,11 @@ _PG_init(void)
 	/* Set up a rendezvous point with optional instrumentation plugin */
 	plisql_plugin_ptr = (PLiSQL_plugin **) find_rendezvous_variable("PLiSQL_plugin");
 
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	prev_RegisterAutonxIsoVars_PlisqlHook = RegisterAutonxIsoVars_PlisqlHook;
+	RegisterAutonxIsoVars_PlisqlHook = RegisterAutonxIsoVars_plisql_hook;
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 	inited = true;
 }
 
@@ -298,6 +307,9 @@ void
 _PG_fini(void)
 {
 	plisql_unregister_internal_func();
+
+	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	RegisterAutonxIsoVars_PlisqlHook = prev_RegisterAutonxIsoVars_PlisqlHook;
 }
 /* End - SRS-PLSQL-SUBPROC */
 
@@ -308,6 +320,9 @@ _PG_fini(void)
  * The PostgreSQL function manager and trigger manager
  * call this function for execution of PL/iSQL procedures.
  * ----------
+ *
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *   Support autonomous transaction.
  */
 PG_FUNCTION_INFO_V1(plisql_call_handler);
 
@@ -323,10 +338,16 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	/* Begin - SRS-PLSQL-SUBPROC */
 	char	function_from = plisql_function_from(fcinfo);
 	/* End - SRS-PLSQL-SUBPROC */
+	MemoryContext	ax_oldcontext = NULL;
+	ResourceOwner	ax_oldresowner= NULL;
+	bool			autonomous = false;
 
 	nonatomic = fcinfo->context &&
 		IsA(fcinfo->context, CallContext) &&
 		!castNode(CallContext, fcinfo->context)->atomic;
+
+	if (!nonatomic && IsTopAutonTransaction())
+		nonatomic = true;
 
 	/*
 	 * Connect to SPI manager
@@ -370,6 +391,38 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	func->use_count++;
 
 	/*
+	 * Startup autonomous transaction if necessary.
+	 */
+	if (func->autonomous && AutonxEnabled && !RecoveryInProgress())
+	{
+		ax_oldcontext = CurrentMemoryContext;
+		ax_oldresowner = CurrentResourceOwner;
+
+		if (!nonatomic)
+		{
+			SPI_switch_atomic(true);
+			nonatomic = true;
+		}
+
+		PG_TRY();
+		{
+			AutonPrestartPortals();
+			ReserveAutoTransactionProc();
+			BeginInternalAutonTransaction(func->fn_signature);
+		}
+		PG_CATCH();
+		{
+			ReleaseAutoTransactionProc();
+			PG_RE_THROW();
+		}
+		PG_END_TRY();
+
+		MemoryContextSwitchTo(ax_oldcontext);
+		//CurrentResourceOwner = ax_oldresowner;
+		autonomous = true;
+	}
+
+	/*
 	 * If we'll need a procedure-lifespan resowner to execute any CALL or DO
 	 * statements, create it now.  Since this resowner is not tied to any
 	 * parent, failing to free it would result in process-lifespan leaks.
@@ -388,11 +441,13 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 		 */
 		if (CALLED_AS_TRIGGER(fcinfo))
 			retval = PointerGetDatum(plisql_exec_trigger(func,
-														  (TriggerData *) fcinfo->context));
+														 (TriggerData *)fcinfo->context,
+														!nonatomic));
 		else if (CALLED_AS_EVENT_TRIGGER(fcinfo))
 		{
 			plisql_exec_event_trigger(func,
-									   (EventTriggerData *) fcinfo->context);
+									  (EventTriggerData *) fcinfo->context,
+									  !nonatomic);
 			/* there's no return value in this case */
 		}
 		else
@@ -403,6 +458,22 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	}
 	PG_FINALLY();
 	{
+		/*
+		 * Finish autonomous tansaction if necessary.
+		 */
+		if (autonomous)
+		{
+			Assert(IsAutonTransaction() && ax_oldcontext != NULL && ax_oldresowner != NULL);
+
+			if (_do_rethrow)
+				RollbackAndReleaseCurrentAutonTransaction();
+			else
+				ReleaseCurrentAutonTransaction();
+
+			MemoryContextSwitchTo(ax_oldcontext);
+			CurrentResourceOwner = ax_oldresowner;
+		}
+
 		/* Decrement use-count, restore cur_estate */
 		func->use_count--;
 		func->cur_estate = save_cur_estate;
@@ -446,6 +517,9 @@ plisql_call_handler(PG_FUNCTION_ARGS)
  *
  * Called by PostgreSQL to execute an anonymous code block
  * ----------
+ *
+ * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+ *   Support autonomous transaction.
  */
 PG_FUNCTION_INFO_V1(plisql_inline_handler);
 
@@ -461,6 +535,13 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	Datum		retval;
 	int			rc;
 	MemoryContext oldcontext = CurrentMemoryContext; /* ReqID:SRS-SQL-CALL */
+	MemoryContext	ax_oldcontext = NULL;
+	ResourceOwner	ax_oldresowner = NULL;
+	bool			autonomous = false;
+
+	/* Set codeblock atomic which was in autonomous transaction. */
+	if (codeblock->atomic && IsTopAutonTransaction())
+		codeblock->atomic = false;
 
 	/*
 	 * Connect to SPI manager
@@ -579,6 +660,38 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	reset_oraparam_curpos();
 	/* End - BUG#M0000316 */
 
+	/*
+	 * Startup autonomous transaction if necessary.
+	 */
+	if (func->autonomous && AutonxEnabled && !RecoveryInProgress())
+	{
+		ax_oldcontext = CurrentMemoryContext;
+		ax_oldresowner = CurrentResourceOwner;
+
+		if (codeblock->atomic)
+		{
+			SPI_switch_atomic(true);
+			codeblock->atomic = false;
+		}
+
+		PG_TRY();
+		{
+			AutonPrestartPortals();
+			ReserveAutoTransactionProc();
+			BeginInternalAutonTransaction(func->fn_signature);
+		}
+		PG_CATCH();
+		{
+			ReleaseAutoTransactionProc();
+			PG_RE_THROW();
+		}
+		PG_END_TRY();
+
+		MemoryContextSwitchTo(ax_oldcontext);
+		//CurrentResourceOwner = ax_oldresowner;
+		autonomous = true;
+	}
+
 	/* And run the function */
 	PG_TRY();
 	{
@@ -587,9 +700,30 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 									   simple_eval_resowner,
 									   simple_eval_resowner,	/* see above */
 									   codeblock->atomic);
+
+		if (autonomous)
+		{
+			Assert(IsAutonTransaction() && ax_oldcontext != NULL && ax_oldresowner != NULL);
+
+			ReleaseCurrentAutonTransaction();
+			MemoryContextSwitchTo(ax_oldcontext);
+			CurrentResourceOwner = ax_oldresowner;
+		}
 	}
 	PG_CATCH();
 	{
+		/*
+		 * Finish autonomous tansaction if necessary.
+		 */
+		if (autonomous)
+		{
+			Assert(IsAutonTransaction() && ax_oldcontext != NULL && ax_oldresowner != NULL);
+
+			RollbackAndReleaseCurrentAutonTransaction();
+			MemoryContextSwitchTo(ax_oldcontext);
+			CurrentResourceOwner = ax_oldresowner;
+		}
+
 		/* Begin - ReqID:SRS-SQL-CALL */
 		if (codeblock->do_from_call && oldcontext != ErrorContext)
 		{

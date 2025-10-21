@@ -5432,6 +5432,7 @@ static bool report_needed;		/* true if any GUC_REPORT reports are needed */
 
 static int	GUCNestLevel = 0;	/* 1 when in main transaction */
 
+static MemoryContext GUCStackContext = NULL;	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 static int	guc_var_compare(const void *a, const void *b);
 static int	guc_name_compare(const char *namea, const char *nameb);
@@ -6527,6 +6528,14 @@ push_old_value(struct config_generic *gconf, GucAction action)
 	if (GUCNestLevel == 0)
 		return;
 
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	if (GUCStackContext == NULL)
+	{
+		GUCStackContext =
+			AllocSetContextCreate(TopMemoryContext, "GUCStackContext", ALLOCSET_DEFAULT_SIZES);
+	}
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 	/* Do we already have a stack entry of the current nest level? */
 	stack = gconf->stack;
 	if (stack && stack->nest_level >= GUCNestLevel)
@@ -6568,7 +6577,7 @@ push_old_value(struct config_generic *gconf, GucAction action)
 	 *
 	 * We keep all the stack entries in TopTransactionContext for simplicity.
 	 */
-	stack = (GucStack *) MemoryContextAllocZero(TopTransactionContext,
+	stack = (GucStack *) MemoryContextAllocZero(GUCStackContext,	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 												sizeof(GucStack));
 
 	stack->prev = gconf->stack;
@@ -6911,6 +6920,14 @@ AtEOXact_GUC(bool isCommit, int nestLevel)
 
 	/* Update nesting level */
 	GUCNestLevel = nestLevel - 1;
+
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	if (GUCNestLevel == 0 && GUCStackContext != NULL)
+	{
+		MemoryContextDelete(GUCStackContext);
+		GUCStackContext = NULL;
+	}
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 }
 
 

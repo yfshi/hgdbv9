@@ -189,7 +189,22 @@ typedef enum TBlockState
 	TBLOCK_SUBABORT_END,		/* failed subxact, ROLLBACK received */
 	TBLOCK_SUBABORT_PENDING,	/* live subxact, ROLLBACK received */
 	TBLOCK_SUBRESTART,			/* live subxact, ROLLBACK TO received */
-	TBLOCK_SUBABORT_RESTART		/* failed subxact, ROLLBACK TO received */
+	TBLOCK_SUBABORT_RESTART,	/* failed subxact, ROLLBACK TO received */
+
+	/*
+	 * Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+	 *
+	 * autonoumous transaction block states
+	 */
+	TBLOCK_AUTONDEFAULT,		/* idle */
+	TBLOCK_AUTONSTARTED,		/* live autontransaction, nonatomic */
+	TBLOCK_AUTONBEGIN,			/* starting a autontransaction */
+	TBLOCK_AUTONINPROGRESS,		/* live autontransaction */
+	TBLOCK_AUTONEND,			/* reserved */
+	TBLOCK_AUTONABORT,			/* reserved */
+	TBLOCK_AUTONABORT_END,		/* reserved */
+	TBLOCK_AUTONABORT_PENDING	/* reserved */
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 } TBlockState;
 
 /*
@@ -204,6 +219,9 @@ typedef struct TransactionStateData
 	TransState	state;			/* low-level state */
 	TBlockState blockState;		/* high-level state */
 	int			nestingLevel;	/* transaction nesting depth */
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	int			autoTransLevel;	/* autonomous transaction nesting depth */
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	int			gucNestLevel;	/* GUC context nesting depth */
 	MemoryContext curTransactionContext;	/* my xact-lifetime context */
 	ResourceOwner curTransactionOwner;	/* my query resources */
@@ -218,7 +236,14 @@ typedef struct TransactionStateData
 	int			parallelModeLevel;	/* Enter/ExitParallelMode counter */
 	bool		chain;			/* start a new block after this one */
 	bool		assigned;		/* assigned to top-level XID */
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	bool		autonomous;		/* autonomous transaction? */
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	struct TransactionStateData *parent;	/* back link to parent */
+	/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+	struct TransactionStateData *atParent;		/* back link to parent for autonomous transaction */
+	struct TransactionStateData *atTopParent;	/* back link to main parent of autonomous transaction */
+	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 } TransactionStateData;
 
 typedef TransactionStateData *TransactionState;
@@ -379,6 +404,15 @@ static void ShowTransactionStateRec(const char *str, TransactionState state);
 static const char *BlockStateAsString(TBlockState blockState);
 static const char *TransStateAsString(TransState state);
 
+
+/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+static void PushAutonTransaction(void);
+static void PopAutonTransaction(void);
+static void StartAutonTransaction(void);
+static void CommitAutonTransaction(void);
+static void AbortAutonTransaction(void);
+static void CleanupAutonTransaction(void);
+/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
 /* ----------------------------------------------------------------
  *	transaction state accessors
@@ -3037,6 +3071,24 @@ StartTransactionCommand(void)
 			elog(ERROR, "StartTransactionCommand: unexpected state %s",
 				 BlockStateAsString(s->blockState));
 			break;
+
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONINPROGRESS:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+			elog(ERROR, "StartTransactionCommand: unexpected state %s",
+				 BlockStateAsString(s->blockState));
+			break;
+
+		case TBLOCK_AUTONDEFAULT:
+			StartAutonTransaction();
+			s->blockState = TBLOCK_AUTONSTARTED;
+			break;
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	}
 
 	/*
@@ -3351,6 +3403,28 @@ CommitTransactionCommand(void)
 				s->blockState = TBLOCK_SUBINPROGRESS;
 			}
 			break;
+
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+			/*
+			 * If we aren't in a autontransaction block, just do our usual
+			 * transaction commit, and return to the idle state.
+			 */
+		case TBLOCK_AUTONSTARTED:
+			CommitAutonTransaction();
+			s->blockState = TBLOCK_AUTONDEFAULT;
+			break;
+
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONINPROGRESS:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+			elog(ERROR, "CommitTransactionCommand: unexpected state %s",
+					BlockStateAsString(s->blockState));
+			break;
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	}
 }
 
@@ -3506,6 +3580,45 @@ AbortCurrentTransaction(void)
 			CleanupSubTransaction();
 			AbortCurrentTransaction();
 			break;
+
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+			if (s->state == TRANS_DEFAULT)
+			{
+				/* we are idle, so nothing to do */
+			}
+			else
+			{
+				/*
+				 * We can get here after an error during transaction start
+				 * (state will be TRANS_START).  Need to clean up the
+				 * incompletely started transaction.  First, adjust the
+				 * low-level state to suppress warning message from
+				 * AbortTransaction.
+				 */
+				if (s->state == TRANS_START)
+					s->state = TRANS_INPROGRESS;
+				AbortAutonTransaction();
+				CleanupAutonTransaction();
+			}
+			break;
+
+		case TBLOCK_AUTONSTARTED:
+			AbortAutonTransaction();
+			CleanupAutonTransaction();
+			s->blockState = TBLOCK_AUTONDEFAULT;
+			break;
+
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONINPROGRESS:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+			elog(FATAL, "AbortCurrentTransaction: unexpected state %s",
+				 BlockStateAsString(s->blockState));
+			break;
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	}
 }
 
@@ -3916,6 +4029,16 @@ BeginTransactionBlock(void)
 		case TBLOCK_SUBRESTART:
 		case TBLOCK_SUBABORT_RESTART:
 		case TBLOCK_PREPARE:
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONINPROGRESS:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			elog(FATAL, "BeginTransactionBlock: unexpected state %s",
 				 BlockStateAsString(s->blockState));
 			break;
@@ -4125,6 +4248,16 @@ EndTransactionBlock(bool chain)
 		case TBLOCK_SUBRESTART:
 		case TBLOCK_SUBABORT_RESTART:
 		case TBLOCK_PREPARE:
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONINPROGRESS:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			elog(FATAL, "EndTransactionBlock: unexpected state %s",
 				 BlockStateAsString(s->blockState));
 			break;
@@ -4248,6 +4381,16 @@ UserAbortTransactionBlock(bool chain)
 		case TBLOCK_SUBRESTART:
 		case TBLOCK_SUBABORT_RESTART:
 		case TBLOCK_PREPARE:
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONINPROGRESS:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			elog(FATAL, "UserAbortTransactionBlock: unexpected state %s",
 				 BlockStateAsString(s->blockState));
 			break;
@@ -4388,6 +4531,16 @@ DefineSavepoint(const char *name)
 		case TBLOCK_SUBRESTART:
 		case TBLOCK_SUBABORT_RESTART:
 		case TBLOCK_PREPARE:
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONINPROGRESS:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			elog(FATAL, "DefineSavepoint: unexpected state %s",
 				 BlockStateAsString(s->blockState));
 			break;
@@ -4464,6 +4617,16 @@ ReleaseSavepoint(const char *name)
 		case TBLOCK_SUBRESTART:
 		case TBLOCK_SUBABORT_RESTART:
 		case TBLOCK_PREPARE:
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONINPROGRESS:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			elog(FATAL, "ReleaseSavepoint: unexpected state %s",
 				 BlockStateAsString(s->blockState));
 			break;
@@ -4573,6 +4736,16 @@ RollbackToSavepoint(const char *name)
 		case TBLOCK_SUBRESTART:
 		case TBLOCK_SUBABORT_RESTART:
 		case TBLOCK_PREPARE:
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONINPROGRESS:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			elog(FATAL, "RollbackToSavepoint: unexpected state %s",
 				 BlockStateAsString(s->blockState));
 			break;
@@ -4664,6 +4837,7 @@ BeginInternalSubTransaction(const char *name)
 		case TBLOCK_END:
 		case TBLOCK_PREPARE:
 		case TBLOCK_SUBINPROGRESS:
+		case TBLOCK_AUTONINPROGRESS:			/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			/* Normal subtransaction start */
 			PushTransaction();
 			s = CurrentTransactionState;	/* changed by push */
@@ -4691,6 +4865,15 @@ BeginInternalSubTransaction(const char *name)
 		case TBLOCK_SUBABORT_PENDING:
 		case TBLOCK_SUBRESTART:
 		case TBLOCK_SUBABORT_RESTART:
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			elog(FATAL, "BeginInternalSubTransaction: unexpected state %s",
 				 BlockStateAsString(s->blockState));
 			break;
@@ -4780,6 +4963,16 @@ RollbackAndReleaseCurrentSubTransaction(void)
 		case TBLOCK_SUBRESTART:
 		case TBLOCK_SUBABORT_RESTART:
 		case TBLOCK_PREPARE:
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONINPROGRESS:
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			elog(FATAL, "RollbackAndReleaseCurrentSubTransaction: unexpected state %s",
 				 BlockStateAsString(s->blockState));
 			break;
@@ -4798,7 +4991,11 @@ RollbackAndReleaseCurrentSubTransaction(void)
 	AssertState(s->blockState == TBLOCK_SUBINPROGRESS ||
 				s->blockState == TBLOCK_INPROGRESS ||
 				s->blockState == TBLOCK_IMPLICIT_INPROGRESS ||
-				s->blockState == TBLOCK_STARTED);
+				s->blockState == TBLOCK_STARTED ||
+				/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+				s->blockState == TBLOCK_AUTONINPROGRESS ||
+				s->blockState == TBLOCK_AUTONSTARTED);
+				/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 }
 
 /*
@@ -4899,6 +5096,56 @@ AbortOutOfAnyTransaction(void)
 				CleanupSubTransaction();
 				s = CurrentTransactionState;	/* changed by pop */
 				break;
+
+			/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+			case TBLOCK_AUTONDEFAULT:
+				if (s->state == TRANS_DEFAULT)
+				{
+					/* Not in a transaction, do nothing */
+				}
+				else
+				{
+					/*
+					 * We can get here after an error during transaction start
+					 * (state will be TRANS_START).  Need to clean up the
+					 * incompletely started transaction.  First, adjust the
+					 * low-level state to suppress warning message from
+					 * AbortTransaction.
+					 */
+					if (s->state == TRANS_START)
+						s->state = TRANS_INPROGRESS;
+					AbortAutonTransaction();
+					CleanupAutonTransaction();
+					PopAutonTransaction();
+					s = CurrentTransactionState; /* changed by pop */
+				}
+				break;
+
+			case TBLOCK_AUTONSTARTED:
+			case TBLOCK_AUTONBEGIN:
+			case TBLOCK_AUTONINPROGRESS:
+			case TBLOCK_AUTONABORT_END:
+			case TBLOCK_AUTONABORT_PENDING:
+				AbortAutonTransaction();
+				CleanupAutonTransaction();
+				s->blockState = TBLOCK_AUTONDEFAULT;
+				PopAutonTransaction();
+				s = CurrentTransactionState; /* changed by pop */
+				break;
+
+			case TBLOCK_AUTONEND:
+			case TBLOCK_AUTONABORT:
+				/* As above, but AbortSubTransaction already done */
+				if (s->curTransactionOwner)
+				{
+					/* As in TBLOCK_AUTONABORT, might have a live portal to zap */
+				}
+				CleanupAutonTransaction();
+				s->blockState = TBLOCK_AUTONABORT;
+				PopAutonTransaction();
+				s = CurrentTransactionState; /* changed by pop */
+				break;
+			/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 		}
 	} while (s->blockState != TBLOCK_DEFAULT);
 
@@ -4964,6 +5211,12 @@ TransactionBlockStatusCode(void)
 		case TBLOCK_SUBRELEASE:
 		case TBLOCK_SUBCOMMIT:
 		case TBLOCK_PREPARE:
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONBEGIN:
+		case TBLOCK_AUTONINPROGRESS:
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			return 'T';			/* in transaction */
 		case TBLOCK_ABORT:
 		case TBLOCK_SUBABORT:
@@ -4973,6 +5226,12 @@ TransactionBlockStatusCode(void)
 		case TBLOCK_SUBABORT_PENDING:
 		case TBLOCK_SUBRESTART:
 		case TBLOCK_SUBABORT_RESTART:
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONEND:
+		case TBLOCK_AUTONABORT:
+		case TBLOCK_AUTONABORT_END:
+		case TBLOCK_AUTONABORT_PENDING:
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 			return 'E';			/* in failed transaction */
 	}
 
@@ -5380,6 +5639,7 @@ PushTransaction(void)
 	s->subTransactionId = currentSubTransactionId;
 	s->parent = p;
 	s->nestingLevel = p->nestingLevel + 1;
+	s->autoTransLevel = p->autoTransLevel;		/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	s->gucNestLevel = NewGUCNestLevel();
 	s->savepointLevel = p->savepointLevel;
 	s->state = TRANS_DEFAULT;
@@ -5672,6 +5932,24 @@ BlockStateAsString(TBlockState blockState)
 			return "SUBRESTART";
 		case TBLOCK_SUBABORT_RESTART:
 			return "SUBABORT_RESTART";
+		/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+		case TBLOCK_AUTONDEFAULT:
+			return "AUTONDEFAULT";
+		case TBLOCK_AUTONSTARTED:
+			return "AUTONSTARTED";
+		case TBLOCK_AUTONBEGIN:
+			return "AUTONBEGIN";
+		case TBLOCK_AUTONINPROGRESS:
+			return "AUTONINPROGRESS";
+		case TBLOCK_AUTONEND:
+			return "AUTONEND";
+		case TBLOCK_AUTONABORT:
+			return "AUTONABORT";
+		case TBLOCK_AUTONABORT_END:
+			return "AUTONABORT_END";
+		case TBLOCK_AUTONABORT_PENDING:
+			return "AUTONABORT_PENDING";
+		/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	}
 	return "UNRECOGNIZED";
 }
@@ -6427,3 +6705,1094 @@ RollbackToAutoSavepoint(const char *sp_name)
 	return true;
 }
 /* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+
+
+/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
+/* ----------------------------------------------------------------
+ * 					autonomous transaction support
+ * ----------------------------------------------------------------
+ */
+
+/*
+ * PostbackupAutonxIsoVars_Xact
+ *   init xact resource
+ */
+static void
+PostbackupAutonxIsoVars_Xact(void)
+{
+	TopTransactionContext = NULL;
+	TopTransactionResourceOwner = NULL;
+	XactTopFullTransactionId =
+		FullTransactionIdFromEpochAndXid(EpochFromFullTransactionId(XactTopFullTransactionId),
+										 InvalidTransactionId);
+	nParallelCurrentXids = 0;
+}
+
+/*
+ * RegisterAutonxIsoVars_Xact
+ *   register xact resource
+ */
+void
+RegisterAutonxIsoVars_Xact(void)
+{
+	/*
+	 * global vars
+	 */
+	RegisterAutonxIsoVar("TopTransactionContext", &TopTransactionContext, sizeof(TopTransactionContext), NULL, NULL);
+	RegisterAutonxIsoVar("TopTransactionResourceOwner", &TopTransactionResourceOwner, sizeof(TopTransactionResourceOwner), NULL, NULL);
+
+	/*
+	 * vars in xact.c
+	 */
+	RegisterAutonxIsoVar("XactIsoLevel", &XactIsoLevel, sizeof(XactIsoLevel), NULL, NULL);
+	RegisterAutonxIsoVar("XactReadOnly", &XactReadOnly, sizeof(XactReadOnly), NULL, NULL);
+	RegisterAutonxIsoVar("XactDeferrable", &XactDeferrable, sizeof(XactDeferrable), NULL, NULL);
+	RegisterAutonxIsoVar("XactTopFullTransactionId", &XactTopFullTransactionId, sizeof(XactTopFullTransactionId), NULL, NULL);
+	RegisterAutonxIsoVar("nParallelCurrentXids", &nParallelCurrentXids, sizeof(nParallelCurrentXids), NULL, NULL);
+	RegisterAutonxIsoVar("ParallelCurrentXids", &ParallelCurrentXids, sizeof(ParallelCurrentXids), NULL, NULL);
+	RegisterAutonxIsoVar("MyXactFlags", &MyXactFlags, sizeof(MyXactFlags), NULL, NULL);
+	RegisterAutonxIsoVar("nUnreportedXids", &nUnreportedXids, sizeof(nUnreportedXids), NULL, NULL);
+	RegisterAutonxIsoVar("unreportedXids", unreportedXids, sizeof(unreportedXids), NULL, NULL);
+	RegisterAutonxIsoVar("currentSubTransactionId", &currentSubTransactionId, sizeof(currentSubTransactionId), NULL, NULL);
+	RegisterAutonxIsoVar("currentCommandId", &currentCommandId, sizeof(currentCommandId), NULL, NULL);
+	RegisterAutonxIsoVar("currentCommandIdUsed", &currentCommandIdUsed, sizeof(currentCommandIdUsed), NULL, NULL);
+	RegisterAutonxIsoVar("xactStartTimestamp", &xactStartTimestamp, sizeof(xactStartTimestamp), NULL, NULL);
+	RegisterAutonxIsoVar("xactStopTimestamp", &xactStopTimestamp, sizeof(xactStopTimestamp), NULL, NULL);
+	RegisterAutonxIsoVar("forceSyncCommit", &forceSyncCommit, sizeof(forceSyncCommit), NULL, NULL);
+	RegisterAutonxIsoVar("xact_is_sampled", &xact_is_sampled, sizeof(xact_is_sampled), NULL, NULL);
+	RegisterAutonxIsoVar("PostbackupAutonxIsoVars_Xact()", NULL, 0, PostbackupAutonxIsoVars_Xact, NULL);
+}
+
+/*
+ * PushAutonTransaction
+ *   Create transaction state stack entry for a main/autonomous transaction.
+ */
+static void
+PushAutonTransaction(void)
+{
+	TransactionState p = CurrentTransactionState;
+	TransactionState s;
+
+	if (p->autoTransLevel >= AutonxNestingLevel)
+		elog(ERROR,
+			 "nesting levels of autonomous transaction (%d) exeeded",
+			 AutonxNestingLevel);
+
+	/*
+	 * We keep autontransaction state nodes in TopTransactionContext,
+	 * which is p->curTransactionContext.
+	 */
+	s = (TransactionState)
+		MemoryContextAllocZero(TopMemoryContext,
+							   sizeof(TransactionStateData));
+
+	memcpy(s, &TopTransactionStateData, sizeof(TransactionStateData));
+
+	TopTransactionStateData = (TransactionStateData) {
+		.state = TRANS_DEFAULT,
+		.blockState = TBLOCK_AUTONBEGIN,
+		.assigned = false,
+	};
+
+	/*
+	 * We can now stack a minimally valid autontransaction without fear of
+	 * failure.
+	 */
+	TopTransactionStateData.state = TRANS_DEFAULT;
+	TopTransactionStateData.blockState = TBLOCK_AUTONBEGIN;
+	TopTransactionStateData.autoTransLevel = s->autoTransLevel + 1;
+	TopTransactionStateData.autonomous = true;
+	TopTransactionStateData.atTopParent = s;
+	if (CurrentTransactionState == &TopTransactionStateData)
+		TopTransactionStateData.atParent = s;
+	else
+		TopTransactionStateData.atParent = CurrentTransactionState;
+
+	CurrentTransactionState = &TopTransactionStateData;
+
+	PG_TRY();
+	{
+		/*
+		 * Init autontrans stack and register vars.
+		 */
+		InitAutoxIsolationState();
+
+		/*
+		 * Push registered vars.
+		 * 1. switch to stack memory context
+		 * 2. call prev init function hook
+		 * 3. copy to stack
+		 * 4. call init function hook
+		 * 5. switch to prev memory context
+		 */
+		AutoxIsoStackPush();
+	}
+	PG_CATCH();
+	{
+		memcpy(&TopTransactionStateData, s, sizeof(TransactionStateData));
+		CurrentTransactionState = &TopTransactionStateData;
+		if (TopTransactionStateData.atParent != s)
+			CurrentTransactionState = TopTransactionStateData.atParent;
+		pfree(s);
+
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	s->name = NULL;
+}
+
+/*
+ * PopAutonTransaction
+ *   Pop back to parent main/autonomous transaction state.
+ */
+static void
+PopAutonTransaction(void)
+{
+	TransactionState s = CurrentTransactionState;
+	TransactionState ps = s->atParent;
+	TransactionState top = s->atTopParent;
+
+	Assert(s == &TopTransactionStateData);
+
+	if (s->state != TRANS_DEFAULT)
+		elog(WARNING, "PopAutonTransaction while in %s state",
+			 TransStateAsString(s->state));
+
+	if (ps == NULL)
+		elog(FATAL, "PopAutonTransaction with no parent");
+
+	/*
+	 * Pop registered vars.
+	 * 1. call finish function hook
+	 * 2. copy from stack
+	 * 3. call post finish function hook
+	 */
+	AutoxIsoStackPop();
+
+	/* Let's just make sure CurTransactionContext is good */
+	CurTransactionContext = ps->curTransactionContext;
+
+	/* Ditto for ResourceOwner links */
+	CurTransactionResourceOwner = ps->curTransactionOwner;
+	CurrentResourceOwner = ps->curTransactionOwner;
+
+	memcpy(&TopTransactionStateData, top, sizeof(TransactionStateData));
+	CurrentTransactionState = &TopTransactionStateData;
+	if (ps != top)
+		CurrentTransactionState = ps;
+
+	if (top->name)
+		pfree(top->name);
+	pfree(top);
+
+	MemoryContextSwitchTo(CurTransactionContext);
+}
+
+/*
+ * StartAutonTransaction
+ *   like StartTransaction, but only for autonomous transaction.
+ */
+static void
+StartAutonTransaction(void)
+{
+	TransactionState s;
+	VirtualTransactionId vxid;
+
+	/*
+	 * Let's just make sure the state stack is empty
+	 */
+	s = &TopTransactionStateData;
+	CurrentTransactionState = s;
+
+	/* check the current transaction state */
+	Assert(s->state == TRANS_DEFAULT);
+	Assert(s->autonomous);
+
+	/*
+	 * Set the current transaction state information appropriately during
+	 * start processing.  Note that once the transaction status is switched
+	 * this process cannot fail until the user ID and the security context
+	 * flags are fetched below.
+	 */
+	s->state = TRANS_START;
+	s->fullTransactionId = InvalidFullTransactionId;	/* until assigned */
+
+	/* Determine if statements are logged in this transaction */
+	xact_is_sampled = log_xact_sample_rate != 0 &&
+		(log_xact_sample_rate == 1 ||
+		 random() <= log_xact_sample_rate * MAX_RANDOM_VALUE);
+
+	/*
+	 * initialize current transaction state fields
+	 *
+	 * note: prevXactReadOnly is not used at the outermost level
+	 */
+	s->autoTransLevel = s->atParent->autoTransLevel + 1;
+	s->nestingLevel = 1;
+	s->gucNestLevel = 1;
+	s->childXids = NULL;
+	s->nChildXids = 0;
+	s->maxChildXids = 0;
+
+	/*
+	 * Once the current user ID and the security context flags are fetched,
+	 * both will be properly reset even if transaction startup fails.
+	 */
+	GetUserIdAndSecContext(&s->prevUser, &s->prevSecContext);
+
+	/*
+	 * Make sure we've reset xact state variables
+	 *
+	 * If recovery is still in progress, mark this transaction as read-only.
+	 * We have lower level defences in XLogInsert and elsewhere to stop us
+	 * from modifying data during recovery, but this gives the normal
+	 * indication to the user that the transaction is read-only.
+	 */
+	if (RecoveryInProgress())
+	{
+		s->startedInRecovery = true;
+		XactReadOnly = true;
+	}
+	else
+	{
+		s->startedInRecovery = false;
+		XactReadOnly = DefaultXactReadOnly;
+	}
+	XactDeferrable = DefaultXactDeferrable;
+	XactIsoLevel = DefaultXactIsoLevel;
+	forceSyncCommit = false;
+	MyXactFlags = 0;
+
+	/*
+	 * Assign a subtransaction ID, watching out for counter wraparound.
+	 */
+	currentSubTransactionId += 1;
+	if (currentSubTransactionId == InvalidSubTransactionId)
+	{
+		currentSubTransactionId -= 1;
+		ereport(ERROR,
+				(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+				 errmsg("cannot have more than 2^32-1 subtransactions in a transaction")));
+	}
+
+	/*
+	 * reinitialize within-transaction counters
+	 */
+	s->subTransactionId = currentSubTransactionId;
+	currentCommandId = FirstCommandId;
+	currentCommandIdUsed = false;
+
+	/*
+	 * initialize reported xid accounting
+	 */
+	nUnreportedXids = 0;
+	s->didLogXid = false;
+
+	/*
+	 * must initialize resource-management stuff first
+	 */
+	AtStart_Memory();
+	AtStart_ResourceOwner();
+
+	/*
+	 * Assign a new LocalTransactionId, and combine it with the backendId to
+	 * form a virtual transaction id.
+	 */
+	vxid.backendId = MyBackendId;
+	vxid.localTransactionId = GetNextLocalTransactionId();
+
+	/*
+	 * Lock the virtual transaction id before we announce it in the proc array
+	 */
+	VirtualXactLockTableInsert(vxid);
+
+	/*
+	 * Advertise it in the proc array.  We assume assignment of
+	 * localTransactionId is atomic, and the backendId should be set already.
+	 */
+	Assert(MyProc->backendId == vxid.backendId);
+	MyProc->lxid = vxid.localTransactionId;
+
+	TRACE_POSTGRESQL_TRANSACTION_START(vxid.localTransactionId);
+
+	/*
+	 * set transaction_timestamp() (a/k/a now()).  Normally, we want this to
+	 * be the same as the first command's statement_timestamp(), so don't do a
+	 * fresh GetCurrentTimestamp() call (which'd be expensive anyway).  But
+	 * for transactions started inside procedures (i.e., nonatomic SPI
+	 * contexts), we do need to advance the timestamp.  Also, in a parallel
+	 * worker, the timestamp should already have been provided by a call to
+	 * SetParallelStartTimestamps().
+	 */
+	if (!IsParallelWorker())
+	{
+		if (!SPI_inside_nonatomic_context())
+			xactStartTimestamp = stmtStartTimestamp;
+		else
+			xactStartTimestamp = GetCurrentTimestamp();
+	}
+	else
+	{
+		/* Should never happen */
+		Assert(xactStartTimestamp != 0);
+		ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("cannot start autonomous transaction in parallel mode")));
+	}
+	pgstat_report_xact_timestamp(xactStartTimestamp);
+	/* Mark xactStopTimestamp as unset. */
+	xactStopTimestamp = 0;
+
+	/*
+	 * initialize other subsystems for new transaction
+	 */
+	s->gucNestLevel = NewGUCNestLevel();
+	AtStart_Cache();
+	AfterTriggerBeginXact();
+
+	/*
+	 * done with start processing, set current transaction state to "in
+	 * progress"
+	 */
+	s->state = TRANS_INPROGRESS;
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/*
+	 * Acquire a resource group slot.
+	 */
+	if (ShouldAssignResGroup())
+		AssignResGroup();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
+	ShowTransactionState("StartAutonTransaction");
+}
+
+/*
+ * CommitAutonTransaction
+ *   like CommitTransaction, but only for autonomous transaction.
+ */
+static void
+CommitAutonTransaction(void)
+{
+	TransactionState s = CurrentTransactionState;
+	TransactionId latestXid;
+
+	Assert(s->autonomous);
+
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_commited_hook)
+	{
+		(*audit_commited_hook)();
+	}
+	/* End - ReqID:SRS-SECURITY-AUDIT */
+
+	/* It should not be in parallel workers */
+	Assert(s->blockState != TBLOCK_PARALLEL_INPROGRESS);
+
+	ShowTransactionState("CommitAutonTransaction");
+
+	/*
+	 * check the current transaction state
+	 */
+	if (s->state != TRANS_INPROGRESS)
+		elog(WARNING, "CommitAutonTransaction while in %s state",
+			 TransStateAsString(s->state));
+	Assert(s->parent == NULL);
+
+	/*
+	 * Do pre-commit processing that involves calling user-defined code, such
+	 * as triggers.  SECURITY_RESTRICTED_OPERATION contexts must not queue an
+	 * action that would run here, because that would bypass the sandbox.
+	 * Since closing cursors could queue trigger actions, triggers could open
+	 * cursors, etc, we have to keep looping until there's nothing left to do.
+	 */
+	for (;;)
+	{
+		AfterTriggerFireDeferred();
+
+		/*
+		 * Close open portals (converting holdable ones into static portals).
+		 * If there weren't any, we are done ... otherwise loop back to check
+		 * if they queued deferred triggers.  Lather, rinse, repeat.
+		 */
+		if (!AtAutonCommit_Portals(s->subTransactionId))
+			break;
+	}
+
+	/*
+	 * The remaining actions cannot call any user-defined code, so it's safe
+	 * to start shutting down within-transaction services.  But note that most
+	 * of this stuff could still throw an error, which would switch us into
+	 * the transaction-abort path.
+	 */
+	CallXactCallbacks(XACT_EVENT_PRE_COMMIT);
+
+	Assert(!IsInParallelMode());
+
+	/* FDW does not support autonomous transaction. */
+	// PreCommit_FdwXact(false);
+
+	/* Shut down the deferred-trigger manager */
+	AfterTriggerEndXact(true);
+
+	/*
+	 * Let ON COMMIT management do its thing (must happen after closing
+	 * cursors, to avoid dangling-reference problems)
+	 */
+	PreCommit_on_commit_actions();
+
+	/*
+	 * Synchronize files that are created and not WAL-logged during this
+	 * transaction. This must happen before AtEOXact_RelationMap(), so that we
+	 * don't see committed-but-broken files after a crash.
+	 */
+	smgrDoPendingSyncs(true, false);
+
+	/* close large objects before lower-level cleanup */
+	AtEOXact_LargeObject(true);
+
+	/*
+	 * Insert notifications sent by NOTIFY commands into the queue.  This
+	 * should be late in the pre-commit sequence to minimize time spent
+	 * holding the notify-insertion lock.  However, this could result in
+	 * creating a snapshot, so we must do it before serializable cleanup.
+	 */
+	PreCommit_Notify();
+
+	/*
+	 * Mark serializable transaction as complete for predicate locking
+	 * purposes.  This should be done as late as we can put it and still allow
+	 * errors to be raised for failure patterns found at commit.  This is not
+	 * appropriate in a parallel worker however, because we aren't committing
+	 * the leader's transaction and its serializable state will live on.
+	 */
+	PreCommit_CheckForSerializationFailure();
+
+	/* Prevent cancel/die interrupt while cleaning up */
+	HOLD_INTERRUPTS();
+
+	/* Commit updates to the relation map --- do this as late as possible */
+	AtEOXact_RelationMap(true, false);
+
+	/*
+	 * set the current transaction state information appropriately during
+	 * commit processing
+	 */
+	s->state = TRANS_COMMIT;
+	s->parallelModeLevel = 0;
+
+	/*
+	 * We need to mark our XIDs as committed in pg_xact.  This is where we
+	 * durably commit.
+	 */
+	latestXid = RecordTransactionCommit();
+
+	TRACE_POSTGRESQL_TRANSACTION_COMMIT(MyProc->lxid);
+
+	/*
+	 * Let others know about no transaction in progress by me. Note that this
+	 * must be done _before_ releasing locks we hold and _after_
+	 * RecordTransactionCommit.
+	 */
+	ProcArrayEndTransaction(MyProc, latestXid);
+
+	/*
+	 * This is all post-commit cleanup.  Note that if an error is raised here,
+	 * it's too late to abort the transaction.  This should be just
+	 * noncritical resource releasing.
+	 *
+	 * The ordering of operations is not entirely random.  The idea is:
+	 * release resources visible to other backends (eg, files, buffer pins);
+	 * then release locks; then release backend-local resources. We want to
+	 * release locks at the point where any backend waiting for us will see
+	 * our transaction as being fully cleaned up.
+	 *
+	 * Resources that can be associated with individual queries are handled by
+	 * the ResourceOwner mechanism.  The other calls here are for backend-wide
+	 * state.
+	 */
+
+	CallXactCallbacks(XACT_EVENT_COMMIT);
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	CallXactCallbacksOnce(XACT_EVENT_COMMIT);
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	ResourceOwnerRelease(TopTransactionResourceOwner,
+						 RESOURCE_RELEASE_BEFORE_LOCKS,
+						 true, true);
+
+	/*
+	 * The buffer references should not need to be checked here. MT and AT shared
+	 * a set of buffer references counter, it should be checed in MT committing.
+	 */
+	// AtEOXact_Buffers(true);
+
+	/* Clean up the relation cache */
+	AtEOXact_RelationCache(true);
+
+	/*
+	 * Make catalog changes visible to all backends.  This has to happen after
+	 * relcache references are dropped (see comments for
+	 * AtEOXact_RelationCache), but before locks are released (if anyone is
+	 * waiting for lock on a relation we've modified, we want them to know
+	 * about the catalog change before they start using the relation).
+	 */
+	AtEOXact_Inval(true);
+
+	AtEOXact_MultiXact();
+
+	ResourceOwnerRelease(TopTransactionResourceOwner,
+						 RESOURCE_RELEASE_LOCKS,
+						 true, true);
+	ResourceOwnerRelease(TopTransactionResourceOwner,
+						 RESOURCE_RELEASE_AFTER_LOCKS,
+						 true, true);
+
+	/*
+	 * Likewise, dropping of files deleted during the transaction is best done
+	 * after releasing relcache and buffer pins.  (This is not strictly
+	 * necessary during commit, since such pins should have been released
+	 * already, but this ordering is definitely critical during abort.)  Since
+	 * this may take many seconds, also delay until after releasing locks.
+	 * Other backends will observe the attendant catalog changes and not
+	 * attempt to access affected files.
+	 */
+	smgrDoPendingDeletes(true);
+
+	/*
+	 * Send out notification signals to other backends (and do other
+	 * post-commit NOTIFY cleanup).  This must not happen until after our
+	 * transaction is fully done from the viewpoint of other backends.
+	 */
+	AtCommit_Notify();
+
+	/*
+	 * Everything after this should be purely internal-to-this-backend
+	 * cleanup.
+	 */
+	AtEOXact_GUC(true, s->gucNestLevel);
+
+	/*
+	 * The SPI should not to be clear at autonomous transaction commting whos
+	 * outter layer is a procedure or function, it will be cleared by calling
+	 * SPI_finish.
+	 */
+	// AtEOXact_SPI(true);
+
+	AtEOXact_Enum();
+	AtEOXact_on_commit_actions(true);
+	AtEOXact_Namespace(true, false);
+	AtEOXact_SMgr();
+	AtEOXact_Files(true);
+	AtEOXact_ComboCid();
+	AtEOXact_HashTables(true);
+	AtEOXact_PgStat(true, false);
+	AtEOXact_Snapshot(true, false);
+	AtEOXact_ApplyLauncher(true);	/* Actually, nothing should be done*/
+
+	/* FDW does not support autonomous transaction. */
+	// AtEOXact_FdwXact(true, false);
+
+	pgstat_report_xact_timestamp(0);
+
+	CurrentResourceOwner = NULL;
+	ResourceOwnerDelete(TopTransactionResourceOwner);
+	s->curTransactionOwner = NULL;
+	CurTransactionResourceOwner = NULL;
+	TopTransactionResourceOwner = NULL;
+	AtCommit_Memory();
+
+	s->fullTransactionId = InvalidFullTransactionId;
+	s->subTransactionId = InvalidSubTransactionId;
+	s->nestingLevel = 0;
+	s->autoTransLevel = 0;
+	s->gucNestLevel = 0;
+	s->childXids = NULL;
+	s->nChildXids = 0;
+	s->maxChildXids = 0;
+
+	XactTopFullTransactionId = InvalidFullTransactionId;
+	nParallelCurrentXids = 0;
+
+	/*
+	 * done with commit processing, set current transaction state back to
+	 * default
+	 */
+	s->state = TRANS_DEFAULT;
+
+	RESUME_INTERRUPTS();
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* Release resource group slot at the end of a transaction */
+	if (ShouldUnassignResGroup())
+		UnassignResGroup();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+}
+
+/*
+ * AbortAutonTransaction
+ *   like AbortTransaction, but only for autonomous transaction.
+ */
+static void
+AbortAutonTransaction(void)
+{
+	TransactionState s = CurrentTransactionState;
+	TransactionId latestXid;
+
+	ShowTransactionState("AbortAutonTransaction");
+
+	/* Prevent cancel/die interrupt while cleaning up */
+	HOLD_INTERRUPTS();
+
+	/* Make sure we have a valid memory context and resource owner */
+	AtAbort_Memory();
+	AtAbort_ResourceOwner();
+
+	/*
+	 * Release any LW locks we might be holding as quickly as possible.
+	 * (Regular locks, however, must be held till we finish aborting.)
+	 * Releasing LW locks is critical since we might try to grab them again
+	 * while cleaning up!
+	 */
+	LWLockReleaseAll();
+
+	/* Clear wait information and command progress indicator */
+	pgstat_report_wait_end();
+	pgstat_progress_end_command();
+
+	/* Clean up buffer I/O and buffer context locks, too */
+	AbortBufferIO();
+	UnlockBuffers();
+
+	/* Reset WAL record construction state */
+	XLogResetInsertion();
+
+	/* Cancel condition variable sleep */
+	ConditionVariableCancelSleep();
+
+	/*
+	 * Also clean up any open wait for lock, since the lock manager will choke
+	 * if we try to wait for another lock before doing this.
+	 */
+	LockErrorCleanup();
+
+	/*
+	 * If any timeout events are still active, make sure the timeout interrupt
+	 * is scheduled.  This covers possible loss of a timeout interrupt due to
+	 * longjmp'ing out of the SIGINT handler (see notes in handle_sig_alarm).
+	 * We delay this till after LockErrorCleanup so that we don't uselessly
+	 * reschedule lock or deadlock check timeouts.
+	 */
+	reschedule_timeouts();
+
+	/*
+	 * Re-enable signals, in case we got here by longjmp'ing out of a signal
+	 * handler.  We do this fairly early in the sequence so that the timeout
+	 * infrastructure will be functional if needed while aborting.
+	 */
+	PG_SETMASK(&UnBlockSig);
+
+	/*
+	 * check the current transaction state
+	 */
+	Assert((s->blockState != TBLOCK_PARALLEL_INPROGRESS));
+	if (s->state != TRANS_INPROGRESS && s->state != TRANS_PREPARE)
+		elog(WARNING, "AbortAutonTransaction while in %s state",
+			 TransStateAsString(s->state));
+	Assert(s->parent == NULL);
+
+	/*
+	 * set the current transaction state information appropriately during the
+	 * abort processing
+	 */
+	s->state = TRANS_ABORT;
+
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_aborted_hook)
+	{
+		(*audit_aborted_hook)();
+	}
+	/* End - ReqID:SRS-SECURITY-AUDIT */
+
+	/*
+	 * Reset user ID which might have been changed transiently.  We need this
+	 * to clean up in case control escaped out of a SECURITY DEFINER function
+	 * or other local change of CurrentUserId; therefore, the prior value of
+	 * SecurityRestrictionContext also needs to be restored.
+	 *
+	 * (Note: it is not necessary to restore session authorization or role
+	 * settings here because those can only be changed via GUC, and GUC will
+	 * take care of rolling them back if need be.)
+	 */
+	SetUserIdAndSecContext(s->prevUser, s->prevSecContext);
+
+	/* Forget about any active REINDEX. */
+	ResetReindexState(s->nestingLevel);
+
+	/*
+	 * Ignore stream replication in autonomous transaction.
+	 */
+
+	/* Reset logical streaming state. */
+	// ResetLogicalStreamingState();
+
+	/* Reset snapshot export state */
+	// SnapBuildResetExportedSnapshotState();
+
+	/* Autonomous transaction cannot be in parallel mode. */
+	Assert (!IsInParallelMode());
+
+	/*
+	 * do abort processing
+	 */
+	AfterTriggerEndXact(false);
+	AtAutonAbort_Portals(s->subTransactionId);
+	smgrDoPendingSyncs(false, false);
+	AtEOXact_LargeObject(false);
+	AtAbort_Notify();
+	AtEOXact_RelationMap(false, false);
+
+	/*
+	 * FDW and twophase do not support autonomous transaction.
+	 */
+	// AtAbort_Twophase();
+	// AtEOXact_FdwXact(false, false);
+
+	/*
+	 * Advertise the fact that we aborted in pg_xact (assuming that we got as
+	 * far as assigning an XID to advertise).  But if we're inside a parallel
+	 * worker, skip this; the user backend must be the one to write the abort
+	 * record.
+	 */
+	latestXid = RecordTransactionAbort(false);
+
+	TRACE_POSTGRESQL_TRANSACTION_ABORT(MyProc->lxid);
+
+	/*
+	 * Let others know about no transaction in progress by me. Note that this
+	 * must be done _before_ releasing locks we hold and _after_
+	 * RecordTransactionAbort.
+	 */
+	ProcArrayEndTransaction(MyProc, latestXid);
+
+	/*
+	 * Post-abort cleanup.  See notes in CommitTransaction() concerning
+	 * ordering.  We can skip all of it if the transaction failed before
+	 * creating a resource owner.
+	 */
+	if (TopTransactionResourceOwner != NULL)
+	{
+		CallXactCallbacks(XACT_EVENT_ABORT);
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		CallXactCallbacksOnce(XACT_EVENT_ABORT);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		ResourceOwnerRelease(TopTransactionResourceOwner,
+							 RESOURCE_RELEASE_BEFORE_LOCKS,
+							 false, true);
+		AtEOXact_RelationCache(false);
+		AtEOXact_Inval(false);
+		AtEOXact_MultiXact();
+		ResourceOwnerRelease(TopTransactionResourceOwner,
+							 RESOURCE_RELEASE_LOCKS,
+							 false, true);
+		ResourceOwnerRelease(TopTransactionResourceOwner,
+							 RESOURCE_RELEASE_AFTER_LOCKS,
+							 false, true);
+		smgrDoPendingDeletes(false);
+
+		AtEOXact_GUC(false, s->gucNestLevel);
+		/* AtEOXact_SPI() should not be called in autonomous transaction. */
+		AtEOXact_Enum();
+		AtEOXact_on_commit_actions(false);
+		AtEOXact_Namespace(false, false);
+		AtEOXact_SMgr();
+		AtEOXact_Files(false);
+		AtEOXact_ComboCid();
+		AtEOXact_HashTables(false);
+		AtEOXact_PgStat(false, false);
+		AtEOXact_ApplyLauncher(false);	/* Actually, nothing should be done*/
+		pgstat_report_xact_timestamp(0);
+	}
+
+	RESUME_INTERRUPTS();
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */	
+	/* Release resource group slot at the end of a transaction */
+	if (ShouldUnassignResGroup())
+		UnassignResGroup();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+}
+
+/*
+ * CleanupAutonTransaction
+ *   like CleanupTransaction, but only for autonomous transaction.
+ */
+static void
+CleanupAutonTransaction(void)
+{
+	TransactionState s = CurrentTransactionState;
+
+	/*
+	 * State should still be TRANS_ABORT from AbortTransaction().
+	 */
+	if (s->state != TRANS_ABORT)
+		elog(FATAL, "CleanupAutonTransaction: unexpected state %s",
+			 TransStateAsString(s->state));
+
+	ShowTransactionState("CleanupAutonTransaction");
+
+	/*
+	 * do abort cleanup processing
+	 */
+	AtAutonCleanup_Portals(s->subTransactionId);	/* now safe to release portal memory */
+	AtEOXact_Snapshot(false, true);					/* and release the transaction's snapshots */
+
+	CurrentResourceOwner = NULL;					/* and resource owner */
+	if (TopTransactionResourceOwner)
+		ResourceOwnerDelete(TopTransactionResourceOwner);
+	s->curTransactionOwner = NULL;
+	CurTransactionResourceOwner = NULL;
+	TopTransactionResourceOwner = NULL;
+
+	AtCleanup_Memory();								/* and transaction memory */
+
+	s->fullTransactionId = InvalidFullTransactionId;
+	s->subTransactionId = InvalidSubTransactionId;
+	s->nestingLevel = 0;
+	s->autoTransLevel = 0;
+	s->gucNestLevel = 0;
+	s->childXids = NULL;
+	s->nChildXids = 0;
+	s->maxChildXids = 0;
+	s->parallelModeLevel = 0;
+
+	XactTopFullTransactionId = InvalidFullTransactionId;
+	nParallelCurrentXids = 0;
+
+	/*
+	 * done with abort processing, set current transaction state back to
+	 * default
+	 */
+	s->state = TRANS_DEFAULT;
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */	
+	/* Release resource group slot at the end of a transaction */
+	if (ShouldUnassignResGroup())
+		UnassignResGroup();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+}
+
+/*
+ * BeginInternalAutonTransaction
+ *
+ * Begin a autonomous transaction. It automatically does
+ * CommitTransactionCommand/StartTransactionCommand.
+ */
+void
+BeginInternalAutonTransaction(const char *name)
+{
+	TransactionState s = CurrentTransactionState;
+
+	/*
+	 * Not supporting parallelism, for the same reason as sub transactions.
+	 */
+	if (IsInParallelMode())
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TRANSACTION_STATE),
+				 errmsg("cannot start autonomous transactions during a parallel operation")));
+
+	switch (s->blockState)
+	{
+		case TBLOCK_STARTED:
+		case TBLOCK_INPROGRESS:
+		case TBLOCK_IMPLICIT_INPROGRESS:
+		case TBLOCK_SUBINPROGRESS:
+		case TBLOCK_AUTONINPROGRESS:
+			/* Normal autontransaction start */
+			PushAutonTransaction();
+			s = CurrentTransactionState;	/* changed by push*/
+
+			Assert(TopTransactionContext == NULL);
+			Assert(TopTransactionResourceOwner == NULL);
+
+			break;
+
+			/* These cases are invalid. */
+		default:
+			elog(FATAL, "BeginInternalAutonTransaction: unexpected state %s",
+				 BlockStateAsString(s->blockState));
+			break;
+	}
+
+	PG_TRY();
+	{
+		StartAutonTransaction();
+
+		Assert(TopTransactionContext != NULL);
+		/*
+		 * Function names, like TransactionState block itself, live
+		 * in TopTransactionContext.
+		 */
+		if (name)
+			s->name = MemoryContextStrdup(TopTransactionContext, name);
+		s->blockState = TBLOCK_AUTONINPROGRESS;
+	}
+	PG_CATCH();
+	{
+		PopAutonTransaction();
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	ShowTransactionState("BeginInternalAutonTransaction");
+}
+
+/*
+ * ReleaseCurrentAutonTransaction
+ *
+ * RELEASE (ie. commit) the innermost autonomous transaction.
+ * NB: do NOT use CommitTransactionCommand/StartTransactionCommand with this.
+ */
+void
+ReleaseCurrentAutonTransaction(void)
+{
+	TransactionState s = CurrentTransactionState;
+
+	ShowTransactionState("ReleaseCurrentAutonTransaction");
+
+	switch (s->blockState)
+	{
+		case TBLOCK_AUTONINPROGRESS:
+			CommitAutonTransaction();
+			s->blockState = TBLOCK_AUTONDEFAULT;
+			PopAutonTransaction();
+			break;
+
+		default:
+			elog(FATAL, "ReleaseCurrentAutonTransaction: unexpected state %s",
+				 BlockStateAsString(s->blockState));
+			break;
+	}
+}
+
+/*
+ * RollbackAndReleaseCurrentAutonTransaction
+ *
+ * ROLLBACK and RELEASE (ie. abort) the innermost autonomous transaction.
+ * NB: do NOT use CommitTransactionCommand/StartTransactionCommand with this.
+ */
+void
+RollbackAndReleaseCurrentAutonTransaction(void)
+{
+	TransactionState s = CurrentTransactionState;
+
+	ShowTransactionState("RollbackAndReleaseCurrentAutonTransaction");
+
+	switch (s->blockState)
+	{
+		case TBLOCK_AUTONINPROGRESS:
+			AbortAutonTransaction();
+			CleanupAutonTransaction();
+			s->blockState = TBLOCK_AUTONDEFAULT;
+			break;
+
+		case TBLOCK_AUTONDEFAULT:
+			break;
+
+		default:
+			elog(FATAL, "RollbackAndReleaseCurrentAutonTransaction: unexpected state %s",
+				 BlockStateAsString(s->blockState));
+			break;
+	}
+
+	PopAutonTransaction();
+}
+
+/*
+ * RollbackAndReleaseAutonTransactionRecursively
+ *
+ * ROLLBACK and RELEASE autonomous transactions recursively.
+ */
+void
+RollbackAndReleaseAutonTransactionRecursively(void)
+{
+	while (IsTopAutonTransaction())
+		RollbackAndReleaseCurrentAutonTransaction();
+}
+
+/*
+ * IsAutonTransaction
+ *   current transaction is autonomous?
+ */
+bool
+IsAutonTransaction(void)
+{
+	TransactionState s = CurrentTransactionState;
+
+	if (s->autonomous)
+		return true;
+
+	return false;
+}
+
+/*
+ * IsTopAutonTransaction
+ *   current top transaction is autonomous?
+ */
+bool
+IsTopAutonTransaction(void)
+{
+	TransactionState s = &TopTransactionStateData;
+
+	if (s->autonomous)
+		return true;
+
+	return false;
+}
+
+
+/*
+ * SetTopAutonTransactionState
+ *   set top autonomous transaction's block state
+ */
+int
+SetTopAutonTransactionState(int state)
+{
+	int		ostate = TopTransactionStateData.blockState;
+	bool	autontrans = IsTopAutonTransaction();
+
+	Assert(state >= TBLOCK_AUTONDEFAULT && state <= TBLOCK_AUTONABORT_PENDING);
+	Assert(autontrans);
+
+	switch (state)
+	{
+		case TBLOCK_AUTONDEFAULT:
+		case TBLOCK_AUTONSTARTED:
+		case TBLOCK_AUTONINPROGRESS:
+			TopTransactionStateData.blockState = state;
+			break;
+		default:
+			elog(ERROR, "SetTopAutonTransactionState: unexpected state %s",
+				 BlockStateAsString(state));
+			break;
+	}
+
+	elog(DEBUG1, "set top autonomous transaction from %s to %s state",
+		 BlockStateAsString(TopTransactionStateData.blockState),
+		 BlockStateAsString(state));
+
+	return ostate;
+}
+
+/*
+ * SetTopAutonTransactionStateStarted
+ *   set top autonomous transaction's block state to TBLOCK_AUTONSTARTED.
+ */
+int
+SetTopAutonTransactionStateStarted(void)
+{
+	return SetTopAutonTransactionState(TBLOCK_AUTONSTARTED);
+}
+
+/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */

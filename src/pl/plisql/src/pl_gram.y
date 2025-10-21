@@ -710,6 +710,12 @@ ora_pl_package: ora_decl_sect K_END opt_label
 				if (plisql_compile_packageitem == NULL)
 					yyerror("syntax error");
 
+				/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+				/* package can not set autonomous, but subproc in package can. */
+				if (plisql_curr_compile->autonomous)
+					elog(ERROR, "Pragma AUTONOMOUS_TRANSACTION cannot be specified here");
+				/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
 				new = palloc0(sizeof(PLiSQL_stmt_block));
 
 				new->cmd_type	= PLISQL_STMT_BLOCK;
@@ -842,6 +848,21 @@ ora_decl_stmts: ora_decl_stmts ora_decl_stmt
 				;
 
 ora_decl_stmt: decl_statement
+				/* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+				| K_PRAGMA any_identifier ';'
+					{
+						/* only support autonomous_transaction pragma currently. */
+						if (pg_strcasecmp($2, "autonomous_transaction") == 0)
+						{
+							/* check autonomous flags exists. */
+							if (plisql_curr_compile->autonomous)
+								elog(ERROR, "Pragma AUTONOMOUS_TRANSACTION cannot be declared twice");
+							plisql_curr_compile->autonomous = true;
+						}
+						else
+							elog(ERROR, "Pragma %s is not a supported pragma", $2);
+					}
+				/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 				;
 /* End - ReqID:SRS-SQL-PROC */
 	
