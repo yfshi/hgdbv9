@@ -38,47 +38,6 @@ typedef enum PolicyActions
 	DROP,
 }PolicyActions;
 
-
-/*
- * is_inherited_child(regclass)
- *
- * Return true if the given relation is a child table in an inheritance hierarchy.
- */
-static bool
-is_inherited_child(Oid relid)
-{
-	bool result = false;
-	Relation inhrel;
-	SysScanDesc scan;
-	ScanKeyData key[1];
-	HeapTuple tuple;
-
-	/* Open pg_inherits catalog */
-	inhrel = table_open(InheritsRelationId, AccessShareLock);
-
-	/* Search pg_inherits for inhrelid = relid */
-	ScanKeyInit(&key[0],
-				Anum_pg_inherits_inhrelid,
-				BTEqualStrategyNumber, F_OIDEQ,
-				ObjectIdGetDatum(relid));
-
-	scan = systable_beginscan(inhrel,
-							  InheritsRelidSeqnoIndexId, /* index on inhrelid */
-							  true,
-							  NULL,
-							  1,
-							  key);
-
-	tuple = systable_getnext(scan);
-	if (HeapTupleIsValid(tuple))
-		result = true;
-
-	systable_endscan(scan);
-	table_close(inhrel, AccessShareLock);
-
-	return result;
-}
-
 /*
  * relation_has_hgseclabel
  *
@@ -161,12 +120,12 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 								" must be applied to the parent before the child tables.");
 				}
 				appendStringInfo(&querybuf,
-						 "select apply_table_policy('%s', true) ",
+						 "select hg_secsch.apply_table_policy('%s', true) ",
 						 relname);
 			}
 			else
 				appendStringInfo(&querybuf,
-						 "select apply_table_policy('%s', false) ",
+						 "select hg_secsch.apply_table_policy('%s', false) ",
 						 relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
@@ -192,7 +151,7 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 		case ENABLE:
 		{
 			appendStringInfo(&querybuf,
-							 "select enable_table_policy('%s') ",
+							 "select hg_secsch.enable_table_policy('%s') ",
 							 relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
@@ -201,7 +160,7 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 		case DISABLE:
 		{
 			appendStringInfo(&querybuf,
-							 "select disable_table_policy('%s') ",
+							 "select hg_secsch.disable_table_policy('%s') ",
 							 relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
@@ -213,7 +172,7 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 			{
 				Oid			tableOid = lfirst_oid(li);
 				appendStringInfo(&querybuf,
-							 "select disable_table_policy('%s') ",
+							 "select hg_secsch.disable_table_policy('%s') ",
 							 get_rel_name(tableOid));
 				if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 					elog(ERROR, "SPI_exec failed: %s", querybuf.data);
@@ -221,7 +180,7 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 			}
 
 			appendStringInfo(&querybuf,
-							 "select drop_table_policy('%s') ",
+							 "select hg_secsch.drop_table_policy('%s') ",
 							 relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
@@ -267,9 +226,11 @@ apply_row_policy(PG_FUNCTION_ARGS)
 		action = DISABLE;
 	else if (strcmp(action_cmd, "drop") == 0)
 	{
+		Relation rel = table_open(relid, AccessShareLock);
+		table_close(rel, AccessShareLock);
 		action = DROP;
-		if (is_inherited_child(relid))
-			elog(ERROR, "cannot %s row-level security policy to child tables of inheritance", action_cmd);
+		if (rel->rd_rel->relispartition)
+			elog(ERROR, "cannot %s row-level security policy to child tables of partition", action_cmd);
 	}
 	else
 		elog(ERROR, "unsupported policy command type: %s", action_cmd);
@@ -312,7 +273,8 @@ mac_row_select_policy(PG_FUNCTION_ARGS)
 	bool	  result = false;
 	volatile hg_sysmac_param *hg_sysmac = (volatile hg_sysmac_param *) hg_sysmac_g;
 
-	if (!hg_sysmac->global_on ||
+	if (!hg_sysmac ||
+		!hg_sysmac->global_on ||
 		!hg_sysmac->global_row_level)
 		PG_RETURN_BOOL(true);
 
@@ -351,7 +313,8 @@ mac_row_delete_policy(PG_FUNCTION_ARGS)
 	bool	  result = false;
 	volatile hg_sysmac_param *hg_sysmac = (volatile hg_sysmac_param *) hg_sysmac_g;
 
-	if (!hg_sysmac->global_on ||
+	if (!hg_sysmac ||
+		!hg_sysmac->global_on ||
 		!hg_sysmac->global_row_level)
 		PG_RETURN_BOOL(true);
 
@@ -390,7 +353,8 @@ mac_row_update_policy(PG_FUNCTION_ARGS)
 	bool	  result = false;
 	volatile hg_sysmac_param *hg_sysmac = (volatile hg_sysmac_param *) hg_sysmac_g;
 
-	if (!hg_sysmac->global_on ||
+	if (!hg_sysmac ||
+		!hg_sysmac->global_on ||
 		!hg_sysmac->global_row_level)
 		PG_RETURN_BOOL(true);
 
@@ -430,7 +394,8 @@ mac_row_insert_policy(PG_FUNCTION_ARGS)
 	bool	  result = false;
 	volatile hg_sysmac_param *hg_sysmac = (volatile hg_sysmac_param *) hg_sysmac_g;
 
-	if (!hg_sysmac->global_on ||
+	if (!hg_sysmac ||
+		!hg_sysmac->global_on ||
 		!hg_sysmac->global_row_level)
 		PG_RETURN_BOOL(true);
 

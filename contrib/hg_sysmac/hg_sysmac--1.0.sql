@@ -218,16 +218,16 @@ declare
     sql text;
 begin
     IF NOT is_partition THEN
-        sql='alter table '||table_name||' add column if not exists __hg_seclabel__ seclabel default (mac_row_user_seclabel())';
+        sql='alter table '||table_name||' add column if not exists __hg_seclabel__ hg_secsch.seclabel default (hg_secsch.mac_row_user_seclabel())';
         execute sql;
     END IF;
-    sql='create policy policysel'||table_name||' on '||table_name||' for select using (mac_row_select_policy(__hg_seclabel__))';
+    sql='create policy policysel'||table_name||' on '||table_name||' for select using (hg_secsch.mac_row_select_policy(__hg_seclabel__))';
     execute sql;
-    sql='create policy policyins'||table_name||' on '||table_name||' for insert with check (mac_row_insert_policy(('''||table_name||''')::regclass))';
+    sql='create policy policyins'||table_name||' on '||table_name||' for insert with check (hg_secsch.mac_row_insert_policy(('''||table_name||''')::regclass))';
     execute sql;
-    sql='create policy policydel'||table_name||' on '||table_name||' for delete using (mac_row_delete_policy(__hg_seclabel__))';
+    sql='create policy policydel'||table_name||' on '||table_name||' for delete using (hg_secsch.mac_row_delete_policy(__hg_seclabel__))';
     execute sql;
-    sql='create policy policyupd'||table_name||' on '||table_name||' for update using (mac_row_update_policy(__hg_seclabel__))';
+    sql='create policy policyupd'||table_name||' on '||table_name||' for update using (hg_secsch.mac_row_update_policy(__hg_seclabel__))';
     execute sql;
 end;
 $$ language plpgsql

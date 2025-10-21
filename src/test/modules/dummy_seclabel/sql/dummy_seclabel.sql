@@ -3,7 +3,7 @@
 --
 
 -- clean sysmac provider
-SELECT unregister_seclabel_provider('sysmac');
+SELECT hg_secsch.unregister_seclabel_provider('sysmac');
 
 CREATE EXTENSION dummy_seclabel;
 
