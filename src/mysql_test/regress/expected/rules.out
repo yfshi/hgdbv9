@@ -2783,15 +2783,6 @@ shoelace_obsolete| SELECT shoelace.sl_name,
   WHERE (NOT (EXISTS ( SELECT shoe.shoename
            FROM shoe
           WHERE (shoe.slcolor = shoelace.sl_color))));
-show_audit_diskinfo| SELECT audit_show_diskinfo.disk_size,
-    audit_show_diskinfo.disk_used,
-    audit_show_diskinfo."disk_used%",
-    audit_show_diskinfo.space_limit,
-    audit_show_diskinfo.table_used,
-    audit_show_diskinfo.avail,
-    audit_show_diskinfo."table_used%",
-    audit_show_diskinfo.alarm
-   FROM audit_show_diskinfo() audit_show_diskinfo(disk_size, disk_used, "disk_used%", space_limit, table_used, avail, "table_used%", alarm);
 street| SELECT r.name,
     r.thepath,
     c.cname

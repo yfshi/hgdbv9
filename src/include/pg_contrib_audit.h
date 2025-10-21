@@ -18,6 +18,7 @@
 #ifndef PG_CONTRIB_AUDIT_H
 #define PG_CONTRIB_AUDIT_H
 
+#include "lib/ilist.h"
 #include "utils/palloc.h"
 #include "libpq/libpq-be.h"
 #include "utils/relcache.h"
@@ -333,7 +334,7 @@ typedef struct
 	char			*colname;
 	Oid				indrelId;
 	AttrNumber		attnum;
-	
+	Bitmapset	   *columns;
 }AuditEvent_Obj;
 
 typedef struct AuditEvent
@@ -373,6 +374,32 @@ typedef struct AuditEvent
 	MemoryContext	auditContext;
 } AuditEvent;
 
+typedef struct SecmonRuleEntry
+{
+	int			confindex;
+	AuditEvent *event;
+	HeapTuple	ruletup;	
+} SecmonRuleEntry;
+
+/* double-linked list 
+ * used for sequence threshold
+ */
+typedef struct SecmonHisCache
+{
+	dlist_head	cached_secmon_his;
+	Size 		n_cached_secmon_his;
+} SecmonHisCache;
+
+/* double-linked list element structure
+ * used for sequence threshold
+ */
+typedef struct SecmonHisEntry
+{
+	List	   *ruleoids;
+	TimestampTz	audittime;
+	int32		commandid;
+	dlist_node	node;
+} SecmonHisEntry;
 
 typedef struct AuditEventStackItem
 {
@@ -443,6 +470,7 @@ extern PGDLLIMPORT pgaudit_Command_hook_type audit_CommandStart_hook;
 extern PGDLLIMPORT pgaudit_Command_hook_type audit_aborted_hook;
 extern PGDLLIMPORT pgaudit_Command_hook_type audit_commited_hook;
 extern PGDLLIMPORT pgaudit_Command_hook_type audit_WriteRecord_hook;
+extern PGDLLIMPORT pgaudit_Command_hook_type audit_WriteThrHistory_hook;
 
 typedef void (*pgaudit_init_hook_type) (List*);
 extern PGDLLIMPORT pgaudit_init_hook_type audit_init_hook;

@@ -8,35 +8,35 @@
 
 SET client_encoding = 'UTF8';
 
-ALTER TABLE pg_track_settings_history ALTER COLUMN name SET NOT NULL;
-ALTER TABLE pg_track_settings_history ADD COLUMN setting_pretty text;
+ALTER TABLE hg_secsch.pg_track_settings_history ALTER COLUMN name SET NOT NULL;
+ALTER TABLE hg_secsch.pg_track_settings_history ADD COLUMN setting_pretty text;
 
-CREATE OR REPLACE FUNCTION pg_track_settings_snapshot() RETURNS boolean AS
+CREATE OR REPLACE FUNCTION hg_secsch.pg_track_settings_snapshot() RETURNS boolean AS
 $_$
 BEGIN
     -- Handle dropped GUC
     WITH dropped AS (
         SELECT l.name
-        FROM pg_track_settings_list l
+        FROM hg_secsch.pg_track_settings_list l
         LEFT JOIN pg_settings s ON s.name = l.name
         WHERE s.name IS NULL
     ),
     mark_dropped AS (
-        INSERT INTO pg_track_settings_history (ts, name, setting,
+        INSERT INTO hg_secsch.pg_track_settings_history (ts, name, setting,
             setting_pretty, is_dropped)
         SELECT now(), name, NULL, NULL, true
         FROM dropped
     )
-    DELETE FROM pg_track_settings_list l
+    DELETE FROM hg_secsch.pg_track_settings_list l
     USING dropped d
     WHERE d.name = l.name;
 
     -- Insert missing settings
-    INSERT INTO pg_track_settings_list (name)
+    INSERT INTO hg_secsch.pg_track_settings_list (name)
     SELECT name
     FROM pg_settings s
     WHERE NOT EXISTS (SELECT 1
-        FROM pg_track_settings_list l
+        FROM hg_secsch.pg_track_settings_list l
         WHERE l.name = s.name
     );
 
@@ -45,11 +45,11 @@ BEGIN
         SELECT name, setting
         FROM (
             SELECT name, setting, row_number() OVER (PARTITION BY NAME ORDER BY ts DESC) rownum
-            FROM pg_track_settings_history
+            FROM hg_secsch.pg_track_settings_history
         ) all_snapshots
         WHERE rownum = 1
     )
-    INSERT INTO pg_track_settings_history (ts, name, setting, setting_pretty)
+    INSERT INTO hg_secsch.pg_track_settings_history (ts, name, setting, setting_pretty)
     SELECT now(), s.name, s.setting, pg_catalog.current_setting(s.name)
     FROM pg_settings s
     LEFT JOIN last_snapshot l ON l.name = s.name
@@ -65,7 +65,7 @@ BEGIN
     ),
     dropped AS (
         SELECT l.setdatabase, l.setrole, l.name
-        FROM pg_track_db_role_settings_list l
+        FROM hg_secsch.pg_track_db_role_settings_list l
         LEFT JOIN rds s ON (
             s.setdatabase = l.setdatabase
             AND s.setrole = l.setrole
@@ -76,12 +76,12 @@ BEGIN
             AND s.name IS NULL
     ),
     mark_dropped AS (
-        INSERT INTO pg_track_db_role_settings_history
+        INSERT INTO hg_secsch.pg_track_db_role_settings_history
             (ts, setdatabase, setrole, name, setting, is_dropped)
         SELECT now(), setdatabase, setrole, name, NULL, true
         FROM dropped
     )
-    DELETE FROM pg_track_db_role_settings_list l
+    DELETE FROM hg_secsch.pg_track_db_role_settings_list l
     USING dropped d
     WHERE
         d.setdatabase = l.setdatabase
@@ -95,12 +95,12 @@ BEGIN
             (regexp_split_to_array(unnest(setconfig),'=')::text[])[2] as setting
         FROM pg_db_role_setting
     )
-    INSERT INTO pg_track_db_role_settings_list
+    INSERT INTO hg_secsch.pg_track_db_role_settings_list
         (setdatabase, setrole, name)
     SELECT setdatabase, setrole, name
     FROM rds s
     WHERE NOT EXISTS (SELECT 1
-        FROM pg_track_db_role_settings_list l
+        FROM hg_secsch.pg_track_db_role_settings_list l
         WHERE
             l.setdatabase = s.setdatabase
             AND l.setrole = l.setrole
@@ -119,11 +119,11 @@ BEGIN
         FROM (
             SELECT setdatabase, setrole, name, setting,
                 row_number() OVER (PARTITION BY name, setdatabase, setrole ORDER BY ts DESC) rownum
-            FROM pg_track_db_role_settings_history
+            FROM hg_secsch.pg_track_db_role_settings_history
         ) all_snapshots
         WHERE rownum = 1
     )
-    INSERT INTO pg_track_db_role_settings_history
+    INSERT INTO hg_secsch.pg_track_db_role_settings_history
         (ts, setdatabase, setrole, name, setting)
     SELECT now(), s.setdatabase, s.setrole, s.name, s.setting
     FROM rds s
@@ -140,10 +140,10 @@ BEGIN
     WITH last_reboot AS (
         SELECT t FROM pg_postmaster_start_time() t
     )
-    INSERT INTO pg_reboot (ts)
+    INSERT INTO hg_secsch.pg_reboot (ts)
     SELECT t FROM last_reboot lr
     WHERE NOT EXISTS (SELECT 1
-        FROM pg_reboot r
+        FROM hg_secsch.pg_reboot r
         WHERE r.ts = lr.t
     );
 
@@ -153,8 +153,8 @@ $_$
 LANGUAGE plpgsql;
 /* end of pg_track_settings_snapshot() */
 
-DROP FUNCTION pg_track_settings(timestamp with time zone);
-CREATE OR REPLACE FUNCTION pg_track_settings(_ts timestamp with time zone DEFAULT now())
+DROP FUNCTION hg_secsch.pg_track_settings(timestamp with time zone);
+CREATE OR REPLACE FUNCTION hg_secsch.pg_track_settings(_ts timestamp with time zone DEFAULT now())
 RETURNS TABLE (name text, setting text, setting_pretty text) AS
 $_$
 BEGIN
@@ -163,7 +163,7 @@ BEGIN
         FROM (
             SELECT h.name, h.setting, h.setting_pretty, h.is_dropped,
             row_number() OVER (PARTITION BY h.name ORDER BY h.ts DESC) AS rownum
-            FROM pg_track_settings_history h
+            FROM hg_secsch.pg_track_settings_history h
             WHERE ts <= _ts
         ) s
         WHERE s.rownum = 1
@@ -173,8 +173,8 @@ END;
 $_$
 LANGUAGE plpgsql;
 
-DROP FUNCTION pg_track_settings_diff(timestamp with time zone,timestamp with time zone);
-CREATE OR REPLACE FUNCTION pg_track_settings_diff(_from timestamp with time zone, _to timestamp with time zone)
+DROP FUNCTION hg_secsch.pg_track_settings_diff(timestamp with time zone,timestamp with time zone);
+CREATE OR REPLACE FUNCTION hg_secsch.pg_track_settings_diff(_from timestamp with time zone, _to timestamp with time zone)
 RETURNS TABLE (name text, from_setting text, from_exists boolean,
     to_setting text, to_exists boolean,
     from_setting_pretty text, to_setting_pretty text) AS
@@ -188,23 +188,23 @@ BEGIN
                CASE WHEN s2.setting IS NULL THEN false ELSE true END,
                s1.setting_pretty AS from_setting_pretty,
                s2.setting_pretty AS to_setting_pretty
-        FROM pg_track_settings(_from) s1
-        FULL OUTER JOIN pg_track_settings(_to) s2 ON s2.name = s1.name
+        FROM hg_secsch.pg_track_settings(_from) s1
+        FULL OUTER JOIN hg_secsch.pg_track_settings(_to) s2 ON s2.name = s1.name
         WHERE s1.setting IS DISTINCT FROM s2.setting
         ORDER BY 1;
 END;
 $_$
 LANGUAGE plpgsql;
 
-DROP FUNCTION pg_track_settings_log(text);
-CREATE OR REPLACE FUNCTION pg_track_settings_log(_name text)
+DROP FUNCTION hg_secsch.pg_track_settings_log(text);
+CREATE OR REPLACE FUNCTION hg_secsch.pg_track_settings_log(_name text)
 RETURNS TABLE (ts timestamp with time zone, name text, setting_exists boolean,
     setting text, setting_pretty text) AS
 $_$
 BEGIN
     RETURN QUERY
         SELECT h.ts, h.name, NOT h.is_dropped, h.setting, h.setting_pretty
-        FROM pg_track_settings_history h
+        FROM hg_secsch.pg_track_settings_history h
         WHERE h.name = _name
         ORDER BY ts DESC;
 END;

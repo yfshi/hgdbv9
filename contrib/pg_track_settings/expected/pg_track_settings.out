@@ -60,31 +60,31 @@ WITH ext AS (
 SELECT descr FROM ext
 WHERE descr NOT like '%"PGTS".%'
 ORDER BY descr COLLATE "C";
-                                                   descr                                                   
------------------------------------------------------------------------------------------------------------
- function public.pg_track_db_role_settings(timestamp with time zone,integer)
- function public.pg_track_db_role_settings_diff(timestamp with time zone,timestamp with time zone,integer)
- function public.pg_track_db_role_settings_log(text,integer)
- function public.pg_track_reboot_log(integer)
- function public.pg_track_settings(timestamp with time zone,integer)
- function public.pg_track_settings_diff(timestamp with time zone,timestamp with time zone,integer)
- function public.pg_track_settings_log(text,integer)
- function public.pg_track_settings_rds_src(integer)
- function public.pg_track_settings_reboot_src(integer)
- function public.pg_track_settings_reset(integer)
- function public.pg_track_settings_settings_src(integer)
- function public.pg_track_settings_snapshot()
- function public.pg_track_settings_snapshot_rds(integer)
- function public.pg_track_settings_snapshot_reboot(integer)
- function public.pg_track_settings_snapshot_settings(integer)
- table public.pg_reboot
- table public.pg_track_db_role_settings_history
- table public.pg_track_db_role_settings_list
- table public.pg_track_settings_history
- table public.pg_track_settings_list
- table public.pg_track_settings_rds_src_tmp
- table public.pg_track_settings_reboot_src_tmp
- table public.pg_track_settings_settings_src_tmp
+                                                    descr                                                     
+--------------------------------------------------------------------------------------------------------------
+ function hg_secsch.pg_track_db_role_settings(timestamp with time zone,integer)
+ function hg_secsch.pg_track_db_role_settings_diff(timestamp with time zone,timestamp with time zone,integer)
+ function hg_secsch.pg_track_db_role_settings_log(text,integer)
+ function hg_secsch.pg_track_reboot_log(integer)
+ function hg_secsch.pg_track_settings(timestamp with time zone,integer)
+ function hg_secsch.pg_track_settings_diff(timestamp with time zone,timestamp with time zone,integer)
+ function hg_secsch.pg_track_settings_log(text,integer)
+ function hg_secsch.pg_track_settings_rds_src(integer)
+ function hg_secsch.pg_track_settings_reboot_src(integer)
+ function hg_secsch.pg_track_settings_reset(integer)
+ function hg_secsch.pg_track_settings_settings_src(integer)
+ function hg_secsch.pg_track_settings_snapshot()
+ function hg_secsch.pg_track_settings_snapshot_rds(integer)
+ function hg_secsch.pg_track_settings_snapshot_reboot(integer)
+ function hg_secsch.pg_track_settings_snapshot_settings(integer)
+ table hg_secsch.pg_reboot
+ table hg_secsch.pg_track_db_role_settings_history
+ table hg_secsch.pg_track_db_role_settings_list
+ table hg_secsch.pg_track_settings_history
+ table hg_secsch.pg_track_settings_list
+ table hg_secsch.pg_track_settings_rds_src_tmp
+ table hg_secsch.pg_track_settings_reboot_src_tmp
+ table hg_secsch.pg_track_settings_settings_src_tmp
 (23 rows)
 
 -- test main config history

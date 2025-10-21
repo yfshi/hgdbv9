@@ -70,7 +70,8 @@ CATALOG_HEADERS := \
 	pg_foreign_table.h pg_policy.h pg_replication_origin.h \
 	pg_default_acl.h pg_init_privs.h pg_seclabel.h pg_shseclabel.h \
 	pg_collation.h pg_partitioned_table.h pg_range.h pg_transform.h \
-	pg_sequence.h pg_publication.h pg_publication_rel.h pg_subscription.h \
+	pg_secmon_rule.h pg_secmon_threshold.h pg_sequence.h \
+	pg_publication.h pg_publication_rel.h pg_subscription.h \
 	pg_subscription_rel.h pg_package.h pg_package_body.h pg_force_view.h \
 	pg_object.h pg_mfaid.h \
 	pg_resgroup.h pg_resgroupcapability.h \

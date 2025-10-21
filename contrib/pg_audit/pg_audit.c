@@ -71,6 +71,8 @@
 #include "catalog/pg_proc.h"
 #include "catalog/pg_auth_members.h"
 #include "catalog/pg_audit_config.h"
+#include "catalog/pg_secmon_rule.h"
+#include "catalog/pg_secmon_threshold.h"
 #include "catalog/indexing.h"
 #include "access/table.h"
 #include "access/relation.h"
@@ -104,6 +106,7 @@
 #include "storage/procsignal.h"
 #include "utils/guc.h"
 #include "utils/acl.h"
+#include "utils/date.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
 #include "utils/resowner.h"
@@ -143,6 +146,7 @@
 #include "foreign/foreign.h"
 #include "catalog/pg_foreign_server.h"
 #include "se_features_interface.h"
+#include "catalog/pg_authid.h"
 
 
 #ifdef PG_MODULE_MAGIC
@@ -206,6 +210,8 @@ char *audit_space_alarm = NULL;
 #define IsSpace(c)		(isspace((unsigned char)(c)))
 
 #define AUDIT_LOG_NATTS 27
+#define SECMON_RULE_NATTS 7
+#define SECMON_THR_NATTS 18
 
 /* audit using independent memory context */
 static MemoryContext AuditContext = NULL;
@@ -221,7 +227,12 @@ static List *auditedrole_syssao;
 static List *auditedrole_syssso;
 
 /* list of audit events in the current transaction */
-List*	auditlist = NIL;
+List   *auditlist = NIL;
+List   *rulelist = NIL;
+
+static int MAX_SECMON_SEQSIZE = 100;
+static MemoryContext SecmonCacheMemoryContext = NULL;
+static SecmonHisCache CachedSecmonHistory; //double-linked list 
 
 static TimestampTz operstarttime;
 
@@ -259,6 +270,8 @@ static bool audit_sqlite_check_hook(char **newvalue, void **extra, GucSource sou
 #endif
 static void check_audit_sao_permission(Oid roid, bool istable);
 static void check_audit_saosso_perm(Oid roid, bool istable);
+static char *AuditResultToString(AuditResult res);
+static char *AuditTypeToString(AuditType type);
 static ObjectType audit_get_objtype(char *key);
 static char *audit_get_objname(ObjectType type);
 static int add_delete_audit_stmt_arg1(char *statments, char *usrnames,  Oid auditoroid, Oid classoid, char *objtype,
@@ -276,7 +289,7 @@ static RoleSpec *makeRoleSpec(RoleSpecType type, int location);
 static void audit_check_pg_track_settings(Node *parsetree);
 static char * audit_stmttype_to_string(AuditStmtType type);
 static List *audit_get_options_on_statement(AuditType audittype, List *optionlist);
-static int audit_check_mode(char *audit_result_str, AuditChange enable_unable, AuditResult *isSuccess);
+static int audit_check_mode(char *audit_result_str, AuditResult *isSuccess);
 static void audit_insert_stmt_tuple(Relation pg_audit, Name auditevent, Oid auditoroid, Name object, Oid classoid,
 									Name objtype, AuditType audittype, AuditResult mode);
 static void audit_deal_with_item(Relation pg_audit, AuditStmtType auditevent, Oid auditoroid, char *object, Oid classoid, 
@@ -313,6 +326,7 @@ static void log_seq_execute(Oid objectId);
 static void audit_aborted(void);
 static void audit_commited(void);
 static void audit_write_record_list(void);
+static void audit_secmon_threshold_check(void);
 static void audit_write_record_system(AuditEvent *event);
 static char *audit_get_privilege(char *type);
 static char *get_auth_method(UserAuth method);
@@ -329,6 +343,31 @@ static void audit_arch_job(void);
 static void audit_set_sqlite_path(void);
 #endif
 static void audit_stop_pgagent(void);
+static Oid add_secmon_rule(char *rule, Oid confid, AuditResult isSuccess, AuditChange enable_unable);
+static Oid audit_insert_secmon_tuple(Relation pg_secmon_rule, Name rulename, Oid confid, AuditResult isSuccess, AuditChange enable_unable);
+static void alter_secmon_rule_arg2(int args, Oid oid, char *rule, AuditResult isSuccess, AuditChange enable_unable);
+static void alter_secmon_rule_arg3(PG_FUNCTION_ARGS, Oid oid, char *rule);
+static void alter_secmon_rule_arg4(PG_FUNCTION_ARGS, Oid oid, char *rule);
+static void audit_check_secmon_rule(int confindex, Oid confid, AuditEvent *event);
+static void audit_insert_secmon_history(Form_pg_secmon_rule rule, Relation history, AuditEvent *event);
+static void cache_secmon_history(List *oids, TimestampTz audittime, Oid commandid);
+static void do_insert_secmon_history(Form_pg_secmon_rule rule, Relation history, AuditEvent *event);
+static bool check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, TimestampTz impt_starttime,
+												TimestampTz impt_endtime, int2vector *impt_columns,  int confindex, AuditEvent *event, char *msg);
+static bool check_maxtimes_threshold(int32 interval, int32 maxtimes, TimestampTz starttime, Oid ruleoid, char *msg);
+static bool check_sequence_threshold(int32 interval, int32 nsteps, TimestampTz starttime, oidvector *ruleseq, char *msg);
+static void do_insert_secmon_thr_history(Form_pg_secmon_threshold thr, Relation thrhistory, SecmonRuleEntry *rule,
+													char *basename, char *basevalue,
+													TimestampTz starttime, TimestampTz impt_starttime, TimestampTz impt_endtime,
+													int2vector *impt_cloumns, oidvector *ruleseq);
+static void audit_insert_secmon_thr_history(Form_pg_secmon_threshold thr, Relation thrhistory, SecmonRuleEntry *rule,
+												char *basename, char *basevalue,
+												TimestampTz starttime, TimestampTz impt_starttime, TimestampTz impt_endtime,
+												int2vector *impt_cloumns, oidvector *ruleseq);
+static void audit_threshold_alarm(int32 level, char *msg);
+static void audit_send_mail(char *msg);
+static void audit_terminate_session(void);
+static void audit_lock_user(void);
 static Node *audit_change_where_clause(Node *clause);
 static void audit_get_from_clause_name(Node *n);
 static Node * make_NullTest(char *col);
@@ -367,6 +406,7 @@ static bool check_disk_size(void);
 
 static void send_signal_launch_proc(void);
 static bool is_enable_audit(void);
+static void audit_WriteThrHistory(void);
 
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
@@ -1318,7 +1358,9 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 	}
 		
 	values[6] = TimestampTzGetDatum(event->audittime);
-	values[7] = CharGetDatum(event->result);
+	//values[7] = CharGetDatum(event->result);
+	values[7] = PointerGetDatum(cstring_to_text(AuditResultToString(event->result)));
+	
 
 	if (object && event->conftypes[i] == AUDIT_TYPE_OBJECT)
 	{
@@ -1381,11 +1423,14 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 	}
 
 	if (i == -1)
-		values[15] = CharGetDatum(AUDIT_TYPE_SYSYEM);
+		values[15] = PointerGetDatum(cstring_to_text(AUDIT_TYPE_STATEMENT_S));
+		//values[15] = CharGetDatum(AUDIT_TYPE_SYSYEM);
 	else if (i == -2)
-		values[15] = CharGetDatum(AUDIT_TYPE_MANDATORY);
+		values[15] = PointerGetDatum(cstring_to_text(AUDIT_TYPE_MANDATORY_S));
+		//values[15] = CharGetDatum(AUDIT_TYPE_MANDATORY);
 	else
-		values[15] = CharGetDatum(event->conftypes[i]);
+		values[15] = PointerGetDatum(cstring_to_text(AuditTypeToString(event->conftypes[i])));
+		//values[15] = CharGetDatum(event->conftypes[i]);
 
 	values[16] = Int32GetDatum(event->commandid);
 
@@ -1548,7 +1593,7 @@ audit_write_record_list(void)
 
 	StartTransactionCommand();
 	
-	relOid = get_relname_relid(PG_AUDIT_LOG, PG_PUBLIC_NAMESPACE);
+	relOid = get_relname_relid(PG_AUDIT_LOG, SECURITY_SCHEMA_NAMESPACE);
 	if (relOid == InvalidOid)
 		elog(ERROR, " could not get oid of relation pg_audit_log");
 
@@ -1662,6 +1707,9 @@ audit_write_record_list(void)
 
 				}
 			}
+
+			if (audit_GUC.audit_monitoring == AUDIT_ON)
+				audit_check_secmon_rule(i, audit_form->confid, auditevent);
 		}
 
 		/* For the same information on the parse tree as ALTER USER and ALTER ROLE, 
@@ -1691,6 +1739,9 @@ audit_write_record_list(void)
 				auditevent->conftypes[i] = audit_form->audittype;
 				
 				audit_insert_all_log(audit_log, auditevent, NULL, i);
+
+				if (audit_GUC.audit_monitoring == AUDIT_ON)
+					audit_check_secmon_rule(i, audit_form->confid, auditevent);
 			}
 			ReleaseSysCacheList(catlistr);
 		}
@@ -1708,6 +1759,8 @@ audit_write_record_list(void)
 				HeapTuple	tuple = &catlistr->members[i]->tuple;
 				
 				audit_form = (Form_pg_audit_config) GETSTRUCT(tuple);
+
+				audit_check_secmon_rule(i, audit_form->confid, auditevent);
 				
 				if (!audit_form->enable)
 					continue;
@@ -1721,6 +1774,9 @@ audit_write_record_list(void)
 				auditevent->conftypes[i] = audit_form->audittype;
 				
 				audit_insert_all_log(audit_log, auditevent, NULL, i);
+
+				if (audit_GUC.audit_monitoring == AUDIT_ON)
+					audit_check_secmon_rule(i, audit_form->confid, auditevent);
 			}
 
 			ReleaseSysCacheList(catlistr);
@@ -1756,7 +1812,7 @@ audit_write_record_system(AuditEvent *event)
 
 	StartTransactionCommand();
 	
-	relOid = get_relname_relid(PG_AUDIT_LOG, PG_PUBLIC_NAMESPACE);
+	relOid = get_relname_relid(PG_AUDIT_LOG, SECURITY_SCHEMA_NAMESPACE);
 	if (relOid == InvalidOid)
 		elog(ERROR, " could not get oid of relation pg_audit_log");
 	
@@ -1817,7 +1873,6 @@ audit_WriteRecord(void)
 			auditlist = NIL;
 		}
 	}
-
 }
 
 
@@ -3032,6 +3087,48 @@ audit_ProcessUtility_hook(PlannedStmt *pstmt,
 			stackItem->auditEvent->commandid = GetCurrentCommandId(false);
 			audit_get_actionname_from_tree(pstmt->utilityStmt, stackItem->auditEvent->actionname);
 			stackItem->auditEvent->conftypes[0] = AUDIT_TYPE_INVALID;
+			
+			if (nodeTag(pstmt->utilityStmt) == T_AlterSystemStmt)
+			{
+				AlterSystemStmt *stmt = (AlterSystemStmt *) pstmt->utilityStmt;
+				
+				if (stmt->setstmt->kind == VAR_SET_VALUE)
+				{
+					VariableSetStmt *set = stmt->setstmt;
+					
+					contextOld = MemoryContextSwitchTo(stackItem->auditEvent->auditContext);
+
+					stackItem->auditEvent->setname = pnstrdup(set->name, strlen(set->name));
+
+					if (set->args != NIL)
+					{
+						Node *arg = (Node *)linitial(set->args);
+
+						if (IsA(arg, A_Const))
+						{
+							A_Const *con = (A_Const *)arg;
+
+							if (con->val.type == T_String)
+							{
+								stackItem->auditEvent->setvalue = pnstrdup(con->val.val.str, strlen(con->val.val.str));
+							}
+							else if (con->val.type == T_Integer)
+							{
+								char	val[MAXPGPATH] = {0};
+								
+								sprintf(val, "%d", con->val.val.ival);
+								stackItem->auditEvent->setvalue = val;
+							}
+							else if (con->val.type == T_Float)
+							{
+								stackItem->auditEvent->setvalue = pnstrdup(con->val.val.str, strlen(con->val.val.str));
+							}
+						}
+					}
+
+					MemoryContextSwitchTo(contextOld);
+				}
+			}
 
 			contextOld = MemoryContextSwitchTo(stackItem->auditEvent->auditContext);
 
@@ -3068,6 +3165,7 @@ static void
 log_select_dml_col(RangeTblEntry *rte, Oid relOid, Relation rel)
 {
 	Bitmapset  *columns;
+	Bitmapset  *columns_bak;
 	AttrNumber	col;
 	char	   *colname = NULL;
 	AuditStmtType type = INVALID_STMT;
@@ -3090,6 +3188,11 @@ log_select_dml_col(RangeTblEntry *rte, Oid relOid, Relation rel)
 				break;
 			default:
 				columns = NULL;
+		}
+
+		if (columns)
+		{
+			columns_bak = bms_copy(columns);
 		}
 
 		/* Retrieve the columns' position in which column */
@@ -3128,6 +3231,11 @@ log_select_dml_col(RangeTblEntry *rte, Oid relOid, Relation rel)
 					obj1->colname = colname;
 					obj1->attnum = col;
 					obj1->objectClassdesc = audit_get_objname(OBJECT_COLUMN);
+					if (columns_bak)
+					{
+						obj1->columns = bms_copy(columns_bak);
+					}
+					
 					auditEventStack->auditEvent->objects = lappend(auditEventStack->auditEvent->objects, obj1);
 					colname = NULL;
 				}
@@ -3311,7 +3419,7 @@ execute_snapshot(void)
 	int		ret;
 
 	memset(sqltext, 0, MAXPGPATH);
-	sprintf(sqltext, "select * from pg_track_settings_snapshot()");
+	sprintf(sqltext, "select * from hg_secsch.pg_track_settings_snapshot()");
 
 	internalStatement = true;
 
@@ -3378,7 +3486,7 @@ audit_alter_set_guc(List *parsetreeList)
 	char	timec[20];
 
 	memset(sqltext, 0, MAXPGPATH);
-	sprintf(sqltext, "select * from pg_track_settings_snapshot()");
+	sprintf(sqltext, "select * from hg_secsch.pg_track_settings_snapshot()");
 
 	foreach(parsetree_item, parsetreeList)
 	{
@@ -3449,7 +3557,7 @@ audit_alter_set_guc(List *parsetreeList)
 		memset(sqltext, 0, MAXPGPATH);
 		
 		sprintf(sqltext, "SELECT ts, name, setting "
-	       				 "FROM pg_track_db_role_settings_history");
+	       				 "FROM hg_secsch.pg_track_db_role_settings_history");
 		
 
 		PushActiveSnapshot(GetTransactionSnapshot());
@@ -3472,7 +3580,7 @@ audit_alter_set_guc(List *parsetreeList)
 			TupleDesc	spi_tupdesc = spi_tuptable->tupdesc;
 			uint64		i;
 			
-			relOid = get_relname_relid(PG_AUDIT_LOG, PG_PUBLIC_NAMESPACE);
+			relOid = get_relname_relid(PG_AUDIT_LOG, SECURITY_SCHEMA_NAMESPACE);
 			if (relOid == InvalidOid)
 			{
 				elog(WARNING, "could not get oid of relation pg_audit_log");
@@ -3867,7 +3975,7 @@ check_audit_table(List *rangeTabls)
 		else
 		{
 			Oid tbloid;
-			tbloid = get_relname_relid(PG_AUDIT_LOG, PG_PUBLIC_NAMESPACE);
+			tbloid = get_relname_relid(PG_AUDIT_LOG, SECURITY_SCHEMA_NAMESPACE);
 
 			if (relOid == tbloid)
 			{
@@ -3876,7 +3984,7 @@ check_audit_table(List *rangeTabls)
 			else
 			{
 				Oid ftboid;
-				ftboid = get_relname_relid(SQLITE_AUDIT_LOG, PG_PUBLIC_NAMESPACE);
+				ftboid = get_relname_relid(SQLITE_AUDIT_LOG, SECURITY_SCHEMA_NAMESPACE);
 				if (relOid == ftboid)
 				{
 					check_audit_saosso_perm(useroid, true);
@@ -4742,6 +4850,7 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 			break;
 		default:
 			sessionid = MyProcPid;
+			break;
 	}
 
 	if (username == NULL)
@@ -4778,8 +4887,9 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 	}
 	/* End - BUG#00004776 */
 	
-	sprintf(inserttext, "insert into pg_sqlite_audit_log(sessionoid, useroid, username, roleoid, rolename, audittime, result, audittype, commandid, actionname, clientport, clientname, clientip, clientmac, clientappname, errtext, authmethod, privlevel) values(%d, %d, \'%s\', %d, \'%s\', \'%s\', \'%c\', \'%c\', 0, \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\')", 
-						sessionid, useroid, username != NULL ? username : tmp, roleoid, rolename, timestr, result, AUDIT_TYPE_SYSYEM, actionname,
+	
+	sprintf(inserttext, "insert into pg_sqlite_audit_log(sessionoid, useroid, username, roleoid, rolename, audittime, result, audittype, commandid, actionname, clientport, clientname, clientip, clientmac, clientappname, errtext, authmethod, privlevel) values(%d, %d, \'%s\', %d, \'%s\', \'%s\', \'%s\', \'%s\', 0, \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\')", 
+						sessionid, useroid, username != NULL ? username : tmp, roleoid, rolename, timestr, AuditResultToString(result), AUDIT_TYPE_SYSYEM_S, actionname,
 						clientInfo.port, clientInfo.clientname, clientInfo.ip, clientInfo.mac,
 						clientInfo.appname, errtext, clientInfo.authmethod, privilege);
 	rc = sqlite3_exec(conn, inserttext, NULL, NULL, &err);
@@ -5113,6 +5223,7 @@ generateSystemEvent(AuditSystemEvent event, AuditResult result)
 			break;
 		default:
 			newAuditEvent->sessionid = MyProcPid;
+			break;
 	}
 	
 	newAuditEvent->result = result;
@@ -5439,6 +5550,7 @@ audit_append_hook(void)
 	audit_commited_hook = audit_commited;
 	audit_privi_mode_hook = audit_privi_mode;
 	audit_WriteRecord_hook = audit_WriteRecord;
+	audit_WriteThrHistory_hook = audit_WriteThrHistory;
 
 	audit_SetServerOption_hook = audit_set_server_option;
 	audit_CreateArchJob_hook = audit_create_arch_job;
@@ -5529,7 +5641,7 @@ audit_postmaster_sighup_guc(char *context)
 
 	initStringInfo(&buf);
 	/* refresh snapshot */
-	appendStringInfo(&buf, "select * from pg_track_settings_snapshot()");
+	appendStringInfo(&buf, "select * from hg_secsch.pg_track_settings_snapshot()");
 	
 	SetCurrentStatementStartTimestamp();
 	StartTransactionCommand();
@@ -5544,7 +5656,7 @@ audit_postmaster_sighup_guc(char *context)
 	if (ret != SPI_OK_SELECT)
 	{
 		internalStatement = false;
-		elog(WARNING, "cannot select from pg_track_settings_snapshot: error code %d", ret);
+		elog(WARNING, "cannot select from hg_secsch.pg_track_settings_snapshot: error code %d", ret);
 		return;
 	}
 
@@ -5560,7 +5672,7 @@ audit_postmaster_sighup_guc(char *context)
 	 * to find the modified GUC parameters 
 	 */
 	appendStringInfo(&buf, "SELECT a.ts, a.name, a.setting "
-							"FROM pg_track_settings_history a "
+							"FROM hg_secsch.pg_track_settings_history a "
 							"INNER JOIN pg_settings b ON a.name = b.name "
 							"WHERE b.context = '%s'", context);
 
@@ -5575,7 +5687,7 @@ audit_postmaster_sighup_guc(char *context)
 	if (ret != SPI_OK_SELECT)
 	{
 		internalStatement = false;
-		elog(WARNING, "cannot select from pg_track_settings_history: error code %d", ret);
+		elog(WARNING, "cannot select from hg_secsch.pg_track_settings_history: error code %d", ret);
 		return;
 	}
 
@@ -5587,7 +5699,7 @@ audit_postmaster_sighup_guc(char *context)
 		TupleDesc	spi_tupdesc = spi_tuptable->tupdesc;
 		uint64		i;
 				
-		relOid = get_relname_relid(PG_AUDIT_LOG, PG_PUBLIC_NAMESPACE);
+		relOid = get_relname_relid(PG_AUDIT_LOG, SECURITY_SCHEMA_NAMESPACE);
 		if (relOid == InvalidOid)
 		{
 			internalStatement = false;
@@ -6116,7 +6228,7 @@ static int64 audit_get_total_log_size(char *table)
 {
 	int64 res;
 
-	res =  Int64GetDatum(DirectFunctionCall1(pg_total_relation_size, get_relname_relid(table,PG_PUBLIC_NAMESPACE)));
+	res =  Int64GetDatum(DirectFunctionCall1(pg_total_relation_size, get_relname_relid(table, SECURITY_SCHEMA_NAMESPACE)));
 
 	return res;
 }
@@ -6495,7 +6607,7 @@ static void audit_choice_retentionpolicy_mode(void)
 			Relation audit_log;
 			Oid relOid = InvalidOid;
 
-			relOid = get_relname_relid(PG_AUDIT_LOG, PG_PUBLIC_NAMESPACE);
+			relOid = get_relname_relid(PG_AUDIT_LOG, SECURITY_SCHEMA_NAMESPACE);
 			if (relOid == InvalidOid)
 				elog(ERROR, " could not get oid of relation pg_audit_log");
 
@@ -8054,6 +8166,7 @@ audit_get_stmt_type(char *statment, bool is_obj, ObjectType objtype)
 					break;
 				default:
 					type = INVALID_STMT;
+					break;
 			}
 		}
 		else
@@ -8718,7 +8831,7 @@ audit_deal_with_item(Relation pg_audit, AuditStmtType auditevent, Oid auditoroid
  *
  */
 static int 
-audit_check_mode(char *audit_result_str, AuditChange enable_unable, AuditResult *isSuccess)
+audit_check_mode(char *audit_result_str, AuditResult *isSuccess)
 {
 	char * str = NULL;
 	unsigned int len = 0;
@@ -8825,7 +8938,7 @@ add_delete_audit_stmt_args2(PG_FUNCTION_ARGS, Oid auditoroid, AuditChange enable
 	{
 		audit_result_str = text_to_cstring(PG_GETARG_TEXT_PP(1));
 	}
-	ret = audit_check_mode(audit_result_str, enable_unable, &isSuccess);
+	ret = audit_check_mode(audit_result_str, &isSuccess);
 
 	if (ret < 0)
 	{
@@ -9335,7 +9448,7 @@ audit_get_object_from_namelist(List *obj, ObjectType objtype, char *schema)
 					res->object = strVal(linitial(obj));
 					res->schemaid = get_namespace_oid(schema,false);
 					res->objectid = get_relname_relid(res->object, res->schemaid);
-				break;
+					break;
 				default:
 					ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
@@ -9603,7 +9716,7 @@ add_delete_audit_object5(PG_FUNCTION_ARGS, Oid auditoroid, AuditChange enable_un
 	AuditResult		isSuccess = AUDIT_ALL;
 	int ret = 0;
 
-	ret = audit_check_mode(audit_result_str, enable_unable, &isSuccess);
+	ret = audit_check_mode(audit_result_str, &isSuccess);
 	if (ret != 0)
 	{
 		ereport(ERROR,
@@ -9681,7 +9794,6 @@ disable_audit_stmt_byoid(Oid confid, char mode)
 	table_close(pg_audit_config, RowExclusiveLock);
 
 	return flag;
-
 }
 
 
@@ -10559,40 +10671,1775 @@ pg_noaudit_object_byoid(PG_FUNCTION_ARGS)
 	PG_RETURN_TEXT_P(cstring_to_text(pstrdup(paramStr)));
 }
 
+static char *
+AuditResultToString(AuditResult res)
+{
+	char *result = SUCCESSFUL_S;
+
+	switch (res)
+	{
+		case AUDIT_SUCCESS:
+			result = SUCCESSFUL_S;
+			break;
+		case AUDIT_FAIL:
+			result = FAIL_S;
+			break;
+		default:
+			break;
+	}
+
+	return result;
+}
+
+static char * 
+AuditTypeToString(AuditType type)
+{
+	char *tag = AUDIT_TYPE_STATEMENT_S;
+
+	switch(type)
+	{
+		case AUDIT_TYPE_STATEMENT:
+			tag = AUDIT_TYPE_STATEMENT_S;
+			break;
+		case AUDIT_TYPE_PRIVILEGE:
+			tag = AUDIT_TYPE_PRIVILEGE_S;
+			break;
+		case AUDIT_TYPE_USER:
+			tag = AUDIT_TYPE_USER_S;
+			break;
+		case AUDIT_TYPE_SYSYEM:
+			tag = AUDIT_TYPE_SYSYEM_S;
+			break;
+		case AUDIT_TYPE_OBJECT:
+			tag = AUDIT_TYPE_OBJECT_S;
+			break;
+		case AUDIT_TYPE_MANDATORY:
+			tag = AUDIT_TYPE_MANDATORY_S;
+			break;
+		default:
+			break;
+	}
+
+	return tag;
+}
+
+/*
+ * insert tuple into pg_secmon_history
+ */
+static void
+do_insert_secmon_history(Form_pg_secmon_rule rule, Relation history, AuditEvent *event)
+{
+	Datum	   *values;
+	bool	   *nulls;
+	HeapTuple	tuple;
+
+	values = palloc(SECMON_RULE_NATTS*sizeof(Datum));
+	nulls = palloc(SECMON_RULE_NATTS*sizeof(bool));
+
+	memset(values, 0, SECMON_RULE_NATTS*sizeof(Datum));
+	memset(nulls, false, SECMON_RULE_NATTS*sizeof(bool));
+
+	values[0] = TimestampTzGetDatum(event->audittime);
+	values[1] = Int32GetDatum(rule->ruleoid);
+	values[2] = Int32GetDatum(rule->confid);
+	values[3] = PointerGetDatum(cstring_to_text(event->actionname));
+	values[4] = Int32GetDatum(event->sessionid);
+	values[5] = Int32GetDatum(event->commandid);
+	values[6] = PointerGetDatum(cstring_to_text(rule->rulename.data));
+
+	tuple = heap_form_tuple(RelationGetDescr(history), values, nulls);
+
+	simple_heap_insert(history, tuple);
+
+	if(values)
+		pfree(values);
+	if(nulls)
+		pfree(nulls);
+
+	return ;
+	
+}
+
+/*
+ * insert into pg_secmon_history
+ */
+static void
+audit_insert_secmon_history(Form_pg_secmon_rule rule, Relation history, AuditEvent *event)
+{
+	PG_TRY();
+	{
+		do_insert_secmon_history(rule, history, event);
+	}
+
+	PG_CATCH();
+	{
+		ErrorData *edata;
+		MemoryContext oldcontext = CurrentMemoryContext;
+		
+		MemoryContextSwitchTo(TopMemoryContext);
+		
+	    edata = CopyErrorData();
+	    FlushErrorState();
+	    MemoryContextSwitchTo(oldcontext);
+
+	    if (edata->elevel >= ERROR)
+	    {
+	        edata->elevel = WARNING;
+			ereport(WARNING, (errcode(edata->sqlerrcode),
+                    errmsg_internal("%s", edata->message)));
+	    }
+
+	}
+	PG_END_TRY();
+
+	return;
+	
+}
+
+/*
+ * for sequence threshold, cache_secmon_history function
+ * is used to cache the ruleoids list
+ */
+static void
+cache_secmon_history(List *oids, TimestampTz audittime, Oid commandid)
+{
+	SecmonHisEntry	   *re = NULL;
+	MemoryContext		oldcontext;
+
+	/* alloc cache space */
+	if (SecmonCacheMemoryContext == NULL)
+	{
+		SecmonCacheMemoryContext = AllocSetContextCreate(TopMemoryContext,
+														"security monitoring memory context",
+														ALLOCSET_DEFAULT_MINSIZE,
+														ALLOCSET_DEFAULT_INITSIZE,
+														ALLOCSET_DEFAULT_MAXSIZE);
+		dlist_init(&CachedSecmonHistory.cached_secmon_his);
+		CachedSecmonHistory.n_cached_secmon_his = 0;
+	}
+
+	/* exceeding the maximum value of the sequence,
+	 * remove the oldest entry
+	 */
+	if (CachedSecmonHistory.n_cached_secmon_his + 1 > MAX_SECMON_SEQSIZE)
+	{
+		re = dlist_container(SecmonHisEntry, node, dlist_pop_head_node(&CachedSecmonHistory.cached_secmon_his));
+		list_free(re->ruleoids);
+		re->ruleoids = NIL;
+		CachedSecmonHistory.n_cached_secmon_his--;
+		
+	}
+
+	oldcontext = MemoryContextSwitchTo(SecmonCacheMemoryContext);
+
+	if (re == NULL)
+		re = (SecmonHisEntry *) palloc0(sizeof(SecmonHisEntry));
+
+	/* save information to the last node */
+	re->ruleoids = list_copy(oids);
+	re->audittime = audittime;
+	re->commandid = commandid;
+	dlist_push_tail(&CachedSecmonHistory.cached_secmon_his, &re->node);
+	CachedSecmonHistory.n_cached_secmon_his++;
+
+	MemoryContextSwitchTo(oldcontext);
+}
+
+
+/*
+ * check if the current operation is configured
+ * with security monitoring rules and if it
+ * needs to be recorded
+ */
+static void
+audit_check_secmon_rule(int confindex, Oid confid, AuditEvent *event)
+{
+	Oid			relOid;
+	Relation	secmon_his;
+	int			i;
+	CatCList   *catlist;
+	List	   *ruleoids = NIL;
+
+	relOid = get_relname_relid(PG_SECMON_HISTORY, SECURITY_SCHEMA_NAMESPACE);
+	if (relOid == InvalidOid)
+		elog(ERROR, " could not get oid of relation pg_secmon_history");
+
+	secmon_his = table_open(relOid, RowExclusiveLock);
+
+	catlist = SearchSysCacheList1(AUDITCONFIDIDRULENAME, ObjectIdGetDatum(confid));
+
+	for (i = 0; i < catlist->n_members; i++)
+	{
+		SecmonRuleEntry	*re;
+		Oid			ruleoid;
+		MemoryContext	oldcontext;
+		Form_pg_secmon_rule rule_form;
+		HeapTuple	rule_tuple = &catlist->members[i]->tuple;
+		
+
+		rule_form = (Form_pg_secmon_rule) GETSTRUCT(rule_tuple);
+
+		if (!rule_form->enable)
+			continue;
+
+		if (rule_form->monmode != event->result && rule_form->monmode != AUDIT_ALL)
+			continue;
+
+		/* inert into pg_secmon_history */
+		audit_insert_secmon_history(rule_form, secmon_his, event);	
+
+		/*
+		 * we need to write the information to list for the 
+		 * purpose of checking the security monitoring
+		 * threshold later on 
+		 */
+		oldcontext = MemoryContextSwitchTo(AuditContext);
+		re = (SecmonRuleEntry *) palloc(sizeof(SecmonRuleEntry));
+		re->confindex = confindex;
+		re->event = (AuditEvent *) palloc(sizeof(AuditEvent));
+		*re->event = *event;
+
+		if (event->setname)
+		{
+			re->event->setname = pnstrdup((const char *)(event->setname), strlen(event->setname));
+		}
+
+		if (event->setvalue)
+		{
+			re->event->setvalue = pnstrdup((const char *)(event->setvalue), strlen(event->setvalue));
+		}
+
+		re->event->objects = NIL;
+
+		if (event->conftypes[confindex] == AUDIT_TYPE_OBJECT)
+		{
+			ListCell *cell;
+			
+			foreach(cell, event->objects)
+			{ 
+				AuditEvent_Obj *src_obj = (AuditEvent_Obj *) lfirst(cell); 
+				AuditEvent_Obj *new_obj = (AuditEvent_Obj *) palloc(sizeof(AuditEvent_Obj));
+
+				*new_obj = *src_obj;
+
+				new_obj->attnum = src_obj->attnum;
+				new_obj->classId = src_obj->classId;
+				if (src_obj->colname)
+					new_obj->colname = pstrdup(src_obj->colname);
+				if (src_obj->columns)
+					new_obj->columns = bms_copy(src_obj->columns);
+				if (src_obj->objectClassdesc)
+					new_obj->objectClassdesc = pstrdup(src_obj->objectClassdesc);
+				new_obj->objectId = src_obj->objectId;
+				if (src_obj->objectName)
+					new_obj->objectName = pstrdup(src_obj->objectName);
+				new_obj->indrelId = src_obj->indrelId;
+				new_obj->schemaId = src_obj->schemaId;
+				if (src_obj->schemaName)
+					new_obj->schemaName = pstrdup(src_obj->schemaName);
+
+				re->event->objects = lappend(re->event->objects, new_obj);
+			}
+		}
+		
+		re->ruletup = heap_copytuple(rule_tuple);
+		ruleoid = rule_form->ruleoid;
+
+		rulelist = lappend(rulelist, re);
+		MemoryContextSwitchTo(oldcontext);
+
+		ruleoids = lappend_oid(ruleoids, ruleoid);
+		
+	}
+
+	cache_secmon_history(ruleoids, event->audittime, event->commandid);
+
+	table_close(secmon_his, RowExclusiveLock);
+	secmon_his = NULL;
+
+	ReleaseSysCacheList(catlist);
+
+	return;
+}
+
+/*
+ * the one-time threshold includes baseline threshold(alter system),
+ * important moments and important columns 
+ */
+static bool
+check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, TimestampTz impt_starttime,
+									TimestampTz impt_endtime, int2vector *impt_columns,  int confindex, AuditEvent *event, char *msg)
+{
+	bool	is_column = false;
+	char	warning_msg[MAXPGPATH] = {0};
+
+	/* if the occurrence time of the event is smaller than
+	 * the start time in pg_secmon_threshold, it will not
+	 * be recored
+	 */
+	if (timestamp_cmp_internal(event->audittime, starttime) < 0)
+	{
+		ereport(NOTICE,
+				(errmsg("The occurrence time of the event is smaller than the start time in pg_secmon_threshold")));
+		return false;
+	}
+
+	if (basename != NULL)
+	{
+		Assert(basevalue != NULL);
+
+		if (event->setname == NULL)
+		{
+			ereport(NOTICE,
+					(errmsg("setname of baseline threshold is NULL")));
+			return false;
+		}
+
+		if (pg_strcasecmp(basename, event->setname) != 0 || 
+			pg_strcasecmp(basevalue, event->setvalue) != 0)
+		{
+			ereport(NOTICE,
+					(errmsg("It is not the set baseline threshold")));
+			return false;
+		}
+
+		sprintf(warning_msg, "The baseline name \"%s\" has reached the baseline threshold \"%s\"", basename, basevalue);
+
+		strncpy(msg, warning_msg, strlen(warning_msg));
+
+		return true;
+	}
+
+	if (!TIMESTAMP_IS_NOBEGIN(impt_starttime))
+	{
+		Assert(!TIMESTAMP_IS_NOBEGIN(impt_endtime));
+
+		if (timestamp_cmp_internal(event->audittime, impt_starttime) < 0 || 
+			timestamp_cmp_internal(event->audittime, impt_endtime) > 0)
+		{
+			ereport(NOTICE,
+					(errmsg("The event occurrence time is less than the start time or the event occurrence time is greater than the end time")));
+			return false;
+		}
+	}
+
+	if (impt_columns != NULL)
+	{	
+		List *objects = NULL;
+		ListCell *cell;
+		
+		if (event->conftypes[confindex] != AUDIT_TYPE_OBJECT)
+			return false;
+		
+		if (event->objects == NULL)
+			return false;
+
+		objects = event->objects;
+		foreach(cell, objects)
+		{
+			int			i;
+			AuditEvent_Obj *obj = lfirst(cell);
+
+			if (obj->colname != NULL && strlen(obj->colname) > 0)
+			{
+				for (i = 0; i < impt_columns->dim1; i++)
+				{
+					if (!bms_is_member(impt_columns->values[i] - FirstLowInvalidHeapAttributeNumber, obj->columns))
+					{
+						return false;
+					}
+					else
+					{
+						is_column = true;
+						
+						sprintf(warning_msg, "Important column \"%s\" has reached the threshold", obj->colname);
+
+						strncpy(msg, warning_msg, strlen(warning_msg));
+					}
+				}
+			}
+		}
+	}
+
+	if (!is_column)
+	{
+		const char	*starttime;
+		const char	*endtime;
+
+		starttime = timestamptz_to_str(impt_starttime);
+
+		if (impt_endtime == DT_NOEND)
+			endtime = strdup("-infinity");
+		else
+			endtime = timestamptz_to_str(impt_endtime);
+
+		sprintf(warning_msg, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
+
+		strncpy(msg, warning_msg, strlen(warning_msg));
+	}
+
+	return true;
+}
+
+/*
+ * the maximum threshold is the number of times that
+ * a unified audit time occurs within a specified interval
+ *
+ */
+static bool
+check_maxtimes_threshold(int32 interval, int32 maxtimes, TimestampTz starttime, Oid ruleoid, char *msg)
+{
+	Relation	secmon_his_rel;
+	Relation	secmon_his_dex;
+	Oid			relOid;
+	Oid			idxOid;
+	TableScanDesc secmon_his_scan;
+	HeapTuple	tup;
+	ScanKeyData	skey[2];
+	TimestampTz	search_start;
+	TimestampTz	current_time;
+	int16		attnum_audittime;
+	int16		attnum_ruleoid;
+	int			count = 0;
+	bool		result = false;
+	char		warning_msg[MAXPGPATH] = {0};
+
+	current_time = GetCurrentTimestamp();
+
+	search_start = DatumGetTimestampTz(DirectFunctionCall2(timestamptz_mi_interval,
+										TimestampTzGetDatum(current_time),
+										DirectFunctionCall7(make_interval, 0, 0, 0, 0, 0, interval, 0)));
+	
+	if (timestamp_cmp_internal(search_start, starttime) < 0)
+	{
+		search_start = starttime;
+	}
+	
+	relOid = get_relname_relid(PG_SECMON_HISTORY, SECURITY_SCHEMA_NAMESPACE);
+	if (relOid == InvalidOid)
+	{
+		elog(ERROR, " could not get oid of relation pg_secmon_history");
+	}
+
+	idxOid = get_relname_relid(PG_SECMON_HISTORY_INDEX, SECURITY_SCHEMA_NAMESPACE);
+	if (idxOid == InvalidOid)
+	{
+		elog(ERROR, " could not get oid of index pg_secmon_history_audttime_ruleoid_idx");
+	}
+
+	attnum_audittime = get_attnum(relOid, "audittime");
+	attnum_ruleoid = get_attnum(relOid, "ruleoid");
+
+	if (attnum_audittime < 0 || attnum_ruleoid < 0)
+	{
+		elog(ERROR, " table pg_secmon_history is missing audittime or ruleoid columns");
+	}
+
+	/* the first field of the table pg_secmon_history index is audittime */
+	ScanKeyInit(&skey[0], attnum_audittime, BTGreaterEqualStrategyNumber, F_TIMESTAMPTZ_GE, TimestampTzGetDatum(search_start));
+	/* the second field of the table pg_secmon_history index is ruleoid */
+	ScanKeyInit(&skey[1], attnum_ruleoid, BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(ruleoid));
+
+	secmon_his_rel = table_open(relOid, AccessShareLock);
+	secmon_his_dex = index_open(idxOid, AccessShareLock);
+
+	secmon_his_scan = heap_beginscan(secmon_his_rel, GetTransactionSnapshot(), 2, skey, NULL, SO_ALLOW_PAGEMODE);
+
+	if (secmon_his_scan == NULL)
+	{
+		elog(ERROR, " secmon_his_scan is null");
+	}
+
+	while ((tup = heap_getnext(secmon_his_scan, ForwardScanDirection)) != NULL)
+	{
+		count ++;
+		if (count >= maxtimes)
+		{
+			result = true;
+			break;
+		}
+	}
+
+	if (secmon_his_scan)
+		heap_endscan(secmon_his_scan);
+	if (secmon_his_dex)
+		index_close(secmon_his_dex, AccessShareLock);
+	if (secmon_his_rel)
+		table_close(secmon_his_rel, AccessShareLock);
+
+	if (result)
+	{
+		sprintf(warning_msg, "Reached the maximum threshold of %d times within %d minutes", maxtimes, interval);
+
+		strncpy(msg, warning_msg, strlen(warning_msg));
+	}
+
+	return result;	
+}
+
+/*
+ * check whether the sequence threshold is
+ * met through a cached doubly linked list
+ */
+static bool
+check_sequence_threshold(int32 interval, int32 nsteps, TimestampTz starttime, oidvector *ruleseq, char *msg)
+{
+	int					i;
+	SecmonHisEntry	   *she;
+	TimestampTz			search_end;
+	StringInfoData		str;
+	int					j;
+	char				warning_msg[MAXPGPATH] = {0};
+
+	/* no history or not enough */
+	if (SecmonCacheMemoryContext == NULL || CachedSecmonHistory.n_cached_secmon_his < nsteps)
+		return false;
+
+	/* find end point for search, Max(starttime, now() - interval * 60) */
+	search_end = DatumGetTimestampTz(DirectFunctionCall2(timestamptz_mi_interval,
+										TimestampTzGetDatum(GetCurrentTransactionStartTimestamp()),
+										DirectFunctionCall7(make_interval, 0, 0, 0, 0, 0, interval, 0)));
+
+	if (timestamp_cmp_internal(search_end, starttime) < 0)
+		search_end = starttime;
+
+	/* check cached history in reversed order */
+	she = dlist_tail_element(SecmonHisEntry, node, &CachedSecmonHistory.cached_secmon_his);
+	
+	Assert(nsteps > 1);
+
+	for (i = nsteps - 1;; i--)
+	{
+		if (!list_member_oid(she->ruleoids, ruleseq->values[i]) ||
+			timestamp_cmp_internal(search_end, she->audittime) > 0)
+			return false;
+
+		if (i <= 0)
+			break;
+
+		she = dlist_container(SecmonHisEntry, node,
+								dlist_prev_node(&CachedSecmonHistory.cached_secmon_his, &she->node));
+	}
+
+	initStringInfo(&str);
+
+	for (j = 0; j < ruleseq->dim1; j++)
+	{
+		if (j > 0)
+			appendStringInfoChar(&str, ',');
+		appendStringInfo(&str, "%u", ruleseq->values[j]);
+	}
+
+	sprintf(warning_msg, "The sequence of rule oid \"%s\" has reached the sequence threshold", str.data);
+
+	strncpy(msg, warning_msg, strlen(warning_msg));
+	
+	return true;	
+}
+
+static void
+do_insert_secmon_thr_history(Form_pg_secmon_threshold thr, Relation thrhistory, SecmonRuleEntry *rule,
+										char *basename, char *basevalue,
+										TimestampTz starttime, TimestampTz impt_starttime, TimestampTz impt_endtime,
+										int2vector *impt_cloumns, oidvector *ruleseq)
+{
+	Datum	   *values;
+	bool	   *nulls;
+	HeapTuple	tuple;
+	Form_pg_secmon_rule rule_form;
+	char	   *thrname;
+		
+	rule_form = (Form_pg_secmon_rule) GETSTRUCT(rule->ruletup);
+
+	values = palloc(SECMON_THR_NATTS*sizeof(Datum));
+	nulls = palloc(SECMON_THR_NATTS*sizeof(bool));
+
+	memset(values, 0, SECMON_THR_NATTS*sizeof(Datum));
+	memset(nulls, false, SECMON_THR_NATTS*sizeof(bool));
+
+	values[0] = Int32GetDatum(thr->throid);
+	values[1] = Int32GetDatum(rule_form->confid);
+	values[2] = Int32GetDatum(rule->event->sessionid);
+	values[3] = TimestampTzGetDatum(rule->event->audittime);
+	values[4] = Int32GetDatum(rule->event->commandid);
+	
+	thrname = NameStr(thr->thrname);
+	if (thrname != NULL && strlen(thrname))
+		values[5] = PointerGetDatum(cstring_to_text(thrname));
+	else
+		nulls[5] = true;
+	
+	values[6] = Int32GetDatum(rule_form->ruleoid);
+	values[7] = Int32GetDatum(thr->interval);
+	values[8] = TimestampTzGetDatum(starttime);
+	values[9] = Int32GetDatum(thr->level);
+	values[10] = Int32GetDatum(thr->maxtimes);
+	
+	if (impt_starttime == DT_NOBEGIN)
+		values[11] = TimestampTzGetDatum(DT_NOBEGIN);
+	else
+		values[11] = TimestampTzGetDatum(impt_starttime);
+	if (impt_endtime == DT_NOEND)
+		values[12] = TimestampTzGetDatum(DT_NOEND);
+	else
+		values[12] = TimestampTzGetDatum(impt_endtime);
+	
+	values[13] = Int32GetDatum(thr->nsteps);
+	
+	if (ruleseq != NULL)
+		values[14] = PointerGetDatum(ruleseq);
+	else
+		nulls[14] = true;
+	
+	if (basename != NULL && strlen(basename) > 0)
+		values[15] = PointerGetDatum(cstring_to_text(basename));
+	else
+		nulls[15] = true;
+
+	if (basevalue != NULL  && strlen(basevalue) > 0)
+		values[16] = PointerGetDatum(cstring_to_text(basevalue));
+	else
+		nulls[16] = true;
+	
+	if (impt_cloumns != NULL)
+		values[17] = PointerGetDatum(impt_cloumns);
+	else
+		nulls[17] = true;
+	
+	tuple = heap_form_tuple(RelationGetDescr(thrhistory), values, nulls);
+
+	simple_heap_insert(thrhistory, tuple);
+
+	if(values)
+		pfree(values);
+	if(nulls)
+		pfree(nulls);
+
+	return;
+}
+
+static void
+audit_insert_secmon_thr_history(Form_pg_secmon_threshold thr, Relation thrhistory, SecmonRuleEntry *rule, 
+											char *basename, char *basevalue,
+											TimestampTz starttime, TimestampTz impt_starttime, TimestampTz impt_endtime,
+											int2vector *impt_cloumns, oidvector *ruleseq)
+{
+	PG_TRY();
+	{
+		do_insert_secmon_thr_history(thr, thrhistory, rule, basename, basevalue, starttime, impt_starttime, impt_endtime, impt_cloumns, ruleseq);
+	}
+
+	PG_CATCH();
+	{
+		ErrorData *edata;
+		MemoryContext oldcontext = CurrentMemoryContext;
+		
+		MemoryContextSwitchTo(TopMemoryContext);
+		
+	    edata = CopyErrorData();
+	    FlushErrorState();
+	    MemoryContextSwitchTo(oldcontext);
+
+	    if (edata->elevel >= ERROR)
+	    {
+	        edata->elevel = WARNING;
+			ereport(WARNING, (errcode(edata->sqlerrcode),
+                    errmsg_internal("%s", edata->message)));
+	    }
+
+	}
+	PG_END_TRY();
+
+	return;
+	
+}
+
+static void
+audit_send_mail(char *msg)
+{
+	char	sendmail[MAXPGPATH] = {0};
+	int		rc = 0;
+
+	if (audit_GUC.audit_mail != NULL && audit_GUC.audit_mail[0] != '\0')
+	{
+		snprintf(sendmail, 1024 , "mail -s \"Dangerous operation on database\" %s <<< \'%s\'",
+					audit_GUC.audit_mail, msg);
+
+		rc = system(sendmail);
+
+		if	(-1 != rc && WIFEXITED(rc) && WEXITSTATUS(rc) == 0)
+			elog(WARNING, "send a mail to %s", audit_GUC.audit_mail);
+		else
+			elog(WARNING, "failed to send mail to %s", audit_GUC.audit_mail);
+	}
+
+	return;
+}
+
+static void
+audit_terminate_session(void)
+{
+	ProcDiePending = true;
+	InterruptPending = true;
+	QueryCancelPending = true;
+}
+
+static void
+audit_lock_user(void)
+{
+	Oid			userid;
+	Relation	pg_authid_rel;
+	HeapTuple	authid_tuple,
+				new_tuple;
+	Datum		new_record[Natts_pg_authid];
+	bool		new_record_nulls[Natts_pg_authid];
+	bool		new_record_repl[Natts_pg_authid];
+
+	userid = GetUserId();
+	
+	pg_authid_rel = table_open(AuthIdRelationId, AccessShareLock);
+
+	authid_tuple = SearchSysCache1(AUTHOID, ObjectIdGetDatum(userid));
+
+	if (!(HeapTupleIsValid(authid_tuple)))
+		elog(ERROR, "user with OID %u does not exist", userid);
+
+	MemSet(new_record, 0, sizeof(new_record));
+	MemSet(new_record_nulls, false, sizeof(new_record_nulls));
+	MemSet(new_record_repl, false, sizeof(new_record_repl));
+
+	new_record_repl[Anum_pg_authid_rolcanlogin - 1] = true;
+	new_record[Anum_pg_authid_rolcanlogin - 1] = BoolGetDatum(false);
+
+	new_tuple = heap_modify_tuple(authid_tuple, 
+									RelationGetDescr(pg_authid_rel),
+									new_record,
+									new_record_nulls,
+									new_record_repl);
+
+	CatalogTupleUpdate(pg_authid_rel, &authid_tuple->t_self, new_tuple);
+
+	
+	ReleaseSysCache(authid_tuple);
+	heap_freetuple(new_tuple);
+
+	table_close(pg_authid_rel, AccessShareLock);
+}
+
+static void
+audit_threshold_alarm(int32 level, char *msg)
+{	
+	switch (level)
+	{
+		case 1: 
+			ereport(WARNING,
+				(errmsg("\"%s\"", msg)));
+			break;
+		case 2:
+			ereport(WARNING,
+				(errmsg("\"%s\"", msg)));
+			audit_send_mail(msg);
+			break;
+		case 3:
+			ereport(WARNING,
+				(errmsg("\"%s\"", msg)));
+			audit_send_mail(msg);
+			audit_terminate_session();
+			break;
+		case 4:
+			ereport(WARNING,
+				(errmsg("\"%s\"", msg)));
+			audit_send_mail(msg);
+			audit_lock_user();
+			audit_terminate_session();
+			break;
+		default:
+			break;
+	}
+}
+
+/*
+ * check if the current operation is configured
+ * with security monitoring threshold and if it
+ * needs to be recorded
+ */
+static void 
+audit_secmon_threshold_check(void)
+{
+	ListCell *listcell;
+	Oid 		relOid;
+	Relation	secmon_threshold_his;
+
+	StartTransactionCommand();
+	
+	relOid = get_relname_relid(PG_SECMON_THRESHOLD_HISTORY, SECURITY_SCHEMA_NAMESPACE);
+	if (relOid == InvalidOid)
+		elog(ERROR, " could not get oid of relation pg_secmon_thrhis");
+
+	secmon_threshold_his = table_open(relOid, RowExclusiveLock);
+
+
+	/* traverse list */	
+	foreach(listcell, rulelist)
+	{
+		SecmonRuleEntry *ruleevent = lfirst(listcell);
+		int 	i;
+		CatCList * catlist;
+		Form_pg_secmon_rule rule_form;
+		
+		rule_form = (Form_pg_secmon_rule) GETSTRUCT(ruleevent->ruletup);
+
+		
+		catlist = SearchSysCacheList1(AUDITTHRESHOLDRULEIDRULESEQ, ObjectIdGetDatum(rule_form->ruleoid));
+
+		for (i = 0; i < catlist->n_members; i++)
+		{
+			bool		needed = false;
+			char	   *basename = NULL;
+			char	   *basevalue = NULL;
+			TimestampTz starttime;
+			TimestampTz impt_starttime;
+			TimestampTz impt_endtime;
+			int2vector *impt_cloumns = NULL;
+			oidvector  *ruleseq = NULL;
+			Datum		datum;
+			bool		isnull;
+			char		warning_msg[MAXPGPATH] = {0};
+			HeapTuple	tup = (HeapTuple) &catlist->members[i]->tuple;
+			Form_pg_secmon_threshold thr_form = (Form_pg_secmon_threshold) GETSTRUCT(tup);
+
+			if (!thr_form->enable)
+				continue;
+
+			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_basename, &isnull);
+			if (!isnull)
+				basename = NameStr(*(DatumGetName(datum)));
+			
+			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_basevalue, &isnull);
+			if (!isnull)
+				basevalue = NameStr(*(DatumGetName(datum)));
+
+			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_impt_columns, &isnull);
+			if (!isnull)
+				impt_cloumns = (int2vector *) DatumGetPointer(datum);
+
+			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_ruleseq, &isnull);
+			if (!isnull)
+				ruleseq = (oidvector *) DatumGetPointer(datum);
+
+			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_starttime, &isnull);
+			if (!isnull)
+				starttime = DatumGetTimestampTz(datum);
+			
+			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_impt_starttime, &isnull);
+			if (!isnull)
+				impt_starttime = DatumGetTimestampTz(datum);
+
+			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_impt_endtime, &isnull);
+			if (!isnull)
+				impt_endtime = DatumGetTimestampTz(datum);
+
+			/* 
+			 * if nsteps is 1 in pg_secmon_threshold, it is either a one-time
+			 * threshold or a maximum threshold 
+			 */
+			if (thr_form->nsteps == 1)
+			{
+				if (thr_form->maxtimes == 1)
+				{
+					needed = check_onetime_threshold(starttime, basename, basevalue, impt_starttime, impt_endtime,
+														impt_cloumns, ruleevent->confindex, ruleevent->event, warning_msg);				
+				}
+				else
+				{
+					needed = check_maxtimes_threshold(thr_form->interval, thr_form->maxtimes, starttime, thr_form->ruleoid, warning_msg);
+				}
+			}
+			else
+			{
+				needed = check_sequence_threshold(thr_form->interval, thr_form->nsteps, starttime, ruleseq, warning_msg);
+			}
+
+			if (needed)
+			{
+				audit_threshold_alarm(thr_form->level, warning_msg);
+				audit_insert_secmon_thr_history(thr_form, secmon_threshold_his, ruleevent, basename, basevalue, starttime, impt_starttime, impt_endtime, impt_cloumns, ruleseq);
+			}
+		}
+
+		ReleaseSysCacheList(catlist);
+
+	}	
+
+	table_close(secmon_threshold_his, RowExclusiveLock);
+	secmon_threshold_his = NULL;
+
+	CommitTransactionCommand();
+
+	list_free(rulelist);
+	rulelist = NIL;
+}
+
+static void
+audit_WriteThrHistory(void)
+{
+	if (rulelist)
+	{
+		/* only write audit logs on the primary node */
+		if (!RecoveryInProgress())
+		{
+			audit_secmon_threshold_check();
+		}
+		/* do not write audit logs on the standby node */
+		else
+		{
+			list_free(rulelist);
+			rulelist = NIL;
+		}
+	}
+}
+
 Datum
 pg_create_secmon_rule(PG_FUNCTION_ARGS)
 {
-	PG_RETURN_BOOL(true);
+	char	   *rulename = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	Oid			confid = PG_GETARG_OID(1);
+	char	   *monmode = text_to_cstring(PG_GETARG_TEXT_PP(2));
+	bool		enable = PG_GETARG_BOOL(3);
+	HeapTuple 	tup;
+	Oid			ruleoid;
+	AuditResult		isSuccess = AUDIT_ALL;
+	int 		ret = 0;
+
+	Oid			userid = GetUserId();
+
+	/* permission check */
+	check_audit_sao_permission(userid, false);
+
+	/* check if the input parameters are correct */
+	ret = audit_check_mode(monmode, &isSuccess);
+	if (ret != 0)
+	{
+		ereport(ERROR,
+				(errmsg("input paramter '%s' format error!", monmode)));
+	}
+
+	/* check if confid exists in table pg_audit_config */
+	tup = SearchSysCache1(AUDITCONFIGID, ObjectIdGetDatum(confid));
+	if (!HeapTupleIsValid(tup))
+	{
+		ereport(ERROR,
+						(errmsg("confid %d does not exist in pg_audit_config!", confid)));
+		
+	}
+
+	ReleaseCatCache(tup);
+
+	/* insert a tuple into table pg_secmon_rule */
+	ruleoid = add_secmon_rule(rulename, confid, isSuccess, enable);
+
+	PG_RETURN_OID(ruleoid);
 }
 
 Datum
 pg_alter_secmon_rule(PG_FUNCTION_ARGS)
 {
-	PG_RETURN_BOOL(true);
+	int 		nargs = PG_NARGS();
+	Oid			ruleoid = PG_GETARG_OID(0);
+	char	   *rulename = text_to_cstring(PG_GETARG_TEXT_PP(1));
+
+	Oid			userid = GetUserId();
+
+	/* permission check */
+	check_audit_sao_permission(userid, false);
+
+	/*
+	 * omitting the timing of the audit indicates
+	 * that both successful and fail will be audited;
+	 * omitting the enable switch to indicate
+	 * that it is turned on
+	 */
+	if (nargs == 2)
+	{	
+		alter_secmon_rule_arg2(2, ruleoid, rulename, -1, false);
+	}
+	/*
+	 * omitting the enable switch to indicate
+	 * that it is turned on
+	 */
+	else if (nargs == 3)
+	{
+		alter_secmon_rule_arg3(fcinfo, ruleoid, rulename);
+	}
+	else
+	{
+		alter_secmon_rule_arg4(fcinfo, ruleoid, rulename);
+	}
+
+	PG_RETURN_OID(ruleoid);
 }
 
 Datum
 pg_drop_secmon_rule(PG_FUNCTION_ARGS)
 {
-	PG_RETURN_BOOL(true);
+	HeapTuple 	tup;
+	Relation    pg_secmon_rule;
+	Oid		ruleoid = PG_GETARG_OID(0);
+
+	Oid 		userid = GetUserId();
+
+	/* permission check */
+	check_audit_sao_permission(userid, false);
+
+	
+	if (!OidIsValid(ruleoid))
+	{
+		ereport(ERROR,
+					(errmsg("invalid ruleoid!")));
+	}
+
+	pg_secmon_rule = table_open(AuditRuleRelationId, RowExclusiveLock);
+
+	tup = SearchSysCache1(AUDITRULEID, ObjectIdGetDatum(ruleoid));
+	if (!HeapTupleIsValid(tup))
+	{
+		ereport(ERROR,
+						(errmsg("ruleoid %d does not exist in pg_secmon_rule!", ruleoid)));
+		
+	}
+			
+	CatalogTupleDelete(pg_secmon_rule, &tup->t_self);
+	
+	ReleaseSysCache(tup);
+	
+	table_close(pg_secmon_rule, RowExclusiveLock);
+		
+	PG_RETURN_OID(ruleoid);
 }
 
 Datum
 pg_create_secmon_threshold(PG_FUNCTION_ARGS)
 {
-	PG_RETURN_BOOL(true);
+	char	   *thrname;
+	Name		name_thrname;
+	oidvector  *oids;
+	int32		interval;
+	int32		maxtimes;
+	char	   *basename;
+	char	   *basevalue;
+	TimestampTz starttime;
+	TimestampTz	endtime;
+	int2vector *columns;
+	int32		level;
+	bool		enabled;
+	int			i;
+	HeapTuple	tp;
+	HeapTuple 	tuple;
+	Oid			throid;
+	Oid			ruleoid;
+	int32		nsteps;
+	bool		nulls[Natts_pg_secmon_threshold];
+	Datum		values[Natts_pg_secmon_threshold];
+	Relation    pg_secmon_threshold;
+	
+	Oid			userid = GetUserId();
+
+	/* permission check */
+	check_audit_sao_permission(userid, false);
+
+	if (PG_ARGISNULL(0) || 
+		PG_ARGISNULL(1) ||
+		PG_ARGISNULL(2) ||
+		PG_ARGISNULL(3) ||
+		PG_ARGISNULL(9) ||
+		PG_ARGISNULL(10))
+	{
+		ereport(ERROR,
+						(errmsg("thrname, secmonseq, interval, maxtimes, level and enabled cannot be null!")));
+	}
+
+	thrname = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	oids = (oidvector *) PG_GETARG_POINTER(1);
+	interval = PG_GETARG_INT32(2);
+	maxtimes = PG_GETARG_INT32(3);
+	level = PG_GETARG_INT32(9);
+	enabled = PG_GETARG_BOOL(10);
+
+	if (interval <= 0)
+	{
+		ereport(ERROR,
+					(errmsg("interval must be at least 1!")));
+	}
+
+	if (maxtimes <= 0)
+	{
+		ereport(ERROR,
+					(errmsg("maxtimes must be at least 1!")));
+	}
+
+	if (level < 1 || level > 4)
+	{
+		ereport(ERROR,
+					(errmsg("the values of level are 1, 2, 3, 4")));
+	}
+
+	if (level > 1)
+	{
+		if (audit_GUC.audit_mail == NULL || audit_GUC.audit_mail[0] == '\0')
+			ereport(ERROR,
+					(errmsg("when the level of the security monitoring threshold is greater than 1, audit alarm email needs to be configured")));
+	}
+
+	nsteps = oids->dim1;
+
+	if (nsteps == 0 || nsteps > MAX_SECMON_SEQSIZE)
+	{
+		ereport(ERROR,
+					(errmsg("number of OIDs in secmonseq must be in the range 1-%d!", MAX_SECMON_SEQSIZE)));
+	}
+
+	if (nsteps > 1 && maxtimes > 1)
+	{
+		ereport(ERROR,
+					(errmsg("maxtimes for sequence threshold must be 1!")));
+	}
+	
+	for (i = 0; i < nsteps; i++)
+	{
+		HeapTuple 	tup;
+			
+		ruleoid = oids->values[i];
+
+		if (!OidIsValid(ruleoid))
+			ereport(ERROR,
+					(errmsg("invalid security monitoring rule with OID %u", ruleoid)));
+		
+		tup = SearchSysCache1(AUDITRULEID, ruleoid);
+		if (!HeapTupleIsValid(tup))
+		{
+			ereport(ERROR,
+							(errmsg("ruleoid %d does not exist in pg_secmon_rule!", ruleoid)));
+			
+		}
+
+		ReleaseCatCache(tup);
+	}
+	
+	tp = SearchSysCache3(AUDITTHRESHOLDRULEIDRULESEQ,
+						 ObjectIdGetDatum(ruleoid),
+						 PointerGetDatum(thrname),
+						 PointerGetDatum(oids));
+
+	if (HeapTupleIsValid(tp))
+	{
+		ReleaseCatCache(tp);
+		ereport(ERROR,
+						(errmsg("security monitoring threshold for thrname %s, ruleoid %d already exist in pg_secmon_threshold!", thrname, ruleoid)));
+	}
+
+	MemSet(values, 0, sizeof(values));
+	MemSet(nulls, false, sizeof(nulls));
+
+	if (PG_ARGISNULL(4) && PG_ARGISNULL(5))
+	{
+		nulls[Anum_pg_secmon_threshold_basename - 1] = true;
+		nulls[Anum_pg_secmon_threshold_basevalue - 1] = true;
+	}
+	else
+	{	
+		
+		Name	name_basename;
+		Name	name_basevalue;
+		
+		if (PG_ARGISNULL(4) || PG_ARGISNULL(5))
+		{
+			ereport(ERROR,
+							(errmsg("basename and basevalue must be both null or both not null!")));
+		}
+
+		basename = text_to_cstring(PG_GETARG_TEXT_PP(4));
+		basevalue = text_to_cstring(PG_GETARG_TEXT_PP(5));
+
+		if (nsteps > 1 || maxtimes > 1)
+		{
+			ereport(ERROR,
+							(errmsg("basename and basevalue cant not work with sequence threshold or maxtimes threshold!")));
+		}
+
+		name_basename = (Name) palloc(NAMEDATALEN);
+		name_basevalue = (Name) palloc(NAMEDATALEN);
+
+		namestrcpy(name_basename, basename);
+		namestrcpy(name_basevalue, basevalue);
+		
+		values[Anum_pg_secmon_threshold_basename - 1] = NameGetDatum(name_basename);
+		values[Anum_pg_secmon_threshold_basevalue - 1] = NameGetDatum(name_basevalue);
+	}
+
+	if (PG_ARGISNULL(6) && PG_ARGISNULL(7))
+	{
+		values[Anum_pg_secmon_threshold_impt_starttime - 1] = TimestampTzGetDatum(DT_NOBEGIN);
+		values[Anum_pg_secmon_threshold_impt_endtime - 1] = TimestampTzGetDatum(DT_NOEND);
+	}
+	else
+	{
+		if (PG_ARGISNULL(6) || PG_ARGISNULL(7))
+		{
+			ereport(ERROR,
+							(errmsg("start time and end time of important moment must be both null or both not null!")));
+		}
+		
+		starttime = PG_GETARG_TIMEADT(6);
+		endtime	= PG_GETARG_TIMEADT(7);
+
+		if (starttime > endtime)
+		{
+			ereport(ERROR,
+							(errmsg("value of start time or end time invalid!")));
+		}
+
+		if (nsteps > 1 || maxtimes > 1)
+		{
+			ereport(ERROR,
+							(errmsg("start time and end time of important momment cant not work with sequence threshold or maxtimes threshold!")));
+		}
+
+		values[Anum_pg_secmon_threshold_impt_starttime - 1] = TimestampTzGetDatum(starttime);
+		values[Anum_pg_secmon_threshold_impt_endtime - 1] = TimestampTzGetDatum(endtime);
+	}
+
+	if (PG_ARGISNULL(8))
+	{
+		nulls[Anum_pg_secmon_threshold_impt_columns - 1] = true;
+	}
+	else
+	{
+		columns	= (int2vector *) PG_GETARG_POINTER(8);
+
+		for (i = 0; i < columns->dim1; i++)
+		{
+			if (columns->values[i] <= FirstLowInvalidHeapAttributeNumber ||
+				columns->values[i] == InvalidAttrNumber ||
+				columns->values[i] > MaxHeapAttributeNumber)
+			{
+				ereport(ERROR,
+							(errmsg("invalid column number %d", columns->values[i])));
+			}
+		}
+
+		if (nsteps > 1 || maxtimes > 1)
+		{
+			ereport(ERROR,
+							(errmsg("important columns cant not work with sequence threshold or maxtimes threshold!")));
+		}
+
+		values[Anum_pg_secmon_threshold_impt_columns - 1] = PointerGetDatum(columns);
+	}
+	
+	pg_secmon_threshold = table_open(AuditThresholdRelationId, RowExclusiveLock);
+
+	name_thrname = (Name) palloc(NAMEDATALEN);
+
+	namestrcpy(name_thrname, thrname);
+
+	values[Anum_pg_secmon_threshold_thrname - 1] = NameGetDatum(name_thrname);
+	values[Anum_pg_secmon_threshold_ruleoid - 1] = ObjectIdGetDatum(ruleoid);
+	values[Anum_pg_secmon_threshold_interval - 1] = Int32GetDatum(interval);
+	values[Anum_pg_secmon_threshold_starttime - 1] = TimestampTzGetDatum(GetCurrentTransactionStartTimestamp());
+	values[Anum_pg_secmon_threshold_level - 1] = Int32GetDatum(level);
+	values[Anum_pg_secmon_threshold_enable - 1] = BoolGetDatum(enabled);
+	values[Anum_pg_secmon_threshold_maxtimes - 1] = Int32GetDatum(maxtimes);
+	values[Anum_pg_secmon_threshold_nsteps - 1] = Int32GetDatum(nsteps);
+	values[Anum_pg_secmon_threshold_ruleseq - 1] = PointerGetDatum(oids);
+	
+	throid = GetNewOidWithIndex(pg_secmon_threshold, AuditThresholdIndexId, Anum_pg_secmon_threshold_throid);
+	values[Anum_pg_secmon_threshold_throid - 1] = ObjectIdGetDatum(throid);
+
+	tuple = heap_form_tuple(RelationGetDescr(pg_secmon_threshold), values, nulls);
+
+	CatalogTupleInsert(pg_secmon_threshold, tuple);
+
+	heap_freetuple(tuple);
+
+	table_close(pg_secmon_threshold, RowExclusiveLock);
+	
+	PG_RETURN_OID(throid);
+}
+
+/*
+ * construct tuple and insert it into pg_secmon_rule
+ */
+static Oid
+audit_insert_secmon_tuple(Relation pg_secmon_rule, Name rulename, Oid confid, AuditResult isSuccess, AuditChange enable_unable)
+{
+	Oid  		ruleoid;
+	Datum		values[Natts_pg_secmon_rule];
+	bool		nulls[Natts_pg_secmon_rule];
+	HeapTuple	tup;
+	
+	memset(values, 0, sizeof(values));
+	memset(nulls, false, sizeof(nulls));
+
+	values[Anum_pg_secmon_rule_rulename - 1] = NameGetDatum(rulename);
+	values[Anum_pg_secmon_rule_confid - 1] = ObjectIdGetDatum(confid);
+	values[Anum_pg_secmon_rule_monmode - 1] = CharGetDatum(isSuccess);
+	values[Anum_pg_secmon_rule_enable - 1] = CharGetDatum(enable_unable);
+
+	ruleoid = GetNewOidWithIndex(pg_secmon_rule, AuditRuleIndexId, Anum_pg_secmon_rule_ruleoid);
+	values[Anum_pg_secmon_rule_ruleoid - 1] = ObjectIdGetDatum(ruleoid);
+
+	tup = heap_form_tuple(RelationGetDescr(pg_secmon_rule), values, nulls);
+
+	CatalogTupleInsert(pg_secmon_rule, tup);
+
+	heap_freetuple(tup);
+
+	return ruleoid;
+
+}
+
+/*
+ * Insert a tuple into table pg_secmon_rule
+ */
+static Oid 
+add_secmon_rule(char *rule, Oid confid, AuditResult isSuccess, AuditChange enable_unable)
+{
+	Oid			ruleoid;
+	Relation    pg_secmon_rule;
+	HeapTuple tup;
+	Name	name_rule;
+
+	pg_secmon_rule = table_open(AuditRuleRelationId, RowExclusiveLock);
+
+	/* search whether the tuple already exists 
+	 * based on index AuditConfidRulenameIndexId
+	 */
+	tup = SearchSysCache2(AUDITCONFIDIDRULENAME, ObjectIdGetDatum(confid), CStringGetDatum(rule));
+	
+	if (HeapTupleIsValid(tup))
+	{
+		ReleaseCatCache(tup);
+		ereport(ERROR,
+						(errmsg("rule with name %s corresponding to confid %d already exist in pg_secmon_rule!", rule, confid)));
+	}
+
+	name_rule = (Name) palloc(NAMEDATALEN);
+
+	namestrcpy(name_rule, rule);
+
+	ruleoid = audit_insert_secmon_tuple(pg_secmon_rule, name_rule, confid, isSuccess, enable_unable);
+	
+	table_close(pg_secmon_rule, RowExclusiveLock);
+
+	return ruleoid;
+}
+
+/*
+ * omitting the timing of the audit indicates
+ * that both successful and fail will be audited;
+ * omitting the enable switch to indicate
+ * that it is turned on
+ */
+
+static void
+alter_secmon_rule_arg2(int args, Oid oid, char *rule, AuditResult isSuccess, AuditChange enable_unable)
+{
+	HeapTuple 	tup;
+	Relation    pg_secmon_rule;
+	HeapTuple 	newtuple;
+	Name		name_rule;
+	Datum 		values[Natts_pg_secmon_rule];
+	bool 		nulls[Natts_pg_secmon_rule];
+	bool 		replaces[Natts_pg_secmon_rule];
+	
+	tup = SearchSysCache1(AUDITRULEID, ObjectIdGetDatum(oid));
+	if (!HeapTupleIsValid(tup))
+	{
+		ereport(ERROR,
+						(errmsg("ruleoid %d does not exist in pg_secmon_rule!", oid)));
+		
+	}
+
+	name_rule = (Name) palloc(NAMEDATALEN);
+
+	namestrcpy(name_rule, rule);
+
+	pg_secmon_rule = table_open(AuditRuleRelationId, RowExclusiveLock);
+		
+	MemSet(values, 0, sizeof(values));
+	MemSet(nulls, false, sizeof(nulls));
+	MemSet(replaces, false, sizeof(replaces));
+			
+	replaces[Anum_pg_secmon_rule_rulename - 1] = true;
+	values[Anum_pg_secmon_rule_rulename - 1] = NameGetDatum(name_rule);
+
+	if (args == 3)
+	{
+		replaces[Anum_pg_secmon_rule_monmode - 1] = true;
+		values[Anum_pg_secmon_rule_monmode - 1] = CharGetDatum(isSuccess);
+	}
+
+	if (args == 4)
+	{
+		replaces[Anum_pg_secmon_rule_enable - 1] = true;
+		values[Anum_pg_secmon_rule_enable - 1] = CharGetDatum(enable_unable);
+	}
+
+	newtuple = heap_modify_tuple(tup, RelationGetDescr(pg_secmon_rule), values,
+					 nulls, replaces);
+	CatalogTupleUpdate(pg_secmon_rule, &newtuple->t_self, newtuple);
+
+	heap_freetuple(newtuple);
+
+	ReleaseCatCache(tup);
+
+	table_close(pg_secmon_rule, RowExclusiveLock);
+	
+	return;
+}
+
+/*
+ * omitting the enable switch to indicate
+ * that it is turned on
+ */
+static void
+alter_secmon_rule_arg3(PG_FUNCTION_ARGS, Oid oid, char *rule)
+{
+	int			ret;
+	char	   *mode;
+	AuditResult result;
+
+	mode = text_to_cstring(PG_GETARG_TEXT_PP(2));
+
+	ret = audit_check_mode(mode, &result);
+	if (ret != 0)
+	{
+		ereport(ERROR,
+				(errmsg("input paramter '%s' format error!", mode)));
+	}
+
+	alter_secmon_rule_arg2(3, oid, rule, result, false);
+
+	return;
+	
+}
+
+static void
+alter_secmon_rule_arg4(PG_FUNCTION_ARGS, Oid oid, char *rule)
+{
+	int			ret;
+	char	   *mode;
+	bool		enable;
+	AuditResult result;
+
+	mode = text_to_cstring(PG_GETARG_TEXT_PP(2));
+	enable = PG_GETARG_BOOL(3);
+	
+	ret = audit_check_mode(mode, &result);
+	if (ret != 0)
+	{
+		ereport(ERROR,
+				(errmsg("input paramter '%s' format error!", mode)));
+	}
+
+	alter_secmon_rule_arg2(4, oid, rule, result, enable);
+
+	return;
+	
 }
 
 Datum
 pg_alter_secmon_threshold(PG_FUNCTION_ARGS)
 {
-	PG_RETURN_BOOL(true);
+	Oid			throid;
+	Relation	pg_secmon_threshold;
+	HeapTuple	tp, tup, newtup;
+	Form_pg_secmon_threshold thrform;
+	bool		nulls[Natts_pg_secmon_threshold];
+	Datum		values[Natts_pg_secmon_threshold];
+	bool		replaces[Natts_pg_secmon_threshold];
+	int			nsteps;
+	int			maxtimes;
+	Oid			userid = GetUserId();
+
+	/* permission check */
+	check_audit_sao_permission(userid, false);
+
+	/* modify throid */
+	if (PG_ARGISNULL(0))
+		ereport(ERROR,
+					(errmsg("throid cannot be null!")));
+
+	throid = PG_GETARG_OID(0);
+
+	if (!OidIsValid(throid))
+		ereport(ERROR,
+					(errmsg("invalid throid!")));
+
+	pg_secmon_threshold = table_open(AuditThresholdRelationId, RowExclusiveLock);
+
+	tup = SearchSysCache1(AUDITTHRESHOLDID, ObjectIdGetDatum(throid));
+	if (!HeapTupleIsValid(tup))
+		ereport(ERROR,
+					(errmsg("throid %d does not exist in pg_secmon_threshold!", throid)));
+	
+	thrform = (Form_pg_secmon_threshold) GETSTRUCT(tup);	
+
+	nsteps = thrform->nsteps;
+	maxtimes = thrform->maxtimes;
+
+	MemSet(values, 0, sizeof(values));
+	MemSet(nulls, false, sizeof(nulls));
+	MemSet(replaces, false, sizeof(replaces));
+
+	/* modify thrname */
+	if (!PG_ARGISNULL(1))
+	{
+		char   *thrname;
+		Name	name_thrname;
+		Oid		ruleoid;
+		oidvector   *ruleseq;
+
+		thrname = text_to_cstring(PG_GETARG_TEXT_PP(1));
+		name_thrname = (Name) palloc(NAMEDATALEN);
+
+		namestrcpy(name_thrname, thrname);
+
+		ruleoid = thrform->ruleoid;
+		ruleseq = &thrform->ruleseq;
+
+		if (strncmp(thrname, NameStr(thrform->thrname), NAMEDATALEN) != 0)
+		{	
+			tp = SearchSysCache3(AUDITTHRESHOLDRULEIDRULESEQ,
+						 ObjectIdGetDatum(ruleoid),
+						 PointerGetDatum(thrname),
+						 PointerGetDatum(ruleseq));
+
+			if (HeapTupleIsValid(tp))
+			{
+				ReleaseCatCache(tp);
+				ereport(ERROR,
+								(errmsg("security monitoring threshold for thrname %s, ruleoid %d already exist in pg_secmon_threshold!", thrname, ruleoid)));
+			}
+
+			values[Anum_pg_secmon_threshold_thrname - 1] = NameGetDatum(name_thrname);
+			replaces[Anum_pg_secmon_threshold_thrname - 1] = true;
+		}
+	}
+
+	/* modify interval */
+	if (!PG_ARGISNULL(2))
+	{
+		int	interval = PG_GETARG_INT32(2);
+
+		if (interval <= 0)
+		{
+			ereport(ERROR,
+					(errmsg("interval must be at least 1!")));
+		}
+
+		values[Anum_pg_secmon_threshold_interval - 1] = Int32GetDatum(interval);
+		replaces[Anum_pg_secmon_threshold_interval - 1] = true;
+	}
+
+	/* modify maxtimes */
+	if (!PG_ARGISNULL(3))
+	{
+		int	new_maxtimes = PG_GETARG_INT32(3);
+
+		if (new_maxtimes <= 0)
+		{
+			ereport(ERROR,
+					(errmsg("maxtimes must be at least 1!")));
+		}
+
+		if (nsteps > 1 && new_maxtimes > 1)
+		{
+			ereport(ERROR,
+					(errmsg("maxtimes for sequence threshold must be 1!")));
+		}
+
+		values[Anum_pg_secmon_threshold_maxtimes - 1] = Int32GetDatum(new_maxtimes);
+		replaces[Anum_pg_secmon_threshold_maxtimes - 1] = true;
+
+		maxtimes = new_maxtimes;
+	}
+
+	/* modify basename and basevalue */
+	if (!PG_ARGISNULL(4) || !PG_ARGISNULL(5))
+	{
+		char   *basename;
+		char   *basevalue;
+		Name	name_basename;
+		Name	name_basevalue;
+
+		if (PG_ARGISNULL(4) || PG_ARGISNULL(5))
+		{
+			ereport(ERROR,
+					(errmsg("basename and basevalue must be updated together!")));
+		}
+		if (nsteps > 1 || maxtimes > 1)
+		{
+			ereport(ERROR,
+							(errmsg("basename and basevalue cant not work with sequence threshold or maxtimes threshold!")));
+		}
+		
+		basename = text_to_cstring(PG_GETARG_TEXT_PP(4));
+		basevalue = text_to_cstring(PG_GETARG_TEXT_PP(5));
+
+		name_basename = (Name) palloc(NAMEDATALEN);
+		name_basevalue = (Name) palloc(NAMEDATALEN);
+
+		namestrcpy(name_basename, basename);
+		namestrcpy(name_basevalue, basevalue);
+		
+		values[Anum_pg_secmon_threshold_basename - 1] = NameGetDatum(name_basename);
+		values[Anum_pg_secmon_threshold_basevalue - 1] = NameGetDatum(name_basevalue);
+
+		replaces[Anum_pg_secmon_threshold_basename - 1] = true;
+		replaces[Anum_pg_secmon_threshold_basevalue - 1] = true;
+	}
+
+	/* modify imp_startime and imp_endtime */
+	if (!PG_ARGISNULL(6) || !PG_ARGISNULL(7))
+	{
+		TimestampTz starttime;
+		TimestampTz	endtime;
+
+		if (PG_ARGISNULL(6) || PG_ARGISNULL(7))
+		{
+			ereport(ERROR,
+					(errmsg("start time and end time of important moment must be updated together!")));
+		}
+
+		starttime = PG_GETARG_TIMEADT(6);
+		endtime	= PG_GETARG_TIMEADT(7);
+
+		if (starttime > endtime)
+		{
+			ereport(ERROR,
+					(errmsg("value of start time or end time invalid!")));
+		}
+
+		if (nsteps > 1 || maxtimes > 1)
+		{
+			ereport(ERROR,
+							(errmsg("start time and end time of important moment cant not work with sequence threshold or maxtimes threshold!")));
+		}
+
+		values[Anum_pg_secmon_threshold_impt_starttime - 1] = TimestampTzGetDatum(starttime);
+		values[Anum_pg_secmon_threshold_impt_endtime - 1] = TimestampTzGetDatum(endtime);
+		replaces[Anum_pg_secmon_threshold_impt_starttime - 1] = true;
+		replaces[Anum_pg_secmon_threshold_impt_endtime - 1] = true;
+	}
+
+	/* modify imp_columns */
+	if (!PG_ARGISNULL(8))
+	{
+		int	i;
+		int2vector *columns = (int2vector *) PG_GETARG_POINTER(8);
+
+		for (i = 0; i < columns->dim1; i++)
+		{
+			if (columns->values[i] <= FirstLowInvalidHeapAttributeNumber ||
+				columns->values[i] == InvalidAttrNumber ||
+				columns->values[i] > MaxHeapAttributeNumber)
+			{
+				ereport(ERROR,
+							(errmsg("invalid column number %d", columns->values[i])));
+			}
+		}
+
+		if (nsteps > 1 || maxtimes > 1)
+		{
+			ereport(ERROR,
+							(errmsg("important columns cant not work with sequence threshold or maxtimes threshold!")));
+		}
+		values[Anum_pg_secmon_threshold_impt_columns - 1] = PointerGetDatum(columns);
+		replaces[Anum_pg_secmon_threshold_impt_columns - 1] = true;
+	}
+
+	/* modify level */
+	if (!PG_ARGISNULL(9))
+	{
+		int		level = PG_GETARG_INT32(9);
+
+		if (level < 1 || level > 4)
+		{
+			ereport(ERROR,
+						(errmsg("the values of level are 1, 2, 3, 4")));
+		}
+		
+		if (level > 1)
+		{
+			if (audit_GUC.audit_mail == NULL || audit_GUC.audit_mail[0] == '\0')
+				ereport(ERROR,
+						(errmsg("when the level of the security monitoring threshold is greater than 1, audit alarm email needs to be configured")));
+		}
+
+		values[Anum_pg_secmon_threshold_level - 1] = Int32GetDatum(level);
+		replaces[Anum_pg_secmon_threshold_level - 1] = true;
+	}
+
+	/* modify enabled */
+	if (!PG_ARGISNULL(10))
+	{
+		bool	enabled = PG_GETARG_BOOL(10);
+
+		values[Anum_pg_secmon_threshold_enable - 1] = BoolGetDatum(enabled);
+		replaces[Anum_pg_secmon_threshold_enable - 1] = true;
+	}
+
+	/* modify starttime */
+	values[Anum_pg_secmon_threshold_starttime - 1] = TimestampTzGetDatum(GetCurrentTransactionStartTimestamp());
+	replaces[Anum_pg_secmon_threshold_starttime - 1] = true;
+
+	newtup = heap_modify_tuple(tup, RelationGetDescr(pg_secmon_threshold), values, nulls, replaces);
+
+	CatalogTupleUpdate(pg_secmon_threshold, &tup->t_self, newtup);
+	
+	heap_freetuple(newtup);
+
+	table_close(pg_secmon_threshold, RowExclusiveLock);
+
+	if (HeapTupleIsValid(tup))
+		ReleaseCatCache(tup);
+	
+	
+	PG_RETURN_OID(throid);
 }
 
 Datum
 pg_drop_secmon_threshold(PG_FUNCTION_ARGS)
 {	
-	PG_RETURN_BOOL(true);
+	Oid			throid = PG_GETARG_OID(0);
+	Relation	pg_secmon_threshold;
+	HeapTuple	tup;
+	Oid			userid = GetUserId();
+
+	/* permission check */
+	check_audit_sao_permission(userid, false);
+
+	if (!OidIsValid(throid))
+	{
+		ereport(ERROR,
+					(errmsg("invalid throid!")));
+	}
+
+	pg_secmon_threshold = table_open(AuditThresholdRelationId, RowExclusiveLock);
+
+	tup = SearchSysCache1(AUDITTHRESHOLDID, ObjectIdGetDatum(throid));
+	if (!HeapTupleIsValid(tup))
+		ereport(ERROR,
+					(errmsg("throid %d does not exist in pg_secmon_threshold!", throid)));
+	
+	CatalogTupleDelete(pg_secmon_threshold, &tup->t_self);
+	
+	ReleaseSysCache(tup);
+	
+	table_close(pg_secmon_threshold, RowExclusiveLock);
+		
+	PG_RETURN_OID(throid);
 }
 
 static void AuditShememInit(void)
@@ -10739,7 +12586,7 @@ static void audit_drop_table_partition(void)
 			if (del_num != -1 && pg_strcasecmp(table, PG_AUDIT_LOG) != 0)
 			{
 				initStringInfo(&buf);
-				appendStringInfo(&buf, "SELECT relowner FROM pg_class WHERE relname='%s' and relnamespace=%d;", table, PG_PUBLIC_NAMESPACE);
+				appendStringInfo(&buf, "SELECT relowner FROM pg_class WHERE relname='%s' and relnamespace=%d;", table, SECURITY_SCHEMA_NAMESPACE);
 				ret = SPI_execute(buf.data, false, 0);
 
 				if (ret != SPI_OK_SELECT)

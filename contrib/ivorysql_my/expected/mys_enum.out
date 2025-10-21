@@ -2627,15 +2627,15 @@ select * from student;
 Indexes:
     "student_pkey" PRIMARY KEY, btree (id)
 
-SELECT typname FROM pg_type WHERE typname like '%student%';
+SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
              typname              
 ----------------------------------
- student_gender_anonymous_enum
+ _student
  _student_gender_anonymous_enum
- student_non_enum_anonymous_enum
  _student_non_enum_anonymous_enum
  student
- _student
+ student_gender_anonymous_enum
+ student_non_enum_anonymous_enum
 (6 rows)
 
 create table student_bak as select * from student;
@@ -2654,21 +2654,21 @@ select * from student_bak;
  gender   | student_bak_gender_anonymous_enum   |           |          | 
  non_enum | student_bak_non_enum_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%student%';
+SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
                typname                
 --------------------------------------
- student_gender_anonymous_enum
+ _student
+ _student_bak
+ _student_bak_gender_anonymous_enum
+ _student_bak_non_enum_anonymous_enum
  _student_gender_anonymous_enum
- student_non_enum_anonymous_enum
  _student_non_enum_anonymous_enum
  student
- _student
- student_bak_gender_anonymous_enum
- _student_bak_gender_anonymous_enum
- student_bak_non_enum_anonymous_enum
- _student_bak_non_enum_anonymous_enum
  student_bak
- _student_bak
+ student_bak_gender_anonymous_enum
+ student_bak_non_enum_anonymous_enum
+ student_gender_anonymous_enum
+ student_non_enum_anonymous_enum
 (12 rows)
 
 alter table student drop column gender;
@@ -2742,15 +2742,15 @@ SELECT enumsortorder,enumlabel FROM pg_enum;
 (2 rows)
 
 drop table student;
-SELECT typname FROM pg_type WHERE typname like '%student%';
+SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
                typname                
 --------------------------------------
- student_bak_gender_anonymous_enum
+ _student_bak
  _student_bak_gender_anonymous_enum
- student_bak_non_enum_anonymous_enum
  _student_bak_non_enum_anonymous_enum
  student_bak
- _student_bak
+ student_bak_gender_anonymous_enum
+ student_bak_non_enum_anonymous_enum
 (6 rows)
 
 SELECT enumsortorder,enumlabel FROM pg_enum;
@@ -2776,7 +2776,7 @@ select * from student_bak;
  non_enum | student_bak_non_enum_anonymous_enum |           |          | 
 
 drop table student_bak;
-SELECT typname FROM pg_type WHERE typname like '%student%';
+SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
  typname 
 ---------
 (0 rows)
@@ -2801,15 +2801,15 @@ select * from student;
   1 | bill | male   | 
 (1 row)
 
-SELECT typname FROM pg_type WHERE typname like '%student%';
+SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
              typname              
 ----------------------------------
- student_gender_anonymous_enum
+ _student
  _student_gender_anonymous_enum
- student_non_enum_anonymous_enum
  _student_non_enum_anonymous_enum
  student
- _student
+ student_gender_anonymous_enum
+ student_non_enum_anonymous_enum
 (6 rows)
 
 SELECT enumsortorder,enumlabel FROM pg_enum;
@@ -2826,21 +2826,21 @@ select * from student_bak;
   1 | bill | male   | 
 (1 row)
 
-SELECT typname FROM pg_type WHERE typname like '%student%';
+SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
                typname                
 --------------------------------------
- student_gender_anonymous_enum
+ _student
+ _student_bak
+ _student_bak_gender_anonymous_enum
+ _student_bak_non_enum_anonymous_enum
  _student_gender_anonymous_enum
- student_non_enum_anonymous_enum
  _student_non_enum_anonymous_enum
  student
- _student
- student_bak_gender_anonymous_enum
- _student_bak_gender_anonymous_enum
- student_bak_non_enum_anonymous_enum
- _student_bak_non_enum_anonymous_enum
  student_bak
- _student_bak
+ student_bak_gender_anonymous_enum
+ student_bak_non_enum_anonymous_enum
+ student_gender_anonymous_enum
+ student_non_enum_anonymous_enum
 (12 rows)
 
 SELECT enumsortorder,enumlabel FROM pg_enum;
@@ -2853,15 +2853,15 @@ SELECT enumsortorder,enumlabel FROM pg_enum;
 (4 rows)
 
 drop table student;
-SELECT typname FROM pg_type WHERE typname like '%student%';
+SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
                typname                
 --------------------------------------
- student_bak_gender_anonymous_enum
+ _student_bak
  _student_bak_gender_anonymous_enum
- student_bak_non_enum_anonymous_enum
  _student_bak_non_enum_anonymous_enum
  student_bak
- _student_bak
+ student_bak_gender_anonymous_enum
+ student_bak_non_enum_anonymous_enum
 (6 rows)
 
 SELECT enumsortorder,enumlabel FROM pg_enum;
@@ -2901,13 +2901,13 @@ select * from student_bak;
  name     | character varying(100)              |           |          | 
  non_enum | student_bak_non_enum_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%student%';
+SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
                typname                
 --------------------------------------
- student_bak_non_enum_anonymous_enum
+ _student_bak
  _student_bak_non_enum_anonymous_enum
  student_bak
- _student_bak
+ student_bak_non_enum_anonymous_enum
 (4 rows)
 
 SELECT enumsortorder,enumlabel FROM pg_enum;
@@ -2916,7 +2916,7 @@ SELECT enumsortorder,enumlabel FROM pg_enum;
 (0 rows)
 
 drop table student_bak;
-SELECT typname FROM pg_type WHERE typname like '%student%';
+SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
  typname 
 ---------
 (0 rows)

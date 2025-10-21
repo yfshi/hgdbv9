@@ -2401,10 +2401,12 @@ WHERE c.oid = attrelid AND c.oid < 32767 AND
  pg_track_db_role_settings_history_pkey | name              |          100
  pg_audit_log                           | username          |          100
  pg_audit_log                           | rolename          |          100
+ pg_audit_log                           | result            |          100
  pg_audit_log                           | namespacename     |          100
  pg_audit_log                           | objectname        |          100
  pg_audit_log                           | colname           |          100
  pg_audit_log                           | objecttype        |          100
+ pg_audit_log                           | audittype         |          100
  pg_audit_log                           | actionname        |          100
  pg_audit_log                           | clientport        |          100
  pg_audit_log                           | clientname        |          100
@@ -2415,9 +2417,11 @@ WHERE c.oid = attrelid AND c.oid < 32767 AND
  pg_audit_log                           | errtext           |          100
  pg_audit_log                           | authmethod        |          100
  pg_audit_log                           | privlevel         |          100
+ pg_secmon_history                      | actionname        |          100
+ pg_secmon_history                      | rulename          |          100
  pg_secmon_thrhis                       | basename          |          100
  pg_secmon_thrhis                       | basevalue         |          100
-(63 rows)
+(67 rows)
 
 -- Double-check that collation-sensitive indexes have "C" collation, too.
 SELECT indexrelid::regclass, indrelid::regclass, iclass, icoll

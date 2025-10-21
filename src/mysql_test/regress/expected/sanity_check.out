@@ -162,7 +162,9 @@ pg_resgroup|t
 pg_resgroupcapability|t
 pg_rewrite|t
 pg_seclabel|t
-pg_secmon_history|f
+pg_secmon_history|t
+pg_secmon_rule|t
+pg_secmon_threshold|t
 pg_secmon_thrhis|f
 pg_sequence|t
 pg_shdepend|t

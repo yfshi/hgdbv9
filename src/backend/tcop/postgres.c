@@ -229,6 +229,7 @@ pgaudit_StopPgagent_hook_type audit_StopPgagent_hook = NULL;
 pgaudit_Command_hook_type audit_aborted_hook = NULL;
 pgaudit_Command_hook_type audit_commited_hook = NULL;
 pgaudit_Command_hook_type audit_WriteRecord_hook = NULL;
+pgaudit_Command_hook_type audit_WriteThrHistory_hook = NULL;
 audit_drop_pg_audit audit_drop_pg_audit_hook = NULL;
 audit_alter_pg_audit_log audit_alter_pg_audit_log_hook = NULL;
 audit_privi_model audit_privi_mode_hook = NULL;
@@ -4926,6 +4927,8 @@ PostgresMain(int argc, char *argv[],
 			{
 				if (audit_WriteRecord_hook)
 					(*audit_WriteRecord_hook)();
+				if (audit_WriteThrHistory_hook)
+					(*audit_WriteThrHistory_hook)();
 			}
 		}
 /* End - ReqID:SRS-SECURITY-AUDIT */
@@ -5412,7 +5415,7 @@ PostgresMain(int argc, char *argv[],
 					audit_system_event_hook(true, SYSTEM_EVENT_LOGOUT_SUCC);
 #ifdef USE_SQLITE
 				else if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
-					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGOUT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
 #endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 

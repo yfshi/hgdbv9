@@ -366,7 +366,7 @@ $node->command_checks_all(
 	[
 		'pg_amcheck', '--all', '--no-strict-names', '-S',
 		'public',     '-S',    'pg_catalog',        '-S',
-		'pg_toast',   '-S',    'information_schema', '-S', 'sys', '-S', 'pgagent',
+		'pg_toast',   '-S',    'information_schema', '-S', 'sys', '-S', 'pgagent', '-S', 'hg_secsch',
 	],
 	1,
 	[qr/^$/],

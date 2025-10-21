@@ -2521,7 +2521,7 @@ credcheck_max_auth_failure(Port *port, int status)
 					}
 					else
 					{
-						ereport(FATAL, (errmsg("rejecting connection, user '%s' has been banned", port->user_name)));
+						ereport(FATAL, (errmsg("rejecting connection, user \"%s\" has been banned", port->user_name)));
 					}
 				}
 			}

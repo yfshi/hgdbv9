@@ -8,29 +8,29 @@
 
 SET LOCAL client_encoding = 'UTF8';
 
-CREATE OR REPLACE FUNCTION pg_track_settings_snapshot_rds(_srvid integer)
+CREATE OR REPLACE FUNCTION hg_secsch.pg_track_settings_snapshot_rds(_srvid integer)
     RETURNS boolean AS
 $_$
 DECLARE
     _snap_ts timestamp with time zone;
 BEGIN
     SELECT max(ts) INTO _snap_ts
-    FROM public.pg_track_settings_rds_src(_srvid);
+    FROM hg_secsch.pg_track_settings_rds_src(_srvid);
 
     -- this function should have been called for previously saved data.  If
     -- not, probably somethig went wrong, so discard those data
     IF (_srvid != 0) THEN
-        DELETE FROM public.pg_track_settings_rds_src_tmp
+        DELETE FROM hg_secsch.pg_track_settings_rds_src_tmp
         WHERE ts != _snap_ts;
     END IF;
 
     -- Handle dropped db_role_setting
     WITH rds AS (
-        SELECT * FROM public.pg_track_settings_rds_src(_srvid)
+        SELECT * FROM hg_secsch.pg_track_settings_rds_src(_srvid)
     ),
     dropped AS (
         SELECT _snap_ts AS ts, l.setdatabase, l.setrole, l.name
-        FROM public.pg_track_db_role_settings_list l
+        FROM hg_secsch.pg_track_db_role_settings_list l
         LEFT JOIN rds s ON (
             s.setdatabase = l.setdatabase
             AND s.setrole = l.setrole
@@ -42,12 +42,12 @@ BEGIN
             AND s.name IS NULL
     ),
     mark_dropped AS (
-        INSERT INTO public.pg_track_db_role_settings_history
+        INSERT INTO hg_secsch.pg_track_db_role_settings_history
             (srvid, ts, setdatabase, setrole, name, setting, is_dropped)
         SELECT _srvid, ts, d.setdatabase, d.setrole, d.name, NULL, true
         FROM dropped AS d
     )
-    DELETE FROM public.pg_track_db_role_settings_list l
+    DELETE FROM hg_secsch.pg_track_db_role_settings_list l
     USING dropped d
     WHERE
         l.srvid = _srvid
@@ -57,14 +57,14 @@ BEGIN
 
     -- Insert missing settings
     WITH rds AS (
-        SELECT * FROM public.pg_track_settings_rds_src(_srvid)
+        SELECT * FROM hg_secsch.pg_track_settings_rds_src(_srvid)
     )
-    INSERT INTO public.pg_track_db_role_settings_list
+    INSERT INTO hg_secsch.pg_track_db_role_settings_list
         (srvid, setdatabase, setrole, name)
     SELECT _srvid, setdatabase, setrole, name
     FROM rds s
     WHERE NOT EXISTS (SELECT 1
-        FROM public.pg_track_db_role_settings_list l
+        FROM hg_secsch.pg_track_db_role_settings_list l
         WHERE
             l.srvid = _srvid
             AND l.setdatabase = s.setdatabase
@@ -74,19 +74,19 @@ BEGIN
 
     -- Detect changed GUC, insert new vals
     WITH rds AS (
-        SELECT * FROM public.pg_track_settings_rds_src(_srvid)
+        SELECT * FROM hg_secsch.pg_track_settings_rds_src(_srvid)
     ),
     last_snapshot AS (
         SELECT setdatabase, setrole, name, setting
         FROM (
             SELECT setdatabase, setrole, name, setting,
                 row_number() OVER (PARTITION BY name, setdatabase, setrole ORDER BY ts DESC) AS rownum
-            FROM public.pg_track_db_role_settings_history
+            FROM hg_secsch.pg_track_db_role_settings_history
             WHERE srvid = _srvid
         ) all_snapshots
         WHERE rownum = 1
     )
-    INSERT INTO public.pg_track_db_role_settings_history
+    INSERT INTO hg_secsch.pg_track_db_role_settings_history
         (srvid, ts, setdatabase, setrole, name, setting)
     SELECT _srvid, s.ts, s.setdatabase, s.setrole, s.name, s.setting
     FROM rds s
@@ -100,7 +100,7 @@ BEGIN
     OR (l.setting IS DISTINCT FROM s.setting);
 
     IF (_srvid != 0) THEN
-        DELETE FROM public.pg_track_settings_rds_src_tmp
+        DELETE FROM hg_secsch.pg_track_settings_rds_src_tmp
         WHERE srvid = _srvid;
     END IF;
 

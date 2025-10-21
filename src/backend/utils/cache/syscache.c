@@ -107,6 +107,8 @@
 /* End - ReqID:SRS-MYSQL-CASE */
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "catalog/pg_audit_config.h"
+#include "catalog/pg_secmon_rule.h"
+#include "catalog/pg_secmon_threshold.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 /*---------------------------------------------------------------------------
@@ -260,6 +262,50 @@ static const struct cachedesc cacheinfo[] = {
 			Anum_pg_audit_config_objoid,
 			Anum_pg_audit_config_classoid,
 			Anum_pg_audit_config_audittype
+		},
+		16
+	},
+	{AuditRuleRelationId, /* AUDITRULEID */
+		AuditRuleIndexId,
+		1,
+		{
+			Anum_pg_secmon_rule_ruleoid,
+			0,
+			0,
+			0
+		},
+		2
+	},
+	{AuditRuleRelationId, /* AUDITCONFIDIDRULENAME */
+		AuditConfidRulenameIndexId,
+		2,
+		{
+			Anum_pg_secmon_rule_confid,
+			Anum_pg_secmon_rule_rulename,
+			0,
+			0
+		},
+		2
+	},
+	{AuditThresholdRelationId, /* AUDITTHRESHOLDID */
+		AuditThresholdIndexId,
+		1,
+		{
+			Anum_pg_secmon_threshold_throid,
+			0,
+			0,
+			0
+		},
+		2
+	},
+	{AuditThresholdRelationId, /* AUDITTHRESHOLDRULEIDRULESEQ */
+		AuditRuleoidThrnameRuleseqIndexId,
+		3,
+		{
+			Anum_pg_secmon_threshold_ruleoid,
+			Anum_pg_secmon_threshold_thrname,
+			Anum_pg_secmon_threshold_ruleseq,
+			0
 		},
 		16
 	},

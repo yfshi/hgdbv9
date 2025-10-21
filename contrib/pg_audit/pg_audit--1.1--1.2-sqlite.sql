@@ -2,8 +2,8 @@ DO $$
 DECLARE
 	new_table_name TEXT;
 BEGIN
-	new_table_name := 'pg_audit_log_' || TO_CHAR(CURRENT_DATE, 'YYYYMMDD');
-	EXECUTE format('ALTER TABLE public.pg_audit_log RENAME TO %I', new_table_name);
+	new_table_name := 'hg_secsch.pg_audit_log_' || TO_CHAR(CURRENT_DATE, 'YYYYMMDD');
+	EXECUTE format('ALTER TABLE hg_secsch.pg_audit_log RENAME TO %I', new_table_name);
 END;
 $$;
 
@@ -14,7 +14,7 @@ BEGIN
     ) THEN
        -- If a tablespace exists, create a table and specify this tablespace
         EXECUTE '
-            CREATE TABLE public.pg_audit_log(
+            CREATE TABLE hg_secsch.pg_audit_log(
 			confid oid, 
 			sessionoid integer,
 			useroid oid,
@@ -47,7 +47,7 @@ BEGIN
     ELSE
         -- If the tablespace does not exist, do not specify the tablespace when creating the table (use the default tablespace)
         EXECUTE '
-            CREATE TABLE public.pg_audit_log(
+            CREATE TABLE hg_secsch.pg_audit_log(
 			confid oid, 
 			sessionoid integer,
 			useroid oid,
@@ -84,8 +84,8 @@ DECLARE
 	new_table TEXT;
 	new_str TEXT;
 BEGIN
-	new_table := 'pg_audit_log_' || TO_CHAR(CURRENT_DATE, 'YYYYMMDD');
+	new_table := 'hg_secsch.pg_audit_log_' || TO_CHAR(CURRENT_DATE, 'YYYYMMDD');
 	new_str := CURRENT_DATE + INTERVAL '1 day';
-	EXECUTE format('ALTER TABLE public.pg_audit_log ATTACH PARTITION %I FOR VALUES FROM (MINVALUE) TO (%L);', new_table, new_str);
+	EXECUTE format('ALTER TABLE hg_secsch.pg_audit_log ATTACH PARTITION %I FOR VALUES FROM (MINVALUE) TO (%L);', new_table, new_str);
 END;
 $$;

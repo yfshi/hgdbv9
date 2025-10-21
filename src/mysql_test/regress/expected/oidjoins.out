@@ -255,6 +255,7 @@ NOTICE:  checking pg_transform {trftype} => pg_type {oid}
 NOTICE:  checking pg_transform {trflang} => pg_language {oid}
 NOTICE:  checking pg_transform {trffromsql} => pg_proc {oid}
 NOTICE:  checking pg_transform {trftosql} => pg_proc {oid}
+NOTICE:  checking pg_secmon_threshold {ruleseq} => pg_type {oid}
 NOTICE:  checking pg_sequence {seqrelid} => pg_class {oid}
 NOTICE:  checking pg_sequence {seqtypid} => pg_type {oid}
 NOTICE:  checking pg_publication {pubowner} => pg_authid {oid}

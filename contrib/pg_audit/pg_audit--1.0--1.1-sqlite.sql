@@ -3,7 +3,7 @@ CREATE SERVER IF NOT EXISTS sqlite_server
 FOREIGN DATA WRAPPER sqlite_fdw
 OPTIONS (database 'pgaudit/sqlite/sqlite.db');
 
-CREATE FOREIGN TABLE public.sqlite_audit_log(
+CREATE FOREIGN TABLE hg_secsch.sqlite_audit_log(
 	confid oid,
 	sessionoid integer,
 	useroid oid,
@@ -33,9 +33,12 @@ CREATE FOREIGN TABLE public.sqlite_audit_log(
 	privlevel text)
 	SERVER sqlite_server
 	OPTIONS (table 'pg_sqlite_audit_log');
+	
+GRANT ALL ON FUNCTION sqlite_fdw_handler TO syssao;
+GRANT ALL ON FUNCTION sqlite_fdw_handler TO syssao_role;
 
-ALTER TABLE public.sqlite_audit_log OWNER TO syssao;
-GRANT SELECT ON public.sqlite_audit_log TO syssso;
+ALTER TABLE hg_secsch.sqlite_audit_log OWNER TO syssao;
+GRANT SELECT ON hg_secsch.sqlite_audit_log TO syssso;
 
-GRANT SELECT ON public.sqlite_audit_log to syssao_role;
-GRANT SELECT ON public.sqlite_audit_log to syssso_role;
+GRANT SELECT ON hg_secsch.sqlite_audit_log to syssao_role;
+GRANT SELECT ON hg_secsch.sqlite_audit_log to syssso_role;

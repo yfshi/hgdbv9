@@ -610,7 +610,7 @@ ConnectDatabaseOracle(Archive *AHX,
 	getDatabaseMode(AH->connection);
 	if ((DB_ORACLE == database_mode) && (!RestoringToDB(AH)))
 	{
-		if((cparams->dbname == NULL) || (cparams->dbname && strcmp(cparams->dbname,"template1") != 0 && strstr(cparams->dbname, "dbname=template1") == 0))
+		//if((cparams->dbname == NULL) || (cparams->dbname && strcmp(cparams->dbname,"template1") != 0 && strstr(cparams->dbname, "dbname=template1") == 0))
 		{
 			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)		/*  bug#M0000261 */
 			{
