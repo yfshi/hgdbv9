@@ -126,6 +126,9 @@
 
 #define PG_AUDIT_LOG "pg_audit_log"
 #define SQLITE_AUDIT_LOG "sqlite_audit_log"
+#define PG_SECMON_HISTORY "pg_secmon_history"
+#define PG_SECMON_HISTORY_INDEX "pg_secmon_history_audttime_ruleoid_idx"
+#define	PG_SECMON_THRESHOLD_HISTORY "pg_secmon_thrhis"
 
 /*
 …Ûº∆”Ôæ‰¿‡–Õ
@@ -133,11 +136,12 @@
 
 #define AUDIT_TYPE_SYSYEM_S "system"
 #define AUDIT_TYPE_STATEMENT_S "statement"
+#define AUDIT_TYPE_PRIVILEGE_S "privilege"
+#define AUDIT_TYPE_USER_S "user"
 #define AUDIT_TYPE_OBJECT_S "object"
+#define AUDIT_TYPE_MANDATORY_S "mandatory"
 
 bool receive_sighup;
-
-#define AUDIT_TYPE_MANDATORY_S "mandatory"
 
 typedef enum AuditChange
 {

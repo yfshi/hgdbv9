@@ -598,6 +598,20 @@ ClientAuthentication(Port *port)
 									encryption_state),
 							 HOSTNAME_LOOKUP_DETAIL(port)));
 				else
+				{
+					/* Begin - ReqID:SRS-SECURITY-AUDIT */
+					#ifdef USE_SQLITE
+					if (sqlite_open_db_for_audit_hook)
+					{
+						char	errtext[MAXPGPATH];
+
+						memset(errtext, 0, MAXPGPATH);
+						sprintf(errtext, "no pg_hba.conf entry for host \"%s\", user \"%s\", database \"%s\", %s",
+								hostinfo, port->user_name, port->database_name, encryption_state);
+						sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_FAIL, port->user_name, errtext);
+					}
+					#endif
+					/* End - ReqID:SRS-SECURITY-AUDIT */
 					ereport(FATAL,
 							(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
 					/* translator: last %s describes encryption state */
@@ -606,6 +620,7 @@ ClientAuthentication(Port *port)
 									port->database_name,
 									encryption_state),
 							 HOSTNAME_LOOKUP_DETAIL(port)));
+				}
 				break;
 			}
 
@@ -771,7 +786,21 @@ sendAuthRequest(Port *port, AuthRequest areq, const char *extradata, int extrale
 	 * queries.
 	 */
 	if (areq != AUTH_REQ_OK && areq != AUTH_REQ_SASL_FIN)
+	{
+		/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		#ifdef USE_SQLITE
+		if (areq == AUTH_REQ_CERT_CERT && sqlite_open_db_for_audit_hook)
+		{
+			char	errtext[MAXPGPATH];
+
+			memset(errtext, 0, MAXPGPATH);
+			sprintf(errtext, "error sending CERT certificate authentication");
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_CERT_VERIFY, AUDIT_FAIL, port->user_name, errtext);
+		}
+		#endif
+		/* End - ReqID:SRS-SECURITY-AUDIT */
 		pq_flush();
+	}
 
 	CHECK_FOR_INTERRUPTS();
 }

@@ -136,9 +136,11 @@ ORDER BY 1;
  pg_depend
  pg_object
  pg_resgroupcapability
+ pg_secmon_rule
+ pg_secmon_threshold
  pg_shdepend
  pg_synonym
-(6 rows)
+(8 rows)
 
 -- system catalog unique indexes not wrapped in a constraint
 -- (There should be none.)

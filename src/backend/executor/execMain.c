@@ -77,6 +77,8 @@
 #include "se_features_interface.h"
 #include "catalog/pg_audit_config.h"
 /* End - BUG#00004706 */
+#include "catalog/pg_secmon_rule.h"
+#include "catalog/pg_secmon_threshold.h"
 
 
 /* Hooks for plugins to get control in ExecutorStart/Run/Finish/End */
@@ -651,10 +653,11 @@ ExecCheckRTEPerms(RangeTblEntry *rte)
 	relOid = rte->relid;
 	
 	/* Begin - BUG#00004706 */
-	if (AuditConfigRelationId == relOid && IS_SYSSAO(GetUserId()) &&
+	if ((AuditConfigRelationId == relOid || AuditRuleRelationId == relOid ||
+			AuditThresholdRelationId == relOid) && IS_SYSSAO(GetUserId()) && 
 			(requiredPerms & ACL_DELETE) != 0)
 	{
-		/* syssao can always delete from pg_audit_log */
+		/* syssao can always delete from pg_audit_log, pg_secmon_rule and pg_secmon_threshold */
 		return true;
 	}
 	
