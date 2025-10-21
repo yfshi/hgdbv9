@@ -549,6 +549,12 @@ pgstat_report_activity(BackendState state, const char *cmd_str)
 			/* st_xact_start_timestamp and wait_event_info are also disabled */
 			beentry->st_xact_start_timestamp = 0;
 			beentry->st_query_id = UINT64CONST(0);
+
+			/* Begin - ReqID:SRS-MISC-HSH */
+			beentry->st_cmd_type = 0;
+			beentry->st_query_phase = 0;
+			/* End - ReqID:SRS-MISC-HSH */
+
 			proc->wait_event_info = 0;
 			PGSTAT_END_WRITE_ACTIVITY(beentry);
 		}
@@ -609,7 +615,12 @@ pgstat_report_activity(BackendState state, const char *cmd_str)
 	 * identifier.
 	 */
 	if (state == STATE_RUNNING)
+	{
 		beentry->st_query_id = UINT64CONST(0);
+
+		/* SRS-MISC-HSH */
+		beentry->st_cmd_type = 0;
+	}
 
 	if (cmd_str != NULL)
 	{
@@ -1149,3 +1160,74 @@ pgstat_clip_activity(const char *raw_activity)
 
 	return activity;
 }
+
+/* Begin - ReqID:SRS-MISC-HSH */
+/* --------
+ * pgstat_report_query_type() -
+ *
+ * Called to update top-level query type
+ * --------
+ */
+void
+pgstat_report_query_type(CmdType stCmdType, bool force)
+{
+	volatile PgBackendStatus *beentry = MyBEEntry;
+
+	/*
+	 * if track_activities is disabled, st_query_id should already have been
+	 * reset
+	 */
+	if (!beentry || !pgstat_track_activities)
+		return;
+
+	/*
+	 * We only report the top-level query type.  The stored cmd_type is
+	 * reset when a backend calls pgstat_report_activity(STATE_RUNNING), or
+	 * with an explicit call to this function using the force flag.  If the
+ 	 * saved query identifier is not zero it means that it's not a top-level
+ 	 * command, so ignore the one provided unless it's an explicit call to
+ 	 * reset the identifier.
+	 */
+	if (beentry->st_cmd_type != 0 && !force)
+		return;
+
+	/*
+	 * Update my status entry, following the protocol of bumping
+	 * st_changecount before and after.  We use a volatile pointer here to
+	 * ensure the compiler doesn't try to get cute.
+	 */
+	PGSTAT_BEGIN_WRITE_ACTIVITY(beentry);
+	beentry->st_cmd_type = stCmdType;
+	PGSTAT_END_WRITE_ACTIVITY(beentry);
+}
+
+/* --------
+ * pgstat_report_query_phase() -
+ *
+ * Called to update query phase
+ * --------
+ */
+void
+pgstat_report_query_phase(QueryPhaseKind stQueryPhase)
+{
+	volatile PgBackendStatus *beentry = MyBEEntry;
+
+	/*
+	 * if track_activities is disabled, st_query_phase should already have been
+	 * reset
+	 */
+	if (!beentry || !pgstat_track_activities)
+		return;
+
+	/*
+	 * Update my status entry, following the protocol of bumping
+	 * st_changecount before and after.  We use a volatile pointer here to
+ 	 * ensure the compiler doesn't try to get cute.
+ 	 */
+	PGSTAT_BEGIN_WRITE_ACTIVITY(beentry);
+	beentry->st_query_phase = stQueryPhase;
+	PGSTAT_END_WRITE_ACTIVITY(beentry);
+
+}
+
+/* End - ReqID:SRS-MISC-HSH */

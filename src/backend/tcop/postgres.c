@@ -768,6 +768,8 @@ pg_analyze_and_rewrite_params(RawStmt *parsetree,
 	free_parsestate(pstate);
 
 	pgstat_report_query_id(query->queryId, false);
+	/* SRS-MISC-HSH */
+	pgstat_report_query_type(query->commandType, false);
 
 	if (log_parser_stats)
 		ShowUsage("PARSE ANALYSIS STATISTICS");
@@ -1027,6 +1029,9 @@ exec_simple_query(const char *query_string)
 	 */
 	oldcontext = MemoryContextSwitchTo(MessageContext);
 
+	/* ReqID: SRS-MISC-HSH */
+	pgstat_report_query_phase(QUERY_PHASE_PARSER);
+
 	/*
 	 * Do basic parsing of the query or queries (this should be safe even if
 	 * we are in aborted transaction state!)
@@ -1142,6 +1147,9 @@ exec_simple_query(const char *query_string)
 		/* End - ReqID:SRS-SQL-CALL */
 
 		pgstat_report_query_id(0, true);
+		
+		/* ReqID: SRS-MISC-HSH */
+		pgstat_report_query_type(0, true);
 
 		/*
 		 * Get the command name for use in status display (it also becomes the
@@ -1219,6 +1227,9 @@ exec_simple_query(const char *query_string)
 		else
 			oldcontext = MemoryContextSwitchTo(MessageContext);
 
+		/* ReqID:SRS-MISC-HSH */
+		pgstat_report_query_phase(QUERY_PHASE_PLAN);
+
 		if (params != NULL)
 			querytree_list = pg_analyze_and_rewrite(parsetree, query_string,
 													paramtypes, params->numParams/*ReqID:SRS-SQL-ANONYOUT */, NULL);
@@ -1244,6 +1255,9 @@ exec_simple_query(const char *query_string)
 
 		/* If we got a cancel signal in analysis or planning, quit */
 		CHECK_FOR_INTERRUPTS();
+
+		/* ReqID:SRS-MISC-HSH */
+		pgstat_report_query_phase(QUERY_PHASE_EXEC);
 
 		/*
 		 * Create unnamed portal to run the query or queries in. If there
@@ -1816,6 +1830,10 @@ exec_bind_message(StringInfo input_message)
 		if (query->queryId != UINT64CONST(0))
 		{
 			pgstat_report_query_id(query->queryId, false);
+
+			/* SRS-MISC-HSH */
+			pgstat_report_query_type(query->commandType, false);
+
 			break;
 		}
 	}
@@ -2479,6 +2497,10 @@ exec_execute_message(const char *portal_name, long max_rows)
 		if (stmt->queryId != UINT64CONST(0))
 		{
 			pgstat_report_query_id(stmt->queryId, false);
+
+			/* SRS-MISC-HSH */
+                        pgstat_report_query_type(stmt->commandType, false);
+
 			break;
 		}
 	}
@@ -4929,6 +4951,9 @@ PostgresMain(int argc, char *argv[],
 		 */
 		InvalidateCatalogSnapshotConditionally();
 
+		/* ReqID: SRS-MISC-HSH */
+		pgstat_report_query_phase(QUERY_PHASE_UNKNOWN);
+
 		/*
 		 * (1) If we've reached idle state, tell the frontend we're ready for
 		 * a new query.
@@ -5177,8 +5202,15 @@ PostgresMain(int argc, char *argv[],
 					}
 					pq_getmsgend(&input_message);
 
+					/* ReqID:SRS-MISC-HSH */
+					pgstat_report_query_phase(QUERY_PHASE_PARSER);
+
 					exec_parse_message(query_string, stmt_name,
 									   paramTypes, numParams);
+
+					/* ReqID:SRS-MISC-HSH */
+					pgstat_report_query_phase(QUERY_PHASE_UNKNOWN);
+
 				}
 				break;
 
@@ -5188,11 +5220,18 @@ PostgresMain(int argc, char *argv[],
 				/* Set statement_timestamp() */
 				SetCurrentStatementStartTimestamp();
 
+				/* ReqID:SRS-MISC-HSH */
+				pgstat_report_query_phase(QUERY_PHASE_BIND);
+
 				/*
 				 * this message is complex enough that it seems best to put
 				 * the field extraction out-of-line
 				 */
 				exec_bind_message(&input_message);
+
+				/* ReqID:SRS-MISC-HSH */
+				pgstat_report_query_phase(QUERY_PHASE_UNKNOWN);
+
 				break;
 
 			case 'E':			/* execute */
@@ -5209,7 +5248,14 @@ PostgresMain(int argc, char *argv[],
 					max_rows = pq_getmsgint(&input_message, 4);
 					pq_getmsgend(&input_message);
 
+					/* ReqID:SRS-MISC-HSH */
+					pgstat_report_query_phase(QUERY_PHASE_EXEC);
+
 					exec_execute_message(portal_name, max_rows);
+
+					/* ReqID:SRS-MISC-HSH */
+					pgstat_report_query_phase(QUERY_PHASE_UNKNOWN);
+
 				}
 				break;
 
@@ -5238,10 +5284,16 @@ PostgresMain(int argc, char *argv[],
 				/* switch back to message context */
 				MemoryContextSwitchTo(MessageContext);
 
+				/* ReqID:SRS-MISC-HSH */
+				pgstat_report_query_phase(QUERY_PHASE_EXEC);
+
 				HandleFunctionRequest(&input_message);
 
 				/* commit the function-invocation transaction */
 				finish_xact_command();
+
+				/* ReqID:SRS-MISC-HSH */
+				pgstat_report_query_phase(QUERY_PHASE_UNKNOWN);
 
 				send_ready_for_query = true;
 				break;
