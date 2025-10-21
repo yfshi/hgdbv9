@@ -7,7 +7,7 @@
 CREATE FUNCTION hsh_ringbuf_raw(
 	OUT ts timestamptz,
 	OUT pid int,
-	OUT client_addr text,
+	OUT client_addr inet,
 	OUT app_name text,
 	OUT dbid oid,
 	OUT db_name text,
@@ -31,7 +31,7 @@ LANGUAGE C VOLATILE STRICT;
 CREATE TABLE hsh_history_data(
 	ts timestamptz,
 	pid int,
-	client_addr text,
+	client_addr inet,
 	app_name text,
 	dbid oid,
 	db_name text,
