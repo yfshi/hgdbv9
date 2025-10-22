@@ -128,13 +128,13 @@ BEGIN
 			starttime timestamp(6) with time zone,
 			level integer,
 			maxtimes integer,
-			ipmt_starttime timestamp(6) with time zone,
-			ipmt_endtime timestamp(6) with time zone,
+			impt_starttime timestamp(6) with time zone,
+			impt_endtime timestamp(6) with time zone,
 			nsteps integer,
 			ruleseq oidvector,
 			basename text,
 			basevalue text,
-			ipmt_cloumns int2vector
+			impt_cloumns int2vector
 			)TABLESPACE audtblspc;
         ';
     ELSE
@@ -152,13 +152,13 @@ BEGIN
 			starttime timestamp(6) with time zone,
 			level smallint,
 			maxtimes integer,
-			ipmt_starttime timestamp(6) with time zone,
-			ipmt_endtime timestamp(6) with time zone,
+			impt_starttime timestamp(6) with time zone,
+			impt_endtime timestamp(6) with time zone,
 			nsteps integer,
 			ruleseq oidvector,
 			basename text,
 			basevalue text,
-			ipmt_cloumns int2vector);
+			impt_cloumns int2vector);
         ';
     END IF;
 END $$;
