@@ -56,8 +56,42 @@
 get_keywords_hook_type get_keywords_hook = NULL;
 fill_in_constant_lengths_hook_type fill_in_constant_lengths_hook = NULL;
 
+/* ReqID: LOCK-SESSION */
+extern bool should_lock_current_session;
+
 static Datum standard_pg_get_keywords(PG_FUNCTION_ARGS);
 /* END - SQL PARSER */
+
+/* Begin ReqID: LOCK-SESSION */
+Datum
+lock_current_session(PG_FUNCTION_ARGS)
+{
+	if (should_lock_current_session)
+	{
+		elog(WARNING, "locked already, ignore!");
+		PG_RETURN_CSTRING(pstrdup("The current session has been locked, no need to re-lock"));
+	}
+
+	should_lock_current_session = true;
+	SetLatch(MyLatch);
+
+	PG_RETURN_CSTRING(pstrdup("lock current session successfully"));
+}
+
+Datum
+unlock_current_session(PG_FUNCTION_ARGS)
+{
+	if (!should_lock_current_session)
+	{
+		PG_RETURN_CSTRING(pstrdup("The current session has been unlocked, no need to unlock again"));
+	}
+
+	should_lock_current_session = false;
+	ResetLatch(MyLatch);
+
+	PG_RETURN_CSTRING(pstrdup("unlock current session successfully"));
+}
+/* End ReqID: LOCK-SESSION */
 
 /*
  * Common subroutine for num_nulls() and num_nonnulls().

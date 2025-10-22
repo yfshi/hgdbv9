@@ -162,6 +162,8 @@
 #include "catalog/pg_namespace.h"
 /* End - BUG#Z1444 */
 
+#include "se_features_interface.h" /* ReqID: LOCK-SESSION */
+
 #ifndef PG_KRB_SRVTAB
 #define PG_KRB_SRVTAB ""
 #endif
@@ -296,6 +298,11 @@ const char *pgvars_assign_pg_resqueue_memory_policy(const char *newval, bool doi
 const char *pgvars_show_pg_resqueue_memory_policy(void);
 bool pgvars_check_pg_resource_group_cgroup_parent(char **newval, void **extra, GucSource source);
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+
+/* Begin ReqID: LOCK-SESSION */
+static bool check_idle_session_noinput(int *newval, void **extra, GucSource source);
+static bool check_idle_session_timeout(int *newval, void **extra, GucSource source);
+/* End ReqID: LOCK-SESSION */
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DECLARE
@@ -2863,16 +2870,27 @@ static struct config_int ConfigureNamesInt[] =
 	},
 
 	{
-		{"idle_session_timeout", PGC_USERSET, CLIENT_CONN_STATEMENT,
+		{"idle_session_timeout", PGC_POSTMASTER, CLIENT_CONN_STATEMENT,
 			gettext_noop("Sets the maximum allowed idle time between queries, when not in a transaction."),
 			gettext_noop("A value of 0 turns off the timeout."),
 			GUC_UNIT_MS
 		},
 		&IdleSessionTimeout,
 		0, 0, INT_MAX,
-		NULL, NULL, NULL
+		check_idle_session_timeout, NULL, NULL /* ReqID: LOCK-SESSION */
 	},
-
+	/* Begin ReqID: LOCK-SESSION */
+	{
+		{"hg_session_locking_timeout", PGC_POSTMASTER, CLIENT_CONN_STATEMENT,
+			gettext_noop("Sets the maximum idle time before locking the session."),
+			gettext_noop("A value of 0 turns off the locking timeout."),
+			GUC_UNIT_MS
+		},
+		&IdleSessionNoinput,
+		0, 0, INT_MAX,
+		check_idle_session_noinput, NULL, NULL
+	},
+	/* End ReqID: LOCK-SESSION */
 	{
 		{"vacuum_freeze_min_age", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("Minimum age at which VACUUM should freeze a table row."),
@@ -13423,6 +13441,49 @@ guc_list_input_check(const char *varname)
 	return false;
 }
 /* End - ReqID:SRS-MYSQL-SET */
+
+
+/* Begin ReqID: LOCK-SESSION */
+static bool
+check_idle_session_noinput(int *newval, void **extra, GucSource source)
+{
+	/* Only allow syssso role set the hg_idle_session_time. */
+	if (IdleSessionTimeout != 0 && *newval >= IdleSessionTimeout)
+		elog(ERROR, "hg_session_locking_timeout:%d should not be bigger than"
+				" idle_session_timeout:%d, session will disconnect before locking",
+				*newval, IdleSessionTimeout);
+	if(IsUnderPostmaster)
+	{
+		if (!IS_SYSSSO(GetUserId()))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("member of syssso_role "
+								"can set the hg_idle_session_time")));
+	}
+	return true;
+}
+
+static bool
+check_idle_session_timeout(int *newval, void **extra, GucSource source)
+{
+	if (IdleSessionNoinput != 0 && *newval < IdleSessionNoinput)
+		elog(ERROR, "hg_session_locking_timeout:%d should not be bigger than"
+				" idle_session_timeout:%d, session will disconnect before locking",
+				IdleSessionNoinput, *newval);
+	/* Only allow syssso role set the idle_session_timeout. */
+	if(IsUnderPostmaster)
+	{
+		if (!IS_SYSSSO(GetUserId()))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("member of syssso_role "
+							"can set the idle_session_timeout")));
+	}
+	return true;
+}
+/* End ReqID: LOCK-SESSION */
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DEFINE

@@ -137,6 +137,9 @@ int			client_connection_check_interval = 0;
 /* flags for non-system relation kinds to restrict use */
 int			restrict_nonsystem_relation_kind;
 
+/* ReqID: LOCK-SESSION */
+bool should_lock_current_session;
+
 /* ----------------
  *		private typedefs etc
  * ----------------
@@ -262,7 +265,6 @@ static void log_disconnections(int code, Datum arg);
 static void enable_statement_timeout(void);
 static void disable_statement_timeout(void);
 static void InitIvorysql(void);				/* ReqID:SRS-MISC-GUC */
-
 
 /* ----------------------------------------------------------------
  *		routines to obtain user input
@@ -991,7 +993,41 @@ exec_simple_query(const char *query_string)
 	ParamListInfo	params = NULL;
 	Oid			*paramtypes = NULL;
 	/* End - ReqID:SRS-SQL-ANONYOUT */
+	/* Begin ReqID: LOCK-SESSION */
+	char	   *query_string_tmp = NULL;
+	List	   *parsetree_list_tmp = NIL;
+	ListCell   *parsetree_item_tmp = NULL;
 
+	if (should_lock_current_session)
+	{
+		query_string_tmp = pstrdup(query_string);
+		parsetree_list_tmp = pg_parse_query(query_string_tmp);
+		foreach(parsetree_item_tmp, parsetree_list_tmp)
+		{
+			CommandTag	commandTag;
+			RawStmt    *parsetree = NULL;
+			parsetree = lfirst_node(RawStmt, parsetree_item_tmp);
+			commandTag = CreateCommandTag(parsetree->stmt);
+			if (commandTag == CMDTAG_SELECT)
+			{
+				if (strcasestr(query_string_tmp, "unlock_current_session"))
+				{
+					break;
+				}
+				else
+				{
+					elog(WARNING, "current session is locked, please unlock first");
+					return;
+				}
+			}
+			else
+			{
+				elog(WARNING, "current session is locked, please unlock first");
+				return;
+			}
+		}
+	}
+	/* End ReqID: LOCK-SESSION */
 	/*
 	 * Report query to various monitoring facilities.
 	 */
@@ -3798,6 +3834,19 @@ ProcessInterrupts(void)
 			IdleSessionTimeoutPending = false;
 	}
 
+	/* Begin ReqID: LOCK-SESSION */
+	if (IdleSessionNoinputPending)
+	{
+		/* As above, ignore the signal if the GUC has been reset to zero. */
+		if (IdleSessionNoinput > 0)
+		{
+			should_lock_current_session = true;
+		}
+		else
+			IdleSessionNoinputPending = false;
+	}
+	/* End ReqID: LOCK-SESSION */
+
 	if (ProcSignalBarrierPending)
 		ProcessProcSignalBarrier();
 
@@ -4468,6 +4517,7 @@ PostgresMain(int argc, char *argv[],
 	volatile bool idle_in_transaction_timeout_enabled = false;
 	volatile bool idle_session_timeout_enabled = false;
 	volatile bool has_savepoint = false;	/* ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+	volatile bool idle_session_noinput_enabled = false; /* ReqID: LOCK-SESSION */
 
 	/* Initialize startup process environment if necessary. */
 	if (!IsUnderPostmaster)
@@ -5024,6 +5074,15 @@ PostgresMain(int argc, char *argv[],
 					enable_timeout_after(IDLE_SESSION_TIMEOUT,
 										 IdleSessionTimeout);
 				}
+
+				/* Begin ReqID: LOCK-SESSION */
+				if (IdleSessionNoinput > 0)
+				{
+					idle_session_noinput_enabled = true;
+					enable_timeout_after(IDLE_SESSION_NOINPUT,
+										 IdleSessionNoinput);
+				}
+				/* End ReqID: LOCK-SESSION */
 			}
 
 			/* Report any recently-changed GUC options */
@@ -5064,6 +5123,14 @@ PostgresMain(int argc, char *argv[],
 			disable_timeout(IDLE_SESSION_TIMEOUT, false);
 			idle_session_timeout_enabled = false;
 		}
+		
+		/* Begin ReqID: LOCK-SESSION */
+		if (idle_session_noinput_enabled)
+		{
+			disable_timeout(IDLE_SESSION_NOINPUT, false);
+			idle_session_noinput_enabled = false;
+		}
+		/* End ReqID: LOCK-SESSION */
 
 		/*
 		 * (5) disable async signal conditions again.

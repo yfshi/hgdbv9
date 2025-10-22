@@ -12014,4 +12014,12 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proargtypes => 'anyenum', prosrc => 'enum_to_varbinary' },
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 /*END MySQL Compatibility Metadatas*/
+/* Begin ReqID: LOCK-SESSION */
+{ oid => '8302', descr => 'lock current session',
+  proname => 'lock_current_session', prorettype => 'cstring',
+  proargtypes => '', prosrc => 'lock_current_session'},
+{ oid => '8303', descr => 'unlock current session',
+  proname => 'unlock_current_session', prorettype => 'cstring',
+  proargtypes => '', prosrc => 'unlock_current_session'},
+/* End ReqID: LOCK-SESSION */
 ]

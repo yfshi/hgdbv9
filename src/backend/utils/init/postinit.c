@@ -78,6 +78,7 @@ static void StatementTimeoutHandler(void);
 static void LockTimeoutHandler(void);
 static void IdleInTransactionSessionTimeoutHandler(void);
 static void IdleSessionTimeoutHandler(void);
+static void IdleSessionNoinputHandler(void); /* ReqID: LOCK-SESSION */
 static void ClientCheckTimeoutHandler(void);
 static bool ThereIsAtLeastOneRole(void);
 static void process_startup_options(Port *port, bool am_superuser);
@@ -634,6 +635,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		RegisterTimeout(IDLE_IN_TRANSACTION_SESSION_TIMEOUT,
 						IdleInTransactionSessionTimeoutHandler);
 		RegisterTimeout(IDLE_SESSION_TIMEOUT, IdleSessionTimeoutHandler);
+		RegisterTimeout(IDLE_SESSION_NOINPUT, IdleSessionNoinputHandler); /* ReqID: LOCK-SESSION */
 		RegisterTimeout(CLIENT_CONNECTION_CHECK_TIMEOUT, ClientCheckTimeoutHandler);
 	}
 
@@ -1292,6 +1294,16 @@ IdleSessionTimeoutHandler(void)
 	InterruptPending = true;
 	SetLatch(MyLatch);
 }
+
+/* Begin ReqID: LOCK-SESSION */
+static void
+IdleSessionNoinputHandler(void)
+{
+	IdleSessionNoinputPending = true;
+	InterruptPending = true;
+	SetLatch(MyLatch);
+}
+/* End ReqID: LOCK-SESSION */
 
 static void
 ClientCheckTimeoutHandler(void)

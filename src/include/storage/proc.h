@@ -457,6 +457,7 @@ extern PGDLLIMPORT int StatementTimeout;
 extern PGDLLIMPORT int LockTimeout;
 extern PGDLLIMPORT int IdleInTransactionSessionTimeout;
 extern PGDLLIMPORT int IdleSessionTimeout;
+extern PGDLLIMPORT int IdleSessionNoinput; /* ReqID: LOCK-SESSION */
 extern bool log_lock_waits;
 /* Begin - SRS-PLSQL-AUTONOMOUSTRANSACTION */
 extern bool AutonxCheckingDeadlocks;
