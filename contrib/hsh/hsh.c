@@ -864,7 +864,7 @@ _PG_init(void)
 					"Whether to enabel session history tracking",
 					NULL,
 					&hsh_collector,
-					true,
+					false,
 					PGC_SUSET,
 					0,
 					NULL,
