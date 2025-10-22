@@ -62,6 +62,7 @@ int			StatementTimeout = 0;
 int			LockTimeout = 0;
 int			IdleInTransactionSessionTimeout = 0;
 int			IdleSessionTimeout = 0;
+int			IdleSessionNoinput = 0; /* ReqID: LOCK-SESSION */
 bool		log_lock_waits = false;
 /* Begin - SRS-PLSQL-AUTONOMOUSTRANSACTION */
 bool		AutonxCheckingDeadlocks = true;
