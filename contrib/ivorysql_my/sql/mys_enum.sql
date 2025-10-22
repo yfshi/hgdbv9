@@ -685,11 +685,17 @@ drop table enum_test_table;
 
 create table test_enum_d(ssl_type enum('any','X509','SPECIFIED') not null default '');
 create table test_enum_d(ssl_type enum('','any','X509','SPECIFIED') not null default '');
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT e.enumsortorder,e.enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
 \d test_enum_d
 \d+ test_enum_d
 drop table test_enum_d;
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
 
 -- test anonymous enum backup
 create table student (
@@ -718,17 +724,26 @@ select * from student_bak;
 select * from student;
 \d student_bak
 \d student
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
 
 drop table student;
 SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
 select * from student_bak;
 
 \d student_bak
 drop table student_bak;
 SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
 
 -- test anonymous enum backup :drop table
 create table student (
@@ -741,24 +756,39 @@ create table student (
 insert into student(id, name,gender) values(1, 'bill','male');
 select * from student;
 SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
 create table student_bak as select * from student;
 select * from student_bak;
 SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
 drop table student;
 SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
 select * from student_bak;
 \d student_bak
 alter table student_bak drop column gender;
 select * from student_bak;
 \d student_bak
 SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
 drop table student_bak;
 SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
 
 -- test charset
 create table t_charset_enum_column(c enum('a', 'b', 'c') charset test_character_set);
