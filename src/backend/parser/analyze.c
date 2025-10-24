@@ -93,6 +93,7 @@
 
 /* Hook for plugins to get control at end of parse analysis */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
+redact_parse_analyze_hook_type redact_parse_analyze_hook = NULL;	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 static Query *transformOptionalSelectInto(ParseState *pstate, Node *parseTree);
 static Query *transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt);
@@ -298,7 +299,14 @@ parse_sub_analyze(Node *parseTree, ParseState *parentParseState,
 	pstate->p_locked_from_parent = locked_from_parent;
 	pstate->p_resolve_unknowns = resolve_unknowns;
 
+	/* pstate->p_subselect record where the row is
+	 * in a subquery, which is needed for data masking.
+	 */
+	pstate->p_subselect = true; /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
 	query = transformStmt(pstate, parseTree);
+
+	pstate->p_subselect = false;	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 	free_parsestate(pstate);
 
@@ -2474,6 +2482,15 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	/* transform targetlist */
 	qry->targetList = transformTargetList(pstate, stmt->targetList,
 										  EXPR_KIND_SELECT_TARGET);
+
+	/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * To emsure that the sorting behavior of group by
+	 * and order by remains the same and after data
+	 * masking.
+	 */
+	if (redact_parse_analyze_hook)
+		redact_parse_analyze_hook(pstate, qry);
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 	/* mark column origins */
 	markTargetListOrigins(pstate, qry->targetList);

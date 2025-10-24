@@ -32,6 +32,13 @@
 
 
 /*
+ * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+ * Hook for plugins to copy object about redaction.
+ */
+Copy_Object_Impl_hook_type get_object_impl_hook = NULL;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
+/*
  * Macros to simplify copying of different kinds of fields.  Use these
  * wherever possible to reduce the chance for silly typos.  Note that these
  * hard-wire the convention that the local variables in a Copy routine are
@@ -6773,9 +6780,23 @@ copyObjectImpl(const void *from)
 			break;
 		/* End - ReqID:SRS-SQL-TRIGGER */
 		default:
+		{
+			/*
+			 * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+			 * Hook for plugins to copy object about redaction,
+			 * add begin by qinshiyu at 20230302.
+			 */
+			if (get_object_impl_hook)
+			{
+				retval = get_object_impl_hook(from);
+				if (retval)
+					return retval;
+			}
+			/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(from));
 			retval = 0;			/* keep compiler quiet */
 			break;
+		}
 	}
 
 	return retval;

@@ -82,6 +82,14 @@
 static Oid	AlterObjectNamespace_internal(Relation rel, Oid objid, Oid nspOid);
 
 /*
+ * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+ * Hook for plugins is about the data table's
+ * dependence on redaction policy.
+ */
+AlterObjectNamespace_oid_hook_type alterobjectnamespaceoid_hook = NULL;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
+/*
  * Raise an error to the effect that an object of the given name is already
  * present in the given namespace.
  */
@@ -702,6 +710,18 @@ AlterObjectNamespace_oid(Oid classId, Oid objid, Oid nspOid,
 	dep.classId = classId;
 	dep.objectId = objid;
 	dep.objectSubId = 0;
+
+	/*
+	 * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * Hook for plugins is about the data table's
+	 * dependence on redaction policy.
+	 */
+	if (alterobjectnamespaceoid_hook)
+	{
+		if (alterobjectnamespaceoid_hook(&dep))
+			return oldNspOid;
+	}
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 	switch (getObjectClass(&dep))
 	{

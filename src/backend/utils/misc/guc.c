@@ -206,6 +206,10 @@ char	   *GUC_check_errmsg_string;
 char	   *GUC_check_errdetail_string;
 char	   *GUC_check_errhint_string;
 
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+bool hg_redaction_data;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
 static void do_serialize(char **destptr, Size *maxbytes, const char *fmt,...) pg_attribute_printf(3, 4);
 
 static void set_config_sourcefile(const char *name, char *sourcefile,
@@ -2338,6 +2342,18 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#Z4610 */
+	/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * data redaction policy.
+	 */
+	{
+		{"hg_redaction.enable", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("data redaction policy switch."),
+		},
+		&hg_redaction_data,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_BOOL_PARAMS
 	#include "ivy_oracle_guc.c"

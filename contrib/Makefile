@@ -62,7 +62,8 @@ SUBDIRS = \
 		uuid-ossp \
 		hg_misc	\
 		ora_synonym	\
-		hsh
+		hsh		\
+		hg_redaction
 
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo

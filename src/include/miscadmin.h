@@ -110,6 +110,13 @@ extern PGDLLIMPORT volatile uint32 InterruptHoldoffCount;
 extern PGDLLIMPORT volatile uint32 QueryCancelHoldoffCount;
 extern PGDLLIMPORT volatile uint32 CritSectionCount;
 
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+ * Hook for plugins to get object Impl.
+ */
+typedef void * (*Copy_Object_Impl_hook_type) (const void *from);
+extern PGDLLIMPORT Copy_Object_Impl_hook_type get_object_impl_hook;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
 /* in tcop/postgres.c */
 extern void ProcessInterrupts(void);
 

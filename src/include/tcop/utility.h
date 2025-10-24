@@ -77,6 +77,19 @@ typedef void (*ProcessUtility_hook_type) (PlannedStmt *pstmt,
 										  DestReceiver *dest, QueryCompletion *qc);
 extern PGDLLIMPORT ProcessUtility_hook_type ProcessUtility_hook;
 
+/*Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+ * Hook for plugins to get control in ProcessUtility()
+ */
+typedef bool (*ProcessUtilityRedaction_hook_type) (PlannedStmt *pstmt,
+															   const char *queryString,
+															   bool readOnlyTree,
+															   ProcessUtilityContext context,
+															   ParamListInfo params,
+															   QueryEnvironment *queryEnv,
+															   DestReceiver *dest, QueryCompletion *qc);
+extern PGDLLIMPORT ProcessUtilityRedaction_hook_type ProcessrdUtility_hook;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
 extern void ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 						   bool readOnlyTree,
 						   ProcessUtilityContext context, ParamListInfo params,

@@ -380,6 +380,15 @@ typedef struct ForeignTruncateInfo
 } ForeignTruncateInfo;
 
 /*
+ * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+ * Hook for plugins is about the data table's
+ * dependence on redaction policy.
+ */
+ATExecAlterTable_hook_type atexecaltercolumntype_hook_type_hook = NULL;
+AlterRelationNamespaceInternal_hook_type alterrelationnamespaceinternal_hook = NULL;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
+/*
  * Partition tables are expected to be dropped when the parent partitioned
  * table gets dropped. Hence for partitioning we use AUTO dependency.
  * Otherwise, for regular inheritance use NORMAL dependency.
@@ -4200,6 +4209,15 @@ renameatt(RenameStmt *stmt)
 						stmt->relation->relname)));
 		return InvalidObjectAddress;
 	}
+
+	/*
+	 * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * Hook for plugins is about the data table's
+	 * dependence on redaction policy.
+	 */
+	if (atexecaltercolumntype_hook_type_hook)
+		atexecaltercolumntype_hook_type_hook(relid, stmt->subname, 2);
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 	attnum =
 		renameatt_internal(relid,
@@ -9630,6 +9648,15 @@ ATExecDropColumn(List **wqueue, Relation rel, const char *colName,
 		addrs = new_object_addresses();
 
 	/*
+	 * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * Hook for plugins is about the data table's
+	 * dependence on redaction policy.
+	 */
+	if (atexecaltercolumntype_hook_type_hook && colName)
+		atexecaltercolumntype_hook_type_hook(RelationGetRelid(rel), pstrdup(colName), 3);
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
+	/*
 	 * get the number of the attribute
 	 */
 	tuple = SearchSysCacheAttName(RelationGetRelid(rel), colName);
@@ -13954,6 +13981,15 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
+	 * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * Hook for plugins is about the data table's
+	 * dependence on redaction policy.
+	 */
+	if (atexecaltercolumntype_hook_type_hook)
+		 atexecaltercolumntype_hook_type_hook(RelationGetRelid(rel), colName, 1);
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
+	/*
 	 * Find everything that depends on the column (constraints, indexes, etc),
 	 * and record enough information to let us recreate the objects.
 	 *
@@ -13992,6 +14028,15 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 		foundObject.classId = foundDep->classid;
 		foundObject.objectId = foundDep->objid;
 		foundObject.objectSubId = foundDep->objsubid;
+
+		/*
+		 * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+		 * Hook for plugins is about the data table's
+		 * dependence on redaction policy.
+		 */
+		if (atexecaltercolumntype_hook_type_hook)
+			atexecaltercolumntype_hook_type_hook(foundObject.objectId, colName, 1);
+		/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 		switch (getObjectClass(&foundObject))
 		{
@@ -18169,6 +18214,14 @@ AlterRelationNamespaceInternal(Relation classRel, Oid relOid,
 
 		InvokeObjectPostAlterHook(RelationRelationId, relOid, 0);
 	}
+
+	/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	if (alterrelationnamespaceinternal_hook)
+	{
+		if (!already_done && oldNspOid != newNspOid)
+			alterrelationnamespaceinternal_hook(relOid, oldNspOid, newNspOid);
+	}
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 	heap_freetuple(classTup);
 }

@@ -78,5 +78,10 @@ extern Node *ivy_makeTypeCast(Node *arg, TypeName *typename, int location);
 extern Node *ivy_makeBoolAConst(bool state);
 extern Node *transformVarAssign(ParseState *pstate, VarAssign *var, bool returnquery);
 /* End - ReqID:SRS-MYSQL-SET */
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+typedef void (*redact_parse_analyze_hook_type) (ParseState *pstate,
+											  Query *query);
+extern PGDLLIMPORT redact_parse_analyze_hook_type redact_parse_analyze_hook;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 #endif							/* ANALYZE_H */

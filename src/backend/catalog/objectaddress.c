@@ -97,6 +97,16 @@
 #include "commands/user.h"
 
 /*
+ * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+ * Hook for plugins is about the data table's
+ * dependence on redaction policy.
+ */
+Get_object_description_hook_type get_object_description_hook = NULL;
+GetObjectTypeDescription_hook_type getobjecttypedescription_hook = NULL;
+GetObjectIdentityParts_hook_type getobjectidentityparts_hook = NULL;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
+/*
  * ObjectProperty
  *
  * This array provides a common part of system object structure; to help
@@ -3040,6 +3050,21 @@ getObjectDescription(const ObjectAddress *object, bool missing_ok)
 
 	initStringInfo(&buffer);
 
+	/*
+	 * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * Hook for plugins is about the data table's
+	 * dependence on redaction policy.
+	 */
+	if (get_object_description_hook)
+	{
+		char	*data = NULL;
+
+		data = get_object_description_hook(object);
+		if (data)
+			return data;
+	}
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
 	switch (getObjectClass(object))
 	{
 		case OCLASS_CLASS:
@@ -4571,6 +4596,21 @@ getObjectTypeDescription(const ObjectAddress *object, bool missing_ok)
 
 	initStringInfo(&buffer);
 
+	/*
+	 * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * Hook for plugins is about the data table's
+	 * dependence on redaction policy.
+	 * add begin by qinshiyu at 2023/02/17
+	 */
+	if (getobjecttypedescription_hook)
+	{
+		char	*str = NULL;
+		str = getobjecttypedescription_hook(object);
+		if (str)
+			return str;
+	}
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
 	switch (getObjectClass(object))
 	{
 		case OCLASS_CLASS:
@@ -4933,6 +4973,21 @@ getObjectIdentityParts(const ObjectAddress *object,
 		*objname = NIL;
 		*objargs = NIL;
 	}
+
+	/*
+	 * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * Hook for plugins is about the data table's
+	 * dependence on redaction policy.
+	 */
+	if (getobjectidentityparts_hook)
+	{
+		char	   *str = NULL;
+
+		str = getobjectidentityparts_hook(object, objname);
+		if (str)
+			return str;
+	}
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 	switch (getObjectClass(object))
 	{
