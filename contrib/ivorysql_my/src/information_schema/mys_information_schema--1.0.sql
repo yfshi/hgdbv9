@@ -1233,3 +1233,110 @@ GRANT SELECT ON ivymy.global_variables TO PUBLIC;
 
 CREATE VIEW ivymy.session_variables AS SELECT name AS "VARIABLE_NAME", setting AS "VARIABLE_VALUE" FROM pg_settings;
 GRANT SELECT ON ivymy.session_variables TO PUBLIC;
+
+/* Begin - #Z5936 */
+-- Create the `mysql` schema if it does not exist
+CREATE SCHEMA IF NOT EXISTS mysql;
+CREATE type mysql.enum_mysql_user as enum('N','Y');
+CREATE type mysql.enum_mysql_user_ssl_type as enum('','ANY','X509','SPECIFIED');
+
+-- Create or replace the `mysql.user` view to simulate MySQL 5.7 `mysql.user` table
+CREATE OR REPLACE VIEW mysql.user AS
+SELECT
+    -- Host column in MySQL; using '%' as default since PostgreSQL has no host concept
+    '%'::char(60) AS "Host",
+
+    -- User name (PostgreSQL role name)
+    r.rolname::char(32) AS "User",
+
+    -- ===== Simulated privileges (Y/N) =====
+    -- SELECT privilege: not mapped in this simplified view, default 'N'
+    'N'::mysql.enum_mysql_user AS "Select_priv",
+
+    -- Table-level privileges: not mapped, default 'N'
+    'N'::mysql.enum_mysql_user AS "Insert_priv",
+    'N'::mysql.enum_mysql_user AS "Update_priv",
+    'N'::mysql.enum_mysql_user AS "Delete_priv",
+
+    -- CREATE privilege: not mapped, default 'N'
+    'N'::mysql.enum_mysql_user AS "Create_priv",
+
+    -- DROP privilege: not available at global level, default 'N'
+    'N'::mysql.enum_mysql_user AS "Drop_priv",
+
+    -- Administrative privileges not supported in PostgreSQL
+    'N'::mysql.enum_mysql_user AS "Reload_priv",
+    'N'::mysql.enum_mysql_user AS "Shutdown_priv",
+    'N'::mysql.enum_mysql_user AS "Process_priv",
+    'N'::mysql.enum_mysql_user AS "File_priv",
+
+    -- GRANT privilege: not mapped, default 'N'
+    'N'::mysql.enum_mysql_user AS "Grant_priv",
+
+    -- Other object-level privileges: default 'N'
+    'N'::mysql.enum_mysql_user AS "References_priv",
+    'N'::mysql.enum_mysql_user AS "Index_priv",
+    'N'::mysql.enum_mysql_user AS "Alter_priv",
+    'N'::mysql.enum_mysql_user AS "Show_db_priv",
+
+    -- SUPER privilege: corresponds to PostgreSQL superuser
+    CASE WHEN r.rolsuper THEN 'Y' ELSE 'N' END AS "Super_priv",
+
+    -- Temporary and table-level privileges: default 'N'
+    'N'::mysql.enum_mysql_user AS "Create_tmp_table_priv",
+    'N'::mysql.enum_mysql_user AS "Lock_tables_priv",
+    'N'::mysql.enum_mysql_user AS "Execute_priv",
+    'N'::mysql.enum_mysql_user AS "Repl_slave_priv",
+    'N'::mysql.enum_mysql_user AS "Repl_client_priv",
+    'N'::mysql.enum_mysql_user AS "Create_view_priv",
+    'N'::mysql.enum_mysql_user AS "Show_view_priv",
+    'N'::mysql.enum_mysql_user AS "Create_routine_priv",
+    'N'::mysql.enum_mysql_user AS "Alter_routine_priv",
+    'N'::mysql.enum_mysql_user AS "Create_user_priv",
+    'N'::mysql.enum_mysql_user AS "Event_priv",
+    'N'::mysql.enum_mysql_user AS "Trigger_priv",
+
+    -- CREATE TABLESPACE privilege: PostgreSQL 14 does not have equivalent field
+    'N'::mysql.enum_mysql_user AS "Create_tablespace_priv",
+
+    -- ===== SSL-related fields (PostgreSQL does not track SSL per role) =====
+    ''::mysql.enum_mysql_user_ssl_type AS "ssl_type",
+    --''::blob AS "ssl_cipher",
+    --''::blob AS "x509_issuer",
+    --''::text AS "x509_subject",
+
+    -- ===== Resource limits =====
+    0::integer AS "max_questions",    -- MySQL-specific, not available in PostgreSQL
+    0::integer AS "max_updates",      -- MySQL-specific, not available in PostgreSQL
+    0::integer AS "max_connections",  -- MySQL-specific, not available in PostgreSQL
+
+    -- Max concurrent connections for this user; mapped from PostgreSQL rolconnlimit
+    CASE WHEN r.rolconnlimit > 0 THEN r.rolconnlimit ELSE 0 END AS "max_user_connections",
+
+    -- ===== Plugin and authentication =====
+    ''::text AS plugin,  -- MySQL authentication plugin; PostgreSQL does not have equivalent
+    COALESCE(r.rolpassword::text, '') AS "authentication_string",  -- Role password
+
+    -- ===== Password and account status =====
+    -- password_expired: 'Y' if rolvaliduntil < now(), else 'N'
+    CASE
+        WHEN r.rolvaliduntil IS NULL THEN 'N'
+        WHEN r.rolvaliduntil::pg_catalog.timestamp < now()::pg_catalog.timestamp THEN 'Y'
+        ELSE 'N'
+    END AS "password_expired",
+
+    -- PostgreSQL does not track last password change; using NULL
+    NULL::timestamp with time zone AS "password_last_changed",
+
+    -- password_lifetime: remaining days until rolvaliduntil; NULL if no expiry
+    CASE
+        WHEN r.rolvaliduntil IS NULL THEN NULL
+        ELSE GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (r.rolvaliduntil::pg_catalog.timestamp - now()::pg_catalog.timestamp)) / 86400))
+    END AS "password_lifetime",
+
+    -- account_locked: 'Y' if rolcanlogin is FALSE, else 'N'
+    CASE WHEN r.rolcanlogin THEN 'N' ELSE 'Y' END AS "account_locked"
+
+FROM pg_authid r;
+
+/* End - #Z5936 */

@@ -2574,7 +2574,10 @@ ERROR:   Data truncated for column
 LINE 1: ...sl_type enum('any','X509','SPECIFIED') not null default '');
                                                                    ^
 create table test_enum_d(ssl_type enum('','any','X509','SPECIFIED') not null default '');
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT e.enumsortorder,e.enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
  enumsortorder | enumlabel 
 ---------------+-----------
              1 | 
@@ -2596,7 +2599,10 @@ SELECT enumsortorder,enumlabel FROM pg_enum;
  ssl_type | test_enum_d_ssl_type_anonymous_enum |           | not null | ''::test_enum_d_ssl_type_anonymous_enum | plain   |              | 
 
 drop table test_enum_d;
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
  enumsortorder | enumlabel 
 ---------------+-----------
 (0 rows)
@@ -2734,7 +2740,10 @@ select * from student;
 Indexes:
     "student_pkey" PRIMARY KEY, btree (id)
 
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
  enumsortorder | enumlabel 
 ---------------+-----------
              1 | male
@@ -2753,7 +2762,10 @@ SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
  student_bak_non_enum_anonymous_enum
 (6 rows)
 
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
  enumsortorder | enumlabel 
 ---------------+-----------
              1 | male
@@ -2781,7 +2793,10 @@ SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
 ---------
 (0 rows)
 
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
  enumsortorder | enumlabel 
 ---------------+-----------
 (0 rows)
@@ -2812,7 +2827,10 @@ SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
  student_non_enum_anonymous_enum
 (6 rows)
 
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
  enumsortorder | enumlabel 
 ---------------+-----------
              1 | male
@@ -2843,7 +2861,10 @@ SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
  student_non_enum_anonymous_enum
 (12 rows)
 
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
  enumsortorder | enumlabel 
 ---------------+-----------
              1 | male
@@ -2864,7 +2885,10 @@ SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
  student_bak_non_enum_anonymous_enum
 (6 rows)
 
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
  enumsortorder | enumlabel 
 ---------------+-----------
              1 | male
@@ -2910,7 +2934,10 @@ SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
  student_bak_non_enum_anonymous_enum
 (4 rows)
 
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
  enumsortorder | enumlabel 
 ---------------+-----------
 (0 rows)
@@ -2921,7 +2948,10 @@ SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
 ---------
 (0 rows)
 
-SELECT enumsortorder,enumlabel FROM pg_enum;
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname <> 'enum_mysql_user'
+	AND t.typname <> 'enum_mysql_user_ssl_type';
  enumsortorder | enumlabel 
 ---------------+-----------
 (0 rows)

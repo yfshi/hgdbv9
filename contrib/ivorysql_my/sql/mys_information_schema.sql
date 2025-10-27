@@ -216,6 +216,12 @@ ORDER BY index_name, seq_in_index;
 SET ivorysql.enable_mysql_information_schema TO off;
 
 ------------------------------------------------------------
+-- 14. Test for mysql.user
+------------------------------------------------------------
+CREATE USER testuser WITH CONNECTION LIMIT 20;
+SELECT * FROM mysql.user WHERE "User" = 'testuser';
+
+------------------------------------------------------------
 -- clean
 ------------------------------------------------------------
 DROP SCHEMA test_schema CASCADE;
@@ -231,3 +237,4 @@ DROP ROLE IF EXISTS test_user;
 DROP ROLE IF EXISTS user_a;
 DROP ROLE IF EXISTS user_b;
 DROP ROLE IF EXISTS schema_user;
+DROP ROLE IF EXISTS testuser;
