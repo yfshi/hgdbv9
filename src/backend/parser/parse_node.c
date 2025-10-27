@@ -56,6 +56,7 @@ make_parsestate(ParseState *parentParseState)
 	pstate->p_next_resno = 1;
 	pstate->p_resolve_unknowns = true;
 	pstate->p_myssetvar = false;	/* ReqID:SRS-MYSQL-SET */
+	pstate->p_subselect = false;	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 	if (parentParseState)
 	{

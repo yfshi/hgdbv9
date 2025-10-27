@@ -1,0 +1,57 @@
+<!--
+doc/src/sgml/ref/alter_redaction_policy.sgml
+PostgreSQL documentation
+-->
+
+<refentry id="sql-alterredactionpolicy">
+ <indexterm zone="sql-alterredactionpolicy">
+  <primary>ALTER REDACTION POLICY</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>ALTER REDACTION POLICY</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>ALTER REDACTION POLICY</refname>
+  <refpurpose>alter a redaction policy </refpurpose>
+ </refnamediv>
+
+<refsynopsisdiv>
+  <synopsis>
+
+ALTER REDCATION POLICY name ON table_name RENAME TO new_name
+
+ALTER REDCATION POLICY name ON table_name for (for_expression)
+
+ALTER REDCATION POLICY name ON table_name [ ENABLE | DISABLE ]
+
+ALTER REDCATION POLICY name ON table_name ADD [ COLUMN ]
+ column_name [, ...] USING func_name [WITH OPTIONS (SCOP value | EXCEPTION value)]
+
+ALTER REDCATION POLICY name ON table_name MODIFY COLUMN column_name [, ...] USING 
+  func_name [WITH OPTIONS (SCOP value | EXCEPTION value)]
+
+ALTER REDCATION POLICY name ON table_name DROP COLUMN column_name [, ...]
+
+  </synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+
+  <para>
+   <command>postmaster</command> is a deprecated alias of <command>postgres</command>.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>See Also</title>
+
+  <para>
+   <xref linkend="app-postgres"/>
+  </para>
+ </refsect1>
+</refentry>

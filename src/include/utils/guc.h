@@ -530,6 +530,12 @@ extern PGDLLIMPORT int default_week_format;
 extern PGDLLIMPORT bool at_or_atat;		/* ReqID:SRS-MYSQL-SET */
 extern PGDLLIMPORT bool sql_quote_show_create;	/* ReqID:SRS-MYSQL-SHOW */
 
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+ * support data redaction policy
+ */
+extern PGDLLIMPORT bool hg_redaction_data;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
 /*
  * Functions exported by guc.c
  */

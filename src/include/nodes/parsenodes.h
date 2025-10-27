@@ -2935,6 +2935,74 @@ typedef struct AlterPolicyStmt
 	Node	   *with_check;		/* the policy's WITH CHECK condition. */
 } AlterPolicyStmt;
 
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+/*----------------------
+ * CREATE REDACTION POLICY policy_name
+ * the struct of create data redaction
+ * add by qinshiyu at 2023-01-16
+ *----------------------
+ */
+typedef struct CreateRedactionPolicyStmt
+{
+	NodeTag		type;
+	char	   *policy_name;		/* Policy's name */
+	RangeVar   *table_name;			/* the table name the policy applies to */
+	List	   *add_columns;		/* add column for the data redaction policy */
+	List	   *withoptions;		/* the data radaction policy's with options */
+	List	   *options;			/* the data radaction policy's condition */
+	bool		policy_enabled;		/* the data radaction policy enable or disable */
+} CreateRedactionPolicyStmt;
+
+/*----------------------
+ * DROP REDACTION POLICY policy_name
+ * the struct of drop data redaction
+ * add by qinshiyu at 2023-01-16
+ *----------------------
+ */
+typedef struct DropRedactionPolicyStmt
+{
+	NodeTag		type;
+	bool		if_exists;			/* if exists */
+	List	   *policyname_list;	/* data radaction policy's name */
+	RangeVar   *table_name;			/* the table name the policy applies to */
+}DropRedactionPolicyStmt;
+
+/*----------------------
+ * ALTER REDACTION POLICY policy_name
+ * the struct of drop data redaction
+ * add by qinshiyu at 2023-01-16
+ * *----------------------
+ */
+typedef struct AlterRedactionPolicyStmt
+{
+	NodeTag		type;
+	char		stmt_type;			/* modify type */
+	char		*policy_name;		/* the data radaction policy's name */
+	char		*policy_newname;	/* the data radaction policy's new name */
+	RangeVar	*table_name;		/* table name */
+	List		*options;			/* the data radaction policy's condition, for expr */
+	List		*colname_list;		/* column name from table */
+	List		*add_columns;		/* add new column for the redaction policy */
+	List		*with_options;		/* with options */
+	char		*procname;			/* data redaction function name */
+	bool		policy_enabled;		/* data redactiom policy enable or disable */
+}AlterRedactionPolicyStmt;
+
+/*----------------------
+ * ALTER REDACTION POLICY policy_name
+ * the struct of drop data redaction
+ * add by qinshiyu at 2023-01-16
+ * *----------------------
+ */
+typedef struct RedactionPolicyColumnStmt
+{
+	NodeTag		type;
+	List		*colname_list;		/* column name from table */
+	char		optype;				/* action flag */
+	List		*withops_list;		/* with options */
+}RedactionPolicyColumnStmt;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
 /*----------------------
  *		Create ACCESS METHOD Statement
  *----------------------

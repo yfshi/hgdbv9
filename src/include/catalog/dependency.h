@@ -156,6 +156,34 @@ typedef enum ObjectClass
 #define PERFORM_DELETION_CONCURRENT_LOCK	0x0020	/* normal drop with
 													 * concurrent lock mode */
 
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+ * Hook for plugins to get object address
+ */
+typedef char * (*Get_object_description_hook_type) (const ObjectAddress *object);
+extern PGDLLIMPORT Get_object_description_hook_type get_object_description_hook;
+/* Hook for plugins to do deletion redaction policy */
+typedef bool (*Do_deletion_hook_type) (const ObjectAddress *object);
+extern PGDLLIMPORT Do_deletion_hook_type do_deletion_hook;
+/* Hook for drop table drop redaction policy */
+typedef bool (*Do_drop_table_redaction_hook_type) (Oid oid);
+extern PGDLLIMPORT Do_drop_table_redaction_hook_type do_drop_table_redaction;
+/* Hook for plugins to alter objectNamespace of hg_redaction */
+typedef bool (*AlterObjectNamespace_oid_hook_type) (const ObjectAddress *object);
+extern PGDLLIMPORT AlterObjectNamespace_oid_hook_type alterobjectnamespaceoid_hook;
+/* Hook for plugins to get object type description of hg_redaction */
+typedef char * (*GetObjectTypeDescription_hook_type) (const ObjectAddress *object);
+extern PGDLLIMPORT GetObjectTypeDescription_hook_type getobjecttypedescription_hook;
+/* Hook for plugins to get object identity parts of hg_redaction */
+typedef char * (*GetObjectIdentityParts_hook_type) (const ObjectAddress *object, List **objname);
+extern PGDLLIMPORT GetObjectIdentityParts_hook_type getobjectidentityparts_hook;
+/* Hook for plugins to alter table of hg_redaction */
+typedef void (*ATExecAlterTable_hook_type) (Oid reloid, char *colName, int type);
+extern PGDLLIMPORT ATExecAlterTable_hook_type atexecaltercolumntype_hook_type_hook;
+
+/* Hook for plugins to alter table of hg_redaction */
+typedef void (*AlterRelationNamespaceInternal_hook_type) (Oid relOid, Oid oldNspOid, Oid newNspOid);
+extern PGDLLIMPORT AlterRelationNamespaceInternal_hook_type alterrelationnamespaceinternal_hook;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 /*

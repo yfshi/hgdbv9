@@ -202,6 +202,9 @@ static void processCASbits(int cas_bits, int location, const char *constrType,
 			   bool *deferrable, bool *initdeferred, bool *not_valid,
 			   bool *no_inherit, core_yyscan_t yyscanner);
 static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+static char *redation_get_func_name(const char *fname, List *indirectionlist, core_yyscan_t yyscanner);
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 %}
 
@@ -268,7 +271,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 		AlterDatabaseStmt AlterDatabaseSetStmt AlterDomainStmt AlterEnumStmt
 		AlterFdwStmt AlterForeignServerStmt AlterGroupStmt
 		AlterObjectDependsStmt AlterObjectSchemaStmt AlterOwnerStmt
-		AlterOperatorStmt AlterTypeStmt AlterSeqStmt AlterSystemStmt AlterTableStmt
+		AlterOperatorStmt AlterRedactionPolicyStmt /* ReqID:SRS-SECURITY-DATADESENSITIZATION */ AlterTypeStmt AlterSeqStmt AlterSystemStmt AlterTableStmt
 		AlterTblSpcStmt AlterExtensionStmt AlterExtensionContentsStmt
 		AlterCompositeTypeStmt AlterUserMappingStmt
 		AlterRoleStmt AlterRoleSetStmt AlterPolicyStmt AlterStatsStmt
@@ -280,11 +283,11 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 		CreateSchemaStmt CreateSeqStmt CreateStmt CreateStatsStmt CreateTableSpaceStmt
 		CreateFdwStmt CreateForeignServerStmt CreateForeignTableStmt
 		CreateAssertionStmt CreateTransformStmt CreateTrigStmt CreateEventTrigStmt
-		CreateUserStmt CreateUserMappingStmt CreateRoleStmt CreatePolicyStmt
+		CreateUserStmt CreateUserMappingStmt CreateRoleStmt CreatePolicyStmt CreateRedactionPolicyStmt /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 		CreatedbStmt DeclareCursorStmt DefineStmt DeleteStmt DiscardStmt DoStmt
 		DropOpClassStmt DropOpFamilyStmt DropForeignServerStmt DropStmt
 		DropCastStmt DropRoleStmt
-		DropdbStmt DropTableSpaceStmt
+		DropdbStmt DropRedactionPolicyStmt /* ReqID:SRS-SECURITY-DATADESENSITIZATION */ DropTableSpaceStmt
 		DropTransformStmt
 		DropUserMappingStmt ExplainStmt FetchStmt
 		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt
@@ -628,6 +631,13 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <list>	skipList
 %type <node>	skipElem
 /* End - BUG#M0000368 */
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+%type <list>		rdpolicy_column_lists for_policy_expr with_options scope_exception_options modify_column_lists
+%type <boolean>		policy_status_opt
+%type <defelt>		add_column_elem scope_exception_option modify_column_elem
+%type <str>			policy_func
+%type <range>		on_qualified_name
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
@@ -678,7 +688,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBDELI /* BUG#M0000414 */ DOUBLE_P DROP
 
-	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
+	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT EXCEPTION /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
 	EXTENSION EXTERNAL EXTRACT
 
@@ -703,7 +713,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGBAD /* BUG#Z1087 */ LOGGED
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEMORY_LIMIT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ MERGE METHOD
-	MINUTE_P MINVALUE MIN_COST /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ MODE MONTH_P MOVE
+	MINUTE_P MINVALUE MIN_COST /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ MODE MODIFY_P /* ReqID:SRS-SECURITY-DATADESENSITIZATION */ MONTH_P MOVE
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
 	NORMALIZE NORMALIZED
@@ -720,12 +730,12 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 
 	QUOTE QUOTES /* BUG#M0000414 */
 
-	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
+	RANGE READ REAL REASSIGN RECHECK RECURSIVE REDACTION /* ReqID:SRS-SECURITY-DATADESENSITIZATION */ REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
 	RESET RESOURCE /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWS RULE
 
-	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
+	SAVEPOINT SCHEMA SCHEMAS SCOPE SCROLL /* ReqID:SRS-SECURITY-DATADESENSITIZATION */ SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARDING /* ReqID:SRS-MISC-BULKLOAD*/ SHARE SHOW
 	SIMILAR SIMPLE SKIP SKIPBAD /* BUG#Z1616 */ SKIPLIST /* BUG:M0000368*/ SMALLINT SNAPSHOT 
 	SOME SQL_P STABLE STANDALONE_P
@@ -950,6 +960,7 @@ stmt:
 			| AlterOperatorStmt
 			| AlterTypeStmt
 			| AlterPolicyStmt
+			| AlterRedactionPolicyStmt		/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| AlterSeqStmt
 			| AlterSystemStmt
 			| AlterTableStmt
@@ -991,6 +1002,7 @@ stmt:
 			| AlterOpFamilyStmt
 			| CreatePolicyStmt
 			| CreatePLangStmt
+			| CreateRedactionPolicyStmt		/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| CreateResourceGroupStmt /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| CreateSchemaStmt
 			| CreateSeqStmt
@@ -1021,6 +1033,7 @@ stmt:
 			| DropSubscriptionStmt
 			| DropTableSpaceStmt
 			| DropTransformStmt
+			| DropRedactionPolicyStmt	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| DropRoleStmt
 			| DropUserMappingStmt
 			| DropdbStmt
@@ -2911,6 +2924,18 @@ reloption_elem:
 				{
 					$$ = makeDefElemExtended($1, $3, NULL, DEFELEM_UNSPEC, @1);
 				}
+			/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+			| ColLabel NOT_EQUALS def_arg
+				{
+					$$ = makeDefElemExtended(NULL, $1, (Node *) $3,
+											 DEFELEM_SET, @1);
+				}
+			| ColLabel '.' ColLabel NOT_EQUALS def_arg
+				{
+					$$ = makeDefElemExtended($1, $3, (Node *) $5,
+											 DEFELEM_SET, @1);
+				}
+			/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 		;
 
 alter_identity_column_option_list:
@@ -5512,6 +5537,268 @@ row_security_cmd:
 		|	UPDATE			{ $$ = "update"; }
 		|	DELETE_P		{ $$ = "delete"; }
 		;
+
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION, the syntax of data redacion policy */
+/*****************************************************************************
+ *		QUERIES:
+ *				CREATE REDACTION POLICY name ON table
+ *				[ ADD [ COLUMN ] <column_name>[,…] USING <funcname_clause>
+ *					[WITH OPTIONS ([redaction_option] [, redaction_option])]
+ *				] [, ...]
+ *				[ FOR ( <expression> ) ]
+ *				[ENABLE | DISABLE]
+ *
+ *****************************************************************************/
+CreateRedactionPolicyStmt:
+		CREATE REDACTION POLICY name ON qualified_name for_policy_expr
+		rdpolicy_column_lists policy_status_opt
+			{
+				CreateRedactionPolicyStmt *n = makeNode(CreateRedactionPolicyStmt);
+				n->policy_name = $4;
+				n->table_name = $6;
+				n->options = $7;
+				n->add_columns = $8;
+				n->policy_enabled = $9;
+				$$ = (Node *) n;
+			}
+	;
+
+/* all elements of data redaction */
+rdpolicy_column_lists:
+			add_column_elem 							{ $$ = list_make1($1); }
+			| rdpolicy_column_lists ',' add_column_elem		{ $$ = lappend($1, $3); }
+;
+
+/* Columns from table, used for data redaction,
+ * one or manny column use the same data redaction function.
+ */
+add_column_elem:
+		ADD_P columnList USING policy_func with_options
+			{
+				RedactionPolicyColumnStmt *colelement = makeNode(RedactionPolicyColumnStmt);
+				colelement->colname_list = $2;
+				colelement->withops_list = $5;
+				colelement->optype = 'A';
+
+				$$ = makeDefElem($4, (Node *)colelement, @1);
+			}
+		| ADD_P COLUMN columnList USING policy_func with_options
+			{
+				RedactionPolicyColumnStmt *colelement = makeNode(RedactionPolicyColumnStmt);
+				colelement->colname_list = $3;
+				colelement->withops_list = $6;
+				colelement->optype = 'A';
+				$$ = makeDefElem($5, (Node *)colelement, @1);
+			}
+	;
+
+modify_column_lists:
+		modify_column_elem 									{ $$ = list_make1($1); }
+		| modify_column_lists ',' modify_column_elem		{ $$ = lappend($1, $3); }
+	;
+
+modify_column_elem:
+		columnList USING policy_func WITH OPTIONS '(' scope_exception_options ')'
+			{
+				RedactionPolicyColumnStmt *colelement = makeNode(RedactionPolicyColumnStmt);
+				colelement->colname_list = $1;
+				colelement->withops_list = $7;
+				colelement->optype = 'M';
+				$$ = makeDefElem($3, (Node *)colelement, @2);
+			}
+		| columnList USING policy_func
+			{
+				RedactionPolicyColumnStmt *colelement = makeNode(RedactionPolicyColumnStmt);
+				colelement->colname_list = $1;
+				colelement->optype = 'M';
+				$$ = makeDefElem($3, (Node *)colelement, @2);
+			}
+		| columnList WITH OPTIONS '(' scope_exception_options ')'
+			{
+				RedactionPolicyColumnStmt *colelement = makeNode(RedactionPolicyColumnStmt);
+				colelement->colname_list = $1;
+				colelement->withops_list = $5;
+				colelement->optype = 'M';
+				$$ = makeDefElem(NULL, (Node *)colelement, @2);
+			}
+	;
+
+/* data redation functions */
+policy_func:
+		type_function_name
+			{
+				$$ = $1;
+			}
+		| IDENT indirection
+			{
+				$$ = redation_get_func_name($1, $2, yyscanner);
+			}
+		| unreserved_keyword indirection
+			{
+				$$ = redation_get_func_name($1, $2, yyscanner);
+			}
+		| col_name_keyword
+			{
+				$$ = pstrdup($1);
+			}
+		| col_name_keyword indirection
+			{
+				$$ = redation_get_func_name($1, $2, yyscanner);
+			}
+	;
+
+/* data redation for expr */
+for_policy_expr:
+			FOR reloptions								{ $$ = $2; }
+			| /* EMPTY */								{ $$ = NULL; }
+;
+
+/* switch for data redation, default value is ENABLE_P */
+policy_status_opt:
+		ENABLE_P										{$$ = true;}
+		| DISABLE_P										{$$ = false;}
+		| /* EMPTY */									{$$ = true;}
+;
+
+/*****************************************************************************
+*
+*	QUERY:
+*
+*		ALTER REDACTION POLICY name
+*
+*****************************************************************************/
+AlterRedactionPolicyStmt:
+		/*
+		 * ALTER REDACTION POLICY <name> ON table_name RENAME TO <newname>
+		 */
+		ALTER REDACTION POLICY name on_qualified_name RENAME TO name
+			{
+				AlterRedactionPolicyStmt *n = makeNode(AlterRedactionPolicyStmt);
+				n->stmt_type = 'R';
+				n->policy_name = $4;
+				n->table_name = $5;
+				n->policy_newname = $8;
+				$$ = (Node *)n;
+			}
+		/*
+		 * ALTER REDACTION POLICY <name> ON table_name FOR (expression)
+		 *
+		 */
+		| ALTER REDACTION POLICY name on_qualified_name FOR reloptions
+			{
+				AlterRedactionPolicyStmt *n = makeNode(AlterRedactionPolicyStmt);
+				n->stmt_type = 'F';
+				n->policy_name = $4;
+				n->table_name = $5;
+				n->options = $7;
+				$$ = (Node *)n;
+			}
+		/*
+		 * ALTER REDACTION POLICY <name> ON table_name { ENABLE | DISABLE }
+		 *
+		 */
+		| ALTER REDACTION POLICY name on_qualified_name policy_status_opt
+			{
+				AlterRedactionPolicyStmt *n = makeNode(AlterRedactionPolicyStmt);
+				n->stmt_type = 'S';
+				n->policy_name = $4;
+				n->table_name = $5;
+				n->policy_enabled = $6;
+				$$ = (Node *)n;
+			}
+		/*
+		 * ALTER REDACTION POLICY <name> ON table_name
+		 * ADD [ COLUMN ] <column_name>[,....] USING <funcname_clause>
+		 */
+		| ALTER REDACTION POLICY name on_qualified_name rdpolicy_column_lists
+			{
+				AlterRedactionPolicyStmt *n = makeNode(AlterRedactionPolicyStmt);
+				n->stmt_type = 'A';
+				n->policy_name = $4;
+				n->table_name = $5;
+				n->add_columns = $6;
+				$$ = (Node *)n;
+			}
+		/*
+		 * ALTER REDACTION POLICY <name> ON table_name MODIFY [ COLUMN ] <column_name>[,....]
+		 * USING <funcname_clause>
+		 */
+		| ALTER REDACTION POLICY name on_qualified_name MODIFY_P COLUMN modify_column_lists
+			{
+				AlterRedactionPolicyStmt *n = makeNode(AlterRedactionPolicyStmt);
+				n->stmt_type = 'M';
+				n->policy_name = $4;
+				n->table_name = $5;
+				n->colname_list = $8;
+				//n->procname = $10;
+				//n->with_options = $11;
+				$$ = (Node *)n;
+			}
+		/*
+		 * ALTER REDACTION POLICY <name> ON table_name
+		 * DROP [ COLUMN ] <column_name>[,....]
+		 */
+		| ALTER REDACTION POLICY name on_qualified_name DROP COLUMN columnList
+			{
+				AlterRedactionPolicyStmt *n = makeNode(AlterRedactionPolicyStmt);
+				n->stmt_type = 'D';
+				n->policy_name = $4;
+				n->table_name = $5;
+				n->colname_list = $8;
+				$$ = (Node *)n;
+			}
+		;
+
+on_qualified_name:
+		ON qualified_name							{ $$ = $2; }
+	;
+
+with_options:
+		WITH OPTIONS '(' scope_exception_options ')'
+			{ $$ = $4;}
+		|
+			{$$ = NIL;}
+	;
+
+scope_exception_options:
+	scope_exception_option
+			{ $$ = list_make1($1); }
+	| scope_exception_options ',' scope_exception_option
+			{ $$ = lappend($1, $3); }
+	;
+
+scope_exception_option:
+	SCOPE ColId
+		{$$ = makeDefElem(pstrdup($1), (Node *)makeString($2), @1);}
+	| EXCEPTION ColId
+		{$$ = makeDefElem(pstrdup($1), (Node *)makeString($2), @1);}
+	;
+
+/*****************************************************************************
+*
+*		QUERY:
+*			DROP REDACTION POLICY policy_redaction_name
+*
+*****************************************************************************/
+DropRedactionPolicyStmt:
+		DROP REDACTION POLICY name_list on_qualified_name opt_drop_behavior
+			{
+				DropRedactionPolicyStmt *n = makeNode(DropRedactionPolicyStmt);
+				n->if_exists = false;
+				n->policyname_list = $4;
+				n->table_name = $5;
+				$$ = (Node *) n;
+			}
+		| DROP REDACTION POLICY IF_P EXISTS name_list on_qualified_name opt_drop_behavior
+			{
+				DropRedactionPolicyStmt *n = makeNode(DropRedactionPolicyStmt);
+				n->if_exists = true;
+				n->policyname_list = $6;
+				n->table_name = $7;
+				$$ = (Node *) n;
+			}
+		;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 /*****************************************************************************
  *
@@ -15943,6 +16230,7 @@ unreserved_keyword:
 			| ENUM_P
 			| ESCAPE
 			| EVENT
+			| EXCEPTION		/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| EXCLUDE
 			| EXCLUDING
 			| EXCLUSIVE
@@ -16017,6 +16305,7 @@ unreserved_keyword:
 			| MINVALUE
 			| MIN_COST /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| MODE
+			| MODIFY_P	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| MONTH_P
 			| MOVE
 			| NAME_P
@@ -16073,6 +16362,7 @@ unreserved_keyword:
 			| REASSIGN
 			| RECHECK
 			| RECURSIVE
+			| REDACTION		/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| REF_P
 			| REFERENCING
 			| REFRESH
@@ -16100,6 +16390,7 @@ unreserved_keyword:
 			| SAVEPOINT
 			| SCHEMA
 			| SCHEMAS
+			| SCOPE		/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| SCROLL
 			| SEARCH
 			| SECOND_P
@@ -16507,6 +16798,7 @@ bare_label_keyword:
 			| ENUM_P
 			| ESCAPE
 			| EVENT
+			| EXCEPTION		/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| EXCLUDE
 			| EXCLUDING
 			| EXCLUSIVE
@@ -16604,6 +16896,7 @@ bare_label_keyword:
 			| MINVALUE
 			| MIN_COST /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| MODE
+			| MODIFY_P		/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| MOVE
 			| NAME_P
 			| NAMES
@@ -16676,6 +16969,7 @@ bare_label_keyword:
 			| REASSIGN
 			| RECHECK
 			| RECURSIVE
+			| REDACTION		/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| REF_P
 			| REFERENCES
 			| REFERENCING
@@ -16706,6 +17000,7 @@ bare_label_keyword:
 			| SAVEPOINT
 			| SCHEMA
 			| SCHEMAS
+			| SCOPE		/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 			| SCROLL
 			| SEARCH
 			| SECURITY
@@ -17689,3 +17984,43 @@ parser_init(base_yy_extra_type *yyext)
 {
 	yyext->parsetree = NIL;		/* in case grammar forgets to set it */
 }
+
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+/* redation_get_func_name
+ * Concatenate the funcion name into s string.
+ */
+static char *
+redation_get_func_name(const char *fname, List *indirectionlist, core_yyscan_t yyscanner)
+{
+	List		*namelist = NIL;
+	char		*schema_name = NULL;
+	char		*relname = NULL;
+	char		*buf = NULL;
+	int			len = 0;
+	char		*resfuncname = NULL;
+
+	namelist = check_func_name(lcons(makeString(pstrdup(fname)), indirectionlist),
+						 yyscanner);
+	DeconstructQualifiedName(namelist, &schema_name, &relname);
+	if (schema_name != NULL)
+	{
+		len = strlen(schema_name) + strlen(relname) + 2;
+		buf = (char *)palloc0(len);
+		sprintf(buf, "%s.%s", schema_name, relname);
+		buf[len-1] = '\0';
+	}
+
+	if (buf != NULL)
+	{
+		resfuncname = pstrdup(buf);
+		list_free(namelist);
+		pfree(buf);
+	}
+	else
+	{
+		resfuncname = pstrdup(relname);
+	}
+
+	return resfuncname;
+}
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */

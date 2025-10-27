@@ -1,0 +1,45 @@
+<!--
+doc/src/sgml/ref/drop_redaction_policy.sgml
+PostgreSQL documentation
+-->
+
+<refentry id="sql-dropredactionpolicy">
+ <indexterm zone="sql-dropredactionpolicy">
+  <primary>DROP REDACTION POLICY</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>DROP REDACTION POLICY</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>DROP REDACTION POLICY</refname>
+  <refpurpose>drop a redaction policy </refpurpose>
+ </refnamediv>
+
+<refsynopsisdiv>
+  <synopsis>
+
+DROP REDCATION POLICY [ IF EXISTS ] name ON table_name [ CASCADE | RESTRICT ]
+
+  </synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+
+  <para>
+   <command>postmaster</command> is a deprecated alias of <command>postgres</command>.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>See Also</title>
+
+  <para>
+   <xref linkend="app-postgres"/>
+  </para>
+ </refsect1>
+</refentry>

@@ -358,6 +358,13 @@ struct ParseState
 	 * cast function will be called in INSERT context.
 	 */
 	bool		p_alter_column_type;
+
+	/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * pstate->p_subselect record where the row is
+	 * in a subquery, which is needed for data masking.
+	 */
+	bool		p_subselect;
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 };
 
 /*

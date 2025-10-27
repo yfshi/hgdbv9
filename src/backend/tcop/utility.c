@@ -94,6 +94,10 @@
 /* Hook for plugins to get control in ProcessUtility() */
 ProcessUtility_hook_type ProcessUtility_hook = NULL;
 
+/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+ProcessUtilityRedaction_hook_type ProcessrdUtility_hook = false;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
 /* local function declarations */
 static int	ClassifyUtilityCommandAsReadOnly(Node *parsetree);
 static void ProcessUtilitySlow(ParseState *pstate,
@@ -632,6 +636,16 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 
 	/* This can recurse, so check for excessive recursion */
 	check_stack_depth();
+
+	/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	if (ProcessrdUtility_hook)
+	{
+		if ((*ProcessrdUtility_hook) (pstmt, queryString, readOnlyTree,
+														context, params, queryEnv,
+														dest, qc))
+			return;
+	}
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 	/*
 	 * If the given node tree is read-only, make a copy to ensure that parse
@@ -3529,6 +3543,22 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_SET_MULTISET;
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
+		/*Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+		 * support redaction policy.
+		 */
+		case T_CreateRedactionPolicyStmt:
+			tag = CMDTAG_CREATE_REDACTION_POLICY;
+			break;
+		case T_AlterRedactionPolicyStmt:
+			tag = CMDTAG_ALTER_REDACTION_POLICY;
+			break;
+		case T_DropRedactionPolicyStmt:
+			tag = CMDTAG_DROP_REDACTION_POLICY;
+			break;
+		case T_RedactionPolicyColumnStmt:
+			tag = CMDTAG_COLUMN_REDACTION_POLICY;
+			break;
+		/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 		default:
 			elog(WARNING, "unrecognized node type: %d",
 				 (int) nodeTag(parsetree));

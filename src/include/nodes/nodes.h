@@ -600,8 +600,14 @@ typedef enum NodeTag
 	T_MysVariableSetStmt,
 	T_SelectIntoUserVarStmt,
 	T_VarAssign,
-	T_VarRef
+	T_VarRef,
 	/* End - ReqID:SRS-MYSQL-SET */
+	/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	T_CreateRedactionPolicyStmt,	/* in nodes/parsenodes.h */
+	T_DropRedactionPolicyStmt,		/* in nodes/parsenodes.h */
+	T_AlterRedactionPolicyStmt,		/* in nodes/parsenodes.h */
+	T_RedactionPolicyColumnStmt		/* in nodes/parsenodes.h */
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 } NodeTag;
 
 /*

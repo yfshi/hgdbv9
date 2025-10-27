@@ -219,6 +219,13 @@ static const Oid object_classes[] = {
 	SynonymRelationId			/* OCLASS_SYNONYM */ /* ReqID:SRS-SQL-SYNONYM */
 };
 
+/*Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+ * Hook for plugins is about the data table's
+ * dependence on redaction policy.
+ */
+Do_deletion_hook_type do_deletion_hook = NULL;
+Do_drop_table_redaction_hook_type do_drop_table_redaction = NULL;
+/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 static void findDependentObjects(const ObjectAddress *object,
 								 int objflags,
@@ -284,6 +291,11 @@ deleteObjectsInList(ObjectAddresses *targetObjects, Relation *depRel,
 				normal = true;
 			if (extra->flags & DEPFLAG_REVERSE)
 				normal = true;
+
+			/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+			if (do_drop_table_redaction != NULL && do_drop_table_redaction(thisobj->classId) == true)
+				continue;
+			/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 			if (EventTriggerSupportsObjectClass(getObjectClass(thisobj)))
 			{
@@ -1738,6 +1750,18 @@ deleteOneObject(const ObjectAddress *object, Relation *depRel, int flags)
 static void
 doDeletion(const ObjectAddress *object, int flags)
 {
+	/*
+	 * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
+	 * Hook for plugins is about the data table's
+	 * dependence on redaction policy.
+	 */
+	if (do_deletion_hook)
+	{
+		if (do_deletion_hook(object))
+			return;
+	}
+	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
 	switch (getObjectClass(object))
 	{
 		case OCLASS_CLASS:

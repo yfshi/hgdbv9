@@ -1,0 +1,7 @@
+# hg_redaction extension
+comment = 'support data redaction'
+default_version = '1.0'
+module_pathname = '$libdir/hg_redaction'
+# schema = public
+relocatable = true
+requires = 'hg_sysmac'
