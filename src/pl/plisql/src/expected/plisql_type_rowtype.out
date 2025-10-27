@@ -272,11 +272,11 @@ SELECT count(*) FROM pg_depend d, pg_class c, pg_proc p
 --change the column id type from int to varchar, call the function
 SELECT fun3(3) FROM dual;  --failed
 ERROR:  invalid input syntax for type integer: "a"
-CONTEXT:  PL/iSQL function fun3(integer) line 2 during statement block local variable initialization
+CONTEXT:  PL/iSQL function public.fun3(integer) line 2 during statement block local variable initialization
 SELECT fun4(4) FROM dual;  --falled
 ERROR:  invalid input syntax for type integer: "a"
-CONTEXT:  PL/iSQL function inf1 line 3 during statement block local variable initialization
-PL/iSQL function fun4(integer) line 7 at RETURN
+CONTEXT:  PL/iSQL function public.inf1 line 3 during statement block local variable initialization
+PL/iSQL function public.fun4(integer) line 7 at RETURN
 SELECT fun5(5) FROM dual;  --successfully
 NOTICE:  5
  fun5 
@@ -307,11 +307,11 @@ SELECT prostatus FROM pg_proc WHERE proname like 'fun5'; --v
 
 SELECT fun3(3) FROM dual;  --failed
 ERROR:  invalid input syntax for type integer: "a"
-CONTEXT:  PL/iSQL function fun3(integer) line 2 during statement block local variable initialization
+CONTEXT:  PL/iSQL function public.fun3(integer) line 2 during statement block local variable initialization
 SELECT fun4(4) FROM dual;  --falled
 ERROR:  invalid input syntax for type integer: "a"
-CONTEXT:  PL/iSQL function inf1 line 3 during statement block local variable initialization
-PL/iSQL function fun4(integer) line 7 at RETURN
+CONTEXT:  PL/iSQL function public.inf1 line 3 during statement block local variable initialization
+PL/iSQL function public.fun4(integer) line 7 at RETURN
 SELECT fun5(5) FROM dual;  --successfully
 NOTICE:  5
  fun5 
@@ -1764,7 +1764,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: a := 'abc'
              ^
 QUERY:  a := 'abc'
-CONTEXT:  PL/iSQL function p1(public.tmpe%ROWTYPE) line 3 at assignment
+CONTEXT:  PL/iSQL function public.p1(public.tmpe%ROWTYPE) line 3 at assignment
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 ALTER PROCEDURE p1 COMPILE;
@@ -1779,7 +1779,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: a := 'abc'
              ^
 QUERY:  a := 'abc'
-CONTEXT:  PL/iSQL function p1(public.tmpe%ROWTYPE) line 3 at assignment
+CONTEXT:  PL/iSQL function public.p1(public.tmpe%ROWTYPE) line 3 at assignment
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 DECLARE
@@ -1794,7 +1794,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: a.phone_number := 'abc'
                           ^
 QUERY:  a.phone_number := 'abc'
-CONTEXT:  PL/iSQL function f1(integer) line 3 at assignment
+CONTEXT:  PL/iSQL function public.f1(integer) line 3 at assignment
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
 BEGIN
@@ -1805,7 +1805,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: a.phone_number := 'abc'
                           ^
 QUERY:  a.phone_number := 'abc'
-CONTEXT:  PL/iSQL function f1(integer) line 3 at assignment
+CONTEXT:  PL/iSQL function public.f1(integer) line 3 at assignment
 SQL statement "CALL p1(f1(1))"
 PL/iSQL function inline_code_block line 3 at CALL
 DECLARE
@@ -1819,7 +1819,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: var1.phone_number := 'abc'
                              ^
 QUERY:  var1.phone_number := 'abc'
-CONTEXT:  PL/iSQL function pfun line 4 at assignment
+CONTEXT:  PL/iSQL function public.pkg1.pfun line 4 at assignment
 PL/iSQL function inline_code_block line 5 at RAISE
 DROP PROCEDURE p1(v tmpe%ROWTYPE);
 DROP FUNCTION f1(v int);
@@ -1884,7 +1884,7 @@ END;
 /
 ERROR:  record "v" has no field "phone_number"
 CONTEXT:  SQL expression "v.phone_number"
-PL/iSQL function p1(public.tmpe%ROWTYPE) line 2 at RAISE
+PL/iSQL function public.p1(public.tmpe%ROWTYPE) line 2 at RAISE
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 DECLARE
@@ -1897,7 +1897,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f1(integer) line 4 at RAISE
+PL/iSQL function public.f1(integer) line 4 at RAISE
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
 BEGIN
@@ -1906,7 +1906,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f1(integer) line 4 at RAISE
+PL/iSQL function public.f1(integer) line 4 at RAISE
 SQL statement "CALL p1(f1(1))"
 PL/iSQL function inline_code_block line 3 at CALL
 DECLARE
@@ -1918,7 +1918,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f2(integer) line 3 at RETURN
+PL/iSQL function public.f2(integer) line 3 at RETURN
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   res varchar(20);
@@ -1929,7 +1929,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  PL/iSQL assignment "r := a.phone_number"
-PL/iSQL function f3(integer) line 4 at assignment
+PL/iSQL function public.f3(integer) line 4 at assignment
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   a tmpe%ROWTYPE;
@@ -1940,7 +1940,7 @@ END;
 /
 ERROR:  record "r" has no field "phone_number"
 CONTEXT:  PL/iSQL assignment "r.phone_number :=  'abc'"
-PL/iSQL function pfun line 4 at assignment
+PL/iSQL function public.pkg1.pfun line 4 at assignment
 PL/iSQL function inline_code_block line 5 at RAISE
 DROP PROCEDURE p1(v tmpe%ROWTYPE);
 DROP FUNCTION f1(v int);
@@ -2007,7 +2007,7 @@ END;
 /
 ERROR:  record "v" has no field "phone_number"
 CONTEXT:  SQL expression "v.phone_number"
-PL/iSQL function p1(public.tmpe%ROWTYPE) line 2 at RAISE
+PL/iSQL function public.p1(public.tmpe%ROWTYPE) line 2 at RAISE
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 DECLARE
@@ -2020,7 +2020,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f1(integer) line 4 at RAISE
+PL/iSQL function public.f1(integer) line 4 at RAISE
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
 BEGIN
@@ -2029,7 +2029,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f1(integer) line 4 at RAISE
+PL/iSQL function public.f1(integer) line 4 at RAISE
 SQL statement "CALL p1(f1(1))"
 PL/iSQL function inline_code_block line 3 at CALL
 DECLARE
@@ -2041,7 +2041,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f2(integer) line 3 at RETURN
+PL/iSQL function public.f2(integer) line 3 at RETURN
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   res varchar(20);
@@ -2052,7 +2052,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  PL/iSQL assignment "r := a.phone_number"
-PL/iSQL function f3(integer) line 4 at assignment
+PL/iSQL function public.f3(integer) line 4 at assignment
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   a tmpe%ROWTYPE;
@@ -2063,7 +2063,7 @@ END;
 /
 ERROR:  record "r" has no field "phone_number"
 CONTEXT:  PL/iSQL assignment "r.phone_number :=  'abc'"
-PL/iSQL function pfun line 4 at assignment
+PL/iSQL function public.pkg1.pfun line 4 at assignment
 PL/iSQL function inline_code_block line 5 at RAISE
 DROP PROCEDURE p1(v tmpe%ROWTYPE);
 DROP FUNCTION f1(v int);

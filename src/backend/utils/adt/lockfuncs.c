@@ -20,6 +20,7 @@
 #include "storage/predicate_internals.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
+#include "utils/guc.h" /* ReqID: SRS-PLSQL-DBMS_UTILITY */
 
 
 /*
@@ -252,10 +253,19 @@ pg_lock_status(PG_FUNCTION_ARGS)
 			case LOCKTAG_RELATION_EXTEND:
 				values[1] = ObjectIdGetDatum(instance->locktag.locktag_field1);
 				values[2] = ObjectIdGetDatum(instance->locktag.locktag_field2);
+				/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+				if (compatible_mode == ORA_MODE)
+				{
+					values[6] = TransactionIdGetDatum(instance->xid);
+				}
+				else
+				{
+					nulls[6] = true;
+				}
+				/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 				nulls[3] = true;
 				nulls[4] = true;
 				nulls[5] = true;
-				nulls[6] = true;
 				nulls[7] = true;
 				nulls[8] = true;
 				nulls[9] = true;

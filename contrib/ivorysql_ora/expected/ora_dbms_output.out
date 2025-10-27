@@ -534,7 +534,7 @@ END;
 /
 ERROR:  buffer overflow, limit of 1000000 bytes
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_putline(item)"
-PL/iSQL function put_line line 32 at CALL
+PL/iSQL function sys.dbms_output.put_line line 32 at CALL
 SQL statement "CALL DBMS_OUTPUT.PUT_LINE(buff)"
 PL/iSQL function inline_code_block line 8 at CALL
 -- if buffer_size < 2000 then buffer_size = 2000.
@@ -552,7 +552,7 @@ END;
 /
 ERROR:  buffer overflow, limit of 2000 bytes
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_putline(item)"
-PL/iSQL function put_line line 32 at CALL
+PL/iSQL function sys.dbms_output.put_line line 32 at CALL
 SQL statement "CALL DBMS_OUTPUT.PUT_LINE(buff)"
 PL/iSQL function inline_code_block line 8 at CALL
 DECLARE
@@ -568,7 +568,7 @@ END;
 /
 ERROR:  buffer overflow, limit of 2000 bytes
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_putline(item)"
-PL/iSQL function put_line line 32 at CALL
+PL/iSQL function sys.dbms_output.put_line line 32 at CALL
 SQL statement "CALL DBMS_OUTPUT.PUT_LINE(buff)"
 PL/iSQL function inline_code_block line 8 at CALL
 DECLARE
@@ -584,7 +584,7 @@ END;
 /
 ERROR:  buffer overflow, limit of 2000 bytes
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_putline(item)"
-PL/iSQL function put_line line 32 at CALL
+PL/iSQL function sys.dbms_output.put_line line 32 at CALL
 SQL statement "CALL DBMS_OUTPUT.PUT_LINE(buff)"
 PL/iSQL function inline_code_block line 8 at CALL
 -- the put lines before set serveroutput will be printed.
@@ -626,7 +626,7 @@ END;
 /
 ERROR:  line length overflow, limit of 32767 bytes per line
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_putline(item)"
-PL/iSQL function put_line line 32 at CALL
+PL/iSQL function sys.dbms_output.put_line line 32 at CALL
 SQL statement "CALL DBMS_OUTPUT.PUT_LINE(buff || 'a')"
 PL/iSQL function inline_code_block line 7 at CALL
 -- when set serveroutput to on and issue error, will flush the buffer, print all
@@ -648,7 +648,7 @@ END;
 abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 ERROR:  line length overflow, limit of 32767 bytes per line
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_put(item)"
-PL/iSQL function put line 19 at CALL
+PL/iSQL function sys.dbms_output.put line 19 at CALL
 SQL statement "CALL DBMS_OUTPUT.PUT(buff)"
 PL/iSQL function inline_code_block line 11 at CALL
 SET SERVEROUTPUT OFF
@@ -672,7 +672,7 @@ abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 ERROR:  line length overflow, limit of 32767 bytes per line
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_put(item)"
-PL/iSQL function put line 19 at CALL
+PL/iSQL function sys.dbms_output.put line 19 at CALL
 SQL statement "CALL DBMS_OUTPUT.PUT(buff)"
 PL/iSQL function inline_code_block line 13 at CALL
 SET SERVEROUTPUT OFF
@@ -784,7 +784,7 @@ END;
 /
 ERROR:  buffer overflow, limit of 3000 bytes
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_putline(item)"
-PL/iSQL function put_line line 32 at CALL
+PL/iSQL function sys.dbms_output.put_line line 32 at CALL
 SQL statement "CALL DBMS_OUTPUT.PUT_LINE('a')"
 PL/iSQL function inline_code_block line 7 at CALL
 -- enable(): buffer_size from limited to unlimited.
@@ -820,7 +820,7 @@ END;
 /
 ERROR:  buffer overflow, limit of 2200 bytes
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_putline(item)"
-PL/iSQL function put_line line 32 at CALL
+PL/iSQL function sys.dbms_output.put_line line 32 at CALL
 SQL statement "CALL DBMS_OUTPUT.PUT_line(buff)"
 PL/iSQL function inline_code_block line 12 at CALL
 DECLARE
@@ -1090,7 +1090,7 @@ end;
 /
 ERROR:  line length overflow, limit of 32767 bytes per line
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_putline(item)"
-PL/iSQL function put_line line 32 at CALL
+PL/iSQL function sys.dbms_output.put_line line 32 at CALL
 SQL statement "CALL dbms_output.put_line(rpad('a',1,'a'))"
 PL/iSQL function inline_code_block line 4 at CALL
 -- ok
@@ -1161,7 +1161,7 @@ END;
 /
 ERROR:  buffer overflow, limit of 2000 bytes
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_put(item)"
-PL/iSQL function put line 19 at CALL
+PL/iSQL function sys.dbms_output.put line 19 at CALL
 SQL statement "CALL dbms_output.put(rpad('b',3000,'b'))"
 PL/iSQL function inline_code_block line 6 at CALL
 DECLARE
@@ -1198,7 +1198,7 @@ END;
 /
 ERROR:  line length overflow, limit of 32767 bytes per line
 CONTEXT:  SQL statement "CALL sys.dbmsoutput_put(item)"
-PL/iSQL function put line 19 at CALL
+PL/iSQL function sys.dbms_output.put line 19 at CALL
 SQL statement "CALL dbms_output.put(rpad('b',32767,'b'))"
 PL/iSQL function inline_code_block line 6 at CALL
 DECLARE

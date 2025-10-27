@@ -4937,7 +4937,7 @@ LINE 1: x + 1
           ^
 HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 QUERY:  x + 1
-CONTEXT:  PL/iSQL function f1 line 3 at RETURN
+CONTEXT:  PL/iSQL function public.test_pkg.f1 line 3 at RETURN
 PL/iSQL function inline_code_block line 5 at assignment
 begin
    test_pkg.var1 := test_pkg.f1(42);
@@ -7840,7 +7840,7 @@ ERROR:  relation "test_id" does not exist
 LINE 1: insert into test_id values(2,'two')
                     ^
 QUERY:  insert into test_id values(2,'two')
-CONTEXT:  PL/iSQL function test_f1(integer) line 2 at SQL statement
+CONTEXT:  PL/iSQL function enrol11.test_f1(integer) line 2 at SQL statement
 --ok
 select enrol11.test_pkg.test_f(1) from dual;
  test_f 
@@ -7854,7 +7854,7 @@ ERROR:  relation "test_id" does not exist
 LINE 1: insert into test_id values(4,'four')
                     ^
 QUERY:  insert into test_id values(4,'four')
-CONTEXT:  PL/iSQL function test_f line 3 at SQL statement
+CONTEXT:  PL/iSQL function enrol11.test_pkg1.test_f line 3 at SQL statement
 --ok
 call enrol11.test_p(1);
 --failed
@@ -7863,7 +7863,7 @@ ERROR:  relation "test_id" does not exist
 LINE 1: insert into test_id values(6,'six')
                     ^
 QUERY:  insert into test_id values(6,'six')
-CONTEXT:  PL/iSQL function test_p1(integer) line 2 at SQL statement
+CONTEXT:  PL/iSQL function enrol11.test_p1(integer) line 2 at SQL statement
 --ok
 call enrol11.test_ppkg.test_p(1);
 --failed
@@ -7872,7 +7872,7 @@ ERROR:  relation "test_id" does not exist
 LINE 1: insert into test_id values(8,'eight')
                     ^
 QUERY:  insert into test_id values(8,'eight')
-CONTEXT:  PL/iSQL function test_p line 3 at SQL statement
+CONTEXT:  PL/iSQL function enrol11.test_ppkg1.test_p line 3 at SQL statement
 select * from enrol11.test_id order by id;
  id | name  
 ----+-------
@@ -8254,7 +8254,7 @@ SET ivorysql.package_security_define_compare_user = false;
 --error
 call test_pkg.test_p(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 --reset
 reset ivorysql.package_security_define_compare_user;
 SELECT * FROM test_id ORDER BY id;
@@ -8360,44 +8360,44 @@ call test_pkg2.test_p(23);
 --error
 call test_ppp(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_sub_proc line 4 at COMMIT
+CONTEXT:  PL/iSQL function public.test_sub_proc line 4 at COMMIT
 SQL statement "CALL test_sub_proc(id)"
-PL/iSQL function test_ppp(integer) line 8 at CALL
+PL/iSQL function public.test_ppp(integer) line 8 at CALL
 --error
 call test_pp(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_pp(integer) line 2 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pp(integer) line 2 at COMMIT
 --raise error
 call test_pkg1.test_p(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_pp(integer) line 2 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pp(integer) line 2 at COMMIT
 SQL statement "CALL test_pp(id)"
-PL/iSQL function test_p line 3 at CALL
+PL/iSQL function public.test_pkg1.test_p line 3 at CALL
 SET ivorysql.package_security_define_compare_user = false;
 --ok
 call test_pkg3.test_p(23);
 --error
 call test_pkg2.test_p(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function pkg_p line 20 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg2.pkg_p line 20 at COMMIT
 SQL statement "CALL pkg_p(var2)"
-PL/iSQL function test_p line 8 at CALL
+PL/iSQL function public.test_pkg2.test_p line 8 at CALL
 --error
 call test_ppp(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_sub_proc line 4 at COMMIT
+CONTEXT:  PL/iSQL function public.test_sub_proc line 4 at COMMIT
 SQL statement "CALL test_sub_proc(id)"
-PL/iSQL function test_ppp(integer) line 8 at CALL
+PL/iSQL function public.test_ppp(integer) line 8 at CALL
 --error
 call test_pp(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_pp(integer) line 2 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pp(integer) line 2 at COMMIT
 --raise error
 call test_pkg1.test_p(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_pp(integer) line 2 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pp(integer) line 2 at COMMIT
 SQL statement "CALL test_pp(id)"
-PL/iSQL function test_p line 3 at CALL
+PL/iSQL function public.test_pkg1.test_p line 3 at CALL
 --trigger
 create table test_trigs(id integer,name varchar2(256));
 create function test_trig() returns trigger as $$
@@ -8415,17 +8415,17 @@ SET ivorysql.package_security_define_compare_user = true;
 insert into test_trigs values(1,'one');
 NOTICE:  test_trigs INSERT BEFORE ROW
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 SQL statement "CALL test_pkg.test_p(23)"
-PL/iSQL function test_trig() line 4 at CALL
+PL/iSQL function public.test_trig() line 4 at CALL
 SET ivorysql.package_security_define_compare_user = false;
 --error
 insert into test_trigs values(1,'one');
 NOTICE:  test_trigs INSERT BEFORE ROW
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 SQL statement "CALL test_pkg.test_p(23)"
-PL/iSQL function test_trig() line 4 at CALL
+PL/iSQL function public.test_trig() line 4 at CALL
 DROP TRIGGER test_row_trig ON test_trigs;
 DROP FUNCTION test_trig;
 create function test_trig() returns TRIGGER SECURITY INVOKER as $$
@@ -8443,34 +8443,34 @@ SET ivorysql.package_security_define_compare_user = true;
 insert into test_trigs values(1,'one');
 NOTICE:  test_trigs INSERT BEFORE ROW
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 SQL statement "CALL test_pkg.test_p(23)"
-PL/iSQL function test_trig() line 4 at CALL
+PL/iSQL function public.test_trig() line 4 at CALL
 SET ivorysql.package_security_define_compare_user = false;
 --error
 insert into test_trigs values(1,'one');
 NOTICE:  test_trigs INSERT BEFORE ROW
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 SQL statement "CALL test_pkg.test_p(23)"
-PL/iSQL function test_trig() line 4 at CALL
+PL/iSQL function public.test_trig() line 4 at CALL
 \c - enrol22
 --raise error
 call test_pkg.test_p(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 --raise error
 call test_pkg1.test_p(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_pp(integer) line 2 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pp(integer) line 2 at COMMIT
 SQL statement "CALL test_pp(id)"
-PL/iSQL function test_p line 3 at CALL
+PL/iSQL function public.test_pkg1.test_p line 3 at CALL
 --raise error
 call test_pkg2.test_p(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function pkg_p line 20 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg2.pkg_p line 20 at COMMIT
 SQL statement "CALL pkg_p(var2)"
-PL/iSQL function test_p line 8 at CALL
+PL/iSQL function public.test_pkg2.test_p line 8 at CALL
 --ok
 call test_pkg3.test_p(23);
 --error
@@ -8481,9 +8481,9 @@ begin
 end;
 /
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 SQL statement "CALL test_pkg.test_p(23)"
-PL/iSQL function test_u1(integer) line 2 at CALL
+PL/iSQL function public.test_u1(integer) line 2 at CALL
 PL/iSQL function inline_code_block line 4 at assignment
 --error
 begin
@@ -8491,28 +8491,28 @@ begin
 end;
 /
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 SQL statement "CALL test_pkg.test_p(23)"
-PL/iSQL function test_p(integer) line 2 at CALL
+PL/iSQL function public.test_p(integer) line 2 at CALL
 SQL statement "CALL test_p(23)"
 PL/iSQL function inline_code_block line 2 at CALL
 SET ivorysql.package_security_define_compare_user = false;
 --raise error
 call test_pkg.test_p(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 --raise error
 call test_pkg1.test_p(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_pp(integer) line 2 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pp(integer) line 2 at COMMIT
 SQL statement "CALL test_pp(id)"
-PL/iSQL function test_p line 3 at CALL
+PL/iSQL function public.test_pkg1.test_p line 3 at CALL
 --raise error
 call test_pkg2.test_p(23);
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function pkg_p line 20 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg2.pkg_p line 20 at COMMIT
 SQL statement "CALL pkg_p(var2)"
-PL/iSQL function test_p line 8 at CALL
+PL/iSQL function public.test_pkg2.test_p line 8 at CALL
 --ok
 call test_pkg3.test_p(23);
 --error
@@ -8523,9 +8523,9 @@ begin
 end;
 /
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 SQL statement "CALL test_pkg.test_p(23)"
-PL/iSQL function test_u1(integer) line 2 at CALL
+PL/iSQL function public.test_u1(integer) line 2 at CALL
 PL/iSQL function inline_code_block line 4 at assignment
 --error
 begin
@@ -8533,9 +8533,9 @@ begin
 end;
 /
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function test_p line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.test_pkg.test_p line 8 at COMMIT
 SQL statement "CALL test_pkg.test_p(23)"
-PL/iSQL function test_p(integer) line 2 at CALL
+PL/iSQL function public.test_p(integer) line 2 at CALL
 SQL statement "CALL test_p(23)"
 PL/iSQL function inline_code_block line 2 at CALL
 \c - enrol11

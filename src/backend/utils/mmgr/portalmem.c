@@ -34,6 +34,7 @@
 #include "common/hashfn.h"
 /* End - ReqID:SRS-PLSQL-CURSOR */
 #include "tcop/pquery.h"	/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+#include "utils/elog.h"  /* ReqID: SRS-PLSQL-DBMS_UTILITY */
 
 
 /*
@@ -614,6 +615,13 @@ PortalDrop(Portal portal, bool isTopCommit)
 
 	/* release portal struct (it's in TopPortalContext) */
 	pfree(portal);
+
+	/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+	if (collect_error_msg_finish_hook != NULL)
+	{
+		collect_error_msg_finish_hook();
+	}
+	/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 }
 
 /*

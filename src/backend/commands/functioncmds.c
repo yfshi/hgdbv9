@@ -115,6 +115,10 @@
 #include "mysql_parser/mys_set_hook.h"
 /* End - ReqID:SRS-MYSQL-SET */
 
+/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+static ObjectAddress invalidateFunctionInternal(Oid funcOid, ObjectType objType);
+/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
+
 /*
  *	 Examine the RETURNS clause of the CREATE FUNCTION statement
  *	 and return information about it as *prorettype_p and *returnsSet.
@@ -2482,8 +2486,15 @@ CompileFunction(CompileFunctionStmt *stmt)
 	ObjectAddress address;
 
 	funcOid = LookupFuncWithArgs(stmt->objtype, stmt->func, false);	/* BUG#Z106 */
+	/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
 	if (OidIsValid(funcOid))
-		address = compileFunctionInternal(funcOid, stmt->is_compile, stmt->objtype);
+	{
+		if (stmt->is_compile || stmt->is_validate)
+			address = compileFunctionInternal(funcOid, stmt->is_compile, stmt->objtype);
+		else
+			address = invalidateFunctionInternal(funcOid, stmt->objtype);
+	}
+	/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 	return address;
 }
 /* End - ReqID:SRS-SQL-PROC */
@@ -3951,3 +3962,37 @@ CallStmtResultDesc(CallStmt *stmt)
 
 	return tupdesc;
 }
+
+/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+static ObjectAddress
+invalidateFunctionInternal(Oid funcOid, ObjectType objType)
+{
+	bool		nulls[Natts_pg_proc] = {true};
+	Datum		values[Natts_pg_proc] = {(Datum)0};
+	bool		replaces[Natts_pg_proc] = {false};
+	Relation	rel;
+	HeapTuple	tup, newTup;
+	ObjectAddress myself;
+	rel = table_open(ProcedureRelationId, RowExclusiveLock);
+	tup = SearchSysCacheCopy1(PROCOID, ObjectIdGetDatum(funcOid));
+	if (!HeapTupleIsValid(tup)) /* should not happen */
+	{
+		if (objType == OBJECT_PROCEDURE)
+			elog(ERROR, "cache lookup failed for procedure %u", funcOid);
+		else if (objType == OBJECT_FUNCTION)
+			elog(ERROR, "cache lookup failed for function %u", funcOid);
+	}
+
+	values[Anum_pg_proc_prostatus - 1] = CharGetDatum(PROSTATUS_INVALID);
+	nulls[Anum_pg_proc_prostatus - 1] = false;
+	replaces[Anum_pg_proc_prostatus - 1] = true;
+
+	newTup = heap_modify_tuple(tup, RelationGetDescr(rel), values, nulls, replaces);
+	CatalogTupleUpdate(rel, &newTup->t_self, newTup);
+	ObjectAddressSet(myself, ProcedureRelationId, funcOid);
+
+	table_close(rel, NoLock);
+	heap_freetuple(tup);
+	return myself;
+}
+/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */

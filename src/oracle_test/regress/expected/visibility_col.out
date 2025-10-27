@@ -283,7 +283,7 @@ END;
 select get_employee(1) from dual;--error
 ERROR:  record "r_emp" has no field "description"
 CONTEXT:  SQL expression "r_emp.description"
-PL/iSQL function get_employee(number) line 4 at RAISE
+PL/iSQL function public.get_employee(number) line 4 at RAISE
 drop function get_employee;
 drop table tab1;
 --test user-define type

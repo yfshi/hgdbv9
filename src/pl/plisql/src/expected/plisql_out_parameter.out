@@ -1119,7 +1119,7 @@ begin
 end;
 /
 ERROR:  Function returned without value
-CONTEXT:  PL/iSQL function f2(integer,integer) line 0 at RETURN
+CONTEXT:  PL/iSQL function public.f2(integer,integer) line 0 at RETURN
 PL/iSQL function inline_code_block line 5 at assignment
 drop function f2(integer, integer);
 --anonymous block with out paramaters
@@ -1290,7 +1290,7 @@ BEGIN
 END;
 /
 ERROR:  Function returned without value
-CONTEXT:  PL/iSQL function f_null(integer,integer,integer) line 0 at RETURN
+CONTEXT:  PL/iSQL function public.f_null(integer,integer,integer) line 0 at RETURN
 PL/iSQL function inline_code_block line 6 at assignment
 DROP FUNCTION f_null;
 --End - BUG#Z195

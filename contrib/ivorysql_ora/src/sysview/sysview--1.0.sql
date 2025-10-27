@@ -8696,7 +8696,10 @@ UNION ALL
         NULL::date AS created,
         NULL::date AS last_ddl_time,
         NULL::varchar2(19) AS timestamp,
-        'VALID'::varchar2(7) AS status,
+        CASE                                            -- Begin - ReqID: SRS-PLSQL-DBMS_UTILITY
+            WHEN tg.tgenabled = 'D' THEN 'INVALID'
+            ELSE 'VALID'
+        END::varchar2(7) AS status,                     -- End - ReqID: SRS-PLSQL-DBMS_UTILITY
         'N'::varchar2(1) AS temporary,
         'N'::varchar2(1) AS generated,
         'N'::varchar2(1) AS secondary,
@@ -9421,7 +9424,10 @@ UNION ALL
         NULL::date AS created,
         NULL::date AS last_ddl_time,
         NULL::varchar2(19) AS timestamp,
-        'VALID'::varchar2(7) AS status,
+        CASE                                            -- Begin - ReqID: SRS-PLSQL-DBMS_UTILITY
+            WHEN tg.tgenabled = 'D' THEN 'INVALID'
+            ELSE 'VALID'
+        END::varchar2(7) AS status,                     -- End - ReqID: SRS-PLSQL-DBMS_UTILITY
         'N'::varchar2(1) AS temporary,
         'N'::varchar2(1) AS generated,
         'N'::varchar2(1) AS secondary,
@@ -10158,7 +10164,10 @@ UNION ALL
         NULL::date AS created,
         NULL::date AS last_ddl_time,
         NULL::varchar2(19) AS timestamp,
-        'VALID'::varchar2(7) AS status,
+        CASE                                            -- Begin - ReqID: SRS-PLSQL-DBMS_UTILITY
+            WHEN tg.tgenabled = 'D' THEN 'INVALID'
+            ELSE 'VALID'
+        END::varchar2(7) AS status,                     -- End - ReqID: SRS-PLSQL-DBMS_UTILITY
         'N'::varchar2(1) AS temporary,
         'N'::varchar2(1) AS generated,
         'N'::varchar2(1) AS secondary,

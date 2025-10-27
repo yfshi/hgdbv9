@@ -10,13 +10,13 @@ SELECT DBMS_ROWID.rowid_create(1, 333, 1, 2, 1000);
 
 SELECT DBMS_ROWID.rowid_create(NULL, 333, 1, 2, 1000);--check invalid rowid_type
 ERROR:  invalid ROWID
-CONTEXT:  PL/iSQL function rowid_create line 12 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_rowid.rowid_create line 12 at RAISE
 SELECT DBMS_ROWID.rowid_create(-100, 333, 1, 2, 1000);--check invalid rowid_type
 ERROR:  invalid ROWID
-CONTEXT:  PL/iSQL function rowid_create line 16 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_rowid.rowid_create line 16 at RAISE
 SELECT DBMS_ROWID.rowid_create(1.5, 333, 1, 2, 1000);--check invalid rowid_type
 ERROR:  invalid ROWID
-CONTEXT:  PL/iSQL function rowid_create line 16 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_rowid.rowid_create line 16 at RAISE
 --ROWID_INFO
 declare
 	rowid_type number:=1;
@@ -70,7 +70,7 @@ select dbms_rowid.rowid_block_number('');-- return 0
 --ROWID_TO_absolute_fno
 SELECT DBMS_ROWID.ROWID_TO_absolute_fno((32811,1), 'PUBLIC','TEST') FROM DUAL;
 ERROR:  table or view does not exist
-CONTEXT:  PL/iSQL function rowid_to_absolute_fno line 181 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_rowid.rowid_to_absolute_fno line 181 at RAISE
 --ROWID_TO_EXTENDED
 SELECT DBMS_ROWID.ROWID_TO_EXTENDED((32811,1), NULL,NULL,0) FROM DUAL;
  rowid_to_extended 

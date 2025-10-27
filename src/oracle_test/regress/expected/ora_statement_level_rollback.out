@@ -213,7 +213,7 @@ BEGIN;
 INSERT INTO testslrb VALUES(1);
 CALL testslrb_pro(); --failed
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function testslrb_pro() line 4 at COMMIT
+CONTEXT:  PL/iSQL function public.testslrb_pro() line 4 at COMMIT
 INSERT INTO testslrb VALUES(2);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 COMMIT;
@@ -228,7 +228,7 @@ BEGIN;
 INSERT INTO testslrb VALUES(1);
 CALL testslrb_pro(); --failed
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function testslrb_pro() line 4 at COMMIT
+CONTEXT:  PL/iSQL function public.testslrb_pro() line 4 at COMMIT
 INSERT INTO testslrb VALUES(2);
 COMMIT;
 SELECT * FROM testslrb ORDER BY 1;
@@ -244,7 +244,7 @@ BEGIN;
 INSERT INTO testslrb VALUES(1);
 CALL testslrb_pro(); --failed
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function testslrb_pro() line 4 at COMMIT
+CONTEXT:  PL/iSQL function public.testslrb_pro() line 4 at COMMIT
 INSERT INTO testslrb VALUES(2);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
@@ -259,7 +259,7 @@ BEGIN;
 INSERT INTO testslrb VALUES(1);
 CALL testslrb_pro(); --failed
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function testslrb_pro() line 4 at COMMIT
+CONTEXT:  PL/iSQL function public.testslrb_pro() line 4 at COMMIT
 INSERT INTO testslrb VALUES(2);
 ROLLBACK;
 SELECT * FROM testslrb ORDER BY 1;
@@ -371,7 +371,7 @@ BEGIN;
 INSERT INTO testslrb VALUES(1);
 CALL testslrb_pro(); --failed
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function testslrb_pro() line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.testslrb_pro() line 8 at COMMIT
 INSERT INTO testslrb VALUES(2);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 COMMIT;
@@ -386,7 +386,7 @@ BEGIN;
 INSERT INTO testslrb VALUES(1);
 CALL testslrb_pro(); --failed
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function testslrb_pro() line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.testslrb_pro() line 8 at COMMIT
 INSERT INTO testslrb VALUES(2);
 COMMIT;
 SELECT * FROM testslrb ORDER BY 1;
@@ -402,7 +402,7 @@ BEGIN;
 INSERT INTO testslrb VALUES(1);
 CALL testslrb_pro(); --failed
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function testslrb_pro() line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.testslrb_pro() line 8 at COMMIT
 INSERT INTO testslrb VALUES(2);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
@@ -417,7 +417,7 @@ BEGIN;
 INSERT INTO testslrb VALUES(1);
 CALL testslrb_pro(); --failed
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function testslrb_pro() line 8 at COMMIT
+CONTEXT:  PL/iSQL function public.testslrb_pro() line 8 at COMMIT
 INSERT INTO testslrb VALUES(2);
 ROLLBACK;
 SELECT * FROM testslrb ORDER BY 1;

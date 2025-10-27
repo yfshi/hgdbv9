@@ -5614,7 +5614,7 @@ BEGIN
 end;
 /
 ERROR:  expression is of wrong type
-CONTEXT:  PL/iSQL function test_f1(integer) line 3 at assignment
+CONTEXT:  PL/iSQL function public.test_f1(integer) line 3 at assignment
 PL/iSQL function inline_code_block line 4 at assignment
 --error
 DECLARE
@@ -5624,7 +5624,7 @@ BEGIN
 end;
 /
 ERROR:  expression is of wrong type
-CONTEXT:  PL/iSQL function test_f1(integer) line 3 at assignment
+CONTEXT:  PL/iSQL function public.test_f1(integer) line 3 at assignment
 PL/iSQL function inline_code_block line 4 at assignment
 CREATE OR REPLACE FUNCTION test_f(id integer) RETURN test_pkg.c_1 IS
   var1 test_pkg.c_1;

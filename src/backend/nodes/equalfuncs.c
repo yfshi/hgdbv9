@@ -1710,6 +1710,7 @@ _equalCompileFunctionStmt(const CompileFunctionStmt *a, const CompileFunctionStm
 	COMPARE_SCALAR_FIELD(is_compile);
 	COMPARE_SCALAR_FIELD(editable);
 	COMPARE_NODE_FIELD(parameters);
+	COMPARE_SCALAR_FIELD(is_validate); 		// ReqID: SRS-PLSQL-DBMS_UTILITY
 
 	return true;
 }

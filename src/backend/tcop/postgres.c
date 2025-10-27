@@ -266,6 +266,14 @@ bool g_proc_is_busy = false;
 extern int64 g_proc_counter;
 /* End ReqID: SESSION-VIEWS */
 
+/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+collect_error_msg_start collect_error_msg_start_hook = NULL;
+collect_error_msg collect_error_msg_hook = NULL;
+collect_error_msg_finish collect_error_msg_finish_hook = NULL;
+collect_error_msg_set_depth collect_error_msg_inc_depth_hook = NULL;
+collect_error_msg_set_depth collect_error_msg_dec_depth_hook = NULL;
+/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
+
 /* ----------------------------------------------------------------
  *		decls for routines only used in this file
  * ----------------------------------------------------------------
