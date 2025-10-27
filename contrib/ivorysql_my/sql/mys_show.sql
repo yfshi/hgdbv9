@@ -97,6 +97,22 @@ show columns from tb in public like 'na%';
 drop table tb;
 drop table test;
 
+--desc table
+create table test(id int, name text, addr text);
+desc test;
+desc test id;
+desc test 'na%';
+describe test;
+describe test id;
+describe test 'na%';
+
+create view vtest as select * from test;
+desc vtest;
+desc vtest id;
+desc vtest 'na%';
+drop view vtest;
+drop table test;
+
 --show create view
 --create table tb(id int, name text);
 --create view v_tb as select * from tb;

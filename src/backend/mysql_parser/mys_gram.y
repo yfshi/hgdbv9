@@ -403,7 +403,7 @@ static void CheckHostId(char* hostId);
 		CreateSubscriptionStmt AlterSubscriptionStmt DropSubscriptionStmt
 		MysqlShowStmt /* Req: SRS-MYSQL-CHARSET */
 
-%type <showfilter> 	ShowFilter OptShowFilter /* Req: SRS-MYSQL-CHARSET */
+%type <showfilter> 	ShowFilter OptShowFilter /* Req: SRS-MYSQL-CHARSET */ opt_col_wild /* ReqID:SRS-MYSQL-SHOW */
 
 %type <node>	select_no_parens select_with_parens select_clause
 				simple_select values_clause
@@ -828,7 +828,7 @@ static void CheckHostId(char* hostId);
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CURTIME CYCLE
 
 	DATA_P DATABASE DATABASES /* ReqID:SRS-MYSQL-SHOW */ DATE_P DATETIME_P DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
-	DEFERRABLE DEFERRED DEFINER DELAYED DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC
+	DEFERRABLE DEFERRED DEFINER DELAYED DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC DESCRIBE /* ReqID:SRS-MYSQL-SHOW */
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT 
 	DISTINCTROW /* BUG#Z4610*/ 
 	DIV DO DOCUMENT_P DOMAIN_P
@@ -2247,6 +2247,32 @@ ShowFilter:
 					}
 			;
 
+/* Begin - Req: SRS-MYSQL-SHOW */
+opt_col_wild:
+			ColId
+				{
+					Node *colname = makeColumnRef("Field", NIL, @1, yyscanner);
+					Node *colvalue = makeStringConst($1, @1);
+					Node *node = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", colname, colvalue, -1);
+					ShowFilter *filter = (ShowFilter *) palloc(sizeof(ShowFilter));
+
+					filter->is_like = false;
+					filter->node = node;
+					$$ = filter;
+				}
+			| SCONST
+					{
+						ShowFilter *filter = (ShowFilter *) palloc(sizeof(ShowFilter));
+						filter->is_like = true;
+						filter->node = makeStringConst($1, -1);
+						$$ = filter;
+					}
+			|
+				{
+					$$ = NULL;
+				}
+/* End - Req: SRS-MYSQL-SHOW */
+
 OptShowFilter:
 			ShowFilter
 				{
@@ -2333,6 +2359,10 @@ MysqlShowStmt:
 				{
 					$$ = (Node *)makeShowColumnsStmt((RangeVar *)$4, $5, $6, $2);
 				}
+			| desc qualified_name opt_col_wild
+				{
+					$$ = (Node *)makeShowColumnsStmt($2, NULL, $3, false);
+				}
 			| SHOW CREATE database ColId
 				{
 					$$ = makeShowCreateDatabaseStmt($4, false);
@@ -2357,9 +2387,13 @@ MysqlShowStmt:
 				{
 					$$ = makeShowVariableStmt($2, $4);
 				}
-/* End - Req: SRS-MYSQL-SHOW */
 			;
 
+desc:
+			DESCRIBE
+			| DESC
+			;
+/* End - Req: SRS-MYSQL-SHOW */
 
 VariableShowStmt:
 			SHOW var_name
@@ -19689,6 +19723,7 @@ reserved_keyword:
 			| DEFERRABLE
 			| DELAYED	/* ReqID:SRS-MYSQL-SQL-INSERT */
 			| DESC
+			| DESCRIBE /* ReqID: SRS-MYSQL-SHOW */
 			| DISTINCT
 			| DISTINCTROW /* BUG#Z4610*/ 
 			| DO
@@ -19878,6 +19913,7 @@ bare_label_keyword:
 			| DEPENDS
 			| DEPTH
 			| DESC
+			| DESCRIBE /* ReqID: SRS-MYSQL-SHOW */
 			| DETACH
 			| DICTIONARY
 			| DISABLE_P
@@ -21985,6 +22021,8 @@ makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool f
 	A_Expr		*lexpr, *rexpr;
 	SelectStmt	*outer;
 	SelectStmt	*inner = makeNode(SelectStmt);
+	List		*order = NIL;
+	SortBy		*sort_by = NULL;
 
 	/* make subselect targetlist */
 	if (full)
@@ -22045,6 +22083,18 @@ makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool f
 	rexpr = makeSimpleA_Expr(AEXPR_OP, "=", col_tb, makeStringConst(tb_name->relname, -1), -1);
 
 	inner->whereClause = (Node *)makeBoolExpr(AND_EXPR, list_make2((Node *)lexpr, (Node *)rexpr), false, -1);
+
+	sort_by = makeNode(SortBy);
+	sort_by ->node = makeColumnRef("ORDINAL_POSITION", NIL, -1, 0);
+	sort_by ->sortby_dir = SORTBY_DEFAULT;
+	sort_by ->sortby_nulls = SORTBY_NULLS_DEFAULT;
+	sort_by ->useOp = NIL;
+	sort_by ->location = -1;
+
+	order = list_make1(sort_by);
+	insertSelectOptions((SelectStmt *) inner, order, NIL,
+						NULL, NULL,
+						0);
 
 	/* make outerselect */
 	rss = makeShowRangeSubselect((Node *)inner, "subq");

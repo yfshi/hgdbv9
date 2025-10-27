@@ -362,6 +362,71 @@ show columns from tb in public like 'na%';
 
 drop table tb;
 drop table test;
+--desc table
+create table test(id int, name text, addr text);
+desc test;
+ Field |  Type   | Null | Key | Default | Extra 
+-------+---------+------+-----+---------+-------
+ id    | integer | YES  |     |         | 
+ name  | text    | YES  |     |         | 
+ addr  | text    | YES  |     |         | 
+(3 rows)
+
+desc test id;
+ Field |  Type   | Null | Key | Default | Extra 
+-------+---------+------+-----+---------+-------
+ id    | integer | YES  |     |         | 
+(1 row)
+
+desc test 'na%';
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+ name  | text | YES  |     |         | 
+(1 row)
+
+describe test;
+ Field |  Type   | Null | Key | Default | Extra 
+-------+---------+------+-----+---------+-------
+ id    | integer | YES  |     |         | 
+ name  | text    | YES  |     |         | 
+ addr  | text    | YES  |     |         | 
+(3 rows)
+
+describe test id;
+ Field |  Type   | Null | Key | Default | Extra 
+-------+---------+------+-----+---------+-------
+ id    | integer | YES  |     |         | 
+(1 row)
+
+describe test 'na%';
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+ name  | text | YES  |     |         | 
+(1 row)
+
+create view vtest as select * from test;
+desc vtest;
+ Field |  Type   | Null | Key | Default | Extra 
+-------+---------+------+-----+---------+-------
+ id    | integer | YES  |     |         | 
+ name  | text    | YES  |     |         | 
+ addr  | text    | YES  |     |         | 
+(3 rows)
+
+desc vtest id;
+ Field |  Type   | Null | Key | Default | Extra 
+-------+---------+------+-----+---------+-------
+ id    | integer | YES  |     |         | 
+(1 row)
+
+desc vtest 'na%';
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+ name  | text | YES  |     |         | 
+(1 row)
+
+drop view vtest;
+drop table test;
 --show create view
 --create table tb(id int, name text);
 --create view v_tb as select * from tb;
