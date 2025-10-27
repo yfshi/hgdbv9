@@ -1,26 +1,26 @@
 SET hg_sysmac.global_on TO ON;
 
 -- check security label format
-SELECT 's0:c0.c2,c4.c6,c9'::hg_secsch.seclabel;
-SELECT 's16'::hg_secsch.seclabel; -- error
-SELECT 's0:c1024'::hg_secsch.seclabel; -- error
-SELECT 's0:c0!'::hg_secsch.seclabel; -- error
+SELECT 's0:c0.c2,c4.c6,c9'::hg_security.seclabel;
+SELECT 's16'::hg_security.seclabel; -- error
+SELECT 's0:c1024'::hg_security.seclabel; -- error
+SELECT 's0:c0!'::hg_security.seclabel; -- error
 
 -- set the security label to user
 CREATE USER u1 with password 'Hello@123';
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's0');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's0');
 SELECT provider,label FROM pg_shseclabel WHERE objoid = 'u1'::regrole;
 
 -- modify user security label
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
-SELECT hg_secsch.get_user_seclabel('u1'::regrole);
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.get_user_seclabel('u1'::regrole);
 
 -- set the security label to table
 SET ROLE u1;
 CREATE TABLE tb1(id int);
 RESET ROLE;
-SELECT hg_secsch.set_table_seclabel('tb1'::regclass, 's2');
-SELECT hg_secsch.get_table_seclabel('tb1'::regclass);
+SELECT hg_security.set_table_seclabel('tb1'::regclass, 's2');
+SELECT hg_security.get_table_seclabel('tb1'::regclass);
 
 -- when dropping a table,its security label should also be removed.
 SET ROLE u1;
@@ -33,10 +33,10 @@ DROP USER u1;
 SELECT * FROM pg_shseclabel;
 
 -- compare two security labels
-SELECT hg_secsch.compare_seclabel('s1:c0.c1023', 's0:c0.c1023');
-SELECT hg_secsch.compare_seclabel('s0:c0.c1023', 's0:c0.c102');
-SELECT hg_secsch.compare_seclabel('s3:c0.c1023', 's3:c0.c1023');
-SELECT hg_secsch.compare_seclabel('s1:c0.c1023', 's3:c0.c102');
+SELECT hg_security.compare_seclabel('s1:c0.c1023', 's0:c0.c1023');
+SELECT hg_security.compare_seclabel('s0:c0.c1023', 's0:c0.c102');
+SELECT hg_security.compare_seclabel('s3:c0.c1023', 's3:c0.c1023');
+SELECT hg_security.compare_seclabel('s1:c0.c1023', 's3:c0.c102');
 
 -- table-level security test
 
@@ -48,9 +48,9 @@ INSERT INTO tb1 VALUES (1),(2),(3);
 RESET ROLE;
 
 -- user-controlled table security label.
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
-SELECT hg_secsch.set_table_seclabel('tb1'::regclass, 's0');
-SELECT hg_secsch.set_table_seclabel('v_tb1'::regclass, 's0');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_table_seclabel('tb1'::regclass, 's0');
+SELECT hg_security.set_table_seclabel('v_tb1'::regclass, 's0');
 SET hg_sysmac.global_table_level TO ON;
 SET hg_sysmac.global_on TO ON;
 SET ROLE u1;
@@ -62,8 +62,8 @@ INSERT INTO tb1 VALUES (4);
 
 -- user equals the table’s security label.
 RESET ROLE;
-SELECT hg_secsch.set_table_seclabel('tb1'::regclass, 's0');
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's0');
+SELECT hg_security.set_table_seclabel('tb1'::regclass, 's0');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's0');
 SET ROLE u1;
 INSERT INTO tb1 VALUES (4);
 DELETE FROM tb1 WHERE id = 1;
@@ -73,8 +73,8 @@ SELECT * FROM v_tb1;
 
 -- table-controlled user security label.
 RESET ROLE;
-SELECT hg_secsch.set_table_seclabel('tb1'::regclass, 's1');
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's0');
+SELECT hg_security.set_table_seclabel('tb1'::regclass, 's1');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's0');
 SET ROLE u1;
 INSERT INTO tb1 VALUES (1);
 SELECT * FROM tb1;
@@ -88,9 +88,9 @@ DELETE FROM v_tb1 WHERE id = 1;
 CREATE TABLE tb2(id int);
 INSERT INTO tb2 VALUES (1),(2),(3);
 RESET ROLE;
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
-SELECT hg_secsch.set_table_seclabel('tb2'::regclass, 's1');
-SELECT hg_secsch.set_column_seclabel('tb2'::regclass, 1, 's0');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_table_seclabel('tb2'::regclass, 's1');
+SELECT hg_security.set_column_seclabel('tb2'::regclass, 1, 's0');
 SET hg_sysmac.global_table_level TO ON;
 SET hg_sysmac.global_on TO ON;
 SET hg_sysmac.global_column_level TO ON;
@@ -102,7 +102,7 @@ SELECT id FROM tb2;
 
 -- user equals the column’s security label.
 RESET ROLE;
-SELECT hg_secsch.set_column_seclabel('tb2'::regclass, 1, 's1');
+SELECT hg_security.set_column_seclabel('tb2'::regclass, 1, 's1');
 SET ROLE u1;
 INSERT INTO tb2 VALUES (4);
 UPDATE tb2 SET id = 5 WHERE id = 1;
@@ -111,7 +111,7 @@ SELECT id FROM tb2;
 
 -- column-controlled user security label.
 RESET ROLE;
-SELECT hg_secsch.set_column_seclabel('tb2'::regclass, 1, 's2');
+SELECT hg_security.set_column_seclabel('tb2'::regclass, 1, 's2');
 SET ROLE u1;
 INSERT INTO tb2 VALUES (6);
 UPDATE tb2 SET id = 5 WHERE id = 1;
@@ -130,13 +130,13 @@ SET ROLE u1;
 CREATE TABLE tb1(id int);
 GRANT ALL ON tb1 TO u1,u2,u3;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('tb1'::regclass, 's3');
-SELECT hg_secsch.apply_row_policy('tb1'::regclass, 'apply');
-SELECT hg_secsch.apply_row_policy('tb1'::regclass, 'enable');
+SELECT hg_security.set_table_seclabel('tb1'::regclass, 's3');
+SELECT hg_security.apply_row_policy('tb1'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('tb1'::regclass, 'enable');
 SET hg_sysmac.global_table_level TO OFF;
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
 SET ROLE u1;
 INSERT INTO tb1 VALUES (1);
 RESET ROLE;

@@ -89,10 +89,10 @@ check_redaction_tb(void)
 	char	*rdpolicycol = "hg_redaction_column";
 	Oid		rdpolicyschemaoid = InvalidOid;
 
-	/*get the oid of hg_secsch schema */
+	/*get the oid of hg_security schema */
 	rdpolicyschemaoid = SECURITY_SCHEMA_NAMESPACE;
 
-	/* if hg_secsch schema exists, the next step is get the oid of 
+	/* if hg_security schema exists, the next step is get the oid of 
 	 * hg_redaction_policy and hg_redaction_column, otherwise report an error.
 	 */
 	if (OidIsValid(rdpolicyschemaoid) &&
@@ -699,7 +699,7 @@ redaction_data_all_function(ParseState *pstate, Var *var,
 			}
 
 			if ((typname != NULL && pg_strcasecmp(typname, "seclabel") == 0) &&
-				(typnamespace != NULL && pg_strcasecmp(typnamespace, "hg_secsch") == 0))
+				(typnamespace != NULL && pg_strcasecmp(typnamespace, "hg_security") == 0))
 			{
 				Node *const_node = NULL;
 

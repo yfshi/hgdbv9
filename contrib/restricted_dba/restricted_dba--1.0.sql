@@ -31,4 +31,4 @@ RETURNS text
 AS 'MODULE_PATHNAME', 'reset_all_se_param'
 LANGUAGE C STRICT;
 
-GRANT USAGE ON SCHEMA hg_secsch TO public;
+GRANT USAGE ON SCHEMA hg_security TO public;

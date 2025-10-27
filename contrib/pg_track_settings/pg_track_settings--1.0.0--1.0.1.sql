@@ -8,31 +8,31 @@
 
 SET client_encoding = 'UTF8';
 
-CREATE OR REPLACE FUNCTION hg_secsch.pg_track_settings_snapshot() RETURNS boolean AS
+CREATE OR REPLACE FUNCTION hg_security.pg_track_settings_snapshot() RETURNS boolean AS
 $_$
 BEGIN
     -- Handle dropped GUC
     WITH dropped AS (
         SELECT l.name
-        FROM hg_secsch.pg_track_settings_list l
+        FROM hg_security.pg_track_settings_list l
         LEFT JOIN pg_settings s ON s.name = l.name
         WHERE s.name IS NULL
     ),
     mark_dropped AS (
-        INSERT INTO hg_secsch.pg_track_settings_history (ts, name, setting, is_dropped)
+        INSERT INTO hg_security.pg_track_settings_history (ts, name, setting, is_dropped)
         SELECT now(), name, NULL, true
         FROM dropped
     )
-    DELETE FROM hg_secsch.pg_track_settings_list l
+    DELETE FROM hg_security.pg_track_settings_list l
     USING dropped d
     WHERE d.name = l.name;
 
     -- Insert missing settings
-    INSERT INTO hg_secsch.pg_track_settings_list (name)
+    INSERT INTO hg_security.pg_track_settings_list (name)
     SELECT name
     FROM pg_settings s
     WHERE NOT EXISTS (SELECT 1
-        FROM hg_secsch.pg_track_settings_list l
+        FROM hg_security.pg_track_settings_list l
         WHERE l.name = s.name
     );
 
@@ -41,11 +41,11 @@ BEGIN
         SELECT name, setting
         FROM (
             SELECT name, setting, row_number() OVER (PARTITION BY NAME ORDER BY ts DESC) rownum
-            FROM hg_secsch.pg_track_settings_history
+            FROM hg_security.pg_track_settings_history
         ) all_snapshots
         WHERE rownum = 1
     )
-    INSERT INTO hg_secsch.pg_track_settings_history (ts, name, setting)
+    INSERT INTO hg_security.pg_track_settings_history (ts, name, setting)
     SELECT now(), s.name, s.setting
     FROM pg_settings s
     LEFT JOIN last_snapshot l ON l.name = s.name
@@ -61,7 +61,7 @@ BEGIN
     ),
     dropped AS (
         SELECT l.setdatabase, l.setrole, l.name
-        FROM hg_secsch.pg_track_db_role_settings_list l
+        FROM hg_security.pg_track_db_role_settings_list l
         LEFT JOIN rds s ON (
             s.setdatabase = l.setdatabase
             AND s.setrole = l.setrole
@@ -72,12 +72,12 @@ BEGIN
             AND s.name IS NULL
     ),
     mark_dropped AS (
-        INSERT INTO hg_secsch.pg_track_db_role_settings_history
+        INSERT INTO hg_security.pg_track_db_role_settings_history
             (ts, setdatabase, setrole, name, setting, is_dropped)
         SELECT now(), setdatabase, setrole, name, NULL, true
         FROM dropped
     )
-    DELETE FROM hg_secsch.pg_track_db_role_settings_list l
+    DELETE FROM hg_security.pg_track_db_role_settings_list l
     USING dropped d
     WHERE
         d.setdatabase = l.setdatabase
@@ -91,12 +91,12 @@ BEGIN
             (regexp_split_to_array(unnest(setconfig),'=')::text[])[2] as setting
         FROM pg_db_role_setting
     )
-    INSERT INTO hg_secsch.pg_track_db_role_settings_list
+    INSERT INTO hg_security.pg_track_db_role_settings_list
         (setdatabase, setrole, name)
     SELECT setdatabase, setrole, name
     FROM rds s
     WHERE NOT EXISTS (SELECT 1
-        FROM hg_secsch.pg_track_db_role_settings_list l
+        FROM hg_security.pg_track_db_role_settings_list l
         WHERE
             l.setdatabase = s.setdatabase
             AND l.setrole = l.setrole
@@ -115,11 +115,11 @@ BEGIN
         FROM (
             SELECT setdatabase, setrole, name, setting,
                 row_number() OVER (PARTITION BY name, setdatabase, setrole ORDER BY ts DESC) rownum
-            FROM hg_secsch.pg_track_db_role_settings_history
+            FROM hg_security.pg_track_db_role_settings_history
         ) all_snapshots
         WHERE rownum = 1
     )
-    INSERT INTO hg_secsch.pg_track_db_role_settings_history
+    INSERT INTO hg_security.pg_track_db_role_settings_history
         (ts, setdatabase, setrole, name, setting)
     SELECT now(), s.setdatabase, s.setrole, s.name, s.setting
     FROM rds s
@@ -136,10 +136,10 @@ BEGIN
     WITH last_reboot AS (
         SELECT t FROM pg_postmaster_start_time() t
     )
-    INSERT INTO hg_secsch.pg_reboot (ts)
+    INSERT INTO hg_security.pg_reboot (ts)
     SELECT t FROM last_reboot lr
     WHERE NOT EXISTS (SELECT 1
-        FROM hg_secsch.pg_reboot r
+        FROM hg_security.pg_reboot r
         WHERE r.ts = lr.t
     );
 
@@ -148,7 +148,7 @@ END;
 $_$
 LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION hg_secsch.pg_track_db_role_settings(_ts timestamp with time zone DEFAULT now())
+CREATE OR REPLACE FUNCTION hg_security.pg_track_db_role_settings(_ts timestamp with time zone DEFAULT now())
 RETURNS TABLE (setdatabase oid, setrole oid, name text, setting text) AS
 $_$
 BEGIN
@@ -157,7 +157,7 @@ BEGIN
         FROM (
             SELECT h.setdatabase, h.setrole, h.name, h.setting, h.is_dropped,
                 row_number() OVER (PARTITION BY h.name, h.setdatabase, h.setrole ORDER BY h.ts DESC) AS rownum
-            FROM hg_secsch.pg_track_db_role_settings_history h
+            FROM hg_security.pg_track_db_role_settings_history h
             WHERE ts <= _ts
         ) s
         WHERE s.rownum = 1

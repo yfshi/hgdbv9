@@ -2497,7 +2497,7 @@ load_cred_check(FILE *cmdfd)
 static void
 load_hg_sysmac(FILE *cmdfd)
 {
-	PG_CMD_PUTS("CREATE EXTENSION hg_sysmac WITH SCHEMA hg_secsch;\n\n");
+	PG_CMD_PUTS("CREATE EXTENSION hg_sysmac WITH SCHEMA hg_security;\n\n");
 }
 
 /*

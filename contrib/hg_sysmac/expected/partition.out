@@ -14,25 +14,25 @@ CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
 GRANT ALL ON part_parent TO u1,u2,u3;
 GRANT ALL ON part_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('part_parent'::regclass, 's2');
+SELECT hg_security.set_table_seclabel('part_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
@@ -116,25 +116,25 @@ CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
 GRANT ALL ON part_parent TO u1,u2,u3;
 GRANT ALL ON part_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('part_child'::regclass, 's2');
+SELECT hg_security.set_table_seclabel('part_child'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
@@ -228,37 +228,37 @@ CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
 GRANT ALL ON part_parent TO u1,u2,u3,u4;
 GRANT ALL ON part_child TO u1,u2,u3,u4;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('part_parent'::regclass, 's2');
+SELECT hg_security.set_table_seclabel('part_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_table_seclabel('part_child'::regclass, 's3');
+SELECT hg_security.set_table_seclabel('part_child'::regclass, 's3');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u4'::regrole, 's4');
+SELECT hg_security.set_user_seclabel('u4'::regrole, 's4');
  set_user_seclabel 
 -------------------
  set
@@ -386,37 +386,37 @@ CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
 GRANT ALL ON part_parent TO u1,u2,u3;
 GRANT ALL ON part_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('part_parent'::regclass, 's2');
+SELECT hg_security.set_table_seclabel('part_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_parent'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('part_parent'::regclass, 'apply');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_parent'::regclass, 'enable');
+SELECT hg_security.apply_row_policy('part_parent'::regclass, 'enable');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
@@ -476,45 +476,45 @@ CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
 GRANT ALL ON part_parent TO u1,u2,u3;
 GRANT ALL ON part_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('part_child'::regclass, 's2');
+SELECT hg_security.set_table_seclabel('part_child'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_child'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('part_child'::regclass, 'apply');
 ERROR:  Mandatory access control row-level - partitioned tables must be applied to the parent before the child tables.
-SELECT hg_secsch.apply_row_policy('part_parent'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('part_parent'::regclass, 'apply');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_child'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('part_child'::regclass, 'apply');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_child'::regclass, 'enable');
+SELECT hg_security.apply_row_policy('part_child'::regclass, 'enable');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
@@ -574,55 +574,55 @@ CREATE TABLE part_child PARTITION OF part_parent FOR VALUES FROM (0) TO (100);
 GRANT ALL ON part_parent TO u1,u2,u3;
 GRANT ALL ON part_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('part_parent'::regclass, 's2');
+SELECT hg_security.set_table_seclabel('part_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_table_seclabel('part_child'::regclass, 's2');
+SELECT hg_security.set_table_seclabel('part_child'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
  set_user_seclabel 
 -------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_parent'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('part_parent'::regclass, 'apply');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_parent'::regclass, 'enable');
+SELECT hg_security.apply_row_policy('part_parent'::regclass, 'enable');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_child'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('part_child'::regclass, 'apply');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_child'::regclass, 'enable');
+SELECT hg_security.apply_row_policy('part_child'::regclass, 'enable');
  apply_row_policy 
 ------------------
  set
@@ -682,19 +682,19 @@ SET ROLE u1;
 CREATE TABLE part_child3 (id int);
 GRANT ALL ON part_child3 TO u1,u2,u3;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('part_child3'::regclass, 's2');
+SELECT hg_security.set_table_seclabel('part_child3'::regclass, 's2');
  set_table_seclabel 
 --------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_child3'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('part_child3'::regclass, 'apply');
  apply_row_policy 
 ------------------
  set
 (1 row)
 
-SELECT hg_secsch.apply_row_policy('part_child3'::regclass, 'enable');
+SELECT hg_security.apply_row_policy('part_child3'::regclass, 'enable');
  apply_row_policy 
 ------------------
  set

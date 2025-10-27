@@ -19,10 +19,10 @@ GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('inh_parent'::regclass, 's2');
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
 
 SET ROLE u1;
 INSERT INTO inh_parent VALUES (1, 'alice');
@@ -79,10 +79,10 @@ GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('inh_child'::regclass, 's2');
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_table_seclabel('inh_child'::regclass, 's2');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
 
 SET ROLE u1;
 INSERT INTO inh_parent VALUES (1, 'alice');
@@ -141,12 +141,12 @@ GRANT ALL ON inh_parent TO u1,u2,u3,u4;
 GRANT ALL ON inh_child TO u1,u2,u3,u4;
 
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('inh_parent'::regclass, 's2');
-SELECT hg_secsch.set_table_seclabel('inh_child'::regclass, 's3');
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
-SELECT hg_secsch.set_user_seclabel('u4'::regrole, 's4');
+SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
+SELECT hg_security.set_table_seclabel('inh_child'::regclass, 's3');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_user_seclabel('u4'::regrole, 's4');
 
 SET ROLE u1;
 INSERT INTO inh_parent VALUES (1, 'alice');
@@ -225,12 +225,12 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('inh_parent'::regclass, 's2');
-SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'apply');
-SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'enable');
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
+SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'enable');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
 SET ROLE u1;
 INSERT INTO inh_parent VALUES (1, 'alice');
 INSERT INTO inh_child VALUES (11, 'aalice');
@@ -247,7 +247,7 @@ SELECT __hg_seclabel__,* FROM inh_parent;
 SET ROLE u3;
 SELECT __hg_seclabel__,* FROM inh_parent;
 SET ROLE syssso;
-SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'drop');
+SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'drop');
 
 -- Set the row-level security label only on the child table.
 
@@ -267,12 +267,12 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('inh_child'::regclass, 's2');
-SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'apply');
-SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'enable');
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_table_seclabel('inh_child'::regclass, 's2');
+SELECT hg_security.apply_row_policy('inh_child'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('inh_child'::regclass, 'enable');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
 SET ROLE u1;
 INSERT INTO inh_parent VALUES (1, 'alice');
 INSERT INTO inh_child VALUES (11, 'aalice');
@@ -289,7 +289,7 @@ SELECT __hg_seclabel__,* FROM inh_child;
 SET ROLE u3;
 SELECT __hg_seclabel__,* FROM inh_child;
 SET ROLE syssso;
-SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'drop');
+SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
 
 -- Set the row-level security label on both the parent table and child tables.
 
@@ -309,13 +309,13 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 SET ROLE syssso;
-SELECT hg_secsch.set_table_seclabel('inh_parent'::regclass, 's2');
-SELECT hg_secsch.set_table_seclabel('inh_child'::regclass, 's2');
-SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'apply');
-SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'enable');
-SELECT hg_secsch.set_user_seclabel('u1'::regrole, 's1');
-SELECT hg_secsch.set_user_seclabel('u2'::regrole, 's2');
-SELECT hg_secsch.set_user_seclabel('u3'::regrole, 's3');
+SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
+SELECT hg_security.set_table_seclabel('inh_child'::regclass, 's2');
+SELECT hg_security.apply_row_policy('inh_child'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('inh_child'::regclass, 'enable');
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
 SET ROLE u1;
 INSERT INTO inh_child VALUES (1, 'alice');
 SET ROLE u2;
@@ -330,8 +330,8 @@ SET ROLE u3;
 SELECT __hg_seclabel__,* FROM inh_child;
 
 SET ROLE syssso;
-SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'apply');
-SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'enable');
+SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'enable');
 
 SET ROLE u1;
 INSERT INTO inh_parent VALUES (11, 'aalice');
@@ -347,9 +347,9 @@ SET ROLE u3;
 SELECT __hg_seclabel__,* FROM inh_parent;
 
 SET ROLE syssso;
-SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'drop');
-SELECT hg_secsch.apply_row_policy('inh_parent'::regclass, 'drop');
-SELECT hg_secsch.apply_row_policy('inh_child'::regclass, 'drop');
+SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
+SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'drop');
+SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
 
 SET hg_sysmac.global_on TO OFF;
 SET hg_sysmac.global_table_level TO OFF;

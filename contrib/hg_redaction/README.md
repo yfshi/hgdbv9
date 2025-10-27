@@ -24,8 +24,8 @@
 			telephone text
 			);
 	3、create a redaction policy(user uperuser or syssso can create)
-		 create redaction policy p1 on test_redaction for(user = 'markbo') add column salary using hg_secsch.redact_cash, add column telephone using hg_secsch.redact_phone;
+		 create redaction policy p1 on test_redaction for(user = 'markbo') add column salary using hg_security.redact_cash, add column telephone using hg_security.redact_phone;
 	4、You can view the create redaction policy through the table
-	   hg_secsch.hg_redaction_policy，and you can alse check which tables
+	   hg_security.hg_redaction_policy，and you can alse check which tables
 	   and columns have redaction policy through the table
-	   hg_secsch.hg_redaction_column.
+	   hg_security.hg_redaction_column.

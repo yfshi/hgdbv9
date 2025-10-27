@@ -2399,12 +2399,12 @@ FROM (SELECT indexrelid, indrelid,
       WHERE indrelid < 16384) ss
 WHERE icoll != 0 AND
     icoll != (SELECT oid FROM pg_collation WHERE collname = 'C');
-                    indexrelid                    |                  indrelid                   | iclass | icoll 
---------------------------------------------------+---------------------------------------------+--------+-------
- pgagent.pga_jobclass_name                        | pgagent.pga_jobclass                        |   3126 |   100
- hg_secsch.pg_track_settings_list_pkey            | hg_secsch.pg_track_settings_list            |   3126 |   100
- hg_secsch.pg_track_settings_history_pkey         | hg_secsch.pg_track_settings_history         |   3126 |   100
- hg_secsch.pg_track_db_role_settings_list_pkey    | hg_secsch.pg_track_db_role_settings_list    |   3126 |   100
- hg_secsch.pg_track_db_role_settings_history_pkey | hg_secsch.pg_track_db_role_settings_history |   3126 |   100
+                     indexrelid                     |                   indrelid                    | iclass | icoll 
+----------------------------------------------------+-----------------------------------------------+--------+-------
+ pgagent.pga_jobclass_name                          | pgagent.pga_jobclass                          |   3126 |   100
+ hg_security.pg_track_settings_list_pkey            | hg_security.pg_track_settings_list            |   3126 |   100
+ hg_security.pg_track_settings_history_pkey         | hg_security.pg_track_settings_history         |   3126 |   100
+ hg_security.pg_track_db_role_settings_list_pkey    | hg_security.pg_track_db_role_settings_list    |   3126 |   100
+ hg_security.pg_track_db_role_settings_history_pkey | hg_security.pg_track_db_role_settings_history |   3126 |   100
 (5 rows)
 

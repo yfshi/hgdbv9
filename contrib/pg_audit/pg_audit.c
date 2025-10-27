@@ -3419,7 +3419,7 @@ execute_snapshot(void)
 	int		ret;
 
 	memset(sqltext, 0, MAXPGPATH);
-	sprintf(sqltext, "select * from hg_secsch.pg_track_settings_snapshot()");
+	sprintf(sqltext, "select * from hg_security.pg_track_settings_snapshot()");
 
 	internalStatement = true;
 
@@ -3486,7 +3486,7 @@ audit_alter_set_guc(List *parsetreeList)
 	char	timec[20];
 
 	memset(sqltext, 0, MAXPGPATH);
-	sprintf(sqltext, "select * from hg_secsch.pg_track_settings_snapshot()");
+	sprintf(sqltext, "select * from hg_security.pg_track_settings_snapshot()");
 
 	foreach(parsetree_item, parsetreeList)
 	{
@@ -3557,7 +3557,7 @@ audit_alter_set_guc(List *parsetreeList)
 		memset(sqltext, 0, MAXPGPATH);
 		
 		sprintf(sqltext, "SELECT ts, name, setting "
-	       				 "FROM hg_secsch.pg_track_db_role_settings_history");
+	       				 "FROM hg_security.pg_track_db_role_settings_history");
 		
 
 		PushActiveSnapshot(GetTransactionSnapshot());
@@ -3866,7 +3866,7 @@ audit_create_arch_job(List *parsetreeList)
 						archpath = palloc(MAXPGPATH);
 						
 						sprintf(archpath, "%s/%d", archdir, oids[elemno]);
-						sprintf(copysql, "COPY hg_secsch.pg_audit_log TO ''%s/%d.csv''", archpath, oids[elemno]);
+						sprintf(copysql, "COPY hg_security.pg_audit_log TO ''%s/%d.csv''", archpath, oids[elemno]);
 				
 						
 						ret = audit_mkdirs(archpath);
@@ -5641,7 +5641,7 @@ audit_postmaster_sighup_guc(char *context)
 
 	initStringInfo(&buf);
 	/* refresh snapshot */
-	appendStringInfo(&buf, "select * from hg_secsch.pg_track_settings_snapshot()");
+	appendStringInfo(&buf, "select * from hg_security.pg_track_settings_snapshot()");
 	
 	SetCurrentStatementStartTimestamp();
 	StartTransactionCommand();
@@ -5656,7 +5656,7 @@ audit_postmaster_sighup_guc(char *context)
 	if (ret != SPI_OK_SELECT)
 	{
 		internalStatement = false;
-		elog(WARNING, "cannot select from hg_secsch.pg_track_settings_snapshot: error code %d", ret);
+		elog(WARNING, "cannot select from hg_security.pg_track_settings_snapshot: error code %d", ret);
 		return;
 	}
 
@@ -5672,7 +5672,7 @@ audit_postmaster_sighup_guc(char *context)
 	 * to find the modified GUC parameters 
 	 */
 	appendStringInfo(&buf, "SELECT a.ts, a.name, a.setting "
-							"FROM hg_secsch.pg_track_settings_history a "
+							"FROM hg_security.pg_track_settings_history a "
 							"INNER JOIN pg_settings b ON a.name = b.name "
 							"WHERE b.context = '%s'", context);
 
@@ -5687,7 +5687,7 @@ audit_postmaster_sighup_guc(char *context)
 	if (ret != SPI_OK_SELECT)
 	{
 		internalStatement = false;
-		elog(WARNING, "cannot select from hg_secsch.pg_track_settings_history: error code %d", ret);
+		elog(WARNING, "cannot select from hg_security.pg_track_settings_history: error code %d", ret);
 		return;
 	}
 
@@ -5944,16 +5944,16 @@ audit_arch_job(void)
 							(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir)))
 		{
 			snprintf(archfile, MAXPGPATH, "%s/%d.csv", archpath, oids[elemno]);	/* Bug#Z5840 */
-			snprintf(copysql, sizeof(copysql), "COPY hg_secsch.pg_audit_log TO ''%s/%d.csv'';select public.copy_file_to_remot_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);
+			snprintf(copysql, sizeof(copysql), "COPY hg_security.pg_audit_log TO ''%s/%d.csv'';select public.copy_file_to_remot_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);
 		}
 		else if ((audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0) &&
 								(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir) == 0))
 		{
 			snprintf(archfile, MAXPGPATH, "%s/%d.csv", DataDir, oids[elemno]);	/* Bug#Z5840 */
-			snprintf(copysql, sizeof(copysql), "COPY hg_secsch.pg_audit_log TO ''%s/%d.csv'';select public.copy_file_to_remot_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir);
+			snprintf(copysql, sizeof(copysql), "COPY hg_security.pg_audit_log TO ''%s/%d.csv'';select public.copy_file_to_remot_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir);
 		}
 		else if(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
-			snprintf(copysql, sizeof(copysql), "COPY hg_secsch.pg_audit_log TO ''%s/%d.csv''", archpath, oids[elemno]);
+			snprintf(copysql, sizeof(copysql), "COPY hg_security.pg_audit_log TO ''%s/%d.csv''", archpath, oids[elemno]);
 
 		if (audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
 		{
@@ -6198,7 +6198,7 @@ static void audit_delete_log(TimestampTz del_time)
 
 	time = DatumGetCString(DirectFunctionCall1(timestamptz_out, TimestampTzGetDatum(del_time)));
 	initStringInfo(&query);
-	appendStringInfo(&query, "delete from hg_secsch.pg_audit_log where audittime <\' %s\'", time);
+	appendStringInfo(&query, "delete from hg_security.pg_audit_log where audittime <\' %s\'", time);
 
 	syssao_oid = get_role_oid("syssao", false);
 	GetUserIdAndSecContext(&save_userid, &save_sec_context);
@@ -10137,7 +10137,7 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 		{
 			if (IS_SYSSAO(userid))
 			{
-				snprintf(archcmd, MAXPGPATH, "copy hg_secsch.pg_audit_log to '%s/%s-%d-%s.csv'", archpath, username, MyDatabaseId, time_str);
+				snprintf(archcmd, MAXPGPATH, "copy hg_security.pg_audit_log to '%s/%s-%d-%s.csv'", archpath, username, MyDatabaseId, time_str);
 			}
 			
 		}
@@ -10145,13 +10145,13 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 		{
 			if (IS_SYSSAO(userid))
 			{
-				snprintf(archcmd, MAXPGPATH, "copy (select * from hg_secsch.pg_audit_log where rolename = 'sysdba_role' or rolename = 'syssso_role') to '%s/%s-%d-%s.csv'", 
+				snprintf(archcmd, MAXPGPATH, "copy (select * from hg_security.pg_audit_log where rolename = 'sysdba_role' or rolename = 'syssso_role') to '%s/%s-%d-%s.csv'", 
 							archpath, username, MyDatabaseId, time_str);
 			}
 		
 			else
 			{
-				snprintf(archcmd, MAXPGPATH, "copy (select * from hg_secsch.pg_audit_log where rolename != 'sysdba_role' and rolename != 'syssso_role' or username IS NULL) to '%s/%s-%d-%s.csv'", 
+				snprintf(archcmd, MAXPGPATH, "copy (select * from hg_security.pg_audit_log where rolename != 'sysdba_role' and rolename != 'syssso_role' or username IS NULL) to '%s/%s-%d-%s.csv'", 
 							archpath, username, MyDatabaseId, time_str);
 			}
 		}
@@ -10161,7 +10161,7 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 	{
 		if (superuser())
 		{
-			snprintf(archcmd, MAXPGPATH, "copy hg_secsch.pg_audit_log to '%s/%s-%d-%s.csv'", archpath, username, MyDatabaseId, time_str);
+			snprintf(archcmd, MAXPGPATH, "copy hg_security.pg_audit_log to '%s/%s-%d-%s.csv'", archpath, username, MyDatabaseId, time_str);
 		}
 	}
 
@@ -12533,7 +12533,7 @@ static void audit_drop_table_partition(void)
 
 	initStringInfo(&buf);
 	pgstat_report_activity(STATE_RUNNING, buf.data);
-	appendStringInfo(&buf, "select relid::regclass as child_table from pg_partition_tree('hg_secsch.pg_audit_log');");
+	appendStringInfo(&buf, "select relid::regclass as child_table from pg_partition_tree('hg_security.pg_audit_log');");
 	ret = SPI_execute(buf.data, false, 0);
 
 	if (ret != SPI_OK_SELECT)
@@ -12618,7 +12618,7 @@ static void audit_drop_table_partition(void)
 				}
 
 				initStringInfo(&buf);
-				appendStringInfo(&buf, "DROP TABLE IF EXISTS hg_secsch.%s;", table);
+				appendStringInfo(&buf, "DROP TABLE IF EXISTS hg_security.%s;", table);
 
 				if (buf.len > 0)
 				{
@@ -12671,7 +12671,7 @@ static bool table_count_changes(void)
 	}
 
 	initStringInfo(&buf);
-	appendStringInfo(&buf, "select count(relid::regclass) as child_num from pg_partition_tree('hg_secsch.pg_audit_log');");
+	appendStringInfo(&buf, "select count(relid::regclass) as child_num from pg_partition_tree('hg_security.pg_audit_log');");
 	ret = SPI_execute(buf.data, false, 0);
 
 	if (ret != SPI_OK_SELECT)
@@ -12726,7 +12726,7 @@ static bool is_table_exits(TimestampTz time_cur)
 											PointerGetDatum(cstring_to_text("YYYYMMDD")))));
 
 	initStringInfo(&buf);
-	appendStringInfo(&buf, "SELECT EXISTS (SELECT FROM pg_tables where schemaname='hg_secsch' and tablename='pg_audit_log_%s');", date_cur1);
+	appendStringInfo(&buf, "SELECT EXISTS (SELECT FROM pg_tables where schemaname='hg_security' and tablename='pg_audit_log_%s');", date_cur1);
 	ret = SPI_execute(buf.data, false, 0);
 
 	if (ret != SPI_OK_SELECT)
@@ -12796,11 +12796,11 @@ static void audit_create_table_partition(TimestampTz time_cur)
 		CommitTransactionCommand();
 		elog(ERROR, "SPI_connect failed");
 	}
-	appendStringInfo(&buf, "CREATE TABLE IF NOT EXISTS hg_secsch.pg_audit_log_%s PARTITION OF hg_secsch.pg_audit_log (audittime) FOR VALUES FROM ('%s') TO ('%s');"
-						"ALTER TABLE hg_secsch.pg_audit_log_%s OWNER TO syssao;"
-						"GRANT SELECT ON hg_secsch.pg_audit_log_%s TO syssso;"
-						"GRANT SELECT ON hg_secsch.pg_audit_log_%s to syssao_role;"
-						"GRANT SELECT ON hg_secsch.pg_audit_log_%s to syssso_role;",
+	appendStringInfo(&buf, "CREATE TABLE IF NOT EXISTS hg_security.pg_audit_log_%s PARTITION OF hg_security.pg_audit_log (audittime) FOR VALUES FROM ('%s') TO ('%s');"
+						"ALTER TABLE hg_security.pg_audit_log_%s OWNER TO syssao;"
+						"GRANT SELECT ON hg_security.pg_audit_log_%s TO syssso;"
+						"GRANT SELECT ON hg_security.pg_audit_log_%s to syssao_role;"
+						"GRANT SELECT ON hg_security.pg_audit_log_%s to syssso_role;",
 						date_cur1, date_cur1, date_next_str1, date_cur1,
 						date_cur1, date_cur1, date_cur1);
 
