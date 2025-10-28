@@ -893,7 +893,7 @@ selectDumpableNamespace(NamespaceInfo *nsinfo, Archive *fout)
 			 strcmp(nsinfo->dobj.name, "information_schema") == 0 ||
 			 strcmp(nsinfo->dobj.name, "sys") == 0 /* ReqID:SRS-GKC-DATATYPE_001 */ ||
 			 strcmp(nsinfo->dobj.name, "pgagent") == 0 || /* ReqID:SRS-SECURITY-AUDIT */
-			 strcmp(nsinfo->dobj.name, "hg_secsch") == 0)
+			 strcmp(nsinfo->dobj.name, "hg_security") == 0)
 	{
 		/* Other system schemas don't get dumped */
 		nsinfo->dobj.dump_contains = nsinfo->dobj.dump = DUMP_COMPONENT_NONE;

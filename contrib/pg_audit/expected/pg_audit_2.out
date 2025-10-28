@@ -43,7 +43,7 @@ ERROR:  invalid value for parameter "audit.spacealarm": "1.1"
 alter system set audit.spacealarm = 0.1;
 alter system set audit.spacealarm = .1;
 ERROR:  invalid value for parameter "audit.spacealarm": ".1"
-select * from hg_secsch.pg_audit_stmt('delete');
+select * from hg_security.pg_audit_stmt('delete');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -58,7 +58,7 @@ BEGIN
 	WHERE actionname = 'DELETE'
 	LIMIT 1;
 	
-	PERFORM hg_secsch.pg_create_secmon_rule('rule1',confoid,'successful',true);
+	PERFORM hg_security.pg_create_secmon_rule('rule1',confoid,'successful',true);
 end $$;
 DO $$
 DECLARE
@@ -75,9 +75,9 @@ BEGIN
 	WHERE confid = confoid
 	LIMIT 1;
 	
-	PERFORM hg_secsch.pg_create_secmon_threshold('thr1',ARRAY[rule_oid]::oidvector,1,1,NULL,NULL,NULL,NULL,NULL,1,true);
+	PERFORM hg_security.pg_create_secmon_threshold('thr1',ARRAY[rule_oid]::oidvector,1,1,NULL,NULL,NULL,NULL,NULL,1,true);
 end $$;
-select * from hg_secsch.pg_audit_stmt('alter system');
+select * from hg_security.pg_audit_stmt('alter system');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -91,7 +91,7 @@ BEGIN
 	FROM pg_audit_config
 	WHERE actionname = 'ALTER SYSTEM'
 	LIMIT 1;
-	PERFORM hg_secsch.pg_create_secmon_rule('rule2',confoid,'successful',true);
+	PERFORM hg_security.pg_create_secmon_rule('rule2',confoid,'successful',true);
 end $$;
 DO $$
 DECLARE
@@ -108,9 +108,9 @@ BEGIN
 	WHERE confid = confoid
 	LIMIT 1;
 	
-	PERFORM hg_secsch.pg_create_secmon_threshold('thr2',ARRAY[rule_oid]::oidvector,1,1,'audit.retentiondays','10',NULL,NULL,NULL,1,true);
+	PERFORM hg_security.pg_create_secmon_threshold('thr2',ARRAY[rule_oid]::oidvector,1,1,'audit.retentiondays','10',NULL,NULL,NULL,1,true);
 end $$;
-select * from hg_secsch.pg_audit_stmt('create table');
+select * from hg_security.pg_audit_stmt('create table');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -124,7 +124,7 @@ BEGIN
 	FROM pg_audit_config
 	WHERE actionname = 'CREATE TABLE'
 	LIMIT 1;
-	PERFORM hg_secsch.pg_create_secmon_rule('rule3',confoid,'successful',true);
+	PERFORM hg_security.pg_create_secmon_rule('rule3',confoid,'successful',true);
 end $$;
 DO $$
 DECLARE
@@ -141,10 +141,10 @@ BEGIN
 	WHERE confid = confoid
 	LIMIT 1;
 	
-	PERFORM hg_secsch.pg_create_secmon_threshold('thr3',ARRAY[rule_oid]::oidvector,5,3,NULL,NULL,NULL,NULL,NULL,1,true);
+	PERFORM hg_security.pg_create_secmon_threshold('thr3',ARRAY[rule_oid]::oidvector,5,3,NULL,NULL,NULL,NULL,NULL,1,true);
 end $$;
 create table test (id int);
-select * from hg_secsch.pg_audit_object('select','column','test.id');
+select * from hg_security.pg_audit_object('select','column','test.id');
                pg_audit_object                
 ----------------------------------------------
  Successfully configured object audit policy!
@@ -158,7 +158,7 @@ BEGIN
 	FROM pg_audit_config
 	WHERE actionname = 'SELECT'
 	LIMIT 1;
-	PERFORM hg_secsch.pg_create_secmon_rule('rule4',confoid,'successful',true);
+	PERFORM hg_security.pg_create_secmon_rule('rule4',confoid,'successful',true);
 end $$;
 DO $$
 DECLARE
@@ -175,33 +175,33 @@ BEGIN
 	WHERE confid = confoid
 	LIMIT 1;
 	
-	PERFORM hg_secsch.pg_create_secmon_threshold('thr4',ARRAY[rule_oid]::oidvector,1,1,NULL,NULL,NULL,NULL,'1',1,true);
+	PERFORM hg_security.pg_create_secmon_threshold('thr4',ARRAY[rule_oid]::oidvector,1,1,NULL,NULL,NULL,NULL,'1',1,true);
 end $$;
-select hg_secsch.pg_clean_secmon_config();
+select hg_security.pg_clean_secmon_config();
  pg_clean_secmon_config 
 ------------------------
  t
 (1 row)
 
-select hg_secsch.pg_clean_audit_config();
+select hg_security.pg_clean_audit_config();
  pg_clean_audit_config 
 -----------------------
  t
 (1 row)
 
-select * from hg_secsch.pg_audit_stmt('create table');
+select * from hg_security.pg_audit_stmt('create table');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
 (1 row)
 
-select * from hg_secsch.pg_audit_stmt('insert');
+select * from hg_security.pg_audit_stmt('insert');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
 (1 row)
 
-select * from hg_secsch.pg_audit_stmt('delete');
+select * from hg_security.pg_audit_stmt('delete');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -228,9 +228,9 @@ BEGIN
 	WHERE actionname = 'DELETE'
 	LIMIT 1;
 	
-	PERFORM hg_secsch.pg_create_secmon_rule('rule1',confoid_1,'successful',true);
-	PERFORM hg_secsch.pg_create_secmon_rule('rule2',confoid_2,'successful',true);
-	PERFORM hg_secsch.pg_create_secmon_rule('rule3',confoid_3,'successful',true);
+	PERFORM hg_security.pg_create_secmon_rule('rule1',confoid_1,'successful',true);
+	PERFORM hg_security.pg_create_secmon_rule('rule2',confoid_2,'successful',true);
+	PERFORM hg_security.pg_create_secmon_rule('rule3',confoid_3,'successful',true);
 end $$;
 DO $$
 DECLARE
@@ -271,16 +271,16 @@ BEGIN
 	WHERE confid = confoid_3
 	LIMIT 1;
 	
-	PERFORM hg_secsch.pg_create_secmon_threshold('thr1',ARRAY[rule_oid_1,rule_oid_2,rule_oid_3],20,1,NULL,NULL,NULL,NULL,NULL,1,true);
+	PERFORM hg_security.pg_create_secmon_threshold('thr1',ARRAY[rule_oid_1,rule_oid_2,rule_oid_3],20,1,NULL,NULL,NULL,NULL,NULL,1,true);
 end $$;
-select hg_secsch.pg_audit_privilege('create role','all');
+select hg_security.pg_audit_privilege('create role','all');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
 create role us1;
-select hg_secsch.pg_audit_privilege('create role','successful');
+select hg_security.pg_audit_privilege('create role','successful');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
@@ -289,7 +289,7 @@ select hg_secsch.pg_audit_privilege('create role','successful');
 create role us2;
 create role us2;
 ERROR:  role "us2" already exists
-select hg_secsch.pg_audit_privilege('create role','fail');
+select hg_security.pg_audit_privilege('create role','fail');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
@@ -298,7 +298,7 @@ select hg_secsch.pg_audit_privilege('create role','fail');
 create role us3;
 create role us3;
 ERROR:  role "us3" already exists
-select hg_secsch.pg_audit_privilege('create role, grant role','all');
+select hg_security.pg_audit_privilege('create role, grant role','all');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
@@ -306,20 +306,20 @@ select hg_secsch.pg_audit_privilege('create role, grant role','all');
 
 create role role1;
 GRANT CONNECT ON DATABASE postgres TO role1;
-select hg_secsch.pg_noaudit_privilege('create role');
+select hg_security.pg_noaudit_privilege('create role');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
 (1 row)
 
 create role us4;
-select hg_secsch.pg_audit_privilege('create role','all');
+select hg_security.pg_audit_privilege('create role','all');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('create role','successful');
+select hg_security.pg_noaudit_privilege('create role','successful');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
@@ -328,28 +328,28 @@ select hg_secsch.pg_noaudit_privilege('create role','successful');
 create role us4;
 ERROR:  role "us4" already exists
 create role us5;
-select hg_secsch.pg_audit_privilege('create role','fail');
+select hg_security.pg_audit_privilege('create role','fail');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('create role','successful');
+select hg_security.pg_noaudit_privilege('create role','successful');
 ERROR:  There is no audit strategy available!
-select hg_secsch.pg_audit_privilege('create role','all');
+select hg_security.pg_audit_privilege('create role','all');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('create role','successful');
+select hg_security.pg_noaudit_privilege('create role','successful');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
 (1 row)
 
 create role us6;
-select hg_secsch.pg_noaudit_privilege('create role','fail');
+select hg_security.pg_noaudit_privilege('create role','fail');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
@@ -357,21 +357,21 @@ select hg_secsch.pg_noaudit_privilege('create role','fail');
 
 create role us1;
 ERROR:  role "us1" already exists
-select hg_secsch.pg_audit_privilege('create role','successful');
+select hg_security.pg_audit_privilege('create role','successful');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('create role', 'fail');
+select hg_security.pg_noaudit_privilege('create role', 'fail');
 ERROR:  There is no audit strategy available!
-select hg_secsch.pg_audit_privilege('create role','all');
+select hg_security.pg_audit_privilege('create role','all');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('create role','fail');
+select hg_security.pg_noaudit_privilege('create role','fail');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
@@ -380,13 +380,13 @@ select hg_secsch.pg_noaudit_privilege('create role','fail');
 create role us1;
 ERROR:  role "us1" already exists
 create role us7;
-select hg_secsch.pg_clean_audit_config();
+select hg_security.pg_clean_audit_config();
  pg_clean_audit_config 
 -----------------------
  t
 (1 row)
 
-select hg_secsch.pg_audit_privilege('grant role','all');
+select hg_security.pg_audit_privilege('grant role','all');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
@@ -394,20 +394,20 @@ select hg_secsch.pg_audit_privilege('grant role','all');
 
 create role test;
 GRANT CONNECT ON DATABASE postgres TO test;
-select hg_secsch.pg_audit_privilege('revoke role');
+select hg_security.pg_audit_privilege('revoke role');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
 REVOKE CONNECT ON DATABASE postgres FROM test;
-select hg_secsch.pg_noaudit_privilege('revoke role','successful');
+select hg_security.pg_noaudit_privilege('revoke role','successful');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
 (1 row)
 
-select hg_secsch.pg_audit_privilege('drop role','successful');
+select hg_security.pg_audit_privilege('drop role','successful');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
@@ -415,7 +415,7 @@ select hg_secsch.pg_audit_privilege('drop role','successful');
 
 drop role test1;
 ERROR:  role "test1" does not exist
-select hg_secsch.pg_audit_privilege('alter role','fail');
+select hg_security.pg_audit_privilege('alter role','fail');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
@@ -423,14 +423,14 @@ select hg_secsch.pg_audit_privilege('alter role','fail');
 
 alter role fff WITH PASSWORD '22222222';
 ERROR:  role "fff" does not exist
-select hg_secsch.pg_audit_privilege('create user','all');
+select hg_security.pg_audit_privilege('create user','all');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
 create user test1 password '1111';
-select hg_secsch.pg_noaudit_privilege('create user','successful');
+select hg_security.pg_noaudit_privilege('create user','successful');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
@@ -438,19 +438,19 @@ select hg_secsch.pg_noaudit_privilege('create user','successful');
 
 create user test1 password '1111';
 ERROR:  role "test1" already exists
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
     14
 (1 row)
 
-select * from hg_secsch.pg_clean_auditlog();
+select * from hg_security.pg_clean_auditlog();
  pg_clean_auditlog 
 -------------------
  t
 (1 row)
 
-select hg_secsch.pg_audit_privilege('drop role','successful');
+select hg_security.pg_audit_privilege('drop role','successful');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
@@ -459,26 +459,26 @@ select hg_secsch.pg_audit_privilege('drop role','successful');
 drop role us1;
 drop role us1;
 ERROR:  role "us1" does not exist
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      1
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('drop role','all'),
-select hg_secsch.pg_noaudit_privilege('drop role', 'fail');
+select hg_security.pg_noaudit_privilege('drop role','all'),
+select hg_security.pg_noaudit_privilege('drop role', 'fail');
 ERROR:  syntax error at or near "select"
-LINE 2: select hg_secsch.pg_noaudit_privilege('drop role', 'fail');
+LINE 2: select hg_security.pg_noaudit_privilege('drop role', 'fail');
         ^
 drop role us1;
 ERROR:  role "us1" does not exist
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      1
 (1 row)
 
-select hg_secsch.pg_audit_privilege('drop user','successful');
+select hg_security.pg_audit_privilege('drop user','successful');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
@@ -488,13 +488,13 @@ create user us1 password '1111';
 drop user us1;
 drop user us1;
 ERROR:  role "us1" does not exist
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      2
 (1 row)
 
-select hg_secsch.pg_audit_privilege('create schema','fail');
+select hg_security.pg_audit_privilege('create schema','fail');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
@@ -503,13 +503,13 @@ select hg_secsch.pg_audit_privilege('create schema','fail');
 create schema sch01;
 create schema sch01;
 ERROR:  schema "sch01" already exists
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      3
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('create schema');
+select hg_security.pg_noaudit_privilege('create schema');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
@@ -517,89 +517,89 @@ select hg_secsch.pg_noaudit_privilege('create schema');
 
 create schema sch01;
 ERROR:  schema "sch01" already exists
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      3
 (1 row)
 
-select hg_secsch.pg_audit_privilege('alter schema','all');
+select hg_security.pg_audit_privilege('alter schema','all');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
 ALTER SCHEMA sch01 RENAME TO sch01_new;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      4
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('alter schema');
+select hg_security.pg_noaudit_privilege('alter schema');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
 (1 row)
 
 ALTER SCHEMA sch01_new RENAME TO sch01;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      4
 (1 row)
 
-select hg_secsch.pg_audit_privilege('drop schema');
+select hg_security.pg_audit_privilege('drop schema');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
 drop schema sch01;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      5
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('drop schema','all')
+select hg_security.pg_noaudit_privilege('drop schema','all')
 drop schema sch01;
 ERROR:  syntax error at or near "schema"
 LINE 2: drop schema sch01;
              ^
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      5
 (1 row)
 
-select hg_secsch.pg_audit_privilege('create database','successful');
+select hg_security.pg_audit_privilege('create database','successful');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
 create database db1;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      6
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('create database', 'successful');
+select hg_security.pg_noaudit_privilege('create database', 'successful');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
 (1 row)
 
 create database db2;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      6
 (1 row)
 
-select hg_secsch.pg_audit_privilege('alter database', 'fail');
+select hg_security.pg_audit_privilege('alter database', 'fail');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
@@ -607,39 +607,39 @@ select hg_secsch.pg_audit_privilege('alter database', 'fail');
 
 ALTER DATABASE db1 OWNER TO us2;
 ALTER DATABASE db1 OWNER TO us2;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      6
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('alter database', 'fail');
+select hg_security.pg_noaudit_privilege('alter database', 'fail');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
 (1 row)
 
 ALTER DATABASE db1 OWNER TO us2;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      6
 (1 row)
 
-select hg_secsch.pg_audit_privilege('drop database','all');
+select hg_security.pg_audit_privilege('drop database','all');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
 drop database db1;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      7
 (1 row)
 
-select hg_secsch.pg_noaudit_privilege('drop database');
+select hg_security.pg_noaudit_privilege('drop database');
              pg_noaudit_privilege              
 -----------------------------------------------
  Successfully canceled privilege audit policy!
@@ -648,30 +648,30 @@ select hg_secsch.pg_noaudit_privilege('drop database');
 drop database db1;
 ERROR:  database "db1" does not exist
 drop database db2;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      7
 (1 row)
 
-select hg_secsch.pg_audit_privilege('set','all');
+select hg_security.pg_audit_privilege('set','all');
 ERROR:  input paramter 'set' format error!
-select hg_secsch.pg_audit_privilege('','all');
+select hg_security.pg_audit_privilege('','all');
 ERROR:  input paramter '' format error!
-select hg_secsch.pg_audit_privilege('all');
+select hg_security.pg_audit_privilege('all');
                pg_audit_privilege                
 -------------------------------------------------
  Successfully configured privilege audit policy!
 (1 row)
 
-select hg_secsch.pg_audit_stmt('create domain','all');
+select hg_security.pg_audit_stmt('create domain','all');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
 (1 row)
 
 create domain domain_test varchar(50) not null;
-select hg_secsch.pg_noaudit_stmt('create domain','successful');
+select hg_security.pg_noaudit_stmt('create domain','successful');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
@@ -680,7 +680,7 @@ select hg_secsch.pg_noaudit_stmt('create domain','successful');
 create domain domain_test1 varchar(50) not null;
 create domain domain_test1 varchar(50) not null;
 ERROR:  type "domain_test1" already exists
-select hg_secsch.pg_audit_stmt('create procedure','all');
+select hg_security.pg_audit_stmt('create procedure','all');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -705,19 +705,19 @@ END;
 $$
 ;
 ERROR:  function "my_procedure" already exists with same argument types
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
     11
 (1 row)
 
-select * from hg_secsch.pg_clean_auditlog();
+select * from hg_security.pg_clean_auditlog();
  pg_clean_auditlog 
 -------------------
  t
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('create procedure','all');
+select hg_security.pg_noaudit_stmt('create procedure','all');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
@@ -743,36 +743,36 @@ END;
 $$
 ;
 ERROR:  function "my_procedure" already exists with same argument types
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      0
 (1 row)
 
-select hg_secsch.pg_audit_stmt('drop procedure','successful');
+select hg_security.pg_audit_stmt('drop procedure','successful');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
 (1 row)
 
 drop procedure my_procedure;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      1
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('drop procedure', 'fail');
+select hg_security.pg_noaudit_stmt('drop procedure', 'fail');
 ERROR:  There is no audit strategy available!
 drop procedure my_procedure;
 ERROR:  could not find a procedure named "my_procedure"
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      1
 (1 row)
 
-select hg_secsch.pg_audit_stmt('create index');
+select hg_security.pg_audit_stmt('create index');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -780,13 +780,13 @@ select hg_secsch.pg_audit_stmt('create index');
 
 create table tb1(id int, name text);
 CREATE INDEX idx_id ON tb1 (id);
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      2
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('create index');
+select hg_security.pg_noaudit_stmt('create index');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
@@ -794,13 +794,13 @@ select hg_secsch.pg_noaudit_stmt('create index');
 
 CREATE INDEX idx_id ON tb1 (id);
 ERROR:  relation "idx_id" already exists
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      2
 (1 row)
 
-select hg_secsch.pg_audit_stmt('drop index','fail');
+select hg_security.pg_audit_stmt('drop index','fail');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -809,19 +809,19 @@ select hg_secsch.pg_audit_stmt('drop index','fail');
 drop index idx_id;
 drop index idx_id;
 ERROR:  index "idx_id" does not exist
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      3
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('drop index');
+select hg_security.pg_noaudit_stmt('drop index');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
 (1 row)
 
-select hg_secsch.pg_audit_stmt('create sequence','successful');
+select hg_security.pg_audit_stmt('create sequence','successful');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -836,13 +836,13 @@ CREATE SEQUENCE my_sequence
     INCREMENT BY 1  
     NO MAXVALUE;
 ERROR:  relation "my_sequence" already exists
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      4
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('create sequence', 'successful');
+select hg_security.pg_noaudit_stmt('create sequence', 'successful');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
@@ -853,13 +853,13 @@ CREATE SEQUENCE my_sequence
     INCREMENT BY 1  
     NO MAXVALUE;
 ERROR:  relation "my_sequence" already exists
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      4
 (1 row)
 
-select hg_secsch.pg_audit_stmt('alter sequence');
+select hg_security.pg_audit_stmt('alter sequence');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -869,13 +869,13 @@ ALTER SEQUENCE my_sequence NOCYCLE;
 ERROR:  syntax error at or near "NOCYCLE"
 LINE 1: ALTER SEQUENCE my_sequence NOCYCLE;
                                    ^
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      4
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('alter sequence', 'fail');
+select hg_security.pg_noaudit_stmt('alter sequence', 'fail');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
@@ -885,26 +885,26 @@ ALTER SEQUENCE my_sequence NOCYCLE;
 ERROR:  syntax error at or near "NOCYCLE"
 LINE 1: ALTER SEQUENCE my_sequence NOCYCLE;
                                    ^
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      4
 (1 row)
 
-select hg_secsch.pg_audit_stmt('drop sequence');
+select hg_security.pg_audit_stmt('drop sequence');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
 (1 row)
 
 drop sequence my_sequence;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      5
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('drop sequence');
+select hg_security.pg_noaudit_stmt('drop sequence');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
@@ -912,13 +912,13 @@ select hg_secsch.pg_noaudit_stmt('drop sequence');
 
 drop sequence my_sequence;
 ERROR:  sequence "my_sequence" does not exist
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      5
 (1 row)
 
-select hg_secsch.pg_audit_stmt('create funciton','fail');
+select hg_security.pg_audit_stmt('create funciton','fail');
 ERROR:  input paramter 'create funciton' format error!
 CREATE OR REPLACE FUNCTION my_function(param1 type1, param2 type2)  
 RETURNS return_type AS 
@@ -935,13 +935,13 @@ END;
 $$
  LANGUAGE plpgsql;
 ERROR:  type type1 does not exist
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      5
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('create funciton', 'fail');
+select hg_security.pg_noaudit_stmt('create funciton', 'fail');
 ERROR:  input paramter 'create funciton' format error!
 CREATE OR REPLACE FUNCTION my_function(param1 type1, param2 type2)  
 RETURNS return_type AS 
@@ -958,13 +958,13 @@ END;
 $$
  LANGUAGE plpgsql;
 ERROR:  type type1 does not exist
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      5
 (1 row)
 
-select hg_secsch.pg_audit_stmt('drop function');
+select hg_security.pg_audit_stmt('drop function');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -972,13 +972,13 @@ select hg_secsch.pg_audit_stmt('drop function');
 
 drop function my_function;
 ERROR:  could not find a function named "my_function"
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      6
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('drop function', 'fail');
+select hg_security.pg_noaudit_stmt('drop function', 'fail');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
@@ -986,91 +986,91 @@ select hg_secsch.pg_noaudit_stmt('drop function', 'fail');
 
 drop function my_function;
 ERROR:  could not find a function named "my_function"
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      6
 (1 row)
 
-select hg_secsch.pg_audit_stmt('create table','all');
+select hg_security.pg_audit_stmt('create table','all');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
 (1 row)
 
 create table tb_aa (a int primary key,b varchar);
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      7
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('create table', 'successful');
+select hg_security.pg_noaudit_stmt('create table', 'successful');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
 (1 row)
 
 create table tb_bb (a int primary key, b varchar);
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      7
 (1 row)
 
-select hg_secsch.pg_audit_stmt('create table as','successful');
+select hg_security.pg_audit_stmt('create table as','successful');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
 (1 row)
 
 create table tb_aa_1 as select * from tb_aa;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      8
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('create table as', 'successful');
+select hg_security.pg_noaudit_stmt('create table as', 'successful');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
 (1 row)
 
 create table tb_aa_2 as select * from tb_aa;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      8
 (1 row)
 
-select hg_secsch.pg_audit_stmt('drop table','successful');
+select hg_security.pg_audit_stmt('drop table','successful');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
 (1 row)
 
 drop table tb_aa_1;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      9
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('drop table', 'successful');
+select hg_security.pg_noaudit_stmt('drop table', 'successful');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
 (1 row)
 
 drop table tb_aa_2;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      9
 (1 row)
 
-select hg_secsch.pg_audit_stmt('create view');
+select hg_security.pg_audit_stmt('create view');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
@@ -1079,13 +1079,13 @@ select hg_secsch.pg_audit_stmt('create view');
 create view V1 as select a,b from tb_aa;
 create view V1 as select a,b from tb_aa;
 ERROR:  relation "v1" already exists
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
     11
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('create view');
+select hg_security.pg_noaudit_stmt('create view');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
@@ -1093,52 +1093,52 @@ select hg_secsch.pg_noaudit_stmt('create view');
 
 create view V1 as select a,b from tb_aa;
 ERROR:  relation "v1" already exists
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
     11
 (1 row)
 
-select hg_secsch.pg_audit_stmt('alter view');
+select hg_security.pg_audit_stmt('alter view');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
 (1 row)
 
 alter view V1 rename to v1_new;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
     12
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('alter view', 'successful');
+select hg_security.pg_noaudit_stmt('alter view', 'successful');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
 (1 row)
 
 alter view v1_new rename to V1;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
     12
 (1 row)
 
-select hg_secsch.pg_audit_stmt('drop view');
+select hg_security.pg_audit_stmt('drop view');
                   pg_audit_stmt                  
 -------------------------------------------------
  Successfully configured statement audit policy!
 (1 row)
 
 drop view V1;
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
     13
 (1 row)
 
-select hg_secsch.pg_noaudit_stmt('drop view');
+select hg_security.pg_noaudit_stmt('drop view');
                 pg_noaudit_stmt                
 -----------------------------------------------
  Successfully canceled statement audit policy!
@@ -1146,13 +1146,13 @@ select hg_secsch.pg_noaudit_stmt('drop view');
 
 drop view V1;
 ERROR:  view "v1" does not exist
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
     13
 (1 row)
 
-select hg_secsch.pg_audit_all_user('create domain');
+select hg_security.pg_audit_all_user('create domain');
              pg_audit_all_user              
 --------------------------------------------
  Successfully configured user audit policy!
@@ -1164,7 +1164,7 @@ create domain domain_test1 varchar(50) not null;
 ERROR:  type "domain_test1" already exists
 create user user1 login;
 create user user2 login;
-select hg_secsch.pg_audit_user('create domain','user1,user2','all');
+select hg_security.pg_audit_user('create domain','user1,user2','all');
                pg_audit_user                
 --------------------------------------------
  Successfully configured user audit policy!
@@ -1175,13 +1175,13 @@ create domain domain_test2 varchar(50) not null;
 ERROR:  type "domain_test2" already exists
 create user user01 password 'Hello@1234';
 create user user02 password 'Hello@1234';
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
     24
 (1 row)
 
-select * from hg_secsch.pg_clean_auditlog();
+select * from hg_security.pg_clean_auditlog();
  pg_clean_auditlog 
 -------------------
  t
@@ -1191,7 +1191,7 @@ create table student(id int primary key,name varchar,score int);
 GRANT SELECT,insert,update ON TABLE student TO user02;
 create table student2(id int primary key,name varchar,score int);
 GRANT SELECT,insert,update ON TABLE student2 TO user01;
-select hg_secsch.pg_audit_user('revoke','user01','fail');
+select hg_security.pg_audit_user('revoke','user01','fail');
                pg_audit_user                
 --------------------------------------------
  Successfully configured user audit policy!
@@ -1201,19 +1201,19 @@ revoke select on student from user03;
 ERROR:  role "user03" does not exist
 revoke select on student from user03;
 ERROR:  role "user03" does not exist
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      4
 (1 row)
 
-select * from hg_secsch.pg_clean_audit_config();
+select * from hg_security.pg_clean_audit_config();
  pg_clean_audit_config 
 -----------------------
  t
 (1 row)
 
-select * from hg_secsch.pg_clean_auditlog();
+select * from hg_security.pg_clean_auditlog();
  pg_clean_auditlog 
 -------------------
  t
@@ -1225,7 +1225,7 @@ create table tb_bb(a int primary key,b varchar);
 ERROR:  relation "tb_bb" already exists
 create schema sch01;
 create table sch01.tb_aa(a int primary key,b varchar);
-select hg_secsch.pg_audit_object('insert','table','tb_aa','public','all');
+select hg_security.pg_audit_object('insert','table','tb_aa','public','all');
                pg_audit_object                
 ----------------------------------------------
  Successfully configured object audit policy!
@@ -1243,7 +1243,7 @@ DETAIL:  Key (a)=(1) already exists.
 insert into sch01.tb_aa values(1,'aa'),(2,'bb'),(3,'cc');
 ERROR:  duplicate key value violates unique constraint "tb_aa_pkey"
 DETAIL:  Key (a)=(1) already exists.
-select hg_secsch.pg_audit_object('insert','table','tb_aa','sch01');
+select hg_security.pg_audit_object('insert','table','tb_aa','sch01');
                pg_audit_object                
 ----------------------------------------------
  Successfully configured object audit policy!
@@ -1258,7 +1258,7 @@ DETAIL:  Key (a)=(1) already exists.
 insert into sch01.tb_aa values(1,'aa'),(2,'bb'),(3,'cc');
 ERROR:  duplicate key value violates unique constraint "tb_aa_pkey"
 DETAIL:  Key (a)=(1) already exists.
-select * from hg_secsch.pg_audit_object('insert,update','table','tb_aa','sch01','all');
+select * from hg_security.pg_audit_object('insert,update','table','tb_aa','sch01','all');
                pg_audit_object                
 ----------------------------------------------
  Successfully configured object audit policy!
@@ -1270,7 +1270,7 @@ DETAIL:  Key (a)=(2) already exists.
 update sch01.tb_aa set b='update_1' where a=1;
 create table sch01.tb_bb(a int primary key,b varchar);
 insert into sch01.tb_bb values(1,'aa');
-select * from hg_secsch.pg_audit_object('insert','table','tb_aa,tb_bb','sch01','all');
+select * from hg_security.pg_audit_object('insert','table','tb_aa,tb_bb','sch01','all');
                pg_audit_object                
 ----------------------------------------------
  Successfully configured object audit policy!
@@ -1282,7 +1282,7 @@ DETAIL:  Key (a)=(2) already exists.
 update sch01.tb_aa set b='update_1' where a=1;
 insert into sch01.tb_bb values(2,'bb'),(3,'cc');
 update sch01.tb_bb set b='update_1' where a=1;
-select hg_secsch.pg_noaudit_object('insert','table','tb_aa','public','all');
+select hg_security.pg_noaudit_object('insert','table','tb_aa','public','all');
              pg_noaudit_object              
 --------------------------------------------
  Successfully canceled object audit policy!
@@ -1294,7 +1294,7 @@ DETAIL:  Key (a)=(1) already exists.
 insert into sch01.tb_aa values(1,'aa'),(2,'bb'),(3,'cc');
 ERROR:  duplicate key value violates unique constraint "tb_aa_pkey"
 DETAIL:  Key (a)=(1) already exists.
-select hg_secsch.pg_noaudit_object('insert','table','tb_aa','sch01');
+select hg_security.pg_noaudit_object('insert','table','tb_aa','sch01');
              pg_noaudit_object              
 --------------------------------------------
  Successfully canceled object audit policy!
@@ -1306,39 +1306,39 @@ DETAIL:  Key (a)=(1) already exists.
 insert into sch01.tb_aa values(1,'aa'),(2,'bb'),(3,'cc');
 ERROR:  duplicate key value violates unique constraint "tb_aa_pkey"
 DETAIL:  Key (a)=(1) already exists.
-select *  from hg_secsch.pg_audit_object('insert','table','tb_aa','public','successful');
+select *  from hg_security.pg_audit_object('insert','table','tb_aa','public','successful');
                pg_audit_object                
 ----------------------------------------------
  Successfully configured object audit policy!
 (1 row)
 
-select *  from hg_secsch.pg_noaudit_object('insert','table','tb_aa','public','successful');
+select *  from hg_security.pg_noaudit_object('insert','table','tb_aa','public','successful');
              pg_noaudit_object              
 --------------------------------------------
  Successfully canceled object audit policy!
 (1 row)
 
-select hg_secsch.pg_audit_object('insert','table','tb_aa','public','fail');
+select hg_security.pg_audit_object('insert','table','tb_aa','public','fail');
                pg_audit_object                
 ----------------------------------------------
  Successfully configured object audit policy!
 (1 row)
 
-select hg_secsch.pg_noaudit_object('insert','table','tb_aa','public','successful');
+select hg_security.pg_noaudit_object('insert','table','tb_aa','public','successful');
 ERROR:  There is no audit strategy available!
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
     10
 (1 row)
 
-select * from hg_secsch.pg_clean_auditlog();
+select * from hg_security.pg_clean_auditlog();
  pg_clean_auditlog 
 -------------------
  t
 (1 row)
 
-select * from hg_secsch.pg_clean_audit_config();
+select * from hg_security.pg_clean_audit_config();
  pg_clean_audit_config 
 -----------------------
  t
@@ -1349,7 +1349,7 @@ drop table tb_bb;
 drop table sch01.tb_aa;
 create table tb_aa(id int primary key,b varchar,c int);
 create table sch01.tb_aa(id int primary key,b varchar,c int);
-select hg_secsch.pg_audit_object('INSERT','COLUMN','tb_aa.b','public','all');
+select hg_security.pg_audit_object('INSERT','COLUMN','tb_aa.b','public','all');
                pg_audit_object                
 ----------------------------------------------
  Successfully configured object audit policy!
@@ -1374,7 +1374,7 @@ as $$
 insert into sch01.tb_test values (a);
 insert into sch01.tb_test values (b);
 $$;
-select hg_secsch.pg_audit_object('call','procedure','pro_test','public','all');
+select hg_security.pg_audit_object('call','procedure','pro_test','public','all');
                pg_audit_object                
 ----------------------------------------------
  Successfully configured object audit policy!
@@ -1382,7 +1382,7 @@ select hg_secsch.pg_audit_object('call','procedure','pro_test','public','all');
 
 call sch01.pro_test(1, 2);
 call public.pro_test(1, 2);
-select count(*) from hg_secsch.pg_audit_log;
+select count(*) from hg_security.pg_audit_log;
  count 
 -------
      2

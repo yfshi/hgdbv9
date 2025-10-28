@@ -2,7 +2,7 @@
 create extension hg_redaction ;
 
 show search_path ;
-alter system set search_path to "$user", public, hg_secsch;
+alter system set search_path to "$user", public, hg_security;
 select pg_reload_conf();
 
 --first step: 
@@ -31,8 +31,8 @@ create redaction policy p1 on test_redaction for(user = 'markbo') add column sal
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --the fifth step:
 --				 create a policy with the same name on a same table,
@@ -48,8 +48,8 @@ create redaction policy p2 on test_redaction for(user = 'markbo') add column nam
 --			query table hg_redaction_policy, hg_redaction_column to see if it is successful.
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --step seven: 
 --			 drop redaction policy.
@@ -59,8 +59,8 @@ drop redaction policy p1 on test_redaction;
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
 set hg_redaction.enable to on;
@@ -68,8 +68,8 @@ drop redaction policy p2 on test_redaction;
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --eighth step: 
 --			  create policy setting with options and for expressions.
@@ -82,8 +82,8 @@ create redaction policy p1 on test_redaction for(user != 'markbo, hr', ip = '192
 --			hg_redaction_column are the set values.
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --			create policy setting with options and for expressions.
 \c - syssso
@@ -94,8 +94,8 @@ create redaction policy p2 on test_redaction for(user != 'markbo, hr', ip = '192
 --			hg_redaction_column are the set values.
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 
 --ninth step:
@@ -124,8 +124,8 @@ create redaction policy p1 on test_redaction1 for(user != 'markbo, hr', ip = '19
 --			query table hg_redaction_policy and table hg_redaction_column.
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 
 --eleventh step:
@@ -147,8 +147,8 @@ create redaction policy p1 on test_redaction for(user = 'hr') add column salary 
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --socond step:
 --			  alter redaction policy name.
@@ -158,8 +158,8 @@ alter redaction policy p1 on test_redaction rename to newp1;
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
 set hg_redaction.enable to on;
@@ -167,8 +167,8 @@ alter redaction policy newp1 on test_redaction rename to newp11;
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
 set hg_redaction.enable to on;
@@ -176,8 +176,8 @@ alter redaction policy newp11 on test_redaction rename to p1;
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --third step:
 --			 alter redaction policy for cause.
@@ -187,7 +187,7 @@ alter redaction policy p1 on test_redaction for (user != 'alice', ip = '192.168.
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 
 \c - syssso
 set hg_redaction.enable to on;
@@ -195,19 +195,19 @@ alter redaction policy p1 on test_redaction for (user = 'hr');
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 
 --the fourth step:
 --				  alter redaction policy enable and disable. 
 \c - syssso
 set hg_redaction.enable to on;
 alter redaction policy p1 on test_redaction disable;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 
 \c - syssso
 set hg_redaction.enable to on;
 alter redaction policy p1 on test_redaction enable;
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 
 --the fifth step:
 --			alter redaction policy p1 add column;
@@ -217,7 +217,7 @@ alter redaction policy p1 on test_redaction add name using redact_name;
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --step six:
 --			alter redaction policy p1 drop column;
@@ -227,7 +227,7 @@ alter redaction policy p1 on test_redaction drop column name;
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --step seven:
 --			alter redaction policy p1 alter column information;
@@ -237,7 +237,7 @@ alter redaction policy p1 on test_redaction modify column salary using redact_al
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
 set hg_redaction.enable to on;
@@ -245,7 +245,7 @@ alter redaction policy p1 on test_redaction modify column salary using redact_ca
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
 set hg_redaction.enable to on;
@@ -253,7 +253,7 @@ alter redaction policy p1 on test_redaction modify column salary with options(SC
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
 set hg_redaction.enable to on;
@@ -261,7 +261,7 @@ alter redaction policy p1 on test_redaction modify column salary with options (S
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
 set hg_redaction.enable to on;
@@ -269,7 +269,7 @@ alter redaction policy p1 on test_redaction modify column salary using redact_ca
 
 \c - redactionuser
 set hg_redaction.enable to on;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 
 --eighth step:
@@ -285,9 +285,9 @@ alter redaction policy p1 on test_redaction drop column salary;
 \c - redactionuser
 set hg_redaction.enable to on;
 --			expecting no column on test_redaction.
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 --			expecting: the policy p1 is existed on test_redaction.
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 
 
 --tenth step:
@@ -339,8 +339,8 @@ insert into test_redaction values (4, 'ddd', 40000, '2023-06-21 14:00:00', '1861
 set hg_redaction.enable to on;
 create redaction policy p1 on test_redaction for(user = 'hr') add column salary using redact_cash, add column telephone using redact_phone;
 
-select polname, tabname, enable, poloptions from hg_secsch.hg_redaction_policy;
-select polname, attname, procname, polscope, polexception from hg_secsch.hg_redaction_column;
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 -- third step:
 --			  change user to hr，alice query table.
@@ -837,8 +837,8 @@ insert into test values (2, 'lisi');
 \c - syssso
 set hg_redaction.enable to on;
 
-create redaction policy p1 on test add column id using hg_secsch.redact_digits;
-alter redaction policy p1 on test add column name using hg_secsch.redact_all;
+create redaction policy p1 on test add column id using hg_security.redact_digits;
+alter redaction policy p1 on test add column name using hg_security.redact_all;
 
 \c - u1
 set hg_redaction.enable to on;
@@ -853,7 +853,7 @@ insert into tb values (1, 'zhangsan', 'beijing'),(2, 'lisi', 'shanghai'),(3, 'zh
 
 \c - syssso
 set hg_redaction.enable to on;
-create redaction policy p1 on tb add column id using  hg_secsch.redact_all, add column name using hg_secsch.redact_name;
+create redaction policy p1 on tb add column id using  hg_security.redact_all, add column name using hg_security.redact_name;
 
 \c - redactionuser
 select name from tb group by name;

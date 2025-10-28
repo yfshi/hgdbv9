@@ -55,7 +55,7 @@ static char * get_table_schema(Oid reloid);
  *
  * NOTE: if can't get the oid, need to check whether
  * the extension pg_redaction exists.or whether the
- * hg_secsch schema exists.
+ * hg_security schema exists.
  */
 Oid
 get_policytb_oid(void)
@@ -64,10 +64,10 @@ get_policytb_oid(void)
 	Oid		rdpolicyschemaoid = InvalidOid;
 	Oid		policytboid = InvalidOid;
 
-	/*get the oid of hg_secsch schema */
+	/*get the oid of hg_security schema */
 	rdpolicyschemaoid = SECURITY_SCHEMA_NAMESPACE;
 
-	/* if hg_secsch schema exists, the next step is get the oid of 
+	/* if hg_security schema exists, the next step is get the oid of 
 	 * hg_redaction_policy, otherwise report an error. 
 	 */
 	if (OidIsValid(rdpolicyschemaoid))
@@ -77,7 +77,7 @@ get_policytb_oid(void)
 	else
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_SCHEMA),
-				 errmsg("schema hg_secsch does not exist")));
+				 errmsg("schema hg_security does not exist")));
 
 	/* if the oid of the hg_redaction_policy is invalid, it 
 	 * will report an error.
@@ -99,7 +99,7 @@ get_policytb_oid(void)
  *
  * NOTE: if can't get the oid, need to check whether
  * the extension pg_redaction exists. or whether the
- * hg_secsch schema exists.
+ * hg_security schema exists.
  */
 Oid
 get_policycoltb_oid(void)
@@ -108,11 +108,11 @@ get_policycoltb_oid(void)
 	Oid		rdpolicyschemaoid = InvalidOid;
 	Oid		policytbcoloid = InvalidOid;
 
-	/*get the oid of hg_secsch schema */
+	/*get the oid of hg_security schema */
 	//rdpolicyschemaoid = LookupExplicitNamespace(rdpolicyschema, true);
 	rdpolicyschemaoid = SECURITY_SCHEMA_NAMESPACE;
 
-	/* if hg_secsch schema exists, the next step is get the oid
+	/* if hg_security schema exists, the next step is get the oid
 	 * of hg_redaction_policy, otherwise report an error.
 	 */
 	if (OidIsValid(rdpolicyschemaoid))
@@ -120,7 +120,7 @@ get_policycoltb_oid(void)
 	else
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_SCHEMA),
-				 errmsg("schema hg_secsch does not exist")));
+				 errmsg("schema hg_security does not exist")));
 
 	/* if the oid of the hg_redaction_policy is invalid,
 	 * it will report an error.
@@ -142,7 +142,7 @@ get_policycoltb_oid(void)
  * if the redactiom redaction exist.
  *
  * NOTE: if can't get the oid, need to check whether the
- * extension pg_redaction exists. or whether the hg_secsch
+ * extension pg_redaction exists. or whether the hg_security
  * schema exists.
  */
 Oid
@@ -151,7 +151,7 @@ get_policytbindex_oid(char *indexschema, char *indexneam)
 	Oid		rdindexschemaoid = InvalidOid;
 	Oid		rdindexoid = InvalidOid;
 
-	/* get the oid of hg_secsch schema or the name of indexschema */
+	/* get the oid of hg_security schema or the name of indexschema */
 	if (!indexschema)
 		rdindexschemaoid = SECURITY_SCHEMA_NAMESPACE;
 	else

@@ -120,12 +120,12 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 								" must be applied to the parent before the child tables.");
 				}
 				appendStringInfo(&querybuf,
-						 "select hg_secsch.apply_table_policy('%s', true) ",
+						 "select hg_security.apply_table_policy('%s', true) ",
 						 relname);
 			}
 			else
 				appendStringInfo(&querybuf,
-						 "select hg_secsch.apply_table_policy('%s', false) ",
+						 "select hg_security.apply_table_policy('%s', false) ",
 						 relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
@@ -151,7 +151,7 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 		case ENABLE:
 		{
 			appendStringInfo(&querybuf,
-							 "select hg_secsch.enable_table_policy('%s') ",
+							 "select hg_security.enable_table_policy('%s') ",
 							 relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
@@ -160,7 +160,7 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 		case DISABLE:
 		{
 			appendStringInfo(&querybuf,
-							 "select hg_secsch.disable_table_policy('%s') ",
+							 "select hg_security.disable_table_policy('%s') ",
 							 relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
@@ -172,7 +172,7 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 			{
 				Oid			tableOid = lfirst_oid(li);
 				appendStringInfo(&querybuf,
-							 "select hg_secsch.disable_table_policy('%s') ",
+							 "select hg_security.disable_table_policy('%s') ",
 							 get_rel_name(tableOid));
 				if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 					elog(ERROR, "SPI_exec failed: %s", querybuf.data);
@@ -180,7 +180,7 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 			}
 
 			appendStringInfo(&querybuf,
-							 "select hg_secsch.drop_table_policy('%s') ",
+							 "select hg_security.drop_table_policy('%s') ",
 							 relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);

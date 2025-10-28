@@ -2,19 +2,19 @@
  *
  * create data redaction table hg_redaction_policy, and index
  */
-create table hg_secsch.hg_redaction_policy(polid oid, polname name, tabrelid oid, schema name, tabname name, enable bool, poloptions text[]);
-create unique index hg_redaciton_policy_oid_index on hg_secsch.hg_redaction_policy using btree(polid);
-create index hg_redaciton_table_oid_index on hg_secsch.hg_redaction_policy using btree(tabrelid);
-create unique index hg_redaciton_policy_tabrelid_polname_index on hg_secsch.hg_redaction_policy using btree(tabrelid, polname);
+create table hg_security.hg_redaction_policy(polid oid, polname name, tabrelid oid, schema name, tabname name, enable bool, poloptions text[]);
+create unique index hg_redaciton_policy_oid_index on hg_security.hg_redaction_policy using btree(polid);
+create index hg_redaciton_table_oid_index on hg_security.hg_redaction_policy using btree(tabrelid);
+create unique index hg_redaciton_policy_tabrelid_polname_index on hg_security.hg_redaction_policy using btree(tabrelid, polname);
 
 /*--------------------redaction table------------------------
  *
  * create data redaction table hg_redaction_column, and index
  */
-create table hg_secsch.hg_redaction_column(polid oid not null, polname name not null, tabrelid oid not null, attname name not null, procid oid not null, procname name not null, polscope smallint, polexception smallint);
-create index hg_redaciton_column_polid_index on hg_secsch.hg_redaction_column using btree (polid);
-create unique index hg_redaciton_column_tabrelid_attname_index on hg_secsch.hg_redaction_column using btree (tabrelid, attname);
-create unique index hg_redaciton_column_polname_attname_index on hg_secsch.hg_redaction_column using btree (polname, tabrelid, attname);
+create table hg_security.hg_redaction_column(polid oid not null, polname name not null, tabrelid oid not null, attname name not null, procid oid not null, procname name not null, polscope smallint, polexception smallint);
+create index hg_redaciton_column_polid_index on hg_security.hg_redaction_column using btree (polid);
+create unique index hg_redaciton_column_tabrelid_attname_index on hg_security.hg_redaction_column using btree (tabrelid, attname);
+create unique index hg_redaciton_column_polname_attname_index on hg_security.hg_redaction_column using btree (polname, tabrelid, attname);
 
 
 /*--------------------redact_bankcard------------------------
@@ -24,7 +24,7 @@ create unique index hg_redaciton_column_polname_attname_index on hg_secsch.hg_re
  * '4880-9898-4545-2525' will be redactioned as 'xxxx-xxxx-xxxx-2525',
  * This function redactions the numbers before the last four digits.
  */
-create or replace function hg_secsch.redact_bankcard(col text,letter char default 'x') RETURNS text AS $$
+create or replace function hg_security.redact_bankcard(col text,letter char default 'x') RETURNS text AS $$
 declare 
 	size INTEGER := 4;
 begin
@@ -44,7 +44,7 @@ SET pg_proc.redaction to 1;
  * 'abcd@gmail.com' will be redactioned as'xxxx@gmail.com',
  * redaction the text before the first @.
  */
-create or replace function hg_secsch.redact_emailname(col text, letter char default 'x') RETURNS text AS $$
+create or replace function hg_security.redact_emailname(col text, letter char default 'x') RETURNS text AS $$
 declare 
 	pos INTEGER := position('@' in col);
 begin
@@ -64,7 +64,7 @@ SET pg_proc.redaction to 1;
  * 'abcd@gmail.com' will be redactioned as 'xxxx@xxxxx.com',
  * redaction the text before the last '.', except'@'.
  */
-create or replace function hg_secsch.redact_emailfull(col text, letter char default 'x') RETURNS text AS $$
+create or replace function hg_security.redact_emailfull(col text, letter char default 'x') RETURNS text AS $$
 declare 
 	pos INTEGER := position('@' in col);
 	dot_pos INTEGER := length(col) - position('.' in reverse(col)) + 1;
@@ -85,7 +85,7 @@ SET pg_proc.redaction to 1;
  * 'alex123alex' will be redactioned as 'alex000alex',
  * redaction only for numbers in text.
  */
-create or replace function hg_secsch.redact_digits(col text, letter char default '0') RETURNS text AS $$
+create or replace function hg_security.redact_digits(col text, letter char default '0') RETURNS text AS $$
 begin
 	return REGEXP_REPLACE(col, '[\d+]', letter, 'g');
 end;
@@ -102,7 +102,7 @@ SET pg_proc.redaction to 1;
  *
  * !!! not recommended to use this function.
  */
-create or replace function hg_secsch.redact_shuffle(col text) RETURNS text AS $$
+create or replace function hg_security.redact_shuffle(col text) RETURNS text AS $$
 declare 
 	index INTEGER := 0;
 	rd INTEGER;
@@ -131,7 +131,7 @@ SET pg_proc.redaction to 1;
  * 'hello word' will be redactioned as 'ad5f5ghdf5'random numbers like this,
  * randomly redaction the text by character.
  */
-create or replace function hg_secsch.redact_random(col text) RETURNS text AS $$	
+create or replace function hg_security.redact_random(col text) RETURNS text AS $$	
 begin
 	return left(MD5(random()::text), length(col));
 end;
@@ -147,7 +147,7 @@ SET pg_proc.redaction to 1;
  * digits of the ID card number, and replace all the middle digits
  * with *.
  */
-create or replace function hg_secsch.redact_idcard(col text, letter char default '*') RETURNS text AS $$
+create or replace function hg_security.redact_idcard(col text, letter char default '*') RETURNS text AS $$
 declare 
 	size INTEGER := 4;
 begin
@@ -170,7 +170,7 @@ SET pg_proc.redaction to 1;
  * such as “张三” will be redactioned as “张**”，“张三丰” will be redactioned as “张**”，
  * “富兰克林” will be redactioned as “富**”
  */
-create or replace function hg_secsch.redact_name(col text, letter char default '*') RETURNS text AS $$
+create or replace function hg_security.redact_name(col text, letter char default '*') RETURNS text AS $$
 declare 
 	size INTEGER := 2;
 begin
@@ -187,12 +187,12 @@ SET pg_proc.redaction to 1;
  * 
  * upported data type: BPCHAR, VARCHAR, NVARCHAR, TEXT
  * Only for text type data.
- * Perform redaction in phone numbers. applicable to mobile
+ * Perform redaction in phone numbers. applicable to mobile
  * phone numbers and fixed-line telephone numbers, retain the
  * first three and last four digits, redaction on the middle
  * number. such as “13534556093” will be redactioned as “135****6093”
  */
-create or replace function hg_secsch.redact_phone(col text, letter char default '*') RETURNS text AS $$
+create or replace function hg_security.redact_phone(col text, letter char default '*') RETURNS text AS $$
 declare 
 	size INTEGER := 4;
 begin
@@ -218,7 +218,7 @@ SET pg_proc.redaction to 1;
  * '4880-9898-4545-2525' will be redactioned as 'xxxxxxxxxxxxxxxxxxx'
  * redaction all characters
  */
-create or replace function hg_secsch.redact_all(col text) RETURNS text AS $$	
+create or replace function hg_security.redact_all(col text) RETURNS text AS $$	
 begin
 	return col;
 end;
@@ -228,28 +228,28 @@ SET pg_proc.redaction to 1;
 /*--------------------redact_cash------------------------
  * 
  * upported data type: cash type data.
- * Perform redaction in cash. applicable to money.
+ * Perform redaction in cash. applicable to money.
  */
-create or replace function hg_secsch.redact_cash(col money) RETURNS money AS $$
+create or replace function hg_security.redact_cash(col money) RETURNS money AS $$
 begin
 	return $1 - $1;
 end;
 $$ LANGUAGE plpgsql
 SET pg_proc.redaction to 1;
 
-CREATE OR REPLACE FUNCTION hg_secsch.policy_num()
+CREATE OR REPLACE FUNCTION hg_security.policy_num()
 RETURNS bigint
 AS 'MODULE_PATHNAME','all_redaction_policy_num'
 LANGUAGE C
 IMMUTABLE PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION hg_secsch.redact_all_name(col name)
+CREATE OR REPLACE FUNCTION hg_security.redact_all_name(col name)
 RETURNS name
 AS 'MODULE_PATHNAME','redaction_all_name'
 LANGUAGE C
 IMMUTABLE PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION hg_secsch.redact_all_name(col name)
+CREATE OR REPLACE FUNCTION hg_security.redact_all_name(col name)
 RETURNS name
 AS 'MODULE_PATHNAME','redaction_all_name'
 LANGUAGE C
@@ -258,9 +258,9 @@ IMMUTABLE PARALLEL SAFE;
 /*--------------------redaction function view------------------------
  *
  * the view as redaction functions view,
- *	display all redaction functions.
+ *	display all redactio functions.
  */
-CREATE OR REPLACE VIEW hg_secsch.hg_redaction_functions as 
+CREATE OR REPLACE VIEW hg_security.hg_redaction_functions as 
 	SELECT 
 		proname,
 		proargtypes,
@@ -272,9 +272,9 @@ CREATE OR REPLACE VIEW hg_secsch.hg_redaction_functions as
 /*--------------------redaction view------------------------
  *
  * the view as redaction functions view,
- *	display all redaction functions.
+ *	display all redactio functions.
  */
-CREATE OR REPLACE VIEW hg_secsch.hg_redaction as
+CREATE OR REPLACE VIEW hg_security.hg_redaction as
 	SELECT
 		a.polid   as polid,
 		a.polname  as polname,
@@ -285,12 +285,12 @@ CREATE OR REPLACE VIEW hg_secsch.hg_redaction as
 		b.attname as colname,
 		b.procname as procname,
 		a.poloptions as poloptions,
-		b.polscope as polscope,
+		b.polscope polscope,
 		b.polexception as polexception
-	from hg_secsch.hg_redaction_policy a, hg_secsch.hg_redaction_column b
+	from hg_security.hg_redaction_policy a, hg_security.hg_redaction_column b
 	where a.polid = b.polid;
 
-grant select on hg_secsch.hg_redaction_policy to public;
-grant select on hg_secsch.hg_redaction_column to public;
-grant select on hg_secsch.hg_redaction_functions to public;
-grant select on hg_secsch.hg_redaction to public;
+grant select on hg_security.hg_redaction_policy to public;
+grant select on hg_security.hg_redaction_column to public;
+grant select on hg_security.hg_redaction_functions to public;
+grant select on hg_security.hg_redaction to public;
