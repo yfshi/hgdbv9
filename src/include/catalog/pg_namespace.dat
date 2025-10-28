@@ -40,6 +40,11 @@
   descr => 'Compatible MySQL performance_schema schema',
   nspname => 'performance_schema', nspacl => '_null_' },
 # End - ReqID:SRS-MYSQL-SET
+# Begin - ReqID:SRS-MYSQL-INFORMATION-SCHEMA
+{ oid => '9803', oid_symbol => 'MYS_INFORMATION_SCHEMA_NAMESPACE',
+  descr => 'Compatible MySQL information schema',
+  nspname => 'mys_information_schema', nspacl => '_null_' },
+# End - ReqID:SRS-MYSQL-INFORMATION-SCHEMA
 /*END MySQL Compatibility Metadatas*/
 #End - ReqID:SRS-MISC-MYSQL-FRAME
 # Begin - ReqID:SRS-SECURITY-POWERS

@@ -5,10 +5,10 @@
  */
 
 --
--- View: ivymy.tables
+-- View: mys_information_schema.tables
 --
 
-CREATE OR REPLACE VIEW ivymy.tables AS
+CREATE OR REPLACE VIEW mys_information_schema.tables AS
 SELECT
 	'def'::varchar(512) AS "TABLE_CATALOG",                                    -- Name of the database catalog (def)
 	n.nspname::varchar(64) AS "TABLE_SCHEMA",                                  -- Name of the schema containing the table
@@ -73,13 +73,13 @@ FROM pg_catalog.pg_class c
 WHERE
 	c.relkind IN ('r', 'v', 'm', 'p', 'f');                              -- Tables, views, materialized views, partitioned tables, foreign tables
 
-GRANT SELECT ON ivymy.tables TO PUBLIC;
+GRANT SELECT ON mys_information_schema.tables TO PUBLIC;
 
 --
--- View: ivymy.table_privileges
+-- View: mys_information_schema.table_privileges
 --
 
-CREATE OR REPLACE VIEW ivymy.table_privileges AS
+CREATE OR REPLACE VIEW mys_information_schema.table_privileges AS
 SELECT
 	-- The name of the grantee (role) in the format 'rolename@localhost'
 	concat(quote_ident(pg_roles.rolname), '@', 'localhost')::varchar(81) AS "GRANTEE",
@@ -128,12 +128,12 @@ FROM
 -- Only include valid relation kinds (regular tables, partitioned tables, views, foreign tables, materialized views)
 WHERE c.relkind IN ('r', 'p', 'v', 'f', 'm');
 
-GRANT SELECT ON ivymy.table_privileges TO PUBLIC;
+GRANT SELECT ON mys_information_schema.table_privileges TO PUBLIC;
 
 --
--- View: ivymy.partitions
+-- View: mys_information_schema.partitions
 --
-CREATE OR REPLACE VIEW ivymy.partitions AS
+CREATE OR REPLACE VIEW mys_information_schema.partitions AS
 WITH RECURSIVE partition_tree AS (
     -- Find all root partitioned tables (top level)
     SELECT
@@ -330,13 +330,13 @@ WHERE pr.level > 0
 
 ORDER BY pr.root_schema, pr.root_name, pr.path, pr.subpartition_name;
 
-GRANT SELECT ON ivymy.partitions TO PUBLIC;
+GRANT SELECT ON mys_information_schema.partitions TO PUBLIC;
 
 --
--- View: ivymy.column_privileges
+-- View: mys_information_schema.column_privileges
 --
 
-CREATE OR REPLACE VIEW ivymy.column_privileges AS
+CREATE OR REPLACE VIEW mys_information_schema.column_privileges AS
 SELECT
 	-- Name of the user to whom the privilege is granted
 	concat('''', grantee.rolname, '''@''localhost''')::varchar(81) AS "GRANTEE",
@@ -423,13 +423,13 @@ JOIN (
 WHERE x.prtype IN ('INSERT', 'SELECT', 'UPDATE', 'REFERENCES')
 	AND (pg_has_role(grantee.oid, 'USAGE') OR grantee.rolname = 'PUBLIC');
 
-GRANT SELECT ON ivymy.column_privileges TO PUBLIC;
+GRANT SELECT ON mys_information_schema.column_privileges TO PUBLIC;
 
 --
--- View: ivymy.columns
+-- View: mys_information_schema.columns
 --
 
-CREATE OR REPLACE VIEW ivymy.columns AS
+CREATE OR REPLACE VIEW mys_information_schema.columns AS
 SELECT
 	'def'::varchar(512) AS "TABLE_CATALOG",                                    -- Name of the database catalog (def)
 	nc.nspname::varchar(64) AS "TABLE_SCHEMA",                                 -- Name of the schema containing the table
@@ -504,7 +504,7 @@ SELECT
 
 	-- PRIVILEGES: user privileges on this column
 	(SELECT string_agg("PRIVILEGE_TYPE", ',' ORDER BY "PRIVILEGE_TYPE")
-		FROM ivymy.column_privileges cp
+		FROM mys_information_schema.column_privileges cp
 		WHERE cp."TABLE_SCHEMA" = nc.nspname
 		AND cp."TABLE_NAME" = c.relname
 		AND cp."COLUMN_NAME" = a.attname
@@ -550,13 +550,13 @@ WHERE a.attnum > 0
 	AND NOT pg_is_other_temp_schema(nc.oid)
 	AND (pg_has_role(c.relowner, 'USAGE') OR has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'));
 
-GRANT SELECT ON ivymy.columns TO PUBLIC;
+GRANT SELECT ON mys_information_schema.columns TO PUBLIC;
 
 --
--- View: ivymy.key_column_usage
+-- View: mys_information_schema.key_column_usage
 --
 
-CREATE OR REPLACE VIEW ivymy.key_column_usage AS
+CREATE OR REPLACE VIEW mys_information_schema.key_column_usage AS
 SELECT
 	-- Name of the catalog containing the constraint (always current database)
 	'def'::varchar(512) AS "CONSTRAINT_CATALOG",
@@ -652,13 +652,13 @@ WHERE
 	pg_has_role(ss.relowner, 'USAGE'::text)
 	OR has_column_privilege(ss.roid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'::text);
 
-GRANT SELECT ON ivymy.key_column_usage TO PUBLIC;
+GRANT SELECT ON mys_information_schema.key_column_usage TO PUBLIC;
 
 --
--- View: ivymy.views
+-- View: mys_information_schema.views
 --
 
-CREATE OR REPLACE VIEW ivymy.views AS
+CREATE OR REPLACE VIEW mys_information_schema.views AS
 SELECT
 	-- Name of the catalog (always the current database)
 	'def'::varchar(512) AS "TABLE_CATALOG",
@@ -708,13 +708,13 @@ WHERE c.relkind = 'v'::"char"
 		OR has_any_column_privilege(c.oid, 'SELECT, INSERT, UPDATE, REFERENCES'::text)
 	);
 
-GRANT SELECT ON ivymy.views TO PUBLIC;
+GRANT SELECT ON mys_information_schema.views TO PUBLIC;
 
 --
--- View: ivymy.routines
+-- View: mys_information_schema.routines
 --
 
-CREATE OR REPLACE VIEW ivymy.routines AS
+CREATE OR REPLACE VIEW mys_information_schema.routines AS
 SELECT
 	-- Specific name of the routine (same as routine name in PostgreSQL)
 	p.proname::varchar(64) AS "SPECIFIC_NAME",
@@ -844,13 +844,13 @@ JOIN pg_roles r ON r.oid = p.proowner
 WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
 	AND p.prokind IN ('f', 'p');
 
-GRANT SELECT ON ivymy.routines TO PUBLIC;
+GRANT SELECT ON mys_information_schema.routines TO PUBLIC;
 
 --
--- View: ivymy.triggers
+-- View: mys_information_schema.triggers
 --
 
-CREATE OR REPLACE VIEW ivymy.triggers AS
+CREATE OR REPLACE VIEW mys_information_schema.triggers AS
 SELECT
 	-- Name of the catalog (always 'def')
 	'def'::varchar(512) AS "TRIGGER_CATALOG",
@@ -961,13 +961,13 @@ WHERE
 		OR has_any_column_privilege(c.oid, 'INSERT, UPDATE, REFERENCES')
 	);
 
-GRANT SELECT ON ivymy.triggers TO PUBLIC;
+GRANT SELECT ON mys_information_schema.triggers TO PUBLIC;
 
 --
--- View: ivymy.table_constraints
+-- View: mys_information_schema.table_constraints
 --
 
-CREATE OR REPLACE VIEW ivymy.table_constraints AS
+CREATE OR REPLACE VIEW mys_information_schema.table_constraints AS
 SELECT
 	-- Catalog name (always 'def')
 	'def'::varchar(512) AS "CONSTRAINT_CATALOG",
@@ -1054,13 +1054,13 @@ WHERE
 		OR has_any_column_privilege(r.oid, 'INSERT, UPDATE, REFERENCES'::text)
 	);
 
-GRANT SELECT ON ivymy.table_constraints TO PUBLIC;
+GRANT SELECT ON mys_information_schema.table_constraints TO PUBLIC;
 
 --
--- View: - ivymy.schemata
+-- View: - mys_information_schema.schemata
 --
 
-CREATE OR REPLACE VIEW ivymy.schemata AS
+CREATE OR REPLACE VIEW mys_information_schema.schemata AS
 SELECT
 	-- Catalog name ('def')
 	'def'::varchar(512) AS "CATALOG_NAME",
@@ -1084,13 +1084,13 @@ WHERE
 	AND n.nspname NOT LIKE 'pg\_%' ESCAPE '\'			 -- Exclude internal schemas
 	AND n.nspname <> 'information_schema';				 -- Exclude information_schema
 
-GRANT SELECT ON ivymy.schemata TO PUBLIC;
+GRANT SELECT ON mys_information_schema.schemata TO PUBLIC;
 
 --
--- View: ivymy.schema_privileges
+-- View: mys_information_schema.schema_privileges
 --
 
-CREATE OR REPLACE VIEW ivymy.schema_privileges AS
+CREATE OR REPLACE VIEW mys_information_schema.schema_privileges AS
 SELECT
 	-- Grantee in format 'rolename@localhost'
 	concat('''', usr.rolname, '''@''localhost''')::varchar(81) AS "GRANTEE",
@@ -1126,13 +1126,13 @@ WHERE
 	n.nspname NOT LIKE 'pg\_%' ESCAPE '\'
 	AND n.nspname <> 'information_schema';
 
-GRANT SELECT ON ivymy.schema_privileges TO PUBLIC;
+GRANT SELECT ON mys_information_schema.schema_privileges TO PUBLIC;
 
 --
--- View: ivymy.tablespaces
+-- View: mys_information_schema.tablespaces
 --
 
-CREATE OR REPLACE VIEW ivymy.tablespaces AS
+CREATE OR REPLACE VIEW mys_information_schema.tablespaces AS
 SELECT
 	''::varchar(64) AS "TABLESPACE_NAME",
 	''::varchar(64) AS "ENGINE",
@@ -1145,13 +1145,13 @@ SELECT
 	''::varchar(2048) AS "TABLESPACE_COMMENT"
 LIMIT 0;
 
-GRANT SELECT ON ivymy.tablespaces TO PUBLIC;
+GRANT SELECT ON mys_information_schema.tablespaces TO PUBLIC;
 
 --
--- View: ivymy.statistics
+-- View: mys_information_schema.statistics
 --
 
-CREATE OR REPLACE VIEW ivymy.statistics AS
+CREATE OR REPLACE VIEW mys_information_schema.statistics AS
 SELECT
 	'def'::varchar(512) AS "TABLE_CATALOG",
 	n.nspname::varchar(64) AS "TABLE_SCHEMA",							  -- Schema name of the table
@@ -1198,13 +1198,13 @@ WHERE
 	t.relkind = 'r' 									  -- Only ordinary tables
 	AND NOT i.indisprimary; 							  -- Exclude primary key indexes (MySQL does not show these in statistics)
 
-GRANT SELECT ON ivymy.statistics TO PUBLIC;
+GRANT SELECT ON mys_information_schema.statistics TO PUBLIC;
 
 --
--- View: ivymy.collations
+-- View: mys_information_schema.collations
 --
 
-CREATE OR REPLACE VIEW ivymy.collations AS
+CREATE OR REPLACE VIEW mys_information_schema.collations AS
 SELECT
 	"Collation"::varchar(32)            AS "COLLATION_NAME",
 	"Charset"::varchar(32)              AS "CHARACTER_SET_NAME",
@@ -1214,11 +1214,11 @@ SELECT
 	"Sortlen"::bigint(3)                AS "SORTLEN"
 FROM show_mysql_collations();
 
-GRANT SELECT ON ivymy.collations TO PUBLIC;
+GRANT SELECT ON mys_information_schema.collations TO PUBLIC;
 
--- View: ivymy.character_sets
+-- View: mys_information_schema.character_sets
 
-CREATE OR REPLACE VIEW ivymy.character_sets AS
+CREATE OR REPLACE VIEW mys_information_schema.character_sets AS
 SELECT
 	"Charset"::varchar(32)              AS "CHARACTER_SET_NAME",
 	"Default collation"::varchar(32)    AS "DEFAULT_COLLATE_NAME",
@@ -1226,13 +1226,13 @@ SELECT
 	"Maxlen"::bigint(3)                 AS "MAXLEN"
 FROM show_mysql_charsets();
 
-GRANT SELECT ON ivymy.character_sets TO PUBLIC;
+GRANT SELECT ON mys_information_schema.character_sets TO PUBLIC;
 
-CREATE VIEW ivymy.global_variables AS SELECT name AS "VARIABLE_NAME", setting AS "VARIABLE_VALUE" FROM pg_settings;
-GRANT SELECT ON ivymy.global_variables TO PUBLIC;
+CREATE VIEW mys_information_schema.global_variables AS SELECT name AS "VARIABLE_NAME", setting AS "VARIABLE_VALUE" FROM pg_settings;
+GRANT SELECT ON mys_information_schema.global_variables TO PUBLIC;
 
-CREATE VIEW ivymy.session_variables AS SELECT name AS "VARIABLE_NAME", setting AS "VARIABLE_VALUE" FROM pg_settings;
-GRANT SELECT ON ivymy.session_variables TO PUBLIC;
+CREATE VIEW mys_information_schema.session_variables AS SELECT name AS "VARIABLE_NAME", setting AS "VARIABLE_VALUE" FROM pg_settings;
+GRANT SELECT ON mys_information_schema.session_variables TO PUBLIC;
 
 /* Begin - #Z5936 */
 -- Create the `mysql` schema if it does not exist
@@ -1340,3 +1340,119 @@ SELECT
 FROM pg_authid r;
 
 /* End - #Z5936 */
+
+/* Begin - #Z5943 */
+
+--
+-- View: mys_information_schema.events
+--
+
+CREATE OR REPLACE VIEW mys_information_schema.events AS
+SELECT
+	''::varchar(64) AS "EVENT_CATALOG",
+	''::varchar(64) AS "EVENT_SCHEMA",
+	''::varchar(64) AS "EVENT_NAME",
+	''::varchar(93) AS "DEFINER",
+	''::varchar(64) AS "TIME_ZONE",
+	''::varchar(8) AS "EVENT_BODY",
+	NULL::longtext AS "EVENT_DEFINITION",
+	''::varchar(9) AS "EVENT_TYPE",
+	NULL::mysdatetime AS "EXECUTE_AT",
+	NULL::varchar(256) AS "INTERVAL_VALUE",
+	NULL::varchar(18) AS "INTERVAL_FIELD",
+	''::varchar(8192) AS "SQL_MODE",
+	NULL::mysdatetime AS "STARTS",
+	NULL::mysdatetime AS "ENDS",
+	''::varchar(18) AS "STATUS",
+	''::varchar(12) AS "ON_COMPLETION",
+	0::mysdatetime AS "CREATED",
+	0::mysdatetime AS "LAST_ALTERED",
+	NULL::mysdatetime AS "LAST_EXECUTED",
+	''::varchar(64) AS "EVENT_COMMENT",
+	0::bigint(10) AS "ORIGINATOR",
+	''::varchar(32) AS "CHARACTER_SET_CLIENT",
+	''::varchar(32) AS "COLLATION_CONNECTION",
+	''::varchar(32) AS "DATABASE_COLLATION"
+LIMIT 0;
+
+GRANT SELECT ON mys_information_schema.events TO PUBLIC;
+
+--
+-- View: performance_schema.global_status
+--
+
+CREATE OR REPLACE VIEW performance_schema.global_status AS
+SELECT variable_name, variable_value
+FROM (
+	VALUES
+
+	-- Aborted connections (client connection lost)
+	('Aborted_clients', (SELECT COALESCE(SUM(sessions_abandoned), 0) FROM pg_stat_database)::text),
+
+	-- Failed connections (fatal error or terminated by administrator)
+	('Aborted_connects', (SELECT COALESCE(SUM(sessions_fatal + sessions_killed), 0) FROM pg_stat_database)::text),
+
+	-- Total number of connections
+	('Connections', (SELECT sessions FROM pg_stat_database WHERE datname = current_database())::text),
+
+	-- Number of temporary files
+	('Created_tmp_file', (SELECT COALESCE(SUM(temp_files), 0) FROM pg_stat_database)::text),
+
+	-- Size of temporary files (in bytes)
+	('Created_tmp_disk_tables', (SELECT COALESCE(SUM(temp_bytes), 0) FROM pg_stat_database)::text),
+
+	-- Number of queries
+	('Queries', (SELECT sum(xact_commit+xact_rollback) FROM pg_stat_database)::text),
+
+	-- Current number of connections
+	('Threads_connected', (SELECT numbackends FROM pg_stat_database WHERE datname = current_database())::text),
+
+	-- Current number of active connections
+	('Threads_running', (SELECT count(*) FROM pg_stat_activity WHERE state='active')::text),
+
+	-- Runtime since PostgreSQL server start
+	('Uptime', EXTRACT(EPOCH FROM (clock_timestamp() - pg_postmaster_start_time()))::bigint::text)
+) AS t(variable_name, variable_value);
+
+GRANT SELECT ON performance_schema.global_status TO PUBLIC;
+
+--
+-- View: performance_schema.session_status
+--
+
+CREATE OR REPLACE VIEW performance_schema.session_status AS
+SELECT variable_name, variable_value
+FROM (
+	VALUES
+
+	-- Aborted connections (client connection lost)
+	('Aborted_clients', (SELECT COALESCE(SUM(sessions_abandoned), 0) FROM pg_stat_database)::text),
+
+	-- Failed connections (fatal error or terminated by administrator)
+	('Aborted_connects', (SELECT COALESCE(SUM(sessions_fatal + sessions_killed), 0) FROM pg_stat_database)::text),
+
+	-- Total number of connections
+	('Connections', (SELECT sessions FROM pg_stat_database WHERE datname = current_database())::text),
+
+	-- Number of temporary files
+	('Created_tmp_file', (SELECT COALESCE(SUM(temp_files), 0) FROM pg_stat_database)::text),
+
+	-- Size of temporary files (in bytes)
+	('Created_tmp_disk_tables', (SELECT COALESCE(SUM(temp_bytes), 0) FROM pg_stat_database)::text),
+
+	-- Number of queries
+	('Queries', (SELECT sum(xact_commit+xact_rollback) FROM pg_stat_database)::text),
+
+	-- Current number of connections
+	('Threads_connected', (SELECT numbackends FROM pg_stat_database WHERE datname = current_database())::text),
+
+	-- Current number of active connections
+	('Threads_running', (SELECT count(*) FROM pg_stat_activity WHERE state='active')::text),
+
+	-- Runtime since PostgreSQL server start
+	('Uptime', EXTRACT(EPOCH FROM (clock_timestamp() - pg_postmaster_start_time()))::bigint::text)
+) AS t(variable_name, variable_value);
+
+GRANT SELECT ON performance_schema.session_status TO PUBLIC;
+
+/* End - #Z5943 */
