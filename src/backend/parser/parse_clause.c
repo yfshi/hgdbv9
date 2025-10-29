@@ -1440,7 +1440,8 @@ IsMysInformationSchemaView(char *view_name)
 {
 	static char *mys_views[] = {"tables", "table_privileges", "partitions", "column_privileges", "columns", "views",
 							   "key_column_usage", "routines", "triggers", "table_constraints", "schemata",
-							   "schema_privileges", "tablespaces", "statistics", "collations", "character_sets", "events"};
+							   "schema_privileges", "tablespaces", "statistics", "collations", "character_sets",
+							   "events", "processlist"};
 	size_t	count = sizeof(mys_views) / sizeof(mys_views[0]);
 	int		i = 0;
 
