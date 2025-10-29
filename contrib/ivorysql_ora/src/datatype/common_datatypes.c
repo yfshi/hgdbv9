@@ -19,6 +19,7 @@
 
 #include "mb/pg_wchar.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 #include "utils/varlena.h"/* BUG#M508 */
 
 #include "../include/common_datatypes.h"
@@ -177,7 +178,10 @@ ora_dotrim(const char *string, int stringlen, const char *set, int setlen, bool 
 	}
 
 	/* Return selected portion of string */
-	return cstring_to_text_with_len(string, stringlen);
+	if (enable_emptystring_to_NULL && stringlen == 0)
+		return NULL;
+	else
+		return cstring_to_text_with_len(string, stringlen);
 }
 
 

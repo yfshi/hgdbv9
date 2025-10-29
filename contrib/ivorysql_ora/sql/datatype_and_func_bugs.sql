@@ -329,3 +329,29 @@ select instr(name, '1',-0) from test_null;
 
 --clean data
 drop table test_null;
+
+
+-- BUG#6021
+set ivorysql.enable_emptystring_is_NULL to on;
+create table test_isnull(id int, name varchar2(200));
+insert into test_isnull values(1, 'hello');
+insert into test_isnull values(2, '   ');
+insert into test_isnull values(3, '');
+insert into test_isnull values(4, null);
+set ivorysql.enable_emptystring_to_NULL to off;
+insert into test_isnull values(5, '');
+reset ivorysql.enable_emptystring_to_NULL;
+
+select *,name is null from test_isnull;
+select * from test_isnull where name is null;
+
+select trim('   ') is null;
+select (trim('   ') || trim('   ')) is null;
+select *,trim(name) is null from test_isnull;
+select *,(trim(name) || trim(name)) is null from test_isnull;
+
+select regexp_replace('abc', 'abc') is null;
+select *,regexp_replace(name, 'hello') is null from test_isnull;
+
+drop table test_isnull;
+reset ivorysql.enable_emptystring_is_NULL;

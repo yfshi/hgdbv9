@@ -1201,6 +1201,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 					}
 				}
 
+				scratch.restype = scratch.d.var.vartype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -1212,6 +1213,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				scratch.opcode = EEOP_CONST;
 				scratch.d.constval.value = con->constvalue;
 				scratch.d.constval.isnull = con->constisnull;
+				scratch.restype = con->consttype;	/* BUG#6021 */
 
 				ExprEvalPushStep(state, &scratch);
 				break;
@@ -1231,6 +1233,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 								 errmsg("RowNum expr must have parent plan state")));
 					scratch.opcode = EEOP_ORA_ROWNUM;
 					scratch.d.ptr_rownum.num = &(state->parent->ps_ExprContext->count_rownum);
+					scratch.restype = pvar->pvartype;	/* BUG#6021 */
 					ExprEvalPushStep(state, &scratch);
 				}
 				break;
@@ -1248,6 +1251,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 						scratch.opcode = EEOP_PARAM_EXEC;
 						scratch.d.param.paramid = param->paramid;
 						scratch.d.param.paramtype = param->paramtype;
+						scratch.restype = param->paramtype;	/* BUG#6021 */
 						ExprEvalPushStep(state, &scratch);
 						break;
 					case PARAM_EXTERN:
@@ -1275,6 +1279,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 							scratch.opcode = EEOP_PARAM_EXTERN;
 							scratch.d.param.paramid = param->paramid;
 							scratch.d.param.paramtype = param->paramtype;
+							scratch.restype = param->paramtype;	/* BUG#6021 */
 							ExprEvalPushStep(state, &scratch);
 						}
 						break;
@@ -1305,6 +1310,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 					elog(ERROR, "Aggref found in non-Agg plan node");
 				}
 
+				scratch.restype = scratch.restype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -1373,6 +1379,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 
 				scratch.opcode = EEOP_WINDOW_FUNC;
 				scratch.d.window_func.wfstate = wfstate;
+				scratch.restype = wfunc->wintype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -1381,6 +1388,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 			{
 				SubscriptingRef *sbsref = (SubscriptingRef *) node;
 
+				scratch.restype = sbsref->refrestype;	/* BUG#6021 */
 				ExecInitSubscriptingRef(&scratch, sbsref, state, resv, resnull);
 				break;
 			}
@@ -1392,6 +1400,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				ExecInitFunc(&scratch, node,
 							 func->args, func->funcid, func->inputcollid,
 							 state);
+				scratch.restype = func->funcresulttype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 
 				/* Begin - ReqID:SRS-SQL-FUNCOUT */
@@ -1407,6 +1416,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				ExecInitFunc(&scratch, node,
 							 op->args, op->opfuncid, op->inputcollid,
 							 state);
+				scratch.restype = op->opresulttype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -1429,6 +1439,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				 * opcodes for FUSAGE or not.
 				 */
 				scratch.opcode = EEOP_DISTINCT;
+				scratch.restype = op->opresulttype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -1459,6 +1470,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				 * opcodes for FUSAGE or not.
 				 */
 				scratch.opcode = EEOP_NULLIF;
+				scratch.restype = op->opresulttype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -1713,6 +1725,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				scratch.d.fieldselect.fieldnum = fselect->fieldnum;
 				scratch.d.fieldselect.resulttype = fselect->resulttype;
 				scratch.d.fieldselect.rowcache.cacheptr = NULL;
+				scratch.restype = fselect->resulttype;	/* BUG#6021 */
 
 				ExprEvalPushStep(state, &scratch);
 				break;
@@ -1810,6 +1823,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				scratch.d.fieldstore.values = values;
 				scratch.d.fieldstore.nulls = nulls;
 				scratch.d.fieldstore.ncolumns = ncolumns;
+				scratch.restype = fstore->resulttype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -1819,6 +1833,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				/* relabel doesn't need to do anything at runtime */
 				RelabelType *relabel = (RelabelType *) node;
 
+				scratch.restype = relabel->resulttype;	/* BUG#6021 */
 				ExecInitExprRec(relabel->arg, state, resv, resnull);
 				break;
 			}
@@ -1886,6 +1901,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				}
 				/* End - SRS-MYSQL-HEX-LITERAL */
 
+				scratch.restype = iocoerce->resulttype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -1953,6 +1969,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 					scratch.d.arraycoerce.amstate = NULL;
 				}
 
+				scratch.restype = acoerce->resulttype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -1978,6 +1995,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				scratch.d.convert_rowtype.incache = &rowcachep[0];
 				scratch.d.convert_rowtype.outcache = &rowcachep[1];
 				scratch.d.convert_rowtype.map = NULL;
+				scratch.restype = convert->resulttype;	/* BUG#6021 */
 
 				ExprEvalPushStep(state, &scratch);
 				break;
@@ -2171,6 +2189,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				}
 
 				/* and then collect all into an array */
+				scratch.restype = arrayexpr->array_typeid;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -2268,6 +2287,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				}
 
 				/* And finally build the row value */
+				scratch.restype = rowexpr->row_typeid;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -2373,6 +2393,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				/* Finally, examine the last comparison result */
 				scratch.opcode = EEOP_ROWCOMPARE_FINAL;
 				scratch.d.rowcompare_final.rctype = rcexpr->rctype;
+				scratch.restype = rcexpr->rctype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 
 				/* adjust jump targets */
@@ -2425,6 +2446,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 					scratch.opcode = EEOP_NVL_FETCH;
 					scratch.d.nvl_val_fetchstep.expr2_step = expr1_stepid;
 					scratch.d.nvl_val_fetchstep.expr3_step = expr2_stepid;
+					scratch.restype = coalesce->coalescetype;	/* BUG#6021 */
 					ExprEvalPushStep(state, &scratch);
 				}
 				/* Begin - BUG#Z4592 */
@@ -2458,6 +2480,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 					scratch.opcode = EEOP_NVL_FETCH;
 					scratch.d.nvl_val_fetchstep.expr2_step = expr2_stepid;
 					scratch.d.nvl_val_fetchstep.expr3_step = expr3_stepid;
+					scratch.restype = coalesce->coalescetype;	/* BUG#6021 */
 					ExprEvalPushStep(state, &scratch);
 				}
 				/* End - BUG#Z4592 */
@@ -2484,6 +2507,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 						/* if it's not null, skip to end of COALESCE expr */
 						scratch.opcode = EEOP_JUMP_IF_NOT_NULL;
 						scratch.d.jump.jumpdone = -1;	/* adjust later */
+						scratch.restype = e->type;	/* BUG#6021 */
 						ExprEvalPushStep(state, &scratch);
 
 						adjust_jumps = lappend_int(adjust_jumps,
@@ -2569,6 +2593,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				}
 
 				/* and push the final comparison */
+				scratch.restype = minmaxexpr->minmaxtype;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -2579,6 +2604,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 
 				scratch.opcode = EEOP_SQLVALUEFUNCTION;
 				scratch.d.sqlvaluefunction.svf = svf;
+				scratch.restype = svf->type;	/* BUG#6021 */
 
 				ExprEvalPushStep(state, &scratch);
 				break;
@@ -2646,6 +2672,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				}
 
 				/* and evaluate the actual XML expression */
+				scratch.restype = xexpr->type;	/* BUG#6021 */
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}
@@ -2732,6 +2759,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 			{
 				CoerceToDomain *ctest = (CoerceToDomain *) node;
 
+				scratch.restype = ctest->resulttype;	/* BUG#6021 */
 				ExecInitCoerceToDomain(&scratch, ctest, state,
 									   resv, resnull);
 				break;
@@ -2770,6 +2798,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				scratch.opcode = EEOP_NEXTVALUEEXPR;
 				scratch.d.nextvalueexpr.seqid = nve->seqid;
 				scratch.d.nextvalueexpr.seqtypid = nve->typeId;
+				scratch.restype = nve->typeId;	/* BUG#6021 */
 
 				ExprEvalPushStep(state, &scratch);
 				break;
@@ -2787,6 +2816,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 					scratch.d.varref.varname = ref->varname;
 					scratch.d.varref.value = ref->value;
 					scratch.d.varref.rettype = ref->rettype;
+					scratch.restype = ref->rettype;	/* BUG#6021 */
 
 					ExprEvalPushStep(state, &scratch);
 				}

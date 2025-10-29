@@ -307,6 +307,10 @@ extern PGDLLIMPORT bool numerictonumber;
 extern PGDLLIMPORT bool	enable_emptystring_to_NULL;
 /* End - ReqID:EMPTY_STIRNG_TO_NULL */
 
+/* Begin - BUG#6021 */
+extern PGDLLIMPORT bool	enable_emptystring_is_NULL;
+/* End - BUG#6021 */
+
 /* Begin - BUG:M0000068 */
 extern PGDLLIMPORT bool convert_plisql_int_to_number;
 extern PGDLLIMPORT bool convert_plisql_anonymous_int_to_number;
