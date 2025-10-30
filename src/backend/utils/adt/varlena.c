@@ -5648,7 +5648,10 @@ ora_replace_text_regexp(text *src_text, regex_t *regexp,
 		appendBinaryStringInfo(&buf, start_ptr, chunk_len);
 	}
 
-	ret_text = cstring_to_text_with_len(buf.data, buf.len);
+	if (enable_emptystring_to_NULL && buf.len == 0)
+		ret_text = NULL;
+	else
+		ret_text = cstring_to_text_with_len(buf.data, buf.len);
 	pfree(buf.data);
 	pfree(data);
 

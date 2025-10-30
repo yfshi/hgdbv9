@@ -75,6 +75,10 @@ Oid			default_collation_oid = InvalidOid;
 bool			enable_emptystring_to_NULL = false;
 /* End - ReqID:EMPTY_STIRNG_TO_NULL */
 
+/* Begin - BUG#6021 */
+bool			enable_emptystring_is_NULL = false;
+/* End - BUG#6021 */
+
 
 /* Begin - ReqID:COMPATIBLE_GROUP */
 bool          compatible_group = false;
@@ -436,6 +440,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:EMPTY_STIRNG_TO_NULL */
+
+	/* Begin - BUG#6021 */
+	{
+		{"ivorysql.enable_emptystring_is_NULL", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("whether treat empty string as null in ISNULL/ISNOTNULL clause."),
+			NULL
+		},
+		&enable_emptystring_is_NULL,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#6021 */
 
     /* Begin - ReqID:COMPATIBLE_GROUP */	
 	{

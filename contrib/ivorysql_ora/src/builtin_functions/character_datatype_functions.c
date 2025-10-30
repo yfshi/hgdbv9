@@ -189,7 +189,12 @@ rtrim1(PG_FUNCTION_ARGS)
 				 	false, true,
 					coll /* BUG#Z1465 */);
 
-	PG_RETURN_VARCHAR_P(ret);
+	/* Begin - BUG#6021 */
+	if (ret == NULL)
+		PG_RETURN_NULL();
+	else
+		PG_RETURN_VARCHAR_P(ret);
+	/* End - BUG#6021 */
 }
 
 Datum
@@ -217,7 +222,12 @@ rtrim2(PG_FUNCTION_ARGS)
 				 	false, true,
 					coll /* BUG#Z1465 */);
 
-	PG_RETURN_VARCHAR_P(ret);
+	/* Begin - BUG#6021 */
+	if (ret == NULL)
+		PG_RETURN_NULL();
+	else
+		PG_RETURN_VARCHAR_P(ret);
+	/* End - BUG#6021 */
 }
 
 Datum
@@ -245,7 +255,12 @@ ltrim2(PG_FUNCTION_ARGS)
 				 	true, false,
 					coll /* BUG#Z1465 */);
 
-	PG_RETURN_VARCHAR_P(ret);
+	/* Begin - BUG#6021 */
+	if (ret == NULL)
+		PG_RETURN_NULL();
+	else
+		PG_RETURN_VARCHAR_P(ret);
+	/* End - BUG#6021 */
 }
 
 Datum
@@ -272,7 +287,12 @@ ltrim1(PG_FUNCTION_ARGS)
 				 	true, false,
 					coll /* BUG#Z1465 */);
 
-	PG_RETURN_VARCHAR_P(ret);
+	/* Begin - BUG#6021 */
+	if (ret == NULL)
+		PG_RETURN_NULL();
+	else
+		PG_RETURN_VARCHAR_P(ret);
+	/* End - BUG#6021 */
 }
 /* End - Bug#796 */
 
@@ -302,7 +322,12 @@ trim2(PG_FUNCTION_ARGS)
 				 	true, true,
 					coll /* BUG#Z1465 */);
 
-	PG_RETURN_VARCHAR_P(ret);
+	/* Begin - BUG#6021 */
+	if (ret == NULL)
+		PG_RETURN_NULL();
+	else
+		PG_RETURN_VARCHAR_P(ret);
+	/* End - BUG#6021 */
 }
 
 Datum
@@ -329,7 +354,12 @@ trim1(PG_FUNCTION_ARGS)
 				 	true, true,
 					coll /* BUG#Z1465 */);
 
-	PG_RETURN_VARCHAR_P(ret);
+	/* Begin - BUG#6021 */
+	if (ret == NULL)
+		PG_RETURN_NULL();
+	else
+		PG_RETURN_VARCHAR_P(ret);
+	/* End - BUG#6021 */
 }
 /* End - BUG#833 */
 
@@ -445,8 +475,12 @@ ora_regexp_replace(PG_FUNCTION_ARGS)
 	ora_parse_re_flags(&flags, match_para);
 	re = ora_re_compile_and_cache(pattern_arg, flags.cflags, PG_GET_COLLATION());
 	tem = ora_replace_text_regexp(src_text, re, replace_str, start_posn, occur_posn);
-	PG_RETURN_TEXT_P(tem);
-
+	/* Begin - BUG#6021 */
+	if (tem == NULL)
+		PG_RETURN_NULL();
+	else
+		PG_RETURN_TEXT_P(tem);
+	/* End - BUG#6021 */
 }
 
 /*

@@ -3592,6 +3592,37 @@ eval_const_expressions_mutator(Node *node,
 							break;
 					}
 
+					/* Begin - BUG#6021 */
+					/*
+					 * In the ISNULL/ISNOTNULL statment in oracle mode, an empty string
+					 * is considered null.
+					 */
+					if (compatible_db == ORA_PARSER && enable_emptystring_is_NULL &&
+						((ntest->nulltesttype == IS_NULL && !result) ||
+						 (ntest->nulltesttype == IS_NOT_NULL && result)))
+					{
+						Oid rettype = carg->consttype;
+
+						if (rettype == ORAVARCHARCHAROID ||
+							rettype == ORAVARCHARBYTEOID ||
+							rettype == ORACHARCHAROID ||
+							rettype == ORACHARBYTEOID ||
+							rettype == TEXTOID ||
+							rettype == VARCHAROID ||
+							rettype == BPCHAROID)
+						{
+							text *v = DatumGetTextPP(carg->constvalue);
+							if (VARSIZE_ANY_EXHDR(v) == 0)
+							{
+								if (ntest->nulltesttype == IS_NULL)
+									result = true;
+								else
+									result = false;
+							}
+						}
+					}
+					/* End - BUG#6021 */
+
 					return makeBoolConst(result, false);
 				}
 

@@ -1016,6 +1016,31 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			*op->resvalue = BoolGetDatum(*op->resnull);
 			*op->resnull = false;
 
+			/* Begin - BUG#6021 */
+			/*
+			 * In the ISNULL statment in oracle mode, an empty string
+			 * is considered null.
+			 */
+			if (compatible_db == ORA_PARSER && enable_emptystring_is_NULL &&
+				!DatumGetBool(*op->resvalue) && OidIsValid(op->restype))
+			{
+				Oid rettype = op->restype;
+
+				if (rettype == ORAVARCHARCHAROID ||
+					rettype == ORAVARCHARBYTEOID ||
+					rettype == ORACHARCHAROID ||
+					rettype == ORACHARBYTEOID ||
+					rettype == TEXTOID ||
+					rettype == VARCHAROID ||
+					rettype == BPCHAROID)
+				{
+					text *v = DatumGetTextPP(*op->resvalue);
+					if (VARSIZE_ANY_EXHDR(v) == 0)
+						*op->resvalue = BoolGetDatum(true);
+				}
+			}
+			/* End - BUG#6021 */
+
 			EEO_NEXT();
 		}
 
@@ -1023,6 +1048,31 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		{
 			*op->resvalue = BoolGetDatum(!*op->resnull);
 			*op->resnull = false;
+
+			/* Begin - BUG#6021 */
+			/*
+			 * In the ISNOTNULL statment in oracle mode, an empty string
+			 * is considered null. 
+			 */
+			if (compatible_db == ORA_PARSER && enable_emptystring_is_NULL &&
+				DatumGetBool(*op->resvalue) && OidIsValid(op->restype))
+			{
+				Oid rettype = op->restype;
+
+				if (rettype == ORAVARCHARCHAROID ||
+					rettype == ORAVARCHARBYTEOID ||
+					rettype == ORACHARCHAROID ||
+					rettype == ORACHARBYTEOID ||
+					rettype == TEXTOID ||
+					rettype == VARCHAROID ||
+					rettype == BPCHAROID)
+				{
+					text *v = DatumGetTextPP(*op->resvalue);
+					if (VARSIZE_ANY_EXHDR(v) == 0)
+						*op->resvalue = BoolGetDatum(false);
+				}
+			}
+			/* End - BUG#6021 */
 
 			EEO_NEXT();
 		}

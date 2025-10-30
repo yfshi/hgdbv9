@@ -297,6 +297,7 @@ typedef struct ExprEvalStep
 	/* where to store the result of this step */
 	Datum	   *resvalue;
 	bool	   *resnull;
+	Oid			restype;	/* BUG#6021 only for ISNULL and ISNOTNULL */
 
 	/*
 	 * Inline data for the operation.  Inline data is faster to access, but
