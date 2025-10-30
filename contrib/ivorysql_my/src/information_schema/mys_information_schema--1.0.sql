@@ -1228,6 +1228,68 @@ FROM show_mysql_charsets();
 
 GRANT SELECT ON mys_information_schema.character_sets TO PUBLIC;
 
+-- View: mys_information_schema.processlist
+
+CREATE OR REPLACE VIEW mys_information_schema.processlist AS
+SELECT
+	CAST(p.pid AS unsigned) AS "ID",
+
+	-- User field handling, distinguish system users
+	CASE
+		WHEN p.usename IS NULL THEN 'system user'
+		ELSE p.usename::text
+	END::varchar(32) AS "USER",
+
+	-- Host information
+	CASE
+		WHEN p.client_addr IS NOT NULL THEN
+			COALESCE(p.client_hostname, p.client_addr::text) || ':' || p.client_port::text
+		WHEN p.usename IS NULL THEN ''  -- System users have no host
+		ELSE 'localhost'
+	END::varchar(64) AS "HOST",
+
+	-- Database
+	NULL::varchar(64) AS "DB",
+
+	-- More precise command type mapping
+	CASE
+		WHEN p.backend_type != 'client backend' THEN 'Daemon'
+		WHEN p.state = 'active' THEN 'Query'
+		WHEN p.state = 'idle' THEN 'Sleep'
+		WHEN p.state = 'idle in transaction' THEN 'Sleep'
+		WHEN p.state = 'idle in transaction (aborted)' THEN 'Sleep'
+		WHEN p.state = 'fastpath function call' THEN 'Query'
+		ELSE 'Daemon'
+	END::varchar(16) AS "COMMAND",
+
+	-- Time calculation
+	CASE
+		WHEN p.state = 'active' AND p.backend_type = 'client backend' THEN
+			EXTRACT(EPOCH FROM (now() - p.query_start))::integer
+		WHEN p.state LIKE 'idle%' AND p.backend_type = 'client backend' THEN
+			EXTRACT(EPOCH FROM (now() - p.state_change))::integer
+		ELSE
+			0::integer
+			--EXTRACT(EPOCH FROM (now() - p.backend_start))::integer
+	END::int(7) AS "TIME",
+
+	-- State
+	p.state::varchar(64) AS "STATE",
+
+	-- Query information
+	CASE
+		WHEN p.state = 'active' THEN p.query
+		ELSE NULL
+	END::longtext AS "INFO"
+FROM
+	pg_stat_activity p
+ORDER BY
+	CASE WHEN p.pid = pg_backend_pid() THEN 0 ELSE 1 END,
+	p.query_start DESC NULLS LAST;
+
+GRANT SELECT ON mys_information_schema.processlist TO PUBLIC;
+
+
 CREATE VIEW mys_information_schema.global_variables AS SELECT name AS "VARIABLE_NAME", setting AS "VARIABLE_VALUE" FROM pg_settings;
 GRANT SELECT ON mys_information_schema.global_variables TO PUBLIC;
 

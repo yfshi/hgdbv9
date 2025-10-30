@@ -60,12 +60,157 @@
 #include "utils/lsyscache.h"
 
 
+/* Begin - #Z6036 */
+
+/***************************************************************************
+ List all privileges supported
+***************************************************************************/
+
+typedef struct show_privileges_st
+{
+	const char *privilege;
+	const char *context;
+	const char *comment;
+}show_privileges_st;
+
+static struct show_privileges_st sys_privileges[] =
+{
+	{"Alter", "Tables",  "To alter the table"},
+	{"Alter routine", "Functions,Procedures",  "To alter or drop stored functions/procedures"},
+	{"Create", "Databases,Tables,Indexes",  "To create new databases and tables"},
+	{"Create routine","Databases","To use CREATE FUNCTION/PROCEDURE"},
+	{"Create temporary tables","Databases","To use CREATE TEMPORARY TABLE"},
+	{"Create view", "Tables",  "To create new views"},
+	{"Create user", "Server Admin",  "To create new users"},
+	{"Delete", "Tables",  "To delete existing rows"},
+	{"Drop", "Databases,Tables", "To drop databases, tables, and views"},
+#ifndef EMBEDDED_LIBRARY
+	{"Event","Server Admin","To create, alter, drop and execute events"},
+#endif
+	{"Execute", "Functions,Procedures", "To execute stored routines"},
+	{"File", "File access on server",   "To read and write files on the server"},
+	{"Grant option",  "Databases,Tables,Functions,Procedures", "To give to other users those privileges you possess"},
+	{"Index", "Tables",  "To create or drop indexes"},
+	{"Insert", "Tables",  "To insert data into tables"},
+	{"Lock tables","Databases","To use LOCK TABLES (together with SELECT privilege)"},
+	{"Process", "Server Admin", "To view the plain text of currently executing queries"},
+	{"Proxy", "Server Admin", "To make proxy user possible"},
+	{"References", "Databases,Tables", "To have references on tables"},
+	{"Reload", "Server Admin", "To reload or refresh tables, logs and privileges"},
+	{"Replication client","Server Admin","To ask where the slave or master servers are"},
+	{"Replication slave","Server Admin","To read binary log events from the master"},
+	{"Select", "Tables",  "To retrieve rows from table"},
+	{"Show databases","Server Admin","To see all databases with SHOW DATABASES"},
+	{"Show view","Tables","To see views with SHOW CREATE VIEW"},
+	{"Shutdown","Server Admin", "To shut down the server"},
+	{"Super","Server Admin","To use KILL thread, SET GLOBAL, CHANGE MASTER, etc."},
+	{"Trigger","Tables", "To use triggers"},
+	{"Create tablespace", "Server Admin", "To create/alter/drop tablespaces"},
+	{"Update", "Tables",  "To update existing rows"},
+	{"Usage","Server Admin","No privileges - allow connect only"},
+	{NULL, NULL, NULL}
+};
+
+/* End - #Z6036 */
+
+
 PG_FUNCTION_INFO_V1(mys_show_create_database);
 PG_FUNCTION_INFO_V1(mys_show_create_table);
+PG_FUNCTION_INFO_V1(mys_show_privileges);
+PG_FUNCTION_INFO_V1(mys_show_warnings);
+
 
 static void get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf);
 static void get_inherits(Oid tableoid, Form_pg_class pgclass, StringInfo inheritsbuf);
 static text *ivy_JsonbValueAsText(JsonbValue *v);
+
+/* Begin - #Z6036 */
+/*
+ * mys_show_privileges:
+ *   Display the SQL statement information for privileges.
+ */
+Datum
+mys_show_privileges(PG_FUNCTION_ARGS)
+{
+	#define		SHOW_PRIVILEGES_RESULTSET_NATTR 3
+	FuncCallContext *funcctx;
+	TupleDesc tupdesc;
+	const int n_privs = sizeof(sys_privileges) / sizeof(sys_privileges[0]) - 1;
+
+	if (SRF_IS_FIRSTCALL())
+	{
+		MemoryContext oldcontext;
+		funcctx = SRF_FIRSTCALL_INIT();
+		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
+
+		tupdesc = CreateTemplateTupleDesc(SHOW_PRIVILEGES_RESULTSET_NATTR, false);
+		TupleDescInitEntry(tupdesc, 1, "Privilege", TEXTOID, -1, 0);
+		TupleDescInitEntry(tupdesc, 2, "Context", TEXTOID, -1, 0);
+		TupleDescInitEntry(tupdesc, 3, "Comment", TEXTOID, -1, 0);
+
+		funcctx->tuple_desc = BlessTupleDesc(tupdesc);
+		funcctx->max_calls = n_privs;
+		funcctx->call_cntr = 0;
+
+		MemoryContextSwitchTo(oldcontext);
+	}
+
+	funcctx = SRF_PERCALL_SETUP();
+
+	if (funcctx->call_cntr < funcctx->max_calls)
+	{
+
+		Datum values[SHOW_PRIVILEGES_RESULTSET_NATTR];
+		bool nulls[SHOW_PRIVILEGES_RESULTSET_NATTR] = {false, false, false};
+		HeapTuple tuple;
+		const show_privileges_st *row;
+
+		row = &sys_privileges[funcctx->call_cntr];
+		values[0] = CStringGetTextDatum(row->privilege);
+		values[1] = CStringGetTextDatum(row->context);
+		values[2] = CStringGetTextDatum(row->comment);
+
+		tuple = heap_form_tuple(funcctx->tuple_desc, values, nulls);
+		SRF_RETURN_NEXT(funcctx, HeapTupleGetDatum(tuple));
+	}
+
+	SRF_RETURN_DONE(funcctx);
+}
+
+/*
+ * mys_show_warnings:
+ *   Display the SQL statement information for privileges.
+ */
+Datum
+mys_show_warnings(PG_FUNCTION_ARGS)
+{
+	#define		SHOW_WARNINGS_RESULTSET_NATTR 3
+	FuncCallContext *funcctx;
+	TupleDesc tupdesc;
+
+	if (SRF_IS_FIRSTCALL())
+	{
+		MemoryContext oldcontext;
+		funcctx = SRF_FIRSTCALL_INIT();
+		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
+
+		tupdesc = CreateTemplateTupleDesc(SHOW_WARNINGS_RESULTSET_NATTR, false);
+		TupleDescInitEntry(tupdesc, 1, "Privilege", TEXTOID, -1, 0);
+		TupleDescInitEntry(tupdesc, 2, "Context", TEXTOID, -1, 0);
+		TupleDescInitEntry(tupdesc, 3, "Comment", TEXTOID, -1, 0);
+
+		funcctx->tuple_desc = BlessTupleDesc(tupdesc);
+		funcctx->max_calls = 0;
+		funcctx->call_cntr = 0;
+
+		MemoryContextSwitchTo(oldcontext);
+	}
+
+	funcctx = SRF_PERCALL_SETUP();
+
+	SRF_RETURN_DONE(funcctx);
+}
+/* End - #Z6036 */
 
 /*
  * ivy_JsonbValueAsText

@@ -291,6 +291,10 @@ static SelectStmt *makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFil
 static Node *makeShowCreateDatabaseStmt(const char *showname, bool existflg);
 static Node *makeShowVariableStmt(const char *glob_or_session, ShowFilter *filter);
 static Node *makeShowStatusStmt(const char *glob_or_session, ShowFilter *filter);
+static Node *makeShowProcesslistStmt(void);
+static Node *makeShowPrivilegesStmt(void);
+static Node *makeShowWarningsStmt(void);
+
 static ResTarget *makeRestaget(Node *val, char *alias);
 static Node *makeShowCreateTableStmt(RangeVar *rvar);
 /* End - ReqID:SRS-MYSQL-SHOW */
@@ -875,7 +879,7 @@ static void CheckHostId(char* hostId);
 
 	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD PLACING PLANS POLICY
 	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
-	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROGRAM PUBLICATION
+	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROCESSLIST /* Bug#Z6036 */ PROGRAM PUBLICATION
 
 	QUATER_P QUOTE QUICK /* ReqID:SRS-MYSQL-SQL-DELETE */
 
@@ -899,7 +903,7 @@ static void CheckHostId(char* hostId);
 	UNLISTEN UNLOGGED UNSIGNED UNTIL UPDATE USE USER USING UTC_DATE UTC_TIME UTC_TIMESTAMP /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARBINARY VARCHAR VARIABLES /* ReqID:SRS-MYSQL-SHOW */ VARIADIC VARYING
-	VERBOSE VERSION_P VIEW VIEWS VOLATILE WEIGHT_STRING
+	VERBOSE VERSION_P VIEW VIEWS VOLATILE WARNINGS /* Bug#Z6036 */ WEIGHT_STRING
 
 	WEEK_P WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
 
@@ -2398,6 +2402,16 @@ MysqlShowStmt:
 					$$ = makeShowStatusStmt($2, $4);
 				}
 			/* End - #Z5943 */
+			/* Begin - #Z6036 */
+			| SHOW FULL PROCESSLIST
+				{
+					$$ = makeShowProcesslistStmt();
+				}
+			| SHOW WARNINGS
+				{
+					$$ = makeShowWarningsStmt();
+				}
+			/* End - #Z6036 */
 			;
 
 desc:
@@ -2413,8 +2427,17 @@ VariableShowStmt:
 					if (strcasecmp($2, "status") == 0)
 					{
 						$$ = makeShowVariableStmt($2, $3);
+					} /* End - #Z5943 */
+					/* Begin - #Z6036 */
+					else if (strcasecmp($2, "processlist") == 0)
+					{
+						$$ = makeShowProcesslistStmt();
 					}
-					else /* End - #Z5943 */
+					else if (strcasecmp($2, "privileges") == 0)
+					{
+						$$ = makeShowPrivilegesStmt();
+					} /* End - #Z6036 */
+					else
 					{
 						VariableShowStmt *n = makeNode(VariableShowStmt);
 						n->name = $2;
@@ -19465,6 +19488,7 @@ unreserved_keyword:
 			| PROCEDURAL
 			| PROCEDURE
 			| PROCEDURES
+			| PROCESSLIST /* Bug#Z6036 */
 			| PROGRAM
 			| PUBLICATION
 			| QUATER_P
@@ -19805,6 +19829,7 @@ reserved_keyword:
 			| UTC_TIMESTAMP /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| VARIABLES /* ReqID: SRS-MYSQL-SHOW */
 			| VARIADIC
+			| WARNINGS /* Bug#Z6036 */
 			| WHEN
 			| WHERE
 			| WINDOW
@@ -20125,6 +20150,7 @@ bare_label_keyword:
 			| PROCEDURAL
 			| PROCEDURE
 			| PROCEDURES
+			| PROCESSLIST /* Bug#Z6036 */
 			| PROGRAM
 			| PUBLICATION
 			| QUICK
@@ -20263,6 +20289,7 @@ bare_label_keyword:
 			| VIEW
 			| VIEWS
 			| VOLATILE
+			| WARNINGS /* Bug#Z6036 */
 			| WEIGHT_STRING
 			| WHEN
 			| WHITESPACE_P
@@ -22559,6 +22586,94 @@ makeShowStatusStmt(const char *glob_or_session, ShowFilter *filter)
 	return (Node *) selectStmt;
 }
 /* End - #Z5943 */
+
+/* Begin - #Z6036 */
+/* makeShowProcesslistStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the view's result.
+ */
+static Node *
+makeShowProcesslistStmt(void)
+{
+#define		PROCESSLIST_COLUMN_NUMS 8
+	char		colnames[PROCESSLIST_COLUMN_NUMS][16]
+						= {"ID", "USER","HOST", "DB", "COMMAND", "TIME", "STATE", "INFO"};
+	char		ailas[PROCESSLIST_COLUMN_NUMS][16]
+						= {"Id", "User", "Host", "db", "Command", "Time", "State", "Info"};
+	int 		i = 0;
+	SelectStmt	*outer = makeNode(SelectStmt);
+	ResTarget	*rt;
+
+	/* make subselect targetlist */
+	for (i = 0; i < PROCESSLIST_COLUMN_NUMS; i++)
+	{
+		rt = makeShowResTarget(pstrdup(ailas[i]),
+							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
+							   -1);
+		outer->targetList = lappend(outer->targetList, rt);
+	}
+
+	/* make subselect fromClause */
+	outer->fromClause = list_make1(makeRangeVar("mys_information_schema", "processlist", -1));
+
+	return (Node *) outer;
+}
+
+/* makeShowPrivilegesStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the function's result.
+ */
+static Node *
+makeShowPrivilegesStmt(void)
+{
+	SelectStmt		   *selectStmt = makeNode(SelectStmt);
+	ColumnRef		   *columnRef = makeNode(ColumnRef);
+	ResTarget		   *resTarget = makeNode(ResTarget);
+	RangeFunction	   *rangeFunction = makeNode(RangeFunction);
+	FuncCall		   *funcCall = makeFuncCall(list_make2(makeString("ivymy"), makeString("mys_show_privileges")),
+												NIL,
+												COERCE_EXPLICIT_CALL,
+												-1);
+
+	/* Construct a query whose result comes from a function */
+	rangeFunction->functions = list_make1(list_make2(funcCall, NIL));
+	selectStmt->fromClause = list_make1(rangeFunction);
+	columnRef->fields = list_make1(makeNode(A_Star));
+	resTarget->val = (Node *)columnRef;
+	selectStmt->targetList = list_make1(resTarget);
+
+	return (Node *) selectStmt;
+}
+
+/* makeShowWarningsStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the function's result.
+ */
+static Node *
+makeShowWarningsStmt(void)
+{
+	SelectStmt		   *selectStmt = makeNode(SelectStmt);
+	ColumnRef		   *columnRef = makeNode(ColumnRef);
+	ResTarget		   *resTarget = makeNode(ResTarget);
+	RangeFunction	   *rangeFunction = makeNode(RangeFunction);
+	FuncCall		   *funcCall = makeFuncCall(list_make2(makeString("ivymy"), makeString("mys_show_warnings")),
+												NIL,
+												COERCE_EXPLICIT_CALL,
+												-1);
+
+	/* Construct a query whose result comes from a function */
+	rangeFunction->functions = list_make1(list_make2(funcCall, NIL));
+	selectStmt->fromClause = list_make1(rangeFunction);
+	columnRef->fields = list_make1(makeNode(A_Star));
+	resTarget->val = (Node *)columnRef;
+	selectStmt->targetList = list_make1(resTarget);
+
+	return (Node *) selectStmt;
+}
+/* End - #Z6036 */
 
 /* End - ReqID:SRS-MYSQL-SHOW */
 

@@ -54,3 +54,25 @@ RETURNS text
 AS 'MODULE_PATHNAME', 'mys_show_create_table'
 LANGUAGE C
 STRICT PARALLEL SAFE IMMUTABLE;
+
+--
+-- show privileges
+--
+CREATE FUNCTION ivymy.mys_show_privileges(
+	OUT "Privilege" TEXT,
+	OUT "Context" TEXT,
+	OUT "Comment" TEXT)
+RETURNS SETOF record
+AS 'MODULE_PATHNAME', 'mys_show_privileges'
+LANGUAGE C PARALLEL SAFE;
+
+--
+-- show warnings
+--
+CREATE FUNCTION ivymy.mys_show_warnings(
+	OUT "Level" TEXT,
+	OUT "Code" TEXT,
+	OUT "Message" TEXT)
+RETURNS SETOF record
+AS 'MODULE_PATHNAME', 'mys_show_warnings'
+LANGUAGE C PARALLEL SAFE;
