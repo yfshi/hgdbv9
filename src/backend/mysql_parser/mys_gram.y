@@ -21806,41 +21806,157 @@ makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 
 /* makeShowViewStmt
  *
- * Construct a SelectStmt statement that
- * returns the view's information.
+ * Construct the following SQL:
+ *
+ * SELECT *
+ * FROM (
+ *    SELECT
+ *        v.TABLE_NAME AS "View",
+ *        CASE
+ *            WHEN c.relpersistence = 't'
+ *                THEN concat('create temp view as ', v.VIEW_DEFINITION)
+ *            ELSE
+ *                concat('create view as ', v.VIEW_DEFINITION)
+ *        END AS "Create View",
+ *        v.CHARACTER_SET_CLIENT AS character_set_client,
+ *        v.COLLATION_CONNECTION AS collation_connection
+ *    FROM mys_information_schema.views v
+ *    JOIN pg_catalog.pg_namespace n
+ *        ON v.TABLE_SCHEMA = n.nspname
+ *    JOIN pg_catalog.pg_class c
+ *        ON v.TABLE_NAME = c.relname
+ *       AND c.relnamespace = n.oid
+ *    WHERE v.TABLE_SCHEMA = COALESCE('<schema_name>', pg_catalog.current_schema())
+ * ) subq
+ * WHERE "View" = '<view_name>';
  */
 static SelectStmt *
 makeShowViewStmt(RangeVar *view_name)
 {
 	#define		VIEW_COLUMN_NUMS 4
-
 	char		colnames[VIEW_COLUMN_NUMS][32]
-						= {"TABLE_NAME", "VIEW_DEFINITION","CHARACTER_SET_CLIENT", "COLLATION_CONNECTION"};
-
+						= {"TABLE_NAME", "VIEW_DEFINITION", "CHARACTER_SET_CLIENT", "COLLATION_CONNECTION"};
 	char		ailas[VIEW_COLUMN_NUMS][32]
 						= {"View", "Create View", "character_set_client", "collation_connection"};
+
 	int			i = 0;
 	SelectStmt	*outer;
 	SelectStmt	*inner = makeNode(SelectStmt);
 	ResTarget	*rt;
-	ColumnRef	*cref;
-	Node		*col_db;
-	RangeSubselect *rss;
-	Node		*col_tb;
-	A_Expr		*lexpr;
-	Node		*whereClause = NULL;
+	Node		*col_db, *col_tb, *whereClause = NULL;
+	BoolExpr	*and_expr;
+	JoinExpr	*join1, *join2;
+	A_Expr		*lexpr, *schema_cond, *table_cond, *namespace_cond;
+	ColumnRef	*cref, *namespace_oid_ref;
+	RangeSubselect	*rss;
 
-	/* make subselect targetlist */
+	/* Build target column list */
 	for (i = 0; i < VIEW_COLUMN_NUMS; i++)
 	{
-		rt = makeShowResTarget(pstrdup(ailas[i]),
-							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
-							   -1);
+		/* Begin - #Z5972 #Z5976 */
+		rt = makeNode(ResTarget);
+		rt->name = pstrdup(ailas[i]);
+
+		if (i == 1) /* "Create View" column needs special processing */
+		{
+			FuncCall *then_func, *else_func;
+			/* Use CASE WHEN expression to determine prefix based on relpersistence */
+			CaseExpr *caseExpr = makeNode(CaseExpr);
+			CaseWhen *when = makeNode(CaseWhen);
+
+			/* WHEN pc.relpersistence = 't' */
+			when->expr = (Expr *) makeSimpleA_Expr(AEXPR_OP, "=",
+												   makeColumnRef("relpersistence", NIL, -1, 0),
+												   makeStringConst("t", -1),
+												   -1);
+			/* THEN concat('create temp view ', TABLE_NAME, ' as ', v.VIEW_DEFINITION) */
+			then_func = makeFuncCall(list_make1(makeString("concat")),
+											   list_make4(makeStringConst("create temp view ", -1),
+														  makeColumnRef("TABLE_NAME", NIL, -1, 0),
+														  makeStringConst(" as ", -1),
+														  makeColumnRef("VIEW_DEFINITION", NIL, -1, 0)),
+											   COERCE_EXPLICIT_CALL,
+											   -1);
+
+			when->result = (Expr *)then_func;
+
+			caseExpr->args = list_make1(when);
+			/* ELSE concat('create view ', TABLE_NAME, ' as ', v.VIEW_DEFINITION) */
+			else_func = makeFuncCall(list_make1(makeString("concat")),
+											   list_make4(makeStringConst("create view ", -1),
+														  makeColumnRef("TABLE_NAME", NIL, -1, 0),
+														  makeStringConst(" as ", -1),
+														  makeColumnRef("VIEW_DEFINITION", NIL, -1, 0)),
+											   COERCE_EXPLICIT_CALL,
+											   -1);
+			caseExpr->defresult = (Expr *)else_func;
+			caseExpr->location = -1;
+
+			rt->val = (Node *)caseExpr;
+		}
+		else
+		{
+			rt->val = (Node*)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0);
+		}
+
+		rt->indirection = NIL;
+		rt->location = -1;
+		/* End - #Z5972 #Z5976 */
 		inner->targetList = lappend(inner->targetList, rt);
 	}
 
-	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "views", -1));
+	/* Begin - #Z5972 #Z5976 */
+
+	/* Build FROM clause - directly join three tables */
+	join1 = makeNode(JoinExpr);
+	join1->jointype = JOIN_INNER;
+
+	/* Left table: mys_information_schema.views */
+	join1->larg = (Node *)makeRangeVar("mys_information_schema", "views", -1);
+
+	/* Right table: pg_namespace */
+	join1->rarg = (Node *)makeRangeVar("pg_catalog", "pg_namespace", -1);
+
+	/* Join condition: TABLE_SCHEMA = nspname */
+	schema_cond = makeSimpleA_Expr(AEXPR_OP, "=",
+										  makeColumnRef("TABLE_SCHEMA", NIL, -1, 0),
+										  makeColumnRef("nspname", NIL, -1, 0),
+										  -1);
+
+	join1->quals = (Node *)schema_cond;
+
+	/* Join pg_class */
+	join2 = makeNode(JoinExpr);
+	join2->jointype = JOIN_INNER;
+	join2->larg = (Node *)join1;
+	join2->rarg = (Node *)makeRangeVar("pg_catalog", "pg_class", -1);
+
+	/* Join condition: TABLE_NAME = relname AND relnamespace = pg_namespace.oid */
+	table_cond = makeSimpleA_Expr(AEXPR_OP, "=",
+										 makeColumnRef("TABLE_NAME", NIL, -1, 0),
+										 makeColumnRef("relname", NIL, -1, 0),
+										 -1);
+
+	/* Explicitly specify pg_namespace.oid */
+	namespace_oid_ref = makeNode(ColumnRef);
+	namespace_oid_ref->fields = list_make2(makeString("pg_namespace"), makeString("oid"));
+	namespace_oid_ref->location = -1;
+
+	namespace_cond = makeSimpleA_Expr(AEXPR_OP, "=",
+											 makeColumnRef("relnamespace", NIL, -1, 0),
+											 (Node *)namespace_oid_ref,
+											 -1);
+
+	and_expr = makeNode(BoolExpr);
+	and_expr->boolop = AND_EXPR;
+	and_expr->args = list_make2(table_cond, namespace_cond);
+	and_expr->location = -1;
+
+	join2->quals = (Node *)and_expr;
+
+	inner->fromClause = list_make1(join2);
+
+	/* End - #Z5972 #Z5976 */
 
 	/*
 	 * make subselect whereClause
