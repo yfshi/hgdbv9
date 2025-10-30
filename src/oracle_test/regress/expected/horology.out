@@ -1398,3 +1398,587 @@ SELECT to_char('2012-12-12 12:00'::timestamptz, 'YYYY-MM-DD SSSSS');
 (1 row)
 
 RESET TIME ZONE;
+--
+-- check standard datetime parsing mode
+--
+SET ivorysql.enable_standard_datetime_parsing_mode = on;
+SELECT to_timestamp('0097/Feb/16 --> 08:14:30', 'YYYY/Mon/DD --> HH:MI:SS'); --failed
+ERROR:  invalid datetime format separator: ">"
+SELECT to_timestamp('0097/Feb/16 -- 08:14:30', 'YYYY/Mon/DD -- HH:MI:SS');
+        to_timestamp        
+----------------------------
+ 0097-02-16 08:14:30.000000
+(1 row)
+
+SELECT to_timestamp('97/2/16 8:14:30', 'FMYYYY/FMMM/FMDD FMHH:FMMI:FMSS');
+        to_timestamp        
+----------------------------
+ 0097-02-16 08:14:30.000000
+(1 row)
+
+SELECT to_timestamp('2011$03!18 23_38_15', 'YYYY-MM-DD HH24:MI:SS'); --failed
+ERROR:  unmatched format separator "-"
+SELECT to_timestamp('2011-03-18 23:38:15', 'YYYY-MM-DD HH24:MI:SS');
+        to_timestamp        
+----------------------------
+ 2011-03-18 23:38:15.000000
+(1 row)
+
+SELECT to_timestamp('1985 January 12', 'YYYY FMMonth DD');
+        to_timestamp        
+----------------------------
+ 1985-01-12 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('1,582nd VIII 21', 'Y,YYYth FMRM DD');
+        to_timestamp        
+----------------------------
+ 1582-08-21 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('2000January09Sunday', 'YYYYFMMonthDDFMDay');
+        to_timestamp        
+----------------------------
+ 2000-01-09 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('97/Feb/16', 'YYMonDD'); --failed
+ERROR:  invalid value "/Feb/16" for "Mon"
+DETAIL:  The given value did not match any of the allowed values for this field.
+SELECT to_timestamp('97Feb16', 'YYMonDD');
+        to_timestamp        
+----------------------------
+ 2097-02-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('97/Feb/16', 'YY:Mon:DD'); --failed
+ERROR:  unmatched format separator ":"
+SELECT to_timestamp('97:Feb:16', 'YY:Mon:DD');
+        to_timestamp        
+----------------------------
+ 2097-02-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('97/Feb/16', 'FXYY:Mon:DD'); --failed
+ERROR:  unmatched format separator ":"
+SELECT to_timestamp('97:Feb:16', 'FXYY:Mon:DD');
+        to_timestamp        
+----------------------------
+ 2097-02-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('97/Feb/16', 'FXYY/Mon/DD');
+        to_timestamp        
+----------------------------
+ 2097-02-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('19971116', 'YYYYMMDD');
+        to_timestamp        
+----------------------------
+ 1997-11-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('20000-1116', 'YYYY-MMDD'); --failed
+ERROR:  Number value does not match the length of the format item.
+SELECT to_timestamp('1997 AD 11 16', 'YYYY BC MM DD');
+        to_timestamp        
+----------------------------
+ 1997-11-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('1997 BC 11 16', 'YYYY BC MM DD');
+        to_timestamp        
+----------------------------
+ 1997-11-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('1997 A.D. 11 16', 'YYYY B.C. MM DD');
+        to_timestamp        
+----------------------------
+ 1997-11-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('1997 B.C. 11 16', 'YYYY B.C. MM DD');
+        to_timestamp        
+----------------------------
+ 1997-11-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('9-1116', 'Y-MMDD');
+        to_timestamp        
+----------------------------
+ 2029-11-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('95-1116', 'YY-MMDD');
+        to_timestamp        
+----------------------------
+ 2095-11-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('995-1116', 'YYY-MMDD');
+        to_timestamp        
+----------------------------
+ 2995-11-16 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('2005426', 'YYYYWWD');
+        to_timestamp        
+----------------------------
+ 2005-10-15 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('2005300', 'YYYYDDD');
+        to_timestamp        
+----------------------------
+ 2005-10-27 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('2005527', 'IYYYIWID');
+        to_timestamp        
+----------------------------
+ 2006-01-01 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('005527', 'IYYIWID');
+        to_timestamp        
+----------------------------
+ 2006-01-01 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('05527', 'IYIWID');
+        to_timestamp        
+----------------------------
+ 2006-01-01 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('5527', 'IIWID');
+        to_timestamp        
+----------------------------
+ 2025-12-28 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('2005364', 'IYYYIDDD');
+        to_timestamp        
+----------------------------
+ 2006-01-01 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('20050302', 'YYYYMMDD');
+        to_timestamp        
+----------------------------
+ 2005-03-02 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('2005 03 02', 'YYYYMMDD');
+        to_timestamp        
+----------------------------
+ 2005-03-02 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp(' 2005 03 02', 'YYYYMMDD');
+        to_timestamp        
+----------------------------
+ 2005-03-02 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('  20050302', 'YYYYMMDD'); --failed
+ERROR:  YEAR must be between -4713 and +9999, and not be 0
+SELECT to_timestamp('  20050302', '  YYYYMMDD');
+        to_timestamp        
+----------------------------
+ 2005-03-02 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 11:38 AM', 'YYYY-MM-DD HH12:MI PM');
+        to_timestamp        
+----------------------------
+ 2011-12-18 11:38:00.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 11:38 PM', 'YYYY-MM-DD HH12:MI PM');
+        to_timestamp        
+----------------------------
+ 2011-12-18 23:38:00.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 11:38 A.M.', 'YYYY-MM-DD HH12:MI P.M.');
+        to_timestamp        
+----------------------------
+ 2011-12-18 11:38:00.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 11:38 P.M.', 'YYYY-MM-DD HH12:MI P.M.');
+        to_timestamp        
+----------------------------
+ 2011-12-18 23:38:00.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 11:38 +05',    'YYYY-MM-DD HH12:MI TZH');
+        to_timestamp        
+----------------------------
+ 2011-12-18 11:38:00.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 11:38 -05',    'YYYY-MM-DD HH12:MI TZH');
+        to_timestamp        
+----------------------------
+ 2011-12-18 11:38:00.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 11:38 +05:20', 'YYYY-MM-DD HH12:MI TZH:TZM');
+        to_timestamp        
+----------------------------
+ 2011-12-18 11:38:00.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 11:38 -05:20', 'YYYY-MM-DD HH12:MI TZH:TZM');
+        to_timestamp        
+----------------------------
+ 2011-12-18 11:38:00.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 11:38 20',     'YYYY-MM-DD HH12:MI TZM');
+        to_timestamp        
+----------------------------
+ 2011-12-18 11:38:00.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 11:38 PST', 'YYYY-MM-DD HH12:MI TZ');  -- NYI
+ERROR:  formatting field "TZ" is only supported in to_char
+SELECT to_timestamp('2018-11-02 12:34:56.025', 'YYYY-MM-DD HH24:MI:SS.MS');
+        to_timestamp        
+----------------------------
+ 2018-11-02 12:34:56.025000
+(1 row)
+
+SELECT i, to_timestamp('2018-11-02 12:34:56', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i; --failed
+ERROR:  input string is too short for datetime format
+SELECT i, to_timestamp('2018-11-02 12:34:56.0', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
+ i |        to_timestamp        
+---+----------------------------
+ 1 | 2018-11-02 12:34:56.000000
+ 2 | 2018-11-02 12:34:56.000000
+ 3 | 2018-11-02 12:34:56.000000
+ 4 | 2018-11-02 12:34:56.000000
+ 5 | 2018-11-02 12:34:56.000000
+ 6 | 2018-11-02 12:34:56.000000
+(6 rows)
+
+SELECT i, to_timestamp('2018-11-02 12:34:56.1', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
+ i |        to_timestamp        
+---+----------------------------
+ 1 | 2018-11-02 12:34:56.100000
+ 2 | 2018-11-02 12:34:56.100000
+ 3 | 2018-11-02 12:34:56.100000
+ 4 | 2018-11-02 12:34:56.100000
+ 5 | 2018-11-02 12:34:56.100000
+ 6 | 2018-11-02 12:34:56.100000
+(6 rows)
+
+SELECT i, to_timestamp('2018-11-02 12:34:56.12', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i; --failed
+ERROR:  date format picture ends before converting entire input string.
+SELECT i, to_timestamp('2018-11-02 12:34:56.12', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(2, 6) i;
+ i |        to_timestamp        
+---+----------------------------
+ 2 | 2018-11-02 12:34:56.120000
+ 3 | 2018-11-02 12:34:56.120000
+ 4 | 2018-11-02 12:34:56.120000
+ 5 | 2018-11-02 12:34:56.120000
+ 6 | 2018-11-02 12:34:56.120000
+(5 rows)
+
+SELECT i, to_timestamp('2018-11-02 12:34:56.123', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(3, 6) i;
+ i |        to_timestamp        
+---+----------------------------
+ 3 | 2018-11-02 12:34:56.123000
+ 4 | 2018-11-02 12:34:56.123000
+ 5 | 2018-11-02 12:34:56.123000
+ 6 | 2018-11-02 12:34:56.123000
+(4 rows)
+
+SELECT i, to_timestamp('2018-11-02 12:34:56.1234', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(4, 6) i;
+ i |        to_timestamp        
+---+----------------------------
+ 4 | 2018-11-02 12:34:56.123400
+ 5 | 2018-11-02 12:34:56.123400
+ 6 | 2018-11-02 12:34:56.123400
+(3 rows)
+
+SELECT i, to_timestamp('2018-11-02 12:34:56.12345', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(5, 6) i;
+ i |        to_timestamp        
+---+----------------------------
+ 5 | 2018-11-02 12:34:56.123450
+ 6 | 2018-11-02 12:34:56.123450
+(2 rows)
+
+SELECT i, to_timestamp('2018-11-02 12:34:56.123456', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(6, 6) i;
+ i |        to_timestamp        
+---+----------------------------
+ 6 | 2018-11-02 12:34:56.123456
+(1 row)
+
+SELECT i, to_timestamp('2018-11-02 12:34:56.123456789', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(6, 6) i; --failed
+ERROR:  date format picture ends before converting entire input string.
+SELECT to_date('1 4 1902', 'Q MM YYYY');  -- Q is ignored
+  to_date   
+------------
+ 1902-04-01
+(1 row)
+
+SELECT to_date('3 4 21 01', 'W MM CC YY');
+  to_date   
+------------
+ 2001-04-15
+(1 row)
+
+SELECT to_date('2458872', 'J');
+  to_date   
+------------
+ 2020-01-23
+(1 row)
+
+SELECT to_date('44-02-01 BC','YYYY-MM-DD BC');
+  to_date   
+------------
+ 0044-02-01
+(1 row)
+
+SELECT to_date('-44-02-01','YYYY-MM-DD');
+  to_date   
+------------
+ 0044-02-01
+(1 row)
+
+SELECT to_date('-44-02-01 BC','YYYY-MM-DD BC');
+  to_date   
+------------
+ 0044-02-01
+(1 row)
+
+SELECT to_timestamp('44-02-01 11:12:13 BC','YYYY-MM-DD HH24:MI:SS BC');
+        to_timestamp        
+----------------------------
+ 0044-02-01 11:12:13.000000
+(1 row)
+
+SELECT to_timestamp('-44-02-01 11:12:13','YYYY-MM-DD HH24:MI:SS');
+        to_timestamp        
+----------------------------
+ 0044-02-01 11:12:13.000000
+(1 row)
+
+SELECT to_timestamp('-44-02-01 11:12:13 BC','YYYY-MM-DD HH24:MI:SS BC');
+        to_timestamp        
+----------------------------
+ 0044-02-01 11:12:13.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18 23:38:15', 'YYYY-MM-DD  HH24:MI:SS'); --failed
+ERROR:  unmatched format separator " "
+SELECT to_timestamp('2011-12-18  23:38:15', 'YYYY-MM-DD  HH24:MI:SS');
+        to_timestamp        
+----------------------------
+ 2011-12-18 23:38:15.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18   23:38:15', 'YYYY-MM-DD  HH24:MI:SS');
+        to_timestamp        
+----------------------------
+ 2011-12-18 23:38:15.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18  23:38:15', 'YYYY-MM-DD HH24:MI:SS');
+        to_timestamp        
+----------------------------
+ 2011-12-18 23:38:15.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18  23:38:15', 'YYYY-MM-DD  HH24:MI:SS');
+        to_timestamp        
+----------------------------
+ 2011-12-18 23:38:15.000000
+(1 row)
+
+SELECT to_timestamp('2011-12-18  23:38:15', 'YYYY-MM-DD   HH24:MI:SS'); --failed
+ERROR:  unmatched format separator " "
+SELECT to_timestamp('2000+   JUN', 'YYYY/MON'); --failed
+ERROR:  unmatched format separator "/"
+SELECT to_timestamp('  2000 +JUN', 'YYYY/MON'); --failed
+ERROR:  unmatched format separator "/"
+SELECT to_timestamp(' 2000 +JUN', 'YYYY//MON'); --failed
+ERROR:  unmatched format separator "/"
+SELECT to_timestamp('2000  +JUN', 'YYYY//MON'); --failed
+ERROR:  unmatched format separator "/"
+SELECT to_timestamp('2000 + JUN', 'YYYY MON'); --failed
+ERROR:  invalid value "+" for "MON"
+DETAIL:  The given value did not match any of the allowed values for this field.
+SELECT to_timestamp('2000 ++ JUN', 'YYYY  MON'); --failed
+ERROR:  unmatched format separator " "
+SELECT to_timestamp('2000 + + JUN', 'YYYY  MON'); --failed
+ERROR:  unmatched format separator " "
+SELECT to_timestamp('2000 + + JUN', 'YYYY   MON'); --failed
+ERROR:  unmatched format separator " "
+SELECT to_date('2011 12  18', 'YYYY MM DD');
+  to_date   
+------------
+ 2011-12-18
+(1 row)
+
+SELECT to_date('2011 12  18', 'YYYY MM  DD');
+  to_date   
+------------
+ 2011-12-18
+(1 row)
+
+SELECT to_date('2011 12  18', 'YYYY MM   DD'); --failed
+ERROR:  unmatched format separator " "
+SELECT to_date('2011 12 18', 'YYYY  MM DD');
+ERROR:  unmatched format separator " "
+SELECT to_date('2011  12 18', 'YYYY  MM DD');
+  to_date   
+------------
+ 2011-12-18
+(1 row)
+
+SELECT to_date('2011   12 18', 'YYYY  MM DD');
+  to_date   
+------------
+ 2011-12-18
+(1 row)
+
+SELECT to_date('2011 12 18', 'YYYYxMMxDD'); --failed
+ERROR:  invalid datetime format separator: "x"
+SELECT to_date('2011x 12x 18', 'YYYYxMMxDD'); --failed
+ERROR:  invalid datetime format separator: "x"
+SELECT to_date('2011 x12 x18', 'YYYYxMMxDD'); --failed
+ERROR:  invalid datetime format separator: "x"
+SELECT to_timestamp('2005527', 'YYYYIWID'); --failed
+ERROR:  invalid combination of date conventions
+HINT:  Do not mix Gregorian and ISO week date conventions in a formatting template.
+SELECT to_timestamp('19971', 'YYYYMMDD'); --failed
+ERROR:  Number value does not match the length of the format item.
+SELECT to_timestamp('19971)24', 'YYYYMMDD'); --failed
+ERROR:  Number value does not match the length of the format item.
+SELECT to_timestamp('Friday-1-January-1999', 'DY-DD-MON-YYYY'); --failed
+ERROR:  unmatched format separator "-"
+SELECT to_timestamp('Fri 1-January-1999', 'DY DD-MON-YYYY'); --failed
+ERROR:  unmatched format separator "-"
+SELECT to_timestamp('Fri 1-Jan-1999', 'DY DD-MON-YYYY');  -- ok
+        to_timestamp        
+----------------------------
+ 1999-01-01 00:00:00.000000
+(1 row)
+
+SELECT to_timestamp('1997-11-Jan-16', 'YYYY-MM-Mon-DD'); --failed
+ERROR:  conflicting values for "Mon" field in formatting string
+DETAIL:  This value contradicts a previous setting for the same field type.
+SELECT to_timestamp('199711xy', 'YYYYMMDD'); --failed
+ERROR:  invalid value "xy" for "DD"
+DETAIL:  Value must be an integer.
+SELECT to_timestamp('10000000000', 'FMYYYY'); --failed
+ERROR:  value for "YYYY" in source string is out of range
+DETAIL:  Value must be in the range -2147483648 to 2147483647.
+-- Out-of-range and not-quite-out-of-range fields:
+SELECT to_timestamp('2016-06-13 25:00:00', 'YYYY-MM-DD HH24:MI:SS'); --failed
+ERROR:  The hour value must be between 0 and 23.
+SELECT to_timestamp('2016-06-13 15:60:00', 'YYYY-MM-DD HH24:MI:SS'); --failed
+ERROR:  The minute value must be between 0 and 59.
+SELECT to_timestamp('2016-06-13 15:50:60', 'YYYY-MM-DD HH24:MI:SS'); --failed
+ERROR:  The second must be between 0 and 59.
+SELECT to_timestamp('2016-06-13 15:50:55', 'YYYY-MM-DD HH24:MI:SS');  -- ok
+        to_timestamp        
+----------------------------
+ 2016-06-13 15:50:55.000000
+(1 row)
+
+SELECT to_timestamp('2016-06-13 15:50:55', 'YYYY-MM-DD HH:MI:SS'); --failed
+ERROR:  The hour value must be between 1 and 12.
+SELECT to_timestamp('2016-13-01 15:50:55', 'YYYY-MM-DD HH24:MI:SS'); --failed
+ERROR:  The value of month is invalid.
+SELECT to_timestamp('2016-02-30 15:50:55', 'YYYY-MM-DD HH24:MI:SS'); --failed
+ERROR:  The value of day must be between 1 and the last day of the month.
+SELECT to_timestamp('2016-02-29 15:50:55', 'YYYY-MM-DD HH24:MI:SS');  -- ok
+        to_timestamp        
+----------------------------
+ 2016-02-29 15:50:55.000000
+(1 row)
+
+SELECT to_timestamp('2015-02-29 15:50:55', 'YYYY-MM-DD HH24:MI:SS'); --failed
+ERROR:  The value of day must be between 1 and the last day of the month.
+SELECT to_timestamp('2015-02-11 86000', 'YYYY-MM-DD SSSS');  -- ok
+        to_timestamp        
+----------------------------
+ 2015-02-11 23:53:20.000000
+(1 row)
+
+SELECT to_timestamp('2015-02-11 86400', 'YYYY-MM-DD SSSS'); --failed
+ERROR:  date/time field value out of range: "2015-02-11 86400"
+SELECT to_timestamp('2015-02-11 86000', 'YYYY-MM-DD SSSSS');  -- ok
+        to_timestamp        
+----------------------------
+ 2015-02-11 23:53:20.000000
+(1 row)
+
+SELECT to_timestamp('2015-02-11 86400', 'YYYY-MM-DD SSSSS'); --failed
+ERROR:  date/time field value out of range: "2015-02-11 86400"
+SELECT to_date('2016-13-10', 'YYYY-MM-DD'); --failed
+ERROR:  The value of month is invalid.
+SELECT to_date('2016-02-30', 'YYYY-MM-DD'); --failed
+ERROR:  The value of day must be between 1 and the last day of the month.
+SELECT to_date('2016-02-29', 'YYYY-MM-DD');  -- ok
+  to_date   
+------------
+ 2016-02-29
+(1 row)
+
+SELECT to_date('2015-02-29', 'YYYY-MM-DD'); --failed
+ERROR:  The value of day must be between 1 and the last day of the month.
+SELECT to_date('2015 365', 'YYYY DDD');  -- ok
+  to_date   
+------------
+ 2015-12-31
+(1 row)
+
+SELECT to_date('2015 366', 'YYYY DDD'); --failed
+ERROR:  date/time field value out of range: "2015 366"
+SELECT to_date('2016 365', 'YYYY DDD');  -- ok
+  to_date   
+------------
+ 2016-12-30
+(1 row)
+
+SELECT to_date('2016 366', 'YYYY DDD');  -- ok
+  to_date   
+------------
+ 2016-12-31
+(1 row)
+
+SELECT to_date('2016 367', 'YYYY DDD'); --failed
+ERROR:  date/time field value out of range: "2016 367"
+SELECT to_date('0-02-01','Y-MM-DD');
+  to_date   
+------------
+ 2020-02-01
+(1 row)
+
+SELECT to_date('00-02-01','YY-MM-DD');
+  to_date   
+------------
+ 2000-02-01
+(1 row)
+
+SELECT to_date('000-02-01','YYY-MM-DD');
+  to_date   
+------------
+ 2000-02-01
+(1 row)
+
+SELECT to_date('0000-02-01','YYYY-MM-DD'); --failed
+ERROR:  YEAR must be between -4713 and +9999, and not be 0
+SELECT to_date('2000-02','YYYY-MM-DD'); --failed
+ERROR:  input string is too short for datetime format
+SELECT to_date('200002','YYYYMMDD'); --failed
+ERROR:  input string is too short for datetime format
+RESET ivorysql.enable_standard_datetime_parsing_mode;

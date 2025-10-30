@@ -798,7 +798,9 @@ to_oradate1(PG_FUNCTION_ARGS)
 	struct pg_tm tm;
 	fsec_t		fsec;
 				 
-	ora_do_to_timestamp(date_txt, cstring_to_text(nls_date_format), collid, false, &tm, &fsec, NULL, NULL, NULL, true);
+	ora_do_to_timestamp(date_txt, cstring_to_text(nls_date_format), collid, 
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+						&tm, &fsec, NULL, NULL, NULL, true);
 	
 	/* no timezone and no fractional second */
 	fsec = 0;
@@ -820,7 +822,9 @@ to_oradate2(PG_FUNCTION_ARGS)
 	struct pg_tm tm;
 	fsec_t		fsec;
 				 
-	ora_do_to_timestamp(date_txt, fmt, collid, false, &tm, &fsec, NULL, NULL, NULL, true);
+	ora_do_to_timestamp(date_txt, fmt, collid, 
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+						&tm, &fsec, NULL, NULL, NULL, true);
 	
 	/* no timezone and no fractional second */
 	fsec = 0;
@@ -857,7 +861,9 @@ to_oradate3(PG_FUNCTION_ARGS)
 	if (p && strlen(p) != 0)
 	/* make compiler quiet */
 
-	ora_do_to_timestamp(date_txt, fmt, collid, false, &tm, &fsec, NULL, NULL, NULL, true);
+	ora_do_to_timestamp(date_txt, fmt, collid, 
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+						&tm, &fsec, NULL, NULL, NULL, true);
 	
 	/* no timezone and no fractional second */
 	fsec = 0;
@@ -883,7 +889,9 @@ to_oratimestamp1(PG_FUNCTION_ARGS)
 	struct pg_tm tm;
 	fsec_t		fsec;
 
-	ora_do_to_timestamp(date_txt, cstring_to_text(nls_timestamp_format), collid, false, &tm, &fsec, NULL, NULL, NULL, true);
+	ora_do_to_timestamp(date_txt, cstring_to_text(nls_timestamp_format), collid, 
+						/* BUG:6022 */enable_standard_datetime_parsing_mode, 
+						&tm, &fsec, NULL, NULL, NULL, true);
 
 	/* no time zone */
 	if (tm2timestamp(&tm, fsec, NULL, &result) != 0)
@@ -904,7 +912,9 @@ to_oratimestamp2(PG_FUNCTION_ARGS)
 	struct pg_tm tm;
 	fsec_t		fsec;
 
-	ora_do_to_timestamp(date_txt, fmt, collid, false, &tm, &fsec, NULL, NULL, NULL, true);
+	ora_do_to_timestamp(date_txt, fmt, collid, 
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+						&tm, &fsec, NULL, NULL, NULL, true);
 
 	/* no time zone */
 	if (tm2timestamp(&tm, fsec, NULL, &result) != 0)
@@ -937,7 +947,9 @@ to_oratimestamp3(PG_FUNCTION_ARGS)
 	if (p && strlen(p) != 0)
 	/* make compiler quiet */
 
-	ora_do_to_timestamp(date_txt, fmt, collid, false, &tm, &fsec, NULL, NULL, NULL, true);
+	ora_do_to_timestamp(date_txt, fmt, collid, 
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+						&tm, &fsec, NULL, NULL, NULL, true);
 
 	/* no time zone */
 	if (tm2timestamp(&tm, fsec, NULL, &result) != 0)
@@ -963,7 +975,9 @@ to_oratimestamptz1(PG_FUNCTION_ARGS)
 	struct pg_tm tm;
 	fsec_t		fsec;
 
-	ora_do_to_timestamp(date_txt, cstring_to_text(nls_timestamp_tz_format), collid, false, &tm, &fsec, NULL, NULL, NULL, true);
+	ora_do_to_timestamp(date_txt, cstring_to_text(nls_timestamp_tz_format), collid, 
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+						&tm, &fsec, NULL, NULL, NULL, true);
 
 	/* Begin - BUG:0000846 */
 	if (tm.tm_zone)
@@ -996,7 +1010,9 @@ to_oratimestamptz2(PG_FUNCTION_ARGS)
 	struct pg_tm tm;
 	fsec_t		fsec;
 
-	ora_do_to_timestamp(date_txt, fmt, collid, false, &tm, &fsec, NULL, NULL, NULL, true);
+	ora_do_to_timestamp(date_txt, fmt, collid, 
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+						&tm, &fsec, NULL, NULL, NULL, true);
 
 /* Begin - BUG:0000846 */
 	if (tm.tm_zone)
@@ -1052,7 +1068,9 @@ to_oratimestamptz3(PG_FUNCTION_ARGS)
 				 errmsg("function \"to_date\" not support the parameter of \"nlsparam\".")));
 	*/
 
-	ora_do_to_timestamp(date_txt, fmt, collid, false, &tm, &fsec, NULL, NULL, NULL, true);
+	ora_do_to_timestamp(date_txt, fmt, collid, 
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+						&tm, &fsec, NULL, NULL, NULL, true);
 
 	/* Begin - BUG:0000846 */
 	if (tm.tm_zone)
