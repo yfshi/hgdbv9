@@ -70,7 +70,7 @@ CREATE TABLE test_schema_ivymy.part_tbl_p1 PARTITION OF test_schema_ivymy.part_t
 SELECT table_schema, table_name, table_type, engine, table_rows,
        avg_row_length, data_length, max_data_length, index_length,
        data_free, auto_increment, table_comment
-FROM ivymy.tables
+FROM information_schema.tables
 WHERE table_schema = 'test_schema_ivymy'
 ORDER BY table_name;
 

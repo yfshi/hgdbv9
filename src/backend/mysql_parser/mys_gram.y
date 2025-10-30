@@ -290,6 +290,7 @@ static SelectStmt *makeShowSchemasStmt(ShowFilter *filter);
 static SelectStmt *makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool full);
 static Node *makeShowCreateDatabaseStmt(const char *showname, bool existflg);
 static Node *makeShowVariableStmt(const char *glob_or_session, ShowFilter *filter);
+static Node *makeShowStatusStmt(const char *glob_or_session, ShowFilter *filter);
 static ResTarget *makeRestaget(Node *val, char *alias);
 static Node *makeShowCreateTableStmt(RangeVar *rvar);
 /* End - ReqID:SRS-MYSQL-SHOW */
@@ -2387,6 +2388,16 @@ MysqlShowStmt:
 				{
 					$$ = makeShowVariableStmt($2, $4);
 				}
+			/* Begin - #Z5943 */
+			| SHOW GLOBAL STATUS OptShowFilter
+				{
+					$$ = makeShowStatusStmt($2, $4);
+				}
+			| SHOW SESSION STATUS OptShowFilter
+				{
+					$$ = makeShowStatusStmt($2, $4);
+				}
+			/* End - #Z5943 */
 			;
 
 desc:
@@ -2396,11 +2407,19 @@ desc:
 /* End - Req: SRS-MYSQL-SHOW */
 
 VariableShowStmt:
-			SHOW var_name
+			SHOW var_name OptShowFilter
 				{
-					VariableShowStmt *n = makeNode(VariableShowStmt);
-					n->name = $2;
-					$$ = (Node *) n;
+					/* Begin - #Z5943 */
+					if (strcasecmp($2, "status") == 0)
+					{
+						$$ = makeShowVariableStmt($2, $3);
+					}
+					else /* End - #Z5943 */
+					{
+						VariableShowStmt *n = makeNode(VariableShowStmt);
+						n->name = $2;
+						$$ = (Node *) n;
+					}
 				}
 			| SHOW TIME ZONE
 				{
@@ -18753,7 +18772,7 @@ qualified_name:
 							{
 								if (IsMysInformationSchemaView($$->relname))
 								{
-									$$->schemaname = pstrdup("ivymy");
+									$$->schemaname = pstrdup("mys_information_schema");
 								}
 							}
 							/* End - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
@@ -21589,7 +21608,7 @@ makeShowTriggersStmt(Node *db_name, ShowFilter *filter)
 	}
 
 	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("ivymy", "triggers", -1));
+	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "triggers", -1));
 
 	/*
 	 * make subselect whereClause
@@ -21660,7 +21679,7 @@ makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
 	}
 
 	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("ivymy", "statistics", -1));
+	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "statistics", -1));
 
 	/*
 	 * make subselect whereClause
@@ -21751,7 +21770,7 @@ makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 	}
 
 	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("ivymy", "tables", -1));
+	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "tables", -1));
 
 	/*
 	 * make subselect whereClause
@@ -21821,7 +21840,7 @@ makeShowViewStmt(RangeVar *view_name)
 	}
 
 	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("ivymy", "views", -1));
+	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "views", -1));
 
 	/*
 	 * make subselect whereClause
@@ -21893,7 +21912,7 @@ makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 	char		*rtname = NULL;
 
 	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("ivymy", "tables", -1));
+	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "tables", -1));
 
 	/*
 	 * make subselect whereClause
@@ -21978,7 +21997,7 @@ makeShowSchemasStmt(ShowFilter *filter)
 	inner->targetList = lappend(inner->targetList, rt);
 
 	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("ivymy", "schemata", -1));
+	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "schemata", -1));
 
 	/* make outerselect */
 	rss = makeShowRangeSubselect((Node *)inner, "subq");
@@ -22047,7 +22066,7 @@ makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool f
 	}
 
 	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("ivymy", "columns", -1));
+	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "columns", -1));
 
 	/*
 	 * make subselect whereClause
@@ -22362,11 +22381,69 @@ makeShowVariableStmt(const char *glob_or_session, ShowFilter *filter)
 
 	/* Construct a SelectStmt statement */
 	selectStmt->targetList = list_make2(resvariablename, resvariablevalue);
-	selectStmt->fromClause = list_make1(makeRangeVar("ivymy", viewstr, -1));
+	selectStmt->fromClause = list_make1(makeRangeVar("mys_information_schema", viewstr, -1));
 	selectStmt->whereClause = where;
 
 	return (Node *) selectStmt;
 }
+
+/* Begin - #Z5943 */
+
+/* makeShowStatusStmt
+ *
+ * Construct a SelectStmt statement that
+ * returns the view's result.
+ */
+static Node *
+makeShowStatusStmt(const char *glob_or_session, ShowFilter *filter)
+{
+	SelectStmt	   *selectStmt = makeNode(SelectStmt);
+	ResTarget 	   *resvariablename;
+	ResTarget 	   *resvariablevalue;
+	Node		   *where = NULL;
+	char		   *viewname = NULL;
+
+	/* get system view's name */
+	if (glob_or_session != NULL)
+	{
+		if (pg_strcasecmp(glob_or_session, "global") == 0)
+		{
+			viewname = pstrdup("global_status");
+		}
+		else if (pg_strcasecmp(glob_or_session, "session") == 0)
+		{
+			viewname = pstrdup("session_status");
+		}
+		else
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg(" unrecognized configuration parameter %s ", glob_or_session)));
+		}
+	}
+	else
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("unrecognized configuration parameter")));
+	}
+
+	/* A condition or a Like expression */
+	where = makeShowFilter(pstrdup("VARIABLE_NAME"), filter);
+
+	/* Return two columns */
+	resvariablename = makeRestaget(makeColumnRef("VARIABLE_NAME", NIL, -1, 0), "Variable_name");
+	resvariablevalue = makeRestaget(makeColumnRef("VARIABLE_VALUE", NIL, -1, 0), "Value");
+
+	/* Construct a SelectStmt statement */
+	selectStmt->targetList = list_make2(resvariablename, resvariablevalue);
+	selectStmt->fromClause = list_make1(makeRangeVar("performance_schema", viewname, -1));
+	selectStmt->whereClause = where;
+
+	return (Node *) selectStmt;
+}
+/* End - #Z5943 */
+
 /* End - ReqID:SRS-MYSQL-SHOW */
 
 /* Begin - ReqID:SRS-MYSQL-RENAME */
