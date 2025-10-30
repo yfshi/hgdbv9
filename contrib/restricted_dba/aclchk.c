@@ -195,6 +195,8 @@ grant_schema_check(InternalGrant *istmt)
 	Relation	relation;
 	ListCell   *cell_obj;
 	
+	if (istmt->all_privs && istmt->privileges == ACL_NO_RIGHTS)
+		istmt->privileges = ACL_ALL_RIGHTS_SCHEMA;
 
 	relation = table_open(NamespaceRelationId, RowExclusiveLock);
 
@@ -230,18 +232,33 @@ grant_schema_check(InternalGrant *istmt)
 		}
 		else if (IS_SYSDBA(ownerId))
 		{
+			if (se_feature.restricted_dba && (ownerId != GetUserId()))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("sysdba_role member can only grant privilege of itself")));
+
 			foreach(cell_grantee, istmt->grantees)
 			{
 				Oid grantee = lfirst_oid(cell_grantee);
-				
+
 				if (IS_SYSSSO(grantee) || IS_SYSSAO(grantee))
+				{
+					if(istmt->privileges & ACL_CREATE)
+						ereport(ERROR,
+								(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+								 errmsg("permission denied"),
+								 errdetail("cannot grant create on schema of sysdba_role member to "
+											"syssso_role/syssao_role member")));
+				}
+				else if(se_feature.restricted_dba && !IS_SYSDBA(grantee))
 				{
 					ereport(ERROR,
 							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-							errmsg("permission denied"),
-							errdetail("cannot grant privilege of sysdba_role member to"
-										" syssso_role/syssao_role member")));
-				}	
+							 errmsg("permission denied"),
+							 errdetail("cannot grant privilege of sysdba_role member to "
+									   "normal user")));
+				}
 			}
 		}
 		else
@@ -250,14 +267,24 @@ grant_schema_check(InternalGrant *istmt)
 			{
 				Oid grantee = lfirst_oid(cell_grantee);
 				
-				if (IS_SYSSSO(grantee) || IS_SYSSAO(grantee))
+				if ((IS_SYSSSO(grantee) || IS_SYSSAO(grantee)) &&
+					(istmt->privileges & ACL_CREATE))
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied"),
+							 errdetail("cannot grant create on normal user schema to "
+										"syssso_role/syssao_role member")));
+				}
+
+				if(se_feature.restricted_dba && IS_SYSDBA(grantee))
 				{
 					ereport(ERROR,
 							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 							errmsg("permission denied"),
 							errdetail("cannot grant privilege of normal user to "
-										"syssso_role/syssao_role member")));
-				}	
+									  "sysdba_role member")));
+				}		
 			}
 		}
 
@@ -302,6 +329,12 @@ grant_relation_check(InternalGrant *istmt)
 		}
 		else if (IS_SYSDBA(ownerId))
 		{
+			if (se_feature.restricted_dba && (ownerId != GetUserId()))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("sysdba_role member can only grant privilege of itself")));
+
 			foreach(cell_grantee, istmt->grantees)
 			{
 				Oid grantee = lfirst_oid(cell_grantee);
@@ -311,13 +344,27 @@ grant_relation_check(InternalGrant *istmt)
 					ereport(ERROR,
 							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 							errmsg("permission denied"),
-							errdetail("cannot grant privilege of sysdba_role member to"
-										" syssso_role/syssao_role member")));
+							errdetail("cannot grant privilege of sysdba_role member to "
+										"syssso_role/syssao_role member")));
+				}	
+				else if(se_feature.restricted_dba && !IS_SYSDBA(grantee))
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("cannot grant privilege of sysdba_role member to "
+									  "normal user")));
 				}	
 			}
 		}
 		else
 		{
+			if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("sysdba_role member can only grant privilege of itself")));
+			
 			foreach(cell_grantee, istmt->grantees)
 			{
 				Oid grantee = lfirst_oid(cell_grantee);
@@ -373,6 +420,12 @@ grant_proc_check(InternalGrant *istmt)
 		}
 		else if (IS_SYSDBA(ownerid))
 		{
+			if (se_feature.restricted_dba && (ownerid != GetUserId()))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("sysdba_role member can only grant privilege of itself")));
+
 			foreach(cell_grantee, istmt->grantees)
 			{
 				Oid grantee = lfirst_oid(cell_grantee);
@@ -384,6 +437,14 @@ grant_proc_check(InternalGrant *istmt)
 							errmsg("permission denied"),
 							errdetail("cannot grant privilege of sysdba_role member to"
 										" syssso_role/syssao_role member")));
+				}
+				else if(se_feature.restricted_dba && !IS_SYSDBA(grantee))
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("cannot grant privilege of sysdba_role member to "
+									  "normal user")));
 				}	
 			}
 		}
@@ -393,6 +454,12 @@ grant_proc_check(InternalGrant *istmt)
 			{
 				Oid grantee = lfirst_oid(cell_grantee);
 				
+				if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("sysdba_role member can only grant privilege of itself")));
+
 				if (IS_SYSSSO(grantee) || IS_SYSSAO(grantee))
 				{
 					ereport(ERROR,

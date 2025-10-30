@@ -211,7 +211,7 @@ create_view_check(ViewStmt *stmt, const char *queryString,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				errmsg("permission denied"),
 				errdetail("member of syssso_role and syssao_role "
-							"cannot create sequence")));
+							"cannot create view")));
 	}
 	else if (IS_SYSDBA(creater))
 	{
@@ -256,8 +256,15 @@ create_index_check(IndexStmt *stmt)
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 						errmsg("permission denied"),
-						errdetail("member of sysdba_role can only create index"
-									"on its owned relation")));
+						errdetail("member of sysdba_role can only create index "
+									"on its own relation")));
+
+			if (se_feature.restricted_dba && (ownerId != GetUserId()))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("member of sysdba_role can only create index "
+									"on its own relation")));
 
 			ReleaseSysCache(tuple);
 		}
@@ -299,29 +306,53 @@ alter_relation_check(AlterTableStmt *stmt)
 								" member")));			
 		}
 
-		ReleaseSysCache(tuple);
-	}
-
-
-	foreach(lcmd, stmt->cmds)
-	{
-		AlterTableCmd *cmd = (AlterTableCmd *) lfirst(lcmd);
-
-		if(cmd->subtype == AT_ChangeOwner)
+		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
 		{
-			Oid newowner = get_rolespec_oid(cmd->newowner, false);
-
-			if (IS_SYSSSO(newowner) || IS_SYSSAO(newowner))
+			if (ownerId != GetUserId())
 			{
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-						 errmsg("permission denied"),
-						 errdetail("syssso_role/syssao_role member cannot"
-									" be owner of relation")));	
+							errmsg("permission denied"),
+							errdetail("sysdba_role member can only alter relation of "
+									"itself")));
 			}
 		}
-	}
 
+		ReleaseSysCache(tuple);
+
+		foreach(lcmd, stmt->cmds)
+		{
+			AlterTableCmd *cmd = (AlterTableCmd *) lfirst(lcmd);
+
+			if(cmd->subtype == AT_ChangeOwner)
+			{
+				Oid newowner = get_rolespec_oid(cmd->newowner, false);
+
+				if (IS_SYSSSO(newowner) || IS_SYSSAO(newowner))
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("syssso_role/syssao_role member cannot"
+										" be owner of relation")));	
+				}
+
+				if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+				{
+					if (!IS_SYSDBA(newowner))
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+									errmsg("permission denied"),
+									errdetail("only sysdba_role member is allowed to own a "
+												"relation of another sysdba_role member")));
+					}
+				}
+
+			}
+		}
+
+	}
 	return true;
 }
 
@@ -359,6 +390,18 @@ alter_relation_rename_check(RenameStmt *stmt)
 					errmsg("permission denied"),
 					errdetail("cannot alter relation of syssso_role/syssao_role "
 								"member")));
+
+		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		{
+			if (relowner != GetUserId())
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("sysdba_role member can only alter relation of "
+									"itself")));
+			}
+		}
 		
 		ReleaseSysCache(tup);
 	}	
@@ -408,6 +451,17 @@ alter_relation_schema_check(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 								"member")));
 		}
 
+		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		{
+			if (relowner != GetUserId())
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("sysdba_role member can only alter relation of "
+									"itself")));
+			}
+		}
 
 		/* Get and lock schema OID and check its permissions. */
 		newrv = makeRangeVar(stmt->newschema,relname, -1);
@@ -468,6 +522,19 @@ bool drop_relation_check(DropStmt *stmt)
 						errdetail("cannot drop relation of syssso_role/syssao_role "
 									"member")));
 			}
+
+			if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+			{
+				if (relowner != GetUserId())
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+								errmsg("permission denied"),
+								errdetail("sysdba_role member can only drop relation of "
+										"itself")));
+				}
+			}
+
 			ReleaseSysCache(tup);
 		}
 
@@ -482,7 +549,7 @@ alter_sequence_check(AlterSeqStmt *stmt)
 {
 	Oid			relid;
 
-	relid = RangeVarGetRelid(stmt->sequence, NoLock, false);
+	relid = RangeVarGetRelid(stmt->sequence, NoLock, true);
 	/*
 	 * we only care the relation existed case,
 	 * leave non-exist case to original error check
@@ -502,8 +569,20 @@ alter_sequence_check(AlterSeqStmt *stmt)
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					errmsg("permission denied"),
-					errdetail("cannot alter sequence of syssso_role/syssao_role"
+					errdetail("cannot alter relation of syssso_role/syssao_role"
 								" member")));			
+		}
+
+		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		{
+			if (ownerId != GetUserId())
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("sysdba_role member can only alter relation of "
+									"itself")));
+			}
 		}
 
 		ReleaseSysCache(tuple);

@@ -126,3 +126,153 @@ drop schema sch_syssso_u2;
 \c template1 sysdba_u1
 drop database testdb;
 
+-- set restricted_dba to no
+
+-- setup before test start
+create database testdb;
+create user sysdba_u3 superuser createdb createrole;
+grant sysdba_role to sysdba_u3;
+
+\c testdb -
+create table test_create(id int, ts timestamptz);
+create schema sch_sysdba_u1 authorization sysdba_u1;
+create schema sch_sysdba_u2 authorization sysdba_u2;
+create schema sch_sysdba_u3 authorization sysdba_u3; 
+create schema sch_syssso_u1 authorization syssso_u1;
+create schema sch_syssso_u2 authorization syssso_u2;
+create schema sch_syssao_u1 authorization syssao_u1;
+create schema sch_u1 authorization u1;
+create schema sch_u2 authorization u2;
+
+grant create on schema sch_sysdba_u2 to sysdba_role;
+grant create on schema sch_syssso_u2 to sysdba_role;
+grant create on schema sch_u2 to sysdba_role;
+
+create view v1_dba_u2 as select * from test_create;
+create view v1_sso_u1 as select * from test_create;
+create view v1_sao_u1 as select * from test_create;
+create view v1_u1 as select * from test_create;
+
+alter view v1_dba_u2 owner to sysdba_u2;
+alter view v1_sso_u1 owner to syssso_u1;
+alter view v1_sao_u1 owner to syssao_u1;
+alter view v1_u1 owner to u1;
+
+alter database testdb set se_feature.mode to on;
+alter database testdb set se_feature.restricted_dba to on;
+set se_feature.restricted_dba to on;
+set se_feature.mode to on;
+
+-- For member of sysdba_role
+\c testdb sysdba_u1;
+
+---- CREATE VIEW
+------ pass
+create view v1_sysdba_u1 as select * from test_create;
+create view sch_sysdba_u1.v1_sysdba_u1 as select * from test_create;
+create view sch_sysdba_u2.v1_sysdba_u1 as select * from test_create;
+create view sch_syssso_u2.v1_sysdba_u1 as select * from test_create;
+create view sch_u2.v1_sysdba_u1 as select * from test_create;
+------ fail
+create view sch_sysdba_u3.v1_sysdba_u3 as select * from test_create;
+create view sch_syssso_u1.v1_syssso_u1 as select * from test_create;
+create view sch_syssao_u1.v1_syssao_u1 as select * from test_create;
+create view sch_u1.v1_u1 as select * from test_create;
+create view sch_non_exist.v1_non_exist as select * from test_create;
+
+
+---- ALTER VIEW RENAME
+------ pass
+begin;
+alter view v1_sysdba_u1 rename to v1_sysdba_u1_new;
+rollback;
+alter view if exists v1_non_exist rename to v1_non_exist_new;
+------ fail
+alter view v1_dba_u2 rename to v1_dba_u2_new;
+alter view v1_sso_u1 rename to v1_sso_u1_new;
+alter view v1_sao_u1 rename to v1_sao_u1_new;
+alter view v1_u1 rename to v1_u1_new;
+alter view v1_non_exist rename to v1_non_exist_new;
+
+---- ALTER VIEW
+------ pass
+alter view v1_sysdba_u1 alter column ts set default now();
+alter view if exists v1_non_exist alter column ts set default now();
+------ fail
+alter view v1_dba_u2 alter column ts set default now();
+alter view v1_sso_u1 alter column ts set default now();
+alter view v1_sao_u1 alter column ts set default now();
+alter view v1_u1 alter column ts set default now();
+alter view v1_non_exist alter column ts set default now();
+
+---- ALTER VIEW OWNER
+------ pass
+begin;
+alter view v1_sysdba_u1 owner to sysdba_u2;
+rollback;
+alter view if exists v1_non_exist owner to sysdba_u1;
+------ fail
+alter view v1_sysdba_u1 owner to syssso_u1;
+alter view v1_sysdba_u1 owner to syssao_u1;
+alter view v1_sysdba_u1 owner to u1;
+alter view v1_dba_u2 owner to sysdba_u1;
+alter view v1_sso_u1 owner to sysdba_u1;
+alter view v1_sao_u1 owner to u1;
+alter view v1_u1 owner to sysdba_u1;
+alter view v1_u1 owner to syssso_u1;
+alter view v1_u1 owner to syssao_u1;
+alter view v1_u1 owner to u2;
+alter view v1_non_exist owner to sysdba_u1;
+
+---- ALTER VIEW SCHEMA
+------ pass
+create view v1_test as select * from test_create;
+begin;
+alter view v1_test set schema sch_sysdba_u1;
+alter view sch_sysdba_u1.v1_test set schema sch_sysdba_u2;
+alter view sch_sysdba_u2.v1_test set schema sch_syssso_u2;
+alter view sch_syssso_u2.v1_test set schema sch_u2;
+alter view sch_u2.v1_test set schema public;
+rollback;
+------ fail
+alter view v1_test set schema sch_sysdba_u3;
+alter view v1_test set schema sch_syssso_u1;
+alter view v1_test set schema sch_syssao_u1;
+alter view v1_test set schema sch_u1;
+alter view v1_dba_u2 set schema sch_syssso_u1;
+alter view v1_dba_u2 owner to sch_syssao_u1;
+alter view v1_dba_u2 owner to sch_sysdba_u1;
+alter view v1_dba_u2 owner to sch_u1;
+alter view v1_u1 set schema sch_syssso_u1;
+alter view v1_u1 owner to sch_syssao_u1;
+alter view v1_u1 owner to sch_sysdba_u1;
+alter view v1_u1 owner to sch_u2;
+alter view v1_sso_u1 set schema sch_sysdba_u1;
+alter view v1_sso_u1 set schema sch_syssao_u1;
+alter view v1_sso_u1 set schema sch_u1;
+alter view v1_sao_u1 set schema sch_sysdba_u1;
+alter view v1_sao_u1 set schema sch_syssao_u1;
+alter view v1_sao_u1 set schema sch_u1;
+alter view v1_non_exist set schema sch_sysdba_u1;
+
+---- DROP VIEW
+------ pass
+drop view v1_test;
+drop view v1_sysdba_u1;
+drop view if exists v1_non_exist;
+------ fail
+drop view v1_sso_u1;
+drop view v1_sao_u1;
+drop view v1_dba_u2;
+drop view v1_u1;
+drop view v1_non_exist;
+
+-- Clean test object
+\c testdb syssso_u1
+set se_feature.mode to on;
+alter database testdb set se_feature.mode to off;
+alter database testdb set se_feature.restricted_dba to off;
+
+\c template1 sysdba_u1
+drop database testdb;
+drop user sysdba_u3;

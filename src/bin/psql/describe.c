@@ -4165,8 +4165,11 @@ describeRoles(const char *pattern, bool verbose, bool showSystem)
 		printTableAddCell(&cont, PQgetvalue(res, i, 0), false, false);
 
 		resetPQExpBuffer(&buf);
+		/* Begin - Bug#z4795 */
+		/* Bug#z4795 displaying "superuser" is not permitted. */
 		if (strcmp(PQgetvalue(res, i, 1), "t") == 0)
-			add_role_attribute(&buf, _("Superuser"));
+			add_role_attribute(&buf, _("Admin"));
+		/* End - Bug#z4795 */
 
 		if (strcmp(PQgetvalue(res, i, 2), "t") != 0)
 			add_role_attribute(&buf, _("No inheritance"));

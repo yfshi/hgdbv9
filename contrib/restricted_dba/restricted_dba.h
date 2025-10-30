@@ -70,6 +70,7 @@ extern bool create_role_check(ParseState *pstate, CreateRoleStmt *stmt);
 extern bool alter_role_set_check(AlterRoleSetStmt *stmt);
 extern bool drop_role_check(DropRoleStmt *stmt);
 extern bool rename_role_check(const char *oldname, const char *newname);
+extern void grant_sysdba_priv(Oid roleid, bool is_grant);
 
 /*alter.c*/
 extern bool rename_object_check(RenameStmt *stmt);
