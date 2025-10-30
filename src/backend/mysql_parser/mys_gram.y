@@ -22060,7 +22060,7 @@ makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 
 	/* make subselect targetlist */
 	if (schema)
-		rtname = psprintf("%s_%s", ailas[0], schema);
+		rtname = psprintf("%s_in_%s", ailas[0], schema);
 	else
 		rtname = pstrdup(ailas[0]);
 

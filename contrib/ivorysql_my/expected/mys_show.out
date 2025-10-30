@@ -580,33 +580,33 @@ create foreign table ft1 (
 	check (c3 between '1994-01-01'::date and '1994-01-31'::date)
 ) server s0 options (delimiter ',', quote '"', "be quoted" 'value');
 create table tab_part_create (a int) partition by list (a);
-show tables where Tables_public = 'tb';
- Tables_public 
----------------
+show tables where Tables_in_public = 'tb';
+ Tables_in_public 
+------------------
  tb
 (1 row)
 
-show full tables where Tables_public = 'tb1';
- Tables_public | Table_type 
----------------+------------
+show full tables where Tables_in_public = 'tb1';
+ Tables_in_public | Table_type 
+------------------+------------
 (0 rows)
 
-show full tables from public where Tables_public = 'logs';
- Tables_public | Table_type 
----------------+------------
- logs          | BASE TABLE
+show full tables from public where Tables_in_public = 'logs';
+ Tables_in_public | Table_type 
+------------------+------------
+ logs             | BASE TABLE
 (1 row)
 
-show full tables in public where Tables_public = 'ft1';
- Tables_public |  Table_type   
----------------+---------------
- ft1           | FOREIGN TABLE
+show full tables in public where Tables_in_public = 'ft1';
+ Tables_in_public |  Table_type   
+------------------+---------------
+ ft1              | FOREIGN TABLE
 (1 row)
 
-show full tables in public where Tables_public = 'tab_part_create';
-  Tables_public  | Table_type 
------------------+------------
- tab_part_create | BASE TABLE
+show full tables in public where Tables_in_public = 'tab_part_create';
+ Tables_in_public | Table_type 
+------------------+------------
+ tab_part_create  | BASE TABLE
 (1 row)
 
 drop table tb;
@@ -635,3 +635,178 @@ drop table tab_part_create;
 --drop  TRIGGER before_ins ON trig_tbl;
 --drop FUNCTION trig_func;
 --drop TABLE trig_tbl;
+--fix bug#Z5991
+CREATE TABLE IF NOT EXISTS test_table (
+     id SERIAL NOT NULL,
+     name VARCHAR(100) NOT NULL,
+     email VARCHAR(150),
+     department VARCHAR(50),
+     salary DECIMAL(10,2),
+     hire_date DATE,
+     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+     PRIMARY KEY (id, create_time),
+     UNIQUE (email, create_time)
+) PARTITION BY RANGE (create_time);
+CREATE INDEX IF NOT EXISTS idx_test_table_hire_date ON test_table(hire_date);
+CREATE INDEX IF NOT EXISTS idx_test_table_department ON test_table(department);
+CREATE INDEX IF NOT EXISTS idx_test_table_create_time ON test_table(create_time);
+CREATE TABLE IF NOT EXISTS test_table_p2024
+PARTITION OF test_table
+FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+CREATE TABLE IF NOT EXISTS test_table_p2025
+PARTITION OF test_table
+FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
+CREATE TABLE IF NOT EXISTS test_table_pdefault
+PARTITION OF test_table
+DEFAULT;
+SHOW INDEXES FROM test_table;
+   Table    | Non_unique |             Key_name             | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+----------------------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_table |          0 | test_table_email_create_time_key |            1 | email       | A         |             |          |        | YES  | btree      |         | 
+ test_table |          0 | test_table_email_create_time_key |            2 | create_time | A         |             |          |        | NO   | btree      |         | 
+ test_table |          1 | idx_test_table_hire_date         |            1 | hire_date   | A         |             |          |        | YES  | btree      |         | 
+ test_table |          1 | idx_test_table_department        |            1 | department  | A         |             |          |        | YES  | btree      |         | 
+ test_table |          1 | idx_test_table_create_time       |            1 | create_time | A         |             |          |        | NO   | btree      |         | 
+(5 rows)
+
+SHOW INDEXES FROM test_table_p2024;
+      Table       | Non_unique |                Key_name                | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------------+------------+----------------------------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_table_p2024 |          0 | test_table_p2024_pkey                  |            1 | id          | A         |             |          |        | NO   | btree      |         | 
+ test_table_p2024 |          0 | test_table_p2024_pkey                  |            2 | create_time | A         |             |          |        | NO   | btree      |         | 
+ test_table_p2024 |          0 | test_table_p2024_email_create_time_key |            1 | email       | A         |             |          |        | YES  | btree      |         | 
+ test_table_p2024 |          0 | test_table_p2024_email_create_time_key |            2 | create_time | A         |             |          |        | NO   | btree      |         | 
+ test_table_p2024 |          1 | test_table_p2024_hire_date_idx         |            1 | hire_date   | A         |             |          |        | YES  | btree      |         | 
+ test_table_p2024 |          1 | test_table_p2024_department_idx        |            1 | department  | A         |             |          |        | YES  | btree      |         | 
+ test_table_p2024 |          1 | test_table_p2024_create_time_idx       |            1 | create_time | A         |             |          |        | NO   | btree      |         | 
+(7 rows)
+
+SHOW INDEXES FROM test_table_p2025;
+      Table       | Non_unique |                Key_name                | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------------+------------+----------------------------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_table_p2025 |          0 | test_table_p2025_pkey                  |            1 | id          | A         |             |          |        | NO   | btree      |         | 
+ test_table_p2025 |          0 | test_table_p2025_pkey                  |            2 | create_time | A         |             |          |        | NO   | btree      |         | 
+ test_table_p2025 |          0 | test_table_p2025_email_create_time_key |            1 | email       | A         |             |          |        | YES  | btree      |         | 
+ test_table_p2025 |          0 | test_table_p2025_email_create_time_key |            2 | create_time | A         |             |          |        | NO   | btree      |         | 
+ test_table_p2025 |          1 | test_table_p2025_hire_date_idx         |            1 | hire_date   | A         |             |          |        | YES  | btree      |         | 
+ test_table_p2025 |          1 | test_table_p2025_department_idx        |            1 | department  | A         |             |          |        | YES  | btree      |         | 
+ test_table_p2025 |          1 | test_table_p2025_create_time_idx       |            1 | create_time | A         |             |          |        | NO   | btree      |         | 
+(7 rows)
+
+SHOW INDEXES FROM test_table_pdefault;
+        Table        | Non_unique |                 Key_name                  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+---------------------+------------+-------------------------------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_table_pdefault |          0 | test_table_pdefault_pkey                  |            1 | id          | A         |             |          |        | NO   | btree      |         | 
+ test_table_pdefault |          0 | test_table_pdefault_pkey                  |            2 | create_time | A         |             |          |        | NO   | btree      |         | 
+ test_table_pdefault |          0 | test_table_pdefault_email_create_time_key |            1 | email       | A         |             |          |        | YES  | btree      |         | 
+ test_table_pdefault |          0 | test_table_pdefault_email_create_time_key |            2 | create_time | A         |             |          |        | NO   | btree      |         | 
+ test_table_pdefault |          1 | test_table_pdefault_hire_date_idx         |            1 | hire_date   | A         |             |          |        | YES  | btree      |         | 
+ test_table_pdefault |          1 | test_table_pdefault_department_idx        |            1 | department  | A         |             |          |        | YES  | btree      |         | 
+ test_table_pdefault |          1 | test_table_pdefault_create_time_idx       |            1 | create_time | A         |             |          |        | NO   | btree      |         | 
+(7 rows)
+
+--fix bug#Z5983
+CREATE SCHEMA IF NOT EXISTS test_sche;
+CREATE TABLE test_sche.test_table(
+  id INT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  age TINYINT,
+  create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE VIEW test_sche.test_view AS SELECT * FROM test_sche.test_table;
+CREATE TEMPORARY TABLE test_temp (id INT);
+SHOW TABLES FROM test_sche;
+ Tables_in_test_sche 
+---------------------
+ test_table
+ test_view
+(2 rows)
+
+DROP VIEW test_sche.test_view;
+DROP TABLE test_sche.test_table;
+DROP SCHEMA test_sche;
+DROP TABLE test_temp;
+--fix bug#Z5979
+SET GLOBAL sql_mode = E'\\110\\145\\154\\154\\157'::bytea;
+ERROR:  Variable 'sql_mode' can't be set to the value of '\x48656c6c6f'
+show variables like 'sql_mode';
+ Variable_name |                                                                                        Value                                                                                        
+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+(1 row)
+
+--fix bug#Z5978
+SET GLOBAL time_zone = NULL;
+ERROR:  syntax error at or near "null"
+SHOW GLOBAL VARIABLES LIKE 'time_zone';
+ Variable_name | Value 
+---------------+-------
+(0 rows)
+
+--fix bug#Z5975
+CREATE SCHEMA IF NOT EXISTS test_sche;
+CREATE TABLE IF NOT EXISTS test_sche.test_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+SELECT *
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE table_name = 'test_table'
+  AND table_schema = 'test_sche';
+   table_catalog    | table_schema | table_name | column_name | ordinal_position |    column_default     | is_nullable |     data_type     | character_maximum_length | character_octet_length | numeric_precision | numeric_precision_radix | numeric_scale | datetime_precision | interval_type | interval_precision | character_set_catalog | character_set_schema | character_set_name | collation_catalog | collation_schema | collation_name | domain_catalog | domain_schema | domain_name |    udt_catalog     | udt_schema |   udt_name   | scope_catalog | scope_schema | scope_name | maximum_cardinality | dtd_identifier | is_self_referencing | is_identity | identity_generation | identity_start | identity_increment | identity_maximum | identity_minimum | identity_cycle | is_generated | generation_expression | is_updatable 
+--------------------+--------------+------------+-------------+------------------+-----------------------+-------------+-------------------+--------------------------+------------------------+-------------------+-------------------------+---------------+--------------------+---------------+--------------------+-----------------------+----------------------+--------------------+-------------------+------------------+----------------+----------------+---------------+-------------+--------------------+------------+--------------+---------------+--------------+------------+---------------------+----------------+---------------------+-------------+---------------------+----------------+--------------------+------------------+------------------+----------------+--------------+-----------------------+--------------
+ contrib_regression | test_sche    | test_table | id          |                1 |                       | NO          | integer           |                          |                        |                32 |                       2 |             0 |                    |               |                    |                       |                      |                    |                   |                  |                |                |               |             | contrib_regression | pg_catalog | int4         |               |              |            |                     | 1              | NO                  | NO          |                     |                |                    |                  |                  | NO             | NEVER        |                       | YES
+ contrib_regression | test_sche    | test_table | name        |                2 |                       | NO          | character varying |                      100 |                    400 |                   |                         |               |                    |               |                    |                       |                      |                    |                   |                  |                |                |               |             | contrib_regression | pg_catalog | varchar      |               |              |            |                     | 2              | NO                  | NO          |                     |                |                    |                  |                  | NO             | NEVER        |                       | YES
+ contrib_regression | test_sche    | test_table | email       |                3 |                       | YES         | character varying |                      150 |                    600 |                   |                         |               |                    |               |                    |                       |                      |                    |                   |                  |                |                |               |             | contrib_regression | pg_catalog | varchar      |               |              |            |                     | 3              | NO                  | NO          |                     |                |                    |                  |                  | NO             | NEVER        |                       | YES
+ contrib_regression | test_sche    | test_table | department  |                4 |                       | YES         | character varying |                       50 |                    200 |                   |                         |               |                    |               |                    |                       |                      |                    |                   |                  |                |                |               |             | contrib_regression | pg_catalog | varchar      |               |              |            |                     | 4              | NO                  | NO          |                     |                |                    |                  |                  | NO             | NEVER        |                       | YES
+ contrib_regression | test_sche    | test_table | salary      |                5 |                       | YES         | numeric           |                          |                        |                10 |                      10 |             2 |                    |               |                    |                       |                      |                    |                   |                  |                |                |               |             | contrib_regression | pg_catalog | numeric      |               |              |            |                     | 5              | NO                  | NO          |                     |                |                    |                  |                  | NO             | NEVER        |                       | YES
+ contrib_regression | test_sche    | test_table | hire_date   |                6 |                       | YES         | date              |                          |                        |                   |                         |               |                    |               |                    |                       |                      |                    |                   |                  |                |                |               |             | contrib_regression | ivymy      | mysdate      |               |              |            |                     | 6              | NO                  | NO          |                     |                |                    |                  |                  | NO             | NEVER        |                       | YES
+ contrib_regression | test_sche    | test_table | create_time |                7 | "current_timestamp"() | YES         | timestamp         |                          |                        |                   |                         |               |                    |               |                    |                       |                      |                    |                   |                  |                |                |               |             | contrib_regression | ivymy      | mystimestamp |               |              |            |                     | 7              | NO                  | NO          |                     |                |                    |                  |                  | NO             | NEVER        |                       | YES
+(7 rows)
+
+DROP TABLE test_sche.test_table;
+DROP SCHEMA test_sche;
+--fix bug#Z5974
+CREATE TABLE test_table4 (
+    id SERIAL PRIMARY KEY,
+    btree_col INT NOT NULL,
+    hash_col VARCHAR(50) NOT NULL,
+    data DATE,
+    text_col TEXT,
+    jsonb_col JSONB,
+    array_col TEXT[],
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_btree ON test_table4 USING BTREE(btree_col);
+CREATE INDEX idx_hash ON test_table4 USING HASH(hash_col);
+CREATE INDEX idx_gist_text ON test_table4 USING GiST(to_tsvector('english', text_col));
+CREATE INDEX idx_gin_jsonb ON test_table4 USING GIN(jsonb_col);
+CREATE INDEX idx_brin_date ON test_table4 USING BRIN(data);
+CREATE INDEX idx_spgist_text ON test_table4 USING SPGiST(text_col);
+SHOW INDEXES FROM test_table4;
+    Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_table4 |          0 | test_table4_pkey |            1 | id          | A         |             |          |        | NO   | btree      |         | 
+ test_table4 |          1 | idx_btree        |            1 | btree_col   | A         |             |          |        | NO   | btree      |         | 
+ test_table4 |          1 | idx_hash         |            1 | hash_col    | A         |             |          |        | NO   | hash       |         | 
+ test_table4 |          1 | idx_gist_text    |            1 | text_col    | A         |             |          |        | YES  | gist       |         | 
+ test_table4 |          1 | idx_gin_jsonb    |            1 | jsonb_col   | A         |             |          |        | YES  | gin        |         | 
+ test_table4 |          1 | idx_brin_date    |            1 | data        | A         |             |          |        | YES  | brin       |         | 
+ test_table4 |          1 | idx_spgist_text  |            1 | text_col    | A         |             |          |        | YES  | spgist     |         | 
+(7 rows)
+
+DROP TABLE test_table4;
+--fix bug#Z5969
+set session max_index_keys=NULL;
+ERROR:  syntax error at or near "null"
+show variables like 'max_index_keys';
+ Variable_name  | Value 
+----------------+-------
+ max_index_keys | 32
+(1 row)
+

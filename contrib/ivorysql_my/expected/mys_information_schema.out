@@ -284,7 +284,8 @@ ORDER BY index_name, seq_in_index;
 -------------------+------------+-----------------------+--------------+-------------+-----------+-------------+----------+------------
  test_schema_stats | stats_tbl  | idx_stats_code_prefix |            1 |             | A         |             |       10 | btree
  test_schema_stats | stats_tbl  | idx_stats_name        |            1 | name        | A         |             |          | btree
-(2 rows)
+ test_schema_stats | stats_tbl  | stats_tbl_pkey        |            1 | id          | A         |             |          | btree
+(3 rows)
 
 SET ivorysql.enable_mysql_information_schema TO off;
 ------------------------------------------------------------

@@ -266,7 +266,11 @@ Oid mysql_get_namespace_oid(const char *nspname)
 
 	if (compatible_db == MYS_PARSER && myenable_case_switch == true)
 	{
-		if (lower_case_table_names == 1 || lower_case_table_names == 2)
+		/* BUG#5975, If the schema is information_schema, and MySQL
+		 * case sensitivity is enabled, convert it entirely to lowercase.
+		 */
+		if ((lower_case_table_names == 1 || lower_case_table_names == 2) ||
+			pg_strcasecmp(nspname, "information_schema") == 0)		/* BUG#5975 */
 		{
 			casenspname = downcase_truncate_identifier(pstrdup(nspname), 
 														strlen(pstrdup(nspname)), true);

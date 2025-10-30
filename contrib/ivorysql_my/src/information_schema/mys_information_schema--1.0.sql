@@ -71,7 +71,9 @@ FROM pg_catalog.pg_class c
 	LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
 	LEFT JOIN pg_catalog.pg_stat_user_tables us ON c.oid = us.relid
 WHERE
-	c.relkind IN ('r', 'v', 'm', 'p', 'f');                              -- Tables, views, materialized views, partitioned tables, foreign tables
+	c.relkind IN ('r', 'v', 'm', 'p', 'f')                              -- Tables, views, materialized views, partitioned tables, foreign tables
+ORDER BY c.oid;		-- bug#Z5983
+
 
 GRANT SELECT ON mys_information_schema.tables TO PUBLIC;
 
@@ -1147,6 +1149,14 @@ LIMIT 0;
 
 GRANT SELECT ON mys_information_schema.tablespaces TO PUBLIC;
 
+-- Begin - BUG#ZZ5974
+CREATE FUNCTION mys_information_schema.mys_get_gistindex_column(indexoid Oid)
+RETURNS text
+AS 'MODULE_PATHNAME','mys_get_gistindex_column'
+LANGUAGE C
+PARALLEL SAFE STRICT;
+-- End - BUG#ZZ5974
+
 --
 -- View: mys_information_schema.statistics
 --
@@ -1160,7 +1170,17 @@ SELECT
 	n.nspname::varchar(64) AS "INDEX_SCHEMA",							  -- Schema of the index, usually same as table schema
 	ci.relname::varchar(64) AS "INDEX_NAME",							  -- Index name
 	k.n AS "SEQ_IN_INDEX",												  -- Column sequence number within the index (starting from 1)
-	a.attname::varchar(64) AS "COLUMN_NAME",							  -- Column name in the index; NULL if expression index
+	-- Begin - BUG#ZZ5974
+	CASE WHEN a.attname IS NOT NULL THEN
+		a.attname::varchar(64)							  -- Column name in the index; NULL if expression index
+	ELSE
+		CASE WHEN am.amname = 'gist' THEN
+			mys_information_schema.mys_get_gistindex_column(i.indexrelid)
+		ELSE
+			a.attname::varchar(64)
+		END
+	END AS "COLUMN_NAME",
+	-- End - BUG#ZZ5974
 	CASE (k.opt & 1) WHEN 1 THEN 'D' ELSE 'A' END::varchar(1) AS "COLLATION",
 	s.n_distinct::bigint(21) AS "CARDINALITY",							  -- Estimated cardinality (number of distinct values) from pg_stats.n_distinct
 
@@ -1195,7 +1215,7 @@ LEFT JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum	-- Index 
 LEFT JOIN pg_stats s ON s.schemaname = n.nspname AND s.tablename = t.relname AND s.attname = a.attname	-- Statistics for cardinality
 
 WHERE
-	t.relkind = 'r' 									  -- Only ordinary tables
+	t.relkind = 'r' OR t.relkind = 'p'					  -- Only ordinary tables --BUG#Z5991,add OR t.relkind = 'p'
 	AND NOT i.indisprimary; 							  -- Exclude primary key indexes (MySQL does not show these in statistics)
 
 GRANT SELECT ON mys_information_schema.statistics TO PUBLIC;
