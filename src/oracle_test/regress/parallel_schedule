@@ -262,3 +262,7 @@ test: ora_statement_level_rollback
 #/* Begin - ReqID:SRS-SQL-TRIGGER */
 test: ora_trigger
 #/* End - ReqID:SRS-SQL-TRIGGER */
+
+#/* Begin - ReqID: RQ-SQL-SYSVIEW */
+test: ora_sysview
+#/* End - ReqID: RQ-SQL-SYSVIEW */

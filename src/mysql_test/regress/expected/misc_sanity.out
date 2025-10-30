@@ -61,7 +61,7 @@ for relnm, reloid, shared in
     and relkind = 'r' and oid < 16384 order by 1
 loop
   execute 'select min(oid) from ' || relnm into lowoid;
-  continue when lowoid is null or lowoid >= 16384;
+  continue when lowoid is null or lowoid::text >= get_macro_value('FirstNormalObjectId');
   if shared then
     pinned := exists(select 1 from pg_shdepend
                      where refclassid = reloid and refobjid = lowoid
@@ -78,7 +78,11 @@ end loop;
 end$$;
 NOTICE:  pg_attrdef contains unpinned initdb-created object(s)
 NOTICE:  pg_database contains unpinned initdb-created object(s)
+NOTICE:  pg_enum contains unpinned initdb-created object(s)
+NOTICE:  pg_event_trigger contains unpinned initdb-created object(s)
 NOTICE:  pg_extension contains unpinned initdb-created object(s)
+NOTICE:  pg_foreign_data_wrapper contains unpinned initdb-created object(s)
+NOTICE:  pg_foreign_server contains unpinned initdb-created object(s)
 NOTICE:  pg_rewrite contains unpinned initdb-created object(s)
 NOTICE:  pg_tablespace contains unpinned initdb-created object(s)
 NOTICE:  pg_trigger contains unpinned initdb-created object(s)

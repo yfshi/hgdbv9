@@ -63,7 +63,7 @@ for relnm, reloid, shared in
     and relkind = 'r' and oid < 16384 order by 1
 loop
   execute 'select min(oid) from ' || relnm into lowoid;
-  continue when lowoid is null or lowoid >= 16384;
+  continue when lowoid is null or lowoid::text >= get_macro_value('FirstNormalObjectId');
   if shared then
     pinned := exists(select 1 from pg_shdepend
                      where refclassid = reloid and refobjid = lowoid

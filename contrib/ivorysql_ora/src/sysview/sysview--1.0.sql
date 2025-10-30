@@ -2595,3 +2595,8945 @@ CREATE OR REPLACE VIEW sys.dba_triggers AS
 
 GRANT SELECT ON sys.dba_triggers TO PUBLIC;
 /* End - ReqID:SRS-SQL-TRIGGER */
+
+/* Begin - ReqID: RQ-SQL-SYSVIEW */
+/* *******************************************************************************************
+                                          XXX_TABLES
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.TABLES_INTERNAL AS
+    SELECT
+        c.oid AS oid,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
+        SYS.ORA_CASE_TRANS(
+            COALESCE(
+                ((SELECT spcname FROM pg_tablespace WHERE oid = c.reltablespace)::VARCHAR2),
+                'pg_default')
+        )::varchar2(30) AS tablespace_name,
+        NULL::varchar2(128) AS cluster_name,
+        NULL::varchar2(128) AS iot_name,
+        'VALID'::varchar2(8) AS status,
+        COALESCE(
+            (100 - (SELECT split_part(opt, '=', 2)::integer
+             FROM unnest(c.reloptions) AS opt
+             WHERE split_part(opt, '=', 1) = 'fillfactor')),
+            0
+        )::number AS pct_free,
+        NULL::number AS pct_used,
+        NULL::number AS ini_trans,
+        NULL::number AS max_trans,
+        NULL::number AS initial_extent,
+        NULL::number AS next_extent,
+        NULL::number AS min_extents,
+        NULL::number AS max_extents,
+        NULL::number AS pct_increase,
+        NULL::number AS freelists,
+        NULL::number AS freelist_groups,
+        CASE
+            WHEN c.relpersistence = 'p' THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS logging,
+        'N'::varchar2(1) AS backed_up,
+        CASE
+            WHEN c.reltuples > -1 THEN c.reltuples
+            ELSE NULL
+        END::number AS num_rows,
+        CASE
+            WHEN c.relpages > -1 THEN c.relpages
+            ELSE NULL
+        END::number AS blocks,
+        NULL::number AS empty_blocks,
+        NULL::number AS avg_space,
+        NULL::number AS chain_cnt,
+        (SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = c.oid LIMIT 1)::number AS avg_row_len,
+        NULL::number AS avg_space_freelist_blocks,
+        NULL::number AS num_freelist_blocks,
+        NULL::varchar2(10) AS degree,
+        NULL::varchar2(10) AS instances,
+        NULL::varchar2(5) AS cache,
+        'ENABLED'::varchar2(8) AS table_lock,
+        NULL::number AS sample_size,
+        TO_CHAR((GREATEST(
+                pg_stat_get_last_analyze_time(c.oid),
+                pg_stat_get_last_autoanalyze_time(c.oid)
+        )), current_setting('nls_date_format'))::date AS last_analyzed,
+        CASE
+            WHEN c.relkind = 'p' THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS partitioned,
+        NULL::varchar2(12) AS iot_type,
+        CASE
+            WHEN c.relpersistence IN ('t', 'g') THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS secondary,
+        'NO'::varchar2(3) AS nested,
+        NULL::varchar2(7) AS buffer_pool,
+        NULL::varchar2(7) AS flash_cache,
+        NULL::varchar2(7) AS cell_flash_cache,
+        'ENABLED'::varchar2(8) AS row_movement,
+        'YES'::varchar2(3) AS global_stats,
+        'NO'::varchar2(3) AS user_stats,
+        CASE
+            WHEN c.relpersistence IN ('t', 'g') THEN
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                    FROM unnest(c.reloptions) AS op
+                                WHERE
+                                    (regexp_match(op, 'on_commit_delete_rows=true') IS NOT NULL)
+                                    OR (regexp_match(op, 'on_commit_drop=true') IS NOT NULL))
+                        THEN 'SYS$TRANSACTION'
+                    ELSE 'SYS$SESSION'
+                END
+            ELSE NULL
+        END::varchar2(15) AS duration,
+        CASE
+            WHEN current_setting('zero_damaged_pages') = 'off' THEN 'DISABLED'
+            ELSE 'ENABLED'
+        END::varchar2(8) AS skip_corrupt,
+        NULL::varchar2(3) AS monitoring,
+        NULL::varchar2(128) AS cluster_owner,
+        'DISABLED'::varchar2(8) AS dependencies,
+        'DISABLED'::varchar2(8) AS compression,
+        NULL::varchar2(30) AS compress_for,
+        'NO'::varchar2(3) AS dropped,
+        NULL::varchar2(3) AS read_only,
+        NULL::varchar2(3) AS segment_created,
+        NULL::varchar2(7) AS result_cache,
+        'NO'::varchar2(3) AS clustering,
+        NULL::varchar2(23) AS activity_tracking,
+        NULL::varchar2(25) AS dml_timestamp,
+        CASE
+           WHEN EXISTS (select 1 from pg_attribute where attrelid = c.oid and attidentity IN ('a', 'd', 'n', 'i', 'o')) THEN 'YES'
+           ELSE 'NO'
+        END::varchar2(3) AS has_identity,
+        'NO'::varchar2(3) AS container_data,
+        'DISABLED'::varchar2(8) AS inmemory,
+        NULL::varchar2(8) AS inmemory_priority,
+        NULL::varchar2(15) AS inmemory_distribute,
+        NULL::varchar2(17) AS inmemory_compression,
+        NULL::varchar2(13) AS inmemory_duplicate,
+        UPPER((SELECT collname FROM pg_collation WHERE oid = (obj.option->>'collation')))::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS externally_sharded,
+        'N'::varchar2(1) AS externally_duplicated,
+        CASE
+            WHEN c.relkind = 'f' THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS external,
+        'NO'::varchar2(3) AS hybrid,
+        NULL::varchar2(24) AS cellmemory,
+        'NO'::varchar2(3) AS containers_default,
+        'NO'::varchar2(3) AS container_map,
+        'NO'::varchar2(3) AS extended_data_link,
+        NULL::varchar2(3) AS extended_data_link_map,
+        NULL::varchar2(12) AS inmemory_service,
+        NULL::varchar2(1000) AS inmemory_service_name,
+        'NO'::varchar2(3) AS container_map_object,
+        'DISABLED'::varchar2(8) AS memoptimize_read,
+        NULL::varchar2(8) AS memoptimize_write,
+        'NO'::varchar2(3) AS has_sensitive_column,
+        'NO'::varchar2(3) AS admit_null,
+        'YES'::varchar2(3) AS data_link_dml_enabled,
+        CASE
+            WHEN EXISTS (SELECT 1 FROM pg_subscription_rel WHERE srrelid = c.oid)
+                OR EXISTS (SELECT 1 FROM pg_publication_rel WHERE prrelid = c.oid) THEN 'ENABLED'
+            ELSE 'DISABLED'
+        END::varchar2(8) AS logical_relication
+    FROM
+        pg_class c
+    LEFT JOIN
+        pg_object obj ON c.oid = obj.obj_oid
+    WHERE
+        c.relkind IN ('r', 'p', 'f')
+        AND c.oid NOT IN (SELECT rcyrelid FROM pg_recyclebin)
+        AND c.oid NOT IN (SELECT inhrelid FROM pg_inherits);
+
+CREATE OR REPLACE VIEW SYS.DBA_TABLES AS
+    SELECT
+        owner,
+        table_name,
+        tablespace_name,
+        cluster_name,
+        iot_name,
+        status,
+        pct_free,
+        pct_used,
+        ini_trans,
+        max_trans,
+        initial_extent,
+        next_extent,
+        min_extents,
+        max_extents,
+        pct_increase,
+        freelists,
+        freelist_groups,
+        logging,
+        backed_up,
+        num_rows,
+        blocks,
+        empty_blocks,
+        avg_space,
+        chain_cnt,
+        avg_row_len,
+        avg_space_freelist_blocks,
+        num_freelist_blocks,
+        degree,
+        instances,
+        cache,
+        table_lock,
+        sample_size,
+        last_analyzed,
+        partitioned,
+        iot_type,
+        temporary,
+        secondary,
+        nested,
+        buffer_pool,
+        flash_cache,
+        cell_flash_cache,
+        row_movement,
+        global_stats,
+        user_stats,
+        duration,
+        skip_corrupt,
+        monitoring,
+        cluster_owner,
+        dependencies,
+        compression,
+        compress_for,
+        dropped,
+        read_only,
+        segment_created,
+        result_cache,
+        clustering,
+        activity_tracking,
+        dml_timestamp,
+        has_identity,
+        container_data,
+        inmemory,
+        inmemory_priority,
+        inmemory_distribute,
+        inmemory_compression,
+        inmemory_duplicate,
+        default_collation,
+        duplicated,
+        sharded,
+        externally_sharded,
+        externally_duplicated,
+        external,
+        hybrid,
+        cellmemory,
+        containers_default,
+        container_map,
+        extended_data_link,
+        extended_data_link_map,
+        inmemory_service,
+        inmemory_service_name,
+        container_map_object,
+        memoptimize_read,
+        memoptimize_write,
+        has_sensitive_column,
+        admit_null,
+        data_link_dml_enabled,
+        logical_relication
+    FROM
+        TABLES_INTERNAL;
+GRANT SELECT ON SYS.DBA_TABLES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_TABLES AS
+    SELECT
+        owner,
+        table_name,
+        tablespace_name,
+        cluster_name,
+        iot_name,
+        status,
+        pct_free,
+        pct_used,
+        ini_trans,
+        max_trans,
+        initial_extent,
+        next_extent,
+        min_extents,
+        max_extents,
+        pct_increase,
+        freelists,
+        freelist_groups,
+        logging,
+        backed_up,
+        num_rows,
+        blocks,
+        empty_blocks,
+        avg_space,
+        chain_cnt,
+        avg_row_len,
+        avg_space_freelist_blocks,
+        num_freelist_blocks,
+        degree,
+        instances,
+        cache,
+        table_lock,
+        sample_size,
+        last_analyzed,
+        partitioned,
+        iot_type,
+        temporary,
+        secondary,
+        nested,
+        buffer_pool,
+        flash_cache,
+        cell_flash_cache,
+        row_movement,
+        global_stats,
+        user_stats,
+        duration,
+        skip_corrupt,
+        monitoring,
+        cluster_owner,
+        dependencies,
+        compression,
+        compress_for,
+        dropped,
+        read_only,
+        segment_created,
+        result_cache,
+        clustering,
+        activity_tracking,
+        dml_timestamp,
+        has_identity,
+        container_data,
+        inmemory,
+        inmemory_priority,
+        inmemory_distribute,
+        inmemory_compression,
+        inmemory_duplicate,
+        default_collation,
+        duplicated,
+        sharded,
+        externally_sharded,
+        externally_duplicated,
+        external,
+        hybrid,
+        cellmemory,
+        containers_default,
+        container_map,
+        extended_data_link,
+        extended_data_link_map,
+        inmemory_service,
+        inmemory_service_name,
+        container_map_object,
+        memoptimize_read,
+        memoptimize_write,
+        has_sensitive_column,
+        admit_null,
+        data_link_dml_enabled,
+        logical_relication
+    FROM
+        TABLES_INTERNAL
+    WHERE (
+        HAS_TABLE_PRIVILEGE(oid, 'SELECT')
+        OR HAS_TABLE_PRIVILEGE(oid,'INSERT')
+        OR HAS_TABLE_PRIVILEGE(oid, 'UPDATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'DELETE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRUNCATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRIGGER')
+        OR HAS_TABLE_PRIVILEGE(oid, 'REFERENCES')
+    );
+GRANT SELECT ON SYS.ALL_TABLES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_TABLES AS
+    SELECT
+        table_name,
+        tablespace_name,
+        cluster_name,
+        iot_name,
+        status,
+        pct_free,
+        pct_used,
+        ini_trans,
+        max_trans,
+        initial_extent,
+        next_extent,
+        min_extents,
+        max_extents,
+        pct_increase,
+        freelists,
+        freelist_groups,
+        logging,
+        backed_up,
+        num_rows,
+        blocks,
+        empty_blocks,
+        avg_space,
+        chain_cnt,
+        avg_row_len,
+        avg_space_freelist_blocks,
+        num_freelist_blocks,
+        degree,
+        instances,
+        cache,
+        table_lock,
+        sample_size,
+        last_analyzed,
+        partitioned,
+        iot_type,
+        temporary,
+        secondary,
+        nested,
+        buffer_pool,
+        flash_cache,
+        cell_flash_cache,
+        row_movement,
+        global_stats,
+        user_stats,
+        duration,
+        skip_corrupt,
+        monitoring,
+        cluster_owner,
+        dependencies,
+        compression,
+        compress_for,
+        dropped,
+        read_only,
+        segment_created,
+        result_cache,
+        clustering,
+        activity_tracking,
+        dml_timestamp,
+        has_identity,
+        container_data,
+        inmemory,
+        inmemory_priority,
+        inmemory_distribute,
+        inmemory_compression,
+        inmemory_duplicate,
+        default_collation,
+        duplicated,
+        sharded,
+        externally_sharded,
+        externally_duplicated,
+        external,
+        hybrid,
+        cellmemory,
+        containers_default,
+        container_map,
+        extended_data_link,
+        extended_data_link_map,
+        inmemory_service,
+        inmemory_service_name,
+        container_map_object,
+        memoptimize_read,
+        memoptimize_write,
+        has_sensitive_column,
+        admit_null,
+        data_link_dml_enabled,
+        logical_relication
+    FROM
+        TABLES_INTERNAL
+    WHERE
+        owner::regrole = current_user::regrole;
+GRANT SELECT ON SYS.USER_TABLES TO PUBLIC;
+
+/* *******************************************************************************************
+                                         XXX_TAB_COLS
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.TAB_COLS_INTERNAL AS
+    SELECT
+        c.oid AS oid,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+        SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
+        SYS.ORA_CASE_TRANS(a.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
+        SYS.ORA_CASE_TRANS(t.typname::VARCHAR2)::VARCHAR2(128) AS data_type,
+        NULL::VARCHAR2(3) AS data_type_mod,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(t.typowner)::VARCHAR2)::VARCHAR2(128) AS data_type_owner,
+        CASE
+            WHEN a.attlen = '-1'::integer THEN
+                CASE UPPER(t.typname::text)
+                    WHEN 'BIT'::text THEN
+                        CASE a.atttypmod >> 16
+                            WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                            ELSE 0
+                        END
+                    WHEN 'BIT VARYING'::text THEN
+                        CASE a.atttypmod >> 16
+                            WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                            ELSE 0
+                        END
+                    WHEN 'TIMETZ'::text THEN
+                        CASE a.atttypmod >> 16
+                            WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                            ELSE 0
+                        END
+                    WHEN 'TIME'::text THEN
+                        CASE a.atttypmod >> 16
+                            WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                            ELSE 0
+                        END
+                    WHEN 'TIMESTAMPTZ'::text THEN
+                        CASE a.atttypmod >> 16
+                            WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                            ELSE 0
+                        END
+                    WHEN 'TIMESTAMP'::text THEN
+                        CASE a.atttypmod >> 16
+                            WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                            ELSE 0
+                        END
+                    WHEN 'INTERVAL'::text THEN
+                        CASE a.atttypmod >> 16
+                            WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                            ELSE 0
+                        END
+                    WHEN 'VARBIT'::text THEN
+                        CASE a.atttypmod >> 16
+                            WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                            ELSE 0
+                        END
+                    WHEN 'VARCHAR'::text THEN
+                        CASE a.atttypmod
+                            WHEN '-1'::integer THEN NULL::integer
+                            ELSE abs(a.atttypmod) - 4
+                        END
+                    WHEN 'BPCHAR'::text THEN
+                        CASE a.atttypmod
+                            WHEN '-1'::integer THEN NULL::integer
+                            ELSE abs(a.atttypmod) - 4
+                        END
+                    WHEN 'NUMBER'::text THEN 22
+					WHEN 'ORAVARCHARCHAR'::text THEN
+						CASE a.atttypmod
+							WHEN '-1'::integer THEN NULL::integer
+							ELSE (abs(a.atttypmod) - 4) * 4
+						END
+					WHEN 'ORAVARCHARBYTE':: text THEN
+						CASE a.atttypmod
+							WHEN '-1'::integer THEN NULL::integer
+							ELSE (abs(a.atttypmod) - 4) * 4
+						END
+					WHEN 'ORACHARBYTE'::text THEN
+						CASE a.atttypmod
+							WHEN '-1'::integer THEN NULL::integer
+							ELSE (abs(a.atttypmod) - 4) * 4
+						END
+                    ELSE
+                        CASE a.atttypmod >> 16
+                            WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16) - 4
+                            ELSE 0
+                        END
+                END
+            ELSE a.attlen::integer
+        END::number AS data_length,
+        CASE
+            CASE UPPER(t.typname::text)
+                WHEN 'BPCHAR'::text THEN 'CHAR'::text
+                ELSE UPPER(t.typname::text)
+            END::character varying(106 byte)
+            WHEN 'NUMERIC'::text THEN
+                CASE
+                    WHEN a.atttypmod = '-1'::integer THEN 38
+                    ELSE ((a.atttypmod - 4) >> 16) & 65535
+                END
+            WHEN 'FLOAT4'::text THEN 7
+            WHEN 'FLOAT8'::text THEN 15
+            WHEN 'NUMBER'::text THEN
+                CASE
+                    WHEN a.atttypmod = '-1'::integer THEN 38
+                    ELSE ((a.atttypmod - 4) >> 16) & 65535
+                END
+            ELSE NULL::integer
+        END::number AS data_precision,
+        CASE
+            WHEN UPPER(t.typname) IN ('NUMERIC', 'DECIMAL') THEN a.atttypmod & 65535
+            ELSE NULL
+        END::number AS data_scale,
+        CASE
+            WHEN a.attnotnull THEN 'N'
+            ELSE 'Y'
+        END::varchar2(1) AS nullable,
+        a.attnum::number AS column_id,
+        CASE
+            WHEN d.adbin IS NOT NULL THEN
+                length(
+                    trim(
+                        BOTH '''' FROM
+                        CASE
+                            WHEN position('::' IN pg_get_expr(d.adbin, d.adrelid)) > 0 THEN
+                                substring(
+                                    pg_get_expr(d.adbin, d.adrelid)
+                                    FROM 1
+                                    FOR position('::' IN pg_get_expr(d.adbin, d.adrelid)) - 1
+                                )
+                            ELSE
+                                pg_get_expr(d.adbin, d.adrelid)
+                        END
+                    )
+                )
+            ELSE NULL
+        END::number AS default_length,
+        CASE
+            WHEN d.adbin IS NOT NULL THEN
+                trim(
+                        BOTH '''' FROM
+                        CASE
+                            WHEN position('::' IN pg_get_expr(d.adbin, d.adrelid)) > 0 THEN
+                                substring(
+                                    pg_get_expr(d.adbin, d.adrelid)
+                                    FROM 1
+                                    FOR position('::' IN pg_get_expr(d.adbin, d.adrelid)) - 1
+                                )
+                            ELSE
+                                pg_get_expr(d.adbin, d.adrelid)
+                        END
+                    )
+            ELSE NULL
+        END::long AS data_default,
+        NULL::number AS num_distinct,
+        NULL::raw(1000) AS low_value,
+        NULL::raw(1000) AS high_value,
+        NULL::number AS density,
+        CASE
+            WHEN s.stanullfrac IS NOT NULL AND c.reltuples > 0 THEN round(s.stanullfrac * c.reltuples)
+            ELSE NULL
+        END::number AS num_nulls,
+        NULL::number AS num_buckets,
+        TO_CHAR((GREATEST(
+                pg_stat_get_last_analyze_time(c.oid),
+                pg_stat_get_last_autoanalyze_time(c.oid)
+        )), current_setting('nls_date_format'))::date AS last_analyzed,
+        NULL::number AS sample_size,
+        current_setting('server_encoding')::varchar2(44) AS character_set_name,
+        CASE UPPER(t.typname::text)
+            WHEN 'BIT'::text THEN
+                CASE a.atttypmod >> 16
+                    WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                    ELSE 0
+                END
+            WHEN 'BIT VARYING'::text THEN
+                CASE a.atttypmod >> 16
+                    WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                    ELSE 0
+                END
+            WHEN 'TIMETZ'::text THEN
+                CASE a.atttypmod >> 16
+                    WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                    ELSE 0
+                END
+            WHEN 'TIME'::text THEN
+                CASE a.atttypmod >> 16
+                    WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                    ELSE 0
+                END
+            WHEN 'TIMESTAMPTZ'::text THEN
+                CASE a.atttypmod >> 16
+                    WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                    ELSE 0
+                END
+            WHEN 'TIMESTAMP'::text THEN
+                CASE a.atttypmod >> 16
+                    WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                    ELSE 0
+                END
+            WHEN 'INTERVAL'::text THEN
+                CASE a.atttypmod >> 16
+                    WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                    ELSE 0
+                END
+            WHEN 'VARBIT'::text THEN
+                CASE a.atttypmod >> 16
+                    WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16)
+                    ELSE 0
+                END
+            WHEN 'VARCHAR'::text THEN
+                CASE a.atttypmod
+                    WHEN '-1'::integer THEN NULL::integer
+                    ELSE abs(a.atttypmod) - 4
+                END
+            WHEN 'BPCHAR'::text THEN
+                CASE a.atttypmod
+                    WHEN '-1'::integer THEN NULL::integer
+                    ELSE abs(a.atttypmod) - 4
+                END
+            WHEN 'NUMBER'::text THEN
+                CASE a.atttypmod
+                    WHEN '-1'::integer THEN NULL::integer
+                    ELSE (a.atttypmod - 4) >> 16
+                END
+            ELSE
+                CASE a.atttypmod >> 16
+                    WHEN 0 THEN a.atttypmod - ((a.atttypmod >> 16) << 16) - 4
+                    ELSE 0
+                END
+        END::number AS char_col_decl_length,
+        'YES'::varchar(3) AS global_stats,
+        'NO'::varchar(3) AS user_stats,
+        s.stawidth::number AS avg_col_len,
+        CASE UPPER(t.typname::text)
+            WHEN 'VARCHAR'::text THEN
+                CASE a.atttypmod
+                    WHEN '-1'::integer THEN NULL::integer
+                    ELSE abs(a.atttypmod) - 4
+                END
+            WHEN 'BPCHAR'::text THEN
+                CASE a.atttypmod
+                    WHEN '-1'::integer THEN NULL::integer
+                    ELSE abs(a.atttypmod) - 4
+                END
+            WHEN 'CHAR'::text THEN
+                CASE a.atttypmod
+                    WHEN '-1'::integer THEN NULL::integer
+                    ELSE abs(a.atttypmod) - 4
+                END
+            WHEN 'ORAVARCHARBYTE'::text THEN
+                CASE a.atttypmod
+                    WHEN '-1'::integer THEN NULL::integer
+                    ELSE abs(a.atttypmod) - 4
+                END
+            WHEN 'ORACHARBYTE'::text THEN
+                CASE a.atttypmod
+                    WHEN '-1'::integer THEN NULL::integer
+                    ELSE abs(a.atttypmod) - 4
+                END
+            WHEN 'ORACHARCHAR'::text THEN
+                CASE a.atttypmod
+                    WHEN '-1'::integer THEN NULL::integer
+                    ELSE abs(a.atttypmod) - 4
+                END
+            WHEN 'ORAVARCHARCHAR'::text THEN
+                CASE a.atttypmod
+                    WHEN '-1'::integer THEN NULL::integer
+                    ELSE abs(a.atttypmod) - 4
+                END
+            ELSE
+                NULL::number
+        END::number AS char_length,
+        CASE
+            WHEN UPPER(t.typname) IN ('ORAVARCHARBYTE', 'ORACHARBYTE', 'BPCHAR') THEN 'B'
+            WHEN UPPER(t.typname) = 'TEXT' THEN 'C'
+            ELSE NULL
+        END::varchar2(1) AS char_used,
+        'NO'::varchar(3) AS v80_fmt_image,
+        'NO'::varchar(3) AS data_upgraded,
+        CASE
+            WHEN a.attisvisible THEN 'NO'
+            ELSE 'YES'
+        END::varchar2(3) AS hidden_column,
+        CASE
+            WHEN a.attgenerated = 'v' THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS virtual_column,
+        NULL::number AS segment_column_id,
+        a.attnum::number AS internal_column_id,
+        NULL::varchar2(15) AS histogram,
+        SYS.ORA_CASE_TRANS(a.attname::VARCHAR2)::VARCHAR2(4000) AS qualified_col_name,
+        'YES'::varchar(3) AS user_generated,
+        CASE
+            WHEN d.adbin IS NOT NULL THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS default_on_null,
+        CASE
+            WHEN a.attidentity IN ('a', 'd', 'n', 'i', 'o') THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS identity_column,
+        NULL::varchar2(128) AS evaluation_edition,
+        NULL::varchar2(128) AS unusable_before,
+        NULL::varchar2(128) AS unusable_beginning,
+        SYS.ORA_CASE_TRANS((SELECT collname FROM pg_collation WHERE oid = a.attcollation)::varchar2)::varchar2(100) AS attcollation,
+        NULL::number AS collated_column_id
+    FROM
+        pg_class c
+        JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0
+        JOIN pg_type t ON t.oid = a.atttypid
+        LEFT JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum
+        LEFT JOIN pg_statistic s ON s.starelid = c.oid AND s.staattnum = a.attnum
+    WHERE
+        c.relkind IN ('r', 'v', 'm', 'f', 'p')
+        AND c.oid NOT IN (SELECT rcyrelid FROM pg_recyclebin)
+    ORDER BY
+        table_name, column_id;
+
+CREATE OR REPLACE VIEW SYS.DBA_TAB_COLS AS
+    SELECT
+        owner,
+        table_name,
+        column_name,
+        data_type,
+        data_type_mod,
+        data_type_owner,
+        data_length,
+        data_precision,
+        data_scale,
+        nullable,
+        column_id,
+        default_length,
+        data_default,
+        num_distinct,
+        low_value,
+        high_value,
+        density,
+        num_nulls,
+        num_buckets,
+        last_analyzed,
+        sample_size,
+        character_set_name,
+        char_col_decl_length,
+        global_stats,
+        user_stats,
+        avg_col_len,
+        char_length,
+        char_used,
+        v80_fmt_image,
+        data_upgraded,
+        hidden_column,
+        virtual_column,
+        segment_column_id,
+        internal_column_id,
+        histogram,
+        qualified_col_name,
+        user_generated,
+        default_on_null,
+        identity_column,
+        evaluation_edition,
+        unusable_before,
+        unusable_beginning,
+        attcollation,
+        collated_column_id
+    FROM SYS.TAB_COLS_INTERNAL;
+GRANT SELECT ON SYS.DBA_TAB_COLS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_TAB_COLS AS
+    SELECT
+        owner,
+        table_name,
+        column_name,
+        data_type,
+        data_type_mod,
+        data_type_owner,
+        data_length,
+        data_precision,
+        data_scale,
+        nullable,
+        column_id,
+        default_length,
+        data_default,
+        num_distinct,
+        low_value,
+        high_value,
+        density,
+        num_nulls,
+        num_buckets,
+        last_analyzed,
+        sample_size,
+        character_set_name,
+        char_col_decl_length,
+        global_stats,
+        user_stats,
+        avg_col_len,
+        char_length,
+        char_used,
+        v80_fmt_image,
+        data_upgraded,
+        hidden_column,
+        virtual_column,
+        segment_column_id,
+        internal_column_id,
+        histogram,
+        qualified_col_name,
+        user_generated,
+        default_on_null,
+        identity_column,
+        evaluation_edition,
+        unusable_before,
+        unusable_beginning,
+        attcollation,
+        collated_column_id
+    FROM SYS.TAB_COLS_INTERNAL
+    WHERE (
+        HAS_TABLE_PRIVILEGE(oid, 'SELECT')
+        OR HAS_TABLE_PRIVILEGE(oid,'INSERT')
+        OR HAS_TABLE_PRIVILEGE(oid, 'UPDATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'DELETE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRUNCATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRIGGER')
+        OR HAS_TABLE_PRIVILEGE(oid, 'REFERENCES')
+        )
+    ORDER BY
+        table_name, column_id;
+GRANT SELECT ON SYS.ALL_TAB_COLS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_TAB_COLS AS
+    SELECT
+        owner,
+        table_name,
+        column_name,
+        data_type,
+        data_type_mod,
+        data_type_owner,
+        data_length,
+        data_precision,
+        data_scale,
+        nullable,
+        column_id,
+        default_length,
+        data_default,
+        num_distinct,
+        low_value,
+        high_value,
+        density,
+        num_nulls,
+        num_buckets,
+        last_analyzed,
+        sample_size,
+        character_set_name,
+        char_col_decl_length,
+        global_stats,
+        user_stats,
+        avg_col_len,
+        char_length,
+        char_used,
+        v80_fmt_image,
+        data_upgraded,
+        hidden_column,
+        virtual_column,
+        segment_column_id,
+        internal_column_id,
+        histogram,
+        qualified_col_name,
+        user_generated,
+        default_on_null,
+        identity_column,
+        evaluation_edition,
+        unusable_before,
+        unusable_beginning,
+        attcollation,
+        collated_column_id
+    FROM SYS.TAB_COLS_INTERNAL
+    WHERE
+        owner::regrole = current_user::regrole
+    ORDER BY
+        table_name, column_id;
+GRANT SELECT ON SYS.USER_TAB_COLS TO PUBLIC;
+
+/* *******************************************************************************************
+                                        XXX_TAB_COLUMNS
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.DBA_TAB_COLUMNS AS
+    SELECT
+        owner,
+        table_name,
+        column_name,
+        data_type,
+        data_type_mod,
+        data_type_owner,
+        data_length,
+        data_precision,
+        data_scale,
+        nullable,
+        column_id,
+        default_length,
+        data_default,
+        num_distinct,
+        low_value,
+        high_value,
+        density,
+        num_nulls,
+        num_buckets,
+        last_analyzed,
+        sample_size,
+        character_set_name,
+        char_col_decl_length,
+        global_stats,
+        user_stats,
+        avg_col_len,
+        char_length,
+        char_used,
+        v80_fmt_image,
+        data_upgraded,
+        histogram,
+        default_on_null,
+        identity_column,
+        evaluation_edition,
+        unusable_before,
+        unusable_beginning,
+        attcollation
+    FROM SYS.DBA_TAB_COLS;
+GRANT SELECT ON SYS.DBA_TAB_COLUMNS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_TAB_COLUMNS AS
+    SELECT 
+        owner,
+        table_name,
+        column_name,
+        data_type,
+        data_type_mod,
+        data_type_owner,
+        data_length,
+        data_precision,
+        data_scale,
+        nullable,
+        column_id,
+        default_length,
+        data_default,
+        num_distinct,
+        low_value,
+        high_value,
+        density,
+        num_nulls,
+        num_buckets,
+        last_analyzed,
+        sample_size,
+        character_set_name,
+        char_col_decl_length,
+        global_stats,
+        user_stats,
+        avg_col_len,
+        char_length,
+        char_used,
+        v80_fmt_image,
+        data_upgraded,
+        histogram,
+        default_on_null,
+        identity_column,
+        evaluation_edition,
+        unusable_before,
+        unusable_beginning,
+        attcollation
+    FROM SYS.ALL_TAB_COLS;
+GRANT SELECT ON SYS.ALL_TAB_COLUMNS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_TAB_COLUMNS AS
+    SELECT
+        table_name,
+        column_name,
+        data_type,
+        data_type_mod,
+        data_type_owner,
+        data_length,
+        data_precision,
+        data_scale,
+        nullable,
+        column_id,
+        default_length,
+        data_default,
+        num_distinct,
+        low_value,
+        high_value,
+        density,
+        num_nulls,
+        num_buckets,
+        last_analyzed,
+        sample_size,
+        character_set_name,
+        char_col_decl_length,
+        global_stats,
+        user_stats,
+        avg_col_len,
+        char_length,
+        char_used,
+        v80_fmt_image,
+        data_upgraded,
+        histogram,
+        default_on_null,
+        identity_column,
+        evaluation_edition,
+        unusable_before,
+        unusable_beginning,
+        attcollation
+    FROM SYS.USER_TAB_COLS;
+GRANT SELECT ON SYS.USER_TAB_COLUMNS TO PUBLIC;
+
+/* *******************************************************************************************
+                                        XXX_TAB_COMMENTS
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.TAB_COMMENTS_INTERNAL AS
+    SELECT
+        c.oid AS oid,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+        SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
+        CASE
+            WHEN c.relkind = 'r' THEN 'TABLE'::varchar2(18)
+            WHEN c.relkind = 'f' THEN 'TABLE'::varchar2(18)
+            WHEN c.relkind = 'p' THEN 'TABLE'::varchar2(18)
+            WHEN c.relkind = 'v' THEN 'VIEW'::varchar2(18)
+        END AS table_type,
+        d.description::varchar2(4000) AS comments,
+        NULL::number AS origin_con_id
+    FROM
+        pg_class c
+    LEFT JOIN
+        pg_description d ON c.oid = d.objoid AND d.objsubid = 0
+    WHERE
+        c.relkind IN ('r', 'v','f', 'p');
+
+CREATE OR REPLACE VIEW SYS.DBA_TAB_COMMENTS AS
+    SELECT
+        owner,
+        table_name,
+        table_type,
+        comments,
+        origin_con_id
+    FROM SYS.TAB_COMMENTS_INTERNAL;
+GRANT SELECT ON SYS.DBA_TAB_COMMENTS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_TAB_COMMENTS AS
+    SELECT
+        owner,
+        table_name,
+        table_type,
+        comments,
+        origin_con_id
+    FROM SYS.TAB_COMMENTS_INTERNAL
+    WHERE (
+        HAS_TABLE_PRIVILEGE(oid, 'SELECT')
+        OR HAS_TABLE_PRIVILEGE(oid,'INSERT')
+        OR HAS_TABLE_PRIVILEGE(oid, 'UPDATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'DELETE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRUNCATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRIGGER')
+        OR HAS_TABLE_PRIVILEGE(oid, 'REFERENCES')
+        );
+GRANT SELECT ON SYS.ALL_TAB_COMMENTS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_TAB_COMMENTS AS
+    SELECT
+        table_name,
+        table_type,
+        comments,
+        origin_con_id
+    FROM SYS.TAB_COMMENTS_INTERNAL
+    WHERE
+        owner::regrole = current_user::regrole;
+GRANT SELECT ON SYS.USER_TAB_COMMENTS TO PUBLIC;
+
+/* *******************************************************************************************
+                                         XXX_INDEXES
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.INDEXES_INTERNAL AS
+    SELECT
+        tbl.oid AS oid,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS index_name,
+        SYS.ORA_CASE_TRANS(am.amname::VARCHAR2)::varchar2(27) AS index_type,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(tbl.relowner)::varchar2)::varchar2(128) AS table_owner,
+        SYS.ORA_CASE_TRANS(tbl.relname::VARCHAR2)::varchar2(128) AS table_name,
+        CASE tbl.relkind
+            WHEN 'r' THEN 'TABLE'
+            WHEN 'p' THEN 'TABLE'
+			WHEN 'f' THEN 'TABLE'
+            WHEN 't' THEN 'TOAST TABLE'         -- PG-specific
+            ELSE tbl.relkind::text
+        END::varchar2(17) AS table_type,
+        CASE
+            WHEN idx.indisunique THEN 'UNIQUE'
+            ELSE 'NONUNIQUE'
+        END::varchar2(9) AS uniqueness,
+        CASE
+            WHEN c.reloptions IS NOT NULL AND 'deduplicate_items=yes' = ANY(c.reloptions)
+                THEN 'DEDUPLICATE'              -- PG-specific
+            ELSE 'DISABLED'
+        END::varchar2(13) AS compression,
+        NULL::number AS prefix_length,
+        SYS.ORA_CASE_TRANS(
+            COALESCE(
+                ((SELECT spcname FROM pg_tablespace WHERE oid = c.reltablespace)::VARCHAR2),
+                'pg_default')
+        )::varchar2(30) AS tablespace_name,
+        NULL::number AS ini_trans,
+        NULL::number AS max_trans,
+        NULL::number AS initial_extent,
+        NULL::number AS next_extent,
+        NULL::number AS min_extents,
+        NULL::number AS max_extents,
+        NULL::number AS pct_increase,
+        NULL::number AS pct_threshold,
+        NULL::number AS include_column,
+        NULL::number AS freelists,
+        NULL::number AS freelist_groups,
+        COALESCE(
+            (100 - (SELECT split_part(opt, '=', 2)::integer
+             FROM unnest(c.reloptions) AS opt
+             WHERE split_part(opt, '=', 1) = 'fillfactor')),
+            0
+        )::number AS pct_free,
+        CASE
+            WHEN c.relpersistence = 'p' THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS logging,
+        NULL::number AS blevel,
+        NULL::number AS leaf_blocks,
+        NULL::number AS distinct_keys,
+        NULL::number AS avg_leaf_blocks_per_key,
+        NULL::number AS avg_data_blocks_per_key,
+        NULL::number AS clustering_factor,
+        CASE
+            WHEN idx.indisvalid THEN 'VALID'
+            ELSE 'UNUSABLE'
+        END::varchar2(8) AS status,
+        c.reltuples::number AS num_rows,
+        NULL::number AS sample_size,
+        TO_CHAR((GREATEST(
+                pg_stat_get_last_analyze_time(tbl.oid),
+                pg_stat_get_last_autoanalyze_time(tbl.oid)
+        )), current_setting('nls_date_format'))::date AS last_analyzed,
+        NULL::varchar2(40) AS degree,
+        NULL::varchar2(40) AS instances,
+        CASE
+            WHEN c.relkind = 'I' THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS partitioned,
+        CASE
+            WHEN c.relpersistence = 't' THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::varchar2(7) AS buffer_pool,
+        NULL::varchar2(7) AS flash_cache,
+        NULL::varchar2(7) AS cell_flush_cache,
+        'NO'::varchar2(3) AS user_stats,
+        CASE
+            WHEN c.relpersistence IN ('t', 'g') THEN
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                    FROM unnest(tbl.reloptions) AS op
+                                WHERE
+                                    (regexp_match(op, 'on_commit_delete_rows=true') IS NOT NULL)
+                                    OR (regexp_match(op, 'on_commit_drop=true') IS NOT NULL))
+                        THEN 'SYS$TRANSACTION'
+                    ELSE 'SYS$SESSION'
+                END
+            ELSE NULL
+        END::varchar2(15) AS duration,
+        NULL::number AS pct_direct_access,
+        NULL::varchar2(128) AS ityp_owner,
+        NULL::varchar2(128) AS ityp_name,
+        NULL::varchar2(1000) AS parameters,
+        'YES'::varchar2(3) AS global_stats,
+        NULL::varchar2(12) AS domidx_status,
+        NULL::varchar2(6) AS domidx_opstatus,
+        CASE
+            WHEN idx.indexprs IS NOT NULL THEN 
+                CASE
+                    WHEN idx.indisvalid THEN 'ENABLED'
+                    ELSE 'DISABLED'
+                END
+            ELSE NULL
+        END::varchar2(8) AS funcidx_status,
+        'NO'::varchar2(3) AS join_index,
+        'NO'::varchar2(3) AS iot_redundant_pkey_elim,
+        'NO'::varchar2(3) AS dropped,
+        CASE
+            WHEN idx.indisvalid THEN 'VISIBLE'
+            ELSE 'INVISIBLE'
+        END::varchar2(9) AS visibility,
+        NULL::varchar2(14) AS domidx_management,
+        NULL::varchar2(3) AS segment_created,
+        'NO'::varchar2(3) AS orphaned_entries,
+        NULL::varchar2(7) AS indexing,
+        'NO'::varchar2(3) AS auto,
+        CASE
+            WHEN EXISTS (SELECT 1 FROM pg_constraint WHERE conindid = c.oid AND contype in ('p', 'u')) THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS constraint_index
+    FROM
+        pg_class c
+    JOIN
+        pg_index idx ON idx.indexrelid = c.oid
+    JOIN
+        pg_am am ON c.relam = am.oid
+    JOIN
+        pg_class tbl ON idx.indrelid = tbl.oid
+    WHERE
+        c.relkind IN ('i', 'I')
+        AND c.oid NOT IN (SELECT rcyrelid FROM pg_recyclebin)
+        AND c.oid NOT IN (SELECT inhrelid FROM pg_inherits);
+
+CREATE OR REPLACE VIEW SYS.DBA_INDEXES AS
+    SELECT
+        owner,
+        index_name,
+        index_type,
+        table_owner,
+        table_name,
+        table_type,
+        uniqueness,
+        compression,
+        prefix_length,
+        tablespace_name,
+        ini_trans,
+        max_trans,
+        initial_extent,
+        next_extent,
+        min_extents,
+        max_extents,
+        pct_increase,
+        pct_threshold,
+        include_column,
+        freelists,
+        freelist_groups,
+        pct_free,
+        logging,
+        blevel,
+        leaf_blocks,
+        distinct_keys,
+        avg_leaf_blocks_per_key,
+        avg_data_blocks_per_key,
+        clustering_factor,
+        status,
+        num_rows,
+        sample_size,
+        last_analyzed,
+        degree,
+        instances,
+        partitioned,
+        temporary,
+        generated,
+        secondary,
+        buffer_pool,
+        flash_cache,
+        cell_flush_cache,
+        user_stats,
+        duration,
+        pct_direct_access,
+        ityp_owner,
+        ityp_name,
+        parameters,
+        global_stats,
+        domidx_status,
+        domidx_opstatus,
+        funcidx_status,
+        join_index,
+        iot_redundant_pkey_elim,
+        dropped,
+        visibility,
+        domidx_management,
+        segment_created,
+        orphaned_entries,
+        indexing,
+        auto,
+        constraint_index
+    FROM SYS.INDEXES_INTERNAL;
+GRANT SELECT ON SYS.DBA_INDEXES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_INDEXES AS
+    SELECT
+        owner,
+        index_name,
+        index_type,
+        table_owner,
+        table_name,
+        table_type,
+        uniqueness,
+        compression,
+        prefix_length,
+        tablespace_name,
+        ini_trans,
+        max_trans,
+        initial_extent,
+        next_extent,
+        min_extents,
+        max_extents,
+        pct_increase,
+        pct_threshold,
+        include_column,
+        freelists,
+        freelist_groups,
+        pct_free,
+        logging,
+        blevel,
+        leaf_blocks,
+        distinct_keys,
+        avg_leaf_blocks_per_key,
+        avg_data_blocks_per_key,
+        clustering_factor,
+        status,
+        num_rows,
+        sample_size,
+        last_analyzed,
+        degree,
+        instances,
+        partitioned,
+        temporary,
+        generated,
+        secondary,
+        buffer_pool,
+        flash_cache,
+        cell_flush_cache,
+        user_stats,
+        duration,
+        pct_direct_access,
+        ityp_owner,
+        ityp_name,
+        parameters,
+        global_stats,
+        domidx_status,
+        domidx_opstatus,
+        funcidx_status,
+        join_index,
+        iot_redundant_pkey_elim,
+        dropped,
+        visibility,
+        domidx_management,
+        segment_created,
+        orphaned_entries,
+        indexing,
+        auto,
+        constraint_index
+    FROM SYS.INDEXES_INTERNAL
+    WHERE (
+        HAS_TABLE_PRIVILEGE(oid, 'SELECT')
+        OR HAS_TABLE_PRIVILEGE(oid, 'INSERT')
+        OR HAS_TABLE_PRIVILEGE(oid, 'UPDATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'DELETE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRUNCATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRIGGER')
+        OR HAS_TABLE_PRIVILEGE(oid, 'REFERENCES')
+        );
+GRANT SELECT ON SYS.ALL_INDEXES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_INDEXES AS
+    SELECT
+        SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS index_name,
+        SYS.ORA_CASE_TRANS(am.amname::VARCHAR2)::varchar2(27) AS index_type,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(tbl.relowner)::varchar2)::varchar2(128) AS table_owner,
+        SYS.ORA_CASE_TRANS(tbl.relname::VARCHAR2)::varchar2(128) AS table_name,
+        CASE tbl.relkind
+            WHEN 'r' THEN 'TABLE'
+            WHEN 'p' THEN 'TABLE'
+			WHEN 'f' THEN 'TABLE'
+            WHEN 't' THEN 'TOAST TABLE'
+            ELSE tbl.relkind::text
+        END::varchar2(17) AS table_type,
+        CASE
+            WHEN idx.indisunique THEN 'UNIQUE'
+            ELSE 'NONUNIQUE'
+        END::varchar2(9) AS uniqueness,
+        CASE
+            WHEN c.reloptions IS NOT NULL AND 'deduplicate_items=yes' = ANY(c.reloptions)
+                THEN 'DEDUPLICATE'
+            ELSE 'DISABLED'
+        END::varchar2(13) AS compression,
+        NULL::number AS prefix_length,
+        SYS.ORA_CASE_TRANS(
+            COALESCE(
+                ((SELECT spcname FROM pg_tablespace WHERE oid = c.reltablespace)::VARCHAR2),
+                'pg_default')
+        )::varchar2(30) AS tablespace_name,
+        NULL::number AS ini_trans,
+        NULL::number AS max_trans,
+        NULL::number AS initial_extent,
+        NULL::number AS next_extent,
+        NULL::number AS min_extents,
+        NULL::number AS max_extents,
+        NULL::number AS pct_increase,
+        NULL::number AS pct_threshold,
+        NULL::number AS include_column,
+        NULL::number AS freelists,
+        NULL::number AS freelist_groups,
+        COALESCE(
+            (100 - (SELECT split_part(opt, '=', 2)::integer
+             FROM unnest(c.reloptions) AS opt
+             WHERE split_part(opt, '=', 1) = 'fillfactor')),
+            0
+        )::number AS pct_free,
+        CASE
+            WHEN c.relpersistence = 'p' THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS logging,
+        NULL::number AS blevel,
+        NULL::number AS leaf_blocks,
+        NULL::number AS distinct_keys,
+        NULL::number AS avg_leaf_blocks_per_key,
+        NULL::number AS avg_data_blocks_per_key,
+        NULL::number AS clustering_factor,
+        CASE
+            WHEN idx.indisvalid THEN 'VALID'
+            ELSE 'UNUSABLE'
+        END::varchar2(8) AS status,
+        c.reltuples::number AS num_rows,
+        NULL::number AS sample_size,
+        TO_CHAR((GREATEST(
+                pg_stat_get_last_analyze_time(tbl.oid),
+                pg_stat_get_last_autoanalyze_time(tbl.oid)
+        )), current_setting('nls_date_format'))::date AS last_analyzed,
+        NULL::varchar2(40) AS degree,
+        NULL::varchar2(40) AS instances,
+        CASE
+            WHEN c.relkind = 'I' THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS partitioned,
+        CASE
+            WHEN c.relpersistence = 't' THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::varchar2(7) AS buffer_pool,
+        NULL::varchar2(7) AS flash_cache,
+        NULL::varchar2(7) AS cell_flush_cache,
+        'NO'::varchar2(3) AS user_stats,
+        CASE
+            WHEN c.relpersistence IN ('t', 'g') THEN
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                    FROM unnest(tbl.reloptions) AS op
+                                WHERE
+                                    (regexp_match(op, 'on_commit_delete_rows=true') IS NOT NULL)
+                                    OR (regexp_match(op, 'on_commit_drop=true') IS NOT NULL))
+                        THEN 'SYS$TRANSACTION'
+                    ELSE 'SYS$SESSION'
+                END
+            ELSE NULL
+        END::varchar2(15) AS duration,
+        NULL::number AS pct_direct_access,
+        NULL::varchar2(128) AS ityp_owner,
+        NULL::varchar2(128) AS ityp_name,
+        NULL::varchar2(1000) AS parameters,
+        'YES'::varchar2(3) AS global_stats,
+        NULL::varchar2(12) AS domidx_status,
+        NULL::varchar2(6) AS domidx_opstatus,
+        CASE
+            WHEN idx.indexprs IS NOT NULL THEN 
+                CASE
+                    WHEN idx.indisvalid THEN 'ENABLED'
+                    ELSE 'DISABLED'
+                END
+            ELSE NULL
+        END::varchar2(8) AS funcidx_status,
+        'NO'::varchar2(3) AS join_index,
+        'NO'::varchar2(3) AS iot_redundant_pkey_elim,
+        'NO'::varchar2(3) AS dropped,
+        CASE
+            WHEN idx.indisvalid THEN 'VISIBLE'
+            ELSE 'INVISIBLE'
+        END::varchar2(9) AS visibility,
+        NULL::varchar2(14) AS domidx_management,
+        NULL::varchar2(3) AS segment_created,
+        'NO'::varchar2(3) AS orphaned_entries,
+        NULL::varchar2(7) AS indexing,
+        'NO'::varchar2(3) AS auto,
+        CASE
+            WHEN EXISTS (SELECT 1 FROM pg_constraint WHERE conindid = c.oid AND contype in ('p', 'u')) THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS constraint_index
+    FROM
+        pg_class c
+    JOIN
+        pg_index idx ON idx.indexrelid = c.oid
+    JOIN
+        pg_am am ON c.relam = am.oid
+    JOIN
+        pg_class tbl ON idx.indrelid = tbl.oid
+    WHERE
+        c.relkind IN ('i', 'I')
+        AND c.oid NOT IN (SELECT rcyrelid FROM pg_recyclebin)
+        AND c.oid NOT IN (SELECT inhrelid FROM pg_inherits)
+        AND c.relowner::regrole = current_user::regrole;
+GRANT SELECT ON SYS.USER_INDEXES TO PUBLIC;
+
+/* *******************************************************************************************
+                                        XXX_IND_COLUMNS
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.IND_COLUMNS_INTERNAL AS
+WITH
+    index_columns AS (
+        SELECT
+            idx.indexrelid,
+            k.attnum,
+            o.opt,
+            k.pos,
+            sum(CASE WHEN k.attnum = 0 THEN 1 ELSE 0 END)
+                OVER (PARTITION BY idx.indexrelid ORDER BY k.pos) AS expr_pos
+        FROM
+            pg_index idx,
+            unnest(idx.indkey) WITH ORDINALITY AS k(attnum, pos),
+            unnest(idx.indoption) WITH ORDINALITY AS o(opt, pos)
+        WHERE
+            k.pos = o.pos
+    ),
+    expr_list AS (
+        SELECT
+            idx.indexrelid,
+            regexp_split_to_table(
+                pg_get_expr(idx.indexprs, idx.indrelid, true), ', (?![^()]*\))'
+            ) AS expr,
+            row_number() OVER (PARTITION BY idx.indexrelid ORDER BY (pg_get_expr(idx.indexprs, idx.indrelid, true))) AS expr_pos
+        FROM
+            pg_index idx
+        WHERE
+            idx.indexprs IS NOT NULL
+    )
+
+    SELECT
+        tbl.oid AS oid,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS index_owner,
+        SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS index_name,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(tbl.relowner)::varchar2)::varchar2(128) AS table_owner,
+        SYS.ORA_CASE_TRANS(tbl.relname::VARCHAR2)::varchar2(128) AS table_name,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN ic.attnum > 0 THEN attr.attname
+            ELSE el.expr
+        END::varchar2)::varchar2(4000) AS column_name,
+        ic.pos::number AS column_position,
+        CASE
+            WHEN ic.attnum > 0 THEN
+                CASE
+                    WHEN attr.attlen = '-1'::integer THEN
+                        CASE attr.atttypid
+                            WHEN 'BIT'::regtype THEN
+                                CASE attr.atttypmod >> 16
+                                    WHEN 0 THEN attr.atttypmod - ((attr.atttypmod >> 16) << 16)
+                                    ELSE 0
+                                END
+                            WHEN 'BIT VARYING'::regtype THEN
+                                CASE attr.atttypmod >> 16
+                                    WHEN 0 THEN attr.atttypmod - ((attr.atttypmod >> 16) << 16)
+                                    ELSE 0
+                                END
+                            WHEN 'TIMETZ'::regtype THEN
+                                CASE attr.atttypmod >> 16
+                                    WHEN 0 THEN attr.atttypmod - ((attr.atttypmod >> 16) << 16)
+                                    ELSE 0
+                                END
+                            WHEN 'TIME'::regtype THEN
+                                CASE attr.atttypmod >> 16
+                                    WHEN 0 THEN attr.atttypmod - ((attr.atttypmod >> 16) << 16)
+                                    ELSE 0
+                                END
+                            WHEN 'TIMESTAMPTZ'::regtype THEN
+                                CASE attr.atttypmod >> 16
+                                    WHEN 0 THEN attr.atttypmod - ((attr.atttypmod >> 16) << 16)
+                                    ELSE 0
+                                END
+                            WHEN 'TIMESTAMP'::regtype THEN
+                                CASE attr.atttypmod >> 16
+                                    WHEN 0 THEN attr.atttypmod - ((attr.atttypmod >> 16) << 16)
+                                    ELSE 0
+                                END
+                            WHEN 'VARBIT'::regtype THEN
+                                CASE attr.atttypmod >> 16
+                                    WHEN 0 THEN attr.atttypmod - ((attr.atttypmod >> 16) << 16)
+                                    ELSE 0
+                                END
+                            WHEN 'VARCHAR'::regtype THEN
+                                CASE attr.atttypmod
+                                    WHEN '-1'::integer THEN NULL::integer
+                                    ELSE (abs(attr.atttypmod) - 4) * 4
+                                END
+                            WHEN 'BPCHAR'::regtype THEN
+                                CASE attr.atttypmod
+                                    WHEN '-1'::integer THEN NULL::integer
+                                    ELSE (abs(attr.atttypmod) - 4) * 4
+                                END
+                            WHEN 'NUMBER'::regtype THEN 22
+                            WHEN 'ORAVARCHARCHAR'::regtype THEN
+                                CASE attr.atttypmod
+                                    WHEN '-1'::integer THEN NULL::integer
+                                    ELSE (abs(attr.atttypmod) - 4) * 4
+                                END
+                            WHEN 'ORAVARCHARBYTE':: regtype THEN
+                                CASE attr.atttypmod
+                                    WHEN '-1'::integer THEN NULL::integer
+                                    ELSE (abs(attr.atttypmod) - 4) * 4
+                                END
+                            WHEN 'ORACHARBYTE'::regtype THEN
+                                CASE attr.atttypmod
+                                    WHEN '-1'::integer THEN NULL::integer
+                                    ELSE (abs(attr.atttypmod) - 4) * 4
+                                END
+                            ELSE
+                                CASE attr.atttypmod >> 16
+                                    WHEN 0 THEN attr.atttypmod - ((attr.atttypmod >> 16) << 16) - 4
+                                    ELSE 0
+                                END
+                        END
+                    ELSE attr.attlen
+                END
+            ELSE 0
+        END::number AS column_length,
+        CASE
+            WHEN ic.attnum > 0 THEN
+                CASE
+                    WHEN attr.atttypmod > 0 AND attr.atttypid IN ('varchar'::regtype, 'char'::regtype, 'text'::regtype, 'oravarcharchar'::regtype, 'oravarcharbyte'::regtype, 'oracharbyte'::regtype)
+                        THEN attr.atttypmod - 4
+                    ELSE 0
+                END
+            ELSE NULL
+        END::number AS char_length,
+        CASE
+            WHEN (ic.opt & 1) = 1 THEN 'DESC'
+            ELSE 'ASC'
+        END::varchar2(4) AS descend,
+        NULL::number AS collated_column_id
+    FROM
+        pg_class c
+    JOIN
+        pg_index idx ON idx.indexrelid = c.oid
+    JOIN
+        pg_class tbl ON tbl.oid = idx.indrelid
+    JOIN
+        index_columns ic ON ic.indexrelid = idx.indexrelid
+    LEFT JOIN
+        expr_list el ON el.indexrelid = idx.indexrelid AND el.expr_pos = ic.expr_pos
+    LEFT JOIN
+        pg_attribute attr ON attr.attrelid = tbl.oid AND attr.attnum = ic.attnum AND attr.attisdropped = false
+    WHERE
+        c.relkind IN ('i', 'I')
+        AND (ic.attnum > 0 OR ic.attnum = 0)
+        AND c.oid NOT IN (SELECT inhrelid FROM pg_inherits)
+    ORDER BY
+        index_name, column_position;
+
+CREATE OR REPLACE VIEW SYS.DBA_IND_COLUMNS AS
+    SELECT
+        index_owner,
+        index_name,
+        table_owner,
+        table_name,
+        column_name,
+        column_position,
+        column_length,
+        char_length,
+        descend,
+        collated_column_id
+    FROM SYS.IND_COLUMNS_INTERNAL;
+GRANT SELECT ON SYS.DBA_IND_COLUMNS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_IND_COLUMNS AS
+    SELECT
+        index_owner,
+        index_name,
+        table_owner,
+        table_name,
+        column_name,
+        column_position,
+        column_length,
+        char_length,
+        descend,
+        collated_column_id
+    FROM SYS.IND_COLUMNS_INTERNAL
+    WHERE (
+        HAS_TABLE_PRIVILEGE(oid, 'SELECT')
+        OR HAS_TABLE_PRIVILEGE(oid, 'INSERT')
+        OR HAS_TABLE_PRIVILEGE(oid, 'UPDATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'DELETE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRUNCATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRIGGER')
+        OR HAS_TABLE_PRIVILEGE(oid, 'REFERENCES')
+        );
+GRANT SELECT ON SYS.ALL_IND_COLUMNS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_IND_COLUMNS AS
+    SELECT
+        index_name,
+        table_name,
+        column_name,
+        column_position,
+        column_length,
+        char_length,
+        descend,
+        collated_column_id
+    FROM SYS.IND_COLUMNS_INTERNAL
+    WHERE
+        table_owner::regrole = current_user::regrole;
+GRANT SELECT ON SYS.USER_IND_COLUMNS TO PUBLIC;
+
+/* *******************************************************************************************
+                                        XXX_DEPENDENCIES
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.DBA_DEPENDENCIES AS
+------------------------------------------------------------------------------------------
+-- subquery-1：handle table, index, sequence etc. (classid=pg_class)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS name,
+        CASE c.relkind
+            WHEN 'r' THEN 'TABLE'
+            WHEN 'v' THEN 'VIEW'
+            WHEN 'm' THEN 'MATERIALIZED VIEW'
+            WHEN 'S' THEN 'SEQUENCE'
+            WHEN 'f' THEN 'FOREIGN TABLE'
+            WHEN 'p' THEN 'PARTITIONED TABLE'
+            WHEN 'i' THEN 'INDEX'
+            WHEN 't' THEN 'TOAST'               -- PG-specific
+            WHEN 'I' THEN 'PARTITIONED INDEX'
+            ELSE c.relkind::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = con_ref.conrelid))
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc_ref.opcowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN con_ref.conname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc_ref.opcname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 'S' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    WHEN 'i' THEN 'INDEX'
+                    WHEN 't' THEN 'TOAST'
+                    WHEN 'I' THEN 'PARTITIONED INDEX'
+                    ELSE c.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN
+                CASE con_ref.contype
+                    WHEN 'p' THEN 'PRIMARY KEY'
+                    WHEN 'f' THEN 'FOREIGN KEY'
+                    WHEN 'u' THEN 'UNIQUE CONSTRAINT'
+                    WHEN 'c' THEN 'CHECK CONSTRAINT'
+                    WHEN 't' THEN 'CONSTRAINT TRIGGER'
+                    ELSE con_ref.contype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'       -- PG-specific
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPCLASS'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_class c ON d.classid = 'pg_class'::regclass AND d.objid = c.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_constraint con_ref ON d.refclassid = 'pg_constraint'::regclass AND d.refobjid = con_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_opclass opc_ref ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc_ref.oid
+    WHERE d.classid = 'pg_class'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-2：handle proc (classid=pg_proc)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p.proowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(p.proname::varchar2)::varchar2(128) AS name,
+        CASE p.prokind
+            WHEN 'f' THEN 'FUNCTION'
+            WHEN 'p' THEN 'PROCEDURE'
+            WHEN 'w' THEN 'WINDOW FUNCTION'
+            WHEN 'a' THEN 'AGGREGATE FUNCTION'
+            ELSE p.prokind::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(op_ref.oprowner)
+            WHEN d.refclassid = 'pg_language'::regclass THEN PG_GET_USERBYID(lan_ref.lanowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN op_ref.oprname
+            WHEN d.refclassid = 'pg_language'::regclass THEN lan_ref.lanname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_language'::regclass THEN 'LANGUAGE'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN
+                CASE op_ref.oprkind
+                    WHEN 'b' THEN 'INFIX OPERATOR'
+                    WHEN 'l' THEN 'PREFIX OPERATOR'
+                END
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_proc p ON d.classid = 'pg_proc'::regclass AND d.objid = p.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_operator op_ref ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = op_ref.oid
+    LEFT JOIN pg_language lan_ref ON d.refclassid = 'pg_language'::regclass AND d.refobjid = lan_ref.oid
+    WHERE d.classid = 'pg_proc'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-3: handle trigger (classid=pg_trigger)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t.tgrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(t.tgname::varchar2)::varchar2(128) AS name,
+        'TRIGGER'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = cons_ref.conrelid))
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN cons_ref.conname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN 'CONSTRAINT'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_trigger t ON d.classid = 'pg_trigger'::regclass AND d.objid = t.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_constraint cons_ref ON d.refclassid = 'pg_constraint'::regclass AND d.refobjid = cons_ref.oid
+    WHERE d.classid = 'pg_trigger'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-4: handle type (classid=pg_type)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ty.typowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(ty.typname::varchar)::varchar2(128) AS name,
+        CASE ty.typtype
+            WHEN 'b' THEN 'BASE TYPE'
+            WHEN 'c' THEN 'COMPOSITE TYPE'
+            WHEN 'd' THEN 'DOMAIN'
+            WHEN 'e' THEN 'ENUM'
+            WHEN 'r' THEN 'RANGE TYPE'
+            WHEN 'p' THEN 'PSEUDO TYPE'
+            ELSE ty.typtype::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_type ty ON d.classid = 'pg_type'::regclass AND d.objid = ty.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_type'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-5: handle constraint (classid=pg_constraint)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = cons.conrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(cons.conname::varchar)::varchar2(128) AS name,
+        CASE cons.contype
+            WHEN 'p' THEN 'PRIMARY KEY'
+            WHEN 'f' THEN 'FOREIGN KEY'
+            WHEN 'u' THEN 'UNIQUE CONSTRAINT'
+            WHEN 'c' THEN 'CHECK CONSTRAINT'
+            WHEN 't' THEN 'CONSTRAINT TRIGGER'
+            ELSE cons.contype::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    WHEN 'i' THEN 'INDEX'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_constraint cons ON d.classid = 'pg_constraint'::regclass AND d.objid = cons.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    WHERE d.classid = 'pg_constraint'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-6: handle extension (classid=pg_extension)      -- PG-specific
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext.extowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(ext.extname::varchar)::varchar2(128) AS name,
+        'EXTENSION'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_extension ext ON d.classid = 'pg_extension'::regclass AND d.objid = ext.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE d.classid = 'pg_extension'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-7: handle operator (classid=pg_operator)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opr.oprowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opr.oprname::varchar)::varchar2(128) AS name,
+        'OPERATOR'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_operator opr ON d.classid = 'pg_operator'::regclass AND d.objid = opr.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE d.classid = 'pg_operator'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-8: handle type cast (classid=pg_cast)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(COALESCE(
+            PG_GET_USERBYID(cast_func.proowner),
+            PG_GET_USERBYID(10)
+        )::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(src_ty.typname::varchar2)::varchar2(128) AS name,
+        'CAST'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(dep_class.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(dep_proc.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = dep_trigger.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(dep_type.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_cast'::regclass THEN COALESCE(PG_GET_USERBYID(cast_func.proowner), PG_GET_USERBYID(10))
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN dep_class.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN dep_proc.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN dep_trigger.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN dep_type.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_cast'::regclass THEN tgt_ty.typname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE dep_class.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE dep_class.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE dep_proc.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE dep_proc.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE dep_type.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE dep_type.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_cast'::regclass THEN 'CAST'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_cast cas ON d.classid = 'pg_cast'::regclass AND d.objid = cas.oid
+    LEFT JOIN pg_type src_ty ON cas.castsource = src_ty.oid
+    LEFT JOIN pg_type tgt_ty ON cas.casttarget = tgt_ty.oid
+    LEFT JOIN pg_proc cast_func ON cas.castfunc = cast_func.oid
+    LEFT JOIN pg_class dep_class ON d.refclassid = 'pg_class'::regclass AND d.refobjid = dep_class.oid
+    LEFT JOIN pg_proc dep_proc ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = dep_proc.oid
+    LEFT JOIN pg_trigger dep_trigger ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = dep_trigger.oid
+    LEFT JOIN pg_type dep_type ON d.refclassid = 'pg_type'::regclass AND d.refobjid = dep_type.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_cast'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-9: handle opfamily (classid='pg_opfamily'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opf.opfname::varchar)::varchar2(128) AS name,
+        'OPERATOR FAMILY'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc.opcowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr.oprowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc.opcname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN opr.oprname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_opfamily opf ON d.classid = 'pg_opfamily'::regclass AND d.objid = opf.oid
+    LEFT JOIN pg_opclass opc ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc.oid
+    LEFT JOIN pg_operator opr ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE d.classid = 'pg_opfamily'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-10: handle opclass (classid='pg_opclass'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opc.opcowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opc.opcname::varchar)::varchar2(128) AS name,
+        'OPERATOR CLASS'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN PG_GET_USERBYID(opf.opfowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr.oprowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN opf.opfname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN opr.oprname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN 'OPERATOR FAMILY'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_class'::regclass THEN 
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 'S' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    WHEN 'i' THEN 'INDEX'
+                    WHEN 't' THEN 'TOAST'
+                    ELSE c_ref.relkind::text
+                END
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_opclass opc ON d.classid = 'pg_opclass'::regclass AND d.objid = opc.oid
+    LEFT JOIN pg_opfamily opf ON d.refclassid = 'pg_opfamily'::regclass AND d.refobjid = opf.oid
+    LEFT JOIN pg_operator opr ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    WHERE d.classid = 'pg_opclass'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-11: handle amop (classid='pg_amop'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opf.opfname || ' OPERATOR(' || opr.oprname || ')'::varchar)::varchar2(128) AS name,
+        'OPERATOR FAMILY MEMBER'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN PG_GET_USERBYID(opf_ref.opfowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr_ref.oprowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc_ref.opcowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN opf_ref.opfname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN opr_ref.oprname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc_ref.opcname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN 'OPERATOR FAMILY'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_amop amop ON d.classid = 'pg_amop'::regclass AND d.objid = amop.oid
+    LEFT JOIN pg_opfamily opf ON amop.amopfamily = opf.oid
+    LEFT JOIN pg_operator opr ON amop.amopopr = opr.oid
+    LEFT JOIN pg_opfamily opf_ref ON d.refclassid = 'pg_opfamily'::regclass AND d.refobjid = opf_ref.oid
+    LEFT JOIN pg_operator opr_ref ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr_ref.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_opclass opc_ref ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc_ref.oid
+    WHERE d.classid = 'pg_amop'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-12: handle amproc (classid='pg_amproc'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        UPPER(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
+        UPPER(opf.opfname || '.' || amproc.amproc::varchar2)::varchar2(256) AS name,
+        'ACCESS METHOD SUPPORT PROCEDURE'::varchar2(32) AS type,
+        UPPER(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN PG_GET_USERBYID(opf_ref.opfowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc_ref.opcowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        UPPER(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN opf_ref.opfname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc_ref.opcname
+            ELSE NULL
+        END::varchar2)::varchar2(256) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN 'OPERATOR FAMILY'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_amproc amproc ON d.classid = 'pg_amproc'::regclass AND d.objid = amproc.oid
+    LEFT JOIN pg_opfamily opf ON amproc.amprocfamily = opf.oid
+    LEFT JOIN pg_opfamily opf_ref ON d.refclassid = 'pg_opfamily'::regclass AND d.refobjid = opf_ref.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_opclass opc_ref ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc_ref.oid
+    WHERE d.classid = 'pg_amproc'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-13: handle language (classid='pg_language'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(l.lanowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(l.lanname::varchar2)::varchar2(128) AS name,
+        'LANGUAGE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_language l ON d.classid = 'pg_language'::regclass AND d.objid = l.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_language'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-14: handle rewrite (classid='pg_rewrite'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(r.rulename::varchar2)::varchar2(128) AS name,
+        'RULE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr_ref.oprowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN oprname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_rewrite r ON d.classid = 'pg_rewrite'::regclass AND d.objid = r.oid
+    LEFT JOIN pg_class c ON r.ev_class = c.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_operator opr_ref ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE d.classid = 'pg_rewrite'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-15 handle text search config (classid='pg_ts_config'::regclass) -- PG-specific
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(cfg.cfgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(cfg.cfgname::varchar2)::varchar2(128) AS name,
+        'TEXT SEARCH CONFIGURATION'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_ts_dict'::regclass THEN PG_GET_USERBYID(dict.dictowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp.nspowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_ts_dict'::regclass THEN dict.dictname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp.nspname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_ts_dict'::regclass THEN 'TEXT SEARCH DICTIONARY'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'SCHEMA'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_ts_config cfg ON d.classid = 'pg_ts_config'::regclass AND d.objid = cfg.oid
+    LEFT JOIN pg_ts_dict dict ON d.refclassid = 'pg_ts_dict'::regclass AND d.refobjid = dict.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    WHERE d.classid = 'pg_ts_config'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-16: handle text search dict (classid='pg_ts_dict'::regclass)    -- PG-specific
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(dict.dictowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(dict.dictname::varchar2)::varchar2(128) AS name,
+        'TEXT SEARCH DICTIONARY'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp.nspowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_ts_template'::regclass THEN PG_GET_USERBYID(p.proowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp.nspname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_ts_template'::regclass THEN tmpl.tmplname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'SCHEMA'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_ts_template'::regclass THEN 'TEXT SEARCH TEMPLATE'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_ts_dict dict ON d.classid = 'pg_ts_dict'::regclass AND d.objid = dict.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_ts_template tmpl ON d.refclassid = 'pg_ts_template'::regclass AND d.refobjid = tmpl.oid
+    WHERE d.classid = 'pg_ts_dict'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-17: handle text search template (classid='pg_ts_template'::regclass) -- PG-specific
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(10)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(tmpl.tmplname::varchar2)::varchar2(128) AS name,
+        'TEXT SEARCH TEMPLATE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp.nspowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp.nspname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'SCHEMA'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_ts_template tmpl ON d.classid = 'pg_ts_template'::regclass AND d.objid = tmpl.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    WHERE d.classid = 'pg_ts_template'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-18: handle attribute default (classid='pg_attrdef'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = attrdef.adrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS((attr.attname || ' default value')::varchar2)::varchar2(128) AS name,
+        'ATTRIBUTE DEFAULT'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = attrdef.adrelid))::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS((SELECT relname FROM pg_class WHERE oid = attrdef.adrelid)::varchar2)::varchar2(128) AS referenced_name,
+        'TABLE'::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_attrdef attrdef ON d.classid = 'pg_attrdef'::regclass AND d.objid = attrdef.oid
+    LEFT JOIN pg_attribute attr ON attrdef.adrelid = attr.attrelid AND attrdef.adnum = attr.attnum
+    WHERE d.classid = 'pg_attrdef'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-19: handle foreign data wrapper (classid='pg_foreign_data_wrapper'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(fdw.fdwowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(fdw.fdwname::varchar2)::varchar2(128) AS name,
+        'FDW'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN 
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_foreign_data_wrapper fdw ON d.classid = 'pg_foreign_data_wrapper'::regclass AND d.objid = fdw.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_foreign_data_wrapper'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-20: handle package (classid='pg_package'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS name,
+        'PACKAGE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(10)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_package pkg ON d.classid = 'pg_package'::regclass AND d.objid = pkg.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_package'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-21: package body (classid='pg_package_body'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS((pkg.pkgname || ' BODY')::varchar2)::varchar2(128) AS name,
+        'PACKAGE BODY'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_package'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_package'::regclass THEN pkg.pkgname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_package'::regclass THEN 'PACKAGE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_package_body pkgb ON d.classid = 'pg_package_body'::regclass AND d.objid = pkgb.oid
+    LEFT JOIN pg_package pkg ON pkgb.pkgoid = pkg.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_package_body'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-22: handle event trigger (classid='pg_event_trigger'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(evt.evtowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(evt.evtname::varchar2)::varchar2(128) AS name,
+        'EVENT TRIGGER'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN 
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_event_trigger evt ON d.classid = 'pg_event_trigger'::regclass AND d.objid = evt.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_event_trigger'::regclass;
+GRANT SELECT ON SYS.DBA_DEPENDENCIES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_DEPENDENCIES AS
+------------------------------------------------------------------------------------------
+-- subquery-1：handle table, index, sequence etc. (classid=pg_class)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS name,
+        CASE c.relkind
+            WHEN 'r' THEN 'TABLE'
+            WHEN 'v' THEN 'VIEW'
+            WHEN 'm' THEN 'MATERIALIZED VIEW'
+            WHEN 'S' THEN 'SEQUENCE'
+            WHEN 'f' THEN 'FOREIGN TABLE'
+            WHEN 'p' THEN 'PARTITIONED TABLE'
+            WHEN 'i' THEN 'INDEX'
+            WHEN 't' THEN 'TOAST'
+            WHEN 'I' THEN 'PARTITIONED INDEX'
+            ELSE c.relkind::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = con_ref.conrelid))
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc_ref.opcowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN con_ref.conname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc_ref.opcname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 'S' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    WHEN 'i' THEN 'INDEX'
+                    WHEN 't' THEN 'TOAST'
+                    WHEN 'I' THEN 'PARTITIONED INDEX'
+                    ELSE c.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN
+                CASE con_ref.contype
+                    WHEN 'p' THEN 'PRIMARY KEY'
+                    WHEN 'f' THEN 'FOREIGN KEY'
+                    WHEN 'u' THEN 'UNIQUE CONSTRAINT'
+                    WHEN 'c' THEN 'CHECK CONSTRAINT'
+                    WHEN 't' THEN 'CONSTRAINT TRIGGER'
+                    ELSE con_ref.contype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPCLASS'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_class c ON d.classid = 'pg_class'::regclass AND d.objid = c.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_constraint con_ref ON d.refclassid = 'pg_constraint'::regclass AND d.refobjid = con_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_opclass opc_ref ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc_ref.oid
+    WHERE
+        d.classid = 'pg_class'::regclass
+        AND (
+            HAS_TABLE_PRIVILEGE(c.oid, 'SELECT')
+            OR HAS_TABLE_PRIVILEGE(c.oid,'INSERT')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'UPDATE')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'DELETE')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'TRUNCATE')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'TRIGGER')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'REFERENCES')
+            )
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-2：handle proc (classid=pg_proc)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p.proowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(p.proname::varchar2)::varchar2(128) AS name,
+        CASE p.prokind
+            WHEN 'f' THEN 'FUNCTION'
+            WHEN 'p' THEN 'PROCEDURE'
+            WHEN 'w' THEN 'WINDOW FUNCTION'
+            WHEN 'a' THEN 'AGGREGATE FUNCTION'
+            ELSE p.prokind::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(op_ref.oprowner)
+            WHEN d.refclassid = 'pg_language'::regclass THEN PG_GET_USERBYID(lan_ref.lanowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN op_ref.oprname
+            WHEN d.refclassid = 'pg_language'::regclass THEN lan_ref.lanname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_language'::regclass THEN 'LANGUAGE'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN
+                CASE op_ref.oprkind
+                    WHEN 'b' THEN 'INFIX OPERATOR'
+                    WHEN 'l' THEN 'PREFIX OPERATOR'
+                END
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_proc p ON d.classid = 'pg_proc'::regclass AND d.objid = p.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_operator op_ref ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = op_ref.oid
+    LEFT JOIN pg_language lan_ref ON d.refclassid = 'pg_language'::regclass AND d.refobjid = lan_ref.oid
+    WHERE
+        d.classid = 'pg_proc'::regclass
+        AND HAS_FUNCTION_PRIVILEGE(p.oid, 'EXECUTE')
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-3: handle trigger (classid=pg_trigger)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t.tgrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(t.tgname::varchar2)::varchar2(128) AS name,
+        'TRIGGER'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = cons_ref.conrelid))
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN cons_ref.conname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN 'CONSTRAINT'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_trigger t ON d.classid = 'pg_trigger'::regclass AND d.objid = t.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_constraint cons_ref ON d.refclassid = 'pg_constraint'::regclass AND d.refobjid = cons_ref.oid
+    WHERE
+        d.classid = 'pg_trigger'::regclass
+        AND (
+            HAS_TABLE_PRIVILEGE(t.tgrelid, 'SELECT')
+            OR HAS_TABLE_PRIVILEGE(t.tgrelid,'INSERT')
+            OR HAS_TABLE_PRIVILEGE(t.tgrelid, 'UPDATE')
+            OR HAS_TABLE_PRIVILEGE(t.tgrelid, 'DELETE')
+            OR HAS_TABLE_PRIVILEGE(t.tgrelid, 'TRUNCATE')
+            OR HAS_TABLE_PRIVILEGE(t.tgrelid, 'TRIGGER')
+            OR HAS_TABLE_PRIVILEGE(t.tgrelid, 'REFERENCES')
+        )
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-4: handle type (classid=pg_type)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ty.typowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(ty.typname::varchar)::varchar2(128) AS name,
+        CASE ty.typtype
+            WHEN 'b' THEN 'BASE TYPE'
+            WHEN 'c' THEN 'COMPOSITE TYPE'
+            WHEN 'd' THEN 'DOMAIN'
+            WHEN 'e' THEN 'ENUM'
+            WHEN 'r' THEN 'RANGE TYPE'
+            WHEN 'p' THEN 'PSEUDO TYPE'
+            ELSE ty.typtype::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_type ty ON d.classid = 'pg_type'::regclass AND d.objid = ty.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE
+        d.classid = 'pg_type'::regclass
+        AND HAS_TYPE_PRIVILEGE(ty.oid, 'USAGE')
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-5: handle constraint (classid=pg_constraint)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = cons.conrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(cons.conname::varchar)::varchar2(128) AS name,
+        CASE cons.contype
+            WHEN 'p' THEN 'PRIMARY KEY'
+            WHEN 'f' THEN 'FOREIGN KEY'
+            WHEN 'u' THEN 'UNIQUE CONSTRAINT'
+            WHEN 'c' THEN 'CHECK CONSTRAINT'
+            WHEN 't' THEN 'CONSTRAINT TRIGGER'
+            ELSE cons.contype::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    WHEN 'i' THEN 'INDEX'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_constraint cons ON d.classid = 'pg_constraint'::regclass AND d.objid = cons.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    WHERE
+        d.classid = 'pg_constraint'::regclass
+        AND (
+            HAS_TABLE_PRIVILEGE(cons.conrelid, 'SELECT')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid,'INSERT')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid, 'UPDATE')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid, 'DELETE')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid, 'TRUNCATE')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid, 'TRIGGER')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid, 'REFERENCES')
+        )
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-6: handle extension (classid=pg_extension)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext.extowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(ext.extname::varchar)::varchar2(128) AS name,
+        'EXTENSION'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_extension ext ON d.classid = 'pg_extension'::regclass AND d.objid = ext.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE
+        d.classid = 'pg_extension'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-7: handle operator (classid=pg_operator)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opr.oprowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opr.oprname::varchar)::varchar2(128) AS name,
+        'OPERATOR'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_operator opr ON d.classid = 'pg_operator'::regclass AND d.objid = opr.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE
+        d.classid = 'pg_operator'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-8: handle type cast (classid=pg_cast)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(COALESCE(
+            PG_GET_USERBYID(cast_func.proowner),
+            PG_GET_USERBYID(10)
+        )::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(src_ty.typname::varchar2)::varchar2(128) AS name,
+        'CAST'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(dep_class.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(dep_proc.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = dep_trigger.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(dep_type.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_cast'::regclass THEN COALESCE(PG_GET_USERBYID(cast_func.proowner), PG_GET_USERBYID(10))
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN dep_class.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN dep_proc.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN dep_trigger.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN dep_type.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_cast'::regclass THEN tgt_ty.typname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE dep_class.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE dep_class.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE dep_proc.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE dep_proc.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE dep_type.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE dep_type.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_cast'::regclass THEN 'CAST'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_cast cas ON d.classid = 'pg_cast'::regclass AND d.objid = cas.oid
+    LEFT JOIN pg_type src_ty ON cas.castsource = src_ty.oid
+    LEFT JOIN pg_type tgt_ty ON cas.casttarget = tgt_ty.oid
+    LEFT JOIN pg_proc cast_func ON cas.castfunc = cast_func.oid
+    LEFT JOIN pg_class dep_class ON d.refclassid = 'pg_class'::regclass AND d.refobjid = dep_class.oid
+    LEFT JOIN pg_proc dep_proc ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = dep_proc.oid
+    LEFT JOIN pg_trigger dep_trigger ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = dep_trigger.oid
+    LEFT JOIN pg_type dep_type ON d.refclassid = 'pg_type'::regclass AND d.refobjid = dep_type.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE
+        d.classid = 'pg_cast'::regclass
+        AND HAS_TYPE_PRIVILEGE(src_ty.oid, 'USAGE')
+        AND HAS_TYPE_PRIVILEGE(tgt_ty.oid, 'USAGE')
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-9: handle opfamily (classid='pg_opfamily'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opf.opfname::varchar)::varchar2(128) AS name,
+        'OPERATOR FAMILY'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc.opcowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr.oprowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc.opcname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN opr.oprname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_opfamily opf ON d.classid = 'pg_opfamily'::regclass AND d.objid = opf.oid
+    LEFT JOIN pg_opclass opc ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc.oid
+    LEFT JOIN pg_operator opr ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE
+        d.classid = 'pg_opfamily'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-10: handle opclass (classid='pg_opclass'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opc.opcowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opc.opcname::varchar)::varchar2(128) AS name,
+        'OPERATOR CLASS'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN PG_GET_USERBYID(opf.opfowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr.oprowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN opf.opfname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN opr.oprname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN 'OPERATOR FAMILY'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_class'::regclass THEN 
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 'S' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    WHEN 'i' THEN 'INDEX'
+                    WHEN 't' THEN 'TOAST'
+                    ELSE c_ref.relkind::text
+                END
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_opclass opc ON d.classid = 'pg_opclass'::regclass AND d.objid = opc.oid
+    LEFT JOIN pg_opfamily opf ON d.refclassid = 'pg_opfamily'::regclass AND d.refobjid = opf.oid
+    LEFT JOIN pg_operator opr ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    WHERE
+        d.classid = 'pg_opclass'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-11: handle amop (classid='pg_amop'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opf.opfname || ' OPERATOR(' || opr.oprname || ')'::varchar)::varchar2(128) AS name,
+        'OPERATOR FAMILY MEMBER'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN PG_GET_USERBYID(opf_ref.opfowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr_ref.oprowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc_ref.opcowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN opf_ref.opfname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN opr_ref.oprname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc_ref.opcname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN 'OPERATOR FAMILY'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_amop amop ON d.classid = 'pg_amop'::regclass AND d.objid = amop.oid
+    LEFT JOIN pg_opfamily opf ON amop.amopfamily = opf.oid
+    LEFT JOIN pg_operator opr ON amop.amopopr = opr.oid
+    LEFT JOIN pg_opfamily opf_ref ON d.refclassid = 'pg_opfamily'::regclass AND d.refobjid = opf_ref.oid
+    LEFT JOIN pg_operator opr_ref ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr_ref.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_opclass opc_ref ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc_ref.oid
+    WHERE
+        d.classid = 'pg_amop'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-12: handle amproc (classid='pg_amproc'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        UPPER(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
+        UPPER(opf.opfname || '.' || amproc.amproc::varchar2)::varchar2(256) AS name,
+        'ACCESS METHOD SUPPORT PROCEDURE'::varchar2(32) AS type,
+        UPPER(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN PG_GET_USERBYID(opf_ref.opfowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc_ref.opcowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        UPPER(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN opf_ref.opfname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc_ref.opcname
+            ELSE NULL
+        END::varchar2)::varchar2(256) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN 'OPERATOR FAMILY'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_amproc amproc ON d.classid = 'pg_amproc'::regclass AND d.objid = amproc.oid
+    LEFT JOIN pg_opfamily opf ON amproc.amprocfamily = opf.oid
+    LEFT JOIN pg_opfamily opf_ref ON d.refclassid = 'pg_opfamily'::regclass AND d.refobjid = opf_ref.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_opclass opc_ref ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc_ref.oid
+    WHERE
+        d.classid = 'pg_amproc'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-13: handle language (classid='pg_language'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(l.lanowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(l.lanname::varchar2)::varchar2(128) AS name,
+        'LANGUAGE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_language l ON d.classid = 'pg_language'::regclass AND d.objid = l.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE
+        d.classid = 'pg_language'::regclass
+        AND HAS_LANGUAGE_PRIVILEGE(l.oid, 'USAGE')
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-14: handle rewrite (classid='pg_rewrite'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(r.rulename::varchar2)::varchar2(128) AS name,
+        'RULE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr_ref.oprowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN oprname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_rewrite r ON d.classid = 'pg_rewrite'::regclass AND d.objid = r.oid
+    LEFT JOIN pg_class c ON r.ev_class = c.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_operator opr_ref ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE
+        d.classid = 'pg_rewrite'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-15 handle text search config (classid='pg_ts_config'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(cfg.cfgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(cfg.cfgname::varchar2)::varchar2(128) AS name,
+        'TEXT SEARCH CONFIGURATION'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_ts_dict'::regclass THEN PG_GET_USERBYID(dict.dictowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp.nspowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_ts_dict'::regclass THEN dict.dictname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp.nspname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_ts_dict'::regclass THEN 'TEXT SEARCH DICTIONARY'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'SCHEMA'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_ts_config cfg ON d.classid = 'pg_ts_config'::regclass AND d.objid = cfg.oid
+    LEFT JOIN pg_ts_dict dict ON d.refclassid = 'pg_ts_dict'::regclass AND d.refobjid = dict.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    WHERE
+        d.classid = 'pg_ts_config'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-16: handle text search dict (classid='pg_ts_dict'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(dict.dictowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(dict.dictname::varchar2)::varchar2(128) AS name,
+        'TEXT SEARCH DICTIONARY'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp.nspowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_ts_template'::regclass THEN PG_GET_USERBYID(p.proowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp.nspname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_ts_template'::regclass THEN tmpl.tmplname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'SCHEMA'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_ts_template'::regclass THEN 'TEXT SEARCH TEMPLATE'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_ts_dict dict ON d.classid = 'pg_ts_dict'::regclass AND d.objid = dict.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_ts_template tmpl ON d.refclassid = 'pg_ts_template'::regclass AND d.refobjid = tmpl.oid
+    WHERE
+        d.classid = 'pg_ts_dict'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-17: handle text search template (classid='pg_ts_template'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(10)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(tmpl.tmplname::varchar2)::varchar2(128) AS name,
+        'TEXT SEARCH TEMPLATE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp.nspowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp.nspname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'SCHEMA'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_ts_template tmpl ON d.classid = 'pg_ts_template'::regclass AND d.objid = tmpl.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    WHERE
+        d.classid = 'pg_ts_template'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-18: handle attribute default (classid='pg_attrdef'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = attrdef.adrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS((attr.attname || ' default value')::varchar2)::varchar2(128) AS name,
+        'ATTRIBUTE DEFAULT'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = attrdef.adrelid))::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS((SELECT relname FROM pg_class WHERE oid = attrdef.adrelid)::varchar2)::varchar2(128) AS referenced_name,
+        'TABLE'::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_attrdef attrdef ON d.classid = 'pg_attrdef'::regclass AND d.objid = attrdef.oid
+    LEFT JOIN pg_attribute attr ON attrdef.adrelid = attr.attrelid AND attrdef.adnum = attr.attnum
+    WHERE
+        d.classid = 'pg_attrdef'::regclass
+        AND (
+            HAS_TABLE_PRIVILEGE(attrdef.adrelid, 'SELECT')
+            OR HAS_TABLE_PRIVILEGE(attrdef.adrelid,'INSERT')
+            OR HAS_TABLE_PRIVILEGE(attrdef.adrelid, 'UPDATE')
+            OR HAS_TABLE_PRIVILEGE(attrdef.adrelid, 'DELETE')
+            OR HAS_TABLE_PRIVILEGE(attrdef.adrelid, 'TRUNCATE')
+            OR HAS_TABLE_PRIVILEGE(attrdef.adrelid, 'TRIGGER')
+            OR HAS_TABLE_PRIVILEGE(attrdef.adrelid, 'REFERENCES')
+            )
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-19: handle foreign data wrapper (classid='pg_foreign_data_wrapper'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(fdw.fdwowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(fdw.fdwname::varchar2)::varchar2(128) AS name,
+        'FDW'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN 
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_foreign_data_wrapper fdw ON d.classid = 'pg_foreign_data_wrapper'::regclass AND d.objid = fdw.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_foreign_data_wrapper'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-20: handle package (classid='pg_package'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS name,
+        'PACKAGE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(10)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_package pkg ON d.classid = 'pg_package'::regclass AND d.objid = pkg.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE
+        d.classid = 'pg_package'::regclass
+        AND HAS_PACKAGE_PRIVILEGE(pkg.oid, 'EXECUTE')
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-21: package body (classid='pg_package_body'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS((pkg.pkgname || ' BODY')::varchar2)::varchar2(128) AS name,
+        'PACKAGE BODY'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_package'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_package'::regclass THEN pkg.pkgname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_package'::regclass THEN 'PACKAGE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_package_body pkgb ON d.classid = 'pg_package_body'::regclass AND d.objid = pkgb.oid
+    LEFT JOIN pg_package pkg ON pkgb.pkgoid = pkg.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE
+        d.classid = 'pg_package_body'::regclass
+        AND HAS_PACKAGE_PRIVILEGE(pkg.oid, 'EXECUTE')
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-22: handle event trigger (classid='pg_event_trigger'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(evt.evtowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(evt.evtname::varchar2)::varchar2(128) AS name,
+        'EVENT TRIGGER'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN 
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_event_trigger evt ON d.classid = 'pg_event_trigger'::regclass AND d.objid = evt.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_event_trigger'::regclass;
+GRANT SELECT ON SYS.ALL_DEPENDENCIES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_DEPENDENCIES AS
+------------------------------------------------------------------------------------------
+-- subquery-1：handle table, index, sequence etc. (classid=pg_class)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS name,
+        CASE c.relkind
+            WHEN 'r' THEN 'TABLE'
+            WHEN 'v' THEN 'VIEW'
+            WHEN 'm' THEN 'MATERIALIZED VIEW'
+            WHEN 'S' THEN 'SEQUENCE'
+            WHEN 'f' THEN 'FOREIGN TABLE'
+            WHEN 'p' THEN 'PARTITIONED TABLE'
+            WHEN 'i' THEN 'INDEX'
+            WHEN 't' THEN 'TOAST'
+            WHEN 'I' THEN 'PARTITIONED INDEX'
+            ELSE c.relkind::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = con_ref.conrelid))
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc_ref.opcowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN con_ref.conname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc_ref.opcname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 'S' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    WHEN 'i' THEN 'INDEX'
+                    WHEN 't' THEN 'TOAST'
+                    WHEN 'I' THEN 'PARTITIONED INDEX'
+                    ELSE c.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN
+                CASE con_ref.contype
+                    WHEN 'p' THEN 'PRIMARY KEY'
+                    WHEN 'f' THEN 'FOREIGN KEY'
+                    WHEN 'u' THEN 'UNIQUE CONSTRAINT'
+                    WHEN 'c' THEN 'CHECK CONSTRAINT'
+                    WHEN 't' THEN 'CONSTRAINT TRIGGER'
+                    ELSE con_ref.contype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPCLASS'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_class c ON d.classid = 'pg_class'::regclass AND d.objid = c.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_constraint con_ref ON d.refclassid = 'pg_constraint'::regclass AND d.refobjid = con_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_opclass opc_ref ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc_ref.oid
+    WHERE
+        d.classid = 'pg_class'::regclass
+        AND c.relowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-2：handle proc (classid=pg_proc)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p.proowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(p.proname::varchar2)::varchar2(128) AS name,
+        CASE p.prokind
+            WHEN 'f' THEN 'FUNCTION'
+            WHEN 'p' THEN 'PROCEDURE'
+            WHEN 'w' THEN 'WINDOW FUNCTION'
+            WHEN 'a' THEN 'AGGREGATE FUNCTION'
+            ELSE p.prokind::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(op_ref.oprowner)
+            WHEN d.refclassid = 'pg_language'::regclass THEN PG_GET_USERBYID(lan_ref.lanowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN op_ref.oprname
+            WHEN d.refclassid = 'pg_language'::regclass THEN lan_ref.lanname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_language'::regclass THEN 'LANGUAGE'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN
+                CASE op_ref.oprkind
+                    WHEN 'b' THEN 'INFIX OPERATOR'
+                    WHEN 'l' THEN 'PREFIX OPERATOR'
+                END
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_proc p ON d.classid = 'pg_proc'::regclass AND d.objid = p.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_operator op_ref ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = op_ref.oid
+    LEFT JOIN pg_language lan_ref ON d.refclassid = 'pg_language'::regclass AND d.refobjid = lan_ref.oid
+    WHERE
+        d.classid = 'pg_proc'::regclass
+        AND p.proowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-3: handle trigger (classid=pg_trigger)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t.tgrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(t.tgname::varchar2)::varchar2(128) AS name,
+        'TRIGGER'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = cons_ref.conrelid))
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN cons_ref.conname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_constraint'::regclass THEN 'CONSTRAINT'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_trigger t ON d.classid = 'pg_trigger'::regclass AND d.objid = t.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_constraint cons_ref ON d.refclassid = 'pg_constraint'::regclass AND d.refobjid = cons_ref.oid
+    WHERE
+        d.classid = 'pg_trigger'::regclass
+        AND
+            (SELECT relowner FROM pg_class WHERE oid = t.tgrelid)::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-4: handle type (classid=pg_type)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ty.typowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(ty.typname::varchar)::varchar2(128) AS name,
+        CASE ty.typtype
+            WHEN 'b' THEN 'BASE TYPE'
+            WHEN 'c' THEN 'COMPOSITE TYPE'
+            WHEN 'd' THEN 'DOMAIN'
+            WHEN 'e' THEN 'ENUM'
+            WHEN 'r' THEN 'RANGE TYPE'
+            WHEN 'p' THEN 'PSEUDO TYPE'
+            ELSE ty.typtype::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_type ty ON d.classid = 'pg_type'::regclass AND d.objid = ty.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE
+        d.classid = 'pg_type'::regclass
+        AND ty.typowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-5: handle constraint (classid=pg_constraint)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = cons.conrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(cons.conname::varchar)::varchar2(128) AS name,
+        CASE cons.contype
+            WHEN 'p' THEN 'PRIMARY KEY'
+            WHEN 'f' THEN 'FOREIGN KEY'
+            WHEN 'u' THEN 'UNIQUE CONSTRAINT'
+            WHEN 'c' THEN 'CHECK CONSTRAINT'
+            WHEN 't' THEN 'CONSTRAINT TRIGGER'
+            ELSE cons.contype::text
+        END::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    WHEN 'i' THEN 'INDEX'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_constraint cons ON d.classid = 'pg_constraint'::regclass AND d.objid = cons.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    WHERE
+        d.classid = 'pg_constraint'::regclass
+        AND
+            (SELECT relowner FROM pg_class WHERE oid = cons.conrelid)::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-6: handle extension (classid=pg_extension)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext.extowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(ext.extname::varchar)::varchar2(128) AS name,
+        'EXTENSION'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_extension ext ON d.classid = 'pg_extension'::regclass AND d.objid = ext.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE
+        d.classid = 'pg_extension'::regclass
+        AND ext.extowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-7: handle operator (classid=pg_operator)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opr.oprowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opr.oprname::varchar)::varchar2(128) AS name,
+        'OPERATOR'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t_ref.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty_ref.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN t_ref.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty_ref.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty_ref.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty_ref.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_operator opr ON d.classid = 'pg_operator'::regclass AND d.objid = opr.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_trigger t_ref ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = t_ref.oid
+    LEFT JOIN pg_type ty_ref ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE
+        d.classid = 'pg_operator'::regclass
+        AND opr.oprowner = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-8: handle type cast (classid=pg_cast)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(COALESCE(
+            PG_GET_USERBYID(cast_func.proowner),
+            PG_GET_USERBYID(10)
+        )::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(src_ty.typname::varchar2)::varchar2(128) AS name,
+        'CAST'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(dep_class.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(dep_proc.proowner)
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = dep_trigger.tgrelid))
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(dep_type.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_cast'::regclass THEN COALESCE(PG_GET_USERBYID(cast_func.proowner), PG_GET_USERBYID(10))
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN dep_class.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN dep_proc.proname
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN dep_trigger.tgname
+            WHEN d.refclassid = 'pg_type'::regclass THEN dep_type.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_cast'::regclass THEN tgt_ty.typname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE dep_class.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE dep_class.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE dep_proc.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE dep_proc.prokind::text
+                END
+            WHEN d.refclassid = 'pg_trigger'::regclass THEN 'TRIGGER'
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE dep_type.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE dep_type.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_cast'::regclass THEN 'CAST'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_cast cas ON d.classid = 'pg_cast'::regclass AND d.objid = cas.oid
+    LEFT JOIN pg_type src_ty ON cas.castsource = src_ty.oid
+    LEFT JOIN pg_type tgt_ty ON cas.casttarget = tgt_ty.oid
+    LEFT JOIN pg_proc cast_func ON cas.castfunc = cast_func.oid
+    LEFT JOIN pg_class dep_class ON d.refclassid = 'pg_class'::regclass AND d.refobjid = dep_class.oid
+    LEFT JOIN pg_proc dep_proc ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = dep_proc.oid
+    LEFT JOIN pg_trigger dep_trigger ON d.refclassid = 'pg_trigger'::regclass AND d.refobjid = dep_trigger.oid
+    LEFT JOIN pg_type dep_type ON d.refclassid = 'pg_type'::regclass AND d.refobjid = dep_type.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE
+        d.classid = 'pg_cast'::regclass
+        AND cast_func.proowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-9: handle opfamily (classid='pg_opfamily'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opf.opfname::varchar)::varchar2(128) AS name,
+        'OPERATOR FAMILY'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc.opcowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr.oprowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc.opcname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN opr.oprname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_opfamily opf ON d.classid = 'pg_opfamily'::regclass AND d.objid = opf.oid
+    LEFT JOIN pg_opclass opc ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc.oid
+    LEFT JOIN pg_operator opr ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE
+        d.classid = 'pg_opfamily'::regclass
+        AND opf.opfowner = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-10: handle opclass (classid='pg_opclass'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opc.opcowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opc.opcname::varchar)::varchar2(128) AS name,
+        'OPERATOR CLASS'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN PG_GET_USERBYID(opf.opfowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr.oprowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN opf.opfname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN opr.oprname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN 'OPERATOR FAMILY'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_class'::regclass THEN 
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 'S' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    WHEN 'i' THEN 'INDEX'
+                    WHEN 't' THEN 'TOAST'
+                    ELSE c_ref.relkind::text
+                END
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_opclass opc ON d.classid = 'pg_opclass'::regclass AND d.objid = opc.oid
+    LEFT JOIN pg_opfamily opf ON d.refclassid = 'pg_opfamily'::regclass AND d.refobjid = opf.oid
+    LEFT JOIN pg_operator opr ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    WHERE
+        d.classid = 'pg_opclass'::regclass
+        AND opc.opcowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-11: handle amop (classid='pg_amop'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opf.opfname || ' OPERATOR(' || opr.oprname || ')'::varchar)::varchar2(128) AS name,
+        'OPERATOR FAMILY MEMBER'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN PG_GET_USERBYID(opf_ref.opfowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr_ref.oprowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc_ref.opcowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN opf_ref.opfname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN opr_ref.oprname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc_ref.opcname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN 'OPERATOR FAMILY'
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_amop amop ON d.classid = 'pg_amop'::regclass AND d.objid = amop.oid
+    LEFT JOIN pg_opfamily opf ON amop.amopfamily = opf.oid
+    LEFT JOIN pg_operator opr ON amop.amopopr = opr.oid
+    LEFT JOIN pg_opfamily opf_ref ON d.refclassid = 'pg_opfamily'::regclass AND d.refobjid = opf_ref.oid
+    LEFT JOIN pg_operator opr_ref ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr_ref.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_opclass opc_ref ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc_ref.oid
+    WHERE
+        d.classid = 'pg_amop'::regclass
+        AND opf.opfowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-12: handle amproc (classid='pg_amproc'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        UPPER(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
+        UPPER(opf.opfname || '.' || amproc.amproc::varchar2)::varchar2(256) AS name,
+        'ACCESS METHOD SUPPORT PROCEDURE'::varchar2(32) AS type,
+        UPPER(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN PG_GET_USERBYID(opf_ref.opfowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN PG_GET_USERBYID(opc_ref.opcowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        UPPER(CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN opf_ref.opfname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN opc_ref.opcname
+            ELSE NULL
+        END::varchar2)::varchar2(256) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_opfamily'::regclass THEN 'OPERATOR FAMILY'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_amproc amproc ON d.classid = 'pg_amproc'::regclass AND d.objid = amproc.oid
+    LEFT JOIN pg_opfamily opf ON amproc.amprocfamily = opf.oid
+    LEFT JOIN pg_opfamily opf_ref ON d.refclassid = 'pg_opfamily'::regclass AND d.refobjid = opf_ref.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_opclass opc_ref ON d.refclassid = 'pg_opclass'::regclass AND d.refobjid = opc_ref.oid
+    WHERE
+        d.classid = 'pg_amproc'::regclass
+        AND opf.opfowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-13: handle language (classid='pg_language'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(l.lanowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(l.lanname::varchar2)::varchar2(128) AS name,
+        'LANGUAGE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_language l ON d.classid = 'pg_language'::regclass AND d.objid = l.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE
+        d.classid = 'pg_language'::regclass
+        AND l.lanowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-14: handle rewrite (classid='pg_rewrite'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(r.rulename::varchar2)::varchar2(128) AS name,
+        'RULE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN PG_GET_USERBYID(c_ref.relowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_type'::regclass THEN PG_GET_USERBYID(ty.typowner)
+            WHEN d.refclassid = 'pg_operator'::regclass THEN PG_GET_USERBYID(opr_ref.oprowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp_ref.nspowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN c_ref.relname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_type'::regclass THEN ty.typname
+            WHEN d.refclassid = 'pg_operator'::regclass THEN oprname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nspname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_class'::regclass THEN
+                CASE c_ref.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 's' THEN 'SEQUENCE'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    WHEN 'p' THEN 'PARTITIONED TABLE'
+                    ELSE c_ref.relkind::text
+                END
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_type'::regclass THEN
+                CASE ty.typtype
+                    WHEN 'b' THEN 'BASE TYPE'
+                    WHEN 'c' THEN 'COMPOSITE TYPE'
+                    WHEN 'd' THEN 'DOMAIN'
+                    WHEN 'e' THEN 'ENUM'
+                    WHEN 'r' THEN 'RANGE TYPE'
+                    WHEN 'p' THEN 'PSEUDO TYPE'
+                    ELSE ty.typtype::text
+                END
+            WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_rewrite r ON d.classid = 'pg_rewrite'::regclass AND d.objid = r.oid
+    LEFT JOIN pg_class c ON r.ev_class = c.oid
+    LEFT JOIN pg_class c_ref ON d.refclassid = 'pg_class'::regclass AND d.refobjid = c_ref.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_type ty ON d.refclassid = 'pg_type'::regclass AND d.refobjid = ty.oid
+    LEFT JOIN pg_operator opr_ref ON d.refclassid = 'pg_operator'::regclass AND d.refobjid = opr_ref.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    WHERE
+        d.classid = 'pg_rewrite'::regclass
+        AND c.relowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-15 handle text search config (classid='pg_ts_config'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(cfg.cfgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(cfg.cfgname::varchar2)::varchar2(128) AS name,
+        'TEXT SEARCH CONFIGURATION'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_ts_dict'::regclass THEN PG_GET_USERBYID(dict.dictowner)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp.nspowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_ts_dict'::regclass THEN dict.dictname
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp.nspname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_ts_dict'::regclass THEN 'TEXT SEARCH DICTIONARY'
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'SCHEMA'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_ts_config cfg ON d.classid = 'pg_ts_config'::regclass AND d.objid = cfg.oid
+    LEFT JOIN pg_ts_dict dict ON d.refclassid = 'pg_ts_dict'::regclass AND d.refobjid = dict.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    WHERE
+        d.classid = 'pg_ts_config'::regclass
+        AND cfg.cfgowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-16: handle text search dict (classid='pg_ts_dict'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(dict.dictowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(dict.dictname::varchar2)::varchar2(128) AS name,
+        'TEXT SEARCH DICTIONARY'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp.nspowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            WHEN d.refclassid = 'pg_ts_template'::regclass THEN PG_GET_USERBYID(p.proowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp.nspname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            WHEN d.refclassid = 'pg_ts_template'::regclass THEN tmpl.tmplname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'SCHEMA'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            WHEN d.refclassid = 'pg_ts_template'::regclass THEN 'TEXT SEARCH TEMPLATE'
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_ts_dict dict ON d.classid = 'pg_ts_dict'::regclass AND d.objid = dict.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    LEFT JOIN pg_ts_template tmpl ON d.refclassid = 'pg_ts_template'::regclass AND d.refobjid = tmpl.oid
+    WHERE
+        d.classid = 'pg_ts_dict'::regclass
+        AND dict.dictowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-17: handle text search template (classid='pg_ts_template'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(10)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(tmpl.tmplname::varchar2)::varchar2(128) AS name,
+        'TEXT SEARCH TEMPLATE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(nsp.nspowner)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p.proowner)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp.nspname
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p.proname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'SCHEMA'
+            WHEN d.refclassid = 'pg_proc'::regclass THEN
+                CASE p.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p.prokind::text
+                END
+            ELSE NULL
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_ts_template tmpl ON d.classid = 'pg_ts_template'::regclass AND d.objid = tmpl.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    LEFT JOIN pg_proc p ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p.oid
+    WHERE
+        d.classid = 'pg_ts_template'::regclass
+        AND current_user::regrole = 10::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-18: handle attribute default (classid='pg_attrdef'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = attrdef.adrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS((attr.attname || ' default value')::varchar2)::varchar2(128) AS name,
+        'ATTRIBUTE DEFAULT'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = attrdef.adrelid))::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS((SELECT relname FROM pg_class WHERE oid = attrdef.adrelid)::varchar2)::varchar2(128) AS referenced_name,
+        'TABLE'::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM pg_depend d
+    LEFT JOIN pg_attrdef attrdef ON d.classid = 'pg_attrdef'::regclass AND d.objid = attrdef.oid
+    LEFT JOIN pg_attribute attr ON attrdef.adrelid = attr.attrelid AND attrdef.adnum = attr.attnum
+    WHERE
+        d.classid = 'pg_attrdef'::regclass
+        AND (SELECT relowner FROM pg_class WHERE oid = attrdef.adrelid)::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-19: handle foreign data wrapper (classid='pg_foreign_data_wrapper'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(fdw.fdwowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(fdw.fdwname::varchar2)::varchar2(128) AS name,
+        'FDW'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN 
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_foreign_data_wrapper fdw ON d.classid = 'pg_foreign_data_wrapper'::regclass AND d.objid = fdw.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_foreign_data_wrapper'::regclass
+        AND fdw.fdwowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-20: handle package (classid='pg_package'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS name,
+        'PACKAGE'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(10)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN nsp_ref.nspname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_package pkg ON d.classid = 'pg_package'::regclass AND d.objid = pkg.oid
+    LEFT JOIN pg_namespace nsp_ref ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE
+        d.classid = 'pg_package'::regclass
+        AND pkg.pkgowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-21: package body (classid='pg_package_body'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS((pkg.pkgname || ' BODY')::varchar2)::varchar2(128) AS name,
+        'PACKAGE BODY'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_package'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_package'::regclass THEN pkg.pkgname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_package'::regclass THEN 'PACKAGE'
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_package_body pkgb ON d.classid = 'pg_package_body'::regclass AND d.objid = pkgb.oid
+    LEFT JOIN pg_package pkg ON pkgb.pkgoid = pkg.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE
+        d.classid = 'pg_package_body'::regclass
+        AND pkg.pkgowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-22: handle event trigger (classid='pg_event_trigger'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(evt.evtowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(evt.evtname::varchar2)::varchar2(128) AS name,
+        'EVENT TRIGGER'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN p_ref.proname
+            WHEN d.refclassid = 'pg_extension'::regclass THEN ext_ref.extname
+            ELSE NULL
+        END::varchar2)::varchar2(128) AS referenced_name,
+        CASE
+            WHEN d.refclassid = 'pg_proc'::regclass THEN 
+                CASE p_ref.prokind
+                    WHEN 'f' THEN 'FUNCTION'
+                    WHEN 'p' THEN 'PROCEDURE'
+                    WHEN 'w' THEN 'WINDOW FUNCTION'
+                    WHEN 'a' THEN 'AGGREGATE FUNCTION'
+                    ELSE p_ref.prokind::text
+                END
+            WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
+            ELSE d.refclassid::regclass::text
+        END::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_event_trigger evt ON d.classid = 'pg_event_trigger'::regclass AND d.objid = evt.oid
+    LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
+    LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
+    WHERE d.classid = 'pg_event_trigger'::regclass
+        AND evt.evtowner::regrole = current_user::regrole;
+GRANT SELECT ON SYS.USER_DEPENDENCIES TO PUBLIC;
+
+/* *******************************************************************************************
+                                          XXX_OBJECTS
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.DBA_OBJECTS AS
+--------------------------------------------------------------------------------
+-- subquery-1: handle table, index, view, sequence etc.
+--------------------------------------------------------------------------------
+    WITH partition_info AS (
+        SELECT
+            c_top.relname AS top_parent_name,
+            NULL::oid AS mid_parent_oid,
+            c_child.oid AS partition_oid,
+            c_child.relname AS partition_name,
+            c_child.relowner AS relowner,
+            c_child.relfilenode AS relfilenode,
+            c_child.relkind AS relkind,
+            c_child.relnamespace AS relnamespace,
+            c_child.relpersistence AS relpersistence
+        FROM pg_class c_top
+        JOIN pg_inherits i ON c_top.oid = i.inhparent
+        JOIN pg_class c_child ON i.inhrelid = c_child.oid
+        WHERE c_top.relkind IN ('p', 'i', 'I')
+            AND NOT EXISTS (SELECT 1 FROM pg_inherits WHERE inhrelid = c_top.oid)
+
+        UNION ALL
+
+        SELECT
+            c_top.relname AS top_parent_name,
+            c_mid.oid AS mid_parent_oid,
+            c_child.oid AS partition_oid,
+            c_child.relname AS partition_name,
+            c_child.relowner AS relowner,
+            c_child.relfilenode AS relfilenode,
+            c_child.relkind AS relkind,
+            c_child.relnamespace AS relnamespace,
+            c_child.relpersistence AS relpersistence
+        FROM pg_class c_top
+        JOIN pg_inherits i1 ON c_top.oid = i1.inhparent
+        JOIN pg_class c_mid ON i1.inhrelid = c_mid.oid
+        JOIN pg_inherits i2 ON c_mid.oid = i2.inhparent
+        JOIN pg_class c_child ON i2.inhrelid = c_child.oid
+        WHERE c_top.relkind IN ('p', 'i', 'I')
+            AND c_mid.relkind IN ('p', 'i', 'I')
+    )
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pi.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(pi.top_parent_name::varchar2)::varchar2(128) AS object_name,
+        SYS.ORA_CASE_TRANS(pi.partition_name::varchar2)::varchar2(128) AS subobject_name,
+        pi.partition_oid::text::number AS object_id,
+        CASE
+            WHEN pi.relfilenode <> 0 THEN pi.relfilenode
+            ELSE NULL
+        END::text::number AS data_object_id,
+        CASE
+            WHEN pi.relkind IN ('i', 'I') THEN
+                CASE
+                    WHEN pi.mid_parent_oid IS NOT NULL THEN 'INDEX SUBPARTITION'
+                    ELSE 'INDEX PARTITION'
+                END
+            ELSE
+                CASE
+                    WHEN pi.mid_parent_oid IS NOT NULL THEN 'TABLE SUBPARTITION'
+                    ELSE 'TABLE PARTITION'
+                END
+        END::varchar2(32) AS object_type,
+        TO_CHAR(obj.created, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(obj.modified, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(obj.created, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        CASE
+            WHEN pi.relpersistence IN ('t', 'g') THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        pi.relnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        UPPER((SELECT collname FROM pg_collation WHERE oid = (obj.option->>'collation')))::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        partition_info pi
+    LEFT JOIN
+        pg_object obj ON obj.refclassid = 'pg_class'::regclass AND pi.partition_oid = obj.obj_oid
+    WHERE
+        pi.relowner::regrole = current_user::regrole
+
+UNION ALL
+
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        c.oid::text::number AS object_id,
+        CASE
+            WHEN c.relfilenode <> 0 THEN c.relfilenode
+            ELSE NULL
+        END::text::number AS data_object_id,
+        CASE c.relkind
+            WHEN 'r' THEN 'TABLE'
+            WHEN 'v' THEN 'VIEW'
+            WHEN 'm' THEN 'MATERIALIZED VIEW'
+            WHEN 'S' THEN 'SEQUENCE'
+            WHEN 'f' THEN 'FOREIGN TABLE'
+            WHEN 'p' THEN 'TABLE'
+            WHEN 'i' THEN 'INDEX'
+            WHEN 't' THEN 'TOAST TABLE'
+            WHEN 'I' THEN 'INDEX'
+            WHEN 'c' THEN 'COMPOSITE TYPE'
+            ELSE c.relkind::text
+        END::varchar2(32) AS object_type,
+        TO_CHAR(obj.created, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(obj.modified, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(obj.created, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        CASE
+            WHEN c.relpersistence IN ('t', 'g') THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        c.relnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        UPPER((SELECT collname FROM pg_collation WHERE oid = (obj.option->>'collation')))::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_class c
+    LEFT JOIN
+        pg_object obj ON obj.refclassid = 'pg_class'::regclass AND c.oid = obj.obj_oid
+    WHERE
+        ((c.oid NOT IN (SELECT inhparent FROM pg_inherits)) AND (c.oid NOT IN (SELECT inhrelid FROM pg_inherits))
+         OR  (c.oid IN (SELECT inhparent FROM pg_inherits) AND (c.oid NOT IN (SELECT inhrelid FROM pg_inherits)))
+        )
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-2: handle proc.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p.proowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(p.proname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        p.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        CASE p.prokind
+            WHEN 'f' THEN 'FUNCTION'
+            WHEN 'p' THEN 'PROCEDURE'
+            WHEN 'w' THEN 'WINDOW'
+            WHEN 'a' THEN 'AGGREGATE FUNCTION'
+            ELSE p.prokind::text
+        END::varchar2(32) AS object_type,
+        TO_CHAR(obj.created, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(obj.modified, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(obj.created, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        CASE p.prostatus
+            WHEN 'v' THEN 'VALID'
+            ELSE 'INVALID'
+        END::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        p.pronamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_proc p
+    LEFT JOIN
+        pg_object obj ON obj.refclassid = 'pg_proc'::regclass AND obj.obj_oid = p.oid
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-3: handle package.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        pkg.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'PACKAGE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        pkg.pkgnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        CASE
+            WHEN pkg.editable THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        CASE
+            WHEN pkg.use_collation THEN 'USING_NLS_COMP'
+            ELSE 'DEFAULT'
+        END::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_package pkg
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-4: handle package_body.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        pkgb.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'PACKAGE BODY'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        pkg.pkgnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        CASE
+            WHEN pkg.editable THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_package_body pkgb
+    LEFT JOIN
+        pg_package pkg ON pkgb.pkgoid = pkg.oid
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-5: handle type.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(typ.typowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(typ.typname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        typ.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'TYPE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        typ.typnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        UPPER((select collname from pg_collation WHERE oid = typ.typcollation))::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_type typ
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-6: handle trigger.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        UPPER(tg.tgname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        tg.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'TRIGGER'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        c.relnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_trigger tg
+    LEFT JOIN
+        pg_class c ON tg.tgrelid = c.oid
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-7: handle language.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(lan.lanowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(lan.lanname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        lan.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'LANGUAGE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_language lan
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-8: handle constraint.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = con.conrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(con.conname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        con.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'CONSTRAINT'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_constraint con
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-9: handle extension.        -- PG-specific
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext.extowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(ext.extname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        ext.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'EXTENSION'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        ext.extnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_extension ext
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-10: handle operator.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opr.oprowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opr.oprname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        opr.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'OPERATOR'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        opr.oprnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        (select datcollate from pg_database where datname = current_database)::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_operator opr
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-11: handle database.
+--------------------------------------------------------------------------------
+    SELECT
+        NULL::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(db.datname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        db.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'DATABASE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        db.datcollate::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_database db
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-12: handle tablespace.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(tsp.spcowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(tsp.spcname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        tsp.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'TABLESPACE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_tablespace tsp
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-13: handle schema.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(nsp.nspowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(nsp.nspname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        nsp.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'SCHEMA'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        oid::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        (select datcollate from pg_database where datname = current_database)::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_namespace nsp
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-14: handle synonym.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(syn.synowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(syn.synname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        syn.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'SYNONYM'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_synonym syn
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-15: handle job.
+--------------------------------------------------------------------------------
+    SELECT
+        NULL::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(job.jobname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        job.jobid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'JOB'::varchar2(32) AS object_type,
+        TO_CHAR(job.jobcreated, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(job.jobchanged, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(job.jobcreated, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM pgagent.pga_job job
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-16: handle dblink.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(link.lnkowner::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(link.lnkname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        link.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'DBLINK'::varchar2(32) AS object_type,
+        TO_CHAR(link.lnkcreated, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(link.lnkcreated, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(link.lnkcreated, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM ivorysql_dblink link
+;
+GRANT SELECT ON SYS.DBA_OBJECTS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_OBJECTS AS
+--------------------------------------------------------------------------------
+-- subquery-1: handle table, index, view, sequence etc.
+--------------------------------------------------------------------------------
+    WITH partition_info AS (
+        SELECT
+            c_top.relname AS top_parent_name,
+            NULL::oid AS mid_parent_oid,
+            c_child.oid AS partition_oid,
+            c_child.relname AS partition_name,
+            c_child.relowner AS relowner,
+            c_child.relfilenode AS relfilenode,
+            c_child.relkind AS relkind,
+            c_child.relnamespace AS relnamespace,
+            c_child.relpersistence AS relpersistence
+        FROM pg_class c_top
+        JOIN pg_inherits i ON c_top.oid = i.inhparent
+        JOIN pg_class c_child ON i.inhrelid = c_child.oid
+        WHERE c_top.relkind IN ('p', 'i', 'I')
+            AND NOT EXISTS (SELECT 1 FROM pg_inherits WHERE inhrelid = c_top.oid)
+
+        UNION ALL
+
+        SELECT
+            c_top.relname AS top_parent_name,
+            c_mid.oid AS mid_parent_oid,
+            c_child.oid AS partition_oid,
+            c_child.relname AS partition_name,
+            c_child.relowner AS relowner,
+            c_child.relfilenode AS relfilenode,
+            c_child.relkind AS relkind,
+            c_child.relnamespace AS relnamespace,
+            c_child.relpersistence AS relpersistence
+        FROM pg_class c_top
+        JOIN pg_inherits i1 ON c_top.oid = i1.inhparent
+        JOIN pg_class c_mid ON i1.inhrelid = c_mid.oid
+        JOIN pg_inherits i2 ON c_mid.oid = i2.inhparent
+        JOIN pg_class c_child ON i2.inhrelid = c_child.oid
+        WHERE c_top.relkind IN ('p', 'i', 'I')
+            AND c_mid.relkind IN ('p', 'i', 'I')
+    )
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pi.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(pi.top_parent_name::varchar2)::varchar2(128) AS object_name,
+        SYS.ORA_CASE_TRANS(pi.partition_name::varchar2)::varchar2(128) AS subobject_name,
+        pi.partition_oid::text::number AS object_id,
+        CASE
+            WHEN pi.relfilenode <> 0 THEN pi.relfilenode
+            ELSE NULL
+        END::text::number AS data_object_id,
+        CASE
+            WHEN pi.relkind IN ('i', 'I') THEN
+                CASE
+                    WHEN pi.mid_parent_oid IS NOT NULL THEN 'INDEX SUBPARTITION'
+                    ELSE 'INDEX PARTITION'
+                END
+            ELSE
+                CASE
+                    WHEN pi.mid_parent_oid IS NOT NULL THEN 'TABLE SUBPARTITION'
+                    ELSE 'TABLE PARTITION'
+                END
+        END::varchar2(32) AS object_type,
+        TO_CHAR(obj.created, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(obj.modified, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(obj.created, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        CASE
+            WHEN pi.relpersistence IN ('t', 'g') THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        pi.relnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        UPPER((SELECT collname FROM pg_collation WHERE oid = (obj.option->>'collation')))::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        partition_info pi
+    LEFT JOIN
+        pg_object obj ON obj.refclassid = 'pg_class'::regclass AND pi.partition_oid = obj.obj_oid
+    WHERE
+        pi.relowner::regrole = current_user::regrole
+
+UNION ALL
+
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        c.oid::text::number AS object_id,
+        CASE
+            WHEN c.relfilenode <> 0 THEN c.relfilenode
+            ELSE NULL
+        END::text::number AS data_object_id,
+        CASE c.relkind
+            WHEN 'r' THEN 'TABLE'
+            WHEN 'v' THEN 'VIEW'
+            WHEN 'm' THEN 'MATERIALIZED VIEW'
+            WHEN 'S' THEN 'SEQUENCE'
+            WHEN 'f' THEN 'FOREIGN TABLE'
+            WHEN 'p' THEN 'TABLE'
+            WHEN 'i' THEN 'INDEX'
+            WHEN 't' THEN 'TOAST TABLE'
+            WHEN 'I' THEN 'INDEX'
+            WHEN 'c' THEN 'COMPOSITE TYPE'
+            ELSE c.relkind::text
+        END::varchar2(32) AS object_type,
+        TO_CHAR(obj.created, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(obj.modified, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(obj.created, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        CASE
+            WHEN c.relpersistence IN ('t', 'g') THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        c.relnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        UPPER((SELECT collname FROM pg_collation WHERE oid = (obj.option->>'collation')))::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_class c
+    LEFT JOIN
+        pg_object obj ON obj.refclassid = 'pg_class'::regclass AND c.oid = obj.obj_oid
+    WHERE
+        ((c.oid NOT IN (SELECT inhparent FROM pg_inherits)) AND (c.oid NOT IN (SELECT inhrelid FROM pg_inherits))
+         OR  (c.oid IN (SELECT inhparent FROM pg_inherits) AND (c.oid NOT IN (SELECT inhrelid FROM pg_inherits)))
+        )
+        AND (
+            HAS_TABLE_PRIVILEGE(c.oid, 'SELECT')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'INSERT')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'UPDATE')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'DELETE')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'TRUNCATE')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'TRIGGER')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'REFERENCES')
+        )
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-2: handle proc.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p.proowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(p.proname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        p.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        CASE p.prokind
+            WHEN 'f' THEN 'FUNCTION'
+            WHEN 'p' THEN 'PROCEDURE'
+            WHEN 'w' THEN 'WINDOW FUNCTION'
+            WHEN 'a' THEN 'AGGREGATE FUNCTION'
+            ELSE p.prokind::text
+        END::varchar2(32) AS object_type,
+        TO_CHAR(obj.created, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(obj.modified, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(obj.created, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        CASE p.prostatus
+            WHEN 'v' THEN 'VALID'
+            ELSE 'INVALID'
+        END::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        p.pronamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_proc p
+    LEFT JOIN
+        pg_object obj ON obj.refclassid = 'pg_proc'::regclass AND obj.obj_oid = p.oid
+    WHERE
+        HAS_FUNCTION_PRIVILEGE(p.oid, 'EXECUTE')
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-3: handle package.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        pkg.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'PACKAGE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        pkg.pkgnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        CASE
+            WHEN pkg.editable THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        CASE
+            WHEN pkg.use_collation THEN 'USING_NLS_COMP'
+            ELSE 'DEFAULT'
+        END::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_package pkg
+    WHERE
+        HAS_PACKAGE_PRIVILEGE(pkg.oid, 'EXECUTE')
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-4: handle package_body.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        pkgb.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'PACKAGE BODY'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        pkg.pkgnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        CASE
+            WHEN pkg.editable THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_package_body pkgb
+    LEFT JOIN
+        pg_package pkg ON pkgb.pkgoid = pkg.oid
+    WHERE
+        HAS_PACKAGE_PRIVILEGE(pkg.oid, 'EXECUTE')
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-5: handle type.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(typ.typowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(typ.typname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        typ.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'TYPE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        typ.typnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        UPPER((select collname from pg_collation WHERE oid = typ.typcollation))::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_type typ
+    WHERE
+        HAS_TYPE_PRIVILEGE(typ.oid, 'USAGE')
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-6: handle trigger.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
+        UPPER(tg.tgname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        tg.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'TRIGGER'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        c.relnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_trigger tg
+    LEFT JOIN
+        pg_class c ON tg.tgrelid = c.oid
+    WHERE
+        HAS_TABLE_PRIVILEGE(c.oid, 'SELECT')
+        OR HAS_TABLE_PRIVILEGE(c.oid, 'INSERT')
+        OR HAS_TABLE_PRIVILEGE(c.oid, 'UPDATE')
+        OR HAS_TABLE_PRIVILEGE(c.oid, 'DELETE')
+        OR HAS_TABLE_PRIVILEGE(c.oid, 'TRUNCATE')
+        OR HAS_TABLE_PRIVILEGE(c.oid, 'TRIGGER')
+        OR HAS_TABLE_PRIVILEGE(c.oid, 'REFERENCES')
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-7: handle language.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(lan.lanowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(lan.lanname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        lan.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'LANGUAGE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_language lan
+    WHERE
+        HAS_LANGUAGE_PRIVILEGE(lan.oid, 'USAGE')
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-8: handle constraint.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = con.conrelid))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(con.conname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        con.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'CONSTRAINT'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_constraint con
+    WHERE
+        HAS_TABLE_PRIVILEGE(con.conrelid, 'SELECT')
+        OR HAS_TABLE_PRIVILEGE(con.conrelid, 'INSERT')
+        OR HAS_TABLE_PRIVILEGE(con.conrelid, 'UPDATE')
+        OR HAS_TABLE_PRIVILEGE(con.conrelid, 'DELETE')
+        OR HAS_TABLE_PRIVILEGE(con.conrelid, 'TRUNCATE')
+        OR HAS_TABLE_PRIVILEGE(con.conrelid, 'TRIGGER')
+        OR HAS_TABLE_PRIVILEGE(con.conrelid, 'REFERENCES')
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-9: handle extension.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext.extowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(ext.extname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        ext.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'EXTENSION'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        ext.extnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_extension ext
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-10: handle operator.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opr.oprowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(opr.oprname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        opr.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'OPERATOR'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        opr.oprnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        (select datcollate from pg_database where datname = current_database)::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_operator opr
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-11: handle database.
+--------------------------------------------------------------------------------
+    SELECT
+        NULL::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(db.datname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        db.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'DATABASE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        db.datcollate::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_database db
+    WHERE
+        HAS_DATABASE_PRIVILEGE(db.oid, 'CREATE')
+        OR HAS_DATABASE_PRIVILEGE(db.oid, 'CREATE WITH GRANT OPTION')
+        OR HAS_DATABASE_PRIVILEGE(db.oid, 'TEMPORARY')
+        OR HAS_DATABASE_PRIVILEGE(db.oid, 'TEMPORARY WITH GRANT OPTION')
+        OR HAS_DATABASE_PRIVILEGE(db.oid, 'TEMP')
+        OR HAS_DATABASE_PRIVILEGE(db.oid, 'TEMP WITH GRANT OPTION')
+        OR HAS_DATABASE_PRIVILEGE(db.oid, 'CONNECT')
+        OR HAS_DATABASE_PRIVILEGE(db.oid, 'CONNECT WITH GRANT OPTION')
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-12: handle tablespace.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(tsp.spcowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(tsp.spcname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        tsp.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'TABLESPACE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_tablespace tsp
+    WHERE
+        HAS_TABLESPACE_PRIVILEGE(tsp.oid, 'CREATE')
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-13: handle schema.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(nsp.nspowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(nsp.nspname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        nsp.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'SCHEMA'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        oid::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        (select datcollate from pg_database where datname = current_database)::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_namespace nsp
+    WHERE
+        HAS_SCHEMA_PRIVILEGE(nsp.oid, 'CREATE')
+        OR HAS_SCHEMA_PRIVILEGE(nsp.oid, 'USAGE')
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-14: handle synonym.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(syn.synowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(syn.synname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        syn.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'SYNONYM'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_synonym syn
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-15: handle job.
+--------------------------------------------------------------------------------
+    SELECT
+        NULL::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(job.jobname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        job.jobid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'JOB'::varchar2(32) AS object_type,
+        TO_CHAR(job.jobcreated, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(job.jobchanged, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(job.jobcreated, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM pgagent.pga_job job
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-16: handle dblink.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(link.lnkowner::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(link.lnkname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        link.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'DBLINK'::varchar2(32) AS object_type,
+        TO_CHAR(link.lnkcreated, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(link.lnkcreated, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(link.lnkcreated, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM ivorysql_dblink link
+;
+GRANT SELECT ON SYS.ALL_OBJECTS TO PUBLIC;
+
+
+CREATE OR REPLACE VIEW SYS.USER_OBJECTS AS
+--------------------------------------------------------------------------------
+-- subquery-1: handle table, index, view, sequence etc.
+--------------------------------------------------------------------------------
+    WITH partition_info AS (
+        SELECT
+            c_top.relname AS top_parent_name,
+            NULL::oid AS mid_parent_oid,
+            c_child.oid AS partition_oid,
+            c_child.relname AS partition_name,
+            c_child.relowner AS relowner,
+            c_child.relfilenode AS relfilenode,
+            c_child.relkind AS relkind,
+            c_child.relnamespace AS relnamespace,
+            c_child.relpersistence AS relpersistence
+        FROM pg_class c_top
+        JOIN pg_inherits i ON c_top.oid = i.inhparent
+        JOIN pg_class c_child ON i.inhrelid = c_child.oid
+        WHERE c_top.relkind IN ('p', 'i', 'I')
+            AND NOT EXISTS (SELECT 1 FROM pg_inherits WHERE inhrelid = c_top.oid)
+
+        UNION ALL
+
+        SELECT
+            c_top.relname AS top_parent_name,
+            c_mid.oid AS mid_parent_oid,
+            c_child.oid AS partition_oid,
+            c_child.relname AS partition_name,
+            c_child.relowner AS relowner,
+            c_child.relfilenode AS relfilenode,
+            c_child.relkind AS relkind,
+            c_child.relnamespace AS relnamespace,
+            c_child.relpersistence AS relpersistence
+        FROM pg_class c_top
+        JOIN pg_inherits i1 ON c_top.oid = i1.inhparent
+        JOIN pg_class c_mid ON i1.inhrelid = c_mid.oid
+        JOIN pg_inherits i2 ON c_mid.oid = i2.inhparent
+        JOIN pg_class c_child ON i2.inhrelid = c_child.oid
+        WHERE c_top.relkind IN ('p', 'i', 'I')
+            AND c_mid.relkind IN ('p', 'i', 'I')
+    )
+    SELECT
+        SYS.ORA_CASE_TRANS(pi.top_parent_name::varchar2)::varchar2(128) AS object_name,
+        SYS.ORA_CASE_TRANS(pi.partition_name::varchar2)::varchar2(128) AS subobject_name,
+        pi.partition_oid::text::number AS object_id,
+        CASE
+            WHEN pi.relfilenode <> 0 THEN pi.relfilenode
+            ELSE NULL
+        END::text::number AS data_object_id,
+        CASE
+            WHEN pi.relkind IN ('i', 'I') THEN
+                CASE
+                    WHEN pi.mid_parent_oid IS NOT NULL THEN 'INDEX SUBPARTITION'
+                    ELSE 'INDEX PARTITION'
+                END
+            ELSE
+                CASE
+                    WHEN pi.mid_parent_oid IS NOT NULL THEN 'TABLE SUBPARTITION'
+                    ELSE 'TABLE PARTITION'
+                END
+        END::varchar2(32) AS object_type,
+        TO_CHAR(obj.created, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(obj.modified, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(obj.created, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        CASE
+            WHEN pi.relpersistence IN ('t', 'g') THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        pi.relnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        UPPER((SELECT collname FROM pg_collation WHERE oid = (obj.option->>'collation')))::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        partition_info pi
+    LEFT JOIN
+        pg_object obj ON obj.refclassid = 'pg_class'::regclass AND pi.partition_oid = obj.obj_oid
+    WHERE
+        pi.relowner::regrole = current_user::regrole
+
+UNION ALL
+
+    SELECT
+        SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        c.oid::text::number AS object_id,
+        CASE
+            WHEN c.relfilenode <> 0 THEN c.relfilenode
+            ELSE NULL
+        END::text::number AS data_object_id,
+        CASE c.relkind
+            WHEN 'r' THEN 'TABLE'
+            WHEN 'v' THEN 'VIEW'
+            WHEN 'm' THEN 'MATERIALIZED VIEW'
+            WHEN 'S' THEN 'SEQUENCE'
+            WHEN 'f' THEN 'FOREIGN TABLE'
+            WHEN 'p' THEN 'TABLE'
+            WHEN 'i' THEN 'INDEX'
+            WHEN 't' THEN 'TOAST TABLE'
+            WHEN 'I' THEN 'INDEX'
+            WHEN 'c' THEN 'COMPOSITE TYPE'
+            ELSE c.relkind::text
+        END::varchar2(32) AS object_type,
+        TO_CHAR(obj.created, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(obj.modified, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(obj.created, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        CASE
+            WHEN c.relpersistence IN ('t', 'g') THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        c.relnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        UPPER((SELECT collname FROM pg_collation WHERE oid = (obj.option->>'collation')))::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_class c
+    LEFT JOIN
+        pg_object obj ON obj.refclassid = 'pg_class'::regclass AND c.oid = obj.obj_oid
+    WHERE
+        ((c.oid NOT IN (SELECT inhparent FROM pg_inherits)) AND (c.oid NOT IN (SELECT inhrelid FROM pg_inherits))
+         OR  (c.oid IN (SELECT inhparent FROM pg_inherits) AND (c.oid NOT IN (SELECT inhrelid FROM pg_inherits)))
+        )
+        AND c.relowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-2: handle proc.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(p.proname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        p.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        CASE p.prokind
+            WHEN 'f' THEN 'FUNCTION'
+            WHEN 'p' THEN 'PROCEDURE'
+            WHEN 'w' THEN 'WINDOW FUNCTION'
+            WHEN 'a' THEN 'AGGREGATE FUNCTION'
+            ELSE p.prokind::text
+        END::varchar2(32) AS object_type,
+        TO_CHAR(obj.created, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(obj.modified, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(obj.created, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        CASE p.prostatus
+            WHEN 'v' THEN 'VALID'
+            ELSE 'INVALID'
+        END::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        p.pronamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_proc p
+    LEFT JOIN
+        pg_object obj ON obj.refclassid = 'pg_proc'::regclass AND obj.obj_oid = p.oid
+    WHERE
+        p.proowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-3: handle package.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        pkg.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'PACKAGE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        pkg.pkgnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        CASE
+            WHEN pkg.editable THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        CASE
+            WHEN pkg.use_collation THEN 'USING_NLS_COMP'
+            ELSE 'DEFAULT'
+        END::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_package pkg
+    WHERE
+        pkg.pkgowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-4: handle package_body.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS((pkg.pkgname::varchar2))::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        pkgb.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'PACKAGE BODY'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        pkg.pkgnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        CASE
+            WHEN pkg.editable THEN 'Y'
+            ELSE 'N'
+        END::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_package_body pkgb
+    LEFT JOIN
+        pg_package pkg ON pkgb.pkgoid = pkg.oid
+    WHERE
+        pkg.pkgowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-5: handle type.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(typ.typname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        typ.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'TYPE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        typ.typnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        UPPER((select collname from pg_collation WHERE oid = typ.typcollation))::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_type typ
+    WHERE
+        typ.typowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-6: handle trigger.
+--------------------------------------------------------------------------------
+    SELECT
+        UPPER(tg.tgname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        tg.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'TRIGGER'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        c.relnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_trigger tg
+    LEFT JOIN
+        pg_class c ON tg.tgrelid = c.oid
+    WHERE
+        c.relowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-7: handle language.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(lan.lanname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        lan.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'LANGUAGE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_language lan
+    WHERE
+        lan.lanowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-8: handle constraint.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(con.conname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        con.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'CONSTRAINT'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_constraint con
+    WHERE
+        (SELECT relowner FROM pg_class WHERE oid = con.conrelid)::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-9: handle extension.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(ext.extname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        ext.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'EXTENSION'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        ext.extnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_extension ext
+    WHERE
+        ext.extowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-10: handle operator.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(opr.oprname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        opr.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'OPERATOR'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        opr.oprnamespace::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        (select datcollate from pg_database where datname = current_database)::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_operator opr
+    WHERE
+        opr.oprowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-11: handle database.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(db.datname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        db.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'DATABASE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        db.datcollate::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_database db
+    WHERE
+        db.datdba::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-12: handle tablespace.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(tsp.spcname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        tsp.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'TABLESPACE'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_tablespace tsp
+    WHERE
+        tsp.spcowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-13: handle schema.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(nsp.nspname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        nsp.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'SCHEMA'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        oid::text::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        (select datcollate from pg_database where datname = current_database)::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_namespace nsp
+    WHERE
+        nsp.nspowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-14: handle synonym.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(syn.synname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        syn.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'SYNONYM'::varchar2(32) AS object_type,
+        NULL::date AS created,
+        NULL::date AS last_ddl_time,
+        NULL::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM
+        pg_synonym syn
+    WHERE
+        syn.synowner::regrole = current_user::regrole
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-15: handle job.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(job.jobname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        job.jobid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'JOB'::varchar2(32) AS object_type,
+        TO_CHAR(job.jobcreated, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(job.jobchanged, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(job.jobcreated, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM pgagent.pga_job job
+
+UNION ALL
+--------------------------------------------------------------------------------
+-- subquery-16: handle dblink.
+--------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(link.lnkname::varchar2)::varchar2(128) AS object_name,
+        NULL::varchar2(128) AS subobject_name,
+        link.oid::text::number AS object_id,
+        NULL::number AS data_object_id,
+        'DBLINK'::varchar2(32) AS object_type,
+        TO_CHAR(link.lnkcreated, current_setting('nls_date_format'))::date AS created,
+        TO_CHAR(link.lnkcreated, current_setting('nls_date_format'))::date AS last_ddl_time,
+        TO_CHAR(link.lnkcreated, 'YYYY-MM-DD HH24:MI:SS')::varchar2(19) AS timestamp,
+        'VALID'::varchar2(7) AS status,
+        'N'::varchar2(1) AS temporary,
+        'N'::varchar2(1) AS generated,
+        'N'::varchar2(1) AS secondary,
+        NULL::number AS namespace,
+        NULL::varchar2(128) AS edition_name,
+        NULL::varchar2(18) AS sharing,
+        NULL::varchar2(1) AS editionable,
+        'N'::varchar2(1) AS oracle_maintained,
+        'N'::varchar2(1) AS application,
+        NULL::varchar2(100) AS default_collation,
+        'N'::varchar2(1) AS duplicated,
+        'N'::varchar2(1) AS sharded,
+        'N'::varchar2(1) AS imported_object,
+        NULL::number AS created_appid,
+        NULL::number AS created_vsnid,
+        NULL::number AS modified_appid,
+        NULL::number AS modified_vsnid
+    FROM ivorysql_dblink link
+    WHERE link.lnkowner::regrole = current_user::regrole
+;
+GRANT SELECT ON SYS.USER_OBJECTS TO PUBLIC;
+
+
+/* *******************************************************************************************
+                                           XXX_TYPES
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.TYPES_INTERNAL AS
+    SELECT
+        t.oid AS oid,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(t.typowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+        SYS.ORA_CASE_TRANS(t.typname::varchar2)::varchar2(128) AS type_name,
+        t.oid::text::raw(16) AS type_oid,
+        UPPER(t.typname)::varchar2(128) AS typecode,
+        CASE
+            WHEN t.typtype = 'c' THEN (
+                SELECT count(a.attnum ORDER BY a.attnum)
+                FROM pg_attribute a
+                WHERE a.attrelid = c.oid
+                AND a.attnum > 0
+            )
+            ELSE NULL
+        END::number AS attributes,
+        4::number AS methods,
+        CASE
+            WHEN t.oid < 32767 THEN 'YES'
+            ELSE 'NO'
+        END::varchar2(3) AS predefined,
+        'NO'::varchar2(3) AS incomplete,
+        'NO'::varchar2(3) AS final,
+        'NO'::varchar2(3) AS instantable,
+        'NO'::varchar2(3) AS persistable,
+        NULL::varchar2(128) AS supertype_owner,
+        NULL::varchar2(128) AS supertype_name,
+        NULL::number AS local_attributes,
+        NULL::number AS local_methods,
+        t.oid::text::raw(16) AS typeid
+    FROM
+        pg_type t
+    LEFT JOIN
+        pg_class c ON t.typname = c.relname
+    ORDER BY
+        t.oid;
+
+CREATE OR REPLACE VIEW SYS.DBA_TYPES AS
+    SELECT
+        owner,
+        type_name,
+        type_oid,
+        typecode,
+        attributes,
+        methods,
+        predefined,
+        incomplete,
+        final,
+        instantable,
+        persistable,
+        supertype_owner,
+        supertype_name,
+        local_attributes,
+        local_methods,
+        typeid
+    FROM SYS.TYPES_INTERNAL;
+GRANT SELECT ON SYS.DBA_TYPES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_TYPES AS
+    SELECT
+        owner,
+        type_name,
+        type_oid,
+        typecode,
+        attributes,
+        methods,
+        predefined,
+        incomplete,
+        final,
+        instantable,
+        persistable,
+        supertype_owner,
+        supertype_name,
+        local_attributes,
+        local_methods,
+        typeid
+    FROM SYS.TYPES_INTERNAL
+    WHERE
+        has_type_privilege(oid, 'USAGE')
+    ORDER BY
+        type_oid;
+GRANT SELECT ON SYS.ALL_TYPES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_TYPES AS
+    SELECT
+        type_name,
+        type_oid,
+        typecode,
+        attributes,
+        methods,
+        predefined,
+        incomplete,
+        final,
+        instantable,
+        persistable,
+        supertype_owner,
+        supertype_name,
+        local_attributes,
+        local_methods,
+        typeid
+    FROM SYS.TYPES_INTERNAL
+    WHERE
+        owner::regrole = current_user::regrole
+    ORDER BY
+        type_oid;
+GRANT SELECT ON SYS.USER_TYPES TO PUBLIC;
+
+/* *******************************************************************************************
+                                           XXX_USERS
+* *******************************************************************************************/
+CREATE OR REPLACE FUNCTION sys.get_user_auth_info(p_username text)
+RETURNS RECORD SECURITY DEFINER LANGUAGE plisql AS
+$$
+DECLARE
+    passwd text;
+    is_banned boolean;
+    banned_time text;
+    validuntil timestamptz;
+    ret record;
+BEGIN
+    SELECT a.rolpassword AS passwd, (br.roleid IS NOT NULL) AS is_banned, br.banned_date::text AS banned_time, a.rolvaliduntil AS validuntil
+		INTO passwd, is_banned, banned_time, validuntil
+	FROM pg_authid a
+	LEFT JOIN pg_roles r ON a.oid = r.oid
+	LEFT JOIN pg_banned_role br ON r.oid = br.roleid
+	WHERE a.rolname = p_username;
+    ret := ROW(passwd, is_banned, banned_time, validuntil);
+    RETURN ret;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION sys.get_user_auth_info(text) TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.DBA_USERS AS
+    SELECT
+        UPPER(u.rolname)::varchar2(128) AS username,
+        u.oid::text::number AS user_id,
+        NULL::varchar2(4000) AS password,
+        CASE
+            WHEN br.validuntil < now() THEN
+                CASE
+                    WHEN br.is_banned THEN 'EXPIRED&LOCKED(TIMED)'
+                    ELSE 'EXPIRED'
+                END
+            ELSE
+                CASE
+                    WHEN br.is_banned THEN 'LOCKED(TIMED)'
+                    ELSE 'OPEN'
+                END
+        END::varchar2(32) AS account_status,
+        TO_CHAR(br.banned_time::timestamptz, current_setting('nls_date_format'))::date AS lock_date,
+        NULL::date AS expiry_date,
+        NULL::varchar2(30) AS default_tablespace,
+        NULL::varchar2(30) AS temporary_tablespace,
+        NULL::varchar2(30) AS local_temp_tablespace,
+        NULL::date AS created,
+        NULL::varchar2(128) AS profile,
+        NULL::varchar2(128) AS initial_rsrc_consumer_group,
+        NULL::varchar2(4000) AS external_name,
+        NULL::varchar2(12) AS password_version,
+        'N'::varchar2(1) AS editions_enable,
+        CASE
+            WHEN regexp_match(br.passwd, 'SCRAM-SHA-256') IS NOT NULL THEN 'PASSWORD'
+            ELSE 'NONE'
+        END::varchar2(8) AS authentication_type,
+        NULL::varchar2(1) AS proxy_only_connect,
+        'NO'::varchar2(3) AS common,
+        NULL::timestamptz AS last_login,
+        'N'::varchar2(1) AS oracle_maintained,
+        'NO'::varchar2(3) AS inherited,
+        NULL::varchar2(100) AS default_collation,
+        'NO'::varchar2(3) AS implicit,
+        'NO'::varchar2(3) AS all_shard,
+        'NO'::varchar2(3) AS external_shard,
+        NULL::date AS password_change_date,
+        'NO'::varchar2(3) AS mandatory_profile_violation
+    FROM
+        pg_authid u
+    LEFT JOIN LATERAL (
+        SELECT * FROM sys.get_user_auth_info(u.rolname) AS (passwd text, is_banned bool, banned_time text, validuntil timestamptz)
+    ) br ON true;
+GRANT SELECT ON SYS.DBA_USERS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_USERS AS
+    SELECT
+        UPPER(u.rolname)::varchar2(128) AS username,
+        u.oid::text::number AS user_id,
+        NULL::date AS created,
+        'NO'::varchar2(3) AS common,
+        'N'::varchar2(1) AS oracle_maintained,
+        'NO'::varchar2(3) AS inherited,
+        NULL::varchar2(100) AS default_collation,
+        'NO'::varchar2(3) AS implicit,
+        'NO'::varchar2(3) AS all_shard,
+        'NO'::varchar2(3) AS external_shard
+    FROM
+        pg_authid u
+    WHERE
+        pg_has_role(current_user, u.oid, 'USAGE');
+GRANT SELECT ON SYS.ALL_USERS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_USERS AS
+    SELECT
+        UPPER(u.rolname)::varchar2(128) AS username,
+        u.oid::text::number AS user_id,
+        CASE
+            WHEN br.validuntil < now() THEN
+                CASE
+                    WHEN br.is_banned THEN 'EXPIRED&LOCKED(TIMED)'
+                    ELSE 'EXPIRED'
+                END	
+            ELSE
+                CASE
+                    WHEN br.is_banned THEN 'LOCKED(TIMED)'
+                    ELSE 'OPEN'
+                END
+        END::varchar2(32) AS account_status,
+        TO_CHAR(br.banned_time::timestamptz, current_setting('nls_date_format'))::date AS lock_date,
+        NULL::date AS expiry_date,
+        NULL::varchar2(30) AS default_tablespace,
+        NULL::varchar2(30) AS temporary_tablespace,
+        NULL::varchar2(30) AS local_temp_tablespace,
+        NULL::date AS created,
+        NULL::varchar2(128) AS initial_rsrc_consumer_group,
+        NULL::varchar2(4000) AS external_name,
+        NULL::varchar2(1) AS proxy_only_connect,
+        'NO'::varchar2(3) AS common,
+        'N'::varchar2(1) AS oracle_maintained,
+        'NO'::varchar2(3) AS inherited,
+        NULL::varchar2(100) AS default_collation,
+        'NO'::varchar2(3) AS implicit,
+        'NO'::varchar2(3) AS all_shard,
+        'NO'::varchar2(3) AS external_shard,
+        NULL::date AS password_change_date,
+        'NO'::varchar2(3) AS mandatory_profile_violation
+    FROM
+        pg_authid u
+    LEFT JOIN LATERAL (
+        SELECT * FROM sys.get_user_auth_info(u.rolname) AS (passwd text, is_banned bool, banned_time text, validuntil timestamptz)
+    ) br ON true
+    WHERE
+        current_user::regrole = u.oid::regrole;
+GRANT SELECT ON SYS.USER_USERS TO PUBLIC;
+
+/* *******************************************************************************************
+                                         XXX_CONSTRAINTS
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.DBA_CONSTRAINTS AS
+    (
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            UPPER(cons.conname)::varchar2(128) AS constraint_name,
+            UPPER(cons.contype)::varchar2(1) AS constraint_type,
+            UPPER((SELECT relname FROM pg_class WHERE oid = cons.conrelid))::varchar2(128) AS table_name,
+            UPPER((pg_get_constraintdef(cons.oid)))::long AS search_condition,
+            UPPER((pg_get_constraintdef(cons.oid)))::varchar2(4000) AS search_condition_vc,
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
+            UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
+            CASE cons.confdeltype
+                WHEN 'c' THEN 'CASCADE'
+                WHEN 'r' THEN 'RESTRICT'
+                WHEN 'n' THEN 'SET NULL'
+                WHEN 'd' THEN 'SET DEFAULT'
+                WHEN 's' THEN 'SET NULL'
+                WHEN 'a' THEN 'NO ACTION'
+                ELSE NULL
+            END::varchar2(11) AS delete_rule,
+            'ENABLED'::varchar2(8) AS status,
+            CASE
+                WHEN cons.condeferrable THEN 'DEFERRABLE'
+                ELSE 'NOT DEFERRABLE'
+            END::varchar2(14) AS condeferrable,
+            CASE
+                WHEN cons.condeferred THEN 'DEFERRED'
+                ELSE 'IMMEDIATE'
+            END::varchar2(9) AS deferred,
+            CASE
+                WHEN cons.convalidated THEN 'VALIDATE'
+                ELSE 'NOT VALIDATE'
+            END::varchar2(13) AS validated,
+            'USER NAME'::varchar2(14) AS generated,
+            NULL::varchar2(3) AS bad,
+            NULL::varchar2(4) AS rely,
+            NULL::date AS last_change,
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ci.relowner)::VARCHAR2)::VARCHAR2(128) AS index_owner,
+            UPPER(ci.relname)::varchar2(128) AS index_name,
+            CASE
+                WHEN cons.convalidated THEN NULL
+                ELSE 'INVALID'
+            END::varchar2(7) AS invalid,
+            NULL::varchar2(14) AS view_related,
+            NULL::number AS origin_con_id
+        FROM
+            pg_constraint cons
+        LEFT JOIN
+            pg_class c ON cons.conrelid = c.oid
+        LEFT JOIN
+            pg_class c_ref ON cons.confrelid = c_ref.oid
+        LEFT JOIN
+            pg_class ci ON cons.conindid = ci.oid
+    UNION ALL
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            (SYS.ORA_CASE_TRANS((c.relname || '_' || attr.attname)::varchar2) || '_NOT_NULL')::varchar2(128) AS constraint_name,
+            'C'::varchar2(1) AS constraint_type,
+            SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS table_name,
+            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::long AS search_condition,
+            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::varchar2(4000) AS search_condition_vc,
+            NULL::VARCHAR2(128) AS r_owner,
+            NULL::varchar2(128) AS r_constraint_name,
+            NULL::varchar2(11) AS delete_rule,
+            'ENABLED'::varchar2(8) AS status,
+            'NOT DEFERRABLE'::varchar2(14) AS condeferrable,
+            'IMMEDIATE'::varchar2(9) AS deferred,
+            'VALIDATE'::varchar2(13) AS validate,
+            'USER NAME'::varchar2(14) AS generated,
+            NULL::varchar2(3) AS bad,
+            NULL::varchar2(4) AS rely,
+            NULL::date AS last_change,
+            NULL::VARCHAR2(128) AS index_owner,
+            NULL::varchar2(128) AS index_name,
+            NULL::varchar2(7) AS invalid,
+            NULL::varchar2(14) AS view_related,
+            NULL::number AS origin_con_id
+        FROM
+            pg_attribute attr
+        JOIN
+            pg_class c ON attr.attrelid = c.oid
+        WHERE
+            attr.attnotnull = true
+            AND attr.attnum > 0
+    ) ORDER BY table_name;
+GRANT SELECT ON SYS.DBA_CONSTRAINTS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_CONSTRAINTS AS
+    (
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            UPPER(cons.conname)::varchar2(128) AS constraint_name,
+            UPPER(cons.contype)::varchar2(1) AS constraint_type,
+            UPPER((SELECT relname FROM pg_class WHERE oid = cons.conrelid))::varchar2(128) AS table_name,
+            UPPER((pg_get_constraintdef(cons.oid)))::varchar2(128) AS search_condition,
+            UPPER((pg_get_constraintdef(cons.oid)))::long AS search_condition_vc,
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
+            UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
+            CASE cons.confdeltype
+                WHEN 'c' THEN 'CASCADE'
+                WHEN 'r' THEN 'RESTRICT'
+                WHEN 'n' THEN 'SET NULL'
+                WHEN 'd' THEN 'SET DEFAULT'
+                WHEN 's' THEN 'SET NULL'
+                WHEN 'a' THEN 'NO ACTION'
+                ELSE NULL
+            END::varchar2(11) AS delete_rule,
+            'ENABLED'::varchar2(8) AS status,
+            CASE
+                WHEN cons.condeferrable THEN 'DEFERRABLE'
+                ELSE 'NOT DEFERRABLE'
+            END::varchar2(14) AS condeferrable,
+            CASE
+                WHEN cons.condeferred THEN 'DEFERRED'
+                ELSE 'IMMEDIATE'
+            END::varchar2(9) AS deferred,
+            CASE
+                WHEN cons.convalidated THEN 'VALIDATE'
+                ELSE 'NOT VALIDATE'
+            END::varchar2(13) AS validated,
+            'USER NAME'::varchar2(14) AS generated,
+            NULL::varchar2(3) AS bad,
+            NULL::varchar2(4) AS rely,
+            NULL::date AS last_change,
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ci.relowner)::VARCHAR2)::VARCHAR2(128) AS index_owner,
+            UPPER(ci.relname)::varchar2(128) AS index_name,
+            CASE
+                WHEN cons.convalidated THEN NULL
+                ELSE 'INVALID'
+            END::varchar2(7) AS invalid,
+            NULL::varchar2(14) AS view_related,
+            NULL::number AS origin_con_id
+        FROM
+            pg_constraint cons
+        LEFT JOIN
+            pg_class c ON cons.conrelid = c.oid
+        LEFT JOIN
+            pg_class c_ref ON cons.confrelid = c_ref.oid
+        LEFT JOIN
+            pg_class ci ON cons.conindid = ci.oid
+        WHERE
+            HAS_TABLE_PRIVILEGE(cons.conrelid, 'SELECT')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid,'INSERT')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid, 'UPDATE')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid, 'DELETE')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid, 'TRUNCATE')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid, 'TRIGGER')
+            OR HAS_TABLE_PRIVILEGE(cons.conrelid, 'REFERENCES')
+    UNION ALL
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            (SYS.ORA_CASE_TRANS((c.relname || '_' || attr.attname)::varchar2) || '_NOT_NULL')::varchar2(128) AS constraint_name,
+            'C'::varchar2(1) AS constraint_type,
+            SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS table_name,
+            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::long AS search_condition,
+            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::varchar2(4000) AS search_condition_vc,
+            NULL::VARCHAR2(128) AS r_owner,
+            NULL::varchar2(128) AS r_constraint_name,
+            NULL::varchar2(11) AS delete_rule,
+            'ENABLED'::varchar2(8) AS status,
+            'NOT DEFERRABLE'::varchar2(14) AS condeferrable,
+            'IMMEDIATE'::varchar2(9) AS deferred,
+            'VALIDATE'::varchar2(13) AS validate,
+            'USER NAME'::varchar2(14) AS generated,
+            NULL::varchar2(3) AS bad,
+            NULL::varchar2(4) AS rely,
+            NULL::date AS last_change,
+            NULL::VARCHAR2(128) AS index_owner,
+            NULL::varchar2(128) AS index_name,
+            NULL::varchar2(7) AS invalid,
+            NULL::varchar2(14) AS view_related,
+            NULL::number AS origin_con_id
+        FROM
+            pg_attribute attr
+        JOIN
+            pg_class c ON attr.attrelid = c.oid
+        WHERE
+            attr.attnotnull = true
+            AND attr.attnum > 0
+            AND (
+                HAS_TABLE_PRIVILEGE(c.oid, 'SELECT')
+                OR HAS_TABLE_PRIVILEGE(c.oid,'INSERT')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'UPDATE')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'DELETE')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'TRUNCATE')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'TRIGGER')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'REFERENCES')
+            )
+    ) ORDER BY table_name;
+GRANT SELECT ON SYS.ALL_CONSTRAINTS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_CONSTRAINTS AS
+    (
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            UPPER(cons.conname)::varchar2(128) AS constraint_name,
+            UPPER(cons.contype)::varchar2(1) AS constraint_type,
+            UPPER((SELECT relname FROM pg_class WHERE oid = cons.conrelid))::varchar2(128) AS table_name,
+            UPPER((pg_get_constraintdef(cons.oid)))::varchar2(128) AS search_condition,
+            UPPER((pg_get_constraintdef(cons.oid)))::long AS search_condition_vc,
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
+            UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
+            CASE cons.confdeltype
+                WHEN 'c' THEN 'CASCADE'
+                WHEN 'r' THEN 'RESTRICT'
+                WHEN 'n' THEN 'SET NULL'
+                WHEN 'd' THEN 'SET DEFAULT'
+                WHEN 's' THEN 'SET NULL'
+                WHEN 'a' THEN 'NO ACTION'
+                ELSE NULL
+            END::varchar2(11) AS delete_rule,
+            'ENABLED'::varchar2(8) AS status,
+            CASE
+                WHEN cons.condeferrable THEN 'DEFERRABLE'
+                ELSE 'NOT DEFERRABLE'
+            END::varchar2(14) AS condeferrable,
+            CASE
+                WHEN cons.condeferred THEN 'DEFERRED'
+                ELSE 'IMMEDIATE'
+            END::varchar2(9) AS deferred,
+            CASE
+                WHEN cons.convalidated THEN 'VALIDATE'
+                ELSE 'NOT VALIDATE'
+            END::varchar2(13) AS validated,
+            'USER NAME'::varchar2(14) AS generated,
+            NULL::varchar2(3) AS bad,
+            NULL::varchar2(4) AS rely,
+            NULL::date AS last_change,
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ci.relowner)::VARCHAR2)::VARCHAR2(128) AS index_owner,
+            UPPER(ci.relname)::varchar2(128) AS index_name,
+            CASE
+                WHEN cons.convalidated THEN NULL
+                ELSE 'INVALID'
+            END::varchar2(7) AS invalid,
+            NULL::varchar2(14) AS view_related,
+            NULL::number AS origin_con_id
+        FROM
+            pg_constraint cons
+        LEFT JOIN
+            pg_class c ON cons.conrelid = c.oid
+        LEFT JOIN
+            pg_class c_ref ON cons.confrelid = c_ref.oid
+        LEFT JOIN
+            pg_class ci ON cons.conindid = ci.oid
+        WHERE
+            c.relowner::regrole = current_user::regrole
+    UNION ALL
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            (SYS.ORA_CASE_TRANS((c.relname || '_' || attr.attname)::varchar2) || '_NOT_NULL')::varchar2(128) AS constraint_name,
+            'C'::varchar2(1) AS constraint_type,
+            SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS table_name,
+            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::long AS search_condition,
+            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::varchar2(4000) AS search_condition_vc,
+            NULL::VARCHAR2(128) AS r_owner,
+            NULL::varchar2(128) AS r_constraint_name,
+            NULL::varchar2(11) AS delete_rule,
+            'ENABLED'::varchar2(8) AS status,
+            'NOT DEFERRABLE'::varchar2(14) AS condeferrable,
+            'IMMEDIATE'::varchar2(9) AS deferred,
+            'VALIDATE'::varchar2(13) AS validate,
+            'USER NAME'::varchar2(14) AS generated,
+            NULL::varchar2(3) AS bad,
+            NULL::varchar2(4) AS rely,
+            NULL::date AS last_change,
+            NULL::VARCHAR2(128) AS index_owner,
+            NULL::varchar2(128) AS index_name,
+            NULL::varchar2(7) AS invalid,
+            NULL::varchar2(14) AS view_related,
+            NULL::number AS origin_con_id
+        FROM
+            pg_attribute attr
+        JOIN
+            pg_class c ON attr.attrelid = c.oid
+        WHERE
+            attr.attnotnull = true
+            AND attr.attnum > 0
+            AND c.relowner::regrole = current_user::regrole
+    ) ORDER BY table_name;
+GRANT SELECT ON SYS.USER_CONSTRAINTS TO PUBLIC;
+
+/* *******************************************************************************************
+                                         XXX_CONS_COLUMNS
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.DBA_CONS_COLUMNS AS
+    (
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            SYS.ORA_CASE_TRANS(pc.conname::VARCHAR2)::VARCHAR2(128) AS constraint_name,
+            SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
+            SYS.ORA_CASE_TRANS(pa.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
+            subscript::number AS position
+        FROM
+            pg_constraint pc
+        JOIN pg_class c ON pc.conrelid = c.oid
+        JOIN LATERAL generate_subscripts(pc.conkey, 1) AS subscript ON TRUE
+        JOIN pg_attribute pa ON
+            pa.attrelid = pc.conrelid
+            AND pa.attnum = pc.conkey[subscript]
+        WHERE
+            pc.conrelid <> 0
+    UNION ALL
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            (SYS.ORA_CASE_TRANS((c.relname || '_' || attr.attname)::varchar2) || '_NOT_NULL')::varchar2(128) AS constraint_name,
+            SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
+            SYS.ORA_CASE_TRANS(attr.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
+            attr.attnum::number AS position
+        FROM
+            pg_attribute attr
+        LEFT JOIN
+            pg_class c ON attr.attrelid = c.oid
+        WHERE attr.attnotnull AND attr.attnum > 0
+    ) ORDER BY table_name;
+GRANT SELECT ON SYS.DBA_CONS_COLUMNS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_CONS_COLUMNS AS
+    (
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            SYS.ORA_CASE_TRANS(pc.conname::VARCHAR2)::VARCHAR2(128) AS constraint_name,
+            SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
+            SYS.ORA_CASE_TRANS(pa.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
+            subscript::number AS position
+        FROM
+            pg_constraint pc
+        JOIN pg_class c ON pc.conrelid = c.oid
+        JOIN LATERAL generate_subscripts(pc.conkey, 1) AS subscript ON TRUE
+        JOIN pg_attribute pa ON
+            pa.attrelid = pc.conrelid
+            AND pa.attnum = pc.conkey[subscript]
+        WHERE
+            pc.conrelid <> 0
+            AND (
+                HAS_TABLE_PRIVILEGE(c.oid, 'SELECT')
+                OR HAS_TABLE_PRIVILEGE(c.oid,'INSERT')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'UPDATE')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'DELETE')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'TRUNCATE')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'TRIGGER')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'REFERENCES')
+                )
+    UNION ALL
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            (SYS.ORA_CASE_TRANS((c.relname || '_' || attr.attname)::varchar2) || '_NOT_NULL')::varchar2(128) AS constraint_name,
+            SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
+            SYS.ORA_CASE_TRANS(attr.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
+            attr.attnum::number AS position
+        FROM
+            pg_attribute attr
+        LEFT JOIN
+            pg_class c ON attr.attrelid = c.oid
+        WHERE
+            attr.attnotnull AND attr.attnum > 0
+            AND (
+                HAS_TABLE_PRIVILEGE(c.oid, 'SELECT')
+                OR HAS_TABLE_PRIVILEGE(c.oid,'INSERT')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'UPDATE')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'DELETE')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'TRUNCATE')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'TRIGGER')
+                OR HAS_TABLE_PRIVILEGE(c.oid, 'REFERENCES')
+                )
+    ) ORDER BY table_name;
+GRANT SELECT ON SYS.ALL_CONS_COLUMNS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_CONS_COLUMNS AS
+    (
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            SYS.ORA_CASE_TRANS(pc.conname::VARCHAR2)::VARCHAR2(128) AS constraint_name,
+            SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
+            SYS.ORA_CASE_TRANS(pa.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
+            subscript::number AS position
+        FROM
+            pg_constraint pc
+        JOIN pg_class c ON pc.conrelid = c.oid
+        JOIN LATERAL generate_subscripts(pc.conkey, 1) AS subscript ON TRUE
+        JOIN pg_attribute pa ON
+            pa.attrelid = pc.conrelid
+            AND pa.attnum = pc.conkey[subscript]
+        WHERE
+            pc.conrelid <> 0
+            AND c.relowner::regrole = current_user::regrole
+    UNION ALL
+        SELECT
+            SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
+            (SYS.ORA_CASE_TRANS((c.relname || '_' || attr.attname)::varchar2) || '_NOT_NULL')::varchar2(128) AS constraint_name,
+            SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
+            SYS.ORA_CASE_TRANS(attr.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
+            attr.attnum::number AS position
+        FROM
+            pg_attribute attr
+        LEFT JOIN
+            pg_class c ON attr.attrelid = c.oid
+        WHERE
+            attr.attnotnull AND attr.attnum > 0
+            AND c.relowner::regrole = current_user::regrole
+    ) ORDER BY table_name;
+GRANT SELECT ON SYS.USER_CONS_COLUMNS TO PUBLIC;
+
+/* *******************************************************************************************
+                                          XXX_TAB_PRIVS
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.DBA_TAB_PRIVS AS
+    SELECT
+        SYS.ORA_CASE_TRANS(t.grantee::varchar2)::varchar2(128) AS grantee,
+        SYS.ORA_CASE_TRANS((PG_GET_USERBYID(c.relowner))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(t.table_name::varchar2)::varchar2(128) AS table_name,
+        SYS.ORA_CASE_TRANS(t.grantor::varchar2)::varchar2(128) AS grantor,
+        t.privilege_type::varchar2(40) AS privilege,
+        t.is_grantable::varchar2(3) AS grantable,
+        t.with_hierarchy::varchar2(3) AS hierarchy,
+        'NO'::varchar2(3) AS common,
+        CASE				-- To maintain consistency with ORACLE
+            WHEN c.relkind = 'r' THEN 'TABLE'::varchar2(24)
+            WHEN c.relkind = 'f' THEN 'TABLE'::varchar2(24)
+            WHEN c.relkind = 'p' THEN 'TABLE'::varchar2(24)
+            WHEN c.relkind = 'v' THEN 'VIEW'::varchar2(24)
+            WHEN c.relkind = 'm' THEN 'TABLE'::varchar2(24)
+            ELSE 'OTHER TYPE'::varchar2(24)
+        END AS type,
+        'NO'::varchar2(3) AS inherited
+    FROM
+        information_schema.table_privileges t
+    JOIN
+        pg_namespace n ON t.table_schema = n.nspname
+    JOIN
+        pg_class c ON t.table_name = c.relname AND n.oid = c.relnamespace
+    WHERE
+        t.grantee <> t.grantor;
+GRANT SELECT ON SYS.DBA_TAB_PRIVS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_TAB_PRIVS AS
+    SELECT
+        SYS.ORA_CASE_TRANS(t.grantor::varchar2)::varchar2(128) AS grantor,
+        SYS.ORA_CASE_TRANS(t.grantee::varchar2)::varchar2(128) AS grantee,
+        SYS.ORA_CASE_TRANS(t.table_schema::varchar2)::varchar2(128) AS table_schema,
+        SYS.ORA_CASE_TRANS(t.table_name::varchar2)::varchar2(128) AS table_name,
+        t.privilege_type::varchar2(40) AS privilege,
+        t.is_grantable::varchar2(3) AS grantable,
+        t.with_hierarchy::varchar2(3) AS hierarchy,
+        'NO'::varchar2(3) AS common,
+        CASE				-- To maintain consistency with ORACLE
+            WHEN c.relkind = 'r' THEN 'TABLE'::varchar2(24)
+            WHEN c.relkind = 'f' THEN 'TABLE'::varchar2(24)
+            WHEN c.relkind = 'p' THEN 'TABLE'::varchar2(24)
+            WHEN c.relkind = 'v' THEN 'VIEW'::varchar2(24)
+            WHEN c.relkind = 'm' THEN 'TABLE'::varchar2(24)
+            ELSE 'OTHER TYPE'::varchar2(24)
+        END AS type,
+        'NO'::varchar2(3) AS inherited
+    FROM
+        information_schema.table_privileges t
+    JOIN
+        pg_namespace n ON t.table_schema = n.nspname
+    JOIN
+        pg_class c ON t.table_name = c.relname AND n.oid = c.relnamespace
+    WHERE
+        t.grantee <> t.grantor AND
+        (
+            HAS_TABLE_PRIVILEGE(c.oid, 'SELECT')
+            OR HAS_TABLE_PRIVILEGE(c.oid,'INSERT')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'UPDATE')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'DELETE')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'TRUNCATE')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'TRIGGER')
+            OR HAS_TABLE_PRIVILEGE(c.oid, 'REFERENCES')
+        );
+GRANT SELECT ON SYS.ALL_TAB_PRIVS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_TAB_PRIVS AS
+    SELECT
+        SYS.ORA_CASE_TRANS(t.grantee::varchar2)::varchar2(128) AS grantee,
+        SYS.ORA_CASE_TRANS((PG_GET_USERBYID(c.relowner))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(t.table_name::varchar2)::varchar2(128) AS table_name,
+        SYS.ORA_CASE_TRANS(t.grantor::varchar2)::varchar2(128) AS grantor,
+        t.privilege_type::varchar2(40) AS privilege,
+        t.is_grantable::varchar2(3) AS grantable,
+        t.with_hierarchy::varchar2(3) AS hierarchy,
+        'NO'::varchar2(3) AS common,
+        CASE				-- To maintain consistency with ORACLE
+            WHEN c.relkind = 'r' THEN 'TABLE'::varchar2(24)
+            WHEN c.relkind = 'f' THEN 'TABLE'::varchar2(24)
+            WHEN c.relkind = 'p' THEN 'TABLE'::varchar2(24)
+            WHEN c.relkind = 'v' THEN 'VIEW'::varchar2(24)
+            WHEN c.relkind = 'm' THEN 'TABLE'::varchar2(24)
+            ELSE 'OTHER TYPE'::varchar2(24)
+        END AS type,
+        'NO'::varchar2(3) AS inherited
+    FROM
+        information_schema.table_privileges t
+    JOIN
+        pg_namespace n ON t.table_schema = n.nspname
+    JOIN
+        pg_class c ON t.table_name = c.relname AND n.oid = c.relnamespace
+    WHERE
+        t.grantee <> t.grantor AND
+        c.relowner::regrole = current_user::regrole;
+GRANT SELECT ON SYS.USER_TAB_PRIVS TO PUBLIC;
+
+/* *******************************************************************************************
+                                         XXX_TAB_PARTITIONS
+* *******************************************************************************************/
+CREATE OR REPLACE VIEW SYS.TAB_PARTITIONS_INTERNAL AS
+WITH partition_info AS (
+    SELECT
+        c_parent.oid AS parent_table_oid,
+        c_parent.relname AS parent_table_name,
+        c_parent.relowner AS parent_table_owner,
+        c_child.oid AS partition_oid,
+        c_child.relname AS partition_name,
+        pg_get_expr(c_child.relpartbound, c_parent.oid, true) AS partition_bound,
+        row_number() OVER (
+            PARTITION BY c_parent.oid
+            ORDER BY c_child.relname
+        ) AS partition_position,
+        c_child.reltablespace AS tablespace_oid,
+        c_child.reloptions AS reloptions,
+        c_child.reltuples,
+        c_child.relpages,
+        c_child.relpersistence,
+        c_child.relowner,
+        CASE
+            WHEN EXISTS (
+                SELECT 1 FROM pg_inherits 
+                WHERE inhparent = c_child.oid
+            ) THEN 'YES'
+            ELSE 'NO'
+        END AS composite
+    FROM pg_class c_parent
+    JOIN pg_inherits i ON c_parent.oid = i.inhparent
+    JOIN pg_class c_child ON i.inhrelid = c_child.oid
+    WHERE
+        c_parent.relkind = 'p'
+        AND c_parent.relispartition = false
+        AND c_child.relkind NOT IN ('i', 'I')
+)
+    SELECT
+        pi.parent_table_oid AS oid,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pi.parent_table_owner)::varchar2)::varchar2(128) AS table_owner,
+        SYS.ORA_CASE_TRANS(pi.parent_table_name::varchar2)::varchar2(128) AS table_name,
+        pi.composite::varchar2(3) AS composite,
+        SYS.ORA_CASE_TRANS(pi.partition_name::varchar2)::varchar2(128) AS partition_name,
+        (SELECT COUNT(*) FROM pg_class c 
+            WHERE c.relispartition AND c.oid IN (SELECT inhrelid FROM pg_inherits WHERE inhparent = pi.partition_oid)
+                AND c.relkind NOT IN ('i', 'I')
+        )::number AS subpartition_count,
+        pi.partition_bound::long AS high_value,
+        length(pi.partition_bound::text)::number AS high_value_length,
+        pi.partition_position::number AS partition_position,
+        SYS.ORA_CASE_TRANS((COALESCE(tspc.spcname, 'pg_default'))::varchar2)::varchar2(30) AS tablespace_name,
+        COALESCE(
+            (SELECT split_part(opt, '=', 2)::integer
+            FROM unnest(pi.reloptions) AS opt 
+            WHERE split_part(opt, '=', 1) = 'fillfactor'),
+            0
+        )::number AS pct_free,
+        NULL::number AS pct_used,
+        NULL::number AS ini_trans,
+        NULL::number AS max_trans,
+        NULL::number AS initial_extent,
+        NULL::number AS next_extent,
+        NULL::number AS min_extent,
+        NULL::number AS max_extent,
+        NULL::number AS max_size,
+        NULL::number AS pct_increase,
+        NULL::number AS freelists,
+        NULL::number AS freelist_groups,
+        CASE
+            WHEN pi.relpersistence = 'u' THEN 'NO'
+            ELSE 'YES'
+        END::varchar2(3) AS logging,
+        'DISABLED'::varchar2(8) AS compression,
+        NULL::varchar2(30) AS compress_for,
+        CASE
+            WHEN pi.reltuples > -1 THEN pi.reltuples
+            ELSE NULL
+        END::number AS num_rows,
+        CASE
+            WHEN pi.relpages > -1 THEN pi.relpages
+            ELSE NULL
+        END::number AS blocks,
+        NULL::number AS empty_blocks,
+        NULL::number AS avg_space,
+        NULL::number AS chain_cnt,
+        (SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = pi.partition_oid LIMIT 1)::number AS avg_row_len,
+        NULL::number AS sample_size,
+        TO_CHAR((GREATEST(
+                pg_stat_get_last_analyze_time(pi.partition_oid),
+                pg_stat_get_last_autoanalyze_time(pi.partition_oid)
+        )), current_setting('nls_date_format'))::date AS last_analyzed,
+        NULL::varchar2(7) AS buffer_pool,
+        NULL::varchar2(7) AS flash_cache,
+        NULL::varchar2(7) AS cell_flash_cache,
+        'YES'::varchar2(3) AS global_stats,
+        'NO'::varchar2(3) AS user_stats,
+        'NO'::varchar2(3) AS is_nested,
+        NULL::varchar2(128) AS parent_table_partition,
+        'NO'::varchar2(3) AS interval,
+        NULL::varchar2(3) AS segment_created,
+        NULL::varchar2(4) AS indexing,
+        NULL::varchar2(3) AS read_only,
+        NULL::varchar2(8) AS inmemory,
+        NULL::varchar2(8) AS inmemory_priority,
+        NULL::varchar2(15) AS inmemory_distribute,
+        NULL::varchar2(17) AS inmemory_compression,
+        NULL::varchar2(13) AS inmemory_duplicate,
+        NULL::varchar2(24) AS cellmemory,
+        NULL::varchar2(12) AS inmemory_service,
+        NULL::varchar2(1000) AS inmemory_service_name,
+        'DISABLED'::varchar2(8) AS memoptimize_read,
+        NULL::varchar2(8) AS memoptimize_write
+    FROM partition_info pi
+    LEFT JOIN
+        pg_tablespace tspc ON pi.tablespace_oid = tspc.oid;
+
+CREATE OR REPLACE VIEW SYS.DBA_TAB_PARTITIONS AS
+    SELECT
+        table_owner,
+        table_name,
+        composite,
+        partition_name,
+        subpartition_count,
+        high_value,
+        high_value_length,
+        partition_position,
+        tablespace_name,
+        pct_free,
+        pct_used,
+        ini_trans,
+        max_trans,
+        initial_extent,
+        next_extent,
+        min_extent,
+        max_extent,
+        max_size,
+        pct_increase,
+        freelists,
+        freelist_groups,
+        logging,
+        compression,
+        compress_for,
+        num_rows,
+        blocks,
+        empty_blocks,
+        avg_space,
+        chain_cnt,
+        avg_row_len,
+        sample_size,
+        last_analyzed,
+        buffer_pool,
+        flash_cache,
+        cell_flash_cache,
+        global_stats,
+        user_stats,
+        is_nested,
+        parent_table_partition,
+        interval,
+        segment_created,
+        indexing,
+        read_only,
+        inmemory,
+        inmemory_priority,
+        inmemory_distribute,
+        inmemory_compression,
+        inmemory_duplicate,
+        cellmemory,
+        inmemory_service,
+        inmemory_service_name,
+        memoptimize_read,
+        memoptimize_write
+    FROM SYS.TAB_PARTITIONS_INTERNAL;
+GRANT SELECT ON SYS.DBA_TAB_PARTITIONS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_TAB_PARTITIONS AS
+    SELECT
+        table_owner,
+        table_name,
+        composite,
+        partition_name,
+        subpartition_count,
+        high_value,
+        high_value_length,
+        partition_position,
+        tablespace_name,
+        pct_free,
+        pct_used,
+        ini_trans,
+        max_trans,
+        initial_extent,
+        next_extent,
+        min_extent,
+        max_extent,
+        max_size,
+        pct_increase,
+        freelists,
+        freelist_groups,
+        logging,
+        compression,
+        compress_for,
+        num_rows,
+        blocks,
+        empty_blocks,
+        avg_space,
+        chain_cnt,
+        avg_row_len,
+        sample_size,
+        last_analyzed,
+        buffer_pool,
+        flash_cache,
+        cell_flash_cache,
+        global_stats,
+        user_stats,
+        is_nested,
+        parent_table_partition,
+        interval,
+        segment_created,
+        indexing,
+        read_only,
+        inmemory,
+        inmemory_priority,
+        inmemory_distribute,
+        inmemory_compression,
+        inmemory_duplicate,
+        cellmemory,
+        inmemory_service,
+        inmemory_service_name,
+        memoptimize_read,
+        memoptimize_write
+    FROM SYS.TAB_PARTITIONS_INTERNAL
+    WHERE
+        HAS_TABLE_PRIVILEGE(oid, 'SELECT')
+        OR HAS_TABLE_PRIVILEGE(oid,'INSERT')
+        OR HAS_TABLE_PRIVILEGE(oid, 'UPDATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'DELETE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRUNCATE')
+        OR HAS_TABLE_PRIVILEGE(oid, 'TRIGGER')
+        OR HAS_TABLE_PRIVILEGE(oid, 'REFERENCES')
+    ORDER BY
+        table_name,
+        partition_position;
+GRANT SELECT ON SYS.ALL_TAB_PARTITIONS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_TAB_PARTITIONS AS
+    SELECT
+        table_name,
+        composite,
+        partition_name,
+        subpartition_count,
+        high_value,
+        high_value_length,
+        partition_position,
+        tablespace_name,
+        pct_free,
+        pct_used,
+        ini_trans,
+        max_trans,
+        initial_extent,
+        next_extent,
+        min_extent,
+        max_extent,
+        max_size,
+        pct_increase,
+        freelists,
+        freelist_groups,
+        logging,
+        compression,
+        compress_for,
+        num_rows,
+        blocks,
+        empty_blocks,
+        avg_space,
+        chain_cnt,
+        avg_row_len,
+        sample_size,
+        last_analyzed,
+        buffer_pool,
+        flash_cache,
+        cell_flash_cache,
+        global_stats,
+        user_stats,
+        is_nested,
+        parent_table_partition,
+        interval,
+        segment_created,
+        indexing,
+        read_only,
+        inmemory,
+        inmemory_priority,
+        inmemory_distribute,
+        inmemory_compression,
+        inmemory_duplicate,
+        cellmemory,
+        inmemory_service,
+        inmemory_service_name,
+        memoptimize_read,
+        memoptimize_write
+    FROM SYS.TAB_PARTITIONS_INTERNAL
+    WHERE
+        table_owner::regrole = current_user::regrole
+    ORDER BY
+        table_name,
+        partition_position;
+GRANT SELECT ON SYS.USER_TAB_PARTITIONS TO PUBLIC;
+/* End - ReqID: RQ-SQL-SYSVIEW */
