@@ -1329,11 +1329,6 @@ pg_backend_memory_contexts| SELECT pg_get_backend_memory_contexts.name,
     pg_get_backend_memory_contexts.free_chunks,
     pg_get_backend_memory_contexts.used_bytes
    FROM pg_get_backend_memory_contexts() pg_get_backend_memory_contexts(name, ident, parent, level, total_bytes, total_nblocks, free_bytes, free_chunks, used_bytes);
-pg_banned_role| SELECT pg_banned_role.roleid,
-    pg_banned_role.username,
-    pg_banned_role.failure_count,
-    pg_banned_role.banned_date
-   FROM pg_banned_role() pg_banned_role(roleid, username, failure_count, banned_date);
 pg_config| SELECT pg_config.name,
     pg_config.setting
    FROM pg_config() pg_config(name, setting);
@@ -1509,11 +1504,6 @@ pg_matviews| SELECT n.nspname AS schemaname,
      LEFT JOIN pg_namespace n ON ((n.oid = c.relnamespace)))
      LEFT JOIN pg_tablespace t ON ((t.oid = c.reltablespace)))
   WHERE (c.relkind = 'm'::"char");
-pg_password_history| SELECT pg_password_history.userid,
-    pg_password_history.rolename,
-    pg_password_history.password_date,
-    pg_password_history.password_hash
-   FROM pg_password_history() pg_password_history(userid, rolename, password_date, password_hash);
 pg_policies| SELECT n.nspname AS schemaname,
     c.relname AS tablename,
     pol.polname AS policyname,
@@ -2818,10 +2808,6 @@ toyemp| SELECT emp.name,
     emp.location,
     (12 * emp.salary) AS annualsal
    FROM emp;
-user_expiration_info| SELECT user_expiration_info.userid,
-    user_expiration_info.rolename,
-    user_expiration_info.user_validity
-   FROM user_expiration_info() user_expiration_info(userid, rolename, user_validity);
 SELECT tablename, rulename, definition FROM pg_rules
 WHERE schemaname IN ('pg_catalog', 'public')
 ORDER BY tablename, rulename;

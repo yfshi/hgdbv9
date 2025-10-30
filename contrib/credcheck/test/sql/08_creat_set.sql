@@ -41,7 +41,7 @@ ALTER USER aaa PASSWORD 'DummY2' VALID UNTIL '2030-01-01 00:00:00';
 DROP USER aaa;
 
 -- History must be empty
-SELECT count(*), '0' AS "expected" FROM pg_password_history ;
+SELECT count(*), '0' AS "expected" FROM hg_security.pg_password_history ;
 
 ALTER SYSTEM RESET credcheck.enable;
 ALTER SYSTEM RESET credcheck.login_msg_display;

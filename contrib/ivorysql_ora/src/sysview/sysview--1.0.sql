@@ -10608,7 +10608,7 @@ BEGIN
 		INTO passwd, is_banned, banned_time, validuntil
 	FROM pg_authid a
 	LEFT JOIN pg_roles r ON a.oid = r.oid
-	LEFT JOIN pg_banned_role br ON r.oid = br.roleid
+	LEFT JOIN hg_security.pg_banned_role br ON r.oid = br.roleid
 	WHERE a.rolname = p_username;
     ret := ROW(passwd, is_banned, banned_time, validuntil);
     RETURN ret;

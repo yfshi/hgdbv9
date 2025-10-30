@@ -3271,7 +3271,7 @@ getLoginMessage(PGconn *conn)
 	const char *initial_query =
 		"DO $$\n"
 		"BEGIN\n"
-		"  PERFORM login_message_display();\n"
+		"  PERFORM hg_security.login_message_display();\n"
 		"EXCEPTION WHEN undefined_function THEN\n"
 		"  \n"
 		"  NULL;\n"
@@ -3301,7 +3301,7 @@ getExpirationAlarm(PGconn *conn, const char *user_name)
 		"DECLARE\n" \
 		"	user_validity TEXT DEFAULT NULL;\n" \
 		"BEGIN\n" \
-		"	SELECT (user_expiration_info('%s')).user_validity INTO user_validity;\n" \
+		"	SELECT (hg_security.user_expiration_info('%s')).user_validity INTO user_validity;\n" \
 		"	IF user_validity IS NOT NULL THEN\n" \
 		"		RAISE NOTICE 'Your account will expire in: %%', user_validity;\n" \
 		"	END IF;\n" \
