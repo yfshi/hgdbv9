@@ -81,6 +81,8 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 	 * Disallow COPY to/from file or program except to users with the
 	 * appropriate role.
 	 */
+	/* Begin - bug#z4795*/
+	/* not allow to show superuser in log info */
 	if (!pipe)
 	{
 		if (stmt->is_program)
@@ -88,28 +90,22 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 			if (!is_member_of_role(GetUserId(), ROLE_PG_EXECUTE_SERVER_PROGRAM))
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-						 errmsg("must be superuser or a member of the pg_execute_server_program role to COPY to or from an external program"),
-						 errhint("Anyone can COPY to stdout or from stdin. "
-								 "psql's \\copy command also works for anyone.")));
+						 errmsg("permission denied")));
 		}
 		else
 		{
 			if (is_from && !is_member_of_role(GetUserId(), ROLE_PG_READ_SERVER_FILES))
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-						 errmsg("must be superuser or a member of the pg_read_server_files role to COPY from a file"),
-						 errhint("Anyone can COPY to stdout or from stdin. "
-								 "psql's \\copy command also works for anyone.")));
+						 errmsg("permission denied")));
 
 			if (!is_from && !is_member_of_role(GetUserId(), ROLE_PG_WRITE_SERVER_FILES))
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-						 errmsg("must be superuser or a member of the pg_write_server_files role to COPY to a file"),
-						 errhint("Anyone can COPY to stdout or from stdin. "
-								 "psql's \\copy command also works for anyone.")));
+						 errmsg("permission denied")));
 		}
 	}
-
+	/* End - bug#z4795*/
 	if (stmt->relation)
 	{
 		LOCKMODE	lockmode = is_from ? RowExclusiveLock : AccessShareLock;

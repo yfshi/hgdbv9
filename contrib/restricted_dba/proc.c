@@ -157,8 +157,7 @@ alter_proc_owner_check(AlterOwnerStmt *stmt, const char *name, Oid newOwnerId)
 		procform = (Form_pg_proc) GETSTRUCT(tup);
 		procowner = procform->proowner;
 
-		if (IS_SYSDBA(GetUserId()) &&
-			(IS_SYSSSO(procowner) || IS_SYSSAO(procowner)))
+		if (IS_SYSSSO(procowner) || IS_SYSSAO(procowner))
 		{
 			result = false;
 			ereport(ERROR,
@@ -166,6 +165,17 @@ alter_proc_owner_check(AlterOwnerStmt *stmt, const char *name, Oid newOwnerId)
 					errmsg("permission denied"),
 					errdetail("cannot alter function/procedure/routine of "
 								"syssso_role/syssao_role member")));
+		}
+		else if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		{
+			if (procowner != GetUserId())
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("sysdba_role member can only alter "
+									"function/procedure/routine of itself")));
+			}
 		}
 
 		if(IS_SYSSSO(newOwnerId) || IS_SYSSAO(newOwnerId))
@@ -176,6 +186,18 @@ alter_proc_owner_check(AlterOwnerStmt *stmt, const char *name, Oid newOwnerId)
 					errmsg("permission denied"),
 					errdetail("syssso_role/syssao_role member "
 							"cannot be owner of function/procedure/routine")));
+		}
+		else if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		{
+			if (!IS_SYSDBA(newOwnerId))
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("only sysdba_role member is allowed to own a "
+									  "function/procedure/routine of another "
+									  "sysdba_role member")));
+			}
 		}
 
 		ReleaseSysCache(tup);
@@ -218,6 +240,18 @@ bool alter_proc_rename_check(RenameStmt *stmt)
 					errdetail("cannot alter function/procedure/routine of "
 								"syssso_role/syssao_role member")));
 
+		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		{
+			if (procowner != GetUserId())
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("sysdba_role member can only alter "
+									"function/procedure/routine of itself")));
+			}
+		}
+
 		ReleaseSysCache(tup);
 	}	
 
@@ -258,6 +292,18 @@ alter_proc_schema_check(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 					errmsg("permission denied"),
 					errdetail("cannot alter function/procedure/routine of "
 								"syssso_role/syssao_role member")));
+		}
+
+		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		{
+			if (procowner != GetUserId())
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("sysdba_role member can only alter "
+									"function/procedure/routine of itself")));
+			}
 		}
 
 		newnspoid = LookupCreationNamespace(stmt->newschema);
@@ -306,6 +352,18 @@ alter_proc_check(ParseState *pstate, AlterFunctionStmt *stmt)
 								"syssso_role/syssao_role member")));
 		}
 
+		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		{
+			if (procowner != GetUserId())
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission denied"),
+							errdetail("sysdba_role member can only alter "
+									"function/procedure/routine of itself")));
+			}
+		}
+
 		ReleaseSysCache(tup);
 	}
 
@@ -348,6 +406,18 @@ bool drop_proc_check(DropStmt *stmt)
 						errmsg("permission denied"),
 						errdetail("cannot drop function/procedure/routine of "
 									"syssso_role/syssao_role member")));
+			}
+
+			if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+			{
+				if (procowner != GetUserId())
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+								errmsg("permission denied"),
+								errdetail("sysdba_role member can only drop "
+										"function/procedure/routine of itself")));
+				}
 			}
 		
 			ReleaseSysCache(tup);

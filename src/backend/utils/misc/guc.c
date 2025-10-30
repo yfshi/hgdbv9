@@ -9064,10 +9064,13 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	 */
 	name = altersysstmt->setstmt->name;
 
+	/* Begin - Bug#z4795 */
+	/* Bug#z4795 displaying "superuser" in error log msg is not permitted. */
 	if (!superuser())
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("must be superuser to execute ALTER SYSTEM command")));
+				 errmsg("permission denied")));
+	/* End - Bug#z4795 */
 
 
 	switch (altersysstmt->setstmt->kind)

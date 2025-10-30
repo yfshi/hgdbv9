@@ -75,15 +75,15 @@ create user n_u1 with admin sao_u1;
 
 ---- ALTER USER
 ------ pass
------- alter self pass and validuntil
-alter user dba_u1 with password '123456' valid until '2077-01-01';
+------ alter self pass
+alter user dba_u1 with password '123456';
 ------ alter normal user
 alter user n_user_1 with noinherit nologin noreplication nobypassrls;
 alter user n_user_1 with inherit login replication bypassrls;
 alter user n_user_1 with connection limit 11;
-alter user n_user_1 with password '123456' valid until '2077-01-01';
 ------ fail
 ------ alter sysdba_role member
+alter user dba_u1 with password '123456' valid until '2077-01-01';
 alter user dba_u1 with inherit login replication bypassrls;
 alter user dba_u1 with noinherit nologin noreplication nobypassrls;
 alter user dba_u1 with connection limit 11;
@@ -108,6 +108,18 @@ alter user sao_u1 with password '123456' valid until '2077-01-01';
 alter user n_user_1 with superuser;
 alter user n_user_1 with createrole;
 alter user n_user_1 with createdb;
+alter user n_user_1 with password '123456';
+alter user n_user_1 with password '123456' valid until '2077-01-01';
+
+\c - syssso_u1
+------ pass
+alter user n_user_3 with password '123456';
+alter user n_user_3 with valid until '2077-01-01';
+------ fail
+alter user n_user_3 with superuser;
+alter user n_user_3 with createrole;
+alter user n_user_3 with createdb;
+\c - dba_u1
 
 ---- GRANT ROLE
 ------ pass

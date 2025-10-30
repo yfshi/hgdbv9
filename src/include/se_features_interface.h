@@ -19,6 +19,7 @@
 #define SE_FEATURES_INTF_H
 #include "postgres.h"
 
+typedef void (*grant_sysdba_priv_fn) (Oid roleid, bool is_grant);
 
 typedef struct 
 {
@@ -26,6 +27,7 @@ typedef struct
 	bool restricted_dba;
 	Oid tmp_superuser_oid;
 	/* use it with caution, it may make a normal user a superuser,maybe changed latter*/
+	grant_sysdba_priv_fn grant_sysdba_priv;
 }SeFeature;
 
 extern PGDLLIMPORT SeFeature se_feature;

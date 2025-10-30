@@ -98,9 +98,9 @@ change_member_check(const char* rolname, Oid roleid, Oid grantor,
 			Assert(grantee_id != InvalidOid);
 
 
-			if ((IS_SYSDBA(grantee_id) || 
+			if (IS_SYSDBA(grantee_id) || 
 				IS_SYSSSO(grantee_id) ||
-				IS_SYSSAO(grantee_id)) )
+				IS_SYSSAO(grantee_id))
 			{
 				if (is_grant)
 				{
@@ -373,13 +373,6 @@ alter_role_check(AlterRoleStmt *stmt)
 	
 	if (IS_SYSDBA(roleid) || IS_SYSSSO(roleid) || IS_SYSSAO(roleid))
 	{
-		if (roleid != GetUserId())
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("permission denied")));
-		}
-
 		/*allow alter password and validuntil*/
 		if (dissuper ||
 			dcreatedb ||
@@ -388,12 +381,40 @@ alter_role_check(AlterRoleStmt *stmt)
 			dcanlogin || 
 			disreplication || 
 			dconnlimit || 
-			dbypassRLS)
+			dbypassRLS ||
+			drolemembers)
 		{
 			ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("permission denied")));
 		}
+
+		/*security role member can only alter password for itself*/
+		if (dpassword && roleid != GetUserId())
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied")));
+		}
+	}
+	else
+	{
+		/*only syssso member can alter password for normal user*/
+		/*bug#z5238 -- normal users can alter password for themselves*/
+		if (dpassword && roleid != GetUserId() && !IS_SYSSSO(GetUserId()))
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied")));
+		}
+	}
+
+	/* valid until can only alter by syssso member */
+	if (dvalidUntil && !IS_SYSSSO(GetUserId()))
+	{
+		ereport(ERROR,
+			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				errmsg("permission denied")));
 	}
 
 	/*alter group*/
@@ -718,4 +739,71 @@ rename_role_check(const char *oldname, const char *newname)
 	table_close(rel, AccessShareLock);
 
 	return true;
+}
+
+
+/*
+ * sysdba_role member will implictly get or loss superuser, 
+ * createrole, and createdb attribute when membership changing.
+ */
+void
+grant_sysdba_priv(Oid roleid, bool is_grant)
+{
+	Datum		new_record[Natts_pg_authid];
+	bool		new_record_nulls[Natts_pg_authid];
+	bool		new_record_repl[Natts_pg_authid];
+	HeapTuple	oldtuple;
+	HeapTuple	newtuple;
+	Relation	pg_authid_rel;
+	TupleDesc	pg_authid_dsc;
+
+	/*
+	 * Scan the pg_authid relation to be certain the user exists.
+	 */
+	pg_authid_rel = table_open(AuthIdRelationId, RowExclusiveLock);
+	pg_authid_dsc = RelationGetDescr(pg_authid_rel);
+	
+	oldtuple = SearchSysCache1(AUTHOID, ObjectIdGetDatum(roleid));
+	if (!HeapTupleIsValid(oldtuple))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("role with oid\"%d\" does not exist", roleid)));
+
+	/*
+	 * Build an updated tuple, perusing the information just obtained
+	 */
+	MemSet(new_record, 0, sizeof(new_record));
+	MemSet(new_record_nulls, false, sizeof(new_record_nulls));
+	MemSet(new_record_repl, false, sizeof(new_record_repl));
+
+	if(is_grant)
+	{
+		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(true);
+		new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(true);
+		new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(true);
+	}
+	else
+	{
+		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(false);
+		new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(false);
+		new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(false);
+	}
+
+	new_record_repl[Anum_pg_authid_rolsuper - 1] = true;
+	new_record_repl[Anum_pg_authid_rolcreaterole - 1] = true;
+	new_record_repl[Anum_pg_authid_rolcreatedb - 1] = true;
+
+	newtuple = heap_modify_tuple(oldtuple, pg_authid_dsc, new_record,
+								  new_record_nulls, new_record_repl);
+	CatalogTupleUpdate(pg_authid_rel, &oldtuple->t_self, newtuple);
+
+	InvokeObjectPostAlterHook(AuthIdRelationId, roleid, 0);
+
+	ReleaseSysCache(oldtuple);
+	heap_freetuple(newtuple);
+
+	/*
+	 * Close pg_authid.
+	 */
+	table_close(pg_authid_rel, RowExclusiveLock);
 }

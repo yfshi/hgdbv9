@@ -26,10 +26,10 @@ create index idx_u1_id on tb1_u1(id);
 ------ fail
 create index idx_sso_u1_id2 on tb1_sso_u1(id2);
 ERROR:  permission denied
-DETAIL:  member of sysdba_role can only create indexon its owned relation
+DETAIL:  member of sysdba_role can only create index on its own relation
 create index idx_sao_u1_id2 on tb1_sao_u1(id2);
 ERROR:  permission denied
-DETAIL:  member of sysdba_role can only create indexon its owned relation
+DETAIL:  member of sysdba_role can only create index on its own relation
 create index idx_non_exist on tb1_non_exist(id);
 ERROR:  relation "tb1_non_exist" does not exist
 ---- ALTER INDEX RENAME
@@ -90,5 +90,117 @@ drop table tb1_dba_u2;
 drop table tb1_sso_u1;
 drop table tb1_sao_u1;
 drop table tb1_u1;
+\c template1 sysdba_u1
+drop database testdb;
+-- set restricted_dba to on;
+-- setup before test start
+create database testdb;
+\c testdb -
+create table tb1_dba_u1(id int);
+create table tb1_dba_u2(id int);
+create table tb1_sso_u1(id int);
+create table tb1_sao_u1(id int);
+create table tb1_u1(id int);
+create index idx1_dba_u1_id on tb1_dba_u1(id);
+create index idx1_dba_u2_id on tb1_dba_u2(id);
+create index idx1_sso_u1_id on tb1_sso_u1(id);
+create index idx1_sao_u1_id on tb1_sao_u1(id);
+create index idx1_u1_id on tb1_u1(id);
+alter table tb1_dba_u1 owner to sysdba_u1;
+alter table tb1_dba_u2 owner to sysdba_u2;
+alter table tb1_sso_u1 owner to syssso_u1;
+alter table tb1_sao_u1 owner to syssao_u1;
+alter table tb1_u1 owner to u1;
+alter database testdb set se_feature.mode to on;
+alter database testdb set se_feature.restricted_dba to on;
+set se_feature.restricted_dba to on;
+set se_feature.mode to on;
+-- For member of sysdba_role
+\c testdb sysdba_u1;
+---- CREATE INDEX
+------ pass
+create index idx2_dba_u1_id on tb1_dba_u1(id);
+------ fail
+create index idx2_dba_u2_id on tb1_dba_u2(id);
+ERROR:  permission denied
+DETAIL:  member of sysdba_role can only create index on its own relation
+create index idx2_sso_u1_id on tb1_sso_u1(id);
+ERROR:  permission denied
+DETAIL:  member of sysdba_role can only create index on its own relation
+create index idx2_sao_u1_id on tb1_sao_u1(id);
+ERROR:  permission denied
+DETAIL:  member of sysdba_role can only create index on its own relation
+create index idx2_u1_id on tb1_u1(id);
+ERROR:  permission denied
+DETAIL:  member of sysdba_role can only create index on its own relation
+create index idx_non_exist on tb1_non_exist(id);
+ERROR:  relation "tb1_non_exist" does not exist
+---- ALTER INDEX RENAME
+------ pass
+begin;
+alter index idx2_dba_u1_id rename to idx2_dba_u1_id_new;
+rollback;
+alter index if exists idx_non_exist rename to idx_non_exist_new;
+NOTICE:  relation "idx_non_exist" does not exist, skipping
+------ fail
+alter index idx1_dba_u2_id rename to idx_dba_u2_id_new;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter index idx1_sso_u1_id rename to idx_sso_u1_id_new;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter index idx1_sao_u1_id rename to idx_sao_u1_id_new;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter index idx1_u1_id rename to idx2_u1_id_new;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter index idx_non_exist rename to idx_non_exist_new;
+ERROR:  relation "idx_non_exist" does not exist
+---- ALTER INDEX
+------ pass
+alter index idx1_dba_u1_id set (fillfactor = 75);
+alter index if exists idx_non_exist set (fillfactor = 75);
+NOTICE:  relation "idx_non_exist" does not exist, skipping
+------ fail
+alter index idx1_dba_u2_id set (fillfactor = 75);
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter index idx1_sso_u1_id set (fillfactor = 75);
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter index idx1_sao_u1_id set (fillfactor = 75);
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter index idx1_u1_id set (fillfactor = 75);
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter index idx_non_exist set (fillfactor = 75);
+ERROR:  relation "idx_non_exist" does not exist
+---- DROP INDEX
+------ pass
+drop index idx2_dba_u1_id;
+drop index if exists idx_non_exist;
+NOTICE:  index "idx_non_exist" does not exist, skipping
+------ fail
+drop index idx1_dba_u2_id;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only drop relation of itself
+drop index idx1_sso_u1_id;
+ERROR:  permission denied
+DETAIL:  cannot drop relation of syssso_role/syssao_role member
+drop index idx1_sao_u1_id;
+ERROR:  permission denied
+DETAIL:  cannot drop relation of syssso_role/syssao_role member
+drop index idx1_u1_id;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only drop relation of itself
+drop index idx_non_exist;
+ERROR:  index "idx_non_exist" does not exist
+-- Clean test object
+\c testdb syssso_u1
+set se_feature.mode to on;
+alter database testdb set se_feature.mode to off;
+alter database testdb set se_feature.restricted_dba to off;
 \c template1 sysdba_u1
 drop database testdb;

@@ -28,6 +28,7 @@
 #include "catalog/pg_extension.h"
 #include "catalog/pg_proc.h"
 #include "commands/copy.h"
+#include "commands/extension.h"
 #include "executor/executor.h"
 #include "fmgr.h"
 #include "miscadmin.h"
@@ -63,8 +64,6 @@ static ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 static needs_fmgr_hook_type next_needs_fmgr_hook = NULL;
 
-/*chengxi marks: just a fake guc param*/
-static bool fake_restricted_dba;
 
 SeParamCtl *se_param_ctl = NULL;
 
@@ -158,7 +157,7 @@ restricted_utility(PlannedStmt *pstmt,
 							if (qc)
 								SetQueryCompletion(qc, CMDTAG_COPY, processed);
 						}
-						PG_CATCH();
+						PG_FINALLY();
 						{
 							se_feature.tmp_superuser_oid = InvalidOid;
 						}
@@ -193,10 +192,12 @@ restricted_utility(PlannedStmt *pstmt,
 			case T_CreateStmt:
 			case T_CreateForeignTableStmt:
 				{
+					/* transformCreateStmt() may modify the parsetree, so make a copy */
+					Node *cparsetree = copyObject(parsetree);
 					List	   *stmts;
 
 					/* Run parse analysis ... */
-					stmts = transformCreateStmt((CreateStmt *) parsetree,
+					stmts = transformCreateStmt((CreateStmt *)cparsetree,
 												queryString);
 
 					/*
@@ -271,6 +272,42 @@ restricted_utility(PlannedStmt *pstmt,
 			case T_AlterSeqStmt:
 				call_next = alter_sequence_check((AlterSeqStmt *) parsetree);
 				break;
+			case T_CreateExtensionStmt:
+				{
+					bool saved_se_feature_param = se_feature.mode;
+
+					PG_TRY();
+					{	
+						se_feature.mode = false;
+						CreateExtension(pstate, (CreateExtensionStmt *) parsetree);
+					}
+					PG_FINALLY();
+					{
+						se_feature.mode = saved_se_feature_param;
+					}
+					PG_END_TRY();
+					call_next = false;
+				}
+				break;
+
+			case T_AlterExtensionStmt:
+				{
+					bool saved_se_feature_param = se_feature.mode;
+
+					PG_TRY();
+					{	
+						se_feature.mode = false;
+						ExecAlterExtensionStmt(pstate, (AlterExtensionStmt *) parsetree);
+					}
+					PG_FINALLY();
+					{
+						se_feature.mode = saved_se_feature_param;
+					}
+					PG_END_TRY();
+					call_next = false;
+				}
+				break;
+
 			default:
 
 				/*
@@ -361,12 +398,12 @@ const char * restricted_dba_show (void);
 bool
 restricted_dba_check (bool *newval, void **extra, GucSource source)
 {
-	if(!se_feature.mode && *newval && (source >= PGC_S_FILE))
-	{
-		ereport(WARNING,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				errmsg("se_feature.mode is currently off, restricted_dba is invalid")));
-	}
+	// if(!se_feature.mode && *newval && (source == PGC_S_SESSION))
+	// {
+	// 	ereport(WARNING,
+	// 			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+	// 			errmsg("se_feature.mode is currently off, restricted_dba is invalid")));
+	// }
 
 	if (source < PGC_S_TEST)
 		return true;
@@ -388,9 +425,6 @@ void
 restricted_dba_assign (bool newval, void *extra)
 {
 	/*currently do nothing*/
-	/*just make compiler quiet remove latter*/
-	fake_restricted_dba = newval;
-
 }
 
 const char * 
@@ -629,6 +663,18 @@ se_feature_check_perms(List *rangeTabls, bool abort)
 						return false;
 					}
 				}
+				else if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+				{
+					result = check_rte_perms(rte);
+					if (!result)
+					{
+						Assert(rte->rtekind == RTE_RELATION);
+						if (abort)
+							aclcheck_error(ACLCHECK_NO_PRIV, get_relkind_objtype(get_rel_relkind(rte->relid)),
+										get_rel_name(rte->relid));
+						return false;
+					}
+				}
 			}
 			
 			ReleaseSysCache(tup);
@@ -775,37 +821,43 @@ func_execute_check(Oid proc_oid)
 		procForm = (Form_pg_proc) GETSTRUCT(tuple);
 		ownerId = procForm->proowner;
 
-		/* currently we only care procedure and  */
-		if (procForm->prokind != PROKIND_FUNCTION &&
-			procForm->prokind != PROKIND_PROCEDURE)
+		/* currently we only care procedure and function*/
+		if (procForm->prokind == PROKIND_FUNCTION ||
+			procForm->prokind == PROKIND_PROCEDURE)
 		{
-			result = true;
-		}
-		else if (IS_SYSSSO(ownerId) || IS_SYSSAO(ownerId))
-		{
+			AclResult	aclresult;
 			ObjectType	obj_type = OBJECT_FUNCTION;
-			AclResult	aclresult = pg_proc_aclcheck_nosuper(proc_oid, GetUserId(), ACL_EXECUTE);
 
 			if (procForm->prokind == PROKIND_FUNCTION)
 				obj_type = OBJECT_FUNCTION;
 			else if (procForm->prokind == PROKIND_PROCEDURE)
 				obj_type = OBJECT_PROCEDURE;
 
-			if (aclresult != ACLCHECK_OK)
+			if (IS_SYSSSO(ownerId) || IS_SYSSAO(ownerId))
 			{
-				aclcheck_error(aclresult, obj_type,
-							   get_func_name(proc_oid));
+				aclresult = pg_proc_aclcheck_nosuper(proc_oid, GetUserId(),
+													 ACL_EXECUTE);
+			
+				if (aclresult != ACLCHECK_OK)
+					aclcheck_error(aclresult, obj_type,
+									get_func_name(proc_oid));
 			}
-			else
+			else if (se_feature.restricted_dba && 
+					 procForm->pronamespace != PG_CATALOG_NAMESPACE &&
+					 procForm->pronamespace != PG_PUBLIC_NAMESPACE)
 			{
-				result = true;
-			}	
+				/*
+				 * Note: for those function in pg_catalog schema we skip extra
+				 * check in case other dba user cannot call it. 
+				 */
+				aclresult = pg_proc_aclcheck_nosuper(proc_oid, GetUserId(),
+													 ACL_EXECUTE);
+			
+				if (aclresult != ACLCHECK_OK)
+					aclcheck_error(aclresult, obj_type,
+								get_func_name(proc_oid));
+			}
 		}
-		else
-		{
-			result = true;
-		}
-
 		ReleaseSysCache(tuple);
 	}
 
@@ -838,7 +890,7 @@ _PG_init(void)
 	DefineCustomBoolVariable("se_feature.restricted_dba",
 							 "Turn on/off  restricted_dba",
 							 NULL,
-							 &fake_restricted_dba,
+							 &se_feature.restricted_dba,
 							 false,
 							 PGC_USERSET,
 							 GUC_NOT_IN_SAMPLE,
@@ -863,17 +915,6 @@ _PG_init(void)
 	prev_shmem_startup_hook = shmem_startup_hook;
 	shmem_startup_hook = se_feature_shmem_startup;
 
-	// se_method = &se_method_imp;
-	// /* Initialize userspace access vector cache */
-	// sepgsql_avc_init();
-
-	// /* Initialize security label of the client and related stuff */
-	// sepgsql_init_client_label();
-
-	// /* Security label provider hook */
-	// register_label_provider(SEPGSQL_LABEL_TAG,
-	// 						sepgsql_object_relabel);
-
 	// /* Object access hook */
 	next_object_access_hook = object_access_hook;
 	object_access_hook = object_access_check;
@@ -890,6 +931,8 @@ _PG_init(void)
 
 	next_needs_fmgr_hook = needs_fmgr_hook;
 	needs_fmgr_hook = func_execute_check;
+
+	se_feature.grant_sysdba_priv = grant_sysdba_priv;
 
 	// /* init contextual info */
 	// memset(&sepgsql_context_info, 0, sizeof(sepgsql_context_info));

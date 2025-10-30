@@ -64,12 +64,18 @@ superuser_arg(Oid roleid)
 	HeapTuple	rtup;
 
 	/* Begin - ReqID:SRS-SECURITY-POWERS */
-	/*if has se_feature, we block the superuser check and do over own version*/
-	/* call se_feature version of superuser() */
+	/* since syssso or syssao may need superuser priv, we make them a temp superuser*/
+	/* and this value could only set by code, so we always give code writer superuser privs */
 	if (se_feature.tmp_superuser_oid == roleid)
 		return true;
-	if (se_feature.mode && se_feature.restricted_dba)
-		return false;
+	/* 
+	 * some processes may also check superuser() during initialization.
+	 * At that point sysdba_role haven't created.
+	 * In other case, if se_feature.mode is on, make sure only sysdba_role
+	 * member can be superuser.
+	 */
+	if (IsUnderPostmaster && se_feature.mode)
+		return IS_SYSDBA(roleid);
 	/* End - ReqID:SRS-SECURITY-POWERS */
 
 	/* Quick out for cache hit */
@@ -105,6 +111,13 @@ superuser_arg(Oid roleid)
 	/* Cache the result for next time */
 	last_roleid = roleid;
 	last_roleid_is_super = result;
+
+	/* Begin - ReqID:SRS-SECURITY-POWERS */
+	/* make sure only sysdba_role member can be superuser */
+	if (se_feature.mode && IS_SYSDBA(roleid) &&
+	    result)
+		return true;
+	/* End - ReqID:SRS-SECURITY-POWERS */
 
 	return result;
 }

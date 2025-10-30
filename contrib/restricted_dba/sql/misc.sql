@@ -87,3 +87,41 @@ alter database testdb set se_feature.mode to off;
 
 \c template1 sysdba_u1
 drop database testdb;
+
+-- test for alter system
+create database testdb;
+alter database testdb set se_feature.mode to on;
+set se_feature.mode to on;
+
+---- test start
+---- pass
+\c template1 sysdba_u1
+drop database testdb;
+
+-- test for implict sysdba priv
+create database testdb;
+
+\c testdb sysdba_u1
+create user test_dba_u1;
+create role test_r1;
+create user test_u1;
+---- pass
+grant sysdba_role to test_dba_u1;
+select rolsuper,rolcreaterole,rolcreatedb from pg_authid where rolname = 'test_dba_u1';
+revoke sysdba_role from test_dba_u1;
+select rolsuper,rolcreaterole,rolcreatedb from pg_authid where rolname = 'test_dba_u1';
+
+-- \c testdb syssso_u1;
+-- ---- fail
+-- grant test_r1 to test_u1;
+-- ---- pass
+-- set se_feature.mode to on;
+-- grant test_r1 to test_u1;
+-- revoke test_r1 from test_u1;
+-- set se_feature.mode to off;
+
+\c template1 sysdba_u1
+drop user test_dba_u1;
+drop user test_u1;
+drop role test_r1;
+drop database testdb;

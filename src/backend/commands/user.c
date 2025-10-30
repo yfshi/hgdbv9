@@ -924,13 +924,44 @@ AlterRole(AlterRoleStmt *stmt)
 	bWas_super = ((Form_pg_authid) GETSTRUCT(tuple))->rolsuper;
 
 	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
-	if (authform->rolsuper || issuper >= 0)
+	/* Begin - Bugz5203 ReqID:SRS-SECURITY-POWERS */
+	/* just for dky test, allow sso alter all user's validunitl, maybe removed latter.*/
+	if (issuper >= 0)
 	{
+		/*
+		 * no matter se_feautre.mode is on or off. we not allow non-superuser
+		 * give a target user SUPERUSER attribute.
+		 */
 		if (!superuser())
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("must be superuser to alter superuser roles or change superuser attribute")));
-	}
+		
+	} 
+	else if (authform->rolsuper)
+	{
+		/*
+		 * If we turned on se_feautre.mode, we allow members of syssso_role
+		 * modify user's password validity period, even target user is a superuser.
+		 */
+		if (se_feature.mode)
+		{
+			if(dvalidUntil && !IS_SYSSSO(GetUserId()))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied")));
+		}
+		else
+		{
+			/* otherwise, make sure only superuser can modify another superuser */
+			if (!superuser())
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						 errmsg("must be superuser to alter superuser "
+						 		"roles or change superuser attribute")));
+		}
+
+	}/* End - Bugz5203 ReqID:SRS-SECURITY-POWERS */
 	else if (authform->rolreplication || isreplication >= 0)
 	{
 		if (!superuser())
@@ -949,20 +980,22 @@ AlterRole(AlterRoleStmt *stmt)
 	{
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
 		/*chengxi marks here move following change to extension latter*/
-		if (se_feature.mode && (IS_SYSSSO(GetUserId()) || IS_SYSSAO(GetUserId())))
+		if (se_feature.mode && IS_SYSSSO(GetUserId()))
 		{
 			if (!(inherit < 0 &&
 				createrole < 0 &&
 				createdb < 0 &&
 				canlogin < 0 &&
 				!dconnlimit &&
-				!rolemembers &&
-				(validUntil ||	//we allow syssso and syssao to modify its validuntil
-				dpassword )&&
-				roleid == GetUserId()))
+				!rolemembers))
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 						errmsg("permission denied")));
+			/*
+			 * we allow syssso_role member alter password and validuntil.
+			 * but security role member password can only alter by itself.
+			 * we leave that part in alter_role_check().
+			 */		
 		}
 		else
 		{
@@ -1946,7 +1979,8 @@ AddRoleMems(const char *rolename, Oid roleid,
 	else
 	{
 		if (!have_createrole_privilege() &&
-			!is_admin_of_role(grantorId, roleid))
+			!is_admin_of_role(grantorId, roleid)  &&
+			!(se_feature.mode && IS_SYSSSO(GetUserId()))) /* ReqID:SRS-SECURITY-POWERS: a temp solution for dky */
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("must have admin option on role \"%s\"",
@@ -2075,6 +2109,11 @@ AddRoleMems(const char *rolename, Oid roleid,
 			CatalogTupleInsert(pg_authmem_rel, tuple);
 		}
 
+		/* Begin - ReqID:SRS-SECURITY-POWERS */
+		if(IsUnderPostmaster && IS_SYSDBA(roleid))
+			se_feature.grant_sysdba_priv(memberid, true);
+		/* End - ReqID:SRS-SECURITY-POWERS */
+
 		/* CCI after each change, in case there are duplicates in list */
 		CommandCounterIncrement();
 	}
@@ -2124,7 +2163,8 @@ DelRoleMems(const char *rolename, Oid roleid,
 	else
 	{
 		if (!have_createrole_privilege() &&
-			!is_admin_of_role(GetUserId(), roleid))
+			!is_admin_of_role(GetUserId(), roleid) &&
+			!(se_feature.mode && IS_SYSSSO(GetUserId()))) /* ReqID:SRS-SECURITY-POWERS: a temp solution for dky */
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("must have admin option on role \"%s\"",
@@ -2182,6 +2222,11 @@ DelRoleMems(const char *rolename, Oid roleid,
 		}
 
 		ReleaseSysCache(authmem_tuple);
+
+		/* Begin - ReqID:SRS-SECURITY-POWERS */
+		if(IsUnderPostmaster && IS_SYSDBA(roleid))
+			se_feature.grant_sysdba_priv(memberid, false);
+		/* End - ReqID:SRS-SECURITY-POWERS */
 
 		/* CCI after each change, in case there are duplicates in list */
 		CommandCounterIncrement();

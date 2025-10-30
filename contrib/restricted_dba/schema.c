@@ -114,6 +114,7 @@ use_schema_check(Oid namespaceid, Oid roleid)
 		Oid			nspowner;
 		Form_pg_namespace nsptup;
 		char 	   *nspname;
+		bool		have_priv = false;
 
 		/* Search syscache for pg_tablespace */
 		tp = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(namespaceid));
@@ -128,10 +129,12 @@ use_schema_check(Oid namespaceid, Oid roleid)
 
 		ReleaseSysCache(tp);
 
+		have_priv = (pg_namespace_aclmask_nosuper(namespaceid, roleid, ACL_CREATE , ACLMASK_ANY) != 0);
+
 		if (IS_SYSSSO(nspowner) || IS_SYSSAO(nspowner))
 		{
 			/* Bug#z4741*/
-			if(pg_namespace_aclmask_nosuper(namespaceid, roleid, ACL_CREATE ,ACLMASK_ANY) == 0)
+			if(!have_priv)
 			{
 				result = false;
 				ereport(ERROR,
@@ -139,6 +142,17 @@ use_schema_check(Oid namespaceid, Oid roleid)
 						 errmsg("permission denied for schema %s", nspname),
 						 errdetail("sysdba_role member cannot use schema of "
 								   "syssso_role/syssao_role member schema")));
+			}
+		}
+		else if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		{
+			if(!have_priv)
+			{
+				result = false;
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						 errmsg("permission denied for schema %s", nspname),
+						 errdetail("don't have enough privilege on schema %s", nspname)));
 			}
 		}
 
@@ -188,6 +202,26 @@ alter_schema_owner_check(const char *name, Oid newOwnerId)
 				 		   "cannot be owner of schema")));
 	}
 
+	if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+	{
+		if (nspowner != GetUserId())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("sysdba_role member can only alter schema of "
+								"itself")));
+		}
+
+		if (!IS_SYSDBA(newOwnerId))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("only sysdba_role member is allowed to own a "
+								"schema of another sysdba_role member")));
+
+	}
+
 	ReleaseSysCache(tup);
 
 	table_close(rel, RowExclusiveLock);
@@ -221,6 +255,18 @@ alter_schema_rename_check(const char *oldname, const char *newname)
 				errmsg("permission denied"),
 				errdetail("cannot alter schema of syssso_role/syssao_role "
 							"member")));
+
+	if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+	{
+		if (nspowner != GetUserId())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("sysdba_role member can only alter schema of "
+								  "itself")));
+		}
+	}
 
 	ReleaseSysCache(tup);
 
@@ -260,6 +306,17 @@ drop_schema_check(ObjectAddress *object, char* auditname)
 				 errdetail("cannot drop schema of syssso_role/syssao_role "
 						"member")));
 
+	if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+	{
+		if (nspowner != GetUserId())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied"),
+						errdetail("sysdba_role member can only drop schema of "
+								  "itself")));
+		}
+	}
 
 	return true;
 }

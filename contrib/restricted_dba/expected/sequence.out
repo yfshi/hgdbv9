@@ -63,14 +63,14 @@ alter sequence seq1_sysdba_u1 restart with 100;
 alter sequence seq1_sysdba_u2 restart with 100;
 alter sequence seq1_u1 restart with 100;
 alter sequence if exists seq_non_exist restart with 100;
-ERROR:  relation "seq_non_exist" does not exist
+NOTICE:  relation "seq_non_exist" does not exist, skipping
 ------ fail
 alter sequence seq1_syssso_u1 restart with 100;
 ERROR:  permission denied
-DETAIL:  cannot alter sequence of syssso_role/syssao_role member
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
 alter sequence seq1_syssao_u1 restart with 100;
 ERROR:  permission denied
-DETAIL:  cannot alter sequence of syssso_role/syssao_role member
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
 alter sequence seq_non_exist restart with 100;
 ERROR:  relation "seq_non_exist" does not exist
 ---- ALTER SEQUENCE RENAME
@@ -179,5 +179,285 @@ drop schema sch_u1;
 drop schema sch_syssso_u2;
 drop sequence seq1_syssso_u1;
 drop sequence seq1_syssao_u1;
+\c template1 sysdba_u1
+drop database testdb;
+-- set restricted_dba to on;
+-- setup before test start
+create database testdb;
+\c testdb -
+create schema sch_u1 authorization u1;
+create schema sch_sysdba_u1 authorization sysdba_u1;
+create schema sch_syssso_u1 authorization syssso_u1;
+create schema sch_syssao_u1 authorization syssao_u1;
+create schema sch_syssso_u2 authorization syssso_u2;
+grant create on schema sch_syssso_u2 to sysdba_role;
+create schema sch_u2 authorization u2;
+grant create on schema sch_u2 to sysdba_role;
+create schema sch1_sysdba_u2 authorization sysdba_u2;
+create schema sch2_sysdba_u2 authorization sysdba_u2;
+grant create on schema sch1_sysdba_u2 to sysdba_role;
+create sequence seq1_syssso_u1;
+create sequence seq1_syssao_u1;
+create sequence seq1_u1;
+create sequence seq1_sysdba_u2;
+alter sequence seq1_syssso_u1 owner to syssso_u1;
+alter sequence seq1_syssao_u1 owner to syssao_u1;
+alter sequence seq1_u1 owner to u1;
+alter sequence seq1_sysdba_u2 owner to sysdba_u2;
+alter database testdb set se_feature.mode to on;
+alter database testdb set se_feature.restricted_dba to on;
+set se_feature.restricted_dba to on;
+set se_feature.mode to on;
+-- For member of sysdba_role
+\c testdb sysdba_u1;
+---- CREATE SEQUENCE
+------ pass
+create sequence public.seq1_dba_u1;
+create sequence seq2_dba_u1;
+create sequence sch_sysdba_u1.seq1_dba_u1;
+create sequence sch1_sysdba_u2.seq1_dba_u1;
+create sequence sch_syssso_u2.seq1_dba_u1;
+create sequence sch_u2.seq1_dba_u1;
+------ fail
+create sequence sch2_sysdba_u2.seq1_dba_u1;
+ERROR:  permission denied for schema sch2_sysdba_u2
+DETAIL:  don't have enough privilege on schema sch2_sysdba_u2
+create sequence sch_syssso_u1.seq1_dba_u1;
+ERROR:  permission denied for schema sch_syssso_u1
+DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+create sequence sch_syssao_u1.seq1_dba_u1;
+ERROR:  permission denied for schema sch_syssao_u1
+DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+create sequence sch_u1.seq1_dba_u1;
+ERROR:  permission denied for schema sch_u1
+DETAIL:  don't have enough privilege on schema sch_u1
+create sequence sch_non_exist.seq1_dba_u1;
+ERROR:  schema "sch_non_exist" does not exist
+---- ALTER SEQUENCE OWNER
+------ pass
+begin;
+alter sequence seq1_dba_u1 owner to sysdba_u2;
+rollback;
+alter sequence if exists seq_non_exist owner to sysdba_u1;
+NOTICE:  relation "seq_non_exist" does not exist, skipping
+------ fail
+alter sequence seq1_dba_u1 owner to syssso_u1;
+ERROR:  permission denied
+DETAIL:  syssso_role/syssao_role member cannot be owner of relation
+alter sequence seq1_dba_u1 owner to syssao_u1;
+ERROR:  permission denied
+DETAIL:  syssso_role/syssao_role member cannot be owner of relation
+alter sequence seq1_dba_u1 owner to u1;
+ERROR:  permission denied
+DETAIL:  only sysdba_role member is allowed to own a relation of another sysdba_role member
+alter sequence seq1_sysdba_u2 owner to sysdba_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_sysdba_u2 owner to syssso_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_sysdba_u2 owner to syssao_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_sysdba_u2 owner to u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_syssso_u1 owner to sysdba_u1;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_syssso_u1 owner to syssao_u1;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_syssso_u1 owner to syssso_u2;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_syssso_u1 owner to u1;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_syssao_u1 owner to sysdba_u1;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_syssao_u1 owner to syssao_u2;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_syssao_u1 owner to syssso_u1;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_syssao_u1 owner to u1;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_u1 owner to sysdba_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_u1 owner to syssao_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_u1 owner to syssso_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_u1 owner to u2;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+---- ALTER SEQUENCE
+------ pass
+alter sequence seq1_dba_u1 restart with 100;
+alter sequence if exists seq_non_exist restart with 100;
+NOTICE:  relation "seq_non_exist" does not exist, skipping
+------ fail
+alter sequence seq1_sysdba_u2 restart with 100;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_syssso_u1 restart with 100;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_syssao_u1 restart with 100;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_u1 restart with 100;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq_non_exist restart with 100;
+ERROR:  relation "seq_non_exist" does not exist
+---- ALTER SEQUENCE RENAME
+------ pass
+begin;
+alter sequence seq1_dba_u1 rename to seq1_dba_u1_new;
+rollback;
+alter sequence if exists seq_non_exist rename to seq_non_exist_new;
+NOTICE:  relation "seq_non_exist" does not exist, skipping
+------ fail
+alter sequence seq1_sysdba_u2 rename to seq1_sysdba_u2_new;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_syssso_u1 rename to seq1_syssso_u1_new;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_syssao_u1 rename to seq1_syssao_u1_new;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_u1 rename to seq1_u1_new;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence tb1_non_exist rename to seq_non_exist_new;
+ERROR:  relation "tb1_non_exist" does not exist
+---- ALTER SEQUENCE SCHEMA
+------ pass
+alter sequence seq2_dba_u1 set schema sch_sysdba_u1;
+alter sequence sch_sysdba_u1.seq2_dba_u1 set schema sch1_sysdba_u2;
+alter sequence sch1_sysdba_u2.seq2_dba_u1 set schema sch_syssso_u2;
+alter sequence sch_syssso_u2.seq2_dba_u1 set schema sch_u2;
+alter sequence sch_u2.seq2_dba_u1 set schema public;
+alter sequence if exists seq_non_exist set schema public;
+NOTICE:  relation "seq_non_exist" does not exist, skipping
+------ fail
+alter sequence seq1_dba_u1 set schema sch_syssso_u1;
+ERROR:  permission denied for schema sch_syssso_u1
+DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+alter sequence seq1_dba_u1 set schema sch_syssao_u1;
+ERROR:  permission denied for schema sch_syssao_u1
+DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+alter sequence seq1_dba_u1 set schema sch2_sysdba_u2;
+ERROR:  permission denied for schema sch2_sysdba_u2
+DETAIL:  don't have enough privilege on schema sch2_sysdba_u2
+alter sequence seq1_dba_u1 set schema sch_u1;
+ERROR:  permission denied for schema sch_u1
+DETAIL:  don't have enough privilege on schema sch_u1
+alter sequence seq1_syssso_u1 set schema sch_syssso_u1;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_syssao_u1 set schema sch_syssao_u1;
+ERROR:  permission denied
+DETAIL:  cannot alter relation of syssso_role/syssao_role member
+alter sequence seq1_sysdba_u2 set schema sch1_sysdba_u2;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_u1 set schema sch_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only alter relation of itself
+alter sequence seq1_non_exist set schema sch_sysdba_u1;
+ERROR:  relation "seq1_non_exist" does not exist
+alter sequence seq1_dba_u1 set schema sch_non_exist;
+ERROR:  schema "sch_non_exist" does not exist
+---- GRANT SEQUENCE
+------ pass
+grant all on seq1_dba_u1 to sysdba_u2;
+------ fail
+grant all on seq1_dba_u1 to syssso_u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege of sysdba_role member to syssso_role/syssao_role member
+grant all on seq1_dba_u1 to syssao_u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege of sysdba_role member to syssso_role/syssao_role member
+grant all on seq1_dba_u1 to u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege of sysdba_role member to normal user
+grant all on seq1_u1 to sysdba_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only grant privilege of itself
+grant all on seq1_u1 to syssso_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only grant privilege of itself
+grant all on seq1_u1 to syssao_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only grant privilege of itself
+grant all on seq1_u1 to u2;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only grant privilege of itself
+grant all on seq1_sysdba_u2 to sysdba_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only grant privilege of itself
+grant all on seq1_sysdba_u2 to syssso_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only grant privilege of itself
+grant all on seq1_sysdba_u2 to syssao_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only grant privilege of itself
+grant all on seq1_sysdba_u2 to u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only grant privilege of itself
+grant all on seq1_syssso_u1 to sysdba_u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege of syssso_role/syssao_role member to anyone
+grant all on seq1_syssao_u1 to u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege of syssso_role/syssao_role member to anyone
+grant all on seq1_syssao_u1 to sysdba_u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege of syssso_role/syssao_role member to anyone
+grant all on seq1_syssso_u1 to u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege of syssso_role/syssao_role member to anyone
+grant all on seq1_non_exist to sysdba_u1;
+ERROR:  relation "seq1_non_exist" does not exist
+---- DROP SEQUENCE
+------ pass
+drop sequence seq1_dba_u1;
+drop sequence seq2_dba_u1;
+drop sequence sch_sysdba_u1.seq1_dba_u1;
+drop sequence sch1_sysdba_u2.seq1_dba_u1;
+drop sequence sch_syssso_u2.seq1_dba_u1;
+drop sequence sch_u2.seq1_dba_u1;
+drop sequence if exists tb1_non_exist;
+NOTICE:  sequence "tb1_non_exist" does not exist, skipping
+------ fail
+drop sequence seq1_sysdba_u2;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only drop relation of itself
+drop sequence seq1_syssso_u1;
+ERROR:  permission denied
+DETAIL:  cannot drop relation of syssso_role/syssao_role member
+drop sequence seq1_syssao_u1;
+ERROR:  permission denied
+DETAIL:  cannot drop relation of syssso_role/syssao_role member
+drop sequence seq1_u1;
+ERROR:  permission denied
+DETAIL:  sysdba_role member can only drop relation of itself
+drop sequence tb1_non_exist;
+ERROR:  sequence "tb1_non_exist" does not exist
+-- Clean test object
+\c testdb syssso_u1
+set se_feature.mode to on;
+alter database testdb set se_feature.mode to off;
+alter database testdb set se_feature.restricted_dba to off;
 \c template1 sysdba_u1
 drop database testdb;

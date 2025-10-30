@@ -22,10 +22,16 @@
 
 #include "se_features_interface.h"
 
+static void dummy_grant_sysdba_priv_fn(Oid roleid, bool is_grant);
 
 // /*function warpper that hold all support function in extension*/
 // SeMethod *se_method = NULL;
-SeFeature se_feature = {false, false, InvalidOid};
+SeFeature se_feature = {
+    false, 
+    false, 
+    InvalidOid,
+    dummy_grant_sysdba_priv_fn
+};
 
 
 bool is_member_of_serole (Oid member, char* role_name)
@@ -41,4 +47,10 @@ bool is_member_of_serole (Oid member, char* role_name)
 		result = is_member_of_role(member, role_id);
 
 	return result;
+}
+
+static void
+dummy_grant_sysdba_priv_fn(Oid roleid, bool is_grant)
+{
+    /*do nothing*/
 }
