@@ -310,6 +310,9 @@ extern PGDLLIMPORT bool	enable_emptystring_to_NULL;
 /* Begin - BUG#6021 */
 extern PGDLLIMPORT bool	enable_emptystring_is_NULL;
 /* End - BUG#6021 */
+/* Begin - BUG:6022 */
+extern PGDLLIMPORT bool enable_standard_datetime_parsing_mode;
+/* End - BUG:6022 */
 
 /* Begin - BUG:M0000068 */
 extern PGDLLIMPORT bool convert_plisql_int_to_number;

@@ -559,3 +559,139 @@ SELECT to_char('2012-12-12 12:00'::timestamptz, 'YYYY-MM-DD SSSS');
 SELECT to_char('2012-12-12 12:00'::timestamptz, 'YYYY-MM-DD SSSSS');
 
 RESET TIME ZONE;
+
+--
+-- check standard datetime parsing mode
+--
+
+SET ivorysql.enable_standard_datetime_parsing_mode = on;
+
+SELECT to_timestamp('0097/Feb/16 --> 08:14:30', 'YYYY/Mon/DD --> HH:MI:SS'); --failed
+SELECT to_timestamp('0097/Feb/16 -- 08:14:30', 'YYYY/Mon/DD -- HH:MI:SS');
+SELECT to_timestamp('97/2/16 8:14:30', 'FMYYYY/FMMM/FMDD FMHH:FMMI:FMSS');
+SELECT to_timestamp('2011$03!18 23_38_15', 'YYYY-MM-DD HH24:MI:SS'); --failed
+SELECT to_timestamp('2011-03-18 23:38:15', 'YYYY-MM-DD HH24:MI:SS');
+SELECT to_timestamp('1985 January 12', 'YYYY FMMonth DD');
+SELECT to_timestamp('1,582nd VIII 21', 'Y,YYYth FMRM DD');
+SELECT to_timestamp('2000January09Sunday', 'YYYYFMMonthDDFMDay');
+SELECT to_timestamp('97/Feb/16', 'YYMonDD'); --failed
+SELECT to_timestamp('97Feb16', 'YYMonDD');
+SELECT to_timestamp('97/Feb/16', 'YY:Mon:DD'); --failed
+SELECT to_timestamp('97:Feb:16', 'YY:Mon:DD');
+SELECT to_timestamp('97/Feb/16', 'FXYY:Mon:DD'); --failed
+SELECT to_timestamp('97:Feb:16', 'FXYY:Mon:DD');
+SELECT to_timestamp('97/Feb/16', 'FXYY/Mon/DD');
+SELECT to_timestamp('19971116', 'YYYYMMDD');
+SELECT to_timestamp('20000-1116', 'YYYY-MMDD'); --failed
+SELECT to_timestamp('1997 AD 11 16', 'YYYY BC MM DD');
+SELECT to_timestamp('1997 BC 11 16', 'YYYY BC MM DD');
+SELECT to_timestamp('1997 A.D. 11 16', 'YYYY B.C. MM DD');
+SELECT to_timestamp('1997 B.C. 11 16', 'YYYY B.C. MM DD');
+SELECT to_timestamp('9-1116', 'Y-MMDD');
+SELECT to_timestamp('95-1116', 'YY-MMDD');
+SELECT to_timestamp('995-1116', 'YYY-MMDD');
+SELECT to_timestamp('2005426', 'YYYYWWD');
+SELECT to_timestamp('2005300', 'YYYYDDD');
+SELECT to_timestamp('2005527', 'IYYYIWID');
+SELECT to_timestamp('005527', 'IYYIWID');
+SELECT to_timestamp('05527', 'IYIWID');
+SELECT to_timestamp('5527', 'IIWID');
+SELECT to_timestamp('2005364', 'IYYYIDDD');
+SELECT to_timestamp('20050302', 'YYYYMMDD');
+SELECT to_timestamp('2005 03 02', 'YYYYMMDD');
+SELECT to_timestamp(' 2005 03 02', 'YYYYMMDD');
+SELECT to_timestamp('  20050302', 'YYYYMMDD'); --failed
+SELECT to_timestamp('  20050302', '  YYYYMMDD');
+SELECT to_timestamp('2011-12-18 11:38 AM', 'YYYY-MM-DD HH12:MI PM');
+SELECT to_timestamp('2011-12-18 11:38 PM', 'YYYY-MM-DD HH12:MI PM');
+SELECT to_timestamp('2011-12-18 11:38 A.M.', 'YYYY-MM-DD HH12:MI P.M.');
+SELECT to_timestamp('2011-12-18 11:38 P.M.', 'YYYY-MM-DD HH12:MI P.M.');
+SELECT to_timestamp('2011-12-18 11:38 +05',    'YYYY-MM-DD HH12:MI TZH');
+SELECT to_timestamp('2011-12-18 11:38 -05',    'YYYY-MM-DD HH12:MI TZH');
+SELECT to_timestamp('2011-12-18 11:38 +05:20', 'YYYY-MM-DD HH12:MI TZH:TZM');
+SELECT to_timestamp('2011-12-18 11:38 -05:20', 'YYYY-MM-DD HH12:MI TZH:TZM');
+SELECT to_timestamp('2011-12-18 11:38 20',     'YYYY-MM-DD HH12:MI TZM');
+SELECT to_timestamp('2011-12-18 11:38 PST', 'YYYY-MM-DD HH12:MI TZ');  -- NYI
+SELECT to_timestamp('2018-11-02 12:34:56.025', 'YYYY-MM-DD HH24:MI:SS.MS');
+SELECT i, to_timestamp('2018-11-02 12:34:56', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i; --failed
+SELECT i, to_timestamp('2018-11-02 12:34:56.0', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
+SELECT i, to_timestamp('2018-11-02 12:34:56.1', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
+SELECT i, to_timestamp('2018-11-02 12:34:56.12', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i; --failed
+SELECT i, to_timestamp('2018-11-02 12:34:56.12', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(2, 6) i;
+SELECT i, to_timestamp('2018-11-02 12:34:56.123', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(3, 6) i;
+SELECT i, to_timestamp('2018-11-02 12:34:56.1234', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(4, 6) i;
+SELECT i, to_timestamp('2018-11-02 12:34:56.12345', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(5, 6) i;
+SELECT i, to_timestamp('2018-11-02 12:34:56.123456', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(6, 6) i;
+SELECT i, to_timestamp('2018-11-02 12:34:56.123456789', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(6, 6) i; --failed
+SELECT to_date('1 4 1902', 'Q MM YYYY');  -- Q is ignored
+SELECT to_date('3 4 21 01', 'W MM CC YY');
+SELECT to_date('2458872', 'J');
+SELECT to_date('44-02-01 BC','YYYY-MM-DD BC');
+SELECT to_date('-44-02-01','YYYY-MM-DD');
+SELECT to_date('-44-02-01 BC','YYYY-MM-DD BC');
+SELECT to_timestamp('44-02-01 11:12:13 BC','YYYY-MM-DD HH24:MI:SS BC');
+SELECT to_timestamp('-44-02-01 11:12:13','YYYY-MM-DD HH24:MI:SS');
+SELECT to_timestamp('-44-02-01 11:12:13 BC','YYYY-MM-DD HH24:MI:SS BC');
+SELECT to_timestamp('2011-12-18 23:38:15', 'YYYY-MM-DD  HH24:MI:SS'); --failed
+SELECT to_timestamp('2011-12-18  23:38:15', 'YYYY-MM-DD  HH24:MI:SS');
+SELECT to_timestamp('2011-12-18   23:38:15', 'YYYY-MM-DD  HH24:MI:SS');
+SELECT to_timestamp('2011-12-18  23:38:15', 'YYYY-MM-DD HH24:MI:SS');
+SELECT to_timestamp('2011-12-18  23:38:15', 'YYYY-MM-DD  HH24:MI:SS');
+SELECT to_timestamp('2011-12-18  23:38:15', 'YYYY-MM-DD   HH24:MI:SS'); --failed
+SELECT to_timestamp('2000+   JUN', 'YYYY/MON'); --failed
+SELECT to_timestamp('  2000 +JUN', 'YYYY/MON'); --failed
+SELECT to_timestamp(' 2000 +JUN', 'YYYY//MON'); --failed
+SELECT to_timestamp('2000  +JUN', 'YYYY//MON'); --failed
+SELECT to_timestamp('2000 + JUN', 'YYYY MON'); --failed
+SELECT to_timestamp('2000 ++ JUN', 'YYYY  MON'); --failed
+SELECT to_timestamp('2000 + + JUN', 'YYYY  MON'); --failed
+SELECT to_timestamp('2000 + + JUN', 'YYYY   MON'); --failed
+SELECT to_date('2011 12  18', 'YYYY MM DD');
+SELECT to_date('2011 12  18', 'YYYY MM  DD');
+SELECT to_date('2011 12  18', 'YYYY MM   DD'); --failed
+SELECT to_date('2011 12 18', 'YYYY  MM DD');
+SELECT to_date('2011  12 18', 'YYYY  MM DD');
+SELECT to_date('2011   12 18', 'YYYY  MM DD');
+SELECT to_date('2011 12 18', 'YYYYxMMxDD'); --failed
+SELECT to_date('2011x 12x 18', 'YYYYxMMxDD'); --failed
+SELECT to_date('2011 x12 x18', 'YYYYxMMxDD'); --failed
+SELECT to_timestamp('2005527', 'YYYYIWID'); --failed
+SELECT to_timestamp('19971', 'YYYYMMDD'); --failed
+SELECT to_timestamp('19971)24', 'YYYYMMDD'); --failed
+SELECT to_timestamp('Friday-1-January-1999', 'DY-DD-MON-YYYY'); --failed
+SELECT to_timestamp('Fri 1-January-1999', 'DY DD-MON-YYYY'); --failed
+SELECT to_timestamp('Fri 1-Jan-1999', 'DY DD-MON-YYYY');  -- ok
+SELECT to_timestamp('1997-11-Jan-16', 'YYYY-MM-Mon-DD'); --failed
+SELECT to_timestamp('199711xy', 'YYYYMMDD'); --failed
+SELECT to_timestamp('10000000000', 'FMYYYY'); --failed
+-- Out-of-range and not-quite-out-of-range fields:
+SELECT to_timestamp('2016-06-13 25:00:00', 'YYYY-MM-DD HH24:MI:SS'); --failed
+SELECT to_timestamp('2016-06-13 15:60:00', 'YYYY-MM-DD HH24:MI:SS'); --failed
+SELECT to_timestamp('2016-06-13 15:50:60', 'YYYY-MM-DD HH24:MI:SS'); --failed
+SELECT to_timestamp('2016-06-13 15:50:55', 'YYYY-MM-DD HH24:MI:SS');  -- ok
+SELECT to_timestamp('2016-06-13 15:50:55', 'YYYY-MM-DD HH:MI:SS'); --failed
+SELECT to_timestamp('2016-13-01 15:50:55', 'YYYY-MM-DD HH24:MI:SS'); --failed
+SELECT to_timestamp('2016-02-30 15:50:55', 'YYYY-MM-DD HH24:MI:SS'); --failed
+SELECT to_timestamp('2016-02-29 15:50:55', 'YYYY-MM-DD HH24:MI:SS');  -- ok
+SELECT to_timestamp('2015-02-29 15:50:55', 'YYYY-MM-DD HH24:MI:SS'); --failed
+SELECT to_timestamp('2015-02-11 86000', 'YYYY-MM-DD SSSS');  -- ok
+SELECT to_timestamp('2015-02-11 86400', 'YYYY-MM-DD SSSS'); --failed
+SELECT to_timestamp('2015-02-11 86000', 'YYYY-MM-DD SSSSS');  -- ok
+SELECT to_timestamp('2015-02-11 86400', 'YYYY-MM-DD SSSSS'); --failed
+SELECT to_date('2016-13-10', 'YYYY-MM-DD'); --failed
+SELECT to_date('2016-02-30', 'YYYY-MM-DD'); --failed
+SELECT to_date('2016-02-29', 'YYYY-MM-DD');  -- ok
+SELECT to_date('2015-02-29', 'YYYY-MM-DD'); --failed
+SELECT to_date('2015 365', 'YYYY DDD');  -- ok
+SELECT to_date('2015 366', 'YYYY DDD'); --failed
+SELECT to_date('2016 365', 'YYYY DDD');  -- ok
+SELECT to_date('2016 366', 'YYYY DDD');  -- ok
+SELECT to_date('2016 367', 'YYYY DDD'); --failed
+SELECT to_date('0-02-01','Y-MM-DD');
+SELECT to_date('00-02-01','YY-MM-DD');
+SELECT to_date('000-02-01','YYY-MM-DD');
+SELECT to_date('0000-02-01','YYYY-MM-DD'); --failed
+SELECT to_date('2000-02','YYYY-MM-DD'); --failed
+SELECT to_date('200002','YYYYMMDD'); --failed
+
+RESET ivorysql.enable_standard_datetime_parsing_mode;
