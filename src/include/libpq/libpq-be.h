@@ -147,6 +147,17 @@ typedef struct Port
 	char	   *cmdline_options;
 	List	   *guc_options;
 
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	/*
+	 * These values curretly are only used in statistic module, so it's
+	 * unnecessary to set them as GUC variables. They passed from frountend
+	 * and will be copied to PgBackendStatus at InitPostgres().
+	 */
+	char	   *client_uid;
+	char	   *client_pid;
+	char	   *client_mac;
+	/* End ReqID: SRS-SESSION-VIEWS */
+
 	/*
 	 * The startup packet application name, only used here for the "connection
 	 * authorized" log message. We shouldn't use this post-startup, instead
