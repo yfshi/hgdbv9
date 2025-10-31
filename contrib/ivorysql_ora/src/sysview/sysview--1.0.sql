@@ -3464,7 +3464,6 @@ GRANT SELECT ON SYS.ALL_TAB_COLS TO PUBLIC;
 
 CREATE OR REPLACE VIEW SYS.USER_TAB_COLS AS
     SELECT
-        owner,
         table_name,
         column_name,
         data_type,
@@ -6990,7 +6989,6 @@ CREATE OR REPLACE VIEW SYS.USER_DEPENDENCIES AS
 -- subquery-1：handle table, index, sequence etc. (classid=pg_class)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS name,
         CASE c.relkind
             WHEN 'r' THEN 'TABLE'
@@ -7095,7 +7093,6 @@ UNION ALL
 -- subquery-2：handle proc (classid=pg_proc)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p.proowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(p.proname::varchar2)::varchar2(128) AS name,
         CASE p.prokind
             WHEN 'f' THEN 'FUNCTION'
@@ -7188,7 +7185,6 @@ UNION ALL
 -- subquery-3: handle trigger (classid=pg_trigger)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = t.tgrelid))::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(t.tgname::varchar2)::varchar2(128) AS name,
         'TRIGGER'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -7260,7 +7256,6 @@ UNION ALL
 -- subquery-4: handle type (classid=pg_type)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ty.typowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(ty.typname::varchar)::varchar2(128) AS name,
         CASE ty.typtype
             WHEN 'b' THEN 'BASE TYPE'
@@ -7343,7 +7338,6 @@ UNION ALL
 -- subquery-5: handle constraint (classid=pg_constraint)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = cons.conrelid))::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(cons.conname::varchar)::varchar2(128) AS name,
         CASE cons.contype
             WHEN 'p' THEN 'PRIMARY KEY'
@@ -7419,7 +7413,6 @@ UNION ALL
 -- subquery-6: handle extension (classid=pg_extension)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext.extowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(ext.extname::varchar)::varchar2(128) AS name,
         'EXTENSION'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -7490,7 +7483,6 @@ UNION ALL
 -- subquery-7: handle operator (classid=pg_operator)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opr.oprowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(opr.oprname::varchar)::varchar2(128) AS name,
         'OPERATOR'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -7565,10 +7557,6 @@ UNION ALL
 -- subquery-8: handle type cast (classid=pg_cast)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(COALESCE(
-            PG_GET_USERBYID(cast_func.proowner),
-            PG_GET_USERBYID(10)
-        )::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(src_ty.typname::varchar2)::varchar2(128) AS name,
         'CAST'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -7645,7 +7633,6 @@ UNION ALL
 -- subquery-9: handle opfamily (classid='pg_opfamily'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(opf.opfname::varchar)::varchar2(128) AS name,
         'OPERATOR FAMILY'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -7696,7 +7683,6 @@ UNION ALL
 -- subquery-10: handle opclass (classid='pg_opclass'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opc.opcowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(opc.opcname::varchar)::varchar2(128) AS name,
         'OPERATOR CLASS'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -7775,7 +7761,6 @@ UNION ALL
 -- subquery-11: handle amop (classid='pg_amop'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(opf.opfname || ' OPERATOR(' || opr.oprname || ')'::varchar)::varchar2(128) AS name,
         'OPERATOR FAMILY MEMBER'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -7837,7 +7822,6 @@ UNION ALL
 -- subquery-12: handle amproc (classid='pg_amproc'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        UPPER(PG_GET_USERBYID(opf.opfowner)::varchar2)::varchar2(128) AS owner,
         UPPER(opf.opfname || '.' || amproc.amproc::varchar2)::varchar2(256) AS name,
         'ACCESS METHOD SUPPORT PROCEDURE'::varchar2(32) AS type,
         UPPER(CASE
@@ -7894,7 +7878,6 @@ UNION ALL
 -- subquery-13: handle language (classid='pg_language'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(l.lanowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(l.lanname::varchar2)::varchar2(128) AS name,
         'LANGUAGE'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -7948,7 +7931,6 @@ UNION ALL
 -- subquery-14: handle rewrite (classid='pg_rewrite'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(r.rulename::varchar2)::varchar2(128) AS name,
         'RULE'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -8020,7 +8002,6 @@ UNION ALL
 -- subquery-15 handle text search config (classid='pg_ts_config'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(cfg.cfgowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(cfg.cfgname::varchar2)::varchar2(128) AS name,
         'TEXT SEARCH CONFIGURATION'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -8065,7 +8046,6 @@ UNION ALL
 -- subquery-16: handle text search dict (classid='pg_ts_dict'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(dict.dictowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(dict.dictname::varchar2)::varchar2(128) AS name,
         'TEXT SEARCH DICTIONARY'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -8110,7 +8090,6 @@ UNION ALL
 -- subquery-17: handle text search template (classid='pg_ts_template'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(10)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(tmpl.tmplname::varchar2)::varchar2(128) AS name,
         'TEXT SEARCH TEMPLATE'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -8151,7 +8130,6 @@ UNION ALL
 -- subquery-18: handle attribute default (classid='pg_attrdef'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = attrdef.adrelid))::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS((attr.attname || ' default value')::varchar2)::varchar2(128) AS name,
         'ATTRIBUTE DEFAULT'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(PG_GET_USERBYID((SELECT relowner FROM pg_class WHERE oid = attrdef.adrelid))::varchar2)::varchar2(128) AS referenced_owner,
@@ -8172,7 +8150,6 @@ UNION ALL
 -- subquery-19: handle foreign data wrapper (classid='pg_foreign_data_wrapper'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(fdw.fdwowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(fdw.fdwname::varchar2)::varchar2(128) AS name,
         'FDW'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -8213,7 +8190,6 @@ UNION ALL
 -- subquery-20: handle package (classid='pg_package'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS name,
         'PACKAGE'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -8248,7 +8224,6 @@ UNION ALL
 -- subquery-21: package body (classid='pg_package_body'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS((pkg.pkgname || ' BODY')::varchar2)::varchar2(128) AS name,
         'PACKAGE BODY'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -8283,7 +8258,6 @@ UNION ALL
 -- subquery-22: handle event trigger (classid='pg_event_trigger'::regclass)
 ------------------------------------------------------------------------------------------
     SELECT
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(evt.evtowner)::varchar2)::varchar2(128) AS owner,
         SYS.ORA_CASE_TRANS(evt.evtname::varchar2)::varchar2(128) AS name,
         'EVENT TRIGGER'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -10824,8 +10798,8 @@ CREATE OR REPLACE VIEW SYS.ALL_CONSTRAINTS AS
             UPPER(cons.conname)::varchar2(128) AS constraint_name,
             UPPER(cons.contype)::varchar2(1) AS constraint_type,
             UPPER((SELECT relname FROM pg_class WHERE oid = cons.conrelid))::varchar2(128) AS table_name,
-            UPPER((pg_get_constraintdef(cons.oid)))::varchar2(128) AS search_condition,
-            UPPER((pg_get_constraintdef(cons.oid)))::long AS search_condition_vc,
+            UPPER((pg_get_constraintdef(cons.oid)))::long AS search_condition,
+            UPPER((pg_get_constraintdef(cons.oid)))::varchar2(4000) AS search_condition_vc,
             SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
             UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
             CASE cons.confdeltype
@@ -10928,8 +10902,8 @@ CREATE OR REPLACE VIEW SYS.USER_CONSTRAINTS AS
             UPPER(cons.conname)::varchar2(128) AS constraint_name,
             UPPER(cons.contype)::varchar2(1) AS constraint_type,
             UPPER((SELECT relname FROM pg_class WHERE oid = cons.conrelid))::varchar2(128) AS table_name,
-            UPPER((pg_get_constraintdef(cons.oid)))::varchar2(128) AS search_condition,
-            UPPER((pg_get_constraintdef(cons.oid)))::long AS search_condition_vc,
+            UPPER((pg_get_constraintdef(cons.oid)))::long AS search_condition,
+            UPPER((pg_get_constraintdef(cons.oid)))::varchar2(4000) AS search_condition_vc,
             SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
             UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
             CASE cons.confdeltype
