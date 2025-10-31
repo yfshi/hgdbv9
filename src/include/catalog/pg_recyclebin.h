@@ -3,7 +3,7 @@
  * pg_recyclebin.h
  *		define the recyclebin for flashback.
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/include/catalog/pg_recyclebin.h

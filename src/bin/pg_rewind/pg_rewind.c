@@ -58,7 +58,6 @@ static void ensureCleanShutdown(const char *argv0);
 static void disconnect_atexit(void);
 
 /* Begin - ReqID:SRS-SECURITY-TDE */
-static void retrieve_cluster_key(void);
 static void retrieve_xlog_key(void);
 /* End - ReqID:SRS-SECURITY-TDE */
 
@@ -94,8 +93,8 @@ uint64		fetch_done;
 static int	terminal_fd = -1;
 static bool	pass_terminal_fd = false;
 static char *cluster_key_cmd = NULL;
-static char	cluster_key_hex[ALLOC_KMGR_CLUSTER_KEY_LEN];
-static char cluster_key[KMGR_CLUSTER_KEY_LEN];
+static unsigned char cluster_key[KMGR_CLUSTER_KEY_LEN];
+static char live_path[MAXPGPATH];
 static CryptoKey	data_key;
 /* End - ReqID:SRS-SECURITY-TDE */
 
@@ -398,7 +397,7 @@ main(int argc, char **argv)
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	WALEncrypted = (ControlFile_source.encryption_target_mode == ENCRYPTION_MODE_ALL ||
 						ControlFile_source.encryption_target_mode == ENCRYPTION_MODE_WAL);
-	PG_CIPHER_ENCRYPT_CTR = encryption_methods[ControlFile_source.file_encryption_method].cipher_encrypt_id;
+	PG_CIPHER_ENCRYPT_CTR_WAL = encryption_methods[ControlFile_source.file_encryption_method].cipher_encrypt_id;
 
 	if (WALEncrypted)
 	{
@@ -411,7 +410,23 @@ main(int argc, char **argv)
 			}
 		}
 
-		retrieve_cluster_key(); 
+		/*
+		 * If we have been asked to pass an open file descriptor to the user
+		 * terminal to the commands, set one up.
+		 */
+		if (pass_terminal_fd)
+		{
+			open_terminal_fd(terminal_fd);
+			if (terminal_fd < 0)
+			{
+				pg_log_error(_("%s: could not open terminal: %s"),
+							progname, strerror(errno));
+				exit(1);
+			}
+		}
+		snprintf(live_path, sizeof(live_path), "%s/%s", datadir_target, LIVE_KMGR_DIR);
+		kmgr_retrieve_cluster_key(cluster_key_cmd, cluster_key, live_path, terminal_fd); 
+		close_terminal_fd(terminal_fd);
 		retrieve_xlog_key();
 		LocalXLogKey = &data_key;
 		InitializeXLogEncryption();
@@ -1236,43 +1251,6 @@ disconnect_atexit(void)
 }
 
 /* Begin - ReqID:SRS-SECURITY-TDE */
-/* Retrieve the cluster key */
-static void
-retrieve_cluster_key(void)
-{
-	int			cluster_key_len;
-
-	/*
-	 * If we have been asked to pass an open file descriptor to the user
-	 * terminal to the commands, set one up.
-	 */
-	if (pass_terminal_fd)
-	{
-		open_terminal_fd(terminal_fd);
-		if (terminal_fd < 0)
-		{
-			pg_log_error(_("%s: could not open terminal: %s\n"),
-						 progname, strerror(errno));
-			exit(1);
-		}
-	}
-
-	/* Get the key encryption key from the cluster key command */
-	cluster_key_len = kmgr_run_cluster_key_command(cluster_key_cmd,
-												   cluster_key_hex,
-												   ALLOC_KMGR_CLUSTER_KEY_LEN,
-												   datadir_target, terminal_fd);
-
-	if (!KMGR_USE_HSM_MODE && pg_hex_decode(cluster_key_hex, cluster_key_len,
-					(char *) cluster_key, KMGR_CLUSTER_KEY_LEN) !=
-					KMGR_CLUSTER_KEY_LEN){
-		pg_log_error("cluster key must be at %d hex bytes", KMGR_CLUSTER_KEY_LEN * 2);
-		exit(1);
-	}
-
-	close_terminal_fd(terminal_fd);
-}
-
 /* Decrypt the data key */
 static void
 retrieve_xlog_key(void)

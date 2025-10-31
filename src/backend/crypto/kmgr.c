@@ -10,7 +10,7 @@
  * memory.  Internal keys in the shared memory are read-only.  The wrapping
  * and unwrapping key routines require the OpenSSL library.
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/backend/crypto/kmgr.c

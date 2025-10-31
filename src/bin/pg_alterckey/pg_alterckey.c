@@ -18,7 +18,7 @@
  *    9. Remove "old"
  *   10. Remove lock file
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/bin/pg_alterckey/pg_alterckey.c
  *
@@ -106,8 +106,8 @@ static bool upgrade_mode = false;
 static bool downgrade_mode = false;
 static char *old_cluster_key_cmd = NULL,
 		   *new_cluster_key_cmd = NULL;
-static char old_cluster_key[KMGR_CLUSTER_KEY_LEN],
-			new_cluster_key[KMGR_CLUSTER_KEY_LEN];
+static unsigned char old_cluster_key[KMGR_CLUSTER_KEY_LEN],
+					 new_cluster_key[KMGR_CLUSTER_KEY_LEN];
 static CryptoKey data_key;
 unsigned char in_key[MAX_WRAPPED_KEY_LENGTH],
 			out_key[MAX_WRAPPED_KEY_LENGTH];
@@ -274,7 +274,7 @@ main(int argc, char *argv[])
 		pg_log_error("%s: cannot be run as root\n"
 					 "Please log in (using, e.g., \"su\") as the "
 					 "(unprivileged) user that will\n"
-					 "own the server process.\n",
+					 "own the server process.",
 					 progname);
 		exit(1);
 	}
@@ -550,9 +550,6 @@ recover_failure(void)
 void
 retrieve_cluster_keys(void)
 {
-	int			cluster_key_len;
-	char		cluster_key_hex[ALLOC_KMGR_CLUSTER_KEY_LEN];
-
 	/*
 	 * If we have been asked to pass an open file descriptor to the user
 	 * terminal to the commands, set one up.
@@ -562,26 +559,19 @@ retrieve_cluster_keys(void)
 		open_terminal_fd(terminal_fd);
 		if (terminal_fd < 0)
 		{
-			pg_log_error(_("%s: could not open terminal: %s\n"),
+			pg_log_error(_("%s: could not open terminal: %s"),
 						 progname, strerror(errno));
 			exit(1);
 		}
 	}
 
-	/* Get old key encryption key from the cluster key command */
-	cluster_key_len = kmgr_run_cluster_key_command(old_cluster_key_cmd,
-												   (char *) cluster_key_hex,
-												   ALLOC_KMGR_CLUSTER_KEY_LEN,
-												   live_path, terminal_fd);
+	/* Retrieve the old cluster key. */
+	if (!kmgr_retrieve_cluster_key(old_cluster_key_cmd, old_cluster_key, live_path, terminal_fd))
+		bzero_keys_and_exit(ERROR_EXIT);
 
 	if (KMGR_USE_HSM_MODE)
-		pg_log_error("Operations on HSM managed keys are not supported");
-
-	if (pg_hex_decode(cluster_key_hex, cluster_key_len,
-					  (char *) old_cluster_key, KMGR_CLUSTER_KEY_LEN) !=
-		KMGR_CLUSTER_KEY_LEN)
 	{
-		pg_log_error("cluster key must be at %d hex bytes", KMGR_CLUSTER_KEY_LEN * 2);
+		pg_log_error("Operations on HSM managed keys are not supported");
 		bzero_keys_and_exit(ERROR_EXIT);
 	}
 
@@ -596,18 +586,12 @@ retrieve_cluster_keys(void)
 	}
 
 	/* Get new key */
-	cluster_key_len = kmgr_run_cluster_key_command(new_cluster_key_cmd,
-												   (char *) cluster_key_hex,
-												   ALLOC_KMGR_CLUSTER_KEY_LEN,
-												   new_path, terminal_fd);
+	if (!kmgr_retrieve_cluster_key(new_cluster_key_cmd, new_cluster_key, new_path, terminal_fd))
+		bzero_keys_and_exit(ERROR_EXIT);
+	
 	if (KMGR_USE_HSM_MODE)
-		pg_log_error("Operations on HSM managed keys are not supported");
-		
-	if (pg_hex_decode(cluster_key_hex, cluster_key_len,
-					  (char *) new_cluster_key, KMGR_CLUSTER_KEY_LEN) !=
-		KMGR_CLUSTER_KEY_LEN)
 	{
-		pg_log_error("cluster key must be at %d hex bytes", KMGR_CLUSTER_KEY_LEN * 2);
+		pg_log_error("Operations on HSM managed keys are not supported");
 		bzero_keys_and_exit(ERROR_EXIT);
 	}
 
@@ -618,7 +602,7 @@ retrieve_cluster_keys(void)
 
 	if (memcmp(old_cluster_key, new_cluster_key, KMGR_CLUSTER_KEY_LEN) == 0)
 	{
-		pg_log_error("cluster keys are identical, exiting\n");
+		pg_log_error("cluster keys are identical, exiting");
 		bzero_keys_and_exit(RMDIR_EXIT);
 	}
 }

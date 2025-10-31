@@ -2,7 +2,7 @@
  *
  * kmgr.h
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/crypto/kmgr.h
  *

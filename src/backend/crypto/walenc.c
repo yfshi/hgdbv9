@@ -2,7 +2,7 @@
  *
  * walenc.c
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  *
  * IDENTIFICATION
@@ -37,10 +37,15 @@ static void* hKeyHandle = NULL;
 
 #ifdef FRONTEND
 bool WALEncrypted = false;
-int PG_CIPHER_ENCRYPT_CTR = 0;
+int PG_CIPHER_ENCRYPT_CTR_WAL = 0;
 CryptoKey *LocalXLogKey = NULL;
+static int PG_CIPHER_ENCRYPT_CTR = 0;
 #endif
 
+static void EncryptXLog(char *xlog, Size size, TimeLineID timeline, 
+						XLogSegNo segment, uint32 counter);
+static void DecryptXLog(char *xlog, Size size, TimeLineID timeline, 
+						XLogSegNo segment, uint32 counter);
 static void set_wal_encryption_iv(TimeLineID timeline,
 								  XLogSegNo segment,
 								  uint32 counter);
@@ -57,6 +62,7 @@ InitializeXLogEncryption(void)
 	key = KmgrGetKey(KMGR_KEY_ID_WAL);
 #else
 	key = LocalXLogKey;
+	PG_CIPHER_ENCRYPT_CTR = PG_CIPHER_ENCRYPT_CTR_WAL;
 #endif
 
 	if (!KMGR_USE_HSM_MODE)
@@ -92,8 +98,87 @@ InitializeXLogEncryption(void)
 	}
 }
 
-/* Encrypt the given wal segment with the wal key */
 void
+CleanupXLogEncryption(void)
+{
+	if (XLogEncCtx)
+		pg_cipher_ctx_free(XLogEncCtx);
+	if (XLogDecCtx)
+		pg_cipher_ctx_free(XLogDecCtx);
+}
+
+void
+XLogEncryptInplace(char *xlog, Size size, TimeLineID timeline,
+				   XLogSegNo segment, uint32 offset)
+{
+	uint32		counter;
+	uint32		shift;
+	uint32		partlen;
+
+	if (!WALEncrypted)
+		return;
+
+	/* Calculate the counter */
+	counter = offset / WALENC_BLOCK;
+	shift = offset % WALENC_BLOCK;
+
+	/* There have an uncompleted block */
+	if (shift > 0)
+	{
+		unsigned char xlogPart[WALENC_BLOCK];
+		
+		partlen = Min(WALENC_BLOCK - shift, size);
+		memcpy(xlogPart + shift, xlog, partlen);
+		EncryptXLog((char *) xlogPart, (Size) WALENC_BLOCK,
+					timeline, segment, counter);
+		memcpy(xlog, xlogPart + shift, partlen);
+
+		xlog += partlen;
+		size -= partlen;
+		counter++;
+	}
+
+	if (size > 0)
+		EncryptXLog(xlog, size, timeline, segment, counter);
+}
+
+void
+XLogDecryptInplace(char *xlog, Size size, TimeLineID timeline,
+				   XLogSegNo segment, uint32 offset)
+{
+	uint32		counter;
+	uint32		shift;
+	uint32		partlen;
+
+	if (!WALEncrypted)
+		return;
+
+	/* Calculate the counter */
+	counter = offset / WALENC_BLOCK;
+	shift = offset % WALENC_BLOCK;
+
+	/* There have an uncompleted block */
+	if (shift > 0)
+	{
+		unsigned char xlogPart[WALENC_BLOCK];
+
+		partlen = Min(WALENC_BLOCK - shift, size);
+		memcpy(xlogPart + shift, xlog, partlen);
+		DecryptXLog((char *) xlogPart, (Size) WALENC_BLOCK,
+					timeline, segment, counter);
+		memcpy(xlog, xlogPart + shift, partlen);
+
+		xlog += partlen;
+		size -= partlen;
+		counter++;
+	}
+
+	if (size > 0)
+		DecryptXLog(xlog, size, timeline, segment, counter);
+}
+
+/* Encrypt the given wal segment with the wal key */
+static void
 EncryptXLog(char *xlog, Size size, TimeLineID timeline, 
 			XLogSegNo segment, uint32 counter)
 {
@@ -145,18 +230,11 @@ EncryptXLog(char *xlog, Size size, TimeLineID timeline,
 	}
 #endif
 
-	if (unlikely(enclen != size))
-	{
-#ifndef FRONTEND
-		elog(ERROR, "encrypt error: alg %d in %lu out %d", PG_CIPHER_ENCRYPT_CTR, size, enclen);
-#else
-		pg_log_fatal("encrypt error: alg %d in %lu out %d", PG_CIPHER_ENCRYPT_CTR, size, enclen);
-#endif
-	}
+	Assert(enclen == size);
 }
 
 /* Decrypt the given page with the relation key */
-void
+static void
 DecryptXLog(char *xlog, Size size, TimeLineID timeline, 
 			XLogSegNo segment, uint32 counter)
 {
@@ -208,14 +286,7 @@ DecryptXLog(char *xlog, Size size, TimeLineID timeline,
 	}
 #endif
 
-	if (unlikely(declen != size))
-	{
-#ifndef FRONTEND
-		elog(ERROR, "decrypt error: alg %d in %lu out %d", PG_CIPHER_ENCRYPT_CTR, size, declen);
-#else
-		pg_log_fatal("decrypt error: alg %d in %lu out %d", PG_CIPHER_ENCRYPT_CTR, size, declen);
-#endif
-	}
+	Assert(declen == size);
 }
 
 /* Construct iv for the given page */

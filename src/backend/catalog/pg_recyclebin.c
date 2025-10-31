@@ -3,7 +3,7 @@
  * pg_recyclebin.c
  *		routines to support manipulation of the pg_recyclebin relation.
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/backend/catalog/pg_recyclebin.c

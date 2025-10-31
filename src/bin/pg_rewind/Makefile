@@ -54,8 +54,7 @@ uninstall:
 	rm -f '$(DESTDIR)$(bindir)/pg_rewind$(X)'
 
 clean distclean maintainer-clean:
-	rm -f pg_rewind$(X) $(OBJS) xlogreader.c
-	rm -f pg_rewind$(X) $(OBJS) walenc.c
+	rm -f pg_rewind$(X) $(OBJS) xlogreader.c walenc.c
 	rm -rf tmp_check
 
 check:
