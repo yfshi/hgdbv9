@@ -3621,7 +3621,7 @@ ExecARUpdateTriggers(EState *estate, ResultRelInfo *relinfo,
 		if (fdw_trigtuple == NULL && ItemPointerIsValid(tupleid))
 			GetTupleForTrigger(estate,
 							   NULL,
-							   relinfo,
+							   tupsrc,	/* OA-REQ-1861 */
 							   tupleid,
 							   LockTupleExclusive,
 							   oldslot,
