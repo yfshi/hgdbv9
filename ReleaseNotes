@@ -31,6 +31,18 @@
 	24、兼容 MySQL show 语句；
 	25、增加标记强访功能；
 	26、兼容 MySQL rename 语句；
+	27、新增安全特性专有模式hg_security，并将安全特性系统对象迁移至该模式；
+	28、O兼容支持sql端trigger；
+	29、O兼容支持自治事务功能；
+	30、新增HSH；
+	31、新增审计安全监控功能；
+	32、新增锁定/解锁会话功能；
+	33、M兼容新增desc语法；
+	34、新增数据脱敏功能；
+	35、新增受限DBA功能；
+	36、O兼容增加了一批系统视图；
+	37、增加访问控制功能；
+	38、M兼容增加create table auto increment语法；
 2、修复问题
 	1、修复了MySQL兼容，SET lc_time_names等参数异常断开的问题，bug#5527；
 	2、修复了MySQL兼容，get_format返回类型不正确的问题，bug#5533；
@@ -125,6 +137,16 @@
 	91、修复了开启三权、关闭受限时，初始化提示输入用户错误的问题，bug#4747；
 	92、MySQL 修复了字符串转 float/double/numerc，结果或异常与 MySQL 不一致的问题，bug#5125/5589/5590/5591/5802；
 	93、MySQL 修复了在非严格模式下， int8 不能转成 int4 的问题， bug#5394；
+	94、O兼容修复了PBE协议下创建同义词失败的问题，bug#5924;
+	95、M兼容修复了缺少mysql.user系统表的问题，bug#5936；	
+	96、M兼容添加information_schema.events、performance_schema.global_status和performance_schema.session_status视图以及show [session | global] status 命令，bug#5943;
+	97、修复了审计日志表改为分区表后copy失败的问题，bug#5840;
+	98、O兼容修复了空串转null缺失功能，部分函数返回值和列值为''不能用is null检测的问题，bug#6021；
+	99、M兼容修复了show create view返回与原定义不一致的问题，bug#5972/5976；
+	100、M兼容补充了show warnings/processlist/privileges语法，bug#6036;
+	101、O兼容增加参数enable_standard_datetime_parsing_mode，控制to_date函数是否严格检查format，bug#6022；
+	102、O兼容删除了user_tab_cols、user_dependencies视图中多余的owner字段，bug#6053；
+	103、O兼容分区表触发器，更新分区键导致core的问题，OA-REQ-1861;
 
 V9.0.4.1，禅道版本ID：4647-2025/08/08
 1、新增特性
