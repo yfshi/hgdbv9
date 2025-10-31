@@ -692,6 +692,9 @@ static ObjectAddress ATExecDefaultCollation(Relation relation, char *collname);
 static void ATExecSetPartitionInterval(Relation rel, PartitionInterval *partInterval,
 									   AlterTableUtilityContext *context);
 /* End - ReqID:RSR-SQL-Partition-interval */
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+static void ATExecSetAutoIncrement(Relation rel, Value* value);
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 /* ----------------------------------------------------------------
  *		DefineRelation
@@ -5140,6 +5143,11 @@ AlterTableGetLockLevel(List *cmds)
 				cmd_lockmode = AccessExclusiveLock;
 				break;
 			/* End - ReqID:RSR-SQL-Partition-interval */
+			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			case AT_SetAutoIncrement:
+				cmd_lockmode = AccessExclusiveLock;
+				break;
+			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 			default:			/* oops */
 				elog(ERROR, "unrecognized alter table type: %d",
 					 (int) cmd->subtype);
@@ -5567,6 +5575,7 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 		case AT_DisableRowSecurity:
 		case AT_ForceRowSecurity:
 		case AT_NoForceRowSecurity:
+		case AT_SetAutoIncrement: /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 			ATSimplePermissions(rel, ATT_TABLE);
 			/* These commands never recurse */
 			/* No command-specific prep needed */
@@ -6085,6 +6094,11 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 			ATExecSetPartitionInterval(rel, (PartitionInterval *) cmd->def, context);
 			break;
 		/* End - ReqID:RSR-SQL-Partition-interval */
+		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+		case AT_SetAutoIncrement:
+			ATExecSetAutoIncrement(rel, (Value *)cmd->def);
+			break;
+		/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
 				 (int) cmd->subtype);
@@ -7940,6 +7954,13 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 			nve->seqid = RangeVarGetRelid(colDef->identitySequence, NoLock, false);
 			nve->typeId = typeOid;
+			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			nve->auto_increment = false;
+			if (attribute.attidentity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+			{
+				nve->auto_increment = true;
+			}
+			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 			defval = (Expr *) nve;
 		}
@@ -8969,6 +8990,12 @@ ATExecSetIdentity(Relation rel, const char *colName, Node *def, LOCKMODE lockmod
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("cannot alter system column \"%s\"",
 						colName)));
+
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	/* auto_increment set attidentity*/
+	if(compatible_db == MYS_PARSER && generatedEl && ATTRIBUTE_IDENTITY_AUTO_INCREMENT == defGetInt32(generatedEl))
+		attTup->attidentity = defGetInt32(generatedEl);
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 	if (!attTup->attidentity)
 		ereport(ERROR,
@@ -21707,6 +21734,27 @@ ATExecSetPartitionInterval(Relation rel, PartitionInterval *partInterval,
 
 	StorePartitionInterval(rel, partInterval);
 }
+
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+static void
+ATExecSetAutoIncrement(Relation rel, Value *value)
+{
+	int64 autoinc;
+
+	if (IsA(value, Integer))
+	{
+		autoinc = (int64) intVal(value);
+	}
+	else
+	{ /* T_Float */
+		autoinc = (int64) DatumGetFloat8(DirectFunctionCall1(float8in, CStringGetDatum(strVal(value))));
+	}
+
+	set_auto_nextval(rel->rd_id, autoinc);
+
+	return;
+}
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 /*

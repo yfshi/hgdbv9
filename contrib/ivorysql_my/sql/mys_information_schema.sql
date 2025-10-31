@@ -106,7 +106,7 @@ GRANT SELECT (name) ON test_schema.test_table TO user_b;
 
 SELECT grantee, table_schema, table_name, column_name, privilege_type, is_grantable
 FROM information_schema.column_privileges
-WHERE table_schema = 'test_schema' AND table_name = 'test_table' AND grantee like '%user_%';
+WHERE table_schema = 'test_schema' AND table_name = 'test_table' AND grantee like '%user_%' order by is_grantable , column_name;
 
 ------------------------------------------------------------
 -- 7. Test for information_schema.views
@@ -167,11 +167,11 @@ CREATE TABLE test_schema_constraints.cons_tbl (
     CONSTRAINT fk_ref FOREIGN KEY (ref_id) REFERENCES test_schema_constraints.cons_tbl(id)
 );
 
-SELECT constraint_schema, constraint_name, table_schema,
+SELECT constraint_schema, table_schema,
        table_name, constraint_type
 FROM information_schema.table_constraints
 WHERE table_schema = 'test_schema_constraints'
-ORDER BY constraint_name;
+ORDER BY constraint_type;
 
 ------------------------------------------------------------
 -- 11. Test for information_schema.schemata

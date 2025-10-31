@@ -239,9 +239,9 @@ DROP SEQUENCE sequence_test;
 CREATE SEQUENCE foo_seq nocache;
 ALTER TABLE foo_seq RENAME TO foo_seq_new;
 SELECT * FROM foo_seq_new;
- last_value | log_cnt | is_called 
-------------+---------+-----------
-          1 |       0 | f
+ last_value | log_cnt | is_called | next_value 
+------------+---------+-----------+------------
+          1 |       0 | f         |          0
 (1 row)
 
 SELECT nextval('foo_seq_new');

@@ -338,8 +338,8 @@ INSERT INTO truncate_a DEFAULT VALUES;
 SELECT * FROM truncate_a;
  id | id1 
 ----+-----
-  3 |  35
-  4 |  36
+  1 |  33
+  2 |  34
 (2 rows)
 
 TRUNCATE truncate_a RESTART IDENTITY;
@@ -368,8 +368,8 @@ INSERT INTO truncate_b DEFAULT VALUES;
 SELECT * FROM truncate_b;
  id 
 ----
- 46
- 47
+ 44
+ 45
 (2 rows)
 
 TRUNCATE truncate_b RESTART IDENTITY;

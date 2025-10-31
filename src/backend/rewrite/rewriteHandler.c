@@ -1436,7 +1436,7 @@ build_column_default(Relation rel, int attrno)
 	Oid			exprtype;
 	Oid			nvetype;	/* BUG#Z029 */
 
-	if (att_tup->attidentity)
+	if (att_tup->attidentity && att_tup->attidentity != ATTRIBUTE_IDENTITY_AUTO_INCREMENT) /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	{
 		NextValueExpr *nve = makeNode(NextValueExpr);
 

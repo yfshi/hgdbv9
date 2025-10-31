@@ -105,6 +105,8 @@ typedef struct
 	PartitionBoundSpec *partbound;	/* transformed FOR VALUES */
 	bool		ofType;			/* true if statement contains OF typename */
 	Oid			collOid;		/* ReqID:SRS-SQL-NLSSORT, record table's collation */
+	bool		is_auto_increment; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	Node	   *autoIncStart;      /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 } CreateStmtContext;
 
 /* State shared by transformCreateSchemaStmtElements and its subroutines */
@@ -154,6 +156,10 @@ static Const *transformPartitionBoundValue(ParseState *pstate, Node *con,
 										   const char *colName, Oid colType, int32 colTypmod,
 										   Oid partCollation);
 
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+static List* GetAutoIncSeqOptions(CreateStmtContext* cxt);
+static void TransformAutoIncStart(Node* autoIncStart);
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 /*
  * transformCreateStmt -
@@ -274,6 +280,10 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	/* Begin - ReqID:SRS-SQL-ROWID */
 	cxt.hasrowid = interpretRowidOption(stmt->options, !cxt.isforeign);
 	/* End - ReqID:SRS-SQL-ROWID */
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	cxt.is_auto_increment = false;
+	cxt.autoIncStart = stmt->autoIncStart;
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 	Assert(!stmt->ofTypename || !stmt->inhRelations);	/* grammar enforces */
 
@@ -788,11 +798,13 @@ static void
 transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 {
 	bool		is_serial;
+	bool		is_null = false;  /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	bool		saw_nullable;
 	bool		saw_default;
 	bool		saw_identity;
 	bool		saw_generated;
 	ListCell   *clist;
+	List 	   *seqoptions = NIL; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 	cxt->columns = lappend(cxt->columns, column);
 
@@ -903,6 +915,41 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 	}
 	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	if (compatible_db == MYS_PARSER)
+	{
+		foreach (clist, column->constraints)
+		{
+			Constraint *constraint = lfirst_node(Constraint, clist);
+
+			if (constraint->contype == CONSTR_NULL)
+			{
+				is_null = true;
+			}
+			if (constraint->contype == CONSTR_AUTO_INCREMENT)
+			{
+				Oid atttypid;
+				int32 atttypmod;
+
+				typenameTypeIdAndMod(NULL, column->typeName, &atttypid, &atttypmod);
+				// set initializa value
+				seqoptions = GetAutoIncSeqOptions(cxt);
+				is_serial = true;
+				column->typeName->names = NIL;
+				column->typeName->typeOid = atttypid;
+				column->is_auto_increment = true;
+				column->identity = ATTRIBUTE_IDENTITY_AUTO_INCREMENT;
+
+				if (cxt->is_auto_increment)
+				{
+					elog(ERROR, "there can be only one auto column and it must be defined as a key");
+				}
+				cxt->is_auto_increment = true;
+			}
+		}
+	}
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
 	/* Do necessary work on the column type declaration */
 	if (column->typeName)
 		transformColumnType(cxt, column);
@@ -928,7 +975,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		Constraint *constraint;
 
 		generateSerialExtraStmts(cxt, column,
-								 column->typeName->typeOid, NIL,
+								 column->typeName->typeOid, seqoptions, /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 								 false, false,
 								 &snamespace, &sname, 0);	/* ReqID:SRS-SQL-IDENTCOL */
 
@@ -951,10 +998,23 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		castnode->typeName = SystemTypeName("regclass");
 		castnode->arg = (Node *) snamenode;
 		castnode->location = -1;
-		funccallnode = makeFuncCall(SystemFuncName("nextval"),
-									list_make1(castnode),
-									COERCE_EXPLICIT_CALL,
-									-1);
+		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+		/* set auto_increment default function : autoinc_nextval */
+		if (column->identity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+		{
+			funccallnode = makeFuncCall(SystemFuncName("autoinc_nextval"),
+										list_make1(castnode),
+										COERCE_EXPLICIT_CALL,
+										-1);
+		}
+		else
+		{
+			funccallnode = makeFuncCall(SystemFuncName("nextval"),
+										list_make1(castnode),
+										COERCE_EXPLICIT_CALL,
+										-1);
+		}
+		/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		constraint = makeNode(Constraint);
 		constraint->contype = CONSTR_DEFAULT;
 		constraint->location = -1;
@@ -963,7 +1023,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		column->constraints = lappend(column->constraints, constraint);
 
 		constraint = makeNode(Constraint);
-		constraint->contype = CONSTR_NOTNULL;
+		constraint->contype = is_null ? CONSTR_NULL : CONSTR_NOTNULL; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		constraint->location = -1;
 		column->constraints = lappend(column->constraints, constraint);
 	}
@@ -983,7 +1043,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		switch (constraint->contype)
 		{
 			case CONSTR_NULL:
-				if (saw_nullable && column->is_not_null)
+				if (saw_nullable && column->is_not_null && !column->is_auto_increment) /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 					ereport(ERROR,
 							(errcode(ERRCODE_SYNTAX_ERROR),
 							 errmsg("conflicting NULL/NOT NULL declarations for column \"%s\" of table \"%s\"",
@@ -995,7 +1055,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 				break;
 
 			case CONSTR_NOTNULL:
-				if (saw_nullable && !column->is_not_null)
+				if (saw_nullable && !column->is_not_null && !column->is_auto_increment) /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 					ereport(ERROR,
 							(errcode(ERRCODE_SYNTAX_ERROR),
 							 errmsg("conflicting NULL/NOT NULL declarations for column \"%s\" of table \"%s\"",
@@ -1168,6 +1228,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 			case CONSTR_ATTR_NOT_DEFERRABLE:
 			case CONSTR_ATTR_DEFERRED:
 			case CONSTR_ATTR_IMMEDIATE:
+			case CONSTR_AUTO_INCREMENT: /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 				/* transformConstraintAttrs took care of these */
 				break;
 
@@ -2497,6 +2558,17 @@ transformIndexConstraints(CreateStmtContext *cxt)
 		indexlist = lappend(indexlist, index);
 	}
 
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	foreach(lc, cxt->columns)
+	{
+		ColumnDef  *column = castNode(ColumnDef, lfirst(lc));
+		if (column->is_auto_increment && !column->is_pri_or_unique)
+		{
+			elog(ERROR, "there can be only one auto increment column and it must be defined as a key");
+		}
+	}
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
 	/*
 	 * Scan the index list and remove any redundant index specifications. This
 	 * can happen if, for instance, the user writes UNIQUE PRIMARY KEY. A
@@ -2852,6 +2924,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 				if (strcmp(column->colname, key) == 0)
 				{
 					found = true;
+					column->is_pri_or_unique = true; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 					break;
 				}
 			}
@@ -3823,7 +3896,9 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 	cxt.ispartitioned = (rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE);
 	cxt.partbound = NULL;
 	cxt.ofType = false;
-
+	/* the table only a auto_increment col */
+	cxt.is_auto_increment = false; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	cxt.autoIncStart = NULL;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	/*
 	 * Transform ALTER subcommands that need it (most don't).  These largely
 	 * re-use code from CREATE TABLE.
@@ -5452,3 +5527,55 @@ transformFlashbackStmt(FlashbackStmt *stmt, const char *queryString)
 	return stmt;
 }
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+/*
+ * GetAutoIncSeqOptions
+ * set table default auto_increment values
+ * eg: CREATE TABLE tata(tata_col int unsigned auto_increment NULL UNIQUE) AUTO_INCREMENT = 10;
+ *                                                                         ^
+ *                                                                         this value
+ */
+static List *
+GetAutoIncSeqOptions(CreateStmtContext *cxt)
+{
+	Node *option = NULL;
+
+	if (cxt->autoIncStart != NULL)
+	{
+		TransformAutoIncStart(cxt->autoIncStart);
+		option = (Node *)cxt->autoIncStart;
+	}
+	else
+	{
+		option = (Node *)makeDefElem("start", (Node *)makeInteger(1), -1);
+	}
+	return list_make1(option);
+}
+
+static void 
+TransformAutoIncStart(Node *autoIncStart)
+{
+	int64 autoinc;
+	DefElem *defel = (DefElem *)autoIncStart;
+
+	if (defel == NULL)
+	{
+		return ;
+	}
+	if (IsA(defel->arg, Integer))
+	{
+		autoinc = (int64)intVal(defel->arg);
+	}
+	else
+	{ /* T_Float */
+		autoinc = (int64)DatumGetFloat8(DirectFunctionCall1(float8in, CStringGetDatum(strVal(defel->arg))));
+	}
+	if (autoinc <= 0)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("auto_increment value must be greater than 0")));
+	}
+	return ;
+}
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */

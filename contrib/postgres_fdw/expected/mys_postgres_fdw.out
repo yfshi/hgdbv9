@@ -11726,7 +11726,7 @@ TRUNCATE tru_pk_ftable;	-- failed by FK reference
 ERROR:  cannot truncate a table referenced in a foreign key constraint
 DETAIL:  Table "tru_fk_table" references "tru_pk_table".
 HINT:  Truncate table "tru_fk_table" at the same time, or use TRUNCATE ... CASCADE.
-CONTEXT:  remote SQL command: TRUNCATE public.tru_pk_table CONTINUE IDENTITY RESTRICT
+CONTEXT:  remote SQL command: TRUNCATE public.tru_pk_table RESTART IDENTITY RESTRICT
 TRUNCATE tru_pk_ftable CASCADE;
 SELECT count(*) FROM tru_pk_ftable;    -- 0
  count 

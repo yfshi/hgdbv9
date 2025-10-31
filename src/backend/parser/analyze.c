@@ -39,6 +39,7 @@
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "commands/defrem.h"
+#include "commands/sequence.h"
 #include "commands/typecmds.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
@@ -175,6 +176,11 @@ static void applyLockingTable(Query *qry, Oid relid,
 static void transformGetpartionRelationOid(Query            *qry, RangeVar  *relation);
 static void transformGetpartionRelationOids(Query *qry, List *relations);
 /* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+static Expr *set_auto_increment_func_node(ParseState *pstate, Expr* expr, int attno);
+static Expr *update_set_auto_increment_func_node(ParseState *pstate, Expr* expr, int attno);
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 /* Begin - ReqID:SRS-MYSQL-SET */
 static Query *transformMysVariableSetStmt(ParseState *pstate, MysVariableSetStmt *stmt);
@@ -1690,6 +1696,10 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 		 */
 		exprList = expandNSItemVars(nsitem, 0, -1, NULL);
 
+		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+		/* the auto_increment check has been completed in previous foreach */
+		pstate->p_check_column_auto_increment = false;
+		/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		/*
 		 * Re-apply any indirection on the target column specs to the Vars
 		 */
@@ -1697,6 +1707,9 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 									  stmt->cols,
 									  icolumns, attrnos,
 									  false);
+		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+		pstate->p_check_column_auto_increment = true;
+		/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	}
 	else
 	{
@@ -1933,6 +1946,12 @@ transformInsertRow(ParseState *pstate, List *exprlist,
 		Expr	   *expr = (Expr *) lfirst(lc);
 		ResTarget  *col = lfirst_node(ResTarget, icols);
 		int			attno = lfirst_int(attnos);
+		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+		if (MYS_PARSER == compatible_db && pstate->p_check_column_auto_increment)
+		{
+			expr = set_auto_increment_func_node(pstate, expr, attno);
+		}
+		/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 		expr = transformAssignedExpr(pstate, expr,
 									 EXPR_KIND_INSERT_TARGET,
@@ -4725,6 +4744,13 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 			}
 		}
 
+		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+		if (compatible_db == MYS_PARSER)
+		{
+			tle->expr = update_set_auto_increment_func_node(pstate, tle->expr, attrno);
+		}
+		/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
 		if (colname_temp)
 		{
 			updateTargetListEntry(pstate, tle, colname_temp,
@@ -6541,6 +6567,183 @@ applyLockingTable(Query *qry, Oid relid,
 	return;
 }
 /* End - BUG#M0000470: SELECT FOR UPDATE OF column */
+
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+/*
+ * set_auto_increment_func_node :make insert auto_increment col and make params:
+ * reloid : table oid
+ * attnum : table auto_increment col num
+ * colnotnull : auto_increment is not null flag
+ * valuenullordefault : 
+ * 1 : insert into .. (null)    :AUTO_INCREMENT_INSERT_NULL       (1)
+ * 2 : insert into .. (default) :AUTO_INCREMENT_INSERT_DEFAULT    (2)
+ * 3 : insert into .. (0)       :AUTO_INCREMENT_INSERT_ZERO       (3)
+ * value : insert auto_increment value
+ */
+static Expr *
+set_auto_increment_func_node(ParseState *pstate, Expr* expr, int attno)
+{
+	FuncExpr *fexpr;
+	Form_pg_attribute attr;
+
+	attr = TupleDescAttr(pstate->p_target_relation->rd_att, attno - 1);
+	if (attr->attidentity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+	{
+		Const *reloidNode;
+		Const *attnumNode;
+		Const *colnotnullNode;
+		Const *NullordefaultNode;
+		Const *valueNode;
+
+		reloidNode     = makeConst(OIDOID, -1, InvalidOid, sizeof(Oid),
+								   ObjectIdGetDatum(pstate->p_target_relation->rd_id),
+								   false, true);
+		attnumNode     = makeConst(INT2OID, -1, InvalidOid, sizeof(Oid),
+								   Int16GetDatum(attr->attnum),
+								   false, true);
+		colnotnullNode = makeConst(BOOLOID, -1, InvalidOid, 1,
+								   BoolGetDatum(attr->attnotnull),
+								   false, true);
+
+		/* insert value: (NULL) . (default) . (0) 
+		*  null col:
+		* ---------------------------------------------------------------------------
+		* | sql_mode          MODE_NO_AUTO_VALUE_ON_ZERO       default_sql_mode
+		* | (NULL)                   NULL                           NULL
+		* | (default)                NULL                           NULL
+		* | (0)                       0                            lastval ++
+		* ---------------------------------------------------------------------------
+		* ===========================================================================
+		*  not null col:
+		* ---------------------------------------------------------------------------
+		* | sql_mode          MODE_NO_AUTO_VALUE_ON_ZERO       default_sql_mode
+		* | (NULL)                   NULL                          lastval ++
+		* | (default)                 0                            lastval ++
+		* | (0)                       0                            lastval ++
+		* ---------------------------------------------------------------------------
+		*/
+		if (IsA((expr), Const) && ((Const *)expr)->constisnull)
+		{
+			NullordefaultNode = makeConst(INT8OID, -1, InvalidOid, sizeof(int64),
+										  Int64GetDatum(AUTO_INCREMENT_INSERT_NULL),
+										  false, FLOAT8PASSBYVAL);
+
+			valueNode = makeConst(INT8OID, -1, InvalidOid,
+								  sizeof(int64),
+								  Int64GetDatum(AUTO_INCREMENT_VALUE_ZERO),
+								  false, FLOAT8PASSBYVAL);
+		}
+		else if (IsA((expr), SetToDefault))
+		{
+			NullordefaultNode = makeConst(INT8OID, -1, InvalidOid, sizeof(int64),
+										  Int64GetDatum(AUTO_INCREMENT_INSERT_DEFAULT), 
+										  false, FLOAT8PASSBYVAL);
+
+			valueNode = makeConst(INT8OID, -1, InvalidOid, sizeof(int64),
+								  Int64GetDatum(AUTO_INCREMENT_VALUE_ZERO),
+								  false, FLOAT8PASSBYVAL);
+		}
+		else
+		{
+			NullordefaultNode = makeConst(INT8OID, -1, InvalidOid, sizeof(int64),
+										  Int64GetDatum(AUTO_INCREMENT_INSERT_ZERO),
+										  false, FLOAT8PASSBYVAL);
+			valueNode = (Const*)expr;
+		}
+
+		/* create funcexpr node : mys_set_insertval function  */
+		fexpr = makeFuncExpr(AUTO_INCREMENT_SET_VALUE_FUNC_OID,
+							 INT8OID,
+							 list_make5(reloidNode, attnumNode, colnotnullNode, NullordefaultNode, valueNode),
+							 InvalidOid,
+							 InvalidOid,
+							 COERCE_EXPLICIT_CALL);
+
+		expr = (Expr*)fexpr;
+	}
+	return expr;
+}
+
+/*
+ * update_set_auto_increment_func_node :make update auto_increment col and make params:
+ * modify SetToDefault node and null node
+ *
+ * update value: (NULL) . (default) . (0)
+ *  null col:
+ * ---------------------------------------------------------------------------
+ * | sql_mode          MODE_NO_AUTO_VALUE_ON_ZERO       default_sql_mode
+ * | (NULL)                   NULL                           NULL
+ * | (default)                NULL                           NULL
+ * | (0)                       0                             0
+ * ---------------------------------------------------------------------------
+ * ===========================================================================
+ *  not null col:
+ * ---------------------------------------------------------------------------
+ * | sql_mode          MODE_NO_AUTO_VALUE_ON_ZERO       default_sql_mode
+ * | (NULL)                    0                            ERR
+ * | (default)                 0                            0
+ * | (0)                       0                            0
+ * ---------------------------------------------------------------------------
+ */
+static Expr *
+update_set_auto_increment_func_node(ParseState *pstate, Expr* expr, int attno)
+{
+	Form_pg_attribute attr;
+
+	attr = TupleDescAttr(pstate->p_target_relation->rd_att, attno - 1);
+	if (attr->attidentity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+	{
+		Const *valueNode = NULL;
+
+		if (has_sql_mode(MODE_NO_AUTO_VALUE_ON_ZERO))
+		{
+			if (!attr->attnotnull)
+			{
+				if (IsA((expr), SetToDefault))
+				{
+					valueNode = makeConst(INT8OID, -1, InvalidOid, sizeof(int64),
+										  Int64GetDatum(AUTO_INCREMENT_VALUE_ZERO),
+										  true, FLOAT8PASSBYVAL);
+				}
+			}
+			else
+			{
+				if ((IsA((expr), Const) && ((Const *)expr)->constisnull) ||
+					IsA((expr), SetToDefault))
+				{
+					valueNode = makeConst(INT8OID, -1, InvalidOid, sizeof(int64),
+										  Int64GetDatum(AUTO_INCREMENT_VALUE_ZERO),
+										  false, FLOAT8PASSBYVAL);
+				}
+			}
+		}
+		else
+		{
+			if (!attr->attnotnull)
+			{
+				if (IsA((expr), SetToDefault))
+				{
+					valueNode = makeConst(INT8OID, -1, InvalidOid, sizeof(int64),
+										  Int64GetDatum(AUTO_INCREMENT_VALUE_ZERO),
+										  true, FLOAT8PASSBYVAL);
+				}
+			}
+			else
+			{
+				if (IsA((expr), SetToDefault))
+				{
+					valueNode = makeConst(INT8OID, -1, InvalidOid, sizeof(int64),
+										  Int64GetDatum(AUTO_INCREMENT_VALUE_ZERO),
+										  false, FLOAT8PASSBYVAL);
+				}
+			}
+		}
+		if (valueNode)
+			expr = (Expr*)valueNode;
+	}
+	return expr;
+}
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 /* Begin - ReqID:SRS-MYSQL-SET */
 /* makeStringConst

@@ -86,6 +86,8 @@ make_parsestate(ParseState *parentParseState)
 		pstate->p_myssetvar = parentParseState->p_myssetvar;	/* ReqID:SRS-MYSQL-SET */
 	}
 
+	pstate->p_check_column_auto_increment = true; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
 	return pstate;
 }
 

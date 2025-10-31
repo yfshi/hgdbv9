@@ -1042,6 +1042,30 @@ getIdentitySequence(Oid relid, AttrNumber attnum, bool missing_ok)
 
 	return linitial_oid(seqlist);
 }
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+/*
+ * Get mysql owned auto increment, error if not exactly one.
+ */
+Oid
+getIdentityAutoIncrement(Oid relid, AttrNumber attnum, bool missing_ok)
+{
+	List	   *seqlist = getOwnedSequences_internal(relid, attnum, DEPENDENCY_AUTO);
+
+	if (list_length(seqlist) > 1)
+	{
+		elog(ERROR, "more than one owned sequence found");
+	}
+	else if (list_length(seqlist) < 1)
+	{
+		if (missing_ok)
+			return InvalidOid;
+		else
+			elog(ERROR, "no owned sequence found");
+	}
+
+	return linitial_oid(seqlist);
+}
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 /*
  * get_index_constraint

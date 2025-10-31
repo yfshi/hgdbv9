@@ -662,8 +662,8 @@ INSERT INTO t01 (col2) SELECT col2 + 1 FROM t01 LIMIT 1;
 SELECT * FROM t01 ORDER BY 1, 2, 3;
  col1 | col2 | col3 
 ------+------+------
+      |    1 |     
       |    2 |     
-      |    3 |     
 (2 rows)
 
 ---- should update
@@ -671,8 +671,8 @@ INSERT INTO t01 DEFAULT VALUES ON DUPLICATE KEY UPDATE col1 = col2;
 SELECT * FROM t01 ORDER BY 1, 2, 3;
  col1 | col2 | col3 
 ------+------+------
-    3 |    3 |     
-      |    2 |     
+    2 |    2 |     
+      |    1 |     
 (2 rows)
 
 -- test VALUES(DEFAULT)

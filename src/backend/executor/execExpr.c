@@ -2800,6 +2800,21 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				scratch.d.nextvalueexpr.seqtypid = nve->typeId;
 				scratch.restype = nve->typeId;	/* BUG#6021 */
 
+				/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+				/* create nextval expr:
+				 *    create table t1(a int);
+				 *    insert into t1 values(11),(22),(33);
+				 *    t1 add b_col int sequence/auto_increment;
+				 * add a new b_col will tigger the sequence increment function
+				 * whether it is a pg seqqence ot mysql auto_increment
+				 * it is passed to the executor to confirm that the execution
+				 * function is ExecEvalNextValueExpr (nextval_internal or nextval_autoincrement)
+				 */
+				scratch.d.nextvalueexpr.auto_increment = false;
+				if (nve->auto_increment)
+					scratch.d.nextvalueexpr.auto_increment = true;
+				/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
 				ExprEvalPushStep(state, &scratch);
 				break;
 			}

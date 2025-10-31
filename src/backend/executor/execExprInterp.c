@@ -2733,7 +2733,25 @@ ExecEvalCurrentOfExpr(ExprState *state, ExprEvalStep *op)
 void
 ExecEvalNextValueExpr(ExprState *state, ExprEvalStep *op)
 {
-	int64		newval = nextval_internal(op->d.nextvalueexpr.seqid, false);
+	int64		newval = 0;
+
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	/*set call function:
+	 *    create table t1(a int);
+	 *    insert into t1 values(11),(22),(33);
+	 *    t1 add b_col int sequence/auto_increment;
+	 * pg sequence call nextval_internal
+	 * mysql auto_increment call nextval_autoincrement
+	 */
+	if (op->d.nextvalueexpr.auto_increment)
+	{
+		newval = nextval_autoincrement(op->d.nextvalueexpr.seqid, false);
+	}
+	else
+	{
+		newval = nextval_internal(op->d.nextvalueexpr.seqid, false);
+	}
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 	switch (op->d.nextvalueexpr.seqtypid)
 	{
@@ -2757,6 +2775,17 @@ ExecEvalNextValueExpr(ExprState *state, ExprEvalStep *op)
 			*op->resvalue = NumericGetDatum(int64_to_numeric(newval));
 			break;
 		/* End - ReqID:SRS-SQL-IDENTCOL */
+		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+		case UINT2OID:
+			*op->resvalue = UInt16GetDatum((uint16) newval);
+			break;
+		case UINT4OID:
+			*op->resvalue = UInt32GetDatum((uint32) newval);
+			break;
+		case UINT8OID:
+			*op->resvalue = UInt64GetDatum((uint64) newval);
+			break;
+		/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		default:
 			elog(ERROR, "unsupported sequence type %u",
 				 op->d.nextvalueexpr.seqtypid);

@@ -302,7 +302,9 @@ extern List *getAutoExtensionsOfObject(Oid classId, Oid objectId);
 extern bool sequenceIsOwned(Oid seqId, char deptype, Oid *tableId, int32 *colId);
 extern List *getOwnedSequences(Oid relid);
 extern Oid	getIdentitySequence(Oid relid, AttrNumber attnum, bool missing_ok);
-
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+extern Oid	getIdentityAutoIncrement(Oid relid, AttrNumber attnum, bool missing_ok);
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 extern Oid	get_index_constraint(Oid indexId);
 
 extern List *get_index_ref_constraints(Oid indexId);

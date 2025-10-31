@@ -28,7 +28,13 @@
 	/* Begin - qID: SRS-MYSQL-NUMBERICTYPE */
 	bool check_div_precision_increment(int *newval, void **extra, GucSource source);
 	void assign_div_precision_increment(int newval, void *extra);
-	/* End - qID: SRS-MYSQL-NUMBERICTYPE */	
+	/* End - qID: SRS-MYSQL-NUMBERICTYPE */
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	static bool check_auto_increment_increment(int *newval, void **extra, GucSource source);
+	static void assign_auto_increment_increment(int newval, void *extra);
+	static bool check_auto_increment_offset(int *newval, void **extra, GucSource source);
+	static void assign_auto_increment_offset(int newval, void *extra);
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	static void assign_regress_test_default_value(bool newval, void *extra);
 	/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 	static bool check_lc_time_names(char **target, void **extra, GucSource source);
@@ -60,6 +66,8 @@ int			lower_case_table_names = 0;		/* ReqID:SRS-MYSQL-CASE */
 bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 bool		not_mode_pad_char_to_full = true;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 int			div_precision_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
+int			auto_increment_increment = 1;			/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+int			auto_increment_offset = 1;				/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 /* Begin - BUG#M533 */
 bool		regress_test_default_value = false;
 bool		cast_to_char = true;
@@ -89,7 +97,9 @@ bool		sql_quote_show_create = true;	/* ReqID:SRS-MYSQL-SHOW */
 #define DIV_PREC_MAX_VALUE 30
 #define DIV_PREC_MIN_VALUE 4
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE */
-
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+#define AUTO_INCREMENT_MAX_VALUE 65535
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 #define DEF_WEEK_FORMAT 0
 #define MAX_WEEK_FORMAT 7
@@ -264,6 +274,26 @@ bool		sql_quote_show_create = true;	/* ReqID:SRS-MYSQL-SHOW */
 		check_div_precision_increment, assign_div_precision_increment, NULL
 	},
 	/* End - ReqID: SRS-MYSQL-NUMBERICTYPE */
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	{
+		{"auto_increment_increment", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Use mysql code in datatype function."),
+			NULL
+		},
+		&auto_increment_increment,
+		1, INT_MIN, INT_MAX,
+		check_auto_increment_increment, assign_auto_increment_increment, NULL
+	},
+	{
+		{"auto_increment_offset", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Use mysql code in datatype function."),
+			NULL
+		},
+		&auto_increment_offset,
+		1, INT_MIN, INT_MAX,
+		check_auto_increment_offset, assign_auto_increment_offset, NULL
+	},
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 	{
 		{"default_week_format", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
@@ -607,6 +637,74 @@ assign_div_precision_increment(int newval, void *extra)
 	div_precision_increment = newval;
 }
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE */
+
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+/*
+ * auto_increment_increment
+ *   guc parameter must >=4 and =< 30
+ *
+ */
+static bool
+check_auto_increment_increment(int *newval, void **extra, GucSource source)
+{
+	if (*newval < 1)
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("Truncated incorrect auto_increment_increment value: \"%u\"", *newval)));
+		*newval = 1;
+	}
+
+	if (*newval > AUTO_INCREMENT_MAX_VALUE)
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("Truncated incorrect auto_increment_increment value: \"%u\"", *newval)));
+		*newval = AUTO_INCREMENT_MAX_VALUE;
+	}
+
+	return true;
+}
+
+static void
+assign_auto_increment_increment(int newval, void *extra)
+{
+	auto_increment_increment = newval;
+}
+
+/*
+ * auto_increment_offset
+ *   guc parameter must >=4 and =< 30
+ *
+ */
+static bool
+check_auto_increment_offset(int *newval, void **extra, GucSource source)
+{
+	if (*newval < 1)
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("Truncated incorrect auto_increment_offset value: \"%u\"", *newval)));
+		*newval = 1;
+	}
+
+	if (*newval > AUTO_INCREMENT_MAX_VALUE)
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("Truncated incorrect auto_increment_offset value: \"%u\"", *newval)));
+		*newval = AUTO_INCREMENT_MAX_VALUE;
+	}
+
+	return true;
+}
+
+static void
+assign_auto_increment_offset(int newval, void *extra)
+{
+	auto_increment_offset = newval;
+}
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 static void
 assign_regress_test_default_value(bool newval, void *extra)

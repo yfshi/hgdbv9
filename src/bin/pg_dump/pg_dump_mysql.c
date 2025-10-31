@@ -17070,6 +17070,7 @@ dumpAttrDef(Archive *fout, const AttrDefInfo *adinfo)
 	char	   *qualrelname;
 	char	   *tag;
 	char	   *foreign;
+	char	   auto_increment[128] = "";
 
 	/* Skip if table definition not to be dumped */
 	if (!tbinfo->dobj.dump || dopt->dataOnly)
@@ -17086,10 +17087,19 @@ dumpAttrDef(Archive *fout, const AttrDefInfo *adinfo)
 
 	foreign = tbinfo->relkind == RELKIND_FOREIGN_TABLE ? "FOREIGN " : "";
 
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	/* if sequence is auto_increment,modify attidentity to 'm' */
+	if (*adinfo->adtable->attidentity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+	{
+		snprintf(auto_increment, sizeof(auto_increment), " ,ALTER COLUMN %s SET GENERATED AUTO_INCREMENT\n",
+						  fmtId(tbinfo->attnames[adnum - 1]));
+	}
+	/* set the column attidentity to ATTRIBUTE_IDENTITY_AUTO_INCREMENT */
 	appendPQExpBuffer(q,
-					  "ALTER %sTABLE ONLY %s ALTER COLUMN %s SET DEFAULT %s;\n",
+					  "ALTER %sTABLE ONLY %s ALTER COLUMN %s SET DEFAULT %s%s;\n",
 					  foreign, qualrelname, fmtId(tbinfo->attnames[adnum - 1]),
-					  adinfo->adef_expr);
+					  adinfo->adef_expr, auto_increment);
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 	appendPQExpBuffer(delq, "ALTER %sTABLE %s ALTER COLUMN %s DROP DEFAULT;\n",
 					  foreign, qualrelname,
@@ -17841,6 +17851,43 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 		default_minv = is_ascending ? 1 : PG_INT64_MIN;
 		default_maxv = is_ascending ? PG_INT64_MAX : -1;
 	}
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	else if (strcmp(seqtype, "uint1") == 0)
+	{
+		default_minv = 1;
+		default_maxv = is_ascending ? PG_UINT8_MAX : -1;
+	}
+	else if (strcmp(seqtype, "uint2") == 0)
+	{
+		default_minv = 1;
+		default_maxv = is_ascending ? PG_UINT16_MAX : -1;
+	}
+	else if (strcmp(seqtype, "uint3") == 0)
+	{
+		default_minv = 1;
+		default_maxv = is_ascending ? PG_UINT24_MAX : -1;
+	}
+	else if (strcmp(seqtype, "uint4") == 0)
+	{
+		default_minv = 1;
+		default_maxv = is_ascending ? PG_UINT32_MAX : -1;
+	}
+	else if (strcmp(seqtype, "uint8") == 0)
+	{
+		default_minv = 1;
+		default_maxv = is_ascending ? PG_UINT64_MAX : -1;
+	}
+	else if (strcmp(seqtype, "float4") == 0)
+	{
+		default_minv = is_ascending ? 1 : PG_INT32_MIN;
+		default_maxv = is_ascending ? PG_INT32_MAX : -1;
+	}
+	else if (strcmp(seqtype, "float8") == 0)
+	{
+		default_minv = is_ascending ? 1 : PG_INT64_MIN;
+		default_maxv = is_ascending ? PG_INT64_MAX : -1;
+	}
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	else
 	{
 		fatal("unrecognized sequence type: %s", seqtype);
@@ -17896,6 +17943,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 			appendPQExpBufferStr(query, "ALWAYS");
 		else if (owning_tab->attidentity[tbinfo->owning_col - 1] == ATTRIBUTE_IDENTITY_BY_DEFAULT)
 			appendPQExpBufferStr(query, "BY DEFAULT");
+
 		appendPQExpBuffer(query, " AS IDENTITY (\n    SEQUENCE NAME %s\n",
 						  fmtQualifiedDumpable(tbinfo));
 	}

@@ -417,7 +417,7 @@ static void CheckHostId(char* hostId);
 %type <node>	alter_column_default opclass_item opclass_drop alter_using
 %type <ival>	add_drop opt_asc_desc opt_nulls_order
 
-%type <node>	alter_table_cmd alter_type_cmd opt_collate_clause
+%type <node>	alter_table_cmd alter_type_cmd opt_collate_clause auto_increment_value opt_auto_increment
 	   replica_identity partition_cmd index_partition_cmd
 %type <list>	alter_table_cmds alter_type_cmds
 %type <list>    alter_identity_column_option_list
@@ -431,8 +431,8 @@ static void CheckHostId(char* hostId);
 %type <defelt>	createdb_opt_item copy_opt_item
 				transaction_mode_item
 				create_extension_opt_item alter_extension_opt_item
-%type <myscollatecharacteropt> mys_create_option /* ReqID:SRS-MYSQL-SQL-USE */
-
+%type <myscollatecharacteropt> mys_create_option /* ReqID:SRS-MYSQL-SQL-USE */ char_set_collate /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+%type <list>	char_set_collate_list char_set_collate_list_node /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 %type <ival>	opt_lock lock_type cast_context
 %type <str>		utility_option_name
 %type <defelt>	utility_option_elem
@@ -818,7 +818,7 @@ static void CheckHostId(char* hostId);
 /* ordinary key words in alphabetical order */
 %token <keyword> ABORT_P ABSOLUTE_P ACCESS ACTION ADD_P ADMIN AFTER
 	AGGREGATE ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
-	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION
+	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION AUTO_INCREMENT
 
 	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BIT BLOB_P
 	BOOLEAN_P BOTH BREADTH BY
@@ -2558,7 +2558,7 @@ DiscardStmt:
  *****************************************************************************/
 
 AlterTableStmt:
-			ALTER TABLE relation_expr alter_table_cmds
+		ALTER TABLE relation_expr alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -3408,7 +3408,46 @@ alter_table_cmd:
 					n->def = (Node *)$1;
 					$$ = (Node *) n;
 				}
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			| auto_increment_value
+				{
+					AlterTableCmd *n;
+					n = makeNode(AlterTableCmd);
+					n->subtype = AT_SetAutoIncrement;
+					n->def = $1;
+					$$ = (Node *)n;	
+				}
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		;
+
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+auto_increment_value: 
+			AUTO_INCREMENT Iconst				{ $$ = (Node *)makeInteger($2); }
+			| AUTO_INCREMENT '=' Iconst			{ $$ = (Node *)makeInteger($3); }
+			| AUTO_INCREMENT FCONST				{ $$ = (Node *)makeFloat($2); }
+			| AUTO_INCREMENT '=' FCONST			{ $$ = (Node *)makeFloat($3); }
+		;
+
+opt_auto_increment:   
+			auto_increment_value				{ $$ = (Node*)makeDefElem("start", $1, @1);	}
+			| /*EMPTY*/							{ $$ = NULL; }
+		;
+
+char_set_collate:
+			mys_create_option					{ $$ = $1; }
+			| DEFAULT mys_create_option			{ $$ = $2; }
+		;
+		
+char_set_collate_list:
+			char_set_collate								{ $$ = list_make1($1); }
+			| char_set_collate_list  char_set_collate		{ $$ = lappend($1, $2); }
+		;
+
+char_set_collate_list_node:
+			char_set_collate_list		{ $$ = $1; }
+			| /* EMPTY */				{ $$ = NIL; }
+		;
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 alter_column_default:
 			SET DEFAULT a_expr			{ $$ = $3; }
@@ -4025,7 +4064,7 @@ copy_generic_opt_arg_list_item:
 
 CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptInherit OptPartitionSpec table_access_method_clause OptWith
-			OnCommitOption OptTableSpace
+			OnCommitOption OptTableSpace opt_auto_increment char_set_collate_list_node
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4043,11 +4082,12 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $12;
 					n->tablespacename = $13;
 					n->if_not_exists = false;
+					n->autoIncStart = $14;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name '('
 			OptTableElementList ')' OptInherit OptPartitionSpec table_access_method_clause
-			OptWith OnCommitOption OptTableSpace
+			OptWith OnCommitOption OptTableSpace opt_auto_increment char_set_collate_list_node
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4065,11 +4105,12 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $15;
 					n->tablespacename = $16;
 					n->if_not_exists = true;
+					n->autoIncStart = $17;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE qualified_name OF any_name
 			OptTypedTableElementList OptPartitionSpec table_access_method_clause
-			OptWith OnCommitOption OptTableSpace
+			OptWith OnCommitOption OptTableSpace opt_auto_increment char_set_collate_list_node
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4088,11 +4129,12 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $11;
 					n->tablespacename = $12;
 					n->if_not_exists = false;
+					n->autoIncStart = $13;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name OF any_name
 			OptTypedTableElementList OptPartitionSpec table_access_method_clause
-			OptWith OnCommitOption OptTableSpace
+			OptWith OnCommitOption OptTableSpace opt_auto_increment char_set_collate_list_node
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4111,11 +4153,13 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $14;
 					n->tablespacename = $15;
 					n->if_not_exists = true;
+					n->autoIncStart = $16;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE qualified_name PARTITION OF qualified_name
 			OptTypedTableElementList PartitionBoundSpec OptPartitionSpec
-			table_access_method_clause OptWith OnCommitOption OptTableSpace
+			table_access_method_clause OptWith OnCommitOption OptTableSpace opt_auto_increment
+			char_set_collate_list_node
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4134,11 +4178,13 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $13;
 					n->tablespacename = $14;
 					n->if_not_exists = false;
+					n->autoIncStart = $15;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name PARTITION OF
 			qualified_name OptTypedTableElementList PartitionBoundSpec OptPartitionSpec
-			table_access_method_clause OptWith OnCommitOption OptTableSpace
+			table_access_method_clause OptWith OnCommitOption OptTableSpace opt_auto_increment
+			char_set_collate_list_node
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4157,6 +4203,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $16;
 					n->tablespacename = $17;
 					n->if_not_exists = true;
+					n->autoIncStart = $18;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 					$$ = (Node *)n;
 				}
 		;
@@ -4424,6 +4471,19 @@ ColConstraintElem:
 					n->indexspace = $3;
 					$$ = (Node *)n;
 				}
+			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			| UNIQUE KEY opt_definition OptConsTableSpace
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_UNIQUE;
+					n->location = @1;
+					n->keys = NULL;
+					n->options = $3;
+					n->indexname = NULL;
+					n->indexspace = $4;
+					$$ = (Node *)n;
+				}
+			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 			| PRIMARY KEY opt_definition OptConsTableSpace
 				{
 					Constraint *n = makeNode(Constraint);
@@ -4521,11 +4581,21 @@ ColConstraintElem:
 					n->initially_valid  = true;
 					$$ = (Node *)n;
 				}
+			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			| AUTO_INCREMENT
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_AUTO_INCREMENT;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		;
 
 generated_when:
 			ALWAYS			{ $$ = ATTRIBUTE_IDENTITY_ALWAYS; }
 			| BY DEFAULT	{ $$ = ATTRIBUTE_IDENTITY_BY_DEFAULT; }
+			| AUTO_INCREMENT	{ $$ = ATTRIBUTE_IDENTITY_AUTO_INCREMENT; }
 		;
 
 /*
@@ -4654,6 +4724,24 @@ ConstraintElem:
 								   NULL, yyscanner);
 					$$ = (Node *)n;
 				}
+			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			| UNIQUE KEY '(' columnList ')' opt_c_include opt_definition OptConsTableSpace
+				ConstraintAttributeSpec
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_UNIQUE;
+					n->location = @1;
+					n->keys = $4;
+					n->including = $6;
+					n->options = $7;
+					n->indexname = NULL;
+					n->indexspace = $8;
+					processCASbits($9, @8, "UNIQUE",
+								   &n->deferrable, &n->initdeferred, NULL,
+								   NULL, yyscanner);
+					$$ = (Node *)n;
+				}
+			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 			| UNIQUE ExistingIndex ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
@@ -7378,7 +7466,12 @@ TruncateStmt:
 				{
 					TruncateStmt *n = makeNode(TruncateStmt);
 					n->relations = $3;
-					n->restart_seqs = $4;
+					/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+					if (MYS_PARSER == compatible_db )
+						n->restart_seqs = true;
+					else
+					/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+						n->restart_seqs = $4;
 					n->behavior = $5;
 					$$ = (Node *)n;
 				}
@@ -19308,6 +19401,7 @@ unreserved_keyword:
 			| ATOMIC
 			| ATTACH
 			| ATTRIBUTE
+			| AUTO_INCREMENT
 			| BACKWARD
 			| BEFORE
 			| BEGIN_P
@@ -19873,6 +19967,7 @@ bare_label_keyword:
 			| ATTACH
 			| ATTRIBUTE
 			| AUTHORIZATION
+			| AUTO_INCREMENT
 			| BACKWARD
 			| BEFORE
 			| BEGIN_P

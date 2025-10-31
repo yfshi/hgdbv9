@@ -3559,3 +3559,30 @@ CREATE FUNCTION ivymy.ifnull(p1 timestamptz, p2 text)
 RETURNS timestamptz IMMUTABLE AS $$
 SELECT coalesce(p1::text, p2);
 $$ LANGUAGE sql;
+
+
+CREATE FUNCTION ivymy.LAST_INSERT_ID()
+RETURNS ivymy.uint8 IMMUTABLE AS $$
+SELECT mys_get_lastval();
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.LAST_INSERT_ID(seqid int8)
+RETURNS ivymy.uint8 IMMUTABLE AS $$
+SELECT mys_set_lastval(seqid);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.LAST_INSERT_ID(seqid float4)
+RETURNS ivymy.uint8 IMMUTABLE AS $$
+SELECT mys_set_lastval(seqid::int);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.LAST_INSERT_ID(seqid float8)
+RETURNS ivymy.uint8 IMMUTABLE AS $$
+SELECT mys_set_lastval(seqid::int);
+$$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.LAST_INSERT_ID(seqid numeric)
+RETURNS ivymy.uint8 IMMUTABLE AS $$
+SELECT mys_set_lastval(seqid::int);
+$$ LANGUAGE sql;
+

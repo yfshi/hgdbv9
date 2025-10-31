@@ -40,6 +40,7 @@
 #include "funcapi.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
+#include "parser/parse_expr.h"
 #include "parser/parse_type.h"
 #include "storage/lmgr.h"
 #include "storage/proc.h"
@@ -64,7 +65,7 @@
 /* Begin - BUG#00004709 */
 #include "pg_contrib_audit.h"
 /* End - BUG#00004709 */
-
+#include "utils/guc.h"
 /*
  * We don't want to log each fetching of a value from a sequence,
  * so we pre-log a few fetches in advance. In the event of
@@ -115,6 +116,7 @@ int32	scale_value = 0;
  * sequence.
  */
 static SeqTableData *last_used_seq = NULL;
+static uint64 mys_g_last_seqval = 0; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 static void fill_seq_with_data(Relation rel, HeapTuple tuple);
 static void fill_seq_fork_with_data(Relation rel, HeapTuple tuple, ForkNumber forkNum);
@@ -137,7 +139,17 @@ static bool seq_is_extend(int16 seq_flag);
 static bool seq_is_session(int16 seq_flag);
 /* End - ReqID:SRS-SQL-SEQ */
 
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+static AttrNumber get_rel_auto_increment_attr(Oid tableoid);
 
+static uint64 compute_current_autoinc(uint64 nr);
+static uint64 compute_next_autoinc(uint64 current, uint64 step, /*!< in: AUTOINC increment step */
+							uint64 offset, uint64 max_value);		  /*!< in: max value for type */
+static void compute_cur_next_value(uint64 lastautoinc, uint64 *curautoinc, uint64 *nextautoinc);
+static void set_auto_increment(SeqTable elm, Relation seqrel, bool displayinsert, uint64 autoincvalue, bool logit, bool temptable);
+
+Datum autoinc_nextval(PG_FUNCTION_ARGS);
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 /*
  * DefineSequence
  *				Creates a new sequence relation
@@ -239,7 +251,14 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 				coldef->colname = "is_called";
 				value[i - 1] = BoolGetDatum(false);
 				break;
-		}
+			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			case SEQ_COL_NEXTVAL:
+				coldef->typeName = makeTypeNameFromOid(INT8OID, -1);
+				coldef->colname = "next_value";
+				value[i - 1] = Int64GetDatum((int64)0);
+				break;
+			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			}
 		stmt->tableElts = lappend(stmt->tableElts, coldef);
 	}
 
@@ -350,6 +369,7 @@ ResetSequence(Oid seq_relid)
 	seq->last_value = startv;
 	seq->is_called = false;
 	seq->log_cnt = 0;
+	seq->next_value = 0;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 	/*
 	 * Create a new storage file for the sequence.
@@ -669,6 +689,73 @@ nextval_oid(PG_FUNCTION_ARGS)
 
 	PG_RETURN_INT64(nextval_internal(relid, true));
 }
+
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+/*
+ * Note: autoinc_nextval with a text argument is no longer exported as a pg_proc
+ * entry, but we keep it around to ease porting of C code that may have
+ * called the function directly.
+ */
+Datum
+autoinc_nextval(PG_FUNCTION_ARGS)
+{
+	text	   *seqin = PG_GETARG_TEXT_PP(0);
+	RangeVar   *sequence;
+	Oid			relid;
+
+	sequence = makeRangeVarFromNameList(textToQualifiedNameList(seqin));
+
+	/*
+	 * XXX: This is not safe in the presence of concurrent DDL, but acquiring
+	 * a lock here is more expensive than letting nextval_internal do it,
+	 * since the latter maintains a cache that keeps us from hitting the lock
+	 * manager more than once per transaction.  It's not clear whether the
+	 * performance penalty is material in practice, but for now, we do it this
+	 * way.
+	 */
+	relid = RangeVarGetRelid(sequence, NoLock, false);
+
+	PG_RETURN_INT64(nextval_autoincrement(relid, true));
+}
+
+Datum
+autoinc_nextval_oid(PG_FUNCTION_ARGS)
+{
+	Oid			relid = PG_GETARG_OID(0);
+
+	PG_RETURN_INT64(nextval_autoincrement(relid, true));
+}
+
+int64
+nextval_autoincrement(Oid relid, bool check_permissions)
+{
+	SeqTable elm;
+	Relation seqrel;
+	HeapTuple pgstuple;
+	bool logit = false;
+
+	pgstuple = SearchSysCache1(SEQRELID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(pgstuple))
+		elog(ERROR, "cache lookup failed for sequence %u", relid);
+
+	/* open and lock sequence */
+	init_sequence(relid, &elm, &seqrel);
+
+	if (check_permissions &&
+		pg_class_aclcheck(relid, GetUserId(),
+						  ACL_USAGE | ACL_UPDATE) != ACLCHECK_OK)
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied for auto_increment %s",
+						RelationGetRelationName(seqrel))));
+
+	set_auto_increment(elm, seqrel, false, 0, logit, false);
+	relation_close(seqrel, NoLock);
+	ReleaseSysCache(pgstuple);
+	last_used_seq = elm;
+	return elm->last;
+}
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 int64
 nextval_internal(Oid relid, bool check_permissions)
@@ -1116,6 +1203,286 @@ nextval_internal(Oid relid, bool check_permissions)
 	return result;
 }
 
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+static AttrNumber
+get_rel_auto_increment_attr(Oid tableoid)
+{
+	Relation rel;
+	TupleDesc tupleDesc;
+	AttrNumber natts;
+	AttrNumber autoincAttnum = 0;
+
+	rel = table_open(tableoid, AccessShareLock);
+	tupleDesc = RelationGetDescr(rel);
+	natts = tupleDesc->natts;
+
+	for (autoincAttnum = 1; autoincAttnum <= natts; autoincAttnum++)
+	{
+		Form_pg_attribute attr = TupleDescAttr(tupleDesc, autoincAttnum - 1);
+		if (attr->attidentity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+		{
+			break;
+		}
+	}
+	table_close(rel, AccessShareLock);
+
+	return autoincAttnum;
+}
+/* set next auto_increment value*/
+void
+set_auto_nextval(Oid tableoid, uint64 nextval)
+{
+	HeapTupleData seqdatatuple;
+	Relation seqrel;
+	Buffer buf;
+	Form_pg_sequence_data seq;
+	Oid seqoid;
+
+	seqoid = getIdentityAutoIncrement(tableoid, get_rel_auto_increment_attr(tableoid), false);
+
+	seqrel = relation_open(seqoid, RowExclusiveLock);
+	seq = read_seq_tuple(seqrel, &buf, &seqdatatuple);
+	seq->next_value = seq->next_value > nextval ? seq->next_value : nextval;
+	relation_close(seqrel, RowExclusiveLock);
+	UnlockReleaseBuffer(buf);
+
+	return;
+}
+
+/* set auto_increment value to seqtable
+ * displayinsert: insert (autoincvalue)
+ * autoincvalue:  
+ * logit       : set wal
+ * temptable   : insert temp table
+ */
+static void
+set_auto_increment(SeqTable elm, Relation seqrel, bool displayinsert, uint64 autoincvalue, bool logit, bool temptable)
+{
+	Buffer buf;
+	Page page;
+	HeapTupleData seqdatatuple;
+	Form_pg_sequence_data seq;
+	uint64 nextautoinc = 0;
+	uint64 curautoinc = 0;
+	uint64 lastautoinc = 0;
+
+	/* lock page' buffer and read tuple */
+	seq = read_seq_tuple(seqrel, &buf, &seqdatatuple);
+	page = BufferGetPage(buf);
+
+	if (displayinsert)
+	{
+		/* when displaying the inserted data, select the larger value of 
+		 * the inserted value and the sequence inserted value
+		 */
+		if (autoincvalue && (autoincvalue < seq->last_value || autoincvalue < 0))
+		{
+			lastautoinc = autoincvalue;
+			UnlockReleaseBuffer(buf);
+			return;
+		}
+		lastautoinc = seq->next_value > seq->last_value ? seq->next_value : seq->last_value;
+		lastautoinc = autoincvalue > lastautoinc ? autoincvalue : lastautoinc;
+	}
+	else
+	{
+		/* nextval valid insert  nextval */
+		lastautoinc = seq->next_value > seq->last_value ? seq->next_value : seq->last_value;
+	}
+
+	compute_cur_next_value(lastautoinc, &curautoinc, &nextautoinc);
+
+	START_CRIT_SECTION();
+	MarkBufferDirty(buf);
+
+	/* XLOG stuff */
+	if (logit && RelationNeedsWAL(seqrel))
+	{
+		xl_seq_rec xlrec;
+		XLogRecPtr recptr;
+
+		/*
+		 * We don't log the current state of the tuple, but rather the state
+		 * as it would appear after "log" more fetches.  This lets us skip
+		 * that many future WAL records, at the cost that we lose those
+		 * sequence values if we crash.
+		 */
+		XLogBeginInsert();
+		XLogRegisterBuffer(0, buf, REGBUF_WILL_INIT);
+
+		/* set values that will be saved in xlog */
+		seq->last_value = curautoinc;
+		seq->is_called = true;
+		seq->log_cnt = 0;
+
+		xlrec.node = seqrel->rd_node;
+
+		XLogRegisterData((char *)&xlrec, sizeof(xl_seq_rec));
+		XLogRegisterData((char *)seqdatatuple.t_data, seqdatatuple.t_len);
+
+		recptr = XLogInsert(RM_SEQ_ID, XLOG_SEQ_LOG);
+
+		PageSetLSN(page, recptr);
+	}
+
+	elm->last_valid = true;
+	elm->last = curautoinc;
+
+	/* Now update sequence tuple to the intended final state */
+	seq->last_value = seq->last_value > curautoinc ? seq->last_value : curautoinc; /* last fetched number */
+	seq->next_value = nextautoinc;
+	seq->is_called = true;
+	seq->log_cnt = seq->log_cnt; /* how much is logged */
+
+	END_CRIT_SECTION();
+	UnlockReleaseBuffer(buf);
+
+	if (!temptable || !autoincvalue)
+	{
+		mys_g_last_seqval = (uint64)seq->last_value;
+	}
+	return;
+}
+
+/* comppute current insert auto_increment value*/
+static uint64
+compute_current_autoinc(uint64 nr)
+{
+	const uint64 save_nr = nr;
+
+	if (auto_increment_increment == 1)
+	{
+		nr = nr + 1; // optimization of the formula below
+	}
+	else
+	{
+		/* auto_increment_increment auto_increment_offset
+		 * compute auto increment values : 
+		 *      the auto_increment_offset plus the multiple of the auto_increment_increment
+		 * for example: 
+		 *      auto_increment_increment = 10  auto_increment_offset = 3
+		 *      the valid values are 3 , 13, 23, 33 ...
+		 */
+		nr = (((nr + auto_increment_increment - auto_increment_offset)) / (uint64)auto_increment_increment);
+		nr = (nr * (uint64)auto_increment_increment + auto_increment_offset);
+	}
+
+	if (unlikely(nr <= save_nr))
+	{
+		return UINT64_MAX;
+	}
+
+	return nr;
+}
+
+/* comppute next insert auto_increment value
+ * compute_next_autoinc
+ *  uint64	current: Current value 
+ *	uint64	step: AUTOINC increment step 
+ *	uint64	offset: AUTOINC offset 
+ *	uint64	max_value: max value for type 
+ */
+static uint64
+compute_next_autoinc(uint64 current, uint64 step, uint64 offset, uint64 max_value)
+{
+	uint64 next_value;
+
+	/* According to MySQL documentation, if the offset is greater than
+	the step then the offset is ignored. */
+	if (offset > step)
+	{
+		offset = 0;
+	}
+
+	/* Check for overflow. Current can be > max_value if the value is
+	in reality a negative value. */
+	if (step >= max_value || offset > max_value || current >= max_value )
+	{
+		next_value = max_value;
+	}
+	else
+	{
+		uint64 free = max_value - current;
+
+		if (free < offset || free - offset <= step)
+		{
+			next_value = max_value;
+		}
+		else
+		{
+			next_value = 0;
+		}
+	}
+
+	if (next_value == 0)
+	{
+		uint64 next;
+
+		if (current > offset)
+		{
+			next = (current - offset) / step;
+		}
+		else
+		{
+			next = (offset - current) / step;
+		}
+		next_value = next * step;
+
+		/* Check for overflow */
+		if (max_value - next_value >= step)
+		{
+			next_value += step;
+
+			if (max_value - next_value >= offset)
+			{
+				next_value += offset;
+			}
+			else
+			{
+				next_value = max_value;
+			}
+		}
+		else
+		{
+			next_value = max_value;
+		}
+	}
+
+	return (next_value);
+}
+
+/* comppute insert and next insert auto_increment value*/
+static void
+compute_cur_next_value(uint64 lastautoinc, uint64 *curautoinc, uint64 *nextautoinc)
+{
+	if (auto_increment_increment > 1 && lastautoinc < UINT64_MAX)
+	{
+		uint64 diff = UINT64_MAX - lastautoinc;
+		/* Check for overflow */
+		if (auto_increment_increment <= diff)
+		{
+			uint64 prev_auto_inc = lastautoinc;
+			lastautoinc = ((lastautoinc - 1) + auto_increment_increment - auto_increment_offset) / auto_increment_increment;
+			lastautoinc = lastautoinc * auto_increment_increment + auto_increment_offset;
+
+			/* If autoinc exceeds the col_max_value then reset
+			to old autoinc value. Because in case of non-strict
+			sql mode, boundary value is not considered as error. */
+
+			if (lastautoinc >= UINT64_MAX)
+			{
+				lastautoinc = prev_auto_inc;
+			}
+		}
+	}
+
+	*curautoinc = compute_current_autoinc(lastautoinc - 1);
+	*nextautoinc = compute_next_autoinc(lastautoinc, auto_increment_increment, auto_increment_offset, UINT64_MAX);
+
+	return;
+}
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
 Datum
 currval_oid(PG_FUNCTION_ARGS)
 {
@@ -1278,7 +1645,129 @@ lastval(PG_FUNCTION_ARGS)
 
 	PG_RETURN_INT64(result);
 }
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+Datum
+mys_get_lastval(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_UINT64(mys_g_last_seqval);
+}
 
+Datum
+mys_set_lastval(PG_FUNCTION_ARGS)
+{
+	uint64 result = 0;
+	if (PG_ARGISNULL(0))
+	{
+		mys_g_last_seqval = 0;
+		PG_RETURN_NULL();
+	}
+
+	result = PG_GETARG_INT64(0);
+	mys_g_last_seqval = (uint64)result;
+	PG_RETURN_UINT64(result);
+}
+
+/* mys_set_insertval
+ * mys_set_insertval params: 
+ * reloid : table oid
+ * attnum : table auto_increment col num
+ * colnotnull : auto_increment is not null flag
+ * valuenullordefault :
+ * 1 : insert into .. (null)    :AUTO_INCREMENT_INSERT_NULL       (1)
+ * 2 : insert into .. (default) :AUTO_INCREMENT_INSERT_DEFAULT    (2)
+ * 3 : insert into .. (0)       :AUTO_INCREMENT_INSERT_ZERO       (3)
+ * value : insert auto_increment value
+ */
+Datum
+mys_set_insertval(PG_FUNCTION_ARGS)
+{
+	SeqTable elm;
+	Relation seqrel;
+	Oid reloid = PG_GETARG_OID(0);
+	int16 attnum = PG_GETARG_INT16(1);
+	bool colnotnull = PG_GETARG_BOOL(2);
+	int32 valuenullordefault = PG_GETARG_INT32(3);
+	uint64 value = PG_GETARG_INT64(4);
+	bool isreturnnull = false;
+
+	Oid seqoid = getIdentityAutoIncrement(reloid, attnum, false);
+
+	bool temptable = (get_rel_persistence(reloid) == RELPERSISTENCE_TEMP ||
+					  get_rel_persistence(reloid) == RELPERSISTENCE_GLOBAL_TEMP);
+
+	if ((int64)value < 0)
+		PG_RETURN_UINT64(value);
+
+	/* insert value: (NULL) . (default) . (0) 
+	*  null col:
+	* ---------------------------------------------------------------------------
+	* | sql_mode          MODE_NO_AUTO_VALUE_ON_ZERO       default_sql_mode
+	* | (NULL)                   NULL                           NULL
+	* | (default)                NULL                           NULL
+	* | (0)                       0                            lastval ++
+	* ---------------------------------------------------------------------------
+	* ===========================================================================
+	*  not null col:
+	* ---------------------------------------------------------------------------
+	* | sql_mode          MODE_NO_AUTO_VALUE_ON_ZERO       default_sql_mode
+	* | (NULL)                   NULL                          lastval ++
+	* | (default)                 0                            lastval ++
+	* | (0)                       0                            lastval ++
+	* ---------------------------------------------------------------------------
+	*/
+	if (AUTO_INCREMENT_VALUE_ZERO == value)
+	{
+		if (has_sql_mode(MODE_NO_AUTO_VALUE_ON_ZERO))
+		{
+			if (colnotnull)
+			{
+				if (valuenullordefault == AUTO_INCREMENT_INSERT_DEFAULT || 
+					valuenullordefault == AUTO_INCREMENT_INSERT_ZERO)
+				{
+					PG_RETURN_UINT64(AUTO_INCREMENT_VALUE_ZERO);
+				}
+			}
+			else
+			{
+				if (valuenullordefault == AUTO_INCREMENT_INSERT_NULL || 
+					valuenullordefault == AUTO_INCREMENT_INSERT_DEFAULT)
+				{
+					PG_RETURN_NULL();
+				}
+				if (valuenullordefault == AUTO_INCREMENT_INSERT_ZERO)
+				{
+					PG_RETURN_UINT64(AUTO_INCREMENT_VALUE_ZERO);
+				}
+			}
+		}
+		else
+		{
+			if (!colnotnull)
+			{
+				if (valuenullordefault == AUTO_INCREMENT_INSERT_NULL || 
+					valuenullordefault == AUTO_INCREMENT_INSERT_DEFAULT)
+				{
+					isreturnnull = true;
+				}
+			}
+		}
+	}
+
+	/* open and lock sequence */
+	init_sequence(seqoid, &elm, &seqrel);
+	set_auto_increment(elm, seqrel, true, value, false, temptable);
+	relation_close(seqrel, NoLock);
+	last_used_seq = elm;
+	if (value == AUTO_INCREMENT_VALUE_ZERO)
+	{
+		value = elm->last;
+	}
+
+	if (isreturnnull)
+		PG_RETURN_NULL();
+	PG_RETURN_UINT64(value);
+}
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 /*
  * Main internal procedure that handles 2 & 3 arg forms of SETVAL.
  *
@@ -1372,6 +1861,16 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	seq->last_value = next;		/* last fetched number */
 	seq->is_called = iscalled;
 	seq->log_cnt = 0;
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	if (compatible_db == MYS_PARSER)
+	{
+		seq->next_value = compute_current_autoinc(next);
+	}
+	else
+	{
+		seq->next_value = next + 1;
+	}
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 	MarkBufferDirty(buf);
 
@@ -1913,12 +2412,20 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 		{
 			if (newtypid != INT2OID &&
 				newtypid != INT4OID &&
-				newtypid != INT8OID)
+				newtypid != INT8OID && compatible_db != MYS_PARSER)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 						 for_identity
 						 ? errmsg("identity column type must be smallint, integer, or bigint")
 						 : errmsg("sequence type must be smallint, integer, or bigint")));
+			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			if (!type_is_numeric(newtypid) && compatible_db == MYS_PARSER)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 for_identity
+							 ? errmsg("identity column type must be smallint, integer, bigint, float4, or float8")
+							 : errmsg("sequence type must be smallint, integer, bigint, float4, or float8")));
+			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		}
 		else if(seq_type == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL || seq_type == ATTRIBUTE_ORA_IDENTITY_ALWAYS
 						|| seq_type == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT || compatible_db == ORA_PARSER)	/* Bug#m0000070 */
