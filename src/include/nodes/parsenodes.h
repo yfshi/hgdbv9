@@ -759,6 +759,8 @@ typedef struct ColumnDef
 	bool		isvisible;		/* mark whether column is visible *//* ReqID:SRS-SQL-INVISIBLECOL */
 	bool		not_spefify_column_type;	/* mark  virtual column whether lack of data type */	/* Bug#Z485 */
 	/* End - BUG#M0000257 */
+	bool		is_pri_or_unique;  /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	bool		is_auto_increment; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 } ColumnDef;
 
 /*
@@ -2262,8 +2264,11 @@ typedef enum AlterTableType
 	AT_DefaultCollation,		/* Table's default collation */
 	/* End: ReqID:SRS-SQL-NLSSORT */
 	/* Begin - ReqID:RSR-SQL-Partition-interval */
-	AT_SetInterval				/* Table's partition interval */
+	AT_SetInterval,				/* Table's partition interval */
 	/* End - ReqID:RSR-SQL-Partition-interval */
+	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	AT_SetAutoIncrement  
+	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 } AlterTableType;
 
 typedef struct ReplicaIdentityStmt
@@ -2548,6 +2553,7 @@ typedef struct CreateStmt
 	bool		if_not_exists;	/* just do nothing if it already exists? */
 	bool		with_rowid_seq;
 	char	   *collname;		/* ReqID:SRS-SQL-NLSSORT, table's default collation for Oracle, filled by grammer */
+	Node	   *autoIncStart;
 } CreateStmt;
 
 /* ----------
@@ -2597,7 +2603,8 @@ typedef enum ConstrType			/* types of constraints */
 	CONSTR_ATTR_DEFERRABLE,		/* attributes for previous constraint node */
 	CONSTR_ATTR_NOT_DEFERRABLE,
 	CONSTR_ATTR_DEFERRED,
-	CONSTR_ATTR_IMMEDIATE
+	CONSTR_ATTR_IMMEDIATE,
+	CONSTR_AUTO_INCREMENT
 } ConstrType;
 
 /* Foreign key action codes */

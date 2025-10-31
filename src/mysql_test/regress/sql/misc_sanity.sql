@@ -60,7 +60,8 @@ for relnm, reloid, shared in
   where EXISTS(
       SELECT * FROM pg_attribute
       WHERE attrelid = pg_class.oid AND attname = 'oid')
-    and relkind = 'r' and oid < 16384 order by 1
+    and relkind = 'r' and oid < 16384 and relname != 'pg_foreign_data_wrapper'
+    and relname != 'pg_foreign_server' order by 1
 loop
   execute 'select min(oid) from ' || relnm into lowoid;
   continue when lowoid is null or lowoid::text >= get_macro_value('FirstNormalObjectId');

@@ -2275,6 +2275,7 @@ _copyNextValueExpr(const NextValueExpr *from)
 
 	COPY_SCALAR_FIELD(seqid);
 	COPY_SCALAR_FIELD(typeId);
+	COPY_SCALAR_FIELD(auto_increment); /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 	return newnode;
 }

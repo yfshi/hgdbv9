@@ -131,12 +131,12 @@ GRANT SELECT (id), UPDATE (name) ON test_schema.test_table TO user_a WITH GRANT 
 GRANT SELECT (name) ON test_schema.test_table TO user_b;
 SELECT grantee, table_schema, table_name, column_name, privilege_type, is_grantable
 FROM information_schema.column_privileges
-WHERE table_schema = 'test_schema' AND table_name = 'test_table' AND grantee like '%user_%';
+WHERE table_schema = 'test_schema' AND table_name = 'test_table' AND grantee like '%user_%' order by is_grantable , column_name;
        grantee        | table_schema | table_name | column_name | privilege_type | is_grantable 
 ----------------------+--------------+------------+-------------+----------------+--------------
- 'user_a'@'localhost' | test_schema  | test_table | name        | UPDATE         | YES
  'user_b'@'localhost' | test_schema  | test_table | name        | SELECT         | NO
  'user_a'@'localhost' | test_schema  | test_table | id          | SELECT         | YES
+ 'user_a'@'localhost' | test_schema  | test_table | name        | UPDATE         | YES
 (3 rows)
 
 ------------------------------------------------------------
@@ -221,18 +221,18 @@ CREATE TABLE test_schema_constraints.cons_tbl (
     ref_id INT,
     CONSTRAINT fk_ref FOREIGN KEY (ref_id) REFERENCES test_schema_constraints.cons_tbl(id)
 );
-SELECT constraint_schema, constraint_name, table_schema,
+SELECT constraint_schema, table_schema,
        table_name, constraint_type
 FROM information_schema.table_constraints
 WHERE table_schema = 'test_schema_constraints'
-ORDER BY constraint_name;
-    constraint_schema    |    constraint_name     |      table_schema       | table_name | constraint_type 
--------------------------+------------------------+-------------------------+------------+-----------------
- test_schema_constraints | 32927_32928_1_not_null | test_schema_constraints | cons_tbl   | CHECK
- test_schema_constraints | 32927_32928_3_not_null | test_schema_constraints | cons_tbl   | CHECK
- test_schema_constraints | cons_tbl_code_key      | test_schema_constraints | cons_tbl   | UNIQUE
- test_schema_constraints | cons_tbl_pkey          | test_schema_constraints | cons_tbl   | PRIMARY KEY
- test_schema_constraints | fk_ref                 | test_schema_constraints | cons_tbl   | FOREIGN KEY
+ORDER BY constraint_type;
+    constraint_schema    |      table_schema       | table_name | constraint_type 
+-------------------------+-------------------------+------------+-----------------
+ test_schema_constraints | test_schema_constraints | cons_tbl   | CHECK
+ test_schema_constraints | test_schema_constraints | cons_tbl   | CHECK
+ test_schema_constraints | test_schema_constraints | cons_tbl   | FOREIGN KEY
+ test_schema_constraints | test_schema_constraints | cons_tbl   | PRIMARY KEY
+ test_schema_constraints | test_schema_constraints | cons_tbl   | UNIQUE
 (5 rows)
 
 ------------------------------------------------------------

@@ -359,6 +359,12 @@ struct ParseState
 	 */
 	bool		p_alter_column_type;
 
+	/** SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT
+	 * whether to check the column of type in INSERT context.
+	 * true: check and add funcexpr node
+	 */
+	bool		p_check_column_auto_increment;
+
 	/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
 	 * pstate->p_subselect record where the row is
 	 * in a subquery, which is needed for data masking.

@@ -322,7 +322,10 @@ extern PGDLLIMPORT bool convert_plisql_anonymous_int_to_number;
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 extern PGDLLIMPORT int div_precision_increment;
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
-
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+extern PGDLLIMPORT int	auto_increment_increment;
+extern PGDLLIMPORT int	auto_increment_offset;
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 extern PGDLLIMPORT int	nls_length_semantics;	/* BUG#Z091 */
 extern PGDLLIMPORT char *nls_date_format;

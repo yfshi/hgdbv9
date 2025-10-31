@@ -461,6 +461,7 @@ typedef struct ExprEvalStep
 		{
 			Oid			seqid;
 			Oid			seqtypid;
+			bool		auto_increment; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		}			nextvalueexpr;
 
 		/* for EEOP_ARRAYEXPR */

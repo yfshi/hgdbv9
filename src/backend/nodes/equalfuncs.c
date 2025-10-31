@@ -795,7 +795,7 @@ _equalNextValueExpr(const NextValueExpr *a, const NextValueExpr *b)
 {
 	COMPARE_SCALAR_FIELD(seqid);
 	COMPARE_SCALAR_FIELD(typeId);
-
+	COMPARE_SCALAR_FIELD(auto_increment); /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	return true;
 }
 

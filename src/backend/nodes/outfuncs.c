@@ -1749,6 +1749,7 @@ _outNextValueExpr(StringInfo str, const NextValueExpr *node)
 
 	WRITE_OID_FIELD(seqid);
 	WRITE_OID_FIELD(typeId);
+	WRITE_OID_FIELD(auto_increment); /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 }
 
 static void
@@ -4048,7 +4049,11 @@ _outConstraint(StringInfo str, const Constraint *node)
 		case CONSTR_ATTR_IMMEDIATE:
 			appendStringInfoString(str, "ATTR_IMMEDIATE");
 			break;
-
+		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+		case CONSTR_AUTO_INCREMENT:
+			appendStringInfoString(str, "AUTO_INCREMENT");
+			break;
+		/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		default:
 			appendStringInfo(str, "<unrecognized_constraint %d>",
 							 (int) node->contype);

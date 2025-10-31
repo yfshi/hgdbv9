@@ -574,7 +574,7 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 
 	/* Get all the constraint information */
 	appendStringInfo(&query_constraint_str,
-					 "select conname, pg_get_constraintdef(oid) as constraintdef from pg_constraint where conrelid = %u;",
+					 "select conname, pg_get_constraintdef(oid) as constraintdef from pg_constraint where conrelid = %u order by oid;",
 					 pgclass->oid);
 
 	if (SPI_connect() != SPI_OK_CONNECT)

@@ -1461,6 +1461,7 @@ typedef struct NextValueExpr
 	Expr		xpr;
 	Oid			seqid;
 	Oid			typeId;
+	bool		auto_increment; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 } NextValueExpr;
 
 /*

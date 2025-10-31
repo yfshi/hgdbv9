@@ -106,6 +106,7 @@ SELECT table_name, column_name, is_updatable
  ro_view19  | last_value  | NO
  ro_view19  | log_cnt     | NO
  ro_view19  | is_called   | NO
+ ro_view19  | next_value  | NO
  ro_view2   | a           | NO
  ro_view2   | b           | NO
  ro_view20  | a           | NO
@@ -131,7 +132,7 @@ SELECT table_name, column_name, is_updatable
  rw_view16  | a           | YES
  rw_view16  | b           | YES
  rw_view16  | aa          | YES
-(39 rows)
+(40 rows)
 
 -- Read-only views
 DELETE FROM ro_view1;
