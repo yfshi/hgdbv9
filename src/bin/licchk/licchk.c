@@ -16,6 +16,7 @@
  * 		ReqID:SRS-MISC-LICENSE-ClientTool
  *		ReqID:SRS-MISC-LICENSE-ENCODING
  *		ReqID:SRS-MISC-LICENSE-TECC
+ *		ReqID:SRS-MISC-LICENSE-STYLECONFIG
  *------------------------------------------------------------------
  */
 #include <stdio.h>
@@ -62,6 +63,20 @@ static bool  is_get_start_time = false;		/* acquire the start time */
 static bool  is_get_final_time = false;		/* acquire the deadline time */
 /* End - ReqID:SRS-MISC-LICENSE-TECC */
 
+/* Begin - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+static bool  is_get_highgo_version = false;	// acquire the highgo version
+static bool  is_get_license_version = false;
+static bool  is_get_license_serial = false;
+static bool  is_get_license_status = false;
+static bool  is_get_user_info = false;
+static bool  is_get_auth_type = false;
+static bool  is_get_used_type = false;
+static bool  is_get_project_info = false;
+static bool  is_get_max_cpu_cores = false;
+static bool  is_get_dbname = false;
+static bool  is_get_hardware_code = false;
+/* End - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+
 static void  printLicenseData(void);
 static void  _printFuncList(void);
 static void  gen_hardware_code_file(const char *);
@@ -96,7 +111,6 @@ int main(int argc, char **argv)
 	char	*name;
 	char	*sys;
 #endif
-	
 
 	static struct option long_options[] = {
 		{ "list"    , no_argument      , NULL, 'l' },
@@ -123,9 +137,22 @@ int main(int argc, char **argv)
 		{ "set-language", required_argument, NULL, 'e' },
 		/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
 		/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
-		{ "start-time", no_argument, NULL, 't' },
-		{ "final-time", no_argument, NULL, 'T' },
+		{ "get-start-time", no_argument, NULL, 't' },
+		{ "get-final-time", no_argument, NULL, 'T' },
 		/* End - ReqID:SRS-MISC-LICENSE-TECC */
+		/* Begin - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+		{ "license-version", no_argument, NULL, 1 },
+		{ "license-serial", no_argument, NULL, 2 },
+		{ "license-status", no_argument, NULL, 3 },
+		{ "user-info", no_argument, NULL, 4 },
+		{ "auth-type", no_argument, NULL, 5 },
+		{ "used-type", no_argument, NULL, 6 },
+		{ "project-info", no_argument, NULL, 7 },
+		{ "get-highgo-version", no_argument, NULL, 'H' },
+		{ "max-cpu-cores", no_argument, NULL, 'M' },
+		{ "dbname", no_argument, NULL, 'D' },
+		{ "hardware-code", no_argument, NULL, 'W' },
+		/* End - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
 		{ "version" , no_argument      , NULL, 'V' },
 		{ "help"    , no_argument      , NULL, '?' },
 		{  NULL     , 0                , NULL,  0  }
@@ -192,12 +219,12 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("licchk DB V1.5.5");
+			puts("licchk DB V1.5.6");
 			exit(0);
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSdms:e:Tt", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSdms:e:TtHDMW", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -274,6 +301,52 @@ int main(int argc, char **argv)
 				break;
 			/* End - ReqID:SRS-MISC-LICENSE-TECC */
 
+			/* Begin - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+			case 'H':
+				is_get_highgo_version = true;
+				break;
+
+			case 1:
+				is_get_license_version = true;
+				break;
+
+			case 2:
+				is_get_license_serial = true;
+				break;
+
+			case 3:
+				is_get_license_status = true;
+				break;
+
+			case 4:
+				is_get_user_info = true;
+				break;
+
+			case 5:
+				is_get_auth_type = true;
+				break;
+
+			case 6:
+				is_get_used_type = true;
+				break;
+
+			case 7:
+				is_get_project_info = true;
+				break;
+
+			case 'M':
+				is_get_max_cpu_cores = true;
+				break;
+
+			case 'D':
+				is_get_dbname = true;
+				break;
+
+			case 'W':
+				is_get_hardware_code = true;
+				break;
+			/* End - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+
 			case 'v':
 				is_view = true;
 				break;
@@ -336,6 +409,52 @@ int main(int argc, char **argv)
 			printf("%s\n", hg_get_finalTime());
 		}
 		/* End - ReqID:SRS-MISC-LICENSE-TECC */
+		/* Begin - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+		else if (is_get_highgo_version)
+		{
+			printf("%s\n", hg_get_highgoVersion());
+		}
+		else if (is_get_license_version)
+		{
+			printf("%s\n", hg_get_licver());
+		}
+		else if (is_get_license_serial)
+		{
+			printf("%s\n", hg_get_licSerial());
+		}
+		else if (is_get_license_status)
+		{
+			printf("%s\n", hg_get_license_status());
+		}
+		else if (is_get_user_info)
+		{
+			printf("%s\n", hg_get_userInfo());
+		}
+		else if (is_get_auth_type)
+		{
+			printf("%s\n", hg_get_authType());
+		}
+		else if (is_get_used_type)
+		{
+			printf("%s\n", hg_get_usedType());
+		}
+		else if (is_get_project_info)
+		{
+			printf("%s\n", hg_get_projectInfo());
+		}
+		else if (is_get_max_cpu_cores)
+		{
+			printf("%s\n", hg_get_maxCpuCores());
+		}
+		else if (is_get_dbname)
+		{
+			printf("%s\n", hg_get_defaultDBname());
+		}
+		else if (is_get_hardware_code)
+		{
+			printf("%s\n", hg_get_hardware_code());
+		}
+		/* End - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
 		else
 		{
 			printLicenseData();
@@ -382,6 +501,52 @@ int main(int argc, char **argv)
 			printf("%s\n", hg_get_finalTime());
 		}
 		/* End - ReqID:SRS-MISC-LICENSE-TECC */
+		/* Begin - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+		else if (is_get_highgo_version)
+		{
+			printf("%s\n", hg_get_highgoVersion());
+		}
+		else if (is_get_license_version)
+		{
+			printf("%s\n", hg_get_licver());
+		}
+		else if (is_get_license_serial)
+		{
+			printf("%s\n", hg_get_licSerial());
+		}
+		else if (is_get_license_status)
+		{
+			printf("%s\n", hg_get_license_status());
+		}
+		else if (is_get_user_info)
+		{
+			printf("%s\n", hg_get_userInfo());
+		}
+		else if (is_get_auth_type)
+		{
+			printf("%s\n", hg_get_authType());
+		}
+		else if (is_get_used_type)
+		{
+			printf("%s\n", hg_get_usedType());
+		}
+		else if (is_get_project_info)
+		{
+			printf("%s\n", hg_get_projectInfo());
+		}
+		else if (is_get_max_cpu_cores)
+		{
+			printf("%s\n", hg_get_maxCpuCores());
+		}
+		else if (is_get_dbname)
+		{
+			printf("%s\n", hg_get_defaultDBname());
+		}
+		else if (is_get_hardware_code)
+		{
+			printf("%s\n", hg_get_hardware_code());
+		}
+		/* End - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
 		else
 		{
 			printLicenseData();
@@ -508,6 +673,19 @@ usage(const char *progname)
 	printf(_("  -t, --get-start-time        get authorization start time.\n"));
 	printf(_("  -T, --get-final-time        get authorization final time.\n"));
 	/* End - ReqID:SRS-MISC-LICENSE-TECC */
+	/* Begin - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+	printf(_("  -H, --get-highgo-version    get highgo database version.\n"));
+	printf(_("  -M, --max-cpu-cores         get max cpu cores.\n"));
+	printf(_("  -D, --dbname                get database default name.\n"));
+	printf(_("  -W, --hardware-code         get hardware code.\n"));
+	printf(_("      --license-version       get license version.\n"));
+	printf(_("      --license-serial        get license serial.\n"));
+	printf(_("      --license-status        get license status.\n"));
+	printf(_("      --user-info             get user information.\n"));
+	printf(_("      --auth-type             get authorization type.\n"));
+	printf(_("      --used-type             get used type.\n"));
+	printf(_("      --project-info          get project information.\n"));
+	/* End - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
 	printf(_("  -V, --version               output version information, then exit\n"));
 	printf(_("  -?, --help                  show this help, then exit\n"));
 }
