@@ -2891,3 +2891,124 @@ rollback;
 
 drop table convslot_test_parent;
 drop function convslot_trig4();
+
+--
+-- Fix bug OA-REQ-1861
+--
+DROP TABLE IF EXISTS test_log;
+DROP TABLE IF EXISTS test_tab;
+
+CREATE TABLE test_tab (
+    uuid text,
+    county_int text,
+    info text,
+    CONSTRAINT pk_test_tab PRIMARY KEY (uuid, county_int)
+)
+PARTITION BY LIST (county_int);
+
+CREATE TABLE test_tab1 PARTITION OF test_tab FOR VALUES IN ('a');
+CREATE TABLE test_tab2 PARTITION OF test_tab FOR VALUES IN ('b');
+CREATE TABLE test_tab_default PARTITION OF test_tab DEFAULT;
+
+CREATE TABLE test_log (
+    id serial primary key,
+    trig_timing text,
+    trig_level text,
+    trig_op text,
+    table_name text,
+    old_uuid text,
+    old_county text,
+    new_uuid text,
+    new_county text,
+    message text
+);
+
+CREATE OR REPLACE FUNCTION log_trigger_event()
+RETURNS trigger AS $$
+BEGIN
+    INSERT INTO test_log(
+        trig_timing, trig_level, trig_op, table_name,
+        old_uuid, old_county, new_uuid, new_county, message
+    )
+    VALUES (
+        TG_WHEN, TG_LEVEL, TG_OP, TG_TABLE_NAME,
+        COALESCE(OLD.uuid, '-'), COALESCE(OLD.county_int, '-'),
+        COALESCE(NEW.uuid, '-'), COALESCE(NEW.county_int, '-'),
+        format('[TRIGGER] %s %s %s on %s', TG_WHEN, TG_LEVEL, TG_OP, TG_TABLE_NAME)
+    );
+    IF (TG_LEVEL = 'ROW' AND TG_OP IN ('UPDATE','DELETE')) THEN
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        ELSE
+            RETURN NEW;
+        END IF;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+/
+
+CREATE TRIGGER trg_test_tab_before_stmt_upd
+BEFORE UPDATE ON test_tab
+FOR EACH STATEMENT
+EXECUTE FUNCTION log_trigger_event();
+/
+
+CREATE TRIGGER trg_test_tab_after_stmt_upd
+AFTER UPDATE ON test_tab
+FOR EACH STATEMENT
+EXECUTE FUNCTION log_trigger_event();
+/
+
+CREATE TRIGGER trg_test_tab_before_row_upd
+BEFORE UPDATE ON test_tab
+FOR EACH ROW
+EXECUTE FUNCTION log_trigger_event();
+/
+
+CREATE TRIGGER trg_test_tab_after_row_upd
+AFTER UPDATE ON test_tab
+FOR EACH ROW
+EXECUTE FUNCTION log_trigger_event();
+/
+
+CREATE TRIGGER trg_test_tab_before_stmt_del
+BEFORE DELETE ON test_tab
+FOR EACH STATEMENT
+EXECUTE FUNCTION log_trigger_event();
+/
+
+CREATE TRIGGER trg_test_tab_after_stmt_del
+AFTER DELETE ON test_tab
+FOR EACH STATEMENT
+EXECUTE FUNCTION log_trigger_event();
+/
+
+CREATE TRIGGER trg_test_tab_before_row_del
+BEFORE DELETE ON test_tab
+FOR EACH ROW
+EXECUTE FUNCTION log_trigger_event();
+/
+
+CREATE TRIGGER trg_test_tab_after_row_del
+AFTER DELETE ON test_tab
+FOR EACH ROW
+EXECUTE FUNCTION log_trigger_event();
+/
+
+INSERT INTO test_tab VALUES
+('1', 'a', 'row in partition a'),
+('2', 'b', 'row in partition b'),
+('3', 'x', 'row in default partition');
+
+UPDATE test_tab SET county_int = 'b' WHERE uuid = '1';
+
+DELETE FROM test_tab WHERE county_int = 'b' AND uuid = '2';
+
+SELECT * FROM test_log ORDER BY id;
+
+-- cleanup
+
+DROP TABLE test_log;
+DROP TABLE test_tab CASCADE;
+DROP FUNCTION log_trigger_event;
