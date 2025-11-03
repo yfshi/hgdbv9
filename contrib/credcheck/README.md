@@ -281,16 +281,16 @@ restrict new passwords from being chosen from this history:
 * If an account is restricted based on time elapsed, a new password cannot be chosen from passwords in the history that are newer than `password_reuse_interval` days. For example, if the password reuse interval is set to 365, a new password must not be among those previously chosen within the last year. 
 
 To be able to list the content of the history a view is provided in the database you have created
-the credcheck extension. The view is named `public.pg_password_history`. This view is visible by everyone.
+the credcheck extension. The view is named `hg_security.pg_password_history`. This view is visible by everyone.
 
-A superuser can also reset the content of the password history by calling a function named `public.pg_password_history_reset()`. If it is called without an argument, all the passwords history will be cleared. To only remove the records registered for a single user, just pass his name as parameter. This function returns the number of records removed from the history.
+A superuser can also reset the content of the password history by calling a function named `hg_security.pg_password_history_reset()`. If it is called without an argument, all the passwords history will be cleared. To only remove the records registered for a single user, just pass his name as parameter. This function returns the number of records removed from the history.
 
 Example:
 ```
 SET credcheck.password_reuse_history = 2;
 CREATE USER credtest WITH PASSWORD 'H8Hdre=S2';
 ALTER USER credtest PASSWORD 'J8YuRe=6O';
-SELECT rolename, password_hash FROM pg_password_history WHERE rolename = 'credtest' ORDER BY password_date;
+SELECT rolename, password_hash FROM hg_security.pg_password_history WHERE rolename = 'credtest' ORDER BY password_date;
  rolename |                          password_hash
 ----------+------------------------------------------------------------------
  credtest | 7488570b80076cf9da26644d5eeb316c4768ff5bee7bf319344e7bb328032098
@@ -302,7 +302,7 @@ ALTER USER credtest PASSWORD 'J8YuRe=6O';
 ERROR:  Cannot use this credential following the password reuse policy
 
 -- Reset the password history
-SELECT pg_password_history_reset();
+SELECT hg_security.pg_password_history_reset();
  pg_password_history_reset
 ---------------------------
                          2
@@ -315,13 +315,13 @@ SET credcheck.password_reuse_history = 1;
 SET credcheck.password_reuse_interval = 365;
 -- Add a new password in the history and set its age to 100 days
 ALTER USER credtest PASSWORD 'J8YuRe=6O';
-SELECT pg_password_history_timestamp('credtest', now()::timestamp - '100 days'::interval);
+SELECT hg_security.pg_password_history_timestamp('credtest', now()::timestamp - '100 days'::interval);
  pg_password_history_timestamp
 -------------------------------
                              1
 (1 row)
 
-SELECT * FROM pg_password_history WHERE rolename = 'credtest';
+SELECT * FROM hg_security.pg_password_history WHERE rolename = 'credtest';
  rolename |         password_date         |                          password_hash                           
 ----------+-------------------------------+------------------------------------------------------------------
  credtest | 2022-12-15 13:41:06.736775+03 | c38cf85ca6c3e5ee72c09cf0bfb42fb29b0f0a3e8ba335637941d60f86512508
@@ -331,7 +331,7 @@ SELECT * FROM pg_password_history WHERE rolename = 'credtest';
 ALTER USER credtest PASSWORD 'J8YuRe=6O';
 ERROR:  Cannot use this credential following the password reuse policy
 -- Change the age of the password to exceed the 1 year interval
-SELECT pg_password_history_timestamp('credtest', now()::timestamp - '380 days'::interval);
+SELECT hg_security.pg_password_history_timestamp('credtest', now()::timestamp - '380 days'::interval);
  pg_password_history_timestamp
 -------------------------------
                              2
@@ -339,7 +339,7 @@ SELECT pg_password_history_timestamp('credtest', now()::timestamp - '380 days'::
 
 -- success, the old password present in the history has expired and will be removed
 ALTER USER credtest PASSWORD 'J8YuRe=6O';
-SELECT rolename, password_hash FROM pg_password_history WHERE rolename = 'credtest';
+SELECT rolename, password_hash FROM hg_security.pg_password_history WHERE rolename = 'credtest';
  rolename |         password_date         |                          password_hash                           
 ----------+-------------------------------+------------------------------------------------------------------
  credtest | 2023-03-25 13:42:37.387629+03 | c38cf85ca6c3e5ee72c09cf0bfb42fb29b0f0a3e8ba335637941d60f86512508
@@ -371,7 +371,7 @@ In case the `postgres` superuser was banned, he can not logged anymore. If there
 
 Example: `kill -1 1234`
 
-A superuser can also reset the content of the banned user cache by calling a function named `public.pg_banned_role_reset()`. If it is called without an argument, all the banned cache will be cleared. To only remove the record registered for a single user, just pass his name as parameter. This function returns the number of records removed from the cache. A restart of PostgreSQL also clear the cache.
+A superuser can also reset the content of the banned user cache by calling a function named `hg_security.pg_banned_role_reset()`. If it is called without an argument, all the banned cache will be cleared. To only remove the record registered for a single user, just pass his name as parameter. This function returns the number of records removed from the cache. A restart of PostgreSQL also clear the cache.
 
 Example:
 ```
@@ -391,19 +391,19 @@ psql: error: connection to server at "localhost" (127.0.0.1), port 5432 failed: 
 connection to server at "localhost" (127.0.0.1), port 5432 failed: FATAL:  rejecting connection, user 'toban_user' has been banned
 ```
 ```
-test=# SELECT * FROM pg_banned_role;
+test=# SELECT * FROM hg_security.pg_banned_role;
  roleid | failure_count |        banned_date         
 --------+---------------+----------------------------
  250362 |             2 | 2023-06-09 20:33:58.490273
 (1 row)
 
-test=# SELECT pg_banned_role_reset();
+test=# SELECT hg_security.pg_banned_role_reset();
  pg_banned_role_reset 
 ----------------------
                     1
 (1 row)
 
-test=# SELECT * FROM pg_banned_role;
+test=# SELECT * FROM hg_security.pg_banned_role;
  roleid | failure_count | banned_date 
 --------+---------------+-------------
 (0 rows)

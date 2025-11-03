@@ -9,7 +9,7 @@
 -- Remove all entries from authent failure cache.
 -- Returns the number of entries removed.
 ----
-CREATE FUNCTION pg_banned_role_reset( )
+CREATE FUNCTION hg_security.pg_banned_role_reset( )
 RETURNS integer
 AS 'MODULE_PATHNAME'
 LANGUAGE C VOLATILE;
@@ -18,7 +18,7 @@ LANGUAGE C VOLATILE;
 -- Remove entries of the specified user from authent failure cache.
 -- Returns the number of entries removed.
 ----
-CREATE FUNCTION pg_banned_role_reset( IN username name )
+CREATE FUNCTION hg_security.pg_banned_role_reset( IN username name )
 RETURNS integer
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT VOLATILE;
@@ -26,7 +26,7 @@ LANGUAGE C STRICT VOLATILE;
 ----
 -- Look at authent failure cache entries
 ----
-CREATE FUNCTION pg_banned_role (
+CREATE FUNCTION hg_security.pg_banned_role (
 	OUT roleid Oid,
 	OUT failure_count integer,
 	OUT banned_date timestamp
@@ -36,12 +36,12 @@ AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT VOLATILE;
 
 -- Register a view on the function for ease of use.
-CREATE VIEW pg_banned_role AS
-  SELECT * FROM pg_banned_role();
+CREATE VIEW hg_security.pg_banned_role AS
+  SELECT * FROM hg_security.pg_banned_role();
 
-GRANT SELECT ON pg_banned_role TO PUBLIC;
+GRANT SELECT ON hg_security.pg_banned_role TO PUBLIC;
 
 -- Don't want this to be available to non-superusers.
-REVOKE ALL ON FUNCTION pg_banned_role_reset() FROM PUBLIC;
-REVOKE ALL ON FUNCTION pg_banned_role_reset(name) FROM PUBLIC;
+REVOKE ALL ON FUNCTION hg_security.pg_banned_role_reset() FROM PUBLIC;
+REVOKE ALL ON FUNCTION hg_security.pg_banned_role_reset(name) FROM PUBLIC;
 

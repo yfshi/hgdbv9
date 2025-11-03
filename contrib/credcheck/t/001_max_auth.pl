@@ -70,7 +70,7 @@ test_role($node, 'lockuser', "Login attempt with correct password, expected fail
 
 reset_pg_hba($node, 'trust');
 
-$node->safe_psql('postgres', "SELECT pg_banned_role_reset('lockuser')");
+$node->safe_psql('postgres', "SELECT hg_security.pg_banned_role_reset('lockuser')");
 
 reset_pg_hba($node, 'md5');
 test_role($node, 'lockuser', "Login attempt with correct password, expected success", 0);

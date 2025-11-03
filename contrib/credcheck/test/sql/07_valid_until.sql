@@ -49,4 +49,4 @@ SET credcheck.password_reuse_interval to 15;
 SET credcheck.password_reuse_history to 4;
 CREATE role credcheck_test with login password 'password'; 
 -- History must be empty
-SELECT count(*), '0' AS "expected" FROM pg_password_history ;
+SELECT count(*), '0' AS "expected" FROM hg_security.pg_password_history ;

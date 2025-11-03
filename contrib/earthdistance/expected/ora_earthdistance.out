@@ -1021,29 +1021,20 @@ WHERE
     AND p.proname NOT LIKE 'sqlite_fdw%'
 ORDER BY 
     1, 2, 4;
- Schema |             Name              | Result data type |                                          Argument data types                                          | Type 
---------+-------------------------------+------------------+-------------------------------------------------------------------------------------------------------+------
- public | check_se_param_change         | text             |                                                                                                       | func
- public | is_sysdba                     | boolean          | oid                                                                                                   | func
- public | is_syssao                     | boolean          | oid                                                                                                   | func
- public | is_syssso                     | boolean          | oid                                                                                                   | func
- public | login_message_display         | void             | username name                                                                                         | func
- public | pg_banned_role                | record           | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                       | func
- public | pg_banned_role_reset          | integer          |                                                                                                       | func
- public | pg_banned_role_reset          | integer          | username name                                                                                         | func
- public | pg_password_history           | record           | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text | func
- public | pg_password_history_reset     | integer          |                                                                                                       | func
- public | pg_password_history_reset     | integer          | username name                                                                                         | func
- public | pg_password_history_timestamp | integer          | username name, new_timestamp timestamp with time zone                                                 | func
- public | postgres_fdw_disconnect       | boolean          | text                                                                                                  | func
- public | postgres_fdw_disconnect_all   | boolean          |                                                                                                       | func
- public | postgres_fdw_get_connections  | record           | OUT server_name text, OUT valid boolean                                                               | func
- public | postgres_fdw_handler          | fdw_handler      |                                                                                                       | func
- public | postgres_fdw_validator        | void             | text[], oid                                                                                           | func
- public | reset_all_se_param            | text             |                                                                                                       | func
- public | set_backend_se_param          | text             | oid, text, boolean                                                                                    | func
- public | user_expiration_info          | record           | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                          | func
-(20 rows)
+ Schema |             Name             | Result data type |           Argument data types           | Type 
+--------+------------------------------+------------------+-----------------------------------------+------
+ public | check_se_param_change        | text             |                                         | func
+ public | is_sysdba                    | boolean          | oid                                     | func
+ public | is_syssao                    | boolean          | oid                                     | func
+ public | is_syssso                    | boolean          | oid                                     | func
+ public | postgres_fdw_disconnect      | boolean          | text                                    | func
+ public | postgres_fdw_disconnect_all  | boolean          |                                         | func
+ public | postgres_fdw_get_connections | record           | OUT server_name text, OUT valid boolean | func
+ public | postgres_fdw_handler         | fdw_handler      |                                         | func
+ public | postgres_fdw_validator       | void             | text[], oid                             | func
+ public | reset_all_se_param           | text             |                                         | func
+ public | set_backend_se_param         | text             | oid, text, boolean                      | func
+(11 rows)
 
 \do
                              List of operators
@@ -1081,29 +1072,20 @@ WHERE
     AND p.proname NOT LIKE 'sqlite_fdw%'
 ORDER BY 
     1, 2, 4;
- Schema |             Name              | Result data type |                                          Argument data types                                          | Type 
---------+-------------------------------+------------------+-------------------------------------------------------------------------------------------------------+------
- public | check_se_param_change         | text             |                                                                                                       | func
- public | is_sysdba                     | boolean          | oid                                                                                                   | func
- public | is_syssao                     | boolean          | oid                                                                                                   | func
- public | is_syssso                     | boolean          | oid                                                                                                   | func
- public | login_message_display         | void             | username name                                                                                         | func
- public | pg_banned_role                | record           | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                       | func
- public | pg_banned_role_reset          | integer          |                                                                                                       | func
- public | pg_banned_role_reset          | integer          | username name                                                                                         | func
- public | pg_password_history           | record           | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text | func
- public | pg_password_history_reset     | integer          |                                                                                                       | func
- public | pg_password_history_reset     | integer          | username name                                                                                         | func
- public | pg_password_history_timestamp | integer          | username name, new_timestamp timestamp with time zone                                                 | func
- public | postgres_fdw_disconnect       | boolean          | text                                                                                                  | func
- public | postgres_fdw_disconnect_all   | boolean          |                                                                                                       | func
- public | postgres_fdw_get_connections  | record           | OUT server_name text, OUT valid boolean                                                               | func
- public | postgres_fdw_handler          | fdw_handler      |                                                                                                       | func
- public | postgres_fdw_validator        | void             | text[], oid                                                                                           | func
- public | reset_all_se_param            | text             |                                                                                                       | func
- public | set_backend_se_param          | text             | oid, text, boolean                                                                                    | func
- public | user_expiration_info          | record           | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                          | func
-(20 rows)
+ Schema |             Name             | Result data type |           Argument data types           | Type 
+--------+------------------------------+------------------+-----------------------------------------+------
+ public | check_se_param_change        | text             |                                         | func
+ public | is_sysdba                    | boolean          | oid                                     | func
+ public | is_syssao                    | boolean          | oid                                     | func
+ public | is_syssso                    | boolean          | oid                                     | func
+ public | postgres_fdw_disconnect      | boolean          | text                                    | func
+ public | postgres_fdw_disconnect_all  | boolean          |                                         | func
+ public | postgres_fdw_get_connections | record           | OUT server_name text, OUT valid boolean | func
+ public | postgres_fdw_handler         | fdw_handler      |                                         | func
+ public | postgres_fdw_validator       | void             | text[], oid                             | func
+ public | reset_all_se_param           | text             |                                         | func
+ public | set_backend_se_param         | text             | oid, text, boolean                      | func
+(11 rows)
 
 \do public.*
                              List of operators
@@ -1164,29 +1146,20 @@ WHERE
     AND p.proname NOT LIKE 'sqlite_fdw%'
 ORDER BY 
     1, 2, 4;
- Schema |             Name              | Result data type |                                          Argument data types                                          | Type 
---------+-------------------------------+------------------+-------------------------------------------------------------------------------------------------------+------
- public | check_se_param_change         | text             |                                                                                                       | func
- public | is_sysdba                     | boolean          | oid                                                                                                   | func
- public | is_syssao                     | boolean          | oid                                                                                                   | func
- public | is_syssso                     | boolean          | oid                                                                                                   | func
- public | login_message_display         | void             | username name                                                                                         | func
- public | pg_banned_role                | record           | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                       | func
- public | pg_banned_role_reset          | integer          |                                                                                                       | func
- public | pg_banned_role_reset          | integer          | username name                                                                                         | func
- public | pg_password_history           | record           | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text | func
- public | pg_password_history_reset     | integer          |                                                                                                       | func
- public | pg_password_history_reset     | integer          | username name                                                                                         | func
- public | pg_password_history_timestamp | integer          | username name, new_timestamp timestamp with time zone                                                 | func
- public | postgres_fdw_disconnect       | boolean          | text                                                                                                  | func
- public | postgres_fdw_disconnect_all   | boolean          |                                                                                                       | func
- public | postgres_fdw_get_connections  | record           | OUT server_name text, OUT valid boolean                                                               | func
- public | postgres_fdw_handler          | fdw_handler      |                                                                                                       | func
- public | postgres_fdw_validator        | void             | text[], oid                                                                                           | func
- public | reset_all_se_param            | text             |                                                                                                       | func
- public | set_backend_se_param          | text             | oid, text, boolean                                                                                    | func
- public | user_expiration_info          | record           | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                          | func
-(20 rows)
+ Schema |             Name             | Result data type |           Argument data types           | Type 
+--------+------------------------------+------------------+-----------------------------------------+------
+ public | check_se_param_change        | text             |                                         | func
+ public | is_sysdba                    | boolean          | oid                                     | func
+ public | is_syssao                    | boolean          | oid                                     | func
+ public | is_syssso                    | boolean          | oid                                     | func
+ public | postgres_fdw_disconnect      | boolean          | text                                    | func
+ public | postgres_fdw_disconnect_all  | boolean          |                                         | func
+ public | postgres_fdw_get_connections | record           | OUT server_name text, OUT valid boolean | func
+ public | postgres_fdw_handler         | fdw_handler      |                                         | func
+ public | postgres_fdw_validator       | void             | text[], oid                             | func
+ public | reset_all_se_param           | text             |                                         | func
+ public | set_backend_se_param         | text             | oid, text, boolean                      | func
+(11 rows)
 
 \do public.*
                              List of operators
