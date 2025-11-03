@@ -436,7 +436,7 @@ PG_FUNCTION_INFO_V1(current_is_syssao);
 PG_FUNCTION_INFO_V1(current_is_syssso);
 PG_FUNCTION_INFO_V1(current_is_superuser);
 PG_FUNCTION_INFO_V1(audit_show_diskinfo);
-PG_FUNCTION_INFO_V1(copy_file_to_remot_srv);
+PG_FUNCTION_INFO_V1(copy_file_to_remote_srv);
 PG_FUNCTION_INFO_V1(pg_audit_switch_primary);
 
 Datum
@@ -2263,7 +2263,19 @@ audit_get_actionname_from_tree(Node *parsetree, char *buf)
 		case T_CreateDomainStmt:
 			strcpy(buf, CREATE_DOMAIN_S);
 			break;
+		/* Begin - BUG#Z6075 */
+		case T_CreateResourceGroupStmt:
+			strcpy(buf, CREATE_RESOURCE_GROUP_S);
+			break;
 
+		case T_DropResourceGroupStmt:
+			strcpy(buf, DROP_RESOURCE_GROUP_S);
+			break;
+
+		case T_AlterResourceGroupStmt:
+			strcpy(buf, ALTER_RESOURCE_GROUP_S);
+			break;
+		/* End - BUG#Z6075 */
 		case T_CreateSchemaStmt:
 			strcpy(buf, CREATE_SCHEMA_S);
 			break;
@@ -5944,13 +5956,13 @@ audit_arch_job(void)
 							(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir)))
 		{
 			snprintf(archfile, MAXPGPATH, "%s/%d.csv", archpath, oids[elemno]);	/* Bug#Z5840 */
-			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select public.copy_file_to_remot_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);	/* BUG#Z5840 */
+			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select public.copy_file_to_remote_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);	/* BUG#Z5840 */
 		}
 		else if ((audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0) &&
 								(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir) == 0))
 		{
 			snprintf(archfile, MAXPGPATH, "%s/%d.csv", DataDir, oids[elemno]);	/* Bug#Z5840 */
-			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select public.copy_file_to_remot_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir); /* BUG#Z5840 */
+			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select public.copy_file_to_remote_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir); /* BUG#Z5840 */
 		}
 		else if(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
 			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv''", archpath, oids[elemno]);	/* BUG#Z5840 */
@@ -7641,6 +7653,17 @@ audit_stmttype_to_string(AuditStmtType type)
 		case CREATE_SEQUENCE:
 			tag = CREATE_SEQUENCE_S;
 			break;
+		/* Begin - BUG#Z6075 */
+		case CREATE_RESOURCE_GROUP:
+			tag = CREATE_RESOURCE_GROUP_S;
+			break;
+		case DROP_RESOURCE_GROUP:
+			tag = DROP_RESOURCE_GROUP_S;
+			break;
+		case ALTER_RESOURCE_GROUP:
+			tag = ALTER_RESOURCE_GROUP_S;
+			break;
+		/* End - BUG#Z6075 */
 		case CREATE_TABLE:
 			tag = CREATE_TABLE_S;
 			break;
@@ -7986,6 +8009,14 @@ audit_get_stmt_type(char *statment, bool is_obj, ObjectType objtype)
 		type = CREATE_INDEX;
 	else if (pg_strcasecmp(statment, CREATE_SEQUENCE_S) == 0)
 		type = CREATE_SEQUENCE;
+	/* Begin - BUG#Z6075 */
+	else if (pg_strcasecmp(statment, CREATE_RESOURCE_GROUP_S) == 0)
+		type = CREATE_RESOURCE_GROUP;
+	else if (pg_strcasecmp(statment, DROP_RESOURCE_GROUP_S) == 0)
+		type = DROP_RESOURCE_GROUP;
+	else if (pg_strcasecmp(statment, ALTER_RESOURCE_GROUP_S) == 0)
+		type = ALTER_RESOURCE_GROUP;
+	/* End - BUG#Z6075 */
 	else if (pg_strcasecmp(statment, CREATE_TABLE_S) == 0)
 		type = CREATE_TABLE;
 	else if (pg_strcasecmp(statment, CREATE_TABLE_AS_S) == 0)
@@ -10195,7 +10226,7 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 }
 
 Datum
-copy_file_to_remot_srv(PG_FUNCTION_ARGS)
+copy_file_to_remote_srv(PG_FUNCTION_ARGS)
 {
 	text    *sourcevar = PG_GETARG_TEXT_P(0);
 	text    *destvar = PG_GETARG_TEXT_P(1);

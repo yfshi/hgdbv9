@@ -584,9 +584,9 @@ CREATE FUNCTION hg_security.pg_audit_file_archive( )
 		AS 'MODULE_PATHNAME', 'pg_audit_file_archive'
 LANGUAGE C STRICT;
 
-CREATE OR REPLACE FUNCTION hg_security.copy_file_to_remot_srv(text, text)
+CREATE OR REPLACE FUNCTION hg_security.copy_file_to_remote_srv(text, text)
 RETURNS void
-AS 'MODULE_PATHNAME','copy_file_to_remot_srv'
+AS 'MODULE_PATHNAME','copy_file_to_remote_srv'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -975,5 +975,5 @@ GRANT ALL ON FUNCTION hg_security.pg_drop_secmon_threshold TO syssao_role;
 ALTER FUNCTION hg_security.audit_show_diskinfo OWNER TO syssao;
 GRANT ALL ON FUNCTION hg_security.audit_show_diskinfo TO syssao_role;
 
-ALTER FUNCTION hg_security.copy_file_to_remot_srv OWNER TO syssao;
-GRANT ALL ON FUNCTION hg_security.copy_file_to_remot_srv TO syssao_role;
+ALTER FUNCTION hg_security.copy_file_to_remote_srv OWNER TO syssao;
+GRANT ALL ON FUNCTION hg_security.copy_file_to_remote_srv TO syssao_role;
