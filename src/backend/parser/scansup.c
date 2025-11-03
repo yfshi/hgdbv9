@@ -74,9 +74,19 @@ downcase_identifier(const char *ident, int len, bool warn, bool truncate)
 	 * the high bit set, as long as they aren't part of a multi-byte
 	 * character, and use an ASCII-only downcasing for 7-bit characters.
 	 */
+	strncpy(result, ident, len);
 	for (i = 0; i < len; i++)
 	{
 		unsigned char ch = (unsigned char) ident[i];
+		/* Begin - BUG#Z6063 */
+		int mblen = pg_mblen(ident + i);
+
+		if (mblen > 1)
+		{
+			i += (mblen - 1);
+			continue;
+		}
+		/* End - BUG#Z6063 */
 
 		if (ch >= 'A' && ch <= 'Z')
 			ch += 'a' - 'A';
@@ -114,9 +124,19 @@ upcase_identifier(const char *ident, int len, bool warn, bool truncate)
 	 * the high bit set, as long as they aren't part of a multi-byte
 	 * character, and use an ASCII-only downcasing for 7-bit characters.
 	 */
+	strncpy(result, ident, len);
 	for (i = 0; i < len; i++)
 	{
 		unsigned char ch = (unsigned char) ident[i];
+		/* Begin - BUG#Z6063 */
+		int mblen = pg_mblen(ident + i);
+
+		if (mblen > 1)
+		{
+			i += (mblen - 1);
+			continue;
+		}
+		/* End - BUG#Z6063 */
 
 		if (ch >= 'a' && ch <= 'z')
 			ch -= 'a' - 'A';
