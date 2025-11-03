@@ -59,7 +59,8 @@ OBJS = \
 	src/set/set_global_session_var.o \
 	src/set/set_names.o \
 	src/set/set_charset.o \
-	src/show/show.o
+	src/show/show.o \
+	src/information_schema/mys_information_schema.o
 
 EXTENSION = ivorysql_my
 

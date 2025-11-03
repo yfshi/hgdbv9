@@ -6924,6 +6924,15 @@ trans_MysVariable_to_VariableSet(ParseState *pstate, MysVariableSetStmt *stmt)
 
 					if (aconst->val.type == T_String)
 						varValue = aconst->val.val.str;
+					/* Begin - BUG#Z5978
+					 * Setting a GUC parameter's value to
+					 * NULL will cause a syntax error.
+					 */
+					else if (aconst->val.type == T_Null)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near \"null\"")));
+					/* End - BUG#Z5978 */
 					else
 						vallist = list_make1(ivy_makeAConst(&aconst->val, var->location));
 				}
@@ -7001,6 +7010,15 @@ trans_MysVariable_to_VariableSet(ParseState *pstate, MysVariableSetStmt *stmt)
 				}
 				variableSetStmt->args = vallist;
 
+				/* Begin - BUG#Z5979
+				 * If the parameter list is NIL, the node
+				 * variableSetStmt should node be constructed.
+				 */
+				if (vallist == NULL)
+				{
+					return NULL;
+				}
+				/* End - BUG#Z5979 */
 			}
 		}
 	}

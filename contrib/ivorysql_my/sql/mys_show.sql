@@ -188,11 +188,11 @@ create foreign table ft1 (
 ) server s0 options (delimiter ',', quote '"', "be quoted" 'value');
 create table tab_part_create (a int) partition by list (a);
 
-show tables where Tables_public = 'tb';
-show full tables where Tables_public = 'tb1';
-show full tables from public where Tables_public = 'logs';
-show full tables in public where Tables_public = 'ft1';
-show full tables in public where Tables_public = 'tab_part_create';
+show tables where Tables_in_public = 'tb';
+show full tables where Tables_in_public = 'tb1';
+show full tables from public where Tables_in_public = 'logs';
+show full tables in public where Tables_in_public = 'ft1';
+show full tables in public where Tables_in_public = 'tab_part_create';
 
 drop table tb;
 drop table tb1;
@@ -221,3 +221,110 @@ drop table tab_part_create;
 --drop  TRIGGER before_ins ON trig_tbl;
 --drop FUNCTION trig_func;
 --drop TABLE trig_tbl;
+
+--fix bug#Z5991
+CREATE TABLE IF NOT EXISTS test_table (
+     id SERIAL NOT NULL,
+     name VARCHAR(100) NOT NULL,
+     email VARCHAR(150),
+     department VARCHAR(50),
+     salary DECIMAL(10,2),
+     hire_date DATE,
+     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+     PRIMARY KEY (id, create_time),
+     UNIQUE (email, create_time)
+) PARTITION BY RANGE (create_time);
+
+CREATE INDEX IF NOT EXISTS idx_test_table_hire_date ON test_table(hire_date);
+CREATE INDEX IF NOT EXISTS idx_test_table_department ON test_table(department);
+CREATE INDEX IF NOT EXISTS idx_test_table_create_time ON test_table(create_time);
+
+CREATE TABLE IF NOT EXISTS test_table_p2024
+PARTITION OF test_table
+FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+
+CREATE TABLE IF NOT EXISTS test_table_p2025
+PARTITION OF test_table
+FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
+
+CREATE TABLE IF NOT EXISTS test_table_pdefault
+PARTITION OF test_table
+DEFAULT;
+
+SHOW INDEXES FROM test_table;
+SHOW INDEXES FROM test_table_p2024;
+SHOW INDEXES FROM test_table_p2025;
+SHOW INDEXES FROM test_table_pdefault;
+
+--fix bug#Z5983
+CREATE SCHEMA IF NOT EXISTS test_sche;
+CREATE TABLE test_sche.test_table(
+  id INT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  age TINYINT,
+  create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE VIEW test_sche.test_view AS SELECT * FROM test_sche.test_table;
+CREATE TEMPORARY TABLE test_temp (id INT);
+
+SHOW TABLES FROM test_sche;
+
+DROP VIEW test_sche.test_view;
+DROP TABLE test_sche.test_table;
+DROP SCHEMA test_sche;
+DROP TABLE test_temp;
+
+--fix bug#Z5979
+SET GLOBAL sql_mode = E'\\110\\145\\154\\154\\157'::bytea;
+show variables like 'sql_mode';
+
+--fix bug#Z5978
+SET GLOBAL time_zone = NULL;
+SHOW GLOBAL VARIABLES LIKE 'time_zone';
+
+--fix bug#Z5975
+CREATE SCHEMA IF NOT EXISTS test_sche;
+CREATE TABLE IF NOT EXISTS test_sche.test_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+SELECT *
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE table_name = 'test_table'
+  AND table_schema = 'test_sche';
+
+DROP TABLE test_sche.test_table;
+DROP SCHEMA test_sche;
+
+--fix bug#Z5974
+CREATE TABLE test_table4 (
+    id SERIAL PRIMARY KEY,
+    btree_col INT NOT NULL,
+    hash_col VARCHAR(50) NOT NULL,
+    data DATE,
+    text_col TEXT,
+    jsonb_col JSONB,
+    array_col TEXT[],
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_btree ON test_table4 USING BTREE(btree_col);
+CREATE INDEX idx_hash ON test_table4 USING HASH(hash_col);
+CREATE INDEX idx_gist_text ON test_table4 USING GiST(to_tsvector('english', text_col));
+CREATE INDEX idx_gin_jsonb ON test_table4 USING GIN(jsonb_col);
+CREATE INDEX idx_brin_date ON test_table4 USING BRIN(data);
+CREATE INDEX idx_spgist_text ON test_table4 USING SPGiST(text_col);
+
+SHOW INDEXES FROM test_table4;
+DROP TABLE test_table4;
+
+--fix bug#Z5969
+set session max_index_keys=NULL;
+show variables like 'max_index_keys';

@@ -498,7 +498,8 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 			/* If the column is drop from the table,
 			 * don't display the column information
 			 */
-			if (attisdropped != NULL && strcmp(attisdropped, "t") == 0)
+			if (attisdropped != NULL && (strcmp(attisdropped, "t") == 0 ||
+				strcmp(attisdropped, "1") == 0))	/* BUG#Z6017 */
 			{
 				continue;
 			}
@@ -515,7 +516,19 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 			appendStringInfoString(attrbuf, "\n    ");
 
 			/* Attribute name */
-			appendStringInfoString(attrbuf, attnamestr);
+			/* Begin - BUG#Z5947
+			 * When the GUC parameter "sql_quote_show_create" is enabled,
+			 * columns should also be enclosed in backticks.
+			 */
+			if (sql_quote_show_create)
+			{
+				appendStringInfo(attrbuf, "`%s`", attnamestr);
+			}
+			else
+			{
+				appendStringInfoString(attrbuf, attnamestr);
+			}
+			/* End - BUG#Z5947 */
 
 			/* Attribute type */
 			appendStringInfo(attrbuf, " %s", coltypestr);
