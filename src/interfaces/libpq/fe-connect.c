@@ -246,6 +246,24 @@ static const internalPQconninfoOption PQconninfoOptions[] = {
 		"Fallback-Application-Name", "", 64,
 	offsetof(struct pg_conn, fbappname)},
 
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	{"osname", "OSNAME", NULL, NULL,
+		"Database-osname", "", 64,
+	offsetof(struct pg_conn, osname)},
+
+	{"client_uid", NULL, NULL, NULL,
+		"Client-User-ID", "", 64,
+	offsetof(struct pg_conn, client_uid)},
+
+	{"client_pid", NULL, NULL, NULL,
+		"Client-Process-ID", "", 64,
+	offsetof(struct pg_conn, client_pid)},
+
+	{"client_mac", NULL, NULL, NULL,
+		"Client-MAC", "", 64,
+	offsetof(struct pg_conn, client_mac)},
+	/* End ReqID: SRS-SESSION-VIEWS */
+
 	{"keepalives", NULL, NULL, NULL,
 		"TCP-Keepalives", "", 1,	/* should be just '0' or '1' */
 	offsetof(struct pg_conn, keepalives)},

@@ -1397,3 +1397,73 @@ CREATE VIEW pg_encryption_keys AS
 REVOKE ALL on pg_encryption_keys FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION pg_show_all_encryption_keys() FROM PUBLIC;
 -- End - ReqID:SRS-SECURITY-TDE
+
+/* Begin ReqID: SRS-SESSION-VIEWS */
+CREATE or replace VIEW hg_security.hg_stat_session AS
+    SELECT
+		S.datid AS datid,
+		D.datname AS datname,
+		S.pid,
+		SE.sid,
+		SE.idle_time,
+		SE.busy_time,
+		SE.trans_info,
+		SE.tid,
+		SE.proto,
+		SE.def_schema,
+		SE.type,
+		SE.is_share,
+        SE.is_locked,
+		S.usesysid,
+		U.rolname AS usename,
+		S.application_name,
+		SE.client_osname,
+		S.client_addr,
+		S.client_hostname,
+		S.client_port,
+		SE.client_uid,
+		SE.client_pid,
+		SE.client_mac,
+		S.backend_start AS login_time,
+		S.backend_start,
+		S.xact_start,
+		S.query_start,
+		S.state_change,
+		S.wait_event_type,
+		S.wait_event,
+		S.state,
+		S.backend_xid,
+		s.backend_xmin,
+		S.query,
+		S.backend_type
+	FROM pg_stat_get_activity(NULL) AS S
+        JOIN  pg_stat_get_activity_ext(NULL) AS SE ON (SE.pid = S.pid)
+		LEFT JOIN pg_database AS D ON (S.datid = D.oid)
+		LEFT JOIN pg_authid AS U ON (S.usesysid = U.oid)
+        where S.datid > 0 and S.backend_type = 'client backend';
+
+REVOKE ALL on hg_security.hg_stat_session FROM PUBLIC;
+GRANT ALL ON hg_security.hg_stat_session TO syssso;
+
+create or replace view hg_security.hg_db_connection_info
+as
+    select
+	a.oid as datid,
+	a.datname as datname,
+	count(b.datid) as connect_nums,
+	b.proto,
+	string_agg((type::text),E'\n') as type,
+	string_agg((application_name),E'\n') as connect_name,
+	string_agg((usesysid::text),E'\n') as usesysid,
+	string_agg((usename),E'\n') as usename ,
+	string_agg((state),E'\n') as state,
+	string_agg((query),E'\n') as excute_content
+	from pg_database a left outer join hg_security.hg_stat_session b
+	on a.oid = b.datid
+	where a.datname !='template1' and a.datname !='template0'
+	group by (a.oid, a.datname, b.proto, b.type);
+--GRANT SELECT ON hg_db_connection_info TO public;
+REVOKE ALL on hg_security.hg_db_connection_info FROM PUBLIC;
+GRANT ALL ON hg_security.hg_db_connection_info TO syssso;
+
+/* End ReqID: SRS-SESSION-VIEWS */

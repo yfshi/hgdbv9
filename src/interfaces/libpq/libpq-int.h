@@ -369,6 +369,12 @@ struct pg_conn
 	char	   *replication;	/* connect as the replication standby? */
 	char	   *pguser;			/* Postgres username and password, if any */
 	char	   *pgpass;
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	char	   *osname;
+	char	   *client_uid;		/* client user's system uid */
+	char	   *client_pid;		/* client user's process id */
+	char	   *client_mac;		/* client user's MAC */
+	/* End ReqID: SRS-SESSION-VIEWS */
 	char	   *pgpassfile;		/* path to a file containing password(s) */
 	char	   *channel_binding;	/* channel binding mode
 									 * (require,prefer,disable) */

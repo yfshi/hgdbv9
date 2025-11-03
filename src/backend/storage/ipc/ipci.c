@@ -58,6 +58,8 @@
 #include "utils/resource_manager.h"
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
+#include "utils/hg_proc_data.h" /* ReqID: SESSION-VIEWS */
+
 /* GUCs */
 int			shared_memory_type = DEFAULT_SHARED_MEMORY_TYPE;
 
@@ -179,6 +181,9 @@ CreateSharedMemoryAndSemaphores(void)
 		/* Begin - ReqID:SRS-SECURITY-TDE */
 		size = add_size(size, KmgrShmemSize());
 		/* End - ReqID:SRS-SECURITY-TDE */
+		/* Begin ReqID: SESSION-VIEWS */
+		size = add_size(size, ProcDataShmemSize());
+		/* End ReqID: SESSION-VIEWS */
 #ifdef EXEC_BACKEND
 		size = add_size(size, ShmemBackendArraySize());
 #endif
@@ -257,6 +262,9 @@ CreateSharedMemoryAndSemaphores(void)
 	SUBTRANSShmemInit();
 	MultiXactShmemInit();
 	InitBufferPool();
+
+	ProcDataShmemInit(); /* ReqID: SESSION-VIEWS */
+
 	/* For global temporary table shared hashtable */
 	active_gtt_shared_hash_init();
 

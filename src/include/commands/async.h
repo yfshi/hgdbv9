@@ -50,5 +50,7 @@ extern void HandleNotifyInterrupt(void);
 
 /* process interrupts */
 extern void ProcessNotifyInterrupt(bool flush);
+extern void HandleGetData(void); /* ReqID: SRS-SESSION-VIEWS */
+
 
 #endif							/* ASYNC_H */

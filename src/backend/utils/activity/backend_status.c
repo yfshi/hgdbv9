@@ -55,6 +55,14 @@ static char *BackendAppnameBuffer = NULL;
 static char *BackendClientHostnameBuffer = NULL;
 static char *BackendActivityBuffer = NULL;
 static Size BackendActivityBufferSize = 0;
+
+/* Begin ReqID: SRS-SESSION-VIEWS */
+static char *BackendOSnameBuffer = NULL;
+static char *BackendClientUidBuffer = NULL;
+static char *BackendClientPidBuffer = NULL;
+static char *BackendClientMacBuffer = NULL;
+/* End ReqID: SRS-SESSION-VIEWS */
+
 #ifdef USE_SSL
 static PgBackendSSLStatus *BackendSslStatusBuffer = NULL;
 #endif
@@ -152,6 +160,26 @@ CreateSharedBackendStatus(void)
 		}
 	}
 
+	/* Begin ReqID: SESSION-VIEWS */
+	/* Create or attach to the shared osname buffer */
+	size = mul_size(NAMEDATALEN, NumBackendStatSlots);
+	BackendOSnameBuffer = (char *)
+		ShmemInitStruct("Backend operating system Name Buffer", size, &found);
+
+	if (!found)
+	{
+		MemSet(BackendOSnameBuffer, 0, size);
+
+		/* Initialize st_osname pointers. */
+		buffer = BackendOSnameBuffer;
+		for (i = 0; i < NumBackendStatSlots; i++)
+		{
+			BackendStatusArray[i].st_osname = buffer;
+			buffer += NAMEDATALEN;
+		}
+	}
+	/* End ReqID: SESSION-VIEWS */
+
 	/* Create or attach to the shared client hostname buffer */
 	size = mul_size(NAMEDATALEN, NumBackendStatSlots);
 	BackendClientHostnameBuffer = (char *)
@@ -169,6 +197,62 @@ CreateSharedBackendStatus(void)
 			buffer += NAMEDATALEN;
 		}
 	}
+
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	/* Create or attach to the shared client uid buffer */
+	size = mul_size(NAMEDATALEN, NumBackendStatSlots);
+	BackendClientUidBuffer = (char *)
+		ShmemInitStruct("Backend Client Uid Buffer", size, &found);
+
+	if (!found)
+	{
+		MemSet(BackendClientUidBuffer, 0, size);
+
+		/* Initialize st_clientuid pointers. */
+		buffer = BackendClientUidBuffer;
+		for (i = 0; i < NumBackendStatSlots; i++)
+		{
+			BackendStatusArray[i].st_clientuid = buffer;
+			buffer += NAMEDATALEN;
+		}
+	}
+
+	/* Create or attach to the shared client pid buffer */
+	size = mul_size(NAMEDATALEN, NumBackendStatSlots);
+	BackendClientPidBuffer = (char *)
+		ShmemInitStruct("Backend Client Pid Buffer", size, &found);
+
+	if (!found)
+	{
+		MemSet(BackendClientPidBuffer, 0, size);
+
+		/* Initialize st_clientpid pointers. */
+		buffer = BackendClientPidBuffer;
+		for (i = 0; i < NumBackendStatSlots; i++)
+		{
+			BackendStatusArray[i].st_clientpid = buffer;
+			buffer += NAMEDATALEN;
+		}
+	}
+
+	/* Create or attach to the shared client mac buffer */
+	size = mul_size(NAMEDATALEN, NumBackendStatSlots);
+	BackendClientMacBuffer = (char *)
+		ShmemInitStruct("Backend Client MAC Buffer", size, &found);
+
+	if (!found)
+	{
+		MemSet(BackendClientMacBuffer, 0, size);
+
+		/* Initialize st_clientmac pointers. */
+		buffer = BackendClientMacBuffer;
+		for (i = 0; i < NumBackendStatSlots; i++)
+		{
+			BackendStatusArray[i].st_clientmac = buffer;
+			buffer += NAMEDATALEN;
+		}
+	}
+	/* End ReqID: SRS-SESSION-VIEWS */
 
 	/* Create or attach to the shared activity buffer */
 	BackendActivityBufferSize = mul_size(pgstat_track_activity_query_size,
@@ -426,17 +510,44 @@ pgstat_bestart(void)
 	 * that are in lbeentry; this saves some de-volatilizing messiness.
 	 */
 	lbeentry.st_appname[0] = '\0';
+	lbeentry.st_osname[0] = '\0'; /* ReqID: SESSION-VIEWS */
 	if (MyProcPort && MyProcPort->remote_hostname)
 		strlcpy(lbeentry.st_clienthostname, MyProcPort->remote_hostname,
 				NAMEDATALEN);
 	else
 		lbeentry.st_clienthostname[0] = '\0';
+
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	if (MyProcPort && MyProcPort->client_uid)
+		strlcpy(lbeentry.st_clientuid, MyProcPort->client_uid,
+				NAMEDATALEN);
+	else
+		lbeentry.st_clientuid[0] = '\0';
+
+	if (MyProcPort && MyProcPort->client_pid)
+		strlcpy(lbeentry.st_clientpid, MyProcPort->client_pid,
+				NAMEDATALEN);
+	else
+		lbeentry.st_clientpid[0] = '\0';
+
+	if (MyProcPort && MyProcPort->client_mac)
+		strlcpy(lbeentry.st_clientmac, MyProcPort->client_mac,
+				NAMEDATALEN);
+	else
+		lbeentry.st_clientmac[0] = '\0';
+	/* End ReqID: SRS-SESSION-VIEWS */
+
 	lbeentry.st_activity_raw[0] = '\0';
 	/* Also make sure the last byte in each string area is always 0 */
 	lbeentry.st_appname[NAMEDATALEN - 1] = '\0';
 	lbeentry.st_clienthostname[NAMEDATALEN - 1] = '\0';
 	lbeentry.st_activity_raw[pgstat_track_activity_query_size - 1] = '\0';
 
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	lbeentry.st_clientuid[NAMEDATALEN - 1] = '\0';
+	lbeentry.st_clientpid[NAMEDATALEN - 1] = '\0';
+	lbeentry.st_clientmac[NAMEDATALEN - 1] = '\0';
+	/* End ReqID: SRS-SESSION-VIEWS */
 #ifdef USE_SSL
 	memcpy(lbeentry.st_sslstatus, &lsslstatus, sizeof(PgBackendSSLStatus));
 #endif
@@ -449,6 +560,10 @@ pgstat_bestart(void)
 	/* Update app name to current GUC setting */
 	if (application_name)
 		pgstat_report_appname(application_name);
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	if (osname)
+		pgstat_report_osname(osname);
+	/* End ReqID: SRS-SESSION-VIEWS */
 }
 
 /*
@@ -743,6 +858,12 @@ pgstat_read_current_status(void)
 	char	   *localappname,
 			   *localclienthostname,
 			   *localactivity;
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	char	   *localosname,
+			   *localclientuid,
+			   *localclientpid,
+			   *localclientmac;
+	/* End ReqID: SRS-SESSION-VIEWS */
 #ifdef USE_SSL
 	PgBackendSSLStatus *localsslstatus;
 #endif
@@ -770,9 +891,27 @@ pgstat_read_current_status(void)
 	localappname = (char *)
 		MemoryContextAlloc(backendStatusSnapContext,
 						   NAMEDATALEN * NumBackendStatSlots);
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	localosname = (char *)
+		MemoryContextAlloc(backendStatusSnapContext,
+						   NAMEDATALEN * NumBackendStatSlots);
+	/* End ReqID: SRS-SESSION-VIEWS */
 	localclienthostname = (char *)
 		MemoryContextAlloc(backendStatusSnapContext,
 						   NAMEDATALEN * NumBackendStatSlots);
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	localclientuid = (char *)
+		MemoryContextAlloc(backendStatusSnapContext,
+						   NAMEDATALEN * NumBackendStatSlots);
+
+	localclientpid = (char *)
+		MemoryContextAlloc(backendStatusSnapContext,
+						   NAMEDATALEN * NumBackendStatSlots);
+
+	localclientmac = (char *)
+		MemoryContextAlloc(backendStatusSnapContext,
+						   NAMEDATALEN * NumBackendStatSlots);
+	/* End ReqID: SRS-SESSION-VIEWS */
 	localactivity = (char *)
 		MemoryContextAllocHuge(backendStatusSnapContext,
 							   (Size) pgstat_track_activity_query_size *
@@ -824,8 +963,20 @@ pgstat_read_current_status(void)
 				 */
 				strcpy(localappname, (char *) beentry->st_appname);
 				localentry->backendStatus.st_appname = localappname;
+				/* Begin ReqID: SRS-SESSION-VIEWS */
+				strcpy(localosname, (char *) beentry->st_osname);
+				localentry->backendStatus.st_osname = localosname;
+				/* End ReqID: SRS-SESSION-VIEWS */
 				strcpy(localclienthostname, (char *) beentry->st_clienthostname);
 				localentry->backendStatus.st_clienthostname = localclienthostname;
+				/* Begin ReqID: SRS-SESSION-VIEWS */
+				strcpy(localclientuid, (char *) beentry->st_clientuid);
+				localentry->backendStatus.st_clientuid = localclientuid;
+				strcpy(localclientpid, (char *) beentry->st_clientpid);
+				localentry->backendStatus.st_clientpid = localclientpid;
+				strcpy(localclientmac, (char *) beentry->st_clientmac);
+				localentry->backendStatus.st_clientmac = localclientmac;
+				/* End ReqID: SRS-SESSION-VIEWS */
 				strcpy(localactivity, (char *) beentry->st_activity_raw);
 				localentry->backendStatus.st_activity_raw = localactivity;
 #ifdef USE_SSL
@@ -864,8 +1015,15 @@ pgstat_read_current_status(void)
 
 			localentry++;
 			localappname += NAMEDATALEN;
+			localosname += NAMEDATALEN;  /* ReqID: SESSION-VIEWS */
 			localclienthostname += NAMEDATALEN;
 			localactivity += pgstat_track_activity_query_size;
+
+			/* Begin ReqID: SRS-SESSION-VIEWS */
+			localclientuid += NAMEDATALEN;
+			localclientpid += NAMEDATALEN;
+			localclientmac += NAMEDATALEN;
+			/* End ReqID: SRS-SESSION-VIEWS */
 #ifdef USE_SSL
 			localsslstatus++;
 #endif

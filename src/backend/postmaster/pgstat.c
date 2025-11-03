@@ -3803,6 +3803,39 @@ get_dbstat_filename(bool permanent, bool tempname, Oid databaseid,
 		elog(ERROR, "overlength pgstat path");
 }
 
+/* Begin ReqID: SRS-SESSION-VIEWS */
+/* ----------
+ * pgstat_report_osname() -
+ *
+ *	Called to update our operating system name.
+ * ----------
+ */
+void
+pgstat_report_osname(const char *osname)
+{
+	volatile PgBackendStatus *beentry = MyBEEntry;
+	int 		len;
+
+	if (!beentry)
+		return;
+
+	/* This should be unnecessary if GUC did its job, but be safe */
+	len = pg_mbcliplen(osname, strlen(osname), NAMEDATALEN - 1);
+
+	/*
+	 * Update my status entry, following the protocol of bumping
+	 * st_changecount before and after.  We use a volatile pointer here to
+	 * ensure the compiler doesn't try to get cute.
+	 */
+	PGSTAT_BEGIN_WRITE_ACTIVITY(beentry);
+
+	memcpy((char *) beentry->st_osname, osname, len);
+	beentry->st_osname[len] = '\0';
+
+	PGSTAT_END_WRITE_ACTIVITY(beentry);
+}
+/* End ReqID: SRS-SESSION-VIEWS */
+
 /* ----------
  * pgstat_write_db_statsfile() -
  *		Write the stat file for a single database.

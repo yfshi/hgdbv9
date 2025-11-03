@@ -2220,6 +2220,18 @@ build_startup_packet(const PGconn *conn, char *packet,
 		ADD_STARTUP_OPTION("replication", conn->replication);
 	if (conn->pgoptions && conn->pgoptions[0])
 		ADD_STARTUP_OPTION("options", conn->pgoptions);
+
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	if (conn->osname && conn->osname[0])
+		ADD_STARTUP_OPTION("osname", conn->osname);
+	if (conn->client_uid && conn->client_uid[0])
+		ADD_STARTUP_OPTION("client_uid", conn->client_uid);
+	if (conn->client_pid && conn->client_pid[0])
+		ADD_STARTUP_OPTION("client_pid", conn->client_pid);
+	if (conn->client_mac && conn->client_mac[0])
+		ADD_STARTUP_OPTION("client_mac", conn->client_mac);
+	/* End ReqID: SRS-SESSION-VIEWS */
+
 	if (conn->send_appname)
 	{
 		/* Use appname if present, otherwise use fallback */

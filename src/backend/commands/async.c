@@ -153,7 +153,7 @@
 #include "utils/ps_status.h"
 #include "utils/snapmgr.h"
 #include "utils/timestamp.h"
-
+#include "utils/hg_proc_data.h"  /* ReqID: SRS-SESSION-VIEWS */
 
 /*
  * Maximum size of a NOTIFY payload, including terminating NULL.  This
@@ -1854,6 +1854,19 @@ AtSubAbort_Notify(void)
 		pfree(childPendingNotifies);
 	}
 }
+
+/* Begin ReqID: SESSION-VIEWS
+ * HandleGetData
+ * hangdling get data process 
+ */
+void
+HandleGetData(void)
+{
+	elog(DEBUG3, "invoking HandleGetData");
+
+	ProcDataTableInsert(&MyProcPid, g_proc_counter, GetCurrTransState(), GetCurrentTransactionIdIfAny());
+}
+/* End ReqID: SRS-SESSION-VIEWS */
 
 /*
  * HandleNotifyInterrupt

@@ -139,7 +139,7 @@ int			client_connection_check_interval = 0;
 int			restrict_nonsystem_relation_kind;
 
 /* ReqID: LOCK-SESSION */
-bool should_lock_current_session;
+bool should_lock_current_session = false;
 
 /* Begin ReqID: SRS-CLIENT-AUTH */
 bool enable_macandtime = false;
@@ -245,6 +245,14 @@ audit_privi_model audit_privi_mode_hook = NULL;
 is_audit_enable_hook is_audit_enable = NULL;
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
+/* Begin ReqID: SESSION-VIEWS */
+unsigned long g_busy_secs = 0;
+unsigned long g_busy_microsecs = 0;
+TimestampTz g_before_time;
+/* false means idle */
+extern bool count_idle_busy_time;
+bool g_proc_is_busy = false;
+/* End ReqID: SESSION-VIEWS */
 
 /* ----------------------------------------------------------------
  *		decls for routines only used in this file
@@ -4524,7 +4532,11 @@ PostgresMain(int argc, char *argv[],
 	volatile bool idle_session_timeout_enabled = false;
 	volatile bool has_savepoint = false;	/* ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 	volatile bool idle_session_noinput_enabled = false; /* ReqID: LOCK-SESSION */
-
+	/* Begin ReqID: SESSION-VIEWS */
+	long		tmp_busy_secs = 0;
+	int			tmp_busy_microsecs = 0;
+	TimestampTz	after_time;
+	/* End ReqID: SESSION-VIEWS */
 	/* Initialize startup process environment if necessary. */
 	if (!IsUnderPostmaster)
 		InitStandaloneProcess(argv[0]);
@@ -5117,11 +5129,42 @@ PostgresMain(int argc, char *argv[],
 		 * STDIN doing the same thing.)
 		 */
 		DoingCommandRead = true;
+		/* Begin ReqID: SESSION-VIEWS */
+		if (count_idle_busy_time)
+		{
+			elog(DEBUG3, "count_idle_busy_time:%d", count_idle_busy_time);
+			after_time = GetCurrentTimestamp();
+			if (g_proc_is_busy)
+			{
+				elog(DEBUG3, "g_proc_is_busy:%d", g_proc_is_busy);
+				TimestampDifference(g_before_time, after_time,
+							&tmp_busy_secs, &tmp_busy_microsecs);
+				g_busy_secs += tmp_busy_secs;
+				g_busy_microsecs += tmp_busy_microsecs;
+				tmp_busy_microsecs = g_busy_microsecs / USECS_PER_SEC;
+				if (tmp_busy_microsecs)
+				{
+					g_busy_secs += tmp_busy_microsecs;
+					g_busy_microsecs = g_busy_microsecs % USECS_PER_SEC;
+				}
+			}
+			g_proc_is_busy = false;
+		}
+		/* End ReqID: SESSION-VIEWS */
 
 		/*
 		 * (3) read a command (loop blocks here)
 		 */
 		firstchar = ReadCommand(&input_message);
+
+		/* Begin ReqID: SESSION-VIEWS */
+		if (count_idle_busy_time)
+		{
+			g_before_time = GetCurrentTimestamp();
+			g_proc_is_busy = true;
+			elog(DEBUG3, "getting time before executing query, g_proc_is_busy:%d", g_proc_is_busy);
+		}
+		/* End ReqID: SESSION-VIEWS */
 
 		/*
 		 * (4) turn off the idle-in-transaction and idle-session timeouts, if

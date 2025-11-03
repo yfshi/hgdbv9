@@ -160,6 +160,16 @@ typedef struct PgBackendStatus
 	/* application name; MUST be null-terminated */
 	char	   *st_appname;
 
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	/* operating system Name */
+	char	   *st_osname;
+	/* client user uid in its system */
+	char	   *st_clientuid;
+	/* client application's process id */
+	char	   *st_clientpid;
+	/* client application's mac */
+	char	   *st_clientmac;
+	/* End ReqID: SRS-SESSION-VIEWS */
 	/*
 	 * Current command string; MUST be null-terminated. Note that this string
 	 * possibly is truncated in the middle of a multi-byte character. As

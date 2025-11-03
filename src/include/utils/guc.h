@@ -273,6 +273,8 @@ extern char *IdentFileName;
 extern char *external_pid_file;
 
 extern PGDLLIMPORT char *application_name;
+extern PGDLLIMPORT char *osname; /* ReqID: SRS-SESSION-VIEWS */
+
 
 extern int	tcp_keepalives_idle;
 extern int	tcp_keepalives_interval;

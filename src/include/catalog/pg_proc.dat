@@ -12041,4 +12041,15 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proname => 'unlock_current_session', prorettype => 'cstring',
   proargtypes => '', prosrc => 'unlock_current_session'},
 /* End ReqID: LOCK-SESSION */
+/* Begin ReqID: SESSION-VIEWS */
+{ oid => '4901',
+  descr => 'statistics: extra information about currently active sessions',
+  proname => 'pg_stat_get_activity_ext', prorows => '100', proisstrict => 'f',
+  proretset => 't', provolatile => 's', proparallel => 'r',
+  prorettype => 'record', proargtypes => 'int4',
+  proallargtypes => '{int4,int4,text,text,text,text,int4,text,text,text,int4,text,bool,text,int4,bool}',
+  proargmodes => '{i,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o}',
+  proargnames => '{pid,pid,client_osname,client_uid,client_pid,client_mac,sid,idle_time,busy_time,trans_info,tid,def_schema,is_locked,proto,type,is_share}',
+  prosrc => 'pg_stat_get_activity_ext' },
+/* End ReqID: SESSION-VIEWS */
 ]
