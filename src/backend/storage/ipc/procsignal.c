@@ -687,7 +687,10 @@ procsignal_sigusr1_handler(SIGNAL_ARGS)
 	if (CheckProcSignal(PROCSIG_RELOAD_DB_GUC))
 		HandleReloadDBGucSignal();
 	/* End - ReqID:SRS-SQL-DBLINK */
-
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	if (CheckProcSignal(PROCSIG_GET_DATA))
+		HandleGetData();
+	/* End ReqID: SRS-SESSION-VIEWS */
 	SetLatch(MyLatch);
 
 	errno = save_errno;

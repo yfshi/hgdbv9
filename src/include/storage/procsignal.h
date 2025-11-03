@@ -46,7 +46,7 @@ typedef enum
 	/* move query to a new resource group */
 	PROCSIG_RESOURCE_GROUP_MOVE_QUERY,	/* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	PROCSIG_RELOAD_DB_GUC, /* ReqID:SRS-SQL-DBLINK */
-
+	PROCSIG_GET_DATA,	/* ReqID: SRS-SESSION-VIEWS */
 	NUM_PROCSIGNALS				/* Must be last! */
 } ProcSignalReason;
 

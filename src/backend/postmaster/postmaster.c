@@ -442,6 +442,8 @@ static bool LoadedSSL = false;
 static DNSServiceRef bonjour_sdref = NULL;
 #endif
 
+int64 g_proc_counter = 0; /* ReqID: SRS-SESSION-VIEWS */
+
 /*
  * postmaster.c - function prototypes
  */
@@ -2650,6 +2652,13 @@ retry1:
 			}
 			else if (strncmp(nameptr, "_pq_.", 5) == 0)
 			{
+				/* Begin ReqID: SESSION-VIEWS */
+				/* when the proxy connects, it's a shared connection. */
+				if (strncmp(nameptr, "_pq_.hgproxy_version", 20) == 0)
+					port->is_share = true;
+				else
+					port->is_share = false;
+				/* End ReqID: SESSION-VIEWS */
 				/*
 				 * Any option beginning with _pq_. is reserved for use as a
 				 * protocol-level option, but at present no such options are
@@ -2658,6 +2667,14 @@ retry1:
 				unrecognized_protocol_options =
 					lappend(unrecognized_protocol_options, pstrdup(nameptr));
 			}
+			/* Begin ReqID: SRS-SESSION-VIEWS */
+			else if(strcmp(nameptr, "client_uid") == 0)
+				port->client_uid = pstrdup(valptr);
+			else if(strcmp(nameptr, "client_pid") == 0)
+				port->client_pid = pstrdup(valptr);
+			else if(strcmp(nameptr, "client_mac") == 0)
+				port->client_mac = pstrdup(valptr);
+			/* End ReqID: SRS-SESSION-VIEWS */
 			else
 			{
 				/* Assume it's a generic GUC option */
@@ -2680,6 +2697,16 @@ retry1:
 
 					port->application_name = tmp_app_name;
 				}
+				/* Begin ReqID: SRS-SESSION-VIEWS */
+				else if (strcmp(nameptr, "osname") == 0)
+				{
+					char	   *tmp_osname = pstrdup(valptr);
+
+					pg_clean_ascii(tmp_osname);
+
+					port->osname = tmp_osname;
+				}
+				/* End ReqID: SRS-SESSION-VIEWS */
 			}
 			offset = valoffset + strlen(valptr) + 1;
 		}
@@ -4754,6 +4781,8 @@ BackendStartup(Port *port)
 
 	/* Hasn't asked to be notified about any bgworkers yet */
 	bn->bgworker_notify = false;
+
+	g_proc_counter++; /* ReqID: SRS-SESSION-VIEWS */
 
 #ifdef EXEC_BACKEND
 	pid = backend_forkexec(port);

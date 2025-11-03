@@ -29,6 +29,7 @@
 #include "storage/procarray.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/hg_proc_data.h"	/* ReqID: SESSION-VIEWS */
 #include "utils/inet.h"
 #include "utils/timestamp.h"
 
@@ -962,6 +963,178 @@ pg_stat_get_activity(PG_FUNCTION_ARGS)
 	return (Datum) 0;
 }
 
+/* Begin ReqID: SRS-SESSION-VIEWS */
+#define PROC_INFO_STR_LEN 32
+#define PATH_SEARCH_LEN (PROC_INFO_STR_LEN*8)
+/*
+ * Returns extra activity data of PG backends.
+ */
+Datum
+pg_stat_get_activity_ext(PG_FUNCTION_ARGS)
+{
+#define PG_STAT_GET_ACTIVITY_COLS_EXT	15
+	int			num_backends = pgstat_fetch_stat_numbackends();
+	int			curr_backend;
+	int			pid = PG_ARGISNULL(0) ? -1 : PG_GETARG_INT32(0);
+	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
+	TupleDesc	tupdesc;
+	Tuplestorestate *tupstore;
+	MemoryContext per_query_ctx;
+	MemoryContext oldcontext;
+
+	u_int32_t tmp_sid =0;
+	u_int32_t tmp_tid = 0;
+	char idle_time[PROC_INFO_STR_LEN] = {'\0'};
+	char busy_time[PROC_INFO_STR_LEN] = {'\0'};
+	char tran_info[PROC_INFO_STR_LEN] = {'\0'};
+	char path_search[PATH_SEARCH_LEN] = {'\0'};
+	bool is_lock = false;
+
+	Datum		values[PG_STAT_GET_ACTIVITY_COLS_EXT];
+	bool		nulls[PG_STAT_GET_ACTIVITY_COLS_EXT];
+	LocalPgBackendStatus *local_beentry = NULL;
+	PgBackendStatus *beentry = NULL;
+	
+	elog(DEBUG3, "pid:%d, num of backends:%d", pid, num_backends);
+
+	/* check to see if caller supports us returning a tuplestore */
+	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("set-valued function called in context that cannot accept a set")));
+	if (!(rsinfo->allowedModes & SFRM_Materialize))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("materialize mode required, but it is not allowed in this context")));
+
+	/* Build a tuple descriptor for our result type */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		elog(ERROR, "return type must be a row type");
+
+	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
+	oldcontext = MemoryContextSwitchTo(per_query_ctx);
+
+	tupstore = tuplestore_begin_heap(true, false, work_mem);
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	MemoryContextSwitchTo(oldcontext);
+
+	/* 1-based index */
+	for (curr_backend = 1; curr_backend <= num_backends; curr_backend++)
+	{
+		MemSet(values, 0, sizeof(values));
+		MemSet(nulls, 0, sizeof(nulls));
+
+		/* Get the next one in the list */
+		local_beentry = pgstat_fetch_stat_local_beentry(curr_backend);
+
+		elog(DEBUG1, "Getting backend entry, curr_backend:%d, local_beentry:%p, beentry->st_procpid:%d", 
+						curr_backend, local_beentry, local_beentry->backendStatus.st_procpid );
+
+		if (!local_beentry)
+		{
+			int			i;
+			/* Ignore missing entries if looking for specific PID */
+			if (pid != -1)
+				continue;
+
+			for (i = 0; i < lengthof(nulls); i++)
+				nulls[i] = true;
+			elog(DEBUG3, "Get backend entry failed, curr_backend:%d", curr_backend);
+
+			tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+			continue;
+		}
+
+		beentry = &local_beentry->backendStatus;
+		
+		/* If looking for specific PID, ignore all the others */
+		if (pid != -1 && beentry->st_procpid != pid)
+			continue;
+
+		if (beentry->st_procpid > 0 && beentry->st_backendType == B_BACKEND)
+		{
+			elog(DEBUG3, "Sending signal PROCSIG_GET_DATA to backend pid:%d", beentry->st_procpid);
+			SendProcSignal(beentry->st_procpid, PROCSIG_GET_DATA, InvalidBackendId);
+		}
+		values[0] = Int32GetDatum(beentry->st_procpid);
+
+		elog(DEBUG3, "pid:%d, st_osname: %s", beentry->st_procpid, beentry->st_osname);
+		if (beentry->st_osname)
+			values[1] = CStringGetTextDatum(beentry->st_osname);
+		else
+			nulls[1] = true;
+
+		if (beentry->st_clientuid)
+			values[2] = CStringGetTextDatum(beentry->st_clientuid);
+		else
+			nulls[2] = true;
+
+		if (beentry->st_clientpid)
+			values[3] = CStringGetTextDatum(beentry->st_clientpid);
+		else
+			nulls[3] = true;
+
+		if (beentry->st_clientmac)
+			values[4] = CStringGetTextDatum(beentry->st_clientmac);
+		else
+			nulls[4] = true;
+
+		if (beentry->st_procpid > 0 &&
+				ProcDataTableLookup(&beentry->st_procpid, &tmp_sid, idle_time, 
+				busy_time, tran_info, &tmp_tid, path_search, &is_lock) > 0)
+		{
+			elog(DEBUG3, "ProcDataTableLookup success, st_procpid:%d, tmp_sid:%d, path_search: %s", 
+							beentry->st_procpid, tmp_sid, path_search);
+			values[5] = Int32GetDatum(tmp_sid);
+			values[6] = CStringGetTextDatum(idle_time);
+			values[7] = CStringGetTextDatum(busy_time);
+			values[8] = CStringGetTextDatum(tran_info);
+			values[9] = Int32GetDatum(tmp_tid);
+			values[10] = CStringGetTextDatum(path_search);
+			values[11] = BoolGetDatum(is_lock);
+		}
+		else
+		{
+			elog(DEBUG3, "ProcDataTableLookup failed");
+			nulls[5] = true;
+			nulls[6] = true;
+			nulls[7] = true;
+			nulls[8] = true;
+			nulls[9] = true;
+			nulls[10] = true;
+			nulls[11] = true;
+		}
+
+		values[12] = CStringGetTextDatum("TCP/IP");
+		
+		if (strcasestr(beentry->st_appname, "psql"))
+			values[13] = Int32GetDatum(1);
+		else
+			values[13] = Int32GetDatum(0);
+
+		values[14] = BoolGetDatum(0);
+		if (MyProcPid == pid)
+		{
+			if (MyProcPort && MyProcPort->is_share)
+				values[14] = BoolGetDatum(1);
+		}
+
+		tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+
+		/* If only a single backend was requested, and we found it, break. */
+		if (pid != -1)
+			break;
+	}
+
+	/* clean up and return the tuplestore */
+	tuplestore_donestoring(tupstore);
+
+	return (Datum) 0;
+}
+/* End ReqID: SRS-SESSION-VIEWS */
 
 Datum
 pg_backend_pid(PG_FUNCTION_ARGS)

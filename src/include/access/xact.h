@@ -532,5 +532,9 @@ extern void RollbackAndReleaseAutonTransactionRecursively(void);
 extern bool IsAutonTransaction(void);
 extern bool IsTopAutonTransaction(void);
 /* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+/* Begin ReqID: SESSION-VIEWS */
+extern const char *TransStateIntAsString(int state);
+extern int GetCurrTransState(void);
+/* End ReqID: SESSION-VIEWS */
 
 #endif							/* XACT_H */

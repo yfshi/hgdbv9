@@ -148,6 +148,8 @@ typedef struct Port
 	List	   *guc_options;
 
 	/* Begin ReqID: SRS-SESSION-VIEWS */
+	bool       is_share; 
+	char	   *osname; 
 	/*
 	 * These values curretly are only used in statistic module, so it's
 	 * unnecessary to set them as GUC variables. They passed from frountend

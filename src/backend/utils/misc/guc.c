@@ -307,6 +307,10 @@ bool pgvars_check_pg_resource_group_cgroup_parent(char **newval, void **extra, G
 static bool check_idle_session_noinput(int *newval, void **extra, GucSource source);
 static bool check_idle_session_timeout(int *newval, void **extra, GucSource source);
 /* End ReqID: LOCK-SESSION */
+/* Begin ReqID: SESSION-VIEWS */
+static bool check_osname(char **newval, void **extra, GucSource source);
+static void assign_osname(const char *newval, void *extra);
+/* End ReqID: SESSION-VIEWS */
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DECLARE
@@ -715,7 +719,10 @@ char	   *external_pid_file;
 char	   *pgstat_temp_directory;
 
 char	   *application_name;
-
+/* Begin ReqID: SRS-SESSION-VIEWS */
+char	   *osname;
+bool		count_idle_busy_time = false;
+/* End ReqID: SRS-SESSION-VIEWS */
 int			tcp_keepalives_idle;
 int			tcp_keepalives_interval;
 int			tcp_keepalives_count;
@@ -1580,6 +1587,18 @@ static struct config_bool ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
+
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	{
+		{"count_idle_busy_time", PGC_SUSET, STATS_COLLECTOR,
+			gettext_noop("Count the busy/idle time of each backend process."),
+			NULL
+		},
+		&count_idle_busy_time,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End ReqID: SRS-SESSION-VIEWS */
 
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	{
@@ -4941,6 +4960,18 @@ static struct config_string ConfigureNamesString[] =
 		check_application_name, assign_application_name, NULL
 	},
 
+	/* Begin ReqID: SESSION-VIEWS */
+	{
+		{"osname", PGC_USERSET, LOGGING_WHAT,
+			gettext_noop("Sets the application name to be reported in statistics and logs."),
+			NULL,
+			GUC_IS_NAME | GUC_REPORT | GUC_NOT_IN_SAMPLE
+		},
+		&osname,
+		"",
+		check_osname, assign_osname, NULL
+	},
+	/* End ReqID: SESSION-VIEWS */
 	{
 		{"cluster_name", PGC_POSTMASTER, PROCESS_TITLE,
 			gettext_noop("Sets the name of the cluster, which is included in the process title."),
@@ -13503,6 +13534,24 @@ check_idle_session_timeout(int *newval, void **extra, GucSource source)
 	return true;
 }
 /* End ReqID: LOCK-SESSION */
+
+/* Begin ReqID: SESSION-VIEWS */
+static bool
+check_osname(char **newval, void **extra, GucSource source)
+{
+	/* Only allow clean ASCII chars in the operating system name */
+	pg_clean_ascii(*newval);
+
+	return true;
+}
+
+static void
+assign_osname(const char *newval, void *extra)
+{
+	/* Update the pg_stat_activity view */
+	pgstat_report_osname(newval);
+}
+/* End ReqID: SESSION-VIEWS */
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DEFINE

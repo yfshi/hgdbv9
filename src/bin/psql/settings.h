@@ -107,6 +107,7 @@ typedef struct _psqlSettings
 	bool		cur_cmd_interactive;
 	int			sversion;		/* backend server version */
 	const char *progname;		/* in case you renamed psql */
+	const char *osname;			/* ReqID: SRS-SESSION-VIEWS */
 	char	   *inputfile;		/* file being currently processed, if any */
 	uint64		lineno;			/* also for error reporting */
 	uint64		stmt_lineno;	/* line number inside the current statement */

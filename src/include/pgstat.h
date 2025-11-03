@@ -1106,6 +1106,7 @@ extern void pgstat_count_slru_flush(int slru_idx);
 extern void pgstat_count_slru_truncate(int slru_idx);
 extern const char *pgstat_slru_name(int slru_idx);
 extern int	pgstat_slru_index(const char *name);
+extern void pgstat_report_osname(const char *osname); /* ReqID: SESSION-VIEWS */
 extern void pdr_pgstat_read_db_statsfile(Oid databaseid, HTAB *tabhash, HTAB *funchash, bool permanent); /* ReqID:SRS-MISC-PDR */
 
 #endif							/* PGSTAT_H */

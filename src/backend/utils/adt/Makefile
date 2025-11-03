@@ -42,6 +42,7 @@ OBJS = \
 	geo_ops.o \
 	geo_selfuncs.o \
 	geo_spgist.o \
+	hg_proc_data.o \
 	inet_cidr_ntop.o \
 	inet_net_pton.o \
 	int.o \

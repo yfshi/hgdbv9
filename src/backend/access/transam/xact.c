@@ -5954,6 +5954,13 @@ BlockStateAsString(TBlockState blockState)
 	return "UNRECOGNIZED";
 }
 
+/* Begin ReqID: SESSION-VIEWS */
+const char *
+TransStateIntAsString(int state)
+{
+	return TransStateAsString((TransState)state);
+}
+/* End ReqID: SESSION-VIEWS */
 /*
  * TransStateAsString
  *		Debug support
@@ -6646,7 +6653,13 @@ MarkSubTransactionAssigned(void)
 
 	CurrentTransactionState->assigned = true;
 }
-
+/* Begin ReqID: SESSION-VIEWS */
+int
+GetCurrTransState(void)
+{
+	return CurrentTransactionState->state;
+}
+/* End ReqID: SESSION-VIEWS */
 /* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 /*
  * Set a savepoint using a repeated name.

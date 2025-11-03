@@ -32,6 +32,14 @@
 #include "license.h"
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+
+/* Begin ReqID: SRS-SESSION-VIEWS */
+/* following header file is used to get client MAC*/
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <netinet/in.h>
+/* End ReqID: SRS-SESSION-VIEWS */
+
 /*
  * Global psql options
  */
@@ -89,6 +97,18 @@ struct adhoc_opts
 	SimpleActionList actions;
 };
 
+/* Begin ReqID: SRS-SESSION-VIEWS */
+typedef struct ClientInfo
+{
+	char		uid[64];
+	char		pid[64];
+	char		mac[64];
+}ClientInfo;
+static void get_client_info(ClientInfo *client_info);
+static bool GetMacAddress(char *mac);
+static void getosname(char *osname);
+/* End ReqID: SRS-SESSION-VIEWS */
+
 static void parse_psql_options(int argc, char *argv[],
 							   struct adhoc_opts *options);
 static void simple_action_list_append(SimpleActionList *list,
@@ -138,6 +158,10 @@ main(int argc, char *argv[])
 	int			successResult;
 	char	   *password = NULL;
 	bool		new_pass;
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	char		tmp_osname[100];
+	ClientInfo	client_info;
+	/* End ReqID: SRS-SESSION-VIEWS */
 
 	pg_logging_init(argv[0]);
 	pg_logging_set_pre_callback(log_pre_callback);
@@ -272,12 +296,18 @@ main(int argc, char *argv[])
 		 */
 		password = simple_prompt("Password: ", false);
 	}
-
+	/* Begin ReqID: SRS-SESSION-VIEWS */
+	memset(tmp_osname,0,100);
+	getosname(tmp_osname);
+	pset.osname = pg_strdup(tmp_osname);
+	/*set default ethernet device name with 'eth0' */
+	get_client_info(&client_info);
+	/* End ReqID: SRS-SESSION-VIEWS */
 	/* loop until we have a password if requested by backend */
 	do
 	{
 
-#define PARAMS_ARRAY_SIZE	11 // ReqID:SRS-SECURITY-IDENTITYAUTH
+#define PARAMS_ARRAY_SIZE	15 // ReqID:SRS-SECURITY-IDENTITYAUTH	/* ReqID: SRS-SESSION-VIEWS */
 
 		const char **keywords = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*keywords));
 		const char **values = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*values));
@@ -305,8 +335,18 @@ main(int argc, char *argv[])
 		keywords[9] = "custom";
 		values[9] = options.custom;
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
-		keywords[10] = NULL;
-		values[10] = NULL;
+		/* Begin ReqID: SRS-SESSION-VIEWS */
+		keywords[10] = "osname";
+		values[10] = pset.osname;
+		keywords[11] = "client_uid";
+		values[11] = pg_strdup(client_info.uid);
+		keywords[12] = "client_pid";
+		values[12] = pg_strdup(client_info.pid);
+		keywords[13] = "client_mac";
+		values[13] = pg_strdup(client_info.mac);
+		/* End ReqID: SRS-SESSION-VIEWS */
+		keywords[14] = NULL;
+		values[14] = NULL;
 
 		new_pass = false;
 		pset.db = PQconnectdbParams(keywords, values, true);
@@ -1409,3 +1449,104 @@ EstablishVariableSpace(void)
 					 send_space_one_comments_hook);
 	/* End - BUG#M0000411 */
 }
+
+/* Begin ReqID: SRS-SESSION-VIEWS */
+/* get the mac address */
+static bool
+GetMacAddress(char *mac)
+{
+	struct ifreq ifr;
+	struct ifconf ifc;
+	struct ifreq* it;
+	const struct ifreq* end;
+	char buf[2048];
+	int count = 0;
+
+	int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if (sock == -1)
+	{
+		return false;
+	}
+
+	ifc.ifc_len = sizeof(buf);
+	ifc.ifc_buf = buf;
+	if (ioctl(sock, SIOCGIFCONF, &ifc) == -1)
+	{
+		return false;
+	}
+
+	it = ifc.ifc_req;
+	end = it + (ifc.ifc_len / sizeof(struct ifreq));
+
+	for (; it != end; ++it)
+	{
+		strcpy(ifr.ifr_name, it->ifr_name);
+		if (ioctl(sock, SIOCGIFFLAGS, &ifr) == 0)
+		{
+			if (! (ifr.ifr_flags & IFF_LOOPBACK))
+			{ // don't count loopback
+				if (ioctl(sock, SIOCGIFHWADDR, &ifr) == 0)
+				{
+					unsigned char * ptr;
+					count ++ ;
+					ptr = (unsigned char  *)&ifr.ifr_ifru.ifru_hwaddr.sa_data[0];
+					snprintf(mac,64,"%02X:%02X:%02X:%02X:%02X:%02X",*ptr,*(ptr+1),*(ptr+2),*(ptr+3),*(ptr+4),*(ptr+5));
+					close(sock);
+					return true;
+				}
+			}
+		}
+		else
+			return false;
+	}
+	return false;
+}
+
+/*
+ * This funciton is use for getting client's uid, pid and MAC, So they
+ * can passed to backend for statistic module.
+ */
+static void
+get_client_info(ClientInfo *client_info)
+{
+/*currently it only support Linux*/
+#ifndef WIN32
+	if(!GetMacAddress(client_info->mac))
+		pg_log_warning("can't find mac address.");
+	sprintf(client_info->uid, "%d", geteuid());
+	sprintf(client_info->pid, "%d", getpid());
+#endif
+}
+
+/*
+ * Function: getosname()
+ *
+ * Description:  get the operating system name.
+ *
+*/
+static void
+getosname(char *osname)
+{
+	char operatesystem[100] = "";
+	FILE *stfd = fopen("/etc/os-release", "r");
+	char* ret = NULL;
+
+	if (stfd == NULL)
+	{
+		pg_log_fatal("cannot open /etc/os-release");
+		return;
+		//exit(EXIT_FAILURE);
+	}
+
+	ret = fgets(operatesystem, sizeof(operatesystem), stfd);
+	if (!ret)
+		pg_log_fatal("fget /etc/os-release error");
+
+	if(memcmp(operatesystem, "NAME", 4) == 0)
+	{
+		char *p = strstr(operatesystem, "=");
+		memcpy(osname, p + 1, strlen(p + 1) - 1);
+	}
+	fclose(stfd);
+}
+/* End ReqID: SRS-SESSION-VIEWS */
