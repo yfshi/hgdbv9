@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: licchk (PostgreSQL) 14\n"
 "Report-Msgid-Bugs-To: pgsql-bugs@lists.postgresql.org\n"
-"POT-Creation-Date: 2025-08-05 03:21+0000\n"
+"POT-Creation-Date: 2025-10-23 07:09+0000\n"
 "PO-Revision-Date: 2025-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Ge Tiancheng <getiancheng@highgo.com>\n"
 "Language-Team: Chinese (Simplified) <getiancheng@highgo.com>\n"
@@ -32,22 +32,22 @@ msgstr "错误:"
 msgid "warning: "
 msgstr "警告:"
 
-#: licchk.c:304 licchk.c:348
+#: licchk.c:384 licchk.c:476
 #, c-format
 msgid "license validate fail.\n"
 msgstr "license 验证失败\n"
 
-#: licchk.c:476
+#: licchk.c:652
 #, c-format
 msgid "Usage:\n"
 msgstr "使用方法:\n"
 
-#: licchk.c:477
+#: licchk.c:653
 #, c-format
 msgid "  %s [OPTION]... [DATADIR]\n"
 msgstr "  %s [选项]... [DATADIR]\n"
 
-#: licchk.c:478
+#: licchk.c:654
 #, c-format
 msgid ""
 "\n"
@@ -56,87 +56,142 @@ msgstr ""
 "\n"
 "选项:\n"
 
-#: licchk.c:479
+#: licchk.c:655
 #, c-format
 msgid "  -l, --list                  list enabled function items\n"
 msgstr "  -l, --list                  列出开启功能项\n"
 
-#: licchk.c:480
+#: licchk.c:656
 #, c-format
 msgid "  -a, --all                   all functional items\n"
 msgstr "  -a, --all                   列出所有功能项\n"
 
-#: licchk.c:481
+#: licchk.c:657
 #, c-format
 msgid "  -v, --view                  show desc information\n"
 msgstr "  -v, --view                  显示描述信息\n"
 
-#: licchk.c:482
+#: licchk.c:658
 #, c-format
 msgid "  -f, --filename=xxx.dat      set license filename\n"
 msgstr "  -f, --filename=xxx.dat      指定license文件名\n"
 
-#: licchk.c:483
+#: licchk.c:659
 #, c-format
 msgid "  -c, --check=xxx.txt         check hardware code, then exit.\n"
 msgstr "  -c, --check=xxx.txt         检查硬件码，然后退出\n"
 
-#: licchk.c:485
+#: licchk.c:661
 #, c-format
 msgid "  -C, --client-information    show client client_info.dat information.\n"
 msgstr "  -C, --client-information    显示客户端client_info.dat文件信息\n"
 
-#: licchk.c:486
+#: licchk.c:662
 #, c-format
 msgid "  -S, --server-license        show server license.dat information.\n"
 msgstr "  -S, --server-license        显示服务端license.dat文件信息\n"
 
-#: licchk.c:487
+#: licchk.c:663
 #, c-format
 msgid "  -d, --ignore-datetime-check ignore validity date of the license.\n"
 msgstr "  -d, --ignore-datetime-check 忽略license有效日期校验\n"
 
-#: licchk.c:489
+#: licchk.c:665
 #, c-format
 msgid "  -m, --max-connections       show max connections.\n"
 msgstr "  -m, --max-connections       获取license授权最大连接数\n"
 
-#: licchk.c:490
+#: licchk.c:666
 #, c-format
 msgid "  -U, --username              obtain the username from the license file.\n"
 msgstr "  -U, --username              获取license文件中默认用户名\n"
 
-#: licchk.c:491
+#: licchk.c:667
 #, c-format
 msgid "  -P, --port                  obtain the port from the license file.\n"
 msgstr "  -P, --port                  获取license文件中默认端口号\n"
 
-#: licchk.c:493
+#: licchk.c:669
 #, c-format
 msgid "  -s, --set-encoding          set license character encoding.\n"
 msgstr "  -s, --set-encoding          设置license字符编码\n"
 
-#: licchk.c:494
+#: licchk.c:670
 #, c-format
 msgid "  -e, --set-language          set display language(ch or en).\n"
 msgstr "  -e, --set-language          设置显示语言(ch 或 en)\n"
 
-#: licchk.c:496
+#: licchk.c:673
 #, c-format
 msgid "  -t, --get-start-time        get authorization start time.\n"
 msgstr "  -t, --get-start-time        授权开始时间\n"
 
-#: licchk.c:497
+#: licchk.c:674
 #, c-format
 msgid "  -T, --get-final-time        get authorization final time.\n"
 msgstr "  -T, --get-final-time        授权结束时间\n"
 
-#: licchk.c:498
+#: licchk.c:677
+#, c-format
+msgid "  -H, --get-highgo-version    get highgo database version.\n"
+msgstr "  -H, --get-highgo-version    获取瀚高数据库版本\n"
+
+#: licchk.c:678
+#, c-format
+msgid "  -M, --max-cpu-cores         get max cpu cores.\n"
+msgstr "  -M, --max-cpu-cores         最大CPU数\n"
+
+#: licchk.c:679
+#, c-format
+msgid "  -D, --dbname                get database default name.\n"
+msgstr "  -D, --dbname                默认数据库名\n"
+
+#: licchk.c:680
+#, c-format
+msgid "  -W, --hardware-code         get hardware code.\n"
+msgstr "  -W, --hardware-code         硬件码\n"
+
+#: licchk.c:681
+#, c-format
+msgid "      --license-version       get license version.\n"
+msgstr "      --license-version       license版本号\n"
+
+#: licchk.c:682
+#, c-format
+msgid "      --license-serial        get license serial.\n"
+msgstr "      --license-serial        license序列号\n"
+
+#: licchk.c:683
+#, c-format
+msgid "      --license-status        get license status.\n"
+msgstr "      --license-status        license状态\n"
+
+#: licchk.c:684
+#, c-format
+msgid "      --user-info             get user information.\n"
+msgstr "      --user-info             用户信息\n"
+
+#: licchk.c:685
+#, c-format
+msgid "      --auth-type             get authorization type.\n"
+msgstr "      --auth-type             授权方式\n"
+
+#: licchk.c:686
+#, c-format
+msgid "      --used-type             get used type.\n"
+msgstr "      --used-type             应用方式\n"
+
+#: licchk.c:687
+#, c-format
+msgid "      --project-info          get project information.\n"
+msgstr "      --project-info          项目信息\n"
+
+#: licchk.c:689
 #, c-format
 msgid "  -V, --version               output version information, then exit\n"
 msgstr "  -V, --version               输出版本信息，然后退出\n"
 
-#: licchk.c:499
+#: licchk.c:690
 #, c-format
 msgid "  -?, --help                  show this help, then exit\n"
 msgstr "  -?, --help                  显示此帮助，然后退出\n"
