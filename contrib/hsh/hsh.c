@@ -30,7 +30,7 @@
 #include "access/heapam.h"
 #include "access/genam.h"
 #include "catalog/namespace.h"
-#include "catalog/indexing.h"
+#include "catalog/index.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_database.h"
 #include "catalog/pg_authid.h"
@@ -186,10 +186,10 @@ typedef struct
 {
 	LWLock		lock;		/* lock for consistency */
 	bool		is_full;	/* is full or false */
-	Size		max_size;	/* max queue length */
-	Size		curr_index;	/* the next index to write */
-	Size		sample_index;	/* for writing sample: the latest index have written */
-	Size            sample_index_saved;
+	int		max_size;	/* max queue length */
+	int		curr_index;	/* the next index to write */
+	int		sample_index;	/* for writing sample: the latest index have written */
+	int		sample_index_saved;
 	SessionHistEntry	*buffer; /* buffer */
 
 	TimestampTz	old_ts;	/* the oldest timestamp for update the buff */
@@ -428,6 +428,10 @@ const char *html_sample_h = "<H2></H2><table><tr><th width=\"100\">起始时间<
 
 const char *html_sample_b = "<tr class=\"parent\"><td class=\"value\">{{START_TIME}}</td><td class=\"value\">{{END_TIME}}</td><td class=\"value\">{{DURATION}}</td><td class=\"value\">{{TOTAL_SAMPLE}}</td><td class=\"value\">{{AVG_SESSIONS}}</td></tr></table>";
 
+/* Begin - BUG#z6128 */
+const char *html_sample_d = "<ul><li>字段“样本总数”：采集时间内的样本总数</li><li>字段“平均会话数”：数据来源为 MEMORY 时， 样本总数除以计时时间；数据来源为 DB/COMBINE 时，(样本总数除以计时时间)*10。</li></ul>";
+/* End - BUG#z6128 */
+
 /*
  * report body 
  */
@@ -477,7 +481,9 @@ const char *html_sql_event_e = "</table><p><a HREF=#report_main>返回到报告�
  */
 const char *html_session_t = "<H3><a NAME=top_session>Top 会话</a></H3>";
 
-const char *html_session_d = "<ul><li>显示进程中出现次数最高的 event 信息</li></ul>";
+/* Begin - BUG#z6128 */
+const char *html_session_d = "<ul><li>显示会话中出现次数最高的 event 信息</li><li>字段“会话占比”：会话采样数除以总的采样次数</li><li>字段“平均会话数”：会话采样数除以总的采样时间</li><li>字段“事件名称”：会话采样中，出现次数最多的时间</li><li>字段“事件占比”：当前事件的采样数除以当前会话的总采样数</li></ul>";
+/* End - BUG#z6128 */
 
 const char *html_session_h = "<table><tr><th width=\"200\">会话 ID</th><th width=\"200\">会话占比</th><th width=\"200\">平均会话数</th><th width=\"200\">事件名称</th><th width=\"200\">事件占比</th>";
 
@@ -644,12 +650,12 @@ history_time_check_hook(int *newval, void **extra, GucSource source)
 static bool
 history_size_check_hook(int *newval, void **extra, GucSource source)
 {
-        int n = *newval;
-        if (n < 10000)
-        {
-                return false;
-        }
-        return true;
+	int n = *newval;
+	if (n < 10000)
+	{
+		return false;
+	}
+	return true;
 }
 
 /*
@@ -878,7 +884,7 @@ _PG_init(void)
 					100000,
 					10000,
 					INT_MAX,
-					PGC_SIGHUP,
+					PGC_POSTMASTER,
 					0,
 					history_size_check_hook,
 					NULL,
@@ -1018,6 +1024,7 @@ static void
 probe_sessions(History *hist_hdr, uint64 sample_id)
 {
 	SockAddr        zero_clientaddr;
+	int		count = 0; /* BUG#z6049 */
 
 	TimestampTz now = GetCurrentTimestamp();
 	int number = pgstat_fetch_stat_numbackends();
@@ -1147,6 +1154,7 @@ probe_sessions(History *hist_hdr, uint64 sample_id)
 		memcpy(hsh_array_slot, &item, sizeof(item));
 
 		ring_buf->curr_index ++;
+		count++;	/* BUG#z6049 */
 
 		if (ring_buf->curr_index >= ring_buf->max_size)
                 {
@@ -1155,22 +1163,29 @@ probe_sessions(History *hist_hdr, uint64 sample_id)
                 }
 	}
 
-	/* update the old_ts */
-	if (ring_buf->old_ts == 0)
+	/*
+ 	 * update the ts if we really collected data
+ 	 */
+	if (count != 0)	/* BUG#z6049 */
 	{
-		ring_buf->old_ts = now;
+		/* update the old_ts */
+		if (ring_buf->old_ts == 0)
+		{
+			ring_buf->old_ts = now;
+		}
+		else if (ring_buf->is_full)
+		{
+			int64 next =  ring_buf->curr_index;
+			ring_buf->old_ts = ring_buf->buffer[next].ts;
+		}
+		else
+		{
+			/* do nothing */
+		}
+
+		/* update the new_ts */
+		ring_buf->new_ts = now;
 	}
-	else if (ring_buf->is_full)
-	{
-		int64 next =  ring_buf->curr_index;
-		ring_buf->old_ts = ring_buf->buffer[next].ts;
-	}
-	else
-	{
-		/* do nothing */
-	}
-	/* update the new_ts */
-	ring_buf->new_ts = now;
 }
 
 /*
@@ -1379,7 +1394,7 @@ hsh_collector_main(Datum main_arg)
 	while (!got_sigterm)
 	{
 		int		rc;
-		int64		history_diff;
+		int64		history_diff = 0;
 
 		/* We need an explicit call for at least ProcSignal notifications. */
 		CHECK_FOR_INTERRUPTS();
@@ -1395,24 +1410,48 @@ hsh_collector_main(Datum main_arg)
 
 		history_diff = millisecs_diff(history_ts, current_ts);
 
-                /*
-                 * Wait until next sample time or request to do something through
-                 * shared memory.
-                 */
-                rc = WaitLatch(&MyProc->procLatch, WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
-                                      (1000 - history_diff),
-                                        PG_WAIT_EXTENSION);
+		/* Begin - BUG#z6093 */
+		/*
+		 * for special case: 
+		 * if probe_session_info() spent more than 1s(1000ms)
+		 * reset history_diff to zero
+		 * to prevent waiting forever as (1000 - history_diff) is negative 
+		 * so we can continue waiting 1s to collecotr the session info
+		 */
+		if (history_diff > 1000 )
+		{
+			history_diff = 0;
+		}
+		/* End - BUG#z6093 */
 
-                if (rc & WL_POSTMASTER_DEATH)
-                           proc_exit(1);
+		/*
+		 * Wait until next sample time or request to do something through
+		 * shared memory.
+		 */
+		rc = WaitLatch(&MyProc->procLatch, WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
+							(1000 - history_diff),
+							PG_WAIT_EXTENSION);
 
-                ResetLatch(&MyProc->procLatch);
+		if (rc & WL_POSTMASTER_DEATH)
+			proc_exit(1);
+
+		ResetLatch(&MyProc->procLatch);
 			
 		state = should_hsh_run(false, NULL, NULL);
+
+		/* Begin - BUG#z6093 */
+		/* 
+		 * begin to collector the probe session info
+		 * if hsh.collector set to off
+		 * we also set this timer
+		 */
+		begin_collector = GetCurrentTimestamp();
+		/* End - BUG#z6093 */
+
 		if (state)
 		{
-			long dura;
-			begin_collector = GetCurrentTimestamp();	
+
+			int64	dura = 0;
 
 			/* Acquire the share buf lock */
 			LWLockAcquire(&ring_buf->lock, LW_EXCLUSIVE);
@@ -1444,11 +1483,27 @@ hsh_collector_main(Datum main_arg)
 
 			/* cal the time for collector */
 			dura = millisecs_diff(begin_collector, end_collector);
-			ereport(DEBUG2, (errmsg("Highgo Session History collector duration is %ld",dura)));
 
-			history_ts = end_collector;
-			history_diff = 0;
+			/* Begin - BUG#z6093 */
+			/*
+			 * if probe_sessions() using more than 1s(1000ms)
+			 * we should to record it
+			 */
+			if (dura > 1000)
+			{
+				elog(LOG, "Highgo Session History collector: collecting session info using more than 1s(1000ms)");
+			}
+			/* End - BUG#z6093 */
 		}
+
+		/* Begin - BUG#z6093 */
+		/*
+		 * history_ts is the begin time when we start collect
+		 * if probe_sessions() spent 10ms
+		 * we will wait (1000 - 10) ms
+		 */
+		history_ts = begin_collector;
+		/* End - BUG#z6093 */
 
 		/* Shutdown if requested */
 		if (shutdown_requested)
@@ -1521,6 +1576,7 @@ get_ringbuf_to_heap(History *heap_buf, int filter_flag)
 		 * flowing time elapses
 		 * if not full, read from 0 to curr_index-1
 		 * if full, read from curr_index to max_size, then read 0 to curr_index-1
+		 *
 		 */
 		if (!ring_buf->is_full)
 		{
@@ -1562,10 +1618,19 @@ get_ringbuf_to_heap(History *heap_buf, int filter_flag)
 		 * filter the sample snap
 		 */
 		heap_buf->sample_index = ring_buf->curr_index;
-		if (!ring_buf->is_full)
+
+		/*
+		 * include two case:
+		 *    1) buf is not full
+		 *    2) buf is full, and sample_index_saved has cycled
+		 */
+		if (ring_buf->sample_index_saved <= ring_buf->curr_index)	/* BUG#z6126 */
 		{
-			/* from 0 to curr_index */
-			for (int i = ring_buf->sample_index_saved + 1; i < ring_buf->curr_index; i++)
+			elog(DEBUG2,"ring_buf->sample_index_saved = %d", ring_buf->sample_index_saved);
+			elog(DEBUG2, "ring_buf->curr_index = %d", ring_buf->curr_index);
+
+			/* from sample_index_saved to curr_index */
+			for (int i = ring_buf->sample_index_saved; i < ring_buf->curr_index; i++)
 			{
 				hsh_array_slot = ring_buf->buffer + i;
 				if (hsh_array_slot->is_flushed_sample)
@@ -1580,9 +1645,13 @@ get_ringbuf_to_heap(History *heap_buf, int filter_flag)
 			}
 
 		}
+		/*
+		 * buf is full, but sample_index_saved is not cycled */
 		else
 		{
-			for (int i = ring_buf->sample_index_saved + 1; i < ring_buf->max_size; i++)
+			elog(DEBUG2, "ring_buf->sample_index_saved = %d, ring_buf->curr_index = %d", ring_buf->sample_index_saved, ring_buf->curr_index);
+
+			for (int i = ring_buf->sample_index_saved; i < ring_buf->max_size; i++)
 			{
 				hsh_array_slot = ring_buf->buffer + i;
 				if (hsh_array_slot->is_flushed_sample)
@@ -2004,12 +2073,27 @@ get_history_fill_ratio(void)
 	/* if not full, return real_count / size */
 	if (!ring_buf->is_full)
 	{
-		return (long)((ring_buf->curr_index / hsh_history_size) * 100) ;
+		return (long)((ring_buf->curr_index  * 100) / hsh_history_size); /* BUG#z6126 */
 	}
-	/* if full, return sample_size / size */
+	/* if full, return (not sample size) / size */
 	else
 	{
-		 return (long)( (hsh_history_size - ring_buf->sample_index + ring_buf->curr_index) / hsh_history_size ) * 100;
+		/* Begin - BUG#z6126 */
+		int last_sample_to_end;
+
+		/* sample_index_saved has cycled */
+		if (ring_buf->sample_index_saved <= ring_buf->curr_index)
+		{
+			last_sample_to_end = ring_buf->curr_index - ring_buf->sample_index_saved;
+		}
+		/* sample_index_saved is not cycled, but curr_index has cycled */
+		else
+		{
+			last_sample_to_end = hsh_history_size - ring_buf->sample_index_saved + ring_buf->curr_index;
+		}
+
+		return (long)((last_sample_to_end * 100) / hsh_history_size);
+		/* End - BUG#Z6126 */
 	}
 	
 }
@@ -2031,21 +2115,67 @@ get_history_fill_ratio(void)
 static void
 write_to_systable(SessionHistEntry *beentry, Relation rel)
 {
-        Datum values[Natts_hsh_history];
-        bool nulls[Natts_hsh_history];
-        HeapTuple tuple;
+	Datum values[Natts_hsh_history];
+	bool nulls[Natts_hsh_history];
+	HeapTuple tuple;
 	BlockNumber block;
 	OffsetNumber offnum;
 
-        /* Insert a line to the table */
-        memset(values, 0, sizeof(values));
-        memset(nulls, 0, sizeof(nulls));
+	/* Begin - BUG#z6093 */
+	List *indexList;
+	ListCell * index;
+	/* End - BUG#z6093 */
 
-        /* get active session profile tuple */
-        GetTuple(values, Natts_hsh_history, nulls, Natts_hsh_history, beentry);
+	/* Insert a line to the table */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
 
-        tuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
-        simple_heap_insert(rel, tuple);
+	/* get active session profile tuple */
+	GetTuple(values, Natts_hsh_history, nulls, Natts_hsh_history, beentry);
+
+	tuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
+	simple_heap_insert(rel, tuple);
+
+	/* Begin - BUG#z6093 */
+	indexList = RelationGetIndexList(rel);
+	foreach(index, indexList)
+	{
+		Datum		*index_values;
+		bool		*index_nulls;
+		TupleTableSlot	*slot;
+		EState		*estate;
+		ExprContext	*econtext;
+
+		Oid indexOid = lfirst_oid(index);
+		Relation idexRel = index_open(indexOid, RowExclusiveLock);
+		IndexInfo *indexInfo = BuildIndexInfo(idexRel);
+
+		estate = CreateExecutorState();
+		slot = MakeSingleTupleTableSlot(RelationGetDescr(rel), &TTSOpsHeapTuple);
+
+		ExecStoreHeapTuple(tuple, slot, false);
+
+		index_values = palloc(sizeof(Datum) * indexInfo->ii_NumIndexAttrs);
+		index_nulls = palloc(sizeof(bool) * indexInfo->ii_NumIndexAttrs);
+
+		econtext = GetPerTupleExprContext(estate);
+		econtext->ecxt_scantuple = slot;
+
+		FormIndexDatum(indexInfo, slot, estate, index_values, index_nulls);
+
+		index_insert(idexRel, index_values, index_nulls,
+					&(tuple->t_self), rel, indexInfo->ii_Unique, false, NULL);
+
+		ExecDropSingleTupleTableSlot(slot);
+		FreeExecutorState(estate);
+
+		index_close(idexRel, RowExclusiveLock);
+		pfree(index_values);
+		pfree(index_nulls);
+
+	}
+	list_free(indexList);
+	/* End - BUG#z6093 */
 
 	/* DEBUG log */
         block = ItemPointerGetBlockNumber(&tuple->t_self);
@@ -2072,11 +2202,11 @@ write_to_systable(SessionHistEntry *beentry, Relation rel)
 static void
 save_session_info(void)
 {
-	Size count;
-	History *history_heap;
-	Oid             namespaceid;
-	Oid             relOid;
-	Relation        rel;
+	int		count;	/* BUG#z6126 */
+	History		*history_heap;
+	Oid		namespaceid;
+	Oid		relOid;
+	Relation	rel;
 	
 	/* copy the ring buffer to the heap */
 	history_heap = (History *) palloc0(sizeof(History));
@@ -2089,10 +2219,9 @@ save_session_info(void)
 
 	PG_TRY();
 	{
-
-                namespaceid = LookupNamespaceNoError(HSH_HISTORY_NAMESPACE);
-                relOid = get_relname_relid(HSH_HISTORY_DATA, namespaceid);
-	        rel = table_open(relOid, RowExclusiveLock);
+		namespaceid = LookupNamespaceNoError(HSH_HISTORY_NAMESPACE);
+		relOid = get_relname_relid(HSH_HISTORY_DATA, namespaceid);
+		rel = table_open(relOid, RowExclusiveLock);
 
 		for (int i = 0; i < count; i++)
 		{
@@ -2200,6 +2329,15 @@ hsh_writer_main(Datum main_arg)
 		current_ts = GetCurrentTimestamp();
 		history_diff = millisecs_diff(history_ts, current_ts);
 
+		/* Begin - BUG#z6093 */
+		/* if something wrong, reset the loop for 10s */
+		if (history_diff > WRITER_CHECK)
+		{
+			history_diff  = 0;
+			elog(LOG,"Highgo Session History Writer,loop duration is less than zero, reset the loop to 10s");
+		}
+		/* End - BUG#z6093 */
+
 		/*
 		 * wakeup every 10s to check if have work to do
 		 */
@@ -2212,6 +2350,11 @@ hsh_writer_main(Datum main_arg)
 		if (rc & WL_POSTMASTER_DEATH)
 			proc_exit(1);
 
+		/* Begin - BUG#z6093 */
+		/* we wakeup, refresh the history_ts */
+		history_ts = GetCurrentTimestamp();
+		/* End - BUG#z6093 */
+
 		if (rc & WL_LATCH_SET)
 			goto loop_continue;
 
@@ -2220,7 +2363,6 @@ hsh_writer_main(Datum main_arg)
 		/* ring_buf->count != 0 */
 		if (should_hsh_run(true, NULL, NULL) && ring_buf != NULL )
 		{
-
 			SetCurrentStatementStartTimestamp();
 			StartTransactionCommand();
 			if ((ret = SPI_connect()) < 0)
@@ -2236,7 +2378,7 @@ hsh_writer_main(Datum main_arg)
 			 * 10 min or 80%
 			 * read the data from ring_buff, save to table
 			 */
-			if ((now - last_history_saved) >= (hsh_writer_ringbuf_interval * USECS_PER_MINUTE) || get_history_fill_ratio() > 80)
+			if ((now - last_history_saved) >= (hsh_writer_ringbuf_interval * USECS_PER_MINUTE) || get_history_fill_ratio() >= 80)	/* BUG#z6126 */
 			{
 				save_session_info();
 				last_history_saved = GetCurrentTimestamp();
@@ -2311,7 +2453,6 @@ hsh_writer_main(Datum main_arg)
 		}
 
 loop_continue:
-		history_ts = GetCurrentTimestamp();	
 
 		/* Shutdown if requested */
 		if (shutdown_requested)
@@ -2335,18 +2476,18 @@ loop_continue:
 static TimestampTz
 hsh_get_ringbuf_start(void)
 {
-        TimestampTz tmp = 0;
+	TimestampTz tmp = 0;
 
-        if (ring_buf != NULL)
-        {
-                LWLockAcquire(&ring_buf->lock,0);
-                tmp = ring_buf->old_ts;
-                LWLockRelease(&ring_buf->lock);
+	if (ring_buf != NULL)
+	{
+		LWLockAcquire(&ring_buf->lock,0);
+		tmp = ring_buf->old_ts;
+		LWLockRelease(&ring_buf->lock);
 
-                return tmp;
-        }
+		return tmp;
+	}
 
-        elog(ERROR, "Highgo Session History: shared buff did not initailized");
+	elog(ERROR, "Highgo Session History: shared buff did not initailized");
 
 }
 
@@ -2361,18 +2502,18 @@ hsh_get_ringbuf_start(void)
 static TimestampTz
 hsh_get_ringbuf_end(void)
 {
-        TimestampTz tmp = 0;
+	TimestampTz tmp = 0;
 
-        if (ring_buf != NULL)
-        {
-                LWLockAcquire(&ring_buf->lock,0);
-                tmp = ring_buf->new_ts;
-                LWLockRelease(&ring_buf->lock);
+	if (ring_buf != NULL)
+	{
+		LWLockAcquire(&ring_buf->lock,0);
+		tmp = ring_buf->new_ts;
+		LWLockRelease(&ring_buf->lock);
 
-                return tmp;
-        }
+		return tmp;
+	}
 
-        elog(ERROR, "Highgo Session History: shared buff did not initailized");
+	elog(ERROR, "Highgo Session History: shared buff did not initailized");
 }
 
 /*
@@ -2653,14 +2794,15 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 	Oid     namespaceOid;
         Oid     relOid;
 
-	TimestampTz     now;
-        TimestampTz     ringbuf_start;
-        TimestampTz     ringbuf_end;
-        TimestampTz     sample_data_start;
-        TimestampTz     sample_data_end;
+	/* need init those data */
+	TimestampTz	now;
+	TimestampTz	mem_start = 0,
+			mem_end = 0;
+	TimestampTz	db_start = 0,
+			db_end = 0;
 
 	DATA_TYPE       type = NONE;
-	bool		memory_ready = true;
+	bool		memory_ready = false;
 	bool		table_ready = false;
 
         if (TIMESTAMP_NOT_FINITE(b_tmtz) || TIMESTAMP_NOT_FINITE(e_tmtz))
@@ -2680,85 +2822,75 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 
 	/* check the time is fine */
 	now = GetCurrentTimestamp();    /* current time */
-        if (b_tmtz > now)
-        {
-                elog(ERROR, "Start Time ahead of NOW");
-        }
-        if (b_tmtz <= (now - 7*USECS_PER_DAY))
-        {
-                elog(ERROR, "Start Time later than (NOW - 7days)");
-        }
-
-        if (e_tmtz< (now - 7*USECS_PER_DAY))
-        {
-                elog(ERROR, "End Time is later than (NOW - 7days)");
-        }
-        if (e_tmtz > now)
-        {
-                elog(ERROR, "End Time ahead of NOW");
-        }
-
-       /* check the start time and the end time is invalid */
-        if (b_tmtz >= e_tmtz)
-        {
-                elog(ERROR, "Start Time is ahead of End Time");
-        }
-
-        /* check the ring_buf is ready */
-        if (ring_buf == NULL)
+	if (b_tmtz > now)
 	{
-                memory_ready = false;
+		elog(ERROR, "Start Time ahead of NOW");
+	}
+	if (b_tmtz <= (now - 7*USECS_PER_DAY))
+	{
+		elog(ERROR, "Start Time later than (NOW - 7days)");
 	}
 
-        if (ring_buf != NULL && (!ring_buf->is_full && ring_buf->curr_index == 0))
+	if (e_tmtz< (now - 7*USECS_PER_DAY))
 	{
-                memory_ready = false;
+		elog(ERROR, "End Time is later than (NOW - 7days)");
+	}
+	if (e_tmtz > now)
+	{
+		elog(ERROR, "End Time ahead of NOW");
 	}
 
-        /* check if hsh table exist */
-        namespaceOid = LookupNamespaceNoError(HSH_HISTORY_NAMESPACE);
-        if (OidIsValid(namespaceOid))
-        {
-                relOid = get_relname_relid(HSH_HISTORY_DATA, namespaceOid);
-                if (!OidIsValid(relOid))
-                {
-                        elog(ERROR,"HSH table %s.%s is not exit", HSH_HISTORY_NAMESPACE, HSH_HISTORY_DATA);
-                }
+	/* check the start time and the end time is invalid */
+	if (b_tmtz >= e_tmtz)
+	{
+		elog(ERROR, "Start Time is ahead of End Time");
+	}
+
+	/* check the ring_buf is ready */
+	if (ring_buf == NULL)
+	{
+		elog(ERROR, "The Ringbuf did not initialized for Highgo Session History collector");
+	}
+	else
+	{
+		memory_ready = true;
+	}
+
+	/* check if hsh table exist */
+	namespaceOid = LookupNamespaceNoError(HSH_HISTORY_NAMESPACE);
+	if (OidIsValid(namespaceOid))
+	{
+		relOid = get_relname_relid(HSH_HISTORY_DATA, namespaceOid);
+		if (!OidIsValid(relOid))
+		{
+			elog(ERROR,"HSH table %s.%s is not exit", HSH_HISTORY_NAMESPACE, HSH_HISTORY_DATA);
+		}
 		else
 		{
 			table_ready = true;
 		}
-        }
-        else
-        {
-                elog(ERROR,"HSH namespace is not exit");
-        }
-
-        /*
-	 * check the data source is memory, db or memory&db
-	 * get the ringbuf MIN(ts) and MAX(ts)
-	 * 	if MIN(ts) <= b and e <= MAX(ts)
-	 * 		return MEM_ONLY
-	 * get MIN(t) and MAX(ts) frm hsh_history_data table
-	 * 	if MIN(t) <= b && e <= MAX(ts)
-	 * 		return DB_ONLY
-	 * if single ringbuf or DB could not cover the scope, check cross 
-	 */
-        if (memory_ready)
-        {
-                ringbuf_start = hsh_get_ringbuf_start();
-                ringbuf_end = hsh_get_ringbuf_end();
-
-		if (ringbuf_start <= b_tmtz && e_tmtz <= ringbuf_end)
-		{
-			type = MEM_ONLY;
-			return type;
-		}
+	}
+	else
+	{
+		elog(ERROR,"HSH namespace is not exit");
 	}
 
 	/*
- 	 * get the db MIN(ts) MAX(ts)
- 	 */
+	 * get the memory MIN(ts) MAX(ts)
+	 */
+	if (memory_ready)
+	{
+		mem_start = hsh_get_ringbuf_start();
+		mem_end = hsh_get_ringbuf_end();
+	}
+	else
+	{
+		//there has already report the error
+	}
+
+	/*
+	 * get the db MIN(ts) MAX(ts)
+	 */
 	if (table_ready)
 	{
 		StringInfoData querybuf;
@@ -2788,41 +2920,209 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 			elog(ERROR, "not a singleton result: %s", querybuf.data);
 		}
 
-		sample_data_start = DatumGetTimestampTz(SPI_getbinval(SPI_tuptable->vals[0],
+		db_start = DatumGetTimestampTz(SPI_getbinval(SPI_tuptable->vals[0],
 									SPI_tuptable->tupdesc,
 									1,
 									&isnull));
-
-		sample_data_end = DatumGetTimestampTz(SPI_getbinval(SPI_tuptable->vals[0],
+		db_end = DatumGetTimestampTz(SPI_getbinval(SPI_tuptable->vals[0],
 									SPI_tuptable->tupdesc,
 									2,
 									&isnull));
-
-		SPI_finish();
+         	SPI_finish();
+        }
+	else
+	{
+		// there has already report the error
 	}
 
-	/* did not find MIN(ts) or MAX(ts) from the hsh_history_data table */
-	if (sample_data_start == 0 || sample_data_end == 0)
+	/* Begin - BUG#z6049 */
+        /*
+	 * check the data source is memory, db or memory&db
+	 */
+	if (db_end == 0 && mem_end == 0)
 	{
+		/* there is no data in db or mem */
 		type = NONE;
+		return type;
 	}
-	/* table data could cover the request scope */
-	else if (sample_data_start <= b_tmtz && e_tmtz <= sample_data_end)
+
+	/* there is no possible mem_end < db_end */
+	if (mem_start == 0)        /* db have data */
 	{
-		type = DB_ONLY;
+		/*
+		 * NOTE:
+		 *                       min(ts)                               max(ts)
+		 * DB time:               |-------------|
+		 * ME time:                                        |  nothing    |
+		 * dura:     N -    (b,e)
+		 *
+		 *           D -    (b,         e)
+		 *           D -    (b,                        e)
+		 *           D -            (b, e)
+		 *           D -            (b,                e)
+		 *
+		 *           N -                           (b, e)
+		 *
+		 */
+		if ((e_tmtz < db_start) || (db_end < b_tmtz))
+		{
+			type = NONE;
+		}
+		else
+		{
+			type = DB_ONLY;
+		}
 	}
-	/* ringbuf + table cover the request scope */
-	else if (sample_data_start <= b_tmtz && e_tmtz <= ringbuf_end)
+	else if ((mem_start != 0 && mem_start < db_start) || db_end == 0)
 	{
-		type = COMBINE;
+		/*
+		 * As db did not have data or its just a part of memory
+		 * just check the memory
+		 */
+
+		/*
+		 * NOTE:
+		 *                     min(ts)         max(ts)
+		 * DB time:             |     nothing    |
+		 * DB time:    	            |------------|
+		 * ME time:             |---------------------|
+		 * dura:   N -  (b, e)
+		 *
+		 *         M -  (b,             e)
+		 *         M -  (b,                                  e)
+		 * 	   M -           (b,                e)
+		 * 	   M -           (b,                         e)
+		 *
+		 * 	   N -                                   (b, e)
+		 */
+		if (e_tmtz < mem_start || b_tmtz > mem_end)
+			type = NONE;
+		else
+			type = MEM_ONLY;
+
+	}
+        else if (db_start < mem_start && mem_start < db_end)
+	{
+		/*
+		 * As db have data, and it has overlapping data with memory
+		 * need check db and memory
+		 */
+
+		/*
+		 * NOTE:
+		 *                     min(ts)                    max(ts)
+		 * DB time:               |-----------------|
+		 * ME time:                         |--------------------|
+		 * dura:     N -  (b, e)
+		 *
+		 *           D -  (b,           e)
+		 *           D -  (b,                     e)
+		 *           D -            (b, e)
+		 *           D -            (b,           e)
+		 *
+		 *           C -  (b,                               e)
+		 *           C -  (b,                                          e)
+		 *           C -             (b,                    e)
+		 *           C -             (b,                               e)
+		 *
+		 *           M -                     (b, e)
+		 *           M -                     (b,            e)
+		 *           M -                     (b,                       e)
+		 *           M -                               (b,  e)
+		 *           M -                               (b,             e)  
+		 *
+		 *           N -                                            (b,e)
+		 *
+		 */
+		if (e_tmtz < db_start)
+		{
+			type = NONE;
+		}
+		else if (b_tmtz < mem_start && e_tmtz < db_end)
+		{
+			type = DB_ONLY;
+		}
+		else if (b_tmtz < mem_start &&  db_end < e_tmtz)
+		{
+			type = COMBINE;
+		}
+		else if (mem_start < b_tmtz && b_tmtz < mem_end)
+		{
+			type = MEM_ONLY;
+		}
+		else if (mem_end < b_tmtz)
+		{
+			type = NONE;
+		}
+		else
+		{ 
+			elog(ERROR, "Should not trigged this case as ");
+		}
+		
+	}
+	else if (db_end < mem_start && mem_start != 0)
+	{
+		/*
+		 * AS db have data, but have no overlapping data with memory
+		 * check db and memory
+		 * pay attension with gap between them
+		 */
+
+		/*
+		 * NOTE:
+		 *                       min(ts)                               max(ts)
+		 * DB time:               |-------------|
+		 * ME time:                                        |---------------|
+		 * dura:     N -    (b,e)
+		 *
+		 *           D -    (b,         e)
+		 *           D -    (b,                       e)
+		 *           D -            (b, e)
+		 *           D -            (b,               e)
+		 *
+		 *           C -    (b,                                  e)
+		 *           C -    (b,                                                    e)
+		 *           C -              (b,                        e)
+		 *           C -              (b,                                          e)
+		 *
+		 *           N -                         (b, e)
+		 *
+		 *           M -                         (b,             e)
+		 *           M -                         (b,                               e)
+		 *           M -                                     (b, e)
+		 *           M -                                     (b,                   e)
+		 *
+		 *           N -                                                       (b, e)   
+		 */
+		if ((e_tmtz < db_start) || (db_end < b_tmtz && e_tmtz < mem_start) || (mem_end < b_tmtz))
+		{
+			type = NONE;
+		}
+		else if (b_tmtz < db_end && e_tmtz < mem_start)
+		{
+			type = DB_ONLY;
+		}
+		else if (b_tmtz < db_end && mem_start < e_tmtz)
+		{
+			type = COMBINE;
+		}
+		else if (b_tmtz < mem_end)
+		{
+			type = MEM_ONLY;
+		}
+		else
+		{
+			elog(ERROR,"should not trigged this case");
+		}
+
 	}
 	else
 	{
-		type = NONE;
+		elog(ERROR, "This Scenario should not be trigged"); 
 	}
+	/* End - BUG#z6049 */
 
 	return type;
-
 }
 
 /*
@@ -2974,18 +3274,18 @@ hsh_report_to_file(PG_FUNCTION_ARGS)
 	const char *hgdb_version;
 	StringInfoData	buf_tmp;
 
-        Oid             relOid;
-        Relation        rel;
-        Oid             namespaceid;
-	char    	*tmp_0;
+	Oid             relOid;
+	Relation        rel;
+	Oid             namespaceid;
+	char		*tmp_0;
 
-        struct pg_tm tt, *tm = &tt;
-        char            buf_a[MAXDATELEN + 1];
-        fsec_t          fsec;
+	struct pg_tm tt, *tm = &tt;
+	char		buf_a[MAXDATELEN + 1];
+	fsec_t		fsec;
 
-        struct pg_tm tt_b, *tm_b = &tt_b;
-        char            buf_b[MAXDATELEN + 1];
-        fsec_t          fsec_b;
+	struct pg_tm tt_b, *tm_b = &tt_b;
+	char		buf_b[MAXDATELEN + 1];
+	fsec_t		fsec_b;
 
 	DATA_TYPE type;
 
@@ -3085,6 +3385,7 @@ hsh_report_to_file(PG_FUNCTION_ARGS)
 	hsh_read_template(&report, html_version_b);
 	hsh_read_template(&report, html_sample_h);
 	hsh_read_template(&report, html_sample_b);
+	hsh_read_template(&report, html_sample_d); /* BUG#z6128 */
 	hsh_read_template(&report, html_sample_report_body);
 
 	/*
@@ -3741,7 +4042,8 @@ cal_report(TimestampTz aa, TimestampTz bb)
 	 */
 	memset((void*)(entry.topsql_with_topevents), 0, sizeof(entry.topsql_with_topevents));
 	resetStringInfo(&query);
-	appendStringInfo(&query, "SELECT query_id, COUNT(*) AS count FROM %s WHERE query_id != 0 GROUP BY query_id \
+	appendStringInfo(&query, "SELECT query_id, COUNT(*) AS count FROM %s WHERE backend_type = 'client backend' AND \
+						query_id != 0 GROUP BY query_id \
 						ORDER BY count DESC limit 10;",
 						HSH_RESULT);
 	ret = SPI_execute(query.data, false, 0);
@@ -4006,6 +4308,8 @@ cal_continue:
 #define OVERTIME_INTERVAL 900
 
 	/* over time */
+	memset(entry.sample_slots, 0, sizeof(entry.sample_slots)); /* BUG#z6130 */
+
 	/* interval is 15 * 60s = 900s*/
 	if ((entry.sample_time % OVERTIME_INTERVAL) == 0 )
 	{
@@ -4176,6 +4480,8 @@ cal_continue:
 	 * select from hsh_statements
 	 * store in entry.sql_slots
 	 */
+	memset(entry.sql_slots, 0, sizeof(entry.sql_slots));  /* BUG#z6130 */
+
 	entry.sql_slot_counts = entry.topsql_with_topevent_counts;	
 	for (int i = 0; i < entry.sql_slot_counts; i++)
 	{
