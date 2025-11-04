@@ -61,10 +61,10 @@ WHERE table_schema = 'test_schema'
 ORDER BY constraint_name, ordinal_position;
  constraint_catalog | constraint_schema |  constraint_name   | table_catalog | table_schema | table_name | column_name | ordinal_position | position_in_unique_constraint | referenced_table_schema | referenced_table_name | referenced_column_name 
 --------------------+-------------------+--------------------+---------------+--------------+------------+-------------+------------------+-------------------------------+-------------------------+-----------------------+------------------------
+ def                | test_schema       | PRIMARY            | def           | test_schema  | ref_tbl    | id          |                1 |                               |                         |                       | 
+ def                | test_schema       | PRIMARY            | def           | test_schema  | main_tbl   | col1        |                1 |                               |                         |                       | 
  def                | test_schema       | main_tbl_col2_key  | def           | test_schema  | main_tbl   | col2        |                1 |                               |                         |                       | 
  def                | test_schema       | main_tbl_col3_fkey | def           | test_schema  | main_tbl   | col3        |                1 |                             1 | test_schema             | ref_tbl               | id
- def                | test_schema       | main_tbl_pkey      | def           | test_schema  | main_tbl   | col1        |                1 |                               |                         |                       | 
- def                | test_schema       | ref_tbl_pkey       | def           | test_schema  | ref_tbl    | id          |                1 |                               |                         |                       | 
 (4 rows)
 
 DROP TABLE test_schema.main_tbl cascade;
@@ -90,7 +90,7 @@ ORDER BY table_name;
  test_schema_ivymy | base_tbl    | BASE TABLE | InnoDB | 0          | 0              | 16384       | 0               | 8192         | 16384     |                | Base Table Test
  test_schema_ivymy | part_tbl    | BASE TABLE | InnoDB | 0          | 0              | 0           |                 | 0            | 16384     |                | 
  test_schema_ivymy | part_tbl_p1 | BASE TABLE | InnoDB | 0          | 0              | 8192        | 0               | 0            | 16384     |                | 
- test_schema_ivymy | vw_tbl      | VIEW       | InnoDB |            |                | 0           |                 | 0            | 16384     |                | 
+ test_schema_ivymy | vw_tbl      | VIEW       |        |            |                |             |                 |              |           |                | VIEW
 (4 rows)
 
 ------------------------------------------------------------
@@ -112,13 +112,13 @@ SELECT table_schema, table_name, partition_name, subpartition_name,
 FROM information_schema.partitions
 WHERE table_schema = 'test_schema'
 ORDER BY table_name, partition_name, subpartition_name;
- table_schema | table_name |  partition_name  | subpartition_name | partition_method | partition_expression | subpartition_method | subpartition_expression |          partition_description           | table_rows | avg_row_length | data_length | index_length | partition_comment 
---------------+------------+------------------+-------------------+------------------+----------------------+---------------------+-------------------------+------------------------------------------+------------+----------------+-------------+--------------+-------------------
- test_schema  | list_part  | list_part_asia   | list_part_asia_0  | HASH             | HASH (val)           |                     |                         | FOR VALUES IN ('ASIA')                   | 0          |                | 0           | 0            | 
- test_schema  | list_part  | list_part_asia   | list_part_asia_1  | HASH             | HASH (val)           | HASH                | HASH (val)              | FOR VALUES IN ('ASIA')                   | 0          |                | 0           | 0            | 
- test_schema  | list_part  | list_part_asia_0 |                   |                  |                      |                     |                         | FOR VALUES WITH (modulus 2, remainder 0) | 0          |                | 8192        | 0            | 
- test_schema  | list_part  | list_part_asia_1 |                   | HASH             | HASH (val)           |                     |                         | FOR VALUES WITH (modulus 2, remainder 1) | 0          |                | 0           | 0            | 
- test_schema  | list_part  | list_part_europe |                   |                  |                      |                     |                         | FOR VALUES IN ('EUROPE')                 | 0          |                | 8192        | 0            | 
+ table_schema | table_name |  partition_name  | subpartition_name | partition_method |      partition_expression       | subpartition_method | subpartition_expression |          partition_description           | table_rows | avg_row_length | data_length | index_length | partition_comment 
+--------------+------------+------------------+-------------------+------------------+---------------------------------+---------------------+-------------------------+------------------------------------------+------------+----------------+-------------+--------------+-------------------
+ test_schema  | list_part  | list_part_asia   | list_part_asia_0  | HASH             | HASH (val)                      | HASH                | HASH (val)              | FOR VALUES IN ('ASIA')                   | 0          |                | 0           | 0            | 
+ test_schema  | list_part  | list_part_asia   | list_part_asia_1  | HASH             | HASH (val)                      | HASH                | HASH (val)              | FOR VALUES IN ('ASIA')                   | 0          |                | 0           | 0            | 
+ test_schema  | list_part  | list_part_asia_0 |                   | HASH             | HASH (val)                      |                     |                         | FOR VALUES WITH (modulus 2, remainder 0) | 0          |                | 8192        | 0            | 
+ test_schema  | list_part  | list_part_asia_1 |                   | HASH             | HASH (val)                      |                     |                         | FOR VALUES WITH (modulus 2, remainder 1) | 0          |                | 0           | 0            | 
+ test_schema  | list_part  | list_part_europe |                   | LIST             | LIST (region COLLATE "default") |                     |                         | FOR VALUES IN ('EUROPE')                 | 0          |                | 8192        | 0            | 
 (5 rows)
 
 ------------------------------------------------------------
@@ -282,9 +282,9 @@ WHERE table_schema = 'test_schema_stats'
 ORDER BY index_name, seq_in_index;
    table_schema    | table_name |      index_name       | seq_in_index | column_name | collation | cardinality | sub_part | index_type 
 -------------------+------------+-----------------------+--------------+-------------+-----------+-------------+----------+------------
- test_schema_stats | stats_tbl  | idx_stats_code_prefix |            1 |             | A         |             |       10 | btree
- test_schema_stats | stats_tbl  | idx_stats_name        |            1 | name        | A         |             |          | btree
- test_schema_stats | stats_tbl  | stats_tbl_pkey        |            1 | id          | A         |             |          | btree
+ test_schema_stats | stats_tbl  | idx_stats_code_prefix |            1 |             | A         |           0 |       10 | btree
+ test_schema_stats | stats_tbl  | idx_stats_name        |            1 | name        | A         |           0 |          | btree
+ test_schema_stats | stats_tbl  | stats_tbl_pkey        |            1 | id          | A         |           0 |          | btree
 (3 rows)
 
 SET ivorysql.enable_mysql_information_schema TO off;

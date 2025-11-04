@@ -22259,7 +22259,7 @@ makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool f
 	#define		FULL_COLUMNS_COLUMN_NUMS 9
 
 	char		full_colnames[FULL_COLUMNS_COLUMN_NUMS][16]
-						= {"COLUMN_NAME", "DATA_TYPE","COLLATION_NAME", "IS_NULLABLE", "COLUMN_KEY",
+						= {"COLUMN_NAME", "COLUMN_TYPE",/* Bug - #z5962 #z5963*/ "COLLATION_NAME", "IS_NULLABLE", "COLUMN_KEY",
 						   "COLUMN_DEFAULT", "EXTRA", "PRIVILEGES", "COLUMN_COMMENT"};
 
 	char		full_ailas[FULL_COLUMNS_COLUMN_NUMS][16]
@@ -22267,7 +22267,7 @@ makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool f
 						   "Default", "Extra", "Privileges", "Comment"};
 
 	char		colnames[COLUMNS_COLUMN_NUMS][16]
-						= {"COLUMN_NAME", "DATA_TYPE", "IS_NULLABLE", "COLUMN_KEY", "COLUMN_DEFAULT", "EXTRA"};
+						= {"COLUMN_NAME", "COLUMN_TYPE",/* Bug - #z5962 #z5963*/ "IS_NULLABLE", "COLUMN_KEY", "COLUMN_DEFAULT", "EXTRA"};
 	char		ailas[COLUMNS_COLUMN_NUMS][16]
 						= {"Field", "Type",  "Null", "Key", "Default", "Extra"};
 	int			 i = 0;
