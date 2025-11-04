@@ -576,6 +576,16 @@ msgstr "  -X, --waldir=WALDIR       预写日志目录的位置\n"
 msgid "      --wal-segsize=SIZE    size of WAL segments, in megabytes\n"
 msgstr "      --wal-segsize=SIZE    WAL段的大小（兆字节）\n"
 
+#: initdb.c:2905
+#, c-format
+msgid "                            set database mode (default: oracle)\n"
+msgstr "                            设置数据库兼容模式（默认值：oracle）\n"
+
+#: initdb.c:2907
+#, c-format
+msgid "                            set case conversion mode (default: interchange)\n"
+msgstr "                            设置大小写转换模式（默认值：interchange）\n"
+
 #: initdb.c:2268
 #, c-format
 msgid ""
@@ -637,6 +647,48 @@ msgstr ""
 #, c-format
 msgid "  -V, --version             output version information, then exit\n"
 msgstr "  -V, --version             输出版本信息, 然后退出\n"
+
+#: initdb.c:2927
+#, c-format
+msgid ""
+"  -C, --cluster-key-command=COMMAND\n"
+"                            enable cluster file encryption and set command\n"
+"                            to obtain the cluster key\n"
+msgstr ""
+"  -C, --cluster-key-command=COMMAND\n"
+"                            允许文件加密并指定获取密钥的脚本或加密机相关参数\n"
+
+#: initdb.c:2930
+#, c-format
+msgid "  -R, --authprompt          prompt for a passphrase or PIN\n"
+msgstr "  -R, --authprompt          提示输入密码或PIN\n"
+
+#: initdb.c:2931
+#, c-format
+msgid ""
+"  -K, --file-encryption-method=METHOD\n"
+"                            cluster file encryption method\n"
+msgstr ""
+"  -K, --file-encryption-method=METHOD\n"
+"                            指定文件加密算法\n"
+
+#: initdb.c:2933
+#, c-format
+msgid ""
+"  -z, --file-encryption-mode=MODE\n"
+"                            cluster file encryption mode\n"
+msgstr ""
+"  -z, --file-encryption-mode=MODE\n"
+"                            指定加密范围\n"
+
+#: initdb.c:2935
+#, c-format
+msgid ""
+"  -u, --copy-encryption-keys=DATADIR\n"
+"                            copy the file encryption key from another cluster\n"
+msgstr ""
+"  -u, --copy-encryption-keys=DATADIR\n"
+"                            从指定目录的密钥初始化数据库\n"
 
 #: initdb.c:2279
 #, c-format
