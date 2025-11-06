@@ -15,49 +15,98 @@ SELECT
 	c.relname::varchar(64) AS "TABLE_NAME",                                    -- Table name
 
 	CASE
-		WHEN n.nspname = 'information_schema' THEN 'SYSTEM VIEW'             -- System views from information_schema
-		WHEN c.relkind = 'r' THEN 'BASE TABLE'                               -- Ordinary table
-		WHEN c.relkind = 'p' THEN 'BASE TABLE'                               -- Partitioned table
-		WHEN c.relkind = 'v' THEN 'VIEW'                                     -- View
-		WHEN c.relkind = 'm' THEN 'VIEW'                                     -- Materialized view
-		WHEN c.relkind = 'f' THEN 'FOREIGN TABLE'                            -- Foreign table
+		WHEN n.nspname = 'information_schema' THEN 'SYSTEM VIEW'               -- System views from information_schema
+		WHEN c.relkind = 'r' THEN 'BASE TABLE'                                 -- Ordinary table
+		WHEN c.relkind = 'p' THEN 'BASE TABLE'                                 -- Partitioned table
+		WHEN c.relkind = 'v' THEN 'VIEW'                                       -- View
+		WHEN c.relkind = 'm' THEN 'VIEW'                                       -- Materialized view
+		WHEN c.relkind = 'f' THEN 'FOREIGN TABLE'                              -- Foreign table
 		ELSE NULL
 	END::varchar(64) AS "TABLE_TYPE",
 
-	'InnoDB'::varchar(64) AS "ENGINE",                                       -- Storage engine (access method), e.g. heap
-	CAST(NULL AS unsigned) AS "VERSION",                                     -- Version info (not supported in PostgreSQL)
-	'Dynamic'::varchar(10) AS "ROW_FORMAT",                                  -- Row storage format description
-	CAST(n_live_tup AS unsigned) AS "TABLE_ROWS",                            -- Estimated number of live rows (from pg_stat_user_tables)
+	CASE
+		WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+		ELSE 'InnoDB'
+	END::varchar(64) AS "ENGINE",                                              -- Storage engine (access method), e.g. heap
 
-	CAST(CASE (us.n_tup_ins - us.n_tup_del)                                  -- Average row length (estimated)
-		WHEN 0 THEN 0
-		ELSE (pg_catalog.pg_total_relation_size(c.oid::regclass) / (us.n_tup_ins - us.n_tup_del))
-	END AS unsigned) AS "AVG_ROW_LENGTH",
+	CAST(NULL AS unsigned) AS "VERSION",                                       -- Version info (not supported in PostgreSQL)
 
-	CAST(pg_catalog.pg_total_relation_size(c.oid::regclass) AS unsigned) AS "DATA_LENGTH",    -- Total size of the table including all indexes and TOAST data
+	CASE
+		WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+		ELSE 'Dynamic'
+	END::varchar(10) AS "ROW_FORMAT",                                          -- Row storage format description
+
+	CAST(
+		CASE
+			WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+			ELSE n_live_tup
+		END AS unsigned) AS "TABLE_ROWS",                                       -- Estimated number of live rows (from pg_stat_user_tables)
+
+	CAST(
+		CASE
+			WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+			ELSE
+				CASE (us.n_tup_ins - us.n_tup_del)                              -- Average row length (estimated)
+					WHEN 0 THEN 0
+					ELSE (pg_catalog.pg_total_relation_size(c.oid::regclass) / (us.n_tup_ins - us.n_tup_del))
+				END
+		END AS unsigned) AS "AVG_ROW_LENGTH",
+
+	CAST(
+		CASE
+			WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+			ELSE pg_catalog.pg_total_relation_size(c.oid::regclass)
+		END AS unsigned) AS "DATA_LENGTH",                                     -- Total size of the table including all indexes and TOAST data
+
 	CAST(CASE c.relkind
 			WHEN 'r' THEN 0
 			ELSE NULL
-		END AS unsigned) AS "MAX_DATA_LENGTH",                                              -- Maximum data length (not supported)
-	CAST(pg_catalog.pg_indexes_size(c.oid::regclass) AS unsigned) AS "INDEX_LENGTH",        -- Total size of all indexes attached to the table
-	CAST('16384' AS unsigned) AS "DATA_FREE",                                               -- Estimated free space in tablespace (not precise)
+		END AS unsigned) AS "MAX_DATA_LENGTH",                                 -- Maximum data length (not supported)
 
 	CAST(
-	(SELECT CASE MYSSERIES                                                -- AUTO_INCREMENT value (for identity/serial columns)
-		WHEN NULL THEN NULL
-		ELSE
-			(SELECT seqincrement FROM pg_catalog.pg_sequence WHERE seqrelid = MYSSERIES.seriesname::regclass::oid) + currval(MYSSERIES.seriesname)
-		END
-	FROM (SELECT pg_catalog.pg_get_serial_sequence(c.relname, at.attname) AS seriesname
-		FROM pg_attribute at
-		WHERE at.attrelid = c.oid AND (at.attidentity = 'a' or at.attidentity = 'd')) AS MYSSERIES) AS unsigned) AS "AUTO_INCREMENT",
+		CASE
+			WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+			ELSE pg_catalog.pg_indexes_size(c.oid::regclass)
+		END AS unsigned) AS "INDEX_LENGTH",                                    -- Total size of all indexes attached to the table
 
-	ob.created::mysdatetime AS "CREATE_TIME",                                 -- Table creation timestamp (from pg_object)
-	ob.modified::mysdatetime AS "UPDATE_TIME",                                -- Table last modification timestamp (from pg_object)
-	NULL::mysdatetime AS "CHECK_TIME",                                        -- Last check time (not supported)
-	(SELECT d.datcollate
-		FROM pg_catalog.pg_database d
-	  WHERE d.datname = current_database())::varchar(32) AS "TABLE_COLLATION", -- Default collation of the table
+	CAST(CASE
+			WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+			ELSE '16384'
+		END AS unsigned) AS "DATA_FREE",                                       -- Estimated free space in tablespace (not precise)
+
+	CAST(
+		CASE
+			WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+			ELSE
+				(SELECT CASE MYSSERIES                                         -- AUTO_INCREMENT value (for identity/serial columns)
+					WHEN NULL THEN NULL
+					ELSE
+						(SELECT seqincrement FROM pg_catalog.pg_sequence WHERE seqrelid = MYSSERIES.seriesname::regclass::oid) + currval(MYSSERIES.seriesname)
+					END
+				FROM (SELECT pg_catalog.pg_get_serial_sequence(c.relname, at.attname) AS seriesname
+					FROM pg_attribute at
+					WHERE at.attrelid = c.oid AND (at.attidentity = 'a' or at.attidentity = 'd')) AS MYSSERIES)
+			END AS unsigned) AS "AUTO_INCREMENT",
+
+	CASE
+		WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+		ELSE ob.created
+	END::mysdatetime AS "CREATE_TIME",                                  -- Table creation timestamp (from pg_object)
+
+	CASE
+		WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+		ELSE ob.modified
+	END::mysdatetime AS "UPDATE_TIME",                                  -- Table last modification timestamp (from pg_object)
+
+	NULL::mysdatetime AS "CHECK_TIME",                                  -- Last check time (not supported)
+
+	CASE
+		WHEN c.relkind = 'v' THEN NULL /* Bug - #z5989 */
+		ELSE (SELECT d.datcollate
+				FROM pg_catalog.pg_database d
+				  WHERE d.datname = current_database())
+		END::varchar(32) AS "TABLE_COLLATION", -- Default collation of the table
+
 	CAST(NULL AS unsigned) AS "CHECKSUM",                                -- Table checksum (not supported)
 
 	CASE c.relispartition                                                -- Additional create options (e.g. partitioned)
@@ -65,12 +114,16 @@ SELECT
 		ELSE NULL
 	END::varchar(255) AS "CREATE_OPTIONS",
 
-	pg_catalog.obj_description(c.oid)::varchar(2048) AS "TABLE_COMMENT"  -- Table comment/description
+	CASE
+		WHEN c.relkind = 'v' THEN 'VIEW' /* Bug - #z5989 */
+		ELSE pg_catalog.obj_description(c.oid)
+	END::varchar(2048) AS "TABLE_COMMENT"                                -- Table comment/description
 FROM pg_catalog.pg_class c
 	LEFT JOIN pg_catalog.pg_object ob ON c.oid = ob.obj_oid
 	LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
 	LEFT JOIN pg_catalog.pg_stat_user_tables us ON c.oid = us.relid
 WHERE
+	c.relpersistence != 't' AND /* Bug - #z5989 */
 	c.relkind IN ('r', 'v', 'm', 'p', 'f')                              -- Tables, views, materialized views, partitioned tables, foreign tables
 ORDER BY c.oid;		-- bug#Z5983
 
@@ -133,204 +186,297 @@ WHERE c.relkind IN ('r', 'p', 'v', 'f', 'm');
 GRANT SELECT ON mys_information_schema.table_privileges TO PUBLIC;
 
 --
--- View: mys_information_schema.partitions
+-- View: mys_information_schema.partitions /* Bug - #z5987 */
 --
+
 CREATE OR REPLACE VIEW mys_information_schema.partitions AS
 WITH RECURSIVE partition_tree AS (
-    -- Find all root partitioned tables (top level)
-    SELECT
-        c.oid AS root_oid,
-        c.relname AS root_name,
-        n.nspname AS root_schema,
-        c.oid AS partition_oid,
-        c.relname AS partition_name,
-        NULL::oid AS parent_oid,
-        NULL::name AS parent_name,
-        0 AS level,
-        c.relname AS path
-    FROM pg_class c
-    JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE c.relkind = 'p'  -- Partitioned table
-      AND NOT c.relispartition  -- Not a partition of another table
-      AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+	-- Find all root partitioned tables (top level)
+	SELECT
+		c.oid AS root_oid,
+		c.relname AS root_name,
+		n.nspname AS root_schema,
+		c.oid AS partition_oid,
+		c.relname AS partition_name,
+		NULL::oid AS parent_oid,
+		NULL::name AS parent_name,
+		0 AS level,
+		c.relname AS path,
+		TRUE AS is_root
+	FROM pg_class c
+	JOIN pg_namespace n ON n.oid = c.relnamespace
+	WHERE c.relkind = 'p'  -- Partitioned table
+		AND n.nspname NOT IN ('pg_catalog', 'information_schema')
 
-    UNION ALL
+	UNION ALL
 
-    -- Recursively find all child partitions
-    SELECT
-        pt.root_oid,
-        pt.root_name,
-        pt.root_schema,
-        c.oid AS partition_oid,
-        c.relname AS partition_name,
-        pt.partition_oid AS parent_oid,
-        pt.partition_name AS parent_name,
-        pt.level + 1 AS level,
-        pt.path || '.' || c.relname AS path
-    FROM partition_tree pt
-    JOIN pg_inherits i ON i.inhparent = pt.partition_oid
-    JOIN pg_class c ON c.oid = i.inhrelid
-    WHERE c.relkind IN ('p', 'r')  -- Partitioned table or regular table
+	-- Recursively find all child partitions
+	SELECT
+		pt.root_oid,
+		pt.root_name,
+		pt.root_schema,
+		c.oid AS partition_oid,
+		c.relname AS partition_name,
+		pt.partition_oid AS parent_oid,
+		pt.partition_name AS parent_name,
+		pt.level + 1 AS level,
+		pt.path || '.' || c.relname AS path,
+		FALSE AS is_root
+	FROM partition_tree pt
+	JOIN pg_inherits i ON i.inhparent = pt.partition_oid
+	JOIN pg_class c ON c.oid = i.inhrelid
+	WHERE c.relkind IN ('p', 'r')  -- Partitioned table or regular table
 ),
 partition_relationships AS (
-    -- Find direct subpartitions for each partition
-    SELECT
-        pt.partition_oid,
-        pt.partition_name,
-        pt.root_oid,
-        pt.root_name,
-        pt.root_schema,
-        pt.level,
-        pt.path,
-        child.oid AS subpartition_oid,
-        child.relname AS subpartition_name,
-        child_ns.nspname AS subpartition_schema
-    FROM partition_tree pt
-    LEFT JOIN pg_inherits i ON i.inhparent = pt.partition_oid
-    LEFT JOIN pg_class child ON child.oid = i.inhrelid
-    LEFT JOIN pg_namespace child_ns ON child_ns.oid = child.relnamespace
+	-- Find direct subpartitions for each partition
+	SELECT
+		pt.partition_oid,
+		pt.partition_name,
+		pt.root_oid,
+		pt.root_name,
+		pt.root_schema,
+		pt.level,
+		pt.path,
+		pt.is_root,
+		pt.parent_oid,
+		child.oid AS subpartition_oid,
+		child.relname AS subpartition_name,
+		child_ns.nspname AS subpartition_schema
+	FROM partition_tree pt
+	LEFT JOIN pg_inherits i ON i.inhparent = pt.partition_oid
+	LEFT JOIN pg_class child ON child.oid = i.inhrelid
+	LEFT JOIN pg_namespace child_ns ON child_ns.oid = child.relnamespace
+),
+partition_info AS (
+	SELECT
+		pr.partition_oid,
+		pr.partition_name,
+		pr.root_oid,
+		pr.root_name,
+		pr.root_schema,
+		pr.level,
+		pr.path,
+		pr.is_root,
+		pr.parent_oid,
+		pr.subpartition_oid,
+		pr.subpartition_name,
+		pr.subpartition_schema,
+		-- Get partition method from the actual partitioned table
+		CASE
+			WHEN pt_root.partstrat IS NOT NULL THEN
+				CASE pt_root.partstrat
+					WHEN 'r' THEN 'RANGE'
+					WHEN 'l' THEN 'LIST'
+					WHEN 'h' THEN 'HASH'
+					ELSE NULL
+				END
+			ELSE NULL
+		END AS root_partition_method,
+		-- Get partition expression from root partitioned table
+		CASE
+			WHEN pt_root.partstrat IS NOT NULL THEN
+				pg_get_partkeydef(pr.root_oid)
+			ELSE NULL
+		END AS root_partition_expression,
+		-- Get current partition method (if this partition is itself partitioned)
+		CASE
+			WHEN pt_current.partstrat IS NOT NULL THEN
+				CASE pt_current.partstrat
+					WHEN 'r' THEN 'RANGE'
+					WHEN 'l' THEN 'LIST'
+					WHEN 'h' THEN 'HASH'
+					ELSE NULL
+				END
+			ELSE NULL
+		END AS current_partition_method,
+		-- Get current partition expression
+		CASE
+			WHEN pt_current.partstrat IS NOT NULL THEN
+				pg_get_partkeydef(pr.partition_oid)
+			ELSE NULL
+		END AS current_partition_expression,
+		-- Get subpartition method from the parent partition (if parent is partitioned)
+		CASE
+			WHEN pr.subpartition_oid IS NOT NULL AND pt_current.partstrat IS NOT NULL THEN
+				CASE pt_current.partstrat
+					WHEN 'r' THEN 'RANGE'
+					WHEN 'l' THEN 'LIST'
+					WHEN 'h' THEN 'HASH'
+					ELSE NULL
+				END
+			ELSE NULL
+		END AS subpartition_method,
+		-- Get subpartition expression from the parent partition
+		CASE
+			WHEN pr.subpartition_oid IS NOT NULL AND pt_current.partstrat IS NOT NULL THEN
+				pg_get_partkeydef(pr.partition_oid)
+			ELSE NULL
+		END AS subpartition_expression,
+		-- Store the parent's partition method for correct inheritance
+		CASE
+			WHEN pr.parent_oid IS NOT NULL THEN
+				(SELECT
+					CASE pt_parent.partstrat
+						WHEN 'r' THEN 'RANGE'
+						WHEN 'l' THEN 'LIST'
+						WHEN 'h' THEN 'HASH'
+						ELSE NULL
+					END
+				FROM pg_partitioned_table pt_parent
+				WHERE pt_parent.partrelid = pr.parent_oid)
+			ELSE NULL
+		END AS parent_partition_method,
+		-- Store the parent's partition expression for correct inheritance
+		CASE
+			WHEN pr.parent_oid IS NOT NULL THEN
+				pg_get_partkeydef(pr.parent_oid)
+			ELSE NULL
+		END AS parent_partition_expression
+	FROM partition_relationships pr
+	-- Root partition info
+	LEFT JOIN pg_partitioned_table pt_root ON pt_root.partrelid = pr.root_oid
+	-- Current partition info (to get subpartition info)
+	LEFT JOIN pg_partitioned_table pt_current ON pt_current.partrelid = pr.partition_oid
+),
+filtered_partitions AS (
+	SELECT *
+	FROM partition_info pi
+	-- Exclude rows where partition_name and table_name are the same.
+	WHERE pi.partition_name != pi.root_name
+		AND pi.root_oid IN (
+			SELECT c.oid
+			  FROM pg_class c
+			  JOIN pg_namespace n ON n.oid = c.relnamespace
+			  WHERE c.relkind = 'p'
+			AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'mys_information_schema')
+			AND NOT EXISTS (
+				SELECT 1 FROM pg_inherits WHERE inhrelid = c.oid
+			)
+		)
 )
 SELECT
-    -- Database name (def)
-    'def'::varchar(512) AS "TABLE_CATALOG",
+	-- Database name (def)
+	'def'::varchar(512) AS "TABLE_CATALOG",
 
-    -- Schema name containing the root partitioned table
-    pr.root_schema::varchar(64) AS "TABLE_SCHEMA",
+	-- Schema name containing the root partitioned table
+	fp.root_schema::varchar(64) AS "TABLE_SCHEMA",
 
-    -- Name of the root partitioned table (top-level table name)
-    pr.root_name::varchar(64) AS "TABLE_NAME",
+	-- Name of the root partitioned table (top-level table name)
+	fp.root_name::varchar(64) AS "TABLE_NAME",
 
-    -- Current partition name
-    pr.partition_name::varchar(64) AS "PARTITION_NAME",
+	-- Current partition name
+	fp.partition_name::varchar(64) AS "PARTITION_NAME",
 
-    -- Direct subpartition name (if exists)
-    pr.subpartition_name::varchar(64) AS "SUBPARTITION_NAME",
+	-- Direct subpartition name (if exists)
+	fp.subpartition_name::varchar(64) AS "SUBPARTITION_NAME",
 
-    -- Partition ordinal position (compatible with MySQL)
-    CAST(ROW_NUMBER() OVER (
-        PARTITION BY pr.root_oid
-        ORDER BY pr.path
-    ) AS unsigned) AS "PARTITION_ORDINAL_POSITION",
+	-- Partition ordinal position (compatible with MySQL)
+	CAST(ROW_NUMBER() OVER (
+		PARTITION BY fp.root_oid
+		ORDER BY fp.path
+	) AS unsigned) AS "PARTITION_ORDINAL_POSITION",
 
-    -- Subpartition ordinal position (compatible with MySQL)
-    CAST(
+	-- Subpartition ordinal position (compatible with MySQL)
+	CAST(
 	CASE
-        WHEN pr.subpartition_name IS NOT NULL THEN
-            ROW_NUMBER() OVER (
-                PARTITION BY pr.root_oid, pr.partition_oid
-                ORDER BY pr.subpartition_name
-            )
-        ELSE NULL
-    END AS unsigned) AS "SUBPARTITION_ORDINAL_POSITION",
+		WHEN fp.subpartition_name IS NOT NULL THEN
+			ROW_NUMBER() OVER (
+				PARTITION BY fp.root_oid, fp.partition_oid
+				ORDER BY fp.subpartition_name
+			)
+		ELSE NULL
+	END AS unsigned) AS "SUBPARTITION_ORDINAL_POSITION",
 
-    -- Partitioning method from current partition (if it's a partitioned table)
-    CASE
-        WHEN pt_current.partstrat IS NOT NULL THEN
-            CASE pt_current.partstrat
-                WHEN 'r' THEN 'RANGE'
-                WHEN 'l' THEN 'LIST'
-                WHEN 'h' THEN 'HASH'
-                ELSE NULL
-            END
-        ELSE NULL
-    END::varchar(18) AS "PARTITION_METHOD",
+	-- Partitioning method - use correct inheritance chain
+	CASE
+		-- For leaf partitions that are not themselves partitioned, use parent's method
+		WHEN fp.current_partition_method IS NULL AND fp.parent_partition_method IS NOT NULL
+			THEN fp.parent_partition_method
+		-- Otherwise use current or root method
+		ELSE COALESCE(fp.current_partition_method, fp.root_partition_method)
+	END::varchar(18) AS "PARTITION_METHOD",
 
-    -- Subpartitioning method from subpartition (if it exists and is a partitioned table)
-    CASE
-        WHEN pr.subpartition_oid IS NOT NULL AND pt_sub.partstrat IS NOT NULL THEN
-            CASE pt_sub.partstrat
-                WHEN 'r' THEN 'RANGE'
-                WHEN 'l' THEN 'LIST'
-                WHEN 'h' THEN 'HASH'
-                ELSE NULL
-            END
-        ELSE NULL
-    END::varchar(12) AS "SUBPARTITION_METHOD",
+	-- Subpartitioning method - from parent partition
+	fp.subpartition_method::varchar(12) AS "SUBPARTITION_METHOD",
 
-    -- Expression defining the partition key (from current partition if it's partitioned)
-    CASE
-        WHEN pt_current.partstrat IS NOT NULL THEN
-            pg_get_partkeydef(pr.partition_oid)
-        ELSE NULL
-    END::longtext AS "PARTITION_EXPRESSION",
+	-- Expression defining the partition key - use correct inheritance chain
+	CASE
+		-- For leaf partitions that are not themselves partitioned, use parent's expression
+		WHEN fp.current_partition_method IS NULL AND fp.parent_partition_expression IS NOT NULL
+			THEN fp.parent_partition_expression
+		-- For partitions that are themselves partitioned tables
+		WHEN fp.current_partition_method IS NOT NULL THEN fp.current_partition_expression
+		-- For leaf partitions, use root partition expression
+		ELSE fp.root_partition_expression
+	END::longtext AS "PARTITION_EXPRESSION",
 
-    -- Subpartition expression (from subpartition if it exists and is a partitioned table)
-    CASE
-        WHEN pr.subpartition_oid IS NOT NULL AND pt_sub.partstrat IS NOT NULL THEN
-            pg_get_partkeydef(pr.subpartition_oid)
-        ELSE NULL
-    END::longtext AS "SUBPARTITION_EXPRESSION",
+	-- Subpartition expression - from parent partition
+	fp.subpartition_expression::longtext AS "SUBPARTITION_EXPRESSION",
 
-    -- Description of partition bounds
-    CASE
-        WHEN pr.level = 0 THEN NULL  -- Root table has no partition bounds
-        ELSE pg_catalog.pg_get_expr(c.relpartbound, c.oid)
-    END::longtext AS "PARTITION_DESCRIPTION",
+	-- Description of partition bounds
+	CASE
+		WHEN fp.is_root THEN NULL  -- Root table has no partition bounds
+		ELSE pg_catalog.pg_get_expr(c.relpartbound, c.oid)
+	END::longtext AS "PARTITION_DESCRIPTION",
 
-    -- Estimated number of rows
-    CAST(GREATEST(c.reltuples, 0)::bigint AS unsigned) AS "TABLE_ROWS",
+	-- Estimated number of rows
+	CAST(GREATEST(c.reltuples, 0)::bigint AS unsigned) AS "TABLE_ROWS",
 
-    -- Average row length (bytes per row, estimated)
-    CAST(
+	-- Average row length (bytes per row, estimated)
+	CAST(
 		CASE
 			WHEN c.reltuples > 0
 				THEN (c.relpages * current_setting('block_size')::integer / c.reltuples)
 			ELSE NULL
 		END::bigint AS unsigned) AS "AVG_ROW_LENGTH",
 
-    -- Total size of partition (data + TOAST + FSM + VM)
+	-- Total size of partition (data + TOAST + FSM + VM)
 	CAST(pg_total_relation_size(c.oid) AS unsigned) AS "DATA_LENGTH",
 
-    -- Maximum data length (unsupported, always NULL)
-    CAST(NULL AS unsigned) AS "MAX_DATA_LENGTH",
+	-- Maximum data length (unsupported, always NULL)
+		CAST(NULL AS unsigned) AS "MAX_DATA_LENGTH",
 
-    -- Index size - compatible with MySQL INDEX_LENGTH
+	-- Index size - compatible with MySQL INDEX_LENGTH
 	CAST(pg_indexes_size(c.oid) AS unsigned) AS "INDEX_LENGTH",
 
-    -- Free space (unsupported, always NULL)
-    CAST(NULL AS unsigned) AS "DATA_FREE",
+	-- Free space (unsupported, always NULL)
+	CAST(NULL AS unsigned) AS "DATA_FREE",
 
-    -- Creation time (from pg_object)
+	-- Creation time (from pg_object)
 	po.created::mysdatetime AS "CREATE_TIME",
 
-    -- Last modification time (from pg_object)
+	-- Last modification time (from pg_object)
 	po.modified::mysdatetime AS "UPDATE_TIME",
 
-    -- Check time (unsupported, always NULL)
+	-- Check time (unsupported, always NULL)
 	NULL::mysdatetime AS "CHECK_TIME",
 
-    -- Checksum (unsupported, always NULL)
+	-- Checksum (unsupported, always NULL)
 	CAST(NULL AS unsigned) AS "CHECKSUM",
 
-    -- Partition comment
-    COALESCE(
-        (SELECT description FROM pg_description
-         WHERE objoid = c.oid AND classoid = 'pg_class'::regclass LIMIT 1),
-        ''
-    )::varchar(80) AS "PARTITION_COMMENT",
+	-- Partition comment
+	COALESCE(
+		(SELECT description FROM pg_description
+		 WHERE objoid = c.oid AND classoid = 'pg_class'::regclass LIMIT 1),
+		''
+	)::varchar(80) AS "PARTITION_COMMENT",
 
-    -- Node group (always 'default')
+	-- Node group (always 'default')
 	'default'::varchar(12) AS "NODEGROUP",
 
-    -- Tablespace name
-    ts.spcname::varchar(64) AS "TABLESPACE_NAME"
+	-- Tablespace name
+	ts.spcname::varchar(64) AS "TABLESPACE_NAME"
 
-FROM partition_relationships pr
+FROM filtered_partitions fp
 -- Current partition details
-JOIN pg_class c ON c.oid = pr.partition_oid
--- Partition method (from current partition if it's a partitioned table)
-LEFT JOIN pg_partitioned_table pt_current ON pt_current.partrelid = pr.partition_oid
--- Subpartition method (if subpartition exists and is a partitioned table)
-LEFT JOIN pg_class c_sub ON c_sub.oid = pr.subpartition_oid
-LEFT JOIN pg_partitioned_table pt_sub ON pt_sub.partrelid = pr.subpartition_oid
+JOIN pg_class c ON c.oid = fp.partition_oid
 -- Tablespace information
 LEFT JOIN pg_tablespace ts ON c.reltablespace = ts.oid
 -- Created time and update time
 LEFT JOIN pg_catalog.pg_object po ON po.obj_oid = c.oid
--- Exclude root partitioned table itself (MySQL partitions view doesn't show root table)
-WHERE pr.level > 0
 
-ORDER BY pr.root_schema, pr.root_name, pr.path, pr.subpartition_name;
+ORDER BY fp.root_schema, fp.root_name, fp.path, fp.subpartition_name;
+
 
 GRANT SELECT ON mys_information_schema.partitions TO PUBLIC;
 
@@ -444,7 +590,7 @@ SELECT
 	-- DATA_TYPE logic compatible with MySQL conventions
 	CASE
 		WHEN t.typtype = 'd' THEN
-			format_type(t.typbasetype, NULL)
+			t.typname    /* Bug - #z5966 #z5964 */
 		ELSE
 			format_type(a.atttypid, NULL)
 	END::varchar(64) AS "DATA_TYPE",
@@ -520,7 +666,7 @@ SELECT
 	CASE WHEN a.attgenerated <> '' THEN pg_get_expr(ad.adbin, ad.adrelid) ELSE NULL END::longtext AS "GENERATION_EXPRESSION"
 
 FROM pg_attribute a
-JOIN pg_class c ON a.attrelid = c.oid
+JOIN pg_class c ON a.attrelid = c.oid AND c.relpersistence != 't' /* Bug - #z5986 */
 JOIN pg_namespace nc ON c.relnamespace = nc.oid
 JOIN pg_type t ON a.atttypid = t.oid
 LEFT JOIN pg_type bt ON t.typtype='d' AND t.typbasetype=bt.oid
@@ -550,7 +696,8 @@ WHERE a.attnum > 0
 	AND NOT a.attisdropped
 	AND c.relkind IN ('r','p','v','f')  -- Only regular, partitioned, view, foreign tables
 	AND NOT pg_is_other_temp_schema(nc.oid)
-	AND (pg_has_role(c.relowner, 'USAGE') OR has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'));
+	AND (pg_has_role(c.relowner, 'USAGE') OR has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'))
+	ORDER BY "ORDINAL_POSITION" ASC; /* Bug - #z5984 #z5985 */
 
 GRANT SELECT ON mys_information_schema.columns TO PUBLIC;
 
@@ -566,8 +713,11 @@ SELECT
 	-- Name of the schema containing the constraint
 	ss.nc_nspname::varchar(64) AS "CONSTRAINT_SCHEMA",
 
-	-- Name of the constraint
-	ss.conname::varchar(64) AS "CONSTRAINT_NAME",
+	-- Name of the constraint (if primary key, value is `PRIMARY`)
+	CASE
+		WHEN ss.contype = 'p'::"char" THEN 'PRIMARY'
+		ELSE ss.conname
+	END::varchar(64) AS "CONSTRAINT_NAME",
 
 	-- Name of the catalog containing the table (always current database)
 	'def'::varchar(512) AS "TABLE_CATALOG",
@@ -1082,9 +1232,7 @@ FROM
 	pg_namespace n,
 	pg_database d
 WHERE
-	d.datname = current_database()						 -- Limit to the current database only
-	AND n.nspname NOT LIKE 'pg\_%' ESCAPE '\'			 -- Exclude internal schemas
-	AND n.nspname <> 'information_schema';				 -- Exclude information_schema
+	d.datname = current_database();	/* Bug - #z6081 */ -- Limit to the current database only
 
 GRANT SELECT ON mys_information_schema.schemata TO PUBLIC;
 
@@ -1182,7 +1330,11 @@ SELECT
 	END AS "COLUMN_NAME",
 	-- End - BUG#ZZ5974
 	CASE (k.opt & 1) WHEN 1 THEN 'D' ELSE 'A' END::varchar(1) AS "COLLATION",
-	s.n_distinct::bigint(21) AS "CARDINALITY",							  -- Estimated cardinality (number of distinct values) from pg_stats.n_distinct
+	CASE /* Bug - #z5988 */
+		WHEN s.n_distinct IS NULL THEN 0
+		WHEN s.n_distinct <= 0 THEN 0
+		ELSE s.n_distinct
+	END::bigint(21) AS "CARDINALITY",					  -- Estimated cardinality (number of distinct values) from pg_stats.n_distinct
 
 	CASE
 	  WHEN a.attname IS NOT NULL THEN NULL
@@ -1207,7 +1359,7 @@ SELECT
 FROM
 	pg_class t											  -- Table relation
 JOIN pg_namespace n ON t.relnamespace = n.oid			  -- Table schema
-JOIN pg_index i ON t.oid = i.indrelid					  -- Table-to-index relationship
+JOIN pg_index i ON t.oid = i.indrelid AND t.relpersistence != 't'/* Bug - #z5988 */  -- Table-to-index relationship
 JOIN pg_class ci ON ci.oid = i.indexrelid				  -- Index relation
 JOIN pg_am am ON ci.relam = am.oid						  -- Index access method
 JOIN LATERAL unnest(i.indkey, i.indoption) WITH ORDINALITY AS k(attnum, opt, n) ON true   -- Unnest index keys with order
