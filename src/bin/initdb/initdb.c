@@ -2902,8 +2902,10 @@ usage(const char *progname)
 	printf(_("  -X, --waldir=WALDIR       location for the write-ahead log directory\n"));
 	printf(_("      --wal-segsize=SIZE    size of WAL segments, in megabytes\n"));
 	/* BEGIN - SQL PARSER */
-	printf(_("  -m, --dbmode=MODE         set database mode, default is oracle\n"));
-	printf(_("  -c, --case-conversion-mode=MODE   set case conversion mode, default is interchange\n"));
+	printf(_("  -m, --dbmode=pg|oracle|mysql\n"));
+	printf(_("                            set database mode (default: oracle)\n"));
+	printf(_("  -c, --case-conversion-mode=normal|interchange|lowercase\n"));
+	printf(_("                            set case conversion mode (default: interchange)\n"));
 	/* END - SQL PARSER */
 	printf(_("\nLess commonly used options:\n"));
 	printf(_("  -d, --debug               generate lots of debugging output\n"));
@@ -2929,7 +2931,7 @@ usage(const char *progname)
 	printf(_("  -K, --file-encryption-method=METHOD\n"
 			 "                            cluster file encryption method\n"));
 	printf(_("  -z, --file-encryption-mode=MODE\n"
-			 "             				  cluster file encryption mode\n"));
+			 "                            cluster file encryption mode\n"));
 	printf(_("  -u, --copy-encryption-keys=DATADIR\n"
 			 "                            copy the file encryption key from another cluster\n"));
  	/* End - ReqID:SRS-SECURITY-TDE */
