@@ -112,9 +112,9 @@ static void ExecDropStmt(DropStmt *stmt, bool isTopLevel);
 static int process_utility_nesting_level = 0; /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 /* Begin - ReqID:SRS-MYSQL-SET */
 static void MysExecSetVariableStmt(ParseState *pstate,
-								   MysVariableSetStmt *parsetree,
-								   ParamListInfo params,
-								   bool isTopLevel);
+									MysDoStmt *parsetree,
+									ParamListInfo params,
+									bool isTopLevel);
 static void MysExecSelectIntoUserVarStmt(ParseState *pstate,
 							   SelectIntoUserVarStmt *parsetree,
 							   ParamListInfo params,
@@ -332,7 +332,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_UnlistenStmt:
 		case T_VariableSetStmt:
 		/* Begin - ReqID:SRS-MYSQL-SET */
-		case T_MysVariableSetStmt:
+		case T_MysDoStmt:
 		case T_SelectIntoUserVarStmt:
 		/* End - ReqID:SRS-MYSQL-SET */
 			{
@@ -964,9 +964,9 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 			break;
 
 		/* Begin - ReqID:SRS-MYSQL-SET */
-		case T_MysVariableSetStmt:
+		case T_MysDoStmt:
 			{
-				MysExecSetVariableStmt(pstate, (MysVariableSetStmt *) parsetree, params, isTopLevel);
+				MysExecSetVariableStmt(pstate, (MysDoStmt *) parsetree, params, isTopLevel);
 			}
 			break;
 
@@ -3536,11 +3536,11 @@ CreateCommandTag(Node *parsetree)
 			break;
 		/* End - ReqID:SRS-SQL-SYNONYM */
 		/* Begin - ReqID:SRS-MYSQL-SET */
-		case T_MysVariableSetStmt:
-			tag = CMDTAG_SET_MULTISET;
+		case T_MysDoStmt:
+			tag = CMDTAG_SELECT;
 			break;
 		case T_VarAssign:
-			tag = CMDTAG_SET_MULTISET;
+			tag = CMDTAG_SELECT;
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
 		/*Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
@@ -4139,11 +4139,11 @@ utility_nested(void)
  */
 static void
 MysExecSetVariableStmt(ParseState *pstate,
-							   MysVariableSetStmt *parsetree,
-							   ParamListInfo params,
-							   bool isTopLevel)
+						MysDoStmt *parsetree,
+						ParamListInfo params,
+						bool isTopLevel)
 {
-	Query *query = (Query *)parsetree->varSetStmt;
+	Query *query = (Query *)parsetree->stmt;
 	PlannedStmt *plan;
 	QueryDesc *queryDesc;
 	DestReceiver *treceiver;
@@ -4151,7 +4151,7 @@ MysExecSetVariableStmt(ParseState *pstate,
 
 	Assert(query->commandType == CMD_SELECT);
 
-	/* All output from varSetStmt goes to the bit bucket */
+	/* All output from Stmt goes to the bit bucket */
 	treceiver = CreateDestReceiver(DestNone);
 
 	rewritten = QueryRewrite(query);

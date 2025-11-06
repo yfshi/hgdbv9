@@ -3620,9 +3620,9 @@ _equalIndexHintRelationData(const IndexHintRelationData* a, const IndexHintRelat
 /* End - ReqID:SRS-MYSQL-UPDATE */
 /* Begin - ReqID:SRS-MYSQL-SET */
 static bool
-_equalMysVariableSetStmt(const MysVariableSetStmt *a, const MysVariableSetStmt *b)
+_equalMysDoStmt(const MysDoStmt *a, const MysDoStmt *b)
 {
-	COMPARE_NODE_FIELD(varSetStmt);
+	COMPARE_NODE_FIELD(stmt);
 
 	return true;
 }
@@ -4567,8 +4567,8 @@ equal(const void *a, const void *b)
 			break;
 		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 		/* Begin - ReqID:SRS-MYSQL-SET */
-		case T_MysVariableSetStmt:
-			_equalMysVariableSetStmt(a, b);
+		case T_MysDoStmt:
+			_equalMysDoStmt(a, b);
 			break;
 		case T_SelectIntoUserVarStmt:
 			_equalMysSelectIntoStmt(a, b);

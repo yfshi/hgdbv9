@@ -392,7 +392,7 @@ static void CheckHostId(char* hostId);
 		DropTransformStmt
 		DropUserMappingStmt ExplainStmt FetchStmt
 		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt
-		ListenStmt LoadStmt LockStmt MergeStmt NotifyStmt ExplainableStmt PreparableStmt
+		ListenStmt LoadStmt LockStmt MergeStmt MysDoStmt NotifyStmt ExplainableStmt PreparableStmt
 		CreateFunctionStmt AlterFunctionStmt ReindexStmt RemoveAggrStmt
 		RemoveFuncStmt RemoveOperStmt RenameStmt ReturnStmt RevokeStmt RevokeRoleStmt
 		RuleActionStmt RuleActionStmtOrEmpty RuleStmt
@@ -834,7 +834,7 @@ static void CheckHostId(char* hostId);
 
 	DATA_P DATABASE DATABASES /* ReqID:SRS-MYSQL-SHOW */ DATE_P DATETIME_P DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELAYED DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC DESCRIBE /* ReqID:SRS-MYSQL-SHOW */
-	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT 
+	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO_P
 	DISTINCTROW /* BUG#Z4610*/ 
 	DIV DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP DUPLICATE_P
@@ -1252,6 +1252,7 @@ stmt:
 			| LoadStmt
 			| LockStmt
 			| MergeStmt
+			| MysDoStmt
 			| NotifyStmt
 			| PrepareStmt
 			| ReassignOwnedStmt
@@ -1921,16 +1922,16 @@ var_value:	opt_boolean_or_string
 VariableMultiSetStmt:
 			SET set_variables
 				{
-					MysVariableSetStmt *rt = makeNode(MysVariableSetStmt);
+					MysDoStmt *rt = makeNode(MysDoStmt);
 					SelectStmt *result = makeNode(SelectStmt);
 					result->targetList = $2;
-					rt->varSetStmt = (Node *)result;
+					rt->stmt = (Node *)result;
 					$$ = (Node *) rt;
 				}
 			| SET NAMES multi_encoding set_names_collate
 				{
 					ResTarget *result = makeNode(ResTarget);
-					MysVariableSetStmt *rt = makeNode(MysVariableSetStmt);
+					MysDoStmt *rt = makeNode(MysDoStmt);
 					SelectStmt *res = makeNode(SelectStmt);
 					List *argList;
 					Node *funcCall;
@@ -1946,13 +1947,13 @@ VariableMultiSetStmt:
 					result->val = funcCall;
 					result->location = @1;
 					res->targetList = list_make1(result);
-					rt->varSetStmt = (Node *)res;
+					rt->stmt = (Node *)res;
 					$$ = (Node *) rt;
 				}
 			| SET multi_charset multi_encoding
 				{
 					ResTarget *result = makeNode(ResTarget);
-					MysVariableSetStmt *rt = makeNode(MysVariableSetStmt);
+					MysDoStmt *rt = makeNode(MysDoStmt);
 					SelectStmt *res = makeNode(SelectStmt);
 					List *argList;
 					Node *funcCall;
@@ -1973,7 +1974,7 @@ VariableMultiSetStmt:
 					result->val = funcCall;
 					result->location = @1;
 					res->targetList = list_make1(result);
-					rt->varSetStmt = (Node *)res;
+					rt->stmt = (Node *)res;
 					$$ = (Node *) rt;
 				}
 		;
@@ -2205,7 +2206,7 @@ SetResetClause:
 			/* Begin - ReqID:SRS-MYSQL-SET */
 			| VariableMultiSetStmt
 					{
-						$$ = trans_MysVariable_to_VariableSet(NULL, (MysVariableSetStmt *)$1);
+						$$ = trans_MysVariable_to_VariableSet(NULL, (MysDoStmt *)$1);
 					}
 			/* End - ReqID:SRS-MYSQL-SET */
 		;
@@ -2217,7 +2218,7 @@ FunctionSetResetClause:
 			/* Begin - ReqID:SRS-MYSQL-SET */
 			| VariableMultiSetStmt
 					{
-						$$ = trans_MysVariable_to_VariableSet(NULL, (MysVariableSetStmt *)$1);
+						$$ = trans_MysVariable_to_VariableSet(NULL, (MysDoStmt *)$1);
 					}
 			/* End - ReqID:SRS-MYSQL-SET */
 		;
@@ -12052,7 +12053,7 @@ AlterSystemStmt:
 			| ALTER SYSTEM_P VariableMultiSetStmt
 				{
 					AlterSystemStmt *n = makeNode(AlterSystemStmt);
-					n->setstmt = trans_MysVariable_to_VariableSet(NULL, (MysVariableSetStmt *)$3);
+					n->setstmt = trans_MysVariable_to_VariableSet(NULL, (MysDoStmt *)$3);
 					$$ = (Node *)n;
 				}
 			/* End - ReqID:SRS-MYSQL-SET */
@@ -13375,6 +13376,16 @@ merge_values_clause:
 					$$ = $3;
 				}
 		;
+
+MysDoStmt:
+			DO_P target_list
+				{
+					MysDoStmt *rt = makeNode(MysDoStmt);
+					SelectStmt *result = makeNode(SelectStmt);
+					result->targetList = $2;
+					rt->stmt = (Node *)result;
+					$$ = (Node *) rt;
+				}
 
 /*****************************************************************************
  *

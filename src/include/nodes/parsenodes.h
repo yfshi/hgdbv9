@@ -4451,11 +4451,11 @@ typedef enum VarKind
 	USER_VAR			/* user defined variable at the time of retrieval */
 } VarKind;
 
-typedef struct MysVariableSetStmt
+typedef struct MysDoStmt
 {
 	NodeTag type;
-	Node *varSetStmt;	/* SelectStmt */
-} MysVariableSetStmt;
+	Node *stmt;	/* SelectStmt */
+} MysDoStmt;
 
 typedef struct SelectIntoUserVarStmt
 {

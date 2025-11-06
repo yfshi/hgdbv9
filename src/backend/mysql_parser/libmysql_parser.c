@@ -278,6 +278,11 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 			cur_token_length = 6;
 			break;
 		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+		/* Begin - ReqID:SRS-MYSQL-DO */
+		case DO:
+			cur_token_length = 2;
+			break;
+		/* End - ReqID:SRS-MYSQL-DO */
 		case DELETE_P:
 			cur_token_length = 6;
 			break;
@@ -380,6 +385,26 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 			}
 			break;
 		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+		/* Begin - ReqID:SRS-MYSQL-DO */
+		case DO:
+			{
+				if (next_token == LANGUAGE || 
+					next_token == NOTHING ||
+					next_token == INSTEAD ||
+					next_token == ALSO ||
+					next_token == UPDATE ||
+					next_token == SELECT ||
+					next_token == INSERT ||
+					next_token == DELETE_P ||
+					next_token == NOTIFY ||
+					next_token == VALUES || !use_mysql_do)
+				{
+					break;
+				}
+				cur_token = DO_P;
+			}
+			break;
+		/* End - ReqID:SRS-MYSQL-DO */
 		case NOT:
 			/* Replace NOT by NOT_LA if it's followed by BETWEEN, IN, etc */
 			switch (next_token)
