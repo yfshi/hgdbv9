@@ -84,6 +84,8 @@ int			default_week_format = 0;
 bool		at_or_atat = false;		/* ReqID:SRS-MYSQL-SET */
 bool		sql_quote_show_create = true;	/* ReqID:SRS-MYSQL-SHOW */
 
+bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
+
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
 #define MAX_LOWER_NUM 2
@@ -236,7 +238,17 @@ bool		sql_quote_show_create = true;	/* ReqID:SRS-MYSQL-SHOW */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-SHOW */
-
+	/* Begin - ReqID:SRS-MYSQL-DO */
+	{
+		{"use_mysql_do", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+				gettext_noop("MySQL Parameter use MySQL DO command."),
+				NULL
+		},
+		&use_mysql_do,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-DO*/
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS

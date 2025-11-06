@@ -597,7 +597,7 @@ typedef enum NodeTag
 	T_UpsertExpr,
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 	/* Begin - ReqID:SRS-MYSQL-SET */
-	T_MysVariableSetStmt,
+	T_MysDoStmt,
 	T_SelectIntoUserVarStmt,
 	T_VarAssign,
 	T_VarRef,

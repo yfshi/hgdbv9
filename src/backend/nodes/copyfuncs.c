@@ -3557,7 +3557,6 @@ _copySelectStmt(const SelectStmt *from)
 	COPY_SCALAR_FIELD(all);
 	COPY_NODE_FIELD(larg);
 	COPY_NODE_FIELD(rarg);
-
 	return newnode;
 }
 
@@ -5625,12 +5624,12 @@ _copyIndexHintDefinition(const IndexHintDefinition* from)
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
 /* Begin - ReqID:SRS-MYSQL-SET */
-static MysVariableSetStmt *
-_copyMysVariableSetStmt(const MysVariableSetStmt *from)
+static MysDoStmt *
+_copyMysDoStmt(const MysDoStmt *from)
 {
-	MysVariableSetStmt *newnode = makeNode(MysVariableSetStmt);
+	MysDoStmt *newnode = makeNode(MysDoStmt);
 
-	COPY_NODE_FIELD(varSetStmt);
+	COPY_NODE_FIELD(stmt);
 
 	return newnode;
 }
@@ -6762,8 +6761,8 @@ copyObjectImpl(const void *from)
 			break;
 		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 		/* Begin - ReqID:SRS-MYSQL-SET */
-		case T_MysVariableSetStmt:
-			retval = _copyMysVariableSetStmt(from);
+		case T_MysDoStmt:
+			retval = _copyMysDoStmt(from);
 			break;
 		case T_SelectIntoUserVarStmt:
 			retval = _copyMysSelectIntoStmt(from);

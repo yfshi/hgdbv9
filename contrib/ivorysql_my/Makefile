@@ -155,7 +155,8 @@ MYS_REGRESS = cast_to_number \
 			  set_charset \
 			  set_names \
 			  show_create_table \
-			  mys_show
+			  mys_show \
+			  mys_do
 
 
 ifdef USE_PGXS

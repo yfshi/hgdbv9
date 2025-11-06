@@ -68,7 +68,7 @@ extern List *copy_enum_label(Oid enumOid);
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 /* Begin - ReqID:SRS-MYSQL-SET */
-extern VariableSetStmt *trans_MysVariable_to_VariableSet(ParseState *pstate, MysVariableSetStmt *stmt);
+extern VariableSetStmt *trans_MysVariable_to_VariableSet(ParseState *pstate, MysDoStmt *stmt);
 extern Node *ivy_makeStringConst(char *str, int location);
 extern Node *ivy_makeIntConst(int val, int location);
 extern Node *ivy_makeFloatConst(char *str, int location);

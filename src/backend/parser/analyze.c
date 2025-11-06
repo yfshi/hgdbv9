@@ -183,7 +183,7 @@ static Expr *update_set_auto_increment_func_node(ParseState *pstate, Expr* expr,
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 /* Begin - ReqID:SRS-MYSQL-SET */
-static Query *transformMysVariableSetStmt(ParseState *pstate, MysVariableSetStmt *stmt);
+static Query *transformMysDoStmt(ParseState *pstate, MysDoStmt *stmt);
 static Query *transformSelectIntoUservarStmt(ParseState *pstate, SelectIntoUserVarStmt *stmt);
 /* End - ReqID:SRS-MYSQL-SET */
 
@@ -528,9 +528,9 @@ transformStmt(ParseState *pstate, Node *parseTree)
 			break;
 
 		/* Begin - ReqID:SRS-MYSQL-SET */
-		case T_MysVariableSetStmt:
-			result = transformMysVariableSetStmt(pstate,
-										(MysVariableSetStmt *) parseTree);
+		case T_MysDoStmt:
+			result = transformMysDoStmt(pstate,
+										(MysDoStmt *) parseTree);
 			break;
 
 		case T_SelectIntoUserVarStmt:
@@ -6879,7 +6879,7 @@ ivy_makeBoolAConst(bool state)
  * a VariableSetStmt node, Otherwise, it is a query node.
  */
 VariableSetStmt *
-trans_MysVariable_to_VariableSet(ParseState *pstate, MysVariableSetStmt *stmt)
+trans_MysVariable_to_VariableSet(ParseState *pstate, MysDoStmt *stmt)
 {
 	VariableSetStmt *variableSetStmt = NULL;
 
@@ -6889,11 +6889,11 @@ trans_MysVariable_to_VariableSet(ParseState *pstate, MysVariableSetStmt *stmt)
 	 * and the function name is also a parameter setting
 	 * function, then determine whether the second parameter
 	 * is a simple value, if so, it is a VariableSetStmt node,
-	 * otherwise return a MysVariableSetStmt node.
+	 * otherwise return a MysDoStmt node.
 	 */
-	if (nodeTag(stmt->varSetStmt) == T_SelectStmt)
+	if (nodeTag(stmt->stmt) == T_SelectStmt)
 	{
-		SelectStmt *selstmt = (SelectStmt *)stmt->varSetStmt;
+		SelectStmt *selstmt = (SelectStmt *)stmt->stmt;
 
 		if (list_length(selstmt->targetList) == 1 &&
 			IsA(linitial(selstmt->targetList), VarAssign))
@@ -7026,13 +7026,13 @@ trans_MysVariable_to_VariableSet(ParseState *pstate, MysVariableSetStmt *stmt)
 	return variableSetStmt;
 }
 
-/* transformMysVariableSetStmt
+/* transformMysDoStmt
  *
  * transform Mysql Set clause,If there is only one set, it is
  * a VariableSetStmt node, Otherwise, it is a query node.
  */
 static Query *
-transformMysVariableSetStmt(ParseState *pstate, MysVariableSetStmt *stmt)
+transformMysDoStmt(ParseState *pstate, MysDoStmt *stmt)
 {
 	Query *qry;
 	VariableSetStmt *setvar = NULL;
@@ -7043,7 +7043,7 @@ transformMysVariableSetStmt(ParseState *pstate, MysVariableSetStmt *stmt)
 	 * and the function name is also a parameter setting
 	 * function, then determine whether the second parameter
 	 * is a simple value, if so, it is a VariableSetStmt node,
-	 * otherwise return a MysVariableSetStmt node.
+	 * otherwise return a MysDoStmt node.
 	 */
 	setvar = trans_MysVariable_to_VariableSet(pstate, stmt);
 	if (setvar != NULL)
@@ -7057,9 +7057,9 @@ transformMysVariableSetStmt(ParseState *pstate, MysVariableSetStmt *stmt)
 	/* this is a SET statement, set p_myssetvar to true */
 	pstate->p_myssetvar = true;
 
-	if (nodeTag(stmt->varSetStmt) == T_SelectStmt)
+	if (nodeTag(stmt->stmt) == T_SelectStmt)
 	{
-		SelectStmt	   *selstmt = (SelectStmt *)stmt->varSetStmt;
+		SelectStmt	   *selstmt = (SelectStmt *)stmt->stmt;
 		ListCell	   *cell;
 		List		   *newtargetlist = NIL;
 
@@ -7087,7 +7087,7 @@ transformMysVariableSetStmt(ParseState *pstate, MysVariableSetStmt *stmt)
 	}
 
 	/* transform contained query(SelectStmt) */
-	stmt->varSetStmt = (Node *) transformOptionalSelectInto(pstate, stmt->varSetStmt);
+	stmt->stmt = (Node *) transformOptionalSelectInto(pstate, stmt->stmt);
 
 	/* represent the command as a utility Query */
 	qry = makeNode(Query);
