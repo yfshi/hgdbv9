@@ -1,0 +1,139 @@
+--
+-- MYSQL SELECT
+--
+--test dual
+select 1 + 1 from dual;
+ ?column? 
+----------
+        2
+(1 row)
+
+select * from dual;
+ERROR:  SELECT * with no tables specified is not valid
+LINE 1: select * from dual;
+               ^
+create table sales (product varchar(50), region varchar(50), amount decimal(10,2));
+insert into sales (product, region, amount) values ('ProductA', 'North', 100),('ProductA', 'South', 150),('ProductB', 'North', 200),('ProductB', 'South', 250);
+select * from sales union select * from dual;
+ERROR:  SELECT * with no tables specified is not valid
+LINE 1: select * from sales union select * from dual;
+                                         ^
+select * from dual, sales;
+ERROR:  syntax error at or near ","
+LINE 1: select * from dual, sales;
+                          ^
+--with rollup
+select product, region,SUM(amount) AS total_amount from sales group by product, region with rollup;
+ product  | region | total_amount 
+----------+--------+--------------
+          |        |       700.00
+ ProductA | North  |       100.00
+ ProductB | South  |       250.00
+ ProductB | North  |       200.00
+ ProductA | South  |       150.00
+ ProductA |        |       250.00
+ ProductB |        |       450.00
+(7 rows)
+
+select product, region,SUM(amount) AS total_amount from sales group by product, region, amount with rollup;
+ product  | region | total_amount 
+----------+--------+--------------
+          |        |       700.00
+ ProductA | North  |       100.00
+ ProductA | South  |       150.00
+ ProductB | South  |       250.00
+ ProductB | North  |       200.00
+ ProductA | North  |       100.00
+ ProductB | South  |       250.00
+ ProductB | North  |       200.00
+ ProductA | South  |       150.00
+ ProductA |        |       250.00
+ ProductB |        |       450.00
+(11 rows)
+
+--group by desc/asc
+select product, region,SUM(amount) AS total_amount from sales group by product desc, region asc;
+ product  | region | total_amount 
+----------+--------+--------------
+ ProductB | North  |       200.00
+ ProductB | South  |       250.00
+ ProductA | North  |       100.00
+ ProductA | South  |       150.00
+(4 rows)
+
+select product, region,SUM(amount) AS total_amount from sales group by product desc, region asc order by product asc, region desc;
+ product  | region | total_amount 
+----------+--------+--------------
+ ProductA | South  |       150.00
+ ProductA | North  |       100.00
+ ProductB | South  |       250.00
+ ProductB | North  |       200.00
+(4 rows)
+
+--having without group by
+select * from sales having amount > 100;
+ product  | region | amount 
+----------+--------+--------
+ ProductA | South  | 150.00
+ ProductB | North  | 200.00
+ ProductB | South  | 250.00
+(3 rows)
+
+select * from sales where product = 'ProductA' having amount > 0;
+ product  | region | amount 
+----------+--------+--------
+ ProductA | North  | 100.00
+ ProductA | South  | 150.00
+(2 rows)
+
+select sum(amount) from sales having  SUM(amount) > 10;
+  sum   
+--------
+ 700.00
+(1 row)
+
+--view test
+create view dual_v as select 1+1 from dual;
+select * from dual_v;
+ ?column? 
+----------
+        2
+(1 row)
+
+create view with_rollup_v as select product, region,SUM(amount) AS total_amount from sales group by product, region with rollup;
+select * from with_rollup_v;
+ product  | region | total_amount 
+----------+--------+--------------
+          |        |       700.00
+ ProductA | North  |       100.00
+ ProductB | South  |       250.00
+ ProductB | North  |       200.00
+ ProductA | South  |       150.00
+ ProductA |        |       250.00
+ ProductB |        |       450.00
+(7 rows)
+
+create view groupby_v as select product, region,SUM(amount) AS total_amount from sales group by product desc, region asc;
+select * from groupby_v;
+ product  | region | total_amount 
+----------+--------+--------------
+ ProductB | North  |       200.00
+ ProductB | South  |       250.00
+ ProductA | North  |       100.00
+ ProductA | South  |       150.00
+(4 rows)
+
+create view having_v as select * from sales having amount > 100;
+select * from having_v;
+ product  | region | amount 
+----------+--------+--------
+ ProductA | South  | 150.00
+ ProductB | North  | 200.00
+ ProductB | South  | 250.00
+(3 rows)
+
+drop view dual_v;
+drop view with_rollup_v;
+drop view groupby_v;
+drop view having_v;
+DROP TABLE sales;

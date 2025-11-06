@@ -438,6 +438,11 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 				case ORDINALITY:
 					cur_token = WITH_LA;
 					break;
+				/* Begin - ReqID:SRS-MYSQL-SELECT */
+				case ROLLUP:
+					cur_token = WITH_ROLLUP;
+					break;
+				/* End - ReqID:SRS-MYSQL-SELECT */
 			}
 			break;
 

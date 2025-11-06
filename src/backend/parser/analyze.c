@@ -186,6 +186,8 @@ static Expr *update_set_auto_increment_func_node(ParseState *pstate, Expr* expr,
 static Query *transformMysDoStmt(ParseState *pstate, MysDoStmt *stmt);
 static Query *transformSelectIntoUservarStmt(ParseState *pstate, SelectIntoUserVarStmt *stmt);
 /* End - ReqID:SRS-MYSQL-SET */
+static List *transformSorbyfromGroupclause(List **grouplist);		/* ReqID:SRS-MYSQL-SELECT */
+static Node *makeAndExpr(Node *lexpr, Node *rexpr, int location);	/* ReqID:SRS-MYSQL-SELECT */
 
 
 /*
@@ -2518,7 +2520,6 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 		stmt->whereClause = (*audit_privi_mode_hook)(stmt->whereClause, true);
 	/* End - ReqID:SRS-SECURITY-AUDIT */
 
-
 	/* transform WHERE */
 	qual = transformWhereClause(pstate, stmt->whereClause,
 								EXPR_KIND_WHERE, "WHERE");
@@ -2526,6 +2527,37 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	/* initial processing of HAVING clause is much like WHERE clause */
 	qry->havingQual = transformWhereClause(pstate, stmt->havingClause,
 										   EXPR_KIND_HAVING, "HAVING");
+
+	/* Begin - ReqID:SRS-MYSQL-SELECT */
+	if (MYS_PARSER == compatible_db)
+	{
+		/*
+		 * Compatible with the HAVING clause in MYSQL without the GROUP BY clause and
+		 * the use of aggregate funcitons
+		 */
+		if (!pstate->p_hasAggs && !stmt->groupClause && stmt->havingClause)
+		{
+			if (stmt->whereClause)
+				stmt->whereClause = (Node *) makeAndExpr(stmt->whereClause, stmt->havingClause, -1);
+			else
+				stmt->whereClause = stmt->havingClause;
+			qual = transformWhereClause(pstate, stmt->whereClause,
+											EXPR_KIND_WHERE, "WHERE");
+			qry->havingQual = NULL;
+		}
+
+		/*
+		 * Compatible with the sorting function in the GROUP BY clause in MYSQL
+		 */
+		if (stmt->groupClause)
+		{
+			if (!stmt->sortClause)
+				stmt->sortClause = transformSorbyfromGroupclause(&stmt->groupClause);
+			else
+				transformSorbyfromGroupclause(&stmt->groupClause);
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-SELECT */
 
 	/*
 	 * Transform sorting/grouping stuff.  Do ORDER BY first because both
@@ -7147,3 +7179,54 @@ transformSelectIntoUservarStmt(ParseState *pstate, SelectIntoUserVarStmt *stmt)
 	return result;
 }
 /* End - ReqID:SRS-MYSQL-SET */
+
+/* Begin - ReqID:SRS-MYSQL-SELECT */
+static List *
+transformSorbyfromGroupclause(List **grouplist)
+{
+	List	   *sorbylist = NIL;
+	ListCell   *l;
+	foreach(l, *grouplist)
+	{
+		Node *node = (Node *) lfirst(l);
+		if (IsA(node, SortBy))
+		{
+			sorbylist = lappend(sorbylist, node);
+			*grouplist = list_delete(*grouplist, node);
+		}
+		else if (IsA(node, GroupingSet) && ((GroupingSet *)node)->kind == GROUPING_SET_ROLLUP)
+		{
+			ListCell   *m;
+
+			foreach(m, ((GroupingSet *)node)->content)
+			{
+				Node *groupset = (Node *) lfirst(m);
+				if (IsA(groupset, SortBy))
+					((GroupingSet *)node)->content = list_delete(((GroupingSet *)node)->content, groupset);
+			}
+		}
+	}
+
+	return sorbylist;
+}
+
+static Node *
+makeAndExpr(Node *lexpr, Node *rexpr, int location)
+{
+	Node	   *lexp = lexpr;
+
+	/* Flatten "a AND b AND c ..." to a single BoolExpr on sight */
+	if (IsA(lexp, BoolExpr))
+	{
+		BoolExpr *blexpr = (BoolExpr *)lexp;
+
+		if (blexpr->boolop == AND_EXPR)
+		{
+			blexpr->args = lappend(blexpr->args, rexpr);
+			return (Node *)blexpr;
+		}
+	}
+	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr),
+			false, location);
+}
+/* End - ReqID:SRS-MYSQL-SELECT */
