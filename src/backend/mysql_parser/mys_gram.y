@@ -724,7 +724,7 @@ static void CheckHostId(char* hostId);
 %type <str>		ExistingIndex
 
 %type <list>	constraints_set_list
-%type <boolean> constraints_set_mode
+%type <boolean> constraints_set_mode opt_with_rollup	/* ReqID:SRS-MYSQL-SELECT */
 %type <str>		OptTableSpace OptConsTableSpace
 %type <rolespec> OptTableSpaceOwner
 %type <ival>	opt_check_option
@@ -837,7 +837,7 @@ static void CheckHostId(char* hostId);
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO_P
 	DISTINCTROW /* BUG#Z4610*/ 
 	DIV DO DOCUMENT_P DOMAIN_P
-	DOUBLE_P DROP DUPLICATE_P
+	DOUBLE_P DROP DUAL /* ReqID:SRS-MYSQL-SELECT */ DUPLICATE_P
 
 	EACH ELSE ELT /* ReqID:SRS-MYSQL-BINARYTYPE */ ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
@@ -925,7 +925,7 @@ static void CheckHostId(char* hostId);
  * as NOT, at least with respect to their left-hand subexpression.
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
-%token		NOT_LA NULLS_LA WITH_LA DELETE_FROM BINARY_F
+%token		NOT_LA NULLS_LA WITH_LA WITH_ROLLUP /* ReqID:SRS-MYSQL-SELECT */ DELETE_FROM BINARY_F
 
 
 %token		NCHAR_P		/* ReqID: SRS-MYSQL-CHARACTERTYPE- NCHAR VARCHAR(n) */
@@ -14146,10 +14146,18 @@ first_or_next: FIRST_P								{ $$ = 0; }
  * GroupingSet node of some type.
  */
 group_clause:
-			GROUP_P BY set_quantifier group_by_list
+			GROUP_P BY set_quantifier group_by_list opt_with_rollup	/* ReqID:SRS-MYSQL-SELECT */
 				{
 					GroupClause *n = (GroupClause *) palloc(sizeof(GroupClause));
 					n->distinct = $3 == SET_QUANTIFIER_DISTINCT;
+					/* Begin - ReqID:SRS-MYSQL-SELECT */
+					if ($5)
+					{
+						Node *gnode;
+						gnode = (Node *) makeGroupingSet(GROUPING_SET_ROLLUP, $4, @1);
+						$4 = list_make1(gnode);
+					}
+					/* End - ReqID:SRS-MYSQL-SELECT */
 					n->list = $4;
 					$$ = n;
 				}
@@ -14162,10 +14170,43 @@ group_clause:
 				}
 		;
 
-group_by_list:
-			group_by_item							{ $$ = list_make1($1); }
-			| group_by_list ',' group_by_item		{ $$ = lappend($1,$3); }
+/* Begin - ReqID:SRS-MYSQL-SELECT */
+opt_with_rollup:
+			WITH_ROLLUP ROLLUP						{ $$ = true; }
+			| /* empty */							{ $$ = false; }
 		;
+/* End - ReqID:SRS-MYSQL-SELECT */
+
+/* Begin - ReqID:SRS-MYSQL-SELECT */
+group_by_list:
+			group_by_item opt_asc_desc
+				{
+					if (IsA($1, GroupingSet) || $2 == SORTBY_DEFAULT)
+						$$ = list_make1($1);
+					else
+					{
+						SortBy *sb = makeNode(SortBy);
+						sb->node = $1;
+						sb->sortby_dir = $2;
+						$$ = list_make2($1, sb);
+					}
+				}
+			| group_by_list ',' group_by_item opt_asc_desc
+				{
+					if (IsA($3, GroupingSet) || $4 == SORTBY_DEFAULT)
+						$$ = lappend($1,$3);
+					else
+					{
+						List *list_item;
+						SortBy *sb = makeNode(SortBy);
+						sb->node = $3;
+						sb->sortby_dir = $4;
+						list_item = list_make2($3, sb);
+						$$ = list_concat($1, list_item);
+					}
+				}
+		;
+/* End - ReqID:SRS-MYSQL-SELECT */
 
 group_by_item:
 			a_expr									{ $$ = $1; }
@@ -14205,6 +14246,18 @@ cube_clause:
 grouping_sets_clause:
 			GROUPING SETS '(' group_by_list ')'
 				{
+					/* Begin - ReqID:SRS-MYSQL-SELECT */
+					if ($4)
+					{
+						ListCell   *l;
+						foreach(l, $4)
+						{
+							Node *node = (Node *) lfirst(l);
+							if (IsA(node, SortBy))
+								$4 = list_delete($4, node);
+						}
+					}
+					/* End - ReqID:SRS-MYSQL-SELECT */
 					$$ = (Node *) makeGroupingSet(GROUPING_SET_SETS, $4, @1);
 				}
 		;
@@ -14292,6 +14345,7 @@ values_clause:
 
 from_clause:
 			FROM from_list							{ $$ = $2; }
+			| FROM DUAL								{ $$ = NIL; }	/* ReqID:SRS-MYSQL-SELECT */
 			| /*EMPTY*/								{ $$ = NIL; }
 		;
 
@@ -19875,6 +19929,7 @@ reserved_keyword:
 			| DISTINCT
 			| DISTINCTROW /* BUG#Z4610*/ 
 			| DO
+			| DUAL		/* ReqID:SRS-MYSQL-SELECT */
 			| ELSE
 			| END_P
 			| EXCEPT
@@ -20076,6 +20131,7 @@ bare_label_keyword:
 			| DOMAIN_P
 			| DOUBLE_P
 			| DROP
+			| DUAL			/* ReqID:SRS-MYSQL-SELECT */
 			| DUPLICATE_P
 			| EACH
 			| ELSE
@@ -20523,6 +20579,7 @@ makeColumnRef(char *colname, List *indirection,
 	}
 	/* No subscripting, so all indirection gets added to field list */
 	c->fields = lcons(makeString(colname), indirection);
+
 	return (Node *) c;
 }
 
