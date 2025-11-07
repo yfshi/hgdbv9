@@ -554,6 +554,15 @@ show keys from tb in public where "Table" = 'tb';
 (1 row)
 
 drop table tb;
+create table tb(id int, name text);
+create index tb_i on tb(id) COMMENT 'test test test';
+show index from tb;
+ Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment  
+-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+----------------
+ tb    |          1 | tb_i     |            1 | id          | A         |           0 |          |        | YES  | btree      |         | test test test
+(1 row)
+
+drop table tb;
 --
 --show table status
 --because have time, time is always change,so don't test these.

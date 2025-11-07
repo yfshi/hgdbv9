@@ -91,6 +91,11 @@
 #include "parser/scansup.h"
 /* End - ReqID:SRS-MYSQL-SET */
 
+/* Begin - ReqID:SRS-MYSQL-CREATE-INDEX */
+#include "nodes/makefuncs.h"
+#include "parser/parser.h"
+/* End - ReqID:SRS-MYSQL-CREATE-INDEX */
+
 /* Hook for plugins to get control in ProcessUtility() */
 ProcessUtility_hook_type ProcessUtility_hook = NULL;
 
@@ -120,6 +125,11 @@ static void MysExecSelectIntoUserVarStmt(ParseState *pstate,
 							   ParamListInfo params,
 							   QueryCompletion *qc);
 /* End - ReqID:SRS-MYSQL-SET */
+/* Begin - ReqID:SRS-MYSQL-CREATE-INDEX */
+static bool mys_is_col_all(Oid relid, IndexStmt *stmt);
+static void mys_trans_index_col_to_left(Oid relid, IndexStmt *stmt);
+/* End - ReqID:SRS-MYSQL-CREATE-INDEX */
+
 /*
  * CommandIsReadOnly: is an executable query read-only?
  *
@@ -1666,6 +1676,11 @@ ProcessUtilitySlow(ParseState *pstate,
 					 * worth adding a separate bool field for the purpose.)
 					 */
 					is_alter_table = stmt->transformed;
+
+					/* Begin - ReqID:SRS-MYSQL-CREATE-INDEX */
+					if (compatible_db == MYS_PARSER)
+						mys_trans_index_col_to_left(relid, stmt);
+					/* End - ReqID:SRS-MYSQL-CREATE-INDEX */
 
 					/* Run parse analysis ... */
 					stmt = transformIndexStmt(relid, stmt, queryString);
@@ -4327,3 +4342,122 @@ MysExecSelectIntoUserVarStmt(ParseState *pstate,
 	PopActiveSnapshot();
 }
 /* End - ReqID:SRS-MYSQL-SET */
+
+/* Begin - ReqID:SRS-MYSQL-CREATE-INDEX */
+/* check is all colname? */
+static bool
+mys_is_col_all(Oid relid, IndexStmt *stmt)
+{
+	ListCell	*lc = NULL;
+	int num = 0;  /* number of parameters tha meet the requirements */
+
+	foreach(lc, stmt->indexParams)
+	{
+		IndexElem	*attribute = (IndexElem *) lfirst(lc);
+
+		if (attribute->expr != NULL)
+		{
+			/* Simple index attribute */
+			HeapTuple	 atttuple;
+
+			if (nodeTag(attribute->expr) == T_FuncCall)
+			{
+				List *funcname = ((FuncCall *)attribute->expr)->funcname;
+				Node *last_value = llast(funcname);
+				List *args = ((FuncCall *)attribute->expr)->args;
+				Node *last_arg = NULL;
+
+				if (nodeTag(last_value) != T_String || list_length(args) != 1)
+				{
+					break;
+				}
+
+				last_arg = llast(args);
+				if (nodeTag(last_arg) != T_A_Const)
+				{
+					break;
+				}
+
+				atttuple = SearchSysCacheAttName(relid, ((Value *)last_value)->val.str);
+				if (!HeapTupleIsValid(atttuple))
+				{
+					break;
+				}
+				ReleaseSysCache(atttuple);
+
+				num++;
+			}
+			else
+				num++;
+		}
+		else
+		{
+			num++;
+		}
+	}
+
+	if (num != list_length(stmt->indexParams))
+		return false;
+
+	return true;
+}
+
+static void
+mys_trans_index_col_to_left(Oid relid, IndexStmt *stmt)
+{
+	ListCell	*lc;
+
+	/* when all indexParams matchs. we considered as MySQL's colname(length) */
+	if (!mys_is_col_all(relid, stmt))
+		return;
+
+	foreach(lc, stmt->indexParams)
+	{
+		IndexElem	*attribute = (IndexElem *) lfirst(lc);
+
+		if (attribute->expr != NULL)
+		{
+			/* Simple index attribute */
+			HeapTuple	 atttuple;
+
+			if (nodeTag(attribute->expr) == T_FuncCall)
+			{
+				List *funcname = ((FuncCall *)attribute->expr)->funcname;
+				Node *last_value = llast(funcname);
+				List *args = ((FuncCall *)attribute->expr)->args;
+				Node *last_arg = NULL;
+
+				if (nodeTag(last_value) != T_String || list_length(args) != 1)
+				{
+					return;
+				}
+
+				last_arg = llast(args);
+				if (nodeTag(last_arg) != T_A_Const)
+				{
+					return;
+				}
+
+				atttuple = SearchSysCacheAttName(relid, ((Value *)last_value)->val.str);
+				if (HeapTupleIsValid(atttuple))
+				{
+					/* trans create index t11_1 on t11(str1(5));=> create index t11_1 on t11(left(str1, 5)*/
+					ColumnRef	*c = makeNode(ColumnRef);
+					c->location = -1;
+					c->has_outer_join = false;
+					c->partitionnamelist = NULL;
+					c->ispartition = false;
+					c->colnamelist = NULL;
+					c->fields = list_make1(last_value);
+
+					attribute->expr = (Node *) makeFuncCall(SystemFuncName("left"),
+							list_make2(c, last_arg),
+							COERCE_EXPLICIT_CALL,
+							-1);
+					ReleaseSysCache(atttuple);
+				}
+			}
+		}
+	}
+}
+/* End - ReqID:SRS-MYSQL-CREATE-INDEX */
