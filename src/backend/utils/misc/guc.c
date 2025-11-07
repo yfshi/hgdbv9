@@ -3908,6 +3908,17 @@ static struct config_int ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#Z5597 */
+	/* Begin - BUG#z6159 */
+	{
+		{"hg_pool_skip_txns", PGC_USERSET, RESOURCES_MEM,
+			gettext_noop("Skip txns when enable connect pool size."),
+			NULL,
+		},
+		&hg_pool_skip_txns,
+		0, 0, INT_MAX,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#z6159 */
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_INT_PARAMS
 	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */

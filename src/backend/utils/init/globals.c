@@ -168,4 +168,5 @@ bool            enable_insertparallel = false;     /* ReqID:SRS-MISC-PERFORMANCE
 /* Begin - BUG#Z5597 */
 int		hg_pool_size = 0;
 int		hg_pool_timeout = 0;
+int             hg_pool_skip_txns = 0;  /* BUG#z6159 */
 /* End - BUG#Z5597 */

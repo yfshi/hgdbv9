@@ -523,8 +523,8 @@ extern int	get_hash_mem(void);
 /* Begin - BUG#Z5597 */
 extern PGDLLIMPORT int	hg_pool_size;
 extern PGDLLIMPORT int	hg_pool_timeout;
+extern PGDLLIMPORT int  hg_pool_skip_txns;      /* BUG#z6159 */
 /* End - BUG#Z5597 */
-
 
 /* Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
