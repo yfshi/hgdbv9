@@ -8,11 +8,7 @@ drop table if exists tb;
 NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_002
 create table tb (col mediumtext character set utf32);  -- success
-ERROR:  syntax error at or near "character"
-LINE 1: create table tb (col mediumtext character set utf32);
-                                        ^
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_003
 create table tb(col mediumtext collate armscii8_general_ci);
 ERROR:  collation "armscii8_general_ci" for encoding "UTF8" does not exist
@@ -22,63 +18,49 @@ drop table if exists tb;
 NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_004
 create table tb(col mediumtext charset gbk);
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb(col mediumtext charset gbk);
-                                       ^
 insert into tb values(repeat('中',8388607));  -- success
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',8388607));
-                    ^
 insert into tb values(repeat('中',8388608));  -- fail
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',8388608));
-                    ^
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_005
 create table tb(col mediumtext charset utf8);
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb(col mediumtext charset utf8);
-                                       ^
 insert into tb values(repeat('中',5592405));  -- success
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',5592405));
-                    ^
 insert into tb values(repeat('中',5592406));  -- fail
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',5592406));
-                    ^
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_006
 create table tb1(col text(21845) charset utf8);  -- text
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb1(col text(21845) charset utf8);
-                                         ^
 \d+ tb1
+                                   Table "public.tb1"
+ Column | Type | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------+-----------+----------+---------+----------+--------------+-------------
+ col    | text |           |          |         | extended |              | 
+
 create table tb2(col text(21846) charset utf8);  -- mediumtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb2(col text(21846) charset utf8);
-                                         ^
 \d+ tb2
+                                   Table "public.tb2"
+ Column | Type | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------+-----------+----------+---------+----------+--------------+-------------
+ col    | text |           |          |         | extended |              | 
+
 create table tb3(col text(5592405) charset utf8);  -- mediumtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb3(col text(5592405) charset utf8);
-                                           ^
 \d+ tb3
+                                      Table "public.tb3"
+ Column |    Type    | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------------+-----------+----------+---------+----------+--------------+-------------
+ col    | mediumtext |           |          |         | extended |              | 
+
 create table tb4(col text(5592406) charset utf8);  -- longtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb4(col text(5592406) charset utf8);
-                                           ^
 \d+ tb4
+                                      Table "public.tb4"
+ Column |    Type    | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------------+-----------+----------+---------+----------+--------------+-------------
+ col    | mediumtext |           |          |         | extended |              | 
+
 insert into tb2 values(repeat('中',5592405));  -- success
-ERROR:  relation "tb2" does not exist
-LINE 1: insert into tb2 values(repeat('中',5592405));
-                    ^
 insert into tb2 values(repeat('中',5592406));  -- fail
-ERROR:  relation "tb2" does not exist
-LINE 1: insert into tb2 values(repeat('中',5592406));
-                    ^
+drop table if exists tb1;
+drop table if exists tb2;
+drop table if exists tb3;
+drop table if exists tb4;
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_INSERT_001
 -- create table tb1(col mediumtext charset utf8);
 -- insert into tb1 values(repeat('中',86)); -- fail

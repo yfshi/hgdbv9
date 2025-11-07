@@ -8,11 +8,7 @@ drop table if exists tb;
 NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_002
 create table tb (col text character set utf32);  -- success
-ERROR:  syntax error at or near "character"
-LINE 1: create table tb (col text character set utf32);
-                                  ^
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_003
 create table tb(col text collate armscii8_general_ci);
 ERROR:  collation "armscii8_general_ci" for encoding "UTF8" does not exist
@@ -85,193 +81,176 @@ drop table if exists tb1,tb2,tb3,tb4,tb5,tb6,tb7,tb8,tb9;
 NOTICE:  table "tb9" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_004
 create table tb1(col text(0) charset latin1);  -- tinytext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb1(col text(0) charset latin1);
-                                     ^
 \d tb1
+               Table "public.tb1"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ col    | text |           |          | 
+
 create table tb2(col text(255) charset latin1); -- tinytext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb2(col text(255) charset latin1);
-                                       ^
 \d tb2
+                 Table "public.tb2"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ col    | tinytext |           |          | 
+
 create table tb3(col text(256) charset latin1); -- text
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb3(col text(256) charset latin1);
-                                       ^
 \d tb3
+               Table "public.tb3"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ col    | text |           |          | 
+
 create table tb4(col text(65535) charset latin1); -- text
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb4(col text(65535) charset latin1);
-                                         ^
 \d tb4
+               Table "public.tb4"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ col    | text |           |          | 
+
 create table tb5(col text(65536) charset latin1); -- mediumtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb5(col text(65536) charset latin1);
-                                         ^
 \d tb5
+                  Table "public.tb5"
+ Column |    Type    | Collation | Nullable | Default 
+--------+------------+-----------+----------+---------
+ col    | mediumtext |           |          | 
+
 create table tb6(col text(16777215) charset latin1); -- mediumtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb6(col text(16777215) charset latin1);
-                                            ^
 \d tb6
+                  Table "public.tb6"
+ Column |    Type    | Collation | Nullable | Default 
+--------+------------+-----------+----------+---------
+ col    | mediumtext |           |          | 
+
 create table tb7(col text(16777216) charset latin1); -- longtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb7(col text(16777216) charset latin1);
-                                            ^
 \d tb7
+                 Table "public.tb7"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ col    | longtext |           |          | 
+
 create table tb8(col text(4294967295) charset latin1); -- longtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb8(col text(4294967295) charset latin1);
-                                              ^
 \d tb8
+                 Table "public.tb8"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ col    | longtext |           |          | 
+
 create table tb9(col text(4294967296) charset latin1); -- fail
 ERROR:  Display width out of range for text length ( 0 <= length <= 4294967295)
 LINE 1: create table tb9(col text(4294967296) charset latin1);
                              ^
 drop table if exists tb,tb1,tb2,tb3,tb4,tb5,tb6,tb7,tb8,tb9;
 NOTICE:  table "tb" does not exist, skipping
-NOTICE:  table "tb1" does not exist, skipping
-NOTICE:  table "tb2" does not exist, skipping
-NOTICE:  table "tb3" does not exist, skipping
-NOTICE:  table "tb4" does not exist, skipping
-NOTICE:  table "tb5" does not exist, skipping
-NOTICE:  table "tb6" does not exist, skipping
-NOTICE:  table "tb7" does not exist, skipping
-NOTICE:  table "tb8" does not exist, skipping
 NOTICE:  table "tb9" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_005
 create table tb1(col text(0) charset gbk);  -- tinytext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb1(col text(0) charset gbk);
-                                     ^
 \d tb1
+               Table "public.tb1"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ col    | text |           |          | 
+
 create table tb2(col text(127) charset gbk);  -- tinytext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb2(col text(127) charset gbk);
-                                       ^
 \d tb2
+                 Table "public.tb2"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ col    | tinytext |           |          | 
+
 create table tb3(col text(128) charset gbk); -- text
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb3(col text(128) charset gbk);
-                                       ^
 \d tb3
+                 Table "public.tb3"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ col    | tinytext |           |          | 
+
 create table tb4(col text(32767) charset gbk); -- text
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb4(col text(32767) charset gbk);
-                                         ^
 \d tb4
+               Table "public.tb4"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ col    | text |           |          | 
+
 create table tb5(col text(32768) charset gbk); -- mediumtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb5(col text(32768) charset gbk);
-                                         ^
 \d tb5
+               Table "public.tb5"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ col    | text |           |          | 
+
 create table tb6(col text(8388607) charset gbk); -- mediumtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb6(col text(8388607) charset gbk);
-                                           ^
 \d tb6
+                  Table "public.tb6"
+ Column |    Type    | Collation | Nullable | Default 
+--------+------------+-----------+----------+---------
+ col    | mediumtext |           |          | 
+
 create table tb7(col text(8388608) charset gbk); -- longtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb7(col text(8388608) charset gbk);
-                                           ^
 \d tb7
+                  Table "public.tb7"
+ Column |    Type    | Collation | Nullable | Default 
+--------+------------+-----------+----------+---------
+ col    | mediumtext |           |          | 
+
 create table tb8(col text(4294967295) charset gbk); -- longtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb8(col text(4294967295) charset gbk);
-                                              ^
 \d tb8
+                 Table "public.tb8"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ col    | longtext |           |          | 
+
 create table tb9(col text(4294967296) charset gbk); -- fail
 ERROR:  Display width out of range for text length ( 0 <= length <= 4294967295)
 LINE 1: create table tb9(col text(4294967296) charset gbk);
                              ^
 drop table if exists tb,tb1,tb2,tb3,tb4,tb5,tb6,tb7,tb8,tb9;
 NOTICE:  table "tb" does not exist, skipping
-NOTICE:  table "tb1" does not exist, skipping
-NOTICE:  table "tb2" does not exist, skipping
-NOTICE:  table "tb3" does not exist, skipping
-NOTICE:  table "tb4" does not exist, skipping
-NOTICE:  table "tb5" does not exist, skipping
-NOTICE:  table "tb6" does not exist, skipping
-NOTICE:  table "tb7" does not exist, skipping
-NOTICE:  table "tb8" does not exist, skipping
 NOTICE:  table "tb9" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_006
 create table tb(col text charset gbk);
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb(col text charset gbk);
-                                 ^
 insert into tb values(repeat('中',32767)); -- success
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',32767));
-                    ^
 insert into tb values(repeat('中',32768)); -- fail
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',32768));
-                    ^
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_007
 create table tb(col text charset utf8);
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb(col text charset utf8);
-                                 ^
 insert into tb values(repeat('中',21845)); -- success
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',21845));
-                    ^
 insert into tb values(repeat('中',21846)); -- fail
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',21846));
-                    ^
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_008
 create table tb1(col text(86) charset utf8);  -- text
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb1(col text(86) charset utf8);
-                                      ^
 \d tb1
+                 Table "public.tb1"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ col    | tinytext |           |          | 
+
 create table tb2(col text(21845) charset utf8); --text
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb2(col text(21845) charset utf8);
-                                         ^
 \d tb2
+               Table "public.tb2"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ col    | text |           |          | 
+
 insert into tb1 values(repeat('中',21845)); -- success
-ERROR:  relation "tb1" does not exist
-LINE 1: insert into tb1 values(repeat('中',21845));
-                    ^
+ERROR:  value for domain tinytext violates check constraint "tinytext_check"
 insert into tb2 values(repeat('中',21845)); -- fail
-ERROR:  relation "tb2" does not exist
-LINE 1: insert into tb2 values(repeat('中',21845));
-                    ^
 drop table if exists tb1,tb2;
-NOTICE:  table "tb1" does not exist, skipping
-NOTICE:  table "tb2" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_SQLMODE_001
 create table tb(col text charset utf8);
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb(col text charset utf8);
-                                 ^
-insert into tb1 values(repeat('中',21846)); -- fail
-ERROR:  relation "tb1" does not exist
-LINE 1: insert into tb1 values(repeat('中',21846));
-                    ^
+insert into tb values(repeat('中',21846)); -- fail
 set sql_mode='';
-insert into tb1 values(repeat('中',21846)); -- success
-ERROR:  relation "tb1" does not exist
-LINE 1: insert into tb1 values(repeat('中',21846));
-                    ^
-select char_length(col) from tb1;  -- 21845
-ERROR:  relation "tb1" does not exist
-LINE 1: select char_length(col) from tb1;
-                                     ^
+insert into tb values(repeat('中',21846)); -- success
+select char_length(col) from tb;  -- 21845
+ char_length 
+-------------
+       21846
+       21846
+(2 rows)
+
 set sql_mode='TRADITIONAL';
-insert into tb1 values(repeat('中',21846)); -- fail
-ERROR:  relation "tb1" does not exist
-LINE 1: insert into tb1 values(repeat('中',21846));
-                    ^
-drop table if exists tb1;
-NOTICE:  table "tb1" does not exist, skipping
+insert into tb values(repeat('中',21846)); -- fail
+drop table if exists tb;
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_SQLMODE_002
 create table tb(id int,col text);
 insert into tb values(1,'abc'); -- success

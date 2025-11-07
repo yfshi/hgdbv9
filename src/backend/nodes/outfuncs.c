@@ -2894,6 +2894,9 @@ _outCreateStmtInfo(StringInfo str, const CreateStmt *node)
 	WRITE_STRING_FIELD(tablespacename);
 	WRITE_STRING_FIELD(accessMethod);
 	WRITE_BOOL_FIELD(if_not_exists);
+	WRITE_STRING_FIELD(collname);
+	WRITE_NODE_FIELD(autoIncStart);/* SRS-MYSQL-CREATE-TABLE */
+	WRITE_NODE_FIELD(relcomment); /* SRS-MYSQL-CREATE-TABLE */
 }
 
 static void
@@ -3160,6 +3163,9 @@ _outColumnDef(StringInfo str, const ColumnDef *node)
 	WRITE_NODE_FIELD(constraints);
 	WRITE_NODE_FIELD(fdwoptions);
 	WRITE_LOCATION_FIELD(location);
+	WRITE_BOOL_FIELD(is_pri_or_unique);  /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	WRITE_BOOL_FIELD(is_auto_increment);/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	WRITE_NODE_FIELD(colcomment); /* SRS-MYSQL-CREATE-TABLE */
 }
 
 static void

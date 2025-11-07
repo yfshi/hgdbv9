@@ -761,6 +761,7 @@ typedef struct ColumnDef
 	/* End - BUG#M0000257 */
 	bool		is_pri_or_unique;  /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	bool		is_auto_increment; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	Node	   *colcomment;       /* SRS-MYSQL-CREATE-TABLE */
 } ColumnDef;
 
 /*
@@ -2553,7 +2554,8 @@ typedef struct CreateStmt
 	bool		if_not_exists;	/* just do nothing if it already exists? */
 	bool		with_rowid_seq;
 	char	   *collname;		/* ReqID:SRS-SQL-NLSSORT, table's default collation for Oracle, filled by grammer */
-	Node	   *autoIncStart;
+	Node	   *autoIncStart;	/* SRS-MYSQL-CREATE-TABLE */
+	Node	   *relcomment;		/* SRS-MYSQL-CREATE-TABLE */
 } CreateStmt;
 
 /* ----------

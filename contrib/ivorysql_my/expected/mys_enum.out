@@ -2958,11 +2958,7 @@ SELECT enumsortorder,enumlabel FROM pg_enum e
 
 -- test charset
 create table t_charset_enum_column(c enum('a', 'b', 'c') charset test_character_set);
-ERROR:  syntax error at or near "charset"
-LINE 1: ...table t_charset_enum_column(c enum('a', 'b', 'c') charset te...
-                                                             ^
 drop table t_charset_enum_column;
-ERROR:  table "t_charset_enum_column" does not exist
 -- test alter drop add col 
 create table t_enum_column_drop(c1 int, c2 enum('a', 'b'), c3 enum('a', 'b'));
 SELECT typname FROM pg_type WHERE typname like '%t_enum_column_drop%';

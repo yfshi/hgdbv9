@@ -420,6 +420,8 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 	int					i_attcollation;
 	int					i_atttypid;
 	int					i_attnotnull;
+	int					i_attidentity;
+	int					i_colcomment;
 	int					i_attfdwoptions;
 	int					i_coltype;
 	int					i_coldefault;
@@ -430,6 +432,8 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 	Oid					attcollationoid;
 	Oid					atttypoid;
 	char			   *attnotnullstr;
+	char			   *attidentitystr;
+	char			   *colcommentstr;
 	char			   *coltypestr;
 	char			   *coldefaultstr;
 	char			   *attfdwoptions;
@@ -448,9 +452,10 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 	initStringInfo(&query_attribute_str);
 	appendStringInfo(&query_attribute_str,
 					 "select at.attname, at.attisdropped, at.attgenerated, at.attcollation,"
-					 "at.atttypid, at.attnotnull, replace(replace(attfdwoptions, '{', '('), '}', ')') as attfdwoptions,"
+					 "at.atttypid, at.attnotnull, at.attidentity, replace(replace(attfdwoptions, '{', '('), '}', ')') as attfdwoptions,"
 					 "pg_catalog.format_type(at.atttypid, at.atttypmod) as coltype,"
-					 "pg_catalog.pg_get_expr(atdf.adbin, atdf.adrelid) as coldefault "
+					 "pg_catalog.pg_get_expr(atdf.adbin, atdf.adrelid) as coldefault, "
+					 "col_description(at.attrelid, at.attnum) as colcomment "
 					 "from pg_attribute at "
 					 "left join pg_attrdef atdf on (atdf.adrelid = at.attrelid and atdf.adnum = at.attnum)"
 					 "where at.attrelid = %u and at.attnum > 0;",
@@ -471,6 +476,7 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 		for (i = 0; i < proc; i++)
 		{
 			HeapTuple	spi_tuple;
+			bool		auto_increment =false;
 
 			/* Get the position of the required filed */
 			spi_tuple = spi_tuptable->vals[i];
@@ -482,6 +488,8 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 			i_coltype = SPI_fnumber(spi_tupdesc, "coltype");
 			i_coldefault = SPI_fnumber(spi_tupdesc, "coldefault");
 			i_attnotnull = SPI_fnumber(spi_tupdesc, "attnotnull");
+			i_attidentity = SPI_fnumber(spi_tupdesc, "attidentity");
+			i_colcomment = SPI_fnumber(spi_tupdesc, "colcomment");
 			i_attfdwoptions = SPI_fnumber(spi_tupdesc, "attfdwoptions");
 
 			/* Get the value of the required filed */
@@ -493,6 +501,8 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 			coltypestr = SPI_getvalue(spi_tuple, spi_tupdesc, i_coltype);
 			coldefaultstr = SPI_getvalue(spi_tuple, spi_tupdesc, i_coldefault);
 			attnotnullstr = SPI_getvalue(spi_tuple, spi_tupdesc, i_attnotnull);
+			attidentitystr = SPI_getvalue(spi_tuple, spi_tupdesc, i_attidentity);
+			colcommentstr = SPI_getvalue(spi_tuple, spi_tupdesc, i_colcomment);
 			attfdwoptions = SPI_getvalue(spi_tuple, spi_tupdesc, i_attfdwoptions);
 
 			/* If the column is drop from the table,
@@ -548,16 +558,31 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 				appendStringInfo(attrbuf, " OPTIONS %s", attfdwoptions);
 			}
 
+			/* Column is auto_increment */
+			if (attidentitystr != NULL && attidentitystr[0] == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+			{
+				auto_increment = true;
+			}
+
 			/* Column is NOT NULL */
 			if (attnotnullstr != NULL && strcmp(attnotnullstr, "t") == 0)
 			{
 				appendStringInfoString(attrbuf, " NOT NULL");
 			}
+			else if (auto_increment)
+			{
+				/* Column is auto_increment need set NULL */
+				appendStringInfoString(attrbuf, " NULL");
+			}
 
 			/* The defaule value for the column */
 			if (coldefaultstr != NULL)
 			{
-				if (strcmp(coldefaultstr, ""))
+				if (auto_increment)
+				{
+					appendStringInfoString(attrbuf, " AUTO_INCREMENT");
+				}
+				else if (strcmp(coldefaultstr, ""))
 				{
 					appendStringInfo(attrbuf, " DEFAULT %s", coldefaultstr);
 				}
@@ -572,6 +597,15 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 				{
 					appendStringInfo(attrbuf, " COLLATE %s",
 									 get_collation_name(attcollationoid));
+				}
+			}
+
+			/* Column have comment */
+			if (colcommentstr != NULL)
+			{
+				if (strcmp(colcommentstr, ""))
+				{
+					appendStringInfo(attrbuf, " COMMENT '%s'", colcommentstr);
 				}
 			}
 
@@ -947,6 +981,93 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 		/* General OPTION information of the foreign table */
 		if (ftoptions.data != NULL && strcmp(ftoptions.data, ""))
 			appendStringInfo(&relcreate, "\nOPTIONS (\n    %s\n)", ftoptions.data);
+	}
+
+	/* Option information of the table ：
+	 * engine, charset, comment, auto_increment
+	 */
+	{
+		StringInfoData querybuf;
+		int i_table_comment;
+		int i_auto_inc_start;
+#ifdef NOT_USED
+		int i_encoding;
+		int i_collate;
+		char *encodingstr = NULL;
+		char *collatestr = NULL;
+#endif
+
+		char *table_commentstr = NULL;
+		char *auto_inc_startstr = NULL;
+
+		/* foreign tables are also ordinary tables,
+		 * need to retrieve their partition information.
+		 */
+		reltypename = "FOREIGN TABLE";
+
+		/* retrieve name of foreign server and generic options */
+		initStringInfo(&querybuf);
+		appendStringInfo(&querybuf,
+						 "select obj_description('%u') as table_comment, "
+						 "pg_encoding_to_char(encoding) as encoding, "
+						 "replace(datcollate, '-', '') as collate, "
+						 "(select seqstart from pg_sequence ps where seqrelid = "
+						 "(select dep.objid from pg_depend dep ,pg_class pc ,pg_attribute pa "
+						 "where dep.refclassid = 'pg_class'::regclass "
+						 "and dep.refobjid = '%u' "
+						 "and dep.classid = 'pg_class'::regclass "
+						 "and dep.objid = pc.oid "
+						 "and pc.relkind = 'S' "
+						 "and pa.attnum>0 "
+						 "and not pa.attisdropped "
+						 "and pa.attidentity = '%c' "
+						 "))as auto_inc_start "
+						 "from pg_database "
+						 "where datname = current_database()",
+						 reloid, reloid, ATTRIBUTE_IDENTITY_AUTO_INCREMENT);
+
+		if (SPI_connect() != SPI_OK_CONNECT)
+			elog(ERROR, "SPI_connect failed");
+
+		if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
+			elog(ERROR, "SPI_exec failed: %s", querybuf.data);
+
+		/* Determin the position of generated columns in the query result */
+		i_table_comment = SPI_fnumber(SPI_tuptable->tupdesc, "table_comment");
+#ifdef NOT_USED
+		i_encoding = SPI_fnumber(SPI_tuptable->tupdesc, "encoding");
+		i_collate = SPI_fnumber(SPI_tuptable->tupdesc, "collate");
+#endif
+		i_auto_inc_start = SPI_fnumber(SPI_tuptable->tupdesc, "auto_inc_start");
+
+		/* get these columns values from the results */
+		table_commentstr = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, i_table_comment);
+#ifdef NOT_USED
+		encodingstr = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, i_encoding);
+		collatestr = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, i_collate);
+#endif
+		auto_inc_startstr = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, i_auto_inc_start);
+
+#ifdef NOT_USED
+		appendStringInfoString(&relcreate, " ENGINE=InnoDB");
+#endif
+		if (auto_inc_startstr && strcmp(auto_inc_startstr, "1") != 0)
+			appendStringInfo(&relcreate, " AUTO_INCREMENT=%s", auto_inc_startstr);
+#ifdef NOT_USED
+		/* character and collate information are not diplayed,the interface is reserved
+		   and the code will be submitted later.
+		if (encodingstr)
+			appendStringInfo(&relcreate, " DEFAULT CHARSET=%s", encodingstr);
+		if (collatestr)
+			appendStringInfo(&relcreate, " COLLATE=%s", collatestr);*/
+#endif
+		if (table_commentstr)
+			appendStringInfo(&relcreate, " COMMENT='%s'", table_commentstr);
+
+		if (SPI_finish() != SPI_OK_FINISH)
+			elog(ERROR, "SPI_finish failed");
+
+		pfree(querybuf.data);
 	}
 
 	ReleaseSysCache(reltup);

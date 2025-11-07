@@ -35,7 +35,10 @@ create table tb4(col text(5592406) charset utf8);  -- longtext
 \d+ tb4
 insert into tb2 values(repeat('中',5592405));  -- success
 insert into tb2 values(repeat('中',5592406));  -- fail
-
+drop table if exists tb1;
+drop table if exists tb2;
+drop table if exists tb3;
+drop table if exists tb4;
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_INSERT_001
 -- create table tb1(col mediumtext charset utf8);
 -- insert into tb1 values(repeat('中',86)); -- fail

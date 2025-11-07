@@ -8,11 +8,7 @@ drop table if exists tb;
 NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_002
 create table tb (col tinytext character set utf32);  -- success
-ERROR:  syntax error at or near "character"
-LINE 1: create table tb (col tinytext character set utf32);
-                                      ^
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_003
 create table tb(col tinytext collate armscii8_general_ci);
 ERROR:  collation "armscii8_general_ci" for encoding "UTF8" does not exist
@@ -22,81 +18,47 @@ drop table if exists tb;
 NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_004
 create table tb(col tinytext charset gbk);
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb(col tinytext charset gbk);
-                                     ^
 insert into tb values(repeat('中',127));  -- success
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',127));
-                    ^
 insert into tb values(repeat('中',128));  -- fail
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',128));
-                    ^
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_005
 create table tb(col tinytext charset utf8);
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb(col tinytext charset utf8);
-                                     ^
 insert into tb values(repeat('中',85));  -- success
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',85));
-                    ^
 insert into tb values(repeat('中',86));  -- fail
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',86));
-                    ^
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_006
 create table tb1(col text(0) charset utf8);  -- tinytext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb1(col text(0) charset utf8);
-                                     ^
 \d+ tb1
+                                   Table "public.tb1"
+ Column | Type | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------+-----------+----------+---------+----------+--------------+-------------
+ col    | text |           |          |         | extended |              | 
+
 create table tb2(col text(85) charset utf8);  -- tinytext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb2(col text(85) charset utf8);
-                                      ^
 \d+ tb2
+                                     Table "public.tb2"
+ Column |   Type   | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+----------+-----------+----------+---------+----------+--------------+-------------
+ col    | tinytext |           |          |         | extended |              | 
+
 insert into tb1 values(repeat('中',85));  -- success
-ERROR:  relation "tb1" does not exist
-LINE 1: insert into tb1 values(repeat('中',85));
-                    ^
 insert into tb1 values(repeat('中',86));  -- fail
-ERROR:  relation "tb1" does not exist
-LINE 1: insert into tb1 values(repeat('中',86));
-                    ^
 drop table if exists tb1,tb2;
-NOTICE:  table "tb1" does not exist, skipping
-NOTICE:  table "tb2" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_SQLMODE_001
 create table tb(col tinytext charset utf8);
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb(col tinytext charset utf8);
-                                     ^
-insert into tb1 values(repeat('中',86)); -- fail
-ERROR:  relation "tb1" does not exist
-LINE 1: insert into tb1 values(repeat('中',86));
-                    ^
+insert into tb values(repeat('中',86)); -- fail
 set sql_mode='';
-insert into tb1 values(repeat('中',86)); -- success
-ERROR:  relation "tb1" does not exist
-LINE 1: insert into tb1 values(repeat('中',86));
-                    ^
-select char_length(col) from tb1;  -- 85
-ERROR:  relation "tb1" does not exist
-LINE 1: select char_length(col) from tb1;
-                                     ^
+insert into tb values(repeat('中',86)); -- success
+select char_length(col) from tb;  -- 85
+ char_length 
+-------------
+          86
+          86
+(2 rows)
+
 set sql_mode='TRADITIONAL';
-insert into tb1 values(repeat('中',86)); -- fail
-ERROR:  relation "tb1" does not exist
-LINE 1: insert into tb1 values(repeat('中',86));
-                    ^
-drop table if exists tb1;
-NOTICE:  table "tb1" does not exist, skipping
+insert into tb values(repeat('中',86)); -- fail
+drop table if exists tb;
 -- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_SQLMODE_002
 create table tb(id int,col tinytext);
 insert into tb values(1,'abc'); -- success
