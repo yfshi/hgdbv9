@@ -218,8 +218,12 @@ declare
     sql text;
 begin
     IF NOT is_partition THEN
-        sql='alter table '||table_name||' add column if not exists __hg_seclabel__ hg_security.seclabel default (hg_security.mac_row_user_seclabel())';
+        /* Begin - Bug #5996 */
+        sql='alter table '||table_name||' add column if not exists __hg_seclabel__ hg_security.seclabel';
         execute sql;
+        sql='alter table '||table_name||' alter column __hg_seclabel__ set default (hg_security.mac_row_user_seclabel())';
+        execute sql;
+        /* End - Bug #5996 */
     END IF;
     sql='create policy policysel'||table_name||' on '||table_name||' for select using (hg_security.mac_row_select_policy(__hg_seclabel__))';
     execute sql;

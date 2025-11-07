@@ -34,6 +34,7 @@
 #include "utils/fmgroids.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
+#include "utils/lsyscache.h"
 
 #include "hg_sysmac.h"
 
@@ -290,7 +291,7 @@ seclabel_string_len(SecLabel *seclabel)
 		/* if we end with in_range we set previous valid bit as end*/
 		if (in_range)
 		{
-			len += snprintf(temp, sizeof(temp), ".c%d", i);
+			len += snprintf(temp, sizeof(temp), ".c%d", p); /* Bug - #z6007 */
 		}
 	}
 
@@ -441,7 +442,7 @@ check_relabel(const ObjectAddress *object, const char *seclabel)
 		elog(ERROR, "only sso can set sysmac label");
 #endif
 
-	if (hg_sysmac_g->global_on && !skip_format_check)
+	if (global_on && !skip_format_check) /* Bug - #z5940 */
 		seclabel_format_check(seclabel);
 }
 
@@ -514,8 +515,8 @@ get_user_seclabel(PG_FUNCTION_ARGS)
 
 	if (label)
 		PG_RETURN_TEXT_P(cstring_to_text(label));
-
-	PG_RETURN_NULL();
+	else /* Bug - #z6002 */
+		elog(ERROR, "This user does not have a seclabel.");
 }
 
 PG_FUNCTION_INFO_V1(set_user_seclabel);
@@ -545,18 +546,53 @@ get_table_seclabel(PG_FUNCTION_ARGS)
 
 	if (label)
 		PG_RETURN_TEXT_P(cstring_to_text(label));
-
-	PG_RETURN_NULL();
+	else /* Bug - #6002 */
+		elog(ERROR, "This table does not have a seclabel.");
 }
 
 PG_FUNCTION_INFO_V1(set_table_seclabel);
 Datum
 set_table_seclabel(PG_FUNCTION_ARGS)
 {
+	char		relkind;
+	char		relpersistence;
 	Oid rel_oid = PG_GETARG_OID(0);
 	const char* label = TextDatumGetCString(PG_GETARG_DATUM(1));
 
 	is_security_roles();
+
+	/* Begin - bug#z6002 */
+	relkind = get_rel_relkind(rel_oid);
+	relpersistence = get_rel_persistence(rel_oid);
+
+	if (rel_oid < FirstNormalObjectId)
+		elog(ERROR, "Setting seclabel for system objects is not supported.");
+
+	if (relpersistence == 't')
+		elog(ERROR, "Setting table seclabel for temp table is not supported.");
+
+	switch (relkind)
+	{
+		case 'i':
+			elog(ERROR, "Setting table seclabel for index is not supported.");
+			break;
+
+		case 'c':
+			elog(ERROR, "Setting table seclabel for composite type is not supported.");
+			break;
+
+		case 'f':
+			elog(ERROR, "Setting table seclabel for foreign table is not supported.");
+			break;
+
+		case 'I':
+			elog(ERROR, "Setting table seclabel for partitioned index is not supported.");
+			break;
+
+		default:
+			break;
+	}
+	/* End - bug#z6002 */
 
 	set_obj_seclabel_internal(RelationRelationId, rel_oid, InvalidOid, label, false);
 
@@ -577,19 +613,63 @@ get_column_seclabel(PG_FUNCTION_ARGS)
 
 	if (label)
 		PG_RETURN_TEXT_P(cstring_to_text(label));
-
-	PG_RETURN_NULL();
+	else /* Bug - #z6002 */
+		elog(ERROR, "This column does not have a seclabel.");
 }
 
 PG_FUNCTION_INFO_V1(set_column_seclabel);
 Datum
 set_column_seclabel(PG_FUNCTION_ARGS)
 {
+	char		relkind;
+	char		relpersistence;
 	Oid rel_oid = PG_GETARG_OID(0);
 	int32 col_num = PG_GETARG_OID(1);
 	const char* label = TextDatumGetCString(PG_GETARG_DATUM(2));
 
 	is_security_roles();
+
+	/* Begin - bug#z6038 */
+	if (col_num <= 0)
+		elog(ERROR, "Invalid column number '%d', must be greater than 0.", col_num);
+	/* End - bug#z6038 */
+
+	/* Begin - bug#z6002 */
+	relkind = get_rel_relkind(rel_oid);
+	relpersistence = get_rel_persistence(rel_oid);
+
+	if (rel_oid < FirstNormalObjectId)
+		elog(ERROR, "Setting seclabel for system objects is not supported.");
+
+	if (relpersistence == 't')
+		elog(ERROR, "Setting column seclabel for temp table is not supported.");
+
+	switch (relkind)
+	{
+		case 'i':
+			elog(ERROR, "Setting column seclabel for index is not supported.");
+			break;
+
+		case 'c':
+			elog(ERROR, "Setting column seclabel for composite type is not supported.");
+			break;
+
+		case 'f':
+			elog(ERROR, "Setting column seclabel for foreign table is not supported.");
+			break;
+
+		case 'S':
+			elog(ERROR, "Setting column seclabel for sequence is not supported.");
+			break;
+
+		case 'I':
+			elog(ERROR, "Setting column seclabel for partitioned index is not supported.");
+			break;
+
+		default:
+			break;
+	}
+	/* End - bug#z6002 */
 
 	set_obj_seclabel_internal(RelationRelationId, rel_oid, col_num, label, false);
 

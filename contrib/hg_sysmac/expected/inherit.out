@@ -1,5 +1,11 @@
-SET hg_sysmac.global_on TO ON;
-SET hg_sysmac.global_table_level TO ON;
+ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO ON;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
 CREATE USER u1 with password 'Hello@123';
 CREATE USER u2 with password 'Hello@123';
 CREATE USER u3 with password 'Hello@123';
@@ -15,7 +21,7 @@ CREATE TABLE inh_child (
 ) INHERITS (inh_parent);
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
@@ -117,7 +123,7 @@ CREATE TABLE inh_child (
 ) INHERITS (inh_parent);
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_child'::regclass, 's2');
  set_table_seclabel 
 --------------------
@@ -228,7 +234,7 @@ CREATE TABLE inh_child (
 ) INHERITS (inh_parent);
 GRANT ALL ON inh_parent TO u1,u2,u3,u4;
 GRANT ALL ON inh_child TO u1,u2,u3,u4;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
@@ -364,17 +370,29 @@ SELECT * FROM inh_child;
  22 | bbob
 (2 rows)
 
-SET ROLE syssso;
-SET hg_sysmac.global_on TO OFF;
-SET hg_sysmac.global_table_level TO OFF;
+RESET ROLE;
+ALTER SYSTEM SET hg_sysmac.global_on TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
 SET ROLE u1;
 DROP TABLE inh_parent CASCADE;
 NOTICE:  drop cascades to table inh_child
 -- Set the row-level security label only on the parent table.
-SET ROLE syssso;
-SET hg_sysmac.global_on TO ON;
-SET hg_sysmac.global_table_level TO OFF;
-SET hg_sysmac.global_row_level TO ON;
+RESET ROLE;
+ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_row_level TO ON;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
 SET ROLE u1;
 CREATE TABLE inh_parent (
     id int,
@@ -385,7 +403,7 @@ CREATE TABLE inh_child (
 ) INHERITS (inh_parent);
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
@@ -461,7 +479,7 @@ SELECT __hg_seclabel__,* FROM inh_parent;
  s3              | 33 | ttom
 (5 rows)
 
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'drop');
  apply_row_policy 
 ------------------
@@ -469,10 +487,16 @@ SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'drop');
 (1 row)
 
 -- Set the row-level security label only on the child table.
-SET ROLE syssso;
-SET hg_sysmac.global_on TO ON;
-SET hg_sysmac.global_table_level TO OFF;
-SET hg_sysmac.global_row_level TO ON;
+RESET ROLE;
+ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_row_level TO ON;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
 SET ROLE u1;
 DROP TABLE inh_parent CASCADE;
 NOTICE:  drop cascades to table inh_child
@@ -485,7 +509,7 @@ CREATE TABLE inh_child (
 ) INHERITS (inh_parent);
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_child'::regclass, 's2');
  set_table_seclabel 
 --------------------
@@ -555,7 +579,7 @@ SELECT __hg_seclabel__,* FROM inh_child;
  s2              | 22 | bbob
 (2 rows)
 
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
  apply_row_policy 
 ------------------
@@ -563,10 +587,16 @@ SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
 (1 row)
 
 -- Set the row-level security label on both the parent table and child tables.
-SET ROLE syssso;
-SET hg_sysmac.global_on TO ON;
-SET hg_sysmac.global_table_level TO OFF;
-SET hg_sysmac.global_row_level TO ON;
+RESET ROLE;
+ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_row_level TO ON;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
 SET ROLE u1;
 DROP TABLE inh_parent CASCADE;
 NOTICE:  drop cascades to table inh_child
@@ -579,7 +609,7 @@ CREATE TABLE inh_child (
 ) INHERITS (inh_parent);
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
  set_table_seclabel 
 --------------------
@@ -652,7 +682,7 @@ SELECT __hg_seclabel__,* FROM inh_child;
  s2              |  2 | bob
 (2 rows)
 
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'apply');
 NOTICE:  merging definition of column "__hg_seclabel__" for child "inh_child"
  apply_row_policy 
@@ -701,7 +731,7 @@ SELECT __hg_seclabel__,* FROM inh_parent;
  s2              |  2 | bob
 (4 rows)
 
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
 ERROR:  cannot drop inherited column "__hg_seclabel__"
 CONTEXT:  SQL statement "alter table inh_child drop column __hg_seclabel__ cascade"
@@ -719,9 +749,15 @@ SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
  set
 (1 row)
 
-SET hg_sysmac.global_on TO OFF;
-SET hg_sysmac.global_table_level TO OFF;
-SET hg_sysmac.global_row_level TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_on TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_row_level TO OFF;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
 SET ROLE u1;
 DROP TABLE inh_parent CASCADE;
 NOTICE:  drop cascades to table inh_child

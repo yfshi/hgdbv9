@@ -1,5 +1,6 @@
-SET hg_sysmac.global_on TO ON;
-SET hg_sysmac.global_table_level TO ON;
+ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO ON;
+SELECT pg_reload_conf();
 CREATE USER u1 with password 'Hello@123';
 CREATE USER u2 with password 'Hello@123';
 CREATE USER u3 with password 'Hello@123';
@@ -18,7 +19,7 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
 SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
 SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
@@ -78,7 +79,7 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
 
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_child'::regclass, 's2');
 SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
 SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
@@ -140,7 +141,7 @@ CREATE TABLE inh_child (
 GRANT ALL ON inh_parent TO u1,u2,u3,u4;
 GRANT ALL ON inh_child TO u1,u2,u3,u4;
 
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
 SELECT hg_security.set_table_seclabel('inh_child'::regclass, 's3');
 SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
@@ -202,18 +203,21 @@ SET ROLE u4;
 SELECT * FROM inh_parent;
 SELECT * FROM inh_child;
 
-SET ROLE syssso;
-SET hg_sysmac.global_on TO OFF;
-SET hg_sysmac.global_table_level TO OFF;
+RESET ROLE;
+ALTER SYSTEM SET hg_sysmac.global_on TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+SELECT pg_reload_conf();
 SET ROLE u1;
 DROP TABLE inh_parent CASCADE;
 
 
 -- Set the row-level security label only on the parent table.
-SET ROLE syssso;
-SET hg_sysmac.global_on TO ON;
-SET hg_sysmac.global_table_level TO OFF;
-SET hg_sysmac.global_row_level TO ON;
+RESET ROLE;
+ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_row_level TO ON;
+SELECT pg_reload_conf();
+
 SET ROLE u1;
 CREATE TABLE inh_parent (
     id int,
@@ -224,7 +228,7 @@ CREATE TABLE inh_child (
 ) INHERITS (inh_parent);
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
 SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'apply');
 SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'enable');
@@ -246,15 +250,16 @@ SET ROLE u2;
 SELECT __hg_seclabel__,* FROM inh_parent;
 SET ROLE u3;
 SELECT __hg_seclabel__,* FROM inh_parent;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'drop');
 
 -- Set the row-level security label only on the child table.
 
-SET ROLE syssso;
-SET hg_sysmac.global_on TO ON;
-SET hg_sysmac.global_table_level TO OFF;
-SET hg_sysmac.global_row_level TO ON;
+RESET ROLE;
+ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_row_level TO ON;
+SELECT pg_reload_conf();
 SET ROLE u1;
 DROP TABLE inh_parent CASCADE;
 CREATE TABLE inh_parent (
@@ -266,7 +271,7 @@ CREATE TABLE inh_child (
 ) INHERITS (inh_parent);
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_child'::regclass, 's2');
 SELECT hg_security.apply_row_policy('inh_child'::regclass, 'apply');
 SELECT hg_security.apply_row_policy('inh_child'::regclass, 'enable');
@@ -288,15 +293,16 @@ SET ROLE u2;
 SELECT __hg_seclabel__,* FROM inh_child;
 SET ROLE u3;
 SELECT __hg_seclabel__,* FROM inh_child;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
 
 -- Set the row-level security label on both the parent table and child tables.
 
-SET ROLE syssso;
-SET hg_sysmac.global_on TO ON;
-SET hg_sysmac.global_table_level TO OFF;
-SET hg_sysmac.global_row_level TO ON;
+RESET ROLE;
+ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_row_level TO ON;
+SELECT pg_reload_conf();
 SET ROLE u1;
 DROP TABLE inh_parent CASCADE;
 CREATE TABLE inh_parent (
@@ -308,7 +314,7 @@ CREATE TABLE inh_child (
 ) INHERITS (inh_parent);
 GRANT ALL ON inh_parent TO u1,u2,u3;
 GRANT ALL ON inh_child TO u1,u2,u3;
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.set_table_seclabel('inh_parent'::regclass, 's2');
 SELECT hg_security.set_table_seclabel('inh_child'::regclass, 's2');
 SELECT hg_security.apply_row_policy('inh_child'::regclass, 'apply');
@@ -329,7 +335,7 @@ SELECT __hg_seclabel__,* FROM inh_child;
 SET ROLE u3;
 SELECT __hg_seclabel__,* FROM inh_child;
 
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'apply');
 SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'enable');
 
@@ -346,14 +352,15 @@ SELECT __hg_seclabel__,* FROM inh_parent;
 SET ROLE u3;
 SELECT __hg_seclabel__,* FROM inh_parent;
 
-SET ROLE syssso;
+RESET ROLE;
 SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
 SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'drop');
 SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
 
-SET hg_sysmac.global_on TO OFF;
-SET hg_sysmac.global_table_level TO OFF;
-SET hg_sysmac.global_row_level TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_on TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+ALTER SYSTEM SET hg_sysmac.global_row_level TO OFF;
+SELECT pg_reload_conf();
 SET ROLE u1;
 DROP TABLE inh_parent CASCADE;
 RESET ROLE;

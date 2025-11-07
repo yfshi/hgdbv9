@@ -181,17 +181,11 @@ check_relation_privileges(Oid relOid,
 	Bitmapset	*columns;
 	int			index;
 	bool		result = true;
+	bool		no_seclabel = false; /* Bug - #z6122 */
 	char		relkind = get_rel_relkind(relOid);
-	volatile hg_sysmac_param *hg_sysmac = (volatile hg_sysmac_param *) hg_sysmac_g;
-
-	if (hg_sysmac == NULL)
-	{
-		elog(WARNING, "The 'hg_sysmac' plugin was not loaded correctly. Please check the configuration.");
-		return true;
-	}
 
 	/* if global is off, do nothing */
-	if (!hg_sysmac->global_on)
+	if (!global_on) /* Bug - #z5940 */
 		return true;
 
 	if ((raw_label_s = get_obj_seclabel_internal(AuthIdRelationId, GetUserId(), 0,true)))
@@ -199,7 +193,7 @@ check_relation_privileges(Oid relOid,
 	if ((raw_label_o = get_obj_seclabel_internal(RelationRelationId, relOid, 0,true)))
 		seclabel_o = string_to_seclabel(raw_label_o, NULL, true);
 	else
-		return true;/*fast path if no label on target*/
+		no_seclabel = true; /*fast path if no label on target*/
 
 	/*
 	 * Check type
@@ -218,7 +212,7 @@ check_relation_privileges(Oid relOid,
 			break;
 	}
 
-	if (hg_sysmac->global_table_level)
+	if (global_table_level && !no_seclabel) /* Bug - #z5940 #z6122 */
 	{
 		if (required & ACL_SELECT)
 		{
@@ -284,99 +278,99 @@ check_relation_privileges(Oid relOid,
 				}
 			}
 		}
+	}
 
-		/*do column level*/
-		if (hg_sysmac->global_column_level)
+	/*do column level*/
+	if (global_column_level) /* Bug - #z5940 #z6122 */
+	{
+		/*
+		* Only columns owned by relations shall be checked
+		*/
+		if (relkind != RELKIND_RELATION && relkind != RELKIND_PARTITIONED_TABLE)
+			return true;
+
+		/*
+		* Check permissions on the columns
+		*/
+		selected = fixup_whole_row_references(relOid, selected);
+		inserted = fixup_whole_row_references(relOid, inserted);
+		updated = fixup_whole_row_references(relOid, updated);
+		columns = bms_union(selected, bms_union(inserted, updated));
+
+		while ((index = bms_first_member(columns)) >= 0)
 		{
-			/*
-			* Only columns owned by relations shall be checked
-			*/
-			if (relkind != RELKIND_RELATION && relkind != RELKIND_PARTITIONED_TABLE)
-				return true;
+			char *raw_lable_o_col;
+			SecLabel *seclabel_o_col;
+			AttrNumber	attnum;
 
-			/*
-			* Check permissions on the columns
-			*/
-			selected = fixup_whole_row_references(relOid, selected);
-			inserted = fixup_whole_row_references(relOid, inserted);
-			updated = fixup_whole_row_references(relOid, updated);
-			columns = bms_union(selected, bms_union(inserted, updated));
+			attnum = index + FirstLowInvalidHeapAttributeNumber;
 
-			while ((index = bms_first_member(columns)) >= 0)
+			raw_lable_o_col = get_obj_seclabel_internal(RelationRelationId, relOid, attnum, true);
+
+			/*fast path if not label on target column*/
+			if (!raw_lable_o_col)
+				continue;
+			else
+				seclabel_o_col = string_to_seclabel(raw_lable_o_col, NULL, true);
+
+			object.classId = RelationRelationId;
+			object.objectId = relOid;
+			object.objectSubId = attnum;
+			audit_name = getObjectDescription(&object, false);
+
+			if (bms_is_member(index, selected))
 			{
-				char *raw_lable_o_col;
-				SecLabel *seclabel_o_col;
-				AttrNumber	attnum;
-
-				attnum = index + FirstLowInvalidHeapAttributeNumber;
-
-				raw_lable_o_col = get_obj_seclabel_internal(RelationRelationId, relOid, attnum, true);
-
-				/*fast path if not label on target column*/
-				if (!raw_lable_o_col)
-					continue;
-				else
-					seclabel_o_col = string_to_seclabel(raw_lable_o_col, NULL, true);
-
-				object.classId = RelationRelationId;
-				object.objectId = relOid;
-				object.objectSubId = attnum;
-				audit_name = getObjectDescription(&object, false);
-
-				if (bms_is_member(index, selected))
+				/* focus only on column label */
+				if (seclabel_compare(seclabel_s, seclabel_o_col) == LABEL_UNCOMPARABLE)
 				{
-					/* focus only on column label */
-					if (seclabel_compare(seclabel_s, seclabel_o_col) == LABEL_UNCOMPARABLE)
+					result = false;
+					if (abort_on_violation)
 					{
-						result = false;
-						if (abort_on_violation)
-						{
-							if (seclabel_s)
-								pfree(seclabel_s);
-							if (seclabel_o)
-								pfree(seclabel_o);
-							elog(ERROR, "permission deined: violate select rules on %s",
-										 audit_name);
-						}
+						if (seclabel_s)
+							pfree(seclabel_s);
+						if (seclabel_o)
+							pfree(seclabel_o);
+						elog(ERROR, "permission deined: violate select rules on %s",
+									 audit_name);
 					}
 				}
-				if (bms_is_member(index, inserted))
-				{
-					if (seclabel_compare(seclabel_o_col, seclabel_s) == LABEL_UNCOMPARABLE)
-					{
-						result = false;
-						if (abort_on_violation)
-						{
-							if (seclabel_s)
-								pfree(seclabel_s);
-							if (seclabel_o)
-								pfree(seclabel_o);
-							elog(ERROR, "permission deined: violate insert rules on %s",
-										 audit_name);
-						}
-					}
-				}
-				if (bms_is_member(index, updated))
-				{
-					if (seclabel_compare(seclabel_s, seclabel_o_col) != LABEL_EQUAL)
-					{
-						result = false;
-						if (abort_on_violation)
-						{
-							if (seclabel_s)
-								pfree(seclabel_s);
-							if (seclabel_o)
-								pfree(seclabel_o);
-							elog(ERROR, "permission deined: violate update rules on %s",
-										 audit_name);
-						}
-					}
-				}
-
-				pfree(audit_name);
-				bms_free(seclabel_o_col->catagory);
-				pfree(seclabel_o_col);
 			}
+			if (bms_is_member(index, inserted))
+			{
+				if (seclabel_compare(seclabel_o_col, seclabel_s) == LABEL_UNCOMPARABLE)
+				{
+					result = false;
+					if (abort_on_violation)
+					{
+						if (seclabel_s)
+							pfree(seclabel_s);
+						if (seclabel_o)
+							pfree(seclabel_o);
+						elog(ERROR, "permission deined: violate insert rules on %s",
+									 audit_name);
+					}
+				}
+			}
+			if (bms_is_member(index, updated))
+			{
+				if (seclabel_compare(seclabel_s, seclabel_o_col) != LABEL_EQUAL)
+				{
+					result = false;
+					if (abort_on_violation)
+					{
+						if (seclabel_s)
+							pfree(seclabel_s);
+						if (seclabel_o)
+							pfree(seclabel_o);
+						elog(ERROR, "permission deined: violate update rules on %s",
+									 audit_name);
+					}
+				}
+			}
+
+			pfree(audit_name);
+			bms_free(seclabel_o_col->catagory);
+			pfree(seclabel_o_col);
 		}
 	}
 
@@ -396,16 +390,9 @@ bool
 sysmac_dml_privileges(List *rangeTabls, bool abort_on_violation)
 {
 	ListCell   *lr;
-	volatile hg_sysmac_param *hg_sysmac = (volatile hg_sysmac_param *) hg_sysmac_g;
-
-	if (hg_sysmac == NULL)
-	{
-		elog(WARNING, "The 'hg_sysmac' plugin was not loaded correctly. Please check the configuration.");
-		return true;
-	}
 
 	/* if global is off, do nothing */
-	if (!hg_sysmac->global_on)
+	if (!global_on) /* Bug - #z5940 */
 		return true;
 
 	foreach(lr, rangeTabls)
