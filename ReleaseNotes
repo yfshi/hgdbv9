@@ -160,7 +160,7 @@
 	109、M兼容修复了show create table没有过滤掉已删除列的问题，bug#6017；
 	110、将psql连接默认库从postgres改成template1，避免非postgres用户初始化后连不上的问题，bug#6068；
 	111、O兼容增加了大小写转换时，跳过非ASCII字符的操作，bug#6063；
-	112、安全特性语句审计补充了确实的几类语句，bug#6075；
+	112、安全特性语句审计补充了缺失的几类语句，bug#6075；
 	113、M兼容修复了show columns返回的type列值显示不正确的问题，bug#5962/5963/5964/5966；
 	114、M兼容修复了INFORMATION_SCHEMA.COLUMNS的返回列排序不对的问题，bug#5984/5985；
 	115、M兼容修复了INFORMATION_SCHEMA.COLUMNS没有过滤掉临时表的列的问题，bug#5986；
