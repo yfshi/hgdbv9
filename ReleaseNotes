@@ -43,6 +43,11 @@
 	36、O兼容增加了一批系统视图；
 	37、增加访问控制功能；
 	38、M兼容增加create table auto increment语法；
+	39、新增会话管理功能；
+	40、升级license库到1.5.6；
+	41、M兼容新增DO语法；
+	42、M兼容增加一些SELECT的语法；
+	43、M兼容增加一些CREATE TABLE的语法；
 2、修复问题
 	1、修复了MySQL兼容，SET lc_time_names等参数异常断开的问题，bug#5527；
 	2、修复了MySQL兼容，get_format返回类型不正确的问题，bug#5533；
@@ -147,6 +152,24 @@
 	101、O兼容增加参数enable_standard_datetime_parsing_mode，控制to_date函数是否严格检查format，bug#6022；
 	102、O兼容删除了user_tab_cols、user_dependencies视图中多余的owner字段，bug#6053；
 	103、O兼容分区表触发器，更新分区键导致core的问题，OA-REQ-1861;
+	104、M兼容修复了set session的值为NULL、十六进制等非正常value报错的问题，bug#5969/5978/5979;
+	105、M兼容修复了show index不能显示gist索引的列名的问题，bug#5974;
+	106、M兼容修复了INFORMATION_SCHEMA大小写转换规则不对的问题，bug#5975；
+	107、M兼容修复了show tables结果Label与MySQL不一致的问题，bug#5983；
+	108、M兼容修复了show indexs不支持分区表索引的问题，bug#5991；
+	109、M兼容修复了show create table没有过滤掉已删除列的问题，bug#6017；
+	110、将psql连接默认库从postgres改成template1，避免非postgres用户初始化后连不上的问题，bug#6068；
+	111、O兼容增加了大小写转换时，跳过非ASCII字符的操作，bug#6063；
+	112、安全特性语句审计补充了确实的几类语句，bug#6075；
+	113、M兼容修复了show columns返回的type列值显示不正确的问题，bug#5962/5963/5964/5966；
+	114、M兼容修复了INFORMATION_SCHEMA.COLUMNS的返回列排序不对的问题，bug#5984/5985；
+	115、M兼容修复了INFORMATION_SCHEMA.COLUMNS没有过滤掉临时表的列的问题，bug#5986；
+	116、M兼容修复了INFORMATION_SCHEMA.PARTITIONS的部分列返回值不正确的问题，bug#5987；
+	117、M兼容修复了INFORMATION_SCHEMA.STATISTICS的部分列返回值不正确的问题，bug#5988；
+	118、M兼容修复了INFORMATION_SCHEMA.COLUMNS的部分列返回值不正确的问题，bug#5989；
+	119、M兼容修复了INFORMATION_SCHEMA.SCHEMATA的返回值不完整的问题，bug#6081；
+	120、完善了initdb --help的-m、-c参数的描述信息并汉化，bug#6070;
+	121、透明加密将加解密函数抽成库，提高易用性，bug#6065；
 
 V9.0.4.1，禅道版本ID：4647-2025/08/08
 1、新增特性
