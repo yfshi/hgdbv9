@@ -343,10 +343,6 @@ extern bool XLogRecGetBlockTag(XLogReaderState *record, uint8 block_id,
 /* Begin - ReqID:SRS-SECURITY-TDE */
 extern char* XLogEncryptCopy(char *xlog, Size size, Size *nencrypted, 
 				TimeLineID timeline, XLogSegNo segment, uint32 offset);
-extern void XLogEncryptInplace(char *xlog, Size size, TimeLineID timeline,
-							   XLogSegNo segment, uint32 offset);
-extern void XLogDecryptInplace(char *xlog, Size size, TimeLineID timeline,
-							   XLogSegNo segment, uint32 offset);
 /* End - ReqID:SRS-SECURITY-TDE */
 
 #endif							/* XLOGREADER_H */

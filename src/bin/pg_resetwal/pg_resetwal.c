@@ -93,8 +93,8 @@ static int	set_wal_segsize;
 static int	terminal_fd = -1;
 static bool	pass_terminal_fd = false;
 static char *cluster_key_cmd = NULL;
-static char	cluster_key_hex[ALLOC_KMGR_CLUSTER_KEY_LEN];
-static char cluster_key[KMGR_CLUSTER_KEY_LEN];
+static unsigned char cluster_key[KMGR_CLUSTER_KEY_LEN];
+static char	key_path[MAXPGPATH];
 static CryptoKey	data_key;
 /* End - ReqID:SRS-SECURITY-TDE */
 
@@ -110,116 +110,6 @@ static void KillExistingArchiveStatus(void);
 static void WriteEmptyXLOG(void);
 static void usage(void);
 
-/* Begin - ReqID:SRS-SECURITY-TDE */
-/* Retrieve the cluster key */
-static void
-retrieve_cluster_key(void)
-{
-	int			cluster_key_len;
-
-	/*
-	 * If we have been asked to pass an open file descriptor to the user
-	 * terminal to the commands, set one up.
-	 */
-	if (pass_terminal_fd)
-	{
-		open_terminal_fd(terminal_fd);
-		if (terminal_fd < 0)
-		{
-			pg_log_error(_("%s: could not open terminal: %s\n"),
-						 progname, strerror(errno));
-			exit(1);
-		}
-	}
-
-	/* Get the key encryption key from the cluster key command */
-	cluster_key_len = kmgr_run_cluster_key_command(cluster_key_cmd,
-												   cluster_key_hex,
-												   ALLOC_KMGR_CLUSTER_KEY_LEN,
-												   LIVE_KMGR_DIR, terminal_fd);
-
-	if (!KMGR_USE_HSM_MODE && pg_hex_decode(cluster_key_hex, cluster_key_len,
-					(char *) cluster_key, KMGR_CLUSTER_KEY_LEN) !=
-					KMGR_CLUSTER_KEY_LEN){
-		pg_log_error("cluster key must be at %d hex bytes", KMGR_CLUSTER_KEY_LEN * 2);
-		exit(1);
-	}
-
-	close_terminal_fd(terminal_fd);
-}
-
-/* Decrypt the data key */
-static void
-retrieve_xlog_key(void)
-{
-	PgCipherCtx *ctx;
-	char	key_path[MAXPGPATH];
-	char	in_key[MAX_WRAPPED_KEY_LENGTH];
-	size_t	in_klen;
-	int		len;
-	int		fd;
-	struct stat st;
-
-	if (!KMGR_USE_HSM_MODE)
-	{
-		ctx = pg_cipher_ctx_create(PG_CIPHER_AES_KWP,
-								(unsigned char *) cluster_key,
-								KMGR_CLUSTER_KEY_LEN, false);
-		if (!ctx || !ctx->ctx)
-			pg_log_error("could not initialize encryption context");
-	}
-
-	CryptoKeyFilePath(key_path, LIVE_KMGR_DIR, KMGR_KEY_ID_WAL);
-	if ((fd = open(key_path, O_RDONLY | PG_BINARY, 0)) < 0)
-	{
-		pg_log_error("could not open file \"%s\": %m", key_path);
-		exit(1);
-	}
-
-	if (fstat(fd, &st))
-	{
-		pg_log_error("could not stat file \"%s\": %m", key_path);
-		exit(1);
-	}
-
-	in_klen = st.st_size;
-
-	if (in_klen > MAX_WRAPPED_KEY_LENGTH)
-	{
-		pg_log_error("invalid wrapped key length (%d)", (int)in_klen);
-		exit(1);
-	}
-
-	/* read the data key */
-	len = read(fd, in_key, in_klen);
-	if (len != in_klen)
-	{
-		if (len < 0)
-			pg_log_error("could not read file \"%s\": %m", key_path);
-		else
-			pg_log_error("could not read file \"%s\": read %d of %d", 
-						 key_path, len, (int)in_klen);
-		exit(1);
-	}
-
-	if (!KMGR_USE_HSM_MODE)
-	{
-		/* decrypt with the key */
-		if (!kmgr_unwrap_data_key(ctx, (unsigned char *)in_key, in_klen, &data_key))
-		{
-			pg_log_error("incorrect key specified");
-			exit(1);
-		}
-
-		/* The cluster key is correct, free the cipher context */
-		pg_cipher_ctx_free(ctx);
-	}
-	else
-	{
-		memcpy(&data_key, in_key, sizeof(CryptoKey));
-	}
-}
-/* End - ReqID:SRS-SECURITY-TDE */
 
 int
 main(int argc, char *argv[])
@@ -718,7 +608,7 @@ main(int argc, char *argv[])
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	WALEncrypted = (ControlFile.encryption_target_mode == ENCRYPTION_MODE_ALL ||
 						ControlFile.encryption_target_mode == ENCRYPTION_MODE_WAL);
-	PG_CIPHER_ENCRYPT_CTR = encryption_methods[ControlFile.file_encryption_method].cipher_encrypt_id;
+	PG_CIPHER_ENCRYPT_CTR_WAL = encryption_methods[ControlFile.file_encryption_method].cipher_encrypt_id;
 
 	if (WALEncrypted)
 	{
@@ -731,8 +621,25 @@ main(int argc, char *argv[])
 			}
 		}
 
-		retrieve_cluster_key(); 
-		retrieve_xlog_key();
+		/*
+		 * If we have been asked to pass an open file descriptor to the user
+		 * terminal to the commands, set one up.
+		 */
+		if (pass_terminal_fd)
+		{
+			open_terminal_fd(terminal_fd);
+			if (terminal_fd < 0)
+			{
+				pg_log_error(_("%s: could not open terminal: %s"),
+							progname, strerror(errno));
+				exit(1);
+			}
+		}
+		kmgr_retrieve_cluster_key(cluster_key_cmd, cluster_key, LIVE_KMGR_DIR, terminal_fd); 
+		close_terminal_fd(terminal_fd);
+
+		CryptoKeyFilePath(key_path, LIVE_KMGR_DIR, KMGR_KEY_ID_WAL);
+		kmgr_retrieve_data_key(cluster_key, key_path, &data_key);
 		LocalXLogKey = &data_key;
 		InitializeXLogEncryption();
 	}
@@ -1417,7 +1324,7 @@ WriteEmptyXLOG(void)
 
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	if (WALEncrypted)
-		EncryptXLog(buffer.data, XLOG_BLCKSZ, 
+		XLogEncryptInplace(buffer.data, XLOG_BLCKSZ, 
 			ControlFile.checkPointCopy.ThisTimeLineID, 
 			newXlogSegNo, 0);
 	/* End - ReqID:SRS-SECURITY-TDE */

@@ -17,8 +17,8 @@ include $(top_builddir)/src/Makefile.global
 
 OBJS = \
 	$(WIN32RES) \
-	walenc.o \
-	pg_resetwal.o
+	pg_resetwal.o \
+	walenc.o
 
 override CPPFLAGS := -I$(libpq_srcdir) -DFRONTEND $(CPPFLAGS)
 

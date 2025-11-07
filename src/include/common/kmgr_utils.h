@@ -3,7 +3,7 @@
  * kmgr_utils.h
  *		Declarations for utility function for file encryption key
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/common/kmgr_utils.h
  *
@@ -163,6 +163,10 @@ extern void kmgr_read_wrapped_data_keys(const char *path, unsigned char **keys,
 										int *key_lens);
 extern bool kmgr_get_keycmd_conf(char *dataDir, char **cluster_key_command, 
 						  		 int *file_encryption_method, int *encryption_target_mode);
+
+extern bool kmgr_retrieve_cluster_key(char *cluster_key_cmd, unsigned char* cluster_key,
+                                 	  char *live_path, int terminal_fd);
+extern bool kmgr_retrieve_data_key(unsigned char *cluster_key, const char* key_path, CryptoKey *data_key);
 
 #ifdef USE_SWSDS
 extern unsigned int HSM_GetAlgID(int pg_cipher_id);

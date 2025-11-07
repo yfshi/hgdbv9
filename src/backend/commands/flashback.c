@@ -9,7 +9,7 @@
  * implementation for parts other than flashback query.
  *
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/backend/commands/flashback.c

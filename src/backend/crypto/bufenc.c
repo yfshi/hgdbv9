@@ -2,7 +2,7 @@
  *
  * bufenc.c
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/backend/crypto/bufenc.c
@@ -21,6 +21,7 @@
 #include "crypto/bufenc.h"
 #include "storage/bufpage.h"
 #include "storage/fd.h"
+#include "common/logging.h"
 
 /*
  * We use the page LSN, page number, and permanent-bit to indicate if a fake
@@ -38,6 +39,13 @@ static void* hSessionHandle = NULL;
 static void* hKeyHandle = NULL;
 #endif
 
+#ifdef FRONTEND
+bool FileEncryptionEnabled = false;
+int PG_CIPHER_ENCRYPT_CTR_REL = 0;
+CryptoKey *LocalRelKey = NULL;
+static int PG_CIPHER_ENCRYPT_CTR = 0;
+#endif
+
 static void set_buffer_encryption_iv(Page page, BlockNumber blkno,
 									 bool relation_is_permanent);
 
@@ -49,7 +57,12 @@ InitializeBufferEncryption(void)
 	if (!FileEncryptionEnabled)
 		return;
 
+#ifndef FRONTEND
 	key = KmgrGetKey(KMGR_KEY_ID_REL);
+#else
+	key = LocalRelKey;
+	PG_CIPHER_ENCRYPT_CTR = PG_CIPHER_ENCRYPT_CTR_REL;
+#endif
 
 	if (!KMGR_USE_HSM_MODE)
 	{
@@ -57,13 +70,21 @@ InitializeBufferEncryption(void)
 										(unsigned char *) key->key,
 										(key->klen), true);
 		if (!BufEncCtx || !BufEncCtx->ctx)
+#ifndef FRONTEND
 			elog(ERROR, "cannot intialize encryption context");
+#else
+			pg_log_fatal("cannot intialize encryption context");
+#endif
 
 		BufDecCtx = pg_cipher_ctx_create(PG_CIPHER_ENCRYPT_CTR,
 										(unsigned char *) key->key,
 										(key->klen), false);
 		if (!BufDecCtx || !BufDecCtx->ctx)
+#ifndef FRONTEND
 			elog(ERROR, "cannot intialize decryption context");
+#else
+			pg_log_fatal("cannot intialize decryption context");
+#endif
 	}
 	else
 	{
@@ -74,17 +95,28 @@ InitializeBufferEncryption(void)
 		swsds_failure();
 #endif
 	}
+}
 
-		
+void
+CleanupBufferEncryption(void)
+{
+	if (BufEncCtx)
+		pg_cipher_ctx_free(BufEncCtx);
+	if (BufDecCtx)
+		pg_cipher_ctx_free(BufDecCtx);
 }
 
 /* Encrypt the given page with the relation key */
 void
-EncryptPage(Page page, bool relation_is_permanent, BlockNumber blkno)
+EncryptPage(Page page, bool relation_is_permanent, BlockNumber blkno, Size size)
 {
 	unsigned char *ptr = (unsigned char *) page + PageEncryptOffset;
 	bool		is_gist_page_or_similar;
 	int			enclen;
+
+	size -= PageEncryptOffset;
+	if (size <= 0)
+		return;
 
 	/*
 	 * Permanent pages have valid LSNs, and non-permanent pages usually have
@@ -119,7 +151,13 @@ EncryptPage(Page page, bool relation_is_permanent, BlockNumber blkno)
 		 !XLogRecPtrIsInvalid(PageGetLSN(page)));
 
 	if (!relation_is_permanent && !is_gist_page_or_similar)
+	{
+#ifndef FRONTEND
 		PageSetLSN(page, LSNForEncryption(relation_is_permanent));
+#else
+		pg_log_fatal("cannot encrypt this type of page in the fronted");
+#endif
+	}
 
 	set_buffer_encryption_iv(page, blkno, relation_is_permanent);
 
@@ -128,37 +166,54 @@ EncryptPage(Page page, bool relation_is_permanent, BlockNumber blkno)
 		Assert(BufEncCtx != NULL);
 		if (unlikely(!pg_cipher_encrypt(BufEncCtx, PG_CIPHER_ENCRYPT_CTR,
 										(const unsigned char *) ptr,	/* input  */
-										SizeOfPageEncryption,	/* length */
+										size,	/* length */
 										ptr,	/* output */
 										&enclen,	/* resulting length */
 										buf_encryption_iv,	/* iv */
 										BUFENC_IV_SIZE)))
+#ifndef FRONTEND
 			elog(ERROR, "cannot encrypt page %u", blkno);
+#else
+			pg_log_fatal("cannot encrypt page %u", blkno);
+#endif
 	}
 #ifdef USE_SWSDS
 	else
 	{
-		const CryptoKey *key = KmgrGetKey(KMGR_KEY_ID_REL);
+		const CryptoKey *key;
+
+#ifndef FRONTEND
+		key = KmgrGetKey(KMGR_KEY_ID_REL);
+#else
+		key = LocalRelKey;
+#endif
 		if (unlikely(!HSM_Encrypt(&hSessionHandle, &hKeyHandle,
 								  key, hsm_get_kek_id(),
 								  HSM_GetAlgID(PG_CIPHER_ENCRYPT_CTR),
 								  buf_encryption_iv,
-								  ptr, (unsigned int)SizeOfPageEncryption,
+								  ptr, (unsigned int)size,
 								  ptr, (unsigned int*)&enclen)))
+#ifndef FRONTEND
 			elog(ERROR, "cannot encrypt page %u", blkno);
+#else
+			pg_log_fatal("cannot encrypt page %u", blkno);
+#endif
 	}
 #endif
 
-	if (unlikely(enclen != SizeOfPageEncryption))
-		elog(ERROR, "encrypt error: alg %d in %lu out %d", PG_CIPHER_ENCRYPT_CTR, SizeOfPageEncryption, enclen);
+	Assert(enclen == size);
 }
 
 /* Decrypt the given page with the relation key */
 void
-DecryptPage(Page page, bool relation_is_permanent, BlockNumber blkno)
+DecryptPage(Page page, bool relation_is_permanent, BlockNumber blkno, Size size)
 {
 	unsigned char *ptr = (unsigned char *) page + PageEncryptOffset;
 	int			declen;
+
+	size -= PageEncryptOffset;
+	if (size <= 0)
+		return;
 
 	set_buffer_encryption_iv(page, blkno, relation_is_permanent);
 
@@ -167,29 +222,42 @@ DecryptPage(Page page, bool relation_is_permanent, BlockNumber blkno)
 		Assert(BufDecCtx != NULL);
 		if (unlikely(!pg_cipher_decrypt(BufDecCtx, PG_CIPHER_ENCRYPT_CTR,
 										(const unsigned char *) ptr,	/* input  */
-										SizeOfPageEncryption,	/* length */
+										size,	/* length */
 										ptr,	/* output */
 										&declen,	/* resulting length */
 										buf_encryption_iv,	/* iv */
 										BUFENC_IV_SIZE)))
+#ifndef FRONTEND
 			elog(ERROR, "cannot decrypt page %u", blkno);
+#else
+			pg_log_fatal("cannot decrypt page %u", blkno);
+#endif
 	}
 #ifdef USE_SWSDS
 	else
 	{
-		const CryptoKey *key = KmgrGetKey(KMGR_KEY_ID_REL);
+		const CryptoKey *key;
+
+#ifndef FRONTEND
+		key = KmgrGetKey(KMGR_KEY_ID_REL);
+#else
+		key = LocalRelKey;
+#endif
 		if (unlikely(!HSM_Decrypt(&hSessionHandle, &hKeyHandle,
 								  key, hsm_get_kek_id(),
 								  HSM_GetAlgID(PG_CIPHER_ENCRYPT_CTR),
 								  buf_encryption_iv,
-								  ptr, (unsigned int)SizeOfPageEncryption,
+								  ptr, (unsigned int)size,
 								  ptr, (unsigned int*)&declen)))
+#ifndef FRONTEND
 			elog(ERROR, "cannot decrypt page %u", blkno);
+#else
+			pg_log_fatal("cannot decrypt page %u", blkno);
+#endif
 	}
 #endif
 
-	if (unlikely(declen != SizeOfPageEncryption))
-		elog(ERROR, "decrypt error: alg %d in %lu out %d", PG_CIPHER_ENCRYPT_CTR, SizeOfPageEncryption, declen);
+	Assert(declen == size);
 }
 
 /* Construct iv for the given page */

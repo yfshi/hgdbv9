@@ -5,7 +5,7 @@
  * This contains the common low-level functions needed in both frontend and
  * backend, for implement the database encryption.
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/common/cipher_openssl.c

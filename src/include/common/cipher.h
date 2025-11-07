@@ -3,7 +3,7 @@
  * cipher.h
  *		Declarations for cryptographic functions
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/common/cipher.h
  *

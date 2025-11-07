@@ -4,7 +4,7 @@
  *	  kmgr interfaces for HSM swsds.
  *
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  contrib/pgcrypto/kmgr_swsds.c

@@ -2,7 +2,7 @@
  *
  * walenc.h
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/crypto/walenc.h
  *
@@ -27,14 +27,15 @@
 
 #ifdef FRONTEND
 extern bool WALEncrypted;
-extern int PG_CIPHER_ENCRYPT_CTR;
+extern int PG_CIPHER_ENCRYPT_CTR_WAL;
 extern CryptoKey *LocalXLogKey;
 #endif
 
 extern void InitializeXLogEncryption(void);
-extern void EncryptXLog(char *xlog, Size size, TimeLineID timeline, 
-						XLogSegNo segment, uint32 counter);
-extern void DecryptXLog(char *xlog, Size size, TimeLineID timeline, 
-						XLogSegNo segment, uint32 counter);
+extern void CleanupXLogEncryption(void);
+extern void XLogEncryptInplace(char *xlog, Size size, TimeLineID timeline,
+							   XLogSegNo segment, uint32 offset);
+extern void XLogDecryptInplace(char *xlog, Size size, TimeLineID timeline,
+							   XLogSegNo segment, uint32 offset);
 
 #endif							/* WALENC_H */

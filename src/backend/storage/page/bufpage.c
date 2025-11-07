@@ -1576,7 +1576,7 @@ PageEncryptCopy(Page page, ForkNumber forknum, bool relation_is_permanent,
 		pageCopy = MemoryContextAlloc(TopMemoryContext, BLCKSZ);
 
 	memcpy(pageCopy, (char *) page, BLCKSZ);
-	EncryptPage(pageCopy, relation_is_permanent, blkno);
+	EncryptPage(pageCopy, relation_is_permanent, blkno, BLCKSZ);
 	return pageCopy;
 }
 
@@ -1593,7 +1593,7 @@ PageEncryptInplace(Page page, ForkNumber forknum, bool relation_is_permanent,
 	if (!AllTableEncrypted && !PageIsEncrypted(page))
 		return;
 
-	EncryptPage(page, relation_is_permanent, blkno);
+	EncryptPage(page, relation_is_permanent, blkno, BLCKSZ);
 }
 
 
@@ -1610,6 +1610,6 @@ PageDecryptInplace(Page page, ForkNumber forknum, bool relation_is_permanent,
 	if (!AllTableEncrypted && !PageIsEncrypted(page))
 		return;
 
-	DecryptPage(page, relation_is_permanent, blkno);
+	DecryptPage(page, relation_is_permanent, blkno, BLCKSZ);
 }
 /* End - ReqID:SRS-SECURITY-TDE */

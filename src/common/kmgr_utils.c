@@ -7,7 +7,7 @@
  * file system, and wrapping and unwrapping them.  It also handles
  * running the cluster_key_command.
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/common/kmgr_utils.c
@@ -36,6 +36,7 @@
 #include "lib/stringinfo.h"
 #include "storage/fd.h"
 #include "common/controldata_utils.h"
+#include "common/hex.h"
 
 #ifndef FRONTEND
 #include "pgstat.h"
@@ -549,6 +550,157 @@ read_wrapped_data_key(const char *cryptoKeyDir, uint32 id, unsigned char **key_p
 	if (close(fd) != 0)
 		pg_log_fatal("could not close file \"%s\": %m", path);
 #endif
+}
+
+/* Retrieve the cluster key */
+bool
+kmgr_retrieve_cluster_key(char *cluster_key_cmd, unsigned char* cluster_key,
+                     char *live_path, int terminal_fd)
+{
+	int			cluster_key_len;
+	char		cluster_key_hex[ALLOC_KMGR_CLUSTER_KEY_LEN];
+
+	/* Get the key encryption key from the cluster key command */
+	cluster_key_len = kmgr_run_cluster_key_command(cluster_key_cmd,
+												   cluster_key_hex,
+												   ALLOC_KMGR_CLUSTER_KEY_LEN,
+												   live_path, terminal_fd);
+
+	if (!KMGR_USE_HSM_MODE && pg_hex_decode(cluster_key_hex, cluster_key_len,
+					(char *) cluster_key, KMGR_CLUSTER_KEY_LEN) !=
+					KMGR_CLUSTER_KEY_LEN){
+#ifdef FRONTEND
+		pg_log_error("cluster key must be at %d hex bytes", KMGR_CLUSTER_KEY_LEN * 2);
+#else
+		ereport(ERROR,
+				(errcode(ERRCODE_INTERNAL_ERROR),
+					errmsg("cluster key must be at %d hex bytes", KMGR_CLUSTER_KEY_LEN * 2)));
+#endif
+		return false;
+	}
+
+    return true;
+}
+
+/* Decrypt the data key */
+bool
+kmgr_retrieve_data_key(unsigned char *cluster_key, const char* key_path, CryptoKey *data_key)
+{
+	PgCipherCtx *ctx;
+	char	in_key[MAX_WRAPPED_KEY_LENGTH];
+	size_t	in_klen;
+	int		fd;
+	int		len;
+	struct stat st;
+
+	if (!KMGR_USE_HSM_MODE)
+	{
+		ctx = pg_cipher_ctx_create(PG_CIPHER_AES_KWP,
+								(unsigned char *) cluster_key,
+								KMGR_CLUSTER_KEY_LEN, false);
+		if (!ctx || !ctx->ctx)
+		{
+#ifdef FRONTEND
+			pg_log_error("could not initialize encryption context");
+#else
+			ereport(ERROR,
+					(errcode(ERRCODE_INTERNAL_ERROR),
+						errmsg("could not initialize encryption context")));
+#endif
+		}
+	}
+
+	if ((fd = open(key_path, O_RDONLY | PG_BINARY, 0)) < 0)
+	{
+#ifdef FRONTEND
+		pg_log_error("could not open file \"%s\": %m", key_path);
+#else
+		ereport(ERROR,
+				(errcode_for_file_access(),
+					errmsg("could not open file \"%s\": %m", key_path)));
+#endif
+		return false;
+	}
+
+	if (fstat(fd, &st))
+	{
+#ifdef FRONTEND
+		pg_log_error("could not stat file \"%s\": %m", key_path);
+#else
+		ereport(ERROR,
+				(errcode_for_file_access(),
+					errmsg("could not stat file \"%s\": %m", key_path)));
+#endif
+		return false;
+	}
+
+	in_klen = st.st_size;
+
+	if (in_klen > MAX_WRAPPED_KEY_LENGTH)
+	{
+#ifdef FRONTEND
+		pg_log_error("invalid wrapped key length (%d)", (int)in_klen);
+#else
+		ereport(ERROR,
+				(errcode(ERRCODE_INTERNAL_ERROR),
+					errmsg("invalid wrapped key length (%d)", (int)in_klen)));
+#endif
+		return false;
+	}
+
+	/* read the data key */
+	len = read(fd, in_key, in_klen);
+	if (len != in_klen)
+	{
+		if (len < 0)
+		{
+#ifdef FRONTEND
+			pg_log_error("could not read file \"%s\": %m", key_path);
+#else
+			ereport(ERROR,
+					(errcode_for_file_access(),
+						errmsg("could not read file \"%s\": %m", key_path)));
+#endif
+		}
+		else
+		{
+#ifdef FRONTEND
+			pg_log_error("could not read file \"%s\": read %d of %d", 
+						 key_path, len, (int)in_klen);
+#else
+			ereport(ERROR,
+					(errcode_for_file_access(),
+						errmsg("could not read file \"%s\": read %d of %d", 
+						 key_path, len, (int)in_klen)));
+#endif
+		}
+		return false;
+	}
+
+	if (!KMGR_USE_HSM_MODE)
+	{
+		/* decrypt with the key */
+		if (!kmgr_unwrap_data_key(ctx, (unsigned char *)in_key, in_klen, data_key))
+		{
+#ifdef FRONTEND
+			pg_log_error("incorrect key specified");
+#else
+			ereport(ERROR,
+					(errcode(ERRCODE_INTERNAL_ERROR),
+						errmsg("incorrect key specified")));
+#endif
+			return false;
+		}
+
+		/* The cluster key is correct, free the cipher context */
+		pg_cipher_ctx_free(ctx);
+	}
+	else
+	{
+		memcpy(data_key, in_key, sizeof(CryptoKey));
+	}
+
+    return true;
 }
 
 static char*

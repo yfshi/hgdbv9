@@ -5328,6 +5328,9 @@ ReadControlFile(void)
 	SetConfigOption("file_encryption_method",
 					encryption_methods[ControlFile->file_encryption_method].name,
 					PGC_INTERNAL, PGC_S_OVERRIDE);
+	SetConfigOption("file_encryption_target_mode",
+					encryption_target_modes[ControlFile->encryption_target_mode].name,
+					PGC_INTERNAL, PGC_S_OVERRIDE);
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 }
 

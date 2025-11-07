@@ -799,6 +799,7 @@ static char *recovery_target_lsn_string;
 static char *restrict_nonsystem_relation_kind_string;
 /* Begin - ReqID:SRS-SECURITY-TDE */
 static char *file_encryption_method_str;
+static char *file_encryption_target_mode_str;
 /* End - ReqID:SRS-SECURITY-TDE */
 
 /* should be static, but commands/variable.c needs to get at this */
@@ -4944,6 +4945,17 @@ static struct config_string ConfigureNamesString[] =
 		 GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
 		},
 		&file_encryption_method_str,
+		"",
+		NULL, NULL, NULL
+	},
+
+	{
+		{"file_encryption_target_mode", PGC_INTERNAL, PRESET_OPTIONS,
+		 gettext_noop("Shows the cluster file encryption target mode."),
+		 NULL,
+		 GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&file_encryption_target_mode_str,
 		"",
 		NULL, NULL, NULL
 	},

@@ -6,7 +6,7 @@
  * This is the set of in-core functions used when there are no other
  * alternative options like OpenSSL.
  *
- * Portions Copyright (c) 2025, IvorySQL-2.0
+ * Portions Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/common/cipher.c

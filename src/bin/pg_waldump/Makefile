@@ -46,8 +46,7 @@ uninstall:
 	rm -f '$(DESTDIR)$(bindir)/pg_waldump$(X)'
 
 clean distclean maintainer-clean:
-	rm -f pg_waldump$(X) $(OBJS) $(RMGRDESCSOURCES) xlogreader.c
-	rm -f pg_waldump$(X) $(OBJS) $(RMGRDESCSOURCES) walenc.c
+	rm -f pg_waldump$(X) $(OBJS) $(RMGRDESCSOURCES) xlogreader.c walenc.c
 	rm -rf tmp_check
 
 check:

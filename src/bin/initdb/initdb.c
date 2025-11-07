@@ -3598,7 +3598,7 @@ initialize_data_directory(void)
 
 		if (terminal_fd < 0)
 		{
-			pg_log_error(_("%s: could not open terminal: %s\n"),
+			pg_log_error(_("%s: could not open terminal: %s"),
 						 progname, strerror(errno));
 			exit(1);
 		}
