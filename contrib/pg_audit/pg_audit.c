@@ -1423,7 +1423,7 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 	}
 
 	if (i == -1)
-		values[15] = PointerGetDatum(cstring_to_text(AUDIT_TYPE_STATEMENT_S));
+		values[15] = PointerGetDatum(cstring_to_text(AUDIT_TYPE_SYSYEM_S)); /* BUG#z6149 */
 		//values[15] = CharGetDatum(AUDIT_TYPE_SYSYEM);
 	else if (i == -2)
 		values[15] = PointerGetDatum(cstring_to_text(AUDIT_TYPE_MANDATORY_S));
@@ -3129,7 +3129,7 @@ audit_ProcessUtility_hook(PlannedStmt *pstmt,
 								char	val[MAXPGPATH] = {0};
 								
 								sprintf(val, "%d", con->val.val.ival);
-								stackItem->auditEvent->setvalue = val;
+								stackItem->auditEvent->setvalue = pnstrdup(val, strlen(val)); /* BUG#Z6107 */
 							}
 							else if (con->val.type == T_Float)
 							{
@@ -3980,7 +3980,8 @@ check_audit_table(List *rangeTabls)
 		/*
 		 * Check the system table audit related table
 		 */
-		if (relOid == AuditConfigRelationId)
+		if (AuditConfigRelationId == relOid || AuditRuleRelationId == relOid ||
+			AuditThresholdRelationId == relOid)
 		{
 			check_audit_sao_permission(useroid, true);
 		}
@@ -11023,7 +11024,7 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 		{
 			ereport(NOTICE,
 					(errmsg("setname of baseline threshold is NULL")));
-			return false;
+			//return false; /* BUG#z6114*/
 		}
 
 		if (pg_strcasecmp(basename, event->setname) != 0 || 
@@ -11031,14 +11032,17 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 		{
 			ereport(NOTICE,
 					(errmsg("It is not the set baseline threshold")));
-			return false;
+			//return false; /* BUG#z6114*/
 		}
+		else
+		{
 
-		sprintf(warning_msg, "The baseline name \"%s\" has reached the baseline threshold \"%s\"", basename, basevalue);
+			sprintf(warning_msg, "The baseline name \"%s\" has reached the baseline threshold \"%s\"", basename, basevalue);
 
-		strncpy(msg, warning_msg, strlen(warning_msg));
+			strncpy(msg, warning_msg, strlen(warning_msg));
 
-		return true;
+			return true;
+		}
 	}
 
 	if (!TIMESTAMP_IS_NOBEGIN(impt_starttime))
@@ -11060,10 +11064,14 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 		ListCell *cell;
 		
 		if (event->conftypes[confindex] != AUDIT_TYPE_OBJECT)
-			return false;
+		{
+			is_column = false;
+		}
 		
 		if (event->objects == NULL)
-			return false;
+		{
+			is_column = false;
+		}
 
 		objects = event->objects;
 		foreach(cell, objects)
@@ -11077,7 +11085,7 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 				{
 					if (!bms_is_member(impt_columns->values[i] - FirstLowInvalidHeapAttributeNumber, obj->columns))
 					{
-						return false;
+						is_column = false;
 					}
 					else
 					{
@@ -11278,7 +11286,6 @@ do_insert_secmon_thr_history(Form_pg_secmon_threshold thr, Relation thrhistory, 
 	bool	   *nulls;
 	HeapTuple	tuple;
 	Form_pg_secmon_rule rule_form;
-	char	   *thrname;
 		
 	rule_form = (Form_pg_secmon_rule) GETSTRUCT(rule->ruletup);
 
@@ -11293,13 +11300,7 @@ do_insert_secmon_thr_history(Form_pg_secmon_threshold thr, Relation thrhistory, 
 	values[2] = Int32GetDatum(rule->event->sessionid);
 	values[3] = TimestampTzGetDatum(rule->event->audittime);
 	values[4] = Int32GetDatum(rule->event->commandid);
-	
-	thrname = NameStr(thr->thrname);
-	if (thrname != NULL && strlen(thrname))
-		values[5] = PointerGetDatum(cstring_to_text(thrname));
-	else
-		nulls[5] = true;
-	
+	values[5] = NameGetDatum(&thr->thrname); /* BUG#Z6091 */
 	values[6] = Int32GetDatum(rule_form->ruleoid);
 	values[7] = Int32GetDatum(thr->interval);
 	values[8] = TimestampTzGetDatum(starttime);
@@ -12112,6 +12113,9 @@ alter_secmon_rule_arg2(int args, Oid oid, char *rule, AuditResult isSuccess, Aud
 
 	if (args == 4)
 	{
+		replaces[Anum_pg_secmon_rule_monmode - 1] = true;
+		values[Anum_pg_secmon_rule_monmode - 1] = CharGetDatum(isSuccess); /* BUG#Z6076 */
+		
 		replaces[Anum_pg_secmon_rule_enable - 1] = true;
 		values[Anum_pg_secmon_rule_enable - 1] = CharGetDatum(enable_unable);
 	}

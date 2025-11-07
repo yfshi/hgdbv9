@@ -134,7 +134,7 @@ BEGIN
 			ruleseq oidvector,
 			basename text,
 			basevalue text,
-			impt_cloumns int2vector
+			impt_columns int2vector
 			)TABLESPACE audtblspc;
         ';
     ELSE
@@ -158,7 +158,7 @@ BEGIN
 			ruleseq oidvector,
 			basename text,
 			basevalue text,
-			impt_cloumns int2vector);
+			impt_columns int2vector);
         ';
     END IF;
 END $$;
