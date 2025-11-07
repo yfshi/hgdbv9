@@ -3775,13 +3775,13 @@ Partition key: LIST (a)
 Number of partitions: 0
 
 SHOW CREATE TABLE parted_col_comment;
-       Table        |            Create Table             
---------------------+-------------------------------------
- parted_col_comment | CREATE TABLE `parted_col_comment` (+
-                    |     `a` integer,                   +
-                    |     `b` text                       +
-                    | )                                  +
-                    | PARTITION BY LIST (a)
+       Table        |                     Create Table                     
+--------------------+------------------------------------------------------
+ parted_col_comment | CREATE TABLE `parted_col_comment` (                 +
+                    |     `a` integer COMMENT 'Partition key',            +
+                    |     `b` text                                        +
+                    | )                                                   +
+                    | PARTITION BY LIST (a) COMMENT='Am partitioned table'
 (1 row)
 
 DROP TABLE parted_col_comment;

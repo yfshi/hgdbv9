@@ -366,6 +366,18 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 				like_found = true;	/* ReqID:SRS-SQL-ROWID */
 				transformTableLikeClause(&cxt, (TableLikeClause *) element);
 				break;
+ 
+			/* Begin - SRS-MYSQL-CREATE-TABLE */
+			/* add create index node to the alist execution list */
+			case T_IndexStmt:
+				{
+					IndexStmt *indexnode = (IndexStmt *) element;
+					indexnode->relation = makeRangeVar(cxt.relation->schemaname,
+													   cxt.relation->relname, -1);
+					cxt.alist = lappend(cxt.alist, (Node *) indexnode);
+				}
+				break;
+			/* End - SRS-MYSQL-CREATE-TABLE */
 
 			default:
 				elog(ERROR, "unrecognized node type: %d",
@@ -584,6 +596,19 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	 */
 	stmt->tableElts = cxt.columns;
 	stmt->constraints = cxt.ckconstraints;
+
+	/* Begin - SRS-MYSQL-CREATE-TABLE */
+	/* when there are table comments,
+	 * add the create table comment node to alist
+	 */
+	if (stmt->relcomment != NULL)
+	{
+		CommentStmt * ct = (CommentStmt *)stmt->relcomment;
+		ct->object = (Node*) list_make2(makeString(cxt.relation->schemaname),
+									makeString(cxt.relation->relname));
+		cxt.alist = lappend(cxt.alist, ct);
+	}
+	/* End - SRS-MYSQL-CREATE-TABLE */
 
 	result = lappend(cxt.blist, stmt);
 	result = list_concat(result, cxt.alist);
@@ -1291,6 +1316,21 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 
 		cxt->alist = lappend(cxt->alist, stmt);
 	}
+
+	/* Begin - SRS-MYSQL-CREATE-TABLE */
+	/* when there are column comments,
+	 * add the create column comment node to alist
+	 */
+	if (column->colcomment != NULL)
+	{
+		CommentStmt * ct = (CommentStmt *)column->colcomment;
+
+		ct->object = (Node*) list_make3(makeString(cxt->relation->schemaname),
+										makeString(cxt->relation->relname),
+										makeString(column->colname));
+		cxt->alist = lappend(cxt->alist, ct);
+	}
+	/* End - SRS-MYSQL-CREATE-TABLE */
 }
 
 /*

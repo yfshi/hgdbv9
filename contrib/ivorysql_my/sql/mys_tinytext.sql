@@ -35,13 +35,13 @@ drop table if exists tb1,tb2;
 
 -- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_SQLMODE_001
 create table tb(col tinytext charset utf8);
-insert into tb1 values(repeat('中',86)); -- fail
+insert into tb values(repeat('中',86)); -- fail
 set sql_mode='';
-insert into tb1 values(repeat('中',86)); -- success
-select char_length(col) from tb1;  -- 85
+insert into tb values(repeat('中',86)); -- success
+select char_length(col) from tb;  -- 85
 set sql_mode='TRADITIONAL';
-insert into tb1 values(repeat('中',86)); -- fail
-drop table if exists tb1;
+insert into tb values(repeat('中',86)); -- fail
+drop table if exists tb;
 
 -- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_SQLMODE_002
 create table tb(id int,col tinytext);

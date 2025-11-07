@@ -3273,6 +3273,9 @@ _copyColumnDef(const ColumnDef *from)
 	COPY_NODE_FIELD(constraints);
 	COPY_NODE_FIELD(fdwoptions);
 	COPY_LOCATION_FIELD(location);
+	COPY_SCALAR_FIELD(is_pri_or_unique);  /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	COPY_SCALAR_FIELD(is_auto_increment);/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	COPY_NODE_FIELD(colcomment); /* SRS-MYSQL-CREATE-TABLE */
 
 	return newnode;
 }
@@ -3818,6 +3821,8 @@ CopyCreateStmtFields(const CreateStmt *from, CreateStmt *newnode)
 	COPY_STRING_FIELD(accessMethod);
 	COPY_SCALAR_FIELD(if_not_exists);
 	COPY_STRING_FIELD(collname); /* ReqID:SRS-SQL-NLSSORT */
+	COPY_NODE_FIELD(autoIncStart);/* SRS-MYSQL-CREATE-TABLE */
+	COPY_NODE_FIELD(relcomment); /* SRS-MYSQL-CREATE-TABLE */
 }
 
 static CreateStmt *

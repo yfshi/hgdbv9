@@ -95,13 +95,13 @@ drop table if exists tb1,tb2;
 
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_SQLMODE_001
 create table tb(col text charset utf8);
-insert into tb1 values(repeat('中',21846)); -- fail
+insert into tb values(repeat('中',21846)); -- fail
 set sql_mode='';
-insert into tb1 values(repeat('中',21846)); -- success
-select char_length(col) from tb1;  -- 21845
+insert into tb values(repeat('中',21846)); -- success
+select char_length(col) from tb;  -- 21845
 set sql_mode='TRADITIONAL';
-insert into tb1 values(repeat('中',21846)); -- fail
-drop table if exists tb1;
+insert into tb values(repeat('中',21846)); -- fail
+drop table if exists tb;
 
 -- TC_IVYSQL_MSQL_DATATYPE_TEXT_SQLMODE_002
 create table tb(id int,col text);

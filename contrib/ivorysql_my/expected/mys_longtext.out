@@ -8,11 +8,7 @@ drop table if exists tb;
 NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_002
 create table tb (col longtext character set utf32);  -- success
-ERROR:  syntax error at or near "character"
-LINE 1: create table tb (col longtext character set utf32);
-                                      ^
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_003
 create table tb(col longtext collate armscii8_general_ci);
 ERROR:  collation "armscii8_general_ci" for encoding "UTF8" does not exist
@@ -22,59 +18,55 @@ drop table if exists tb;
 NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_004
 create table tb(col longtext charset gbk);
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb(col longtext charset gbk);
-                                     ^
 insert into tb values(repeat('中',2147483647));  -- success
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',2147483647));
-                    ^
+ERROR:  requested length too large
 insert into tb values(repeat('中',2147483648));  -- fail
-ERROR:  relation "tb" does not exist
+ERROR:  function repeat(unknown, bigint) does not exist
 LINE 1: insert into tb values(repeat('中',2147483648));
-                    ^
+                              ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_005
 create table tb(col longtext charset utf8);
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb(col longtext charset utf8);
-                                     ^
 insert into tb values(repeat('中',1431655765));  -- success
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',1431655765));
-                    ^
+ERROR:  requested length too large
 insert into tb values(repeat('中',1431655766));  -- fail
-ERROR:  relation "tb" does not exist
-LINE 1: insert into tb values(repeat('中',1431655766));
-                    ^
+ERROR:  requested length too large
 drop table if exists tb;
-NOTICE:  table "tb" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_006
 create table tb1(col text(5592405) charset utf8);  -- mediumtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb1(col text(5592405) charset utf8);
-                                           ^
 \d+ tb1
+                                      Table "public.tb1"
+ Column |    Type    | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------------+-----------+----------+---------+----------+--------------+-------------
+ col    | mediumtext |           |          |         | extended |              | 
+
 create table tb2(col text(5592406) charset utf8);  -- longtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb2(col text(5592406) charset utf8);
-                                           ^
 \d+ tb2
+                                      Table "public.tb2"
+ Column |    Type    | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------------+-----------+----------+---------+----------+--------------+-------------
+ col    | mediumtext |           |          |         | extended |              | 
+
 create table tb3(col text(4294967295) charset utf8);  -- longtext
-ERROR:  syntax error at or near "charset"
-LINE 1: create table tb3(col text(4294967295) charset utf8);
-                                              ^
 \d+ tb3
+                                     Table "public.tb3"
+ Column |   Type   | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+----------+-----------+----------+---------+----------+--------------+-------------
+ col    | longtext |           |          |         | extended |              | 
+
 create table tb4(col text(4294967296) charset utf8);  -- fail
 ERROR:  Display width out of range for text length ( 0 <= length <= 4294967295)
 LINE 1: create table tb4(col text(4294967296) charset utf8);
                              ^
 \d+ tb4
 insert into tb2 values(repeat('中',65592406));  -- success
-ERROR:  relation "tb2" does not exist
-LINE 1: insert into tb2 values(repeat('中',65592406));
-                    ^
+ERROR:  value for domain mediumtext violates check constraint "mediumtext_check"
+drop table if exists tb1;
+drop table if exists tb2;
+drop table if exists tb3;
+drop table if exists tb4;
+NOTICE:  table "tb4" does not exist, skipping
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_INSERT_001
 -- create table tb1(col longtext charset utf8);
 -- insert into tb1 values(repeat('中',86)); -- fail
