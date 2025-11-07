@@ -101,6 +101,11 @@ alter_database_set_check(AlterDatabaseSetStmt *stmt)
 {
 	Oid			datid;
 
+	/*Begin -- bug#z5555*/
+	if (stmt->setstmt->name == NULL)
+		return true;
+	/*End -- bug#z5555*/
+
 	if (pg_strncasecmp(stmt->setstmt->name,"se_feature.",strlen("se_feature.")) == 0 ||
 		pg_strncasecmp(stmt->setstmt->name,"credcheck.",strlen("credcheck.")) == 0)
 	{

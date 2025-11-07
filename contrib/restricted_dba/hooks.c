@@ -719,7 +719,6 @@ object_access_check(ObjectAccessType access,
 				object.classId = classId;
 				object.objectId = objectId;
 				object.objectSubId = 0;
-				audit_name = getObjectIdentity(&object, false);
 				
 				/*
 				* No need to apply permission checks on object deletion due
@@ -733,6 +732,9 @@ object_access_check(ObjectAccessType access,
 				{
 					case ExtensionRelationId:
 					{
+						/* Begin -- bug#z5554 */
+						audit_name = getObjectIdentity(&object, false);
+						/* End -- bug#z5554 */
 						if (pg_strcasecmp(audit_name,"restricted_dba") == 0)
 							ereport(ERROR,
 									(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
@@ -743,7 +745,7 @@ object_access_check(ObjectAccessType access,
 					break;
 					case NamespaceRelationId:
 					{
-						drop_schema_check(&object,audit_name);
+						drop_schema_check(&object);
 					}		
 					break;
 
@@ -893,7 +895,7 @@ _PG_init(void)
 							 &se_feature.restricted_dba,
 							 false,
 							 PGC_USERSET,
-							 GUC_NOT_IN_SAMPLE,
+							 GUC_NOT_IN_SAMPLE | GUC_NO_RESET_ALL,
 							 restricted_dba_check,
 							 restricted_dba_assign,
 							 restricted_dba_show);
@@ -904,7 +906,7 @@ _PG_init(void)
 							 &se_feature.mode,
 							 false,
 							 PGC_USERSET,
-							 GUC_NOT_IN_SAMPLE,
+							 GUC_NOT_IN_SAMPLE | GUC_NO_RESET_ALL,
 							 se_feature_mode_check,
 							 se_feature_mode_assign,
 							 se_feature_mode_show);
