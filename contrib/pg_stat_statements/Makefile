@@ -17,10 +17,10 @@ LDFLAGS_SL += $(filter -lm, $(LIBS))
 
 REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_stat_statements/pg_stat_statements.conf
 #BEGIN - SQL PARSER
-ORACLE_REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_stat_statements/pg_stat_statements.conf
+ORACLE_REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_stat_statements/pg_stat_statements_ora.conf
 #END - SQL PARSER
 #Begin - ReqID:SRS-MISC-MYSQL-FRAME
-MYSQL_REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_stat_statements/pg_stat_statements.conf
+MYSQL_REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_stat_statements/pg_stat_statements_mys.conf
 #End - ReqID:SRS-MISC-MYSQL-FRAME
 REGRESS = pg_stat_statements
 ORA_REGRESS = ivy_pg_stat_statements

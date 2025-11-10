@@ -71,6 +71,7 @@
 
 #include "postgres.h"
 
+#include <assert.h>
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
@@ -101,6 +102,7 @@
 #endif
 
 #include "access/fdwxact_launcher.h"
+#include "access/printtup.h"
 #include "access/transam.h"
 #include "access/xlog.h"
 #include "access/xlog_internal.h" /* BUG#Z00004645 */
@@ -239,11 +241,7 @@ BackgroundWorker *MyBgworkerEntry = NULL;
 
 /* The socket number we are listening for connections on */
 int			PostPortNumber;
-int			OraPortNumber;	/* ReqID:LISTEN-MULTI-PORT */
-int			MysPortNumber;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 char 		*DatabaseName; /* ReqID:SRS-SECURITY-AUDIT */
-
-
 
 
 /* The directory names for Unix socket(s) */
@@ -251,9 +249,6 @@ char	   *Unix_socket_directories;
 
 /* The TCP listen address(es) */
 char	   *ListenAddresses;
-char	   *OraListenAddresses;	/* ReqID:LISTEN-MULTI-PORT */
-char	   *MysListenAddresses;	/* ReqID:SRS-MISC-MYSQL-FRAME */
-
 
 /*
  * ReservedBackends is the number of backends reserved for superuser use.
@@ -267,9 +262,8 @@ char	   *MysListenAddresses;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 int			ReservedBackends;
 
 /* The socket(s) we're listening to. */
-#define MAXLISTEN	64
-static pgsocket ListenSocket[MAXLISTEN];
-
+pgsocket ListenSocket[MAXLISTEN];
+ProtocolExtensionConfig *ListenConfig[MAXLISTEN]; /* Req: SRS-MYSQL-PROTOCOL */
 
 /*
  * These globals control the behavior of the postmaster in case some
@@ -451,7 +445,7 @@ static void CloseServerPorts(int status, Datum arg);
 static void unlink_external_pid_file(int status, Datum arg);
 static void getInstallationPaths(const char *argv0);
 static void checkControlFile(void);
-static Port *ConnCreate(int serverFd);
+static Port *ConnCreate(int serverFd, int idx);
 static void ConnFree(Port *port);
 static void reset_shared(void);
 static void SIGHUP_handler(SIGNAL_ARGS);
@@ -509,6 +503,28 @@ static int GetCaseSwitchModeFromControl(char* path);
 /* END - case sensitive indentify */
 /* End - BUG#Z00004645 */
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+static void pg_session_init(ProtocolExtensionConfig *);
+
+create_server_listen_hook_type server_listen_hook = NULL;
+
+static ProtocolExtensionConfig default_protocol_config = {
+	T_ProtocolPg,
+	pg_session_init,
+	StartupPacketInitialize,
+	ClientAuthentication,
+	NULL,
+	send_message_to_frontend,
+	send_cancel_key,
+	pq_comm_reset,
+	ReadyForQuery,
+	SocketBackend,
+	NULL,
+	printtup_create_DR,
+	NULL, /* fn_process_command */
+	libpq_report_param_status
+};
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 /*
  * Archiver is allowed to start up at the current postmaster state?
@@ -842,11 +858,11 @@ PostmasterMain(int argc, char *argv[])
 				SetConfigOption("ssl", "true", PGC_POSTMASTER, PGC_S_ARGV);
 				break;
 
-			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME  */
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 			case 'm':
 				SetConfigOption("mysql.port", optarg, PGC_POSTMASTER, PGC_S_ARGV);
 				break;
-			/* End - ReqID:SRS-MISC-MYSQL-FRAME  */
+			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 			case 'N':
 				SetConfigOption("max_connections", optarg, PGC_POSTMASTER, PGC_S_ARGV);
 				break;
@@ -1210,17 +1226,6 @@ PostmasterMain(int argc, char *argv[])
 						LOG_METAINFO_DATAFILE)));
 
 	/*
-	 * Initialize input sockets.
-	 *
-	 * Mark them all closed, and set up an on_proc_exit function that's
-	 * charged with closing the sockets again at postmaster shutdown.
-	 */
-	for (i = 0; i < MAXLISTEN; i++)
-		ListenSocket[i] = PGINVALID_SOCKET;
-
-	on_proc_exit(CloseServerPorts, 0);
-
-	/*
 	 * If enabled, start up syslogger collection subprocess
 	 */
 	SysLoggerPID = SysLogger_Start();
@@ -1254,7 +1259,15 @@ PostmasterMain(int argc, char *argv[])
 
 	/*
 	 * Establish input sockets.
+	 *
+	 * First, mark them all closed, and set up an on_proc_exit function that's
+	 * charged with closing the sockets again at postmaster shutdown.
 	 */
+	for (i = 0; i < MAXLISTEN; i++)
+		ListenSocket[i] = PGINVALID_SOCKET;
+
+	on_proc_exit(CloseServerPorts, 0);
+
 	if (ListenAddresses)
 	{
 		char	   *rawstring;
@@ -1283,12 +1296,14 @@ PostmasterMain(int argc, char *argv[])
 				status = StreamServerPort(AF_UNSPEC, NULL,
 										  (unsigned short) PostPortNumber,
 										  NULL,
-										  ListenSocket, MAXLISTEN);
+										  ListenSocket, MAXLISTEN,
+										  ListenConfig, &default_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
 			else
 				status = StreamServerPort(AF_UNSPEC, curhost,
 										  (unsigned short) PostPortNumber,
 										  NULL,
-										  ListenSocket, MAXLISTEN);
+										  ListenSocket, MAXLISTEN,
+										  ListenConfig, &default_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
 
 			if (status == STATUS_OK)
 			{
@@ -1325,129 +1340,6 @@ PostmasterMain(int argc, char *argv[])
 		list_free(elemlist);
 		pfree(rawstring);
 	}
-
-	/* Begin - ReqID:LISTEN-MULTI-PORT */
-	if (DB_ORACLE == database_mode
-		 && OraListenAddresses)
-	{
-		char	   *rawstring;
-		List	   *elemlist;
-		ListCell   *l;
-		int 		success = 0;
-
-		/* Need a modifiable copy of ListenAddresses */
-		rawstring = pstrdup(OraListenAddresses);
-
-		/* Parse string into list of hostnames */
-		if (!SplitGUCList(rawstring, ',', &elemlist))
-		{
-			/* syntax error in list */
-			ereport(FATAL,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("invalid list syntax in parameter \"%s\"",
-							"listen_addresses")));
-		}
-
-		foreach(l, elemlist)
-		{
-			char	   *curhost = (char *) lfirst(l);
-
-			if (strcmp(curhost, "*") == 0)
-				status = StreamServerPort(AF_UNSPEC, NULL,
-										  (unsigned short) OraPortNumber,
-										  NULL,
-										  ListenSocket, MAXLISTEN);
-			else
-				status = StreamServerPort(AF_UNSPEC, curhost,
-										  (unsigned short) OraPortNumber,
-										  NULL,
-										  ListenSocket, MAXLISTEN);
-
-			if (status == STATUS_OK)
-			{
-				success++;
-				/* record the first successful host addr in lockfile */
-				if (!listen_addr_saved)
-				{
-					AddToDataDirLockFile(LOCK_FILE_LINE_LISTEN_ADDR, curhost);
-					listen_addr_saved = true;
-				}
-			}
-			else
-				ereport(WARNING,
-						(errmsg("could not create listen socket for \"%s\"",
-								curhost)));
-		}
-
-		if (!success && elemlist != NIL)
-			ereport(FATAL,
-					(errmsg("could not create any Oracle TCP/IP sockets")));
-
-		list_free(elemlist);
-		pfree(rawstring);
-	}
-	/* End - ReqID:LISTEN-MULTI-PORT */
-
-	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME  */
-	if (DB_MYSQL == database_mode && MysListenAddresses)
-	{
-		char	   *rawstring;
-		List	   *elemlist;
-		ListCell   *l;
-		int 		success = 0;
-
-		/* Need a modifiable copy of ListenAddresses */
-		rawstring = pstrdup(MysListenAddresses);
-
-		/* Parse string into list of hostnames */
-		if (!SplitGUCList(rawstring, ',', &elemlist))
-		{
-			/* syntax error in list */
-			ereport(FATAL,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("invalid list syntax in parameter \"%s\"",
-							"listen_addresses")));
-		}
-
-		foreach(l, elemlist)
-		{
-			char	   *curhost = (char *) lfirst(l);
-
-			if (strcmp(curhost, "*") == 0)
-				status = StreamServerPort(AF_UNSPEC, NULL,
-										  (unsigned short) MysPortNumber,
-										  NULL,
-										  ListenSocket, MAXLISTEN);
-			else
-				status = StreamServerPort(AF_UNSPEC, curhost,
-										  (unsigned short) MysPortNumber,
-										  NULL,
-										  ListenSocket, MAXLISTEN);
-
-			if (status == STATUS_OK)
-			{
-				success++;
-				/* record the first successful host addr in lockfile */
-				if (!listen_addr_saved)
-				{
-					AddToDataDirLockFile(LOCK_FILE_LINE_LISTEN_ADDR, curhost);
-					listen_addr_saved = true;
-				}
-			}
-			else
-				ereport(WARNING,
-						(errmsg("could not create listen socket for \"%s\"",
-								curhost)));
-		}
-
-		if (!success && elemlist != NIL)
-			ereport(FATAL,
-					(errmsg("could not create any Mysql TCP/IP sockets")));
-
-		list_free(elemlist);
-		pfree(rawstring);
-	}
-	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 #ifdef USE_BONJOUR
 	/* Register for Bonjour only if we opened TCP socket(s) */
@@ -1516,7 +1408,8 @@ PostmasterMain(int argc, char *argv[])
 			status = StreamServerPort(AF_UNIX, NULL,
 									  (unsigned short) PostPortNumber,
 									  socketdir,
-									  ListenSocket, MAXLISTEN);
+									  ListenSocket, MAXLISTEN,
+									  ListenConfig, &default_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
 
 			if (status == STATUS_OK)
 			{
@@ -1536,69 +1429,6 @@ PostmasterMain(int argc, char *argv[])
 			ereport(FATAL,
 					(errmsg("could not create any PostgreSQL Unix-domain sockets")));
 
-		/* Oracle unix domain socket */
-		if (DB_ORACLE == database_mode)
-		{
-			success = 0;
-			foreach(l, elemlist)
-			{
-				char	   *socketdir = (char *) lfirst(l);
-
-				status = StreamServerPort(AF_UNIX, NULL,
-										  (unsigned short) OraPortNumber,
-										  socketdir,
-										  ListenSocket, MAXLISTEN);
-
-				if (status == STATUS_OK)
-				{
-					success++;
-					/* record the first successful Unix socket in lockfile */
-					if (success == 1)
-						AddToDataDirLockFile(LOCK_FILE_LINE_SOCKET_DIR, socketdir);
-				}
-				else
-					ereport(WARNING,
-							(errmsg("could not create Oracle Unix-domain socket in directory \"%s\"",
-									socketdir)));
-			}
-
-			if (!success && elemlist != NIL)
-				ereport(FATAL,
-						(errmsg("could not create any Oracle Unix-domain sockets")));
-		}
-		/* End - ReqID:LISTEN-MULTI-PORT */
-
-		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME, Mysql unix domain socket */
-		if (DB_MYSQL == database_mode)
-		{
-			success = 0;
-			foreach(l, elemlist)
-			{
-				char	   *socketdir = (char *) lfirst(l);
-
-				status = StreamServerPort(AF_UNIX, NULL,
-										  (unsigned short) MysPortNumber,
-										  socketdir,
-										  ListenSocket, MAXLISTEN);
-
-				if (status == STATUS_OK)
-				{
-					success++;
-					/* record the first successful Unix socket in lockfile */
-					if (success == 1)
-						AddToDataDirLockFile(LOCK_FILE_LINE_SOCKET_DIR, socketdir);
-				}
-				else
-					ereport(WARNING,
-							(errmsg("could not create MySQL Unix-domain socket in directory \"%s\"",
-									socketdir)));
-			}
-
-			if (!success && elemlist != NIL)
-				ereport(FATAL,
-						(errmsg("could not create any MySQL Unix-domain sockets")));
-		}
-		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		list_free_deep(elemlist);
 		pfree(rawstring);
 	}
@@ -1619,6 +1449,15 @@ PostmasterMain(int argc, char *argv[])
 	if (!listen_addr_saved)
 		AddToDataDirLockFile(LOCK_FILE_LINE_LISTEN_ADDR, "");
 
+	/*
+	 * Begin - Req: SRS-MYSQL-PROTOCOL
+	 * Create another tcp/unix listen in plugin, such as ivorysql_ora, ivorysql_my.
+	 * This hook is call chain.
+	 */
+	if (server_listen_hook)
+		server_listen_hook();
+	/* End - Req: SRS-MYSQL-PROTOCOL */
+	
 	/*
 	 * Record postmaster options.  We delay this till now to avoid recording
 	 * bogus options (eg, unusable port number).
@@ -2074,7 +1913,7 @@ ServerLoop(void)
 				{
 					Port	   *port;
 
-					port = ConnCreate(ListenSocket[i]);
+					port = ConnCreate(ListenSocket[i], i);
 					if (port)
 					{
 						BackendStartup(port);
@@ -2257,6 +2096,43 @@ initMasks(fd_set *rmask)
 	return maxsock + 1;
 }
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+static void
+pg_session_init(ProtocolExtensionConfig *self)
+{
+	SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);  /* ReqID:SRS-MISC-GUC */
+	pq_init();
+}
+
+int
+StartupPacketInitialize(Port *port)
+{
+	return ProcessStartupPacket(port, false, false);
+}
+
+void 
+send_cancel_key(int32 pid, int32 key)
+{
+    StringInfoData buf;
+
+    pq_beginmessage(&buf, 'K');
+    pq_sendint32(&buf, pid);
+    pq_sendint32(&buf, key);
+    pq_endmessage(&buf);
+}
+
+void
+libpq_report_param_status(const char *name, char *val)
+{
+    StringInfoData msgbuf;
+
+    pq_beginmessage(&msgbuf, 'S');
+    pq_sendstring(&msgbuf, name);
+    pq_sendstring(&msgbuf, val);
+    pq_endmessage(&msgbuf);
+}
+
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 /*
  * Read a client's startup packet and do something according to it.
@@ -3009,7 +2885,7 @@ canAcceptConnections(int backend_type)
  * Returns NULL on failure, other than out-of-memory which is fatal.
  */
 static Port *
-ConnCreate(int serverFd)
+ConnCreate(int serverFd, int idx)
 {
 	Port	   *port;
 
@@ -3020,6 +2896,8 @@ ConnCreate(int serverFd)
 				 errmsg("out of memory")));
 		ExitPostmaster(1);
 	}
+
+	port->protocol_config = ListenConfig[idx]; /* Req: SRS-MYSQL-PROTOCOL */
 
 	if (StreamConnection(serverFd, port) != STATUS_OK)
 	{
@@ -4890,10 +4768,8 @@ BackendInitialize(Port *port)
 {
 	int			status;
 	int			ret;
-	int			localport;				/* ReqID:LISTEN-MULTI-PORT */
 	char		remote_host[NI_MAXHOST];
 	char		remote_port[NI_MAXSERV];
-	char		service[NI_MAXHOST];	/* ReqID:LISTEN-MULTI-PORT */
 	StringInfoData ps_data;
 
 	/* Save port etc. for ps status */
@@ -4923,7 +4799,8 @@ BackendInitialize(Port *port)
 	 * Initialize libpq and enable reporting of ereport errors to the client.
 	 * Must do this now because authentication uses libpq to send messages.
 	 */
-	pq_init();					/* initialize libpq to talk to client */
+	port->protocol_config->fn_init(port->protocol_config); /* Req: SRS-MYSQL-PROTOCOL */
+	
 	whereToSendOutput = DestRemote; /* now safe to ereport to client */
 
 	/*
@@ -4960,70 +4837,7 @@ BackendInitialize(Port *port)
 	 */
 	port->remote_host = strdup(remote_host);
 	port->remote_port = strdup(remote_port);
-
-	/* Begin - ReqID:LISTEN-MULTI-PORT */
-	/*
-	 * Get the local(server) port number to determine whether the current 
-	 * connection is in oracle mode or postgres mode.
-	 */
-	service[0] = '\0';
-	if ((ret = pg_getnameinfo_all(&port->laddr.addr, port->laddr.salen,
-								  NULL, 0,
-								  service, sizeof(service),
-								  NI_NUMERICSERV)) != 0)
-		ereport(WARNING,
-				(errmsg_internal("pg_getnameinfo_all() failed: %s",
-								 gai_strerror(ret))));
-
-	localport = atoi(service);
-	if (localport == 0)
-	{
-		char	PostPortNumberStr[32];
-		char	OraPortNumberStr[32];
-		char	MysPortNumberStr[32];	/* ReqID:SRS-MISC-MYSQL-FRAME */
-		
-		snprintf(PostPortNumberStr, sizeof(PostPortNumberStr), "%d", PostPortNumber);
-		snprintf(OraPortNumberStr, sizeof(OraPortNumberStr), "%d", OraPortNumber);
-		snprintf(MysPortNumberStr, sizeof(MysPortNumberStr), "%d", MysPortNumber);		/* ReqID:SRS-MISC-MYSQL-FRAME */
-
-		if (strstr(service, PostPortNumberStr) != NULL)
-		{
-			port->connmode = 'p';
-		}
-		else if (strstr(service, OraPortNumberStr) != NULL)
-		{
-			port->connmode = 'o';
-		}
-		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		else if(strstr(service, MysPortNumberStr) != NULL)
-		{
-			port->connmode = 'm';
-		}
-		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-		else
-			port->connmode = 'u';
-	}
-	else
-	{
-		if (localport == PostPortNumber)
-		{
-			port->connmode = 'p';
-		}
-		else if (localport == OraPortNumber)
-		{
-			port->connmode = 'o';
-		}
-		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		else if (localport == MysPortNumber)
-		{
-			port->connmode = 'm';
-		}
-		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-		else
-			port->connmode = 'u';
-	}
-	/* End - ReqID:LISTEN-MULTI-PORT */
-		
+	
 	/* And now we can issue the Log_connections message, if wanted */
 	if (Log_connections)
 	{
@@ -5078,7 +4892,7 @@ BackendInitialize(Port *port)
 	 * Receive the startup packet (which might turn out to be a cancel request
 	 * packet).
 	 */
-	status = ProcessStartupPacket(port, false, false);
+	status = port->protocol_config->fn_start(port); /* Req: SRS-MYSQL-PROTOCOL */
 
 	/*
 	 * Disable the timeout, and prevent SIGTERM again.

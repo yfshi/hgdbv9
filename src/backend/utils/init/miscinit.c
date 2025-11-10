@@ -477,44 +477,6 @@ static int	SecurityRestrictionContext = 0;
 /* We also remember if a SET ROLE is currently active */
 static bool SetRoleIsActive = false;
 
-
-/*
- * GetPortConnmode  ReqID:SRS-MISC-USE
- *
- * get Port Connection mode
- */
-char
-GetPortConnmode(void)
-{
-	Port	   *port = MyProcPort;
-
-	if(MyProcPort == NULL)
-	{
-		if(ORA_PARSER == compatible_db)
-			return 'o';
-		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		else if(MYS_PARSER == compatible_db)
-			return 'm';
-		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-		else
-			return 'p';
-	}
-	else
-	{
-		if (port->connmode == 'p')
-			return 'p';
-		else if (port->connmode == 'o')
-			return 'o';
-		else if (port->connmode == 'u')
-			return 'u';
-		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		else if (port->connmode == 'm')
-			return 'm';
-		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-	}
-	return 'u';
-}
-
 bool
 UserIdIsValid(void)
 {

@@ -260,7 +260,6 @@ bool g_proc_is_busy = false;
  */
 static int	InteractiveBackend(StringInfo inBuf);
 static int	interactive_getc(void);
-static int	SocketBackend(StringInfo inBuf);
 static int	ReadCommand(StringInfo inBuf);
 static void forbidden_in_wal_sender(char firstchar);
 static bool check_log_statement(List *stmt_list);
@@ -269,8 +268,6 @@ static int	errdetail_params(ParamListInfo params);
 static int	errdetail_abort(void);
 static int	errdetail_recovery_conflict(void);
 static void bind_param_error_callback(void *arg);
-static void start_xact_command(void);
-static void finish_xact_command(void);
 static bool IsTransactionExitStmt(Node *parsetree);
 static bool IsTransactionExitStmtList(List *pstmts);
 static bool IsTransactionStmtList(List *pstmts);
@@ -278,7 +275,6 @@ static void drop_unnamed_stmt(void);
 static void log_disconnections(int code, Datum arg);
 static void enable_statement_timeout(void);
 static void disable_statement_timeout(void);
-static void InitIvorysql(void);				/* ReqID:SRS-MISC-GUC */
 
 /* ----------------------------------------------------------------
  *		routines to obtain user input
@@ -411,7 +407,7 @@ interactive_getc(void)
  *	EOF is returned if the connection is lost.
  * ----------------
  */
-static int
+int
 SocketBackend(StringInfo inBuf)
 {
 	int			qtype;
@@ -545,7 +541,12 @@ ReadCommand(StringInfo inBuf)
 	int			result;
 
 	if (whereToSendOutput == DestRemote)
-		result = SocketBackend(inBuf);
+	{
+		/* Begin - Req: SRS-MYSQL-PROTOCOL */
+		Assert (MyProcPort->protocol_config->fn_read_command);
+		result = MyProcPort->protocol_config->fn_read_command(inBuf);
+		/* End - Req: SRS-MYSQL-PROTOCOL */
+	}
 	else
 		result = InteractiveBackend(inBuf);
 	return result;
@@ -991,7 +992,7 @@ pg_plan_queries(List *querytrees, const char *query_string, int cursorOptions,
  *
  * Execute a "simple Query" protocol message.
  */
-static void
+void
 exec_simple_query(const char *query_string)
 {
 	CommandDest dest = whereToSendOutput;
@@ -1436,7 +1437,12 @@ exec_simple_query(const char *query_string)
 		 * command the client sent, regardless of rewriting. (But a command
 		 * aborted by error will not send an EndCommand report at all.)
 		 */
-		EndCommand(&qc, dest, false);
+		/* Begin - SRS-MYSQL-PROTOCOL */
+		if (MyProcPort && MyProcPort->protocol_config->fn_end_command)
+			MyProcPort->protocol_config->fn_end_command(&qc, dest, false);
+		/* End - SRS-MYSQL-PROTOCOL */
+		else
+			EndCommand(&qc, dest, false);
 
 		/* Now we may drop the per-parsetree context, if one was created. */
 		if (per_parsetree_context)
@@ -1454,7 +1460,21 @@ exec_simple_query(const char *query_string)
 	 * If there were no parsetrees, return EmptyQueryResponse message.
 	 */
 	if (!parsetree_list)
-		NullCommand(dest);
+	{
+		/* Begin - Req: SRS-MYSQL-PROTOCOL */
+		if (MyProcPort != NULL && !IsA(MyProcPort->protocol_config, ProtocolPg) &&
+			MyProcPort->protocol_config->fn_end_command)
+        {
+			// Only send ok packet
+			QueryCompletion qc;
+			qc.commandTag = CMDTAG_SELECT;
+			qc.nprocessed = 0;
+            MyProcPort->protocol_config->fn_end_command(&qc, dest, false);
+        }
+		/* End - Req: SRS-MYSQL-PROTOCOL */
+		else
+			NullCommand(dest);
+	}
 
 	/*
 	 * Emit duration logging if appropriate.
@@ -2476,7 +2496,7 @@ exec_bind_message(StringInfo input_message)
  *
  * Process an "Execute" message for a portal
  */
-static void
+void
 exec_execute_message(const char *portal_name, long max_rows)
 {
 	CommandDest dest;
@@ -2688,7 +2708,12 @@ exec_execute_message(const char *portal_name, long max_rows)
 		}
 
 		/* Send appropriate CommandComplete to client */
-		EndCommand(&qc, dest, false);
+		/* Begin - SRS-MYSQL-PROTOCOL */
+		if (MyProcPort && MyProcPort->protocol_config->fn_end_command)
+			MyProcPort->protocol_config->fn_end_command(&qc, dest, false);
+		else
+		/* End - SRS-MYSQL-PROTOCOL */
+			EndCommand(&qc, dest, false);
 	}
 	else
 	{
@@ -3143,7 +3168,7 @@ exec_describe_portal_message(const char *portal_name)
 /*
  * Convenience routines for starting/committing a single command.
  */
-static void
+void
 start_xact_command(void)
 {
 	if (!xact_started)
@@ -3171,7 +3196,7 @@ start_xact_command(void)
 							 client_connection_check_interval);
 }
 
-static void
+void
 finish_xact_command(void)
 {
 	/* cancel active statement timeout after each command */
@@ -4714,13 +4739,6 @@ PostgresMain(int argc, char *argv[],
 		PostmasterContext = NULL;
 	}
 
-	/* Begin - ReqID:SRS-MISC-GUC */
-	/*
-	 * Initialize backend ivorysql parser
-	 */
-	InitIvorysql();
-	/* End - ReqID:SRS-MISC-GUC */
-
 	/*
 	 * psql login, we unset hg_misc.special_index_oid
 	 */
@@ -4791,12 +4809,22 @@ PostgresMain(int argc, char *argv[],
 	 */
 	if (whereToSendOutput == DestRemote)
 	{
-		StringInfoData buf;
+		/* 
+		 * Begin - Req: SRS-MYSQL-PROTOCOL 
+		 * MyProcPort is NULL if subprocess is BackgroundWorker.
+		 */
+		if (!MyProcPort)
+		{
+			StringInfoData buf;
 
-		pq_beginmessage(&buf, 'K');
-		pq_sendint32(&buf, (int32) MyProcPid);
-		pq_sendint32(&buf, (int32) MyCancelKey);
-		pq_endmessage(&buf);
+			pq_beginmessage(&buf, 'K');
+			pq_sendint32(&buf, (int32) MyProcPid);
+			pq_sendint32(&buf, (int32) MyCancelKey);
+			pq_endmessage(&buf);
+		}
+		else if (MyProcPort->protocol_config->fn_send_cancel_key)
+			MyProcPort->protocol_config->fn_send_cancel_key((int32) MyProcPid, (int32) MyCancelKey);
+		/* End - Req: SRS-MYSQL-PROTOCOL */
 		/* Need not flush since ReadyForQuery will do it. */
 	}
 
@@ -4903,7 +4931,15 @@ PostgresMain(int argc, char *argv[],
 		DoingCommandRead = false;
 
 		/* Make sure libpq is in a good state */
-		pq_comm_reset();
+		/* 
+		 * Begin - Req: SRS-MYSQL-PROTOCOL
+		 * MyProcPort is NULL if subprocess is BackgroundWorker.
+		 */
+		if (!MyProcPort)
+			pq_comm_reset();
+		else if (MyProcPort->protocol_config->fn_comm_reset)
+			MyProcPort->protocol_config->fn_comm_reset();
+		/* End - Req: SRS-MYSQL-PROTOCOL */
 
 		/* Report the error to the client and/or server log */
 		EmitErrorReport();
@@ -5002,7 +5038,7 @@ PostgresMain(int argc, char *argv[],
 		int			firstchar;
 		StringInfoData input_message;
 
-/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		/* Begin - ReqID:SRS-SECURITY-AUDIT */
 		if (IsNormalProcessingMode() && send_ready_for_query)
 		{
 			if (IsDefaultTransactionState())
@@ -5013,7 +5049,7 @@ PostgresMain(int argc, char *argv[],
 					(*audit_WriteThrHistory_hook)();
 			}
 		}
-/* End - ReqID:SRS-SECURITY-AUDIT */
+		/* End - ReqID:SRS-SECURITY-AUDIT */
 
 		/*
 		 * At top of loop, reset extended-query-message flag, so that any
@@ -5120,7 +5156,15 @@ PostgresMain(int argc, char *argv[],
 			/* Report any recently-changed GUC options */
 			ReportChangedGUCOptions();
 
-			ReadyForQuery(whereToSendOutput);
+			/* 
+			 * Begin - Req: SRS-MYSQL-PROTOCOL
+			 * MyProcPort is NULL if subprocess is BackgroundWorker.
+			 */
+			if (!MyProcPort)
+				ReadyForQuery(whereToSendOutput);
+			else if (MyProcPort->protocol_config->fn_send_ready_for_query)
+				MyProcPort->protocol_config->fn_send_ready_for_query(whereToSendOutput); /* Req: SRS-MYSQL-PROTOCOL */
+			/* End - Req: SRS-MYSQL-PROTOCOL */
 			send_ready_for_query = false;
 		}
 
@@ -5216,6 +5260,20 @@ PostgresMain(int argc, char *argv[],
 			ConfigReloadPending = false;
 			ProcessConfigFile(PGC_SIGHUP);
 		}
+
+		/*
+		 * Begin - Req: SRS-MYSQL-PROTOCOL
+		 * If firstchar is EOF, then we need to disconnect, ortherwise
+		 * call the protocol hook to process the request.
+		 */
+		if (firstchar != EOF && MyProcPort &&
+			MyProcPort->protocol_config->fn_process_command)
+		{
+			firstchar = MyProcPort->protocol_config->fn_process_command(&input_message);
+			send_ready_for_query = true;
+			continue;
+		}
+		/* End - Req: SRS-MYSQL-PROTOCOL */
 
 		/*
 		 * (7) process the command.  But ignore it if we're skipping till
@@ -5833,35 +5891,3 @@ disable_statement_timeout(void)
 		disable_timeout(STATEMENT_TIMEOUT, false);
 }
 
-/* Begin - ReqID:SRS-MISC-GUC */
-/*
- * Initialize backend ivorysql parser
- */
-static void
-InitIvorysql(void)
-{
-	if (MyProcPort)
-	{
-		if (MyProcPort->connmode == 'p')
-		{
-			SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);  /* ReqID:SRS-MISC-GUC */
-		}
-		else if (MyProcPort->connmode == 'o')
-		{
-			SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);      /* ReqID:SRS-MISC-GUC */
-			if (NULL == ora_raw_parser)
-				ereport(ERROR,
-					(errmsg("Invalid Oracle compatibility mode syntax library.")));
-		}
-		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME  */
-		else if (MyProcPort->connmode == 'm')
-		{
-			SetConfigOption("ivorysql.compatible_mode", "mysql", PGC_USERSET, PGC_S_OVERRIDE);      /* ReqID:SRS-MISC-GUC */
-			if (NULL == mys_raw_parser)
-				ereport(ERROR,
-					(errmsg("Invalid MySQL compatibility mode syntax library.")));
-		}
-		/* End - ReqID:SRS-MISC-MYSQL-FRAME  */
-	}
-}
-/* End - ReqID:SRS-MISC-GUC */

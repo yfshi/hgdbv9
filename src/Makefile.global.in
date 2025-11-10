@@ -919,6 +919,18 @@ mysql_regress_check = \
     --bindir= \
     $(TEMP_CONF) \
     $(mysql_regress_locale_flags) $(EXTRA_REGRESS_OPTS)
+# Begin - SRS-MYSQL-PROTOCOL
+mysql_jdbc_regress_check = \
+    echo "\# +++ mys jdbc regress check in $(subdir) +++" && \
+    $(with_temp_install) \
+    $(top_builddir)/src/mysql_test/regress/pg_regress \
+    --temp-instance=./tmp_check \
+    --inputdir=$(srcdir) \
+    --bindir= \
+    --protocol=mysql \
+    $(TEMP_CONF) \
+    $(mysql_regress_locale_flags) $(EXTRA_REGRESS_OPTS)
+# End - SRS-MYSQL-PROTOCOL
 mysql_regress_installcheck = \
     echo "\# +++ mys installcheck regress check in $(subdir) +++" && \
     $(top_builddir)/src/mysql_test/regress/pg_regress \

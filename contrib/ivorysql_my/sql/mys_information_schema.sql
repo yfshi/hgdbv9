@@ -106,7 +106,8 @@ GRANT SELECT (name) ON test_schema.test_table TO user_b;
 
 SELECT grantee, table_schema, table_name, column_name, privilege_type, is_grantable
 FROM information_schema.column_privileges
-WHERE table_schema = 'test_schema' AND table_name = 'test_table' AND grantee like '%user_%' order by is_grantable , column_name;
+WHERE table_schema = 'test_schema' AND table_name = 'test_table' AND grantee like '%user_%'
+order by is_grantable , column_name;
 
 ------------------------------------------------------------
 -- 7. Test for information_schema.views

@@ -606,8 +606,12 @@ typedef enum NodeTag
 	T_CreateRedactionPolicyStmt,	/* in nodes/parsenodes.h */
 	T_DropRedactionPolicyStmt,		/* in nodes/parsenodes.h */
 	T_AlterRedactionPolicyStmt,		/* in nodes/parsenodes.h */
-	T_RedactionPolicyColumnStmt		/* in nodes/parsenodes.h */
+	T_RedactionPolicyColumnStmt,		/* in nodes/parsenodes.h */
 	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	T_ProtocolPg,
+	T_ProtocolMysql
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 } NodeTag;
 
 /*

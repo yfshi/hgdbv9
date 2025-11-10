@@ -158,4 +158,7 @@ extern void appendBinaryStringInfoNT(StringInfo str,
  */
 extern void enlargeStringInfo(StringInfo str, int needed);
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+extern void DestroyStringInfo(StringInfo str);
+/* End - Req: SRS-MYSQL-PROTOCOL */
 #endif							/* STRINGINFO_H */

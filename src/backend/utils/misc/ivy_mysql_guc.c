@@ -45,6 +45,40 @@
 #endif
 
 #ifdef IVY_MY_GUC_VAR_DEFINE
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+static const struct config_enum_entry proto_type_options[] = {
+	{"pg", PROTOCOL_PG, false},
+	{"mysql", PROTOCOL_MYSQL, false},
+	{NULL, 0, false}
+};
+
+int 	mys_port;
+char 	*mys_listen_address;
+int	 	mys_protocol_type;
+char 	*default_database;
+char    *sha256_password_public_key_path;
+char    *sha256_password_private_key_path;
+char 	*version_comment_str;
+int     net_buffer_length;
+int 	wait_timeout;
+int 	interactive_timeout;
+int 	net_write_timeout;
+int     sql_select_limit;
+
+char 	*character_set_client;
+char 	*character_set_connection;
+char 	*character_set_results;
+char 	*character_set_server;
+char 	*collation_server;
+char 	*collation_connection;
+char 	*init_connect;
+char 	*license;
+char 	*performance_schema;
+char 	*system_time_zone;
+char 	*time_zone;
+bool	mys_autocommit = true;
+/* End - Req: SRS-MYSQL-PROTOCOL */
+
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 bool		enable_indexhint = false;
 /* End - ReqID:SRS-MYSQL-UPDATE */
@@ -108,8 +142,8 @@ bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 #endif
-#ifdef IVY_MY_GUC_BOOL_PARAMS
 
+#ifdef IVY_MY_GUC_BOOL_PARAMS
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	{
 		{"mysql.enable_indexhint", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
@@ -206,7 +240,7 @@ bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
 		true,
 		NULL, NULL, NULL
 	},
-/* End - BUG#M533 */
+	/* End - BUG#M533 */
 	{
 		{"mysql.use_mysql_bool", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("MySQL and Postgres bool is difference."),
@@ -240,7 +274,7 @@ bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
 	/* End - ReqID:SRS-MYSQL-SHOW */
 	/* Begin - ReqID:SRS-MYSQL-DO */
 	{
-		{"use_mysql_do", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+		{"mysql.use_mysql_do", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 				gettext_noop("MySQL Parameter use MySQL DO command."),
 				NULL
 		},
@@ -248,18 +282,29 @@ bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
 		false,
 		NULL, NULL, NULL
 	},
-	/* End - ReqID:SRS-MYSQL-DO*/
+	/* End - ReqID:SRS-MYSQL-DO */
+	/* Begin - ReqID:SRS-MYSQL-PROTOCOL */
+	{
+		{"autocommit", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+				gettext_noop("This parameter is only used in mysql compatibility."),
+				NULL
+		},
+		&mys_autocommit,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-PROTOCOL */
+
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS
-
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		{"mysql.port", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets the MySQL TCP port the server listens on."),
+			gettext_noop("Sets the MySQL TCP port the server listens on with pg protocol."),
 			NULL
 		},
-		&MysPortNumber,
+		&mys_port,
 		3306, 1, 65535,
 		NULL, NULL, NULL
 	},
@@ -339,21 +384,237 @@ bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+	/* Begin - ReqID:SRS-MYSQL-PROTOCOL */
+	#define DEFAULT_NET_BUFFER_LENGTH   16384
+    #define MIN_NET_BUFFER_LENGTH       1024
+    #define MAX_NET_BUFFER_LENGTH       1048576
+	{
+		{
+			"net_buffer_length", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("The default size of the buffer."),
+			NULL
+		},
+		&net_buffer_length,
+		DEFAULT_NET_BUFFER_LENGTH,
+        MIN_NET_BUFFER_LENGTH,
+        MAX_NET_BUFFER_LENGTH,
+		NULL, NULL, NULL
+	},
+	#define DEFAULT_WAIT_TIMEOUT 	28800
+	#define MIN_WAIT_TIMEOUT 		1
+	#define MAX_WAIT_TIMEOUT 		31536000
+	{
+		{
+			"wait_timeout", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("After this number of seconds of inactivity, "
+                         "the server will close the noninteractive connection."),
+			NULL
+		},
+		&wait_timeout,
+		DEFAULT_WAIT_TIMEOUT,
+		MIN_WAIT_TIMEOUT,
+		MAX_WAIT_TIMEOUT,
+		NULL, NULL, NULL
+	},
+	#define DEFAULT_INTERACTIVE_TIMEOUT 28800
+	#define MIN_INTERACTIVE_TIMEOUT 	1
+	#define MAX_INTERACTIVE_TIMEOUT 	31536000
+	{
+		{
+			"interactive_timeout", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("After this number of seconds of inactivity, "
+                         "the server will close the interactive connection."),
+			NULL
+		},
+		&interactive_timeout,
+		DEFAULT_INTERACTIVE_TIMEOUT,
+		MIN_INTERACTIVE_TIMEOUT,
+		MAX_INTERACTIVE_TIMEOUT,
+		NULL, NULL, NULL
+	},
+	#define DEFAULT_NET_WRITE_TIMEOUT 	60
+	#define MIN_NET_WRITE_TIMEOUT 		1
+	#define MAX_NET_WRITE_TIMEOUT 		31536000
+	{
+		{
+			"net_write_timeout", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("After this number of seconds of waiting, "
+                         "the server will abort the write."),
+			NULL
+		},
+		&net_write_timeout,
+		DEFAULT_NET_WRITE_TIMEOUT,
+		MIN_NET_WRITE_TIMEOUT,
+		MAX_NET_WRITE_TIMEOUT,
+		NULL, NULL, NULL
+	},
+	{
+		{
+			"sql_select_limit", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("The maximum number of rows to return from SELECT statements."),
+			NULL
+		},
+		&sql_select_limit,
+		INT_MAX - 1,
+		0,
+		INT_MAX,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-PROTOCOL */
 #endif
 
 #ifdef IVY_MY_GUC_STRING_PARAMS
-
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		{"mysql.listen_addresses", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets MySQL host name or IP address(es) to listen to."),
+			gettext_noop("Sets MySQL host name or IP address(es) to listen to with pg protocol."),
 			NULL,
 			GUC_LIST_INPUT
 		},
-		&MysListenAddresses,
+		&mys_listen_address,
 		"localhost",
 		NULL, NULL, NULL
 	},
+	{
+		{"mysql.default_database", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
+			gettext_noop("Sets mysql default database name."),
+			NULL,
+			GUC_LIST_INPUT
+		},
+		&default_database,
+		"postgres",
+		NULL, NULL, NULL
+	},
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	{
+		{"version_comment", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Version_comment for MySQL."),
+			NULL
+		},
+		&version_comment_str,
+		"Ivorysql",
+		check_read_only_var, NULL, NULL
+	},
+	{
+		{"sha256_password_public_key_path", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("A fully qualified path to the public RSA key used for authentication"),
+			NULL
+		},
+		&sha256_password_public_key_path,
+		"",
+		check_read_only_var, NULL, NULL
+	},
+	{
+		{"sha256_password_private_key_path", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("A fully qualified path to the private RSA key used for authentication"),
+			NULL
+		},
+		&sha256_password_private_key_path,
+		"",
+		check_read_only_var, NULL, NULL
+	},
+	{
+		{"character_set_client", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Client uses this character set."),
+			NULL
+		},
+		&character_set_client,
+		"utf8",
+		NULL, NULL, NULL
+	},
+	{
+		{"character_set_connection", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Set character_set_connection."),
+			NULL
+		},
+		&character_set_connection,
+		"",
+		NULL, NULL, NULL
+	},
+	{
+		{"character_set_results", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("The server uses this character set "
+                         "to return the query results to the client."),
+			NULL
+		},
+		&character_set_results,
+		"utf8",
+		NULL, NULL, NULL
+	},
+	{
+		{"character_set_server", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Server uses this character set."),
+			NULL
+		},
+		&character_set_server,
+		"latin1",
+		NULL, NULL, NULL
+	},
+	{
+		{"collation_server", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Server uses this collation."),
+			NULL
+		},
+		&collation_server,
+		"latin1_swedish_ci",
+		NULL, NULL, NULL
+	},
+	{
+		{"collation_connection", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Set collation_connection."),
+			NULL
+		},
+		&collation_connection,
+		"",
+		NULL, NULL, NULL
+	},
+	{
+		{"init_connect", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("SQL statements executed when each connection is initialized."),
+			NULL
+		},
+		&init_connect,
+		"",
+		NULL, NULL, NULL
+	},
+	{
+		{"license", PGC_INTERNAL, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("The server uses this license."),
+			NULL
+		},
+		&license,
+		"",
+		NULL, NULL, NULL
+	},
+	{
+		{"performance_schema", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("CUSTOM_OPTIONS."),
+			NULL
+		},
+		&performance_schema,
+		"",
+		NULL, NULL, NULL
+	},
+	{
+		{"system_time_zone", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("The time zone set by server."),
+			NULL
+		},
+		&system_time_zone,
+		"",
+		NULL, NULL, NULL
+	},
+	{
+		{"time_zone", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("The time zone set currently."),
+			NULL
+		},
+		&time_zone,
+		"SYSTEM",
+		NULL, NULL, NULL
+	},
+	/* End - Req: SRS-MYSQL-PROTOCOL */
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		{
 			"sql_mode",
@@ -382,9 +643,36 @@ bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
 		check_lc_time_names, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
+#endif
+
+#ifdef IVY_MY_GUC_ENUM_PARAMS
+{
+	{"mysql.protocol_type", PGC_POSTMASTER, PRESET_OPTIONS,
+		gettext_noop("Set mysql port protocol type"),
+		NULL,
+		GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+	},
+	&mys_protocol_type,
+	PROTOCOL_MYSQL, proto_type_options,
+	NULL, NULL, NULL
+},
 #endif
 
 #ifdef IVY_MY_GUC_FUNC_DEFINE
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+static bool
+check_read_only_var(char **newval, void **extra, GucSource source)
+{
+    if (source == PGC_S_SESSION)
+    {
+        ereport(ERROR,
+                (errmsg("Variable 'version_comment' is a read only variable")));
+    }
+    
+    return true;
+}
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 #define REPORT_SQL_MODE_VALUE_ERROR(val) do { \
 	ereport(ERROR, \

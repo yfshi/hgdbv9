@@ -19,21 +19,21 @@
 #ifndef _POSTMASTER_H
 #define _POSTMASTER_H
 
+#include "access/printtup.h"
+#include "libpq/auth.h"
+#include "libpq/libpq.h"
+
 /* GUC options */
 extern PGDLLIMPORT bool EnableSSL;		/* ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 extern int	ReservedBackends;
 extern PGDLLIMPORT int PostPortNumber;
-extern PGDLLIMPORT int OraPortNumber;	/* ReqID:LISTEN-MULTI-PORT */
-extern PGDLLIMPORT int MysPortNumber;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 extern PGDLLIMPORT char *DatabaseName; /* ReqID:SRS-SECURITY-AUDIT */
 
 extern int	Unix_socket_permissions;
 extern char *Unix_socket_group;
 extern char *Unix_socket_directories;
 extern char *ListenAddresses;
-extern char *OraListenAddresses;		/* ReqID:LISTEN-MULTI-PORT */
-extern char *MysListenAddresses;		/* ReqID:SRS-MISC-MYSQL-FRAME */
 extern bool ClientAuthInProgress;
 extern int	PreAuthDelay;
 extern int	AuthenticationTimeout;
@@ -90,5 +90,20 @@ extern void ShmemBackendArrayAllocation(void);
  * relevant GUC check hooks and in RegisterBackgroundWorker().
  */
 #define MAX_BACKENDS	0x3FFFF
+
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+#define MAXLISTEN	64
+
+typedef void (*create_server_listen_hook_type) ();
+typedef void (*create_mysql_auth_cache_hook_type) ();
+
+extern int StartupPacketInitialize(Port *port);
+extern void send_cancel_key(int32 pid, int32 key);
+extern void libpq_report_param_status(const char *name, char *val);
+
+extern PGDLLIMPORT pgsocket ListenSocket[MAXLISTEN];
+extern PGDLLIMPORT ProtocolExtensionConfig *ListenConfig[MAXLISTEN]; 
+extern PGDLLIMPORT create_server_listen_hook_type server_listen_hook;
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 #endif							/* _POSTMASTER_H */

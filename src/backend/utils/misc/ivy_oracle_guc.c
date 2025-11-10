@@ -16,6 +16,9 @@
  *-------------------------------------------------------------------------
  */
 #ifdef IVY_GUC_VAR_DEFINE
+int   OraPortNumber;
+char *OraListenAddresses;
+
 #define ISLOADIVORYSQL_ORA pg_transform_merge_stmt_hook
 
 /* Begin - ReqID:SRS-SQL-GTT */
@@ -1646,8 +1649,8 @@ assign_compatible_mode(int newval, void *extra)
 		}
 	}
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	else if(DB_MYSQL == database_mode
-	&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	else if(DB_MYSQL == database_mode && 
+			(IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
 		if (newval == MYS_PARSER) /* BUG#Z00001674 */
 		{

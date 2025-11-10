@@ -96,3 +96,28 @@ create database aa;
 use aa;
 select current_schema();
 drop schema aa;
+
+
+create schema aa charset utf8;
+drop schema aa;
+
+create schema aa character set utf8;
+drop schema aa;
+
+create schema aa default charset utf8;
+drop schema aa;
+
+create schema aa default character set utf8;
+drop schema aa;
+
+create schema aa collate utf8_bin;
+drop schema aa;
+
+create schema aa default collate utf8_bin;
+drop schema aa;
+
+create schema aa charset utf8 collate utf8_bin charset utf8 collate utf8_bin;
+drop schema aa;
+
+create schema aa default charset utf8 default collate utf8_bin default charset utf8 default collate utf8_bin;
+drop schema aa;

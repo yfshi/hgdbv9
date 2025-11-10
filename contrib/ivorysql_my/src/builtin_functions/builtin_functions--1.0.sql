@@ -3560,7 +3560,7 @@ RETURNS timestamptz IMMUTABLE AS $$
 SELECT coalesce(p1::text, p2);
 $$ LANGUAGE sql;
 
-
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 CREATE FUNCTION ivymy.LAST_INSERT_ID()
 RETURNS ivymy.uint8 IMMUTABLE AS $$
 SELECT mys_get_lastval();
@@ -3585,4 +3585,11 @@ CREATE FUNCTION ivymy.LAST_INSERT_ID(seqid numeric)
 RETURNS ivymy.uint8 IMMUTABLE AS $$
 SELECT mys_set_lastval(seqid::int);
 $$ LANGUAGE sql;
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+CREATE FUNCTION pg_catalog.database()
+RETURNS varchar
+AS 'MODULE_PATHNAME', 'database'
+LANGUAGE C;
+/* End - Req: SRS-MYSQL-PROTOCOL */

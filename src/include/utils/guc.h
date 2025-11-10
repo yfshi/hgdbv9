@@ -549,6 +549,12 @@ extern PGDLLIMPORT bool use_mysql_do;	/* ReqID:SRS-MYSQL-SHOW */
 extern PGDLLIMPORT bool hg_redaction_data;
 /* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+extern PGDLLIMPORT char     *sha256_password_public_key_path;
+extern PGDLLIMPORT char     *sha256_password_private_key_path;
+extern PGDLLIMPORT char 	*version_comment_str;
+/* End - Req: SRS-MYSQL-PROTOCOL */
+
 /*
  * Functions exported by guc.c
  */
@@ -783,5 +789,22 @@ typedef enum WeightStringAS
 	WEIGHT_STRING_AS_BINARY
 } WeightStringAS;
 /* End - SRS-MYSQL-BUILDINFUNCTION */
+
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+extern PGDLLIMPORT int	OraPortNumber;
+extern PGDLLIMPORT char *OraListenAddresses;
+
+enum protocol_type
+{
+	PROTOCOL_PG,
+	PROTOCOL_MYSQL,
+};
+
+extern PGDLLIMPORT int	mys_port;
+extern PGDLLIMPORT char *mys_listen_address;
+extern PGDLLIMPORT int 	mys_protocol_type;
+extern PGDLLIMPORT char *default_database;
+extern PGDLLIMPORT bool	mys_autocommit;
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 #endif							/* GUC_H */

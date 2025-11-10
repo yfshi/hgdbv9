@@ -1,13 +1,13 @@
 /*-------------------------------------------------------------------------
  *
- * mysset.h
+ * set.h
  *	  Header file for the implementation of the MySQL SET feature hook
  *
  * Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  *
  * IDENTIFICATION
- *	  contrib/ivorysql_my/src/include/mysset.h
+ *	  contrib/ivorysql_my/src/include/set.h
  *
  *-------------------------------------------------------------------------
  */

@@ -63,6 +63,10 @@ Oid			binary_upgrade_next_pg_authid_oid = InvalidOid;
 /* GUC parameter */
 int			Password_encryption = PASSWORD_TYPE_SCRAM_SHA_256;
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+mysql_encryt_password_hook_type mysql_encrypt_password_hook;
+/* End - Req: SRS-MYSQL-PROTOCOL */
+
 /* Hook to check passwords in CreateRole() and AlterRole() */
 check_password_hook_type check_password_hook = NULL;
 
@@ -452,9 +456,19 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 		}
 		else
 		{
-			/* Encrypt the password to the requested format. */
-			shadow_pass = encrypt_password(Password_encryption, stmt->role,
-										   password);
+			/* Begin - Req: SRS-MYSQL-PROTOCOL */
+			if (compatible_db == MYS_PARSER && mysql_encrypt_password_hook)
+			{
+				shadow_pass = mysql_encrypt_password_hook(Password_encryption, stmt->role, password);
+			}
+			/* End - Req: SRS-MYSQL-PROTOCOL */
+			else
+			{
+				/* Encrypt the password to the requested format. */
+				shadow_pass = encrypt_password(Password_encryption, stmt->role,
+											   password);
+			}
+
 			new_record[Anum_pg_authid_rolpassword - 1] =
 				CStringGetTextDatum(shadow_pass);
 		}
@@ -1216,9 +1230,18 @@ AlterRole(AlterRoleStmt *stmt)
 		}
 		else
 		{
-			/* Encrypt the password to the requested format. */
-			shadow_pass = encrypt_password(Password_encryption, rolename,
-										   password);
+			/* Begin - Req: SRS-MYSQL-PROTOCOL */
+			if (compatible_db == MYS_PARSER && mysql_encrypt_password_hook)
+			{
+				shadow_pass = mysql_encrypt_password_hook(Password_encryption, rolename, password);
+			}
+			/* End - Req: SRS-MYSQL-PROTOCOL */
+			else
+			{
+				/* Encrypt the password to the requested format. */
+				shadow_pass = encrypt_password(Password_encryption, rolename,
+										   	   password);
+			}
 			new_record[Anum_pg_authid_rolpassword - 1] =
 				CStringGetTextDatum(shadow_pass);
 		}

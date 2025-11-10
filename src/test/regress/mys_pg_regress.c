@@ -2166,7 +2166,6 @@ regression_main(int argc, char *argv[],
 	int			option_index;
 	char		buf[MAXPGPATH * 4];
 	char		buf2[MAXPGPATH * 4];
-	char		port_str[16];		/* SQL PARSER */
 
 	pg_logging_init(argv[0]);
 	progname = get_progname(argv[0]);
@@ -2349,6 +2348,7 @@ regression_main(int argc, char *argv[],
 		FILE	   *pg_conf;
 		const char *env_wait;
 		int			wait_seconds;
+		char		s[16];
 
 		/*
 		 * Prepare the temp instance
@@ -2487,32 +2487,24 @@ regression_main(int argc, char *argv[],
 		{
 			if (system(buf2) == 0)
 			{
-				char		s[16];
-
 				if (i == 15)
 				{
-					fprintf(stderr, _("port %d apparently in use in mysql-pg compatible mode\n"), mysPort);
+					fprintf(stderr, _("port %d apparently in use in mysql compatible mode\n"), mysPort);
 					fprintf(stderr, _("Specify an unused port using the --port option or shut down any conflicting PostgreSQL servers.\n"));
 					exit(2);
 				}
 
-				fprintf(stderr, _("port %d apparently in use, trying %d in mysql-pg compatible mode\n"), mysPort, mysPort + 1);
+				fprintf(stderr, _("port %d apparently in use, trying %d in mysql compatible mode\n"), mysPort, mysPort + 1);
 				mysPort++;
-				sprintf(s, "%d", mysPort);
-				setenv("PGPORT", s, 1);
 			}
 			else
 			{
-				char		s[16];
-
-				sprintf(s, "%d", mysPort);
-				setenv("PGPORT", s, 1);
 				break;
 			}
 		}
-
-		sprintf(port_str, "%d", port);
-		setenv("PGPORT", port_str, 1);
+		
+		sprintf(s, "%d", port);
+		setenv("PGPORT", s, 1);
 		/* END - SQL PARSER */
 
 		/*
@@ -2521,7 +2513,7 @@ regression_main(int argc, char *argv[],
 		header(_("starting postmaster"));
 		snprintf(buf, sizeof(buf),
 				 "\"%s%spostgres\" -D \"%s/data\" -F%s "
-				 "-c \"listen_addresses=%s\" -c \"mysql.listen_addresses=%s\" -k \"%s\" "
+				 "-c \"listen_addresses=%s\" -c \"mysql.listen_addresses=%s\" -c \"mysql.regress_test_default_value=on\" -k \"%s\" "
 				 "-p %d -m %d "							/* SQL PARSER */
 				 "> \"%s/log/postmaster.log\" 2>&1",
 				 bindir ? bindir : "",

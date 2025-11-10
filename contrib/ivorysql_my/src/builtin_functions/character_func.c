@@ -22,6 +22,7 @@
 #include "access/detoast.h"
 #include "common/int.h"
 #include "common/base64.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_collation.h"
 #include "funcapi.h"
@@ -118,7 +119,7 @@ PG_FUNCTION_INFO_V1(unhex);
 PG_FUNCTION_INFO_V1(weight_string);
 PG_FUNCTION_INFO_V1(weight_string_boolean);
 PG_FUNCTION_INFO_V1(mys_strcmp);
-
+PG_FUNCTION_INFO_V1(database);
 
 static unsigned
 b64_decode(const char* src, unsigned len, char* dst, bool flag)
@@ -1615,3 +1616,24 @@ mys_strcmp(PG_FUNCTION_ARGS)
 
 	PG_RETURN_INT32(ret);
 }
+
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+Datum
+database(PG_FUNCTION_ARGS)
+{
+	List	   *search_path = fetch_search_path(false);
+	char	   *nspname;
+
+	if (search_path == NIL)
+		PG_RETURN_NULL();
+
+	nspname = get_namespace_name(linitial_oid(search_path));
+
+	list_free(search_path);
+
+	if (!nspname)
+		PG_RETURN_NULL();		/* recently-deleted namespace? */
+
+	PG_RETURN_DATUM(CStringGetTextDatum(nspname));
+}
+/* End - Req: SRS-MYSQL-PROTOCOL */

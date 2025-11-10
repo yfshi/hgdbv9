@@ -3552,8 +3552,18 @@ CreateCommandTag(Node *parsetree)
 		/* End - ReqID:SRS-SQL-SYNONYM */
 		/* Begin - ReqID:SRS-MYSQL-SET */
 		case T_MysDoStmt:
-			tag = CMDTAG_SELECT;
+		{
+			MysDoStmt *stmt = (MysDoStmt *) parsetree;
+			
+			/* Begin - SRS-MYSQL-PROTOCOL */
+			if (stmt->purpose == MYS_DO_FOR_SET)
+				tag = CMDTAG_SET;
+			else
+				tag = CMDTAG_SELECT;
+			/* End - SRS-MYSQL-PROTOCOL */
+
 			break;
+		}
 		case T_VarAssign:
 			tag = CMDTAG_SELECT;
 			break;

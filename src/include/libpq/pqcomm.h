@@ -203,4 +203,9 @@ typedef struct CancelRequestPacket
 #define NEGOTIATE_SSL_CODE PG_PROTOCOL(1234,5679)
 #define NEGOTIATE_GSS_CODE PG_PROTOCOL(1234,5680)
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+extern int	internal_putbytes(const char *s, size_t len);
+extern int pq_discardbytes(size_t len);
+extern void pq_comm_reset(void);
+/* End - Req: SRS-MYSQL-PROTOCOL */
 #endif							/* PQCOMM_H */

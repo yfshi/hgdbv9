@@ -26,9 +26,6 @@
 #include "utils/numeric.h"
 #include "utils/varbit.h"
 
-#define SIGNED_FLAG                     0
-#define UNSIGNED_FLAG                   1
-
 #define VAL(CH)			                ((CH) - '0')
 
 #define YEAR4_LEN                       4

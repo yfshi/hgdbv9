@@ -127,6 +127,14 @@ static void header(const char *fmt,...) pg_attribute_printf(1, 2);
 static void status(const char *fmt,...) pg_attribute_printf(1, 2);
 static void psql_command(const char *database, const char *query,...) pg_attribute_printf(2, 3);
 
+enum protocol_type
+{
+	PROTOCOL_PG,
+	PROTOCOL_MYSQL,
+};
+
+static enum protocol_type protocol = PROTOCOL_PG;
+
 /*
  * allow core files if possible.
  */
@@ -2155,6 +2163,7 @@ regression_main(int argc, char *argv[],
 		{"config-auth", required_argument, NULL, 24},
 		{"max-concurrent-tests", required_argument, NULL, 25},
 		{"make-testtablespace-dir", no_argument, NULL, 26},
+		{"protocol", required_argument, NULL, 27},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -2288,6 +2297,17 @@ regression_main(int argc, char *argv[],
 			case 26:
 				make_testtablespace_dir = true;
 				break;
+			case 27:
+				if (pg_strncasecmp(optarg, "pg", 2) == 0)
+					protocol = PROTOCOL_PG;
+				else if (pg_strncasecmp(optarg, "mysql", 5) == 0)
+					protocol = PROTOCOL_MYSQL;
+				else
+				{
+					fprintf(stderr, _("\n%s: protocl can only be set to PG or MYSQL"), progname);
+					exit(2);
+				}
+				break;
 			default:
 				/* getopt_long already emitted a complaint */
 				fprintf(stderr, _("\nTry \"%s -h\" for more information.\n"),
@@ -2349,6 +2369,7 @@ regression_main(int argc, char *argv[],
 		FILE	   *sec_conf;
 		const char *env_wait;
 		int			wait_seconds;
+		char		s[16];
 
 		/*
 		 * Prepare the temp instance
@@ -2500,8 +2521,6 @@ regression_main(int argc, char *argv[],
 		{
 			if (system(buf2) == 0)
 			{
-				char		s[16];
-
 				if (i == 15)
 				{
 					fprintf(stderr, _("port %d apparently in use in mysql compatible mode\n"), mysPort);
@@ -2511,18 +2530,20 @@ regression_main(int argc, char *argv[],
 
 				fprintf(stderr, _("port %d apparently in use, trying %d in mysql compatible mode\n"), mysPort, mysPort + 1);
 				mysPort++;
-				sprintf(s, "%d", mysPort);
-				setenv("PGPORT", s, 1);
 			}
 			else
 			{
-				char		s[16];
-
-				sprintf(s, "%d", mysPort);
-				setenv("PGPORT", s, 1);
 				break;
 			}
 		}
+
+		sprintf(s, "%d", mysPort);
+
+		if (protocol == PROTOCOL_PG)
+			setenv("PGPORT", s, 1);
+
+		if (protocol == PROTOCOL_MYSQL)
+			setenv("MYSPORT", s, 1);
 		/* END - SQL PARSER */
 
 		/*
@@ -2531,13 +2552,15 @@ regression_main(int argc, char *argv[],
 		header(_("starting postmaster"));
 		snprintf(buf, sizeof(buf),
 				 "\"%s%spostgres\" -D \"%s/data\" -F%s "
-				 "-c \"listen_addresses=%s\" -c \"mysql.listen_addresses=%s\" -c \"mysql.regress_test_default_value=on\" -k \"%s\" "
+				 "-c \"listen_addresses=%s\" -c \"mysql.listen_addresses=%s\" -c \"mysql.protocol_type=%s\" -c \"mysql.regress_test_default_value=on\" -k \"%s\" "
 				 "-p %d -m %d "							/* SQL PARSER */
 				 "> \"%s/log/postmaster.log\" 2>&1",
 				 bindir ? bindir : "",
 				 bindir ? "/" : "",
 				 temp_instance, debug ? " -d 5" : "",
-				 hostname ? hostname : "", hostname ? hostname : "", sockdir ? sockdir : "",
+				 hostname ? hostname : "", hostname ? hostname : (protocol == PROTOCOL_PG ? "" : "127.0.0.1"), 
+				 protocol == PROTOCOL_PG ? "pg" : "mysql",
+				 sockdir ? sockdir : "",
 				 port, mysPort,							/* SQL PARSER */
 				 outputdir);
 		postmaster_pid = spawn_process(buf);

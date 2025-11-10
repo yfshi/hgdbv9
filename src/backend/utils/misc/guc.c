@@ -312,11 +312,21 @@ static bool check_osname(char **newval, void **extra, GucSource source);
 static void assign_osname(const char *newval, void *extra);
 /* End ReqID: SESSION-VIEWS */
 
+/* Begin - ReqID: SRS-MYSQL-PROTOCOL */
+static const char *show_XactIsoLevel(void);
+/* End - ReqID: SRS-MYSQL-PROTOCOL */
+
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DECLARE
 #include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
 #undef IVY_GUC_FUNC_DECLARE
 /* End - ReqID:SRS-MISC-GUC */
+
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+#define IVY_MY_GUC_FUNC_DECLARE
+#include "ivy_mysql_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
+#undef IVY_MY_GUC_FUNC_DECLARE
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 /* Private functions in guc-file.l that need to be called from guc.c */
 static ConfigVariable *ProcessConfigFileInternal(GucContext context,
@@ -417,6 +427,12 @@ static const struct config_enum_entry isolation_level_options[] = {
 	{"repeatable read", XACT_REPEATABLE_READ, false},
 	{"read committed", XACT_READ_COMMITTED, false},
 	{"read uncommitted", XACT_READ_UNCOMMITTED, false},
+	/* Begin - ReqID: SRS-MYSQL-PROTOCOL */
+	{"SERIALIZABLE", XACT_SERIALIZABLE, false},
+	{"REPEATABLE-READ", XACT_REPEATABLE_READ, false},
+	{"READ-COMMITTED", XACT_READ_COMMITTED, false},
+	{"READ-UNCOMMITTED", XACT_READ_UNCOMMITTED, false},
+	/* End - ReqID: SRS-MYSQL-PROTOCOL */
 	{NULL, 0}
 };
 
@@ -589,6 +605,10 @@ static const struct config_enum_entry password_encryption_options[] = {
 	{"scram-sm3", PASSWORD_TYPE_SCRAM_SM3, false}, // ReqID:SRS-SECURITY-IDENTITYAUTH
 #endif
 	{"scram-sha-256", PASSWORD_TYPE_SCRAM_SHA_256, false},
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	{"mysql_native_password", PASSWORD_TYPE_MYS_NATIVE, false},
+	{"caching_sha2_password", PASSWORD_TYPE_MYS_CACHING_SHA2, false},
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 	{NULL, 0, false}
 };
 
@@ -951,23 +971,17 @@ const char *const config_group_names[] =
 	gettext_noop("Customized Options"),
 	/* DEVELOPER_OPTIONS */
 	gettext_noop("Developer Options"),
-	/* COMPAT_ORACLE_OPTIONS */
-	gettext_noop("Compat Oracle Options"), /* BUG#Z0001269 */
-	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	/* COMPAT_MYSQL_OPTIONS */
+	gettext_noop("Compat Oracle Options"),
 	gettext_noop("Compat MySQL Options"),
-	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	/* ENCRYPTION */
 	gettext_noop("Encryption"),
 	/* End - ReqID:SRS-SECURITY-TDE */
 	/* help_config wants this array to be null-terminated */
-	NULL,
 	NULL
 };
 
-
-StaticAssertDecl(lengthof(config_group_names) == (ENCRYPTION + 3),/* BUG#Z0001269, ReqID:SRS-SECURITY-TDE */
+StaticAssertDecl(lengthof(config_group_names) == (ENCRYPTION + 2),
 				 "array length mismatch");
 
 /*
@@ -5188,7 +5202,7 @@ static struct config_enum ConfigureNamesEnum[] =
 		},
 		&XactIsoLevel,
 		XACT_READ_COMMITTED, isolation_level_options,
-		check_XactIsoLevel, NULL, NULL
+		check_XactIsoLevel, NULL, show_XactIsoLevel
 	},
 
 	{
@@ -5478,6 +5492,13 @@ static struct config_enum ConfigureNamesEnum[] =
 	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
 	#undef IVY_GUC_ENUM_PARAMS
 	/* End - ReqID:SRS-MISC-GUC */
+	
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	#define IVY_MY_GUC_ENUM_PARAMS
+	#include "ivy_mysql_guc.c"
+	#undef IVY_MY_GUC_ENUM_PARAMS
+	/* End - Req: SRS-MYSQL-PROTOCOL */
+
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, NULL, NULL, NULL, NULL
@@ -7123,13 +7144,11 @@ ReportGUCOption(struct config_generic *record)
 	if (record->last_reported == NULL ||
 		strcmp(val, record->last_reported) != 0)
 	{
-		StringInfoData msgbuf;
-
-		pq_beginmessage(&msgbuf, 'S');
-		pq_sendstring(&msgbuf, record->name);
-		pq_sendstring(&msgbuf, val);
-		pq_endmessage(&msgbuf);
-
+		/* Begin - Req: SRS-MYSQL-PROTOCOL */
+		if (MyProcPort && MyProcPort->protocol_config->fn_report_param_status)
+			MyProcPort->protocol_config->fn_report_param_status(record->name, val);
+		/* End - Req: SRS-MYSQL-PROTOCOL */
+		
 		/*
 		 * We need a long-lifespan copy.  If strdup() fails due to OOM, we'll
 		 * set last_reported to NULL and thereby possibly make a duplicate
@@ -8910,6 +8929,12 @@ flatten_set_variable_args(const char *name, List *args)
 				break;
 			case T_String:
 				val = strVal(&con->val);
+
+				/* Begin - Req: SRS-MYSQL-PROTOCOL */
+				if (val == NULL)
+					break;
+				/* End - Req: SRS-MYSQL-PROTOCOL */
+					
 				if (typeName != NULL)
 				{
 					/*
@@ -10955,6 +10980,10 @@ _ShowOption(struct config_generic *record, bool use_units)
 
 				if (conf->show_hook)
 					val = conf->show_hook();
+				/* Begin - Req: SRS-MYSQL-PROTOCOL */
+				else if (compatible_db == MYS_PARSER && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+					val = *conf->variable ? "1" : "0";
+				/* End - Req: SRS-MYSQL-PROTOCOL */
 				else
 					val = *conf->variable ? "on" : "off";
 			}
@@ -13575,6 +13604,40 @@ assign_osname(const char *newval, void *extra)
 	pgstat_report_osname(newval);
 }
 /* End ReqID: SESSION-VIEWS */
+
+/* Begin - ReqID: SRS-MYSQL-PROTOCOL */
+static const char *
+show_XactIsoLevel(void)
+{
+	const char *ret = NULL;
+
+	for (const struct config_enum_entry *option = isolation_level_options; option->name; option++)
+	{
+		if (XactIsoLevel == option->val)
+		{
+			ret = option->name;
+			break;	
+		}
+	}
+	
+	if (MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+	{
+		if (strcmp(ret, "read uncommitted") == 0)
+			ret = "READ-UNCOMMITTED";
+
+		if (strcmp(ret, "read committed") == 0)
+			ret = "READ-COMMITTED";
+		
+		if (strcmp(ret, "repeatable read") == 0)
+			ret = "REPEATABLE-READ";
+		
+		if (strcmp(ret, "serializable") == 0)
+			ret = "SERIALIZABLE";
+	}
+	
+	return ret;
+}
+/* End - ReqID: SRS-MYSQL-PROTOCOL */
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DEFINE

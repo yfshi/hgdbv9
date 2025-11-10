@@ -64,9 +64,10 @@ typedef struct
 #endif							/* ENABLE_SSPI */
 
 #include "datatype/timestamp.h"
+#include "lib/stringinfo.h"
 #include "libpq/hba.h"
 #include "libpq/pqcomm.h"
-
+#include "tcop/dest.h"
 
 typedef enum CAC_state
 {
@@ -98,6 +99,25 @@ typedef struct
 #endif
 } pg_gssinfo;
 #endif
+
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+typedef struct ProtocolExtensionConfig {
+	NodeTag		type;
+	void    (*fn_init)(struct ProtocolExtensionConfig *);
+    int     (*fn_start)(struct Port *port);
+    void    (*fn_authenticate)(struct Port *port);
+	void    (*fn_authenticate_finish)(struct Port *port);
+    void    (*fn_send_message)(ErrorData *edata);
+    void    (*fn_send_cancel_key)(int32 pid, int32 key);
+    void    (*fn_comm_reset)(void);
+    void    (*fn_send_ready_for_query)(CommandDest dest);
+    int	    (*fn_read_command)(StringInfo inBuf);
+    void    (*fn_end_command)(const QueryCompletion *qc, CommandDest dest, bool force_undecorated_output);
+    DestReceiver *  (*fn_printtup_create_DR)(CommandDest dest);
+    int     (*fn_process_command)(StringInfo inBuf);
+    void    (*fn_report_param_status)(const char *name, char *val);
+} ProtocolExtensionConfig;
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 /*
  * This is used by the postmaster in its communication with frontends.  It
@@ -233,19 +253,9 @@ typedef struct Port
 	X509	   *peer;
 #endif
 
-	/* Begin - ReqID:LISTEN-MULTI-PORT */
-	/*
-	 * Connection Mode.
-	 *
-	 * Use single-byte characters to identify the mode information of the 
-	 * current connection. The valid characters are as follows:
-	 *	'p' =  PostgreSQL mode, 
-	 *	'o' =  Oracle mode,
-	 *	'm' =  Mysql mode,
-	 *	'u' = Unkonw mode, shouldn't happen.
-	 */
-	char	connmode;
-	/* End - ReqID:LISTEN-MULTI-PORT */
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	ProtocolExtensionConfig *protocol_config;	/* wire protocol functions */
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 } Port;
 
 #ifdef USE_SSL

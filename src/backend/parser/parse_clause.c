@@ -51,6 +51,7 @@
 #include "parser/parse_type.h"
 #include "parser/parser.h"
 #include "parser/parsetree.h"
+#include "parser/scansup.h"
 #include "rewrite/rewriteManip.h"
 #include "utils/builtins.h"
 #include "utils/catcache.h"
@@ -1435,22 +1436,24 @@ transformRelInfromOrusingcluase(List *relist, RangeVar *rv, ColumnRef **colref)
 /* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
 /* Begin - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
-bool
+static bool
 IsMysInformationSchemaView(char *view_name)
 {
 	static char *mys_views[] = {"tables", "table_privileges", "partitions", "column_privileges", "columns", "views",
-							   "key_column_usage", "routines", "triggers", "table_constraints", "schemata",
-							   "schema_privileges", "tablespaces", "statistics", "collations", "character_sets",
-							   "events", "processlist"};
+								"key_column_usage", "routines", "triggers", "table_constraints", "schemata",
+								"schema_privileges", "tablespaces", "statistics", "collations", "character_sets",
+								"plugins", "engines", "events", "processlist"};
 	size_t	count = sizeof(mys_views) / sizeof(mys_views[0]);
-	int		i = 0;
 
 	if (!view_name)
 		return false;
 
-	for (i = 0; i < count; i++)
+	for (int i = 0; i < count; i++)
 	{
-		if (pg_strcasecmp(view_name, mys_views[i]) == 0)
+		int len1 = strlen(view_name),
+			len2 = strlen(mys_views[i]);
+
+		if (len1 == len2 && pg_strncasecmp(view_name, mys_views[i], len1) == 0)
 			return true;
 	}
 
@@ -1512,18 +1515,23 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		 * convert views from the compatible information_schema
 		 * schema to ivymy schema.
 		 */
-		if (rv->schemaname == NULL && compatible_db == MYS_PARSER)
+		if (compatible_db == MYS_PARSER && enable_mysql_information_schema)
 		{
-			LOCAL_FCINFO(fcinfo, 0);
-			char	*nspname = NameStr(*(DatumGetName(current_schema(fcinfo))));
-			if (nspname && memcmp(nspname, "information_schema", 18) == 0)
+			char	*nspname = rv->schemaname;
+
+			if (nspname == NULL)
+			{	
+				Name name = DatumGetName(DirectFunctionCall1(current_schema, Int32GetDatum(0)));
+				nspname = name->data;
+			}
+			
+			// When in SPI context, nspname may be null.
+			if (nspname && pg_strncasecmp(nspname, "information_schema", 18) == 0)
 			{
 				if (IsMysInformationSchemaView(rv->relname))
 				{
-					if (enable_mysql_information_schema)
-						rv->schemaname = pstrdup("ivymy");
-					else
-						rv->schemaname = pstrdup("information_schema");
+					rv->schemaname = pstrdup("mys_information_schema");
+					rv->relname = downcase_identifier(rv->relname, strlen(rv->relname), false, false);
 				}
 			}
 		}

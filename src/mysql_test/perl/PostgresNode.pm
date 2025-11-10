@@ -541,12 +541,12 @@ sub init
 	if ($use_tcp)
 	{
 		print $conf "unix_socket_directories = ''\n";
-		print $conf "listen_addresses = '$host'\n";
+		print $conf "mysql.listen_addresses = '$host'\n";
 	}
 	else
 	{
 		print $conf "unix_socket_directories = '$host'\n";
-		print $conf "listen_addresses = ''\n";
+		print $conf "mysql.listen_addresses = ''\n";
 	}
 	close $conf;
 

@@ -1,4 +1,4 @@
-set use_mysql_do = true; 
+set mysql.use_mysql_do = true; 
 do 1;
 do 1+1;
 do 1+1,1-1;
@@ -66,4 +66,4 @@ select testf1();
 
 do testf1();
 drop function testf1();
-set use_mysql_do = false; 
+set mysql.use_mysql_do = false; 

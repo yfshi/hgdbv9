@@ -32,8 +32,12 @@ typedef enum PasswordType
 	PASSWORD_TYPE_SCRAM_SHA_256,
 #ifdef USE_GMSSL
 	PASSWORD_TYPE_SM3, //ReqID:SRS-SECURITY-IDENTITYAUTH
-	PASSWORD_TYPE_SCRAM_SM3 // ReqID:SRS-SECURITY-IDENTITYAUTH
+	PASSWORD_TYPE_SCRAM_SM3, // ReqID:SRS-SECURITY-IDENTITYAUTH
 #endif
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	PASSWORD_TYPE_MYS_NATIVE,       // mysql_native_password
+	PASSWORD_TYPE_MYS_CACHING_SHA2  // caching_sha2_password
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 } PasswordType;
 
 extern PasswordType get_password_type(const char *shadow_pass);

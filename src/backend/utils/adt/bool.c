@@ -17,11 +17,12 @@
 
 #include <ctype.h>
 
+#include "libpq/libpq-be.h"
 #include "libpq/pqformat.h"
+#include "miscadmin.h"
 #include "utils/builtins.h"
-#include "utils/ora_compatible.h"
 #include "utils/guc.h"
-
+#include "utils/ora_compatible.h"
 
 /*
  * Try to interpret value as boolean value.  Valid values are: true,
@@ -177,7 +178,12 @@ boolout(PG_FUNCTION_ARGS)
 	bool		b = PG_GETARG_BOOL(0);
 	char	   *result = (char *) palloc(2);
 
-	result[0] = (b) ? 't' : 'f';
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	if (compatible_db == MYS_PARSER && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+		result[0] = (b) ? '1' : '0';
+	/* End - Req: SRS-MYSQL-PROTOCOL */
+	else
+		result[0] = (b) ? 't' : 'f';
 	result[1] = '\0';
 	PG_RETURN_CSTRING(result);
 }

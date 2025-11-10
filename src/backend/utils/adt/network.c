@@ -29,6 +29,7 @@
 #include "utils/guc.h"
 #include "utils/inet.h"
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"
 #include "utils/sortsupport.h"
 
 /* Begin - ReqID:SRS-SQL-DBLINK */
@@ -2157,21 +2158,21 @@ clean_ipv6_addr(int addr_family, char *addr)
 Datum
 pg_get_connection_mode(PG_FUNCTION_ARGS)
 {
-	Port	   *port = MyProcPort;
-
-	if (port == NULL)
+	if (MyProcPort == NULL)
 		PG_RETURN_NULL();
 
-	if (port->connmode == 'p')
+	if (compatible_db == PG_PARSER)
 		PG_RETURN_DATUM(CStringGetTextDatum("PostgreSQL"));
-	else if (port->connmode == 'o')
+	
+	if (compatible_db == ORA_PARSER)
 		PG_RETURN_DATUM(CStringGetTextDatum("Oracle"));
+	
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	else if (port->connmode == 'm')
+	if (compatible_db == MYS_PARSER)
 		PG_RETURN_DATUM(CStringGetTextDatum("MySQL"));
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-	else
-		PG_RETURN_DATUM(CStringGetTextDatum("Unknown"));
+	
+	PG_RETURN_DATUM(CStringGetTextDatum("Unknown"));
 }
 /* End - ReqID:LISTEN-MULTI-PORT */
 

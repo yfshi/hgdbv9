@@ -18,7 +18,7 @@
 #include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
-#include "../include/mysset.h"
+#include "../include/set.h"
 #include "mb/pg_wchar.h"
 
 

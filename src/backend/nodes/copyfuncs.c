@@ -5068,6 +5068,7 @@ _copyCreateSchemaStmt(const CreateSchemaStmt *from)
 	COPY_NODE_FIELD(authrole);
 	COPY_NODE_FIELD(schemaElts);
 	COPY_SCALAR_FIELD(if_not_exists);
+	COPY_NODE_FIELD(option);
 
 	return newnode;
 }
@@ -5635,6 +5636,7 @@ _copyMysDoStmt(const MysDoStmt *from)
 	MysDoStmt *newnode = makeNode(MysDoStmt);
 
 	COPY_NODE_FIELD(stmt);
+	COPY_SCALAR_FIELD(purpose);
 
 	return newnode;
 }

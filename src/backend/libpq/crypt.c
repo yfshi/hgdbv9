@@ -121,6 +121,18 @@ get_password_type(const char *shadow_pass)
 #endif
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	if (strncmp(shadow_pass, "mysql_native_password", 21) == 0)
+	{
+		return PASSWORD_TYPE_MYS_NATIVE;
+	}
+
+    if (strncmp(shadow_pass, "caching_sha2_password", 21) == 0)
+    {
+		return PASSWORD_TYPE_MYS_CACHING_SHA2;
+	}
+	/* End - Req: SRS-MYSQL-PROTOCOL */
+
 	return PASSWORD_TYPE_PLAINTEXT;
 }
 
@@ -173,6 +185,16 @@ encrypt_password(PasswordType target_type, const char *role,
 
 		case PASSWORD_TYPE_PLAINTEXT:
 			elog(ERROR, "cannot encrypt password with 'plaintext'");
+			return NULL; /* make compile quiet */
+			
+		/* Begin - Req: SRS-MYSQL-PROTOCOL */
+		case PASSWORD_TYPE_MYS_NATIVE:
+			elog(ERROR, "cannot encrypt password with 'mysql_native_password'");
+			return NULL; /* make compile quiet */
+		case PASSWORD_TYPE_MYS_CACHING_SHA2:
+			elog(ERROR, "cannot encrypt password with 'caching_sha2_password'");
+			return NULL; /* make compile quiet */
+		/* End - Req: SRS-MYSQL-PROTOCOL */
 	}
 
 	/*
@@ -488,7 +510,10 @@ plain_crypt_verify(const char *role, const char *shadow_pass,
 			break;
 #endif
 		case PASSWORD_TYPE_PLAINTEXT:
-
+		/* Begin - Req: SRS-MYSQL-PROTOCOL */
+		case PASSWORD_TYPE_MYS_NATIVE:
+		case PASSWORD_TYPE_MYS_CACHING_SHA2:
+		/* End - Req: SRS-MYSQL-PROTOCOL */
 			/*
 			 * We never store passwords in plaintext, so this shouldn't
 			 * happen.
