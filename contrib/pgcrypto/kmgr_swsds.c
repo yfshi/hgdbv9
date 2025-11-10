@@ -452,7 +452,7 @@ hsm_show_keys(PG_FUNCTION_ARGS)
                     keylen = hash_entry->keyCxt.sm2Keypair.pucPublicKey.bits;
             }
 
-            memset(result, 0, NUM_HSM_SHOW_KEYS_ATTS);
+            memset(result, 0, NUM_HSM_SHOW_KEYS_ATTS * sizeof(Datum));
             memset(nulls, false, NUM_HSM_SHOW_KEYS_ATTS);
 
             result[0] = Int32GetDatum(hash_entry->id);
