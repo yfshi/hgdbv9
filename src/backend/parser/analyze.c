@@ -188,6 +188,14 @@ static Query *transformSelectIntoUservarStmt(ParseState *pstate, SelectIntoUserV
 /* End - ReqID:SRS-MYSQL-SET */
 static List *transformSorbyfromGroupclause(List **grouplist);		/* ReqID:SRS-MYSQL-SELECT */
 static Node *makeAndExpr(Node *lexpr, Node *rexpr, int location);	/* ReqID:SRS-MYSQL-SELECT */
+/* Begin - BUG#Z5973 */
+static void mys_show_index_check_tb(SelectStmt *stmt);
+static SelectStmt * mys_show_commmand(ParseState *pstate, SelectStmt *stmt);
+static char *mys_show_get_spacename(SelectStmt *stmt);
+/* End - BUG#Z5973 */
+/* Begin - BUG#Z5946 */
+static SelectStmt *mys_show_create_table_to_show_create_view(SelectStmt *stmt);
+/* End - BUG#Z5946 */
 
 
 /*
@@ -2437,6 +2445,7 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	Query	   *qry = makeNode(Query);
 	Node	   *qual;
 	ListCell   *l;
+	SelectStmt *newstmt = NULL;	/* BUG#Z5946 */
 
 	qry->commandType = CMD_SELECT;
 
@@ -2482,6 +2491,19 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 			elog(ERROR, "ORDER SIBLINGS BY clause not allowed here");
 	}
 	/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+	/* Begin - BUG#Z5973
+	 * check mysql show command information.
+	 */
+	if (compatible_db == MYS_PARSER && stmt->mysshowtype != SHOW_UNKNOW)
+	{
+		newstmt = mys_show_commmand(pstate, stmt);
+		if (newstmt != NULL)
+		{
+			stmt = newstmt;
+		}
+	}
+	/* End - BUG#Z5973 */
 
 	/* Complain if we get called from someplace where INTO is not allowed */
 	if (stmt->intoClause)
@@ -7230,3 +7252,661 @@ makeAndExpr(Node *lexpr, Node *rexpr, int location)
 			false, location);
 }
 /* End - ReqID:SRS-MYSQL-SELECT */
+
+/* Begin - BUG#Z5958
+ * mys_show_columns_check_tb
+ *
+ * check show columns, if table is not exits, ereport an error.
+ */
+static void
+mys_show_columns_check_tb(SelectStmt *stmt)
+{
+	char	   *namespace = NULL;
+	char	   *relname = NULL;
+
+	if (list_length(stmt->fromClause) == 1)
+	{
+		/* Get the schema and relname from s subquery */
+		if (IsA(linitial(stmt->fromClause), RangeSubselect))
+		{
+			RangeSubselect *rangesub = (RangeSubselect *)linitial(stmt->fromClause);
+
+			if (rangesub->subquery != NULL && nodeTag(rangesub->subquery) == T_SelectStmt)
+			{
+				SelectStmt *selstmt = (SelectStmt *)rangesub->subquery;
+
+				if (selstmt->whereClause != NULL && nodeTag(selstmt->whereClause) == T_BoolExpr)
+				{
+					BoolExpr *bexpr = (BoolExpr *)selstmt->whereClause;
+
+					if (list_length(bexpr->args) == 2)
+					{
+						/* Get the specified namespace */
+						if (IsA(linitial(bexpr->args), A_Expr))
+						{
+							A_Expr *expr = (A_Expr *)linitial(bexpr->args);
+
+							if (expr->rexpr != NULL && nodeTag(expr->rexpr) == T_A_Const)
+							{
+								A_Const *aconst = (A_Const *)expr->rexpr;
+
+								if (aconst->val.type == T_String)
+								{
+									namespace = aconst->val.val.str;
+								}
+							}
+						}
+
+						/* Get the specified relname */
+						if (IsA(llast(bexpr->args), A_Expr))
+						{
+							A_Expr *expr = (A_Expr *)llast(bexpr->args);
+
+							if (expr->rexpr != NULL && nodeTag(expr->rexpr) == T_A_Const)
+							{
+								A_Const *aconst = (A_Const *)expr->rexpr;
+
+								if (aconst->val.type == T_String)
+								{
+									relname = aconst->val.val.str;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/* get current schema */
+	if (namespace == NULL)
+	{
+		LOCAL_FCINFO(fcinfo, 0);
+		namespace = NameStr(*(DatumGetName(current_schema(fcinfo))));
+	}
+
+	/* check show columns, if table
+	 * is not exits, ereport an error.
+	 */
+	if (relname != NULL)
+	{
+		Oid relid = InvalidOid;
+		Oid namespaceId = InvalidOid;
+
+		namespaceId = LookupExplicitNamespace(namespace, true);
+		relid = GetSysCacheOid2(RELNAMENSP, Anum_pg_class_oid,
+						   PointerGetDatum(relname),
+						   ObjectIdGetDatum(namespaceId));
+
+		if (!OidIsValid(relid))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_TABLE),
+					 errmsg("Table \'%s.%s\' doesn't exist",
+							namespace, relname)));
+		}
+	}
+}
+/* End - BUG#Z5958 */
+
+/* Begin - BUG#Z5968
+ * mys_show_get_spacename
+ *
+ * mysql show command get the spacename from SelectStmt.
+ */
+static char *
+mys_show_get_spacename(SelectStmt *stmt)
+{
+	char *namestr = NULL;
+
+	if (list_length(stmt->fromClause) == 1)
+	{
+		if (IsA(linitial(stmt->fromClause), RangeSubselect))
+		{
+			RangeSubselect *rangesub = (RangeSubselect *)linitial(stmt->fromClause);
+
+			if (rangesub->subquery != NULL && nodeTag(rangesub->subquery) == T_SelectStmt)
+			{
+				SelectStmt *selstmt = (SelectStmt *)rangesub->subquery;
+
+				if (selstmt->whereClause != NULL && nodeTag(selstmt->whereClause) == T_A_Expr)
+				{
+					A_Expr *expr = (A_Expr *)selstmt->whereClause;
+
+					if (expr->rexpr != NULL && nodeTag(expr->rexpr) == T_A_Const)
+					{
+						A_Const *aconst = (A_Const *)expr->rexpr;
+
+						if (aconst->val.type == T_String)
+						{
+							namestr = aconst->val.val.str;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return namestr;
+}
+
+/* mys_show_table_status_check_db
+ *
+ * check show table status, if database is not exits, ereport an error.
+ */
+static void
+mys_show_table_status_check_db(SelectStmt *stmt)
+{
+	char	   *namespace = NULL;
+
+	/* Get the specified namespace */
+	namespace = mys_show_get_spacename(stmt);
+
+	/* if the namespace is null,
+	 * Get the current namespace
+	 */
+	if (namespace == NULL)
+	{
+		LOCAL_FCINFO(fcinfo, 0);
+		namespace = NameStr(*(DatumGetName(current_schema(fcinfo))));
+	}
+
+	/* if the namespace is null,
+	 * ereport an error.
+	 */
+	if (namespace != NULL)
+	{
+		Oid namespaceId = InvalidOid;
+
+		namespaceId = LookupExplicitNamespace(namespace, true);
+		if (!OidIsValid(namespaceId))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_TABLE),
+					 errmsg("Unknow database \'%s\' ",
+							namespace)));
+		}
+	}
+}
+/* End - BUG#Z5968*/
+
+/* Begin - BUG#Z5973
+ * mys_show_index_check_tb
+ *
+ * check show index, if table is not exits, ereport an error.
+ */
+static void
+mys_show_index_check_tb(SelectStmt *stmt)
+{
+	char	   *namespace = NULL;
+	char	   *relname = NULL;
+
+	/* Get the specified namespace */
+	namespace = mys_show_get_spacename(stmt);
+
+	/* if the namespace is null,
+	 * Get the current namespace
+	 */
+	if (namespace == NULL)
+	{
+		LOCAL_FCINFO(fcinfo, 0);
+		namespace = NameStr(*(DatumGetName(current_schema(fcinfo))));
+	}
+
+	if (stmt->whereClause != NULL && nodeTag(stmt->whereClause) == T_A_Expr)
+	{
+		A_Expr *expr = (A_Expr *)stmt->whereClause;
+
+		if (expr->rexpr != NULL && nodeTag(expr->rexpr) == T_A_Const)
+		{
+			A_Const *aconst = (A_Const *)expr->rexpr;
+
+			if (aconst->val.type == T_String)
+			{
+				relname = aconst->val.val.str;
+			}
+		}
+	}
+
+	/* if the table is not exists,
+	 * ereport an error.
+	 */
+	if (relname != NULL)
+	{
+		Oid relid = InvalidOid;
+		Oid namespaceId = InvalidOid;
+
+		namespaceId = LookupExplicitNamespace(namespace, true);
+		relid = GetSysCacheOid2(RELNAMENSP, Anum_pg_class_oid,
+						   PointerGetDatum(relname),
+						   ObjectIdGetDatum(namespaceId));
+
+		if (!OidIsValid(relid))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_TABLE),
+					 errmsg("Table \'%s.%s\' doesn't exist",
+							namespace, relname)));
+		}
+	}
+}
+
+/* Begin - BUG#Z5946
+ * makeColumnRef
+ *
+ * bulid a ColumnRef node.
+ */
+static Node *
+makeColumnRef(char *name)
+{
+	ColumnRef *ColNode = NULL;
+	if (name == NULL)
+		return NULL;
+
+	ColNode = makeNode(ColumnRef);
+	ColNode->fields = list_make1(makeString(name));
+	ColNode->location = -1;
+
+	return (Node *)ColNode;
+}
+
+/* makeShowResTarget
+ *
+ * Construct a ResTarget Node.
+ */
+ResTarget *
+makeShowResTarget(char *ailasstr, Node *columnref, int location)
+{
+	ResTarget *rt = makeNode(ResTarget);
+
+	rt->name = ailasstr;
+	rt->val = columnref;
+	rt->indirection = NIL;
+	rt->location = location;
+
+	return rt;
+}
+
+/* makeShowRangeSubselect
+ *
+ * Construct a RangeSubselect Node.
+ */
+RangeSubselect *
+makeShowRangeSubselect(Node *subquery, char *alias)
+{
+	RangeSubselect *rss = makeNode(RangeSubselect);
+
+	rss->subquery = subquery;
+	rss->alias = makeAlias(alias, NIL);
+
+	return rss;
+}
+
+/* makeShowAllColumnRef
+ *
+ * Construct a ColumnRef Node.
+ */
+ColumnRef *
+makeShowAllColumnRef(void)
+{
+	ColumnRef *cref = makeNode(ColumnRef);
+
+	cref->fields = list_make1(makeNode(A_Star));
+	cref->location = -1;
+
+	return cref;
+}
+
+/* makeShowSelectStmt
+ *
+ * Construct a SelectStmt Node.
+ */
+SelectStmt *
+makeShowSelectStmt(List *targetList, List *fromClause, Node *whereClause)
+{
+	SelectStmt	*outer = makeNode(SelectStmt);
+
+	outer->targetList = targetList;  /* SELECT * */
+	outer->fromClause = fromClause; /* FROM (subq) */
+	outer->whereClause = whereClause;  /* [LIKE 'pattern' | WHERE expr] */
+
+	return outer;
+}
+
+/* makeShowViewStmt
+ *
+ * Construct the following SQL:
+ *
+ * SELECT *
+ * FROM (
+ *    SELECT
+ *        v.TABLE_NAME AS "View",
+ *        CASE
+ *            WHEN c.relpersistence = 't'
+ *                THEN concat('create temp view as ', v.VIEW_DEFINITION)
+ *            ELSE
+ *                concat('create view as ', v.VIEW_DEFINITION)
+ *        END AS "Create View",
+ *        v.CHARACTER_SET_CLIENT AS character_set_client,
+ *        v.COLLATION_CONNECTION AS collation_connection
+ *    FROM mys_information_schema.views v
+ *    JOIN pg_catalog.pg_namespace n
+ *        ON v.TABLE_SCHEMA = n.nspname
+ *    JOIN pg_catalog.pg_class c
+ *        ON v.TABLE_NAME = c.relname
+ *       AND c.relnamespace = n.oid
+ *    WHERE v.TABLE_SCHEMA = COALESCE('<schema_name>', pg_catalog.current_schema())
+ * ) subq
+ * WHERE "View" = '<view_name>';
+ */
+SelectStmt *
+makeShowViewStmt(RangeVar *view_name)
+{
+	#define		VIEW_COLUMN_NUMS 4
+	char		colnames[VIEW_COLUMN_NUMS][32]
+						= {"TABLE_NAME", "VIEW_DEFINITION", "CHARACTER_SET_CLIENT", "COLLATION_CONNECTION"};
+	char		ailas[VIEW_COLUMN_NUMS][32]
+						= {"View", "Create View", "character_set_client", "collation_connection"};
+
+	int			i = 0;
+	SelectStmt	*outer;
+	SelectStmt	*inner = makeNode(SelectStmt);
+	ResTarget	*rt;
+	Node		*col_db, *col_tb, *whereClause = NULL;
+	BoolExpr	*and_expr;
+	JoinExpr	*join1, *join2;
+	A_Expr		*lexpr, *schema_cond, *table_cond, *namespace_cond;
+	ColumnRef	*cref, *namespace_oid_ref;
+	RangeSubselect	*rss;
+
+	/* Build target column list */
+	for (i = 0; i < VIEW_COLUMN_NUMS; i++)
+	{
+		/* Begin - #Z5972 #Z5976 */
+		rt = makeNode(ResTarget);
+		rt->name = pstrdup(ailas[i]);
+
+		if (i == 1) /* "Create View" column needs special processing */
+		{
+			FuncCall *then_func, *else_func;
+			/* Use CASE WHEN expression to determine prefix based on relpersistence */
+			CaseExpr *caseExpr = makeNode(CaseExpr);
+			CaseWhen *when = makeNode(CaseWhen);
+
+			/* WHEN pc.relpersistence = 't' */
+			when->expr = (Expr *) makeSimpleA_Expr(AEXPR_OP, "=",
+												   makeColumnRef("relpersistence"),
+												   ivy_makeStringConst("t", -1),
+												   -1);
+			/* THEN concat('create temp view ', TABLE_NAME, ' as ', v.VIEW_DEFINITION) */
+			then_func = makeFuncCall(list_make1(makeString("concat")),
+											   list_make4(ivy_makeStringConst("create temp view ", -1),
+														  makeColumnRef("TABLE_NAME"),
+														  ivy_makeStringConst(" as ", -1),
+														  makeColumnRef("VIEW_DEFINITION")),
+											   COERCE_EXPLICIT_CALL,
+											   -1);
+
+			when->result = (Expr *)then_func;
+
+			caseExpr->args = list_make1(when);
+			/* ELSE concat('create view ', TABLE_NAME, ' as ', v.VIEW_DEFINITION) */
+			else_func = makeFuncCall(list_make1(makeString("concat")),
+											   list_make4(ivy_makeStringConst("create view ", -1),
+														  makeColumnRef("TABLE_NAME"),
+														  ivy_makeStringConst(" as ", -1),
+														  makeColumnRef("VIEW_DEFINITION")),
+											   COERCE_EXPLICIT_CALL,
+											   -1);
+			caseExpr->defresult = (Expr *)else_func;
+			caseExpr->location = -1;
+
+			rt->val = (Node *)caseExpr;
+		}
+		else
+		{
+			rt->val = (Node*)makeColumnRef(pstrdup(colnames[i]));
+		}
+
+		rt->indirection = NIL;
+		rt->location = -1;
+		/* End - #Z5972 #Z5976 */
+		inner->targetList = lappend(inner->targetList, rt);
+	}
+
+	/* Begin - #Z5972 #Z5976 */
+
+	/* Build FROM clause - directly join three tables */
+	join1 = makeNode(JoinExpr);
+	join1->jointype = JOIN_INNER;
+
+	/* Left table: mys_information_schema.views */
+	join1->larg = (Node *)makeRangeVar("mys_information_schema", "views", -1);
+
+	/* Right table: pg_namespace */
+	join1->rarg = (Node *)makeRangeVar("pg_catalog", "pg_namespace", -1);
+
+	/* Join condition: TABLE_SCHEMA = nspname */
+	schema_cond = makeSimpleA_Expr(AEXPR_OP, "=",
+										  makeColumnRef("TABLE_SCHEMA"),
+										  makeColumnRef("nspname"),
+										  -1);
+
+	join1->quals = (Node *)schema_cond;
+
+	/* Join pg_class */
+	join2 = makeNode(JoinExpr);
+	join2->jointype = JOIN_INNER;
+	join2->larg = (Node *)join1;
+	join2->rarg = (Node *)makeRangeVar("pg_catalog", "pg_class", -1);
+
+	/* Join condition: TABLE_NAME = relname AND relnamespace = pg_namespace.oid */
+	table_cond = makeSimpleA_Expr(AEXPR_OP, "=",
+										 makeColumnRef("TABLE_NAME"),
+										 makeColumnRef("relname"),
+										 -1);
+
+	/* Explicitly specify pg_namespace.oid */
+	namespace_oid_ref = makeNode(ColumnRef);
+	namespace_oid_ref->fields = list_make2(makeString("pg_namespace"), makeString("oid"));
+	namespace_oid_ref->location = -1;
+
+	namespace_cond = makeSimpleA_Expr(AEXPR_OP, "=",
+											 makeColumnRef("relnamespace"),
+											 (Node *)namespace_oid_ref,
+											 -1);
+
+	and_expr = makeNode(BoolExpr);
+	and_expr->boolop = AND_EXPR;
+	and_expr->args = list_make2(table_cond, namespace_cond);
+	and_expr->location = -1;
+
+	join2->quals = (Node *)and_expr;
+
+	inner->fromClause = list_make1(join2);
+
+	/* End - #Z5972 #Z5976 */
+
+	/*
+	 * make subselect whereClause
+	 */
+	col_db = makeColumnRef("table_schema");
+	if (view_name && view_name->schemaname) /* schema.view_name */
+	{
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
+													   col_db,
+													   ivy_makeStringConst(view_name->schemaname, -1),
+													   -1);
+	}
+	else /* current schema */
+	{
+		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
+											NIL,
+											COERCE_EXPLICIT_CALL,
+											-1);
+		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
+													   col_db,
+													   (Node *)funcCall,
+													   -1);
+	}
+
+	/* make outerselect */
+	rss = makeShowRangeSubselect((Node *)inner, "subq");
+	cref = makeShowAllColumnRef();
+	rt = makeShowResTarget(NULL, (Node *) cref, -1);
+
+	/*
+	 * make outerselect whereClause
+	 */
+	if (view_name && view_name->relname)
+	{
+		col_tb = makeColumnRef("View");
+		lexpr = makeSimpleA_Expr(AEXPR_OP, "=", col_tb, ivy_makeStringConst(view_name->relname, -1), -1);
+		whereClause = (Node *)lexpr;
+	}
+
+	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), whereClause);
+
+	return outer;
+}
+
+/* mys_show_create_table_to_view
+ *
+ * check show create table to view, if the name is a view.
+ */
+static SelectStmt *
+mys_show_create_table_to_show_create_view(SelectStmt *stmt)
+{
+	char	   *relname = NULL;
+	char	   *namespace = NULL;
+
+	/* Get the specified relname */
+	if (list_length(stmt->targetList) == 2)
+	{
+		if (IsA(linitial(stmt->targetList), ResTarget))
+		{
+			ResTarget *restag = (ResTarget *)linitial(stmt->targetList);
+
+			if (restag->val != NULL && nodeTag(restag->val) == T_A_Const)
+			{
+				A_Const *aconst = (A_Const *)restag->val;
+
+				if (aconst->val.type == T_String)
+				{
+					relname = aconst->val.val.str;
+				}
+			}
+		}
+
+		/* if the relname is a view, we need to
+		 * change the SelectStmt to a new SelectStmt node,
+		 * query the anthor view, get the result.
+		 */
+		if (relname != NULL && IsA(llast(stmt->targetList), ResTarget))
+		{
+			ResTarget *restag = (ResTarget *)llast(stmt->targetList);
+
+			if (restag->val != NULL && nodeTag(restag->val) == T_FuncCall)
+			{
+				FuncCall *fcall = (FuncCall *)restag->val;
+
+				if (IsA(llast(fcall->args), A_Const))
+				{
+					A_Const *aconst = (A_Const *)llast(fcall->args);
+
+					if (aconst->val.type == T_Integer)
+					{
+						Oid reloid = aconst->val.val.ival;
+
+						if (OidIsValid(reloid))
+						{
+							HeapTuple	tuple;
+
+							/* Find the relation type, if the type is 'v',
+							 * need to buiding a new SelectStmt.
+							 */
+							tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(reloid));
+							if (HeapTupleIsValid(tuple))
+							{
+								Form_pg_class pg_class_tuple;
+
+								pg_class_tuple = (Form_pg_class) GETSTRUCT(tuple);
+								if (pg_class_tuple->relkind == 'v')
+								{
+									RangeVar	   *rvar;
+									SelectStmt	   *newstmt;
+
+									/* Start buiding a new SelectStmt */
+									namespace = get_namespace_name(pg_class_tuple->relnamespace);
+									rvar = makeRangeVar(namespace, relname, -1);
+									newstmt = makeShowViewStmt(rvar);
+									ReleaseSysCache(tuple);
+
+									return newstmt;
+								}
+								ReleaseSysCache(tuple);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return NULL;
+}
+/* End - BUG#Z5946 */
+
+/* mys_show_commmand
+ *
+ * check show command information.
+ */
+static SelectStmt *
+mys_show_commmand(ParseState *pstate, SelectStmt *stmt)
+{
+	if (compatible_db == MYS_PARSER && stmt != NULL && stmt->mysshowtype != SHOW_UNKNOW)
+	{
+		switch (stmt->mysshowtype)
+		{
+			case SHOW_INDEX:
+				/* check show index, if table is
+				 * not exits, ereport an error.
+				 */
+				mys_show_index_check_tb(stmt);
+				break;
+
+			/* Begin - BUG#Z5958 */
+			case SHOW_COLUMNS:
+				/* check show columns, if table
+				 * is not exits, ereport an error.
+				 */
+				mys_show_columns_check_tb(stmt);
+				break;
+			/* End - BUG#Z5958 */
+
+			/* Begin - BUG#Z5968 */
+			case SHOW_TABLES_STATUS:
+				/* check show table status, if database
+				 * is not exits, ereport an error.
+				 */
+				mys_show_table_status_check_db(stmt);
+				break;
+			/* End - BUG#Z5968 */
+
+			/* Begin - BUG#Z5946 */
+			case SHOW_CREATE_TABLE:
+				/* check show create table to view,
+				 * if the name is a view, return a
+				 * anthor SelectStmt.
+				 */
+				return mys_show_create_table_to_show_create_view(stmt);
+			/* End - BUG#Z5946 */
+
+			default:
+				break;
+		}
+	}
+
+	return NULL;
+}
+/* End - BUG#Z5973 */

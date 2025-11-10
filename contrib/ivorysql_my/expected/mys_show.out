@@ -65,7 +65,7 @@ create database aa;
 show create database aa;
  database |    Create Database     
 ----------+------------------------
- aa       | CREATE DATABASE  `aa` 
+ aa       | CREATE DATABASE  "aa" 
 (1 row)
 
 set sql_quote_show_create = false;
@@ -100,25 +100,25 @@ WARNING:   COLLATE or CHARACTER SET nonsupport : 'UTF8'
 show create database aa;
  database |                       Create Database                        
 ----------+--------------------------------------------------------------
- aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+ aa       | CREATE DATABASE  "aa" /*!40100 DEFAULT CHARACTER SET UTF8 */
 (1 row)
 
 show create database if not exists aa;
  database |                                    Create Database                                    
 ----------+---------------------------------------------------------------------------------------
- aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  "aa" /*!40100 DEFAULT CHARACTER SET UTF8 */
 (1 row)
 
 show create schema aa;
  database |                       Create Database                        
 ----------+--------------------------------------------------------------
- aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+ aa       | CREATE DATABASE  "aa" /*!40100 DEFAULT CHARACTER SET UTF8 */
 (1 row)
 
 show create schema if not exists aa;
  database |                                    Create Database                                    
 ----------+---------------------------------------------------------------------------------------
- aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  "aa" /*!40100 DEFAULT CHARACTER SET UTF8 */
 (1 row)
 
 drop schema aa;
@@ -127,25 +127,25 @@ WARNING:   COLLATE or CHARACTER SET nonsupport : 'UTF8'
 show create database aa;
  database |                       Create Database                        
 ----------+--------------------------------------------------------------
- aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+ aa       | CREATE DATABASE  "aa" /*!40100 DEFAULT CHARACTER SET UTF8 */
 (1 row)
 
 show create database if not exists aa;
  database |                                    Create Database                                    
 ----------+---------------------------------------------------------------------------------------
- aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  "aa" /*!40100 DEFAULT CHARACTER SET UTF8 */
 (1 row)
 
 show create schema aa;
  database |                       Create Database                        
 ----------+--------------------------------------------------------------
- aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+ aa       | CREATE DATABASE  "aa" /*!40100 DEFAULT CHARACTER SET UTF8 */
 (1 row)
 
 show create schema if not exists aa;
  database |                                    Create Database                                    
 ----------+---------------------------------------------------------------------------------------
- aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT CHARACTER SET UTF8 */
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  "aa" /*!40100 DEFAULT CHARACTER SET UTF8 */
 (1 row)
 
 drop schema aa;
@@ -154,25 +154,25 @@ WARNING:   COLLATE or CHARACTER SET nonsupport : 'collatetest'
 show create database aa;
  database |                        Create Database                        
 ----------+---------------------------------------------------------------
- aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT COLLATE collatetest */
+ aa       | CREATE DATABASE  "aa" /*!40100 DEFAULT COLLATE collatetest */
 (1 row)
 
 show create database if not exists aa;
  database |                                    Create Database                                     
 ----------+----------------------------------------------------------------------------------------
- aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT COLLATE collatetest */
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  "aa" /*!40100 DEFAULT COLLATE collatetest */
 (1 row)
 
 show create schema aa;
  database |                        Create Database                        
 ----------+---------------------------------------------------------------
- aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT COLLATE collatetest */
+ aa       | CREATE DATABASE  "aa" /*!40100 DEFAULT COLLATE collatetest */
 (1 row)
 
 show create schema if not exists aa;
  database |                                    Create Database                                     
 ----------+----------------------------------------------------------------------------------------
- aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT COLLATE collatetest */
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  "aa" /*!40100 DEFAULT COLLATE collatetest */
 (1 row)
 
 drop schema aa;
@@ -181,25 +181,25 @@ WARNING:   COLLATE or CHARACTER SET nonsupport : 'collatetest'
 show create database aa;
  database |                        Create Database                        
 ----------+---------------------------------------------------------------
- aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT COLLATE collatetest */
+ aa       | CREATE DATABASE  "aa" /*!40100 DEFAULT COLLATE collatetest */
 (1 row)
 
 show create database if not exists aa;
  database |                                    Create Database                                     
 ----------+----------------------------------------------------------------------------------------
- aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT COLLATE collatetest */
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  "aa" /*!40100 DEFAULT COLLATE collatetest */
 (1 row)
 
 show create schema aa;
  database |                        Create Database                        
 ----------+---------------------------------------------------------------
- aa       | CREATE DATABASE  `aa` /*!40100 DEFAULT COLLATE collatetest */
+ aa       | CREATE DATABASE  "aa" /*!40100 DEFAULT COLLATE collatetest */
 (1 row)
 
 show create schema if not exists aa;
  database |                                    Create Database                                     
 ----------+----------------------------------------------------------------------------------------
- aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  `aa` /*!40100 DEFAULT COLLATE collatetest */
+ aa       | CREATE DATABASE /*!32312 IF NOT EXISTS*/  "aa" /*!40100 DEFAULT COLLATE collatetest */
 (1 row)
 
 drop schema aa;
@@ -819,3 +819,248 @@ show variables like 'max_index_keys';
  max_index_keys | 32
 (1 row)
 
+-- fix bug#Z5973
+drop table test_table;
+CREATE TABLE IF NOT EXISTS test_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE VIEW test_view AS SELECT * FROM test_table;
+CREATE TEMPORARY TABLE IF NOT EXISTS temp_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+SHOW INDEX FROM test_table;
+   Table    | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_table |          0 | test_table_pkey      |            1 | id          | A         |           0 |          |        | NO   | btree      |         | 
+ test_table |          0 | test_table_email_key |            1 | email       | A         |           0 |          |        | YES  | btree      |         | 
+(2 rows)
+
+SHOW INDEX FROM test_view;
+ Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+(0 rows)
+
+SHOW INDEX FROM temp_table;
+ERROR:  Table 'public.temp_table' doesn't exist
+SHOW INDEX FROM temp_table FROM pg_temp_4;
+   Table    | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ temp_table |          0 | temp_table_pkey      |            1 | id          | A         |           0 |          |        | NO   | btree      |         | 
+ temp_table |          0 | temp_table_email_key |            1 | email       | A         |           0 |          |        | YES  | btree      |         | 
+(2 rows)
+
+SHOW INDEXES FROM 123abc;
+ERROR:  Table 'public.123abc' doesn't exist
+SHOW INDEX FROM test_table FROM 123abc;
+ERROR:  Table '123abc.test_table' doesn't exist
+drop view test_view;
+drop table test_table;
+drop table temp_table;
+-- fix bug#Z5973
+CREATE TABLE IF NOT EXISTS test_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- fix bug#Z5958
+SHOW COLUMNS FROM 123aaabbb;
+ERROR:  Table 'public.123aaabbb' doesn't exist
+SHOW COLUMNS FROM test_table LIKE '123aaabbb';
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+(0 rows)
+
+SHOW COLUMNS FROM test_table LIKE 'name';
+ Field |          Type          | Null | Key | Default | Extra 
+-------+------------------------+------+-----+---------+-------
+ name  | character varying(100) | NO   |     |         | 
+(1 row)
+
+drop table test_table;
+-- fix bug#Z5956
+CREATE TEMPORARY TABLE temp_table (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(100) NOT NULL,
+	email VARCHAR(150) UNIQUE,
+	department VARCHAR(50),
+	salary DECIMAL(10,2),
+	hire_date DATE,
+	create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+SHOW COLUMNS FROM temp_table;
+ERROR:  Table 'public.temp_table' doesn't exist
+SHOW COLUMNS FROM temp_table FROM pg_temp_4;
+    Field    |          Type          | Null | Key |                Default                 | Extra 
+-------------+------------------------+------+-----+----------------------------------------+-------
+ id          | integer                | NO   | PRI | nextval('temp_table_id_seq'::regclass) | 
+ name        | character varying(100) | NO   |     |                                        | 
+ email       | character varying(150) | YES  | UNI |                                        | 
+ department  | character varying(50)  | YES  |     |                                        | 
+ salary      | numeric(10,2)          | YES  |     |                                        | 
+ hire_date   | date                   | YES  |     |                                        | 
+ create_time | timestamp              | YES  |     | "current_timestamp"()                  | 
+(7 rows)
+
+drop table temp_table;
+-- fix bug#5954
+CREATE TABLE IF NOT EXISTS test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+COMMENT ON COLUMN test_table.name IS 'user name';
+CREATE VIEW test_view AS SELECT id, name, create_time FROM test_table;
+SHOW FULL COLUMNS FROM test_view;
+    Field    |          Type          | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------------+------------------------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id          | integer                |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ name        | character varying(100) |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ create_time | timestamp              |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+(3 rows)
+
+drop view test_view;
+drop table test_table;
+-- fix bug#5949
+CREATE TABLE IF NOT EXISTS test_table (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(100) NOT NULL,
+	email VARCHAR(150) UNIQUE,
+	department VARCHAR(50),
+	salary DECIMAL(10,2),
+	hire_date DATE,
+	create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+SHOW COLUMNS FROM test_table;
+    Field    |          Type          | Null | Key |                Default                 | Extra 
+-------------+------------------------+------+-----+----------------------------------------+-------
+ id          | integer                | NO   | PRI | nextval('test_table_id_seq'::regclass) | 
+ name        | character varying(100) | NO   |     |                                        | 
+ email       | character varying(150) | YES  | UNI |                                        | 
+ department  | character varying(50)  | YES  |     |                                        | 
+ salary      | numeric(10,2)          | YES  |     |                                        | 
+ hire_date   | date                   | YES  |     |                                        | 
+ create_time | timestamp              | YES  |     | "current_timestamp"()                  | 
+(7 rows)
+
+SHOW FULL COLUMNS FROM test_table;
+    Field    |          Type          | Collation | Null | Key |                Default                 | Extra |           Privileges            | Comment 
+-------------+------------------------+-----------+------+-----+----------------------------------------+-------+---------------------------------+---------
+ id          | integer                |           | NO   | PRI | nextval('test_table_id_seq'::regclass) |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ name        | character varying(100) |           | NO   |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ email       | character varying(150) |           | YES  | UNI |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ department  | character varying(50)  |           | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ salary      | numeric(10,2)          |           | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ hire_date   | date                   |           | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ create_time | timestamp              |           | YES  |     | "current_timestamp"()                  |       | INSERT,REFERENCES,SELECT,UPDATE | 
+(7 rows)
+
+drop table test_table;
+-- fix bug#Z5968
+CREATE SCHEMA IF NOT EXISTS test_sche;
+CREATE TABLE test_sche.test_table(
+id INT PRIMARY KEY,
+name VARCHAR(50) NOT NULL,
+age TINYINT,
+create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE VIEW test_sche.test_view AS SELECT * FROM test_sche.test_table;
+--SHOW TABLE STATUS IN test_sche;  --because of time always change, manual operation is required
+SHOW TABLE STATUS IN 123abc;
+ERROR:  Unknow database '123abc' 
+SHOW TABLE STATUS IN highgoadsfdsf;
+ERROR:  Unknow database 'highgoadsfdsf' 
+drop view test_sche.test_view;
+drop table test_sche.test_table;
+drop schema test_sche;
+-- fix bug#Z5948
+CREATE TABLE IF NOT EXISTS test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE VIEW test_view AS
+  SELECT id, name, create_time FROM test_table;
+--SHOW CREATE TABLE test_view;		--zh_CN.utf8 is displayed as zh_CN.UTF-8 on some systems
+--   View    |                   Create View                   | character_set_client | collation_connection
+-- -----------+-------------------------------------------------+----------------------+----------------------
+-- test_view | create view test_view as  SELECT test_table.id,+| UTF8                 | zh_CN.utf8
+--           |     test_table.name,                           +|                      |
+--           |     test_table.create_time                     +|                      |
+--           |    FROM test_table;                             |                      |
+--(1 row)
+drop view test_view;
+drop table test_table;
+--fix bug#Z5946
+CREATE TABLE IF NOT EXISTS test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE VIEW test_view AS
+  SELECT id, name, create_time FROM test_table;
+--SHOW CREATE TABLE test_view;		--zh_CN.utf8 is displayed as zh_CN.UTF-8 on some systems
+--   View    |                   Create View                   | character_set_client | collation_connection
+-- -----------+-------------------------------------------------+----------------------+----------------------
+-- test_view | create view test_view as  SELECT test_table.id,+| UTF8                 | zh_CN.utf8
+--           |     test_table.name,                           +|                      |
+--           |     test_table.create_time                     +|                      |
+--           |    FROM test_table;                             |                      |
+--(1 row)
+drop view test_view;
+drop table test_table;
+--fix bug#Z5947
+CREATE TABLE IF NOT EXISTS test_table (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(100) NOT NULL,
+	email VARCHAR(150) UNIQUE,
+	department VARCHAR(50),
+	salary DECIMAL(10,2),
+	hire_date DATE,
+	create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+SET sql_quote_show_create = 1;
+SHOW CREATE TABLE test_table;
+   Table    |                               Create Table                                
+------------+---------------------------------------------------------------------------
+ test_table | CREATE TABLE "test_table" (                                              +
+            |     "id" integer NOT NULL DEFAULT nextval('test_table_id_seq'::regclass),+
+            |     "name" character varying(100) NOT NULL,                              +
+            |     "email" character varying(150),                                      +
+            |     "department" character varying(50),                                  +
+            |     "salary" numeric(10,2),                                              +
+            |     "hire_date" date,                                                    +
+            |     "create_time" timestamp DEFAULT "current_timestamp"(),               +
+            |     CONSTRAINT "test_table_pkey" PRIMARY KEY (id),                       +
+            |     CONSTRAINT "test_table_email_key" UNIQUE (email)                     +
+            | )
+(1 row)
+
+drop table test_table;

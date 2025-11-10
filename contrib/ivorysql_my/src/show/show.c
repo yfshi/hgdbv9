@@ -310,15 +310,26 @@ mys_show_create_database(PG_FUNCTION_ARGS)
 
 	/* if the GUC paramater sql_quote_show_create
 	 * is on, database name need to add ``
+	 * Begin - BUG#Z5947
+	 * When the GUC parameter "sql_quote_show_create" is enabled,
+	 * columns should also be enclosed in backticks.
 	 */
 	if (sql_quote_show_create)
 	{
-		appendStringInfo(&buf, " `%s` ", namestr);
+		if (has_sql_mode(MODE_ANSI_QUOTES))
+		{
+			appendStringInfo(&buf, " \"%s\" ", namestr);
+		}
+		else
+		{
+			appendStringInfo(&buf, " `%s` ", namestr);
+		}
 	}
 	else
 	{
 		appendStringInfo(&buf, " %s ", namestr);
 	}
+	/* End - BUG#Z5947 */
 
 	tuple = SearchSysCache1(NAMESPACENAME, PG_GETARG_DATUM(0));
 	if (HeapTupleIsValid(tuple))
@@ -532,7 +543,14 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 			 */
 			if (sql_quote_show_create)
 			{
-				appendStringInfo(attrbuf, "`%s`", attnamestr);
+				if (has_sql_mode(MODE_ANSI_QUOTES))
+				{
+					appendStringInfo(attrbuf, "\"%s\"", attnamestr);
+				}
+				else
+				{
+					appendStringInfo(attrbuf, "`%s`", attnamestr);
+				}
 			}
 			else
 			{
@@ -652,7 +670,25 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 			else
 				appendStringInfoString(attrbuf, ",\n    ");
 
-			appendStringInfo(attrbuf, "CONSTRAINT %s ", constraintname);
+			/* Begin - BUG#Z5947
+			 * When the GUC parameter "sql_quote_show_create" is enabled,
+			 * columns should also be enclosed in backticks.
+			 */
+			if (sql_quote_show_create)
+			{
+				if (has_sql_mode(MODE_ANSI_QUOTES))
+				{
+					appendStringInfo(attrbuf, "CONSTRAINT \"%s\" ", constraintname);
+				}
+				else
+				{
+					appendStringInfo(attrbuf, "CONSTRAINT `%s` ", constraintname);
+				}
+			}
+			else
+				appendStringInfo(attrbuf, "CONSTRAINT %s ", constraintname);
+			/* End - BUG#Z5947 */
+
 			appendStringInfoString(attrbuf, constraintstr);
 
 			actual_atts++;
@@ -894,14 +930,26 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 		reloftypename = get_typename(pgclass->reloftype);
 	}
 
+	/* Begin - BUG#Z5947
+	 * When the GUC parameter "sql_quote_show_create" is enabled,
+	 * columns should also be enclosed in backticks.
+	 */
 	if (sql_quote_show_create)
 	{
-		formatstr = "CREATE %s%s `%s`";
+		if (has_sql_mode(MODE_ANSI_QUOTES))
+		{
+			formatstr = "CREATE %s%s \"%s\"";
+		}
+		else
+		{
+			formatstr = "CREATE %s%s `%s`";
+		}
 	}
 	else
 	{
 		formatstr = "CREATE %s%s %s";
 	}
+	/* End - BUG#Z5947 */
 
 	/* Start assembling the CREATE TABLE statement */
 	initStringInfo(&relcreate);

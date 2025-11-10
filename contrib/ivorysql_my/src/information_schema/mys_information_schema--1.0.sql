@@ -1297,14 +1297,6 @@ LIMIT 0;
 
 GRANT SELECT ON mys_information_schema.tablespaces TO PUBLIC;
 
--- Begin - BUG#ZZ5974
-CREATE FUNCTION mys_information_schema.mys_get_gistindex_column(indexoid Oid)
-RETURNS text
-AS 'MODULE_PATHNAME','mys_get_gistindex_column'
-LANGUAGE C
-PARALLEL SAFE STRICT;
--- End - BUG#ZZ5974
-
 --
 -- View: mys_information_schema.statistics
 --

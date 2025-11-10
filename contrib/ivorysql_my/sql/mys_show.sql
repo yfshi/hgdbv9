@@ -333,3 +333,190 @@ DROP TABLE test_table4;
 --fix bug#Z5969
 set session max_index_keys=NULL;
 show variables like 'max_index_keys';
+
+-- fix bug#Z5973
+drop table test_table;
+CREATE TABLE IF NOT EXISTS test_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE VIEW test_view AS SELECT * FROM test_table;
+
+CREATE TEMPORARY TABLE IF NOT EXISTS temp_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+SHOW INDEX FROM test_table;
+SHOW INDEX FROM test_view;
+SHOW INDEX FROM temp_table;
+SHOW INDEX FROM temp_table FROM pg_temp_4;
+
+SHOW INDEXES FROM 123abc;
+SHOW INDEX FROM test_table FROM 123abc;
+
+drop view test_view;
+drop table test_table;
+drop table temp_table;
+
+-- fix bug#Z5973
+CREATE TABLE IF NOT EXISTS test_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- fix bug#Z5958
+SHOW COLUMNS FROM 123aaabbb;
+SHOW COLUMNS FROM test_table LIKE '123aaabbb';
+SHOW COLUMNS FROM test_table LIKE 'name';
+drop table test_table;
+
+-- fix bug#Z5956
+CREATE TEMPORARY TABLE temp_table (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(100) NOT NULL,
+	email VARCHAR(150) UNIQUE,
+	department VARCHAR(50),
+	salary DECIMAL(10,2),
+	hire_date DATE,
+	create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+SHOW COLUMNS FROM temp_table;
+SHOW COLUMNS FROM temp_table FROM pg_temp_4;
+drop table temp_table;
+
+-- fix bug#5954
+CREATE TABLE IF NOT EXISTS test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+COMMENT ON COLUMN test_table.name IS 'user name';
+CREATE VIEW test_view AS SELECT id, name, create_time FROM test_table;
+SHOW FULL COLUMNS FROM test_view;
+
+drop view test_view;
+drop table test_table;
+
+-- fix bug#5949
+CREATE TABLE IF NOT EXISTS test_table (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(100) NOT NULL,
+	email VARCHAR(150) UNIQUE,
+	department VARCHAR(50),
+	salary DECIMAL(10,2),
+	hire_date DATE,
+	create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+SHOW COLUMNS FROM test_table;
+SHOW FULL COLUMNS FROM test_table;
+
+drop table test_table;
+
+
+-- fix bug#Z5968
+CREATE SCHEMA IF NOT EXISTS test_sche;
+CREATE TABLE test_sche.test_table(
+id INT PRIMARY KEY,
+name VARCHAR(50) NOT NULL,
+age TINYINT,
+create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE VIEW test_sche.test_view AS SELECT * FROM test_sche.test_table;
+--SHOW TABLE STATUS IN test_sche;  --because of time always change, manual operation is required
+SHOW TABLE STATUS IN 123abc;
+SHOW TABLE STATUS IN highgoadsfdsf;
+
+drop view test_sche.test_view;
+drop table test_sche.test_table;
+drop schema test_sche;
+
+-- fix bug#Z5948
+CREATE TABLE IF NOT EXISTS test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE VIEW test_view AS
+  SELECT id, name, create_time FROM test_table;
+
+--SHOW CREATE TABLE test_view;		--zh_CN.utf8 is displayed as zh_CN.UTF-8 on some systems
+--   View    |                   Create View                   | character_set_client | collation_connection
+-- -----------+-------------------------------------------------+----------------------+----------------------
+-- test_view | create view test_view as  SELECT test_table.id,+| UTF8                 | zh_CN.utf8
+--           |     test_table.name,                           +|                      |
+--           |     test_table.create_time                     +|                      |
+--           |    FROM test_table;                             |                      |
+--(1 row)
+
+drop view test_view;
+drop table test_table;
+
+--fix bug#Z5946
+CREATE TABLE IF NOT EXISTS test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE VIEW test_view AS
+  SELECT id, name, create_time FROM test_table;
+
+--SHOW CREATE TABLE test_view;		--zh_CN.utf8 is displayed as zh_CN.UTF-8 on some systems
+--   View    |                   Create View                   | character_set_client | collation_connection
+-- -----------+-------------------------------------------------+----------------------+----------------------
+-- test_view | create view test_view as  SELECT test_table.id,+| UTF8                 | zh_CN.utf8
+--           |     test_table.name,                           +|                      |
+--           |     test_table.create_time                     +|                      |
+--           |    FROM test_table;                             |                      |
+--(1 row)
+
+drop view test_view;
+drop table test_table;
+
+
+--fix bug#Z5947
+CREATE TABLE IF NOT EXISTS test_table (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(100) NOT NULL,
+	email VARCHAR(150) UNIQUE,
+	department VARCHAR(50),
+	salary DECIMAL(10,2),
+	hire_date DATE,
+	create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+SET sql_quote_show_create = 1;
+SHOW CREATE TABLE test_table;
+
+drop table test_table;

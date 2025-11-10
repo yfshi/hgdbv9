@@ -278,14 +278,9 @@ static Node *makeVarRef(char *varname, VarKind kind, int location);
 /* End - ReqID:SRS-MYSQL-SET */
 
 /* Begin - ReqID:SRS-MYSQL-SHOW */
-static ResTarget *makeShowResTarget(char *ailasstr, Node *columnref, int location);
-static RangeSubselect *makeShowRangeSubselect(Node *subquery, char *alias);
-static ColumnRef *makeShowAllColumnRef(void);
-static SelectStmt *makeShowSelectStmt(List *targetList, List *fromClause, Node *whereClause);
 static SelectStmt *makeShowTriggersStmt(Node *db_name, ShowFilter *filter);
 static SelectStmt *makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter);
 static SelectStmt *makeShowTableStatusStmt(Node *db_name, ShowFilter *filter);
-static SelectStmt *makeShowViewStmt(RangeVar *view_name);
 static SelectStmt *makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full);
 static SelectStmt *makeShowSchemasStmt(ShowFilter *filter);
 static SelectStmt *makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool full);
@@ -21993,69 +21988,6 @@ makeShowCollationStmt(ShowFilter *filter)
 /* End - Req: SRS-MYSQL-CHARSET */
 
 /* Begin - ReqID:SRS-MYSQL-SHOW */
-/* makeShowResTarget
- *
- * Construct a ResTarget Node.
- */
-static ResTarget *
-makeShowResTarget(char *ailasstr, Node *columnref, int location)
-{
-	ResTarget *rt = makeNode(ResTarget);
-
-	rt->name = ailasstr;
-	rt->val = columnref;
-	rt->indirection = NIL;
-	rt->location = location;
-
-	return rt;
-}
-
-/* makeShowRangeSubselect
- *
- * Construct a RangeSubselect Node.
- */
-static RangeSubselect *
-makeShowRangeSubselect(Node *subquery, char *alias)
-{
-	RangeSubselect *rss = makeNode(RangeSubselect);
-
-	rss->subquery = subquery;
-	rss->alias = makeAlias(alias, NIL);
-
-	return rss;
-}
-
-/* makeShowAllColumnRef
- *
- * Construct a ColumnRef Node.
- */
-static ColumnRef *
-makeShowAllColumnRef(void)
-{
-	ColumnRef *cref = makeNode(ColumnRef);
-
-	cref->fields = list_make1(makeNode(A_Star));
-	cref->location = -1;
-
-	return cref;
-}
-
-/* makeShowSelectStmt
- *
- * Construct a SelectStmt Node.
- */
-static SelectStmt *
-makeShowSelectStmt(List *targetList, List *fromClause, Node *whereClause)
-{
-	SelectStmt	*outer = makeNode(SelectStmt);
-
-	outer->targetList = targetList;  /* SELECT * */
-	outer->fromClause = fromClause; /* FROM (subq) */
-	outer->whereClause = whereClause;  /* [LIKE 'pattern' | WHERE expr] */
-
-	return outer;
-}
-
 /* makeShowTriggersStmt
  *
  * Construct a SelectStmt statement that
@@ -22162,7 +22094,7 @@ makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
 	}
 
 	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "statistics", -1));
+	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "showstatistics", -1));	/* BUG#Z5973 */
 
 	/*
 	 * make subselect whereClause
@@ -22212,6 +22144,7 @@ makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
 		whereClause = (Node *)lexpr;
 
 	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), whereClause);
+	outer->mysshowtype = SHOW_INDEX;	/* BUG#Z5973 */
 
 	return outer;
 }
@@ -22253,7 +22186,7 @@ makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 	}
 
 	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "tables", -1));
+	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "showtables", -1)); /* BUG#Z5968 */
 
 	/*
 	 * make subselect whereClause
@@ -22283,203 +22216,7 @@ makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 	rt = makeShowResTarget(NULL, (Node *) cref, -1);
 	/* [LIKE 'pattern' | WHERE expr] */
 	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter("Name", filter));
-
-	return outer;
-}
-
-/* makeShowViewStmt
- *
- * Construct the following SQL:
- *
- * SELECT *
- * FROM (
- *    SELECT
- *        v.TABLE_NAME AS "View",
- *        CASE
- *            WHEN c.relpersistence = 't'
- *                THEN concat('create temp view as ', v.VIEW_DEFINITION)
- *            ELSE
- *                concat('create view as ', v.VIEW_DEFINITION)
- *        END AS "Create View",
- *        v.CHARACTER_SET_CLIENT AS character_set_client,
- *        v.COLLATION_CONNECTION AS collation_connection
- *    FROM mys_information_schema.views v
- *    JOIN pg_catalog.pg_namespace n
- *        ON v.TABLE_SCHEMA = n.nspname
- *    JOIN pg_catalog.pg_class c
- *        ON v.TABLE_NAME = c.relname
- *       AND c.relnamespace = n.oid
- *    WHERE v.TABLE_SCHEMA = COALESCE('<schema_name>', pg_catalog.current_schema())
- * ) subq
- * WHERE "View" = '<view_name>';
- */
-static SelectStmt *
-makeShowViewStmt(RangeVar *view_name)
-{
-	#define		VIEW_COLUMN_NUMS 4
-	char		colnames[VIEW_COLUMN_NUMS][32]
-						= {"TABLE_NAME", "VIEW_DEFINITION", "CHARACTER_SET_CLIENT", "COLLATION_CONNECTION"};
-	char		ailas[VIEW_COLUMN_NUMS][32]
-						= {"View", "Create View", "character_set_client", "collation_connection"};
-
-	int			i = 0;
-	SelectStmt	*outer;
-	SelectStmt	*inner = makeNode(SelectStmt);
-	ResTarget	*rt;
-	Node		*col_db, *col_tb, *whereClause = NULL;
-	BoolExpr	*and_expr;
-	JoinExpr	*join1, *join2;
-	A_Expr		*lexpr, *schema_cond, *table_cond, *namespace_cond;
-	ColumnRef	*cref, *namespace_oid_ref;
-	RangeSubselect	*rss;
-
-	/* Build target column list */
-	for (i = 0; i < VIEW_COLUMN_NUMS; i++)
-	{
-		/* Begin - #Z5972 #Z5976 */
-		rt = makeNode(ResTarget);
-		rt->name = pstrdup(ailas[i]);
-
-		if (i == 1) /* "Create View" column needs special processing */
-		{
-			FuncCall *then_func, *else_func;
-			/* Use CASE WHEN expression to determine prefix based on relpersistence */
-			CaseExpr *caseExpr = makeNode(CaseExpr);
-			CaseWhen *when = makeNode(CaseWhen);
-
-			/* WHEN pc.relpersistence = 't' */
-			when->expr = (Expr *) makeSimpleA_Expr(AEXPR_OP, "=",
-												   makeColumnRef("relpersistence", NIL, -1, 0),
-												   makeStringConst("t", -1),
-												   -1);
-			/* THEN concat('create temp view ', TABLE_NAME, ' as ', v.VIEW_DEFINITION) */
-			then_func = makeFuncCall(list_make1(makeString("concat")),
-											   list_make4(makeStringConst("create temp view ", -1),
-														  makeColumnRef("TABLE_NAME", NIL, -1, 0),
-														  makeStringConst(" as ", -1),
-														  makeColumnRef("VIEW_DEFINITION", NIL, -1, 0)),
-											   COERCE_EXPLICIT_CALL,
-											   -1);
-
-			when->result = (Expr *)then_func;
-
-			caseExpr->args = list_make1(when);
-			/* ELSE concat('create view ', TABLE_NAME, ' as ', v.VIEW_DEFINITION) */
-			else_func = makeFuncCall(list_make1(makeString("concat")),
-											   list_make4(makeStringConst("create view ", -1),
-														  makeColumnRef("TABLE_NAME", NIL, -1, 0),
-														  makeStringConst(" as ", -1),
-														  makeColumnRef("VIEW_DEFINITION", NIL, -1, 0)),
-											   COERCE_EXPLICIT_CALL,
-											   -1);
-			caseExpr->defresult = (Expr *)else_func;
-			caseExpr->location = -1;
-
-			rt->val = (Node *)caseExpr;
-		}
-		else
-		{
-			rt->val = (Node*)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0);
-		}
-
-		rt->indirection = NIL;
-		rt->location = -1;
-		/* End - #Z5972 #Z5976 */
-		inner->targetList = lappend(inner->targetList, rt);
-	}
-
-	/* Begin - #Z5972 #Z5976 */
-
-	/* Build FROM clause - directly join three tables */
-	join1 = makeNode(JoinExpr);
-	join1->jointype = JOIN_INNER;
-
-	/* Left table: mys_information_schema.views */
-	join1->larg = (Node *)makeRangeVar("mys_information_schema", "views", -1);
-
-	/* Right table: pg_namespace */
-	join1->rarg = (Node *)makeRangeVar("pg_catalog", "pg_namespace", -1);
-
-	/* Join condition: TABLE_SCHEMA = nspname */
-	schema_cond = makeSimpleA_Expr(AEXPR_OP, "=",
-										  makeColumnRef("TABLE_SCHEMA", NIL, -1, 0),
-										  makeColumnRef("nspname", NIL, -1, 0),
-										  -1);
-
-	join1->quals = (Node *)schema_cond;
-
-	/* Join pg_class */
-	join2 = makeNode(JoinExpr);
-	join2->jointype = JOIN_INNER;
-	join2->larg = (Node *)join1;
-	join2->rarg = (Node *)makeRangeVar("pg_catalog", "pg_class", -1);
-
-	/* Join condition: TABLE_NAME = relname AND relnamespace = pg_namespace.oid */
-	table_cond = makeSimpleA_Expr(AEXPR_OP, "=",
-										 makeColumnRef("TABLE_NAME", NIL, -1, 0),
-										 makeColumnRef("relname", NIL, -1, 0),
-										 -1);
-
-	/* Explicitly specify pg_namespace.oid */
-	namespace_oid_ref = makeNode(ColumnRef);
-	namespace_oid_ref->fields = list_make2(makeString("pg_namespace"), makeString("oid"));
-	namespace_oid_ref->location = -1;
-
-	namespace_cond = makeSimpleA_Expr(AEXPR_OP, "=",
-											 makeColumnRef("relnamespace", NIL, -1, 0),
-											 (Node *)namespace_oid_ref,
-											 -1);
-
-	and_expr = makeNode(BoolExpr);
-	and_expr->boolop = AND_EXPR;
-	and_expr->args = list_make2(table_cond, namespace_cond);
-	and_expr->location = -1;
-
-	join2->quals = (Node *)and_expr;
-
-	inner->fromClause = list_make1(join2);
-
-	/* End - #Z5972 #Z5976 */
-
-	/*
-	 * make subselect whereClause
-	 */
-	col_db = makeColumnRef("table_schema", NIL, -1, 0);
-	if (view_name && view_name->schemaname) /* schema.view_name */
-	{
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
-													   col_db,
-													   makeStringConst(view_name->schemaname, -1),
-													   -1);
-	}
-	else /* current schema */
-	{
-		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
-											NIL,
-											COERCE_EXPLICIT_CALL,
-											-1);
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
-													   col_db,
-													   (Node *)funcCall,
-													   -1);
-	}
-
-	/* make outerselect */
-	rss = makeShowRangeSubselect((Node *)inner, "subq");
-	cref = makeShowAllColumnRef();
-	rt = makeShowResTarget(NULL, (Node *) cref, -1);
-
-	/*
-	 * make outerselect whereClause
-	 */
-	if (view_name && view_name->relname)
-	{
-		col_tb = makeColumnRef("View", NIL, -1, 0);
-		lexpr = makeSimpleA_Expr(AEXPR_OP, "=", col_tb, makeStringConst(view_name->relname, -1), -1);
-		whereClause = (Node *)lexpr;
-	}
-
-	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), whereClause);
+	outer->mysshowtype = SHOW_TABLES_STATUS;	/* BUG#Z5968 */
 
 	return outer;
 }
@@ -22665,7 +22402,7 @@ makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool f
 	}
 
 	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "columns", -1));
+	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "showcolumns", -1));	/* bug#Z5956 */
 
 	/*
 	 * make subselect whereClause
@@ -22719,6 +22456,7 @@ makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool f
 	cref = makeShowAllColumnRef();
 	rt = makeShowResTarget(NULL, (Node *) cref, -1);
 	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter("Field", filter));
+	outer->mysshowtype = SHOW_COLUMNS;	/* BUG#Z5958 */
 
 	return outer;
 }
@@ -22928,6 +22666,7 @@ makeShowCreateTableStmt(RangeVar *rvar)
 	resTargetcreate = makeRestaget((Node *)funcCall, "Create Table");
 	resTarget = makeRestaget(makeStringConst(rvar->relname, -1), "Table");
 	selectStmt->targetList = list_make2(resTarget, resTargetcreate);
+	selectStmt->mysshowtype = SHOW_CREATE_TABLE;	/* BUG#Z5946 */
 	return (Node *) selectStmt;
 }
 
