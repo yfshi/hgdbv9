@@ -34,8 +34,8 @@ CREATE FOREIGN TABLE hg_security.sqlite_audit_log(
 	SERVER sqlite_server
 	OPTIONS (table 'pg_sqlite_audit_log');
 	
-GRANT ALL ON FUNCTION sqlite_fdw_handler TO syssao;
-GRANT ALL ON FUNCTION sqlite_fdw_handler TO syssao_role;
+GRANT ALL ON FUNCTION public.sqlite_fdw_handler TO syssao;
+GRANT ALL ON FUNCTION public.sqlite_fdw_handler TO syssao_role;
 
 ALTER TABLE hg_security.sqlite_audit_log OWNER TO syssao;
 GRANT SELECT ON hg_security.sqlite_audit_log TO syssso;

@@ -49,7 +49,10 @@
 #End - ReqID:SRS-MISC-MYSQL-FRAME
 # Begin - ReqID:SRS-SECURITY-POWERS
 { oid => '9802', oid_symbol => 'SECURITY_SCHEMA_NAMESPACE',
-  descr => 'security function schema',
+  descr => 'security features schema',
   nspname => 'hg_security', nspacl => '_null_' },
 # End - ReqID:SRS-SECURITY-POWERS
+{ oid => '9804', oid_symbol => 'HG_MISC_SCHEMA_NAMESPACE',
+  descr => 'miscellaneous features schema',
+  nspname => 'hg_misc', nspacl => '_null_' },
 ]
