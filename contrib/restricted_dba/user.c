@@ -656,6 +656,11 @@ alter_role_set_check(AlterRoleSetStmt *stmt)
 	Oid			databaseid = InvalidOid;
 	Oid			roleid = InvalidOid;
 
+	/*Begin -- bug#z5555*/
+	if (stmt->setstmt->name == NULL)
+		return true;
+	/*End -- bug#z5555*/
+
 	if (pg_strncasecmp(stmt->setstmt->name,"se_feature.",strlen("se_feature.")) == 0 &&
 		IS_SYSSSO(GetUserId()))
 	{

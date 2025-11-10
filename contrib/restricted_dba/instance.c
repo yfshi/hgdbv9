@@ -40,6 +40,10 @@ alter_system_set_check(AlterSystemStmt *altersysstmt)
 	*/
 	name = altersysstmt->setstmt->name;
 
+	/*Begin -- bug#z5555*/
+	if (name == NULL)
+		return true;
+	/*End -- bug#z5555*/
 	/*
 	* if is a audit parameter and the user is syssao, or 
 	* is a se_feature parameter and the user is syssso, then allow the change

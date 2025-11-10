@@ -277,11 +277,14 @@ alter_schema_rename_check(const char *oldname, const char *newname)
 
 
 bool 
-drop_schema_check(ObjectAddress *object, char* auditname)
+drop_schema_check(ObjectAddress *object)
 {
 	Oid			nsp_oid = object->objectId;
 	HeapTuple	nsptuple;
 	Oid			nspowner;
+	char	   *auditname;
+
+	auditname = getObjectIdentity(object, false);
 
 	if (pg_strcasecmp(auditname,"public") == 0)
 	{

@@ -94,7 +94,7 @@ extern bool create_schema_check(CreateSchemaStmt *stmt, const char *queryString,
 extern bool use_schema_check(Oid namespaceid, Oid roleid);
 extern bool alter_schema_owner_check(const char *name, Oid newOwnerId);
 extern bool alter_schema_rename_check(const char *oldname, const char *newname);
-extern bool drop_schema_check(ObjectAddress *object, char* auditname);
+extern bool drop_schema_check(ObjectAddress *object);
 
 /*relation.c*/
 extern bool create_table_check(CreateStmt *stmt, char relkind, Oid ownerId,
