@@ -423,7 +423,7 @@ static void CheckHostId(char* hostId);
 /* Begin - SRS-MYSQL-CREATE-TABLE */
 %type <list>    create_table_options_list create_table_options_list_node
 %type <node>    create_engine create_comment create_table_options
-%type <list>    index_options create_table_index_opt
+%type <list>    index_options create_table_index_opt opt_index_options /* ReqID:SRS-MYSQL-CREATE-INDEX */
 %type <node>    index_opt 
 %type <node>    character_set_without_equal
 %type <myscollatecharacteropt>	opt_col_charset
@@ -481,7 +481,7 @@ static void CheckHostId(char* hostId);
 %type <str>		copy_file_name
 				access_method_clause attr_name
 				table_access_method_clause name cursor_name file_name
-				opt_index_name cluster_index_specification
+				opt_index_name cluster_index_specification mys_access_method_clause /* ReqID:SRS-MYSQL-CREATE-INDEX */
 
 %type <list>	func_name handler_name qual_Op qual_all_Op subquery_Op
 				opt_class opt_inline_handler opt_validator validator_clause
@@ -825,7 +825,7 @@ static void CheckHostId(char* hostId);
 
 /* ordinary key words in alphabetical order */
 %token <keyword> ABORT_P ABSOLUTE_P ACCESS ACTION ADD_P ADMIN AFTER
-	AGGREGATE ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
+	AGGREGATE ALGORITHM /* ReqID:SRS-MYSQL-CREATE-INDEX */ ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
 	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION AUTO_INCREMENT
 
 	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BIT BLOB_P
@@ -855,7 +855,7 @@ static void CheckHostId(char* hostId);
 	FALSE_P FAMILY FETCH FIELD /* ReqID:SRS-MYSQL-BINARYTYPE */ FIELDS /* ReqID:SRS-MYSQL-SHOW */ FILTER FINALIZE FIRST_P
 	FIXED /* bug#z5409 */
 	FLOAT_P FOLLOWING FOR
-	FORCE FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
+	FORCE FOREIGN FORWARD FREEZE FROM FULL FULLTEXT /* ReqID:SRS-MYSQL-CREATE-INDEX */ FUNCTION FUNCTIONS
 
 	GENERATED GET_FORMAT GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
 
@@ -863,12 +863,12 @@ static void CheckHostId(char* hostId);
 
 	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
-	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT3 INTEGER
+	INNER_P INOUT INPLACE /* ReqID:SRS-MYSQL-CREATE-INDEX */ INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT3 INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
 
 	JOIN
 
-	KEY KEYS /* ReqID:SRS-MYSQL-SHOW */
+	KEY KEY_BLOCK_SIZE/* ReqID:SRS-MYSQL-CREATE-INDEX */ KEYS /* ReqID:SRS-MYSQL-SHOW */
 
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
@@ -898,8 +898,8 @@ static void CheckHostId(char* hostId);
 	ROUTINE ROUTINES ROW ROWS RULE
 
 	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
-	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHOW
-	SIGNED SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SQL_P STABLE STANDALONE_P
+	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHARED /* ReqID:SRS-MYSQL-CREATE-INDEX */ SHOW
+	SIGNED SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SPATIAL /* ReqID:SRS-MYSQL-CREATE-INDEX */ SQL_P STABLE STANDALONE_P
 	START STATEMENT STATISTICS STATUS /* ReqID:SRS-MYSQL-SHOW */ STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
 
@@ -4979,60 +4979,6 @@ create_table_index_opt:
 			index_options			{ $$ = $1; }
 			| /* EMPTY */			{ $$ = NIL; }
 		;
-
-index_options:
-			index_opt
-			{
-				if ($1 != NULL)
-				{
-					$$ = list_make1($1);
-				}
-				else
-				{
-					$$ = NIL;
-				}
-			}
-			| index_options index_opt
-			{
-				if ($2 != NULL)
-				{
-					$$ = lappend($1, $2);
-				}
-				else
-				{
-					$$ = $1;
-				}
-			}
-		;
-
-
-index_opt:
-			opt_equal ICONST					{ $$ = NULL; }
-			| WITH PARSER ColId					{ $$ = NULL; }
-			| COMMENT SCONST
-				{
-					CommentStmt *n = makeNode(CommentStmt);
-					n->objtype = OBJECT_INDEX;
-					n->object = NULL;
-					n->comment = $2;
-					$$ = (Node *) n;
-				}
-			| USING name
-				{
-					if ((pg_strncasecmp($2, "btree", 5) == 0) ||
-						(pg_strncasecmp($2, "hash", 4) == 0))
-					{
-						/* Begin - ReqID:SRS-MYSQL-CASE */
-						$2 = MYS_STRING_CASE($2);
-						/* End - ReqID:SRS-MYSQL-CASE */
-						$$ = (Node *) makeString($2);
-					}
-					else
-					{
-						$$ = (Node *) makeString(MYS_STRING_CASE(DEFAULT_INDEX_TYPE));
-					}
-				}
-		;
 /* End - SRS-MYSQL-CREATE-TABLE */
 
 opt_no_inherit:	NO INHERIT							{  $$ = true; }
@@ -8606,26 +8552,59 @@ defacl_privilege_target:
  * willing to make TABLESPACE a fully reserved word.
  *****************************************************************************/
 
-IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
+IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name mys_access_method_clause /* ReqID:SRS-MYSQL-CREATE-INDEX */
 			ON relation_expr access_method_clause '(' index_params ')'
-			opt_include opt_reloptions OptTableSpace where_clause
+			opt_include opt_index_options OptTableSpace where_clause algorithm_option index_lock_opt /* ReqID:SRS-MYSQL-CREATE-INDEX */
 				{
 					IndexStmt *n = makeNode(IndexStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
-					MYS_RVAR_CASE($7);
+					MYS_RVAR_CASE($8);
 					/* End - ReqID:SRS-MYSQL-CASE */
 					n->unique = $2;
 					n->concurrent = $4;
 					n->idxname = $5;
-					n->relation = $7;
-					n->accessMethod = $8;
-					n->indexParams = $10;
-					n->indexIncludingParams = $12;
-					n->options = $13;
-					n->tableSpace = $14;
-					n->whereClause = $15;
+
+					/* Begin - ReqID:SRS-MYSQL-CREATE-INDEX */
+					n->relation = $8;
+					n->accessMethod = DEFAULT_INDEX_TYPE;
+
+					/* mysql: $6 $14 USING BTREE|HASH pg:$9 USING BTREE|HASH... */
+					if ($14 != NULL)
+					{
+						ListCell *lc = NULL;
+						foreach (lc, $14)
+						{
+							Node *tmp_node = (Node *)lfirst(lc);
+							if (nodeTag(tmp_node) == T_String)
+							{
+								Value	   *index_type = (Value *)tmp_node;
+								n->accessMethod = index_type->val.str;
+							}
+							else if (nodeTag(tmp_node) == T_CommentStmt)
+							{
+								CommentStmt	   *comment_type = (CommentStmt *)tmp_node;
+								n->idxcomment = comment_type->comment;
+							}
+							else
+							{
+								/* pg:CREATE INDEX t11_3 on t10 (id DESC) with (deduplicate_item = off); */
+								n->options = $14;
+								n->accessMethod = $9;
+								break;
+							}
+						}
+					}
+					else if ($6 != NULL)
+						n->accessMethod = $6;
+					else
+						n->accessMethod = $9;
+
+					n->indexParams = $11;
+					n->indexIncludingParams = $13;
+					n->tableSpace = $15;
+					n->whereClause = $16;
+					/* End - ReqID:SRS-MYSQL-CREATE-INDEX */
 					n->excludeOpNames = NIL;
-					n->idxcomment = NULL;
 					n->indexOid = InvalidOid;
 					n->oldNode = InvalidOid;
 					n->oldCreateSubid = InvalidSubTransactionId;
@@ -8674,8 +8653,113 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 				}
 		;
 
+/* Begin - ReqID:SRS-MYSQL-CREATE-INDEX */
+index_lock_opt:
+			   /* empty */
+			| LOCK_P opt_equal DEFAULT
+			| LOCK_P opt_equal NONE
+			| LOCK_P opt_equal SHARED
+			| LOCK_P opt_equal EXCLUSIVE
+		;
+
+
+algorithm_option:
+			ALGORITHM opt_equal DEFAULT
+		|	ALGORITHM opt_equal COPY
+		|	ALGORITHM opt_equal INPLACE
+		| /* EMPTY */
+		;
+
+opt_index_options:
+		opt_reloptions					{$$ = $1;}
+		| index_options
+			{$$ = $1;}
+		;
+
+index_options:
+			index_opt
+			{
+				if ($1 != NULL)
+					$$ = list_make1($1);
+				else
+					$$ = NIL;
+			}
+			| index_options index_opt
+			{
+				if ($2 != NULL)
+				{
+					$$ = lappend($1, $2);
+				}
+				else
+				{
+					$$ = $1;
+				}
+			}
+		;
+
+index_opt:
+			KEY_BLOCK_SIZE opt_equal ICONST	{ $$ = NULL; }
+			| WITH PARSER ColId					{ $$ = NULL; }
+			| COMMENT SCONST
+				{
+					CommentStmt *n = makeNode(CommentStmt);
+					n->objtype = OBJECT_INDEX;
+					n->object = NULL;
+					n->comment = $2;
+					$$ = (Node *) n;
+				}
+			| USING name
+				{
+					if ((pg_strncasecmp($2, "btree", 5) == 0) ||
+						(pg_strncasecmp($2, "hash", 4) == 0))
+					{
+						/* Begin - ReqID:SRS-MYSQL-CASE */
+						$2 = MYS_STRING_CASE($2);
+						/* End - ReqID:SRS-MYSQL-CASE */
+						$$ = (Node *)makeString($2);
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near "),
+								 parser_errposition(@2)));
+					}
+				}
+		;
+
+mys_access_method_clause:
+			USING name
+				{
+						if ((pg_strncasecmp($2, "btree", 5) == 0) ||
+							(pg_strncasecmp($2, "hash", 4) == 0))
+						{
+							/* Begin - ReqID:SRS-MYSQL-CASE */
+							$2 = MYS_STRING_CASE($2);
+							/* End - ReqID:SRS-MYSQL-CASE */
+							$$ = $2;
+						}
+						else
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near "),
+									 parser_errposition(@2)));
+						}
+				}
+			| /*EMPTY*/
+				{
+					$$ = NULL;
+				}
+		;
+/* End - ReqID:SRS-MYSQL-CREATE-INDEX */
+
 opt_unique:
 			UNIQUE									{ $$ = true; }
+			/* Begin - ReqID:SRS-MYSQL-CREATE-INDEX */
+			| FULLTEXT								{ $$ = false; }
+			| SPATIAL								{ $$ = false; }
+			/* End - ReqID:SRS-MYSQL-CREATE-INDEX */
 			| /*EMPTY*/								{ $$ = false; }
 		;
 
@@ -19645,6 +19729,7 @@ unreserved_keyword:
 			| ADMIN
 			| AFTER
 			| AGGREGATE
+			| ALGORITHM	/* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| ALSO
 			| ALTER
 			| ALWAYS
@@ -19758,6 +19843,7 @@ unreserved_keyword:
 			| INHERIT
 			| INHERITS
 			| INLINE_P
+			| INPLACE	/* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| INPUT_P
 			| INSENSITIVE
 			| INSERT
@@ -19765,6 +19851,7 @@ unreserved_keyword:
 			| INVOKER
 			| ISOLATION
 			| KEYS /* ReqID: SRS-MYSQL-SHOW */
+			| KEY_BLOCK_SIZE	/* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| LABEL
 			| LANGUAGE
 			| LARGE_P
@@ -19885,6 +19972,7 @@ unreserved_keyword:
 			| SET
 			| SETS
 			| SHARE
+			| SHARED /* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| SHOW
 			| SIMPLE
 			| SKIP
@@ -20129,6 +20217,7 @@ reserved_keyword:
 			| FOR
 			| FOREIGN
 			| FROM
+			| FULLTEXT	/* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| GRANT
 			| GROUP_P
 			| HAVING
@@ -20161,6 +20250,7 @@ reserved_keyword:
 			| SELECT
 			| SESSION_USER
 			| SOME
+			| SPATIAL /* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| SYMMETRIC
 			| TABLE
 			| TABLES /* ReqID: SRS-MYSQL-SHOW */
@@ -20205,6 +20295,7 @@ bare_label_keyword:
 			| ADMIN
 			| AFTER
 			| AGGREGATE
+			| ALGORITHM	/* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| ALL
 			| ALSO
 			| ALTER
@@ -20358,6 +20449,7 @@ bare_label_keyword:
 			| FORWARD
 			| FREEZE
 			| FULL
+			| FULLTEXT	/* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| FUNCTION
 			| FUNCTIONS
 			| GENERATED
@@ -20391,6 +20483,7 @@ bare_label_keyword:
 			| INLINE_P
 			| INNER_P
 			| INOUT
+			| INPLACE	/* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| INPUT_P
 			| INSENSITIVE
 			| INSERT
@@ -20406,6 +20499,7 @@ bare_label_keyword:
 			| JOIN
 			| KEY
 			| KEYS /* ReqID: SRS-MYSQL-SHOW */
+			| KEY_BLOCK_SIZE /* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| LABEL
 			| LANGUAGE
 			| LARGE_P
@@ -20558,6 +20652,7 @@ bare_label_keyword:
 			| SETOF
 			| SETS
 			| SHARE
+			| SHARED /* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| SHOW
 			| SIMILAR
 			| SIMPLE
@@ -20565,6 +20660,7 @@ bare_label_keyword:
 			| SMALLINT
 			| SNAPSHOT
 			| SOME
+			| SPATIAL /* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| SQL_P
 			| STABLE
 			| STANDALONE_P

@@ -156,6 +156,7 @@ MYS_REGRESS = cast_to_number \
 			  set_names \
 			  show_create_table \
 			  mys_show \
+			  create_index \
 			  mys_do \
 			  mys_select
 

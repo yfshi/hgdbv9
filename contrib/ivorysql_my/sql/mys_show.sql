@@ -159,6 +159,11 @@ show keys from tb in public where "Table" = 'tb';
 
 drop table tb;
 
+create table tb(id int, name text);
+create index tb_i on tb(id) COMMENT 'test test test';
+show index from tb;
+drop table tb;
+
 --
 --show table status
 --because have time, time is always change,so don't test these.

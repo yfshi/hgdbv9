@@ -1354,7 +1354,7 @@ SELECT
 	CASE WHEN a.attnotnull THEN 'NO' ELSE 'YES' END::varchar(3) AS "NULLABLE", -- Whether the column is nullable ('NO' if NOT NULL, else 'YES')
 	am.amname::varchar(16) AS "INDEX_TYPE",									   -- Index method/type, e.g. 'btree', 'hash'
 	NULL::varchar(16) AS "COMMENT", 										   -- Index column comment, not supported in PostgreSQL, always NULL
-	NULL::varchar(1024) AS "INDEX_COMMENT"									   -- Index comment, not supported in PostgreSQL, always NULL
+	d.description::varchar(1024) AS "INDEX_COMMENT"									   -- Index comment, not supported in PostgreSQL, always NULL
 
 FROM
 	pg_class t											  -- Table relation
@@ -1363,6 +1363,7 @@ JOIN pg_index i ON t.oid = i.indrelid AND t.relpersistence != 't'/* Bug - #z5988
 JOIN pg_class ci ON ci.oid = i.indexrelid				  -- Index relation
 JOIN pg_am am ON ci.relam = am.oid						  -- Index access method
 JOIN LATERAL unnest(i.indkey, i.indoption) WITH ORDINALITY AS k(attnum, opt, n) ON true   -- Unnest index keys with order
+LEFT JOIN pg_description d ON ci.oid = d.objoid
 LEFT JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum	-- Index column attributes
 LEFT JOIN pg_stats s ON s.schemaname = n.nspname AND s.tablename = t.relname AND s.attname = a.attname	-- Statistics for cardinality
 
