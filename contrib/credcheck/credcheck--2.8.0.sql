@@ -53,7 +53,6 @@ RETURNS integer
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT VOLATILE;
 
-GRANT SELECT ON hg_security.pg_password_history TO PUBLIC;
 
 -- Don't want this to be available to non-superusers.
 ---REVOKE ALL ON FUNCTION hg_security.pg_password_history_reset() FROM PUBLIC;
@@ -95,7 +94,6 @@ LANGUAGE C STRICT VOLATILE;
 CREATE VIEW hg_security.pg_banned_role AS
   SELECT * FROM hg_security.pg_banned_role();
 
-GRANT SELECT ON hg_security.pg_banned_role TO PUBLIC;
 
 -- Don't want this to be available to non-superusers.
 ---REVOKE ALL ON FUNCTION hg_security.pg_banned_role_reset() FROM PUBLIC;
@@ -122,4 +120,25 @@ LANGUAGE C VOLATILE;
 CREATE VIEW hg_security.user_expiration_info AS
   SELECT * FROM hg_security.user_expiration_info();
 
+ALTER FUNCTION hg_security.pg_password_history_reset() OWNER TO syssso;
+ALTER FUNCTION hg_security.pg_password_history_reset(name) OWNER TO syssso;
+
+ALTER FUNCTION hg_security.pg_password_history OWNER TO syssso;
+ALTER VIEW hg_security.pg_password_history OWNER TO syssso;
+
+ALTER FUNCTION hg_security.pg_banned_role_reset(name) OWNER TO syssso;
+
+ALTER FUNCTION hg_security.pg_banned_role_reset() OWNER TO syssso;
+ALTER VIEW hg_security.pg_banned_role OWNER TO syssso;
+
+ALTER FUNCTION hg_security.pg_banned_role OWNER TO syssso;
+ALTER FUNCTION hg_security.login_message_display OWNER TO syssso;
+
+GRANT EXECUTE ON FUNCTION hg_security.login_message_display TO PUBLIC;
+
+ALTER FUNCTION hg_security.user_expiration_info OWNER TO syssso;
+ALTER VIEW hg_security.user_expiration_info OWNER TO syssso;
+
+GRANT EXECUTE ON FUNCTION hg_security.user_expiration_info TO PUBLIC;
+GRANT SELECT ON hg_security.user_expiration_info TO PUBLIC;
 
