@@ -4537,6 +4537,8 @@ PostgresMain(int argc, char *argv[],
 	int			tmp_busy_microsecs = 0;
 	TimestampTz	after_time;
 	/* End ReqID: SESSION-VIEWS */
+	uint64		cmd_cnts = 0;	/* BUG#z6159 */
+
 	/* Initialize startup process environment if necessary. */
 	if (!IsUnderPostmaster)
 		InitStandaloneProcess(argv[0]);
@@ -5227,14 +5229,19 @@ PostgresMain(int argc, char *argv[],
 			(*audit_CommandStart_hook)();
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
-		/* Begin - BUG#Z5597 */
+		/* Begin - BUG#Z5597, BUG#z6159 */
 		/*
 		 * MyProc->pgxactoff is the index of current PROC in procArray->pgprocnos[]
 		 * procArray->pgprocnos[] store all active proc sorted by pgprocnos
 		 * keep first hg_pool_size of BEs active in procArray->pgprocnos[]
 		 * let the reset sleep hg_pool_timeout(ms)
 		 */
-		if (hg_pool_size > 0 && hg_pool_timeout > 0)
+		if (hg_pool_size > 0 && hg_pool_skip_txns > 0)  /* if enable size and skip feature */
+		{
+			cmd_cnts ++;
+		}
+
+		if (hg_pool_size > 0 && hg_pool_timeout > 0 && ((hg_pool_skip_txns == 0) || cmd_cnts > hg_pool_skip_txns))
 		{
 			/*
 			 * MyProc->lxid == 0 used to handle explicit TXN
