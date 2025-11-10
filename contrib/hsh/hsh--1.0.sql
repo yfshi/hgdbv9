@@ -48,6 +48,9 @@ CREATE TABLE hsh_history_data(
 	activity_text text
 );
 
+CREATE INDEX hsh_history_data_ts_index ON hsh_history_data(ts);
+CREATE INDEX hsh_history_data_queryid_index ON hsh_history_data(query_id);
+
 -- create the statments related saved table
 CREATE TABLE hsh_statements
 (
