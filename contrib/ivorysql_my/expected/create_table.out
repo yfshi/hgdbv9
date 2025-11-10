@@ -3228,13 +3228,13 @@ COLLATE latin1_bin COMMENT 'dddd';
 SHOW CREATE TABLE t1;
  Table |                               Create Table                               
 -------+--------------------------------------------------------------------------
- t1    | CREATE TABLE `t1` (                                                     +
-       |     `c1` integer DEFAULT 12 COMMENT 'column1',                          +
-       |     `c2` integer COMMENT 'column2',                                     +
-       |     `c3` integer NOT NULL COMMENT 'column3',                            +
-       |     `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,+
-       |     `c5` character varying(255) DEFAULT 'b'::character varying,         +
-       |     `c6` character varying(255)                                         +
+ t1    | CREATE TABLE "t1" (                                                     +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                          +
+       |     "c2" integer COMMENT 'column2',                                     +
+       |     "c3" integer NOT NULL COMMENT 'column3',                            +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,+
+       |     "c5" character varying(255) DEFAULT 'b'::character varying,         +
+       |     "c6" character varying(255)                                         +
        | ) COMMENT='dddd'
 (1 row)
 
@@ -3794,15 +3794,15 @@ select obj_description(oid) from pg_class where relname = 't1';
 SHOW CREATE TABLE t1;
  Table |                                      Create Table                                       
 -------+-----------------------------------------------------------------------------------------
- t1    | CREATE TABLE `t1` (                                                                    +
-       |     `c1` integer DEFAULT 12 COMMENT 'column1',                                         +
-       |     `c2` integer COMMENT 'column2',                                                    +
-       |     `c3` integer NOT NULL COMMENT 'column3',                                           +
-       |     `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
-       |     `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
-       |     `c6` character varying(255),                                                       +
-       |     `c7` integer NOT NULL AUTO_INCREMENT,                                              +
-       |     CONSTRAINT t1_pkey PRIMARY KEY (c7)                                                +
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
        | ) AUTO_INCREMENT=77 COMMENT='dddd'
 (1 row)
 
@@ -3839,15 +3839,15 @@ select obj_description(oid) from pg_class where relname = 't1';
 SHOW CREATE TABLE t1;
  Table |                                      Create Table                                       
 -------+-----------------------------------------------------------------------------------------
- t1    | CREATE TABLE `t1` (                                                                    +
-       |     `c1` integer DEFAULT 12 COMMENT 'column1',                                         +
-       |     `c2` integer COMMENT 'column2',                                                    +
-       |     `c3` integer NOT NULL COMMENT 'column3',                                           +
-       |     `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
-       |     `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
-       |     `c6` character varying(255),                                                       +
-       |     `c7` integer NOT NULL AUTO_INCREMENT,                                              +
-       |     CONSTRAINT t1_pkey PRIMARY KEY (c7)                                                +
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
        | ) AUTO_INCREMENT=77 COMMENT='dddd'
 (1 row)
 
@@ -3884,15 +3884,15 @@ select obj_description(oid) from pg_class where relname = 't1';
 SHOW CREATE TABLE t1;
  Table |                                      Create Table                                       
 -------+-----------------------------------------------------------------------------------------
- t1    | CREATE TABLE `t1` (                                                                    +
-       |     `c1` integer DEFAULT 12 COMMENT 'column1',                                         +
-       |     `c2` integer COMMENT 'column2',                                                    +
-       |     `c3` integer NOT NULL COMMENT 'column3',                                           +
-       |     `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
-       |     `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
-       |     `c6` character varying(255),                                                       +
-       |     `c7` integer NOT NULL AUTO_INCREMENT,                                              +
-       |     CONSTRAINT t1_pkey PRIMARY KEY (c7)                                                +
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
        | ) AUTO_INCREMENT=77 COMMENT='dddd'
 (1 row)
 
@@ -3929,15 +3929,15 @@ select obj_description(oid) from pg_class where relname = 't1';
 SHOW CREATE TABLE t1;
  Table |                                      Create Table                                       
 -------+-----------------------------------------------------------------------------------------
- t1    | CREATE TABLE `t1` (                                                                    +
-       |     `c1` integer DEFAULT 12 COMMENT 'column1',                                         +
-       |     `c2` integer COMMENT 'column2',                                                    +
-       |     `c3` integer NOT NULL COMMENT 'column3',                                           +
-       |     `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
-       |     `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
-       |     `c6` character varying(255),                                                       +
-       |     `c7` integer NOT NULL AUTO_INCREMENT,                                              +
-       |     CONSTRAINT t1_pkey PRIMARY KEY (c7)                                                +
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
        | )
 (1 row)
 
@@ -3969,15 +3969,15 @@ Indexes:
 SHOW CREATE TABLE t1;
  Table |                                      Create Table                                       
 -------+-----------------------------------------------------------------------------------------
- t1    | CREATE TABLE `t1` (                                                                    +
-       |     `c1` integer DEFAULT 12 COMMENT 'column1',                                         +
-       |     `c2` integer COMMENT 'column2',                                                    +
-       |     `c3` integer NOT NULL COMMENT 'column3',                                           +
-       |     `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
-       |     `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
-       |     `c6` character varying(255),                                                       +
-       |     `c7` integer NOT NULL AUTO_INCREMENT,                                              +
-       |     CONSTRAINT t1_pkey PRIMARY KEY (c7)                                                +
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
        | )
 (1 row)
 
@@ -4014,15 +4014,15 @@ select obj_description(oid) from pg_class where relname = 't1';
 SHOW CREATE TABLE t1;
  Table |                                      Create Table                                       
 -------+-----------------------------------------------------------------------------------------
- t1    | CREATE TABLE `t1` (                                                                    +
-       |     `c1` integer DEFAULT 12 COMMENT 'column1',                                         +
-       |     `c2` integer COMMENT 'column2',                                                    +
-       |     `c3` integer NOT NULL COMMENT 'column3',                                           +
-       |     `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
-       |     `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
-       |     `c6` character varying(255),                                                       +
-       |     `c7` integer NULL AUTO_INCREMENT,                                                  +
-       |     CONSTRAINT t1_c7_key UNIQUE (c7)                                                   +
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NULL AUTO_INCREMENT,                                                  +
+       |     CONSTRAINT "t1_c7_key" UNIQUE (c7)                                                 +
        | )
 (1 row)
 
@@ -4060,15 +4060,15 @@ select obj_description(oid) from pg_class where relname = 't1';
 SHOW CREATE TABLE t1;
  Table |                                      Create Table                                       
 -------+-----------------------------------------------------------------------------------------
- t1    | CREATE TABLE `t1` (                                                                    +
-       |     `c1` integer DEFAULT 12 COMMENT 'column1',                                         +
-       |     `c2` integer COMMENT 'column2',                                                    +
-       |     `c3` integer NOT NULL COMMENT 'column3',                                           +
-       |     `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
-       |     `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
-       |     `c6` character varying(255),                                                       +
-       |     `c7` integer NULL AUTO_INCREMENT,                                                  +
-       |     CONSTRAINT t1_c7_key UNIQUE (c7)                                                   +
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NULL AUTO_INCREMENT,                                                  +
+       |     CONSTRAINT "t1_c7_key" UNIQUE (c7)                                                 +
        | )
 (1 row)
 

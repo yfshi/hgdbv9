@@ -1908,6 +1908,23 @@ typedef struct MergeStmt
 	WithClause *withClause;		/* WITH clause */
 } MergeStmt;
 
+/* Begin - BUG#Z5973 */
+typedef enum ShowType
+{
+	SHOW_UNKNOW,					/* unknow show */
+	SHOW_CREATE_DATABASE,			/* show create database */
+	SHOW_DATABASE,					/* show database */
+	SHOW_TRIGGER,					/* show trigger */
+	SHOW_CREATE_TABLE,				/* show create table */
+	SHOW_CREATE_VIEW,				/* show view */
+	SHOW_COLUMNS,					/* show columns */
+	SHOW_TABLES,					/* show tables */
+	SHOW_TABLES_STATUS,				/* show tables status */
+	SHOW_INDEX,						/* show index */
+	SHOW_VARIABLE					/* show variable */
+} ShowType;
+/* End - BUG#Z5973 */
+
 /* ----------------------
  *		Select Statement
  *
@@ -1984,6 +2001,8 @@ typedef struct SelectStmt
 	struct SelectStmt *larg;	/* left child */
 	struct SelectStmt *rarg;	/* right child */
 	/* Eventually add fields for CORRESPONDING spec here */
+
+	ShowType mysshowtype;		/* BUG#Z5973, Mark the type of SHOW */
 } SelectStmt;
 
 
