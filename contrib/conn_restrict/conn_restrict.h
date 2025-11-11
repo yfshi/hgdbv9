@@ -63,18 +63,19 @@ PG_MODULE_MAGIC;
 
 typedef enum
 {
-	rulemac_wmatch,
-	rulemac_bmatch,
-	rulemac_outmatch
+	rulemac_notmatch,
+	rulemac_exclude_match,
+	rulemac_include_match,
+	rulemac_both_match
 } match_macflag;
 
 typedef enum
 {
-	ruletime_wmatch,
-	ruletime_bmatch,
-	ruletime_outmatch
-}
-match_timeflag;
+	ruletime_notmatch,
+	ruletime_exclude_match,
+	ruletime_include_match,
+	ruletime_both_match
+} match_timeflag;
 
 #endif
 /* End ReqID: SRS-CLIENT-AUTH */
