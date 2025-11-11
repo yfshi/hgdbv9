@@ -28,7 +28,7 @@ begin
 end$$;
 ERROR:  variable "x" is declared CONSTANT
 LINE 4:   for x, y in select 1, 2 loop  -- fail
-              ^
+               ^
 do $$
 declare x constant int[];
 begin
@@ -62,7 +62,7 @@ begin
 end$$;
 ERROR:  variable "x" is declared CONSTANT
 LINE 4:   for x.f1, y in select 1, 2 loop  -- fail
-              ^
+                  ^
 -- initializer expressions
 do $$
 declare x int := sin(0);

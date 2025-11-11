@@ -124,6 +124,7 @@ typedef enum vartag_external
 	VARTAG_INDIRECT = 1,
 	VARTAG_EXPANDED_RO = 2,
 	VARTAG_EXPANDED_RW = 3,
+	VARTAG_COLLECTYPE = 4,	/* ReqID:SRS-PLSQL-Collection */
 	VARTAG_ONDISK = 18
 } vartag_external;
 
@@ -392,6 +393,11 @@ typedef struct
 #define VARATT_EXTERNAL_IS_COMPRESSED(toast_pointer) \
 	(VARATT_EXTERNAL_GET_EXTSIZE(toast_pointer) < \
 	 (toast_pointer).va_rawsize - VARHDRSZ)
+
+/* Begin - ReqID:SRS-PLSQL-Collection */
+#define VARATT_IS_EXTERNAL_COLLECT(PTR) \
+	(VARATT_IS_EXTERNAL(PTR) && VARTAG_EXTERNAL(PTR) == VARTAG_COLLECTYPE)
+/* End- ReqID:SRS-PLSQL-Collection */
 
 
 /* ----------------------------------------------------------------

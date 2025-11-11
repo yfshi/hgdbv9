@@ -489,6 +489,12 @@ P0002    E    ERRCODE_NO_DATA_FOUND                                          no_
 P0003    E    ERRCODE_TOO_MANY_ROWS                                          too_many_rows
 P0004    E    ERRCODE_ASSERT_FAILURE                                         assert_failure
 
+# Oracle compatible
+P0006	 E	  ERRCODE_COLLECTION_IS_NULL                                     collection_is_null
+P0007	 E 	  ERRCODE_SUBSCRIPT_OUTSIDE_LIMIT                                subscript_outside_limit
+P0008	 E	  ERRCODE_SUBSCRIPT_BEYOND_COUNT                                 subscript_beyond_count
+P0182	 E	  ERRCODE_VALUE_ERROR                                            value_error
+
 Section: Class XX - Internal Error
 
 # this is for "can't-happen" conditions and software bugs (PostgreSQL-specific error class)

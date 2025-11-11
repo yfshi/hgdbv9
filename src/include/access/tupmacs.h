@@ -67,8 +67,10 @@
 		) \
 	  ) \
 	) \
-	: \
-	PointerGetDatum((char *) (T)) \
+	: ((attlen == -3) ? \
+		Int64GetDatum(*((int64 *) (T))) \
+		: \
+		PointerGetDatum((char *) (T))) \
 )
 #else							/* SIZEOF_DATUM != 8 */
 
@@ -89,8 +91,10 @@
 			) \
 		) \
 	) \
-	: \
-	PointerGetDatum((char *) (T)) \
+	: ((attlen == -3) ? \
+		Int32GetDatum(*((int32 *) (T))) \
+		: \
+	PointerGetDatum((char *) (T))) \
 )
 #endif							/* SIZEOF_DATUM == 8 */
 
@@ -183,11 +187,15 @@
 	( \
 		(cur_offset) + VARSIZE_ANY(attptr) \
 	) \
+	: (((attlen) == -3) ? \
+	( \
+		(cur_offset) + (sizeof(void *)) \
+	) \
 	: \
 	( \
 		AssertMacro((attlen) == -2), \
 		(cur_offset) + (strlen((char *) (attptr)) + 1) \
-	)) \
+	))) \
 )
 
 /*

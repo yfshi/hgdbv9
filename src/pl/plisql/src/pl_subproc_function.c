@@ -2500,7 +2500,8 @@ plisql_func_select_candidate_forudttype(PLiSQL_function *pfunc,
 		if (argtypes[i] == ORAREFCURSOROID ||
 			argtypes[i] == SYS_REFCURSOROID ||
 			argtypes[i] == RECORDOID ||
-			argtypes[i] == ORARECORDOID) /* ReqID:SRS-PLSQL-RECORD */
+			argtypes[i] == ORARECORDOID /* ReqID:SRS-PLSQL-RECORD */ ||
+			IS_COLLECTOID(argtypes[i]) /* ReqID:SRS-PLSQL-Collection */)
 		{
 			Node *arg = list_nth(fargs, i);
 
@@ -2558,13 +2559,18 @@ plisql_func_select_candidate_forudttype(PLiSQL_function *pfunc,
 					case PLISQL_TTYPE_ORARECORD_TYPE:
 						{
 							if (argitem->type != type[i])
-							{
 								match = false;
-								break;
-							}
 						}
 						break;
 					/* End - ReqID:SRS-PLSQL-RECORD */
+					/* Begin - ReqID:SRS-PLSQL-Collection */
+					case PLISQL_TTYPE_COLLECT_TYPE:
+						{
+							if (argitem->type != type[i])
+								match = false;
+						}
+						break;
+					/* End - ReqID:SRS-PLSQL-Collection */
 					default:
 						break;
 				}
@@ -3209,6 +3215,12 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 	int			j;
 	ListCell	*lc;
 	Oid			rettype = (subprocfunc->rettype != NULL ? subprocfunc->rettype->typoid : VOIDOID);
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	int32		*outargtypmod;
+	int32		rettypmod;
+
+	rettypmod = (subprocfunc->rettype != NULL ? subprocfunc->rettype->atttypmod : -1);
+	/* End - ReqID:SRS-PLSQL-Collection */
 
 	/* function no out arguments */
 	if (numoutargs < 1)
@@ -3216,6 +3228,9 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 
 	outargtypes = (Oid *) palloc0(numoutargs * sizeof(Oid));
 	outargnames = (char **) palloc0(numoutargs * sizeof(char *));
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	outargtypmod = (int32 *) palloc0(numoutargs * sizeof(int32));
+	/* End - ReqID:SRS-PLSQL-Collection */
 
 	i = 0;
 	foreach(lc, subprocfunc->arg)
@@ -3235,6 +3250,11 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 				outargnames[i] = psprintf("_column_%d", i + 1);
 			else
 				outargnames[i] = argitem->argname;
+
+			/* Begin - ReqID:SRS-PLSQL-Collection */
+			outargtypmod[i] = argitem->type->atttypmod;
+			/* End - ReqID:SRS-PLSQL-Collection */
+
 			i++;
 			/* End - ReqID:SRS-SQL-PACKAGE */
 		}
@@ -3258,7 +3278,7 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 			TupleDescInitEntry(desc, ++i,
 								"_RETVAL_",
 								rettype,
-								-1,
+								rettypmod, /* ReqID:SRS-PLSQL-Collection */
 								0);
 
 		for (j = 0; j < numoutargs; j++)
@@ -3266,7 +3286,7 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 			TupleDescInitEntry(desc, ++i,
 							outargnames[j],
 							outargtypes[j],
-							-1,
+							outargtypmod[j], /* ReqID:SRS-PLSQL-Collection */
 							0);
 		}
 	}
@@ -3279,7 +3299,7 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 			TupleDescInitEntry(desc, ++i,
 							outargnames[j],
 							outargtypes[j],
-							-1,
+							outargtypmod[j], /* ReqID:SRS-PLSQL-Collection */
 							0);
 		}
 
@@ -3287,7 +3307,7 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 			TupleDescInitEntry(desc, ++i,
 								"_RETVAL_",
 								rettype,
-								-1,
+								rettypmod,/* ReqID:SRS-PLSQL-Collection */
 								0);
 	}
 	/* End - ReqID:SRS-SQL-FUNCOUT */

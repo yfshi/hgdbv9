@@ -208,6 +208,7 @@ typedef enum NodeTag
 	T_IntoClause,
 	T_NonDefValNode,	/* ReqID:SRS-SQL-FUNCOUT */
 	T_PseudoColVar, /* ReqID:SRS-SQL-ROWNUM */
+	T_UdtypeRef,	/* ReqID:SRS-PLSQL-Collection */
 
 	/*
 	 * TAGS FOR EXPRESSION STATE NODES (execnodes.h)

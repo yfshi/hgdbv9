@@ -334,8 +334,14 @@ nocache_index_getattr(IndexTuple tup,
 		while (j < natts && TupleDescAttr(tupleDesc, j)->attcacheoff > 0)
 			j++;
 
-		off = TupleDescAttr(tupleDesc, j - 1)->attcacheoff +
-			TupleDescAttr(tupleDesc, j - 1)->attlen;
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if (TupleDescAttr(tupleDesc, j - 1)->attlen == -3)
+			off = TupleDescAttr(tupleDesc, j - 1)->attcacheoff +
+				sizeof(void *);
+		else
+		/* End - ReqID:SRS-PLSQL-Collection */
+			off = TupleDescAttr(tupleDesc, j - 1)->attcacheoff +
+				TupleDescAttr(tupleDesc, j - 1)->attlen;
 
 		for (; j < natts; j++)
 		{
@@ -407,7 +413,7 @@ nocache_index_getattr(IndexTuple tup,
 				/* not varlena, so safe to use att_align_nominal */
 				off = att_align_nominal(off, att->attalign);
 
-				if (usecache)
+				if (usecache && att->attlen != -3 /* ReqID:SRS-PLSQL-Collection */)
 					att->attcacheoff = off;
 			}
 

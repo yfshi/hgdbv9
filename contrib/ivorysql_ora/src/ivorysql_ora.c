@@ -35,6 +35,25 @@
 /* End - ReqID:SRS-SQL-XML */
 
 #include "funcapi.h"
+/* Begin - ReqID:SRS-PLSQL-Collection */
+#include "include/collection.h"
+#include "tstl2cl/include/c_algorithm.h"
+#include "tstl2cl/include/c_def.h"
+#include "tstl2cl/include/c_functional.h"
+#include "tstl2cl/include/c_iterator.h"
+#include "tstl2cl/include/c_list.h"
+#include "tstl2cl/include/c_map.h"
+#include "tstl2cl/include/c_queue.h"
+#include "tstl2cl/include/c_set.h"
+#include "tstl2cl/include/c_stack.h"
+#include "tstl2cl/include/c_utility.h"
+#include "tstl2cl/include/c_vector.h"
+#include "tstl2cl/c_algo.h"
+#include "tstl2cl/c_function.h"
+#include "tstl2cl/c_memory.h"
+#include "tstl2cl/c_pair.h"
+#include "tstl2cl/c_tree.h"
+/* End - ReqID:SRS-PLSQL-Collection */
 #include "include/ivorysql_ora.h"
 #include "include/nlssort.h"
 #include "include/orarefcursor.h"
@@ -286,6 +305,10 @@ _PG_init(void)
 	pre_server_listen_hook = server_listen_hook;
 	server_listen_hook = create_oracle_server_listen;
 	/* End - Req: SRS-MYSQL-PROTOCOL */
+
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	collection_init_internal();
+	/* End - ReqID:SRS-PLSQL-Collection */
 }
 
 /*
@@ -325,4 +348,7 @@ _PG_fini(void)
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	server_listen_hook = pre_server_listen_hook;
 	/* End - Req: SRS-MYSQL-PROTOCOL */
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	collection_funcs.loadstate = UNLOADED;
+	/* End - ReqID:SRS-PLSQL-Collection */
 }

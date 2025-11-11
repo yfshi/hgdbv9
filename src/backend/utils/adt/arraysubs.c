@@ -196,10 +196,21 @@ array_subscript_check_subscripts(ExprState *state,
 					ereport(ERROR,
 							(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
 							 errmsg("array subscript in assignment must not be null")));
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				/* if the key value of the collection is null, raise an error */
+				else if (sbsrefstate->ctindex != NULL)
+					ereport(ERROR,
+							(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+							 errmsg("numeric or value error: NULL index table key value")));
+				/* End - ReqID:SRS-PLSQL-Collection */
 				*op->resnull = true;
 				return false;
 			}
 			workspace->upperindex[i] = DatumGetInt32(sbsrefstate->upperindex[i]);
+			/* Begin - ReqID:SRS-PLSQL-Collection */
+			if (sbsrefstate->numctindex > 0)
+				sbsrefstate->ctindex[i] = sbsrefstate->upperindex[i];
+			/* End - ReqID:SRS-PLSQL-Collection */
 		}
 	}
 

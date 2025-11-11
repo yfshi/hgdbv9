@@ -1041,7 +1041,7 @@ ora_test_tupdesc_match(TupleDesc valuedesc, TupleDesc targetdesc, bool raise_err
 
 /* Begin - ReqID:SRS-PLSQL-RECORD */
 /*
- * Check that the tupdesc column contains Oracle record type
+ * Check that the tupdesc column contains Oracle record type or collection type
  */
 bool
 tupledesc_has_udt_type(TupleDesc desc)
@@ -1051,7 +1051,8 @@ tupledesc_has_udt_type(TupleDesc desc)
 	for (i = 0; i < desc->natts; i++)
 	{
 		if (desc->attrs[i].atttypid == ORARECORDOID ||
-			desc->attrs[i].atttypid == UDTPOINTEROID)
+			desc->attrs[i].atttypid == UDTPOINTEROID ||
+			IS_COLLECTOID(desc->attrs[i].atttypid) /* ReqID:SRS-PLSQL-Collection */)
 			return true;
 	}
 

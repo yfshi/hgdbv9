@@ -3393,6 +3393,13 @@ ExecInitSubscriptingRef(ExprEvalStep *scratch, SubscriptingRef *sbsref,
 	sbsrefstate->isassignment = isAssignment;
 	sbsrefstate->numupper = nupper;
 	sbsrefstate->numlower = nlower;
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	if (IS_COLLECTOID(sbsref->refcontainertype))
+		sbsrefstate->numctindex = nupper;
+	else
+		sbsrefstate->numctindex = 0;
+	/* End - ReqID:SRS-PLSQL-Collection */
+
 	/* Set up per-subscript arrays */
 	ptr = ((char *) sbsrefstate) + MAXALIGN(sizeof(SubscriptingRefState));
 	sbsrefstate->upperindex = (Datum *) ptr;
@@ -3407,6 +3414,15 @@ ExecInitSubscriptingRef(ExprEvalStep *scratch, SubscriptingRef *sbsref,
 	ptr += nupper * sizeof(bool);
 	sbsrefstate->lowerindexnull = (bool *) ptr;
 	/* ptr += nlower * sizeof(bool); */
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	if (IS_COLLECTOID(sbsref->refcontainertype))
+	{
+		ptr += nupper * sizeof(Datum);
+		sbsrefstate->ctindex = (Datum *) ptr;
+	}
+	else
+		sbsrefstate->ctindex = NULL;
+	/* End - ReqID:SRS-PLSQL-Collection */
 
 	/*
 	 * Let the container-type-specific code have a chance.  It must fill the
@@ -3430,7 +3446,10 @@ ExecInitSubscriptingRef(ExprEvalStep *scratch, SubscriptingRef *sbsref,
 	 * is NULL.  We can implement this with just JUMP_IF_NULL, since we
 	 * evaluated the array into the desired target location.
 	 */
-	if (!isAssignment && sbsroutines->fetch_strict)
+	if (!isAssignment && sbsroutines->fetch_strict
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		&& !IS_COLLECTOID(sbsref->refcontainertype))
+		/* End - ReqID:SRS-PLSQL-Collection */
 	{
 		scratch->opcode = EEOP_JUMP_IF_NULL;
 		scratch->d.jump.jumpdone = -1;	/* adjust later */
@@ -3438,6 +3457,17 @@ ExecInitSubscriptingRef(ExprEvalStep *scratch, SubscriptingRef *sbsref,
 		adjust_jumps = lappend_int(adjust_jumps,
 								   state->steps_len - 1);
 	}
+
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	if (IS_COLLECTOID(sbsref->refcontainertype))
+	{
+		if (list_length(sbsref->refupperindexpr) > MAXDIM)
+			ereport(ERROR,
+					(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+					 errmsg("number of collection dimensions (%d) exceeds the maximum allowed (%d)",
+							list_length(sbsref->refupperindexpr), MAXDIM)));
+	}
+	/* End - ReqID:SRS-PLSQL-Collection */
 
 	/* Evaluate upper subscripts */
 	i = 0;
@@ -3558,7 +3588,12 @@ ExecInitSubscriptingRef(ExprEvalStep *scratch, SubscriptingRef *sbsref,
 	else
 	{
 		/* array fetch is much simpler */
-		scratch->opcode = EEOP_SBSREF_FETCH;
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if (IS_COLLECTOID(sbsref->refcontainertype))
+			scratch->opcode = EEOP_COLLECTYPEREF_SUBSCRIPTS;
+		else
+		/* End - ReqID:SRS-PLSQL-Collection */
+			scratch->opcode = EEOP_SBSREF_FETCH;
 		scratch->d.sbsref.subscriptfunc = methods.sbs_fetch;
 		scratch->d.sbsref.state = sbsrefstate;
 		ExprEvalPushStep(state, scratch);

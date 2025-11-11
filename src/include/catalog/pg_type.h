@@ -282,6 +282,11 @@ DECLARE_UNIQUE_INDEX(pg_type_typname_nsp_index, 2704, on pg_type using btree(typ
 /* Begin - ReqID:SRS-PLSQL-RECORD */
 #define	 TYPTYPE_ORA_RECORD	   'o'	/* Oracle compatible record type */
 /* End - ReqID:SRS-PLSQL-RECORD */
+/* Begin - ReqID:SRS-PLSQL-Collection */
+#define  TYPTYPE_ASSOCIATIVE_ARRAY 'a' /* associative array type */
+#define  TYPTYPE_NESTEDTABLE  'n' 		/* nested table type  */
+#define  TYPTYPE_VARRAY    'v'    		/* varray type */
+/* End - ReqID:SRS-PLSQL-Collection */
 
 #define  TYPCATEGORY_INVALID	'\0'	/* not an allowed category */
 #define  TYPCATEGORY_ARRAY		'A'
@@ -362,6 +367,19 @@ DECLARE_UNIQUE_INDEX(pg_type_typname_nsp_index, 2704, on pg_type using btree(typ
 #define ISEXCEPTIONOID(oid) (oid == EXCEPTIONOID)
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 
+/* Begin - ReqID:SRS-PLSQL-Collection */
+#define IS_PLSQL_ROWTYPE(typtype)	        (typtype == 'c')
+#define IS_PLSQL_ASSOCIATIVE_ARRAY(typtype)	(typtype == 'a')
+#define IS_PLSQL_NESTED_TABLE(typtype)		(typtype == 'n')
+#define IS_PLSQL_VARRAY(typtype)			(typtype == 'v')
+#define IS_PLSQL_COLLECTYPE(typtype)		(IS_PLSQL_ASSOCIATIVE_ARRAY(typtype) || \
+										 IS_PLSQL_NESTED_TABLE(typtype) || \
+										 IS_PLSQL_VARRAY(typtype))
+#define IS_COLLECTOID(oid) (oid == ASSOCIATIVE_ARRAYOID || \
+						oid == NESTED_TABLEOID || \
+						oid == VARRAYOID)
+#define MAX_UDT_DIM			64
+/* End - ReqID:SRS-PLSQL-Collection */
 
 /*
  * Backwards compatibility for ancient random spellings of pg_type OID macros.

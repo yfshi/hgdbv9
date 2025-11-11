@@ -57,6 +57,7 @@ PG_KEYWORD("constant", K_CONSTANT)
 PG_KEYWORD("constraint", K_CONSTRAINT)
 PG_KEYWORD("constraint_name", K_CONSTRAINT_NAME)
 PG_KEYWORD("continue", K_CONTINUE)
+PG_KEYWORD("count", K_COUNT)	/* ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("current", K_CURRENT)
 /* Begin - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("current_user", K_CURRENT_USER)
@@ -83,7 +84,9 @@ PG_KEYWORD("exception", K_EXCEPTION)
 /* Begin - ReqID:SRS-PLSQL-EXCEPTION */
 PG_KEYWORD("exception_init", K_EXCEPTION_INIT)
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
+PG_KEYWORD("exists", K_EXISTS)	/* ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("exit", K_EXIT)
+PG_KEYWORD("extend", K_EXTEND)	/* ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("fetch", K_FETCH)
 PG_KEYWORD("first", K_FIRST)
 PG_KEYWORD("forward", K_FORWARD)
@@ -92,10 +95,12 @@ PG_KEYWORD("goto", K_GOTO)      /* ReqID:SRS-PLSQL-GOTO */
 PG_KEYWORD("hint", K_HINT)
 PG_KEYWORD("immediate", K_IMMEDIATE)	/* BUG#Z1438 */
 PG_KEYWORD("import", K_IMPORT)
+PG_KEYWORD("index", K_INDEX)	/* ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("info", K_INFO)
 PG_KEYWORD("insert", K_INSERT)
 PG_KEYWORD("is", K_IS)
 PG_KEYWORD("last", K_LAST)
+PG_KEYWORD("limit", K_LIMIT)	/* ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("log", K_LOG)
 PG_KEYWORD("merge", K_MERGE)	/* BUG#Z1389 */
 PG_KEYWORD("message", K_MESSAGE)
@@ -107,6 +112,7 @@ PG_KEYWORD("no", K_NO)
 PG_KEYWORD("nocopy", K_NOCOPY)
 /* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("notice", K_NOTICE)
+PG_KEYWORD("of", K_OF)		/* ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("open", K_OPEN)
 PG_KEYWORD("option", K_OPTION)
 /* Begin - SRS-PLSQL-SUBPROC */
@@ -171,6 +177,7 @@ PG_KEYWORD("table_name", K_TABLE_NAME)
 /* Begin - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("trigger", K_TRIGGER)
 /* End - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("trim", K_TRIM)	/* ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("type", K_TYPE)
 PG_KEYWORD("use_column", K_USE_COLUMN)
 PG_KEYWORD("use_variable", K_USE_VARIABLE)
@@ -178,4 +185,8 @@ PG_KEYWORD("use_variable", K_USE_VARIABLE)
 PG_KEYWORD("using_nls_comp", K_USING_NLS_COMP)
 /* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("variable_conflict", K_VARIABLE_CONFLICT)
+/* Begin - ReqID:SRS-PLSQL-Collection */
+PG_KEYWORD("varray", K_VARRAY)
+PG_KEYWORD("varying", K_VARYING)
+/* End - ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("warning", K_WARNING)

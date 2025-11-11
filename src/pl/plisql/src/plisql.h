@@ -88,8 +88,11 @@ typedef enum PLiSQL_datum_type
 	PLISQL_DTYPE_ATTRIBUTE,
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 	/* Begin - ReqID:SRS-PLSQL-RECORD */
-	PLISQL_DTYPE_ORA_RECORD		/* Oracle compatible record type variables */
+	PLISQL_DTYPE_ORA_RECORD,		/* Oracle compatible record type variables */
 	/* End - ReqID:SRS-PLSQL-RECORD */
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	PLISQL_DTYPE_COLLECT_ARRAYELEM		/* collection element */
+	/* End - ReqID:SRS-PLSQL-Collection */
 } PLiSQL_datum_type;
 
 /*
@@ -127,8 +130,13 @@ typedef enum PLiSQL_type_type
 	PLISQL_TTYPE_ORARECORD_TYPE,		/* Oracle compatible record type or other types */
 	/* End - ReqID:SRS-PLSQL-RECORD */
 	/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
-	PLISQL_TTYPE_SUBTYPE
+	PLISQL_TTYPE_SUBTYPE,
 	/* End - ReqID:SRS-PLSQL-SUBTYPE */
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	PLISQL_TTYPE_COLLECT_TYPE	/* Oracle compatible associative array, nested table,
+								 * and varray type
+								 */
+	/* End - ReqID:SRS-PLSQL-Collection */
 } PLiSQL_type_type;
 
 /*
@@ -534,6 +542,31 @@ typedef struct PLiSQL_recfield
 	ExpandedRecordFieldInfo finfo;	/* field's attnum and type info */
 	/* if rectupledescid == INVALID_TUPLEDESC_IDENTIFIER, finfo isn't valid */
 } PLiSQL_recfield;
+
+/* Begin - ReqID:SRS-PLSQL-Collection */
+/*
+ * Element in a collection variable
+ */
+typedef struct
+{
+	int			dtype;
+	int			dno;
+	Oid			pkgoid;
+	PLiSQL_expr *subscript;
+	List		*indirection;
+	int			arrayparentno;	/* dno of parent array variable */
+	/* Remaining fields are cached info about the array variable's type */
+	Oid			parenttypoid;	/* type of array variable; 0 if not yet set */
+	int32		parenttypmod;	/* typmod of array variable */
+	Oid			arraytypoid;	/* OID of actual array type */
+	int32		arraytypmod;	/* typmod of array (and its elements too) */
+	int16		arraytyplen;	/* typlen of array type */
+	Oid			elemtypoid;		/* OID of array element type */
+	int16		elemtyplen;		/* typlen of element type */
+	bool		elemtypbyval;	/* element type is pass-by-value? */
+	char		elemtypalign;	/* typalign of element type */
+} PLiSQL_arrayelem;
+/* End - ReqID:SRS-PLSQL-Collection */
 
 /*
  * Item in the compilers namespace tree
@@ -1382,6 +1415,7 @@ typedef struct PLwdatum
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	int			nname_used;		/* to find datum, we match idents n names */
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	PLiSQL_type *collectype;	/* ReqID:SRS-PLSQL-Collection, referenced collection type */
 } PLwdatum;
 
 /**********************************************************************
@@ -1619,6 +1653,9 @@ extern Datum exec_cast_value(PLiSQL_execstate *estate,
 /* Begin - BUG#M0000376 */
 extern void do_transform_for_anonyblock_expr(PLiSQL_expr *expr);
 /* End - BUG#M0000376 */
+/* Begin - ReqID:SRS-PLSQL-Collection */
+extern PLiSQL_type *get_row_field_type(PLiSQL_type *data_type, char *name);
+/* End - ReqID:SRS-PLSQL-Collection */
 
 /*
  * Functions for namespace handling in pl_funcs.c
@@ -1676,7 +1713,10 @@ extern void plisql_scanner_finish(void);
 extern void *plisql_get_yylex_global_proper(void);
 extern void plisql_recover_yylex_global_proper(void *yylex_data);
 /* End - ReqID:SRS-SQL-PACKAGE */
-
+/* Begin - ReqID:SRS-PLSQL-Collection */
+extern bool is_collection_variable(PLiSQL_datum *datum);
+bool is_collect_methodname(char *name);
+/* End - ReqID:SRS-PLSQL-Collection */
 
 /*
  * Externs in gram.y

@@ -9200,6 +9200,9 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 		case T_WindowFunc:
 		case T_FuncExpr:
 			/* function-like: name(..) or name[..] */
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		case T_UdtypeRef:
+		/* End - ReqID:SRS-PLSQL-Collection */
 			return true;
 
 			/* CASE keywords act as parentheses */
@@ -9317,6 +9320,9 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 				case T_GroupingFunc:	/* own parentheses */
 				case T_WindowFunc:	/* own parentheses */
 				case T_CaseExpr:	/* other separators */
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				case T_UdtypeRef:
+				/* End - ReqID:SRS-PLSQL-Collection */
 					return true;
 				default:
 					return false;
@@ -9370,6 +9376,9 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 				case T_WindowFunc:	/* own parentheses */
 				case T_CaseExpr:	/* other separators */
 					return true;
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				case T_UdtypeRef:
+				/* End - ReqID:SRS-PLSQL-Collection */
 				default:
 					return false;
 			}

@@ -187,10 +187,6 @@ static void location_lineno_init(void);
 static more_idents_tokendata *plisql_get_morewords_idents(char *paramname, char *word1,
 										char *word2, char *word3,
 										int lloc, int *pre_last_tok);
-static PLwdatum *plisql_get_ora_record_field(PLiSQL_datum *datum,
-					List *idents,
-					int nlen,
-					int nth);
 /* End - ReqID:SRS-PLSQL-RECORD */
 
 
@@ -392,7 +388,8 @@ plisql_yylex(void)
 										wdatum = plisql_get_ora_record_field(aux1.lval.wdatum.datum,
 																	idents,
 																	nlen /* BUG#Z1322 */,
-																	nnames);
+																	nnames,
+																	aux1.lloc);
 										if (wdatum != NULL)
 										{
 											aux1.lval.wdatum.datum = wdatum->datum;
@@ -403,9 +400,13 @@ plisql_yylex(void)
 											tok1 = T_DATUM;
 										}
 										else
-											ereport(ERROR,
-												(errcode(ERRCODE_SYNTAX_ERROR),
-												plisql_scanner_errposition(aux1.lloc)));
+										{
+											/* Begin - ReqID:SRS-PLSQL-Collection */
+											aux1.lval.cword.idents = idents;
+											tok1 = T_CWORD;
+											/* End - ReqID:SRS-PLSQL-Collection */
+										}
+
 									}
 									else
 										tok1 = T_DATUM;
@@ -518,7 +519,7 @@ plisql_yylex(void)
 								   core_yy.scanbuf + aux1.lloc,
 								   (!AT_STMT_START(plisql_yytoken) ||
 									(tok2 == '=' || tok2 == COLON_EQUALS ||
-									 tok2 == '[')),
+									 tok2 == '[' || tok2 == '(')),
 								   &aux1.lval.wdatum,
 								   &aux1.lval.word))
 				tok1 = T_DATUM;
@@ -1035,100 +1036,27 @@ plisql_get_morewords_idents(char *paramname, char *word1,
 	moredata->nused_token = nused_tokdata - 1;
 	return moredata;
 }
-
-static PLwdatum *
-plisql_get_ora_record_field(PLiSQL_datum *datum,
-					List *idents,
-					int nlen,
-					int nth)
-{
-	PLiSQL_row	*ora_rec;
-	int 		i;
-	char		*word;
-	PLwdatum 	*wdatum;
-
-	ora_rec = (PLiSQL_row *) datum;
-	word = ((Value *) list_nth(idents, nth))->val.str;
-	wdatum = palloc0(sizeof(PLwdatum));
-
-	for (i = 0; i < ora_rec->nfields; i++)
-	{
-		if (ora_rec->fieldnames[i] &&
-			pg_strcasecmp(ora_rec->fieldnames[i], word) == 0)
-		{
-			PLiSQL_datum	*datum;
-
-			datum = plisql_Datums[ora_rec->varnos[i]];
-			if (datum->dtype == PLISQL_DTYPE_ORA_RECORD)
-			{
-				if (nth == nlen - 1)
-				{
-					wdatum->datum = datum;
-					wdatum->ident = NULL;
-					wdatum->quoted = false; /* not used */
-					wdatum->idents = idents;
-					return wdatum;
-				}
-				else
-				{
-					nth++;
-					return plisql_get_ora_record_field(datum, idents, nlen, nth);
-				}
-			}
-			else if (datum->dtype == PLISQL_DTYPE_REC)
-			{
-				if (nth == nlen - 1)
-				{
-					wdatum->datum = datum;
-					wdatum->ident = NULL;
-					wdatum->quoted = false; /* not used */
-					wdatum->idents = idents;
-					return wdatum;
-				}
-				else
-				{
-
-					PLiSQL_rec *rec = (PLiSQL_rec *)datum;
-					int 		i;
-
-					nth++;
-					word = ((Value *) list_nth(idents, nth))->val.str;
-
-					/* search for a datum referencing this field */
-					i = rec->firstfield;
-					while (i >= 0)
-					{
-						PLiSQL_recfield *fld = (PLiSQL_recfield *) plisql_Datums[i];
-
-						Assert(fld->dtype == PLISQL_DTYPE_RECFIELD);
-
-						if (strcmp(fld->fieldname, word) == 0 &&
-							nth == nlen - 1)
-						{
-							wdatum->datum = (PLiSQL_datum *)fld;
-							wdatum->ident = NULL;
-							wdatum->quoted = false; /* not used */
-							wdatum->idents = idents;
-							return wdatum;
-						}
-
-						i = fld->nextfield;
-					}
-
-				}
-			}
-			else if (nth == nlen - 1)
-			{
-				wdatum->datum = datum;
-				wdatum->ident = NULL;
-				wdatum->quoted = false; /* not used */
-				wdatum->idents = idents;
-				return wdatum;
-
-			}
-		}
-	}
-
-	return NULL;
-}
 /* End - ReqID:SRS-PLSQL-RECORD */
+
+/* Begin - ReqID:SRS-PLSQL-Collection */
+/*
+ * check if the name is the method name of collection
+ */
+bool
+is_collect_methodname(char *name)
+{
+	if (pg_strcasecmp(name, "FIRST") == 0 ||
+		pg_strcasecmp(name, "LAST") == 0 ||
+		pg_strcasecmp(name, "COUNT") == 0 ||
+		pg_strcasecmp(name, "LIMIT") == 0 ||
+		pg_strcasecmp(name, "PRIOR") == 0 ||
+		pg_strcasecmp(name, "NEXT") == 0 ||
+		pg_strcasecmp(name, "EXISTS") == 0 ||
+		pg_strcasecmp(name, "DELETE") == 0 ||
+		pg_strcasecmp(name, "TRIM") == 0 ||
+		pg_strcasecmp(name, "EXTEND") == 0)
+		return true;
+	else
+		return false;
+}
+/* End - ReqID:SRS-PLSQL-Collection */

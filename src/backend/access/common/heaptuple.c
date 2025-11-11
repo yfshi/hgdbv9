@@ -379,6 +379,15 @@ fill_val(Form_pg_attribute att,
 		data_length = strlen(DatumGetCString(datum)) + 1;
 		memcpy(data, DatumGetPointer(datum), data_length);
 	}
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	else if (att->attlen == -3)
+	{
+		*infomask |= HEAP_HASVARWIDTH;
+		data = (char *) att_align_nominal(data, att->attalign);
+		data_length = sizeof(void *);
+		store_att_byval(data, datum, data_length);
+	}
+	/* End - ReqID:SRS-PLSQL-Collection */
 	else
 	{
 		/* fixed-length pass-by-reference */
@@ -626,8 +635,13 @@ nocachegetattr(HeapTuple tuple,
 		while (j < natts && TupleDescAttr(tupleDesc, j)->attcacheoff > 0)
 			j++;
 
-		off = TupleDescAttr(tupleDesc, j - 1)->attcacheoff +
-			TupleDescAttr(tupleDesc, j - 1)->attlen;
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if (TupleDescAttr(tupleDesc, j - 1)->attlen == -3)
+			off = TupleDescAttr(tupleDesc, j - 1)->attcacheoff + sizeof(void *);
+		else
+		/* End - ReqID:SRS-PLSQL-Collection */
+			off = TupleDescAttr(tupleDesc, j - 1)->attcacheoff +
+				TupleDescAttr(tupleDesc, j - 1)->attlen;
 
 		for (; j < natts; j++)
 		{
@@ -699,7 +713,8 @@ nocachegetattr(HeapTuple tuple,
 				/* not varlena, so safe to use att_align_nominal */
 				off = att_align_nominal(off, att->attalign);
 
-				if (usecache)
+				if (usecache &&
+					att->attlen != -3 /* ReqID:SRS-PLSQL-Collection */)
 					att->attcacheoff = off;
 			}
 
@@ -1127,6 +1142,10 @@ heap_copy_tuple_as_datum(HeapTuple tuple, TupleDesc tupleDesc)
 		return toast_flatten_tuple_to_datum(tuple->t_data,
 											tuple->t_len,
 											tupleDesc);
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	if (tupledesc_has_udt_type(tupleDesc))
+		return HeapTupleGetDatum(heap_copy_orarec_tuple_as_datum(tuple, tupleDesc));
+	/* End - ReqID:SRS-PLSQL-Collection */
 
 	/*
 	 * Fast path for easy case: just make a palloc'd copy and insert the
@@ -1455,7 +1474,7 @@ heap_deform_tuple(HeapTuple tuple, TupleDesc tupleDesc,
 			/* not varlena, so safe to use att_align_nominal */
 			off = att_align_nominal(off, thisatt->attalign);
 
-			if (!slow)
+			if (!slow && thisatt->attlen != -3	/* ReqID:SRS-PLSQL-Collection */)
 				thisatt->attcacheoff = off;
 		}
 

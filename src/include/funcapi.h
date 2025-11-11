@@ -261,7 +261,40 @@ typedef struct
 extern PGDLLIMPORT orarefcursor_funcs_call orarefcursor_funcs;
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-PLSQL-Collection */
+typedef struct
+{
+	Datum (*InitCollectypeVar) (Datum udttype_info);
+	Datum (*CreateCollectInfo)(const char *typname,
+				   Oid typoid,
+				   int32 typmod,
+				   char typtype,
+				   bool typbyval,
+				   int typlen,
+				   Datum typkey,
+				   Datum typdatatype,
+				   int limit,
+				   bool datanotnull);
+	Datum (*CopyCollectypeDatum)(Datum src_value);
+	Datum (*CollectypeElementRef)(Datum datum, int nSubscripts,
+						Datum *indx, bool *isNull);
+	bool (*CollectypeCastCheck)(Datum value, int32 reqtypmod);
+	Datum (*GetCollectypeName)(Datum value);
+	Datum (*GetCollectypeMode)(Datum value);
+	void (*SetCollectValue)(Datum val, int nsubscripts,
+					Datum *subscriptvals,
+					int *nth,
+					List **fieldnames,
+					void *top_datatype,
+					Datum assign_value,
+					bool assign_value_isnull);
+	MemoryContext (*GetCollectypeMcxt)(Datum value);
 
+	UdtExtensionLoadState loadstate;	/* collection type functions loading state */
+} collection_funcs_call;
+
+extern PGDLLIMPORT collection_funcs_call collection_funcs;
+/* End - ReqID:SRS-PLSQL-Collection */
 
 extern TypeFuncClass get_call_result_type(FunctionCallInfo fcinfo,
 										  Oid *resultTypeId,

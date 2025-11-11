@@ -72,6 +72,11 @@ dbmsoutput_errorhandler_hook_type dbmsoutput_errorhandler_hook = NULL; /* BUG#Z5
 dbmsoutput_severoutput_hook_type dbmsoutput_severoutput_hook = NULL;
 bool	enable_serveroutput = false;
 /* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+/* Begin - ReqID:SRS-PLSQL-Collection */
+collection_funcs_call collection_funcs = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+NULL, UNLOADED};
+/* End - ReqID:SRS-PLSQL-Collection */
+
 
 static void shutdown_MultiFuncCall(Datum arg);
 static TypeFuncClass internal_get_result_type(Oid funcid,

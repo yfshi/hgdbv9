@@ -86,5 +86,10 @@ extern void copy_tupleAttrsValues(Datum src_value,
 					int16 typlen,
 					Datum *values);
 extern Datum rowDatumCopy(Datum value, bool isnull);
+/* Begin - ReqID:SRS-PLSQL-Collection */
+extern Datum doCastValue(Datum value, Oid oldTypOid, Oid newTypOid, int typmod);
+extern Datum heap_copy_tuple_as_orarecord(Datum tuple_datum, Datum ora_recordtype);
+extern Datum heap_copy_orarecord_as_tuple(Datum tuple_datum);
+/* End - ReqID:SRS-PLSQL-Collection */
 
 #endif							/* DATUM_H */

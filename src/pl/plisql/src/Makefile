@@ -35,7 +35,8 @@ OBJS = \
 	pl_package.o \
 	pl_udt_type.o \
 	pl_ora_record.o \
-	pl_udt_exception.o
+	pl_udt_exception.o \
+	pl_ora_collection.o
 
 DATA = plisql.control plisql--1.0.sql
 
