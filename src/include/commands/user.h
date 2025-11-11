@@ -37,4 +37,19 @@ extern List *roleSpecsToIds(List *memberNames);
 extern void createDBDefaultResGroup(Oid dboid);
 extern void dropDBDefaultResGroup(Oid dboid);
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/* Begin - ReqID:SRS-MISC-USER */
+extern void createsysrole(const char *srolname, Oid dboid, Oid templateid);
+extern bool isinstancelevel(void);
+extern Oid FindUserLevelbyoid(Oid useroid);
+extern Oid CurrentUserOwnDboid(void);
+extern bool get_role_canlogin(const char *srolname);
+extern bool get_role_canlogin_byoid(Oid userid);
+extern char *CurrentUsername(void);
+/* Begin - ReqID:SRS-MISC-USER */
+
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+typedef char * (*mysql_encryt_password_hook_type) (PasswordType target_type, const char *rolename, const char *password);
+extern PGDLLIMPORT mysql_encryt_password_hook_type mysql_encrypt_password_hook;
+/* End - Req: SRS-MYSQL-PROTOCOL */
+
 #endif							/* USER_H */

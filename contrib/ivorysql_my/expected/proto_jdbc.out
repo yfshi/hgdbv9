@@ -1,0 +1,161 @@
+set ivorysql.compatible_mode = PG;
+CREATE USER proto_user WITH PASSWORD 'ivorysql@123';
+GRANT ALL ON SCHEMA public TO proto_user;
+ALTER USER proto_user WITH PASSWORD 'ivorysql@123';
+set ivorysql.compatible_mode = MYSQL;
+-- compile java source file
+\! javac -classpath proto_test/class/junixsocket-common-2.6.2.jar:proto_test/class/junixsocket-mysql-2.6.2.jar proto_test/class/*.java
+-- wrong password
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+c1:INT
+c2:INT
+c3:INT
+c4:INT
+c5:SMALLINT
+c6:SMALLINT
+c7:BIGINT
+c8:BIGINT
+c9:FLOAT
+c10:DOUBLE
+c11:BIT
+c12:TINYINT
+c13:VARCHAR
+c15:VARCHAR
+QUERY PLAN:VARCHAR
+Hash Join
+  Hash Cond: (a.c1 = b.c2)
+  ->  Seq Scan on t3 a
+  ->  Hash
+        ->  Seq Scan on t3 b
+res_getBoolean: false
+res_getInt: 0
+res_getString: 0
+res_getBoolean: false
+res_getInt: 0
+res_getString: 0
+1
+mysql
+2
+ivorysql-server
+3
+postgres
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+c1:INT
+c2:INT
+c3:INT
+c4:INT
+c5:SMALLINT
+c6:SMALLINT
+c7:BIGINT
+c8:BIGINT
+c9:FLOAT
+c10:DOUBLE
+c11:BIT
+c12:TINYINT
+c13:VARCHAR
+c15:VARCHAR
+QUERY PLAN:VARCHAR
+Hash Join
+  Hash Cond: (a.c1 = b.c2)
+  ->  Seq Scan on t3 a
+  ->  Hash
+        ->  Seq Scan on t3 b
+res_getBoolean: false
+res_getInt: 0
+res_getString: 0
+res_getBoolean: false
+res_getInt: 0
+res_getString: 0
+1
+mysql
+2
+ivorysql-server
+3
+postgres
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcPrepareTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+Exception in thread "main" java.sql.SQLException: type "set" does not exist
+	at com.mysql.jdbc.SQLError.createSQLException(SQLError.java:965)
+	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3978)
+	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3914)
+	at com.mysql.jdbc.MysqlIO.sendCommand(MysqlIO.java:2530)
+	at com.mysql.jdbc.MysqlIO.sqlQueryDirect(MysqlIO.java:2683)
+	at com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2491)
+	at com.mysql.jdbc.StatementImpl.executeUpdateInternal(StatementImpl.java:1552)
+	at com.mysql.jdbc.StatementImpl.executeLargeUpdate(StatementImpl.java:2607)
+	at com.mysql.jdbc.StatementImpl.executeUpdate(StatementImpl.java:1480)
+	at MySQLJdbcPrepareTest.main(MySQLJdbcPrepareTest.java:85)
+select * from t3;
+ERROR:  relation "t3" does not exist
+LINE 1: select * from t3;
+                      ^
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcAutoCommitTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+select relname from pg_class where relname like '%autocommit_test%' order by relname;
+ relname 
+---------
+(0 rows)
+
+select * from autocommit_test6;
+ERROR:  relation "autocommit_test6" does not exist
+LINE 1: select * from autocommit_test6;
+                      ^
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/junixsocket-common-2.6.2.jar:proto_test/class/junixsocket-mysql-2.6.2.jar:proto_test/class/junixsocket-native-common-2.6.2.jar:proto_test/class/. MySQLJdbcAutoIncrementTest 127.0.0.1 $MYSPORT db_uds $USER
+4
+5
+6
+7
+-- prepare
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLLongDataExample 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+CREATE TABLE SUCCESS
+insert success, affected rows: 1
+insert blob data success, affected rows: 1
+
+Result Check:
+ID	FileName			TextLength	BinLength
+------------------------------------------------------------
+1	large_text_file.txt 	628890	0
+2	large_binary_file.dat	0	2097152
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLPreparedStatementExample 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Table created successfully or already exists
+Inserted long text data successfully, affected rows: 1
+Inserted long binary data successfully, affected rows: 1
+
+=== Demonstrating COM_STMT_RESET ===
+First execution - affected rows: 1
+Second execution after reset - affected rows: 1
+
+=== Demonstrating COM_STMT_RESET with Batch ===
+Batch execution completed. Results: [1, 1, 1]
+
+=== Demonstrating COM_STMT_CLOSE ===
+Method 1: Using try-with-resources for automatic COM_STMT_CLOSE
+Query 1 returned 7 rows
+Query 2 returned 7 rows
+Query 3 returned 7 rows
+Method 2: Using explicit close() for COM_STMT_CLOSE
+Total records: 7
+Found 5 records with COM_STMT in description
+First prepared statement closed
+Second prepared statement closed
+
+=== Demonstrating COM_STMT_CLOSE on Connection Close ===
+Created 3 prepared statements
+When connection closes, COM_STMT_CLOSE will be sent for all open statements
+Connection closed - all statements received COM_STMT_CLOSE
+
+=== Data Verification Results ===
+ID    File Name                 Text Length  Bin Length   Description                                       
+----------------------------------------------------------------------------------------------------
+1     large_text_file.txt       598890       0            COM_STMT_SEND_LONG_DATA example with text data    
+2     large_binary_file.dat     0            1048576      COM_STMT_SEND_LONG_DATA example with binary data  
+3     reset_example_1.dat       0            524288       First execution before reset                      
+4     reset_example_2.dat       0            262144       Second execution after reset                      
+5     batch_file_1.txt          57890        0            Batch example 1 - COM_STMT_RESET between batches  
+6     batch_file_2.txt          57890        0            Batch example 2 - COM_STMT_RESET between batches  
+7     batch_file_3.txt          57890        0            Batch example 3 - COM_STMT_RESET between batches  
+-- final clean
+RESET ROLE;
+DROP USER IF EXISTS proto_user CASCADE;
+ERROR:  syntax error at or near "CASCADE"
+LINE 1: DROP USER IF EXISTS proto_user CASCADE;
+                                       ^
+\! rm proto_test/class/*.class

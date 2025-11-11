@@ -35,10 +35,16 @@
 /* End - ReqID:SRS-SQL-XML */
 
 #include "funcapi.h"
-#include "include/guc.h"
 #include "include/ivorysql_ora.h"
 #include "include/nlssort.h"
 #include "include/orarefcursor.h"
+
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+#include "parser/parser.h"
+#include "postmaster/postmaster.h"
+#include "utils/pidfile.h"
+#include "utils/varlena.h"
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 /* Only include it once in any C file */
 PG_MODULE_MAGIC;
@@ -59,6 +65,10 @@ static transform_merge_stmt_hook_type pre_transform_merge_stmt_hook = NULL;
 static ora_updatexml_hook_type pre_ora_updatexml_hook = NULL;
 /* End - ReqID:SRS-SQL-XML */
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+static create_server_listen_hook_type pre_server_listen_hook = NULL;
+static void ora_session_init(ProtocolExtensionConfig *);
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 void _PG_init(void);
 void _PG_fini(void);
@@ -67,6 +77,164 @@ void _PG_fini(void);
 void _dbms_output_PG_init(void);
 void _dbms_output_PG_fini(void);
 /* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+static ProtocolExtensionConfig ora_protocol_config = {
+	T_ProtocolPg,
+	ora_session_init,
+	StartupPacketInitialize,
+	ClientAuthentication,
+	NULL,
+	send_message_to_frontend,
+	send_cancel_key,
+	pq_comm_reset,
+	ReadyForQuery,
+	SocketBackend,
+	NULL,
+	printtup_create_DR,
+	NULL, /* fn_process_command */
+	libpq_report_param_status
+};
+
+static void
+ora_session_init(ProtocolExtensionConfig *self)
+{
+	SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);      /* ReqID:SRS-MISC-GUC */
+	
+	if (NULL == ora_raw_parser)
+	{
+		ereport(ERROR,
+				(errmsg("Invalid Oracle compatibility mode syntax library.")));
+	}
+
+	pq_init();
+}
+
+static void
+create_oracle_server_listen()
+{
+	int			status;
+	bool		listen_addr_saved = false;
+
+	if (OraListenAddresses)
+	{
+		char	   *rawstring;
+		List	   *elemlist;
+		ListCell   *l;
+		int 		success = 0;
+
+		/* Need a modifiable copy of ListenAddresses */
+		rawstring = pstrdup(OraListenAddresses);
+
+		/* Parse string into list of hostnames */
+		if (!SplitGUCList(rawstring, ',', &elemlist))
+		{
+			/* syntax error in list */
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("invalid list syntax in parameter \"%s\"",
+							"listen_addresses")));
+		}
+
+		foreach (l, elemlist)
+		{
+			char	   *curhost = (char *) lfirst(l);
+
+			if (strcmp(curhost, "*") == 0)
+				status = StreamServerPort(AF_UNSPEC, NULL,
+										  (unsigned short) OraPortNumber,
+										  NULL,
+										  ListenSocket, MAXLISTEN,
+										  ListenConfig, &ora_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
+			else
+				status = StreamServerPort(AF_UNSPEC, curhost,
+										  (unsigned short) OraPortNumber,
+										  NULL,
+										  ListenSocket, MAXLISTEN,
+										  ListenConfig, &ora_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
+
+			if (status == STATUS_OK)
+			{
+				success++;
+				/* record the first successful host addr in lockfile */
+				if (!listen_addr_saved)
+				{
+					AddToDataDirLockFile(LOCK_FILE_LINE_LISTEN_ADDR, curhost);
+					listen_addr_saved = true;
+				}
+			}
+			else
+				ereport(WARNING,
+						(errmsg("could not create listen socket for \"%s\"",
+								curhost)));
+		}
+
+		if (!success && elemlist != NIL)
+			ereport(FATAL,
+					(errmsg("could not create any Oracle TCP/IP sockets")));
+
+		list_free(elemlist);
+		pfree(rawstring);
+	}
+
+#ifdef HAVE_UNIX_SOCKETS
+	if (Unix_socket_directories)
+	{
+		char	   *rawstring;
+		List	   *elemlist;
+		ListCell   *l;
+		int			success = 0;
+
+		/* Need a modifiable copy of Unix_socket_directories */
+		rawstring = pstrdup(Unix_socket_directories);
+
+		/* Parse string into list of directories */
+		if (!SplitDirectoriesString(rawstring, ',', &elemlist))
+		{
+			/* syntax error in list */
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("invalid list syntax in parameter \"%s\"",
+							"unix_socket_directories")));
+		}
+
+		foreach (l, elemlist)
+		{
+			char	   *socketdir = (char *) lfirst(l);
+
+			status = StreamServerPort(AF_UNIX, NULL,
+									  (unsigned short) OraPortNumber,
+									  socketdir,
+									  ListenSocket, MAXLISTEN,
+									  ListenConfig, &ora_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
+
+			if (status == STATUS_OK)
+			{
+				success++;
+				/* record the first successful Unix socket in lockfile */
+				if (success == 1)
+					AddToDataDirLockFile(LOCK_FILE_LINE_SOCKET_DIR, socketdir);
+			}
+			else
+			{
+				ereport(WARNING,
+						(errmsg("could not create Oracle Unix-domain socket in directory \"%s\"",
+								socketdir)));
+			}
+		}
+
+		if (!success && elemlist != NIL)
+		{
+			ereport(FATAL,
+					(errmsg("could not create any Oracle Unix-domain sockets")));
+		}
+	}
+#endif
+
+	if (pre_server_listen_hook)
+		pre_server_listen_hook();
+}
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 /*
  * Module initialization function.
@@ -82,8 +250,7 @@ _PG_init(void)
 #endif
 
 	/* Define custom GUC variables */
-	IvorysqlOraDefineGucs();
-
+	
 	/* Install Hooks */
 	pre_oracle_datatype_precedence_hook = oracle_datatype_precedence_hook;
 	oracle_datatype_precedence_hook = pg_compatible_oracle_precedence;
@@ -114,6 +281,11 @@ _PG_init(void)
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	_dbms_output_PG_init(); /* ReqID:SRS-PLSQL-DBMS_OUTPUT */
+	
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	pre_server_listen_hook = server_listen_hook;
+	server_listen_hook = create_oracle_server_listen;
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 }
 
 /*
@@ -149,4 +321,8 @@ _PG_fini(void)
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	_dbms_output_PG_fini(); /* ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	server_listen_hook = pre_server_listen_hook;
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 }

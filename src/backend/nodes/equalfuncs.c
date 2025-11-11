@@ -2528,6 +2528,7 @@ _equalCreateSchemaStmt(const CreateSchemaStmt *a, const CreateSchemaStmt *b)
 	COMPARE_NODE_FIELD(authrole);
 	COMPARE_NODE_FIELD(schemaElts);
 	COMPARE_SCALAR_FIELD(if_not_exists);
+	COMPARE_NODE_FIELD(option);
 
 	return true;
 }
@@ -3629,7 +3630,8 @@ static bool
 _equalMysDoStmt(const MysDoStmt *a, const MysDoStmt *b)
 {
 	COMPARE_NODE_FIELD(stmt);
-
+	COMPARE_SCALAR_FIELD(purpose);
+	
 	return true;
 }
 

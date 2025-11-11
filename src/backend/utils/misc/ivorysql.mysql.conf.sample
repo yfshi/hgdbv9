@@ -1,12 +1,15 @@
 #------------------------------------------------------------------------------
-#MySQL COMPATIBLE Mode GUC parameters
+# MySQL COMPATIBLE Mode GUC parameters
 #------------------------------------------------------------------------------
 
-#mysql.listen_addresses = 'localhost'		# what IP address(es) of MySQL mode to listen on;
-					# comma-separated list of addresses;
-					# defaults to 'localhost'; use '*' for all
-					# (change requires restart)
-#mysql.port = 3306		# (change requires restart)
+#mysql.listen_addresses = 'localhost'
+#mysql.port = 3306
+#mysql.protocol_type = mysql	# what kind of protocol listening with
+
+#mysql.default_database = postgres
+
+#sha256_password_public_key_path = '' 	# private key for caching_sha2_password auth if channel is not security.
+#sha256_password_private_key_path = ''	# public  key for caching_sha2_password auth if channel is not security.
 
 shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my'		# (change requires restart)
 

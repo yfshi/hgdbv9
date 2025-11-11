@@ -1568,6 +1568,42 @@ FROM pg_authid r;
 
 /* End - #Z5936 */
 
+/* Begin - SRS-MYSQL-PROTOCOL */
+--
+-- View: mys_information_schema.plugins
+--
+CREATE TABLE mys_information_schema.plugins (
+	"PLUGIN_NAME" 				varchar(64) DEFAULT '',
+	"PLUGIN_VERSION" 			varchar(20) DEFAULT '',
+	"PLUGIN_STATUS" 			varchar(10) DEFAULT '',
+	"PLUGIN_TYPE"				varchar(80) DEFAULT '',
+	"PLUGIN_TYPE_VERSION"		varchar(20) DEFAULT '',
+	"PLUGIN_LIBRARY"			varchar(64),
+	"PLUGIN_LIBRARY_VERSION"	varchar(20),
+	"PLUGIN_AUTHOR"				varchar(64),
+	"PLUGIN_DESCRIPTION"		longtext,
+	"PLUGIN_LICENSE"			varchar(80),
+	"LOAD_OPTION"				varchar(64)  DEFAULT ''
+);
+
+INSERT INTO mys_information_schema.plugins VALUES ('mysql_native_password', '1.1', 'ACTIVE', 'AUTHENTICATION', '1.1', NULL, NULL, '', '', 'GPL', '');
+INSERT INTO mys_information_schema.plugins VALUES ('caching_sha2_password', '1.1', 'ACTIVE', 'AUTHENTICATION', '1.1', NULL, NULL, '', '', 'GPL', '');
+
+--
+-- View: mys_information_schema.engines
+--
+CREATE TABLE mys_information_schema.engines (
+	"ENGINE" 			varchar(64) DEFAULT '',
+	"SUPPORT" 			varchar(8) DEFAULT '',
+	"COMMENT" 			varchar(80) DEFAULT '',
+	"TRANSACTIONS"		varchar(3),
+	"XA"				varchar(3),
+	"SAVEPOINTS"		varchar(3)
+);
+
+INSERT INTO mys_information_schema.engines VALUES ('PERFORMANCE_SCHEMA', 'YES', 'Performance Schema', 'NO', 'NO', 'NO');
+/* End - SRS-MYSQL-PROTOCOL */
+
 /* Begin - #Z5943 */
 
 --

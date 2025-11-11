@@ -59,12 +59,14 @@
 #include "nodes/nodeFuncs.h"
 #include "mysql_parser/mys_gramparse.h"
 #include "parser/parser.h"
+#include "parser/scansup.h"
 #include "storage/lmgr.h"
 #include "utils/date.h"
 #include "utils/datetime.h"
 #include "utils/numeric.h"
 #include "utils/xml.h"
 #include "utils/builtins.h"
+#include "utils/lsyscache.h"
 #include "utils/varlena.h"		/* ReqID:SRS-MYSQL-SET */
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */ /* Begin - ReqID:SRS-MYSQL-DATETYPE */
@@ -293,12 +295,15 @@ static Node *makeShowWarningsStmt(void);
 
 static ResTarget *makeRestaget(Node *val, char *alias);
 static Node *makeShowCreateTableStmt(RangeVar *rvar);
+static Node *makeShowPluginsStmt(void);
+static Node *makeShowEnginesStmt(void);
 /* End - ReqID:SRS-MYSQL-SHOW */
 
 /* Begin - ReqID:SRS-MYSQL-RENAME */
-static void CheckUserHostId(char* userName, char* hostId);
-bool IsValidIdentUsername(char *input);
-static void CheckHostId(char* hostId);
+static void CheckUserHostId(char *userName, char *hostId);
+static bool IsValidIdentUsername(char *input);
+static void CheckHostId(char *hostId);
+static char *checkRoleSpec(RoleSpec *spc);
 /* End - ReqID:SRS-MYSQL-RENAME */
 %}
 
@@ -358,7 +363,6 @@ static void CheckHostId(char* hostId);
 	SetQuantifier	 setquantifier;
 	struct GroupClause  *groupclause;
 	MergeWhenClause		*mergewhen;
-	MysCollateCharacterOpt *myscollatecharacteropt; /* ReqID:SRS-MYSQL-SQL-USE */
 	struct ShowFilter	*showfilter;				/* Req: SRS-MYSQL-CHARSET */
 	uint64				lval; /* ReqID:SRS-MYSQL-BINARYTYPE */
 }
@@ -404,7 +408,7 @@ static void CheckHostId(char* hostId);
 		CreateSubscriptionStmt AlterSubscriptionStmt DropSubscriptionStmt
 		MysqlShowStmt /* Req: SRS-MYSQL-CHARSET */
 
-%type <showfilter> 	ShowFilter OptShowFilter /* Req: SRS-MYSQL-CHARSET */ opt_col_wild /* ReqID:SRS-MYSQL-SHOW */
+%type <showfilter> 	show_filter opt_show_filter /* Req: SRS-MYSQL-CHARSET */ opt_col_wild /* ReqID:SRS-MYSQL-SHOW */
 
 %type <node>	select_no_parens select_with_parens select_clause
 				simple_select values_clause
@@ -413,15 +417,15 @@ static void CheckHostId(char* hostId);
 %type <node>	alter_column_default opclass_item opclass_drop alter_using
 %type <ival>	add_drop opt_asc_desc opt_nulls_order
 
-%type <node>	alter_table_cmd alter_type_cmd opt_collate_clause auto_increment_value create_auto_incremen
-	   replica_identity partition_cmd index_partition_cmd
+%type <node>	alter_table_cmd alter_type_cmd opt_collate_clause auto_increment auto_increment_value
+	   			replica_identity partition_cmd index_partition_cmd
 /* Begin - SRS-MYSQL-CREATE-TABLE */
 %type <list>    create_table_options_list create_table_options_list_node
 %type <node>    create_engine create_comment create_table_options
 %type <list>    index_options create_table_index_opt opt_index_options /* ReqID:SRS-MYSQL-CREATE-INDEX */
 %type <node>    index_opt 
 %type <node>    character_set_without_equal
-%type <myscollatecharacteropt>	opt_col_charset
+%type <node>	opt_col_charset
 /* End - SRS-MYSQL-CREATE-TABLE */
 %type <list>	alter_table_cmds alter_type_cmds
 %type <list>    alter_identity_column_option_list
@@ -435,7 +439,7 @@ static void CheckHostId(char* hostId);
 %type <defelt>	createdb_opt_item copy_opt_item
 				transaction_mode_item
 				create_extension_opt_item alter_extension_opt_item
-%type <myscollatecharacteropt> mys_create_option /* ReqID:SRS-MYSQL-SQL-USE */ create_char_set_collate /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+%type <node> 	default_create_option default_create_options create_option /* ReqID:SRS-MYSQL-SQL-USE */
 %type <ival>	opt_lock lock_type cast_context
 %type <str>		utility_option_name
 %type <defelt>	utility_option_elem
@@ -711,7 +715,7 @@ static void CheckHostId(char* hostId);
 %type <str>		var_name type_function_name param_name
 %type <str>		createdb_opt_name plassign_target
 %type <node>	var_value zone_value
-%type <rolespec> auth_ident RoleSpec opt_granted_by
+%type <rolespec> auth_ident RoleSpec opt_granted_by UserId
 
 %type <keyword> unreserved_keyword type_func_name_keyword
 %type <keyword> col_name_keyword reserved_keyword
@@ -784,7 +788,7 @@ static void CheckHostId(char* hostId);
 %type <node>		VariableMultiSetStmt user_var
 %type <str>			set_names_collate multi_encoding
 /* End - ReqID:SRS-MYSQL-SET */
-%type <str>			UserId
+%type <str>			UserName
 %type <list>		rename_user_clause rename_list rename_table_list rename_table_clause
 
 /* Begin - ReqID:SRS-MYSQL-SHOW */
@@ -809,7 +813,7 @@ static void CheckHostId(char* hostId);
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS
 %token <str>	HCONST /* Begin BUG#5048 5070 */
-%token <str>   USER_VARIABLE_NAME SYSTEM_OR_SESSION_VARIABLE	/* ReqID:SRS-MYSQL-SET */
+%token <str>    USER_VARIABLE_NAME SYSTEM_OR_SESSION_VARIABLE	/* ReqID:SRS-MYSQL-SET */
 
 /*
  * If you want to make any keyword changes, update the keyword table in
@@ -842,10 +846,9 @@ static void CheckHostId(char* hostId);
 	DIV DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP DUAL /* ReqID:SRS-MYSQL-SELECT */ DUPLICATE_P
 
-	EACH ELSE ELT /* ReqID:SRS-MYSQL-BINARYTYPE */ ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
+	EACH ELSE ELT /* ReqID:SRS-MYSQL-BINARYTYPE */ ENABLE_P ENCODING ENCRYPTED END_P ENGINE_P ENGINES /* ReqID: SRS-MYSQL-PROTOCOL */ ENUM_P ESCAPE EVENT EXCEPT
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
 	EXTENSION EXTERNAL EXTRACT
-	ENGINE_P
 
 	FALSE_P FAMILY FETCH FIELD /* ReqID:SRS-MYSQL-BINARYTYPE */ FIELDS /* ReqID:SRS-MYSQL-SHOW */ FILTER FINALIZE FIRST_P
 	FIXED /* bug#z5409 */
@@ -876,12 +879,13 @@ static void CheckHostId(char* hostId);
 	NORMALIZE NORMALIZED
 	NOT NOTHING NOTIFY NOTNULL NOWAIT NULL_P NULLIF
 	NULLS_P NUMERIC
+	NVARCHAR /* SRS-MYSQL-PROTOCOL */
 
 	OBJECT_P OF OFF OFFSET OIDS OLD ON ONLY OPERATOR OPTION OPTIONS OR
 	ORDER ORDINALITY OTHERS OUT_P OUTER_P
 	OVER OVERLAPS OVERLAY OVERRIDING OWNED OWNER
 
-	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD PLACING PLANS POLICY
+	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD PLACING PLANS PLUGINS /* ReqID: SRS-MYSQL-PROTOCOL */ POLICY
 	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
 	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROCESSLIST /* Bug#Z6036 */ PROGRAM PUBLICATION
 
@@ -1104,7 +1108,7 @@ stmtmulti:	stmtmulti ';' toplevel_stmt
 						/* Begin - ReqID:SRS-MYSQL-RENAME */
 						if (IsA($3, List))
 						{
-							ListCell   *lc;
+							ListCell *lc;
 							List *ret = NIL;
 							foreach(lc, (List *) $3)
 							{
@@ -1126,7 +1130,7 @@ stmtmulti:	stmtmulti ';' toplevel_stmt
 					{
 						if (IsA($1, List))
 						{
-							ListCell   *lc;
+							ListCell *lc;
 							List *ret = NIL;
 							foreach(lc, (List *) $1)
 							{
@@ -1431,7 +1435,7 @@ CreateOptRoleElem:
  *****************************************************************************/
 
 CreateUserStmt:
-			CREATE USER RoleId opt_with OptRoleList
+			CREATE USER UserName opt_with OptRoleList
 				{
 					CreateRoleStmt *n = makeNode(CreateRoleStmt);
 					n->stmt_type = ROLESTMT_USER;
@@ -1637,7 +1641,7 @@ CreateSchemaStmt:
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
-			| CREATE SCHEMA ColId  mys_create_option
+			| CREATE SCHEMA ColId default_create_options
 				{
 					/* Begin - ReqID: SRS-MYSQL-SQL-USE */
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
@@ -1645,7 +1649,7 @@ CreateSchemaStmt:
 					/* ...but not both */
 					n->schemaname = $3;
 					n->authrole = NULL;
-					n->mys_opt = $4;
+					n->option = $4;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 					/* End - ReqID: SRS-MYSQL-SQL-USE */
@@ -1686,7 +1690,7 @@ CreateSchemaStmt:
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
-			| CREATE SCHEMA IF_P NOT EXISTS ColId  mys_create_option
+			| CREATE SCHEMA IF_P NOT EXISTS ColId  default_create_options
 				{
 					/* Begin - ReqID: SRS-MYSQL-SQL-USE */
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
@@ -1694,7 +1698,7 @@ CreateSchemaStmt:
 					/* ...but not both */
 					n->schemaname = $6;
 					n->authrole = NULL;
-					n->mys_opt = $7;
+					n->option = $7;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 					/* End - ReqID: SRS-MYSQL-SQL-USE */
@@ -1927,9 +1931,10 @@ VariableMultiSetStmt:
 			SET set_variables
 				{
 					MysDoStmt *rt = makeNode(MysDoStmt);
-					SelectStmt *result = makeNode(SelectStmt);
-					result->targetList = $2;
-					rt->stmt = (Node *)result;
+					SelectStmt *stmt = makeNode(SelectStmt);
+					stmt->targetList = $2;
+					rt->stmt = (Node *) stmt;
+					rt->purpose = MYS_DO_FOR_SET;
 					$$ = (Node *) rt;
 				}
 			| SET NAMES multi_encoding set_names_collate
@@ -1945,13 +1950,19 @@ VariableMultiSetStmt:
 						argList = list_make2(makeStringConst($3, @3), makeStringConst("true", @3));
 					else
 						argList = list_make2(makeStringConst($3, @3), makeStringConst("false", @3));
+
 					funcCall = (Node *) makeFuncCall(funcName, argList, COERCE_EXPLICIT_CALL, @1);
+
 					result->name = NULL;
 					result->indirection = NIL;
 					result->val = funcCall;
 					result->location = @1;
+
 					res->targetList = list_make1(result);
-					rt->stmt = (Node *)res;
+
+					rt->stmt = (Node *) res;
+					rt->purpose = MYS_DO_FOR_SET;
+
 					$$ = (Node *) rt;
 				}
 			| SET multi_charset multi_encoding
@@ -1973,11 +1984,15 @@ VariableMultiSetStmt:
 					}
 
 					funcCall = (Node *) makeFuncCall(funcName, argList, COERCE_EXPLICIT_CALL, @1);
+					
 					result->name = NULL;
 					result->indirection = NIL;
 					result->val = funcCall;
 					result->location = @1;
+					
 					res->targetList = list_make1(result);
+
+					rt->purpose = MYS_DO_FOR_SET;
 					rt->stmt = (Node *)res;
 					$$ = (Node *) rt;
 				}
@@ -2009,7 +2024,7 @@ mysql_system_variable:
 				{
 					$$ = makeVarAssgin($1, $3, SET_SESSIONVAR, RET_NONE, @1);
 				}
-			|SESSION var_name plassign_equals value_a_expr
+			| SESSION var_name plassign_equals value_a_expr
 				{
 					$$ = makeVarAssgin($2, $4, SET_SESSIONVAR, RET_NONE, @1);
 				}
@@ -2072,14 +2087,14 @@ set_names_collate:
 multi_charset:
 			CHARACTER SET { /* EMTPY */ }
 			| CHARSET { /* EMTPY */ }
-			;
+		;
 
 multi_encoding:
 			Sconst									{ $$ = $1; }
 			| BINARY								{ $$ = (char*)$1; } /* ReqID:SRS-MYSQL-BINARYTYPE */
 			| IDENT 								{ $$ = $1; }	/* ReqID:SRS-MYSQL-SET */
 			| DEFAULT								{ $$ = NULL; }
-					;
+		;
 
 /* End - ReqID:SRS-MYSQL-SET */
 
@@ -2228,7 +2243,7 @@ FunctionSetResetClause:
 		;
 
 /* Begin - Req: SRS-MYSQL-CHARSET */
-ShowFilter:
+show_filter:
 			WHERE a_expr 
 					{
 						ShowFilter *filter = (ShowFilter *)palloc(sizeof(ShowFilter));
@@ -2281,79 +2296,80 @@ opt_col_wild:
 				{
 					$$ = NULL;
 				}
+			;
 /* End - Req: SRS-MYSQL-SHOW */
 
-OptShowFilter:
-			ShowFilter
-				{
-					$$ = $1;
-				}
-			|
-				{ 
-					$$ = NULL; 
-				}
+opt_show_filter:
+			show_filter 		{ $$ = $1; }
+			| /* EMPTY */ 		{ $$ = NULL; }
+			;
 
 /* Begin - Req: SRS-MYSQL-SHOW */
 opt_db:
-						from_in IDENT
-								{
-										$$ = makeStringConst($2, @2);
-								}
-						|/* empty */  { $$ = NULL; }
-						;
+			from_in IDENT
+					{
+							$$ = makeStringConst($2, @2);
+					}
+			|/* empty */  { $$ = NULL; }
+			;
 
 mys_show_table:
-						from_in qualified_name { $$ = (Node *) $2; }
-						;
+			from_in qualified_name { $$ = (Node *) $2; }
+			;
 
 index_or_indexes_or_keys:
-						INDEX
-						| INDEXES
-						| KEYS
-						;
+			INDEX
+			| INDEXES
+			| KEYS
+			;
 
 databases_or_schemas:
-						DATABASES
-						| SCHEMAS
-						;
+			DATABASES
+			| SCHEMAS
+			;
 
 columns_or_fields:
-						COLUMNS
-						| FIELDS
-						;
+			COLUMNS
+			| FIELDS
+			;
 
 database:
-						DATABASE { /* EMTPY */ }
-						| SCHEMA { /* EMTPY */ }
-						;
+			DATABASE { /* EMTPY */ }
+			| SCHEMA { /* EMTPY */ }
+			;
+
+opt_storage:
+			STORAGE
+			| /* EMPTY */
+			;
 /* End - Req: SRS-MYSQL-SHOW */
 
 MysqlShowStmt:
-			SHOW multi_charset OptShowFilter
+			SHOW multi_charset opt_show_filter
 				{
 					SelectStmt *selectStmt = makeShowCharsetStmt($3);
 		    		$$ = (Node *) selectStmt;
 				}
-			| SHOW COLLATION OptShowFilter
+			| SHOW COLLATION opt_show_filter
 				{
-					SelectStmt * selectStmt = makeShowCollationStmt($3);
+					SelectStmt *selectStmt = makeShowCollationStmt($3);
 					$$ = (Node *) selectStmt;
 				}
 /* End - Req: SRS-MYSQL-CHARSET */
 /* Begin - Req: SRS-MYSQL-SHOW */
-			| SHOW TRIGGERS opt_db OptShowFilter
+			| SHOW TRIGGERS opt_db opt_show_filter
 				{
 					$$ = (Node *)makeShowTriggersStmt($3, $4);
 				}
-			| SHOW index_or_indexes_or_keys mys_show_table opt_db OptShowFilter
+			| SHOW index_or_indexes_or_keys mys_show_table opt_db opt_show_filter
 				{
 					$$ = (Node *)makeShowIndexStmt((RangeVar *)$3, $4, $5);
 				}
-			| SHOW TABLE STATUS opt_db OptShowFilter
+			| SHOW TABLE STATUS opt_db opt_show_filter
 				{
 					$$ = (Node *)makeShowTableStatusStmt($4, $5);
 				}
-			| SHOW opt_full TABLES opt_db OptShowFilter
+			| SHOW opt_full TABLES opt_db opt_show_filter
 				{
 					$$ = (Node *)makeShowTablesStmt($4, $5, $2);
 				}
@@ -2361,15 +2377,15 @@ MysqlShowStmt:
 				{
 					$$ = (Node *)makeShowViewStmt($4);
 				}
-			| SHOW databases_or_schemas OptShowFilter
+			| SHOW databases_or_schemas opt_show_filter
 				{
 					$$ = (Node *)makeShowSchemasStmt($3);
 				}
-			| SHOW opt_full columns_or_fields mys_show_table opt_db OptShowFilter
+			| SHOW opt_full columns_or_fields mys_show_table opt_db opt_show_filter
 				{
 					$$ = (Node *)makeShowColumnsStmt((RangeVar *)$4, $5, $6, $2);
 				}
-			| desc qualified_name opt_col_wild
+			| describe qualified_name opt_col_wild
 				{
 					$$ = (Node *)makeShowColumnsStmt($2, NULL, $3, false);
 				}
@@ -2385,24 +2401,24 @@ MysqlShowStmt:
 				{
 					$$ = makeShowCreateTableStmt($4);
 				}
-			| SHOW VARIABLES OptShowFilter
+			| SHOW VARIABLES opt_show_filter
 				{
 					$$ = makeShowVariableStmt("session", $3);
 				}
-			| SHOW GLOBAL VARIABLES OptShowFilter
+			| SHOW GLOBAL VARIABLES opt_show_filter
 				{
 					$$ = makeShowVariableStmt($2, $4);
 				}
-			| SHOW SESSION VARIABLES OptShowFilter
+			| SHOW SESSION VARIABLES opt_show_filter
 				{
 					$$ = makeShowVariableStmt($2, $4);
 				}
 			/* Begin - #Z5943 */
-			| SHOW GLOBAL STATUS OptShowFilter
+			| SHOW GLOBAL STATUS opt_show_filter
 				{
 					$$ = makeShowStatusStmt($2, $4);
 				}
-			| SHOW SESSION STATUS OptShowFilter
+			| SHOW SESSION STATUS opt_show_filter
 				{
 					$$ = makeShowStatusStmt($2, $4);
 				}
@@ -2417,16 +2433,27 @@ MysqlShowStmt:
 					$$ = makeShowWarningsStmt();
 				}
 			/* End - #Z6036 */
-			;
+			/* Begin - ReqID: SRS-MYSQL-PROTOCOL */
+			| SHOW PLUGINS
+				{
+					$$ = makeShowPluginsStmt();
+				}
+			| SHOW opt_storage ENGINES
+				{
+					$$ = makeShowEnginesStmt();
+				}
+			/* End - ReqID: SRS-MYSQL-PROTOCOL */
+/* End - Req: SRS-MYSQL-SHOW */
+		;
 
-desc:
+describe:
 			DESCRIBE
 			| DESC
 			;
 /* End - Req: SRS-MYSQL-SHOW */
 
 VariableShowStmt:
-			SHOW var_name OptShowFilter
+			SHOW var_name opt_show_filter
 				{
 					/* Begin - #Z5943 */
 					if (strcasecmp($2, "status") == 0)
@@ -3425,24 +3452,16 @@ alter_table_cmd:
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		;
 
-/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-auto_increment_value: 
-			AUTO_INCREMENT opt_equal Iconst			{ $$ = (Node *)makeInteger($3); }
-			| AUTO_INCREMENT opt_equal FCONST			{ $$ = (Node *)makeFloat($3); }
+auto_increment_value:
+			AUTO_INCREMENT opt_equal Iconst				{ $$ = (Node *) makeInteger($3); }
+			| AUTO_INCREMENT opt_equal FCONST			{ $$ = (Node *) makeFloat($3); }
 		;
-
-create_auto_incremen:   
-			auto_increment_value				{ $$ = (Node*)makeDefElem("start", $1, @1);	}
-		;
-
-create_char_set_collate:
-			mys_create_option					{ $$ = $1; }
-			| DEFAULT mys_create_option			{ $$ = $2; }
-		;
-
-/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 /* Begin - SRS-MYSQL-CREATE-TABLE */
+auto_increment:
+			auto_increment_value						{ $$ = (Node *) makeDefElem("start", $1, @1); }
+		;
+
 create_table_options_list_node:
 			create_table_options_list		{ $$ = $1; }
 			| /* EMPTY */					{ $$ = NIL; }
@@ -3452,32 +3471,24 @@ create_table_options_list:
 			create_table_options								
 				{
 					if ($1 != NULL)
-					{
 						$$ = list_make1($1);
-					}
 					else
-					{
 						$$ = NIL;
-					}
 				}
 			| create_table_options_list create_table_options
 				{
 					if ($2 != NULL)
-					{
 						$$ = lappend($1, $2); 
-					}
 					else
-					{
 						$$ = $1;
-					}
 				}
 		;
 
 create_table_options:
-			create_auto_incremen 		{ $$ = $1; }
-			| create_char_set_collate	{ $$ = (Node *) $1; }
-			| create_engine				{ $$ = NULL; }
+			auto_increment 				{ $$ = $1; }
 			| create_comment			{ $$ = $1; }
+			| default_create_option		{ $$ = $1; }
+			| create_engine				{ $$ = NULL; }
 		;
 
 create_engine :
@@ -7501,32 +7512,54 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 
 /* Begin - ReqID:SRS-MYSQL-RENAME */
 rename_list:
-                       rename_user_clause		{$$ = list_make1($1);}
-                       | rename_list ',' rename_user_clause			{$$ = lappend($1, $3);}
+            rename_user_clause						{ $$ = list_make1($1);}
+            | rename_list ',' rename_user_clause	{ $$ = lappend($1, $3);}
+		;
 
 rename_user_clause:
-                       UserId TO UserId			{$$ = list_make2($1, $3); }
+            UserName TO UserName					{ $$ = list_make2($1, $3); }
+		;
 
 UserId:
-			SCONST USER_VARIABLE_NAME
-					{
-						CheckUserHostId($1, $2);
-						$$ = $1;
-					}
+			RoleSpec
+				{
+					$$ = $1;
+				}
+			| RoleSpec USER_VARIABLE_NAME
+				{
+					$$ = $1;
+				}
+			| SCONST USER_VARIABLE_NAME
+				{
+					RoleSpec *n;
+					n = makeRoleSpec(ROLESPEC_CSTRING, @1);
+					n->rolename = pstrdup($1);
+					CheckUserHostId($1, $2);
+					$$ = n;
+				}
 			| SCONST
-					{
-						if (strchr($1,'@'))
-							ereport(ERROR,(errcode(ERRCODE_INVALID_NAME),errmsg("@ can't be allowed in username")));
-						if (strlen($1) >= NAMEDATALEN) {
-							ereport(ERROR,(errcode(ERRCODE_INVALID_NAME),errmsg("String %s is too long for user name (should be no longer than 64)", $1)));
-						}
-						$$ = $1;
-					}
-			| RoleId
-					{
-						IsValidIdentUsername($1);
-						$$ = $1;
-					}
+				{
+					RoleSpec *n;
+
+					if (strchr($1, '@'))
+						ereport(ERROR, (errcode(ERRCODE_INVALID_NAME), errmsg("@ can't be allowed in username")));
+						
+					if (strlen($1) >= NAMEDATALEN)
+						ereport(ERROR, (errcode(ERRCODE_INVALID_NAME), errmsg("String %s is too long for user name (should be no longer than 64)", $1)));
+
+					n = makeRoleSpec(ROLESPEC_CSTRING, @1);
+					n->rolename = pstrdup($1);
+					$$ = n;
+				}
+		;
+
+UserName:
+			UserId
+				{
+					char *username = checkRoleSpec($1);
+					IsValidIdentUsername(username);
+					$$ = username;
+				}
 		;
 /* End - ReqID:SRS-MYSQL-RENAME */
 
@@ -10715,11 +10748,13 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 
 /* Begin - ReqID:SRS-MYSQL-RENAME */
 rename_table_list:
-			rename_table_clause		{$$ = list_make1($1);}
-			| rename_table_list ',' rename_table_clause		{$$ = lappend($1, $3);}
+			rename_table_clause								{ $$ = list_make1($1);}
+			| rename_table_list ',' rename_table_clause		{ $$ = lappend($1, $3);}
+		;
 
 rename_table_clause:
-			name TO name			{$$ = list_make2($1, $3); }
+			name TO name							{$$ = list_make2($1, $3); }
+		;
 /* End - ReqID:SRS-MYSQL-RENAME */
 
 opt_column: COLUMN
@@ -12070,11 +12105,11 @@ CreatedbStmt:
 					n->schemaname = $6;
 					n->authrole = NULL;
 					n->schemaElts = NULL;
-					n->mys_opt=NULL;
+					n->option = NULL;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
-			| CREATE DATABASE IF_P NOT EXISTS name mys_create_option
+			| CREATE DATABASE IF_P NOT EXISTS name default_create_options
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -12083,11 +12118,11 @@ CreatedbStmt:
 					n->schemaname = $6;
 					n->authrole = NULL;
 					n->schemaElts = NULL;
-					n->mys_opt=$7;
+					n->option = $7;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
-			| CREATE DATABASE name mys_create_option
+			| CREATE DATABASE name default_create_options
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 
@@ -12097,28 +12132,32 @@ CreatedbStmt:
 					n->schemaname = $3;
 					n->authrole = NULL;
 					n->schemaElts = NULL;
-					n->mys_opt=$4;
+					n->option = $4;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
 				/* End - ReqID: SRS-MYSQL-SQL-USE */
 		;
 /* Begin - ReqID: SRS-MYSQL-SQL-USE */
-mys_create_option:
-		multi_charset opt_equal name
-			{
-				MysCollateCharacterOpt *n = (MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));
-				n->opt_type = OPT_CHARACTERSET;
-				n->name = $3;
-				$$ = n;
-			}
-		| COLLATE opt_equal any_name
-			{
-				MysCollateCharacterOpt *n = (MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));
-				n->opt_type = OPT_COLLATE;
-				n->name = strVal(linitial($3));
-				$$ = n;
-			}
+default_create_option:
+				create_option									{ $$ = $1; }
+				| DEFAULT create_option							{ $$ = $2; }
+		;
+
+default_create_options:
+				default_create_option							{ $$ = $1; }
+				| default_create_options default_create_option 	{ $$ = $2; }
+		;
+
+create_option:
+			multi_charset opt_equal name
+				{
+					$$ = (Node *) makeDefElem("CHARSET", (Node *) makeString($3), @1);
+				}
+			| COLLATE opt_equal name
+				{
+					$$ = (Node *) makeDefElem("COLLATE", (Node *) makeString($3), @1);
+				}
 		;
 /* End - ReqID: SRS-MYSQL-SQL-USE */
 
@@ -16069,6 +16108,8 @@ character:	CHARACTER opt_varying
 										{ $$ = $3 ? "varchar": "bpchar"; }
 			| NCHAR opt_varying
 										{ $$ = $2 ? "varchar": "bpchar"; }
+			| NVARCHAR
+										{ $$ = "varchar"; }
 		;
 
 opt_varying:
@@ -19211,20 +19252,6 @@ qualified_name:
 							$$->catalogname = NULL;
 							$$->schemaname = $1;
 							$$->relname = strVal(linitial($2));
-							/* Begin - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
-							/*
-							 * convert views from the compatible information_schema
-							 * schema to ivymy schema.
-							 */
-							if (enable_mysql_information_schema &&
-								memcmp($$->schemaname, "information_schema", 18) == 0)
-							{
-								if (IsMysInformationSchemaView($$->relname))
-								{
-									$$->schemaname = pstrdup("mys_information_schema");
-								}
-							}
-							/* End - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
 							/* Begin - ReqID:SRS-MYSQL-CASE */
 							$$->schemaname = MYS_LOWERONE_STRING_CASE($$->schemaname);
 							/* End - ReqID:SRS-MYSQL-CASE */
@@ -19450,41 +19477,7 @@ SignedIconst: Iconst								{ $$ = $1; }
 /* Role specifications */
 RoleId:		RoleSpec
 				{
-					RoleSpec *spc = (RoleSpec *) $1;
-					switch (spc->roletype)
-					{
-						case ROLESPEC_CSTRING:
-							$$ = spc->rolename;
-							break;
-						case ROLESPEC_PUBLIC:
-							ereport(ERROR,
-									(errcode(ERRCODE_RESERVED_NAME),
-									 errmsg("role name \"%s\" is reserved",
-											"public"),
-									 parser_errposition(@1)));
-							break;
-						case ROLESPEC_SESSION_USER:
-							ereport(ERROR,
-									(errcode(ERRCODE_RESERVED_NAME),
-									 errmsg("%s cannot be used as a role name here",
-											"SESSION_USER"),
-									 parser_errposition(@1)));
-							break;
-						case ROLESPEC_CURRENT_USER:
-							ereport(ERROR,
-									(errcode(ERRCODE_RESERVED_NAME),
-									 errmsg("%s cannot be used as a role name here",
-											"CURRENT_USER"),
-									 parser_errposition(@1)));
-							break;
-						case ROLESPEC_CURRENT_ROLE:
-							ereport(ERROR,
-									(errcode(ERRCODE_RESERVED_NAME),
-									 errmsg("%s cannot be used as a role name here",
-											"CURRENT_ROLE"),
-									 parser_errposition(@1)));
-							break;
-					}
+					$$ = checkRoleSpec($1);
 				}
 			;
 
@@ -19557,9 +19550,9 @@ RoleSpec:	NonReservedWord
 					}
 		;
 
-role_list:	RoleSpec
+role_list:	UserId
 					{ $$ = list_make1($1); }
-			| role_list ',' RoleSpec
+			| role_list ',' UserId
 					{ $$ = lappend($1, $3); }
 		;
 
@@ -20084,6 +20077,7 @@ col_name_keyword:
 			| NORMALIZE
 			| NULLIF
 			| NUMERIC
+			| NVARCHAR /* SRS-MYSQL-PROTOCOL */
 			| OUT_P
 			| OVERLAY
 			| POSITION
@@ -20205,6 +20199,7 @@ reserved_keyword:
 			| DUAL		/* ReqID:SRS-MYSQL-SELECT */
 			| ELSE
 			| END_P
+			| ENGINES
 			| EXCEPT
 			| FALSE_P
 			| FETCH
@@ -20237,6 +20232,7 @@ reserved_keyword:
 			| OR
 			| ORDER
 			| PLACING
+			| PLUGINS
 			| PRIMARY
 			| QUICK
 			| REFERENCES
@@ -20417,6 +20413,7 @@ bare_label_keyword:
 			| ENCRYPTED
 			| END_P
 			| ENGINE_P      /* SRS-MYSQL-CREATE-TABLE */
+			| ENGINES
 			| ENUM_P
 			| ESCAPE
 			| EVENT
@@ -20554,6 +20551,7 @@ bare_label_keyword:
 			| NULLIF
 			| NULLS_P
 			| NUMERIC
+			| NVARCHAR /* SRS-MYSQL-PROTOCOL */
 			| OBJECT_P
 			| OF
 			| OFF
@@ -20580,6 +20578,7 @@ bare_label_keyword:
 			| PASSWORD
 			| PLACING
 			| PLANS
+			| PLUGINS
 			| POLICY
 			| POSITION
 			| PRECEDING
@@ -22036,9 +22035,9 @@ makeShowTriggersStmt(Node *db_name, ShowFilter *filter)
 	else /* current schema */
 	{
 		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
-											NIL,
-											COERCE_EXPLICIT_CALL,
-											-1);
+										  NIL,
+										  COERCE_EXPLICIT_CALL,
+										  -1);
 
 		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
 													   col_db,
@@ -22116,9 +22115,10 @@ makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
 	else /* current schema */
 	{
 		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
-											NIL,
-											COERCE_EXPLICIT_CALL,
-											-1);
+										  NIL,
+										  COERCE_EXPLICIT_CALL,
+										  -1);
+
 		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
 													   col_db,
 													   (Node *)funcCall,
@@ -22201,9 +22201,10 @@ makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 	else /* current schema */
 	{
 		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
-											NIL,
-											COERCE_EXPLICIT_CALL,
-											-1);
+										  NIL,
+										  COERCE_EXPLICIT_CALL,
+										  -1);
+
 		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
 													   col_db,
 													   (Node *)funcCall,
@@ -22214,6 +22215,7 @@ makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 	rss = makeShowRangeSubselect((Node *)inner, "subq");
 	cref = makeShowAllColumnRef();
 	rt = makeShowResTarget(NULL, (Node *) cref, -1);
+	
 	/* [LIKE 'pattern' | WHERE expr] */
 	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter("Name", filter));
 	outer->mysshowtype = SHOW_TABLES_STATUS;	/* BUG#Z5968 */
@@ -22229,13 +22231,10 @@ makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 static SelectStmt *
 makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 {
-#define		TABLES_COLUMN_NUMS 2
+	#define		TABLES_COLUMN_NUMS 2
 
-	char		colnames[TABLE_STATUS_COLUMN_NUMS][16]
-						= {"TABLE_NAME", "TABLE_TYPE"};
-
-	char		ailas[TABLE_STATUS_COLUMN_NUMS][16]
-						= {"Tables", "Table_type"};
+	char		colnames[TABLE_STATUS_COLUMN_NUMS][16] = { "TABLE_NAME", "TABLE_TYPE" };
+	char		ailas[TABLE_STATUS_COLUMN_NUMS][16] = { "Tables", "Table_type" };
 	SelectStmt	*outer;
 	SelectStmt	*inner = makeNode(SelectStmt);
 	ResTarget	*rt;
@@ -22270,12 +22269,22 @@ makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 		/* The current schema myst be determined first;
 		 * otherwise, the correct value cannot be retrieved later.
 		 */
-		LOCAL_FCINFO(fcinfo, 0);
-		schema = NameStr(*(DatumGetName(current_schema(fcinfo))));
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
-													   col_db,
-													   makeStringConst(schema, -1),
-													   -1);
+		List	   *search_path = fetch_search_path(false);
+
+		if (search_path != NIL)
+		{
+			schema = get_namespace_name(linitial_oid(search_path));
+
+			if (schema)
+			{
+				inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
+															   col_db,
+															   makeStringConst(schema, -1),
+															   -1);
+			}
+
+			list_free(search_path);
+		}
 	}
 
 	/* make subselect targetlist */
@@ -22285,8 +22294,9 @@ makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 		rtname = pstrdup(ailas[0]);
 
 	rt = makeShowResTarget(pstrdup(rtname),
-							   (Node *)makeColumnRef(pstrdup(colnames[0]), NIL, -1, 0),
-							   -1);
+						   (Node *)makeColumnRef(pstrdup(colnames[0]), NIL, -1, 0),
+						   -1);
+
 	inner->targetList = lappend(inner->targetList, rt);
 	like_name = rt->name;
 
@@ -22657,9 +22667,9 @@ makeShowCreateTableStmt(RangeVar *rvar)
 	FuncCall	   *funcCall;
 	reloid = RangeVarGetRelid(rvar, NoLock, false);
 	funcCall = makeFuncCall(list_make2(makeString("ivymy"), makeString("mys_show_create_table")),
-											 list_make1(makeIntConst(reloid, -1)),
-											 COERCE_EXPLICIT_CALL,
-											 -1);
+							list_make1(makeIntConst(reloid, -1)),
+							COERCE_EXPLICIT_CALL,
+							-1);
 	/* Construct a query whose result comes from a function,
 	 * result named "Create Table", table named "Table".
 	 */
@@ -22721,6 +22731,52 @@ makeShowVariableStmt(const char *glob_or_session, ShowFilter *filter)
 	selectStmt->targetList = list_make2(resvariablename, resvariablevalue);
 	selectStmt->fromClause = list_make1(makeRangeVar("mys_information_schema", viewstr, -1));
 	selectStmt->whereClause = where;
+
+	return (Node *) selectStmt;
+}
+
+/**
+ * Just do 
+ * SELECT 
+ * 	"PLUGIN_NAME" 		AS "Name",
+ * 	"PLUGIN_STATUS" 	AS "Status",
+ * 	"PLUGIN_TYPE" 		AS "Type",
+ * 	"PLUGIN_LIBRARY" 	AS "Library",
+ * 	"PLUGIN_LICENSE" 	AS "License" 
+ * FROM mys_information_schema.plugins;
+ */
+static Node *
+makeShowPluginsStmt(void)
+{
+	SelectStmt	*selectStmt = makeNode(SelectStmt);
+	List 		*targetList = list_make5(makeRestaget(makeColumnRef("PLUGIN_NAME", NIL, -1, 0), "Name"),
+			   							 makeRestaget(makeColumnRef("PLUGIN_STATUS", NIL, -1, 0), "Status"),
+			   							 makeRestaget(makeColumnRef("PLUGIN_TYPE", NIL, -1, 0), "Type"),
+			   							 makeRestaget(makeColumnRef("PLUGIN_LIBRARY", NIL, -1, 0), "Library"),
+			   							 makeRestaget(makeColumnRef("PLUGIN_LICENSE", NIL, -1, 0), "License"));
+	List		*fromClause = list_make1(makeRangeVar("mys_information_schema", pstrdup("plugins"), -1));
+
+	selectStmt->targetList = targetList;
+	selectStmt->fromClause = fromClause;
+
+	return (Node *) selectStmt;
+}
+
+static Node *
+makeShowEnginesStmt(void)
+{
+	SelectStmt	*selectStmt = makeNode(SelectStmt);
+	// there is no list_make6
+	List 		*targetList = list_concat(list_make3(makeRestaget(makeColumnRef("ENGINE", NIL, -1, 0), "Engine"),
+			   							 			 makeRestaget(makeColumnRef("SUPPORT", NIL, -1, 0), "Support"),
+			   							 			 makeRestaget(makeColumnRef("COMMENT", NIL, -1, 0), "Comment")),
+			   							  list_make3(makeRestaget(makeColumnRef("TRANSACTIONS", NIL, -1, 0), "Transactions"),
+			   							 			 makeRestaget(makeColumnRef("XA", NIL, -1, 0), "XA"),
+										 			 makeRestaget(makeColumnRef("SAVEPOINTS", NIL, -1, 0), "Savepoints")));
+	List		*fromClause = list_make1(makeRangeVar("mys_information_schema", pstrdup("engines"), -1));
+
+	selectStmt->targetList = targetList;
+	selectStmt->fromClause = fromClause;
 
 	return (Node *) selectStmt;
 }
@@ -22885,14 +22941,17 @@ makeCreateStmtOption(CreateStmt *stmt, List *option)
 	{
 		foreach (lc, option)
 		{
-			Node *tmp_node = (Node *)lfirst(lc);
-			if (nodeTag(tmp_node) == T_DefElem)
+			Node *node = (Node *) lfirst(lc);
+			if (nodeTag(node) == T_DefElem)
 			{
-				stmt->autoIncStart = tmp_node;
+				DefElem *elem = (DefElem *)node;
+
+				if (strncasecmp(elem->defname, "start", 5) == 0)
+					stmt->autoIncStart = node;
 			}
-			else if (nodeTag(tmp_node) == T_CommentStmt)
+			else if (nodeTag(node) == T_CommentStmt)
 			{
-				stmt->relcomment = tmp_node;
+				stmt->relcomment = node;
 			}
 		}
 	}
@@ -22900,19 +22959,19 @@ makeCreateStmtOption(CreateStmt *stmt, List *option)
 /* End - SRS-MYSQL-CREATE-TABLE */
 
 /* Begin - ReqID:SRS-MYSQL-RENAME */
-static void
+static void 
 CheckUserHostId(char *userName, char *hostId)
 {
 	size_t userlen, hostidlen;
-	char* userHostId;
+	char *userHostId;
 
-	if (strchr(userName,'@'))
-		ereport(ERROR,(errcode(ERRCODE_INVALID_NAME), errmsg("Operation RENAME USER failed")));
+	if (strchr(userName, '@'))
+		ereport(ERROR, (errcode(ERRCODE_INVALID_NAME), errmsg("Operation RENAME USER failed")));
 
 	if (*hostId == '\'' || *hostId == '`') 
 	{
 		userHostId = hostId + 1;
-		hostId[strlen(hostId)-1] = '\0';
+		hostId[strlen(hostId) - 1] = '\0';
 	} 
 	else 
 	{
@@ -22927,7 +22986,7 @@ CheckUserHostId(char *userName, char *hostId)
 
 	if ((userlen + hostidlen + 2) >= 32) 
 	{
-		ereport(ERROR,(errcode(ERRCODE_INVALID_NAME),
+		ereport(ERROR, (errcode(ERRCODE_INVALID_NAME),
 				errmsg("String %s @ %s is too long for user name (should be no longer than 32)", userName, hostId)));
 	}
 }
@@ -22970,13 +23029,57 @@ IsValidIdentUsername(char *input)
 	return true;
 }
 
-static void CheckHostId(char* hostId)
+static void 
+CheckHostId(char *hostId)
 {
-	char* tmp = hostId;
+	char *tmp = hostId;
 	for (; *tmp != '\0'; tmp++) 
 	{
 		if (((*tmp < '0') || (*tmp > '9')) && (*tmp != '%') && (*tmp != '.'))
 			ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), errmsg("Operation RENAME USER failed")));
 	}
+}
+
+static char *
+checkRoleSpec(RoleSpec *spc)
+{
+	char *ret = NULL;
+
+	switch (spc->roletype)
+	{
+		case ROLESPEC_CSTRING:
+			ret = spc->rolename;
+			break;
+		case ROLESPEC_PUBLIC:
+			ereport(ERROR,
+					(errcode(ERRCODE_RESERVED_NAME),
+						errmsg("role name \"%s\" is reserved",
+							   "public"),
+						exprLocation((Node *) spc)));
+			break;
+		case ROLESPEC_SESSION_USER:
+			ereport(ERROR,
+					(errcode(ERRCODE_RESERVED_NAME),
+						errmsg("%s cannot be used as a role name here",
+							   "SESSION_USER"),
+						exprLocation((Node *) spc)));
+			break;
+		case ROLESPEC_CURRENT_USER:
+			ereport(ERROR,
+					(errcode(ERRCODE_RESERVED_NAME),
+						errmsg("%s cannot be used as a role name here",
+							   "CURRENT_USER"),
+						exprLocation((Node *) spc)));
+			break;
+		case ROLESPEC_CURRENT_ROLE:
+			ereport(ERROR,
+					(errcode(ERRCODE_RESERVED_NAME),
+						errmsg("%s cannot be used as a role name here",
+							   "CURRENT_ROLE"),
+						exprLocation((Node *) spc)));
+			break;
+	}
+
+	return ret;
 }
 /* End - ReqID:SRS-MYSQL-RENAME */

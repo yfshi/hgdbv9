@@ -42,7 +42,6 @@ typedef struct
 
 extern const PGDLLIMPORT PQcommMethods *PqCommMethods;
 
-#define pq_comm_reset() (PqCommMethods->comm_reset())
 #define pq_flush() (PqCommMethods->flush())
 #define pq_flush_if_writable() (PqCommMethods->flush_if_writable())
 #define pq_is_send_pending() (PqCommMethods->is_send_pending())
@@ -65,7 +64,8 @@ extern WaitEventSet *FeBeWaitSet;
 
 extern int	StreamServerPort(int family, const char *hostName,
 							 unsigned short portNumber, const char *unixSocketDir,
-							 pgsocket ListenSocket[], int MaxListen);
+							 pgsocket ListenSocket[], int MaxListen,
+							 ProtocolExtensionConfig *ListenConfig[], ProtocolExtensionConfig *protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
 extern int	StreamConnection(pgsocket server_fd, Port *port);
 extern void StreamClose(pgsocket sock);
 extern void TouchSocketFiles(void);

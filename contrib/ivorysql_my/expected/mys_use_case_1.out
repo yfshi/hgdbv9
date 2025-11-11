@@ -40,7 +40,6 @@ NOTICE:  schema "test2" already exists, skipping
 DROP SCHEMA TEST2;
 /*CHARACTER & SET COLLATE test  */
 CREATE SCHEMA  TEST4  CHARACTER SET = "charactertest";
-WARNING:   COLLATE or CHARACTER SET nonsupport : 'charactertest'
 USE TEST4;
 SELECT  current_schema();
  current_schema 
@@ -50,7 +49,6 @@ SELECT  current_schema();
 
 DROP SCHEMA TEST4;
 CREATE SCHEMA  TEST41  COLLATE  = "collatetest";
-WARNING:   COLLATE or CHARACTER SET nonsupport : 'collatetest'
 USE TEST41;
 SELECT  current_schema();
  current_schema 
@@ -60,7 +58,6 @@ SELECT  current_schema();
 
 DROP SCHEMA TEST41;
 CREATE DATABASE  TEST5  CHARACTER SET = "charactertest";
-WARNING:   COLLATE or CHARACTER SET nonsupport : 'charactertest'
 USE TEST5;
 SELECT  current_schema();
  current_schema 
@@ -70,7 +67,6 @@ SELECT  current_schema();
 
 DROP SCHEMA TEST5;
 CREATE DATABASE  TEST5  COLLATE  = "collatetest";
-WARNING:   COLLATE or CHARACTER SET nonsupport : 'collatetest'
 USE TEST5;
 SELECT  current_schema();
  current_schema 

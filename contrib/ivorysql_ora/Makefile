@@ -5,7 +5,6 @@ MODULE_big = ivorysql_ora
 OBJS = \
 	$(WIN32RES) \
 	src/ivorysql_ora.o \
-	src/guc/guc.o	\
 	src/datatype/oracharchar.o \
 	src/datatype/oracharbyte.o \
 	src/datatype/oravarcharchar.o \

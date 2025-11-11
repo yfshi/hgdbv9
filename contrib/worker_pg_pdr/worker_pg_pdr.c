@@ -766,7 +766,9 @@ insert_new_snap(void)
 	char 	dbmem_tmp[17];
 	pid_t	pdrpid = 0;
 	int	length_val = 0;
+#ifdef USE_LICENSE
 	const char *hgdb_version; /* BUG#Z5608 */
+#endif
 	
 #ifdef WIN32
 	SYSTEM_INFO sSysInfo;

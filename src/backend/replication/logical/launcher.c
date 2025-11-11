@@ -22,6 +22,7 @@
 #include "access/htup_details.h"
 #include "access/tableam.h"
 #include "access/xact.h"
+#include "catalog/pg_authid.h"
 #include "catalog/pg_subscription.h"
 #include "catalog/pg_subscription_rel.h"
 #include "funcapi.h"
@@ -42,14 +43,13 @@
 #include "storage/procarray.h"
 #include "storage/procsignal.h"
 #include "tcop/tcopprot.h"
+#include "utils/fmgroids.h"
 #include "utils/memutils.h"
 #include "utils/pg_lsn.h"
 #include "utils/ps_status.h"
 #include "utils/snapmgr.h"
-#include "utils/timeout.h"
-#include "catalog/pg_authid.h"
-#include "utils/fmgroids.h"
 #include "utils/syscache.h"
+#include "utils/timeout.h"
 
 /* max sleep time between cycles (3min) */
 #define DEFAULT_NAPTIME_PER_CYCLE 180000L
@@ -721,6 +721,8 @@ ApplyLauncherRegister(void)
 	bgw.bgw_restart_time = 5;
 	bgw.bgw_notify_pid = 0;
 	bgw.bgw_main_arg = (Datum) 0;
+	
+	bgw.bgw_flags |= BGWORKER_COMPAT_PG; /* Req: SRS-MYSQL-PROTOCOL */
 
 	RegisterBackgroundWorker(&bgw);
 }

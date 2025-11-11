@@ -341,3 +341,15 @@ enlargeStringInfo(StringInfo str, int needed)
 
 	str->maxlen = newlen;
 }
+
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+void
+DestroyStringInfo(StringInfo str)
+{
+	if (str != NULL)
+	{
+		pfree(str->data);
+		pfree(str);
+	}
+}
+/* End - Req: SRS-MYSQL-PROTOCOL */

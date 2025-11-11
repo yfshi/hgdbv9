@@ -23,10 +23,7 @@
 #include "postgres.h"
 #include "utils/dynahash.h"
 #include "utils/hsearch.h"
-//extern double use_convert_timevalue_to_scalar(Datum value, Oid typid);
-//extern int conv_n(char *result, int128 data, int from_base_s, int to_base_s);
 
-//extern Numeric int64_to_numeric(int64 v);
 typedef struct MyLocale
 {
 	char	locale_name[LOCALE_LEN];

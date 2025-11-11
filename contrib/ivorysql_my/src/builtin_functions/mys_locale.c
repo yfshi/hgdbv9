@@ -989,9 +989,10 @@ static MyLocale my_locale_array[] = {
 	{"zh_TW", '.', ',', month_names_zh_TW, ab_month_names_zh_TW, day_names_zh_TW, ab_day_names_zh_TW},
 };
 	
-int LOCALE_NUM = sizeof(my_locale_array) / sizeof(MyLocale);
+static int LOCALE_NUM = sizeof(my_locale_array) / sizeof(MyLocale);
 
-MyLocale *MyLocaleSearch(char *target)
+MyLocale *
+MyLocaleSearch(char *target)
 {
 	int start = 0;
 	int end = LOCALE_NUM - 1;

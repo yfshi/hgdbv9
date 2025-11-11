@@ -96,7 +96,6 @@ show create schema if not exists aa;
 reset sql_quote_show_create;
 drop schema aa;
 create database aa CHARACTER SET = UTF8;
-WARNING:   COLLATE or CHARACTER SET nonsupport : 'UTF8'
 show create database aa;
  database |                       Create Database                        
 ----------+--------------------------------------------------------------
@@ -123,7 +122,6 @@ show create schema if not exists aa;
 
 drop schema aa;
 create database aa CHARACTER SET UTF8;
-WARNING:   COLLATE or CHARACTER SET nonsupport : 'UTF8'
 show create database aa;
  database |                       Create Database                        
 ----------+--------------------------------------------------------------
@@ -150,7 +148,6 @@ show create schema if not exists aa;
 
 drop schema aa;
 CREATE database aa COLLATE  = "collatetest";
-WARNING:   COLLATE or CHARACTER SET nonsupport : 'collatetest'
 show create database aa;
  database |                        Create Database                        
 ----------+---------------------------------------------------------------
@@ -177,7 +174,6 @@ show create schema if not exists aa;
 
 drop schema aa;
 CREATE database aa COLLATE "collatetest";
-WARNING:   COLLATE or CHARACTER SET nonsupport : 'collatetest'
 show create database aa;
  database |                        Create Database                        
 ----------+---------------------------------------------------------------
@@ -618,6 +614,35 @@ show full tables in public where Tables_in_public = 'tab_part_create';
  tab_part_create  | BASE TABLE
 (1 row)
 
+show tables where Tables_in_public = 'tb';
+ Tables_in_public 
+------------------
+ tb
+(1 row)
+
+show full tables where Tables_in_public = 'tb1';
+ Tables_in_public | Table_type 
+------------------+------------
+(0 rows)
+
+show full tables from public where Tables_in_public = 'logs';
+ Tables_in_public | Table_type 
+------------------+------------
+ logs             | BASE TABLE
+(1 row)
+
+show full tables in public where Tables_in_public = 'ft1';
+ Tables_in_public |  Table_type   
+------------------+---------------
+ ft1              | FOREIGN TABLE
+(1 row)
+
+show full tables in public where Tables_in_public = 'tab_part_create';
+ Tables_in_public | Table_type 
+------------------+------------
+ tab_part_create  | BASE TABLE
+(1 row)
+
 drop table tb;
 drop table tb1;
 drop table logs;
@@ -746,11 +771,11 @@ show variables like 'sql_mode';
 
 --fix bug#Z5978
 SET GLOBAL time_zone = NULL;
-ERROR:  syntax error at or near "null"
 SHOW GLOBAL VARIABLES LIKE 'time_zone';
  Variable_name | Value 
 ---------------+-------
-(0 rows)
+ time_zone     | 
+(1 row)
 
 --fix bug#Z5975
 CREATE SCHEMA IF NOT EXISTS test_sche;
@@ -812,13 +837,74 @@ SHOW INDEXES FROM test_table4;
 DROP TABLE test_table4;
 --fix bug#Z5969
 set session max_index_keys=NULL;
-ERROR:  syntax error at or near "null"
+ERROR:  parameter "max_index_keys" cannot be changed
 show variables like 'max_index_keys';
  Variable_name  | Value 
 ----------------+-------
  max_index_keys | 32
 (1 row)
 
+show plugins;
+         Name          | Status |      Type      | Library | License 
+-----------------------+--------+----------------+---------+---------
+ mysql_native_password | ACTIVE | AUTHENTICATION |         | GPL
+ caching_sha2_password | ACTIVE | AUTHENTICATION |         | GPL
+(2 rows)
+
+show engines;
+       Engine       | Support |      Comment       | Transactions | XA | Savepoints 
+--------------------+---------+--------------------+--------------+----+------------
+ PERFORMANCE_SCHEMA | YES     | Performance Schema | NO           | NO | NO
+(1 row)
+
+show storage engines;
+       Engine       | Support |      Comment       | Transactions | XA | Savepoints 
+--------------------+---------+--------------------+--------------+----+------------
+ PERFORMANCE_SCHEMA | YES     | Performance Schema | NO           | NO | NO
+(1 row)
+
+create table t1(a int primary key);
+create table t2(a int primary key, b int, foreign key(b) references t1(a));
+set sql_quote_show_create = 0;
+show create table t2;
+ Table |                       Create Table                        
+-------+-----------------------------------------------------------
+ t2    | CREATE TABLE t2 (                                        +
+       |     a integer NOT NULL,                                  +
+       |     b integer,                                           +
+       |     CONSTRAINT t2_pkey PRIMARY KEY (a),                  +
+       |     CONSTRAINT t2_b_fkey FOREIGN KEY (b) REFERENCES t1(a)+
+       | )
+(1 row)
+
+set sql_quote_show_create = 1;
+set sql_mode = '';
+show create table t2;
+ Table |                        Create Table                         
+-------+-------------------------------------------------------------
+ t2    | CREATE TABLE `t2` (                                        +
+       |     `a` integer NOT NULL,                                  +
+       |     `b` integer,                                           +
+       |     CONSTRAINT `t2_pkey` PRIMARY KEY (a),                  +
+       |     CONSTRAINT `t2_b_fkey` FOREIGN KEY (b) REFERENCES t1(a)+
+       | )
+(1 row)
+
+set sql_mode = 'ANSI_QUOTES';
+show create table t2;
+ Table |                        Create Table                         
+-------+-------------------------------------------------------------
+ t2    | CREATE TABLE "t2" (                                        +
+       |     "a" integer NOT NULL,                                  +
+       |     "b" integer,                                           +
+       |     CONSTRAINT "t2_pkey" PRIMARY KEY (a),                  +
+       |     CONSTRAINT "t2_b_fkey" FOREIGN KEY (b) REFERENCES t1(a)+
+       | )
+(1 row)
+
+set sql_mode = DEFAULT;
+drop table t2;
+drop table t1;
 -- fix bug#Z5973
 drop table test_table;
 CREATE TABLE IF NOT EXISTS test_table (

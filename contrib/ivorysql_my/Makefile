@@ -2,9 +2,18 @@
 
 MODULE_big = ivorysql_my
 
+override CPPFLAGS += -I./src/include
+
 OBJS = \
 	$(WIN32RES) \
 	src/ivorysql_my.o \
+	src/protocol/message.o \
+	src/protocol/mqformat.o \
+	src/protocol/server.o \
+	src/protocol/printtup.o \
+	src/protocol/auth/auth.o \
+	src/protocol/auth/caching_sha2.o \
+	src/protocol/auth/native_password.o \
 	src/case_sensitive/casesensitive.o \
 	src/case_sensitive/casefunc.o \
 	src/datatype/strtoll.o \
@@ -158,16 +167,20 @@ MYS_REGRESS = cast_to_number \
 			  mys_show \
 			  create_index \
 			  mys_do \
-			  mys_select
+			  mys_select \
+			  user
+
+MYS_JDBC_REGRESS =	proto_jdbc \
+					proto_jdbc_8_0_28
 
 
 ifdef USE_PGXS
-PG_CONFIG = pg_config
-PGXS := $(shell $(PG_CONFIG) --pgxs)
-include $(PGXS)
+	PG_CONFIG = pg_config
+	PGXS := $(shell $(PG_CONFIG) --pgxs)
+	include $(PGXS)
 else
-subdir = contrib/ivorysql_my
-top_builddir = ../..
-include $(top_builddir)/src/Makefile.global
-include $(top_srcdir)/contrib/contrib-global.mk
+	subdir = contrib/ivorysql_my
+	top_builddir = ../..
+	include $(top_builddir)/src/Makefile.global
+	include $(top_srcdir)/contrib/contrib-global.mk
 endif

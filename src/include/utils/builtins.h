@@ -136,7 +136,7 @@ extern char *quote_literal_cstr(const char *rawstr);
 
 char *quote_catalog_qualified(Oid tid, char *qualifier);
 
-/* parse_clause.c */
-extern bool IsMysInformationSchemaView(char *view_name); /* ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
-
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+extern Datum current_schema(PG_FUNCTION_ARGS);
+/* End - Req: SRS-MYSQL-PROTOCOL */
 #endif							/* BUILTINS_H */

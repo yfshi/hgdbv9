@@ -44,6 +44,7 @@
 #define POSTGRES_H
 
 #include "c.h"
+#include "lib/stringinfo.h"
 #include "utils/elog.h"
 #include "utils/palloc.h"
 
@@ -459,6 +460,14 @@ typedef struct NullableDatum
 
 #define CharGetDatum(X) ((Datum) (X))
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL
+ * DatumGetInt8
+ *		Returns datum representation for an 8-bit integer.
+ */
+
+#define DatumGetInt8(X) ((int8) (X))
+/* End - Req: SRS-MYSQL-PROTOCOL */
+
 /*
  * Int8GetDatum
  *		Returns datum representation for an 8-bit integer.
@@ -805,4 +814,11 @@ extern Datum Float8GetDatum(float8 X);
 #define Float8GetDatumFast(X) PointerGetDatum(&(X))
 #endif
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+extern int SocketBackend(StringInfo inBuf);
+extern void start_xact_command(void);
+extern void finish_xact_command(void);
+extern void exec_simple_query(const char *query_string);
+extern void exec_execute_message(const char *portal_name, long max_rows);
+/* End - Req: SRS-MYSQL-PROTOCOL */
 #endif							/* POSTGRES_H */

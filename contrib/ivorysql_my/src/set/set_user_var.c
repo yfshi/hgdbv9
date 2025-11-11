@@ -16,7 +16,7 @@
 #include "fmgr.h"
 #include "miscadmin.h"
 #include "access/detoast.h"
-#include "../include/mysset.h"
+#include "../include/set.h"
 #include "catalog/pg_type.h"
 #include "executor/execdesc.h"
 #include "executor/executor.h"

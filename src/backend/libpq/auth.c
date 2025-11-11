@@ -45,6 +45,7 @@
 #include "storage/ipc.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"
 #include "utils/timestamp.h"
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "pg_contrib_audit.h"
@@ -720,6 +721,14 @@ ClientAuthentication(Port *port)
 		case uaTrust:
 			status = STATUS_OK;
 			break;
+		/* Begin - Req: SRS-MYSQL-PROTOCOL */
+		case uaNative:
+        case uaCachingSha256:
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PASSWORD),
+						errmsg("unsupport auth method: %s, this can only be used in MySQL compatition mode.", hba_authname(port->hba->auth_method))));
+            break;
+		/* End - Req: SRS-MYSQL-PROTOCOL */
 	}
 
 	if ((status == STATUS_OK && port->hba->clientcert == clientCertFull)

@@ -16,18 +16,19 @@
  *------------------------------------------------------------------
  */
 #include "postgres.h"
+
+#include "auth.h"
 #include "charset/ctype.h"
 #include "commands/collationcmds.h"
 #include "common/int.h"
-#include "fmgr.h"
-#include "include/ivorysql_my.h"
 #include "include/casesensitive.h"
-#include "include/mysset.h"
-#include "parser/parse_coerce.h"
-#include "mysql_parser/mys_case_sensitive.h"
+#include "include/set.h"
+#include "include/server.h"
+#include "utils/guc.h"
+#include "utils/varlena.h"
 #include "mysql_parser/mys_set_hook.h"
 #include "utils/float.h"
-#include "utils/varlena.h"
+
 
 /* Only include it once in any C file */
 PG_MODULE_MAGIC;
@@ -94,6 +95,11 @@ static import_mysql_collation_hook_type 	pre_import_mysql_collation_hook;
 void
 _PG_init(void)
 {
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	register_mysql_listener();
+    register_mysql_auth();
+	/* End - Req: SRS-MYSQL-PROTOCOL */
+
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	pre_mysql_switch_hook = mysql_switch_hook;
 	mysql_switch_hook = pg_compatible_mysql_switch;
@@ -232,4 +238,8 @@ _PG_fini(void)
 	uservariable_hash_search_hook = pre_uservariable_hash_search_hook;
 	setuservarinternal_hook = pre_setuservarinternal_hook;
 	/* End - ReqID:SRS-MYSQL-SET */
+
+    /* Begin - Req: SRS-MYSQL-PROTOCOL */
+	unregister_mysql_listener();
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 }

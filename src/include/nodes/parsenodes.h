@@ -2152,19 +2152,6 @@ typedef enum ObjectType
 	OBJECT_SYNONYM	/* ReqID:SRS-SQL-SYNONYM */
 } ObjectType;
 
-/* Begin - ReqID: SRS-MYSQL-SQL-USE */
-typedef enum {
-	OPT_CHARACTERSET,
-	OPT_COLLATE
-} OptType;
-
-typedef struct MysCollateCharacterOpt
-{
-	NodeTag type;
-	OptType opt_type;
-	char * name;
-} MysCollateCharacterOpt;
-/* End - ReqID: SRS-MYSQL-SQL-USE */
 /* ----------------------
  *		Create Schema Statement
  *
@@ -2180,7 +2167,9 @@ typedef struct CreateSchemaStmt
 	RoleSpec   *authrole;		/* the owner of the created schema */
 	List	   *schemaElts;		/* schema components (list of parsenodes) */
 	bool		if_not_exists;	/* just do nothing if schema already exists? */
-	MysCollateCharacterOpt *mys_opt; /* ReqID:SRS-MYSQL-SQL-USE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-USE */
+	Node	   *option;
+	/* End - ReqID:SRS-MYSQL-SQL-USE */
 } CreateSchemaStmt;
 
 typedef enum DropBehavior
@@ -4472,10 +4461,17 @@ typedef enum VarKind
 	USER_VAR			/* user defined variable at the time of retrieval */
 } VarKind;
 
+typedef enum MysDoPurpose
+{
+	MYS_DO_NORMAL,
+	MYS_DO_FOR_SET,
+} MysDoPurpose;
+
 typedef struct MysDoStmt
 {
 	NodeTag type;
-	Node *stmt;	/* SelectStmt */
+	Node 	*stmt;		/* SelectStmt */
+	MysDoPurpose purpose; 	/* For distinguishing commandtag, which is important in mysql protocol, default is CMDTAG_SELECT */
 } MysDoStmt;
 
 typedef struct SelectIntoUserVarStmt

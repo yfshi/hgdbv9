@@ -28,6 +28,7 @@
 #include "access/htup_details.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
+#include "commands/dbcommands.h"
 #include "common/ip.h"
 #include "common/string.h"
 #include "funcapi.h"
@@ -45,7 +46,6 @@
 #include "utils/memutils.h"
 #include "utils/varlena.h"
 #include "utils/ora_compatible.h"
-#include "commands/dbcommands.h"
 
 #ifdef USE_LDAP
 #ifdef WIN32
@@ -148,6 +148,10 @@ static const char *const UserAuthName[] =
 	"ldap",
 	"cert",
 	"radius",
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	"mysql_native_password",
+	"caching_sha2_password",
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 	"peer"
 };
 
@@ -1436,6 +1440,12 @@ parse_hba_line(TokenizedLine *tok_line, int elevel)
 #endif
 	else if (strncmp(token->string, "radius", strlen("radius")) == 0)
 		parsedline->auth_method = uaRADIUS;
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	else if (strcmp(token->string, "mysql_native_password") == 0)
+		parsedline->auth_method = uaNative;
+	else if (strcmp(token->string, "caching_sha2_password") == 0)
+		parsedline->auth_method = uaCachingSha256;
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 	else
 	{
 		ereport(elevel,

@@ -146,7 +146,6 @@ static int	socket_flush_if_writable(void);
 static bool socket_is_send_pending(void);
 static int	socket_putmessage(char msgtype, const char *s, size_t len);
 static void socket_putmessage_noblock(char msgtype, const char *s, size_t len);
-static int	internal_putbytes(const char *s, size_t len);
 static int	internal_flush(void);
 
 #ifdef HAVE_UNIX_SOCKETS
@@ -313,7 +312,8 @@ socket_close(int code, Datum arg)
 int
 StreamServerPort(int family, const char *hostName, unsigned short portNumber,
 				 const char *unixSocketDir,
-				 pgsocket ListenSocket[], int MaxListen)
+				 pgsocket ListenSocket[], int MaxListen,
+				 ProtocolExtensionConfig *ListenConfig[], ProtocolExtensionConfig *protocol_config /* Req: SRS-MYSQL-PROTOCOL */)
 {
 	pgsocket	fd;
 	int			err;
@@ -581,6 +581,7 @@ StreamServerPort(int family, const char *hostName, unsigned short portNumber,
 							familyDesc, addrDesc, (int) portNumber)));
 
 		ListenSocket[listen_index] = fd;
+		ListenConfig[listen_index] = protocol_config;
 		added++;
 	}
 
@@ -1124,7 +1125,7 @@ pq_getbytes(char *s, size_t len)
  *		returns 0 if OK, EOF if trouble
  * --------------------------------
  */
-static int
+int
 pq_discardbytes(size_t len)
 {
 	size_t		amount;
@@ -1302,7 +1303,7 @@ pq_getmessage(StringInfo s, int maxlen)
 }
 
 
-static int
+int
 internal_putbytes(const char *s, size_t len)
 {
 	size_t		amount;
@@ -1980,3 +1981,11 @@ pq_check_connection(void)
 
 	return true;
 }
+
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+void
+pq_comm_reset(void)
+{
+	PqCommMethods->comm_reset();
+}
+/* End - Req: SRS-MYSQL-PROTOCOL */

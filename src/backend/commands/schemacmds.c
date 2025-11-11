@@ -88,17 +88,6 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	}
 	/* End - ReqID:SRS-MYSQL-CASE */
 
-	/* Begin - ReqID: SRS-MYSQL-SQL-USE */
-	if (compatible_db == MYS_PARSER && 
-		stmt->mys_opt && 
-		(stmt->mys_opt->opt_type == OPT_CHARACTERSET || 
-		 stmt->mys_opt->opt_type == OPT_COLLATE))
-	{
-		ereport(WARNING,
-				(errmsg(" COLLATE or CHARACTER SET nonsupport : '%s'",stmt->mys_opt->name)));
-	}
-	/* End - ReqID: SRS-MYSQL-SQL-USE */
-
 	/*
 	 * Who is supposed to own the new schema?
 	 */
@@ -299,6 +288,7 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 		StringInfoData	buf;
 		bool	needbracket = false;
 		Jsonb	*attr = NULL;
+		DefElem	*option = (DefElem *) stmt->option;
 
 		initStringInfo(&buf);
 
@@ -308,8 +298,7 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 			needbracket = true;
 		}
 
-		if(stmt->mys_opt != NULL && stmt->mys_opt->name != NULL &&
-			(stmt->mys_opt->opt_type == OPT_CHARACTERSET || stmt->mys_opt->opt_type == OPT_COLLATE))
+		if(option != NULL)
 		{
 			if (needbracket)
 				appendStringInfoString(&buf, ", \"mysoption\" : ");
@@ -319,10 +308,10 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 				needbracket = true;
 			}
 
-			if (stmt->mys_opt->opt_type == OPT_CHARACTERSET)
-				appendStringInfo(&buf, "\"CHARACTER SET %s\"", stmt->mys_opt->name);
-			else if (stmt->mys_opt->opt_type == OPT_COLLATE)
-				appendStringInfo(&buf, "\"COLLATE %s\"", stmt->mys_opt->name);
+			if (pg_strncasecmp(option->defname, "CHARSET", 7) == 0)
+				appendStringInfo(&buf, "\"CHARACTER SET %s\"", strVal(option->arg));
+			else if (pg_strncasecmp(option->defname, "COLLATE", 7) == 0)
+				appendStringInfo(&buf, "\"COLLATE %s\"", strVal(option->arg));
 			else
 				;
 		}

@@ -39,6 +39,7 @@
 #include "executor/tstoreReceiver.h"
 #include "libpq/libpq.h"
 #include "libpq/pqformat.h"
+#include  "miscadmin.h"
 #include "utils/portal.h"
 
 /* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
@@ -124,7 +125,7 @@ CreateDestReceiver(CommandDest dest)
 	{
 		case DestRemote:
 		case DestRemoteExecute:
-			return printtup_create_DR(dest);
+			return MyProcPort->protocol_config->fn_printtup_create_DR(dest); /* Req: SRS-MYSQL-PROTOCOL */
 
 		case DestRemoteSimple:
 			return unconstify(DestReceiver *, &printsimpleDR);
@@ -206,7 +207,6 @@ EndCommand(const QueryCompletion *qc, CommandDest dest, bool force_undecorated_o
 							 "%s 0 " UINT64_FORMAT : "%s " UINT64_FORMAT,
 							 tagname, qc->nprocessed);
 			}
-			/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 			else
 				snprintf(completionTag, COMPLETION_TAG_BUFSIZE, "%s", tagname);
 			pq_putmessage('C', completionTag, strlen(completionTag) + 1);

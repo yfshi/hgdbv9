@@ -633,6 +633,11 @@ mysql-check: mysql-submake $(REGRESS_PREP)
 ifdef MYS_REGRESS
 	$(mysql_regress_check) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
 endif
+# Begin - SRS-MYSQL-PROTOCOL
+ifdef MYS_JDBC_REGRESS
+	$(mysql_jdbc_regress_check) $(MYSQL_REGRESS_OPTS) $(MYS_JDBC_REGRESS)
+endif
+# End - SRS-MYSQL-PROTOCOL
 ifdef MYS_ISOLATION
 	$(mysql_isolation_regress_check) $(MYS_ISOLATION_OPTS) $(MYS_ISOLATION)
 endif

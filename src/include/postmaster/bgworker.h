@@ -67,6 +67,11 @@
 #define BGWORKER_CLASS_PARALLEL					0x0010
 /* add additional bgworker classes here */
 
+/* Begin - Req: SRS-MYSQL-PROTOCOL */
+#define BGWORKER_COMPAT_PG						((BGWORKER_CLASS_PARALLEL << 1))
+#define BGWORKER_COMPAT_ORA						((BGWORKER_COMPAT_PG << 1))
+#define BGWORKER_COMPAT_MYS						((BGWORKER_COMPAT_ORA << 1))
+/* End - Req: SRS-MYSQL-PROTOCOL */
 
 typedef void (*bgworker_main_type) (Datum main_arg);
 

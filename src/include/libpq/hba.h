@@ -50,6 +50,10 @@ typedef enum UserAuth
 	uaLDAP,
 	uaCert,
 	uaRADIUS,
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	uaNative,
+	uaCachingSha256,
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 	uaPeer
 #define USER_AUTH_LAST uaPeer	/* Must be last value of this enum */
 } UserAuth;

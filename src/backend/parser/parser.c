@@ -30,9 +30,9 @@
 
 
 /* Hook for plugins to get control in raw_parser() */
-raw_parser_hook_type sql_raw_parser= standard_raw_parser;
-raw_parser_hook_type ora_raw_parser= NULL;
-raw_parser_hook_type mys_raw_parser= NULL;		/* ReqID:SRS-MISC-MYSQL-FRAME  */
+raw_parser_hook_type sql_raw_parser = standard_raw_parser;
+raw_parser_hook_type ora_raw_parser = NULL;
+raw_parser_hook_type mys_raw_parser = NULL;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 /* END - SQL PARSER */
 
 static bool check_uescapechar(unsigned char escape);

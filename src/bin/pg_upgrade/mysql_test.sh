@@ -69,7 +69,7 @@ case $testhost in
 		;;
 esac
 
-POSTMASTER_OPTS="-F -c listen_addresses=\"$LISTEN_ADDRESSES\" -c mysql.listen_addresses=\"$LISTEN_ADDRESSES\" -c mysql.regress_test_default_value=on -k \"$PG_REGRESS_SOCKET_DIR\""
+POSTMASTER_OPTS="-F -c listen_addresses=\"$LISTEN_ADDRESSES\" -c mysql.listen_addresses=\"$LISTEN_ADDRESSES\" -c mysql.protocol_type=\"pg\" -c mysql.regress_test_default_value=on -k \"$PG_REGRESS_SOCKET_DIR\""
 export PGHOST
 
 # don't rely on $PWD here, as old shells don't set it

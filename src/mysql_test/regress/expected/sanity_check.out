@@ -57,6 +57,7 @@ child3|f
 city|f
 dept|f
 dupindexcols|t
+engines|f
 equipment_r|f
 extra_wide_table|f
 fast_emp4000|t
@@ -201,6 +202,7 @@ pga_joblog|t
 pga_jobstep|t
 pga_jobsteplog|t
 pga_schedule|t
+plugins|f
 quad_box_tbl|t
 quad_box_tbl_ord_seq1|f
 quad_box_tbl_ord_seq2|f

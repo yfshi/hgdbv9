@@ -244,7 +244,8 @@ PerformAuthentication(Port *port)
 	 * Now perform authentication exchange.
 	 */
 	set_ps_display("authentication");
-	ClientAuthentication(port); /* might not return, if failure */
+
+	port->protocol_config->fn_authenticate(port); /* Req: SRS-MYSQL-PROTOCOL */
 
 	/*
 	 * Done with authentication.  Disable the timeout, and log if needed.
@@ -797,6 +798,12 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		Assert(MyProcPort != NULL);
 		PerformAuthentication(MyProcPort);
 		InitializeSessionUserId(username, useroid);
+
+		/* Begin - Req: SRS-MYSQL-PROTOCOL */
+		if (MyProcPort->protocol_config->fn_authenticate_finish)
+			MyProcPort->protocol_config->fn_authenticate_finish(MyProcPort);
+		/* End - Req: SRS-MYSQL-PROTOCOL */
+
 		am_superuser = superuser();
 	}
 

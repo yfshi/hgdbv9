@@ -198,6 +198,11 @@ show full tables where Tables_in_public = 'tb1';
 show full tables from public where Tables_in_public = 'logs';
 show full tables in public where Tables_in_public = 'ft1';
 show full tables in public where Tables_in_public = 'tab_part_create';
+show tables where Tables_in_public = 'tb';
+show full tables where Tables_in_public = 'tb1';
+show full tables from public where Tables_in_public = 'logs';
+show full tables in public where Tables_in_public = 'ft1';
+show full tables in public where Tables_in_public = 'tab_part_create';
 
 drop table tb;
 drop table tb1;
@@ -334,6 +339,28 @@ DROP TABLE test_table4;
 set session max_index_keys=NULL;
 show variables like 'max_index_keys';
 
+
+show plugins;
+show engines;
+show storage engines;
+
+create table t1(a int primary key);
+create table t2(a int primary key, b int, foreign key(b) references t1(a));
+
+set sql_quote_show_create = 0;
+show create table t2;
+
+set sql_quote_show_create = 1;
+set sql_mode = '';
+show create table t2;
+
+set sql_mode = 'ANSI_QUOTES';
+show create table t2;
+
+set sql_mode = DEFAULT;
+
+drop table t2;
+drop table t1;
 -- fix bug#Z5973
 drop table test_table;
 CREATE TABLE IF NOT EXISTS test_table (

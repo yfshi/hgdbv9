@@ -41,6 +41,7 @@
 #include "utils/guc.h"
 #include "utils/inval.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"
 #include "utils/relmapper.h"
 #include "utils/snapmgr.h"
 #include "utils/typcache.h"
@@ -589,6 +590,23 @@ LaunchParallelWorkers(ParallelContext *pcxt)
 	sprintf(worker.bgw_function_name, "ParallelWorkerMain");
 	worker.bgw_main_arg = UInt32GetDatum(dsm_segment_handle(pcxt->seg));
 	worker.bgw_notify_pid = MyProcPid;
+
+	/*
+	 * Begin - Req: SRS-MYSQL-PROTOCOL
+	 * Multi-process synchronization mode
+	 */
+	if (MyProcPort != NULL)
+	{
+		if (compatible_db == ORA_PARSER)
+			worker.bgw_flags |= BGWORKER_COMPAT_ORA;
+		else if (compatible_db == MYS_PARSER)
+			worker.bgw_flags |= BGWORKER_COMPAT_MYS;
+		else if (compatible_db == PG_PARSER)
+			worker.bgw_flags |= BGWORKER_COMPAT_PG;
+	}
+	else
+		worker.bgw_flags |= BGWORKER_COMPAT_PG;
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 
 	/*
 	 * Start workers.
@@ -1361,10 +1379,20 @@ ParallelWorkerMain(Datum main_arg)
 	 * protocol message is defined, but it won't actually be used for anything
 	 * in this case.
 	 */
-	pq_beginmessage(&msgbuf, 'K');
-	pq_sendint32(&msgbuf, (int32) MyProcPid);
-	pq_sendint32(&msgbuf, (int32) MyCancelKey);
-	pq_endmessage(&msgbuf);
+	/* 
+	 * Begin - Req: SRS-MYSQL-PROTOCOL
+	 * MyProcPort is NULL if subprocess is BackgroundWorker.
+	 */
+	if (!MyProcPort)
+	{
+		pq_beginmessage(&msgbuf, 'K');
+		pq_sendint32(&msgbuf, (int32) MyProcPid);
+		pq_sendint32(&msgbuf, (int32) MyCancelKey);
+		pq_endmessage(&msgbuf);
+	}
+	else if (MyProcPort->protocol_config->fn_send_cancel_key)
+		MyProcPort->protocol_config->fn_send_cancel_key((int32) MyProcPid, (int32) MyCancelKey);
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 
 	/*
 	 * Hooray! Primary initialization is complete.  Now, we need to set up our

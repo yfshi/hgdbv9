@@ -484,4 +484,5 @@ extern void write_stderr_signal_safe(const char *fmt);
 
 extern bool elog_demote(int downgrade_to_elevel); /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
+extern void send_message_to_frontend(ErrorData *edata); /* Req: SRS-MYSQL-PROTOCOL */
 #endif							/* ELOG_H */
