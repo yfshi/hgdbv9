@@ -1,5 +1,6 @@
 ALTER SYSTEM SET hg_sysmac.global_on TO ON;
 SELECT pg_reload_conf();
+SELECT pg_sleep(1);
 
 -- check security label format
 SELECT 's0:c0.c2,c4.c6,c9'::hg_security.seclabel;
@@ -95,6 +96,7 @@ ALTER SYSTEM SET hg_sysmac.global_table_level TO ON;
 ALTER SYSTEM SET hg_sysmac.global_on TO ON;
 ALTER SYSTEM SET hg_sysmac.global_column_level TO ON;
 SELECT pg_reload_conf();
+SELECT pg_sleep(1);
 SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
 SELECT hg_security.set_table_seclabel('tb2'::regclass, 's1');
 SELECT hg_security.set_column_seclabel('tb2'::regclass, 1, 's0');
@@ -128,6 +130,7 @@ DROP USER u1;
 -- row-level security testing.
 ALTER SYSTEM SET hg_sysmac.global_row_level TO ON;
 SELECT pg_reload_conf();
+SELECT pg_sleep(1);
 CREATE USER u1 with password 'Hello@123';
 CREATE USER u2 with password 'Hello@123';
 CREATE USER u3 with password 'Hello@123';
@@ -140,6 +143,7 @@ SELECT hg_security.apply_row_policy('tb1'::regclass, 'apply');
 SELECT hg_security.apply_row_policy('tb1'::regclass, 'enable');
 ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
 SELECT pg_reload_conf();
+SELECT pg_sleep(1);
 SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
 SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
 SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
@@ -171,6 +175,7 @@ SELECT __hg_seclabel__,* FROM tb1;
 RESET ROLE;
 ALTER SYSTEM SET hg_sysmac.global_row_level TO OFF;
 SELECT pg_reload_conf();
+SELECT pg_sleep(1);
 SET ROLE u1;
 TRUNCATE TABLE tb1;
 INSERT INTO tb1 VALUES (1);

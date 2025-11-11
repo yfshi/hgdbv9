@@ -5,6 +5,12 @@ SELECT pg_reload_conf();
  t
 (1 row)
 
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
 -- check security label format
 SELECT 's0:c0.c2,c4.c6,c9'::hg_security.seclabel;
      seclabel      
@@ -246,6 +252,12 @@ SELECT pg_reload_conf();
  t
 (1 row)
 
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
 SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
  set_user_seclabel 
 -------------------
@@ -333,6 +345,12 @@ SELECT pg_reload_conf();
  t
 (1 row)
 
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
 CREATE USER u1 with password 'Hello@123';
 CREATE USER u2 with password 'Hello@123';
 CREATE USER u3 with password 'Hello@123';
@@ -363,6 +381,12 @@ SELECT pg_reload_conf();
  pg_reload_conf 
 ----------------
  t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
 (1 row)
 
 SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
@@ -452,6 +476,12 @@ SELECT pg_reload_conf();
  pg_reload_conf 
 ----------------
  t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
 (1 row)
 
 SET ROLE u1;
