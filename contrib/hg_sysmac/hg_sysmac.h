@@ -50,6 +50,14 @@ typedef struct hg_sysmac_param
 
 extern hg_sysmac_param *hg_sysmac_g;
 
+/* Begin - bug#z5940 */
+extern bool global_on;
+extern bool global_table_level;
+extern bool global_column_level;
+extern bool global_row_level;
+/* End - bug#z5940 */
+
+
 /* label.c */
 extern LABEL_Comparison seclabel_compare(SecLabel *label_l, SecLabel *label_r);
 extern SecLabel* string_to_seclabel(const char *str_label, bool *format_result, bool do_convert);

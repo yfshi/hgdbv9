@@ -271,11 +271,8 @@ mac_row_select_policy(PG_FUNCTION_ARGS)
 	SecLabel *seclabel_r = NULL;
 	char	 *user_label = NULL;
 	bool	  result = false;
-	volatile hg_sysmac_param *hg_sysmac = (volatile hg_sysmac_param *) hg_sysmac_g;
 
-	if (!hg_sysmac ||
-		!hg_sysmac->global_on ||
-		!hg_sysmac->global_row_level)
+	if (!global_on || !global_row_level) /* Bug - #z5940 */
 		PG_RETURN_BOOL(true);
 
 	user_label = get_obj_seclabel_internal(AuthIdRelationId, GetUserId(), InvalidOid, true);
@@ -311,11 +308,8 @@ mac_row_delete_policy(PG_FUNCTION_ARGS)
 	SecLabel *seclabel_r = NULL;
 	char	 *user_label = NULL;
 	bool	  result = false;
-	volatile hg_sysmac_param *hg_sysmac = (volatile hg_sysmac_param *) hg_sysmac_g;
 
-	if (!hg_sysmac ||
-		!hg_sysmac->global_on ||
-		!hg_sysmac->global_row_level)
+	if (!global_on || !global_row_level) /* Bug - #z5940 */
 		PG_RETURN_BOOL(true);
 
 	user_label = get_obj_seclabel_internal(AuthIdRelationId, GetUserId(), InvalidOid, true);
@@ -351,11 +345,8 @@ mac_row_update_policy(PG_FUNCTION_ARGS)
 	SecLabel *seclabel_r = NULL;
 	char	 *user_label = NULL;
 	bool	  result = false;
-	volatile hg_sysmac_param *hg_sysmac = (volatile hg_sysmac_param *) hg_sysmac_g;
 
-	if (!hg_sysmac ||
-		!hg_sysmac->global_on ||
-		!hg_sysmac->global_row_level)
+	if (!global_on || !global_row_level) /* Bug - #z5940 */
 		PG_RETURN_BOOL(true);
 
 	user_label = get_obj_seclabel_internal(AuthIdRelationId, GetUserId(), InvalidOid, true);
@@ -392,11 +383,8 @@ mac_row_insert_policy(PG_FUNCTION_ARGS)
 	char	 *user_label = NULL;
 	char	 *table_label = NULL;
 	bool	  result = false;
-	volatile hg_sysmac_param *hg_sysmac = (volatile hg_sysmac_param *) hg_sysmac_g;
 
-	if (!hg_sysmac ||
-		!hg_sysmac->global_on ||
-		!hg_sysmac->global_row_level)
+	if (!global_on || !global_row_level) /* Bug - #z5940 */
 		PG_RETURN_BOOL(true);
 
 	user_label = get_obj_seclabel_internal(AuthIdRelationId, GetUserId(), InvalidOid, true);
