@@ -3145,7 +3145,7 @@ CREATE OR REPLACE VIEW SYS.TAB_COLS_INTERNAL AS
             ELSE NULL::integer
         END::number AS data_precision,
         CASE
-            WHEN UPPER(t.typname) IN ('NUMERIC', 'DECIMAL') THEN a.atttypmod & 65535
+            WHEN UPPER(t.typname) IN ('NUMERIC', 'DECIMAL', 'NUMBER') THEN (a.atttypmod - 4) & 65535
             ELSE NULL
         END::number AS data_scale,
         CASE
