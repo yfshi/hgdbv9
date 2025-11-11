@@ -1,4 +1,5 @@
 -- CREATE EXTENSION restricted_dba;
+set search_path to 'hg_security';
 select is_sysdba(10);
  is_sysdba 
 -----------
@@ -74,3 +75,4 @@ alter system set credcheck.enable to on;
 ERROR:  permission denied
 alter system reset audit.enable;
 ERROR:  permission denied
+reset search_path;

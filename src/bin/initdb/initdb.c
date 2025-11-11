@@ -3784,7 +3784,7 @@ initialize_data_directory(void)
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/* Begin - ReqID:SRS-SECURITY-POWERS */
-	PG_CMD_PUTS("CREATE EXTENSION restricted_dba SCHEMA public;\n\n");
+	PG_CMD_PUTS("CREATE EXTENSION restricted_dba SCHEMA hg_security;\n\n");
 	/* End - ReqID:SRS-SECURITY-POWERS */
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */

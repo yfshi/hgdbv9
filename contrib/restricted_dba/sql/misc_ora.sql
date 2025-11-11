@@ -128,3 +128,6 @@ drop user test_dba_u1;
 drop user test_u1;
 drop role test_r1;
 drop database testdb;
+
+-- test for bug z6059
+select extnamespace = 'hg_security'::regnamespace as result from pg_extension where extname = 'restricted_dba';
