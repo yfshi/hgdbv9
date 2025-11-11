@@ -57,9 +57,9 @@ drop table sysview_all_tables_part1;
 -- 5. test logical_replication
 create table sysview_all_tables_tb5(id int, name text);
 create publication pub1 for table sysview_all_tables_tb5;
-select table_name, logical_relication from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB5';
+select table_name, logical_replication from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB5';
 drop publication pub1;
-select table_name, logical_relication from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB5';
+select table_name, logical_replication from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB5';
 drop table sysview_all_tables_tb5;
 
 -- 6. test has_identity
