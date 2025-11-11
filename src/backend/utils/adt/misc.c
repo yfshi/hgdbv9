@@ -49,6 +49,7 @@
 #include "utils/ora_compatible.h"
 /* END - SQL PARSER */
 #include "utils/timestamp.h"
+#include "pg_contrib_audit.h"
 
 
 /* Hook for plugins to get control in get_keywords() */
@@ -75,6 +76,14 @@ lock_current_session(PG_FUNCTION_ARGS)
 	should_lock_current_session = true;
 	SetLatch(MyLatch);
 
+/* Begin - BUG#Z6168 */
+#ifdef USE_SQLITE
+	/* add audit event */
+	if (sqlite_open_db_for_audit_hook)
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_SUCCESS, NULL, NULL);
+#endif
+/* End - BUG#Z6168 */
+
 	PG_RETURN_CSTRING(pstrdup("lock current session successfully"));
 }
 
@@ -88,6 +97,13 @@ unlock_current_session(PG_FUNCTION_ARGS)
 
 	should_lock_current_session = false;
 	ResetLatch(MyLatch);
+
+/* Begin - BUG#Z6168 */
+#ifdef USE_SQLITE
+	if (sqlite_open_db_for_audit_hook)
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_UNLOCK_SESSION, AUDIT_SUCCESS, NULL, NULL);
+#endif
+/* End - BUG#Z6168 */
 
 	PG_RETURN_CSTRING(pstrdup("unlock current session successfully"));
 }

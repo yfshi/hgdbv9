@@ -1102,6 +1102,11 @@ do_stop(void)
 	{
 		write_stderr(_("%s: PID file \"%s\" does not exist\n"), progname, pid_file);
 		write_stderr(_("Is server running?\n"));
+/* Begin - BUG#Z5879 */
+#if defined (ENABLE_DKY_BETA_FEATURE) && defined (USE_SQLITE)
+		audit_tools(pg_data, "pg_ctl", 'f', 'y', "STOP", "pg_ctl: no server running");
+#endif
+/* End - BUG#Z5879 */
 		exit(1);
 	}
 	else if (pid < 0)			/* standalone backend, not postmaster */
@@ -1148,6 +1153,11 @@ do_stop(void)
 			print_msg(_(" failed\n"));
 
 			write_stderr(_("%s: server does not shut down\n"), progname);
+/* Begin - BUG#Z5879 */
+#if defined (ENABLE_DKY_BETA_FEATURE) && defined (USE_SQLITE)
+			audit_tools(pg_data, "pg_ctl", 'f', 'y', "STOP", "pg_ctl: server does not shut down");
+#endif
+/* End - BUG#Z5879 */
 			if (shutdown_mode == SMART_MODE)
 				write_stderr(_("HINT: The \"-m fast\" option immediately disconnects sessions rather than\n"
 							   "waiting for session-initiated disconnection.\n"));
