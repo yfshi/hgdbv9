@@ -2740,7 +2740,7 @@ CREATE OR REPLACE VIEW SYS.TABLES_INTERNAL AS
             WHEN EXISTS (SELECT 1 FROM pg_subscription_rel WHERE srrelid = c.oid)
                 OR EXISTS (SELECT 1 FROM pg_publication_rel WHERE prrelid = c.oid) THEN 'ENABLED'
             ELSE 'DISABLED'
-        END::varchar2(8) AS logical_relication
+        END::varchar2(8) AS logical_replication
     FROM
         pg_class c
     LEFT JOIN
@@ -2837,7 +2837,7 @@ CREATE OR REPLACE VIEW SYS.DBA_TABLES AS
         has_sensitive_column,
         admit_null,
         data_link_dml_enabled,
-        logical_relication
+        logical_replication
     FROM
         TABLES_INTERNAL;
 GRANT SELECT ON SYS.DBA_TABLES TO PUBLIC;
@@ -2929,7 +2929,7 @@ CREATE OR REPLACE VIEW SYS.ALL_TABLES AS
         has_sensitive_column,
         admit_null,
         data_link_dml_enabled,
-        logical_relication
+        logical_replication
     FROM
         TABLES_INTERNAL
     WHERE (
@@ -3029,7 +3029,7 @@ CREATE OR REPLACE VIEW SYS.USER_TABLES AS
         has_sensitive_column,
         admit_null,
         data_link_dml_enabled,
-        logical_relication
+        logical_replication
     FROM
         TABLES_INTERNAL
     WHERE
@@ -3789,7 +3789,7 @@ CREATE OR REPLACE VIEW SYS.INDEXES_INTERNAL AS
         'N'::varchar2(1) AS secondary,
         NULL::varchar2(7) AS buffer_pool,
         NULL::varchar2(7) AS flash_cache,
-        NULL::varchar2(7) AS cell_flush_cache,
+        NULL::varchar2(7) AS cell_flash_cache,
         'NO'::varchar2(3) AS user_stats,
         CASE
             WHEN c.relpersistence IN ('t', 'g') THEN
@@ -3891,7 +3891,7 @@ CREATE OR REPLACE VIEW SYS.DBA_INDEXES AS
         secondary,
         buffer_pool,
         flash_cache,
-        cell_flush_cache,
+        cell_flash_cache,
         user_stats,
         duration,
         pct_direct_access,
@@ -3958,7 +3958,7 @@ CREATE OR REPLACE VIEW SYS.ALL_INDEXES AS
         secondary,
         buffer_pool,
         flash_cache,
-        cell_flush_cache,
+        cell_flash_cache,
         user_stats,
         duration,
         pct_direct_access,
@@ -4070,7 +4070,7 @@ CREATE OR REPLACE VIEW SYS.USER_INDEXES AS
         'N'::varchar2(1) AS secondary,
         NULL::varchar2(7) AS buffer_pool,
         NULL::varchar2(7) AS flash_cache,
-        NULL::varchar2(7) AS cell_flush_cache,
+        NULL::varchar2(7) AS cell_flash_cache,
         'NO'::varchar2(3) AS user_stats,
         CASE
             WHEN c.relpersistence IN ('t', 'g') THEN

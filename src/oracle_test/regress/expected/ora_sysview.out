@@ -74,16 +74,16 @@ create table sysview_all_tables_tb5(id int, name text);
 create publication pub1 for table sysview_all_tables_tb5;
 WARNING:  wal_level is insufficient to publish logical changes
 HINT:  Set wal_level to logical before creating subscriptions.
-select table_name, logical_relication from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB5';
-       table_name       | logical_relication 
-------------------------+--------------------
+select table_name, logical_replication from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB5';
+       table_name       | logical_replication 
+------------------------+---------------------
  sysview_all_tables_tb5 | ENABLED
 (1 row)
 
 drop publication pub1;
-select table_name, logical_relication from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB5';
-       table_name       | logical_relication 
-------------------------+--------------------
+select table_name, logical_replication from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB5';
+       table_name       | logical_replication 
+------------------------+---------------------
  sysview_all_tables_tb5 | DISABLED
 (1 row)
 
