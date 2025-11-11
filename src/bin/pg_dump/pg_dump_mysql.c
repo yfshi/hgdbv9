@@ -934,7 +934,8 @@ selectDumpableNamespace(NamespaceInfo *nsinfo, Archive *fout)
 			 strcmp(nsinfo->dobj.name, "performance_schema") == 0 ||	/* ReqID:SRS-MYSQL-SET, Do not back up objects in schema performance_schema */
 			 strcmp(nsinfo->dobj.name, "pgagent") == 0 || /* ReqID:SRS-SECURITY-AUDIT */
 			 strcmp(nsinfo->dobj.name, "hg_security") == 0 ||
-			 strcmp(nsinfo->dobj.name, "mys_information_schema") == 0) /* ReqID:SRS-MYSQL-INFORMATION-SCHEMA */
+			 strcmp(nsinfo->dobj.name, "mys_information_schema") == 0 || /* ReqID:SRS-MYSQL-INFORMATION-SCHEMA */
+			 strcmp(nsinfo->dobj.name, "hg_misc") == 0) 
 	{
 		/* Other system schemas don't get dumped */
 		nsinfo->dobj.dump_contains = nsinfo->dobj.dump = DUMP_COMPONENT_NONE;

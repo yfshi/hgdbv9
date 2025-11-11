@@ -2400,7 +2400,7 @@ load_ivorysql_base(FILE *cmdfd)
 static void
 load_hg_misc(FILE *cmdfd)
 {
-	PG_CMD_PUTS("CREATE EXTENSION hg_misc;\n\n");
+	PG_CMD_PUTS("CREATE EXTENSION hg_misc WITH SCHEMA hg_misc;\n\n");
 }
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
@@ -2456,12 +2456,12 @@ load_pg_audit(FILE *cmdfd)
 {
 #ifdef USE_SQLITE
 #ifndef ENABLE_DKY_BETA_FEATURE
-	PG_CMD_PUTS("CREATE EXTENSION pg_audit WITH SCHEMA public;\n\n");
+	PG_CMD_PUTS("CREATE EXTENSION pg_audit WITH SCHEMA hg_security;\n\n");
 #else
-	PG_CMD_PUTS("CREATE EXTENSION pg_audit VERSION '1.2' SCHEMA public;\n\n");
+	PG_CMD_PUTS("CREATE EXTENSION pg_audit VERSION '1.2' SCHEMA hg_security;\n\n");
 #endif
 #else
-	PG_CMD_PUTS("CREATE EXTENSION pg_audit VERSION '1.0' SCHEMA public;\n\n");
+	PG_CMD_PUTS("CREATE EXTENSION pg_audit VERSION '1.0' SCHEMA hg_security;\n\n");
 #endif
 }
 
@@ -2487,7 +2487,7 @@ load_pg_track_settings(FILE *cmdfd)
 static void
 load_cred_check(FILE *cmdfd)
 {
-	PG_CMD_PUTS("create extension credcheck WITH SCHEMA public;\n\n");
+	PG_CMD_PUTS("create extension credcheck WITH SCHEMA hg_security;\n\n");
 }
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
