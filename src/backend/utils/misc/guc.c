@@ -13522,8 +13522,8 @@ check_idle_session_noinput(int *newval, void **extra, GucSource source)
 {
 	/* Only allow syssso role set the hg_idle_session_time. */
 	if (IdleSessionTimeout != 0 && *newval >= IdleSessionTimeout)
-		elog(ERROR, "hg_session_locking_timeout:%d should not be bigger than"
-				" idle_session_timeout:%d, session will disconnect before locking",
+		elog(ERROR, "hg_session_locking_timeout:%d should be smaller than"
+				" idle_session_timeout:%d, or session might disconnect before locking",
 				*newval, IdleSessionTimeout);
 	if(IsUnderPostmaster)
 	{
