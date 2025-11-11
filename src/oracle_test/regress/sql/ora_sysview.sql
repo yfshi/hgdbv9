@@ -557,7 +557,7 @@ $$ language plpgsql;
 /
 
 select object_name, object_type, temporary, editionable from all_objects 
-    where upper(object_name) in ('GET_NAME_BY_ID', 'UPSERT_TB_RECORD');
+    where upper(object_name) in ('GET_NAME_BY_ID', 'UPSERT_TB_RECORD') ORDER BY object_name;
 
 drop function get_name_by_id(p_id int);
 drop procedure upsert_tb_record;

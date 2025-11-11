@@ -6617,17 +6617,13 @@ static void audit_choice_retentionpolicy_mode(void)
 		/* get table 'hg_audit_log' total size */
 		if (relkind == '\0')
 		{
-			Relation audit_log;
 			Oid relOid = InvalidOid;
 
 			relOid = get_relname_relid(PG_AUDIT_LOG, SECURITY_SCHEMA_NAMESPACE);
 			if (relOid == InvalidOid)
 				elog(ERROR, " could not get oid of relation pg_audit_log");
 
-			audit_log = table_open(relOid, AccessShareLock);
-			relkind = audit_log->rd_rel->relkind;
-			table_close(audit_log, AccessShareLock);
-			audit_log = NULL;
+			relkind = get_rel_relkind(relOid);
 		}
 
 		if (relkind == RELKIND_PARTITIONED_TABLE)
@@ -6752,6 +6748,7 @@ audit_show_diskinfo(PG_FUNCTION_ARGS)
 	uint64 free = 0;
 	char buffer[21];
 	int64 table_size = 0;
+	static char relkind = '\0';
 
 	Datum	  values[LOG_ATTR_NUMS];
 	bool 		   nulls[LOG_ATTR_NUMS];
@@ -6798,7 +6795,23 @@ audit_show_diskinfo(PG_FUNCTION_ARGS)
 	snprintf(buffer, sizeof(buffer), "%lu", audit_GUC.audit_spacelimit);
 	values[3] = PointerGetDatum(cstring_to_text(buffer));
 
-	table_size = audit_get_total_log_size("pg_audit_log");
+	/* get table 'hg_audit_log' total size */
+	if (relkind == '\0')
+	{
+		Oid relOid = InvalidOid;
+
+		relOid = get_relname_relid(PG_AUDIT_LOG, SECURITY_SCHEMA_NAMESPACE);
+		if (relOid == InvalidOid)
+			elog(ERROR, " could not get oid of relation pg_audit_log");
+
+		relkind = get_rel_relkind(relOid);
+	}
+
+	if (relkind == RELKIND_PARTITIONED_TABLE)
+		table_size = get_partiton_table_size(PG_AUDIT_LOG);
+	else
+		table_size = audit_get_total_log_size(PG_AUDIT_LOG);
+
 	MemSet(buffer, 0, sizeof(buffer));
 	snprintf(buffer, sizeof(buffer), "%ld", table_size);
 	values[4] = PointerGetDatum(cstring_to_text(buffer));
