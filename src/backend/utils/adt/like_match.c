@@ -314,6 +314,7 @@ do_like_escape(text *pat, text *esc)
 					 errhint("Escape string must be empty or one character.")));
 
 		e = VARDATA_ANY(esc);
+		elen = VARSIZE_ANY_EXHDR(esc);
 
 		/*
 		 * If specified escape is '\', just copy the pattern as-is.
@@ -326,12 +327,12 @@ do_like_escape(text *pat, text *esc)
 				afterescape = false;
 				while (plen > 0)
 				{
-					if (CHAREQ(p, e) && !afterescape)
+					if (CHAREQ(p, plen, e, elen) && !afterescape)
 					{
 						CopyAdvChar(r, p, plen);
 						afterescape = true;
 					}
-					else if(afterescape && !((*p == '%') || (*p == '_') || CHAREQ(p, e)))
+					else if(afterescape && !((*p == '%') || (*p == '_') || CHAREQ(p, plen, e, elen)))
 					{
 						ereport(ERROR,
 									(errcode(ERRCODE_INVALID_ESCAPE_SEQUENCE),
@@ -360,7 +361,7 @@ do_like_escape(text *pat, text *esc)
 		afterescape = false;
 		while (plen > 0)
 		{
-			if (CHAREQ(p, e) && !afterescape)
+			if (CHAREQ(p, plen, e, elen) && !afterescape)
 			{
 				*r++ = '\\';
 				NextChar(p, plen);
@@ -383,7 +384,7 @@ do_like_escape(text *pat, text *esc)
 			/* Begin - BUG:Z473 */
 			if(afterescape && (plen > 0) && (ORA_MODE == compatible_mode))
 			{
-				if(!((*p == '%') || (*p == '_') || CHAREQ(p, e)))
+				if(!((*p == '%') || (*p == '_') || CHAREQ(p, plen, e, elen)))
 					ereport(ERROR,
 							(errcode(ERRCODE_INVALID_ESCAPE_SEQUENCE),
 							 errmsg("The character after the escape character is missing or invalid.")));

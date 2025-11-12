@@ -13,7 +13,7 @@ show charset;
  eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
  euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
  gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
- gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      2
+ gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      3
  gbk     | GBK Simplified Chinese          | gbk_chinese_ci      |      2
  greek   | ISO 8859-7 Greek                | greek_general_ci    |      1
  hebrew  | ISO 8859-8 Hebrew               | hebrew_general_ci   |      1
@@ -60,7 +60,7 @@ show charset where maxlen > 1;
  eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
  euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
  gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
- gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      2
+ gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      3
  gbk     | GBK Simplified Chinese          | gbk_chinese_ci      |      2
  sjis    | Shift-JIS Japanese              | sjis_japanese_ci    |      2
  ujis    | EUC-JP Japanese                 | ujis_japanese_ci    |      3
@@ -84,7 +84,7 @@ show character set;
  eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
  euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
  gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
- gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      2
+ gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      3
  gbk     | GBK Simplified Chinese          | gbk_chinese_ci      |      2
  greek   | ISO 8859-7 Greek                | greek_general_ci    |      1
  hebrew  | ISO 8859-8 Hebrew               | hebrew_general_ci   |      1
@@ -131,7 +131,7 @@ show character set where maxlen > 1;
  eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
  euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
  gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
- gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      2
+ gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      3
  gbk     | GBK Simplified Chinese          | gbk_chinese_ci      |      2
  sjis    | Shift-JIS Japanese              | sjis_japanese_ci    |      2
  ujis    | EUC-JP Japanese                 | ujis_japanese_ci    |      3
