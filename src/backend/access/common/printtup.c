@@ -179,7 +179,12 @@ SendRowDescriptionMessage(StringInfo buf, TupleDesc typeinfo,
 		 * If column is a domain, send the base type and typmod instead.
 		 * Lookup before sending any ints, for efficiency.
 		 */
-		atttypid = getBaseTypeAndTypmod(atttypid, &atttypmod);
+		/* Begin - BUG#Z6208 */
+		if (atttypid == CLOBOID || atttypid == BLOBOID)
+			atttypmod = -1;
+		else
+		/* End - BUG#Z6208 */
+			atttypid = getBaseTypeAndTypmod(atttypid, &atttypmod);
 
 		/* Do we have a non-resjunk tlist item? */
 		while (tlist_item &&
