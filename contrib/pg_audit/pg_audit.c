@@ -3748,6 +3748,15 @@ audit_stop_pgagent(void)
 	if (audit_GUC.audit_archdir == NULL || strlen(audit_GUC.audit_archdir) <= 0)
 		return;
 
+/* Begin - BUG#Z6180 */
+#ifdef USE_SQLITE
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (sqlite_open_db_for_audit_hook)
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_STOP_PGAGENT, AUDIT_SUCCESS, NULL, NULL);
+	/* End - ReqID:SRS-SECURITY-AUDIT */
+#endif
+/* End - BUG#Z6180 */
+
 	memset(cmd, 0, MAXPGPATH);
 	sprintf(cmd, "ps -ef | grep pgagent | grep -v grep > /dev/null");
 	rc = system(cmd);
@@ -3760,12 +3769,6 @@ audit_stop_pgagent(void)
 	rc = system(cmd);
 	if (rc != 0)
 		return;
-#ifdef USE_SQLITE
-	/* Begin - ReqID:SRS-SECURITY-AUDIT */
-	if (sqlite_open_db_for_audit_hook)
-		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_STOP_PGAGENT, AUDIT_SUCCESS, NULL, NULL);
-	/* End - ReqID:SRS-SECURITY-AUDIT */
-#endif
 }
 
 /* Not used, can be deleted later */
@@ -5957,13 +5960,13 @@ audit_arch_job(void)
 							(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir)))
 		{
 			snprintf(archfile, MAXPGPATH, "%s/%d.csv", archpath, oids[elemno]);	/* Bug#Z5840 */
-			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select public.copy_file_to_remote_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);	/* BUG#Z5840 */
+			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select hg_security.copy_file_to_remote_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);	/* BUG#Z5840 */	/* BUG#Z6166 */
 		}
 		else if ((audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0) &&
 								(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir) == 0))
 		{
 			snprintf(archfile, MAXPGPATH, "%s/%d.csv", DataDir, oids[elemno]);	/* Bug#Z5840 */
-			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select public.copy_file_to_remote_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir); /* BUG#Z5840 */
+			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select hg_security.copy_file_to_remote_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir); /* BUG#Z5840 */	/* BUG#Z6166 */
 		}
 		else if(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
 			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv''", archpath, oids[elemno]);	/* BUG#Z5840 */
