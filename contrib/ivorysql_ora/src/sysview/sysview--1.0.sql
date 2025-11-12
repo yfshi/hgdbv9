@@ -3782,7 +3782,7 @@ CREATE OR REPLACE VIEW SYS.INDEXES_INTERNAL AS
             ELSE 'NO'
         END::varchar2(3) AS partitioned,
         CASE
-            WHEN c.relpersistence = 't' THEN 'Y'
+            WHEN c.relpersistence IN ('t', 'g') THEN 'Y'
             ELSE 'N'
         END::varchar2(1) AS temporary,
         'N'::varchar2(1) AS generated,
@@ -4063,7 +4063,7 @@ CREATE OR REPLACE VIEW SYS.USER_INDEXES AS
             ELSE 'NO'
         END::varchar2(3) AS partitioned,
         CASE
-            WHEN c.relpersistence = 't' THEN 'Y'
+            WHEN c.relpersistence IN ('t', 'g') THEN 'Y'
             ELSE 'N'
         END::varchar2(1) AS temporary,
         'N'::varchar2(1) AS generated,
