@@ -52,7 +52,6 @@ static bool CheckTimeInRuleslist(Timestamp logintime, char* allow_time);
 static bool checkTimeformat(char* allow_time);
 static bool checkMacformat(char* macaddress);
 
-
 PG_FUNCTION_INFO_V1(add_rules);
 PG_FUNCTION_INFO_V1(remove_rules);
 
@@ -61,11 +60,6 @@ PG_FUNCTION_INFO_V1(remove_rules);
  */
 void _PG_init(void)
 {
-	if (NULL == strstr(shared_preload_libraries_string, "conn_restrict"))
-	{
-		elog(ERROR, "cannot using Highgo connect restriction as no conn_restrict in shared_preload_libraries");
-		return;
-	}
 	/* add guc value, bool default false */
 	DefineCustomBoolVariable("conn_restrict.enable",
 						 "enable restrict or disable",
@@ -79,14 +73,14 @@ void _PG_init(void)
 						 NULL);
 	prev_check_rules_hook = check_rules_hook;
 	check_rules_hook = CheckMacandTimeRules;
-	elog(DEBUG5, "conn_restrict _PG_init complete, check_rules_hook: %p", check_rules_hook);
+	elog(DEBUG3, "conn_restrict _PG_init complete, check_rules_hook: %p", check_rules_hook);
 }
 
 void _PG_fini(void)
 {
 	check_rules_hook = prev_check_rules_hook;
 	enable_macandtime = false;
-	elog(DEBUG5, "conn_restrict _PG_fini complete, check_rules_hook: %p", check_rules_hook);
+	elog(DEBUG3, "conn_restrict _PG_fini complete, check_rules_hook: %p", check_rules_hook);
 }
 
 /*
@@ -261,236 +255,6 @@ checkMacformat(char* macaddress)
 	return true;
 }
 
-static bool
-CheckTimeRange(char* allow_time, char* outallow_time)
-{
-	Timestamp		startm;
-	Timestamp		endtm;
-	Timestamp		startm1;
-	Timestamp		endtm1;
-	Timestamp		ct;
-	bool			result = false;
-	bool			startflag = false;
-	bool			endflag = false;
-	bool			startflag1 = false;
-	bool			endflag1 = false;
-	text		   *tmpstartime;
-	text		   *tmpendtime;
-	char		   *tmptime = NULL;
-	int				len = 0;
-	int				num = 0;
-	char		   *starttime = NULL;
-	char		   *endtime = NULL;
-	char		   *tmpstime = NULL;
-	char		   *tmpetime = NULL;
-
-	text		   *tmpstartime1;
-	text		   *tmpendtime1;
-	char		   *tmptime1 = NULL;
-	int				len1 = 0;
-	int				num1 = 0;
-	char		   *starttime1 = NULL;
-	char		   *endtime1 = NULL;
-	char		   *tmpstime1 = NULL;
-	char		   *tmpetime1 = NULL;
-
-	if(!strcmp(allow_time ,"*"))
-		return false;
-
-	ct = timestamptz2timestamp(GetCurrentTimestamp());
-
-	/* get the allow_time period,split according to "to". */
-	tmptime = strstr(allow_time, "to");
-	len = strlen(allow_time);
-	num = strlen(tmptime);
-	starttime = palloc0(sizeof(char) * (len - num + 1));
-	endtime = palloc0(sizeof(char) * len);
-
-	memcpy(starttime, allow_time, len - num);
-	memcpy(endtime, tmptime + 2, num - 2);
-
-	/* remove the first and last spaces. */
-	tmpstartime = DatumGetTextPP(DirectFunctionCall1(ltrim1,
-									PointerGetDatum(cstring_to_text(starttime))));
-	tmpstartime = DatumGetTextPP(DirectFunctionCall1(rtrim1,
-									PointerGetDatum(tmpstartime)));
-
-	tmpendtime = DatumGetTextPP(DirectFunctionCall1(ltrim1,
-									PointerGetDatum(cstring_to_text(endtime))));
-
-	tmpendtime = DatumGetTextPP(DirectFunctionCall1(rtrim1,
-									PointerGetDatum(tmpendtime)));
-
-	/* get the outallow_time period,split according to "to". */
-	tmptime1 = strstr(outallow_time, "to");
-	len1 = strlen(outallow_time);
-	num1 = strlen(tmptime);
-	starttime1 = palloc0(sizeof(char) * (len1 - num1 + 1));
-	endtime1 = palloc0(sizeof(char) * len1);
-
-	memcpy(starttime1, outallow_time, len1 - num1);
-	memcpy(endtime1, tmptime1 + 2, num1 - 2);
-
-	/* remove the first and last spaces. */
-	tmpstartime1 = DatumGetTextPP(DirectFunctionCall1(ltrim1,
-									PointerGetDatum(cstring_to_text(starttime1))));
-	tmpstartime1 = DatumGetTextPP(DirectFunctionCall1(rtrim1,
-									PointerGetDatum(tmpstartime1)));
-
-	tmpendtime1 = DatumGetTextPP(DirectFunctionCall1(ltrim1,
-									PointerGetDatum(cstring_to_text(endtime1))));
-
-	tmpendtime1 = DatumGetTextPP(DirectFunctionCall1(rtrim1,
-									PointerGetDatum(tmpendtime1)));
-
-	/* check startime format. */
-	tmpstime = text_to_cstring(tmpstartime);
-	if(strstr(tmpstime, ":"))
-		startflag = true;
-
-	/* check endtime format. */
-	tmpetime = text_to_cstring(tmpendtime);
-	if(strstr(tmpetime, ":"))
-		endflag = true;
-
-	/* check startime1 format. */
-	tmpstime1 = text_to_cstring(tmpstartime1);
-	if(strstr(tmpstime1, ":"))
-		startflag1 = true;
-
-	/* check endtime1 format. */
-	tmpetime1 = text_to_cstring(tmpendtime1);
-	if(strstr(tmpetime1, ":"))
-		endflag1 = true;
-
-	/* convert a allow_time string to a timestamp type. */
-	if(strlen(tmpstime) > 8 || !startflag)
-	/* if startime format is YYYY-MM-DD HH24:MI:SS it can be converted directly. */
-		startm = DirectFunctionCall3(timestamp_in,
-									CStringGetDatum(text_to_cstring(tmpstartime)),
-									ObjectIdGetDatum(InvalidOid),
-									Int32GetDatum(-1));
-	else
-	{
-		/* if the time format is HH24:MI:SS,we need to get the year,month,and day. */
-		StringInfoData		buf;
-		char			   *nowtime = DatumGetCString(DirectFunctionCall1(timestamp_out,
-										   TimestampGetDatum(ct)));
-		char			   *pretime = palloc0(sizeof(char) * 11);
-
-		/* get the year,month,and day. */
-		memcpy(pretime, nowtime, 10);
-
-		initStringInfo(&buf);
-
-		appendStringInfo(&buf, "%s %s",
-					 pretime, tmpstime);
-
-		startm = DirectFunctionCall3(timestamp_in,
-									CStringGetDatum(buf.data),
-									ObjectIdGetDatum(InvalidOid),
-									Int32GetDatum(-1));
-		pfree(pretime);
-
-	}
-
-	/* convert a outallow_time string to a timestamp type. */
-	if(strlen(tmpstime1) > 8 || !startflag1)
-	/* if startime format is YYYY-MM-DD HH24:MI:SS it can be converted directly. */
-		startm1 = DirectFunctionCall3(timestamp_in,
-									CStringGetDatum(text_to_cstring(tmpstartime1)),
-									ObjectIdGetDatum(InvalidOid),
-									Int32GetDatum(-1));
-	else
-	{
-		/* if the time format is HH24:MI:SS,we need to get the year,month,and day. */
-		StringInfoData		buf1;
-		char			   *nowtime1 = DatumGetCString(DirectFunctionCall1(timestamp_out,
-										   TimestampGetDatum(ct)));
-		char			   *pretime1 = palloc0(sizeof(char) * 11);
-
-		/* get the year,month,and day. */
-		memcpy(pretime1, nowtime1, 10);
-		
-		initStringInfo(&buf1);
-
-		appendStringInfo(&buf1, "%s %s",
-					 pretime1, tmpstime1);
-
-		startm1 = DirectFunctionCall3(timestamp_in,
-									CStringGetDatum(buf1.data),
-									ObjectIdGetDatum(InvalidOid),
-									Int32GetDatum(-1));
-		pfree(pretime1);
-
-	}
-	/* if allow endtime format is YYYY-MM-DD HH24:MI:SS it can be converted directly. */
-	if(strlen(tmpetime) > 8 || !endflag)
-		endtm = DirectFunctionCall3(timestamp_in,
-									CStringGetDatum(text_to_cstring(tmpendtime)),
-									ObjectIdGetDatum(InvalidOid),
-									Int32GetDatum(-1));
-	else
-	{
-		StringInfoData		buf2;
-		char			   *nowtime2 = DatumGetCString(DirectFunctionCall1(timestamp_out,
-										   TimestampGetDatum(ct)));
-		char			   *pretime2 = palloc0(sizeof(char) * 11);
-
-		/* get the year,month,and day. */
-		memcpy(pretime2, nowtime2, 10);
-
-		initStringInfo(&buf2);
-
-		appendStringInfo(&buf2, "%s %s",
-					 pretime2, tmpetime);
-
-		endtm = DirectFunctionCall3(timestamp_in,
-									CStringGetDatum(buf2.data),
-									ObjectIdGetDatum(InvalidOid),
-									Int32GetDatum(-1));
-		pfree(pretime2);
-
-	}
-
-	/* if outallow endtime format is YYYY-MM-DD HH24:MI:SS it can be converted directly. */
-	if(strlen(tmpetime1) > 8 || !endflag1)
-		endtm1 = DirectFunctionCall3(timestamp_in,
-									CStringGetDatum(text_to_cstring(tmpendtime1)),
-									ObjectIdGetDatum(InvalidOid),
-									Int32GetDatum(-1));
-	else
-	{
-		StringInfoData		buf3;
-		char			   *nowtime3 = DatumGetCString(DirectFunctionCall1(timestamp_out,
-										   TimestampGetDatum(ct)));
-		char			   *pretime3 = palloc0(sizeof(char) * 11);
-
-		/* get the year,month,and day. */
-		memcpy(pretime3, nowtime3, 10);
-
-		initStringInfo(&buf3);
-
-		appendStringInfo(&buf3, "%s %s",
-					 pretime3, tmpetime1);
-
-		endtm1 = DirectFunctionCall3(timestamp_in,
-									CStringGetDatum(buf3.data),
-									ObjectIdGetDatum(InvalidOid),
-									Int32GetDatum(-1));
-		pfree(pretime3);
-
-	}
-
-	/* check if the logon time is in the time preiod. */
-	if(startm1 - startm > 0 && endtm - endtm1 > 0)
-		result = true;
-	pfree(starttime);
-	pfree(endtime);
-	pfree(starttime1);
-	pfree(endtime1);
-	return result;
-}
 
 /* 
  * CheckRulesParmeter
@@ -687,15 +451,6 @@ add_rules(PG_FUNCTION_ARGS)
 	allowtime = text_to_cstring(arg4);
 	outallowtime = text_to_cstring(arg5);
 
-	/* Determin whether the allowed time range in the blacklist is within the disallowed time range.*/
-	if(arg0 == 1)
-	{
-		if(strcmp(allowtime, "*") && strcmp(outallowtime, "*"))
-		{
-			if(CheckTimeRange(allowtime, outallowtime))
-				arg5 = cstring_to_text("*");
-		}
-	}
 	/* first check the parmeter,include filter_type,username. */
 	CheckRulesParameters(arg0, username, macaddress, outmacaddress, allowtime, outallowtime);
 
@@ -726,7 +481,7 @@ add_rules(PG_FUNCTION_ARGS)
 	simple_heap_insert(rel, tup);
 	table_close(rel, RowExclusiveLock);
 
-	PG_RETURN_VOID();
+	PG_RETURN_BOOL(1);
 }
 
 /*
@@ -782,14 +537,13 @@ DeleteRestrictRulesByusername(char* username)
 
 	scandesc = table_beginscan(rel, SnapshotSelf, 1, scanKey);
 	tup = heap_getnext(scandesc, ForwardScanDirection);
-	if(HeapTupleIsValid(tup))
+	while (HeapTupleIsValid(tup))
 	{
 		flag = true;
 		simple_heap_delete(rel, &tup->t_self);
+		tup = heap_getnext(scandesc, ForwardScanDirection);
 	}
-//	else
-//		flag = false;
-//		elog(ERROR, "The rule under this user cannot be found, please check it!");
+
 	table_endscan(scandesc);
 	table_close(rel, RowExclusiveLock);
 	return flag;
@@ -833,7 +587,7 @@ remove_rules(PG_FUNCTION_ARGS)
 			elog(ERROR, "The rule under this user cannot be found, please check it!");
 	}
 
-	PG_RETURN_VOID();
+	PG_RETURN_BOOL(1);
 }
 
 /*
@@ -869,21 +623,27 @@ CheckMacInRuleslist(char* macaddress, char* rulemac)
 static int
 CheckMacInRules(char* macaddress, char* rulemac, char* outrulemac)
 {
-	bool	macbflag = false;
-	bool	macwflag = false;
+	bool	include_flag = false;
+	bool	exclude_flag = false;
+	match_macflag result_flag = rulemac_notmatch;
 
-	if(!macaddress)
-		return rulemac_outmatch;
+	if (!macaddress || *macaddress == '\0')
+		return rulemac_notmatch;
 
-	macbflag = CheckMacInRuleslist(macaddress, rulemac);
-	if(macbflag)
-		return rulemac_bmatch;
+	include_flag = !strcmp(rulemac, "*") || CheckMacInRuleslist(macaddress, rulemac);
+	exclude_flag = strcmp(outrulemac, "*") && CheckMacInRuleslist(macaddress, outrulemac);
 
-	macwflag = CheckMacInRuleslist(macaddress, outrulemac);
-	if(macwflag)
-		return rulemac_wmatch;
-
-	return rulemac_outmatch;
+	if (include_flag) {
+		result_flag = rulemac_include_match;
+		if (exclude_flag)
+			result_flag = rulemac_both_match;
+	} else if (exclude_flag)
+		result_flag = rulemac_exclude_match;
+	else
+		result_flag = rulemac_notmatch;
+	elog(DEBUG3, "CheckMacInRules, include_mac:%s, exclude_mac:%s, include_flag:%d, exclude_flag:%d, result_flag: %d",
+					rulemac, outrulemac, include_flag, exclude_flag, result_flag);
+	return result_flag;
 }
 
 /*
@@ -909,11 +669,12 @@ CheckTimeInRuleslist(Timestamp logintime, char* allow_time)
 	char		   *tmpstime = NULL;
 	char		   *tmpetime = NULL;
 
-	if(!strcmp(allow_time ,"*"))
+	if (!allow_time)
 		return false;
-
 	/* get the time period,split according to "to". */
 	tmptime = strstr(allow_time, "to");
+	if (!tmptime)
+		elog(ERROR, "The time span:%s is not in correct format, should contain 'to'", allow_time);
 	len = strlen(allow_time);
 	num = strlen(tmptime);
 	starttime = palloc0(sizeof(char) * (len - num + 1));
@@ -1019,20 +780,25 @@ CheckTimeInRuleslist(Timestamp logintime, char* allow_time)
 static int
 CheckTimeInRules(Timestamp logintime, char* allow_time, char* outallow_time)
 {
-	bool			timebflag = false;
-	bool			timewflag = false;
+	bool			include_flag = false;
+	bool			exclude_flag = false;
+	match_timeflag  result_flag = ruletime_notmatch;
 
 	/* First,check whether the login time is within the restricted time period. */
-	timebflag = CheckTimeInRuleslist(logintime, allow_time);
-	if(timebflag)
-		return ruletime_bmatch;
-
+	include_flag = !strcmp(allow_time, "*") || CheckTimeInRuleslist(logintime, allow_time);
 	/* Second,check wherther the login time is in an unrestricted time period. */
-	timewflag = CheckTimeInRuleslist(logintime, outallow_time);
-	if(timewflag)
-		return ruletime_wmatch;
-
-	return ruletime_outmatch;
+	exclude_flag = strcmp(outallow_time, "*") && CheckTimeInRuleslist(logintime, outallow_time);
+	if(include_flag) {
+		result_flag = ruletime_include_match;
+		if(exclude_flag)
+			result_flag = ruletime_both_match;
+	} else if (exclude_flag)
+			result_flag = ruletime_exclude_match;
+	else
+		result_flag = ruletime_notmatch;
+	elog(DEBUG3, "CheckTimeInRules, include_time:%s, exclude_time:%s, include_flag:%d, exclude_flag:%d, result_flag: %d",
+					allow_time, outallow_time, include_flag, exclude_flag, result_flag);
+	return result_flag;
 }
 
 /*
@@ -1059,21 +825,27 @@ LookupRerstrictRules(char* username, char* mac_address)
 	char		   *outrule_mac;
 	char		   *allow_time;
 	char		   *outallow_time;
-	match_macflag	macflag = rulemac_outmatch;
-	match_timeflag	timeflag = ruletime_outmatch;
+	match_macflag	macflag = rulemac_notmatch;
+	match_timeflag	timeflag = ruletime_notmatch;
 	Timestamp		curtime;
 	Oid				useroid;
+	Oid 			relid = InvalidOid;
 	elog(DEBUG3, "Entering LookupRerstrictRules, username:%s, mac_address:%s", username, mac_address);
 
 	/*get user oid */
 	useroid = get_role_oid(username, false);
 
 	/* open table restrict_rules */
-	rel = table_open(get_relname_relid(HGS_RULE_TABLE_NAME, SECURITY_SCHEMA_NAMESPACE), AccessShareLock);
-	ScanKeyInit(&scanKey[0],
-				1,
-				BTEqualStrategyNumber, F_OIDEQ,
-				ObjectIdGetDatum(useroid));
+	relid = get_relname_relid(HGS_RULE_TABLE_NAME, SECURITY_SCHEMA_NAMESPACE);
+	if (relid == InvalidOid) {
+		elog(WARNING, "Table:%s doesn't exist, check if extension conn_restrict is created", HGS_RULE_TABLE_NAME);
+		return;
+	}
+	else
+		rel = table_open(relid, AccessShareLock);
+
+	ScanKeyInit(&scanKey[0], 1,
+					BTEqualStrategyNumber, F_OIDEQ,	ObjectIdGetDatum(useroid));
 
 	scandesc = table_beginscan(rel, SnapshotSelf, 1, scanKey);
 	tup = heap_getnext(scandesc, ForwardScanDirection);
@@ -1093,6 +865,8 @@ LookupRerstrictRules(char* username, char* mac_address)
 		outallowtime = heap_getattr(tup, 7, RelationGetDescr(rel), &isNull);
 		outallow_time = text_to_cstring(DatumGetTextPP(outallowtime));
 
+		elog(DEBUG3, "Checking connect rules: filter_type:%d, rule_mac:%s, outrule_mac:%s, allow_time:%s, outallow_time:%s", 
+				filter_type, rule_mac, outrule_mac, allow_time, outallow_time);
 		/* if the type is blacklist. */
 		if(filter_type == 1)
 		{
@@ -1102,80 +876,28 @@ LookupRerstrictRules(char* username, char* mac_address)
 			curtime = timestamptz2timestamp(GetCurrentTimestamp());
 			timeflag = CheckTimeInRules(curtime, pstrdup(allow_time), pstrdup(outallow_time));
 
-//			cur_time = DatumGetCString(DirectFunctionCall1(timestamp_out,
-//									TimestampGetDatum(curtime)));
-
-			/* get mac and time result */
-			if(macflag == rulemac_wmatch && timeflag == ruletime_wmatch)
-			{
-				//ok;
-			}
-			else if(macflag == rulemac_wmatch && timeflag == ruletime_outmatch)
-			{
-				if(strcmp(outallow_time, "*"))
-				{
-					elog(ERROR, "Login time in restricted!");
-				}
-			}
-			else if(macflag == rulemac_outmatch && timeflag == ruletime_outmatch)
-			{
-				if(!(!strcmp(outrule_mac, "*") && !strcmp(outallow_time, "*")))
-				{
-					elog(ERROR, "Mac address or login time in restricted!");
-				}
-			}
-			else if(macflag == rulemac_outmatch && timeflag == ruletime_wmatch)
-			{
-				if(strcmp(outrule_mac, "*"))
-				{
+			if (macflag == rulemac_include_match)
 					elog(ERROR, "Mac address in restricted!");
-				}
-			}
-			else
-			{
-				elog(ERROR, "Mac address or login time in restricted!");
-			}
+			if (timeflag == ruletime_include_match)
+					elog(ERROR, "Login time in restricted!");
 		}
 		/* if the type is whitelist. */
-		else
+		else if (filter_type == 0)
 		{
 			/* Check macaddress. */
-			macflag = CheckMacInRules(mac_address, pstrdup(outrule_mac), pstrdup(rule_mac));
+			macflag = CheckMacInRules(mac_address, pstrdup(rule_mac), pstrdup(outrule_mac));
 			/* Check time. */
 			curtime = timestamptz2timestamp(GetCurrentTimestamp());
-			timeflag = CheckTimeInRules(curtime, pstrdup(outallow_time), pstrdup(allow_time));
+			timeflag = CheckTimeInRules(curtime, pstrdup(allow_time), pstrdup(outallow_time));
 
 			/* get mac and time result */
-			if(macflag == rulemac_wmatch && timeflag == ruletime_wmatch)
-			{
-				//ok;
-			}
-			else if(macflag == rulemac_wmatch && timeflag == ruletime_outmatch)
-			{
-				if(strcmp(allow_time, "*"))
-				{
-					elog(ERROR, "Login time in restricted!");
-				}
-			}
-			else if(macflag == rulemac_outmatch && timeflag == ruletime_outmatch)
-			{
-				if(!(!strcmp(rule_mac, "*") && !strcmp(allow_time, "*")))
-				{
-					elog(ERROR, "Mac address or login time in restricted!");
-				}
-			}
-			else if(macflag == rulemac_outmatch && timeflag == ruletime_wmatch)
-			{
-				if(strcmp(rule_mac, "*"))
-				{
+			if (macflag != rulemac_include_match)
 					elog(ERROR, "Mac address in restricted!");
-				}
-			}
-			else
-			{
-				elog(ERROR, "Mac address or login time in restricted!");
-			}
+			if (timeflag != ruletime_include_match)
+					elog(ERROR, "Login time in restricted!");
 		}
+		else
+			elog(ERROR, "filter type: %d is not correct.", filter_type);
 	}
 
 	table_endscan(scandesc);
@@ -1225,4 +947,5 @@ CheckMacandTimeRules(char* username, char* mac_address)
 		LookupRerstrictRules(username, mac_address);
 	return;
 }
+
 /* End ReqID: SRS-CLIENT-AUTH */
