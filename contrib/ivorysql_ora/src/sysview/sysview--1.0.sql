@@ -10619,7 +10619,7 @@ CREATE OR REPLACE VIEW SYS.DBA_USERS AS
         NULL::varchar2(12) AS password_version,
         'N'::varchar2(1) AS editions_enable,
         CASE
-            WHEN regexp_match(br.passwd, 'SCRAM-SHA-256') IS NOT NULL THEN 'PASSWORD'
+            WHEN br.passwd IS NOT NULL THEN 'PASSWORD'
             ELSE 'NONE'
         END::varchar2(8) AS authentication_type,
         NULL::varchar2(1) AS proxy_only_connect,
