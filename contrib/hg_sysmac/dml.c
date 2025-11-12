@@ -281,7 +281,7 @@ check_relation_privileges(Oid relOid,
 	}
 
 	/*do column level*/
-	if (global_column_level) /* Bug - #z5940 #z6122 */
+	if (global_table_level && global_column_level) /* Bug - #z6193 */ /* Bug - #z5940 #z6122 */
 	{
 		/*
 		* Only columns owned by relations shall be checked
