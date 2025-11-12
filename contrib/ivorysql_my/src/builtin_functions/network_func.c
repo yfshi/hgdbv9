@@ -730,7 +730,7 @@ inetntop(PG_FUNCTION_ARGS)
 		ntopipv6((const struct in6_addr *)ip, res_address);
 		PG_RETURN_TEXT_P(cstring_to_text(res_address));
 	}
-	ereport(is_strict_mode() ? ERROR : WARNING,
-			(errmsg("Incorrect string value for function inet6_ntoa")));
+	ereport(WARNING,
+			(errmsg("Incorrect string value for function inet6_ntoa"))); /* Bug - #z6173 */
 	PG_RETURN_NULL();
 }
