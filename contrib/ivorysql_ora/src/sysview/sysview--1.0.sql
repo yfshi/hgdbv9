@@ -11055,7 +11055,10 @@ CREATE OR REPLACE VIEW SYS.DBA_CONS_COLUMNS AS
             SYS.ORA_CASE_TRANS(pc.conname::VARCHAR2)::VARCHAR2(128) AS constraint_name,
             SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
             SYS.ORA_CASE_TRANS(pa.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
-            subscript::number AS position
+            CASE
+                WHEN pc.contype = 'c' THEN NULL
+                ELSE subscript
+            END::number AS position
         FROM
             pg_constraint pc
         JOIN pg_class c ON pc.conrelid = c.oid
@@ -11087,7 +11090,10 @@ CREATE OR REPLACE VIEW SYS.ALL_CONS_COLUMNS AS
             SYS.ORA_CASE_TRANS(pc.conname::VARCHAR2)::VARCHAR2(128) AS constraint_name,
             SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
             SYS.ORA_CASE_TRANS(pa.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
-            subscript::number AS position
+            CASE
+                WHEN pc.contype = 'c' THEN NULL
+                ELSE subscript
+            END::number AS position
         FROM
             pg_constraint pc
         JOIN pg_class c ON pc.conrelid = c.oid
@@ -11138,7 +11144,10 @@ CREATE OR REPLACE VIEW SYS.USER_CONS_COLUMNS AS
             SYS.ORA_CASE_TRANS(pc.conname::VARCHAR2)::VARCHAR2(128) AS constraint_name,
             SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
             SYS.ORA_CASE_TRANS(pa.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
-            subscript::number AS position
+            CASE
+                WHEN pc.contype = 'c' THEN NULL
+                ELSE subscript
+            END::number AS position
         FROM
             pg_constraint pc
         JOIN pg_class c ON pc.conrelid = c.oid
