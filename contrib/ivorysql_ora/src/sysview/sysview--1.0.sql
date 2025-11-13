@@ -5628,7 +5628,27 @@ UNION ALL
     LEFT JOIN pg_event_trigger evt ON d.classid = 'pg_event_trigger'::regclass AND d.objid = evt.oid
     LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
     LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
-    WHERE d.classid = 'pg_event_trigger'::regclass;
+    WHERE d.classid = 'pg_event_trigger'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-23: handle synonym (classid='pg_synonym'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(syn.synowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(syn.synname::varchar2)::varchar2(128) AS name,
+        'SYNONYM'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(nsp.nspowner)::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(nsp.nspname::varchar2)::varchar2(128) AS referenced_name,
+        'NAMESPACE'::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_synonym syn ON d.classid = 'pg_synonym'::regclass AND d.objid = syn.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    WHERE d.classid = 'pg_synonym'::regclass;
 GRANT SELECT ON SYS.DBA_DEPENDENCIES TO PUBLIC;
 
 CREATE OR REPLACE VIEW SYS.ALL_DEPENDENCIES AS
@@ -6981,7 +7001,27 @@ UNION ALL
     LEFT JOIN pg_event_trigger evt ON d.classid = 'pg_event_trigger'::regclass AND d.objid = evt.oid
     LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
     LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
-    WHERE d.classid = 'pg_event_trigger'::regclass;
+    WHERE d.classid = 'pg_event_trigger'::regclass
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-23: handle synonym (classid='pg_synonym'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(syn.synowner)::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(syn.synname::varchar2)::varchar2(128) AS name,
+        'SYNONYM'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(nsp.nspowner)::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(nsp.nspname::varchar2)::varchar2(128) AS referenced_name,
+        'NAMESPACE'::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_synonym syn ON d.classid = 'pg_synonym'::regclass AND d.objid = syn.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    WHERE d.classid = 'pg_synonym'::regclass;
 GRANT SELECT ON SYS.ALL_DEPENDENCIES TO PUBLIC;
 
 CREATE OR REPLACE VIEW SYS.USER_DEPENDENCIES AS
@@ -8290,7 +8330,27 @@ UNION ALL
     LEFT JOIN pg_proc p_ref ON d.refclassid = 'pg_proc'::regclass AND d.refobjid = p_ref.oid
     LEFT JOIN pg_extension ext_ref ON d.refclassid = 'pg_extension'::regclass AND d.refobjid = ext_ref.oid
     WHERE d.classid = 'pg_event_trigger'::regclass
-        AND evt.evtowner::regrole = current_user::regrole;
+        AND evt.evtowner::regrole = current_user::regrole
+
+UNION ALL
+
+------------------------------------------------------------------------------------------
+-- subquery-23: handle synonym (classid='pg_synonym'::regclass)
+------------------------------------------------------------------------------------------
+    SELECT
+        SYS.ORA_CASE_TRANS(syn.synname::varchar2)::varchar2(128) AS name,
+        'SYNONYM'::varchar2(32) AS type,
+        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(nsp.nspowner)::varchar2)::varchar2(128) AS referenced_owner,
+        SYS.ORA_CASE_TRANS(nsp.nspname::varchar2)::varchar2(128) AS referenced_name,
+        'NAMESPACE'::varchar2(32) AS referenced_type,
+        NULL::varchar2(128) AS referenced_link_name,
+        'HARD'::varchar2(4) AS dependency_type
+    FROM
+        pg_depend d
+    LEFT JOIN pg_synonym syn ON d.classid = 'pg_synonym'::regclass AND d.objid = syn.oid
+    LEFT JOIN pg_namespace nsp ON d.refclassid = 'pg_namespace'::regclass AND d.refobjid = nsp.oid
+    WHERE d.classid = 'pg_synonym'::regclass
+    AND syn.synowner = current_user::regrole;
 GRANT SELECT ON SYS.USER_DEPENDENCIES TO PUBLIC;
 
 /* *******************************************************************************************
