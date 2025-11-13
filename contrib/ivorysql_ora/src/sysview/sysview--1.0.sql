@@ -5494,8 +5494,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS(fdw.fdwname::varchar2)::varchar2(128) AS name,
         'FDW'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -5534,8 +5534,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS name,
         'PACKAGE'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_namespace'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(10)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -5567,8 +5567,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS((pkg.pkgname || ' BODY')::varchar2)::varchar2(128) AS name,
         'PACKAGE BODY'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_package'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_package'::regclass THEN PG_GET_USERBYID(pkg.pkgowner)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -5600,8 +5600,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS(evt.evtname::varchar2)::varchar2(128) AS name,
         'EVENT TRIGGER'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -6843,8 +6843,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS(fdw.fdwname::varchar2)::varchar2(128) AS name,
         'FDW'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -6883,8 +6883,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS name,
         'PACKAGE'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_namespace'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(10)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -6918,8 +6918,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS((pkg.pkgname || ' BODY')::varchar2)::varchar2(128) AS name,
         'PACKAGE BODY'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_package'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_package'::regclass THEN PG_GET_USERBYID(pkg.pkgowner)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -6953,8 +6953,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS(evt.evtname::varchar2)::varchar2(128) AS name,
         'EVENT TRIGGER'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -8153,8 +8153,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS(fdw.fdwname::varchar2)::varchar2(128) AS name,
         'FDW'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -8193,8 +8193,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS(pkg.pkgname::varchar2)::varchar2(128) AS name,
         'PACKAGE'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_namespace'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(10)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_namespace'::regclass THEN PG_GET_USERBYID(10)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -8227,8 +8227,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS((pkg.pkgname || ' BODY')::varchar2)::varchar2(128) AS name,
         'PACKAGE BODY'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_package'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pkg.pkgowner)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_package'::regclass THEN PG_GET_USERBYID(pkg.pkgowner)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
@@ -8261,8 +8261,8 @@ UNION ALL
         SYS.ORA_CASE_TRANS(evt.evtname::varchar2)::varchar2(128) AS name,
         'EVENT TRIGGER'::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
-            WHEN d.refclassid = 'pg_proc'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p_ref.proowner)::varchar2)::varchar2(128)
-            WHEN d.refclassid = 'pg_extension'::regclass THEN SYS.ORA_CASE_TRANS(PG_GET_USERBYID(ext_ref.extowner)::varchar2)::varchar2(128)
+            WHEN d.refclassid = 'pg_proc'::regclass THEN PG_GET_USERBYID(p_ref.proowner)::varchar2(128)
+            WHEN d.refclassid = 'pg_extension'::regclass THEN PG_GET_USERBYID(ext_ref.extowner)::varchar2(128)
             ELSE NULL
         END::varchar2)::varchar2(128) AS referenced_owner,
         SYS.ORA_CASE_TRANS(CASE
