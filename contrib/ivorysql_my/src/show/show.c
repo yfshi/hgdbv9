@@ -18,6 +18,7 @@
 #include "fmgr.h"
 #include "miscadmin.h"
 #include "catalog/pg_type.h"
+#include "commands/sequence.h"
 #include "executor/execdesc.h"
 #include "executor/executor.h"
 #include "executor/tstoreReceiver.h"
@@ -118,7 +119,7 @@ PG_FUNCTION_INFO_V1(mys_show_create_database);
 PG_FUNCTION_INFO_V1(mys_show_create_table);
 PG_FUNCTION_INFO_V1(mys_show_privileges);
 PG_FUNCTION_INFO_V1(mys_show_warnings);
-
+PG_FUNCTION_INFO_V1(show_next_autoinc);
 
 static void get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf);
 static void get_inherits(Oid tableoid, Form_pg_class pgclass, StringInfo inheritsbuf);
@@ -1037,7 +1038,7 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 	{
 		StringInfoData querybuf;
 		int i_table_comment;
-		int i_auto_inc_start;
+		uint64 auto_inc_num;
 #ifdef NOT_USED
 		int i_encoding;
 		int i_collate;
@@ -1046,7 +1047,6 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 #endif
 
 		char *table_commentstr = NULL;
-		char *auto_inc_startstr = NULL;
 
 		/* foreign tables are also ordinary tables,
 		 * need to retrieve their partition information.
@@ -1058,21 +1058,10 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 		appendStringInfo(&querybuf,
 						 "select obj_description('%u') as table_comment, "
 						 "pg_encoding_to_char(encoding) as encoding, "
-						 "replace(datcollate, '-', '') as collate, "
-						 "(select seqstart from pg_sequence ps where seqrelid = "
-						 "(select dep.objid from pg_depend dep ,pg_class pc ,pg_attribute pa "
-						 "where dep.refclassid = 'pg_class'::regclass "
-						 "and dep.refobjid = '%u' "
-						 "and dep.classid = 'pg_class'::regclass "
-						 "and dep.objid = pc.oid "
-						 "and pc.relkind = 'S' "
-						 "and pa.attnum>0 "
-						 "and not pa.attisdropped "
-						 "and pa.attidentity = '%c' "
-						 "))as auto_inc_start "
+						 "replace(datcollate, '-', '') as collate "
 						 "from pg_database "
 						 "where datname = current_database()",
-						 reloid, reloid, ATTRIBUTE_IDENTITY_AUTO_INCREMENT);
+						 reloid);
 
 		if (SPI_connect() != SPI_OK_CONNECT)
 			elog(ERROR, "SPI_connect failed");
@@ -1086,7 +1075,6 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 		i_encoding = SPI_fnumber(SPI_tuptable->tupdesc, "encoding");
 		i_collate = SPI_fnumber(SPI_tuptable->tupdesc, "collate");
 #endif
-		i_auto_inc_start = SPI_fnumber(SPI_tuptable->tupdesc, "auto_inc_start");
 
 		/* get these columns values from the results */
 		table_commentstr = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, i_table_comment);
@@ -1094,13 +1082,13 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 		encodingstr = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, i_encoding);
 		collatestr = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, i_collate);
 #endif
-		auto_inc_startstr = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, i_auto_inc_start);
 
 #ifdef NOT_USED
 		appendStringInfoString(&relcreate, " ENGINE=InnoDB");
 #endif
-		if (auto_inc_startstr && strcmp(auto_inc_startstr, "1") != 0)
-			appendStringInfo(&relcreate, " AUTO_INCREMENT=%s", auto_inc_startstr);
+		auto_inc_num = get_show_autoinc(reloid);
+		if (auto_inc_num > 1)
+			appendStringInfo(&relcreate, " AUTO_INCREMENT=%lu", auto_inc_num);
 #ifdef NOT_USED
 		/* character and collate information are not diplayed,the interface is reserved
 		   and the code will be submitted later.
@@ -1126,4 +1114,18 @@ mys_show_create_table(PG_FUNCTION_ARGS)
 	pfree(reloptiondata.data);
 
 	PG_RETURN_TEXT_P(cstring_to_text(relcreate.data));
+}
+
+/* Begin - BUG#Z6191 */
+/*
+ * get table next auto increment value by table oid
+ * only get mysql's auto_increment type
+ */
+Datum
+show_next_autoinc(PG_FUNCTION_ARGS)
+{
+	Oid reloid = PG_GETARG_OID(0);
+	uint64 result = get_show_autoinc(reloid);
+
+	PG_RETURN_UINT64(result);
 }

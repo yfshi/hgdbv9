@@ -95,6 +95,8 @@ extern Datum mys_get_lastval(PG_FUNCTION_ARGS);
 extern void set_auto_nextval(Oid relid, uint64 nextval);
 
 extern Datum mys_set_insertval(PG_FUNCTION_ARGS);
+extern uint64 get_show_autoinc(Oid tableoid);
+extern Datum show_next_autoinc(PG_FUNCTION_ARGS);
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 #endif							/* SEQUENCE_H */

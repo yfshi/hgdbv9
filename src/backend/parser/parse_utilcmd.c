@@ -830,6 +830,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 	bool		saw_generated;
 	ListCell   *clist;
 	List 	   *seqoptions = NIL; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	char		attr_identity = 0;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 	cxt->columns = lappend(cxt->columns, column);
 
@@ -964,6 +965,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 				column->typeName->typeOid = atttypid;
 				column->is_auto_increment = true;
 				column->identity = ATTRIBUTE_IDENTITY_AUTO_INCREMENT;
+				attr_identity = ATTRIBUTE_IDENTITY_AUTO_INCREMENT;
 
 				if (cxt->is_auto_increment)
 				{
@@ -1002,7 +1004,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		generateSerialExtraStmts(cxt, column,
 								 column->typeName->typeOid, seqoptions, /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 								 false, false,
-								 &snamespace, &sname, 0);	/* ReqID:SRS-SQL-IDENTCOL */
+								 &snamespace, &sname, attr_identity);	/* ReqID:SRS-SQL-IDENTCOL */
 
 		/*
 		 * Create appropriate constraints for SERIAL.  We do this in full,
@@ -5611,10 +5613,11 @@ TransformAutoIncStart(Node *autoIncStart)
 	{ /* T_Float */
 		autoinc = (int64)DatumGetFloat8(DirectFunctionCall1(float8in, CStringGetDatum(strVal(defel->arg))));
 	}
-	if (autoinc <= 0)
+	if (autoinc < 0)
 	{
 		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("auto_increment value must be greater than 0")));
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("auto_increment value must be greater than or equal to 0")));
 	}
 	return ;
 }

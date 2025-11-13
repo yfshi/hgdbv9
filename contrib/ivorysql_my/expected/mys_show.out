@@ -1150,3 +1150,809 @@ SHOW CREATE TABLE test_table;
 (1 row)
 
 drop table test_table;
+-- show comment
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) NULL DEFAULT 'b',
+c6 VARCHAR(255))
+COLLATE latin1_bin COMMENT 'dddd';
+\d+ t1
+                                                    Table "public.t1"
+ Column |          Type          | Collation | Nullable |        Default         | Storage  | Stats target | Description 
+--------+------------------------+-----------+----------+------------------------+----------+--------------+-------------
+ c1     | integer                |           |          | 12                     | plain    |              | column1
+ c2     | integer                |           |          |                        | plain    |              | column2
+ c3     | integer                |           | not null |                        | plain    |              | column3
+ c4     | character varying(255) |           | not null | 'a'::character varying | extended |              | 
+ c5     | character varying(255) |           |          | 'b'::character varying | extended |              | 
+ c6     | character varying(255) |           |          |                        | extended |              | 
+
+SHOW CREATE TABLE t1;
+ Table |                               Create Table                               
+-------+--------------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                                     +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                          +
+       |     "c2" integer COMMENT 'column2',                                     +
+       |     "c3" integer NOT NULL COMMENT 'column3',                            +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,+
+       |     "c5" character varying(255) DEFAULT 'b'::character varying,         +
+       |     "c6" character varying(255)                                         +
+       | ) COMMENT='dddd'
+(1 row)
+
+drop table t1;
+-- show auto_increment
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int auto_increment PRIMARY KEY
+)auto_increment = 77 COLLATE latin1_bin COMMENT 'dddd' ;
+\d+ t1
+                                                               Table "public.t1"
+ Column |          Type          |    Collation    | Nullable |                Default                 | Storage  | Stats target | Description 
+--------+------------------------+-----------------+----------+----------------------------------------+----------+--------------+-------------
+ c1     | integer                |                 |          | 12                                     | plain    |              | column1
+ c2     | integer                |                 |          |                                        | plain    |              | column2
+ c3     | integer                |                 | not null |                                        | plain    |              | column3
+ c4     | character varying(255) |                 | not null | 'a'::character varying                 | extended |              | 
+ c5     | character varying(255) | utf8_unicode_ci |          | 'b'::character varying                 | extended |              | 
+ c6     | character varying(255) |                 |          |                                        | extended |              | 
+ c7     | integer                |                 | not null | autoinc_nextval('t1_c7_seq'::regclass) | plain    |              | 
+Indexes:
+    "t1_pkey" PRIMARY KEY, btree (c7)
+
+select obj_description(oid) from pg_class where relname = 't1';
+ obj_description 
+-----------------
+ dddd
+(1 row)
+
+SHOW CREATE TABLE t1;
+ Table |                                      Create Table                                       
+-------+-----------------------------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
+       | ) AUTO_INCREMENT=77 COMMENT='dddd'
+(1 row)
+
+drop table t1;
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int auto_increment PRIMARY KEY
+)COLLATE latin1_bin COMMENT 'dddd' auto_increment = 77 ;
+\d+ t1
+                                                               Table "public.t1"
+ Column |          Type          |    Collation    | Nullable |                Default                 | Storage  | Stats target | Description 
+--------+------------------------+-----------------+----------+----------------------------------------+----------+--------------+-------------
+ c1     | integer                |                 |          | 12                                     | plain    |              | column1
+ c2     | integer                |                 |          |                                        | plain    |              | column2
+ c3     | integer                |                 | not null |                                        | plain    |              | column3
+ c4     | character varying(255) |                 | not null | 'a'::character varying                 | extended |              | 
+ c5     | character varying(255) | utf8_unicode_ci |          | 'b'::character varying                 | extended |              | 
+ c6     | character varying(255) |                 |          |                                        | extended |              | 
+ c7     | integer                |                 | not null | autoinc_nextval('t1_c7_seq'::regclass) | plain    |              | 
+Indexes:
+    "t1_pkey" PRIMARY KEY, btree (c7)
+
+select obj_description(oid) from pg_class where relname = 't1';
+ obj_description 
+-----------------
+ dddd
+(1 row)
+
+SHOW CREATE TABLE t1;
+ Table |                                      Create Table                                       
+-------+-----------------------------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
+       | ) AUTO_INCREMENT=77 COMMENT='dddd'
+(1 row)
+
+drop table t1;
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int auto_increment PRIMARY KEY
+)character set utf32 COLLATE = utf32_unicode_ci  COMMENT 'dddd' auto_increment = 77 ;
+\d+ t1
+                                                               Table "public.t1"
+ Column |          Type          |    Collation    | Nullable |                Default                 | Storage  | Stats target | Description 
+--------+------------------------+-----------------+----------+----------------------------------------+----------+--------------+-------------
+ c1     | integer                |                 |          | 12                                     | plain    |              | column1
+ c2     | integer                |                 |          |                                        | plain    |              | column2
+ c3     | integer                |                 | not null |                                        | plain    |              | column3
+ c4     | character varying(255) |                 | not null | 'a'::character varying                 | extended |              | 
+ c5     | character varying(255) | utf8_unicode_ci |          | 'b'::character varying                 | extended |              | 
+ c6     | character varying(255) |                 |          |                                        | extended |              | 
+ c7     | integer                |                 | not null | autoinc_nextval('t1_c7_seq'::regclass) | plain    |              | 
+Indexes:
+    "t1_pkey" PRIMARY KEY, btree (c7)
+
+select obj_description(oid) from pg_class where relname = 't1';
+ obj_description 
+-----------------
+ dddd
+(1 row)
+
+SHOW CREATE TABLE t1;
+ Table |                                      Create Table                                       
+-------+-----------------------------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
+       | ) AUTO_INCREMENT=77 COMMENT='dddd'
+(1 row)
+
+drop table t1;
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int auto_increment PRIMARY KEY
+);
+\d+ t1
+                                                               Table "public.t1"
+ Column |          Type          |    Collation    | Nullable |                Default                 | Storage  | Stats target | Description 
+--------+------------------------+-----------------+----------+----------------------------------------+----------+--------------+-------------
+ c1     | integer                |                 |          | 12                                     | plain    |              | column1
+ c2     | integer                |                 |          |                                        | plain    |              | column2
+ c3     | integer                |                 | not null |                                        | plain    |              | column3
+ c4     | character varying(255) |                 | not null | 'a'::character varying                 | extended |              | 
+ c5     | character varying(255) | utf8_unicode_ci |          | 'b'::character varying                 | extended |              | 
+ c6     | character varying(255) |                 |          |                                        | extended |              | 
+ c7     | integer                |                 | not null | autoinc_nextval('t1_c7_seq'::regclass) | plain    |              | 
+Indexes:
+    "t1_pkey" PRIMARY KEY, btree (c7)
+
+select obj_description(oid) from pg_class where relname = 't1';
+ obj_description 
+-----------------
+ 
+(1 row)
+
+SHOW CREATE TABLE t1;
+ Table |                                      Create Table                                       
+-------+-----------------------------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
+       | )
+(1 row)
+
+drop table t1;
+CREATE TABLE `t1` (
+    `c1` integer DEFAULT 12 COMMENT 'column1',
+    `c2` integer COMMENT 'column2',
+    `c3` integer NOT NULL COMMENT 'column3',
+    `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,
+    `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,
+    `c6` character varying(255),
+    `c7` integer NOT NULL AUTO_INCREMENT,
+    CONSTRAINT t1_pkey PRIMARY KEY (c7)
+) ENGINE=InnoDB;
+ \d+ t1
+                                                               Table "public.t1"
+ Column |          Type          |    Collation    | Nullable |                Default                 | Storage  | Stats target | Description 
+--------+------------------------+-----------------+----------+----------------------------------------+----------+--------------+-------------
+ c1     | integer                |                 |          | 12                                     | plain    |              | column1
+ c2     | integer                |                 |          |                                        | plain    |              | column2
+ c3     | integer                |                 | not null |                                        | plain    |              | column3
+ c4     | character varying(255) |                 | not null | 'a'::character varying                 | extended |              | 
+ c5     | character varying(255) | utf8_unicode_ci |          | 'b'::character varying                 | extended |              | 
+ c6     | character varying(255) |                 |          |                                        | extended |              | 
+ c7     | integer                |                 | not null | autoinc_nextval('t1_c7_seq'::regclass) | plain    |              | 
+Indexes:
+    "t1_pkey" PRIMARY KEY, btree (c7)
+
+SHOW CREATE TABLE t1;
+ Table |                                      Create Table                                       
+-------+-----------------------------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
+       | )
+(1 row)
+
+drop table t1;
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int null auto_increment unique key
+);
+\d+ t1
+                                                               Table "public.t1"
+ Column |          Type          |    Collation    | Nullable |                Default                 | Storage  | Stats target | Description 
+--------+------------------------+-----------------+----------+----------------------------------------+----------+--------------+-------------
+ c1     | integer                |                 |          | 12                                     | plain    |              | column1
+ c2     | integer                |                 |          |                                        | plain    |              | column2
+ c3     | integer                |                 | not null |                                        | plain    |              | column3
+ c4     | character varying(255) |                 | not null | 'a'::character varying                 | extended |              | 
+ c5     | character varying(255) | utf8_unicode_ci |          | 'b'::character varying                 | extended |              | 
+ c6     | character varying(255) |                 |          |                                        | extended |              | 
+ c7     | integer                |                 |          | autoinc_nextval('t1_c7_seq'::regclass) | plain    |              | 
+Indexes:
+    "t1_c7_key" UNIQUE CONSTRAINT, btree (c7)
+
+select obj_description(oid) from pg_class where relname = 't1';
+ obj_description 
+-----------------
+ 
+(1 row)
+
+SHOW CREATE TABLE t1;
+ Table |                                      Create Table                                       
+-------+-----------------------------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NULL AUTO_INCREMENT,                                                  +
+       |     CONSTRAINT "t1_c7_key" UNIQUE (c7)                                                 +
+       | )
+(1 row)
+
+drop table t1;
+CREATE TABLE `t1` (
+    `c1` integer DEFAULT 12 COMMENT 'column1',
+    `c2` integer COMMENT 'column2',
+    `c3` integer NOT NULL COMMENT 'column3',
+    `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,
+    `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,
+    `c6` character varying(255),
+    `c7` integer NULL AUTO_INCREMENT,
+    CONSTRAINT t1_c7_key UNIQUE (c7)
+) ENGINE=InnoDB;
+\d+ t1
+                                                               Table "public.t1"
+ Column |          Type          |    Collation    | Nullable |                Default                 | Storage  | Stats target | Description 
+--------+------------------------+-----------------+----------+----------------------------------------+----------+--------------+-------------
+ c1     | integer                |                 |          | 12                                     | plain    |              | column1
+ c2     | integer                |                 |          |                                        | plain    |              | column2
+ c3     | integer                |                 | not null |                                        | plain    |              | column3
+ c4     | character varying(255) |                 | not null | 'a'::character varying                 | extended |              | 
+ c5     | character varying(255) | utf8_unicode_ci |          | 'b'::character varying                 | extended |              | 
+ c6     | character varying(255) |                 |          |                                        | extended |              | 
+ c7     | integer                |                 |          | autoinc_nextval('t1_c7_seq'::regclass) | plain    |              | 
+Indexes:
+    "t1_c7_key" UNIQUE CONSTRAINT, btree (c7)
+
+select obj_description(oid) from pg_class where relname = 't1';
+ obj_description 
+-----------------
+ 
+(1 row)
+
+SHOW CREATE TABLE t1;
+ Table |                                      Create Table                                       
+-------+-----------------------------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NULL AUTO_INCREMENT,                                                  +
+       |     CONSTRAINT "t1_c7_key" UNIQUE (c7)                                                 +
+       | )
+(1 row)
+
+drop table t1;
+CREATE TABLE test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=9
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | )
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=2
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=2
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=3
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=5
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=6
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=100
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=101
+(1 row)
+
+SELECT * FROM test_show order by id;
+ id  | name  
+-----+-------
+   1 | test1
+   2 | test2
+   5 | test3
+ 100 | test4
+(4 rows)
+
+drop TABLE test_show;
+CREATE TABLE test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=9
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=10
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=10
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=11
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=11
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=12
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=100
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=101
+(1 row)
+
+SELECT * FROM test_show order by id;
+ id  | name  
+-----+-------
+   9 | test1
+  10 | test2
+  11 | test3
+ 100 | test4
+(4 rows)
+
+drop TABLE test_show;
+CREATE TEMPORARY TABLE test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=9
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | )
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=2
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=2
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=3
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=5
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=6
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=100
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=101
+(1 row)
+
+SELECT * FROM test_show order by id;
+ id  | name  
+-----+-------
+   1 | test1
+   2 | test2
+   5 | test3
+ 100 | test4
+(4 rows)
+
+drop TABLE test_show;
+CREATE TEMPORARY TABLE test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=9
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=10
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=10
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=11
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=11
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=12
+(1 row)
+
+ALTER TABLE test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=100
+(1 row)
+
+INSERT INTO test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TEMPORARY TABLE "test_show" (            +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=101
+(1 row)
+
+SELECT * FROM test_show order by id;
+ id  | name  
+-----+-------
+   9 | test1
+  10 | test2
+  11 | test3
+ 100 | test4
+(4 rows)
+
+drop TABLE test_show;
+-- #bug6167
+CREATE TABLE test_show (
+id1 INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(50)
+);
+SHOW COLUMNS FROM test_show;
+ Field |         Type          | Null | Key |                    Default                     |     Extra      
+-------+-----------------------+------+-----+------------------------------------------------+----------------
+ id1   | integer               | NO   | PRI | autoinc_nextval('test_show_id1_seq'::regclass) | auto_increment
+ name  | character varying(50) | YES  |     |                                                | 
+(2 rows)
+
+SHOW full COLUMNS FROM test_show;
+ Field |         Type          | Collation | Null | Key |                    Default                     |     Extra      |           Privileges            | Comment 
+-------+-----------------------+-----------+------+-----+------------------------------------------------+----------------+---------------------------------+---------
+ id1   | integer               |           | NO   | PRI | autoinc_nextval('test_show_id1_seq'::regclass) | auto_increment | INSERT,REFERENCES,SELECT,UPDATE | 
+ name  | character varying(50) |           | YES  |     |                                                |                | INSERT,REFERENCES,SELECT,UPDATE | 
+(2 rows)
+
+SHOW CREATE TABLE test_show;
+   Table   |                   Create Table                    
+-----------+---------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                       +
+           |     "id1" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),                +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id1)+
+           | )
+(1 row)
+
+drop table test_show;

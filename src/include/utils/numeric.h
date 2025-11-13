@@ -93,5 +93,5 @@ extern bool is_numeric_neg(Numeric num);
 typedef Numeric (*mysql_numeric_datatype_in_hook_type) (const char *str, int typmod, bool is_insert);
 extern PGDLLIMPORT mysql_numeric_datatype_in_hook_type mysql_numeric_datatype_in_hook;
 /* End - bug#z5590 */
-
+extern Datum numeric_uint8(PG_FUNCTION_ARGS);
 #endif							/* _PG_NUMERIC_H_ */

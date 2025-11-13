@@ -21749,7 +21749,6 @@ ATExecSetAutoIncrement(Relation rel, Value *value)
 	{ /* T_Float */
 		autoinc = (int64) DatumGetFloat8(DirectFunctionCall1(float8in, CStringGetDatum(strVal(value))));
 	}
-
 	set_auto_nextval(rel->rd_id, autoinc);
 
 	return;

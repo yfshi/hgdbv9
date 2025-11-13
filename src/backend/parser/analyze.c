@@ -6643,11 +6643,11 @@ set_auto_increment_func_node(ParseState *pstate, Expr* expr, int attno)
 	attr = TupleDescAttr(pstate->p_target_relation->rd_att, attno - 1);
 	if (attr->attidentity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
 	{
-		Const *reloidNode;
-		Const *attnumNode;
-		Const *colnotnullNode;
-		Const *NullordefaultNode;
-		Const *valueNode;
+		Const *reloidNode = NULL;
+		Const *attnumNode = NULL;
+		Const *colnotnullNode = NULL;
+		Const *NullordefaultNode = NULL;
+		Const *valueNode = NULL;
 
 		reloidNode     = makeConst(OIDOID, -1, InvalidOid, sizeof(Oid),
 								   ObjectIdGetDatum(pstate->p_target_relation->rd_id),
@@ -6702,8 +6702,16 @@ set_auto_increment_func_node(ParseState *pstate, Expr* expr, int attno)
 			NullordefaultNode = makeConst(INT8OID, -1, InvalidOid, sizeof(int64),
 										  Int64GetDatum(AUTO_INCREMENT_INSERT_ZERO),
 										  false, FLOAT8PASSBYVAL);
-			valueNode = (Const*)expr;
 		}
+
+		/* convert the original expression node to a cast numeric node*/
+		valueNode = (Const *) coerce_to_target_type(pstate,
+										  valueNode ? (Node *) valueNode : (Node *) expr,
+										  valueNode ? exprType((Node *) valueNode) : exprType((Node *) expr),
+										  NUMERICOID, -1,
+										  COERCION_EXPLICIT,
+										  COERCE_EXPLICIT_CAST,
+										  -1);
 
 		/* create funcexpr node : mys_set_insertval function  */
 		fexpr = makeFuncExpr(AUTO_INCREMENT_SET_VALUE_FUNC_OID,
