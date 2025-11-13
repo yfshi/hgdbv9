@@ -1019,15 +1019,9 @@ WHERE
     AND p.proname NOT LIKE 'sqlite_fdw%'
 ORDER BY 
     1, 2, 4;
- Schema |         Name          | Result data type | Argument data types | Type 
---------+-----------------------+------------------+---------------------+------
- public | check_se_param_change | text             |                     | func
- public | is_sysdba             | boolean          | oid                 | func
- public | is_syssao             | boolean          | oid                 | func
- public | is_syssso             | boolean          | oid                 | func
- public | reset_all_se_param    | text             |                     | func
- public | set_backend_se_param  | text             | oid, text, boolean  | func
-(6 rows)
+ Schema | Name | Result data type | Argument data types | Type 
+--------+------+------------------+---------------------+------
+(0 rows)
 
 \do
                              List of operators
@@ -1063,15 +1057,9 @@ WHERE
     AND p.proname NOT LIKE 'sqlite_fdw%'
 ORDER BY 
     1, 2, 4;
- Schema |         Name          | Result data type | Argument data types | Type 
---------+-----------------------+------------------+---------------------+------
- public | check_se_param_change | text             |                     | func
- public | is_sysdba             | boolean          | oid                 | func
- public | is_syssao             | boolean          | oid                 | func
- public | is_syssso             | boolean          | oid                 | func
- public | reset_all_se_param    | text             |                     | func
- public | set_backend_se_param  | text             | oid, text, boolean  | func
-(6 rows)
+ Schema | Name | Result data type | Argument data types | Type 
+--------+------+------------------+---------------------+------
+(0 rows)
 
 \do public.*
                              List of operators
@@ -1130,15 +1118,9 @@ WHERE
     AND p.proname NOT LIKE 'sqlite_fdw%'
 ORDER BY 
     1, 2, 4;
- Schema |         Name          | Result data type | Argument data types | Type 
---------+-----------------------+------------------+---------------------+------
- public | check_se_param_change | text             |                     | func
- public | is_sysdba             | boolean          | oid                 | func
- public | is_syssao             | boolean          | oid                 | func
- public | is_syssso             | boolean          | oid                 | func
- public | reset_all_se_param    | text             |                     | func
- public | set_backend_se_param  | text             | oid, text, boolean  | func
-(6 rows)
+ Schema | Name | Result data type | Argument data types | Type 
+--------+------+------------------+---------------------+------
+(0 rows)
 
 \do public.*
                              List of operators

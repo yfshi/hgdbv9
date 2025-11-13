@@ -2,8 +2,9 @@
 comment = 'restricted_dba'
 default_version = '1.0'
 module_pathname = '$libdir/restricted_dba'
-relocatable = true
+relocatable = false
 trusted = true
+schema = hg_security
 #  begin - bug: z676
 parse_options = all
 #  end - bug: z676

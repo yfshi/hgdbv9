@@ -1,4 +1,6 @@
 -- CREATE EXTENSION restricted_dba;
+set search_path to 'hg_security';
+
 select is_sysdba(10);
 
 select is_syssso(10);
@@ -33,3 +35,5 @@ alter system reset se_feature.mode;
 --fail, these test case depends on other module
 alter system set credcheck.enable to on;
 alter system reset audit.enable;
+
+reset search_path;
