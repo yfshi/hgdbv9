@@ -378,8 +378,8 @@ select index_name, index_type, table_name, table_type, uniqueness, compression, 
 from all_indexes where upper(table_name) like('SYSVIEW_INDEXES_TEMP%') order by table_name, index_name;
           index_name          | index_type |        table_name        | table_type | uniqueness | compression | pct_free | logging | status | num_rows | partitioned | temporary |    duration     | funcidx_status | constraint_index 
 ------------------------------+------------+--------------------------+------------+------------+-------------+----------+---------+--------+----------+-------------+-----------+-----------------+----------------+------------------
- sysview_indexes_temp_tb1_idx | btree      | sysview_indexes_temp_tb1 | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | N         | SYS$TRANSACTION |                | NO
- sysview_indexes_temp_tb2_idx | btree      | sysview_indexes_temp_tb2 | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | N         | SYS$SESSION     |                | NO
+ sysview_indexes_temp_tb1_idx | btree      | sysview_indexes_temp_tb1 | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$TRANSACTION |                | NO
+ sysview_indexes_temp_tb2_idx | btree      | sysview_indexes_temp_tb2 | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$SESSION     |                | NO
 (2 rows)
 
 commit;
@@ -407,8 +407,8 @@ from all_indexes where upper(table_name) like('SYSVIEW_INDEXES_%') order by tabl
  sysview_indexes_tb_idx2         | btree      | sysview_indexes_tb          | TABLE      | UNIQUE     | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | NO
  sysview_indexes_tb_multi_idx    | btree      | sysview_indexes_tb          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | NO
  sysview_indexes_tb_pkey         | btree      | sysview_indexes_tb          | TABLE      | UNIQUE     | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | YES
- sysview_indexes_temp_tb1_idx    | btree      | sysview_indexes_temp_tb1    | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | N         | SYS$TRANSACTION |                | NO
- sysview_indexes_temp_tb2_idx    | btree      | sysview_indexes_temp_tb2    | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | N         | SYS$SESSION     |                | NO
+ sysview_indexes_temp_tb1_idx    | btree      | sysview_indexes_temp_tb1    | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$TRANSACTION |                | NO
+ sysview_indexes_temp_tb2_idx    | btree      | sysview_indexes_temp_tb2    | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$SESSION     |                | NO
  sysview_indexes_unlogged_tb_idx | btree      | sysview_indexes_unlogged_tb | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | N         |                 |                | NO
 (12 rows)
 
