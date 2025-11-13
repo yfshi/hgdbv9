@@ -10711,8 +10711,16 @@ CREATE OR REPLACE VIEW SYS.DBA_CONSTRAINTS AS
             UPPER(cons.conname)::varchar2(128) AS constraint_name,
             UPPER(cons.contype)::varchar2(1) AS constraint_type,
             UPPER((SELECT relname FROM pg_class WHERE oid = cons.conrelid))::varchar2(128) AS table_name,
-            UPPER((pg_get_constraintdef(cons.oid)))::long AS search_condition,
-            UPPER((pg_get_constraintdef(cons.oid)))::varchar2(4000) AS search_condition_vc,
+            CASE
+                WHEN cons.contype = 'c' THEN
+                    UPPER(regexp_replace(pg_get_constraintdef(cons.oid), '^\s*CHECK\s*\(\s*\(\s*(.*?)\s*\)\s*\)\s*$', '\1', 'i'))
+                ELSE NULL
+            END::long AS search_condition,
+            CASE
+                WHEN cons.contype = 'c' THEN
+                    UPPER(regexp_replace(pg_get_constraintdef(cons.oid), '^\s*CHECK\s*\(\s*\(\s*(.*?)\s*\)\s*\)\s*$', '\1', 'i'))
+                ELSE NULL
+            END::varchar2(4000) AS search_condition_vc,
             SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
             UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
             CASE cons.confdeltype
@@ -10763,8 +10771,8 @@ CREATE OR REPLACE VIEW SYS.DBA_CONSTRAINTS AS
             (SYS.ORA_CASE_TRANS((c.relname || '_' || attr.attname)::varchar2) || '_NOT_NULL')::varchar2(128) AS constraint_name,
             'C'::varchar2(1) AS constraint_type,
             SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS table_name,
-            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::long AS search_condition,
-            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::varchar2(4000) AS search_condition_vc,
+            (('"' || UPPER(attr.attname)::varchar2) || '" IS NOT NULL')::long AS search_condition,
+            (('"' || UPPER(attr.attname)::varchar2) || '" IS NOT NULL')::varchar2(4000) AS search_condition_vc,
             NULL::VARCHAR2(128) AS r_owner,
             NULL::varchar2(128) AS r_constraint_name,
             NULL::varchar2(11) AS delete_rule,
@@ -10798,8 +10806,16 @@ CREATE OR REPLACE VIEW SYS.ALL_CONSTRAINTS AS
             UPPER(cons.conname)::varchar2(128) AS constraint_name,
             UPPER(cons.contype)::varchar2(1) AS constraint_type,
             UPPER((SELECT relname FROM pg_class WHERE oid = cons.conrelid))::varchar2(128) AS table_name,
-            UPPER((pg_get_constraintdef(cons.oid)))::long AS search_condition,
-            UPPER((pg_get_constraintdef(cons.oid)))::varchar2(4000) AS search_condition_vc,
+            CASE
+                WHEN cons.contype = 'c' THEN
+                    UPPER(regexp_replace(pg_get_constraintdef(cons.oid), '^\s*CHECK\s*\(\s*\(\s*(.*?)\s*\)\s*\)\s*$', '\1', 'i'))
+                ELSE NULL
+            END::long AS search_condition,
+            CASE
+                WHEN cons.contype = 'c' THEN
+                    UPPER(regexp_replace(pg_get_constraintdef(cons.oid), '^\s*CHECK\s*\(\s*\(\s*(.*?)\s*\)\s*\)\s*$', '\1', 'i'))
+                ELSE NULL
+            END::varchar2(4000) AS search_condition_vc,
             SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
             UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
             CASE cons.confdeltype
@@ -10858,8 +10874,8 @@ CREATE OR REPLACE VIEW SYS.ALL_CONSTRAINTS AS
             (SYS.ORA_CASE_TRANS((c.relname || '_' || attr.attname)::varchar2) || '_NOT_NULL')::varchar2(128) AS constraint_name,
             'C'::varchar2(1) AS constraint_type,
             SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS table_name,
-            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::long AS search_condition,
-            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::varchar2(4000) AS search_condition_vc,
+            (('"' || UPPER(attr.attname)::varchar2) || '" IS NOT NULL')::long AS search_condition,
+            (('"' || UPPER(attr.attname)::varchar2) || '" IS NOT NULL')::varchar2(4000) AS search_condition_vc,
             NULL::VARCHAR2(128) AS r_owner,
             NULL::varchar2(128) AS r_constraint_name,
             NULL::varchar2(11) AS delete_rule,
@@ -10902,8 +10918,16 @@ CREATE OR REPLACE VIEW SYS.USER_CONSTRAINTS AS
             UPPER(cons.conname)::varchar2(128) AS constraint_name,
             UPPER(cons.contype)::varchar2(1) AS constraint_type,
             UPPER((SELECT relname FROM pg_class WHERE oid = cons.conrelid))::varchar2(128) AS table_name,
-            UPPER((pg_get_constraintdef(cons.oid)))::long AS search_condition,
-            UPPER((pg_get_constraintdef(cons.oid)))::varchar2(4000) AS search_condition_vc,
+            CASE
+                WHEN cons.contype = 'c' THEN
+                    UPPER(regexp_replace(pg_get_constraintdef(cons.oid), '^\s*CHECK\s*\(\s*\(\s*(.*?)\s*\)\s*\)\s*$', '\1', 'i'))
+                ELSE NULL
+            END::long AS search_condition,
+            CASE
+                WHEN cons.contype = 'c' THEN
+                    UPPER(regexp_replace(pg_get_constraintdef(cons.oid), '^\s*CHECK\s*\(\s*\(\s*(.*?)\s*\)\s*\)\s*$', '\1', 'i'))
+                ELSE NULL
+            END::varchar2(4000) AS search_condition_vc,
             SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
             UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
             CASE cons.confdeltype
@@ -10956,8 +10980,8 @@ CREATE OR REPLACE VIEW SYS.USER_CONSTRAINTS AS
             (SYS.ORA_CASE_TRANS((c.relname || '_' || attr.attname)::varchar2) || '_NOT_NULL')::varchar2(128) AS constraint_name,
             'C'::varchar2(1) AS constraint_type,
             SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS table_name,
-            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::long AS search_condition,
-            (SYS.ORA_CASE_TRANS('"' || attr.attname::varchar2) || '" IS NOT NULL')::varchar2(4000) AS search_condition_vc,
+            (('"' || UPPER(attr.attname)::varchar2) || '" IS NOT NULL')::long AS search_condition,
+            (('"' || UPPER(attr.attname)::varchar2) || '" IS NOT NULL')::varchar2(4000) AS search_condition_vc,
             NULL::VARCHAR2(128) AS r_owner,
             NULL::varchar2(128) AS r_constraint_name,
             NULL::varchar2(11) AS delete_rule,
