@@ -48,6 +48,9 @@
 	41、M兼容新增DO语法；
 	42、M兼容增加一些SELECT的语法；
 	43、M兼容增加一些CREATE TABLE的语法；
+	44、M兼容增加了一些CREATE INDEX语法；
+	45、M兼容增加支持MySQL协议；
+	46、统一整理了自研功能系统对象的模式问题；
 2、修复问题
 	1、修复了MySQL兼容，SET lc_time_names等参数异常断开的问题，bug#5527；
 	2、修复了MySQL兼容，get_format返回类型不正确的问题，bug#5533；
@@ -170,6 +173,63 @@
 	119、M兼容修复了INFORMATION_SCHEMA.SCHEMATA的返回值不完整的问题，bug#6081；
 	120、完善了initdb --help的-m、-c参数的描述信息并汉化，bug#6070;
 	121、透明加密将加解密函数抽成库，提高易用性，bug#6065；
+	122、安全特性身份鉴别相关函数的执行权限问题，bug#6151/6152/6153；
+	123、HSH新功能，通过alter system和pg_reload_conf()开启关闭会话信息收集功能，bug#6093；
+	124、HSH修复了查询区间处理时范围不正确的问题，bug#6049；
+	125、HSH修复了队列填充率计算不正确的问题，bug#6126；
+	126、HSH修复了一些报告格式的问题，bug#6128；
+	127、HSH修复了分段等待事件存在脏数据的问题，bug#6130；
+	128、修复了缺少resource相关事件的语句审计问题，bug#6075；
+	129、修复了三权开启时，删除hstore和postgis插件报错的问题，bug#5554；
+	130、修复了三权开启时，alter database失败并且宕机的问题，bug#5555；
+	131、审计功能修复了修改安全监测规则模式不生效的问题，bug#6076；
+	132、审计功能修复了pg_secmon_thrhis存储thrname不正确，bug#6091；
+	133、审计功能修复了修改参数格式不对不产生警告信息的问题，bug#6107;
+	134、审计功能pg_secmon_thrhis表中列名拼写错误的问题，bug#6109；
+	135、审计功能修复了重要时刻内执行alter system不告警的问题，bug#6114；
+	136、审计功能修复了用户登出事件审计类型不对的问题，bug#6149;
+	137、M兼容修复了SHOW语法结果列名不对的问题,bug#5946;
+	138、M兼容修复了设置使用引号后，SHOW结果中只有部分带引号的问题，bug#5947;
+	139、M兼容修复了SHOW未区分表、视图的问题，bug#5948；
+	140、M兼容修复了SHOW部分列展示结果不对的问题，bug#5949/5954；
+	141、M兼容修复了SHOW语法不支持临时表的问题，bug#5956；
+	142、M兼容修复了SHOW语法查询不存在的表不报错的问题，bug#5958;
+	143、M兼容修复了SHOW TABLE STATUS与MySQL不一致的问题，bug#5968；
+	144、M兼容修复了SHOW INDEX与MySQL不一致的问题，bug#5973；
+	145、新增hg_pool_skip_txns参数，bug#6159；
+	146、制定规则：三权开，syssso设置；三权关，超户设置。bug#5937/6015/6056/6058;
+	147、将强访开关由set方式改为alter system的方式，可以pg_reload_conf()生效，bug5940；
+	148、当应用行级安全时，表中已有数据行的__hg_seclabel__列会被设置为当前用户的标签（不应该设置），bug#5996；
+	149、安全标记客体应不包括系统表、临时表、外表、索引、等对象，bug#6002；
+	150、标记强访修复了行安全标记中的第二个安全类别被错误截断为两位数字，bug#6007；
+	151、标记强访修复了列安全标记中为存在表设置无效列序号时应提示错误的问题，bug#6038；
+	152、标记强访修复了用户安全标签为空，列级安全标签不为空时，列级安全标签不生效的问题，bug#6122；
+	153、修复了idle_session_timeout提示信息不对的问题，bug#6048;
+	154、O兼容修复了xxx_table相关系统视图缺少logical_replication字段的问题，bug#6181；
+	155、O兼容修复了xxx_tab_cols视图中number类型的data_scale取值与预期不符的问题，bug#6182；
+	156、系统审计修复了没有记录启动/关闭事件的问题，bug#5879;
+	157、系统审计修复了三权关闭审计开时远程归档失败的问题，bug#6166；
+	158、系统审计修复了没有记录会话锁定/解锁事件的问题，bug#6168；
+	159、系统审计修复了没有记录STOP PGAGENT事件的问题，bug#6180；
+	160、标记强访修复了标记强访功能在未打开表级开关时，列级安全控制生效的问题，bug#6193；
+	161、O兼容修复了dba_users视图中authentication_type列用户的认证机制类型不对的问题，bug#6205；
+	162、审计功能修复了视图show_audit_diskinfo的table_used信息总是为0的问题，bug#6169；
+	163、O兼容修改Blob、Clob的T报文返回类型为basetype oid的问题，bug#6208；
+	164、O兼容修复了user_indexes视图temporary返回值不正确的问题，bug#6207;
+	165、O兼容修复了all_dependencies视图referenced_owner列值大小写不对的问题，bug#6209；
+	166、O兼容修复了all_dependencies视图没有记录同义词依赖表的问题，bug#6210；
+	167、O兼容修复了all_cons_columns视图返回约束的position列值不对的问题，bug#6217；
+	168、M兼容设定auto increment不支持uint8，bug#6157；
+	169、M兼容修复了auto increment当初始值大于最大值时报错的问题，bug#6160;
+	170、M兼容修复了auto increment插入失败时仍记录的问题，bug#6161；
+	171、M兼容修复了auto increment显式插入时，影响到LAST_INSERT_ID()的问题，bug#6162；
+	172、M兼容修复了auto increment修改自增值无效的问题，bug#6163；
+	173、M兼容修复了auto increment offset与运算值一致时出错的问题，bug#6164；
+	174、M兼容修复了auto increment未被SHOW语法支持的问题，bug#6167;
+	175、O兼容修复了全局临时表在生效后再创建索引，导致读取失败的问题，bug#6206；
+	176、O兼容修复了user_objects 视图CONSTRAINT类型的对象，没有获取namespace的问题，bug#6227；
+	177、O兼容修复了user_objects 视图没有获取约束状态的问题，bug#6228；
+	178、O兼容修复了dba_constraints视图查询结果与Oracle不一致的问题，bug#6212；
 
 V9.0.4.1，禅道版本ID：4647-2025/08/08
 1、新增特性
