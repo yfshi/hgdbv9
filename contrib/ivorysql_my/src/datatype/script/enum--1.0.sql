@@ -1339,6 +1339,30 @@ PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
+CREATE FUNCTION ivymy.anyenum_cat(int8, anyenum)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.anyenum_cat(anyenum, uint8)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.anyenum_cat(uint8, anyenum)
+RETURNS varchar
+AS 'select concat($1::varchar, $2::varchar);'
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE
+LEAKPROOF;
+
 ----operator invert !
 CREATE FUNCTION ivymy.anyenum_invert(anyenum)
 RETURNS int4
@@ -2435,6 +2459,24 @@ CREATE OPERATOR || (
 	procedure = ivymy.anyenum_cat,
 	leftarg = anyenum,
 	rightarg = int8
+);
+
+CREATE OPERATOR || (
+	procedure = ivymy.anyenum_cat,
+	leftarg = int8,
+	rightarg = anyenum
+);
+
+CREATE OPERATOR || (
+	procedure = ivymy.anyenum_cat,
+	leftarg = anyenum,
+	rightarg = uint8
+);
+
+CREATE OPERATOR || (
+	procedure = ivymy.anyenum_cat,
+	leftarg = uint8,
+	rightarg = anyenum
 );
 
 --operator !
