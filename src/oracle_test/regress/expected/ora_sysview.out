@@ -1029,7 +1029,7 @@ where upper(table_name) like('SYSVIEW_CONS_COLUMNS_%') order by constraint_name;
  sysview_cons_columns_tb_col1_NOT_NULL | sysview_cons_columns_tb  | col1        | 1
  sysview_cons_columns_tb_col2_key      | sysview_cons_columns_tb  | col2        | 1
  sysview_cons_columns_tb_col3_NOT_NULL | sysview_cons_columns_tb  | col3        | 3
- sysview_cons_columns_tb_col4_check    | sysview_cons_columns_tb  | col4        | 1
+ sysview_cons_columns_tb_col4_check    | sysview_cons_columns_tb  | col4        | 
  sysview_cons_columns_tb_col5_fkey     | sysview_cons_columns_tb  | col5        | 1
  sysview_cons_columns_tb_pkey          | sysview_cons_columns_tb  | col1        | 1
 (7 rows)
