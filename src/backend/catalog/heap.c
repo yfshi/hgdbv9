@@ -2139,8 +2139,7 @@ heap_drop_with_catalog(Oid relid)
 	 */
 	if (RELATION_IS_GLOBAL_TEMP(rel) && is_other_backend_use_gtt(relid))
 	{
-		elog(ERROR, "cannot drop global temporary table %s when other backend in use",
-			 get_rel_name(relid));
+		elog(ERROR, "cannot drop global temporary table or index when other backend in use");
 	}
 
 	/*

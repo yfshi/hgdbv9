@@ -506,3 +506,13 @@ commit;
 
 drop table g_tmp_pr;
 /* End - BUG#Z5712 */
+
+/* Begin - BUG#Z6206 */
+create global temporary table g_tmp_6206(a int) on commit preserve rows;
+insert into g_tmp_6206 values(generate_series(1, 10000));
+
+create index idx_g_6206 on g_tmp_6206(a);
+select * from g_tmp_6206 where  rownum < 5;
+
+drop table g_tmp_6206;
+/* End - BUG#Z6206 */

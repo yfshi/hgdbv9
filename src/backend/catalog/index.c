@@ -782,6 +782,14 @@ index_create(Relation heapRelation,
 			skip_create_storage = true;
 			flags |= INDEX_CREATE_SKIP_BUILD;
 		}
+		else	/* Begin - BUG#Z6206 */
+		{
+			/*
+			 * If the global temporary table is initialized in the current backend
+			 * then this index should be built when it is created.
+			 */
+			flags &= ~INDEX_CREATE_SKIP_BUILD;
+		}		/* End - BUG#Z6206 */
 	}
 
 	/* constraint flags can only be set when a constraint is requested */
@@ -2248,9 +2256,7 @@ index_drop(Oid indexId, bool concurrent, bool concurrent_lock_mode)
 	if (RELATION_IS_GLOBAL_TEMP(userIndexRelation) &&
 		is_other_backend_use_gtt(RelationGetRelid(userIndexRelation)))
 	{
-		elog(ERROR, "cannot drop index %s on global temporary table %s when other backend in use",
-			 RelationGetRelationName(userIndexRelation),
-			 get_rel_name(heapId));
+		elog(ERROR, "cannot drop global temporary table or index when other backend in use");
 	}
 	/* End - ReqID:SRS-SQL-GTT */
 
