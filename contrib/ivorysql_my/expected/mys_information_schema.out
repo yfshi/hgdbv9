@@ -93,6 +93,386 @@ ORDER BY table_name;
  test_schema_ivymy | vw_tbl      | VIEW       |        |            |                |             |                 |              |           |                | VIEW
 (4 rows)
 
+-- test auto_increment
+CREATE TABLE test_schema_ivymy.t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int auto_increment PRIMARY KEY
+)auto_increment = 77 COLLATE latin1_bin COMMENT 'dddd' ;
+\d+ test_schema_ivymy.t1
+                                                                  Table "test_schema_ivymy.t1"
+ Column |          Type          |    Collation    | Nullable |                         Default                          | Storage  | Stats target | Description 
+--------+------------------------+-----------------+----------+----------------------------------------------------------+----------+--------------+-------------
+ c1     | integer                |                 |          | 12                                                       | plain    |              | column1
+ c2     | integer                |                 |          |                                                          | plain    |              | column2
+ c3     | integer                |                 | not null |                                                          | plain    |              | column3
+ c4     | character varying(255) |                 | not null | 'a'::character varying                                   | extended |              | 
+ c5     | character varying(255) | utf8_unicode_ci |          | 'b'::character varying                                   | extended |              | 
+ c6     | character varying(255) |                 |          |                                                          | extended |              | 
+ c7     | integer                |                 | not null | autoinc_nextval('test_schema_ivymy.t1_c7_seq'::regclass) | plain    |              | 
+Indexes:
+    "t1_pkey" PRIMARY KEY, btree (c7)
+
+select obj_description(oid) from pg_class where relname = 't1';
+ obj_description 
+-----------------
+ dddd
+(1 row)
+
+SHOW CREATE TABLE test_schema_ivymy.t1;
+ Table |                                      Create Table                                       
+-------+-----------------------------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                                                    +
+       |     "c1" integer DEFAULT 12 COMMENT 'column1',                                         +
+       |     "c2" integer COMMENT 'column2',                                                    +
+       |     "c3" integer NOT NULL COMMENT 'column3',                                           +
+       |     "c4" character varying(255) NOT NULL DEFAULT 'a'::character varying,               +
+       |     "c5" character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,+
+       |     "c6" character varying(255),                                                       +
+       |     "c7" integer NOT NULL AUTO_INCREMENT,                                              +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (c7)                                              +
+       | ) AUTO_INCREMENT=77 COMMENT='dddd'
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 't1' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | t1         | BASE TABLE | InnoDB | 77             | dddd
+(1 row)
+
+drop table test_schema_ivymy.t1;
+CREATE TABLE test_schema_ivymy.test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=9
+(1 row)
+
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | )
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 1              | 
+(1 row)
+
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=2
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 2              | 
+(1 row)
+
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=2
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 2              | 
+(1 row)
+
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=3
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 3              | 
+(1 row)
+
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=5
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 5              | 
+(1 row)
+
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=6
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 6              | 
+(1 row)
+
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=100
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 100            | 
+(1 row)
+
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=101
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 101            | 
+(1 row)
+
+SELECT * FROM test_schema_ivymy.test_show order by id;
+ id  | name  
+-----+-------
+   1 | test1
+   2 | test2
+   5 | test3
+ 100 | test4
+(4 rows)
+
+drop TABLE test_schema_ivymy.test_show;
+CREATE TABLE test_schema_ivymy.test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=9
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 9              | 
+(1 row)
+
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=10
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 10             | 
+(1 row)
+
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=10
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 10             | 
+(1 row)
+
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=11
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 11             | 
+(1 row)
+
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=11
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 11             | 
+(1 row)
+
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=12
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 12             | 
+(1 row)
+
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=100
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 100            | 
+(1 row)
+
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_show | CREATE TABLE "test_show" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(50),               +
+           |     CONSTRAINT "test_show_pkey" PRIMARY KEY (id)+
+           | ) AUTO_INCREMENT=101
+(1 row)
+
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+   table_schema    | table_name | table_type | engine | auto_increment | table_comment 
+-------------------+------------+------------+--------+----------------+---------------
+ test_schema_ivymy | test_show  | BASE TABLE | InnoDB | 101            | 
+(1 row)
+
+SELECT * FROM test_schema_ivymy.test_show order by id;
+ id  | name  
+-----+-------
+   9 | test1
+  10 | test2
+  11 | test3
+ 100 | test4
+(4 rows)
+
+drop TABLE test_schema_ivymy.test_show;
 ------------------------------------------------------------
 -- 5. Test for information_schema.partitions
 ------------------------------------------------------------

@@ -1265,7 +1265,6 @@ c5 VARCHAR(255) NULL DEFAULT 'b',
 c6 VARCHAR(255))
 COLLATE latin1_bin COMMENT 'dddd';
 \d+ t1
-SHOW CREATE TABLE t1;
 drop table t1;
 
 -- pg grammar
@@ -1539,102 +1538,135 @@ create table P4 PARTITION of test_option10 for VALUES from(2451544) to(MAXVALUE)
 \d+ test_option10
 drop table if exists test_option10;
 -----------------------------------------------------------------------------------------------------
---test show
-CREATE TABLE t1(
-c1 INT DEFAULT 12 COMMENT 'column1',
-c2 INT NULL COMMENT 'column2',
-c3 INT NOT NULL COMMENT 'column3',
-c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
-c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
-c6 VARCHAR(255),
-c7 int auto_increment PRIMARY KEY
-)auto_increment = 77 COLLATE latin1_bin COMMENT 'dddd' ;
-\d+ t1
-select obj_description(oid) from pg_class where relname = 't1';
-SHOW CREATE TABLE t1;
-drop table t1;
 
-CREATE TABLE t1(
-c1 INT DEFAULT 12 COMMENT 'column1',
-c2 INT NULL COMMENT 'column2',
-c3 INT NOT NULL COMMENT 'column3',
-c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
-c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
-c6 VARCHAR(255),
-c7 int auto_increment PRIMARY KEY
-)COLLATE latin1_bin COMMENT 'dddd' auto_increment = 77 ;
-\d+ t1
-select obj_description(oid) from pg_class where relname = 't1';
-SHOW CREATE TABLE t1;
-drop table t1;
+-- #bug6164
+SET SESSION auto_increment_increment = 5;
+SET SESSION auto_increment_offset = 10;
+SHOW VARIABLES LIKE 'auto_inc%';
 
-CREATE TABLE t1(
-c1 INT DEFAULT 12 COMMENT 'column1',
-c2 INT NULL COMMENT 'column2',
-c3 INT NOT NULL COMMENT 'column3',
-c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
-c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
-c6 VARCHAR(255),
-c7 int auto_increment PRIMARY KEY
-)character set utf32 COLLATE = utf32_unicode_ci  COMMENT 'dddd' auto_increment = 77 ;
-\d+ t1
-select obj_description(oid) from pg_class where relname = 't1';
-SHOW CREATE TABLE t1;
-drop table t1;
+CREATE TABLE test_incguc4 (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(20));
 
-CREATE TABLE t1(
-c1 INT DEFAULT 12 COMMENT 'column1',
-c2 INT NULL COMMENT 'column2',
-c3 INT NOT NULL COMMENT 'column3',
-c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
-c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
-c6 VARCHAR(255),
-c7 int auto_increment PRIMARY KEY
+INSERT INTO test_incguc4 (name) VALUES ('a');
+INSERT INTO test_incguc4 (name) VALUES ('b');
+INSERT INTO test_incguc4 (name) VALUES ('c');
+INSERT INTO test_incguc4 (name) VALUES ('d');
+SELECT * FROM test_incguc4;
+drop table test_incguc4;
+
+SET SESSION auto_increment_increment = 3;
+SET SESSION auto_increment_offset = 9;
+CREATE TABLE test_incguc4 (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(20));
+
+INSERT INTO test_incguc4 (name) VALUES ('a');
+INSERT INTO test_incguc4 (name) VALUES ('b');
+INSERT INTO test_incguc4 (name) VALUES ('c');
+INSERT INTO test_incguc4 (name) VALUES ('d');
+SELECT * FROM test_incguc4;
+drop table test_incguc4;
+
+SET SESSION auto_increment_increment = 1;
+SET SESSION auto_increment_offset = 1;
+
+-- #bug6163
+CREATE TABLE test_edit6 (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+ALTER TABLE test_edit6 AUTO_INCREMENT = 0;
+INSERT INTO test_edit6 (name) VALUES ('test1');
+ALTER TABLE test_edit6 AUTO_INCREMENT = 0;
+INSERT INTO test_edit6 (name) VALUES ('test2');
+ALTER TABLE test_edit6 AUTO_INCREMENT = 5;
+INSERT INTO test_edit6 (name) VALUES ('test3');
+ALTER TABLE test_edit6 AUTO_INCREMENT = 100;
+INSERT INTO test_edit6 (name) VALUES ('test4');
+SELECT * FROM test_edit6 order by id;
+drop TABLE test_edit6;
+
+CREATE TABLE test_edit6 (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+INSERT INTO test_edit6 (name) VALUES ('test1');
+ALTER TABLE test_edit6 AUTO_INCREMENT = 0;
+INSERT INTO test_edit6 (name) VALUES ('test2');
+ALTER TABLE test_edit6 AUTO_INCREMENT = 5;
+INSERT INTO test_edit6 (name) VALUES ('test3');
+ALTER TABLE test_edit6 AUTO_INCREMENT = 100;
+INSERT INTO test_edit6 (name) VALUES ('test4');
+SELECT * FROM test_edit6 order by id;
+drop TABLE test_edit6;
+
+-- #bug6162
+CREATE TABLE test_last_insert6 (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=5;
+
+INSERT INTO test_last_insert6 (id,name) VALUES (10,'test1');
+INSERT INTO test_last_insert6 (id,name) VALUES (11,'test1');
+SELECT LAST_INSERT_ID();
+drop TABLE test_last_insert6;
+
+-- #bug6161
+CREATE TABLE test_last_insert3 (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
 );
-\d+ t1
-select obj_description(oid) from pg_class where relname = 't1';
-SHOW CREATE TABLE t1;
-drop table t1;
+INSERT INTO test_last_insert3 (name) VALUES ('test1');
+SELECT LAST_INSERT_ID();
+INSERT INTO test_last_insert3 (id,name) VALUES (1,'test1');
+SELECT LAST_INSERT_ID();
+drop TABLE test_last_insert3;
 
-CREATE TABLE `t1` (
-    `c1` integer DEFAULT 12 COMMENT 'column1',
-    `c2` integer COMMENT 'column2',
-    `c3` integer NOT NULL COMMENT 'column3',
-    `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,
-    `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,
-    `c6` character varying(255),
-    `c7` integer NOT NULL AUTO_INCREMENT,
-    CONSTRAINT t1_pkey PRIMARY KEY (c7)
-) ENGINE=InnoDB;
- \d+ t1
-SHOW CREATE TABLE t1;
-drop table t1;
+-- #bug6160
+CREATE TABLE test_autoinc1 (
+    id INT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50),
+    PRIMARY KEY (id)
+) AUTO_INCREMENT = 2147483648;
+INSERT INTO test_autoinc1 (name) VALUES ('test1'),('test2'),('test3');
+SELECT * FROM test_autoinc1;
+drop TABLE test_autoinc1;
 
-CREATE TABLE t1(
-c1 INT DEFAULT 12 COMMENT 'column1',
-c2 INT NULL COMMENT 'column2',
-c3 INT NOT NULL COMMENT 'column3',
-c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
-c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
-c6 VARCHAR(255),
-c7 int null auto_increment unique key
+CREATE TABLE test_autoinc2 (
+    id INT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50),
+    PRIMARY KEY (id)
+) AUTO_INCREMENT = 0;
+INSERT INTO test_autoinc2 (name) VALUES ('test1'),('test2'),('test3');
+SELECT * FROM test_autoinc2;
+drop TABLE test_autoinc2;
+
+CREATE TABLE test_autoinc3 (
+    id INT8 NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50),
+    PRIMARY KEY (id)
+) AUTO_INCREMENT = 2147483648;
+INSERT INTO test_autoinc3 (name) VALUES ('test1'),('test2'),('test3');
+SELECT * FROM test_autoinc3;
+drop TABLE test_autoinc3;
+
+CREATE TABLE test_autoinc4 (
+    id INT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50),
+    PRIMARY KEY (id)
+) AUTO_INCREMENT = -5;
+INSERT INTO test_autoinc4 (name) VALUES ('test1'),('test2'),('test3');
+SELECT * FROM test_autoinc4;
+drop TABLE test_autoinc4;
+
+CREATE TABLE test_bigint (
+id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+timestamp DATETIME
 );
-\d+ t1
-select obj_description(oid) from pg_class where relname = 't1';
-SHOW CREATE TABLE t1;
-drop table t1;
 
-CREATE TABLE `t1` (
-    `c1` integer DEFAULT 12 COMMENT 'column1',
-    `c2` integer COMMENT 'column2',
-    `c3` integer NOT NULL COMMENT 'column3',
-    `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,
-    `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,
-    `c6` character varying(255),
-    `c7` integer NULL AUTO_INCREMENT,
-    CONSTRAINT t1_c7_key UNIQUE (c7)
-) ENGINE=InnoDB;
-\d+ t1
-select obj_description(oid) from pg_class where relname = 't1';
-SHOW CREATE TABLE t1;
-drop table t1;
+INSERT INTO test_bigint (timestamp) VALUES ('2025-10-01 12:00:00'), ('2025-10-02 12:00:00'), ('2025-10-03 12:00:00');
+INSERT INTO test_bigint (id,timestamp) VALUES (18446744073709551615,'2025-10-04 12:00:00');
+INSERT INTO test_bigint (timestamp) VALUES ('2025-10-04 12:00:00');
+SELECT * FROM test_bigint;
+drop TABLE test_bigint;

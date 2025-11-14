@@ -547,3 +547,222 @@ SET sql_quote_show_create = 1;
 SHOW CREATE TABLE test_table;
 
 drop table test_table;
+
+-- show comment
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) NULL DEFAULT 'b',
+c6 VARCHAR(255))
+COLLATE latin1_bin COMMENT 'dddd';
+\d+ t1
+SHOW CREATE TABLE t1;
+drop table t1;
+
+-- show auto_increment
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int auto_increment PRIMARY KEY
+)auto_increment = 77 COLLATE latin1_bin COMMENT 'dddd' ;
+\d+ t1
+select obj_description(oid) from pg_class where relname = 't1';
+SHOW CREATE TABLE t1;
+drop table t1;
+
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int auto_increment PRIMARY KEY
+)COLLATE latin1_bin COMMENT 'dddd' auto_increment = 77 ;
+\d+ t1
+select obj_description(oid) from pg_class where relname = 't1';
+SHOW CREATE TABLE t1;
+drop table t1;
+
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int auto_increment PRIMARY KEY
+)character set utf32 COLLATE = utf32_unicode_ci  COMMENT 'dddd' auto_increment = 77 ;
+\d+ t1
+select obj_description(oid) from pg_class where relname = 't1';
+SHOW CREATE TABLE t1;
+drop table t1;
+
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int auto_increment PRIMARY KEY
+);
+\d+ t1
+select obj_description(oid) from pg_class where relname = 't1';
+SHOW CREATE TABLE t1;
+drop table t1;
+
+CREATE TABLE `t1` (
+    `c1` integer DEFAULT 12 COMMENT 'column1',
+    `c2` integer COMMENT 'column2',
+    `c3` integer NOT NULL COMMENT 'column3',
+    `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,
+    `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,
+    `c6` character varying(255),
+    `c7` integer NOT NULL AUTO_INCREMENT,
+    CONSTRAINT t1_pkey PRIMARY KEY (c7)
+) ENGINE=InnoDB;
+ \d+ t1
+SHOW CREATE TABLE t1;
+drop table t1;
+
+CREATE TABLE t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int null auto_increment unique key
+);
+\d+ t1
+select obj_description(oid) from pg_class where relname = 't1';
+SHOW CREATE TABLE t1;
+drop table t1;
+
+CREATE TABLE `t1` (
+    `c1` integer DEFAULT 12 COMMENT 'column1',
+    `c2` integer COMMENT 'column2',
+    `c3` integer NOT NULL COMMENT 'column3',
+    `c4` character varying(255) NOT NULL DEFAULT 'a'::character varying,
+    `c5` character varying(255) DEFAULT 'b'::character varying COLLATE utf8_unicode_ci,
+    `c6` character varying(255),
+    `c7` integer NULL AUTO_INCREMENT,
+    CONSTRAINT t1_c7_key UNIQUE (c7)
+) ENGINE=InnoDB;
+\d+ t1
+select obj_description(oid) from pg_class where relname = 't1';
+SHOW CREATE TABLE t1;
+drop table t1;
+
+CREATE TABLE test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_show;
+SELECT * FROM test_show order by id;
+drop TABLE test_show;
+
+CREATE TABLE test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_show;
+SELECT * FROM test_show order by id;
+drop TABLE test_show;
+
+CREATE TEMPORARY TABLE test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_show;
+SELECT * FROM test_show order by id;
+drop TABLE test_show;
+
+CREATE TEMPORARY TABLE test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_show;
+ALTER TABLE test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_show;
+INSERT INTO test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_show;
+SELECT * FROM test_show order by id;
+drop TABLE test_show;
+
+-- #bug6167
+CREATE TABLE test_show (
+id1 INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(50)
+);
+SHOW COLUMNS FROM test_show;
+SHOW full COLUMNS FROM test_show;
+SHOW CREATE TABLE test_show;
+drop table test_show;

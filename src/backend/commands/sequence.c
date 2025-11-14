@@ -66,6 +66,8 @@
 #include "pg_contrib_audit.h"
 /* End - BUG#00004709 */
 #include "utils/guc.h"
+#include "utils/numeric.h"
+
 /*
  * We don't want to log each fetching of a value from a sequence,
  * so we pre-log a few fetches in advance. In the event of
@@ -146,7 +148,7 @@ static uint64 compute_current_autoinc(uint64 nr);
 static uint64 compute_next_autoinc(uint64 current, uint64 step, /*!< in: AUTOINC increment step */
 							uint64 offset, uint64 max_value);		  /*!< in: max value for type */
 static void compute_cur_next_value(uint64 lastautoinc, uint64 *curautoinc, uint64 *nextautoinc);
-static void set_auto_increment(SeqTable elm, Relation seqrel, bool displayinsert, uint64 autoincvalue, bool logit, bool temptable);
+static void set_auto_increment(SeqTable elm, Relation seqrel, bool displayinsert, uint64 autoincvalue, bool logit);
 
 Datum autoinc_nextval(PG_FUNCTION_ARGS);
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
@@ -749,7 +751,7 @@ nextval_autoincrement(Oid relid, bool check_permissions)
 				 errmsg("permission denied for auto_increment %s",
 						RelationGetRelationName(seqrel))));
 
-	set_auto_increment(elm, seqrel, false, 0, logit, false);
+	set_auto_increment(elm, seqrel, false, 0, logit);
 	relation_close(seqrel, NoLock);
 	ReleaseSysCache(pgstuple);
 	last_used_seq = elm;
@@ -1226,6 +1228,11 @@ get_rel_auto_increment_attr(Oid tableoid)
 	}
 	table_close(rel, AccessShareLock);
 
+	/* set invalid attnum */
+	if (autoincAttnum > natts)
+	{
+		autoincAttnum = -1;
+	}
 	return autoincAttnum;
 }
 /* set next auto_increment value*/
@@ -1243,6 +1250,14 @@ set_auto_nextval(Oid tableoid, uint64 nextval)
 	seqrel = relation_open(seqoid, RowExclusiveLock);
 	seq = read_seq_tuple(seqrel, &buf, &seqdatatuple);
 	seq->next_value = seq->next_value > nextval ? seq->next_value : nextval;
+	/* Bug - #z6163 */
+	/* when modifying to insert values, table without inserted date can modifying initial values;
+	 * while tables with inserted data can not be set to values less than the last inseted value.
+	 */
+	if (!nextval && !seq->next_value)
+	{
+		seq->last_value = 1;
+	}
 	relation_close(seqrel, RowExclusiveLock);
 	UnlockReleaseBuffer(buf);
 
@@ -1256,7 +1271,7 @@ set_auto_nextval(Oid tableoid, uint64 nextval)
  * temptable   : insert temp table
  */
 static void
-set_auto_increment(SeqTable elm, Relation seqrel, bool displayinsert, uint64 autoincvalue, bool logit, bool temptable)
+set_auto_increment(SeqTable elm, Relation seqrel, bool displayinsert, uint64 autoincvalue, bool logit)
 {
 	Buffer buf;
 	Page page;
@@ -1337,7 +1352,11 @@ set_auto_increment(SeqTable elm, Relation seqrel, bool displayinsert, uint64 aut
 	END_CRIT_SECTION();
 	UnlockReleaseBuffer(buf);
 
-	if (!temptable || !autoincvalue)
+	/* Bug - #z6162 */
+	/* when display the insertion of non-empty and non-zero values
+	 * the insertion of lastvalues is not recorded
+	 */
+	if (!(autoincvalue && displayinsert))
 	{
 		mys_g_last_seqval = (uint64)seq->last_value;
 	}
@@ -1468,7 +1487,6 @@ compute_cur_next_value(uint64 lastautoinc, uint64 *curautoinc, uint64 *nextautoi
 			/* If autoinc exceeds the col_max_value then reset
 			to old autoinc value. Because in case of non-strict
 			sql mode, boundary value is not considered as error. */
-
 			if (lastautoinc >= UINT64_MAX)
 			{
 				lastautoinc = prev_auto_inc;
@@ -1479,7 +1497,42 @@ compute_cur_next_value(uint64 lastautoinc, uint64 *curautoinc, uint64 *nextautoi
 	*curautoinc = compute_current_autoinc(lastautoinc - 1);
 	*nextautoinc = compute_next_autoinc(lastautoinc, auto_increment_increment, auto_increment_offset, UINT64_MAX);
 
+	/* Bug - #z6164 */
+	/* when the next calculated inserted value is consistent
+	 * with the current inserted value, the next inserted value is recalculated
+	 */
+	if (*curautoinc == *nextautoinc)
+	{
+		*nextautoinc = compute_next_autoinc(*nextautoinc, auto_increment_increment, auto_increment_offset, UINT64_MAX);
+	}
 	return;
+}
+
+/* get show create table auto_increment value */
+uint64
+get_show_autoinc(Oid tableoid)
+{
+	HeapTupleData seqdatatuple;
+	Relation seqrel;
+	Buffer buf;
+	Form_pg_sequence_data seq;
+	Oid seqoid;
+	uint64 result = 0;
+	AttrNumber attnum = get_rel_auto_increment_attr(tableoid);
+
+	if (attnum == -1)
+	{
+		return 0;
+	}
+
+	seqoid = getIdentityAutoIncrement(tableoid, attnum, false);
+	seqrel = relation_open(seqoid, AccessShareLock);
+	seq = read_seq_tuple(seqrel, &buf, &seqdatatuple);
+	result = seq->next_value ? seq->next_value : seq->last_value;
+	relation_close(seqrel, AccessShareLock);
+	UnlockReleaseBuffer(buf);
+
+	return result;
 }
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
@@ -1687,16 +1740,31 @@ mys_set_insertval(PG_FUNCTION_ARGS)
 	int16 attnum = PG_GETARG_INT16(1);
 	bool colnotnull = PG_GETARG_BOOL(2);
 	int32 valuenullordefault = PG_GETARG_INT32(3);
-	uint64 value = PG_GETARG_INT64(4);
+	uint64 value = 0;
+	Numeric valuenum = PG_GETARG_NUMERIC(4);
 	bool isreturnnull = false;
+	Oid seqoid = InvalidOid;
 
-	Oid seqoid = getIdentityAutoIncrement(reloid, attnum, false);
+	if (DatumGetBool(DirectFunctionCall2(numeric_gt, NumericGetDatum(valuenum),
+										 NumericGetDatum(uint64_to_numeric(PG_UINT64_MAX)))))
+	{
+		ereport(ERROR, (errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE), errmsg("Failed to read auto-increment value from storage engine")));
+	}
+	else if (DatumGetBool(DirectFunctionCall2(numeric_gt, NumericGetDatum(valuenum),
+											  NumericGetDatum(uint64_to_numeric(PG_INT64_MAX)))))
+	{
+		ereport(WARNING, (errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE), errmsg("auto_increment max is 9223372036854775807")));
+		value = DatumGetUInt64(DirectFunctionCall1(numeric_uint8, NumericGetDatum(valuenum)));
+		value = 9223372036854775807;
+	}
+	else
+	{
+		value = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(valuenum)));
+		if ((int64)value < 0)
+			PG_RETURN_INT64(value);
+	}
 
-	bool temptable = (get_rel_persistence(reloid) == RELPERSISTENCE_TEMP ||
-					  get_rel_persistence(reloid) == RELPERSISTENCE_GLOBAL_TEMP);
-
-	if ((int64)value < 0)
-		PG_RETURN_UINT64(value);
+	seqoid = getIdentityAutoIncrement(reloid, attnum, false);
 
 	/* insert value: (NULL) . (default) . (0) 
 	*  null col:
@@ -1755,7 +1823,7 @@ mys_set_insertval(PG_FUNCTION_ARGS)
 
 	/* open and lock sequence */
 	init_sequence(seqoid, &elm, &seqrel);
-	set_auto_increment(elm, seqrel, true, value, false, temptable);
+	set_auto_increment(elm, seqrel, true, value, false);
 	relation_close(seqrel, NoLock);
 	last_used_seq = elm;
 	if (value == AUTO_INCREMENT_VALUE_ZERO)
@@ -1765,7 +1833,7 @@ mys_set_insertval(PG_FUNCTION_ARGS)
 
 	if (isreturnnull)
 		PG_RETURN_NULL();
-	PG_RETURN_UINT64(value);
+	PG_RETURN_INT64(value);
 }
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 /*
@@ -2783,24 +2851,40 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 		char		bufs[100],
 					bufm[100];
 
-		snprintf(bufs, sizeof(bufs), INT64_FORMAT, seqform->seqstart);
-		snprintf(bufm, sizeof(bufm), INT64_FORMAT, seqform->seqmin);
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("START value (%s) cannot be less than MINVALUE (%s)",
-						bufs, bufm)));
+		/* Bug - #z6160 */
+		if (compatible_db == MYS_PARSER && seq_type == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+		{
+			seqform->seqstart = seqform->seqmin;
+		}
+		else
+		{
+			snprintf(bufs, sizeof(bufs), INT64_FORMAT, seqform->seqstart);
+			snprintf(bufm, sizeof(bufm), INT64_FORMAT, seqform->seqmin);
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("START value (%s) cannot be less than MINVALUE (%s)",
+							bufs, bufm)));
+		}
 	}
 	if (seqform->seqstart > seqform->seqmax && (compatible_db == PG_PARSER || compatible_db == MYS_PARSER || !for_identity))	/* BUG#Z026 */ /* ReqID:SRS-SQL-SEQ */	/* ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		char		bufs[100],
 					bufm[100];
 
-		snprintf(bufs, sizeof(bufs), INT64_FORMAT, seqform->seqstart);
-		snprintf(bufm, sizeof(bufm), INT64_FORMAT, seqform->seqmax);
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("START value (%s) cannot be greater than MAXVALUE (%s)",
-						bufs, bufm)));
+		/* Bug - #z6160 */
+		if (compatible_db == MYS_PARSER && seq_type == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+		{
+			seqform->seqstart = seqform->seqmax;
+		}
+		else
+		{
+			snprintf(bufs, sizeof(bufs), INT64_FORMAT, seqform->seqstart);
+			snprintf(bufm, sizeof(bufm), INT64_FORMAT, seqform->seqmax);
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("START value (%s) cannot be greater than MAXVALUE (%s)",
+							bufs, bufm)));
+		}
 	}
 
 	/* Begin - ReqID:SRS-SQL-SEQ */

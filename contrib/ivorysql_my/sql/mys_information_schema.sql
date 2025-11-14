@@ -74,6 +74,103 @@ FROM information_schema.tables
 WHERE table_schema = 'test_schema_ivymy'
 ORDER BY table_name;
 
+-- test auto_increment
+CREATE TABLE test_schema_ivymy.t1(
+c1 INT DEFAULT 12 COMMENT 'column1',
+c2 INT NULL COMMENT 'column2',
+c3 INT NOT NULL COMMENT 'column3',
+c4 VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'a',
+c5 VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'b',
+c6 VARCHAR(255),
+c7 int auto_increment PRIMARY KEY
+)auto_increment = 77 COLLATE latin1_bin COMMENT 'dddd' ;
+\d+ test_schema_ivymy.t1
+select obj_description(oid) from pg_class where relname = 't1';
+SHOW CREATE TABLE test_schema_ivymy.t1;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 't1' ORDER BY table_name;
+drop table test_schema_ivymy.t1;
+
+CREATE TABLE test_schema_ivymy.test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+SELECT * FROM test_schema_ivymy.test_show order by id;
+drop TABLE test_schema_ivymy.test_show;
+
+CREATE TABLE test_schema_ivymy.test_show (
+id INT NOT NULL AUTO_INCREMENT,
+name VARCHAR(50),
+PRIMARY KEY (id)
+)AUTO_INCREMENT=9;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test1');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 0;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test2');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 5;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test3');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+ALTER TABLE test_schema_ivymy.test_show AUTO_INCREMENT = 100;
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+INSERT INTO test_schema_ivymy.test_show (name) VALUES ('test4');
+SHOW CREATE TABLE test_schema_ivymy.test_show;
+SELECT table_schema, table_name, table_type, engine, auto_increment, table_comment
+FROM information_schema.tables WHERE table_schema = 'test_schema_ivymy' and table_name = 'test_show' ORDER BY table_name;
+SELECT * FROM test_schema_ivymy.test_show order by id;
+drop TABLE test_schema_ivymy.test_show;
+
 ------------------------------------------------------------
 -- 5. Test for information_schema.partitions
 ------------------------------------------------------------

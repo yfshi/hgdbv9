@@ -3585,7 +3585,14 @@ CREATE FUNCTION ivymy.LAST_INSERT_ID(seqid numeric)
 RETURNS ivymy.uint8 IMMUTABLE AS $$
 SELECT mys_set_lastval(seqid::int);
 $$ LANGUAGE sql;
+
+CREATE FUNCTION ivymy.show_next_autoinc(Oid)
+RETURNS uint8
+AS 'MODULE_PATHNAME', 'show_next_autoinc'
+LANGUAGE C
+STRICT;
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
 
 /* Begin - Req: SRS-MYSQL-PROTOCOL */
 CREATE FUNCTION pg_catalog.database()

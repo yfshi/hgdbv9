@@ -81,11 +81,11 @@ SELECT
 				(SELECT CASE MYSSERIES                                         -- AUTO_INCREMENT value (for identity/serial columns)
 					WHEN NULL THEN NULL
 					ELSE
-						(SELECT seqincrement FROM pg_catalog.pg_sequence WHERE seqrelid = MYSSERIES.seriesname::regclass::oid) + currval(MYSSERIES.seriesname)
+						(SELECT ivymy.show_next_autoinc(c.oid))
 					END
 				FROM (SELECT pg_catalog.pg_get_serial_sequence(c.relname, at.attname) AS seriesname
 					FROM pg_attribute at
-					WHERE at.attrelid = c.oid AND (at.attidentity = 'a' or at.attidentity = 'd')) AS MYSSERIES)
+					WHERE at.attrelid = c.oid AND (at.attidentity = 'a' or at.attidentity = 'd' or at.attidentity = 'm')) AS MYSSERIES)
 			END AS unsigned) AS "AUTO_INCREMENT",
 
 	CASE
@@ -645,7 +645,7 @@ SELECT
 	-- EXTRA: auto_increment, generated, etc.
 	trim(
 		both ' ' from (concat(
-		CASE WHEN a.attidentity IN ('a','d') THEN 'auto_increment ' ELSE '' END,
+		CASE WHEN a.attidentity IN ('a','d','m') THEN 'auto_increment ' ELSE '' END,
 		CASE WHEN a.attgenerated <> '' THEN 'STORED GENERATED ' ELSE '' END)
 		)
 		)::varchar(30) AS "EXTRA",

@@ -11943,7 +11943,7 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   
 { oid => '4660', descr => 'mysql set auto_increment value by callback',
   proname => 'mys_set_insertval', provolatile => 'v', proparallel => 'u',
-  prorettype => 'int8', proargtypes => 'oid int2 bool int4 int8', prosrc => 'mys_set_insertval' },
+  prorettype => 'int8', proargtypes => 'oid int2 bool int4 numeric', prosrc => 'mys_set_insertval' },
 
 { oid => '4661', descr => 'autoincrement  next value',
   proname => 'autoinc_nextval', provolatile => 'v', proparallel => 'u',
