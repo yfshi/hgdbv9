@@ -236,9 +236,6 @@ endif
 	# END - SQL PARSER
 	$(INSTALL_DATA) $(srcdir)/utils/misc/ivorysql.mysql.conf.sample '$(DESTDIR)$(datadir)/ivorysql.mysql.conf.sample'
 	# END - SRS-MISC-MYSQL-FRAME
-	# Begin - ReqID:SRS-SECURITY-AUDIT
-	$(INSTALL_DATA) $(srcdir)/utils/misc/sec_pg.conf.sample '$(DESTDIR)$(datadir)/sec_pg.conf.sample'
-	# End - ReqID:SRS-SECURITY-AUDIT
 	# BEGIN - SRS-SECURITY-TDE
 	$(INSTALL_DATA) $(srcdir)/crypto/ckey_aws.sh.sample '$(DESTDIR)$(datadir)/auth_commands/ckey_aws.sh.sample'
 	$(INSTALL_DATA) $(srcdir)/crypto/ckey_direct.sh.sample '$(DESTDIR)$(datadir)/auth_commands/ckey_direct.sh.sample'
@@ -315,9 +312,6 @@ endif
 	rm -f '$(DESTDIR)$(datadir)/pg_hba.conf.sample' \
 	      '$(DESTDIR)$(datadir)/pg_ident.conf.sample' \
 	      '$(DESTDIR)$(datadir)/postgresql.conf.sample' 
-	# Begin - ReqID:SRS-SECURITY-AUDIT
-	rm -f '$(DESTDIR)$(datadir)/sec_pg.conf.sample'
-	# End - ReqID:SRS-SECURITY-AUDIT
 	# BEGIN - SRS-SECURITY-TDE
 	rm -f '$(DESTDIR)$(datadir)/postgresql.conf.sample' \
 	      '$(DESTDIR)$(datadir)/auth_commands/ckey_aws.sh.sample' \
