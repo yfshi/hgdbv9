@@ -1361,3 +1361,20 @@ insert into enum_operator values (1);
 insert into enum_operator values (2);
 select binary(status) from enum_operator;
 drop table enum_operator;
+
+--bug5762
+create table enum_int_binary_ops ( enum_col enum('a', 'b', 'c', 'd'), sm_int smallint, int_val int, big_int bigint ); 
+insert into enum_int_binary_ops values ('a', 1, 1, 1), ('b', 2, 2, 2), ('c', 3, 3, 3), ('d', 4, 4, 4), (null, null, null, null); 
+set sql_mode='PIPES_AS_CONCAT';
+
+SELECT 
+  (sm_int || enum_col)  AS int2_cat_enum, 
+  (int_val || enum_col) AS int4_cat_enum,
+  (big_int || enum_col) AS int8_cat_enum,
+  (enum_col || sm_int)  AS enum_cat_int2, 
+  (enum_col || int_val) AS enum_cat_int4,
+  (enum_col || big_int) AS enum_cat_int8,
+  (enum_col || 'hhhhhhhh') AS enum_cat_text,
+  ('hhhhhhhh' || enum_col) AS text_cat_enum
+FROM enum_int_binary_ops;
+drop table enum_int_binary_ops;

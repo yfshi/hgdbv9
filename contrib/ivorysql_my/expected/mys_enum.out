@@ -4542,3 +4542,27 @@ select binary(status) from enum_operator;
 (2 rows)
 
 drop table enum_operator;
+--bug5762
+create table enum_int_binary_ops ( enum_col enum('a', 'b', 'c', 'd'), sm_int smallint, int_val int, big_int bigint ); 
+insert into enum_int_binary_ops values ('a', 1, 1, 1), ('b', 2, 2, 2), ('c', 3, 3, 3), ('d', 4, 4, 4), (null, null, null, null); 
+set sql_mode='PIPES_AS_CONCAT';
+SELECT 
+  (sm_int || enum_col)  AS int2_cat_enum, 
+  (int_val || enum_col) AS int4_cat_enum,
+  (big_int || enum_col) AS int8_cat_enum,
+  (enum_col || sm_int)  AS enum_cat_int2, 
+  (enum_col || int_val) AS enum_cat_int4,
+  (enum_col || big_int) AS enum_cat_int8,
+  (enum_col || 'hhhhhhhh') AS enum_cat_text,
+  ('hhhhhhhh' || enum_col) AS text_cat_enum
+FROM enum_int_binary_ops;
+ int2_cat_enum | int4_cat_enum | int8_cat_enum | enum_cat_int2 | enum_cat_int4 | enum_cat_int8 | enum_cat_text | text_cat_enum 
+---------------+---------------+---------------+---------------+---------------+---------------+---------------+---------------
+ 1a            | 1a            | 1a            | a1            | a1            | a1            | ahhhhhhhh     | hhhhhhhha
+ 2b            | 2b            | 2b            | b2            | b2            | b2            | bhhhhhhhh     | hhhhhhhhb
+ 3c            | 3c            | 3c            | c3            | c3            | c3            | chhhhhhhh     | hhhhhhhhc
+ 4d            | 4d            | 4d            | d4            | d4            | d4            | dhhhhhhhh     | hhhhhhhhd
+               |               |               |               |               |               |               | 
+(5 rows)
+
+drop table enum_int_binary_ops;
