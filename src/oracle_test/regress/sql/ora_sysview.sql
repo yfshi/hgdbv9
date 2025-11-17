@@ -126,6 +126,36 @@ select table_name, column_name, data_type from all_tab_cols where upper(table_na
 purge recyclebin;
 set ivorysql.enable_recycle_bin = off;
 
+-- test whether string storaged by byte length or char length
+-- byte length
+create table sysview_tab_cols_tb(name varchar(3));
+insert into sysview_tab_cols_tb values('你好呀');
+drop table sysview_tab_cols_tb;
+
+create table sysview_tab_cols_tb(name char(3));
+insert into sysview_tab_cols_tb values('你好呀');
+drop table sysview_tab_cols_tb;
+
+create table sysview_tab_cols_tb(name oracharbyte(3));
+insert into sysview_tab_cols_tb values('你好呀');
+drop table sysview_tab_cols_tb;
+
+create table sysview_tab_cols_tb(name oravarcharbyte(3));
+insert into sysview_tab_cols_tb values('你好呀');
+drop table sysview_tab_cols_tb;
+
+-- char length
+create table sysview_tab_cols_tb(name bpchar(3));
+insert into sysview_tab_cols_tb values('你好呀');
+drop table sysview_tab_cols_tb;
+
+create table sysview_tab_cols_tb(name oracharchar(3));
+insert into sysview_tab_cols_tb values('你好呀');
+drop table sysview_tab_cols_tb;
+
+create table sysview_tab_cols_tb(name oravarcharchar(3));
+insert into sysview_tab_cols_tb values('你好呀');
+drop table sysview_tab_cols_tb;
 /****************************test xxx_tab_columns************************************/
 set ivorysql.enable_recycle_bin = on;
 purge recyclebin;

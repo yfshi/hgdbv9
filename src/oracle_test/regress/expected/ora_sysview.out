@@ -163,7 +163,7 @@ from all_tab_cols where upper(table_name) = 'SYSVIEW_TAB_COLS_TB1' order by colu
  SYSVIEW_TAB_COLS_TB1 | COL16       | NUMERIC        | 0           | 13             | 9          | Y        | 16        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 16                 | COL16              | NO              | NO
  SYSVIEW_TAB_COLS_TB1 | COL17       | FLOAT4         | 4           | 7              |            | Y        | 17        |                |              | 100       | UTF8               | 0                    | 4           |             |           | NO            | NO             | 17                 | COL17              | NO              | NO
  SYSVIEW_TAB_COLS_TB1 | COL18       | INT2           | 2           |                |            | Y        | 18        |                |              | 100       | UTF8               | 0                    | 2           |             |           | NO            | NO             | 18                 | COL18              | NO              | NO
- SYSVIEW_TAB_COLS_TB1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              | 100       | UTF8               | 0                    | 0           |             | C         | NO            | NO             | 19                 | COL19              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              | 100       | UTF8               | 0                    | 0           |             | B         | NO            | NO             | 19                 | COL19              | NO              | NO
  SYSVIEW_TAB_COLS_TB1 | COL20       | ORATIMESTAMP   | 8           |                |            | Y        | 20        |                |              | 100       | UTF8               | 2                    | 8           |             |           | NO            | NO             | 20                 | COL20              | NO              | NO
  SYSVIEW_TAB_COLS_TB1 | COL21       | ORATIMESTAMPTZ | 8           |                |            | Y        | 21        |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 21                 | COL21              | NO              | NO
  SYSVIEW_TAB_COLS_TB1 | COL22       | UUID           | 16          |                |            | Y        | 22        |                |              | 100       | UTF8               | 0                    | 16          |             |           | NO            | NO             | 22                 | COL22              | NO              | NO
@@ -197,7 +197,7 @@ from all_tab_cols where upper(table_name) = 'SYSVIEW_TAB_COLS_V1' order by colum
  SYSVIEW_TAB_COLS_V1 | COL16       | NUMERIC        | 0           | 13             | 9          | Y        | 16        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 16                 | COL16              | NO              | NO
  SYSVIEW_TAB_COLS_V1 | COL17       | FLOAT4         | 4           | 7              |            | Y        | 17        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 17                 | COL17              | NO              | NO
  SYSVIEW_TAB_COLS_V1 | COL18       | INT2           | 2           |                |            | Y        | 18        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 18                 | COL18              | NO              | NO
- SYSVIEW_TAB_COLS_V1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              |           | UTF8               | 0                    |             |             | C         | NO            | NO             | 19                 | COL19              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              |           | UTF8               | 0                    |             |             | B         | NO            | NO             | 19                 | COL19              | NO              | NO
  SYSVIEW_TAB_COLS_V1 | COL20       | ORATIMESTAMP   | 8           |                |            | Y        | 20        |                |              |           | UTF8               | 2                    |             |             |           | NO            | NO             | 20                 | COL20              | NO              | NO
  SYSVIEW_TAB_COLS_V1 | COL21       | ORATIMESTAMPTZ | 8           |                |            | Y        | 21        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 21                 | COL21              | NO              | NO
  SYSVIEW_TAB_COLS_V1 | COL22       | UUID           | 16          |                |            | Y        | 22        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 22                 | COL22              | NO              | NO
@@ -215,6 +215,34 @@ select table_name, column_name, data_type from all_tab_cols where upper(table_na
 
 purge recyclebin;
 set ivorysql.enable_recycle_bin = off;
+-- test whether string storaged by byte length or char length
+-- byte length
+create table sysview_tab_cols_tb(name varchar(3));
+insert into sysview_tab_cols_tb values('你好呀');
+ERROR:  value too long for type varchar2(3 byte)
+drop table sysview_tab_cols_tb;
+create table sysview_tab_cols_tb(name char(3));
+insert into sysview_tab_cols_tb values('你好呀');
+ERROR:  value too long for type char(3 byte)
+drop table sysview_tab_cols_tb;
+create table sysview_tab_cols_tb(name oracharbyte(3));
+insert into sysview_tab_cols_tb values('你好呀');
+ERROR:  value too long for type char(3 byte)
+drop table sysview_tab_cols_tb;
+create table sysview_tab_cols_tb(name oravarcharbyte(3));
+insert into sysview_tab_cols_tb values('你好呀');
+ERROR:  value too long for type varchar2(3 byte)
+drop table sysview_tab_cols_tb;
+-- char length
+create table sysview_tab_cols_tb(name bpchar(3));
+insert into sysview_tab_cols_tb values('你好呀');
+drop table sysview_tab_cols_tb;
+create table sysview_tab_cols_tb(name oracharchar(3));
+insert into sysview_tab_cols_tb values('你好呀');
+drop table sysview_tab_cols_tb;
+create table sysview_tab_cols_tb(name oravarcharchar(3));
+insert into sysview_tab_cols_tb values('你好呀');
+drop table sysview_tab_cols_tb;
 /****************************test xxx_tab_columns************************************/
 set ivorysql.enable_recycle_bin = on;
 purge recyclebin;
@@ -271,7 +299,7 @@ from all_tab_columns where upper(table_name) = 'SYSVIEW_TAB_COLUMNS_TB1'  order 
  SYSVIEW_TAB_COLUMNS_TB1 | COL16       | NUMERIC        | 0           | 13             | 9          | Y        | 16        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_TB1 | COL17       | FLOAT4         | 4           | 7              |            | Y        | 17        |                |              | 100       | UTF8               | 0                    | 4           |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_TB1 | COL18       | INT2           | 2           |                |            | Y        | 18        |                |              | 100       | UTF8               | 0                    | 2           |             |           | NO              | NO
- SYSVIEW_TAB_COLUMNS_TB1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              | 100       | UTF8               | 0                    | 0           |             | C         | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              | 100       | UTF8               | 0                    | 0           |             | B         | NO              | NO
  SYSVIEW_TAB_COLUMNS_TB1 | COL20       | ORATIMESTAMP   | 8           |                |            | Y        | 20        |                |              | 100       | UTF8               | 2                    | 8           |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_TB1 | COL21       | ORATIMESTAMPTZ | 8           |                |            | Y        | 21        |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_TB1 | COL22       | UUID           | 16          |                |            | Y        | 22        |                |              | 100       | UTF8               | 0                    | 16          |             |           | NO              | NO
@@ -305,7 +333,7 @@ from all_tab_columns where upper(table_name) = 'SYSVIEW_TAB_COLUMNS_V1'  order b
  SYSVIEW_TAB_COLUMNS_V1 | COL16       | NUMERIC        | 0           | 13             | 9          | Y        | 16        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_V1 | COL17       | FLOAT4         | 4           | 7              |            | Y        | 17        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_V1 | COL18       | INT2           | 2           |                |            | Y        | 18        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- SYSVIEW_TAB_COLUMNS_V1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              |           | UTF8               | 0                    |             |             | C         | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              |           | UTF8               | 0                    |             |             | B         | NO              | NO
  SYSVIEW_TAB_COLUMNS_V1 | COL20       | ORATIMESTAMP   | 8           |                |            | Y        | 20        |                |              |           | UTF8               | 2                    |             |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_V1 | COL21       | ORATIMESTAMPTZ | 8           |                |            | Y        | 21        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_V1 | COL22       | UUID           | 16          |                |            | Y        | 22        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
