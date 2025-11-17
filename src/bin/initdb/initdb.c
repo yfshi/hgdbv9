@@ -227,7 +227,6 @@ static int	n_buffers = 50;
 static const char *dynamic_shared_memory_type = NULL;
 static const char *default_timezone = NULL;
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
-static char *secpg_conf_file; /*pg_audit*/
 static char *auditDir = NULL;
 /* End - ReqID:SRS-SECURITY-AUDIT */
 static bool enable_blankspace_compare = true;	/* SRS-MISC-COMPATDM-SQL */
@@ -312,6 +311,7 @@ static char **replace_token(char **lines,
 static char **filter_lines_with_token(char **lines, const char *token);
 #endif
 static char **readfile(const char *path);
+static char **readfile_append(const char *path, char **conflines); /* BUG#6225 */
 static void writefile(char *path, char **lines);
 static FILE *popen_check(const char *command, const char *mode);
 static char *get_id(void);
@@ -598,6 +598,61 @@ readfile(const char *path)
 	fclose(infile);
 
 	return result;
+}
+
+
+/*
+ * BUG#6225
+ * get the lines from a text file and append to conflines
+ */
+static char **
+readfile_append(const char *path, char **conflines)
+{
+	FILE	   *infile;
+	StringInfoData line;
+	int			maxlines;
+	int			n;
+
+	if (conflines == NULL)
+	{
+		pg_log_error("conflines must not be NULL in readfile_append");
+		exit(1);
+	}
+
+	if ((infile = fopen(path, "r")) == NULL)
+	{
+		pg_log_error("could not open file \"%s\" for reading: %m", path);
+		exit(1);
+	}
+
+	initStringInfo(&line);
+
+	maxlines = 0;
+	while (conflines[maxlines] != NULL)
+	{
+		maxlines++;
+	}
+
+	n = maxlines;
+	while (pg_get_line_buf(infile, &line))
+	{
+		/* make sure there will be room for a trailing NULL pointer */
+		if (n >= maxlines - 1)
+		{
+			maxlines *= 2;
+			conflines = (char **) pg_realloc(conflines, maxlines * sizeof(char *));
+		}
+
+		conflines[n++] = pg_strdup(line.data);
+	}
+	
+	conflines[n] = NULL;
+
+	pfree(line.data);
+
+	fclose(infile);
+
+	return conflines;
 }
 
 /*
@@ -979,60 +1034,6 @@ set_null_conf(void)
 		exit(1);
 	}
 	free(path);
-
-/* Begin - ReqID:SRS-SECURITY-AUDIT */
-	path = psprintf("%s/sec_pg.conf", pg_data);
-	conf_file = fopen(path, PG_BINARY_W);
-	if (conf_file == NULL)
-	{
-		pg_log_error("could not open file \"%s\" for writing: %m", path);
-		exit(1);
-	}
-	if (fclose(conf_file))
-	{
-		pg_log_error("could not write file \"%s\": %m", path);
-		exit(1);
-	}
-	free(path);
-/* End - ReqID:SRS-SECURITY-AUDIT */
-	
-	/* BEGIN - SQL PARSER */
-	if (database_mode == DB_ORACLE)
-	{
-		path = psprintf("%s/ivorysql.oracle.conf", pg_data);
-		conf_file = fopen(path, PG_BINARY_W);
-		if (conf_file == NULL)
-		{
-			pg_log_error("could not open file \"%s\" for writing: %m", path);
-			exit(1);
-		}
-		if (fclose(conf_file))
-		{
-			pg_log_error("could not write file \"%s\": %m", path);
-			exit(1);
-		}
-		free(path);
-	}
-	/* END - SQL PARSER */
-
-	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	if (database_mode == DB_MYSQL)
-	{
-		path = psprintf("%s/ivorysql.mysql.conf", pg_data);
-		conf_file = fopen(path, PG_BINARY_W);
-		if (conf_file == NULL)
-		{
-			pg_log_error("could not open file \"%s\" for writing: %m", path);
-			exit(1);
-		}
-		if (fclose(conf_file))
-		{
-			pg_log_error("could not write file \"%s\": %m", path);
-			exit(1);
-		}
-		free(path);
-	}
-	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 }
 
 /*
@@ -1437,60 +1438,36 @@ setup_config(void)
 								  "log_file_mode = 0640");
 	}
 
-/* Begin - ReqID:SRS-SECURITY-AUDIT */
-	conflines = replace_token(conflines,
-							  "#include_if_exists = 'sec_pg.conf'",
-							  "include_if_exists = 'sec_pg.conf'");
-/* End - ReqID:SRS-SECURITY-AUDIT */
+	/* Begin - BUG#6225 */
+	{
+        char *token = "#shared_preload_libraries = ''";
+		char *replacement = "#shared_preload_libraries = ''";
 
-	/* Begin - BUG#0000065 */
-	/*
-	 * In pg mode we don't need ivorysql configuration file
-	 */
-	if (database_mode == DB_PG)
-	{
-		conflines = replace_token(conflines,
-							  "include_if_exists = 'ivorysql.oracle.conf'",
-							  "#include_if_exists = 'ivorysql.oracle.conf'");
-		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		conflines = replace_token(conflines,
-							  "include_if_exists = 'ivorysql.mysql.conf'",
-							  "#include_if_exists = 'ivorysql.mysql.conf'");
-		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-	}
-	/* End - BUG#0000065 */
-	/* Begin - ReqID:SRS-SECURITY-POWERS */
-	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	{
-        char *token = "shared_preload_libraries = 'gb18030_2022'";
 #ifdef USE_SQLITE
-		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw, credcheck, ora_synonym, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT	/* ReqID:SRS-SQL-SYNONYM */
+		if (database_mode == DB_PG)
+			replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw, credcheck, ora_synonym, hg_sysmac'";
+		else if (database_mode == DB_ORACLE)
+			replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, sqlite_fdw, credcheck, hg_sysmac'";
+		else if (database_mode == DB_MYSQL)
+			replacement = "shared_preload_libraries = 'gb18030_2022, libmysql_parser, ivorysql_my, pg_object, restricted_dba, pg_audit, sqlite_fdw, credcheck, hg_sysmac'";
 #else
-		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, credcheck, ora_synonym, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT	/* ReqID:SRS-SQL-SYNONYM */
+		if (database_mode == DB_PG)
+			replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, credcheck, ora_synonym, hg_sysmac'";
+		else if (database_mode == DB_ORACLE)
+			replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, credcheck, hg_sysmac'";
+		else if (database_mode == DB_MYSQL)
+			replacement = "shared_preload_libraries = 'gb18030_2022, libmysql_parser, ivorysql_my, pg_object, restricted_dba, pg_audit, credcheck, hg_sysmac'";
 #endif
         conflines = replace_token(conflines,token, replacement);
 	}
-	/* End - ReqID:SRS-SECURITY-POWERS */
-	/* End - ReqID:SRS-SECURITY-POWERS */
-
-		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
-
-	snprintf(path, sizeof(path), "%s/postgresql.conf", pg_data);
-
-	writefile(path, conflines);
-	if (chmod(path, pg_file_create_mode) != 0)
-	{
-		pg_log_error("could not change permissions of \"%s\": %m", path);
-		exit(1);
-	}
+	/* End - BUG#6225 */
 
 	/* BEGIN - SQL PARSER */
 	if (database_mode == DB_ORACLE)
 	{
 		/* oracle compatibility conf file */
-		conflines = readfile(ora_conf_file);
-
-		snprintf(path, sizeof(path), "%s/ivorysql.oracle.conf", pg_data);
+		snprintf(path, sizeof(path), "%s/postgresql.conf", pg_data);
+		conflines = readfile_append(ora_conf_file, conflines); /* BUG#6225 */
 
 		/* BEGIN - BUG#M0000120 */
  		if (DEF_ORAPORT != 1521)
@@ -1507,65 +1484,17 @@ setup_config(void)
 			conflines = replace_token(conflines,"ivorysql.enable_blankspace_compare = off",repltok);
 		}
 		/* End - SRS-MISC-COMPATDM-SQL */
-
-		/* Begin - ReqID:SRS-SECURITY-POWERS */
-		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-		{
-			char *token = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym'";
-#ifdef USE_SQLITE
-			char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, sqlite_fdw, credcheck, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT
-#else
-			char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, credcheck, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT
-#endif
-			conflines = replace_token(conflines,token, replacement);
-		}
-		/* End - ReqID:SRS-SECURITY-POWERS */
-	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
-
-		writefile(path, conflines);
-		if (chmod(path, pg_file_create_mode) != 0)
-		{
-			pg_log_error("could not change permissions of \"%s\": %m", path);
-			exit(1);
-		}
 	}
 	/* END - SQL PARSER */
-
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	if (database_mode == DB_MYSQL)
+	else if (database_mode == DB_MYSQL)
 	{
 		/* mysql compatibility conf file */
-		conflines = readfile(mys_conf_file);
-
-		snprintf(path, sizeof(path), "%s/ivorysql.mysql.conf", pg_data);
-
-		/* Begin - ReqID:SRS-SECURITY-POWERS */
-		/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-		{
-	        char *token = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my'";
-#ifdef USE_SQLITE
-			char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, sqlite_fdw, credcheck, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT
-#else
-			char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, credcheck, hg_sysmac'"; //ReqID:SRS-SECURITY-AUDIT
-#endif
-	        conflines = replace_token(conflines,token, replacement);
-		}
-		/* End - ReqID:SRS-SECURITY-POWERS */
-		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
-
-		writefile(path, conflines);
-		if (chmod(path, pg_file_create_mode) != 0)
-		{
-			pg_log_error("could not change permissions of \"%s\": %m", path);
-			exit(1);
-		}
+		conflines = readfile_append(mys_conf_file, conflines); /* BUG#6225 */
 	}
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-/* Begin - ReqID:SRS-SECURITY-AUDIT */
-	/* sec_pg.conf */
 
-	conflines = readfile(secpg_conf_file);
-	snprintf(path, sizeof(path), "%s/sec_pg.conf", pg_data);
+	snprintf(path, sizeof(path), "%s/postgresql.conf", pg_data);
 
 	writefile(path, conflines);
 	if (chmod(path, pg_file_create_mode) != 0)
@@ -1573,7 +1502,6 @@ setup_config(void)
 		pg_log_error("could not change permissions of \"%s\": %m", path);
 		exit(1);
 	}
-/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/*
 	 * create the automatic configuration file to store the configuration
@@ -3184,9 +3112,6 @@ setup_data_file_paths(void)
 
 	set_input(&hba_file, "pg_hba.conf.sample");
 	set_input(&ident_file, "pg_ident.conf.sample");
-/* Begin - ReqID:SRS-SECURITY-AUDIT */
-	set_input(&secpg_conf_file, "sec_pg.conf.sample"); /* pg_audit */
-/* End - ReqID:SRS-SECURITY-AUDIT */
 	set_input(&conf_file, "postgresql.conf.sample");
 	set_input(&dictionary_file, "snowball_create.sql");
 	set_input(&info_schema_file, "information_schema.sql");
@@ -3228,9 +3153,6 @@ setup_data_file_paths(void)
 	check_input(bki_file);
 	check_input(hba_file);
 	check_input(ident_file);
-/* Begin - ReqID:SRS-SECURITY-AUDIT */
-	check_input(secpg_conf_file);
-/* End - ReqID:SRS-SECURITY-AUDIT */
 	check_input(conf_file);
 	check_input(dictionary_file);
 	check_input(info_schema_file);

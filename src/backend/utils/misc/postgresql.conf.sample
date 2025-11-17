@@ -728,7 +728,7 @@
 
 #local_preload_libraries = ''
 #session_preload_libraries = ''
-shared_preload_libraries = 'gb18030_2022'	# (change requires restart) # ReqID:SRS-SECURITY-IDENTITYAUTH
+#shared_preload_libraries = ''	# (change requires restart)
 #jit_provider = 'llvmjit'		# JIT library to use
 
 # - Other Defaults -
@@ -816,21 +816,8 @@ shared_preload_libraries = 'gb18030_2022'	# (change requires restart) # ReqID:SR
 # CUSTOMIZED OPTIONS
 #------------------------------------------------------------------------------
 
-# Add settings for extensions here
-# Begin - ReqID:SRS-SECURITY-IDENTITYAUTH
-credcheck.enable = off
-#credcheck.password_min_length = 8
-#credcheck.password_min_special = 1
-#credcheck.password_min_digit = 1
-#credcheck.password_min_upper = 1
-#credcheck.password_min_lower = 1
-# End - ReqID:SRS-SECURITY-IDENTITYAUTH
+#------------------------------------------------------------------------------
+# PG_AUDIT GUC parameters
+#------------------------------------------------------------------------------
+audit.sqlitedbpath = 'pgaudit/sqlite/sqlite.db'		# sqlite database path
 
-#------------------------------------------------------------------------------
-#COMPATIBLE LEVEL
-#------------------------------------------------------------------------------
-#Begin - ReqID:SRS-MISC-MYSQL-FRAME
-include_if_exists = 'ivorysql.oracle.conf'
-include_if_exists = 'ivorysql.mysql.conf'
-#End - ReqID:SRS-MISC-MYSQL-FRAME
-#include_if_exists = 'sec_pg.conf'

@@ -208,7 +208,7 @@ static int encrypted_password_allowed = 0;
 static float global_fail_num = -1;
 static int save_invalid_user = 1;
 
-static int is_enable = 1;
+static int is_enable = 0;
 
 /* In memory storage of auth failure history */
 typedef struct pgafHashKey
@@ -1576,7 +1576,7 @@ void _PG_init(void)
 
 	DefineCustomEnumVariable("credcheck.enable",
 							 gettext_noop("credcheck enabled"),
-							 NULL, &is_enable, true, guc_enum_entry,
+							 NULL, &is_enable, false, guc_enum_entry,
 							 PGC_SIGHUP, 0,
 							 guc_enum_check, NULL, NULL);
 

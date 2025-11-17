@@ -28,10 +28,9 @@ command_ok([ $ENV{PG_REGRESS}, '--config-auth', "$tempdir/data" ],
 my $node_port = get_free_port();
 my $ivr_node_port = get_free_port();
 open my $conf, '>>', "$tempdir/data/postgresql.conf";
-open my $ivrconf, '>>', "$tempdir/data/ivorysql.oracle.conf";
 print $conf "fsync = off\n";
 print $conf "port = $node_port\n";
-print $ivrconf "\nivorysql.port = $ivr_node_port\n";
+print $conf "\nivorysql.port = $ivr_node_port\n";
 print $conf TestLib::slurp_file($ENV{TEMP_CONFIG})
   if defined $ENV{TEMP_CONFIG};
 
@@ -45,7 +44,6 @@ else
 	print $conf "listen_addresses = '127.0.0.1'\n";
 }
 close $conf;
-close $ivrconf;
 my $ctlcmd = [
 	'pg_ctl', 'start', '-D', "$tempdir/data", '-l',
 	"$TestLib::log_path/001_start_stop_server.log"
