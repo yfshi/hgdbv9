@@ -842,4 +842,37 @@ from all_tab_partitions where upper(table_name) like('BIN$%') order by table_nam
 
 purge recyclebin;
 set ivorysql.enable_recycle_bin to off;
+
+-- partitioned table related (xxx_objects)
+create user sysview_objects_u1;
+create user sysview_objects_u2 superuser;
+
+\c - sysview_objects_u2
+
+create table sysview_objects_part(id int, age int, name text) partition by hash(id);
+create table sysview_objects_part1 partition of sysview_objects_part for values with(modulus 2, remainder 0) partition by hash(age);
+create table sysview_objects_part1_1 partition of sysview_objects_part1 for values with(modulus 2, remainder 0);
+create table sysview_objects_part1_2 partition of sysview_objects_part1 for values with(modulus 2, remainder 1);
+create table sysview_objects_part2 partition of sysview_objects_part for values with(modulus 2, remainder 1) partition by hash(age);
+create table sysview_objects_part2_1 partition of sysview_objects_part2 for values with(modulus 2, remainder 0);
+create table sysview_objects_part2_2 partition of sysview_objects_part2 for values with(modulus 2, remainder 1);
+
+grant select on sysview_objects_part1_2 to sysview_objects_u1;
+grant select on sysview_objects_part2 to sysview_objects_u1;
+
+\c - sysview_objects_u1
+set ivorysql.identifier_case_switch to interchange;
+select object_name, subobject_name, object_type from all_objects where UPPER(object_name) = 'SYSVIEW_OBJECTS_PART' order by object_name, subobject_name;
+select object_name, subobject_name, object_type from dba_objects where UPPER(object_name) = 'SYSVIEW_OBJECTS_PART' order by object_name, subobject_name;
+
+\c - sysview_objects_u2
+set ivorysql.identifier_case_switch to interchange;
+select object_name, subobject_name, object_type from all_objects where UPPER(object_name) = 'SYSVIEW_OBJECTS_PART' order by object_name, subobject_name;
+select object_name, subobject_name, object_type from dba_objects where UPPER(object_name) = 'SYSVIEW_OBJECTS_PART' order by object_name, subobject_name;
+
+revoke all on sysview_objects_part1_2 from sysview_objects_u1;
+revoke all on sysview_objects_part2 from sysview_objects_u1;
+
+drop table sysview_objects_part cascade;
+
 set ivorysql.identifier_case_switch to normal;
