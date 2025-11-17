@@ -10791,7 +10791,12 @@ CREATE OR REPLACE VIEW SYS.DBA_CONSTRAINTS AS
                 ELSE NULL
             END::varchar2(4000) AS search_condition_vc,
             SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
-            UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
+            SYS.ORA_CASE_TRANS(
+                CASE cons.contype
+                    WHEN 'f' THEN
+                        (SELECT unique_constraint_name FROM information_schema.referential_constraints WHERE constraint_name = cons.conname)
+                    ELSE NULL
+                END::varchar2)::varchar2(128) AS r_constraint_name,
             CASE cons.confdeltype
                 WHEN 'c' THEN 'CASCADE'
                 WHEN 'r' THEN 'RESTRICT'
@@ -10886,7 +10891,12 @@ CREATE OR REPLACE VIEW SYS.ALL_CONSTRAINTS AS
                 ELSE NULL
             END::varchar2(4000) AS search_condition_vc,
             SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
-            UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
+            SYS.ORA_CASE_TRANS(
+                CASE cons.contype
+                    WHEN 'f' THEN
+                        (SELECT unique_constraint_name FROM information_schema.referential_constraints WHERE constraint_name = cons.conname)
+                    ELSE NULL
+                END::varchar2)::varchar2(128) AS r_constraint_name,
             CASE cons.confdeltype
                 WHEN 'c' THEN 'CASCADE'
                 WHEN 'r' THEN 'RESTRICT'
@@ -10998,7 +11008,12 @@ CREATE OR REPLACE VIEW SYS.USER_CONSTRAINTS AS
                 ELSE NULL
             END::varchar2(4000) AS search_condition_vc,
             SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c_ref.relowner)::VARCHAR2)::VARCHAR2(128) AS r_owner,
-            UPPER((SELECT relname FROM pg_class WHERE oid = cons.confrelid))::varchar2(128) AS r_constraint_name,
+            SYS.ORA_CASE_TRANS(
+                CASE cons.contype
+                    WHEN 'f' THEN
+                        (SELECT unique_constraint_name FROM information_schema.referential_constraints WHERE constraint_name = cons.conname)
+                    ELSE NULL
+                END::varchar2)::varchar2(128) AS r_constraint_name,
             CASE cons.confdeltype
                 WHEN 'c' THEN 'CASCADE'
                 WHEN 'r' THEN 'RESTRICT'

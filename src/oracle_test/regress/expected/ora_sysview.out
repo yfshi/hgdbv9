@@ -1,3 +1,4 @@
+set ivorysql.identifier_case_switch to interchange;
 /****************************test xxx_tables************************************/
 set ivorysql.enable_ora_default_collation = on;
 set ivorysql.enable_recycle_bin = on;
@@ -9,7 +10,7 @@ analyze sysview_all_tables_tb1;
 select table_name, tablespace_name, pct_free, logging, num_rows, blocks, avg_row_len, partitioned, temporary, default_collation from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB1';
        table_name       | tablespace_name | pct_free | logging | num_rows | blocks | avg_row_len | partitioned | temporary | default_collation 
 ------------------------+-----------------+----------+---------+----------+--------+-------------+-------------+-----------+-------------------
- sysview_all_tables_tb1 | pg_default      | 25       | YES     | 10000    | 72     | 12          | NO          | N         | C
+ SYSVIEW_ALL_TABLES_TB1 | PG_DEFAULT      | 25       | YES     | 10000    | 72     | 12          | NO          | N         | C
 (1 row)
 
 drop table sysview_all_tables_tb1;
@@ -21,7 +22,7 @@ analyze sysview_all_tables_tb2;
 select table_name, tablespace_name, pct_free, logging, num_rows, blocks, avg_row_len, partitioned, temporary, default_collation, duration from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB2';
        table_name       | tablespace_name | pct_free | logging | num_rows | blocks | avg_row_len | partitioned | temporary | default_collation |    duration     
 ------------------------+-----------------+----------+---------+----------+--------+-------------+-------------+-----------+-------------------+-----------------
- sysview_all_tables_tb2 | pg_default      | 0        | NO      |          | 0      |             | NO          | Y         | USING_NLS_COMP    | SYS$TRANSACTION
+ SYSVIEW_ALL_TABLES_TB2 | PG_DEFAULT      | 0        | NO      |          | 0      |             | NO          | Y         | USING_NLS_COMP    | SYS$TRANSACTION
 (1 row)
 
 drop table sysview_all_tables_tb2;
@@ -31,7 +32,7 @@ analyze sysview_all_tables_tb3;
 select table_name, tablespace_name, pct_free, logging, num_rows, blocks, avg_row_len, partitioned, temporary, default_collation, duration from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB3';
        table_name       | tablespace_name | pct_free | logging | num_rows | blocks | avg_row_len | partitioned | temporary | default_collation |  duration   
 ------------------------+-----------------+----------+---------+----------+--------+-------------+-------------+-----------+-------------------+-------------
- sysview_all_tables_tb3 | pg_default      | 0        | NO      |          | 0      |             | NO          | Y         | USING_NLS_COMP    | SYS$SESSION
+ SYSVIEW_ALL_TABLES_TB3 | PG_DEFAULT      | 0        | NO      |          | 0      |             | NO          | Y         | USING_NLS_COMP    | SYS$SESSION
 (1 row)
 
 commit;
@@ -42,7 +43,7 @@ analyze sysview_all_tables_tb4;
 select table_name, tablespace_name, pct_free, logging, num_rows, blocks, avg_row_len, partitioned, temporary, default_collation, duration from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB4';
        table_name       | tablespace_name | pct_free | logging | num_rows | blocks | avg_row_len | partitioned | temporary | default_collation | duration 
 ------------------------+-----------------+----------+---------+----------+--------+-------------+-------------+-----------+-------------------+----------
- sysview_all_tables_tb4 | pg_default      | 0        | NO      | 10000    | 55     | 12          | NO          | N         | USING_NLS_COMP    | 
+ SYSVIEW_ALL_TABLES_TB4 | PG_DEFAULT      | 0        | NO      | 10000    | 55     | 12          | NO          | N         | USING_NLS_COMP    | 
 (1 row)
 
 drop table sysview_all_tables_tb4;
@@ -65,7 +66,7 @@ analyze;
 select table_name, tablespace_name, pct_free, logging, num_rows, blocks, avg_row_len, partitioned, temporary, default_collation, duration from all_tables where upper(table_name) like('SYSVIEW_ALL_TABLES_PART%');
         table_name        | tablespace_name | pct_free | logging | num_rows | blocks | avg_row_len | partitioned | temporary | default_collation | duration 
 --------------------------+-----------------+----------+---------+----------+--------+-------------+-------------+-----------+-------------------+----------
- sysview_all_tables_part1 | pg_default      | 0        | YES     | 4000     |        | 51          | YES         | N         | USING_NLS_COMP    | 
+ SYSVIEW_ALL_TABLES_PART1 | PG_DEFAULT      | 0        | YES     | 4000     |        | 51          | YES         | N         | USING_NLS_COMP    | 
 (1 row)
 
 drop table sysview_all_tables_part1;
@@ -77,14 +78,14 @@ HINT:  Set wal_level to logical before creating subscriptions.
 select table_name, logical_replication from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB5';
        table_name       | logical_replication 
 ------------------------+---------------------
- sysview_all_tables_tb5 | ENABLED
+ SYSVIEW_ALL_TABLES_TB5 | ENABLED
 (1 row)
 
 drop publication pub1;
 select table_name, logical_replication from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB5';
        table_name       | logical_replication 
 ------------------------+---------------------
- sysview_all_tables_tb5 | DISABLED
+ SYSVIEW_ALL_TABLES_TB5 | DISABLED
 (1 row)
 
 drop table sysview_all_tables_tb5;
@@ -93,7 +94,7 @@ create table sysview_all_tables_tb6(id int generated always as identity primary 
 select table_name, has_identity from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB6';
        table_name       | has_identity 
 ------------------------+--------------
- sysview_all_tables_tb6 | YES
+ SYSVIEW_ALL_TABLES_TB6 | YES
 (1 row)
 
 drop table sysview_all_tables_tb6;
@@ -101,7 +102,7 @@ NOTICE:  Not support relation kind S in recyclebin
 select table_name from all_tables where upper(table_name) like('SYSVIEW_ALL_TABLES%') or upper(table_name) like('BIN%');
        table_name       
 ------------------------
- sysview_all_tables_tb3
+ SYSVIEW_ALL_TABLES_TB3
 (1 row)
 
 set ivorysql.enable_ora_default_collation = off;
@@ -144,31 +145,31 @@ select table_name, column_name, data_type, data_length, data_precision, data_sca
 from all_tab_cols where upper(table_name) = 'SYSVIEW_TAB_COLS_TB1' order by column_id;
       table_name      | column_name |   data_type    | data_length | data_precision | data_scale | nullable | column_id | default_length | data_default | num_nulls | character_set_name | char_col_decl_length | avg_col_len | char_length | char_used | hidden_column | virtual_column | internal_column_id | qualified_col_name | default_on_null | identity_column 
 ----------------------+-------------+----------------+-------------+----------------+------------+----------+-----------+----------------+--------------+-----------+--------------------+----------------------+-------------+-------------+-----------+---------------+----------------+--------------------+--------------------+-----------------+-----------------
- sysview_tab_cols_tb1 | col1        | int8           | 8           |                |            | N        | 1         |                |              | 0         | UTF8               | 0                    | 8           |             |           | NO            | NO             | 1                  | col1               | NO              | YES
- sysview_tab_cols_tb1 | col2        | bit            | 1           |                |            | Y        | 2         |                |              | 100       | UTF8               | 1                    | 0           |             |           | NO            | NO             | 2                  | col2               | NO              | NO
- sysview_tab_cols_tb1 | col3        | bit            | 10          |                |            | Y        | 3         |                |              | 100       | UTF8               | 10                   | 0           |             |           | NO            | NO             | 3                  | col3               | NO              | NO
- sysview_tab_cols_tb1 | col4        | bool           | 1           |                |            | Y        | 4         |                |              | 100       | UTF8               | 0                    | 1           |             |           | NO            | NO             | 4                  | col4               | NO              | NO
- sysview_tab_cols_tb1 | col5        | bytea          | 0           |                |            | Y        | 5         |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 5                  | col5               | NO              | NO
- sysview_tab_cols_tb1 | col6        | oracharbyte    | 44          |                |            | N        | 6         |                |              | 0         | UTF8               | 11                   | 12          | 11          | B         | NO            | NO             | 6                  | col6               | NO              | NO
- sysview_tab_cols_tb1 | col7        | oravarcharbyte | 48          |                |            | Y        | 7         | 9              | qwertyuio    | 0         | UTF8               | 12                   | 10          | 12          | B         | NO            | NO             | 7                  | col7               | YES             | NO
- sysview_tab_cols_tb1 | col8        | oradate        | 8           |                |            | Y        | 8         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 8                  | col8               | NO              | NO
- sysview_tab_cols_tb1 | col9        | float8         | 8           | 15             |            | Y        | 9         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 9                  | col9               | NO              | NO
- sysview_tab_cols_tb1 | col10       | inet           | 0           |                |            | Y        | 10        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 10                 | col10              | NO              | NO
- sysview_tab_cols_tb1 | col11       | int4           | 4           |                |            | Y        | 11        |                |              | 0         | UTF8               | 0                    | 4           |             |           | NO            | NO             | 11                 | col11              | NO              | NO
- sysview_tab_cols_tb1 | col12       | json           | 0           |                |            | Y        | 12        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 12                 | col12              | NO              | NO
- sysview_tab_cols_tb1 | col13       | jsonb          | 0           |                |            | Y        | 13        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 13                 | col13              | NO              | NO
- sysview_tab_cols_tb1 | col14       | macaddr        | 6           |                |            | Y        | 14        |                |              | 100       | UTF8               | 0                    | 6           |             |           | NO            | NO             | 14                 | col14              | NO              | NO
- sysview_tab_cols_tb1 | col15       | money          | 8           |                |            | Y        | 15        |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 15                 | col15              | NO              | NO
- sysview_tab_cols_tb1 | col16       | numeric        | 0           | 13             | 9          | Y        | 16        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 16                 | col16              | NO              | NO
- sysview_tab_cols_tb1 | col17       | float4         | 4           | 7              |            | Y        | 17        |                |              | 100       | UTF8               | 0                    | 4           |             |           | NO            | NO             | 17                 | col17              | NO              | NO
- sysview_tab_cols_tb1 | col18       | int2           | 2           |                |            | Y        | 18        |                |              | 100       | UTF8               | 0                    | 2           |             |           | NO            | NO             | 18                 | col18              | NO              | NO
- sysview_tab_cols_tb1 | col19       | text           | 0           |                |            | Y        | 19        |                |              | 100       | UTF8               | 0                    | 0           |             | C         | NO            | NO             | 19                 | col19              | NO              | NO
- sysview_tab_cols_tb1 | col20       | oratimestamp   | 8           |                |            | Y        | 20        |                |              | 100       | UTF8               | 2                    | 8           |             |           | NO            | NO             | 20                 | col20              | NO              | NO
- sysview_tab_cols_tb1 | col21       | oratimestamptz | 8           |                |            | Y        | 21        |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 21                 | col21              | NO              | NO
- sysview_tab_cols_tb1 | col22       | uuid           | 16          |                |            | Y        | 22        |                |              | 100       | UTF8               | 0                    | 16          |             |           | NO            | NO             | 22                 | col22              | NO              | NO
- sysview_tab_cols_tb1 | col23       | int4           | 4           |                |            | Y        | 23        | 11             | (col11 * 2)  | 0         | UTF8               | 0                    | 4           |             |           | NO            | YES            | 23                 | col23              | YES             | NO
- sysview_tab_cols_tb1 | col24       | int4           | 4           |                |            | Y        | 24        | 11             | (col11 * 3)  | 0         | UTF8               | 0                    | 4           |             |           | NO            | YES            | 24                 | col24              | YES             | NO
- sysview_tab_cols_tb1 | col25       | int4           | 4           |                |            | Y        | 25        |                |              | 100       | UTF8               | 0                    | 4           |             |           | YES           | NO             | 25                 | col25              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL1        | INT8           | 8           |                |            | N        | 1         |                |              | 0         | UTF8               | 0                    | 8           |             |           | NO            | NO             | 1                  | COL1               | NO              | YES
+ SYSVIEW_TAB_COLS_TB1 | COL2        | BIT            | 1           |                |            | Y        | 2         |                |              | 100       | UTF8               | 1                    | 0           |             |           | NO            | NO             | 2                  | COL2               | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL3        | BIT            | 10          |                |            | Y        | 3         |                |              | 100       | UTF8               | 10                   | 0           |             |           | NO            | NO             | 3                  | COL3               | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL4        | BOOL           | 1           |                |            | Y        | 4         |                |              | 100       | UTF8               | 0                    | 1           |             |           | NO            | NO             | 4                  | COL4               | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL5        | BYTEA          | 0           |                |            | Y        | 5         |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 5                  | COL5               | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL6        | ORACHARBYTE    | 44          |                |            | N        | 6         |                |              | 0         | UTF8               | 11                   | 12          | 11          | B         | NO            | NO             | 6                  | COL6               | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL7        | ORAVARCHARBYTE | 48          |                |            | Y        | 7         | 9              | qwertyuio    | 0         | UTF8               | 12                   | 10          | 12          | B         | NO            | NO             | 7                  | COL7               | YES             | NO
+ SYSVIEW_TAB_COLS_TB1 | COL8        | ORADATE        | 8           |                |            | Y        | 8         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 8                  | COL8               | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL9        | FLOAT8         | 8           | 15             |            | Y        | 9         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 9                  | COL9               | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL10       | INET           | 0           |                |            | Y        | 10        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 10                 | COL10              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL11       | INT4           | 4           |                |            | Y        | 11        |                |              | 0         | UTF8               | 0                    | 4           |             |           | NO            | NO             | 11                 | COL11              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL12       | JSON           | 0           |                |            | Y        | 12        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 12                 | COL12              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL13       | JSONB          | 0           |                |            | Y        | 13        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 13                 | COL13              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL14       | MACADDR        | 6           |                |            | Y        | 14        |                |              | 100       | UTF8               | 0                    | 6           |             |           | NO            | NO             | 14                 | COL14              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL15       | MONEY          | 8           |                |            | Y        | 15        |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 15                 | COL15              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL16       | NUMERIC        | 0           | 13             | 9          | Y        | 16        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 16                 | COL16              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL17       | FLOAT4         | 4           | 7              |            | Y        | 17        |                |              | 100       | UTF8               | 0                    | 4           |             |           | NO            | NO             | 17                 | COL17              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL18       | INT2           | 2           |                |            | Y        | 18        |                |              | 100       | UTF8               | 0                    | 2           |             |           | NO            | NO             | 18                 | COL18              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              | 100       | UTF8               | 0                    | 0           |             | C         | NO            | NO             | 19                 | COL19              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL20       | ORATIMESTAMP   | 8           |                |            | Y        | 20        |                |              | 100       | UTF8               | 2                    | 8           |             |           | NO            | NO             | 20                 | COL20              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL21       | ORATIMESTAMPTZ | 8           |                |            | Y        | 21        |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 21                 | COL21              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL22       | UUID           | 16          |                |            | Y        | 22        |                |              | 100       | UTF8               | 0                    | 16          |             |           | NO            | NO             | 22                 | COL22              | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL23       | INT4           | 4           |                |            | Y        | 23        | 11             | (col11 * 2)  | 0         | UTF8               | 0                    | 4           |             |           | NO            | YES            | 23                 | COL23              | YES             | NO
+ SYSVIEW_TAB_COLS_TB1 | COL24       | INT4           | 4           |                |            | Y        | 24        | 11             | (col11 * 3)  | 0         | UTF8               | 0                    | 4           |             |           | NO            | YES            | 24                 | COL24              | YES             | NO
+ SYSVIEW_TAB_COLS_TB1 | COL25       | INT4           | 4           |                |            | Y        | 25        |                |              | 100       | UTF8               | 0                    | 4           |             |           | YES           | NO             | 25                 | COL25              | NO              | NO
 (25 rows)
 
 create view sysview_tab_cols_v1 as select * from sysview_tab_cols_tb1;
@@ -178,30 +179,30 @@ select table_name, column_name, data_type, data_length, data_precision, data_sca
 from all_tab_cols where upper(table_name) = 'SYSVIEW_TAB_COLS_V1' order by column_id;
      table_name      | column_name |   data_type    | data_length | data_precision | data_scale | nullable | column_id | default_length | data_default | num_nulls | character_set_name | char_col_decl_length | avg_col_len | char_length | char_used | hidden_column | virtual_column | internal_column_id | qualified_col_name | default_on_null | identity_column 
 ---------------------+-------------+----------------+-------------+----------------+------------+----------+-----------+----------------+--------------+-----------+--------------------+----------------------+-------------+-------------+-----------+---------------+----------------+--------------------+--------------------+-----------------+-----------------
- sysview_tab_cols_v1 | col1        | int8           | 8           |                |            | Y        | 1         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 1                  | col1               | NO              | NO
- sysview_tab_cols_v1 | col2        | bit            | 1           |                |            | Y        | 2         |                |              |           | UTF8               | 1                    |             |             |           | NO            | NO             | 2                  | col2               | NO              | NO
- sysview_tab_cols_v1 | col3        | bit            | 10          |                |            | Y        | 3         |                |              |           | UTF8               | 10                   |             |             |           | NO            | NO             | 3                  | col3               | NO              | NO
- sysview_tab_cols_v1 | col4        | bool           | 1           |                |            | Y        | 4         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 4                  | col4               | NO              | NO
- sysview_tab_cols_v1 | col5        | bytea          | 0           |                |            | Y        | 5         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 5                  | col5               | NO              | NO
- sysview_tab_cols_v1 | col6        | oracharbyte    | 44          |                |            | Y        | 6         |                |              |           | UTF8               | 11                   |             | 11          | B         | NO            | NO             | 6                  | col6               | NO              | NO
- sysview_tab_cols_v1 | col7        | oravarcharbyte | 48          |                |            | Y        | 7         |                |              |           | UTF8               | 12                   |             | 12          | B         | NO            | NO             | 7                  | col7               | NO              | NO
- sysview_tab_cols_v1 | col8        | oradate        | 8           |                |            | Y        | 8         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 8                  | col8               | NO              | NO
- sysview_tab_cols_v1 | col9        | float8         | 8           | 15             |            | Y        | 9         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 9                  | col9               | NO              | NO
- sysview_tab_cols_v1 | col10       | inet           | 0           |                |            | Y        | 10        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 10                 | col10              | NO              | NO
- sysview_tab_cols_v1 | col11       | int4           | 4           |                |            | Y        | 11        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 11                 | col11              | NO              | NO
- sysview_tab_cols_v1 | col12       | json           | 0           |                |            | Y        | 12        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 12                 | col12              | NO              | NO
- sysview_tab_cols_v1 | col13       | jsonb          | 0           |                |            | Y        | 13        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 13                 | col13              | NO              | NO
- sysview_tab_cols_v1 | col14       | macaddr        | 6           |                |            | Y        | 14        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 14                 | col14              | NO              | NO
- sysview_tab_cols_v1 | col15       | money          | 8           |                |            | Y        | 15        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 15                 | col15              | NO              | NO
- sysview_tab_cols_v1 | col16       | numeric        | 0           | 13             | 9          | Y        | 16        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 16                 | col16              | NO              | NO
- sysview_tab_cols_v1 | col17       | float4         | 4           | 7              |            | Y        | 17        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 17                 | col17              | NO              | NO
- sysview_tab_cols_v1 | col18       | int2           | 2           |                |            | Y        | 18        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 18                 | col18              | NO              | NO
- sysview_tab_cols_v1 | col19       | text           | 0           |                |            | Y        | 19        |                |              |           | UTF8               | 0                    |             |             | C         | NO            | NO             | 19                 | col19              | NO              | NO
- sysview_tab_cols_v1 | col20       | oratimestamp   | 8           |                |            | Y        | 20        |                |              |           | UTF8               | 2                    |             |             |           | NO            | NO             | 20                 | col20              | NO              | NO
- sysview_tab_cols_v1 | col21       | oratimestamptz | 8           |                |            | Y        | 21        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 21                 | col21              | NO              | NO
- sysview_tab_cols_v1 | col22       | uuid           | 16          |                |            | Y        | 22        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 22                 | col22              | NO              | NO
- sysview_tab_cols_v1 | col23       | int4           | 4           |                |            | Y        | 23        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 23                 | col23              | NO              | NO
- sysview_tab_cols_v1 | col24       | int4           | 4           |                |            | Y        | 24        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 24                 | col24              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL1        | INT8           | 8           |                |            | Y        | 1         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 1                  | COL1               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL2        | BIT            | 1           |                |            | Y        | 2         |                |              |           | UTF8               | 1                    |             |             |           | NO            | NO             | 2                  | COL2               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL3        | BIT            | 10          |                |            | Y        | 3         |                |              |           | UTF8               | 10                   |             |             |           | NO            | NO             | 3                  | COL3               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL4        | BOOL           | 1           |                |            | Y        | 4         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 4                  | COL4               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL5        | BYTEA          | 0           |                |            | Y        | 5         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 5                  | COL5               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL6        | ORACHARBYTE    | 44          |                |            | Y        | 6         |                |              |           | UTF8               | 11                   |             | 11          | B         | NO            | NO             | 6                  | COL6               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL7        | ORAVARCHARBYTE | 48          |                |            | Y        | 7         |                |              |           | UTF8               | 12                   |             | 12          | B         | NO            | NO             | 7                  | COL7               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL8        | ORADATE        | 8           |                |            | Y        | 8         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 8                  | COL8               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL9        | FLOAT8         | 8           | 15             |            | Y        | 9         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 9                  | COL9               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL10       | INET           | 0           |                |            | Y        | 10        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 10                 | COL10              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL11       | INT4           | 4           |                |            | Y        | 11        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 11                 | COL11              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL12       | JSON           | 0           |                |            | Y        | 12        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 12                 | COL12              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL13       | JSONB          | 0           |                |            | Y        | 13        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 13                 | COL13              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL14       | MACADDR        | 6           |                |            | Y        | 14        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 14                 | COL14              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL15       | MONEY          | 8           |                |            | Y        | 15        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 15                 | COL15              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL16       | NUMERIC        | 0           | 13             | 9          | Y        | 16        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 16                 | COL16              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL17       | FLOAT4         | 4           | 7              |            | Y        | 17        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 17                 | COL17              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL18       | INT2           | 2           |                |            | Y        | 18        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 18                 | COL18              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              |           | UTF8               | 0                    |             |             | C         | NO            | NO             | 19                 | COL19              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL20       | ORATIMESTAMP   | 8           |                |            | Y        | 20        |                |              |           | UTF8               | 2                    |             |             |           | NO            | NO             | 20                 | COL20              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL21       | ORATIMESTAMPTZ | 8           |                |            | Y        | 21        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 21                 | COL21              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL22       | UUID           | 16          |                |            | Y        | 22        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 22                 | COL22              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL23       | INT4           | 4           |                |            | Y        | 23        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 23                 | COL23              | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL24       | INT4           | 4           |                |            | Y        | 24        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 24                 | COL24              | NO              | NO
 (24 rows)
 
 drop view sysview_tab_cols_v1;
@@ -252,31 +253,31 @@ select table_name, column_name, data_type, data_length, data_precision, data_sca
 from all_tab_columns where upper(table_name) = 'SYSVIEW_TAB_COLUMNS_TB1'  order by column_id;
        table_name        | column_name |   data_type    | data_length | data_precision | data_scale | nullable | column_id | default_length | data_default | num_nulls | character_set_name | char_col_decl_length | avg_col_len | char_length | char_used | default_on_null | identity_column 
 -------------------------+-------------+----------------+-------------+----------------+------------+----------+-----------+----------------+--------------+-----------+--------------------+----------------------+-------------+-------------+-----------+-----------------+-----------------
- sysview_tab_columns_tb1 | col1        | int8           | 8           |                |            | N        | 1         |                |              | 0         | UTF8               | 0                    | 8           |             |           | NO              | YES
- sysview_tab_columns_tb1 | col2        | bit            | 1           |                |            | Y        | 2         |                |              | 100       | UTF8               | 1                    | 0           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col3        | bit            | 10          |                |            | Y        | 3         |                |              | 100       | UTF8               | 10                   | 0           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col4        | bool           | 1           |                |            | Y        | 4         |                |              | 100       | UTF8               | 0                    | 1           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col5        | bytea          | 0           |                |            | Y        | 5         |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col6        | oracharbyte    | 44          |                |            | N        | 6         |                |              | 0         | UTF8               | 11                   | 12          | 11          | B         | NO              | NO
- sysview_tab_columns_tb1 | col7        | oravarcharbyte | 48          |                |            | Y        | 7         | 9              | qwertyuio    | 0         | UTF8               | 12                   | 10          | 12          | B         | YES             | NO
- sysview_tab_columns_tb1 | col8        | oradate        | 8           |                |            | Y        | 8         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col9        | float8         | 8           | 15             |            | Y        | 9         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col10       | inet           | 0           |                |            | Y        | 10        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col11       | int4           | 4           |                |            | Y        | 11        |                |              | 0         | UTF8               | 0                    | 4           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col12       | json           | 0           |                |            | Y        | 12        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col13       | jsonb          | 0           |                |            | Y        | 13        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col14       | macaddr        | 6           |                |            | Y        | 14        |                |              | 100       | UTF8               | 0                    | 6           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col15       | money          | 8           |                |            | Y        | 15        |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col16       | numeric        | 0           | 13             | 9          | Y        | 16        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col17       | float4         | 4           | 7              |            | Y        | 17        |                |              | 100       | UTF8               | 0                    | 4           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col18       | int2           | 2           |                |            | Y        | 18        |                |              | 100       | UTF8               | 0                    | 2           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col19       | text           | 0           |                |            | Y        | 19        |                |              | 100       | UTF8               | 0                    | 0           |             | C         | NO              | NO
- sysview_tab_columns_tb1 | col20       | oratimestamp   | 8           |                |            | Y        | 20        |                |              | 100       | UTF8               | 2                    | 8           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col21       | oratimestamptz | 8           |                |            | Y        | 21        |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
- sysview_tab_columns_tb1 | col22       | uuid           | 16          |                |            | Y        | 22        |                |              | 100       | UTF8               | 0                    | 16          |             |           | NO              | NO
- sysview_tab_columns_tb1 | col23       | int4           | 4           |                |            | Y        | 23        | 11             | (col11 * 2)  | 0         | UTF8               | 0                    | 4           |             |           | YES             | NO
- sysview_tab_columns_tb1 | col24       | int4           | 4           |                |            | Y        | 24        | 11             | (col11 * 3)  | 0         | UTF8               | 0                    | 4           |             |           | YES             | NO
- sysview_tab_columns_tb1 | col25       | int4           | 4           |                |            | Y        | 25        |                |              | 100       | UTF8               | 0                    | 4           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL1        | INT8           | 8           |                |            | N        | 1         |                |              | 0         | UTF8               | 0                    | 8           |             |           | NO              | YES
+ SYSVIEW_TAB_COLUMNS_TB1 | COL2        | BIT            | 1           |                |            | Y        | 2         |                |              | 100       | UTF8               | 1                    | 0           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL3        | BIT            | 10          |                |            | Y        | 3         |                |              | 100       | UTF8               | 10                   | 0           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL4        | BOOL           | 1           |                |            | Y        | 4         |                |              | 100       | UTF8               | 0                    | 1           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL5        | BYTEA          | 0           |                |            | Y        | 5         |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL6        | ORACHARBYTE    | 44          |                |            | N        | 6         |                |              | 0         | UTF8               | 11                   | 12          | 11          | B         | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL7        | ORAVARCHARBYTE | 48          |                |            | Y        | 7         | 9              | qwertyuio    | 0         | UTF8               | 12                   | 10          | 12          | B         | YES             | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL8        | ORADATE        | 8           |                |            | Y        | 8         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL9        | FLOAT8         | 8           | 15             |            | Y        | 9         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL10       | INET           | 0           |                |            | Y        | 10        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL11       | INT4           | 4           |                |            | Y        | 11        |                |              | 0         | UTF8               | 0                    | 4           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL12       | JSON           | 0           |                |            | Y        | 12        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL13       | JSONB          | 0           |                |            | Y        | 13        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL14       | MACADDR        | 6           |                |            | Y        | 14        |                |              | 100       | UTF8               | 0                    | 6           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL15       | MONEY          | 8           |                |            | Y        | 15        |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL16       | NUMERIC        | 0           | 13             | 9          | Y        | 16        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL17       | FLOAT4         | 4           | 7              |            | Y        | 17        |                |              | 100       | UTF8               | 0                    | 4           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL18       | INT2           | 2           |                |            | Y        | 18        |                |              | 100       | UTF8               | 0                    | 2           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              | 100       | UTF8               | 0                    | 0           |             | C         | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL20       | ORATIMESTAMP   | 8           |                |            | Y        | 20        |                |              | 100       | UTF8               | 2                    | 8           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL21       | ORATIMESTAMPTZ | 8           |                |            | Y        | 21        |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL22       | UUID           | 16          |                |            | Y        | 22        |                |              | 100       | UTF8               | 0                    | 16          |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL23       | INT4           | 4           |                |            | Y        | 23        | 11             | (col11 * 2)  | 0         | UTF8               | 0                    | 4           |             |           | YES             | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL24       | INT4           | 4           |                |            | Y        | 24        | 11             | (col11 * 3)  | 0         | UTF8               | 0                    | 4           |             |           | YES             | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL25       | INT4           | 4           |                |            | Y        | 25        |                |              | 100       | UTF8               | 0                    | 4           |             |           | NO              | NO
 (25 rows)
 
 create view sysview_tab_columns_v1 as select * from sysview_tab_columns_tb1;
@@ -286,30 +287,30 @@ select table_name, column_name, data_type, data_length, data_precision, data_sca
 from all_tab_columns where upper(table_name) = 'SYSVIEW_TAB_COLUMNS_V1'  order by column_id;
        table_name       | column_name |   data_type    | data_length | data_precision | data_scale | nullable | column_id | default_length | data_default | num_nulls | character_set_name | char_col_decl_length | avg_col_len | char_length | char_used | default_on_null | identity_column 
 ------------------------+-------------+----------------+-------------+----------------+------------+----------+-----------+----------------+--------------+-----------+--------------------+----------------------+-------------+-------------+-----------+-----------------+-----------------
- sysview_tab_columns_v1 | col1        | int8           | 8           |                |            | Y        | 1         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col2        | bit            | 1           |                |            | Y        | 2         |                |              |           | UTF8               | 1                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col3        | bit            | 10          |                |            | Y        | 3         |                |              |           | UTF8               | 10                   |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col4        | bool           | 1           |                |            | Y        | 4         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col5        | bytea          | 0           |                |            | Y        | 5         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col6        | oracharbyte    | 44          |                |            | Y        | 6         |                |              |           | UTF8               | 11                   |             | 11          | B         | NO              | NO
- sysview_tab_columns_v1 | col7        | oravarcharbyte | 48          |                |            | Y        | 7         |                |              |           | UTF8               | 12                   |             | 12          | B         | NO              | NO
- sysview_tab_columns_v1 | col8        | oradate        | 8           |                |            | Y        | 8         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col9        | float8         | 8           | 15             |            | Y        | 9         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col10       | inet           | 0           |                |            | Y        | 10        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col11       | int4           | 4           |                |            | Y        | 11        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col12       | json           | 0           |                |            | Y        | 12        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col13       | jsonb          | 0           |                |            | Y        | 13        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col14       | macaddr        | 6           |                |            | Y        | 14        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col15       | money          | 8           |                |            | Y        | 15        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col16       | numeric        | 0           | 13             | 9          | Y        | 16        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col17       | float4         | 4           | 7              |            | Y        | 17        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col18       | int2           | 2           |                |            | Y        | 18        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col19       | text           | 0           |                |            | Y        | 19        |                |              |           | UTF8               | 0                    |             |             | C         | NO              | NO
- sysview_tab_columns_v1 | col20       | oratimestamp   | 8           |                |            | Y        | 20        |                |              |           | UTF8               | 2                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col21       | oratimestamptz | 8           |                |            | Y        | 21        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col22       | uuid           | 16          |                |            | Y        | 22        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col23       | int4           | 4           |                |            | Y        | 23        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- sysview_tab_columns_v1 | col24       | int4           | 4           |                |            | Y        | 24        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL1        | INT8           | 8           |                |            | Y        | 1         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL2        | BIT            | 1           |                |            | Y        | 2         |                |              |           | UTF8               | 1                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL3        | BIT            | 10          |                |            | Y        | 3         |                |              |           | UTF8               | 10                   |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL4        | BOOL           | 1           |                |            | Y        | 4         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL5        | BYTEA          | 0           |                |            | Y        | 5         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL6        | ORACHARBYTE    | 44          |                |            | Y        | 6         |                |              |           | UTF8               | 11                   |             | 11          | B         | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL7        | ORAVARCHARBYTE | 48          |                |            | Y        | 7         |                |              |           | UTF8               | 12                   |             | 12          | B         | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL8        | ORADATE        | 8           |                |            | Y        | 8         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL9        | FLOAT8         | 8           | 15             |            | Y        | 9         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL10       | INET           | 0           |                |            | Y        | 10        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL11       | INT4           | 4           |                |            | Y        | 11        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL12       | JSON           | 0           |                |            | Y        | 12        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL13       | JSONB          | 0           |                |            | Y        | 13        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL14       | MACADDR        | 6           |                |            | Y        | 14        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL15       | MONEY          | 8           |                |            | Y        | 15        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL16       | NUMERIC        | 0           | 13             | 9          | Y        | 16        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL17       | FLOAT4         | 4           | 7              |            | Y        | 17        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL18       | INT2           | 2           |                |            | Y        | 18        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL19       | TEXT           | 0           |                |            | Y        | 19        |                |              |           | UTF8               | 0                    |             |             | C         | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL20       | ORATIMESTAMP   | 8           |                |            | Y        | 20        |                |              |           | UTF8               | 2                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL21       | ORATIMESTAMPTZ | 8           |                |            | Y        | 21        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL22       | UUID           | 16          |                |            | Y        | 22        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL23       | INT4           | 4           |                |            | Y        | 23        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL24       | INT4           | 4           |                |            | Y        | 24        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
 (24 rows)
 
 drop view sysview_tab_columns_v1;
@@ -331,8 +332,8 @@ comment on view sysview_tab_comments_v is 'This is test view comment';
 select table_name, table_type, comments, origin_con_id from all_tab_comments where upper(table_name) like ('SYSVIEW_TAB_COMMENTS_%') order by table_name;
        table_name        | table_type |          comments          | origin_con_id 
 -------------------------+------------+----------------------------+---------------
- sysview_tab_comments_tb | TABLE      | This is test table comment | 
- sysview_tab_comments_v  | VIEW       | This is test view comment  | 
+ SYSVIEW_TAB_COMMENTS_TB | TABLE      | This is test table comment | 
+ SYSVIEW_TAB_COMMENTS_V  | VIEW       | This is test view comment  | 
 (2 rows)
 
 drop view sysview_tab_comments_v;
@@ -378,8 +379,8 @@ select index_name, index_type, table_name, table_type, uniqueness, compression, 
 from all_indexes where upper(table_name) like('SYSVIEW_INDEXES_TEMP%') order by table_name, index_name;
           index_name          | index_type |        table_name        | table_type | uniqueness | compression | pct_free | logging | status | num_rows | partitioned | temporary |    duration     | funcidx_status | constraint_index 
 ------------------------------+------------+--------------------------+------------+------------+-------------+----------+---------+--------+----------+-------------+-----------+-----------------+----------------+------------------
- sysview_indexes_temp_tb1_idx | btree      | sysview_indexes_temp_tb1 | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$TRANSACTION |                | NO
- sysview_indexes_temp_tb2_idx | btree      | sysview_indexes_temp_tb2 | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$SESSION     |                | NO
+ SYSVIEW_INDEXES_TEMP_TB1_IDX | BTREE      | SYSVIEW_INDEXES_TEMP_TB1 | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$TRANSACTION |                | NO
+ SYSVIEW_INDEXES_TEMP_TB2_IDX | BTREE      | SYSVIEW_INDEXES_TEMP_TB2 | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$SESSION     |                | NO
 (2 rows)
 
 commit;
@@ -398,18 +399,18 @@ select index_name, index_type, table_name, table_type, uniqueness, compression, 
 from all_indexes where upper(table_name) like('SYSVIEW_INDEXES_%') order by table_name, index_name;
            index_name            | index_type |         table_name          | table_type | uniqueness | compression | pct_free | logging | status | num_rows | partitioned | temporary |    duration     | funcidx_status | constraint_index 
 ---------------------------------+------------+-----------------------------+------------+------------+-------------+----------+---------+--------+----------+-------------+-----------+-----------------+----------------+------------------
- sysview_indexes_part_idx        | btree      | sysview_indexes_part        | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | YES         | N         |                 |                | NO
- sysview_indexes_tb_brin_idx     | brin       | sysview_indexes_tb          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 1        | NO          | N         |                 |                | NO
- sysview_indexes_tb_func_idx     | btree      | sysview_indexes_tb          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 | ENABLED        | NO
- sysview_indexes_tb_gin_idx      | gin        | sysview_indexes_tb          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | NO
- sysview_indexes_tb_hash_idx     | hash       | sysview_indexes_tb          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | NO
- sysview_indexes_tb_idx1         | btree      | sysview_indexes_tb          | TABLE      | NONUNIQUE  | DEDUPLICATE | 35       | YES     | VALID  | 0        | NO          | N         |                 |                | NO
- sysview_indexes_tb_idx2         | btree      | sysview_indexes_tb          | TABLE      | UNIQUE     | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | NO
- sysview_indexes_tb_multi_idx    | btree      | sysview_indexes_tb          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | NO
- sysview_indexes_tb_pkey         | btree      | sysview_indexes_tb          | TABLE      | UNIQUE     | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | YES
- sysview_indexes_temp_tb1_idx    | btree      | sysview_indexes_temp_tb1    | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$TRANSACTION |                | NO
- sysview_indexes_temp_tb2_idx    | btree      | sysview_indexes_temp_tb2    | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$SESSION     |                | NO
- sysview_indexes_unlogged_tb_idx | btree      | sysview_indexes_unlogged_tb | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | N         |                 |                | NO
+ SYSVIEW_INDEXES_PART_IDX        | BTREE      | SYSVIEW_INDEXES_PART        | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | YES         | N         |                 |                | NO
+ SYSVIEW_INDEXES_TB_BRIN_IDX     | BRIN       | SYSVIEW_INDEXES_TB          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 1        | NO          | N         |                 |                | NO
+ SYSVIEW_INDEXES_TB_FUNC_IDX     | BTREE      | SYSVIEW_INDEXES_TB          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 | ENABLED        | NO
+ SYSVIEW_INDEXES_TB_GIN_IDX      | GIN        | SYSVIEW_INDEXES_TB          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | NO
+ SYSVIEW_INDEXES_TB_HASH_IDX     | HASH       | SYSVIEW_INDEXES_TB          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | NO
+ SYSVIEW_INDEXES_TB_IDX1         | BTREE      | SYSVIEW_INDEXES_TB          | TABLE      | NONUNIQUE  | DEDUPLICATE | 35       | YES     | VALID  | 0        | NO          | N         |                 |                | NO
+ SYSVIEW_INDEXES_TB_IDX2         | BTREE      | SYSVIEW_INDEXES_TB          | TABLE      | UNIQUE     | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | NO
+ SYSVIEW_INDEXES_TB_MULTI_IDX    | BTREE      | SYSVIEW_INDEXES_TB          | TABLE      | NONUNIQUE  | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | NO
+ SYSVIEW_INDEXES_TB_PKEY         | BTREE      | SYSVIEW_INDEXES_TB          | TABLE      | UNIQUE     | DISABLED    | 0        | YES     | VALID  | 0        | NO          | N         |                 |                | YES
+ SYSVIEW_INDEXES_TEMP_TB1_IDX    | BTREE      | SYSVIEW_INDEXES_TEMP_TB1    | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$TRANSACTION |                | NO
+ SYSVIEW_INDEXES_TEMP_TB2_IDX    | BTREE      | SYSVIEW_INDEXES_TEMP_TB2    | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | Y         | SYS$SESSION     |                | NO
+ SYSVIEW_INDEXES_UNLOGGED_TB_IDX | BTREE      | SYSVIEW_INDEXES_UNLOGGED_TB | TABLE      | NONUNIQUE  | DISABLED    | 0        | NO      | VALID  | 0        | NO          | N         |                 |                | NO
 (12 rows)
 
 drop table sysview_indexes_part cascade;
@@ -460,13 +461,13 @@ select index_name, table_name, column_name, column_position, column_length, char
 from all_ind_columns where upper(table_name) like('SYSVIEW_IND_COLUMNS_%') order by table_name, index_name;
              index_name              |           table_name            | column_name | column_position | column_length | char_length | descend | collated_column_id 
 -------------------------------------+---------------------------------+-------------+-----------------+---------------+-------------+---------+--------------------
- sysview_ind_columns_part_idx        | sysview_ind_columns_part        | id          | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_tb_idx1         | sysview_ind_columns_tb          | col1        | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_tb_idx2         | sysview_ind_columns_tb          | col2        | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_tb_pkey         | sysview_ind_columns_tb          | col1        | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_temp_tb1_idx    | sysview_ind_columns_temp_tb1    | id          | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_temp_tb2_idx    | sysview_ind_columns_temp_tb2    | id          | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_unlogged_tb_idx | sysview_ind_columns_unlogged_tb | col1        | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_PART_IDX        | SYSVIEW_IND_COLUMNS_PART        | ID          | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_IDX1         | SYSVIEW_IND_COLUMNS_TB          | COL1        | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_IDX2         | SYSVIEW_IND_COLUMNS_TB          | COL2        | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_PKEY         | SYSVIEW_IND_COLUMNS_TB          | COL1        | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TEMP_TB1_IDX    | SYSVIEW_IND_COLUMNS_TEMP_TB1    | ID          | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TEMP_TB2_IDX    | SYSVIEW_IND_COLUMNS_TEMP_TB2    | ID          | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_UNLOGGED_TB_IDX | SYSVIEW_IND_COLUMNS_UNLOGGED_TB | COL1        | 1               | 4             | 0           | ASC     | 
 (7 rows)
 
 commit;
@@ -484,20 +485,20 @@ select index_name, table_name, column_name, column_position, column_length, char
 from all_ind_columns where upper(table_name) like('SYSVIEW_IND_COLUMNS_%') order by table_name, index_name;
              index_name              |           table_name            | column_name | column_position | column_length | char_length | descend | collated_column_id 
 -------------------------------------+---------------------------------+-------------+-----------------+---------------+-------------+---------+--------------------
- sysview_ind_columns_part_idx        | sysview_ind_columns_part        | id          | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_tb_brin_idx     | sysview_ind_columns_tb          | col6        | 1               | 8             | 0           | ASC     | 
- sysview_ind_columns_tb_func_idx     | sysview_ind_columns_tb          | upper(col5) | 1               | 0             |             | ASC     | 
- sysview_ind_columns_tb_gin_idx      | sysview_ind_columns_tb          | col3        | 1               | 0             | 0           | ASC     | 
- sysview_ind_columns_tb_hash_idx     | sysview_ind_columns_tb          | col1        | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_tb_idx1         | sysview_ind_columns_tb          | col1        | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_tb_idx2         | sysview_ind_columns_tb          | col2        | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_tb_multi_idx    | sysview_ind_columns_tb          | col1        | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_tb_multi_idx    | sysview_ind_columns_tb          | col2        | 2               | 4             | 0           | ASC     | 
- sysview_ind_columns_tb_multi_idx    | sysview_ind_columns_tb          | col3        | 3               | 0             | 0           | ASC     | 
- sysview_ind_columns_tb_pkey         | sysview_ind_columns_tb          | col1        | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_temp_tb1_idx    | sysview_ind_columns_temp_tb1    | id          | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_temp_tb2_idx    | sysview_ind_columns_temp_tb2    | id          | 1               | 4             | 0           | ASC     | 
- sysview_ind_columns_unlogged_tb_idx | sysview_ind_columns_unlogged_tb | col1        | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_PART_IDX        | SYSVIEW_IND_COLUMNS_PART        | ID          | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_BRIN_IDX     | SYSVIEW_IND_COLUMNS_TB          | COL6        | 1               | 8             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_FUNC_IDX     | SYSVIEW_IND_COLUMNS_TB          | UPPER(COL5) | 1               | 0             |             | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_GIN_IDX      | SYSVIEW_IND_COLUMNS_TB          | COL3        | 1               | 0             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_HASH_IDX     | SYSVIEW_IND_COLUMNS_TB          | COL1        | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_IDX1         | SYSVIEW_IND_COLUMNS_TB          | COL1        | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_IDX2         | SYSVIEW_IND_COLUMNS_TB          | COL2        | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_MULTI_IDX    | SYSVIEW_IND_COLUMNS_TB          | COL1        | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_MULTI_IDX    | SYSVIEW_IND_COLUMNS_TB          | COL2        | 2               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_MULTI_IDX    | SYSVIEW_IND_COLUMNS_TB          | COL3        | 3               | 0             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TB_PKEY         | SYSVIEW_IND_COLUMNS_TB          | COL1        | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TEMP_TB1_IDX    | SYSVIEW_IND_COLUMNS_TEMP_TB1    | ID          | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_TEMP_TB2_IDX    | SYSVIEW_IND_COLUMNS_TEMP_TB2    | ID          | 1               | 4             | 0           | ASC     | 
+ SYSVIEW_IND_COLUMNS_UNLOGGED_TB_IDX | SYSVIEW_IND_COLUMNS_UNLOGGED_TB | COL1        | 1               | 4             | 0           | ASC     | 
 (14 rows)
 
 drop table sysview_ind_columns_part;
@@ -509,19 +510,19 @@ select column_name, column_position, column_length, char_length, descend, collat
 from all_ind_columns where upper(table_name) like('BIN%') or index_name like('BIN%') order by table_name, index_name;
  column_name | column_position | column_length | char_length | descend | collated_column_id 
 -------------+-----------------+---------------+-------------+---------+--------------------
- col1        | 1               | 4             | 0           | ASC     | 
- col1        | 1               | 4             | 0           | ASC     | 
- col2        | 1               | 4             | 0           | ASC     | 
- upper(col5) | 1               | 0             |             | ASC     | 
- col2        | 2               | 4             | 0           | ASC     | 
- col1        | 1               | 4             | 0           | ASC     | 
- col3        | 3               | 0             | 0           | ASC     | 
- col1        | 1               | 4             | 0           | ASC     | 
- col3        | 1               | 0             | 0           | ASC     | 
- col6        | 1               | 8             | 0           | ASC     | 
- chunk_seq   | 2               | 4             | 0           | ASC     | 
- chunk_id    | 1               | 4             | 0           | ASC     | 
- col1        | 1               | 4             | 0           | ASC     | 
+ COL1        | 1               | 4             | 0           | ASC     | 
+ COL1        | 1               | 4             | 0           | ASC     | 
+ COL2        | 1               | 4             | 0           | ASC     | 
+ UPPER(COL5) | 1               | 0             |             | ASC     | 
+ COL2        | 2               | 4             | 0           | ASC     | 
+ COL1        | 1               | 4             | 0           | ASC     | 
+ COL3        | 3               | 0             | 0           | ASC     | 
+ COL1        | 1               | 4             | 0           | ASC     | 
+ COL3        | 1               | 0             | 0           | ASC     | 
+ COL6        | 1               | 8             | 0           | ASC     | 
+ CHUNK_SEQ   | 2               | 4             | 0           | ASC     | 
+ CHUNK_ID    | 1               | 4             | 0           | ASC     | 
+ COL1        | 1               | 4             | 0           | ASC     | 
 (13 rows)
 
 set ivorysql.enable_recycle_bin to off;
@@ -538,21 +539,21 @@ select name, type, referenced_name, referenced_type, referenced_link_name, depen
 where upper(referenced_name) = 'SYSVIEW_DEPENDENCIES_TB' or upper(name) like('SYSVIEW_DEPENDENCIES%') order by name, referenced_name;
              name             |       type        |       referenced_name        |  referenced_type  | referenced_link_name | dependency_type 
 ------------------------------+-------------------+------------------------------+-------------------+----------------------+-----------------
- _RETURN                      | RULE              | sysview_dependencies_tb      | TABLE             |                      | HARD
- _RETURN                      | RULE              | sysview_dependencies_tb      | TABLE             |                      | HARD
- _RETURN                      | RULE              | sysview_dependencies_tb      | TABLE             |                      | HARD
- _RETURN                      | RULE              | sysview_dependencies_tb      | TABLE             |                      | HARD
- _sysview_dependencies_tb     | BASE TYPE         | sysview_dependencies_tb      | COMPOSITE TYPE    |                      | HARD
- sysview_dependencies_tb      | TABLE             | public                       | NAMESPACE         |                      | HARD
- sysview_dependencies_tb      | COMPOSITE TYPE    | sysview_dependencies_tb      | TABLE             |                      | HARD
- sysview_dependencies_tb_idx  | INDEX             | oravarcharbyte_ops           | OPCLASS           |                      | HARD
- sysview_dependencies_tb_idx  | INDEX             | sysview_dependencies_tb      | TABLE             |                      | HARD
- sysview_dependencies_tb_pkey | PRIMARY KEY       | sysview_dependencies_tb      | TABLE             |                      | HARD
- sysview_dependencies_tb_pkey | INDEX             | sysview_dependencies_tb_pkey | PRIMARY KEY       |                      | HARD
- sysview_dependencies_v1      | VIEW              | public                       | NAMESPACE         |                      | HARD
- sysview_dependencies_v1      | COMPOSITE TYPE    | sysview_dependencies_v1      | VIEW              |                      | HARD
- sysview_dependencies_v2      | MATERIALIZED VIEW | public                       | NAMESPACE         |                      | HARD
- sysview_dependencies_v2      | COMPOSITE TYPE    | sysview_dependencies_v2      | MATERIALIZED VIEW |                      | HARD
+ SYSVIEW_DEPENDENCIES_TB      | TABLE             | PUBLIC                       | NAMESPACE         |                      | HARD
+ SYSVIEW_DEPENDENCIES_TB      | COMPOSITE TYPE    | SYSVIEW_DEPENDENCIES_TB      | TABLE             |                      | HARD
+ SYSVIEW_DEPENDENCIES_TB_IDX  | INDEX             | ORAVARCHARBYTE_OPS           | OPCLASS           |                      | HARD
+ SYSVIEW_DEPENDENCIES_TB_IDX  | INDEX             | SYSVIEW_DEPENDENCIES_TB      | TABLE             |                      | HARD
+ SYSVIEW_DEPENDENCIES_TB_PKEY | PRIMARY KEY       | SYSVIEW_DEPENDENCIES_TB      | TABLE             |                      | HARD
+ SYSVIEW_DEPENDENCIES_TB_PKEY | INDEX             | SYSVIEW_DEPENDENCIES_TB_PKEY | PRIMARY KEY       |                      | HARD
+ SYSVIEW_DEPENDENCIES_V1      | VIEW              | PUBLIC                       | NAMESPACE         |                      | HARD
+ SYSVIEW_DEPENDENCIES_V1      | COMPOSITE TYPE    | SYSVIEW_DEPENDENCIES_V1      | VIEW              |                      | HARD
+ SYSVIEW_DEPENDENCIES_V2      | MATERIALIZED VIEW | PUBLIC                       | NAMESPACE         |                      | HARD
+ SYSVIEW_DEPENDENCIES_V2      | COMPOSITE TYPE    | SYSVIEW_DEPENDENCIES_V2      | MATERIALIZED VIEW |                      | HARD
+ _SYSVIEW_DEPENDENCIES_TB     | BASE TYPE         | SYSVIEW_DEPENDENCIES_TB      | COMPOSITE TYPE    |                      | HARD
+ _return                      | RULE              | SYSVIEW_DEPENDENCIES_TB      | TABLE             |                      | HARD
+ _return                      | RULE              | SYSVIEW_DEPENDENCIES_TB      | TABLE             |                      | HARD
+ _return                      | RULE              | SYSVIEW_DEPENDENCIES_TB      | TABLE             |                      | HARD
+ _return                      | RULE              | SYSVIEW_DEPENDENCIES_TB      | TABLE             |                      | HARD
 (15 rows)
 
 drop materialized view sysview_dependencies_v2;
@@ -562,11 +563,11 @@ select type, referenced_type, referenced_link_name, dependency_type from all_dep
 where upper(referenced_name) like('BIN$%') or upper(name) like('BIN$%') order by name, referenced_name;
     type     | referenced_type | referenced_link_name | dependency_type 
 -------------+-----------------+----------------------+-----------------
+ PRIMARY KEY | TABLE           |                      | HARD
  TABLE       | NAMESPACE       |                      | HARD
  INDEX       | PRIMARY KEY     |                      | HARD
- INDEX       | TABLE           |                      | HARD
  INDEX       | OPCLASS         |                      | HARD
- PRIMARY KEY | TABLE           |                      | HARD
+ INDEX       | TABLE           |                      | HARD
 (5 rows)
 
 purge recyclebin;
@@ -611,16 +612,16 @@ select name, type, referenced_name, referenced_type, referenced_link_name, depen
 where upper(name) = 'GET_NAME_BY_ID' or upper(referenced_name) = 'GET_NAME_BY_ID' order by name;
       name      |   type   | referenced_name | referenced_type | referenced_link_name | dependency_type 
 ----------------+----------+-----------------+-----------------+----------------------+-----------------
- get_name_by_id | FUNCTION | plpgsql         | LANGUAGE        |                      | HARD
- get_name_by_id | FUNCTION | public          | NAMESPACE       |                      | HARD
+ GET_NAME_BY_ID | FUNCTION | PLPGSQL         | LANGUAGE        |                      | HARD
+ GET_NAME_BY_ID | FUNCTION | PUBLIC          | NAMESPACE       |                      | HARD
 (2 rows)
 
 select name, type, referenced_name, referenced_type, referenced_link_name, dependency_type from all_dependencies 
 where upper(name) = 'UPSERT_TB_RECORD' or upper(referenced_name) = 'UPSERT_TB_RECORD' order by name;
        name       |   type    | referenced_name | referenced_type | referenced_link_name | dependency_type 
 ------------------+-----------+-----------------+-----------------+----------------------+-----------------
- upsert_tb_record | PROCEDURE | plpgsql         | LANGUAGE        |                      | HARD
- upsert_tb_record | PROCEDURE | public          | NAMESPACE       |                      | HARD
+ UPSERT_TB_RECORD | PROCEDURE | PLPGSQL         | LANGUAGE        |                      | HARD
+ UPSERT_TB_RECORD | PROCEDURE | PUBLIC          | NAMESPACE       |                      | HARD
 (2 rows)
 
 drop function get_name_by_id(p_id int);
@@ -658,15 +659,15 @@ select name, type, referenced_name, referenced_type, referenced_link_name, depen
 where upper(name) = 'INSERT_TRIGGER' or upper(referenced_name) = 'INSERT_TRIGGER' order by name;
       name      |  type   |     referenced_name      | referenced_type | referenced_link_name | dependency_type 
 ----------------+---------+--------------------------+-----------------+----------------------+-----------------
- insert_trigger | TRIGGER | tri_insert_func          | FUNCTION        |                      | HARD
- insert_trigger | TRIGGER | sysview_dependencies_tb3 | TABLE           |                      | HARD
+ INSERT_TRIGGER | TRIGGER | TRI_INSERT_FUNC          | FUNCTION        |                      | HARD
+ INSERT_TRIGGER | TRIGGER | SYSVIEW_DEPENDENCIES_TB3 | TABLE           |                      | HARD
 (2 rows)
 
 select name, type, referenced_name, referenced_type, referenced_link_name, dependency_type from all_dependencies 
 where upper(name) = 'EVENT_TRIGGER' or upper(referenced_name) = 'EVENT_TRIGGER' order by name;
      name      |     type      |     referenced_name      | referenced_type | referenced_link_name | dependency_type 
 ---------------+---------------+--------------------------+-----------------+----------------------+-----------------
- event_trigger | EVENT TRIGGER | sysview_dependencies_cmd | FUNCTION        |                      | HARD
+ EVENT_TRIGGER | EVENT TRIGGER | SYSVIEW_DEPENDENCIES_CMD | FUNCTION        |                      | HARD
 (1 row)
 
 drop event trigger event_trigger;
@@ -697,8 +698,8 @@ select name, type, referenced_name, referenced_type, referenced_link_name, depen
 where upper(name) = 'SYSVIEW_DEPENDENCIES_PKG' or upper(referenced_name) = 'SYSVIEW_DEPENDENCIES_PKG' order by name;
              name              |     type     |     referenced_name      | referenced_type | referenced_link_name | dependency_type 
 -------------------------------+--------------+--------------------------+-----------------+----------------------+-----------------
- sysview_dependencies_pkg      | PACKAGE      | public                   | NAMESPACE       |                      | HARD
- sysview_dependencies_pkg BODY | PACKAGE BODY | sysview_dependencies_pkg | PACKAGE         |                      | HARD
+ SYSVIEW_DEPENDENCIES_PKG      | PACKAGE      | PUBLIC                   | NAMESPACE       |                      | HARD
+ sysview_dependencies_pkg BODY | PACKAGE BODY | SYSVIEW_DEPENDENCIES_PKG | PACKAGE         |                      | HARD
 (2 rows)
 
 drop package sysview_dependencies_pkg;
@@ -729,31 +730,31 @@ select object_name, subobject_name, object_type, temporary, editionable from all
     order by object_name, subobject_name;
        object_name        |         subobject_name         |    object_type     | temporary | editionable 
 --------------------------+--------------------------------+--------------------+-----------+-------------
- sysview_objects_part     | sysview_objects_part1          | TABLE PARTITION    | N         | 
- sysview_objects_part     | sysview_objects_part1_1        | TABLE SUBPARTITION | N         | 
- sysview_objects_part     | sysview_objects_part1_2        | TABLE SUBPARTITION | N         | 
- sysview_objects_part     | sysview_objects_part2          | TABLE PARTITION    | N         | 
- sysview_objects_part     | sysview_objects_part2_1        | TABLE SUBPARTITION | N         | 
- sysview_objects_part     | sysview_objects_part2_2        | TABLE SUBPARTITION | N         | 
- sysview_objects_part     | sysview_objects_part3          | TABLE PARTITION    | N         | 
- sysview_objects_part     | sysview_objects_part3_1        | TABLE SUBPARTITION | N         | 
- sysview_objects_part     | sysview_objects_part3_2        | TABLE SUBPARTITION | N         | 
- sysview_objects_part     |                                | TABLE              | N         | 
- sysview_objects_part_idx | sysview_objects_part1_1_id_idx | INDEX SUBPARTITION | N         | 
- sysview_objects_part_idx | sysview_objects_part1_2_id_idx | INDEX SUBPARTITION | N         | 
- sysview_objects_part_idx | sysview_objects_part1_id_idx   | INDEX PARTITION    | N         | 
- sysview_objects_part_idx | sysview_objects_part2_1_id_idx | INDEX SUBPARTITION | N         | 
- sysview_objects_part_idx | sysview_objects_part2_2_id_idx | INDEX SUBPARTITION | N         | 
- sysview_objects_part_idx | sysview_objects_part2_id_idx   | INDEX PARTITION    | N         | 
- sysview_objects_part_idx | sysview_objects_part3_1_id_idx | INDEX SUBPARTITION | N         | 
- sysview_objects_part_idx | sysview_objects_part3_2_id_idx | INDEX SUBPARTITION | N         | 
- sysview_objects_part_idx | sysview_objects_part3_id_idx   | INDEX PARTITION    | N         | 
- sysview_objects_part_idx |                                | INDEX              | N         | 
- sysview_objects_seq      |                                | SEQUENCE           | N         | 
- sysview_objects_tb       |                                | TABLE              | N         | 
- sysview_objects_tb_idx   |                                | INDEX              | N         | 
- sysview_objects_tb_v     |                                | VIEW               | N         | 
- sysview_objects_temp_tb  |                                | TABLE              | Y         | 
+ SYSVIEW_OBJECTS_PART     | SYSVIEW_OBJECTS_PART1          | TABLE PARTITION    | N         | 
+ SYSVIEW_OBJECTS_PART     | SYSVIEW_OBJECTS_PART1_1        | TABLE SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART     | SYSVIEW_OBJECTS_PART1_2        | TABLE SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART     | SYSVIEW_OBJECTS_PART2          | TABLE PARTITION    | N         | 
+ SYSVIEW_OBJECTS_PART     | SYSVIEW_OBJECTS_PART2_1        | TABLE SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART     | SYSVIEW_OBJECTS_PART2_2        | TABLE SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART     | SYSVIEW_OBJECTS_PART3          | TABLE PARTITION    | N         | 
+ SYSVIEW_OBJECTS_PART     | SYSVIEW_OBJECTS_PART3_1        | TABLE SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART     | SYSVIEW_OBJECTS_PART3_2        | TABLE SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART     |                                | TABLE              | N         | 
+ SYSVIEW_OBJECTS_PART_IDX | SYSVIEW_OBJECTS_PART1_1_ID_IDX | INDEX SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART_IDX | SYSVIEW_OBJECTS_PART1_2_ID_IDX | INDEX SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART_IDX | SYSVIEW_OBJECTS_PART1_ID_IDX   | INDEX PARTITION    | N         | 
+ SYSVIEW_OBJECTS_PART_IDX | SYSVIEW_OBJECTS_PART2_1_ID_IDX | INDEX SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART_IDX | SYSVIEW_OBJECTS_PART2_2_ID_IDX | INDEX SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART_IDX | SYSVIEW_OBJECTS_PART2_ID_IDX   | INDEX PARTITION    | N         | 
+ SYSVIEW_OBJECTS_PART_IDX | SYSVIEW_OBJECTS_PART3_1_ID_IDX | INDEX SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART_IDX | SYSVIEW_OBJECTS_PART3_2_ID_IDX | INDEX SUBPARTITION | N         | 
+ SYSVIEW_OBJECTS_PART_IDX | SYSVIEW_OBJECTS_PART3_ID_IDX   | INDEX PARTITION    | N         | 
+ SYSVIEW_OBJECTS_PART_IDX |                                | INDEX              | N         | 
+ SYSVIEW_OBJECTS_SEQ      |                                | SEQUENCE           | N         | 
+ SYSVIEW_OBJECTS_TB       |                                | TABLE              | N         | 
+ SYSVIEW_OBJECTS_TB_IDX   |                                | INDEX              | N         | 
+ SYSVIEW_OBJECTS_TB_V     |                                | VIEW               | N         | 
+ SYSVIEW_OBJECTS_TEMP_TB  |                                | TABLE              | Y         | 
 (25 rows)
 
 drop view sysview_objects_tb_v;
@@ -813,8 +814,8 @@ select object_name, object_type, temporary, editionable from all_objects
     where upper(object_name) in ('GET_NAME_BY_ID', 'UPSERT_TB_RECORD') ORDER BY object_name;
    object_name    | object_type | temporary | editionable 
 ------------------+-------------+-----------+-------------
- get_name_by_id   | FUNCTION    | N         | 
- upsert_tb_record | PROCEDURE   | N         | 
+ GET_NAME_BY_ID   | FUNCTION    | N         | 
+ UPSERT_TB_RECORD | PROCEDURE   | N         | 
 (2 rows)
 
 drop function get_name_by_id(p_id int);
@@ -842,8 +843,8 @@ select object_name, object_type, temporary, editionable from all_objects
     where upper(object_name) like('SYSVIEW_OBJECTS_PKG%');
      object_name     | object_type  | temporary | editionable 
 ---------------------+--------------+-----------+-------------
- sysview_objects_pkg | PACKAGE      | N         | Y
- sysview_objects_pkg | PACKAGE BODY | N         | Y
+ SYSVIEW_OBJECTS_PKG | PACKAGE      | N         | Y
+ SYSVIEW_OBJECTS_PKG | PACKAGE BODY | N         | Y
 (2 rows)
 
 drop package sysview_objects_pkg;
@@ -856,8 +857,8 @@ select object_name, object_type, temporary, editionable from all_objects
     where upper(object_name) = 'SYSVIEW_OBJECTS_TYPE';
      object_name      |  object_type   | temporary | editionable 
 ----------------------+----------------+-----------+-------------
- sysview_objects_type | COMPOSITE TYPE | N         | 
- sysview_objects_type | TYPE           | N         | 
+ SYSVIEW_OBJECTS_TYPE | COMPOSITE TYPE | N         | 
+ SYSVIEW_OBJECTS_TYPE | TYPE           | N         | 
 (2 rows)
 
 drop type sysview_objects_type;
@@ -896,7 +897,7 @@ select object_name, object_type, temporary, editionable from all_objects
     where upper(object_name) = 'SYSVIEW_OBJECTS_TB4_PKEY' and object_type = 'CONSTRAINT';
        object_name        | object_type | temporary | editionable 
 --------------------------+-------------+-----------+-------------
- sysview_objects_tb4_pkey | CONSTRAINT  | N         | 
+ SYSVIEW_OBJECTS_TB4_PKEY | CONSTRAINT  | N         | 
 (1 row)
 
 drop table sysview_objects_tb4;
@@ -906,7 +907,7 @@ select object_name, object_type, temporary, editionable from all_objects
     where upper(object_name) = 'SYSVIEW_OBJECTS_DB';
     object_name     | object_type | temporary | editionable 
 --------------------+-------------+-----------+-------------
- sysview_objects_db | DATABASE    | N         | 
+ SYSVIEW_OBJECTS_DB | DATABASE    | N         | 
 (1 row)
 
 drop database sysview_objects_db;
@@ -916,7 +917,7 @@ select object_name, object_type, temporary, editionable from all_objects
     where upper(object_name) = 'SYSVIEW_OBJECTS_SCHEMA';
       object_name       | object_type | temporary | editionable 
 ------------------------+-------------+-----------+-------------
- sysview_objects_schema | SCHEMA      | N         | 
+ SYSVIEW_OBJECTS_SCHEMA | SCHEMA      | N         | 
 (1 row)
 
 drop schema sysview_objects_schema;
@@ -927,7 +928,7 @@ select object_name, object_type, temporary, editionable from all_objects
     where upper(object_name) = 'SYSVIEW_OBJECTS_SYN';
      object_name     | object_type | temporary | editionable 
 ---------------------+-------------+-----------+-------------
- sysview_objects_syn | SYNONYM     | N         | 
+ SYSVIEW_OBJECTS_SYN | SYNONYM     | N         | 
 (1 row)
 
 drop synonym sysview_objects_syn;
@@ -946,9 +947,9 @@ select type_name, typecode, attributes, methods, predefined, incomplete,final, i
 where upper(type_name) like('SYSVIEW_TYPES%') order by type_name;
      type_name      |      typecode      | attributes | methods | predefined | incomplete | final | instantable | persistable 
 --------------------+--------------------+------------+---------+------------+------------+-------+-------------+-------------
- sysview_types_typ1 | SYSVIEW_TYPES_TYP1 | 4          | 4       | NO         | NO         | NO    | NO          | NO
- sysview_types_typ2 | SYSVIEW_TYPES_TYP2 |            | 4       | NO         | NO         | NO    | NO          | NO
- sysview_types_typ3 | SYSVIEW_TYPES_TYP3 |            | 4       | NO         | NO         | NO    | NO          | NO
+ SYSVIEW_TYPES_TYP1 | SYSVIEW_TYPES_TYP1 | 4          | 4       | NO         | NO         | NO    | NO          | NO
+ SYSVIEW_TYPES_TYP2 | SYSVIEW_TYPES_TYP2 |            | 4       | NO         | NO         | NO    | NO          | NO
+ SYSVIEW_TYPES_TYP3 | SYSVIEW_TYPES_TYP3 |            | 4       | NO         | NO         | NO    | NO          | NO
 (3 rows)
 
 drop type sysview_types_typ1;
@@ -986,19 +987,33 @@ create table sysview_constraints_tb(
 select constraint_name, constraint_type, table_name, search_condition, search_condition_vc, r_constraint_name, delete_rule,
         condeferrable, deferred, validated, generated, index_name, invalid
 from all_constraints where upper(table_name) = 'SYSVIEW_CONSTRAINTS_TB' order by table_name, constraint_name;
-           constraint_name            | constraint_type |       table_name       |       search_condition        |      search_condition_vc      |    r_constraint_name    | delete_rule | condeferrable  | deferred  | validated | generated |           index_name            | invalid 
---------------------------------------+-----------------+------------------------+-------------------------------+-------------------------------+-------------------------+-------------+----------------+-----------+-----------+-----------+---------------------------------+---------
- SYSVIEW_CONSTRAINTS_TB_COL2_KEY      | U               | SYSVIEW_CONSTRAINTS_TB |                               |                               |                         |             | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME | SYSVIEW_CONSTRAINTS_TB_COL2_KEY | 
- SYSVIEW_CONSTRAINTS_TB_COL4_CHECK    | C               | SYSVIEW_CONSTRAINTS_TB | (COL4 >= 0) AND (COL4 <= 120) | (COL4 >= 0) AND (COL4 <= 120) |                         |             | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME |                                 | 
- SYSVIEW_CONSTRAINTS_TB_COL5_FKEY     | F               | SYSVIEW_CONSTRAINTS_TB |                               |                               | SYSVIEW_CONSTRAINTS_REF | NO ACTION   | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME | SYSVIEW_CONSTRAINTS_REF_COL_KEY | 
- SYSVIEW_CONSTRAINTS_TB_PKEY          | P               | SYSVIEW_CONSTRAINTS_TB |                               |                               |                         |             | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME | SYSVIEW_CONSTRAINTS_TB_PKEY     | 
- sysview_constraints_tb_col1_NOT_NULL | C               | sysview_constraints_tb | "COL1" IS NOT NULL            | "COL1" IS NOT NULL            |                         |             | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME |                                 | 
- sysview_constraints_tb_col3_NOT_NULL | C               | sysview_constraints_tb | "COL3" IS NOT NULL            | "COL3" IS NOT NULL            |                         |             | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME |                                 | 
+           constraint_name            | constraint_type |       table_name       |       search_condition        |      search_condition_vc      |        r_constraint_name        | delete_rule | condeferrable  | deferred  | validated | generated |           index_name            | invalid 
+--------------------------------------+-----------------+------------------------+-------------------------------+-------------------------------+---------------------------------+-------------+----------------+-----------+-----------+-----------+---------------------------------+---------
+ SYSVIEW_CONSTRAINTS_TB_COL1_NOT_NULL | C               | SYSVIEW_CONSTRAINTS_TB | "COL1" IS NOT NULL            | "COL1" IS NOT NULL            |                                 |             | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME |                                 | 
+ SYSVIEW_CONSTRAINTS_TB_COL2_KEY      | U               | SYSVIEW_CONSTRAINTS_TB |                               |                               |                                 |             | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME | SYSVIEW_CONSTRAINTS_TB_COL2_KEY | 
+ SYSVIEW_CONSTRAINTS_TB_COL3_NOT_NULL | C               | SYSVIEW_CONSTRAINTS_TB | "COL3" IS NOT NULL            | "COL3" IS NOT NULL            |                                 |             | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME |                                 | 
+ SYSVIEW_CONSTRAINTS_TB_COL4_CHECK    | C               | SYSVIEW_CONSTRAINTS_TB | (COL4 >= 0) AND (COL4 <= 120) | (COL4 >= 0) AND (COL4 <= 120) |                                 |             | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME |                                 | 
+ SYSVIEW_CONSTRAINTS_TB_COL5_FKEY     | F               | SYSVIEW_CONSTRAINTS_TB |                               |                               | SYSVIEW_CONSTRAINTS_REF_COL_KEY | NO ACTION   | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME | SYSVIEW_CONSTRAINTS_REF_COL_KEY | 
+ SYSVIEW_CONSTRAINTS_TB_PKEY          | P               | SYSVIEW_CONSTRAINTS_TB |                               |                               |                                 |             | NOT DEFERRABLE | IMMEDIATE | VALIDATE  | USER NAME | SYSVIEW_CONSTRAINTS_TB_PKEY     | 
 (6 rows)
 
 drop table sysview_constraints_tb cascade;
 NOTICE:  The recycle bin feature currently does not support collecting objects dropped not in RESTRICT mode.
 drop table sysview_constraints_ref cascade;
+NOTICE:  The recycle bin feature currently does not support collecting objects dropped not in RESTRICT mode.
+create table sysview_constraints_ref1(id int);
+alter table sysview_constraints_ref1 add constraint sysview_constraints_ref1_cons unique(id);
+create table sysview_constraints_tb1(id int constraint sysview_constraints_tb1_cons references sysview_constraints_ref1(id));
+select constraint_name,table_name,r_constraint_name from all_constraints where upper(constraint_name) IN ('SYSVIEW_CONSTRAINTS_TB1_CONS', 'SYSVIEW_CONSTRAINTS_REF1_CONS') order by constraint_name;
+        constraint_name        |        table_name        |       r_constraint_name       
+-------------------------------+--------------------------+-------------------------------
+ SYSVIEW_CONSTRAINTS_REF1_CONS | SYSVIEW_CONSTRAINTS_REF1 | 
+ SYSVIEW_CONSTRAINTS_TB1_CONS  | SYSVIEW_CONSTRAINTS_TB1  | SYSVIEW_CONSTRAINTS_REF1_CONS
+(2 rows)
+
+drop table sysview_constraints_tb1 cascade;
+NOTICE:  The recycle bin feature currently does not support collecting objects dropped not in RESTRICT mode.
+drop table sysview_constraints_ref1 cascade;
 NOTICE:  The recycle bin feature currently does not support collecting objects dropped not in RESTRICT mode.
 select count(*) from all_constraints where upper(table_name) like('BIN%');
  count 
@@ -1025,13 +1040,13 @@ select constraint_name, table_name, column_name, position from all_cons_columns
 where upper(table_name) like('SYSVIEW_CONS_COLUMNS_%') order by constraint_name;
             constraint_name            |        table_name        | column_name | position 
 ---------------------------------------+--------------------------+-------------+----------
- sysview_cons_columns_ref_col_key      | sysview_cons_columns_ref | col         | 1
- sysview_cons_columns_tb_col1_NOT_NULL | sysview_cons_columns_tb  | col1        | 1
- sysview_cons_columns_tb_col2_key      | sysview_cons_columns_tb  | col2        | 1
- sysview_cons_columns_tb_col3_NOT_NULL | sysview_cons_columns_tb  | col3        | 3
- sysview_cons_columns_tb_col4_check    | sysview_cons_columns_tb  | col4        | 
- sysview_cons_columns_tb_col5_fkey     | sysview_cons_columns_tb  | col5        | 1
- sysview_cons_columns_tb_pkey          | sysview_cons_columns_tb  | col1        | 1
+ SYSVIEW_CONS_COLUMNS_REF_COL_KEY      | SYSVIEW_CONS_COLUMNS_REF | COL         | 1
+ SYSVIEW_CONS_COLUMNS_TB_COL1_NOT_NULL | SYSVIEW_CONS_COLUMNS_TB  | COL1        | 1
+ SYSVIEW_CONS_COLUMNS_TB_COL2_KEY      | SYSVIEW_CONS_COLUMNS_TB  | COL2        | 1
+ SYSVIEW_CONS_COLUMNS_TB_COL3_NOT_NULL | SYSVIEW_CONS_COLUMNS_TB  | COL3        | 3
+ SYSVIEW_CONS_COLUMNS_TB_COL4_CHECK    | SYSVIEW_CONS_COLUMNS_TB  | COL4        | 
+ SYSVIEW_CONS_COLUMNS_TB_COL5_FKEY     | SYSVIEW_CONS_COLUMNS_TB  | COL5        | 1
+ SYSVIEW_CONS_COLUMNS_TB_PKEY          | SYSVIEW_CONS_COLUMNS_TB  | COL1        | 1
 (7 rows)
 
 drop table sysview_cons_columns_tb cascade;
@@ -1060,36 +1075,36 @@ select table_name, privilege, grantable, hierarchy, common, type, inherited from
     where upper(table_name) like('SYSVIEW_TAB_PRIVS_%') order by table_name, privilege, grantable;
       table_name      | privilege  | grantable | hierarchy | common | type  | inherited 
 ----------------------+------------+-----------+-----------+--------+-------+-----------
- sysview_tab_privs_tb | INSERT     | NO        | NO        | NO     | TABLE | NO
- sysview_tab_privs_tb | SELECT     | NO        | YES       | NO     | TABLE | NO
- sysview_tab_privs_tb | SELECT     | YES       | YES       | NO     | TABLE | NO
- sysview_tab_privs_tb | UPDATE     | NO        | NO        | NO     | TABLE | NO
- sysview_tab_privs_v  | DELETE     | YES       | NO        | NO     | VIEW  | NO
- sysview_tab_privs_v  | INSERT     | YES       | NO        | NO     | VIEW  | NO
- sysview_tab_privs_v  | REFERENCES | YES       | NO        | NO     | VIEW  | NO
- sysview_tab_privs_v  | SELECT     | NO        | YES       | NO     | VIEW  | NO
- sysview_tab_privs_v  | SELECT     | YES       | YES       | NO     | VIEW  | NO
- sysview_tab_privs_v  | TRIGGER    | YES       | NO        | NO     | VIEW  | NO
- sysview_tab_privs_v  | TRUNCATE   | YES       | NO        | NO     | VIEW  | NO
- sysview_tab_privs_v  | UPDATE     | YES       | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_TB | INSERT     | NO        | NO        | NO     | TABLE | NO
+ SYSVIEW_TAB_PRIVS_TB | SELECT     | NO        | YES       | NO     | TABLE | NO
+ SYSVIEW_TAB_PRIVS_TB | SELECT     | YES       | YES       | NO     | TABLE | NO
+ SYSVIEW_TAB_PRIVS_TB | UPDATE     | NO        | NO        | NO     | TABLE | NO
+ SYSVIEW_TAB_PRIVS_V  | DELETE     | YES       | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | INSERT     | YES       | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | REFERENCES | YES       | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | SELECT     | NO        | YES       | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | SELECT     | YES       | YES       | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | TRIGGER    | YES       | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | TRUNCATE   | YES       | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | UPDATE     | YES       | NO        | NO     | VIEW  | NO
 (12 rows)
 
 select table_schema, table_name, privilege, grantable, hierarchy, type from all_tab_privs
 where upper(table_name) like('SYSVIEW_TAB_PRIVS_%') order by table_name, privilege, grantable;
  table_schema |      table_name      | privilege  | grantable | hierarchy | type  
 --------------+----------------------+------------+-----------+-----------+-------
- public       | sysview_tab_privs_tb | INSERT     | NO        | NO        | TABLE
- public       | sysview_tab_privs_tb | SELECT     | NO        | YES       | TABLE
- public       | sysview_tab_privs_tb | SELECT     | YES       | YES       | TABLE
- public       | sysview_tab_privs_tb | UPDATE     | NO        | NO        | TABLE
- public       | sysview_tab_privs_v  | DELETE     | YES       | NO        | VIEW
- public       | sysview_tab_privs_v  | INSERT     | YES       | NO        | VIEW
- public       | sysview_tab_privs_v  | REFERENCES | YES       | NO        | VIEW
- public       | sysview_tab_privs_v  | SELECT     | NO        | YES       | VIEW
- public       | sysview_tab_privs_v  | SELECT     | YES       | YES       | VIEW
- public       | sysview_tab_privs_v  | TRIGGER    | YES       | NO        | VIEW
- public       | sysview_tab_privs_v  | TRUNCATE   | YES       | NO        | VIEW
- public       | sysview_tab_privs_v  | UPDATE     | YES       | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_TB | INSERT     | NO        | NO        | TABLE
+ PUBLIC       | SYSVIEW_TAB_PRIVS_TB | SELECT     | NO        | YES       | TABLE
+ PUBLIC       | SYSVIEW_TAB_PRIVS_TB | SELECT     | YES       | YES       | TABLE
+ PUBLIC       | SYSVIEW_TAB_PRIVS_TB | UPDATE     | NO        | NO        | TABLE
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | DELETE     | YES       | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | INSERT     | YES       | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | REFERENCES | YES       | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | SELECT     | NO        | YES       | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | SELECT     | YES       | YES       | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | TRIGGER    | YES       | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | TRUNCATE   | YES       | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | UPDATE     | YES       | NO        | VIEW
 (12 rows)
 
 drop view sysview_tab_privs_v;
@@ -1131,14 +1146,14 @@ select table_name, composite, partition_name, subpartition_count, high_value, hi
 from all_tab_partitions where upper(table_name) like('SYSVIEW_TAB_PARTITIONS_%') order by table_name, partition_name;
           table_name          | composite |         partition_name         | subpartition_count |                high_value                | high_value_length | partition_position | pct_free | logging | num_rows | blocks | avg_row_len 
 ------------------------------+-----------+--------------------------------+--------------------+------------------------------------------+-------------------+--------------------+----------+---------+----------+--------+-------------
- sysview_tab_partitions_part1 | NO        | sysview_tab_partitions_part1_1 | 0                  | FOR VALUES FROM (0) TO (20)              | 27                | 1                  | 0        | YES     | 60       | 1      | 27
- sysview_tab_partitions_part1 | NO        | sysview_tab_partitions_part1_2 | 0                  | FOR VALUES FROM (21) TO (40)             | 28                | 2                  | 65       | YES     | 57       | 1      | 27
- sysview_tab_partitions_part1 | NO        | sysview_tab_partitions_part1_3 | 0                  | FOR VALUES FROM (41) TO (60)             | 28                | 3                  | 0        | YES     | 57       | 1      | 27
- sysview_tab_partitions_part1 | NO        | sysview_tab_partitions_part1_4 | 0                  | FOR VALUES FROM (61) TO (100)            | 29                | 4                  | 0        | YES     | 117      | 1      | 27
- sysview_tab_partitions_part1 | NO        | sysview_tab_partitions_part1_5 | 0                  | DEFAULT                                  | 7                 | 5                  | 0        | YES     | 72       | 1      | 27
- sysview_tab_partitions_part2 | YES       | sysview_tab_partitions_part2_1 | 2                  | FOR VALUES WITH (modulus 3, remainder 0) | 40                | 1                  | 0        | YES     | 1296     |        | 51
- sysview_tab_partitions_part2 | YES       | sysview_tab_partitions_part2_2 | 2                  | FOR VALUES WITH (modulus 3, remainder 1) | 40                | 2                  | 0        | YES     | 1332     |        | 51
- sysview_tab_partitions_part2 | YES       | sysview_tab_partitions_part2_3 | 2                  | FOR VALUES WITH (modulus 3, remainder 2) | 40                | 3                  | 0        | YES     | 1372     |        | 51
+ SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_1 | 0                  | FOR VALUES FROM (0) TO (20)              | 27                | 1                  | 0        | YES     | 60       | 1      | 27
+ SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_2 | 0                  | FOR VALUES FROM (21) TO (40)             | 28                | 2                  | 65       | YES     | 57       | 1      | 27
+ SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_3 | 0                  | FOR VALUES FROM (41) TO (60)             | 28                | 3                  | 0        | YES     | 57       | 1      | 27
+ SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_4 | 0                  | FOR VALUES FROM (61) TO (100)            | 29                | 4                  | 0        | YES     | 117      | 1      | 27
+ SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_5 | 0                  | DEFAULT                                  | 7                 | 5                  | 0        | YES     | 72       | 1      | 27
+ SYSVIEW_TAB_PARTITIONS_PART2 | YES       | SYSVIEW_TAB_PARTITIONS_PART2_1 | 2                  | FOR VALUES WITH (modulus 3, remainder 0) | 40                | 1                  | 0        | YES     | 1296     |        | 51
+ SYSVIEW_TAB_PARTITIONS_PART2 | YES       | SYSVIEW_TAB_PARTITIONS_PART2_2 | 2                  | FOR VALUES WITH (modulus 3, remainder 1) | 40                | 2                  | 0        | YES     | 1332     |        | 51
+ SYSVIEW_TAB_PARTITIONS_PART2 | YES       | SYSVIEW_TAB_PARTITIONS_PART2_3 | 2                  | FOR VALUES WITH (modulus 3, remainder 2) | 40                | 3                  | 0        | YES     | 1372     |        | 51
 (8 rows)
 
 drop table sysview_tab_partitions_part1;
@@ -1153,3 +1168,4 @@ from all_tab_partitions where upper(table_name) like('BIN$%') order by table_nam
 
 purge recyclebin;
 set ivorysql.enable_recycle_bin to off;
+set ivorysql.identifier_case_switch to normal;
