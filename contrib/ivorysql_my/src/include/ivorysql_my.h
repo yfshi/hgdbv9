@@ -62,6 +62,7 @@ extern double my_atod(const char *src, bool is_insert);
 extern Numeric my_aton(const char *src, int typmod, bool is_insert);
 
 extern Datum parse_hexstring(const char *value);/* BUG#5048 5070 */
+extern Datum parse_bitstring(const char *value); /* SRS-MYSQL-HEX-LITERAL */
 extern char *my_bit_out(VarBit *s, int32 atttypmod);
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 extern Datum pgtime_mystimes(PG_FUNCTION_ARGS);

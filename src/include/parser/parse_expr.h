@@ -17,7 +17,9 @@
 
 /* Begin BUG#5048 5070 */
 #define exprIsHexConstant(n) \
-		  (((n) && IsA((n), A_Const) && ((A_Const *) (n))->val.type == T_HexString))
+		  ((n) && IsA((n), A_Const) && \
+		  (((A_Const *) (n))->val.type == T_HexString || \
+		   ((A_Const *) (n))->val.type == T_MysBitString))
 /* End BUG#5048 5070 */
 
 /* GUC parameters */

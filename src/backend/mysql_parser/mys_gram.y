@@ -204,6 +204,7 @@ static Node *makeStringConstCast(char *str, int location, TypeName *typename);
 static Node *makeIntConst(int val, int location);
 static Node *makeFloatConst(char *str, int location);
 static Node *makeBitStringConst(char *str, int location);
+static Node *makeMysBitStringConst(char *str, int location); /* SRS-MYSQL-HEX-LITERAL */
 static Node *makeHexStringConst(char *str, int location); /* BUG#5048 5070 */
 static Node *makeNullAConst(int location);
 static Node *makeAConst(Value *v, int location);
@@ -19321,17 +19322,22 @@ AexprConst: Iconst
 				{
 					$$ = makeStringConst($1, @1);
 				}
-			| BCONST
-				{
-					$$ = makeBitStringConst($1, @1);
+			| BCONST  // b'val' or B'val' and 0bval
+				{	
+					/* Begin - SRS-MYSQL-HEX-LITERAL */
+					if (use_mysql_bit_literal)
+						$$ = makeMysBitStringConst($1, @1);
+					else
+						$$ = makeBitStringConst($1, @1);
+					/* End - SRS-MYSQL-HEX-LITERAL */
 				}
 			/* Begin - SRS-MYSQL-HEX-LITERAL */
-			| HCONST
+			| HCONST  // 0xval
 				{
 					$$ = makeHexStringConst($1, @1);
 				}
 			/* End - SRS-MYSQL-HEX-LITERAL */
-			| XCONST
+			| XCONST  // x'val' or X'val'
 				{
 					#if NOT_USED
 					/* This is a bit constant per SQL99:
@@ -20930,7 +20936,7 @@ makeBitStringConst(char *str, int location)
 	return (Node *)n;
 }
 
-/* Begin BUG#5048 5070 */
+/* Begin - SRS-MYSQL-HEX-LITERAL */
 static Node *
 makeHexStringConst(char *str, int location)
 {
@@ -20943,7 +20949,20 @@ makeHexStringConst(char *str, int location)
 
 	return (Node *)n;
 }
-/* End BUG#5048 5070 */
+
+static Node *
+makeMysBitStringConst(char *str, int location)
+{
+	A_Const 	*n;
+	
+	n = makeNode(A_Const);
+	n->val.type = T_MysBitString;
+	n->val.val.str = str; // the length may be odd
+	n->location = location;
+
+	return (Node *)n;
+}
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 static Node *
 makeNullAConst(int location)

@@ -340,3 +340,14 @@ CREATE CAST(ivy_hex as longblob)
 WITHOUT FUNCTION
 AS ASSIGNMENT;
 
+CREATE CAST (ivy_hex as bytea)
+WITHOUT FUNCTION
+AS ASSIGNMENT;
+
+CREATE FUNCTION pg_catalog.position(ivy_hex, ivy_hex)
+RETURNS int
+AS 'select pg_catalog.position($1::bytea, $2::bytea)'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;

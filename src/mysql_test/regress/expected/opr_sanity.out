@@ -1033,6 +1033,7 @@ WHERE c.castmethod = 'b' AND
  longblob          | bytea             |        0 | i
  binary            | bytea             |        0 | i
  varbinary         | bytea             |        0 | i
+ ivy_hex           | bytea             |        0 | a
  ivy_hex           | text              |        0 | a
  ivy_hex           | tinyblob          |        0 | a
  ivy_hex           | blob              |        0 | a
@@ -1044,7 +1045,7 @@ WHERE c.castmethod = 'b' AND
  datetime          | numeric           |        0 | a
  timestamp         | bigint            |        0 | a
  timestamp         | numeric           |        0 | a
-(32 rows)
+(33 rows)
 
 -- **************** pg_conversion ****************
 -- Look for illegal values in pg_conversion fields.

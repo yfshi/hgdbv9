@@ -105,6 +105,7 @@ MYS_REGRESS = cast_to_number \
 			  create_table \
 			  mys_information_schema \
 			  hex_literal \
+			  bit_literal \
 			  pipes_as_concat \
 			  rename \
 			  multi_update \

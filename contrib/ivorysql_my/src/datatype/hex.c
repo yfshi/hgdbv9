@@ -26,6 +26,11 @@ PG_FUNCTION_INFO_V1(hex2numeric);
 PG_FUNCTION_INFO_V1(hex2bool);
 PG_FUNCTION_INFO_V1(hex2bit);
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+static unsigned char mys_get_bits(const char *bits, int n);
+static void mys_bits_decode(const char *src, int len, char *dst);
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 static const int8 hexlookup[128] = {
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -111,6 +116,32 @@ parse_hexstring(const char *src)
 
 	PG_RETURN_BYTEA_P(result);
 }
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+Datum
+parse_bitstring(const char *src)
+{
+	int		len = strlen(src);
+	size_t	bc = (len + BITS_PER_BYTE - 1) / BITS_PER_BYTE + VARHDRSZ ;
+
+	bytea	*result = palloc0(bc) ;
+	char	*dst = VARDATA(result);
+
+	int remain = len % BITS_PER_BYTE;
+	if (remain)
+	{
+		*dst++ = mys_get_bits(src, remain);
+		src += remain;
+		len -= remain;
+	}
+
+	mys_bits_decode(src, len, dst);
+
+	SET_VARSIZE(result, bc);
+
+	PG_RETURN_BYTEA_P(result);
+}
+/* End - SRS-MYSQL-HEX-LITERAL */
 
 Datum
 hex_in(PG_FUNCTION_ARGS)
@@ -388,3 +419,30 @@ hex2bit(PG_FUNCTION_ARGS)
 
 	PG_RETURN_VARBIT_P(result);
 }
+
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+unsigned char
+mys_get_bits(const char *bits, int n)
+{
+	unsigned char byte = 0;
+	int i;
+
+	for (i = 0; i < n; i++)
+	{
+		byte = (byte << 1) | ((bits[i] - '0'));
+	}
+
+	return byte;
+}
+
+void
+mys_bits_decode(const char *src, int len, char *dst)
+{
+	int i;
+
+	for (i = 0; i < len; i += 8)
+	{
+		*dst++ = mys_get_bits(src + i, 8);
+	}
+}
+/* End - SRS-MYSQL-HEX-LITERAL */

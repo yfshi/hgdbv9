@@ -3685,7 +3685,8 @@ _outValue(StringInfo str, const Value *value)
 		case T_BFloat: /* BUG:Z093 */
 		case T_BDouble: /* BUG:Z093 */
 		/* End - ReqID:SRS-PLSQL-EXCEPTION */
-		case T_HexString: /* BUG#5048 5070 */	
+		case T_HexString: /* BUG#5048 5070 */
+		case T_MysBitString:	/* SRS-MYSQL-HEX-LITERAL */
 		case T_Float:
 
 			/*

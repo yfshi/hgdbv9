@@ -500,5 +500,8 @@ extern Const *make_const(ParseState *pstate, Value *value, int location);
 /* Begin BUG#5048 5070 */
 typedef Datum (* mysql_hexstring_parse_hook_type) (const char *str);
 extern PGDLLIMPORT mysql_hexstring_parse_hook_type mysql_hexstring_parse_hook;
+
+typedef Datum (* mysql_bitstring_parse_hook_type) (const char *str);
+extern PGDLLIMPORT mysql_bitstring_parse_hook_type mysql_bitstring_parse_hook;
 /* End BUG#5048 5070 */
 #endif							/* PARSE_NODE_H */
