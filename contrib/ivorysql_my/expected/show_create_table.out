@@ -4063,13 +4063,15 @@ Indexes:
     "part_column_drop_1_10_expr_idx1" btree ((d = 2))
 
 SHOW CREATE TABLE part_column_drop;
-      Table       |           Create Table            
-------------------+-----------------------------------
- part_column_drop | CREATE TABLE "part_column_drop" (+
-                  |     "id" integer,                +
-                  |     "d" integer,                 +
-                  |     "b" integer                  +
-                  | )                                +
+      Table       |              Create Table               
+------------------+-----------------------------------------
+ part_column_drop | CREATE TABLE "part_column_drop" (      +
+                  |     "id" integer,                      +
+                  |     "d" integer,                       +
+                  |     "b" integer                        +
+                  |     KEY "part_column_drop_b_pred" ("b")+
+                  |     KEY "part_column_drop_d_pred" ("d")+
+                  | )                                      +
                   | PARTITION BY RANGE (id)
 (1 row)
 
@@ -4141,3 +4143,74 @@ SHOW CREATE TABLE ft1;
 DROP FOREIGN TABLE ft1;
 DROP SERVER s0;
 DROP FOREIGN DATA WRAPPER dummy;
+--Begin BUG#Z6281
+CREATE TABLE IF NOT EXISTS test_table ( id INT, col1 VARCHAR(50), col2 INT, col3 VARCHAR(100) );
+INSERT INTO test_table (id, col1, col2, col3) VALUES (1, 'data1', 100, 'content1');
+INSERT INTO test_table (id, col1, col2, col3) VALUES (2, 'data2', 200, 'content2');
+INSERT INTO test_table (id, col1, col2, col3) VALUES (3, 'data3', 300, 'content3');
+CREATE INDEX idx_test ON test_table (col1);
+CREATE INDEX  idx_2 on test_table (col3,col2);
+DESCRIBE test_table col1;
+ Field |         Type          | Null | Key | Default | Extra 
+-------+-----------------------+------+-----+---------+-------
+ col1  | character varying(50) | YES  | MUL |         | 
+(1 row)
+
+set sql_quote_show_create= on;
+set sql_mode='';
+SHOW CREATE TABLE test_table;
+   Table    |           Create Table            
+------------+-----------------------------------
+ test_table | CREATE TABLE `test_table` (      +
+            |     `id` integer,                +
+            |     `col1` character varying(50),+
+            |     `col2` integer,              +
+            |     `col3` character varying(100)+
+            |     KEY `idx_2` (`col3`,`col2`)  +
+            |     KEY `idx_test` (`col1`)      +
+            | )
+(1 row)
+
+set sql_mode='ANSI_QUOTES';
+SHOW CREATE TABLE test_table;
+   Table    |           Create Table            
+------------+-----------------------------------
+ test_table | CREATE TABLE "test_table" (      +
+            |     "id" integer,                +
+            |     "col1" character varying(50),+
+            |     "col2" integer,              +
+            |     "col3" character varying(100)+
+            |     KEY "idx_2" ("col3","col2")  +
+            |     KEY "idx_test" ("col1")      +
+            | )
+(1 row)
+
+set sql_quote_show_create= false;
+SHOW CREATE TABLE test_table;
+   Table    |          Create Table           
+------------+---------------------------------
+ test_table | CREATE TABLE test_table (      +
+            |     id integer,                +
+            |     col1 character varying(50),+
+            |     col2 integer,              +
+            |     col3 character varying(100)+
+            |     KEY idx_2 (col3, col2)     +
+            |     KEY idx_test (col1)        +
+            | )
+(1 row)
+
+DROP TABLE test_table;
+create table t2 (ID_ii int);
+set sql_quote_show_create= on;
+set sql_mode='';
+SHOW CREATE TABLE t2;
+ Table |    Create Table     
+-------+---------------------
+ t2    | CREATE TABLE `t2` (+
+       |     `ID_ii` integer+
+       | )
+(1 row)
+
+drop table t2;
+reset sql_mode;
+--END BUG#Z6281

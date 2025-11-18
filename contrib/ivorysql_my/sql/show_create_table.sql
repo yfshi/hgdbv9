@@ -1371,3 +1371,33 @@ SHOW CREATE TABLE ft1;
 DROP FOREIGN TABLE ft1;
 DROP SERVER s0;
 DROP FOREIGN DATA WRAPPER dummy;
+
+--Begin BUG#Z6281
+CREATE TABLE IF NOT EXISTS test_table ( id INT, col1 VARCHAR(50), col2 INT, col3 VARCHAR(100) );
+INSERT INTO test_table (id, col1, col2, col3) VALUES (1, 'data1', 100, 'content1');
+INSERT INTO test_table (id, col1, col2, col3) VALUES (2, 'data2', 200, 'content2');
+INSERT INTO test_table (id, col1, col2, col3) VALUES (3, 'data3', 300, 'content3');
+CREATE INDEX idx_test ON test_table (col1);
+CREATE INDEX  idx_2 on test_table (col3,col2);
+
+DESCRIBE test_table col1;
+set sql_quote_show_create= on;
+set sql_mode='';
+SHOW CREATE TABLE test_table;
+
+set sql_mode='ANSI_QUOTES';
+SHOW CREATE TABLE test_table;
+
+set sql_quote_show_create= false;
+SHOW CREATE TABLE test_table;
+
+DROP TABLE test_table;
+
+create table t2 (ID_ii int);
+set sql_quote_show_create= on;
+set sql_mode='';
+SHOW CREATE TABLE t2;
+drop table t2;
+
+reset sql_mode;
+--END BUG#Z6281

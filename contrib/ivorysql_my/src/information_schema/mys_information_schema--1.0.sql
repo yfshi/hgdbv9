@@ -688,7 +688,7 @@ LEFT JOIN (
 LEFT JOIN LATERAL (
 	SELECT i.indexrelid
 	FROM pg_index i
-	WHERE i.indrelid=c.oid AND NOT i.indisunique AND a.attnum = i.indkey[1]
+	WHERE i.indrelid=c.oid AND NOT i.indisunique AND a.attnum = any(i.indkey) /* BUG#Z6281*/
 	LIMIT 1
 ) idx ON true
 
