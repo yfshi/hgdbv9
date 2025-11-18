@@ -13561,7 +13561,7 @@ check_idle_session_noinput(int *newval, void **extra, GucSource source)
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					errmsg("permission denied"),
 					errdetail("member of syssso_role "
-								"can set the hg_idle_session_time")));
+								"can set the hg_session_locking_timeout"))); /* Bug #6046*/
 	}
 	return true;
 }

@@ -53,7 +53,7 @@ alter_system_set_check(AlterSystemStmt *altersysstmt)
 		(pg_strncasecmp(name,"se_feature.",strlen("se_feature.")) == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug#z1456 */
 		(pg_strncasecmp(name,"hg_sysmac.",strlen("hg_sysmac.")) == 0 && IS_SYSSSO(GetUserId())) ||
 		(pg_strcasecmp(name,"idle_session_timeout") == 0 && IS_SYSSSO(GetUserId())) ||
-		(pg_strcasecmp(name,"idle_session_noinput") == 0 && IS_SYSSSO(GetUserId())))
+		(pg_strcasecmp(name,"hg_session_locking_timeout") == 0 && IS_SYSSSO(GetUserId()))) /* Bug #6046*/
 	{
 
 		PG_TRY();
