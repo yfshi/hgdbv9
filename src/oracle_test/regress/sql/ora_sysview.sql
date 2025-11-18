@@ -1,3 +1,4 @@
+set ivorysql.identifier_case_switch to interchange;
 /****************************test xxx_tables************************************/
 set ivorysql.enable_ora_default_collation = on;
 set ivorysql.enable_recycle_bin = on;
@@ -702,6 +703,14 @@ from all_constraints where upper(table_name) = 'SYSVIEW_CONSTRAINTS_TB' order by
 drop table sysview_constraints_tb cascade;
 drop table sysview_constraints_ref cascade;
 
+create table sysview_constraints_ref1(id int);
+alter table sysview_constraints_ref1 add constraint sysview_constraints_ref1_cons unique(id);
+create table sysview_constraints_tb1(id int constraint sysview_constraints_tb1_cons references sysview_constraints_ref1(id));
+select constraint_name,table_name,r_constraint_name from all_constraints where upper(constraint_name) IN ('SYSVIEW_CONSTRAINTS_TB1_CONS', 'SYSVIEW_CONSTRAINTS_REF1_CONS') order by constraint_name;
+
+drop table sysview_constraints_tb1 cascade;
+drop table sysview_constraints_ref1 cascade;
+
 select count(*) from all_constraints where upper(table_name) like('BIN%');
 purge recyclebin;
 set ivorysql.enable_recycle_bin to off;
@@ -803,3 +812,4 @@ from all_tab_partitions where upper(table_name) like('BIN$%') order by table_nam
 
 purge recyclebin;
 set ivorysql.enable_recycle_bin to off;
+set ivorysql.identifier_case_switch to normal;
