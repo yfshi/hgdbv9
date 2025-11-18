@@ -3309,8 +3309,8 @@ CREATE OR REPLACE VIEW SYS.TAB_COLS_INTERNAL AS
                 NULL::number
         END::number AS char_length,
         CASE
-            WHEN UPPER(t.typname) IN ('ORAVARCHARBYTE', 'ORACHARBYTE', 'BPCHAR') THEN 'B'
-            WHEN UPPER(t.typname) = 'TEXT' THEN 'C'
+            WHEN UPPER(t.typname) IN ('VARCHAR', 'CHAR', 'ORACHARBYTE', 'ORAVARCHARBYTE', 'TEXT') THEN 'B'
+            WHEN UPPER(t.typname) IN ('BPCHAR', 'ORACHARCHAR', 'ORAVARCHARCHAR') THEN 'C'
             ELSE NULL
         END::varchar2(1) AS char_used,
         'NO'::varchar(3) AS v80_fmt_image,
