@@ -1170,18 +1170,18 @@ insert into sysview_tab_partitions_part2 values(generate_series(0, 999), 2, 'sgj
 insert into sysview_tab_partitions_part2 values(generate_series(0, 999), 3, 'sjtbjnyyukyukjtyjytrug');
 analyze;
 select table_name, composite, partition_name, subpartition_count, high_value, high_value_length, partition_position, pct_free, logging,
-        num_rows, blocks, avg_row_len
+        num_rows, blocks, avg_row_len, inmemory
 from all_tab_partitions where upper(table_name) like('SYSVIEW_TAB_PARTITIONS_%') order by table_name, partition_name;
-          table_name          | composite |         partition_name         | subpartition_count |                high_value                | high_value_length | partition_position | pct_free | logging | num_rows | blocks | avg_row_len 
-------------------------------+-----------+--------------------------------+--------------------+------------------------------------------+-------------------+--------------------+----------+---------+----------+--------+-------------
- SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_1 | 0                  | FOR VALUES FROM (0) TO (20)              | 27                | 1                  | 0        | YES     | 60       | 1      | 27
- SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_2 | 0                  | FOR VALUES FROM (21) TO (40)             | 28                | 2                  | 65       | YES     | 57       | 1      | 27
- SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_3 | 0                  | FOR VALUES FROM (41) TO (60)             | 28                | 3                  | 0        | YES     | 57       | 1      | 27
- SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_4 | 0                  | FOR VALUES FROM (61) TO (100)            | 29                | 4                  | 0        | YES     | 117      | 1      | 27
- SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_5 | 0                  | DEFAULT                                  | 7                 | 5                  | 0        | YES     | 72       | 1      | 27
- SYSVIEW_TAB_PARTITIONS_PART2 | YES       | SYSVIEW_TAB_PARTITIONS_PART2_1 | 2                  | FOR VALUES WITH (modulus 3, remainder 0) | 40                | 1                  | 0        | YES     | 1296     |        | 51
- SYSVIEW_TAB_PARTITIONS_PART2 | YES       | SYSVIEW_TAB_PARTITIONS_PART2_2 | 2                  | FOR VALUES WITH (modulus 3, remainder 1) | 40                | 2                  | 0        | YES     | 1332     |        | 51
- SYSVIEW_TAB_PARTITIONS_PART2 | YES       | SYSVIEW_TAB_PARTITIONS_PART2_3 | 2                  | FOR VALUES WITH (modulus 3, remainder 2) | 40                | 3                  | 0        | YES     | 1372     |        | 51
+          table_name          | composite |         partition_name         | subpartition_count |                high_value                | high_value_length | partition_position | pct_free | logging | num_rows | blocks | avg_row_len | inmemory 
+------------------------------+-----------+--------------------------------+--------------------+------------------------------------------+-------------------+--------------------+----------+---------+----------+--------+-------------+----------
+ SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_1 | 0                  | FOR VALUES FROM (0) TO (20)              | 27                | 1                  | 0        | YES     | 60       | 1      | 27          | DISABLED
+ SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_2 | 0                  | FOR VALUES FROM (21) TO (40)             | 28                | 2                  | 35       | YES     | 57       | 1      | 27          | DISABLED
+ SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_3 | 0                  | FOR VALUES FROM (41) TO (60)             | 28                | 3                  | 0        | YES     | 57       | 1      | 27          | DISABLED
+ SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_4 | 0                  | FOR VALUES FROM (61) TO (100)            | 29                | 4                  | 0        | YES     | 117      | 1      | 27          | DISABLED
+ SYSVIEW_TAB_PARTITIONS_PART1 | NO        | SYSVIEW_TAB_PARTITIONS_PART1_5 | 0                  | DEFAULT                                  | 7                 | 5                  | 0        | YES     | 72       | 1      | 27          | DISABLED
+ SYSVIEW_TAB_PARTITIONS_PART2 | YES       | SYSVIEW_TAB_PARTITIONS_PART2_1 | 2                  | FOR VALUES WITH (modulus 3, remainder 0) | 40                | 1                  | 0        | YES     | 1296     |        | 51          | DISABLED
+ SYSVIEW_TAB_PARTITIONS_PART2 | YES       | SYSVIEW_TAB_PARTITIONS_PART2_2 | 2                  | FOR VALUES WITH (modulus 3, remainder 1) | 40                | 2                  | 0        | YES     | 1332     |        | 51          | DISABLED
+ SYSVIEW_TAB_PARTITIONS_PART2 | YES       | SYSVIEW_TAB_PARTITIONS_PART2_3 | 2                  | FOR VALUES WITH (modulus 3, remainder 2) | 40                | 3                  | 0        | YES     | 1372     |        | 51          | DISABLED
 (8 rows)
 
 drop table sysview_tab_partitions_part1;

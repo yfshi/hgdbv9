@@ -11375,9 +11375,9 @@ WITH partition_info AS (
         pi.partition_position::number AS partition_position,
         SYS.ORA_CASE_TRANS((COALESCE(tspc.spcname, 'pg_default'))::varchar2)::varchar2(30) AS tablespace_name,
         COALESCE(
-            (SELECT split_part(opt, '=', 2)::integer
+            (100 - (SELECT split_part(opt, '=', 2)::integer
             FROM unnest(pi.reloptions) AS opt 
-            WHERE split_part(opt, '=', 1) = 'fillfactor'),
+            WHERE split_part(opt, '=', 1) = 'fillfactor')),
             0
         )::number AS pct_free,
         NULL::number AS pct_used,
@@ -11425,7 +11425,7 @@ WITH partition_info AS (
         NULL::varchar2(3) AS segment_created,
         NULL::varchar2(4) AS indexing,
         NULL::varchar2(3) AS read_only,
-        NULL::varchar2(8) AS inmemory,
+        'DISABLED'::varchar2(8) AS inmemory,
         NULL::varchar2(8) AS inmemory_priority,
         NULL::varchar2(15) AS inmemory_distribute,
         NULL::varchar2(17) AS inmemory_compression,

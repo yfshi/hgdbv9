@@ -829,7 +829,7 @@ insert into sysview_tab_partitions_part2 values(generate_series(0, 999), 3, 'sjt
 
 analyze;
 select table_name, composite, partition_name, subpartition_count, high_value, high_value_length, partition_position, pct_free, logging,
-        num_rows, blocks, avg_row_len
+        num_rows, blocks, avg_row_len, inmemory
 from all_tab_partitions where upper(table_name) like('SYSVIEW_TAB_PARTITIONS_%') order by table_name, partition_name;
 
 drop table sysview_tab_partitions_part1;
