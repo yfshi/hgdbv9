@@ -13570,9 +13570,9 @@ static bool
 check_idle_session_timeout(int *newval, void **extra, GucSource source)
 {
 	if (IdleSessionNoinput != 0 && *newval < IdleSessionNoinput)
-		elog(ERROR, "hg_session_locking_timeout:%d should not be bigger than"
-				" idle_session_timeout:%d, session will disconnect before locking",
-				IdleSessionNoinput, *newval);
+		elog(ERROR, "idle_session_timeout:%d should be bigger than"
+				" hg_session_locking_timeout:%d, or session might disconnect before locking",
+				*newval, IdleSessionNoinput);
 	/* Only allow syssso role set the idle_session_timeout. */
 	if(IsUnderPostmaster)
 	{

@@ -275,7 +275,7 @@ CheckRulesParameters(int fitertype, char* username, char* macaddress, char* outm
 	/* check the mac and time parameters. */
 	if(!strcmp(macaddress, "*") && !strcmp(outmacaddress, "*") &&
 	   !strcmp(allowtime, "*") && !strcmp(outallowtime, "*"))
-		elog(ERROR, "Rule_mac,outrule_mac,allow_time,outallow_time parameters cannot be null at the same time!");
+		elog(ERROR, "include_mac,exclude_mac,include_time,exclude_time parameters cannot be null at the same time!");
 	else
 	{
 		/* check the mac address,restricted and unrestricted cannot be consistent. */
@@ -289,21 +289,21 @@ CheckRulesParameters(int fitertype, char* username, char* macaddress, char* outm
 		if(strcmp(macaddress, "*"))
 		{
 			if(strstr(macaddress, "-"))
-				elog(ERROR, "The rule_mac format is error,please enter mac addresses separted by commas!");
+				elog(ERROR, "The include_mac format is error,please enter mac addresses separted by commas!");
 			else
 			{
 				if(!checkMacformat(macaddress))
-					elog(ERROR, "The rule_mac format is error!");
+					elog(ERROR, "The include_mac format is error!");
 			}
 		}
 		if(strcmp(outmacaddress, "*"))
 		{
 			if(strstr(outmacaddress, "-"))
-				elog(ERROR, "The outrule_mac format is error,please enter mac addresses separted by commas!");
+				elog(ERROR, "The exclude_mac format is error,please enter mac addresses separted by commas!");
 			else
 			{
 				if(!checkMacformat(outmacaddress))
-					elog(ERROR, "The outrule_mac format is error!");
+					elog(ERROR, "The exclude_mac format is error!");
 			}
 		}
 
@@ -318,21 +318,21 @@ CheckRulesParameters(int fitertype, char* username, char* macaddress, char* outm
 		if(strcmp(allowtime, "*"))
 		{
 			if(!strstr(allowtime, "to"))
-				elog(ERROR, "The allowtime format is error, must be separated by 'to'!");
+				elog(ERROR, "The include_time format is error, must be separated by 'to'!");
 			else
 			{
 				if(!checkTimeformat(allowtime))
-					elog(ERROR, "The allowtime format is error!");
+					elog(ERROR, "The include_time format is error!");
 			}
 		}
 		if(strcmp(outallowtime, "*"))
 		{
 			if(!strstr(outallowtime, "to"))
-				elog(ERROR, "The outallowtime format is error, must be separated by 'to'!");
+				elog(ERROR, "The exclude_time format is error, must be separated by 'to'!");
 			else
 			{
 				if(!checkTimeformat(outallowtime))
-					elog(ERROR, "The outallowtime format is error!");
+					elog(ERROR, "The exclude_time format is error!");
 			}
 		}
 	}
@@ -865,7 +865,7 @@ LookupRerstrictRules(char* username, char* mac_address)
 		outallowtime = heap_getattr(tup, 7, RelationGetDescr(rel), &isNull);
 		outallow_time = text_to_cstring(DatumGetTextPP(outallowtime));
 
-		elog(DEBUG3, "Checking connect rules: filter_type:%d, rule_mac:%s, outrule_mac:%s, allow_time:%s, outallow_time:%s", 
+		elog(DEBUG3, "Checking connect rules: filter_type:%d, include_mac:%s, exclude_mac:%s, include_time:%s, exclude_time:%s", 
 				filter_type, rule_mac, outrule_mac, allow_time, outallow_time);
 		/* if the type is blacklist. */
 		if(filter_type == 1)
