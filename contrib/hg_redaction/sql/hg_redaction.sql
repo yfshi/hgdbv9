@@ -33,6 +33,9 @@ create redaction policy p1 on test_redaction for(user = 'markbo') add column sal
 set hg_redaction.enable to on;
 select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
+\c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --the fifth step:
 --				 create a policy with the same name on a same table,
@@ -50,6 +53,9 @@ create redaction policy p2 on test_redaction for(user = 'markbo') add column nam
 set hg_redaction.enable to on;
 select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
+\c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --step seven: 
 --			 drop redaction policy.
@@ -63,6 +69,8 @@ select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy
 select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 set hg_redaction.enable to on;
 drop redaction policy p2 on test_redaction;
 
@@ -74,6 +82,8 @@ select polname, attname, procname, polscope, polexception from hg_security.hg_re
 --eighth step: 
 --			  create policy setting with options and for expressions.
 \c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 set hg_redaction.enable to on;
 create redaction policy p1 on test_redaction for(user != 'markbo, hr', ip = '192.168.1.130') add column salary using redact_digits with options(SCOPE query, EXCEPTION none), add column telephone using redact_phone with options(SCOPE top_tlist, EXCEPTION equal) ;
 
@@ -87,6 +97,8 @@ select polname, attname, procname, polscope, polexception from hg_security.hg_re
 
 --			create policy setting with options and for expressions.
 \c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 set hg_redaction.enable to on;
 create redaction policy p2 on test_redaction for(user != 'markbo, hr', ip = '192.168.1.130') add column name using redact_name with options(SCOPE top_tlist_or_error, EXCEPTION none), add column hiredate using redact_all with options(SCOPE query, EXCEPTION equal);
 --			query table hg_redaction_policy, hg_redaction_column, check the options value
@@ -96,7 +108,9 @@ create redaction policy p2 on test_redaction for(user != 'markbo, hr', ip = '192
 set hg_redaction.enable to on;
 select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
-
+\c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --ninth step:
 --			 drop redaction policy.
@@ -149,6 +163,9 @@ create redaction policy p1 on test_redaction for(user = 'hr') add column salary 
 set hg_redaction.enable to on;
 select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
+\c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 --socond step:
 --			  alter redaction policy name.
@@ -162,6 +179,8 @@ select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy
 select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 set hg_redaction.enable to on;
 alter redaction policy newp1 on test_redaction rename to newp11;
 
@@ -171,6 +190,8 @@ select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy
 select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 set hg_redaction.enable to on;
 alter redaction policy newp11 on test_redaction rename to p1;
 
@@ -182,6 +203,8 @@ select polname, attname, procname, polscope, polexception from hg_security.hg_re
 --third step:
 --			 alter redaction policy for cause.
 \c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 set hg_redaction.enable to on;
 alter redaction policy p1 on test_redaction for (user != 'alice', ip = '192.168.88.98');
 
@@ -190,10 +213,12 @@ set hg_redaction.enable to on;
 select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 
 \c - syssso
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 set hg_redaction.enable to on;
 alter redaction policy p1 on test_redaction for (user = 'hr');
 
 \c - redactionuser
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 set hg_redaction.enable to on;
 select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 
@@ -256,6 +281,9 @@ set hg_redaction.enable to on;
 select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
+
+\c - syssso
 set hg_redaction.enable to on;
 alter redaction policy p1 on test_redaction modify column salary with options (SCOPE top_tlist_or_error, EXCEPTION none), telephone using redact_all with options (SCOPE top_tlist_or_error, EXCEPTION none);
 
@@ -264,11 +292,15 @@ set hg_redaction.enable to on;
 select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 \c - syssso
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
+
 set hg_redaction.enable to on;
 alter redaction policy p1 on test_redaction modify column salary using redact_cash with options(SCOPE top_tlist_or_error, EXCEPTION none);
 
 \c - redactionuser
 set hg_redaction.enable to on;
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
+\c - syssso
 select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
 
 
@@ -289,6 +321,10 @@ select polname, attname, procname, polscope, polexception from hg_security.hg_re
 --			expecting: the policy p1 is existed on test_redaction.
 select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 
+\c - syssso
+select polname, attname, procname, polscope, polexception from hg_security.hg_redaction_column;
+--			expecting: the policy p1 is existed on test_redaction.
+select polname, tabname, enable, poloptions from hg_security.hg_redaction_policy;
 
 --tenth step:
 --			 drop policy
@@ -414,11 +450,11 @@ select * from test_redaction where salary = 30000::money;	--expecting have one d
 
 select * from (select * from test_redaction) t; --expecting an error
 select id, name, salary, hiredate, telephone from (select * from test_redaction) t; --expecting an error
-select * from (select id, name, salary, hiredate from test_redaction)t; --expecting no data redaction
+select * from (select id, name, salary, hiredate from test_redaction)t; --data redaction
 --expecting no data redaction
 select id, name, salary, hiredate from (select id, name, salary, hiredate from test_redaction)t;
 
-select * from test_redaction where salary in (select salary from test_redaction); --expecting all data redaction
+select * from test_redaction where salary in (select salary from test_redaction); --expecting redaction data
 select * from test_redaction where telephone in (select telephone from test_redaction); --expecting an error
 
 \c - redactionuser
@@ -494,17 +530,17 @@ set hg_redaction.enable to on;
 select * from employees;	--all redaction
 select * from employees where ssn = '123-33-9345';	--one entry
 select * from employees where ssn = 'xxxxxxxxxxx';	--no data
-select * from employees where ssn in (select ssn from employees);	--all redaction
-select ssn = 'xxx-xx-9345' from employees;	--all true
+select * from employees where ssn in (select ssn from employees);	--data redaction
+select ssn = 'xxx-xx-9345' from employees;	--all false
 select ssn = '123-33-9345' from employees;	--all false
-select * from (select * from employees) t;	--no redaction
+select * from (select * from employees) t;	--data redaction
 select * from employees where ssn in (select ssn from employees where ssn = '123-33-9345'); --one entry
-with ep as (select * from employees) select * from ep;	--no redaction
+with ep as (select * from employees) select * from ep;	--data redaction
 with ep as (select * from employees where ssn = '123-33-9345') select * from ep;	--one entry
 with ep as (select * from employees where ssn = 'xxxxxxxxxxx') select * from ep;	--no data
 select * from employees where salary = 0;	--no data
 select * from employees where salary = 45350; 	--one entry
-select * from employees where salary in (select salary from employees);	--all redaction
+select * from employees where salary in (select salary from employees);	--data redaction
 select salary = 45350 from employees;	--one true
 select salary = 0 from employees;	--all false
 with ep as (select * from employees where salary = 45350) select * from ep; --one entry
@@ -529,16 +565,16 @@ select * from employees where ssn in (select ssn from employees);	--error
 select ssn = 'xxxxxxxxxxx' from employees;	--all true
 select ssn = '123-33-9345' from employees;	--all false
 select * from (select * from employees) t;	--error
-with ep as (select * from employees) select * from ep;	--error
+with ep as (select * from employees) select * from ep;	--data redaction
 with ep as (select * from employees where ssn = '123-33-9345') select * from ep;  --error
 with ep as (select * from employees where ssn = 'xxxxxxxxxxx') select * from ep;  --error
-select * from employees where salary = 0; --no data
-select * from employees where salary = 45350; --one data
+select * from employees where salary = 0; --error
+select * from employees where salary = 45350; --error
 select * from employees where salary in (select salary from employees);		--error
 select salary = 45350 from employees;	--one true
 select salary = 0 from employees;		--all false
 with ep as (select * from employees where salary = 45350) select * from ep;		--error
-with ep as (select * from employees where salary = 0::money) select * from ep;	--error
+with ep as (select * from employees where salary = 0) select * from ep;	--error
 
 
 select * from employees cross join test_redaction;
@@ -568,7 +604,7 @@ VALUES
 ( 'Bill Foo', '123-89-9345', '9781234567','1963-02-14', 45350,
 'william.foe@hotmail.com');
 
-select salary from employees union select salary from employees1; -- 3 entry
+select salary from employees union select salary from employees1; -- 4 entry
 
 \c - syssso
 set hg_redaction.enable to on;
@@ -870,3 +906,316 @@ drop table tb;
 \c - syssso
 set hg_redaction.enable to off;
 
+-- fix bug#Z6105
+\c - redactionuser
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT * FROM tb1 JOIN tb2 USING (id);	--error
+SELECT a.id,a.name FROM tb1 a JOIN tb2 b on(a.id=b.id);	--error
+select a.id,a.name from tb1 a join tb2 b on a.id=b.id;	--error
+SELECT a.id,b.name FROM tb1 a LEFT OUTER JOIN tb2 b ON (a.id = b.id);	 --error
+SELECT a.id,b.name FROM tb1 a RIGHT OUTER JOIN tb2 b ON (a.id = b.id);	 --error
+SELECT a.id,b.name FROM tb1 a FULL OUTER JOIN tb2 b ON (a.id = b.id);	 --error
+drop table tb1, tb2;
+
+
+-- fix bug#Z6106
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+create table tb3(id int4 references tb1(id),info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+insert into tb3 values(1,'hgdb','highgo'),(2,'student','zhang');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
+create redaction policy tb3_pol1 on tb3 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 UNION SELECT id,name FROM tb2;
+SELECT id,name FROM tb1 UNION ALL SELECT id,name FROM tb2 order by id;
+SELECT id,name FROM tb1 INTERSECT SELECT id,name FROM tb2;
+
+drop table tb1, tb2, tb3;
+
+-- fix bug#Z6108
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column  id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 a ORDER BY (SELECT name FROM tb2 b WHERE a.id = b.id);
+
+drop table tb1, tb2;
+
+-- fix bug#Z6110
+create table tb1(id int4 primary key,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+select * from tb1 where id = 2;
+select * from tb1 order by id;
+drop table tb1;
+
+-- fix bug#Z6111
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT * FROM tb1 JOIN tb2 USING (id);
+SELECT a.id,a.name FROM tb1 a JOIN tb2 b USING (id) where b.id=1;
+SELECT a.id,a.name FROM tb1 a JOIN tb2 b on(a.id=b.id);
+select a.id,a.name from tb1 a join tb2 b on a.id=b.id;
+SELECT a.id,b.name FROM tb1 a LEFT OUTER JOIN tb2 b ON (a.id = b.id);
+SELECT a.id,b.name FROM tb1 a RIGHT OUTER JOIN tb2 b ON (a.id = b.id);
+SELECT a.id,b.name FROM tb1 a FULL OUTER JOIN tb2 b ON (a.id = b.id);
+
+drop table tb1, tb2;
+
+-- fix bug#Z6112
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+create table tb3(id int4 references tb1(id),info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+insert into tb3 values(1,'hgdb','highgo'),(2,'student','zhang');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
+create redaction policy tb2_pol1 on tb2 add column  id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
+create redaction policy tb3_pol1 on tb3 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 UNION SELECT id,name FROM tb2;
+SELECT id,name FROM tb1 INTERSECT SELECT id,name FROM tb2;
+
+drop table tb1, tb2, tb3;
+
+-- fix bug#Z6112
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column  id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 a ORDER BY (SELECT name FROM tb2 b WHERE a.id = b.id);
+
+drop table tb1, tb2;
+
+-- fix bug#Z6113
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column  id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 a ORDER BY (SELECT name FROM tb2 b WHERE a.id = b.id);
+
+drop table tb1, tb2;
+
+-- fix bug#Z6116
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTIONS (SCOPE query,EXCEPTION none);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE query,EXCEPTION none);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 WHERE id = (SELECT min(id) FROM tb2 WHERE name = 'highgo');  --three entry
+SELECT min(id),name FROM tb1 GROUP BY name HAVING  max(id) > (SELECT min(id) FROM tb1); --no data
+
+drop table tb1, tb2;
+
+-- fix bug#Z6117
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column id using redact_all  with options(SCOPE query,EXCEPTION equal);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all with options(SCOPE query,EXCEPTION equal);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT min(id),name FROM tb1 GROUP BY name HAVING  max(id) > (SELECT min(id) FROM tb1);
+
+drop table tb1, tb2;
+
+-- fix bug#Z6118
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+create table tb3(id int4 references tb1(id),info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+insert into tb3 values(1,'hgdb','highgo'),(2,'student','zhang');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column id using redact_all with options(scope top_tlist,exception none);
+create redaction policy tb2_pol1 on tb2 add column  id using redact_all with options(scope top_tlist,exception none);
+create redaction policy tb3_pol1 on tb3 add column id using redact_all with options(scope top_tlist,exception none);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 UNION SELECT id,name FROM tb2; 
+SELECT id,name FROM tb1 UNION ALL SELECT id,name FROM tb2 order by id;
+SELECT id,name FROM tb1 INTERSECT SELECT id,name FROM tb2;
+
+drop table tb1, tb2, tb3;
+
+-- fix bug#Z6119
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column  id using redact_all WITH OPTIONS (SCOPE top_tlist,EXCEPTION none);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist,EXCEPTION none);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 WHERE id = (SELECT min(id) FROM tb2 WHERE name = 'highgo');
+SELECT min(id),name FROM tb1 GROUP BY name HAVING  max(id) > (SELECT min(id) FROM tb1);
+SELECT id,name FROM tb1 a ORDER BY (SELECT name FROM tb2 b WHERE a.id = b.id);
+WITH w AS (SELECT id,name FROM tb1) SELECT id,name FROM w WHERE id = 3;
+
+drop table tb1, tb2;
+
+-- fix bug#Z6120
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+create table tb3(id int4 references tb1(id),info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+insert into tb3 values(1,'hgdb','highgo'),(2,'student','zhang');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTIONS (SCOPE top_tlist,EXCEPTION equal);
+create redaction policy tb2_pol1 on tb2 add column  id using redact_all WITH OPTIONS (SCOPE top_tlist,EXCEPTION equal);
+create redaction policy tb3_pol1 on tb3 add column id using redact_all WITH OPTIONS (SCOPE top_tlist,EXCEPTION equal);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 UNION SELECT id,name FROM tb2;
+SELECT id,name FROM tb1 UNION ALL SELECT id,name FROM tb2 order by id;
+SELECT id,name FROM tb1 INTERSECT SELECT id,name FROM tb2;
+
+drop table tb1, tb2, tb3;
+
+-- fix bug#Z6121
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column  id using redact_all WITH OPTIONS (SCOPE top_tlist,EXCEPTION equal);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist,EXCEPTION equal);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 WHERE id = (SELECT min(id) FROM tb2 WHERE name = 'highgo');
+SELECT min(id),name FROM tb1 GROUP BY name HAVING  max(id) > (SELECT min(id) FROM tb1);
+SELECT id,name FROM tb1 a ORDER BY (SELECT name FROM tb2 b WHERE a.id = b.id);
+WITH w AS (SELECT id,name FROM tb1) SELECT id,name FROM w WHERE id = 3;
+
+drop table tb1, tb2;
+
+
+-- fix bug#Z6124
+create table tb1(id int4 primary key,info text,name varchar);
+create table tb2(id int4,info text,name varchar);
+insert into tb1 values(1,'hgdb','highgo'),(2,'student','zhang'),(3,'fruit','apple');
+insert into tb2 values(1,'hgdb','highgo'),(22,'student','zhang'),(33,'fruit','apple');
+
+\c - syssso
+set hg_redaction.enable to on;
+create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
+create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
+
+\c - redactionuser
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+SELECT id,name FROM tb1 NATURAL JOIN tb2;
+SELECT * FROM tb1 JOIN tb2 USING (id);
+SELECT a.id,a.name FROM tb1 a JOIN tb2 b USING (id) where b.id=1;
+SELECT a.id,a.name FROM tb1 a JOIN tb2 b on(a.id=b.id);
+select a.id,a.name from tb1 a join tb2 b on a.id=b.id;
+SELECT a.id,b.name FROM tb1 a LEFT OUTER JOIN tb2 b ON (a.id = b.id);
+SELECT a.id,b.name FROM tb1 a RIGHT OUTER JOIN tb2 b ON (a.id = b.id);
+SELECT a.id,b.name FROM tb1 a FULL OUTER JOIN tb2 b ON (a.id = b.id);
+SELECT * FROM tb1 a CROSS JOIN tb2;
+
+drop table tb1, tb2;

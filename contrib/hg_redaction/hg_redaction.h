@@ -63,6 +63,7 @@
 #include "utils/builtins.h"
 #include "utils/varlena.h"
 #include "catalog/objectaddress.h"
+#include "executor/executor.h"
 
 
 #define CATALOG_RELID		10
@@ -162,6 +163,7 @@ static const MaskingFuncsInfo masking_funcs_infos[] =
 extern post_parse_analyze_hook_type hg_prev_redaction_parse_analyze;
 extern ProcessUtilityRedaction_hook_type hg_prev_redaction_ProcessUtility;
 extern Get_object_description_hook_type hg_prev_Objectclassget;
+extern ExecutorCheckPerms_hook_type prev_ExecutorCheckPerms_hook;
 
 #define COPY_REDACT_SCALAR_FIELD(fldname) \
 	(newnode->fldname = from->fldname)
@@ -202,5 +204,6 @@ extern void Redaction_AlterRelationNamespaceInternal(Oid relOid, Oid oldNspOid, 
 extern Oid get_procid_from_procname(char *procname);
 extern bool judge_redaction_tb(Oid oid);
 extern void redactionTransformDelTargetList(ParseState *pstate, Query *query);
+extern bool hg_redataction_rel_access_restrictions(List *tbnames, bool flg);
 #endif
 

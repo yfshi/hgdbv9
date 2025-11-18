@@ -315,14 +315,9 @@ parse_sub_analyze(Node *parseTree, ParseState *parentParseState,
 	pstate->p_locked_from_parent = locked_from_parent;
 	pstate->p_resolve_unknowns = resolve_unknowns;
 
-	/* pstate->p_subselect record where the row is
-	 * in a subquery, which is needed for data masking.
-	 */
-	pstate->p_subselect = true; /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
-
 	query = transformStmt(pstate, parseTree);
 
-	pstate->p_subselect = false;	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	parentParseState->p_subselect = false;	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
 	free_parsestate(pstate);
 
@@ -2525,7 +2520,13 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	/* transform targetlist */
 	qry->targetList = transformTargetList(pstate, stmt->targetList,
 										  EXPR_KIND_SELECT_TARGET);
-
+	/* Begin - BUG#Z6106
+	 * Keep the original target before data masking,
+	 * as it will be used for later judgment.
+	 */
+	if (hg_redaction_data)
+		qry->oriredactiontargetList = list_copy_deep(qry->targetList);
+	/* End - BUG#Z6106 */
 	/* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
 	 * To emsure that the sorting behavior of group by
 	 * and order by remains the same and after data

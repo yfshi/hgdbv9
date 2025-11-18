@@ -304,6 +304,8 @@ _readQuery(void)
 	READ_BOOL_FIELD(isReplace);
 	READ_NODE_FIELD(partOids);
 	READ_NODE_FIELD(partreloids);
+	READ_BOOL_FIELD(hasuservar);			/* ReqID:SRS-MYSQL-SET */
+	READ_NODE_FIELD(oriredactiontargetList);	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	READ_LOCATION_FIELD(stmt_location);
 	READ_INT_FIELD(stmt_len);
 

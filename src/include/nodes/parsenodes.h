@@ -210,6 +210,13 @@ typedef struct Query
 	 */
 	bool		hasuservar;
 	/* End - ReqID:SRS-MYSQL-SET */
+	/* Begin - BUG#Z6106
+	 * data redaction record targetList the original
+	 * values on the targetlist for later check.
+	 */
+	List	   *oriredactiontargetList;
+	/* End - BUG#Z6106 */
+
 	/*
 	 * The following two fields identify the portion of the source text string
 	 * containing this query.  They are typically only populated in top-level

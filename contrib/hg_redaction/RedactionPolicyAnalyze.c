@@ -44,6 +44,10 @@ static void redaction_whexception(ParseState *pstate, Query *query);
 static bool	redaction_option_cmp(char *tbvalue, char *currval);
 static bool redaction_op_isequal(OpExpr *opexpr);
 static char *default_time_str(Var *var);
+/* Begin - BUG#Z6106 */
+static void check_other_position(ParseState *pstate, Query *query);
+static void check_orderby_position(ParseState *pstate, Query *query);
+/* End - BUG#Z6106 */
 
 PG_FUNCTION_INFO_V1(redaction_all_name);
 
@@ -235,12 +239,25 @@ get_var_value(const List *rtable, Var *var, VarParserValue *varvalue)
 	}
 
 	/*
-	 * Determine whether the current table is a system
-	 * table, if it is a system table, no data redaction
-	 * will be performed.
+	 * Handle the case where RangeTblEntry is a subquery.
+	 * there is no bug number.
 	 */
-	if (!OidIsValid(rte->relid) || IsCatalogRelationOid(rte->relid))
-		return CATALOG_RELID;
+	if (rte->rtekind == RTE_SUBQUERY)
+	{
+		Query *qry = (Query *)rte->subquery;
+
+		return get_var_value(qry->rtable, var, varvalue);
+	}
+	else
+	{
+		/*
+		 * Determine whether the current table is a system
+		 * table, if it is a system table, no data redaction
+		 * will be performed.
+		 */
+		if (!OidIsValid(rte->relid) || IsCatalogRelationOid(rte->relid))
+			return CATALOG_RELID;
+	}
 
 	/* the kind of current RangeTableEntry */
 	switch (rte->rtekind)
@@ -1731,7 +1748,44 @@ redaction_whexception(ParseState *pstate, Query *query)
 				redaction_whexception(pstate, subquery);
 			}
 		}
+
+		/* Begin - BUG#Z6105
+		 * Check if the column appears in the join statement.
+		 */
+		if (query->jointree != NULL && query->jointree->fromlist != NIL)
+		{
+			ListCell    *cell;
+			List	   *temfromlist = list_copy_deep(query->jointree->fromlist);
+
+			foreach(cell, temfromlist)
+			{
+				if (IsA(lfirst(cell), JoinExpr))
+				{
+					JoinExpr *jexpr = (JoinExpr *)lfirst(cell);
+
+					if (jexpr->quals != NULL)
+					{
+						mask_expr_node(pstate, (Expr **)&jexpr->quals, query->rtable, true, false, false);
+					}
+				}
+			}
+			list_free_deep(temfromlist);
+		}
+		/* End - BUG#Z6105 */
+
+		/* Begin - BUG#Z6116
+		 * having redaction.
+		 */
+		if (query->havingQual != NULL)
+		{
+			mask_expr_node(pstate, (Expr **)&query->havingQual, query->rtable, true, false, false);
+		}
+		/* End - BUG#Z6116 */
 	}
+
+	/* Begin - BUG#Z6106 */
+	check_other_position(pstate, query);
+	/* End - BUG#Z6106 */
 }
 
 /*
@@ -1764,9 +1818,7 @@ redaction_check(char *polname, char *colname, int16 scope, int16 execption, bool
 	}
 	else if (scope == 4)
 	{
-		if (!toptlistflg && eqflg && execption == 16)
-			res = false;
-		else if (toptlistflg && eqflg && execption == 16)
+		if (toptlistflg && eqflg && execption == 16)
 			res = false;
 		else if (!toptlistflg)
 			ereport(ERROR,
@@ -1835,7 +1887,7 @@ process_redaction(ParseState *pstate, Query *query, bool toptlistflg, bool dealt
 	
 	if (query == NULL)
 		return;
-	
+
 	/* 
 	 * For each cte, we get its query recursively for masking,
 	 * and then handle this query in normal way
@@ -1846,9 +1898,13 @@ process_redaction(ParseState *pstate, Query *query, bool toptlistflg, bool dealt
 		{
 			CommonTableExpr *cte = (CommonTableExpr *) lfirst(lc);
 			Query *cte_query = (Query *)cte->ctequery;
-			process_redaction(pstate, cte_query, false, true);
+			process_redaction(pstate, cte_query, toptlistflg, true);
 		}
 	}
+
+	/* Begin - BUG#Z6106 */
+	check_other_position(pstate, query);
+	/* End - BUG#Z6106 */
 
 	/* find subquery and process each subquery node */
 	if (query->rtable != NULL) 
@@ -2011,3 +2067,75 @@ redactionTransformDelTargetList(ParseState *pstate, Query *query)
 
 	return;
 }
+
+/* Begin - BUG#Z6106
+ *
+ * check_other_position
+ *	return void
+ *
+ * NOTE: check the column position, sometimes
+ * 		 need to ereport an error.
+ */
+static void
+check_other_position(ParseState *pstate, Query *query)
+{
+	check_orderby_position(pstate, query);
+}
+
+/*
+ * check_orderby_position
+ *	return void
+ *
+ * NOTE: check the column position, sometimes
+ * 		 need to ereport an error.
+ */
+static void
+check_orderby_position(ParseState *pstate, Query *query)
+{
+	if (query->sortClause != NIL)
+	{
+		List	   *templist = NIL;
+		ListCell   *cell;
+
+		/* Copy the linked list once to prevent the original
+		 * list from beging modified by wrapping.
+		 */
+		if (query->oriredactiontargetList != NIL)
+		{
+			templist = list_copy_deep(query->oriredactiontargetList);
+		}
+		else
+		{
+			templist = list_copy_deep(query->targetList);
+		}
+
+		/* if the templist is NULL, do nothing */
+		if (templist == NIL)
+		{
+			return;
+		}
+
+		foreach(cell, query->sortClause)
+		{
+			if (IsA(lfirst(cell), SortGroupClause))
+			{
+				SortGroupClause *sortgrop = (SortGroupClause *)lfirst(cell);
+
+				/* Find the corresponding node for inspection */
+				if (IsA(lfirst(list_nth_cell(templist, sortgrop->tleSortGroupRef - 1)), TargetEntry))
+				{
+					TargetEntry *tle = (TargetEntry *)lfirst(list_nth_cell(templist, sortgrop->tleSortGroupRef - 1));
+
+					parser_target_entry(pstate, &tle, query->rtable, true, false);
+				}
+			}
+		}
+
+		/* if the copied list is not null, free it */
+		if (templist != NIL)
+		{
+			list_free_deep(templist);
+		}
+	}
+}
+/* End - BUG#Z6106 */

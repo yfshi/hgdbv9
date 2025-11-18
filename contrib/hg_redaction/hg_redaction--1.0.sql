@@ -260,7 +260,7 @@ IMMUTABLE PARALLEL SAFE;
  * the view as redaction functions view,
  *	display all redactio functions.
  */
-CREATE OR REPLACE VIEW hg_security.hg_redaction_functions as 
+CREATE OR REPLACE VIEW hg_security.hg_redaction_function as 	/* BUG#Z6106 */
 	SELECT 
 		proname,
 		proargtypes,
@@ -292,5 +292,5 @@ CREATE OR REPLACE VIEW hg_security.hg_redaction as
 
 grant select on hg_security.hg_redaction_policy to public;
 grant select on hg_security.hg_redaction_column to public;
-grant select on hg_security.hg_redaction_functions to public;
+grant select on hg_security.hg_redaction_function to public;	/* BUG#Z6106 */
 grant select on hg_security.hg_redaction to public;

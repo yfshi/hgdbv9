@@ -85,6 +85,7 @@ make_parsestate(ParseState *parentParseState)
 		pstate->p_not_transform_funcCall = parentParseState->p_not_transform_funcCall;
 		/* End - BUG#M0000376 */
 		pstate->p_myssetvar = parentParseState->p_myssetvar;	/* ReqID:SRS-MYSQL-SET */
+		pstate->p_subselect = parentParseState->p_subselect;	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	}
 
 	pstate->p_check_column_auto_increment = true; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */

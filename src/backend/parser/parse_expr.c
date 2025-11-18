@@ -3209,6 +3209,7 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 
 	pstate->p_hasSubLinks = true;
 
+	pstate->p_subselect = true; /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	/*
 	 * OK, let's transform the sub-SELECT.
 	 */

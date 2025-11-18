@@ -467,3 +467,77 @@ judge_redaction_tb(Oid oid)
 
 	return false;
 }
+
+/* hg_redataction_rel_access_restrictions
+ *
+ * With all three privileges enabled, only user syssso can
+ * query tables and views related to hg_redaction, with all
+ * three privileges disabled, only the supperuser can query
+ * table and views related to hg_redaction.
+ */
+bool
+hg_redataction_rel_access_restrictions(List *tbnames, bool flg)
+{
+	ListCell	*cell;
+	Oid			redactionpoid = InvalidOid;
+	Oid			redactioncoid = InvalidOid;
+	Oid			redactionvoid = InvalidOid;
+	Oid			redactionfoid = InvalidOid;
+
+	if (prev_ExecutorCheckPerms_hook &&
+		!(*prev_ExecutorCheckPerms_hook) (tbnames, flg))
+		return false;
+
+	/* get table and view oid */
+	redactionpoid = ddl_get_policytb_oid("hg_redaction_policy");
+	redactioncoid = ddl_get_policytb_oid("hg_redaction_column");
+	redactionvoid = ddl_get_policytb_oid("hg_redaction");
+	redactionfoid = ddl_get_policytb_oid("hg_redaction_function");
+
+	if (!OidIsValid(redactionpoid) ||!OidIsValid(redactioncoid) ||
+		!OidIsValid(redactionvoid) || !OidIsValid(redactionfoid))
+		return true;
+
+	foreach(cell, tbnames)
+	{
+		RangeTblEntry *rte = lfirst(cell);
+		if (rte->rtekind == RTE_RELATION)
+		{
+			char 	*reltype = NULL;
+			char	*relname = NULL;
+
+			if (rte->relid == redactionpoid || rte->relid == redactioncoid)
+			{
+				reltype = "table";
+				if (rte->relid == redactionpoid)
+					relname = "hg_redaction_policy";
+				else
+					relname = "hg_redaction_column";
+			}
+			else if (rte->relid == redactionvoid || rte->relid == redactionfoid)
+			{
+				reltype = "view";
+				if (rte->relid == redactionvoid)
+					relname = "hg_redaction";
+				else
+					relname = "hg_redaction_function";
+			}
+			else
+				return true;
+
+			if (!IS_SYSSSO(GetUserId()))
+			{
+				if (rte->relid == redactionpoid || rte->relid == redactioncoid ||
+					rte->relid == redactionvoid || rte->relid == redactionfoid)
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied for %s %s.",
+							 reltype, relname)));
+				}
+			}
+		}
+	}
+
+	return true;
+}
