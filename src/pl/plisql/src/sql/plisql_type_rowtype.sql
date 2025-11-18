@@ -2900,6 +2900,42 @@ drop table emp;
 \c - system - -;
 /* End - BUG#M0000407 */
 
+/* Begin - BUG#M0000536 */
+CREATE TABLE t1(id int, name varchar(20));
+
+CREATE OR REPLACE FUNCTION fun1(v t1.id%TYPE) RETURN varchar AS
+BEGIN
+  RETURN v;
+END;
+/
+
+CREATE OR REPLACE PACKAGE pkg1 is
+  var1 t1.id%TYPE;
+END;
+/
+CREATE OR REPLACE FUNCTION fun2(v pkg1.var1%TYPE) RETURN varchar AS
+BEGIN
+  RETURN v;
+END;
+/
+
+\df fun1;
+\df fun2;
+
+alter table t1 alter column id type real;
+\df fun1;
+\df fun2;
+
+alter table t1 alter column id type int;
+\df fun1;
+\df fun2;
+
+DROP FUNCTION fun1;
+DROP FUNCTION fun2;
+DROP PACKAGE pkg1;
+DROP TABLE t1;
+/* End - BUG#M0000536 */
+
 RESET IVORYSQL.COMPATIBLE_MODE;
 RESET IVORYSQL.IDENTIFIER_CASE_SWITCH;
 
