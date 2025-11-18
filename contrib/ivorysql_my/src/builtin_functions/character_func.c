@@ -1473,14 +1473,31 @@ weight_string(PG_FUNCTION_ARGS)
 	#define SINGLE_BYTE_LENGTH 1
 
 	bytea *result;
-	text *input = PG_GETARG_TEXT_PP(0);
-	char * input_str = VARDATA_ANY(input);
-	size_t input_len = VARSIZE_ANY_EXHDR(input);
+	text *input;
+	char * input_str;
+	size_t input_len;
+	size_t flags;
+	size_t type;
+	size_t nweights;
+	int err_level;
 
-	size_t flags = PG_GETARG_UINT32(1);
-	size_t type = PG_GETARG_UINT32(2);
-	size_t nweights = PG_GETARG_UINT32(3);
-	int err_level = is_strict_mode() ? ERROR : WARNING;
+	/* Begin - bug#z6009 */
+	if (PG_ARGISNULL(0))
+	{
+		result = (bytea *)palloc0(VARHDRSZ);
+		SET_VARSIZE(result, VARHDRSZ);
+		PG_RETURN_BYTEA_P(result);
+	}
+	/* End - bug#z6009 */
+
+	input = PG_GETARG_TEXT_PP(0);
+	input_str = VARDATA_ANY(input);
+	input_len = VARSIZE_ANY_EXHDR(input);
+
+	flags = PG_GETARG_UINT32(1);
+	type = PG_GETARG_UINT32(2);
+	nweights = PG_GETARG_UINT32(3);
+	err_level = is_strict_mode() ? ERROR : WARNING;
 
 	if (type == WEIGHT_STRING_AS_UNUSE)
 		nweights = input_len;
@@ -1515,11 +1532,18 @@ weight_string(PG_FUNCTION_ARGS)
 			PG_RETURN_NULL();
 		}
 
-		result = (bytea *)palloc(VARHDRSZ + max_output_len);
+		result = (bytea *)palloc0(VARHDRSZ + max_output_len);
 		result_data = (char *)VARDATA(result);
-		actual_len = do_mysql_strnxfrm((unsigned char*)result_data, max_output_len, nweights,
-									   (unsigned char*)input_str, input_len,
-									   flags | MY_STRXFRM_PAD_WITH_SPACE, PG_GET_COLLATION());
+		/* Begin - bug#z6010 */
+		if (type == WEIGHT_STRING_AS_UNUSE)
+			actual_len = do_mysql_strnxfrm((unsigned char*)result_data, max_output_len, nweights,
+										   (unsigned char*)input_str, input_len,
+										   flags, PG_GET_COLLATION());
+		else
+			actual_len = do_mysql_strnxfrm((unsigned char*)result_data, max_output_len, nweights,
+										   (unsigned char*)input_str, input_len,
+										   flags | MY_STRXFRM_PAD_WITH_SPACE, PG_GET_COLLATION());
+		/* End - bug#z6010 */
 		SET_VARSIZE(result, VARHDRSZ + actual_len);
 
 		PG_RETURN_BYTEA_P(result);
