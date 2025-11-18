@@ -117,8 +117,8 @@ int			default_week_format = 0;
 
 bool		at_or_atat = false;		/* ReqID:SRS-MYSQL-SET */
 bool		sql_quote_show_create = true;	/* ReqID:SRS-MYSQL-SHOW */
-
 bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
+bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
@@ -294,7 +294,17 @@ bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-PROTOCOL */
-
+	/* Begin - SRS-MYSQL-HEX-LITERAL */
+	{
+		{"mysql.use_mysql_bit_literal", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Use bit-value literal with Mysql features in mysql compatible mode."),
+			NULL,
+		},
+		&use_mysql_bit_literal,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - SRS-MYSQL-HEX-LITERAL */
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS

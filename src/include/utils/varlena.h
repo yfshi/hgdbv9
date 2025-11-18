@@ -66,5 +66,6 @@ extern text *text_catenate(text *t1, text *t2);
 
 /* Begin - SRS-MYSQL-HEX-LITERAL */
 extern bool isxdigits_n(const char *instr, size_t n);
+extern bool isbindigits_n(const char *instr, size_t n);
 /* End - SRS-MYSQL-HEX-LITERAL */
 #endif

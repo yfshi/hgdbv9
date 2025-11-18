@@ -1,0 +1,291 @@
+set mysql.use_mysql_bit_literal to on;
+set mysql.cast_to_char = on;
+select 0b;
+ERROR:  column "0b" does not exist
+LINE 1: select 0b;
+               ^
+select 0B;
+ERROR:  column "0B" does not exist
+LINE 1: select 0B;
+               ^
+select 0b1;
+ varbinary 
+-----------
+ \x01
+(1 row)
+
+select 0B1;
+ERROR:  column "0B1" does not exist
+LINE 1: select 0B1;
+               ^
+select 0ba;
+ERROR:  column "0ba" does not exist
+LINE 1: select 0ba;
+               ^
+select 0Bc;
+ERROR:  column "0Bc" does not exist
+LINE 1: select 0Bc;
+               ^
+select 0b01100001;
+ varbinary 
+-----------
+ \x61
+(1 row)
+
+select B'111';
+ varbinary 
+-----------
+ \x07
+(1 row)
+
+select B'0010';
+ varbinary 
+-----------
+ \x02
+(1 row)
+
+select B'123';
+ERROR:  You have an error in your SQL syntax.
+select B'100A100';
+ERROR:  You have an error in your SQL syntax.
+select b'01100100';
+ varbinary 
+-----------
+ \x64
+(1 row)
+
+select cast(0b01100001 as char);                -- a
+ varchar 
+---------
+ a
+(1 row)
+
+select cast(0b01100110 as nchar);               -- f
+ varchar 
+---------
+ f
+(1 row)
+
+select cast(0b01 as signed);                    -- 1
+ int8 
+------
+    1
+(1 row)
+
+select cast(0b10 as unsigned);                  -- 2
+ uint8 
+-------
+ 2
+(1 row)
+
+select cast(0b11111111 as decimal);             -- 255
+ numeric 
+---------
+     255
+(1 row)
+
+select cast(0b01111010 as binary);              -- \x7a
+ binary 
+--------
+ \x7a
+(1 row)
+
+select cast(0b0011001000110000001100100011001000110001001100100011000100110010 as date);        -- 2022-12-12
+  mysdate   
+------------
+ 2022-12-12
+(1 row)
+
+select cast(0b0011001000110000001100100011001000110001001100100011000100110010 as datetime);    -- 2022-12-12 00:00:00
+     mysdatetime     
+---------------------
+ 2022-12-12 00:00:00
+(1 row)
+
+select cast(0b001100010011001000110001001100100011000100110010 as time);                        -- 12:12:12 
+ mystime  
+----------
+ 12:12:12
+(1 row)
+
+select cast(0b1111111111111111 as signed);                                                        -- 65535
+ int8  
+-------
+ 65535
+(1 row)
+
+select cast(0b1111111111111111111111111111111111111111111111111111111111111111 as signed);        -- 1
+ int8 
+------
+   -1
+(1 row)
+
+select cast(0b11111111111111111111111111111111111111111111111111111111111111111 as signed);       -- -1 and warning
+WARNING:  Truncated incorrect BINARY value: x'01ffffffffffffffff'
+ int8 
+------
+   -1
+(1 row)
+
+select cast(0b1111111111111111111111111111111111111111111111111111111111111111 as unsigned);      -- 18446744073709551615
+        uint8         
+----------------------
+ 18446744073709551615
+(1 row)
+
+select cast(0b11111111111111111111111111111111111111111111111111111111111111111 as decimal(64));  -- 18446744073709551615 and warning
+WARNING:  Truncated incorrect BINARY value: x'01ffffffffffffffff'
+       numeric        
+----------------------
+ 18446744073709551615
+(1 row)
+
+select cast(0b00 as signed);    -- 0
+ int8 
+------
+    0
+(1 row)
+
+select cast(0b0000 as unsigned);  -- 0
+ uint8 
+-------
+ 0
+(1 row)
+
+create table bit_test(i1 int1, i2 int2, i3 int3, i4 int4, i8 int8);
+insert into bit_test values (0b11, 0b11, 0b11, 0b11, 0b11);
+select * from bit_test;
+ i1 | i2 | i3 | i4 | i8 
+----+----+----+----+----
+  3 |  3 |  3 |  3 |  3
+(1 row)
+
+drop table bit_test;
+create table bit_test(u1 uint1, u2 uint2, u3 uint3, u4 uint4, u8 uint8);
+insert into bit_test values (0b11, 0b11, 0b11, 0b11, 0b11);
+select * from bit_test;
+ u1 | u2 | u3 | u4 | u8 
+----+----+----+----+----
+ 3  | 3  | 3  | 3  | 3
+(1 row)
+
+drop table bit_test;
+create table t1(a int3 unsigned);
+insert into t1 values(0b01100001);
+select * from t1;
+ a  
+----
+ 97
+(1 row)
+
+create table t2(a int2 unsigned);
+insert into t2 values(0b01100001);
+select * from t2;
+ a  
+----
+ 97
+(1 row)
+
+create table t3(a int4 unsigned);
+insert into t3 values(0b01100001);
+select * from t3;
+ a  
+----
+ 97
+(1 row)
+
+create table t4(a int8 unsigned);
+insert into t4 values(0b01100001);
+select * from t4;
+ a  
+----
+ 97
+(1 row)
+
+drop table t1, t2, t3, t4;
+select 0b1111111111111111111111111111111111111111111111111111111111111111 + 1;  -- 0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select 0b11111111111111111111111111111111111111111111111111111111111111111 + 0; -- 18446744073709551615 + warning
+WARNING:  Truncated incorrect BINARY value: x'01ffffffffffffffff'
+       ?column?       
+----------------------
+ 18446744073709551615
+(1 row)
+
+set sql_mode = '';
+select 0b11111111 || '1';   -- t
+ ?column? 
+----------
+ t
+(1 row)
+
+select 0b11111111 || '0';  -- t
+ ?column? 
+----------
+ t
+(1 row)
+
+select 0b11111111 ||  1 ;  -- t
+ ?column? 
+----------
+ t
+(1 row)
+
+select 0b11111111 ||  0 ;   -- t
+ ?column? 
+----------
+ t
+(1 row)
+
+select 0b11111111 ||  true;    -- t
+ ?column? 
+----------
+ t
+(1 row)
+
+select 0b11111111 ||  false;    -- t
+ ?column? 
+----------
+ t
+(1 row)
+
+set sql_mode = 'pipes_as_concat';
+select 0b01100110 || 'a';   -- fa
+ ?column? 
+----------
+ fa
+(1 row)
+
+reset sql_mode;
+create table bit_test as select 0b11;
+\d bit_test
+                Table "public.bit_test"
+  Column   |   Type    | Collation | Nullable | Default 
+-----------+-----------+-----------+----------+---------
+ varbinary | varbinary |           |          | 
+
+drop table bit_test;
+select position(B'1010' IN B'00001010');           -- 1
+ position 
+----------
+        1
+(1 row)
+
+select position(B'111010110' IN B'0111010110');    -- 1
+ position 
+----------
+        1
+(1 row)
+
+select position(B'1010' in B'11111010');           -- 0
+ position 
+----------
+        0
+(1 row)
+
+reset mysql.cast_to_char;
+SET mysql.use_mysql_bit_literal TO off;

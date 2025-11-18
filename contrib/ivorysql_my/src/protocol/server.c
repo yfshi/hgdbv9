@@ -184,6 +184,7 @@ mysql_session_init(ProtocolExtensionConfig *self)
 		SetConfigOption("ivorysql.enable_mysql_information_schema", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.use_mysql_bool", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.use_mysql_do", "true", PGC_USERSET, PGC_S_OVERRIDE);
+		SetConfigOption("mysql.use_mysql_bit_literal", "true", PGC_USERSET, PGC_S_OVERRIDE); 
 		SetConfigOption("sql_mode", "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,"
 									"NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,"
 									"NO_ENGINE_SUBSTITUTION",

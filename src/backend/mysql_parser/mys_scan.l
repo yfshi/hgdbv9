@@ -633,7 +633,25 @@ other			.
 					switch (yyextra->state_before_str_stop)
 					{
 						case xb:
-							yylval->str = litbufdup(yyscanner);
+							/* Begin - SRS-MYSQL-HEX-LITERAL */
+							if (use_mysql_bit_literal == true)
+							{	
+								if (!isbindigits_n(yyextra->literalbuf + 1, yyextra->literallen - 1))
+								{
+									ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											 errmsg("You have an error in your SQL syntax.")));
+								}
+							
+								yylval->str = litbufdup(yyscanner);
+
+								// yylval->str has 'b' prefix, we have to jump it when make hex const in parse_bitstring().
+								yylval->str++;
+							}
+							else
+								yylval->str = litbufdup(yyscanner);
+							/* End - SRS-MYSQL-HEX-LITERAL */
+
 							return BCONST;
 						case xh:
 							yylval->str = litbufdup(yyscanner);
@@ -1215,6 +1233,11 @@ other			.
 						{
 							yylval->str = pstrdup(yytext + 2);
 							return HCONST;
+						}
+						if (yytext[1] == 'b' && yyleng > 2 && isbindigits_n(yytext + 2, yyleng - 2))
+						{
+							yylval->str = pstrdup(yytext + 2);
+							return BCONST;
 						}
 					}
 					/* End - SRS-MYSQL-HEX-LITERAL */

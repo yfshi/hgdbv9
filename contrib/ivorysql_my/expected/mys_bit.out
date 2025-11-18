@@ -1,3 +1,4 @@
+SET mysql.use_mysql_bit_literal TO on;
 create table t (c bit);
 \d t;
                   Table "public.t"
@@ -880,12 +881,12 @@ select * from t;
 
 drop table t;
 CREATE TABLE BIT_TABLE(b BIT(11));
-INSERT INTO BIT_TABLE VALUES (B'10'); -- too short
+INSERT INTO BIT_TABLE VALUES (B'10');
 INSERT INTO BIT_TABLE VALUES (B'00000000000');
 INSERT INTO BIT_TABLE VALUES (B'11011000000');
 INSERT INTO BIT_TABLE VALUES (B'01010101010');
 INSERT INTO BIT_TABLE VALUES (B'101011111010'); -- too long
-ERROR:  bit string length 12 does not match type bit(11)
+ERROR:  Data too long for column
 SELECT * FROM BIT_TABLE;
    b    
 --------
@@ -1076,13 +1077,11 @@ insert into t_index_brin (flag) select (i % 65536) from generate_series(1, 10000
 set enable_seqscan = off;
 create index idx_brin on t_index_brin using brin (flag);
 explain (costs off) select * from t_index_brin where flag=b'1010';
-                      QUERY PLAN                      
-------------------------------------------------------
- Bitmap Heap Scan on t_index_brin
-   Recheck Cond: (flag = ('1010'::"bit")::mysbit)
-   ->  Bitmap Index Scan on idx_brin
-         Index Cond: (flag = ('1010'::"bit")::mysbit)
-(4 rows)
+               QUERY PLAN                
+-----------------------------------------
+ Seq Scan on t_index_brin
+   Filter: ((flag)::uint8 = '10'::uint8)
+(2 rows)
 
 drop index idx_brin;
 drop table t_index_brin;
@@ -1091,13 +1090,11 @@ create table t_index_btree (id serial primary key, flag bit(64));
 insert into t_index_btree (flag) select (i % 65536) from generate_series(1, 100000) as i;
 create index  idx_btree on t_index_btree  (flag);
 explain (costs off) select * from t_index_btree where flag=b'1010';
-                      QUERY PLAN                      
-------------------------------------------------------
- Bitmap Heap Scan on t_index_btree
-   Recheck Cond: (flag = ('1010'::"bit")::mysbit)
-   ->  Bitmap Index Scan on idx_btree
-         Index Cond: (flag = ('1010'::"bit")::mysbit)
-(4 rows)
+               QUERY PLAN                
+-----------------------------------------
+ Seq Scan on t_index_btree
+   Filter: ((flag)::uint8 = '10'::uint8)
+(2 rows)
 
 drop index idx_btree;
 drop table t_index_btree;
@@ -1229,13 +1226,20 @@ drop table t_bit;
 set sql_mode = '';
 create table t_bit_sql_mode (b1 BIT(8), b2 bit(17), b3 BIT(32), b4 BIT(63), b5 BIT(1));
 insert into t_bit_sql_mode values (0b101010101010,'这是一条测试数据',X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF','@#!@#!%^&*特殊字符',10);
-ERROR:  column "0b101010101010" does not exist
+WARNING:  Out of range value for column
 LINE 1: insert into t_bit_sql_mode values (0b101010101010,'这是一条...
-                                           ^
+                                                          ^
+WARNING:  Out of range value for column
+LINE 1: ...是一条测试数据',X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF','@#!@#!%^&...
+                                                             ^
+WARNING:  Out of range value for column
+WARNING:  Out of range value for column
+WARNING:  value too long for type bit(1)
 select * from t_bit_sql_mode;
- b1 | b2 | b3 | b4 | b5 
-----+----+----+----+----
-(0 rows)
+  b1  |    b2    |     b3     |         b4         |  b5  
+------+----------+------------+--------------------+------
+ 0xFF | 0x01FFFF | 0xFFFFFFFF | 0x7FFFFFFFFFFFFFFF | 0x01
+(1 row)
 
 set sql_mode = default;
 drop table t_bit_sql_mode;
@@ -1283,3 +1287,4 @@ LINE 1: select convert('2023-08-20', unsigned),convert('2025-03-24 2...
  2023  | 2025  | 13
 (1 row)
 
+SET mysql.use_mysql_bit_literal TO off;

@@ -1,3 +1,6 @@
+
+SET mysql.use_mysql_bit_literal TO on;
+
 create table t (c bit);
 \d t;
 drop table t;
@@ -123,7 +126,7 @@ select * from t;
 drop table t;
 
 CREATE TABLE BIT_TABLE(b BIT(11));
-INSERT INTO BIT_TABLE VALUES (B'10'); -- too short
+INSERT INTO BIT_TABLE VALUES (B'10');
 INSERT INTO BIT_TABLE VALUES (B'00000000000');
 INSERT INTO BIT_TABLE VALUES (B'11011000000');
 INSERT INTO BIT_TABLE VALUES (B'01010101010');
@@ -317,3 +320,5 @@ drop table t_index_hash;
 
 -- bug 5805
 select convert('2023-08-20', unsigned),convert('2025-03-24 20:47:35', unsigned),convert(b'1101', unsigned);
+
+SET mysql.use_mysql_bit_literal TO off;

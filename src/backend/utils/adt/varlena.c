@@ -7241,6 +7241,21 @@ isxdigits_n(const char *instr, size_t n)
 	return true;
 }
 
+/* Begin - SRS-MYSQL-HEX-LITERAL */
+bool
+isbindigits_n(const char *instr, size_t n)
+{
+	for (size_t i = 0; i < n; i++)
+	{
+		char c = instr[i];
+		if (c != '0' && c != '1')
+			return false;
+	}
+
+	return true;
+}
+/* End - SRS-MYSQL-HEX-LITERAL */
+
 static unsigned int
 hexval(unsigned char c)
 {

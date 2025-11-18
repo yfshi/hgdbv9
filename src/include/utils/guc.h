@@ -555,6 +555,8 @@ extern PGDLLIMPORT char     *sha256_password_private_key_path;
 extern PGDLLIMPORT char 	*version_comment_str;
 /* End - Req: SRS-MYSQL-PROTOCOL */
 
+extern PGDLLIMPORT bool use_mysql_bit_literal;	/* SRS-MYSQL-HEX-LITERAL */
+
 /*
  * Functions exported by guc.c
  */

@@ -72,6 +72,7 @@ Mysql_check_for_column_name_collision_hook_type pre_mysql_check_for_column_name_
 
 /* Begin BUG#5048 5070 */
 static mysql_hexstring_parse_hook_type pre_mysql_hexstring_parse_hook = NULL;
+static mysql_bitstring_parse_hook_type pre_mysql_bitstring_parse_hook = NULL;
 /* End BUG#5048 5070 */
 
 /* Begin - ReqID:SRS-MYSQL-SET */
@@ -169,6 +170,9 @@ _PG_init(void)
 	/* Begin BUG#5048 5070 */
 	pre_mysql_hexstring_parse_hook = mysql_hexstring_parse_hook;
 	mysql_hexstring_parse_hook = parse_hexstring;
+
+	pre_mysql_bitstring_parse_hook = mysql_bitstring_parse_hook;
+	mysql_bitstring_parse_hook = parse_bitstring;
 	/* End BUG#5048 5070 */
 
 	/* Begin - ReqID:SRS-MYSQL-SET */
@@ -232,6 +236,7 @@ _PG_fini(void)
 
 	/* Begin BUG#5048 5070 */
 	mysql_hexstring_parse_hook = pre_mysql_hexstring_parse_hook;
+	mysql_bitstring_parse_hook = pre_mysql_bitstring_parse_hook;
 	/* End BUG#5048 5070 */
 
 	/* Begin - ReqID:SRS-MYSQL-SET */
