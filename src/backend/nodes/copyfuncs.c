@@ -3438,6 +3438,8 @@ _copyQuery(const Query *from)
 	COPY_NODE_FIELD(partOids);
 	COPY_NODE_FIELD(partreloids);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	COPY_SCALAR_FIELD(hasuservar);	/* ReqID:SRS-MYSQL-SET */
+	COPY_NODE_FIELD(oriredactiontargetList);	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	COPY_LOCATION_FIELD(stmt_location);
 	COPY_SCALAR_FIELD(stmt_len);
 
@@ -3561,6 +3563,7 @@ _copySelectStmt(const SelectStmt *from)
 	COPY_SCALAR_FIELD(all);
 	COPY_NODE_FIELD(larg);
 	COPY_NODE_FIELD(rarg);
+	COPY_SCALAR_FIELD(mysshowtype);	/* BUG#Z5973, Mark the type of SHOW */
 	return newnode;
 }
 

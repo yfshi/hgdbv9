@@ -719,6 +719,7 @@ transformRangeSubselect(ParseState *pstate, RangeSubselect *r)
 	Assert(!pstate->p_lateral_active);
 	pstate->p_lateral_active = r->lateral;
 
+	pstate->p_subselect = true; /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	/*
 	 * Analyze and transform the subquery.
 	 */

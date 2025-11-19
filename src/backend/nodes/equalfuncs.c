@@ -1068,6 +1068,8 @@ _equalQuery(const Query *a, const Query *b)
 	COMPARE_NODE_FIELD(partOids);
 	COMPARE_NODE_FIELD(partreloids);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	COMPARE_SCALAR_FIELD(hasuservar);			/* ReqID:SRS-MYSQL-SET */
+	COMPARE_NODE_FIELD(oriredactiontargetList);	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	COMPARE_LOCATION_FIELD(stmt_location);
 	COMPARE_SCALAR_FIELD(stmt_len);
 
@@ -1179,6 +1181,7 @@ _equalSelectStmt(const SelectStmt *a, const SelectStmt *b)
 	COMPARE_SCALAR_FIELD(all);
 	COMPARE_NODE_FIELD(larg);
 	COMPARE_NODE_FIELD(rarg);
+	COMPARE_SCALAR_FIELD(mysshowtype);	/* BUG#Z5973, Mark the type of SHOW */
 
 	return true;
 }

@@ -3035,6 +3035,7 @@ _outSelectStmt(StringInfo str, const SelectStmt *node)
 	WRITE_BOOL_FIELD(all);
 	WRITE_NODE_FIELD(larg);
 	WRITE_NODE_FIELD(rarg);
+	WRITE_ENUM_FIELD(mysshowtype, ShowType);	/* BUG#Z5973, Mark the type of SHOW */
 }
 
 static void
@@ -3308,6 +3309,8 @@ _outQuery(StringInfo str, const Query *node)
 	WRITE_BOOL_FIELD(isReplace);
 	WRITE_NODE_FIELD(partOids);
 	WRITE_NODE_FIELD(partreloids);
+	WRITE_BOOL_FIELD(hasuservar);	/* ReqID:SRS-MYSQL-SET */
+	WRITE_NODE_FIELD(oriredactiontargetList);	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	WRITE_LOCATION_FIELD(stmt_location);
 	WRITE_INT_FIELD(stmt_len);
 }

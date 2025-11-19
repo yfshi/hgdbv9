@@ -21,6 +21,7 @@ PG_MODULE_MAGIC;
 
 post_parse_analyze_hook_type hg_prev_redaction_parse_analyze = NULL;
 ProcessUtilityRedaction_hook_type hg_prev_redaction_ProcessUtility = false;
+ExecutorCheckPerms_hook_type prev_ExecutorCheckPerms_hook = false;
 
 /*---- Function declarations ----*/
 void		_PG_init(void);
@@ -60,6 +61,13 @@ _PG_init(void)
 	get_object_impl_hook = Redaction_pbeop;
 	alterrelationnamespaceinternal_hook = Redaction_AlterRelationNamespaceInternal;
 	do_drop_table_redaction = judge_redaction_tb;
+
+	/* Add access control for the newly
+	 * created tables and views related
+	 * to data redaction
+	 */
+	prev_ExecutorCheckPerms_hook = ExecutorCheckPerms_hook;
+	ExecutorCheckPerms_hook = hg_redataction_rel_access_restrictions;
 }
 
 /*
@@ -70,6 +78,12 @@ _PG_fini(void)
 {
 	post_parse_analyze_hook = hg_prev_redaction_parse_analyze;
 	ProcessrdUtility_hook = hg_prev_redaction_ProcessUtility;
+
+	/* Add access control for the newly
+	 * created tables and views related
+	 * to data redaction
+	 */
+	ExecutorCheckPerms_hook = prev_ExecutorCheckPerms_hook;
 }
 
 /*
