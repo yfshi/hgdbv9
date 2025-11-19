@@ -1956,3 +1956,106 @@ SHOW CREATE TABLE test_show;
 (1 row)
 
 drop table test_show;
+-- #bug6241
+create table t1(c char (20) character set utf8 collate utf8_bin collate utf8_bin collate utf8_bin);
+show create table t1;
+ Table |              Create Table              
+-------+----------------------------------------
+ t1    | CREATE TABLE "t1" (                   +
+       |     "c" character(20) COLLATE utf8_bin+
+       | )
+(1 row)
+
+drop table t1;
+-- #bug6256
+CREATE TABLE test_prefix_index (
+id INT PRIMARY KEY,
+long_text VARCHAR(500)
+);
+CREATE INDEX test_prefix_index_1 on test_prefix_index (long_text(100));
+CREATE INDEX test_prefix_index_2 on test_prefix_index (long_text);
+CREATE INDEX test_prefix_index_3 on test_prefix_index (id);
+CREATE INDEX test_prefix_index_4 on test_prefix_index (long_text(99), id);
+SHOW CREATE TABLE test_prefix_index;
+       Table       |                       Create Table                       
+-------------------+----------------------------------------------------------
+ test_prefix_index | CREATE TABLE "test_prefix_index" (                      +
+                   |     "id" integer NOT NULL,                              +
+                   |     "long_text" character varying(500),                 +
+                   |     CONSTRAINT "test_prefix_index_pkey" PRIMARY KEY (id)+
+                   | )
+(1 row)
+
+SHOW INDEX FROM test_prefix_index;
+       Table       | Non_unique |        Key_name        | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------------+------------+------------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_prefix_index |          0 | test_prefix_index_pkey |            1 | id          | A         |           0 |          |        | NO   | btree      |         | 
+ test_prefix_index |          1 | test_prefix_index_1    |            1 | long_text   | A         |           0 |      100 |        | YES  | btree      |         | 
+ test_prefix_index |          1 | test_prefix_index_2    |            1 | long_text   | A         |           0 |          |        | YES  | btree      |         | 
+ test_prefix_index |          1 | test_prefix_index_3    |            1 | id          | A         |           0 |          |        | NO   | btree      |         | 
+ test_prefix_index |          1 | test_prefix_index_4    |            1 | long_text   | A         |           0 |       99 |        | YES  | btree      |         | 
+ test_prefix_index |          1 | test_prefix_index_4    |            2 | id          | A         |           0 |          |        | NO   | btree      |         | 
+(6 rows)
+
+drop TABLE test_prefix_index;
+-- #bug6254
+CREATE TABLE test_pk2 (id INT KEY, name VARCHAR(50) );
+show index FROM test_pk2;
+  Table   | Non_unique |   Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------+------------+---------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_pk2 |          0 | test_pk2_pkey |            1 | id          | A         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop TABLE test_pk2;
+CREATE TABLE test_pk2 (id INT PRIMARY KEY, name VARCHAR(50) );
+show index FROM test_pk2;
+  Table   | Non_unique |   Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------+------------+---------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_pk2 |          0 | test_pk2_pkey |            1 | id          | A         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop TABLE test_pk2;
+CREATE TABLE test_pk2 (id INT , name VARCHAR(50), PRIMARY KEY (id) );
+show index FROM test_pk2;
+  Table   | Non_unique |   Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------+------------+---------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_pk2 |          0 | test_pk2_pkey |            1 | id          | A         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop TABLE test_pk2;
+CREATE TABLE test_pk2 (id INT , name VARCHAR(50), KEY (id) );
+show index FROM test_pk2;
+  Table   | Non_unique |    Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------+------------+-----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_pk2 |          1 | test_pk2_id_idx |            1 | id          | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop TABLE test_pk2;
+-- #bug6257
+CREATE TABLE test_comment1 (
+id INT,
+value VARCHAR(50),
+INDEX idx_value (value) COMMENT 'This is a test index'
+);
+SHOW CREATE TABLE test_comment1;
+     Table     |           Create Table            
+---------------+-----------------------------------
+ test_comment1 | CREATE TABLE "test_comment1" (   +
+               |     "id" integer,                +
+               |     "value" character varying(50)+
+               | )
+(1 row)
+
+SHOW INDEX FROM test_comment1;
+     Table     | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment |    Index_comment     
+---------------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+----------------------
+ test_comment1 |          1 | idx_value |            1 | value       | A         |           0 |          |        | YES  | btree      |         | This is a test index
+(1 row)
+
+SELECT INDEX_NAME,INDEX_COMMENT FROM mys_information_schema.STATISTICS WHERE TABLE_NAME = 'test_comment1';
+ INDEX_NAME |    INDEX_COMMENT     
+------------+----------------------
+ idx_value  | This is a test index
+(1 row)
+
+drop TABLE test_comment1;

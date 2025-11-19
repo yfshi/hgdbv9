@@ -58,11 +58,11 @@ SELECT constraint_catalog, constraint_schema, constraint_name,
        referenced_table_schema, referenced_table_name, referenced_column_name
 FROM information_schema.key_column_usage
 WHERE table_schema = 'test_schema'
-ORDER BY constraint_name, ordinal_position;
+ORDER BY constraint_name, ordinal_position, table_name;
  constraint_catalog | constraint_schema |  constraint_name   | table_catalog | table_schema | table_name | column_name | ordinal_position | position_in_unique_constraint | referenced_table_schema | referenced_table_name | referenced_column_name 
 --------------------+-------------------+--------------------+---------------+--------------+------------+-------------+------------------+-------------------------------+-------------------------+-----------------------+------------------------
- def                | test_schema       | PRIMARY            | def           | test_schema  | ref_tbl    | id          |                1 |                               |                         |                       | 
  def                | test_schema       | PRIMARY            | def           | test_schema  | main_tbl   | col1        |                1 |                               |                         |                       | 
+ def                | test_schema       | PRIMARY            | def           | test_schema  | ref_tbl    | id          |                1 |                               |                         |                       | 
  def                | test_schema       | main_tbl_col2_key  | def           | test_schema  | main_tbl   | col2        |                1 |                               |                         |                       | 
  def                | test_schema       | main_tbl_col3_fkey | def           | test_schema  | main_tbl   | col3        |                1 |                             1 | test_schema             | ref_tbl               | id
 (4 rows)
