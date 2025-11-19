@@ -10667,12 +10667,46 @@ CREATE OR REPLACE VIEW SYS.DBA_USERS AS
         CASE
             WHEN br.validuntil < now() THEN
                 CASE
-                    WHEN br.is_banned THEN 'EXPIRED&LOCKED(TIMED)'
+                    WHEN br.is_banned THEN
+                        CASE
+                            WHEN ((SELECT
+                                    (
+                                        substr(diff_text, 2, 8)::int * 1440 +
+                                        split_part(time_part, ':', 1)::int * 60 +
+                                        split_part(time_part, ':', 2)::int
+                                    ) AS mins
+                                FROM (
+                                    SELECT
+                                        (now() - banned_time::timestamptz)::text AS diff_text,
+                                        split_part((now() - banned_time::timestamptz)::text, ' ', 2) AS time_part
+                                    FROM (SELECT * FROM sys.get_user_auth_info(u.rolname) AS (passwd text, is_banned bool, banned_time text, validuntil timestamptz))
+                                )) > (SELECT COALESCE(reset_val, boot_val) FROM pg_settings WHERE name = 'credcheck.reset_time_min')::int) THEN
+                                'EXPIRED&LOCKED'
+                            ELSE
+                                'EXPIRED&LOCKED(TIMED)'
+                        END
                     ELSE 'EXPIRED'
                 END
             ELSE
                 CASE
-                    WHEN br.is_banned THEN 'LOCKED(TIMED)'
+                    WHEN br.is_banned THEN
+                        CASE
+                            WHEN ((SELECT
+                                    (
+                                        substr(diff_text, 2, 8)::int * 1440 +
+                                        split_part(time_part, ':', 1)::int * 60 +
+                                        split_part(time_part, ':', 2)::int
+                                    ) AS mins
+                                FROM (
+                                    SELECT
+                                        (now() - banned_time::timestamptz)::text AS diff_text,
+                                        split_part((now() - banned_time::timestamptz)::text, ' ', 2) AS time_part
+                                    FROM (SELECT * FROM sys.get_user_auth_info(u.rolname) AS (passwd text, is_banned bool, banned_time text, validuntil timestamptz))
+                                )) > (SELECT COALESCE(reset_val, boot_val) FROM pg_settings WHERE name = 'credcheck.reset_time_min')::int) THEN
+                                'LOCKED'
+                            ELSE
+                                'LOCKED(TIMED)'
+                        END
                     ELSE 'OPEN'
                 END
         END::varchar2(32) AS account_status,
