@@ -2095,6 +2095,82 @@ FunctionIsVisible(Oid funcid)
 				visible = (clist->oid == funcid);
 				break;
 			}
+			/* Begin - BUG#M0000536 */
+			else if (DB_ORACLE == database_mode && procform->pronargs > 0)
+			{
+				Datum 		protypenames;
+				bool		isNull;
+				Datum	    *elems;
+				int 		nelems;
+				char 		**argtypenames = NULL;
+				int 		i;
+
+				protypenames = SysCacheGetAttr(PROCOID, proctup,
+											Anum_pg_proc_protypenames,
+											&isNull);
+				if (!isNull)
+				{
+					deconstruct_array(DatumGetArrayTypeP(protypenames),
+										TEXTOID, -1, false, 'i',
+										&elems, NULL, &nelems);
+					argtypenames = (char **) palloc(sizeof(char *) * nelems);
+					for (i = 0; i < nelems; i++)
+						argtypenames[i] = TextDatumGetCString(elems[i]);
+
+					if (argtypenames != NULL)
+					{
+						Oid 		*argtypes;
+
+						argtypes = (Oid *)palloc(sizeof(Oid) * procform->pronargs);
+						for (i = 0; i < procform->pronargs; i++)
+						{
+							if (strcmp(argtypenames[i], "") != 0)
+							{
+								TypeName	*tname;
+								PkgType 	*pkgtype;
+
+								tname = (TypeName *) stringToNode(argtypenames[i]);
+								pkgtype = LookupPkgTypeByTypename(tname->names, false);
+								if (pkgtype == NULL)
+								{
+									Type		typtup;
+
+									typtup = LookupOraTypeName(NULL, tname, NULL, true);
+									if (typtup)
+									{
+										if (!((Form_pg_type) GETSTRUCT(typtup))->typisdefined)
+										{
+											pfree(tname);
+											elog(ERROR, "package, relation or view does not exist");
+										}
+										argtypes[i] = typeTypeId(typtup);
+										ReleaseSysCache(typtup);
+									}
+								}
+								else
+								{
+									argtypes[i] = pkgtype->basetypid;
+									pfree(pkgtype);
+								}
+								pfree(tname);
+							}
+						}
+
+						if (memcmp(clist->args, argtypes,
+								   nargs * sizeof(Oid)) == 0)
+						{
+							/* Found the expected entry; is it the right proc? */
+							visible = (clist->oid == funcid);
+							pfree(argtypes);
+							pfree(argtypenames);
+							break;
+						}
+						pfree(argtypes);
+					}
+					pfree(argtypenames);
+				}
+			}
+			/* End - BUG#M0000536 */
 		}
 	}
 
