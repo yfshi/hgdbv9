@@ -119,6 +119,15 @@ ERROR:  function str1(integer) does not exist
 LINE 1: create index t11_6 on t11(str1(5), str2(6), max(id));
                                   ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+/*Begin - BUG#Z6293 */
+create index t11_7 on t11(str1(0)); --error
+ERROR:  Key part 'str1' length cannot be 0
+create index t11_8 on t11(str1(11)); --error
+ERROR:  Key part 'str1' length cannot be 11
+create index t11_10 on t11(str1('10')); --error
+ERROR:  Key part 'str1' length must integer
+create index t11_9 on t11(str1(10));
+/*End - BUG#Z6293 */
 \d+ t11
                                            Table "public.t11"
  Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
@@ -132,6 +141,7 @@ Indexes:
     "t11_3" btree (id, "left"(str1::text, 5), "left"(str2::text, 6))
     "t11_4" btree ("left"(str1::text, 5), id, "left"(str2::text, 6))
     "t11_5" btree ("left"(str1::text, 5), "left"(str2::text, 6), id)
+    "t11_9" btree ("left"(str1::text, 10))
 
 drop table t11;
 create table t11(id int, str1 varchar(10), str2 varchar(10));

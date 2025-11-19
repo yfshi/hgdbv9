@@ -4373,11 +4373,16 @@ mys_is_col_all(Oid relid, IndexStmt *stmt)
 			if (nodeTag(attribute->expr) == T_FuncCall)
 			{
 				List *funcname = ((FuncCall *)attribute->expr)->funcname;
-				Node *last_value = llast(funcname);
+				Node *col_name = llast(funcname);
 				List *args = ((FuncCall *)attribute->expr)->args;
 				Node *last_arg = NULL;
 
-				if (nodeTag(last_value) != T_String || list_length(args) != 1)
+				/*Begin - BUG#Z6293 */
+				A_Const *aconst = NULL;
+				int collength = 0;
+				/*End - BUG#Z6293 */
+
+				if (nodeTag(col_name) != T_String || list_length(args) != 1)
 				{
 					break;
 				}
@@ -4388,11 +4393,31 @@ mys_is_col_all(Oid relid, IndexStmt *stmt)
 					break;
 				}
 
-				atttuple = SearchSysCacheAttName(relid, ((Value *)last_value)->val.str);
+				atttuple = SearchSysCacheAttName(relid, ((Value *)col_name)->val.str);
 				if (!HeapTupleIsValid(atttuple))
 				{
 					break;
 				}
+
+				/*Begin - BUG#Z6293 */
+				collength = ((Form_pg_attribute) GETSTRUCT(atttuple))->atttypmod - VARHDRSZ;
+				aconst = (A_Const *)last_arg;
+
+				if (aconst->val.type == T_Integer)
+				{
+					if (aconst->val.val.ival <= 0 || aconst->val.val.ival > collength)
+						ereport(ERROR,
+								errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("Key part '%s' length cannot be %d", ((Value *)col_name)->val.str, aconst->val.val.ival));
+				}
+				else
+				{
+					ereport(ERROR,
+							errcode(ERRCODE_SYNTAX_ERROR),
+							errmsg("Key part '%s' length must integer", ((Value *)col_name)->val.str));
+				}
+				/*End - BUG#Z6293 */
+
 				ReleaseSysCache(atttuple);
 
 				num++;
