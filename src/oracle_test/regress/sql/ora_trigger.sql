@@ -253,6 +253,21 @@ BEGIN
 END;
 /
 
+/* Begin - BUG#Z6177 */
+CREATE OR REPLACE TRIGGER trg_emp_info_delete
+INSTEAD OF DELETE ON employee_info
+BEGIN
+	DELETE FROM employees
+	WHERE emp_id = :OLD.emp_id;
+END;
+/
+
+/* Begin - BUG#Z6215 6216 */
+select trigger_name, trigger_type, triggering_event, base_object_type, table_name
+ from user_triggers where upper(trigger_name) = 'TRG_EMP_INFO_DELETE';
+/* End - BUG#Z6215 6216 */
+/* End - BUG#Z6177 */
+
 INSERT INTO departments VALUES (10, 'HR');
 INSERT INTO departments VALUES (20, 'IT');
 
@@ -328,3 +343,45 @@ DROP TRIGGER trg_emp_update;
 DROP PROCEDURE call_log_emp_update;
 DROP TABLE call_emp_audit;
 DROP TABLE call_emp;
+
+/* Begin - BUG#Z6170, BUG#Z6196 ,BUG#Z6187 */
+CREATE TABLE tb1 (
+    id NUMBER PRIMARY KEY,
+    name VARCHAR2(50),
+    salary NUMBER(10,2)
+);
+
+CREATE TRIGGER tgtiotsc
+BEFORE INSERT ON tb1
+FOR EACH ROW
+BEGIN
+    IF :NEW.id IS NULL THEN
+        SELECT NVL(MAX(id), 0) + 100 INTO :NEW.id FROM tb1;
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER tgtiotsc
+BEFORE INSERT ON tb1
+FOR EACH ROW
+BEGIN
+    IF :NEW.id IS NULL THEN
+        SELECT NVL(MAX(id), 0) + 200 INTO :NEW.id FROM tb1;
+    END IF;
+END;
+/
+
+/* Begin - BUG#Z6215 6216 */
+select trigger_name, trigger_type, triggering_event, base_object_type, table_name
+ from user_triggers where upper(trigger_name) = 'TGTIOTSC';
+/* End - BUG#Z6215 6216 */
+
+INSERT INTO tb1 (name, salary) VALUES ('Wang 5', 7000); -- fire trigger
+INSERT INTO tb1 (id, name, salary) VALUES (300, 'Li 4', 6000); -- unfire trigger
+
+SELECT * FROM tb1;
+
+-- cleanup
+DROP TRIGGER tgtiotsc;
+DROP TABLE tb1;
+/* End - BUG#Z6170, BUG#Z6196 ,BUG#Z6187 */

@@ -2495,7 +2495,12 @@ SELECT
     )::varchar2(246)                        AS triggering_event,
 
     SYS.ORA_CASE_TRANS(usr.usename::varchar2)::varchar2(128)              AS table_owner,
-    'TABLE'::varchar2(18)                   AS base_object_type,
+	/* Begin - BUG#Z6216 */
+	CASE
+		WHEN cls.relkind = 'v' THEN 'VIEW'
+		ELSE 'TABLE'
+	END::varchar2(18)                   AS base_object_type,
+	/* Begin - BUG#Z6216 */
     SYS.ORA_CASE_TRANS(cls.relname::varchar2)::varchar2(128)              AS table_name,
 
     NULL::varchar2(4000)                    AS column_name,
@@ -2583,7 +2588,7 @@ CREATE OR REPLACE VIEW sys.user_triggers AS
 	at.fire_once AS fire_once,
 	at.apply_server_only AS apply_server_only
    FROM sys.all_triggers at
- WHERE at.owner = current_user;
+ WHERE at.owner::regrole = current_user::regrole;	/* BUG#Z6215 */
 
 GRANT SELECT ON sys.user_triggers TO PUBLIC;
 
