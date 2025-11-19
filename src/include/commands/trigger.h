@@ -322,6 +322,7 @@ extern void GetTriggerFollowsDependencies(Trigger *triggers, int numtrigs,
 												TriggerDepInfo *depInfo, HTAB *nameToIndex);
 extern int * TopologicalSortTriggers(Trigger *triggers, int numtrigs, TriggerDepInfo *depInfo, HTAB *nameToIndex);
 extern List *ivyExtractJsonbStringArray(JsonbValue *arrayValue);
+extern TriggerEvent ivy_tgtype_to_event(int16 tgtype);	/* BUG#Z6170 */
 /* End - ReqID:SRS-SQL-TRIGGER */
 
 #endif							/* TRIGGER_H */

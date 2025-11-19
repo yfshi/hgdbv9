@@ -292,6 +292,7 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 				{
 					RemoveObjects(dptrig);
 					CommandCounterIncrement();
+					otrigid = InvalidOid;
 				}
 			}
 			else
@@ -466,6 +467,15 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 	if (partition_recurse)
 		list_free(find_all_inheritors(RelationGetRelid(rel),
 									  ShareRowExclusiveLock, NULL));
+	/* Begin - BUG#Z6177 */
+	/*
+	 * In Oracle, triggers on view can omit the FOR EACH ROW clause
+	 * because INSTEAD OF triggers are always row level triggers
+	 */
+	if (rel->rd_rel->relkind == RELKIND_VIEW && stmt->ora_trfuncsrc &&
+		stmt->timing == TRIGGER_TYPE_INSTEAD && !stmt->row)
+		stmt->row = true;
+	/* End - BUG#Z6177 */
 
 	/* Compute tgtype */
 	TRIGGER_CLEAR_TYPE(tgtype);
@@ -812,17 +822,46 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 		ParseState *pstate;
 		CreateFunctionStmt	*tfunc;
 		ObjectAddress	objfunc;
+		char	*nspname = NULL;
+		char	*temp = NULL;
+		Oid		nspoid = InvalidOid;
 
 		if (OidIsValid(otrigid) && !stmt->replace)
 			ereport(ERROR,
 					(errcode(ERRCODE_DUPLICATE_OBJECT),
 					 errmsg("trigger \"%s\" for relation \"%s\" already exists",
 							stmt->trigname, RelationGetRelationName(rel))));
+		/* Build function name */
+		nspoid = RelationGetNamespace(rel);
+		nspname = get_namespace_name(nspoid);
+		temp = ivyChooseFunctionName(stmt->trigname, RelationGetRelationName(rel), "func", nspoid);
 
 		tfunc = makeNode(CreateFunctionStmt);
 		tfunc->is_procedure = false;
-		tfunc->replace = false;
-		tfunc->funcname = list_make1(makeString(ivyChooseFunctionName(stmt->trigname, RelationGetRelationName(rel), "func", RelationGetNamespace(rel))));
+		/* Begin - BUG#Z6187 */
+		if (stmt->replace)
+		{
+			if (OidIsValid(otrigid))
+			{
+				Trigger		*tg;
+				char 		*funcname = NULL;
+
+				tg = ivyGetTriggerById(otrigid);
+				funcname = get_func_name(tg->tgfoid);
+				/* Build schema.funcname */
+				tfunc->funcname = list_make2(makeString(nspname), makeString(funcname));
+			}
+			else
+			{
+				tfunc->funcname = list_make2(makeString(nspname), makeString(temp));
+			}
+			tfunc->replace = true;
+		} /* End - BUG#Z6187 */
+		else
+		{
+			tfunc->replace = false;
+			tfunc->funcname = list_make2(makeString(nspname), makeString(temp));
+		}
 		stmt->funcname = tfunc->funcname;
 		tfunc->parameters = NULL;
 		tfunc->returnType = makeTypeName("trigger");
@@ -1482,7 +1521,7 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 
 			pg_object_create_obj_hook(stmt->trigname,
 									  trgschema,
-									  false,
+									  stmt->replace ? true: false,	/* BUG#Z6187 */
 									  PG_OBJECT_TRIGGER,
 									  myself,
 									  (stmt->orderList || stmt->newalias || stmt->oldalias) ? DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(str.data))) : NULL,
@@ -7642,3 +7681,40 @@ RegisterAutonxIsoVars_Trigger(void)
 {
 	RegisterAutonxIsoVar("afterTriggers", &afterTriggers, sizeof(afterTriggers), PostbackupAutonxIsoVars_afterTriggers, NULL);
 }
+
+/* Begin - BUG#Z6170 */
+TriggerEvent
+ivy_tgtype_to_event(int16 tgtype)
+{
+	TriggerEvent	event = 0;
+
+	/* Determine operation */
+	if (tgtype & TRIGGER_TYPE_UPDATE)
+		event |= TRIGGER_EVENT_UPDATE;
+	else if (tgtype & TRIGGER_TYPE_DELETE)
+		event |= TRIGGER_EVENT_DELETE;
+	else if (tgtype & TRIGGER_TYPE_INSERT)
+		event |= TRIGGER_EVENT_INSERT;
+	else if (tgtype & TRIGGER_TYPE_TRUNCATE)
+		event |= TRIGGER_EVENT_TRUNCATE;
+	else
+		event |= TRIGGER_EVENT_INSERT;  /* fallback, should'd happen */
+
+	/* Determine timing */
+	event &= ~((uint32) TRIGGER_EVENT_TIMINGMASK);
+	if (tgtype & TRIGGER_TYPE_BEFORE)
+		event |= TRIGGER_EVENT_BEFORE;
+	else if (tgtype & TRIGGER_TYPE_INSTEAD)
+		event |= TRIGGER_EVENT_INSTEAD;
+	else
+		event |= TRIGGER_EVENT_AFTER;
+
+	/* Determine level */
+	if (tgtype & TRIGGER_TYPE_ROW)
+		event |= TRIGGER_EVENT_ROW;
+	else
+		event &= ~((uint32) TRIGGER_EVENT_ROW);
+
+	return event;
+}
+/* End - BUG#Z6170 */

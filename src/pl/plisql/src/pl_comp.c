@@ -1104,10 +1104,12 @@ do_compile(FunctionCallInfo fcinfo,
 			{
 				/* Add the record for referencing NEW ROW */
 				rec = plisql_build_record("new", 0, NULL, RECORDOID, true);
+				add_parameter_name(PLISQL_NSTYPE_REC, rec->dno, ":new");	/* BUG#Z6196 */
 				function->new_varno = rec->dno;
 
 				/* Add the record for referencing OLD ROW */
 				rec = plisql_build_record("old", 0, NULL, RECORDOID, true);
+				add_parameter_name(PLISQL_NSTYPE_REC, rec->dno, ":old");	/* BUG#Z6196 */
 				function->old_varno = rec->dno;
 			}
 			/* End - ReqID:SRS-SQL-TRIGGER */
@@ -1346,7 +1348,7 @@ do_compile(FunctionCallInfo fcinfo,
 	 * If ORA trigger function, here we add the RETURN clause
 	 */
 	if (is_ora_trig)
-		add_ora_trigfunc_return(function, otg->tgtype);
+		add_ora_trigfunc_return(function, ivy_tgtype_to_event(otg->tgtype)); /* BUG#Z6170 */
 	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	/*
