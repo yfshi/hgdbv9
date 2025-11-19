@@ -8451,8 +8451,6 @@ CREATE OR REPLACE VIEW SYS.DBA_OBJECTS AS
         partition_info pi
     LEFT JOIN
         pg_object obj ON obj.refclassid = 'pg_class'::regclass AND pi.partition_oid = obj.obj_oid
-    WHERE
-        pi.relowner::regrole = current_user::regrole
 
 UNION ALL
 
@@ -9154,7 +9152,13 @@ CREATE OR REPLACE VIEW SYS.ALL_OBJECTS AS
     LEFT JOIN
         pg_object obj ON obj.refclassid = 'pg_class'::regclass AND pi.partition_oid = obj.obj_oid
     WHERE
-        pi.relowner::regrole = current_user::regrole
+        HAS_TABLE_PRIVILEGE(pi.partition_oid, 'SELECT')
+        OR HAS_TABLE_PRIVILEGE(pi.partition_oid, 'INSERT')
+        OR HAS_TABLE_PRIVILEGE(pi.partition_oid, 'UPDATE')
+        OR HAS_TABLE_PRIVILEGE(pi.partition_oid, 'DELETE')
+        OR HAS_TABLE_PRIVILEGE(pi.partition_oid, 'TRUNCATE')
+        OR HAS_TABLE_PRIVILEGE(pi.partition_oid, 'TRIGGER')
+        OR HAS_TABLE_PRIVILEGE(pi.partition_oid, 'REFERENCES')
 
 UNION ALL
 
