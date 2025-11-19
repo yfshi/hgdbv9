@@ -67,6 +67,12 @@ create index t11_3 on t11(id ,str1(5), str2(6));
 create index t11_4 on t11(str1(5),id, str2(6));
 create index t11_5 on t11(str1(5), str2(6), id);
 create index t11_6 on t11(str1(5), str2(6), max(id)); --error
+/*Begin - BUG#Z6293 */
+create index t11_7 on t11(str1(0)); --error
+create index t11_8 on t11(str1(11)); --error
+create index t11_10 on t11(str1('10')); --error
+create index t11_9 on t11(str1(10));
+/*End - BUG#Z6293 */
 \d+ t11
 drop table t11;
 
