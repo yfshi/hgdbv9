@@ -347,12 +347,9 @@ static void
 SearchRestrictRules(Oid useroid, char *username)
 {
 	HeapTuple		tup;
-	HeapTuple		tup1;
 	Relation		rel;
 	ScanKeyData		scanKey[1];
-	ScanKeyData		scanKey1[1];
 	TableScanDesc	scandesc;
-	TableScanDesc	scandesc1;
 
 	/* open table conn_restrict_rules */
 	rel = table_open(get_relname_relid(HGS_RULE_TABLE_NAME, SECURITY_SCHEMA_NAMESPACE), AccessShareLock);
@@ -371,21 +368,7 @@ SearchRestrictRules(Oid useroid, char *username)
 		elog(ERROR, "The rule under this user %s already exists!", username);
 	}
 
-	/* Through the username,look up records in the table. */
-	ScanKeyInit(&scanKey1[0],
-				3,
-				BTEqualStrategyNumber, F_TEXTEQ,
-				CStringGetTextDatum(username));
-
-	scandesc1 = table_beginscan(rel, SnapshotSelf, 1, scanKey1);
-	tup1 = heap_getnext(scandesc1, ForwardScanDirection);
-	if(HeapTupleIsValid(tup1))
-	{
-		elog(ERROR, "The rule under this user %s already exists,please remove old rule.", username);
-	}
-
 	table_endscan(scandesc);
-	table_endscan(scandesc1);
 	table_close(rel, AccessShareLock);
 }
 
@@ -411,7 +394,7 @@ add_rules(PG_FUNCTION_ARGS)
 	char	   *outmacaddress = NULL;
 	char	   *allowtime = NULL;
 	char	   *outallowtime = NULL;
-	int32		arg0 = PG_GETARG_INT32(0);
+	int32		arg0 = 0; /* Bug #6248 */
 
 	/* Is syssso user*/
 	if(!IS_SYSSSO(GetUserId()))
@@ -422,6 +405,12 @@ add_rules(PG_FUNCTION_ARGS)
 						  "can add rules")));
 
 	/* get the function parameters. */
+	/* Bug #6248 */
+	if(!fcinfo->args[0].isnull)
+		arg0 = PG_GETARG_INT32(0);
+	else
+		elog(ERROR,"filter type can't be null!");
+
 	if(!fcinfo->args[1].isnull)
 		arg1 = PG_GETARG_TEXT_PP(1);
 	else
