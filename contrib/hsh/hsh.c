@@ -3189,11 +3189,22 @@ split_path(const char *path, char **dir, char **fname)
 	/* directory path */
 	if (sep != NULL)
 	{
-		*dir = pnstrdup(path, sep - path);
-		*fname = pstrdup(sep + 1);
+		/* Begin - BUG#z6336 */
+		/* '/xxx/yyy/' */
+		if (strlen(path) == (sep - path + 1))
+		{
+			*dir = pnstrdup(path, sep - path + 1);
+			*fname = NULL;
+		}
+		/* End - BUG#z6336 */
+		else	/* '/xxx/yyy/zzz' */
+		{
+			*dir = pnstrdup(path, sep - path);
+			*fname = pstrdup(sep + 1);
+		}
 	}
 	/* local directory */
-	else
+	else	/* 'zzz' */
 	{
 		*dir = NULL;
 		*fname = pstrdup(path);
@@ -3211,6 +3222,7 @@ verify_directory(const char *directory)
 
 	if (dir == NULL)
 		return false;
+
 	closedir(dir);
 	return true;
 }
@@ -3230,7 +3242,23 @@ check_loc_validate(const char *file_path)
 	if (len == 0 || len >= MAXPGPATH)
 		elog(ERROR, "Report file is NULL or more than %d: %s", MAXPGPATH, file_path);
 
+	/*
+	 * split /xxx/yyy/zzz.html to /xxx/yyy/ and zzz.html
+	 * then check /xxx/yyy/ by verify_directory()
+	 * check zzz.html ended by .html
+	 */
 	split_path(file_path, &path, &filename);
+	/* Begin - BUG#z6636 */
+	/*
+	 * the right file_path is '/xxx/yyy/zz.html'
+	 * '/xxx/yyy/' and 'zzz.html' is invalid
+	 */
+	if (path == NULL)
+		elog(ERROR,"There is an invalid file path: %s", file_path);
+
+	if (filename == NULL)
+		elog(ERROR,"There is an invalid file path: %s", file_path);
+	/* End - BUG#z6636 */
 
 	ret = verify_directory(path);
 
