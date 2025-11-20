@@ -59,6 +59,7 @@
 #include "access/genam.h"
 #include "executor/spi.h"
 #include "utils/lsyscache.h"
+#include "utils/varlena.h" /* BUG#Z6281*/
 
 
 /* Begin - #Z6036 */
@@ -458,6 +459,13 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 	SPITupleTable	   *spi_tuptable;
 	TupleDesc			spi_tupdesc;
 
+	/*Begin BUG#Z6281*/
+	int					i_indexname;
+	int					i_indexnamedef;
+	char			   *indexname;
+	char			   *indexnamestr;
+	/*End BUG#Z6281*/
+
 	actual_atts = 0;
 
 	/* Query all columns of the table along with their default values */
@@ -698,6 +706,89 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 
 	if (SPI_finish() != SPI_OK_FINISH)
 		elog(ERROR, "SPI_finish failed");
+
+	/*Begin BUG#Z6281*/
+	resetStringInfo(&query_attribute_str);
+	appendStringInfo(&query_attribute_str,
+		"SELECT i.relname AS index_name, "
+		"string_agg(a.attname, ', ' ORDER BY array_position(ix.indkey, a.attnum)) AS indexed_columns "
+		"FROM pg_class t "
+		"JOIN pg_index ix ON t.oid = ix.indrelid "
+		"JOIN pg_class i ON i.oid = ix.indexrelid "
+		"JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey) "
+		"WHERE t.oid = %u and ix.indisunique = false and ix.indisprimary = false "
+		"GROUP BY i.relname ORDER BY i.relname; ", tableoid);
+
+	if (SPI_connect() != SPI_OK_CONNECT)
+		elog(ERROR, "SPI_connect failed");
+
+	if (SPI_exec(query_attribute_str.data, 0) != SPI_OK_SELECT)
+		elog(ERROR, "SPI_exec failed: %s", query_attribute_str.data);
+
+	proc = SPI_processed;
+	if (proc > 0)
+	{
+		spi_tuptable = SPI_tuptable;
+		spi_tupdesc = spi_tuptable->tupdesc;
+		for (i = 0; i < proc; i++)
+		{
+			HeapTuple	spi_tuple;
+
+			spi_tuple = spi_tuptable->vals[i];
+			i_indexname = SPI_fnumber(spi_tupdesc, "index_name");
+			i_indexnamedef = SPI_fnumber(spi_tupdesc, "indexed_columns");
+			indexname = pstrdup(SPI_getvalue(spi_tuple,spi_tupdesc, i_indexname));
+			indexnamestr = pstrdup(SPI_getvalue(spi_tuple, spi_tupdesc, i_indexnamedef));
+
+			if (sql_quote_show_create)
+			{
+				List *namelist = NIL;
+				ListCell   *cell;
+				int num = 0;
+
+				SplitIdentifierString(indexnamestr, ',', &namelist);
+
+				if (has_sql_mode(MODE_ANSI_QUOTES))
+				{
+
+					appendStringInfo(attrbuf, "\n    KEY \"%s\" (", indexname);
+					foreach(cell, namelist)
+					{
+						if (num > 0)
+							appendStringInfo(attrbuf, ",\"%s\"", (char *)lfirst(cell));
+						else
+							appendStringInfo(attrbuf, "\"%s\"", (char *)lfirst(cell));
+
+						num++;
+					}
+					appendStringInfoString(attrbuf, ")");
+				}
+				else
+				{
+					appendStringInfo(attrbuf, "\n    KEY `%s` (", indexname);
+					foreach(cell, namelist)
+					{
+						if (num > 0)
+							appendStringInfo(attrbuf, ",`%s`", (char *)lfirst(cell));
+						else
+							appendStringInfo(attrbuf, "`%s`", (char *)lfirst(cell));
+
+						num++;
+					}
+					appendStringInfoString(attrbuf, ")");
+				}
+			}
+			else
+			{
+				appendStringInfo(attrbuf, "\n    KEY %s ", indexname);
+				appendStringInfo(attrbuf, "(%s)", indexnamestr);
+			}
+		}
+	}
+
+	if (SPI_finish() != SPI_OK_FINISH)
+		elog(ERROR, "SPI_finish failed");
+	/*End BUG#Z6281*/
 
 	/* Finish collecting the column information */
 	if (actual_atts)
