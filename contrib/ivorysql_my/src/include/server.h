@@ -180,6 +180,7 @@ typedef struct {
     uint32 client_capabilities;
     uint32 max_packet_size;
     uint8  charset;
+    char   *schema; /* bug#6321 */
     uint8  scramble[SCRAMBLE_LENGTH + 1];
     uint8  auth_response[CLIENT_PASSWORD_SHA256_TOKEN_LEN + 1];
     uint8  resultset_metadata;

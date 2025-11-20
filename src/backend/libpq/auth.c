@@ -723,7 +723,9 @@ ClientAuthentication(Port *port)
 			break;
 		/* Begin - Req: SRS-MYSQL-PROTOCOL */
 		case uaNative:
+#ifdef USE_OPENSSL
         case uaCachingSha256:
+#endif
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PASSWORD),
 						errmsg("unsupport auth method: %s, this can only be used in MySQL compatition mode.", hba_authname(port->hba->auth_method))));

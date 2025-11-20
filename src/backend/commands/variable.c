@@ -978,3 +978,32 @@ show_role(void)
 	/* Otherwise we can just use the GUC string */
 	return role_string ? role_string : "none";
 }
+
+/* Begin - SRS-MYSQL-PROTOCOL */
+bool
+check_password_encryption(int *newval, void **extra, GucSource source)
+{
+	int			new_encryption = *newval;
+
+	if (compatible_db != MYS_PARSER)
+	{
+		if (new_encryption == PASSWORD_TYPE_MYS_NATIVE)
+		{
+			GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+			GUC_check_errmsg("invalid value for parameter \"password_encryption\": \"mysql_native_password\"");
+			return false;
+		}
+
+		#ifdef USE_OPENSSL
+		if (new_encryption == PASSWORD_TYPE_MYS_CACHING_SHA2)
+		{
+			GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+			GUC_check_errmsg("invalid value for parameter \"password_encryption\": \"caching_sha2_password\"");
+			return false;
+		}
+		#endif
+	}
+	
+	return true;
+}
+/* End - SRS-MYSQL-PROTOCOL */

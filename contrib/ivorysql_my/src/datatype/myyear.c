@@ -20,8 +20,6 @@
 
 #define DatumGetYearADT(x)      ((YearADT)DatumGetInt16(x))
 #define PG_GETARG_YEARADT(n)    DatumGetYearADT(PG_GETARG_DATUM(n))
-#define YearADTGetDatum(X)      Int16GetDatum(X)
-#define PG_RETURN_YEARADT(x)    return YearADTGetDatum(x)
 
 #define MAX_YEAR_NUM    2155
 #define MIN_YEAR_NUM    1901
@@ -126,7 +124,6 @@ PG_FUNCTION_INFO_V1(year_int_notlike);
 static double float8in_internals(char* str, char** endptr_p, bool* hasError);
 static YearADT int32_to_YearADT(int32 year);
 static YearADT int4_to_YearADT(int32 year);
-static YearADT bigint_to_YearADT(int64 year);
 static int year_cmp_internal(YearADT y1, YearADT y2);
 static int year_fastcmp(Datum x, Datum y, SortSupport ssup);
 
@@ -1240,7 +1237,7 @@ int4_to_YearADT(int32 year)
 }
 /* Fix Bug#Z4800 end */
 
-static YearADT
+YearADT
 bigint_to_YearADT(int64 year)
 {
 	if (year)

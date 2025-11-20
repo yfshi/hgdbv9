@@ -22,4 +22,8 @@ extern uint64 pg_hex_encode(const char *src, size_t srclen,
 extern uint64 pg_hex_enc_len(size_t srclen);
 extern uint64 pg_hex_dec_len(size_t srclen);
 
+/* Begin - SRS-HEX-LITERAL */
+extern char mys_get_hex(const char *cp);
+extern uint64 mys_hex_decode(const char *src, size_t srclen, char *dst);
+/* End - SRS-HEX-LITERAL */
 #endif							/* COMMON_HEX_H */

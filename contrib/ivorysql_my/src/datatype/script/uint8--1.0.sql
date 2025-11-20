@@ -972,6 +972,26 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
+/* Begin - BUG#6039 */
+CREATE FUNCTION ivymy.mysuint8_mul(double, ivymy.uint8)
+RETURNS  double
+AS 'MODULE_PATHNAME','double_mulmysuint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysuint8_mul(ivymy.uint8, double)
+RETURNS  double
+AS 'MODULE_PATHNAME','uint8_muldouble'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+/* End - BUG#6039 */
+
 ----function divide
 CREATE FUNCTION ivymy.mysuint8_div(ivymy.uint8, ivymy.uint8)
 RETURNS pg_catalog.numeric
@@ -1138,7 +1158,7 @@ IMMUTABLE
 LEAKPROOF;
 
 CREATE FUNCTION ivymy.mysuint8_mod(pg_catalog.int2, ivymy.uint8)
-RETURNS  ivymy.uint8
+RETURNS int8
 AS 'MODULE_PATHNAME','int2_modmysuint8'
 LANGUAGE C
 PARALLEL SAFE
@@ -1147,7 +1167,7 @@ IMMUTABLE
 LEAKPROOF;
 
 CREATE FUNCTION ivymy.mysuint8_mod(pg_catalog.int4, ivymy.uint8)
-RETURNS  ivymy.uint8
+RETURNS  int8
 AS 'MODULE_PATHNAME','int4_modmysuint8'
 LANGUAGE C
 PARALLEL SAFE
@@ -1156,7 +1176,7 @@ IMMUTABLE
 LEAKPROOF;
 
 CREATE FUNCTION ivymy.mysuint8_mod(pg_catalog.int8, ivymy.uint8)
-RETURNS  ivymy.uint8
+RETURNS  int8
 AS 'MODULE_PATHNAME','int8_modmysuint8'
 LANGUAGE C
 PARALLEL SAFE
@@ -2250,6 +2270,18 @@ CREATE OPERATOR * (
 	procedure = ivymy.mysuint8_mul,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
+);
+
+CREATE OPERATOR * (
+	procedure = ivymy.mysuint8_mul,
+	leftarg = double,
+	rightarg = ivymy.uint8
+);
+
+CREATE OPERATOR * (
+	procedure = ivymy.mysuint8_mul,
+	leftarg = ivymy.uint8,
+	rightarg = double
 );
 
 --operator /

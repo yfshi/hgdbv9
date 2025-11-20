@@ -25,6 +25,7 @@
 #include "catalog/namespace.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_collation.h"
+#include "common/hex.h"
 #include "funcapi.h"
 #include "lib/stringinfo.h"
 #include "mb/pg_wchar.h"
@@ -120,6 +121,7 @@ PG_FUNCTION_INFO_V1(weight_string);
 PG_FUNCTION_INFO_V1(weight_string_boolean);
 PG_FUNCTION_INFO_V1(mys_strcmp);
 PG_FUNCTION_INFO_V1(database);
+PG_FUNCTION_INFO_V1(char_length_varlena); /* bug#z6050 */
 
 static unsigned
 b64_decode(const char* src, unsigned len, char* dst, bool flag)
@@ -277,14 +279,14 @@ b64_encode(const char *src, unsigned len, char *dst)
 }
 
 
-static bytea*
+static bytea *
 b64_decode_internal(const char *data, int dataLength)
 {
 	int		resultLength, res = 0;
 	bytea  *result;
 
 	resultLength = pg_b64_dec_len(dataLength);
-	result = (bytea*)palloc(VARHDRSZ + resultLength);
+	result = (bytea *)palloc(VARHDRSZ + resultLength);
 	if (resultLength > 0)
 	{
 		res = b64_decode(data, dataLength, VARDATA(result), false);
@@ -1661,3 +1663,13 @@ database(PG_FUNCTION_ARGS)
 	PG_RETURN_DATUM(CStringGetTextDatum(nspname));
 }
 /* End - Req: SRS-MYSQL-PROTOCOL */
+
+/* Begin - bug#z6050 */
+Datum
+char_length_varlena(PG_FUNCTION_ARGS)
+{
+	text *src = PG_GETARG_TEXT_PP(0);
+
+	PG_RETURN_INT32(VARSIZE_ANY_EXHDR(src));
+}
+/* End - bug#z6050 */

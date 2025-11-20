@@ -39,6 +39,13 @@ select cast(0x3233 as char);                    -- 23
  23
 (1 row)
 
+select cast(0x32333435 as char(3));             -- 234, warning
+WARNING:  Truncated incorrect CHAR(3) value: '2345'
+ varchar 
+---------
+ 234
+(1 row)
+
 select cast(0x3233 as nchar);                   -- 23
  varchar 
 ---------
@@ -177,13 +184,13 @@ insert into hex_test values (0x003, 0x003, 0x003, 0x003, 0x003, 0x003, 0x003);
 insert into hex_test values (0x033, 0x033, 0x033, 0x033, 0x033, 0x033, 0x033);
 insert into hex_test values (0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33);
 select * from hex_test;
- a  |  b   |       c       |  d   |   e    | f  | g  
-----+------+---------------+------+--------+----+----
-  3 | \x03 | \x03          | \x03 | \x03   |  3 |  3
-  0 |      |               |      | \x00   |  0 |  0
-  3 |      |               |      | \x0003 |  3 |  3
- 51 |      |               |      | \x0033 | 51 | 51
- 51 | 3    | 3             | 3    | \x33   | 51 | 51
+ a  |  b   |       c       |       d       |   e    | f  | g  
+----+------+---------------+---------------+--------+----+----
+  3 | \x03 | \x03          | \x03          | \x03   |  3 |  3
+  0 |      |               |               | \x00   |  0 |  0
+  3 |      |               |               | \x0003 |  3 |  3
+ 51 |      |               |               | \x0033 | 51 | 51
+ 51 | 3    | 3             | 3             | \x33   | 51 | 51
 (5 rows)
 
 drop table hex_test;
@@ -235,11 +242,7 @@ select 0xfffffffffffffffe + 1;  -- 18446744073709551615
 (1 row)
 
 select 0xffffffffffffffff + 1;  -- should be out-of-range error
- ?column? 
-----------
- 0
-(1 row)
-
+ERROR:  integer unsigned out of range
 set sql_mode = '';
 select 0x323232323232323232323232323232 || '1';    -- waring, and result is 1
 WARNING:  Truncated incorrect BINARY value: x'323232323232323232323232323232'
@@ -608,4 +611,187 @@ select X'01';
  \x01
 (1 row)
 
+/* Begin - bug#z6026 */
+create table t_hex_convert_string (c_char char(2));
+insert into t_hex_convert_string values ( x'414243');
+ERROR:  Data too long for column
+set sql_mode ='';
+insert into t_hex_convert_string values ( x'414243');
+WARNING:  Data truncated for column
+select * from t_hex_convert_string;
+ c_char 
+--------
+ AB
+(1 row)
+
+drop table t_hex_convert_string;
+create table t_hex_convert_string (c_varchar varchar(5));
+insert into t_hex_convert_string values (X'414243444546');
+WARNING:  Data truncated for column
+select * from t_hex_convert_string;
+ c_varchar 
+-----------
+ ABCDE
+(1 row)
+
+drop table t_hex_convert_string;
+reset sql_mode;
+/* End - bug#z6026 */
+/* Begin - bug#z6027 */
+create table t_hex_to_enum (c_enum enum(x'123'));
+ERROR:  You have an error in your SQL syntax.
+create table t_hex_to_enum (c_enum enum(x'1234'));
+drop table t_hex_to_enum;
+create table t_hex_to_enum (c_enum enum(0x323334));
+drop table t_hex_to_enum;
+create table t_hex_to_enum (c_enum enum(0x3233340035));
+drop table t_hex_to_enum;
+/* End - bug#z6027 */
+/* Begin - bug#z6028 */
+create table  t_hex_to_time (
+    timestamp_col timestamp,
+	year_col year
+);
+insert into t_hex_to_time values(0x3230323331303031313233303435, X'03');
+select * from t_hex_to_time;
+    timestamp_col    | year_col 
+---------------------+----------
+ 2023-10-01 12:30:45 | 2003
+(1 row)
+
+drop table t_hex_to_time;
+/* End - bug#z6028 */
+/* Begin - bug#z6031 */
+select +0x123, +X'ffac', +x'1234';
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+ \x0123   | \xffac   | \x1234
+(1 row)
+
+/* End - bug#z6031 */
+/* Begin - bug#z6033 */
+select 3::uint8 % 2::uint8, pg_typeof(3::uint8 % 2::uint8);         -- 1, uint8
+ ?column? | pg_typeof 
+----------+-----------
+ 1        | uint8
+(1 row)
+
+select 3::uint8 % 2::int2, pg_typeof(3::uint8 % 2::int2);           -- 1, uint8
+ ?column? | pg_typeof 
+----------+-----------
+ 1        | uint8
+(1 row)
+
+select 3::uint8 % (-2)::int2, pg_typeof(3::uint8 % (-2)::int2);     -- 1, uint8
+ ?column? | pg_typeof 
+----------+-----------
+ 1        | uint8
+(1 row)
+
+select 3::uint8 % 2::int4, pg_typeof(3::uint8 % 2::int4);           -- 1, uint8
+ ?column? | pg_typeof 
+----------+-----------
+ 1        | uint8
+(1 row)
+
+select 3::uint8 % (-2)::int4, pg_typeof(3::uint8 % (-2)::int4);     -- 1, uint8
+ ?column? | pg_typeof 
+----------+-----------
+ 1        | uint8
+(1 row)
+
+select 3::uint8 % 2::int8, pg_typeof(3::uint8 % 2::int8);           -- 1, uint8
+ ?column? | pg_typeof 
+----------+-----------
+ 1        | uint8
+(1 row)
+
+select 3::uint8 % (-2)::int8, pg_typeof(3::uint8 % (-2)::int8);     -- 1, uint8
+ ?column? | pg_typeof 
+----------+-----------
+ 1        | uint8
+(1 row)
+
+select 3::int2 % 2::uint8, pg_typeof(3::int2 % 2::uint8);           -- 1, int8
+ ?column? | pg_typeof 
+----------+-----------
+        1 | bigint
+(1 row)
+
+select (-3)::int2 % 2::uint8, pg_typeof((-3)::int2 % 2::uint8);     -- -1, int8
+ ?column? | pg_typeof 
+----------+-----------
+       -1 | bigint
+(1 row)
+
+select 3::int4 % 2::uint8, pg_typeof(3::int4 % 2::uint8);           -- 1, int8
+ ?column? | pg_typeof 
+----------+-----------
+        1 | bigint
+(1 row)
+
+select (-3)::int4 % 2::uint8, pg_typeof((-3)::int4 % 2::uint8);     -- -1, int8
+ ?column? | pg_typeof 
+----------+-----------
+       -1 | bigint
+(1 row)
+
+select 3::int8 % 2::uint8, pg_typeof(3::int8 % 2::uint8);           -- 1, int8
+ ?column? | pg_typeof 
+----------+-----------
+        1 | bigint
+(1 row)
+
+select (-3)::int8 % 2::uint8, pg_typeof((-3)::int8 % 2::uint8);     -- -1, int8
+ ?column? | pg_typeof 
+----------+-----------
+       -1 | bigint
+(1 row)
+
+/* End - bug#z6033 */
+/* Begin - bug#z6039 */
+create table t_numeric_arith_hex ( unsigned_tinyint tinyint unsigned ); 
+insert into t_numeric_arith_hex values (12);
+select unsigned_tinyint * (-x'12ffac') from t_numeric_arith_hex;
+ ?column?  
+-----------
+ -14941200
+(1 row)
+
+drop table t_numeric_arith_hex;
+/* End - bug#z6039 */
+/* Begin - bug#z6037 */
+select '-32000'::smallint + 0x1234;
+ERROR:  integer unsigned out of range
+select 1 + 0xffffffffffffffff;
+ERROR:  integer unsigned out of range
+select -1000 + 0xff;
+ERROR:  integer unsigned out of range
+/* End - bug#z6037 */
+/* Begin - bug#z6041 */
+create table t_numeric_arith_hex (float_col float, double_col double, decimal_col decimal(20,6)); 
+insert into t_numeric_arith_hex values (3.25, -2.75, 12345.678901);
+select
+    0x1234ff && float_col,
+    0x1234ff && double_col,
+    0x1234ff and decimal_col
+from t_numeric_arith_hex;
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+        1 |        1 | t
+(1 row)
+
+drop table t_numeric_arith_hex;
+/* End - bug#z6041 */
+/* Begin - bug#z6052 */
+create table idx_hex ( b_fixed binary(20), b_var varbinary(20) ); 
+insert into idx_hex values(1,2);
+select * from idx_hex where b_var=0x32;
+                  b_fixed                   | b_var 
+--------------------------------------------+-------
+ \x3100000000000000000000000000000000000000 | \x32
+(1 row)
+
+drop table idx_hex;
+/* End - bug#z6052 */
 reset mysql.cast_to_char;

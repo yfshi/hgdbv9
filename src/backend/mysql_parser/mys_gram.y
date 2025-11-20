@@ -55,6 +55,7 @@
 #include "catalog/pg_trigger.h"
 #include "commands/defrem.h"
 #include "commands/trigger.h"
+#include "common/hex.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "mysql_parser/mys_gramparse.h"
@@ -204,8 +205,8 @@ static Node *makeStringConstCast(char *str, int location, TypeName *typename);
 static Node *makeIntConst(int val, int location);
 static Node *makeFloatConst(char *str, int location);
 static Node *makeBitStringConst(char *str, int location);
-static Node *makeMysBitStringConst(char *str, int location); /* SRS-MYSQL-HEX-LITERAL */
-static Node *makeHexStringConst(char *str, int location); /* BUG#5048 5070 */
+static Node *makeMysBitStringConst(char *str, int location); /* SRS-HEX-LITERAL */
+static Node *makeHexStringConst(char *str, int location); 	/* SRS-HEX-LITERAL */
 static Node *makeNullAConst(int location);
 static Node *makeAConst(Value *v, int location);
 static Node *makeBoolAConst(bool state, int location);
@@ -306,6 +307,8 @@ static bool IsValidIdentUsername(char *input);
 static void CheckHostId(char *hostId);
 static char *checkRoleSpec(RoleSpec *spc);
 /* End - ReqID:SRS-MYSQL-RENAME */
+
+static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
 %}
 
 %pure-parser
@@ -795,6 +798,7 @@ static char *checkRoleSpec(RoleSpec *spc);
 /* Begin - ReqID:SRS-MYSQL-SHOW */
 %type <node>		opt_db
 %type <node>		mys_show_table
+%type <node>		enum_val
 /* End - ReqID:SRS-MYSQL-SHOW */
 
 /*
@@ -7056,10 +7060,28 @@ opt_enum_val_list:
 		| /*EMPTY*/								{ $$ = NIL; }
 		;
 
-enum_val_list:	Sconst
-				{ $$ = list_make1(makeString($1)); }
-			| enum_val_list ',' Sconst
-				{ $$ = lappend($1, makeString($3)); }
+/* Begin - bug#z6027 */
+enum_val:
+			Sconst		{ $$ = (Node *) makeString($1); }
+			| HCONST	{ $$ = (Node *) makeString(parse_hex_to_cstring($1)); }
+			| XCONST
+				{
+					char *input = $1;
+
+					if (strlen(input) % 2 == 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("You have an error in your SQL syntax.")));
+
+					$$ = (Node *) makeString(parse_hex_to_cstring(input + 1));
+				}
+		;
+/* End - bug#z6027 */
+
+enum_val_list:	enum_val
+				{ $$ = list_make1($1); }
+			| enum_val_list ',' enum_val
+				{ $$ = lappend($1, $3); }
 		;
 
 /*****************************************************************************
@@ -20964,6 +20986,26 @@ makeMysBitStringConst(char *str, int location)
 }
 /* End - SRS-MYSQL-HEX-LITERAL */
 
+/* Begin - bug#z6027 */
+static char *
+parse_hex_to_cstring(const char *src)
+{
+	int 	len = strlen(src);
+	int 	bc = (len + 1) / 2;
+	char	*dst = palloc0(bc + 1);
+
+	if (len % 2)
+	{
+		*dst++ = mys_get_hex(src++);
+		len--;
+	}
+
+	mys_hex_decode(src, len, dst);
+
+	return dst;
+}
+/* End - bug#z6027 */
+
 static Node *
 makeNullAConst(int location)
 {
@@ -22981,7 +23023,7 @@ makeCreateStmtOption(CreateStmt *stmt, List *option)
 static void 
 CheckUserHostId(char *userName, char *hostId)
 {
-	size_t userlen, hostidlen;
+	size_t userlen;
 	char *userHostId;
 
 	if (strchr(userName, '@'))
@@ -23001,9 +23043,8 @@ CheckUserHostId(char *userName, char *hostId)
 		CheckHostId(userHostId);
 
 	userlen = strlen(userName);
-	hostidlen = strlen(hostId);	
 
-	if ((userlen + hostidlen + 2) >= 32) 
+	if (userlen > 32) 
 	{
 		ereport(ERROR, (errcode(ERRCODE_INVALID_NAME),
 				errmsg("String %s @ %s is too long for user name (should be no longer than 32)", userName, hostId)));

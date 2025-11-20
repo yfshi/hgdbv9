@@ -401,6 +401,38 @@ CREATE OPERATOR * (
 	rightarg = numeric
 );
 
+/* End - bug#z6039 */
+CREATE FUNCTION ivymy.numeric_mul(uint8, numeric)
+RETURNS numeric
+AS 'MODULE_PATHNAME', 'uint8_mul_numeric'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR * (
+	procedure = ivymy.numeric_mul,
+	leftarg = uint8,
+	rightarg = numeric
+);
+
+CREATE FUNCTION ivymy.numeric_mul(numeric, uint8)
+RETURNS numeric
+AS 'MODULE_PATHNAME', 'numeric_mul_uint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR * (
+	procedure = ivymy.numeric_mul,
+	leftarg = numeric,
+	rightarg = uint8
+);
+/* End - bug#z6039 */
+
 CREATE FUNCTION ivymy.numeric_div(numeric, int8)
 RETURNS numeric
 AS 'select $1 / $2::numeric'

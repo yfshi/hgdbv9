@@ -219,6 +219,7 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
     uint16  status = ServerStatus();
 
     if (tag == CMDTAG_SELECT ||
+        tag == CMDTAG_SHOW   ||
         tag == CMDTAG_EXPLAIN)
     {
         send_eof(0, status);

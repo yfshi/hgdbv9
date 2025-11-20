@@ -150,7 +150,9 @@ static const char *const UserAuthName[] =
 	"radius",
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	"mysql_native_password",
+#ifdef USE_OPENSSL
 	"caching_sha2_password",
+#endif
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 	"peer"
 };
@@ -1443,8 +1445,10 @@ parse_hba_line(TokenizedLine *tok_line, int elevel)
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	else if (strcmp(token->string, "mysql_native_password") == 0)
 		parsedline->auth_method = uaNative;
+#ifdef USE_OPENSSL
 	else if (strcmp(token->string, "caching_sha2_password") == 0)
 		parsedline->auth_method = uaCachingSha256;
+#endif
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 	else
 	{

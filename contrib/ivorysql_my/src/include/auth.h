@@ -13,9 +13,12 @@ typedef struct {
 } mysql_auth_plugin_t;
 
 extern mysql_auth_plugin_t mysql_native_password;
-extern mysql_auth_plugin_t caching_sha2_password;
 
+#ifdef USE_OPENSSL
+extern mysql_auth_plugin_t caching_sha2_password;
 extern void create_mysql_auth_cache(void);
+#endif
+
 extern void register_mysql_auth(void);
 extern void unregister_mysql_auth(void);
 extern int mysql_conn_handshake(Port* port);
