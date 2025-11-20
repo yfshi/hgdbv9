@@ -11362,8 +11362,10 @@ CREATE OR REPLACE VIEW SYS.USER_TAB_PRIVS AS
     JOIN
         pg_class c ON t.table_name = c.relname AND n.oid = c.relnamespace
     WHERE
-        t.grantee <> t.grantor AND
-        c.relowner::regrole = current_user::regrole;
+        t.grantee <> t.grantor
+        AND (c.relowner::regrole = current_user::regrole
+        OR t.grantee = current_user
+        OR t.grantor = current_user);
 GRANT SELECT ON SYS.USER_TAB_PRIVS TO PUBLIC;
 
 /* *******************************************************************************************

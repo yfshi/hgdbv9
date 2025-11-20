@@ -1263,4 +1263,19 @@ select object_name, subobject_name, object_type from dba_objects where UPPER(obj
 revoke all on sysview_objects_part1_2 from sysview_objects_u1;
 revoke all on sysview_objects_part2 from sysview_objects_u1;
 drop table sysview_objects_part cascade;
+-- special test for user_tab_privs
+create user tab_privs_u1 superuser;
+create user tab_privs_u2;
+create role r1;
+\c - tab_privs_u1
+create table tab_privs_tb(id int);
+grant select on table tab_privs_tb to tab_privs_u2;
+\c - tab_privs_u2
+set ivorysql.identifier_case_switch to interchange;
+select * from user_tab_privs;
+   grantee    |    owner     |  table_name  |   grantor    | privilege | grantable | hierarchy | common | type  | inherited 
+--------------+--------------+--------------+--------------+-----------+-----------+-----------+--------+-------+-----------
+ TAB_PRIVS_U2 | TAB_PRIVS_U1 | TAB_PRIVS_TB | TAB_PRIVS_U1 | SELECT    | NO        | YES       | NO     | TABLE | NO
+(1 row)
+
 set ivorysql.identifier_case_switch to normal;

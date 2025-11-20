@@ -875,4 +875,17 @@ revoke all on sysview_objects_part2 from sysview_objects_u1;
 
 drop table sysview_objects_part cascade;
 
+-- special test for user_tab_privs
+create user tab_privs_u1 superuser;
+create user tab_privs_u2;
+create role r1;
+
+\c - tab_privs_u1
+create table tab_privs_tb(id int);
+grant select on table tab_privs_tb to tab_privs_u2;
+
+\c - tab_privs_u2
+set ivorysql.identifier_case_switch to interchange;
+select * from user_tab_privs;
+
 set ivorysql.identifier_case_switch to normal;
