@@ -34,8 +34,7 @@ static void AddAcl(PQExpBuffer aclbuf, const char *keyword,
 bool restoremode = true; 					/*  bug#M0000238 */
 DBMode database_mode = DB_PG;
 
-DBParser compatible_mode = ORA_PARSER;	/* ReqID:SRS-CMD-PGDUMP */
-DBUser	CurUser = INSTANCE;		/* ReqID:SRS-CMD-PGDUMP */
+CompatibleMode compatible_mode = ORA_MODE;	/* ReqID:SRS-CMD-PGDUMP */
 const char *DumpM = NULL;		/* ReqID:SRS-CMD-PGDUMP */
 int			caselowernum = 3;		/* ReqID:SRS-MYSQL-CASE */
 

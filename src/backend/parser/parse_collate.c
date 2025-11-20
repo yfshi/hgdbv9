@@ -832,7 +832,7 @@ merge_collation_state(Oid collation,
 					else if (collation != DEFAULT_COLLATION_OID) // Neither of them equals to DEFAULT_COLLATION_OID(100)
 					{
 						/* Begin - bug#M0000372 */
-						if (ORA_PARSER != compatible_db || !enable_ora_default_collation)
+						if (ORA_MODE != compatible_mode || !enable_ora_default_collation)
 						{
 							/* 
 							 * Oops, we have a conflict.  We cannot throw error

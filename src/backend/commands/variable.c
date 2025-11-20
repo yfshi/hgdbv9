@@ -985,7 +985,7 @@ check_password_encryption(int *newval, void **extra, GucSource source)
 {
 	int			new_encryption = *newval;
 
-	if (compatible_db != MYS_PARSER)
+	if (compatible_mode != MYS_MODE)
 	{
 		if (new_encryption == PASSWORD_TYPE_MYS_NATIVE)
 		{

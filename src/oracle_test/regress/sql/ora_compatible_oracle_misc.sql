@@ -283,3 +283,10 @@ select x from (values (1), (2), (3)) _(x) where x in int4(1) * int8(2);
 -- support minus
 select x from (values (row(1, 2)), (row(1, 3))) _(x) minus select x from (values (row(1, 2)), (row(1, 4))) _(x);
 /* End - OA#1682 */
+
+--bug#Z6324
+--ok
+set ivorysql.compatbile_mode = 'pg';
+set ivorysql.compatible_mode = 'oracle';
+--error
+set ivorysql.compatible_mode = 'mysql';

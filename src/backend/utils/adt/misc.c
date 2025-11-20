@@ -509,7 +509,7 @@ pg_get_keywords(PG_FUNCTION_ARGS)
 {
 	/*BEGIN - SQL PARSER */
 	/* Slove the issue of using the same global variable in static lib and dynamic lib */
-	if (get_keywords_hook && compatible_db != PG_PARSER)
+	if (get_keywords_hook && compatible_mode != PG_MODE)
 	{
 		if (((ReturnSetInfo *) (fcinfo->resultinfo))->isDone != ExprEndResult)
 			PG_RETURN_DATUM((*get_keywords_hook) (fcinfo));

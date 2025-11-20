@@ -1894,7 +1894,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				fcinfo_in->args[2].isnull = false;
 				
 				/* Begin - SRS-MYSQL-HEX-LITERAL */
-				if (compatible_db == MYS_PARSER)
+				if (compatible_mode == MYS_MODE)
 				{
 					fcinfo_in->args[3].value = Int64GetDatum(iocoerce->flag);
 					fcinfo_in->args[3].isnull = false;
@@ -4494,7 +4494,7 @@ static void
 ExecInitFuncOutParams(Expr *node, ExprState *state,
 					Datum *resvalue, bool *resnull)
 {
-	if (compatible_db == ORA_PARSER)
+	if (compatible_mode == ORA_MODE)
 	{
 		FuncExpr	*funcexpr = (FuncExpr *) node;
 		Oid 		funcOid = funcexpr->funcid;

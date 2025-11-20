@@ -799,7 +799,7 @@ pg_get_viewdef_worker(Oid viewoid, int prettyFlags, int wrapColumn)
 	StringInfoData buf;
 
 	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
-	if (ORA_PARSER == compatible_db && rel_is_force_view(viewoid))
+	if (ORA_MODE == compatible_mode && rel_is_force_view(viewoid))
 		return get_force_view_def(viewoid);
 	/* End - ReqID:SRS-SQL-FORCEVIEW */
 
@@ -925,7 +925,7 @@ pg_get_triggerdef_worker(Oid trigid, bool pretty)
 
 	/* Begin - ReqID:SRS-SQL-TRIGGER */
 	/* Get this trigger in pg_object */
-	if (ORA_PARSER == compatible_db && pg_object_get_ori_infor_hook)
+	if (ORA_MODE == compatible_mode && pg_object_get_ori_infor_hook)
 	{
 		ObjectAddressSet(object, TriggerRelationId, trigid);
 		objinfo =  pg_object_get_ori_infor_hook(object);
@@ -4061,9 +4061,9 @@ print_function_arguments(StringInfo buf, HeapTuple proctup,
 			nextargdefault = list_head(argdefaults);
 
 			/*
-			 * If compatible_db is not ORA_PARSER mode,
+			 * If compatible_mode is not ORA_MODE mode,
 			 * nlackdefaults counts only *input* arguments lacking defaults.
-			 * If compatible_db is ORA_PARSER mode, proc->pronargs counts all the arguments,
+			 * If compatible_mode is ORA_MODE mode, proc->pronargs counts all the arguments,
 			 * nlackdefaults counts all arguments before first arugment has default.
 			 */
 			nlackdefaults = proc->pronargs - list_length(argdefaults);
@@ -4140,7 +4140,7 @@ print_function_arguments(StringInfo buf, HeapTuple proctup,
 			inputargno++;		/* this is a 1-based counter */
 
 		/* Begin - BUG#Z212 */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			LANG_PLISQL_OID == proc->prolang)
 			argno++;
 		/* End - BUG#Z212 */
@@ -4179,11 +4179,11 @@ print_function_arguments(StringInfo buf, HeapTuple proctup,
 		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		/* Begin - BUG#Z212 */
-		if (ORA_PARSER == compatible_db && LANG_PLISQL_OID == proc->prolang)
+		if (ORA_MODE == compatible_mode && LANG_PLISQL_OID == proc->prolang)
 		{
 			/*
 			 * proc->pronargs counts all the arguments
-			 * if compatible_db is ORA_PARSER mode,
+			 * if compatible_mode is ORA_MODE mode,
 			 * nlackdefaults counts all arguments before first arugment has default.
 			 */
 			if (print_defaults && argno > nlackdefaults)
@@ -4332,7 +4332,7 @@ pg_get_function_arg_default(PG_FUNCTION_ARGS)
 	 * last N input arguments, where N = pronargdefaults.
 	 */
 	/* Begin - BUG#Z199 */
-	if (ORA_PARSER == compatible_db && LANG_PLISQL_OID == proc->prolang)
+	if (ORA_MODE == compatible_mode && LANG_PLISQL_OID == proc->prolang)
 		nth_default = nth_arg - 1 - (numargs - proc->pronargdefaults);
 	else
 		nth_default = nth_inputarg - 1 - (proc->pronargs - proc->pronargdefaults);
@@ -4345,7 +4345,7 @@ pg_get_function_arg_default(PG_FUNCTION_ARGS)
 	}
 	node = list_nth(argdefaults, nth_default);
 	/* Begin - BUG#Z199 */
-	if (ORA_PARSER == compatible_db && LANG_PLISQL_OID == proc->prolang && IsA(node, NonDefValNode))
+	if (ORA_MODE == compatible_mode && LANG_PLISQL_OID == proc->prolang && IsA(node, NonDefValNode))
 	{
 		ReleaseSysCache(proctup);
 		PG_RETURN_NULL();
@@ -10843,7 +10843,7 @@ get_oper_expr(OpExpr *expr, deparse_context *context)
 		if ((strcmp(opr, "~~") == 0 ||
 			strcmp(opr, "!~~") == 0) &&
 			arg2 != NULL &&
-			compatible_db == ORA_PARSER)
+			compatible_mode == ORA_MODE)
 		{
 			FuncExpr *funcexpr = NULL;
 			Node *tmp_arg2 = arg2;
@@ -11572,7 +11572,7 @@ get_const_expr(Const *constval, deparse_context *context, int showtype)
 	 * Begin - ReqID:SRS-GKC-DATATYPE_001
 	 * Compatible oracle , pass typmod to output function
 	 */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		(constval->consttype == YMINTERVALOID ||
 		constval->consttype == DSINTERVALOID))
 	{
@@ -12774,7 +12774,7 @@ quote_identifier(const char *ident)
 	char	   *result;
 
 	/* Slove the issue of using the same global variable in static lib and dynamic lib */
-	if (quote_identifier_hook && compatible_db != PG_PARSER)
+	if (quote_identifier_hook && compatible_mode != PG_MODE)
 		result = (char *)(*quote_identifier_hook)(ident);
 	else
 		result = (char *)standard_quote_identifier(ident);

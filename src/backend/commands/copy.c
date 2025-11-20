@@ -971,7 +971,7 @@ ProcessCopyOptions(ParseState *pstate,
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				errmsg("Double quotes(quotes) must be 8 length")));
-	if (ORA_PARSER != compatible_db && quotes_specified == true)
+	if (ORA_MODE != compatible_mode && quotes_specified == true)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				errmsg("Double quotes(quotes) just support in ora port")));

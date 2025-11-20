@@ -537,7 +537,7 @@ bool_orachar(PG_FUNCTION_ARGS)
 	const char *str;
 
 	/* Begin - BUG#Z1488 */
-	if (compatible_db == ORA_PARSER)
+	if (compatible_mode == ORA_MODE)
 	{
 		if (arg1)
 			str = "1";

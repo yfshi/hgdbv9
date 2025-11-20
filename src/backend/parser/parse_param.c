@@ -186,7 +186,7 @@ parse_variable_parameters(ParseState *pstate,
 	/*
 	 * get the real paramTypes(reset 32nd-30nd bit of 32 bit Oid)
 	 */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		int 		   i;
 
@@ -280,7 +280,7 @@ variable_paramref_hook(ParseState *pstate, ParamRef *pref)
 			   (paramno - *parstate->numParams) * sizeof(Oid));
 
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
-		if (ORA_PARSER == compatible_db && parstate->paramModes != NULL)
+		if (ORA_MODE == compatible_mode && parstate->paramModes != NULL)
 		{
 			/* Need to enlarge param mode array */
 			if (*parstate->paramModes)

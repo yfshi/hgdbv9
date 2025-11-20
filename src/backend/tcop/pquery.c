@@ -181,7 +181,7 @@ ProcessQuery(PlannedStmt *plan,
 				break;
 			case CMD_INSERT:
 				/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-				if (((ModifyTableState*)queryDesc->planstate)->isReplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+				if (((ModifyTableState*)queryDesc->planstate)->isReplace && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 					SetQueryCompletion(qc, CMDTAG_REPLACE, queryDesc->estate->es_processed);
 				else
 				/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
@@ -602,7 +602,7 @@ PortalStart(Portal portal, ParamListInfo params,
 				portal->tupDesc = NULL;
 				/* Begin - ReqID:SRS-SQL-ANONYOUT */
 				/* DoStmt has out parameters, we should have output tupdesc */
-				if (ORA_PARSER == compatible_db && portal->stmts!= NIL)
+				if (ORA_MODE == compatible_mode && portal->stmts!= NIL)
 				{
 					Node *node = linitial(portal->stmts);
 
@@ -1231,7 +1231,7 @@ PortalRunMulti(Portal portal,
 	bool		anonymous_has_outparamter = false;
 
 	/* If anonymous block has out parameters, should not change receiver */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		portal->stmts != NIL &&
 	   list_length(portal->stmts) == 1)
 	{

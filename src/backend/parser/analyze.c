@@ -372,7 +372,7 @@ transformOptionalSelectInto(ParseState *pstate, Node *parseTree)
 			CreateTableAsStmt *ctas = makeNode(CreateTableAsStmt);
 
 			/* Begin - ReqID:SRS-MYSQL-SET */
-			if (compatible_db == MYS_PARSER && stmt->intoClause->colNames != NIL)
+			if (compatible_mode == MYS_MODE && stmt->intoClause->colNames != NIL)
 			{
 				ListCell *cell;
 
@@ -795,7 +795,7 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
-	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		if (stmt->usingClause || stmt->relationList)
 		{
@@ -817,12 +817,12 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	/* set up range table with just the result rel */
 	if (stmt->relation)
 	{
-		if (MYS_PARSER == compatible_db && stmt->relationList && stmt->collist) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && stmt->relationList && stmt->collist) /* BUG#Z5121 */
 		{
 			transformCollistInFromcClause(list_make1(stmt->relation), stmt->collist);
 			stmt->relationList = NIL;
 		}
-		if (MYS_PARSER == compatible_db && stmt->relation->ispartition) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && stmt->relation->ispartition) /* BUG#Z5121 */
 			transformGetpartionRelationOid(qry, stmt->relation);
 		qry->resultRelation = setTargetTable(pstate, stmt->relation,
 											 stmt->relation->inh,
@@ -845,7 +845,7 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	 * USING keyword is used rather than FROM because FROM is already a
 	 * keyword in the DELETE syntax.
 	 */
-	if (MYS_PARSER == compatible_db &&
+	if (MYS_MODE == compatible_mode &&
 		(stmt->usingClause || stmt->relationList)) /* BUG#Z5121 */
 	{
 		if (qry->cteList)
@@ -862,7 +862,7 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	transformFromClause(pstate, stmt->usingClause);
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
-	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		transformFromClause(pstate, stmt->relationList);
 
@@ -1353,7 +1353,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 	pstate->p_is_insert = true;
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		qry->isReplace = stmt->isReplace;
 		pstate->p_isreplace = stmt->isReplace; /* BUG#Z1626 */
@@ -1431,7 +1431,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 										 false, false, targetPerms);
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 		transformTableAndSchemaInCols(pstate, &(stmt->cols));
 	/* Validate stmt->cols list, or build default list if no list given */
 	icolumns = checkInsertTargets(pstate, stmt->cols, &attrnos);
@@ -1484,7 +1484,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 		/* In MySQL mode, check if the temporary table is referenced multiple times */
-		if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 			transformCheckTemptableIsMultiUse(pstate->p_rtable, sub_pstate->p_rtable);
 		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
@@ -1505,7 +1505,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 											   false,
 											   false);
 		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-		if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 		{
 			addNSItemToQuery(pstate, nsitem, true, false, true);
 		}
@@ -1552,7 +1552,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 		/* Check that the number of column values in the query is the same as
 		 * the number of columns inserted into the table.
 		 */
-		if (compatible_db ==  MYS_PARSER && exprList && icolumns) /* BUG#Z5121 */
+		if (compatible_mode ==  MYS_MODE && exprList && icolumns) /* BUG#Z5121 */
 		{
 			if (list_length(exprList) != list_length(icolumns))
 				ereport(ERROR,
@@ -1616,7 +1616,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 			/* In mysql mode, handle column references. */
-			if (MYS_PARSER == compatible_db && sublist) /* BUG#Z5121 */
+			if (MYS_MODE == compatible_mode && sublist) /* BUG#Z5121 */
 			{
 				transformColumnReference(pstate, &sublist, NULL, attrnos, 0);
 				/* Begin - BUG#Z1434 */
@@ -1770,7 +1770,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 									  stmt->cols,
 									  icolumns, attrnos,
 									  false);
-		if (MYS_PARSER == compatible_db && exprList) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && exprList) /* BUG#Z5121 */
 		{
 			transformColumnReference(pstate, &exprList, NULL, attrnos, 0);
 			/* Begin - BUG#Z1434 */
@@ -1829,7 +1829,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 	/* Process DUPLICATE KEY UPDATE, if any. */
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-	if (MYS_PARSER == compatible_db && stmt->upsertClause) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && stmt->upsertClause) /* BUG#Z5121 */
 	{
 //		qry->resultRelations = lappend_int(qry->resultRelations, qry->resultRelation);
 		qry->upsertClause = transformUpsertClause(pstate, stmt->upsertClause, qry->resultRelations);
@@ -1888,7 +1888,7 @@ transformInsertRow(ParseState *pstate, List *exprlist,
 	if (list_length(exprlist) > list_length(icolumns))
 	/* Begin - BUG#Z1626 */
 	{
-		if (pstate->p_isreplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+		if (pstate->p_isreplace && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
 					 errmsg("REPLACE has more expressions than target columns"),
@@ -1917,7 +1917,7 @@ transformInsertRow(ParseState *pstate, List *exprlist,
 		 * hint in that case.)
 		 */
 		/* Begin - BUG#Z1626 */
-		if (pstate->p_isreplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+		if (pstate->p_isreplace && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 						ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
 					 errmsg(" REPLACE has more target columns than expressions"),
@@ -1952,7 +1952,7 @@ transformInsertRow(ParseState *pstate, List *exprlist,
 		ResTarget  *col = lfirst_node(ResTarget, icols);
 		int			attno = lfirst_int(attnos);
 		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-		if (MYS_PARSER == compatible_db && pstate->p_check_column_auto_increment)
+		if (MYS_MODE == compatible_mode && pstate->p_check_column_auto_increment)
 		{
 			expr = set_auto_increment_func_node(pstate, expr, attno);
 		}
@@ -2490,7 +2490,7 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	/* Begin - BUG#Z5973
 	 * check mysql show command information.
 	 */
-	if (compatible_db == MYS_PARSER && stmt->mysshowtype != SHOW_UNKNOW)
+	if (compatible_mode == MYS_MODE && stmt->mysshowtype != SHOW_UNKNOW)
 	{
 		newstmt = mys_show_commmand(pstate, stmt);
 		if (newstmt != NULL)
@@ -2552,7 +2552,7 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 										   EXPR_KIND_HAVING, "HAVING");
 
 	/* Begin - ReqID:SRS-MYSQL-SELECT */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		/*
 		 * Compatible with the HAVING clause in MYSQL without the GROUP BY clause and
@@ -3196,7 +3196,7 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 	 * With this logic, we will trans raw statement to this:
 	 *  CREATE TABLE tbl AS SELECT val COLLATE USING_NLS_COMP FROM (SELECT val COLLATE BINARY FROM tbl1 UNION SELECT val COLLATE BINARY FROM tbl2).
 	 */
-	if (ORA_PARSER == compatible_db && enable_ora_default_collation && 
+	if (ORA_MODE == compatible_mode && enable_ora_default_collation && 
 		subquery_with_raw_collation)
 	{
 		ListCell *cc, *rcc;
@@ -3609,7 +3609,7 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 			}
 
 			/* Begin - BUG#Z1461 */
-			if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+			if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 			{
 				Node *lcopy = copyObject(lcolnode);
 				Node *rcopy = copyObject(rcolnode);
@@ -3751,7 +3751,7 @@ determineRecursiveColTypes(ParseState *pstate, Node *larg, List *nrtargetlist)
 		colName = pstrdup(lefttle->resname);
 
 		/* Begin - BUG#Z1461 */
-		if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+		if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 		{
 			Node 	*expr = (Node *) nrtle->expr;
 			Oid		 colcoll = exprCollation(expr);
@@ -4170,7 +4170,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	pstate->p_is_insert = false;
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		pstate->p_isupdate = true;
 		if (stmt->relation)
@@ -4187,7 +4187,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	}
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	/* Begin - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
-	else if (DB_ORACLE == compatible_db)
+	else if (ORA_MODE == compatible_mode)
 	{
 		if (stmt->relation && enable_update_multicol)
 			transformMergeTargetList(stmt->relation, &stmt->targetList, false);
@@ -4203,7 +4203,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db && stmt->relationClause) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && stmt->relationClause) /* BUG#Z5121 */
 	{
 		if (qry->cteList)
 			ereport(ERROR,
@@ -4229,7 +4229,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 											 true,
 											 ACL_UPDATE);
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 			pstate->p_updateRelations = lappend_int(pstate->p_updateRelations, qry->resultRelation);
 		/* End - ReqID:SRS-MYSQL-UPDATE */
 	}
@@ -4243,7 +4243,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 		nsitem->p_lateral_ok = false;
 	}
 
-	if (MYS_PARSER == compatible_db && pstate->p_indexhintLists) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && pstate->p_indexhintLists) /* BUG#Z5121 */
 		qry->indexhintList = pstate->p_indexhintLists;
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 
@@ -4261,7 +4261,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 		nsitem->p_lateral_ok = true;
 	}
 
-	if (compatible_db != MYS_PARSER) /* BUG#Z5121 */
+	if (compatible_mode != MYS_MODE) /* BUG#Z5121 */
 		qual = transformWhereClause(pstate, stmt->whereClause,
 									EXPR_KIND_WHERE, "WHERE");
 	/* End - ReqID:SRS-MYSQL-UPDATE */
@@ -4269,7 +4269,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	qry->returningList = transformReturningList(pstate, stmt->returningList);
 
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	if (DB_ORACLE == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		qry->targetList = transformIvyUpdateTargetList(pstate, stmt->targetList);
 
@@ -4289,7 +4289,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 		 * transforming the target list to match the UPDATE target columns.
 		 */
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (MYS_PARSER == compatible_db && stmt->relationClause) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && stmt->relationClause) /* BUG#Z5121 */
 		{
 			if (pstate->p_addupdatedeleterv)
 				transformGetpartionRelationOids(qry, pstate->p_addupdatedeleterv);
@@ -4302,13 +4302,13 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 			qry->targetList = transformUpdateTargetList(pstate, stmt->targetList);
 
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (MYS_PARSER == compatible_db && qry->resultRelation) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && qry->resultRelation) /* BUG#Z5121 */
 			transformLimitSortClause(pstate, stmt, qry, false);
 		/* End - ReqID:SRS-MYSQL-UPDATE */
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 		qual = transformWhereClause(pstate, stmt->whereClause,
 										EXPR_KIND_WHERE, "WHERE");
 	/* End - ReqID:SRS-MYSQL-UPDATE */
@@ -4322,13 +4322,13 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	assign_query_collations(pstate, qry);
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db && list_length(qry->resultRelations) == 1) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && list_length(qry->resultRelations) == 1) /* BUG#Z5121 */
 	{
 		qry->resultRelation = linitial_int(qry->resultRelations);
 		qry->resultRelations = NIL;
 	}
 
-	if (pstate->p_updateRelations && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (pstate->p_updateRelations && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 		pstate->p_updateRelations = NIL;
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 
@@ -4800,7 +4800,7 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 		}
 
 		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-		if (compatible_db == MYS_PARSER)
+		if (compatible_mode == MYS_MODE)
 		{
 			tle->expr = update_set_auto_increment_func_node(pstate, tle->expr, attrno);
 		}
@@ -5440,7 +5440,7 @@ transformCreateTableAsStmt(ParseState *pstate, CreateTableAsStmt *stmt)
 	Query	   *result;
 	Query	   *query;
 
-	if (compatible_db == MYS_PARSER)
+	if (compatible_mode == MYS_MODE)
 		pstate->p_createastmt = true;
 
 	/* transform contained query, not allowing SELECT INTO */
@@ -5448,7 +5448,7 @@ transformCreateTableAsStmt(ParseState *pstate, CreateTableAsStmt *stmt)
 	stmt->query = (Node *) query;
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		/* Replace original query in the correct element of the query list */
 		stmt->query = create_ctas_enum_expr(pstate, stmt, query);
@@ -5709,10 +5709,10 @@ transformCallStmt(ParseState *pstate, CallStmt *stmt)
 		}
 		/* Begin - BUG#Z196: procedure with out arguments supports overload */
 		/*
-		 * If compatible_db is ORA_PARSER and the procedure language is PLISQL,
+		 * If compatible_mode is ORA_MODE and the procedure language is PLISQL,
 		 * the funcexpr->args should be all the args including out argment
 		 */
-		if (!(ORA_PARSER == compatible_db &&
+		if (!(ORA_MODE == compatible_mode &&
 			((Form_pg_proc) GETSTRUCT(proctup))->prolang == LANG_PLISQL_OID))
 		/* End - BUG#Z196: procedure with out arguments supports overload */
 			fexpr->args = inargs;
@@ -5921,7 +5921,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 			List       *lockedColumns = NIL;
 			/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 
-			if (ORA_PARSER != compatible_db)
+			if (ORA_MODE != compatible_mode)
 			{
 				/* For simplicity we insist on unqualified alias names here */
 				if (thisrel->catalogname || thisrel->schemaname)
@@ -5936,7 +5936,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 
 			/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
 			/* unqualified names may be table name or column name */
-			if (ORA_PARSER == compatible_db)
+			if (ORA_MODE == compatible_mode)
 			{
 				colOrRelname = thisrel->relname;
 
@@ -5982,7 +5982,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 					rtename = rte->eref->aliasname;
 
 				/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if (!thisrel->catalogname && !thisrel->schemaname)
 					{
@@ -6073,14 +6073,14 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 				}
 				/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 
-				if ((ORA_PARSER != compatible_db && strcmp(rtename, thisrel->relname) == 0) ||
-					(ORA_PARSER == compatible_db && matched))
+				if ((ORA_MODE != compatible_mode && strcmp(rtename, thisrel->relname) == 0) ||
+					(ORA_MODE == compatible_mode && matched))
 				{
 					switch (rte->rtekind)
 					{
 						case RTE_RELATION:
 							/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
-							if (ORA_PARSER != compatible_db)
+							if (ORA_MODE != compatible_mode)
 							{
 							/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 								applyLockingClause(qry, i, lc->strength,
@@ -6127,7 +6127,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 							break;
 						case RTE_SUBQUERY:
 							/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
-							if (ORA_PARSER != compatible_db ||
+							if (ORA_MODE != compatible_mode ||
 								!isColumn)
 							{
 							/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
@@ -6221,7 +6221,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 				}
 			}
 			/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
-			if (ORA_PARSER == compatible_db && !matched)
+			if (ORA_MODE == compatible_mode && !matched)
 			{
 				if (!thisrel->catalogname && !thisrel->schemaname)
 					ereport(ERROR,
@@ -6251,7 +6251,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 			/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 
 			if (rt == NULL &&
-				ORA_PARSER != compatible_db /* BUG#M0000470: SELECT FOR UPDATE OF column */)
+				ORA_MODE != compatible_mode /* BUG#M0000470: SELECT FOR UPDATE OF column */)
 				ereport(ERROR,
 						(errcode(ERRCODE_UNDEFINED_TABLE),
 				/*------
@@ -6925,7 +6925,7 @@ ivy_makeBoolAConst(bool state)
 
 	n->val.type = T_String;
 	/* Begin - BUG#Z5838 */
-	if (MYS_PARSER == compatible_db && use_mysql_bool == true)
+	if (MYS_MODE == compatible_mode && use_mysql_bool == true)
 	{
 		n->val.val.str = (state ? "1" : "0");
 	}
@@ -7871,7 +7871,7 @@ mys_show_create_table_to_show_create_view(SelectStmt *stmt)
 static SelectStmt *
 mys_show_commmand(ParseState *pstate, SelectStmt *stmt)
 {
-	if (compatible_db == MYS_PARSER && stmt != NULL && stmt->mysshowtype != SHOW_UNKNOW)
+	if (compatible_mode == MYS_MODE && stmt != NULL && stmt->mysshowtype != SHOW_UNKNOW)
 	{
 		switch (stmt->mysshowtype)
 		{

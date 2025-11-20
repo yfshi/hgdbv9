@@ -245,7 +245,7 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 
 		case FLOAT4OID:
 			/* Begin - ReqID:SRS-MYSQL-NUMERICTYPE-FLOAT */
-			if (compatible_db == MYS_PARSER)
+			if (compatible_mode == MYS_MODE)
 				buf = pstrdup("float4");
 			else
 				buf = pstrdup("real");

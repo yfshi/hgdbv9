@@ -652,7 +652,7 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	/* End - ReqID:SRS-SQL-ROWNUM */
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if(MYS_PARSER == compatible_db && list_length(parse->resultRelations) > 1) /* BUG#Z5121 */
+	if(MYS_MODE == compatible_mode && list_length(parse->resultRelations) > 1) /* BUG#Z5121 */
 	{
 		int		num = list_length(parse->resultRelations) + 1;
 		foreach(lc, parse->resultRelations)
@@ -798,7 +798,7 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	 * If we have now verified that the query target relation is
 	 * non-inheriting, mark it as a leaf target.
 	 */
-	if (MYS_PARSER == compatible_db && list_length(parse->resultRelations) > 1) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && list_length(parse->resultRelations) > 1) /* BUG#Z5121 */
 	{
 		int		i = 0;
 		foreach(lc, parse->resultRelations)
@@ -1159,7 +1159,7 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	 */
 	set_cheapest(final_rel);
 
-	if (MYS_PARSER == compatible_db && list_length(parse->resultRelations) > 1) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && list_length(parse->resultRelations) > 1) /* BUG#Z5121 */
 	{
 		if (root->leaf_result_relids_arr)
 			pfree(root->leaf_result_relids_arr);
@@ -1888,7 +1888,7 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 			List	   *partresultRelations = NIL;
 			List	   *partresultRelationslist = NIL;
 
-			if (MYS_PARSER == compatible_db && list_length(root->all_result_relids_list) > 1) /* BUG#Z5121 */
+			if (MYS_MODE == compatible_mode && list_length(root->all_result_relids_list) > 1) /* BUG#Z5121 */
 			{
 				forboth(lc, root->all_result_relids_list, lc1, root->parse->resultRelations)
 				{
@@ -1921,7 +1921,7 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 							if (IS_DUMMY_REL(this_result_rel))
 								continue;
 
-							if (root->parse->partreloids && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+							if (root->parse->partreloids && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 							{
 								ListCell   *lc = NULL;
 								bool		is_part = false;
@@ -2165,7 +2165,7 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 							continue;
 
 						/* Begin - ReqID:SRS-MYSQL-UPDATE */
-						if (root->parse->partOids && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+						if (root->parse->partOids && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 						{
 							/* Check whether the current partition is the specified partition. */
 							ListCell   *lc = NULL;
@@ -2636,7 +2636,7 @@ preprocess_rowmarks(PlannerInfo *root)
 	rels = get_relids_in_jointree((Node *) parse->jointree, false);
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if(MYS_PARSER == compatible_db && list_length(parse->resultRelations) == 1) /* BUG#Z5121 */
+	if(MYS_MODE == compatible_mode && list_length(parse->resultRelations) == 1) /* BUG#Z5121 */
 	{
 		ListCell   *lc;
 		foreach(lc, parse->resultRelations)
@@ -2698,7 +2698,7 @@ preprocess_rowmarks(PlannerInfo *root)
 	 */
 	i = 0;
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (list_length(parse->resultRelations) > 1 && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (list_length(parse->resultRelations) > 1 && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		foreach(l, parse->resultRelations)
 		{

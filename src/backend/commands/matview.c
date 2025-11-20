@@ -840,7 +840,7 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 	 * Begin - BUG#Z4625
 	 * MySQL cannot use alias name in Delete From.
 	 */
-	if (compatible_db == MYS_PARSER)
+	if (compatible_mode == MYS_MODE)
 	{
 		appendStringInfo(&querybuf,
 						"DELETE FROM %s WHERE ctid OPERATOR(pg_catalog.=) ANY "

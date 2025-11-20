@@ -86,7 +86,7 @@ int2in(PG_FUNCTION_ARGS)
 	/* End - BUG#M0000194 */
 
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
-	if (MYS_PARSER == compatible_db && mysql_int2_datatype_in_hook)
+	if (MYS_MODE == compatible_mode && mysql_int2_datatype_in_hook)
 	{
 		int16 	ret;
 		bool	is_insert = CALL_IN_INSERT();
@@ -307,7 +307,7 @@ int4in(PG_FUNCTION_ARGS)
 	/* End - BUG#M0000194 */
 
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
-	if (MYS_PARSER == compatible_db && mysql_int4_datatype_in_hook)
+	if (MYS_MODE == compatible_mode && mysql_int4_datatype_in_hook)
 	{
 		int32 	ret;
 		bool	is_insert = CALL_IN_INSERT();
@@ -382,7 +382,7 @@ i4toi2(PG_FUNCTION_ARGS)
 	if (unlikely(arg1 < SHRT_MIN) || unlikely(arg1 > SHRT_MAX))
 	{
 		/* Begin - SRS-MYSQL-NUMBERICTYPE-INT2 */
-		if (MYS_PARSER == compatible_db && (!is_strict_mode()))
+		if (MYS_MODE == compatible_mode && (!is_strict_mode()))
 		{
 			if(arg1 < PG_INT16_MIN)
 			{

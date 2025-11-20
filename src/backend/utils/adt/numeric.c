@@ -693,7 +693,7 @@ numeric_in(PG_FUNCTION_ARGS)
 	const char *cp;
 
 	/* Begin - bug#z5590 */
-	if (MYS_PARSER == compatible_db && mysql_numeric_datatype_in_hook)
+	if (MYS_MODE == compatible_mode && mysql_numeric_datatype_in_hook)
 	{
 		// Prevent the recursion from entering a cycle.
 		if (PG_NARGS() > 3)
@@ -839,7 +839,7 @@ numeric_out(PG_FUNCTION_ARGS)
 	init_var_from_num(num, &x);
 
 	/* Begin - ReqID:SRS-SQL-ORACLE-LIKE  BUG:Z475 */
-	if(database_mode == DB_ORACLE && compatible_db == ORA_PARSER && numerictonumber)
+	if(database_mode == DB_ORACLE && compatible_mode == ORA_MODE && numerictonumber)
 		str = ora_get_str_from_var(&x);
 	else
 		str = get_str_from_var(&x);
@@ -3095,7 +3095,7 @@ numeric_div(PG_FUNCTION_ARGS)
 
 		errdata = CopyErrorData();
 
-		if (compatible_db == MYS_PARSER && errdata->sqlerrcode == ERRCODE_DIVISION_BY_ZERO)
+		if (compatible_mode == MYS_MODE && errdata->sqlerrcode == ERRCODE_DIVISION_BY_ZERO)
 		{
 			FlushErrorState();
 			
@@ -3208,7 +3208,7 @@ numeric_div_opt_error(Numeric num1, Numeric num2, bool *have_error)
 	 * Select scale for division result
 	 */
 
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		rscale = arg1.dscale + div_precision_increment < DECIMAL_MAX_SCALE ?
 					arg1.dscale + div_precision_increment : DECIMAL_MAX_SCALE;
@@ -11703,7 +11703,7 @@ ora_strtoint64(const char *num, const char *dtype, int64 *retval)
 		   strcmp(dtype, "bigint") == 0);
 	Assert(retval != NULL);
 
-	if (database_mode == DB_ORACLE && compatible_db == ORA_PARSER &&
+	if (database_mode == DB_ORACLE && compatible_mode == ORA_MODE &&
 		cast_int_like_oracle && num)
 	{
 		const char *cp;

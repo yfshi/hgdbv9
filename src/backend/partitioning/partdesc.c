@@ -127,7 +127,7 @@ RelationBuildPartitionInterval(Oid relid, MemoryContext context)
 	char				   *intervalstr;
 	MemoryContext			oldcxt = NULL;
 
-	if (ORA_PARSER != compatible_db)
+	if (ORA_MODE != compatible_mode)
 		return NULL;
 
 	if (context != NULL)

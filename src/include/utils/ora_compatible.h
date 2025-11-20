@@ -26,19 +26,14 @@ typedef enum DBMode
 	DB_MYSQL = 2,	/* ReqID:SRS-MISC-MYSQL-FRAME */
 	DB_NATIVE = 3	/* ReqID:SRS-CMD-PGDUMP */
 }DBMode;
-/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-typedef enum DBUser
+
+
+typedef enum CompatibleMode
 {
-	INSTANCE = 0,
-	DB = 1
-}DBUser;
-/* END - ReqID:SRS-CMD-PGDUMP */
-typedef enum DBParser
-{
-	PG_PARSER = 0,
-	ORA_PARSER,
-	MYS_PARSER		/* ReqID:SRS-MISC-MYSQL-FRAME */
-}DBParser;
+	PG_MODE = 0,
+	ORA_MODE,
+	MYS_MODE		/* ReqID:SRS-MISC-MYSQL-FRAME */
+} CompatibleMode;
 
 /* BEGIN - ReqID:SRS-MISC-USER */
 /* BEGIN - bug#M0000261 */

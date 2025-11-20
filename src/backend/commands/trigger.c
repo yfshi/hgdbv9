@@ -2433,7 +2433,7 @@ RelationBuildTriggers(Relation relation)
 	}
 
 	/* Begin - ReqID:SRS-SQL-TRIGGER */
-	if (numtrigs > 0 && compatible_db == ORA_PARSER)
+	if (numtrigs > 0 && compatible_mode == ORA_MODE)
 	{
 		TriggerDepInfo	*depInfo;
 		HTAB			*nameToIndex;

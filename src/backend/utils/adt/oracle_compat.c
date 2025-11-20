@@ -858,7 +858,7 @@ rtrim1(PG_FUNCTION_ARGS)
 	 * Handing char(n) space padding issues based on
 	 * sql_mode value MODE_PAD_CHAR_TO_FULL_LENGTH.
 	 */
-	if (compatible_db == MYS_PARSER && mode_pad_char_to_full())
+	if (compatible_mode == MYS_MODE && mode_pad_char_to_full())
 		ret = string;
 	else
 		ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),

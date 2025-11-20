@@ -59,7 +59,7 @@ LookupTypeName(ParseState *pstate, const TypeName *typeName,
 	tup = LookupTypeNameExtended(pstate,
 								  typeName, typmod_p, true, missing_ok);
 
-	if (ORA_PARSER == compatible_db && tup == NULL && SynnameGettype_hook)
+	if (ORA_MODE == compatible_mode && tup == NULL && SynnameGettype_hook)
 		tup = SynnameGettype_hook(pstate, typeName, typmod_p, &synoids, true);
 
 	list_free(synoids);
@@ -185,7 +185,7 @@ LookupTypeNameExtended(ParseState *pstate,
 		}
 	}
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	else if (ORA_PARSER == compatible_db && typeName->row_type)
+	else if (ORA_MODE == compatible_mode && typeName->row_type)
 	{
 		char		*schema_name = NULL;
 		char		*relname = NULL;
@@ -228,7 +228,7 @@ LookupTypeNameExtended(ParseState *pstate,
 				setup_parser_errposition_callback(&pcbstate, pstate, typeName->location);
 
 				/* Begin - BUG#Z1308 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 					missing_ok = true;
 				/* End - BUG#Z1308 */
 				namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
@@ -431,7 +431,7 @@ typenameTypeMod(ParseState *pstate, const TypeName *typeName, Type typ)
 	 * Add for Alter table alter column's type,
 	 * such as alter type from text to enum.
 	 */
-	if (compatible_db == MYS_PARSER && type_is_enum(((Form_pg_type) GETSTRUCT(typ))->oid))
+	if (compatible_mode == MYS_MODE && type_is_enum(((Form_pg_type) GETSTRUCT(typ))->oid))
 		return typeName->typemod;
 	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
@@ -1079,7 +1079,7 @@ LookupOraTypeNameExtended(ParseState *pstate,
 			Assert(typeName->arrayBounds == NIL);
 		}
 	}
-	else if (ORA_PARSER == compatible_db && typeName->row_type)
+	else if (ORA_MODE == compatible_mode && typeName->row_type)
 	{
 		char		*schema_name = NULL;
 		char		*relname = NULL;

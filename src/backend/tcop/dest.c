@@ -196,7 +196,7 @@ EndCommand(const QueryCompletion *qc, CommandDest dest, bool force_undecorated_o
 			if (command_tag_display_rowcount(tag) && !force_undecorated_output)
 			{
 				/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-				if (tag == CMDTAG_REPLACE && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+				if (tag == CMDTAG_REPLACE && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 					snprintf(completionTag, COMPLETION_TAG_BUFSIZE,
 							 tag == CMDTAG_REPLACE ?
 							 "%s 0 " UINT64_FORMAT : "%s " UINT64_FORMAT,

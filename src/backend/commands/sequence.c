@@ -965,7 +965,7 @@ nextval_internal(Oid relid, bool check_permissions)
 	log = seq->log_cnt;
 
 	/* Begin - BUG#Z026 */
-	if(result > maxv && compatible_db == ORA_PARSER)
+	if(result > maxv && compatible_mode == ORA_MODE)
 		elog(ERROR, "sequence %s.nextval exceeds MAXVALUE and cannot be instantiated",get_rel_name(relid));
 	/* End - BUG#Z026 */
 
@@ -1930,7 +1930,7 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	seq->is_called = iscalled;
 	seq->log_cnt = 0;
 	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-	if (compatible_db == MYS_PARSER)
+	if (compatible_mode == MYS_MODE)
 	{
 		seq->next_value = compute_current_autoinc(next);
 	}
@@ -2275,9 +2275,9 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 						 parser_errposition(pstate, defel->location)));
 			restart_value = defel;
 			/* Begin - ReqID:SRS-SQL-SEQ */
-			if(isInit && compatible_db == ORA_PARSER)
+			if(isInit && compatible_mode == ORA_MODE)
 				elog(ERROR, "CREATE SEQUENCE cannot have a RESTART clause");
-			if(!isInit && restart_value->arg != NULL && compatible_db == ORA_PARSER)
+			if(!isInit && restart_value->arg != NULL && compatible_mode == ORA_MODE)
 				elog(ERROR, "SQL command not properly ended");
 			/* End - ReqID:SRS-SQL-SEQ */
 			*need_seq_rewrite = true;
@@ -2466,7 +2466,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 
 	/* Begin BUG#Z250 */
 	if (start_value && !isInit && !restart_value &&
-			compatible_db == ORA_PARSER && !for_identity)
+			compatible_mode == ORA_MODE && !for_identity)
 		elog(ERROR, "cannot alter starting sequence number");
 	/* End BUG#Z250 */
 
@@ -2475,19 +2475,19 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	{
 		Oid			newtypid = typenameTypeId(pstate, defGetTypeName(as_type));
 		/* Begin - ReqID:SRS-SQL-IDENTCOL */
-		if (seq_type == ATTRIBUTE_IDENTITY_ALWAYS || seq_type == ATTRIBUTE_IDENTITY_BY_DEFAULT || compatible_db == PG_PARSER
-						|| compatible_db == MYS_PARSER)	/* Bug#m0000070 */	/* ReqID:SRS-MISC-MYSQL-FRAME */
+		if (seq_type == ATTRIBUTE_IDENTITY_ALWAYS || seq_type == ATTRIBUTE_IDENTITY_BY_DEFAULT || compatible_mode == PG_MODE
+						|| compatible_mode == MYS_MODE)	/* Bug#m0000070 */	/* ReqID:SRS-MISC-MYSQL-FRAME */
 		{
 			if (newtypid != INT2OID &&
 				newtypid != INT4OID &&
-				newtypid != INT8OID && compatible_db != MYS_PARSER)
+				newtypid != INT8OID && compatible_mode != MYS_MODE)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 						 for_identity
 						 ? errmsg("identity column type must be smallint, integer, or bigint")
 						 : errmsg("sequence type must be smallint, integer, or bigint")));
 			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-			if (!type_is_numeric(newtypid) && compatible_db == MYS_PARSER)
+			if (!type_is_numeric(newtypid) && compatible_mode == MYS_MODE)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 						 for_identity
@@ -2496,7 +2496,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 		}
 		else if(seq_type == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL || seq_type == ATTRIBUTE_ORA_IDENTITY_ALWAYS
-						|| seq_type == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT || compatible_db == ORA_PARSER)	/* Bug#m0000070 */
+						|| seq_type == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT || compatible_mode == ORA_MODE)	/* Bug#m0000070 */
 		{
 			if (newtypid != INT2OID &&
 				newtypid != INT4OID &&
@@ -2552,7 +2552,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	if (increment_by != NULL)
 	{
 		/* Begin - BUG#Z165 */
-		if (compatible_db == ORA_PARSER)
+		if (compatible_mode == ORA_MODE)
 		{
 			PG_TRY();
 			{
@@ -2623,7 +2623,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	if (max_value != NULL && max_value->arg)
 	{
 		/* Begin - BUG#Z165 */
-		if (compatible_db == ORA_PARSER)
+		if (compatible_mode == ORA_MODE)
 		{
 			/* Begin - BUG#Z028 */
 			PG_TRY();
@@ -2701,7 +2701,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	if (min_value != NULL && min_value->arg)
 	{
 		/* Begin - BUG#Z165 */
-		if (compatible_db == ORA_PARSER)
+		if (compatible_mode == ORA_MODE)
 		{
 			PG_TRY();
 			{
@@ -2791,7 +2791,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	if (start_value != NULL)
 	{
 		/* Begin - BUG#Z024 */
-		if (compatible_db == ORA_PARSER)
+		if (compatible_mode == ORA_MODE)
 		{
 			/* Begin - BUG#Z028 */
 			PG_TRY();
@@ -2852,7 +2852,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 					bufm[100];
 
 		/* Bug - #z6160 */
-		if (compatible_db == MYS_PARSER && seq_type == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+		if (compatible_mode == MYS_MODE && seq_type == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
 		{
 			seqform->seqstart = seqform->seqmin;
 		}
@@ -2866,13 +2866,13 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 							bufs, bufm)));
 		}
 	}
-	if (seqform->seqstart > seqform->seqmax && (compatible_db == PG_PARSER || compatible_db == MYS_PARSER || !for_identity))	/* BUG#Z026 */ /* ReqID:SRS-SQL-SEQ */	/* ReqID:SRS-MISC-MYSQL-FRAME */
+	if (seqform->seqstart > seqform->seqmax && (compatible_mode == PG_MODE || compatible_mode == MYS_MODE || !for_identity))	/* BUG#Z026 */ /* ReqID:SRS-SQL-SEQ */	/* ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		char		bufs[100],
 					bufm[100];
 
 		/* Bug - #z6160 */
-		if (compatible_db == MYS_PARSER && seq_type == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+		if (compatible_mode == MYS_MODE && seq_type == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
 		{
 			seqform->seqstart = seqform->seqmax;
 		}
@@ -3031,17 +3031,17 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 		if (restart_value->arg != NULL)
 			seqdataform->last_value = defGetInt64(restart_value);
 		/* Begin - ReqID:SRS-SQL-SEQ */
-		else if (!restart_value->arg && compatible_db == PG_PARSER)
+		else if (!restart_value->arg && compatible_mode == PG_MODE)
 			seqdataform->last_value = seqform->seqstart;
-		else if (!restart_value->arg && compatible_db == ORA_PARSER && seqform->seqincrement > 0 && !start_value)
+		else if (!restart_value->arg && compatible_mode == ORA_MODE && seqform->seqincrement > 0 && !start_value)
 			seqdataform->last_value = seqform->seqmin;
-		else if (!restart_value->arg && compatible_db == ORA_PARSER && seqform->seqincrement < 0 && !start_value)
+		else if (!restart_value->arg && compatible_mode == ORA_MODE && seqform->seqincrement < 0 && !start_value)
 			seqdataform->last_value = seqform->seqmax;
-		else if (start_value && compatible_db == ORA_PARSER)
+		else if (start_value && compatible_mode == ORA_MODE)
 			seqdataform->last_value = defGetInt64(start_value);
 		/* End - ReqID:SRS-SQL-SEQ */
 		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		else if (!restart_value->arg && compatible_db == MYS_PARSER)
+		else if (!restart_value->arg && compatible_mode == MYS_MODE)
 			seqdataform->last_value = seqform->seqstart;
 		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		seqdataform->is_called = false;
@@ -3066,7 +3066,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 				 errmsg("RESTART value (%s) cannot be less than MINVALUE (%s)",
 						bufs, bufm)));
 	}
-	if (seqdataform->last_value > seqform->seqmax && compatible_db == PG_PARSER)	/* BUG#Z026 */
+	if (seqdataform->last_value > seqform->seqmax && compatible_mode == PG_MODE)	/* BUG#Z026 */
 	{
 		char		bufs[100],
 					bufm[100];
@@ -3079,7 +3079,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 						bufs, bufm)));
 	}
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	else if (seqdataform->last_value > seqform->seqmax && compatible_db == MYS_PARSER)
+	else if (seqdataform->last_value > seqform->seqmax && compatible_mode == MYS_MODE)
 	{
 		char		bufs[100],
 					bufm[100];
@@ -3097,7 +3097,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	if (cache_value != NULL)
 	{
 		/* Begin - BUG#Z165 */
-		if (compatible_db == ORA_PARSER)
+		if (compatible_mode == ORA_MODE)
 		{
 			PG_TRY();
 			{
@@ -3188,7 +3188,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 			seqform->seqcache = 20;
 		/* End - BUG#Z025*/
 		/* Begin - ReqID:SRS-SQL-SEQ */
-		else if (compatible_db == ORA_PARSER && !no_cache_flag)
+		else if (compatible_mode == ORA_MODE && !no_cache_flag)
 			seqform->seqcache = 20;
 		/* End - ReqID:SRS-SQL-SEQ */
 		else
@@ -3273,7 +3273,7 @@ process_owned_by(Relation seqrel, List *owned_by, bool for_identity)
 					 errmsg("sequence must be in same schema as table it is linked to")));
 
 		/* Now, fetch the attribute number from the system cache */
-		if (compatible_db == DB_ORACLE && strcmp(seqname, attrname) != 0)
+		if (compatible_mode == ORA_MODE && strcmp(seqname, attrname) != 0)
 		{
 			attnum = get_attnum(RelationGetRelid(tablerel), attrname);
 			if (attnum == InvalidAttrNumber)
@@ -3283,7 +3283,7 @@ process_owned_by(Relation seqrel, List *owned_by, bool for_identity)
 								attrname, RelationGetRelationName(tablerel))));
 		}
 		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		else if (compatible_db == MYS_PARSER) /* BUG#Z5121 */
+		else if (compatible_mode == MYS_MODE) /* BUG#Z5121 */
 		{
 			attnum = get_attnum(RelationGetRelid(tablerel), attrname);
 			if (attnum == InvalidAttrNumber)
@@ -3293,7 +3293,7 @@ process_owned_by(Relation seqrel, List *owned_by, bool for_identity)
 								attrname, RelationGetRelationName(tablerel))));
 		}
 		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-		else if (compatible_db == DB_PG)
+		else if (compatible_mode == PG_MODE)
 		{
 			attnum = get_attnum(RelationGetRelid(tablerel), attrname);
 			if (attnum == InvalidAttrNumber)

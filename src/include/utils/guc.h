@@ -294,12 +294,11 @@ extern PGDLLIMPORT bool enable_case_switch;
 
 /* BEGIN - SQL PARSER */
 extern PGDLLIMPORT int  database_mode;	/* SRS-MISC-COMPATDM-SQL */
-extern PGDLLIMPORT int  compatible_db;
+extern PGDLLIMPORT int  compatible_mode;
 /* END - SQL PARSER */
 
 /* BEGIN - ReqID:SRS-MISC-USER */
 extern PGDLLIMPORT int  dumppgtype;
-extern PGDLLIMPORT int  grant_usertype;
 /* END - ReqID:SRS-MISC-USER */
 /* Begin - BUG#z476 */
 extern PGDLLIMPORT bool numerictonumber;
@@ -404,7 +403,6 @@ enum
 
 extern PGDLLIMPORT bool enable_ora_default_collation;
 extern PGDLLIMPORT bool subquery_with_raw_collation;
-extern PGDLLIMPORT bool enable_partitionwise_qual_force_pushdown;
 extern PGDLLIMPORT bool default_collation_is_c;
 extern PGDLLIMPORT int	max_string_size;
 extern PGDLLIMPORT int	nls_comp_option;

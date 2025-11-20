@@ -173,7 +173,7 @@ float4in(PG_FUNCTION_ARGS)
 	char	   *endptr;
 
 	/* Begin - bug#z5590 */
-	if (MYS_PARSER == compatible_db && mysql_float4_datatype_in_hook)
+	if (MYS_MODE == compatible_mode && mysql_float4_datatype_in_hook)
 	{
 		// Prevent the recursion from entering a cycle.
 		if (PG_NARGS() > 3)
@@ -362,7 +362,7 @@ float8in(PG_FUNCTION_ARGS)
 	char	   *num = PG_GETARG_CSTRING(0);
 
 	/* Begin - bug#z5590 */
-	if (MYS_PARSER == compatible_db && mysql_float8_datatype_in_hook)
+	if (MYS_MODE == compatible_mode && mysql_float8_datatype_in_hook)
 	{
 		bool	is_insert = CALL_IN_INSERT();
 		double 	val = mysql_float8_datatype_in_hook(num, is_insert);

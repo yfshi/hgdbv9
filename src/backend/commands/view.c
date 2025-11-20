@@ -119,7 +119,7 @@ DefineVirtualRelation(RangeVar *relation, List *tlist, bool replace,
 	/*
 	 * If the view is a force view, rebuild the view.
 	 */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		OidIsValid(viewOid) &&
 		rel_is_force_view(viewOid))
 	{
@@ -567,7 +567,7 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	 * Switch role ahead of  DefineRelation() so that objects in the target
 	 * namespace can be used for sytax parsing.
 	 */
-	if (stmt->view->schemaname && ORA_PARSER == compatible_db && enable_ora_user_schema)
+	if (stmt->view->schemaname && ORA_MODE == compatible_mode && enable_ora_user_schema)
 	{
 		Oid	nspid = RangeVarGetAndCheckCreationNamespace(stmt->view, NoLock, NULL);
 		Oid	nspowner = GetUserId();
@@ -604,7 +604,7 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	}
 	PG_CATCH();
 	{
-		if (ORA_PARSER == compatible_db && stmt->force)
+		if (ORA_MODE == compatible_mode && stmt->force)
 		{
 			compile_failed = true;
 			FlushErrorState();
@@ -617,7 +617,7 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	/* Begin - ReqID:SRS-MYSQL-SET
 	 * Create a view cannot include user defined variable.
 	 */
-	if (MYS_PARSER == compatible_db && viewParse->hasuservar)
+	if (MYS_MODE == compatible_mode && viewParse->hasuservar)
 	{
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -1442,7 +1442,7 @@ make_view_invalid(Oid viewid)
 	 */
 	DeleteAttributeTuples(viewid);
 	/* BEGIN - BUGM354 */
-	if(pg_object_drop_obj_hook && compatible_db == ORA_PARSER)
+	if(pg_object_drop_obj_hook && compatible_mode == ORA_MODE)
 		DeleteForceViewAttinPgobject(viewid);
 	/* END - BUGM354 */
 	/*

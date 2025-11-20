@@ -151,7 +151,7 @@ transformTargetList(ParseState *pstate, List *targetlist,
 	{
 		ResTarget  *res = (ResTarget *) lfirst(o_target);
 
-		if (compatible_db == MYS_PARSER)
+		if (compatible_mode == MYS_MODE)
 		{
 			/** 
 			 * Begin - SRS-MYSQL-HEX-LITERAL
@@ -345,7 +345,7 @@ resolveTargetListUnknowns(ParseState *pstate, List *targetlist)
 			 */
 			Oid targetoid = TEXTOID;
 
-			if (compatible_db == ORA_PARSER)
+			if (compatible_mode == ORA_MODE)
 			{
 				if (nls_length_semantics == NLS_LENGTH_BYTE)
 					targetoid = ORAVARCHARBYTEOID;
@@ -1135,7 +1135,7 @@ checkInsertTargets(ParseState *pstate, List *cols, List **attrnos)
 			attrno = attnameAttNum(pstate->p_target_relation, name, false);
 
 			/* Begin - ReqID:SRS-SQL-INSERT */
-			if (attrno == InvalidAttrNumber && compatible_db == DB_ORACLE)
+			if (attrno == InvalidAttrNumber && compatible_mode == ORA_MODE)
 			{
 				if (OraGetAttrnoHook && insert_enable_alias)
 					attrno = (* OraGetAttrnoHook)(pstate, col);

@@ -318,7 +318,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
  	 * Set table's collation, or inherit from Effective Schema Default Collation,
 	 * Which is depended on schema's collation and DEFAULT_COLLATION session paramerter
  	 */
-	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+	if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 	{
 		Oid	relColl;		
 
@@ -350,7 +350,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 				{
 					/* Begin - ReqID:SRS-SQL-ROWID */
 					ColumnDef *col = (ColumnDef *) element;
-					if (compatible_db == DB_ORACLE && strcmp(col->colname, "rowid") == 0)
+					if (compatible_mode == ORA_MODE && strcmp(col->colname, "rowid") == 0)
 						elog(ERROR, "column name \"%s\" conflicts with a system column name", col->colname);
 					else
 						transformColumnDefinition(&cxt, (ColumnDef *) element);
@@ -553,7 +553,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	 * If column's collation is set explicity, mark it in pg_attribute.attoptions.
 	 * ALTER TABLE xx ALTER COLUMN xx SET (explict_set_collation=true)
 	 */
-	if (compatible_db == ORA_PARSER && enable_ora_default_collation)
+	if (compatible_mode == ORA_MODE && enable_ora_default_collation)
 	{
 		foreach(elements, cxt.columns)
 		{
@@ -733,7 +733,7 @@ generateSerialExtraStmts(CreateStmtContext *cxt, ColumnDef *column,
 	seqstmt->sequence->relpersistence = cxt->relation->relpersistence;
 	seqstmt->options = seqoptions;
 	/* Begin - ReqID:SRS-SQL-SEQ */
-	if (compatible_db == ORA_PARSER)
+	if (compatible_mode == ORA_MODE)
 		seqstmt->options = lcons(makeDefElem("nocache",
 											 NULL,
 											 -1),
@@ -914,7 +914,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 	 * If column type is mysql enum, we create anonymous enum
 	 * firsr.
 	 */
-	if (compatible_db == MYS_PARSER &&
+	if (compatible_mode == MYS_MODE &&
 		typename_is_enum(column->typeName))
 	{
 		Oid 		enumnspoid;
@@ -942,7 +942,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-	if (compatible_db == MYS_PARSER)
+	if (compatible_mode == MYS_MODE)
 	{
 		foreach (clist, column->constraints)
 		{
@@ -1196,7 +1196,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 						elog(ERROR, "specified data type is not supported for a virtual column");
 				}
 				/* Begin Bug#m0000392 */
-				if (ORA_PARSER != compatible_db)
+				if (ORA_MODE != compatible_mode)
 					column->generated = ATTRIBUTE_GENERATED_STORED;
 				/* End Bug#m0000392 */
 				/* End - ReqID:SRS-SQL-VIRTUALCOL */
@@ -2895,7 +2895,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 				defopclass = GetDefaultOpClass(attform->atttypid,
 											   index_rel->rd_rel->relam);
 				/* Begin - SRS-MISC-COMPATDM-SQL */
-				if (indclass->values[i] != defopclass && ORA_PARSER == compatible_db && !enable_blankspace_compare)
+				if (indclass->values[i] != defopclass && ORA_MODE == compatible_mode && !enable_blankspace_compare)
 					defopclass = GetExplicitOpClass(attform->atttypid,index_rel->rd_rel->relam);
 				/* End - SRS-MISC-COMPATDM-SQL */
 				if (indclass->values[i] != defopclass ||
@@ -3470,7 +3470,7 @@ transformStatsStmt(Oid relid, CreateStatsStmt *stmt, const char *queryString)
 			 * Begin - Req: SRS-SQL-NLSSORT 
 			 * Keep pace with A_Expr's pseudo-collation rule.
 			 */
-			if (ORA_PARSER == compatible_db && enable_ora_default_collation && IsA(selem->expr, A_Expr))
+			if (ORA_MODE == compatible_mode && enable_ora_default_collation && IsA(selem->expr, A_Expr))
 			{
 				A_Expr *a = (A_Expr *) selem->expr;
 				Oid coll = exprCollation((Node *) a);
@@ -3669,7 +3669,7 @@ transformRuleStmt(RuleStmt *stmt, const char *queryString,
 
 			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 			/* In MySQL mode,Set flag about rules */
-			if (compatible_db == MYS_PARSER) /* BUG#Z5121 */
+			if (compatible_mode == MYS_MODE) /* BUG#Z5121 */
 				sub_pstate->p_ruleflag = true;
 			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
@@ -4071,7 +4071,7 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					AttrNumber	attnum;
 
 					/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-					if (compatible_db == MYS_PARSER)
+					if (compatible_mode == MYS_MODE)
 					{
 						/** 
 						 * When alter column's type, if target type is enum, 
@@ -4100,7 +4100,7 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					if (attnum == InvalidAttrNumber)
 					{
 						/* Req: SRS-SQL-NLSSORT */
-						if (ORA_PARSER == compatible_db)
+						if (ORA_MODE == compatible_mode)
 							ereport(ERROR,
 									errmsg("IVY-00904: \"%s\": invalid identifier", cmd->name));
 						else
@@ -4123,7 +4123,7 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					 * when ALTER TABLE modify column type in oracle database, otherwise
 					 * an error will be thrown.
 					 */
-					if (ORA_PARSER == compatible_db &&
+					if (ORA_MODE == compatible_mode &&
 						rel->rd_rel->relkind == RELKIND_RELATION &&
 						def->typeName)
 					{
@@ -4483,7 +4483,7 @@ mys_set_default_mod(CreateStmtContext *cxt, ColumnDef *column)
 {
 	char *type_name;
 
-	if (compatible_db != MYS_PARSER)
+	if (compatible_mode != MYS_MODE)
 		return;
 
 	type_name = TypeNameToString(column->typeName);
@@ -4530,7 +4530,7 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 	 * datatypes varchar2 and nvarchar2 in oracle database, otherwise
 	 * an error will be thrown.
 	 */
-	if (ORA_PARSER == compatible_db && typmod == -1)
+	if (ORA_MODE == compatible_mode && typmod == -1)
 	{
 		if (typtup->oid == ORAVARCHARCHAROID ||
 			typtup->oid == ORAVARCHARBYTEOID)
@@ -4559,7 +4559,7 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 		 * NCLOB columns is always USING_NLS_COMP and it does not depend on 
 		 * the table default collation.
 		 */
-		if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+		if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 		{
 			if (typtup->oid == CLOBOID || typtup->oid == NCLOBOID) 
 			{
@@ -4581,7 +4581,7 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 		 * The `column->collOid` may be COVERED if the column has foreign key 
 		 * constraints at transformFKConstraintsCollation();
 		 */
-		if (ORA_PARSER == compatible_db && enable_ora_default_collation) 
+		if (ORA_MODE == compatible_mode && enable_ora_default_collation) 
 		{
 			if (typtup->oid == CLOBOID || typtup->oid == NCLOBOID)
 				column->collOid = ORA_COLL_OID(USING_NLS_COMP);

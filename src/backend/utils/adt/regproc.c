@@ -448,7 +448,7 @@ format_procedure_extended(Oid procedure_oid, bits16 flags)
 		appendStringInfo(&buf, "%s(",
 						 quote_qualified_identifier(nspname, proname));
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 			get_func_typename_info(proctup,
 						&p_argtypeNames, NULL);
 		/* End - ReqID:SRS-SQL-PACKAGE */
@@ -532,7 +532,7 @@ format_procedure_parts(Oid procedure_oid, List **objnames, List **objargs,
 						   pstrdup(NameStr(procform->proname)));
 	*objargs = NIL;
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 		get_func_typename_info(proctup,
 						&p_argtypeNames, NULL);
 	/* End - ReqID:SRS-SQL-PACKAGE */

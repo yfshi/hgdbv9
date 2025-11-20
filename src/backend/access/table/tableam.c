@@ -84,7 +84,7 @@ table_slot_callbacks(Relation relation)
 			   relation->rd_rel->relkind == RELKIND_PARTITIONED_TABLE);
 		/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
 		/* To support insert partition table on duplicate key update. */
-		if (MYS_PARSER == compatible_db &&
+		if (MYS_MODE == compatible_mode &&
 			relation->rd_rel->relkind == RELKIND_PARTITIONED_TABLE &&
 			relation->rd_onduplicate) /* BUG#Z5121 */
 			tts_cb = &TTSOpsBufferHeapTuple;

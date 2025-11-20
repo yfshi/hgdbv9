@@ -409,7 +409,7 @@ enum_in(PG_FUNCTION_ARGS)
 	char	   *trimname = NULL;
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		int32 	enumidx = 0;
 		bool 	iswarnins = false;
@@ -511,7 +511,7 @@ enum_out(PG_FUNCTION_ARGS)
 	Form_pg_enum en;
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		if (enumval == InvalidOid)
 			PG_RETURN_CSTRING("");
@@ -668,7 +668,7 @@ enum_lt(PG_FUNCTION_ARGS)
 	Oid			b = PG_GETARG_OID(1);
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db) 
+	if (MYS_MODE == compatible_mode) 
 	{
 		PG_RETURN_BOOL(compare_two_enum_value(a, b) < 0);
 	}
@@ -684,7 +684,7 @@ enum_le(PG_FUNCTION_ARGS)
 	Oid			b = PG_GETARG_OID(1);
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		PG_RETURN_BOOL(compare_two_enum_value(a, b) <= 0);
 	}
@@ -700,7 +700,7 @@ enum_eq(PG_FUNCTION_ARGS)
 	Oid			b = PG_GETARG_OID(1);
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		PG_RETURN_BOOL(!compare_two_enum_value(a, b));
 	}
@@ -716,7 +716,7 @@ enum_ne(PG_FUNCTION_ARGS)
 	Oid			b = PG_GETARG_OID(1);
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		PG_RETURN_BOOL(compare_two_enum_value(a, b) != 0);
 	}
@@ -732,7 +732,7 @@ enum_ge(PG_FUNCTION_ARGS)
 	Oid			b = PG_GETARG_OID(1);
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		PG_RETURN_BOOL(compare_two_enum_value(a, b) >= 0);
 	}
@@ -748,7 +748,7 @@ enum_gt(PG_FUNCTION_ARGS)
 	Oid			b = PG_GETARG_OID(1);
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		PG_RETURN_BOOL(compare_two_enum_value(a, b) > 0);
 	}
@@ -763,7 +763,7 @@ enum_smaller(PG_FUNCTION_ARGS)
 	Oid			a = PG_GETARG_OID(0);
 	Oid			b = PG_GETARG_OID(1);
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		PG_RETURN_OID(compare_two_enum_value(a, b) < 0 ? a : b);
 	}
@@ -778,7 +778,7 @@ enum_larger(PG_FUNCTION_ARGS)
 	Oid			a = PG_GETARG_OID(0);
 	Oid			b = PG_GETARG_OID(1);
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		PG_RETURN_OID(compare_two_enum_value(a, b) > 0 ? a : b);
 	}

@@ -669,12 +669,12 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 		leaf_part_rri->ri_IndexRelationDescs == NULL)
 	{
 		/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-		if (node && MYS_PARSER == compatible_db &&
+		if (node && MYS_MODE == compatible_mode &&
 			node->isReplace) /* BUG#Z5121 */
 			ExecOpenIndices(leaf_part_rri,
 							(node->isReplace &&
 							node != NULL));
-		else if (node && MYS_PARSER == compatible_db &&
+		else if (node && MYS_MODE == compatible_mode &&
 				 node->upsertAction != UPSERT_NONE) /* BUG#Z5121 */
 			ExecOpenIndices(leaf_part_rri,
 							(node != NULL &&
@@ -1472,7 +1472,7 @@ FormPartitionKeyDatum(PartitionDispatch pd,
 			/* Plain column; get the value directly from the heap tuple */
 			datum = slot_getattr(slot, keycol, &isNull);
 		}
-		else if (ORA_PARSER == compatible_db &&
+		else if (ORA_MODE == compatible_mode &&
 			estate->es_result_relations &&
 			estate->es_result_relations[0] &&
 			estate->es_result_relations[0]->ri_RelationDesc->rd_att->attrs[keycol - 1].attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)

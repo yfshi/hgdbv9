@@ -4479,7 +4479,7 @@ cost_qual_eval_walker(Node *node, cost_qual_eval_context *context)
 						  &context->total);
 	}
 	/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
-	else if (IsA(node, Var) && DB_ORACLE == compatible_db)
+	else if (IsA(node, Var) && ORA_MODE == compatible_mode)
 	{
 		Relation rel;
 		RangeTblEntry *rte;

@@ -2161,14 +2161,14 @@ pg_get_connection_mode(PG_FUNCTION_ARGS)
 	if (MyProcPort == NULL)
 		PG_RETURN_NULL();
 
-	if (compatible_db == PG_PARSER)
+	if (compatible_mode == PG_MODE)
 		PG_RETURN_DATUM(CStringGetTextDatum("PostgreSQL"));
 	
-	if (compatible_db == ORA_PARSER)
+	if (compatible_mode == ORA_MODE)
 		PG_RETURN_DATUM(CStringGetTextDatum("Oracle"));
 	
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	if (compatible_db == MYS_PARSER)
+	if (compatible_mode == MYS_MODE)
 		PG_RETURN_DATUM(CStringGetTextDatum("MySQL"));
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	

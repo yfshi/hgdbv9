@@ -887,7 +887,7 @@ max_parallel_hazard_walker(Node *node, max_parallel_hazard_context *context)
 	/* Begin - BUG#M0000141 */
 	/* check package'func and subproc func */
 	if (nodeTag(node) == T_FuncExpr &&
-		ORA_PARSER == compatible_db)
+		ORA_MODE == compatible_mode)
 	{
 		FuncExpr *funcexpr = (FuncExpr *) node;
 
@@ -3597,7 +3597,7 @@ eval_const_expressions_mutator(Node *node,
 					 * In the ISNULL/ISNOTNULL statment in oracle mode, an empty string
 					 * is considered null.
 					 */
-					if (compatible_db == ORA_PARSER && enable_emptystring_is_NULL &&
+					if (compatible_mode == ORA_MODE && enable_emptystring_is_NULL &&
 						((ntest->nulltesttype == IS_NULL && !result) ||
 						 (ntest->nulltesttype == IS_NOT_NULL && result)))
 					{
@@ -4321,7 +4321,7 @@ expand_function_arguments(List *args, bool include_out_arguments,
 	ListCell   *lc;
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		funcform->prolang == LANG_PLISQL_OID)
 		include_out_arguments = true;
 	/* End - ReqID:SRS-SQL-FUNCOUT */
@@ -4359,7 +4359,7 @@ expand_function_arguments(List *args, bool include_out_arguments,
 
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	/* argtype maybe from a package */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		Size size_len = sizeof(Oid) * pronargs;
 		Oid *rel_proargtypes = palloc0(size_len);
@@ -4566,7 +4566,7 @@ recheck_cast_function_args(List *args, Oid result_type,
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	declared_rettype = get_func_real_rettype(func_tuple);
 	/* End - ReqID:SRS-SQL-PACKAGE */
-	if (ORA_PARSER == compatible_db && funcform->prointisnumber)
+	if (ORA_MODE == compatible_mode && funcform->prointisnumber)
 	{
 		int	i= 0;
 		

@@ -452,7 +452,7 @@ LookupPkgTypeByTypename(const List *names, bool missing_ok)
 	PkgType *pkgtype;
 	AclResult aclresult;
 
-	if (ORA_PARSER != compatible_db)
+	if (ORA_MODE != compatible_mode)
 		return NULL;
 
 	if (!package_resolve_names((List *) names, &pkey, &pkgname_startloc))
@@ -482,7 +482,7 @@ LookupPkgVarByvarnames(const List *names, bool missing_ok)
 	int varname_startloc = 0;
 	AclResult aclresult;
 
-	if (ORA_PARSER != compatible_db)
+	if (ORA_MODE != compatible_mode)
 		return NULL;
 
 	if (!package_resolve_names((List *) names, &pkey, &varname_startloc))
@@ -512,7 +512,7 @@ LookupPkgEntryByTypename(const List *names, bool missing_ok)
 	int name_startloc;
 	AclResult aclresult;
 
-	if (ORA_PARSER != compatible_db)
+	if (ORA_MODE != compatible_mode)
 		return NULL;
 
 	if (!package_resolve_names((List *) names, &pkey, &name_startloc))
@@ -558,7 +558,7 @@ LookupPkgFunc(ParseState *pstate, List *funcname,
 	int funcname_startloc;
 	AclResult aclresult;
 
-	if (ORA_PARSER != compatible_db)
+	if (ORA_MODE != compatible_mode)
 		return FUNCDETAIL_NOTFOUND;
 
 	if (!package_resolve_names(funcname, &pkey, &funcname_startloc))

@@ -473,7 +473,7 @@ binary_float_in(PG_FUNCTION_ARGS)
 		else if (save_errno == ERANGE)
 		{
 			/* Begin - BUG:Z093 */
-			if (ORA_PARSER == compatible_db && !isliteral)
+			if (ORA_MODE == compatible_mode && !isliteral)
 			{
 /* Begin - BUG:Z188 */
 				/*
@@ -573,7 +573,7 @@ binary_float_out(PG_FUNCTION_ARGS)
 	if (extra_float_digits > 0)
 	{
 		/* Begin - BUG:Z093 */
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 			binary_float_to_shortest_decimal_buf(num, ascii);
 		else
 		/* End - BUG:Z093 */
@@ -582,7 +582,7 @@ binary_float_out(PG_FUNCTION_ARGS)
 	}
 
 	/* Begin - BUG:Z093 */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 		(void) ivy_strfromd(ascii, 32, ndig, num);
 	else
 	/* End - BUG:Z093 */

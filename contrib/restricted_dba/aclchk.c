@@ -671,7 +671,7 @@ objectNamesToOids(ObjectType objtype, List *objnames)
 				char	   *fdwname = strVal(lfirst(cell));
 
 				/* Begin - BUG#Z1331 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					fdwid = get_foreign_data_wrapper_oid(fdwname, true);
 					if (OidIsValid(fdwid))

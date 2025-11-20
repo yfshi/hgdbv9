@@ -982,7 +982,7 @@ mysql_quote_identifier(const char *ident)
 		 * keyword to a column name keyword - the display of text is now enclosed
 		 * in double quotes. Here, we remove the display of the double quotes.
 		 */
-		if ((compatible_db == MYS_PARSER) && (pg_strcasecmp("text", ident) == 0))
+		if ((compatible_mode == MYS_MODE) && (pg_strcasecmp("text", ident) == 0))
 			safe = tempsafe;
 		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 	}

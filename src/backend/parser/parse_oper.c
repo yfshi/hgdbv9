@@ -295,7 +295,7 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 	Oid			result;
 	bool		was_unknown = false;
 
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		/* Begin - BUG#5123 */
 		if (type_is_numeric(arg1) && arg2 == UNKNOWNOID)
@@ -327,7 +327,7 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 	}
 
 	/* Begin - BUG#Z5201 */
-	if (MYS_PARSER == compatible_db &&
+	if (MYS_MODE == compatible_mode &&
 		was_unknown && arg1 == FLOAT4OID)
 	{
 		char	*schemaname;
@@ -345,7 +345,7 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 	/* End - BUG#Z5201 */
 
 	/* Begin - OA#1475 */
-	if (ORA_PARSER == compatible_db && compatible_ora_bytea_concat_operator &&
+	if (ORA_MODE == compatible_mode && compatible_ora_bytea_concat_operator &&
 		was_unknown && arg1 == BYTEAOID)
 	{
 		char	*schemaname;
@@ -366,7 +366,7 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 		return result;
 
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (IsNormalProcessingMode() && oracle_datatype_precedence_hook && ORA_PARSER == compatible_db)
+	if (IsNormalProcessingMode() && oracle_datatype_precedence_hook && ORA_MODE == compatible_mode)
 	{	
 		bool	rewrite_args = false;
 		char	*schemaname;
@@ -836,7 +836,7 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 		 * If one of left and right expreessions is enum type, and the other is UNKNOWN,
 		 * we trans the UNKNOWN to text.
 		 */
-		if (compatible_db == MYS_PARSER)
+		if (compatible_mode == MYS_MODE)
 		{
 			const char *op_name = strVal(linitial(opname));
 
@@ -900,7 +900,7 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 		}
 		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 		{
 			/* 
 			 * Begin - SRS-MISC-COMPATDM-SQL
@@ -1088,7 +1088,7 @@ make_scalar_array_op(ParseState *pstate, List *opname,
 	 * if we are in make_scalar_array_op,it means we are dealing with ANY|ALL|IN a_expr,
 	 * replace the opname as needed 
 	 */
-	if(!enable_blankspace_compare && ORA_PARSER == compatible_db)
+	if(!enable_blankspace_compare && ORA_MODE == compatible_mode)
 	{
 		List * opname_rewrite = needReplaceOpname(opname,ltypeId,rtypeId);
 		if(opname_rewrite)

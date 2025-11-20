@@ -291,7 +291,7 @@ array_in(PG_FUNCTION_ARGS)
 						 errdetail("Missing array dimension value.")));
 		}
 		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		else if (ORA_PARSER == compatible_db && strncmp(q, "..", 2) == 0)
+		else if (ORA_MODE == compatible_mode && strncmp(q, "..", 2) == 0)
 		{
 			/* [m..n] format */
 			*q = '\0';
@@ -1723,7 +1723,7 @@ array_dims(PG_FUNCTION_ARGS)
 	for (i = 0; i < AARR_NDIM(v); i++)
 	{
 		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 			sprintf(p, "[%d..%d]", lb[i], dimv[i] + lb[i] - 1);
 		else
 		/* End - ReqID:SRS-SQL-ANONYOUT */

@@ -3079,7 +3079,7 @@ pltcl_set_tuple_values(Tcl_Interp *interp, const char *arrayname,
 		{
 			getTypeOutputInfo(att->atttypid, &typoutput, &typisvarlena);
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-			if (ORA_PARSER == compatible_db &&
+			if (ORA_MODE == compatible_mode &&
 				(att->atttypid == YMINTERVALOID ||
 				 att->atttypid == DSINTERVALOID))
 			{
@@ -3160,7 +3160,7 @@ pltcl_build_tuple_argument(HeapTuple tuple, TupleDesc tupdesc, bool include_gene
 							  &typoutput, &typisvarlena);
 
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-			if (ORA_PARSER == compatible_db &&
+			if (ORA_MODE == compatible_mode &&
 				(att->atttypid == YMINTERVALOID ||
 				 att->atttypid == DSINTERVALOID))
 			{

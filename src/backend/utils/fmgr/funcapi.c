@@ -459,7 +459,7 @@ internal_get_result_type(Oid funcid,
 
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
 		/* If we change the return type of a function, we change the return type of the expr */
-		if (ORA_PARSER == compatible_db && !type_is_rowtype(rettype) && SPI_get_connected() < 0)
+		if (ORA_MODE == compatible_mode && !type_is_rowtype(rettype) && SPI_get_connected() < 0)
 		{
 			FuncExpr *func = (FuncExpr *) call_expr;
 
@@ -1749,7 +1749,7 @@ build_function_result_tupdesc_t(HeapTuple procTuple)
 
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	/* maybe argtype from a package */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		proargtypenames = SysCacheGetAttr(PROCOID, procTuple,
 									Anum_pg_proc_protypenames,
@@ -1762,7 +1762,7 @@ build_function_result_tupdesc_t(HeapTuple procTuple)
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	if (compatible_db == ORA_PARSER &&
+	if (compatible_mode == ORA_MODE &&
 		LANG_PLISQL_OID == procform->prolang &&
 		procform->prokind == PROKIND_FUNCTION)
 		return build_plisql_function_result_tupdesc_d(procform->prokind,
@@ -2068,7 +2068,7 @@ build_function_result_tupdesc_d(char prokind,
 	}
 
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		proargtypenames != PointerGetDatum(NULL))
 	{
 		Datum	   *elems;
@@ -2266,7 +2266,7 @@ build_plisql_function_result_tupdesc_d(char prokind,
 	}
 
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		proargtypenames != PointerGetDatum(NULL))
 	{
 		Datum	   *elems;

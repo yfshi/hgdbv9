@@ -1524,7 +1524,7 @@ parse_format(FormatNode *node, const char *str, const KeyWord *kw,
 				else
 				{
 					/* Begin - BUG:402 */
-					if (ORA_PARSER == compatible_db && !is_separator_char(str))
+					if (ORA_MODE == compatible_mode && !is_separator_char(str))
 						ereport(ERROR,
 								(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
 								 errmsg("date format not recognized")));
@@ -2536,7 +2536,7 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 	Assert(len <= DCH_MAX_ITEM_SIZ);
 	used = (int) strlcpy(copy, *src, len + 1);
 
-	if (((ORA_PARSER != compatible_db || (node->type != NODE_TYPE_END && (node + 1)->type == NODE_TYPE_END)) &&
+	if (((ORA_MODE != compatible_mode || (node->type != NODE_TYPE_END && (node + 1)->type == NODE_TYPE_END)) &&
 		(S_FM(node->suffix) || is_next_separator(node)))  || node->sep)	/* BUG:0000561 */ /*BUG:z97 and z99 */
 	{
 		/*
@@ -2557,7 +2557,7 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 		 */
 		char	   *last;
 
-		if (used < len && ORA_PARSER != compatible_db)	/* BUG:0000561 */
+		if (used < len && ORA_MODE != compatible_mode)	/* BUG:0000561 */
 			RETURN_ERROR(ereport(ERROR,
 								 (errcode(ERRCODE_INVALID_DATETIME_FORMAT),
 								  errmsg("source string too short for \"%s\" "
@@ -2573,7 +2573,7 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 		result = strtol(copy, &last, 10);
 		used = last - copy;
 
-		if (used > 0 && used < len && ORA_PARSER != compatible_db)	/* BUG:0000561 */
+		if (used > 0 && used < len && ORA_MODE != compatible_mode)	/* BUG:0000561 */
 			RETURN_ERROR(ereport(ERROR,
 								 (errcode(ERRCODE_INVALID_DATETIME_FORMAT),
 								  errmsg("invalid value \"%s\" for \"%s\"",
@@ -3596,7 +3596,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 	for (n = node, s = in; n->type != NODE_TYPE_END && *s != '\0'; n++)
 	{
 		/* Begin - BUG:z98: . */
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 			n->sep = false;
 		/* End - BUG:z98: . */
 
@@ -3706,7 +3706,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			case DCH_FX:
 				fx_mode = true;
 				/* Begin - BUG:z97, fx. */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					fx_mode1 = true;
 					std = true;
@@ -3743,7 +3743,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			case DCH_HH:
 			case DCH_HH12:
 				/* Begin - BUG:z98 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					numlen = ivy_getnumlength(s);
 					if (numlen < 4)
@@ -3768,7 +3768,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				out->clock = CLOCK_12_HOUR;
 				SKIP_THth(s, n->suffix);
 				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if (out->hh < 0 || out->hh > 12)
 						ereport(ERROR,
@@ -3779,7 +3779,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			case DCH_HH24:
 				/* Begin - BUG:z98 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					numlen = ivy_getnumlength(s);
 					if (numlen < 4)
@@ -3803,7 +3803,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
 				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if (out->hh < 0 || out->hh > 23)
 						ereport(ERROR,
@@ -3814,7 +3814,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			case DCH_MI:
 				/* Begin - BUG:z98 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					numlen = ivy_getnumlength(s);
 					if (numlen < 4)
@@ -3839,7 +3839,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
 				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if (out->mi < 0 || out->mi > 59)
 						ereport(ERROR,
@@ -3850,7 +3850,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			case DCH_SS:
 				/* Begin - BUG:z98 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					numlen = ivy_getnumlength(s);
 					if (numlen < 4)
@@ -3875,7 +3875,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
 				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if (out->ss < 0 || out->ss > 59)
 						ereport(ERROR,
@@ -3920,7 +3920,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			/* fall through *//* BUG:M0000081 */
 			case DCH_US:		/* microsecond */
 				/* Begin - BUG:z101 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if (skipff)
 						continue;
@@ -3943,7 +3943,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				 *	eg: select to_timestamp('1990-1-1 11:11:11.1235', 'yyyy-mm-dd hh24:mi:ss.ff3') from dual;
 				 *	errmsg: ORA-01830: date format picture ends before converting entire input string.
 				 */
-				if (ORA_PARSER == compatible_db &&
+				if (ORA_MODE == compatible_mode &&
 					n->key->id != DCH_US &&
 					n->key->id != DCH_FF &&
 					out->ff < len)
@@ -3961,7 +3961,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 					len == 5 ? 10 : 1;
 
 				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-				if (ORA_PARSER == compatible_db &&
+				if (ORA_MODE == compatible_mode &&
 					n->key->id != DCH_US &&
 					len > 6)
 				{
@@ -4085,7 +4085,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			case DCH_MM:
 				/* Begin - BUG:z98 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					numlen = ivy_getnumlength(s);
 					if (numlen < 4)
@@ -4109,7 +4109,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
 				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if (out->mm < 1 || out->mm > 12)
 					{
@@ -4157,7 +4157,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			case DCH_DD:
 				/* Begin - BUG:z98 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					numlen = ivy_getnumlength(s);
 					if (numlen < 4)
@@ -4181,7 +4181,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
 				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					/* Check for valid day of month */
 					if (out->year != 0 && out->mm != 0)
@@ -4196,7 +4196,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			case DCH_D:
 				/* Begin - BUG:z97 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 					n->sep = true;
 				/* End - BUG:z97 */
 
@@ -4262,7 +4262,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			case DCH_YYYY:
 				/* Begin - BUG#M0000076 */
 				/* Begin - BUG:z98 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					numlen = ivy_getnumlength(s);
 					if (numlen < 6)
@@ -4285,7 +4285,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				len = from_char_parse_int(&out->year, &s, n, have_error);
 				/* End - BUG:z98 */
 				CHECK_ERROR;
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if (out->year < -4712 || out->year > 9999 || out->year == 0)
 						ereport(ERROR,
@@ -4298,7 +4298,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				/* End - BUG#M0000076 */
 			case DCH_IYYY:
 				/* Begin - BUG:z98 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					numlen = ivy_getnumlength(s);
 					if (numlen < 6)
@@ -4326,11 +4326,11 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			/* Begin - BUG:z82 */
 			case DCH_SYYYY:
-				if (ORA_PARSER != compatible_db)
+				if (ORA_MODE != compatible_mode)
 					s += pg_mblen(s);
 				len = from_char_parse_int(&out->year, &s, n, have_error);
 				CHECK_ERROR;
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if (out->year < -4712 || out->year > 9999 || out->year == 0)
 						ereport(ERROR,
@@ -4344,7 +4344,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			case DCH_YYY:
 			case DCH_IYY:
 				/* Begin - BUG:z98 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					numlen = ivy_getnumlength(s);
 					if (numlen < 5)
@@ -4369,7 +4369,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				if (len < 4)
 				{
-					if (ORA_PARSER != compatible_db)
+					if (ORA_MODE != compatible_mode)
 						out->year = adjust_partial_year_to_2020(out->year);
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 					else
@@ -4388,7 +4388,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			case DCH_YY:
 			case DCH_IY:
 				/* Begin - BUG:z97 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					/* Begin - BUG:z99 */
 					if (n->key->id == DCH_YY)
@@ -4405,7 +4405,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				if (len < 4)
 				{
-					if (ORA_PARSER != compatible_db)
+					if (ORA_MODE != compatible_mode)
 						out->year = adjust_partial_year_to_2020(out->year);
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 					else
@@ -4426,12 +4426,12 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			/* Begin - BUG:z59 */
 			case DCH_RR:
 				/* support format RR and BC year only can use SYYYY format. */
-				if (ORA_PARSER == compatible_db && *s == '-')
+				if (ORA_MODE == compatible_mode && *s == '-')
 					ereport(ERROR,
 							(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
 							 errmsg("negative YEAR must use SYYYY format")));
 				/* Begin - BUG:z184 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					n->sep = true;
 				}
@@ -4450,7 +4450,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				if (len < 4)
 				{
-					if (ORA_PARSER != compatible_db)
+					if (ORA_MODE != compatible_mode)
 						out->year = adjust_partial_year_to_2020(out->year);
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 					else
@@ -4469,7 +4469,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			/* Begin - ReqID:SRS-SQL-SYSFUNC:SRS-SQL-SYSFUNC: support RRRR. */
 			case DCH_RRRR:
 				/* Begin - BUG:z185 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if (*s == '+')
 						s++;
@@ -4515,7 +4515,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			case DCH_J:
 				/* Begin - BUG:z97 */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 					n->sep = true;
 				/* End - BUG:z97 */
 				from_char_parse_int(&out->j, &s, n, have_error);
@@ -4525,7 +4525,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 		}
 
 		/* Begin - BUG:z101 */
-		if (ORA_PARSER == compatible_db && second)
+		if (ORA_MODE == compatible_mode && second)
 		{
 			char *tempstr = pstrdup(s);
 
@@ -4595,7 +4595,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 	}
 
 	/* Begin - BUGID:0000028 */
-	if(ORA_PARSER == compatible_db)
+	if(ORA_MODE == compatible_mode)
 	{
 		while(*s != '\0' && *s == ' ')
 			s++;
@@ -4940,7 +4940,7 @@ timestamp_to_char(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 		ORA_ZERO_tmtc(&tmtc);
 	else
 		ZERO_tmtc(&tmtc);
@@ -4979,13 +4979,13 @@ timestamptz_to_char(PG_FUNCTION_ARGS)
 
 	if (TIMESTAMP_NOT_FINITE(dt))
 	{
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 			elog(ERROR, "the infinite value isn't supported by \"to_char\"");
 		else
 			PG_RETURN_NULL();
 	}
 
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 		ORA_ZERO_tmtc(&tmtc);
 	else
 		ZERO_tmtc(&tmtc);
@@ -5026,7 +5026,7 @@ interval_to_char(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 		ORA_ZERO_tmtc(&tmtc);
 	else
 		ZERO_tmtc(&tmtc);
@@ -5683,7 +5683,7 @@ final_datetime_check(TmFromChar *out)
 				(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
 			  errmsg("The value of datetime is invalid.")));
 
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		int year = out->year;
 
@@ -5731,7 +5731,7 @@ final_datetime_check_for_conv_func(struct pg_tm *out)
 				(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
 			  errmsg("The value of datetime is invalid.")));
 
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		int year = out->tm_year;
 
@@ -5873,7 +5873,7 @@ ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
 	}
 
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 		GetCurrentDateTime(&cur_tm);
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
@@ -5933,7 +5933,7 @@ ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
 	else
 	{
 		Assert(!tmfc.cc && !tmfc.year);
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 			tm->tm_year = cur_tm.tm_year;
 	}
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
@@ -6028,7 +6028,7 @@ ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
 
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 	/* Oracle year field defaults to the year value of sysdate */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		if (!tm->tm_mon)
 			tm->tm_mon = cur_tm.tm_mon;

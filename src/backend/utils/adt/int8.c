@@ -144,7 +144,7 @@ int8in(PG_FUNCTION_ARGS)
 	/* End - BUG#M0000194 */
 
 	/* Begin - SRS-MYSQL-HEX-LITERAL */
-	if (MYS_PARSER == compatible_db && mysql_int8_datatype_in_hook)
+	if (MYS_MODE == compatible_mode && mysql_int8_datatype_in_hook)
 	{
 		bool is_insert = CALL_IN_INSERT();
 
@@ -1322,7 +1322,7 @@ int84(PG_FUNCTION_ARGS)
 	if (unlikely(arg < PG_INT32_MIN) || unlikely(arg > PG_INT32_MAX))
 	{
 		/* Begin - bug#z5394 */
-		if (compatible_db == MYS_PARSER)
+		if (compatible_mode == MYS_MODE)
 		{
 			if (is_insert)
 			{

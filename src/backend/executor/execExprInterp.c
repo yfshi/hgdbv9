@@ -1021,7 +1021,7 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			 * In the ISNULL statment in oracle mode, an empty string
 			 * is considered null.
 			 */
-			if (compatible_db == ORA_PARSER && enable_emptystring_is_NULL &&
+			if (compatible_mode == ORA_MODE && enable_emptystring_is_NULL &&
 				!DatumGetBool(*op->resvalue) && OidIsValid(op->restype))
 			{
 				Oid rettype = op->restype;
@@ -1054,7 +1054,7 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			 * In the ISNOTNULL statment in oracle mode, an empty string
 			 * is considered null. 
 			 */
-			if (compatible_db == ORA_PARSER && enable_emptystring_is_NULL &&
+			if (compatible_mode == ORA_MODE && enable_emptystring_is_NULL &&
 				DatumGetBool(*op->resvalue) && OidIsValid(op->restype))
 			{
 				Oid rettype = op->restype;
@@ -1251,7 +1251,7 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 				str = DatumGetCString(FunctionCallInvoke(fcinfo_out));
 
 				/* OutputFunctionCall assumes result isn't null */
-				if(compatible_db != MYS_PARSER)/* ReqID:SRS-MYSQL-DATETYPE */
+				if(compatible_mode != MYS_MODE)/* ReqID:SRS-MYSQL-DATETYPE */
 					Assert(!fcinfo_out->isnull);
 			}
 
@@ -1270,7 +1270,7 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 				d = FunctionCallInvoke(fcinfo_in);
 				*op->resvalue = d;
 
-				if (compatible_db == MYS_PARSER)
+				if (compatible_mode == MYS_MODE)
 				{
 					*op->resnull = fcinfo_in->isnull;
 				}
@@ -1283,7 +1283,7 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 				}
 				else
 				{
-					if(compatible_db != MYS_PARSER)/* ReqID:SRS-MYSQL-DATETYPE */
+					if(compatible_mode != MYS_MODE)/* ReqID:SRS-MYSQL-DATETYPE */
 					{
 						Assert(!*op->resnull);
 						Assert(!fcinfo_in->isnull);
@@ -3200,7 +3200,7 @@ ExecEvalMinMax(ExprState *state, ExprEvalStep *op)
 	for (int off = 0; off < op->d.minmax.nelems; off++)
 	{
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-		if (compatible_db == MYS_PARSER && nulls[off])
+		if (compatible_mode == MYS_MODE && nulls[off])
 		{
 			/* return NULL if any one is NULL. */
 			*op->resvalue = values[off];
@@ -4151,7 +4151,7 @@ ExecEvalXmlExpr(ExprState *state, ExprEvalStep *op)
 
 				if (values != NIL)
 				{
-					if (ora_updatexml_hook && compatible_db == DB_ORACLE)
+					if (ora_updatexml_hook && compatible_mode == ORA_MODE)
 						*op->resvalue = PointerGetDatum((*ora_updatexml_hook)(values));
 					else
 						*op->resvalue = (Datum) 0;

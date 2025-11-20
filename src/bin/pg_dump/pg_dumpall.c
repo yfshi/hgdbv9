@@ -4554,7 +4554,7 @@ dumpDatabasesOracle(PGconn *conn)
 				if (DB_ORACLE == database_mode) 
 				{
 					fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-					compatible_mode = ORA_PARSER; /* BUGZ4254 */
+					compatible_mode = ORA_MODE; /* BUGZ4254 */
 					fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
 					fprintf(OPF, "\n\n");
 				}
@@ -4665,7 +4665,7 @@ dumpDatabasesPg(PGconn *conn)
 				if (DB_ORACLE == database_mode) 
 				{
 					fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-					compatible_mode = ORA_PARSER; /* BUGZ4254 */
+					compatible_mode = ORA_MODE; /* BUGZ4254 */
 					fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
 					fprintf(OPF, "\n\n");
 				}

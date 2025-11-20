@@ -60,7 +60,6 @@ char	   *nls_numeric_characters = "";
 
 /* Begin - SRS-SQL-NLSSORT */
 bool		 enable_ora_default_collation = false;
-bool		 enable_partitionwise_qual_force_pushdown = true;
 bool		 subquery_with_raw_collation = true;
 bool		 default_collation_is_c = true;
 char		*nls_sort_str;
@@ -105,7 +104,7 @@ int		enable_ora_merge_tuning = OMERGE_TUNING_OFF;
 
 /* BEGIN - SQL PARSER */
 int	database_mode = DB_PG;
-int	compatible_db = PG_PARSER;
+int	compatible_mode = PG_MODE;
 /* END - SQL PARSER */
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 bool		allow_out_parameter_const = false;
@@ -149,7 +148,6 @@ bool compile_plisql_use_owner = true;
 
 /* BEGIN - ReqID:SRS-MISC-USER */
 int dumppgtype = PG_DUMP;
-int grant_usertype = PG_GRANTUSER;
 /* END - ReqID:SRS-MISC-USER */
 /* Begin - BUG#z476 */
 bool numerictonumber = false;
@@ -256,7 +254,7 @@ bool enable_coverwritten_ora_trigger = true;	/* ReqID:SRS-SQL-TRIGGER */
 /* BEGIN - SQL PARSER */
 /* The comments shown as blow define the
  * value range of guc parameters "database_mode"
- * and "compatible_db".
+ * and "compatible_mode".
  */
 static const struct config_enum_entry db_mode_options[] = {
 	{"pg", DB_PG, false},
@@ -268,10 +266,10 @@ static const struct config_enum_entry db_mode_options[] = {
 	{NULL, 0, false}
 };
 
-static const struct config_enum_entry db_parser_options[] = {
-	{"pg", PG_PARSER, false},
-	{"oracle", ORA_PARSER, false},
-	{"mysql", MYS_PARSER, false},	/* ReqID:SRS-MISC-MYSQL-FRAME */
+static const struct config_enum_entry compatible_mode_options[] = {
+	{"pg", PG_MODE, false},
+	{"oracle", ORA_MODE, false},
+	{"mysql", MYS_MODE, false},	/* ReqID:SRS-MISC-MYSQL-FRAME */
 	{NULL, 0, false}
 /* END - SQL PARSER */
 };
@@ -371,7 +369,6 @@ static bool nls_territory_check(char **newval, void **extra, GucSource source);
 static bool nls_numeric_characters_check(char **newval, void **extra,
 										 GucSource source);
 static bool check_dump_pgtype(int *newval, void **extra, GucSource source);
-static bool check_grant_usertype(int *newval, void **extra, GucSource source);
 /* End - ReqID:SRS-SQL-SYSFUNC */
 
 /* Begin - SRS-SQL-NLSSORT */
@@ -415,7 +412,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_case_switch", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("whether enable case conversion feature in oracle compatible mode."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_case_switch,
 		true,
@@ -427,7 +424,8 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	{
 		{"ivorysql.hex_bytea", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Convert hex data display format."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&hex_bytea,
 		false,
@@ -463,7 +461,8 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	{
 		{"ivorysql.compatible_group", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("whether fully consistent with the Oracle mode."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&compatible_group,
 		false,
@@ -475,7 +474,8 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	{
 		{"ivorysql.insert_enable_alias", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether to enable INSERT alias-qualified columns."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&insert_enable_alias,
 		false,
@@ -487,7 +487,8 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	{
 		{"ivorysql.convert_plisql_int_to_number", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether the created plisql function converts integer and smallint to number by default."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
 		},
 		&convert_plisql_int_to_number,
 		false,
@@ -497,7 +498,8 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	{
 		{"ivorysql.convert_plisql_anonymous_int_to_number", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether converts integer and smallint to number within plisql anonymous block."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
 		},
 		&convert_plisql_anonymous_int_to_number,
 		false,
@@ -556,7 +558,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_seq_scale_fixed", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Sequence scale value switch."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&seq_scale_fixed,
 		false,
@@ -568,7 +570,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_internal_warning", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether to print internal warning information."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&internal_warning,
 		false,
@@ -579,9 +581,9 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	/* Begin - ReqID:SRS-SQL-ROWID */
    	{
        	{"ivorysql.default_with_rowids", PGC_USERSET, DEVELOPER_OPTIONS,
-           	gettext_noop("Auto add rowid column for create new table."),
-           	NULL,
-           	GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			gettext_noop("Auto add rowid column for create new table."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
        	},
        	&default_with_rowids,
        	false,
@@ -594,7 +596,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"colinvisible", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Used to control whether to view invisible column information."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&visibility_switch,
 		false,
@@ -606,7 +608,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.sort_desc_nulls_last", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("NULLS LAST for ORDER BY ... DESC"),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&sort_desc_nulls_last,
 		false,
@@ -618,7 +620,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.cast_int_like_oracle", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("CAST(expr AS int) processing float and exponent like Oracle"),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&cast_int_like_oracle,
 		false,
@@ -641,8 +643,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	{
 		{"ivorysql.enable_blankspace_compare", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Enable character type blank space compare."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			NULL
 		},
 		&enable_blankspace_compare,
 		true,
@@ -654,7 +655,8 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	{
 		{"ivorysql.numerictonumber", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("Set numeric to number(38)."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&numerictonumber,
 		false, 
@@ -667,7 +669,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 			gettext_noop("Try to scan oracle compatible views using "
 						 "pg_catalog indexes on specific column."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&ora_views_index_scan,
 		true,
@@ -679,7 +681,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.check_strong_cursor_assign", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether to check assignment between strong cursor types."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&check_strong_cursor_assign,
 		true,
@@ -689,7 +691,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_cursor_as_column_type", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether to enable cursor as a column type."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_cursor_as_column_type,
 		false,
@@ -698,20 +700,9 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 	/* BEGIN - SRS-SQL-NLSSORT */
 	{
-		{"ivorysql.enable_partitionwise_qual_force_pushdown", PGC_USERSET, CLIENT_CONN_STATEMENT,
-			gettext_noop("whether allow to force push down qual when do wise partition aggerate in oracle compatible mode."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
-		},
-		&enable_partitionwise_qual_force_pushdown,
-		true,
-		NULL, NULL, NULL
-	},
-	{
 		{"ivorysql.enable_ora_default_collation", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("whether allow to set default collation in oracle compatible mode."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+			NULL
 		},
 		&enable_ora_default_collation,
 		false,
@@ -720,8 +711,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	{
 		{"ivorysql.default_collation_is_c", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("whether the default collation(100) is C collation in oracle compatible mode."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+			NULL
 		},
 		&default_collation_is_c,
 		true,
@@ -730,8 +720,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	{
 		{"ivorysql.subquery_with_raw_collation", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("Reset subquery resultset collation after doing pseudo-collation replace."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+			NULL
 		},
 		&subquery_with_raw_collation,
 		true,
@@ -743,7 +732,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.check_lnk_metadata_changed", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Check whether the object metadata accessed by using dblink has changed."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&check_lnk_metadata_changed,
 		false,
@@ -753,7 +742,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"global_names", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("enforce that database links have same name as remote database."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&ora_global_names,
 		false,
@@ -764,7 +753,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.dblinkrel_schema_use_user", PGC_SUSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("enforce that database links have same name as remote database."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&dblinkrel_schema_use_user,
 		true,
@@ -777,7 +766,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_get_oraparam_mode", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("get the oracle bind params' mode  in an anonymous block"),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_get_oraparam_mode,
 		false,
@@ -789,7 +778,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.convert_utf8_to_gbk_question_mark", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether convert the encoding which cannot been converted from UTF8 to GBK to question mark."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&convert_utf8_to_gbk_question_mark,
 		true,
@@ -799,7 +788,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.compile_plisql_use_owner", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether comping plsqil use its owner."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&compile_plisql_use_owner,
 		true,
@@ -811,7 +800,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_update_multicol", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether multiple updates of the same column."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_update_multicol,
 		false,
@@ -823,7 +812,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_compatible_const_integer_operator", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether compatible const integer operator like oracle."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_compatible_const_integer_operator,
 		false,
@@ -835,7 +824,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_compatible_numeric_division_result", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether compatible with numeric type division results with Oracle."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_compatible_numeric_division_result,
 		false,
@@ -848,7 +837,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.allow_forupdate_in_subquery", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether to allow the FOR UPDATE clause in a subquery."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&allow_forupdate_in_subquery,
 		true,
@@ -860,7 +849,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_pg_interval_datatype", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether to allow the use of PG's interval type syntax in Oracle compatibility mode."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_pg_interval_datatype,
 		false,
@@ -871,7 +860,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.alter_database_set_special", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether to allow ALTER DATABASE SET to set identifier_case_switch."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&alter_database_set_special,
 		false,
@@ -883,7 +872,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.package_security_define_compare_user", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether to compare users when the package uses define invoke."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&package_security_define_compare_user,
 		true,
@@ -895,7 +884,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_ora_user_schema", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether allow users and schemas to correspond one-to-one in oracle compatible mode."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_ora_user_schema,
 		true,
@@ -907,7 +896,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_store_nullterminator_char", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether store null terminator as a char like oracle."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_store_nullterminator_char,
 		false,
@@ -919,7 +908,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.convert_gbk_to_utf8_question_mark", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether convert the encoding which cannot been converted from GBK to UTF8 to question mark."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&convert_gbk_to_utf8_question_mark,
 		false,
@@ -931,7 +920,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.connect_by_rownum_use_func", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether using func to implement connect by rownum when level is bigger deep."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&connect_by_rownum_use_func,
 		true,
@@ -941,9 +930,9 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 
 	{
 		{"ivorysql.compatible_ora_bytea_concat_operator", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-		gettext_noop("Compatible with Oracle \"BYTEA || UNKNOWN\" operator."),
-		NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			gettext_noop("Compatible with Oracle \"BYTEA || UNKNOWN\" operator."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&compatible_ora_bytea_concat_operator,
 		true,
@@ -955,7 +944,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_strict_view_def", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("When enabled, all tables in view definition are schema-qualified."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_strict_view_def,
 		false,
@@ -965,9 +954,9 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	/* Begin - OA#00001554 */
 	{
 		{"ivorysql.enable_compatible_type_shippable", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-		gettext_noop("Enable Compatible type operator or functions shippble."),
-		NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			gettext_noop("Enable Compatible type operator or functions shippble."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_compatible_type_shippable,
 		true,
@@ -989,9 +978,9 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 	{
 		{"ivorysql.ora_statement_level_rollback", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-		gettext_noop("Enable statement level rollback."),
-		NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			gettext_noop("Enable statement level rollback."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_ora_statement_level_rollback,
 		false,
@@ -999,9 +988,9 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	},
 	{
 		{"ivorysql.ora_commit_before_disconnect", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-		gettext_noop("Enable auto commit transaction before disconnect."),
-		NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			gettext_noop("Enable auto commit transaction before disconnect."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_ora_commit_before_desconnect,
 		false,
@@ -1013,7 +1002,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_coverwritten_ora_trigger", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("When enabled, a trigger with the same name created on the same table but in a different schema will be overwritten by the newly created one."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_coverwritten_ora_trigger,
 		true,
@@ -1025,7 +1014,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.autonomous_transaction", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether allow autonomous transaction."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&AutonxEnabled,
 		true,
@@ -1035,7 +1024,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.check_autontrans_deadlocks", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether check session deadlocks in autonomous transaction."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&AutonxCheckingDeadlocks,
 		true,
@@ -1046,7 +1035,8 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	{
 		{"ivorysql.enable_standard_datetime_parsing_mode", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("whether check the time format use standard datetime parsing mode."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_standard_datetime_parsing_mode,
 		false,
@@ -1084,7 +1074,8 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	{
 		{"ivorysql.datetime_ignore_nls_mask", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Sets the datetime type input is not controlled by the NLS parameter."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&datetime_ignore_nls_mask,
 		0, 0, 15,
@@ -1096,7 +1087,8 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	{
 		{"ivorysql.max_active_gtt", PGC_POSTMASTER, UNGROUPED,
 			gettext_noop("max active global temporary table."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&max_active_gtt,
 		DEFAULT_NUM_ACTIVE_GTT, MIN_NUM_ACTIVE_GTT, MAX_NUM_ACTIVE_GTT,
@@ -1108,7 +1100,8 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	{
 		{"ivorysql.vacuum_gtt_defer_check_age", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("The defer check age of GTT, used to check expired data after vacuum."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&vacuum_gtt_defer_check_age,
 		10000, 0, 1000000,
@@ -1121,7 +1114,7 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		{"ivorysql.rowid_seq_cache", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Sets rowid Sequence cache number."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&rowid_seq_cache,
 		20, 1, 60000,
@@ -1132,7 +1125,8 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	{
 		{"open_cursors", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("specifies the maximum number of open cursors a session can have at once."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&open_cursors,
 		50, 0, 65535,
@@ -1143,8 +1137,8 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	{
     	{"open_links", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Sets the global maximum number of database links in use."),
-        	NULL,
-        	GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			NULL,
+			GUC_NOT_IN_SAMPLE
     	},
 		&ora_open_links,
 		4, 0, 32767, /* BUG#Z1397 */
@@ -1155,7 +1149,7 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		{"open_links_per_instance", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Sets the instance maximum number of database links in use."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&ora_open_links_per_instance,
 		4, 0, 32767,
@@ -1166,7 +1160,8 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	{
 		{"ivorysql.format_max_string_size_len", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Set the format type length of Oracle varchar and varchar2 types when typmod is -1."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&format_max_string_size_len,
 		4000, 4000, 32767,
@@ -1178,7 +1173,8 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	{
 		{"ivorysql.max_interval_partition_failures", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Set the maxinum number of failures allowed during creation an interval partition."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&max_interval_partition_failures,
 		10, -1, INT32_MAX,
@@ -1192,7 +1188,7 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 			gettext_noop("Set whether to free memory when DBMS_OUTPUT reset the buffer."),
 			gettext_noop("When the DBMS_OUTPUT buffer exceeds this much memory, "
 						 "the buffer reset operation release the memory."),
-			GUC_UNIT_BYTE
+			GUC_UNIT_BYTE | GUC_NOT_IN_SAMPLE
 		},
 		&dbms_output_discard_buffer_limit,
 		64*1024*1024, 8*1024, MaxAllocSize,
@@ -1203,7 +1199,8 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	{
 		{"ivorysql.max_autonomous_transactions", PGC_POSTMASTER, UNGROUPED,
 			gettext_noop("Sets the maximum number of autonomous transactions."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&MaxAutonxs,
 		32, 1, MAX_BACKENDS,
@@ -1212,7 +1209,8 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	{
 		{"ivorysql.autontrans_nesting_level", PGC_USERSET, UNGROUPED,
 			gettext_noop("Sets the maximum nesting level of autonomous transactions."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&AutonxNestingLevel,
 		16, 1, 64,
@@ -1251,7 +1249,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"nls_date_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for date type."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_date_format,
 		"YYYY-MM-DD",
@@ -1261,7 +1260,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"nls_timestamp_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for timestamp type."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_timestamp_format,
 		"YYYY-MM-DD HH24:MI:SS.FF6",
@@ -1271,7 +1271,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"nls_timestamp_tz_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for timestamp with time zone type."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_timestamp_tz_format,
 		"YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM",
@@ -1282,7 +1283,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"nls_territory", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for NLS_TERRITORY."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_territory,
 		"AMERICA",
@@ -1292,7 +1294,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"nls_currency", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for NLS_CURRENCY."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_currency,
 		"$",
@@ -1302,7 +1305,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"nls_iso_currency", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for NLS_ISO_CURRENCY."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_iso_currency,
 		"AMERICA",
@@ -1312,7 +1316,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"nls_dual_currency", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for NLS_DUAL_CURRENCY."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_dual_currency,
 		"$",
@@ -1322,7 +1327,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"nls_numeric_characters", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for NLS_NUMERIC_CHARACTERS."     ),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_numeric_characters,
 		".,",
@@ -1334,7 +1340,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"nls_comp", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for NLS_COMP"),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_comp_str,
 		"binary",
@@ -1343,7 +1350,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"nls_sort", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for NLS_SORT."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_sort_str,
 		"binary",
@@ -1352,7 +1360,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	{
 		{"default_collation", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle Session parameter for DEFAULT_COLLATION."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&default_collation_str,
 		"",
@@ -1364,7 +1373,7 @@ static struct config_string Ivy_ConfigureNamesString[] =
 		{"ivorysql.default_dblink_fdw", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle DBLINK using FDW name."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&default_dblink_fdw,
 		"postgres_fdw",
@@ -1376,7 +1385,7 @@ static struct config_string Ivy_ConfigureNamesString[] =
 		{"plsql_warnings", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle plsql_warnings."     ),
 			NULL,
-			GUC_LIST_INPUT
+			GUC_LIST_INPUT | GUC_NOT_IN_SAMPLE
 		},
 		&plsql_warnings,
 		"DISABLE:ALL", /* bug#Z1309 */
@@ -1427,12 +1436,12 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 
 	{
 		{"ivorysql.compatible_mode", PGC_USERSET, CLIENT_CONN_STATEMENT,
-			gettext_noop("Set default sql parser compatibility mode"),
+			gettext_noop("Set database compatibility mode"),
 			NULL,
 			GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
 		},
-		&compatible_db,
-		PG_PARSER, db_parser_options,
+		&compatible_mode,
+		PG_MODE, compatible_mode_options,
 		check_compatible_mode, assign_compatible_mode, NULL
 	},
 	/* END - SQL PARSER */
@@ -1442,7 +1451,7 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		{"ivorysql.identifier_case_switch", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Set character case conversion mode."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&identifier_case_switch,
 		INTERCHANGE,case_conversion_mode,
@@ -1454,7 +1463,8 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 	{
 		{"nls_length_semantics", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Set the length semantics of the character datatype."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&nls_length_semantics,
 		NLS_LENGTH_BYTE, nls_length_options,
@@ -1467,7 +1477,7 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		{"ivorysql.enable_ora_merge_tuning", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Enable the ora_merge tuning mode."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_ora_merge_tuning,
 		OMERGE_TUNING_OFF, ora_merge_tuning,
@@ -1493,28 +1503,20 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 	{
 		{"ivorysql.dumppgtype", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("Set pg type use oracle parser."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
 		},
 		&dumppgtype,
 		PG_DUMP, dump_pgtype_options,
 		check_dump_pgtype, NULL, NULL
 	},
-	{
-		{"ivorysql.grant_usertype", PGC_USERSET, CLIENT_CONN_STATEMENT,
-			gettext_noop("Set user type use oracle parser."),
-			NULL
-		},
-		&grant_usertype,
-		PG_GRANTUSER, grant_usertype_options,
-		check_grant_usertype, NULL, NULL
-	},
-	/* END - ReqID:SRS-MISC-USER */
 
 	/* Begin - SRS-SQL-NLSSORT */
 	{
 		{"max_string_size", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle system parameter for MAX_STRING_SIZE."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&max_string_size,
 		ORA_MAX_STRING_SIZE_EXTENDED, max_string_size_options,
@@ -1557,7 +1559,7 @@ check_compatible_mode(int *newval, void **extra, GucSource source)
 {
 	int		newmode = *newval;
 
-	if (DB_PG == database_mode && (newmode == ORA_PARSER|| newmode == MYS_PARSER))	/* BUG#Z00001674 */
+	if (DB_PG == database_mode && (newmode == ORA_MODE|| newmode == MYS_MODE))	/* BUG#Z00001674 */
 			ereport(ERROR,
 				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
 				errmsg("parameter ivorysql.compatible_mode cannot be changed in native PG mode.")));
@@ -1565,7 +1567,7 @@ check_compatible_mode(int *newval, void **extra, GucSource source)
 	if(DB_ORACLE == database_mode
 		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
-		if (newmode == ORA_PARSER) /* BUG#Z00001674 */
+		if (newmode == ORA_MODE) /* BUG#Z00001674 */
 		{
 			if (ora_raw_parser == NULL)
 				ereport(ERROR,
@@ -1578,12 +1580,20 @@ check_compatible_mode(int *newval, void **extra, GucSource source)
 					errmsg("IVORYSQL_ORA library not found!"),
 					errhint("You must load IVORYSQL_ORA to use oracle parser..")));
 		}
+		/* Begin - BUG#Z00006324 */
+		else if (newmode != PG_MODE)
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
+				errmsg("parameter ivorysql.compatible_mode can only change to oracle or pg mode")));
+		}
+		/* End - BUG#Z00006324 */
 	}
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	if(DB_MYSQL == database_mode
 		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
-		if (newmode == MYS_PARSER) /* BUG#Z00001674 */
+		if (newmode == MYS_MODE) /* BUG#Z00001674 */
 		{
 			if (mys_raw_parser == NULL)
 				ereport(ERROR,
@@ -1591,6 +1601,14 @@ check_compatible_mode(int *newval, void **extra, GucSource source)
 					errmsg("libmysql_parser not found!"),
 					errhint("You must load libmysql_parser to use mysql parser.")));
 		}
+		/* Begin - BUG#Z00006324 */
+		else if (newmode != PG_MODE)
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
+				errmsg("parameter ivorysql.compatible_mode can only change to mysql or pg mode")));
+		}
+		/* End - BUG#Z00006324 */
 	}
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	return true;
@@ -1615,7 +1633,7 @@ assign_compatible_mode(int newval, void *extra)
 	if(DB_ORACLE == database_mode
 		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
-		if (newval == ORA_PARSER) /* BUG#Z00001674 */
+		if (newval == ORA_MODE) /* BUG#Z00001674 */
 		{
 			sql_raw_parser = ora_raw_parser;
 
@@ -1631,7 +1649,7 @@ assign_compatible_mode(int newval, void *extra)
 			/* update the search_path */
 			assign_search_path(NULL, NULL);
 		}
-		else if (newval == PG_PARSER) /* BUG#Z00001674 */
+		else if (newval == PG_MODE) /* BUG#Z00001674 */
 		{
 			sql_raw_parser = standard_raw_parser;
 
@@ -1652,13 +1670,13 @@ assign_compatible_mode(int newval, void *extra)
 	else if(DB_MYSQL == database_mode && 
 			(IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
-		if (newval == MYS_PARSER) /* BUG#Z00001674 */
+		if (newval == MYS_MODE) /* BUG#Z00001674 */
 		{
 			sql_raw_parser = mys_raw_parser;
 			pg_object_bulid_relcache = NULL;
 			assign_search_path(NULL, NULL);
 		}
-		else if (newval == PG_PARSER) /* BUG#Z00001674 */
+		else if (newval == PG_MODE) /* BUG#Z00001674 */
 		{
 			sql_raw_parser = standard_raw_parser;
 			pg_object_bulid_relcache = NULL;
@@ -1679,12 +1697,12 @@ check_dump_pgtype(int *newval, void **extra, GucSource source)
 				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
 				errmsg("parameter ivorysql.dumppgtype cannot be changed in native PG mode.")));
 
-	if (PG_PARSER == compatible_db && newmode == ORA_DUMP)
+	if (PG_MODE == compatible_mode && newmode == ORA_DUMP)
 			ereport(ERROR,
 				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
 				errmsg("parameter ivorysql.dumppgtype cannot be changed in native PG parser.")));
 	
-	if(DB_ORACLE == database_mode && ORA_PARSER == compatible_db
+	if(DB_ORACLE == database_mode && ORA_MODE == compatible_mode
 		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
 		if (newmode == ORA_DUMP)
@@ -1703,42 +1721,6 @@ check_dump_pgtype(int *newval, void **extra, GucSource source)
 	}
 	return true;
 }
-
-static bool
-check_grant_usertype(int *newval, void **extra, GucSource source)
-{
-	int		newmode = *newval;
-
-	if (DB_PG == database_mode && newmode == ORA_GRANTUSER)
-			ereport(ERROR,
-				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
-				errmsg("parameter ivorysql.dumppgtype cannot be changed in native PG mode.")));
-
-	if (PG_PARSER == compatible_db && newmode == ORA_GRANTUSER)
-			ereport(ERROR,
-				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
-				errmsg("parameter ivorysql.dumppgtype cannot be changed in native PG parser.")));
-
-	if(DB_ORACLE == database_mode && ORA_PARSER == compatible_db
-		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
-	{
-		if (newmode == ORA_GRANTUSER)
-		{
-			if (ora_raw_parser == NULL)
-				ereport(ERROR,
-					(errcode(ERRCODE_SYSTEM_ERROR),
-					errmsg("liboracle_parser not found!"),
-					errhint("You must load liboracle_parser to use oracle parser.")));
-			if (!ISLOADIVORYSQL_ORA)
-				ereport(ERROR,
-					(errcode(ERRCODE_SYSTEM_ERROR),
-					errmsg("IVORYSQL_ORA library not found!"),
-					errhint("You must load IVORYSQL_ORA to use oracle parser..")));
-		}
-	}
-	return true;
-}
-/* END - ReqID:SRS-MISC-USER */
 
 
 /* Begin - ReqID:SRS-SQL-SYSFUNC */

@@ -189,7 +189,7 @@ binary_double_in_internal_opt_error(char *num, char **endptr_p,
 		else if (save_errno == ERANGE)
 		{
 			/* Begin - BUG:Z093 */
-			if (ORA_PARSER == compatible_db && !isliteral)
+			if (ORA_MODE == compatible_mode && !isliteral)
 			{
 				if (val >= HUGE_VAL)
 					return get_float8_infinity();
@@ -287,7 +287,7 @@ binary_double_out_internal(double num)
 	if (extra_float_digits > 0)
 	{
 		/* Begin - BUG:Z093 */
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 			binary_double_to_shortest_decimal_buf(num, ascii);
 		else
 		/* End - BUG:Z093 */
@@ -296,7 +296,7 @@ binary_double_out_internal(double num)
 	}
 
 	/* Begin - BUG:Z093 */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 		(void) ivy_strfromd(ascii, 32, ndig, num);
 	else
 	/* End - BUG:Z093 */

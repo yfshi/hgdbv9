@@ -192,7 +192,7 @@ compute_return_type(TypeName *returnType, Oid languageOid,
 		}
 		rettype = typeTypeId(typtup);
 		/* Begin - ReqID:SRS-PLSQL-TYPE */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			languageOid == LANG_PLISQL_OID &&
 			(returnType->pct_type || returnType->row_type))
 		{
@@ -648,7 +648,7 @@ interpret_function_parameter_list(ParseState *pstate,
 			/* IN OUT formal parameters may not have default expressions */
 			if (fp->mode == FUNC_PARAM_INOUT &&
 				LANG_PLISQL_OID == languageOid &&
-				compatible_db == ORA_PARSER)
+				compatible_mode == ORA_MODE)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
 				   errmsg("IN OUT formal parameters may not have default expressions")));
@@ -689,9 +689,9 @@ interpret_function_parameter_list(ParseState *pstate,
 		else
 		{
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
-			if (compatible_db == PG_PARSER ||
-				compatible_db == MYS_PARSER ||		/* ReqID:SRS-MISC-MYSQL-FRAME */
-				(compatible_db == ORA_PARSER &&
+			if (compatible_mode == PG_MODE ||
+				compatible_mode == MYS_MODE ||		/* ReqID:SRS-MISC-MYSQL-FRAME */
+				(compatible_mode == ORA_MODE &&
 				LANG_PLISQL_OID != languageOid))
 			{
 			/* End - ReqID:SRS-SQL-FUNCOUT */
@@ -712,7 +712,7 @@ interpret_function_parameter_list(ParseState *pstate,
 
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			}
-			else if (compatible_db == ORA_PARSER &&
+			else if (compatible_mode == ORA_MODE &&
 					LANG_PLISQL_OID == languageOid &&
 					have_defaults)
 			{
@@ -727,7 +727,7 @@ interpret_function_parameter_list(ParseState *pstate,
 		 * Check if the function parameter datatype is tablename.columnname%TYPE,
 		 */
 		if (!has_pkg_type &&
-			compatible_db == ORA_PARSER &&
+			compatible_mode == ORA_MODE &&
 			LANG_PLISQL_OID == languageOid &&
 			t->pct_type)
 		{
@@ -783,7 +783,7 @@ interpret_function_parameter_list(ParseState *pstate,
 			}
 		}
 		else if (!has_pkg_type &&
-			compatible_db == ORA_PARSER &&
+			compatible_mode == ORA_MODE &&
 			LANG_PLISQL_OID == languageOid &&
 			t->row_type)
 		{
@@ -895,7 +895,7 @@ compute_common_attribute(ParseState *pstate,
 						 DefElem **intisnumber_item) /* BUG:M0000068 */
 {
 	if (strcmp(defel->defname, "volatility") == 0 ||
-		(ORA_PARSER == compatible_db && strcmp(defel->defname, "deterministic") == 0)) /* ReqID:SRS-SQL-PROC */
+		(ORA_MODE == compatible_mode && strcmp(defel->defname, "deterministic") == 0)) /* ReqID:SRS-SQL-PROC */
 	{
 		if (is_procedure)
 			goto procedure_error;
@@ -914,7 +914,7 @@ compute_common_attribute(ParseState *pstate,
 		*strict_item = defel;
 	}
 	else if (strcmp(defel->defname, "security") == 0 ||
-			(ORA_PARSER == compatible_db && strcmp(defel->defname, "authid") == 0)) /* ReqID:SRS-SQL-PROC */
+			(ORA_MODE == compatible_mode && strcmp(defel->defname, "authid") == 0)) /* ReqID:SRS-SQL-PROC */
 	{
 		if (*security_item)
 			goto duplicate_error;
@@ -962,7 +962,7 @@ compute_common_attribute(ParseState *pstate,
 		*support_item = defel;
 	}
 	else if (strcmp(defel->defname, "parallel") == 0 ||
-			(ORA_PARSER == compatible_db && strcmp(defel->defname, "parallel_enable") == 0)) /* ReqID:SRS-SQL-PROC */
+			(ORA_MODE == compatible_mode && strcmp(defel->defname, "parallel_enable") == 0)) /* ReqID:SRS-SQL-PROC */
 	{
 		if (is_procedure)
 			goto procedure_error;
@@ -972,7 +972,7 @@ compute_common_attribute(ParseState *pstate,
 		*parallel_item = defel;
 	}
 	/* Begin - BUG:M0000068 */
-	else if (ORA_PARSER == compatible_db && strcmp(defel->defname, "integerisnumber") == 0)
+	else if (ORA_MODE == compatible_mode && strcmp(defel->defname, "integerisnumber") == 0)
 	{
 		if (*intisnumber_item)
 			goto duplicate_error;
@@ -1202,7 +1202,7 @@ compute_function_attributes(ParseState *pstate,
 			windowfunc_item = defel;
 		}
 		/* Begin - ReqID:SRS-SQL-PROC */
-		else if (ORA_PARSER == compatible_db && strcmp(defel->defname, "accessible") == 0)
+		else if (ORA_MODE == compatible_mode && strcmp(defel->defname, "accessible") == 0)
 		{
 			if (accessible_item)
 				ereport(ERROR,
@@ -1211,7 +1211,7 @@ compute_function_attributes(ParseState *pstate,
 						 parser_errposition(pstate, defel->location)));
 			accessible_item = defel;
 		}
-		else if (ORA_PARSER == compatible_db && strcmp(defel->defname, "collation") == 0)
+		else if (ORA_MODE == compatible_mode && strcmp(defel->defname, "collation") == 0)
 		{
 			if (default_collation_item)
 				ereport(ERROR,
@@ -1220,7 +1220,7 @@ compute_function_attributes(ParseState *pstate,
 						 parser_errposition(pstate, defel->location)));
 			default_collation_item = defel;
 		}
-		else if (ORA_PARSER == compatible_db && strcmp(defel->defname, "aggregate") == 0)
+		else if (ORA_MODE == compatible_mode && strcmp(defel->defname, "aggregate") == 0)
 		{
 			if (aggregate_item)
 				ereport(ERROR,
@@ -1229,7 +1229,7 @@ compute_function_attributes(ParseState *pstate,
 						 parser_errposition(pstate, defel->location)));
 			aggregate_item = defel;
 		}
-		else if (ORA_PARSER == compatible_db && strcmp(defel->defname, "sql_macro") == 0)
+		else if (ORA_MODE == compatible_mode && strcmp(defel->defname, "sql_macro") == 0)
 		{
 			if (sql_macro_item)
 				ereport(ERROR,
@@ -1238,7 +1238,7 @@ compute_function_attributes(ParseState *pstate,
 						 parser_errposition(pstate, defel->location)));
 			sql_macro_item = defel;
 		}
-		else if (ORA_PARSER == compatible_db && strcmp(defel->defname, "pipelined") == 0)
+		else if (ORA_MODE == compatible_mode && strcmp(defel->defname, "pipelined") == 0)
 		{
 			if (pipelined_item)
 				ereport(ERROR,
@@ -1247,7 +1247,7 @@ compute_function_attributes(ParseState *pstate,
 						 parser_errposition(pstate, defel->location)));
 			pipelined_item = defel;
 		}
-		else if (ORA_PARSER == compatible_db && strcmp(defel->defname, "result_cache") == 0)
+		else if (ORA_MODE == compatible_mode && strcmp(defel->defname, "result_cache") == 0)
 		{
 			if (result_cache_item)
 				ereport(ERROR,
@@ -1296,7 +1296,7 @@ compute_function_attributes(ParseState *pstate,
 	/* Begin - ReqID:SRS-SQL-PROC */
 	else
 		{
-			if (ORA_PARSER == compatible_db &&
+			if (ORA_MODE == compatible_mode &&
 				language_item &&
 				strcmp(*language, "plisql") == 0)
 				*security_definer = true;	/* default is DEFINER in oracle */
@@ -1900,7 +1900,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		enumOids = CreateEnumTypeForFunction(stmt->parameters, namespaceId, funcname, stmt->replace);
 	}
@@ -1941,7 +1941,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 						&prorettype, &returnsSet, &rettypeName); /* ReqID:SRS-SQL-PACKAGE */
 		if (OidIsValid(requiredResultType) && prorettype != requiredResultType
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
-			&& !(compatible_db == ORA_PARSER && LANG_PLISQL_OID == languageOid))
+			&& !(compatible_mode == ORA_MODE && LANG_PLISQL_OID == languageOid))
 			/* End - ReqID:SRS-SQL-FUNCOUT */
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
@@ -1953,7 +1953,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 		 * in plisql function, the function return datatype
 		 * has no relationship with out pararmeter datatype
 		 */
-		if (ORA_PARSER == compatible_db && LANG_PLISQL_OID == languageOid)
+		if (ORA_MODE == compatible_mode && LANG_PLISQL_OID == languageOid)
 		{
 			/* have out parameter,  should't allow return setof */
 			if (returnsSet && parameterModes != NULL)
@@ -2081,12 +2081,12 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 						   rettypeName);
 						   /* End - ReqID:SRS-SQL-PACKAGE */
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (pg_object_create_obj_hook && compatible_db == ORA_PARSER)
+	if (pg_object_create_obj_hook && compatible_mode == ORA_MODE)
 	{
 		pg_object_create_obj_hook(funcname, namespaceId, stmt->replace, stmt->is_procedure ? PROKIND_PROCEDURE : (isWindowFunc ? PROKIND_WINDOW : PROKIND_FUNCTION), address, NULL, NULL);
 	}
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	else if (pg_object_create_obj_hook && compatible_db == MYS_PARSER)
+	else if (pg_object_create_obj_hook && compatible_mode == MYS_MODE)
 	{
 		StringInfoData buf;
 		Jsonb	*attr = NULL;
@@ -2110,7 +2110,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE 
 	 * record dependence for the function if there are enum parameters.
 	 */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		RecordDependencyForEnumAndFunction(enumOids, address.objectId);
 	}
@@ -2184,7 +2184,7 @@ compileFunctionInternal(Oid funcOid, bool compile, ObjectType objtype)
 	}
 
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		!strcmp(NameStr(langForm->lanname), "plisql"))
 		plisql_check_body = true;
 
@@ -2575,7 +2575,7 @@ RemoveFunctionById(Oid funcOid)
 		table_close(relation, RowExclusiveLock);
 	}
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (pg_object_drop_obj_hook && ORA_PARSER == compatible_db)
+	if (pg_object_drop_obj_hook && ORA_MODE == compatible_mode)
 	{
 		ObjectAddress address;
 
@@ -2684,7 +2684,7 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 		procForm->prosecdef = intVal(security_def_item->arg);
 	/* Begin - BUG:M0000068 */
 	if (procForm->prolang == get_language_oid("plisql", true) &&
-		ORA_PARSER == compatible_db &&
+		ORA_MODE == compatible_mode &&
 		intisnumber_item)
 		procForm->prointisnumber = intVal(intisnumber_item->arg);
 	/* End - BUG:M0000068 */
@@ -2873,7 +2873,7 @@ CreateCast(CreateCastStmt *stmt)
 		procstruct = (Form_pg_proc) GETSTRUCT(tuple);
 		nargs = procstruct->pronargs;
 		
-		if (compatible_db == MYS_PARSER)
+		if (compatible_mode == MYS_MODE)
 		{
 			/**
 			 * Begin - SRS-MYSQL-HEX-LITERAL
@@ -3381,9 +3381,9 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 						 errmsg("conflicting or redundant options")));
 			/* Begin - BUG:M0000079 */
 			/* ReqID:SRS-MISC-MYSQL-FRAME, Add new language plmysql add "
-			 * || MYS_PARSER == compatible_db"
+			 * || MYS_MODE == compatible_mode"
 			 */
-			if ((PG_PARSER == compatible_db || MYS_PARSER == compatible_db) &&
+			if ((PG_MODE == compatible_mode || MYS_MODE == compatible_mode) &&
 				!pg_strcasecmp(strVal(defel->arg), "plisql"))
 				ereport(ERROR,
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -3391,7 +3391,7 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 			/* End - BUG:M0000079 */
 
 			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-			if ((PG_PARSER == compatible_db || ORA_PARSER == compatible_db) &&
+			if ((PG_MODE == compatible_mode || ORA_MODE == compatible_mode) &&
 							!pg_strcasecmp(strVal(defel->arg), "plmysql"))
 							ereport(ERROR,
 									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -3420,10 +3420,10 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 		/* anonymous block's language default value is plsql
 		 * in oracle compatibility mode
 		 */
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 			language = "plisql";
 		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		else if (MYS_PARSER == compatible_db)
+		else if (MYS_MODE == compatible_mode)
 			language = "plmysql";
 		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else
@@ -3476,7 +3476,7 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 	ReleaseSysCache(languageTuple);
 
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		codeblock->params = params;
 
@@ -3535,7 +3535,7 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 									scanslot);
 
 			/* Begin - ReqID:SRS-CMD-PSQL */
-			if (DB_ORACLE == compatible_db &&
+			if (ORA_MODE == compatible_mode &&
 				codeblock->do_from_call)
 				SetRemoteDestReceiverSendDescr(dest, true);
 			/* End - ReqID:SRS-CMD-PSQL */
@@ -3703,7 +3703,7 @@ SKIP_PG_PROC_CHECK:
 	econtext = CreateExprContext(estate);
 
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		ParamListInfo paramInfo = econtext->ecxt_param_list_info;
 
@@ -3834,7 +3834,7 @@ SKIP_PG_PROC_CHECK:
 		 * input arguments. for each argument that is a user defined variable,
 		 * assign the value of the OUT parameter to that user defined variable.
 		 */
-		if (compatible_db == MYS_PARSER)
+		if (compatible_mode == MYS_MODE)
 		{
 			if (OidIsValid(fexpr->funcid))
 				tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(fexpr->funcid));

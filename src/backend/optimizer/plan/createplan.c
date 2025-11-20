@@ -1294,7 +1294,7 @@ redo_actsubplans:;
 		/* Check whether it is the specified partition.
 		 * If so, append the partition. If not, skip it.
 		 */
-		if (!is_notexistsubplans && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+		if (!is_notexistsubplans && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 		{
 			if (root->parse->partreloids)
 			{
@@ -1394,7 +1394,7 @@ redo_actsubplans:;
 	/* If no subplans are generated, it means that the specified partition 
 	 * does not meet the conditions and the subplans need to be regenerated.
 	 */
-	if (MYS_PARSER == compatible_db && !subplans &&
+	if (MYS_MODE == compatible_mode && !subplans &&
 		(root->parse->partreloids || root->parse->partOids)) /* BUG#Z5121 */
 	{
 		is_notexistsubplans = true;
@@ -1526,7 +1526,7 @@ redo_actmegsubplans:; /* BUGZ4237 */
 		/* Check whether it is the specified partition.
 		 * If so, append the partition. If not, skip it.
 		 */
-		if (!is_notexistsubplans && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+		if (!is_notexistsubplans && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 		{
 			if (root->parse->partreloids)
 			{
@@ -1603,7 +1603,7 @@ redo_actmegsubplans:; /* BUGZ4237 */
 	/* If no subplans are generated, it means that the specified partition 
 	 * does not meet the conditions and the subplans need to be regenerated.
 	 */
-	if (MYS_PARSER == compatible_db && !subplans &&
+	if (MYS_MODE == compatible_mode && !subplans &&
 		(root->parse->partreloids || root->parse->partOids)) /* BUG#Z5121 */
 	{
 		is_notexistsubplans = true;
@@ -2923,7 +2923,7 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 	copy_generic_path_info(&plan->plan, &best_path->path);
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		if(plan->plan.plan_rows == 0.0 && subplan->plan_rows > 0.0)
 			plan->plan.plan_rows = subplan->plan_rows;

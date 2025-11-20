@@ -104,7 +104,7 @@ void pg_object_createobj(char *objname, Oid objnsp, bool replace, char objkind,
 	NameData		dobjname;
 	TupleDesc		tupDesc;
 	Timestamp		tms;
-	char			compatible_mode;
+	char			compatible_mode_c;
 
 	if (!enable_pg_object || (objname == NULL))
 		return;
@@ -118,14 +118,14 @@ void pg_object_createobj(char *objname, Oid objnsp, bool replace, char objkind,
 		nulls[Anum_pg_object_option - 1] = true;
 
 	/* Objects created in that compatibility mode */
-	if (compatible_db == ORA_PARSER)
-		compatible_mode = 'o';
+	if (compatible_mode == ORA_MODE)
+		compatible_mode_c = 'o';
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	else if (compatible_db == MYS_PARSER)
-		compatible_mode = 'm';
+	else if (compatible_mode == MYS_MODE)
+		compatible_mode_c = 'm';
 	/* End - ReqID:SRS-MYSQL-CASE */
 	else
-		compatible_mode = 'p';
+		compatible_mode_c = 'p';
 
 	namestrcpy(&dobjname, pstrdup(objname));
 
@@ -179,7 +179,7 @@ void pg_object_createobj(char *objname, Oid objnsp, bool replace, char objkind,
 				nulls[Anum_pg_object_option - 1] = true;
 
 			replaces[Anum_pg_object_created - 1] = false;
-			values[Anum_pg_object_compatible_mode - 1] = CharGetDatum(compatible_mode);
+			values[Anum_pg_object_compatible_mode - 1] = CharGetDatum(compatible_mode_c);
 			nulls[Anum_pg_object_compatible_mode - 1] = false;
 
 			newtup = heap_modify_tuple(oldtuple, tupDesc, values, nulls, replaces);
@@ -204,7 +204,7 @@ void pg_object_createobj(char *objname, Oid objnsp, bool replace, char objkind,
 		else
 			nulls[Anum_pg_object_option - 1] = true;
 
-		values[Anum_pg_object_compatible_mode - 1] = CharGetDatum(compatible_mode);
+		values[Anum_pg_object_compatible_mode - 1] = CharGetDatum(compatible_mode_c);
 		nulls[Anum_pg_object_compatible_mode - 1] = false;
 
 		newtup = heap_form_tuple(tupDesc, values, nulls);
