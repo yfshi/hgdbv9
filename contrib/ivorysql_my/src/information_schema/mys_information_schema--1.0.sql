@@ -1316,6 +1316,9 @@ SELECT
 	ELSE
 		CASE WHEN am.amname = 'gist' THEN
 			mys_information_schema.mys_get_gistindex_column(i.indexrelid)
+			-- Handle PostgreSQL native expression indexes like "left"(name, 100)
+			WHEN pg_get_indexdef(i.indexrelid, k.n::integer, true) ~* '"?left"?\s*\(.*,\s*\d+\s*\)' THEN
+				(regexp_match(pg_get_indexdef(i.indexrelid, k.n::integer, true), '"left"\s*\(\s*([^,:\s")]+)'))[1]::varchar(64)
 		ELSE
 			a.attname::varchar(64)
 		END
