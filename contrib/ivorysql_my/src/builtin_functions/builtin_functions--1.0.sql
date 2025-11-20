@@ -3600,3 +3600,11 @@ RETURNS varchar
 AS 'MODULE_PATHNAME', 'database'
 LANGUAGE C;
 /* End - Req: SRS-MYSQL-PROTOCOL */
+
+/* Begin - bug#z6050 */
+CREATE FUNCTION ivymy.char_length(ivy_hex)
+RETURNS int
+AS 'MODULE_PATHNAME', 'char_length_varlena'
+LANGUAGE C
+IMMUTABLE;
+/* End - bug#z6050 */

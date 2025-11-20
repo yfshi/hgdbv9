@@ -3559,7 +3559,11 @@ CreateCommandTag(Node *parsetree)
 			if (stmt->purpose == MYS_DO_FOR_SET)
 				tag = CMDTAG_SET;
 			else
-				tag = CMDTAG_SELECT;
+				/**
+				 * we have to set tag to CMDTAG_DO, because there
+				 * has different OK Packet from SELECT command.
+				 */
+				tag = CMDTAG_DO;
 			/* End - SRS-MYSQL-PROTOCOL */
 
 			break;

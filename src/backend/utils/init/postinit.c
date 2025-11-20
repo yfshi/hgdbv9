@@ -799,11 +799,6 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		PerformAuthentication(MyProcPort);
 		InitializeSessionUserId(username, useroid);
 
-		/* Begin - Req: SRS-MYSQL-PROTOCOL */
-		if (MyProcPort->protocol_config->fn_authenticate_finish)
-			MyProcPort->protocol_config->fn_authenticate_finish(MyProcPort);
-		/* End - Req: SRS-MYSQL-PROTOCOL */
-
 		am_superuser = superuser();
 	}
 
@@ -1116,6 +1111,11 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	/* close the transaction we started above */
 	if (!bootstrap)
 		CommitTransactionCommand();
+
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	if (MyProcPort && MyProcPort->protocol_config->fn_authenticate_finish)
+		MyProcPort->protocol_config->fn_authenticate_finish(MyProcPort);
+	/* End - Req: SRS-MYSQL-PROTOCOL */
 }
 
 /*

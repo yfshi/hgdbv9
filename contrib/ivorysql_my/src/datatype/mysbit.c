@@ -25,6 +25,7 @@
 #include "fmgr.h"
 #include "common/hashfn.h"
 #include "common/hashfn.h"
+#include "common/hex.h"
 #include "common/int.h"
 #include "lib/stringinfo.h"
 #include "libpq/pqformat.h"

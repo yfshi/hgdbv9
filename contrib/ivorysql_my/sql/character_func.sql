@@ -611,3 +611,7 @@ SELECT replace ('helloworld','world',1) as test1; -- 'hello1'
 SELECT replace ('helloworld','world',1.55) as test1; -- 'hello1.55'
 SELECT replace ('helloworld','world','1970-01-01 10:10:10') as test1; -- 'hello1970-01-01 10:10:10'
 SELECT replace ('1970-01-01 10:10:10',7,'highgo') as test1; -- '19highgo0-01-01 10:10:10'
+
+/* Begin - bug#z6050 */
+select char_length(X'41'), char_length(X'4142'), char_length(x'410041'), char_length(x'414243'), char_length(0x41), char_length(0x4142);
+/* End - bug#z6050 */

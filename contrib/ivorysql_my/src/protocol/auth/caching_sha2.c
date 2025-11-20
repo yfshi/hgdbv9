@@ -4,7 +4,6 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
-#endif
 
 #include "c.h"
 #include "common/base64.h"
@@ -795,6 +794,7 @@ caching_sha2_password_clean()
     }
 }
 
+#ifdef USE_OPENSSL
 void
 create_mysql_auth_cache()
 {
@@ -820,6 +820,7 @@ create_mysql_auth_cache()
 		LWLockInitialize(UserCachedLinesHashLock, tranche_id);
     }
 }
+#endif
 
 mysql_auth_plugin_t caching_sha2_password = {
     .type = PASSWORD_TYPE_MYS_CACHING_SHA2,
@@ -828,3 +829,4 @@ mysql_auth_plugin_t caching_sha2_password = {
     .password_parse = caching_sha2_password_parse,
     .passwd_check = caching_sha2_password_check,
 };
+#endif

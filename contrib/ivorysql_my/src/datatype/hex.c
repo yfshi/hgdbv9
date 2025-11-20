@@ -1,5 +1,6 @@
 #include "postgres.h"
 #include "c.h"
+#include "common/hex.h"
 #include "fmgr.h"
 #include "mb/pg_wchar.h"
 #include "utils/builtins.h"
@@ -25,72 +26,17 @@ PG_FUNCTION_INFO_V1(hex2float8);
 PG_FUNCTION_INFO_V1(hex2numeric);
 PG_FUNCTION_INFO_V1(hex2bool);
 PG_FUNCTION_INFO_V1(hex2bit);
+PG_FUNCTION_INFO_V1(hex2bpchar);	/* bug#z6026 */
+PG_FUNCTION_INFO_V1(hex2year);		/* bug#z6028 */
+PG_FUNCTION_INFO_V1(hex_positive); 	/* bug#z6031 */
+PG_FUNCTION_INFO_V1(hex_negative); 	/* bug#z6039 */
 
 /* Begin - SRS-MYSQL-HEX-LITERAL */
 static unsigned char mys_get_bits(const char *bits, int n);
 static void mys_bits_decode(const char *src, int len, char *dst);
 /* End - SRS-MYSQL-HEX-LITERAL */
 
-static const int8 hexlookup[128] = {
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, -1, -1, -1, -1, -1,
-	-1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-};
-
 static const char hextbl[] = "0123456789abcdef";
-
-char
-mys_get_hex(const char *cp)
-{
-	unsigned char c = (unsigned char) *cp;
-	int			res = -1;
-
-	if (c < 127)
-		res = hexlookup[c];
-
-	if (res < 0)
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("invalid hexadecimal digit: \"%.*s\"",
-						pg_mblen(cp), cp)));
-
-	return (char) res;
-}
-
-/**
- * There are some difference from hex_decode(),
- * mys_hex_decode() will not filter special char, like '\n', '\t'.
- */
-uint64
-mys_hex_decode(const char *src, size_t len, char *dst)
-{
-	const char *s,
-			   *srcend;
-	char		v1,
-				v2,
-			   *p;
-
-	assert(len % 2 == 0);
-
-	srcend = src + len;
-	s = src;
-	p = dst;
-	while (s < srcend)
-	{
-		v1 = mys_get_hex(s) << 4;
-		s++;
-		v2 = mys_get_hex(s);
-		s++;
-		*p++ = v1 | v2;
-	}
-
-	return p - dst;
-}
 
 /**
  * Hex value without '0x' prefix
@@ -446,3 +392,82 @@ mys_bits_decode(const char *src, int len, char *dst)
 	}
 }
 /* End - SRS-MYSQL-HEX-LITERAL */
+/* Begin - bug#z6031 */
+Datum
+hex_positive(PG_FUNCTION_ARGS)
+{
+	Datum hex = PG_GETARG_DATUM(0);
+
+	PG_RETURN_DATUM(hex);
+}
+/* End - bug#z6031 */
+
+/* Begin - bug#z6039 */
+Datum
+hex_negative(PG_FUNCTION_ARGS)
+{
+	bytea   	*hex = PG_GETARG_BYTEA_PP(0);
+	uint64 		base = (uint64) parse_hex_string_to_int64(VARDATA_ANY(hex), VARSIZE_ANY_EXHDR(hex));
+
+	PG_RETURN_FLOAT8((double) base * (-1));
+}
+/* End - bug#z6039 */
+
+/* Begin - bug#z6028 */
+Datum
+hex2year(PG_FUNCTION_ARGS)
+{
+	bytea   	*hex = PG_GETARG_BYTEA_PP(0);
+	uint64 		base = (uint64) parse_hex_string_to_int64(VARDATA_ANY(hex), VARSIZE_ANY_EXHDR(hex));
+	YearADT 	ret = bigint_to_YearADT(base);
+
+	PG_RETURN_YEARADT(ret);
+}
+/* End - bug#z6028 */
+
+/* Begin - bug#z6026 */
+Datum
+hex2bpchar(PG_FUNCTION_ARGS)
+{
+	BpChar	  	*result;
+	bytea   	*hex = PG_GETARG_BYTEA_PP(0);
+	char		*src = VARDATA_ANY(hex);
+	int 		len = VARSIZE_ANY_EXHDR(hex);
+	int			atttypmod = PG_GETARG_INT32(1);
+	int 		maxlen = atttypmod - VARHDRSZ;
+	bool		is_insert = CALL_IN_INSERT();
+	char		*dst;
+
+	if (atttypmod < (int32) VARHDRSZ)
+		maxlen = len;
+
+	if (len > maxlen)
+	{
+		if (is_insert)
+		{
+			if (is_strict_mode())
+				ereport(ERROR, errmsg("Data too long for column"));
+			else
+				ereport(WARNING, errmsg("Data truncated for column"));
+			// error
+		}
+		else
+		{
+			ereport(WARNING, errmsg("Truncated incorrect CHAR(%d) value: '%.*s'", maxlen, len, src));
+		}
+
+		len = maxlen;
+	}
+
+	result = (BpChar *) palloc0(maxlen + VARHDRSZ);
+	SET_VARSIZE(result, maxlen + VARHDRSZ);
+	dst = VARDATA(result);
+	memcpy(dst, src, len);
+
+	/* blank pad the string if necessary */
+	if (maxlen > len)
+		memset(dst + len, ' ', maxlen - len);
+	
+	PG_RETURN_BPCHAR_P(result);
+}
+/* End - bug#z6026 */

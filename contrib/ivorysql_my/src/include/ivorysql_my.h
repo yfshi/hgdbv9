@@ -22,6 +22,7 @@
 
 #include "postgres.h"
 #include "fmgr.h" /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
+#include "utils/date.h"
 #include "utils/guc.h"
 #include "utils/numeric.h"
 #include "utils/varbit.h"
@@ -32,6 +33,9 @@
 #define YEAR2_LEN                       2
 #define YEAR2_BOUND_BETWEEN_20C_21C     70
 #define YEAR2_IN_RANGE(x)               ((x) >= 0 && (x) <= 99)
+
+#define YearADTGetDatum(X)      		Int16GetDatum(X)
+#define PG_RETURN_YEARADT(x)    		return YearADTGetDatum(x)
 
 #define A_LESS_THAN_B                   (-1)
 #define A_GREATER_THAN_B                (1)
@@ -82,6 +86,5 @@ extern Datum mysdatetime_out(PG_FUNCTION_ARGS);
 extern Datum mystimestamp_out(PG_FUNCTION_ARGS);
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
-extern char mys_get_hex(const char *cp);
-extern uint64 mys_hex_decode(const char *src, size_t len, char *dst);
+extern YearADT bigint_to_YearADT(int64 year);
 #endif	/* IVORYSQL_MYS_H_ */

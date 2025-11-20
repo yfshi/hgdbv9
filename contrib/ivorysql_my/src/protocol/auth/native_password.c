@@ -1,17 +1,12 @@
 #include "postgres.h"
 #include "common/base64.h"
-
-#ifdef USE_OPENSSL
-#include <openssl/evp.h>
-#include <openssl/sha.h>
-#endif
+#include "common/cryptohash.h"
+#include "common/sha1.h"
 
 #include "server.h"
 #include "message.h"
 #include "mqformat.h"
 #include "auth.h"
-
-#define SHA1_DIGEST_LENGTH          20
 
 #define NATIVE_PASSWORD_NPART       1
 #define NATIVE_DIGEST_INDEX         0
@@ -21,26 +16,26 @@
 static char *part[NATIVE_PASSWORD_NPART];
 
 static void
-compute_sha1_hash(uint8 *digest, const uint8 *buf, size_t len)
+compute_sha1_hash(uint8 *dest, size_t dest_size, const uint8 *buf, size_t len)
 {
-    EVP_MD_CTX *sha1_context = EVP_MD_CTX_create();
-    EVP_DigestInit_ex(sha1_context, EVP_sha1(), NULL);
-    EVP_DigestUpdate(sha1_context, buf, len);
-    EVP_DigestFinal_ex(sha1_context, digest, NULL);
-    EVP_MD_CTX_destroy(sha1_context);
-    sha1_context = NULL;
+    pg_cryptohash_ctx *ctx = NULL;
+    ctx = pg_cryptohash_create(PG_SHA1);
+    pg_cryptohash_init(ctx);
+    pg_cryptohash_update(ctx, buf, len);
+    pg_cryptohash_final(ctx, dest, dest_size);
+    pg_cryptohash_free(ctx);
 }
 
 static void
-compute_sha1_hash_multi(uint8 *digest, const uint8 *buf1, int len1, const char *buf2, int len2)
+compute_sha1_hash_multi(uint8 *dest, size_t dest_size, const uint8 *buf1, int len1, const uint8 *buf2, int len2)
 {
-    EVP_MD_CTX *sha1_context = EVP_MD_CTX_create();
-    EVP_DigestInit_ex(sha1_context, EVP_sha1(), NULL);
-    EVP_DigestUpdate(sha1_context, buf1, len1);
-    EVP_DigestUpdate(sha1_context, buf2, len2);
-    EVP_DigestFinal_ex(sha1_context, digest, NULL);
-    EVP_MD_CTX_destroy(sha1_context);
-    sha1_context = NULL;
+    pg_cryptohash_ctx *ctx = NULL;
+    ctx = pg_cryptohash_create(PG_SHA1);
+    pg_cryptohash_init(ctx);
+    pg_cryptohash_update(ctx, buf1, len1);
+    pg_cryptohash_update(ctx, buf2, len2);
+    pg_cryptohash_final(ctx, dest, dest_size);
+    pg_cryptohash_free(ctx);
 }
 
 static void
@@ -66,10 +61,10 @@ native_password_generate(const char *plain_password, int len)
             s2[SCRAMBLE_LENGTH + 1];
 
     // s1 = sha1(password)
-    compute_sha1_hash(s1, (uint8 *) plain_password, strlen(plain_password));
+    compute_sha1_hash(s1, sizeof(s1), (uint8 *) plain_password, strlen(plain_password));
 
     // s2 = sha1(s2)
-    compute_sha1_hash(s2, s1, SCRAMBLE_LENGTH);
+    compute_sha1_hash(s2, sizeof(s2), s1, SCRAMBLE_LENGTH);
 
     base64_len = pg_b64_enc_len(SCRAMBLE_LENGTH);
     pg_b64_encode((char *) s2, SCRAMBLE_LENGTH, base64, base64_len);
@@ -138,13 +133,13 @@ native_password_check(Port *port)
     auth_response = (uint8 *) read_switch_response(buf);
 
     // s3 = sha1(scramble, s2)
-    compute_sha1_hash_multi(s3, scramble, SHA1_HASH_SIZE, s2, SHA1_DIGEST_LENGTH);
+    compute_sha1_hash_multi(s3, sizeof(s3), scramble, SHA1_HASH_SIZE, (uint8 *) s2, SHA1_DIGEST_LENGTH);
 
     // s1 = xor[xor(s3, s1), s3]
     my_xor(_s1, auth_response, s3, SCRAMBLE_LENGTH);
 
     // s2 = sha1(s1)
-    compute_sha1_hash(_s2, _s1, SCRAMBLE_LENGTH);
+    compute_sha1_hash(_s2, sizeof(_s2), _s1, SCRAMBLE_LENGTH);
 
     if (strncmp(s2, (char *) _s2, SCRAMBLE_LENGTH) == 0)
         ret = STATUS_OK;

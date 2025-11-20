@@ -185,10 +185,7 @@ mysql_session_init(ProtocolExtensionConfig *self)
 		SetConfigOption("mysql.use_mysql_bool", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.use_mysql_do", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.use_mysql_bit_literal", "true", PGC_USERSET, PGC_S_OVERRIDE); 
-		SetConfigOption("sql_mode", "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,"
-									"NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,"
-									"NO_ENGINE_SUBSTITUTION",
-						PGC_USERSET, PGC_S_OVERRIDE);	
+		SetConfigOption("ivorysql.aggregates_without_group_by", "true", PGC_USERSET, PGC_S_OVERRIDE);
 	}
 }
 
@@ -318,7 +315,9 @@ create_mysql_server_listen(void)
 #endif
 
 	// create hash cache for caching_sha2_password
+#ifdef USE_OPENSSL
 	create_mysql_auth_cache();
+#endif
 
 	if (pre_server_listen_hook)
 		pre_server_listen_hook();

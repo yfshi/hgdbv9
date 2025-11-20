@@ -1586,6 +1586,10 @@ CREATE TABLE mys_information_schema.plugins (
 	"LOAD_OPTION"				varchar(64)  DEFAULT ''
 );
 
+/* Begin - bug#6322 */
+GRANT SELECT ON mys_information_schema.plugins TO PUBLIC;
+/* End - bug#6322 */
+
 INSERT INTO mys_information_schema.plugins VALUES ('mysql_native_password', '1.1', 'ACTIVE', 'AUTHENTICATION', '1.1', NULL, NULL, '', '', 'GPL', '');
 INSERT INTO mys_information_schema.plugins VALUES ('caching_sha2_password', '1.1', 'ACTIVE', 'AUTHENTICATION', '1.1', NULL, NULL, '', '', 'GPL', '');
 
@@ -1600,6 +1604,10 @@ CREATE TABLE mys_information_schema.engines (
 	"XA"				varchar(3),
 	"SAVEPOINTS"		varchar(3)
 );
+
+/* Begin - bug#6322 */
+GRANT SELECT ON mys_information_schema.engines TO PUBLIC;
+/* End - bug#6322 */
 
 INSERT INTO mys_information_schema.engines VALUES ('PERFORMANCE_SCHEMA', 'YES', 'Performance Schema', 'NO', 'NO', 'NO');
 /* End - SRS-MYSQL-PROTOCOL */

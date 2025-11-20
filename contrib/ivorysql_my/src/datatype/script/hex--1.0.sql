@@ -28,6 +28,40 @@ UPDATE pg_type
 SET typoutput=(SELECT oid FROM pg_proc WHERE proname='hex_out')
 WHERE oid = 9270;
 
+/* Begin - bug#z6031 */
+CREATE FUNCTION ivymy.hex_positive(ivy_hex)
+RETURNS varbinary
+AS 'MODULE_PATHNAME','hex_positive'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+---- operator -
+CREATE OPERATOR + (
+	procedure = ivymy.hex_positive,
+	rightarg = ivymy.ivy_hex
+);
+/* End - bug#z6031 */
+
+/* Begin - bug#z6039 */
+CREATE FUNCTION ivymy.hex_negative(ivy_hex)
+RETURNS double
+AS 'MODULE_PATHNAME','hex_negative'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+---- operator -
+CREATE OPERATOR - (
+	procedure = ivymy.hex_negative,
+	rightarg = ivymy.ivy_hex
+);
+/* End - bug#z6039 */
+
 ---- operator ivy_hex = ivy_hex
 CREATE FUNCTION ivymy.hex_eq(ivy_hex, ivy_hex)
 RETURNS int
@@ -43,6 +77,38 @@ CREATE OPERATOR = (
 	leftarg = ivy_hex,
 	rightarg = ivy_hex
 );
+
+/* Begin - bug#z6052 */
+CREATE FUNCTION ivymy.hex_eq(binary, ivy_hex)
+RETURNS int
+AS 'MODULE_PATHNAME','anybinary_eq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR = (
+	procedure = hex_eq,
+	leftarg = binary,
+	rightarg = ivy_hex
+);
+
+CREATE FUNCTION ivymy.hex_eq(ivy_hex, binary)
+RETURNS int
+AS 'MODULE_PATHNAME','anybinary_eq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR = (
+	procedure = hex_eq,
+	leftarg = ivy_hex,
+	rightarg = binary
+);
+/* End - bug#z6052 */
 
 ---- operator ivy_hex != ivy_hex
 CREATE FUNCTION ivymy.hex_ne(ivy_hex, ivy_hex)
@@ -66,6 +132,38 @@ CREATE OPERATOR != (
 CREATE CAST(ivy_hex as text) 
 WITHOUT FUNCTION
 AS ASSIGNMENT;
+
+/* Begin - bug#z6026 */
+CREATE FUNCTION ivymy.hex2bpchar(ivy_hex, int, bool, int8)
+RETURNS bpchar
+AS 'MODULE_PATHNAME', 'hex2bpchar'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+--
+-- cast (ivy_hex as bpchar)
+--
+CREATE CAST(ivy_hex as bpchar) 
+WITH FUNCTION ivymy.hex2bpchar(ivy_hex, int, bool, int8)
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.hex2varchar(ivy_hex, int, bool, int8)
+RETURNS varchar
+AS 'MODULE_PATHNAME', 'hex2bpchar'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+--
+-- cast (ivy_hex as hex2varchar)
+--
+CREATE CAST(ivy_hex as varchar) 
+WITH FUNCTION ivymy.hex2varchar(ivy_hex, int, bool, int8)
+AS ASSIGNMENT;
+/* End - bug#z6026 */
 
 --
 -- cast (ivy_hex as int2)
@@ -235,14 +333,14 @@ AS ASSIGNMENT;
 --
 -- cast (ivy_hex as date)
 --
-CREATE CAST(ivy_hex as date) 
+CREATE CAST(ivy_hex as mysdate) 
 WITH INOUT
 AS ASSIGNMENT;
 
 --
 -- cast (ivy_hex as time)
 --
-CREATE CAST(ivy_hex as time) 
+CREATE CAST(ivy_hex as mystime) 
 WITH INOUT
 AS ASSIGNMENT;
 
@@ -253,11 +351,10 @@ CREATE CAST(ivy_hex as mystimes)
 WITH INOUT
 AS ASSIGNMENT;
 
-
 --
 -- cast (ivy_hex as datetime)
 --
-CREATE CAST(ivy_hex as datetime) 
+CREATE CAST(ivy_hex as mysdatetime) 
 WITH INOUT
 AS ASSIGNMENT;
 
@@ -267,6 +364,37 @@ AS ASSIGNMENT;
 CREATE CAST(ivy_hex as mysdatetimes) 
 WITH INOUT
 AS ASSIGNMENT;
+
+/* Begin - bug#z6028 */
+--
+-- cast (ivy_hex as timestamp)
+--
+CREATE CAST(ivy_hex as mystimestamp) 
+WITH INOUT
+AS ASSIGNMENT;
+
+--
+-- cast (ivy_hex as timestamp(x))
+--
+CREATE CAST(ivy_hex as mystimestamps) 
+WITH INOUT
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.hex2year(ivy_hex, int4, bool, int8)
+RETURNS year
+AS 'MODULE_PATHNAME','hex2year'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+--
+-- cast (ivy_hex as year)
+--
+CREATE CAST(ivy_hex as year) 
+WITH FUNCTION ivymy.hex2year(ivy_hex, int4, bool, int8)
+AS ASSIGNMENT;
+/* End - bug#z6028 */
 
 --
 -- cast (ivy_hex as mysbit)

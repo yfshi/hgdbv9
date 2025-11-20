@@ -26,6 +26,7 @@
 #include "access/hash.h"
 #include "access/xact.h"
 #include "catalog/pg_type.h"
+#include "common/int.h"
 #include "fmgr.h"
 #include "funcapi.h"
 #include "libpq/pqformat.h"
@@ -37,6 +38,7 @@
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/datetime.h"
+#include "utils/float.h"
 #include "utils/formatting.h"
 #include "utils/guc.h"
 #include "utils/numeric.h"
@@ -146,6 +148,10 @@ PG_FUNCTION_INFO_V1(mysuint8_mulint8);
 PG_FUNCTION_INFO_V1(int2_mulmysuint8);
 PG_FUNCTION_INFO_V1(int4_mulmysuint8);
 PG_FUNCTION_INFO_V1(int8_mulmysuint8);
+/* Begin - BUG#6039 */
+PG_FUNCTION_INFO_V1(double_mulmysuint8);
+PG_FUNCTION_INFO_V1(uint8_muldouble);
+/* End - BUG#6039 */
 
 PG_FUNCTION_INFO_V1(mysuint8_divmysuint8);
 PG_FUNCTION_INFO_V1(mysuint8_divint2);
@@ -898,9 +904,11 @@ int8_seqmysuint8(PG_FUNCTION_ARGS)
 Datum
 mysuint8_addmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(0);
-	uint64		val2 = PG_GETARG_INT64(1);
-	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT64_MAX)
+	uint64		val1 = PG_GETARG_UINT64(0);
+	uint64		val2 = PG_GETARG_UINT64(1);
+	uint64 		ret;
+
+	if (unlikely(pg_add_u64_overflow(val1, val2, &ret))) /* bug#z6037 */
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
@@ -910,9 +918,12 @@ mysuint8_addmysuint8(PG_FUNCTION_ARGS)
 Datum
 mysuint8_addint2(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(0);
+	uint64		val1 = PG_GETARG_UINT64(0);
 	int16		val2 = PG_GETARG_INT16(1);
-	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT64_MAX)
+	uint64 		ret;
+
+	if ((val2 > 0 && unlikely(pg_add_u64_overflow(val1, val2, &ret))) ||
+		(val2 < 0 && unlikely(pg_sub_u64_overflow(val1, -1 * val2, &ret)))) /* bug#z6037 */
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
@@ -922,9 +933,12 @@ mysuint8_addint2(PG_FUNCTION_ARGS)
 Datum
 mysuint8_addint4(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(0);
+	uint64		val1 = PG_GETARG_UINT64(0);
 	int32		val2 = PG_GETARG_INT32(1);
-	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT64_MAX)
+	uint64 		ret;
+
+	if ((val2 > 0 && unlikely(pg_add_u64_overflow(val1, val2, &ret))) ||
+		(val2 < 0 && unlikely(pg_sub_u64_overflow(val1, -1 * val2, &ret)))) /* bug#z6037 */
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
@@ -934,9 +948,12 @@ mysuint8_addint4(PG_FUNCTION_ARGS)
 Datum
 mysuint8_addint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(0);
+	uint64		val1 = PG_GETARG_UINT64(0);
 	int64		val2 = PG_GETARG_INT64(1);
-	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT64_MAX)
+	uint64 		ret;
+
+	if ((val2 > 0 && unlikely(pg_add_u64_overflow(val1, val2, &ret))) ||
+		(val2 < 0 && unlikely(pg_sub_u64_overflow(val1, -1 * val2, &ret)))) /* bug#z6037 */
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
@@ -946,9 +963,12 @@ mysuint8_addint8(PG_FUNCTION_ARGS)
 Datum
 int2_addmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(1);
-	int16		val2 = PG_GETARG_INT16(0);
-	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT64_MAX)
+	int16		val1 = PG_GETARG_INT16(0);
+	uint64		val2 = PG_GETARG_UINT64(1);
+	uint64 		ret;
+
+	if ((val1 > 0 && unlikely(pg_add_u64_overflow(val1, val2, &ret))) ||
+		(val1 < 0 && unlikely(pg_sub_u64_overflow(val2, -1 * val1, &ret)))) /* bug#z6037 */
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
@@ -958,9 +978,12 @@ int2_addmysuint8(PG_FUNCTION_ARGS)
 Datum
 int4_addmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(1);
-	int32		val2 = PG_GETARG_INT32(0);
-	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT64_MAX)
+	int32		val1 = PG_GETARG_INT32(0);
+	uint64		val2 = PG_GETARG_UINT64(1);
+	uint64 		ret;
+
+	if ((val1 > 0 && unlikely(pg_add_u64_overflow(val1, val2, &ret))) ||
+		(val1 < 0 && unlikely(pg_sub_u64_overflow(val2, -1 * val1, &ret)))) /* bug#z6037 */
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
@@ -970,9 +993,12 @@ int4_addmysuint8(PG_FUNCTION_ARGS)
 Datum
 int8_addmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(1);
-	int64		val2 = PG_GETARG_INT64(0);
-	if ((val1 + val2) < 0 || (val1 + val2) > PG_UINT64_MAX)
+	int64		val1 = PG_GETARG_INT64(0);
+	uint64		val2 = PG_GETARG_UINT64(1);
+	uint64 		ret;
+
+	if ((val1 > 0 && unlikely(pg_add_u64_overflow(val1, val2, &ret))) ||
+		(val1 < 0 && unlikely(pg_sub_u64_overflow(val2, -1 * val1, &ret)))) /* bug#z6037 */
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}	
@@ -1175,7 +1201,7 @@ mysuint8_divmysuint8(PG_FUNCTION_ARGS)
 	uint64		val2 = PG_GETARG_INT64(1);
 	Numeric		res;
 
-	if(val2 == 0)
+	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1194,7 +1220,7 @@ mysuint8_divint2(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(1);
 	Numeric		res;
 
-	if(val2 == 0)
+	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1212,7 +1238,7 @@ mysuint8_divint4(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(1);
 	Numeric		res;
 
-	if(val2 == 0)
+	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1230,7 +1256,7 @@ mysuint8_divint8(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(1);
 	Numeric		res;
 
-	if(val2 == 0)
+	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1249,7 +1275,7 @@ int2_divmysuint8(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(0);
 	Numeric		res;
 
-	if(val1 == 0)
+	if (val1 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1267,7 +1293,7 @@ int4_divmysuint8(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(0);
 	Numeric		res;
 
-	if(val1 == 0)
+	if (val1 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1285,7 +1311,7 @@ int8_divmysuint8(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(0);
 	Numeric		res;
 
-	if(val1 == 0)
+	if (val1 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1303,11 +1329,8 @@ mysuint8_exact_divmysuint8(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(0);
 	uint64		val2 = PG_GETARG_INT64(1);
-	if (val2 < 0 )
-	{
-		ereport(ERROR, (errmsg("integer unsigned out of range")));
-	}
-	if(val2 == 0)
+	
+	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1316,33 +1339,17 @@ mysuint8_exact_divmysuint8(PG_FUNCTION_ARGS)
 	
 	PG_RETURN_UINT64(val1 / val2);
 }
+
 Datum
 mysuint8_exact_divint2(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(0);
 	int16		val2 = PG_GETARG_INT16(1);
-	if (val2 < 0 )
+	if (val2 < 0)
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
-	if(val2 == 0)
-	{
-		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		PG_RETURN_NULL();
-	}	
-	PG_RETURN_UINT64(val1 / val2);
-}
-Datum
-mysuint8_exact_divint4(PG_FUNCTION_ARGS)
-{
-	uint64		val1 = PG_GETARG_INT64(0);
-	int32		val2 = PG_GETARG_INT32(1);
-	if (val2 < 0 )
-	{
-		ereport(ERROR, (errmsg("integer unsigned out of range")));
-	}
-	if(val2 == 0)
+	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1351,21 +1358,42 @@ mysuint8_exact_divint4(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT64(val1 / val2);
 }
+
+Datum
+mysuint8_exact_divint4(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_INT64(0);
+	int32		val2 = PG_GETARG_INT32(1);
+	if (val2 < 0)
+	{
+		ereport(ERROR, (errmsg("integer unsigned out of range")));
+	}
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	PG_RETURN_UINT64(val1 / val2);
+}
+
 Datum
 mysuint8_exact_divint8(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(0);
 	int64		val2 = PG_GETARG_INT64(1);
-	if (val2 < 0 )
+	if (val2 < 0)
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
-	if(val2 == 0)
+	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
 		PG_RETURN_NULL();
-	}	
+	}
+
 	PG_RETURN_UINT64(val1 / val2);
 }
 
@@ -1374,11 +1402,11 @@ int2_exact_divmysuint8(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(1);
 	int16		val2 = PG_GETARG_INT16(0);
-	if (val2 < 0 )
+	if (val2 < 0)
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
-	if(val1 == 0)
+	if (val1 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1387,16 +1415,17 @@ int2_exact_divmysuint8(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT64(val2 / val1);
 }
+
 Datum
 int4_exact_divmysuint8(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(1);
 	int32		val2 = PG_GETARG_INT32(0);
-	if (val2 < 0 )
+	if (val2 < 0)
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
-	if(val1 == 0)
+	if (val1 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1405,16 +1434,17 @@ int4_exact_divmysuint8(PG_FUNCTION_ARGS)
 	
 	PG_RETURN_UINT64(val2 / val1);
 }
+
 Datum
 int8_exact_divmysuint8(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(1);
 	int64		val2 = PG_GETARG_INT64(0);
-	if (val2 < 0 )
+	if (val2 < 0)
 	{
 		ereport(ERROR, (errmsg("integer unsigned out of range")));
 	}
-	if(val1 == 0)
+	if (val1 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
@@ -1424,129 +1454,103 @@ int8_exact_divmysuint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(val2 / val1);
 }
 
-
 // mod
+#define MYS_MOD(V1, V2, R) do { 																	\
+	if (V2 == 0)																					\
+	{																								\
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))											\
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));			\
+		PG_RETURN_NULL();																			\
+	}																								\
+																									\
+	R = V1 > 0 ? 1 : -1;																			\
+	V1 = V1 > 0 ? V1 : -V1; 																		\
+	V2 = V2 > 0 ? V2 : -V2; 																		\
+	R *= (V1 % V2); 																				\
+} while(0);
+
 Datum
 mysuint8_modmysuint8(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(0);
 	uint64		val2 = PG_GETARG_INT64(1);
-	if (val2 < 0 )
-	{
-		PG_RETURN_UINT64(0);
-	}
-	if(val2 == 0)
-	{
-		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_UINT64(val1 % val2);
+	uint64 		ret = 0;
+	
+	MYS_MOD(val1, val2, ret);
+	
+	PG_RETURN_UINT64(ret);
 }
+
 Datum
 mysuint8_modint2(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(0);
 	int16		val2 = PG_GETARG_INT16(1);
-	if (val2 < 0 )
-	{
-		PG_RETURN_UINT64(0);
-	}
-	if(val2 == 0)
-	{
-		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		PG_RETURN_NULL();
-	}
+	uint64 		ret = 0;
 
-	PG_RETURN_UINT64(val1 % val2);
+	MYS_MOD(val1, val2, ret);
+
+	PG_RETURN_UINT64(ret);
 }
+
 Datum
 mysuint8_modint4(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(0);
 	int32		val2 = PG_GETARG_INT32(1);
-	if (val2 < 0 )
-	{
-		PG_RETURN_UINT64(0);
-	}
-	if(val2 == 0)
-	{
-		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_UINT64(val1 % val2);
+	uint64 		ret = 0;
+
+	MYS_MOD(val1, val2, ret);
+
+	PG_RETURN_UINT64(ret);
 }
+
 Datum
 mysuint8_modint8(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_INT64(0);
 	int64		val2 = PG_GETARG_INT64(1);
-	if (val2 < 0 )
-	{
-		PG_RETURN_UINT64(0);
-	}
-	if(val2 == 0)
-	{
-		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_UINT64(val1 % val2);
+	uint64 		ret = 0;
+
+	MYS_MOD(val1, val2, ret);
+
+	PG_RETURN_UINT64(ret);
 }
 
 Datum
 int2_modmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(1);
-	int16		val2 = PG_GETARG_INT16(0);
-	if (val2 < 0 )
-	{
-		PG_RETURN_UINT64(0);
-	}
-	if(val1 == 0)
-	{
-		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		PG_RETURN_NULL();
-	}
+	int16		val1 = PG_GETARG_INT16(0);
+	uint64		val2 = PG_GETARG_INT64(1);
+	int64 		ret = 0;
 
-	PG_RETURN_UINT64(val2 % val1);
+	MYS_MOD(val1, val2, ret);
+
+	PG_RETURN_INT64(ret);
 }
+
 Datum
 int4_modmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(1);
-	int32		val2 = PG_GETARG_INT32(0);
-	if (val2 < 0 )
-	{
-		PG_RETURN_UINT64(0);
-	}
-	if(val1 == 0)
-	{
-		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_UINT64(val2 % val1);
+	int32		val1 = PG_GETARG_INT32(0);
+	uint64		val2 = PG_GETARG_INT64(1);
+	int64 		ret = 0;
+
+	MYS_MOD(val1, val2, ret);
+
+	PG_RETURN_INT64(ret);
 }
+
 Datum
 int8_modmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(1);
-	int64		val2 = PG_GETARG_INT64(0);
-	if (val2 < 0 )
-	{
-		PG_RETURN_UINT64(0);
-	}
-	if(val1 == 0)
-	{
-		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
-			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
-		PG_RETURN_NULL();
-	}
-	PG_RETURN_UINT64(val2 % val1);
+	int64		val1 = PG_GETARG_INT64(0);
+	uint64		val2 = PG_GETARG_INT64(1);
+	int64 		ret = 0;
+
+	MYS_MOD(val1, val2, ret);
+
+	PG_RETURN_INT64(ret);
 }
 
 // bitand
@@ -2404,3 +2408,23 @@ uint8_float8(PG_FUNCTION_ARGS)
 	PG_RETURN_FLOAT8(val2);
 }
 /* End BUG#5048 5070 */
+
+/* Begin - BUG#6039 */
+Datum
+double_mulmysuint8(PG_FUNCTION_ARGS)
+{
+	double arg1 = PG_GETARG_FLOAT8(0);
+	uint64 arg2 = PG_GETARG_UINT64(1);
+
+	PG_RETURN_FLOAT8(float8_mul(arg1, (double) arg2));
+}
+
+Datum
+uint8_muldouble(PG_FUNCTION_ARGS)
+{
+	uint64 arg1 = PG_GETARG_UINT64(0);
+	double arg2 = PG_GETARG_FLOAT8(1);
+
+	PG_RETURN_FLOAT8(float8_mul((double) arg1, arg2));
+}
+/* End - BUG#6039 */

@@ -204,11 +204,7 @@ select * from t4;
 
 drop table t1, t2, t3, t4;
 select 0b1111111111111111111111111111111111111111111111111111111111111111 + 1;  -- 0
- ?column? 
-----------
- 0
-(1 row)
-
+ERROR:  integer unsigned out of range
 select 0b11111111111111111111111111111111111111111111111111111111111111111 + 0; -- 18446744073709551615 + warning
 WARNING:  Truncated incorrect BINARY value: x'01ffffffffffffffff'
        ?column?       

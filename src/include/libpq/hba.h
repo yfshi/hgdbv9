@@ -52,7 +52,9 @@ typedef enum UserAuth
 	uaRADIUS,
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	uaNative,
+#ifdef USE_OPENSSL
 	uaCachingSha256,
+#endif
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 	uaPeer
 #define USER_AUTH_LAST uaPeer	/* Must be last value of this enum */

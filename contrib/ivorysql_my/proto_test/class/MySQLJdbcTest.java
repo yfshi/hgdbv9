@@ -120,6 +120,9 @@ public class MySQLJdbcTest {
                     System.out.println(resultSet.getObject(i));
                 }
             }
+
+            statement.executeUpdate("do 1+1");
+            statement.executeQuery("show search_path");
         }
     }
 }

@@ -36,7 +36,9 @@ typedef enum PasswordType
 #endif
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	PASSWORD_TYPE_MYS_NATIVE,       // mysql_native_password
+#ifdef USE_OPENSSL
 	PASSWORD_TYPE_MYS_CACHING_SHA2  // caching_sha2_password
+#endif
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 } PasswordType;
 

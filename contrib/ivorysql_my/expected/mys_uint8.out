@@ -1158,13 +1158,13 @@ select cast(111 as UNSIGNED) % NULL; --NULL
 select 111 % cast(111 as UNSIGNED); --0
  ?column? 
 ----------
- 0
+        0
 (1 row)
 
 select -111 % cast(111 as UNSIGNED); --0
  ?column? 
 ----------
- 0
+        0
 (1 row)
 
 select NULL % cast(111 as UNSIGNED); --NULL
@@ -1195,13 +1195,13 @@ select cast(111 as UNSIGNED) mod NULL; --NULL
 select 111 mod cast(111 as UNSIGNED); --0
  ?column? 
 ----------
- 0
+        0
 (1 row)
 
 select -111 mod cast(111 as UNSIGNED); --0
  ?column? 
 ----------
- 0
+        0
 (1 row)
 
 select NULL mod cast(111 as UNSIGNED); --NULL
@@ -2194,12 +2194,12 @@ WARNING:  Division by 0
 select 0 % a from t2;
  ?column? 
 ----------
- 0
- 0
- 0
- 0
- 0
- 0
+        0
+        0
+        0
+        0
+        0
+        0
 (6 rows)
 
 --mod
@@ -2240,12 +2240,12 @@ WARNING:  Division by 0
 select 0 mod a from t2;
  ?column? 
 ----------
- 0
- 0
- 0
- 0
- 0
- 0
+        0
+        0
+        0
+        0
+        0
+        0
 (6 rows)
 
 set sql_mode='';
@@ -2376,12 +2376,12 @@ select a % b from t2;
 select 0 % a from t2;
  ?column? 
 ----------
- 0
- 0
- 0
- 0
- 0
- 0
+        0
+        0
+        0
+        0
+        0
+        0
 (6 rows)
 
 --mod
@@ -2421,12 +2421,12 @@ select a mod b from t2;
 select 0 mod a from t2;
  ?column? 
 ----------
- 0
- 0
- 0
- 0
- 0
- 0
+        0
+        0
+        0
+        0
+        0
+        0
 (6 rows)
 
 drop table t2;

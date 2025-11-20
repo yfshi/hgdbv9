@@ -403,3 +403,145 @@ CREATE CAST (text as float4)
 WITH FUNCTION ivymy.text_float4(text, integer, boolean, int8)
 AS ASSIGNMENT;
 /* End - bug#z5590 */
+
+/* Begin - bug#z6040 */
+CREATE FUNCTION ivymy.float8_add(float8, uint8)
+RETURNS float8
+AS 'select $1::float8 + $2::float8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.+ (
+	procedure = ivymy.float8_add,
+	leftarg = float8,
+	rightarg = uint8
+);
+
+CREATE FUNCTION ivymy.float8_add(uint8, float8)
+RETURNS float8
+AS 'select $1::float8 + $2::float8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.+ (
+	procedure = ivymy.float8_add,
+	leftarg = uint8,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.float8_del(float8, uint8)
+RETURNS float8
+AS 'select $1::float8 - $2::float8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.- (
+	procedure = ivymy.float8_del,
+	leftarg = float8,
+	rightarg = uint8
+);
+
+CREATE FUNCTION ivymy.float8_del(uint8, float8)
+RETURNS float8
+AS 'select $1::float8 - $2::float8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.- (
+	procedure = ivymy.float8_del,
+	leftarg = uint8,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.float8_div(uint8, float8)
+RETURNS float8
+AS 'select $1::float8 / $2::float8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy./ (
+	procedure = ivymy.float8_div,
+	leftarg = uint8,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.float8_div(float8, uint8)
+RETURNS float8
+AS 'select $1::float8 / $2::float8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy./ (
+	procedure = ivymy.float8_div,
+	leftarg = float8,
+	rightarg = uint8
+);
+
+CREATE FUNCTION ivymy.float8_mod(uint8, float8)
+RETURNS float8
+AS 'select $1::float8 % $2::float8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.% (
+	procedure = ivymy.float8_mod,
+	leftarg = uint8,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.float8_mod(float8, uint8)
+RETURNS float8
+AS 'select $1::float8 % $2::float8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.% (
+	procedure = ivymy.float8_mod,
+	leftarg = float8,
+	rightarg = uint8
+);
+
+CREATE FUNCTION ivymy.float8_logic_and(uint8, float8)
+RETURNS int
+AS 'select ($1::float8 && $2::float8)::int'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.&& (
+	procedure = ivymy.float8_logic_and,
+	leftarg = uint8,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.float8_logic_and(float8, uint8)
+RETURNS int
+AS 'select ($1::float8 && $2::float8)::int'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.&& (
+	procedure = ivymy.float8_logic_and,
+	leftarg = float8,
+	rightarg = uint8
+);
+/* End - bug#z6040 */

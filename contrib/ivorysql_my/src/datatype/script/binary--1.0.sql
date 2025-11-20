@@ -4139,6 +4139,22 @@ CREATE OPERATOR ivymy.- (
 	rightarg  = ivymy.longblob
 );
 
+/* Begin - bug#z6052 */
+CREATE OR REPLACE FUNCTION ivymy.varbinary_minus(ivymy.varbinary)
+RETURNS float8
+AS 'MODULE_PATHNAME','anybinary_minus'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE
+LEAKPROOF;
+
+----operator -
+CREATE OPERATOR ivymy.- (
+	procedure = ivymy.varbinary_minus,
+	rightarg  = ivymy.varbinary
+);
+/* End - bug#z6052 */
+
 ----function longblob_mul
 CREATE OR REPLACE FUNCTION ivymy.longblob_mul(ivymy.longblob, ivymy.longblob)
 RETURNS bigint

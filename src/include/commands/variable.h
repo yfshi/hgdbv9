@@ -34,5 +34,7 @@ extern void assign_session_authorization(const char *newval, void *extra);
 extern bool check_role(char **newval, void **extra, GucSource source);
 extern void assign_role(const char *newval, void *extra);
 extern const char *show_role(void);
-
+/* Begin - SRS-MYSQL-PROTOCOL */
+extern bool check_password_encryption(int *newval, void **extra, GucSource source);
+/* End - SRS-MYSQL-PROTOCOL */
 #endif							/* VARIABLE_H */

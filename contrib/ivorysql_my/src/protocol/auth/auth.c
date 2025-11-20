@@ -2,6 +2,8 @@
 
 #include <openssl/sha.h>
 
+#include "access/xact.h"
+#include "catalog/namespace.h"
 #include "commands/user.h"
 #include "common/ip.h"
 #include "libpq/crypt.h"
@@ -40,7 +42,9 @@ static mysql_encryt_password_hook_type      pre_mysql_encrypt_password_hook = NU
 
 static auth_plugin_cache_t auth_plugins[] = {
 	{ PASSWORD_TYPE_MYS_NATIVE, &mysql_native_password },
+#ifdef USE_OPENSSL
     { PASSWORD_TYPE_MYS_CACHING_SHA2, &caching_sha2_password }
+#endif
 };
 
 static char PRINTABLE_CHARS[PRINTABLE_CHARS_COUNT + 1] = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -66,7 +70,7 @@ make_mysqld_handshakev10_packet(uint8 *scramble)
 
     handshake->protocol_version = 10; // always is 10
     handshake->capabilities = get_client_capabilities();
-    handshake->auth_plugin_name = pstrdup("caching_sha2_password");
+    handshake->auth_plugin_name = pstrdup("mysql_native_password");
     handshake->server_version_str = pstrdup("8.0.28-ivorysql-server");
     handshake->charset = MYS_ENCODING_UTF8MB3_GENERAL_CI;
     handshake->server_status = SERVER_STATUS_AUTOCOMMIT;
@@ -276,8 +280,44 @@ read_handshake_response(StringInfo buf, Port *port)
     return auth;
 }
 
+static void
+free_handshake(mysql_handshake_t *handshake)
+{
+    if (handshake->server_version_str)
+        pfree(handshake->server_version_str);
+
+    if (handshake->auth_plugin_name)
+        pfree(handshake->auth_plugin_name);
+
+    pfree(handshake);
+}
+
+static void
+free_handshake_response(mysql_handshake_response_t *resp)
+{
+    if (resp->username)
+        pfree(resp->username);
+    
+    if (resp->auth_response)
+        pfree(resp->auth_response);
+    
+    if (resp->database)
+        pfree(resp->database);
+
+    if (resp->client_plugin_name)
+        pfree(resp->client_plugin_name);
+    
+    for (int i = 0; i < resp->nattrs; ++i)
+    {
+        pfree(resp->attrs[i].key);
+        pfree(resp->attrs[i].value);
+    }
+    
+    pfree(resp);
+}
+
 int
-mysql_conn_handshake(Port* port)
+mysql_conn_handshake(Port *port)
 {
     MemoryContext oldcontext;
     mysql_handshake_t *handshake;
@@ -318,31 +358,24 @@ mysql_conn_handshake(Port* port)
         memcpy(mysql_conn_info.auth_response, handshakeResp->auth_response, CLIENT_PASSWORD_SHA256_TOKEN_LEN);
         mysql_conn_info.auth_response[CLIENT_PASSWORD_SHA256_TOKEN_LEN] = 0x00;
     }
-
-    oldcontext = MemoryContextSwitchTo(TopMemoryContext);
     
-    port->user_name = handshakeResp->username;
+    oldcontext = MemoryContextSwitchTo(TopMemoryContext);
+
+    port->user_name = pstrdup(handshakeResp->username);
 
     // Set dafault database for Mysql compatiable
     port->database_name = pstrdup(default_database);
 
+    MemoryContextSwitchTo(oldcontext);
+
     // Set default scheam
     if (handshakeResp->database)
-        SetConfigOption("search_path", handshakeResp->database, PGC_SUSET, PGC_S_OVERRIDE);
+        mysql_conn_info.schema = pstrdup(handshakeResp->database);    
+    
+    free_handshake(handshake);
+    free_handshake_response(handshakeResp);
 
-    for (int i = 0; i < handshakeResp->nattrs; ++i)
-    {
-        pfree(handshakeResp->attrs[i].key);
-        pfree(handshakeResp->attrs[i].value);
-    }
-
-    pfree(handshakeResp);
-    pfree(handshake->auth_plugin_name);
-    pfree(handshake->server_version_str);
-    pfree(handshake);
     DestroyStringInfo(buf);
-
-    MemoryContextSwitchTo(oldcontext);
 
     return STATUS_OK;
 }
@@ -546,7 +579,9 @@ mysql_client_authentication(Port *port)
 				break;
 			}
         case uaNative:
+#ifdef USE_OPENSSL
         case uaCachingSha256:
+#endif
             if (exec_mysql_password_auth(port) != STATUS_OK)
             {
                 ereport(ERROR,
@@ -599,6 +634,23 @@ mysql_client_authentication(Port *port)
 void
 mysql_client_authentication_finish(Port *port)
 {
+    /* Begin - bug#6321 */
+    if (mysql_conn_info.schema)
+    {
+        SetCurrentStatementStartTimestamp();
+		StartTransactionCommand();
+
+        if (!OidIsValid(get_namespace_oid(mysql_conn_info.schema, true)))
+        {
+            ereport(ERROR,
+                    (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                     errmsg("Unknown database %s", mysql_conn_info.schema)));
+        }
+
+        CommitTransactionCommand();
+    }
+    /* End - bug#6321 */
+    
     send_ok(0, 0, 0, 0, NULL);
 
     pq_flush();

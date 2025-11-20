@@ -12,6 +12,7 @@ select 0xg; -- parse as column
 select 0Xg; -- parse as column
 
 select cast(0x3233 as char);                    -- 23
+select cast(0x32333435 as char(3));             -- 234, warning
 select cast(0x3233 as nchar);                   -- 23
 select cast(0x11 as signed);                    -- 17
 select cast(0x11 as unsigned);                  -- 17
@@ -162,4 +163,99 @@ select X'1';
 select x'01';
 select X'01';
 
+/* Begin - bug#z6026 */
+create table t_hex_convert_string (c_char char(2));
+insert into t_hex_convert_string values ( x'414243');
+set sql_mode ='';
+insert into t_hex_convert_string values ( x'414243');
+select * from t_hex_convert_string;
+drop table t_hex_convert_string;
+
+create table t_hex_convert_string (c_varchar varchar(5));
+insert into t_hex_convert_string values (X'414243444546');
+select * from t_hex_convert_string;
+drop table t_hex_convert_string;
+
+reset sql_mode;
+/* End - bug#z6026 */
+
+/* Begin - bug#z6027 */
+create table t_hex_to_enum (c_enum enum(x'123'));
+create table t_hex_to_enum (c_enum enum(x'1234'));
+drop table t_hex_to_enum;
+create table t_hex_to_enum (c_enum enum(0x323334));
+drop table t_hex_to_enum;
+create table t_hex_to_enum (c_enum enum(0x3233340035));
+drop table t_hex_to_enum;
+/* End - bug#z6027 */
+
+/* Begin - bug#z6028 */
+create table  t_hex_to_time (
+    timestamp_col timestamp,
+	year_col year
+);
+
+insert into t_hex_to_time values(0x3230323331303031313233303435, X'03');
+select * from t_hex_to_time;
+drop table t_hex_to_time;
+/* End - bug#z6028 */
+
+/* Begin - bug#z6031 */
+select +0x123, +X'ffac', +x'1234';
+/* End - bug#z6031 */
+
+/* Begin - bug#z6033 */
+select 3::uint8 % 2::uint8, pg_typeof(3::uint8 % 2::uint8);         -- 1, uint8
+
+select 3::uint8 % 2::int2, pg_typeof(3::uint8 % 2::int2);           -- 1, uint8
+select 3::uint8 % (-2)::int2, pg_typeof(3::uint8 % (-2)::int2);     -- 1, uint8
+
+select 3::uint8 % 2::int4, pg_typeof(3::uint8 % 2::int4);           -- 1, uint8
+select 3::uint8 % (-2)::int4, pg_typeof(3::uint8 % (-2)::int4);     -- 1, uint8
+
+select 3::uint8 % 2::int8, pg_typeof(3::uint8 % 2::int8);           -- 1, uint8
+select 3::uint8 % (-2)::int8, pg_typeof(3::uint8 % (-2)::int8);     -- 1, uint8
+
+select 3::int2 % 2::uint8, pg_typeof(3::int2 % 2::uint8);           -- 1, int8
+select (-3)::int2 % 2::uint8, pg_typeof((-3)::int2 % 2::uint8);     -- -1, int8
+
+select 3::int4 % 2::uint8, pg_typeof(3::int4 % 2::uint8);           -- 1, int8
+select (-3)::int4 % 2::uint8, pg_typeof((-3)::int4 % 2::uint8);     -- -1, int8
+
+select 3::int8 % 2::uint8, pg_typeof(3::int8 % 2::uint8);           -- 1, int8
+select (-3)::int8 % 2::uint8, pg_typeof((-3)::int8 % 2::uint8);     -- -1, int8
+/* End - bug#z6033 */
+
+/* Begin - bug#z6039 */
+create table t_numeric_arith_hex ( unsigned_tinyint tinyint unsigned ); 
+insert into t_numeric_arith_hex values (12);
+select unsigned_tinyint * (-x'12ffac') from t_numeric_arith_hex;
+drop table t_numeric_arith_hex;
+/* End - bug#z6039 */
+
+/* Begin - bug#z6037 */
+select '-32000'::smallint + 0x1234;
+select 1 + 0xffffffffffffffff;
+select -1000 + 0xff;
+/* End - bug#z6037 */
+
+/* Begin - bug#z6041 */
+create table t_numeric_arith_hex (float_col float, double_col double, decimal_col decimal(20,6)); 
+insert into t_numeric_arith_hex values (3.25, -2.75, 12345.678901);
+
+select
+    0x1234ff && float_col,
+    0x1234ff && double_col,
+    0x1234ff and decimal_col
+from t_numeric_arith_hex;
+
+drop table t_numeric_arith_hex;
+/* End - bug#z6041 */
+
+/* Begin - bug#z6052 */
+create table idx_hex ( b_fixed binary(20), b_var varbinary(20) ); 
+insert into idx_hex values(1,2);
+select * from idx_hex where b_var=0x32;
+drop table idx_hex;
+/* End - bug#z6052 */
 reset mysql.cast_to_char;

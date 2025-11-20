@@ -607,7 +607,9 @@ static const struct config_enum_entry password_encryption_options[] = {
 	{"scram-sha-256", PASSWORD_TYPE_SCRAM_SHA_256, false},
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	{"mysql_native_password", PASSWORD_TYPE_MYS_NATIVE, false},
+#ifdef USE_OPENSSL
 	{"caching_sha2_password", PASSWORD_TYPE_MYS_CACHING_SHA2, false},
+#endif
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 	{NULL, 0, false}
 };
@@ -5439,7 +5441,7 @@ static struct config_enum ConfigureNamesEnum[] =
 		&Password_encryption,
 		PASSWORD_TYPE_SCRAM_SHA_256,
 		password_encryption_options,
-		NULL, NULL, NULL
+		check_password_encryption, NULL, NULL
 	},
 
 	{
