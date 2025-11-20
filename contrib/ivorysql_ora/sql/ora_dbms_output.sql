@@ -1,6 +1,10 @@
 --
 -- Regression tests for Oracle dbms_output package
 --
+/* Begin - BUG#Z6218 */
+CREATE USER system WITH superuser;
+\c - system
+/* End - BUG#Z6218 */
 
 -- without call enable(), put_line not work.
 CREATE TABLE dbms_output_test(buff varchar2(1024), status int);
@@ -866,3 +870,37 @@ SET SERVEROUTPUT ON
 ROLLBACK;
 SHOW SERVEROUTPUT
 SET SERVEROUTPUT OFF
+
+/* Begin - BUG#Z6218 */
+create user bugz6218;
+
+\c - bugz6218
+
+create package pkg1 is
+  procedure say_hello;
+end;
+/
+
+create package body pkg1 is
+  procedure say_hello is
+  begin
+    dbms_output.put_line('hello');
+  end;
+end;
+/
+
+drop package pkg1;
+\c - system
+drop user bugz6218;
+
+--drop system user
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+
+DROP USER system;
+/* End - BUG#Z6218 */

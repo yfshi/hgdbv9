@@ -14584,6 +14584,79 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  dbms_metadata | PACKAGE BODY | 1461 |     RETURN ddl;
  dbms_metadata | PACKAGE BODY | 1462 |   END;
  dbms_metadata | PACKAGE BODY | 1463 | END;
+ dbms_output   | PACKAGE      | 1    | PACKAGE dbms_output IS
+ dbms_output   | PACKAGE      | 2    |         PROCEDURE ENABLE(buffer_size in integer default 20000);
+ dbms_output   | PACKAGE      | 3    |         PROCEDURE DISABLE();
+ dbms_output   | PACKAGE      | 4    |         PROCEDURE PUT(item text);
+ dbms_output   | PACKAGE      | 5    |         PROCEDURE PUT(item anyelement);
+ dbms_output   | PACKAGE      | 6    |         PROCEDURE PUT_LINE(item text);
+ dbms_output   | PACKAGE      | 7    |         PROCEDURE PUT_LINE(item anyelement);
+ dbms_output   | PACKAGE      | 8    |         PROCEDURE NEW_LINE();
+ dbms_output   | PACKAGE      | 9    |         PROCEDURE GET_LINE(line out varchar2, status out integer);
+ dbms_output   | PACKAGE      | 10   |         PROCEDURE GET_LINES(lines out text[], numlines in out integer);
+ dbms_output   | PACKAGE      | 11   | END;
+ dbms_output   | PACKAGE BODY | 1    | PACKAGE BODY dbms_output IS
+ dbms_output   | PACKAGE BODY | 2    |         /* ENABLE */
+ dbms_output   | PACKAGE BODY | 3    |         PROCEDURE ENABLE(buffer_size in integer default 20000)
+ dbms_output   | PACKAGE BODY | 4    |         AS
+ dbms_output   | PACKAGE BODY | 5    |         BEGIN
+ dbms_output   | PACKAGE BODY | 6    |                 sys.dbmsoutput_enable(buffer_size);
+ dbms_output   | PACKAGE BODY | 7    |         END;
+ dbms_output   | PACKAGE BODY | 8    | 
+ dbms_output   | PACKAGE BODY | 9    |         /* DISABLE */
+ dbms_output   | PACKAGE BODY | 10   |         PROCEDURE DISABLE()
+ dbms_output   | PACKAGE BODY | 11   |         AS
+ dbms_output   | PACKAGE BODY | 12   |         BEGIN
+ dbms_output   | PACKAGE BODY | 13   |                 sys.dbmsoutput_disable();
+ dbms_output   | PACKAGE BODY | 14   |         END;
+ dbms_output   | PACKAGE BODY | 15   | 
+ dbms_output   | PACKAGE BODY | 16   |         /* PUT */
+ dbms_output   | PACKAGE BODY | 17   |         PROCEDURE PUT(item text)
+ dbms_output   | PACKAGE BODY | 18   |         AS
+ dbms_output   | PACKAGE BODY | 19   |         BEGIN
+ dbms_output   | PACKAGE BODY | 20   |                 sys.dbmsoutput_put(item);
+ dbms_output   | PACKAGE BODY | 21   |         END;
+ dbms_output   | PACKAGE BODY | 22   | 
+ dbms_output   | PACKAGE BODY | 23   |         PROCEDURE PUT(item anyelement)
+ dbms_output   | PACKAGE BODY | 24   |         AS
+ dbms_output   | PACKAGE BODY | 25   |         BEGIN
+ dbms_output   | PACKAGE BODY | 26   |                 sys.dbmsoutput_put(item);
+ dbms_output   | PACKAGE BODY | 27   |         END;
+ dbms_output   | PACKAGE BODY | 28   | 
+ dbms_output   | PACKAGE BODY | 29   |         /* PUT_LINE */
+ dbms_output   | PACKAGE BODY | 30   |         PROCEDURE PUT_LINE(item text)
+ dbms_output   | PACKAGE BODY | 31   |         AS
+ dbms_output   | PACKAGE BODY | 32   |         BEGIN
+ dbms_output   | PACKAGE BODY | 33   |                 sys.dbmsoutput_putline(item);
+ dbms_output   | PACKAGE BODY | 34   |         END;
+ dbms_output   | PACKAGE BODY | 35   | 
+ dbms_output   | PACKAGE BODY | 36   |         PROCEDURE PUT_LINE(item anyelement)
+ dbms_output   | PACKAGE BODY | 37   |         AS
+ dbms_output   | PACKAGE BODY | 38   |         BEGIN
+ dbms_output   | PACKAGE BODY | 39   |                 sys.dbmsoutput_putline(item);
+ dbms_output   | PACKAGE BODY | 40   |         END;
+ dbms_output   | PACKAGE BODY | 41   | 
+ dbms_output   | PACKAGE BODY | 42   |         /* NEW_LINE */
+ dbms_output   | PACKAGE BODY | 43   |         PROCEDURE NEW_LINE()
+ dbms_output   | PACKAGE BODY | 44   |         AS
+ dbms_output   | PACKAGE BODY | 45   |         BEGIN
+ dbms_output   | PACKAGE BODY | 46   |                 sys.dbmsoutput_newline();
+ dbms_output   | PACKAGE BODY | 47   |         END;
+ dbms_output   | PACKAGE BODY | 48   | 
+ dbms_output   | PACKAGE BODY | 49   |         /* GET_LINE */
+ dbms_output   | PACKAGE BODY | 50   |         PROCEDURE GET_LINE(line out varchar2, status out integer)
+ dbms_output   | PACKAGE BODY | 51   |         AS
+ dbms_output   | PACKAGE BODY | 52   |         BEGIN
+ dbms_output   | PACKAGE BODY | 53   |                 sys.dbmsoutput_getline(line, status);
+ dbms_output   | PACKAGE BODY | 54   |         END;
+ dbms_output   | PACKAGE BODY | 55   | 
+ dbms_output   | PACKAGE BODY | 56   |         /* GET_LINES */
+ dbms_output   | PACKAGE BODY | 57   |         PROCEDURE GET_LINES(lines out text[], numlines in out integer)
+ dbms_output   | PACKAGE BODY | 58   |         AS
+ dbms_output   | PACKAGE BODY | 59   |         BEGIN
+ dbms_output   | PACKAGE BODY | 60   |                 sys.dbmsoutput_getlines(lines, numlines);
+ dbms_output   | PACKAGE BODY | 61   |         END;
+ dbms_output   | PACKAGE BODY | 62   | END;
  dbms_random   | PACKAGE      | 1    | PACKAGE dbms_random IS
  dbms_random   | PACKAGE      | 2    |     PROCEDURE INITIALIZE (
  dbms_random   | PACKAGE      | 3    |         val IN INTEGER
@@ -14832,7 +14905,7 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(1731 rows)
+(1804 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
  name | type | line | text 
@@ -14934,6 +15007,16 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  dbms_metadata | get_view_ddl            | 4             | PACKAGE     | CURRENT_USER
  dbms_metadata | is_supper_user          | 3             | PACKAGE     | CURRENT_USER
  dbms_metadata |                         | 0             | PACKAGE     | CURRENT_USER
+ dbms_output   | disable                 | 2             | PACKAGE     | DEFINER
+ dbms_output   | enable                  | 1             | PACKAGE     | DEFINER
+ dbms_output   | get_line                | 8             | PACKAGE     | DEFINER
+ dbms_output   | get_lines               | 9             | PACKAGE     | DEFINER
+ dbms_output   | new_line                | 7             | PACKAGE     | DEFINER
+ dbms_output   | put                     | 3             | PACKAGE     | DEFINER
+ dbms_output   | put                     | 4             | PACKAGE     | DEFINER
+ dbms_output   | put_line                | 5             | PACKAGE     | DEFINER
+ dbms_output   | put_line                | 6             | PACKAGE     | DEFINER
+ dbms_output   |                         | 0             | PACKAGE     | DEFINER
  dbms_random   | initialize              | 1             | PACKAGE     | CURRENT_USER
  dbms_random   | normal                  | 2             | PACKAGE     | CURRENT_USER
  dbms_random   | random                  | 3             | PACKAGE     | CURRENT_USER
@@ -14955,7 +15038,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(40 rows)
+(50 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid 
@@ -15103,93 +15186,102 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
 (135 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
-       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
--------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
- get_objname             | dbms_metadata | 1             |                | 0        | 1        | varchar2  | N         | OUT    | 63          |                |       | CHAR_CS
- get_objname             | dbms_metadata | 1             | ori_name       | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- check_privilege         | dbms_metadata | 2             |                | 0        | 1        | boolean   | N         | OUT    |             |                |       | 
- check_privilege         | dbms_metadata | 2             | owneroid       | 1        | 2        | oid       | N         | IN     |             |                |       | 
- is_supper_user          | dbms_metadata | 3             |                | 0        | 1        | boolean   | N         | OUT    |             |                |       | 
- is_supper_user          | dbms_metadata | 3             | username       | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_view_ddl            | dbms_metadata | 4             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_view_ddl            | dbms_metadata | 4             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_view_ddl            | dbms_metadata | 4             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_func_ddl            | dbms_metadata | 5             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_func_ddl            | dbms_metadata | 5             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_func_ddl            | dbms_metadata | 5             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_procedure_ddl       | dbms_metadata | 6             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_procedure_ddl       | dbms_metadata | 6             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_procedure_ddl       | dbms_metadata | 6             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_trigger_ddl         | dbms_metadata | 7             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_trigger_ddl         | dbms_metadata | 7             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_trigger_ddl         | dbms_metadata | 7             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_trigger_ddl         | dbms_metadata | 7             | taboid         | 3        | 4        | oid       | Y         | IN     |             |                |       | 
- get_tablespace_ddl      | dbms_metadata | 8             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_tablespace_ddl      | dbms_metadata | 8             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_tablespace_ddl      | dbms_metadata | 8             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_index_ddl           | dbms_metadata | 9             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_index_ddl           | dbms_metadata | 9             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_index_ddl           | dbms_metadata | 9             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_index_ddl           | dbms_metadata | 9             | taboid         | 3        | 4        | oid       | Y         | IN     |             |                |       | 
- get_constraint_ddl      | dbms_metadata | 10            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_constraint_ddl      | dbms_metadata | 10            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_constraint_ddl      | dbms_metadata | 10            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_constraint_ddl      | dbms_metadata | 10            | taboid         | 3        | 4        | oid       | Y         | IN     |             |                |       | 
- get_ref_constraint_ddl  | dbms_metadata | 11            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_ref_constraint_ddl  | dbms_metadata | 11            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_ref_constraint_ddl  | dbms_metadata | 11            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_ref_constraint_ddl  | dbms_metadata | 11            | taboid         | 3        | 4        | oid       | Y         | IN     |             |                |       | 
- get_attr                | dbms_metadata | 12            | taboid         | 1        | 1        | oid       | N         | IN     |             |                |       | 
- get_attr                | dbms_metadata | 12            | attrcnt        | 2        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- get_attr                | dbms_metadata | 12            | buf            | 3        | 3        | varchar2  | N         | OUT    | 8000        |                |       | CHAR_CS
- get_table_ddl           | dbms_metadata | 13            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_table_ddl           | dbms_metadata | 13            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_table_ddl           | dbms_metadata | 13            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_table_ddl           | dbms_metadata | 13            | parentobjname  | 3        | 4        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_package_ddl         | dbms_metadata | 14            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_package_ddl         | dbms_metadata | 14            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_package_ddl         | dbms_metadata | 14            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_package_body_ddl    | dbms_metadata | 15            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_package_body_ddl    | dbms_metadata | 15            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_package_body_ddl    | dbms_metadata | 15            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_dblink_ddl          | dbms_metadata | 16            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_dblink_ddl          | dbms_metadata | 16            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_dblink_ddl          | dbms_metadata | 16            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_sequence_ddl        | dbms_metadata | 17            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_sequence_ddl        | dbms_metadata | 17            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_sequence_ddl        | dbms_metadata | 17            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            |                | 0        | 1        | clob      | N         | OUT    |             |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | objtype        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | objname        | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | schema         | 3        | 4        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | model          | 4        | 5        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | version        | 5        | 6        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | transform      | 6        | 7        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
- initialize              | dbms_random   | 1             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- normal                  | dbms_random   | 2             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
- random                  | dbms_random   | 3             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- seed                    | dbms_random   | 4             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- seed                    | dbms_random   | 5             | val            | 1        | 1        | varchar2  | N         | IN     | 2000        |                |       | CHAR_CS
- string                  | dbms_random   | 6             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
- string                  | dbms_random   | 6             | opt            | 1        | 2        | char      | N         | IN     | 1           |                |       | CHAR_CS
- string                  | dbms_random   | 6             | len            | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
- value                   | dbms_random   | 8             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
- value                   | dbms_random   | 9             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
- value                   | dbms_random   | 9             | low            | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
- value                   | dbms_random   | 9             | high           | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
- raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
- raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
- get_time                | dbms_utility  | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
- sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
- sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
- sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
- test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(84 rows)
+       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type  | defaulted | in_out | data_length | data_precision | radix | character_set_name 
+-------------------------+---------------+---------------+----------------+----------+----------+------------+-----------+--------+-------------+----------------+-------+--------------------
+ get_objname             | dbms_metadata | 1             |                | 0        | 1        | varchar2   | N         | OUT    | 63          |                |       | CHAR_CS
+ get_objname             | dbms_metadata | 1             | ori_name       | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ check_privilege         | dbms_metadata | 2             |                | 0        | 1        | boolean    | N         | OUT    |             |                |       | 
+ check_privilege         | dbms_metadata | 2             | owneroid       | 1        | 2        | oid        | N         | IN     |             |                |       | 
+ is_supper_user          | dbms_metadata | 3             |                | 0        | 1        | boolean    | N         | OUT    |             |                |       | 
+ is_supper_user          | dbms_metadata | 3             | username       | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_view_ddl            | dbms_metadata | 4             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_view_ddl            | dbms_metadata | 4             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_view_ddl            | dbms_metadata | 4             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_func_ddl            | dbms_metadata | 5             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_func_ddl            | dbms_metadata | 5             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_func_ddl            | dbms_metadata | 5             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_procedure_ddl       | dbms_metadata | 6             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_procedure_ddl       | dbms_metadata | 6             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_procedure_ddl       | dbms_metadata | 6             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_trigger_ddl         | dbms_metadata | 7             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_trigger_ddl         | dbms_metadata | 7             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_trigger_ddl         | dbms_metadata | 7             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_trigger_ddl         | dbms_metadata | 7             | taboid         | 3        | 4        | oid        | Y         | IN     |             |                |       | 
+ get_tablespace_ddl      | dbms_metadata | 8             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_tablespace_ddl      | dbms_metadata | 8             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_tablespace_ddl      | dbms_metadata | 8             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_index_ddl           | dbms_metadata | 9             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_index_ddl           | dbms_metadata | 9             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_index_ddl           | dbms_metadata | 9             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_index_ddl           | dbms_metadata | 9             | taboid         | 3        | 4        | oid        | Y         | IN     |             |                |       | 
+ get_constraint_ddl      | dbms_metadata | 10            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_constraint_ddl      | dbms_metadata | 10            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_constraint_ddl      | dbms_metadata | 10            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_constraint_ddl      | dbms_metadata | 10            | taboid         | 3        | 4        | oid        | Y         | IN     |             |                |       | 
+ get_ref_constraint_ddl  | dbms_metadata | 11            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_ref_constraint_ddl  | dbms_metadata | 11            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_ref_constraint_ddl  | dbms_metadata | 11            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_ref_constraint_ddl  | dbms_metadata | 11            | taboid         | 3        | 4        | oid        | Y         | IN     |             |                |       | 
+ get_attr                | dbms_metadata | 12            | taboid         | 1        | 1        | oid        | N         | IN     |             |                |       | 
+ get_attr                | dbms_metadata | 12            | attrcnt        | 2        | 2        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ get_attr                | dbms_metadata | 12            | buf            | 3        | 3        | varchar2   | N         | OUT    | 8000        |                |       | CHAR_CS
+ get_table_ddl           | dbms_metadata | 13            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_table_ddl           | dbms_metadata | 13            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_table_ddl           | dbms_metadata | 13            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_table_ddl           | dbms_metadata | 13            | parentobjname  | 3        | 4        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_package_ddl         | dbms_metadata | 14            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_package_ddl         | dbms_metadata | 14            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_package_ddl         | dbms_metadata | 14            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_package_body_ddl    | dbms_metadata | 15            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_package_body_ddl    | dbms_metadata | 15            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_package_body_ddl    | dbms_metadata | 15            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_dblink_ddl          | dbms_metadata | 16            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_dblink_ddl          | dbms_metadata | 16            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_dblink_ddl          | dbms_metadata | 16            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_sequence_ddl        | dbms_metadata | 17            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_sequence_ddl        | dbms_metadata | 17            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_sequence_ddl        | dbms_metadata | 17            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            |                | 0        | 1        | clob       | N         | OUT    |             |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | objtype        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | objname        | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | schema         | 3        | 4        | varchar2   | Y         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | model          | 4        | 5        | varchar2   | Y         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | version        | 5        | 6        | varchar2   | Y         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | transform      | 6        | 7        | varchar2   | Y         | IN     | 63          |                |       | CHAR_CS
+ enable                  | dbms_output   | 1             | buffer_size    | 1        | 1        | NUMBER     | Y         | IN     | 22          | 38             | 10    | 
+ put                     | dbms_output   | 3             | item           | 1        | 1        | text       | N         | IN     |             |                |       | 
+ put                     | dbms_output   | 4             | item           | 1        | 1        | anyelement | N         | IN     |             |                |       | 
+ put_line                | dbms_output   | 5             | item           | 1        | 1        | text       | N         | IN     |             |                |       | 
+ put_line                | dbms_output   | 6             | item           | 1        | 1        | anyelement | N         | IN     |             |                |       | 
+ get_line                | dbms_output   | 8             | line           | 1        | 1        | varchar2   | N         | OUT    |             |                |       | CHAR_CS
+ get_line                | dbms_output   | 8             | status         | 2        | 2        | NUMBER     | N         | OUT    | 22          | 38             | 10    | 
+ get_lines               | dbms_output   | 9             | lines          | 1        | 1        | text[]     | N         | OUT    |             |                |       | 
+ get_lines               | dbms_output   | 9             | numlines       | 2        | 2        | NUMBER     | N         | IN/OUT | 22          | 38             | 10    | 
+ initialize              | dbms_random   | 1             | val            | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ normal                  | dbms_random   | 2             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 65535          | 10    | 
+ random                  | dbms_random   | 3             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 4             | val            | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 5             | val            | 1        | 1        | varchar2   | N         | IN     | 2000        |                |       | CHAR_CS
+ string                  | dbms_random   | 6             |                | 0        | 1        | varchar2   | N         | OUT    |             |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | opt            | 1        | 2        | char       | N         | IN     | 1           |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | len            | 2        | 3        | NUMBER     | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 8             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | low            | 1        | 2        | NUMBER     | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | high           | 2        | 3        | NUMBER     | N         | IN     | 22          | 65535          | 10    | 
+ raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean    | Y         | IN     |             |                |       | 
+ get_time                | dbms_utility  | 1             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 65535          | 10    | 
+ sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 38             | 10    | 
+ sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2   | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2   | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER     | N         | IN     | 22          | 65535          | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2   | Y         | IN     |             |                |       | CHAR_CS
+(93 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
@@ -19026,6 +19118,79 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  dbms_metadata | PACKAGE BODY | 1461 |     RETURN ddl;
  dbms_metadata | PACKAGE BODY | 1462 |   END;
  dbms_metadata | PACKAGE BODY | 1463 | END;
+ dbms_output   | PACKAGE      | 1    | PACKAGE dbms_output IS
+ dbms_output   | PACKAGE      | 2    |         PROCEDURE ENABLE(buffer_size in integer default 20000);
+ dbms_output   | PACKAGE      | 3    |         PROCEDURE DISABLE();
+ dbms_output   | PACKAGE      | 4    |         PROCEDURE PUT(item text);
+ dbms_output   | PACKAGE      | 5    |         PROCEDURE PUT(item anyelement);
+ dbms_output   | PACKAGE      | 6    |         PROCEDURE PUT_LINE(item text);
+ dbms_output   | PACKAGE      | 7    |         PROCEDURE PUT_LINE(item anyelement);
+ dbms_output   | PACKAGE      | 8    |         PROCEDURE NEW_LINE();
+ dbms_output   | PACKAGE      | 9    |         PROCEDURE GET_LINE(line out varchar2, status out integer);
+ dbms_output   | PACKAGE      | 10   |         PROCEDURE GET_LINES(lines out text[], numlines in out integer);
+ dbms_output   | PACKAGE      | 11   | END;
+ dbms_output   | PACKAGE BODY | 1    | PACKAGE BODY dbms_output IS
+ dbms_output   | PACKAGE BODY | 2    |         /* ENABLE */
+ dbms_output   | PACKAGE BODY | 3    |         PROCEDURE ENABLE(buffer_size in integer default 20000)
+ dbms_output   | PACKAGE BODY | 4    |         AS
+ dbms_output   | PACKAGE BODY | 5    |         BEGIN
+ dbms_output   | PACKAGE BODY | 6    |                 sys.dbmsoutput_enable(buffer_size);
+ dbms_output   | PACKAGE BODY | 7    |         END;
+ dbms_output   | PACKAGE BODY | 8    | 
+ dbms_output   | PACKAGE BODY | 9    |         /* DISABLE */
+ dbms_output   | PACKAGE BODY | 10   |         PROCEDURE DISABLE()
+ dbms_output   | PACKAGE BODY | 11   |         AS
+ dbms_output   | PACKAGE BODY | 12   |         BEGIN
+ dbms_output   | PACKAGE BODY | 13   |                 sys.dbmsoutput_disable();
+ dbms_output   | PACKAGE BODY | 14   |         END;
+ dbms_output   | PACKAGE BODY | 15   | 
+ dbms_output   | PACKAGE BODY | 16   |         /* PUT */
+ dbms_output   | PACKAGE BODY | 17   |         PROCEDURE PUT(item text)
+ dbms_output   | PACKAGE BODY | 18   |         AS
+ dbms_output   | PACKAGE BODY | 19   |         BEGIN
+ dbms_output   | PACKAGE BODY | 20   |                 sys.dbmsoutput_put(item);
+ dbms_output   | PACKAGE BODY | 21   |         END;
+ dbms_output   | PACKAGE BODY | 22   | 
+ dbms_output   | PACKAGE BODY | 23   |         PROCEDURE PUT(item anyelement)
+ dbms_output   | PACKAGE BODY | 24   |         AS
+ dbms_output   | PACKAGE BODY | 25   |         BEGIN
+ dbms_output   | PACKAGE BODY | 26   |                 sys.dbmsoutput_put(item);
+ dbms_output   | PACKAGE BODY | 27   |         END;
+ dbms_output   | PACKAGE BODY | 28   | 
+ dbms_output   | PACKAGE BODY | 29   |         /* PUT_LINE */
+ dbms_output   | PACKAGE BODY | 30   |         PROCEDURE PUT_LINE(item text)
+ dbms_output   | PACKAGE BODY | 31   |         AS
+ dbms_output   | PACKAGE BODY | 32   |         BEGIN
+ dbms_output   | PACKAGE BODY | 33   |                 sys.dbmsoutput_putline(item);
+ dbms_output   | PACKAGE BODY | 34   |         END;
+ dbms_output   | PACKAGE BODY | 35   | 
+ dbms_output   | PACKAGE BODY | 36   |         PROCEDURE PUT_LINE(item anyelement)
+ dbms_output   | PACKAGE BODY | 37   |         AS
+ dbms_output   | PACKAGE BODY | 38   |         BEGIN
+ dbms_output   | PACKAGE BODY | 39   |                 sys.dbmsoutput_putline(item);
+ dbms_output   | PACKAGE BODY | 40   |         END;
+ dbms_output   | PACKAGE BODY | 41   | 
+ dbms_output   | PACKAGE BODY | 42   |         /* NEW_LINE */
+ dbms_output   | PACKAGE BODY | 43   |         PROCEDURE NEW_LINE()
+ dbms_output   | PACKAGE BODY | 44   |         AS
+ dbms_output   | PACKAGE BODY | 45   |         BEGIN
+ dbms_output   | PACKAGE BODY | 46   |                 sys.dbmsoutput_newline();
+ dbms_output   | PACKAGE BODY | 47   |         END;
+ dbms_output   | PACKAGE BODY | 48   | 
+ dbms_output   | PACKAGE BODY | 49   |         /* GET_LINE */
+ dbms_output   | PACKAGE BODY | 50   |         PROCEDURE GET_LINE(line out varchar2, status out integer)
+ dbms_output   | PACKAGE BODY | 51   |         AS
+ dbms_output   | PACKAGE BODY | 52   |         BEGIN
+ dbms_output   | PACKAGE BODY | 53   |                 sys.dbmsoutput_getline(line, status);
+ dbms_output   | PACKAGE BODY | 54   |         END;
+ dbms_output   | PACKAGE BODY | 55   | 
+ dbms_output   | PACKAGE BODY | 56   |         /* GET_LINES */
+ dbms_output   | PACKAGE BODY | 57   |         PROCEDURE GET_LINES(lines out text[], numlines in out integer)
+ dbms_output   | PACKAGE BODY | 58   |         AS
+ dbms_output   | PACKAGE BODY | 59   |         BEGIN
+ dbms_output   | PACKAGE BODY | 60   |                 sys.dbmsoutput_getlines(lines, numlines);
+ dbms_output   | PACKAGE BODY | 61   |         END;
+ dbms_output   | PACKAGE BODY | 62   | END;
  dbms_random   | PACKAGE      | 1    | PACKAGE dbms_random IS
  dbms_random   | PACKAGE      | 2    |     PROCEDURE INITIALIZE (
  dbms_random   | PACKAGE      | 3    |         val IN INTEGER
@@ -19301,7 +19466,7 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(1758 rows)
+(1831 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
    name   |     type     | line |                            text                            
@@ -19430,6 +19595,16 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  dbms_metadata | get_view_ddl            | 4             | PACKAGE     | CURRENT_USER
  dbms_metadata | is_supper_user          | 3             | PACKAGE     | CURRENT_USER
  dbms_metadata |                         | 0             | PACKAGE     | CURRENT_USER
+ dbms_output   | disable                 | 2             | PACKAGE     | DEFINER
+ dbms_output   | enable                  | 1             | PACKAGE     | DEFINER
+ dbms_output   | get_line                | 8             | PACKAGE     | DEFINER
+ dbms_output   | get_lines               | 9             | PACKAGE     | DEFINER
+ dbms_output   | new_line                | 7             | PACKAGE     | DEFINER
+ dbms_output   | put                     | 3             | PACKAGE     | DEFINER
+ dbms_output   | put                     | 4             | PACKAGE     | DEFINER
+ dbms_output   | put_line                | 5             | PACKAGE     | DEFINER
+ dbms_output   | put_line                | 6             | PACKAGE     | DEFINER
+ dbms_output   |                         | 0             | PACKAGE     | DEFINER
  dbms_random   | initialize              | 1             | PACKAGE     | CURRENT_USER
  dbms_random   | normal                  | 2             | PACKAGE     | CURRENT_USER
  dbms_random   | random                  | 3             | PACKAGE     | CURRENT_USER
@@ -19456,7 +19631,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(45 rows)
+(55 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid  
@@ -19609,97 +19784,106 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
 (135 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
-       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
--------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
- get_objname             | dbms_metadata | 1             |                | 0        | 1        | varchar2  | N         | OUT    | 63          |                |       | CHAR_CS
- get_objname             | dbms_metadata | 1             | ori_name       | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- check_privilege         | dbms_metadata | 2             |                | 0        | 1        | boolean   | N         | OUT    |             |                |       | 
- check_privilege         | dbms_metadata | 2             | owneroid       | 1        | 2        | oid       | N         | IN     |             |                |       | 
- is_supper_user          | dbms_metadata | 3             |                | 0        | 1        | boolean   | N         | OUT    |             |                |       | 
- is_supper_user          | dbms_metadata | 3             | username       | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_view_ddl            | dbms_metadata | 4             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_view_ddl            | dbms_metadata | 4             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_view_ddl            | dbms_metadata | 4             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_func_ddl            | dbms_metadata | 5             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_func_ddl            | dbms_metadata | 5             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_func_ddl            | dbms_metadata | 5             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_procedure_ddl       | dbms_metadata | 6             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_procedure_ddl       | dbms_metadata | 6             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_procedure_ddl       | dbms_metadata | 6             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_trigger_ddl         | dbms_metadata | 7             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_trigger_ddl         | dbms_metadata | 7             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_trigger_ddl         | dbms_metadata | 7             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_trigger_ddl         | dbms_metadata | 7             | taboid         | 3        | 4        | oid       | Y         | IN     |             |                |       | 
- get_tablespace_ddl      | dbms_metadata | 8             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_tablespace_ddl      | dbms_metadata | 8             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_tablespace_ddl      | dbms_metadata | 8             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_index_ddl           | dbms_metadata | 9             |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_index_ddl           | dbms_metadata | 9             | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_index_ddl           | dbms_metadata | 9             | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_index_ddl           | dbms_metadata | 9             | taboid         | 3        | 4        | oid       | Y         | IN     |             |                |       | 
- get_constraint_ddl      | dbms_metadata | 10            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_constraint_ddl      | dbms_metadata | 10            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_constraint_ddl      | dbms_metadata | 10            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_constraint_ddl      | dbms_metadata | 10            | taboid         | 3        | 4        | oid       | Y         | IN     |             |                |       | 
- get_ref_constraint_ddl  | dbms_metadata | 11            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_ref_constraint_ddl  | dbms_metadata | 11            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_ref_constraint_ddl  | dbms_metadata | 11            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_ref_constraint_ddl  | dbms_metadata | 11            | taboid         | 3        | 4        | oid       | Y         | IN     |             |                |       | 
- get_attr                | dbms_metadata | 12            | taboid         | 1        | 1        | oid       | N         | IN     |             |                |       | 
- get_attr                | dbms_metadata | 12            | attrcnt        | 2        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- get_attr                | dbms_metadata | 12            | buf            | 3        | 3        | varchar2  | N         | OUT    | 8000        |                |       | CHAR_CS
- get_table_ddl           | dbms_metadata | 13            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_table_ddl           | dbms_metadata | 13            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_table_ddl           | dbms_metadata | 13            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_table_ddl           | dbms_metadata | 13            | parentobjname  | 3        | 4        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_package_ddl         | dbms_metadata | 14            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_package_ddl         | dbms_metadata | 14            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_package_ddl         | dbms_metadata | 14            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_package_body_ddl    | dbms_metadata | 15            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_package_body_ddl    | dbms_metadata | 15            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_package_body_ddl    | dbms_metadata | 15            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_dblink_ddl          | dbms_metadata | 16            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_dblink_ddl          | dbms_metadata | 16            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_dblink_ddl          | dbms_metadata | 16            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_sequence_ddl        | dbms_metadata | 17            |                | 0        | 1        | text      | N         | OUT    |             |                |       | 
- get_sequence_ddl        | dbms_metadata | 17            | objname        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_sequence_ddl        | dbms_metadata | 17            | schema         | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            |                | 0        | 1        | clob      | N         | OUT    |             |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | objtype        | 1        | 2        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | objname        | 2        | 3        | varchar2  | N         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | schema         | 3        | 4        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | model          | 4        | 5        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | version        | 5        | 6        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
- get_ddl                 | dbms_metadata | 18            | transform      | 6        | 7        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
- initialize              | dbms_random   | 1             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- normal                  | dbms_random   | 2             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
- random                  | dbms_random   | 3             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- seed                    | dbms_random   | 4             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- seed                    | dbms_random   | 5             | val            | 1        | 1        | varchar2  | N         | IN     | 2000        |                |       | CHAR_CS
- string                  | dbms_random   | 6             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
- string                  | dbms_random   | 6             | opt            | 1        | 2        | char      | N         | IN     | 1           |                |       | CHAR_CS
- string                  | dbms_random   | 6             | len            | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
- value                   | dbms_random   | 8             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
- value                   | dbms_random   | 9             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
- value                   | dbms_random   | 9             | low            | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
- value                   | dbms_random   | 9             | high           | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
- raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
- raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
- get_time                | dbms_utility  | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
- sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
- sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
- sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
- test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(88 rows)
+       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type  | defaulted | in_out | data_length | data_precision | radix | character_set_name 
+-------------------------+---------------+---------------+----------------+----------+----------+------------+-----------+--------+-------------+----------------+-------+--------------------
+ get_objname             | dbms_metadata | 1             |                | 0        | 1        | varchar2   | N         | OUT    | 63          |                |       | CHAR_CS
+ get_objname             | dbms_metadata | 1             | ori_name       | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ check_privilege         | dbms_metadata | 2             |                | 0        | 1        | boolean    | N         | OUT    |             |                |       | 
+ check_privilege         | dbms_metadata | 2             | owneroid       | 1        | 2        | oid        | N         | IN     |             |                |       | 
+ is_supper_user          | dbms_metadata | 3             |                | 0        | 1        | boolean    | N         | OUT    |             |                |       | 
+ is_supper_user          | dbms_metadata | 3             | username       | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_view_ddl            | dbms_metadata | 4             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_view_ddl            | dbms_metadata | 4             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_view_ddl            | dbms_metadata | 4             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_func_ddl            | dbms_metadata | 5             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_func_ddl            | dbms_metadata | 5             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_func_ddl            | dbms_metadata | 5             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_procedure_ddl       | dbms_metadata | 6             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_procedure_ddl       | dbms_metadata | 6             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_procedure_ddl       | dbms_metadata | 6             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_trigger_ddl         | dbms_metadata | 7             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_trigger_ddl         | dbms_metadata | 7             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_trigger_ddl         | dbms_metadata | 7             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_trigger_ddl         | dbms_metadata | 7             | taboid         | 3        | 4        | oid        | Y         | IN     |             |                |       | 
+ get_tablespace_ddl      | dbms_metadata | 8             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_tablespace_ddl      | dbms_metadata | 8             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_tablespace_ddl      | dbms_metadata | 8             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_index_ddl           | dbms_metadata | 9             |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_index_ddl           | dbms_metadata | 9             | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_index_ddl           | dbms_metadata | 9             | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_index_ddl           | dbms_metadata | 9             | taboid         | 3        | 4        | oid        | Y         | IN     |             |                |       | 
+ get_constraint_ddl      | dbms_metadata | 10            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_constraint_ddl      | dbms_metadata | 10            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_constraint_ddl      | dbms_metadata | 10            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_constraint_ddl      | dbms_metadata | 10            | taboid         | 3        | 4        | oid        | Y         | IN     |             |                |       | 
+ get_ref_constraint_ddl  | dbms_metadata | 11            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_ref_constraint_ddl  | dbms_metadata | 11            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_ref_constraint_ddl  | dbms_metadata | 11            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_ref_constraint_ddl  | dbms_metadata | 11            | taboid         | 3        | 4        | oid        | Y         | IN     |             |                |       | 
+ get_attr                | dbms_metadata | 12            | taboid         | 1        | 1        | oid        | N         | IN     |             |                |       | 
+ get_attr                | dbms_metadata | 12            | attrcnt        | 2        | 2        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ get_attr                | dbms_metadata | 12            | buf            | 3        | 3        | varchar2   | N         | OUT    | 8000        |                |       | CHAR_CS
+ get_table_ddl           | dbms_metadata | 13            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_table_ddl           | dbms_metadata | 13            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_table_ddl           | dbms_metadata | 13            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_table_ddl           | dbms_metadata | 13            | parentobjname  | 3        | 4        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_package_ddl         | dbms_metadata | 14            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_package_ddl         | dbms_metadata | 14            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_package_ddl         | dbms_metadata | 14            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_package_body_ddl    | dbms_metadata | 15            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_package_body_ddl    | dbms_metadata | 15            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_package_body_ddl    | dbms_metadata | 15            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_dblink_ddl          | dbms_metadata | 16            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_dblink_ddl          | dbms_metadata | 16            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_dblink_ddl          | dbms_metadata | 16            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_sequence_ddl        | dbms_metadata | 17            |                | 0        | 1        | text       | N         | OUT    |             |                |       | 
+ get_sequence_ddl        | dbms_metadata | 17            | objname        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_sequence_ddl        | dbms_metadata | 17            | schema         | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            |                | 0        | 1        | clob       | N         | OUT    |             |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | objtype        | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | objname        | 2        | 3        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | schema         | 3        | 4        | varchar2   | Y         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | model          | 4        | 5        | varchar2   | Y         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | version        | 5        | 6        | varchar2   | Y         | IN     | 63          |                |       | CHAR_CS
+ get_ddl                 | dbms_metadata | 18            | transform      | 6        | 7        | varchar2   | Y         | IN     | 63          |                |       | CHAR_CS
+ enable                  | dbms_output   | 1             | buffer_size    | 1        | 1        | NUMBER     | Y         | IN     | 22          | 38             | 10    | 
+ put                     | dbms_output   | 3             | item           | 1        | 1        | text       | N         | IN     |             |                |       | 
+ put                     | dbms_output   | 4             | item           | 1        | 1        | anyelement | N         | IN     |             |                |       | 
+ put_line                | dbms_output   | 5             | item           | 1        | 1        | text       | N         | IN     |             |                |       | 
+ put_line                | dbms_output   | 6             | item           | 1        | 1        | anyelement | N         | IN     |             |                |       | 
+ get_line                | dbms_output   | 8             | line           | 1        | 1        | varchar2   | N         | OUT    |             |                |       | CHAR_CS
+ get_line                | dbms_output   | 8             | status         | 2        | 2        | NUMBER     | N         | OUT    | 22          | 38             | 10    | 
+ get_lines               | dbms_output   | 9             | lines          | 1        | 1        | text[]     | N         | OUT    |             |                |       | 
+ get_lines               | dbms_output   | 9             | numlines       | 2        | 2        | NUMBER     | N         | IN/OUT | 22          | 38             | 10    | 
+ initialize              | dbms_random   | 1             | val            | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ normal                  | dbms_random   | 2             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 65535          | 10    | 
+ random                  | dbms_random   | 3             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 4             | val            | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 5             | val            | 1        | 1        | varchar2   | N         | IN     | 2000        |                |       | CHAR_CS
+ string                  | dbms_random   | 6             |                | 0        | 1        | varchar2   | N         | OUT    |             |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | opt            | 1        | 2        | char       | N         | IN     | 1           |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | len            | 2        | 3        | NUMBER     | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 8             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | low            | 1        | 2        | NUMBER     | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | high           | 2        | 3        | NUMBER     | N         | IN     | 22          | 65535          | 10    | 
+ raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean    | Y         | IN     |             |                |       | 
+ get_time                | dbms_utility  | 1             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 65535          | 10    | 
+ sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 38             | 10    | 
+ sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2   | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2   | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER     | N         | IN     | 22          | 65535          | 10    | 
+ test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 38             | 10    | 
+ test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER     | Y         | IN     | 22          | 38             | 10    | 
+ test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER     | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2   | Y         | IN     |             |                |       | CHAR_CS
+(97 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
