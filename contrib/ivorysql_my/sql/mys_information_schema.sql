@@ -51,7 +51,7 @@ SELECT constraint_catalog, constraint_schema, constraint_name,
        referenced_table_schema, referenced_table_name, referenced_column_name
 FROM information_schema.key_column_usage
 WHERE table_schema = 'test_schema'
-ORDER BY constraint_name, ordinal_position;
+ORDER BY constraint_name, ordinal_position, table_name;
 DROP TABLE test_schema.main_tbl cascade;
 DROP TABLE test_schema.ref_tbl cascade;
 

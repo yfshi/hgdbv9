@@ -1037,6 +1037,7 @@ static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
  */
 %left		JOIN CROSS LEFT FULL RIGHT INNER_P NATURAL
 %nonassoc	ZEROFILL
+%right		UNIQUE KEY /* Bug#Z504 */
 %%
 
 /*
@@ -3496,11 +3497,11 @@ create_table_options:
 			| create_engine				{ $$ = NULL; }
 		;
 
-create_engine :
+create_engine:
 			ENGINE_P opt_equal name						{ $$ = NULL; }
 		;
 
-create_comment :
+create_comment:
 			COMMENT opt_equal comment_text
 				{
 					CommentStmt *n = makeNode(CommentStmt);
@@ -4537,6 +4538,17 @@ ColConstraint:
 			/* End - SRS-MYSQL-CREATE-TABLE */
 		;
 
+/* Begin Bug#Z504 */
+opt_unique_key:
+			UNIQUE
+			| UNIQUE KEY
+		;
+opt_pri_key:
+			KEY
+			| PRIMARY KEY
+		;
+/* End Bug#Z504 */
+
 /* DEFAULT NULL is already the default for Postgres.
  * But define it here and carry it forward into the system
  * to make it explicit.
@@ -4567,7 +4579,8 @@ ColConstraintElem:
 					n->location = @1;
 					$$ = (Node *)n;
 				}
-			| UNIQUE opt_definition OptConsTableSpace
+			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			| opt_unique_key opt_definition OptConsTableSpace 
 				{
 					Constraint *n = makeNode(Constraint);
 					n->contype = CONSTR_UNIQUE;
@@ -4578,30 +4591,18 @@ ColConstraintElem:
 					n->indexspace = $3;
 					$$ = (Node *)n;
 				}
-			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-			| UNIQUE KEY opt_definition OptConsTableSpace
-				{
-					Constraint *n = makeNode(Constraint);
-					n->contype = CONSTR_UNIQUE;
-					n->location = @1;
-					n->keys = NULL;
-					n->options = $3;
-					n->indexname = NULL;
-					n->indexspace = $4;
-					$$ = (Node *)n;
-				}
-			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-			| PRIMARY KEY opt_definition OptConsTableSpace
+			| opt_pri_key opt_definition OptConsTableSpace 
 				{
 					Constraint *n = makeNode(Constraint);
 					n->contype = CONSTR_PRIMARY;
 					n->location = @1;
 					n->keys = NULL;
-					n->options = $3;
+					n->options = $2;
 					n->indexname = NULL;
-					n->indexspace = $4;
+					n->indexspace = $3;
 					$$ = (Node *)n;
 				}
+			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 			| CHECK '(' a_expr ')' opt_no_inherit
 				{
 					Constraint *n = makeNode(Constraint);
@@ -4944,6 +4945,7 @@ ConstraintElem:
 					n->idxname = $2;
 					n->indexParams = $5;
 					n->accessMethod = $3;
+					n->idxcomment = NULL;
 					if ($7 != NULL) /* mysql : options */
 					{
 						ListCell *lc = NULL;
@@ -4968,7 +4970,6 @@ ConstraintElem:
 					n->tableSpace = NULL;
 					n->whereClause = NULL;
 					n->excludeOpNames = NIL;
-					n->idxcomment = NULL;
 					n->indexOid = InvalidOid;
 					n->oldNode = InvalidOid;
 					n->oldCreateSubid = InvalidSubTransactionId;
@@ -8749,7 +8750,7 @@ index_options:
 		;
 
 index_opt:
-			KEY_BLOCK_SIZE opt_equal ICONST	{ $$ = NULL; }
+			KEY_BLOCK_SIZE opt_equal ICONST		{ $$ = NULL; }
 			| WITH PARSER ColId					{ $$ = NULL; }
 			| COMMENT SCONST
 				{
@@ -21712,14 +21713,7 @@ SplitColQualList(List *qualList,
 		/* End - SRS-MYSQL-CREATE-TABLE */
 		else if (IsA(n, CollateClause))
 		{
-			CollateClause *c = (CollateClause *) n;
-
-			if (*collClause)
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("multiple COLLATE clauses not allowed"),
-						 parser_errposition(c->location)));
-			*collClause = c;
+			*collClause = (CollateClause *) n;
 		}
 		else
 			elog(ERROR, "unexpected node type %d", (int) n->type);

@@ -766,3 +766,49 @@ SHOW COLUMNS FROM test_show;
 SHOW full COLUMNS FROM test_show;
 SHOW CREATE TABLE test_show;
 drop table test_show;
+
+-- #bug6241
+create table t1(c char (20) character set utf8 collate utf8_bin collate utf8_bin collate utf8_bin);
+show create table t1;
+drop table t1;
+
+-- #bug6256
+CREATE TABLE test_prefix_index (
+id INT PRIMARY KEY,
+long_text VARCHAR(500)
+);
+CREATE INDEX test_prefix_index_1 on test_prefix_index (long_text(100));
+CREATE INDEX test_prefix_index_2 on test_prefix_index (long_text);
+CREATE INDEX test_prefix_index_3 on test_prefix_index (id);
+CREATE INDEX test_prefix_index_4 on test_prefix_index (long_text(99), id);
+SHOW CREATE TABLE test_prefix_index;
+SHOW INDEX FROM test_prefix_index;
+drop TABLE test_prefix_index;
+
+-- #bug6254
+CREATE TABLE test_pk2 (id INT KEY, name VARCHAR(50) );
+show index FROM test_pk2;
+drop TABLE test_pk2;
+CREATE TABLE test_pk2 (id INT PRIMARY KEY, name VARCHAR(50) );
+show index FROM test_pk2;
+drop TABLE test_pk2;
+CREATE TABLE test_pk2 (id INT , name VARCHAR(50), PRIMARY KEY (id) );
+show index FROM test_pk2;
+drop TABLE test_pk2;
+CREATE TABLE test_pk2 (id INT , name VARCHAR(50), KEY (id) );
+show index FROM test_pk2;
+drop TABLE test_pk2;
+
+-- #bug6257
+CREATE TABLE test_comment1 (
+id INT,
+value VARCHAR(50),
+INDEX idx_value (value) COMMENT 'This is a test index'
+);
+
+SHOW CREATE TABLE test_comment1;
+SHOW INDEX FROM test_comment1;
+
+SELECT INDEX_NAME,INDEX_COMMENT FROM mys_information_schema.STATISTICS WHERE TABLE_NAME = 'test_comment1';
+
+drop TABLE test_comment1;
