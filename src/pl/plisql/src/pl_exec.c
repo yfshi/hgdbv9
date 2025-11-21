@@ -11415,6 +11415,10 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 			get_typlenbyval(prm->ptype, &typLen, &typByVal);
 			if (!typByVal)
 				prm->value = datumCopy(prm->value, typByVal, typLen);
+			/* Begin - BUG#M0000531 */
+			else if (prm->ptype == ORARECORDOID)
+				prm->value = rowDatumCopy(prm->value, prm->isnull);
+			/* End - BUG#M0000531 */
 		}
 
 		/* Begin - ReqID:SRS-PLSQL-DSQL */
