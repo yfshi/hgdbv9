@@ -663,7 +663,7 @@ WHERE table_schema = 'test_schema_stats'
 ORDER BY index_name, seq_in_index;
    table_schema    | table_name |      index_name       | seq_in_index | column_name | collation | cardinality | sub_part | index_type 
 -------------------+------------+-----------------------+--------------+-------------+-----------+-------------+----------+------------
- test_schema_stats | stats_tbl  | idx_stats_code_prefix |            1 |             | A         |           0 |       10 | btree
+ test_schema_stats | stats_tbl  | idx_stats_code_prefix |            1 | code        | A         |           0 |       10 | btree
  test_schema_stats | stats_tbl  | idx_stats_name        |            1 | name        | A         |           0 |          | btree
  test_schema_stats | stats_tbl  | stats_tbl_pkey        |            1 | id          | A         |           0 |          | btree
 (3 rows)

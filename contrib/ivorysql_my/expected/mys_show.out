@@ -1983,6 +1983,9 @@ SHOW CREATE TABLE test_prefix_index;
                    |     "id" integer NOT NULL,                              +
                    |     "long_text" character varying(500),                 +
                    |     CONSTRAINT "test_prefix_index_pkey" PRIMARY KEY (id)+
+                   |     KEY "test_prefix_index_2" ("long_text")             +
+                   |     KEY "test_prefix_index_3" ("id")                    +
+                   |     KEY "test_prefix_index_4" ("id")                    +
                    | )
 (1 row)
 
@@ -2043,6 +2046,7 @@ SHOW CREATE TABLE test_comment1;
  test_comment1 | CREATE TABLE "test_comment1" (   +
                |     "id" integer,                +
                |     "value" character varying(50)+
+               |     KEY "idx_value" ("value")    +
                | )
 (1 row)
 

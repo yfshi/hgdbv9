@@ -144,7 +144,7 @@ select test_add(1, 2, 3);
 --alter function schema
 create schema mysqlt;
 alter function test_add(integer, integer) set schema mysqlt;
-select objname, refclassid, objkind from pg_object where objname in ('test_add', 'mysqlt', 'TEST_ADD') order by refclassid;
+select objname, refclassid, objkind from pg_object where objname in ('test_add', 'mysqlt', 'TEST_ADD') order by refclassid, objname;
 
 --use function test_add
 select mysqlt.test_add(1, 2);
@@ -253,7 +253,7 @@ select test_add(1, 2, 3);
 --alter function schema
 create schema mysqlt;
 alter function test_add(integer, integer) set schema mysqlt;
-select objname, refclassid, objkind from pg_object where objname in ('test_add', 'mysqlt', 'TEST_ADD') order by refclassid;
+select objname, refclassid, objkind from pg_object where objname in ('test_add', 'mysqlt', 'TEST_ADD') order by refclassid, objname;
 
 --use function test_add
 select mysqlt.test_add(1, 2);
