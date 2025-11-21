@@ -407,6 +407,9 @@ static bool check_disk_size(void);
 static void send_signal_launch_proc(void);
 static bool is_enable_audit(void);
 static void audit_WriteThrHistory(void);
+/* Begin BUG#z6137 */
+static void check_base_line(const char *basename, const char *basevalue);
+/* End BUG#z6137 */
 
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
@@ -11498,8 +11501,11 @@ audit_threshold_alarm(int32 level, char *msg)
 			ereport(WARNING,
 				(errmsg("\"%s\"", msg)));
 			audit_send_mail(msg);
-			audit_lock_user();
 			audit_terminate_session();
+			/* Begin BUG#z6135 */
+			if(!IS_SYSDBA(GetUserId()))
+				audit_lock_user();
+			/* End BUG#z6135 */
 			break;
 		default:
 			break;
@@ -11646,6 +11652,23 @@ audit_WriteThrHistory(void)
 		}
 	}
 }
+
+/* Begin BUG#z6137 */
+static void
+check_base_line(const char *basename, const char *basevalue)
+{
+	char 	   *guc_var = NULL;
+
+	guc_var = GetConfigOptionByName(basename, NULL, false);
+
+	if (guc_var == NULL)
+	{
+		ereport(ERROR,
+				(errmsg("basename '%s' does not exist!", basename)));
+	}
+}
+/* End BUG#z6137 */
+
 
 Datum
 pg_create_secmon_rule(PG_FUNCTION_ARGS)
@@ -11908,6 +11931,10 @@ pg_create_secmon_threshold(PG_FUNCTION_ARGS)
 		basename = text_to_cstring(PG_GETARG_TEXT_PP(4));
 		basevalue = text_to_cstring(PG_GETARG_TEXT_PP(5));
 
+		/* Begin BUG#z6137 */
+		check_base_line(basename, basevalue);
+		/* End BUG#z6137 */
+
 		if (nsteps > 1 || maxtimes > 1)
 		{
 			ereport(ERROR,
@@ -11962,6 +11989,49 @@ pg_create_secmon_threshold(PG_FUNCTION_ARGS)
 	}
 	else
 	{
+		/* Begin BUG#z6137 */
+		HeapTuple 	rule_tup;
+		HeapTuple 	config_tup;
+		Form_pg_secmon_rule rule_form;
+		Oid			config_oid;
+		Form_pg_audit_config config_form;
+		char	   *objinfo;
+		
+		rule_tup = SearchSysCache1(AUDITRULEID, ruleoid);
+		if (!HeapTupleIsValid(rule_tup))
+		{
+			ereport(ERROR,
+							(errmsg("ruleoid %d does not exist in pg_secmon_rule!", ruleoid)));
+			
+		}
+
+		rule_form = (Form_pg_secmon_rule) GETSTRUCT(rule_tup);
+
+		config_oid = rule_form->confid;
+
+		ReleaseCatCache(rule_tup);
+
+		config_tup = SearchSysCache1(AUDITCONFIGID, config_oid);
+		if (!HeapTupleIsValid(config_tup))
+		{
+			ereport(ERROR,
+							(errmsg("confid %d does not exist in pg_audit_config!", config_oid)));
+			
+		}
+
+		config_form = (Form_pg_audit_config) GETSTRUCT(config_tup);
+
+		if (strcmp(NameStr(config_form->objtype), "column") == 0)
+		{
+			objinfo = pstrdup(NameStr(config_form->objoid));
+		}
+		else
+		{
+			objinfo = pstrdup("");
+		}
+		
+		/* End BUG#z6137 */
+		
 		columns	= (int2vector *) PG_GETARG_POINTER(8);
 
 		for (i = 0; i < columns->dim1; i++)
@@ -11973,6 +12043,15 @@ pg_create_secmon_threshold(PG_FUNCTION_ARGS)
 				ereport(ERROR,
 							(errmsg("invalid column number %d", columns->values[i])));
 			}
+
+			/* Begin BUG#z6137 */
+			if (strlen(objinfo) == 0)
+				ereport(ERROR,
+							(errmsg("the audit configuration is not a column audit")));
+			if (strlen(objinfo) > 0 && (objinfo[strlen(objinfo) - 1] - '0') != columns->values[i])
+				ereport(ERROR,
+							(errmsg("invalid column number %d", columns->values[i])));
+			/* End BUG#z6137 */
 		}
 
 		if (nsteps > 1 || maxtimes > 1)
@@ -11981,6 +12060,10 @@ pg_create_secmon_threshold(PG_FUNCTION_ARGS)
 							(errmsg("important columns cant not work with sequence threshold or maxtimes threshold!")));
 		}
 
+		/* Begin BUG#z6137 */
+		ReleaseCatCache(config_tup);
+		/* End BUG#z6137 */
+		
 		values[Anum_pg_secmon_threshold_impt_columns - 1] = PointerGetDatum(columns);
 	}
 	
@@ -12441,9 +12524,11 @@ pg_alter_secmon_threshold(PG_FUNCTION_ARGS)
 		replaces[Anum_pg_secmon_threshold_enable - 1] = true;
 	}
 
+	/*Begin BUG#z6147 */
 	/* modify starttime */
-	values[Anum_pg_secmon_threshold_starttime - 1] = TimestampTzGetDatum(GetCurrentTransactionStartTimestamp());
-	replaces[Anum_pg_secmon_threshold_starttime - 1] = true;
+	//values[Anum_pg_secmon_threshold_starttime - 1] = TimestampTzGetDatum(GetCurrentTransactionStartTimestamp());
+	//replaces[Anum_pg_secmon_threshold_starttime - 1] = true;
+	/*End BUG#z6147 */
 
 	newtup = heap_modify_tuple(tup, RelationGetDescr(pg_secmon_threshold), values, nulls, replaces);
 
