@@ -4336,8 +4336,22 @@ rename_constraint_internal(Oid myrelid,
 		&& (con->contype == CONSTRAINT_PRIMARY
 			|| con->contype == CONSTRAINT_UNIQUE
 			|| con->contype == CONSTRAINT_EXCLUSION))
+	{   /* Begin BUG#Z6226 */
 		/* rename the index; this renames the constraint as well */
+		ObjectAddress	indAddr;
+		char* newname = pstrdup(newconname);
 		RenameRelationInternal(con->conindid, newconname, false, true);
+		
+		/* update index information in pg_object */
+		ObjectAddressSet(indAddr, RelationRelationId, con->conindid);
+		if (pg_object_alter_obj_hook && pg_object_get_ori_infor_hook)
+		{
+			PgObjectInfo oriinf = NULL;
+			if ((oriinf = pg_object_get_ori_infor_hook(indAddr)) != NULL)
+				pg_object_alter_obj_hook(indAddr, newname, oriinf->orischema, oriinf->orioption, NULL);
+		}
+	}   /* End BUG#6226 */
+		
 	else
 		RenameConstraintById(constraintOid, newconname);
 
