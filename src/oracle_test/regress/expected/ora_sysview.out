@@ -1278,4 +1278,35 @@ select * from user_tab_privs;
  TAB_PRIVS_U2 | TAB_PRIVS_U1 | TAB_PRIVS_TB | TAB_PRIVS_U1 | SELECT    | NO        | YES       | NO     | TABLE | NO
 (1 row)
 
+-- special test for all_objects for CONSTRAINT 
+create table objects_tb(id int);
+alter table objects_tb add constraint objects_tb_con unique(id);
+select object_name, object_name from all_objects where UPPER(object_name) = UPPER('objects_tb_con');
+  object_name   |  object_name   
+----------------+----------------
+ OBJECTS_TB_CON | OBJECTS_TB_CON
+ OBJECTS_TB_CON | OBJECTS_TB_CON
+(2 rows)
+
+select objname from pg_object where UPPER(objname) = UPPER('objects_tb_con');
+    objname     
+----------------
+ objects_tb_con
+(1 row)
+
+alter table objects_tb rename constraint objects_tb_con to objects_tb_con_new;
+select object_name, object_name from all_objects where UPPER(object_name) = UPPER('objects_tb_con_new');
+    object_name     |    object_name     
+--------------------+--------------------
+ OBJECTS_TB_CON_NEW | OBJECTS_TB_CON_NEW
+ OBJECTS_TB_CON_NEW | OBJECTS_TB_CON_NEW
+(2 rows)
+
+select objname from pg_object where UPPER(objname) = UPPER('objects_tb_con_new');
+      objname       
+--------------------
+ objects_tb_con_new
+(1 row)
+
+drop table objects_tb cascade;
 set ivorysql.identifier_case_switch to normal;

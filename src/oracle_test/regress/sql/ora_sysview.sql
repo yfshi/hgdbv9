@@ -888,4 +888,16 @@ grant select on table tab_privs_tb to tab_privs_u2;
 set ivorysql.identifier_case_switch to interchange;
 select * from user_tab_privs;
 
+-- special test for all_objects for CONSTRAINT 
+create table objects_tb(id int);
+alter table objects_tb add constraint objects_tb_con unique(id);
+select object_name, object_name from all_objects where UPPER(object_name) = UPPER('objects_tb_con');
+select objname from pg_object where UPPER(objname) = UPPER('objects_tb_con');
+
+alter table objects_tb rename constraint objects_tb_con to objects_tb_con_new;
+select object_name, object_name from all_objects where UPPER(object_name) = UPPER('objects_tb_con_new');
+select objname from pg_object where UPPER(objname) = UPPER('objects_tb_con_new');
+
+drop table objects_tb cascade;
+
 set ivorysql.identifier_case_switch to normal;
