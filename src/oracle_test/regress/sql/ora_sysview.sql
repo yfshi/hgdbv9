@@ -900,4 +900,96 @@ select objname from pg_object where UPPER(objname) = UPPER('objects_tb_con_new')
 
 drop table objects_tb cascade;
 
+\c - sysview_objects_u2
+drop table tab_privs_tb;
+
+-- Additional test fof xxx_tab_privs
+create user tab_privs_u11;
+create user tab_privs_u12;
+
+-- create table, view, materialized view, sequence
+create table tab_privs_tb(id int);
+insert into tab_privs_tb values (generate_series(0, 9));
+create view tab_privs_v1 as select * from tab_privs_tb;
+create materialized view tab_privs_mv1 as select * from tab_privs_tb;
+create sequence tab_privs_seq1;
+
+grant select on tab_privs_tb to tab_privs_u11;
+grant insert on tab_privs_tb to tab_privs_u12;
+
+grant select on tab_privs_v1 to tab_privs_u11;
+grant select on tab_privs_mv1 to tab_privs_u12;
+
+grant update on tab_privs_seq1 to tab_privs_u11;
+
+-- create function, procedure
+create or replace function tab_privs_func()
+returns varchar2(128)
+AS $$ 
+    declare v_name varchar2(128);
+    begin
+        return v_name;
+    end;
+$$ LANGUAGE plpgsql;
+/
+
+create or replace procedure tab_privs_proc
+AS $$
+    begin 
+    end;
+$$ language plpgsql;
+/
+
+grant execute on function tab_privs_func to tab_privs_u11;
+grant execute on procedure tab_privs_proc to tab_privs_u12;
+
+-- create type
+create type tab_privs_typ as (id int, name text);
+grant usage on type tab_privs_typ to tab_privs_u11;
+
+-- package
+CREATE OR REPLACE PACKAGE tab_privs_pkg IS
+    FUNCTION GET_TIME RETURN NUMBER;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY tab_privs_pkg IS
+    FUNCTION GET_TIME RETURN NUMBER IS
+    BEGIN
+        RETURN floor(EXTRACT(EPOCH FROM (now() - pg_postmaster_start_time())*100));
+    END;
+END;
+/
+
+grant execute on package tab_privs_pkg to tab_privs_u11;
+
+-- query
+\c - tab_privs_u11
+set ivorysql.identifier_case_switch to interchange; 
+select table_name, owner, grantor, grantee, privilege, type from dba_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
+select table_name, grantor, grantee, privilege, type from all_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, grantor, grantee, privilege, type;
+select table_name, owner, grantor, grantee, privilege, type from user_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
+
+\c - tab_privs_u12
+set ivorysql.identifier_case_switch to interchange; 
+select table_name, owner, grantor, grantee, privilege, type from dba_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
+select table_name, grantor, grantee, privilege, type from all_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, grantor, grantee, privilege, type;
+select table_name, owner, grantor, grantee, privilege, type from user_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
+
+\c - sysview_objects_u2
+set ivorysql.identifier_case_switch to interchange; 
+select table_name, owner, grantor, grantee, privilege, type from dba_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
+select table_name, grantor, grantee, privilege, type from all_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, grantor, grantee, privilege, type;
+select table_name, owner, grantor, grantee, privilege, type from user_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
+
+drop function tab_privs_func;
+drop procedure tab_privs_proc;
+drop type tab_privs_typ;
+drop materialized view tab_privs_mv1;
+drop view tab_privs_v1;
+drop sequence tab_privs_seq1;
+drop table tab_privs_tb;
+drop PACKAGE BODY tab_privs_pkg;
+drop PACKAGE tab_privs_pkg;
+
 set ivorysql.identifier_case_switch to normal;
