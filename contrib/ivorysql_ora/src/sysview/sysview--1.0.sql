@@ -8754,7 +8754,10 @@ UNION ALL
         NULL::date AS created,
         NULL::date AS last_ddl_time,
         NULL::varchar2(19) AS timestamp,
-        'VALID'::varchar2(7) AS status,
+        CASE
+            WHEN con.convalidated = 't' THEN 'VALID'
+            ELSE 'INVALID'
+        END::varchar2(7) AS status,
         'N'::varchar2(1) AS temporary,
         'N'::varchar2(1) AS generated,
         'N'::varchar2(1) AS secondary,
@@ -9480,7 +9483,10 @@ UNION ALL
         NULL::date AS created,
         NULL::date AS last_ddl_time,
         NULL::varchar2(19) AS timestamp,
-        'VALID'::varchar2(7) AS status,
+        CASE
+            WHEN con.convalidated = 't' THEN 'VALID'
+            ELSE 'INVALID'
+        END::varchar2(7) AS status,
         'N'::varchar2(1) AS temporary,
         'N'::varchar2(1) AS generated,
         'N'::varchar2(1) AS secondary,
@@ -10206,7 +10212,10 @@ UNION ALL
         NULL::date AS created,
         NULL::date AS last_ddl_time,
         NULL::varchar2(19) AS timestamp,
-        'VALID'::varchar2(7) AS status,
+        CASE
+            WHEN con.convalidated = 't' THEN 'VALID'
+            ELSE 'INVALID'
+        END::varchar2(7) AS status,
         'N'::varchar2(1) AS temporary,
         'N'::varchar2(1) AS generated,
         'N'::varchar2(1) AS secondary,
