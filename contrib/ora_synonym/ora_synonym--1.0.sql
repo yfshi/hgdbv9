@@ -26,7 +26,7 @@ CREATE OR REPLACE VIEW SYS.USER_SYNONYMS AS
             objname AS TABLE_NAME,
             db_link AS DB_LINK,
             '' AS ORIGIN_CON_ID
-    FROM PG_SYNONYM WHERE pg_get_userbyid(synowner) = CURRENT_USER;
+    FROM PG_SYNONYM WHERE pg_get_userbyid(synowner) = CURRENT_USER AND synispub IS false;
 
 GRANT SELECT ON SYS.USER_SYNONYMS TO PUBLIC;
 
