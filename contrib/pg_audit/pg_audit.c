@@ -213,6 +213,8 @@ char *audit_space_alarm = NULL;
 #define SECMON_RULE_NATTS 7
 #define SECMON_THR_NATTS 18
 
+#define CHECK_LIMIT_TIMES 200
+
 /* audit using independent memory context */
 static MemoryContext AuditContext = NULL;
 /* auditEventStack head */
@@ -402,6 +404,9 @@ void pg_audit_launch_drop_table(Datum main_arg);
 static bool is_db_changes(List      *sublist);
 static bool is_table_exits(TimestampTz time_cur);
 static bool check_disk_size(void);
+/* Begin - BUG#Z6360 */
+static bool find_is_exist_create_table_proc(Oid dbid);
+/* End - BUG#Z6360 */
 #endif
 
 static void send_signal_launch_proc(void);
@@ -13178,7 +13183,7 @@ audit_register_all_db_work(AuditTable flag)
 
 	TimestampTz time_cur;
 	static TimestampTz pre_time = 0;
-	int times;
+	int times = 0;
 
 	if (RecoveryInProgress())
 		return;
@@ -13210,7 +13215,10 @@ audit_register_all_db_work(AuditTable flag)
 			dbinfo *sub = (dbinfo *) lfirst(lc);
 			if (sub->datallowconn && !sub->datistemplate)
 			{
-				audit_register_db_work(sub->dbid, flag);
+				/* Begin - BUG#Z6360 */
+				if (!find_is_exist_create_table_proc(sub->dbid))
+				/* End - BUG#Z6360 */
+					audit_register_db_work(sub->dbid, flag);
 			}
 		}
 	}
@@ -13219,11 +13227,16 @@ audit_register_all_db_work(AuditTable flag)
 	{
 		do
 		{
-			if (is_table_exits(time_cur))
+			if (is_table_exits(time_cur)
+				&& is_table_exits(time_cur + USECS_PER_DAY)) /* BUG#Z6360 */
+			{
 				break;
+			}
+
 			pg_usleep(5000);
 			times++;
-		}while(times < 10);
+
+		} while(times < CHECK_LIMIT_TIMES); /* BUG#Z6360 */
 	}
 
 	/* Switch back to original memory context. */
@@ -13275,4 +13288,31 @@ void pg_audit_launch_drop_table(Datum main_arg)
 
 	exit(0);
 }
+
+/* Begin - BUG#Z6360 */
+static bool
+find_is_exist_create_table_proc(Oid dbid)
+{
+	slist_mutable_iter iter;
+	char audit_pro_name[BGW_MAXLEN] = {'\0'};
+
+	memset(audit_pro_name, '\0', BGW_MAXLEN);
+	snprintf(audit_pro_name, BGW_MAXLEN, AUDIT_LAUNCHER_DB_S, dbid);
+
+	slist_foreach_modify(iter, &BackgroundWorkerList)
+	{
+		RegisteredBgWorker *rw;
+
+		rw = slist_container(RegisteredBgWorker, rw_lnode, iter.cur);
+
+		if (rw->rw_pid != getpid()
+			&& strncmp(rw->rw_worker.bgw_name, audit_pro_name, strlen(audit_pro_name) + 1) == 0)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+/* End - BUG#Z6360 */
 #endif
