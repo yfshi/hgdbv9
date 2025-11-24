@@ -5087,6 +5087,8 @@ transformPLAssignStmt(ParseState *pstate, PLAssignStmt *stmt)
 											EXPR_KIND_GROUP_BY,
 											false /* allow SQL92 rules */ );
 
+	qry->groupDistinct = sstmt->groupDistinct;
+
 	/* Begin - BUG#M4610 */
 	if (pstate->p_hasAggs && qry->groupClause == NULL && qry->sortClause != NULL)
 	{

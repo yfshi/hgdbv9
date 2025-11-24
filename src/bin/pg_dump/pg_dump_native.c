@@ -16756,7 +16756,7 @@ dumpConstraint(Archive *fout, const ConstraintInfo *coninfo)
 				dumpComment(fout, conprefix->data, qtypname,
 										tyinfo->dobj.namespace->dobj.name,
 										tyinfo->rolname,
-										coninfo->dobj.catId, 0, tyinfo->dobj.dumpId);
+										coninfo->dobj.catId, 0, coninfo->dobj.dumpId);
 				destroyPQExpBuffer(conprefix);
 				free(qtypname);
 			}
@@ -17477,6 +17477,11 @@ dumpEventTrigger(Archive *fout, const EventTriggerInfo *evtinfo)
 		dumpComment(fout, "EVENT TRIGGER", qevtname,
 					NULL, evtinfo->evtowner,
 					evtinfo->dobj.catId, 0, evtinfo->dobj.dumpId);
+
+	if (evtinfo->dobj.dump & DUMP_COMPONENT_SECLABEL)
+		dumpSecLabel(fout, "EVENT TRIGGER", qevtname,
+					 NULL, evtinfo->evtowner,
+					 evtinfo->dobj.catId, 0, evtinfo->dobj.dumpId);
 
 	destroyPQExpBuffer(query);
 	destroyPQExpBuffer(delqry);

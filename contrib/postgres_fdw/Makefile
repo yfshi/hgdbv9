@@ -21,6 +21,8 @@ ORA_REGRESS = ivy_postgres_fdw
 #Begin - ReqID:SRS-MISC-MYSQL-FRAME
 MYS_REGRESS = mys_postgres_fdw
 #End - ReqID:SRS-MISC-MYSQL-FRAME
+ISOLATION = eval_plan_qual
+ISOLATION_OPTS = --load-extension=postgres_fdw
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

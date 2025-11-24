@@ -1772,12 +1772,6 @@ _bt_killitems(IndexScanDesc scan)
 		buf = _bt_getbuf(scan->indexRelation, so->currPos.currPage, BT_READ);
 
 		latestlsn = BufferGetLSNAtomic(buf);
-		/* Begin - BUG#Z5880 */
-		/* This assertion will case the pg_bulkload regression to fail.Comment it
-		 * out and it will be reverted onve pg_bulkload fixes the issue.
-		 */
-		//Assert(!XLogRecPtrIsInvalid(so->currPos.lsn));
-		/* End - BUG#Z5880 */
 		Assert(so->currPos.lsn <= latestlsn);
 		if (so->currPos.lsn != latestlsn)
 		{
