@@ -233,8 +233,7 @@ static char *ab_month_names_et_EE[] = {
 static char *day_names_et_EE[] = {
 	"esmaspäev", "teisipäev", "kolmapäev", "neljapäev",
 	"reede",	 "laupäev",   "pühapäev"};
-static char *ab_day_names_et_EE[] = {"E", "T", "K", "N",
-													  "R", "L", "P"};
+static char *ab_day_names_et_EE[] = {"E", "T", "K", "N", "R", "L", "P"};
 /***** LOCALE END et_EE *****/
 
 /***** LOCALE BEGIN eu_ES: Basque - Basque *****/
@@ -1015,4 +1014,35 @@ MyLocaleSearch(char *target)
 		}
 	}
 	return NULL;
+}
+
+
+int
+MyMonthSearch(char *target, char **input)
+{
+	int i = 0;
+	MyLocale   *locale = NULL;
+	locale = MyLocaleSearch(target);
+
+	if (locale == NULL)
+	{
+			ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("search month: '%s' failed for function str_to_date", *input)));
+	}
+
+	for (i = 0; i < 12; i++)
+	{
+		if (!pg_strncasecmp(*input, locale->month_names[i], strlen(locale->month_names[i])))
+		{
+			*input = *input + strlen(locale->month_names[i]);
+			return i + 1;
+		}
+		else if (!pg_strncasecmp(*input, locale->ab_month_names[i], strlen(locale->ab_month_names[i])))
+		{
+			*input = *input + strlen(locale->ab_month_names[i]);
+			return i + 1;
+		}
+	}
+	return 0;
 }

@@ -1323,3 +1323,139 @@ select convert('abc', decimal(10,2));
 select convert(9999999999.9999999999, decimal(66,31));
 select convert(9999999999.9999999999, decimal(65,31));
 /* End - bug#z5802 */
+
+/* STR_TO_DATE FUNCTION */
+SELECT STR_TO_DATE('01,5,2013','%d,%m,%Y');
+SELECT STR_TO_DATE('May 1, 2013','%M %d,%Y');
+set sql_mode = '' ;
+SELECT STR_TO_DATE('a09:30:17','a%h:%i:%s');
+set sql_mode = '';
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%sa');
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%sabc');
+SELECT STR_TO_DATE('09:30a:17','%h:%ia:%s');
+SELECT STR_TO_DATE('09:a30:17','%h:%ai:%s');
+SELECT STR_TO_DATE('09:a30:17','%h:a%i:%s');
+set sql_mode = traditional;
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%sa');
+set sql_mode = '' ;
+SELECT STR_TO_DATE('a09:30:17','%h:%i:%s');
+set sql_mode = traditional;
+SELECT STR_TO_DATE('a09:30:17','%h:%i:%s');
+set sql_mode = '' ;
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%s');
+set sql_mode = traditional;
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%s');
+set sql_mode = '' ;
+SELECT STR_TO_DATE('abc','abc');
+set sql_mode = traditional;
+SELECT STR_TO_DATE('abc','abc');
+set sql_mode = '';
+SELECT STR_TO_DATE('9','%m');
+set sql_mode = traditional;
+SELECT STR_TO_DATE('9','%m');
+set sql_mode = '';
+SELECT STR_TO_DATE('00/00/0000', '%m/%d/%Y');
+set sql_mode = NO_ZERO_DATE;
+SELECT STR_TO_DATE('00/00/0000', '%m/%d/%Y');
+SELECT STR_TO_DATE('2021-2-31', '%Y-%m-%d');
+SELECT STR_TO_DATE('100000-2-31', '%Y-%m-%d');
+SELECT STR_TO_DATE('2021-13-31', '%Y-%m-%d');
+SELECT STR_TO_DATE('2021-13-32', '%Y-%m-%d');
+SELECT STR_TO_DATE('01,5,2013','%d,%m,%Y');
+
+/* mysql code test */
+select str_to_date(concat('15-01-2001',' 2:59:58.999'), concat('%d-%m-%Y',' ','%H:%i:%s.%f'));
+select STR_TO_DATE('2004.12.12 22.30.61','%Y.%m.%d %T');
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+create table t1 (date char(30), format char(30) not null);
+insert into t1 values
+('2003-01-02 10:11:12', '%Y-%m-%d %H:%i:%S'),
+('03-01-02 8:11:2.123456', '%y-%m-%d %H:%i:%S.%#'),
+('0003-01-02 8:11:2.123456', '%Y-%m-%d %H:%i:%S.%#'),
+('03-01-02 8:11:2.123456',   '%Y-%m-%d %H:%i:%S.%#'),
+('2003-01-02 10:11:12 PM', '%Y-%m-%d %h:%i:%S %p'),
+('2003-01-02 01:11:12.12345AM', '%Y-%m-%d %h:%i:%S.%f%p'),
+('2003-01-02 02:11:12.12345AM', '%Y-%m-%d %h:%i:%S.%f %p'),
+('2003-01-02 12:11:12.12345 am', '%Y-%m-%d %h:%i:%S.%f%p'),
+('2003-01-02 11:11:12Pm', '%Y-%m-%d %h:%i:%S%p'),
+('10:20:10', '%H:%i:%s'),
+('10:20:10', '%h:%i:%s.%f'),
+('10:20:10', '%T'),
+('10:20:10AM', '%h:%i:%s%p'),
+('10:20:10AM', '%r'),
+('10:20:10.44AM', '%h:%i:%s.%f%p'),
+('15-01-2001 12:59:58', '%d-%m-%Y %H:%i:%S'),
+('15 September 2001', '%d %M %Y'),
+('15 SEPTEMB 2001', '%d %M %Y'),
+('15 MAY 2001', '%d %b %Y'),
+('15th May 2001', '%D %b %Y'),
+('Sunday 15 MAY 2001', '%W %d %b %Y'),
+('Sund 15 MAY 2001', '%W %d %b %Y'),
+('Tuesday 00 2002', '%W %U %Y'),
+('Thursday 53 1998', '%W %u %Y'),
+('Sunday 01 2001', '%W %v %x'),
+('Tuesday 52 2001', '%W %V %X'),
+('060 2004', '%j %Y'),
+('4 53 1998', '%w %u %Y'),
+('15-01-2001', '%d-%m-%Y %H:%i:%S'),
+('15-01-20', '%d-%m-%y'),
+('15-2001-1', '%d-%Y-%c');
+select date,format,str_to_date(date, format) as str_to_date from t1;
+drop table t1;
+
+/*TIMESTAMPDIFF*/
+set sql_mode = default;
+select timestampdiff(YEAR, '2002-05-01', '2001-01-01') as a;
+select timestampdiff(QUARTER, '2002-05-01', '2001-01-01') as a;
+select timestampdiff(MONTH, '2000-03-28', '2000-02-29') as a;
+select timestampdiff(MONTH, '1991-03-28', '2000-02-29') as a;
+select timestampdiff(SQL_TSI_WEEK, '2001-02-01', '2001-05-01') as a;
+select timestampdiff(SQL_TSI_HOUR, '2001-02-01', '2001-05-01') as a;
+select timestampdiff(SQL_TSI_DAY, '2001-02-01', '2001-05-01') as a;
+select timestampdiff(SQL_TSI_MINUTE, '2001-02-01 12:59:59', '2001-05-01 12:58:59') as a;
+select timestampdiff(SQL_TSI_SECOND, '2001-02-01 12:59:59', '2001-05-01 12:58:58') as a;
+select timestampdiff(SQL_TSI_DAY, '1986-02-01', '1986-03-01') as a1,
+       timestampdiff(SQL_TSI_DAY, '1900-02-01', '1900-03-01') as a2,
+       timestampdiff(SQL_TSI_DAY, '1996-02-01', '1996-03-01') as a3,
+       timestampdiff(SQL_TSI_DAY, '2000-02-01', '2000-03-01') as a4;
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-11 14:30:27');
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-11 14:30:28');
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-11 14:30:29');
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-12 14:30:27');
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-12 14:30:28');
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-12 14:30:29');
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-17 14:30:27');
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-17 14:30:28');
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-17 14:30:29');
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-24 14:30:27');
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-24 14:30:28');
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-24 14:30:29');
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-02-10 14:30:27');
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-02-10 14:30:28');
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-02-10 14:30:29');
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-03-10 14:30:27');
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-03-10 14:30:28');
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-03-10 14:30:29');
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2007-01-10 14:30:27');
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2007-01-10 14:30:28');
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2007-01-10 14:30:29');
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2008-01-10 14:30:27');
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2008-01-10 14:30:28');
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2008-01-10 14:30:29');
+select timestampdiff(month,'2004-09-11','2004-09-11');
+select timestampdiff(month,'2004-09-11','2005-09-11');
+select timestampdiff(month,'2004-09-11','2006-09-11');
+select timestampdiff(month,'2004-09-11','2007-09-11');
+select timestampdiff(month,'2005-09-11','2004-09-11');
+select timestampdiff(month,'2005-09-11','2003-09-11');
+select timestampdiff(month,'2004-02-28','2005-02-28');
+select timestampdiff(month,'2004-02-29','2005-02-28');
+select timestampdiff(month,'2004-02-28','2005-02-28');
+select timestampdiff(month,'2004-03-29','2005-03-28');
+select timestampdiff(month,'2003-02-28','2004-02-29');
+select timestampdiff(month,'2003-02-28','2005-02-28');
+select timestampdiff(month,'1999-09-11','2001-10-10');
+select timestampdiff(month,'1999-09-11','2001-9-11');
+select timestampdiff(year,'1999-09-11','2001-9-11');
+select timestampdiff(year,'2004-02-28','2005-02-28');
+select timestampdiff(year,'2004-02-29','2005-02-28');
