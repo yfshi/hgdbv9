@@ -908,7 +908,7 @@ static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TEMP TEMPLATE TEMPORARY TEXT_P THEN
-	TIES TIME TIMESTAMP TIMESTAMPADD TINYBLOB TINYINT TO TRAILING TRANSACTION TRANSFORM
+	TIES TIME TIMESTAMP TIMESTAMPADD TIMESTAMPDIFF TINYBLOB TINYINT TO TRAILING TRANSACTION TRANSFORM
 	TREAT TRIGGER TRIGGERS /* ReqID:SRS-MYSQL-SHOW */ TRIM TRUE_P
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
@@ -17820,6 +17820,19 @@ func_expr_common_subexpr:
 											   COERCE_SQL_SYNTAX,
 											   @2);
 				}
+			/* Begin - ReqID: SRS-MYSQL-BUILDINFUNCTION */
+			| TIMESTAMPDIFF '(' timestamp_units ',' a_expr ',' a_expr ')'
+				{
+					Node *arg1 = makeStringConst($3, @3);
+					Node *arg2 = makeTypeCast($5, MySQLSystemTypeName("mysdatetimes"), @5);
+					Node *arg3 = makeTypeCast($7, MySQLSystemTypeName("mysdatetimes"), @7);
+
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("timestampdiff"),
+											   list_make3(arg1, arg2, arg3),
+											   COERCE_SQL_SYNTAX,
+											   @2);
+				}
+			/* End - ReqID: SRS-MYSQL-BUILDINFUNCTION */
 			| YEAR '(' a_expr ')'
 				{
 					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myyear"),
@@ -20121,6 +20134,7 @@ col_name_keyword:
 			| TIME
 			| TIMESTAMP
 			| TIMESTAMPADD
+			| TIMESTAMPDIFF /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| TINYBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| TINYINT		 /* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| TREAT
@@ -20716,6 +20730,7 @@ bare_label_keyword:
 			| TIME
 			| TIMESTAMP
 			| TIMESTAMPADD
+			| TIMESTAMPDIFF /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| TINYBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| TINYINT		/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| TRAILING

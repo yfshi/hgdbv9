@@ -4847,3 +4847,571 @@ select convert(9999999999.9999999999, decimal(65,31));
 (1 row)
 
 /* End - bug#z5802 */
+/* STR_TO_DATE FUNCTION */
+SELECT STR_TO_DATE('01,5,2013','%d,%m,%Y');
+     STR_TO_DATE     
+---------------------
+ 2013-05-01 00:00:00
+(1 row)
+
+SELECT STR_TO_DATE('May 1, 2013','%M %d,%Y');
+     STR_TO_DATE     
+---------------------
+ 2013-05-01 00:00:00
+(1 row)
+
+set sql_mode = '' ;
+SELECT STR_TO_DATE('a09:30:17','a%h:%i:%s');
+     STR_TO_DATE     
+---------------------
+ 0000-00-00 09:30:17
+(1 row)
+
+set sql_mode = '';
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%sa');
+     STR_TO_DATE     
+---------------------
+ 0000-00-00 09:30:17
+(1 row)
+
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%sabc');
+     STR_TO_DATE     
+---------------------
+ 0000-00-00 09:30:17
+(1 row)
+
+SELECT STR_TO_DATE('09:30a:17','%h:%ia:%s');
+     STR_TO_DATE     
+---------------------
+ 0000-00-00 09:30:17
+(1 row)
+
+SELECT STR_TO_DATE('09:a30:17','%h:%ai:%s');
+WARNING:  Incorrect datetime value: '09:a30:17' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+SELECT STR_TO_DATE('09:a30:17','%h:a%i:%s');
+     STR_TO_DATE     
+---------------------
+ 0000-00-00 09:30:17
+(1 row)
+
+set sql_mode = traditional;
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%sa');
+WARNING:  Incorrect datetime value: '09:30:17a' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+set sql_mode = '' ;
+SELECT STR_TO_DATE('a09:30:17','%h:%i:%s');
+WARNING:  Incorrect datetime value: 'a09:30:17' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+set sql_mode = traditional;
+SELECT STR_TO_DATE('a09:30:17','%h:%i:%s');
+WARNING:  Incorrect datetime value: 'a09:30:17' for function str_to_date
+WARNING:  Incorrect datetime value: 'a09:30:17' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+set sql_mode = '' ;
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%s');
+WARNING:  Truncated incorrect time value: '09:30:17a'
+     STR_TO_DATE     
+---------------------
+ 0000-00-00 09:30:17
+(1 row)
+
+set sql_mode = traditional;
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%s');
+WARNING:  Truncated incorrect time value: '09:30:17a'
+WARNING:  Incorrect datetime value: '09:30:17a' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+set sql_mode = '' ;
+SELECT STR_TO_DATE('abc','abc');
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+set sql_mode = traditional;
+SELECT STR_TO_DATE('abc','abc');
+WARNING:  Incorrect datetime value: 'abc' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+set sql_mode = '';
+SELECT STR_TO_DATE('9','%m');
+     STR_TO_DATE     
+---------------------
+ 0000-09-00 00:00:00
+(1 row)
+
+set sql_mode = traditional;
+SELECT STR_TO_DATE('9','%m');
+WARNING:  Incorrect datetime value: '9' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+set sql_mode = '';
+SELECT STR_TO_DATE('00/00/0000', '%m/%d/%Y');
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+set sql_mode = NO_ZERO_DATE;
+SELECT STR_TO_DATE('00/00/0000', '%m/%d/%Y');
+WARNING:  Incorrect datetime value: '00/00/0000' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+SELECT STR_TO_DATE('2021-2-31', '%Y-%m-%d');
+     STR_TO_DATE     
+---------------------
+ 2021-02-31 00:00:00
+(1 row)
+
+SELECT STR_TO_DATE('100000-2-31', '%Y-%m-%d');
+ERROR:  numeric field overflow
+DETAIL:  A field with precision 14, scale 0 must round to an absolute value less than 10^14.
+SELECT STR_TO_DATE('2021-13-31', '%Y-%m-%d');
+WARNING:  Incorrect datetime value: '2021-13-31' for function str_to_date
+WARNING:  Incorrect datetime value: '2021-13-31' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+SELECT STR_TO_DATE('2021-13-32', '%Y-%m-%d');
+WARNING:  Incorrect datetime value: '2021-13-32' for function str_to_date
+WARNING:  Incorrect datetime value: '2021-13-32' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+SELECT STR_TO_DATE('01,5,2013','%d,%m,%Y');
+     STR_TO_DATE     
+---------------------
+ 2013-05-01 00:00:00
+(1 row)
+
+/* mysql code test */
+select str_to_date(concat('15-01-2001',' 2:59:58.999'), concat('%d-%m-%Y',' ','%H:%i:%s.%f'));
+        str_to_date         
+----------------------------
+ 2001-01-15 02:59:58.999000
+(1 row)
+
+select STR_TO_DATE('2004.12.12 22.30.61','%Y.%m.%d %T');
+WARNING:  Incorrect datetime value: '22.30.61' for function str_to_date
+WARNING:  Incorrect datetime value: '2004.12.12 22.30.61' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+create table t1 (date char(30), format char(30) not null);
+insert into t1 values
+('2003-01-02 10:11:12', '%Y-%m-%d %H:%i:%S'),
+('03-01-02 8:11:2.123456', '%y-%m-%d %H:%i:%S.%#'),
+('0003-01-02 8:11:2.123456', '%Y-%m-%d %H:%i:%S.%#'),
+('03-01-02 8:11:2.123456',   '%Y-%m-%d %H:%i:%S.%#'),
+('2003-01-02 10:11:12 PM', '%Y-%m-%d %h:%i:%S %p'),
+('2003-01-02 01:11:12.12345AM', '%Y-%m-%d %h:%i:%S.%f%p'),
+('2003-01-02 02:11:12.12345AM', '%Y-%m-%d %h:%i:%S.%f %p'),
+('2003-01-02 12:11:12.12345 am', '%Y-%m-%d %h:%i:%S.%f%p'),
+('2003-01-02 11:11:12Pm', '%Y-%m-%d %h:%i:%S%p'),
+('10:20:10', '%H:%i:%s'),
+('10:20:10', '%h:%i:%s.%f'),
+('10:20:10', '%T'),
+('10:20:10AM', '%h:%i:%s%p'),
+('10:20:10AM', '%r'),
+('10:20:10.44AM', '%h:%i:%s.%f%p'),
+('15-01-2001 12:59:58', '%d-%m-%Y %H:%i:%S'),
+('15 September 2001', '%d %M %Y'),
+('15 SEPTEMB 2001', '%d %M %Y'),
+('15 MAY 2001', '%d %b %Y'),
+('15th May 2001', '%D %b %Y'),
+('Sunday 15 MAY 2001', '%W %d %b %Y'),
+('Sund 15 MAY 2001', '%W %d %b %Y'),
+('Tuesday 00 2002', '%W %U %Y'),
+('Thursday 53 1998', '%W %u %Y'),
+('Sunday 01 2001', '%W %v %x'),
+('Tuesday 52 2001', '%W %V %X'),
+('060 2004', '%j %Y'),
+('4 53 1998', '%w %u %Y'),
+('15-01-2001', '%d-%m-%Y %H:%i:%S'),
+('15-01-20', '%d-%m-%y'),
+('15-2001-1', '%d-%Y-%c');
+select date,format,str_to_date(date, format) as str_to_date from t1;
+WARNING:  Truncated incorrect time value: '15 SEPTEMB 2001'
+              date              |             format             |        str_to_date         
+--------------------------------+--------------------------------+----------------------------
+ 2003-01-02 10:11:12            | %Y-%m-%d %H:%i:%S              | 2003-01-02 10:11:12
+ 03-01-02 8:11:2.123456         | %y-%m-%d %H:%i:%S.%#           | 2003-01-02 08:11:02
+ 0003-01-02 8:11:2.123456       | %Y-%m-%d %H:%i:%S.%#           | 0003-01-02 08:11:02
+ 03-01-02 8:11:2.123456         | %Y-%m-%d %H:%i:%S.%#           | 2003-01-02 08:11:02
+ 2003-01-02 10:11:12 PM         | %Y-%m-%d %h:%i:%S %p           | 2003-01-02 22:11:12
+ 2003-01-02 01:11:12.12345AM    | %Y-%m-%d %h:%i:%S.%f%p         | 2003-01-02 01:11:12.123450
+ 2003-01-02 02:11:12.12345AM    | %Y-%m-%d %h:%i:%S.%f %p        | 2003-01-02 02:11:12.123450
+ 2003-01-02 12:11:12.12345 am   | %Y-%m-%d %h:%i:%S.%f%p         | 2003-01-02 00:11:12.123450
+ 2003-01-02 11:11:12Pm          | %Y-%m-%d %h:%i:%S%p            | 2003-01-02 23:11:12
+ 10:20:10                       | %H:%i:%s                       | 0000-00-00 10:20:10
+ 10:20:10                       | %h:%i:%s.%f                    | 0000-00-00 10:20:10
+ 10:20:10                       | %T                             | 0000-00-00 10:20:10
+ 10:20:10AM                     | %h:%i:%s%p                     | 0000-00-00 10:20:10
+ 10:20:10AM                     | %r                             | 0000-00-00 10:20:10
+ 10:20:10.44AM                  | %h:%i:%s.%f%p                  | 0000-00-00 10:20:10.440000
+ 15-01-2001 12:59:58            | %d-%m-%Y %H:%i:%S              | 2001-01-15 12:59:58
+ 15 September 2001              | %d %M %Y                       | 2001-09-15 00:00:00
+ 15 SEPTEMB 2001                | %d %M %Y                       | 2000-09-15 00:00:00
+ 15 MAY 2001                    | %d %b %Y                       | 2001-05-15 00:00:00
+ 15th May 2001                  | %D %b %Y                       | 2001-05-15 00:00:00
+ Sunday 15 MAY 2001             | %W %d %b %Y                    | 2001-05-15 00:00:00
+ Sund 15 MAY 2001               | %W %d %b %Y                    | 2001-05-15 00:00:00
+ Tuesday 00 2002                | %W %U %Y                       | 2002-02-00 00:00:00
+ Thursday 53 1998               | %W %u %Y                       | 1998-04-00 00:00:00
+ Sunday 01 2001                 | %W %v %x                       | 0000-07-00 00:00:00
+ Tuesday 52 2001                | %W %V %X                       | 0000-02-00 00:00:00
+ 060 2004                       | %j %Y                          | 2004-02-29 00:00:00
+ 4 53 1998                      | %w %u %Y                       | 1998-12-31 00:00:00
+ 15-01-2001                     | %d-%m-%Y %H:%i:%S              | 2001-01-15 00:00:00
+ 15-01-20                       | %d-%m-%y                       | 2020-01-15 00:00:00
+ 15-2001-1                      | %d-%Y-%c                       | 2001-01-15 00:00:00
+(31 rows)
+
+drop table t1;
+/*TIMESTAMPDIFF*/
+set sql_mode = default;
+select timestampdiff(YEAR, '2002-05-01', '2001-01-01') as a;
+ a  
+----
+ -1
+(1 row)
+
+select timestampdiff(QUARTER, '2002-05-01', '2001-01-01') as a;
+ a  
+----
+ -5
+(1 row)
+
+select timestampdiff(MONTH, '2000-03-28', '2000-02-29') as a;
+ a 
+---
+ 0
+(1 row)
+
+select timestampdiff(MONTH, '1991-03-28', '2000-02-29') as a;
+  a  
+-----
+ 107
+(1 row)
+
+select timestampdiff(SQL_TSI_WEEK, '2001-02-01', '2001-05-01') as a;
+ a  
+----
+ 12
+(1 row)
+
+select timestampdiff(SQL_TSI_HOUR, '2001-02-01', '2001-05-01') as a;
+  a   
+------
+ 2136
+(1 row)
+
+select timestampdiff(SQL_TSI_DAY, '2001-02-01', '2001-05-01') as a;
+ a  
+----
+ 89
+(1 row)
+
+select timestampdiff(SQL_TSI_MINUTE, '2001-02-01 12:59:59', '2001-05-01 12:58:59') as a;
+   a    
+--------
+ 128159
+(1 row)
+
+select timestampdiff(SQL_TSI_SECOND, '2001-02-01 12:59:59', '2001-05-01 12:58:58') as a;
+    a    
+---------
+ 7689539
+(1 row)
+
+select timestampdiff(SQL_TSI_DAY, '1986-02-01', '1986-03-01') as a1,
+       timestampdiff(SQL_TSI_DAY, '1900-02-01', '1900-03-01') as a2,
+       timestampdiff(SQL_TSI_DAY, '1996-02-01', '1996-03-01') as a3,
+       timestampdiff(SQL_TSI_DAY, '2000-02-01', '2000-03-01') as a4;
+ a1 | a2 | a3 | a4 
+----+----+----+----
+ 28 | 28 | 29 | 29
+(1 row)
+
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-11 14:30:27');
+ timestampdiff 
+---------------
+             0
+(1 row)
+
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-11 14:30:28');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-11 14:30:29');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-12 14:30:27');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-12 14:30:28');
+ timestampdiff 
+---------------
+             2
+(1 row)
+
+SELECT TIMESTAMPDIFF(day,'2006-01-10 14:30:28','2006-01-12 14:30:29');
+ timestampdiff 
+---------------
+             2
+(1 row)
+
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-17 14:30:27');
+ timestampdiff 
+---------------
+             0
+(1 row)
+
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-17 14:30:28');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-17 14:30:29');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-24 14:30:27');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-24 14:30:28');
+ timestampdiff 
+---------------
+             2
+(1 row)
+
+SELECT TIMESTAMPDIFF(week,'2006-01-10 14:30:28','2006-01-24 14:30:29');
+ timestampdiff 
+---------------
+             2
+(1 row)
+
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-02-10 14:30:27');
+ timestampdiff 
+---------------
+             0
+(1 row)
+
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-02-10 14:30:28');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-02-10 14:30:29');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-03-10 14:30:27');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-03-10 14:30:28');
+ timestampdiff 
+---------------
+             2
+(1 row)
+
+SELECT TIMESTAMPDIFF(month,'2006-01-10 14:30:28','2006-03-10 14:30:29');
+ timestampdiff 
+---------------
+             2
+(1 row)
+
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2007-01-10 14:30:27');
+ timestampdiff 
+---------------
+             0
+(1 row)
+
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2007-01-10 14:30:28');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2007-01-10 14:30:29');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2008-01-10 14:30:27');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2008-01-10 14:30:28');
+ timestampdiff 
+---------------
+             2
+(1 row)
+
+SELECT TIMESTAMPDIFF(year,'2006-01-10 14:30:28','2008-01-10 14:30:29');
+ timestampdiff 
+---------------
+             2
+(1 row)
+
+select timestampdiff(month,'2004-09-11','2004-09-11');
+ timestampdiff 
+---------------
+             0
+(1 row)
+
+select timestampdiff(month,'2004-09-11','2005-09-11');
+ timestampdiff 
+---------------
+            12
+(1 row)
+
+select timestampdiff(month,'2004-09-11','2006-09-11');
+ timestampdiff 
+---------------
+            24
+(1 row)
+
+select timestampdiff(month,'2004-09-11','2007-09-11');
+ timestampdiff 
+---------------
+            36
+(1 row)
+
+select timestampdiff(month,'2005-09-11','2004-09-11');
+ timestampdiff 
+---------------
+           -12
+(1 row)
+
+select timestampdiff(month,'2005-09-11','2003-09-11');
+ timestampdiff 
+---------------
+           -24
+(1 row)
+
+select timestampdiff(month,'2004-02-28','2005-02-28');
+ timestampdiff 
+---------------
+            12
+(1 row)
+
+select timestampdiff(month,'2004-02-29','2005-02-28');
+ timestampdiff 
+---------------
+            11
+(1 row)
+
+select timestampdiff(month,'2004-02-28','2005-02-28');
+ timestampdiff 
+---------------
+            12
+(1 row)
+
+select timestampdiff(month,'2004-03-29','2005-03-28');
+ timestampdiff 
+---------------
+            11
+(1 row)
+
+select timestampdiff(month,'2003-02-28','2004-02-29');
+ timestampdiff 
+---------------
+            12
+(1 row)
+
+select timestampdiff(month,'2003-02-28','2005-02-28');
+ timestampdiff 
+---------------
+            24
+(1 row)
+
+select timestampdiff(month,'1999-09-11','2001-10-10');
+ timestampdiff 
+---------------
+            24
+(1 row)
+
+select timestampdiff(month,'1999-09-11','2001-9-11');
+ timestampdiff 
+---------------
+            24
+(1 row)
+
+select timestampdiff(year,'1999-09-11','2001-9-11');
+ timestampdiff 
+---------------
+             2
+(1 row)
+
+select timestampdiff(year,'2004-02-28','2005-02-28');
+ timestampdiff 
+---------------
+             1
+(1 row)
+
+select timestampdiff(year,'2004-02-29','2005-02-28');
+ timestampdiff 
+---------------
+             0
+(1 row)
+

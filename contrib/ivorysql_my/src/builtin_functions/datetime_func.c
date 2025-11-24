@@ -49,7 +49,8 @@
 #include "../include/ivorysql_my.h"
 #include "../include/mys_locale.h"
 
-
+PG_FUNCTION_INFO_V1(str_to_date);
+PG_FUNCTION_INFO_V1(timestampdiff);
 PG_FUNCTION_INFO_V1(dayofmonth);
 PG_FUNCTION_INFO_V1(dayofweek);
 PG_FUNCTION_INFO_V1(dayofyear);
@@ -152,6 +153,7 @@ PG_FUNCTION_INFO_V1(get_format);
 #define JANUARY 1
 #define EPOCH_YEAR 1970
 #define LEAPS_THRU_END_OF(y)  ((y) / 4 - (y) / 100 + (y) / 400)
+#define FIRST_JULIAN_DAY 1721060
 
 static const int mon_starts[2][MONS_PER_YEAR] =
 {
@@ -178,6 +180,14 @@ typedef struct DateTimeFormat
 	const char   *time_format;
 }DateTimeFormat;
 
+typedef struct Date_time_format
+{
+	unsigned char positions[8];
+	char time_separator;
+	unsigned int flag;
+	char *format_str;
+	size_t format_length;
+}Date_time_format;
 
 static unsigned long long pow_of_10[20] = {
     1, 10, 100, 1000, 10000UL, 100000UL, 1000000UL, 10000000UL,
@@ -205,6 +215,9 @@ static int64 log_10_int[20] = {
     1000000000000000000ULL, 10000000000000000000ULL
 };
 
+static Date_time_format time_24hrs_format = {{0}, '\0', 0, (char *)"%H:%i:%S", 8};
+static Date_time_format time_ampm_format= {{0}, '\0', 0, (char *)"%I:%i:%S %p", 11};
+
 static Datum ivymy_dayof_date(FunctionCallInfo fcinfo, int datekind);
 static int64 getPartFromTm(struct pg_tm *tm, fsec_t fsec, int part);
 static Datum GetSpecificPartOfTime(FunctionCallInfo fcinfo, int part);
@@ -227,6 +240,20 @@ static void mys_sec_to_time(struct pg_tm *tmp, pg_time_t t, int offset);
 static int determine_precision(int micro);
 static bool parse_timezone(struct pg_tm *tm, char *str, int *tz);
 
+static mysql_dttype fix_from_format(const char *format, size_t length);
+
+static bool extract_date_time(Date_time_format *format,
+							  const char *val, size_t length, struct pg_tm *l_time,
+							  mysql_dttype cached_timestamp_type,
+							  const char **sub_pattern_end,
+							  const char *date_time_type,
+							  fsec_t *fsec);
+
+static bool valid_datetime(char *val, char *format, 
+						  struct pg_tm *ltime, int fuzzy_date,
+						  mysql_dttype cached_timestamp_type, fsec_t *fsec);
+
+static int MyWeekdaySearch(char **input);
 
 static DateTimeFormat date_time_formats[] =
 {
@@ -239,7 +266,519 @@ static DateTimeFormat date_time_formats[] =
 
 static int szdate_time_formats = sizeof date_time_formats / sizeof date_time_formats[0];
 
+static mysql_dttype 
+fix_from_format(const char *format, size_t length)
+{
+	const char *time_part_frms = "HISThiklrs";
+	const char *date_part_frms = "MVUXYWabcjmvuxyw";
+	bool date_part_used = 0, time_part_used = 0, frac_second_used = 0;
+	const char *val = format;
+	const char *end = format + length;
+	mysql_dttype cached_timestamp_type = MYSQL_TIMESTAMP_NONE;
 
+	for (; val != end; val++)
+	{
+		if (*val == '%' && val + 1 != end)
+		{
+			val++;
+
+			if (*val == 'f')
+				frac_second_used = time_part_used= 1;
+			else if (!time_part_used && strchr(time_part_frms, *val))
+				time_part_used = 1;
+			else if (!date_part_used && strchr(date_part_frms, *val))
+				date_part_used = 1;
+
+			if (date_part_used && frac_second_used)
+			{
+				/*
+				 * frac_second_used implies time_part_used, and thus we already
+				 * have all types of date-time components and can end our search.
+				 */
+				cached_timestamp_type = MYSQL_TIMESTAMP_DATETIME;
+				return cached_timestamp_type;
+			}
+		}
+	}
+
+	/* We don't have all three types of date-time components */
+	if (frac_second_used) /* TIME with microseconds */
+	{
+		cached_timestamp_type = MYSQL_TIMESTAMP_TIME;
+	}
+	else if (time_part_used)
+	{
+		if (date_part_used) /* DATETIME, no microseconds */
+		{
+			cached_timestamp_type = MYSQL_TIMESTAMP_DATETIME;
+		}
+		else /* TIME, no microseconds */
+		{
+			cached_timestamp_type = MYSQL_TIMESTAMP_TIME;
+		}
+	}
+	else /* DATE */
+	{
+		cached_timestamp_type = MYSQL_TIMESTAMP_DATE;
+	}	
+	return cached_timestamp_type;
+}
+
+static int 
+MyWeekdaySearch(char **input)
+{
+	int i = 0;
+	char *const weekday_names[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+	char *const ab_weekday_names[] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sund"};
+
+	for (i = 0; i < 7; i++)
+	{
+		if (!pg_strncasecmp(*input, weekday_names[i], strlen(weekday_names[i])))
+		{
+			*input = *input + strlen(weekday_names[i]);
+			return i + 1;
+		}
+		else if (!pg_strncasecmp(*input, ab_weekday_names[i], strlen(ab_weekday_names[i])))
+		{
+			*input = *input + strlen(ab_weekday_names[i]);
+			return i + 1;
+		}
+	}
+	return 0;
+}
+
+/*
+ * Extract datetime value to pg_tm struct from string value
+ * according to format string.
+ */
+static bool extract_date_time(Date_time_format *format,
+								const char *val, size_t length, struct pg_tm *l_time,		
+								mysql_dttype cached_timestamp_type,
+								const char **sub_pattern_end,
+								 const char *date_time_type,
+								 fsec_t *fsec)
+{
+	int weekday = 0, yearday = 0, daypart = 0;
+	int week_number = -1;
+	int error = 0;
+	int  strict_week_number_year = -1;
+	int frac_part;
+	bool usa_time = 0; //12-hour system 
+	bool sunday_first_n_first_week_non_iso = false;
+	bool strict_week_number = false;
+	bool strict_week_number_year_type = false;
+	const char *val_begin = val;
+	const char *val_end = val + length;
+	const char *ptr = format->format_str;
+	const char *end = ptr + format->format_length;
+
+	if (!sub_pattern_end)
+		memset(l_time, 0, sizeof(*l_time));
+
+	/* Skip pre-space between each argument */
+	for (; val != end && isspace((unsigned char)*val) ; val++)
+	;
+
+	for (; ptr != end && val != val_end; ptr++)
+	{
+
+		/* Skip pre-space between each argument */
+		for (; val != end && isspace((unsigned char)*val) ; val++)
+		;
+
+		if (*ptr == '%' && ptr + 1 != end)
+		{
+			int val_len;
+			char *tmp;
+			error= 0;
+
+			val_len= (unsigned int) (val_end - val);
+			switch (*++ptr) 
+			{
+				/* Year */
+				case 'Y':
+					tmp = (char*) val + Min(4, val_len);
+					l_time->tm_year = (int) strtoll(val, &tmp, 10);
+					if ((int) (tmp-val) <= 2)
+						l_time->tm_year = l_time->tm_year + (l_time->tm_year >= YEAR2_BOUND_BETWEEN_20C_21C ? 1900 : 2000);
+					val = tmp;
+					break;
+
+				case 'y':
+					tmp= (char*) val + Min(2, val_len);
+					l_time->tm_year = (int) strtoll(val, &tmp, 10);
+					val = tmp;
+					l_time->tm_year = l_time->tm_year + (l_time->tm_year >= YEAR2_BOUND_BETWEEN_20C_21C ? 1900 : 2000);
+					break;
+
+					/* Month */
+					case 'm':
+					case 'c':
+						tmp = (char*) val + Min(2, val_len);
+						l_time->tm_mon = (int) strtoll(val, &tmp, 10);
+						val = tmp;
+						break;
+					case 'M':
+					case 'b':
+						tmp = (char*) val;
+						if ((l_time->tm_mon = MyMonthSearch(lc_time_names, &tmp)) <= 0)
+							goto err;
+						else
+							val = tmp;
+						break;
+
+					/* Day */
+					case 'd':
+					case 'e':
+						tmp = (char*) val + Min(2, val_len);
+						l_time->tm_mday = (int) strtoll(val, &tmp, 10);
+						val = tmp;
+						break;
+					case 'D':
+						tmp = (char*) val + Min(2, val_len);
+						l_time->tm_mday = (int) strtoll(val, &tmp, 10);
+						/* Skip 'st, 'nd, 'th .. */
+						val= tmp + Min((int) (val_end-tmp), 2);
+						break;
+
+					/* Hour */
+					case 'h':
+					case 'I':
+					case 'l':
+						usa_time = 1;
+					/* fall through */
+					case 'k':
+					case 'H':
+						tmp = (char*) val + Min(2, val_len);
+						l_time->tm_hour = (int) strtoll(val, &tmp, 10);
+						val = tmp;
+						break;
+
+					/* Minute */
+					case 'i':
+						tmp = (char*) val + Min(2, val_len);
+						l_time->tm_min = (int) strtoll(val, &tmp, 10);
+						val = tmp;
+						break;
+
+					/* Second */
+					case 's':
+					case 'S':
+						tmp = (char*) val + Min(2, val_len);
+						l_time->tm_sec = (int) strtoll(val, &tmp, 10);
+						val = tmp;
+						break;
+
+					/* Second part */
+					case 'f':
+						tmp = (char*) val_end;
+						if (tmp - val > 6)
+							tmp = (char*) val + 6;
+						(*fsec) = (int) strtoll(val, &tmp, 10);
+						frac_part = 6 - (int) (tmp - val);
+						if (frac_part > 0)
+							*fsec = (*fsec) * (unsigned long) log_10_int[frac_part];
+						val = tmp;
+						break;
+
+					/* AM / PM */
+					case 'p':
+						if (val_len < 2 || !usa_time)
+							goto err;
+						if (!strncasecmp(val, "PM", 2))
+							daypart = 12;
+						else if (strncasecmp(val,"AM", 2))
+							goto err;
+						val += 2;
+						break;
+
+				/* Exotic things */
+					case 'W':
+					case 'a':
+						tmp = (char*) val;
+						if ((l_time->tm_mon = MyWeekdaySearch(&tmp)) <= 0)
+							goto err;
+						else
+							val = tmp;
+						break;
+			
+					case 'w':
+						tmp = (char*) val + 1;
+						if ((weekday= (int) strtoll(val, &tmp, 10)) < 0 || weekday >= 7)
+							goto err;
+						/* We should use the same 1 - 7 scale for %w as for %W */
+						if (!weekday)
+							weekday= 7;
+						val = tmp;
+						break;
+					case 'j':
+						tmp = (char*) val + Min(val_len, 3);
+						yearday = (int) strtoll(val, &tmp, 10);
+						val= tmp;
+						break;
+
+					/* Week numbers */
+					case 'V':
+					case 'U':
+					case 'v':
+					case 'u':
+						sunday_first_n_first_week_non_iso = (*ptr=='U' || *ptr== 'V');
+						strict_week_number = (*ptr=='V' || *ptr=='v');
+						tmp = (char*) val + Min(val_len, 2);
+						if ((week_number = (int) strtoll(val, &tmp, 10)) < 0 ||
+							(strict_week_number && !week_number) ||
+							week_number > 53)
+							goto err;
+						val= tmp;
+						break;
+
+					/* Year used with 'strict' %V and %v week numbers */
+					case 'X':
+					case 'x':
+						strict_week_number_year_type = (*ptr=='X');
+						tmp = (char*) val + Min(4, val_len);
+						strict_week_number_year = (int) strtoll(val, &tmp, 10);
+						val = tmp;
+						break;
+
+					/* Time in AM/PM notation */
+					case 'r':
+						/* We can't just set error here, as we don't want to generate two warnings in case of errors */
+						if (!extract_date_time(&time_ampm_format, val, strlen(val), l_time, 
+												cached_timestamp_type, &val, "time", fsec))
+							return false;
+						else 
+							return true;
+						break;
+
+					/* Time in 24-hour notation */
+					case 'T':
+						if (!extract_date_time(&time_24hrs_format, val, strlen(val), l_time, 
+												cached_timestamp_type, &val, "time", fsec))
+							return false;
+						else 
+							return true;
+					break;
+
+					/* Conversion specifiers that match classes of characters */
+					case '.':
+						while (val < val_end && ispunct(*val))
+							val++;
+						break;
+					case '@':
+						while (val < val_end && isalpha(*val))
+							val++;
+						break;
+					case '#':
+						while (val < val_end && isdigit(*val))
+							val++;
+						break;
+					default:
+						goto err;
+			}			
+			if (error)				// Error from my_strtoll10
+				goto err;
+		}
+		else if (!isspace(*ptr))
+		{
+			if (*val != *ptr)
+				goto err;
+			val++;
+		}
+	}
+	if (usa_time)
+	{
+		if (l_time->tm_hour > 12 || l_time->tm_hour < 1)
+			goto err;
+		l_time->tm_hour = l_time->tm_hour%12+daypart;
+	}
+
+	/*
+	 * If we are recursively called for parsing string matching compound
+	 * specifiers we are already done.
+	*/
+	if (sub_pattern_end)
+	{
+		*sub_pattern_end = val;
+		return true;
+	}
+
+	if (yearday > 0)
+	{
+		unsigned int days;
+		days= date2j(l_time->tm_year,1,1) + yearday - 1 - FIRST_JULIAN_DAY;
+		if (days <= 0 || days > 3652424L)
+			goto err;
+		get_date_from_day(days, l_time);
+	}
+
+	if (week_number >= 0 && weekday)
+	{
+		int days;
+		unsigned int weekday_b;
+
+		/*
+		 * %V,%v require %X,%x resprectively,
+		 * %U,%u should be used with %Y and not %X or %x
+		 */
+		if ((strict_week_number &&
+			(strict_week_number_year < 0 ||
+			strict_week_number_year_type != sunday_first_n_first_week_non_iso)) ||
+			(!strict_week_number && strict_week_number_year >= 0))
+			goto err;
+
+		/* Number of days since year 0 till 1st Jan of this year */
+		days = date2j((strict_week_number ? strict_week_number_year : l_time->tm_year), 1, 1) - FIRST_JULIAN_DAY;
+		/* Which day of week is 1st Jan of this year */
+		weekday_b = calc_weekday(days, sunday_first_n_first_week_non_iso);
+
+		/*
+		 * Below we are going to sum:
+		 * 1) number of days since year 0 till 1st day of 1st week of this year
+		 * 2) number of days between 1st week and our week
+		 * 3) and position of our day in the week
+		 */
+		if (sunday_first_n_first_week_non_iso)
+		{
+			days += ((weekday_b == 0) ? 0 : 7) - weekday_b +
+					(week_number - 1) * 7 +
+					weekday % 7;
+		}
+		else
+		{
+			days+= ((weekday_b <= 3) ? 0 : 7) - weekday_b +
+					(week_number - 1) * 7 +
+					(weekday - 1);
+		}
+
+		if (days <= 0 || days > 3652424L)
+			goto err;
+		get_date_from_day(days, l_time);
+	}
+
+	if (l_time->tm_mon > 12 || l_time->tm_mday > 31 || l_time->tm_hour > 23 || 
+		l_time->tm_min > 59 || l_time->tm_sec > 59)
+		goto err;
+
+	if (val != val_end)
+	{
+		do
+		{
+			if (!isspace(*val))
+			{
+				// TS-TODO: extract_date_time is not UCS2 safe
+				ereport(WARNING,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+							errmsg("Truncated incorrect time value: '%s'", val_begin)));
+				break;
+			}
+		} while (++val != val_end);
+	}
+	return true;
+
+err:
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("Incorrect datetime value: '%s' for function str_to_date", val_begin)));
+	}
+	return false;
+}
+
+static bool 
+valid_datetime(char *val, char *format, struct pg_tm *ltime, int fuzzy_date, 
+				mysql_dttype cached_timestamp_type, fsec_t *fsec)
+{
+	Date_time_format date_time_format;
+
+	if (sql_mode & MODE_NO_ZERO_DATE)
+		fuzzy_date |= TIME_NO_ZERO_DATE;
+
+	if (val == NULL || format == NULL)
+		goto null_date;
+
+	memset(ltime, 0, sizeof(*ltime));
+	date_time_format.format_str = format;
+	date_time_format.format_length = strlen(format);
+
+	if (!extract_date_time(&date_time_format, val, strlen(val),
+		ltime, cached_timestamp_type, 0, "datetime", fsec) ||
+		((fuzzy_date & TIME_NO_ZERO_DATE) && (ltime->tm_year == 0 || ltime->tm_mon == 0 || ltime->tm_mday == 0)))
+		goto null_date;
+
+	if (cached_timestamp_type == MYSQL_TIMESTAMP_TIME && ltime->tm_mday)
+	{
+		/*
+		 * Day part for time type can be nonzero value and so 
+		 * we should add hours from day part to hour part to
+		 * keep valid time value.
+		 */
+		ltime->tm_hour += ltime->tm_mday * 24;
+		ltime->tm_mday = 0;
+	}
+	return true;
+
+null_date:
+	if (val && (fuzzy_date & TIME_NO_ZERO_DATE) /*warnings*/)
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("Incorrect datetime value: '%s' for function str_to_date", val)));
+	}
+	return false;
+}
+
+Datum
+str_to_date(PG_FUNCTION_ARGS)
+{
+	text	*arg0 = PG_GETARG_TEXT_PP(0);
+	text	*arg1 = PG_GETARG_TEXT_PP(1);
+	
+	char	*str = text_to_cstring(arg0);
+	char	*str_format = text_to_cstring(arg1);
+
+	int32	typmod = 0;
+	
+	TimeADT		datetime = -1;
+	fsec_t		fsec = 0;
+	struct pg_tm tt,
+				*tm = &tt;
+	TimeOffset	time = 0;
+	int64 		datetemp = 0;
+	Numeric		num ;
+	char		buf[MAXDATELEN + 1] = {0};
+
+	mysql_dttype cached_timestamp_type = MYSQL_TIMESTAMP_NONE;
+	cached_timestamp_type = fix_from_format(str_format, sizeof(str_format));
+	
+	if (!valid_datetime(str, str_format, tm, TIME_FUZZY_DATE, cached_timestamp_type, &fsec))
+	{
+		PG_RETURN_NULL();
+	}
+
+	if (fsec)
+	{
+		typmod = 6;
+	}
+
+	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
+	datetemp = datetemp * 1000000;
+	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+	datetime = datetemp + time;
+
+#ifdef WIN32
+	snprintf(buf, MAXDATELEN, "%lld.%06d", datetime, fsec);
+#else
+	snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
+#endif
+
+	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+											CStringGetDatum(buf),
+											ObjectIdGetDatum(InvalidOid),
+											Int32GetDatum((((14 + typmod) << 16) | typmod) + VARHDRSZ)));
+
+	PG_RETURN_NUMERIC(num);
+}
 
 static Datum
 ivymy_dayof_date(FunctionCallInfo fcinfo, int datekind)
@@ -2118,6 +2657,112 @@ timestampadd(PG_FUNCTION_ARGS)
                                               Int32GetDatum((((14 + dec) << 16) | dec) + VARHDRSZ)));
 
     PG_RETURN_NUMERIC(num);
+}
+
+
+// 2 - 1
+Datum
+timestampdiff(PG_FUNCTION_ARGS)
+{
+	int64	res = 0;
+	Interval	*span;
+	int		unit_val, unit_type;
+	text	*units = PG_GETARG_TEXT_PP(0);
+	char	*lowunits = downcase_truncate_identifier(VARDATA_ANY(units),
+														VARSIZE_ANY_EXHDR(units),
+														false);
+	TimestampTz		timestamp1 = 0, timestamp2 = 0;
+	struct pg_tm	tt1, *tm1 = &tt1;
+	struct pg_tm	tt2, *tm2 = &tt2;
+	struct pg_tm	tt3, *tm3 = &tt3;
+	fsec_t fsec1 = 0;
+	fsec_t fsec2 = 0;
+	fsec_t fsec3 = 0;
+
+	MYS_ZERO_tm(tm1);
+	MYS_ZERO_tm(tm2);
+
+	mys_datetimes2tm(PG_GETARG_NUMERIC(1), tm1, &fsec1);
+	mys_datetimes2tm(PG_GETARG_NUMERIC(2), tm2, &fsec2);
+
+	if (!strncasecmp(lowunits, "sql_tsi_", 8))
+	{
+		lowunits = lowunits + 8;
+	}
+
+	unit_type = DecodeUnits(0, lowunits, &unit_val);
+
+	if (unit_type == UNKNOWN_FIELD)
+		unit_type = DecodeSpecial(0, lowunits, &unit_val);
+
+	if ((tm2timestamp(tm1, fsec1, NULL, &timestamp1) != 0) || (tm2timestamp(tm2, fsec2, NULL, &timestamp2) != 0))
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+				 errmsg("timestamp out of range")));
+
+	if (unit_val == DTK_MONTH || unit_val == DTK_QUARTER || unit_val == DTK_YEAR)
+	{
+		span = DatumGetIntervalP(DirectFunctionCall2(timestamptz_age,
+													 TimestampTzGetDatum(timestamp2), TimestampTzGetDatum(timestamp1)));
+	}
+	else
+	{
+		span = DatumGetIntervalP(DirectFunctionCall2(timestamp_mi,
+													 TimestampTzGetDatum(timestamp2), TimestampTzGetDatum(timestamp1)));
+	}
+
+	if (unit_type == UNITS)
+	{
+		switch (unit_val)
+		{
+			case DTK_YEAR:
+				res = span->month / 12;
+				break;
+			case DTK_QUARTER:
+				res = span->month / 3;
+				break;
+			case DTK_MONTH:
+				res = span->month;
+				break;
+			case DTK_WEEK:
+				res = span->day / 7;
+				break;
+			case DTK_DAY:
+				res = span->day;
+				break;
+			case DTK_HOUR:
+				if (interval2tm(*span, tm3, &fsec3) != 0)
+					elog(ERROR, "could not convert interval to tm");
+				res = span->day * 24 + tm3->tm_hour;
+				break;
+			case DTK_MINUTE:
+				if (interval2tm(*span, tm3, &fsec3) != 0)
+					elog(ERROR, "could not convert interval to tm");
+				res = span->day * 24 * 60 + tm3->tm_hour * 60 + tm3->tm_min;
+				break;
+			case DTK_SECOND:
+				if (interval2tm(*span, tm3, &fsec3) != 0)
+					elog(ERROR, "could not convert interval to tm");
+				res = span->day * 24 * 60 * 60 +
+					tm3->tm_hour * 60 * 60 + tm3->tm_min * 60 + tm3->tm_sec;
+				break;
+			case DTK_MICROSEC:
+				res = span->day * 24 * 60 * 60 * 1000000 +
+					tm3->tm_hour * 60 * 60 * 1000000 +
+					tm3->tm_min * 60 * 1000000 + fsec3;
+				break;
+			default:
+				ereport(ERROR, (errcode(ERRCODE_UNDEFINED_PARAMETER), 
+								errmsg("unknown unit: \"%s\"", lowunits))); /* impossible */
+				break;
+		}
+	}
+	else
+	{
+		ereport(ERROR, (errcode(ERRCODE_UNDEFINED_PARAMETER), errmsg("unknown unit: \"%s\"", lowunits)));
+	}
+
+	PG_RETURN_INT64(res);
 }
 
 /*

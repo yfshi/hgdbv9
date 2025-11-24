@@ -3608,3 +3608,18 @@ AS 'MODULE_PATHNAME', 'char_length_varlena'
 LANGUAGE C
 IMMUTABLE;
 /* End - bug#z6050 */
+CREATE FUNCTION ivymy.STR_TO_DATE(text, text)
+RETURNS ivymy.mysdatetimes 
+AS 'MODULE_PATHNAME','str_to_date'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.timestampdiff(text, datetime(6), datetime(6))
+RETURNS bigint 
+AS 'MODULE_PATHNAME','timestampdiff'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;

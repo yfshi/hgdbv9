@@ -36,6 +36,8 @@ typedef struct MyLocale
 }MyLocale;
 
 MyLocale *MyLocaleSearch(char* target);
-	
+
+int MyMonthSearch(char *target, char **input);
+
 #endif  // MYSLOCALE_H
 
