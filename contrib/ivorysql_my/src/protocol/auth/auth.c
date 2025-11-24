@@ -71,6 +71,7 @@ make_mysqld_handshakev10_packet(uint8 *scramble)
     handshake->protocol_version = 10; // always is 10
     handshake->capabilities = get_client_capabilities();
     handshake->auth_plugin_name = pstrdup("mysql_native_password");
+    // Caution is required when modifying this value, as it may cause JDBC to fail to connect.
     handshake->server_version_str = pstrdup("8.0.28-ivorysql-server");
     handshake->charset = MYS_ENCODING_UTF8MB3_GENERAL_CI;
     handshake->server_status = SERVER_STATUS_AUTOCOMMIT;

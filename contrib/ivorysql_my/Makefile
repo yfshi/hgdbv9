@@ -169,7 +169,8 @@ MYS_REGRESS = cast_to_number \
 			  create_index \
 			  mys_do \
 			  mys_select \
-			  user
+			  user \
+			  namespace
 
 MYS_JDBC_REGRESS =	proto_jdbc \
 					proto_jdbc_8_0_28

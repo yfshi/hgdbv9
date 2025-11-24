@@ -4464,3 +4464,58 @@ IMMUTABLE;
 CREATE CAST (ivymy.longblob AS double)
 WITH FUNCTION ivymy.longblob_double(ivymy.longblob, integer, boolean, int8)
 AS ASSIGNMENT;
+
+/* Begin - bug#6051 */
+CREATE FUNCTION binary_smaller(binary, binary)
+RETURNS binary
+AS 'MODULE_PATHNAME', 'anybinary_smaller'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE AGGREGATE min(binary)  (
+    SFUNC = binary_smaller,
+    STYPE = binary,
+    SORTOP = <,
+    PARALLEL = SAFE,
+    COMBINEFUNC = binary_smaller
+);
+
+CREATE FUNCTION binary_larger(binary, binary)
+RETURNS binary
+AS 'MODULE_PATHNAME', 'anybinary_larger'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE AGGREGATE max(binary)  (
+    SFUNC = binary_larger,
+    STYPE = binary,
+    SORTOP = >,
+    PARALLEL = SAFE,
+    COMBINEFUNC = binary_larger
+);
+
+CREATE FUNCTION ivymy.binary_sum(float8, binary)
+RETURNS float8
+AS 'MODULE_PATHNAME', 'anybinary_sum'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE AGGREGATE ivymy.sum(binary) (
+  SFUNC = ivymy.binary_sum,
+  STYPE = float8
+);
+
+CREATE FUNCTION ivymy.binary_avg_accum(float8[], binary)
+RETURNS float8[]
+AS 'MODULE_PATHNAME', 'binary_avg_accum'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE
+STRICT;
+
+CREATE AGGREGATE ivymy.avg(binary) (
+   sfunc = binary_avg_accum, 
+   stype = float8[],
+   finalfunc = float8_avg,
+   initcond = '{0,0,0}'
+);
+/* End - bug#6051 */

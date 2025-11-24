@@ -1729,3 +1729,19 @@ drop table tb1;
 -- bug#z5800
 select convert('Hello World', binary(5));
 select convert(123, binary),convert(123.456, binary);
+
+/* Begin - bug#6051 */
+create table t_hex_aggregate (bcol binary(4));
+insert into t_hex_aggregate values(NULL);
+select  max(bcol) as max_b, min(bcol) as min_b from t_hex_aggregate;
+select * from t_hex_aggregate;
+select  sum(bcol) as sum_b from t_hex_aggregate;
+select  avg(bcol) as avg_b from t_hex_aggregate;
+
+insert into t_hex_aggregate values(0x31323334),(X'35363738'),(x'39303132');
+select  max(bcol) as max_b, min(bcol) as min_b from t_hex_aggregate;
+select * from t_hex_aggregate;
+select  sum(bcol) as sum_b from t_hex_aggregate;
+select  avg(bcol) as avg_b from t_hex_aggregate;
+drop table t_hex_aggregate;
+/* End - bug#6051 */

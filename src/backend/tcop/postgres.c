@@ -4739,6 +4739,11 @@ PostgresMain(int argc, char *argv[],
 		PostmasterContext = NULL;
 	}
 
+	/* Begin - bug#6338 */
+	/* We mark the path as needing recomputation */
+	assign_search_path(NULL, NULL);
+	/* End - bug#6338 */
+
 	/*
 	 * psql login, we unset hg_misc.special_index_oid
 	 */

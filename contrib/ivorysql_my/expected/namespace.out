@@ -1,0 +1,23 @@
+/* Begin - bug#6338 */
+select current_database();
+  current_database  
+--------------------
+ contrib_regression
+(1 row)
+
+create database test_database with encoding 'latin1' template template0 lc_collate 'C' lc_ctype 'C';
+\c test_database
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ mysql
+(1 row)
+
+create table t(a tinytext);
+\d t
+                  Table "public.t"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ a      | tinytext |           |          | 
+
+/* End - bug#6338 */
