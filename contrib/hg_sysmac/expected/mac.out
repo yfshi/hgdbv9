@@ -32,6 +32,7 @@ LINE 1: SELECT 's0:c0!'::hg_security.seclabel;
                ^
 -- set the security label to user
 CREATE USER u1 with password 'Hello@123';
+CREATE USER u2 with password 'Hello@123';
 SELECT hg_security.set_user_seclabel('u1'::regrole, 's0');
  set_user_seclabel 
 -------------------
@@ -57,9 +58,17 @@ SELECT hg_security.get_user_seclabel('u1'::regrole);
  s1
 (1 row)
 
+SELECT hg_security.get_user_seclabel('u2'::regrole);
+ get_user_seclabel 
+-------------------
+ 
+(1 row)
+
+DROP USER u2;
 -- set the security label to table
 SET ROLE u1;
 CREATE TABLE tb1(id int);
+CREATE TABLE tb2(id int);
 RESET ROLE;
 SELECT hg_security.set_table_seclabel('tb1'::regclass, 's2');
  set_table_seclabel 
@@ -73,6 +82,13 @@ SELECT hg_security.get_table_seclabel('tb1'::regclass);
  s2
 (1 row)
 
+SELECT hg_security.get_table_seclabel('tb2'::regclass);
+ get_table_seclabel 
+--------------------
+ 
+(1 row)
+
+DROP TABLE tb2;
 -- when dropping a table,its security label should also be removed.
 SET ROLE u1;
 DROP TABLE tb1;

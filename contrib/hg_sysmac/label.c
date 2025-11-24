@@ -515,8 +515,8 @@ get_user_seclabel(PG_FUNCTION_ARGS)
 
 	if (label)
 		PG_RETURN_TEXT_P(cstring_to_text(label));
-	else /* Bug - #z6002 */
-		elog(ERROR, "This user does not have a seclabel.");
+
+	PG_RETURN_NULL(); /* Bug - #6350 */
 }
 
 PG_FUNCTION_INFO_V1(set_user_seclabel);
@@ -546,8 +546,8 @@ get_table_seclabel(PG_FUNCTION_ARGS)
 
 	if (label)
 		PG_RETURN_TEXT_P(cstring_to_text(label));
-	else /* Bug - #6002 */
-		elog(ERROR, "This table does not have a seclabel.");
+
+	PG_RETURN_NULL(); /* Bug - #6350 */
 }
 
 PG_FUNCTION_INFO_V1(set_table_seclabel);
@@ -613,8 +613,8 @@ get_column_seclabel(PG_FUNCTION_ARGS)
 
 	if (label)
 		PG_RETURN_TEXT_P(cstring_to_text(label));
-	else /* Bug - #z6002 */
-		elog(ERROR, "This column does not have a seclabel.");
+
+	PG_RETURN_NULL(); /* Bug - #6350 */
 }
 
 PG_FUNCTION_INFO_V1(set_column_seclabel);
