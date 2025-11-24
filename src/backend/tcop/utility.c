@@ -116,10 +116,10 @@ static void ProcessUtilitySlow(ParseState *pstate,
 static void ExecDropStmt(DropStmt *stmt, bool isTopLevel);
 static int process_utility_nesting_level = 0; /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 /* Begin - ReqID:SRS-MYSQL-SET */
-static void MysExecSetVariableStmt(ParseState *pstate,
-									MysDoStmt *parsetree,
-									ParamListInfo params,
-									bool isTopLevel);
+static void ExecMysDoStmt(ParseState *pstate,
+								MysDoStmt *parsetree,
+								ParamListInfo params,
+								bool isTopLevel);
 static void MysExecSelectIntoUserVarStmt(ParseState *pstate,
 							   SelectIntoUserVarStmt *parsetree,
 							   ParamListInfo params,
@@ -976,7 +976,7 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 		/* Begin - ReqID:SRS-MYSQL-SET */
 		case T_MysDoStmt:
 			{
-				MysExecSetVariableStmt(pstate, (MysDoStmt *) parsetree, params, isTopLevel);
+				ExecMysDoStmt(pstate, (MysDoStmt *) parsetree, params, isTopLevel);
 			}
 			break;
 
@@ -4167,10 +4167,10 @@ utility_nested(void)
  * and each query statement is execute here.
  */
 static void
-MysExecSetVariableStmt(ParseState *pstate,
-						MysDoStmt *parsetree,
-						ParamListInfo params,
-						bool isTopLevel)
+ExecMysDoStmt(ParseState *pstate,
+					MysDoStmt *parsetree,
+					ParamListInfo params,
+					bool isTopLevel)
 {
 	Query *query = (Query *)parsetree->stmt;
 	PlannedStmt *plan;

@@ -7101,17 +7101,22 @@ transformMysDoStmt(ParseState *pstate, MysDoStmt *stmt)
 	 * is a simple value, if so, it is a VariableSetStmt node,
 	 * otherwise return a MysDoStmt node.
 	 */
-	setvar = trans_MysVariable_to_VariableSet(pstate, stmt);
-	if (setvar != NULL)
+	/* Begin - BUG#Z6201 */
+	if (stmt->purpose == MYS_DO_FOR_SET)
 	{
-		qry = makeNode(Query);
-		qry->commandType = CMD_UTILITY;
-		qry->utilityStmt = (Node *) setvar;
-		return qry;
-	}
+		setvar = trans_MysVariable_to_VariableSet(pstate, stmt);
+		if (setvar != NULL)
+		{
+			qry = makeNode(Query);
+			qry->commandType = CMD_UTILITY;
+			qry->utilityStmt = (Node *) setvar;
+			return qry;
+		}
 
-	/* this is a SET statement, set p_myssetvar to true */
-	pstate->p_myssetvar = true;
+		/* this is a SET statement, set p_myssetvar to true */
+		pstate->p_myssetvar = true;
+	}
+	/* End - BUG#Z6201 */
 
 	if (nodeTag(stmt->stmt) == T_SelectStmt)
 	{
