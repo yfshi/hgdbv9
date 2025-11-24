@@ -52,8 +52,26 @@ static bool CheckTimeInRuleslist(Timestamp logintime, char* allow_time);
 static bool checkTimeformat(char* allow_time);
 static bool checkMacformat(char* macaddress);
 
+static bool check_conn_restrict_enable(bool *newval, void **extra, GucSource source);
+
 PG_FUNCTION_INFO_V1(add_rules);
 PG_FUNCTION_INFO_V1(remove_rules);
+
+static bool
+check_conn_restrict_enable(bool *newval, void **extra, GucSource source)
+{
+	/* Only allow syssso role set the conn_restrict.enable. */
+	if(IsUnderPostmaster)
+	{
+		if (!IS_SYSSSO(GetUserId()))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("member of syssso_role "
+								"can set the conn_restrict.enable")));
+	}
+	return true;
+}
 
 /*
  * Module initialization function
@@ -68,7 +86,7 @@ void _PG_init(void)
 						 false,
 						 PGC_SUSET,
 						 GUC_SUPERUSER_ONLY,
-						 NULL,
+						 &check_conn_restrict_enable,
 						 NULL,
 						 NULL);
 	prev_check_rules_hook = check_rules_hook;

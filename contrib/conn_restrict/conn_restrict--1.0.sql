@@ -1,7 +1,7 @@
 /* contrib/conn_restrict/conn_restrict--1.0.sql */
 
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
-\echo Use "CREATE EXTENSION conn_restrict" to load this file. \quit
+\echo Use "CREATE EXTENSION hg_security.conn_restrict" to load this file. \quit
 
 
 CREATE TABLE hg_security.conn_restrict_rules(id Oid primary key, filter_type int not null, rule_user text not null, include_mac text, exclude_mac text, include_time text, exclude_time text);
