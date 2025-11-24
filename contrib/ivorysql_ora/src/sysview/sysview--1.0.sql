@@ -2533,7 +2533,7 @@ SELECT
     SYS.ORA_CASE_TRANS(lang.lanname::varchar2)::varchar2(11)      AS action_type,
     SYS.ORA_CASE_TRANS(p.prosrc::varchar2)::long                  AS trigger_body,
 
-    'NO'::varchar2(7)               AS crosedition,
+    'NO'::varchar2(7)               AS crossedition,	/* BUG#Z6339 */
 
     CASE WHEN trg.tgtype & 2 <> 0 AND trg.tgtype & 1 = 0 THEN 'YES' ELSE 'NO' END::varchar2(3) AS before_statement,
     CASE WHEN trg.tgtype & 2 <> 0 AND trg.tgtype & 1 <> 0 THEN 'YES' ELSE 'NO' END::varchar2(3) AS before_row,
@@ -2579,7 +2579,7 @@ CREATE OR REPLACE VIEW sys.user_triggers AS
 	at.description AS description,
 	at.action_type AS action_type,
 	at.trigger_body AS trigger_body,
-	at.crosedition AS crosedition,
+	at.crossedition AS crossedition, /* BUG#Z6339 */
 	at.before_statement AS before_statement,
 	at.before_row AS before_row,
 	at.after_row AS after_row,

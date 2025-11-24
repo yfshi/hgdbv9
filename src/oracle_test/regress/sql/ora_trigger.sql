@@ -376,6 +376,11 @@ select trigger_name, trigger_type, triggering_event, base_object_type, table_nam
  from user_triggers where upper(trigger_name) = 'TGTIOTSC';
 /* End - BUG#Z6215 6216 */
 
+/* Begin - BUG#Z6339 */
+select trigger_name, crossedition
+ from user_triggers where upper(trigger_name) = 'TGTIOTSC';
+/* End - BUG#Z6339 */
+
 INSERT INTO tb1 (name, salary) VALUES ('Wang 5', 7000); -- fire trigger
 INSERT INTO tb1 (id, name, salary) VALUES (300, 'Li 4', 6000); -- unfire trigger
 
