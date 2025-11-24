@@ -23,10 +23,13 @@
 #include "catalog/pg_type.h"
 #include "fmgr.h"
 #include "utils/array.h"
+#include "utils/builtins.h"
 #include "utils/elog.h"
 #include "utils/sortsupport.h"
 #include "utils/fmgrprotos.h"
 #include "utils/float.h"
+
+#include "ivorysql_my.h"
 
 #define BINARY_MAX_LENGTH       255
 #define VARBINARY_MAX_LENGTH    65532
@@ -51,6 +54,12 @@ PG_FUNCTION_INFO_V1(anybinary_sub);
 PG_FUNCTION_INFO_V1(anybinary_minus);
 PG_FUNCTION_INFO_V1(anybinary_mul);
 PG_FUNCTION_INFO_V1(anybinary_mod);
+/* Begin - bug#6051 */
+PG_FUNCTION_INFO_V1(anybinary_smaller);
+PG_FUNCTION_INFO_V1(anybinary_larger);
+PG_FUNCTION_INFO_V1(anybinary_sum);
+PG_FUNCTION_INFO_V1(binary_avg_accum);
+/* End - bug#6051 */
 
 /* common code for varbinarytypmodin and binarytypmodin */
 int32 
@@ -544,3 +553,100 @@ truncate_bytea_with_len(const bytea *b, int len)
 
 	return result;
 }
+
+/* Begin - bug#6051 */
+Datum
+anybinary_smaller(PG_FUNCTION_ARGS)
+{
+	bytea	   *arg1 = PG_GETARG_BYTEA_PP(0);
+	bytea	   *arg2 = PG_GETARG_BYTEA_PP(1);
+	bytea 	   *result;
+	int			len1,
+				len2;
+	int			cmp;
+
+	len1 = VARSIZE_ANY_EXHDR(arg1);
+	len2 = VARSIZE_ANY_EXHDR(arg2);
+
+	cmp = memcmp(VARDATA_ANY(arg1), VARDATA_ANY(arg2), Min(len1, len2));
+	if ((cmp == 0) && (len1 != len2))
+		cmp = (len1 < len2) ? -1 : 1;
+
+	PG_FREE_IF_COPY(arg1, 0);
+	PG_FREE_IF_COPY(arg2, 1);
+
+	result = cmp < 0 ? arg1 : arg2;
+
+	PG_RETURN_BYTEA_P(result);
+}
+
+Datum
+anybinary_larger(PG_FUNCTION_ARGS)
+{
+	bytea	   *arg1 = PG_GETARG_BYTEA_PP(0);
+	bytea	   *arg2 = PG_GETARG_BYTEA_PP(1);
+	bytea 	   *result;
+	int			len1,
+				len2;
+	int			cmp;
+
+	len1 = VARSIZE_ANY_EXHDR(arg1);
+	len2 = VARSIZE_ANY_EXHDR(arg2);
+
+	cmp = memcmp(VARDATA_ANY(arg1), VARDATA_ANY(arg2), Min(len1, len2));
+	if ((cmp == 0) && (len1 != len2))
+		cmp = (len1 < len2) ? -1 : 1;
+
+	PG_FREE_IF_COPY(arg1, 0);
+	PG_FREE_IF_COPY(arg2, 1);
+
+	result = cmp > 0 ? arg1 : arg2;
+
+	PG_RETURN_BYTEA_P(result);
+}
+
+Datum
+anybinary_sum(PG_FUNCTION_ARGS)
+{
+	float8 	arg1 = 0,
+			arg2 = 0,
+			ret = 0;
+
+	if (PG_ARGISNULL(0) && PG_ARGISNULL(1))
+		PG_RETURN_NULL();
+
+	if (!PG_ARGISNULL(0))
+	{
+		arg1 = PG_GETARG_FLOAT8(0);
+	}
+
+	if (!PG_ARGISNULL(1))
+	{
+		bytea 	*arg = PG_GETARG_BYTEA_PP(1);
+		char	*src = (char *) text_to_cstring(arg);
+		arg2 = my_atod(src, false);
+	}
+	
+	ret = float8_pl(arg1, arg2);
+
+	PG_RETURN_FLOAT8(ret);
+}
+
+Datum
+binary_avg_accum(PG_FUNCTION_ARGS)
+{
+	Datum 	ret;
+	float8 	val = 0;
+	bytea 	*arg;
+	char	*src;
+
+	arg = PG_GETARG_BYTEA_PP(1);
+	src = (char *) text_to_cstring(arg);
+
+	val = my_atod(src, false);
+
+	ret = DirectFunctionCall2(float8_accum, PG_GETARG_DATUM(0), Float8GetDatum(val));
+
+	PG_RETURN_DATUM(ret);
+}
+/* End - bug#6051 */

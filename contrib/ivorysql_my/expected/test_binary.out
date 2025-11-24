@@ -2199,3 +2199,60 @@ select convert(123, binary),convert(123.456, binary);
  123    | 123.456
 (1 row)
 
+/* Begin - bug#6051 */
+create table t_hex_aggregate (bcol binary(4));
+insert into t_hex_aggregate values(NULL);
+select  max(bcol) as max_b, min(bcol) as min_b from t_hex_aggregate;
+ max_b | min_b 
+-------+-------
+ NULL  | NULL
+(1 row)
+
+select * from t_hex_aggregate;
+ bcol 
+------
+ NULL
+(1 row)
+
+select  sum(bcol) as sum_b from t_hex_aggregate;
+ sum_b 
+-------
+  NULL
+(1 row)
+
+select  avg(bcol) as avg_b from t_hex_aggregate;
+ avg_b 
+-------
+  NULL
+(1 row)
+
+insert into t_hex_aggregate values(0x31323334),(X'35363738'),(x'39303132');
+select  max(bcol) as max_b, min(bcol) as min_b from t_hex_aggregate;
+ max_b | min_b 
+-------+-------
+ 9012  | 1234
+(1 row)
+
+select * from t_hex_aggregate;
+ bcol 
+------
+ NULL
+ 1234
+ 5678
+ 9012
+(4 rows)
+
+select  sum(bcol) as sum_b from t_hex_aggregate;
+ sum_b 
+-------
+ 15924
+(1 row)
+
+select  avg(bcol) as avg_b from t_hex_aggregate;
+ avg_b 
+-------
+  5308
+(1 row)
+
+drop table t_hex_aggregate;
+/* End - bug#6051 */

@@ -502,7 +502,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 			NULL
 		},
 		&version_comment_str,
-		"Ivorysql",
+		"HighGo",
 		check_read_only_var, NULL, NULL
 	},
 	{
