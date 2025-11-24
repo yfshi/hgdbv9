@@ -1608,10 +1608,10 @@ CREATE USER MAPPING FOR public SERVER s10 OPTIONS (user 'secret');
 CREATE USER MAPPING FOR regress_unprivileged_role SERVER s10 OPTIONS (user 'secret');
 -- owner of server can see some option fields
 \deu+
-                 List of user mappings
- Server |         User name         |    FDW options    
---------+---------------------------+-------------------
- s10    | public                    | ("user" 'secret')
+                List of user mappings
+ Server |         User name         |   FDW options   
+--------+---------------------------+-----------------
+ s10    | public                    | (user 'secret')
  s10    | regress_unprivileged_role | 
  s4     | regress_foreign_data_user | 
  s5     | regress_test_role         | (modified '1')
@@ -1628,8 +1628,8 @@ RESET ROLE;
                   List of user mappings
  Server |         User name         |     FDW options     
 --------+---------------------------+---------------------
- s10    | public                    | ("user" 'secret')
- s10    | regress_unprivileged_role | ("user" 'secret')
+ s10    | public                    | (user 'secret')
+ s10    | regress_unprivileged_role | (user 'secret')
  s4     | regress_foreign_data_user | 
  s5     | regress_test_role         | (modified '1')
  s6     | regress_test_role         | 

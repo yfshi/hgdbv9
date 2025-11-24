@@ -3244,7 +3244,12 @@ alter_table_cmd:
 			| ENABLE_P TRIGGER name
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
-					n->subtype = AT_EnableTrig;
+					/* Begin - BUG#Z6309 */
+					if (pg_strcasecmp($3, "user") == 0)
+						n->subtype = AT_EnableTrigUser;
+					else
+						n->subtype = AT_EnableTrig;
+					/* End - BUG#Z6309 */
 					n->name = $3;
 					$$ = (Node *)n;
 				}
@@ -3271,18 +3276,16 @@ alter_table_cmd:
 					n->subtype = AT_EnableTrigAll;
 					$$ = (Node *)n;
 				}
-			/* ALTER TABLE <name> ENABLE TRIGGER USER */
-			| ENABLE_P TRIGGER USER
-				{
-					AlterTableCmd *n = makeNode(AlterTableCmd);
-					n->subtype = AT_EnableTrigUser;
-					$$ = (Node *)n;
-				}
 			/* ALTER TABLE <name> DISABLE TRIGGER <trig> */
 			| DISABLE_P TRIGGER name
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
-					n->subtype = AT_DisableTrig;
+					/* Begin - BUG#Z6309 */
+					if (pg_strcasecmp($3, "user") == 0)
+						n->subtype = AT_DisableTrigUser;
+					else
+						n->subtype = AT_DisableTrig;
+					/* End - BUG#Z6309 */
 					n->name = $3;
 					$$ = (Node *)n;
 				}
@@ -3291,13 +3294,6 @@ alter_table_cmd:
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DisableTrigAll;
-					$$ = (Node *)n;
-				}
-			/* ALTER TABLE <name> DISABLE TRIGGER USER */
-			| DISABLE_P TRIGGER USER
-				{
-					AlterTableCmd *n = makeNode(AlterTableCmd);
-					n->subtype = AT_DisableTrigUser;
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> ENABLE RULE <rule> */
@@ -6329,7 +6325,6 @@ CreateUserMappingStmt: CREATE USER MAPPING FOR auth_ident SERVER name create_gen
 
 /* User mapping authorization identifier */
 auth_ident: RoleSpec			{ $$ = $1; }
-			| USER				{ $$ = makeRoleSpec(ROLESPEC_CURRENT_USER, @1); }
 		;
 
 /*****************************************************************************
@@ -17847,10 +17842,12 @@ func_expr_common_subexpr:
 				{
 					$$ = makeSQLValueFunction(SVFOP_SESSION_USER, -1, @1);
 				}
-			| USER
+			/* Begin - BUG#Z6309 */
+			/*| USER
 				{
 					$$ = makeSQLValueFunction(SVFOP_USER, -1, @1);
-				}
+				}*/
+			/* End - BUG#Z6309 */
 			| CURRENT_CATALOG
 				{
 					$$ = makeSQLValueFunction(SVFOP_CURRENT_CATALOG, -1, @1);
@@ -19527,6 +19524,12 @@ RoleSpec:	NonReservedWord
 								n = (RoleSpec *) makeRoleSpec(ROLESPEC_PUBLIC, @1);
 								n->roletype = ROLESPEC_PUBLIC;
 							}
+							/* Begin - BUG#Z6309 */
+							else if (strcmp(str, "user") == 0)
+							{
+								n = makeRoleSpec(ROLESPEC_CURRENT_USER, @1);
+							}
+							/* End - BUG#Z6309 */
 							else if (strcmp(str, "none") == 0)
 							{
 								ereport(ERROR,
@@ -19548,6 +19551,12 @@ RoleSpec:	NonReservedWord
 								n = (RoleSpec *) makeRoleSpec(ROLESPEC_PUBLIC, @1);
 								n->roletype = ROLESPEC_PUBLIC;
 							}
+							/* Begin - BUG#Z6309 */
+							else if (strcmp($1, "user") == 0)
+							{
+								n = makeRoleSpec(ROLESPEC_CURRENT_USER, @1);
+							}
+							/* End - BUG#Z6309 */
 							else if (strcmp($1, "none") == 0)
 							{
 								ereport(ERROR,
@@ -20032,6 +20041,7 @@ unreserved_keyword:
 			| UNLOGGED
 			| UNTIL
 			| UPDATE
+			| USER	/* BUG#Z6309 */
 			| VACUUM
 			| VALID
 			| VALIDATE
@@ -20282,7 +20292,6 @@ reserved_keyword:
 			| UNION
 			| UNIQUE
 			| USE	/* ReqID:SRS-MYSQL-UPDATE */
-			| USER
 			| USING
 			| UTC_DATE /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| UTC_TIME /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
