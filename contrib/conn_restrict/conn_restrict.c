@@ -615,8 +615,9 @@ CheckMacInRules(char* macaddress, char* rulemac, char* outrulemac)
 	bool	include_flag = false;
 	bool	exclude_flag = false;
 	match_macflag result_flag = rulemac_notmatch;
-
-	if (!macaddress || *macaddress == '\0')
+	/* Bug #6268*/
+	if (!macaddress || *macaddress == '\0' ||
+		(!strcmp(rulemac, "*") && !strcmp(outrulemac, "*")))
 		return rulemac_notmatch;
 
 	include_flag = !strcmp(rulemac, "*") || CheckMacInRuleslist(macaddress, rulemac);
@@ -772,7 +773,10 @@ CheckTimeInRules(Timestamp logintime, char* allow_time, char* outallow_time)
 	bool			include_flag = false;
 	bool			exclude_flag = false;
 	match_timeflag  result_flag = ruletime_notmatch;
-
+	/*Bug #6268*/
+	if (!strcmp(allow_time, "*") && !strcmp(outallow_time, "*"))
+		return ruletime_notmatch;
+	
 	/* First,check whether the login time is within the restricted time period. */
 	include_flag = !strcmp(allow_time, "*") || CheckTimeInRuleslist(logintime, allow_time);
 	/* Second,check wherther the login time is in an unrestricted time period. */
