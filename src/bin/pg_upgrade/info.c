@@ -458,8 +458,9 @@ get_rel_infos(ClusterInfo *cluster, DbInfo *dbinfo, bool skip_gtt)
 	}
 
 	/* exclude possible orphaned temp tables */
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
 	snprintf(query + strlen(query), sizeof(query) - strlen(query),
-			 "    ((n.nspname !~ '^pg_temp_' AND "
+			 "    ((n.nspname !~ '^pg_temp_' AND n.nspname !~ '^hg_security' AND "
 			 "      n.nspname !~ '^pg_toast_temp_' AND "
 			 "      n.nspname NOT IN ('pg_catalog', 'information_schema', "
 			 "                        'binary_upgrade', 'pg_toast') AND "
@@ -467,6 +468,18 @@ get_rel_infos(ClusterInfo *cluster, DbInfo *dbinfo, bool skip_gtt)
 			 "     (n.nspname = 'pg_catalog' AND "
 			 "      relname IN ('pg_largeobject') ))), ",
 			 FirstNormalObjectId);
+#else
+	snprintf(query + strlen(query), sizeof(query) - strlen(query),
+			 "	  ((n.nspname !~ '^pg_temp_' AND "
+			 "		n.nspname !~ '^pg_toast_temp_' AND "
+			 "		n.nspname NOT IN ('pg_catalog', 'information_schema', "
+			 "						  'binary_upgrade', 'pg_toast') AND "
+			 "		c.oid >= %u::pg_catalog.oid) OR "
+			 "	   (n.nspname = 'pg_catalog' AND "
+			 "		relname IN ('pg_largeobject') ))), ",
+			 FirstNormalObjectId);
+
+#endif
 
 	/*
 	 * Add a CTE that collects OIDs of toast tables belonging to the tables
