@@ -46,7 +46,6 @@
 /* End - ReqID:SRS-MYSQL-CASE */
 
 extern bool restoremode; 			/*  bug#M0000238 */
-extern const char *DumpMode;			/*  bug#M0000261 */
 extern DBMode database_mode;
 
 extern DBParser compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */

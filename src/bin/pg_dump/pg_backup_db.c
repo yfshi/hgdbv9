@@ -346,19 +346,9 @@ ConnectDatabaseNative(Archive *AHX,
 	{
 		if((cparams->dbname == NULL) || (cparams->dbname && strcmp(cparams->dbname,"template1") != 0 && strstr(cparams->dbname, "dbname=template1") == 0))
 		{
-			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
-			{
-				SetDumptypeMode(AH->connection);
-				setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
-				setNLSdateFormat(AH->connection);				/* BUG:z774 */
-			}
-			else if (getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)	
-			{
-				PGresult		  *res;
-				res = PQexec(AH->connection, "set ivorysql.compatible_mode to pg;");
-				if (res)
-					PQclear(res);	
-			}
+			SetDumptypeMode(AH->connection);
+			setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
+			setNLSdateFormat(AH->connection);				/* BUG:z774 */
 		}
 	}
 	
@@ -479,19 +469,9 @@ ConnectDatabasePg(Archive *AHX,
 	{
 		if((cparams->dbname == NULL) || (cparams->dbname && strcmp(cparams->dbname,"template1") != 0 && strstr(cparams->dbname, "dbname=template1") == 0))
 		{
-			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)		/*  bug#M0000261 */
-			{
-				SetDumptypeMode(AH->connection);
-				setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
-				setNLSdateFormat(AH->connection);				/* BUG:z774 */
-			}
-			else if (getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)	
-			{
-				PGresult		  *res;
-				res = PQexec(AH->connection, "set ivorysql.compatible_mode to pg;");
-				if (res)
-					PQclear(res);	
-			}
+			SetDumptypeMode(AH->connection);
+			setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
+			setNLSdateFormat(AH->connection);				/* BUG:z774 */
 		}
 	}
 	
@@ -612,19 +592,9 @@ ConnectDatabaseOracle(Archive *AHX,
 	{
 		//if((cparams->dbname == NULL) || (cparams->dbname && strcmp(cparams->dbname,"template1") != 0 && strstr(cparams->dbname, "dbname=template1") == 0))
 		{
-			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)		/*  bug#M0000261 */
-			{
-				SetDumptypeMode(AH->connection);
-				setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
-				setNLSdateFormat(AH->connection);				/* BUG:z774 */
-			}
-			else if (getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)	
-			{
-				PGresult		  *res;
-				res = PQexec(AH->connection, "set ivorysql.compatible_mode to pg;");
-				if (res)
-					PQclear(res);	
-			}
+			SetDumptypeMode(AH->connection);
+			setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
+			setNLSdateFormat(AH->connection);				/* BUG:z774 */
 		}
 	}
 	

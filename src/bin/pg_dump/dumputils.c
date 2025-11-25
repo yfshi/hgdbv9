@@ -32,7 +32,6 @@ static void AddAcl(PQExpBuffer aclbuf, const char *keyword,
 				   const char *subname);
 
 bool restoremode = true; 					/*  bug#M0000238 */
-const char *DumpMode = NULL;
 DBMode database_mode = DB_PG;
 
 DBParser compatible_mode = ORA_PARSER;	/* ReqID:SRS-CMD-PGDUMP */

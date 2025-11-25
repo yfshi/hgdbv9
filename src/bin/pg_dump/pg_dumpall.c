@@ -402,7 +402,7 @@ main(int argc, char *argv[])
 
 	pgdumpopts = createPQExpBuffer();
 
-	while ((c = getopt_long(argc, argv, "acd:E:f:gh:l:m:Op:rsS:tU:vwWx", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "acd:E:f:gh:l:Op:rsS:tU:vwWx", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -442,12 +442,6 @@ main(int argc, char *argv[])
 			case 'l':
 				pgdb = pg_strdup(optarg);
 				break;
-
-			/* BEGIN - bug#M0000261 */
-			case 'm':			/* Specify the dump mode */
-				DumpMode = pg_strdup(optarg);
-				break;
-			/* End - bug#M0000261 */
 
 			case 'O':
 				appendPQExpBufferStr(pgdumpopts, " -O");
@@ -738,29 +732,6 @@ main(int argc, char *argv[])
 		DAM->getDatabaseMode(conn);
 	}
 
-	/* BEGIN - bug#M0000261 */
-	if (DumpMode)
-	{
-		if (DB_ORACLE == database_mode)
-		{
-			;
-		}
-		else
-		{
-			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-			if (DB_MYSQL == database_mode)
-				pg_log_error("Can't use -m when dbmode is MySQL.");	/* BUG#Z4251 */
-			else
-				pg_log_error("Can't use -m when dbmode is pg.");
-			/* END - ReqID:SRS-MISC-MYSQL-FRAME */
-
-			exit_nicely(1);
-		}
-
-	}
-	/* END - bug#M0000261 */
-	
-	
 	/* END - ReqID:SRS-MISC-USER */
 
 	/* BEGIN - SQL PARSER */
@@ -4582,18 +4553,10 @@ dumpDatabasesOracle(PGconn *conn)
 				/* BEGIN - ReqID:SRS-MISC-USER */
 				if (DB_ORACLE == database_mode) 
 				{
-					if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)	/*  bug#M0000261 */
-					{
-						fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-						compatible_mode = ORA_PARSER; /* BUGZ4254 */
-						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
-						fprintf(OPF, "\n\n");
-					}
-					else
-					{
-						fprintf(OPF, "set ivorysql.compatible_mode to pg;\n");
-						compatible_mode = PG_PARSER; /* BUGZ4254 */
-					}
+					fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
+					compatible_mode = ORA_PARSER; /* BUGZ4254 */
+					fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
+					fprintf(OPF, "\n\n");
 				}
 				/* END - ReqID:SRS-MISC-USER */
 			}
@@ -4701,18 +4664,10 @@ dumpDatabasesPg(PGconn *conn)
 				/* BEGIN - ReqID:SRS-MISC-USER */
 				if (DB_ORACLE == database_mode) 
 				{
-					if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)	/*  bug#M0000261 */
-					{
-						fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-						compatible_mode = ORA_PARSER; /* BUGZ4254 */
-						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
-						fprintf(OPF, "\n\n");
-					}
-					else
-					{
-						fprintf(OPF, "set ivorysql.compatible_mode to pg;\n");
-						compatible_mode = PG_PARSER; /* BUGZ4254 */
-					}
+					fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
+					compatible_mode = ORA_PARSER; /* BUGZ4254 */
+					fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
+					fprintf(OPF, "\n\n");
 				}
 				/* END - ReqID:SRS-MISC-USER */
 			}
@@ -4858,15 +4813,9 @@ runPgDump(const char *dbname, const char *create_opts)
 	PQExpBuffer cmd = createPQExpBuffer();
 	int			ret;
 
-	/* BEGIN - bug#M0000261 */
-	if(DumpMode)
-		appendPQExpBuffer(cmd, "\"%s\" %s %s -m %s", pg_dump_bin,
-						  pgdumpopts->data, create_opts, DumpMode);
-	else
-		appendPQExpBuffer(cmd, "\"%s\" %s %s", pg_dump_bin,
-						  pgdumpopts->data, create_opts);
+	appendPQExpBuffer(cmd, "\"%s\" %s %s", pg_dump_bin,
+					  pgdumpopts->data, create_opts);
 
-	/* END - bug#M0000261 */
 	/*
 	 * If we have a filename, use the undocumented plain-append pg_dump
 	 * format.

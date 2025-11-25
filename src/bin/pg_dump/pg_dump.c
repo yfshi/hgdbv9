@@ -257,10 +257,6 @@ static char *downMoptionString(const char*options);
 static bool Moption(const char *options, const char **moptions, int length);
 static void DatabaseCheckMoption(const char *options);
 /* END - ReqID:SRS-MYSQL-PGDUMP */
-/* Begin - bugz1402 */
-static void DatabaseCheckoptions(const char *options);
-/* End - bugz1402 */
-
 
 int
 main(int argc, char **argv)
@@ -404,7 +400,7 @@ main(int argc, char **argv)
 
 	InitDumpOptions(&dopt);
 
-	while ((c = getopt_long(argc, argv, "abBcCd:e:E:f:F:h:j:m:M:n:N:Op:RsS:t:T:U:vwWxZ:",	/* ReqID:SRS-CMD-PGDUMP */
+	while ((c = getopt_long(argc, argv, "abBcCd:e:E:f:F:h:j:M:n:N:Op:RsS:t:T:U:vwWxZ:",	/* ReqID:SRS-CMD-PGDUMP */
 							long_options, &optindex)) != -1)
 	{
 		switch (c)
@@ -458,11 +454,6 @@ main(int argc, char **argv)
 				numWorkers = atoi(optarg);
 				break;
 
-			/* BEGIN -  bug#M0000261 */
-			case 'm':			/* Specify the dump mode */
-				DumpMode = pg_strdup(optarg);
-				break;
-			/* END - bug#M0000261 */
 			/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 			case 'M':
 				DumpM = downMoptionString(pg_strdup(optarg));	/* ReqID:SRS-MYSQL-PGDUMP */
@@ -751,9 +742,6 @@ main(int argc, char **argv)
 	 */
 	DatabaseCheckMoption(DumpM);
 	/* END - ReqID:SRS-CMD-PGDUMP SRS-MYSQL-PGDUMP */
-	/* Begin - bugz1402 */
-	DatabaseCheckoptions(DumpMode);
-	/* End - bugz1402 */
 
 	/* Open the output file */
 	fout = dM->CreateArchive(filename, archiveFormat, compressLevel, dosync,
@@ -1385,19 +1373,3 @@ static void DatabaseCheckMoption(const char *options)
 		fatal("Except for Oracle and MySQL database modes, other database modes do not support -M");	/* BUGZ1346 */
 }
 /* END - ReqID:SRS-MYSQL-PGDUMP */
-
-/* Begin - bugz1402 */
-static void DatabaseCheckoptions(const char *options)
-{
-	/* Begin - BUGZ1621 */
-	if (options == NULL)
-		return;
-	if (database_mode == DB_MYSQL)
-		fatal("Can't use -m when dbmode is MySQL.");	/* BUG#Z4251 */
-	else if (database_mode == DB_PG)
-		fatal("Can't use -m when dbmode is pg");
-	else if (database_mode == DB_NATIVE)
-		fatal("Can't use -m when dbmode is native-pg");
-	/* End - BUGZ1621 */
-}
-/* End - bugz1402 */
