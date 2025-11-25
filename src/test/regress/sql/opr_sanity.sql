@@ -57,6 +57,7 @@ FROM pg_proc AS p1,
 pg_language lang /* BUG#M0000412 */
 WHERE prosecdef
 AND p1.prolang = lang.oid AND lang.lanname != 'plisql' /* BUG#M0000412 */
+AND p1.proname != 'get_auth_info'   /* BUG#z6222 */
 ORDER BY 1;
 
 -- pronargdefaults should be 0 iff proargdefaults is null

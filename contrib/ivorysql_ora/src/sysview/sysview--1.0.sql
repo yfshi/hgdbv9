@@ -11269,103 +11269,267 @@ GRANT SELECT ON SYS.USER_CONS_COLUMNS TO PUBLIC;
 /* *******************************************************************************************
                                           XXX_TAB_PRIVS
 * *******************************************************************************************/
+/* Auxiliary function to query OID and ROLNAME from pg_authid */
+CREATE OR REPLACE FUNCTION sys.get_auth_info(out oid, out text)
+RETURNS SETOF RECORD SECURITY DEFINER AS
+$$
+    SELECT oid, rolname FROM pg_authid
+$$ language sql;
+GRANT EXECUTE ON FUNCTION sys.get_auth_info(out oid, out text) TO PUBLIC;
+
+/* 
+ * Auxiliary view describing the privilege informations of TABLE, VIEW, MATERIALIZED VIEW, SEQUENCE,
+ * PACKAGE, PROCEDURE, FUNCTION, TYPE, LANGUAGE.
+ */
+CREATE OR REPLACE VIEW SYS.OBJECT_PRIVILEGES AS
+    SELECT      -- include table, view, sequence, materialized view
+        u_grantor.rolname AS grantor,
+        grantee.rolname AS grantee,
+        current_database() AS table_catalog,
+        nc.nspname AS table_schema,
+        c.relname AS table_name,
+        c.prtype AS privilege_type,
+        CASE WHEN
+            -- object owner always has grant options
+            pg_has_role(grantee.oid, c.relowner, 'USAGE')
+            OR c.grantable
+            THEN 'YES' ELSE 'NO' END AS is_grantable,
+        CASE WHEN c.prtype = 'SELECT' THEN 'YES' ELSE 'NO' END AS with_hierarchy,
+        CASE c.relkind
+            WHEN 'r' THEN 'TABLE'
+            WHEN 'v' THEN 'VIEW'
+            WHEN 'f' THEN 'TABLE'
+            WHEN 'p' THEN 'TABLE'
+            WHEN 'm' THEN 'MATERIALIZED VIEW'
+            WHEN 'S' THEN 'SEQUENCE'
+            ELSE NULL
+        END AS object_type,
+        c.relowner AS owner,
+        c.oid AS oid
+    FROM (
+            SELECT oid, relname, relnamespace, relkind, relowner, (aclexplode(coalesce(relacl, acldefault('r', relowner)))).* FROM pg_class
+        ) AS c (oid, relname, relnamespace, relkind, relowner, grantor, grantee, prtype, grantable),
+        pg_namespace nc,
+        (SELECT * FROM sys.get_auth_info()) AS u_grantor (oid, rolname),
+        (
+            SELECT * FROM sys.get_auth_info()
+            UNION ALL
+            SELECT 0::oid, 'PUBLIC'
+        ) AS grantee (oid, rolname)
+    WHERE c.relnamespace = nc.oid
+        AND c.relkind IN ('r', 'v', 'f', 'p', 'm', 'S')
+        AND c.grantee = grantee.oid
+        AND c.grantor = u_grantor.oid
+        AND c.prtype IN ('INSERT', 'SELECT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER')
+UNION ALL
+    SELECT      -- include package
+        u_grantor.rolname AS grantor,
+        grantee.rolname AS grantee,
+        current_database() AS table_catalog,
+        nc.nspname AS table_schema,
+        c.pkgname AS table_name,
+        c.prtype AS privilege_type,
+        CASE WHEN
+            -- object owner always has grant options
+            pg_has_role(grantee.oid, c.pkgowner, 'USAGE')
+            OR c.grantable
+            THEN 'YES' ELSE 'NO' END AS is_grantable,
+        CASE WHEN c.prtype = 'SELECT' THEN 'YES' ELSE 'NO' END AS with_hierarchy,
+        'PACKAGE' AS object_type,
+        c.pkgowner AS owner,
+        c.oid AS oid
+    FROM (
+            SELECT oid, pkgname, pkgnamespace, pkgowner, (aclexplode(coalesce(pkgacl, acldefault('r', pkgowner)))).* FROM pg_package
+        ) AS c (oid, pkgname, pkgnamespace, pkgowner, grantor, grantee, prtype, grantable),
+        pg_namespace nc,
+        (SELECT * FROM sys.get_auth_info()) AS u_grantor (oid, rolname),
+        (
+            SELECT * FROM sys.get_auth_info()
+            UNION ALL
+            SELECT 0::oid, 'PUBLIC'
+        ) AS grantee (oid, rolname)
+    WHERE c.pkgnamespace = nc.oid
+        AND c.grantee = grantee.oid
+        AND c.grantor = u_grantor.oid
+        AND c.prtype IN ('EXECUTE')
+UNION ALL
+    SELECT      -- include function, procedure
+        u_grantor.rolname AS grantor,
+        grantee.rolname AS grantee,
+        current_database() AS table_catalog,
+        nc.nspname AS table_schema,
+        c.proname AS table_name,
+        c.prtype AS privilege_type,
+        CASE WHEN
+            -- object owner always has grant options
+            pg_has_role(grantee.oid, c.proowner, 'USAGE')
+            OR c.grantable
+            THEN 'YES' ELSE 'NO' END AS is_grantable,
+        CASE WHEN c.prtype = 'SELECT' THEN 'YES' ELSE 'NO' END AS with_hierarchy,
+        CASE c.prokind
+            WHEN 'f' THEN 'FUNCTION'
+            WHEN 'p' THEN 'PROCEDURE'
+            ELSE 'OTHER PROC TYPE'
+        END AS object_type,
+        c.proowner AS owner,
+        c.oid AS oid
+    FROM (
+            SELECT oid, proname, pronamespace, prokind, proowner, (aclexplode(coalesce(proacl, acldefault('r', proowner)))).* FROM pg_proc
+        ) AS c (oid, proname, pronamespace, prokind, proowner, grantor, grantee, prtype, grantable),
+        pg_namespace nc,
+        (SELECT * FROM sys.get_auth_info()) AS u_grantor (oid, rolname),
+        (
+            SELECT * FROM sys.get_auth_info()
+            UNION ALL
+            SELECT 0::oid, 'PUBLIC'
+        ) AS grantee (oid, rolname)
+    WHERE c.pronamespace = nc.oid
+        AND c.grantee = grantee.oid
+        AND c.grantor = u_grantor.oid
+        AND c.prtype IN ('EXECUTE')
+UNION ALL
+    SELECT      -- include language
+        u_grantor.rolname AS grantor,
+        grantee.rolname AS grantee,
+        current_database() AS table_catalog,
+        'PUBLIC' AS table_schema,
+        c.lanname AS table_name,
+        c.prtype AS privilege_type,
+        CASE WHEN
+            -- object owner always has grant options
+            pg_has_role(grantee.oid, c.lanowner, 'USAGE')
+            OR c.grantable
+            THEN 'YES' ELSE 'NO' END AS is_grantable,
+        CASE WHEN c.prtype = 'SELECT' THEN 'YES' ELSE 'NO' END AS with_hierarchy,
+        'LANGUAGE' AS object_type,
+        c.lanowner AS owner,
+        c.oid AS oid
+    FROM (
+            SELECT oid, lanname, lanowner, (aclexplode(coalesce(lanacl, acldefault('r', lanowner)))).* FROM pg_language
+        ) AS c (oid, lanname, lanowner, grantor, grantee, prtype, grantable),
+        (SELECT * FROM sys.get_auth_info()) AS u_grantor (oid, rolname),
+        (
+            SELECT * FROM sys.get_auth_info()
+            UNION ALL
+            SELECT 0::oid, 'PUBLIC'
+        ) AS grantee (oid, rolname)
+    WHERE c.grantee = grantee.oid
+        AND c.grantor = u_grantor.oid
+        AND c.prtype IN ('USAGE')
+UNION ALL
+    SELECT      -- include type
+        u_grantor.rolname AS grantor,
+        grantee.rolname AS grantee,
+        current_database() AS table_catalog,
+        nc.nspname AS table_schema,
+        c.typname AS table_name,
+        c.prtype AS privilege_type,
+        CASE WHEN
+            -- object owner always has grant options
+            pg_has_role(grantee.oid, c.typowner, 'USAGE')
+            OR c.grantable
+            THEN 'YES' ELSE 'NO' END AS is_grantable,
+        CASE WHEN c.prtype = 'SELECT' THEN 'YES' ELSE 'NO' END AS with_hierarchy,
+        'TYPE' AS object_type,
+        c.typowner AS owner,
+        c.oid AS oid
+    FROM (
+            SELECT oid, typname, typnamespace, typowner, (aclexplode(coalesce(typacl, acldefault('r', typowner)))).* FROM pg_type
+        ) AS c (oid, typname, typnamespace, typowner, grantor, grantee, prtype, grantable),
+        pg_namespace nc,
+        (SELECT * FROM sys.get_auth_info()) AS u_grantor (oid, rolname),
+        (
+            SELECT * FROM sys.get_auth_info()
+            UNION ALL
+            SELECT 0::oid, 'PUBLIC'
+        ) AS grantee (oid, rolname)
+    WHERE c.typnamespace = nc.oid
+        AND c.grantee = grantee.oid
+        AND c.grantor = u_grantor.oid
+        AND c.prtype IN ('USAGE');
+GRANT SELECT ON SYS.OBJECT_PRIVILEGES TO PUBLIC;
+
 CREATE OR REPLACE VIEW SYS.DBA_TAB_PRIVS AS
     SELECT
-        SYS.ORA_CASE_TRANS(t.grantee::varchar2)::varchar2(128) AS grantee,
-        SYS.ORA_CASE_TRANS((PG_GET_USERBYID(c.relowner))::varchar2)::varchar2(128) AS owner,
-        SYS.ORA_CASE_TRANS(t.table_name::varchar2)::varchar2(128) AS table_name,
-        SYS.ORA_CASE_TRANS(t.grantor::varchar2)::varchar2(128) AS grantor,
-        t.privilege_type::varchar2(40) AS privilege,
-        t.is_grantable::varchar2(3) AS grantable,
-        t.with_hierarchy::varchar2(3) AS hierarchy,
+        SYS.ORA_CASE_TRANS(objp.grantee::varchar2)::varchar2(128) AS grantee,
+        SYS.ORA_CASE_TRANS((PG_GET_USERBYID(objp.owner))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(objp.table_name::varchar2)::varchar2(128) AS table_name,
+        SYS.ORA_CASE_TRANS(objp.grantor::varchar2)::varchar2(128) AS grantor,
+        objp.privilege_type::varchar2(40) AS privilege,
+        objp.is_grantable::varchar2(3) AS grantable,
+        objp.with_hierarchy::varchar2(3) AS hierarchy,
         'NO'::varchar2(3) AS common,
-        CASE				-- To maintain consistency with ORACLE
-            WHEN c.relkind = 'r' THEN 'TABLE'::varchar2(24)
-            WHEN c.relkind = 'f' THEN 'TABLE'::varchar2(24)
-            WHEN c.relkind = 'p' THEN 'TABLE'::varchar2(24)
-            WHEN c.relkind = 'v' THEN 'VIEW'::varchar2(24)
-            WHEN c.relkind = 'm' THEN 'TABLE'::varchar2(24)
-            ELSE 'OTHER TYPE'::varchar2(24)
-        END AS type,
+        object_type AS type,
         'NO'::varchar2(3) AS inherited
     FROM
-        information_schema.table_privileges t
+        sys.object_privileges objp
     JOIN
-        pg_namespace n ON t.table_schema = n.nspname
-    JOIN
-        pg_class c ON t.table_name = c.relname AND n.oid = c.relnamespace
+        pg_namespace n ON objp.table_schema = n.nspname
     WHERE
-        t.grantee <> t.grantor;
+        objp.grantee <> objp.grantor;
 GRANT SELECT ON SYS.DBA_TAB_PRIVS TO PUBLIC;
 
 CREATE OR REPLACE VIEW SYS.ALL_TAB_PRIVS AS
     SELECT
-        SYS.ORA_CASE_TRANS(t.grantor::varchar2)::varchar2(128) AS grantor,
-        SYS.ORA_CASE_TRANS(t.grantee::varchar2)::varchar2(128) AS grantee,
-        SYS.ORA_CASE_TRANS(t.table_schema::varchar2)::varchar2(128) AS table_schema,
-        SYS.ORA_CASE_TRANS(t.table_name::varchar2)::varchar2(128) AS table_name,
-        t.privilege_type::varchar2(40) AS privilege,
-        t.is_grantable::varchar2(3) AS grantable,
-        t.with_hierarchy::varchar2(3) AS hierarchy,
+        SYS.ORA_CASE_TRANS(objp.grantor::varchar2)::varchar2(128) AS grantor,
+        SYS.ORA_CASE_TRANS(objp.grantee::varchar2)::varchar2(128) AS grantee,
+        SYS.ORA_CASE_TRANS(objp.table_schema::varchar2)::varchar2(128) AS table_schema,
+        SYS.ORA_CASE_TRANS(objp.table_name::varchar2)::varchar2(128) AS table_name,
+        objp.privilege_type::varchar2(40) AS privilege,
+        objp.is_grantable::varchar2(3) AS grantable,
+        objp.with_hierarchy::varchar2(3) AS hierarchy,
         'NO'::varchar2(3) AS common,
-        CASE				-- To maintain consistency with ORACLE
-            WHEN c.relkind = 'r' THEN 'TABLE'::varchar2(24)
-            WHEN c.relkind = 'f' THEN 'TABLE'::varchar2(24)
-            WHEN c.relkind = 'p' THEN 'TABLE'::varchar2(24)
-            WHEN c.relkind = 'v' THEN 'VIEW'::varchar2(24)
-            WHEN c.relkind = 'm' THEN 'TABLE'::varchar2(24)
-            ELSE 'OTHER TYPE'::varchar2(24)
-        END AS type,
+        object_type AS type,
         'NO'::varchar2(3) AS inherited
     FROM
-        information_schema.table_privileges t
+        sys.object_privileges objp
     JOIN
-        pg_namespace n ON t.table_schema = n.nspname
-    JOIN
-        pg_class c ON t.table_name = c.relname AND n.oid = c.relnamespace
+        pg_namespace n ON objp.table_schema = n.nspname
     WHERE
-        t.grantee <> t.grantor AND
+        objp.grantee <> objp.grantor AND
         (
-            HAS_TABLE_PRIVILEGE(c.oid, 'SELECT')
-            OR HAS_TABLE_PRIVILEGE(c.oid,'INSERT')
-            OR HAS_TABLE_PRIVILEGE(c.oid, 'UPDATE')
-            OR HAS_TABLE_PRIVILEGE(c.oid, 'DELETE')
-            OR HAS_TABLE_PRIVILEGE(c.oid, 'TRUNCATE')
-            OR HAS_TABLE_PRIVILEGE(c.oid, 'TRIGGER')
-            OR HAS_TABLE_PRIVILEGE(c.oid, 'REFERENCES')
+            CASE
+                WHEN objp.object_type IN ('TABLE', 'VIEW', 'SEQUENCE', 'MATERIALIZED VIEW') THEN
+                (
+                    HAS_TABLE_PRIVILEGE(objp.oid, 'SELECT')
+                    OR HAS_TABLE_PRIVILEGE(objp.oid,'INSERT')
+                    OR HAS_TABLE_PRIVILEGE(objp.oid, 'UPDATE')
+                    OR HAS_TABLE_PRIVILEGE(objp.oid, 'DELETE')
+                    OR HAS_TABLE_PRIVILEGE(objp.oid, 'TRUNCATE')
+                    OR HAS_TABLE_PRIVILEGE(objp.oid, 'TRIGGER')
+                    OR HAS_TABLE_PRIVILEGE(objp.oid, 'REFERENCES')
+                )
+                ELSE
+                (
+                    objp.grantee = current_user
+                    OR objp.grantor = current_user
+                )
+            END
         );
 GRANT SELECT ON SYS.ALL_TAB_PRIVS TO PUBLIC;
 
 CREATE OR REPLACE VIEW SYS.USER_TAB_PRIVS AS
     SELECT
-        SYS.ORA_CASE_TRANS(t.grantee::varchar2)::varchar2(128) AS grantee,
-        SYS.ORA_CASE_TRANS((PG_GET_USERBYID(c.relowner))::varchar2)::varchar2(128) AS owner,
-        SYS.ORA_CASE_TRANS(t.table_name::varchar2)::varchar2(128) AS table_name,
-        SYS.ORA_CASE_TRANS(t.grantor::varchar2)::varchar2(128) AS grantor,
-        t.privilege_type::varchar2(40) AS privilege,
-        t.is_grantable::varchar2(3) AS grantable,
-        t.with_hierarchy::varchar2(3) AS hierarchy,
+        SYS.ORA_CASE_TRANS(objp.grantee::varchar2)::varchar2(128) AS grantee,
+        SYS.ORA_CASE_TRANS((PG_GET_USERBYID(objp.owner))::varchar2)::varchar2(128) AS owner,
+        SYS.ORA_CASE_TRANS(objp.table_name::varchar2)::varchar2(128) AS table_name,
+        SYS.ORA_CASE_TRANS(objp.grantor::varchar2)::varchar2(128) AS grantor,
+        objp.privilege_type::varchar2(40) AS privilege,
+        objp.is_grantable::varchar2(3) AS grantable,
+        objp.with_hierarchy::varchar2(3) AS hierarchy,
         'NO'::varchar2(3) AS common,
-        CASE				-- To maintain consistency with ORACLE
-            WHEN c.relkind = 'r' THEN 'TABLE'::varchar2(24)
-            WHEN c.relkind = 'f' THEN 'TABLE'::varchar2(24)
-            WHEN c.relkind = 'p' THEN 'TABLE'::varchar2(24)
-            WHEN c.relkind = 'v' THEN 'VIEW'::varchar2(24)
-            WHEN c.relkind = 'm' THEN 'TABLE'::varchar2(24)
-            ELSE 'OTHER TYPE'::varchar2(24)
-        END AS type,
+        object_type AS type,
         'NO'::varchar2(3) AS inherited
     FROM
-        information_schema.table_privileges t
+        sys.object_privileges objp
     JOIN
-        pg_namespace n ON t.table_schema = n.nspname
-    JOIN
-        pg_class c ON t.table_name = c.relname AND n.oid = c.relnamespace
+        pg_namespace n ON objp.table_schema = n.nspname
     WHERE
-        t.grantee <> t.grantor
-        AND (c.relowner::regrole = current_user::regrole
-        OR t.grantee = current_user
-        OR t.grantor = current_user);
+        objp.grantee <> objp.grantor AND
+        (objp.owner::regrole = current_user::regrole
+        OR objp.grantee = current_user
+        OR objp.grantor = current_user);
+
 GRANT SELECT ON SYS.USER_TAB_PRIVS TO PUBLIC;
 
 /* *******************************************************************************************
