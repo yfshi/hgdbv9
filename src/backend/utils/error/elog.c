@@ -369,9 +369,12 @@ errstart(int elevel, const char *domain)
 	if (elevel >= ERROR)
 	{
 		/* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
-		if(enable_serveroutput && dbmsoutput_sendbuffer_hook)
+		if(dbmsoutput_errorhandler_hook && dbmsoutput_sendbuffer_hook)
 		{
-			(*dbmsoutput_sendbuffer_hook)();
+			if (enable_serveroutput)
+				(*dbmsoutput_sendbuffer_hook)();
+			else
+				(*dbmsoutput_errorhandler_hook)();	/* BUG#Z5656 */
 		}
 		/* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 

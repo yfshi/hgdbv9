@@ -68,6 +68,7 @@ orarefcursor_funcs_call orarefcursor_funcs = {NULL, NULL, NULL, NULL, NULL, UNLO
 /* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 /* Hook for DBMS_OUTPUT Package */
 dbmsoutput_sendbuffer_hook_type dbmsoutput_sendbuffer_hook = NULL;
+dbmsoutput_errorhandler_hook_type dbmsoutput_errorhandler_hook = NULL; /* BUG#Z5656 */
 dbmsoutput_severoutput_hook_type dbmsoutput_severoutput_hook = NULL;
 bool	enable_serveroutput = false;
 /* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
