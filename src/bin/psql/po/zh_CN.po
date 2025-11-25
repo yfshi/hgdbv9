@@ -2448,6 +2448,12 @@ msgstr ""
 msgid "  -V, --version            output version information, then exit\n"
 msgstr "  -V, --version            输出版本信息, 然后退出\n"
 
+
+#: help.c:94
+#, c-format
+msgid "  -G, --highgo-version     output version of highgo information, then exit\n"
+msgstr "  -G, --highgo-version     输出瀚高版本信息, 然后退出\n"
+
 #: help.c:90
 #, c-format
 msgid "  -X, --no-psqlrc          do not read startup file (~/.psqlrc)\n"
@@ -2535,6 +2541,12 @@ msgstr "  -s, --single-step        单步模式 (确认每个查询)\n"
 #, c-format
 msgid "  -S, --single-line        single-line mode (end of line terminates SQL command)\n"
 msgstr "  -S, --single-line        单行模式 (一行就是一条 SQL 命令)\n"
+
+
+#: help.c:116
+#, c-format
+msgid "  -N, --no-echo            disable enhanced history command line editing (readline)\n"
+msgstr "  -N, --no-echo            禁用增强历史记录命令编辑(readline)\n"
 
 #: help.c:109
 #, c-format
@@ -2653,6 +2665,25 @@ msgstr "  -w, --no-password        永远不提示输入口令\n"
 #, c-format
 msgid "  -W, --password           force password prompt (should happen automatically)\n"
 msgstr "  -W, --password           强制口令提示 (自动)\n"
+
+
+#: help.c:151
+#, c-format
+msgid "  -D, --ident=PASSIDENT    Database directory(if use identifier) (default: \"%s\")\n"
+msgstr "  -D, --ident=PASSIDENT    数据库目录(如果使用标识符) (默认: \"%s\")\n"
+
+
+#: help.c:154
+#, c-format
+msgid "  -M, --ident=PASSMAC      Gets the MAC address of the specified NIC (default: \"%s\")\n"
+msgstr "  -M, --ident=PASSMAC      获取指定网卡的MAC地址 (默认: \"%s\")\n"
+
+
+#: help.c:156
+#, c-format
+msgid "  -C, --ident=PASSCUSTOM   Custom Key (default: \"%s\")\n"
+msgstr "  -C, --ident=PASSCUSTOM   自定义键 (默认: \"%s\")\n"
+
 
 #: help.c:141
 #, c-format

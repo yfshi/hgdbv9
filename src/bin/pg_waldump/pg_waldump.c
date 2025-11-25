@@ -800,10 +800,10 @@ usage(void)
 			 "                         (optionally, show per-record statistics)\n"));
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -C, --cluster-key-command=COMMAND\n"
-			 "						   set command to obtain the cluster key\n"));
-	printf(_("  -R, --authprompt	   prompt for a passphrase or PIN\n"));
+			 "                         set command to obtain the cluster key\n"));
+	printf(_("  -R, --authprompt       prompt for a passphrase or PIN\n"));
 	printf(_("  -K, --encrypt-method   the encryption method of the wal file\n"));
-	printf(_("  -W, --wal-key		   the path of the wal's key file\n"));
+	printf(_("  -W, --wal-key          the path of the wal's key file\n"));
 	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -?, --help             show this help, then exit\n"));
 	printf(_("\nReport bugs to <%s>.\n"), PACKAGE_BUGREPORT);

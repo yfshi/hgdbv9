@@ -1082,7 +1082,7 @@ help(const char *progname)
 	printf(_("  -V, --version                output version information, then exit\n"));
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
-	printf(_("  -G, --highgo-version		 output version of highgo information, then exit\n"));
+	printf(_("  -G, --highgo-version         output version of highgo information, then exit\n"));
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf(_("  -Z, --compress=0-9           compression level for compressed formats\n"));

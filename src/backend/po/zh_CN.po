@@ -13919,8 +13919,20 @@ msgstr "  -o OPTIONS         把 \"OPTIONS\" 传递给每一个后端服务器�
 
 #: main/main.c:346
 #, c-format
-msgid "  -p PORT            port number to listen on\n"
-msgstr "  -p PORT            监听的端口号\n"
+msgid "  -p PORT            port number to listen on in Postgres mode\n"
+msgstr "  -p PORT            设置PG模式的监听端口\n"
+
+
+#: main/main.c:346
+#, c-format
+msgid "  -o PORT            port number to listen on in Oracle mode\n"
+msgstr "  -o PORT            设置Oracle模式的监听端口\n"
+
+#: main/main.c:349
+#, c-format
+msgid "  -R fd              prompt for the cluster key\n"
+msgstr "  -R fd              提示输入集群密钥\n"
+
 
 #: main/main.c:347
 #, c-format
@@ -13936,6 +13948,12 @@ msgstr "  -S WORK-MEM        设置排序内存数量 (单位为 kB)\n"
 #, c-format
 msgid "  -V, --version      output version information, then exit\n"
 msgstr "  -V, --version      输出版本信息，然后退出\n"
+
+
+#: main/main.c:356
+#, c-format
+msgid "  -G, --highgo-version      output version of highgo information, then exit\n"
+msgstr "  -G, --highgo-version      输出瀚高版本信息, 然后退出\n"
 
 #: main/main.c:350
 #, c-format
@@ -14035,6 +14053,17 @@ msgstr "  -j                 不使用新行作为交互查询的分隔符\n"
 msgid "  -r FILENAME        send stdout and stderr to given file\n"
 msgstr "  -r FILENAME        把标准输出和标准错误发送到指定的文件中\n"
 
+#: main/main.c:380
+#, c-format
+msgid "  -K LEN             enable cluster file encryption with specified key bit length\n"
+msgstr "  -K LEN             启用具有指定密钥长度的集群文件加密\n"
+
+
+#: main/main.c:383
+#, c-format
+msgid "  -u DATADIR         copy encryption keys from datadir\n"
+msgstr "  -u DATADIR         从数据目录复制加密密钥\n"
+
 #: main/main.c:371
 #, c-format
 msgid ""
@@ -14053,6 +14082,7 @@ msgstr "  --boot             选择引导模式(必须是第一个参数)\n"
 #, c-format
 msgid "  DBNAME             database name (mandatory argument in bootstrapping mode)\n"
 msgstr "  DBNAME             数据库名称（在引导模式中是必选参数)\n"
+
 
 #: main/main.c:375
 #, c-format

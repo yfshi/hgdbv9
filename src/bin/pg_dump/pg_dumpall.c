@@ -938,7 +938,7 @@ help(void)
 	printf(_("  -V, --version                output version information, then exit\n"));
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
-	printf(_("  -G, --highgo-version		 output version of highgo information, then exit\n"));
+	printf(_("  -G, --highgo-version         output version of highgo information, then exit\n"));
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf(_("  --lock-wait-timeout=TIMEOUT  fail after waiting TIMEOUT for a table lock\n"));

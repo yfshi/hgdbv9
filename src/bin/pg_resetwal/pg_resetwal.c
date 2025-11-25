@@ -1376,7 +1376,7 @@ usage(void)
 	printf(_("  -e, --epoch=XIDEPOCH             set next transaction ID epoch\n"));
 	printf(_("  -f, --force                      force update to be done\n"));
 	/* BEGIN - SQL PARSER */
-	printf(_("  -g, --dbmode                   set database mode\n"));
+	printf(_("  -g, --dbmode                     set database mode\n"));
 	/* END - SQL PARSER */
 	printf(_("  -l, --next-wal-file=WALFILE      set minimum starting location for new WAL\n"));
 	printf(_("  -m, --multixact-ids=MXID,MXID    set next and oldest multitransaction ID\n"));
@@ -1387,15 +1387,15 @@ usage(void)
 	printf(_("  -V, --version                    output version information, then exit\n"));
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
-	printf(_("  -G, --highgo-version			 output version of highgo information, then exit\n"));
+	printf(_("  -G, --highgo-version             output version of highgo information, then exit\n"));
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf(_("  -x, --next-transaction-id=XID    set next transaction ID\n"));
 	printf(_("      --wal-segsize=SIZE           size of WAL segments, in megabytes\n"));
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -C, --cluster-key-command=COMMAND\n"
-			 "								   set command to obtain the cluster key\n"));
-	printf(_("  -R, --authprompt			   prompt for a passphrase or PIN\n"));
+			 "                                   set command to obtain the cluster key\n"));
+	printf(_("  -R, --authprompt                 prompt for a passphrase or PIN\n"));
 	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -?, --help                       show this help, then exit\n"));
 	printf(_("\nReport bugs to <%s>.\n"), PACKAGE_BUGREPORT);

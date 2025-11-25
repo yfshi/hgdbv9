@@ -2809,7 +2809,7 @@ usage(const char *progname)
 /* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
 	printf(_("  -H, --highgoDB=DBNAME     set highgo database name\n"));
-	printf(_("  -P, --port=PORT			  set highgo database listening port\n"));
+	printf(_("  -P, --port=PORT           set highgo database listening port\n"));
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  -E, --encoding=ENCODING   set default encoding for new databases\n"));

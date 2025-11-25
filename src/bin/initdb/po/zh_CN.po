@@ -504,10 +504,27 @@ msgstr "      --auth-local=METHOD   本地socket连接的默认认证方法\n"
 msgid " [-D, --pgdata=]DATADIR     location for this database cluster\n"
 msgstr "  -D, --pgdata=DATADIR      当前数据库簇的位置\n"
 
+#: intdb.c:2857
+#, c-format
+msgid "  -H, --highgoDB=DBNAME     set highgo database name\n"
+msgstr "  -H, --highgoDB=DBNAME     设置瀚高数据库名称\n"
+
+
+#: intidb.c:2858
+#, c-format
+msgid "  -P, --port=PORT           set highgo database listening port\n"
+msgstr "  -P, --port=PORT           设置瀚高数据库监听端口\n"
+
 #: initdb.c:2252
 #, c-format
 msgid "  -E, --encoding=ENCODING   set default encoding for new databases\n"
 msgstr "  -E, --encoding=ENCODING   为新数据库设置默认编码\n"
+
+
+#: initdb.c:2815
+#, c-format
+msgid "  -a, --audit-path          the audit log tablespace path\n"
+msgstr "  -a, --audit-path          设置审计日志的表空间路径\n"
 
 #: initdb.c:2253
 #, c-format
@@ -648,7 +665,13 @@ msgstr ""
 msgid "  -V, --version             output version information, then exit\n"
 msgstr "  -V, --version             输出版本信息, 然后退出\n"
 
-#: initdb.c:2927
+
+#: initdb.c:2896
+#, c-format
+msgid "  -G, --highgo-version      output version of highgo information, then exit\n"
+msgstr "  -G, --highgo-version      输出瀚高版本信息, 然后退出\n"
+
+#: initdb.c:2900
 #, c-format
 msgid ""
 "  -C, --cluster-key-command=COMMAND\n"

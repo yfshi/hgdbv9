@@ -111,7 +111,7 @@ help(void)
 	printf(_("  --version             show the PostgreSQL version\n"));
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
-	printf(_("  --highgo-version      show the HighgoDB versionn"));
+	printf(_("  --highgo-version      show the HighgoDB version\n"));
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf(_("  -?, --help            show this help, then exit\n"));

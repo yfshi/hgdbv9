@@ -582,6 +582,10 @@ msgstr "  -e, --epoch=XIDEPOCH             设置下一个事务ID的epoch\n"
 msgid "  -f, --force                      force update to be done\n"
 msgstr "  -f, --force                      强制更新完成\n"
 
+#: pg_resetwal.c:1379
+msgid "  -g, --dbmode                     set database mode\n"
+msgstr "  -g, --dbmode                     设置数据库模式\n"
+
 #: pg_resetwal.c:1226
 msgid "  -l, --next-wal-file=WALFILE      set minimum starting location for new WAL\n"
 msgstr "  -l, --next-wal-file=WALFILE      设置新的WAL最小起始位置\n"
@@ -610,6 +614,11 @@ msgstr "  -u, --oldest-transaction-id=XID  设置最旧的事务ID\n"
 msgid "  -V, --version                    output version information, then exit\n"
 msgstr "  -V, --version                    输出版本信息, 然后退出\n"
 
+
+#: pg_resetwal.c:1390
+msgid "  -G, --highgo-version             output version of highgo information, then exit\n"
+msgstr "  -G, --highgo-version             输出瀚高版本信息, 然后退出\n"
+
 #: pg_resetwal.c:1233
 msgid "  -x, --next-transaction-id=XID    set next transaction ID\n"
 msgstr "  -x, --next-transaction-id=XID    设置下一个事务ID\n"
@@ -617,6 +626,19 @@ msgstr "  -x, --next-transaction-id=XID    设置下一个事务ID\n"
 #: pg_resetwal.c:1234
 msgid "      --wal-segsize=SIZE           size of WAL segments, in megabytes\n"
 msgstr "      --wal-segsize=SIZE           WAL段的大小（兆字节）\n"
+
+
+#: pg_resetwal.c:1396
+#, c-format
+msgid "  -C, --cluster-key-command=COMMAND\n"
+"                                   set command to obtain the cluster key\n"
+msgstr "  -C, --cluster-key-command=COMMAND\n"
+"                                   设置命令以获取集群的密钥\n"
+
+#: pg_resetwal.c:1398
+#, c-format
+msgid "  -R, --authprompt                 prompt for a passphrase or PIN\n"
+msgstr "  -R, --authprompt                 提示输入密码或PIN码\n"
 
 #: pg_resetwal.c:1235
 msgid "  -?, --help                       show this help, then exit\n"

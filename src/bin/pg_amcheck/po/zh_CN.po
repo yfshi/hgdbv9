@@ -444,6 +444,12 @@ msgstr "  -v, --verbose                   写大量的输出\n"
 msgid "  -V, --version                   output version information, then exit\n"
 msgstr "  -V, --version                   输出版本信息, 然后退出\n"
 
+
+#: pg_amcheck.c:1213
+#, c-format
+msgid "  -G, --highgo-version            output version of highgo information, then exit\n"
+msgstr "  -G, --highgo-version            输出瀚高版本信息, 然后退出\n"
+
 #: pg_amcheck.c:1194
 #, c-format
 msgid "      --install-missing           install missing extensions\n"

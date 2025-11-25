@@ -122,8 +122,8 @@ usage(const char *progname)
 	printf(_("      --no-ensure-shutdown       do not automatically fix unclean shutdown\n"));
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -C, --cluster-key-command=COMMAND\n"
-			 "								   set command to obtain the cluster key\n"));
-	printf(_("  -T, --authprompt			   prompt for a passphrase or PIN\n"));
+			 "                                 set command to obtain the cluster key\n"));
+	printf(_("  -R, --authprompt               prompt for a passphrase or PIN\n"));
 	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -V, --version                  output version information, then exit\n"));
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
