@@ -1796,7 +1796,7 @@ GetTuple(Datum* values, int val_len, bool* nulls, int null_len, SessionHistEntry
 	}
 
 	/* application name */
-	if (beentry->st_appname)
+	if (strlen(beentry->st_appname))
 		values[NATTS_APPNAME] = CStringGetTextDatum(beentry->st_appname);
 	else
 		nulls[NATTS_APPNAME] = true;
@@ -2973,7 +2973,7 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 			type = DB_ONLY;
 		}
 	}
-	else if ((mem_start != 0 && mem_start < db_start) || db_end == 0)
+	else if ((mem_start != 0 && mem_start <= db_start) || db_end == 0)  /* BUG#z6416 */
 	{
 		/*
 		 * As db did not have data or its just a part of memory
@@ -2983,7 +2983,9 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 		/*
 		 * NOTE:
 		 *                     min(ts)         max(ts)
-		 * DB time:             |     nothing    |
+		 * DB time:             |  ( nothing )   |
+		 * DB time:             |  (only one record, min=max=1)
+		 * DB time:             |----------------|
 		 * DB time:    	            |------------|
 		 * ME time:             |---------------------|
 		 * dura:   N -  (b, e)
@@ -3001,7 +3003,7 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 			type = MEM_ONLY;
 
 	}
-        else if (db_start < mem_start && mem_start < db_end)
+        else if (db_start < mem_start && mem_start <= db_end)	/* BUG#z6146 */
 	{
 		/*
 		 * As db have data, and it has overlapping data with memory
@@ -3011,6 +3013,7 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 		/*
 		 * NOTE:
 		 *                     min(ts)                    max(ts)
+		 * DB time                |---------|
 		 * DB time:               |-----------------|
 		 * ME time:                         |--------------------|
 		 * dura:     N -  (b, e)
@@ -3038,7 +3041,7 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 		{
 			type = NONE;
 		}
-		else if (b_tmtz < mem_start && e_tmtz < db_end)
+		else if (b_tmtz < mem_start && e_tmtz <= db_end)	/* BUG#z6146 */
 		{
 			type = DB_ONLY;
 		}
@@ -3046,7 +3049,7 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 		{
 			type = COMBINE;
 		}
-		else if (mem_start < b_tmtz && b_tmtz < mem_end)
+		else if (mem_start <= b_tmtz && b_tmtz <= mem_end)	/* BUG#z6146 */
 		{
 			type = MEM_ONLY;
 		}
@@ -3056,7 +3059,7 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 		}
 		else
 		{ 
-			elog(ERROR, "Should not trigged this case as ");
+			elog(ERROR, "Highgo Session History: should not trigged this case (overlap for DB and MEM)");
 		}
 		
 	}
@@ -3098,27 +3101,27 @@ set_data_source_type(TimestampTz b_tmtz, TimestampTz e_tmtz)
 		{
 			type = NONE;
 		}
-		else if (b_tmtz < db_end && e_tmtz < mem_start)
+		else if (b_tmtz <= db_end && e_tmtz < mem_start)	/* BUG#z6146 */
 		{
 			type = DB_ONLY;
 		}
-		else if (b_tmtz < db_end && mem_start < e_tmtz)
+		else if (b_tmtz <= db_end && e_tmtz >= mem_start)	/* BUG#z6146 */
 		{
 			type = COMBINE;
 		}
-		else if (b_tmtz < mem_end)
+		else if (b_tmtz <= mem_end)	/* BUG#z6146 */
 		{
 			type = MEM_ONLY;
 		}
 		else
 		{
-			elog(ERROR,"should not trigged this case");
+			elog(ERROR,"Highgo Session History: should not trigged this case(no-overlap for DB and MEM)");
 		}
 
 	}
 	else
 	{
-		elog(ERROR, "This Scenario should not be trigged"); 
+		elog(ERROR, "Highgo Session History: This Scenario should not be trigged"); 
 	}
 	/* End - BUG#z6049 */
 
@@ -3391,6 +3394,15 @@ hsh_report_to_file(PG_FUNCTION_ARGS)
 	/* the the database version */
 
 #ifdef USE_LICENSE
+	/* Begin - BUG#z6426 */
+	/*
+	 * in the same session, 
+	 * if calling licence function get_lic_baseinfo()
+	 * it will set the title format to true, so the hg_get_highgoVersion() will output 'Database version: xxxx'
+	 * HSH did not need 'Database version:', so set the title to false
+	 */
+	hg_set_is_with_title(false);
+	/* End - BUG#z6426 */
 	hgdb_version = hg_get_highgoVersion();
 #else
 	hgdb_version = "Highgo database";
@@ -4428,10 +4440,34 @@ cal_continue:
 		e_str = pstrdup(timestamptz_to_str(entry.sample_slots[j].end));
 
 		resetStringInfo(&query);
-		appendStringInfo(&query, "SELECT count(*) FROM hsh_result WHERE backend_type = 'client backend' \
+
+		/*
+		 * BUG#z6145, NOTE:
+		 * the last sample should be included in the last interval
+		 * not    [),[),[)
+		 * should [),[),[]
+		 */
+		if (i < inter - 1)
+		{
+			appendStringInfo(&query, "SELECT count(*) FROM hsh_result WHERE backend_type = 'client backend' \
 							AND ts>='%s'::timestamptz AND ts<'%s'::timestamptz;",
 							b_str,
 							e_str);
+		}
+		/* Begin - BUG#z6145 */
+		else
+		{
+			/*
+ 			 * i = inter -1, this is the last interval
+ 			 * ts<='%s'
+ 			 */
+			appendStringInfo(&query, "SELECT count(*) FROM hsh_result WHERE backend_type = 'client backend' \
+							AND ts>='%s'::timestamptz AND ts<='%s'::timestamptz;",
+							b_str,
+							e_str);
+		}
+		/* End - BUG#z6145 */
+
 		ret = SPI_execute(query.data, false, 0);
         	if (ret != SPI_OK_SELECT)
         	{
@@ -4468,12 +4504,35 @@ cal_continue:
 
 		resetStringInfo(&query);
 
-		appendStringInfo(&query, "SELECT event,count(*) AS cnt FROM %s WHERE backend_type = 'client backend' \
+		/*
+		 * BUG#z6145, NOTE:
+		 * the last sample should be included in the last interval
+		 * not    [),[),[)
+		 * should [),[),[]
+		 */
+		if (i < inter - 1)
+		{
+			appendStringInfo(&query, "SELECT event,count(*) AS cnt FROM %s WHERE backend_type = 'client backend' \
 							AND ts>='%s' AND ts<'%s' \
 							GROUP BY event ORDER BY cnt DESC LIMIT 3;",
 							HSH_RESULT,
 							b_str,
 							e_str);
+		}
+		/* Begin - BUG#z6145 */
+		else
+		{
+			/*
+			 * i = inter -1, this is the last interval
+			 * ts <='%s'
+			 */
+			appendStringInfo(&query, "SELECT event,count(*) AS cnt FROM %s WHERE backend_type = 'client backend' \
+							AND ts>='%s' AND ts<='%s' \
+							GROUP BY event ORDER BY cnt DESC LIMIT 3;",
+							HSH_RESULT,
+							b_str,
+							e_str);
+		}
 
 		ret = SPI_execute(query.data, false, 0);
 		spituptable = SPI_tuptable;
