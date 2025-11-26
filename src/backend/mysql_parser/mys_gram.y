@@ -309,6 +309,9 @@ static char *checkRoleSpec(RoleSpec *spc);
 /* End - ReqID:SRS-MYSQL-RENAME */
 
 static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
+
+static List *
+makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /* ReqID:SRS-MYSQL-RENAME */
 %}
 
 %pure-parser
@@ -10289,6 +10292,27 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->missing_ok = false;
 					$$ = (Node *)n;
 				}
+			/* Begin - bug#z5994 */
+			| ALTER TABLE relation_expr RENAME TO ColId indirection
+				{
+					RangeVar *n = NULL;
+					if (list_length($7) == 1)
+					{
+						n = makeRangeVar(NULL, NULL, @6);
+						n->catalogname = NULL;
+						n->relname = strVal(linitial($7));
+						n->schemaname = MYS_LOWERONE_STRING_CASE($6);
+						$$ = (Node *) makeRenameStmt($3, n, @3);
+					}
+					else
+					{					
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("improper qualified name (too many dotted names)"),
+									parser_errposition(@1)));
+					}
+				}
+			/* End - bug#z5994 */
 			/* Begin - ReqID:SRS-MYSQL-RENAME */
 			| ALTER TABLE relation_expr RENAME AS name
 				{
@@ -10672,21 +10696,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| RENAME TABLE rename_table_list
 				{
-					List *renamestmts = NIL;
-					ListCell *lc = NULL;
-					
-					foreach (lc, $3) 
-					{
-						List *names = lfirst_node(List, lc);
-						RenameStmt *n = makeNode(RenameStmt);
-						n->renameType = OBJECT_TABLE;
-						n->relation = makeRangeVar(NULL, (char *) linitial(names), @3);
-						n->subname = NULL;
-						n->newname = (char *) lsecond(names);
-						n->missing_ok = false;	/* bug#z5993 */
-						renamestmts = lappend(renamestmts, (Node *) n);
-					}
-					$$ = (Node *)renamestmts;
+					$$ = (Node *) $3;
 				}
 			/* End - ReqID:SRS-MYSQL-RENAME */
 			| ALTER TABLESPACE name RENAME TO name
@@ -10768,12 +10778,15 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 
 /* Begin - ReqID:SRS-MYSQL-RENAME */
 rename_table_list:
-			rename_table_clause								{ $$ = list_make1($1);}
-			| rename_table_list ',' rename_table_clause		{ $$ = lappend($1, $3);}
+			rename_table_clause								{ $$ = $1; }
+			| rename_table_list ',' rename_table_clause		{ $$ = list_concat($1, $3); }
 		;
 
 rename_table_clause:
-			name TO name							{$$ = list_make2($1, $3); }
+			relation_expr TO relation_expr							
+				{
+					$$ = makeRenameStmt($1, $3, @3);
+				}
 		;
 /* End - ReqID:SRS-MYSQL-RENAME */
 
@@ -23238,5 +23251,32 @@ checkRoleSpec(RoleSpec *spc)
 	}
 
 	return ret;
+}
+static List *
+makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location)
+{
+	List *renamestmts = NIL;
+	if (new_relation->schemaname)
+	{
+		AlterObjectSchemaStmt *n1 = makeNode(AlterObjectSchemaStmt);
+		n1->objectType = OBJECT_TABLE;
+		n1->relation = old_relation;
+		n1->missing_ok = false;
+		n1->newschema = new_relation->schemaname;
+		renamestmts = lappend(renamestmts, (Node *) n1);
+	}
+
+	if (strcmp(old_relation->relname, new_relation->relname))
+	{
+		RenameStmt *n2 = makeNode(RenameStmt);
+		n2->renameType = OBJECT_TABLE;
+		n2->relation = makeRangeVar(new_relation->schemaname, old_relation->relname, location);
+		n2->subname = NULL;
+		n2->newname = new_relation->relname;
+		n2->missing_ok = false;
+		renamestmts = lappend(renamestmts, (Node *) n2);
+	}
+
+	return renamestmts;	
 }
 /* End - ReqID:SRS-MYSQL-RENAME */
