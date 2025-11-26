@@ -904,3 +904,131 @@ end;
 
 DROP USER system;
 /* End - BUG#Z6218 */
+
+/* Begin - BUG#Z5656 */
+-- error
+begin
+dbms_output.enable(40000);
+dbms_output.put(rpad('a',32767,'a'));
+dbms_output.put_line(rpad('a',1,'a'));
+declare
+v_line clob;
+v_status integer:=0;
+begin
+dbms_output.get_line(v_line, v_status);
+dbms_output.put_line(v_line);
+end;
+end;
+/
+
+-- ok
+begin
+dbms_output.enable(40000);
+dbms_output.put(rpad('a',32767,'a'));
+dbms_output.new_line;
+declare
+v_line clob;
+v_status integer:=0;
+begin
+dbms_output.get_line(v_line, v_status);
+dbms_output.put_line(v_line);
+end;
+end;
+/
+
+BEGIN
+dbms_output.disable();
+END;
+/
+
+CREATE TABLE dbms_output_test(buff varchar2(2200), status int);
+
+-- discard all lines and partial line in buffer
+BEGIN
+dbms_output.enable(2000);
+dbms_output.put_line(rpad('s',10,'s'));
+dbms_output.put(rpad('x',10,'x'));
+dbms_output.put(rpad('a',10,'a'));
+sss;
+END;
+/
+
+DECLARE
+	buff varchar2(3000);
+	stts int;
+BEGIN
+	dbms_output.enable(2000);
+	dbms_output.put_line(rpad('c',2000,'c'));
+	dbms_output.get_line(buff,stts);
+	insert into dbms_output_test values (buff, stts);
+	dbms_output.get_line(buff,stts);
+	insert into dbms_output_test values (buff, stts);
+	dbms_output.get_line(buff,stts);
+	insert into dbms_output_test values (buff, stts);
+END;
+/
+
+SELECT * FROM dbms_output_test;
+
+-- discard latest partial line in buffer
+DELETE FROM dbms_output_test;
+BEGIN
+dbms_output.enable(2000);
+dbms_output.put_line(rpad('s',10,'s'));
+dbms_output.put(rpad('x',10,'x'));
+dbms_output.put(rpad('a',10,'a'));
+dbms_output.put(rpad('b',3000,'b'));
+END;
+/
+
+DECLARE
+	buff varchar2(3000);
+	stts int;
+BEGIN
+	dbms_output.enable(2000);
+	dbms_output.put_line(rpad('c',2000,'c'));
+	dbms_output.get_line(buff,stts);
+	insert into dbms_output_test values (buff, stts);
+	dbms_output.get_line(buff,stts);
+	insert into dbms_output_test values (buff, stts);
+	dbms_output.get_line(buff,stts);
+	insert into dbms_output_test values (buff, stts);
+END;
+/
+
+SELECT * FROM dbms_output_test;
+
+-- discard all partial line in buffer
+DELETE FROM dbms_output_test;
+BEGIN
+dbms_output.enable(40000);
+dbms_output.put_line(rpad('s',10,'s'));
+dbms_output.put(rpad('x',10,'x'));
+dbms_output.put(rpad('a',10,'a'));
+dbms_output.put(rpad('b',32767,'b'));
+END;
+/
+
+DECLARE
+	buff varchar2(3000);
+	stts int;
+BEGIN
+	dbms_output.enable(40000);
+	dbms_output.put_line(rpad('c',2000,'c'));
+	dbms_output.get_line(buff,stts);
+	insert into dbms_output_test values (buff, stts);
+	dbms_output.get_line(buff,stts);
+	insert into dbms_output_test values (buff, stts);
+	dbms_output.get_line(buff,stts);
+	insert into dbms_output_test values (buff, stts);
+END;
+/
+
+SELECT * FROM dbms_output_test;
+
+BEGIN
+dbms_output.disable();
+END;
+/
+DROP TABLE dbms_output_test;
+/* End - BUG#Z5656 */

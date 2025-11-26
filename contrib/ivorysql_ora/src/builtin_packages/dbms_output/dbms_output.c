@@ -75,6 +75,24 @@ static int	newline_cnt = 0;					/* how many newlines */
 static bool	buffer_need_reset = false;			/* reset buffer flag, mainly used for send_buffer */
 static int	buffer_limit = BUFSIZE_UNLIMITED;	/* the size of the buffer specified by DBMS_OUTPUT */
 MemoryContext dbms_output_mcontext = NULL;
+
+/* Begin - BUG#Z5656 */
+/*
+ * the buffer cleanup behavior when serveroutput is off and an error occurs.
+ */
+typedef enum
+{
+	BEC_DISCARD_ALL,
+	BEC_DISCARD_ALL_PARTIAL_LINE,
+	BEC_DISCARD_LATEST_PARTIAL_LINE
+} BufferErrorClean;
+
+static BufferErrorClean buffer_error_action = BEC_DISCARD_ALL;
+
+/* position of the last newline in the buffer */
+static int	latest_put_pos = 0;
+/* End - BUG#Z5656 */
+
 /*
  * After buffer_limit changes, save the size of the new buffer.
  * this only work for limited buffer.
@@ -90,12 +108,14 @@ static void dbms_output_input_internal(FunctionCallInfo fcinfo, char *which);
 
 void dbmsoutput_severoutput(bool, int32);
 void dbmsoutput_sendbuffer(void);
+void dbmsoutput_errorhandler(void); /* BUG#Z5656 */
 void _dbms_output_PG_init(void);
 void _dbms_output_PG_fini(void);
 
 /* Saved hook value in case of unload */
 static dbmsoutput_sendbuffer_hook_type pre_dbmsoutput_sendbuffer_hook = NULL;
 static dbmsoutput_severoutput_hook_type pre_dbmsoutput_severoutput_hook = NULL;
+static dbmsoutput_errorhandler_hook_type pre_dbmsoutput_errorhandler_hook = NULL; /* BUG#Z5656 */
 
 PG_FUNCTION_INFO_V1(dbms_output_enable);
 PG_FUNCTION_INFO_V1(dbms_output_disable);
@@ -110,14 +130,17 @@ void _dbms_output_PG_init(void)
 {
 	pre_dbmsoutput_sendbuffer_hook = dbmsoutput_sendbuffer_hook;
 	pre_dbmsoutput_severoutput_hook = dbmsoutput_severoutput_hook;
+	pre_dbmsoutput_errorhandler_hook = dbmsoutput_errorhandler_hook; /* BUG#Z5656 */
 	dbmsoutput_sendbuffer_hook = dbmsoutput_sendbuffer;
 	dbmsoutput_severoutput_hook = dbmsoutput_severoutput;
+	dbmsoutput_errorhandler_hook = dbmsoutput_errorhandler; /* BUG#Z5656 */
 }
 
 void _dbms_output_PG_fini(void)
 {
 	dbmsoutput_sendbuffer_hook = pre_dbmsoutput_sendbuffer_hook;
 	dbmsoutput_severoutput_hook = pre_dbmsoutput_severoutput_hook;
+	dbmsoutput_errorhandler_hook = pre_dbmsoutput_errorhandler_hook; /* BUG#Z5656 */
 	if (dbms_output_mcontext)
 		MemoryContextDelete(dbms_output_mcontext);
 }
@@ -136,6 +159,7 @@ add_str(const char *str, int len, bool is_newline)
 		buffer_len = 0;
 		buffer_end = 0;
 		newline_cnt = 0;
+		latest_put_pos = 0;	/* BUG#Z5656 */
 		buffer_need_reset = false;
 
 		/*
@@ -176,14 +200,19 @@ add_str(const char *str, int len, bool is_newline)
 		}
 	}
 
+	latest_put_pos = buffer_len; /* BUG#Z5656 */
+
 	/* Compatible Oracle: limit does not include newlines */
 	if (!is_newline &&
 		buffer_limit != BUFSIZE_UNLIMITED &&
 		buffer_len - newline_cnt + len > buffer_limit)
+	{
+		buffer_error_action = BEC_DISCARD_LATEST_PARTIAL_LINE; /* BUG#Z5656 */
 		ereport(ERROR,
 			(errcode(ERRCODE_INSUFFICIENT_RESOURCES),
 			 errmsg("buffer overflow, limit of %d bytes", 
 			 new_buffer_limit ? new_buffer_limit : buffer_limit)));
+	}
 
 	/*
 	 * The maximum line size is 32767 bytes, and even if the size of the row
@@ -193,9 +222,12 @@ add_str(const char *str, int len, bool is_newline)
 	 * Note, the maximum line size(32767) does not include the trailing newline.
 	 */
 	if (!is_newline && (buffer_len + len - buffer_end) > LINESIZE_MAX)
+	{
+		buffer_error_action = BEC_DISCARD_ALL_PARTIAL_LINE; /* BUG#Z5656 */
 		ereport(ERROR,
 			(errcode(ERRCODE_INSUFFICIENT_RESOURCES),
 			 errmsg("line length overflow, limit of 32767 bytes per line")));
+	}
 
 	/* enlarge buffer */
 	if (buffer_len + len > buffer_size)
@@ -405,6 +437,7 @@ dbms_output_enable_internal(int32 n_buf_size)
 		newline_cnt = 0;
 		buffer_need_reset = false;
 		new_buffer_limit = 0;
+		latest_put_pos = 0;	/* BUG#Z5656 */
 	}
 	else
 	{
@@ -470,6 +503,7 @@ dbms_output_disable_internal()
 		buffer_need_reset = false;
 		buffer_limit = BUFSIZE_UNLIMITED;
 		new_buffer_limit = 0;
+		latest_put_pos = 0;	/* BUG#Z5656 */
 	}
 }
 
@@ -538,6 +572,28 @@ dbmsoutput_sendbuffer(void)
 	if(buffer)
 		send_buffer();
 }
+
+/* Begin - BUG#Z5656 */
+void 
+dbmsoutput_errorhandler(void)
+{
+	switch (buffer_error_action)
+	{
+		case BEC_DISCARD_ALL:
+			buffer_need_reset = true;
+			break;
+		case BEC_DISCARD_ALL_PARTIAL_LINE:
+			buffer_len = buffer_len > buffer_end ? buffer_end : buffer_len;
+			break;
+		case BEC_DISCARD_LATEST_PARTIAL_LINE:
+			buffer_len = latest_put_pos;
+			break;
+	}
+
+	buffer_error_action = BEC_DISCARD_ALL;
+}
+/* End - BUG#Z5656 */
+
 
 /*
  * EXPORT INTERFACE.

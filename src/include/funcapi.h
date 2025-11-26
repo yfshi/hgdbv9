@@ -523,9 +523,11 @@ extern int	extract_variadic_args(FunctionCallInfo fcinfo, int variadic_start,
 
 /* Begin - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 typedef void (*dbmsoutput_sendbuffer_hook_type)(void);
+typedef void (*dbmsoutput_errorhandler_hook_type)(void); /* BUG#Z5656 */
 typedef void (*dbmsoutput_severoutput_hook_type)(bool, int32);
 
 extern PGDLLIMPORT dbmsoutput_sendbuffer_hook_type dbmsoutput_sendbuffer_hook;
+extern PGDLLIMPORT dbmsoutput_errorhandler_hook_type dbmsoutput_errorhandler_hook;
 extern PGDLLIMPORT dbmsoutput_severoutput_hook_type dbmsoutput_severoutput_hook;
 extern PGDLLIMPORT bool enable_serveroutput;
 /* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
