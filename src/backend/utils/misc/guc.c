@@ -310,6 +310,7 @@ static bool check_idle_session_timeout(int *newval, void **extra, GucSource sour
 /* Begin ReqID: SESSION-VIEWS */
 static bool check_osname(char **newval, void **extra, GucSource source);
 static void assign_osname(const char *newval, void *extra);
+static bool check_count_idle_busy_time(bool *newval, void **extra, GucSource source);
 /* End ReqID: SESSION-VIEWS */
 
 /* Begin - ReqID: SRS-MYSQL-PROTOCOL */
@@ -1607,13 +1608,13 @@ static struct config_bool ConfigureNamesBool[] =
 
 	/* Begin ReqID: SRS-SESSION-VIEWS */
 	{
-		{"count_idle_busy_time", PGC_SUSET, STATS_COLLECTOR,
+		{"count_idle_busy_time", PGC_POSTMASTER, STATS_COLLECTOR,
 			gettext_noop("Count the busy/idle time of each backend process."),
 			NULL
 		},
 		&count_idle_busy_time,
 		false,
-		NULL, NULL, NULL
+		&check_count_idle_busy_time, NULL, NULL
 	},
 	/* End ReqID: SRS-SESSION-VIEWS */
 
@@ -13615,6 +13616,23 @@ assign_osname(const char *newval, void *extra)
 {
 	/* Update the pg_stat_activity view */
 	pgstat_report_osname(newval);
+}
+
+/* Bug #6183 */
+static bool
+check_count_idle_busy_time(bool *newval, void **extra, GucSource source)
+{
+	/* Only allow syssso role set the count_idle_busy_time. */
+	if(IsUnderPostmaster)
+	{
+		if (!IS_SYSSSO(GetUserId()))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied"),
+					errdetail("member of syssso_role "
+								"can set the count_idle_busy_time")));
+	}
+	return true;
 }
 /* End ReqID: SESSION-VIEWS */
 
