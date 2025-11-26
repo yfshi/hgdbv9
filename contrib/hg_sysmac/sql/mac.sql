@@ -10,19 +10,25 @@ SELECT 's0:c0!'::hg_security.seclabel; -- error
 
 -- set the security label to user
 CREATE USER u1 with password 'Hello@123';
+CREATE USER u2 with password 'Hello@123';
 SELECT hg_security.set_user_seclabel('u1'::regrole, 's0');
 SELECT provider,label FROM pg_shseclabel WHERE objoid = 'u1'::regrole;
 
 -- modify user security label
 SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
 SELECT hg_security.get_user_seclabel('u1'::regrole);
+SELECT hg_security.get_user_seclabel('u2'::regrole);
+DROP USER u2;
 
 -- set the security label to table
 SET ROLE u1;
 CREATE TABLE tb1(id int);
+CREATE TABLE tb2(id int);
 RESET ROLE;
 SELECT hg_security.set_table_seclabel('tb1'::regclass, 's2');
 SELECT hg_security.get_table_seclabel('tb1'::regclass);
+SELECT hg_security.get_table_seclabel('tb2'::regclass);
+DROP TABLE tb2;
 
 -- when dropping a table,its security label should also be removed.
 SET ROLE u1;
