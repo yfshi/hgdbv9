@@ -254,6 +254,12 @@ msgstr ""
 "  -X, --wal-method=none|fetch|stream\n"
 "                         按指定的模式包含必需的WAL日志文件\n"
 
+
+#: pg_basebackup.c:412
+#, c-format
+msgid "  -y, --decrypt          receive the data decrypted\n"
+msgstr "  -y, --decrypt          接收解密后的数据\n"
+
 #: pg_basebackup.c:395
 #, c-format
 msgid "  -z, --gzip             compress tar output\n"
@@ -322,6 +328,12 @@ msgstr "  -v, --verbose          输出详细的消息\n"
 msgid "  -V, --version          output version information, then exit\n"
 msgstr "  -V, --version          输出版本信息, 然后退出\n"
 
+
+#: pg_basebackup.c:432
+#, c-format
+msgid "  -G, --highgo-version   output version of highgo information, then exit\n"
+msgstr "  -G, --highgo-version   输出瀚高版本信息, 然后退出\n"
+
 #: pg_basebackup.c:408
 msgid ""
 "      --manifest-checksums=SHA{224,256,384,512}|CRC32C|NONE\n"
@@ -338,10 +350,17 @@ msgstr ""
 "      --manifest-force-encode\n"
 "                         十六进制编码清单中的所有文件名\n"
 
-#: pg_basebackup.c:412
-#, c-format
-msgid "      --no-estimate-size do not estimate backup size in server side\n"
+
+msgid "--no-estimate-size do not estimate backup size in server side\n"
+"      --manifest-force-encode\n"
+"                         hex encode all file names in manifest\n"
 msgstr ""
+"      --manifest-force-encode\n"
+"                         十六进制编码清单中的所有文件名\n"
+
+#: pg_basebackup.c:439
+msgid "      --no-estimate-size do not estimate backup size in server side\n"
+msgstr "      --no-estimate-size 不要估算服务器备份大小\n"
 
 #: pg_basebackup.c:413
 msgid "      --no-manifest      suppress generation of backup manifest\n"

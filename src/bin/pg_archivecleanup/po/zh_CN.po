@@ -110,6 +110,12 @@ msgstr "  -n             dry运行，显示要删除的文件的名称\n"
 msgid "  -V, --version  output version information, then exit\n"
 msgstr "  -V, --version  输出版本信息，然后退出\n"
 
+
+#: pg_archivecleanup.c:267
+#, c-format
+msgid "  -G, --highgo-version      output version of highgo information, then exit\n"
+msgstr "  -G, --highgo-version   输出瀚高版本信息, 然后退出\n"
+
 #: pg_archivecleanup.c:261
 #, c-format
 msgid "  -x EXT         clean up files if they have this extension\n"

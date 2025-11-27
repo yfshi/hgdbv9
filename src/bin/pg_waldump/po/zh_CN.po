@@ -171,6 +171,11 @@ msgstr ""
 msgid "  -V, --version          output version information, then exit\n"
 msgstr "  -V, --version          输出版本信息, 然后退出\n"
 
+#: pg_waldump.c:795
+#,c-format
+msgid "  -G, --highgo-version   output version of highgo information, then exit\n"
+msgstr "  -G, --highgo-version   输出瀚高版本信息, 然后退出\n"
+
 #: pg_waldump.c:743
 #, c-format
 msgid "  -x, --xid=XID          only show records with transaction ID XID\n"
@@ -184,6 +189,30 @@ msgid ""
 msgstr ""
 "  -z, --stats[=record]   显示统计信息而不是记录\n"
 "                         (或者，显示每个记录的统计信息)\n"
+
+
+#: pg_waldump.c:802
+#, c-format
+msgid "  -C, --cluster-key-command=COMMAND\n"
+"                         set command to obtain the cluster key\n"
+msgstr "  -C, --cluster-key-command=COMMAND\n"
+"                         设置命令以获取集群的密钥\n"
+
+#: pg_waldump.c:804
+#,c-format
+msgid "  -R, --authprompt       prompt for a passphrase or PIN\n"
+msgstr "  -R, --authprompt       提示输入密码或PIN码\n"
+
+#: pg_waldump.c:805
+#, c-format
+msgid "  -K, --encrypt-method   the encryption method of the wal file\n"
+msgstr "  -K, --encrypt-method   指定wal文件的加密方法\n"
+
+
+#: pg_waldump.c:806
+#, c-format
+msgid "  -W, --wal-key          the path of the wal's key file\n"
+msgstr "  -W, --wal-key          指定Wal密钥文件的路径\n"
 
 #: pg_waldump.c:746
 #, c-format

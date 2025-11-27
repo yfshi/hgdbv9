@@ -974,14 +974,14 @@ usage(void)
 	printf(_("  -V, --version               output version information, then exit\n"));
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
-	printf(_("  -G, --highgo-version		output version of highgo information, then exit\n"));
+	printf(_("  -G, --highgo-version        output version of highgo information, then exit\n"));
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -C, --cluster-key-command=COMMAND\n"
-			 "						   set command to obtain the cluster key\n"));
-	printf(_("  -R, --authprompt	   prompt for a passphrase or PIN\n"));
-	printf(_("  -K, --encrypt-method   the encryption method of the wal file\n"));
+			 "                              set command to obtain the cluster key\n"));
+	printf(_("  -R, --authprompt            prompt for a passphrase or PIN\n"));
+	printf(_("  -K, --encrypt-method        the encryption method of the wal file\n"));
 	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -?, --help                  show this help, then exit\n"));
 	printf(_("\nReport bugs to <%s>.\n"), PACKAGE_BUGREPORT);

@@ -378,17 +378,17 @@ help(const char *progname)
 	printf(_("  -E                 echo statement before execution\n"));
 	printf(_("  -j                 do not use newline as interactive query delimiter\n"));
 	printf(_("  -r FILENAME        send stdout and stderr to given file\n"));
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -K LEN             enable cluster file encryption with specified key bit length\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	printf(_("  -u DATADIR         copy encryption keys from datadir\n"));
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	printf(_("\nOptions for bootstrapping mode:\n"));
 	printf(_("  --boot             selects bootstrapping mode (must be first argument)\n"));
 	printf(_("  DBNAME             database name (mandatory argument in bootstrapping mode)\n"));
-	/* Begin - ReqID:SRS-SECURITY-TDE */
-	printf(_("  -K LEN             enable cluster file encryption with specified key bit length\n"));
-	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -r FILENAME        send stdout and stderr to given file\n"));
-	/* Begin - ReqID:SRS-SECURITY-TDE */
-	printf(_("  -u DATADIR         copy encryption keys from datadir\n"));
-	/* End - ReqID:SRS-SECURITY-TDE */
 	printf(_("  -x NUM             internal use\n"));
 
 	printf(_("\nPlease read the documentation for the complete list of run-time\n"

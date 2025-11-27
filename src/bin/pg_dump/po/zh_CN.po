@@ -1367,6 +1367,19 @@ msgstr "  -v, --verbose                详细模式\n"
 msgid "  -V, --version                output version information, then exit\n"
 msgstr "  -V, --version                输出版本信息, 然后退出\n"
 
+
+#: pg_dump.c:1094 pg_dumpall.c:970
+#, c-format
+msgid "  -G, --highgo-version         output version of highgo information, then exit\n"
+msgstr "  -G, --highgo-version         输出瀚高版本信息, 然后退出\n"
+
+
+#: pg_restore.c
+#, c-format
+msgid "  -G, --highgo-version     output version of highgo information, then exit\n"
+msgstr "  -G, --highgo-version     输出瀚高版本信息, 然后退出\n"
+
+
 #: pg_dump.c:1028
 #, c-format
 msgid "  -Z, --compress=0-9           compression level for compressed formats\n"
@@ -1429,6 +1442,12 @@ msgstr "  -e, --extension=PATTERN      仅转储指定的扩展名\n"
 #, c-format
 msgid "  -E, --encoding=ENCODING      dump the data in encoding ENCODING\n"
 msgstr "  -E, --encoding=ENCODING      转储以ENCODING形式编码的数据\n"
+
+
+#: pg_dump.c:1109 pg_dumpall.c:634
+#, c-format
+msgid "  -M                           dump the specified compatible_mode data only(pg, oracle, mysql)\n"
+msgstr "  -M                           备份指定兼容模式的数据(pg, oracle, mysql)\n"
 
 #: pg_dump.c:1041
 msgid "  -n, --schema=PATTERN         dump the specified schema(s) only\n"
@@ -1579,6 +1598,11 @@ msgstr "  --on-conflict-do-nothing     将ON CONFLICT DO NOTHING添加到INSERT�
 msgid "  --quote-all-identifiers      quote all identifiers, even if not key words\n"
 msgstr "  --quote-all-identifiers      所有标识符加引号，即使不是关键字\n"
 
+#: pg_dump.c:1144 pg_dumpall.c:1006
+#, c-format
+msgid "  --restrict-key=RESTRICT_KEY  use provided string as psql \\restrict key\n"
+msgstr "  --restrict-key=RESTRICT_KEY  使用提供的字符串作为 psql \\restrict key\n"
+
 #: pg_dump.c:1074 pg_dumpall.c:662
 #, c-format
 msgid "  --rows-per-insert=NROWS      number of rows per INSERT; implies --inserts\n"
@@ -1616,6 +1640,12 @@ msgstr ""
 "  --use-set-session-authorization\n"
 "                               使用 SESSION AUTHORIZATION 命令代替\n"
 "                               ALTER OWNER 命令来设置所有权\n"
+
+
+#: pg_dump.c:1154 pg_dumpall.c:663 pg_restore.c:506
+#, c-format
+msgid "  --first-normal-objectid=OID  set FirstNormalObjectId in dump\n"
+msgstr "  --first-normal-objectid=OID  设置备份的首次正常ID\n"
 
 #: pg_dump.c:1084 pg_dumpall.c:667 pg_restore.c:510
 #, c-format
