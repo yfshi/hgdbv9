@@ -10682,7 +10682,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 						n->relation = makeRangeVar(NULL, (char *) linitial(names), @3);
 						n->subname = NULL;
 						n->newname = (char *) lsecond(names);
-						n->missing_ok = true;
+						n->missing_ok = false;	/* bug#z5993 */
 						renamestmts = lappend(renamestmts, (Node *) n);
 					}
 					$$ = (Node *)renamestmts;

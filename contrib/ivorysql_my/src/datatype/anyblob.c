@@ -35,7 +35,7 @@
 #define TINYBLOB_MAX_LENGTH     255
 #define BLOB_MAX_LENGTH         65535
 #define MEDIUMBLOB_MAX_LENGTH   16777215
-#define LONGBLOB_MAX_LENGTH     4294967295
+#define LONGBLOB_MAX_LENGTH     1073741771 /* bug#z5655 */
 
 /**
  * 'pg text' 'blob' 'tinyblob' 'mediumblob' 'longblob' all call this to check length limit.

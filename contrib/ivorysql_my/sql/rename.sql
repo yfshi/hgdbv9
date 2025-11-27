@@ -70,6 +70,9 @@ rollback;
 \d t2;
 drop table t1;
 
+/* bug#z5993 */
+rename table t1 to table_new;
+
 -- alter table rename index 
 create table t(c int);
 create index i1 on t(c);
