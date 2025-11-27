@@ -809,4 +809,27 @@ extern PGDLLIMPORT char *default_database;
 extern PGDLLIMPORT bool	mys_autocommit;
 /* End - Req: SRS-MYSQL-PROTOCOL */
 
+/* Begin - BUG#Z6092 */
+/*
+ * List of audit-related parameters we want to show by default
+ */
+static const char * const audit_parameters[] = {
+	"audit.enable",
+	"audit.retentionpolicy",
+	"audit.retentiondays",
+	"audit.detectiontime",
+	"audit.spacelimit",
+	"audit.spacealarm",
+	"audit.archdir",
+	"audit.remote_archdir",
+	"audit.monitoring",
+	"audit.mail",
+	"audit.privimode",
+	"audit.systemopers",
+	"audit.sqlitedbpath",
+	"audit.track_settings",
+	"audit.logpolicy"
+};
+/* End - BUG#Z6092 */
+
 #endif							/* GUC_H */

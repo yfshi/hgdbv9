@@ -465,11 +465,18 @@ select count(*) from hg_security.pg_audit_log;
      0
 (1 row)
 
-select hg_security.pg_noaudit_privilege('drop role','all'),
+select hg_security.pg_noaudit_privilege('drop role','all');
+             pg_noaudit_privilege              
+-----------------------------------------------
+ Successfully canceled privilege audit policy!
+(1 row)
+
 select hg_security.pg_noaudit_privilege('drop role', 'fail');
-ERROR:  syntax error at or near "select"
-LINE 2: select hg_security.pg_noaudit_privilege('drop role', 'fail');
-        ^
+             pg_noaudit_privilege              
+-----------------------------------------------
+ Successfully canceled privilege audit policy!
+(1 row)
+
 drop role us1;
 ERROR:  role "us1" does not exist
 select count(*) from hg_security.pg_audit_log;
@@ -978,6 +985,8 @@ select hg_security.pg_audit_object('call','procedure','pro_test','public','all')
 call sch01.pro_test(1, 2);
 call public.pro_test(1, 2);
 select count(*) from hg_security.pg_audit_log;
+
+select * from hg_security.show_audit_param();
 ERROR:  syntax error at or near "NO"
 LINE 72:     NO MAXVALUE;
              ^

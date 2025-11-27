@@ -793,6 +793,14 @@ CREATE FUNCTION hg_security.pg_drop_secmon_threshold(throid Oid)
 		AS 'MODULE_PATHNAME', 'pg_drop_secmon_threshold'
 LANGUAGE C STRICT;
 
+CREATE FUNCTION hg_security.show_audit_param()
+	RETURNS  TABLE (
+		name	text,
+		setting		text
+	)
+	AS 'MODULE_PATHNAME', 'show_audit_param'
+LANGUAGE C STRICT;
+
 CREATE FUNCTION hg_security.audit_show_diskinfo()
 	RETURNS  TABLE (
 		disk_size        text,
@@ -971,6 +979,9 @@ GRANT ALL ON FUNCTION hg_security.pg_alter_secmon_threshold TO syssao_role;
 
 ALTER FUNCTION hg_security.pg_drop_secmon_threshold OWNER TO syssao;
 GRANT ALL ON FUNCTION hg_security.pg_drop_secmon_threshold TO syssao_role;
+
+ALTER FUNCTION hg_security.show_audit_param OWNER TO syssao;
+GRANT ALL ON FUNCTION hg_security.show_audit_param TO syssao_role;
 
 ALTER FUNCTION hg_security.audit_show_diskinfo OWNER TO syssao;
 GRANT ALL ON FUNCTION hg_security.audit_show_diskinfo TO syssao_role;

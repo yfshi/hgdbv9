@@ -9,6 +9,9 @@ PGFILEDESC = "pg_audit - hgdb audit control"
 
 DATA = pg_audit--1.0.sql pg_audit.control
 
+REGRESS = pg_audit
+ORA_REGRESS = pg_audit
+
 ifeq ($(with_sqlite), yes)
 DATA += pg_audit--1.1.sql pg_audit--1.0--1.1-sqlite.sql sqlite.db
 endif
@@ -34,8 +37,8 @@ endif
 
 #SHLIB_LINK += -L$(top_builddir)/src/port -lpgport -lpgport_shlib -lpgport_srv
 
-REGRESS = pg_audit
-ORA_REGRESS = pg_audit
+#REGRESS = pg_audit
+#ORA_REGRESS = pg_audit
 
 TAP_TESTS = 1
 

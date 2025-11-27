@@ -465,11 +465,18 @@ select count(*) from hg_security.pg_audit_log;
      1
 (1 row)
 
-select hg_security.pg_noaudit_privilege('drop role','all'),
+select hg_security.pg_noaudit_privilege('drop role','all');
+             pg_noaudit_privilege
+-----------------------------------------------
+ Successfully canceled privilege audit policy!
+(1 row)
+
 select hg_security.pg_noaudit_privilege('drop role', 'fail');
-ERROR:  syntax error at or near "select"
-LINE 2: select hg_security.pg_noaudit_privilege('drop role', 'fail');
-        ^
+             pg_noaudit_privilege
+-----------------------------------------------
+ Successfully canceled privilege audit policy!
+(1 row)
+
 drop role us1;
 ERROR:  role "us1" does not exist
 select count(*) from hg_security.pg_audit_log;
@@ -1387,3 +1394,24 @@ select count(*) from hg_security.pg_audit_log;
 -------
      2
 (1 row)
+
+select * from hg_security.show_audit_param();
+         name          |         setting          
+-----------------------+--------------------------
+ audit.enable          | off
+ audit.retentionpolicy | space
+ audit.retentiondays   | 180
+ audit.detectiontime   | 1
+ audit.spacelimit      | 10GB
+ audit.spacealarm      | 0.8
+ audit.archdir         | 
+ audit.remote_archdir  | 
+ audit.monitoring      | off
+ audit.mail            | 
+ audit.privimode       | 1
+ audit.systemopers     | off
+ audit.sqlitedbpath    | pgaudit/sqlite/sqlite.db
+ audit.track_settings  | off
+ audit.logpolicy       | pause
+(15 rows)
+
