@@ -269,6 +269,7 @@ static bool audit_real_check_hook(char **newvalue, void **extra, GucSource sourc
 static bool audit_logdir_check_hook(char **newvalue, void **extra, GucSource source);
 #ifdef USE_SQLITE
 static bool audit_sqlite_check_hook(char **newvalue, void **extra, GucSource source);
+static void audit_sqlite_assign_hook(const char *newvalue, void *extra);
 #endif
 static void check_audit_sao_permission(Oid roid, bool istable);
 static void check_audit_saosso_perm(Oid roid, bool istable);
@@ -807,10 +808,13 @@ static bool
 audit_sqlite_check_hook(char **newvalue, void **extra, GucSource source)
 {
 	struct stat fileInfo;
-
+	
 	if (*newvalue == NULL || *newvalue[0] == '\0')
 		return true;
-		
+
+	if (source == PGC_S_DEFAULT)
+		return true;
+
 	if (lstat(*newvalue, &fileInfo) == -1)
 	{
 		GUC_check_errdetail("could not stat file:%s :%m", *newvalue);
@@ -822,7 +826,32 @@ audit_sqlite_check_hook(char **newvalue, void **extra, GucSource source)
 		GUC_check_errdetail("%s is a directory: %m", *newvalue);
 		return false;
 	}
+	
 	return true;
+
+}
+
+/*
+ * check sqlite database file path
+ */
+static void 
+audit_sqlite_assign_hook(const char *newvalue, void *extra)
+{
+	struct stat fileInfo;
+
+	if (newvalue == NULL || newvalue[0] == '\0')
+		return;
+		
+	if (lstat(newvalue, &fileInfo) == -1)
+	{
+		GUC_check_errdetail("could not stat file:%s :%m", newvalue);
+	}
+
+	if (S_ISDIR(fileInfo.st_mode))
+	{
+		GUC_check_errdetail("%s is a directory: %m", newvalue);
+	}
+	return;
 }
 #endif
 
@@ -982,11 +1011,11 @@ static void audit_define_GUC(void)
 					 "set sqlite database path",
 					 NULL,
 					 &audit_GUC.audit_sqlitedbpath,
-					 "",
+					 "pgaudit/sqlite/sqlite.db",
 					 PGC_POSTMASTER,
 					 0,
 					 audit_sqlite_check_hook,
-					 NULL,
+					 audit_sqlite_assign_hook,
 					 NULL);
 #endif
 
