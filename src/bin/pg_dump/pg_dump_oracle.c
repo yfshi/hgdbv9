@@ -6010,6 +6010,14 @@ getSynonyms(Archive *fout, int *numSyns)
 	int			i_objname;
 	int			i_db_link;
 
+	/* Begin - BUG#Z6400 */
+	if (fout->remoteVersion < 140018)
+	{
+		*numSyns = 0;
+		return NULL;
+	}
+	/* End - BUG#Z6400 */
+
 	if ((DumpM != NULL && (strcmp(DumpM, "o") == 0 || strcmp(DumpM, "oracle") == 0)) || DumpM == NULL)
 	{
 		appendPQExpBuffer(query,
@@ -13116,7 +13124,7 @@ dumpSynonym(Archive *fout, const SynInfo *syninfo)
 	char       *synname;
 
 	/* Skip if not to be dumped */
-	if (!syninfo->dobj.dump || fout->remoteVersion < 120000)
+	if (!syninfo->dobj.dump || fout->remoteVersion < 140018)	/* BUG#Z6400 */
 	   return;
 
 	q = createPQExpBuffer();
