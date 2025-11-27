@@ -2502,8 +2502,9 @@ SetTriggerFlags(TriggerDesc *trigdesc, Trigger *trigger)
 		TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_ROW,
 							 TRIGGER_TYPE_AFTER, TRIGGER_TYPE_INSERT);
 	trigdesc->trig_insert_instead_row |=
-		TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_ROW,
-							 TRIGGER_TYPE_INSTEAD, TRIGGER_TYPE_INSERT);
+		(TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_ROW,
+							 TRIGGER_TYPE_INSTEAD, TRIGGER_TYPE_INSERT) &&
+							 trigger->tgenabled != TRIGGER_DISABLED);	/* BUG#Z6366 */
 	trigdesc->trig_insert_before_statement |=
 		TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_STATEMENT,
 							 TRIGGER_TYPE_BEFORE, TRIGGER_TYPE_INSERT);
@@ -2517,8 +2518,9 @@ SetTriggerFlags(TriggerDesc *trigdesc, Trigger *trigger)
 		TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_ROW,
 							 TRIGGER_TYPE_AFTER, TRIGGER_TYPE_UPDATE);
 	trigdesc->trig_update_instead_row |=
-		TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_ROW,
-							 TRIGGER_TYPE_INSTEAD, TRIGGER_TYPE_UPDATE);
+		(TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_ROW,
+							 TRIGGER_TYPE_INSTEAD, TRIGGER_TYPE_UPDATE) &&
+							 trigger->tgenabled != TRIGGER_DISABLED);	/* BUG#Z6366 */
 	trigdesc->trig_update_before_statement |=
 		TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_STATEMENT,
 							 TRIGGER_TYPE_BEFORE, TRIGGER_TYPE_UPDATE);
@@ -2532,8 +2534,9 @@ SetTriggerFlags(TriggerDesc *trigdesc, Trigger *trigger)
 		TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_ROW,
 							 TRIGGER_TYPE_AFTER, TRIGGER_TYPE_DELETE);
 	trigdesc->trig_delete_instead_row |=
-		TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_ROW,
-							 TRIGGER_TYPE_INSTEAD, TRIGGER_TYPE_DELETE);
+		(TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_ROW,
+							 TRIGGER_TYPE_INSTEAD, TRIGGER_TYPE_DELETE) &&
+							 trigger->tgenabled != TRIGGER_DISABLED);	/* BUG#Z6366 */
 	trigdesc->trig_delete_before_statement |=
 		TRIGGER_TYPE_MATCHES(tgtype, TRIGGER_TYPE_STATEMENT,
 							 TRIGGER_TYPE_BEFORE, TRIGGER_TYPE_DELETE);
