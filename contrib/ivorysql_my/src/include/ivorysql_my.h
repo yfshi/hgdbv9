@@ -87,4 +87,5 @@ extern Datum mystimestamp_out(PG_FUNCTION_ARGS);
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 extern YearADT bigint_to_YearADT(int64 year);
+extern Oid mysql_agg_field_type(List *exprs); /* Bug - #6172 */
 #endif	/* IVORYSQL_MYS_H_ */

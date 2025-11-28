@@ -864,7 +864,7 @@ static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
 
 	HANDLER HAVING HEADER_P HIGH_PRIORITY HOLD HOUR_P
 
-	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
+	IDENTITY_P IF_P IFNULL_P /* Bug - #z5512 */ IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
 	INNER_P INOUT INPLACE /* ReqID:SRS-MYSQL-CREATE-INDEX */ INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT3 INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
@@ -19078,6 +19078,7 @@ case_expr:	CASE case_arg when_clause_list case_default END_P
 				{
 					CaseExpr *c = makeNode(CaseExpr);
 					CaseWhen *w = makeNode(CaseWhen);
+					ResTarget *res = makeNode(ResTarget);
 
 					w->expr = (Expr *) $3;
 					w->result = (Expr *) $5;
@@ -19087,10 +19088,56 @@ case_expr:	CASE case_arg when_clause_list case_default END_P
 					c->args = list_make1(w);
 					c->defresult = (Expr *) $7;
 					c->location = @1;
-					
-					$$ = (Node *)c;
+
+					// Wrap CASE expression in Restarget with alias
+					res->name = "if";
+					res->indirection = NIL;
+					res->val = (Node *) c;
+					res->location = @1;
+
+					$$ = (Node *) res;
 				}
 			/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			/* Begin - bug#z5512 */
+			| IFNULL_P '(' a_expr ',' a_expr ')'
+				{
+					/* Construct CASE WHEN expr1 IS NOT NULL THEN expr1 ELSE expr2 END */
+					NullTest		*nt;
+					CaseWhen		*w;
+					CaseExpr		*c;
+					ResTarget		*res;
+
+					// Create NullTest node
+					nt = makeNode(NullTest);
+					nt->arg = (Expr *) $3;
+					nt->nulltesttype = IS_NOT_NULL;
+					nt->argisrow = false;
+					nt->location = @3;
+
+					// Create CaseWhen node
+					w = makeNode(CaseWhen);
+					w->expr = (Expr *) nt;
+					w->result = (Expr *) $3;
+					w->location = @1;
+
+					// Create CaseExpr node
+					c = makeNode(CaseExpr);
+					c->casetype = InvalidOid; /* not analyzed yet */
+					c->arg = NULL;
+					c->args = list_make1(w);
+					c->defresult = (Expr *) $5;
+					c->location = @1;
+
+					// Wrap CASE expression in Restarget with alias
+					res = makeNode(ResTarget);
+					res->name = "ifnull";
+					res->indirection = NIL;
+					res->val = (Node *) c;
+					res->location = @1;
+
+					$$ = (Node *) res;
+				}
+			/* End - bug#z5512 */
 		;
 
 when_clause_list:
@@ -20266,6 +20313,7 @@ reserved_keyword:
 			| HAVING
 			| HIGH_PRIORITY	/* ReqID:SRS-MYSQL-SQL-INSERT */
 			| IF_P
+			| IFNULL_P
 			| IGNORE_P	/* ReqID:SRS-MYSQL-UPDATE */
 			| IN_P
 			| INITIALLY
@@ -20509,6 +20557,7 @@ bare_label_keyword:
 			| HOLD
 			| IDENTITY_P
 			| IF_P
+			| IFNULL_P
 			| IGNORE_P
 			| ILIKE
 			| IMMEDIATE
@@ -21075,7 +21124,11 @@ makeBoolAConst(bool state, int location)
 	A_Const *n = makeNode(A_Const);
 
 	n->val.type = T_String;
-	n->val.val.str = (state ? "t" : "f");
+	/* Begin - bug #z5484 #z5485 #z6171 */
+	if (use_mysql_bool == true)
+		n->val.val.str = (state ? "1" : "0");
+	else /* End - bug #z5484 #z5485 #z6171 */
+		n->val.val.str = (state ? "t" : "f");
 	n->location = location;
 
 	return makeTypeCast((Node *)n, SystemTypeName("bool"), -1);

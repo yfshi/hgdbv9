@@ -1,31 +1,31 @@
 -- IF
 select if (1 > 2, 2, 3); -- 3
- case 
-------
-    3
+ if 
+----
+  3
 (1 row)
 
 select if (1 < 2, 'yes', 'no'); -- yes
- case 
-------
+ if  
+-----
  yes
 (1 row)
 
 select if (strcmp('test', 'test1'), 'no', 'yes'); -- no
- case 
-------
+ if 
+----
  no
 (1 row)
 
 select if (NULL, 'yes', 'no'); -- 'no'
- case 
-------
+ if 
+----
  no
 (1 row)
 
 select if (NULL, NULL, NULL); -- NULL
- case 
-------
+ if 
+----
  
 (1 row)
 

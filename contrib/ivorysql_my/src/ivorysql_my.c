@@ -28,6 +28,7 @@
 #include "utils/varlena.h"
 #include "mysql_parser/mys_set_hook.h"
 #include "utils/float.h"
+#include "parser/parse_coerce.h"
 
 
 /* Only include it once in any C file */
@@ -47,6 +48,10 @@ static Mysql_casesensitive_get_obj_nameinfo_hook_type premysql_get_objnameinfo_h
 static Mysql_casesensitive_get_attName_hook_type premysql_get_attName_hook = NULL;
 static Mysql_casesensitive_get_typoid_hook_type premysql_get_typoid_hook = NULL;
 /* End - ReqID:SRS-MYSQL-CASE */
+
+/* Begin - bug#z6172 */
+static mysql_int1_datatype_in_hook_type pre_mysql_int1_datatype_in_hook = NULL;
+/* End - bug#z6172 */
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
 static mysql_int2_datatype_in_hook_type pre_mysql_int2_datatype_in_hook = NULL;
@@ -80,6 +85,10 @@ static uservariable_hash_search_hook_type pre_uservariable_hash_search_hook = NU
 static SetUserVarInternal_hook_type pre_setuservarinternal_hook = NULL;
 
 /* End - ReqID:SRS-MYSQL-SET */
+
+/* Begin - bug#z6172 */
+static mys_agg_field_type_hook_type pre_mys_agg_field_type_hook = NULL;
+/* End - bug#z6172 */
 
 void _PG_init(void);
 void _PG_fini(void);
@@ -135,6 +144,11 @@ _PG_init(void)
 	mysql_hash_hook = do_mysql_hash;
 	/* End - Req:SRS-MYSQL-CHARSET */
 
+	/* Begin - bug#z6172 */
+	pre_mysql_int1_datatype_in_hook = mysql_int1_datatype_in_hook;
+	mysql_int1_datatype_in_hook = my_atoi_int8;
+	/* End - bug#z6172 */
+
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
 	pre_mysql_int2_datatype_in_hook = mysql_int2_datatype_in_hook;
 	mysql_int2_datatype_in_hook = my_atoi_int16;
@@ -181,6 +195,11 @@ _PG_init(void)
 	pre_setuservarinternal_hook = setuservarinternal_hook;
 	setuservarinternal_hook = mysSetUserVarInternal;
 	/* End - ReqID:SRS-MYSQL-SET */
+
+	/* Begin - bug#z6172 */
+	pre_mys_agg_field_type_hook = mys_agg_field_type_hook;
+	mys_agg_field_type_hook = mysql_agg_field_type;
+	/* End - bug#z6172 */
 }
 
 /*

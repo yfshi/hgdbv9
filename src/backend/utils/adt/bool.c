@@ -17,12 +17,17 @@
 
 #include <ctype.h>
 
+#include "common/int.h"
 #include "libpq/libpq-be.h"
 #include "libpq/pqformat.h"
 #include "miscadmin.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
+
+/* Begin - bug #z5484 #z5485 #z6171 */
+mysql_int1_datatype_in_hook_type mysql_int1_datatype_in_hook = NULL;
+/* End - bug #z5484 #z5485 #z6171 */
 
 /*
  * Try to interpret value as boolean value.  Valid values are: true,
@@ -149,13 +154,18 @@ boolin(PG_FUNCTION_ARGS)
 	while (len > 0 && isspace((unsigned char) str[len - 1]))
 		len--;
 
-	if (MYS_MODE == compatible_mode && use_mysql_bool == true)
+	/* Begin - bug #z5484 #z5485 #z6171 */
+	if (MYS_MODE == compatible_mode &&
+		use_mysql_bool &&
+		mysql_int1_datatype_in_hook)
 	{
-		if (in_str[0] < '1' || in_str[0] > '9')
-			PG_RETURN_BOOL(false);
-		else
-			PG_RETURN_BOOL(true);
+		int32 	ret;
+		bool	is_insert = CALL_IN_INSERT();
+
+		ret = mysql_int1_datatype_in_hook(in_str, is_insert);
+		PG_RETURN_BOOL(ret != 0);
 	}
+	/* End - bug #z5484 #z5485 #z6171 */
 
 	if (parse_bool_with_len(str, len, &result))
 		PG_RETURN_BOOL(result);
@@ -179,7 +189,7 @@ boolout(PG_FUNCTION_ARGS)
 	char	   *result = (char *) palloc(2);
 
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
-	if (compatible_mode == MYS_MODE && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+	if (compatible_mode == MYS_MODE && use_mysql_bool)
 		result[0] = (b) ? '1' : '0';
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 	else

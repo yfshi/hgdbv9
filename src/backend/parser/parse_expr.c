@@ -2597,28 +2597,58 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 	 */
 	resultexprs = lcons(newc->defresult, resultexprs);
 
-	ptype = select_common_type(pstate, resultexprs, "CASE", NULL);
+	/* Begin - bug#z6172 */
+	if (compatible_mode == MYS_MODE)
+	{
+		if (mys_agg_field_type_hook)
+		{
+			ptype = mys_agg_field_type_hook(resultexprs);
+			if (!OidIsValid(ptype))
+			{
+				ptype = select_common_type(pstate, resultexprs, "CASE", NULL);
+			}
+		}
+		else
+			ptype = select_common_type(pstate, resultexprs, "CASE", NULL);
+	}
+	else /* End - bug#z6172 */
+		ptype = select_common_type(pstate, resultexprs, "CASE", NULL);
 	Assert(OidIsValid(ptype));
 	newc->casetype = ptype;
 	/* casecollid will be set by parse_collate.c */
 
 	/* Convert default result clause, if necessary */
-	newc->defresult = (Expr *)
-		coerce_to_common_type(pstate,
-							  (Node *) newc->defresult,
-							  ptype,
-							  "CASE/ELSE");
-
+	/* Begin - bug#z6172 */
+	if (compatible_mode == MYS_MODE)
+		newc->defresult = (Expr *)
+			mys_coerce_to_common_type(pstate,
+								  (Node *) newc->defresult,
+								  ptype,
+								  "CASE/ELSE");
+	else /* End - bug#z6172 */
+		newc->defresult = (Expr *)
+			coerce_to_common_type(pstate,
+								  (Node *) newc->defresult,
+								  ptype,
+								  "CASE/ELSE");
 	/* Convert when-clause results, if necessary */
 	foreach(l, newc->args)
 	{
 		CaseWhen   *w = (CaseWhen *) lfirst(l);
 
-		w->result = (Expr *)
-			coerce_to_common_type(pstate,
-								  (Node *) w->result,
-								  ptype,
-								  "CASE/WHEN");
+		/* Begin - bug#z6172 */
+		if (compatible_mode == MYS_MODE)
+			w->result = (Expr *)
+				mys_coerce_to_common_type(pstate,
+									  (Node *) w->result,
+									  ptype,
+									  "CASE/WHEN");
+		else /* End - bug#z6172 */
+			w->result = (Expr *)
+				coerce_to_common_type(pstate,
+									  (Node *) w->result,
+									  ptype,
+									  "CASE/WHEN");
 	}
 
 	/* if any subexpression contained a SRF, complain */

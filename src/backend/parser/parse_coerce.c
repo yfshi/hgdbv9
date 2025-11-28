@@ -58,6 +58,10 @@ typedef enum datetime
 
 PGDLLIMPORT ora_raw_input_hook_type ora_raw_input_hook;
 
+/* Begin - bug#z6172 */
+PGDLLIMPORT mys_agg_field_type_hook_type mys_agg_field_type_hook = NULL;
+/* End - bug#z6172 */
+
 static Node *coerce_type_typmod(Node *node,
 								Oid targetTypeId, int32 targetTypMod,
 								CoercionContext ccontext, CoercionForm cformat,
@@ -4194,7 +4198,6 @@ parser_coercion_errposition(ParseState *pstate,
 		return parser_errposition(pstate, exprLocation(input_expr));
 }
 
-
 /*
  * select_common_type()
  *		Determine the common supertype of a list of input expressions.
@@ -4692,6 +4695,44 @@ coerce_to_common_type(ParseState *pstate, Node *node,
 				 parser_errposition(pstate, exprLocation(node))));
 	return node;
 }
+
+/* Begin - bug#z6172 */
+
+/*
+ * mys_coerce_to_common_type()
+ *	  Coerce an expression to the given type.
+ *
+ * This is used following select_common_type() to coerce the individual
+ * expressions to the desired type.  'context' is a phrase to use in the
+ * error message if we fail to coerce.
+ *
+ * As with coerce_type, pstate may be NULL if no special unknown-Param
+ * processing is wanted.
+ */
+Node *
+mys_coerce_to_common_type(ParseState *pstate, Node *node,
+						  Oid targetTypeId, const char *context)
+{
+	Oid		inputTypeId = exprType(node);
+
+	if (inputTypeId == targetTypeId)
+		return node;			  /* no work */
+	if (can_coerce_type(1, &inputTypeId, &targetTypeId, COERCION_EXPLICIT))
+		node = coerce_type(pstate, node, inputTypeId, targetTypeId, -1,
+						   COERCION_EXPLICIT, COERCE_EXPLICIT_CAST, -1);
+	else
+		ereport(ERROR,
+				(errcode(ERRCODE_CANNOT_COERCE),
+		/* translator: first %s is name of a SQL construct, eg CASE */
+				 errmsg("%s could not convert type %s to %s",
+						context,
+						format_type_be(inputTypeId),
+						format_type_be(targetTypeId)),
+				 parser_errposition(pstate, exprLocation(node))));
+	return node;
+}
+
+/* End - bug#z6172 */
 
 /*
  * verify_common_type()

@@ -40,7 +40,7 @@
 # OIDS 1 - 99
 
 { oid => '1242', descr => 'I/O',
-  proname => 'boolin', prorettype => 'bool', proargtypes => 'cstring',
+  proname => 'boolin', prorettype => 'bool', proargtypes => 'cstring oid int4 int8',
   prosrc => 'boolin' },
 { oid => '1243', descr => 'I/O',
   proname => 'boolout', prorettype => 'cstring', proargtypes => 'bool',
@@ -7725,7 +7725,7 @@
   proname => 'charsend', prorettype => 'bytea', proargtypes => 'char',
   prosrc => 'charsend' },
 { oid => '2436', descr => 'I/O',
-  proname => 'boolrecv', prorettype => 'bool', proargtypes => 'internal',
+  proname => 'boolrecv', prorettype => 'bool', proargtypes => 'internal oid int4 int8',
   prosrc => 'boolrecv' },
 { oid => '2437', descr => 'I/O',
   proname => 'boolsend', prorettype => 'bytea', proargtypes => 'bool',

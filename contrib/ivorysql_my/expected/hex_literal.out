@@ -566,7 +566,7 @@ select
 WARNING:  Truncated incorrect BINARY value: x'ffffffffffffffffff'
  x 
 ---
- 
+  
 (1 row)
 
 select
@@ -579,7 +579,7 @@ select
     end as x;
  x 
 ---
- 
+  
 (1 row)
 
 -- other

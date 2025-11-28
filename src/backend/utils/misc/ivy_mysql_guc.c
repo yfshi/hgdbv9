@@ -169,7 +169,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	},
 	/* End - BUG#Z1434 */
 	{
-		{"ivorysql.enable_mysql_information_schema", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+		{"mysql.enable_mysql_information_schema", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable information schema feature in mysql compatible mode."),
 			NULL,
 			GUC_NOT_IN_SAMPLE

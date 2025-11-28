@@ -94,6 +94,7 @@ static TypeItem type_items[] = {
 	{"mysbit", 		MYSQL_TYPE_BIT, 		MYSBITOID, 		BINARY_FLAG, 	COLLATE_BINARY},
 	{"binary", 		MYSQL_TYPE_STRING, 		BINARYOID, 		BINARY_FLAG, 	COLLATE_BINARY},
 	{"varbinary", 	MYSQL_TYPE_VAR_STRING, 	VARBINARYOID, 	BINARY_FLAG, 	COLLATE_BINARY},
+	{"ivy_hex", 	MYSQL_TYPE_STRING, 		IVY_HEXOID, 	BINARY_FLAG, 	COLLATE_BINARY},
 	{"blob", 		MYSQL_TYPE_BLOB, 		MYBLOBOID, 		BLOB_FLAG | BINARY_FLAG, 		COLLATE_BINARY},
 	{"tinyblob", 	MYSQL_TYPE_BLOB, 		TINYBLOBOID, 	BLOB_FLAG | BINARY_FLAG, 		COLLATE_BINARY},
 	{"mediumblob",	MYSQL_TYPE_BLOB, 		MEDIUMBLOBOID, 	BLOB_FLAG | BINARY_FLAG, 		COLLATE_BINARY},
@@ -115,7 +116,7 @@ static TypeItem type_items[] = {
     {"timestamptz", MYSQL_TYPE_STRING, 		TIMESTAMPTZOID, 0, 				COLLATE_BINARY},
     {"timestamp", 	MYSQL_TYPE_STRING, 		TIMESTAMPOID, 	0, 				COLLATE_BINARY},
 	{"bpchar", 		MYSQL_TYPE_VARCHAR, 	BPCHAROID, 		0, 				0x2d},
-	{"bit", 		MYSQL_TYPE_VAR_STRING, 	BITOID, 		0, 				COLLATE_BINARY},
+	{"bit", 		MYSQL_TYPE_VAR_STRING, 	BITOID, 		BINARY_FLAG, 	COLLATE_BINARY},
     {"varbit", 		MYSQL_TYPE_VAR_STRING, 	VARBITOID, 		0, 				COLLATE_BINARY},
 	{"bytea", 		MYSQL_TYPE_VAR_STRING, 	BYTEAOID, 		0, 				COLLATE_BINARY},
 
@@ -128,6 +129,8 @@ static TypeItem type_items[] = {
 	{"regproc", 	MYSQL_TYPE_STRING, 		REGPROCOID, 	0, 				COLLATE_BINARY},
 	{"pg_node_tree", MYSQL_TYPE_STRING, 	PG_NODE_TREEOID, 0, 			COLLATE_BINARY},
 	{"_aclitem", 	MYSQL_TYPE_STRING, 		0, 				 0, 			COLLATE_BINARY},
+	{"regtype",		MYSQL_TYPE_LONG,		REGTYPEOID,		0,				0},
+	{"unknown",		MYSQL_TYPE_VAR_STRING,	UNKNOWNOID,		0,				0x2d},
 };
 
 static const int ntype_items = sizeof(type_items) / sizeof(TypeItem);
@@ -181,7 +184,7 @@ mysql_session_init(ProtocolExtensionConfig *self)
 	{
 		SetConfigOption("password_encryption", "mysql_native_password", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.at_or_atat", "true", PGC_USERSET, PGC_S_OVERRIDE);
-		SetConfigOption("ivorysql.enable_mysql_information_schema", "true", PGC_USERSET, PGC_S_OVERRIDE);
+		SetConfigOption("mysql.enable_mysql_information_schema", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.use_mysql_bool", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.use_mysql_do", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.use_mysql_bit_literal", "true", PGC_USERSET, PGC_S_OVERRIDE); 
@@ -386,7 +389,7 @@ InitTypoid2MysqlMacroHtab()
 }
 
 const TypeItem *
-GetItemByTypeOid(Oid oid)
+GetItemByTypeOid(Oid oid, bool report_warning)
 {
 	HeapTuple 		tuple;
 	Form_pg_type 	typeForm;
@@ -432,7 +435,8 @@ GetItemByTypeOid(Oid oid)
 			break;
 		*/
 		default:
-			ereport(WARNING,
+			if (!report_warning)
+				ereport(WARNING,
 					(errmsg("type \"%s\" cannot find the macro, use string macro instead", result->typname)));
 			result->mysql_type_id = MYSQL_TYPE_STRING;
 			break;
@@ -446,7 +450,7 @@ GetItemByTypeOid(Oid oid)
 bool
 type_is_blob(Oid oid)
 {
-	const TypeItem *item = GetItemByTypeOid(oid);
+	const TypeItem *item = GetItemByTypeOid(oid, false);
 
 	return (item->flags & BLOB_FLAG) | (item->flags & BINARY_FLAG);
 }

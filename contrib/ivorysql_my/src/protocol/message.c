@@ -396,7 +396,7 @@ parse_query_bind_params(StringInfo buf, PreparedStatement *entry,
 
             if (!new_params_bind_flag)
             {
-                const TypeItem *item = GetItemByTypeOid(param_type);
+                const TypeItem *item = GetItemByTypeOid(param_type, false);
                 type = item->mysql_type_id;
             }
 
@@ -796,7 +796,7 @@ execute_com_stmt_prepare(const char *client_sql)
     {
         const TypeItem *item;
         mysql_column_definition_t *param_field = make_column_definition_with_name("?", NULL);
-        item = GetItemByTypeOid(entry->plansource->param_types[i]);
+        item = GetItemByTypeOid(entry->plansource->param_types[i], false);
         param_field->type = item->mysql_type_id;
         param_field->charset = item->charset_flag;
         send_column_definition41_packet(param_field);
