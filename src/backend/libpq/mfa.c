@@ -87,6 +87,52 @@
 /* Base32*/
 static const char base32_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
 
+#ifdef _WIN32
+
+static FILE* fmemopen(void *buf, size_t size, const char *mode)
+{
+	if (!buf || !mode || size == 0)
+	{
+		return NULL;
+	}
+
+	char tmp_path[L_tmpnam];
+	if (tmpnam(tmp_path) == NULL)
+	{
+		return NULL;
+	}
+
+	FILE *fp = fopen(tmp_path, "w+b");
+	if (!fp)
+	{
+		return NULL;
+	}
+
+	if (strchr(mode, 'r'))
+	{
+		fwrite(buf, 1, size, fp);
+		rewind(fp);
+	} else if (strchr(mode, 'w'))
+	{
+		// do nothing
+	} else if (strchr(mode, 'a'))
+	{
+		fwrite(buf, 1, size, fp);
+		fseek(fp, 0, SEEK_END);
+	} else if (strchr(mode, '+'))
+	{
+		fwrite(buf, 1, size, fp);
+		rewind(fp);
+	} else
+	{
+		fwrite(buf, 1, size, fp);
+		rewind(fp);
+	}
+
+	return fp;
+}
+#endif
+
 /* Base32*/
 static void
 base32_decode(const char *base32, unsigned char *output, size_t *output_len)
