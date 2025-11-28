@@ -121,23 +121,35 @@ CREATE VIEW hg_security.user_expiration_info AS
   SELECT * FROM hg_security.user_expiration_info();
 
 ALTER FUNCTION hg_security.pg_password_history_reset() OWNER TO syssso;
+GRANT ALL ON FUNCTION hg_security.pg_password_history_reset() TO syssso_role;
+
 ALTER FUNCTION hg_security.pg_password_history_reset(name) OWNER TO syssso;
+GRANT ALL ON FUNCTION hg_security.pg_password_history_reset(name) TO syssso_role;
 
 ALTER FUNCTION hg_security.pg_password_history OWNER TO syssso;
+GRANT ALL ON FUNCTION hg_security.pg_password_history TO syssso_role;
 ALTER VIEW hg_security.pg_password_history OWNER TO syssso;
+GRANT ALL ON hg_security.pg_password_history TO syssso_role;
 
 ALTER FUNCTION hg_security.pg_banned_role_reset(name) OWNER TO syssso;
+GRANT ALL ON FUNCTION hg_security.pg_banned_role_reset(name) TO syssso_role;
 
 ALTER FUNCTION hg_security.pg_banned_role_reset() OWNER TO syssso;
+GRANT ALL ON FUNCTION hg_security.pg_banned_role_reset() TO syssso_role;
 ALTER VIEW hg_security.pg_banned_role OWNER TO syssso;
+GRANT ALL ON hg_security.pg_banned_role TO syssso_role;
 
 ALTER FUNCTION hg_security.pg_banned_role OWNER TO syssso;
+GRANT ALL ON FUNCTION hg_security.pg_banned_role TO syssso_role;
 ALTER FUNCTION hg_security.login_message_display OWNER TO syssso;
+GRANT ALL ON FUNCTION hg_security.login_message_display TO syssso_role;
 
 GRANT EXECUTE ON FUNCTION hg_security.login_message_display TO PUBLIC;
 
 ALTER FUNCTION hg_security.user_expiration_info OWNER TO syssso;
+GRANT ALL ON FUNCTION hg_security.user_expiration_info TO syssso_role;
 ALTER VIEW hg_security.user_expiration_info OWNER TO syssso;
+GRANT ALL ON hg_security.user_expiration_info TO syssso_role;
 
 GRANT EXECUTE ON FUNCTION hg_security.user_expiration_info TO PUBLIC;
 GRANT SELECT ON hg_security.user_expiration_info TO PUBLIC;
