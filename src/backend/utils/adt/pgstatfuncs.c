@@ -25,6 +25,7 @@
 #include "postmaster/bgworker_internals.h"
 #include "postmaster/postmaster.h"
 #include "replication/slot.h"
+#include "se_features_interface.h" /* ReqID: SESSION-VIEWS y*/
 #include "storage/proc.h"
 #include "storage/procarray.h"
 #include "utils/acl.h"
@@ -996,6 +997,15 @@ pg_stat_get_activity_ext(PG_FUNCTION_ARGS)
 	PgBackendStatus *beentry = NULL;
 	
 	elog(DEBUG3, "pid:%d, num of backends:%d", pid, num_backends);
+
+	/* Bug #6195, #6192*/
+	if(IsUnderPostmaster)
+	{
+		if (!IS_SYSSSO(GetUserId()) || (!IS_SYSDBA(GetUserId()) && se_feature.mode == false))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("permission denied")));
+	}
 
 	/* check to see if caller supports us returning a tuplestore */
 	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))

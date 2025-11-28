@@ -415,12 +415,11 @@ add_rules(PG_FUNCTION_ARGS)
 	int32		arg0 = 0; /* Bug #6248 */
 
 	/* Is syssso user*/
-	if(!IS_SYSSSO(GetUserId()))
+	if (!IS_SYSSSO(GetUserId()) ||
+		(!IS_SYSDBA(GetUserId()) && !se_feature.mode)) /* Bug #6279 */
 		ereport(ERROR,
-			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				errmsg("permission denied "),
-				errdetail("member of syssso_role "
-						  "can add rules")));
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				errmsg("permission denied")));
 
 	/* get the function parameters. */
 	/* Bug #6248 */
@@ -569,12 +568,11 @@ remove_rules(PG_FUNCTION_ARGS)
 	Oid			userid;
 
 	/* Is syssso user*/
-	if(!IS_SYSSSO(GetUserId()))
+	if (!IS_SYSSSO(GetUserId()) ||
+		(!IS_SYSDBA(GetUserId()) && !se_feature.mode)) /* Bug #6279 */
 		ereport(ERROR,
-			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				errmsg("permission denied "),
-				errdetail("member of syssso_role "
-						  "can remove rules")));
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				errmsg("permission denied")));
 
 	if(!fcinfo->args[0].isnull)
 		arg = PG_GETARG_TEXT_PP(0);

@@ -49,7 +49,7 @@ typedef struct
 
 extern void ProcDataShmemInit(void); 
 extern Size ProcDataShmemSize(void);
-extern unsigned int ProcDataTableInsert(const int *tagPtr, int sid, int trans_state, unsigned int tid);
+extern void ProcDataTableInsert(const int *tagPtr, int sid, int trans_state, unsigned int tid);
 unsigned int ProcDataTableLookup(const int *tagPtr, u_int32_t *sid, char *idle_sum, char *busy_num, char *trans_info, u_int32_t *tid, char* path_search, bool *islock);
 void ProcDataDelete(const int *tagPtr);
 void RegisterOnExithandler(void);

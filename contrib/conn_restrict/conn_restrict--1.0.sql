@@ -7,7 +7,8 @@
 CREATE TABLE hg_security.conn_restrict_rules(id Oid primary key, filter_type int not null, rule_user text not null, include_mac text, exclude_mac text, include_time text, exclude_time text);
 
 REVOKE ALL on hg_security.conn_restrict_rules FROM PUBLIC;
-GRANT INSERT, DELETE, UPDATE ON hg_security.conn_restrict_rules TO syssso;
+--GRANT INSERT, DELETE, UPDATE ON hg_security.conn_restrict_rules TO syssso_role;
+ALTER TABLE hg_security.conn_restrict_rules OWNER TO syssso_role;
 
 CREATE or replace FUNCTION hg_security.add_rules(filter_type int, rule_user text, include_mac text, exclude_mac text, include_time text, exclude_time text)
 RETURNS void
@@ -15,7 +16,7 @@ AS 'MODULE_PATHNAME'
 LANGUAGE C VOLATILE PARALLEL SAFE;
 
 alter FUNCTION hg_security.add_rules(filter_type int, rule_user text, include_mac text, exclude_mac text, include_time text, exclude_time text)
-owner to syssso;
+owner to syssso_role;
 
 CREATE or replace FUNCTION hg_security.remove_rules(rule_user text)
 RETURNS void
@@ -23,7 +24,7 @@ AS 'MODULE_PATHNAME'
 LANGUAGE C VOLATILE PARALLEL SAFE;
 
 alter FUNCTION hg_security.remove_rules(rule_user text)
-owner to syssso;
+owner to syssso_role;
 
 CREATE or replace VIEW hg_security.show_rules as select
 		a.oid as id,
@@ -33,8 +34,9 @@ CREATE or replace VIEW hg_security.show_rules as select
 		case b.exclude_mac when '*' then NULL else b.exclude_mac end as exclude_mac,
 		case b.include_time when '*' then NULL else b.include_time end as include_time,
 		case b.exclude_time when '*' then NULL else b.exclude_time end as exclude_time
-	from pg_catalog.pg_authid a , hg_security.conn_restrict_rules b
+	from pg_catalog.pg_roles a , hg_security.conn_restrict_rules b
 	where a.oid = b.id;
 
 REVOKE ALL on hg_security.show_rules FROM PUBLIC;
-GRANT SELECT ON hg_security.show_rules TO syssso;
+--GRANT SELECT ON hg_security.show_rules TO syssso_role;
+ALTER VIEW hg_security.show_rules OWNER TO syssso_role;

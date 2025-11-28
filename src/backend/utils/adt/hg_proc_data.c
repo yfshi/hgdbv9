@@ -162,12 +162,10 @@ static void format_time(unsigned long secs, char *delta_time)
 /* ReqID: SRS-SESSION-VIEWS 
  * ProcDataTableInsert
  * insert proc data to hash table, update if exists. */
-unsigned int
+void
 ProcDataTableInsert(const int *tagPtr, int sid, int trans_state, unsigned int tid)
 {
 	ProcPrivEnt	   *result;
-	bool			found;
-//	u_int64_t		delta = 0;
 	char			delta_time_idle[32] = {'\0'};
 	char			delta_time_busy[32] = {'\0'};
 	long			secs;
@@ -179,23 +177,13 @@ ProcDataTableInsert(const int *tagPtr, int sid, int trans_state, unsigned int ti
 	unsigned long	tmp_busy_microsecs = 0;
 	unsigned long	tmp = 0;
 
-	elog(DEBUG3, "ProcDataTableInsert, pid:%d, sid:%d, trans_state:%d, tid:%d", 
-			*tagPtr, sid, trans_state, tid);
-
 	LWLockAcquire(proc_data_lock, LW_EXCLUSIVE);
 
 	result = (ProcPrivEnt *)
 		hash_search(ProcPrivDataHash,
 									(void *) tagPtr,
 									HASH_ENTER,
-									&found);
-
-	if (found)					/* found something already in the table */
-	{
-		LWLockRelease(proc_data_lock);
-		return result->data.sid;
-	}
-
+									NULL);
 	result->data.sid = sid;
 
 	/* get first idle time, there are two situations
@@ -243,7 +231,7 @@ ProcDataTableInsert(const int *tagPtr, int sid, int trans_state, unsigned int ti
 		
 		format_time(idle_secs, delta_time_idle);
 
-		elog(DEBUG3, "Finish counting busy time, time_idle:%s, time_busy:%s",
+		elog(DEBUG1, "Finish counting busy time, time_idle:%s, time_busy:%s",
 				delta_time_idle, delta_time_busy);
 		strcpy(result->data.idle_sum, delta_time_idle);
 		strcpy(result->data.busy_num, delta_time_busy);
@@ -253,8 +241,10 @@ ProcDataTableInsert(const int *tagPtr, int sid, int trans_state, unsigned int ti
 	result->data.tid = tid;
 	result->data.is_lock = should_lock_current_session;
 
+	elog(DEBUG1, "ProcDataTableInsert, pid:%d, sid:%d, trans_state:%d, tid:%d, is_lock:%d", 
+			*tagPtr, sid, trans_state, tid, result->data.is_lock);
+
 	LWLockRelease(proc_data_lock);
-	return -1;
 }
 
 /* ReqID: SRS-SESSION-VIEWS 

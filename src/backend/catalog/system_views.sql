@@ -1443,7 +1443,7 @@ CREATE or replace VIEW hg_security.hg_stat_session AS
         where S.datid > 0 and S.backend_type = 'client backend';
 
 REVOKE ALL on hg_security.hg_stat_session FROM PUBLIC;
-GRANT ALL ON hg_security.hg_stat_session TO syssso;
+GRANT ALL ON hg_security.hg_stat_session TO syssso_role;
 
 create or replace view hg_security.hg_db_connection_info
 as
@@ -1462,8 +1462,8 @@ as
 	on a.oid = b.datid
 	where a.datname !='template1' and a.datname !='template0'
 	group by (a.oid, a.datname, b.proto, b.type);
---GRANT SELECT ON hg_db_connection_info TO public;
+
 REVOKE ALL on hg_security.hg_db_connection_info FROM PUBLIC;
-GRANT ALL ON hg_security.hg_db_connection_info TO syssso;
+GRANT ALL ON hg_security.hg_db_connection_info TO syssso_role;
 
 /* End ReqID: SRS-SESSION-VIEWS */
