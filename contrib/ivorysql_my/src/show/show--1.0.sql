@@ -517,3 +517,11 @@ WHERE
 	AND NOT i.indisprimary; 							  -- Exclude primary key indexes (MySQL does not show these in statistics)
 GRANT SELECT ON mys_information_schema.showstatistics TO PUBLIC;
 -- End bug#Z5973
+
+-- Begin - BUG#6420
+CREATE FUNCTION mys_information_schema.mysql_get_indexdef_columns(indexoid Oid)
+RETURNS text
+AS 'MODULE_PATHNAME','mysql_get_indexdef_columns'
+LANGUAGE C
+PARALLEL SAFE STRICT;
+-- End - BUG#6420

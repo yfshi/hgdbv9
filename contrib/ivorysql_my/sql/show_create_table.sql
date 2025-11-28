@@ -1399,5 +1399,40 @@ set sql_mode='';
 SHOW CREATE TABLE t2;
 drop table t2;
 
-reset sql_mode;
 --END BUG#Z6281
+
+--Begin BUG#Z6420
+CREATE TABLE IF NOT EXISTS test_table (
+id1 integer NOT NULL,
+id2 INT UNIQUE,
+col1 VARCHAR(50),
+col2 INT,
+col3 VARCHAR(100),
+PRIMARY KEY (id1)
+);
+
+CREATE INDEX idx_test1 ON test_table (col1);
+CREATE INDEX idx_test_composite1 ON test_table (col1, col2, col3);
+CREATE INDEX idx_test2 ON test_table (col1(10));
+CREATE INDEX idx_test_composite2 ON test_table (col1(10), col3(20));
+CREATE UNIQUE INDEX idx_unique_col3 ON test_table (col1);
+CREATE UNIQUE INDEX idx_unique_composite_col3 ON test_table (col1,col2);
+CREATE INDEX idx_test4 USING Hash ON test_table (col1);
+CREATE INDEX idx_test_composite4 USING BTREE ON test_table (col1, col2);
+CREATE INDEX idx_test_option4 ON test_table (col1) USING Hash;
+CREATE INDEX idx_test6 ON test_table(col1) COMMENT '123abc测试索引';
+CREATE UNIQUE INDEX idx_test7 ON test_table(col3(10), col2, col1(20)) COMMENT '123abc测试索引';
+
+set sql_quote_show_create= on;
+set sql_mode='';
+SHOW CREATE TABLE test_table;
+
+set sql_mode='ANSI_QUOTES';
+SHOW CREATE TABLE test_table;
+
+set sql_quote_show_create= false;
+SHOW CREATE TABLE test_table;
+drop table test_table;
+--End BUG#Z6420
+
+reset sql_mode;

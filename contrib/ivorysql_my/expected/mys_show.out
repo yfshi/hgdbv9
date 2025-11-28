@@ -1977,15 +1977,16 @@ CREATE INDEX test_prefix_index_2 on test_prefix_index (long_text);
 CREATE INDEX test_prefix_index_3 on test_prefix_index (id);
 CREATE INDEX test_prefix_index_4 on test_prefix_index (long_text(99), id);
 SHOW CREATE TABLE test_prefix_index;
-       Table       |                       Create Table                       
--------------------+----------------------------------------------------------
- test_prefix_index | CREATE TABLE "test_prefix_index" (                      +
-                   |     "id" integer NOT NULL,                              +
-                   |     "long_text" character varying(500),                 +
-                   |     CONSTRAINT "test_prefix_index_pkey" PRIMARY KEY (id)+
-                   |     KEY "test_prefix_index_2" ("long_text")             +
-                   |     KEY "test_prefix_index_3" ("id")                    +
-                   |     KEY "test_prefix_index_4" ("id")                    +
+       Table       |                                Create Table                                 
+-------------------+-----------------------------------------------------------------------------
+ test_prefix_index | CREATE TABLE "test_prefix_index" (                                         +
+                   |     "id" integer NOT NULL,                                                 +
+                   |     "long_text" character varying(500),                                    +
+                   |     CONSTRAINT "test_prefix_index_pkey" PRIMARY KEY (id),                  +
+                   |     KEY "test_prefix_index_1" ("left"(long_text::text, 100)) USING BTREE,  +
+                   |     KEY "test_prefix_index_2" ("long_text") USING BTREE,                   +
+                   |     KEY "test_prefix_index_3" ("id") USING BTREE,                          +
+                   |     KEY "test_prefix_index_4" ("left"(long_text::text, 99), id) USING BTREE+
                    | )
 (1 row)
 
@@ -2041,12 +2042,12 @@ value VARCHAR(50),
 INDEX idx_value (value) COMMENT 'This is a test index'
 );
 SHOW CREATE TABLE test_comment1;
-     Table     |           Create Table            
----------------+-----------------------------------
- test_comment1 | CREATE TABLE "test_comment1" (   +
-               |     "id" integer,                +
-               |     "value" character varying(50)+
-               |     KEY "idx_value" ("value")    +
+     Table     |                              Create Table                              
+---------------+------------------------------------------------------------------------
+ test_comment1 | CREATE TABLE "test_comment1" (                                        +
+               |     "id" integer,                                                     +
+               |     "value" character varying(50),                                    +
+               |     KEY "idx_value" ("value") USING BTREE COMMENT This is a test index+
                | )
 (1 row)
 
