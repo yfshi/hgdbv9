@@ -52,6 +52,8 @@
 	45、M兼容增加支持MySQL协议；
 	46、统一整理了自研功能系统对象的模式问题；
 	47、M兼容增加二进制语法；
+	48、合并PG 14.20 patch；
+	49、M兼容增加str_to_date和timestampdiff函数；
 2、修复问题
 	1、修复了MySQL兼容，SET lc_time_names等参数异常断开的问题，bug#5527；
 	2、修复了MySQL兼容，get_format返回类型不正确的问题，bug#5533；
@@ -262,3 +264,31 @@
 	207、O兼容修改了约束依赖的索引时，未同步更新到pg_object的问题，bug#6226；
 	208、O兼容修改动态sql在Oracle record变量中不能用USING IN的问题，bug#0000531；
 	209、HSH修复了hsh_report_to_file()函数参数为非法路径时，连接崩溃的问题，bug#6336；	
+	210、O兼容修复了触发器相关的兼容视图中crossedition列误写成crosedition的问题，bug#6339；
+	211、O兼容修复了user_synonyms系统视图没有区分公有或者私有视图的问题，bug#6347；
+	212、M兼容为binary类型增加了avg、sum、min和max聚合函数，bug#6051；
+	213、M兼容修复了在指定协议为pg后未重新加载search_path的问题，bug#6338；
+	214、M兼容修复了do中执行多表达式结果错误的问题，bug#6201/6202；
+	215、M兼容修复了user被指定为保留关键字无法做表名的问题，bug#6309；
+	216、O兼容删除了pg_dump的-m参数，bug#6100；
+	217、O兼容新增视图，记录表、视图、物化视图、序列、存储过程、函数、包、类型等对象的授权信息，bug#6222;
+	218、强访修复了用户、表和列的安全标记默认值不为空的问题，bug#6350；
+	219、审计修复了初始化数据库后首次启动报错死锁的问题，bug#6360;
+	220、会话管理、访问白名单修复了相关参数未按三权规则控制的问题，bug#6183/6238；
+	221、访问白名单修复了.control文件中sql未指定hg_security模式的问题，bug#6283；
+	222、访问白名单功能修复了include_mac、exclude_mac都为null时未限制客户端登录和登录时间的问题，bug#6268/8284；
+	223、O兼容修复了dbms_output.get_line越界报错时buffer清理行为与Oracle不一致的问题，bug#5656；
+	224、对bin目录下的多个可执行命令的帮助信息做了汉化，bug#6369；
+	225、修复了upgrade升级V9.0.4到V9.0.5时报错系统表pg_synonym不存在的问题，bug#6400；
+	226、修复了upgrade未过滤掉安全模式hg_security下相关对象的问题，bug#6353;
+	227、M兼容修复了rename与alter表不存在时报错信息不一致的问题，bug#5993;
+	228、M兼容修复了longblob长度上限不准确的问题，bug#5655；
+	229、HSH修复了分时段统计表最后一个interval未包含最后一个采样数据的问题，bug#6415；
+	230、HSH的判断数据源函数的区间值应该是闭区间而不是开区间，bug#6416；
+	231、HSH修复了执行select get_lic_baseinfo()的报告中“发行版本”多了“Database version：”无关信息，bug#6426；
+	232、修复了MySQL和Oracle兼容模式可通过set命令切换的问题，并且统一修改兼容开关，纠正mode和parser乱用的问题，bug#6324;
+	233、身份鉴别修复了syssso用户与syssso角色用户权限不统一的问题，bug#6313/6314；
+	234、会话管理修复了hg_security.hg_stat_session视图中is_locked的值不正确的问题，bug#6185；
+	235、会话管理修复了相关视图的权限与三权规则不符的问题，bug#6192/6195/6279；
+	236、审计设置使用了统一的sqlite默认路径；
+	
