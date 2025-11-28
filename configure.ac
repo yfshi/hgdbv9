@@ -141,7 +141,7 @@ AC_DEFINE_UNQUOTED(HG_MAJOR_VERSION, "$HG_MAJOR_VERSION", [Hgdb major version as
 #add HG_EXTRAL_VERSION
 PGAC_ARG_REQ(with, hg_extral_version, [STRING], [Hgdb extral version],
              [HG_EXTRAL_VERSION="$withval"],
-             [HG_EXTRAL_VERSION="03-0-0-0000"])
+             [HG_EXTRAL_VERSION="05-0-0-0000"])
 AC_DEFINE_UNQUOTED(HG_EXTRAL_VERSION, "$HG_EXTRAL_VERSION", [Hgdb extral version as a string])
 
 #add HG_PROJECT_ID

@@ -1122,7 +1122,7 @@ exec_simple_query(const char *query_string)
 	 * and the out parameters datatype is integer.
 	 * this only used for regression test so far.
 	 */
-	if (ORA_PARSER == compatible_db && list_length(parsetree_list) == 1)
+	if (ORA_MODE == compatible_mode && list_length(parsetree_list) == 1)
 	{
 		Node *node = (Node *) linitial(parsetree_list);
 		ParamListInfo paramsinfo;
@@ -1533,7 +1533,7 @@ exec_parse_message(const char *query_string,	/* string to execute */
 	char 	   *paramModes = NULL;
 
 	/* get the masked oid from typeoid */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 		paramModes = GetParamMode(paramTypes, numParams);
 	/* End - BUG:M0000083 */
 	/* End - ReqID:SRS-SQL-FUNCOUT */
@@ -1599,7 +1599,7 @@ exec_parse_message(const char *query_string,	/* string to execute */
 	 * we are in aborted transaction state!)
 	 */
 	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
-	if (compatible_db== ORA_PARSER)
+	if (compatible_mode == ORA_MODE)
 	{
 		/* parser :select * from f(:x,:y) */
 		int oraparam_cur_level;
@@ -1704,7 +1704,7 @@ exec_parse_message(const char *query_string,	/* string to execute */
 				 */
 				if (nodeTag(raw_parse_tree->stmt) == T_DoStmt)
 				{
-					if (compatible_db == ORA_PARSER)
+					if (compatible_mode == ORA_MODE)
 					{
 						/* Begin - BUG#M000437 */
 						/* according to nls_length_semantics to assign default oid */
@@ -2010,7 +2010,7 @@ exec_bind_message(StringInfo input_message)
 
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	/* anonymous block out parameters */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		psrc->raw_parse_tree != NULL &&
 		nodeTag(psrc->raw_parse_tree) == T_RawStmt &&
 		nodeTag((RawStmt *)(psrc->raw_parse_tree)->stmt) == T_DoStmt &&
@@ -2049,7 +2049,7 @@ exec_bind_message(StringInfo input_message)
 		params = makeParamList(numParams);
 
 		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		if (ORA_PARSER == compatible_db && dostmt_modes != NIL && list_length(dostmt_modes) != numParams)
+		if (ORA_MODE == compatible_mode && dostmt_modes != NIL && list_length(dostmt_modes) != numParams)
 			elog(ERROR, "parameters modes doesn't match to params");
 		/* End - ReqID:SRS-SQL-ANONYOUT */
 
@@ -2082,7 +2082,7 @@ exec_bind_message(StringInfo input_message)
 
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			/* get out parameters from Dostmt' modes */
-			if (ORA_PARSER == compatible_db && dostmt_modes != NIL)
+			if (ORA_MODE == compatible_mode && dostmt_modes != NIL)
 			{
 				DefElem *def = NULL;
 				Value *v= NULL;
@@ -2132,7 +2132,7 @@ exec_bind_message(StringInfo input_message)
 				 * BUG:803 should consider enable_emptystring_to_NULL
 				 */
 				/* Begin - Bug#803 */
-				if (compatible_db == ORA_PARSER &&
+				if (compatible_mode == ORA_MODE &&
 					enable_emptystring_to_NULL &&
 					plength == 0)
 				{
@@ -2166,7 +2166,7 @@ exec_bind_message(StringInfo input_message)
 				pformat = 0;	/* default = text */
 
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
-			if (compatible_db == ORA_PARSER &&
+			if (compatible_mode == ORA_MODE &&
 				pmode == 'o')
 			{
 				/* virtual type its value is awalys null */
@@ -4798,7 +4798,7 @@ PostgresMain(int argc, char *argv[],
 	 */
 	if (am_walsender &&
 		database_mode == DB_ORACLE &&
-		compatible_db == ORA_PARSER)
+		compatible_mode == ORA_MODE)
 		SetConfigOption("ivorysql.identifier_case_switch", "normal",
 				PGC_USERSET, PGC_S_OVERRIDE);
 	/* End - ROLLBACK_SRS-MISC-USER */

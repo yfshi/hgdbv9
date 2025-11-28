@@ -654,7 +654,7 @@ adjust_inherited_attnums_multilevel(PlannerInfo *root, List *attnums,
 	AppendRelInfo *appinfo = root->append_rel_array[child_relid];
 
 	/* rebulid attnums list. */
-	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		ListCell   *lc = NULL;
 		List	   *tmpattnums = NIL;
@@ -813,7 +813,7 @@ add_row_identity_var(PlannerInfo *root, Var *orig_var,
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db && list_length(root->parse->resultRelations) > 1) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && list_length(root->parse->resultRelations) > 1) /* BUG#Z5121 */
 	{
 		/* When list partitions, leaf_result_relids will not be generated. */
 		if (rtindex <= list_length(root->parse->resultRelations))
@@ -879,7 +879,7 @@ add_row_identity_var(PlannerInfo *root, Var *orig_var,
 						  list_length(root->processed_tlist) + 1,
 						  pstrdup(rowid_name),
 						  true);
-	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		if (!root->all_result_relids_list)
 			root->processed_tlist = lappend(root->processed_tlist, tle);
@@ -996,7 +996,7 @@ distribute_row_identity_vars(PlannerInfo *root)
 		return;
 	}
 
-	if (MYS_PARSER == compatible_db && list_length(parse->resultRelations) > 1) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && list_length(parse->resultRelations) > 1) /* BUG#Z5121 */
 	{
 		foreach(lc, parse->resultRelations)
 		{

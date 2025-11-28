@@ -655,7 +655,7 @@ other			.
 							yylval->str = litbufdup(yyscanner);
 							/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
 							if (strcmp(yylval->str, "") == 0 &&
-								ORA_PARSER == compatible_db &&
+								ORA_MODE == compatible_mode &&
 								enable_emptystring_to_NULL)
 							{
 								return NULL_P;
@@ -949,7 +949,7 @@ other			.
 					 * quotes.
 					 */
 					/* BEGIN - case sensitive indentify */
-					if (compatible_db == DB_ORACLE && enable_case_switch
+					if (compatible_mode == ORA_MODE && enable_case_switch
 						&& identifier_case_switch != NORMAL
 						&& !identifier_case_from_pg_dump)
 					{

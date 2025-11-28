@@ -287,7 +287,7 @@ setMultiTargetTable(ParseState* pstate, RangeVar* relRv, bool inh, bool alsoSour
 	 * For UPDATE, maybe target table has been added to rtable before.
 	 * if that, no need to do that again, just set resultRelation to the existed rtindex.
 	 */
-	if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		if (multiModify && (requiredPerms & ACL_UPDATE))
 		{
@@ -463,13 +463,13 @@ setTargetTable(ParseState *pstate, RangeVar *relation,
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	/* If INSERT, add table to insertvarnamespace. */
-	if (pstate->p_is_insert && MYS_PARSER == compatible_db && !pstate->p_ruleflag) /* BUG#Z5121 */
+	if (pstate->p_is_insert && MYS_MODE == compatible_mode && !pstate->p_ruleflag) /* BUG#Z5121 */
 		addNSItemToQuery(pstate, nsitem, false, false, false);
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	/* In MySQL mode, deal index hint pre check */
-	if (relation->indexhints != NIL && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if (relation->indexhints != NIL && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		IndexHintType	ihtype = INDEX_HINT_USE;
 		ihtype = preCheckIndexHints(pstate, relation->indexhints, pstate->p_target_relation);
@@ -961,7 +961,7 @@ transformRangeFunction(ParseState *pstate, RangeFunction *r)
 	is_lateral = r->lateral || contain_vars_of_level((Node *) funcexprs, 0);
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 		check_funcexpr_outparams(funcexprs);
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 
@@ -1516,7 +1516,7 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		 * convert views from the compatible information_schema
 		 * schema to ivymy schema.
 		 */
-		if (compatible_db == MYS_PARSER && enable_mysql_information_schema)
+		if (compatible_mode == MYS_MODE && enable_mysql_information_schema)
 		{
 			char	*nspname = rv->schemaname;
 
@@ -1550,11 +1550,11 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		rtr = makeNode(RangeTblRef);
 		rtr->rtindex = nsitem->p_rtindex;
 
-		if (MYS_PARSER == compatible_db && rv->ispartition) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && rv->ispartition) /* BUG#Z5121 */
 			pstate->p_addupdatedeleterv = lappend(pstate->p_addupdatedeleterv, rv);
 
 		/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
-		if (MYS_PARSER == compatible_db && pstate->p_addDeleteTable &&
+		if (MYS_MODE == compatible_mode && pstate->p_addDeleteTable &&
 			pstate->p_delrellist) /* BUG#Z5121 */
 		{
 			ColumnRef   *ref = NULL;
@@ -2054,7 +2054,7 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		 * Begin - BUG#M497
 		 * replace pseudo-collation in JOIN clause.
 		 */
-		if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+		if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 		{			
 			if (j->quals)
 			{
@@ -2390,7 +2390,7 @@ transformWhereClause(ParseState *pstate, Node *clause,
 	 * having clause also do parseCheckAggregates() check,
 	 * so we replace Pseudo-collation-Var occured in having clause.
 	 */
-	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+	if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 	{
 		Oid 	 coll;
 		Node 	*copy = copyObject(qual);
@@ -2419,7 +2419,7 @@ transformWhereClause(ParseState *pstate, Node *clause,
 	/* End - SRS: SQL-SQL-NLSSORT */
 
 	/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
-	if (compatible_db == ORA_PARSER && hasPlusFlag(qual))
+	if (compatible_mode == ORA_MODE && hasPlusFlag(qual))
 	{
 		/* Resolve the NOT expression in advance */
 		if (is_notclause(qual))
@@ -2956,7 +2956,7 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			if (target_result != NULL)
 			{
 				/* Begin - Req: SRS-SQL-NLSSORT */
-				if (compatible_db == ORA_PARSER && enable_ora_default_collation)
+				if (compatible_mode == ORA_MODE && enable_ora_default_collation)
 				{
 					Node *copy = copyObject((Node *) target_result->expr);
 					assign_expr_collations(pstate, copy);
@@ -3041,7 +3041,7 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			if (target_result != NULL)
 			{
 				/* Begin - Req: SRS-SQL-NLSSORT */
-				if (compatible_db == ORA_PARSER && enable_ora_default_collation)
+				if (compatible_mode == ORA_MODE && enable_ora_default_collation)
 				{
 					Node *copy = copyObject((Node *) target_result->expr);
 					assign_expr_collations(pstate, copy);
@@ -3099,7 +3099,7 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 				if (++targetlist_pos == target_pos)
 				{
 					/* Begin - Req: SRS-SQL-NLSSORT */
-					if (compatible_db == ORA_PARSER && enable_ora_default_collation)
+					if (compatible_mode == ORA_MODE && enable_ora_default_collation)
 					{
 						Node *copy = copyObject((Node *) tle->expr);
 						assign_expr_collations(pstate, copy);
@@ -3792,7 +3792,7 @@ findTargetlistEntrySQL99(ParseState *pstate, Node *node, List **tlist,
 	 * We assgin collation on expr's copy to check whether it is pseudo collation,
 	 * meanwhile do not change expr's value.
 	 */
-	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+	if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 	{
 		Oid 	 coll;
 		Node 	*copy = copyObject(expr);
@@ -5604,9 +5604,9 @@ interpretRowidOption(List *defList, bool allowRowid)
 
 	/*
 	 * ROWID option was not specified, so use default GUC value,
-	 * but this GUC only valid in DB_ORACLE model
+	 * but this GUC only valid in ORA_MODE model
 	 */
-	if (compatible_db == DB_ORACLE)
+	if (compatible_mode == ORA_MODE)
 		return default_with_rowids;
 	else
 		return false;

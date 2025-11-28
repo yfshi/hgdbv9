@@ -148,7 +148,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.enable_indexhint", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable index hint feature in MySQL compatible mode."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_indexhint,
 		false,
@@ -159,7 +160,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.enable_ignore_columns_list", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable ignore cloumns list feature in MySQL compatible mode."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_ignore_columns_list,
 		false,
@@ -170,7 +172,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{"ivorysql.enable_mysql_information_schema", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable information schema feature in mysql compatible mode."),
 			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_mysql_information_schema,
 		false,
@@ -180,7 +182,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.enable_case_switch", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable case conversion feature in oracle compatible mode."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&myenable_case_switch,
 		true,
@@ -191,7 +194,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.mode_pad_char_to_full", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("mode_pad_char_to_full_length control char(n) output."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&not_mode_pad_char_to_full,
 		true,
@@ -202,7 +206,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.enable_character_blob", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable binary/varbinary/blob type to be input and output as character."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&enable_character_blob,
 		false,
@@ -213,7 +218,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.mysql_convert", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
 			gettext_noop("mysql and pg convert."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&mysql_convert,
 		true,	/* BUG#Z5124 */
@@ -225,7 +231,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		// Only for regress test
 		{"mysql.regress_test_default_value", PGC_POSTMASTER, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Controlling the functional difference between MySQL and Postgres."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&regress_test_default_value,
 		false,
@@ -234,7 +241,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.cast_to_char", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("MySQL and Postgres CAST(expr as char) is difference."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&cast_to_char,
 		true,
@@ -244,7 +252,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.use_mysql_bool", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("MySQL and Postgres bool is difference."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&use_mysql_bool,
 		false,
@@ -254,7 +263,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.at_or_atat", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("MySQL user/global/session variable switch."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&at_or_atat,
 		false,
@@ -265,7 +275,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"sql_quote_show_create", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 				gettext_noop("MySQL Parameter show create command."),
-				NULL
+				NULL,
+				GUC_NOT_IN_SAMPLE
 		},
 		&sql_quote_show_create,
 		true,
@@ -276,7 +287,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.use_mysql_do", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 				gettext_noop("MySQL Parameter use MySQL DO command."),
-				NULL
+				NULL,
+				GUC_NOT_IN_SAMPLE
 		},
 		&use_mysql_do,
 		false,
@@ -287,7 +299,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"autocommit", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 				gettext_noop("This parameter is only used in mysql compatibility."),
-				NULL
+				NULL,
+				GUC_NOT_IN_SAMPLE
 		},
 		&mys_autocommit,
 		true,
@@ -299,6 +312,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{"mysql.use_mysql_bit_literal", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Use bit-value literal with Mysql features in mysql compatible mode."),
 			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&use_mysql_bit_literal,
 		false,
@@ -323,7 +337,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"lower_case_table_names", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("MySQL case sensitive parameter."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&lower_case_table_names,
 		DEF_LOWER_NUM, MIN_LOWER_NUM, MAX_LOWER_NUM,
@@ -345,7 +360,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"auto_increment_increment", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Use mysql code in datatype function."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&auto_increment_increment,
 		1, INT_MIN, INT_MAX,
@@ -354,7 +370,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"auto_increment_offset", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Use mysql code in datatype function."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&auto_increment_offset,
 		1, INT_MIN, INT_MAX,
@@ -377,7 +394,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{
 			"max_allowed_packet", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Sets mysql max_allowed_packet ."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&max_allowed_packet,
 		4194304, 1024, 1073741824,
@@ -387,7 +405,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{
 			"max_sort_length", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Sets mysql max_sort_length."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&max_sort_length,
 		1024, 4, 8388608,
@@ -402,7 +421,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{
 			"net_buffer_length", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("The default size of the buffer."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&net_buffer_length,
 		DEFAULT_NET_BUFFER_LENGTH,
@@ -418,7 +438,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 			"wait_timeout", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("After this number of seconds of inactivity, "
                          "the server will close the noninteractive connection."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&wait_timeout,
 		DEFAULT_WAIT_TIMEOUT,
@@ -434,7 +455,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 			"interactive_timeout", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("After this number of seconds of inactivity, "
                          "the server will close the interactive connection."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&interactive_timeout,
 		DEFAULT_INTERACTIVE_TIMEOUT,
@@ -450,7 +472,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 			"net_write_timeout", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("After this number of seconds of waiting, "
                          "the server will abort the write."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&net_write_timeout,
 		DEFAULT_NET_WRITE_TIMEOUT,
@@ -462,7 +485,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{
 			"sql_select_limit", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("The maximum number of rows to return from SELECT statements."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&sql_select_limit,
 		INT_MAX - 1,
@@ -499,7 +523,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"version_comment", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Version_comment for MySQL."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&version_comment_str,
 		"HighGo",
@@ -526,7 +551,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"character_set_client", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Client uses this character set."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&character_set_client,
 		"utf8",
@@ -535,7 +561,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"character_set_connection", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Set character_set_connection."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&character_set_connection,
 		"",
@@ -545,7 +572,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{"character_set_results", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("The server uses this character set "
                          "to return the query results to the client."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&character_set_results,
 		"utf8",
@@ -554,7 +582,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"character_set_server", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Server uses this character set."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&character_set_server,
 		"latin1",
@@ -563,7 +592,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"collation_server", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Server uses this collation."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&collation_server,
 		"latin1_swedish_ci",
@@ -572,7 +602,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"collation_connection", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Set collation_connection."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&collation_connection,
 		"",
@@ -581,7 +612,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"init_connect", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("SQL statements executed when each connection is initialized."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&init_connect,
 		"",
@@ -590,7 +622,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"license", PGC_INTERNAL, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("The server uses this license."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&license,
 		"",
@@ -599,7 +632,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"performance_schema", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("CUSTOM_OPTIONS."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&performance_schema,
 		"",
@@ -608,7 +642,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"system_time_zone", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("The time zone set by server."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&system_time_zone,
 		"",
@@ -617,7 +652,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{
 		{"time_zone", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("The time zone set currently."),
-			NULL
+			NULL,
+			GUC_NOT_IN_SAMPLE
 		},
 		&time_zone,
 		"SYSTEM",
@@ -632,7 +668,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 			COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Sets mysql sql_mode."),
 			NULL,
-			GUC_LIST_INPUT
+			GUC_LIST_INPUT | GUC_NOT_IN_SAMPLE
 		},
 		&sql_mode_str,
 		// psql need PIPES_AS_CONCAT, so we add it to default value, which is different from MySQL's.
@@ -661,7 +697,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	{"mysql.protocol_type", PGC_POSTMASTER, PRESET_OPTIONS,
 		gettext_noop("Set mysql port protocol type"),
 		NULL,
-		GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		GUC_DISALLOW_IN_FILE
 	},
 	&mys_protocol_type,
 	PROTOCOL_MYSQL, proto_type_options,

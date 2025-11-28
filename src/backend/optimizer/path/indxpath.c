@@ -299,7 +299,7 @@ create_index_paths(PlannerInfo *root, RelOptInfo *rel)
 			continue;
 
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (enable_indexhint && compatible_db == MYS_PARSER &&
+		if (enable_indexhint && compatible_mode == MYS_MODE &&
 			root->parse->indexhintList) /* BUG#Z5121 */
 		{
 			/* If the index hint is ignore, then skip. */

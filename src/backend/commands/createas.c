@@ -403,7 +403,7 @@ ExecCreateTableAs(ParseState *pstate, CreateTableAsStmt *stmt,
 		ExecutorStart(queryDesc, GetIntoRelEFlags(into));
 
 		/* Begin - ReqID:SRS-MYSQL-DATETYPE */
-		if(compatible_db == MYS_PARSER)
+		if(compatible_mode == MYS_MODE)
 			queryDesc->estate->es_createtbas = true;
 		/* End - ReqID:SRS-MYSQL-DATETYPE */
 

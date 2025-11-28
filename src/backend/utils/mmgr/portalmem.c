@@ -202,7 +202,7 @@ CreatePortal(const char *name, bool allowDup, bool dupSilent)
 	}
 
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		int n_eles = hash_get_num_entries(PortalHashTable);
 

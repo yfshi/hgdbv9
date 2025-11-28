@@ -1525,7 +1525,7 @@ get_object_address_relobject(ObjectType objtype, List *object,
 
 	/* Extract name of dependent object. */
 	/* Begin - ReqID:SRS-SQL-TRIGGER */
-	if (ORA_PARSER == compatible_db && objtype == OBJECT_TRIGGER && nodeTag(lfirst(list_tail(object))) == T_List)
+	if (ORA_MODE == compatible_mode && objtype == OBJECT_TRIGGER && nodeTag(lfirst(list_tail(object))) == T_List)
 	{
 		RangeVar	*trigname = makeRangeVarFromNameList((List *)lfirst(list_tail(object)));
 		depname = trigname->relname;
@@ -1539,7 +1539,7 @@ get_object_address_relobject(ObjectType objtype, List *object,
 	if (nnames < 2)
 	{
 		/* Begin - ReqID:SRS-SQL-TRIGGER */
-		if (ORA_PARSER == compatible_db && objtype == OBJECT_TRIGGER)
+		if (ORA_MODE == compatible_mode && objtype == OBJECT_TRIGGER)
 		{
 			trigoid = ivyGetTriggerOidReloidByName(depname, &reloid, missing_ok);
 		} /* End - ReqID:SRS-SQL-TRIGGER */
@@ -1568,7 +1568,7 @@ get_object_address_relobject(ObjectType objtype, List *object,
 	}
 
 	/* Begin - ReqID:SRS-SQL-TRIGGER */
-	if (ORA_PARSER == compatible_db && nnames < 2 && objtype == OBJECT_TRIGGER)
+	if (ORA_MODE == compatible_mode && nnames < 2 && objtype == OBJECT_TRIGGER)
 	{
 		if (OidIsValid(reloid))
 			relation = table_open(reloid, AccessShareLock);

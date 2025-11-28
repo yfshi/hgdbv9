@@ -2484,7 +2484,7 @@ ExecBuildSlotValueDescription(Oid reloid,
 				 * Begin - ReqID:SRS-GKC-DATATYPE_001
 				 * Compatible oracle , pass typmod to output function
 				 */
-				if (ORA_PARSER == compatible_db &&
+				if (ORA_MODE == compatible_mode &&
 					(att->atttypid == YMINTERVALOID ||
 					 att->atttypid == DSINTERVALOID))
 				{

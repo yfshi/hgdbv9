@@ -141,7 +141,7 @@ ExecMakeTableFunctionResult(SetExprState *setexpr,
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	if (nodeTag(setexpr->expr) == T_FuncExpr &&
 		SPI_get_connected() < 0 &&
-		DB_ORACLE == compatible_db)
+		ORA_MODE == compatible_mode)
 	{
 		FuncExpr *funcexpr = (FuncExpr *) setexpr->expr;
 		Oid		resulttype;

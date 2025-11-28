@@ -1196,18 +1196,18 @@ RestoreArchivePg(Archive *AHX)
 		/* BEGIN - bug#M0000238 */
 		if(restoremode)
 		{	/* Begin - BUGZ4254 */
-			if (compatible_mode != ORA_PARSER)
+			if (compatible_mode != ORA_MODE)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
 				if (( AH->format == archNull))
 					ahprintf(AH, "\\parser\n");
-				compatible_mode = ORA_PARSER;
+
 				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n"); /* BUGZ4388 */
+
+				compatible_mode = ORA_MODE;
 			}
 			/* End - BUGZ4254 */
-			CurUser = DB;
 			ahprintf(AH, "\n\n");
-
 			SetDumptypeMode(AH->connection);
 		}
 		/* END - bug#M0000238 */
@@ -1475,10 +1475,10 @@ RestoreArchivePg(Archive *AHX)
 			strstr((&ropt->cparams)->dbname, "dbname=template1") == 0)
 	{
 		/* Begin - BUGZ4254 */
-		if (compatible_mode != PG_PARSER)
+		if (compatible_mode != PG_MODE)
 		{
 			ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
-			compatible_mode = PG_PARSER;
+			compatible_mode = PG_MODE;
 		}
 		/* End - BUGZ4254 */
 	}
@@ -1679,18 +1679,15 @@ RestoreArchiveOracle(Archive *AHX)
 		if(restoremode)
 		{
 			/* Begin - BUGZ4254 */
-			if (compatible_mode != ORA_PARSER)
+			if (compatible_mode != ORA_MODE)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
 				if (( AH->format == archNull))
 					ahprintf(AH, "\\parser\n");
-				compatible_mode = ORA_PARSER;	/* ReqID:SRS-CMD-PGDUMP */
+				compatible_mode = ORA_MODE;	/* ReqID:SRS-CMD-PGDUMP */
 				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n"); /* BUGZ4388 */
 			}
-			/* End - BUGZ4254 */
-
 			ahprintf(AH, "\n\n");
-			CurUser = DB;
 			SetDumptypeMode(AH->connection);
 		}
 		/* END - bug#M0000238 */
@@ -2522,7 +2519,7 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 					if (restoremode)
 					{
 						/* Begin - BUGZ4254 */
-						if (compatible_mode != ORA_PARSER)
+						if (compatible_mode != ORA_MODE)
 						{
 							ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
 							ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
@@ -2530,8 +2527,7 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 							if ((AH->format == archNull))
 								ahprintf(AH, "\\parser\n");
 							ahprintf(AH, "\n\n");
-							compatible_mode = ORA_PARSER;
-							CurUser = DB;
+							compatible_mode = ORA_MODE;
 						}
 						/* End - BUGZ4254 */
 					}
@@ -4986,7 +4982,6 @@ _doSetFixedOutputState(ArchiveHandle *AH)
 				ahprintf(AH, "\\parser\n");
 			/* End - BUGZ4565 */
 			ahprintf(AH, "SET ivorysql.dumppgtype to oracle;\n");
-			ahprintf(AH, "SET ivorysql.grant_usertype to oracle;\n");
 			ahprintf(AH, "SET ivorysql.enable_ora_user_schema to off;\n");
 			//ahprintf(AH, "RESET ivorysql.compatible_mode;\n");	/* BUGZ4388 */
 		}
@@ -5078,19 +5073,16 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 			setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
 			setNLSdateFormat(AH->connection);				/* BUG:z774 */
 			/* Begin - BUGZ4254 */
-			if (compatible_mode != ORA_PARSER)
+			if (compatible_mode != ORA_MODE)
 			{
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.compatible_mode to oracle;\n");
 				if ((AH->format == archNull))
 					appendPQExpBufferStr(&connectbuf, "\\parser\n");
-				compatible_mode = ORA_PARSER;
+				compatible_mode = ORA_MODE;
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.dumppgtype to oracle;\n");	/* BUGZ4388 */
 			}
 			/* End - BUGZ4254 */
-
-
 			appendPQExpBufferStr(&connectbuf, "\n\n");
-			CurUser = DB;
 		}
 
 		ahprintf(AH, "%s", connectbuf.data);
@@ -5493,7 +5485,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 
 				ahprintf(AH, "set session authorization \"%s\";\n", AH->connection == NULL ? fmtId(te->owner) : getInstanceSuperuser(AH->connection));	/* BUGM431 */
 				CurUser = INSTANCE;
-				compatible_mode = PG_PARSER;
+				compatible_mode = PG_MODE;
 			}
 		}
 		/* END - ReqID:SRS-MISC-USER */
@@ -5505,18 +5497,18 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 	{
 		if (te->compatible_mode != NULL)
 		{
-			if (strcmp(pg_strdup(te->compatible_mode),"p") == 0 && compatible_mode != PG_PARSER
+			if (strcmp(pg_strdup(te->compatible_mode),"p") == 0 && compatible_mode != PG_MODE
 					&& strcmp(te->desc, "ACL") != 0)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
-				compatible_mode = PG_PARSER;
+				compatible_mode = PG_MODE;
 				if (AH->format == archNull || AH->connection == NULL)
 					ahprintf(AH, "\\parser\n\n");
 			}
-			else if (strcmp(pg_strdup(te->compatible_mode),"m") == 0 && compatible_mode != MYS_PARSER)
+			else if (strcmp(pg_strdup(te->compatible_mode),"m") == 0 && compatible_mode != MYS_MODE)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to mysql;\n");
-				compatible_mode = MYS_PARSER;
+				compatible_mode = MYS_MODE;
 				if (AH->format == archNull || AH->connection == NULL)
 					ahprintf(AH, "\\parser\n\n");
 
@@ -5553,25 +5545,25 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 			if (database_mode == DB_ORACLE && te->compatible_mode != NULL)
 			{
-				if (strcmp(te->compatible_mode,"p") == 0 && compatible_mode != PG_PARSER	/* BUG#M0000404 */
+				if (strcmp(te->compatible_mode,"p") == 0 && compatible_mode != PG_MODE	/* BUG#M0000404 */
 						&& strcmp(te->desc, "ACL") != 0)
 				{
 					ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
-					compatible_mode = PG_PARSER;
+					compatible_mode = PG_MODE;
 					if (AH->format == archNull || AH->connection == NULL)
 						ahprintf(AH, "\\parser\n\n");
 				}
-				else if (strcmp(te->compatible_mode,"o") == 0 && compatible_mode != ORA_PARSER)	/* BUG#M0000404 */
+				else if (strcmp(te->compatible_mode,"o") == 0 && compatible_mode != ORA_MODE)	/* BUG#M0000404 */
 				{
 					ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-					compatible_mode = ORA_PARSER;
+					compatible_mode = ORA_MODE;
 					if (AH->format == archNull || AH->connection == NULL)
 						ahprintf(AH, "\\parser\n\n");
 				}
-				else if (strcmp(te->compatible_mode,"p") == 0 && compatible_mode != ORA_PARSER && strcmp(te->desc, "ACL") == 0)	/* BUG#M0000404 */	/* BUGZ1408 */
+				else if (strcmp(te->compatible_mode,"p") == 0 && compatible_mode != ORA_MODE && strcmp(te->desc, "ACL") == 0)	/* BUG#M0000404 */	/* BUGZ1408 */
 				{
 					ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-					compatible_mode = ORA_PARSER;
+					compatible_mode = ORA_MODE;
 					if (AH->format == archNull || AH->connection == NULL)
 						ahprintf(AH, "\\parser\n\n");
 				}
@@ -5584,10 +5576,10 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			/* to be deleted. */
 			if (database_mode != DB_MYSQL && (strcmp(te->desc, "PACKAGE") == 0  ||
 				 strcmp(te->desc, "SYNONYM") == 0 || strcmp(te->desc, "TRIGGER") == 0)	/* ReqID:SRS-SQL-SYNONYM */
-											&& compatible_mode != ORA_PARSER)
+											&& compatible_mode != ORA_MODE)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-				compatible_mode = ORA_PARSER;
+				compatible_mode = ORA_MODE;
 				if (AH->format == archNull || AH->connection == NULL)
 					ahprintf(AH, "\\parser\n\n");
 			}
@@ -5643,12 +5635,12 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 
 			if (database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */	/* BUGZ1408 */
 			{
-				if (compatible_mode == PG_PARSER)
+				if (compatible_mode == PG_MODE)
 				{
 					ahprintf(AH, "set ivorysql.compatible_mode to oracle;");
 					if (AH->format == archNull || AH->connection == NULL)
 						ahprintf(AH, "\n\\parser\n");
-					compatible_mode = ORA_PARSER;					
+					compatible_mode = ORA_MODE;
 				}
 			}
 
@@ -5750,8 +5742,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			if ((AH->format == archNull))
 				ahprintf(AH, "\\parser\n");
 			ahprintf(AH, "\n\n");
-			compatible_mode = ORA_PARSER;
-			CurUser = DB;
+			compatible_mode = ORA_MODE;
 		}
 		/* END - ReqID:SRS-MISC-USER */
 	}

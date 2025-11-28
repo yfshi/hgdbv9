@@ -176,7 +176,7 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	 * CREATE SCHEMA AUTHORIZATION schema ...
 	 * Allow existing schema in oracle mode.
 	 */
-	if (ORA_PARSER == compatible_db && enable_ora_user_schema &&
+	if (ORA_MODE == compatible_mode && enable_ora_user_schema &&
 		stmt->schemaElts != NULL && stmt->schemaname == NULL)
 	{
 		if (stmt->authrole == NULL)
@@ -282,7 +282,7 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	SetUserIdAndSecContext(saved_uid, save_sec_context);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (pg_object_create_obj_hook && compatible_db == MYS_PARSER)
+	if (pg_object_create_obj_hook && compatible_mode == MYS_MODE)
 	{
 		ObjectAddress	addrs;
 		StringInfoData	buf;

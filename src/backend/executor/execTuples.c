@@ -2131,7 +2131,7 @@ ExecTypeFromTLInternal(List *targetList, bool hasrowid, bool skipjunk)
 		 * If call a function which has out parameters in SQL, not in PLSQL, 
 		 * the function return type should be changed to record
 		 */
-		if (ORA_PARSER == compatible_db && nodeTag(tle->expr) == T_FuncExpr && SPI_get_connected() < 0)
+		if (ORA_MODE == compatible_mode && nodeTag(tle->expr) == T_FuncExpr && SPI_get_connected() < 0)
 		{
 			FuncExpr *func = (FuncExpr *) tle->expr;
 			Oid		resulttype;

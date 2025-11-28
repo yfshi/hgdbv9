@@ -269,7 +269,7 @@ BuildIndexValueDescription(Relation indexRelation,
 			 * Begin - ReqID:SRS-GKC-DATATYPE_001
 			 * Compatible oracle , pass typmod to output function
 			 */
-			if (ORA_PARSER == compatible_db &&
+			if (ORA_MODE == compatible_mode &&
 				indexRelation->rd_att != NULL &&
 				(TupleDescAttr(indexRelation->rd_att, i)->atttypid == YMINTERVALOID ||
 				 TupleDescAttr(indexRelation->rd_att, i)->atttypid == DSINTERVALOID))

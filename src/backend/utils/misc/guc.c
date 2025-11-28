@@ -9541,7 +9541,7 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 				WarnNoTransactionBlock(isTopLevel, "SET LOCAL");
 
 			/* Begin - BUG#Z1444 */
-			if (stmt->is_use && MYS_PARSER == compatible_db && list_length(stmt->args) == 1) /* BUG#Z5121 */
+			if (stmt->is_use && MYS_MODE == compatible_mode && list_length(stmt->args) == 1) /* BUG#Z5121 */
 			{
 				Node   *con = (Node *)linitial(stmt->args);
 				char   *nspname = NULL;
@@ -10984,7 +10984,7 @@ _ShowOption(struct config_generic *record, bool use_units)
 				if (conf->show_hook)
 					val = conf->show_hook();
 				/* Begin - Req: SRS-MYSQL-PROTOCOL */
-				else if (compatible_db == MYS_PARSER && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+				else if (compatible_mode == MYS_MODE && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
 					val = *conf->variable ? "1" : "0";
 				/* End - Req: SRS-MYSQL-PROTOCOL */
 				else

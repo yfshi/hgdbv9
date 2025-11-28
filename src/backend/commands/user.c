@@ -457,7 +457,7 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 		else
 		{
 			/* Begin - Req: SRS-MYSQL-PROTOCOL */
-			if (compatible_db == MYS_PARSER && mysql_encrypt_password_hook)
+			if (compatible_mode == MYS_MODE && mysql_encrypt_password_hook)
 			{
 				shadow_pass = mysql_encrypt_password_hook(Password_encryption, stmt->role, password);
 			}
@@ -707,7 +707,7 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	 *
 	 * Create a schema with the same name.
 	 */
-	if (ORA_PARSER == compatible_db && enable_ora_user_schema)
+	if (ORA_MODE == compatible_mode && enable_ora_user_schema)
 	{
 		CommandCounterIncrement();
 
@@ -1231,7 +1231,7 @@ AlterRole(AlterRoleStmt *stmt)
 		else
 		{
 			/* Begin - Req: SRS-MYSQL-PROTOCOL */
-			if (compatible_db == MYS_PARSER && mysql_encrypt_password_hook)
+			if (compatible_mode == MYS_MODE && mysql_encrypt_password_hook)
 			{
 				shadow_pass = mysql_encrypt_password_hook(Password_encryption, rolename, password);
 			}

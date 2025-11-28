@@ -1538,7 +1538,7 @@ oracle_quote_identifier(const char *ident)
 		return ident;			/* no change needed */
 
 	/* Begin - BUG#Z1423 */
-	if (compatible_db == ORA_PARSER && identifier_case_switch == INTERCHANGE)
+	if (compatible_mode == ORA_MODE && identifier_case_switch == INTERCHANGE)
 	{
 		char *ident_case;
 

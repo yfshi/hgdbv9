@@ -2199,7 +2199,7 @@ coerce_type(ParseState *pstate, Node *node,
 	Oid			funcId;
 	bool 		is_insert = false;
 
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		/* Begin - SRS-MYSQL-HEX-LITERAL */
 		if ((pstate) && 
@@ -2217,7 +2217,7 @@ coerce_type(ParseState *pstate, Node *node,
 	{
 		/* Begin - ReqID:SRS-MYSQL-DATETYPE*/
 		//error:select cast('1.1111' as timestamp);
-		if (MYS_PARSER == compatible_db)
+		if (MYS_MODE == compatible_mode)
 		{
 			if (COERCION_EXPLICIT == ccontext && (targetTypeId == MYSTIMESTAMPOID || targetTypeId == MYSTIMESTAMPSOID))
 			{
@@ -2306,7 +2306,7 @@ coerce_type(ParseState *pstate, Node *node,
 		}
 	}
 
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		/**
 		 * Begin - ReqID:SRS-MYSQL-DATETYPE
@@ -2570,7 +2570,7 @@ coerce_type(ParseState *pstate, Node *node,
 		 */
 		setup_parser_errposition_callback(&pcbstate, pstate, con->location);
 
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 		{
 			/*
 			* Begin - ReqID:SRS-GKC-DATATYPE_001
@@ -2848,7 +2848,7 @@ coerce_type(ParseState *pstate, Node *node,
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
 		/* Begin - ReqID:SRS-MYSQL-DATETYPE */
 		/* date'2222-22-22' */
-		else if (MYS_PARSER == compatible_db)
+		else if (MYS_MODE == compatible_mode)
 		{
 			bool mysdateflag = false;
 
@@ -3073,7 +3073,7 @@ coerce_type(ParseState *pstate, Node *node,
 		return result;
 	}
 	/* Begin - ReqID:SRS-MYSQL-SET */
-	else if (compatible_db == MYS_PARSER && inputTypeId == UNKNOWNOID && IsA(node, VarRef))
+	else if (compatible_mode == MYS_MODE && inputTypeId == UNKNOWNOID && IsA(node, VarRef))
 	{
 		/*
 		 * Handle the case of SELECT on non-existent
@@ -3251,7 +3251,7 @@ coerce_type(ParseState *pstate, Node *node,
 		 * because coerce_record_to_complex only support RowExprs or whole-row
 		 * so if we pass it a Param or a FuncExpr, we only return node, we corece later
 		 */
-		if (compatible_db == DB_ORACLE &&
+		if (compatible_mode == ORA_MODE &&
 			node && (IsA(node, Param)
 			|| IsA(node, FuncExpr)))
 			return node;
@@ -3447,7 +3447,7 @@ can_coerce_type(int nargs, const Oid *input_typeids, const Oid *target_typeids,
 			|| typeIsOfTypedTable(inputTypeId, targetTypeId))
 			continue;
 		
-		if (MYS_PARSER == compatible_db)
+		if (MYS_MODE == compatible_mode)
 		{
 			/*
 			 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
@@ -3721,7 +3721,7 @@ build_coercion_expression(Node *node,
 		if (nargs >= 2)
 		{
 			/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-			if (MYS_PARSER == compatible_db && type_is_enum(targetTypeId))
+			if (MYS_MODE == compatible_mode && type_is_enum(targetTypeId))
 			{
 				/* set enum type oid */
 				cons = makeConst(OIDOID,
@@ -3860,7 +3860,7 @@ build_coercion_expression(Node *node,
 		iocoerce->location = location;
 
 		/* SRS-MYSQL-HEX-LITERAL */
-		if (compatible_db == MYS_PARSER)
+		if (compatible_mode == MYS_MODE)
 			iocoerce->flag = flag;
 
 		return (Node *) iocoerce;
@@ -4042,7 +4042,7 @@ coerce_to_boolean(ParseState *pstate, Node *node,
 
 		newnode = coerce_to_target_type(pstate, node, inputTypeId,
 										BOOLOID, -1,
-										MYS_PARSER == compatible_db ? COERCION_EXPLICIT : COERCION_ASSIGNMENT, /* BUG#5051 */
+										MYS_MODE == compatible_mode ? COERCION_EXPLICIT : COERCION_ASSIGNMENT, /* BUG#5051 */
 										COERCE_IMPLICIT_CAST,
 										-1);
 		if (newnode == NULL)
@@ -4329,7 +4329,7 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 			* The set operation between two subquery returned type is differ from oracle and dm,
 			* it results in wrong results,make it same as oracle and dm.
 			*/
-			else if ( (issetop && ORA_PARSER == compatible_db && ncategory == TYPCATEGORY_STRING &&
+			else if ( (issetop && ORA_MODE == compatible_mode && ncategory == TYPCATEGORY_STRING &&
 					   can_coerce_type(1, &ptype, &ntype, COERCION_IMPLICIT)) && 
 					   (ptype == ORACHARCHAROID || ptype == ORACHARBYTEOID || (!pispreferred && nispreferred)) )
 			{
@@ -4362,7 +4362,7 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 		 * also require that it must be of text[] type. Oracle does not have the
 		 * concept of arrays, so it will not affect our compatibility with Oracle.
 		 */
-		if (context && strcmp(context, "ARRAY") && compatible_db == ORA_PARSER)
+		if (context && strcmp(context, "ARRAY") && compatible_mode == ORA_MODE)
 		{
 			if (nls_length_semantics == NLS_LENGTH_BYTE)
 				ptype = ORAVARCHARBYTEOID;
@@ -4397,13 +4397,13 @@ select_common_type_for_nvl(ParseState *pstate, List *exprs, const char *context,
 	{
 		if (!IsA(pexpr, Const) || !((Const *)pexpr)->constisnull)
 		{
-			if (compatible_db  == PG_PARSER)
+			if (compatible_mode  == PG_MODE)
 				ptype = TEXTOID;
 			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-			else if (compatible_db  == MYS_PARSER)
+			else if (compatible_mode  == MYS_MODE)
 				ptype = TEXTOID;
 			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-			else if (compatible_db == ORA_PARSER)
+			else if (compatible_mode == ORA_MODE)
 			{
 				if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
 					ptype = ORAVARCHARBYTEOID;
@@ -4436,13 +4436,13 @@ select_common_type_for_nvl(ParseState *pstate, List *exprs, const char *context,
 
 			if (ptype == UNKNOWNOID)
 			{
-				if (compatible_db == PG_PARSER)
+				if (compatible_mode == PG_MODE)
 					ptype = TEXTOID;
 				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-				else if (compatible_db  == MYS_PARSER)
+				else if (compatible_mode  == MYS_MODE)
 					ptype = TEXTOID;
 				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-				else if (compatible_db == ORA_PARSER)
+				else if (compatible_mode == ORA_MODE)
 				{
 					if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
 						ptype = ORAVARCHARBYTEOID;
@@ -4488,13 +4488,13 @@ select_common_type_for_nvl2(ParseState *pstate, List *exprs, const char *context
 	{
 		if (!IsA(pexpr, Const) || !((Const *)pexpr)->constisnull)
 		{
-			if (compatible_db  == PG_PARSER)
+			if (compatible_mode  == PG_MODE)
 				ptype = TEXTOID;
 			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-			else if (compatible_db  == MYS_PARSER)
+			else if (compatible_mode  == MYS_MODE)
 				ptype = TEXTOID;
 			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-			else if (compatible_db == ORA_PARSER)
+			else if (compatible_mode == ORA_MODE)
 			{
 				if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
 					ptype = ORAVARCHARBYTEOID;
@@ -4527,13 +4527,13 @@ select_common_type_for_nvl2(ParseState *pstate, List *exprs, const char *context
 
 			if (ptype == UNKNOWNOID)
 			{
-				if (compatible_db == PG_PARSER)
+				if (compatible_mode == PG_MODE)
 					ptype = TEXTOID;
 				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-				else if (compatible_db  == MYS_PARSER)
+				else if (compatible_mode  == MYS_MODE)
 					ptype = TEXTOID;
 				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-				else if (compatible_db == ORA_PARSER)
+				else if (compatible_mode == ORA_MODE)
 				{
 					if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
 						ptype = ORAVARCHARBYTEOID;
@@ -5307,7 +5307,7 @@ enforce_generic_type_consistency(const Oid *actual_arg_types,
 			if (allow_poly && decl_type == actual_type)
 				continue;		/* no new information here */
 			
-			if (MYS_PARSER != compatible_db || !type_is_enum(elem_typeid))
+			if (MYS_MODE != compatible_mode || !type_is_enum(elem_typeid))
 			{
 				if (OidIsValid(elem_typeid) && actual_type != elem_typeid)
 					ereport(ERROR,
@@ -6276,7 +6276,7 @@ find_coercion_pathway(Oid targetTypeId, Oid sourceTypeId,
 	if (sourceTypeId == targetTypeId)
 		return COERCION_PATH_RELABELTYPE;
 
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		/**
 		 * if two enum type is same, return .:
@@ -6475,7 +6475,7 @@ find_typmod_coercion_function(Oid typeId,
 	}
 
 	/*Begin - BUGID:0000649*/
-	if (compatible_db == ORA_PARSER && typeForm->typbasetype != InvalidOid)
+	if (compatible_mode == ORA_MODE && typeForm->typbasetype != InvalidOid)
 	{
 		if ((strcmp(typeForm->typname.data, "raw") == 0)||
 			(strcmp(typeForm->typname.data,"long") == 0))

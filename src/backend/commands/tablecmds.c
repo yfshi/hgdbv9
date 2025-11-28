@@ -1141,7 +1141,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (pg_object_create_obj_hook &&
-		 compatible_db == MYS_PARSER &&
+		 compatible_mode == MYS_MODE &&
 		 stmt->relation->relpersistence != RELPERSISTENCE_TEMP)
 	{
 		char newrelkind = relkind;
@@ -1418,7 +1418,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 		 * We need to transform the raw parsetrees conrresponding to interval
 		 * expressions into executable expression trees.
 		 */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			stmt->partspec->partInterval != NULL &&
 			strategy == PARTITION_STRATEGY_RANGE)
 		{
@@ -1598,7 +1598,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	relation_close(rel, NoLock);
 
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if(pg_object_create_obj_hook && compatible_db == ORA_PARSER)
+	if(pg_object_create_obj_hook && compatible_mode == ORA_MODE)
 	{
 		StringInfoData	str;
 		initStringInfo(&str);
@@ -1662,7 +1662,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 * Set table's collation, or inherit from Effective Schema Default Collation,
 	 * Which is depended on schema's collation and DEFAULT_COLLATION session paramerter
 	 */
-	if (ORA_PARSER == compatible_db && enable_ora_default_collation &&
+	if (ORA_MODE == compatible_mode && enable_ora_default_collation &&
 		(relkind == RELKIND_RELATION ||
 		 relkind == RELKIND_PARTITIONED_TABLE ||
 		 relkind == RELKIND_FOREIGN_TABLE ||
@@ -4061,7 +4061,7 @@ renameatt_internal(Oid myrelid,
 			/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 			childttnum = renameatt_internal(childrelid, oldattname, newattname, false, true, numparents, behavior);
 
-			if (pg_object_alter_obj_hook && compatible_db == ORA_PARSER)
+			if (pg_object_alter_obj_hook && compatible_mode == ORA_MODE)
 			{
 				ObjectAddress	address;
 				PgObjectInfo	objinf;
@@ -4233,7 +4233,7 @@ renameatt(RenameStmt *stmt)
 
 	ObjectAddressSubSet(address, RelationRelationId, relid, attnum);
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if(pg_object_alter_obj_hook && compatible_db == ORA_PARSER)
+	if(pg_object_alter_obj_hook && compatible_mode == ORA_MODE)
 	{
 		ObjectAddress address;
 		PgObjectInfo objinf;
@@ -4506,7 +4506,7 @@ RenameRelation(RenameStmt *stmt)
 	check_function_depend_on_relation(relid);
 	/* End - ReqID:SRS-PLSQL-TYPE */
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (pg_object_alter_obj_hook && compatible_db == ORA_PARSER)
+	if (pg_object_alter_obj_hook && compatible_mode == ORA_MODE)
 	{
 		PgObjectInfo objinf;
 		if ((objinf = pg_object_get_ori_infor_hook(address)) != NULL)
@@ -4515,7 +4515,7 @@ RenameRelation(RenameStmt *stmt)
 	/* END - ReqID:SRS-CMD-PGDUMP */
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	else if (pg_object_alter_obj_hook && pg_object_get_ori_infor_hook &&
-			 compatible_db == MYS_PARSER)
+			 compatible_mode == MYS_MODE)
 	{
 		PgObjectInfo oriinf = NULL;
 
@@ -7786,7 +7786,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	typeOid = tform->oid;
 
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		!enable_cursor_as_column_type &&
 		(typeOid == ORAREFCURSOROID ||
 		typeOid == SYS_REFCURSOROID))
@@ -7844,7 +7844,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	 * Build dependence between new anonymous enum type and this table.
 	 * Same logical as AddNewAttributeTuples.
 	 */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		for (int i = 0; i < tupdesc->natts; i++)
 		{
@@ -7880,7 +7880,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 	table_close(pgclass, RowExclusiveLock);
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (pg_object_create_obj_hook && compatible_db == ORA_PARSER)
+	if (pg_object_create_obj_hook && compatible_mode == ORA_MODE)
 	{
 		ObjectAddress 	address_paraent;/* BUGZ1662 */
 		PgObjectInfo	objori;
@@ -9007,7 +9007,7 @@ ATExecSetIdentity(Relation rel, const char *colName, Node *def, LOCKMODE lockmod
 
 	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	/* auto_increment set attidentity*/
-	if(compatible_db == MYS_PARSER && generatedEl && ATTRIBUTE_IDENTITY_AUTO_INCREMENT == defGetInt32(generatedEl))
+	if(compatible_mode == MYS_MODE && generatedEl && ATTRIBUTE_IDENTITY_AUTO_INCREMENT == defGetInt32(generatedEl))
 		attTup->attidentity = defGetInt32(generatedEl);
 	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
@@ -10794,7 +10794,7 @@ ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	 * If a column belongs to two or more foreign key constraints referencing primary key or unique 
 	 * constraints with different collation specifications, an error is reported.
 	 */
-	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+	if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 	{
 		Form_pg_attribute 	att;
 		bool 				self_reference = (RelationGetRelid(rel) == RelationGetRelid(pkrel));
@@ -13319,7 +13319,7 @@ ATExecDropConstraint(Relation rel, const char *constrName,
 
 	table_close(conrel, RowExclusiveLock);
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (compatible_db == ORA_PARSER && pg_object_drop_obj_hook)
+	if (compatible_mode == ORA_MODE && pg_object_drop_obj_hook)
 	{
 		ObjectAddress	addr;
 		PgObjectInfo	ori;
@@ -13430,7 +13430,7 @@ ATPrepAlterColumnType(List **wqueue,
 	 * "enum" is type name flag set in mys_gram.y
 	 * alter enum column type, create new enum type.
 	 */
-	if (compatible_db == MYS_PARSER &&
+	if (compatible_mode == MYS_MODE &&
 		typename_is_enum(typeName))
 	{
 		CreateEnumTypeForAlterTable(attTup, RelationGetRelationName(rel), colName, typeName);
@@ -13907,7 +13907,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	if (!HeapTupleIsValid(heapTup)) /* shouldn't happen */
 	{
 		/* Req: SRS-SQL-NLSSORT */
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 			ereport(ERROR,
 					(errcode(ERRCODE_UNDEFINED_COLUMN),
 					errmsg("IVY-00904: \"%s\": invalid identifier", colName)));
@@ -13938,7 +13938,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	 * Begin - Req: SRS-SQL-NLSSORT
 	 * And the collation 
 	 */
-	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+	if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 	{		
 		if (def->collClause)
 		{
@@ -13970,7 +13970,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 		targetcollid = GetColumnDefCollation(NULL, def, targettype);
 
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		!enable_cursor_as_column_type &&
 		(targettype == ORAREFCURSOROID ||
 		targettype == SYS_REFCURSOROID))
@@ -14130,7 +14130,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 
 			case OCLASS_REWRITE:
 				/* Begin - ReqID:SRS-SQL-FORCEVIEW */
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					Relation	ruleDesc;
 					ScanKeyData skey[1];
@@ -14251,7 +14251,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 			case OCLASS_PROC:
 
 				/* Begin - ReqID:SRS-PLSQL-TYPE */
-				if (ORA_PARSER == compatible_db && foundDep->deptype == DEPENDENCY_TYPE)
+				if (ORA_MODE == compatible_mode && foundDep->deptype == DEPENDENCY_TYPE)
 				{
 					/* Add function Oid to the pending-oids list */
 					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_PROC);	/* BUG#Z1670 */
@@ -14280,7 +14280,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
 				 * Remove anonymous type depend on the column.
 				 */
-				if (MYS_PARSER == compatible_db)
+				if (MYS_MODE == compatible_mode)
 				{
 					Oid 	enumOid = foundObject.objectId;
 					
@@ -14336,7 +14336,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 			/* Begin - ReqID:SRS-SQL-PACKAGE */
 			case OCLASS_PACKAGE_BODY:
 				/* Begin - ReqID:SRS-PLSQL-TYPE */
-				if (ORA_PARSER == compatible_db && foundDep->deptype == DEPENDENCY_TYPE)
+				if (ORA_MODE == compatible_mode && foundDep->deptype == DEPENDENCY_TYPE)
 				{
 					/* Add package body Oid to the pending-oids list */
 					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_PACKAGE_BODY);	/* BUG#Z1670 */
@@ -14359,7 +14359,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 			case OCLASS_PACKAGE:
 
 				/* Begin - ReqID:SRS-PLSQL-TYPE */
-				if (ORA_PARSER == compatible_db && foundDep->deptype == DEPENDENCY_TYPE)
+				if (ORA_MODE == compatible_mode && foundDep->deptype == DEPENDENCY_TYPE)
 				{
 					/* Add package Oid to the pending-oids list */
 					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_PACKAGE);	/* BUG#Z1670 */
@@ -17427,7 +17427,7 @@ ATExecAddOf(Relation rel, const TypeName *ofTypename, LOCKMODE lockmode)
 		if (table_attr->atttypid != type_attr->atttypid ||
 			table_attr->atttypmod != type_attr->atttypmod ||
 			(table_attr->attcollation != type_attr->attcollation &&
-			 ORA_PARSER != compatible_db))
+			 ORA_MODE != compatible_mode))
 			ereport(ERROR,
 					(errcode(ERRCODE_DATATYPE_MISMATCH),
 					 errmsg("table \"%s\" has different type for column \"%s\"",
@@ -19242,7 +19242,7 @@ ComputePartitionAttrs(ParseState *pstate, Relation rel, List *partParams, AttrNu
 			 * we should get the explicit-named opclass for partition key,
 			 * this have an impact on the partition prune.
 			 */
-			if(ORA_PARSER == compatible_db && !enable_blankspace_compare)
+			if(ORA_MODE == compatible_mode && !enable_blankspace_compare)
 			{
 				partopclass[attn] = GetExplicitOpClass(atttype,am_oid);
 				if(!OidIsValid(partopclass[attn]))
@@ -20909,7 +20909,7 @@ ATExecDefaultCollation(Relation relation, char *collname)
 	ObjectAddress 	address = InvalidObjectAddress;
 
 	/* Begin - BUG#M0000436 */
-	if (ORA_PARSER != compatible_db || !enable_ora_default_collation)
+	if (ORA_MODE != compatible_mode || !enable_ora_default_collation)
 		return InvalidObjectAddress;
 	/* End - BUG#M0000436 */
 
@@ -21211,7 +21211,7 @@ check_function_depend_on_relation(Oid relid)
 	ScanKeyData key[2];
 	SysScanDesc scan;
 
-	if (ORA_PARSER != compatible_db)
+	if (ORA_MODE != compatible_mode)
 		return;
 
 	/*
@@ -21252,7 +21252,7 @@ check_function_depend_on_relation_column(Oid relid, AttrNumber attnum)
 	SysScanDesc scan;
 
 
-	if (ORA_PARSER != compatible_db)
+	if (ORA_MODE != compatible_mode)
 		return;
 
 	/*

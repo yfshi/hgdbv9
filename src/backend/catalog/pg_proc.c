@@ -309,7 +309,7 @@ ProcedureCreate(const char *procedureName,
 	/*
 	 * call plisql function which includes out parameters,
 	 */
-	if (compatible_db == DB_ORACLE &&
+	if (compatible_mode == ORA_MODE &&
 		LANG_PLISQL_OID == languageObjectId)
 	{
 		parameterTypes = buildoidvector(allParams, allParamCount);
@@ -382,7 +382,7 @@ ProcedureCreate(const char *procedureName,
 	else
 		nulls[Anum_pg_proc_proconfig - 1] = true;
 	/* Begin - BUG:M0000068 */
-	if (ORA_PARSER == compatible_db &&
+	if (ORA_MODE == compatible_mode &&
 		languageObjectId == get_language_oid("plisql", true))
 	{
 		if (intisnumber)
@@ -627,7 +627,7 @@ ProcedureCreate(const char *procedureName,
 		}
 
 		/* Begin - ReqID:SRS-PLSQL-TYPE */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			languageObjectId == get_language_oid("plisql", true))
 		{
 			if (check_function_bodies)
@@ -672,7 +672,7 @@ ProcedureCreate(const char *procedureName,
 		values[Anum_pg_proc_oid - 1] = ObjectIdGetDatum(newOid);
 
 		/* Begin - ReqID:SRS-PLSQL-TYPE */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			languageObjectId == get_language_oid("plisql", true))
 		{
 			if (check_function_bodies)
@@ -714,7 +714,7 @@ ProcedureCreate(const char *procedureName,
 	add_exact_object_address(&referenced, addrs);
 
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	if (!(ORA_PARSER == compatible_db &&
+	if (!(ORA_MODE == compatible_mode &&
 		LANG_PLISQL_OID == languageObjectId &&
 		get_typtype(returnType) == TYPTYPE_COMPOSITE))
 	/* End - ReqID:SRS-PLSQL-TYPE */
@@ -736,7 +736,7 @@ ProcedureCreate(const char *procedureName,
 	for (i = 0; i < allParamCount; i++)
 	{
 		/* Begin - ReqID:SRS-PLSQL-TYPE */
-		if (!(ORA_PARSER == compatible_db &&
+		if (!(ORA_MODE == compatible_mode &&
 			LANG_PLISQL_OID == languageObjectId &&
 			get_typtype(allParams[i]) == TYPTYPE_COMPOSITE))
 		{
@@ -828,7 +828,7 @@ ProcedureCreate(const char *procedureName,
 		}
 
 		/* Begin - ReqID:SRS-PLSQL-TYPE */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			languageObjectId == LANG_PLISQL_OID &&
 			check_function_bodies)
 			plisql_check_body = true;

@@ -320,7 +320,7 @@ deleteObjectsInList(ObjectAddresses *targetObjects, Relation *depRel,
 		deleteOneObject(thisobj, depRel, flags);
 
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (compatible_db == MYS_PARSER && pg_object_drop_obj_hook)
+		if (compatible_mode == MYS_MODE && pg_object_drop_obj_hook)
 		{
 			ObjectAddress address;
 
@@ -421,7 +421,7 @@ performDeletion(const ObjectAddress *object,
 						   &need_refinddepobj/* ReqID:SRS-SQL-FORCEVIEW */);
 
 	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
-	if (ORA_PARSER == compatible_db && need_refinddepobj)
+	if (ORA_MODE == compatible_mode && need_refinddepobj)
 	{
 		free_object_addresses(targetObjects);
 		targetObjects = new_object_addresses();
@@ -529,7 +529,7 @@ performMultipleDeletions(const ObjectAddresses *objects,
 						   &need_refinddepobj /* ReqID:SRS-SQL-FORCEVIEW */);
 
 	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
-	if (ORA_PARSER == compatible_db && need_refinddepobj)
+	if (ORA_MODE == compatible_mode && need_refinddepobj)
 	{
 		free_object_addresses(targetObjects);
 		targetObjects = new_object_addresses();
@@ -1331,7 +1331,7 @@ reportDependentObjects(const ObjectAddresses *targetObjects,
 		return;
 
 	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
-	if (ORA_PARSER == compatible_db && behavior == DROP_RESTRICT)
+	if (ORA_MODE == compatible_mode && behavior == DROP_RESTRICT)
 	{
 		bool	all_cascade_dep_is_view = true;
 		ObjectAddresses *viewObjects;
@@ -1798,7 +1798,7 @@ doDeletion(const ObjectAddress *object, int flags)
 				if (relKind == RELKIND_VIEW && rel_is_force_view(object->objectId))
 					  DeleteForceView(object->objectId);
 				#endif
-				if (ORA_PARSER == compatible_db && relKind == RELKIND_VIEW)
+				if (ORA_MODE == compatible_mode && relKind == RELKIND_VIEW)
 					  DeleteForceView(object->objectId);
 				/* End - ReqID:SRS-SQL-FORCEVIEW */
 				break;

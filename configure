@@ -3237,7 +3237,7 @@ if test "${with_hg_extral_version+set}" = set; then :
   esac
 
 else
-  HG_EXTRAL_VERSION="03-0-0-0000"
+  HG_EXTRAL_VERSION="05-0-0-0000"
 fi
 
 

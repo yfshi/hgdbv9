@@ -825,7 +825,7 @@ BuildDescForRelation(List *schema)
 		typenameTypeIdAndMod(NULL, entry->typeName, &atttypid, &atttypmod);
 
 		/* Begin - ReqID:SRS-PLSQL-CURSOR */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			!enable_cursor_as_column_type &&
 			(atttypid == ORAREFCURSOROID ||
 			atttypid == SYS_REFCURSOROID))

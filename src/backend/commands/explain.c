@@ -1187,7 +1187,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			{
 				case CMD_INSERT:
 					/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-					if (((ModifyTable *) plan)->isReplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+					if (((ModifyTable *) plan)->isReplace && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 						pname = operation = "Replace";
 					else
 						pname = operation = "Insert";
@@ -3780,7 +3780,7 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es, bool multiTarget)
 	{
 		case T_ModifyTable:
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
-			if (multiTarget && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+			if (multiTarget && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 			{
 				objecttag = "Relation Name";
 				break;
@@ -3882,7 +3882,7 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es, bool multiTarget)
 	{
 		appendStringInfoString(es->str, " on");
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (multiTarget && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+		if (multiTarget && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 		{
 			appendStringInfoString(es->str, " MULTI-RELATION");
 		}
@@ -3898,7 +3898,7 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es, bool multiTarget)
 		}
 	}
 	else
-	{	if (objecttag != NULL && multiTarget && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	{	if (objecttag != NULL && multiTarget && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 		{
 			ExplainPropertyText(objecttag, "MULTI-RELATION", es);
 		}
@@ -4096,7 +4096,7 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 			skipped_path = total - insert_path - update_path - delete_path;
 
 			/* Begin - ReqID:SRS-SQL-MERGE */
-			if (compatible_db == DB_ORACLE)
+			if (compatible_mode == ORA_MODE)
 			{
 				ExplainPropertyFloat("Tuples Inserted", NULL, insert_path, 0, es);
 				ExplainPropertyFloat("Tuples Updated", NULL, update_path, 0, es);

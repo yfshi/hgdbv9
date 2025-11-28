@@ -48,8 +48,7 @@
 extern bool restoremode; 			/*  bug#M0000238 */
 extern DBMode database_mode;
 
-extern DBParser compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
-extern DBUser	CurUser;		/* ReqID:SRS-CMD-PGDUMP */
+extern CompatibleMode compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
 extern const char *DumpM;	/* ReqID:SRS-CMD-PGDUMP */
 extern int caselowernum;	/* ReqID:SRS-MYSQL-CASE */
 

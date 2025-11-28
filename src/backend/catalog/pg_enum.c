@@ -134,7 +134,7 @@ EnumValuesCreate(Oid enumTypeOid, List *vals)
 		values[Anum_pg_enum_enumsortorder - 1] = Float4GetDatum(elemno + 1);
 
 		/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-		if (MYS_PARSER == compatible_db)
+		if (MYS_MODE == compatible_mode)
 		{
 			/* trim the right space for set label */
 			Datum trimtxt = DirectFunctionCall1(rtrim1, CStringGetTextDatum(lab));

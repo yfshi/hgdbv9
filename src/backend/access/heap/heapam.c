@@ -3510,7 +3510,7 @@ l2:
 	checked_lockers = false;
 	locker_remains = false;
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-	if (MYS_PARSER == compatible_db && relation->rd_conflictTid) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && relation->rd_conflictTid) /* BUG#Z5121 */
 	{
 		if (ItemPointerEquals(relation->rd_conflictTid, otid))
 			result = heapTupleSatisfiesUpdateOnconflict(&oldtup, cid , buffer);

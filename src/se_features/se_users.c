@@ -64,7 +64,7 @@ void drop_db_seroles(Oid dboid)
     StringInfoData  querybuf;
 
     /*Since only instance-level user can drop db, make an assertion here*/
-    Assert(compatible_db == PG_PARSER);
+	Assert(compatible_mode == PG_MODE);
 
     initStringInfo(&querybuf);
 
@@ -97,7 +97,7 @@ insert_serole(SE_roles* se_role, Oid dboid)
     char           *rolname = se_role->role_name;
 
     /*Since only instance-level user can create db, make an assertion here*/
-    Assert(compatible_db == PG_PARSER);
+	Assert(compatible_mode == PG_MODE);
 
     initStringInfo(&querybuf);
 

@@ -514,7 +514,7 @@ DefineAggregate(ParseState *pstate,
 						   minitval,	/* initial condition */
 						   proparallel);	/* parallel safe? */
 
-	if (pg_object_create_obj_hook && compatible_db == MYS_PARSER)
+	if (pg_object_create_obj_hook && compatible_mode == MYS_MODE)
 	{
 		StringInfoData buf;
 		Jsonb	*attr = NULL;

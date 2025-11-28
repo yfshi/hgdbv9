@@ -303,7 +303,7 @@ textlike(PG_FUNCTION_ARGS)
 	 * so rtrim both str and pat blank spaces then compare
 	 * we only get trimed len here,cause GenericMatchText will deal with it.
 	 */
-	if(ORA_PARSER == compatible_db && !enable_blankspace_compare)
+	if(ORA_MODE == compatible_mode && !enable_blankspace_compare)
 	{
 		s_trimed_len = bpchartruelen(s,slen);
 		p_trimed_len = bpchartruelen(p,plen);
@@ -359,7 +359,7 @@ textnlike(PG_FUNCTION_ARGS)
 	 * if  enable_blankspace_copmpare is off,we should not compare blank space,
 	 * so rtrim both str and pat blank spaces then compare.
 	 */
-	if(ORA_PARSER == compatible_db && !enable_blankspace_compare)
+	if(ORA_MODE == compatible_mode && !enable_blankspace_compare)
 	{
 		s_trimed_len = bpchartruelen(s,slen);
 		p_trimed_len = bpchartruelen(p,plen);

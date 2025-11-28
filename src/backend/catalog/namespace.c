@@ -359,7 +359,7 @@ RangeVarGetRelidExtended(const RangeVar *relation, LOCKMODE lockmode,
 
 		/* Begin - ReqID:SRS-SQL-SYNONYM */
 		/* Check for synonyms */
-		if (ORA_PARSER == compatible_db && !OidIsValid(relId) && SynnameGetRelname_hook)
+		if (ORA_MODE == compatible_mode && !OidIsValid(relId) && SynnameGetRelname_hook)
 		{
 			List		*synoids = NIL;
 			char *objschema;
@@ -1331,7 +1331,7 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 		}
 
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
-		if (DB_ORACLE == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			LANG_PLISQL_OID == procform->prolang)
 			include_out_arguments = true;
 		/* End - ReqID:SRS-SQL-FUNCOUT */
@@ -1434,7 +1434,7 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 			if (pronargs > nargs && expand_defaults)
 			{
 				/* Begin - ReqID:SRS-SQL-FUNCOUT */
-				if (compatible_db == PG_PARSER || compatible_db == MYS_PARSER)	/* ReqID:SRS-MISC-MYSQL-FRAME */
+				if (compatible_mode == PG_MODE || compatible_mode == MYS_MODE)	/* ReqID:SRS-MISC-MYSQL-FRAME */
 				{
 				/* End - ReqID:SRS-SQL-FUNCOUT */
 					/* Ignore if not enough default expressions */
@@ -1503,7 +1503,7 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		/* maybe argtype from a package */
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 		{
 			Datum protypenames;
 			bool	isNull;
@@ -1541,7 +1541,7 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 			{
 				newResult->args[i] = proargtypes[argnumbers[i]];
 				/* Begin - ReqID:SRS-PLSQL-RECORD */
-				if (ORA_PARSER == compatible_db &&
+				if (ORA_MODE == compatible_mode &&
 					newResult->argnames != NULL)
 					newResult->argnames[i] = pstrdup(argtypenames[argnumbers[i]]);
 				/* End - ReqID:SRS-PLSQL-RECORD */
@@ -1596,7 +1596,7 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 				{
 					newResult->args[i] = proargtypes[i];
 					/* Begin - ReqID:SRS-PLSQL-RECORD */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						newResult->argnames[i] = pstrdup(argtypenames[i]);
 					/* End - ReqID:SRS-PLSQL-RECORD */
 
@@ -1833,7 +1833,7 @@ PackageTypeSelectCandidates(FuncCandidateList candidates,
 	if (fargs == NIL)
 		return candidates;
 
-	if (ORA_PARSER != compatible_db)
+	if (ORA_MODE != compatible_mode)
 		return candidates;
 
 	type = (void **) palloc0(sizeof(void *) * nargs);
@@ -2704,7 +2704,7 @@ lookup_collation(const char *collname, Oid collnamespace, int32 encoding, bool r
 		 * Second, if identifier_case_switch == INTERCHANGE, ivorysql will trans UPPER string to LOWER, 
 		 * and trans LOWER string to UPPER, if identify name quoted.
 		 */
-		if (ORA_PARSER == compatible_db && recurse)
+		if (ORA_MODE == compatible_mode && recurse)
 		{
 			if(!is_all_lower(collname, strlen(collname)))
 				return lookup_collation(down_character(collname, strlen(collname)), collnamespace, encoding, false);
@@ -4119,13 +4119,13 @@ GetOverrideSearchPath(MemoryContext context)
 		else
 		{
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-			if (PG_PARSER == compatible_db )	/* ReqID:SRS-MISC-MYSQL-FRAME */
+			if (PG_MODE == compatible_mode )	/* ReqID:SRS-MISC-MYSQL-FRAME */
 			{
 				Assert(linitial_oid(schemas) == PG_CATALOG_NAMESPACE);
 				result->addCatalog = true;
 
 			}
-			else if (ORA_PARSER == compatible_db)
+			else if (ORA_MODE == compatible_mode)
 			{
 				/*
 				 * When the search_path is specified by the user, and the pg_catalog namespace is
@@ -4154,7 +4154,7 @@ GetOverrideSearchPath(MemoryContext context)
 			}
 			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			/* Begin - ReqID:SRS-MYSQL-DATETYPE */
-			else if(MYS_PARSER == compatible_db)
+			else if(MYS_MODE == compatible_mode)
 			{
 				if (!IsNormalProcessingMode())
 				{
@@ -4625,7 +4625,7 @@ recomputeNamespacePath(void)
 
 		count++;	/* ReqID:SRS-MYSQL-SQL-USE */
 		
-		if ((compatible_db == DB_ORACLE && enable_case_switch && identifier_case_switch != NORMAL) ?	/* case sensitive indentify */
+		if ((compatible_mode == ORA_MODE && enable_case_switch && identifier_case_switch != NORMAL) ?	/* case sensitive indentify */
 			pg_strcasecmp(curname, "$user") == 0 : strcmp(curname, "$user") == 0)
 		{
 			/* $user --- substitute namespace matching user name, if any */
@@ -4682,7 +4682,7 @@ recomputeNamespacePath(void)
 	 * value will exist. So it's assigned to firstNS.
 	 */
 	#define  USE_LABLE 	1
-	if (compatible_db == MYS_PARSER && oidlist && list_length(oidlist) == USE_LABLE && count == USE_LABLE)
+	if (compatible_mode == MYS_MODE && oidlist && list_length(oidlist) == USE_LABLE && count == USE_LABLE)
 	{
 		mys_schema_id = linitial_oid(oidlist);
 		oidlist = list_delete_first(oidlist);
@@ -4693,7 +4693,7 @@ recomputeNamespacePath(void)
 	 * nominally wrong if temp_missing, but we need it anyway to distinguish
 	 * explicit from implicit mention of pg_catalog.)
 	 */
-	if (compatible_db == MYS_PARSER && is_use && mys_schema_id)
+	if (compatible_mode == MYS_MODE && is_use && mys_schema_id)
 		firstNS = mys_schema_id;
 	else
 	{	/* End - ReqID: SRS-MYSQL-SQL-USE */
@@ -4717,11 +4717,11 @@ recomputeNamespacePath(void)
 	 * in other paths to be used by the current schema except for 'schema.obj',
 	 * they need to take priority over this schema.
 	 * */
-	if(compatible_db == MYS_PARSER && mys_schema_id && !list_member_oid(oidlist, mys_schema_id) && is_use)
+	if(compatible_mode == MYS_MODE && mys_schema_id && !list_member_oid(oidlist, mys_schema_id) && is_use)
 		oidlist = lcons_oid(mys_schema_id, oidlist);
 	/* End - ReqID: SRS-MYSQL-SQL-USE */
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (IsNormalProcessingMode() && ORA_PARSER == compatible_db)
+	if (IsNormalProcessingMode() && ORA_MODE == compatible_mode)
 	{
 		if (!list_member_oid(oidlist, PG_SYS_NAMESPACE))
 			oidlist = lcons_oid(PG_SYS_NAMESPACE, oidlist);
@@ -4729,7 +4729,7 @@ recomputeNamespacePath(void)
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 	/* Begin - ReqID:SRS-MYSQL-DATETYPE */
-	if (IsNormalProcessingMode() && MYS_PARSER == compatible_db)
+	if (IsNormalProcessingMode() && MYS_MODE == compatible_mode)
 	{
 		if (!list_member_oid(oidlist, PG_IVYMY_NAMESPACE))
 			oidlist = lcons_oid(PG_IVYMY_NAMESPACE, oidlist);
@@ -5591,7 +5591,7 @@ IndexCollationPersistent(Oid collid)
 {
 	Oid		realcoll;
 
-	if (ORA_PARSER != compatible_db || !enable_ora_default_collation)
+	if (ORA_MODE != compatible_mode || !enable_ora_default_collation)
 	{
 		if (IsPseudoCollation(collid))
 			elog(NOTICE, "do not use pseudo-collation in persistent object");

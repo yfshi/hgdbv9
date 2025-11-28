@@ -298,7 +298,7 @@ date2j(int y, int m, int d)
 	 *
 	 *	 Begin - ReqID:SRS-GKC-DATATYPE_001
 	 */
-	if ((y == 0 || m == 0) && ORA_PARSER == compatible_db)
+	if ((y == 0 || m == 0) && ORA_MODE == compatible_mode)
 	{
 		TimestampTz current_date;
 		int			tz;

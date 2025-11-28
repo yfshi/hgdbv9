@@ -1071,7 +1071,7 @@ DefineIndex(Oid relationId,
 							break;
 						}
 						/* Begin - SRS-MISC-COMPATDM-SQL */
-						else if (ORA_PARSER == compatible_db && !enable_blankspace_compare)
+						else if (ORA_MODE == compatible_mode && !enable_blankspace_compare)
 						{
 							/* 
 							 * When defining a partition table pkey,
@@ -1252,7 +1252,7 @@ DefineIndex(Oid relationId,
 		return address;
 	}
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (ORA_PARSER == compatible_db && pg_object_create_obj_hook)
+	if (ORA_MODE == compatible_mode && pg_object_create_obj_hook)
 	{
 		pg_object_create_obj_hook(indexRelationName, 		/* BUG#Z1410 */
 								  RelationGetNamespace(rel),
@@ -2221,7 +2221,7 @@ ResolveOpClass(List *opclass, Oid attrType,
 		 * when opclass is null,it means the user don't assign opclass explicitly,
 		 * and if !enable_blankspace_compare,get the explicit-named one.
 		 */
-		if (ORA_PARSER == compatible_db && !enable_blankspace_compare)
+		if (ORA_MODE == compatible_mode && !enable_blankspace_compare)
 		{
 			opClassId = GetExplicitOpClass(attrType,accessMethodId);
 			if(!OidIsValid(opClassId))
@@ -2253,7 +2253,7 @@ ResolveOpClass(List *opclass, Oid attrType,
 	 * it could be assigned expilicitly in create index or alter table use index implicitly,
 	 * check if the atttype fits the opclass,if not,try to find the default opclass for the type.
 	 */
-	if (ORA_PARSER == compatible_db && !enable_blankspace_compare &&
+	if (ORA_MODE == compatible_mode && !enable_blankspace_compare &&
 			 opcname && OPCLASSISEXPLICIT(opcname) && !ISDMCHARTYPE(attrType))
 	{
 		opClassId = GetDefaultOpClass(attrType, accessMethodId);

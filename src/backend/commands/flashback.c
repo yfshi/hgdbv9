@@ -750,7 +750,7 @@ RbTruncate(List *explicit_rels, List *relids, List *relids_logged,
     pgstat_count_truncate(rel);
 
     /* Record time of truancate relation. */
-    if (pg_object_alter_obj_hook && compatible_db == ORA_PARSER)
+    if (pg_object_alter_obj_hook && compatible_mode == ORA_MODE)
     {
         ObjectAddress address;
         PgObjectInfo objinf;

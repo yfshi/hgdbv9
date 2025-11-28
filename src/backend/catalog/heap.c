@@ -559,7 +559,7 @@ CheckAttributeNamesTypes(TupleDesc tupdesc, char relkind,
 			Form_pg_attribute attr = TupleDescAttr(tupdesc, i);
 
 			/* Begin - ReqID:SRS-SQL-ROWID */
-			if (strcmp(NameStr(attr->attname), "rowid") == 0 && compatible_db != DB_ORACLE)
+			if (strcmp(NameStr(attr->attname), "rowid") == 0 && compatible_mode != ORA_MODE)
 				continue;
 			/* End - ReqID:SRS-SQL-ROWID */
 
@@ -1536,7 +1536,7 @@ heap_create_with_catalog(const char *relname,
 	 * (delete the relevant information from pg_object directly after the query)
 	 * if so, create enum depend col.
 	 */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		int		natts = tupdesc->natts;
 		
@@ -2195,7 +2195,7 @@ heap_drop_with_catalog(Oid relid)
 	DeleteRelationTuple(relid);
 
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (compatible_db == ORA_PARSER && pg_object_create_obj_hook)
+	if (compatible_mode == ORA_MODE && pg_object_create_obj_hook)
 	{
 		PgObjectInfo 	ori;
 		ObjectAddress	addr;
@@ -2856,7 +2856,7 @@ AddRelationNewConstraints(Relation rel,
 		 * when char(0) and varchar(0) are used as the default value
 		 * of a table, their length cannot be greater than 0.
 		 */
-		if (compatible_db == MYS_PARSER && atp->atttypmod == VARHDRSZ && 
+		if (compatible_mode == MYS_MODE && atp->atttypmod == VARHDRSZ && 
 			(atp->atttypid == BPCHAROID || atp->atttypid == VARCHAROID ))
 		{
 			if (colDef->raw_default != NULL && IsA(colDef->raw_default, A_Const))
@@ -3334,7 +3334,7 @@ cookDefault(ParseState *pstate,
 	 * Begin - SRS-MYSQL-HEX-LITERAL
 	 * set 4th argument 'is_insert' of cast function to true.
 	 */
-	if (compatible_db == MYS_PARSER)
+	if (compatible_mode == MYS_MODE)
 		pstate->p_cook_default = true;
 	/* End - SRS-MYSQL-HEX-LITERAL */
 

@@ -1357,7 +1357,7 @@ SPI_getvalue(HeapTuple tuple, TupleDesc tupdesc, int fnumber)
 	 * Compatible oracle , pass typmod to output function
 	 */
 	if (fnumber > 0 &&
-		ORA_PARSER == compatible_db &&
+		ORA_MODE == compatible_mode &&
 		(typoid == YMINTERVALOID ||
 		 typoid == DSINTERVALOID))
 	{
@@ -2534,7 +2534,7 @@ _SPI_execute_plan(SPIPlanPtr plan, const SPIExecuteOptions *options,
 	ListCell   *lc1;
 
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
-	if (ORA_PARSER == compatible_db && 
+	if (ORA_MODE == compatible_mode && 
 		options && options->params && 
 		options->params->oraCallParamCheck > -1 &&
 		plan && list_length(plan->plancache_list) > 1)

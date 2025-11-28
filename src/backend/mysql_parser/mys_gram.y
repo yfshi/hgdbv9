@@ -5093,7 +5093,7 @@ key_action:
 OptInherit: INHERITS '(' qualified_name_list ')'
 				{
 					/* Begin - ReqID:SRS-MYSQL-UPDATE */
-					if(MYS_PARSER == compatible_db)
+					if(MYS_MODE == compatible_mode)
 					{
 						ereport(ERROR,
 							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -7664,7 +7664,7 @@ TruncateStmt:
 					TruncateStmt *n = makeNode(TruncateStmt);
 					n->relations = $3;
 					/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-					if (MYS_PARSER == compatible_db )
+					if (MYS_MODE == compatible_mode )
 						n->restart_seqs = true;
 					else
 					/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
@@ -9007,7 +9007,7 @@ index_hint_definition:
 index_hint_list:
 			index_hint_definition
 				{
-					if (MYS_PARSER != compatible_db)
+					if (MYS_MODE != compatible_mode)
 					{
 						//error
 					}
@@ -13453,7 +13453,7 @@ UpdateStmt: opt_with_clause UPDATE opt_lowpriority opt_ignore from_list	/* ReqID
 					/* Begin - ReqID:SRS-MYSQL-UPDATE */
 					n->sortClause = $10;
 					n->limitClause = (Node*)list_nth($11, 1);
-					if (MYS_PARSER == compatible_db)
+					if (MYS_MODE == compatible_mode)
 					{
 						if (list_length($5) > 1)
 						{
@@ -14334,7 +14334,7 @@ limit_clause:
 				}
 			| LIMIT select_limit_value ',' select_offset_value
 				{
-					if (MYS_PARSER == compatible_db)
+					if (MYS_MODE == compatible_mode)
 					{
 						SelectLimit *n = (SelectLimit *) palloc(sizeof(SelectLimit));
 						n->limitOffset = $2;
@@ -15027,7 +15027,7 @@ joined_table:
 					n->join_using_alias = NULL;
 					n->quals = NULL; /* fill later */
 					/* Begin - ReqID:SRS-MYSQL-UPDATE */
-					if (MYS_PARSER == compatible_db)
+					if (MYS_MODE == compatible_mode)
 					{
 						if (n->jointype == JOIN_FULL || n->jointype == JOIN_INNER)
 							ereport(ERROR,
@@ -15098,7 +15098,7 @@ joined_table:
 					n->usingClause = NIL; /* figure out which columns later... */
 					n->join_using_alias = NULL;
 					n->quals = NULL; /* fill later */
-					if (MYS_PARSER == compatible_db)
+					if (MYS_MODE == compatible_mode)
 					{
 						ereport(ERROR,
 							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -16346,7 +16346,7 @@ Datetime:
 				{
 					
 					/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
-					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL == $5)
+					if (MYS_MODE == compatible_mode && TIME_ZONE_NULL == $5)
 					{
 						CheckIconstType($3);			/* SRS-MYSQL-BUILDINFUNCTION */
 
@@ -16376,7 +16376,7 @@ Datetime:
 			| TIMESTAMP opt_timezone
 				{
 					/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
-					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL == $2)
+					if (MYS_MODE == compatible_mode && TIME_ZONE_NULL == $2)
 					{
 						$$ = MySQLSystemTypeName("mystimestamp");
 						$$->location = @1;
@@ -16394,7 +16394,7 @@ Datetime:
 			| DATE_P
 				{
 					/* Begin - ReqID:SRS-MYSQL-DATETYPE */
-					if (MYS_PARSER == compatible_db)
+					if (MYS_MODE == compatible_mode)
 					{
 						$$ = MySQLSystemTypeName("mysdate");
 						$$->location = @1;
@@ -16432,7 +16432,7 @@ Datetime:
 			| TIME '(' a_expr ')' opt_timezone
 				{
 					/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
-					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL == $5)
+					if (MYS_MODE == compatible_mode && TIME_ZONE_NULL == $5)
 					{
 						CheckIconstType($3);		/* SRS-MYSQL-BUILDINFUNCTION */
 
@@ -16462,7 +16462,7 @@ Datetime:
 			| TIME opt_timezone
 				{
 					/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
-					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL ==$2)
+					if (MYS_MODE == compatible_mode && TIME_ZONE_NULL ==$2)
 					{
 						$$ = MySQLSystemTypeName("mystime");
 						$$->location = @1;
@@ -16514,7 +16514,7 @@ ConstDatetime:
 			TIMESTAMP opt_timezone
 				{
 					/* ReqID:SRS-MYSQL-TIMESTAMPTYPE */
-					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL ==$2)
+					if (MYS_MODE == compatible_mode && TIME_ZONE_NULL ==$2)
 					{
 						$$ = MySQLSystemTypeName("mystimestamp");
 						$$->location = @1;
@@ -16552,7 +16552,7 @@ ConstDatetime:
 			| DATE_P
 				{
 					/* ReqID:SRS-MYSQL-DATETYPE */
-					if (MYS_PARSER == compatible_db)
+					if (MYS_MODE == compatible_mode)
 					{
 						$$ = MySQLSystemTypeName("mysdate");
 						$$->location = @1;
@@ -16573,7 +16573,7 @@ ConstDatetime:
 			| TIME opt_timezone
 				{
 					/* ReqID:SRS-MYSQL-TIMETYPE */
-					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL ==$2)
+					if (MYS_MODE == compatible_mode && TIME_ZONE_NULL ==$2)
 					{
 						$$ = MySQLSystemTypeName("mystimes");
 						$$->typmods = list_make1(makeIntConst(0, -1));
@@ -19128,7 +19128,7 @@ columnref:	ColId		 %prec UMINUS
 					ColumnRef   *col = NULL;
 					$$ = makeColumnRef($1, NIL, @1, yyscanner);
 					col = (ColumnRef *)$$;
-					if ($4 && compatible_db == MYS_PARSER)
+					if ($4 && compatible_mode == MYS_MODE)
 					{
 						col->partitionnamelist = $4;
 						col->ispartition = true;
@@ -19438,7 +19438,7 @@ AexprConst: Iconst
 			| ConstTypename Sconst
 				{
 					/* ReqID:SRS-MYSQL-DATETYPE */
-					if (MYS_PARSER == compatible_db)
+					if (MYS_MODE == compatible_mode)
 						$$ = makeStringConstCast($2, -2, $1);
 					else
 						$$ = makeStringConstCast($2, @2, $1);

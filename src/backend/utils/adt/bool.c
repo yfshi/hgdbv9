@@ -149,7 +149,7 @@ boolin(PG_FUNCTION_ARGS)
 	while (len > 0 && isspace((unsigned char) str[len - 1]))
 		len--;
 
-	if (MYS_PARSER == compatible_db && use_mysql_bool == true)
+	if (MYS_MODE == compatible_mode && use_mysql_bool == true)
 	{
 		if (in_str[0] < '1' || in_str[0] > '9')
 			PG_RETURN_BOOL(false);
@@ -179,7 +179,7 @@ boolout(PG_FUNCTION_ARGS)
 	char	   *result = (char *) palloc(2);
 
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
-	if (compatible_db == MYS_PARSER && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+	if (compatible_mode == MYS_MODE && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
 		result[0] = (b) ? '1' : '0';
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 	else

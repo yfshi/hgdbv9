@@ -1484,7 +1484,7 @@ CreateExtensionInternal(char *extensionName,
 					;
 				else if (strcmp(pcontrol->parse_options, "pg") == 0)
 				{
-					if (PG_PARSER == compatible_db)
+					if (PG_MODE == compatible_mode)
 						;
 					else
 					{
@@ -1494,7 +1494,7 @@ CreateExtensionInternal(char *extensionName,
 				}
 				else if (strcmp(pcontrol->parse_options, "oracle") == 0)
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						;
 					else
 					{
@@ -1506,7 +1506,7 @@ CreateExtensionInternal(char *extensionName,
 			}
 			else
 			{
-				if (PG_PARSER == compatible_db)
+				if (PG_MODE == compatible_mode)
 					;
 				else
 				{
@@ -1517,7 +1517,7 @@ CreateExtensionInternal(char *extensionName,
 		}
 		/* end - bug:z676,z776 */
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (DB_MYSQL == database_mode && MYS_PARSER == compatible_db)
+		if (DB_MYSQL == database_mode && MYS_MODE == compatible_mode)
 		{
 			if (pcontrol->mys_case_switch == true)
 			{
@@ -1752,9 +1752,9 @@ CreateExtensionInternal(char *extensionName,
 		if(modify_flag)
 		{
 			Assert(database_mode == DB_ORACLE || database_mode == DB_PG);
-			if (compatible_db == DB_ORACLE)
+			if (compatible_mode == ORA_MODE)
 				SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);
-			else if (compatible_db == DB_PG)
+			else if (compatible_mode == PG_MODE)
 				SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
 			else
 				; /* Maybe there is another database_mode in the future, we will handle it at here or send an error message right now */
@@ -1764,7 +1764,7 @@ CreateExtensionInternal(char *extensionName,
 
 		/* Begin - ReqID:SRS-MYSQL-CASE */
 		if (database_mode == DB_MYSQL &&
-			MYS_PARSER == compatible_db &&
+			MYS_MODE == compatible_mode &&
 			mys_case_switch_change_flg)
 		{
 			/* The parameter is on at the beginning and should be on at the end.*/

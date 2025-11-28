@@ -1120,7 +1120,7 @@ stringlist_to_identifierstr(PGconn *conn, List *strings)
 		 * to uppercase during the logical backup, causing a match failure.
 		 * 
 		 */
-		if (compatible_db == DB_ORACLE && enable_case_switch
+		if (compatible_mode == ORA_MODE && enable_case_switch
 			 && identifier_case_switch == INTERCHANGE)
 		{
 			char	   *casename = NULL;

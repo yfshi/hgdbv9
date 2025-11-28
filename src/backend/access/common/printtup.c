@@ -337,7 +337,7 @@ printtup(TupleTableSlot *slot, DestReceiver *self)
 			 * Begin - ReqID:SRS-GKC-DATATYPE_001
 			 * Compatible oracle , pass typmod to output function
 			 */
-			if (ORA_PARSER == compatible_db &&
+			if (ORA_MODE == compatible_mode &&
 				(TupleDescAttr(typeinfo, i)->atttypid == YMINTERVALOID ||
 				TupleDescAttr(typeinfo, i)->atttypid == DSINTERVALOID))
 			{
@@ -480,7 +480,7 @@ debugtup(TupleTableSlot *slot, DestReceiver *self)
 		 * Begin - ReqID:SRS-GKC-DATATYPE_001
 		 * Compatible oracle , pass typmod to output function
 		 */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			(TupleDescAttr(typeinfo, i)->atttypid == YMINTERVALOID ||
 			TupleDescAttr(typeinfo, i)->atttypid == DSINTERVALOID))
 		{

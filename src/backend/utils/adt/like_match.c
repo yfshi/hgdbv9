@@ -230,7 +230,7 @@ MatchText(const char *t, int tlen, const char *p, int plen,
 	 * if not found,the str matched,on the contrary, match failed.
 	 * this is for compata guc enable_blankspace_compare in dm.
 	 */
-	if(ORA_PARSER == compatible_db && !enable_blankspace_compare && tlen > 0)
+	if(ORA_MODE == compatible_mode && !enable_blankspace_compare && tlen > 0)
 	{
 		while(tlen > 0 && *t == ' ')
 			NextChar(t,tlen);
@@ -321,7 +321,7 @@ do_like_escape(text *pat, text *esc)
 		if (*e == '\\')
 		{
 			/* Begin - BUG:Z473 */
-			if (ORA_PARSER == compatible_db)
+			if (ORA_MODE == compatible_mode)
 			{
 				afterescape = false;
 				while (plen > 0)
@@ -381,7 +381,7 @@ do_like_escape(text *pat, text *esc)
 			}
 
 			/* Begin - BUG:Z473 */
-			if(afterescape && (plen > 0) && (ORA_PARSER == compatible_db))
+			if(afterescape && (plen > 0) && (ORA_MODE == compatible_mode))
 			{
 				if(!((*p == '%') || (*p == '_') || CHAREQ(p, e)))
 					ereport(ERROR,

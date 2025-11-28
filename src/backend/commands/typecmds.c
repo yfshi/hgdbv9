@@ -1289,7 +1289,7 @@ DefineEnum(CreateEnumStmt *stmt)
 	 * Record into pg_object is the enum is anonymous, who created
 	 * in CreateStmt with mysql syntax.
 	 */
-	if (compatible_db == MYS_PARSER)
+	if (compatible_mode == MYS_MODE)
 	{
 		if (pg_object_create_obj_hook && stmt->anonymous_enum == true)
 		{

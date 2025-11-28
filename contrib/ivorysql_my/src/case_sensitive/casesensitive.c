@@ -57,7 +57,7 @@
  */
 bool pg_compatible_mysql_switch(void)
 {
-	if (compatible_db == MYS_PARSER && myenable_case_switch == true)
+	if (compatible_mode == MYS_MODE && myenable_case_switch == true)
 		return true;
 
 	return false;
@@ -72,7 +72,7 @@ bool pg_compatible_mysql_switch(void)
  */
 bool pg_compatible_mysql_lower(void)
 {
-	if (compatible_db == MYS_PARSER && myenable_case_switch == true &&
+	if (compatible_mode == MYS_MODE && myenable_case_switch == true &&
 		(lower_case_table_names == 1 || lower_case_table_names == 2))
 		return true;
 
@@ -88,7 +88,7 @@ bool pg_compatible_mysql_lower(void)
  */
 obj_lower pg_compatible_mysql_ojblower(void)
 {
-	if (compatible_db == MYS_PARSER && myenable_case_switch == true)
+	if (compatible_mode == MYS_MODE && myenable_case_switch == true)
 	{
 		if (lower_case_table_names == 0)
 			return lower_zero;
@@ -264,7 +264,7 @@ Oid mysql_get_namespace_oid(const char *nspname)
 	if (!nspname)
 		return oid;
 
-	if (compatible_db == MYS_PARSER && myenable_case_switch == true)
+	if (compatible_mode == MYS_MODE && myenable_case_switch == true)
 	{
 		/* BUG#5975, If the schema is information_schema, and MySQL
 		 * case sensitivity is enabled, convert it entirely to lowercase.

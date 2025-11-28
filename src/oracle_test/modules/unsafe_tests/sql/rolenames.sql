@@ -471,7 +471,6 @@ CREATE ROLE regress_role_nopriv;
 
 -- pg_read_all_stats
 set ivorysql.dumppgtype to oracle;
-set ivorysql.grant_usertype to oracle;
 GRANT INSTANCEUSER pg_read_all_stats TO regress_role_haspriv;
 SET SESSION AUTHORIZATION regress_role_haspriv;
 -- returns true with role member of pg_read_all_stats
@@ -486,7 +485,6 @@ REVOKE INSTANCEUSER pg_read_all_stats FROM regress_role_haspriv;
 
 -- pg_read_all_settings
 set ivorysql.dumppgtype to oracle;
-set ivorysql.grant_usertype to oracle;
 GRANT INSTANCEUSER pg_read_all_settings TO regress_role_haspriv;
 BEGIN;
 -- A GUC using GUC_SUPERUSER_ONLY is useful for negative tests.

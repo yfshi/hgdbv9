@@ -638,7 +638,7 @@ RemoveConstraintById(Oid conId)
 	ReleaseSysCache(tup);
 	table_close(conDesc, RowExclusiveLock);
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (compatible_db == ORA_PARSER && pg_object_create_obj_hook)
+	if (compatible_mode == ORA_MODE && pg_object_create_obj_hook)
 	{
 		ObjectAddress	addr;
 		PgObjectInfo	ori;
@@ -1319,7 +1319,7 @@ check_functional_grouping(Oid relid,
 
 	/* If the rel has no PK, then we can't prove functional dependency */
 	pkattnos = get_primary_key_attnos(relid, false, &constraintOid);
-	if (pkattnos == NULL || (compatible_db == ORA_PARSER && compatible_group))
+	if (pkattnos == NULL || (compatible_mode == ORA_MODE && compatible_group))
 		return false;
 
 	/* Identify all the rel's columns that appear in grouping_columns */

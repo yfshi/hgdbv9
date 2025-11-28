@@ -5652,7 +5652,7 @@ SeqOptElem:	CACHE NumericOnly
 			| INCREMENT opt_by NumericOnly
 				{
 					/* Begin - BUG#Z030 */
-					if (!$2 && compatible_db == ORA_PARSER)
+					if (!$2 && compatible_mode == ORA_MODE)
 						elog(ERROR, "missing BY keyword");
 					/* End - BUG#Z030 */
 					$$ = makeDefElem("increment", (Node *)$3, @1);
@@ -5687,7 +5687,7 @@ SeqOptElem:	CACHE NumericOnly
 			| START opt_with NumericOnly
 				{
 					/* Begin - BUG#Z030 */
-					if (!$2 && compatible_db == ORA_PARSER)
+					if (!$2 && compatible_mode == ORA_MODE)
 						elog(ERROR, "missing WITH keyword");
 					/* End - BUG#Z030 */
 					$$ = makeDefElem("start", (Node *)$3, @1);
@@ -9870,7 +9870,7 @@ default_collation_clause:
 				/* Begin - ReqID:SRS-SQL-NLSSORT */
 				char *collname = strVal(linitial($3));
 
-				if (ORA_PARSER == compatible_db)
+				if (ORA_MODE == compatible_mode)
 				{
 					if(max_string_size != ORA_MAX_STRING_SIZE_EXTENDED)
 					{
@@ -16438,7 +16438,7 @@ SimpleTypename:
 			| ConstInterval opt_interval_type	/* ReqID:SRS-GKC-DATATYPE_001 */
 				{
 					/* Begin - BUG#M0000475 */
-					if (ORA_PARSER == compatible_db &&
+					if (ORA_MODE == compatible_mode &&
 						enable_pg_interval_datatype &&
 						$2 == NIL)
 					{
@@ -16447,7 +16447,7 @@ SimpleTypename:
 					}
 					/* End - BUG#M0000475 */
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					else if (ORA_PARSER == compatible_db)
+					else if (ORA_MODE == compatible_mode)
 					{
 						List *typmods = $2;
 						A_Const *n;
@@ -16536,7 +16536,7 @@ GenericType:
 			type_function_name opt_type_modifiers
 				{
 					/*Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db &&
+					if (ORA_MODE == compatible_mode &&
 						strcmp($1, "timestamptz") == 0)
 						$$ = makeTypeName("oratimestamptz");
 					else
@@ -16656,7 +16656,7 @@ Numeric:	INT_P
 			| NUMERIC numeric_opt_type_modifiers
 				{
 					/* Begin - Bug#Z476 */
-					if(numerictonumber && (ORA_PARSER == compatible_db))
+					if(numerictonumber && (ORA_MODE == compatible_mode))
 					{
 						$$ = OracleSystemTypeName("number");
 						if($2)
@@ -16798,7 +16798,7 @@ ConstCharacter:  CharacterWithLength
 CharacterWithLength:  character '(' Iconst ')'
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						/* Begin - BUG:M0000068 */
 						if (strcmp($1, "nvarchar2") == 0)
@@ -16842,7 +16842,7 @@ CharacterWithLength:  character '(' Iconst ')'
 CharacterWithoutLength:	 character
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						/* Begin - BUG:M0000068 */
 						if (strcmp($1, "nvarchar2") == 0)
@@ -16904,7 +16904,7 @@ character:	CHARACTER opt_varying
 			| NCHAR opt_varying
 				{
 					/* Begin - BUG:M0000068 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						if ($2)
 							ereport(ERROR,
@@ -16973,7 +16973,7 @@ OracleCharacter: character '(' Iconst CHAR_P ')'
 Datetime:
 			TIMESTAMP '(' Iconst ')' opt_timezone
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						if ($5)
 							$$ = OracleSystemTypeName("oratimestamptz");
@@ -16994,7 +16994,7 @@ Datetime:
 				}
 			| TIMESTAMP opt_timezone
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						if ($2)
 							$$ = OracleSystemTypeName("oratimestamptz");
@@ -17026,7 +17026,7 @@ Datetime:
 				}
 			| DATE_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = OracleSystemTypeName("oradate");
 						$$->location = @1;
@@ -17061,7 +17061,7 @@ ConstDatetime:
 			TIMESTAMP
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = OracleSystemTypeName("oratimestamp");
 						$$->typmods = list_make1(makeIntConst(6, -1));
@@ -17072,7 +17072,7 @@ ConstDatetime:
 			| DATE_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = OracleSystemTypeName("oradate");
 						$$->location = @1;
@@ -17104,7 +17104,7 @@ opt_interval:
 			YEAR_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR), @1),
 										makeIntConst(2, -1));
@@ -17118,7 +17118,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| YEAR_P '(' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR), @1),
 										makeIntConst($3, @3));
@@ -17134,7 +17134,7 @@ opt_interval:
 			| MONTH_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(MONTH), @1),
 										makeIntConst(2, -1));
@@ -17148,7 +17148,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| MONTH_P '(' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(MONTH), @1),
 										makeIntConst($3, @3));
@@ -17164,7 +17164,7 @@ opt_interval:
 			| DAY_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY), @1),
 										makeIntConst(2, -1));
@@ -17178,7 +17178,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| DAY_P '(' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY), @1),
 										makeIntConst($3, @3));
@@ -17194,7 +17194,7 @@ opt_interval:
 			| HOUR_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR), @1),
 										makeIntConst(2, -1));
@@ -17208,7 +17208,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| HOUR_P '(' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR), @1),
 										makeIntConst($3, @3));
@@ -17224,7 +17224,7 @@ opt_interval:
 			| MINUTE_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(MINUTE), @1),
 										makeIntConst(2, -1));
@@ -17238,7 +17238,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| MINUTE_P '(' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(MINUTE), @1),
 										makeIntConst($3, @3));
@@ -17254,7 +17254,7 @@ opt_interval:
 			| SECOND_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(SECOND), @1),
 										makeIntConst(6, -1));
@@ -17273,7 +17273,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| SECOND_P '(' Iconst ',' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(SECOND), @1),
 										makeIntConst($3, @3), 
@@ -17290,7 +17290,7 @@ opt_interval:
 			| YEAR_P TO MONTH_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR) |
 													 INTERVAL_MASK(MONTH), @1), 
@@ -17306,7 +17306,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| YEAR_P '(' Iconst ')' TO MONTH_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR) | INTERVAL_MASK(MONTH), @1),
 										makeIntConst($3, @3));
@@ -17322,7 +17322,7 @@ opt_interval:
 			| DAY_P TO HOUR_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
 													 INTERVAL_MASK(HOUR), @1), 
@@ -17338,7 +17338,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| DAY_P '(' Iconst ')' TO HOUR_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
 													 INTERVAL_MASK(HOUR), @1), 
@@ -17355,7 +17355,7 @@ opt_interval:
 			| DAY_P TO MINUTE_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
 													 INTERVAL_MASK(HOUR) |
@@ -17373,7 +17373,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| DAY_P '(' Iconst ')' TO MINUTE_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
 													 INTERVAL_MASK(HOUR) |
@@ -17391,7 +17391,7 @@ opt_interval:
 			| DAY_P TO SECOND_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
 													INTERVAL_MASK(HOUR) | 
@@ -17412,7 +17412,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| DAY_P '(' Iconst ')' TO SECOND_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
 													INTERVAL_MASK(HOUR) | 
@@ -17432,7 +17432,7 @@ opt_interval:
 			| DAY_P TO SECOND_P '(' Iconst ')'
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
 													INTERVAL_MASK(HOUR) | 
@@ -17454,7 +17454,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| DAY_P '(' Iconst ')' TO SECOND_P '(' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
 													INTERVAL_MASK(HOUR) |
@@ -17474,7 +17474,7 @@ opt_interval:
 			| HOUR_P TO MINUTE_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR) |
 													 INTERVAL_MASK(MINUTE), @1), 
@@ -17490,7 +17490,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| HOUR_P '(' Iconst ')' TO MINUTE_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR) |
 													 INTERVAL_MASK(MINUTE), @1), 
@@ -17507,7 +17507,7 @@ opt_interval:
 			| HOUR_P TO SECOND_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(HOUR) | 
 													INTERVAL_MASK(MINUTE) |
@@ -17526,7 +17526,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| HOUR_P '(' Iconst ')' TO SECOND_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 				{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(HOUR) | 
 													INTERVAL_MASK(MINUTE) |
@@ -17545,7 +17545,7 @@ opt_interval:
 			| HOUR_P TO SECOND_P '(' Iconst ')'
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(HOUR) | 
 													INTERVAL_MASK(MINUTE) |
@@ -17565,7 +17565,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| HOUR_P '(' Iconst ')' TO SECOND_P '(' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(HOUR) | 
 													INTERVAL_MASK(MINUTE) |
@@ -17584,7 +17584,7 @@ opt_interval:
 			| MINUTE_P TO SECOND_P
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(MINUTE) |
 													INTERVAL_MASK(SECOND), @1),
@@ -17601,7 +17601,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| MINUTE_P '(' Iconst ')' TO SECOND_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(MINUTE) |
 													INTERVAL_MASK(SECOND), @1),
@@ -17619,7 +17619,7 @@ opt_interval:
 			| MINUTE_P TO SECOND_P '(' Iconst ')'
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(MINUTE) |
 													INTERVAL_MASK(SECOND), @1),
@@ -17637,7 +17637,7 @@ opt_interval:
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			| MINUTE_P '(' Iconst ')' TO SECOND_P '(' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(MINUTE) |
 													INTERVAL_MASK(SECOND), @1),
@@ -17663,7 +17663,7 @@ opt_interval_type:
 			YEAR_P TO MONTH_P
 				{
 					
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR) |
 													 INTERVAL_MASK(MONTH), @1), 
@@ -17677,7 +17677,7 @@ opt_interval_type:
 				}
 			| YEAR_P '(' Iconst ')' TO MONTH_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR) | INTERVAL_MASK(MONTH), @1),
 										makeIntConst($3, @3));
@@ -17691,7 +17691,7 @@ opt_interval_type:
 				}
 			| DAY_P TO HOUR_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
 													 INTERVAL_MASK(HOUR), @1), 
@@ -17705,7 +17705,7 @@ opt_interval_type:
 				}
 			| DAY_P '(' Iconst ')' TO HOUR_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
 													 INTERVAL_MASK(HOUR), @1), 
@@ -17720,7 +17720,7 @@ opt_interval_type:
 				}
 			| DAY_P TO MINUTE_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
 													 INTERVAL_MASK(HOUR) |
@@ -17736,7 +17736,7 @@ opt_interval_type:
 				}
 			| DAY_P '(' Iconst ')' TO MINUTE_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
 													 INTERVAL_MASK(HOUR) |
@@ -17752,7 +17752,7 @@ opt_interval_type:
 				}
 			| DAY_P TO SECOND_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
 													INTERVAL_MASK(HOUR) | 
@@ -17771,7 +17771,7 @@ opt_interval_type:
 				}
 			| DAY_P '(' Iconst ')' TO SECOND_P
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
 													INTERVAL_MASK(HOUR) | 
@@ -17789,7 +17789,7 @@ opt_interval_type:
 				}
 			| DAY_P TO SECOND_P '(' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
 													INTERVAL_MASK(HOUR) | 
@@ -17809,7 +17809,7 @@ opt_interval_type:
 				}
 			| DAY_P '(' Iconst ')' TO SECOND_P '(' Iconst ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
 													INTERVAL_MASK(HOUR) |
@@ -17873,7 +17873,7 @@ a_expr:		c_expr									{ $$ = $1; }
 			| a_expr AT TIME ZONE a_expr			%prec AT
 				{
 					/* Begin - BUGID:0000986 */
-					if (compatible_db == ORA_PARSER)
+					if (compatible_mode == ORA_MODE)
 						$$ = (Node *) makeFuncCall(OracleSystemFuncName("timezone"),
 												   list_make2($5, $1),
 												   COERCE_SQL_SYNTAX,
@@ -17950,7 +17950,7 @@ a_expr:		c_expr									{ $$ = $1; }
 				{
 					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
 					/* If there is already an E conversion, there is no need to do it (like "") */
-					if ((ORA_PARSER == compatible_db) &&
+					if ((ORA_MODE == compatible_mode) &&
 						isAconstNode($3) && /*  OA#00001559 */
 						getXeFirstEscape(yyscanner))
 					{
@@ -17970,7 +17970,7 @@ a_expr:		c_expr									{ $$ = $1; }
 			| a_expr LIKE a_expr ESCAPE a_expr					%prec LIKE
 				{
 					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						if(nodeTag($5) == T_A_Const)
 						{
@@ -18018,7 +18018,7 @@ a_expr:		c_expr									{ $$ = $1; }
 			| a_expr NOT_LA LIKE a_expr							%prec NOT_LA
 				{
 					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
-					if ((ORA_PARSER == compatible_db) &&
+					if ((ORA_MODE == compatible_mode) &&
 						isAconstNode($4) && /*  OA#00001559 */
 						getXeFirstEscape(yyscanner))
 					{
@@ -18038,7 +18038,7 @@ a_expr:		c_expr									{ $$ = $1; }
 			| a_expr NOT_LA LIKE a_expr ESCAPE a_expr			%prec NOT_LA
 				{
 					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 					{
 						if(nodeTag($6) == T_A_Const)
 						{
@@ -18932,7 +18932,7 @@ func_expr_common_subexpr:
 			| CURRENT_DATE
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						$$ = (Node *) makeFuncCall(OracleSystemFuncName("current_date"), NIL, COERCE_EXPLICIT_CALL, @1);
 					else
 					/* End - ReqID:SRS-GKC-DATATYPE_001 */
@@ -18949,7 +18949,7 @@ func_expr_common_subexpr:
 			| CURRENT_TIMESTAMP
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						$$ = (Node *) makeFuncCall(OracleSystemFuncName("current_timestamp"), NIL, COERCE_EXPLICIT_CALL, @1);
 					else
 					/* End - ReqID:SRS-GKC-DATATYPE_001 */
@@ -18958,7 +18958,7 @@ func_expr_common_subexpr:
 			| CURRENT_TIMESTAMP '(' Iconst ')'
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						$$ = (Node *) makeFuncCall(OracleSystemFuncName("current_timestamp"), list_make1(makeIntConst($3, @3)), COERCE_EXPLICIT_CALL, @1);
 					else
 					/* End - ReqID:SRS-GKC-DATATYPE_001 */
@@ -18975,7 +18975,7 @@ func_expr_common_subexpr:
 			| LOCALTIMESTAMP
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						$$ = (Node *) makeFuncCall(OracleSystemFuncName("localtimestamp"), NIL, COERCE_EXPLICIT_CALL, @1);
 					else
 					/* End - ReqID:SRS-GKC-DATATYPE_001 */
@@ -18984,7 +18984,7 @@ func_expr_common_subexpr:
 			| LOCALTIMESTAMP '(' Iconst ')'
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						$$ = (Node *) makeFuncCall(OracleSystemFuncName("localtimestamp"), list_make1(makeIntConst($3, @3)), COERCE_EXPLICIT_CALL, @1);
 					else
 					/* End - ReqID:SRS-GKC-DATATYPE_001 */
@@ -19294,28 +19294,28 @@ func_expr_common_subexpr:
 			/* Begin - OA-REQ-1604 */
 			| SYSDATE
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						$$ = (Node *) makeFuncCall(OracleSystemFuncName("sysdate"), NIL, COERCE_EXPLICIT_CALL, @1);
 					else
 						$$ = makeSQLValueFunction(SVFOP_CURRENT_DATE, -1, @1);
 				}
 			| SYSDATE '(' ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						$$ = (Node *) makeFuncCall(OracleSystemFuncName("sysdate"), NIL, COERCE_EXPLICIT_CALL, @1);
 					else
 						$$ = makeSQLValueFunction(SVFOP_CURRENT_DATE, -1, @1);
 				}
 			| SYSTIMESTAMP
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						$$ = (Node *) makeFuncCall(OracleSystemFuncName("systimestamp"), NIL, COERCE_EXPLICIT_CALL, @1);
 					else
 						$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP, -1, @1);
 				}
 			| SYSTIMESTAMP '(' ')'
 				{
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						$$ = (Node *) makeFuncCall(OracleSystemFuncName("systimestamp"), NIL, COERCE_EXPLICIT_CALL, @1);
 					else
 						$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP, -1, @1);
@@ -20695,7 +20695,7 @@ AexprConst: Iconst
 			| ConstTypename Sconst
 				{
 					/* ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_MODE == compatible_mode)
 						$$ = makeStringConstCast($2, -2, $1);
 					else
 						$$ = makeStringConstCast($2, @2, $1);
@@ -20703,7 +20703,7 @@ AexprConst: Iconst
 			| ConstInterval Sconst opt_interval
 				{
 					/* Begin - BUG#M0000475 */
-					if (ORA_PARSER == compatible_db &&
+					if (ORA_MODE == compatible_mode &&
 						enable_pg_interval_datatype &&
 						$3 == NIL)
 					{
@@ -20713,7 +20713,7 @@ AexprConst: Iconst
 					}
 					/* End - BUG#M0000475 */
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					else if (ORA_PARSER == compatible_db)
+					else if (ORA_MODE == compatible_mode)
 					{
 						TypeName *t;
 						List *typmods = $3;
@@ -20756,7 +20756,7 @@ AexprConst: Iconst
 			| ConstInterval '(' Iconst ')' Sconst
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db && !enable_pg_interval_datatype /* BUG#M0000475 */)
+					if (ORA_MODE == compatible_mode && !enable_pg_interval_datatype /* BUG#M0000475 */)
 					{
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -23101,7 +23101,7 @@ SplitColQualList(List *qualList,
 			CollateClause *c = (CollateClause *) n;
 
 			/* Begin - ReqID:SRS-SQL-NLSSORT */
-			if(ORA_PARSER == compatible_db) 
+			if(ORA_MODE == compatible_mode) 
 			{
 				if(max_string_size != ORA_MAX_STRING_SIZE_EXTENDED) 
 				{

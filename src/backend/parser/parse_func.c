@@ -201,7 +201,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		 * 31nd bit indicates that the function or procedure parameter mode is IN.
 		 * 30nd-1nd bit used for the function or procedure parameter type OID.
 		 */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			IsA(arg, Param) &&
 			pstate->p_ref_hook_state &&
 			pstate->p_isVarParamState)
@@ -418,7 +418,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 	/* End - SRS-PLSQL-SUBPROC */
 
 	/* Begin - ReqID:SRS-SQL-SYNONYM */
-	if(ORA_PARSER == compatible_db && fdresult == FUNCDETAIL_NOTFOUND && SynnameGetFuncInfo_hook)
+	if(ORA_MODE == compatible_mode && fdresult == FUNCDETAIL_NOTFOUND && SynnameGetFuncInfo_hook)
 	{
 		char	   *schemaname = NULL;
 		char	   *objname = NULL;
@@ -570,7 +570,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 	if (fdresult == FUNCDETAIL_NORMAL || fdresult == FUNCDETAIL_PROCEDURE)
 	{
 		/* Begin - ReqID:SRS-PLSQL-TYPE */
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 		{
 			HeapTuple	tup;
 			Form_pg_proc procstruct;
@@ -859,7 +859,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 					 parser_errposition(pstate, location)));
 		}
 		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
-		else if (ORA_PARSER == compatible_db && pstate->p_expr_kind == EXPR_KIND_GENERATED_COLUMN)
+		else if (ORA_MODE == compatible_mode && pstate->p_expr_kind == EXPR_KIND_GENERATED_COLUMN)
 			elog(ERROR, "%s:invalid identifier", func_signature_string(funcname, nargs, argnames, actual_arg_types));
 		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 		else if (proc_call)
@@ -1626,10 +1626,10 @@ func_select_candidate(int nargs,
 		 * If they are not in the same namespace, then return the one in
 		 * the frontest namespace.
 		 */
-		if (PG_PARSER == compatible_db)
+		if (PG_MODE == compatible_mode)
 			return NULL;			/* failed to select a best candidate */
 		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		else if (MYS_PARSER == compatible_db)
+		else if (MYS_MODE == compatible_mode)
 			return NULL;			/* failed to select a best candidate */
 		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else
@@ -1856,10 +1856,10 @@ func_select_candidate(int nargs,
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 			else if (ncandidates > 1)
 			{
-				if (PG_PARSER == compatible_db)
+				if (PG_MODE == compatible_mode)
 					return NULL;			/* failed to select a best candidate */
 				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-				else if (MYS_PARSER == compatible_db)
+				else if (MYS_MODE == compatible_mode)
 					return NULL;			/* failed to select a best candidate */
 				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				else
@@ -2183,7 +2183,7 @@ func_get_detail(List *funcname,
 		pform = (Form_pg_proc) GETSTRUCT(ftup);
 
 		/* Begin - BUG:M0000079 */
-		if (PG_PARSER == compatible_db &&
+		if (PG_MODE == compatible_mode &&
 			pform->prolang == LANG_PLISQL_OID)
 			ereport(ERROR,
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -2193,7 +2193,7 @@ func_get_detail(List *funcname,
 		*rettype = pform->prorettype;
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		/* return a package.xxx */
-		if (ORA_PARSER == compatible_db)
+		if (ORA_MODE == compatible_mode)
 		{
 			*rettype = get_func_real_rettype(ftup);
 		}
@@ -2851,7 +2851,7 @@ LookupFuncWithArgs(ObjectType objtype, ObjectWithArgs *func, bool missing_ok)
 		TypeName   *t = lfirst_node(TypeName, args_item);
 
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
-		if (ORA_PARSER == compatible_db && IsModeOut(t->typeOid))
+		if (ORA_MODE == compatible_mode && IsModeOut(t->typeOid))
 		{
 			argcount--;
 
@@ -2899,7 +2899,7 @@ LookupFuncWithArgs(ObjectType objtype, ObjectWithArgs *func, bool missing_ok)
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	/* If not found, then search all arguments include OUT arguments */
-	if (ORA_PARSER == compatible_db && objtype != OBJECT_AGGREGATE && !OidIsValid(oid))
+	if (ORA_MODE == compatible_mode && objtype != OBJECT_AGGREGATE && !OidIsValid(oid))
 	{
 		nargs = func->args_unspecified ? -1 : raw_argcount;
 		oid = LookupFuncNameInternal(func->args_unspecified ? objtype : OBJECT_ROUTINE,

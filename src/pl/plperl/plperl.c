@@ -3094,7 +3094,7 @@ plperl_hash_from_tuple(HeapTuple tuple, TupleDesc tupdesc, bool include_generate
 				getTypeOutputInfo(att->atttypid, &typoutput, &typisvarlena);
 
 				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-				if (ORA_PARSER == compatible_db &&
+				if (ORA_MODE == compatible_mode &&
 					(att->atttypid == YMINTERVALOID ||
 					 att->atttypid == DSINTERVALOID))
 				{

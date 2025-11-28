@@ -271,7 +271,7 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 				 * Begin - Req: SRS-SQL-NLSSORT
 				 * Replace pseudo collation for "=, !=, >, <, >=, <=, BETWEEN, NOT BETWEEN, IN, NOT IN, REGEXP_LIKE, LIKE" conditions.
 				 */
-				if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+				if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 				{
 					Oid 	 coll;
 					Node 	*copy = copyObject(result);
@@ -779,7 +779,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* End - Bug#Z167 */
 
 				/* Begin - BUG#M0000217 */
-				if (compatible_db == ORA_PARSER &&
+				if (compatible_mode == ORA_MODE &&
 					(pstate->p_expr_kind == EXPR_KIND_ORDER_BY ||
 					 pstate->p_expr_kind == EXPR_KIND_GROUP_BY_DISTINCT) &&
 					pstate->p_targetlist)
@@ -906,7 +906,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				if (nsitem == NULL)
 				{
 					/* Begin - ReqID:SRS-SQL-SEQ */
-					if(ORA_PARSER == compatible_db && IsA(field2, String) &&
+					if(ORA_MODE == compatible_mode && IsA(field2, String) &&
 						(!pg_strcasecmp(strVal(field2), "nextval") || !pg_strcasecmp(strVal(field2), "currval")))	/* Bug#m353 */
 					{
 						FuncCall *seq_func = NULL;
@@ -988,7 +988,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				if (nsitem == NULL)
 				{
 					/* Begin - ReqID:SRS-SQL-SEQ */
-					if(ORA_PARSER == compatible_db && IsA(field3, String) &&
+					if(ORA_MODE == compatible_mode && IsA(field3, String) &&
 						(!pg_strcasecmp(strVal(field3), "nextval") || !pg_strcasecmp(strVal(field3), "currval")))	/* Bug#m353 */
 					{
 						FuncCall *seq_func = NULL;
@@ -1084,7 +1084,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				if (strcmp(catname, get_database_name(MyDatabaseId)) != 0)
 				{
 					/* Begin - Bug#m351 */
-					if(ORA_PARSER == compatible_db && IsA(field4, String) &&
+					if(ORA_MODE == compatible_mode && IsA(field4, String) &&
 						(!pg_strcasecmp(strVal(field4), "nextval") || !pg_strcasecmp(strVal(field4), "currval")))	/* Bug#m353 */
 						elog(ERROR, "sequence does not exist");
 					/* End - Bug#m351 */
@@ -1093,7 +1093,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				}
 				/* Begin - Bug#m351 */
 				/* Begin - ReqID:SRS-SQL-SEQ */
-				if(ORA_PARSER == compatible_db && IsA(field4, String) &&
+				if(ORA_MODE == compatible_mode && IsA(field4, String) &&
 					(!pg_strcasecmp(strVal(field4), "nextval") || !pg_strcasecmp(strVal(field4), "currval")))	/* Bug#m353 */
 				{
 					FuncCall *seq_func = NULL;
@@ -1183,7 +1183,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 		Node	   *tmpnode = NULL;
 
 		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-		if (compatible_db == MYS_PARSER && node)
+		if (compatible_mode == MYS_MODE && node)
 		{
 			tmpnode = copyObject(node);
 			if (pstate->p_isexistVar)
@@ -1194,7 +1194,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 		hookresult = pstate->p_post_columnref_hook(pstate, cref, node);
 
 		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-		if (compatible_db == MYS_PARSER && !hookresult && tmpnode)
+		if (compatible_mode == MYS_MODE && !hookresult && tmpnode)
 		{
 			if (node == NULL)
 				node = tmpnode;
@@ -1216,8 +1216,8 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 	/*
 	 * Throw error if no translation found.
 	 */
-	if ((compatible_db == ORA_PARSER && !missing_ok) ||
-		compatible_db == PG_PARSER || compatible_db == MYS_PARSER)	/* ReqID:SRS-MISC-MYSQL-FRAME */
+	if ((compatible_mode == ORA_MODE && !missing_ok) ||
+		compatible_mode == PG_MODE || compatible_mode == MYS_MODE)	/* ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		if (node == NULL)
 		{
@@ -1420,7 +1420,7 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 		lexpr = transformExprRecurse(pstate, lexpr);
 		ltypeId = exprType(lexpr);
 
-		if (compatible_db == DB_ORACLE && ltypeId == ROWIDOID && nodeTag(rexpr) != T_TypeCast)
+		if (compatible_mode == ORA_MODE && ltypeId == ROWIDOID && nodeTag(rexpr) != T_TypeCast)
 		{
 			TypeCast   *castnode = makeNode(TypeCast);
 			castnode->typeName = makeTypeNameFromNameList(list_make2(makeString("sys"), makeString("rowid")));
@@ -1877,7 +1877,7 @@ transformAExprBetween(ParseState *pstate, A_Expr *a)
 	cexpr = (Node *) lsecond(args);
 
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		CheckAndReplaceEnumExpr(pstate, &aexpr, &bexpr, &cexpr);
 	}
@@ -2090,7 +2090,7 @@ transformFuncCall(ParseState *pstate, FuncCall *fn)
 	}
 
 	/* Begin - BUG #Z5517 #Z5518 */
-	if (MYS_PARSER == compatible_db && fn->funcname != NIL && targs != NIL)
+	if (MYS_MODE == compatible_mode && fn->funcname != NIL && targs != NIL)
 	{
 		if (list_length(fn->funcname) == 1 ||
 			(list_length(fn->funcname) == 2 && IsA(linitial(fn->funcname), String) &&
@@ -2512,7 +2512,7 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 			/* Begin - BUG#Z1506 */
 			Oid	unknown_type;
 
-			if (compatible_db == ORA_PARSER)
+			if (compatible_mode == ORA_MODE)
 			{
 				if (nls_length_semantics == NLS_LENGTH_BYTE)
 					unknown_type = ORAVARCHARBYTEOID;
@@ -2864,13 +2864,13 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 		 */
 		else if (exprType(arg) == UNKNOWNOID)
 		{
-			if (compatible_db == PG_PARSER)
+			if (compatible_mode == PG_MODE)
 				arg = coerce_to_common_type(pstate, arg, TEXTOID, "DECODE");
 			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-			else if (compatible_db == MYS_PARSER)
+			else if (compatible_mode == MYS_MODE)
 				arg = coerce_to_common_type(pstate, arg, TEXTOID, "DECODE");
 			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-			else if (compatible_db == ORA_PARSER)
+			else if (compatible_mode == ORA_MODE)
 			{
 				if (nls_length_semantics == NLS_LENGTH_BYTE) /* BUG#Z091 */
 					arg = coerce_to_common_type(pstate, arg, ORAVARCHARBYTEOID, "DECODE");
@@ -3270,7 +3270,7 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
 		/* In mysql mode, can't specify target table for update in FROM clause. */
-		if (MYS_PARSER == compatible_db && qtree &&
+		if (MYS_MODE == compatible_mode && qtree &&
 			pstate->p_isupdate && qtree->rtable) /* BUG#Z5121 */
 		{
 			ListCell   *lc;
@@ -3596,13 +3596,13 @@ transformCoalesceExpr(ParseState *pstate, CoalesceExpr *c)
 	}
 
 	/* Begin - BUGID:0000536 */
-	if (compatible_db == PG_PARSER)
+	if (compatible_mode == PG_MODE)
 		newc->coalescetype = select_common_type(pstate, newargs, "COALESCE", NULL);
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	else if (compatible_db == MYS_PARSER)
+	else if (compatible_mode == MYS_MODE)
 		newc->coalescetype = select_common_type(pstate, newargs, "COALESCE", NULL);
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-	else if (compatible_db == ORA_PARSER)
+	else if (compatible_mode == ORA_MODE)
 	/* Begin - BUG#Z4592 */
 	{
 		/*
@@ -4120,7 +4120,7 @@ transformTypeCast(ParseState *pstate, TypeCast *tc)
 	 * when cast hex string to other data, we parse it to uint64 or
 	 * varbinary according to target type.
 	 */
-	if (MYS_PARSER == compatible_db)
+	if (MYS_MODE == compatible_mode)
 	{
 		if (cast_to_char && targetType == BPCHAROID)
 		{

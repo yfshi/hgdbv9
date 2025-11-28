@@ -2500,7 +2500,7 @@ compute_scalar_stats(VacAttrStatsP stats,
 			continue;
 		}
 		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
-		else if (stats->attr->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL && ORA_PARSER == compatible_db)	/* Bug#m0000421 */
+		else if (stats->attr->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL && ORA_MODE == compatible_mode)	/* Bug#m0000421 */
 		{
 			EState     *estate;
 			Expr       *varexpr;

@@ -1678,7 +1678,7 @@ ProcessUtilitySlow(ParseState *pstate,
 					is_alter_table = stmt->transformed;
 
 					/* Begin - ReqID:SRS-MYSQL-CREATE-INDEX */
-					if (compatible_db == MYS_PARSER)
+					if (compatible_mode == MYS_MODE)
 						mys_trans_index_col_to_left(relid, stmt);
 					/* End - ReqID:SRS-MYSQL-CREATE-INDEX */
 
@@ -2594,7 +2594,7 @@ CreateCommandTag(Node *parsetree)
 			/* raw plannable queries */
 		case T_InsertStmt:
 			/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-			if (((InsertStmt *)parsetree)->isReplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+			if (((InsertStmt *)parsetree)->isReplace && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 				tag = CMDTAG_REPLACE;
 			else
 			/* End - ReqID:SRS-MYSQL-SQL-REPLACE */

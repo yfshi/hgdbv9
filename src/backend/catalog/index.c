@@ -423,7 +423,7 @@ ConstructTupleDescriptor(Relation heapRelation,
 		/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0)
 		 * char(0) and varchar(0) columns do not support index creation.
 		 */
-		if (compatible_db == MYS_PARSER && (to->atttypid == BPCHAROID ||
+		if (compatible_mode == MYS_MODE && (to->atttypid == BPCHAROID ||
 			to->atttypid == VARCHAROID) && to->atttypmod == VARHDRSZ)
 		{
 			elog(ERROR, "The used storage engine can't index column '%s' ",
@@ -2479,7 +2479,7 @@ index_drop(Oid indexId, bool concurrent, bool concurrent_lock_mode)
 		UnlockRelationIdForSession(&indexrelid, ShareUpdateExclusiveLock);
 	}
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (ORA_PARSER == compatible_db && pg_object_drop_obj_hook)
+	if (ORA_MODE == compatible_mode && pg_object_drop_obj_hook)
 	{
 		PgObjectInfo		ori;
 		ObjectAddress		addr;

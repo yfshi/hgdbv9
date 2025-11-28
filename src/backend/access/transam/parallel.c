@@ -597,11 +597,11 @@ LaunchParallelWorkers(ParallelContext *pcxt)
 	 */
 	if (MyProcPort != NULL)
 	{
-		if (compatible_db == ORA_PARSER)
+		if (compatible_mode == ORA_MODE)
 			worker.bgw_flags |= BGWORKER_COMPAT_ORA;
-		else if (compatible_db == MYS_PARSER)
+		else if (compatible_mode == MYS_MODE)
 			worker.bgw_flags |= BGWORKER_COMPAT_MYS;
-		else if (compatible_db == PG_PARSER)
+		else if (compatible_mode == PG_MODE)
 			worker.bgw_flags |= BGWORKER_COMPAT_PG;
 	}
 	else

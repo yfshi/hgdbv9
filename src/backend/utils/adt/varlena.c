@@ -442,7 +442,7 @@ byteaout(PG_FUNCTION_ARGS)
 	if (bytea_output == BYTEA_OUTPUT_HEX && !enable_character_blob) /* ReqID:SRS-MYSQL-BINARYTYPE */
 	{
 		/* Begin - Bug#z1457 */
-		if (hex_bytea && DB_ORACLE == compatible_db) /* BUG#m541 */
+		if (hex_bytea && ORA_MODE == compatible_mode) /* BUG#m541 */
 		{
 			rp = result = palloc(VARSIZE_ANY_EXHDR(vlena) * 2 + 1);
 			rp += hex_encode(VARDATA_ANY(vlena), VARSIZE_ANY_EXHDR(vlena), rp);
@@ -796,7 +796,7 @@ textcat(PG_FUNCTION_ARGS)
 	text	   *t1 = NULL;
 	text	   *t2 = NULL;
 
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		if (PG_ARGISNULL(0) && PG_ARGISNULL(1))
 			PG_RETURN_NULL();
@@ -1507,7 +1507,7 @@ text_position_next_internal(char *start_ptr, TextPositionState *state)
 		while (hptr < haystack_end)
 		{
 			/* Begin - BUG#Z1464 */
-			if (compatible_db != PG_PARSER && varstr_cmp(hptr, 1, &nchar, 1, coll) == 0)
+			if (compatible_mode != PG_MODE && varstr_cmp(hptr, 1, &nchar, 1, coll) == 0)
 				return (char *) hptr;
 			/* End - BUG#Z1464 */
 
@@ -1532,7 +1532,7 @@ text_position_next_internal(char *start_ptr, TextPositionState *state)
 			p = hptr;
 			
 			/* Begin - BUG#Z1464 */
-			if (compatible_db != PG_PARSER)
+			if (compatible_mode != PG_MODE)
 			{
 				while (varstr_cmp(nptr, 1, p, 1, coll) == 0)
 				{
@@ -1676,13 +1676,13 @@ varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid)
 			result = (len1 < len2) ? -1 : 1;
 	}
 	/* Begin - SRS-SQL-NLSSORT */
-	else if(compatible_db == ORA_PARSER && provider == COLLPROVIDER_ORACLE)
+	else if(compatible_mode == ORA_MODE && provider == COLLPROVIDER_ORACLE)
 	{
 		result = nlssortfastcmp_internal_with_collid(arg1, len1, arg2, len2, collid, false);
 	}
 	/* End - SRS-SQL-NLSSORT */
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	else if (compatible_db == MYS_PARSER && provider == COLLPROVIDER_MYSQL)
+	else if (compatible_mode == MYS_MODE && provider == COLLPROVIDER_MYSQL)
 	{
 		result = mysql_varstr_cmp(pstrdup(arg1), len1, pstrdup(arg2), len2, collid);
 	}
@@ -2231,7 +2231,7 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 		collate_c = true;
 	}
 	/* Begin - SRS-SQL-NLSSORT */
-	else if(compatible_db == ORA_PARSER && nlssort_hook && provider == COLLPROVIDER_ORACLE)
+	else if(compatible_mode == ORA_MODE && nlssort_hook && provider == COLLPROVIDER_ORACLE)
 	{
 		if (typid == NAMEOID)
 			ssup->comparator = namefastcmp_nlssort;
@@ -4195,7 +4195,7 @@ SplitIdentifierString(char *rawstring, char separator,
 		/* transform the case for the identifier that is
 		 * quoted by double quotes.
 		 */
-		if (compatible_db == DB_ORACLE && enable_case_switch
+		if (compatible_mode == ORA_MODE && enable_case_switch
 			 && identifier_case_switch == INTERCHANGE && need_case_switch)
 		{
 			char	   *new_name;
@@ -4666,7 +4666,7 @@ SplitGUCList(char *rawstring, char separator,
 		/* transform the case for the identifier that is
 		 * quoted by double quotes.
 		 */
-		if (compatible_db == DB_ORACLE && enable_case_switch
+		if (compatible_mode == ORA_MODE && enable_case_switch
 			 && identifier_case_switch == INTERCHANGE && need_case_switch)
 		{
 			char	   *new_name;
@@ -4926,7 +4926,7 @@ replace_text(PG_FUNCTION_ARGS)
 	}
 
 	/* Begin - BUG#Z1464 */
-	if (compatible_db == ORA_PARSER)
+	if (compatible_mode == ORA_MODE)
 		coll = PseudoCollationReplace_BNB(coll);
 	/* End - BUG#Z1464 */
 
@@ -6444,7 +6444,7 @@ text_left(PG_FUNCTION_ARGS)
 	int			n = PG_GETARG_INT32(1);
 
 	/* Begin - BUG#Z5490 */
-	if (n < 0 && compatible_db == MYS_PARSER)
+	if (n < 0 && compatible_mode == MYS_MODE)
 		n = 0;
 	/* End - BUG#Z5490 */
 
@@ -6477,7 +6477,7 @@ text_right(PG_FUNCTION_ARGS)
 	int			off;
 
 	/* Begin - BUG#Z5491 */
-	if (n < 0 && compatible_db == MYS_PARSER)
+	if (n < 0 && compatible_mode == MYS_MODE)
 		n = 0;
 	/* End - BUG#Z5491 */
 

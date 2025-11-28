@@ -1003,7 +1003,7 @@ ExecInsert(ModifyTableContext *context,
 									   resultRelInfo, slot,
 									   &partRelInfo);
 		/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-		if (MYS_PARSER == compatible_db && mtstate->mt_partOids) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && mtstate->mt_partOids) /* BUG#Z5121 */
 		{
 			if (!CheckPartitionRelationIsexist(partRelInfo, mtstate->mt_partOids))
 				ereport(ERROR,
@@ -2009,7 +2009,7 @@ ExecCrossPartitionUpdate(ModifyTableContext *context,
 	context->cpUpdateRetrySlot = NULL;
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db && resultRelInfo->ri_RootResultRelInfo) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && resultRelInfo->ri_RootResultRelInfo) /* BUG#Z5121 */
 	{
 		if (mtstate->rootResultRelInfo != resultRelInfo->ri_RootResultRelInfo)
 		{
@@ -2155,7 +2155,7 @@ ExecCrossPartitionUpdate(ModifyTableContext *context,
 		mtstate->mt_transition_capture->tcs_original_insert_tuple = NULL;
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db && is_replacerootrelinfo) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && is_replacerootrelinfo) /* BUG#Z5121 */
 	{
 		if (!list_member_ptr(mtstate->mt_partition_tuple_routing_list, mtstate->mt_partition_tuple_routing))
 			mtstate->mt_partition_tuple_routing_list = lappend(mtstate->mt_partition_tuple_routing_list,
@@ -3062,7 +3062,7 @@ ExecConflictUpdate(ModifyTableContext *context,
 							 0,/* BUG#M0000470:FOR UPDATE WAIT integer */
 							 0,
 							 &tmfd);
-	if ( test != TM_Ok && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if ( test != TM_Ok && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		if(ItemPointerEquals(conflictTid, &(context->mtstate->mt_upsert->us_updateproj->tts_tid)) &&
 			resultRelInfo->ri_RelationDesc->rd_node.relNode == context->mtstate->mt_upsert->us_updateproj->tts_tableOid)
@@ -4006,7 +4006,7 @@ fireBSTriggers(ModifyTableState *node)
 	int				i = 0;
 	bool			multirel = false;
 
-	if (MYS_PARSER == compatible_db && node->mt_ResultTupleSlots) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && node->mt_ResultTupleSlots) /* BUG#Z5121 */
 	{
 		resultRelInfo = node->resultRelInfo;
 		resultRelationNum = node->mt_ResultTupleSlots ? list_length(node->mt_ResultTupleSlots) : 1;
@@ -4115,7 +4115,7 @@ fireASTriggers(ModifyTableState *node)
 	int				i = 0;
 	bool			multirel = false;
 
-	if (MYS_PARSER == compatible_db && node->mt_ResultTupleSlots) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && node->mt_ResultTupleSlots) /* BUG#Z5121 */
 	{
 		resultRelInfo = node->resultRelInfo;
 		resultRelationNum = node->mt_ResultTupleSlots ? list_length(node->mt_ResultTupleSlots) : 1;
@@ -4206,7 +4206,7 @@ fireASTriggers(ModifyTableState *node)
 			break;
 		case CMD_MERGE:
 			/* Begin - ReqID:SRS-SQL-MERGE */
-			if (compatible_db == DB_ORACLE)
+			if (compatible_mode == ORA_MODE)
 			{
 				if (node->mt_merge_subcommands & MERGE_UPDATE)
 					ExecASUpdateTriggers(node->ps.state, resultRelInfo,
@@ -4359,7 +4359,7 @@ ExecReplace(ModifyTableContext *context,
 		slot = ExecPrepareTupleRouting(mtstate, estate, proute,
 									   resultRelInfo, slot,
 									   &partRelInfo);
-		if (MYS_PARSER == compatible_db && mtstate->mt_partOids) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && mtstate->mt_partOids) /* BUG#Z5121 */
 		{
 			if (!CheckPartitionRelationIsexist(partRelInfo, mtstate->mt_partOids))
 				ereport(ERROR,
@@ -4423,7 +4423,7 @@ ExecModifyTable(PlanState *pstate)
 	int					res = 0, tblnum = 0;
 	bool				first_fetch_slot;
 
-	if (MYS_PARSER == compatible_db && node->mt_ResultTupleSlots) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && node->mt_ResultTupleSlots) /* BUG#Z5121 */
 	{
 		tupleid = NULL;
 		resultRelationNum = node->mt_ResultTupleSlots ? list_length(node->mt_ResultTupleSlots) : 1;
@@ -4488,7 +4488,7 @@ ExecModifyTable(PlanState *pstate)
 	for (;;)
 	{
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (MYS_PARSER == compatible_db && resultRelationNum) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && resultRelationNum) /* BUG#Z5121 */
 		{
 			if (node->mt_partresultRelInfo)
 			{
@@ -4517,7 +4517,7 @@ ExecModifyTable(PlanState *pstate)
 			ResetExprContext(pstate->ps_ExprContext);
 
 		/* Begin - SRS-MYSQL-UPDATE */
-		if (MYS_PARSER == compatible_db && resultRelationNum) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && resultRelationNum) /* BUG#Z5121 */
 		{
 			planSlot = FetchPlanSlot(subplanstate, node, &res, &tblnum, &resultRelInfo,
 												&tmpslot, estate, &first_fetch_slot);
@@ -4577,7 +4577,7 @@ ExecModifyTable(PlanState *pstate)
 				}
 
 				/* Begin - ReqID:SRS-MYSQL-UPDATE */
-				if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+				if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 					continue;
 				else
 					elog(ERROR, "tableoid is NULL");
@@ -4589,7 +4589,7 @@ ExecModifyTable(PlanState *pstate)
 			if (resultoid != node->mt_lastResultOid)
 			{
 				/* Begin - ReqID:SRS-MYSQL-UPDATE */
-				if (MYS_PARSER == compatible_db && !resultRelationNum) /* BUG#Z5121 */
+				if (MYS_MODE == compatible_mode && !resultRelationNum) /* BUG#Z5121 */
 				{
 					/* If the matching partition is not the specified partition,
 					 * no update is performed,and this cycle is skipped.
@@ -4687,7 +4687,7 @@ ExecModifyTable(PlanState *pstate)
 					}
 
 					/* Begin - ReqID:SRS-MYSQL-UPDATE */
-					if (MYS_PARSER == compatible_db && resultRelationNum) /* BUG#Z5121 */
+					if (MYS_MODE == compatible_mode && resultRelationNum) /* BUG#Z5121 */
 					{
 						if (estate->result_rel_index == resultRelationNum - 1)
 							estate->result_rel_index = 0;
@@ -4697,7 +4697,7 @@ ExecModifyTable(PlanState *pstate)
 						continue;
 					}
 					/* End - ReqID:SRS-MYSQL-UPDATE */
-					if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+					if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 						continue;
 					else
 						elog(ERROR, "ctid is NULL");
@@ -4763,7 +4763,7 @@ ExecModifyTable(PlanState *pstate)
 					ExecInitInsertProjection(node, resultRelInfo);
 				slot = ExecGetInsertNewTuple(resultRelInfo, planSlot);
 				/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
-				if (node->isReplace && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+				if (node->isReplace && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 					slot = ExecReplace(&context, resultRelInfo, slot,
 									  node->canSetTag, NULL, NULL, oldtuple);
 				else
@@ -4776,7 +4776,7 @@ ExecModifyTable(PlanState *pstate)
 					tuplock = false;
 					/* Initialize projection info if first time for this table */
 					/* Begin - ReqID:SRS-MYSQL-UPDATE */
-					if (MYS_PARSER == compatible_db && resultRelationNum) /* BUG#Z5121 */
+					if (MYS_MODE == compatible_mode && resultRelationNum) /* BUG#Z5121 */
 					{
 						if(!estate->result_rel_index)
 						{
@@ -4853,7 +4853,7 @@ ExecModifyTable(PlanState *pstate)
 		}
 
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if (MYS_PARSER == compatible_db && resultRelationNum) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode && resultRelationNum) /* BUG#Z5121 */
 		{
 			if (estate->result_rel_index == resultRelationNum - 1)
 				estate->result_rel_index = 0;
@@ -5140,7 +5140,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	 *----------
 	 */
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db && node->rootRelations) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && node->rootRelations) /* BUG#Z5121 */
 	{
 		ListCell		   *lc = NULL;
 		ResultRelInfo	   *rootresultRelInfo = NULL;
@@ -5172,7 +5172,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		else
 		{
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
-			if(!(MYS_PARSER == compatible_db && node->parseresultrelations &&
+			if(!(MYS_MODE == compatible_mode && node->parseresultrelations &&
 			list_length(node->parseresultrelations) > 1)) /* BUG#Z5121 */
 				Assert(list_length(node->resultRelations) == 1);
 			/* End - ReqID:SRS-MYSQL-UPDATE */
@@ -5217,7 +5217,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			 * mtstate handy.
 			 */
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
-			if (MYS_PARSER == compatible_db && node->rootRelations) /* BUG#Z5121 */
+			if (MYS_MODE == compatible_mode && node->rootRelations) /* BUG#Z5121 */
 			{
 				/* check resultRelation is partition relation. */
 				resultRelInfo->ri_RootResultRelInfo = ExecInitCheckpartitionResultInfo(mtstate, node, resultRelation);
@@ -5236,7 +5236,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			}
 			else
 			{
-				if (!get_rel_relispartition(resultRelInfo->ri_RelationDesc->rd_id) && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+				if (!get_rel_relispartition(resultRelInfo->ri_RelationDesc->rd_id) && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 				{
 					resultRelInfo->ri_RootResultRelInfo = NULL;
 				}
@@ -5304,7 +5304,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 				relkind == RELKIND_PARTITIONED_TABLE)
 			{
 				/* Begin - ReqID:SRS-MYSQL-UPDATE */
-				if (node->targetlists && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+				if (node->targetlists && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 				{
 					if (node->rootRelations &&
 						resultRelInfo->ri_RootResultRelInfo)
@@ -5385,7 +5385,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		ExecFindJunkAttributeInTlist(subplan->targetlist, "tableoid");
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (!(MYS_PARSER == compatible_db && node->parseresultrelations &&
+	if (!(MYS_MODE == compatible_mode && node->parseresultrelations &&
 		list_length(node->parseresultrelations) > 1)) /* BUG#Z5121 */
 		Assert(AttributeNumberIsValid(mtstate->mt_resultOidAttno) || nrels == 1);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
@@ -5551,7 +5551,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	 */
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	result_rel_info = mtstate->resultRelInfo;
-	if ((node->upsertAction == UPSERT_UPDATE || node->isReplace) && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if ((node->upsertAction == UPSERT_UPDATE || node->isReplace) && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		ExprContext	   *econtext = NULL;
 		TupleDesc		tupDesc = NULL;
@@ -5653,7 +5653,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 							HASH_ENTER, &found);
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
 			/* check partition is duplicated. */
-			if (MYS_PARSER == compatible_db && found) /* BUG#Z5121 */
+			if (MYS_MODE == compatible_mode && found) /* BUG#Z5121 */
 				ereport(ERROR,
 						(errcode(ERRCODE_DUPLICATE_TABLE),
 						 errmsg("The partition relation %s is duplicated.", RelationGetRelationName(resultRelInfo->ri_RelationDesc))));
@@ -5705,7 +5705,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		estate->es_auxmodifytables = lcons(mtstate,
 										   estate->es_auxmodifytables);
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db && (operation == CMD_UPDATE || operation == CMD_DELETE)
+	if (MYS_MODE == compatible_mode && (operation == CMD_UPDATE || operation == CMD_DELETE)
 		&& node->parseresultrelations &&
 		list_length(node->parseresultrelations) > 1) /* BUG#Z5121 */
 		{
@@ -5788,7 +5788,7 @@ ExecEndModifyTable(ModifyTableState *node)
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db && node->mt_partition_tuple_routing_list) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && node->mt_partition_tuple_routing_list) /* BUG#Z5121 */
 	{
 		ListCell   *lc = NULL;
 		ListCell   *lc1 = NULL;

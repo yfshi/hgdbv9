@@ -63,7 +63,7 @@ anychar_typmodin(ArrayType *ta, const char *typename)
 				 errmsg("invalid type modifier")));
 
 	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0) */
-	if (*tl < 1 && compatible_db == MYS_PARSER &&
+	if (*tl < 1 && compatible_mode == MYS_MODE &&
 		(strcmp(typename, "char") == 0 || strcmp(typename, "varchar") == 0))
 	{
 		typmod = VARHDRSZ + *tl;
@@ -100,7 +100,7 @@ anychar_typmodout(int32 typmod)
 	if (typmod > VARHDRSZ)
 		snprintf(res, 64, "(%d)", (int) (typmod - VARHDRSZ));
 	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0) */
-	else if (compatible_db == MYS_PARSER && typmod == VARHDRSZ)
+	else if (compatible_mode == MYS_MODE && typmod == VARHDRSZ)
 		snprintf(res, 64, "(%d)", 0);
 	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0) */
 	else
@@ -246,7 +246,7 @@ bpcharout(PG_FUNCTION_ARGS)
 	Datum		txt = PG_GETARG_DATUM(0);
 
 	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
-	if (compatible_db == MYS_PARSER)
+	if (compatible_mode == MYS_MODE)
 	{
 		/*
 		 * 1. if sql_mode value have MODE_PAD_CHAR_TO_FULL_LENGTH, the return is full string;
@@ -342,7 +342,7 @@ bpchar(PG_FUNCTION_ARGS)
 	 * if type is char(0), sql_mode is strict mode,
 	 * we need to report an error.
 	 */
-	if (compatible_db == MYS_PARSER && maxlen == 0 && len > 0 && charlen > 0)
+	if (compatible_mode == MYS_MODE && maxlen == 0 && len > 0 && charlen > 0)
 	{
 		/* Begin - BUG#Z00005074 */
 		int		i;
@@ -718,7 +718,7 @@ varchar(PG_FUNCTION_ARGS)
 	 * if type is char(0), sql_mode is strict mode,
 	 * we need to report an error.
 	 */
-	if (compatible_db == MYS_PARSER && maxlen == 0 && len > 0)
+	if (compatible_mode == MYS_MODE && maxlen == 0 && len > 0)
 	{
 		/* Begin - BUG#Z00005148 */
 		int		i;
@@ -800,7 +800,7 @@ bcTruelen(BpChar *arg)
 	 * sql_mode have value MODE_PAD_CHAR_TO_FULL_LENGTH,
 	 * the length include space.
 	 */
-	if (compatible_db == MYS_PARSER && mode_pad_char_to_full())
+	if (compatible_mode == MYS_MODE && mode_pad_char_to_full())
 		return VARSIZE_ANY_EXHDR(arg);
 	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 

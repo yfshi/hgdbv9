@@ -1719,7 +1719,7 @@ get_func_real_rettype(HeapTuple proc_tup)
 
 	retoid = form_proc->prorettype;
 
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		char *rettypename = NULL;
 
@@ -1772,7 +1772,7 @@ get_func_real_rettype(HeapTuple proc_tup)
 void
 repl_func_real_argtype(HeapTuple proc_tup, Oid *args, int nargs)
 {
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		char **p_argtypeNames = NULL;
 		bool isNull;
@@ -1880,7 +1880,7 @@ ArrayType *
 get_func_real_allargtype(HeapTuple proc_tup)
 
 {
-	if (ORA_PARSER == compatible_db)
+	if (ORA_MODE == compatible_mode)
 	{
 		Datum proallargtypes;
 		bool isNull;
@@ -3166,13 +3166,13 @@ get_preferred_type(Oid typid)
 		switch (typtup->typcategory)
 		{
 			case TYPCATEGORY_STRING:
-				if (compatible_db == PG_PARSER)
+				if (compatible_mode == PG_MODE)
 					result = TEXTOID;
 				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-				else if (compatible_db == MYS_PARSER)
+				else if (compatible_mode == MYS_MODE)
 					result = TEXTOID;
 				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-				else if (compatible_db == ORA_PARSER)
+				else if (compatible_mode == ORA_MODE)
 				{
 					if (typid == ORAVARCHARBYTEOID ||
 						typid == ORACHARBYTEOID)
@@ -3191,13 +3191,13 @@ get_preferred_type(Oid typid)
 				result = typid;
 				break;
 			case TYPCATEGORY_NUMERIC:
-				if (compatible_db == PG_PARSER)
+				if (compatible_mode == PG_MODE)
 					result = NUMERICOID;
 				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-				else if (compatible_db == MYS_PARSER)
+				else if (compatible_mode == MYS_MODE)
 					result = NUMERICOID;
 				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-				else if (compatible_db == ORA_PARSER)
+				else if (compatible_mode == ORA_MODE)
 				{
 					if (typid == BINARY_DOUBLEOID || typid == BINARY_FLOATOID)
 						result = BINARY_DOUBLEOID;
@@ -3940,7 +3940,7 @@ fit_namespace_owner(Oid nspid, Oid *owner)
 {
 	char *nspname = NULL;
 
-	if(ORA_PARSER != compatible_db || !enable_ora_user_schema)
+	if(ORA_MODE != compatible_mode || !enable_ora_user_schema)
 		return false;
 
 	nspname = get_namespace_name_or_temp(nspid);

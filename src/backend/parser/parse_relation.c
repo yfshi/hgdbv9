@@ -259,7 +259,7 @@ scanNameSpaceForRefname(ParseState *pstate, const char *refname, int location)
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-	if (compatible_db == MYS_PARSER && !result) /* BUG#Z5121 */
+	if (compatible_mode == MYS_MODE && !result) /* BUG#Z5121 */
 	{
 		foreach(l, pstate->p_varnamespace)
 		{
@@ -327,7 +327,7 @@ scanNameSpaceForRelid(ParseState *pstate, Oid relid, int location)
 		}
 	}
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-	if (compatible_db == MYS_PARSER && !result) /* BUG#Z5121 */
+	if (compatible_mode == MYS_MODE && !result) /* BUG#Z5121 */
 	{
 		foreach(l, pstate->p_varnamespace)
 		{
@@ -1016,7 +1016,7 @@ colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_p
 			Node	   *newresult;
 
 			/* Begin - BUG#Z1326 */
-			if (ORA_PARSER == compatible_db && pstate->p_expr_kind == EXPR_KIND_MERGE_WHEN &&
+			if (ORA_MODE == compatible_mode && pstate->p_expr_kind == EXPR_KIND_MERGE_WHEN &&
 				pstate->p_target_nsitem != nsitem)
 			{
 				foreach(c, nsitem->p_names->colnames)
@@ -1619,7 +1619,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 			else if (strcmp(fdw->fdwname, "postgres_fdw") == 0)
 				fdw_type = PG_FDW;
 
-			if (ORA_PARSER == compatible_db && ora_global_names)
+			if (ORA_MODE == compatible_mode && ora_global_names)
 			{
 				if (strcmp(server->servername, server->olnk_service_name) != 0)
 					elog(ERROR, "database link %s connects to %s", server->servername, server->olnk_service_name); // ORA-02085:
@@ -2053,7 +2053,7 @@ addRangeTableEntry(ParseState *pstate,
 
 	/* Begin - ReqID:SRS-SQL-SYNONYM */
 	/* Dealing with dblink related issues */
-	if (ORA_PARSER == compatible_db && relation->srvname == NULL && SynnameGetRelname_hook)
+	if (ORA_MODE == compatible_mode && relation->srvname == NULL && SynnameGetRelname_hook)
 	{
 		rel = table_openrv_extended(relation, lockmode, true);
 		if (rel == NULL)
@@ -2095,7 +2095,7 @@ addRangeTableEntry(ParseState *pstate,
 	 * statement will compile the force view recursively, so we do it here
 	 * for now temp.
 	 */
-	if (ORA_PARSER == compatible_db && rel_is_force_view(RelationGetRelid(rel)))
+	if (ORA_MODE == compatible_mode && rel_is_force_view(RelationGetRelid(rel)))
 	{
 		bool	compile_res;
 		char	*nspname;
@@ -2190,7 +2190,7 @@ addRangeTableEntry(ParseState *pstate,
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	/* In MySQL mode, deal index hint pre check */
-	if(relation->indexhints != NIL && MYS_PARSER == compatible_db) /* BUG#Z5121 */
+	if(relation->indexhints != NIL && MYS_MODE == compatible_mode) /* BUG#Z5121 */
 	{
 		IndexHintType	ihtype = INDEX_HINT_USE;
 		ihtype = preCheckIndexHints(pstate, relation->indexhints, rel);
@@ -3335,7 +3335,7 @@ addNSItemToQuery(ParseState *pstate, ParseNamespaceItem *nsitem,
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	else
 	{
-		if (MYS_PARSER == compatible_db) /* BUG#Z5121 */
+		if (MYS_MODE == compatible_mode) /* BUG#Z5121 */
 		{
 			/* Set the new nsitem's visibility flags correctly */
 			nsitem->p_rel_visible = addToRelNameSpace;

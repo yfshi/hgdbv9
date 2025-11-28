@@ -82,7 +82,7 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 				 errmsg("invalid statement name: must not be empty")));
 
 	/* Begin - ReqID:SRS-MYSQL-SET */
-	if (compatible_db == MYS_PARSER && stmt->query != NULL &&
+	if (compatible_mode == MYS_MODE && stmt->query != NULL &&
 		nodeTag(stmt->query) == T_VarRef)
 	{
 		Const	   *con;

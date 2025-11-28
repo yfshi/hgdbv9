@@ -153,7 +153,7 @@ add_other_rels_to_query(PlannerInfo *root)
 	int			rti;
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (MYS_PARSER == compatible_db && list_length(root->all_result_relids_list) > 1) /* BUG#Z5121 */
+	if (MYS_MODE == compatible_mode && list_length(root->all_result_relids_list) > 1) /* BUG#Z5121 */
 	{
 		int		tmpresult = root->parse->resultRelation;
 		for (rti = 1; rti < root->simple_rel_array_size; rti++)
@@ -1734,7 +1734,7 @@ distribute_qual_to_rels(PlannerInfo *root, Node *clause,
 	relids = pull_varnos(root, clause);
 
 	/* Begin - BUG#M0000302 */
-	if (database_mode == DB_ORACLE && compatible_db == ORA_PARSER &&
+	if (database_mode == DB_ORACLE && compatible_mode == ORA_MODE &&
 		ora_views_index_scan && identifier_case_switch != LOWERCASE)
 		clause = take_oracasetrans_away(clause);
 	/* End - BUG#M0000302 */

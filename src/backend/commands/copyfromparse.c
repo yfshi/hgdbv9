@@ -1442,7 +1442,7 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 			}
 			/* End - BUG#M0000414 */
 			/* Begin - SRS-MYSQL-HEX-LITERAL */
-			else if (compatible_db == MYS_PARSER)
+			else if (compatible_mode == MYS_MODE)
 			{
 				values[m] = InputFunctionCall_mysql(&in_functions[m],
 													string,

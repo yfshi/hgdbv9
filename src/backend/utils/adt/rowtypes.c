@@ -442,7 +442,7 @@ record_out(PG_FUNCTION_ARGS)
 		 * Begin - ReqID:SRS-GKC-DATATYPE_001
 		 * Compatible oracle , pass typmod to output function
 		 */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			(att->atttypid == YMINTERVALOID ||
 			 att->atttypid == DSINTERVALOID))
 		{
@@ -993,7 +993,7 @@ record_cmp(FunctionCallInfo fcinfo)
 			 * if att1 or att2's collation is DEFAULT_COLLATION_OID and they not equal, 
 			 * we use oracle's collation.
 			 */
-			if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+			if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 			{
 				if (att1->attcollation == DEFAULT_COLLATION_OID &&
 					get_collation_provider(att2->attcollation) == COLLPROVIDER_ORACLE)
@@ -1264,7 +1264,7 @@ record_eq(PG_FUNCTION_ARGS)
 			 * If att1 or att2's collation is DEFAULT_COLLATION_OID and they not equal, 
 			 * we use oracle's collation.
 			 */
-			if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+			if (ORA_MODE == compatible_mode && enable_ora_default_collation)
 			{
 				if (att1->attcollation == DEFAULT_COLLATION_OID &&
 					get_collation_provider(att2->attcollation) == COLLPROVIDER_ORACLE)
@@ -2229,7 +2229,7 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 										(errcode(ERRCODE_SYNTAX_ERROR),
 										 errmsg("conflicting or redundant options")));
 							/* Begin - BUG:M0000079 */
-							if (PG_PARSER == compatible_db &&
+							if (PG_MODE == compatible_mode &&
 								!pg_strcasecmp(strVal(defel->arg), "plisql"))
 								ereport(ERROR,
 										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),

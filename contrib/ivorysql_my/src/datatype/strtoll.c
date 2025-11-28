@@ -332,7 +332,7 @@ my_atoi_int8(const char *s, bool is_insert)
 int16
 my_atoi_int16(const char *s, bool is_insert)
 {
-	if (compatible_db != MYS_PARSER)
+	if (compatible_mode != MYS_MODE)
 		return DirectFunctionCall1(int2in, CStringGetDatum(s));
 
 	return (int16) cstring_to_signed(s, INT16_MIN, INT16_MAX, is_insert);

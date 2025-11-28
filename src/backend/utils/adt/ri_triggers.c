@@ -1840,7 +1840,7 @@ quoteOneName(char *buffer, const char *name)
 	*buffer++ = '"';
 
 	/* BEGIN - case sensitive indentify */
-	if (compatible_db == DB_ORACLE && enable_case_switch
+	if (compatible_mode == ORA_MODE && enable_case_switch
 		 && identifier_case_switch == INTERCHANGE)
 		new_name = identifier_case_transform(name, strlen(name));
 	else

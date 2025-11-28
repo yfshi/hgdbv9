@@ -382,7 +382,7 @@ print_expr(const Node *expr, const List *rtable)
 		 * Begin - ReqID:SRS-GKC-DATATYPE_001
 		 * Compatible oracle , pass typmod to output function
 		 */
-		if (ORA_PARSER == compatible_db &&
+		if (ORA_MODE == compatible_mode &&
 			(c->consttype == YMINTERVALOID ||
 			 c->consttype == DSINTERVALOID))
 		{

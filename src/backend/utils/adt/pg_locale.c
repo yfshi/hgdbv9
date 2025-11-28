@@ -1339,8 +1339,8 @@ lc_collate_is_c(Oid collation)
 		char	   *localeptr;
 
 		/* Begin: SRS-SQL-NLSSORT */
-		if ((ORA_PARSER == compatible_db ||
-			MYS_PARSER == compatible_db) && /* bug- #z6175 */
+		if ((ORA_MODE == compatible_mode ||
+			MYS_MODE == compatible_mode) && /* bug- #z6175 */
 			default_collation_is_c)
 			return true;
 		/* End: SRS-SQL-NLSSORT */

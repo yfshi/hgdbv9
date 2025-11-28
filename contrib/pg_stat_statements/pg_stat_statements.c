@@ -2753,7 +2753,7 @@ fill_in_constant_lengths(JumbleState *jstate, const char *query,
 {
 	/* BEGIN - SQL PARSER */
 	/* Slove the issue of using the same global variable in static lib and dynamic lib */
-	if (fill_in_constant_lengths_hook && compatible_db != PG_PARSER)
+	if (fill_in_constant_lengths_hook && compatible_mode != PG_MODE)
 		(*fill_in_constant_lengths_hook)((void *)jstate, query, query_loc);
 	else
 		standard_fill_in_constant_lengths(jstate, query, query_loc);
