@@ -46,6 +46,19 @@ SELECT hg_security.compare_seclabel('s0:c0.c1023', 's0:c0.c102');
 SELECT hg_security.compare_seclabel('s3:c0.c1023', 's3:c0.c1023');
 SELECT hg_security.compare_seclabel('s1:c0.c1023', 's3:c0.c102');
 
+-- bug #z6431
+CREATE USER sec_user WITH PASSWORD 'sec@123';
+SET ROLE sec_user;
+CREATE TABLE sec_table(id int, data varchar(50));
+RESET ROLE;
+GRANT EXECUTE ON function hg_security.get_user_seclabel(oid) TO sec_user;
+GRANT EXECUTE ON function hg_security.get_table_seclabel(oid) TO sec_user;
+GRANT EXECUTE ON function hg_security.get_column_seclabel(oid, int) TO sec_user;
+GRANT SELECT ON pg_shseclabel TO sec_user;
+GRANT SELECT ON pg_seclabel TO sec_user;
+DROP TABLE sec_table;
+DROP USER sec_user;
+
 -- table-level security test
 
 CREATE USER u1 with password 'Hello@123';
