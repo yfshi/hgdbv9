@@ -6083,6 +6083,23 @@ set_count_rel_width(PlannerInfo *root, RelOptInfo *count_rel)
 			int			ndx;
 			int32		item_width;
 
+			/* Begin - BUG#Z00006495 */
+			/*
+			 * there maybe ROWID_VAR for update
+			 * or delete on partition table
+			 */
+			if (var->varno == ROWID_VAR)
+			{
+				/* UPDATE/DELETE row identity vars are always needed */
+				RowIdentityVarInfo *ridinfo = (RowIdentityVarInfo *)
+					list_nth(root->row_identity_vars, var->varattno - 1);
+
+				/* Vars have cost zero, so no need to adjust reltarget->cost */
+				tuple_width += ridinfo->rowidwidth;
+				continue;
+			}
+			/* End - BUG#Z00006495 */
+
 			rel = find_base_rel(root, ((Var *)node)->varno);
 			reloid = planner_rt_fetch(rel->relid, root)->relid;
 
