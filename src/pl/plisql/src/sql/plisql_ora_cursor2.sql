@@ -8865,3 +8865,53 @@ exception
 	raise notice '%','unexpected error: ' || sqlerrm;
 end;
 /
+
+--bug#Z6496
+create table test_id(id integer,name varchar2(256));
+
+insert into test_id values(1,'sfdjsjf');
+insert into test_id values(2,'two');
+
+declare
+  var_sql varchar2(256);
+begin
+  var_sql := 'update test_id set id = 2';
+  execute immediate var_sql;
+  raise info 'sql_rowcount = %', sql%rowcount;
+end;
+/
+
+
+declare
+	var_sql varchar2(256);
+begin
+	var_sql := 'insert into test_id select * from test_id';
+	execute immediate var_sql;
+	raise info 'sql_rowcount = %', sql%rowcount;
+end;
+/
+
+
+declare
+	var_sql varchar2(256);
+begin
+	var_sql := 'delete from test_id';
+	execute immediate var_sql;
+	raise info 'sql_rowcount = %', sql%rowcount;
+end;
+/
+
+insert into test_id values(1,'one');
+
+declare
+	var_sql varchar2(256);
+	var test_id%rowtype;
+begin
+	var_sql := 'select * from test_id where id = :1';
+	execute immediate var_sql into var using 1;
+	raise info 'sql_rowcount = %', sql%rowcount;
+end;
+/
+
+--clean data
+drop table test_id;

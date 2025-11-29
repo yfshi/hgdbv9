@@ -10,6 +10,13 @@ SELECT PG_RELOAD_CONF();
  t
 (1 row)
 
+--wait pg_reload_conf effective
+select pg_sleep(2);
+ pg_sleep 
+----------
+ 
+(1 row)
+
 SET credcheck.username_min_length TO DEFAULT;
 SET credcheck.username_min_special TO DEFAULT;
 SET credcheck.username_min_upper TO DEFAULT;
