@@ -390,3 +390,135 @@ SELECT * FROM tb1;
 DROP TRIGGER tgtiotsc;
 DROP TABLE tb1;
 /* End - BUG#Z6170, BUG#Z6196 ,BUG#Z6187 */
+
+/* Begin - BUG#Z6366 */
+drop table if exists t1;
+drop table if exists t2;
+
+create table t1(
+  emp_id  number primary key,
+  emp_name varchar2(50),
+  salary number(10,2)
+);
+
+create table t2(
+  log_id  number primary key,
+  operation varchar2(50),
+  emp_id number
+);
+
+create view vt1 as
+  select emp_id, emp_name, salary from t1;
+
+CREATE SEQUENCE log_seq;
+
+CREATE OR REPLACE TRIGGER trg_vt1_ins
+INSTEAD OF INSERT ON vt1
+FOR EACH ROW
+BEGIN
+    INSERT INTO t1(emp_id, emp_name, salary)
+        VALUES (:NEW.emp_id, :NEW.emp_name, :NEW.salary);
+
+    INSERT INTO t2(log_id, operation, emp_id)
+        VALUES (log_seq.nextval, 'INSERT', :NEW.emp_id);
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_vt1_upd
+INSTEAD OF UPDATE ON vt1
+FOR EACH ROW
+BEGIN
+    UPDATE t1
+       SET emp_name = :NEW.emp_name,
+           salary   = :NEW.salary
+     WHERE emp_id   = :OLD.emp_id;
+
+    INSERT INTO t2(log_id, operation, emp_id)
+        VALUES (log_seq.nextval, 'UPDATE', :OLD.emp_id);
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_vt1_del
+INSTEAD OF DELETE ON vt1
+FOR EACH ROW
+BEGIN
+    DELETE FROM t1 WHERE emp_id = :OLD.emp_id;
+
+    INSERT INTO t2(log_id, operation, emp_id)
+        VALUES (log_seq.nextval, 'DELETE', :OLD.emp_id);
+END;
+/
+
+--
+-- Test insert
+--
+INSERT INTO vt1 VALUES (1, 'Tom', 5000); -- fire trg_vt1_ins trigger
+select * from t1 order by emp_id;
+select * from t2;
+
+-- disable trg_vt1_ins
+alter trigger trg_vt1_ins disable;
+
+select trigger_name, table_name, trigger_type, status from all_triggers where upper(trigger_name) = 'TRG_VT1_INS';
+INSERT INTO vt1 VALUES (2, 'Bob', 2000); -- not fire trg_vt1_ins trigger
+select * from t1 order by emp_id;
+select * from t2;
+
+-- enable trg_vt1_ins
+alter trigger trg_vt1_ins enable;
+select trigger_name, table_name, trigger_type, status from all_triggers where upper(trigger_name) = 'TRG_VT1_INS';
+INSERT INTO vt1 VALUES (3, 'Kobe', 9000); -- fire trg_vt1_ins trigger
+select * from t1 order by emp_id;
+select * from t2;
+
+--
+-- Test update
+--
+UPDATE vt1 SET salary = 6000 WHERE emp_id = 1; -- fire trg_vt1_upd trigger
+select * from t1 order by emp_id;
+select * from t2;
+
+-- disable trg_vt1_upd
+alter trigger trg_vt1_upd disable;
+select trigger_name, table_name, trigger_type, status from all_triggers where upper(trigger_name) = 'TRG_VT1_UPD';
+UPDATE vt1 SET salary = 50 WHERE emp_id = 2; -- not fire trg_vt1_upd trigger
+select * from t1 order by emp_id;
+select * from t2;
+
+-- enable trg_vt1_upd
+alter trigger trg_vt1_upd enable;
+select trigger_name, table_name, trigger_type, status from all_triggers where upper(trigger_name) = 'TRG_VT1_UPD';
+UPDATE vt1 SET salary = 2025 WHERE emp_id = 3; -- fire trg_vt1_upd trigger
+select * from t1 order by emp_id;
+select * from t2;
+
+--
+-- Test delete
+--
+DELETE FROM vt1 WHERE emp_id = 1; -- fire trg_vt1_del trigger
+select * from t1 order by emp_id;
+select * from t2;
+
+-- disable trg_vt1_del
+alter trigger trg_vt1_del disable;
+select trigger_name, table_name, trigger_type, status from all_triggers where upper(trigger_name) = 'TRG_VT1_DEL';
+DELETE FROM vt1 WHERE emp_id = 2; -- not fire trg_vt1_del trigger
+select * from t1 order by emp_id;
+select * from t2;
+
+-- enable trg_vt1_del
+alter trigger trg_vt1_del enable;
+select trigger_name, table_name, trigger_type, status from all_triggers where upper(trigger_name) = 'TRG_VT1_DEL';
+DELETE FROM vt1 WHERE emp_id = 3; -- fire trg_vt1_del trigger
+select * from t1 order by emp_id;
+select * from t2;
+
+-- cleanup
+drop trigger trg_vt1_del;
+drop trigger trg_vt1_upd;
+drop trigger trg_vt1_ins;
+drop view vt1;
+drop table t1;
+drop table t2;
+drop sequence log_seq;
+/* End - BUG#Z6366 */
