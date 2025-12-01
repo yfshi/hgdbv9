@@ -4064,6 +4064,7 @@ _copyRenameStmt(const RenameStmt *from)
 	COPY_STRING_FIELD(newname);
 	COPY_SCALAR_FIELD(behavior);
 	COPY_SCALAR_FIELD(missing_ok);
+	COPY_NODE_FIELD(realrelation);	/* BUG#Z5992 */
 
 	return newnode;
 }

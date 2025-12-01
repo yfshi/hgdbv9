@@ -22,8 +22,15 @@
 #include "utils/relcache.h"
 
 struct AlterTableUtilityContext;	/* avoid including tcop/utility.h here */
-
-
+/* Begin - BUG#Z5992 */
+typedef enum MySQLIndexModifyType
+{
+	MYS_IDX_UNKNOW,					/* unknow */
+	MYS_IDX_RENAME_CHECK,			/* rename index check */
+	MYS_IDX_FIND_INDEX_REAL_NAME,	/* get index real name */
+	MYS_IDX_CREATE_DIFFERENT_NAME	/* judge the index name when create index */
+} MySQLIndexModifyType;
+/* End - BUG#Z5992 */
 extern ObjectAddress DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 									ObjectAddress *typaddress, const char *queryString);
 
@@ -116,5 +123,12 @@ extern void ExecutePurge(PurgeStmt *stmt);
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 extern int DefinePartitionInterval(Relation parent, Datum *values, PartitionDirectory partdirectory);
+/* Begin - BUG#Z5992 */
+extern void modify_judge_or_modify_name(Oid myrelid,
+												   char *newrelname,
+												   bool is_index,
+												   MySQLIndexModifyType modifytyp,
+												   RenameStmt *stmt);
+/* End - BUG#Z5992 */
 
 #endif							/* TABLECMDS_H */

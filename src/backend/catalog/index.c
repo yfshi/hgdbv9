@@ -762,6 +762,13 @@ index_create(Relation heapRelation,
 	MultiXactId relminmxid;
 	bool		skip_create_storage = false;
 
+	/* Begin - BUG#Z5992 */
+	if (compatible_mode == MYS_MODE && OidIsValid(heapRelationId))
+	{
+		modify_judge_or_modify_name(heapRelationId, pstrdup(indexRelationName), true, MYS_IDX_CREATE_DIFFERENT_NAME, NULL);
+	}
+	/* End - BUG#Z5992 */
+
 	/* For global temporary table only */
 	if (RELATION_IS_GLOBAL_TEMP(heapRelation))
 	{

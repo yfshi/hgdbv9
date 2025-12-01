@@ -812,3 +812,27 @@ SHOW INDEX FROM test_comment1;
 SELECT INDEX_NAME,INDEX_COMMENT FROM mys_information_schema.STATISTICS WHERE TABLE_NAME = 'test_comment1';
 
 drop TABLE test_comment1;
+
+--fix bug 6441
+CREATE SCHEMA IF NOT EXISTS test_sche;
+CREATE TEMPORARY TABLE test_temp (id INT);
+SHOW TABLE STATUS FROM test_sche;
+SHOW TABLE STATUS FROM pg_temp_4;
+SHOW TABLE STATUS FROM pg_temp_4 LIKE 'test_temp';
+drop TABLE test_temp;
+drop schema test_sche;
+
+--fix bug 6442
+CREATE SCHEMA IF NOT EXISTS test_sche;
+SHOW TABLES FROM 123abc;
+SHOW TABLES FROM test_sche;
+create table test_sche.aa(id int);
+SHOW TABLES FROM test_sche;
+create database 123abc;
+create table 123abc.aa(id int);
+SHOW TABLES FROM 123abc;
+
+drop table 123abc.aa;
+drop table test_sche.aa;
+drop schema 123abc;
+drop schema test_sche;

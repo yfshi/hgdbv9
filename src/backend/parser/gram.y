@@ -5730,10 +5730,19 @@ AlterRedactionPolicyStmt:
 				n->policy_name = $4;
 				n->table_name = $5;
 				n->colname_list = $8;
-				//n->procname = $10;
-				//n->with_options = $11;
 				$$ = (Node *)n;
 			}
+		/* Begin - BUG#Z6485 */
+		| ALTER REDACTION POLICY name on_qualified_name MODIFY_P modify_column_lists
+			{
+				AlterRedactionPolicyStmt *n = makeNode(AlterRedactionPolicyStmt);
+				n->stmt_type = 'M';
+				n->policy_name = $4;
+				n->table_name = $5;
+				n->colname_list = $7;
+				$$ = (Node *)n;
+			}
+		/* End - BUG#Z6485 */
 		/*
 		 * ALTER REDACTION POLICY <name> ON table_name
 		 * DROP [ COLUMN ] <column_name>[,....]

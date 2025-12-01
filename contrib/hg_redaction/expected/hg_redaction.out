@@ -19,6 +19,7 @@ set hg_redaction.enable to on;
 --seccond step:
 --				create a superuser.
 create user redactionuser with CREATEROLE CREATEDB REPLICATION BYPASSRLS ;
+create user super1 with superuser password 'Hello@123';
 --third step:
 --			 create table and prepare data.
 \c - redactionuser
@@ -1548,7 +1549,6 @@ select * from tb order by id;
 (4 rows)
 
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 select name from tb group by name;
  name 
 ------
@@ -1581,7 +1581,6 @@ create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTI
 create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT * FROM tb1 JOIN tb2 USING (id);	--error
 ERROR:  redaction column id is allowed only in top targetlist
 SELECT a.id,a.name FROM tb1 a JOIN tb2 b on(a.id=b.id);	--error
@@ -1609,7 +1608,6 @@ create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTI
 create redaction policy tb3_pol1 on tb3 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 UNION SELECT id,name FROM tb2;
  id |  name  
 ----+--------
@@ -1640,8 +1638,9 @@ create redaction policy tb1_pol1 on tb1 add column  id using redact_all WITH OPT
 create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 a ORDER BY (SELECT name FROM tb2 b WHERE a.id = b.id);
+ERROR:  redaction column id is allowed only in top targetlist
+WITH w AS (SELECT id,name FROM tb1) SELECT id,name FROM w WHERE id = 3;
 ERROR:  redaction column id is allowed only in top targetlist
 drop table tb1, tb2;
 -- fix bug#Z6110
@@ -1652,7 +1651,6 @@ set hg_redaction.enable to on;
 create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 select * from tb1 where id = 2;
 ERROR:  redaction column id is allowed only in top targetlist
 select * from tb1 order by id;
@@ -1669,7 +1667,6 @@ create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTI
 create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT * FROM tb1 JOIN tb2 USING (id);
 ERROR:  redaction column id is allowed only in top targetlist
 SELECT a.id,a.name FROM tb1 a JOIN tb2 b USING (id) where b.id=1;
@@ -1699,7 +1696,6 @@ create redaction policy tb2_pol1 on tb2 add column  id using redact_all WITH OPT
 create redaction policy tb3_pol1 on tb3 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 UNION SELECT id,name FROM tb2;
  id |  name  
 ----+--------
@@ -1728,7 +1724,6 @@ create redaction policy tb1_pol1 on tb1 add column  id using redact_all WITH OPT
 create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 a ORDER BY (SELECT name FROM tb2 b WHERE a.id = b.id);
 ERROR:  redaction column id is allowed only in top targetlist
 drop table tb1, tb2;
@@ -1743,8 +1738,9 @@ create redaction policy tb1_pol1 on tb1 add column  id using redact_all WITH OPT
 create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION equal);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 a ORDER BY (SELECT name FROM tb2 b WHERE a.id = b.id);
+ERROR:  redaction column id is allowed only in top targetlist
+WITH w AS (SELECT id,name FROM tb1) SELECT id,name FROM w WHERE id = 3;	--err
 ERROR:  redaction column id is allowed only in top targetlist
 drop table tb1, tb2;
 -- fix bug#Z6116
@@ -1758,7 +1754,6 @@ create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTI
 create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE query,EXCEPTION none);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 WHERE id = (SELECT min(id) FROM tb2 WHERE name = 'highgo');  --three entry
  id |  name  
 ----+--------
@@ -1784,7 +1779,6 @@ create redaction policy tb1_pol1 on tb1 add column id using redact_all  with opt
 create redaction policy tb2_pol1 on tb2 add column id using redact_all with options(SCOPE query,EXCEPTION equal);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT min(id),name FROM tb1 GROUP BY name HAVING  max(id) > (SELECT min(id) FROM tb1);
  min | name 
 -----+------
@@ -1805,7 +1799,6 @@ create redaction policy tb2_pol1 on tb2 add column  id using redact_all with opt
 create redaction policy tb3_pol1 on tb3 add column id using redact_all with options(scope top_tlist,exception none);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 UNION SELECT id,name FROM tb2; 
  id |  name  
 ----+--------
@@ -1845,7 +1838,6 @@ create redaction policy tb1_pol1 on tb1 add column  id using redact_all WITH OPT
 create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist,EXCEPTION none);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 WHERE id = (SELECT min(id) FROM tb2 WHERE name = 'highgo');
  id |  name  
 ----+--------
@@ -1887,7 +1879,6 @@ create redaction policy tb2_pol1 on tb2 add column  id using redact_all WITH OPT
 create redaction policy tb3_pol1 on tb3 add column id using redact_all WITH OPTIONS (SCOPE top_tlist,EXCEPTION equal);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 UNION SELECT id,name FROM tb2;
  id |  name  
 ----+--------
@@ -1927,7 +1918,6 @@ create redaction policy tb1_pol1 on tb1 add column  id using redact_all WITH OPT
 create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist,EXCEPTION equal);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 WHERE id = (SELECT min(id) FROM tb2 WHERE name = 'highgo');
  id |  name  
 ----+--------
@@ -1966,7 +1956,6 @@ create redaction policy tb1_pol1 on tb1 add column id using redact_all WITH OPTI
 create redaction policy tb2_pol1 on tb2 add column id using redact_all WITH OPTIONS (SCOPE top_tlist_or_error,EXCEPTION none);
 \c - redactionuser
 set hg_redaction.enable to on;
-set se_feature.mode to on;
 SELECT id,name FROM tb1 NATURAL JOIN tb2;
  id |  name  
 ----+--------
@@ -2002,3 +1991,177 @@ SELECT * FROM tb1 a CROSS JOIN tb2;
 (9 rows)
 
 drop table tb1, tb2;
+-- fix bug 6440
+\c - super1
+set hg_redaction.enable to on;
+create table tb1(id int4, info text);
+insert into tb1 values(123,'highgo456');
+create user u1 with password 'Qwer@1234';
+create redaction policy tb1_pol on tb1 add column id using hg_security.redact_all;
+\c - u1
+set hg_redaction.enable to on;
+create redaction policy tb1_pol on tb1 add column info using hg_security.redact_all; --error
+ERROR:  permission denied to create redacation policy "tb1_pol"
+HINT:  Must be superuser to create a redacation policy.
+alter redaction policy tb1_pol on tb1 rename to tb1_pol_new; --error
+ERROR:  permission denied to alter redacation policy"tb1_pol"
+HINT:  Must be superuser to alter a redacation policy.
+alter redaction policy tb1_pol1 on tb1 disable;		--error
+ERROR:  permission denied to alter redacation policy"tb1_pol1"
+HINT:  Must be superuser to alter a redacation policy.
+alter redaction policy tb1_pol1 on tb1 enable;	 --error
+ERROR:  permission denied to alter redacation policy"tb1_pol1"
+HINT:  Must be superuser to alter a redacation policy.
+drop redaction policy tb1_pol on tb1;	--error
+ERROR:  permission denied to drop redacation policy.
+HINT:  Must be superuser to drop a redacation policy.
+\c - super1
+drop table tb1;
+create table tb1(id int4, info text);
+insert into tb1 values(123,'highgo456');
+\c - super1
+set hg_redaction.enable to on;
+set se_feature.mode to on;
+create redaction policy tb1_pol on tb1 add column id using hg_security.redact_all; --error
+ERROR:  permission denied to create redacation policy "tb1_pol"
+HINT:  Must be syssso to create a redacation policy.
+alter redaction policy tb1_pol on tb1 rename to tb1_pol_new; --error
+ERROR:  permission denied to alter redacation policy"tb1_pol"
+HINT:  Must be syssso to alter a redacation policy.
+alter redaction policy tb1_pol_new on tb1 disable;		--error
+ERROR:  permission denied to alter redacation policy"tb1_pol_new"
+HINT:  Must be syssso to alter a redacation policy.
+alter redaction policy tb1_pol_new on tb1 enable;	 --error
+ERROR:  permission denied to alter redacation policy"tb1_pol_new"
+HINT:  Must be syssso to alter a redacation policy.
+drop redaction policy tb1_pol_new on tb1;	--error
+ERROR:  permission denied to drop redacation policy.
+HINT:  Must be syssso to drop a redacation policy.
+drop table tb1;
+\c - super1
+drop table tb1;
+ERROR:  table "tb1" does not exist
+create table tb1(id int4, info text);
+insert into tb1 values(123,'highgo456');
+set hg_redaction.enable to on;
+create redaction policy tb1_pol on tb1 add column id using hg_security.redact_all; --successful
+alter redaction policy tb1_pol on tb1 rename to tb1_pol_new; --successful
+alter redaction policy tb1_pol_new on tb1 disable;		--successful
+alter redaction policy tb1_pol_new on tb1 enable;	 --successful
+drop redaction policy tb1_pol_new on tb1;	--successful
+drop table tb1;
+-- fix bug 4685
+create table tb1(id int4 primary key,info text,name text);
+insert into tb1 values(111,'hgdb','high23go');
+create redaction policy tb1_pol on tb1 add column info,name using hg_security.redact_digits with options(scope query,exception none);
+grant all on table tb1 to u1;
+\c - u1
+set hg_redaction.enable to on;
+select * from tb1 ;
+ id  | info |   name   
+-----+------+----------
+ 111 | hgdb | high00go
+(1 row)
+
+\c - super1
+set hg_redaction.enable to on;
+alter redaction policy tb1_pol on tb1 modify  column info  using hg_security.redact_all;
+\c - u1
+set hg_redaction.enable to on;
+select * from tb1 ;
+ id  | info |   name   
+-----+------+----------
+ 111 | xxxx | high00go
+(1 row)
+
+\c - super1
+set hg_redaction.enable to on;
+alter redaction policy tb1_pol on tb1 modify  info,name using hg_security.redact_all;
+\c - u1
+set hg_redaction.enable to on;
+select * from tb1 ;
+ id  | info |   name   
+-----+------+----------
+ 111 | xxxx | xxxxxxxx
+(1 row)
+
+\c - super1
+set hg_redaction.enable to on;
+alter redaction policy tb1_pol on tb1 modify  info using hg_security.redact_all,name using hg_security.redact_all;
+\c - u1
+set hg_redaction.enable to on;
+select * from tb1 ;
+ id  | info |   name   
+-----+------+----------
+ 111 | xxxx | xxxxxxxx
+(1 row)
+
+\c - super1
+set hg_redaction.enable to on;
+alter redaction policy tb1_pol on tb1 modify  info with options(scope query,exception equal);
+\c - u1
+set hg_redaction.enable to on;
+select * from tb1 ;
+ id  | info |   name   
+-----+------+----------
+ 111 | xxxx | xxxxxxxx
+(1 row)
+
+\c - super1
+set hg_redaction.enable to on;
+alter redaction policy tb1_pol on tb1 modify  info using hg_security.redact_all with options(scope query,exception equal);
+\c - u1
+set hg_redaction.enable to on;
+select * from tb1 ;
+ id  | info |   name   
+-----+------+----------
+ 111 | xxxx | xxxxxxxx
+(1 row)
+
+\c - super1
+set hg_redaction.enable to on;
+alter redaction policy tb1_pol on tb1 modify  info using hg_security.redact_all
+with options(scope query,exception equal),name using hg_security.redact_all with  options(scope query,exception equal);
+\c - u1
+set hg_redaction.enable to on;
+select * from tb1 ;
+ id  | info |   name   
+-----+------+----------
+ 111 | xxxx | xxxxxxxx
+(1 row)
+
+\c - super1
+select polname,tabname,colname,procname,polscope,polexception from hg_security.hg_redaction where tabname='tb1';
+ polname | tabname | colname |  procname  | polscope | polexception 
+---------+---------+---------+------------+----------+--------------
+ tb1_pol | tb1     | info    | redact_all |        1 |           16
+ tb1_pol | tb1     | name    | redact_all |        1 |           16
+(2 rows)
+
+--test by dev
+set hg_redaction.enable to on;
+alter redaction policy tb1_pol on tb1 drop column info;
+select polname,tabname,colname,procname,polscope,polexception from hg_security.hg_redaction where tabname='tb1';
+ polname | tabname | colname |  procname  | polscope | polexception 
+---------+---------+---------+------------+----------+--------------
+ tb1_pol | tb1     | name    | redact_all |        1 |           16
+(1 row)
+
+alter redaction policy tb1_pol on tb1 add column info using hg_security.redact_all;
+select polname,tabname,colname,procname,polscope,polexception from hg_security.hg_redaction where tabname='tb1';
+ polname | tabname | colname |  procname  | polscope | polexception 
+---------+---------+---------+------------+----------+--------------
+ tb1_pol | tb1     | name    | redact_all |        1 |           16
+ tb1_pol | tb1     | info    | redact_all |        1 |           16
+(2 rows)
+
+\c - u1
+set hg_redaction.enable to on;
+select * from tb1 ;
+ id  | info |   name   
+-----+------+----------
+ 111 | xxxx | xxxxxxxx
+(1 row)
+
+\c - super1
+drop table tb1;

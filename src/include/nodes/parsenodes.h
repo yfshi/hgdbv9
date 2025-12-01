@@ -3618,6 +3618,7 @@ typedef struct RenameStmt
 	char	   *newname;		/* the new name */
 	DropBehavior behavior;		/* RESTRICT or CASCADE behavior */
 	bool		missing_ok;		/* skip error if missing? */
+	RangeVar   *realrelation;		/* BUG#Z5992 real relation */
 } RenameStmt;
 
 /* ----------------------

@@ -10459,6 +10459,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->subname = NULL;
 					n->newname = $8;
 					n->missing_ok = false;
+					n->realrelation = $3;	/* BUG#Z5992 */
 					$$ = (Node *)n;
 				}
 			/* End - ReqID:SRS-MYSQL-RENAME */
@@ -22395,6 +22396,7 @@ makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 	rt2 = makeShowResTarget(NULL, (Node *) cref, -1);
 	/* [LIKE 'pattern' | WHERE expr] */
 	outer = makeShowSelectStmt(list_make1(rt2), list_make1(rss), makeShowFilter(like_name, filter));
+	outer->mysshowtype =  SHOW_TABLES;	/* BUG#Z6442 */
 
 	return outer;
 }

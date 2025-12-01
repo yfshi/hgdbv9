@@ -3251,7 +3251,7 @@ ERROR:  constraint "foo" for relation "tt9" already exists
 ALTER TABLE tt9 ADD UNIQUE(c);
 ALTER TABLE tt9 ADD UNIQUE(c);  -- picks nonconflicting name
 ALTER TABLE tt9 ADD CONSTRAINT tt9_c_key UNIQUE(c);  -- fail, dup name
-ERROR:  relation "tt9_c_key" already exists
+ERROR:  Duplicate key name "tt9_c_key"
 ALTER TABLE tt9 ADD CONSTRAINT foo UNIQUE(c);  -- fail, dup name
 ERROR:  constraint "foo" for relation "tt9" already exists
 ALTER TABLE tt9 ADD CONSTRAINT tt9_c_key CHECK(c > 5);  -- fail, dup name

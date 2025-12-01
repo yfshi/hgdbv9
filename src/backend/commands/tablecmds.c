@@ -4446,6 +4446,18 @@ RenameRelation(RenameStmt *stmt)
 	}
 	/* End - ReqID:SRS-MYSQL-CASE */
 
+	/* Begin - BUG#Z5992 */
+	if (compatible_mode == MYS_MODE && is_index_stmt && stmt->realrelation != NULL)
+	{
+		Oid			reloid = InvalidOid;
+		char	   *indexname = stmt->relation->relname;
+
+		reloid = RangeVarGetRelid(stmt->realrelation, NoLock, false);
+
+		modify_judge_or_modify_name(reloid, indexname, is_index_stmt, MYS_IDX_FIND_INDEX_REAL_NAME, stmt);
+	}
+	/* End - BUG#Z5992 */
+
 	/*
 	 * Grab an exclusive lock on the target table, index, sequence, view,
 	 * materialized view, or foreign table, which we will NOT release until
@@ -4553,6 +4565,10 @@ RenameRelationInternal(Oid myrelid, const char *newrelname, bool is_internal, bo
 	targetrelation = relation_open(myrelid, is_index ? ShareUpdateExclusiveLock : AccessExclusiveLock);
 	namespaceId = RelationGetNamespace(targetrelation);
 
+	/* Begin - BUG#Z5992 */
+	modify_judge_or_modify_name(myrelid, pstrdup(newrelname), is_index, MYS_IDX_RENAME_CHECK, NULL);
+	/* End - BUG#Z5992 */
+
 	/*
 	 * Find relation's pg_class tuple, and make sure newrelname isn't in use.
 	 */
@@ -4564,11 +4580,20 @@ RenameRelationInternal(Oid myrelid, const char *newrelname, bool is_internal, bo
 	otid = reltup->t_self;
 	relform = (Form_pg_class) GETSTRUCT(reltup);
 
-	if (get_relname_relid(newrelname, namespaceId) != InvalidOid)
-		ereport(ERROR,
-				(errcode(ERRCODE_DUPLICATE_TABLE),
-				 errmsg("relation \"%s\" already exists",
-						newrelname)));
+	/* Begin - BUG#Z5992 */
+	if (compatible_mode == MYS_MODE && is_index)
+	{
+		/* do nothing.*/
+	}
+	else
+	{
+		if (get_relname_relid(newrelname, namespaceId) != InvalidOid)
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_TABLE),
+					 errmsg("relation \"%s\" already exists",
+							newrelname)));
+	}
+	/* End - BUG#Z5992 */
 
 	/*
 	 * RenameRelation is careful not to believe the caller's idea of the
@@ -21828,3 +21853,135 @@ ExecutePurge(PurgeStmt *stmt)
 	}
 }
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+/* Begin - BUG#Z5992
+ * modify_judge_or_modify_name
+ *
+ * Search for and replace the actual index name,
+ * and perform duplicate name checking.
+ */
+void
+modify_judge_or_modify_name(Oid myrelid, char *newrelname, bool is_index,
+									   MySQLIndexModifyType modifytyp, RenameStmt *stmt)
+{
+	if (compatible_mode == MYS_MODE && is_index)
+	{
+		HeapTuple	indextup;
+		Oid			reloid = InvalidOid;
+		Relation	indexRelation;
+		ScanKeyData skey;
+		SysScanDesc scan;
+		HeapTuple	indexTuple;
+		char		*oldindexname = NULL;
+
+		if (modifytyp == MYS_IDX_RENAME_CHECK)
+		{
+			/* When renaming an index, you must first
+			 * locate the index name and the OID of
+			 * its table
+			 */
+			indextup = SearchSysCache1(INDEXRELID, ObjectIdGetDatum(myrelid));
+			if (HeapTupleIsValid(indextup))
+			{
+				Form_pg_index indexform = (Form_pg_index) GETSTRUCT(indextup);
+
+				reloid = indexform->indrelid;
+				oldindexname = get_rel_name(myrelid);
+				ReleaseSysCache(indextup);
+			}
+		}
+		else if (modifytyp == MYS_IDX_FIND_INDEX_REAL_NAME || modifytyp == MYS_IDX_CREATE_DIFFERENT_NAME)
+		{
+			/* the myrelid is table oid */
+			reloid = myrelid;
+		}
+
+		if (OidIsValid(reloid))
+		{
+			/* Scan pg_index using the table's
+			 * OID to find each index defined on
+			 * the table
+			 */
+			indexRelation = table_open(IndexRelationId, AccessShareLock);
+			ScanKeyInit(&skey,
+					Anum_pg_index_indrelid,
+					BTEqualStrategyNumber, F_OIDEQ,
+					ObjectIdGetDatum(reloid));
+
+			scan = systable_beginscan(indexRelation, IndexIndrelidIndexId, true,
+									  NULL, 1, &skey);
+
+			while (HeapTupleIsValid(indexTuple = systable_getnext(scan)))
+			{
+				Form_pg_index index = (Form_pg_index) GETSTRUCT(indexTuple);
+				Oid		perindexoid = InvalidOid;
+
+				/* index oid */
+				perindexoid = index->indexrelid;
+
+				/* Retrieve the index name based on its OID */
+				if (OidIsValid(perindexoid))
+				{
+					char	   *result = NULL;
+
+					/* get the index name */
+					result = get_rel_name(perindexoid);
+					if (result != NULL)
+					{
+						/* When renaming or creating an index,
+						 * case-insensitive name conflicts must
+						 * be considered; if an index with the
+						 * same name already exits, an error should
+						 * be raised.
+						 */
+						if (modifytyp == MYS_IDX_RENAME_CHECK || modifytyp == MYS_IDX_CREATE_DIFFERENT_NAME)
+						{
+							bool	errflg = false;
+
+							/* For rename: If the current name and the new name
+							 * are the same except for case differences, no error
+							 * should be reported; otherwise a conflict should
+							 * export an error.
+							 */
+							if (modifytyp == MYS_IDX_RENAME_CHECK && 
+								newrelname != NULL && pg_strcasecmp(result, newrelname) == 0 &&
+								oldindexname != NULL && pg_strcasecmp(newrelname, oldindexname))
+							{
+								errflg = true;
+							}
+
+							/* For index create, if an index with the same
+							 * name alreadu exists, an error must be reported
+							 */
+							if (!errflg && modifytyp == MYS_IDX_CREATE_DIFFERENT_NAME &&
+								newrelname != NULL && pg_strcasecmp(result, newrelname) == 0)
+							{
+								errflg = true;
+							}
+
+							/* ereport an error */
+							if (errflg)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_DUPLICATE_TABLE),
+										 errmsg("Duplicate key name \"%s\"",
+												newrelname)));
+							}
+						}
+						else if (modifytyp == MYS_IDX_FIND_INDEX_REAL_NAME)
+						{
+							/* Assign the actual index name to it */
+							if (pg_strcasecmp(result, newrelname) == 0)
+							{
+								stmt->relation->relname = result;
+							}
+						}
+					}
+				}
+			}
+
+			systable_endscan(scan);
+			table_close(indexRelation, AccessShareLock);
+		}
+	}
+}
+/* End - BUG#Z5992 */

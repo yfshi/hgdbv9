@@ -3076,3 +3076,26 @@ select col_int8 XOR col_uint3 from t_binary_operators;
  f
 (4 rows)
 
+/* Begin - bug#z6043 */
+create table t_char_arith_hex(c char(10), v varchar(255),t text);
+insert into t_char_arith_hex values (X'41', X'42', X'43'), (x'31', x'32', x'33'), (0x39, 0x30, 0x35);
+select c, v, t,
+c + 10 as c_add10,
+c + 0x10 as c_add_hex,
+v + 10 as v_add10,
+v + 0x10 as v_add_hex,
+t + 10 as t_add10,
+t + 0x10 as t_add_hex
+from t_char_arith_hex;
+WARNING:  Truncated incorrect DECIMAL value: 'A         '
+WARNING:  Truncated incorrect DECIMAL value: 'B                                                                                                                                                                                                                                                              '
+WARNING:  Truncated incorrect DECIMAL value: 'C'
+     c      |                                                                                                                                v                                                                                                                                | t | c_add10 | c_add_hex | v_add10 | v_add_hex | t_add10 | t_add_hex 
+------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---+---------+-----------+---------+-----------+---------+-----------
+ A          | B                                                                                                                                                                                                                                                               | C |      10 |        16 |      10 |        16 |      10 |        16
+ 1          | 2                                                                                                                                                                                                                                                               | 3 |      11 |        17 |      12 |        18 |      13 |        19
+ 9          | 0                                                                                                                                                                                                                                                               | 5 |      19 |        25 |      10 |        16 |      15 |        21
+(3 rows)
+
+drop table t_char_arith_hex;
+/* End - bug#z6043 */
