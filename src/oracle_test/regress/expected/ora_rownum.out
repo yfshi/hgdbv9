@@ -1762,3 +1762,94 @@ select * from empg where rownum <= 1 and salary IS NULL;
 reset ivorysql.enable_emptystring_to_null;
 drop table empg;
 /* End - OA-REQ-1698 */
+---bug#Z6495
+create table lp (a char) partition by list (a);
+create table lp_default partition of lp default;
+create table lp_ef partition of lp for values in ('e', 'f');
+create table lp_ad partition of lp for values in ('a', 'd');
+create table lp_bc partition of lp for values in ('b', 'c');
+create table lp_g partition of lp for values in ('g');
+update lp set  a = 'g' where rownum < 3;
+insert into lp values('e');
+insert into lp values('a');
+insert into lp values('b');
+insert into lp values('g');
+select  *from lp order by a;
+ a 
+---
+ a
+ b
+ e
+ g
+(4 rows)
+
+update lp set a = 'x' where rownum < 2;
+select count(*) from lp where a = 'x';
+ count 
+-------
+     1
+(1 row)
+
+insert into lp values('x');
+delete lp where a = 'x' and rownum < 1;
+delete lp where a = 'x' and rownum < 2;
+insert into lp values('m');
+insert into lp values('m');
+update lp set a = 'y' where a = 'm'  and rownum < 3;
+select count(*) from lp where a = 'y';
+ count 
+-------
+     2
+(1 row)
+
+update lp set a = 'x' where a = 'y' and rownum > 4;
+--complex test
+CREATE TABLE partiton_first_level (a int, b int, c varchar2(256)) PARTITION BY range (a);
+CREATE TABLE partiton_second_test1 PARTITION OF partiton_first_level
+  FOR VALUES FROM (minvalue) TO (0) PARTITION BY list (b);
+CREATE TABLE partiton_second_test2 PARTITION OF partiton_first_level
+  FOR VALUES FROM (0) TO (100) PARTITION BY list (b);
+CREATE TABLE partiton_second_test3 PARTITION OF partiton_first_level
+  FOR VALUES FROM (100) TO (200) partition BY list(b);
+CREATE TABLE partiton_second_leaf1 PARTITION OF partiton_second_test1 FOR VALUES IN (1);
+CREATE TABLE partiton_second_leaf2 PARTITION OF partiton_second_test1 FOR VALUES IN (2);
+CREATE TABLE partiton_second_leaf3 PARTITION OF partiton_second_test1 FOR VALUES IN (3);
+CREATE TABLE partiton_second_leaf4 PARTITION OF partiton_second_test2 FOR VALUES IN (1);
+CREATE TABLE partiton_second_leaf5 PARTITION OF partiton_second_test2 FOR VALUES IN (2);
+CREATE TABLE partiton_second_leaf6 PARTITION OF partiton_second_test2 FOR VALUES IN (3);
+CREATE TABLE partiton_second_leaf7 PARTITION OF partiton_second_test3 FOR VALUES IN (1);
+CREATE TABLE partiton_second_leaf8 PARTITION OF partiton_second_test3 FOR VALUES IN (2);
+CREATE TABLE partiton_second_leaf9 PARTITION OF partiton_second_test3 FOR VALUES IN (3);
+CREATE TABLE partiton_second_test4 PARTITION OF partiton_first_level
+  FOR VALUES FROM (200) TO (300);
+insert into partiton_first_level values(-1, 1,'-1');
+insert into partiton_first_level values(-3, 2 ,'-3');
+insert into partiton_first_level values(-4, 3 ,'-4');
+insert into partiton_first_level values(55, 1,'55');
+insert into partiton_first_level values(78, 2 ,'78');
+insert into partiton_first_level values(99, 3 ,'99');
+insert into partiton_first_level values(104, 1,'104');
+insert into partiton_first_level values(156, 2 ,'156');
+insert into partiton_first_level values(199, 3 ,'199');
+insert into partiton_first_level values(245, 9,'245');
+insert into partiton_first_level values(235, 22 ,'235');
+insert into partiton_first_level values(299, 28 ,'299');
+--one row update
+update partiton_first_level set a = 245,b = 28,c = 'xiexie' where a < -1 and rownum < 2;
+--2 rows delete
+delete from partiton_first_level where a >0 and a < 100 and rownum < 3;
+--3 rows update
+update partiton_first_level set a = a + 1,b = 3,c = c || 'xiexie' where a > 100 and a < 200 and rownum < 4;
+--update 0
+update partiton_first_level set a = '1',b = 4,c = 'sfjs' where a > 0 and rownum > 2;
+--0 delete
+delete from partiton_first_level where rownum > 2;
+--2 rows delete
+delete from partiton_first_level where rownum < 3;
+--0 update
+update partiton_first_level set a = 1000,b = 29,c = 'sfs' where rownum > 9;
+--4 rows update
+update partiton_first_level set a = 100,b = 1,c = 'sfs' where rownum < 5;
+--clean data
+drop table lp;
+drop table partiton_first_level;
