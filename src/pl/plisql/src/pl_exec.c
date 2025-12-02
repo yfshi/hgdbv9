@@ -5350,6 +5350,9 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 		case SPI_OK_MERGE:	/* BUG#Z1389 */
 		case SPI_OK_UTILITY:
 		case SPI_OK_REWRITTEN:
+			/* Begin - BUG#Z00006496 */
+			exec_set_implicit_cursor_attribute(estate, SPI_processed);
+			/* End - BUG#Z00006496 */
 			break;
 
 		case 0:

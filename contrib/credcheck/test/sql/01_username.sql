@@ -5,6 +5,8 @@ LOAD 'credcheck';
 ALTER SYSTEM SET credcheck.enable TO ON;
 ALTER SYSTEM SET credcheck.login_msg_display TO OFF;
 SELECT PG_RELOAD_CONF();
+--wait pg_reload_conf effective
+select pg_sleep(2);
 SET credcheck.username_min_length TO DEFAULT;
 SET credcheck.username_min_special TO DEFAULT;
 SET credcheck.username_min_upper TO DEFAULT;
