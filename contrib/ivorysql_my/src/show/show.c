@@ -60,7 +60,7 @@
 #include "executor/spi.h"
 #include "utils/lsyscache.h"
 #include "utils/varlena.h" /* BUG#Z6281*/
-
+#include "utils/ruleutils.h" /* BUG#Z6420*/
 
 /* Begin - #Z6036 */
 
@@ -121,6 +121,7 @@ PG_FUNCTION_INFO_V1(mys_show_create_table);
 PG_FUNCTION_INFO_V1(mys_show_privileges);
 PG_FUNCTION_INFO_V1(mys_show_warnings);
 PG_FUNCTION_INFO_V1(show_next_autoinc);
+PG_FUNCTION_INFO_V1(mysql_get_indexdef_columns); /* BUG#Z6420*/
 
 static void get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf);
 static void get_inherits(Oid tableoid, Form_pg_class pgclass, StringInfo inheritsbuf);
@@ -459,13 +460,6 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 	SPITupleTable	   *spi_tuptable;
 	TupleDesc			spi_tupdesc;
 
-	/*Begin BUG#Z6281*/
-	int					i_indexname;
-	int					i_indexnamedef;
-	char			   *indexname;
-	char			   *indexnamestr;
-	/*End BUG#Z6281*/
-
 	actual_atts = 0;
 
 	/* Query all columns of the table along with their default values */
@@ -707,17 +701,23 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 	if (SPI_finish() != SPI_OK_FINISH)
 		elog(ERROR, "SPI_finish failed");
 
-	/*Begin BUG#Z6281*/
+	/*Begin BUG#Z6281 BUG#Z6420 */
 	resetStringInfo(&query_attribute_str);
 	appendStringInfo(&query_attribute_str,
-		"SELECT i.relname AS index_name, "
-		"string_agg(a.attname, ', ' ORDER BY array_position(ix.indkey, a.attnum)) AS indexed_columns "
-		"FROM pg_class t "
-		"JOIN pg_index ix ON t.oid = ix.indrelid "
-		"JOIN pg_class i ON i.oid = ix.indexrelid "
-		"JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey) "
-		"WHERE t.oid = %u and ix.indisunique = false and ix.indisprimary = false "
-		"GROUP BY i.relname ORDER BY i.relname; ", tableoid);
+	"select distinct cs.INDEX_NAME, cs.NON_UNIQUE, cs.INDEX_COMMENT, cs.INDEX_TYPE,"
+	"mys_information_schema.mysql_get_indexdef_columns(ix.indexrelid) AS indexed_columns,"
+	"CASE WHEN ix.indexprs IS NOT NULL "
+	"THEN 1 ELSE 0 END::integer AS is_expr "
+	"from mys_information_schema.showstatistics cs "
+	"JOIN pg_class t ON  t.relname= cs.INDEX_NAME "
+	"JOIN pg_index ix on t.oid = ix.indexrelid "
+	"LEFT JOIN pg_attribute a on a.attrelid = t.oid "
+	"where t.relname IN (select relname from pg_class where oid in "
+	"(select indexrelid from pg_index where indrelid = %u)) "
+	"and t.relname NOT IN (select ct.conname from pg_constraint ct "
+	"where conrelid = %u order by oid)"
+	" GROUP BY cs.INDEX_NAME, cs.COLUMN_NAME,  ix.indexprs, ix.indrelid, "
+	"cs.NON_UNIQUE, cs.INDEX_COMMENT, ix.indexrelid, cs.INDEX_TYPE; ", tableoid, tableoid);
 
 	if (SPI_connect() != SPI_OK_CONNECT)
 		elog(ERROR, "SPI_connect failed");
@@ -728,67 +728,155 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 	proc = SPI_processed;
 	if (proc > 0)
 	{
+		int i_indexname;
+		int i_unique_flag;
+		int i_indexcomment;
+		int i_indexed_columns;
+		int i_is_expr;
+		int i_index_type;
+		char *indexname = NULL;
+		bool unique_flag = -1;
+		char *indexcomment = NULL;
+		char *indexed_columns = NULL;
+		int is_expr = false;
+		char *index_type = NULL;
+		char *to_upper = NULL;
+
 		spi_tuptable = SPI_tuptable;
 		spi_tupdesc = spi_tuptable->tupdesc;
 		for (i = 0; i < proc; i++)
 		{
 			HeapTuple	spi_tuple;
+			indexcomment = NULL;
+			index_type = NULL;
 
 			spi_tuple = spi_tuptable->vals[i];
-			i_indexname = SPI_fnumber(spi_tupdesc, "index_name");
-			i_indexnamedef = SPI_fnumber(spi_tupdesc, "indexed_columns");
+			i_indexname = SPI_fnumber(spi_tupdesc, "INDEX_NAME");
+			i_unique_flag = SPI_fnumber(spi_tupdesc, "NON_UNIQUE");
+			i_indexcomment = SPI_fnumber(spi_tupdesc, "INDEX_COMMENT");
+			i_indexed_columns = SPI_fnumber(spi_tupdesc, "indexed_columns");
+			i_is_expr = SPI_fnumber(spi_tupdesc, "is_expr");
+			i_index_type = SPI_fnumber(spi_tupdesc, "INDEX_TYPE");
+
 			indexname = pstrdup(SPI_getvalue(spi_tuple,spi_tupdesc, i_indexname));
-			indexnamestr = pstrdup(SPI_getvalue(spi_tuple, spi_tupdesc, i_indexnamedef));
+			unique_flag = atoi(SPI_getvalue(spi_tuple,spi_tupdesc, i_unique_flag)) == 0? true:false;
+			if (SPI_getvalue(spi_tuple,spi_tupdesc, i_indexcomment) != NULL)
+				indexcomment = pstrdup(SPI_getvalue(spi_tuple,spi_tupdesc, i_indexcomment));
+			indexed_columns = pstrdup(SPI_getvalue(spi_tuple, spi_tupdesc, i_indexed_columns));
+			is_expr = atoi(SPI_getvalue(spi_tuple,spi_tupdesc, i_is_expr));
+			index_type = pstrdup(SPI_getvalue(spi_tuple, spi_tupdesc, i_index_type));
 
-			if (sql_quote_show_create)
+			appendStringInfoString(attrbuf, ",");
+			if (is_expr)
 			{
-				List *namelist = NIL;
-				ListCell   *cell;
-				int num = 0;
-
-				SplitIdentifierString(indexnamestr, ',', &namelist);
-
-				if (has_sql_mode(MODE_ANSI_QUOTES))
+				if (sql_quote_show_create)
 				{
-
-					appendStringInfo(attrbuf, "\n    KEY \"%s\" (", indexname);
-					foreach(cell, namelist)
+					if (has_sql_mode(MODE_ANSI_QUOTES))
 					{
-						if (num > 0)
-							appendStringInfo(attrbuf, ",\"%s\"", (char *)lfirst(cell));
+						if (unique_flag)
+							appendStringInfo(attrbuf, "\n    UNIQUE KEY \"%s\" ", indexname);
 						else
-							appendStringInfo(attrbuf, "\"%s\"", (char *)lfirst(cell));
+							appendStringInfo(attrbuf, "\n    KEY \"%s\" ", indexname);
+					}
+					else
+					{
+						if (unique_flag)
+							appendStringInfo(attrbuf, "\n    UNIQUE KEY `%s` ", indexname);
+						else
+							appendStringInfo(attrbuf, "\n    KEY `%s` ", indexname);
+					}
+				}
+				else
+				{
+					if (unique_flag)
+						appendStringInfo(attrbuf, "\n    UNIQUE KEY %s ", indexname);
+					else
+						appendStringInfo(attrbuf, "\n    KEY %s ", indexname);
+				}
 
-						num++;
+				/* NOTE: this is temporary solution. when the future,
+					"left"(col1::text, 10) will optimize*/
+				appendStringInfo(attrbuf, "(%s)", indexed_columns);
+				if (index_type)
+				{
+					to_upper = upper_character(index_type, strlen(index_type));
+					appendStringInfo(attrbuf, " USING %s", to_upper);
+					pfree(to_upper);
+				}
+
+				if (indexcomment)
+					appendStringInfo(attrbuf, " COMMENT %s", indexcomment);
+			}
+			else
+			{
+				if (sql_quote_show_create)
+				{
+					List *namelist = NIL;
+					ListCell   *cell;
+					int num = 0;
+
+					SplitIdentifierString(indexed_columns, ',', &namelist);
+
+					if (has_sql_mode(MODE_ANSI_QUOTES))
+					{
+						if (unique_flag)
+							appendStringInfo(attrbuf, "\n    UNIQUE KEY \"%s\" (", indexname);
+						else
+							appendStringInfo(attrbuf, "\n    KEY \"%s\" (", indexname);
+						foreach(cell, namelist)
+						{
+							if (num > 0)
+								appendStringInfo(attrbuf, ",\"%s\"", (char *)lfirst(cell));
+							else
+								appendStringInfo(attrbuf, "\"%s\"", (char *)lfirst(cell));
+
+							num++;
+						}
+					}
+					else
+					{
+						if (unique_flag)
+							appendStringInfo(attrbuf, "\n    UNIQUE KEY `%s` (", indexname);
+						else
+							appendStringInfo(attrbuf, "\n    KEY `%s` (", indexname);
+
+						foreach(cell, namelist)
+						{
+							if (num > 0)
+								appendStringInfo(attrbuf, ",`%s`", (char *)lfirst(cell));
+							else
+								appendStringInfo(attrbuf, "`%s`", (char *)lfirst(cell));
+
+							num++;
+						}
 					}
 					appendStringInfoString(attrbuf, ")");
 				}
 				else
 				{
-					appendStringInfo(attrbuf, "\n    KEY `%s` (", indexname);
-					foreach(cell, namelist)
-					{
-						if (num > 0)
-							appendStringInfo(attrbuf, ",`%s`", (char *)lfirst(cell));
-						else
-							appendStringInfo(attrbuf, "`%s`", (char *)lfirst(cell));
-
-						num++;
-					}
-					appendStringInfoString(attrbuf, ")");
+					if (unique_flag)
+						appendStringInfo(attrbuf, "\n    UNIQUE KEY %s ", indexname);
+					else
+						appendStringInfo(attrbuf, "\n    KEY %s ", indexname);
+					appendStringInfo(attrbuf, "(%s)", indexed_columns);
 				}
-			}
-			else
-			{
-				appendStringInfo(attrbuf, "\n    KEY %s ", indexname);
-				appendStringInfo(attrbuf, "(%s)", indexnamestr);
+
+				if (index_type)
+				{
+					to_upper = upper_character(index_type, strlen(index_type));
+					appendStringInfo(attrbuf, " USING %s", to_upper);
+					pfree(to_upper);
+				}
+
+				if (indexcomment)
+					appendStringInfo(attrbuf, " COMMENT %s", indexcomment);
 			}
 		}
 	}
 
 	if (SPI_finish() != SPI_OK_FINISH)
 		elog(ERROR, "SPI_finish failed");
-	/*End BUG#Z6281*/
+	/*End BUG#Z6281 Z6420*/
 
 	/* Finish collecting the column information */
 	if (actual_atts)
@@ -1220,3 +1308,19 @@ show_next_autoinc(PG_FUNCTION_ARGS)
 
 	PG_RETURN_UINT64(result);
 }
+
+/* Begin - BUG#Z6420 */
+Datum
+mysql_get_indexdef_columns(PG_FUNCTION_ARGS)
+{
+	Oid			indexrelid = PG_GETARG_OID(0);
+	char	   *res = NULL;
+
+	res = pg_get_indexdef_columns(indexrelid, true);
+
+	if (res == NULL)
+		PG_RETURN_NULL();
+
+	PG_RETURN_TEXT_P(cstring_to_text(res));
+}
+/* End - BUG#Z6420 */
