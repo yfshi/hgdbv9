@@ -1402,6 +1402,11 @@ insert into t1 values
 ('15-2001-1', '%d-%Y-%c');
 select date,format,str_to_date(date, format) as str_to_date from t1;
 drop table t1;
+--bug#z6403 z6405 z6414
+select STR_TO_DATE('20230515143045', '%Y%m%d%H%i%s');
+select STR_TO_DATE('20230515', '%Y%m%d');
+SELECT STR_TO_DATE('15-10-2023', '%Y-%m-%d');
+SELECT STR_TO_DATE('10000-01-01', '%Y-%m-%d');
 
 /*TIMESTAMPDIFF*/
 set sql_mode = default;

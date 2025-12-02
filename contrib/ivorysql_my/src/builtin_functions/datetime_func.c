@@ -218,6 +218,8 @@ static int64 log_10_int[20] = {
 static Date_time_format time_24hrs_format = {{0}, '\0', 0, (char *)"%H:%i:%S", 8};
 static Date_time_format time_ampm_format= {{0}, '\0', 0, (char *)"%I:%i:%S %p", 11};
 
+static long long strtoll10_n(const char *src, size_t max, char **endptr);
+
 static Datum ivymy_dayof_date(FunctionCallInfo fcinfo, int datekind);
 static int64 getPartFromTm(struct pg_tm *tm, fsec_t fsec, int part);
 static Datum GetSpecificPartOfTime(FunctionCallInfo fcinfo, int part);
@@ -265,6 +267,28 @@ static DateTimeFormat date_time_formats[] =
 };
 
 static int szdate_time_formats = sizeof date_time_formats / sizeof date_time_formats[0];
+
+static long long 
+strtoll10_n(const char *src, size_t max, char **endptr)
+{
+	char buf[8];
+	char *tmp;
+	long long val = 0;
+
+	if (max >= sizeof(buf))
+		max = sizeof(buf) - 1;
+
+	memcpy(buf, src, max);
+	buf[max] = '\0';
+
+	errno = 0;
+	val = strtoll(buf, &tmp, 10);
+
+	if (endptr)
+		*endptr = (char *)src + (tmp - buf); /* map back to original str */
+
+	return val;
+}
 
 static mysql_dttype 
 fix_from_format(const char *format, size_t length)
@@ -398,7 +422,7 @@ static bool extract_date_time(Date_time_format *format,
 				/* Year */
 				case 'Y':
 					tmp = (char*) val + Min(4, val_len);
-					l_time->tm_year = (int) strtoll(val, &tmp, 10);
+					l_time->tm_year = (int) strtoll10_n(val, Min(4, val_len), &tmp);
 					if ((int) (tmp-val) <= 2)
 						l_time->tm_year = l_time->tm_year + (l_time->tm_year >= YEAR2_BOUND_BETWEEN_20C_21C ? 1900 : 2000);
 					val = tmp;
@@ -406,7 +430,7 @@ static bool extract_date_time(Date_time_format *format,
 
 				case 'y':
 					tmp= (char*) val + Min(2, val_len);
-					l_time->tm_year = (int) strtoll(val, &tmp, 10);
+					l_time->tm_year = (int) strtoll10_n(val, Min(2, val_len),&tmp);
 					val = tmp;
 					l_time->tm_year = l_time->tm_year + (l_time->tm_year >= YEAR2_BOUND_BETWEEN_20C_21C ? 1900 : 2000);
 					break;
@@ -415,7 +439,7 @@ static bool extract_date_time(Date_time_format *format,
 					case 'm':
 					case 'c':
 						tmp = (char*) val + Min(2, val_len);
-						l_time->tm_mon = (int) strtoll(val, &tmp, 10);
+						l_time->tm_mon = (int) strtoll10_n(val, Min(2, val_len), &tmp);
 						val = tmp;
 						break;
 					case 'M':
@@ -431,12 +455,13 @@ static bool extract_date_time(Date_time_format *format,
 					case 'd':
 					case 'e':
 						tmp = (char*) val + Min(2, val_len);
-						l_time->tm_mday = (int) strtoll(val, &tmp, 10);
+						l_time->tm_mday = (int) strtoll10_n(val, Min(2, val_len), &tmp);
+						//l_time->tm_mday = (int) strtoll(val, &tmp, 10);
 						val = tmp;
 						break;
 					case 'D':
 						tmp = (char*) val + Min(2, val_len);
-						l_time->tm_mday = (int) strtoll(val, &tmp, 10);
+						l_time->tm_mday = (int) strtoll10_n(val, Min(2, val_len), &tmp);
 						/* Skip 'st, 'nd, 'th .. */
 						val= tmp + Min((int) (val_end-tmp), 2);
 						break;
@@ -450,14 +475,14 @@ static bool extract_date_time(Date_time_format *format,
 					case 'k':
 					case 'H':
 						tmp = (char*) val + Min(2, val_len);
-						l_time->tm_hour = (int) strtoll(val, &tmp, 10);
+						l_time->tm_hour = (int) strtoll10_n(val, Min(2, val_len), &tmp);
 						val = tmp;
 						break;
 
 					/* Minute */
 					case 'i':
 						tmp = (char*) val + Min(2, val_len);
-						l_time->tm_min = (int) strtoll(val, &tmp, 10);
+						l_time->tm_min = (int) strtoll10_n(val, Min(2, val_len), &tmp);
 						val = tmp;
 						break;
 
@@ -465,7 +490,7 @@ static bool extract_date_time(Date_time_format *format,
 					case 's':
 					case 'S':
 						tmp = (char*) val + Min(2, val_len);
-						l_time->tm_sec = (int) strtoll(val, &tmp, 10);
+						l_time->tm_sec = (int) strtoll10_n(val, Min(2, val_len), &tmp);
 						val = tmp;
 						break;
 
@@ -513,7 +538,7 @@ static bool extract_date_time(Date_time_format *format,
 						break;
 					case 'j':
 						tmp = (char*) val + Min(val_len, 3);
-						yearday = (int) strtoll(val, &tmp, 10);
+						yearday = (int) strtoll10_n(val, Min(val_len, 3), &tmp);
 						val= tmp;
 						break;
 
@@ -525,7 +550,7 @@ static bool extract_date_time(Date_time_format *format,
 						sunday_first_n_first_week_non_iso = (*ptr=='U' || *ptr== 'V');
 						strict_week_number = (*ptr=='V' || *ptr=='v');
 						tmp = (char*) val + Min(val_len, 2);
-						if ((week_number = (int) strtoll(val, &tmp, 10)) < 0 ||
+						if ((week_number = (int) strtoll10_n(val, Min(val_len, 2), &tmp)) < 0 ||
 							(strict_week_number && !week_number) ||
 							week_number > 53)
 							goto err;
@@ -537,7 +562,7 @@ static bool extract_date_time(Date_time_format *format,
 					case 'x':
 						strict_week_number_year_type = (*ptr=='X');
 						tmp = (char*) val + Min(4, val_len);
-						strict_week_number_year = (int) strtoll(val, &tmp, 10);
+						strict_week_number_year = (int) strtoll10_n(val, Min(4, val_len), &tmp);
 						val = tmp;
 						break;
 
