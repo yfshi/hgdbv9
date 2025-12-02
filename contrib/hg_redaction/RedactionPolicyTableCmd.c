@@ -412,12 +412,19 @@ Redaction_AlterRelationNamespaceInternal(Oid relOid, Oid oldNspOid, Oid newNspOi
 	bool			policy_null[Natts_hg_redaction_policy];
 	bool			policy_repl[Natts_hg_redaction_policy];
 	char		   *namespace = NULL;
+	Oid				redaction_policyoid = InvalidOid;	/* BUG#Z6564 */
 
 	namespace = get_namespace_name(newNspOid);
 	if (!namespace)
 		return;
 
-	policyrel = table_open(get_policytb_oid(), RowExclusiveLock);
+	/* Begin - BUG#Z6564 */
+	redaction_policyoid = ddl_get_policytb_oid("hg_redaction_policy");
+	if (!OidIsValid(redaction_policyoid))
+		return;
+
+	policyrel = table_open(redaction_policyoid, RowExclusiveLock);
+	/* End - BUG#Z6564 */
 
 	ScanKeyInit(&skey[0],
 				Anum_hg_redaction_policy_tabrelid,
