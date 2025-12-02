@@ -570,3 +570,10 @@ SELECT to_char('2012-12-12 12:00'::timestamptz, 'YYYY-MM-DD SSSS');
 SELECT to_char('2012-12-12 12:00'::timestamptz, 'YYYY-MM-DD SSSSS');
 
 RESET TIME ZONE;
+
+
+/* Begin - BUG#6553 */
+SELECT to_timestamp('2005300', 'YYYYDDD');
+SELECT i, to_timestamp('2018-11-02 12:34:56', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 19) i;
+SELECT to_timestamp('20181102123456', 'YYYYMMDDHH24MISS');
+/* End - BUG#6553 */

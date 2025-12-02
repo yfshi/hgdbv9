@@ -3351,3 +3351,41 @@ SELECT to_char('2012-12-12 12:00'::timestamptz, 'YYYY-MM-DD SSSSS');
 (1 row)
 
 RESET TIME ZONE;
+/* Begin - BUG#6553 */
+SELECT to_timestamp('2005300', 'YYYYDDD');
+         to_timestamp         
+------------------------------
+ Thu Oct 27 00:00:00 2005 PDT
+(1 row)
+
+SELECT i, to_timestamp('2018-11-02 12:34:56', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 19) i;
+ i  |         to_timestamp         
+----+------------------------------
+  1 | Fri Nov 02 12:34:56 2018 PDT
+  2 | Fri Nov 02 12:34:56 2018 PDT
+  3 | Fri Nov 02 12:34:56 2018 PDT
+  4 | Fri Nov 02 12:34:56 2018 PDT
+  5 | Fri Nov 02 12:34:56 2018 PDT
+  6 | Fri Nov 02 12:34:56 2018 PDT
+  7 | Fri Nov 02 12:34:56 2018 PDT
+  8 | Fri Nov 02 12:34:56 2018 PDT
+  9 | Fri Nov 02 12:34:56 2018 PDT
+ 10 | Fri Nov 02 12:34:56 2018 PDT
+ 11 | Fri Nov 02 12:34:56 2018 PDT
+ 12 | Fri Nov 02 12:34:56 2018 PDT
+ 13 | Fri Nov 02 12:34:56 2018 PDT
+ 14 | Fri Nov 02 12:34:56 2018 PDT
+ 15 | Fri Nov 02 12:34:56 2018 PDT
+ 16 | Fri Nov 02 12:34:56 2018 PDT
+ 17 | Fri Nov 02 12:34:56 2018 PDT
+ 18 | Fri Nov 02 12:34:56 2018 PDT
+ 19 | Fri Nov 02 12:34:56 2018 PDT
+(19 rows)
+
+SELECT to_timestamp('20181102123456', 'YYYYMMDDHH24MISS');
+         to_timestamp         
+------------------------------
+ Fri Nov 02 12:34:56 2018 PDT
+(1 row)
+
+/* End - BUG#6553 */

@@ -1430,6 +1430,7 @@ parse_format(FormatNode *node, const char *str, const KeyWord *kw,
 		{
 			n->type = NODE_TYPE_ACTION;
 			n->suffix = suffix;
+			n->sep = false;	/* BUG#6553 */
 			if (n->key->len)
 				str += n->key->len;
 
@@ -1478,6 +1479,7 @@ parse_format(FormatNode *node, const char *str, const KeyWord *kw,
 				n->character[1] = '\0';
 				n->key = NULL;
 				n->suffix = 0;
+				n->sep = false;	/* BUG#6553 */
 				n++;
 				str++;
 			}
@@ -1503,6 +1505,7 @@ parse_format(FormatNode *node, const char *str, const KeyWord *kw,
 					n->character[chlen] = '\0';
 					n->key = NULL;
 					n->suffix = 0;
+					n->sep = false;	/* BUG#6553 */
 					n++;
 					str += chlen;
 				}
@@ -1537,6 +1540,7 @@ parse_format(FormatNode *node, const char *str, const KeyWord *kw,
 				n->character[chlen] = '\0';
 				n->key = NULL;
 				n->suffix = 0;
+				n->sep = false;	/* BUG#6553 */
 				n++;
 				str += chlen;
 			}
@@ -1545,6 +1549,7 @@ parse_format(FormatNode *node, const char *str, const KeyWord *kw,
 
 	n->type = NODE_TYPE_END;
 	n->suffix = 0;
+	n->sep = false;	/* BUG#6553 */
 }
 
 /* ----------
@@ -4145,7 +4150,8 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				out->d++;
 				break;
 			case DCH_DDD:
-				n->sep = true;	/* BUG:z97 */
+				if (ORA_MODE == compatible_mode)	/* BUG#6553 */
+					n->sep = true;	/* BUG:z97 */
 				from_char_parse_int(&out->ddd, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
