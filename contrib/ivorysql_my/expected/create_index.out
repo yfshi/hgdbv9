@@ -236,7 +236,7 @@ insert into t10 values(5,'qqaazz');
 CREATE INDEX t10_1 on t10 (id) ALGORITHM = DEFAULT;
 CREATE INDEX t10_2 on t10 (id) ALGORITHM = INPLACE;
 CREATE INDEX t10_2 on t10 (id) ALGORITHM = COPY;
-ERROR:  relation "t10_2" already exists
+ERROR:  Duplicate key name "t10_2"
 \d+ t10
                                            Table "public.t10"
  Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 

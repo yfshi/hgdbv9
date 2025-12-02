@@ -432,6 +432,7 @@ FROM pg_catalog.pg_class c
 	LEFT JOIN pg_catalog.pg_stat_user_tables us ON c.oid = us.relid
 WHERE
 	c.relkind IN ('r', 'v', 'm', 'p', 'f')                              -- Tables, views, materialized views, partitioned tables, foreign tables
+	AND c.relpersistence <> 't'                                         -- /* Bug - #z6441 */
 ORDER BY c.oid;		-- bug#Z5983
 
 GRANT SELECT ON mys_information_schema.showtables TO PUBLIC;
@@ -514,7 +515,9 @@ LEFT JOIN pg_stats s ON s.schemaname = n.nspname AND s.tablename = t.relname AND
 
 WHERE
 	t.relkind = 'r' OR t.relkind = 'p'					  -- Only ordinary tables --BUG#Z5991,add OR t.relkind = 'p'
-	AND NOT i.indisprimary; 							  -- Exclude primary key indexes (MySQL does not show these in statistics)
+	AND NOT i.indisprimary							  -- Exclude primary key indexes (MySQL does not show these in statistics)
+ORDER BY i.indexrelid;								  -- Eliminate the uncertain regression error
+
 GRANT SELECT ON mys_information_schema.showstatistics TO PUBLIC;
 -- End bug#Z5973
 

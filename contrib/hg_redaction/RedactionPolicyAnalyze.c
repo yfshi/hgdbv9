@@ -26,8 +26,8 @@ static bool parser_target_entry(ParseState *pstate, TargetEntry **old_tle,
 									   List* rtable, bool can_mask, bool toptlistflg);
 static bool handle_masking_node(ParseState *pstate, Expr **src_expr,
 									   List* rtable, bool can_mask, bool toptlistflg, bool eqflg);
-static int get_var_value(const List *rtable, Var *var,
-									VarParserValue *varvalue);
+static int get_var_value(ParseState *pstate, const List *rtable, Var *var,
+							  VarParserValue *varvalue);	/* BUG#Z6108 */
 static void reset_node_location();
 static Node* create_predefined_function(const char* funcname, int funcid, int rettype, 
 												  Node* arg, int funccollid);
@@ -220,7 +220,7 @@ get_function_behavious(const char *func_name)
  * every (var-rte) pair.
  */
 static int
-get_var_value(const List *rtable, Var *var, VarParserValue *varvalue)
+get_var_value(ParseState *pstate, const List *rtable, Var *var, VarParserValue *varvalue)	/* BUG#Z6108 */
 {
 	RangeTblEntry  *rte;
 
@@ -246,8 +246,33 @@ get_var_value(const List *rtable, Var *var, VarParserValue *varvalue)
 	{
 		Query *qry = (Query *)rte->subquery;
 
-		return get_var_value(qry->rtable, var, varvalue);
+		return get_var_value(pstate, qry->rtable, var, varvalue);	/* BUG#Z6108 */
 	}
+	/* Begin - BUG#Z6108 */
+	else if (rte->rtekind == RTE_CTE)
+	{
+		if (pstate->p_ctenamespace != NULL)
+		{
+			ListCell *cell;
+
+			foreach(cell, pstate->p_ctenamespace)
+			{
+				if (IsA(lfirst(cell), CommonTableExpr))
+				{
+					CommonTableExpr *cexpr = (CommonTableExpr *)lfirst(cell);
+
+					if (nodeTag(cexpr->ctequery) == T_Query &&
+						strcmp(cexpr->ctename, rte->ctename) == 0)
+					{
+						Query *qry = (Query *)cexpr->ctequery;
+
+						return get_var_value(pstate, qry->rtable, var, varvalue);
+					}
+				}
+			}
+		}
+	}
+	/* End - BUG#Z6108 */
 	else
 	{
 		/*
@@ -1126,7 +1151,7 @@ handle_masking_node(ParseState *pstate, Expr **src_expr,
 	 * and the oid of the table where the column is located,
 	 * if it is a system table, there will be no data redaction.
 	 */
-	ret = get_var_value(rtable, var, varvalue);
+	ret = get_var_value(pstate, rtable, var, varvalue);	/* BUG#Z6108 */
 
 	/* is the var in system table, return false */
 	if (ret == CATALOG_RELID || ret == NO_FOUND_RTE_OR_COLUMN)

@@ -789,3 +789,17 @@ insert into t_binary_operators values (65535,65535),(500000,3),(1,5),(0,0);
 select col_int8 AND col_uint3 from t_binary_operators;
 select col_int8 OR col_uint3 from t_binary_operators;
 select col_int8 XOR col_uint3 from t_binary_operators;
+
+/* Begin - bug#z6043 */
+create table t_char_arith_hex(c char(10), v varchar(255),t text);
+insert into t_char_arith_hex values (X'41', X'42', X'43'), (x'31', x'32', x'33'), (0x39, 0x30, 0x35);
+select c, v, t,
+c + 10 as c_add10,
+c + 0x10 as c_add_hex,
+v + 10 as v_add10,
+v + 0x10 as v_add_hex,
+t + 10 as t_add10,
+t + 0x10 as t_add_hex
+from t_char_arith_hex;
+drop table t_char_arith_hex;
+/* End - bug#z6043 */

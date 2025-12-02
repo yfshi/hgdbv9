@@ -7864,6 +7864,52 @@ mys_show_create_table_to_show_create_view(SelectStmt *stmt)
 }
 /* End - BUG#Z5946 */
 
+/* Begin - BUG#Z6442 */
+/* mys_show_table_check_database
+ *
+ * If the database does not exist,
+ * an error is raised when executing
+ * show tables.
+ */
+static void
+mys_show_table_check_database(SelectStmt *stmt)
+{
+	if (stmt->fromClause != NIL)
+	{
+		if (IsA(linitial(stmt->fromClause), RangeSubselect))
+		{
+			RangeSubselect *rsubselect = (RangeSubselect *)linitial(stmt->fromClause);
+
+			if (rsubselect->subquery != NULL && nodeTag(rsubselect->subquery) == T_SelectStmt)
+			{
+				SelectStmt *inerselect = (SelectStmt *)rsubselect->subquery;
+
+				if (inerselect->whereClause != NULL && nodeTag(inerselect->whereClause) == T_A_Expr)
+				{
+					A_Expr *aexpr = (A_Expr *)inerselect->whereClause;
+
+					if (aexpr->rexpr != NULL && nodeTag(aexpr->rexpr) == T_A_Const)
+					{
+						char	   *namespacename = NULL;
+						Oid			namespaceoid = InvalidOid;
+						A_Const	    *aconst = (A_Const *)aexpr->rexpr;
+
+						namespacename = aconst->val.val.str;
+						namespaceoid = get_namespace_oid(namespacename, true);
+						if (!OidIsValid(namespaceoid))
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_UNDEFINED_SCHEMA),
+									 errmsg("Unknown database \'%s\'", namespacename)));
+						}
+					}
+				}
+			}
+		}
+	}
+}
+/* End - BUG#Z6442 */
+
 /* mys_show_commmand
  *
  * check show command information.
@@ -7909,6 +7955,10 @@ mys_show_commmand(ParseState *pstate, SelectStmt *stmt)
 				return mys_show_create_table_to_show_create_view(stmt);
 			/* End - BUG#Z5946 */
 
+			/* Begin - BUG#Z6442 */
+			case SHOW_TABLES:
+				mys_show_table_check_database(stmt);
+			/* End - BUG#Z6442 */
 			default:
 				break;
 		}

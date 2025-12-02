@@ -26,7 +26,7 @@ PG_FUNCTION_INFO_V1(all_redaction_policy_num);
 static void RangeVarCallbackForRedactionPolicy(const RangeVar *rv, Oid relid, Oid oldrelid,
 															void *arg);
 Oid get_procid_from_procname(char *procname);
-ObjectAddress DropRedactionPolicy(DropRedactionPolicyStmt *stmt);
+static void DropRedactionPolicy(DropRedactionPolicyStmt *stmt);
 static void RenameRedactionPolicy(AlterRedactionPolicyStmt *stmt);
 static void RenameRedactioncolumn(AlterRedactionPolicyStmt *stmt);
 static void FilterRedactionPolicy(AlterRedactionPolicyStmt *stmt);
@@ -34,8 +34,8 @@ static void StatusRedactionPolicy(AlterRedactionPolicyStmt *stmt);
 static void AddRedactionColumn(AlterRedactionPolicyStmt *stmt);
 static void ModifyRedactionPolicy(AlterRedactionPolicyStmt *stmt);
 static void DropColumnRedactionColumn(AlterRedactionPolicyStmt *stmt);
-ObjectAddress AlterRedactionPolicy(AlterRedactionPolicyStmt *stmt);
-ObjectAddress CreateRedactionPolicy(CreateRedactionPolicyStmt *stmt);
+static void AlterRedactionPolicy(AlterRedactionPolicyStmt *stmt);
+static void CreateRedactionPolicy(CreateRedactionPolicyStmt *stmt);
 static void define_hg_redaction_column(Oid policy_id, char *polname, Oid table_id,
 												 Relation target_table, List *colfunc_list);
 Oid hg_GetNewOidWithIndex(Relation relation, Oid indexId, AttrNumber oidcolumn);
@@ -46,6 +46,8 @@ DefElem *
 redatcion_makeDefElem(char *name, Node *arg, int location);
 static void check_table_col(Relation rel, char *colname);
 static char * get_table_schema(Oid reloid);
+static List * get_redaction_func_name(char *defname);	/* BUG#Z6485 */
+
 /*
  * get_policytb_oid
  *		Returns the oid of the relation hg_redaction_policy.
@@ -571,9 +573,9 @@ hg_redact_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 		if (hg_redaction_data == true)
 		{
 			if (nodeTag(parsetree) == T_CreateRedactionPolicyStmt)
-				(void)CreateRedactionPolicy((CreateRedactionPolicyStmt *) parsetree);
+				CreateRedactionPolicy((CreateRedactionPolicyStmt *) parsetree);
 			else if (nodeTag(parsetree) == T_AlterRedactionPolicyStmt)
-				(void)AlterRedactionPolicy((AlterRedactionPolicyStmt *) parsetree);
+				AlterRedactionPolicy((AlterRedactionPolicyStmt *) parsetree);
 			else
 				DropRedactionPolicy((DropRedactionPolicyStmt *) parsetree);
 		}
@@ -598,10 +600,9 @@ hg_redact_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
  * drop data redaction.
  *
  */
-ObjectAddress
+static void
 DropRedactionPolicy(DropRedactionPolicyStmt *stmt)
 {
-	ObjectAddress	myself;
 	Relation		policyrel, attrrel;
 	HeapTuple		policy_tuple, attr_tuple;
 	ScanKeyData 	skey[2], skey2[2];
@@ -612,11 +613,26 @@ DropRedactionPolicy(DropRedactionPolicyStmt *stmt)
 	Datum			poloiddatum;
 	Oid				table_id;
 
+	/* Begin - BUG#Z6440 */
 	if (!IS_SYSSSO(GetUserId()))
+	{
+		char	   *username = NULL;
+
+		if (se_feature.mode)
+		{
+			username = "syssso";
+		}
+		else
+		{
+			username = "superuser";
+		}
+
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("permission denied to drop redacation policy."),
-				 errhint("Must be syssso to drop a redacation policy.")));
+				 errhint("Must be %s to drop a redacation policy.", username)));
+	}
+	/* End - BUG#Z6440 */
 
 	table_id = RangeVarGetRelidExtended(stmt->table_name, AccessShareLock,
 										0,
@@ -690,8 +706,6 @@ DropRedactionPolicy(DropRedactionPolicyStmt *stmt)
 
 	table_close(policyrel, RowExclusiveLock);
 	table_close(attrrel, RowExclusiveLock);
-
-	return myself;
 }
 
 /*
@@ -1119,13 +1133,20 @@ ModifyRedactionPolicy(AlterRedactionPolicyStmt *stmt)
 		List	   *with_options = NIL;
 		List	   *colname_list = NIL;
 		char	   *funcname = NULL;
+		List	   *funcnamelist = NIL;		/* BUG#Z6485 */
 
 		defelem_cols = (DefElem *) lfirst(defcell);
 		rdpolcol = (RedactionPolicyColumnStmt *)defelem_cols->arg;
 		with_options = rdpolcol->withops_list;
 		colname_list = rdpolcol->colname_list;
 		/* get function name */
-		funcname = defelem_cols->defname;
+		/* Begin - BUG#Z6485 */
+		if (defelem_cols->defname != NULL)
+		{
+			funcnamelist = get_redaction_func_name(defelem_cols->defname);
+			funcname = strVal(llast(funcnamelist));
+		}
+		/* End - BUG#Z6485 */
 
 		if (rdpolcol->optype != 'M')
 		{
@@ -1280,7 +1301,7 @@ ModifyRedactionPolicy(AlterRedactionPolicyStmt *stmt)
 
 			if (funcname)
 			{
-				procid = get_procid_from_procname(funcname);
+				procid = get_procid_from_procname(defelem_cols->defname);	/* BUG#Z6485 */
 
 				/* Fill modified value, create a modify tuple */
 				attr_val[Anum_hg_redaction_column_procid -1] = ObjectIdGetDatum(procid);
@@ -1387,10 +1408,9 @@ DropColumnRedactionColumn(AlterRedactionPolicyStmt *stmt)
  * be inserted into one table or two tables of
  * hg_redaction_policy and hg_redaction_column.
  */
-ObjectAddress
+static void
 AlterRedactionPolicy(AlterRedactionPolicyStmt *stmt)
 {
-	ObjectAddress	myself;
 	Oid 			table_id;
 	Relation		target_table;
 	SysScanDesc 	sscan_p;
@@ -1402,12 +1422,26 @@ AlterRedactionPolicy(AlterRedactionPolicyStmt *stmt)
 	 * Only supperusers and syssso users can alter
 	 * data redaction policy.
 	 */
+	/* Begin - BUG#Z6440 */
 	if (!IS_SYSSSO(GetUserId()))
+	{
+		char	   *username = NULL;
+		if (se_feature.mode)
+		{
+			username = "syssso";
+		}
+		else
+		{
+			username = "superuser";
+		}
+
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("permission denied to alter redacation policy\"%s\"",
 						stmt->policy_name),
-				 errhint("Must be syssso to alter a redacation policy.")));
+				 errhint("Must be %s to alter a redacation policy.", username)));
+	}
+	/* End - BUG#Z6440 */
 
 	/*
 	 * It can only alter the existing data redaction policy.
@@ -1481,8 +1515,6 @@ AlterRedactionPolicy(AlterRedactionPolicyStmt *stmt)
 			elog(ERROR, "unrecognized alter domain type: %d",(int) stmt->stmt_type);
 			break;
 	}
-	
-	return myself;
 }
 
 /*
@@ -1598,7 +1630,7 @@ hg_GetNewOidWithIndex(Relation relation, Oid indexId, AttrNumber oidcolumn)
  * be inserted into two tables of hg_redaction_policy and
  * hg_redaction_column.
  */
-ObjectAddress
+static void
 CreateRedactionPolicy(CreateRedactionPolicyStmt *stmt)
 {
 	Relation		policyrel;
@@ -1619,12 +1651,27 @@ CreateRedactionPolicy(CreateRedactionPolicyStmt *stmt)
 	 * Only supperusers and syssso users can create
 	 * data redaction policy.
 	 */
+	/* Begin - BUG#Z6440 */
 	if (!IS_SYSSSO(GetUserId()))
+	{
+		char	   *username = NULL;
+
+		if (se_feature.mode)
+		{
+			username = "syssso";
+		}
+		else
+		{
+			username = "superuser";
+		}
+
 		ereport(ERROR,
 			(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				errmsg("permission denied to create redacation policy \"%s\"",
 					stmt->policy_name),
-				errhint("Must be syssso to create a redacation policy.")));
+				errhint("Must be %s to create a redacation policy.", username)));
+	}
+	/* End - BUG#Z6440 */
 
 	/*
 	 * Get the oid of the table that need to create
@@ -1737,8 +1784,6 @@ CreateRedactionPolicy(CreateRedactionPolicyStmt *stmt)
 	table_close(policyrel, RowExclusiveLock);
 	systable_endscan(sscan_p);
 	relation_close(target_table, NoLock);
-
-	return myself;
 }
 
 /*
@@ -1921,14 +1966,7 @@ define_hg_redaction_column(Oid policy_id, char *polname, Oid table_id,
 		List		   *funcnamelist = NIL;
 		char		   *funcname = NULL;
 
-		funcnamelist = stringToQualifiedNameList(func_cols->defname);
-		if (funcnamelist == NIL)
-		{
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
-					 errmsg("data redaction function \"%s\" does not exist", func_cols->defname)));
-		}
-
+		funcnamelist = get_redaction_func_name(func_cols->defname);	/* BUG#Z6485 */
 		funcname = strVal(llast(funcnamelist));
 
 		/*
@@ -2309,3 +2347,28 @@ all_redaction_policy_num(PG_FUNCTION_ARGS)
 
 	return policynum;
 }
+
+/* Begin - BUG#Z6485
+ *
+ * get_redaction_func_name
+ *		Returns a function name list.
+ *
+ * get function schema and function name.
+ *
+ */
+static List *
+get_redaction_func_name(char *defname)
+{
+	List		   *funcnamelist = NIL;
+
+	funcnamelist = stringToQualifiedNameList(defname);
+	if (funcnamelist == NIL)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				 errmsg("data redaction function \"%s\" does not exist", defname)));
+	}
+
+	return funcnamelist;
+}
+/* End - BUG#Z6485 */

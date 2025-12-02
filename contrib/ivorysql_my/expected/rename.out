@@ -201,3 +201,36 @@ CREATE USER rename_test WITH superuser;
 \! psql -p $PGPORT -d postgres -p $PGPORT -U rename_test -c "create user user1;create user user2;rename user user1 to user3,user2 to user4;drop user user3, user4;"
 DROP ROLE
 drop user rename_test;
+--fix bug 5992
+create table test ( id int primary key, name text, email text );
+create index original_index on test(name);
+create index idx_02 on test(name);
+select indexname from pg_indexes where tablename='test';
+   indexname    
+----------------
+ test_pkey
+ original_index
+ idx_02
+(3 rows)
+
+alter table test rename index idx_02 to ORIGINAL_INDEX; --err
+ERROR:  Duplicate key name "ORIGINAL_INDEX"
+select indexname from pg_indexes where tablename='test';
+   indexname    
+----------------
+ test_pkey
+ original_index
+ idx_02
+(3 rows)
+
+alter table test rename index idx_02 to IDX_02; -- succ
+alter table test rename index idx_02 to ORIGINAL_INDEX;
+ERROR:  Duplicate key name "ORIGINAL_INDEX"
+drop table test;
+create table test(id int, name text);
+create index idx_temp on test(id);
+create index IDX_TEMP on test(name); --err
+ERROR:  Duplicate key name "IDX_TEMP"
+create index idx_TeMP on test(name); --err
+ERROR:  Duplicate key name "idx_TeMP"
+drop table test;

@@ -2866,3 +2866,47 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
+
+/* Begin - bug#z6043 */
+CREATE FUNCTION ivymy.varchar_add_uint8(text, uint8)
+RETURNS numeric
+AS 'select $1::numeric + $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.+ (
+	procedure = ivymy.varchar_add_uint8,
+	leftarg = text,
+	rightarg = uint8
+);
+
+CREATE FUNCTION ivymy.char_add_uint8(char, uint8)
+RETURNS numeric
+AS 'select $1::numeric + $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.+ (
+	procedure = ivymy.char_add_uint8,
+	leftarg = char,
+	rightarg = uint8
+);
+
+CREATE FUNCTION ivymy.uint8_add_char(uint8, char)
+RETURNS numeric
+AS 'select $1 + $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.+ (
+	procedure = ivymy.uint8_add_char,
+	leftarg = uint8,
+	rightarg = char
+);
+/* End - bug#z6043 */

@@ -2064,3 +2064,51 @@ SELECT INDEX_NAME,INDEX_COMMENT FROM mys_information_schema.STATISTICS WHERE TAB
 (1 row)
 
 drop TABLE test_comment1;
+--fix bug 6441
+CREATE SCHEMA IF NOT EXISTS test_sche;
+CREATE TEMPORARY TABLE test_temp (id INT);
+SHOW TABLE STATUS FROM test_sche;
+ Name | Engine | Version | Row_format | Rows | Avg_row_length | Data_length | Max_data_length | Index_length | Data_free | Auto_increment | Create_time | Update_time | Check_time | Collation | Checksum | Create_options | Comment 
+------+--------+---------+------------+------+----------------+-------------+-----------------+--------------+-----------+----------------+-------------+-------------+------------+-----------+----------+----------------+---------
+(0 rows)
+
+SHOW TABLE STATUS FROM pg_temp_4;
+ Name | Engine | Version | Row_format | Rows | Avg_row_length | Data_length | Max_data_length | Index_length | Data_free | Auto_increment | Create_time | Update_time | Check_time | Collation | Checksum | Create_options | Comment 
+------+--------+---------+------------+------+----------------+-------------+-----------------+--------------+-----------+----------------+-------------+-------------+------------+-----------+----------+----------------+---------
+(0 rows)
+
+SHOW TABLE STATUS FROM pg_temp_4 LIKE 'test_temp';
+ Name | Engine | Version | Row_format | Rows | Avg_row_length | Data_length | Max_data_length | Index_length | Data_free | Auto_increment | Create_time | Update_time | Check_time | Collation | Checksum | Create_options | Comment 
+------+--------+---------+------------+------+----------------+-------------+-----------------+--------------+-----------+----------------+-------------+-------------+------------+-----------+----------+----------------+---------
+(0 rows)
+
+drop TABLE test_temp;
+drop schema test_sche;
+--fix bug 6442
+CREATE SCHEMA IF NOT EXISTS test_sche;
+SHOW TABLES FROM 123abc;
+ERROR:  Unknown database '123abc'
+SHOW TABLES FROM test_sche;
+ Tables_in_test_sche 
+---------------------
+(0 rows)
+
+create table test_sche.aa(id int);
+SHOW TABLES FROM test_sche;
+ Tables_in_test_sche 
+---------------------
+ aa
+(1 row)
+
+create database 123abc;
+create table 123abc.aa(id int);
+SHOW TABLES FROM 123abc;
+ Tables_in_123abc 
+------------------
+ aa
+(1 row)
+
+drop table 123abc.aa;
+drop table test_sche.aa;
+drop schema 123abc;
+drop schema test_sche;

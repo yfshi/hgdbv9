@@ -777,3 +777,47 @@ CREATE OPERATOR && (
 	leftarg = numeric,
 	rightarg = int8
 );
+
+/* Begin - bug#z6342 */
+CREATE FUNCTION ivymy.numeric_add_tinyint(numeric, ivymy.tinyint)
+RETURNS numeric
+AS 'select $1 + $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.+ (
+	procedure = ivymy.numeric_add_tinyint,
+	leftarg = numeric,
+	rightarg = ivymy.tinyint
+);
+
+CREATE FUNCTION ivymy.numeric_add_smallint(numeric, smallint)
+RETURNS numeric
+AS 'select $1 + $2::int'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.+ (
+	procedure = ivymy.numeric_add_smallint,
+	leftarg = numeric,
+	rightarg = smallint
+);
+
+CREATE FUNCTION ivymy.smallint_add_numeric(smallint, numeric)
+RETURNS numeric
+AS 'select $1::int + $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.+ (
+	procedure = ivymy.smallint_add_numeric,
+	leftarg = smallint,
+	rightarg = numeric
+);
+/* End - bug#z6342 */
