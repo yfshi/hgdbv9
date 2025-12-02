@@ -19,13 +19,24 @@
 #include "postgres.h"
 
 #include "catalog/objectaccess.h"
+#include "catalog/pg_proc.h"
+#include "catalog/pg_seclabel.h"
+#include "catalog/pg_shseclabel.h"
+#include "catalog/namespace.h"
 #include "commands/seclabel.h"
 #include "executor/executor.h"
-#include "storage/ipc.h"
+#include "parser/parse_func.h"
 #include "miscadmin.h"
+#include "storage/ipc.h"
 #include "storage/shmem.h"
+#include "tcop/utility.h"
+#include "utils/acl.h"
+#include "utils/builtins.h"
+#include "utils/catcache.h"
 #include "utils/guc.h"
 #include "utils/rls.h"
+#include "utils/syscache.h"
+#include "utils/lsyscache.h"
 
 #include "hg_sysmac.h"
 #include "se_features_interface.h"
@@ -45,6 +56,41 @@ bool global_row_level = true;
  * Saved hook entries (if stacked)
  */
 static ExecutorCheckPerms_hook_type next_exec_check_perms_hook = NULL;
+static ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
+
+
+static bool
+is_sysmac_function(Oid funcoid)
+{
+	#define		PROCESSLIST_COLUMN_NUMS 7
+	char	*funcname = NULL;
+	int		i;
+	Oid		nspoid;
+	char	funclist[PROCESSLIST_COLUMN_NUMS][32] =
+							{"get_user_seclabel",   "set_user_seclabel",
+							 "get_table_seclabel",  "set_table_seclabel",
+							 "get_column_seclabel", "get_column_seclabel",
+							 "apply_row_policy"};
+
+	nspoid = get_namespace_oid("hg_security", true);
+	if (!OidIsValid(nspoid))
+		return false;
+
+	if (get_func_namespace(funcoid) != nspoid)
+		return false;
+
+	funcname = get_func_name(funcoid);
+	if (!funcname)
+		return false;
+
+	for (i = 0; i < PROCESSLIST_COLUMN_NUMS; i++)
+	{
+		if (pg_strcasecmp(funcname, funclist[i]) == 0)
+			return true;
+	}
+
+	return false;
+}
 
 static bool
 sysmac_exec_check_perms(List *rangeTabls, bool abort)
@@ -61,6 +107,108 @@ sysmac_exec_check_perms(List *rangeTabls, bool abort)
 		return false;
 
 	return true;
+}
+
+/*
+ * sysmac_utility_command
+ *
+ * It tries to rough-grained control on utility commands; some of them can
+ * break whole of the things if nefarious user would use.
+ */
+static void
+sysmac_utility_command(PlannedStmt *pstmt,
+						const char *queryString,
+						bool readOnlyTree,
+						ProcessUtilityContext context,
+						ParamListInfo params,
+						QueryEnvironment *queryEnv,
+						DestReceiver *dest,
+						QueryCompletion *qc)
+{
+	Node	   *parsetree = pstmt->utilityStmt;
+	GrantStmt  *action;
+	ListCell   *cell;
+
+	if (next_ProcessUtility_hook)
+		(*next_ProcessUtility_hook) (pstmt, queryString, readOnlyTree,
+									 context, params, queryEnv,
+									 dest, qc);
+	else
+		standard_ProcessUtility(pstmt, queryString, readOnlyTree,
+								context, params, queryEnv,
+								dest, qc);
+
+	if (!IsUnderPostmaster || !global_on)
+		return;
+
+	switch (nodeTag(parsetree))
+	{
+		case T_GrantStmt:
+			action = (GrantStmt *) parsetree;
+
+			/*
+			 * We do not allow granting permissions on hg_sysmac
+			 * functions and tables to regular users.
+			 */
+			foreach(cell, action->grantees)
+			{
+				RoleSpec   *grantee = (RoleSpec *) lfirst(cell);
+				Oid			grantee_uid;
+
+				switch (grantee->roletype)
+				{
+					case ROLESPEC_PUBLIC:
+						grantee_uid = ACL_ID_PUBLIC;
+						break;
+					default:
+						grantee_uid = get_rolespec_oid(grantee, false);
+						break;
+				}
+
+				if (!IS_SYSSSO(grantee_uid) && !superuser_arg(grantee_uid))
+				{
+					if (action->objtype == OBJECT_TABLE)
+					{
+						foreach(cell, action->objects)
+						{
+							RangeVar   *relvar = (RangeVar *) lfirst(cell);
+							Oid			relOid;
+
+							relOid = RangeVarGetRelid(relvar, NoLock, true);
+							if (relOid == SharedSecLabelRelationId ||
+								relOid == SecLabelRelationId)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+										errmsg("permission denied"),
+										errdetail("Cannot grant sysmac-related `%s` to regular users.", relvar->relname)));
+							}
+						}
+					}
+					else if (action->objtype == OBJECT_FUNCTION)
+					{
+						foreach(cell, action->objects)
+						{
+							ObjectWithArgs *func = (ObjectWithArgs *) lfirst(cell);
+							Oid			funcid;
+
+							funcid = LookupFuncWithArgs(OBJECT_FUNCTION, func, false);
+							if (is_sysmac_function(funcid))
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+										errmsg("permission denied"),
+										errdetail("Cannot grant sysmac-related functions to regular users.")));
+							}
+						}
+					}
+				}
+			}
+			break;
+
+		default:
+			break;
+	}
 }
 
 bool
@@ -140,6 +288,10 @@ _PG_init(void)
 	/* DML permission check */
 	next_exec_check_perms_hook = ExecutorCheckPerms_hook;
 	ExecutorCheckPerms_hook = sysmac_exec_check_perms;
+
+	/* ProcessUtility hook */
+	next_ProcessUtility_hook = ProcessUtility_hook;
+	ProcessUtility_hook = sysmac_utility_command;
 }
 
 /* End - ReqID: SRS-SECURITY-LMAC */
