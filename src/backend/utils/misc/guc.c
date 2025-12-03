@@ -10984,7 +10984,7 @@ _ShowOption(struct config_generic *record, bool use_units)
 				if (conf->show_hook)
 					val = conf->show_hook();
 				/* Begin - Req: SRS-MYSQL-PROTOCOL */
-				else if (compatible_mode == MYS_MODE && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+				else if (compatible_mode == MYS_MODE && use_mysql_bool)
 					val = *conf->variable ? "1" : "0";
 				/* End - Req: SRS-MYSQL-PROTOCOL */
 				else

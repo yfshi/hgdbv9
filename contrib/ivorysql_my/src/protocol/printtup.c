@@ -22,7 +22,7 @@ make_column_definition_with_attr(FormData_pg_attribute *attr, char *tableName)
     // FIELD packet
     mysql_column_definition_t *field = (mysql_column_definition_t *) palloc0(sizeof(mysql_column_definition_t));
 
-    const TypeItem *item = GetItemByTypeOid(attr->atttypid);
+    const TypeItem *item = GetItemByTypeOid(attr->atttypid, false);
 
     field->name = attr->attname.data;
 
@@ -530,7 +530,7 @@ send_binaryproto(TupleTableSlot *slot, DR_printtup *myState, int natts, StringIn
 
         thisState = myState->myinfo + i;
         binval = slot->tts_values[i];
-        item = GetItemByTypeOid(desc->attrs[i].atttypid);
+        item = GetItemByTypeOid(desc->attrs[i].atttypid, false);
         append_data_by_mysql_type(item, binval, buf, thisState);
     }
 

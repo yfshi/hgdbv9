@@ -20,6 +20,11 @@
 #ifndef COMMON_INT_H
 #define COMMON_INT_H
 
+/* Begin - bug #z5484 #z5485 #z6171 */
+typedef int8 (*mysql_int1_datatype_in_hook_type) (const char *str, bool is_insert);
+extern PGDLLIMPORT mysql_int1_datatype_in_hook_type mysql_int1_datatype_in_hook;
+/* End - bug #z5484 #z5485 #z6171 */
+
 /* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 typedef int16 (*mysql_int2_datatype_in_hook_type) (const char *str, bool is_insert);
 extern PGDLLIMPORT mysql_int2_datatype_in_hook_type mysql_int2_datatype_in_hook;

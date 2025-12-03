@@ -27,9 +27,9 @@ Hash Join
   ->  Seq Scan on t3 a
   ->  Hash
         ->  Seq Scan on t3 b
-res_getBoolean: false
-res_getInt: 0
-res_getString: 0
+res_getBoolean: true
+res_getInt: 1
+res_getString: 1
 res_getBoolean: false
 res_getInt: 0
 res_getString: 0
@@ -60,9 +60,9 @@ Hash Join
   ->  Seq Scan on t3 a
   ->  Hash
         ->  Seq Scan on t3 b
-res_getBoolean: false
-res_getInt: 0
-res_getString: 0
+res_getBoolean: true
+res_getInt: 1
+res_getString: 1
 res_getBoolean: false
 res_getInt: 0
 res_getString: 0

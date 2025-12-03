@@ -2647,6 +2647,187 @@ select instr(1234.5, 34.5);
      3
 (1 row)
 
+-- if
+set mysql.enable_mysql_information_schema TO on;
+set mysql.use_mysql_bool TO true;
+CREATE TABLE type_analysis AS
+SELECT
+	-- 1. Numeric types vs String types
+	IF(TRUE, 123, 'abc') as int_to_string,
+	IF(TRUE, 'abc', 123) as string_to_int,
+	IF(TRUE, 45.67, 'text') as float_to_string,
+	IF(TRUE, 'text', 45.67) as string_to_float,
+	-- 2. Mixing different numeric types
+	IF(TRUE, 123, 45.67) as int_to_float,
+	IF(TRUE, 45.67, 123) as float_to_int,
+	-- 3. Large numeric type testing
+	IF(TRUE, 123456789012345, 'big_number') as bigint_to_string,
+	IF(TRUE, 999999999.9999, 'decimal_text') as decimal_to_string,
+	IF(TRUE, 'text', 123456789012345) as string_to_bigint,
+	-- 4. Numeric types vs Date types
+	IF(TRUE, 100, '2023-01-01'::mysdate) as int_to_date,
+	IF(TRUE, '2023-01-01'::mysdate, 100) as date_to_int,
+	IF(TRUE, 99.99, '2023-01-01'::mysdate) as float_to_date,
+	IF(TRUE, '2023-01-01'::mysdate, 99.99) as date_to_float,
+	-- 5. String types vs Date types
+	IF(TRUE, 'hello world', '2023-01-01'::mysdate) as string_to_date,
+	IF(TRUE, '2023-01-01'::mysdate, 'hello world') as date_to_string,
+	IF(TRUE, 'text', '2025-11-25 15:20:27'::mysdatetime) as string_to_datetime,
+	IF(TRUE, '2025-11-25 15:20:27'::mysdatetime, 'text') as datetime_to_string,
+	-- 6. Mixing different datetime types
+	IF(TRUE, '2025-11-25'::mysdate, '2025-11-25 15:20:27'::mysdatetime) as date_to_datetime,
+	IF(TRUE, '2025-11-25 15:20:27'::mysdatetime, '2025-11-25'::mysdate) as datetime_to_date,
+	-- 7. FALSE condition testing
+	IF(FALSE, 123, 'abc') as int_to_string_false,
+	IF(FALSE, 'abc', 123) as string_to_int_false,
+	IF(FALSE, 45.67, 'text') as float_to_string_false,
+	IF(FALSE, '2023-01-01', 100) as date_to_int_false,
+	IF(FALSE, TRUE, 'false_text') as bool_to_string_false,
+	-- 8. Boolean types vs Other types
+	IF(TRUE, TRUE, 'false_text') as bool_to_string,
+	IF(TRUE, 'true_text', FALSE) as string_to_bool,
+	IF(TRUE, TRUE, 0) as bool_to_int,
+	IF(TRUE, 1, FALSE) as int_to_bool,
+	-- 9. NULL values with other types
+	IF(TRUE, NULL, 'not_null') as null_to_string,
+	IF(TRUE, 'not_null', NULL) as string_to_null,
+	IF(TRUE, NULL, 123) as null_to_int,
+	IF(TRUE, 456, NULL) as int_to_null,
+	IF(TRUE, NULL, 45.67) as null_to_float,
+	IF(TRUE, 89.12, NULL) as float_to_null,
+	IF(TRUE, NULL, TRUE) as null_to_bool,
+	IF(TRUE, FALSE, NULL) as bool_to_null,
+	-- 10. Time types vs Other types
+	IF(TRUE, '11:00:00'::time, '12:00:00') as time_to_string,
+	IF(TRUE, '12:00:00', '11:00:00'::time) as string_to_time,
+	IF(TRUE, '2025-11-25 15:04:55'::mysdatetime, 12345) as datetime_to_int,
+	IF(TRUE, 67890, '2025-11-25 15:04:55'::mysdatetime) as int_to_datetime,
+	IF(TRUE, '11:00:00'::mystime, 123) as time_to_int,
+	IF(TRUE, 456, '11:00:00'::mystime) as int_to_time,
+	-- 11. Binary data vs Other types
+	IF(TRUE, BINARY 'binary_data', 'text_data') as binary_to_string,
+	IF(TRUE, 'text_data', BINARY 'binary_data') as string_to_binary,
+	IF(TRUE, BINARY 'data', 123) as binary_to_int,
+	IF(TRUE, 456, BINARY 'data') as int_to_binary,
+	-- 12. Hexadecimal and bit types
+	IF(TRUE, X'4D7953514C', 'hex_text') as hex_to_string,
+	IF(TRUE, 'hex_text', X'4D7953514C') as string_to_hex,
+	IF(TRUE, b'1010', 'bit_text') as bit_to_string,
+	IF(TRUE, 'bit_text', b'1010') as string_to_bit,
+	-- 13. Scientific notation numbers
+	IF(TRUE, 1.23e5, 'scientific') as scientific_to_string,
+	IF(TRUE, '1.23e5', 123000) as string_to_scientific,
+	-- 14. Complex expression type inference
+	IF(TRUE, 1 + 2, 'calculated') as expression_to_string,
+	IF(TRUE, 'prefix_' || 'suffix', 123) as concat_to_int,
+	IF(TRUE, LENGTH('test'), 'length_text') as function_to_string,
+	-- 15. Boundary values and special values
+	IF(TRUE, 0, 'zero') as zero_to_string,
+	IF(TRUE, '', 123) as empty_string_to_int,
+	IF(TRUE, '0', 0) as string_zero_to_int,
+	IF(TRUE, NULL, 'default') as null_default,
+	IF(TRUE, -123, 'negative') as negative_to_string,
+	IF(TRUE, 999999999999999999, 'very_large') as very_large_int_to_string,
+	-- 16. Spatial data types (if supported)
+	IF(TRUE, POINT(1, 1), 'point_text') as spatial_to_string,
+	IF(TRUE, 'point_text', POINT(1, 1)) as string_to_spatial;
+-- Display detailed data type information for all test cases
+SELECT
+	COLUMN_NAME as test_case,
+	DATA_TYPE,
+	COLUMN_TYPE,
+	CHARACTER_MAXIMUM_LENGTH,
+	NUMERIC_PRECISION,
+	NUMERIC_SCALE,
+	IS_NULLABLE,
+	CHARACTER_SET_NAME,
+	COLLATION_NAME
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_SCHEMA = DATABASE() 
+AND TABLE_NAME = 'type_analysis'
+ORDER BY
+	CASE
+		WHEN COLUMN_NAME LIKE '%int%' THEN 1
+		WHEN COLUMN_NAME LIKE '%float%' THEN 2
+		WHEN COLUMN_NAME LIKE '%string%' THEN 3
+		WHEN COLUMN_NAME LIKE '%date%' THEN 4
+		WHEN COLUMN_NAME LIKE '%time%' THEN 5
+		WHEN COLUMN_NAME LIKE '%bool%' THEN 6
+		WHEN COLUMN_NAME LIKE '%null%' THEN 7
+		WHEN COLUMN_NAME LIKE '%binary%' THEN 8
+		WHEN COLUMN_NAME LIKE '%json%' THEN 9
+		ELSE 10
+	END,
+	ORDINAL_POSITION;
+        test_case         |     DATA_TYPE     |    COLUMN_TYPE    | CHARACTER_MAXIMUM_LENGTH | NUMERIC_PRECISION | NUMERIC_SCALE | IS_NULLABLE | CHARACTER_SET_NAME | COLLATION_NAME 
+--------------------------+-------------------+-------------------+--------------------------+-------------------+---------------+-------------+--------------------+----------------
+ int_to_string            | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_int            | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ int_to_float             | numeric           | numeric           |                          |                   |               | YES         | UTF8               | 
+ float_to_int             | numeric           | numeric           |                          |                   |               | YES         | UTF8               | 
+ bigint_to_string         | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_bigint         | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ int_to_date              | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ date_to_int              | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ int_to_string_false      | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_int_false      | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ date_to_int_false        | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ bool_to_int              | integer           | integer           |                          | 32                | 0             | YES         | UTF8               | 
+ int_to_bool              | integer           | integer           |                          | 32                | 0             | YES         | UTF8               | 
+ null_to_int              | integer           | integer           |                          | 32                | 0             | YES         | UTF8               | 
+ int_to_null              | integer           | integer           |                          | 32                | 0             | YES         | UTF8               | 
+ datetime_to_int          | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ int_to_datetime          | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ time_to_int              | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ int_to_time              | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ binary_to_int            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
+ int_to_binary            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
+ concat_to_int            | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ empty_string_to_int      | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_zero_to_int       | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ very_large_int_to_string | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ float_to_string          | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_float          | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ float_to_date            | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ date_to_float            | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ float_to_string_false    | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ null_to_float            | numeric           | numeric           |                          |                   |               | YES         | UTF8               | 
+ float_to_null            | numeric           | numeric           |                          |                   |               | YES         | UTF8               | 
+ decimal_to_string        | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_date           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ date_to_string           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_datetime       | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ datetime_to_string       | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ bool_to_string_false     | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ bool_to_string           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_bool           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ null_to_string           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_null           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ time_to_string           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_time           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ binary_to_string         | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
+ string_to_binary         | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
+ hex_to_string            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
+ string_to_hex            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
+ bit_to_string            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
+ string_to_bit            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
+ scientific_to_string     | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_scientific     | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ expression_to_string     | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ function_to_string       | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ zero_to_string           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ negative_to_string       | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ spatial_to_string        | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ string_to_spatial        | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+ date_to_datetime         | datetime          | datetime          |                          |                   |               | YES         | UTF8               | 
+ datetime_to_date         | datetime          | datetime          |                          |                   |               | YES         | UTF8               | 
+ null_to_bool             | tinyint           | "tinyint"         |                          | 16                | 0             | YES         | UTF8               | 
+ bool_to_null             | tinyint           | "tinyint"         |                          | 16                | 0             | YES         | UTF8               | 
+ null_default             | character varying | character varying |                          |                   |               | YES         | UTF8               | 
+(63 rows)
+
+set mysql.enable_mysql_information_schema TO off;
+set mysql.use_mysql_bool TO false;
 -- ifnull
 select ifnull(null, null);
  ifnull 
@@ -2669,7 +2850,7 @@ select ifnull('something','other');
 select ifnull(null,321);
  ifnull 
 --------
- 321
+    321
 (1 row)
 
 select ifnull(123,'321');
@@ -2776,10 +2957,9 @@ SELECT ifnull('100'::int4, 'hello!'::text);
 
 --ifnull(text, int8)
 SELECT ifnull('hello!'::text, '100'::int8);
-WARNING:  Truncated incorrect DOUBLE value: 'hello!'
  ifnull 
 --------
-      0
+ hello!
 (1 row)
 
 SELECT ifnull('100'::int8, 'hello!'::text);
@@ -2790,29 +2970,25 @@ SELECT ifnull('100'::int8, 'hello!'::text);
 
 --ifnull(text, float4)
 SELECT ifnull('hello!'::text, '100.001'::float4);
-WARNING:  Truncated incorrect DOUBLE value: 'hello!'
  ifnull 
 --------
-      0
+ hello!
 (1 row)
 
 SELECT ifnull('100.001'::float4, 'hello!'::text);
-WARNING:  Truncated incorrect DOUBLE value: 'hello!'
-      ifnull       
--------------------
- 100.0009994506836
+ ifnull  
+---------
+ 100.001
 (1 row)
 
 --ifnull(text, float8)
 SELECT ifnull('hello!'::text, '100.001'::float8);
-WARNING:  Truncated incorrect DOUBLE value: 'hello!'
  ifnull 
 --------
-      0
+ hello!
 (1 row)
 
 SELECT ifnull('100.001'::float8, 'hello!'::text);
-WARNING:  Truncated incorrect DOUBLE value: 'hello!'
  ifnull  
 ---------
  100.001
@@ -2820,10 +2996,9 @@ WARNING:  Truncated incorrect DOUBLE value: 'hello!'
 
 --ifnull(text, number)
 SELECT ifnull('hello!'::text, '100.001'::numeric);
-WARNING:  Truncated incorrect DOUBLE value: 'hello!'
  ifnull 
 --------
-      0
+ hello!
 (1 row)
 
 SELECT ifnull('100.001'::numeric, 'hello!'::text);
@@ -2832,6 +3007,27 @@ SELECT ifnull('100.001'::numeric, 'hello!'::text);
  100.001
 (1 row)
 
+-- ifnull in where
+CREATE TABLE test_table (id INT, column1 TEXT, column2 TEXT);
+INSERT INTO test_table (id, column1, column2) VALUES
+(1, 'value', 'other'),
+(2, NULL, 'value'),
+(3, 'other', 'other'),
+(4, NULL, 'other');
+SELECT * FROM test_table WHERE IFNULL(column1, column2) = 'value';
+ id | column1 | column2 
+----+---------+---------
+  1 | value   | other
+  2 |         | value
+(2 rows)
+
+SELECT * FROM test_table WHERE IFNULL(column2, column1) = 'value';
+ id | column1 | column2 
+----+---------+---------
+  2 |         | value
+(1 row)
+
+DROP TABLE test_table;
 -- replace
 SELECT replace (123,3,'highgo') as test1; -- '12highgo'
   test1   

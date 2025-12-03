@@ -64,6 +64,7 @@ OBJS = \
 	src/builtin_functions/interval.o \
 	src/builtin_functions/mys_locale.o \
 	src/builtin_functions/network_func.o \
+	src/builtin_functions/agg_field_type.o \
 	src/set/set_user_var.o \
 	src/set/set_global_session_var.o \
 	src/set/set_names.o \

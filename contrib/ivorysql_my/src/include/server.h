@@ -272,7 +272,7 @@ typedef struct {
     char        *default_value;
 } mysql_column_definition_t;
 
-enum enum_field_types {
+typedef enum enum_field_types {
     MYSQL_TYPE_DECIMAL,
     MYSQL_TYPE_TINY,
     MYSQL_TYPE_SHORT,
@@ -308,7 +308,7 @@ enum enum_field_types {
     MYSQL_TYPE_VAR_STRING = 253,
     MYSQL_TYPE_STRING = 254,
     MYSQL_TYPE_GEOMETRY = 255
-};
+}enum_field_types;
 
 enum enum_cursor_type {
     CURSOR_TYPE_NO_CURSOR = 0,
@@ -349,7 +349,7 @@ extern mysql_conn_info_t    mysql_conn_info;
 
 extern void register_mysql_listener(void);
 extern void unregister_mysql_listener(void);
-extern const TypeItem *GetItemByTypeOid(Oid oid);
+extern const TypeItem *GetItemByTypeOid(Oid oid, bool report_warning); /* Bug - #z6172 */
 extern bool type_is_blob(Oid oid);
 
 static inline uint32

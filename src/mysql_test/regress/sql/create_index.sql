@@ -995,7 +995,7 @@ CREATE OR REPLACE FUNCTION create_relfilenode_part(relname text, indname text)
   END
   $func$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION compare_relfilenode_part(tabname text)
-  RETURNS TABLE (relname name, relkind "char", state text) AS
+  RETURNS TABLE (relname name, relkind "char", state varchar) AS
   $func$
   BEGIN
     RETURN QUERY EXECUTE

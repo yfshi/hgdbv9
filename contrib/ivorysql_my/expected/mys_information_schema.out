@@ -1,4 +1,4 @@
-SET ivorysql.enable_mysql_information_schema TO on;
+SET mysql.enable_mysql_information_schema TO on;
 ------------------------------------------------------------
 -- 1. Test for information_schema.table_privileges
 ------------------------------------------------------------
@@ -668,7 +668,7 @@ ORDER BY index_name, seq_in_index;
  test_schema_stats | stats_tbl  | stats_tbl_pkey        |            1 | id          | A         |           0 |          | btree
 (3 rows)
 
-SET ivorysql.enable_mysql_information_schema TO off;
+SET mysql.enable_mysql_information_schema TO off;
 ------------------------------------------------------------
 -- 14. Test for mysql.user
 ------------------------------------------------------------
