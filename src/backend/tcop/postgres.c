@@ -5314,12 +5314,12 @@ PostgresMain(int argc, char *argv[],
 			if (MyProc->pgxactoff > hg_pool_size && (MyProc->lxid == 0))
 			{
 				/*
-				 * wait 1000ms every cycle
+				 * wait 100ms every cycle(let the shutdown-connection duration be shorter)
 				 * when wait timeout, check if need wait again by MyProc->pgxactoff <= hg_pool_size
 				 * if no this check, coming a B message at the last of tpcc, this BE will wait more time
 				 */
-				int wait_times = hg_pool_timeout / 1000;
-				int wait_left = hg_pool_timeout % 1000;
+				int wait_times = hg_pool_timeout / 100;	/* BUG#z6612 */
+				int wait_left = hg_pool_timeout % 100;  /* BUG#z6612 */
 				int rc;
 
 				for (int i = 0; i < wait_times; i++)
@@ -5330,7 +5330,7 @@ PostgresMain(int argc, char *argv[],
 
 					rc = WaitLatch(MyLatch,
 							WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
-							1000L,
+							100L,
 							WAIT_EVENT_PG_SLEEP);
 
 					if (rc & WL_POSTMASTER_DEATH)
