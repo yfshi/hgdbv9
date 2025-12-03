@@ -81,7 +81,7 @@ ProcDataShmemInit(void)
 /* look up information in the hash table. */
 unsigned int
 ProcDataTableLookup(const int *tagPtr, u_int32_t *sid, char *idle_sum, 
-	char *busy_num, char *trans_info, u_int32_t *tid, char* path_search, bool *islock)
+	char *busy_num, char *trans_info, u_int32_t *tid, char* path_search, bool *islock, bool *is_share)
 {
 	ProcPrivEnt *result;
 	LWLockAcquire(proc_data_lock, LW_SHARED);
@@ -116,6 +116,7 @@ ProcDataTableLookup(const int *tagPtr, u_int32_t *sid, char *idle_sum,
 	}
 	*tid = result->data.tid;
 	*islock = result->data.is_lock;
+	*is_share = result->data.is_share;
 
 	LWLockRelease(proc_data_lock);
 	return *sid;
@@ -240,6 +241,7 @@ ProcDataTableInsert(const int *tagPtr, int sid, int trans_state, unsigned int ti
 	strcpy(result->data.trans_info, TransStateIntAsString(trans_state));
 	result->data.tid = tid;
 	result->data.is_lock = should_lock_current_session;
+	result->data.is_share = MyProcPort->is_share;
 
 	elog(DEBUG1, "ProcDataTableInsert, pid:%d, sid:%d, trans_state:%d, tid:%d, is_lock:%d", 
 			*tagPtr, sid, trans_state, tid, result->data.is_lock);
