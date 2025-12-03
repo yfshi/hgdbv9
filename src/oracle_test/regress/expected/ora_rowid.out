@@ -498,3 +498,29 @@ drop user test_z928;
 -- add a table with rowid to test BUGZ1641 for pg_upgrade
 CREATE TABLE test_bugz1641(a int, b text) WITH ROWID;
 /* End - BUG#M508 */
+/* Begin - BUG#Z6505 */
+set ivorysql.default_with_rowids = on;
+create table test_id(id integer);
+insert into test_id select generate_series(1,100);
+create table test_mds as select * from test_id;
+set enable_seqscan = off;
+select count(*) from test_mds;
+ count 
+-------
+   100
+(1 row)
+
+set ivorysql.default_with_rowids = off;
+create table test_mds2 with rowid as select * from test_id;
+select count(*) from test_mds2;
+ count 
+-------
+   100
+(1 row)
+
+drop table test_mds;
+drop table test_mds2;
+drop table test_id;
+set ivorysql.default_with_rowids = off;
+reset enable_seqscan;
+/* End - BUG#Z6505 */

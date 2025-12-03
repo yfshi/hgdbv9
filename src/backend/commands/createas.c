@@ -31,6 +31,7 @@
 #include "access/tableam.h"
 #include "access/xact.h"
 #include "access/xlog.h"
+#include "catalog/index.h"     /* BUG#Z6505 */
 #include "catalog/namespace.h"
 #include "catalog/toasting.h"
 #include "commands/createas.h"
@@ -422,6 +423,28 @@ ExecCreateTableAs(ParseState *pstate, CreateTableAsStmt *stmt,
 		ExecutorEnd(queryDesc);
 
 		FreeQueryDesc(queryDesc);
+
+		/* Begin - BUG#Z6505 */
+		if (DB_ORACLE == database_mode)
+		{
+			Relation	rel;
+			Oid 		nspid;
+			Oid 		relid;
+			IntoClause 	*into = stmt->into;
+
+			nspid = RangeVarGetCreationNamespace(into->rel);
+			relid = get_relname_relid(into->rel->relname, nspid);
+
+			rel = relation_open(relid, ShareLock);
+			if (rel->rd_rel->relhasrowid)
+			{
+				ReindexParams reindex_params = {0};
+
+				reindex_relation(relid, REINDEX_REL_PROCESS_TOAST, &reindex_params);
+			}
+			relation_close(rel, ShareLock);
+		}
+		/* End - BUG#Z6505 */
 
 		PopActiveSnapshot();
 	}
