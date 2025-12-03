@@ -795,3 +795,118 @@ update partiton_first_level set a = 100,b = 1,c = 'sfs' where rownum < 5;
 --clean data
 drop table lp;
 drop table partiton_first_level;
+
+/* Begin - BUG#Z6554 */
+DROP TABLE IF EXISTS TB1;
+CREATE TABLE TB1 (
+    emp_id NUMBER PRIMARY KEY,
+    emp_name VARCHAR2(50),
+    salary NUMBER(10,2)
+);
+
+CREATE VIEW VIEW1 AS
+    SELECT emp_id, emp_name, salary FROM TB1;
+
+INSERT INTO VIEW1 (emp_id, emp_name, salary)
+  SELECT 101, 'Bob', 5000 FROM DUAL
+UNION ALL
+  SELECT 102, 'Tom', 6000 FROM DUAL
+UNION ALL
+  SELECT 103, 'Mary', 7000 FROM DUAL;
+
+select * from VIEW1 order by emp_id;
+
+update view1 set salary = salary -100 where salary > 4000 and rownum < 3;
+
+select * from VIEW1 order by emp_id;
+
+DROP VIEW VIEW1;
+DROP TABLE TB1;
+
+DROP TABLE IF EXISTS sales CASCADE;
+CREATE TABLE sales (
+    id          int,
+    category    varchar2(20),
+    amount      number,
+    region      varchar2(20),
+    status      varchar2(20),
+    col1        varchar2(20),
+    col2        varchar2(20),
+    col3        varchar2(20),
+    col4        varchar2(20),
+    col5        varchar2(20),
+    col6        varchar2(20),
+    col7        varchar2(20),
+    col8        varchar2(20),
+    col9        varchar2(20),
+    col10       varchar2(20)
+) PARTITION BY RANGE (id);
+
+CREATE TABLE sales_p1 PARTITION OF sales
+FOR VALUES FROM (1) TO (301);
+
+CREATE TABLE sales_p2 PARTITION OF sales
+FOR VALUES FROM (301) TO (601);
+
+CREATE TABLE sales_p3 PARTITION OF sales
+FOR VALUES FROM (601) TO (1001);
+
+CREATE OR REPLACE VIEW sales_view AS
+SELECT
+    id,
+    category,
+    amount,
+    region,
+    status,
+    col1,
+    col2,
+    col3,
+    col4,
+    col5,
+    col6,
+    col7,
+    ctid,
+    0 AS mds,
+    sysdate as md
+FROM sales;
+
+INSERT INTO sales (
+    id, category, amount, region, status,
+    col1, col2, col3, col4, col5,
+    col6, col7, col8, col9, col10
+)
+SELECT
+    gs,
+    'cat-' || gs,
+    gs * 1.25,
+    'region-' || (gs % 5),
+    CASE WHEN gs % 2 = 0 THEN 'OK' ELSE 'PENDING' END,
+    'c1-' || gs, 'c2-' || gs, 'c3-' || gs, 'c4-' || gs, 'c5-' || gs,
+    'c6-' || gs, 'c7-' || gs, 'c8-' || gs, 'c9-' || gs, 'c10-' || gs
+FROM generate_series(1, 1000) gs;
+
+UPDATE sales_view
+SET amount = amount + 100,
+    status = 'UPDATED'
+WHERE id < 10;
+
+select * from sales where id < 20 order by id;
+
+UPDATE sales_view
+SET amount = amount + 100,
+    status = 'ROWNUM_TEST'
+WHERE amount < 25 AND rownum < 20;
+
+select * from sales where id < 20 order by id;
+
+UPDATE sales_view
+SET amount = amount - 10,
+    status = 'ROWNUM_OR_ROWNUM'
+WHERE amount < 100 AND rownum < 2 OR rownum < 8;
+
+select * from sales where status = 'ROWNUM_OR_ROWNUM' order by id;
+
+--cleanup
+DROP VIEW sales_view;
+DROP TABLE sales;
+/* End - BUG#Z6554 */

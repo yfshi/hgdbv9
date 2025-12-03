@@ -648,7 +648,29 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	/* Begin - ReqID:SRS-SQL-ROWNUM */
 	root->hasCount = parse->hasRownum;
 	if (root->hasCount)
-		root->countRI = list_length(parse->rtable);
+	{
+		/* Begin - BUG#Z6554 */
+		ListCell	*l;
+		int 		i = 1;
+
+		/*
+		 * Find the correct index for the Count RTE in parser->rtable.
+		 * for the rownum pseudo-column, we add a dummy Count entry in
+		 * the pstate's range table to generate a Count plan. countRI
+		 * ensures that quals are correctly distributed to the Count path.
+		 * See the build_count_path function for detailed logic.
+		 */
+		foreach(l, parse->rtable)
+		{
+			RangeTblEntry	*rte = lfirst_node(RangeTblEntry, l);
+
+			if (rte->rtekind == RTE_COUNT)
+				break;
+			i++;
+		}
+		root->countRI = i;
+		/* End - BUG#Z6554 */
+	}
 	/* End - ReqID:SRS-SQL-ROWNUM */
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
