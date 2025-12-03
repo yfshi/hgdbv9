@@ -839,6 +839,30 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 		if (compatible_mode == MYS_MODE)
 		{
 			const char *op_name = strVal(linitial(opname));
+			Oid ptype = InvalidOid;		/* BUG#Z5913*/
+
+			/* Begin - BUG#Z5913
+			 * This is used to compute the common type that
+			 * two operand types of a custom variable operation
+			 * can return.
+			 */
+			if ((IsA(ltree, VarRef) || IsA(rtree, VarRef)) && mys_agg_field_type_hook)
+			{
+				List	   *exprlist = NIL;
+
+				exprlist = list_make2(ltree, rtree);
+				ptype = mys_agg_field_type_hook(exprlist);
+
+				/* Because the varchar type does not have its
+				 * own dedicated operators, it is easy to encounter
+				 * operator does not exist errors during computation,
+				 * and we cannot simply add varchar-specific operators
+				 * to resolve this.
+				 */
+				if (ptype == VARCHAROID)
+					ptype = TEXTOID;
+			}
+			/* End - BUG#Z5913 */
 
 			/* Begin - ReqID:SRS-MYSQL-SET
 			 * if both sides of the operator are user defined variable,
@@ -848,14 +872,20 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 			{
 				VarRef *lref = (VarRef *) ltree;
 
-				ltypeId = lref->rettype = TEXTOID;
+				/* Begin - BUG#Z5913 */
+				if (OidIsValid(ptype))
+					ltypeId = lref->rettype = ptype;
+				/* End - BUG#Z5913 */
 			}
 
 			if (rtree != NULL && IsA(rtree, VarRef))
 			{
 				VarRef *rref = (VarRef *) rtree;
 
-				rtypeId = rref->rettype = TEXTOID;
+				/* Begin - BUG#Z5913 */
+				if (OidIsValid(ptype))
+					rtypeId = rref->rettype = ptype;
+				/* End - BUG#Z5913 */
 			}
 			/* End - ReqID:SRS-MYSQL-SET */
 
