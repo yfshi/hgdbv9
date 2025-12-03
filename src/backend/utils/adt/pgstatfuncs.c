@@ -990,6 +990,7 @@ pg_stat_get_activity_ext(PG_FUNCTION_ARGS)
 	char tran_info[PROC_INFO_STR_LEN] = {'\0'};
 	char path_search[PATH_SEARCH_LEN] = {'\0'};
 	bool is_lock = false;
+	bool is_share = false; /* Bug #6197 */
 
 	Datum		values[PG_STAT_GET_ACTIVITY_COLS_EXT];
 	bool		nulls[PG_STAT_GET_ACTIVITY_COLS_EXT];
@@ -1094,7 +1095,7 @@ pg_stat_get_activity_ext(PG_FUNCTION_ARGS)
 
 		if (beentry->st_procpid > 0 &&
 				ProcDataTableLookup(&beentry->st_procpid, &tmp_sid, idle_time, 
-				busy_time, tran_info, &tmp_tid, path_search, &is_lock) > 0)
+				busy_time, tran_info, &tmp_tid, path_search, &is_lock, &is_share) > 0) /* Bug #6197 */
 		{
 			elog(DEBUG3, "ProcDataTableLookup success, st_procpid:%d, tmp_sid:%d, path_search: %s", 
 							beentry->st_procpid, tmp_sid, path_search);
@@ -1105,6 +1106,7 @@ pg_stat_get_activity_ext(PG_FUNCTION_ARGS)
 			values[9] = Int32GetDatum(tmp_tid);
 			values[10] = CStringGetTextDatum(path_search);
 			values[11] = BoolGetDatum(is_lock);
+			values[14] = BoolGetDatum(is_share); /* Bug #6197 */
 		}
 		else
 		{
@@ -1116,6 +1118,7 @@ pg_stat_get_activity_ext(PG_FUNCTION_ARGS)
 			nulls[9] = true;
 			nulls[10] = true;
 			nulls[11] = true;
+			nulls[14] = true; /* Bug #6197 */
 		}
 
 		values[12] = CStringGetTextDatum("TCP/IP");
@@ -1124,13 +1127,6 @@ pg_stat_get_activity_ext(PG_FUNCTION_ARGS)
 			values[13] = Int32GetDatum(1);
 		else
 			values[13] = Int32GetDatum(0);
-
-		values[14] = BoolGetDatum(0);
-		if (MyProcPid == pid)
-		{
-			if (MyProcPort && MyProcPort->is_share)
-				values[14] = BoolGetDatum(1);
-		}
 
 		tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 

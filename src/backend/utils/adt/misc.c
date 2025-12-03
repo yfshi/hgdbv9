@@ -23,6 +23,7 @@
 
 #include "access/sysattr.h"
 #include "access/table.h"
+#include "access/xact.h"	 /* ReqID: SRS-SESSION-VIEWS */
 #include "catalog/catalog.h"
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_type.h"
@@ -41,6 +42,7 @@
 #include "tcop/tcopprot.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
+#include "utils/hg_proc_data.h"  /* ReqID: SRS-SESSION-VIEWS */
 #include "utils/lsyscache.h"
 #include "utils/ruleutils.h"
 /* Begin - SQL PARSER */
@@ -51,6 +53,7 @@
 #include "utils/timestamp.h"
 #include "pg_contrib_audit.h"
 
+extern int64 g_proc_counter;
 
 /* Hook for plugins to get control in get_keywords() */
 /* BEGIN - SQL PARSER */
@@ -76,6 +79,9 @@ lock_current_session(PG_FUNCTION_ARGS)
 	should_lock_current_session = true;
 	SetLatch(MyLatch);
 
+	/* Bug 6185 Update the lock state of the process */
+	ProcDataTableInsert(&MyProcPid, g_proc_counter, GetCurrTransState(), GetCurrentTransactionIdIfAny());
+
 /* Begin - BUG#Z6168 */
 #ifdef USE_SQLITE
 	/* add audit event */
@@ -97,6 +103,8 @@ unlock_current_session(PG_FUNCTION_ARGS)
 
 	should_lock_current_session = false;
 	ResetLatch(MyLatch);
+	/* Bug 6185 Update the lock state of the process */
+	ProcDataTableInsert(&MyProcPid, g_proc_counter, GetCurrTransState(), GetCurrentTransactionIdIfAny());
 
 /* Begin - BUG#Z6168 */
 #ifdef USE_SQLITE

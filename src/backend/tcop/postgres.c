@@ -83,6 +83,7 @@
 #include "tcop/pquery.h"
 #include "tcop/tcopprot.h"
 #include "tcop/utility.h"
+#include "utils/hg_proc_data.h"  /* ReqID: SRS-SESSION-VIEWS */
 #include "utils/guc.h"				/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
@@ -252,6 +253,7 @@ TimestampTz g_before_time;
 /* false means idle */
 extern bool count_idle_busy_time;
 bool g_proc_is_busy = false;
+extern int64 g_proc_counter;
 /* End ReqID: SESSION-VIEWS */
 
 /* ----------------------------------------------------------------
@@ -3880,6 +3882,8 @@ ProcessInterrupts(void)
 		if (IdleSessionNoinput > 0)
 		{
 			should_lock_current_session = true;
+			/* Bug 6185 Update the lock state of the process */
+			ProcDataTableInsert(&MyProcPid, g_proc_counter, GetCurrTransState(), GetCurrentTransactionIdIfAny());
 		}
 		else
 			IdleSessionNoinputPending = false;
