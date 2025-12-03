@@ -1325,3 +1325,16 @@ select * from tb1 ;
 
 \c - super1
 drop table tb1;
+
+
+-- fix bug 6564
+create schema sch1;
+drop extension hg_redaction;
+
+create table test(id int,name text);
+alter table test set schema sch1;
+\d+ sch1.test
+
+create extension hg_redaction;
+drop table sch1.test;
+drop schema sch1;
