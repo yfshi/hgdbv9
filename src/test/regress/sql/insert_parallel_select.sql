@@ -160,3 +160,6 @@ drop table names2;
 drop table test_data;
 
 set enable_insertparallel = false;
+
+-- BUG#Z6513
+create table test_id(id integer) with rowid;

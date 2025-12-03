@@ -160,3 +160,18 @@ drop table names2;
 drop table test_data;
 
 set enable_insertparallel = false;
+
+-- BUG#z6513
+create table test_id(id integer) with rowid;
+set force_parallel_mode = on;
+insert into test_id select generate_series(1, 10000);
+select count(*) from test_id;
+
+-- although, enable insertparallel, as target table has rowid, using no-parallel mode
+set enable_insertparallel = true;
+insert into test_id select generate_series(1, 10000);
+select count(*) from test_id;
+
+reset enable_insertparallel;
+insert into test_id select generate_series(1, 10000);
+select count(*) from test_id;

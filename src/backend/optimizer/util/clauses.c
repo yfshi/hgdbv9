@@ -22,6 +22,8 @@
 #include "access/htup_details.h"
 /* Begin - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
 #include "access/xact.h"
+#include "access/relation.h"
+#include "utils/rel.h"
 /* End - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
 #include "catalog/pg_aggregate.h"
 #include "catalog/pg_class.h"
@@ -1048,6 +1050,7 @@ max_parallel_hazard_walker(Node *node, max_parallel_hazard_context *context)
  *
  *  1) INSERT...ON CONFLICT...DO UPDATE
  *  2) INSERT without SELECT
+ *  3) INSERT XXX SELECT YYY:table XXX has rowid
  *
  * (Note: we don't do in-depth parallel-safety checks here, we do only the
  * cheaper tests that can quickly exclude obvious cases for which
@@ -1078,6 +1081,41 @@ is_parallel_allowed_for_modify(Query *parse)
                 parse->onConflict != NULL &&
                 parse->onConflict->action == ONCONFLICT_UPDATE)
                 return false;
+
+	/* Begin - BUG#z6513 */
+	/*
+	 * For insert into XXX select YYY, we set parallel mode for(select YYY) part
+	 *
+	 * If there has rowid in the target table(XXX), should using non-parallel mode
+	 * why?
+	 * rowid is generated next value used nextval_internal() in heap_prepare_insert()
+	 * nextval_internal() fuction could not be used in parallel mode
+	 * but when arrived in heap_prepare_insert(), there has already set prarallel-mode to true
+	 * so the function used-mode checked fail
+	 * how to fix?
+	 * At begining, set no-parallel mode for this case
+	 * however nextval_internal() belongs to insert xxx, not select xxx
+	 * because change nextval_internal() to be alonged in parallel mode is not sensible 
+	 */
+	if (parse->resultRelation > 0)
+	{
+		int idx = parse->resultRelation - 1;
+		RangeTblEntry *rte = list_nth_node(RangeTblEntry, parse->rtable, idx);
+
+		Oid relid = rte->relid;
+		Relation rel = relation_open(relid, AccessShareLock);
+
+		if (rel->rd_rel->relhasrowid)
+		{
+			relation_close(rel,  AccessShareLock);
+			return false;
+		}
+		else
+		{
+			relation_close(rel,  AccessShareLock);
+		}
+	}
+	/* End - BUG#z6513 */
 
         /*
 	 * If there is no underlying SELECT, a parallel insert operation is not
