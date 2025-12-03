@@ -16753,11 +16753,35 @@ a_expr:		c_expr									{ $$ = $1; }
 					{ $$ = makeTypeCast($1, $3, @2); }
 			| a_expr COLLATE any_name
 				{
-					CollateClause *n = makeNode(CollateClause);
-					n->arg = $1;
-					n->collname = $3;
-					n->location = @2;
-					$$ = (Node *) n;
+					char *id = NULL;
+					StringInfoData buf;
+					initStringInfo(&buf);
+
+					if (IsA($1, TypeCast))
+					{
+						TypeCast *tc = (TypeCast *) $1;
+						ListCell *lc;
+						
+						foreach(lc, tc->typeName->names)
+						{
+							id = strVal(lfirst(lc));
+							appendStringInfoString(&buf, id);
+							if (lnext(tc->typeName->names, lc))
+								appendStringInfoString(&buf, "."); 
+						}
+					}
+					if (strcasecmp(buf.data, "ivymy.varbinary") == 0)
+					{
+ 						$$ = $1;
+					}
+					else
+					{
+						CollateClause *n = makeNode(CollateClause);
+						n->arg = $1;
+						n->collname = $3;
+						n->location = @2;
+						$$ = (Node *) n;
+					}
 				}
 			| a_expr AT TIME ZONE a_expr			%prec AT
 				{

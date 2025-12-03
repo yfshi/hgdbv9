@@ -1459,3 +1459,13 @@ select timestampdiff(month,'1999-09-11','2001-9-11');
 select timestampdiff(year,'1999-09-11','2001-9-11');
 select timestampdiff(year,'2004-02-28','2005-02-28');
 select timestampdiff(year,'2004-02-29','2005-02-28');
+
+--bug#z6049
+set sql_mode ='';
+SELECT TIMESTAMPDIFF(MINUTE,'00:00:01','2001-01-01 00:05:59');
+set sql_mode = default;
+SELECT TIMESTAMPDIFF(MINUTE,'00:00:01','2001-01-01 00:05:59');
+
+--bug#z6412
+SELECT TIMESTAMPDIFF(MICROSECOND, '2024-01-01 23:59:59.000123', '2024-01-01 23:59:59.123456');
+SELECT TIMESTAMPDIFF(MICROSECOND, '2024-01-01 23:59:59', '2024-01-01 23:59:59.12345678');

@@ -2685,6 +2685,13 @@ timestampdiff(PG_FUNCTION_ARGS)
 	mys_datetimes2tm(PG_GETARG_NUMERIC(1), tm1, &fsec1);
 	mys_datetimes2tm(PG_GETARG_NUMERIC(2), tm2, &fsec2);
 
+	if ((tm1->tm_year == 0 || tm1->tm_mon == 0 || tm1->tm_mday == 0)
+		|| (tm2->tm_year == 0 || tm2->tm_mon == 0 || tm2->tm_mday == 0))
+	{
+		ereport(WARNING, (errmsg("Incorrect datetime value")));
+		PG_RETURN_NULL();
+	}
+
 	if (!strncasecmp(lowunits, "sql_tsi_", 8))
 	{
 		lowunits = lowunits + 8;
@@ -2747,9 +2754,12 @@ timestampdiff(PG_FUNCTION_ARGS)
 					tm3->tm_hour * 60 * 60 + tm3->tm_min * 60 + tm3->tm_sec;
 				break;
 			case DTK_MICROSEC:
+				if (interval2tm(*span, tm3, &fsec3) != 0)
+					elog(ERROR, "could not convert interval to tm");
 				res = span->day * 24 * 60 * 60 * 1000000 +
 					tm3->tm_hour * 60 * 60 * 1000000 +
-					tm3->tm_min * 60 * 1000000 + fsec3;
+					tm3->tm_min * 60 * 1000000 + 
+					tm3->tm_sec * 1000000 + fsec3;
 				break;
 			default:
 				ereport(ERROR, (errcode(ERRCODE_UNDEFINED_PARAMETER), 
