@@ -2877,3 +2877,10 @@ select char_length(X'41'), char_length(X'4142'), char_length(x'410041'), char_le
 (1 row)
 
 /* End - bug#z6050 */
+-- bug#z6011
+select binary 'test' collate utf8_bin;
+ varbinary 
+-----------
+ test
+(1 row)
+

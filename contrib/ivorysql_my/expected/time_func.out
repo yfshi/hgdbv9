@@ -5415,3 +5415,33 @@ select timestampdiff(year,'2004-02-29','2005-02-28');
              0
 (1 row)
 
+--bug#z6049
+set sql_mode ='';
+SELECT TIMESTAMPDIFF(MINUTE,'00:00:01','2001-01-01 00:05:59');
+WARNING:  Incorrect datetime value
+ timestampdiff 
+---------------
+              
+(1 row)
+
+set sql_mode = default;
+SELECT TIMESTAMPDIFF(MINUTE,'00:00:01','2001-01-01 00:05:59');
+WARNING:  Incorrect datetime value
+ timestampdiff 
+---------------
+              
+(1 row)
+
+--bug#z6412
+SELECT TIMESTAMPDIFF(MICROSECOND, '2024-01-01 23:59:59.000123', '2024-01-01 23:59:59.123456');
+ timestampdiff 
+---------------
+        123333
+(1 row)
+
+SELECT TIMESTAMPDIFF(MICROSECOND, '2024-01-01 23:59:59', '2024-01-01 23:59:59.12345678');
+ timestampdiff 
+---------------
+        123457
+(1 row)
+
