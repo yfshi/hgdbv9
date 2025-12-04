@@ -1211,6 +1211,11 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 			break;
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
+		/* Begin - BUG#Z6475 */
+		case T_AlterSynonymStmt:
+			break;
+		/* End - BUG#Z6475 */
+
 		default:
 			/* All other statement types have event trigger support */
 			ProcessUtilitySlow(pstate, pstmt, queryString,
@@ -2123,6 +2128,18 @@ ProcessUtilitySlow(ParseState *pstate,
 				address = AlterOraTrigger((AlterOraTrigStmt *) parsetree);
 				break;
 			/* End - ReqID:SRS-SQL-TRIGGER */
+			/* Begin - BUG#Z6475 */
+			case T_CreateSynonymStmt:
+			case T_DropSynStmt:
+				/* triger and cleanup will be handle later */
+				if (isCompleteQuery || needCleanup)
+				{
+					isCompleteQuery =  false;
+					needCleanup = false;
+				}
+				break;
+			/* End - BUG#Z6475 */
+
 			default:
 				elog(ERROR, "unrecognized node type: %d",
 					 (int) nodeTag(parsetree));
