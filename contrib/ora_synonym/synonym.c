@@ -137,13 +137,22 @@ syno_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 	bool	needCleanup;
 	bool	isCompleteQuery = (context != PROCESS_UTILITY_SUBCOMMAND);
 
+	/* Begin - BUG#Z6475 */
+	if (prev_ProcessUtility)
+		(*prev_ProcessUtility) (pstmt, queryString, readOnlyTree,
+									context, params, queryEnv,
+									dest, qc);
+	else
+		standard_ProcessUtility(pstmt, queryString, readOnlyTree,
+									context, params, queryEnv,
+									dest, qc);
+	/* End - BUG#Z6475 */
+
 	switch (nodeTag(parsetree))
 	{
 		case T_CreateSynonymStmt:
 			{
 				needCleanup = isCompleteQuery && EventTriggerBeginCompleteQuery();
-				if (isCompleteQuery)
-					EventTriggerDDLCommandStart(parsetree);
 
 				CreateSynonym((CreateSynonymStmt *) parsetree);
 
@@ -165,8 +174,6 @@ syno_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 		case T_DropSynStmt:
 			{
 				needCleanup = isCompleteQuery && EventTriggerBeginCompleteQuery();
-				if (isCompleteQuery)
-					EventTriggerDDLCommandStart(parsetree);
 
 				DropSynonym((DropSynStmt *)parsetree);
 
@@ -180,17 +187,6 @@ syno_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 			}
 			break;
 		default:
-			{
-				if (prev_ProcessUtility)
-        			prev_ProcessUtility(pstmt, queryString, readOnlyTree,
-                                                context, params, queryEnv,
-                                                        dest, qc);
-        		else
-            		standard_ProcessUtility(pstmt, queryString, readOnlyTree,
-                                                context, params, queryEnv,
-                                                        dest, qc);
-
-			}
 			break;
 	}
 }
