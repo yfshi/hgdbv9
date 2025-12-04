@@ -153,6 +153,11 @@ drop schema sch_syssso_u1;
 drop schema sch_syssao_u1;
 
 
+-- test for bug z6280, should fail
+set client_min_messages to error;
+drop schema public cascade;
+reset client_min_messages;
+
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

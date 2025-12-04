@@ -9287,6 +9287,65 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 		replace_auto_config_value(&head, &tail, name, value);
 	}
 
+	/* Begin - ReqID:SRS-SECURITY-POWERS */
+	/* 
+	 * If we turn on se_feature.mode, we disallow user to reset all in auto_file.
+	 * At this point, we should be able to get all value in auto conf file, and we 
+	 * need to find all se_feature params and keep their setting.
+	 */
+	if (se_feature.mode && resetall)
+	{
+		struct stat st;
+		ConfigVariable *item,
+						*new_list = NULL;
+
+		Assert(head == NULL);
+
+		if (stat(AutoConfFileName, &st) == 0)
+		{
+			/* open old file PG_AUTOCONF_FILENAME */
+			FILE	   *infile;
+
+			infile = AllocateFile(AutoConfFileName, "r");
+			if (infile == NULL)
+				ereport(ERROR,
+						(errcode_for_file_access(),
+						errmsg("could not open file \"%s\": %m",
+								AutoConfFileName)));
+
+			/* parse it */
+			if (!ParseConfigFp(infile, AutoConfFileName, 0, LOG, &head, &tail))
+				ereport(ERROR,
+						(errcode(ERRCODE_CONFIG_FILE_ERROR),
+						errmsg("could not parse contents of file \"%s\"",
+								AutoConfFileName)));
+
+			FreeFile(infile);
+		}
+		
+		for (item = head; item; item = item->next)
+		{
+			if (item->ignore)
+				continue;
+			if (pg_strncasecmp(item->name,"se_feature.",strlen("se_feature.")) == 0)
+			{
+				if(new_list)
+					new_list->next = item;
+				else
+					new_list = item;
+
+				ereport(DEBUG3,
+						errmsg("cannot set security param \"%s\" in auto config file "
+								"via reset all, skipping it",
+								item->name));
+			}
+		}
+
+		/* we keep all the security params and write them back. */
+		head = new_list;
+	}
+	/* Begin - ReqID:SRS-SECURITY-POWERS */
+
 	/*
 	 * To ensure crash safety, first write the new file data to a temp file,
 	 * then atomically rename it into place.
@@ -12109,9 +12168,19 @@ GUCArrayReset(ArrayType *array)
 	if (!array)
 		return NULL;
 
-	/* if we're superuser, we can delete everything, so just do it */
-	if (superuser())
-		return NULL;
+	/* Begin - ReqID:SRS-SECURITY-POWERS */
+	/*
+	 * if we turn on se_feature.mode, we disallow superuser reset all directly,
+	 * we still need to keep the setting of security params;
+	 */
+	if (!se_feature.mode)
+	{
+		/* if we're superuser, we can delete everything, so just do it */
+		if (superuser())
+			return NULL;
+	}
+	/* End - ReqID:SRS-SECURITY-POWERS */
+	
 
 	newarray = NULL;
 	index = 1;
@@ -12135,6 +12204,43 @@ GUCArrayReset(ArrayType *array)
 
 		eqsgn = strchr(val, '=');
 		*eqsgn = '\0';
+
+		/* Begin - ReqID:SRS-SECURITY-POWERS */
+		if (se_feature.mode)
+		{
+			/* 
+			 * Since validate_option_array_item won't call checker for reset. 
+			 * So we check it here, if it's a security param, keep its setting.
+			 */
+			if (pg_strncasecmp(val,"se_feature.",strlen("se_feature.")) == 0)
+			{
+				ereport(DEBUG3,
+						errmsg("cannot set security param \"%s\" in auto config file "
+								"via reset all, skipping it",
+								val));
+			
+				/* add it to the output array */
+				if (newarray)
+					newarray = array_set(newarray, 1, &index,
+										d,
+										false,
+										-1 /* varlenarray */ ,
+										-1 /* TEXT's typlen */ ,
+										false /* TEXT's typbyval */ ,
+										TYPALIGN_INT /* TEXT's typalign */ );
+				else
+					newarray = construct_array(&d, 1,
+											TEXTOID,
+											-1, false, TYPALIGN_INT);
+				
+				index++;
+				pfree(val);
+
+				/* now, we can skip the rest */
+				continue;
+			}
+		}
+		/* End - ReqID:SRS-SECURITY-POWERS */
 
 		/* skip if we have permission to delete it */
 		if (validate_option_array_item(val, NULL, true))

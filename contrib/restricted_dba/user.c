@@ -647,7 +647,6 @@ drop_role_check(DropRoleStmt *stmt)
 	return true;
 }
 
-
 bool
 alter_role_set_check(AlterRoleSetStmt *stmt)
 {
@@ -661,48 +660,69 @@ alter_role_set_check(AlterRoleSetStmt *stmt)
 		return true;
 	/*End -- bug#z5555*/
 
-	if (pg_strncasecmp(stmt->setstmt->name,"se_feature.",strlen("se_feature.")) == 0 &&
-		IS_SYSSSO(GetUserId()))
+	if (stmt->role)
 	{
-		if (stmt->role)
+		check_rolespec_name(stmt->role,
+							_("Cannot alter reserved roles."));
+
+		roletuple = get_rolespec_tuple(stmt->role);
+		roleform = (Form_pg_authid) GETSTRUCT(roletuple);
+		roleid = roleform->oid;
+
+		/*
+		 * Obtain a lock on the role and make sure it didn't go away in the
+		 * meantime.
+		 */
+		shdepLockAndCheckObject(AuthIdRelationId, roleid);
+
+		ReleaseSysCache(roletuple);
+
+		if (pg_strncasecmp(stmt->setstmt->name,"se_feature.",strlen("se_feature.")) == 0)
 		{
-			check_rolespec_name(stmt->role,
-								_("Cannot alter reserved roles."));
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("permission denied")));
 
-			roletuple = get_rolespec_tuple(stmt->role);
-			roleform = (Form_pg_authid) GETSTRUCT(roletuple);
-			roleid = roleform->oid;
+			/* we should never get here */
+			return false;
+		}
+	}
+	else if (stmt->database != NULL) /* set for all roles for datebase */
+	{
+		/*
+		 * If no role is specified, then this is effectively the same as
+		 * ALTER DATABASE ... SET, so use the same permission check.
+		 */
+		if (pg_strncasecmp(stmt->setstmt->name,"se_feature.",strlen("se_feature.")) == 0 ||
+			pg_strncasecmp(stmt->setstmt->name,"credcheck.",strlen("credcheck.")) == 0)
+		{
 
+			/*Begin -- bug#z4455*/
+			databaseid = get_database_oid(stmt->database, false);
+			/*Begin -- bug#z4455*/
+
+			/*Begin -- bug#z4705*/
+			if (!IS_SYSSSO(GetUserId()))	
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied")));
+			}
+			/*End -- bug#z4705*/	
+			
 			/*
-			* Obtain a lock on the role and make sure it didn't go away in the
+			* Obtain a lock on the database and make sure it didn't go away in the
 			* meantime.
 			*/
-			shdepLockAndCheckObject(AuthIdRelationId, roleid);
-
-			/*
-			* To mess with a superuser you gotta be superuser; else you need
-			* createrole, or just want to change your own settings
-			*/
-
-			/*skip superuser and createrole check*/
-
-			ReleaseSysCache(roletuple);
-		}
-
-		/* look up and lock the database, if specified */
-		if (stmt->database != NULL)
-		{
-			databaseid = get_database_oid(stmt->database, false);
 			shdepLockAndCheckObject(DatabaseRelationId, databaseid);
-			
-			/*skip db owner check*/
-			
-		}
 
-		AlterSetting(databaseid, roleid, stmt->setstmt);
-	
-		return false;
-	}	
+			AlterSetting(databaseid, InvalidOid, stmt->setstmt);
+
+			UnlockSharedObject(DatabaseRelationId, databaseid, 0, AccessShareLock);
+		
+			return false;
+		}
+	}
 
 	return true;
 }

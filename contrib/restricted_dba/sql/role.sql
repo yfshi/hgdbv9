@@ -149,6 +149,47 @@ drop user sso_u2;
 drop user sao_u1;
 drop user sao_u2;
 
+
+---- SET ROLE
+------ pass
+\c testdb sysdba_u1;
+set role dba_u1;
+------ fail
+set role sso_u1;
+set role sao_u1;
+
+\c testdb syssso_u1;
+------ fail
+set role dba_u1;
+set role sso_u1;
+set role sao_u1;
+
+\c testdb syssao_u1;
+------ fail
+set role dba_u1;
+set role sso_u1;
+set role sao_u1;
+
+---- SET SESSION AUTHORIZATION
+------ pass
+\c testdb sysdba_u1;
+set session authorization dba_u1;
+------ fail
+set session authorization sso_u1;
+set session authorization sao_u1;
+
+\c testdb syssso_u1;
+------ fail
+set session authorization dba_u1;
+set session authorization sso_u1;
+set session authorization sao_u1;
+
+\c testdb syssao_u1;
+------ fail
+set session authorization dba_u1;
+set session authorization sso_u1;
+set session authorization sao_u1;
+
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

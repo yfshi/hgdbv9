@@ -78,7 +78,7 @@ set se_feature.mode to on;
 select test_func_1_sso_u1();
 ERROR:  permission denied for function test_func_1_sso_u1
 ------ owner should fail for permmission denied of table
-set role syssso;
+\c - syssso;
 select test_func_1_sso_u1();
 ERROR:  permission denied for table tb1_syssso_u1
 CONTEXT:  SQL statement "select sum(c1)           from tb1_syssso_u1"

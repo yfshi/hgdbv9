@@ -268,6 +268,7 @@ alter_schema_rename_check(const char *oldname, const char *newname)
 		}
 	}
 
+
 	ReleaseSysCache(tup);
 
 	table_close(rel, RowExclusiveLock);
@@ -286,10 +287,14 @@ drop_schema_check(ObjectAddress *object)
 
 	auditname = getObjectIdentity(object, false);
 
-	if (pg_strcasecmp(auditname,"public") == 0)
+	/* Begin :Bug#z6280*/
+	if(nsp_oid == PG_PUBLIC_NAMESPACE)
 	{
-		return false;
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("cannot drop public schema")));
 	}
+	/* End: Bug#z6280*/
 
 	/* Search syscache for pg_tablespace */
 	nsptuple = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(nsp_oid));

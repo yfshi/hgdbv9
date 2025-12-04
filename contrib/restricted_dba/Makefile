@@ -22,7 +22,7 @@ PGFILEDESC = "restricted_dba - restrict superuser privilege from dba"
 REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/restricted_dba/restricted_dba.conf
 
 REGRESS = role helper tablespace database schema table view sequence index		\
-			function procedure routine aclchk misc
+			function procedure routine aclchk guc misc 
 # ORA_REGRESS: for oracle grammer sequence function/procedure/routine is different
 ORA_REGRESS = role helper tablespace database schema table view sequence_ora 	\
 			index function_ora procedure_ora routine_ora aclchk misc_ora
