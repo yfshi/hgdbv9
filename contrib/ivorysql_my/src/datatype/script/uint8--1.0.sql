@@ -1094,7 +1094,7 @@ IMMUTABLE
 LEAKPROOF;
 
 CREATE FUNCTION ivymy.mys_div(pg_catalog.int2, ivymy.uint8)
-RETURNS  ivymy.uint8
+RETURNS  ivymy.uint4
 AS 'MODULE_PATHNAME','int2_exact_divmysuint8'
 LANGUAGE C
 PARALLEL SAFE
@@ -1103,7 +1103,7 @@ IMMUTABLE
 LEAKPROOF;
 
 CREATE FUNCTION ivymy.mys_div(pg_catalog.int4, ivymy.uint8)
-RETURNS  ivymy.uint8
+RETURNS  ivymy.uint4
 AS 'MODULE_PATHNAME','int4_exact_divmysuint8'
 LANGUAGE C
 PARALLEL SAFE

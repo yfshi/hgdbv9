@@ -5,6 +5,10 @@
 #include "fmgr.h"
 #include "libpq/libpq.h"
 #include "miscadmin.h"
+#include "nodes/makefuncs.h"
+#include "optimizer/optimizer.h"
+#include "parser/parse_type.h"
+#include "parser/parse_coerce.h"
 #include "storage/ipc.h"
 #include "tcop/pquery.h"
 #include "utils/builtins.h"
@@ -12,6 +16,7 @@
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
 #include "utils/snapmgr.h"
+#include "utils/syscache.h"
 #include "utils/timestamp.h"
 
 #include "server.h"
@@ -309,35 +314,330 @@ send_column_definition41_packet(mysql_column_definition_t *field)
     DestroyStringInfo(buf);
 }
 
-/*
- * Implentment in Mysql source code with
- * function parse_query_bind_params().
- */
-static bool
-parse_query_bind_params(StringInfo buf, PreparedStatement *entry,
-                        bool receive_named_params, bool receive_parameter_set_count, 
-                        com_stmt_exec_request_t *req)
+/* Begin - Bug#6356 */
+static Datum
+mys_evaluate_param(Datum value, Oid src_type, Oid dst_type)
 {
-    int param_count = 0;
-    int num_params = entry ? entry->plansource->num_params : 0;
+    Type    type = typeidType(src_type);
+    bool    typebyval = typeByVal(type);
+    int16   typlen = typeLen(type);
 
-    if (receive_named_params)
+    Const *con = makeConst(src_type,
+                           -1,         /* typmod -1 is OK for all cases */
+                           InvalidOid, /* all cases are uncollatable types */
+                           typlen,
+                           value,
+                           false,
+                           typebyval);
+
+    Node *node = coerce_type(NULL, (Node *) con, src_type, dst_type, -1, COERCION_EXPLICIT, COERCE_EXPLICIT_CAST, -1);
+
+    node = eval_const_expressions(NULL, node);
+
+    Assert(IsA(node, Const));
+
+    ReleaseSysCache(type);
+
+    return ((Const *) node)->constvalue;
+}
+/* End - Bug#6356 */
+
+static void
+parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
+{
+    #define SIGNED_BIT (1 << 15)
+
+    Datum   value;
+    int     is_unsigned = flag & SIGNED_BIT;
+    enum    enum_field_types type = flag & ~SIGNED_BIT;
+    Oid     param_type = param->ptype;
+    Oid     src_type = InvalidOid;
+
+    switch(type)
+    {
+        case MYSQL_TYPE_NULL:
+            param->isnull = true;
+            break;
+        case MYSQL_TYPE_TINY:
+        {
+            uint8 v;
+            mq_get_int1(buf, &v);
+
+            if (is_unsigned)
+            {
+                value = UInt8GetDatum(v);
+                src_type = UINT1OID;
+            }
+            else
+            {
+                value = Int8GetDatum(v);
+                src_type = TINYINTOID;
+            }
+
+            break;
+        }
+        case MYSQL_TYPE_SHORT:
+        {
+            uint32 v;
+            mq_get_int2(buf, &v);
+
+            if (is_unsigned)
+            {
+                value = UInt16GetDatum(v);
+                src_type = UINT2OID;
+            }
+            else
+            {
+                value = Int16GetDatum(v);
+                src_type = INT2OID;
+            }
+
+            break;
+        }
+        case MYSQL_TYPE_LONG:
+        {
+            uint32 v;
+            mq_get_int4(buf, &v);
+
+            if (is_unsigned)
+            {
+                value = UInt32GetDatum(v);
+                src_type = UINT4OID;
+            }
+            else
+            {
+                value = Int32GetDatum(v);
+                src_type = INT4OID;
+            }
+
+            break;
+        }
+        case MYSQL_TYPE_LONGLONG:
+        {
+            uint64 v;
+            mq_get_int8(buf, &v);
+
+            if (is_unsigned)
+            {
+                value = UInt64GetDatum(v);
+                src_type = UINT8OID;
+            }
+            else
+            {
+                value = Int64GetDatum(v);
+                src_type = INT8OID;
+            }
+            
+            break;
+        }
+        case MYSQL_TYPE_FLOAT:
+        {
+            uint32 v;
+            mq_get_int4(buf, &v);
+            src_type = FLOAT4OID;
+            value = Float4GetDatum((float4) v);
+            break;
+        }
+        case MYSQL_TYPE_DOUBLE:
+        {
+            uint64 v;
+            mq_get_int8(buf, &v);
+            src_type = FLOAT8OID;
+            value = Float8GetDatum((float8) v);
+            break;
+        }
+        case MYSQL_TYPE_DECIMAL:
+        case MYSQL_TYPE_NEWDECIMAL:
+        {
+            char *str = mq_get_string_lenenc(buf, NULL, NULL);
+            value = DirectFunctionCall3(numeric_in,
+                                        CStringGetDatum(str),
+                                        ObjectIdGetDatum(InvalidOid),
+                                        Int32GetDatum(-1));
+            src_type = NUMERICOID;
+            break;
+        }
+        case MYSQL_TYPE_TIME:
+            {
+                uint8 len;
+                uint8 negative;
+                struct pg_tm tt, *tm = &tt;
+
+                memset(tm, 0, sizeof(struct pg_tm));
+
+                mq_get_int1(buf, &len);
+
+                if (len == PROTO_TIME_LEN)
+                {
+                    TimeADT	time;
+
+                    mq_get_int1(buf, &negative);
+                    mq_get_int4(buf, (uint32 *) &tm->tm_mday);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_hour);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_min);
+                    mq_get_int1(buf, (uint8 *)&tm->tm_sec);
+
+                    tm->tm_hour += tm->tm_mday * HOURS_PER_DAY;
+
+                    time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+
+                    value = TimeADTGetDatum(time);
+                    src_type = MYSTIMEOID;
+                }
+                else if (len == PROTE_TIMESTATMP_LEN)
+                {
+                    fsec_t  fsec;
+                    char    str[128];
+                    Oid		typinput;
+                    Oid		typioparam;
+
+                    mq_get_int1(buf, (uint8 *) &negative);
+                    mq_get_int4(buf, (uint32 *) &tm->tm_mday);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_hour);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_min);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_sec);
+                    mq_get_int4(buf, (uint32 *) &fsec);
+
+                    tm->tm_hour += tm->tm_mday * HOURS_PER_DAY;
+
+                    if (tm->tm_hour > 838)
+                    {
+                        tm->tm_hour = 838;
+                        tm->tm_min = 59;
+                        tm->tm_sec = 59;
+                    }
+
+                    snprintf(str, sizeof(str), "%s%d:%d:%d.%u", negative ? "-" : "",
+                             tm->tm_hour, tm->tm_min, tm->tm_sec, fsec);
+
+                    getTypeInputInfo(param_type, &typinput, &typioparam);
+
+                    value = OidInputFunctionCall(typinput, str, typioparam, -1);
+                    src_type = MYSTIMESOID;
+                }
+
+                break;
+            }
+        case MYSQL_TYPE_DATE:
+        {
+            DateADT		date;
+            struct pg_tm tt, *tm = &tt;
+
+            memset(tm, 0, sizeof(struct pg_tm));
+
+            mq_get_int2(buf, (uint32 *) &tm->tm_year);
+            mq_get_int1(buf, (uint8 *) &tm->tm_mon);
+            mq_get_int1(buf, (uint8 *) &tm->tm_mday);
+            
+            date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+
+            value = DateADTGetDatum(date);
+            src_type = MYSDATEOID;
+            break;
+        }
+        case MYSQL_TYPE_DATETIME:
+        case MYSQL_TYPE_TIMESTAMP:
+            {
+                uint8   len;
+                struct pg_tm tt, *tm = &tt;
+
+                memset(tm, 0, sizeof(struct pg_tm));
+
+                mq_get_int1(buf, &len);
+
+                if (len == PROTO_DATETIME_LEN)
+                {
+                    TimeADT		datetime;
+
+                    mq_get_int2(buf, (uint32 *) &tm->tm_year);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_mon);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_mday);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_hour);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_min);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_sec);
+                    
+                    datetime = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) * 1000000 + 
+                                tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+
+                    value = TimeADTGetDatum(datetime);
+                    src_type = MYSDATETIMEOID;
+                }
+                else if (len == PROTO_DATETIMESTAMP_LEN)
+                {
+                    fsec_t  fsec;
+                    char    str[512];
+                    Oid		typinput;
+                    Oid		typioparam;
+
+                    mq_get_int2(buf, (uint32 *) &tm->tm_year);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_mon);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_mday);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_hour);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_min);
+                    mq_get_int1(buf, (uint8 *) &tm->tm_sec);
+                    mq_get_int4(buf, (uint32 *) &fsec);
+
+                    snprintf(str, sizeof(str), "%d-%d-%d %d:%d:%d.%u",
+                             tm->tm_year, tm->tm_mon, tm->tm_mday,
+                             tm->tm_hour, tm->tm_min, tm->tm_sec, fsec);
+
+                    getTypeInputInfo(param_type, &typinput, &typioparam);
+                    
+                    value = OidInputFunctionCall(typinput, str, typioparam, -1);
+                    src_type = param_type;
+                }
+
+                break;
+            }
+        case MYSQL_TYPE_TINY_BLOB:
+        case MYSQL_TYPE_MEDIUM_BLOB:
+        case MYSQL_TYPE_LONG_BLOB:
+        case MYSQL_TYPE_BLOB:
+        {
+            // Data send with COM_SEND_LONG_DATA
+            return;
+        }
+        default: // string
+        {
+            Oid		typinput;
+            Oid		typioparam;
+            char    *str = mq_get_string_lenenc(buf, NULL, NULL);
+
+            getTypeInputInfo(param_type, &typinput, &typioparam);
+                    
+            value = OidInputFunctionCall(typinput, str, typioparam, -1);
+            
+            src_type = param_type;
+            break;
+        }
+    }
+
+    /**
+     * Begin - Bug#6356
+     * evaluate current parameter
+     */
+    if (OidIsValid(src_type) && OidIsValid(param_type) && src_type != param_type)
+    {
+        value = mys_evaluate_param(value, src_type, param_type);
+    }
+    /* End - Bug#6356 */
+
+    param->value = value;
+}
+
+static void
+parse_com_stmt_execute_params(StringInfo buf, PreparedStatement *entry, com_stmt_exec_request_t *req)
+{
+    int num_params = entry->plansource->num_params;
+    int param_count = num_params;
+
+    if (num_params == 0)
+        return;
+
+    if (has_client_capabilities(CLIENT_QUERY_ATTRIBUTES))
     {
         uint32 size;
         param_count = mq_get_int_lenenc(buf, &size);
-
-        /* recv parameter_set_count, always is 1 */
-        if (receive_parameter_set_count)
-        {
-            mq_get_int_lenenc(buf, &size);
-        }
-
-        if (param_count > 65535) 
-			return false;
-    }
-    else
-    {
-        param_count = num_params;
     }
 
     if (param_count > 0)
@@ -347,32 +647,22 @@ parse_query_bind_params(StringInfo buf, PreparedStatement *entry,
         int                 len = (param_count + 7) / 8;
         ParamListInfo       paramLI = req->paramLI; // from portal
         ParamExternData     *params = paramLI->params;
-        int                 *flags;
-
-        flags = palloc0(param_count * sizeof(int));
+        int                 *flags = entry->plansource->param_type_and_flags;
 
         null_bitmap = mq_get_string_len(buf, len);
+        
         mq_get_int1(buf, &new_params_bind_flag);
 
-        /* COM_QUERY always be true */
         if (new_params_bind_flag)
         {
-            /* recv parameter flag and name */
             for (int i = 0; i < param_count; i++)
             {
-                #define SIGNED_BIT (1 << 15)
+                // parameter type
+                mq_get_int2(buf, (uint32 *) &flags[i]);
 
-                uint32 param_type_and_flag;
-                mq_get_int2(buf, &param_type_and_flag);
-
-                if (!new_params_bind_flag && !entry) 
-                    return false;
-
-               flags[i] = param_type_and_flag;
-
-                if (receive_named_params)
+                // parameter name
+                if (has_client_capabilities(CLIENT_QUERY_ATTRIBUTES))
                 {
-                    // recive parameter name
                     mq_get_string_lenenc(buf, NULL, NULL);
                 }
             }
@@ -381,274 +671,79 @@ parse_query_bind_params(StringInfo buf, PreparedStatement *entry,
         /* recv parameter value */
         for (int i = 0; i < param_count; i++)
         {
-            int     flag = flags[i];
-            int     is_unsigned = flag & SIGNED_BIT;
-            Oid     param_type = entry->plansource->param_types[i];
-            enum    enum_field_types type = flag & ~SIGNED_BIT;
-
             params[i].isnull = null_bitmap[i / 8] & (1 << (i & 7));
+
             if (params[i].isnull) 
-            {
                 continue;
-            }
 
-            assert(new_params_bind_flag || entry);
-
-            if (!new_params_bind_flag)
-            {
-                const TypeItem *item = GetItemByTypeOid(param_type, false);
-                type = item->mysql_type_id;
-            }
-
-            switch(type)
-            {
-                case MYSQL_TYPE_NULL:
-                    params[i].isnull = true;
-                    break;
-                case MYSQL_TYPE_TINY:
-                {
-                    uint8 v;
-                    mq_get_int1(buf, &v);
-
-                    if (is_unsigned)
-                        params[i].value = UInt8GetDatum(v);
-                    else
-                        params[i].value = Int8GetDatum(v);
-
-                    break;
-                }
-                case MYSQL_TYPE_SHORT:
-                {
-                    uint32 v;
-                    mq_get_int2(buf, &v);
-
-                    if (is_unsigned)
-                        params[i].value = UInt16GetDatum(v);
-                    else
-                        params[i].value = Int16GetDatum(v);
-
-                    break;
-                }
-                case MYSQL_TYPE_LONG:
-                {
-                    uint32 v;
-                    mq_get_int4(buf, &v);
-
-                    if (is_unsigned)
-                        params[i].value = UInt32GetDatum(v);
-                    else
-                        params[i].value = Int32GetDatum(v);
-
-                    break;
-                }
-                case MYSQL_TYPE_LONGLONG:
-                {
-                    uint64 v;
-                    mq_get_int8(buf, &v);
-
-                    if (is_unsigned)
-                        params[i].value = UInt64GetDatum(v);
-                    else
-                        params[i].value = Int64GetDatum(v);
-                    
-                    break;
-                }
-                case MYSQL_TYPE_FLOAT:
-                {
-                    uint32 v;
-                    mq_get_int4(buf, &v);
-                    params[i].value = Float4GetDatum((float4) v);
-                    break;
-                }
-                case MYSQL_TYPE_DOUBLE:
-                {
-                    uint64 v;
-                    mq_get_int8(buf, &v);
-                    params[i].value = Float8GetDatum((float8) v);
-                    break;
-                }
-                case MYSQL_TYPE_DECIMAL:
-                case MYSQL_TYPE_NEWDECIMAL:
-                {
-                    char *str = mq_get_string_lenenc(buf, NULL, NULL);
-                    params[i].value = DirectFunctionCall3(numeric_in,
-                                                          CStringGetDatum(str),
-                                                          ObjectIdGetDatum(InvalidOid),
-                                                          Int32GetDatum(-1));
-                    break;
-                }
-                case MYSQL_TYPE_TIME:
-                    {
-                        uint8 len;
-                        uint8 negative;
-                        struct pg_tm tt, *tm = &tt;
-
-                        memset(tm, 0, sizeof(struct pg_tm));
-
-                        mq_get_int1(buf, &len);
-
-                        if (len == PROTO_TIME_LEN)
-                        {
-                            TimeADT	time;
-
-                            mq_get_int1(buf, &negative);
-                            mq_get_int4(buf, (uint32 *) &tm->tm_mday);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_hour);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_min);
-                            mq_get_int1(buf, (uint8 *)&tm->tm_sec);
-
-                            tm->tm_hour += tm->tm_mday * HOURS_PER_DAY;
-
-                            time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-
-                            params[i].value = TimeADTGetDatum(time);
-                        }
-                        else if (len == PROTE_TIMESTATMP_LEN)
-                        {
-                            fsec_t  fsec;
-                            char    str[128];
-                            Oid		typinput;
-                            Oid		typioparam;
-
-                            mq_get_int1(buf, (uint8 *) &negative);
-                            mq_get_int4(buf, (uint32 *) &tm->tm_mday);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_hour);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_min);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_sec);
-                            mq_get_int4(buf, (uint32 *) &fsec);
-
-                            tm->tm_hour += tm->tm_mday * HOURS_PER_DAY;
-
-                            if (tm->tm_hour > 838)
-                            {
-                                tm->tm_hour = 838;
-                                tm->tm_min = 59;
-                                tm->tm_sec = 59;
-                            }
-
-                            snprintf(str, sizeof(str), "%s%d:%d:%d.%u", negative ? "-" : "",
-                                     tm->tm_hour, tm->tm_min, tm->tm_sec, fsec);
-
-                            getTypeInputInfo(param_type, &typinput, &typioparam);
-
-                            params[i].value = OidInputFunctionCall(typinput, str, typioparam, -1);
-                        }
-
-                        break;
-                    }
-                case MYSQL_TYPE_DATE:
-                {
-                    DateADT		date;
-                    struct pg_tm tt, *tm = &tt;
-
-                    memset(tm, 0, sizeof(struct pg_tm));
-
-                    mq_get_int2(buf, (uint32 *) &tm->tm_year);
-                    mq_get_int1(buf, (uint8 *) &tm->tm_mon);
-                    mq_get_int1(buf, (uint8 *) &tm->tm_mday);
-                    
-                    date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
-
-                    params[i].value = DateADTGetDatum(date);
-                    break;
-                }
-                case MYSQL_TYPE_DATETIME:
-                case MYSQL_TYPE_TIMESTAMP:
-                    {
-                        uint8   len;
-                        struct pg_tm tt, *tm = &tt;
-
-                        memset(tm, 0, sizeof(struct pg_tm));
-
-                        mq_get_int1(buf, &len);
-
-                        if (len == PROTO_DATETIME_LEN)
-                        {
-                            TimeADT		datetime;
- 
-                            mq_get_int2(buf, (uint32 *) &tm->tm_year);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_mon);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_mday);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_hour);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_min);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_sec);
-                            
-                            datetime = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) * 1000000 + 
-                                        tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-
-                            params[i].value = TimeADTGetDatum(datetime);
-                        }
-                        else if (len == PROTO_DATETIMESTAMP_LEN)
-                        {
-                            fsec_t  fsec;
-                            char    str[512];
-                            Oid		typinput;
-                            Oid		typioparam;
-
-                            mq_get_int2(buf, (uint32 *) &tm->tm_year);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_mon);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_mday);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_hour);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_min);
-                            mq_get_int1(buf, (uint8 *) &tm->tm_sec);
-                            mq_get_int4(buf, (uint32 *) &fsec);
-
-                            snprintf(str, sizeof(str), "%d-%d-%d %d:%d:%d.%u",
-                                     tm->tm_year, tm->tm_mon, tm->tm_mday,
-                                     tm->tm_hour, tm->tm_min, tm->tm_sec, fsec);
-
-                            getTypeInputInfo(param_type, &typinput, &typioparam);
-                            
-                            params[i].value = OidInputFunctionCall(typinput, str, typioparam, -1);
-                        }
-
-                        break;
-                    }
-                case MYSQL_TYPE_TINY_BLOB:
-                case MYSQL_TYPE_MEDIUM_BLOB:
-                case MYSQL_TYPE_LONG_BLOB:
-                case MYSQL_TYPE_BLOB:
-                {
-                    break;
-                }
-                default: // string
-                {
-                    Oid		typinput;
-                    Oid		typioparam;
-                    char    *str = mq_get_string_lenenc(buf, NULL, NULL);
-
-                    getTypeInputInfo(param_type, &typinput, &typioparam);
-                            
-                    params[i].value = OidInputFunctionCall(typinput, str, typioparam, -1);
-                    break;
-                }
-            }
+            parse_one_param_value(buf, flags[i], &params[i]);
         }
 
         req->null_bitmap = null_bitmap;
         req->new_params_bind_flag = new_params_bind_flag;
         req->param_count = param_count;
     }
-
-    return true;
 }
 
 static char *
 parse_com_query_request(StringInfo buf)
 {
-    char *sql;
-    com_stmt_exec_request_t *req;
-
-    req = (com_stmt_exec_request_t *) palloc0(sizeof(com_stmt_exec_request_t));
-
-    parse_query_bind_params(buf, 
-                            NULL,
-                            has_client_capabilities(CLIENT_QUERY_ATTRIBUTES),
-                            true,
-                            req);
+    char    *sql;
+    uint32  size;
+    char    *null_bitmap;
+    uint32  *flags = NULL;
+    uint64  param_count = 0;
+    uint8   new_params_bind_flag;
+    ParamListInfo paramLI = NULL;
+    ParamExternData *params = NULL;
     
-    sql = mq_get_string_eof(buf, NULL);
+    if (has_client_capabilities(CLIENT_QUERY_ATTRIBUTES))
+    {
+        // paramter count
+        param_count = mq_get_int_lenenc(buf, &size);
 
+        // parameter set count, always 1
+        mq_get_int_lenenc(buf, &size);
+    
+        if (param_count > 0)
+        {
+            int len = (param_count + 7) / 8;
+            
+            flags = palloc0(param_count * sizeof(uint32));
+            paramLI = makeParamList(param_count);
+            params = paramLI->params;
+
+            null_bitmap = mq_get_string_len(buf, len);
+
+            mq_get_int1(buf, &new_params_bind_flag); // always 1
+
+            for (int i = 0; i < param_count; i++)
+            {
+                char *param_name = NULL;
+
+                // param_type_and_flag
+                mq_get_int2(buf, &flags[i]);
+
+                // parameter name
+                param_name = mq_get_string_lenenc(buf, NULL, NULL);
+
+                pfree(param_name);
+            }
+
+            for (int i = 0; i < param_count; i++)
+            {
+                parse_one_param_value(buf, flags[i], &params[i]);
+            }
+
+            // just free query attribute
+            pfree(flags);
+            pfree(paramLI);
+            pfree(null_bitmap);
+        }
+    }
+
+    sql = mq_get_string_eof(buf, NULL);
+    
     return sql;
 }
 
@@ -846,11 +941,7 @@ parse_com_stmt_exec_request(StringInfo buf)
 
     req->paramLI = portal->portalParams;
 
-    parse_query_bind_params(buf,
-                            entry,
-                            has_client_capabilities(CLIENT_QUERY_ATTRIBUTES),
-                            false,
-                            req);
+    parse_com_stmt_execute_params(buf, entry, req);
 
     return req;
 }

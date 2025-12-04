@@ -66,8 +66,7 @@ native_password_generate(const char *plain_password, int len)
     // s2 = sha1(s2)
     compute_sha1_hash(s2, sizeof(s2), s1, SCRAMBLE_LENGTH);
 
-    base64_len = pg_b64_enc_len(SCRAMBLE_LENGTH);
-    pg_b64_encode((char *) s2, SCRAMBLE_LENGTH, base64, base64_len);
+    base64_len = pg_b64_encode((char *) s2, SCRAMBLE_LENGTH, base64, sizeof(base64));
 
     snprintf(rolpassword, sizeof(rolpassword), "%s$%.*s", NATIVE_PASSWORD_TAG, base64_len, base64);
 

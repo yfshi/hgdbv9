@@ -1684,3 +1684,15 @@ enum_to_varbinary(PG_FUNCTION_ARGS)
 	PG_RETURN_BYTEA_P(cstring_to_text(enumlabel));
 }
 /* End - bug#z5768 */
+
+/* Begin - bug#6027 */
+Datum
+hex_to_enum(PG_FUNCTION_ARGS)
+{
+	Datum ret = DirectFunctionCall2(text_to_enum,
+									PG_GETARG_DATUM(0),
+									PG_GETARG_DATUM(1));
+
+	PG_RETURN_DATUM(ret);
+}
+/* End - bug#6027 */

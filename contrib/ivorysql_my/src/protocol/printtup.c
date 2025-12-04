@@ -10,11 +10,14 @@
 #include "utils/lsyscache.h"
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
+#include "utils/varbit.h"
 
 #include "message.h"
 #include "server.h"
 #include "printtup.h"
 #include "mqformat.h"
+
+#include "../include/ivorysql_my.h"
 
 static mysql_column_definition_t *
 make_column_definition_with_attr(FormData_pg_attribute *attr, char *tableName)
@@ -230,7 +233,7 @@ printtup_prepare_info(DR_printtup *myState, TupleDesc typeinfo, int numAttrs)
 static void
 send_textproto(TupleTableSlot *slot, DR_printtup *myState, int natts, StringInfo buf)
 {
-     /*
+    /*
      * send the attributes of this tuple
      */
     for (int i = 0; i < natts; ++i)
@@ -265,17 +268,22 @@ send_textproto(TupleTableSlot *slot, DR_printtup *myState, int natts, StringInfo
 
         typeOid = slot->tts_tupleDescriptor->attrs[i].atttypid;
 
-        if (type_is_blob(typeOid))
+        /* Begin - bug#6619 */
+        if (typeOid == MYSBITOID)
         {
-            bytea *barg = DatumGetByteaPP(attr);
-            mq_append_string_lenenc(buf, VARDATA_ANY(barg), VARSIZE_ANY_EXHDR(barg));
+            bytea *arg = DatumGetByteaPP(DirectFunctionCall1(bittobinary, attr));
+            mq_append_string_lenenc(buf, VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
+        }
+        /* End - bug#6619 */
+        else if (type_is_blob(typeOid))
+        {
+            bytea *arg = DatumGetByteaPP(attr);
+            mq_append_string_lenenc(buf, VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
         }
         else
         {
             outputstr = OutputFunctionCall(&thisState->finfo, attr);
             mq_append_string_lenenc(buf, outputstr, -1);
-
-            pfree(outputstr);
         }
     }
 }

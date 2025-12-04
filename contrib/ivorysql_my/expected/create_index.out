@@ -286,3 +286,7 @@ Indexes:
     "t10_1" UNIQUE, btree (id DESC, "left"(str::text, 5))
 
 drop table t10;
+/* Begin - bug#5180 */
+create table tb_blob1(c1 blob, index(c1(10)));
+drop table tb_blob1;
+/* End - bug#5180 */

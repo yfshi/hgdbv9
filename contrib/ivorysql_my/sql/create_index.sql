@@ -158,3 +158,7 @@ CREATE UNIQUE INDEX t10_1 on t10 (id DESC, str(5)) KEY_BLOCK_SIZE=1 WITH PARSER 
 \d+ t10
 drop table t10;
 
+/* Begin - bug#5180 */
+create table tb_blob1(c1 blob, index(c1(10)));
+drop table tb_blob1;
+/* End - bug#5180 */

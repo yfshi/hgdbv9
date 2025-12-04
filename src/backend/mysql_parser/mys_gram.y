@@ -706,7 +706,7 @@ static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
 				Datetime /* ReqID:SRS-MYSQL-DATETYPE */
 %type <str>		character
 %type <str>		extract_arg
-%type <str>		timestamp_units
+%type <ival>	timestamp_units
 %type <boolean> opt_varying opt_no_inherit
 %type <ival>	opt_timezone
 
@@ -894,7 +894,7 @@ static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
 	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
 	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROCESSLIST /* Bug#Z6036 */ PROGRAM PUBLICATION
 
-	QUATER_P QUOTE QUICK /* ReqID:SRS-MYSQL-SQL-DELETE */
+	QUARTER_P QUOTE QUICK /* ReqID:SRS-MYSQL-SQL-DELETE */
 
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
@@ -903,7 +903,11 @@ static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
 
 	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHARED /* ReqID:SRS-MYSQL-CREATE-INDEX */ SHOW
-	SIGNED SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SPATIAL /* ReqID:SRS-MYSQL-CREATE-INDEX */ SQL_P STABLE STANDALONE_P
+	SIGNED SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SPATIAL /* ReqID:SRS-MYSQL-CREATE-INDEX */ SQL_P 
+	/* Begin - bug#6410 */
+	SQL_TSI_DAY SQL_TSI_HOUR SQL_TSI_MINUTE SQL_TSI_SECOND SQL_TSI_WEEK
+	/* End - bug#6410 */
+	STABLE STANDALONE_P
 	START STATEMENT STATISTICS STATUS /* ReqID:SRS-MYSQL-SHOW */ STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
 
@@ -13176,7 +13180,7 @@ insert_empty_values:
 					n->valuesLists = list_make1($2);
 					$$ = (Node *)n;
 				}
-			|VALUE_P empty_values
+			| VALUE_P empty_values
 				{
 					SelectStmt   *n = makeNode(SelectStmt);
 					n->valuesLists = list_make1($2);
@@ -16313,26 +16317,21 @@ BlobWithoutLength:
 			BLOB_P
 				{
 					$$ = MySQLSystemTypeName("myblob");
-					if (strcmp($1, "blob") == 0)
-						$$->typmods = list_make1(makeIntConst(1, -1));
 					$$->location = @1;
 				}
 			| TINYBLOB
 				{
 					$$ = MySQLSystemTypeName("tinyblob");
-					$$->typmods = list_make1(makeIntConst(1, -1));
 					$$->location = @1;
 				}
 			| MEDIUMBLOB
 				{
 					$$ = MySQLSystemTypeName("mediumblob");
-					$$->typmods = list_make1(makeIntConst(1, -1));
 					$$->location = @1;
 				}
 			| LONGBLOB
 				{
 					$$ = MySQLSystemTypeName("longblob");
-					$$->typmods = list_make1(makeIntConst(1, -1));
 					$$->location = @1;
 				}
 		;
@@ -17831,7 +17830,7 @@ func_expr_common_subexpr:
 				}
 			| TIMESTAMPADD '(' timestamp_units ',' a_expr ',' a_expr ')'
 				{
-					Node *arg1 = makeStringConst($3, @3);
+					Node *arg1 = makeIntConst($3, @3);
 					Node *arg2 = makeTypeCast($5, SystemTypeName("int4"), @5);
 					Node *arg3 = makeTypeCast($7, MySQLSystemTypeName("mysdatetimes"), @7);
 
@@ -17843,7 +17842,7 @@ func_expr_common_subexpr:
 			/* Begin - ReqID: SRS-MYSQL-BUILDINFUNCTION */
 			| TIMESTAMPDIFF '(' timestamp_units ',' a_expr ',' a_expr ')'
 				{
-					Node *arg1 = makeStringConst($3, @3);
+					Node *arg1 = makeIntConst($3, @3);
 					Node *arg2 = makeTypeCast($5, MySQLSystemTypeName("mysdatetimes"), @5);
 					Node *arg3 = makeTypeCast($7, MySQLSystemTypeName("mysdatetimes"), @7);
 
@@ -18950,22 +18949,27 @@ extract_arg:
 			| SECOND_P								{ $$ = "second"; }
 			| WEEK_P								{ $$ = "week"; }
 			| MICROSECOND_P							{ $$ = "microsecond"; }
-			| QUATER_P								{ $$ = "quater"; }
+			| QUARTER_P								{ $$ = "quarter"; }
 			| Sconst								{ $$ = $1; }
 		;
 
 timestamp_units:
-			IDENT      		{ $$ = $1; }
-			| YEAR   		{ $$ = pstrdup("year"); }
-			| DAY_P    		{ $$ = pstrdup("day"); }
-			| HOUR_P   		{ $$ = pstrdup("hour"); }
-			| MICROSECOND_P { $$ = pstrdup("microsecond"); }
-			| MINUTE_P 		{ $$ = pstrdup("minute"); }
-			| SECOND_P 		{ $$ = pstrdup("second"); }
-			| MONTH_P 		{ $$ = pstrdup("month"); }
-			| QUATER_P 		{ $$ = pstrdup("quater"); }
-			| WEEK_P 		{ $$ = pstrdup("week"); }
-			| SCONST   		{ $$ = $1; }
+			YEAR   				{ $$ = DTK_YEAR; }
+			| DAY_P    			{ $$ = DTK_DAY; }
+			| HOUR_P   			{ $$ = DTK_HOUR; }
+			| MICROSECOND_P 	{ $$ = DTK_MICROSEC; }
+			| MINUTE_P 			{ $$ = DTK_MINUTE; }
+			| SECOND_P 			{ $$ = DTK_SECOND; }
+			| MONTH_P 			{ $$ = DTK_MONTH; }
+			| QUARTER_P 			{ $$ = DTK_QUARTER; }
+			| WEEK_P 			{ $$ = DTK_WEEK; }
+			/* Begin - bug#6410 */
+			| SQL_TSI_WEEK		{ $$ = DTK_WEEK; }
+			| SQL_TSI_HOUR		{ $$ = DTK_HOUR; }
+			| SQL_TSI_DAY		{ $$ = DTK_DAY; }
+			| SQL_TSI_MINUTE	{ $$ = DTK_MINUTE; }
+			| SQL_TSI_SECOND	{ $$ = DTK_SECOND; }
+			/* End - bug#6410 */
 		;
 
 /* End - SRS-MYSQL-BUILDINFUNCTION */
@@ -20038,7 +20042,7 @@ unreserved_keyword:
 			| PROCESSLIST /* Bug#Z6036 */
 			| PROGRAM
 			| PUBLICATION
-			| QUATER_P
+			| QUARTER_P
 			| QUOTE
 			| RANGE
 			| READ
@@ -20089,6 +20093,13 @@ unreserved_keyword:
 			| SKIP
 			| SNAPSHOT
 			| SQL_P
+			/* Begin - bug#6410 */
+			| SQL_TSI_DAY
+			| SQL_TSI_HOUR
+			| SQL_TSI_MINUTE
+			| SQL_TSI_SECOND
+			| SQL_TSI_WEEK
+			/* End - bug#6410 */
 			| STABLE
 			| STANDALONE_P
 			| START
@@ -21091,7 +21102,8 @@ parse_hex_to_cstring(const char *src)
 {
 	int 	len = strlen(src);
 	int 	bc = (len + 1) / 2;
-	char	*dst = palloc0(bc + 1);
+	char	*dst = palloc0(bc + 1),
+			*ret = dst;
 
 	if (len % 2)
 	{
@@ -21101,7 +21113,7 @@ parse_hex_to_cstring(const char *src)
 
 	mys_hex_decode(src, len, dst);
 
-	return dst;
+	return ret;
 }
 /* End - bug#z6027 */
 

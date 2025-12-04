@@ -2335,6 +2335,16 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - bug#5180 */
+CREATE FUNCTION ivymy.tinyblob(text, integer, boolean)
+RETURNS ivymy.tinyblob
+AS 'MODULE_PATHNAME','tinyblob'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - bug#5180 */
+
 CREATE FUNCTION ivymy.tinyblob(bytea, integer, boolean)
 RETURNS ivymy.tinyblob
 AS 'MODULE_PATHNAME','tinyblob2'
@@ -2398,7 +2408,7 @@ WITHOUT FUNCTION
 AS IMPLICIT;
 
 CREATE CAST (pg_catalog.text AS ivymy.tinyblob)
-WITHOUT FUNCTION
+WITH FUNCTION ivymy.tinyblob(text, integer, boolean)
 AS ASSIGNMENT;
 
 CREATE CAST (bytea AS ivymy.tinyblob)
@@ -3024,6 +3034,16 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - bug#5180 */
+CREATE FUNCTION ivymy.mediumblob(text, integer, boolean)
+RETURNS ivymy.mediumblob
+AS 'MODULE_PATHNAME','mediumblob'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - bug#5180 */
+
 CREATE FUNCTION ivymy.mediumblob(ivymy.binary, integer, boolean)
 RETURNS ivymy.mediumblob
 AS 'MODULE_PATHNAME','mediumblob'
@@ -3079,7 +3099,7 @@ WITHOUT FUNCTION
 AS IMPLICIT;
 
 CREATE CAST (pg_catalog.text AS ivymy.mediumblob)
-WITHOUT FUNCTION
+WITH FUNCTION ivymy.mediumblob(text, integer, boolean)
 AS ASSIGNMENT;
 
 CREATE CAST (bytea AS ivymy.mediumblob)
@@ -3703,6 +3723,16 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - bug#5180 */
+CREATE FUNCTION ivymy.longblob(text, integer, boolean)
+RETURNS ivymy.longblob
+AS 'MODULE_PATHNAME','longblob'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - bug#5180 */
+
 CREATE FUNCTION ivymy.longblob(ivymy.binary, integer, boolean)
 RETURNS ivymy.longblob
 AS 'MODULE_PATHNAME','longblob'
@@ -3758,7 +3788,7 @@ WITHOUT FUNCTION
 AS IMPLICIT;
 
 CREATE CAST (pg_catalog.text AS ivymy.longblob)
-WITHOUT FUNCTION
+WITH FUNCTION ivymy.longblob(text, integer, boolean)
 AS ASSIGNMENT;
 
 CREATE CAST (bytea AS ivymy.longblob)

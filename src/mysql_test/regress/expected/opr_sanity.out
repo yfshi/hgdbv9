@@ -336,6 +336,7 @@ ORDER BY 2;
  3532 | enum_recv
  6027 | float4_to_enum
  6029 | float8_to_enum
+ 6046 | hex_to_enum
  6021 | int2_to_enum
  6023 | int4_to_enum
  6025 | int8_to_enum
@@ -345,7 +346,7 @@ ORDER BY 2;
  6035 | uint2_to_enum
  6037 | uint4_to_enum
  6039 | uint8_to_enum
-(21 rows)
+(22 rows)
 
 -- anyrange and anymultirange are tighter than the rest, can only resolve
 -- from each other
@@ -1013,9 +1014,6 @@ WHERE c.castmethod = 'b' AND
     castsource     |    casttarget     | castfunc | castcontext 
 -------------------+-------------------+----------+-------------
  text              | character         |        0 | i
- text              | tinyblob          |        0 | a
- text              | mediumblob        |        0 | a
- text              | longblob          |        0 | a
  text              | binary            |        0 | a
  text              | varbinary         |        0 | a
  xml               | text              |        0 | a
@@ -1045,7 +1043,7 @@ WHERE c.castmethod = 'b' AND
  datetime          | numeric           |        0 | a
  timestamp         | bigint            |        0 | a
  timestamp         | numeric           |        0 | a
-(33 rows)
+(30 rows)
 
 -- **************** pg_conversion ****************
 -- Look for illegal values in pg_conversion fields.

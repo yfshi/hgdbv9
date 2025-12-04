@@ -234,6 +234,7 @@ CreateCachedPlan(RawStmt *raw_parse_tree,
 	plansource->total_custom_cost = 0;
 	plansource->num_generic_plans = 0;
 	plansource->num_custom_plans = 0;
+	plansource->param_type_and_flags = NULL; /* SRS-MYSQL-PROTOCOL */
 
 	MemoryContextSwitchTo(oldcxt);
 
@@ -303,6 +304,7 @@ CreateOneShotCachedPlan(RawStmt *raw_parse_tree,
 	plansource->total_custom_cost = 0;
 	plansource->num_generic_plans = 0;
 	plansource->num_custom_plans = 0;
+	plansource->param_type_and_flags = NULL; /* SRS-MYSQL-PROTOCOL */
 
 	return plansource;
 }
@@ -454,6 +456,13 @@ CompleteCachedPlan(CachedPlanSource *plansource,
 		memcpy(plansource->param_modes, param_modes, num_params * sizeof(char));
 	}
 	/* End - ReqID:SRS-SQL-FUNCOUT */
+
+	/* Begin - SRS-MYSQL-PROTOCOL */
+	if (num_params > 0)
+	{
+		plansource->param_type_and_flags = (int32 *) palloc0(num_params * sizeof(int32));
+	}
+	/* End - SRS-MYSQL-PROTOCOL */
 
 	MemoryContextSwitchTo(oldcxt);
 

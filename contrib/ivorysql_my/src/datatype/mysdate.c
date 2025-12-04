@@ -3361,8 +3361,8 @@ Datum mysdate2_notlike(PG_FUNCTION_ARGS)
 
 Datum mysdate_text_notlike(PG_FUNCTION_ARGS)
 {
-	DateADT		dateVal1 = PG_GETARG_DATEADT(1);
-	text	   *file = PG_GETARG_TEXT_PP(0);
+	DateADT		dateVal1 = PG_GETARG_DATEADT(0);
+	text	   *file = PG_GETARG_TEXT_PP(1);
 
 	char	   *str = text_to_cstring(file);
 	DateADT		date = 0;

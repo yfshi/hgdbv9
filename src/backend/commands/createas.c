@@ -39,6 +39,7 @@
 #include "commands/prepare.h"
 #include "commands/tablecmds.h"
 #include "commands/view.h"
+#include "libpq/libpq-be.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
@@ -413,7 +414,14 @@ ExecCreateTableAs(ParseState *pstate, CreateTableAsStmt *stmt,
 
 		/* save the rowcount if we're given a qc to fill */
 		if (qc)
-			SetQueryCompletion(qc, CMDTAG_SELECT, queryDesc->estate->es_processed);
+		{
+			/* Begin - bug#6461 */
+			if (compatible_mode == MYS_MODE && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+				SetQueryCompletion(qc, CMDTAG_CREATE_TABLE_AS, queryDesc->estate->es_processed);
+			/* End - bug#6461 */
+			else
+				SetQueryCompletion(qc, CMDTAG_SELECT, queryDesc->estate->es_processed);
+		}
 
 		/* get object address that intorel_startup saved for us */
 		address = ((DR_intorel *) dest)->reladdr;

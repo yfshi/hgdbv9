@@ -12031,6 +12031,11 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
 { oid => '6045', descr => 'Cast enum to varbinary for MySQL.',
   proname => 'enum_to_varbinary', provolatile => 's', prorettype => 'varbinary',
   proargtypes => 'anyenum', prosrc => 'enum_to_varbinary' },
+/* Begin - bug#6027 */
+{ oid => '6046', descr => 'Cast bool to enum for MySQL.',
+  proname => 'hex_to_enum', provolatile => 's', prorettype => 'anyenum',
+  proargtypes => 'ivy_hex int4', prosrc => 'hex_to_enum' },
+/* End - bug#6027 */
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 /*END MySQL Compatibility Metadatas*/
 /* Begin ReqID: LOCK-SESSION */
@@ -12052,4 +12057,5 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proargnames => '{pid,pid,client_osname,client_uid,client_pid,client_mac,sid,idle_time,busy_time,trans_info,tid,def_schema,is_locked,proto,type,is_share}',
   prosrc => 'pg_stat_get_activity_ext' },
 /* End ReqID: SESSION-VIEWS */
+
 ]

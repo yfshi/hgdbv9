@@ -71,8 +71,6 @@ extern char *my_bit_out(VarBit *s, int32 atttypmod);
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 extern Datum pgtime_mystimes(PG_FUNCTION_ARGS);
 extern Datum pgtimestamp_mystimestamps(PG_FUNCTION_ARGS);
-/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
-/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 extern bool extract_leading_integer_str(const char *str, char *out_buf, size_t size);
 extern Datum mysuint2_in(PG_FUNCTION_ARGS);
 extern Datum mysuint4_in(PG_FUNCTION_ARGS);
@@ -85,6 +83,10 @@ extern Datum mysdatetime_in(PG_FUNCTION_ARGS);
 extern Datum mysdatetime_out(PG_FUNCTION_ARGS);
 extern Datum mystimestamp_out(PG_FUNCTION_ARGS);
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
+/* Begin - bug#6619 */
+extern Datum bittobinary(PG_FUNCTION_ARGS);
+/* End - bug#6619 */
 
 extern YearADT bigint_to_YearADT(int64 year);
 extern Oid mysql_agg_field_type(List *exprs); /* Bug - #6172 */
