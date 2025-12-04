@@ -1408,6 +1408,19 @@ select STR_TO_DATE('20230515', '%Y%m%d');
 SELECT STR_TO_DATE('15-10-2023', '%Y-%m-%d');
 SELECT STR_TO_DATE('10000-01-01', '%Y-%m-%d');
 
+-- bug#z6407 #z6402
+set sql_mode = '';
+SELECT STR_TO_DATE(00000000, '%Y-%m-%d');
+set sql_mode = NO_ZERO_DATE;
+SELECT STR_TO_DATE(00000000, '%Y-%m-%d');
+SELECT STR_TO_DATE(20230515, '%Y%m%d');
+SELECT STR_TO_DATE(CAST(20230515.999999 AS numeric), '%Y%m%d');
+SELECT STR_TO_DATE(CAST(20230515.999999 AS DECIMAL(20,6)), '%Y%m%d') AS high_precision_decimal;
+SELECT STR_TO_DATE('2021-12-30 14:30:00'::date, '%Y-%m-%d %H:%i:%s');
+SELECT STR_TO_DATE('2021-12-30 14:30:00'::datetime, '%Y-%m-%d %H:%i:%s');
+SELECT STR_TO_DATE('2021-12-30 14:30:00'::time, '%Y-%m-%d %H:%i:%s');
+SELECT STR_TO_DATE('2021-12-30 14:30:00'::time, '%H:%i:%s');
+
 /*TIMESTAMPDIFF*/
 set sql_mode = default;
 select timestampdiff(YEAR, '2002-05-01', '2001-01-01') as a;
