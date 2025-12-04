@@ -167,7 +167,7 @@ search_charset_info_by_coll_id(Oid coll)
 
 	if (entry->cs == NULL)
 		ereport(ERROR,
-				errmsg("The collation \"%s\" is not sepported in MySQL mode.", collname));
+				errmsg("The collation \"%s\" is not supported in MySQL mode.", collname));
 	if (collname)
 		pfree(collname);
 

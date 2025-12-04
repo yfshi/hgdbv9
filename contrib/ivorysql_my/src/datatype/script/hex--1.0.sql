@@ -126,6 +126,348 @@ CREATE OPERATOR != (
 	rightarg = ivy_hex
 );
 
+/* Begin - bug#6045 */
+-- operator >
+CREATE FUNCTION ivymy.hex_gt(ivy_hex, mysdate)
+RETURNS bool
+AS 'select $1::mysdate > $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR > (
+	procedure = hex_gt,
+	leftarg = ivy_hex,
+	rightarg = mysdate
+);
+
+CREATE FUNCTION ivymy.hex_gt(mysdate, ivy_hex)
+RETURNS bool
+AS 'select $1 > $2::mysdate'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR > (
+	procedure = hex_gt,
+	leftarg = mysdate,
+	rightarg = ivy_hex
+);
+
+-- operator >=
+CREATE FUNCTION ivymy.hex_ge(ivy_hex, mysdate)
+RETURNS bool
+AS 'select $1::mysdate >= $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR >= (
+	procedure = hex_ge,
+	leftarg = ivy_hex,
+	rightarg = mysdate
+);
+
+CREATE FUNCTION ivymy.hex_ge(mysdate, ivy_hex)
+RETURNS bool
+AS 'select $1 >= $2::mysdate'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR >= (
+	procedure = hex_ge,
+	leftarg = mysdate,
+	rightarg = ivy_hex
+);
+
+-- operator <
+CREATE FUNCTION ivymy.hex_lt(ivy_hex, mysdate)
+RETURNS bool
+AS 'select $1::mysdate < $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR < (
+	procedure = hex_lt,
+	leftarg = ivy_hex,
+	rightarg = mysdate
+);
+
+CREATE FUNCTION ivymy.hex_lt(mysdate, ivy_hex)
+RETURNS bool
+AS 'select $1 < $2::mysdate'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR < (
+	procedure = hex_lt,
+	leftarg = mysdate,
+	rightarg = ivy_hex
+);
+
+-- operator <=
+CREATE FUNCTION ivymy.hex_le(ivy_hex, mysdate)
+RETURNS bool
+AS 'select $1::mysdate <= $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <= (
+	procedure = hex_le,
+	leftarg = ivy_hex,
+	rightarg = mysdate
+);
+
+CREATE FUNCTION ivymy.hex_le(mysdate, ivy_hex)
+RETURNS bool
+AS 'select $1 <= $2::mysdate'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <= (
+	procedure = hex_le,
+	leftarg = mysdate,
+	rightarg = ivy_hex
+);
+
+-- operator <>
+CREATE FUNCTION ivymy.hex_ne(ivy_hex, mysdate)
+RETURNS bool
+AS 'select $1::mysdate <> $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <> (
+	procedure = hex_ne,
+	leftarg = ivy_hex,
+	rightarg = mysdate
+);
+
+CREATE FUNCTION ivymy.hex_ne(mysdate, ivy_hex)
+RETURNS bool
+AS 'select $1 <> $2::mysdate'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <> (
+	procedure = hex_ne,
+	leftarg = mysdate,
+	rightarg = ivy_hex
+);
+
+-- operator =
+CREATE FUNCTION ivymy.hex_eq(ivy_hex, mysdate)
+RETURNS bool
+AS 'select $1::mysdate = $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR = (
+	procedure = hex_eq,
+	leftarg = ivy_hex,
+	rightarg = mysdate
+);
+
+CREATE FUNCTION ivymy.hex_eq(mysdate, ivy_hex)
+RETURNS bool
+AS 'select $1 = $2::mysdate'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR = (
+	procedure = hex_eq,
+	leftarg = mysdate,
+	rightarg = ivy_hex
+);
+
+-- operator <=>
+CREATE FUNCTION ivymy.hex_seq(ivy_hex, mysdate)
+RETURNS bool
+AS 'select $1::mysdate <=> $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <=> (
+	procedure = hex_seq,
+	leftarg = ivy_hex,
+	rightarg = mysdate
+);
+
+CREATE FUNCTION ivymy.hex_seq(mysdate, ivy_hex)
+RETURNS bool
+AS 'select $1 <=> $2::mysdate'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <=> (
+	procedure = hex_seq,
+	leftarg = mysdate,
+	rightarg = ivy_hex
+);
+/* End - bug#6045 */
+
+/* Begin - bug#5378 */
+CREATE FUNCTION ivymy.hex_seq(ivy_hex, float4)
+RETURNS bool
+AS 'select $1::float4 <=> $2'
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <=> (
+	procedure = hex_seq,
+	leftarg = ivy_hex,
+	rightarg = float4
+);
+
+CREATE FUNCTION ivymy.hex_seq(float4, ivy_hex)
+RETURNS bool
+AS 'select $1 <=> $2::float4'
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <=> (
+	procedure = hex_seq,
+	leftarg = float4,
+	rightarg = ivy_hex
+);
+
+-- operator &
+CREATE FUNCTION ivymy.hex_bitand(float4, ivy_hex)
+RETURNS uint8
+AS 'select $1 & $2::float4'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR & (
+	procedure = hex_bitand,
+	leftarg = float4,
+	rightarg = ivy_hex
+);
+
+CREATE FUNCTION ivymy.hex_bitand(ivy_hex, float4)
+RETURNS uint8
+AS 'select $1::float4 & $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR & (
+	procedure = hex_bitand,
+	leftarg = ivy_hex,
+	rightarg = float4
+);
+
+-- operator >>
+CREATE FUNCTION ivymy.hex_rightmov(float4, ivy_hex)
+RETURNS uint8
+AS 'select $1 >> $2::float4'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR >> (
+	procedure = hex_rightmov,
+	leftarg = float4,
+	rightarg = ivy_hex
+);
+
+CREATE FUNCTION ivymy.hex_rightmov(ivy_hex, float4)
+RETURNS uint8
+AS 'select $1::float4 >> $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR >> (
+	procedure = hex_rightmov,
+	leftarg = ivy_hex,
+	rightarg = float4
+);
+
+-- operator <<
+CREATE FUNCTION ivymy.hex_leftmov(float4, ivy_hex)
+RETURNS uint8
+AS 'select $1 << $2::float4'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR << (
+	procedure = hex_leftmov,
+	leftarg = float4,
+	rightarg = ivy_hex
+);
+
+CREATE FUNCTION ivymy.hex_leftmov(ivy_hex, float4)
+RETURNS uint8
+AS 'select $1::float4 << $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR << (
+	procedure = hex_leftmov,
+	leftarg = ivy_hex,
+	rightarg = float4
+);
+/* End - bug#5378 */
+
 --
 -- cast (ivy_hex as text)
 --

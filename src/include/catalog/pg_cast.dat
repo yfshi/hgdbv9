@@ -603,6 +603,10 @@
   castcontext => 'a', castmethod => 'f' },
 { castsource => 'anyenum', casttarget => 'varbinary', castfunc => 'enum_to_varbinary',
   castcontext => 'a', castmethod => 'f' },
+/* Begin - bug#6027 */
+{ castsource => 'ivy_hex', casttarget => 'anyenum', castfunc => 'hex_to_enum',
+  castcontext => 'a', castmethod => 'f' },
+/* End - bug#6027 */
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 /*END MySQL Compatibility Metadatas*/
 ]

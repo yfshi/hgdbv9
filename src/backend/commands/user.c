@@ -456,18 +456,9 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 		}
 		else
 		{
-			/* Begin - Req: SRS-MYSQL-PROTOCOL */
-			if (compatible_mode == MYS_MODE && mysql_encrypt_password_hook)
-			{
-				shadow_pass = mysql_encrypt_password_hook(Password_encryption, stmt->role, password);
-			}
-			/* End - Req: SRS-MYSQL-PROTOCOL */
-			else
-			{
-				/* Encrypt the password to the requested format. */
-				shadow_pass = encrypt_password(Password_encryption, stmt->role,
-											   password);
-			}
+			/* Encrypt the password to the requested format. */
+			shadow_pass = encrypt_password(Password_encryption, stmt->role,
+										   password);
 
 			new_record[Anum_pg_authid_rolpassword - 1] =
 				CStringGetTextDatum(shadow_pass);
@@ -1230,18 +1221,10 @@ AlterRole(AlterRoleStmt *stmt)
 		}
 		else
 		{
-			/* Begin - Req: SRS-MYSQL-PROTOCOL */
-			if (compatible_mode == MYS_MODE && mysql_encrypt_password_hook)
-			{
-				shadow_pass = mysql_encrypt_password_hook(Password_encryption, rolename, password);
-			}
-			/* End - Req: SRS-MYSQL-PROTOCOL */
-			else
-			{
-				/* Encrypt the password to the requested format. */
-				shadow_pass = encrypt_password(Password_encryption, rolename,
-										   	   password);
-			}
+			/* Encrypt the password to the requested format. */
+			shadow_pass = encrypt_password(Password_encryption, rolename,
+										   password);
+
 			new_record[Anum_pg_authid_rolpassword - 1] =
 				CStringGetTextDatum(shadow_pass);
 		}

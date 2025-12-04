@@ -1327,8 +1327,8 @@ int8_divmysuint8(PG_FUNCTION_ARGS)
 Datum
 mysuint8_exact_divmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(0);
-	uint64		val2 = PG_GETARG_INT64(1);
+	uint64		val1 = PG_GETARG_UINT64(0);
+	uint64		val2 = PG_GETARG_UINT64(1);
 	
 	if (val2 == 0)
 	{
@@ -1343,17 +1343,22 @@ mysuint8_exact_divmysuint8(PG_FUNCTION_ARGS)
 Datum
 mysuint8_exact_divint2(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(0);
+	uint64		val1 = PG_GETARG_UINT64(0);
 	int16		val2 = PG_GETARG_INT16(1);
-	if (val2 < 0)
-	{
-		ereport(ERROR, (errmsg("integer unsigned out of range")));
-	}
+	
 	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
 		PG_RETURN_NULL();
+	}
+
+	if (val2 < 0)
+	{
+		if (val1 >= abs(val2))
+			ereport(ERROR, (errmsg("integer unsigned out of range")));
+		
+		PG_RETURN_UINT64(0);
 	}
 
 	PG_RETURN_UINT64(val1 / val2);
@@ -1362,17 +1367,22 @@ mysuint8_exact_divint2(PG_FUNCTION_ARGS)
 Datum
 mysuint8_exact_divint4(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(0);
+	uint64		val1 = PG_GETARG_UINT64(0);
 	int32		val2 = PG_GETARG_INT32(1);
-	if (val2 < 0)
-	{
-		ereport(ERROR, (errmsg("integer unsigned out of range")));
-	}
+
 	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
 		PG_RETURN_NULL();
+	}
+
+	if (val2 < 0)
+	{
+		if (val1 >= abs(val2))
+			ereport(ERROR, (errmsg("integer unsigned out of range")));
+		
+		PG_RETURN_UINT64(0);
 	}
 
 	PG_RETURN_UINT64(val1 / val2);
@@ -1381,17 +1391,22 @@ mysuint8_exact_divint4(PG_FUNCTION_ARGS)
 Datum
 mysuint8_exact_divint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(0);
+	uint64		val1 = PG_GETARG_UINT64(0);
 	int64		val2 = PG_GETARG_INT64(1);
-	if (val2 < 0)
-	{
-		ereport(ERROR, (errmsg("integer unsigned out of range")));
-	}
+
 	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
 		PG_RETURN_NULL();
+	}
+
+	if (val2 < 0)
+	{
+		if (val1 >= abs(val2))
+			ereport(ERROR, (errmsg("integer unsigned out of range")));
+		
+		PG_RETURN_UINT64(0);
 	}
 
 	PG_RETURN_UINT64(val1 / val2);
@@ -1400,58 +1415,73 @@ mysuint8_exact_divint8(PG_FUNCTION_ARGS)
 Datum
 int2_exact_divmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(1);
-	int16		val2 = PG_GETARG_INT16(0);
-	if (val2 < 0)
-	{
-		ereport(ERROR, (errmsg("integer unsigned out of range")));
-	}
-	if (val1 == 0)
+	int16		val1 = PG_GETARG_INT16(0);
+	uint64		val2 = PG_GETARG_INT64(1);
+
+	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
 		PG_RETURN_NULL();
-	}	
+	}
 
-	PG_RETURN_UINT64(val2 / val1);
+	if (val1 < 0)
+	{
+		if (abs(val1) >= val2)
+			ereport(ERROR, (errmsg("integer unsigned out of range")));
+
+		PG_RETURN_UINT32(0);
+	}
+
+	PG_RETURN_UINT32(val1 / val2);
 }
 
 Datum
 int4_exact_divmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(1);
-	int32		val2 = PG_GETARG_INT32(0);
-	if (val2 < 0)
-	{
-		ereport(ERROR, (errmsg("integer unsigned out of range")));
-	}
-	if (val1 == 0)
+	int32		val1 = PG_GETARG_INT32(0);
+	uint64		val2 = PG_GETARG_UINT64(1);
+	
+	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
 		PG_RETURN_NULL();
 	}
-	
-	PG_RETURN_UINT64(val2 / val1);
+
+	if (val1 < 0)
+	{
+		if (abs(val1) >= val2)
+			ereport(ERROR, (errmsg("integer unsigned out of range")));
+
+		PG_RETURN_UINT32(0);
+	}
+
+	PG_RETURN_UINT32(val1 / val2);
 }
 
 Datum
 int8_exact_divmysuint8(PG_FUNCTION_ARGS)
 {
-	uint64		val1 = PG_GETARG_INT64(1);
-	int64		val2 = PG_GETARG_INT64(0);
-	if (val2 < 0)
-	{
-		ereport(ERROR, (errmsg("integer unsigned out of range")));
-	}
-	if (val1 == 0)
+	int64		val1 = PG_GETARG_INT64(0);
+	uint64		val2 = PG_GETARG_UINT64(1);
+	
+	if (val2 == 0)
 	{
 		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
 			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
 		PG_RETURN_NULL();
 	}
+
+	if (val1 < 0)
+	{
+		if (abs(val1) >= val2)
+			ereport(ERROR, (errmsg("integer unsigned out of range")));
+
+		PG_RETURN_UINT64(0);
+	}
 	
-	PG_RETURN_UINT64(val2 / val1);
+	PG_RETURN_UINT64(val1 / val2);
 }
 
 // mod

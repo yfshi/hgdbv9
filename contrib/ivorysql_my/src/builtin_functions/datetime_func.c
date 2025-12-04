@@ -2540,12 +2540,8 @@ mys_datetimes2tm(Numeric datetimes, struct pg_tm *tm, fsec_t *fsec)
 Datum 
 timestampadd(PG_FUNCTION_ARGS)
 {
-    int             unit_val, unit_type;
-    text            *units = PG_GETARG_TEXT_PP(0);
+    int             unit_val = PG_GETARG_INT32(0);
     int64           interval = (int64) PG_GETARG_INT32(1); // may be negative
-    char            *lowunits = downcase_truncate_identifier(VARDATA_ANY(units),
-											                 VARSIZE_ANY_EXHDR(units),
-											                 false);
     TimeOffset      timestamp = 0, units_timestamp = 0;
     struct pg_tm    tt, *tm = &tt;
     fsec_t	        fsec = 0;
@@ -2558,85 +2554,75 @@ timestampadd(PG_FUNCTION_ARGS)
 
     mys_datetimes2tm(PG_GETARG_NUMERIC(2), tm, &fsec);
 
-    unit_type = DecodeUnits(0, lowunits, &unit_val);
-
-    if (unit_type == UNKNOWN_FIELD)
-        unit_type = DecodeSpecial(0, lowunits, &unit_val);
-
-    if (fsec != 0 || unit_type == DTK_MICROSEC)
-        dec = 6;
-
-    if (unit_type == UNITS)
+    if (fsec != 0 || unit_val == DTK_MICROSEC)
     {
-        switch (unit_val)
-        {
-            case DTK_WEEK:
-                interval *= DAYS_PER_WEEK;
-                /* fallthrough */
-            case DTK_DAY:
-                interval *= HOURS_PER_DAY;
-                /* fallthrough */
-            case DTK_HOUR:
-                interval *= MINS_PER_HOUR;
-                /* fallthrough */
-            case DTK_MINUTE:
-                interval *= SECS_PER_MINUTE;
-                /* fallthrough */
-            case DTK_SECOND:
-                interval *= USECS_PER_SEC;
-                /* fallthrough */
-            case DTK_MICROSEC:
-                units_timestamp = interval;
-                break;
-            case DTK_YEAR:
-                interval *= 4;
-                /* fallthrough */
-            case DTK_QUARTER:
-                interval *= 3;
-                /* fallthrough */
-            case DTK_MONTH:
-            {
-                int days; /* bug#z5367 */
-                
-                tm->tm_mon += interval % MONTHS_PER_YEAR;
-                tm->tm_year += interval / MONTHS_PER_YEAR;
-                    
-                if (tm->tm_mon > MONTHS_PER_YEAR)
-                {
-                    tm->tm_year++;
-                    tm->tm_mon -= MONTHS_PER_YEAR;
-                }
-                
-                if (tm->tm_mon <= 0)
-                {
-                    tm->tm_year--;
-                    tm->tm_mon += MONTHS_PER_YEAR;
-                }
+		dec = 6;
+	}
 
-                /**
-                 * Begin - bug#z5367
-                 * If you add MONTH, QUARTER, or YEAR and the resulting date has
-                 * a day that is larger than the maximum day for the new month,
-                 * the day is adjusted to the maximum days in the new month.
-                 * such as timestamp(MONTH, 1, '2019-01-30'), it will get '2019-2-28'.
-                 */
-                days = mon_lengths[isleap(tm->tm_year)][tm->tm_mon - 1];
+	switch (unit_val)
+	{
+		case DTK_WEEK:
+			interval *= DAYS_PER_WEEK;
+			/* fallthrough */
+		case DTK_DAY:
+			interval *= HOURS_PER_DAY;
+			/* fallthrough */
+		case DTK_HOUR:
+			interval *= MINS_PER_HOUR;
+			/* fallthrough */
+		case DTK_MINUTE:
+			interval *= SECS_PER_MINUTE;
+			/* fallthrough */
+		case DTK_SECOND:
+			interval *= USECS_PER_SEC;
+			/* fallthrough */
+		case DTK_MICROSEC:
+			units_timestamp = interval;
+			break;
+		case DTK_YEAR:
+			interval *= 4;
+			/* fallthrough */
+		case DTK_QUARTER:
+			interval *= 3;
+			/* fallthrough */
+		case DTK_MONTH:
+		{
+			int days; /* bug#z5367 */
+			
+			tm->tm_mon += interval % MONTHS_PER_YEAR;
+			tm->tm_year += interval / MONTHS_PER_YEAR;
+				
+			if (tm->tm_mon > MONTHS_PER_YEAR)
+			{
+				tm->tm_year++;
+				tm->tm_mon -= MONTHS_PER_YEAR;
+			}
+			
+			if (tm->tm_mon <= 0)
+			{
+				tm->tm_year--;
+				tm->tm_mon += MONTHS_PER_YEAR;
+			}
 
-                if (tm->tm_mday > days)
-                    tm->tm_mday = days;
-                /* End - bug#z5367 */
+			/**
+			 * Begin - bug#z5367
+			 * If you add MONTH, QUARTER, or YEAR and the resulting date has
+			 * a day that is larger than the maximum day for the new month,
+			 * the day is adjusted to the maximum days in the new month.
+			 * such as timestamp(MONTH, 1, '2019-01-30'), it will get '2019-2-28'.
+			 */
+			days = mon_lengths[isleap(tm->tm_year)][tm->tm_mon - 1];
 
-                break;
-            }
-            default:
-                break;
-        }
-    }
-    else
-    {
-        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_PARAMETER), errmsg("unknown unit: \"%s\"", lowunits)));
-    }
+			if (tm->tm_mday > days)
+				tm->tm_mday = days;
+			/* End - bug#z5367 */
 
+			break;
+		}
+		default:
+			break;
+	}
+    
     if (tm->tm_year < 0 || tm->tm_year > 9999)
     {
         ereport(WARNING, (errmsg("Datetime function: datetime field overflow")));
@@ -2659,18 +2645,12 @@ timestampadd(PG_FUNCTION_ARGS)
     PG_RETURN_NUMERIC(num);
 }
 
-
-// 2 - 1
 Datum
 timestampdiff(PG_FUNCTION_ARGS)
 {
-	int64	res = 0;
+	int64		res = 0;
 	Interval	*span;
-	int		unit_val, unit_type;
-	text	*units = PG_GETARG_TEXT_PP(0);
-	char	*lowunits = downcase_truncate_identifier(VARDATA_ANY(units),
-														VARSIZE_ANY_EXHDR(units),
-														false);
+	int			unit_val = PG_GETARG_INT32(0);
 	TimestampTz		timestamp1 = 0, timestamp2 = 0;
 	struct pg_tm	tt1, *tm1 = &tt1;
 	struct pg_tm	tt2, *tm2 = &tt2;
@@ -2692,20 +2672,19 @@ timestampdiff(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 	}
 
-	if (!strncasecmp(lowunits, "sql_tsi_", 8))
+	if ((tm1->tm_year == 0 || tm1->tm_mon == 0 || tm1->tm_mday == 0) || 
+		(tm2->tm_year == 0 || tm2->tm_mon == 0 || tm2->tm_mday == 0))
 	{
-		lowunits = lowunits + 8;
+		ereport(WARNING, (errmsg("Incorrect datetime value")));
+		PG_RETURN_NULL();
 	}
 
-	unit_type = DecodeUnits(0, lowunits, &unit_val);
-
-	if (unit_type == UNKNOWN_FIELD)
-		unit_type = DecodeSpecial(0, lowunits, &unit_val);
-
 	if ((tm2timestamp(tm1, fsec1, NULL, &timestamp1) != 0) || (tm2timestamp(tm2, fsec2, NULL, &timestamp2) != 0))
+	{
 		ereport(ERROR,
 				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
 				 errmsg("timestamp out of range")));
+	}
 
 	if (unit_val == DTK_MONTH || unit_val == DTK_QUARTER || unit_val == DTK_YEAR)
 	{
@@ -2718,58 +2697,50 @@ timestampdiff(PG_FUNCTION_ARGS)
 													 TimestampTzGetDatum(timestamp2), TimestampTzGetDatum(timestamp1)));
 	}
 
-	if (unit_type == UNITS)
+	switch (unit_val)
 	{
-		switch (unit_val)
-		{
-			case DTK_YEAR:
-				res = span->month / 12;
-				break;
-			case DTK_QUARTER:
-				res = span->month / 3;
-				break;
-			case DTK_MONTH:
-				res = span->month;
-				break;
-			case DTK_WEEK:
-				res = span->day / 7;
-				break;
-			case DTK_DAY:
-				res = span->day;
-				break;
-			case DTK_HOUR:
-				if (interval2tm(*span, tm3, &fsec3) != 0)
-					elog(ERROR, "could not convert interval to tm");
-				res = span->day * 24 + tm3->tm_hour;
-				break;
-			case DTK_MINUTE:
-				if (interval2tm(*span, tm3, &fsec3) != 0)
-					elog(ERROR, "could not convert interval to tm");
-				res = span->day * 24 * 60 + tm3->tm_hour * 60 + tm3->tm_min;
-				break;
-			case DTK_SECOND:
-				if (interval2tm(*span, tm3, &fsec3) != 0)
-					elog(ERROR, "could not convert interval to tm");
-				res = span->day * 24 * 60 * 60 +
-					tm3->tm_hour * 60 * 60 + tm3->tm_min * 60 + tm3->tm_sec;
-				break;
-			case DTK_MICROSEC:
+		case DTK_YEAR:
+			res = span->month / 12;
+			break;
+		case DTK_QUARTER:
+			res = span->month / 3;
+			break;
+		case DTK_MONTH:
+			res = span->month;
+			break;
+		case DTK_WEEK:
+			res = span->day / 7;
+			break;
+		case DTK_DAY:
+			res = span->day;
+			break;
+		case DTK_HOUR:
+			if (interval2tm(*span, tm3, &fsec3) != 0)
+				elog(ERROR, "could not convert interval to tm");
+			res = span->day * 24 + tm3->tm_hour;
+			break;
+		case DTK_MINUTE:
+			if (interval2tm(*span, tm3, &fsec3) != 0)
+				elog(ERROR, "could not convert interval to tm");
+			res = span->day * 24 * 60 + tm3->tm_hour * 60 + tm3->tm_min;
+			break;
+		case DTK_SECOND:
+			if (interval2tm(*span, tm3, &fsec3) != 0)
+				elog(ERROR, "could not convert interval to tm");
+			res = span->day * 24 * 60 * 60 +
+				tm3->tm_hour * 60 * 60 + tm3->tm_min * 60 + tm3->tm_sec;
+			break;
+		case DTK_MICROSEC:
 				if (interval2tm(*span, tm3, &fsec3) != 0)
 					elog(ERROR, "could not convert interval to tm");
 				res = span->day * 24 * 60 * 60 * 1000000 +
-					tm3->tm_hour * 60 * 60 * 1000000 +
-					tm3->tm_min * 60 * 1000000 + 
-					tm3->tm_sec * 1000000 + fsec3;
+					  tm3->tm_hour * 60 * 60 * 1000000 +
+					  tm3->tm_min * 60 * 1000000 +
+					  tm3->tm_sec * 1000000 + fsec3;
 				break;
-			default:
-				ereport(ERROR, (errcode(ERRCODE_UNDEFINED_PARAMETER), 
-								errmsg("unknown unit: \"%s\"", lowunits))); /* impossible */
-				break;
-		}
-	}
-	else
-	{
-		ereport(ERROR, (errcode(ERRCODE_UNDEFINED_PARAMETER), errmsg("unknown unit: \"%s\"", lowunits)));
+		default:
+			/* impossible */
+			break;
 	}
 
 	PG_RETURN_INT64(res);

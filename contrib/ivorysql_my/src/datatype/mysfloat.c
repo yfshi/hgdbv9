@@ -32,6 +32,7 @@ PG_FUNCTION_INFO_V1(mysfloat4um);
 PG_FUNCTION_INFO_V1(mysfloat8_logic_not);
 PG_FUNCTION_INFO_V1(mysfloat4safeeq);
 PG_FUNCTION_INFO_V1(mysfloat8safeeq);
+PG_FUNCTION_INFO_V1(mysfloat4_and);
 PG_FUNCTION_INFO_V1(mysfloat8_and);
 PG_FUNCTION_INFO_V1(mysfloat8_or);
 PG_FUNCTION_INFO_V1(mysfloat8_shl);
@@ -53,6 +54,10 @@ PG_FUNCTION_INFO_V1(mysfloat8_boolean);
 PG_FUNCTION_INFO_V1(mysfloat4larger);
 PG_FUNCTION_INFO_V1(mysfloat84_pl);
 /* End - BUG#Z5204 */
+/* Begin - bug#z6040 */
+PG_FUNCTION_INFO_V1(mysfloat4_moddiv_uint8);
+PG_FUNCTION_INFO_V1(mysfloat8_moddiv_uint8);
+/* End - bug#z6040 */
 
 /*
  * mysfloat8_not - bitwise inversion.
@@ -145,6 +150,20 @@ mysfloat8safeeq(PG_FUNCTION_ARGS)
 
 	PG_RETURN_BOOL(float8_eq(arg1, arg2));
 }
+
+/* Begin - bug#5378 */
+Datum
+mysfloat4_and(PG_FUNCTION_ARGS)
+{
+	uint64	val1;
+	uint64	val2;
+
+	val1 = DatumGetUInt64(DirectFunctionCall1(ftoi8, PG_GETARG_DATUM(0)));
+	val2 = DatumGetUInt64(DirectFunctionCall1(ftoi8, PG_GETARG_DATUM(1)));
+
+	PG_RETURN_UINT64(val1 & val2);
+}
+/* End - bug#5378 */
 
 /* Begin - BUG#Z5355 */
 /*
@@ -515,3 +534,45 @@ mysfloat84_pl(PG_FUNCTION_ARGS)
 	PG_RETURN_FLOAT8(result);
 }
 /* End - BUG#Z5204 */
+
+/* Begin - bug#z6040 */
+Datum
+mysfloat4_moddiv_uint8(PG_FUNCTION_ARGS)
+{
+	uint64	num = 0;
+	float4	arg1 = PG_GETARG_FLOAT4(0);
+	uint64	arg2 = PG_GETARG_UINT64(1);
+
+	if (arg2 == 0.0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING,
+				(errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	num = arg1 / arg2;
+
+	PG_RETURN_UINT64(num);
+}
+
+Datum
+mysfloat8_moddiv_uint8(PG_FUNCTION_ARGS)
+{
+	uint64	num = 0;
+	float8	arg1 = PG_GETARG_FLOAT8(0);
+	uint64	arg2 = PG_GETARG_UINT64(1);
+
+	if (arg2 == 0.0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING,
+				(errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	num = arg1 / arg2;
+
+	PG_RETURN_UINT64(num);
+}
+/* End - bug#z6040 */

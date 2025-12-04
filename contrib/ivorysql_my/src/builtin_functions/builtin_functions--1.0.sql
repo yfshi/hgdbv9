@@ -646,7 +646,7 @@ STRICT
 PARALLEL SAFE;
 
 /*TIMESTAMPADD*/
-CREATE OR REPLACE FUNCTION ivymy.timestampadd(text, int, datetime(6))
+CREATE OR REPLACE FUNCTION ivymy.timestampadd(int, int, datetime(6))
 RETURNS datetime(6)
 as 'MODULE_PATHNAME', 'timestampadd'
 LANGUAGE C 
@@ -1587,6 +1587,14 @@ AS $$
 select left($1::text, $2::int);
 $$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
 /* End - SRS-MYSQL-HEX-LITERAL */
+
+/* Begin - bug#5180 */
+CREATE OR REPLACE FUNCTION ivymy.left(myblob, int4)
+RETURNS varbinary
+AS 'text_left'
+LANGUAGE INTERNAL
+PARALLEL SAFE IMMUTABLE STRICT;
+/* End - bug#5180 */
 
 -- right
 
@@ -3493,7 +3501,7 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.timestampdiff(text, datetime(6), datetime(6))
+CREATE FUNCTION ivymy.timestampdiff(int, datetime(6), datetime(6))
 RETURNS bigint 
 AS 'MODULE_PATHNAME','timestampdiff'
 LANGUAGE C

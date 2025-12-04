@@ -121,6 +121,32 @@ public class MySQLJdbcTest {
                 }
             }
 
+            /* Begin - bug#6619 */
+            statement.executeUpdate("drop table if exists t4");
+            statement.executeUpdate("create table t4 (a bit(63))");
+            statement.executeUpdate("insert into t4 values (b'1')");
+            statement.executeUpdate("insert into t4 values (b'1101')");
+            resultSet = statement.executeQuery("select * from t4");
+
+            resultSetMetaData = resultSet.getMetaData();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                System.out.println(resultSetMetaData.getColumnName(i) + ":" + resultSetMetaData.getColumnTypeName(i));
+            }
+            /* End - bug#6619 */
+            
+            /* Begin - bug#6625 */
+            statement.executeUpdate("drop table if exists shirts");
+            statement.executeUpdate("create table shirts(name varchar(40), size enum('x-small', 'small', 'medium', 'large', 'x-large'));");
+            statement.executeUpdate("set sql_mode = '';");
+            statement.executeUpdate("insert into shirts(name, size) values('Henry', 'lar');");
+            resultSet = statement.executeQuery("select * from shirts;");
+
+            resultSetMetaData = resultSet.getMetaData();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                System.out.println(resultSetMetaData.getColumnName(i) + ":" + resultSetMetaData.getColumnTypeName(i));
+            }
+            /* End - bug#6625 */
+
             statement.executeUpdate("do 1+1");
             statement.executeQuery("show search_path");
         }

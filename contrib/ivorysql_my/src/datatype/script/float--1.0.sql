@@ -77,6 +77,22 @@ CREATE OPERATOR ivymy.<=> (
 );
 
 -- &
+/* Begin - bug#5378 */
+CREATE FUNCTION ivymy.mysfloat4_and(float4, float4)
+RETURNS ivymy.uint8
+AS 'MODULE_PATHNAME','mysfloat4_and'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.& (
+	procedure = ivymy.mysfloat4_and,
+	leftarg = float4,
+	rightarg = float4
+);
+/* End - bug#5378 */
+
 CREATE FUNCTION ivymy.mysfloat8_and(float8, float8)
 RETURNS ivymy.uint8 /* BUG#Z5355 */
 AS 'MODULE_PATHNAME','mysfloat8_and'
@@ -282,24 +298,6 @@ IMMUTABLE
 LEAKPROOF;
 
 CREATE FUNCTION ivymy.mysfloat8_moddiv(float8, float8)
-RETURNS int8
-AS 'MODULE_PATHNAME','mysfloat8_moddiv'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mys_div(float4, float4)
-RETURNS int8
-AS 'MODULE_PATHNAME','mysfloat4_moddiv'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mys_div(float8, float8)
 RETURNS int8
 AS 'MODULE_PATHNAME','mysfloat8_moddiv'
 LANGUAGE C
@@ -541,6 +539,36 @@ IMMUTABLE;
 
 CREATE OPERATOR ivymy.&& (
 	procedure = ivymy.float8_logic_and,
+	leftarg = float8,
+	rightarg = uint8
+);
+
+CREATE FUNCTION ivymy.mysfloat4_moddiv(float4, uint8)
+RETURNS uint8
+AS 'MODULE_PATHNAME','mysfloat4_moddiv_uint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR ivymy.// (
+	procedure = ivymy.mysfloat4_moddiv,
+	leftarg = float4,
+	rightarg = uint8
+);
+
+CREATE FUNCTION ivymy.mysfloat8_moddiv(float8, uint8)
+RETURNS uint8
+AS 'MODULE_PATHNAME','mysfloat8_moddiv_uint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR ivymy.// (
+	procedure = ivymy.mysfloat8_moddiv,
 	leftarg = float8,
 	rightarg = uint8
 );

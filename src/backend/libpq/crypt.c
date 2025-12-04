@@ -191,12 +191,17 @@ encrypt_password(PasswordType target_type, const char *role,
 			
 		/* Begin - Req: SRS-MYSQL-PROTOCOL */
 		case PASSWORD_TYPE_MYS_NATIVE:
-			elog(ERROR, "cannot encrypt password with 'mysql_native_password'");
-			return NULL; /* make compile quiet */
+			if (compatible_mode != MYS_MODE || mysql_encrypt_password_hook == NULL)
+				elog(ERROR, "cannot encrypt password with 'mysql_native_password'");
+			
+			return mysql_encrypt_password_hook(target_type, role, password);
+
 #ifdef USE_OPENSSL		
 		case PASSWORD_TYPE_MYS_CACHING_SHA2:
-			elog(ERROR, "cannot encrypt password with 'caching_sha2_password'");
-			return NULL; /* make compile quiet */
+			if (compatible_mode != MYS_MODE || mysql_encrypt_password_hook == NULL)
+				elog(ERROR, "cannot encrypt password with 'caching_sha2_password'");
+
+		return mysql_encrypt_password_hook(target_type, role, password);
 #endif
 		/* End - Req: SRS-MYSQL-PROTOCOL */
 	}

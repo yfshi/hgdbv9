@@ -803,3 +803,113 @@ t + 0x10 as t_add_hex
 from t_char_arith_hex;
 drop table t_char_arith_hex;
 /* End - bug#z6043 */
+
+/* Begin - bug#6033 */
+-- uint8 div uint8
+create table t(a bigint unsigned, b bigint unsigned);
+insert into t values (1, 2);
+create table tt as select a div b from t;
+desc tt;        -- uint8
+drop table t;
+drop table tt;
+
+-- uint8 div int2
+create table t(a bigint unsigned, b int2);
+insert into t values (1, 2);
+insert into t values (66666, 2);
+create table tt as select a div b from t;
+select * from tt;   -- 0, 33333
+desc tt;        -- uint8
+drop table tt;
+
+truncate t;
+insert into t values (1, -2);
+select a div b from t;  -- 0
+
+truncate t;
+insert into t values (3, -2);
+select a div b from t; -- error
+
+truncate t;
+insert into t values (3, -3); -- error
+select a div b from t;
+
+truncate t;
+insert into t values (3, -4);
+select a div b from t;   -- 0
+
+drop table t;
+
+-- uint8 div int
+create table t(a bigint unsigned, b int);
+insert into t values (1, 2);
+create table tt as select a div b from t;
+desc tt;    -- uint8
+drop table tt;
+
+insert into t values (1, -2);
+select a div b from t; -- 0, 0
+drop table t;
+
+-- uint8 div int8
+create table t(a bigint unsigned, b int8);
+insert into t values (1, 2);
+create table tt as select a div b from t;
+desc tt;        -- uint8
+drop table tt;
+
+insert into t values (1, -2);
+select a div b from t;  -- 0, 0
+drop table t;
+
+-- int2 div uint8
+create table t(a int2, b bigint unsigned);
+insert into t values (1, 2);
+create table tt as select a div b from t;
+desc tt;        -- uint4
+drop table tt;
+
+truncate t;
+insert into t values (-1, 2);
+select a div b from t;  -- 0
+
+truncate t;
+insert into t values (-2, 2);
+select a div b from t;  -- error
+
+truncate t;
+insert into t values (1, 65538);
+select a div b from t;
+drop table t;
+
+-- int div uint8
+create table t(a int, b bigint unsigned);
+insert into t values (1, 2);
+create table tt as select a div b from t;
+desc tt;        -- uint4
+drop table tt;
+
+insert into t values (-1, 2);
+insert into t values (1, 65538);
+select a div b from t; -- 0, 0, 0
+drop table t;
+
+-- int8 div uint8
+create table t(a int8, b bigint unsigned);
+insert into t values (1, 2);
+create table tt as select a div b from t;
+desc tt;        -- uint8
+drop table tt;
+
+insert into t values (-1, 2);
+insert into t values (1, 65538);
+select a div b from t; -- 0, 0, 0
+drop table t;
+
+create table t_numeric_arith_hex ( signed_tinyint tinyint ); 
+insert into t_numeric_arith_hex values (-12);
+select signed_tinyint % x'12'  from t_numeric_arith_hex;
+select signed_tinyint mod 0x12 from t_numeric_arith_hex;
+select signed_tinyint div X'12' from t_numeric_arith_hex;
+drop table t_numeric_arith_hex;
+/* End - bug#6033 */

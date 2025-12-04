@@ -29,6 +29,8 @@ select * from autocommit_test6;
 -- prepare
 \! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLLongDataExample 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 \! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLPreparedStatementExample 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcStmtPrepareTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcStmtResetTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 
 -- final clean
 RESET ROLE;

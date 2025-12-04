@@ -667,8 +667,7 @@ mysql_encrypt_password(PasswordType target_type, const char *rolename, const cha
 	
     auth_plugin = get_auth_plugin_by_pwtype(target_type);
 
-    if (auth_plugin == NULL)
-        return encrypt_password(Password_encryption, rolename, password);
+    Assert (auth_plugin != NULL);
 
     return auth_plugin->password_generate(password, strlen(password));
 }

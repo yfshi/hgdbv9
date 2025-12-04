@@ -23,6 +23,7 @@
 #include "commands/trigger.h"
 #include "executor/executor.h"
 #include "executor/spi_priv.h"
+#include "libpq/libpq-be.h"
 #include "miscadmin.h"
 #include "tcop/pquery.h"
 #include "tcop/utility.h"
@@ -2872,6 +2873,13 @@ _SPI_execute_plan(SPIPlanPtr plan, const SPIExecuteOptions *options,
 
 					if (qc.commandTag == CMDTAG_SELECT)
 						_SPI_current->processed = qc.nprocessed;
+					/* Begin - bug#6461 */
+					else if (qc.commandTag == CMDTAG_CREATE_TABLE_AS &&
+							 compatible_mode == MYS_MODE && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+					{
+						_SPI_current->processed = qc.nprocessed;
+					}
+					/* End - bug#6461 */
 					else
 					{
 						/*

@@ -4381,10 +4381,11 @@ mys_is_col_all(Oid relid, IndexStmt *stmt)
 				List *args = ((FuncCall *)attribute->expr)->args;
 				Node *last_arg = NULL;
 
-				/*Begin - BUG#Z6293 */
+				/* Begin - BUG#Z6293 */
 				A_Const *aconst = NULL;
-				int collength = 0;
-				/*End - BUG#Z6293 */
+				int 	typmod;
+				int 	collength = 0;
+				/* End - BUG#Z6293 */
 
 				if (nodeTag(col_name) != T_String || list_length(args) != 1)
 				{
@@ -4403,13 +4404,14 @@ mys_is_col_all(Oid relid, IndexStmt *stmt)
 					break;
 				}
 
-				/*Begin - BUG#Z6293 */
-				collength = ((Form_pg_attribute) GETSTRUCT(atttuple))->atttypmod - VARHDRSZ;
+				/* Begin - BUG#Z6293 */
+				typmod = ((Form_pg_attribute) GETSTRUCT(atttuple))->atttypmod;
+				collength = typmod - VARHDRSZ;
 				aconst = (A_Const *)last_arg;
 
 				if (aconst->val.type == T_Integer)
 				{
-					if (aconst->val.val.ival <= 0 || aconst->val.val.ival > collength)
+					if (typmod > 0 && (aconst->val.val.ival <= 0 || aconst->val.val.ival > collength))
 						ereport(ERROR,
 								errcode(ERRCODE_SYNTAX_ERROR),
 								errmsg("Key part '%s' length cannot be %d", ((Value *)col_name)->val.str, aconst->val.val.ival));
@@ -4420,19 +4422,13 @@ mys_is_col_all(Oid relid, IndexStmt *stmt)
 							errcode(ERRCODE_SYNTAX_ERROR),
 							errmsg("Key part '%s' length must integer", ((Value *)col_name)->val.str));
 				}
-				/*End - BUG#Z6293 */
+				/* End - BUG#Z6293 */
 
 				ReleaseSysCache(atttuple);
-
-				num++;
 			}
-			else
-				num++;
 		}
-		else
-		{
-			num++;
-		}
+		
+		num++;
 	}
 
 	if (num != list_length(stmt->indexParams))
@@ -4489,10 +4485,10 @@ mys_trans_index_col_to_left(Oid relid, IndexStmt *stmt)
 					c->colnamelist = NULL;
 					c->fields = list_make1(last_value);
 
-					attribute->expr = (Node *) makeFuncCall(SystemFuncName("left"),
-							list_make2(c, last_arg),
-							COERCE_EXPLICIT_CALL,
-							-1);
+					attribute->expr = (Node *)makeFuncCall(list_make1(makeString("left")),
+														   list_make2(c, last_arg),
+														   COERCE_EXPLICIT_CALL,
+														   -1);
 					ReleaseSysCache(atttuple);
 				}
 			}
