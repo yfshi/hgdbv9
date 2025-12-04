@@ -48,7 +48,7 @@ select @vara := @vara + 2 * length('aaa');
 select @vara := @vara + length('aaa') / length('aaa');
  ?column? 
 ----------
-       10
+  10.0000
 (1 row)
 
 set @vara = 4, @vara = 5;
@@ -72,10 +72,10 @@ select @vara + 2.2;
 
 create table settb as select @vara;
 \d settb
-                     Table "public.settb"
-  Column  |       Type       | Collation | Nullable | Default 
-----------+------------------+-----------+----------+---------
- ?column? | double precision |           |          | 
+                Table "public.settb"
+  Column  |  Type  | Collation | Nullable | Default 
+----------+--------+-----------+----------+---------
+ ?column? | bigint |           |          | 
 
 insert into settb values(1),(2),(3);
 select * from settb;
@@ -115,9 +115,9 @@ select @vara * 2;
 (1 row)
 
 select @vara / 3;
-      ?column?      
---------------------
- 1.3333333333333333
+ ?column? 
+----------
+   1.3333
 (1 row)
 
 select @vara + 1 * 3;
@@ -127,9 +127,9 @@ select @vara + 1 * 3;
 (1 row)
 
 select @vara + 4 / 3;
-      ?column?      
---------------------
- 5.3332999999999995
+ ?column? 
+----------
+   5.3333
 (1 row)
 
 select @vara - 1 * 3;
@@ -151,9 +151,9 @@ select (@vara + 1) * 3;
 (1 row)
 
 select (@vara + 4) / 3;
-      ?column?      
---------------------
- 2.6666666666666665
+ ?column? 
+----------
+   2.6667
 (1 row)
 
 select (@vara - 1) * 3;
@@ -165,7 +165,7 @@ select (@vara - 1) * 3;
 select (@vara - 4) / 3;
  ?column? 
 ----------
-        0
+   0.0000
 (1 row)
 
 create table settb as select @vara;
@@ -209,13 +209,13 @@ select @vara - 1;
 select @vara * 2;
  ?column? 
 ----------
-        9
+      9.0
 (1 row)
 
 select @vara / 3;
  ?column? 
 ----------
-      1.5
+  1.50000
 (1 row)
 
 select @vara + 1 * 3;
@@ -225,9 +225,9 @@ select @vara + 1 * 3;
 (1 row)
 
 select @vara + 4 / 3;
-      ?column?      
---------------------
- 5.8332999999999995
+ ?column? 
+----------
+   5.8333
 (1 row)
 
 select @vara - 1 * 3;
@@ -249,9 +249,9 @@ select (@vara + 1) * 3;
 (1 row)
 
 select (@vara + 4) / 3;
-      ?column?      
---------------------
- 2.8333333333333335
+ ?column? 
+----------
+  2.83333
 (1 row)
 
 select (@vara - 1) * 3;
@@ -261,9 +261,9 @@ select (@vara - 1) * 3;
 (1 row)
 
 select (@vara - 4) / 3;
-      ?column?       
----------------------
- 0.16666666666666666
+ ?column? 
+----------
+  0.16667
 (1 row)
 
 --@vara is a float，and use this varibale to paricipate in the calculation
@@ -283,19 +283,19 @@ select @vara + 1.6;
 select @vara - 1.5;
  ?column? 
 ----------
-        4
+      4.0
 (1 row)
 
 select @vara * 2.3;
-      ?column?      
---------------------
- 12.649999999999999
+ ?column? 
+----------
+    12.65
 (1 row)
 
 select @vara / 3.5;
-      ?column?      
---------------------
- 1.5714285714285714
+ ?column? 
+----------
+  1.57143
 (1 row)
 
 select @vara + 1.8 * 3.9;
@@ -311,9 +311,9 @@ select @vara + 4.4 / 3.7;
 (1 row)
 
 select @vara - 1.8 * 3.9;
-      ?column?       
----------------------
- -1.5199999999999996
+ ?column? 
+----------
+    -1.52
 (1 row)
 
 select @vara - 4.4 / 3.7;
@@ -329,21 +329,21 @@ select (@vara + 1.8) * 3.7;
 (1 row)
 
 select (@vara + 4.6) / 3.3;
-      ?column?      
---------------------
- 3.0606060606060606
+ ?column? 
+----------
+  3.06061
 (1 row)
 
 select (@vara - 1.8) * 3.7;
-      ?column?      
---------------------
- 13.690000000000001
+ ?column? 
+----------
+    13.69
 (1 row)
 
 select (@vara - 4.6) / 3.3;
-      ?column?      
---------------------
- 0.2727272727272729
+ ?column? 
+----------
+  0.27273
 (1 row)
 
 create table settb as select @vara;
@@ -393,7 +393,7 @@ select @varab * 2;
 select @varab / 2;
  ?column? 
 ----------
-      2.5
+   2.5000
 (1 row)
 
 select @varab + 1 * 3;
@@ -405,7 +405,7 @@ select @varab + 1 * 3;
 select @varab + 6 / 3;
  ?column? 
 ----------
-        7
+   7.0000
 (1 row)
 
 select @varab - 1 * 3;
@@ -417,7 +417,7 @@ select @varab - 1 * 3;
 select @varab - 6 / 3;
  ?column? 
 ----------
-        3
+   3.0000
 (1 row)
 
 select (@varab + 1) * 3;
@@ -427,9 +427,9 @@ select (@varab + 1) * 3;
 (1 row)
 
 select (@varab + 6) / 3;
-      ?column?      
---------------------
- 3.6666666666666665
+ ?column? 
+----------
+   3.6667
 (1 row)
 
 select (@varab - 1) * 3;
@@ -439,9 +439,9 @@ select (@varab - 1) * 3;
 (1 row)
 
 select (@varab - 6) / 3;
-      ?column?       
----------------------
- -0.3333333333333333
+ ?column? 
+----------
+  -0.3333
 (1 row)
 
 create table settb as select @vara;
@@ -491,7 +491,7 @@ select @varab * 2;
 select @varab / 2;
  ?column? 
 ----------
-      2.7
+  2.70000
 (1 row)
 
 select @varab + 1 * 3;
@@ -503,43 +503,43 @@ select @varab + 1 * 3;
 select @varab + 6 / 3;
  ?column? 
 ----------
-      7.4
+   7.4000
 (1 row)
 
 select @varab - 1 * 3;
-      ?column?      
---------------------
- 2.4000000000000004
+ ?column? 
+----------
+      2.4
 (1 row)
 
 select @varab - 6 / 3;
-      ?column?      
---------------------
- 3.4000000000000004
+ ?column? 
+----------
+   3.4000
 (1 row)
 
 select (@varab + 1) * 3;
-      ?column?      
---------------------
- 19.200000000000003
+ ?column? 
+----------
+     19.2
 (1 row)
 
 select (@varab + 6) / 3;
-      ?column?      
---------------------
- 3.8000000000000003
+ ?column? 
+----------
+  3.80000
 (1 row)
 
 select (@varab - 1) * 3;
-      ?column?      
---------------------
- 13.200000000000001
+ ?column? 
+----------
+     13.2
 (1 row)
 
 select (@varab - 6) / 3;
-       ?column?       
-----------------------
- -0.19999999999999987
+ ?column? 
+----------
+ -0.20000
 (1 row)
 
 create table settb as select @vara;
@@ -575,21 +575,21 @@ select @varab + 1.5;
 (1 row)
 
 select @varab - 1.7;
-      ?column?      
---------------------
- 2.8999999999999995
+ ?column? 
+----------
+      2.9
 (1 row)
 
 select @varab * 2.9;
-      ?column?      
---------------------
- 13.339999999999998
+ ?column? 
+----------
+    13.34
 (1 row)
 
 select @varab / 2.3;
  ?column? 
 ----------
-        2
+  2.00000
 (1 row)
 
 select @varab + 1.5 * 3;
@@ -599,21 +599,21 @@ select @varab + 1.5 * 3;
 (1 row)
 
 select @varab + 6.5 / 3;
-      ?column?      
---------------------
- 6.7666699999999995
+ ?column? 
+----------
+  6.76667
 (1 row)
 
 select @varab - 1.9 * 3;
-      ?column?       
----------------------
- -1.1000000000000005
+ ?column? 
+----------
+     -1.1
 (1 row)
 
 select @varab - 6.7 / 3;
-      ?column?      
---------------------
- 2.3666699999999996
+ ?column? 
+----------
+  2.36667
 (1 row)
 
 select (@varab + 1.7) * 3.6;
@@ -623,9 +623,9 @@ select (@varab + 1.7) * 3.6;
 (1 row)
 
 select (@varab + 6.6) / 3.4;
-      ?column?      
---------------------
- 3.2941176470588234
+ ?column? 
+----------
+  3.29412
 (1 row)
 
 select (@varab - 1.4) * 3.7;
@@ -635,9 +635,9 @@ select (@varab - 1.4) * 3.7;
 (1 row)
 
 select (@varab - 6.2) / 3.1;
-      ?column?       
----------------------
- -0.5161290322580647
+ ?column? 
+----------
+ -0.51613
 (1 row)
 
 --If the same user define variable is assigned twice, the last assignment will take precedence
@@ -662,9 +662,9 @@ select @varab := @varab + 2 * length('aaa');
 (1 row)
 
 select @varab := @varab + 5 / length('aaa');
-      ?column?      
---------------------
- 12.966700000000001
+ ?column? 
+----------
+  12.9667
 (1 row)
 
 set @varab := 5.3, @varab := 4.5;
@@ -677,7 +677,7 @@ select @varab := @varab + 2.6 * length('aaa');
 select @varab := @varab + 5.1 / length('aaa');
  ?column? 
 ----------
-       14
+ 14.00000
 (1 row)
 
 --@vara is a integer，and use this varibale to paricipate in the calculation
@@ -875,40 +875,40 @@ select * from (select @varc:=@varc+1, * from test)g where @varc=0;
 --@vara is a float，and use this varibale to paricipate in the calculation
 set @vard := 2;
 select @vard := @vard + 1.8 as rownum, * from test;
-       rownum       | id | flg 
---------------------+----+-----
-                3.8 |  1 | a
-                5.6 |  2 | b
- 7.3999999999999995 |  3 | c
-                9.2 |  4 | d
+ rownum | id | flg 
+--------+----+-----
+    3.8 |  1 | a
+    5.6 |  2 | b
+    7.4 |  3 | c
+    9.2 |  4 | d
 (4 rows)
 
 set @vara :=  2;
 select @vard := @vard + 1.2 as rownum, @vara := @vara - 1.4, e.* from (select @vara := 1.8, @vard := 0.5)r ,test e;
- rownum |      ?column?       | id | flg 
---------+---------------------+----+-----
-    1.7 | 0.40000000000000013 |  1 | a
-    2.9 | -0.9999999999999998 |  2 | b
-    4.1 | -2.3999999999999995 |  3 | c
-    5.3 | -3.7999999999999994 |  4 | d
+ rownum | ?column? | id | flg 
+--------+----------+----+-----
+    1.7 |      0.4 |  1 | a
+    2.9 |     -1.0 |  2 | b
+    4.1 |     -2.4 |  3 | c
+    5.3 |     -3.8 |  4 | d
 (4 rows)
 
 select @vard := @vard + 1.2 as rownum, @vara := @vara - 1.4, e.* from (select @vara := 1.8, @vard := 0.5)r ,test e order by id desc;
- rownum |      ?column?       | id | flg 
---------+---------------------+----+-----
-    1.7 | 0.40000000000000013 |  4 | d
-    2.9 | -0.9999999999999998 |  3 | c
-    4.1 | -2.3999999999999995 |  2 | b
-    5.3 | -3.7999999999999994 |  1 | a
+ rownum | ?column? | id | flg 
+--------+----------+----+-----
+    1.7 |      0.4 |  4 | d
+    2.9 |     -1.0 |  3 | c
+    4.1 |     -2.4 |  2 | b
+    5.3 |     -3.8 |  1 | a
 (4 rows)
 
 select @vard, @vard := @vard + 1.3 as rownum, @vard, e.* from (select @vara := 1.6, @vard := 0.3)r ,test e;
-      ?column?      |       rownum       |      ?column?      | id | flg 
---------------------+--------------------+--------------------+----+-----
-                0.3 |                1.6 |                1.6 |  1 | a
-                1.6 | 2.9000000000000004 | 2.9000000000000004 |  2 | b
- 2.9000000000000004 |                4.2 |                4.2 |  3 | c
-                4.2 |                5.5 |                5.5 |  4 | d
+ ?column? | rownum | ?column? | id | flg 
+----------+--------+----------+----+-----
+      0.3 |    1.6 |      1.6 |  1 | a
+      1.6 |    2.9 |      2.9 |  2 | b
+      2.9 |    4.2 |      4.2 |  3 | c
+      4.2 |    5.5 |      5.5 |  4 | d
 (4 rows)
 
 select @vard;
@@ -924,22 +924,22 @@ select @vara;
 (1 row)
 
 select @vard := @vard - 1.2 as rownum, @vara := @vara - 2.2, e.* from test e;
-       rownum       |      ?column?       | id | flg 
---------------------+---------------------+----+-----
-                4.3 | -0.6000000000000001 |  1 | a
- 3.0999999999999996 | -2.8000000000000003 |  2 | b
- 1.8999999999999997 |                  -5 |  3 | c
- 0.6999999999999997 |                -7.2 |  4 | d
+ rownum | ?column? | id | flg 
+--------+----------+----+-----
+    4.3 |     -0.6 |  1 | a
+    3.1 |     -2.8 |  2 | b
+    1.9 |     -5.0 |  3 | c
+    0.7 |     -7.2 |  4 | d
 (4 rows)
 
 set @vard := 1.4;
 select @vard := @vard + 1.2 as rownum, @vara := @vara - 2.4, e.* from test e;
-       rownum       | ?column? | id | flg 
---------------------+----------+----+-----
- 2.5999999999999996 |     -9.6 |  1 | a
-                3.8 |      -12 |  2 | b
-                  5 |    -14.4 |  3 | c
-                6.2 |    -16.8 |  4 | d
+ rownum | ?column? | id | flg 
+--------+----------+----+-----
+    2.6 |     -9.6 |  1 | a
+    3.8 |    -12.0 |  2 | b
+    5.0 |    -14.4 |  3 | c
+    6.2 |    -16.8 |  4 | d
 (4 rows)
 
 set @d := length('aa');
@@ -947,7 +947,7 @@ select @vard := @vard + 1.5 as rownum, @vara := @vara + 1.1 + 1.3, @d = 1.5, e.*
  rownum | ?column? | ?column? | id | flg 
 --------+----------+----------+----+-----
     7.7 |    -14.4 | f        |  1 | a
-    9.2 |      -12 | f        |  2 | b
+    9.2 |    -12.0 | f        |  2 | b
    10.7 |     -9.6 | f        |  3 | c
    12.2 |     -7.2 | f        |  4 | d
 (4 rows)
@@ -1156,6 +1156,9 @@ create table t(id int);
 insert into t values (1),(2),(3);
 set @var = 1.1;
 select @var + 1, @var := 'a' from (select @var := 'a') t1, t;
+WARNING:  Truncated incorrect DECIMAL value: 'a'
+WARNING:  Truncated incorrect DECIMAL value: 'a'
+WARNING:  Truncated incorrect DECIMAL value: 'a'
  ?column? | ?column? 
 ----------+----------
         1 | a
