@@ -217,6 +217,11 @@ DETAIL:  cannot drop schema of syssso_role/syssao_role member
 drop schema sch_syssao_u1;
 ERROR:  permission denied for namespace sch_syssao_u1
 DETAIL:  cannot drop schema of syssso_role/syssao_role member
+-- test for bug z6280, should fail
+set client_min_messages to error;
+drop schema public cascade;
+ERROR:  cannot drop public schema
+reset client_min_messages;
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

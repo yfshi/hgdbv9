@@ -80,7 +80,7 @@ set se_feature.mode to on;
 ------ should fail for permission denied for test_func_1_sso_u1
 select test_func_1_sso_u1();
 ------ owner should fail for permmission denied of table
-set role syssso;
+\c - syssso;
 select test_func_1_sso_u1();
 
 -- Clean test object

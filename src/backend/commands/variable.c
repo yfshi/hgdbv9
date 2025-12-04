@@ -36,6 +36,10 @@
 #include "utils/guc.h"
 #include "commands/user.h"
 
+/* Begin - ReqID:SRS-SECURITY-POWERS */
+#include "se_features_interface.h"
+/* End - ReqID:SRS-SECURITY-POWERS*/
+
 /*
  * DATESTYLE
  */
@@ -779,30 +783,58 @@ check_session_authorization(char **newval, void **extra, GucSource source)
 			return false;
 		}
 
-	/* Look up the username */
-	roleTup = SearchSysCache1(AUTHNAME, PointerGetDatum(*newval));
-	if (!HeapTupleIsValid(roleTup))
-	{
-		/*
-		 * When source == PGC_S_TEST, we don't throw a hard error for a
-		 * nonexistent user name, only a NOTICE.  See comments in guc.h.
-		 */
-		if (source == PGC_S_TEST)
+		/* Look up the username */
+		roleTup = SearchSysCache1(AUTHNAME, PointerGetDatum(*newval));
+		if (!HeapTupleIsValid(roleTup))
 		{
-			ereport(NOTICE,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-					 errmsg("role \"%s\" does not exist", *newval)));
-			return true;
+			/*
+			* When source == PGC_S_TEST, we don't throw a hard error for a
+			* nonexistent user name, only a NOTICE.  See comments in guc.h.
+			*/
+			if (source == PGC_S_TEST)
+			{
+				ereport(NOTICE,
+						(errcode(ERRCODE_UNDEFINED_OBJECT),
+						errmsg("role \"%s\" does not exist", *newval)));
+				return true;
+			}
+			GUC_check_errmsg("role \"%s\" does not exist", *newval);
+			return false;
 		}
-		GUC_check_errmsg("role \"%s\" does not exist", *newval);
-		return false;
-	}
 
 		roleform = (Form_pg_authid) GETSTRUCT(roleTup);
 		roleid = roleform->oid;
 		is_superuser = roleform->rolsuper;
 
 		ReleaseSysCache(roleTup);
+
+
+		/* Begin - ReqID:SRS-SECURITY-POWERS */
+		/*
+		 * We forbid security role especially member of sysdba_role 
+		 * change their role to another security role.
+		 */
+		if (se_feature.mode)
+		{
+			if (IS_SYSDBA(GetAuthenticatedUserId()) &&
+				(IS_SYSSSO(roleid) || IS_SYSSAO(roleid)))
+			{
+				if (source == PGC_S_TEST)
+				{
+					ereport(NOTICE,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission will be denied to set session authorization \"%s\"",
+									*newval)));
+					return true;
+				}
+				GUC_check_errcode(ERRCODE_INSUFFICIENT_PRIVILEGE);
+				GUC_check_errmsg("permission denied to set session authorization \"%s\"",
+								*newval);
+				return false;
+			}
+			/* for other case we currently don't care */
+		}
+		/* End - ReqID:SRS-SECURITY-POWERS*/
 
 		/*
 		 * Only superusers may SET SESSION AUTHORIZATION a role other than
@@ -924,6 +956,33 @@ check_role(char **newval, void **extra, GucSource source)
 		is_superuser = roleform->rolsuper;
 
 		ReleaseSysCache(roleTup);
+
+		/* Begin - ReqID:SRS-SECURITY-POWERS */
+		/*
+		 * We forbid security role especially member of sysdba_role 
+		 * change their role to another security role.
+		 */
+		if (se_feature.mode)
+		{
+			if (IS_SYSDBA(GetSessionUserId()) &&
+				(IS_SYSSSO(roleid) || IS_SYSSAO(roleid)))
+			{
+				if (source == PGC_S_TEST)
+				{
+					ereport(NOTICE,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							errmsg("permission will be denied to set role \"%s\"",
+									*newval)));
+					return true;
+				}
+				GUC_check_errcode(ERRCODE_INSUFFICIENT_PRIVILEGE);
+				GUC_check_errmsg("permission denied to set role \"%s\"",
+								*newval);
+				return false;
+			}
+			/* for other case we currently don't care */
+		}
+		/* End - ReqID:SRS-SECURITY-POWERS*/
 
 		/* Verify that session user is allowed to become this role */
 		if (!is_member_of_role(GetSessionUserId(), roleid))
