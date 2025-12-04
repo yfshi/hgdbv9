@@ -1136,6 +1136,38 @@ ExecInitRoutingInfo(ModifyTableState *mtstate,
 		convert_tuples_by_name(RelationGetDescr(rootRelInfo->ri_RelationDesc),
 							   RelationGetDescr(partRelInfo->ri_RelationDesc));
 
+	/* Begin - BUG#Z6561 */
+	if (DB_ORACLE == database_mode &&
+		partRelInfo->ri_RelationDesc->rd_rel->relhasrowid &&
+		partRelInfo->ri_RootToPartitionMap == NULL)
+	{
+		AttrMap    *attrMap;
+		TupleConversionMap *map;
+		TupleDesc indesc = RelationGetDescr(rootRelInfo->ri_RelationDesc);
+		TupleDesc outdesc = RelationGetDescr(partRelInfo->ri_RelationDesc);
+		int 		n = outdesc->natts;
+
+		/* Verify compatibility and prepare attribute-number map */
+		attrMap = build_attrmap_by_name(indesc, outdesc);
+
+		/* Prepare the map structure */
+		map = (TupleConversionMap *) palloc(sizeof(TupleConversionMap));
+		map->indesc = indesc;
+		map->outdesc = outdesc;
+		map->attrMap = attrMap;
+		/* preallocate workspace for Datum arrays */
+		map->outvalues = (Datum *) palloc(n * sizeof(Datum));
+		map->outisnull = (bool *) palloc(n * sizeof(bool));
+		n = indesc->natts + 1;		/* +1 for NULL */
+		map->invalues = (Datum *) palloc(n * sizeof(Datum));
+		map->inisnull = (bool *) palloc(n * sizeof(bool));
+		map->invalues[0] = (Datum) 0;	/* set up the NULL entry */
+		map->inisnull[0] = true;
+
+		partRelInfo->ri_RootToPartitionMap = map;
+	}
+	/* End - BUG#Z6561 */
+
 	/*
 	 * If a partition has a different rowtype than the root parent, initialize
 	 * a slot dedicated to storing this partition's tuples.  The slot is used
