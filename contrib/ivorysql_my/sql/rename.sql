@@ -116,3 +116,35 @@ create index IDX_TEMP on test(name); --err
 create index idx_TeMP on test(name); --err
 drop table test;
 
+/* Begin - bug#z5994 */
+create schema sch1;
+create table test (id int,name text);
+insert into  test values (1, 'Alice');
+rename table  test to sch1.test;
+select  * from  test;
+select  * from  sch1.test;
+drop table sch1.test;
+create table test (id int,name text);
+insert into  test values (1, 'Alice');
+alter table test rename to sch1.test;
+select  * from  test;
+select  * from  sch1.test;
+drop table sch1.test;
+create table test (id int,name text);
+rename table test to sch2.test1;
+\d test;
+rename table test to sch1.test1;
+\d sch1.test1;
+create schema sch2;
+rename table sch1.test1 to sch2.test2;
+\d sch2.test2;
+create schema sch3;
+create schema sch4;
+rename table sch2.test2 to sch3.test3, sch3.test3 to sch4.test4;
+\d sch4.test4;
+create schema sch5;
+ALTER TABLE sch4.test4 RENAME TO sch5.test5;
+\d sch5.test5;
+drop table sch5.test5;
+drop schema sch1,sch2,sch3,sch4,sch5;
+/* End - bug#z5994 */

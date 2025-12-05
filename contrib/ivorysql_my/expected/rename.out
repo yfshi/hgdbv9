@@ -234,3 +234,82 @@ ERROR:  Duplicate key name "IDX_TEMP"
 create index idx_TeMP on test(name); --err
 ERROR:  Duplicate key name "idx_TeMP"
 drop table test;
+/* Begin - bug#z5994 */
+create schema sch1;
+create table test (id int,name text);
+insert into  test values (1, 'Alice');
+rename table  test to sch1.test;
+select  * from  test;
+ERROR:  relation "test" does not exist
+LINE 1: select  * from  test;
+                        ^
+select  * from  sch1.test;
+ id | name  
+----+-------
+  1 | Alice
+(1 row)
+
+drop table sch1.test;
+create table test (id int,name text);
+insert into  test values (1, 'Alice');
+alter table test rename to sch1.test;
+select  * from  test;
+ERROR:  relation "test" does not exist
+LINE 1: select  * from  test;
+                        ^
+select  * from  sch1.test;
+ id | name  
+----+-------
+  1 | Alice
+(1 row)
+
+drop table sch1.test;
+create table test (id int,name text);
+rename table test to sch2.test1;
+ERROR:  schema "sch2" does not exist
+\d test;
+                Table "public.test"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ id     | integer |           |          | 
+ name   | text    |           |          | 
+
+rename table test to sch1.test1;
+\d sch1.test1;
+                Table "sch1.test1"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ id     | integer |           |          | 
+ name   | text    |           |          | 
+
+create schema sch2;
+rename table sch1.test1 to sch2.test2;
+\d sch2.test2;
+                Table "sch2.test2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ id     | integer |           |          | 
+ name   | text    |           |          | 
+
+create schema sch3;
+create schema sch4;
+rename table sch2.test2 to sch3.test3, sch3.test3 to sch4.test4;
+\d sch4.test4;
+                Table "sch4.test4"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ id     | integer |           |          | 
+ name   | text    |           |          | 
+
+create schema sch5;
+ALTER TABLE sch4.test4 RENAME TO sch5.test5;
+\d sch5.test5;
+                Table "sch5.test5"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ id     | integer |           |          | 
+ name   | text    |           |          | 
+
+drop table sch5.test5;
+drop schema sch1,sch2,sch3,sch4,sch5;
+/* End - bug#z5994 */
