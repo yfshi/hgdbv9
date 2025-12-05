@@ -127,15 +127,15 @@ ERROR:  function PGTS.pg_track_settings_snapshot() does not exist
 LINE 1: SELECT * FROM "PGTS".pg_track_settings_snapshot();
                       ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-ALTER ROLE postgres SET work_mem = '2MB';
-ERROR:  role "postgres" does not exist
+ALTER ROLE track_settings SET work_mem = '2MB';
+ERROR:  role "track_settings" does not exist
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
 ERROR:  function PGTS.pg_track_settings_snapshot() does not exist
 LINE 1: SELECT * FROM "PGTS".pg_track_settings_snapshot();
                       ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-ALTER ROLE postgres IN DATABASE postgres SET work_mem = '3MB';
-ERROR:  role "postgres" does not exist
+ALTER ROLE track_settings IN DATABASE postgres SET work_mem = '3MB';
+ERROR:  role "track_settings" does not exist
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
 ERROR:  function PGTS.pg_track_settings_snapshot() does not exist
 LINE 1: SELECT * FROM "PGTS".pg_track_settings_snapshot();
@@ -162,15 +162,15 @@ ERROR:  function PGTS.pg_track_settings_snapshot() does not exist
 LINE 1: SELECT * FROM "PGTS".pg_track_settings_snapshot();
                       ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-ALTER ROLE postgres RESET work_mem;
-ERROR:  role "postgres" does not exist
+ALTER ROLE track_settings RESET work_mem;
+ERROR:  role "track_settings" does not exist
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
 ERROR:  function PGTS.pg_track_settings_snapshot() does not exist
 LINE 1: SELECT * FROM "PGTS".pg_track_settings_snapshot();
                       ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-ALTER ROLE postgres IN DATABASE postgres RESET work_mem;
-ERROR:  role "postgres" does not exist
+ALTER ROLE track_settings IN DATABASE postgres RESET work_mem;
+ERROR:  role "track_settings" does not exist
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
 ERROR:  function PGTS.pg_track_settings_snapshot() does not exist
 LINE 1: SELECT * FROM "PGTS".pg_track_settings_snapshot();

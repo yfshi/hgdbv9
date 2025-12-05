@@ -70,18 +70,18 @@ SELECT name, from_setting, from_exists, to_setting, to_exists, from_setting_pret
 -- test pg_db_role_settings
 ALTER DATABASE postgres SET work_mem = '1MB';
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
-ALTER ROLE postgres SET work_mem = '2MB';
+ALTER ROLE track_settings SET work_mem = '2MB';
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
-ALTER ROLE postgres IN DATABASE postgres SET work_mem = '3MB';
+ALTER ROLE track_settings IN DATABASE postgres SET work_mem = '3MB';
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
 SELECT COALESCE(datname, '-') AS datname, setrole::regrole, name, setting_exists, setting FROM "PGTS".pg_track_db_role_settings_log('work_mem') s LEFT JOIN pg_database d ON d.oid = s.setdatabase ORDER BY ts ASC;
 SELECT COALESCE(datname, '-') AS datname, setrole::regrole, name, from_setting, from_exists, to_setting, to_exists FROM "PGTS".pg_track_db_role_settings_diff(now() - interval '10 min', now()) s LEFT JOIN pg_database d ON d.oid = s.setdatabase WHERE name = 'work_mem' ORDER BY 1, 2, 3;
 ALTER DATABASE postgres RESET work_mem;
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
-ALTER ROLE postgres RESET work_mem;
+ALTER ROLE track_settings RESET work_mem;
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
-ALTER ROLE postgres IN DATABASE postgres RESET work_mem;
+ALTER ROLE track_settings IN DATABASE postgres RESET work_mem;
 SELECT * FROM "PGTS".pg_track_settings_snapshot();
 -- test pg_reboot
 SELECT COUNT(*) FROM "PGTS".pg_reboot;

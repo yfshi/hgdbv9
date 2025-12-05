@@ -3213,8 +3213,8 @@ audit_ProcessUtility_hook(PlannedStmt *pstmt,
 static void 
 log_select_dml_col(RangeTblEntry *rte, Oid relOid, Relation rel)
 {
-	Bitmapset  *columns;
-	Bitmapset  *columns_bak;
+	Bitmapset  *columns = NULL;
+	Bitmapset  *columns_bak = NULL;
 	AttrNumber	col;
 	char	   *colname = NULL;
 	AuditStmtType type = INVALID_STMT;
@@ -11066,35 +11066,35 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 	{
 		ereport(NOTICE,
 				(errmsg("The occurrence time of the event is smaller than the start time in pg_secmon_threshold")));
-		return false;
+		//return false; /* BUG#z6114*/
 	}
 
 	if (basename != NULL)
 	{
 		Assert(basevalue != NULL);
 
-		if (event->setname == NULL)
-		{
-			ereport(NOTICE,
-					(errmsg("setname of baseline threshold is NULL")));
-			//return false; /* BUG#z6114*/
-		}
-
-		if (pg_strcasecmp(basename, event->setname) != 0 || 
-			pg_strcasecmp(basevalue, event->setvalue) != 0)
-		{
-			ereport(NOTICE,
-					(errmsg("It is not the set baseline threshold")));
-			//return false; /* BUG#z6114*/
-		}
-		else
+		/* Begin BUG#6570 */
+		if (event->setname != NULL && event->setvalue != NULL)
+		/* End BUG#6570 */
 		{
 
-			sprintf(warning_msg, "The baseline name \"%s\" has reached the baseline threshold \"%s\"", basename, basevalue);
+			if (pg_strcasecmp(basename, event->setname) != 0 || 
+				pg_strcasecmp(basevalue, event->setvalue) != 0)
+			{
+				ereport(NOTICE,
+						(errmsg("It is not the set baseline threshold")));
+				//return false; /* BUG#z6114*/
+			}
+			else
+			{
 
-			strncpy(msg, warning_msg, strlen(warning_msg));
+				sprintf(warning_msg, "The baseline name \"%s\" has reached the baseline threshold \"%s\"", basename, basevalue);
 
-			return true;
+				strncpy(msg, warning_msg, strlen(warning_msg));
+
+				return true;
+			}
+			
 		}
 	}
 
@@ -11107,7 +11107,7 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 		{
 			ereport(NOTICE,
 					(errmsg("The event occurrence time is less than the start time or the event occurrence time is greater than the end time")));
-			return false;
+			//return false; /* BUG#z6114*/
 		}
 	}
 
@@ -11585,9 +11585,9 @@ audit_secmon_threshold_check(void)
 			bool		needed = false;
 			char	   *basename = NULL;
 			char	   *basevalue = NULL;
-			TimestampTz starttime;
-			TimestampTz impt_starttime;
-			TimestampTz impt_endtime;
+			TimestampTz starttime = 0;
+			TimestampTz impt_starttime = 0;
+			TimestampTz impt_endtime = 0;
 			int2vector *impt_cloumns = NULL;
 			oidvector  *ruleseq = NULL;
 			Datum		datum;
@@ -11841,7 +11841,7 @@ pg_create_secmon_threshold(PG_FUNCTION_ARGS)
 	HeapTuple	tp;
 	HeapTuple 	tuple;
 	Oid			throid;
-	Oid			ruleoid;
+	Oid			ruleoid = 0;
 	int32		nsteps;
 	bool		nulls[Natts_pg_secmon_threshold];
 	Datum		values[Natts_pg_secmon_threshold];
@@ -12446,6 +12446,7 @@ pg_alter_secmon_threshold(PG_FUNCTION_ARGS)
 			ereport(ERROR,
 					(errmsg("basename and basevalue must be updated together!")));
 		}
+		
 		if (nsteps > 1 || maxtimes > 1)
 		{
 			ereport(ERROR,
@@ -12454,6 +12455,10 @@ pg_alter_secmon_threshold(PG_FUNCTION_ARGS)
 		
 		basename = text_to_cstring(PG_GETARG_TEXT_PP(4));
 		basevalue = text_to_cstring(PG_GETARG_TEXT_PP(5));
+
+		/* Begin BUG#z6137 */
+		check_base_line(basename, basevalue);
+		/* End BUG#z6137 */
 
 		name_basename = (Name) palloc(NAMEDATALEN);
 		name_basevalue = (Name) palloc(NAMEDATALEN);
@@ -12507,6 +12512,52 @@ pg_alter_secmon_threshold(PG_FUNCTION_ARGS)
 		int	i;
 		int2vector *columns = (int2vector *) PG_GETARG_POINTER(8);
 
+		/* Begin BUG#z6137 */
+		HeapTuple 	rule_tup;
+		HeapTuple 	config_tup;
+		Form_pg_secmon_rule rule_form;
+		Oid			config_oid;
+		Form_pg_audit_config config_form;
+		char	   *objinfo;
+		Oid		ruleoid;
+
+		ruleoid = thrform->ruleoid;
+		
+		rule_tup = SearchSysCache1(AUDITRULEID, ruleoid);
+		if (!HeapTupleIsValid(rule_tup))
+		{
+			ereport(ERROR,
+							(errmsg("ruleoid %d does not exist in pg_secmon_rule!", ruleoid)));
+			
+		}
+
+		rule_form = (Form_pg_secmon_rule) GETSTRUCT(rule_tup);
+
+		config_oid = rule_form->confid;
+
+		ReleaseCatCache(rule_tup);
+
+		config_tup = SearchSysCache1(AUDITCONFIGID, config_oid);
+		if (!HeapTupleIsValid(config_tup))
+		{
+			ereport(ERROR,
+							(errmsg("confid %d does not exist in pg_audit_config!", config_oid)));
+			
+		}
+
+		config_form = (Form_pg_audit_config) GETSTRUCT(config_tup);
+
+		if (strcmp(NameStr(config_form->objtype), "column") == 0)
+		{
+			objinfo = pstrdup(NameStr(config_form->objoid));
+		}
+		else
+		{
+			objinfo = pstrdup("");
+		}
+		
+		/* End BUG#z6137 */
+
 		for (i = 0; i < columns->dim1; i++)
 		{
 			if (columns->values[i] <= FirstLowInvalidHeapAttributeNumber ||
@@ -12516,6 +12567,15 @@ pg_alter_secmon_threshold(PG_FUNCTION_ARGS)
 				ereport(ERROR,
 							(errmsg("invalid column number %d", columns->values[i])));
 			}
+
+			/* Begin BUG#z6137 */
+			if (strlen(objinfo) == 0)
+				ereport(ERROR,
+							(errmsg("the audit configuration is not a column audit")));
+			if (strlen(objinfo) > 0 && (objinfo[strlen(objinfo) - 1] - '0') != columns->values[i])
+				ereport(ERROR,
+							(errmsg("invalid column number %d", columns->values[i])));
+			/* End BUG#z6137 */
 		}
 
 		if (nsteps > 1 || maxtimes > 1)
@@ -12523,6 +12583,11 @@ pg_alter_secmon_threshold(PG_FUNCTION_ARGS)
 			ereport(ERROR,
 							(errmsg("important columns cant not work with sequence threshold or maxtimes threshold!")));
 		}
+
+		/* Begin BUG#z6137 */
+		ReleaseCatCache(config_tup);
+		/* End BUG#z6137 */
+		
 		values[Anum_pg_secmon_threshold_impt_columns - 1] = PointerGetDatum(columns);
 		replaces[Anum_pg_secmon_threshold_impt_columns - 1] = true;
 	}
