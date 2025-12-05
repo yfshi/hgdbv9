@@ -714,3 +714,23 @@ varlena_numeric(PG_FUNCTION_ARGS)
 	PG_RETURN_NUMERIC(ret);
 }
 /* End - bug#z5590 */
+
+PG_FUNCTION_INFO_V1(mystextsafeeq);
+Datum
+mystextsafeeq(PG_FUNCTION_ARGS)
+{
+	bool res;
+
+	bool is_null_a = PG_ARGISNULL(0);
+	bool is_null_b = PG_ARGISNULL(1);
+
+	if (is_null_a && is_null_b)
+		PG_RETURN_BOOL(true);
+
+	if (is_null_a || is_null_b)
+		PG_RETURN_BOOL(false);
+
+	res = DatumGetBool(DirectFunctionCall2Coll(texteq, PG_GET_COLLATION(),
+											   PG_GETARG_DATUM(0), PG_GETARG_DATUM(1)));
+	PG_RETURN_BOOL(res);
+}

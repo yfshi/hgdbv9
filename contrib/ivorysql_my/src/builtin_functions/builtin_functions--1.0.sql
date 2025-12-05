@@ -592,6 +592,10 @@ AS $$
     SELECT ivymy.time_format(cast($1 as text), $2);
 $$ LANGUAGE SQL STRICT PARALLEL SAFE;
 
+CREATE OR REPLACE FUNCTION ivymy.time_format(date, text) RETURNS text
+AS $$
+    SELECT ivymy.time_format(cast($1 as text), $2);
+$$ LANGUAGE SQL STRICT PARALLEL SAFE;
 /*TIMESTAMP*/
 CREATE OR REPLACE FUNCTION ivymy.timestamp(text)
 RETURNS datetime(6)
@@ -611,6 +615,15 @@ STRICT
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.timestamp(datetime) 
+RETURNS datetime(6)
+AS $$
+    SELECT ivymy.timestamp(cast($1 as text));
+$$ 
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.timestamp(date) 
 RETURNS datetime(6)
 AS $$
     SELECT ivymy.timestamp(cast($1 as text));
@@ -645,6 +658,14 @@ LANGUAGE SQL
 STRICT 
 PARALLEL SAFE;
 
+CREATE OR REPLACE FUNCTION ivymy.timestamp(date, date) 
+RETURNS datetime(6)
+AS $$
+    SELECT ivymy.timestamp(cast($1 as text), cast($2 as text));
+$$ 
+LANGUAGE SQL
+STRICT 
+PARALLEL SAFE;
 /*TIMESTAMPADD*/
 CREATE OR REPLACE FUNCTION ivymy.timestampadd(int, int, datetime(6))
 RETURNS datetime(6)
@@ -2128,6 +2149,15 @@ $$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+CREATE FUNCTION ivymy.time_to_sec(date)
+RETURNS int
+AS $$
+	select ivymy.time_to_sec($1::time(6));
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
 /* End - BUG#Z5568 */
 
 /* Begin - SRS-MYSQL-HEX-LITERAL */
@@ -2651,6 +2681,24 @@ CREATE FUNCTION ivymy.datediff(date, date)
 RETURNS int /* BUG#Z5751 */
 AS 'MODULE_PATHNAME','datediff'
 LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(date, datetime)
+RETURNS int
+AS $$
+	select ivymy.datediff($1, $2::date);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.datediff(datetime, date)
+RETURNS int
+AS $$
+	select ivymy.datediff($1::date, $2);
+$$ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
@@ -3508,3 +3556,248 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+
+
+-------------------------------------------------------------------------------------------------
+-- mystime type function 
+-------------------------------------------------------------------------------------------------
+CREATE FUNCTION ivymy.mod(ivymy.mysdate, year)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(year, ivymy.mysdate)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mysdatetime, year)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(year, ivymy.mysdatetime)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mysdatetimes, year)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(year, ivymy.mysdatetimes)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mystimestamp, year)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(year, ivymy.mystimestamp)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mystimestamps, year)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(year, ivymy.mystimestamps)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mystime, year)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(year, ivymy.mystime)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mystimes, year)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(year, ivymy.mystimes)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+-------------------------------------------------------------------------------------------------
+-- mystime type hex function 
+-------------------------------------------------------------------------------------------------
+CREATE FUNCTION ivymy.mod(ivymy.mysdate, ivy_hex)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(ivy_hex, ivymy.mysdate)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mysdatetime, ivy_hex)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(ivy_hex, ivymy.mysdatetime)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mysdatetimes, ivy_hex)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(ivy_hex, ivymy.mysdatetimes)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mystimestamp, ivy_hex)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(ivy_hex, ivymy.mystimestamp)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mystimestamps, ivy_hex)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(ivy_hex, ivymy.mystimestamps)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mystime, ivy_hex)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(ivy_hex, ivymy.mystime)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mod(ivymy.mystimes, ivy_hex)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.mod(ivy_hex, ivymy.mystimes)
+RETURNS uint8
+AS 'select $1::int8 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;

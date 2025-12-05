@@ -1287,3 +1287,55 @@ insert into date_01 values('111111111111111.1');
 select * from date_01;
 
 drop table date_01;
+
+-- agg
+CREATE TABLE t1(m1 date);
+INSERT INTO t1 VALUES ('2001-04-10'),('2001-05-09'),('2001-06-10');
+SELECT * FROM t1;
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+SELECT AVG(m1) AS avg_value FROM t1;
+SELECT SUM(m1) AS sum_value FROM t1;
+DROP TABLE t1;
+
+-- bug#6334
+create table sales_data (
+	id int auto_increment primary key,
+	region varchar(50),
+	product_category varchar(50),
+	salesperson varchar(50),
+	amount int,
+	sale_date date
+);
+
+insert into sales_data (region, product_category, salesperson, amount, sale_date) values
+('North', 'Electronics', 'John', 5000, '2023-01-15'),
+('North', 'Electronics', 'John', 3000, '2023-02-10'),
+('South', 'Clothing', 'Jane', 2000, '2023-01-20'),
+('South', 'Clothing', 'Jane', 2500, '2023-02-15'),
+('East', 'Electronics', 'Mike', 8000, '2023-01-25'),
+('East', 'Home Goods', 'Mike', 1500, '2023-02-20'),
+('West', 'Electronics', 'Sarah', 6000, '2023-01-30'),
+('West', 'Clothing', 'Sarah', 1800, '2023-02-25'),
+('North', 'Home Goods', 'Tom', 1200, '2023-03-01'),
+('South', 'Electronics', 'Lisa', 4500, '2023-03-05');
+
+select salesperson,min(sale_date) as first_sale,max(sale_date) as last_sale,count(*) as total_sales
+from sales_data
+group by salesperson
+having datediff(max(sale_date), min(sale_date)) > 20  order by first_sale;
+
+drop table sales_data;
+
+-- bug#6345
+CREATE TABLE tb_test ( a DOUBLE, b INT, c VARCHAR(50), d DATE, e BINARY(10) );
+
+INSERT INTO tb_test VALUES
+(3.14, 3, '3.14', '2023-01-01', 0x03),
+(1000.5, 1000, '1000.5', '2023-12-31', 0x04),
+(0.001, 0, '0.001', '2000-01-01', 0x00),
+(NULL, NULL, NULL, NULL, NULL);
+
+SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
+
+SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
+drop TABLE tb_test;

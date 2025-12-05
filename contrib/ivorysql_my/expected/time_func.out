@@ -3765,10 +3765,11 @@ select from_days(cast(8382822.5999999 as time(6)));--0000-00-00
 (1 row)
 
 select from_days(cast(2011 as year));--0005-07-04
-ERROR:  function from_days("year") does not exist
-LINE 1: select from_days(cast(2011 as year));
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ from_days  
+------------
+ 0005-07-04
+(1 row)
+
 select from_days(cast(201212128182822.222 as datetime));--NULL warning
 WARNING:  Incorrect datetime value: '201212128182822.222'
  from_days 

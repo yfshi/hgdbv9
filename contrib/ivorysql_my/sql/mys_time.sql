@@ -2936,3 +2936,47 @@ INSERT INTO time_01 values ('-839:00:00.000000');
 INSERT INTO time_01 values ('839:00:00.000000');
 select * from time_01;
 drop table time_01;
+
+-- agg
+CREATE TABLE t1(m1 time);
+INSERT INTO t1 VALUES ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+SELECT * FROM t1;
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+SELECT AVG(m1) AS avg_value FROM t1;
+SELECT SUM(m1) AS sum_value FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(m1 time(5));
+INSERT INTO t1 VALUES ('2001-04-10 01:01:01.444444'),('2001-05-09 02:01:01.555555'),('2001-06-10 04:01:01.666666');
+SELECT * FROM t1;
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+SELECT AVG(m1) AS avg_value FROM t1;
+SELECT SUM(m1) AS sum_value FROM t1;
+DROP TABLE t1;
+
+-- bug#6345
+CREATE TABLE tb_test ( a DOUBLE, b INT, c VARCHAR(50), d time, e BINARY(10) );
+
+INSERT INTO tb_test VALUES
+(3.14, 3, '3.14', '2001-04-10 01:01:01.444444', 0x03),
+(1000.5, 1000, '1000.5', '2001-05-09 02:01:01.555555', 0x04),
+(0.001, 0, '0.001', '2001-06-10 04:01:01.666666', 0x00),
+(NULL, NULL, NULL, NULL, NULL);
+
+SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
+
+SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
+drop TABLE tb_test;
+
+CREATE TABLE tb_test ( a DOUBLE, b INT, c VARCHAR(50), d time(3), e BINARY(10) );
+
+INSERT INTO tb_test VALUES
+(3.14, 3, '3.14', '2001-04-10 01:01:01.444444', 0x03),
+(1000.5, 1000, '1000.5', '2001-05-09 02:01:01.555555', 0x04),
+(0.001, 0, '0.001', '2001-06-10 04:01:01.666666', 0x00),
+(NULL, NULL, NULL, NULL, NULL);
+
+SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
+
+SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
+drop TABLE tb_test;

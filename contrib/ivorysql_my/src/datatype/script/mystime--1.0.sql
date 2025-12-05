@@ -764,90 +764,62 @@ CREATE OPERATOR CLASS ivymy.mystime_ops
 
 GRANT USAGE ON SCHEMA ivymy TO PUBLIC;
 
-CREATE FUNCTION ivymy.mysdate_mystime(ivymy.mysdate) 
-RETURNS ivymy.mystime 
-AS 'MODULE_PATHNAME','mysdate_mystime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE;
-CREATE CAST (ivymy.mysdate AS ivymy.mystime)
-WITH FUNCTION ivymy.mysdate_mystime(ivymy.mysdate)
-AS ASSIGNMENT;
 
-CREATE CAST (ivymy.mysdatetime AS ivymy.mystime)      WITH INOUT AS ASSIGNMENT;
-CREATE CAST (ivymy.mysdatetimes AS ivymy.mystime)      WITH INOUT AS ASSIGNMENT;
-CREATE CAST (ivymy.mystimestamp AS ivymy.mystime)     WITH INOUT AS ASSIGNMENT;
-CREATE CAST (ivymy.mystimestamps AS ivymy.mystime)     WITH INOUT AS ASSIGNMENT;
-
-CREATE FUNCTION ivymy.mystime_mysdate(ivymy.mystime) 
-RETURNS ivymy.mysdate 
-AS 'MODULE_PATHNAME','mystime_mysdate'
+--
+-- CREATE AGGREGATE 
+--
+/* max */
+CREATE FUNCTION ivymy.mystime_larger(ivymy.mystime, ivymy.mystime)
+RETURNS ivymy.mystime
+AS 'MODULE_PATHNAME', 'mysdatetime_larger'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-CREATE CAST (ivymy.mystime AS ivymy.mysdate)
-WITH FUNCTION ivymy.mystime_mysdate(ivymy.mystime)
-AS ASSIGNMENT;
+CREATE AGGREGATE ivymy.max(ivymy.mystime) (
+  SFUNC = ivymy.mystime_larger,
+  STYPE = ivymy.mystime,
+  SORTOP = >,
+  PARALLEL = SAFE
+);
 
-CREATE FUNCTION ivymy.mystime_mystimestamp(ivymy.mystime) 
-RETURNS ivymy.mystimestamp 
-AS 'MODULE_PATHNAME','mystime_mystimestamp'
+/* min */
+CREATE FUNCTION ivymy.mystime_smaller(ivymy.mystime, ivymy.mystime)
+RETURNS ivymy.mystime
+AS 'MODULE_PATHNAME', 'mysdatetime_smaller'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-CREATE CAST (ivymy.mystime AS ivymy.mystimestamp)
-WITH FUNCTION ivymy.mystime_mystimestamp(ivymy.mystime)
-AS ASSIGNMENT;
+CREATE AGGREGATE ivymy.min(ivymy.mystime) (
+  SFUNC = ivymy.mystime_smaller,
+  STYPE = ivymy.mystime,
+  SORTOP = <,
+  PARALLEL = SAFE
+);
 
-CREATE FUNCTION ivymy.mystime_mysdatetimes(ivymy.mystime, integer) 
-RETURNS ivymy.mysdatetimes 
-AS 'MODULE_PATHNAME','mystime_mysdatetimes'
-LANGUAGE C
+
+CREATE OR REPLACE FUNCTION ivymy.mystime_float4(ivymy.mystime)
+RETURNS float4
+AS 'select $1::int8::float4'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
-IMMUTABLE;
+IMMUTABLE
+LEAKPROOF;
+CREATE CAST (ivymy.mystime as float4) WITH FUNCTION mystime_float4(ivymy.mystime) AS ASSIGNMENT;
 
-CREATE CAST (ivymy.mystime AS ivymy.mysdatetimes)
-WITH FUNCTION ivymy.mystime_mysdatetimes(ivymy.mystime, integer)
-AS ASSIGNMENT;
-
-CREATE FUNCTION ivymy.mystime_mystimestamps(ivymy.mystime, integer) 
-RETURNS ivymy.mystimestamps
-AS 'MODULE_PATHNAME','mystime_mystimestamps'
-LANGUAGE C
+CREATE OR REPLACE FUNCTION ivymy.mystime_float8(ivymy.mystime)
+RETURNS float8
+AS 'select $1::int8::float8'
+LANGUAGE SQL
 PARALLEL SAFE
 STRICT
-IMMUTABLE;
-
-CREATE CAST (ivymy.mystime AS ivymy.mystimestamps)
-WITH FUNCTION ivymy.mystime_mystimestamps(ivymy.mystime, integer)
-AS ASSIGNMENT;
-
-CREATE FUNCTION ivymy.mystime_mystimes(ivymy.mystime, integer) 
-RETURNS ivymy.mystimes
-AS 'MODULE_PATHNAME','mystime_mystimes'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE;
-
-CREATE CAST (ivymy.mystime AS ivymy.mystimes)
-WITH FUNCTION ivymy.mystime_mystimes(ivymy.mystime, integer)
-AS ASSIGNMENT;
-
-CREATE OR REPLACE FUNCTION ivymy.time2year(ivymy.mystime)
-RETURNS ivymy.year
-AS 'MODULE_PATHNAME', 'time_year'
-LANGUAGE C STABLE STRICT PARALLEL SAFE;
-
-CREATE CAST (ivymy.mystime as year)
-WITH FUNCTION ivymy.time2year(ivymy.mystime)
-AS ASSIGNMENT;
+IMMUTABLE
+LEAKPROOF;
+CREATE CAST (ivymy.mystime as float8) WITH FUNCTION mystime_float8(ivymy.mystime) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.mystime_int8(ivymy.mystime)
 RETURNS int8
@@ -860,15 +832,3 @@ PARALLEL SAFE;
 CREATE CAST (ivymy.mystime as bigint)
 WITH FUNCTION mystime_int8(ivymy.mystime)
 AS IMPLICIT;
-
-CREATE OPERATOR CLASS ivymy.mystime_minmax_ops
-	DEFAULT FOR TYPE ivymy.mystime USING brin FAMILY ivymy.mys_mysdate_minmax_ops AS
-		OPERATOR	1 	<  (ivymy.mystime, ivymy.mystime),
-		OPERATOR	2 	<= (ivymy.mystime, ivymy.mystime),
-		OPERATOR	3 	=  (ivymy.mystime, ivymy.mystime),
-		OPERATOR	4  	>= (ivymy.mystime, ivymy.mystime),
-		OPERATOR	5  	>  (ivymy.mystime, ivymy.mystime),
-		FUNCTION	1	ivymy.brin_minmax_opcinfo(internal),
-		FUNCTION	2 	ivymy.brin_minmax_add_value(internal, internal, internal, internal),
-		FUNCTION	3 	ivymy.brin_minmax_consistent(internal, internal, internal),
-		FUNCTION	4 	ivymy.brin_minmax_union(internal, internal, internal);

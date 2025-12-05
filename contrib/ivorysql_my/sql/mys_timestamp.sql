@@ -1455,3 +1455,21 @@ insert into timestamp_01 values('111111111111111.1');
 select * from timestamp_01;
 
 drop table timestamp_01;
+
+
+-- agg
+CREATE TABLE t1(m1 timestamp);
+INSERT INTO t1 VALUES ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+SELECT * FROM t1;
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+SELECT AVG(m1) AS avg_value FROM t1;
+SELECT SUM(m1) AS sum_value FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(m1 timestamp(5));
+INSERT INTO t1 VALUES ('2001-04-10 01:01:01.444444'),('2001-05-09 02:01:01.555555'),('2001-06-10 04:01:01.666666');
+SELECT * FROM t1;
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+SELECT AVG(m1) AS avg_value FROM t1;
+SELECT SUM(m1) AS sum_value FROM t1;
+DROP TABLE t1;

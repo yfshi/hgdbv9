@@ -2256,34 +2256,26 @@ LINE 1: ... sum(salary) over (order by depname range between '1 year'::...
                                                              ^
 select max(enroll_date) over (order by enroll_date range between 1 preceding and 2 following
 	exclude ties), salary, enroll_date from empsalary;
-ERROR:  function max(date) does not exist
-LINE 1: select max(enroll_date) over (order by enroll_date range bet...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...ll_date) over (order by enroll_date range between 1 precedin...
+                                                             ^
 select max(enroll_date) over (order by salary range between -1 preceding and 2 following
 	exclude ties), salary, enroll_date from empsalary;
-ERROR:  function max(date) does not exist
-LINE 1: select max(enroll_date) over (order by salary range between ...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR:  invalid preceding or following size in window function
 select max(enroll_date) over (order by salary range between 1 preceding and -2 following
 	exclude ties), salary, enroll_date from empsalary;
-ERROR:  function max(date) does not exist
-LINE 1: select max(enroll_date) over (order by salary range between ...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR:  invalid preceding or following size in window function
 select max(enroll_date) over (order by salary range between '1 year'::interval preceding and '2 years'::interval following
 	exclude ties), salary, enroll_date from empsalary;
-ERROR:  function max(date) does not exist
-LINE 1: select max(enroll_date) over (order by salary range between ...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type integer and offset type interval
+LINE 1: ...(enroll_date) over (order by salary range between '1 year'::...
+                                                             ^
+HINT:  Cast the offset value to an appropriate type.
 select max(enroll_date) over (order by enroll_date range between '1 year'::interval preceding and '-2 years'::interval following
 	exclude ties), salary, enroll_date from empsalary;
-ERROR:  function max(date) does not exist
-LINE 1: select max(enroll_date) over (order by enroll_date range bet...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...ll_date) over (order by enroll_date range between '1 year'::...
+                                                             ^
 -- GROUPS tests
 SELECT sum(unique1) over (order by four groups between unbounded preceding and current row),
 	unique1, four

@@ -1769,7 +1769,7 @@ select t-11 from t2;
 
 -- *
 select t*a from t2;
-ERROR:  BIGINT value is out of range
+ERROR:  bigint out of range
 select t*11 from t2;
     ?column?     
 -----------------
@@ -1781,12 +1781,12 @@ select t*11 from t2;
 
 -- /
 select t/a from t2;
-     ?column?      
--------------------
-    20221211010101
-  10110610505050.5
-                 1
- 0.999995000254463
+      ?column?       
+---------------------
+ 20221211010101.0000
+ 10110610505050.5000
+              1.0000
+              1.0000
 (4 rows)
 
 /*
@@ -1802,10 +1802,10 @@ select t/a from t2;
 select t/11 from t2;
       ?column?      
 --------------------
-  1838291910009.182
- 1838292819100.0908
-      1838293728191
-  1838284546372.818
+ 1838291910009.1818
+ 1838292819100.0909
+ 1838293728191.0000
+ 1838284546372.8182
 (4 rows)
 
 /*
@@ -1879,8 +1879,8 @@ select t mod 11 from t2;
 select t & a from t2;
     ?column?    
 ----------------
-              1
-              0
+ 1
+ 0
  20221231010101
  20221129918917
 (4 rows)
@@ -1888,10 +1888,10 @@ select t & a from t2;
 select t & 11 from t2;
  ?column? 
 ----------
-        1
-        1
-        1
-        1
+ 1
+ 1
+ 1
+ 1
 (4 rows)
 
 -- |
@@ -1930,8 +1930,8 @@ select t ^ a from t2;
 ----------------
  20221211010100
  20221221010103
-              0
-      101283378
+ 0
+ 101283378
 (4 rows)
 
 select t ^ 11 from t2;
@@ -1948,9 +1948,9 @@ select t >> a from t2;
     ?column?    
 ----------------
  10110605505050
-  5055305252525
-              0
-              0
+ 5055305252525
+ 0
+ 0
 (4 rows)
 
 select t >> 11 from t2;
@@ -1968,8 +1968,8 @@ select t << a from t2;
 ----------------
  40442422020202
  80884884040404
-              0
-              0
+ 0
+ 0
 (4 rows)
 
 select t << 11 from t2;
@@ -1995,19 +1995,19 @@ select bit_count(t) from t2;
 select t && a from t2;
  ?column? 
 ----------
-        1
-        1
-        1
-        1
+ 1
+ 1
+ 1
+ 1
 (4 rows)
 
 select t && 11 from t2;
  ?column? 
 ----------
-        1
-        1
-        1
-        1
+ 1
+ 1
+ 1
+ 1
 (4 rows)
 
 -- ||
@@ -2713,7 +2713,7 @@ select 20221231010101 div t from t2;
 ----------
         1
         1
-        1
+        0
         1
 (4 rows)
 
@@ -2777,8 +2777,8 @@ select t mod 11 from t2;
 select t & a from t2;
     ?column?    
 ----------------
-              1
-              0
+ 1
+ 0
  20221231010101
  20221129918917
 (4 rows)
@@ -2786,10 +2786,10 @@ select t & a from t2;
 select t & 11 from t2;
  ?column? 
 ----------
-        1
-        1
-        1
-        1
+ 1
+ 1
+ 1
+ 1
 (4 rows)
 
 -- |
@@ -2846,9 +2846,9 @@ select t >> a from t2;
     ?column?    
 ----------------
  10110605505050
-  5055305252525
-              0
-              0
+ 5055305252525
+ 0
+ 0
 (4 rows)
 
 select t >> 11 from t2;
@@ -2866,8 +2866,8 @@ select t << a from t2;
 ----------------
  40442422020202
  80884884040404
-              0
-              0
+ 0
+ 0
 (4 rows)
 
 select t << 11 from t2;
@@ -2893,19 +2893,19 @@ select bit_count(t) from t2;
 select t && a from t2;
  ?column? 
 ----------
-        1
-        1
-        1
-        1
+ 1
+ 1
+ 1
+ 1
 (4 rows)
 
 select t && 11 from t2;
  ?column? 
 ----------
-        1
-        1
-        1
-        1
+ 1
+ 1
+ 1
+ 1
 (4 rows)
 
 -- ||
@@ -4245,3 +4245,62 @@ select * from timestamp_01;
 (2 rows)
 
 drop table timestamp_01;
+-- agg
+CREATE TABLE t1(m1 timestamp);
+INSERT INTO t1 VALUES ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+SELECT * FROM t1;
+         m1          
+---------------------
+ 2001-04-10 01:01:01
+ 2001-05-09 02:01:01
+ 2001-06-10 04:01:01
+(3 rows)
+
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+ total_rows |      min_value      |      max_value      
+------------+---------------------+---------------------
+          3 | 2001-04-10 01:01:01 | 2001-06-10 04:01:01
+(1 row)
+
+SELECT AVG(m1) AS avg_value FROM t1;
+      avg_value      
+---------------------
+ 20010509690101.0000
+(1 row)
+
+SELECT SUM(m1) AS sum_value FROM t1;
+   sum_value    
+----------------
+ 60031529070303
+(1 row)
+
+DROP TABLE t1;
+CREATE TABLE t1(m1 timestamp(5));
+INSERT INTO t1 VALUES ('2001-04-10 01:01:01.444444'),('2001-05-09 02:01:01.555555'),('2001-06-10 04:01:01.666666');
+SELECT * FROM t1;
+            m1             
+---------------------------
+ 2001-04-10 01:01:01.44444
+ 2001-05-09 02:01:01.55556
+ 2001-06-10 04:01:01.66667
+(3 rows)
+
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+ total_rows |         min_value         |         max_value         
+------------+---------------------------+---------------------------
+          3 | 2001-04-10 01:01:01.44444 | 2001-06-10 04:01:01.66667
+(1 row)
+
+SELECT AVG(m1) AS avg_value FROM t1;
+        avg_value         
+--------------------------
+ 20010509690101.555556667
+(1 row)
+
+SELECT SUM(m1) AS sum_value FROM t1;
+      sum_value       
+----------------------
+ 60031529070304.66667
+(1 row)
+
+DROP TABLE t1;

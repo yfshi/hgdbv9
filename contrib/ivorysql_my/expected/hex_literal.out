@@ -867,6 +867,67 @@ select -float_col div 0x12F from t_numeric_arith_hex;       -- 0
 
 drop table t_numeric_arith_hex;
 /* End - bug#z6040 */
+/* Begin - bug#z6044 */
+create table t_hex_to_time ( date_col date, timestamp_col timestamp, time_col time, datetime_col datetime, year_col year );
+insert into t_hex_to_time values ( x'323032332d31302d3031', 0x3230323331303031313233303435, 
+x'31323a33303a3435', 0x323032352D30312D30312031323A30303A3030, X'03' );
+select
+    date_col + 0x10,
+    date_col - 0x10,
+    date_col % 0x0a,
+    mod(date_col, 0x0a),
+    time_col + 0x01,
+    time_col - 0x01
+from t_hex_to_time;
+ ?column? | ?column? | ?column? | mod | ?column? | ?column? 
+----------+----------+----------+-----+----------+----------
+ 20231017 | 20230985 |        1 | 1   | 123046   | 123044
+(1 row)
+
+select
+    time_col * 0x02,
+    time_col / 0x02,
+    time_col div 0x02
+from t_hex_to_time;
+ ?column? |  ?column?  | ?column? 
+----------+------------+----------
+ 246090   | 61522.5000 | 61522
+(1 row)
+
+select
+    datetime_col + 0x10,
+    datetime_col - 0x10,
+    datetime_col % 0x0a
+from t_hex_to_time;
+    ?column?    |    ?column?    | ?column? 
+----------------+----------------+----------
+ 20250101120016 | 20250101119984 |        0
+(1 row)
+
+select
+    timestamp_col + 0x10,
+    timestamp_col - 0x10,
+    timestamp_col % 0x0a
+from t_hex_to_time;
+    ?column?    |    ?column?    | ?column? 
+----------------+----------------+----------
+ 20231001123061 | 20231001123029 |        5
+(1 row)
+
+select
+    year_col + 0x01,
+    year_col - 0x01,
+    year_col * 0x02,
+    year_col / 0x02,
+    year_col div 0x02
+from t_hex_to_time;
+ ?column? | ?column? | ?column? | ?column?  | ?column? 
+----------+----------+----------+-----------+----------
+ 2004     | 2002     | 4006     | 1001.5000 | 1001
+(1 row)
+
+drop table t_hex_to_time;
+/* End - bug#z6044 */
 /* Begin - bug#5378 */
 CREATE TABLE tb_test (
     a FLOAT
