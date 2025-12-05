@@ -5136,6 +5136,69 @@ WARNING:  Incorrect datetime value: '10000-01-01' for function str_to_date
  
 (1 row)
 
+-- bug#z6407 #z6402
+set sql_mode = '';
+SELECT STR_TO_DATE(00000000, '%Y-%m-%d');
+     STR_TO_DATE     
+---------------------
+ 2000-00-00 00:00:00
+(1 row)
+
+set sql_mode = NO_ZERO_DATE;
+SELECT STR_TO_DATE(00000000, '%Y-%m-%d');
+WARNING:  Incorrect datetime value: '0' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+SELECT STR_TO_DATE(20230515, '%Y%m%d');
+     STR_TO_DATE     
+---------------------
+ 2023-05-15 00:00:00
+(1 row)
+
+SELECT STR_TO_DATE(CAST(20230515.999999 AS numeric), '%Y%m%d');
+WARNING:  Truncated incorrect time value: '20230515.999999'
+     STR_TO_DATE     
+---------------------
+ 2023-05-15 00:00:00
+(1 row)
+
+SELECT STR_TO_DATE(CAST(20230515.999999 AS DECIMAL(20,6)), '%Y%m%d') AS high_precision_decimal;
+WARNING:  Truncated incorrect time value: '20230515.999999'
+ high_precision_decimal 
+------------------------
+ 2023-05-15 00:00:00
+(1 row)
+
+SELECT STR_TO_DATE('2021-12-30 14:30:00'::date, '%Y-%m-%d %H:%i:%s');
+     STR_TO_DATE     
+---------------------
+ 2021-12-30 00:00:00
+(1 row)
+
+SELECT STR_TO_DATE('2021-12-30 14:30:00'::datetime, '%Y-%m-%d %H:%i:%s');
+     STR_TO_DATE     
+---------------------
+ 2021-12-30 14:30:00
+(1 row)
+
+SELECT STR_TO_DATE('2021-12-30 14:30:00'::time, '%Y-%m-%d %H:%i:%s');
+WARNING:  Incorrect datetime value: '14:30:00' for function str_to_date
+WARNING:  Incorrect datetime value: '14:30:00' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
+SELECT STR_TO_DATE('2021-12-30 14:30:00'::time, '%H:%i:%s');
+WARNING:  Incorrect datetime value: '14:30:00' for function str_to_date
+ STR_TO_DATE 
+-------------
+ 
+(1 row)
+
 /*TIMESTAMPDIFF*/
 set sql_mode = default;
 select timestampdiff(YEAR, '2002-05-01', '2001-01-01') as a;

@@ -3493,6 +3493,7 @@ AS 'MODULE_PATHNAME', 'char_length_varlena'
 LANGUAGE C
 IMMUTABLE;
 /* End - bug#z6050 */
+
 CREATE FUNCTION ivymy.STR_TO_DATE(text, text)
 RETURNS ivymy.mysdatetimes 
 AS 'MODULE_PATHNAME','str_to_date'
@@ -3500,6 +3501,55 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+/* Begin - bug#z6402 bug#6407 */
+CREATE FUNCTION ivymy.STR_TO_DATE(p1 integer, p2 text)
+RETURNS ivymy.mysdatetimes 
+IMMUTABLE 
+AS $$
+SELECT ivymy.STR_TO_DATE(p1::text, p2);
+$$ 
+LANGUAGE sql;
+
+CREATE FUNCTION ivymy.STR_TO_DATE(p1 bigint, p2 text)
+RETURNS ivymy.mysdatetimes 
+IMMUTABLE 
+AS $$
+SELECT ivymy.STR_TO_DATE(p1::text, p2);
+$$ 
+LANGUAGE sql;
+
+CREATE FUNCTION ivymy.STR_TO_DATE(p1 numeric, p2 text)
+RETURNS ivymy.mysdatetimes 
+IMMUTABLE 
+AS $$
+SELECT ivymy.STR_TO_DATE(p1::text, p2);
+$$ 
+LANGUAGE sql;
+
+CREATE FUNCTION ivymy.STR_TO_DATE(p1 date, p2 text)
+RETURNS ivymy.mysdatetimes 
+IMMUTABLE 
+AS $$
+SELECT ivymy.STR_TO_DATE(p1::text, p2);
+$$ 
+LANGUAGE sql;
+
+CREATE FUNCTION ivymy.STR_TO_DATE(p1 time, p2 text)
+RETURNS ivymy.mysdatetimes 
+IMMUTABLE 
+AS $$
+SELECT ivymy.STR_TO_DATE(p1::text, p2);
+$$ 
+LANGUAGE sql;
+
+CREATE FUNCTION ivymy.STR_TO_DATE(p1 datetime, p2 text)
+RETURNS ivymy.mysdatetimes 
+IMMUTABLE 
+AS $$
+SELECT ivymy.STR_TO_DATE(p1::text, p2);
+$$ 
+LANGUAGE sql;
+/* End - bug#z6402 #z6407*/
 
 CREATE FUNCTION ivymy.timestampdiff(int, datetime(6), datetime(6))
 RETURNS bigint 
