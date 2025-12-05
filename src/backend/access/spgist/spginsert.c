@@ -169,46 +169,46 @@ spgbuildempty(Relation index)
 	 * replayed.
 	 */
 	/* Begin - ReqID:SRS-SECURITY-TDE */
+	log_newpage(&(RelationGetSmgr(index))->smgr_rnode.node, INIT_FORKNUM,
+				SPGIST_METAPAGE_BLKNO, page, true);
 	if (RelationIsEncrypted(index))
 		PageSetEncrypted(page);
 	PageEncryptInplace(page, INIT_FORKNUM, RelationIsPermanent(index),
 					   SPGIST_METAPAGE_BLKNO);
-	/* End - ReqID:SRS-SECURITY-TDE */
 	PageSetChecksumInplace(page, SPGIST_METAPAGE_BLKNO);
 	smgrwrite(RelationGetSmgr(index), INIT_FORKNUM, SPGIST_METAPAGE_BLKNO,
 			  (char *) page, true);
-	log_newpage(&(RelationGetSmgr(index))->smgr_rnode.node, INIT_FORKNUM,
-				SPGIST_METAPAGE_BLKNO, page, true);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/* Likewise for the root page. */
 	SpGistInitPage(page, SPGIST_LEAF);
 
 	/* Begin - ReqID:SRS-SECURITY-TDE */
+	log_newpage(&(RelationGetSmgr(index))->smgr_rnode.node, INIT_FORKNUM,
+				SPGIST_ROOT_BLKNO, page, true);
 	if (RelationIsEncrypted(index))
 		PageSetEncrypted(page);
 	PageEncryptInplace(page, INIT_FORKNUM, RelationIsPermanent(index),
 					   SPGIST_ROOT_BLKNO);
-	/* End - ReqID:SRS-SECURITY-TDE */
 	PageSetChecksumInplace(page, SPGIST_ROOT_BLKNO);
 	smgrwrite(RelationGetSmgr(index), INIT_FORKNUM, SPGIST_ROOT_BLKNO,
 			  (char *) page, true);
-	log_newpage(&(RelationGetSmgr(index))->smgr_rnode.node, INIT_FORKNUM,
-				SPGIST_ROOT_BLKNO, page, true);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/* Likewise for the null-tuples root page. */
 	SpGistInitPage(page, SPGIST_LEAF | SPGIST_NULLS);
 
 	/* Begin - ReqID:SRS-SECURITY-TDE */
+	log_newpage(&(RelationGetSmgr(index))->smgr_rnode.node, INIT_FORKNUM,
+				SPGIST_NULL_BLKNO, page, true);
 	if (RelationIsEncrypted(index))
 		PageSetEncrypted(page);
 	PageEncryptInplace(page, INIT_FORKNUM, RelationIsPermanent(index),
 					   SPGIST_NULL_BLKNO);
-	/* End - ReqID:SRS-SECURITY-TDE */
 	PageSetChecksumInplace(page, SPGIST_NULL_BLKNO);
 	smgrwrite(RelationGetSmgr(index), INIT_FORKNUM, SPGIST_NULL_BLKNO,
 			  (char *) page, true);
-	log_newpage(&(RelationGetSmgr(index))->smgr_rnode.node, INIT_FORKNUM,
-				SPGIST_NULL_BLKNO, page, true);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/*
 	 * An immediate sync is required even if we xlog'd the pages, because the

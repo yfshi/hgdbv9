@@ -451,8 +451,12 @@ gist_indexsortbuild(GISTBuildState *state)
 
 	gist_indexsortbuild_flush_ready_pages(state);
 
-	/* Write out the root */
 	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (RelationNeedsWAL(state->indexrel))
+		log_newpage(&state->indexrel->rd_node, MAIN_FORKNUM, GIST_ROOT_BLKNO,
+					pagestate->page, true);
+
+	/* Write out the root */
 	PageSetLSN(pagestate->page, !FileEncryptionEnabled ? GistBuildLSN :
 			   LSNForEncryption(RelationIsPermanent(state->indexrel)));
 	/* Make sure LSNs are vaild, and if encryption, are not constant. */
@@ -463,13 +467,11 @@ gist_indexsortbuild(GISTBuildState *state)
 		PageSetEncrypted(pagestate->page);
 	PageEncryptInplace(pagestate->page, MAIN_FORKNUM, RelationIsPermanent(state->indexrel),
 					   GIST_ROOT_BLKNO);
-	/* End - ReqID:SRS-SECURITY-TDE */
+
 	PageSetChecksumInplace(pagestate->page, GIST_ROOT_BLKNO);
 	smgrwrite(RelationGetSmgr(state->indexrel), MAIN_FORKNUM, GIST_ROOT_BLKNO,
 			  pagestate->page, true);
-	if (RelationNeedsWAL(state->indexrel))
-		log_newpage(&state->indexrel->rd_node, MAIN_FORKNUM, GIST_ROOT_BLKNO,
-					pagestate->page, true);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	pfree(pagestate->page);
 	pfree(pagestate);
@@ -586,6 +588,11 @@ gist_indexsortbuild_flush_ready_pages(GISTBuildState *state)
 	if (state->ready_num_pages == 0)
 		return;
 
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	if (RelationNeedsWAL(state->indexrel))
+		log_newpages(&state->indexrel->rd_node, MAIN_FORKNUM, state->ready_num_pages,
+					 state->ready_blknos, state->ready_pages, true);
+
 	for (int i = 0; i < state->ready_num_pages; i++)
 	{
 		Page		page = state->ready_pages[i];
@@ -595,7 +602,6 @@ gist_indexsortbuild_flush_ready_pages(GISTBuildState *state)
 		if (blkno != state->pages_written)
 			elog(ERROR, "unexpected block number to flush GiST sorting build");
 
-		/* Begin - ReqID:SRS-SECURITY-TDE */
 		PageSetLSN(page, !FileEncryptionEnabled ? GistBuildLSN :
 				   LSNForEncryption(RelationIsPermanent(state->indexrel)));
 		/* Make sure LSNs are vaild, and if encryption, are not constant. */
@@ -606,17 +612,14 @@ gist_indexsortbuild_flush_ready_pages(GISTBuildState *state)
 			PageSetEncrypted(page);
 		PageEncryptInplace(page, MAIN_FORKNUM, RelationIsPermanent(state->indexrel),
 				   blkno);
-		/* End - ReqID:SRS-SECURITY-TDE */
+
 		PageSetChecksumInplace(page, blkno);
 		smgrextend(RelationGetSmgr(state->indexrel), MAIN_FORKNUM, blkno, page,
 				   true);
 
 		state->pages_written++;
 	}
-
-	if (RelationNeedsWAL(state->indexrel))
-		log_newpages(&state->indexrel->rd_node, MAIN_FORKNUM, state->ready_num_pages,
-					 state->ready_blknos, state->ready_pages, true);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	for (int i = 0; i < state->ready_num_pages; i++)
 		pfree(state->ready_pages[i]);
