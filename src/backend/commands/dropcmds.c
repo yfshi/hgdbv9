@@ -22,13 +22,18 @@
 #include "catalog/objectaddress.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_proc.h"
+#include "catalog/pg_type.h"
 #include "commands/defrem.h"
+#include "commands/typecmds.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "parser/parse_type.h"
+#include "parser/pg_object_hook.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"
 #include "utils/syscache.h"
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
@@ -43,7 +48,6 @@ static bool schema_does_not_exist_skipping(List *object,
 										   const char **msg, char **name);
 static bool type_in_list_does_not_exist_skipping(List *typenames,
 												 const char **msg, char **name);
-
 
 /*
  * Drop one or more objects.
@@ -61,6 +65,7 @@ RemoveObjects(DropStmt *stmt)
 {
 	ObjectAddresses *objects;
 	ListCell   *cell1;
+	List *typlist = NIL;
 
 	objects = new_object_addresses();
 
@@ -97,6 +102,13 @@ RemoveObjects(DropStmt *stmt)
 		 */
 		if (stmt->removeType == OBJECT_FUNCTION)
 		{
+			/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+			if (compatible_mode == MYS_MODE)
+			{			
+				typlist = TryGetFuncTypeNeedDrop(address.objectId);
+				add_enum_type_object_address(typlist, objects);
+			}
+			/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 			if (get_func_prokind(address.objectId) == PROKIND_AGGREGATE)
 				ereport(ERROR,
 						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
@@ -511,3 +523,4 @@ does_not_exist_skipping(ObjectType objtype, Node *object)
 	else
 		ereport(NOTICE, (errmsg(msg, name, args)));
 }
+

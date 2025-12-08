@@ -1781,6 +1781,7 @@ RemoveRelations(DropStmt *drop)
 	ListCell   *cell;
 	int			flags = 0;
 	LOCKMODE	lockmode = AccessExclusiveLock;
+	List *typlist = NULL;  /* ReqID:SRS-MYSQL-ENUMTYPE */
 
 	/* DROP CONCURRENTLY uses a weaker lock, and has some restrictions */
 	if (drop->concurrent)
@@ -1882,6 +1883,14 @@ RemoveRelations(DropStmt *drop)
 			DropErrorMsgNonExistent(rel, relkind, drop->missing_ok);
 			continue;
 		}
+
+		/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+		if (compatible_mode == MYS_MODE)
+		{
+			typlist = TryGetTypeNeedDrop(relOid);
+			add_enum_type_object_address(typlist, objects);
+		}
+		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 		/*
 		 * Decide if concurrent mode needs to be used here or not.  The
@@ -5397,6 +5406,12 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 		case AT_DropColumn:		/* DROP COLUMN */
 			ATSimplePermissions(rel,
 								ATT_TABLE | ATT_COMPOSITE_TYPE | ATT_FOREIGN_TABLE);
+			/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+			/* See comments for ATPrepAlterColumnType 
+			 * add drop col to a_list
+			 */
+			cmd = ATParseTransformCmd(wqueue, tab, rel, cmd, recurse, lockmode, AT_PASS_UNSET, context);
+			/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 			ATPrepDropColumn(wqueue, rel, recurse, recursing, cmd,
 							 lockmode, context);
 			/* Recursion occurs during execution phase */
@@ -7863,30 +7878,6 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	InsertPgAttributeTuples(attrdesc, tupdesc, myrelid, NULL, NULL);
 
 	table_close(attrdesc, RowExclusiveLock);
-
-	/**
-	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
-	 * Build dependence between new anonymous enum type and this table.
-	 * Same logical as AddNewAttributeTuples.
-	 */
-	if (MYS_MODE == compatible_mode)
-	{
-		for (int i = 0; i < tupdesc->natts; i++)
-		{
-			Form_pg_attribute attrs = TupleDescAttr(tupdesc, i);
-
-			if (type_is_enum(attrs->atttypid) && type_is_anonymous_enum(attrs->atttypid))
-			{
-				ObjectAddress myself, referenced;
-				/* Add dependency info */
-				ObjectAddressSubSet(myself, RelationRelationId, myrelid, attrs->attnum);
-				ObjectAddressSet(referenced, TypeRelationId, attrs->atttypid);
-				/* add dependencies on their datatypes and collations */
-				recordDependencyOn(&referenced, &myself, DEPENDENCY_AUTO);
-			}
-		}
-	}
-	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	/*
 	 * Update pg_class tuple as appropriate
@@ -14305,20 +14296,8 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
 				 * Remove anonymous type depend on the column.
 				 */
-				if (MYS_MODE == compatible_mode)
-				{
-					Oid 	enumOid = foundObject.objectId;
-					
-					if (type_is_enum(enumOid) && type_is_anonymous_enum(enumOid))
-					{
-						deleteDependencyRecordsForSpecific(RelationRelationId,
-														   RelationGetRelid(rel),
-														   DEPENDENCY_AUTO,
-														   foundObject.classId,
-														   foundObject.objectId);
-						break;
-					}
-				}
+				break;
+
 				// fallthrough
 				/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 			case OCLASS_CAST:
@@ -16759,10 +16738,10 @@ MergeAttributesIntoExisting(Relation child_rel, Relation parent_rel)
 			if (attribute->atttypid != childatt->atttypid ||
 				attribute->atttypmod != childatt->atttypmod)
 				ereport(ERROR,
-						(errcode(ERRCODE_DATATYPE_MISMATCH),
-						 errmsg("child table \"%s\" has different type for column \"%s\"",
-								RelationGetRelationName(child_rel),
-								attributeName)));
+					(errcode(ERRCODE_DATATYPE_MISMATCH),
+						errmsg("child table \"%s\" has different type for column \"%s\"",
+							RelationGetRelationName(child_rel),
+							attributeName)));
 
 			if (attribute->attcollation != childatt->attcollation)
 				ereport(ERROR,
@@ -21853,6 +21832,7 @@ ExecutePurge(PurgeStmt *stmt)
 	}
 }
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
 /* Begin - BUG#Z5992
  * modify_judge_or_modify_name
  *

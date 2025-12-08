@@ -59,6 +59,11 @@ extern Oid	AlterTypeNamespaceInternal(Oid typeOid, Oid nspOid,
 extern ObjectAddress AlterType(AlterTypeStmt *stmt);
 
 /* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+extern List *TryGetFuncTypeNeedDrop(Oid procoid);
+extern List *TryGetTypeNeedDrop(Oid relOid);
+extern void add_enum_type_object_address(List *typOidList, ObjectAddresses *objects);
+extern bool more_relation_depend_on_enum(Oid atttypid);
+
 extern Oid DefineAnonymousEnum(TypeName* typname);
 extern void CreateEnumTypeForAlterTable(Form_pg_attribute attTup, char* relname, char *colname, TypeName* typname);
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */

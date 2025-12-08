@@ -1529,37 +1529,6 @@ heap_create_with_catalog(const char *relname,
 	 */
 	AddNewAttributeTuples(relid, new_rel_desc->rd_att, relkind);
 
-	/** 
-	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
-	 * create not-internal table col and check in the pg_object table whether 
-	 * the col type is anonymous enum
-	 * (delete the relevant information from pg_object directly after the query)
-	 * if so, create enum depend col.
-	 */
-	if (MYS_MODE == compatible_mode)
-	{
-		int		natts = tupdesc->natts;
-		
-		for (int i = 0; i < natts; i++)
-		{
-			ObjectAddress myself, referenced;
-			Oid atttypid = tupdesc->attrs[i].atttypid;
-
-			ObjectAddressSubSet(myself, RelationRelationId, relid, i + 1);
-			ObjectAddressSet(referenced, TypeRelationId, tupdesc->attrs[i].atttypid);
-
-			if (relkind == RELKIND_RELATION && 
-				!is_internal &&
-				type_is_enum(atttypid) &&
-				type_is_anonymous_enum(atttypid))
-			{
-				recordDependencyOn(&referenced, &myself,  DEPENDENCY_AUTO);
-			}
-		}
-	}
-
-	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
-
 	/*
 	 * Make a dependency link to force the relation to be deleted if its
 	 * namespace is.  Also make a dependency link to its owner, as well as

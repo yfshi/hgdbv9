@@ -830,7 +830,7 @@ static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
 /* ordinary key words in alphabetical order */
 %token <keyword> ABORT_P ABSOLUTE_P ACCESS ACTION ADD_P ADMIN AFTER
 	AGGREGATE ALGORITHM /* ReqID:SRS-MYSQL-CREATE-INDEX */ ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
-	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION AUTO_INCREMENT
+	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION AUTO_INCREMENT ANONYMOUS
 
 	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BIT BLOB_P
 	BOOLEAN_P BOTH BREADTH BY
@@ -6920,6 +6920,16 @@ DefineStmt:
 					CreateEnumStmt *n = makeNode(CreateEnumStmt);
 					n->typeName = $3;
 					n->vals = $7;
+					n->anonymous_enum = false;
+					$$ = (Node *)n;
+				}
+			/* create ANONYMOUS ENUM ig:create table t1(id enum(enum('a','b'))) */
+			| CREATE TYPE_P any_name AS ANONYMOUS ENUM_P '(' opt_enum_val_list ')'
+				{
+					CreateEnumStmt *n = makeNode(CreateEnumStmt);
+					n->typeName = $3;
+					n->vals = $8;
+					n->anonymous_enum = true;
 					$$ = (Node *)n;
 				}
 			| CREATE TYPE_P any_name AS RANGE definition
@@ -20171,7 +20181,8 @@ unreserved_keyword:
  * looks too much like a function call for an LR(1) parser.
  */
 col_name_keyword:
-			  BETWEEN
+			ANONYMOUS
+			| BETWEEN
 			| BIGINT
 			| BINARY
 			| BIT
@@ -20430,6 +20441,7 @@ bare_label_keyword:
 			| ANALYSE
 			| ANALYZE
 			| AND
+			| ANONYMOUS
 			| ANY
 			| ASC
 			| ASENSITIVE

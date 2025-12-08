@@ -1061,7 +1061,7 @@ int8_geanyenum(PG_FUNCTION_ARGS)
 		val1 = get_enum_sortorder(oid1);
 	}
 
-	PG_RETURN_BOOL(val2 < val1);
+	PG_RETURN_BOOL(val2 >= val1);
 }
 
 Datum
