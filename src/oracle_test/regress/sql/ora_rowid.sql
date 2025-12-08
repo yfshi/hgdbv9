@@ -318,3 +318,37 @@ drop table test_id;
 set ivorysql.default_with_rowids = off;
 reset enable_seqscan;
 /* End - BUG#Z6505 */
+
+/* Begin - BUG#Z6561 */
+set ivorysql.default_with_rowids = on;
+
+create table parted_trig(a int) partition by list(a);
+create table parted_trig2 partition of parted_trig for values in (2);
+create table parted_trig3(like parted_trig);
+
+insert into parted_trig values(2);
+insert into parted_trig3 values(3);
+
+alter table parted_trig attach partition parted_trig3 for values in (3);
+
+insert into parted_trig values(2), (3);
+insert into parted_trig values(3);
+
+delete from parted_trig where a = 3;
+
+drop table parted_trig3;
+drop table parted_trig2;
+drop table parted_trig;
+
+set ivorysql.default_with_rowids = off;
+create table parted_trig(a int) partition by list(a);
+create table parted_trig2 partition of parted_trig for values in (2);
+
+alter table parted_trig  set with rowid;
+insert into parted_trig values(2);
+delete from parted_trig where a = 2;
+update parted_trig set a = 2;
+
+drop table parted_trig2;
+drop table parted_trig;
+/* End - BUG#Z6561 */
