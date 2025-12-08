@@ -68,7 +68,7 @@
   castcontext => 'a', castmethod => 'f' },
 { castsource => 'float8', casttarget => 'numeric',
   castfunc => 'numeric(float8)', castcontext => 'a', castmethod => 'f' },
-{ castsource => 'numeric', casttarget => 'int8', castfunc => 'int8(numeric)',
+{ castsource => 'numeric', casttarget => 'int8', castfunc => 'int8(numeric,int4,bool,int8)',
   castcontext => 'a', castmethod => 'f' },
 { castsource => 'numeric', casttarget => 'int2', castfunc => 'int2(numeric)',
   castcontext => 'a', castmethod => 'f' },

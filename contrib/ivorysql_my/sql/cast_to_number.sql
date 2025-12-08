@@ -163,3 +163,41 @@ select cast('-a'::text as unsigned);    -- warning: truncated
 
 select cast('!@#' as decimal(6, 3));    -- 1 warning
 select cast('123!@#' as decimal(6, 3)); -- no warning
+
+
+create table test_convert_signed (
+    original_value varchar(50),
+    converted_value bigint signed
+);
+
+set sql_mode='';
+
+insert into test_convert_signed (original_value, converted_value) values 
+('9223372036854775808', 9223372036854775808), 
+('-9223372036854775809', -9223372036854775809);
+
+-- insert into test_convert_signed (original_value, converted_value) values
+-- ('9223372036854775808', convert(9223372036854775808, signed)),
+-- ('-9223372036854775809', convert(-9223372036854775809, signed));
+
+select * from test_convert_signed;
+drop table test_convert_signed;
+
+
+select convert(9223372036854775807, signed);
+select convert(9223372036854775808, signed);
+select convert(9223372036854775809, signed);
+select convert(-9223372036854775809, signed);
+
+
+create table test_convert_decimal (
+    original_value varchar(50),
+    converted_value decimal(15,2)
+);
+
+insert into test_convert_decimal (original_value, converted_value) values
+('123456789.12', convert('123456789.12', decimal(10,2)));
+
+select * from test_convert_decimal;
+
+reset sql_mode;

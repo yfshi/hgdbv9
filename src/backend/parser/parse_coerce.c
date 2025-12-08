@@ -2947,7 +2947,8 @@ coerce_type(ParseState *pstate, Node *node,
 				if (baseTypeId == MYSDATETIMEOID || baseTypeId == MYSDATETIMESOID ||
 					baseTypeId == MYSTIMESTAMPOID || baseTypeId == MYSTIMESTAMPSOID ||
 					baseTypeId == MYSTIMESOID || baseTypeId == MYSDATETIMESOID ||
-					baseTypeId == MYSDATEOID)
+					baseTypeId == MYSDATEOID ||
+					baseTypeId == NUMERICOID)		/* BUG#Z6535 */
 				{
 					if (!con->constisnull)
 					{
