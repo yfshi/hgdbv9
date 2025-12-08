@@ -774,10 +774,10 @@ SELECT * FROM fract_only;
 DROP TABLE fract_only;
 
 -- Check conversion to integers
-SELECT (-9223372036854775808.5)::int8; -- should fail
+SELECT (-9223372036854775808.5)::int8;
 SELECT (-9223372036854775808.4)::int8; -- ok
 SELECT 9223372036854775807.4::int8; -- ok
-SELECT 9223372036854775807.5::int8; -- should fail
+SELECT 9223372036854775807.5::int8;
 SELECT (-2147483648.5)::int4; -- should fail
 SELECT (-2147483648.4)::int4; -- ok
 SELECT 2147483647.4::int4; -- ok

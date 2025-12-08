@@ -993,3 +993,67 @@ select cast('123!@#' as decimal(6, 3)); -- no warning
  123.000
 (1 row)
 
+create table test_convert_signed (
+    original_value varchar(50),
+    converted_value bigint signed
+);
+set sql_mode='';
+insert into test_convert_signed (original_value, converted_value) values 
+('9223372036854775808', 9223372036854775808), 
+('-9223372036854775809', -9223372036854775809);
+WARNING:  Out of range value for column.
+WARNING:  Out of range value for column.
+-- insert into test_convert_signed (original_value, converted_value) values
+-- ('9223372036854775808', convert(9223372036854775808, signed)),
+-- ('-9223372036854775809', convert(-9223372036854775809, signed));
+select * from test_convert_signed;
+    original_value    |   converted_value    
+----------------------+----------------------
+ 9223372036854775808  |  9223372036854775807
+ -9223372036854775809 | -9223372036854775808
+(2 rows)
+
+drop table test_convert_signed;
+select convert(9223372036854775807, signed);
+        int8         
+---------------------
+ 9223372036854775807
+(1 row)
+
+select convert(9223372036854775808, signed);
+WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
+         int8         
+----------------------
+ -9223372036854775808
+(1 row)
+
+select convert(9223372036854775809, signed);
+WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
+         int8         
+----------------------
+ -9223372036854775807
+(1 row)
+
+select convert(-9223372036854775809, signed);
+WARNING:  Truncated incorrect INTEGER value: '-9223372036854775809'
+         int8         
+----------------------
+ -9223372036854775808
+(1 row)
+
+create table test_convert_decimal (
+    original_value varchar(50),
+    converted_value decimal(15,2)
+);
+insert into test_convert_decimal (original_value, converted_value) values
+('123456789.12', convert('123456789.12', decimal(10,2)));
+WARNING:  Truncated incorrect DECIMAL value: '123456789.12'
+LINE 2: ('123456789.12', convert('123456789.12', decimal(10,2)));
+                                 ^
+select * from test_convert_decimal;
+ original_value | converted_value 
+----------------+-----------------
+ 123456789.12   |     99999999.99
+(1 row)
+
+reset sql_mode;

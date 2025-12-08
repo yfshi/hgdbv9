@@ -1193,7 +1193,7 @@ numeric_support(PG_FUNCTION_ARGS)
  *	scale of the attribute have to be applied on the value.
  */
 Datum
-numeric		(PG_FUNCTION_ARGS)
+numeric(PG_FUNCTION_ARGS)
 {
 	Numeric		num = PG_GETARG_NUMERIC(0);
 	int32		typmod = PG_GETARG_INT32(1);
@@ -4450,10 +4450,19 @@ numeric_int8(PG_FUNCTION_ARGS)
 	init_var_from_num(num, &x);
 
 	if (!numericvar_to_int64(&x, &result))
-		ereport(ERROR,
-				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-				 errmsg("bigint out of range")));
-
+	/* Begin - BUG#Z6536 */
+	{
+		if (MYS_MODE == compatible_mode)
+		{
+			char *str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
+			result = mysql_int8_datatype_in_hook(str, CALL_IN_INSERT());
+		}
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg("bigint out of range")));
+	}
+	/* End - BUG#Z6536 */
 	PG_RETURN_INT64(result);
 }
 

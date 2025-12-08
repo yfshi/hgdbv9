@@ -3692,8 +3692,12 @@ select from_days(20001111250000);--0000-00-00
 (1 row)
 
 select from_days(200011112323233242424242456565);--0000-00-00 warning
-ERROR:  bigint out of range
-CONTEXT:  SQL function "from_days" statement 1
+WARNING:  Truncated incorrect INTEGER value: '200011112323233242424242456565'
+ from_days  
+------------
+ 0000-00-00
+(1 row)
+
 select from_days(121212.22);--0331-11-14
  from_days  
 ------------

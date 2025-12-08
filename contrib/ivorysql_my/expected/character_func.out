@@ -74,23 +74,47 @@ SELECT LOCATE('lo','hello',4294967297); -- 0
 (1 row)
 
 SELECT LOCATE('lo','hello',-18446744073709551615); -- 0
-ERROR:  bigint out of range
-CONTEXT:  SQL function "locate" statement 1
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551615'
+ LOCATE 
+--------
+      0
+(1 row)
+
 SELECT LOCATE('lo','hello',18446744073709551615); -- 0
-ERROR:  bigint out of range
-CONTEXT:  SQL function "locate" statement 1
+WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
+ LOCATE 
+--------
+      0
+(1 row)
+
 SELECT LOCATE('lo','hello',-18446744073709551616); -- 0
-ERROR:  bigint out of range
-CONTEXT:  SQL function "locate" statement 1
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551616'
+ LOCATE 
+--------
+      0
+(1 row)
+
 SELECT LOCATE('lo','hello',18446744073709551616); -- 0
-ERROR:  bigint out of range
-CONTEXT:  SQL function "locate" statement 1
+WARNING:  Truncated incorrect INTEGER value: '18446744073709551616'
+ LOCATE 
+--------
+      0
+(1 row)
+
 SELECT LOCATE('lo','hello',-18446744073709551617); -- 0
-ERROR:  bigint out of range
-CONTEXT:  SQL function "locate" statement 1
+WARNING:  Truncated incorrect INTEGER value: '-18446744073709551617'
+ LOCATE 
+--------
+      0
+(1 row)
+
 SELECT LOCATE('lo','hello',18446744073709551617); -- 0
-ERROR:  bigint out of range
-CONTEXT:  SQL function "locate" statement 1
+WARNING:  Truncated incorrect INTEGER value: '18446744073709551617'
+ LOCATE 
+--------
+      0
+(1 row)
+
 SELECT LOCATE('foo', NULL); -- NULL
  LOCATE 
 --------
@@ -1387,8 +1411,12 @@ select substring_index('a..b..c', '..', 9223372036854775807); -- 'c'
 (1 row)
 
 select substring_index('a..b..c', '..', 9223372036854775808); -- ''
-ERROR:  bigint out of range
-CONTEXT:  SQL function "substring_index" statement 1
+WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
+ substring_index 
+-----------------
+ 
+(1 row)
+
 select substring_index('a..b..c', '..', -9223372036854775808); -- ''
  substring_index 
 -----------------
@@ -1396,14 +1424,26 @@ select substring_index('a..b..c', '..', -9223372036854775808); -- ''
 (1 row)
 
 select substring_index('a..b..c', '..', -9223372036854775809); -- ''
-ERROR:  bigint out of range
-CONTEXT:  SQL function "substring_index" statement 1
+WARNING:  Truncated incorrect INTEGER value: '-9223372036854775809'
+ substring_index 
+-----------------
+ 
+(1 row)
+
 select substring_index('a..b..c', '..', 18446744073709551615); -- 'c'
-ERROR:  bigint out of range
-CONTEXT:  SQL function "substring_index" statement 1
+WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
+ substring_index 
+-----------------
+ c
+(1 row)
+
 select substring_index('a..b..c', '..', 18446744073709551616); -- 'c'
-ERROR:  bigint out of range
-CONTEXT:  SQL function "substring_index" statement 1
+WARNING:  Truncated incorrect INTEGER value: '18446744073709551616'
+ substring_index 
+-----------------
+ c
+(1 row)
+
 create table t_sub as SELECT SUBSTRING_INDEX('a,b,c,d', ',', 2);
 \d t_sub
                          Table "public.t_sub"
