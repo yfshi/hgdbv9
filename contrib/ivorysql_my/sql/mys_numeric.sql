@@ -20,3 +20,13 @@ select 10/5 + 1::smallint;
 select 10/5 + 1::tinyint;
 drop table test_priority;
 /* End - bug#z6342 */
+
+/* Begin - bug#z6503 */
+select 
+convert(1000.00, decimal(5,2)) , 
+convert(12345.67, decimal(5,2)), 
+convert(-1000.00, decimal(5,2));
+
+select convert(123.456, decimal(10,10)) , 
+convert(1234.567, decimal(5,2));
+/* End - bug#z6503 */

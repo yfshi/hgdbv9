@@ -1205,6 +1205,15 @@ numeric(PG_FUNCTION_ARGS)
 	int			maxdigits;
 	NumericVar	var;
 
+	/* crop according to the numeric value range */
+	if (MYS_MODE == compatible_mode && mysql_numeric_datatype_in_hook)
+	{
+		char * str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
+		Numeric res = mysql_numeric_datatype_in_hook(str, typmod, false);
+
+		PG_RETURN_NUMERIC(res);
+	}
+
 	/*
 	 * Handle NaN and infinities: if apply_typmod_special doesn't complain,
 	 * just return a copy of the input.
