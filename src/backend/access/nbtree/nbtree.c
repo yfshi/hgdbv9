@@ -155,6 +155,9 @@ btbuildempty(Relation index)
 	metapage = (Page) palloc(BLCKSZ);
 	_bt_initmetapage(metapage, P_NONE, 0, _bt_allequalimage(index, false));
 
+	/* Begin - ReqID:SRS-SECURITY-TDE */
+	log_newpage(&RelationGetSmgr(index)->smgr_rnode.node, INIT_FORKNUM,
+				BTREE_METAPAGE, metapage, true);
 	/*
 	 * Write the page and log it.  It might seem that an immediate sync would
 	 * be sufficient to guarantee that the file exists on disk, but recovery
@@ -162,17 +165,15 @@ btbuildempty(Relation index)
 	 * XLOG_DBASE_CREATE or XLOG_TBLSPC_CREATE record.  Therefore, we need
 	 * this even when wal_level=minimal.
 	 */
-	/* Begin - ReqID:SRS-SECURITY-TDE */
 	if (RelationIsEncrypted(index))
 		PageSetEncrypted(metapage);
 	PageEncryptInplace(metapage, INIT_FORKNUM, RelationIsPermanent(index),
 					   BTREE_METAPAGE);
-	/* End - ReqID:SRS-SECURITY-TDE */
+
 	PageSetChecksumInplace(metapage, BTREE_METAPAGE);
 	smgrwrite(RelationGetSmgr(index), INIT_FORKNUM, BTREE_METAPAGE,
 			  (char *) metapage, true);
-	log_newpage(&RelationGetSmgr(index)->smgr_rnode.node, INIT_FORKNUM,
-				BTREE_METAPAGE, metapage, true);
+	/* End - ReqID:SRS-SECURITY-TDE */
 
 	/*
 	 * An immediate sync is required even if we xlog'd the page, because the

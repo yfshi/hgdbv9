@@ -325,6 +325,8 @@ end_heap_rewrite(RewriteState state)
 						true);
 
 		/* Begin - ReqID:SRS-SECURITY-TDE */
+		if (RelationIsEncrypted(state->rs_new_rel))
+			PageSetEncrypted(state->rs_buffer);
 		PageEncryptInplace(state->rs_buffer, MAIN_FORKNUM,
 						   RelationIsPermanent(state->rs_new_rel),
 						   state->rs_blockno);
@@ -696,7 +698,8 @@ raw_heap_insert(RewriteState state, HeapTuple tup)
 			 * ourselves in end_heap_rewrite.
 			 */
 			/* Begin - ReqID:SRS-SECURITY-TDE */
-			/* XXX Do we need to encrypt a copy of the page here? */
+			if (RelationIsEncrypted(state->rs_new_rel))
+				PageSetEncrypted(page);
 			PageEncryptInplace(page, MAIN_FORKNUM,
 							   RelationIsPermanent(state->rs_old_rel),
 							   state->rs_blockno);

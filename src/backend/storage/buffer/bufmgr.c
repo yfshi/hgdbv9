@@ -3657,7 +3657,8 @@ FlushRelationBuffers(Relation rel)
 				error_context_stack = &errcallback;
 
 				/* Begin - ReqID:SRS-SECURITY-TDE */
-				/* XXX should we be writing a copy of the page here? */
+				if (RelationIsEncrypted(rel))
+					PageSetEncrypted(localpage);
 				PageEncryptInplace(localpage, bufHdr->tag.forkNum,
 								   RelationIsPermanent(rel), bufHdr->tag.blockNum);
 				/* End - ReqID:SRS-SECURITY-TDE */
