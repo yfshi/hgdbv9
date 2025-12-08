@@ -806,17 +806,33 @@ WARNING:  Division by 0
 (1 row)
 
 SELECT 'inf'::numeric % '0';
-ERROR:  division by zero
-SELECT '-inf'::numeric % '0';
-ERROR:  division by zero
-SELECT 'nan'::numeric % '0';
+WARNING:  Division by 0
  ?column? 
 ----------
-      NaN
+         
+(1 row)
+
+SELECT '-inf'::numeric % '0';
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
+SELECT 'nan'::numeric % '0';
+WARNING:  Division by 0
+ ?column? 
+----------
+         
 (1 row)
 
 SELECT '0'::numeric % '0';
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 SELECT div('inf'::numeric, '0');
 ERROR:  division by zero
 SELECT div('-inf'::numeric, '0');

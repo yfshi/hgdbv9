@@ -6,6 +6,7 @@
 #include "utils/numeric.h"
 
 PG_FUNCTION_INFO_V1(numeric_eq_int4);
+PG_FUNCTION_INFO_V1(int4_eq_numeric);
 PG_FUNCTION_INFO_V1(numeric_eq_int8);
 PG_FUNCTION_INFO_V1(numeric_add_int4);
 PG_FUNCTION_INFO_V1(int4_add_numeric);
@@ -15,6 +16,7 @@ PG_FUNCTION_INFO_V1(int8_add_numeric);
 PG_FUNCTION_INFO_V1(uint8_mul_numeric);
 PG_FUNCTION_INFO_V1(numeric_mul_uint8);
 /* End - bug#z6039 */
+PG_FUNCTION_INFO_V1(numeric_exact_divnumeric);
 
 Datum
 numeric_eq_int4(PG_FUNCTION_ARGS)
@@ -24,7 +26,14 @@ numeric_eq_int4(PG_FUNCTION_ARGS)
 
     return DirectFunctionCall2(numeric_eq, val1, NumericGetDatum(int64_to_numeric((int64) val2)));
 }
+Datum
+int4_eq_numeric(PG_FUNCTION_ARGS)
+{
+    Datum val1 = PG_GETARG_DATUM(1);
+    int32 val2 = PG_GETARG_INT32(0);
 
+    return DirectFunctionCall2(numeric_eq, val1, NumericGetDatum(int64_to_numeric((int64) val2)));
+}
 Datum
 numeric_eq_int8(PG_FUNCTION_ARGS)
 {
@@ -70,6 +79,28 @@ int8_add_numeric(PG_FUNCTION_ARGS)
     return DirectFunctionCall2(numeric_add, NumericGetDatum(int64_to_numeric(val1)), val2);
 }
 
+Datum
+numeric_exact_divnumeric(PG_FUNCTION_ARGS)
+{
+	Numeric		dateVal1 = PG_GETARG_NUMERIC(0);
+	Numeric		dateVal2 = PG_GETARG_NUMERIC(1);
+	Numeric		res;
+	bool		divzero;
+
+	divzero = DatumGetBool(DirectFunctionCall2(numeric_eq, NumericGetDatum(dateVal2),
+						NumericGetDatum(int64_to_numeric(0))));	
+	if(divzero)
+	{
+		ereport(WARNING, (errmsg("Division by 0.")));
+		PG_RETURN_NULL();
+	}
+
+	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(dateVal1),
+						NumericGetDatum(dateVal2)));
+	res = DatumGetNumeric(DirectFunctionCall2(numeric_sub, NumericGetDatum(res),
+					DirectFunctionCall1(float8_numeric, Float8GetDatum(0.5))));	
+	PG_RETURN_INT64(DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(res))));
+}
 /* Begin - bug#z6039 */
 Datum
 uint8_mul_numeric(PG_FUNCTION_ARGS)

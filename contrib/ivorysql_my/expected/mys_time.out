@@ -6088,19 +6088,19 @@ select cast('222222' as time) & 1.5; --2
 select cast('222222.444444' as time(5)) & 1.5;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select cast('1.1' as time(5)) & 3;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('1.9' as time(5)) & 3;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 -- |
@@ -6285,7 +6285,7 @@ select cast('222222' as time) >> 1.5; --55555
 select cast('111111.7777' as time(3)) >> 2;--27778
  ?column? 
 ----------
-    27778
+ 27778
 (1 row)
 
 -- <<
@@ -6346,7 +6346,7 @@ select cast('222222' as time) << 1.5; --888888
 select cast('111111.7777' as time(3)) << 2;--444448
  ?column? 
 ----------
-   444448
+ 444448
 (1 row)
 
 -- bit_count
@@ -6444,7 +6444,7 @@ select cast('222222' as time) && 1.5; --1
 select cast('222222.555555' as time(3)) && 1.5;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 -- ||
@@ -12225,7 +12225,7 @@ select cast('222222' as time(5)) / 115; -- 1932.365217391
 (1 row)
 
 select cast('222222' as time(5)) / 0; -- NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -12281,7 +12281,7 @@ select cast('222222' as time(5)) div 115; -- 1932
 (1 row)
 
 select cast('222222' as time(5)) div 0; -- NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -12343,7 +12343,7 @@ select cast('222222' as time(5)) % 111.1; --22.00000
 (1 row)
 
 select cast('111111' as time(5)) % 0; --NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -12393,7 +12393,7 @@ select cast('222222' as time(5)) mod 111.1; --22.00000
 (1 row)
 
 select cast('111111' as time(5)) mod 0; --NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -12439,67 +12439,67 @@ select cast('111111.5555555' as time(5)) & cast('111110' as time(5)); --111104
 select cast('111111' as time(5)) & 111; --7
  ?column? 
 ----------
-        7
+ 7
 (1 row)
 
 select cast('222222' as time(5)) & 111.1; --14
  ?column? 
 ----------
-       14
+ 14
 (1 row)
 
 select cast('111111' as time(5)) & 0; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111 & cast('222220' as time(5)); --73732
  ?column? 
 ----------
-    73732
+ 73732
 (1 row)
 
 select 111111.111 & cast('222220' as time(5)); --73732
  ?column? 
 ----------
-    73732
+ 73732
 (1 row)
 
 select 0 & cast('222220' as time(5)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time(5)) & 1.4; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time(5)) & 1.5; --2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select cast('222222.444444' as time(5)) & 1.5;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 select cast('1.1' as time(5)) & 3;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('1.9' as time(5)) & 3;--2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 -- |
@@ -12512,49 +12512,49 @@ select cast('111111.5555555' as time(5)) | cast('111110' as time(5)); --111118
 select cast('111111' as time(5)) | 111; --111215
  ?column? 
 ----------
-   111215
+ 111215
 (1 row)
 
 select cast('222222' as time(5)) | 111.1; --222319
  ?column? 
 ----------
-   222319
+ 222319
 (1 row)
 
 select cast('111111' as time(5)) | 0; --111111
  ?column? 
 ----------
-   111111
+ 111111
 (1 row)
 
 select 111111 | cast('222220' as time(5)); --259599
  ?column? 
 ----------
-   259599
+ 259599
 (1 row)
 
 select 111111.111 | cast('222220' as time(5)); --259599
  ?column? 
 ----------
-   259599
+ 259599
 (1 row)
 
 select 0 | cast('222220' as time(5)); --222220
  ?column? 
 ----------
-   222220
+ 222220
 (1 row)
 
 select cast('222222' as time(5)) | 1.4; --222223
  ?column? 
 ----------
-   222223
+ 222223
 (1 row)
 
 select cast('222222' as time(5)) | 1.5; --222222
  ?column? 
 ----------
-   222222
+ 222222
 (1 row)
 
 select cast('111111.77777' as time(3)) | cast('111110.4444' as time(2)); --111118
@@ -12642,55 +12642,55 @@ select cast('111111.5555555' as time(5)) >> cast('111110' as time(5)); --0
 select cast('111111' as time(5)) >> 111; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time(5)) >> 111.1; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111' as time(5)) >> 0; --111111
  ?column? 
 ----------
-   111111
+ 111111
 (1 row)
 
 select 111111 >> cast('222220' as time(5)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111.111 >> cast('222220' as time(5)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 0 >> cast('222220' as time(5)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time(5)) >> 1.4; --111111
  ?column? 
 ----------
-   111111
+ 111111
 (1 row)
 
 select cast('222222' as time(5)) >> 1.5; --55555
  ?column? 
 ----------
-    55555
+ 55555
 (1 row)
 
 select cast('111111.7777' as time(3)) >> 2;--27778
  ?column? 
 ----------
-    27778
+ 27778
 (1 row)
 
 -- <<
@@ -12703,55 +12703,55 @@ select cast('111111.5555555' as time(5)) << cast('111110' as time(5)); --0
 select cast('111111' as time(5)) << 111; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time(5)) << 111.1; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111' as time(5)) << 0; --111111
  ?column? 
 ----------
-   111111
+ 111111
 (1 row)
 
 select 111111 << cast('222220' as time(5)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111.111 << cast('222220' as time(5)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 0 << cast('222220' as time(5)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time(5)) << 1.4; --444444
  ?column? 
 ----------
-   444444
+ 444444
 (1 row)
 
 select cast('222222' as time(5)) << 1.5; --888888
  ?column? 
 ----------
-   888888
+ 888888
 (1 row)
 
 select cast('111111.7777' as time(3)) << 2;--444448
  ?column? 
 ----------
-   444448
+ 444448
 (1 row)
 
 -- bit_count
@@ -12801,55 +12801,55 @@ select cast('111111.5555555' as time(5)) && cast('111110' as time(5)); --1
 select cast('111111' as time(5)) && 111; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('222222' as time(5)) && 111.1; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111' as time(5)) && 0; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111 && cast('222220' as time(5)); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 111111.111 && cast('222220' as time(5)); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 0 && cast('222220' as time(5)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('222222' as time(5)) && 1.4; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('222222' as time(5)) && 1.5; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('222222.555555' as time(3)) && 1.5;--1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 set sql_mode = '';
@@ -13745,3 +13745,149 @@ select * from time_01;
 (4 rows)
 
 drop table time_01;
+-- agg
+CREATE TABLE t1(m1 time);
+INSERT INTO t1 VALUES ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+WARNING:  Data truncated for column.
+LINE 1: INSERT INTO t1 VALUES ('2001-04-10 01:01:01'),('2001-05-09 0...
+                               ^
+WARNING:  Data truncated for column.
+LINE 1: INSERT INTO t1 VALUES ('2001-04-10 01:01:01'),('2001-05-09 0...
+                                                       ^
+WARNING:  Data truncated for column.
+LINE 1: ... ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-1...
+                                                             ^
+SELECT * FROM t1;
+    m1    
+----------
+ 01:01:01
+ 02:01:01
+ 04:01:01
+(3 rows)
+
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+ total_rows | min_value | max_value 
+------------+-----------+-----------
+          3 | 01:01:01  | 04:01:01
+(1 row)
+
+SELECT AVG(m1) AS avg_value FROM t1;
+ avg_value  
+------------
+ 23434.3333
+(1 row)
+
+SELECT SUM(m1) AS sum_value FROM t1;
+ sum_value 
+-----------
+     70303
+(1 row)
+
+DROP TABLE t1;
+CREATE TABLE t1(m1 time(5));
+INSERT INTO t1 VALUES ('2001-04-10 01:01:01.444444'),('2001-05-09 02:01:01.555555'),('2001-06-10 04:01:01.666666');
+WARNING:  Data truncated for column.
+LINE 1: INSERT INTO t1 VALUES ('2001-04-10 01:01:01.444444'),('2001-...
+                               ^
+WARNING:  Data truncated for column.
+LINE 1: ...RT INTO t1 VALUES ('2001-04-10 01:01:01.444444'),('2001-05-0...
+                                                             ^
+WARNING:  Data truncated for column.
+LINE 1: ...01:01:01.444444'),('2001-05-09 02:01:01.555555'),('2001-06-1...
+                                                             ^
+SELECT * FROM t1;
+       m1       
+----------------
+ 01:01:01.44444
+ 02:01:01.55556
+ 04:01:01.66667
+(3 rows)
+
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+ total_rows |   min_value    |   max_value    
+------------+----------------+----------------
+          3 | 01:01:01.44444 | 04:01:01.66667
+(1 row)
+
+SELECT AVG(m1) AS avg_value FROM t1;
+    avg_value    
+-----------------
+ 23434.888890000
+(1 row)
+
+SELECT SUM(m1) AS sum_value FROM t1;
+  sum_value  
+-------------
+ 70304.66667
+(1 row)
+
+DROP TABLE t1;
+-- bug#6345
+CREATE TABLE tb_test ( a DOUBLE, b INT, c VARCHAR(50), d time, e BINARY(10) );
+INSERT INTO tb_test VALUES
+(3.14, 3, '3.14', '2001-04-10 01:01:01.444444', 0x03),
+(1000.5, 1000, '1000.5', '2001-05-09 02:01:01.555555', 0x04),
+(0.001, 0, '0.001', '2001-06-10 04:01:01.666666', 0x00),
+(NULL, NULL, NULL, NULL, NULL);
+WARNING:  Data truncated for column.
+LINE 2: (3.14, 3, '3.14', '2001-04-10 01:01:01.444444', 0x03),
+                          ^
+WARNING:  Data truncated for column.
+LINE 3: (1000.5, 1000, '1000.5', '2001-05-09 02:01:01.555555', 0x04)...
+                                 ^
+WARNING:  Data truncated for column.
+LINE 4: (0.001, 0, '0.001', '2001-06-10 04:01:01.666666', 0x00),
+                            ^
+SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
+    d     |   d   |    pg_typeof     
+----------+-------+------------------
+ 01:01:01 | 10101 | double precision
+ 02:01:02 | 20102 | double precision
+ 04:01:02 | 40102 | double precision
+          |       | double precision
+(4 rows)
+
+SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
+    d     |   d   | pg_typeof 
+----------+-------+-----------
+ 01:01:01 | 10101 | float4
+ 02:01:02 | 20102 | float4
+ 04:01:02 | 40102 | float4
+          |       | float4
+(4 rows)
+
+drop TABLE tb_test;
+CREATE TABLE tb_test ( a DOUBLE, b INT, c VARCHAR(50), d time(3), e BINARY(10) );
+INSERT INTO tb_test VALUES
+(3.14, 3, '3.14', '2001-04-10 01:01:01.444444', 0x03),
+(1000.5, 1000, '1000.5', '2001-05-09 02:01:01.555555', 0x04),
+(0.001, 0, '0.001', '2001-06-10 04:01:01.666666', 0x00),
+(NULL, NULL, NULL, NULL, NULL);
+WARNING:  Data truncated for column.
+LINE 2: (3.14, 3, '3.14', '2001-04-10 01:01:01.444444', 0x03),
+                          ^
+WARNING:  Data truncated for column.
+LINE 3: (1000.5, 1000, '1000.5', '2001-05-09 02:01:01.555555', 0x04)...
+                                 ^
+WARNING:  Data truncated for column.
+LINE 4: (0.001, 0, '0.001', '2001-06-10 04:01:01.666666', 0x00),
+                            ^
+SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
+      d       |     d     |    pg_typeof     
+--------------+-----------+------------------
+ 01:01:01.444 | 10101.444 | double precision
+ 02:01:01.556 | 20101.556 | double precision
+ 04:01:01.667 | 40101.667 | double precision
+              |           | double precision
+(4 rows)
+
+SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
+      d       |     d     | pg_typeof 
+--------------+-----------+-----------
+ 01:01:01.444 | 10101.444 | float4
+ 02:01:01.556 | 20101.557 | float4
+ 04:01:01.667 | 40101.668 | float4
+              |           | float4
+(4 rows)
+
+drop TABLE tb_test;

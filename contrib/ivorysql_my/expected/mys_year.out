@@ -160,15 +160,15 @@ SELECT * FROM t2 WHERE yy > NULL;
 (0 rows)
 
 SELECT * FROM t2 WHERE yy = NOW();
-ERROR:  operator does not exist: "year" = datetime
-LINE 1: SELECT * FROM t2 WHERE yy = NOW();
-                                  ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ yy | c2 
+----+----
+(0 rows)
+
 SELECT * FROM t4 WHERE yyyy = NOW();
-ERROR:  operator does not exist: "year" = datetime
-LINE 1: SELECT * FROM t4 WHERE yyyy = NOW();
-                                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ yyyy | c4 
+------+----
+(0 rows)
+
 SELECT * FROM t2 WHERE yy = 99;
   yy  |  c2  
 ------+------

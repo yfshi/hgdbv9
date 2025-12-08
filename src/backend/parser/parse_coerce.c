@@ -209,7 +209,7 @@ static int64 log_10_int[20] =
 static int32
 Num2Mysdate(Const *con, Oid inputTypeId)
 {
-	DateADT	  date = 0;
+	DateADT	  date = MYSQL_NULL_DATE;
 	fsec_t	  fsec = 0;
 	char		 *errstr = NULL;
 	struct pg_tm tt,
@@ -314,7 +314,7 @@ Num2Mysdate(Const *con, Oid inputTypeId)
 static int32
 Str2Mysdate(Const *con, Const *newcon)
 {
-	DateADT	  date = 0;
+	DateADT	  date = MYSQL_NULL_DATE;
 	int		  flag = 1;
 	bool	  is_strict_mode = false;
 
@@ -333,7 +333,7 @@ Str2Mysdate(Const *con, Const *newcon)
 	{
 		if (con->constisnull)
 		{
-			date = 0;
+			date = MYSQL_NULL_DATE;
 			newcon->constisnull = true;
 		}
 		else
@@ -342,7 +342,7 @@ Str2Mysdate(Const *con, Const *newcon)
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATE value: %s", DatumGetCString(con->constvalue))));
 			else
-				date = 0;
+				date = MYSQL_NULL_DATE;
 		}
 	}
 	else
@@ -439,7 +439,6 @@ Str2Mysdate(Const *con, Const *newcon)
 
 	}
 
-
 	return date;
 }
 /* End - ReqID:SRS-MYSQL-DATETYPE */
@@ -448,7 +447,7 @@ Str2Mysdate(Const *con, Const *newcon)
 static int64
 Num2Mysdatetime(Const *con, Oid inputTypeId)
 {
-	TimeADT	  datetime = -1;
+	TimeADT	  datetime = MYSQL_NULL_DATE;
 	TimeOffset	time = 0;
 	fsec_t	  fsec = 0;
 	char		 *errstr = NULL;
@@ -584,7 +583,7 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 static int64
 Str2Mysdatetime(Const *con, Const *newcon)
 {
-	TimeADT	  datetime = -1;
+	TimeADT	  datetime = MYSQL_INVAILD_DATE;
 	TimeOffset	time = 0;
 	int		  flag = 1;
 	bool	  is_strict_mode = false;
@@ -604,7 +603,7 @@ Str2Mysdatetime(Const *con, Const *newcon)
 	{
 		if (con->constisnull)
 		{
-			datetime = 0;
+			datetime = MYSQL_NULL_DATE;
 			newcon->constisnull = true;
 		}
 		else
@@ -613,7 +612,7 @@ Str2Mysdatetime(Const *con, Const *newcon)
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: %s", DatumGetCString(con->constvalue))));
 			else
-				datetime = 0;
+				datetime = MYSQL_NULL_DATE;
 		}
 	}
 	else
@@ -720,7 +719,7 @@ Str2Mysdatetime(Const *con, Const *newcon)
 						datetime = MYSQL_ZERO_DATETIME;
 					}
 				}
-				if (datetime != 0 && datetime != MYSQL_ZERO_DATETIME)
+				if (datetime != MYSQL_NULL_DATE && datetime != MYSQL_ZERO_DATETIME)
 				{
 					int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 					datetemp = datetemp * 1000000;
@@ -737,7 +736,7 @@ Str2Mysdatetime(Const *con, Const *newcon)
 static Datum
 Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 {
-	int64	  datetime = -1;
+	int64	  datetime = MYSQL_NULL_DATE;
 	TimeOffset	time = 0;
 	fsec_t	  fsec = 0;
 	fsec_t	  nanoseconds = 0;
@@ -881,7 +880,7 @@ Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 static Datum
 Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 {
-	TimeADT		datetime = -1;
+	TimeADT		datetime = MYSQL_INVAILD_DATE;
 	TimeOffset	time = 0;
 	int			flag = 1;
 	bool		is_strict_mode = false;
@@ -908,7 +907,7 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 	{
 		if (con->constisnull)
 		{
-			datetime = 0;
+			datetime = MYSQL_NULL_DATE;
 			newcon->constisnull = true;
 		}
 		else
@@ -917,7 +916,7 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: %s", DatumGetCString(con->constvalue))));
 			else
-				datetime = 0;
+				datetime = MYSQL_NULL_DATE;
 		}
 	}
 	else
@@ -1021,7 +1020,7 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 		}
 	}
 
-	if (datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
+	if (datetime != MYSQL_NULL_DATE && datetime != MYSQL_ZERO_TIMESTAMP)
 	{
 		int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 		datetemp = datetemp * 1000000;
@@ -1048,7 +1047,7 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 static int64
 Num2Mystimestamp(Const *con, Oid inputTypeId)
 {
-	TimeADT	  datetime = -1;
+	TimeADT	  datetime = MYSQL_NULL_DATE;
 	TimeOffset	time = 0;
 	fsec_t	  fsec = 0;
 	char		 *str;
@@ -1187,7 +1186,7 @@ Num2Mystimestamp(Const *con, Oid inputTypeId)
 static int64
 Str2Mystimestamp(Const *con, Const *newcon)
 {
-	TimeADT	  datetime = -1;
+	TimeADT	  datetime = MYSQL_INVAILD_DATE;
 	TimeOffset	time = 0;
 	int		  flag = TIME_NO_ZERO_IN_DATE;
 	bool	  is_strict_mode = false;
@@ -1207,7 +1206,7 @@ Str2Mystimestamp(Const *con, Const *newcon)
 	{
 		if (con->constisnull)
 		{
-			datetime = 0;
+			datetime = MYSQL_NULL_DATE;
 			newcon->constisnull = true;
 		}
 		else
@@ -1216,7 +1215,7 @@ Str2Mystimestamp(Const *con, Const *newcon)
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: %s", DatumGetCString(con->constvalue))));
 			else
-				datetime = 0;
+				datetime = MYSQL_NULL_DATE;
 		}
 	}
 	else
@@ -1337,7 +1336,7 @@ Str2Mystimestamp(Const *con, Const *newcon)
 					}
 				}
 
-				if (datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
+				if (datetime != MYSQL_NULL_DATE && datetime != MYSQL_ZERO_TIMESTAMP)
 				{
 					int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 					datetemp = datetemp * 1000000;
@@ -1354,7 +1353,7 @@ Str2Mystimestamp(Const *con, Const *newcon)
 static Datum
 Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 {
-	TimeADT	  datetime = -1;
+	TimeADT	  datetime = MYSQL_NULL_DATE;
 	TimeOffset	time = 0;
 	fsec_t	  fsec = 0;
 	char		 *str;
@@ -1493,7 +1492,7 @@ Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 static Datum
 Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 {
-	TimeADT		datetime = -1;
+	TimeADT		datetime = MYSQL_INVAILD_DATE;
 	TimeOffset	time = 0;
 	int			flag = TIME_NO_ZERO_IN_DATE;
 	bool		is_strict_mode = false;
@@ -1516,7 +1515,7 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 	{
 		if (con->constisnull)
 		{
-			datetime = 0;
+			datetime = MYSQL_NULL_DATE;
 			newcon->constisnull = true;
 		}
 		else
@@ -1525,7 +1524,7 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 				(flag & TIME_NO_ZERO_IN_DATE))
 				ereport(ERROR, (errmsg("Incorrect DATETIME value: %s", DatumGetCString(con->constvalue))));
 			else
-				datetime = 0;
+				datetime = MYSQL_NULL_DATE;
 		}
 	}
 	else
@@ -1648,7 +1647,7 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 				}
 
 
-				if (datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
+				if (datetime != MYSQL_NULL_DATE && datetime != MYSQL_ZERO_TIMESTAMP)
 				{
 					int64 datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) ; 
 					datetemp = datetemp * 1000000;
@@ -2951,10 +2950,12 @@ coerce_type(ParseState *pstate, Node *node,
 					baseTypeId == MYSDATEOID)
 				{
 					if (!con->constisnull)
+					{
 						newcon->constvalue = stringTypeDatum_mysql(baseType,
 																   DatumGetCString(con->constvalue),
 																   targetTypeMod, 
 																   0);
+					}
 					else
 						newcon->constvalue = stringTypeDatum_mysql(baseType,
 																   NULL,
@@ -2975,12 +2976,14 @@ coerce_type(ParseState *pstate, Node *node,
 																   0);
 				}
 
-				if (newcon->constvalue == 0 && 
+				if (newcon->constvalue == MYSQL_NULL_DATE && 
 					(baseTypeId == MYSDATETIMESOID ||
 					 baseTypeId == MYSTIMESTAMPSOID ||
 					 baseTypeId == MYSTIMESOID ||
 					 /* Begin - BUG#Z5569 */
 					 baseTypeId == MYSDATETIMEOID ||
+					 baseTypeId == MYSTIMESTAMPOID ||
+					 baseTypeId == MYSTIMEOID ||
 					 baseTypeId == MYSDATEOID))
 					 /* End - BUG#Z5569 */
 				{

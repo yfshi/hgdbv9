@@ -282,3 +282,17 @@ CREATE CAST (text AS numeric)
 WITH FUNCTION ivymy.text_numeric(text, int, bool, int8)
 AS ASSIGNMENT;
 /* End - bug#z5590 */
+
+
+CREATE FUNCTION ivymy.text_seq(text, text)
+returns bool
+as 'MODULE_PATHNAME', 'mystextsafeeq'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE OPERATOR <=> (
+	procedure = ivymy.text_seq,
+	leftarg = text,
+	rightarg = text
+);

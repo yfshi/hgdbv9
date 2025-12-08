@@ -17,8 +17,14 @@ src/datatype/script/uint8_index
 src/datatype/script/enum
 src/datatype/script/float
 src/datatype/script/year
-src/datatype/script/time
+src/datatype/script/mysdate
+src/datatype/script/mysdatetime
+src/datatype/script/mysdatetimes
+src/datatype/script/mystimestamp
+src/datatype/script/mystimestamps
 src/datatype/script/mystime
+src/datatype/script/mystimes
+src/datatype/script/mystime-cast
 src/datatype/script/binary
 src/datatype/script/character
 src/datatype/script/bit

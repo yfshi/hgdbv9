@@ -5318,7 +5318,7 @@ select cast(20220121102233.5 as datetime) >= cast('2022-01-21 10:22:33' as datet
 select 20220121102233 >= cast('2022-01-21 10:22:33' as datetime);--1
  ?column? 
 ----------
- f
+ t
 (1 row)
 
 select 20220121102233.4 >= cast('2022-01-21 10:22:33' as datetime);--1
@@ -5927,7 +5927,7 @@ select 111.11 * cast('221222222220' as datetime); --2246780001110864.20
 (1 row)
 
 select cast('221222222222' as datetime) * 111111111111; --ERROR
-ERROR:  BIGINT value is out of range
+ERROR:  bigint out of range
 -- /
 -- Need to be modified: mysql takes the last 4 digits !!!!!!!
 select cast('221222222222' as datetime) / cast('221222222220' as datetime); --1.0000
@@ -5937,9 +5937,9 @@ select cast('221222222222' as datetime) / cast('221222222220' as datetime); --1.
 (1 row)
 
 select cast('221222222222' as datetime) / 111; --182173173173.1712
-      ?column?      
---------------------
- 182173173173.17117
+     ?column?      
+-------------------
+ 182173173173.1712
 (1 row)
 
 select cast('221222222222' as datetime) / 111.1; -- 182009200920.0900
@@ -5949,22 +5949,22 @@ select cast('221222222222' as datetime) / 111.1; -- 182009200920.0900
 (1 row)
 
 select cast('221222222222' as datetime) / 115; -- 175836714975.8435
-      ?column?      
---------------------
- 175836714975.84348
+     ?column?      
+-------------------
+ 175836714975.8435
 (1 row)
 
 select cast('221222222222' as datetime) / 0; -- NULL
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
 (1 row)
 
 select 111111111111 / cast('221222222220' as datetime); --0.0055
-       ?column?       
-----------------------
- 0.005494777214252957
+ ?column? 
+----------
+   0.0055
 (1 row)
 
 select 111111111111.111 / cast('221222222220' as datetime);--0.0054948
@@ -5976,7 +5976,7 @@ select 111111111111.111 / cast('221222222220' as datetime);--0.0054948
 select 0 / cast('221222222220' as datetime); --0.0000
  ?column? 
 ----------
-        0
+   0.0000
 (1 row)
 
 -- div
@@ -6005,7 +6005,7 @@ select cast('221222222222' as datetime) div 115; -- 175836714975
 (1 row)
 
 select cast('221222222222' as datetime) div 0; -- NULL
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -6061,7 +6061,7 @@ select cast('221222222222' as datetime) % 111.1; --10.0
 (1 row)
 
 select cast('111111111111' as datetime) % 0; --NULL
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -6105,7 +6105,7 @@ select cast('221222222222' as datetime) mod 111.1; --10.0
 (1 row)
 
 select cast('111111111111' as datetime) mod 0; --NULL
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -6145,19 +6145,19 @@ select cast('111111111111' as datetime) & cast('111111111110' as datetime); --20
 select cast('111111111111' as datetime) & 111; --71
  ?column? 
 ----------
-       71
+ 71
 (1 row)
 
 select cast('221222222222' as datetime) & 111.1; --14
  ?column? 
 ----------
-       14
+ 14
 (1 row)
 
 select cast('111111111111' as datetime) & 0; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111 & cast('221222222220' as datetime); --511967620
@@ -6175,19 +6175,19 @@ select 111111111111.111 & cast('221222222220' as datetime); --511967620
 select 0 & cast('221222222220' as datetime); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime) & 1.4; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime) & 1.5; --2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 -- |
@@ -6317,17 +6317,15 @@ WARNING:  Truncated incorrect DECIMAL value:'20111111111110'
 (1 row)
 
 select cast('111111111111' as datetime) >> 111; --0
-WARNING:  Truncated incorrect DECIMAL value:'111'
  ?column? 
 ----------
         0
 (1 row)
 
 select cast('221222222222' as datetime) >> 111.1; --0
-WARNING:  Truncated incorrect DECIMAL value:'111'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111111111' as datetime) >> 0; --20111111111111
@@ -6337,24 +6335,21 @@ select cast('111111111111' as datetime) >> 0; --20111111111111
 (1 row)
 
 select 111111111111 >> cast('221222222220' as datetime); --0
-WARNING:  Truncated incorrect DECIMAL value:'20221222222220'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111.111 >> cast('221222222220' as datetime); --0
-WARNING:  Truncated incorrect DECIMAL value:'20221222222220'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 0 >> cast('221222222220' as datetime); --0
-WARNING:  Truncated incorrect DECIMAL value:'20221222222220'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime) >> 1.4; --10110611111111
@@ -6378,17 +6373,15 @@ WARNING:  Truncated incorrect DECIMAL value:'20111111111110'
 (1 row)
 
 select cast('111111111111' as datetime) << 111; --0
-WARNING:  Truncated incorrect DECIMAL value:'111'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime) << 111.1; --0
-WARNING:  Truncated incorrect DECIMAL value:'111'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111111111' as datetime) << 0; --20111111111111
@@ -6398,24 +6391,21 @@ select cast('111111111111' as datetime) << 0; --20111111111111
 (1 row)
 
 select 111111111111 << cast('221222222220' as datetime); --0
-WARNING:  Truncated incorrect DECIMAL value:'20221222222220'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111.111 << cast('221222222220' as datetime); --0
-WARNING:  Truncated incorrect DECIMAL value:'20221222222220'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 0 << cast('221222222220' as datetime); --0
-WARNING:  Truncated incorrect DECIMAL value:'20221222222220'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime) << 1.4; --40442444444444
@@ -6471,49 +6461,49 @@ select cast('111111111111' as datetime) && cast('111111111110' as datetime); --1
 select cast('111111111111' as datetime) && 111; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('221222222222' as datetime) && 111.1; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111111111' as datetime) && 0; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111 && cast('221222222220' as datetime); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 111111111111.111 && cast('221222222220' as datetime); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 0 && cast('221222222220' as datetime); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime) && 1.4; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('221222222222' as datetime) && 1.5; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 -- ||
@@ -11335,7 +11325,7 @@ select cast('221222222222' as datetime(3)) / 115; -- 175836714975.8434783
 (1 row)
 
 select cast('221222222222' as datetime(3)) / 0; -- NULL
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -11391,7 +11381,7 @@ select cast('221222222222' as datetime(3)) div 115; -- 175836714975
 (1 row)
 
 select cast('221222222222' as datetime(3)) div 0; -- NULL
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -11447,7 +11437,7 @@ select cast('221222222222' as datetime(3)) % 111.1; --10.000
 (1 row)
 
 select cast('111111111111' as datetime(3)) % 0; --NULL
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -11491,7 +11481,7 @@ select cast('221222222222' as datetime(3)) mod 111.1; --10.000
 (1 row)
 
 select cast('111111111111' as datetime(3)) mod 0; --NULL
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -11531,19 +11521,19 @@ select cast('111111111111' as datetime(3)) & cast('111111111110' as datetime(3))
 select cast('111111111111' as datetime(3)) & 111; --71
  ?column? 
 ----------
-       71
+ 71
 (1 row)
 
 select cast('221222222222' as datetime(3)) & 111.1; --14
  ?column? 
 ----------
-       14
+ 14
 (1 row)
 
 select cast('111111111111' as datetime(3)) & 0; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111 & cast('221222222220' as datetime(3)); --511967620
@@ -11561,19 +11551,19 @@ select 111111111111.111 & cast('221222222220' as datetime(3)); --511967620
 select 0 & cast('221222222220' as datetime(3)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime(3)) & 1.4; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime(3)) & 1.5; --2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 -- |
@@ -11704,13 +11694,13 @@ select cast('111111111111' as datetime(3)) >> cast('111111111110' as datetime(3)
 select cast('111111111111' as datetime(3)) >> 111; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime(3)) >> 111.1; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111111111' as datetime(3)) >> 0; --20111111111111
@@ -11722,19 +11712,19 @@ select cast('111111111111' as datetime(3)) >> 0; --20111111111111
 select 111111111111 >> cast('221222222220' as datetime(3)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111.111 >> cast('221222222220' as datetime(3)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 0 >> cast('221222222220' as datetime(3)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime(3)) >> 1.4; --10110611111111
@@ -11759,13 +11749,13 @@ select cast('111111111111' as datetime(3)) << cast('111111111110' as datetime(3)
 select cast('111111111111' as datetime(3)) << 111; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime(3)) << 111.1; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111111111' as datetime(3)) << 0; --20111111111111
@@ -11777,19 +11767,19 @@ select cast('111111111111' as datetime(3)) << 0; --20111111111111
 select 111111111111 << cast('221222222220' as datetime(3)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111.111 << cast('221222222220' as datetime(3)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 0 << cast('221222222220' as datetime(3)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime(3)) << 1.4; --40442444444444
@@ -11845,49 +11835,49 @@ select cast('111111111111' as datetime(3)) && cast('111111111110' as datetime(3)
 select cast('111111111111' as datetime(3)) && 111; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('221222222222' as datetime(3)) && 111.1; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111111111' as datetime(3)) && 0; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111 && cast('221222222220' as datetime(3)); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 111111111111.111 && cast('221222222220' as datetime(3)); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 0 && cast('221222222220' as datetime(3)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as datetime(3)) && 1.4; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('221222222222' as datetime(3)) && 1.5; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 -- ||
@@ -12417,3 +12407,113 @@ select * from datetime_01;
 (2 rows)
 
 drop table datetime_01;
+-- agg
+CREATE TABLE t1(m1 datetime);
+INSERT INTO t1 VALUES ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+SELECT * FROM t1;
+         m1          
+---------------------
+ 2001-04-10 01:01:01
+ 2001-05-09 02:01:01
+ 2001-06-10 04:01:01
+(3 rows)
+
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+ total_rows |      min_value      |      max_value      
+------------+---------------------+---------------------
+          3 | 2001-04-10 01:01:01 | 2001-06-10 04:01:01
+(1 row)
+
+SELECT AVG(m1) AS avg_value FROM t1;
+      avg_value      
+---------------------
+ 20010509690101.0000
+(1 row)
+
+SELECT SUM(m1) AS sum_value FROM t1;
+   sum_value    
+----------------
+ 60031529070303
+(1 row)
+
+DROP TABLE t1;
+CREATE TABLE t1(m1 datetime(4));
+INSERT INTO t1 VALUES ('2001-04-10 01:01:01.444444'),('2001-05-09 02:01:01.555555'),('2001-06-10 04:01:01.666666');
+SELECT * FROM t1;
+            m1            
+--------------------------
+ 2001-04-10 01:01:01.4444
+ 2001-05-09 02:01:01.5556
+ 2001-06-10 04:01:01.6667
+(3 rows)
+
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+ total_rows |        min_value         |        max_value         
+------------+--------------------------+--------------------------
+          3 | 2001-04-10 01:01:01.4444 | 2001-06-10 04:01:01.6667
+(1 row)
+
+SELECT AVG(m1) AS avg_value FROM t1;
+        avg_value        
+-------------------------
+ 20010509690101.55556667
+(1 row)
+
+SELECT SUM(m1) AS sum_value FROM t1;
+      sum_value      
+---------------------
+ 60031529070304.6667
+(1 row)
+
+DROP TABLE t1;
+-- bug#6345
+CREATE TABLE tb_test ( a DOUBLE, b INT, c VARCHAR(50), d datetime, e BINARY(10) );
+INSERT INTO tb_test VALUES
+(3.14, 3, '3.14', '2001-04-10 01:01:01.444444', 0x03),
+(1000.5, 1000, '1000.5', '2001-05-09 02:01:01.555555', 0x04),
+(0.001, 0, '0.001', '2001-06-10 04:01:01.666666', 0x00),
+(NULL, NULL, NULL, NULL, NULL);
+SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
+          d          |       d        |    pg_typeof     
+---------------------+----------------+------------------
+ 2001-04-10 01:01:01 | 20010410010101 | double precision
+ 2001-05-09 02:01:02 | 20010509020102 | double precision
+ 2001-06-10 04:01:02 | 20010610040102 | double precision
+                     |                | double precision
+(4 rows)
+
+SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
+          d          |       d       | pg_typeof 
+---------------------+---------------+-----------
+ 2001-04-10 01:01:01 |  2.001041e+13 | float4
+ 2001-05-09 02:01:02 | 2.0010508e+13 | float4
+ 2001-06-10 04:01:02 |  2.001061e+13 | float4
+                     |               | float4
+(4 rows)
+
+drop TABLE tb_test;
+CREATE TABLE tb_test ( a DOUBLE, b INT, c VARCHAR(50), d datetime(3), e BINARY(10) );
+INSERT INTO tb_test VALUES
+(3.14, 3, '3.14', '2001-04-10 01:01:01.444444', 0x03),
+(1000.5, 1000, '1000.5', '2001-05-09 02:01:01.555555', 0x04),
+(0.001, 0, '0.001', '2001-06-10 04:01:01.666666', 0x00),
+(NULL, NULL, NULL, NULL, NULL);
+SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
+            d            |         d          |    pg_typeof     
+-------------------------+--------------------+------------------
+ 2001-04-10 01:01:01.444 | 20010410010101.445 | double precision
+ 2001-05-09 02:01:01.556 | 20010509020101.555 | double precision
+ 2001-06-10 04:01:01.667 | 20010610040101.668 | double precision
+                         |                    | double precision
+(4 rows)
+
+SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
+            d            |       d       | pg_typeof 
+-------------------------+---------------+-----------
+ 2001-04-10 01:01:01.444 |  2.001041e+13 | float4
+ 2001-05-09 02:01:01.556 | 2.0010508e+13 | float4
+ 2001-06-10 04:01:01.667 |  2.001061e+13 | float4
+                         |               | float4
+(4 rows)
+
+drop TABLE tb_test;

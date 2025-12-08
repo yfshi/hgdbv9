@@ -14,6 +14,7 @@ PG_FUNCTION_INFO_V1(int8_bitxor);
 PG_FUNCTION_INFO_V1(int8_rightmov);
 PG_FUNCTION_INFO_V1(int8_leftmov);
 PG_FUNCTION_INFO_V1(int8_and);
+PG_FUNCTION_INFO_V1(int8_seq);
 
 Datum
 int8_div(PG_FUNCTION_ARGS)
@@ -148,4 +149,13 @@ int8_and(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(1);
 
 	PG_RETURN_INT32(val1 && val2);
+}
+
+Datum
+int8_seq(PG_FUNCTION_ARGS)
+{
+	int64		val1 = PG_GETARG_INT64(0);
+	int64		val2 = PG_GETARG_INT64(1);
+
+	PG_RETURN_BOOL(val2 == val1);
 }

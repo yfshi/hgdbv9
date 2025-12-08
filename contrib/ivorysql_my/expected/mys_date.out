@@ -5098,9 +5098,9 @@ select cast('221222222222' as date) / cast('221222222220' as date); --1.0000
 (1 row)
 
 select cast('221222222222' as date) / 111; --182173.1712
-      ?column?      
---------------------
- 182173.17117117118
+  ?column?   
+-------------
+ 182173.1712
 (1 row)
 
 select cast('221222222222' as date) / 111.1; -- 182009.1989
@@ -5110,22 +5110,22 @@ select cast('221222222222' as date) / 111.1; -- 182009.1989
 (1 row)
 
 select cast('221222222222' as date) / 115; -- 175836.7130
-      ?column?      
---------------------
- 175836.71304347826
+  ?column?   
+-------------
+ 175836.7130
 (1 row)
 
 select cast('221222222222' as date) / 0; -- NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
 (1 row)
 
 select 111111111111 / cast('221222222220' as date); --5494.7773
-     ?column?      
--------------------
- 5494.777274637507
+ ?column?  
+-----------
+ 5494.7773
 (1 row)
 
 select 111111111111.111 / cast('221222222220' as date);--5494.7772746
@@ -5137,7 +5137,7 @@ select 111111111111.111 / cast('221222222220' as date);--5494.7772746
 select 0 / cast('221222222220' as date); --0.0000
  ?column? 
 ----------
-        0
+   0.0000
 (1 row)
 
 -- div
@@ -5166,7 +5166,7 @@ select cast('221222222222' as date) div 115; -- 175836
 (1 row)
 
 select cast('221222222222' as date) div 0; -- NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -5222,7 +5222,7 @@ select cast('221222222222' as date) % 111.1; --22.1
 (1 row)
 
 select cast('111111111111' as date) % 0; --NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -5266,7 +5266,7 @@ select cast('221222222222' as date) mod 111.1; --22.1
 (1 row)
 
 select cast('111111111111' as date) mod 0; --NULL warning
-WARNING:  Division by 0.
+WARNING:  Division by 0
  ?column? 
 ----------
          
@@ -5306,49 +5306,49 @@ select cast('111111111111' as date) & cast('111111111110' as date); --20111111
 select cast('111111111111' as date) & 111; --7
  ?column? 
 ----------
-        7
+ 7
 (1 row)
 
 select cast('221222222222' as date) & 111.1; --38
  ?column? 
 ----------
-       38
+ 38
 (1 row)
 
 select cast('111111111111' as date) & 0; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111 & cast('221222222220' as date); --3408134
  ?column? 
 ----------
-  3408134
+ 3408134
 (1 row)
 
 select 111111111111.111 & cast('221222222220' as date); --3408134
  ?column? 
 ----------
-  3408134
+ 3408134
 (1 row)
 
 select 0 & cast('221222222220' as date); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as date) & 1.4; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as date) & 1.5; --2
  ?column? 
 ----------
-        2
+ 2
 (1 row)
 
 -- |
@@ -5485,7 +5485,7 @@ select cast('111111111111' as date) >> 111; --0
 select cast('221222222222' as date) >> 111.1; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111111111' as date) >> 0; --20111111
@@ -5497,19 +5497,19 @@ select cast('111111111111' as date) >> 0; --20111111
 select 111111111111 >> cast('221222222220' as date); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111.111 >> cast('221222222220' as date); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 0 >> cast('221222222220' as date); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as date) >> 1.4; --10110611
@@ -5521,7 +5521,7 @@ select cast('221222222222' as date) >> 1.4; --10110611
 select cast('221222222222' as date) >> 1.5; --5055305
  ?column? 
 ----------
-  5055305
+ 5055305
 (1 row)
 
 -- <<
@@ -5534,13 +5534,13 @@ select cast('111111111111' as date) << cast('111111111110' as date); --0
 select cast('111111111111' as date) << 111; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as date) << 111.1; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111111111' as date) << 0; --20111111
@@ -5552,19 +5552,19 @@ select cast('111111111111' as date) << 0; --20111111
 select 111111111111 << cast('221222222220' as date); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111.111 << cast('221222222220' as date); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 0 << cast('221222222220' as date); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as date) << 1.4; --40442444
@@ -5620,49 +5620,49 @@ select cast('111111111111' as date) && cast('111111111110' as date); --1
 select cast('111111111111' as date) && 111; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('221222222222' as date) && 111.1; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111111111' as date) && 0; --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select 111111111111 && cast('221222222220' as date); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 111111111111.111 && cast('221222222220' as date); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select 0 && cast('221222222220' as date); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('221222222222' as date) && 1.4; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('221222222222' as date) && 1.5; --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 -- ||
@@ -6132,3 +6132,92 @@ select * from date_01;
 (2 rows)
 
 drop table date_01;
+-- agg
+CREATE TABLE t1(m1 date);
+INSERT INTO t1 VALUES ('2001-04-10'),('2001-05-09'),('2001-06-10');
+SELECT * FROM t1;
+     m1     
+------------
+ 2001-04-10
+ 2001-05-09
+ 2001-06-10
+(3 rows)
+
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+ total_rows | min_value  | max_value  
+------------+------------+------------
+          3 | 2001-04-10 | 2001-06-10
+(1 row)
+
+SELECT AVG(m1) AS avg_value FROM t1;
+   avg_value   
+---------------
+ 20010509.6667
+(1 row)
+
+SELECT SUM(m1) AS sum_value FROM t1;
+ sum_value 
+-----------
+  60031529
+(1 row)
+
+DROP TABLE t1;
+-- bug#6334
+create table sales_data (
+	id int auto_increment primary key,
+	region varchar(50),
+	product_category varchar(50),
+	salesperson varchar(50),
+	amount int,
+	sale_date date
+);
+insert into sales_data (region, product_category, salesperson, amount, sale_date) values
+('North', 'Electronics', 'John', 5000, '2023-01-15'),
+('North', 'Electronics', 'John', 3000, '2023-02-10'),
+('South', 'Clothing', 'Jane', 2000, '2023-01-20'),
+('South', 'Clothing', 'Jane', 2500, '2023-02-15'),
+('East', 'Electronics', 'Mike', 8000, '2023-01-25'),
+('East', 'Home Goods', 'Mike', 1500, '2023-02-20'),
+('West', 'Electronics', 'Sarah', 6000, '2023-01-30'),
+('West', 'Clothing', 'Sarah', 1800, '2023-02-25'),
+('North', 'Home Goods', 'Tom', 1200, '2023-03-01'),
+('South', 'Electronics', 'Lisa', 4500, '2023-03-05');
+select salesperson,min(sale_date) as first_sale,max(sale_date) as last_sale,count(*) as total_sales
+from sales_data
+group by salesperson
+having datediff(max(sale_date), min(sale_date)) > 20  order by first_sale;
+ salesperson | first_sale | last_sale  | total_sales 
+-------------+------------+------------+-------------
+ John        | 2023-01-15 | 2023-02-10 |           2
+ Jane        | 2023-01-20 | 2023-02-15 |           2
+ Mike        | 2023-01-25 | 2023-02-20 |           2
+ Sarah       | 2023-01-30 | 2023-02-25 |           2
+(4 rows)
+
+drop table sales_data;
+-- bug#6345
+CREATE TABLE tb_test ( a DOUBLE, b INT, c VARCHAR(50), d DATE, e BINARY(10) );
+INSERT INTO tb_test VALUES
+(3.14, 3, '3.14', '2023-01-01', 0x03),
+(1000.5, 1000, '1000.5', '2023-12-31', 0x04),
+(0.001, 0, '0.001', '2000-01-01', 0x00),
+(NULL, NULL, NULL, NULL, NULL);
+SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
+     d      |    d     |    pg_typeof     
+------------+----------+------------------
+ 2023-01-01 | 20230101 | double precision
+ 2023-12-31 | 20231231 | double precision
+ 2000-01-01 | 20000101 | double precision
+            |          | double precision
+(4 rows)
+
+SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
+     d      |       d       | pg_typeof 
+------------+---------------+-----------
+ 2023-01-01 |   2.02301e+07 | float4
+ 2023-12-31 | 2.0231232e+07 | float4
+ 2000-01-01 |   2.00001e+07 | float4
+            |               | float4
+(4 rows)
+
+drop TABLE tb_test;

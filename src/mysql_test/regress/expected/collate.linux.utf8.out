@@ -437,26 +437,30 @@ SELECT relname FROM pg_class WHERE relname ~* '^abc';
 
 -- to_char
 SET lc_time TO 'tr_TR';
-SELECT to_char(date '2010-02-01', 'DD TMMON YYYY');
-ERROR:  function to_char(date, unknown) does not exist
-LINE 1: SELECT to_char(date '2010-02-01', 'DD TMMON YYYY');
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-SELECT to_char(date '2010-02-01', 'DD TMMON YYYY' COLLATE "tr_TR");
-ERROR:  function to_char(date, unknown) does not exist
-LINE 1: SELECT to_char(date '2010-02-01', 'DD TMMON YYYY' COLLATE "t...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-SELECT to_char(date '2010-04-01', 'DD TMMON YYYY');
-ERROR:  function to_char(date, unknown) does not exist
-LINE 1: SELECT to_char(date '2010-04-01', 'DD TMMON YYYY');
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-SELECT to_char(date '2010-04-01', 'DD TMMON YYYY' COLLATE "tr_TR");
-ERROR:  function to_char(date, unknown) does not exist
-LINE 1: SELECT to_char(date '2010-04-01', 'DD TMMON YYYY' COLLATE "t...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+SELECT to_char(pg_catalog.date '2010-02-01', 'DD TMMON YYYY');
+   to_char   
+-------------
+ 01 ŞUB 2010
+(1 row)
+
+SELECT to_char(pg_catalog.date '2010-02-01', 'DD TMMON YYYY' COLLATE "tr_TR");
+   to_char   
+-------------
+ 01 ŞUB 2010
+(1 row)
+
+SELECT to_char(pg_catalog.date '2010-04-01', 'DD TMMON YYYY');
+   to_char   
+-------------
+ 01 NIS 2010
+(1 row)
+
+SELECT to_char(pg_catalog.date '2010-04-01', 'DD TMMON YYYY' COLLATE "tr_TR");
+   to_char   
+-------------
+ 01 NİS 2010
+(1 row)
+
 -- to_date
 SELECT to_date('01 ŞUB 2010', 'DD TMMON YYYY');
   to_date   

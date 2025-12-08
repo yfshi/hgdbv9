@@ -3341,6 +3341,18 @@ numeric_mod(PG_FUNCTION_ARGS)
 	Numeric		num2 = PG_GETARG_NUMERIC(1);
 	Numeric		res;
 
+	if (compatible_mode == MYS_MODE)
+	{
+		float8 val2 = DatumGetFloat8(DirectFunctionCall1(numeric_float8, NumericGetDatum(num2)));
+		if (val2 == 0.0)
+		{
+			if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+				ereport(WARNING,
+					(errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+			PG_RETURN_NULL();
+		}
+	}
+
 	res = numeric_mod_opt_error(num1, num2, NULL);
 
 	PG_RETURN_NUMERIC(res);
@@ -8818,13 +8830,13 @@ div_var(const NumericVar *var1, const NumericVar *var2, NumericVar *result,
 	int			var2ndigits = var2->ndigits;
 
 	/*
-	 * First of all division by zero check; we must not be handed an
-	 * unnormalized divisor.
-	 */
+		* First of all division by zero check; we must not be handed an
+		* unnormalized divisor.
+		*/
 	if (var2ndigits == 0 || var2->digits[0] == 0)
 		ereport(ERROR,
 				(errcode(ERRCODE_DIVISION_BY_ZERO),
-				 errmsg("division by zero")));
+					errmsg("division by zero")));
 
 	/*
 	 * Now result zero check

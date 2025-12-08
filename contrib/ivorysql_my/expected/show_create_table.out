@@ -2769,10 +2769,9 @@ LINE 2:   FOR VALUES FROM (max(somename)) TO ('2019-01-01');
                                ^
 CREATE TABLE part_bogus_expr_fail PARTITION OF range_parted
   FOR VALUES FROM (max('2019-02-01'::date)) TO ('2019-01-01');
-ERROR:  function max(date) does not exist
+ERROR:  aggregate functions are not allowed in partition bound
 LINE 2:   FOR VALUES FROM (max('2019-02-01'::date)) TO ('2019-01-01'...
                            ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 CREATE TABLE part_bogus_expr_fail PARTITION OF range_parted
   FOR VALUES FROM ((select 1)) TO ('2019-01-01');
 ERROR:  cannot use subquery in partition bound

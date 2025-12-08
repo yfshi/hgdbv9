@@ -259,6 +259,8 @@ LANGUAGE C VOLATILE STRICT PARALLEL SAFE;
 CREATE CAST (BIGINT AS year)
 WITH FUNCTION ivymy.bigint2year (BIGINT) AS ASSIGNMENT;
 
+CREATE CAST (year AS int)  WITH INOUT AS IMPLICIT;
+
 -- CREATE YEAR'S MAX, MIN FUNCTION
 CREATE OR REPLACE FUNCTION ivymy.year_larger(ivymy.year, ivymy.year)
 RETURNS ivymy.year
@@ -721,3 +723,37 @@ CREATE OPERATOR !~~ (
 	rightarg  = pg_catalog.int4
 );
 -- Fix Bug#Z5263 end
+
+CREATE FUNCTION ivymy.year_mod(int4, year)
+RETURNS uint8
+AS 'select $1 mod $2::int4'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.year_mod(year, int4)
+RETURNS uint8
+AS 'select $1::int4 mod $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.year_mod(int8, year)
+RETURNS uint8
+AS 'select $1 mod $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+CREATE FUNCTION ivymy.year_mod(year, int8)
+RETURNS uint8
+AS 'select $1::int8 mod $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;

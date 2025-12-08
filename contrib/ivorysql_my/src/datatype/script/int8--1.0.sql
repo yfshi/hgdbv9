@@ -1,17 +1,4 @@
-CREATE FUNCTION ivymy.int8_seq(int8, int4)
-RETURNS bool
-AS 'select $1 <=> $2::int8'
-LANGUAGE SQL
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
 
-CREATE OPERATOR <=> (
-	procedure = ivymy.int8_seq,
-	leftarg = int8,
-	rightarg = int4
-);
 
 CREATE FUNCTION ivymy.int8_div(int8, int8)
 RETURNS numeric
@@ -59,7 +46,7 @@ CREATE OPERATOR / (
 );
 
 CREATE FUNCTION ivymy.int8_exact_div(int8, int8)
-RETURNS int4
+RETURNS int8
 AS 'MODULE_PATHNAME', 'int8_exact_div'
 LANGUAGE C
 PARALLEL SAFE
@@ -74,7 +61,7 @@ CREATE OPERATOR // (
 );
 
 CREATE FUNCTION ivymy.int8_exact_div(int8, int4)
-RETURNS int4
+RETURNS int8
 AS 'select $1 div $2::int8'
 LANGUAGE SQL
 PARALLEL SAFE
@@ -89,7 +76,7 @@ CREATE OPERATOR // (
 );
 
 CREATE FUNCTION ivymy.int8_exact_div(int4, int8)
-RETURNS int4
+RETURNS int8
 AS 'select $1::int8 div $2'
 LANGUAGE SQL
 PARALLEL SAFE
@@ -104,7 +91,7 @@ CREATE OPERATOR // (
 );
 
 CREATE FUNCTION ivymy.int8_mod(int8, int8)
-RETURNS int4
+RETURNS int8
 AS 'MODULE_PATHNAME', 'int8_mod'
 LANGUAGE C
 PARALLEL SAFE
@@ -119,7 +106,7 @@ CREATE OPERATOR % (
 );
 
 CREATE FUNCTION ivymy.int8_mod(int8, int4)
-RETURNS int4
+RETURNS int8
 AS 'select $1 % $2::int8'
 LANGUAGE SQL
 PARALLEL SAFE
@@ -134,7 +121,7 @@ CREATE OPERATOR % (
 );
 
 CREATE FUNCTION ivymy.int8_mod(int8, int2)
-RETURNS int4
+RETURNS int8
 AS 'select $1 % $2::int8'
 LANGUAGE SQL
 PARALLEL SAFE
@@ -149,7 +136,7 @@ CREATE OPERATOR % (
 );
 
 CREATE FUNCTION ivymy.int8_mod(int4, int8)
-RETURNS int4
+RETURNS int8
 AS 'select $1::int8 % $2'
 LANGUAGE SQL
 PARALLEL SAFE
@@ -400,5 +387,51 @@ LEAKPROOF;
 CREATE OPERATOR && (
 	procedure = ivymy.int8_and,
 	leftarg = int4,
+	rightarg = int8
+);
+
+
+CREATE FUNCTION ivymy.int8_seq(int4, int8)
+RETURNS bool
+AS 'select $1::int8 <=> $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <=> (
+	procedure = ivymy.int8_seq,
+	leftarg = int4,
+	rightarg = int8
+);
+
+CREATE FUNCTION ivymy.int8_seq(int8, int4)
+RETURNS bool
+AS 'select $1 <=> $2::int8'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <=> (
+	procedure = ivymy.int8_seq,
+	leftarg = int8,
+	rightarg = int4
+);
+
+CREATE FUNCTION ivymy.int8_seq(int8, int8)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'int8_seq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR <=> (
+	procedure = ivymy.int8_seq,
+	leftarg = int8,
 	rightarg = int8
 );
