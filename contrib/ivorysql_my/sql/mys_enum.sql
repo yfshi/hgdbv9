@@ -507,9 +507,9 @@ CREATE TABLE test_drop_table (
     age INT,
     myname enum('a','b')
 );
-SELECT COUNT(*) FROM pg_type WHERE typname like '%anonymous_enum%';
+SELECT COUNT(*) FROM pg_type WHERE typname like '%test_drop_table_myname_anonymous_enum%';
 DROP TABLE test_drop_table;
-SELECT COUNT(*) FROM pg_type WHERE typname like '%anonymous_enum%';
+SELECT COUNT(*) FROM pg_type WHERE typname like '%test_drop_table_myname_anonymous_enum%';
 
 -- when drop a column using an hand created enum type, the created enum type will not be dropped.
 CREATE TYPE job AS enum('x','y');
@@ -521,17 +521,16 @@ DROP TABLE test;
 
 -- when alter column type to others, the created enum type will not be dropped.
 CREATE TABLE test (age INT, myjob enum('x','y'));
-SELECT COUNT(*) FROM pg_type WHERE typname like '%anonymous_enum%';
+SELECT COUNT(*) FROM pg_type WHERE typname like '%test_myjob_anonymous_enum%';
 
 insert into test values(1, 'x');
 insert into test values(2, 'y');
 insert into test values(4, 'y');
 
 alter table test alter myjob type text;
-SELECT COUNT(*) FROM pg_type WHERE typname like '%anonymous_enum%';
+SELECT COUNT(*) FROM pg_type WHERE typname like '%test_myjob_anonymous_enum%';
 
 DROP TABLE test;
-
 
 -- rename a type to a type contain 'anonymous_enum' is not allowed
 create type test as enum('a','b');
@@ -542,7 +541,7 @@ drop type anonymous_enum;
 
 CREATE TABLE testtttttttttttttttttttttttttttttttttt (age INT, myjobbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb enum('x','y'));
 
-SELECT count(*) FROM pg_type WHERE typname like '%_anonymous_enum%';
+SELECT count(*) FROM pg_type WHERE typname like '%testtttttttttttttttttttt_myjobbbbbbbbbbbbbbbbbbb_anonymous_enum%';
 drop table testtttttttttttttttttttttttttttttttttt;
 
 -- when drop a table using an hand created enum type, the created enum type will not be dropped.
@@ -687,15 +686,13 @@ create table test_enum_d(ssl_type enum('any','X509','SPECIFIED') not null defaul
 create table test_enum_d(ssl_type enum('','any','X509','SPECIFIED') not null default '');
 SELECT e.enumsortorder,e.enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%_ssl_type_anonymous_enum';
 \d test_enum_d
 \d+ test_enum_d
 drop table test_enum_d;
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%_ssl_type_anonymous_enum';
 
 -- test anonymous enum backup
 create table student (
@@ -708,11 +705,11 @@ create table student (
 insert into student(id, name,gender) values(1, 'bill','male');
 select * from student;
 \d student
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
 create table student_bak as select * from student;
 select * from student_bak;
 \d student_bak
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
 
 alter table student drop column gender;
 select * from student_bak;
@@ -726,69 +723,61 @@ select * from student;
 \d student
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%student%_anonymous_enum';
 
 drop table student;
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%student%_anonymous_enum';
 select * from student_bak;
 
 \d student_bak
 drop table student_bak;
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%student%_anonymous_enum';
 
 -- test anonymous enum backup :drop table
-create table student (
+create table studentdrop (
      id int not null ,
      name varchar(100),
      gender enum('male', 'female'),
      non_enum enum(),
      primary key(id)
 );
-insert into student(id, name,gender) values(1, 'bill','male');
-select * from student;
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+insert into studentdrop(id, name,gender) values(1, 'bill','male');
+select * from studentdrop;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
-create table student_bak as select * from student;
-select * from student_bak;
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+	WHERE t.typname like '%student%_anonymous_enum';
+create table studentdrop_bak as select * from studentdrop;
+select * from studentdrop_bak;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
-drop table student;
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+	WHERE t.typname like '%student%_anonymous_enum';
+drop table studentdrop;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
-select * from student_bak;
-\d student_bak
-alter table student_bak drop column gender;
-select * from student_bak;
-\d student_bak
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+	WHERE t.typname like '%student%_anonymous_enum';
+select * from studentdrop_bak;
+\d studentdrop_bak
+alter table studentdrop_bak drop column gender;
+select * from studentdrop_bak;
+\d studentdrop_bak
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
-drop table student_bak;
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+	WHERE t.typname like '%student%_anonymous_enum';
+drop table studentdrop_bak;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%student%_anonymous_enum';
 
 -- test charset
 create table t_charset_enum_column(c enum('a', 'b', 'c') charset test_character_set);
@@ -812,71 +801,81 @@ select * from t_enum_column_alter_type;
 drop table t_enum_column_alter_type;
 SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
 
-create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
-\d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-insert into t_enum_column_alter_type values(11, 'a', 'c');
-alter table t_enum_column_alter_type alter c2 type text;
-\d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-insert into t_enum_column_alter_type values(22, 'xxxx', 'c');
-select * from t_enum_column_alter_type;
-insert into t_enum_column_alter_type values(22, 'yyyy', 'c');
-select * from t_enum_column_alter_type;
-alter table t_enum_column_alter_type alter c2 type enum('aaaa', 'bbbb'); -- err 'xxxx' not cast to enum
-\d t_enum_column_alter_type
-insert into t_enum_column_alter_type values(33, 'aaaa', 'c');
-select * from t_enum_column_alter_type;
-drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
+create table t_enum_column_alter_type1(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
+\d t_enum_column_alter_type1
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type1%' order by typname;
+insert into t_enum_column_alter_type1 values(11, 'a', 'c');
+alter table t_enum_column_alter_type1 alter c2 type text;
+\d t_enum_column_alter_type1
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type1%' order by typname;
+insert into t_enum_column_alter_type1 values(22, 'xxxx', 'c');
+select * from t_enum_column_alter_type1;
+insert into t_enum_column_alter_type1 values(22, 'yyyy', 'c');
+select * from t_enum_column_alter_type1;
+alter table t_enum_column_alter_type1 alter c2 type enum('aaaa', 'bbbb'); -- err 'xxxx' not cast to enum
+\d t_enum_column_alter_type1
+insert into t_enum_column_alter_type1 values(33, 'aaaa', 'c');
+select * from t_enum_column_alter_type1;
+drop table t_enum_column_alter_type1;
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type1%' order by typname;
 
-create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
-\d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-insert into t_enum_column_alter_type values(11, 'a', 'c');
-alter table t_enum_column_alter_type alter c2 type enum('aaaa', 'bbbb'); -- enum to enum
-\d t_enum_column_alter_type
-insert into t_enum_column_alter_type values(33, 'aaaa', 'c');
-select * from t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
+create table t_enum_column_alter_type2(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
+\d t_enum_column_alter_type2
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type2%' order by typname;
+insert into t_enum_column_alter_type2 values(11, 'a', 'c');
+alter table t_enum_column_alter_type2 alter c2 type enum('aaaa', 'bbbb'); -- enum to enum
+\d t_enum_column_alter_type2
+insert into t_enum_column_alter_type2 values(33, 'aaaa', 'c');
+select * from t_enum_column_alter_type2;
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type2%' order by typname;
+drop table t_enum_column_alter_type2;
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type2%' order by typname;
 
-create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
-\d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-insert into t_enum_column_alter_type values(11, 'a', 'c');
-insert into t_enum_column_alter_type values(33, 'bbbb', 'c');
-alter table t_enum_column_alter_type alter c2 type enum('a', 'bbbb'); -- enum to enum
-\d t_enum_column_alter_type
-insert into t_enum_column_alter_type values(33, 'a', 'c');
-insert into t_enum_column_alter_type values(33, 'bbbb', 'c');
-select * from t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
+create table t_enum_column_alter_type3(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
+\d t_enum_column_alter_type3
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type3%' order by typname;
+insert into t_enum_column_alter_type3 values(11, 'a', 'c');
+insert into t_enum_column_alter_type3 values(33, 'bbbb', 'c');
+alter table t_enum_column_alter_type3 alter c2 type enum('a', 'bbbb'); -- enum to enum
+\d t_enum_column_alter_type3
+insert into t_enum_column_alter_type3 values(33, 'a', 'c');
+insert into t_enum_column_alter_type3 values(33, 'bbbb', 'c');
+select * from t_enum_column_alter_type3;
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type3%' order by typname;
+drop table t_enum_column_alter_type3;
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type3%' order by typname;
 
-create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
-\d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-insert into t_enum_column_alter_type values(11, 'a', 'c');
-alter table t_enum_column_alter_type add c4 enum('xxxx', 'yyyy');
-\d t_enum_column_alter_type
-insert into t_enum_column_alter_type values(33, 'a', 'c', 'yyyy');
-select * from t_enum_column_alter_type;
-insert into t_enum_column_alter_type values(33, 'aaaa', 'c', 'yyyy');
-select * from t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-alter table t_enum_column_alter_type drop c4;
-select * from t_enum_column_alter_type;
-\d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-alter table t_enum_column_alter_type add c4 enum('xxxx', 'yyyy'), add c5 enum('xxxx', 'yyyy'), add c6 enum('xxxx', 'yyyy');
-select * from t_enum_column_alter_type;
-\d t_enum_column_alter_type
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
+create table t_enum_column_alter_type4(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+\d t_enum_column_alter_type4
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
+insert into t_enum_column_alter_type4 values(11, 'a', 'c');
+alter table t_enum_column_alter_type4 add c4 enum('xxxx', 'yyyy');
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+\d t_enum_column_alter_type4
+insert into t_enum_column_alter_type4 values(33, 'a', 'c', 'yyyy');
+select * from t_enum_column_alter_type4;
+insert into t_enum_column_alter_type4 values(33, 'aaaa', 'c', 'yyyy');
+select * from t_enum_column_alter_type4;
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
+alter table t_enum_column_alter_type4 drop c4;
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+select * from t_enum_column_alter_type4;
+\d t_enum_column_alter_type4
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
+alter table t_enum_column_alter_type4 add c4 enum('xxxx', 'yyyy'), add c5 enum('xxxx', 'yyyy'), add c6 enum('xxxx', 'yyyy');
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+select * from t_enum_column_alter_type4;
+\d t_enum_column_alter_type4
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
+alter table t_enum_column_alter_type4 alter c4 type enum('xxxx', 'yyyy');
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+select * from t_enum_column_alter_type4;
+\d t_enum_column_alter_type4
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
+drop table t_enum_column_alter_type4;
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
 
 -- test drop table 
 create table t_enum_table_drop(c1 int, c2 enum('aa', 'bb'), c3 enum('aaa', 'bbb'), c4 enum('aaaaa', 'bbbb'));
@@ -1029,7 +1028,9 @@ $$ LANGUAGE PLMYSQL;
 select count(*) from pg_type where typname like '%insert_data1%';
 select insert_data1('aaa', 'yyy', 'xxx'); -- should fail
 select insert_data1('aaa', 'female', 'old');
+select objname,option from pg_object where objname like '%insert_data1%';
 drop function insert_data1;
+select objname,option from pg_object where objname like '%insert_data1%';
 select * from staff;
 select count(*) from pg_type where typname like '%insert_data1%';
 
@@ -1111,9 +1112,9 @@ select proname,pronamespace,prorettype,pronargs from pg_proc where proname like 
 \df insert_data1
 drop function insert_data1;
 drop function insert_data1(character);
-drop function insert_data1(character, insert_data1__anonymous_enum);
-drop function insert_data1(character, insert_data1__anonymous_enum1);
-drop function insert_data1(character, insert_data1__anonymous_enum2, insert_data1__anonymous_enum3);
+drop function insert_data1(character, insert_data1_proc_anonymous_enum);
+drop function insert_data1(character, insert_data1_proc_anonymous_enum1);
+drop function insert_data1(character, insert_data1_proc_anonymous_enum2, insert_data1_proc_anonymous_enum3);
 select typname from pg_type where typname like '%insert_data1%';
 
 set SQL_MODE='';
@@ -1278,7 +1279,7 @@ create table table_like_test_2 (like table_like_test);
 \d table_like_test_2
 drop table table_like_test;
 drop table table_like_test_2;
-SELECT typname FROM pg_type WHERE typname like '%anonymous_enum%';
+SELECT typname FROM pg_type WHERE typname like '%a_anonymous_enum%';
 
 create table enum_space (val enum('apple ','banana  ','      pear'));
 insert into enum_space values('apple '),('banana');
@@ -1378,3 +1379,143 @@ SELECT
   ('hhhhhhhh' || enum_col) AS text_cat_enum
 FROM enum_int_binary_ops;
 drop table enum_int_binary_ops;
+
+----bug 5779------------------------------------------
+create table t_base (
+  username varchar(50),
+  status enum('active','inactive','locked')
+);
+
+insert into t_base (username, status) values
+('zhangsan', 'active'),
+('lisi', 'inactive'),
+('wangwu', 'locked'),
+('zhaoliu', 'active');
+
+create materialized view mv1 as select * from t_base;
+
+drop table t_base;
+drop materialized view mv1;
+drop table t_base;
+
+----bug 5782 ------------------------------------------
+create table t1_enum(col_1 enum('a','b','c'),col_2 enum('测试','开发'));
+create table t2_enum(col_1 t1_enum_col_1_anonymous_enum,col_2 t1_enum_col_2_anonymous_enum);
+insert into t1_enum values('a'),('b');
+\d t1_enum
+\d t2_enum
+alter table t1_enum alter column col_1 type int;
+\d t1_enum
+\d t2_enum
+alter table t2_enum alter col_2 type t1_enum_col_2_anonymous_enum;
+\d t1_enum
+\d t2_enum
+drop table t1_enum;
+drop table t2_enum;
+
+----bug 5783:partition------------------------------------------
+create table region_orders (
+    order_id serial,
+    user_id int not null,
+    order_amount numeric(10,2) not null,
+    order_time timestamp default current_timestamp,
+    regioncol enum ('北京','上海','广州','深圳','天津','济南','其他') not null
+) partition by list(regioncol);
+
+create table region_orders_北京 partition of region_orders for values in ('北京');
+create table region_orders_上海 partition of region_orders for values in ('上海');
+create table region_orders_广州 partition of region_orders for values in ('广州');
+create table region_orders_深圳 partition of region_orders for values in ('深圳');
+create table region_orders_天津 partition of region_orders for values in ('天津');
+create table region_orders_济南 partition of region_orders for values in ('济南');
+create table region_orders_其他 partition of region_orders for values in ('其他');
+
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(1, 101, 299.00, '北京'), (2, 102, 499.50, '北京');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(3, 103, 599.00, '上海'), (4, 104, 799.99, '上海');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(5, 105, 399.00, '广州'), (6, 106, 699.50, '广州');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(7, 107, 899.00, '深圳'), (8, 108, 999.99, '深圳');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(9, 109, 199.00, '天津'), (10, 110, 299.50, '天津');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(11, 111, 399.00, '济南'), (12, 112, 499.50, '济南');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(13, 113, 599.00, '其他'), (14, 114, 699.50, '其他');
+
+\d region_orders
+\d region_orders_北京
+select typname from pg_type where typname like '%regioncol%';
+select objname,option from pg_object where objname like '%regioncol%';
+drop TABLE public.region_orders;
+select typname from pg_type where typname like '%regioncol%';
+select objname,option from pg_object where objname like '%regioncol%';
+
+CREATE TABLE public.region_orders (
+    order_id integer NOT NULL,
+    user_id integer NOT NULL,
+    order_amount numeric(10,2) NOT NULL,
+    order_time timestamp DEFAULT ivymy.current_timestamp(),
+    regioncol enum('北京', '上海', '广州', '深圳', '天津', '济南', '其他') NOT NULL
+)
+PARTITION BY LIST (regioncol);
+
+CREATE TABLE public.region_orders_北京 (
+    order_id integer NOT NULL,
+    user_id integer NOT NULL,
+    order_amount numeric(10,2) NOT NULL,
+    order_time timestamp DEFAULT ivymy.current_timestamp(),
+    regioncol enum('北京', '上海', '广州', '深圳', '天津', '济南', '其他') NOT NULL
+);
+
+CREATE TABLE public.region_orders_上海 (
+    order_id integer NOT NULL,
+    user_id integer NOT NULL,
+    order_amount numeric(10,2) NOT NULL,
+    order_time timestamp DEFAULT ivymy.current_timestamp(),
+    regioncol enum('北京', '上海', '广州', '深圳', '天津', '济南', '其他') NOT NULL
+);
+
+select typname from pg_type where typname like '%regioncol%';
+select objname,option from pg_object where objname like '%regioncol%';
+ALTER TABLE ONLY public.region_orders ATTACH PARTITION public.region_orders_北京 FOR VALUES IN ('北京');
+\d region_orders
+\d region_orders_北京
+\d region_orders_上海
+drop TABLE public.region_orders;
+drop TABLE public.region_orders_北京;
+drop TABLE public.region_orders_上海;
+
+select typname from pg_type where typname like '%regioncol%';
+select objname,option from pg_object where objname like '%regioncol%';
+
+-- bug 5757
+create table t_enum_grammar ( col_1 enum ('a','b','c') , col_2 ENUM ('测试','#') default '测试' , col_3 Enum ('1','2','3') ); 
+create index idx_col_1 on t_enum_grammar(col_1); 
+insert into t_enum_grammar values ('a',default,2);
+
+select typname from pg_type where typname like '%t_enum_grammar%';
+select objname,option from pg_object where objname like '%t_enum_grammar%';
+
+create table t_enum_like (like t_enum_grammar including all);
+
+select typname from pg_type where typname like '%t_enum_like%';
+select objname,option from pg_object where objname like '%t_enum_like%';
+select * from t_enum_grammar;
+select * from t_enum_like;
+
+drop TABLE t_enum_grammar;
+select * from t_enum_like;
+
+select typname from pg_type where typname like '%t_enum_grammar%';
+select objname,option from pg_object where objname like '%t_enum_grammar%';
+select typname from pg_type where typname like '%t_enum_like%';
+select objname,option from pg_object where objname like '%t_enum_like%';
+
+drop TABLE t_enum_like;
+select typname from pg_type where typname like '%t_enum_grammar%';
+select objname,option from pg_object where objname like '%t_enum_grammar%';
+select typname from pg_type where typname like '%t_enum_like%';
+select objname,option from pg_object where objname like '%t_enum_like%';

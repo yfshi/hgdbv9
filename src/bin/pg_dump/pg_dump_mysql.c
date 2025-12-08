@@ -4649,22 +4649,6 @@ is_anonymous_enum(Archive *fout, const TypeInfo *tyinfo)
 	ret = is_anonymous_enum_by_oid(fout, tyinfo->dobj.catId.oid);
 	return ret;
 }
-
-static bool
-function_enum_args(Archive *fout, const FuncInfo *finfo)
-{
-	int			j;
-	for (j = 0; j < finfo->nargs; j++)
-	{
-		if (is_anonymous_enum_by_oid(fout, finfo->argtypes[j]))
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 /*
@@ -8899,7 +8883,6 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 							 "a.attislocal,\n"
 							 "t.typnamespace,\n"
 							 "pg_catalog.format_type(t.oid, a.atttypmod) AS atttypname,\n"
-							 "ivymy.format_anonymous_enum(t.oid) AS anonymous_enum,\n" /* ReqID:SRS-MYSQL-ENUMTYPE */
 						);
 
 		if (fout->remoteVersion >= 90000)
@@ -8981,7 +8964,6 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		tbinfo->numatts = ntups;
 		tbinfo->attnames = (char **) pg_malloc(ntups * sizeof(char *));
 		tbinfo->atttypnames = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->anonymous_enums = (char **) pg_malloc(ntups * sizeof(char *));
 		tbinfo->atttypmod = (int *) pg_malloc(ntups * sizeof(int));
 		tbinfo->attstattarget = (int *) pg_malloc(ntups * sizeof(int));
 		tbinfo->attstorage = (char *) pg_malloc(ntups * sizeof(char));
@@ -9043,11 +9025,6 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			{
 				tbinfo->atttypnames[j] = pg_strdup(atttypname);
 			}
-			
-			if (!PQgetisnull(res, j, PQfnumber(res, "anonymous_enum")))
-				tbinfo->anonymous_enums[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "anonymous_enum")));
-			else
-				tbinfo->anonymous_enums[j] = NULL;
 			/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 			
 			tbinfo->atttypmod[j] = atoi(PQgetvalue(res, j, PQfnumber(res, "atttypmod")));
@@ -10882,17 +10859,6 @@ dumpEnumType(Archive *fout, const TypeInfo *tyinfo)
 	char	   *qualtypname;
 	char	   *label;
 
-	/** 
-	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
-	 * If the enum is created in CreateStmt with MySQL syntax,
-	 * we do not dump it with CREATE TYPE.
-	 */
-	if (tyinfo->is_anonymous_enum)
-	{
-		return;
-	}
-	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
-
 	if (fout->remoteVersion >= 90100)
 		appendPQExpBuffer(query, "SELECT oid, enumlabel "
 						  "FROM pg_catalog.pg_enum "
@@ -10924,8 +10890,22 @@ dumpEnumType(Archive *fout, const TypeInfo *tyinfo)
 												 tyinfo->dobj.catId.oid,
 												 false, false);
 
-	appendPQExpBuffer(q, "CREATE TYPE %s AS ENUM (",
-					  qualtypname);
+	/** 
+	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
+	 * If the enum is created in CreateStmt with MySQL syntax,
+	 * we do not dump it with CREATE TYPE.
+	 */
+	if (tyinfo->is_anonymous_enum)
+	{
+		appendPQExpBuffer(q, "CREATE TYPE %s AS ANONYMOUS ENUM (",
+						  qualtypname);
+	}
+	else
+	{
+		appendPQExpBuffer(q, "CREATE TYPE %s AS ENUM (",
+						  qualtypname);
+	}
+	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	if (!dopt->binary_upgrade)
 	{
@@ -12296,14 +12276,12 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	PGresult   *res;
 	char	   *funcsig;		/* identity signature */
 	char	   *funcfullsig = NULL; /* full signature */
-	char	   *enumfuncfullsig = NULL; /* ReqID:SRS-MYSQL-ENUMTYPE */
 	char	   *funcsig_tag;
 	char	   *proretset;
 	char	   *prosrc;
 	char	   *probin;
 	char	   *prosqlbody;
 	char	   *funcargs;
-	char	   *enumfuncargs;/* ReqID:SRS-MYSQL-ENUMTYPE */
 	char	   *funciargs;
 	char	   *funcresult;
 	char	   *proallargtypes;
@@ -12329,18 +12307,10 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	int			nconfigitems = 0;
 	const char *keyword;
 	int			i;
-	bool		is_enum_args = false;
 
 	/* Skip if not to be dumped */
 	if (!finfo->dobj.dump || dopt->dataOnly)
 		return;
-
-	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (function_enum_args(fout, finfo))
-	{
-		is_enum_args = true;
-	}
-	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	query = createPQExpBuffer();
 	q = createPQExpBuffer();
@@ -12390,14 +12360,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 							 "null AS proallargtypes,\n"
 							 "null AS proargmodes,\n"
 							 "proargnames,\n");
-
-	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (is_enum_args)
-	{
-		appendPQExpBufferStr(query,
-						  "ivymy.format_func_args(p.oid) AS enumfuncargs,\n");
-	}
-	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	if (fout->remoteVersion >= 90200)
 		appendPQExpBufferStr(query,
@@ -12476,13 +12438,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		proargnames = PQgetvalue(res, 0, PQfnumber(res, "proargnames"));
 		funcargs = funciargs = funcresult = NULL;
 	}
-
-	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (is_enum_args)
-	{
-		enumfuncargs = PQgetvalue(res, 0, PQfnumber(res, "enumfuncargs"));
-	}
-	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	if (PQfnumber(res, "protrftypes") != -1)
 		protrftypes = PQgetvalue(res, 0, PQfnumber(res, "protrftypes"));
@@ -12613,13 +12568,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 
 	funcsig_tag = format_function_signature(fout, finfo, false);
 
-	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (is_enum_args)
-	{
-		enumfuncfullsig = format_function_arguments(finfo, enumfuncargs, false);
-	}
-	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
-
 	if (prokind[0] == PROKIND_PROCEDURE)
 		keyword = "PROCEDURE";
 	else
@@ -12633,7 +12581,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	appendPQExpBuffer(q, "CREATE %s %s.%s",
 					  keyword,
 					  fmtId(finfo->dobj.namespace->dobj.name),
-					  (prokind[0] == PROKIND_FUNCTION && is_enum_args)?enumfuncfullsig: /* ReqID:SRS-MYSQL-ENUMTYPE */
 					  (funcfullsig ? funcfullsig : funcsig));
 
 	if (prokind[0] == PROKIND_PROCEDURE)
@@ -12830,10 +12777,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	free(funcsig);
 	if (funcfullsig)
 		free(funcfullsig);
-	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (enumfuncfullsig)
-		free(enumfuncfullsig);
-	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 	free(funcsig_tag);
 	if (allargtypes)
 		free(allargtypes);
@@ -16437,17 +16380,8 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 					 */
 					if (dopt->binary_upgrade || !OidIsValid(tbinfo->reloftype))
 					{
-						/**
-						 * Begin - ReqID:SRS-MYSQL-ENUMTYPE
-						 * Dump type name of enum attribute as enum('a', 'b', 'c').
-						 */
-						if (tbinfo->anonymous_enums[j])
-							appendPQExpBuffer(q, " %s",
-											  tbinfo->anonymous_enums[j]);
-						/* End - ReqID:SRS-MYSQL-ENUMTYPE */
-						else
-							appendPQExpBuffer(q, " %s",
-											  tbinfo->atttypnames[j]);
+						appendPQExpBuffer(q, " %s",
+										  tbinfo->atttypnames[j]);
 					}
 
 					if (print_default)
@@ -19345,18 +19279,9 @@ getFormattedTypeName(Archive *fout, Oid oid, OidOptions opts)
 		return typeInfo->ftypname;
 
 	query = createPQExpBuffer();
-	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-	if (is_anonymous_enum_by_oid(fout, oid))
-	{
-		appendPQExpBuffer(query, "SELECT ivymy.format_anonymous_enum(%u::pg_catalog.oid) AS anonymous_enum",
-									  oid);
-	}
-	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
-	else
-	{
-		appendPQExpBuffer(query, "SELECT pg_catalog.format_type('%u'::pg_catalog.oid, NULL)",
-									  oid);
-	}
+
+	appendPQExpBuffer(query, "SELECT pg_catalog.format_type('%u'::pg_catalog.oid, NULL)",
+								  oid);
 
 	res = ExecuteSqlQueryForSingleRow(fout, query->data);
 

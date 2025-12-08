@@ -1567,7 +1567,7 @@ CreateEnumTypeForFunction(List *parameters, Oid namespaceId, char *funcName, boo
 			if (list_length(t->names) == 1)
 				t->names = lcons(makeString(get_namespace_name(namespaceId)), t->names);
 
-			strVal(llast(t->names)) = ChooseTypeName(funcName, "", "anonymous_enum", namespaceId, false);
+			strVal(llast(t->names)) = ChooseTypeName(funcName, "proc", "anonymous_enum", namespaceId, false);
 			
 			DefineAnonymousEnum(t);
 
@@ -1607,7 +1607,6 @@ CreateEnumTypeForFunction(List *parameters, Oid namespaceId, char *funcName, boo
 			}
 
 			get_func_arg_info(proctup, &argtypes, &argnames, &argmodes);
-
 			ReleaseSysCache(proctup);
 
 			for (int i = 0; i < nargs; i++)
@@ -1675,12 +1674,9 @@ CreateEnumTypeForFunction(List *parameters, Oid namespaceId, char *funcName, boo
 
 					// new enum is same as old enum, so new enum is useless.
 					RemoveObjects(stmt);
-
 					// set parameter's type name to old enum.
 					strVal(llast(t->names)) = get_typename(oldtype);
-					
 					CommandCounterIncrement();
-
 					continue;
 				}
 			}
@@ -1690,30 +1686,6 @@ CreateEnumTypeForFunction(List *parameters, Oid namespaceId, char *funcName, boo
 	}
 
 	return oids;
-}
-
-/*
- * create depend : enum ==> function
- */
-static void
-RecordDependencyForEnumAndFunction(List *enumOids, Oid funcId)
-{
-	ListCell *lc = NULL;
-	ObjectAddress depender;
-	ObjectAddress referencer;
-
-	referencer.classId = ProcedureRelationId;
-	referencer.objectId = funcId;
-	referencer.objectSubId = 0;
-
-	depender.classId = TypeRelationId;
-	depender.objectSubId = 0;
-
-	foreach (lc, enumOids)
-	{
-		depender.objectId = lfirst_oid(lc);
-		recordMultipleDependencies(&depender, &referencer, 1, DEPENDENCY_AUTO);
-	}
 }
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
@@ -1768,7 +1740,6 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	ObjectAddress address;	/* ReqID:SRS-CMD-PGDUMP */
 	char	   *orifuncname = NULL;	/* ReqID:SRS-MYSQL-CASE */
 	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
-	List	   *enumOids = NIL; /* ReqID:SRS-MYSQL-ENUMTYPE */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (stmt->funcname != NIL && IsA(llast(stmt->funcname), String))
@@ -1902,7 +1873,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
 	if (MYS_MODE == compatible_mode)
 	{
-		enumOids = CreateEnumTypeForFunction(stmt->parameters, namespaceId, funcname, stmt->replace);
+		CreateEnumTypeForFunction(stmt->parameters, namespaceId, funcname, stmt->replace);
 	}
 	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
@@ -2105,16 +2076,6 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 
 		pfree(buf.data);
 	}
-
-	/** 
-	 * Begin - ReqID:SRS-MYSQL-ENUMTYPE 
-	 * record dependence for the function if there are enum parameters.
-	 */
-	if (MYS_MODE == compatible_mode)
-	{
-		RecordDependencyForEnumAndFunction(enumOids, address.objectId);
-	}
-	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
 	return address;
 	/* END - ReqID:SRS-CMD-PGDUMP */

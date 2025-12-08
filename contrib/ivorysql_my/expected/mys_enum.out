@@ -2189,14 +2189,14 @@ CREATE TABLE test_drop_table (
     age INT,
     myname enum('a','b')
 );
-SELECT COUNT(*) FROM pg_type WHERE typname like '%anonymous_enum%';
+SELECT COUNT(*) FROM pg_type WHERE typname like '%test_drop_table_myname_anonymous_enum%';
  COUNT 
 -------
      2
 (1 row)
 
 DROP TABLE test_drop_table;
-SELECT COUNT(*) FROM pg_type WHERE typname like '%anonymous_enum%';
+SELECT COUNT(*) FROM pg_type WHERE typname like '%test_drop_table_myname_anonymous_enum%';
  COUNT 
 -------
      0
@@ -2221,7 +2221,7 @@ SELECT typname FROM pg_type WHERE typname = 'job';
 DROP TABLE test;
 -- when alter column type to others, the created enum type will not be dropped.
 CREATE TABLE test (age INT, myjob enum('x','y'));
-SELECT COUNT(*) FROM pg_type WHERE typname like '%anonymous_enum%';
+SELECT COUNT(*) FROM pg_type WHERE typname like '%test_myjob_anonymous_enum%';
  COUNT 
 -------
      2
@@ -2231,7 +2231,7 @@ insert into test values(1, 'x');
 insert into test values(2, 'y');
 insert into test values(4, 'y');
 alter table test alter myjob type text;
-SELECT COUNT(*) FROM pg_type WHERE typname like '%anonymous_enum%';
+SELECT COUNT(*) FROM pg_type WHERE typname like '%test_myjob_anonymous_enum%';
  COUNT 
 -------
      0
@@ -2246,7 +2246,7 @@ ERROR:  type "test" does not exist
 drop type anonymous_enum;
 -- make name more the 64
 CREATE TABLE testtttttttttttttttttttttttttttttttttt (age INT, myjobbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb enum('x','y'));
-SELECT count(*) FROM pg_type WHERE typname like '%_anonymous_enum%';
+SELECT count(*) FROM pg_type WHERE typname like '%testtttttttttttttttttttt_myjobbbbbbbbbbbbbbbbbbb_anonymous_enum%';
  count 
 -------
      1
@@ -2576,8 +2576,7 @@ LINE 1: ...sl_type enum('any','X509','SPECIFIED') not null default '');
 create table test_enum_d(ssl_type enum('','any','X509','SPECIFIED') not null default '');
 SELECT e.enumsortorder,e.enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%_ssl_type_anonymous_enum';
  enumsortorder | enumlabel 
 ---------------+-----------
              1 | 
@@ -2601,8 +2600,7 @@ SELECT e.enumsortorder,e.enumlabel FROM pg_enum e
 drop table test_enum_d;
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%_ssl_type_anonymous_enum';
  enumsortorder | enumlabel 
 ---------------+-----------
 (0 rows)
@@ -2633,16 +2631,14 @@ select * from student;
 Indexes:
     "student_pkey" PRIMARY KEY, btree (id)
 
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
              typname              
 ----------------------------------
- _student
  _student_gender_anonymous_enum
  _student_non_enum_anonymous_enum
- student
  student_gender_anonymous_enum
  student_non_enum_anonymous_enum
-(6 rows)
+(4 rows)
 
 create table student_bak as select * from student;
 select * from student_bak;
@@ -2652,30 +2648,22 @@ select * from student_bak;
 (1 row)
 
 \d student_bak
-                           Table "public.student_bak"
-  Column  |                Type                 | Collation | Nullable | Default 
-----------+-------------------------------------+-----------+----------+---------
- id       | integer                             |           |          | 
- name     | character varying(100)              |           |          | 
- gender   | student_bak_gender_anonymous_enum   |           |          | 
- non_enum | student_bak_non_enum_anonymous_enum |           |          | 
+                         Table "public.student_bak"
+  Column  |              Type               | Collation | Nullable | Default 
+----------+---------------------------------+-----------+----------+---------
+ id       | integer                         |           |          | 
+ name     | character varying(100)          |           |          | 
+ gender   | student_gender_anonymous_enum   |           |          | 
+ non_enum | student_non_enum_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-               typname                
---------------------------------------
- _student
- _student_bak
- _student_bak_gender_anonymous_enum
- _student_bak_non_enum_anonymous_enum
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
+             typname              
+----------------------------------
  _student_gender_anonymous_enum
  _student_non_enum_anonymous_enum
- student
- student_bak
- student_bak_gender_anonymous_enum
- student_bak_non_enum_anonymous_enum
  student_gender_anonymous_enum
  student_non_enum_anonymous_enum
-(12 rows)
+(4 rows)
 
 alter table student drop column gender;
 select * from student_bak;
@@ -2691,13 +2679,13 @@ select * from student;
 (1 row)
 
 \d student_bak
-                           Table "public.student_bak"
-  Column  |                Type                 | Collation | Nullable | Default 
-----------+-------------------------------------+-----------+----------+---------
- id       | integer                             |           |          | 
- name     | character varying(100)              |           |          | 
- gender   | student_bak_gender_anonymous_enum   |           |          | 
- non_enum | student_bak_non_enum_anonymous_enum |           |          | 
+                         Table "public.student_bak"
+  Column  |              Type               | Collation | Nullable | Default 
+----------+---------------------------------+-----------+----------+---------
+ id       | integer                         |           |          | 
+ name     | character varying(100)          |           |          | 
+ gender   | student_gender_anonymous_enum   |           |          | 
+ non_enum | student_non_enum_anonymous_enum |           |          | 
 
 \d student
                            Table "public.student"
@@ -2723,13 +2711,13 @@ select * from student;
 (1 row)
 
 \d student_bak
-                           Table "public.student_bak"
-  Column  |                Type                 | Collation | Nullable | Default 
-----------+-------------------------------------+-----------+----------+---------
- id       | integer                             |           |          | 
- name     | character varying(100)              |           |          | 
- gender   | student_bak_gender_anonymous_enum   |           |          | 
- non_enum | student_bak_non_enum_anonymous_enum |           |          | 
+                         Table "public.student_bak"
+  Column  |              Type               | Collation | Nullable | Default 
+----------+---------------------------------+-----------+----------+---------
+ id       | integer                         |           |          | 
+ name     | character varying(100)          |           |          | 
+ gender   | student_gender_anonymous_enum   |           |          | 
+ non_enum | student_non_enum_anonymous_enum |           |          | 
 
 \d student
                       Table "public.student"
@@ -2742,8 +2730,7 @@ Indexes:
 
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%student%_anonymous_enum';
  enumsortorder | enumlabel 
 ---------------+-----------
              1 | male
@@ -2751,21 +2738,18 @@ SELECT enumsortorder,enumlabel FROM pg_enum e
 (2 rows)
 
 drop table student;
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-               typname                
---------------------------------------
- _student_bak
- _student_bak_gender_anonymous_enum
- _student_bak_non_enum_anonymous_enum
- student_bak
- student_bak_gender_anonymous_enum
- student_bak_non_enum_anonymous_enum
-(6 rows)
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
+             typname              
+----------------------------------
+ _student_gender_anonymous_enum
+ _student_non_enum_anonymous_enum
+ student_gender_anonymous_enum
+ student_non_enum_anonymous_enum
+(4 rows)
 
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%student%_anonymous_enum';
  enumsortorder | enumlabel 
 ---------------+-----------
              1 | male
@@ -2779,179 +2763,157 @@ select * from student_bak;
 (1 row)
 
 \d student_bak
-                           Table "public.student_bak"
-  Column  |                Type                 | Collation | Nullable | Default 
-----------+-------------------------------------+-----------+----------+---------
- id       | integer                             |           |          | 
- name     | character varying(100)              |           |          | 
- gender   | student_bak_gender_anonymous_enum   |           |          | 
- non_enum | student_bak_non_enum_anonymous_enum |           |          | 
+                         Table "public.student_bak"
+  Column  |              Type               | Collation | Nullable | Default 
+----------+---------------------------------+-----------+----------+---------
+ id       | integer                         |           |          | 
+ name     | character varying(100)          |           |          | 
+ gender   | student_gender_anonymous_enum   |           |          | 
+ non_enum | student_non_enum_anonymous_enum |           |          | 
 
 drop table student_bak;
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
  typname 
 ---------
 (0 rows)
 
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%student%_anonymous_enum';
  enumsortorder | enumlabel 
 ---------------+-----------
 (0 rows)
 
 -- test anonymous enum backup :drop table
-create table student (
+create table studentdrop (
      id int not null ,
      name varchar(100),
      gender enum('male', 'female'),
      non_enum enum(),
      primary key(id)
 );
-insert into student(id, name,gender) values(1, 'bill','male');
-select * from student;
+insert into studentdrop(id, name,gender) values(1, 'bill','male');
+select * from studentdrop;
  id | name | gender | non_enum 
 ----+------+--------+----------
   1 | bill | male   | 
 (1 row)
 
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-             typname              
-----------------------------------
- _student
- _student_gender_anonymous_enum
- _student_non_enum_anonymous_enum
- student
- student_gender_anonymous_enum
- student_non_enum_anonymous_enum
-(6 rows)
-
-SELECT enumsortorder,enumlabel FROM pg_enum e
-    JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
- enumsortorder | enumlabel 
----------------+-----------
-             1 | male
-             2 | female
-(2 rows)
-
-create table student_bak as select * from student;
-select * from student_bak;
- id | name | gender | non_enum 
-----+------+--------+----------
-  1 | bill | male   | 
-(1 row)
-
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
                typname                
 --------------------------------------
- _student
- _student_bak
- _student_bak_gender_anonymous_enum
- _student_bak_non_enum_anonymous_enum
- _student_gender_anonymous_enum
- _student_non_enum_anonymous_enum
- student
- student_bak
- student_bak_gender_anonymous_enum
- student_bak_non_enum_anonymous_enum
- student_gender_anonymous_enum
- student_non_enum_anonymous_enum
-(12 rows)
-
-SELECT enumsortorder,enumlabel FROM pg_enum e
-    JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
- enumsortorder | enumlabel 
----------------+-----------
-             1 | male
-             2 | female
-             1 | male
-             2 | female
+ _studentdrop_gender_anonymous_enum
+ _studentdrop_non_enum_anonymous_enum
+ studentdrop_gender_anonymous_enum
+ studentdrop_non_enum_anonymous_enum
 (4 rows)
 
-drop table student;
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
-               typname                
---------------------------------------
- _student_bak
- _student_bak_gender_anonymous_enum
- _student_bak_non_enum_anonymous_enum
- student_bak
- student_bak_gender_anonymous_enum
- student_bak_non_enum_anonymous_enum
-(6 rows)
-
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%student%_anonymous_enum';
  enumsortorder | enumlabel 
 ---------------+-----------
              1 | male
              2 | female
 (2 rows)
 
-select * from student_bak;
+create table studentdrop_bak as select * from studentdrop;
+select * from studentdrop_bak;
  id | name | gender | non_enum 
 ----+------+--------+----------
   1 | bill | male   | 
 (1 row)
 
-\d student_bak
-                           Table "public.student_bak"
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
+               typname                
+--------------------------------------
+ _studentdrop_gender_anonymous_enum
+ _studentdrop_non_enum_anonymous_enum
+ studentdrop_gender_anonymous_enum
+ studentdrop_non_enum_anonymous_enum
+(4 rows)
+
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname like '%student%_anonymous_enum';
+ enumsortorder | enumlabel 
+---------------+-----------
+             1 | male
+             2 | female
+(2 rows)
+
+drop table studentdrop;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
+               typname                
+--------------------------------------
+ _studentdrop_gender_anonymous_enum
+ _studentdrop_non_enum_anonymous_enum
+ studentdrop_gender_anonymous_enum
+ studentdrop_non_enum_anonymous_enum
+(4 rows)
+
+SELECT enumsortorder,enumlabel FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+	WHERE t.typname like '%student%_anonymous_enum';
+ enumsortorder | enumlabel 
+---------------+-----------
+             1 | male
+             2 | female
+(2 rows)
+
+select * from studentdrop_bak;
+ id | name | gender | non_enum 
+----+------+--------+----------
+  1 | bill | male   | 
+(1 row)
+
+\d studentdrop_bak
+                         Table "public.studentdrop_bak"
   Column  |                Type                 | Collation | Nullable | Default 
 ----------+-------------------------------------+-----------+----------+---------
  id       | integer                             |           |          | 
  name     | character varying(100)              |           |          | 
- gender   | student_bak_gender_anonymous_enum   |           |          | 
- non_enum | student_bak_non_enum_anonymous_enum |           |          | 
+ gender   | studentdrop_gender_anonymous_enum   |           |          | 
+ non_enum | studentdrop_non_enum_anonymous_enum |           |          | 
 
-alter table student_bak drop column gender;
-select * from student_bak;
+alter table studentdrop_bak drop column gender;
+select * from studentdrop_bak;
  id | name | non_enum 
 ----+------+----------
   1 | bill | 
 (1 row)
 
-\d student_bak
-                           Table "public.student_bak"
+\d studentdrop_bak
+                         Table "public.studentdrop_bak"
   Column  |                Type                 | Collation | Nullable | Default 
 ----------+-------------------------------------+-----------+----------+---------
  id       | integer                             |           |          | 
  name     | character varying(100)              |           |          | 
- non_enum | student_bak_non_enum_anonymous_enum |           |          | 
+ non_enum | studentdrop_non_enum_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
                typname                
 --------------------------------------
- _student_bak
- _student_bak_non_enum_anonymous_enum
- student_bak
- student_bak_non_enum_anonymous_enum
-(4 rows)
+ _studentdrop_non_enum_anonymous_enum
+ studentdrop_non_enum_anonymous_enum
+(2 rows)
 
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%student%_anonymous_enum';
  enumsortorder | enumlabel 
 ---------------+-----------
 (0 rows)
 
-drop table student_bak;
-SELECT typname FROM pg_type WHERE typname like '%student%' order by 1;
+drop table studentdrop_bak;
+SELECT typname FROM pg_type WHERE typname like '%student%_anonymous_enum%' order by 1;
  typname 
 ---------
 (0 rows)
 
 SELECT enumsortorder,enumlabel FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-	WHERE t.typname <> 'enum_mysql_user'
-	AND t.typname <> 'enum_mysql_user_ssl_type';
+	WHERE t.typname like '%student%_anonymous_enum';
  enumsortorder | enumlabel 
 ---------------+-----------
 (0 rows)
@@ -3031,55 +2993,55 @@ SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' orde
 ---------
 (0 rows)
 
-create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
-\d t_enum_column_alter_type
-                       Table "public.t_enum_column_alter_type"
- Column |                    Type                    | Collation | Nullable | Default 
---------+--------------------------------------------+-----------+----------+---------
- c1     | integer                                    |           |          | 
- c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
+create table t_enum_column_alter_type1(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
+\d t_enum_column_alter_type1
+                       Table "public.t_enum_column_alter_type1"
+ Column |                    Type                     | Collation | Nullable | Default 
+--------+---------------------------------------------+-----------+----------+---------
+ c1     | integer                                     |           |          | 
+ c2     | t_enum_column_alter_type1_c2_anonymous_enum |           |          | 
+ c3     | t_enum_column_alter_type1_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-                   typname                   
----------------------------------------------
- _t_enum_column_alter_type
- _t_enum_column_alter_type_c2_anonymous_enum
- _t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type
- t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type1%' order by typname;
+                   typname                    
+----------------------------------------------
+ _t_enum_column_alter_type1
+ _t_enum_column_alter_type1_c2_anonymous_enum
+ _t_enum_column_alter_type1_c3_anonymous_enum
+ t_enum_column_alter_type1
+ t_enum_column_alter_type1_c2_anonymous_enum
+ t_enum_column_alter_type1_c3_anonymous_enum
 (6 rows)
 
-insert into t_enum_column_alter_type values(11, 'a', 'c');
-alter table t_enum_column_alter_type alter c2 type text;
-\d t_enum_column_alter_type
-                       Table "public.t_enum_column_alter_type"
- Column |                    Type                    | Collation | Nullable | Default 
---------+--------------------------------------------+-----------+----------+---------
- c1     | integer                                    |           |          | 
- c2     | text                                       |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
+insert into t_enum_column_alter_type1 values(11, 'a', 'c');
+alter table t_enum_column_alter_type1 alter c2 type text;
+\d t_enum_column_alter_type1
+                       Table "public.t_enum_column_alter_type1"
+ Column |                    Type                     | Collation | Nullable | Default 
+--------+---------------------------------------------+-----------+----------+---------
+ c1     | integer                                     |           |          | 
+ c2     | text                                        |           |          | 
+ c3     | t_enum_column_alter_type1_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-                   typname                   
----------------------------------------------
- _t_enum_column_alter_type
- _t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type
- t_enum_column_alter_type_c3_anonymous_enum
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type1%' order by typname;
+                   typname                    
+----------------------------------------------
+ _t_enum_column_alter_type1
+ _t_enum_column_alter_type1_c3_anonymous_enum
+ t_enum_column_alter_type1
+ t_enum_column_alter_type1_c3_anonymous_enum
 (4 rows)
 
-insert into t_enum_column_alter_type values(22, 'xxxx', 'c');
-select * from t_enum_column_alter_type;
+insert into t_enum_column_alter_type1 values(22, 'xxxx', 'c');
+select * from t_enum_column_alter_type1;
  c1 |  c2  | c3 
 ----+------+----
  11 | a    | c
  22 | xxxx | c
 (2 rows)
 
-insert into t_enum_column_alter_type values(22, 'yyyy', 'c');
-select * from t_enum_column_alter_type;
+insert into t_enum_column_alter_type1 values(22, 'yyyy', 'c');
+select * from t_enum_column_alter_type1;
  c1 |  c2  | c3 
 ----+------+----
  11 | a    | c
@@ -3087,18 +3049,18 @@ select * from t_enum_column_alter_type;
  22 | yyyy | c
 (3 rows)
 
-alter table t_enum_column_alter_type alter c2 type enum('aaaa', 'bbbb'); -- err 'xxxx' not cast to enum
+alter table t_enum_column_alter_type1 alter c2 type enum('aaaa', 'bbbb'); -- err 'xxxx' not cast to enum
 ERROR:  Incorrect integer value: 'a' for column.
-\d t_enum_column_alter_type
-                       Table "public.t_enum_column_alter_type"
- Column |                    Type                    | Collation | Nullable | Default 
---------+--------------------------------------------+-----------+----------+---------
- c1     | integer                                    |           |          | 
- c2     | text                                       |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
+\d t_enum_column_alter_type1
+                       Table "public.t_enum_column_alter_type1"
+ Column |                    Type                     | Collation | Nullable | Default 
+--------+---------------------------------------------+-----------+----------+---------
+ c1     | integer                                     |           |          | 
+ c2     | text                                        |           |          | 
+ c3     | t_enum_column_alter_type1_c3_anonymous_enum |           |          | 
 
-insert into t_enum_column_alter_type values(33, 'aaaa', 'c');
-select * from t_enum_column_alter_type;
+insert into t_enum_column_alter_type1 values(33, 'aaaa', 'c');
+select * from t_enum_column_alter_type1;
  c1 |  c2  | c3 
 ----+------+----
  11 | a    | c
@@ -3107,107 +3069,107 @@ select * from t_enum_column_alter_type;
  33 | aaaa | c
 (4 rows)
 
-drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
+drop table t_enum_column_alter_type1;
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type1%' order by typname;
  typname 
 ---------
 (0 rows)
 
-create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
-\d t_enum_column_alter_type
-                       Table "public.t_enum_column_alter_type"
- Column |                    Type                    | Collation | Nullable | Default 
---------+--------------------------------------------+-----------+----------+---------
- c1     | integer                                    |           |          | 
- c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
+create table t_enum_column_alter_type2(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
+\d t_enum_column_alter_type2
+                       Table "public.t_enum_column_alter_type2"
+ Column |                    Type                     | Collation | Nullable | Default 
+--------+---------------------------------------------+-----------+----------+---------
+ c1     | integer                                     |           |          | 
+ c2     | t_enum_column_alter_type2_c2_anonymous_enum |           |          | 
+ c3     | t_enum_column_alter_type2_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-                   typname                   
----------------------------------------------
- _t_enum_column_alter_type
- _t_enum_column_alter_type_c2_anonymous_enum
- _t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type
- t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type2%' order by typname;
+                   typname                    
+----------------------------------------------
+ _t_enum_column_alter_type2
+ _t_enum_column_alter_type2_c2_anonymous_enum
+ _t_enum_column_alter_type2_c3_anonymous_enum
+ t_enum_column_alter_type2
+ t_enum_column_alter_type2_c2_anonymous_enum
+ t_enum_column_alter_type2_c3_anonymous_enum
 (6 rows)
 
-insert into t_enum_column_alter_type values(11, 'a', 'c');
-alter table t_enum_column_alter_type alter c2 type enum('aaaa', 'bbbb'); -- enum to enum
+insert into t_enum_column_alter_type2 values(11, 'a', 'c');
+alter table t_enum_column_alter_type2 alter c2 type enum('aaaa', 'bbbb'); -- enum to enum
 ERROR:  Data truncated for column
-\d t_enum_column_alter_type
-                       Table "public.t_enum_column_alter_type"
- Column |                    Type                    | Collation | Nullable | Default 
---------+--------------------------------------------+-----------+----------+---------
- c1     | integer                                    |           |          | 
- c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
+\d t_enum_column_alter_type2
+                       Table "public.t_enum_column_alter_type2"
+ Column |                    Type                     | Collation | Nullable | Default 
+--------+---------------------------------------------+-----------+----------+---------
+ c1     | integer                                     |           |          | 
+ c2     | t_enum_column_alter_type2_c2_anonymous_enum |           |          | 
+ c3     | t_enum_column_alter_type2_c3_anonymous_enum |           |          | 
 
-insert into t_enum_column_alter_type values(33, 'aaaa', 'c');
-ERROR:  invalid input value for enum t_enum_column_alter_type_c2_anonymous_enum: "aaaa"
-LINE 1: insert into t_enum_column_alter_type values(33, 'aaaa', 'c')...
-                                                        ^
-select * from t_enum_column_alter_type;
+insert into t_enum_column_alter_type2 values(33, 'aaaa', 'c');
+ERROR:  invalid input value for enum t_enum_column_alter_type2_c2_anonymous_enum: "aaaa"
+LINE 1: insert into t_enum_column_alter_type2 values(33, 'aaaa', 'c'...
+                                                         ^
+select * from t_enum_column_alter_type2;
  c1 | c2 | c3 
 ----+----+----
  11 | a  | c
 (1 row)
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-                   typname                   
----------------------------------------------
- _t_enum_column_alter_type
- _t_enum_column_alter_type_c2_anonymous_enum
- _t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type
- t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type2%' order by typname;
+                   typname                    
+----------------------------------------------
+ _t_enum_column_alter_type2
+ _t_enum_column_alter_type2_c2_anonymous_enum
+ _t_enum_column_alter_type2_c3_anonymous_enum
+ t_enum_column_alter_type2
+ t_enum_column_alter_type2_c2_anonymous_enum
+ t_enum_column_alter_type2_c3_anonymous_enum
 (6 rows)
 
-drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
+drop table t_enum_column_alter_type2;
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type2%' order by typname;
  typname 
 ---------
 (0 rows)
 
-create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
-\d t_enum_column_alter_type
-                       Table "public.t_enum_column_alter_type"
- Column |                    Type                    | Collation | Nullable | Default 
---------+--------------------------------------------+-----------+----------+---------
- c1     | integer                                    |           |          | 
- c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
-
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-                   typname                   
----------------------------------------------
- _t_enum_column_alter_type
- _t_enum_column_alter_type_c2_anonymous_enum
- _t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type
- t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
-(6 rows)
-
-insert into t_enum_column_alter_type values(11, 'a', 'c');
-insert into t_enum_column_alter_type values(33, 'bbbb', 'c');
-ERROR:  invalid input value for enum t_enum_column_alter_type_c2_anonymous_enum: "bbbb"
-LINE 1: insert into t_enum_column_alter_type values(33, 'bbbb', 'c')...
-                                                        ^
-alter table t_enum_column_alter_type alter c2 type enum('a', 'bbbb'); -- enum to enum
-\d t_enum_column_alter_type
-                        Table "public.t_enum_column_alter_type"
+create table t_enum_column_alter_type3(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
+\d t_enum_column_alter_type3
+                       Table "public.t_enum_column_alter_type3"
  Column |                    Type                     | Collation | Nullable | Default 
 --------+---------------------------------------------+-----------+----------+---------
  c1     | integer                                     |           |          | 
- c2     | t_enum_column_alter_type_c2_anonymous_enum1 |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum  |           |          | 
+ c2     | t_enum_column_alter_type3_c2_anonymous_enum |           |          | 
+ c3     | t_enum_column_alter_type3_c3_anonymous_enum |           |          | 
 
-insert into t_enum_column_alter_type values(33, 'a', 'c');
-insert into t_enum_column_alter_type values(33, 'bbbb', 'c');
-select * from t_enum_column_alter_type;
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type3%' order by typname;
+                   typname                    
+----------------------------------------------
+ _t_enum_column_alter_type3
+ _t_enum_column_alter_type3_c2_anonymous_enum
+ _t_enum_column_alter_type3_c3_anonymous_enum
+ t_enum_column_alter_type3
+ t_enum_column_alter_type3_c2_anonymous_enum
+ t_enum_column_alter_type3_c3_anonymous_enum
+(6 rows)
+
+insert into t_enum_column_alter_type3 values(11, 'a', 'c');
+insert into t_enum_column_alter_type3 values(33, 'bbbb', 'c');
+ERROR:  invalid input value for enum t_enum_column_alter_type3_c2_anonymous_enum: "bbbb"
+LINE 1: insert into t_enum_column_alter_type3 values(33, 'bbbb', 'c'...
+                                                         ^
+alter table t_enum_column_alter_type3 alter c2 type enum('a', 'bbbb'); -- enum to enum
+\d t_enum_column_alter_type3
+                        Table "public.t_enum_column_alter_type3"
+ Column |                     Type                     | Collation | Nullable | Default 
+--------+----------------------------------------------+-----------+----------+---------
+ c1     | integer                                      |           |          | 
+ c2     | t_enum_column_alter_type3_c2_anonymous_enum1 |           |          | 
+ c3     | t_enum_column_alter_type3_c3_anonymous_enum  |           |          | 
+
+insert into t_enum_column_alter_type3 values(33, 'a', 'c');
+insert into t_enum_column_alter_type3 values(33, 'bbbb', 'c');
+select * from t_enum_column_alter_type3;
  c1 |  c2  | c3 
 ----+------+----
  11 | a    | c
@@ -3215,151 +3177,239 @@ select * from t_enum_column_alter_type;
  33 | bbbb | c
 (3 rows)
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-                   typname                    
-----------------------------------------------
- _t_enum_column_alter_type
- _t_enum_column_alter_type_c2_anonymous_enum1
- _t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type
- t_enum_column_alter_type_c2_anonymous_enum1
- t_enum_column_alter_type_c3_anonymous_enum
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type3%' order by typname;
+                    typname                    
+-----------------------------------------------
+ _t_enum_column_alter_type3
+ _t_enum_column_alter_type3_c2_anonymous_enum1
+ _t_enum_column_alter_type3_c3_anonymous_enum
+ t_enum_column_alter_type3
+ t_enum_column_alter_type3_c2_anonymous_enum1
+ t_enum_column_alter_type3_c3_anonymous_enum
 (6 rows)
 
-drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
+drop table t_enum_column_alter_type3;
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type3%' order by typname;
  typname 
 ---------
 (0 rows)
 
-create table t_enum_column_alter_type(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
-\d t_enum_column_alter_type
-                       Table "public.t_enum_column_alter_type"
- Column |                    Type                    | Collation | Nullable | Default 
---------+--------------------------------------------+-----------+----------+---------
- c1     | integer                                    |           |          | 
- c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
+create table t_enum_column_alter_type4(c1 int, c2 enum('a', 'b'), c3 enum('c', 'd'));
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+                   objname                   |             option              
+---------------------------------------------+---------------------------------
+ t_enum_column_alter_type4_c2_anonymous_enum | {"anonymous": true}
+ t_enum_column_alter_type4_c3_anonymous_enum | {"anonymous": true}
+ t_enum_column_alter_type4                   | {"lower_case_table_names": "0"}
+(3 rows)
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-                   typname                   
----------------------------------------------
- _t_enum_column_alter_type
- _t_enum_column_alter_type_c2_anonymous_enum
- _t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type
- t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
+\d t_enum_column_alter_type4
+                       Table "public.t_enum_column_alter_type4"
+ Column |                    Type                     | Collation | Nullable | Default 
+--------+---------------------------------------------+-----------+----------+---------
+ c1     | integer                                     |           |          | 
+ c2     | t_enum_column_alter_type4_c2_anonymous_enum |           |          | 
+ c3     | t_enum_column_alter_type4_c3_anonymous_enum |           |          | 
+
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
+                   typname                    
+----------------------------------------------
+ _t_enum_column_alter_type4
+ _t_enum_column_alter_type4_c2_anonymous_enum
+ _t_enum_column_alter_type4_c3_anonymous_enum
+ t_enum_column_alter_type4
+ t_enum_column_alter_type4_c2_anonymous_enum
+ t_enum_column_alter_type4_c3_anonymous_enum
 (6 rows)
 
-insert into t_enum_column_alter_type values(11, 'a', 'c');
-alter table t_enum_column_alter_type add c4 enum('xxxx', 'yyyy');
-\d t_enum_column_alter_type
-                       Table "public.t_enum_column_alter_type"
- Column |                    Type                    | Collation | Nullable | Default 
---------+--------------------------------------------+-----------+----------+---------
- c1     | integer                                    |           |          | 
- c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
- c4     | t_enum_column_alter_type_c4_anonymous_enum |           |          | 
+insert into t_enum_column_alter_type4 values(11, 'a', 'c');
+alter table t_enum_column_alter_type4 add c4 enum('xxxx', 'yyyy');
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+                   objname                   |             option              
+---------------------------------------------+---------------------------------
+ t_enum_column_alter_type4_c2_anonymous_enum | {"anonymous": true}
+ t_enum_column_alter_type4_c3_anonymous_enum | {"anonymous": true}
+ t_enum_column_alter_type4                   | {"lower_case_table_names": "0"}
+ t_enum_column_alter_type4_c4_anonymous_enum | {"anonymous": true}
+(4 rows)
 
-insert into t_enum_column_alter_type values(33, 'a', 'c', 'yyyy');
-select * from t_enum_column_alter_type;
+\d t_enum_column_alter_type4
+                       Table "public.t_enum_column_alter_type4"
+ Column |                    Type                     | Collation | Nullable | Default 
+--------+---------------------------------------------+-----------+----------+---------
+ c1     | integer                                     |           |          | 
+ c2     | t_enum_column_alter_type4_c2_anonymous_enum |           |          | 
+ c3     | t_enum_column_alter_type4_c3_anonymous_enum |           |          | 
+ c4     | t_enum_column_alter_type4_c4_anonymous_enum |           |          | 
+
+insert into t_enum_column_alter_type4 values(33, 'a', 'c', 'yyyy');
+select * from t_enum_column_alter_type4;
  c1 | c2 | c3 |  c4  
 ----+----+----+------
  11 | a  | c  | 
  33 | a  | c  | yyyy
 (2 rows)
 
-insert into t_enum_column_alter_type values(33, 'aaaa', 'c', 'yyyy');
-ERROR:  invalid input value for enum t_enum_column_alter_type_c2_anonymous_enum: "aaaa"
-LINE 1: insert into t_enum_column_alter_type values(33, 'aaaa', 'c',...
-                                                        ^
-select * from t_enum_column_alter_type;
+insert into t_enum_column_alter_type4 values(33, 'aaaa', 'c', 'yyyy');
+ERROR:  invalid input value for enum t_enum_column_alter_type4_c2_anonymous_enum: "aaaa"
+LINE 1: insert into t_enum_column_alter_type4 values(33, 'aaaa', 'c'...
+                                                         ^
+select * from t_enum_column_alter_type4;
  c1 | c2 | c3 |  c4  
 ----+----+----+------
  11 | a  | c  | 
  33 | a  | c  | yyyy
 (2 rows)
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-                   typname                   
----------------------------------------------
- _t_enum_column_alter_type
- _t_enum_column_alter_type_c2_anonymous_enum
- _t_enum_column_alter_type_c3_anonymous_enum
- _t_enum_column_alter_type_c4_anonymous_enum
- t_enum_column_alter_type
- t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type_c4_anonymous_enum
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
+                   typname                    
+----------------------------------------------
+ _t_enum_column_alter_type4
+ _t_enum_column_alter_type4_c2_anonymous_enum
+ _t_enum_column_alter_type4_c3_anonymous_enum
+ _t_enum_column_alter_type4_c4_anonymous_enum
+ t_enum_column_alter_type4
+ t_enum_column_alter_type4_c2_anonymous_enum
+ t_enum_column_alter_type4_c3_anonymous_enum
+ t_enum_column_alter_type4_c4_anonymous_enum
 (8 rows)
 
-alter table t_enum_column_alter_type drop c4;
-select * from t_enum_column_alter_type;
+alter table t_enum_column_alter_type4 drop c4;
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+                   objname                   |             option              
+---------------------------------------------+---------------------------------
+ t_enum_column_alter_type4_c2_anonymous_enum | {"anonymous": true}
+ t_enum_column_alter_type4_c3_anonymous_enum | {"anonymous": true}
+ t_enum_column_alter_type4                   | {"lower_case_table_names": "0"}
+(3 rows)
+
+select * from t_enum_column_alter_type4;
  c1 | c2 | c3 
 ----+----+----
  11 | a  | c
  33 | a  | c
 (2 rows)
 
-\d t_enum_column_alter_type
-                       Table "public.t_enum_column_alter_type"
- Column |                    Type                    | Collation | Nullable | Default 
---------+--------------------------------------------+-----------+----------+---------
- c1     | integer                                    |           |          | 
- c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
+\d t_enum_column_alter_type4
+                       Table "public.t_enum_column_alter_type4"
+ Column |                    Type                     | Collation | Nullable | Default 
+--------+---------------------------------------------+-----------+----------+---------
+ c1     | integer                                     |           |          | 
+ c2     | t_enum_column_alter_type4_c2_anonymous_enum |           |          | 
+ c3     | t_enum_column_alter_type4_c3_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-                   typname                   
----------------------------------------------
- _t_enum_column_alter_type
- _t_enum_column_alter_type_c2_anonymous_enum
- _t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type
- t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
+                   typname                    
+----------------------------------------------
+ _t_enum_column_alter_type4
+ _t_enum_column_alter_type4_c2_anonymous_enum
+ _t_enum_column_alter_type4_c3_anonymous_enum
+ t_enum_column_alter_type4
+ t_enum_column_alter_type4_c2_anonymous_enum
+ t_enum_column_alter_type4_c3_anonymous_enum
 (6 rows)
 
-alter table t_enum_column_alter_type add c4 enum('xxxx', 'yyyy'), add c5 enum('xxxx', 'yyyy'), add c6 enum('xxxx', 'yyyy');
-select * from t_enum_column_alter_type;
+alter table t_enum_column_alter_type4 add c4 enum('xxxx', 'yyyy'), add c5 enum('xxxx', 'yyyy'), add c6 enum('xxxx', 'yyyy');
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+                   objname                   |             option              
+---------------------------------------------+---------------------------------
+ t_enum_column_alter_type4_c2_anonymous_enum | {"anonymous": true}
+ t_enum_column_alter_type4_c3_anonymous_enum | {"anonymous": true}
+ t_enum_column_alter_type4                   | {"lower_case_table_names": "0"}
+ t_enum_column_alter_type4_c4_anonymous_enum | {"anonymous": true}
+ t_enum_column_alter_type4_c5_anonymous_enum | {"anonymous": true}
+ t_enum_column_alter_type4_c6_anonymous_enum | {"anonymous": true}
+(6 rows)
+
+select * from t_enum_column_alter_type4;
  c1 | c2 | c3 | c4 | c5 | c6 
 ----+----+----+----+----+----
  11 | a  | c  |    |    | 
  33 | a  | c  |    |    | 
 (2 rows)
 
-\d t_enum_column_alter_type
-                       Table "public.t_enum_column_alter_type"
- Column |                    Type                    | Collation | Nullable | Default 
---------+--------------------------------------------+-----------+----------+---------
- c1     | integer                                    |           |          | 
- c2     | t_enum_column_alter_type_c2_anonymous_enum |           |          | 
- c3     | t_enum_column_alter_type_c3_anonymous_enum |           |          | 
- c4     | t_enum_column_alter_type_c4_anonymous_enum |           |          | 
- c5     | t_enum_column_alter_type_c5_anonymous_enum |           |          | 
- c6     | t_enum_column_alter_type_c6_anonymous_enum |           |          | 
+\d t_enum_column_alter_type4
+                       Table "public.t_enum_column_alter_type4"
+ Column |                    Type                     | Collation | Nullable | Default 
+--------+---------------------------------------------+-----------+----------+---------
+ c1     | integer                                     |           |          | 
+ c2     | t_enum_column_alter_type4_c2_anonymous_enum |           |          | 
+ c3     | t_enum_column_alter_type4_c3_anonymous_enum |           |          | 
+ c4     | t_enum_column_alter_type4_c4_anonymous_enum |           |          | 
+ c5     | t_enum_column_alter_type4_c5_anonymous_enum |           |          | 
+ c6     | t_enum_column_alter_type4_c6_anonymous_enum |           |          | 
 
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
-                   typname                   
----------------------------------------------
- _t_enum_column_alter_type
- _t_enum_column_alter_type_c2_anonymous_enum
- _t_enum_column_alter_type_c3_anonymous_enum
- _t_enum_column_alter_type_c4_anonymous_enum
- _t_enum_column_alter_type_c5_anonymous_enum
- _t_enum_column_alter_type_c6_anonymous_enum
- t_enum_column_alter_type
- t_enum_column_alter_type_c2_anonymous_enum
- t_enum_column_alter_type_c3_anonymous_enum
- t_enum_column_alter_type_c4_anonymous_enum
- t_enum_column_alter_type_c5_anonymous_enum
- t_enum_column_alter_type_c6_anonymous_enum
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
+                   typname                    
+----------------------------------------------
+ _t_enum_column_alter_type4
+ _t_enum_column_alter_type4_c2_anonymous_enum
+ _t_enum_column_alter_type4_c3_anonymous_enum
+ _t_enum_column_alter_type4_c4_anonymous_enum
+ _t_enum_column_alter_type4_c5_anonymous_enum
+ _t_enum_column_alter_type4_c6_anonymous_enum
+ t_enum_column_alter_type4
+ t_enum_column_alter_type4_c2_anonymous_enum
+ t_enum_column_alter_type4_c3_anonymous_enum
+ t_enum_column_alter_type4_c4_anonymous_enum
+ t_enum_column_alter_type4_c5_anonymous_enum
+ t_enum_column_alter_type4_c6_anonymous_enum
 (12 rows)
 
-drop table t_enum_column_alter_type;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type%' order by typname;
+alter table t_enum_column_alter_type4 alter c4 type enum('xxxx', 'yyyy');
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+                   objname                    |             option              
+----------------------------------------------+---------------------------------
+ t_enum_column_alter_type4_c2_anonymous_enum  | {"anonymous": true}
+ t_enum_column_alter_type4_c3_anonymous_enum  | {"anonymous": true}
+ t_enum_column_alter_type4                    | {"lower_case_table_names": "0"}
+ t_enum_column_alter_type4_c5_anonymous_enum  | {"anonymous": true}
+ t_enum_column_alter_type4_c6_anonymous_enum  | {"anonymous": true}
+ t_enum_column_alter_type4_c4_anonymous_enum1 | {"anonymous": true}
+(6 rows)
+
+select * from t_enum_column_alter_type4;
+ c1 | c2 | c3 | c4 | c5 | c6 
+----+----+----+----+----+----
+ 11 | a  | c  |    |    | 
+ 33 | a  | c  |    |    | 
+(2 rows)
+
+\d t_enum_column_alter_type4
+                        Table "public.t_enum_column_alter_type4"
+ Column |                     Type                     | Collation | Nullable | Default 
+--------+----------------------------------------------+-----------+----------+---------
+ c1     | integer                                      |           |          | 
+ c2     | t_enum_column_alter_type4_c2_anonymous_enum  |           |          | 
+ c3     | t_enum_column_alter_type4_c3_anonymous_enum  |           |          | 
+ c4     | t_enum_column_alter_type4_c4_anonymous_enum1 |           |          | 
+ c5     | t_enum_column_alter_type4_c5_anonymous_enum  |           |          | 
+ c6     | t_enum_column_alter_type4_c6_anonymous_enum  |           |          | 
+
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
+                    typname                    
+-----------------------------------------------
+ _t_enum_column_alter_type4
+ _t_enum_column_alter_type4_c2_anonymous_enum
+ _t_enum_column_alter_type4_c3_anonymous_enum
+ _t_enum_column_alter_type4_c4_anonymous_enum1
+ _t_enum_column_alter_type4_c5_anonymous_enum
+ _t_enum_column_alter_type4_c6_anonymous_enum
+ t_enum_column_alter_type4
+ t_enum_column_alter_type4_c2_anonymous_enum
+ t_enum_column_alter_type4_c3_anonymous_enum
+ t_enum_column_alter_type4_c4_anonymous_enum1
+ t_enum_column_alter_type4_c5_anonymous_enum
+ t_enum_column_alter_type4_c6_anonymous_enum
+(12 rows)
+
+drop table t_enum_column_alter_type4;
+select objname,option from pg_object where objname like '%t_enum_column_alter_type4%';
+ objname | option 
+---------+--------
+(0 rows)
+
+SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' order by typname;
  typname 
 ---------
 (0 rows)
@@ -3702,7 +3752,7 @@ select count(*) from pg_type where typname like '%insert_data1%';
 (1 row)
 
 select insert_data1('aaa', 'yyy', 'xxx'); -- should fail
-ERROR:  invalid input value for enum insert_data1__anonymous_enum: "yyy"
+ERROR:  invalid input value for enum insert_data1_proc_anonymous_enum: "yyy"
 LINE 1: select insert_data1('aaa', 'yyy', 'xxx');
                                    ^
 select insert_data1('aaa', 'female', 'old');
@@ -3711,7 +3761,20 @@ select insert_data1('aaa', 'female', 'old');
  
 (1 row)
 
+select objname,option from pg_object where objname like '%insert_data1%';
+              objname              |             option              
+-----------------------------------+---------------------------------
+ insert_data1_proc_anonymous_enum  | {"anonymous": true}
+ insert_data1_proc_anonymous_enum1 | {"anonymous": true}
+ insert_data1                      | {"lower_case_table_names": "0"}
+(3 rows)
+
 drop function insert_data1;
+select objname,option from pg_object where objname like '%insert_data1%';
+ objname | option 
+---------+--------
+(0 rows)
+
 select * from staff;
  name | gender | age 
 ------+--------+-----
@@ -3785,10 +3848,10 @@ BEGIN
 END
 $$ LANGUAGE PLMYSQL;
 select typname from pg_type where typname like '%insert_data1%';
-            typname            
--------------------------------
- insert_data1__anonymous_enum
- _insert_data1__anonymous_enum
+              typname              
+-----------------------------------
+ insert_data1_proc_anonymous_enum
+ _insert_data1_proc_anonymous_enum
 (2 rows)
 
 select enumsortorder,enumlabel from pg_enum where enumtypid in (select oid from pg_type where typname like '%insert_data1%');
@@ -3806,12 +3869,12 @@ BEGIN
 END
 $$ LANGUAGE PLMYSQL;
 select typname from pg_type where typname like '%insert_data1%';
-            typname             
---------------------------------
- insert_data1__anonymous_enum
- _insert_data1__anonymous_enum
- insert_data1__anonymous_enum1
- _insert_data1__anonymous_enum1
+              typname               
+------------------------------------
+ insert_data1_proc_anonymous_enum
+ _insert_data1_proc_anonymous_enum
+ insert_data1_proc_anonymous_enum1
+ _insert_data1_proc_anonymous_enum1
 (4 rows)
 
 select enumsortorder,enumlabel from pg_enum where enumtypid in (select oid from pg_type where typname like '%insert_data1%');
@@ -3840,16 +3903,16 @@ BEGIN
 END
 $$ LANGUAGE PLMYSQL;
 select typname from pg_type where typname like '%insert_data1%';
-            typname             
---------------------------------
- insert_data1__anonymous_enum
- _insert_data1__anonymous_enum
- insert_data1__anonymous_enum1
- _insert_data1__anonymous_enum1
- insert_data1__anonymous_enum2
- _insert_data1__anonymous_enum2
- insert_data1__anonymous_enum3
- _insert_data1__anonymous_enum3
+              typname               
+------------------------------------
+ insert_data1_proc_anonymous_enum
+ _insert_data1_proc_anonymous_enum
+ insert_data1_proc_anonymous_enum1
+ _insert_data1_proc_anonymous_enum1
+ insert_data1_proc_anonymous_enum2
+ _insert_data1_proc_anonymous_enum2
+ insert_data1_proc_anonymous_enum3
+ _insert_data1_proc_anonymous_enum3
 (8 rows)
 
 select enumsortorder,enumlabel from pg_enum where enumtypid in (select oid from pg_type where typname like '%insert_data1%');
@@ -3886,16 +3949,16 @@ BEGIN
 END
 $$ LANGUAGE PLMYSQL;
 select typname from pg_type where typname like '%insert_data1%';
-            typname             
---------------------------------
- insert_data1__anonymous_enum
- _insert_data1__anonymous_enum
- insert_data1__anonymous_enum1
- _insert_data1__anonymous_enum1
- insert_data1__anonymous_enum2
- _insert_data1__anonymous_enum2
- insert_data1__anonymous_enum3
- _insert_data1__anonymous_enum3
+              typname               
+------------------------------------
+ insert_data1_proc_anonymous_enum
+ _insert_data1_proc_anonymous_enum
+ insert_data1_proc_anonymous_enum1
+ _insert_data1_proc_anonymous_enum1
+ insert_data1_proc_anonymous_enum2
+ _insert_data1_proc_anonymous_enum2
+ insert_data1_proc_anonymous_enum3
+ _insert_data1_proc_anonymous_enum3
 (8 rows)
 
 select enumsortorder,enumlabel from pg_enum where enumtypid in (select oid from pg_type where typname like '%insert_data1%');
@@ -3947,22 +4010,22 @@ select proname,pronamespace,prorettype,pronargs from pg_proc where proname like 
 (4 rows)
 
 \df insert_data1
-                                                     List of functions
- Schema |     Name     | Result data type |                           Argument data types                           | Type 
---------+--------------+------------------+-------------------------------------------------------------------------+------
- public | insert_data1 | void             | character                                                               | func
- public | insert_data1 | void             | character, insert_data1__anonymous_enum                                 | func
- public | insert_data1 | void             | character, insert_data1__anonymous_enum1                                | func
- public | insert_data1 | void             | character, insert_data1__anonymous_enum2, insert_data1__anonymous_enum3 | func
+                                                         List of functions
+ Schema |     Name     | Result data type |                               Argument data types                               | Type 
+--------+--------------+------------------+---------------------------------------------------------------------------------+------
+ public | insert_data1 | void             | character                                                                       | func
+ public | insert_data1 | void             | character, insert_data1_proc_anonymous_enum                                     | func
+ public | insert_data1 | void             | character, insert_data1_proc_anonymous_enum1                                    | func
+ public | insert_data1 | void             | character, insert_data1_proc_anonymous_enum2, insert_data1_proc_anonymous_enum3 | func
 (4 rows)
 
 drop function insert_data1;
 ERROR:  function name "insert_data1" is not unique
 HINT:  Specify the argument list to select the function unambiguously.
 drop function insert_data1(character);
-drop function insert_data1(character, insert_data1__anonymous_enum);
-drop function insert_data1(character, insert_data1__anonymous_enum1);
-drop function insert_data1(character, insert_data1__anonymous_enum2, insert_data1__anonymous_enum3);
+drop function insert_data1(character, insert_data1_proc_anonymous_enum);
+drop function insert_data1(character, insert_data1_proc_anonymous_enum1);
+drop function insert_data1(character, insert_data1_proc_anonymous_enum2, insert_data1_proc_anonymous_enum3);
 select typname from pg_type where typname like '%insert_data1%';
  typname 
 ---------
@@ -3986,10 +4049,10 @@ INSERT INTO staff (name, gender, age) VALUES (param1,param2, param3);
 END
 $$ LANGUAGE PLMYSQL;
 select insert_data2('aaa', 'yyy', 'xxx'); -- should fail
-WARNING:  invalid input value for enum insert_data2__anonymous_enum: "yyy"
+WARNING:  invalid input value for enum insert_data2_proc_anonymous_enum: "yyy"
 LINE 1: select insert_data2('aaa', 'yyy', 'xxx');
                                    ^
-WARNING:  invalid input value for enum insert_data2__anonymous_enum1: "xxx"
+WARNING:  invalid input value for enum insert_data2_proc_anonymous_enum1: "xxx"
 LINE 1: select insert_data2('aaa', 'yyy', 'xxx');
                                           ^
 WARNING:   Data truncated for column
@@ -4286,14 +4349,14 @@ create table table_like_test_2 (like table_like_test);
  a      | table_like_test_a_anonymous_enum |           |          | 
 
 \d table_like_test_2
-                       Table "public.table_like_test_2"
- Column |                Type                | Collation | Nullable | Default 
---------+------------------------------------+-----------+----------+---------
- a      | table_like_test_2_a_anonymous_enum |           |          | 
+                      Table "public.table_like_test_2"
+ Column |               Type               | Collation | Nullable | Default 
+--------+----------------------------------+-----------+----------+---------
+ a      | table_like_test_a_anonymous_enum |           |          | 
 
 drop table table_like_test;
 drop table table_like_test_2;
-SELECT typname FROM pg_type WHERE typname like '%anonymous_enum%';
+SELECT typname FROM pg_type WHERE typname like '%a_anonymous_enum%';
  typname 
 ---------
 (0 rows)
@@ -4566,3 +4629,344 @@ FROM enum_int_binary_ops;
 (5 rows)
 
 drop table enum_int_binary_ops;
+----bug 5779------------------------------------------
+create table t_base (
+  username varchar(50),
+  status enum('active','inactive','locked')
+);
+insert into t_base (username, status) values
+('zhangsan', 'active'),
+('lisi', 'inactive'),
+('wangwu', 'locked'),
+('zhaoliu', 'active');
+create materialized view mv1 as select * from t_base;
+drop table t_base;
+ERROR:  cannot drop table t_base because other objects depend on it
+DETAIL:  materialized view mv1 depends on table t_base
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+drop materialized view mv1;
+drop table t_base;
+----bug 5782 ------------------------------------------
+create table t1_enum(col_1 enum('a','b','c'),col_2 enum('测试','开发'));
+create table t2_enum(col_1 t1_enum_col_1_anonymous_enum,col_2 t1_enum_col_2_anonymous_enum);
+insert into t1_enum values('a'),('b');
+\d t1_enum
+                         Table "public.t1_enum"
+ Column |             Type             | Collation | Nullable | Default 
+--------+------------------------------+-----------+----------+---------
+ col_1  | t1_enum_col_1_anonymous_enum |           |          | 
+ col_2  | t1_enum_col_2_anonymous_enum |           |          | 
+
+\d t2_enum
+                         Table "public.t2_enum"
+ Column |             Type             | Collation | Nullable | Default 
+--------+------------------------------+-----------+----------+---------
+ col_1  | t1_enum_col_1_anonymous_enum |           |          | 
+ col_2  | t1_enum_col_2_anonymous_enum |           |          | 
+
+alter table t1_enum alter column col_1 type int;
+\d t1_enum
+                         Table "public.t1_enum"
+ Column |             Type             | Collation | Nullable | Default 
+--------+------------------------------+-----------+----------+---------
+ col_1  | integer                      |           |          | 
+ col_2  | t1_enum_col_2_anonymous_enum |           |          | 
+
+\d t2_enum
+                         Table "public.t2_enum"
+ Column |             Type             | Collation | Nullable | Default 
+--------+------------------------------+-----------+----------+---------
+ col_1  | t1_enum_col_1_anonymous_enum |           |          | 
+ col_2  | t1_enum_col_2_anonymous_enum |           |          | 
+
+alter table t2_enum alter col_2 type t1_enum_col_2_anonymous_enum;
+\d t1_enum
+                         Table "public.t1_enum"
+ Column |             Type             | Collation | Nullable | Default 
+--------+------------------------------+-----------+----------+---------
+ col_1  | integer                      |           |          | 
+ col_2  | t1_enum_col_2_anonymous_enum |           |          | 
+
+\d t2_enum
+                         Table "public.t2_enum"
+ Column |             Type             | Collation | Nullable | Default 
+--------+------------------------------+-----------+----------+---------
+ col_1  | t1_enum_col_1_anonymous_enum |           |          | 
+ col_2  | t1_enum_col_2_anonymous_enum |           |          | 
+
+drop table t1_enum;
+drop table t2_enum;
+----bug 5783:partition------------------------------------------
+create table region_orders (
+    order_id serial,
+    user_id int not null,
+    order_amount numeric(10,2) not null,
+    order_time timestamp default current_timestamp,
+    regioncol enum ('北京','上海','广州','深圳','天津','济南','其他') not null
+) partition by list(regioncol);
+create table region_orders_北京 partition of region_orders for values in ('北京');
+create table region_orders_上海 partition of region_orders for values in ('上海');
+create table region_orders_广州 partition of region_orders for values in ('广州');
+create table region_orders_深圳 partition of region_orders for values in ('深圳');
+create table region_orders_天津 partition of region_orders for values in ('天津');
+create table region_orders_济南 partition of region_orders for values in ('济南');
+create table region_orders_其他 partition of region_orders for values in ('其他');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(1, 101, 299.00, '北京'), (2, 102, 499.50, '北京');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(3, 103, 599.00, '上海'), (4, 104, 799.99, '上海');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(5, 105, 399.00, '广州'), (6, 106, 699.50, '广州');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(7, 107, 899.00, '深圳'), (8, 108, 999.99, '深圳');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(9, 109, 199.00, '天津'), (10, 110, 299.50, '天津');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(11, 111, 399.00, '济南'), (12, 112, 499.50, '济南');
+insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
+(13, 113, 599.00, '其他'), (14, 114, 699.50, '其他');
+\d region_orders
+                                            Partitioned table "public.region_orders"
+    Column    |                  Type                  | Collation | Nullable |                     Default                     
+--------------+----------------------------------------+-----------+----------+-------------------------------------------------
+ order_id     | integer                                |           | not null | nextval('region_orders_order_id_seq'::regclass)
+ user_id      | integer                                |           | not null | 
+ order_amount | numeric(10,2)                          |           | not null | 
+ order_time   | timestamp                              |           |          | "current_timestamp"()
+ regioncol    | region_orders_regioncol_anonymous_enum |           | not null | 
+Partition key: LIST (regioncol)
+Number of partitions: 7 (Use \d+ to list them.)
+
+\d region_orders_北京
+                                               Table "public.region_orders_北京"
+    Column    |                  Type                  | Collation | Nullable |                     Default                     
+--------------+----------------------------------------+-----------+----------+-------------------------------------------------
+ order_id     | integer                                |           | not null | nextval('region_orders_order_id_seq'::regclass)
+ user_id      | integer                                |           | not null | 
+ order_amount | numeric(10,2)                          |           | not null | 
+ order_time   | timestamp                              |           |          | "current_timestamp"()
+ regioncol    | region_orders_regioncol_anonymous_enum |           | not null | 
+Partition of: region_orders FOR VALUES IN ('北京')
+
+select typname from pg_type where typname like '%regioncol%';
+                 typname                 
+-----------------------------------------
+ region_orders_regioncol_anonymous_enum
+ _region_orders_regioncol_anonymous_enum
+(2 rows)
+
+select objname,option from pg_object where objname like '%regioncol%';
+                objname                 |       option        
+----------------------------------------+---------------------
+ region_orders_regioncol_anonymous_enum | {"anonymous": true}
+(1 row)
+
+drop TABLE public.region_orders;
+select typname from pg_type where typname like '%regioncol%';
+ typname 
+---------
+(0 rows)
+
+select objname,option from pg_object where objname like '%regioncol%';
+ objname | option 
+---------+--------
+(0 rows)
+
+CREATE TABLE public.region_orders (
+    order_id integer NOT NULL,
+    user_id integer NOT NULL,
+    order_amount numeric(10,2) NOT NULL,
+    order_time timestamp DEFAULT ivymy.current_timestamp(),
+    regioncol enum('北京', '上海', '广州', '深圳', '天津', '济南', '其他') NOT NULL
+)
+PARTITION BY LIST (regioncol);
+CREATE TABLE public.region_orders_北京 (
+    order_id integer NOT NULL,
+    user_id integer NOT NULL,
+    order_amount numeric(10,2) NOT NULL,
+    order_time timestamp DEFAULT ivymy.current_timestamp(),
+    regioncol enum('北京', '上海', '广州', '深圳', '天津', '济南', '其他') NOT NULL
+);
+CREATE TABLE public.region_orders_上海 (
+    order_id integer NOT NULL,
+    user_id integer NOT NULL,
+    order_amount numeric(10,2) NOT NULL,
+    order_time timestamp DEFAULT ivymy.current_timestamp(),
+    regioncol enum('北京', '上海', '广州', '深圳', '天津', '济南', '其他') NOT NULL
+);
+select typname from pg_type where typname like '%regioncol%';
+                   typname                    
+----------------------------------------------
+ region_orders_regioncol_anonymous_enum
+ _region_orders_regioncol_anonymous_enum
+ region_orders_北京_regioncol_anonymous_enum
+ _region_orders_北京_regioncol_anonymous_enum
+ region_orders_上海_regioncol_anonymous_enum
+ _region_orders_上海_regioncol_anonymous_enum
+(6 rows)
+
+select objname,option from pg_object where objname like '%regioncol%';
+                   objname                   |       option        
+---------------------------------------------+---------------------
+ region_orders_regioncol_anonymous_enum      | {"anonymous": true}
+ region_orders_北京_regioncol_anonymous_enum | {"anonymous": true}
+ region_orders_上海_regioncol_anonymous_enum | {"anonymous": true}
+(3 rows)
+
+ALTER TABLE ONLY public.region_orders ATTACH PARTITION public.region_orders_北京 FOR VALUES IN ('北京');
+ERROR:  child table "region_orders_北京" has different type for column "regioncol"
+\d region_orders
+                               Partitioned table "public.region_orders"
+    Column    |                  Type                  | Collation | Nullable |        Default        
+--------------+----------------------------------------+-----------+----------+-----------------------
+ order_id     | integer                                |           | not null | 
+ user_id      | integer                                |           | not null | 
+ order_amount | numeric(10,2)                          |           | not null | 
+ order_time   | timestamp                              |           |          | "current_timestamp"()
+ regioncol    | region_orders_regioncol_anonymous_enum |           | not null | 
+Partition key: LIST (regioncol)
+Number of partitions: 0
+
+\d region_orders_北京
+                                      Table "public.region_orders_北京"
+    Column    |                     Type                      | Collation | Nullable |        Default        
+--------------+-----------------------------------------------+-----------+----------+-----------------------
+ order_id     | integer                                       |           | not null | 
+ user_id      | integer                                       |           | not null | 
+ order_amount | numeric(10,2)                                 |           | not null | 
+ order_time   | timestamp                                     |           |          | "current_timestamp"()
+ regioncol    | "region_orders_北京_regioncol_anonymous_enum" |           | not null | 
+
+\d region_orders_上海
+                                      Table "public.region_orders_上海"
+    Column    |                     Type                      | Collation | Nullable |        Default        
+--------------+-----------------------------------------------+-----------+----------+-----------------------
+ order_id     | integer                                       |           | not null | 
+ user_id      | integer                                       |           | not null | 
+ order_amount | numeric(10,2)                                 |           | not null | 
+ order_time   | timestamp                                     |           |          | "current_timestamp"()
+ regioncol    | "region_orders_上海_regioncol_anonymous_enum" |           | not null | 
+
+drop TABLE public.region_orders;
+drop TABLE public.region_orders_北京;
+drop TABLE public.region_orders_上海;
+select typname from pg_type where typname like '%regioncol%';
+ typname 
+---------
+(0 rows)
+
+select objname,option from pg_object where objname like '%regioncol%';
+ objname | option 
+---------+--------
+(0 rows)
+
+-- bug 5757
+create table t_enum_grammar ( col_1 enum ('a','b','c') , col_2 ENUM ('测试','#') default '测试' , col_3 Enum ('1','2','3') ); 
+create index idx_col_1 on t_enum_grammar(col_1); 
+insert into t_enum_grammar values ('a',default,2);
+select typname from pg_type where typname like '%t_enum_grammar%';
+               typname                
+--------------------------------------
+ t_enum_grammar_col_1_anonymous_enum
+ _t_enum_grammar_col_1_anonymous_enum
+ t_enum_grammar_col_2_anonymous_enum
+ _t_enum_grammar_col_2_anonymous_enum
+ t_enum_grammar_col_3_anonymous_enum
+ _t_enum_grammar_col_3_anonymous_enum
+ t_enum_grammar
+ _t_enum_grammar
+(8 rows)
+
+select objname,option from pg_object where objname like '%t_enum_grammar%';
+               objname               |             option              
+-------------------------------------+---------------------------------
+ t_enum_grammar_col_1_anonymous_enum | {"anonymous": true}
+ t_enum_grammar_col_2_anonymous_enum | {"anonymous": true}
+ t_enum_grammar_col_3_anonymous_enum | {"anonymous": true}
+ t_enum_grammar                      | {"lower_case_table_names": "0"}
+(4 rows)
+
+create table t_enum_like (like t_enum_grammar including all);
+select typname from pg_type where typname like '%t_enum_like%';
+   typname    
+--------------
+ t_enum_like
+ _t_enum_like
+(2 rows)
+
+select objname,option from pg_object where objname like '%t_enum_like%';
+   objname   |             option              
+-------------+---------------------------------
+ t_enum_like | {"lower_case_table_names": "0"}
+(1 row)
+
+select * from t_enum_grammar;
+ col_1 | col_2 | col_3 
+-------+-------+-------
+ a     | 测试  | 2
+(1 row)
+
+select * from t_enum_like;
+ col_1 | col_2 | col_3 
+-------+-------+-------
+(0 rows)
+
+drop TABLE t_enum_grammar;
+select * from t_enum_like;
+ col_1 | col_2 | col_3 
+-------+-------+-------
+(0 rows)
+
+select typname from pg_type where typname like '%t_enum_grammar%';
+               typname                
+--------------------------------------
+ t_enum_grammar_col_1_anonymous_enum
+ _t_enum_grammar_col_1_anonymous_enum
+ t_enum_grammar_col_2_anonymous_enum
+ _t_enum_grammar_col_2_anonymous_enum
+ t_enum_grammar_col_3_anonymous_enum
+ _t_enum_grammar_col_3_anonymous_enum
+(6 rows)
+
+select objname,option from pg_object where objname like '%t_enum_grammar%';
+               objname               |       option        
+-------------------------------------+---------------------
+ t_enum_grammar_col_1_anonymous_enum | {"anonymous": true}
+ t_enum_grammar_col_2_anonymous_enum | {"anonymous": true}
+ t_enum_grammar_col_3_anonymous_enum | {"anonymous": true}
+(3 rows)
+
+select typname from pg_type where typname like '%t_enum_like%';
+   typname    
+--------------
+ t_enum_like
+ _t_enum_like
+(2 rows)
+
+select objname,option from pg_object where objname like '%t_enum_like%';
+   objname   |             option              
+-------------+---------------------------------
+ t_enum_like | {"lower_case_table_names": "0"}
+(1 row)
+
+drop TABLE t_enum_like;
+select typname from pg_type where typname like '%t_enum_grammar%';
+ typname 
+---------
+(0 rows)
+
+select objname,option from pg_object where objname like '%t_enum_grammar%';
+ objname | option 
+---------+--------
+(0 rows)
+
+select typname from pg_type where typname like '%t_enum_like%';
+ typname 
+---------
+(0 rows)
+
+select objname,option from pg_object where objname like '%t_enum_like%';
+ objname | option 
+---------+--------
+(0 rows)
+

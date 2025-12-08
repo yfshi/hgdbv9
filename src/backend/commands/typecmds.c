@@ -146,6 +146,7 @@ static void AlterTypeRecurse(Oid typeOid, bool isImplicitArray,
 							 HeapTuple tup, Relation catalog,
 							 AlterTypeRecurseParams *atparams);
 
+static List *add_enum_type_list(Oid typeOid, List *typlist); /* ReqID:SRS-MYSQL-ENUMTYPE */
 
 /*
  * DefineType
@@ -4618,18 +4619,192 @@ AlterTypeRecurse(Oid typeOid, bool isImplicitArray,
 
 /* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
 /*
+ * when drop a table:
+ * add need droped enum type to the list
+ */
+static List *
+add_enum_type_list(Oid typeOid, List *typlist)
+{
+	ObjectAddress object;
+	PgObjectInfo objinfo = NULL;
+	if (type_is_enum(typeOid) && !more_relation_depend_on_enum(typeOid))
+	{
+		if (pg_object_get_ori_infor_hook)
+		{
+			ObjectAddressSet(object, TypeRelationId, typeOid);
+			objinfo = pg_object_get_ori_infor_hook(object);
+			if (objinfo && objinfo->oricompatible_mode == 'm' &&
+				objinfo->orioption != NULL)
+			{
+				JsonbValue key;
+				JsonbValue *followsValue = NULL;
+
+				key.type = jbvString;
+				key.val.string.val = "anonymous";
+				key.val.string.len = strlen("anonymous");
+
+				followsValue = findJsonbValueFromContainer(&objinfo->orioption->root, JB_FOBJECT, &key);
+				if (followsValue)
+				{
+					pg_object_drop_obj_hook(object);
+					typlist = lappend_oid(typlist, typeOid);
+				}
+			}
+		}
+	}
+
+	return typlist;
+}
+
+/*
+ * when drop a function:
+ * add need droped enum type to the list
+ */
+List *
+TryGetFuncTypeNeedDrop(Oid procoid)
+{
+	Form_pg_proc procform;
+	HeapTuple tup ;
+	List *typlist = NIL;
+
+	if (InvalidOid == procoid)
+	{
+		return NIL;
+	}
+	tup = SearchSysCache1(PROCOID, ObjectIdGetDatum(procoid));
+	if (!HeapTupleIsValid(tup))
+		elog(ERROR, "cache lookup failed for function %u", procoid);
+	procform = (Form_pg_proc) GETSTRUCT(tup);
+
+	for (int i = 0; i < procform->pronargs; i++)
+	{
+		Oid typeOid = procform->proargtypes.values[i];
+		typlist = add_enum_type_list(typeOid, typlist);
+	}
+	ReleaseSysCache(tup);
+
+	return typlist;
+}
+/*
+ * when drop a table, query the enum type created in the table 
+ * add need droped enum type to the list
+ */
+List *
+TryGetTypeNeedDrop(Oid relOid)
+{
+	List *typlist = NULL;
+	TupleDesc tupDesc;
+	Relation rel;
+
+	if (InvalidOid == relOid)
+	{
+		return NULL;
+	}
+
+	rel = try_relation_open(relOid, NoLock);
+	if (rel == NULL || rel->rd_att == NULL ||
+		!(rel->rd_rel->relkind == RELKIND_RELATION ||
+		 rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE))
+	{
+		if (rel != NULL)
+		{
+			relation_close(rel, NoLock);
+		}
+		return NULL;
+	}
+	tupDesc = rel->rd_att;
+
+	for (int i = 0; i < tupDesc->natts; i++)
+	{
+		if (tupDesc->attrs[i].attisdropped)
+		{
+			continue;
+		}
+		typlist = add_enum_type_list(tupDesc->attrs[i].atttypid, typlist);
+	}
+	if (rel != NULL)
+	{
+		relation_close(rel, NoLock);
+	}
+	return typlist;
+}
+
+/*
+ * add need droped enum type to the exact_object_address list
+ */
+void
+add_enum_type_object_address(List *typOidList, ObjectAddresses *objects)
+{
+	ObjectAddress obj;
+	ListCell *cell;
+	if (typOidList == NULL)
+	{
+		return;
+	}
+
+	foreach (cell, typOidList)
+	{
+		Oid typid = lfirst_oid(cell);
+		obj.classId = TypeRelationId;
+		obj.objectId = typid;
+		obj.objectSubId = 0;
+		add_exact_object_address(&obj, objects);
+	}
+}
+
+/*
+ * use enum type for more than two tables or functions
+ */
+bool
+more_relation_depend_on_enum(Oid atttypid)
+{
+	Relation class_rel;
+	ScanKeyData skey;
+	SysScanDesc scan;
+	HeapTuple maptup;
+	int dependnum = 0;
+
+	class_rel = table_open(DependRelationId, AccessShareLock);
+
+	ScanKeyInit(&skey,
+				Anum_pg_depend_refobjid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(atttypid));
+
+	scan = systable_beginscan(class_rel, DependReferenceIndexId, true,
+							  NULL, 1, &skey);
+
+	while ((maptup = systable_getnext(scan)) != NULL)
+	{
+		Form_pg_depend foundDep = (Form_pg_depend)GETSTRUCT(maptup);
+
+		if (foundDep->objsubid != 0 && foundDep->refobjid == atttypid &&
+			false == get_rel_relispartition(foundDep->objid))
+		{
+			dependnum++;
+			continue;
+		}
+	}
+
+	systable_endscan(scan);
+	table_close(class_rel, AccessShareLock);
+
+	if (dependnum >= 2)
+		return true;
+	return false;
+}
+
+/*
  * CreateEnumTypeForAlterTable
  *		create new enum type when modify table.
  */
 void
 CreateEnumTypeForAlterTable(Form_pg_attribute attTup, char *relname, char *colname, TypeName *typname)
 {
-	Oid 	enumoid = InvalidOid;
 	char 	*enumName = NULL;
 	char 	*enumTypeName = NULL;
 	char 	*enumnspstr = NULL;
 	Oid 	enumnspoid;
-	ObjectAddress myself, referenced;
 
 	assert(typename_is_enum(typname));
 	
@@ -4643,14 +4818,7 @@ CreateEnumTypeForAlterTable(Form_pg_attribute attTup, char *relname, char *colna
 	typname->names = lcons(makeString(enumnspstr), typname->names);
 	strVal(llast(typname->names)) = enumTypeName;
 
-	enumoid = DefineAnonymousEnum(typname);
-
-	/* no need insert pg_object , write the pg_depend table directly */
-	/* Add dependency info */
-	ObjectAddressSubSet(myself, RelationRelationId, attTup->attrelid, attTup->attnum + 1);
-	ObjectAddressSet(referenced, TypeRelationId, enumoid);
-	/* add dependencies on their datatypes and collations */
-	recordDependencyOn(&referenced, &myself, DEPENDENCY_AUTO);
+	DefineAnonymousEnum(typname);
 
 	/* CommandCounterIncrement here to ensure that preceding changes are all
 	 * visible to the type checking step.

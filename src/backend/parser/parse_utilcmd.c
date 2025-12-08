@@ -38,6 +38,7 @@
 #include "catalog/pg_am.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_constraint.h"
+#include "catalog/pg_depend.h"
 #include "catalog/pg_enum.h"
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_operator.h"
@@ -69,6 +70,7 @@
 #include "rewrite/rewriteManip.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/fmgroids.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
 #include "utils/ora_compatible.h"
@@ -1507,33 +1509,8 @@ transformTableLikeClause(CreateStmtContext *cxt, TableLikeClause *table_like_cla
 		def = makeNode(ColumnDef);
 		def->colname = pstrdup(attributeName);
 
-		/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-		if (type_is_enum(attribute->atttypid) && type_is_anonymous_enum(attribute->atttypid))
-		{
-			TypeName 	*enumtype = NULL;
-			const char 	*colname = attribute->attname.data;
-			RangeVar 	*rel = cxt->relation;
-			char		*enumTypeName;
-			Oid			enumnspoid = InvalidOid;
-
-			enumnspoid = RangeVarGetCreationNamespace(rel);
-
-			enumTypeName = ChooseTypeName(rel->relname, colname, "anonymous_enum", 
-										  enumnspoid, false);
-			enumtype = makeTypeNameFromNameList(
-				list_make2(
-					makeString(get_namespace_name(enumnspoid)),
-					makeString(enumTypeName)));
-			enumtype->typmods = copy_enum_label(attribute->atttypid);
-			enumtype->typemod = -1;
-
-			def->typeName = makeTypeNameFromOid(DefineAnonymousEnum(enumtype),
-												attribute->atttypmod);
-		}
-		else
-		/* End - ReqID:SRS-MYSQL-ENUMTYPE */
-			def->typeName = makeTypeNameFromOid(attribute->atttypid,
-												attribute->atttypmod);
+		def->typeName = makeTypeNameFromOid(attribute->atttypid,
+										attribute->atttypmod);
 		def->inhcount = 0;
 		def->is_local = true;
 		def->is_not_null = attribute->attnotnull;
@@ -3848,7 +3825,7 @@ DropTypeOwnedByTable(CreateStmtContext *cxt, char *colname)
 	typname = get_typename(atttypid);
 
 	/* get depend */
-	if (type_is_enum(atttypid) && type_is_anonymous_enum(atttypid))
+	if (type_is_enum(atttypid) && type_is_anonymous_enum(atttypid) && !more_relation_depend_on_enum(atttypid))
 	{
 		char 	*nspace = get_typenamespace(atttypid);
 		DropStmt *stmt = makeNode(DropStmt);
@@ -4064,7 +4041,21 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					elog(ERROR, "unrecognized node type: %d",
 						 (int) nodeTag(cmd->def));
 				break;
-
+			/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+			/* ALTER TABLE test DROP myjob;
+			 * drop enum type when drop col 
+			 */
+			case AT_DropColumn:
+				{
+					if (compatible_mode == MYS_MODE)
+					{
+						/* if the dropped column type is an enum, should drop it after */
+						DropTypeOwnedByTable(&cxt, cmd->name);
+					}
+					newcmds = lappend(newcmds, cmd);
+					break;
+				}
+			/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 			case AT_AlterColumnType:
 				{
 					ColumnDef  *def = castNode(ColumnDef, cmd->def);
