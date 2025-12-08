@@ -76,6 +76,26 @@ create index t11_9 on t11(str1(10));
 \d+ t11
 drop table t11;
 
+--Begin - BUG#Z6657
+CREATE TABLE test_table (
+    id INT PRIMARY KEY,
+    tinytext_column TINYTEXT,
+    text_column TEXT,
+    mediumtext_column MEDIUMTEXT,
+    longtext_column LONGTEXT
+);
+
+CREATE INDEX idx_tinytext ON test_table (tinytext_column(86)); --error
+CREATE INDEX idx_tinytext ON test_table (tinytext_column(85));
+CREATE INDEX idx_text ON test_table (text_column(1025)); --error
+CREATE INDEX idx_text ON test_table (text_column(1024));
+CREATE INDEX idx_mediumtext ON test_table (mediumtext_column(1025)); --error
+CREATE INDEX idx_mediumtext ON test_table (mediumtext_column(1024));
+CREATE INDEX idx_longtext ON test_table (longtext_column (1025)); --error
+CREATE INDEX idx_longtext ON test_table (longtext_column (1024));
+
+--End - BUG#Z6657
+
 create table t11(id int, str1 varchar(10), str2 varchar(10));
 create UNIQUE index t11_7 on t11 (str1(6));
 insert into t11 values(1, 'aaaaaa', 'bbbbb');
