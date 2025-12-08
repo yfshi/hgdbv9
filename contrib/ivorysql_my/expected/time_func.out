@@ -5545,3 +5545,85 @@ SELECT TIMESTAMPDIFF(MICROSECOND, '2024-01-01 23:59:59', '2024-01-01 23:59:59.12
         123457
 (1 row)
 
+--bug#6651
+SELECT UNIX_TIMESTAMP('2023-01-01 12:30:45');
+ UNIX_TIMESTAMP 
+----------------
+     1672605045
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2023-01-01');
+ UNIX_TIMESTAMP 
+----------------
+     1672560000
+(1 row)
+
+SELECT UNIX_TIMESTAMP('1970-01-01 00:00:00');
+ UNIX_TIMESTAMP 
+----------------
+          28800
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07');
+ UNIX_TIMESTAMP 
+----------------
+     2147512447
+(1 row)
+
+SELECT UNIX_TIMESTAMP(20380119031407);
+ UNIX_TIMESTAMP 
+----------------
+     2147512447
+(1 row)
+
+SELECT UNIX_TIMESTAMP(20380119);
+ UNIX_TIMESTAMP 
+----------------
+     2147500800
+(1 row)
+
+SELECT UNIX_TIMESTAMP('20250119031407'::DECIMAL(20,6));
+ UNIX_TIMESTAMP 
+----------------
+     1737285247
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07'::datetime);
+ UNIX_TIMESTAMP 
+----------------
+     2147512447
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07'::date);
+ UNIX_TIMESTAMP 
+----------------
+     2147500800
+(1 row)
+
+SELECT UNIX_TIMESTAMP(20380119031407::time);
+WARNING:  Incorrect DATETIME value: '31407'
+ UNIX_TIMESTAMP 
+----------------
+               
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-00-19 03:14:07');
+ UNIX_TIMESTAMP 
+----------------
+              0
+(1 row)
+
+SELECT UNIX_TIMESTAMP('0000-1-0 00:00:00');
+ UNIX_TIMESTAMP 
+----------------
+              0
+(1 row)
+
+set TIMEZONE='UTC';
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07');
+ UNIX_TIMESTAMP 
+----------------
+     2147483647
+(1 row)
+
+set TIMEZONE='Asia/Shanghai';
