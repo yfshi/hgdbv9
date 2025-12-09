@@ -1858,11 +1858,67 @@ IMMUTABLE;
 --unix_timestamp
 CREATE FUNCTION ivymy.unix_timestamp()
 RETURNS numeric
-AS 'MODULE_PATHNAME','unix_timestamp_no_args'
+AS 'MODULE_PATHNAME','unix_timestamp'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+CREATE FUNCTION ivymy.unix_timestamp(datetime)
+RETURNS numeric
+AS 'MODULE_PATHNAME','unix_timestamp'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.unix_timestamp(p1 text)
+RETURNS numeric
+IMMUTABLE 
+AS $$
+SELECT ivymy.unix_timestamp(p1::datetime);
+$$ 
+LANGUAGE sql;
+
+CREATE FUNCTION ivymy.unix_timestamp(p1 integer)
+RETURNS numeric
+IMMUTABLE 
+AS $$
+SELECT ivymy.unix_timestamp(p1::datetime);
+$$ 
+LANGUAGE sql;
+
+CREATE FUNCTION ivymy.unix_timestamp(p1 bigint)
+RETURNS numeric
+IMMUTABLE 
+AS $$
+SELECT ivymy.unix_timestamp(p1::datetime);
+$$ 
+LANGUAGE sql;
+
+CREATE FUNCTION ivymy.unix_timestamp(p1 numeric)
+RETURNS numeric
+IMMUTABLE 
+AS $$
+SELECT ivymy.unix_timestamp(p1::datetime);
+$$ 
+LANGUAGE sql;
+
+CREATE FUNCTION ivymy.unix_timestamp(p1 date)
+RETURNS numeric
+IMMUTABLE 
+AS $$
+SELECT ivymy.unix_timestamp(p1::datetime);
+$$ 
+LANGUAGE sql;
+
+CREATE FUNCTION ivymy.unix_timestamp(p1 time)
+RETURNS numeric
+IMMUTABLE 
+AS $$
+SELECT ivymy.unix_timestamp(p1::numeric::datetime);
+$$ 
+LANGUAGE sql;
 
 --utc_date
 CREATE FUNCTION ivymy.utc_date()

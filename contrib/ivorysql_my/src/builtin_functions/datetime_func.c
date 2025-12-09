@@ -88,7 +88,7 @@ PG_FUNCTION_INFO_V1(timestamp_arg2);
 
 PG_FUNCTION_INFO_V1(to_days);
 PG_FUNCTION_INFO_V1(to_seconds);
-PG_FUNCTION_INFO_V1(unix_timestamp_no_args);
+PG_FUNCTION_INFO_V1(unix_timestamp);
 PG_FUNCTION_INFO_V1(utc_date_func);
 PG_FUNCTION_INFO_V1(utc_time_func);
 PG_FUNCTION_INFO_V1(utc_timestamp_func);
@@ -3382,22 +3382,51 @@ to_seconds(PG_FUNCTION_ARGS)
 }
 
 Datum
-unix_timestamp_no_args(PG_FUNCTION_ARGS)
+unix_timestamp(PG_FUNCTION_ARGS)
 {
-	Timestamp now;
+	struct pg_tm ttx, *tmx = &ttx;
+	Timestamp input;
 	Timestamp epoch;
-	struct pg_tm tt, *tm = &tt;
 	Timestamp result;
 
-	GetCurrentDateTime(tm);
+	GetCurrentDateTime(tmx);
+
+	if(PG_NARGS())
+	{
+		TimeADT	datetime = PG_GETARG_TIMEADT(0);
+		struct pg_tm tt, *tm = &tt;
+		int64 part1, part2;
+		DateADT date = 0;
+
+		date = datetime / 1000000;
+		part1 = (date / 10000);
+		part2 = (date - part1 * 10000);
+		tm->tm_year = part1;
+		tm->tm_mon = part2 / 100;
+		tm->tm_mday = part2 % 100;
+		tm->tm_hour = datetime % 1000000 / 10000;
+		tm->tm_min = datetime % 1000000 % 10000 / 100;
+		tm->tm_sec = datetime % 1000000 % 10000 % 100;
+
+		if (tm->tm_year == 0 || tm->tm_mon == 0 || tm->tm_mday == 0)
+		{
+			PG_RETURN_NUMERIC(int64_to_numeric(0));
+		}
+
+		tm2timestamp(tm, 0, NULL, &input);
+	}
+	else
+	{
+		tm2timestamp(tmx, 0, NULL, &input);
+	}
+
 	epoch = SetEpochTimestamp();
-	tm2timestamp(tm, 0, NULL, &now);
-	result = now - epoch - tm->tm_gmtoff * USECS_PER_SEC;
+	result = input - epoch - tmx->tm_gmtoff * USECS_PER_SEC;;
 	PG_RETURN_NUMERIC(DirectFunctionCall2(numeric_trunc,
-					   DirectFunctionCall2(numeric_div,
-					   DirectFunctionCall1(int8_numeric, result),
-					   DirectFunctionCall1(int8_numeric, USECS_PER_SEC)),
-					   determine_precision(result % USECS_PER_SEC)));
+										DirectFunctionCall2(numeric_div,
+															DirectFunctionCall1(int8_numeric, result),
+															DirectFunctionCall1(int8_numeric, USECS_PER_SEC)),
+										determine_precision(result % USECS_PER_SEC)));
 }
 
 
