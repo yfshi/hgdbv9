@@ -124,6 +124,16 @@ call sch_syssso_u2.func_sysdba_u1_f1(1,1);
 call func_syssso_u1(1,1);
 call func_syssao_u1(1,1);
 
+---- bug z4253, compile procedure should follow rules like EXECUTE
+------ pass
+alter procedure public.func_sysdba_u1_f1(a integer, b integer) compile;
+alter procedure sch_sysdba_u1.func_sysdba_u1_f1(a integer, b integer) compile;
+alter procedure sch_u1.func_sysdba_u1_f1(a integer, b integer) compile;
+alter procedure sch_syssso_u2.func_sysdba_u1_f1(a integer, b integer) compile;
+------ fail
+alter procedure func_syssao_u1(a integer, b integer) compile;
+alter procedure func_syssso_u1(a integer, b integer) compile;
+
 ---- DROP PROCEDURE
 ------ pass
 drop procedure public.func_sysdba_u1_f1;

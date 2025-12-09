@@ -307,6 +307,9 @@ restricted_utility(PlannedStmt *pstmt,
 					call_next = false;
 				}
 				break;
+			case T_CompileFunctionStmt:		/*bug z4253*/
+				call_next = compile_function_check((CompileFunctionStmt *) parsetree);
+				break;
 
 			default:
 
@@ -374,22 +377,6 @@ se_feature_shmem_startup(void)
 
 }
 
-// static bool has_superuser_priv_imp (roleid)
-// {
-// 	if (se_feature.mode && se_feature.restricted_dba)
-// 		return false;
-
-// 	/*otherwise call origin supseruser*/
-// }
-
-/*
- *	the implimentation of se_method.
- */
-// SeMethod se_method_imp = 
-// {
-// 	has_superuser_priv_imp;
-// };
-
 bool restricted_dba_check (bool *newval, void **extra, GucSource source);
 void restricted_dba_assign (bool newval, void *extra);
 const char * restricted_dba_show (void);
@@ -398,11 +385,13 @@ const char * restricted_dba_show (void);
 bool
 restricted_dba_check (bool *newval, void **extra, GucSource source)
 {
-	// if(!se_feature.mode && *newval && (source == PGC_S_SESSION))
+	// if(!se_feature.mode && *newval)
 	// {
-	// 	ereport(WARNING,
-	// 			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-	// 			errmsg("se_feature.mode is currently off, restricted_dba is invalid")));
+	// 	// ereport(WARNING,
+	// 	// 		(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+	// 	// 		 errmsg("se_feature.mode is currently off, "
+	// 	// 				"setting restricted_dba is invalid")));
+	// 	return false;
 	// }
 
 	if (source < PGC_S_TEST)
@@ -758,7 +747,8 @@ object_access_check(ObjectAccessType access,
 
 			case OAT_TRUNCATE:
 			{
-				/*do nothing*/
+				/* bug#z6271: add truncate check */
+				truncate_relation_check(objectId);
 			}
 			break;
 
@@ -846,7 +836,9 @@ func_execute_check(Oid proc_oid)
 			}
 			else if (se_feature.restricted_dba && 
 					 procForm->pronamespace != PG_CATALOG_NAMESPACE &&
-					 procForm->pronamespace != PG_PUBLIC_NAMESPACE)
+					 procForm->pronamespace != PG_PUBLIC_NAMESPACE &&
+					 procForm->pronamespace != PG_SYS_NAMESPACE)
+					 /* Bug#z6190: we skip checking function under sys schema */
 			{
 				/*
 				 * Note: for those function in pg_catalog schema we skip extra
@@ -935,6 +927,9 @@ _PG_init(void)
 	needs_fmgr_hook = func_execute_check;
 
 	se_feature.grant_sysdba_priv = grant_sysdba_priv;
+	se_feature.role_is_superuser = se_role_is_superuser;
+	se_feature.role_has_createrole_priv = se_role_has_createrole_priv;
+	se_feature.role_has_createdb_priv = se_role_has_createdb_priv;
 
 	// /* init contextual info */
 	// memset(&sepgsql_context_info, 0, sizeof(sepgsql_context_info));

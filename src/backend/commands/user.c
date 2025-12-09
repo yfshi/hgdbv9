@@ -320,7 +320,15 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 		validUntil = strVal(dvalidUntil->arg);
 	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	if (dresgroup)
+	{
+		/*Bug z6352*/
+		if(!IS_SYSDBA(GetUserId()))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("must be sysdba_role member to set resourse group")));
+
 		resgroup = strVal(linitial((List *) dresgroup->arg));
+	}
 	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	if (dbypassRLS)
 		bypassrls = intVal(dbypassRLS->arg) != 0;
@@ -903,7 +911,15 @@ AlterRole(AlterRoleStmt *stmt)
 		validUntil = strVal(dvalidUntil->arg);
 	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	if (dresgroup)
+	{
+		/*Bug z6352*/
+		if(!IS_SYSDBA(GetUserId()))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("must be sysdba_role member to set resourse group")));
+
 		resgroup = strVal(linitial((List *) dresgroup->arg));
+	}
 	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	if (dbypassRLS)
 		bypassrls = intVal(dbypassRLS->arg);
@@ -943,7 +959,13 @@ AlterRole(AlterRoleStmt *stmt)
 					 errmsg("must be superuser to alter superuser roles or change superuser attribute")));
 		
 	} 
-	else if (authform->rolsuper)
+	/*
+	 * when se_feature.mode is on, we should not use authform->rolsuper, since we  
+	 * assume only member of sysdba_role can have superuser privelige.
+	 * we use superuser_arg(authform->oid) instead of using rolsuper directly.
+	 * otherwise it may cause non-sysdba_role superuser cannot alter itself.
+	 */
+	else if (se_feature.mode? superuser_arg(authform->oid) : authform->rolsuper) /* bug# z6273 */
 	{
 		/*
 		 * If we turned on se_feautre.mode, we allow members of syssso_role
@@ -951,10 +973,13 @@ AlterRole(AlterRoleStmt *stmt)
 		 */
 		if (se_feature.mode)
 		{
-			if(dvalidUntil && !IS_SYSSSO(GetUserId()))
-				ereport(ERROR,
-						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-						errmsg("permission denied")));
+			if(!superuser())
+			{
+				if(!(dvalidUntil && IS_SYSSSO(GetUserId())))
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied")));
+			}	
 		}
 		else
 		{
@@ -1396,7 +1421,7 @@ AlterRoleSet(AlterRoleSetStmt *stmt)
 		 * To mess with a superuser you gotta be superuser; else you need
 		 * createrole, or just want to change your own settings
 		 */
-		if (roleform->rolsuper)
+		if (se_feature.mode? superuser_arg(roleform->oid) : roleform->rolsuper) /*bug# z6273 */
 		{
 			if (!superuser())
 				ereport(ERROR,
@@ -1528,7 +1553,8 @@ DropRole(DropRoleStmt *stmt)
 		 * roles but not superuser roles.  This is mainly to avoid the
 		 * scenario where you accidentally drop the last superuser.
 		 */
-		if (roleform->rolsuper && !superuser())
+		if ((se_feature.mode? superuser_arg(roleform->oid) : roleform->rolsuper) &&
+			!superuser()) /* bug# z6273 */
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("must be superuser to drop superusers")));
@@ -1734,7 +1760,9 @@ RenameRole(const char *oldname, const char *newname)
 	/*
 	 * createrole is enough privilege unless you want to mess with a superuser
 	 */
-	if (((Form_pg_authid) GETSTRUCT(oldtuple))->rolsuper)
+	if (se_feature.mode ? 
+		superuser_arg(((Form_pg_authid) GETSTRUCT(oldtuple))->oid) : 
+		((Form_pg_authid) GETSTRUCT(oldtuple))->rolsuper ) /* bug# z6273 */
 	{
 		if (!superuser())
 			ereport(ERROR,
@@ -1985,8 +2013,7 @@ AddRoleMems(const char *rolename, Oid roleid,
 	else
 	{
 		if (!have_createrole_privilege() &&
-			!is_admin_of_role(grantorId, roleid)  &&
-			!(se_feature.mode && IS_SYSSSO(GetUserId()))) /* ReqID:SRS-SECURITY-POWERS: a temp solution for dky */
+			!is_admin_of_role(grantorId, roleid))
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("must have admin option on role \"%s\"",
@@ -2116,8 +2143,12 @@ AddRoleMems(const char *rolename, Oid roleid,
 		}
 
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
-		if(IsUnderPostmaster && IS_SYSDBA(roleid))
+		/* we skip following operation during initialzation */
+		if(IsUnderPostmaster && 
+		   (roleid == get_role_oid(SYSDBA_ROLE, false)))
+		{
 			se_feature.grant_sysdba_priv(memberid, true);
+		}
 		/* End - ReqID:SRS-SECURITY-POWERS */
 
 		/* CCI after each change, in case there are duplicates in list */
@@ -2169,8 +2200,7 @@ DelRoleMems(const char *rolename, Oid roleid,
 	else
 	{
 		if (!have_createrole_privilege() &&
-			!is_admin_of_role(GetUserId(), roleid) &&
-			!(se_feature.mode && IS_SYSSSO(GetUserId()))) /* ReqID:SRS-SECURITY-POWERS: a temp solution for dky */
+			!is_admin_of_role(GetUserId(), roleid))
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("must have admin option on role \"%s\"",
@@ -2230,8 +2260,12 @@ DelRoleMems(const char *rolename, Oid roleid,
 		ReleaseSysCache(authmem_tuple);
 
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
-		if(IsUnderPostmaster && IS_SYSDBA(roleid))
+		/* we skip following operation during initialzation */
+		if(IsUnderPostmaster &&
+		   (roleid == get_role_oid(SYSDBA_ROLE, false)))
+		{
 			se_feature.grant_sysdba_priv(memberid, false);
+		}
 		/* End - ReqID:SRS-SECURITY-POWERS */
 
 		/* CCI after each change, in case there are duplicates in list */

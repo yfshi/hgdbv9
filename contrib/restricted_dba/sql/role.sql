@@ -190,6 +190,59 @@ set session authorization dba_u1;
 set session authorization sso_u1;
 set session authorization sao_u1;
 
+
+---- bug 6277
+\c testdb sysdba_u1
+create role n_r2;
+create role n_u2 in role n_r2;
+------ all grant should fail1
+\c testdb syssso
+grant syssso_role to n_r2;
+grant syssso_role to n_u2;
+\c testdb syssao
+grant syssao_role to n_r2;
+grant syssao_role to n_u2;
+\c testdb sysdba_u1
+drop role n_u2;
+drop role n_r2;
+
+---- bug 6276
+\c testdb sysdba_u1
+create role n_r2;
+create role n_u2;
+------ all grant should fail1
+\c testdb syssso
+grant n_r2 to n_u2;
+\c testdb syssao
+grant n_r2 to n_u2;
+\c testdb sysdba_u1
+drop role n_u2;
+drop role n_r2;
+
+---- bug 6273
+\c template1 sysdba_u1
+create user super_u1 with superuser;
+create user cr_u1 with createrole;
+------ should pass
+\c testdb super_u1
+alter user super_u1 with password '123456';
+alter user super_u1 set work_mem = '6 MB';
+alter user super_u1 reset work_mem;
+------ should fail
+\c testdb cr_u1
+alter user super_u1 with inherit;
+alter user super_u1 with createdb;
+alter user super_u1 with createrole;
+alter user super_u1 with connection limit 10;
+alter user super_u1 with valid until '20300101';
+alter user super_u1 set work_mem = '6 MB';
+alter user super_u1 reset work_mem;
+alter user super_u1 rename to super_u2;
+drop user super_u1;
+\c testdb sysdba_u1
+drop user cr_u1;;
+drop user super_u1;
+
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

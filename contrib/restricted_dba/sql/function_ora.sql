@@ -124,6 +124,16 @@ select sch_syssso_u2.func_sysdba_u1_f1(1,1);
 select func_syssso_u1(1,1);
 select func_syssao_u1(1,1);
 
+---- bug z4253, compile function should follow rules like EXECUTE
+------ pass
+alter function public.func_sysdba_u1_f1(a integer, b integer) compile;
+alter function sch_sysdba_u1.func_sysdba_u1_f1(a integer, b integer) compile;
+alter function sch_u1.func_sysdba_u1_f1(a integer, b integer) compile;
+alter function sch_syssso_u2.func_sysdba_u1_f1(a integer, b integer) compile;
+------ fail
+alter function func_syssao_u1(a integer, b integer) compile;
+alter function func_syssso_u1(a integer, b integer) compile;
+
 ---- DROP FUNCTION
 ------ pass
 drop function public.func_sysdba_u1_f1;
@@ -349,6 +359,18 @@ select func_syssao_u1(1,1);
 select func_syssso_u1(1,1);
 select sch_u1.func_u1(1,1);
 
+---- bug z4253, compile function should follow rules like EXECUTE
+------ pass
+alter function func_sysdba_u1_f1(a integer, b integer) compile;
+alter function func_sysdba_u2_f1(a integer, b integer) compile;
+alter function func_sysdba_u2(a integer, b integer) compile;
+alter function func_u1(a integer, b integer) compile;
+------ fail
+alter function sch2_sysdba_u2.func_sysdba_u2(a integer, b integer) compile;
+alter function func_syssao_u1(a integer, b integer) compile;
+alter function func_syssso_u1(a integer, b integer) compile;
+alter function sch_u1.func_u1(a integer, b integer) compile;
+
 ---- DROP FUNCTION
 ------ pass
 drop function func_sysdba_u1_f1;
@@ -357,6 +379,21 @@ drop function func_sysdba_u2;
 drop function func_syssao_u1;
 drop function func_syssso_u1;
 drop function func_u1;
+
+---- bug z6190 user should always call type_in function under 'sys' schema
+------ all should pass
+\c - sysdba_u1;
+select 'test_string'::varchar; -- call typin 
+select 'test_string'::varchar(20); -- call typmodin
+\c - syssso_u1;
+select 'test_string'::varchar; -- call typin 
+select 'test_string'::varchar(20); -- call typmodin
+\c - syssao_u1;
+select 'test_string'::varchar; -- call typin 
+select 'test_string'::varchar(20); -- call typmodin
+\c - u1;
+select 'test_string'::varchar; -- call typin 
+select 'test_string'::varchar(20); -- call typmodin
 
 -- Clean test object
 \c testdb syssso_u1

@@ -7,7 +7,8 @@ create user dba_u1 superuser createdb createrole;
 create user dba_u2 superuser createdb createrole;
 create user dba_u3 superuser createdb createrole;
 create user dba_u4 superuser createdb createrole;
-grant sysdba_role to dba_u1,dba_u2,dba_u3,dba_u4;
+create user dba_u5 superuser createdb createrole;
+grant sysdba_role to dba_u1,dba_u2,dba_u3,dba_u4,dba_u5;
 
 -- FOR TABLE
 \c testdb -
@@ -24,6 +25,7 @@ grant select on tb1_sso_u1 to dba_u1;
 grant update on tb1_sso_u1 to dba_u2;
 grant insert on tb1_sso_u1 to dba_u3;
 grant delete on tb1_sso_u1 to dba_u4;
+grant truncate on tb1_sso_u1 to dba_u5;
 
 grant select(col1) on tb1_sao_u1 to dba_u1;
 grant update(col1) on tb1_sao_u1 to dba_u2;
@@ -34,7 +36,7 @@ set se_feature.mode to on;
 
 
 -- TEST START
----- For TABLE SELECT/UPDATE/INSERT/DELETE
+---- For TABLE SELECT/UPDATE/INSERT/DELETE/
 
 \c testdb dba_u1;
 ------ pass
@@ -51,6 +53,7 @@ select col1,col2,col3,col4 from tb1_u1;
 insert into tb1_sso_u1 values(1,1,1,1);
 update tb1_sso_u1 set col4 = col4 + 1;
 delete from tb1_sso_u1;
+truncate table tb1_sso_u1;
 --------- column-level
 select col2 from tb1_sao_u1;
 select col3 from tb1_sao_u1;
@@ -80,6 +83,7 @@ update tb1_sao_u1 set col1 = 2;
 select * from tb1_sso_u1;
 insert into tb1_sso_u1 values(1,1,1,1);
 delete from tb1_sso_u1;
+truncate table tb1_sso_u1;
 --------- column-level
 select col1 from tb1_sao_u1;
 insert into tb1_sao_u1(col1) values(1);
@@ -108,6 +112,7 @@ insert into tb1_u1(col4) values(1);
 select * from tb1_sso_u1;
 update tb1_sso_u1 set col4 = col4 + 1;
 delete from tb1_sso_u1;
+truncate table tb1_sso_u1;
 --------- column-level
 insert into tb1_sao_u1(col2) values(1);
 insert into tb1_sao_u1(col3) values(1);
@@ -126,6 +131,17 @@ delete from tb1_u1;
 select * from tb1_sso_u1;
 update tb1_sso_u1 set col4 = col4 + 1;
 insert into tb1_sso_u1 values(1,1,1,1);
+truncate table tb1_sso_u1;
+
+\c testdb dba_u5;
+------ pass
+truncate table tb1_sso_u1;
+truncate table tb1_dba_u1;
+truncate table tb1_u1;
+------ fail
+truncate table tb1_sao_u1;
+
+
 
 
 -- Clean test object
@@ -139,7 +155,7 @@ drop table tb1_dba_u1;
 drop table tb1_u1;
 
 \c template1 sysdba_u1
-drop user dba_u1,dba_u2,dba_u3,dba_u4;
+drop user dba_u1,dba_u2,dba_u3,dba_u4,dba_u5;
 drop database testdb;
 
 
@@ -150,7 +166,8 @@ create user dba_u1 superuser createdb createrole;
 create user dba_u2 superuser createdb createrole;
 create user dba_u3 superuser createdb createrole;
 create user dba_u4 superuser createdb createrole;
-grant sysdba_role to dba_u1,dba_u2,dba_u3,dba_u4;
+create user dba_u5 superuser createdb createrole;
+grant sysdba_role to dba_u1,dba_u2,dba_u3,dba_u4,dba_u5;
 
 -- FOR TABLE
 \c testdb -
@@ -168,11 +185,13 @@ grant select on tb1_dba_u1 to dba_u1;
 grant update on tb1_dba_u1 to dba_u2;
 grant insert on tb1_dba_u1 to dba_u3;
 grant delete on tb1_dba_u1 to dba_u4;
+grant truncate on tb1_dba_u1 to dba_u5;
 
 grant select on tb1_sso_u1 to dba_u1;
 grant update on tb1_sso_u1 to dba_u2;
 grant insert on tb1_sso_u1 to dba_u3;
 grant delete on tb1_sso_u1 to dba_u4;
+grant truncate on tb1_sso_u1 to dba_u5;
 
 grant select(col1) on tb1_sao_u1 to dba_u1;
 grant update(col1) on tb1_sao_u1 to dba_u2;
@@ -316,6 +335,13 @@ select * from tb1_dba_u1;
 update tb1_dba_u1 set col4 = 1;
 insert into tb1_dba_u1 values(1,1,1,1);
 
+\c testdb dba_u5;
+------ pass
+truncate table tb1_sso_u1;
+truncate table tb1_dba_u1;
+------ fail
+truncate table tb1_sao_u1;
+truncate table tb1_u1;
 
 -- Clean test object
 \c testdb syssso_u1
@@ -329,5 +355,5 @@ drop table tb1_dba_u1;
 drop table tb1_u1;
 
 \c template1 sysdba_u1
-drop user dba_u1,dba_u2,dba_u3,dba_u4;
+drop user dba_u1,dba_u2,dba_u3,dba_u4,dba_u5;
 drop database testdb;

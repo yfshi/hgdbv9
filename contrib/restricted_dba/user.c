@@ -43,6 +43,7 @@
 #include "storage/lmgr.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/catcache.h"
 #include "utils/fmgroids.h"
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
@@ -50,6 +51,7 @@
 #include "libpq/libpq-be.h"
 #include "utils/snapmgr.h"
 #include "access/tableam.h"
+
 
 #include "se_features_interface.h"
 #include "restricted_dba.h"
@@ -59,6 +61,7 @@ change_member_check(const char* rolname, Oid roleid, Oid grantor,
 					List *grantee_specs, List *grantee_ids,
 					bool admin_opt, bool is_grant)
 {
+	bool		grant_security_roles = false;
 	ListCell   *id_item;
 	ListCell   *spec_item;
 
@@ -85,6 +88,8 @@ change_member_check(const char* rolname, Oid roleid, Oid grantor,
 					(errcode(ERRCODE_INVALID_GRANT_OPERATION),
 					 errmsg("permission denied"),
 					 errdetail("security roles cannot be operated with admin option")));
+
+		grant_security_roles = true;
 	}
 
 	if(grantee_ids && grantee_specs)
@@ -119,6 +124,42 @@ change_member_check(const char* rolname, Oid roleid, Oid grantor,
 								 errdetail("security role \"%s\" cannot do self revoke",
 										 grantee_name)));
 				}
+			}
+			else if (grant_security_roles && is_grant)
+			{
+				/*
+				 * we cannot grant security role to a user who already have members or
+				 * belongs to another role.
+				 */
+				CatCList   *memlist;
+				CatCList   *rolelist;
+				
+				/* get all roles that grantee is members of */
+				memlist = SearchSysCacheList1(AUTHMEMMEMROLE,
+											  ObjectIdGetDatum(grantee_id));
+				
+				if (memlist->n_members > 0)
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_GRANT_OPERATION),
+							 errmsg("permission denied"),
+							 errdetail("grantee \"%s\" already belongs to other roles",
+										grantee_name)));
+				}
+				ReleaseSysCacheList(memlist);
+
+				/* get all members belong to grantee*/
+				rolelist = SearchSysCacheList1(AUTHMEMROLEMEM,
+											  ObjectIdGetDatum(grantee_id));
+				if (rolelist->n_members > 0)
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_GRANT_OPERATION),
+							 errmsg("permission denied"),
+							 errdetail("grantee \"%s\" already have members",
+										grantee_name)));
+				}
+				ReleaseSysCacheList(rolelist);
 			}
 		}
 	}
