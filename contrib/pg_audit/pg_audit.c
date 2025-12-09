@@ -1204,7 +1204,12 @@ audit_get_privilege(char *type)
 		pg_strcasecmp(type, DROP_DATABASE_S) == 0 ||
 		pg_strcasecmp(type, DROP_EXTENSION_S) == 0 ||
 		pg_strcasecmp(type, IMPORT_S) == 0 ||
-		pg_strcasecmp(type, EXPORT_S) == 0)
+		pg_strcasecmp(type, EXPORT_S) == 0 ||
+		/* Begin - BUG#Z6075 */
+		pg_strcasecmp(type, CREATE_RESOURCE_GROUP_S) == 0 ||
+		pg_strcasecmp(type, ALTER_RESOURCE_GROUP_S) == 0 ||
+		pg_strcasecmp(type, DROP_RESOURCE_GROUP_S) == 0)
+		/* End - BUG#Z6075 */
 		strcpy(pri, AUDIT_PRIVILEGE_DATABASE_S);
 	else if (pg_strcasecmp(type, CREATE_DOMAIN_S) == 0 ||
 		pg_strcasecmp(type, CREATE_PROCEDURE_S) == 0 ||
