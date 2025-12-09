@@ -21,13 +21,28 @@
 
 typedef void (*grant_sysdba_priv_fn) (Oid roleid, bool is_grant);
 
+/*
+ * Since we limit only sysdba_role can have SUPERUSER\CREATEROLE\CREATEDB
+ * attributes, to bind these privileges with sysdba_role, beside we set 
+ * these attributes to new sysdba_role member, we also need some support 
+ * funciton to replace origin privilege check function. In these check
+ * functions we ignore those non-sysdba_role user's privileges.
+ */
+typedef bool (*role_is_superuser_fn) (Oid roleid);
+typedef bool (*role_has_createrole_priv_fn) (Oid roleid);
+typedef bool (*role_has_createdb_priv_fn) (Oid roleid);
+
 typedef struct 
 {
 	bool mode;
 	bool restricted_dba;
+	/* use it with caution, it may make a normal user a superuser,maybe changed latter */
 	Oid tmp_superuser_oid;
-	/* use it with caution, it may make a normal user a superuser,maybe changed latter*/
+	/* support function interface */
 	grant_sysdba_priv_fn grant_sysdba_priv;
+	role_is_superuser_fn role_is_superuser;
+	role_has_createrole_priv_fn role_has_createrole_priv;
+	role_has_createdb_priv_fn role_has_createdb_priv;
 }SeFeature;
 
 extern PGDLLIMPORT SeFeature se_feature;

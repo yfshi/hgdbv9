@@ -8,9 +8,6 @@ set se_feature.mode to on;
 -- For member of sysdba_role
 \c testdb sysdba_u1;
 
--- Should fail for resource group not exist
-alter role u1 resource group rg_non_exist;
-
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;
@@ -22,6 +19,7 @@ drop database testdb;
 
 --extra check for bug fix 4737 funciton execution;
 create database testdb;
+\c testdb sysdba_u1
 
 ---- setup tables
 create table tb1_syssso_u1(c1 int);
@@ -81,7 +79,7 @@ select test_func_1_sso_u1();
 select test_func_1_sso_u1();
 
 -- Clean test object
-\c testdb sysdba_u1
+\c testdb syssso_u1
 set se_feature.mode to on;
 alter database testdb set se_feature.mode to off;
 
@@ -126,5 +124,33 @@ drop user test_u1;
 drop role test_r1;
 drop database testdb;
 
--- test for bug z6059
+-- test for bug z6059 should show true
 select extnamespace = 'hg_security'::regnamespace as result from pg_extension where extname = 'restricted_dba';
+
+-- bug z6352
+\c template1 sysdba_u1
+create user test_u1;
+create database testdb;
+\c testdb syssso_u1
+alter database testdb set se_feature.mode to on;
+---- should fail for resource group not exist
+\c testdb sysdba_u1;
+create user test_u2 resource group rgroup1;
+alter user test_u1 resource group rgroup1;
+---- should fail
+\c testdb syssso_u1
+create user test_u1 resource group rgroup1;
+alter user test_u1 resource group rgroup1;
+---- should fail
+\c testdb syssao_u1
+create user test_u1 resource group rgroup1;
+alter user test_u1 resource group rgroup1;
+---- should fail
+\c testdb test_u1
+create user test_u1 resource group rgroup1;
+alter user test_u1 resource group rgroup1;
+\c testdb syssso_u1
+alter database testdb reset se_feature.mode;
+\c template1 sysdba_u1
+drop database testdb;
+drop user test_u1;

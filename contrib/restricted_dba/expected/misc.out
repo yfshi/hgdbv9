@@ -5,9 +5,6 @@ alter database testdb set se_feature.mode to on;
 set se_feature.mode to on;
 -- For member of sysdba_role
 \c testdb sysdba_u1;
--- Should fail for resource group not exist
-alter role u1 resource group rg_non_exist;
-ERROR:  resource group "rg_non_exist" does not exist
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;
@@ -17,6 +14,7 @@ alter database testdb set se_feature.mode to off;
 drop database testdb;
 --extra check for bug fix 4737 funciton execution;
 create database testdb;
+\c testdb sysdba_u1
 ---- setup tables
 create table tb1_syssso_u1(c1 int);
 create table tb1_syssso_u2(c1 int);
@@ -84,11 +82,9 @@ ERROR:  permission denied for table tb1_syssso_u1
 CONTEXT:  SQL statement "select sum(c1)           from tb1_syssso_u1"
 PL/pgSQL function test_func_1_sso_u1() line 6 at SQL statement
 -- Clean test object
-\c testdb sysdba_u1
+\c testdb syssso_u1
 set se_feature.mode to on;
-ERROR:  Only syssso users can set this value
 alter database testdb set se_feature.mode to off;
-ERROR:  permission denied
 \c template1 sysdba_u1
 drop database testdb;
 -- test for alter system
@@ -133,10 +129,47 @@ drop user test_dba_u1;
 drop user test_u1;
 drop role test_r1;
 drop database testdb;
--- test for bug z6059
+-- test for bug z6059 should show true
 select extnamespace = 'hg_security'::regnamespace as result from pg_extension where extname = 'restricted_dba';
  result 
 --------
  t
 (1 row)
 
+-- bug z6352
+\c template1 sysdba_u1
+create user test_u1;
+create database testdb;
+\c testdb syssso_u1
+alter database testdb set se_feature.mode to on;
+ERROR:  must be owner of database testdb
+---- should fail for resource group not exist
+\c testdb sysdba_u1;
+create user test_u2 resource group rgroup1;
+ERROR:  resource group "rgroup1" does not exist
+alter user test_u1 resource group rgroup1;
+ERROR:  resource group "rgroup1" does not exist
+---- should fail
+\c testdb syssso_u1
+create user test_u1 resource group rgroup1;
+ERROR:  must be sysdba_role member to set resourse group
+alter user test_u1 resource group rgroup1;
+ERROR:  must be sysdba_role member to set resourse group
+---- should fail
+\c testdb syssao_u1
+create user test_u1 resource group rgroup1;
+ERROR:  must be sysdba_role member to set resourse group
+alter user test_u1 resource group rgroup1;
+ERROR:  must be sysdba_role member to set resourse group
+---- should fail
+\c testdb test_u1
+create user test_u1 resource group rgroup1;
+ERROR:  must be sysdba_role member to set resourse group
+alter user test_u1 resource group rgroup1;
+ERROR:  must be sysdba_role member to set resourse group
+\c testdb syssso_u1
+alter database testdb reset se_feature.mode;
+ERROR:  must be owner of database testdb
+\c template1 sysdba_u1
+drop database testdb;
+drop user test_u1;

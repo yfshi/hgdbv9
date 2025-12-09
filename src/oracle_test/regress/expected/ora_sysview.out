@@ -1105,16 +1105,16 @@ select table_name, privilege, grantable, hierarchy, common, type, inherited from
 ----------------------+------------+-----------+-----------+--------+-------+-----------
  SYSVIEW_TAB_PRIVS_TB | INSERT     | NO        | NO        | NO     | TABLE | NO
  SYSVIEW_TAB_PRIVS_TB | SELECT     | NO        | YES       | NO     | TABLE | NO
- SYSVIEW_TAB_PRIVS_TB | SELECT     | YES       | YES       | NO     | TABLE | NO
+ SYSVIEW_TAB_PRIVS_TB | SELECT     | NO        | YES       | NO     | TABLE | NO
  SYSVIEW_TAB_PRIVS_TB | UPDATE     | NO        | NO        | NO     | TABLE | NO
- SYSVIEW_TAB_PRIVS_V  | DELETE     | YES       | NO        | NO     | VIEW  | NO
- SYSVIEW_TAB_PRIVS_V  | INSERT     | YES       | NO        | NO     | VIEW  | NO
- SYSVIEW_TAB_PRIVS_V  | REFERENCES | YES       | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | DELETE     | NO        | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | INSERT     | NO        | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | REFERENCES | NO        | NO        | NO     | VIEW  | NO
  SYSVIEW_TAB_PRIVS_V  | SELECT     | NO        | YES       | NO     | VIEW  | NO
- SYSVIEW_TAB_PRIVS_V  | SELECT     | YES       | YES       | NO     | VIEW  | NO
- SYSVIEW_TAB_PRIVS_V  | TRIGGER    | YES       | NO        | NO     | VIEW  | NO
- SYSVIEW_TAB_PRIVS_V  | TRUNCATE   | YES       | NO        | NO     | VIEW  | NO
- SYSVIEW_TAB_PRIVS_V  | UPDATE     | YES       | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | SELECT     | NO        | YES       | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | TRIGGER    | NO        | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | TRUNCATE   | NO        | NO        | NO     | VIEW  | NO
+ SYSVIEW_TAB_PRIVS_V  | UPDATE     | NO        | NO        | NO     | VIEW  | NO
 (12 rows)
 
 select table_schema, table_name, privilege, grantable, hierarchy, type from all_tab_privs
@@ -1123,16 +1123,16 @@ where upper(table_name) like('SYSVIEW_TAB_PRIVS_%') order by table_name, privile
 --------------+----------------------+------------+-----------+-----------+-------
  PUBLIC       | SYSVIEW_TAB_PRIVS_TB | INSERT     | NO        | NO        | TABLE
  PUBLIC       | SYSVIEW_TAB_PRIVS_TB | SELECT     | NO        | YES       | TABLE
- PUBLIC       | SYSVIEW_TAB_PRIVS_TB | SELECT     | YES       | YES       | TABLE
+ PUBLIC       | SYSVIEW_TAB_PRIVS_TB | SELECT     | NO        | YES       | TABLE
  PUBLIC       | SYSVIEW_TAB_PRIVS_TB | UPDATE     | NO        | NO        | TABLE
- PUBLIC       | SYSVIEW_TAB_PRIVS_V  | DELETE     | YES       | NO        | VIEW
- PUBLIC       | SYSVIEW_TAB_PRIVS_V  | INSERT     | YES       | NO        | VIEW
- PUBLIC       | SYSVIEW_TAB_PRIVS_V  | REFERENCES | YES       | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | DELETE     | NO        | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | INSERT     | NO        | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | REFERENCES | NO        | NO        | VIEW
  PUBLIC       | SYSVIEW_TAB_PRIVS_V  | SELECT     | NO        | YES       | VIEW
- PUBLIC       | SYSVIEW_TAB_PRIVS_V  | SELECT     | YES       | YES       | VIEW
- PUBLIC       | SYSVIEW_TAB_PRIVS_V  | TRIGGER    | YES       | NO        | VIEW
- PUBLIC       | SYSVIEW_TAB_PRIVS_V  | TRUNCATE   | YES       | NO        | VIEW
- PUBLIC       | SYSVIEW_TAB_PRIVS_V  | UPDATE     | YES       | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | SELECT     | NO        | YES       | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | TRIGGER    | NO        | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | TRUNCATE   | NO        | NO        | VIEW
+ PUBLIC       | SYSVIEW_TAB_PRIVS_V  | UPDATE     | NO        | NO        | VIEW
 (12 rows)
 
 drop view sysview_tab_privs_v;

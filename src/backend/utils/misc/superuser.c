@@ -53,30 +53,30 @@ superuser(void)
 	return superuser_arg(GetUserId());
 }
 
-
+/* Begin - ReqID:SRS-SECURITY-POWERS */
 /*
- * The specified role has Postgres superuser privileges
+ * we change the origin defination of superuser_arg.
  */
 bool
 superuser_arg(Oid roleid)
 {
+
+	/* when se_feature.mode is on, we use our version of superuser() */
+	if (se_feature.mode)
+		return se_feature.role_is_superuser(roleid);
+	else
+		return superuser_arg_ori(roleid);
+
+}
+
+/*
+ * the original pg version of superuser_arg()
+ */
+bool
+superuser_arg_ori(Oid roleid)
+{
 	bool		result;
 	HeapTuple	rtup;
-
-	/* Begin - ReqID:SRS-SECURITY-POWERS */
-	/* since syssso or syssao may need superuser priv, we make them a temp superuser*/
-	/* and this value could only set by code, so we always give code writer superuser privs */
-	if (se_feature.tmp_superuser_oid == roleid)
-		return true;
-	/* 
-	 * some processes may also check superuser() during initialization.
-	 * At that point sysdba_role haven't created.
-	 * In other case, if se_feature.mode is on, make sure only sysdba_role
-	 * member can be superuser.
-	 */
-	if (IsUnderPostmaster && se_feature.mode)
-		return IS_SYSDBA(roleid);
-	/* End - ReqID:SRS-SECURITY-POWERS */
 
 	/* Quick out for cache hit */
 	if (OidIsValid(last_roleid) && last_roleid == roleid)
@@ -112,15 +112,10 @@ superuser_arg(Oid roleid)
 	last_roleid = roleid;
 	last_roleid_is_super = result;
 
-	/* Begin - ReqID:SRS-SECURITY-POWERS */
-	/* make sure only sysdba_role member can be superuser */
-	if (se_feature.mode && IS_SYSDBA(roleid) &&
-	    result)
-		return true;
-	/* End - ReqID:SRS-SECURITY-POWERS */
-
 	return result;
 }
+/* End - ReqID:SRS-SECURITY-POWERS */
+
 
 /*
  * RoleidCallback

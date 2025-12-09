@@ -277,7 +277,9 @@ grant_schema_check(InternalGrant *istmt)
 										"syssso_role/syssao_role member")));
 				}
 
-				if(se_feature.restricted_dba && IS_SYSDBA(grantee))
+				if (se_feature.restricted_dba &&
+					IS_SYSDBA(grantee) &&
+					IS_SYSDBA(GetUserId()))/*bug#z6269*/
 				{
 					ereport(ERROR,
 							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),

@@ -76,6 +76,10 @@
 #include "catalog/pg_resgroupcapability.h"
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
+/* Begin - ReqID:SRS-SECURITY-POWERS */
+#include "se_features_interface.h"
+/* End - ReqID:SRS-SECURITY-POWERS */
+
 typedef struct
 {
 	Oid			src_dboid;		/* source (template) DB */
@@ -2026,6 +2030,11 @@ have_createdb_privilege(void)
 {
 	bool		result = false;
 	HeapTuple	utup;
+
+	/* Begin - ReqID:SRS-SECURITY-POWERS */
+	if (se_feature.mode)
+		return se_feature.role_has_createdb_priv(GetUserId());
+	/* End - ReqID:SRS-SECURITY-POWERS */
 
 	/* Superusers can always do everything */
 	if (superuser())

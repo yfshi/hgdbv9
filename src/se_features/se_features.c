@@ -23,6 +23,9 @@
 #include "se_features_interface.h"
 
 static void dummy_grant_sysdba_priv_fn(Oid roleid, bool is_grant);
+static bool dummy_role_is_superuser_fn(Oid roleid);
+static bool dummy_role_has_createrole_priv_fn(Oid roleid);
+static bool dummy_role_has_createdb_priv_fn(Oid roleid);
 
 // /*function warpper that hold all support function in extension*/
 // SeMethod *se_method = NULL;
@@ -30,7 +33,10 @@ SeFeature se_feature = {
     false, 
     false, 
     InvalidOid,
-    dummy_grant_sysdba_priv_fn
+    dummy_grant_sysdba_priv_fn,
+    dummy_role_is_superuser_fn,
+	dummy_role_has_createrole_priv_fn,
+	dummy_role_has_createdb_priv_fn
 };
 
 
@@ -49,8 +55,34 @@ bool is_member_of_serole (Oid member, char* role_name)
 	return result;
 }
 
+
+/* dummy support functions that make compiler quiet */
 static void
 dummy_grant_sysdba_priv_fn(Oid roleid, bool is_grant)
 {
     /*do nothing*/
+}
+
+static bool
+dummy_role_is_superuser_fn(Oid roleid)
+{
+	Assert(se_feature.mode);
+    elog(ERROR, "dummy_role_is_superuser() should never be called");
+	return false;;
+}
+
+static bool
+dummy_role_has_createrole_priv_fn(Oid roleid)
+{
+	Assert(se_feature.mode);
+    elog(ERROR, "dummy_role_is_superuser() should never be called");
+	return false;
+}
+
+static bool
+dummy_role_has_createdb_priv_fn(Oid roleid)
+{
+	Assert(se_feature.mode);
+    elog(ERROR, "dummy_role_is_superuser() should never be called");
+	return false;
 }

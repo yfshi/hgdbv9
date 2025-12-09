@@ -397,6 +397,10 @@ extern void SetCurrentRoleId(Oid roleid, bool is_superuser);
 /* in utils/misc/superuser.c */
 extern bool superuser(void);	/* current user is superuser */
 extern bool superuser_arg(Oid roleid);	/* given user is superuser */
+/* Begin - ReqID:SRS-SECURITY-POWERS */
+/*since we change the defination of superuser_arg(), we keep the original logic here */
+extern bool superuser_arg_ori(Oid roleid);
+/* Begin - ReqID:SRS-SECURITY-POWERS */
 extern bool UserIdIsValid(void);	/* current user is valid */
 
 

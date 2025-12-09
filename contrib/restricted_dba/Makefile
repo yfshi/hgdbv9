@@ -13,7 +13,8 @@ OBJS = \
 	tablespace.o\
 	schema.o	\
 	relation.o	\
-	proc.o
+	proc.o		\
+	superuser.o
 
 EXTENSION = restricted_dba
 DATA = restricted_dba--1.0.sql

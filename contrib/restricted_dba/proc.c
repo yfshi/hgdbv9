@@ -428,3 +428,68 @@ bool drop_proc_check(DropStmt *stmt)
 
 	return true;
 }
+
+
+/* 
+ * Basiclly, this function did what func_execute_check() did , 
+ * but just for compile statement; 
+ */
+bool
+compile_function_check(CompileFunctionStmt *stmt)
+{
+	Oid 	proc_oid = InvalidOid;
+
+	proc_oid = LookupFuncWithArgs(stmt->objtype, stmt->func, false);
+	if (OidIsValid(proc_oid))
+	{
+		HeapTuple	tuple;
+		Oid			ownerId;
+		Form_pg_proc	procForm;	
+
+		tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(proc_oid));
+		procForm = (Form_pg_proc) GETSTRUCT(tuple);
+		ownerId = procForm->proowner;
+
+		/* currently we only care procedure and function*/
+		if (procForm->prokind == PROKIND_FUNCTION ||
+			procForm->prokind == PROKIND_PROCEDURE)
+		{
+			AclResult	aclresult;
+			ObjectType	obj_type = OBJECT_FUNCTION;
+
+			if (procForm->prokind == PROKIND_FUNCTION)
+				obj_type = OBJECT_FUNCTION;
+			else if (procForm->prokind == PROKIND_PROCEDURE)
+				obj_type = OBJECT_PROCEDURE;
+
+			if (IS_SYSSSO(ownerId) || IS_SYSSAO(ownerId))
+			{
+				aclresult = pg_proc_aclcheck_nosuper(proc_oid, GetUserId(),
+													 ACL_EXECUTE);
+			
+				if (aclresult != ACLCHECK_OK)
+					aclcheck_error(aclresult, obj_type,
+									get_func_name(proc_oid));
+			}
+			else if (se_feature.restricted_dba && 
+					 procForm->pronamespace != PG_CATALOG_NAMESPACE &&
+					 procForm->pronamespace != PG_PUBLIC_NAMESPACE &&
+					 procForm->pronamespace != PG_SYS_NAMESPACE)
+					 /* Bug#z6190: we skip checking function under sys schema */
+			{
+				/*
+				 * Note: for those function in pg_catalog schema we skip extra
+				 * check in case other dba user cannot call it. 
+				 */
+				aclresult = pg_proc_aclcheck_nosuper(proc_oid, GetUserId(),
+													 ACL_EXECUTE);
+			
+				if (aclresult != ACLCHECK_OK)
+					aclcheck_error(aclresult, obj_type,
+								get_func_name(proc_oid));
+			}
+		}
+		ReleaseSysCache(tuple);
+	}
+	return true;
+}

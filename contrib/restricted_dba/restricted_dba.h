@@ -108,6 +108,7 @@ extern bool alter_relation_rename_check(RenameStmt *stmt);
 extern bool alter_relation_schema_check(AlterObjectSchemaStmt *stmt, Oid *oldschema);
 extern bool drop_relation_check(DropStmt *stmt);
 extern bool alter_sequence_check(AlterSeqStmt *stmt);
+extern void truncate_relation_check(Oid relid);
 
 /*proc.c*/
 extern bool create_proc_check(ParseState *pstate, CreateFunctionStmt *stmt);
@@ -117,5 +118,10 @@ extern bool alter_proc_rename_check(RenameStmt *stmt);
 extern bool alter_proc_schema_check(AlterObjectSchemaStmt *stmt, Oid *oldschema);
 extern bool alter_proc_check(ParseState *pstate, AlterFunctionStmt *stmt);
 extern bool drop_proc_check(DropStmt *stmt);
+extern bool compile_function_check(CompileFunctionStmt *stmt);
 
+/*superuser.c*/
+extern bool se_role_is_superuser(Oid roleid);
+extern bool se_role_has_createrole_priv(Oid roleid);
+extern bool se_role_has_createdb_priv(Oid roleid);
 #endif

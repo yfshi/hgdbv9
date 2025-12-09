@@ -591,3 +591,54 @@ alter_sequence_check(AlterSeqStmt *stmt)
 	return true;
 }
 
+
+/*
+ *	truncate relation perm check function;
+ */
+void
+truncate_relation_check(Oid relid)
+{
+	HeapTuple	tuple;
+	Form_pg_class reltuple;
+	AclMode		aclmode;
+	Oid 		relowner;
+	char	   *relname;
+
+	/* Nothing to do if the relation was not found. */
+	if (!OidIsValid(relid))
+		return;
+
+	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(tuple))	/* should not happen */
+		elog(ERROR, "cache lookup failed for relation %u", relid);
+
+	reltuple = (Form_pg_class)GETSTRUCT(tuple);
+	relowner = reltuple->relowner;
+	relname = NameStr(reltuple->relname);
+
+	/* just like check a normal relation but we ignore supseruser priv */
+	if(IS_SYSSSO(relowner) || IS_SYSSAO(relowner))
+	{
+		aclmode = pg_class_aclmask_nosuper(relid, GetUserId(), ACL_TRUNCATE,
+											 ACLMASK_ALL);
+		if (aclmode == 0)
+		{
+			aclcheck_error(ACLCHECK_NO_PRIV, 
+						   get_relkind_objtype(reltuple->relkind),
+					   	   relname);
+		}
+	}
+	else if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+	{
+		aclmode = pg_class_aclmask_nosuper(relid, GetUserId(), ACL_TRUNCATE,
+											 ACLMASK_ALL);
+		if (aclmode == 0)
+		{
+			aclcheck_error(ACLCHECK_NO_PRIV, 
+						   get_relkind_objtype(reltuple->relkind),
+					   	   relname);
+		}
+	}
+
+	ReleaseSysCache(tuple);
+}

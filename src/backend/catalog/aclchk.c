@@ -86,6 +86,10 @@
 /* End - ReqID:SRS-SQL-PACKAGE */
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
+/* Begin - ReqID:SRS-SECURITY-POWERS */
+#include "se_features_interface.h"
+/* End - ReqID:SRS-SECURITY-POWERS */
+
 
 /*
  * Internal format used by ALTER DEFAULT PRIVILEGES.
@@ -5821,6 +5825,11 @@ has_createrole_privilege(Oid roleid)
 {
 	bool		result = false;
 	HeapTuple	utup;
+
+	/* Begin - ReqID:SRS-SECURITY-POWERS */
+	if (se_feature.mode)
+		return se_feature.role_has_createrole_priv(roleid);
+	/* End - ReqID:SRS-SECURITY-POWERS */
 
 	/* Superusers bypass all permission checking. */
 	if (superuser_arg(roleid))
