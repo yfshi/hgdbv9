@@ -16,6 +16,13 @@ RETURNS boolean
 AS 'MODULE_PATHNAME', 'is_syssao'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
+/* Begin - bug#z6385 */
+CREATE FUNCTION is_superuser(oid)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'is_superuser'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+/* End - bug#z6385 */
+
 CREATE FUNCTION check_se_param_change()
 RETURNS text
 AS 'MODULE_PATHNAME', 'check_se_param_change'

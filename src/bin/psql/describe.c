@@ -4090,7 +4090,7 @@ describeRoles(const char *pattern, bool verbose, bool showSystem)
 	if (pset.sversion >= 80100)
 	{
 		printfPQExpBuffer(&buf,
-						  "SELECT r.rolname, r.rolsuper, r.rolinherit,\n"
+						  "SELECT r.rolname, hg_security.is_superuser(r.oid), r.rolinherit,\n" /* bug - #z6385 */
 						  "  r.rolcreaterole, r.rolcreatedb, r.rolcanlogin,\n"
 						  "  r.rolconnlimit, r.rolvaliduntil,\n"
 						  "  ARRAY(SELECT b.rolname\n"
