@@ -169,6 +169,18 @@ create user dba_u4 superuser createdb createrole;
 create user dba_u5 superuser createdb createrole;
 grant sysdba_role to dba_u1,dba_u2,dba_u3,dba_u4,dba_u5;
 
+-- \du ROLE
+/* Begin - bug#z6385 */
+create user du_u1 with password '1234' superuser;
+set role syssso_u1;
+set se_feature.mode to on;
+\du du_u1
+set se_feature.mode to off;
+\du du_u1
+reset role;
+drop user du_u1;
+/* End - bug#z6385 */
+
 -- FOR TABLE
 \c testdb -
 create table tb1_dba_u1(col1 int, col2 int, col3 int, col4 int);

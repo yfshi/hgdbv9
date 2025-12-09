@@ -38,6 +38,17 @@ is_syssao(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(result);
 }
 
+/* Begin - bug#z6385 */
+PG_FUNCTION_INFO_V1(is_superuser);
+Datum
+is_superuser(PG_FUNCTION_ARGS)
+{
+	Oid		role_id = PG_GETARG_OID(0);
+
+	PG_RETURN_BOOL(superuser_arg(role_id));
+}
+/* End - bug#z6385 */
+
 static bool get_se_param(void)
 {
 	bool	changed = false;
