@@ -1545,7 +1545,8 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 static bool
 check_nls_length_semantics(int *newval, void **extra, GucSource source)
 {
-	if (IsUnderPostmaster && DB_PG == database_mode)
+	if (IsUnderPostmaster &&
+		(DB_PG == database_mode || DB_MYSQL == database_mode)) /* BUG#Z00006646 */
 		ereport(WARNING,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("Do not use this GUC variable in the current cluster (PG).")));
@@ -1870,9 +1871,10 @@ static bool
 nls_sort_check(char **newval, void **extra, GucSource source)
 {
 	if (DB_ORACLE == database_mode && 
-	   (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+		IsTransactionState() && MyDatabaseId != InvalidOid) /* Begin - BUG#Z00006646 */
 	{
 		Oid coll = CollationGetCollid(*newval);
+
 		if (!OidIsValid(coll) || 
 			IsPseudoCollation(coll))
 		{
@@ -1887,7 +1889,7 @@ static void
 nls_sort_assign(const char *newval, void *extra)
 {
 	if (DB_ORACLE == database_mode && 
-	   (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	   IsTransactionState() && MyDatabaseId != InvalidOid) /* Begin - BUG#Z00006646 */
 	{
 		nls_sort_oid = CollationGetCollid(newval);
 	}
@@ -1897,7 +1899,7 @@ static bool
 default_collation_check(char **newval, void **extra, GucSource source)
 {
 	if (DB_ORACLE == database_mode && 
-		(IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+		IsTransactionState() && MyDatabaseId != InvalidOid) /* Begin - BUG#Z00006646 */
 	{
 		Oid coll = InvalidOid;
 		
@@ -1925,7 +1927,8 @@ default_collation_check(char **newval, void **extra, GucSource source)
 static void
 default_collation_assign(const char *newval, void *extra)
 {
-	if (strlen(newval))
+	if (strlen(newval) &&
+		IsTransactionState() && MyDatabaseId != InvalidOid) /* Begin - BUG#Z00006646 */
 		default_collation_oid = CollationGetCollid(newval);
 	else
 		default_collation_oid = InvalidOid; /* BUG#M0000436 */
