@@ -73,6 +73,17 @@ lock_current_session(PG_FUNCTION_ARGS)
 	if (should_lock_current_session)
 	{
 		elog(WARNING, "locked already, ignore!");
+/* Begin - BUG#Z6168 */
+#ifdef USE_SQLITE
+		/* add audit event */
+		if (sqlite_open_db_for_audit_hook)
+		{
+			char	*errtext="The current session has been locked, no need to re-lock";
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_FAIL, NULL, errtext);
+		}
+#endif
+/* End - BUG#Z6168 */
+
 		PG_RETURN_CSTRING(pstrdup("The current session has been locked, no need to re-lock"));
 	}
 
@@ -98,6 +109,16 @@ unlock_current_session(PG_FUNCTION_ARGS)
 {
 	if (!should_lock_current_session)
 	{
+/* Begin - BUG#Z6168 */
+#ifdef USE_SQLITE
+		/* add audit event */
+		if (sqlite_open_db_for_audit_hook)
+		{
+			char	*errtext="The current session has been unlocked, no need to unlock again";
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_FAIL, NULL, errtext);
+		}
+#endif
+/* End - BUG#Z6168 */
 		PG_RETURN_CSTRING(pstrdup("The current session has been unlocked, no need to unlock again"));
 	}
 

@@ -1031,6 +1031,17 @@ exec_simple_query(const char *query_string)
 				{
 					break;
 				}
+/* Begin - BUG#Z6168 */
+#ifdef USE_SQLITE
+				else if (strcasestr(query_string_tmp, "lock_current_session") && sqlite_open_db_for_audit_hook)
+				{
+							char	*errtext="The current session has been locked, no need to re-lock";
+							sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_FAIL, NULL, errtext);
+							elog(WARNING, "The current session has been locked, no need to re-lock");
+							return;
+				}
+#endif
+/* End - BUG#Z6168 */
 				else
 				{
 					elog(WARNING, "current session is locked, please unlock first");
