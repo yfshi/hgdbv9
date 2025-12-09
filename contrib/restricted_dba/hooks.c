@@ -189,6 +189,11 @@ restricted_utility(PlannedStmt *pstmt,
 												pstmt->stmt_location,
 												pstmt->stmt_len);
 				break;
+			/* Begin - bug#z6270 */
+			case T_CreateTableAsStmt:
+				call_next = create_table_as_check((CreateTableAsStmt *) parsetree);
+				break;
+			/* End - bug#z6270 */
 			case T_CreateStmt:
 			case T_CreateForeignTableStmt:
 				{

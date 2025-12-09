@@ -170,6 +170,38 @@ create_table_check(CreateStmt *stmt, char relkind, Oid ownerId,
 	return true;
 }
 
+/* Begin - bug#z6270 */
+bool
+create_table_as_check(CreateTableAsStmt *stmt)
+{
+	Oid creater = GetUserId();
+
+	if (IS_SYSSSO(creater) || IS_SYSSAO(creater))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied"),
+				 errdetail("member of syssso_role and syssao_role "
+						   "cannot create table")));
+	}
+	else if (IS_SYSDBA(creater))
+	{
+		/*make sure we get the active namespace id we create table on*/
+		if (stmt->into && stmt->into->rel)
+		{
+			Oid namespace_id;
+
+			namespace_id = RangeVarGetCreationNamespace(stmt->into->rel);
+			/*check whewher creater able to use the schema*/
+			use_schema_check(namespace_id,creater);
+		}
+	}
+	/*we leave nomral user to standard acl check*/
+
+	return true;
+}
+/* End - bug#z6270 */
+
 bool
 create_sequence_check(ParseState *pstate, CreateSeqStmt *seq)
 {

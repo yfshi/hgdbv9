@@ -187,6 +187,20 @@ create table sch_syssao_u1.tb1_dba_u1(id int);
 create table sch_u1.tb1_dba_u1(id int);
 create table sch_non_exist.tb1_non_exist(id int);
 
+/* Begin - bug#z6270 */
+------ fail
+create table sch2_sysdba_u2.tb1_dba_u1 as select * from tb1_dba_u1;
+create table sch_syssso_u1.tb1_dba_u1 as select * from tb1_dba_u1;
+create table sch_syssao_u1.tb1_dba_u1 as select * from tb1_dba_u1;
+create table sch_u1.tb1_dba_u1 as select * from tb1_dba_u1;
+create table sch_non_exist.tb1_non_exist as select * from tb1_dba_u1;
+select * into sch2_sysdba_u2.tb1_dba_u1 from tb1_dba_u1;
+select * into sch_syssso_u1.tb1_dba_u1 from tb1_dba_u1;
+select * into sch_syssao_u1.tb1_dba_u1 from tb1_dba_u1;
+select * into sch_u1.tb1_dba_u1 from tb1_dba_u1;
+select * into sch_non_exist.tb1_non_exist from tb1_dba_u1;
+/* End - bug#z6270 */
+
 ---- ALTER TABLE OWNER
 ------ pass
 begin;
