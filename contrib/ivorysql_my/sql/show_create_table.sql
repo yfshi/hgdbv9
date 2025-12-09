@@ -1393,6 +1393,18 @@ SHOW CREATE TABLE test_table;
 
 DROP TABLE test_table;
 
+CREATE TABLE IF NOT EXISTS test_table ( id INT, col1 VARCHAR(50), col2 INT, col3 VARCHAR(100) );
+
+INSERT INTO test_table (id, col1, col2, col3) VALUES (1, 'data1', 100, 'content1');
+INSERT INTO test_table (id, col1, col2, col3) VALUES (2, 'data2', 200, 'content2');
+INSERT INTO test_table (id, col1, col2, col3) VALUES (3, 'data3', 300, 'content3');
+
+CREATE unique INDEX idx_test_u ON test_table (col2);
+SELECT * from mys_information_schema.columns where TABLE_NAME='test_table';
+DESCRIBE test_table col2;
+
+DROP TABLE test_table;
+
 create table t2 (ID_ii int);
 set sql_quote_show_create= on;
 set sql_mode='';

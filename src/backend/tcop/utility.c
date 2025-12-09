@@ -96,6 +96,15 @@
 #include "parser/parser.h"
 /* End - ReqID:SRS-MYSQL-CREATE-INDEX */
 
+/* Begin - BUG#Z6657 */
+#include "catalog/pg_namespace.h"
+/* End - BUG#Z6657 */
+
+/* Begin - BUG#Z6657 */
+#define TINYTEXT_LIMIT 255
+#define TEXT_LIMIT 3072
+/* End - BUG#Z6657 */
+
 /* Hook for plugins to get control in ProcessUtility() */
 ProcessUtility_hook_type ProcessUtility_hook = NULL;
 
@@ -4404,6 +4413,11 @@ mys_is_col_all(Oid relid, IndexStmt *stmt)
 				int 	collength = 0;
 				/* End - BUG#Z6293 */
 
+				/* Begin - BUG#Z6657 */
+				Oid typid = InvalidOid;
+				HeapTuple	 typetuple;
+				/* End - BUG#Z6657 */
+
 				if (nodeTag(col_name) != T_String || list_length(args) != 1)
 				{
 					break;
@@ -4423,28 +4437,80 @@ mys_is_col_all(Oid relid, IndexStmt *stmt)
 
 				/* Begin - BUG#Z6293 */
 				typmod = ((Form_pg_attribute) GETSTRUCT(atttuple))->atttypmod;
-				collength = typmod - VARHDRSZ;
-				aconst = (A_Const *)last_arg;
-
-				if (aconst->val.type == T_Integer)
+				/* Begin - BUG#Z6657 */
+				if (typmod < 0)
 				{
-					if (typmod > 0 && (aconst->val.val.ival <= 0 || aconst->val.val.ival > collength))
+					typid = ((Form_pg_attribute) GETSTRUCT(atttuple))->atttypid;
+					typetuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(typid));
+
+					if (!HeapTupleIsValid(typetuple))
+					{
+						break;
+					}
+
+					if (typid == TINYTEXTOID &&
+						((Form_pg_type) GETSTRUCT(typetuple))->typnamespace == PG_IVYMY_NAMESPACE)
+					{
+						collength = TINYTEXT_LIMIT;
+					}
+					else if (((typid == MEDIUMTEXTOID || typid == LONGTEXTOID) &&
+						((Form_pg_type) GETSTRUCT(typetuple))->typnamespace == PG_IVYMY_NAMESPACE) ||
+						(typid == TEXTOID &&
+						((Form_pg_type) GETSTRUCT(typetuple))->typnamespace == PG_CATALOG_NAMESPACE))
+					{
+						collength = TEXT_LIMIT;
+					}
+					ReleaseSysCache(typetuple);
+
+					aconst = (A_Const *)last_arg;
+					if (aconst->val.type == T_Integer)
+					{
+						if (collength > 0 && aconst->val.val.ival*3 > collength)
+						{
+							ereport(ERROR,
+									errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("Specified key was too long; max key length is %d bytes", collength));
+						}
+						else if (collength > 0 && aconst->val.val.ival <= 0)
+						{
+							ereport(ERROR,
+									errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("Key part '%s' length cannot be %d", ((Value *)col_name)->val.str, aconst->val.val.ival));
+						}
+					}
+					else
+					{
 						ereport(ERROR,
 								errcode(ERRCODE_SYNTAX_ERROR),
-								errmsg("Key part '%s' length cannot be %d", ((Value *)col_name)->val.str, aconst->val.val.ival));
+								errmsg("Key part '%s' length must integer", ((Value *)col_name)->val.str));
+					}
 				}
 				else
+				/* End - BUG#Z6657 */
 				{
-					ereport(ERROR,
-							errcode(ERRCODE_SYNTAX_ERROR),
-							errmsg("Key part '%s' length must integer", ((Value *)col_name)->val.str));
+					collength = typmod - VARHDRSZ;
+					aconst = (A_Const *)last_arg;
+
+					if (aconst->val.type == T_Integer)
+					{
+						if (collength > 0 && (aconst->val.val.ival <= 0 || aconst->val.val.ival > collength))
+							ereport(ERROR,
+									errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("Key part '%s' length cannot be %d", ((Value *)col_name)->val.str, aconst->val.val.ival));
+					}
+					else
+					{
+						ereport(ERROR,
+								errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("Key part '%s' length must integer", ((Value *)col_name)->val.str));
+					}
 				}
 				/* End - BUG#Z6293 */
 
 				ReleaseSysCache(atttuple);
 			}
 		}
-		
+
 		num++;
 	}
 
