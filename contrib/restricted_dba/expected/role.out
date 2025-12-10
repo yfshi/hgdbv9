@@ -359,3 +359,26 @@ drop user sso_u1,sso_u2;
 drop user sao_u1,sao_u2;
 \c template1 sysdba_u1
 drop database testdb;
+---- bug z6267
+------ all should fail
+alter role sysdba_role with login;
+ERROR:  role name "sysdba_role" is reserved
+DETAIL:  Cannot alter reserved roles.
+alter role syssso_role with login;
+ERROR:  role name "syssso_role" is reserved
+DETAIL:  Cannot alter reserved roles.
+alter role syssao_role with login;
+ERROR:  role name "syssao_role" is reserved
+DETAIL:  Cannot alter reserved roles.
+alter role sysdba_role rename to sysdba_role_new;
+ERROR:  role name "sysdba_role_new" is reserved
+alter role syssso_role rename to syssso_role_new;
+ERROR:  role name "syssso_role_new" is reserved
+alter role syssao_role rename to syssao_role_new;
+ERROR:  role name "syssao_role_new" is reserved
+drop role sysdba_role;
+ERROR:  cannot drop role sysdba_role because it is required by the database system
+drop role syssso_role;
+ERROR:  cannot drop role syssso_role because it is required by the database system
+drop role syssao_role;
+ERROR:  cannot drop role syssao_role because it is required by the database system

@@ -254,3 +254,15 @@ drop user sao_u1,sao_u2;
 
 \c template1 sysdba_u1
 drop database testdb;
+
+---- bug z6267
+------ all should fail
+alter role sysdba_role with login;
+alter role syssso_role with login;
+alter role syssao_role with login;
+alter role sysdba_role rename to sysdba_role_new;
+alter role syssso_role rename to syssso_role_new;
+alter role syssao_role rename to syssao_role_new;
+drop role sysdba_role;
+drop role syssso_role;
+drop role syssao_role;
