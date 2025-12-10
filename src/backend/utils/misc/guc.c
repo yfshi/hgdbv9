@@ -13674,7 +13674,8 @@ check_idle_session_noinput(int *newval, void **extra, GucSource source)
 		elog(ERROR, "hg_session_locking_timeout:%d should be smaller than"
 				" idle_session_timeout:%d, or session might disconnect before locking",
 				*newval, IdleSessionTimeout);
-	if(IsUnderPostmaster)
+	if(IsUnderPostmaster &&
+		IsTransactionState() && MyDatabaseId != InvalidOid) /* Begin - BUG#Z00006646 */
 	{
 		if (!IS_SYSSSO(GetUserId()))
 			ereport(ERROR,
@@ -13694,7 +13695,8 @@ check_idle_session_timeout(int *newval, void **extra, GucSource source)
 				" hg_session_locking_timeout:%d, or session might disconnect before locking",
 				*newval, IdleSessionNoinput);
 	/* Only allow syssso role set the idle_session_timeout. */
-	if(IsUnderPostmaster)
+	if(IsUnderPostmaster &&
+		IsTransactionState() && MyDatabaseId != InvalidOid) /* Begin - BUG#Z00006646 */
 	{
 		if (!IS_SYSSSO(GetUserId()))
 			ereport(ERROR,
@@ -13729,7 +13731,8 @@ static bool
 check_count_idle_busy_time(bool *newval, void **extra, GucSource source)
 {
 	/* Only allow syssso role set the count_idle_busy_time. */
-	if(IsUnderPostmaster)
+	if(IsUnderPostmaster &&
+		IsTransactionState() && MyDatabaseId != InvalidOid) /* Begin - BUG#Z00006646 */
 	{
 		if (!IS_SYSSSO(GetUserId()))
 			ereport(ERROR,
