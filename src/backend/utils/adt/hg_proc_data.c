@@ -178,7 +178,9 @@ ProcDataTableInsert(const int *tagPtr, int sid, int trans_state, unsigned int ti
 	unsigned long	tmp_busy_microsecs = 0;
 	unsigned long	tmp = 0;
 
-	LWLockAcquire(proc_data_lock, LW_EXCLUSIVE);
+	/* Bug #6198 */
+	if (!LWLockConditionalAcquire(proc_data_lock, LW_EXCLUSIVE))
+		return;
 
 	result = (ProcPrivEnt *)
 		hash_search(ProcPrivDataHash,
@@ -241,7 +243,7 @@ ProcDataTableInsert(const int *tagPtr, int sid, int trans_state, unsigned int ti
 	strcpy(result->data.trans_info, TransStateIntAsString(trans_state));
 	result->data.tid = tid;
 	result->data.is_lock = should_lock_current_session;
-	result->data.is_share = MyProcPort->is_share;
+	result->data.is_share = MyProcPort ? MyProcPort->is_share : false;
 
 	elog(DEBUG1, "ProcDataTableInsert, pid:%d, sid:%d, trans_state:%d, tid:%d, is_lock:%d", 
 			*tagPtr, sid, trans_state, tid, result->data.is_lock);

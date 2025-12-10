@@ -5049,6 +5049,11 @@ PostgresMain(int argc, char *argv[],
 	if (!ignore_till_sync)
 		send_ready_for_query = true;	/* initially, or after error */
 
+	/* Begin ReqID: SESSION-VIEWS */
+	/* Bug #6198 insert a row when session is up, before the query loop */
+	ProcDataTableInsert(&MyProcPid, g_proc_counter, GetCurrTransState(), GetCurrentTransactionIdIfAny());
+	/* End ReqID: SESSION-VIEWS */
+
 	/*
 	 * Non-error queries loop here.
 	 */
