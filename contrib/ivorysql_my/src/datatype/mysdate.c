@@ -7835,7 +7835,7 @@ mystimes_out(PG_FUNCTION_ARGS)
 	time = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(num)));
 
 	/* Begin - bug#z5127 */
-	if (is_numeric_neg(num))
+	if (numeric_is_neg(num))
 	{
 		if (time < 0)
 			time = -time;

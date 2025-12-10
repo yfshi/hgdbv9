@@ -184,11 +184,20 @@ select * from test_convert_signed;
 drop table test_convert_signed;
 
 
-select convert(9223372036854775807, signed);
-select convert(9223372036854775808, signed);
-select convert(9223372036854775809, signed);
-select convert(-9223372036854775809, signed);
+select convert(9223372036854775807, signed);        -- 9223372036854775807
+select convert(9223372036854775808, signed);        -- -9223372036854775808
+select convert(9223372036854775808.0, signed);      -- 9223372036854775807, warning
+select convert(9223372036854775808.9, signed);      -- 9223372036854775807, warning
+select convert(9223372036854775809, signed);        -- -9223372036854775807
+select convert(9223372036854775809.0, signed);      -- 9223372036854775807, warning
+select convert(-9223372036854775809, signed);       -- -9223372036854775808, warning
 
+select convert(-1, unsigned);                           -- 18446744073709551615
+select convert(9223372036854775808.9, unsigned);        -- 9223372036854775809
+select convert(-9223372036854775808, unsigned);         -- 9223372036854775808
+select convert(-9223372036854775808.0, unsigned);       -- 0, warning
+select convert(-9223372036854775808.9, unsigned);       -- 0, warning
+select convert(-9223372036854775809, unsigned);         -- 0, warning
 
 create table test_convert_decimal (
     original_value varchar(50),
@@ -201,3 +210,23 @@ insert into test_convert_decimal (original_value, converted_value) values
 select * from test_convert_decimal;
 
 reset sql_mode;
+
+/* Begin - bug#6533 */
+select convert(true, float),  convert(false, float),  convert('true', float),  convert('false', float);
+select convert(1 = 1, float), convert(1 = 2, float), convert(NULL IS NULL, float),  convert('a' = 'b', float);
+/* End - bug#6533 */
+
+/* Begin - bug#6531 */
+select convert(true, double) ,  convert(false, double),  convert('true', double), convert('false', double);
+select convert(1 = 1, double),  convert(1 = 2, double),   convert(NULL IS NULL, double),  convert('a' = 'b', double);
+/* End - bug#6531 */
+
+/* Begin - bug#6529 */
+select convert(true, signed),convert(false, signed),convert(TRUE, signed),  convert(FALSE, signed);
+select convert(1 = 1, signed), convert(1 = 2, signed),  convert(NULL IS NULL, signed),   convert('a' = 'b', signed);
+/* End - bug#6529 */
+
+/* Begin - bug#6528 */
+select convert(TRUE, decimal(10,2)) ,  convert(FALSE, decimal(10,2));
+select convert(1 = 1, decimal(10,2)),  convert(1 = 2, decimal(10,2)), convert(NULL IS NULL, decimal(10,2)),  convert('a' = 'b', decimal(10,2));
+/* End - bug#6528 */

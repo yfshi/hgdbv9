@@ -330,8 +330,26 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 			}
 
 		case T_SubLink:
-			result = transformSubLink(pstate, (SubLink *) expr);
-			break;
+			{
+				List *p_varnamespace = NIL;
+
+				/**
+				 * Begin - bug#5797
+				 * In InsertStmt, do not replace Var node with column's default value
+				 * in SubLink node if the Var occur in value list.
+				 */
+				p_varnamespace = pstate->p_varnamespace;
+				pstate->p_varnamespace = NIL;
+				/* End - bug#5797 */
+
+				result = transformSubLink(pstate, (SubLink *) expr);
+			
+				/* Begin - bug#5797 */
+				pstate->p_varnamespace = p_varnamespace;
+				/* End - bug#5797 */
+
+				break;
+			}
 
 		case T_CaseExpr:
 			{

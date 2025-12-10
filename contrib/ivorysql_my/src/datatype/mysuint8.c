@@ -56,7 +56,6 @@ PG_FUNCTION_INFO_V1(mysuint8_typmodout);
 PG_FUNCTION_INFO_V1(mysuint8_scale);
 
 PG_FUNCTION_INFO_V1(int_uint8);
-PG_FUNCTION_INFO_V1(numeric_uint8);
 PG_FUNCTION_INFO_V1(boolean_uint8);
 PG_FUNCTION_INFO_V1(uint8_int2);
 PG_FUNCTION_INFO_V1(uint8_int4);
@@ -366,55 +365,6 @@ int_uint8(PG_FUNCTION_ARGS)
 		}
 	}
 	/* End - SRS-MYSQL-HEX-LITERAL */
-
-	PG_RETURN_UINT64(val2);
-}
-
-Datum
-numeric_uint8(PG_FUNCTION_ARGS)
-{
-	Numeric		num = PG_GETARG_NUMERIC(0);
-	uint64		val2 = 0;
-	uint64		val1 = 0;
-	Numeric 	uint8maxnum;
-	bool		is_insert = CALL_IN_INSERT();
-	int 		level = WARNING;
-
-	/* Begin - SRS-MYSQL-HEX-LITERAL */
-	if (is_insert)
-		level = !is_strict_mode() ? WARNING : ERROR;
-	/* End - SRS-MYSQL-HEX-LITERAL */
-
-	uint8maxnum = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-													  CStringGetDatum("18446744073709551615"),
-													  ObjectIdGetDatum(InvalidOid),
-													  Int32GetDatum(-1)));
-
-	if (DatumGetBool(DirectFunctionCall2(numeric_gt,
-										 NumericGetDatum(num),
-										 NumericGetDatum(uint8maxnum))))
-	{
-		ereport(level, (errmsg("integer unsigned out of range")));
-		PG_RETURN_UINT64(PG_UINT64_MAX);
-	}
-
-	if (DatumGetBool(DirectFunctionCall2(numeric_lt,
-										 NumericGetDatum(num),
-										 NumericGetDatum(int64_to_numeric(0)))))
-	{
-		ereport(level, (errmsg("integer unsigned out of range")));
-		PG_RETURN_UINT64(0);
-	}
-
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_uint8, NumericGetDatum(num)));
-
-	if (val1 < 0 || val1 > PG_UINT64_MAX)
-	{
-		ereport(level, (errmsg("integer unsigned out of range")));
-		val1 = val1 < 0 ? 0 : PG_UINT64_MAX;
-	}
-
-	val2 = val1;
 
 	PG_RETURN_UINT64(val2);
 }

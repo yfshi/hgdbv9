@@ -49,8 +49,6 @@
 mysql_numeric_datatype_in_hook_type mysql_numeric_datatype_in_hook = NULL;
 /* End - bug#z5590 */
 
-PG_FUNCTION_INFO_V1(numeric_uint8);
-
 /* ----------
  * Uncomment the following to enable compilation of dump_numeric()
  * and dump_var() and to get a dump of any result produced by make_result().
@@ -4471,19 +4469,54 @@ numeric_int8(PG_FUNCTION_ARGS)
 	init_var_from_num(num, &x);
 
 	if (!numericvar_to_int64(&x, &result))
-	/* Begin - BUG#Z6536 */
 	{
-		if (MYS_MODE == compatible_mode)
+		/* Begin - bug#6526 */
+		if (compatible_mode == MYS_MODE)
 		{
-			char *str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
-			result = mysql_int8_datatype_in_hook(str, CALL_IN_INSERT());
+			bool is_insert = CALL_IN_INSERT();
+
+			if (is_insert)
+			{
+				if (numeric_is_neg(num))
+					result = INT64_MIN;
+				else
+					result = INT64_MAX;
+
+				ereport(is_strict_mode() ? ERROR : WARNING,
+						(errmsg("Out of range value for column")));
+			}
+			else
+			{
+				uint64 tmp;
+				
+				// num is integer and no more than UINT64_MAX
+				if (x.dscale == 0 && numericvar_to_uint64(&x, &tmp))
+				{
+					result = (int64) tmp;
+				}
+				else
+				{
+					if (numeric_is_neg(num))
+						result = INT64_MIN;
+					else
+						result = INT64_MAX;
+
+					ereport(WARNING,
+							(errmsg("Truncated incorrect DECIMAL value: '%s'",
+									DatumGetCString(DirectFunctionCall1(numeric_out,
+																		PointerGetDatum(num))))));
+				}
+			}
 		}
+		/* End - bug#6526 */
 		else
+		{
 			ereport(ERROR,
 					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
 					 errmsg("bigint out of range")));
+		}
 	}
-	/* End - BUG#Z6536 */
+
 	PG_RETURN_INT64(result);
 }
 
@@ -4728,7 +4761,7 @@ numeric_uint8(PG_FUNCTION_ARGS)
 {
 	Numeric		num = PG_GETARG_NUMERIC(0);
 	NumericVar	x;
-	XLogRecPtr	result;
+	uint64		result;
 
 	if (NUMERIC_IS_SPECIAL(num))
 	{
@@ -4745,10 +4778,54 @@ numeric_uint8(PG_FUNCTION_ARGS)
 	/* Convert to variable format and thence to pg_lsn */
 	init_var_from_num(num, &x);
 
-	if (!numericvar_to_uint64(&x, (uint64 *) &result))
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("uint8 out of range")));
+	if (!numericvar_to_uint64(&x, &result))
+	{
+		/* Begin - bug#6526 */
+		if (compatible_mode == MYS_MODE)
+		{
+			bool is_insert = CALL_IN_INSERT();
+
+			if (is_insert)
+			{
+				if (numeric_is_neg(num))
+					result = 0;
+				else
+					result = PG_UINT64_MAX;
+
+				ereport(is_strict_mode() ? ERROR : WARNING,
+						(errmsg("Out of range value for column")));
+			}
+			else
+			{
+				int64 tmp;
+				
+				// num is integer and no less than INT64_MIN
+				if (x.dscale == 0 && numericvar_to_int64(&x, &tmp))
+				{
+					result = (int64) tmp;
+				}
+				else
+				{
+					if (numeric_is_neg(num))
+						result = 0;
+					else
+						result = PG_UINT64_MAX;
+
+					ereport(WARNING,
+							(errmsg("Truncated incorrect DECIMAL value: '%s'",
+									DatumGetCString(DirectFunctionCall1(numeric_out,
+																		PointerGetDatum(num))))));
+				}
+			}
+		}
+		/* End - bug#6526 */
+		else
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg("unsigned bigint out of range")));
+		}
+	}
 
 	PG_RETURN_UINT64(result);
 }
@@ -11939,7 +12016,7 @@ bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to)
 
 /* Begin - bug#z5127 */
 bool
-is_numeric_neg(Numeric num)
+numeric_is_neg(Numeric num)
 {
 	if (NUMERIC_SIGN(num) == NUMERIC_POS)
 		return false;

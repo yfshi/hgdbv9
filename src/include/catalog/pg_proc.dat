@@ -12036,6 +12036,11 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proname => 'hex_to_enum', provolatile => 's', prorettype => 'anyenum',
   proargtypes => 'ivy_hex int4', prosrc => 'hex_to_enum' },
 /* End - bug#6027 */
+/* Begin - bug#6526 */
+{ oid => '6047', descr => 'convert numeric to uint8',
+  proname => 'numeric_uint8', prorettype => 'uint8', proargtypes => 'numeric int4 bool int8',
+  prosrc => 'numeric_uint8' },
+/* End - bug#6526 */
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 /*END MySQL Compatibility Metadatas*/
 /* Begin ReqID: LOCK-SESSION */

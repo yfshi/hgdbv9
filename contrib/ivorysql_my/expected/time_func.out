@@ -3692,7 +3692,7 @@ select from_days(20001111250000);--0000-00-00
 (1 row)
 
 select from_days(200011112323233242424242456565);--0000-00-00 warning
-WARNING:  Truncated incorrect INTEGER value: '200011112323233242424242456565'
+WARNING:  Truncated incorrect DECIMAL value: '200011112323233242424242456565'
  from_days  
 ------------
  0000-00-00

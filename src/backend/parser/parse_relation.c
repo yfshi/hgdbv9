@@ -1087,12 +1087,6 @@ colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_p
 
 				if (newresult)
 				{
-					if (result && !equal(result, newresult))
-						ereport(ERROR,
-								(errcode(ERRCODE_AMBIGUOUS_COLUMN),
-								 errmsg("column reference \"%s\" is ambiguous",
-										colname),
-								 parser_errposition(pstate, location)));
 					check_lateral_ref_ok(pstate, nsitem, location);
 					result = newresult;
 					pstate->p_isexistVar = true;

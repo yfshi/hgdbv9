@@ -1001,8 +1001,8 @@ set sql_mode='';
 insert into test_convert_signed (original_value, converted_value) values 
 ('9223372036854775808', 9223372036854775808), 
 ('-9223372036854775809', -9223372036854775809);
-WARNING:  Out of range value for column.
-WARNING:  Out of range value for column.
+WARNING:  Out of range value for column
+WARNING:  Out of range value for column
 -- insert into test_convert_signed (original_value, converted_value) values
 -- ('9223372036854775808', convert(9223372036854775808, signed)),
 -- ('-9223372036854775809', convert(-9223372036854775809, signed));
@@ -1014,31 +1014,89 @@ select * from test_convert_signed;
 (2 rows)
 
 drop table test_convert_signed;
-select convert(9223372036854775807, signed);
+select convert(9223372036854775807, signed);        -- 9223372036854775807
         int8         
 ---------------------
  9223372036854775807
 (1 row)
 
-select convert(9223372036854775808, signed);
-WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
+select convert(9223372036854775808, signed);        -- -9223372036854775808
          int8         
 ----------------------
  -9223372036854775808
 (1 row)
 
-select convert(9223372036854775809, signed);
-WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
+select convert(9223372036854775808.0, signed);      -- 9223372036854775807, warning
+WARNING:  Truncated incorrect DECIMAL value: '9223372036854775808.0'
+        int8         
+---------------------
+ 9223372036854775807
+(1 row)
+
+select convert(9223372036854775808.9, signed);      -- 9223372036854775807, warning
+WARNING:  Truncated incorrect DECIMAL value: '9223372036854775808.9'
+        int8         
+---------------------
+ 9223372036854775807
+(1 row)
+
+select convert(9223372036854775809, signed);        -- -9223372036854775807
          int8         
 ----------------------
  -9223372036854775807
 (1 row)
 
-select convert(-9223372036854775809, signed);
-WARNING:  Truncated incorrect INTEGER value: '-9223372036854775809'
+select convert(9223372036854775809.0, signed);      -- 9223372036854775807, warning
+WARNING:  Truncated incorrect DECIMAL value: '9223372036854775809.0'
+        int8         
+---------------------
+ 9223372036854775807
+(1 row)
+
+select convert(-9223372036854775809, signed);       -- -9223372036854775808, warning
+WARNING:  Truncated incorrect DECIMAL value: '-9223372036854775809'
          int8         
 ----------------------
  -9223372036854775808
+(1 row)
+
+select convert(-1, unsigned);                           -- 18446744073709551615
+        uint8         
+----------------------
+ 18446744073709551615
+(1 row)
+
+select convert(9223372036854775808.9, unsigned);        -- 9223372036854775809
+        uint8        
+---------------------
+ 9223372036854775809
+(1 row)
+
+select convert(-9223372036854775808, unsigned);         -- 9223372036854775808
+        uint8        
+---------------------
+ 9223372036854775808
+(1 row)
+
+select convert(-9223372036854775808.0, unsigned);       -- 0, warning
+WARNING:  Truncated incorrect DECIMAL value: '-9223372036854775808.0'
+ uint8 
+-------
+ 0
+(1 row)
+
+select convert(-9223372036854775808.9, unsigned);       -- 0, warning
+WARNING:  Truncated incorrect DECIMAL value: '-9223372036854775808.9'
+ uint8 
+-------
+ 0
+(1 row)
+
+select convert(-9223372036854775809, unsigned);         -- 0, warning
+WARNING:  Truncated incorrect DECIMAL value: '-9223372036854775809'
+ uint8 
+-------
+ 0
 (1 row)
 
 create table test_convert_decimal (
@@ -1057,3 +1115,71 @@ select * from test_convert_decimal;
 (1 row)
 
 reset sql_mode;
+/* Begin - bug#6533 */
+select convert(true, float),  convert(false, float),  convert('true', float),  convert('false', float);
+WARNING:  Truncated incorrect FLOAT value: 'true'
+LINE 2: ...rt(true, float),  convert(false, float),  convert('true', fl...
+                                                             ^
+WARNING:  Truncated incorrect FLOAT value: 'false'
+LINE 2: ...(false, float),  convert('true', float),  convert('false', f...
+                                                             ^
+ float4 | float4 | float4 | float4 
+--------+--------+--------+--------
+      1 |      0 |      0 |      0
+(1 row)
+
+select convert(1 = 1, float), convert(1 = 2, float), convert(NULL IS NULL, float),  convert('a' = 'b', float);
+ float4 | float4 | float4 | float4 
+--------+--------+--------+--------
+      1 |      0 |      1 |      0
+(1 row)
+
+/* End - bug#6533 */
+/* Begin - bug#6531 */
+select convert(true, double) ,  convert(false, double),  convert('true', double), convert('false', double);
+WARNING:  Truncated incorrect DOUBLE value: 'true'
+LINE 3: ...true, double) ,  convert(false, double),  convert('true', do...
+                                                             ^
+WARNING:  Truncated incorrect DOUBLE value: 'false'
+LINE 3: ...false, double),  convert('true', double), convert('false', d...
+                                                             ^
+ float8 | float8 | float8 | float8 
+--------+--------+--------+--------
+      1 |      0 |      0 |      0
+(1 row)
+
+select convert(1 = 1, double),  convert(1 = 2, double),   convert(NULL IS NULL, double),  convert('a' = 'b', double);
+ float8 | float8 | float8 | float8 
+--------+--------+--------+--------
+      1 |      0 |      1 |      0
+(1 row)
+
+/* End - bug#6531 */
+/* Begin - bug#6529 */
+select convert(true, signed),convert(false, signed),convert(TRUE, signed),  convert(FALSE, signed);
+ int8 | int8 | int8 | int8 
+------+------+------+------
+    1 |    0 |    1 |    0
+(1 row)
+
+select convert(1 = 1, signed), convert(1 = 2, signed),  convert(NULL IS NULL, signed),   convert('a' = 'b', signed);
+ int8 | int8 | int8 | int8 
+------+------+------+------
+    1 |    0 |    1 |    0
+(1 row)
+
+/* End - bug#6529 */
+/* Begin - bug#6528 */
+select convert(TRUE, decimal(10,2)) ,  convert(FALSE, decimal(10,2));
+ numeric | numeric 
+---------+---------
+    1.00 |    0.00
+(1 row)
+
+select convert(1 = 1, decimal(10,2)),  convert(1 = 2, decimal(10,2)), convert(NULL IS NULL, decimal(10,2)),  convert('a' = 'b', decimal(10,2));
+ numeric | numeric | numeric | numeric 
+---------+---------+---------+---------
+    1.00 |    0.00 |    1.00 |    0.00
+(1 row)
+
+/* End - bug#6528 */

@@ -112,10 +112,9 @@ ERROR:  wrong number of parameters for prepared statement "q3"
 DETAIL:  Expected 5 parameters but got 6.
 -- wrong param types
 EXECUTE q3(5::smallint, 10.5::float, false, 4::bigint, 'bytea');
-ERROR:  parameter $3 of type boolean cannot be coerced to the expected type double precision
-LINE 1: EXECUTE q3(5::smallint, 10.5::float, false, 4::bigint, 'byte...
-                                             ^
-HINT:  You will need to rewrite or cast the expression.
+ERROR:  invalid input syntax for type smallint: "bytea"
+LINE 1: ...UTE q3(5::smallint, 10.5::float, false, 4::bigint, 'bytea');
+                                                              ^
 -- invalid type
 PREPARE q4(nonexistenttype) AS SELECT $1;
 ERROR:  type "nonexistenttype" does not exist

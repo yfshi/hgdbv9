@@ -54,3 +54,41 @@ WARNING:  Truncated incorrect DECIMAL value: '1234.567'
 (1 row)
 
 /* End - bug#z6503 */
+/* Begin - bug#6506 */
+create table tttt (a decimal(0, 0));
+desc tttt;
+ Field |     Type      | Null | Key | Default | Extra 
+-------+---------------+------+-----+---------+-------
+ a     | numeric(10,0) | YES  |     |         | 
+(1 row)
+
+drop table tttt;
+select convert(123.456, decimal(0,0));
+ numeric 
+---------
+     123
+(1 row)
+
+/* End - bug#6506 */
+/* Begin - bug#6526 */
+select CAST('1.8446744e19' AS decimal(65,30));
+                       numeric                       
+-----------------------------------------------------
+ 18446744000000000000.000000000000000000000000000000
+(1 row)
+
+select convert(CAST('1.8446744e19' AS decimal(65,30)), signed);
+WARNING:  Truncated incorrect DECIMAL value: '18446744000000000000.000000000000000000000000000000'
+        int8         
+---------------------
+ 9223372036854775807
+(1 row)
+
+select convert(CAST('-1.8446744e19' AS decimal(65,30)), signed);
+WARNING:  Truncated incorrect DECIMAL value: '-18446744000000000000.000000000000000000000000000000'
+         int8         
+----------------------
+ -9223372036854775808
+(1 row)
+
+/* End - bug#6526 */

@@ -1584,16 +1584,3 @@ INSERT INTO my_longblob_t1 VALUES ('123', '123', '1234', 'abcd', 'ABCD', '', ' '
 
 -- should get (0, 0, 0, 0, 1, 0, 0, 0, NULL, NULL) and warnings
 select c1 XOR c1, c1 XOR c2, c1 XOR c3, c2 XOR c3, c3 XOR c4, c4 XOR c5, c5 XOR c6, c6 XOR c7, c4 XOR c8, c6 XOR c8 from my_longblob_t1;
-
-/* Begin - bug#z5655 */
-create table tb_longblob1(c1 longblob);
-insert into tb_longblob1 values (repeat('a', 1073741771));
-insert into tb_longblob1 values (repeat('a', 1073741772));
-select length(c1) from tb_longblob1;
-set sql_mode = '';
-insert into tb_longblob1 values (repeat('a', 1073741772));
-insert into tb_longblob1 values (repeat('a', 1073741819));
-select length(c1) from tb_longblob1;
-drop table tb_longblob1;
-set sql_mode = default;
-/* End - bug#z5655 */

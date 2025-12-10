@@ -823,3 +823,58 @@ select * from test2;
 (3 rows)
 
 drop table test,test1,test2;
+/* Begin - bug#5797 */
+create table test(a int default 1);
+insert into test values (a);
+select * from test;
+ a 
+---
+ 1
+(1 row)
+
+drop table test;
+create table test(a int default 1, b int);
+insert into test values (2, a); -- 2, 2
+insert into test values (b, 2); -- null, 2
+insert into test values (a, a); -- 1, 1
+insert into test values (b, b); -- null, null
+insert into test values (a, b);	-- 1, null
+insert into test values (b, a); -- null, null
+insert into test(b) values (a); -- 1, 1
+insert into test(a) values (b); -- null, null
+select * from test;
+ a | b 
+---+---
+ 2 | 2
+   | 2
+ 1 | 1
+   |  
+ 1 |  
+   |  
+ 1 | 1
+   |  
+(8 rows)
+
+drop table test;
+create table test(a int default 1, b int default 2);
+insert into test(a, b) values (1, (select b where b != 2)); -- error
+ERROR:  column "b" does not exist
+LINE 1: insert into test(a, b) values (1, (select b where b != 2));
+                                                  ^
+HINT:  There is a column named "b" in table "test", but it cannot be referenced from this part of the query.
+insert into test(a, b) values (1, (select b from test limit 1));	-- error
+insert into test(a, b) values (1, (select 1 from (select 1 from test) tt limit 1));  -- ok
+insert into test(b) values (a = (select a));  -- error
+ERROR:  column "a" does not exist
+LINE 1: insert into test(b) values (a = (select a));
+                                                ^
+HINT:  There is a column named "a" in table "test", but it cannot be referenced from this part of the query.
+select * from test;
+ a | b 
+---+---
+ 1 |  
+ 1 | 1
+(2 rows)
+
+drop table test;
+/* End - bug#5797 */

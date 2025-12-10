@@ -30,3 +30,17 @@ convert(-1000.00, decimal(5,2));
 select convert(123.456, decimal(10,10)) , 
 convert(1234.567, decimal(5,2));
 /* End - bug#z6503 */
+
+/* Begin - bug#6506 */
+create table tttt (a decimal(0, 0));
+desc tttt;
+drop table tttt;
+
+select convert(123.456, decimal(0,0));
+/* End - bug#6506 */
+
+/* Begin - bug#6526 */
+select CAST('1.8446744e19' AS decimal(65,30));
+select convert(CAST('1.8446744e19' AS decimal(65,30)), signed);
+select convert(CAST('-1.8446744e19' AS decimal(65,30)), signed);
+/* End - bug#6526 */

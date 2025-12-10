@@ -74,42 +74,41 @@ SELECT LOCATE('lo','hello',4294967297); -- 0
 (1 row)
 
 SELECT LOCATE('lo','hello',-18446744073709551615); -- 0
-WARNING:  Truncated incorrect INTEGER value: '-18446744073709551615'
+WARNING:  Truncated incorrect DECIMAL value: '-18446744073709551615'
  LOCATE 
 --------
       0
 (1 row)
 
 SELECT LOCATE('lo','hello',18446744073709551615); -- 0
-WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
  LOCATE 
 --------
       0
 (1 row)
 
 SELECT LOCATE('lo','hello',-18446744073709551616); -- 0
-WARNING:  Truncated incorrect INTEGER value: '-18446744073709551616'
+WARNING:  Truncated incorrect DECIMAL value: '-18446744073709551616'
  LOCATE 
 --------
       0
 (1 row)
 
 SELECT LOCATE('lo','hello',18446744073709551616); -- 0
-WARNING:  Truncated incorrect INTEGER value: '18446744073709551616'
+WARNING:  Truncated incorrect DECIMAL value: '18446744073709551616'
  LOCATE 
 --------
       0
 (1 row)
 
 SELECT LOCATE('lo','hello',-18446744073709551617); -- 0
-WARNING:  Truncated incorrect INTEGER value: '-18446744073709551617'
+WARNING:  Truncated incorrect DECIMAL value: '-18446744073709551617'
  LOCATE 
 --------
       0
 (1 row)
 
 SELECT LOCATE('lo','hello',18446744073709551617); -- 0
-WARNING:  Truncated incorrect INTEGER value: '18446744073709551617'
+WARNING:  Truncated incorrect DECIMAL value: '18446744073709551617'
  LOCATE 
 --------
       0
@@ -1411,7 +1410,6 @@ select substring_index('a..b..c', '..', 9223372036854775807); -- 'c'
 (1 row)
 
 select substring_index('a..b..c', '..', 9223372036854775808); -- ''
-WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
  substring_index 
 -----------------
  
@@ -1424,21 +1422,20 @@ select substring_index('a..b..c', '..', -9223372036854775808); -- ''
 (1 row)
 
 select substring_index('a..b..c', '..', -9223372036854775809); -- ''
-WARNING:  Truncated incorrect INTEGER value: '-9223372036854775809'
+WARNING:  Truncated incorrect DECIMAL value: '-9223372036854775809'
  substring_index 
 -----------------
  
 (1 row)
 
 select substring_index('a..b..c', '..', 18446744073709551615); -- 'c'
-WARNING:  Cast to signed converted positive out-of-range integer to it's negative complement
  substring_index 
 -----------------
  c
 (1 row)
 
 select substring_index('a..b..c', '..', 18446744073709551616); -- 'c'
-WARNING:  Truncated incorrect INTEGER value: '18446744073709551616'
+WARNING:  Truncated incorrect DECIMAL value: '18446744073709551616'
  substring_index 
 -----------------
  c

@@ -1497,7 +1497,7 @@ sec_to_time(PG_FUNCTION_ARGS)
             dec = DATETIME_MAX_DECIMALS;
     }
 
-    if (is_numeric_neg(num))
+    if (numeric_is_neg(num))
     {
         neg = true;
         num = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(num),
