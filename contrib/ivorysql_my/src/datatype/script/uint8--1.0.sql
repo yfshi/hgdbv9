@@ -130,16 +130,8 @@ CREATE CAST (pg_catalog.int4 AS ivymy.uint8)
 WITH FUNCTION ivymy.int_uint8(pg_catalog.int4, int, bool, int8)
 AS ASSIGNMENT;
 
-CREATE FUNCTION ivymy.numeric_uint8(pg_catalog.numeric, int, bool, int8)
-RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','numeric_uint8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-STABLE;
-
 CREATE CAST (pg_catalog.numeric AS ivymy.uint8)
-WITH FUNCTION ivymy.numeric_uint8(pg_catalog.numeric, int, bool, int8)
+WITH FUNCTION numeric_uint8(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
 /* Begin BUG#5048 5070 */

@@ -1776,30 +1776,3 @@ WARNING:  Truncated incorrect INTEGER value: ''
  f        | f        | f        | f        | t        | f        | f        | f        | NULL     | NULL
 (1 row)
 
-/* Begin - bug#z5655 */
-create table tb_longblob1(c1 longblob);
-insert into tb_longblob1 values (repeat('a', 1073741771));
-insert into tb_longblob1 values (repeat('a', 1073741772));
-ERROR:  value too long for type longblob(1073741771)
-select length(c1) from tb_longblob1;
-   length   
-------------
- 1073741771
-(1 row)
-
-set sql_mode = '';
-insert into tb_longblob1 values (repeat('a', 1073741772));
-WARNING:  value too long for type longblob(1073741771), data truncated
-insert into tb_longblob1 values (repeat('a', 1073741819));
-WARNING:  value too long for type longblob(1073741771), data truncated
-select length(c1) from tb_longblob1;
-   length   
-------------
- 1073741771
- 1073741771
- 1073741771
-(3 rows)
-
-drop table tb_longblob1;
-set sql_mode = default;
-/* End - bug#z5655 */

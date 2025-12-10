@@ -146,14 +146,10 @@ static void transformMultiMergeTargetList(List *rellist, List **targetList);
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
 /* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
-static UpsertExpr*
-transformUpsertClause(ParseState *pstate, UpsertClause *upsertClause, List *resultRelations);
-static void transformColumnReference(ParseState *pstate, List **exprList, Node **opexpr, List *attrnos, int atrrno);
+static UpsertExpr *transformUpsertClause(ParseState *pstate, UpsertClause *upsertClause, List *resultRelations);
 static void transformSchemaInTargetlist(List **targetlist);
 static void transformTableAndSchemaInCols(ParseState *pstate, List **cols);
-static Node *MakeNullNode();
-static Node *GetExprNode(List *exprList, List *attrnos, int varattno);
-
+static Node *make_null_const(Oid typeid);
 /* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 /* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
@@ -931,14 +927,14 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 
 /* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 /*
- * MakeNullNode
+ * make_null_const
  * Construct a null node.
  */
 static Node *
-MakeNullNode()
+make_null_const(Oid typeid)
 {
 	Const   *cnst = makeNode(Const);
-	cnst->consttype = UNKNOWNOID;
+	cnst->consttype = typeid;
 	cnst->consttypmod = -1;
 	cnst->constcollid = 0;
 	cnst->constlen = -2;
@@ -946,205 +942,24 @@ MakeNullNode()
 	cnst->constisnull = true;
 	cnst->constbyval = false;
 	cnst->location = -1;		/* "unknown" */
-	return (Node*)cnst;
+	return (Node *) cnst;
 }
 
-/*
- * GetExprNode
- * Get the previous column node referenced in the expression.
- * Note: If the column exists, get it. If not, construct a NULL node.
- */
 static Node *
-GetExprNode(List *exprList, List *attrnos, int varattno)
+build_default_value(ParseState *pstate, Var *var)
 {
-	ListCell   *lc = NULL;
-	int			resnum = 0;
-	int			num = 0;
-	Node	   *node;
-	foreach(lc, attrnos)
-	{
-		int		attrno = lfirst_int(lc);
-		num++;
-		if (attrno == varattno)
-		{
-			resnum = num;
-			node = ((Node *)list_nth(exprList, resnum - 1));
-			break;
-		}
-	}
+	Node *node;
+	AttrNumber attrno = var->varattno;
+	Form_pg_attribute att_tup;
 
-	if (!resnum)
-		node = MakeNullNode();
+	att_tup = TupleDescAttr(pstate->p_target_relation->rd_att, attrno - 1);
+
+	if (att_tup->atthasdef)
+		node = build_column_default(pstate->p_target_relation, attrno);
+	else
+		node = make_null_const(exprType((Node *) var));
 
 	return node;
-}
-
-/*
- * transformColumnReference
- * Parsing and processing column references.
- * 
- * fix “insert into test values(1, a * 2)” dump bug, opexpr change type to node.
- * 
- */
-static void
-transformColumnReference(ParseState *pstate, List **exprList, Node **opexpr, List *attrnos, int atrrno)
-{
-	List	   *tmpattrnos = NIL;
-	List	   *argslist = NIL;
-	ListCell   *lc = NULL;
-	ListCell   *lc1 = NULL;
-	ListCell   *lc2 = NULL;
-
-	tmpattrnos = copyObject(attrnos);
-	if(!opexpr)
-	{
-		forboth(lc, *exprList, lc2, attrnos)
-		{
-			Node   *node = lfirst(lc);
-			int		num = lfirst_int(lc2);
-			argslist = NIL;
-			/* Whether the node is OpExpr */
-			if (IsA(node, OpExpr))
-			{
-				OpExpr   *tmp_opexpr = (OpExpr*)node;
-				/* Iterate over each parameter of the expression */
-				foreach(lc1, tmp_opexpr->args)
-				{
-					Node   *node1 = lfirst(lc1);
-					/* If the expression references the previous table column,
-					 * it needs to be replaced. If so, replace it; otherwise,
-					 * construct a NULL node.
-					 */
-					if (IsA(node1, Var))
-					{
-						Node	   *tmpnode;
-						Var		   *var = (Var*)node1;
-						Form_pg_attribute att_tup;
-						/* Determines whether the expression (current column value) 
-						 * refers to the previous column,
-						 */
-						/* Begin - BUG#Z1435 */
-						if (num <= var->varattno)
-						{
-							att_tup = TupleDescAttr(pstate->p_target_relation->rd_att, var->varattno - 1);
-							if (att_tup->atthasdef)
-							{
-								tmpnode = build_column_default(pstate->p_target_relation, var->varattno);
-							}
-							else
-							{
-								tmpnode = MakeNullNode();
-							}
-						}
-						/* End - BUG#Z1435 */
-						else
-							tmpnode = GetExprNode(*exprList, tmpattrnos, var->varattno);
-
-						argslist = lappend(argslist, tmpnode);
-					}
-					/* If the parameter is also an expression,
-					 * recursive processing is required.
-					 */
-					else if (IsA(node1, OpExpr))
-					{
-						OpExpr	   *opr = (OpExpr*)node1;
-						transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, num);
-						argslist = lappend(argslist, opr);
-					}
-					/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
-					else if (IsA(node1, FuncExpr))
-					{
-						FuncExpr	   *opr = (FuncExpr*)node1;
-						transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, num);
-						argslist = lappend(argslist, opr);
-					}
-					/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
-					else
-						argslist = lappend(argslist, node1);
-				}
-				tmp_opexpr->args = argslist;
-			}
-			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
-			else if (IsA(node, FuncExpr))
-			{
-				FuncExpr	   *opr = (FuncExpr*)node;
-				transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, num);
-				argslist = lappend(argslist, opr);
-			}
-			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
-		}
-	}
-	/* Recursively process parameters, which are expressions. */
-	else
-	{
-		/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
-		List	   *args = NULL;
-		if (IsA(*opexpr, FuncExpr))
-		{
-			args = ((FuncExpr *)(*opexpr))->args;
-		}
-		else if (IsA(*opexpr, OpExpr))
-		{
-			args = ((OpExpr *)(*opexpr))->args;
-		}
-		/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
-
-		foreach(lc1, args)
-		{
-			Node   *node1 = lfirst(lc1);
-			if (IsA(node1, Var))
-			{
-				Node	   *tmpnode;
-				Var		   *var = (Var*)node1;
-				Form_pg_attribute att_tup;
-
-				if (atrrno <= var->varattno)
-				{
-					att_tup = TupleDescAttr(pstate->p_target_relation->rd_att, var->varattno - 1);
-					if (att_tup->atthasdef)
-					{
-						tmpnode = build_column_default(pstate->p_target_relation, var->varattno);
-					}
-					else
-					{
-						/* If it is a primary key column, you need to get an implicit default value. */
-						tmpnode = MakeNullNode();
-					}
-				}
-				else
-					tmpnode = GetExprNode(*exprList, tmpattrnos, var->varattno);
-
-				argslist = lappend(argslist, tmpnode);
-			}
-			else if (IsA(node1, OpExpr))
-			{
-				OpExpr	   *opr = (OpExpr*)node1;
-				transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, atrrno);
-				argslist = lappend(argslist, opr);
-			}
-			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
-			else if (IsA(node1, FuncExpr))
-			{
-				FuncExpr	   *opr = (FuncExpr*)node1;
-				transformColumnReference(pstate, exprList, (Node **)&opr, attrnos, atrrno);
-				argslist = lappend(argslist, opr);
-			}
-			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
-			else
-				argslist = lappend(argslist, node1);
-		}
-
-		/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
-		if (IsA(*opexpr, FuncExpr))
-		{
-			((FuncExpr *)(*opexpr))->args = argslist;
-		}
-		else if (IsA(*opexpr, OpExpr))
-		{
-			((OpExpr *)(*opexpr))->args = argslist;
-		}
-		/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
-	}
 }
 
 /*
@@ -1157,14 +972,14 @@ GetTableOidInSubquery(RangeTblEntry* rte)
 	ListCell   *lc;
 	if (rte->rtekind == RTE_SUBQUERY && rte->subquery)
 	{
-		if( rte->subquery->rtable)
+		if (rte->subquery->rtable)
 		{
 			foreach(lc, rte->subquery->rtable)
 			{
 				RangeTblEntry   *subrte = lfirst(lc);
 				if (subrte->relid != InvalidOid)
 				{
-					if(get_rel_persistence(subrte->relid) == 't')
+					if (get_rel_persistence(subrte->relid) == 't')
 						return subrte->relid;
 					else
 						return InvalidOid;
@@ -1322,6 +1137,122 @@ transformGetpartionRelationOids(Query *qry, List *relations)
 	return;
 }
 
+/* Begin - bug#5797 */
+typedef struct
+{
+	ParseState 	*pstate;
+	List		*exprList;
+	List		*attrnos;
+	AttrNumber 	 attrno;
+} check_insert_values_context;
+
+static Node *
+check_insert_values_mutator(Node *node, check_insert_values_context *context)
+{
+	List		*exprList = context->exprList;
+	List		*attrnos = context->attrnos;
+	ParseState 	*pstate = context->pstate;
+	AttrNumber	 attrno = context->attrno;
+
+	if (node == NULL)
+		return node;
+
+	if (IsA(node, SubLink))
+		return node;
+
+	/**
+	 * Replace the Var with column's default value.
+	 * Only OpExpr and FuncExpr node need to be processed.
+	 * 
+	 * Such as
+	 *		CREATE TABLE t (
+	 * 			col1 int DEFAULT 1,
+	 * 			col2 int DEFAULT 2,
+	 * 		);
+	 * 
+	 * 1. INSERT INTO t(col1) VALUES (col2);
+	 * We will replace `col2` with col2's default value, which is 2.
+	 * 
+	 * 2. INSERT INTO t(col1, col2) VALUES (3, col1);
+	 * We will replace `col1` with col1's value, which is 3.
+	 * 
+	 * 3. INSERT INTO t(col1, col2) VALUES (col2, 3);
+	 * We will replace `col2` with col2's defailt value, which is 2, 
+	 * although the value for col1 refers to col2, but it's assigned after col1. 
+	 */
+	if (IsA(node, Var))
+	{
+		Node	   *ret = NULL;
+		Var		   *var = (Var *) node;
+		AttrNumber	varattno = var->varattno;
+		
+		if (attrno <= varattno)
+		{
+			ret = build_default_value(pstate, var);
+		}
+		else
+		{
+			ListCell   *lc, *lc2;
+			
+			forboth (lc, attrnos, lc2, exprList)
+			{
+				int	attrno = lfirst_int(lc);
+
+				if (attrno == varattno)
+				{
+					ret = lfirst(lc2);
+					break;
+				}
+			}
+
+			if (ret == NULL)
+				ret = build_default_value(pstate, var);
+		}
+
+		if (exprType(ret) != exprType(node))
+		{
+			ret = coerce_to_target_type(pstate, ret, 
+										exprType(ret), 
+										exprType(node), 
+										exprTypmod(node), 
+										COERCION_EXPLICIT, 
+										COERCE_EXPLICIT_CAST, 
+										-1);
+		}
+
+		return ret;
+	}
+
+	return expression_tree_mutator(node, check_insert_values_mutator, context);
+}
+
+static void
+check_insert_values(ParseState *pstate, List *exprList, List *attrnos)
+{
+	ListCell   *lc, *lc2;
+	check_insert_values_context context;
+
+	/**
+	 * Do nothing if Insert stmt called by Rule Stmt
+	 */
+	if (pstate->p_ruleflag)
+		return;
+
+	context.pstate = pstate;
+	context.exprList = exprList;
+	context.attrnos = attrnos;
+	context.attrno = 0;
+
+	forboth(lc, exprList, lc2, attrnos)
+	{
+		Node 	*node = lfirst(lc);
+
+		context.attrno = lfirst_int(lc2);
+
+		lfirst(lc) = check_insert_values_mutator(node, &context);
+	}
+}
+/* End - bug#5797 */
 
 /*
  * transformInsertStmt -
@@ -1618,7 +1549,8 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 			/* In mysql mode, handle column references. */
 			if (MYS_MODE == compatible_mode && sublist) /* BUG#Z5121 */
 			{
-				transformColumnReference(pstate, &sublist, NULL, attrnos, 0);
+				check_insert_values(pstate, sublist, attrnos); /* bug#5797 */
+				
 				/* Begin - BUG#Z1434 */
 				if (enable_ignore_columns_list)
 				{
@@ -1765,14 +1697,10 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 											   true);
 		}
 
-		/* Prepare row for assignment to target table */
-		exprList = transformInsertRow(pstate, exprList,
-									  stmt->cols,
-									  icolumns, attrnos,
-									  false);
 		if (MYS_MODE == compatible_mode && exprList) /* BUG#Z5121 */
 		{
-			transformColumnReference(pstate, &exprList, NULL, attrnos, 0);
+			check_insert_values(pstate, exprList, attrnos); /* bug#5797 */
+
 			/* Begin - BUG#Z1434 */
 			if (enable_ignore_columns_list)
 			{
@@ -1784,6 +1712,11 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 			/* End - BUG#Z1434 */
 		}
 
+		/* Prepare row for assignment to target table */
+		exprList = transformInsertRow(pstate, exprList,
+									  stmt->cols,
+									  icolumns, attrnos,
+									  false);
 	}
 
 	/*
@@ -1831,7 +1764,6 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	if (MYS_MODE == compatible_mode && stmt->upsertClause) /* BUG#Z5121 */
 	{
-//		qry->resultRelations = lappend_int(qry->resultRelations, qry->resultRelation);
 		qry->upsertClause = transformUpsertClause(pstate, stmt->upsertClause, qry->resultRelations);
 	}
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
@@ -4412,7 +4344,7 @@ checkSRFInMultiUpdate(Expr *expr, int targetRelationNum)
 	if (targetRelationNum == 1)
 		return;
 
-	if ((expr->type == T_FuncExpr) && ((FuncExpr*)expr)->funcretset == true)
+	if ((expr->type == T_FuncExpr) && ((FuncExpr *)expr)->funcretset == true)
 	{
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),

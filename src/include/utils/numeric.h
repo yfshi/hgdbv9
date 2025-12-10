@@ -86,12 +86,11 @@ extern bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to);
 /* End - SRS-MYSQL-BUILDINFUNCTION */
 
 /* Begin - SRS-MYSQL-BUILDINFUNCTION */
-extern bool is_numeric_neg(Numeric num);
+extern bool numeric_is_neg(Numeric num);
 /* End - SRS-MYSQL-BUILDINFUNCTION */
 
 /* Begin - bug#z5590 */
 typedef Numeric (*mysql_numeric_datatype_in_hook_type) (const char *str, int typmod, bool is_insert);
 extern PGDLLIMPORT mysql_numeric_datatype_in_hook_type mysql_numeric_datatype_in_hook;
 /* End - bug#z5590 */
-extern Datum numeric_uint8(PG_FUNCTION_ARGS);
 #endif							/* _PG_NUMERIC_H_ */

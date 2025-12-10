@@ -433,3 +433,31 @@ insert into test2 values(1);
 insert into test2 values(2),(3);
 select * from test2;
 drop table test,test1,test2;
+
+/* Begin - bug#5797 */
+create table test(a int default 1);
+insert into test values (a);
+select * from test;
+drop table test;
+
+create table test(a int default 1, b int);
+insert into test values (2, a); -- 2, 2
+insert into test values (b, 2); -- null, 2
+insert into test values (a, a); -- 1, 1
+insert into test values (b, b); -- null, null
+insert into test values (a, b);	-- 1, null
+insert into test values (b, a); -- null, null
+insert into test(b) values (a); -- 1, 1
+insert into test(a) values (b); -- null, null
+select * from test;
+drop table test;
+
+create table test(a int default 1, b int default 2);
+insert into test(a, b) values (1, (select b where b != 2)); -- error
+insert into test(a, b) values (1, (select b from test limit 1));	-- error
+insert into test(a, b) values (1, (select 1 from (select 1 from test) tt limit 1));  -- ok
+insert into test(b) values (a = (select a));  -- error
+select * from test;
+drop table test;
+
+/* End - bug#5797 */

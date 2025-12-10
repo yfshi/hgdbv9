@@ -276,6 +276,7 @@ static int parse_typmod(Node *node);
 static int MySQLIntegerCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscanner);
 static int MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscanner);
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+static List *MySQLNumericCheckTypemod(List *typmods); /* bug#6506 */
 /* Begin - ReqID:SRS-MYSQL-SET */
 static Node *makeVarAssgin(char *varname, Node *value, SetKindType kind, SetReturn setret, int location);
 static Node *makeVarRef(char *varname, VarKind kind, int location);
@@ -15899,7 +15900,7 @@ Numeric:	int1 opt_type_modifiers is_unsigned
 			| decimal opt_type_modifiers is_unsigned
 				{
 					$$ = SystemTypeName("numeric");
-					$$->typmods = $2;
+					$$->typmods = MySQLNumericCheckTypemod($2); /* bug#6506 */
 					$$->location = @1;
 				}
 			| BOOLEAN_P
@@ -21582,6 +21583,35 @@ MySQLFloatingCheckTypemod(List *typmods, int position, mys_core_yyscan_t yyscann
 	return 0;
 }
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
+
+/* Begin - bug#6506 */
+List *
+MySQLNumericCheckTypemod(List *typmods)
+{
+	List *ret = typmods;
+	int first, second;
+	int length = list_length(typmods);
+	
+	if (length == 1)
+	{
+		first = parse_typmod(linitial(typmods));
+
+		if (first == 0)
+			ret = list_make2(makeIntConst(10, -1), makeIntConst(0, -1));
+	}
+
+	if (length == 2)
+	{
+		first = parse_typmod(linitial(typmods));
+		second = parse_typmod(lsecond(typmods));
+
+		if (first == 0 && second == 0)
+			ret = list_make2(makeIntConst(10, -1), makeIntConst(0, -1));
+	}
+
+	return ret;
+}
+/* End - bug#6506 */
 
 /* End - ReqID:SRS-MYSQL-DATETYPE */
 /* doNegate()

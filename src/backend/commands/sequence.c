@@ -1754,7 +1754,6 @@ mys_set_insertval(PG_FUNCTION_ARGS)
 											  NumericGetDatum(uint64_to_numeric(PG_INT64_MAX)))))
 	{
 		ereport(WARNING, (errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE), errmsg("auto_increment max is 9223372036854775807")));
-		value = DatumGetUInt64(DirectFunctionCall1(numeric_uint8, NumericGetDatum(valuenum)));
 		value = 9223372036854775807;
 	}
 	else

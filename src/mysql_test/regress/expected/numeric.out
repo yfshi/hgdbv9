@@ -1187,7 +1187,7 @@ SELECT * FROM fract_only;
 DROP TABLE fract_only;
 -- Check conversion to integers
 SELECT (-9223372036854775808.5)::int8;
-WARNING:  Truncated incorrect INTEGER value: '-9223372036854775808.5'
+WARNING:  Truncated incorrect DECIMAL value: '-9223372036854775808.5'
          int8         
 ----------------------
  -9223372036854775808
@@ -1206,7 +1206,7 @@ SELECT 9223372036854775807.4::int8; -- ok
 (1 row)
 
 SELECT 9223372036854775807.5::int8;
-WARNING:  Truncated incorrect INTEGER value: '9223372036854775807.5'
+WARNING:  Truncated incorrect DECIMAL value: '9223372036854775807.5'
         int8         
 ---------------------
  9223372036854775807
