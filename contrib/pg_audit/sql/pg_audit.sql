@@ -297,7 +297,7 @@ drop role us1;
 select count(*) from hg_security.pg_audit_log;
 
 
-select hg_security.pg_noaudit_privilege('drop role','all'),
+select hg_security.pg_noaudit_privilege('drop role','all');
 select hg_security.pg_noaudit_privilege('drop role', 'fail');
 drop role us1;
 select count(*) from hg_security.pg_audit_log;
@@ -661,3 +661,5 @@ select hg_security.pg_audit_object('call','procedure','pro_test','public','all')
 call sch01.pro_test(1, 2);
 call public.pro_test(1, 2);
 select count(*) from hg_security.pg_audit_log;
+
+select * from hg_security.show_audit_param();

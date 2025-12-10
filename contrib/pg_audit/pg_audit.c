@@ -215,6 +215,28 @@ char *audit_space_alarm = NULL;
 
 #define CHECK_LIMIT_TIMES 200
 
+/* Begin - BUG#Z6092 */
+typedef enum AuditParameter
+{
+        AUDIT_ENABLE,
+        AUDIT_RENTENTIONPOLICY,
+        AUDIT_RENTENTIONIDAYS,
+        AUDIT_DETECTIONTIME,
+        AUDIT_SPACELIMIT,
+        AUDIT_SPACEALARM,
+        AUDIT_ARCHDIR,
+        AUDIT_REMOTE_ARCHDIR,
+        AUDIT_MONITORING,
+        AUDIT_MAIL,
+        AUDIT_PRIVIMODE,
+        AUDIT_SYSTEMOPERS,
+        AUDIT_SQLITEDBPATH,
+        AUDIT_TRACE_SETTINGS,
+        AUDIT_LOGPOLICY,
+        NUM_AUDIT_PARAMS
+} AuditParameter;
+/* End - BUG#Z6092 */
+
 /* audit using independent memory context */
 static MemoryContext AuditContext = NULL;
 /* auditEventStack head */
@@ -447,6 +469,7 @@ PG_FUNCTION_INFO_V1(current_is_superuser);
 PG_FUNCTION_INFO_V1(audit_show_diskinfo);
 PG_FUNCTION_INFO_V1(copy_file_to_remote_srv);
 PG_FUNCTION_INFO_V1(pg_audit_switch_primary);
+PG_FUNCTION_INFO_V1(show_audit_param);
 
 Datum
 current_is_syssao(PG_FUNCTION_ARGS)
@@ -865,155 +888,155 @@ audit_sqlite_assign_hook(const char *newvalue, void *extra)
 static void audit_define_GUC(void)
 {
 	/* audit switch */
-	DefineCustomEnumVariable("audit.enable",
+	DefineCustomEnumVariable(audit_parameters[AUDIT_ENABLE],
 						 "turn on or off pg_audit",
 						 NULL,
 						 (int *)&(audit_GUC.audit_enable),
 						 AUDIT_OFF,
 						 audit_turn_options,
 						 PGC_POSTMASTER,
-						 0,
+						 GUC_SUPERUSER_ONLY,
 						 NULL,
 						 NULL,
 						 NULL);
 	/* audit switch */
-	DefineCustomEnumVariable("audit.retentionpolicy",
+	DefineCustomEnumVariable(audit_parameters[AUDIT_RENTENTIONPOLICY],
 							 "time or space",
 							 NULL,
 							 (int *)&(audit_GUC.audit_retentionpolicy_switch),
 							 RETEN_SPACE,
 							 audit_retion_options,
 							 PGC_POSTMASTER,
-							 0,
+							 GUC_SUPERUSER_ONLY,
 							 NULL,
 							 NULL,
 							 NULL);
 
 	/* save logs by time or space */
-	DefineCustomIntVariable("audit.retentiondays",
+	DefineCustomIntVariable(audit_parameters[AUDIT_RENTENTIONIDAYS],
 				 "set the audit log save days",
 				 "If set to 30, the log save 30 days.",
 				 &(audit_GUC.audit_retentiondays),
 				 180,
 				 1, INT_MAX,
 				 PGC_POSTMASTER,
-				 0,
+				 GUC_SUPERUSER_ONLY,
 				 NULL,
 				 NULL,
 				 NULL);
 	/* timed task detection time, delete logs that exceed the time limit */
-	DefineCustomIntVariable("audit.detectiontime",
+	DefineCustomIntVariable(audit_parameters[AUDIT_DETECTIONTIME],
 				 "set audit log deletion detection time",
 				 "If set to 1, deletion detection time is 1 day.",
 				 &(audit_GUC.audit_detectiontime),
 				 1,
 				 1, INT_MAX,
 				 PGC_POSTMASTER,
-				 0,
+				 GUC_SUPERUSER_ONLY,
 				 NULL,
 				 NULL,
 				 NULL);
 	/* maximum allowable usage space */
-	DefineCustomIntVariable("audit.spacelimit",
+	DefineCustomIntVariable(audit_parameters[AUDIT_SPACELIMIT],
 					 "set MB",
 					 "only support XXXG",
 					 &audit_spacelimit,
 					 10240,
 					 1, INT_MAX,
 					 PGC_POSTMASTER,
-					 GUC_UNIT_MB,
+					 GUC_UNIT_MB | GUC_SUPERUSER_ONLY,
 					 NULL,
 					 NULL,
 					 NULL);
 	/* space usage exceeding threshold alarm */
-	 DefineCustomStringVariable("audit.spacealarm",
+	 DefineCustomStringVariable(audit_parameters[AUDIT_SPACEALARM],
 					  "set audit space alarm",
 					  NULL,
 					  &audit_space_alarm,
 					  "0.8",
 					  PGC_POSTMASTER,
-					  0,
+					  GUC_SUPERUSER_ONLY,
 					  audit_real_check_hook,
 					  NULL,
 					  NULL);
 	/* archive Path */
-	DefineCustomStringVariable("audit.archdir",
+	DefineCustomStringVariable(audit_parameters[AUDIT_ARCHDIR],
 					 "set audit arch path",
 					 NULL,
 					 &audit_GUC.audit_archdir,
 					 "",
 					 PGC_POSTMASTER,
-					 0,
+					 GUC_SUPERUSER_ONLY,
 					 audit_logdir_check_hook,
 					 NULL,
 					 NULL);
 	/* remote path */
-	DefineCustomStringVariable("audit.remote_archdir",
+	DefineCustomStringVariable(audit_parameters[AUDIT_REMOTE_ARCHDIR],
 					 "set audit remote arch path",
 					 NULL,
 					 &audit_GUC.remote_archdir,
 					 "",
 					 PGC_POSTMASTER,
-					 0,
+					 GUC_SUPERUSER_ONLY,
 					 NULL,
 					 NULL,
 					 NULL);
 	/* safety monitoring switch */
-	DefineCustomEnumVariable("audit.monitoring",
+	DefineCustomEnumVariable(audit_parameters[AUDIT_MONITORING],
 						 "monitoring on/off",
 						 NULL,
 						 (int *)&(audit_GUC.audit_monitoring),
 						 AUDIT_OFF,
 						 audit_turn_options,
 						 PGC_POSTMASTER,
-						 0,
+						 GUC_SUPERUSER_ONLY,
 						 NULL,
 						 NULL,
 						 NULL);
 	/* email address for sending threshold alarm */
-	DefineCustomStringVariable("audit.mail",
+	DefineCustomStringVariable(audit_parameters[AUDIT_MAIL],
 					 "alarm email",
 					 NULL,
 					 &audit_GUC.audit_mail,
 					 "",
 					 PGC_POSTMASTER,
-					 0,
+					 GUC_SUPERUSER_ONLY,
 					 NULL,
 					 NULL,
 					 NULL);
 	 /* permission mode */
-	 DefineCustomIntVariable("audit.privimode",
+	 DefineCustomIntVariable(audit_parameters[AUDIT_PRIVIMODE],
 						  "set 1 or 2",
 						  "1 is the general mode, 2 is the dedicated mode",
 						  &(audit_GUC.audit_privimode),
 						  1,
 						  1, 2,
 						  PGC_POSTMASTER,
-						  0,
+						  GUC_SUPERUSER_ONLY,
 						  NULL,
 						  NULL,
 						  NULL);
 	/* permission mode */
-	DefineCustomEnumVariable("audit.systemopers",
+	DefineCustomEnumVariable(audit_parameters[AUDIT_SYSTEMOPERS],
 							  "system audit, support off/succ/fail/all",
 							  NULL,
 							  (int *)&(audit_GUC.audit_systemopers),
 							  AUDIT_OPER_OFF,
 							  audit_opers_options,
 							  PGC_POSTMASTER,
-							  0,
+							  GUC_SUPERUSER_ONLY,
 							  NULL,
 							  NULL,
 							  NULL);
 #ifdef USE_SQLITE
 	/* system audit switch */
-	DefineCustomStringVariable("audit.sqlitedbpath",
+	DefineCustomStringVariable(audit_parameters[AUDIT_SQLITEDBPATH],
 					 "set sqlite database path",
 					 NULL,
 					 &audit_GUC.audit_sqlitedbpath,
 					 "pgaudit/sqlite/sqlite.db",
 					 PGC_POSTMASTER,
-					 0,
+					 GUC_SUPERUSER_ONLY,
 					 audit_sqlite_check_hook,
 					 audit_sqlite_assign_hook,
 					 NULL);
@@ -1024,26 +1047,26 @@ static void audit_define_GUC(void)
 	 * This parameter is used to disable pg_track_settings feature 
 	 * during wal recovery test.
 	 */
-	DefineCustomEnumVariable("audit.track_settings",
+	DefineCustomEnumVariable(audit_parameters[AUDIT_TRACE_SETTINGS],
 						 "turn on or off",
 						 NULL,
 						 (int *)&(audit_GUC.track_settings),
 						 AUDIT_OFF,
 						 audit_turn_options,
 						 PGC_POSTMASTER,
-						 0,
+						 GUC_SUPERUSER_ONLY,
 						 NULL,
 						 NULL,
 						 NULL);
 
-	DefineCustomEnumVariable("audit.logpolicy",
+	DefineCustomEnumVariable(audit_parameters[AUDIT_LOGPOLICY],
 						  "choice audit log policy",
 						  NULL,
 						  (int *)&(audit_GUC.logpolicy),
 						  AUDIT_PAUSE,
 						  audit_policy_options,
 						  PGC_POSTMASTER,
-						  0,
+						  GUC_SUPERUSER_ONLY,
 						  NULL,
 						  NULL,
 						  NULL);
@@ -12702,6 +12725,83 @@ static void AuditShememInit(void)
 
 	return ;
 }
+
+/* Begin - BUG#Z6092 */
+Datum
+show_audit_param(PG_FUNCTION_ARGS)
+{	
+	FuncCallContext *funcctx;
+    int            call_cntr;
+    int            max_calls;
+    TupleDesc    tupdesc;
+    AttInMetadata *attinmeta;
+    MemoryContext oldcontext;
+	Oid			userid = GetUserId();
+
+	/* permission check */
+	check_audit_sao_permission(userid, false);
+	
+    /* stuff done only on the first call of the function */
+    if (SRF_IS_FIRSTCALL())
+    {
+        /* create a function context for cross-call persistence */
+        funcctx = SRF_FIRSTCALL_INIT();
+
+        /* switch to memory context appropriate for multiple function calls */
+        oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
+
+        /* build tupdesc for result tuples */
+        tupdesc = CreateTemplateTupleDesc(2, false);
+        TupleDescInitEntry(tupdesc, (AttrNumber) 1, "parameter",
+                          TEXTOID, -1, 0);
+        TupleDescInitEntry(tupdesc, (AttrNumber) 2, "value",
+                          TEXTOID, -1, 0);
+
+        attinmeta = TupleDescGetAttInMetadata(tupdesc);
+        funcctx->attinmeta = attinmeta;
+        funcctx->max_calls = NUM_AUDIT_PARAMS;
+
+        MemoryContextSwitchTo(oldcontext);
+    }
+
+    /* stuff done on every call of the function */
+    funcctx = SRF_PERCALL_SETUP();
+    call_cntr = funcctx->call_cntr;
+    max_calls = funcctx->max_calls;
+    attinmeta = funcctx->attinmeta;
+
+    if (call_cntr < max_calls)
+    {
+        char       *values[2];
+        HeapTuple    tuple;
+        Datum        result;
+        char       *param_value;
+
+        /* get the parameter name */
+        values[0] = (char *) audit_parameters[call_cntr];
+
+        /* get the parameter value */
+        param_value = GetConfigOptionByName(values[0], NULL, false);
+        values[1] = param_value ? pstrdup(param_value) : "NULL";
+
+        /* build the tuple */
+        tuple = BuildTupleFromCStrings(attinmeta, values);
+
+        /* make the tuple into a datum */
+        result = HeapTupleGetDatum(tuple);
+
+        /* free memory if needed */
+        if (param_value)
+            pfree(param_value);
+
+        SRF_RETURN_NEXT(funcctx, result);
+    }
+    else
+    {
+        SRF_RETURN_DONE(funcctx);
+    }
+}
+/* End - BUG#Z6092 */
 
 Datum
 pg_audit_switch_primary(PG_FUNCTION_ARGS)

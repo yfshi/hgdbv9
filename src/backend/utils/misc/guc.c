@@ -21,6 +21,7 @@
  *--------------------------------------------------------------------
  */
 #include "postgres.h"
+#include "se_features_interface.h"
 
 #include <ctype.h>
 #include <float.h>
@@ -8754,13 +8755,29 @@ GetConfigOption(const char *name, bool missing_ok, bool restrict_privileged)
 	record = find_option(name, false, missing_ok, ERROR);
 	if (record == NULL)
 		return NULL;
-	if (restrict_privileged &&
-		(record->flags & GUC_SUPERUSER_ONLY) &&
-		!is_member_of_role(GetUserId(), ROLE_PG_READ_ALL_SETTINGS))
-		ereport(ERROR,
+	
+	/* Begin - BUG#Z6092 */
+	if (!se_feature.mode)
+    {
+        if (restrict_privileged &&
+			(record->flags & GUC_SUPERUSER_ONLY) &&
+			!is_member_of_role(GetUserId(), ROLE_PG_READ_ALL_SETTINGS))
+			ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("must be superuser or a member of pg_read_all_settings to examine \"%s\"",
 						name)));
+    }
+    else
+    {
+		if ((record->flags & GUC_SUPERUSER_ONLY) && (strncmp(name, "audit.", 6) == 0) && !IS_SYSSAO(GetUserId()))
+		{
+			ereport(ERROR,
+                    (errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+                    errmsg("must be syssao or a member of syssao to examine \"%s\"",
+                            name)));	
+		}
+    }
+	/* End - BUG#Z6092 */
 
 	switch (record->vartype)
 	{
@@ -8802,12 +8819,28 @@ GetConfigOptionResetString(const char *name)
 
 	record = find_option(name, false, false, ERROR);
 	Assert(record != NULL);
-	if ((record->flags & GUC_SUPERUSER_ONLY) &&
-		!is_member_of_role(GetUserId(), ROLE_PG_READ_ALL_SETTINGS))
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("must be superuser or a member of pg_read_all_settings to examine \"%s\"",
-						name)));
+	
+	/* Begin - BUG#Z6092 */
+	if (!se_feature.mode)
+    {
+        if ((record->flags & GUC_SUPERUSER_ONLY) &&
+            !is_member_of_role(GetUserId(), ROLE_PG_READ_ALL_SETTINGS))
+            ereport(ERROR,
+                    (errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+                    errmsg("must be superuser or a member of pg_read_all_settings to examine \"%s\"",
+                            name)));
+    }
+    else
+    {
+		if ((record->flags & GUC_SUPERUSER_ONLY) && (strncmp(name, "audit.", 6) == 0) && !IS_SYSSAO(GetUserId()))
+		{
+            ereport(ERROR,
+                    (errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+                    errmsg("must be syssao or a member of syssao to examine \"%s\"",
+                            name)));
+		}
+    }
+	/* End - BUG#Z6092 */
 
 	switch (record->vartype)
 	{
@@ -10488,12 +10521,25 @@ GetConfigOptionByName(const char *name, const char **varname, bool missing_ok)
 		return NULL;
 	}
 
-	if ((record->flags & GUC_SUPERUSER_ONLY) &&
-		!is_member_of_role(GetUserId(), ROLE_PG_READ_ALL_SETTINGS))
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("must be superuser or a member of pg_read_all_settings to examine \"%s\"",
-						name)));
+	/* Begin - BUG#Z6092 */
+	if (!se_feature.mode)
+    {
+        if ((record->flags & GUC_SUPERUSER_ONLY) &&
+            !is_member_of_role(GetUserId(), ROLE_PG_READ_ALL_SETTINGS))
+            ereport(ERROR,
+                    (errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+                    errmsg("must be superuser or a member of pg_read_all_settings to examine \"%s\"",
+                            name)));
+    }
+    else
+    {
+		if ((record->flags & GUC_SUPERUSER_ONLY) && (strncmp(name, "audit.", 6) == 0) && !IS_SYSSAO(GetUserId()))
+			ereport(ERROR,
+                    (errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+                    errmsg("must be syssao or a member of syssao to examine \"%s\"",
+                            name)));
+    }
+	/* End - BUG#Z6092 */
 
 	if (varname)
 		*varname = record->name;
