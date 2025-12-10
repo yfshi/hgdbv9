@@ -770,8 +770,9 @@ str_to_date(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	TimeOffset	time = 0;
 	int64 		datetemp = 0;
-	Numeric		num ;
 	char		buf[MAXDATELEN + 1] = {0};
+
+	Datum	result;
 
 	mysql_dttype cached_timestamp_type = MYSQL_TIMESTAMP_NONE;
 	cached_timestamp_type = fix_from_format(str_format, sizeof(str_format));
@@ -786,23 +787,34 @@ str_to_date(PG_FUNCTION_ARGS)
 		typmod = 6;
 	}
 
-	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
-	datetemp = datetemp * 1000000;
-	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-	datetime = datetemp + time;
+	snprintf(buf, MAXDATELEN, "%04d-%02d-%02d %02d:%02d:%02d.%06d",
+				tm->tm_year, tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, fsec);
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d", datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
-#endif
+	result = DirectFunctionCall3(mysdatetimes_in,
+										CStringGetDatum(buf),
+										ObjectIdGetDatum(InvalidOid),
+										Int32GetDatum(typmod));
+	if (result)
+	{
+		PG_RETURN_DATUM(result);
+	}
+	else
+	{
+		datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
+		datetemp = datetemp * 1000000;
+		time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+		datetime = datetemp + time;
 
-	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+	#ifdef WIN32
+		snprintf(buf, MAXDATELEN, "%lld.%06d", datetime, fsec);
+	#else
+		snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
+	#endif
+		PG_RETURN_DATUM(DirectFunctionCall3(numeric_in,
 											CStringGetDatum(buf),
 											ObjectIdGetDatum(InvalidOid),
-											Int32GetDatum((((14 + typmod) << 16) | typmod) + VARHDRSZ)));
-
-	PG_RETURN_NUMERIC(num);
+											Int32GetDatum(typmod)));
+	}
 }
 
 static Datum

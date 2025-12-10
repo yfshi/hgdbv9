@@ -998,45 +998,123 @@ SELECT         c1::char           FROM my_binary_t07;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as date)          FROM my_binary_t07;
-ERROR:  cannot cast type binary to date
-LINE 1: SELECT  cast(c1 as date)          FROM my_binary_t07;
-                ^
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
 SELECT convert(c1, date)          FROM my_binary_t07;
-ERROR:  cannot cast type binary to date
-LINE 1: SELECT convert(c1, date)          FROM my_binary_t07;
-               ^
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
 SELECT         c1::date           FROM my_binary_t07;
-ERROR:  cannot cast type binary to date
-LINE 1: SELECT         c1::date           FROM my_binary_t07;
-                         ^
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as time)          FROM my_binary_t07;
-ERROR:  cannot cast type binary to time
-LINE 1: SELECT  cast(c1 as time)          FROM my_binary_t07;
-                ^
+WARNING:  Truncated incorrect time value: 'abcd'
+WARNING:  Truncated incorrect time value: '1q2w'
+WARNING:  Truncated incorrect time value: 'q1w2'
+    c1    
+----------
+ 00:12:34
+ 00:00:00
+ 00:00:01
+ 00:00:00
+(4 rows)
+
 SELECT convert(c1, time)          FROM my_binary_t07;
-ERROR:  cannot cast type binary to time
-LINE 1: SELECT convert(c1, time)          FROM my_binary_t07;
-               ^
+WARNING:  Truncated incorrect time value: 'abcd'
+WARNING:  Truncated incorrect time value: '1q2w'
+WARNING:  Truncated incorrect time value: 'q1w2'
+    c1    
+----------
+ 00:12:34
+ 00:00:00
+ 00:00:01
+ 00:00:00
+(4 rows)
+
 SELECT         c1::time           FROM my_binary_t07;
-ERROR:  cannot cast type binary to time
-LINE 1: SELECT         c1::time           FROM my_binary_t07;
-                         ^
+WARNING:  Truncated incorrect time value: 'abcd'
+WARNING:  Truncated incorrect time value: '1q2w'
+WARNING:  Truncated incorrect time value: 'q1w2'
+    c1    
+----------
+ 00:12:34
+ 00:00:00
+ 00:00:01
+ 00:00:00
+(4 rows)
+
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as datetime)      FROM my_binary_t07;
-ERROR:  cannot cast type binary to datetime
-LINE 1: SELECT  cast(c1 as datetime)      FROM my_binary_t07;
-                ^
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
 SELECT convert(c1, datetime)      FROM my_binary_t07;
-ERROR:  cannot cast type binary to datetime
-LINE 1: SELECT convert(c1, datetime)      FROM my_binary_t07;
-               ^
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
 SELECT         c1::datetime       FROM my_binary_t07;
-ERROR:  cannot cast type binary to datetime
-LINE 1: SELECT         c1::datetime       FROM my_binary_t07;
-                         ^
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as decimal(4, 0)) FROM my_binary_t07;
@@ -1118,13 +1196,29 @@ SELECT         c1::nchar          FROM my_binary_t07;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as signed)        FROM my_binary_t07;
-ERROR:  cannot cast type binary to bigint
-LINE 1: SELECT  cast(c1 as signed)        FROM my_binary_t07;
-                ^
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT convert(c1, signed)        FROM my_binary_t07;
-ERROR:  cannot cast type binary to bigint
-LINE 1: SELECT convert(c1, signed)        FROM my_binary_t07;
-               ^
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 SELECT         c1::signed         FROM my_binary_t07;
 ERROR:  syntax error at or near "signed"
 LINE 1: SELECT         c1::signed         FROM my_binary_t07;
@@ -1132,13 +1226,29 @@ LINE 1: SELECT         c1::signed         FROM my_binary_t07;
 -- EXPECT: ok , but warning
 -- TODO[TD004]: error
 SELECT  cast(c1 as unsigned)      FROM my_binary_t07;
-ERROR:  cannot cast type binary to uint8
-LINE 1: SELECT  cast(c1 as unsigned)      FROM my_binary_t07;
-                ^
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
+  c1  
+------
+ 1234
+ 0
+ 1
+ 0
+(4 rows)
+
 SELECT convert(c1, unsigned)      FROM my_binary_t07;
-ERROR:  cannot cast type binary to uint8
-LINE 1: SELECT convert(c1, unsigned)      FROM my_binary_t07;
-               ^
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
+  c1  
+------
+ 1234
+ 0
+ 1
+ 0
+(4 rows)
+
 SELECT         c1::unsigned       FROM my_binary_t07;
 ERROR:  syntax error at or near "unsigned"
 LINE 1: SELECT         c1::unsigned       FROM my_binary_t07;

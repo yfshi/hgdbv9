@@ -2130,3 +2130,82 @@ select * from tb_varbinary;
 
 RESET sql_mode;
 /* End - bug#z5465 */
+/* Begin - bug#5184 */
+drop table tb_varbinary;
+create table tb_varbinary(c1 binary(10));
+insert into tb_varbinary values('1234'), ('abcd'), ('1q2w'), ('q1w2');
+select cast(c1 as date) from tb_varbinary;
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+  c1  
+------
+ NULL
+ NULL
+ NULL
+ NULL
+(4 rows)
+
+select cast(c1 as time) from tb_varbinary;
+WARNING:  Truncated incorrect time value: 'abcd'
+WARNING:  Truncated incorrect time value: '1q2w'
+WARNING:  Truncated incorrect time value: 'q1w2'
+    c1    
+----------
+ 00:12:34
+ 00:00:00
+ 00:00:01
+ 00:00:00
+(4 rows)
+
+select cast(c1 as datetime) from tb_varbinary;
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+  c1  
+------
+ NULL
+ NULL
+ NULL
+ NULL
+(4 rows)
+
+select cast(c1 as decimal(4, 0)) from tb_varbinary;
+WARNING:  Truncated incorrect DECIMAL value: 'abcd'
+WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
+select cast(c1 as signed) from tb_varbinary;
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
+select cast(c1 as unsigned) from tb_varbinary;
+WARNING:  Truncated incorrect INTEGER value: 'abcd'
+WARNING:  Truncated incorrect INTEGER value: '1q2w'
+WARNING:  Truncated incorrect INTEGER value: 'q1w2'
+  c1  
+------
+ 1234
+ 0
+ 1
+ 0
+(4 rows)
+
+drop table tb_varbinary;
+/* End - bug#5184 */

@@ -195,6 +195,73 @@ CREATE CAST (ivymy.longblob AS ivymy.binary)
 WITH FUNCTION ivymy.binary(ivymy.longblob, integer, boolean)
 AS IMPLICIT;
 
+/* Begin BUG#5184 */
+-- cast binary to date
+CREATE FUNCTION ivymy.binary2date(ivymy.binary, integer, boolean)
+RETURNS date
+AS 'MODULE_PATHNAME','anybinary2date'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.binary AS date)
+WITH FUNCTION ivymy.binary2date(ivymy.binary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast binary to time
+CREATE FUNCTION ivymy.binary2time(ivymy.binary, integer, boolean)
+RETURNS time
+AS 'MODULE_PATHNAME','anybinary2time'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.binary AS time)
+WITH FUNCTION ivymy.binary2time(ivymy.binary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast binary to datetime
+CREATE FUNCTION ivymy.binary2datetime(ivymy.binary, integer, boolean)
+RETURNS datetime
+AS 'MODULE_PATHNAME','anybinary2datetime'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.binary AS datetime)
+WITH FUNCTION ivymy.binary2datetime(ivymy.binary, integer, boolean)
+AS ASSIGNMENT;
+
+-- cast binary to int8
+CREATE FUNCTION ivymy.binary2int8(ivymy.binary, integer, boolean, int8)
+RETURNS pg_catalog.int8
+AS 'MODULE_PATHNAME','varlena_int8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.binary AS pg_catalog.int8)
+WITH FUNCTION ivymy.binary2int8(ivymy.binary, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast binary to uint8
+CREATE FUNCTION ivymy.binary2uint8(ivymy.binary, integer, boolean, int8)
+RETURNS uint8
+AS 'MODULE_PATHNAME','varlena_uint8'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.binary AS uint8)
+WITH FUNCTION ivymy.binary2uint8(ivymy.binary, integer, boolean, int8)
+AS ASSIGNMENT;
+/* End BUG#5184 */
+
 /********************************************************************************
  *
  * BINARY OPERATOR
@@ -1048,7 +1115,7 @@ AS ASSIGNMENT;
 -- cast varbinary to date
 CREATE FUNCTION ivymy.varbinary2date(ivymy.varbinary, integer, boolean)
 RETURNS date
-AS 'MODULE_PATHNAME','varbinary2date'
+AS 'MODULE_PATHNAME','anybinary2date'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
@@ -1061,7 +1128,7 @@ AS ASSIGNMENT;
 -- cast varbinary to time
 CREATE FUNCTION ivymy.varbinary2time(ivymy.varbinary, integer, boolean)
 RETURNS time
-AS 'MODULE_PATHNAME','varbinary2time'
+AS 'MODULE_PATHNAME','anybinary2time'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
@@ -1074,7 +1141,7 @@ AS ASSIGNMENT;
 -- cast varbinary to datetime
 CREATE FUNCTION ivymy.varbinary2datetime(ivymy.varbinary, integer, boolean)
 RETURNS datetime
-AS 'MODULE_PATHNAME','varbinary2datetime'
+AS 'MODULE_PATHNAME','anybinary2datetime'
 LANGUAGE C
 STRICT
 PARALLEL SAFE

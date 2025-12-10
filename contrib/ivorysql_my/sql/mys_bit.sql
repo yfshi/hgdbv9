@@ -322,3 +322,9 @@ drop table t_index_hash;
 select convert('2023-08-20', unsigned),convert('2025-03-24 20:47:35', unsigned),convert(b'1101', unsigned);
 
 SET mysql.use_mysql_bit_literal TO off;
+
+-- bug 6613
+create table t_bit_operator(b1 BIT(8), b2 bit(17), b3 BIT(32), b4 BIT(63), b5 BIT(1)); 
+insert into t_bit_operator values ('A', 1234, b'101010',0x1234,true);
+select mod(b4,3) from t_bit_operator; 
+drop table t_bit_operator;
