@@ -238,6 +238,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_AlterPackageStmt:
 		/* End - ReqID:SRS-SQL-PACKAGE */
 		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case T_AlterSynonymStmt:	/* ReqID:SRS-SQL-SYNONYM */
 		case T_CreateSynonymStmt:	/* ReqID:SRS-SQL-SYNONYM */
 		case T_CreateDatabaseLinkStmt:
 		case T_AlterDatabaseLinkStmt:

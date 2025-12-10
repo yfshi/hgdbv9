@@ -3893,6 +3893,13 @@ ProcessInterrupts(void)
 		if (IdleSessionNoinput > 0)
 		{
 			should_lock_current_session = true;
+/* Begin - BUG#Z6168 */
+#ifdef USE_SQLITE
+			/* add audit event */
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_SUCCESS, NULL, NULL);
+#endif
+/* End - BUG#Z6168 */
 			/* Bug 6185 Update the lock state of the process */
 			ProcDataTableInsert(&MyProcPid, g_proc_counter, GetCurrTransState(), GetCurrentTransactionIdIfAny());
 		}
