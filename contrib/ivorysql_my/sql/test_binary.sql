@@ -1745,3 +1745,16 @@ select  sum(bcol) as sum_b from t_hex_aggregate;
 select  avg(bcol) as avg_b from t_hex_aggregate;
 drop table t_hex_aggregate;
 /* End - bug#6051 */
+
+/* Begin - bug#5184 */
+drop table tb_binary;
+create table tb_binary(c1 binary(10));
+insert into tb_binary values('1234'), ('abcd'), ('1q2w'), ('q1w2');
+select cast(c1 as date) from tb_binary;
+select cast(c1 as time) from tb_binary;
+select cast(c1 as datetime) from tb_binary;
+select cast(c1 as decimal(4, 0)) from tb_binary;
+select cast(c1 as signed) from tb_binary;
+select cast(c1 as unsigned) from tb_binary;
+drop table tb_binary;
+/* End - bug#5184 */

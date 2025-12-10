@@ -1747,3 +1747,16 @@ COPY public.tb_varbinary (c1) FROM stdin;
 select * from tb_varbinary;
 RESET sql_mode;
 /* End - bug#z5465 */
+
+/* Begin - bug#5184 */
+drop table tb_varbinary;
+create table tb_varbinary(c1 binary(10));
+insert into tb_varbinary values('1234'), ('abcd'), ('1q2w'), ('q1w2');
+select cast(c1 as date) from tb_varbinary;
+select cast(c1 as time) from tb_varbinary;
+select cast(c1 as datetime) from tb_varbinary;
+select cast(c1 as decimal(4, 0)) from tb_varbinary;
+select cast(c1 as signed) from tb_varbinary;
+select cast(c1 as unsigned) from tb_varbinary;
+drop table tb_varbinary;
+/* End - bug#5184 */

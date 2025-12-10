@@ -4866,29 +4866,29 @@ SELECT STR_TO_DATE('May 1, 2013','%M %d,%Y');
 (1 row)
 
 set sql_mode = '' ;
-SELECT STR_TO_DATE('a09:30:17','a%h:%i:%s');
+SELECT STR_TO_DATE('a09:30:17','a%h:%i:%s'); --error
      STR_TO_DATE     
 ---------------------
- 0000-00-00 09:30:17
+ 1000-01-01 09:30:17
 (1 row)
 
 set sql_mode = '';
-SELECT STR_TO_DATE('09:30:17a','%h:%i:%sa');
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%sa'); --error
      STR_TO_DATE     
 ---------------------
- 0000-00-00 09:30:17
+ 1000-01-01 09:30:17
 (1 row)
 
-SELECT STR_TO_DATE('09:30:17a','%h:%i:%sabc');
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%sabc'); --error
      STR_TO_DATE     
 ---------------------
- 0000-00-00 09:30:17
+ 1000-01-01 09:30:17
 (1 row)
 
-SELECT STR_TO_DATE('09:30a:17','%h:%ia:%s');
+SELECT STR_TO_DATE('09:30a:17','%h:%ia:%s'); --error
      STR_TO_DATE     
 ---------------------
- 0000-00-00 09:30:17
+ 1000-01-01 09:30:17
 (1 row)
 
 SELECT STR_TO_DATE('09:a30:17','%h:%ai:%s');
@@ -4898,10 +4898,10 @@ WARNING:  Incorrect datetime value: '09:a30:17' for function str_to_date
  
 (1 row)
 
-SELECT STR_TO_DATE('09:a30:17','%h:a%i:%s');
+SELECT STR_TO_DATE('09:a30:17','%h:a%i:%s'); --error
      STR_TO_DATE     
 ---------------------
- 0000-00-00 09:30:17
+ 1000-01-01 09:30:17
 (1 row)
 
 set sql_mode = traditional;
@@ -4934,7 +4934,7 @@ SELECT STR_TO_DATE('09:30:17a','%h:%i:%s');
 WARNING:  Truncated incorrect time value: '09:30:17a'
      STR_TO_DATE     
 ---------------------
- 0000-00-00 09:30:17
+ 1000-01-01 09:30:17
 (1 row)
 
 set sql_mode = traditional;
@@ -4948,9 +4948,9 @@ WARNING:  Incorrect datetime value: '09:30:17a' for function str_to_date
 
 set sql_mode = '' ;
 SELECT STR_TO_DATE('abc','abc');
- STR_TO_DATE 
--------------
- 
+     STR_TO_DATE     
+---------------------
+ 1000-01-01 00:00:00
 (1 row)
 
 set sql_mode = traditional;
@@ -4977,10 +4977,10 @@ WARNING:  Incorrect datetime value: '9' for function str_to_date
 (1 row)
 
 set sql_mode = '';
-SELECT STR_TO_DATE('00/00/0000', '%m/%d/%Y');
- STR_TO_DATE 
--------------
- 
+SELECT STR_TO_DATE('00/00/0000', '%m/%d/%Y'); --error
+     STR_TO_DATE     
+---------------------
+ 1000-01-01 00:00:00
 (1 row)
 
 set sql_mode = NO_ZERO_DATE;
@@ -4992,9 +4992,10 @@ WARNING:  Incorrect datetime value: '00/00/0000' for function str_to_date
 (1 row)
 
 SELECT STR_TO_DATE('2021-2-31', '%Y-%m-%d');
-     STR_TO_DATE     
----------------------
- 2021-02-31 00:00:00
+WARNING:  Incorrect datetime value: '2021-02-31 00:00:00.000000'
+        STR_TO_DATE         
+----------------------------
+ 2021-02-31 00:00:00.000000
 (1 row)
 
 SELECT STR_TO_DATE('100000-2-31', '%Y-%m-%d');
@@ -5089,12 +5090,12 @@ WARNING:  Truncated incorrect time value: '15 SEPTEMB 2001'
  2003-01-02 02:11:12.12345AM    | %Y-%m-%d %h:%i:%S.%f %p        | 2003-01-02 02:11:12.123450
  2003-01-02 12:11:12.12345 am   | %Y-%m-%d %h:%i:%S.%f%p         | 2003-01-02 00:11:12.123450
  2003-01-02 11:11:12Pm          | %Y-%m-%d %h:%i:%S%p            | 2003-01-02 23:11:12
- 10:20:10                       | %H:%i:%s                       | 0000-00-00 10:20:10
- 10:20:10                       | %h:%i:%s.%f                    | 0000-00-00 10:20:10
- 10:20:10                       | %T                             | 0000-00-00 10:20:10
- 10:20:10AM                     | %h:%i:%s%p                     | 0000-00-00 10:20:10
- 10:20:10AM                     | %r                             | 0000-00-00 10:20:10
- 10:20:10.44AM                  | %h:%i:%s.%f%p                  | 0000-00-00 10:20:10.440000
+ 10:20:10                       | %H:%i:%s                       | 1000-01-01 10:20:10
+ 10:20:10                       | %h:%i:%s.%f                    | 1000-01-01 10:20:10
+ 10:20:10                       | %T                             | 1000-01-01 10:20:10
+ 10:20:10AM                     | %h:%i:%s%p                     | 1000-01-01 10:20:10
+ 10:20:10AM                     | %r                             | 1000-01-01 10:20:10
+ 10:20:10.44AM                  | %h:%i:%s.%f%p                  | 1000-01-01 10:20:10.440000
  15-01-2001 12:59:58            | %d-%m-%Y %H:%i:%S              | 2001-01-15 12:59:58
  15 September 2001              | %d %M %Y                       | 2001-09-15 00:00:00
  15 SEPTEMB 2001                | %d %M %Y                       | 2000-09-15 00:00:00

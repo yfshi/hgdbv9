@@ -1148,6 +1148,15 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
+CREATE FUNCTION ivymy.mod(ivymy.uint8, pg_catalog.int4)
+RETURNS  ivymy.uint8
+AS 'MODULE_PATHNAME','mysuint8_modint4'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
 CREATE FUNCTION ivymy.mysuint8_mod(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
 AS 'MODULE_PATHNAME','mysuint8_modint8'

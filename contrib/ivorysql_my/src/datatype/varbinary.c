@@ -41,9 +41,9 @@ PG_FUNCTION_INFO_V1(varbinary2);
 PG_FUNCTION_INFO_V1(varbinary2text);
 PG_FUNCTION_INFO_V1(varbinary2bpchar);
 PG_FUNCTION_INFO_V1(varbinary2varchar);
-PG_FUNCTION_INFO_V1(varbinary2date);
-PG_FUNCTION_INFO_V1(varbinary2time);
-PG_FUNCTION_INFO_V1(varbinary2datetime);
+PG_FUNCTION_INFO_V1(anybinary2date);
+PG_FUNCTION_INFO_V1(anybinary2time);
+PG_FUNCTION_INFO_V1(anybinary2datetime);
 /* End BUG#5048 5070 */
 PG_FUNCTION_INFO_V1(varbinary_in);
 PG_FUNCTION_INFO_V1(varbinary_recv);
@@ -490,7 +490,7 @@ varbinary_sortsupport(PG_FUNCTION_ARGS)
 
 /* Begin BUG#5048 5070 */
 Datum 
-varbinary2date(PG_FUNCTION_ARGS)
+anybinary2date(PG_FUNCTION_ARGS)
 {
 	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
 	int 	len = VARSIZE_ANY_EXHDR(arg);
@@ -508,7 +508,7 @@ varbinary2date(PG_FUNCTION_ARGS)
 }
 
 Datum 
-varbinary2time(PG_FUNCTION_ARGS)
+anybinary2time(PG_FUNCTION_ARGS)
 {
 	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
 	int 	len = VARSIZE_ANY_EXHDR(arg);
@@ -526,7 +526,7 @@ varbinary2time(PG_FUNCTION_ARGS)
 }
 
 Datum 
-varbinary2datetime(PG_FUNCTION_ARGS)
+anybinary2datetime(PG_FUNCTION_ARGS)
 {
 	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
 	int 	len = VARSIZE_ANY_EXHDR(arg);

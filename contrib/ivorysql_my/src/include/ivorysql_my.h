@@ -82,6 +82,7 @@ extern Datum mystime_out(PG_FUNCTION_ARGS);
 extern Datum mysdatetime_in(PG_FUNCTION_ARGS);
 extern Datum mysdatetime_out(PG_FUNCTION_ARGS);
 extern Datum mystimestamp_out(PG_FUNCTION_ARGS);
+extern Datum mysdatetimes_in(PG_FUNCTION_ARGS);
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 /* Begin - bug#6619 */

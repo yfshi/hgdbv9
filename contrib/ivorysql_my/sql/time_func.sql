@@ -1328,13 +1328,13 @@ select convert(9999999999.9999999999, decimal(65,31));
 SELECT STR_TO_DATE('01,5,2013','%d,%m,%Y');
 SELECT STR_TO_DATE('May 1, 2013','%M %d,%Y');
 set sql_mode = '' ;
-SELECT STR_TO_DATE('a09:30:17','a%h:%i:%s');
+SELECT STR_TO_DATE('a09:30:17','a%h:%i:%s'); --error
 set sql_mode = '';
-SELECT STR_TO_DATE('09:30:17a','%h:%i:%sa');
-SELECT STR_TO_DATE('09:30:17a','%h:%i:%sabc');
-SELECT STR_TO_DATE('09:30a:17','%h:%ia:%s');
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%sa'); --error
+SELECT STR_TO_DATE('09:30:17a','%h:%i:%sabc'); --error
+SELECT STR_TO_DATE('09:30a:17','%h:%ia:%s'); --error
 SELECT STR_TO_DATE('09:a30:17','%h:%ai:%s');
-SELECT STR_TO_DATE('09:a30:17','%h:a%i:%s');
+SELECT STR_TO_DATE('09:a30:17','%h:a%i:%s'); --error
 set sql_mode = traditional;
 SELECT STR_TO_DATE('09:30:17a','%h:%i:%sa');
 set sql_mode = '' ;
@@ -1354,7 +1354,7 @@ SELECT STR_TO_DATE('9','%m');
 set sql_mode = traditional;
 SELECT STR_TO_DATE('9','%m');
 set sql_mode = '';
-SELECT STR_TO_DATE('00/00/0000', '%m/%d/%Y');
+SELECT STR_TO_DATE('00/00/0000', '%m/%d/%Y'); --error
 set sql_mode = NO_ZERO_DATE;
 SELECT STR_TO_DATE('00/00/0000', '%m/%d/%Y');
 SELECT STR_TO_DATE('2021-2-31', '%Y-%m-%d');
