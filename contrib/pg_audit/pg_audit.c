@@ -1051,7 +1051,7 @@ static void audit_define_GUC(void)
 						 "turn on or off",
 						 NULL,
 						 (int *)&(audit_GUC.track_settings),
-						 AUDIT_OFF,
+						 AUDIT_ON,
 						 audit_turn_options,
 						 PGC_POSTMASTER,
 						 GUC_SUPERUSER_ONLY,
