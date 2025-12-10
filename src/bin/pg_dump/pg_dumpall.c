@@ -1674,6 +1674,21 @@ dumpRolesOracle(PGconn *conn)
 						   rolename);
 			continue;
 		}
+		/* Begin - ReqID:SRS-SECURITY-POWERS bug 6267*/
+		/*
+		 * initial security roles should not be altered bug 
+		 * we may change initial security user's passsword
+		 * so we skip roles not user.
+		 */
+		if (strcmp(rolename, "sysdba_role") == 0 ||
+			strcmp(rolename, "syssso_role") == 0 ||
+			strcmp(rolename, "syssao_role") == 0)
+		{
+			pg_log_warning("security roles should be skipped (%s)",
+						   rolename);
+			continue;
+		}
+		/* End - ReqID:SRS-SECURITY-POWERS bug 6267*/
 
 		resetPQExpBuffer(buf);
 
@@ -1696,10 +1711,7 @@ dumpRolesOracle(PGconn *conn)
 		 */
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
 		/*no matter in dumpall or upgrade, do not dump a create of se_roles*/
-		if (strcmp(rolename, "sysdba_role") != 0 &&
-			strcmp(rolename, "syssso_role") != 0 &&
-			strcmp(rolename, "syssao_role") != 0 &&
-			strcmp(rolename, "syssso") != 0 &&
+		if (strcmp(rolename, "syssso") != 0 &&
 			strcmp(rolename, "syssao") != 0)
 		{
 			if (!binary_upgrade ||
@@ -1940,6 +1952,21 @@ dumpRolesPg(PGconn *conn)
 						   rolename);
 			continue;
 		}
+		/* Begin - ReqID:SRS-SECURITY-POWERS bug 6267*/
+		/*
+		 * initial security roles should not be altered bug 
+		 * we may change initial security user's passsword
+		 * so we skip roles not user.
+		 */
+		if (strcmp(rolename, "sysdba_role") == 0 ||
+			strcmp(rolename, "syssso_role") == 0 ||
+			strcmp(rolename, "syssao_role") == 0)
+		{
+			pg_log_warning("security roles should be skipped (%s)",
+						   rolename);
+			continue;
+		}
+		/* End - ReqID:SRS-SECURITY-POWERS bug 6267*/
 
 		resetPQExpBuffer(buf);
 
@@ -1961,17 +1988,14 @@ dumpRolesPg(PGconn *conn)
 		 */
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
 		/*no matter in dumpall or upgrade, do not dump a create of se_roles*/
-		if (strcmp(rolename, "sysdba_role") != 0 &&
-			strcmp(rolename, "syssso_role") != 0 &&
-			strcmp(rolename, "syssao_role") != 0 &&
-			strcmp(rolename, "syssso") != 0 &&
+		if (strcmp(rolename, "syssso") != 0 &&
 			strcmp(rolename, "syssao") != 0)
 		{
 			if (!binary_upgrade ||
 				strcmp(PQgetvalue(res, i, i_is_current_user), "f") == 0)
 				appendPQExpBuffer(buf, "CREATE ROLE %s;\n", fmtId(rolename));
 		}
-		/* End - ReqID:SRS-SECURITY-POWERS */
+		
 		appendPQExpBuffer(buf, "ALTER ROLE %s WITH", fmtId(rolename));
 
 		if (strcmp(PQgetvalue(res, i, i_rolsuper), "t") == 0)
@@ -2206,6 +2230,21 @@ dumpRolesMysql(PGconn *conn)
 						   rolename);
 			continue;
 		}
+		/* Begin - ReqID:SRS-SECURITY-POWERS bug 6267*/
+		/*
+		 * initial security roles should not be altered bug 
+		 * we may change initial security user's passsword
+		 * so we skip roles not user.
+		 */
+		if (strcmp(rolename, "sysdba_role") == 0 ||
+			strcmp(rolename, "syssso_role") == 0 ||
+			strcmp(rolename, "syssao_role") == 0)
+		{
+			pg_log_warning("security roles should be skipped (%s)",
+						   rolename);
+			continue;
+		}
+		/* End - ReqID:SRS-SECURITY-POWERS bug 6267*/
 
 		resetPQExpBuffer(buf);
 
@@ -2227,10 +2266,7 @@ dumpRolesMysql(PGconn *conn)
 		 */
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
 		/*no matter in dumpall or upgrade, do not dump a create of se_roles*/
-		if (strcmp(rolename, "sysdba_role") != 0 &&
-			strcmp(rolename, "syssso_role") != 0 &&
-			strcmp(rolename, "syssao_role") != 0 &&
-			strcmp(rolename, "syssso") != 0 &&
+		if (strcmp(rolename, "syssso") != 0 &&
 			strcmp(rolename, "syssao") != 0)
 		{
 			if (!binary_upgrade ||

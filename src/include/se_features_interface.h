@@ -18,6 +18,7 @@
 #ifndef SE_FEATURES_INTF_H
 #define SE_FEATURES_INTF_H
 #include "postgres.h"
+#include "nodes/parsenodes.h"
 
 typedef void (*grant_sysdba_priv_fn) (Oid roleid, bool is_grant);
 
@@ -55,6 +56,7 @@ extern PGDLLIMPORT SeFeature se_feature;
 extern void create_db_seroles(Oid dboid, Oid templateid);
 extern void drop_db_seroles(Oid dboid);
 extern bool is_member_of_serole (Oid member, char* role_name);
+extern void check_se_rolespec_name(const RoleSpec *role, const char *detail_msg);
 
 #define IS_SYSDBA(role_oid) \
 	(is_member_of_serole(role_oid,SYSDBA_ROLE))

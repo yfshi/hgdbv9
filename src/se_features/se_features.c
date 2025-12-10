@@ -55,6 +55,39 @@ bool is_member_of_serole (Oid member, char* role_name)
 	return result;
 }
 
+/*
+ * Just like check_rolespec_name(), we should prevent user 
+ * alter 3 security roles which created at initalization ,
+ * also disallow user change its role attributes, 
+ * just like how postgres treat those predefined roles
+ */
+void
+check_se_rolespec_name(const RoleSpec *role, const char *detail_msg)
+{
+	if (!role)
+		return;
+
+	if (role->roletype != ROLESPEC_CSTRING)
+		return;
+
+	if (strcmp(role->rolename, SYSDBA_ROLE) == 0 ||
+		strcmp(role->rolename, SYSSSO_ROLE) == 0 ||
+		strcmp(role->rolename, SYSSAO_ROLE) == 0)
+	{
+		if (detail_msg)
+			ereport(ERROR,
+					(errcode(ERRCODE_RESERVED_NAME),
+					 errmsg("role name \"%s\" is reserved",
+							role->rolename),
+					 errdetail_internal("%s", detail_msg)));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_RESERVED_NAME),
+					 errmsg("role name \"%s\" is reserved",
+							role->rolename)));
+	}
+}
+
 
 /* dummy support functions that make compiler quiet */
 static void

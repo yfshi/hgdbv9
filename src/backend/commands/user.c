@@ -774,6 +774,11 @@ AlterRole(AlterRoleStmt *stmt)
 	check_rolespec_name(stmt->role,
 						_("Cannot alter reserved roles."));
 
+	/* Begin - ReqID:SRS-SECURITY-POWERS bug#z6267 */
+	check_se_rolespec_name(stmt->role,
+						   _("Cannot alter reserved roles."));
+	/* End - ReqID:SRS-SECURITY-POWERS bug#z6267 */
+
 	/* Extract options from the statement node tree */
 	foreach(option, stmt->options)
 	{
@@ -1741,6 +1746,18 @@ RenameRole(const char *oldname, const char *newname)
 				 errmsg("role name \"%s\" is reserved",
 						newname),
 				 errdetail("Role names starting with \"pg_\" are reserved.")));
+
+	/* Begin - ReqID:SRS-SECURITY-POWERS bug#z6267 */
+	if (strcmp(NameStr(authform->rolname), SYSDBA_ROLE) == 0 ||
+		strcmp(NameStr(authform->rolname), SYSSSO_ROLE) == 0 ||
+		strcmp(NameStr(authform->rolname), SYSSAO_ROLE) == 0)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_RESERVED_NAME),
+				 errmsg("role name \"%s\" is reserved",
+						newname)));
+	}
+	/* End - ReqID:SRS-SECURITY-POWERS bug#z6267 */
 
 	/*
 	 * If built with appropriate switch, whine when regression-testing
