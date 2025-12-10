@@ -447,7 +447,14 @@ does_not_exist_skipping(ObjectType objtype, Node *object)
 			}
 			break;
 		case OBJECT_TRIGGER:
-			if (!owningrel_does_not_exist_skipping(castNode(List, object), &msg, &name))
+			/* Begin - BUG#Z6516 */
+			if (list_length(castNode(List, object)) == 1)
+			{
+				RangeVar	*trigname = makeRangeVarFromNameList((List *)lfirst(list_tail(castNode(List, object))));
+				msg = gettext_noop("trigger \"%s\" does not exist, skipping");
+				name = trigname->relname;
+			} /* End - BUG#Z6516 */
+			else if (!owningrel_does_not_exist_skipping(castNode(List, object), &msg, &name))
 			{
 				msg = gettext_noop("trigger \"%s\" for relation \"%s\" does not exist, skipping");
 				name = strVal(llast(castNode(List, object)));

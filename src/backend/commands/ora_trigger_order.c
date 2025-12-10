@@ -33,124 +33,102 @@
 #include "utils/jsonb.h"
 #include "lib/binaryheap.h"
 #include "parser/pg_object_hook.h"
+#include "utils/ruleutils.h"
 
-static int trigger_name_compare(Datum a, Datum b, void *arg);
 
 /*
- *	trigger_name_compare
- *		compare function
+ * adjacency list for trigger graph node
  */
+typedef struct TriggerAdj
+{
+	int     nNeighbors;
+	int     allocNeighbors;
+	int     *neighbors;		/* indices of neighbor nodes (out edges) */
+} TriggerAdj;
+
+/*
+ * add_trigger_edge
+ *	add directed edge u -> v  (u before v)
+ */
+static void
+add_trigger_edge(TriggerAdj *adj, int u, int v)
+{
+	if (adj[u].nNeighbors >= adj[u].allocNeighbors)
+	{
+		if (adj[u].allocNeighbors <= 0)
+		{
+			adj[u].allocNeighbors = 8;
+			adj[u].neighbors = (int *) palloc(adj[u].allocNeighbors * sizeof(int));
+		}
+		else
+		{
+			adj[u].allocNeighbors *= 2;
+			adj[u].neighbors = (int *) repalloc(adj[u].neighbors,
+												adj[u].allocNeighbors * sizeof(int));
+		}
+	}
+	adj[u].neighbors[adj[u].nNeighbors++] = v;
+}
+
 static int
-trigger_name_compare(Datum a, Datum b, void *arg)
+find_trigger_index_by_name(Trigger *triggers, int numtrigs, char *name)
 {
-	Trigger 	*triggers;
-	int 		ia, ib;
-
-	triggers = (Trigger *) arg;
-	ia = DatumGetInt32(a);
-	ib = DatumGetInt32(b);
-
-	return strcmp(triggers[ia].tgname, triggers[ib].tgname);
-}
-
-/*
- *	ExtractStringArray
- *		Extracts an array of strings from a Jsonb object
- */
-List *
-ivyExtractJsonbStringArray(JsonbValue *arrayValue)
-{
-	List		*result = NIL;
-	int 		i;
-
-	if (arrayValue == NULL || arrayValue->type != jbvArray)
-		return NIL;
-
-	for (i = 0; i < arrayValue->val.array.nElems; i++)
-	{
-		JsonbValue *elem = &arrayValue->val.array.elems[i];
-		if (elem->type == jbvString)
-		{
-			char 	*str = palloc(elem->val.string.len + 1);
-
-			memcpy(str, elem->val.string.val, elem->val.string.len);
-			str[elem->val.string.len] = '\0';
-
-			result = lappend(result, str);
-		}
-	}
-	return result;
-}
-
-
-/*
- *	CreateTriggerNameMap
- *		Create a HTAB from trigger name to index
- */
-HTAB *
-CreateTriggerNameMap(Trigger *triggers, int numtrigs)
-{
-	HASHCTL		ctl;
-	HTAB		*map;
-	int			i;
-
-	MemSet(&ctl, 0, sizeof(ctl));
-	ctl.keysize = NAMEDATALEN;
-	ctl.entrysize = sizeof(TriggerNameMapEntry);
-	ctl.hcxt = CurrentMemoryContext;
-
-	map = hash_create("trigger name map", numtrigs, &ctl,
-					 HASH_ELEM | HASH_CONTEXT | HASH_STRINGS);
+	int     i;
+	if (name == NULL)
+		return -1;
 
 	for (i = 0; i < numtrigs; i++)
 	{
-		TriggerNameMapEntry *entry;
-		bool		found;
-		char	name[NAMEDATALEN];
-
-		strncpy(name, triggers[i].tgname, NAMEDATALEN);
-		name[NAMEDATALEN - 1] = '\0';
-
-		entry = (TriggerNameMapEntry *) hash_search(map, name, HASH_ENTER, &found);
-		if (found)
-		{
-			/* Trigger name should be unique on a table */
-			ereport(ERROR,
-					(errcode(ERRCODE_DUPLICATE_OBJECT),
-					errmsg("duplicate trigger name \"%s\"", name)));
-		}
-
-		entry->index = i;
+		if (strcmp(triggers[i].tgname, name) == 0)
+			return i;
 	}
 
-	return map;
+	return -1;
 }
 
 /*
- *	GetTriggerFollowsDependencies
- *		Get trigger follows dependency
+ * orderTriggersByPrecedence
+ *
+ * Build directed graph based on trigger FOLLOWS and perform
+ * topological sort. On success, produce an array 'ordered' of trigger
+ * indices in execution order (from first to last).
+ *
+ * If cycles detected, emit WARNING and return false, caller should fall back
+ * to default order.
  */
-void
-GetTriggerFollowsDependencies(Trigger *triggers, int numtrigs,
-					TriggerDepInfo *depInfo, HTAB *nameToIndex)
+bool
+orderTriggersByPrecedence(Trigger *triggers, int numtrigs, int **out_order, int *out_count)
 {
-	ObjectAddress	object;
-	PgObjectInfo	objinfo;
-	TriggerNameMapEntry *entry;
-	int				i;
+	int         i, j;
+	TriggerAdj *adj;
+	int        *indegree = NULL;
+	int        *queue = NULL;
+	int         qhead = 0, qtail = 0;
+	int        *ordered = NULL;
+	int         ordered_count = 0;
+	ObjectAddress   object;
+	PgObjectInfo    objinfo;
 
+
+	if (numtrigs <= 1)
+	{
+		/* trivial */
+		*out_order = NULL;
+		*out_count = 0;
+		return true;
+	}
+
+	/* allocate adjacency list */
+	adj = (TriggerAdj *) palloc0(sizeof(TriggerAdj) * numtrigs);
+	indegree = (int *) palloc0(sizeof(int) * numtrigs);
+
+	/* Iterate triggers again and add edges according to follows */
 	for (i = 0; i < numtrigs; i++)
 	{
-		depInfo[i].follows = NIL;
+		List        *tr_follows = NIL;
+		ListCell	*l;
 
-		entry = (TriggerNameMapEntry *) hash_search(nameToIndex, triggers[i].tgname, HASH_FIND, NULL);
-		if (entry == NULL)
-			continue;
-
-		object.classId = TriggerRelationId;
-		object.objectId = triggers[i].tgoid;
-		object.objectSubId = 0;
-
+		ObjectAddressSet(object, TriggerRelationId, triggers[i].tgoid);
 		objinfo =  pg_object_get_ori_infor_hook(object);
 
 		if (objinfo && objinfo->oricompatible_mode == 'o' && objinfo->orioption)
@@ -163,127 +141,101 @@ GetTriggerFollowsDependencies(Trigger *triggers, int numtrigs,
 			key.val.string.len = strlen("follows");
 
 			followsValue = findJsonbValueFromContainer(&objinfo->orioption->root, JB_FOBJECT, &key);
-			if (followsValue && followsValue->type == jbvArray)
+			if (followsValue && followsValue->type == jbvBinary)
 			{
-				depInfo[entry->index].follows = ivyExtractJsonbStringArray(followsValue);
+				tr_follows = ivy_extract_array_from_jbvBinary(followsValue);
+			}
+		}
+
+		if (tr_follows)
+		{
+			foreach(l, tr_follows)
+			{
+				char    *other_name = lfirst(l);
+				int other_idx = find_trigger_index_by_name(triggers, numtrigs, other_name);
+
+				/*
+				 * other_idx == -1 indicates that other_name not exist in the current trigger follows
+				 */
+				if (other_idx < 0)
+				{
+					ereport(ERROR,
+							(errmsg("trigger \"%s\" depends on non-existent trigger \"%s\"",
+							 triggers[i].tgname, other_name)));
+				}
+				else if (other_idx == i)
+				{
+					ereport(ERROR,
+							(errmsg("trigger \"%s\" declares FOLLOWS itself",
+							 triggers[i].tgname)));
+				}
+				else
+				{
+					add_trigger_edge(adj, other_idx, i);
+					indegree[i]++;
+				}
 			}
 		}
 	}
-}
 
-/*
- *	TopologicalSortTriggers
- *		Topological sorting, using a priority queue, ensures
- *		order by name when there is no dependency
- */
-int *
-TopologicalSortTriggers(Trigger *triggers, int numtrigs,
-					TriggerDepInfo *depInfo, HTAB *nameToIndex)
-{
-	int			*inDegree;
-	List		**graph;
-	int			*sortedIndexes;
-	binaryheap	*queue;
-	int			count = 0;
-	int			i;
+	/* Kahn's algorithm: init queue with indegree 0 nodes */
+	queue = (int *) palloc0(sizeof(int) * numtrigs);
+	ordered = (int *) palloc0(sizeof(int) * numtrigs);
 
-	/* allocating memory */
-	inDegree = (int *) palloc0(numtrigs * sizeof(int));
-	graph = (List **) palloc0(numtrigs * sizeof(List *));
-	sortedIndexes = (int *) palloc(numtrigs * sizeof(int));
-
-	/* Building the dependency graph */
 	for (i = 0; i < numtrigs; i++)
 	{
-		ListCell	*lc;
-
-		foreach(lc, depInfo[i].follows)
+		if (indegree[i] == 0)
 		{
-			char *depName = (char *) lfirst(lc);
-			TriggerNameMapEntry *entry;
-			int		depIndex;
-
-			entry = (TriggerNameMapEntry *) hash_search(nameToIndex, depName, HASH_FIND, NULL);
-			if (entry == NULL)
-			{
-				/* depend trigger not exist */
-				ereport(WARNING,
-						(errmsg("trigger \"%s\" depends on non-existent trigger \"%s\"",
-								triggers[i].tgname, depName)));
-				continue;
-			}
-
-			depIndex = entry->index;
-
-			/* Add an edge from the dependent trigger to the current trigger */
-			graph[depIndex] = lappend_int(graph[depIndex], i);
-			inDegree[i]++;
+			queue[qtail++] = i;
 		}
 	}
 
-	/* Initialize the priority queue(sorted by name) */
-	queue = binaryheap_allocate(numtrigs, trigger_name_compare, triggers);
-
-	/* Add a trigger with in-degree 0 to the queue */
-	for (i = 0; i < numtrigs; i++)
+	while (qhead < qtail)
 	{
-		if (inDegree[i] == 0)
+		int u = queue[qhead++];
+		ordered[ordered_count++] = u;
+
+		for (j = 0; j < adj[u].nNeighbors; j++)
 		{
-			binaryheap_add(queue, Int32GetDatum(i));
+			int v = adj[u].neighbors[j];
+			indegree[v]--;
+			if (indegree[v] == 0)
+				queue[qtail++] = v;
 		}
 	}
 
-	/* Topo sort */
-	while (!binaryheap_empty(queue))
+	if (ordered_count != numtrigs)
 	{
-		Datum		d;
-		int			idx;
-		ListCell	*lc;
-
-		d = binaryheap_remove_first(queue);
-		idx = DatumGetInt32(d);
-		sortedIndexes[count++] = idx;
-
-		/* Process all successor nodes */
-		foreach(lc, graph[idx])
-		{
-			int succ = lfirst_int(lc);
-
-			inDegree[succ]--;
-			if (inDegree[succ] == 0)
-			{
-				binaryheap_add(queue, Int32GetDatum(succ));
-			}
-		}
-	}
-
-	/* Check circular dependencies */
-	if (count != numtrigs)
-	{
-		/* Find unhandled triggers */
+		/* free adjacency */
 		for (i = 0; i < numtrigs; i++)
 		{
-			if (inDegree[i] > 0)
-			{
-				ereport(ERROR,
-						(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
-						 errmsg("circular dependency detected involving trigger \"%s\"",
-								triggers[i].tgname)));
-			}
+			if (adj[i].neighbors)
+				pfree(adj[i].neighbors);
 		}
-		elog(ERROR, "circular dependency detected in trigger FOLLOWS");
+
+		pfree(adj);
+		pfree(indegree);
+		pfree(queue);
+		pfree(ordered);
+
+		ereport(ERROR,
+				(errmsg("cycle detected in trigger precedence chain")));
 	}
 
-	/* Clean up*/
+	/* success: return ordered array */
+	*out_order = ordered;
+	*out_count = ordered_count;
+
+	/* free adjacency arrays (keep ordered) */
 	for (i = 0; i < numtrigs; i++)
 	{
-		if (graph[i] != NIL)
-			list_free(graph[i]);
+		if (adj[i].neighbors)
+			pfree(adj[i].neighbors);
 	}
 
-	pfree(graph);
-	pfree(inDegree);
-	binaryheap_free(queue);
+	pfree(adj);
+	pfree(indegree);
+	pfree(queue);
 
-	return sortedIndexes;
+	return true;
 }

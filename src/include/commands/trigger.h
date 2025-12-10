@@ -89,20 +89,6 @@ typedef struct TransitionCaptureState
 	struct AfterTriggersTableData *tcs_private;
 } TransitionCaptureState;
 
-/* Begin - ReqID:SRS-SQL-TRIGGER */
-typedef struct TriggerDepInfo
-{
-	List	*follows;	/* trigger follow names (List of char*) */
-} TriggerDepInfo;
-
-/* Mapping entries from trigger names to indexes */
-typedef struct TriggerNameMapEntry
-{
-	char 	tgname[NAMEDATALEN];	/* Trigger name */
-	int		index;					/* Index in the trigger array */
-} TriggerNameMapEntry;
-/* End - ReqID:SRS-SQL-TRIGGER */
-
 /*
  * TriggerEvent bit flags
  *
@@ -317,10 +303,7 @@ extern ObjectAddress AlterOraTrigger(AlterOraTrigStmt *at);
 extern int	RI_FKey_trigger_type(Oid tgfoid);
 
 /* Begin - ReqID:SRS-SQL-TRIGGER */
-extern HTAB *CreateTriggerNameMap(Trigger *triggers, int numtrigs);
-extern void GetTriggerFollowsDependencies(Trigger *triggers, int numtrigs,
-												TriggerDepInfo *depInfo, HTAB *nameToIndex);
-extern int * TopologicalSortTriggers(Trigger *triggers, int numtrigs, TriggerDepInfo *depInfo, HTAB *nameToIndex);
+extern bool orderTriggersByPrecedence(Trigger *triggers, int numtrigs, int **out_order, int *out_count);
 extern List *ivyExtractJsonbStringArray(JsonbValue *arrayValue);
 extern TriggerEvent ivy_tgtype_to_event(int16 tgtype);	/* BUG#Z6170 */
 /* End - ReqID:SRS-SQL-TRIGGER */

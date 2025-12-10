@@ -53,6 +53,10 @@ INSERT INTO empt VALUES (7380,'JODEN',900, to_date('22-09-1989','dd-mm-yyyy'));
 select * from empt;
 select * from empt_logs; -- bschb.trgins will be fire
 
+/* Begin - BUG#Z6516 */
+DROP TRIGGER IF EXISTS tscha.vtgwschema;
+/* End - BUG#Z6516 */
+
 drop trigger trgins;
 drop schema tscha;
 drop schema bschb;
@@ -174,10 +178,13 @@ INSERT INTO empt VALUES (7387,'TEST FOLLOWS',900, to_date('24-03-2025','dd-mm-yy
 select * from empt;
 select * from empt_logs;
 
+drop trigger trgins1; -- error, report dependency
+
 --clean
+drop trigger at1;
 drop trigger trgins1;
 drop trigger trgins2;
-drop trigger at1;
+
 drop table empt;
 drop table empt_logs;
 
@@ -522,3 +529,96 @@ drop table t1;
 drop table t2;
 drop sequence log_seq;
 /* End - BUG#Z6366 */
+
+/* Begin - BUG#Z6577 */
+drop table if exists test_table;
+CREATE TABLE test_table (
+    id NUMBER PRIMARY KEY,
+    value VARCHAR2(50)
+);
+
+CREATE OR REPLACE TRIGGER first_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('1111');
+END;
+/
+
+CREATE OR REPLACE TRIGGER second_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW
+FOLLOWS first_trigger
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('2222');
+END;
+/
+
+CREATE OR REPLACE TRIGGER thrid_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW
+FOLLOWS second_trigger
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('3333');
+END;
+/
+
+SET SERVEROUTPUT ON;
+
+INSERT INTO test_table (id, value) VALUES (1, 'Test');
+
+--cleanup
+drop trigger thrid_trigger;
+drop trigger second_trigger;
+drop trigger first_trigger;
+drop table test_table;
+SET SERVEROUTPUT OFF;
+/* End - BUG#Z6577 */
+
+/* Begin - BUG#Z6560 */
+drop table if exists T1;
+drop table if exists T2;
+CREATE TABLE T1 (
+    emp_id NUMBER PRIMARY KEY,
+    emp_name VARCHAR2(50) NOT NULL,
+    salary NUMBER(10,2),
+    email VARCHAR2(100)
+);
+
+CREATE TABLE T2 (
+    log_id NUMBER PRIMARY KEY,
+    operation VARCHAR2(20),
+    emp_id NUMBER,
+    error_msg VARCHAR2(1000)
+);
+
+CREATE SEQUENCE TSEQ;
+
+INSERT INTO T1 (emp_id, emp_name, salary, email) VALUES (1001, 'TEST EMP', 5000, 'test@company.com');
+
+CREATE OR REPLACE TRIGGER test_basic_referencing
+BEFORE UPDATE ON T1
+REFERENCING OLD AS original NEW AS updated
+FOR EACH ROW
+WHEN (original.salary != updated.salary)
+BEGIN
+    INSERT INTO T2 (log_id, operation, emp_id, error_msg)
+    VALUES (TSEQ.NEXTVAL, 'UPDATE', :updated.emp_id,
+           'BASIC_REFERENCING: Salary changed ' || :original.salary || '->' || :updated.salary);
+END;
+/
+
+UPDATE T1 SET salary = 6000 WHERE emp_id = 1001;
+SELECT * FROM T1;
+SELECT * FROM T2 WHERE error_msg LIKE 'BASIC_REFERENCING%';
+
+--cleanup
+drop trigger test_basic_referencing;
+drop sequence TSEQ;
+drop table T1;
+drop table T2;
+/* End - BUG#Z6560 */
+
+/* Begin - BUG#Z6516 */
+DROP TRIGGER IF EXISTS vskill;
+/* End - BUG#Z6516 */
