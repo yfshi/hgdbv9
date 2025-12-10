@@ -66,6 +66,10 @@ select * from empt_logs; -- bschb.trgins will be fire
  2      | 7380   | bschb.trgins-> INSERT (b) | 2025-09-03
 (1 row)
 
+/* Begin - BUG#Z6516 */
+DROP TRIGGER IF EXISTS tscha.vtgwschema;
+NOTICE:  trigger "vtgwschema" does not exist, skipping
+/* End - BUG#Z6516 */
 drop trigger trgins;
 drop schema tscha;
 drop schema bschb;
@@ -289,15 +293,19 @@ select * from empt_logs;
  4      | 7384   | trgref-> INSERT (100)     | 2025-09-03
  4      | 7385   | trgref-> INSERT (100)     | 2025-09-03
  4      | 7386   | trgref-> INSERT (100)     | 2025-09-03
- 7      | 7387   | trgins2-> INSERT (2)      | 2025-09-03
  5      | 7387   | trgins1-> INSERT (1)      | 2025-09-03
+ 7      | 7387   | trgins2-> INSERT (2)      | 2025-09-03
  8      | 7387   | at1-> INSERT (3)          | 2025-09-03
 (8 rows)
 
+drop trigger trgins1; -- error, report dependency
+ERROR:  cannot drop trigger trgins1 on table empt because other objects depend on it
+DETAIL:  trigger at1 on table empt depends on trigger trgins1 on table empt
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
 --clean
+drop trigger at1;
 drop trigger trgins1;
 drop trigger trgins2;
-drop trigger at1;
 drop table empt;
 drop table empt_logs;
 --
@@ -813,3 +821,98 @@ drop table t1;
 drop table t2;
 drop sequence log_seq;
 /* End - BUG#Z6366 */
+/* Begin - BUG#Z6577 */
+drop table if exists test_table;
+NOTICE:  table "test_table" does not exist, skipping
+CREATE TABLE test_table (
+    id NUMBER PRIMARY KEY,
+    value VARCHAR2(50)
+);
+CREATE OR REPLACE TRIGGER first_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('1111');
+END;
+/
+CREATE OR REPLACE TRIGGER second_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW
+FOLLOWS first_trigger
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('2222');
+END;
+/
+CREATE OR REPLACE TRIGGER thrid_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW
+FOLLOWS second_trigger
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('3333');
+END;
+/
+SET SERVEROUTPUT ON;
+INSERT INTO test_table (id, value) VALUES (1, 'Test');
+1111
+2222
+3333
+--cleanup
+drop trigger thrid_trigger;
+drop trigger second_trigger;
+drop trigger first_trigger;
+drop table test_table;
+SET SERVEROUTPUT OFF;
+/* End - BUG#Z6577 */
+/* Begin - BUG#Z6560 */
+drop table if exists T1;
+NOTICE:  table "t1" does not exist, skipping
+drop table if exists T2;
+NOTICE:  table "t2" does not exist, skipping
+CREATE TABLE T1 (
+    emp_id NUMBER PRIMARY KEY,
+    emp_name VARCHAR2(50) NOT NULL,
+    salary NUMBER(10,2),
+    email VARCHAR2(100)
+);
+CREATE TABLE T2 (
+    log_id NUMBER PRIMARY KEY,
+    operation VARCHAR2(20),
+    emp_id NUMBER,
+    error_msg VARCHAR2(1000)
+);
+CREATE SEQUENCE TSEQ;
+INSERT INTO T1 (emp_id, emp_name, salary, email) VALUES (1001, 'TEST EMP', 5000, 'test@company.com');
+CREATE OR REPLACE TRIGGER test_basic_referencing
+BEFORE UPDATE ON T1
+REFERENCING OLD AS original NEW AS updated
+FOR EACH ROW
+WHEN (original.salary != updated.salary)
+BEGIN
+    INSERT INTO T2 (log_id, operation, emp_id, error_msg)
+    VALUES (TSEQ.NEXTVAL, 'UPDATE', :updated.emp_id,
+           'BASIC_REFERENCING: Salary changed ' || :original.salary || '->' || :updated.salary);
+END;
+/
+UPDATE T1 SET salary = 6000 WHERE emp_id = 1001;
+SELECT * FROM T1;
+ emp_id | emp_name | salary  |      email       
+--------+----------+---------+------------------
+ 1001   | TEST EMP | 6000.00 | test@company.com
+(1 row)
+
+SELECT * FROM T2 WHERE error_msg LIKE 'BASIC_REFERENCING%';
+ log_id | operation | emp_id |                     error_msg                      
+--------+-----------+--------+----------------------------------------------------
+ 1      | UPDATE    | 1001   | BASIC_REFERENCING: Salary changed 5000.00->6000.00
+(1 row)
+
+--cleanup
+drop trigger test_basic_referencing;
+drop sequence TSEQ;
+drop table T1;
+drop table T2;
+/* End - BUG#Z6560 */
+/* Begin - BUG#Z6516 */
+DROP TRIGGER IF EXISTS vskill;
+NOTICE:  trigger "vskill" does not exist, skipping
+/* End - BUG#Z6516 */

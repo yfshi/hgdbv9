@@ -687,16 +687,41 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 		 *
 		 * 'OLD' must always have varno equal to 1 and 'NEW' equal to 2.
 		 */
-		nsitem = addRangeTableEntryForRelation(pstate, rel,
-											   AccessShareLock,
-											   makeAlias("old", NIL),
-											   false, false);
-		addNSItemToQuery(pstate, nsitem, false, true, true);
-		nsitem = addRangeTableEntryForRelation(pstate, rel,
-											   AccessShareLock,
-											   makeAlias("new", NIL),
-											   false, false);
-		addNSItemToQuery(pstate, nsitem, false, true, true);
+		/* Begin - BUG#Z6560 */
+		if (stmt->oldalias)
+		{
+			nsitem = addRangeTableEntryForRelation(pstate, rel,
+												   AccessShareLock,
+												   makeAlias(stmt->oldalias, NIL),
+												   false, false);
+			addNSItemToQuery(pstate, nsitem, false, true, true);
+		} /* End - BUG#Z6560 */
+		else
+		{
+			nsitem = addRangeTableEntryForRelation(pstate, rel,
+												   AccessShareLock,
+												   makeAlias("old", NIL),
+												   false, false);
+			addNSItemToQuery(pstate, nsitem, false, true, true);
+		}
+
+		/* Begin - BUG#Z6560 */
+		if (stmt->newalias)
+		{
+			nsitem = addRangeTableEntryForRelation(pstate, rel,
+												   AccessShareLock,
+												   makeAlias(stmt->newalias, NIL),
+												   false, false);
+			addNSItemToQuery(pstate, nsitem, false, true, true);
+		} /* End - BUG#Z6560 */
+		else
+		{
+			nsitem = addRangeTableEntryForRelation(pstate, rel,
+												   AccessShareLock,
+												   makeAlias("new", NIL),
+												   false, false);
+			addNSItemToQuery(pstate, nsitem, false, true, true);
+		}
 
 		/* Transform expression.  Copy to be sure we don't modify original */
 		whenClause = transformWhereClause(pstate,
@@ -805,7 +830,6 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 			Oid 		followtrigOid = InvalidOid;
 			Trigger		*t;
 			RangeVar *rv = lfirst_node(RangeVar, lc);
-
 			followtrigOid = get_trigger_oid(rel->rd_rel->oid, rv->relname ,true);
 			if (!OidIsValid(followtrigOid))
 				elog(ERROR, "Trigger \"%s\" referenced in FOLLOWS or PRECEDES clause may not exist", rv->relname);
@@ -1240,6 +1264,34 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 	 */
 	if (trigger_exists)
 		deleteDependencyRecordsFor(TriggerRelationId, trigoid, true);
+
+	/* Begin - BUG#Z6577 */
+	/*
+	 * Record dependencies for trigger.  Always place a normal dependency on
+	 * the follows triggers
+	 */
+	if (stmt->orderList)
+	{
+		ListCell   *lc;
+		ObjectAddress address;
+
+		ObjectAddressSet(address, TriggerRelationId, trigoid);
+
+		foreach(lc, stmt->orderList)
+		{
+			Oid 		followtrigOid = InvalidOid;
+			ObjectAddress referenced;
+
+			RangeVar *rv = lfirst_node(RangeVar, lc);
+			followtrigOid = get_trigger_oid(rel->rd_rel->oid, rv->relname ,true);
+			if (OidIsValid(followtrigOid))
+			{
+				ObjectAddressSet(referenced, TriggerRelationId, followtrigOid);
+				recordDependencyOn(&address, &referenced, DEPENDENCY_NORMAL);
+			}
+		}
+	}
+	/* End - BUG#Z6577 */
 
 	/*
 	 * Record dependencies for trigger.  Always place a normal dependency on
@@ -2432,44 +2484,30 @@ RelationBuildTriggers(Relation relation)
 		return;
 	}
 
-	/* Begin - ReqID:SRS-SQL-TRIGGER */
-	if (numtrigs > 0 && compatible_mode == ORA_MODE)
+	/* Begin - BUG#Z6577 */
+	if (compatible_mode == ORA_MODE && numtrigs >= 2 && check_tableTriglist_has_follows(triggers, numtrigs))
 	{
-		TriggerDepInfo	*depInfo;
-		HTAB			*nameToIndex;
-		int				*sortedIndexes;
-		Trigger			*newTriggers;
+		int 		*order = NULL;
+		int 		order_count = 0;
+		Trigger 	*newTriggers;
 
-		if (check_tableTriglist_has_follows(triggers, numtrigs))
+		if (orderTriggersByPrecedence(triggers, numtrigs, &order, &order_count))
 		{
-			/* Initializing the dependency graph */
-			depInfo = (TriggerDepInfo *) palloc0(numtrigs * sizeof(TriggerDepInfo));
-			nameToIndex = CreateTriggerNameMap(triggers, numtrigs);
-
-			/* Get trigger follows */
-			GetTriggerFollowsDependencies(triggers, numtrigs, depInfo, nameToIndex);
-
-			/* Topo sort */
-			sortedIndexes = TopologicalSortTriggers(triggers, numtrigs, depInfo, nameToIndex);
-
-			/* Rebuild trigger array */
-			newTriggers = (Trigger *) palloc(numtrigs * sizeof(Trigger));
-
-			for (i = 0; i < numtrigs; i++)
+			if (order_count > 0)
 			{
-				newTriggers[i] = triggers[sortedIndexes[i]];
+				newTriggers = (Trigger *) palloc(order_count * sizeof(Trigger));
+				for (i = 0; i < order_count; i++)
+				{
+					newTriggers[i] = triggers[order[i]];
+				}
+
+				/* Replace the original array and clean up */
+				pfree(triggers);
+				triggers = newTriggers;
 			}
-
-			/* Replace the original array and clean up */
-			pfree(triggers);
-			triggers = newTriggers;
-
-			pfree(sortedIndexes);
-			pfree(depInfo);
-			hash_destroy(nameToIndex);
 		}
 	}
-	/* End - ReqID:SRS-SQL-TRIGGER */
+	/* End - BUG#Z6577 */
 
 	/* Build trigdesc */
 	trigdesc = (TriggerDesc *) palloc0(sizeof(TriggerDesc));
