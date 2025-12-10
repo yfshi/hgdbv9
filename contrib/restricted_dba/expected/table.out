@@ -235,6 +235,37 @@ create table sch_non_exist.tb1_non_exist(id int);
 ERROR:  schema "sch_non_exist" does not exist
 LINE 1: create table sch_non_exist.tb1_non_exist(id int);
                      ^
+/* Begin - bug#z6270 */
+------ fail
+create table sch2_sysdba_u2.tb1_dba_u1 as select * from tb1_dba_u1;
+ERROR:  permission denied for schema sch2_sysdba_u2
+DETAIL:  don't have enough privilege on schema sch2_sysdba_u2
+create table sch_syssso_u1.tb1_dba_u1 as select * from tb1_dba_u1;
+ERROR:  permission denied for schema sch_syssso_u1
+DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+create table sch_syssao_u1.tb1_dba_u1 as select * from tb1_dba_u1;
+ERROR:  permission denied for schema sch_syssao_u1
+DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+create table sch_u1.tb1_dba_u1 as select * from tb1_dba_u1;
+ERROR:  permission denied for schema sch_u1
+DETAIL:  don't have enough privilege on schema sch_u1
+create table sch_non_exist.tb1_non_exist as select * from tb1_dba_u1;
+ERROR:  schema "sch_non_exist" does not exist
+select * into sch2_sysdba_u2.tb1_dba_u1 from tb1_dba_u1;
+ERROR:  permission denied for schema sch2_sysdba_u2
+DETAIL:  don't have enough privilege on schema sch2_sysdba_u2
+select * into sch_syssso_u1.tb1_dba_u1 from tb1_dba_u1;
+ERROR:  permission denied for schema sch_syssso_u1
+DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+select * into sch_syssao_u1.tb1_dba_u1 from tb1_dba_u1;
+ERROR:  permission denied for schema sch_syssao_u1
+DETAIL:  sysdba_role member cannot use schema of syssso_role/syssao_role member schema
+select * into sch_u1.tb1_dba_u1 from tb1_dba_u1;
+ERROR:  permission denied for schema sch_u1
+DETAIL:  don't have enough privilege on schema sch_u1
+select * into sch_non_exist.tb1_non_exist from tb1_dba_u1;
+ERROR:  schema "sch_non_exist" does not exist
+/* End - bug#z6270 */
 ---- ALTER TABLE OWNER
 ------ pass
 begin;

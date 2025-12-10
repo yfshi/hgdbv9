@@ -99,6 +99,7 @@ extern bool drop_schema_check(ObjectAddress *object);
 /*relation.c*/
 extern bool create_table_check(CreateStmt *stmt, char relkind, Oid ownerId,
 							   ObjectAddress *typaddress, const char *queryString);
+extern bool create_table_as_check(CreateTableAsStmt *stmt); /* bug - #z6270 */
 extern bool create_sequence_check(ParseState *pstate, CreateSeqStmt *seq);
 extern bool create_view_check(ViewStmt *stmt, const char *queryString,
 							   int stmt_location, int stmt_len);
