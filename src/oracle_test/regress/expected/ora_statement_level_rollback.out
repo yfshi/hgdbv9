@@ -1306,3 +1306,23 @@ COMMIT;
 \set AUTOCOMMIT on
 RESET ivorysql.ora_statement_level_rollback;
 RESET ivorysql.ora_commit_before_disconnect;
+SET ivorysql.ora_statement_level_rollback = on;
+create table t(id int);
+create or replace function func_main return number as
+	v_result number;
+begin
+	insert into t values(1);
+	return 1;
+exception
+	when others then
+		raise notice '111';
+		return 0;
+end;
+/
+select func_main();
+ func_main 
+-----------
+ 1
+(1 row)
+
+RESET ivorysql.ora_statement_level_rollback;

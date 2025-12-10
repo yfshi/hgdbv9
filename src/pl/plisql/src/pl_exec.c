@@ -2644,6 +2644,13 @@ exec_stmts(PLiSQL_execstate *estate, List *stmts)
 
 		if (rc != PLISQL_RC_OK)
 		{
+			/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+			if (set_savepoint > 0 && has_savepoint)
+			{
+				/* Back to the upper layer transaction where the savepoint is not set. */
+				ReleaseCurrentSubTransaction();
+			}
+			/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 			estate->err_stmt = save_estmt;
 			return rc;
 		}
