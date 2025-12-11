@@ -25,7 +25,7 @@ my $psql_timeout = IPC::Run::timer($TestLib::timeout_default);
 my $node = get_new_node('node_crash');
 $node->init(allows_streaming => 1,
 		extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
-$node->append_conf('sec_pg.conf', 'audit.track_settings = off');
+$node->append_conf('postgresql.conf', 'audit.track_settings = off');
 
 $node->start();
 

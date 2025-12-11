@@ -10,7 +10,7 @@ use Test::More tests => 100;
 my $node = get_new_node('test');
 $node->init;
 
-#$node->append_conf('sec_pg.conf', 'audit.enable = on');
+#$node->append_conf('postgresql.conf', 'audit.enable = on');
 $node->start;
 
 $node->safe_psql('postgres', "alter system set audit.enable = on;");

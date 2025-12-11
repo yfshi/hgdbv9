@@ -2511,7 +2511,7 @@ regression_main(int argc, char *argv[],
 
 		fclose(pg_conf);
 
-		snprintf(buf, sizeof(buf), "%s/data/sec_pg.conf", temp_instance);
+		snprintf(buf, sizeof(buf), "%s/data/postgresql.conf", temp_instance);
 		sec_conf = fopen(buf, "a");
 		if (sec_conf == NULL)
 		{

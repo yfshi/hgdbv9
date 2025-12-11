@@ -119,7 +119,7 @@ $node->append_conf(
 					 autovacuum = off
 					 checkpoint_timeout = '30min'
 ]);
-$node->append_conf('sec_pg.conf', 'audit.track_settings = off');
+$node->append_conf('postgresql.conf', 'audit.track_settings = off');
 $node->start;
 $node->safe_psql('postgres', "CREATE TABLE t AS SELECT 42");
 
