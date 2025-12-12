@@ -7794,7 +7794,7 @@ mystimes_in(PG_FUNCTION_ARGS)
 
 		if(dterr < 0 || nanosec)
 		{
-			PG_RETURN_NULL();PG_RETURN_NUMERIC(Int32GetDatum(num));
+			PG_RETURN_NULL();
 		}
 	}
 

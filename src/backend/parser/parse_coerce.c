@@ -2977,6 +2977,10 @@ coerce_type(ParseState *pstate, Node *node,
 																   0);
 				}
 
+				/* it should be noted that the return with precision is NULL
+				 * the one without precision is the actual value MYSQL_NULL_DATE
+				 * it is normal for the mystime value to be 0 ,so not set null
+				 */
 				if (newcon->constvalue == MYSQL_NULL_DATE && 
 					(baseTypeId == MYSDATETIMESOID ||
 					 baseTypeId == MYSTIMESTAMPSOID ||
@@ -2984,7 +2988,6 @@ coerce_type(ParseState *pstate, Node *node,
 					 /* Begin - BUG#Z5569 */
 					 baseTypeId == MYSDATETIMEOID ||
 					 baseTypeId == MYSTIMESTAMPOID ||
-					 baseTypeId == MYSTIMEOID ||
 					 baseTypeId == MYSDATEOID))
 					 /* End - BUG#Z5569 */
 				{
