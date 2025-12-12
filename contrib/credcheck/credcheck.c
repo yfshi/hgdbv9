@@ -353,7 +353,7 @@ static bool guc_enum_check(int *newval, void **extra, GucSource source)
 
 	ret = is_manager();
 	if (!ret)
-		elog(ERROR, "Permission denied. Only role=(syssso_role or sysdba_role) can change this parameter.");
+		elog(ERROR, "Permission denied.");
 
 	return ret;
 }
@@ -366,7 +366,7 @@ static bool guc_int_check(int *newval, void **extra, GucSource source)
 
 	ret = is_manager();
 	if (!ret)
-		elog(ERROR, "Permission denied. Only role=(syssso_role or sysdba_role) can change this parameter.");
+		elog(ERROR, "Permission denied.");
 
 	return ret;
 }
@@ -379,7 +379,7 @@ static bool guc_string_check(char **newval, void **extra, GucSource source)
 
 	ret = is_manager();
 	if (!ret)
-		elog(ERROR, "Permission denied. Only role=(syssso_role or sysdba_role) can change this parameter.");
+		elog(ERROR, "Permission denied.");
 
 	return ret;
 }
@@ -2278,7 +2278,7 @@ Datum pg_password_history_reset(PG_FUNCTION_ARGS)
 
 	/* Only syssso can reset the history */
 	if (!is_manager())
-		ereport(ERROR, (errmsg("only superuser(or syssso)  can reset password history")));
+		ereport(ERROR, (errmsg("Permission denied.")));
 
 	/* Get the username to filter the entries to remove if one specified */
 	if (PG_NARGS() > 0)
@@ -2319,7 +2319,7 @@ Datum pg_password_history(PG_FUNCTION_ARGS)
 {
 	bool ret = is_manager();
 	if (!ret)
-		elog(ERROR, "Permission denied. Only role=(syssso_role or sysdba_role) can be queried.");
+		elog(ERROR, "Permission denied.");
 	else
 		pg_password_history_internal(fcinfo);
 
@@ -2421,7 +2421,7 @@ Datum pg_password_history_timestamp(PG_FUNCTION_ARGS)
 
 	/* Only syssso can reset the history */
 	if (!is_manager())
-		ereport(ERROR, (errmsg("only superuser(or syssso)  can change timestamp in password history")));
+		ereport(ERROR, (errmsg("Permission denied.")));
 
 	/* Lookup the hash table entry with exclusive lock. */
 	LWLockAcquire(pgph->lock, LW_EXCLUSIVE);
@@ -2660,7 +2660,7 @@ Datum pg_banned_role_reset(PG_FUNCTION_ARGS)
 
 	/* Only syssso or sysdba can reset the history */
 	if (!is_manager())
-		ereport(ERROR, (errmsg("only superuser(or syssso sysdba) can reset banned roles cache")));
+		ereport(ERROR, (errmsg("Permission denied.")));
 
 	/* Get the username to filter the entries to remove if one specified */
 	if (PG_NARGS() > 0)
@@ -2697,7 +2697,7 @@ Datum pg_banned_role(PG_FUNCTION_ARGS)
 {
 	bool ret = is_manager();
 	if (!ret)
-		elog(ERROR, "Permission denied. Only role=(syssso_role or sysdba_role) can be queried.");
+		elog(ERROR, "Permission denied.");
 	else
 		pg_banned_role_internal(fcinfo);
 
