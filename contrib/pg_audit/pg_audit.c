@@ -11083,7 +11083,6 @@ static bool
 check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, TimestampTz impt_starttime,
 									TimestampTz impt_endtime, int2vector *impt_columns,  int confindex, AuditEvent *event, char *msg)
 {
-	bool	is_column = false;
 	char	warning_msg[MAXPGPATH] = {0};
 
 	/* if the occurrence time of the event is smaller than
@@ -11126,6 +11125,48 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 		}
 	}
 
+	if (impt_columns != NULL)
+	{	
+		List *objects = NULL;
+		ListCell *cell;
+		
+		if (event->conftypes[confindex] != AUDIT_TYPE_OBJECT || event->objects == NULL)
+		{
+			ereport(NOTICE,
+						(errmsg("It is not the important column")));
+		}
+		else if (event->objects)
+		{
+
+			objects = event->objects;
+			foreach(cell, objects)
+			{
+				int			i;
+				AuditEvent_Obj *obj = lfirst(cell);
+
+				if (obj->colname != NULL && strlen(obj->colname) > 0)
+				{
+					for (i = 0; i < impt_columns->dim1; i++)
+					{
+						if (!bms_is_member(impt_columns->values[i] - FirstLowInvalidHeapAttributeNumber, obj->columns))
+						{
+							ereport(NOTICE,
+							(errmsg("It is not the important column")));
+						}
+						else
+						{	
+							sprintf(warning_msg, "Important column \"%s\" has reached the threshold", obj->colname);
+
+							strncpy(msg, warning_msg, strlen(warning_msg));
+
+							return true;
+						}
+					}
+				}
+			}
+		}
+	}
+
 	if (!TIMESTAMP_IS_NOBEGIN(impt_starttime))
 	{
 		Assert(!TIMESTAMP_IS_NOBEGIN(impt_endtime));
@@ -11137,68 +11178,27 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 					(errmsg("The event occurrence time is less than the start time or the event occurrence time is greater than the end time")));
 			//return false; /* BUG#z6114*/
 		}
-	}
-
-	if (impt_columns != NULL)
-	{	
-		List *objects = NULL;
-		ListCell *cell;
-		
-		if (event->conftypes[confindex] != AUDIT_TYPE_OBJECT)
-		{
-			is_column = false;
-		}
-		
-		if (event->objects == NULL)
-		{
-			is_column = false;
-		}
-
-		objects = event->objects;
-		foreach(cell, objects)
-		{
-			int			i;
-			AuditEvent_Obj *obj = lfirst(cell);
-
-			if (obj->colname != NULL && strlen(obj->colname) > 0)
-			{
-				for (i = 0; i < impt_columns->dim1; i++)
-				{
-					if (!bms_is_member(impt_columns->values[i] - FirstLowInvalidHeapAttributeNumber, obj->columns))
-					{
-						is_column = false;
-					}
-					else
-					{
-						is_column = true;
-						
-						sprintf(warning_msg, "Important column \"%s\" has reached the threshold", obj->colname);
-
-						strncpy(msg, warning_msg, strlen(warning_msg));
-					}
-				}
-			}
-		}
-	}
-
-	if (!is_column)
-	{
-		const char	*starttime;
-		const char	*endtime;
-
-		starttime = timestamptz_to_str(impt_starttime);
-
-		if (impt_endtime == DT_NOEND)
-			endtime = strdup("-infinity");
 		else
-			endtime = timestamptz_to_str(impt_endtime);
+		{
+			const char	*starttime;
+			const char	*endtime;
 
-		sprintf(warning_msg, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
+			starttime = timestamptz_to_str(impt_starttime);
 
-		strncpy(msg, warning_msg, strlen(warning_msg));
+			if (impt_endtime == DT_NOEND)
+				endtime = strdup("-infinity");
+			else
+				endtime = timestamptz_to_str(impt_endtime);
+
+			sprintf(warning_msg, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
+
+			strncpy(msg, warning_msg, strlen(warning_msg));
+
+			return true;
+		}
 	}
 
-	return true;
+	return false;
 }
 
 /*
