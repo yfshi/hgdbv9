@@ -14893,6 +14893,13 @@ dumpACL(Archive *fout, DumpId objDumpId, DumpId altDumpId,
 #endif
 /* END - ReqID:SRS-CMD-highgo2pg */
 
+	/* Begin - BUG#6400 */
+	if (!highgo_is_dumpACL(name))
+	{
+		return InvalidDumpId;
+	}
+	/* End - BUG#6400 */
+
 	sql = createPQExpBuffer();
 
 	/*

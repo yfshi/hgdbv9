@@ -98,4 +98,8 @@ extern void GetMySQLCompPara(Archive *AHX);
 extern char *generate_restrict_key(void);
 extern bool valid_restrict_key(const char *restrict_key);
 
+/* Begin - BUG#6400 */
+bool highgo_is_dumpACL(const char *name);
+/* End - BUG#6400 */
+
 #endif							/* DUMPUTILS_H */
