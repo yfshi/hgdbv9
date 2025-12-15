@@ -15984,6 +15984,13 @@ dumpACL2(Archive *fout, DumpId objDumpId, DumpId altDumpId,
 	if (dopt->dataOnly && strcmp(type, "LARGE OBJECT") != 0)
 		return InvalidDumpId;
 
+	/* Begin - BUG#6400 */
+	if (!highgo_is_dumpACL(name))
+	{
+		return InvalidDumpId;
+	}
+	/* End - BUG#6400 */
+
 	sql = createPQExpBuffer();
 
 	/*

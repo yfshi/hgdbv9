@@ -1333,3 +1333,44 @@ GetMySQLCompPara(Archive *AHX)
 	}
 }
 /* End - ReqID:SRS-MYSQL-CASE */
+
+/* Begin - BUG#6400 */
+/* check if dump the object */
+bool highgo_is_dumpACL(const char *name)
+{
+	/* TO DO: Detemine whether to judge based on the version  */
+	if (strcmp(name, "\"pg_audit_log\"") == 0 ||
+		strcmp(name, "pg_audit_log") == 0 ||
+		strcmp(name, "\"pg_banned_role\"") == 0 ||
+		strcmp(name, "pg_banned_role") == 0 ||
+		strcmp(name, "pg_reboot") == 0 ||
+		strcmp(name, "\"pg_reboot\"") == 0 ||
+		strcmp(name, "hg_redaction_policy") == 0 ||
+		strcmp(name, "\"hg_redaction_policy\"") == 0 ||
+		strcmp(name, "hg_redaction_column") == 0 ||
+		strcmp(name, "\"hg_redaction_column\"") == 0 ||
+		strcmp(name, "hg_redaction") == 0 ||
+		strcmp(name, "\"hg_redaction\"") == 0 ||
+		strcmp(name, "hg_redaction_function") == 0 ||
+		strcmp(name, "\"hg_redaction_function\"") == 0 ||
+		strcmp(name, "sqlite_audit_log") == 0 ||
+		strcmp(name, "\"sqlite_audit_log\"") == 0 ||
+		strcmp(name, "pg_secmon_history") == 0 ||
+		strcmp(name, "\"pg_secmon_history\"") == 0 ||
+		strcmp(name, "pg_secmon_thrhis") == 0 ||
+		strcmp(name, "\"pg_secmon_thrhis\"") == 0 ||
+		strcmp(name, "pg_track_settings_list") == 0 ||
+		strcmp(name, "\"pg_track_settings_list\"") == 0 ||
+		strcmp(name, "pg_track_settings_history") == 0 ||
+		strcmp(name, "\"pg_track_settings_history\"") == 0 ||
+		strcmp(name, "pg_track_db_role_settings_list") == 0 ||
+		strcmp(name, "\"pg_track_db_role_settings_list\"") == 0 ||
+		strcmp(name, "pg_track_db_role_settings_history") == 0 ||
+		strcmp(name, "\"pg_track_db_role_settings_history\"") == 0 ||
+		strcmp(name, "\"pg_password_history\"") == 0 ||
+		strcmp(name, "pg_password_history") == 0)
+		return false;
+
+	return true;
+}
+/* End - BUG#6400 */
