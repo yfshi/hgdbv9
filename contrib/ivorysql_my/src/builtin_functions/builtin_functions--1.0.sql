@@ -3916,3 +3916,14 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
+
+/* Begin - bug#6769 */
+CREATE FUNCTION pg_catalog.acldefault(text, oid)
+RETURNS aclitem[]
+AS $$
+	SELECT pg_catalog.acldefault($1::"char", $2);
+$$
+LANGUAGE SQL
+IMMUTABLE
+PARALLEL SAFE;
+/* End - bug#6769 */

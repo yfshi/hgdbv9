@@ -4,7 +4,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS
@@ -26,9 +25,9 @@ NOTICE:  table "my_binary_t6" does not exist, skipping
 NOTICE:  table "my_binary_t7" does not exist, skipping
 NOTICE:  table "my_binary_t8" does not exist, skipping
 CREATE TABLE my_binary_t1(c1 binary(-1)); -- should error
-ERROR:  You have an error in you SQL syntax in binary( ... 
+ERROR:  syntax error at or near "-"
 LINE 1: CREATE TABLE my_binary_t1(c1 binary(-1));
-                                     ^
+                                            ^
 CREATE TABLE my_binary_t2(c1 binary(0)); -- should ok
 \d my_binary_t2;
              Table "public.my_binary_t2"
@@ -68,9 +67,9 @@ CREATE TABLE my_binary_t6(c1 binary(3)); -- should ok
 INSERT INTO my_binary_t6 VALUES('a');
 -- should get (a, 3, f)
 SELECT *, length(c1), c1 = 'a' FROM my_binary_t6;
- c1 | length | ?column? 
-----+--------+----------
- a  |      3 | f
+    c1    | length | ?column? 
+----------+--------+----------
+ \x610000 |      3 | f
 (1 row)
 
 -- should get (t, f)
@@ -102,9 +101,9 @@ WARNING:  Data truncated for column
 LINE 1: INSERT INTO my_binary_t7 VALUES('abcd');
                                         ^
 SELECT * FROM my_binary_t7;
- c1  
------
- abc
+    c1    
+----------
+ \x616263
 (1 row)
 
 RESET sql_mode;
@@ -113,60 +112,59 @@ ERROR:  Data too long for column
 LINE 1: INSERT INTO my_binary_t7 VALUES('abcd');
                                         ^
 SELECT * FROM my_binary_t7;
- c1  
------
- abc
+    c1    
+----------
+ \x616263
 (1 row)
 
 CREATE TABLE my_binary_t8(c1 binary('5'));  -- should error
-ERROR:  You have an error in you SQL syntax in binary( ... 
+ERROR:  syntax error at or near "'5'"
 LINE 1: CREATE TABLE my_binary_t8(c1 binary('5'));
-                                     ^
+                                            ^
 CREATE TABLE my_binary_t8(c1 binary(a));    -- should error
-ERROR:  You have an error in you SQL syntax in binary( ... 
+ERROR:  syntax error at or near "a"
 LINE 1: CREATE TABLE my_binary_t8(c1 binary(a));
-                                     ^
+                                            ^
 CREATE TABLE my_binary_t8(c1 binary('a'));  -- should error
-ERROR:  You have an error in you SQL syntax in binary( ... 
+ERROR:  syntax error at or near "'a'"
 LINE 1: CREATE TABLE my_binary_t8(c1 binary('a'));
-                                     ^
+                                            ^
 CREATE TABLE my_binary_t8(c1 binary(''));   -- should error
-ERROR:  You have an error in you SQL syntax in binary( ... 
+ERROR:  syntax error at or near "''"
 LINE 1: CREATE TABLE my_binary_t8(c1 binary(''));
-                                     ^
+                                            ^
 CREATE TABLE my_binary_t8(c1 binary(null)); -- should error
-ERROR:  You have an error in you SQL syntax in binary( ... 
+ERROR:  syntax error at or near "null"
 LINE 1: CREATE TABLE my_binary_t8(c1 binary(null));
-                                     ^
+                                            ^
 CREATE TABLE my_binary_t9(c1 binary(4), c2 binary(5) default 'test'); -- should ok
 \d my_binary_t9;
-                  Table "public.my_binary_t9"
- Column |   Type    | Collation | Nullable |      Default      
---------+-----------+-----------+----------+-------------------
+                      Table "public.my_binary_t9"
+ Column |   Type    | Collation | Nullable |          Default          
+--------+-----------+-----------+----------+---------------------------
  c1     | binary(4) |           |          | 
- c2     | binary(5) |           |          | 'test'::binary(5)
+ c2     | binary(5) |           |          | '\x7465737400'::binary(5)
 
 INSERT INTO my_binary_t9 VALUES('ab'); -- should ok
 SELECT * FROM my_binary_t9;
- c1 |  c2  
-----+------
- ab | test
+     c1     |      c2      
+------------+--------------
+ \x61620000 | \x7465737400
 (1 row)
 
 SELECT binary'101010' as result; -- should ok
- result 
---------
- 101010
+     result     
+----------------
+ \x313031303130
 (1 row)
 
 SELECT binary('101010') as result; -- should ok
- result 
---------
- 101010
+     result     
+----------------
+ \x313031303130
 (1 row)
 
 set sql_mode='';
-set mysql.enable_character_blob to off;
 CREATE TABLE my_binary_t8 (c1 binary(8));
 INSERT  INTO my_binary_t8 values ('HGDB');
 INSERT  INTO my_binary_t8 values ('Database');
@@ -199,7 +197,6 @@ DISCARD ALL;
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
 set enable_seqscan = off;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -216,137 +213,137 @@ INSERT INTO my_binary_t1 VALUES ('abcdefghij', 'bcdefghijk', 'cdefghijkl', 'defg
 -- case: gin
 create index my_binary_t1_gin on my_binary_t1 using gin(c1);
 select c1 from my_binary_t1 where c1 = 'abcdefghij';
-     c1     
-------------
- abcdefghij
- abcdefghij
- abcdefghij
+           c1           
+------------------------
+ \x6162636465666768696a
+ \x6162636465666768696a
+ \x6162636465666768696a
 (3 rows)
 
 select c1 from my_binary_t1 where c1 = cast('abcdefghij' as binary);
-     c1     
-------------
- abcdefghij
- abcdefghij
- abcdefghij
+           c1           
+------------------------
+ \x6162636465666768696a
+ \x6162636465666768696a
+ \x6162636465666768696a
 (3 rows)
 
 select c1 from my_binary_t1 where c1 = cast('abcdefghij' as binary(10));
-     c1     
-------------
- abcdefghij
- abcdefghij
- abcdefghij
+           c1           
+------------------------
+ \x6162636465666768696a
+ \x6162636465666768696a
+ \x6162636465666768696a
 (3 rows)
 
 explain select c1 from my_binary_t1 where c1 = cast('abcdefghij' as binary(10));
                                   QUERY PLAN                                   
 -------------------------------------------------------------------------------
  Bitmap Heap Scan on my_binary_t1  (cost=8.01..12.02 rows=1 width=32)
-   Recheck Cond: (c1 = 'abcdefghij'::binary(10))
+   Recheck Cond: (c1 = '\x6162636465666768696a'::binary(10))
    ->  Bitmap Index Scan on my_binary_t1_gin  (cost=0.00..8.01 rows=1 width=0)
-         Index Cond: (c1 = 'abcdefghij'::binary(10))
+         Index Cond: (c1 = '\x6162636465666768696a'::binary(10))
 (4 rows)
 
 -- case: brin
 create index my_binary_t1_brin on my_binary_t1 using brin(c2);
 select c2 from my_binary_t1 where c2 = 'bcdefghijk';
-     c2     
-------------
- bcdefghijk
- bcdefghijk
- bcdefghijk
+           c2           
+------------------------
+ \x62636465666768696a6b
+ \x62636465666768696a6b
+ \x62636465666768696a6b
 (3 rows)
 
 select c2 from my_binary_t1 where c2 = cast('bcdefghijk' as binary);
-     c2     
-------------
- bcdefghijk
- bcdefghijk
- bcdefghijk
+           c2           
+------------------------
+ \x62636465666768696a6b
+ \x62636465666768696a6b
+ \x62636465666768696a6b
 (3 rows)
 
 select c2 from my_binary_t1 where c2 = cast('bcdefghijk' as binary(10));
-     c2     
-------------
- bcdefghijk
- bcdefghijk
- bcdefghijk
+           c2           
+------------------------
+ \x62636465666768696a6b
+ \x62636465666768696a6b
+ \x62636465666768696a6b
 (3 rows)
 
 explain select c2 from my_binary_t1 where c2 = cast('bcdefghijk' as binary(10));
                                    QUERY PLAN                                    
 ---------------------------------------------------------------------------------
  Bitmap Heap Scan on my_binary_t1  (cost=12.03..16.07 rows=1 width=32)
-   Recheck Cond: (c2 = 'bcdefghijk'::binary(10))
+   Recheck Cond: (c2 = '\x62636465666768696a6b'::binary(10))
    ->  Bitmap Index Scan on my_binary_t1_brin  (cost=0.00..12.03 rows=3 width=0)
-         Index Cond: (c2 = 'bcdefghijk'::binary(10))
+         Index Cond: (c2 = '\x62636465666768696a6b'::binary(10))
 (4 rows)
 
 -- case: btree
 create index my_binary_t1_btree on my_binary_t1 using btree(c3);
 select c3 from my_binary_t1 where c3 = 'cdefghijkl';
-     c3     
-------------
- cdefghijkl
- cdefghijkl
- cdefghijkl
+           c3           
+------------------------
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
 (3 rows)
 
 select c3 from my_binary_t1 where c3 = cast('cdefghijkl' as binary);
-     c3     
-------------
- cdefghijkl
- cdefghijkl
- cdefghijkl
+           c3           
+------------------------
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
 (3 rows)
 
 select c3 from my_binary_t1 where c3 = cast('cdefghijkl' as binary(10));
-     c3     
-------------
- cdefghijkl
- cdefghijkl
- cdefghijkl
+           c3           
+------------------------
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
 (3 rows)
 
 explain select c3 from my_binary_t1 where c3 = cast('cdefghijkl' as binary(10));
                                          QUERY PLAN                                          
 ---------------------------------------------------------------------------------------------
  Index Only Scan using my_binary_t1_btree on my_binary_t1  (cost=0.13..8.15 rows=1 width=32)
-   Index Cond: (c3 = 'cdefghijkl'::binary(10))
+   Index Cond: (c3 = '\x636465666768696a6b6c'::binary(10))
 (2 rows)
 
 -- case: hash
 create index my_binary_t1_hash on my_binary_t1 using hash(c4);
 select c4 from my_binary_t1 where c4 = 'defghijklm';
-     c4     
-------------
- defghijklm
- defghijklm
- defghijklm
+           c4           
+------------------------
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
 (3 rows)
 
 select c4 from my_binary_t1 where c4 = cast('defghijklm' as binary);
-     c4     
-------------
- defghijklm
- defghijklm
- defghijklm
+           c4           
+------------------------
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
 (3 rows)
 
 select c4 from my_binary_t1 where c4 = cast('defghijklm' as binary(10));
-     c4     
-------------
- defghijklm
- defghijklm
- defghijklm
+           c4           
+------------------------
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
 (3 rows)
 
 explain select c4 from my_binary_t1 where c4 = cast('defghijklm' as binary(10));
                                        QUERY PLAN                                       
 ----------------------------------------------------------------------------------------
  Index Scan using my_binary_t1_hash on my_binary_t1  (cost=0.00..12.02 rows=1 width=32)
-   Index Cond: (c4 = 'defghijklm'::binary(10))
+   Index Cond: (c4 = '\x6465666768696a6b6c6d'::binary(10))
 (2 rows)
 
 DISCARD ALL;
@@ -355,7 +352,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -406,7 +402,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -417,17 +412,17 @@ INSERT INTO my_binary_t1 VALUES ('123'), ('12345'), ('abc');
 --------------------------------------------------------------------------------
 -- should get (123)
 SELECT * from my_binary_t1 WHERE c1 BETWEEN '12' AND '1234';
- c1  
------
- 123
+      c1      
+--------------
+ \x3132330000
 (1 row)
 
 -- should get {(123), (12345)}
 SELECT * from my_binary_t1 WHERE c1 BETWEEN '12' AND '12346';
-  c1   
--------
- 123
- 12345
+      c1      
+--------------
+ \x3132330000
+ \x3132333435
 (2 rows)
 
 -- should get empty
@@ -442,7 +437,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -519,7 +513,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -548,7 +541,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -577,7 +569,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -606,7 +597,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -635,7 +625,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -665,7 +654,6 @@ DISCARD ALL;
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
 set enable_seqscan to off;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -680,30 +668,30 @@ INSERT INTO my_binary_t1 VALUES ('123', 'abc', '', ' ', null);
 --------------------------------------------------------------------------------
 -- should get {(123)}
 SELECT COALESCE(c1, c5) FROM my_binary_t1;
- coalesce 
-----------
- 123
+   coalesce   
+--------------
+ \x3132330000
 (1 row)
 
 -- should get {(abc)}
 SELECT COALESCE(c5, c2) FROM my_binary_t1;
- coalesce 
-----------
- abc
+   coalesce   
+--------------
+ \x6162630000
 (1 row)
 
 -- should get {()}
 SELECT COALESCE(c5, c3) FROM my_binary_t1;
- coalesce 
-----------
- 
+   coalesce   
+--------------
+ \x0000000000
 (1 row)
 
 -- should get {( )}
 SELECT COALESCE(c5, c4) FROM my_binary_t1;
- coalesce 
-----------
-  
+   coalesce   
+--------------
+ \x2000000000
 (1 row)
 
 -- should get {(NULL)}
@@ -722,9 +710,9 @@ SELECT
   COALESCE(c5, c5)
 FROM
   my_binary_t1;
- coalesce | coalesce | coalesce | coalesce | coalesce 
-----------+----------+----------+----------+----------
- 123      | abc      |          |          | NULL
+   coalesce   |   coalesce   |   coalesce   |   coalesce   | coalesce 
+--------------+--------------+--------------+--------------+----------
+ \x3132330000 | \x6162630000 | \x0000000000 | \x2000000000 | NULL
 (1 row)
 
 DISCARD ALL;
@@ -733,7 +721,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -872,7 +859,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -888,9 +874,9 @@ INSERT INTO my_binary_t1 VALUES ('123', '123', 'abc', '', ' ', null);
 --------------------------------------------------------------------------------
 -- should get {(123)}
 SELECT GREATEST(c1, c2) FROM my_binary_t1;
- greatest 
-----------
- 123
+   greatest   
+--------------
+ \x3132330000
 (1 row)
 
 -- should get {(5)}
@@ -902,23 +888,23 @@ SELECT length(GREATEST(c1, c2)) FROM my_binary_t1;
 
 -- should get {(abc)}
 SELECT GREATEST(c1, c3) FROM my_binary_t1;
- greatest 
-----------
- abc
+   greatest   
+--------------
+ \x6162630000
 (1 row)
 
 -- should get {(abc)}
 SELECT GREATEST(c3, c4) FROM my_binary_t1;
- greatest 
-----------
- abc
+   greatest   
+--------------
+ \x6162630000
 (1 row)
 
 -- should get {()}
 SELECT GREATEST(c4, c5) FROM my_binary_t1;
- greatest 
-----------
-  
+   greatest   
+--------------
+ \x2000000000
 (1 row)
 
 -- should get {(NULL)}
@@ -938,16 +924,16 @@ SELECT
   GREATEST(c4, c6)
 FROM
   my_binary_t1;
- greatest | length | greatest | greatest | greatest | greatest 
-----------+--------+----------+----------+----------+----------
- 123      |      5 | abc      | abc      |          | NULL
+   greatest   | length |   greatest   |   greatest   |   greatest   | greatest 
+--------------+--------+--------------+--------------+--------------+----------
+ \x3132330000 |      5 | \x6162630000 | \x6162630000 | \x2000000000 | NULL
 (1 row)
 
 -- should get {(123), (123), (abc), (), (), (NULL)}
 SELECT * FROM my_binary_t1;
- c1  | c2  | c3  | c4 | c5 |  c6  
------+-----+-----+----+----+------
- 123 | 123 | abc |    |    | NULL
+      c1      |      c2      |      c3      |      c4      |      c5      |  c6  
+--------------+--------------+--------------+--------------+--------------+------
+ \x3132330000 | \x3132330000 | \x6162630000 | \x0000000000 | \x2000000000 | NULL
 (1 row)
 
 -- should get {(5), (5), (5), (5), (5), (NULL)}
@@ -1015,7 +1001,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1028,24 +1013,24 @@ INSERT INTO my_binary_t1 VALUES ('abc'), ('abc123'), ('Abc123'), ('瀚高'), (''
 -- TODO[TD007]: can not display chinese
 SELECT * FROM my_binary_t1 WHERE c1
   IN ('abc', 'abc123', '瀚高', '\0\0\0\0\0\0', ' \0\0\0\0\0', null);
-            c1            
---------------------------
- abc123
- \347\200\232\351\253\230
- 
-  
+       c1       
+----------------
+ \x616263313233
+ \xe7809ae9ab98
+ \x000000000000
+ \x200000000000
 (4 rows)
 
 -- should get {(abc), (abc123), (Abc123), (瀚高)}
 -- TODO[TD007]: can not display chinese
 SELECT * FROM my_binary_t1 WHERE c1
   IN ('abc\0\0\0', 'abc123', 'Abc123', '瀚高', '', ' ', null);
-            c1            
---------------------------
- abc
- abc123
- Abc123
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x616263000000
+ \x616263313233
+ \x416263313233
+ \xe7809ae9ab98
 (4 rows)
 
 DISCARD ALL;
@@ -1093,7 +1078,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1105,12 +1089,12 @@ INSERT INTO my_binary_t1 VALUES (1, '123'), (2, 'abc'), (3, ''), (4, ' '), (5, n
 --------------------------------------------------------------------------------
 -- should get {(1, '123'), (2, 'abc'), (3, ''), (4, ' ')}
 select * from my_binary_t1 where c1 is not null;
- id | c1  
-----+-----
-  1 | 123
-  2 | abc
-  3 | 
-  4 |  
+ id |           c1           
+----+------------------------
+  1 | \x31323300000000000000
+  2 | \x61626300000000000000
+  3 | \x00000000000000000000
+  4 | \x20000000000000000000
 (4 rows)
 
 DISCARD ALL;
@@ -1119,7 +1103,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1134,11 +1117,11 @@ select * from my_binary_t1 where c1 is not true;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id |  c1  
-----+------
-  2 | abc
-  3 | 
-  4 |  
+ id |           c1           
+----+------------------------
+  2 | \x61626300000000000000
+  3 | \x00000000000000000000
+  4 | \x20000000000000000000
   5 | NULL
 (4 rows)
 
@@ -1147,9 +1130,9 @@ select * from my_binary_t1 where c1 is not false;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id |  c1  
-----+------
-  1 | 123
+ id |           c1           
+----+------------------------
+  1 | \x31323300000000000000
   5 | NULL
 (2 rows)
 
@@ -1159,7 +1142,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1206,7 +1188,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1221,9 +1202,9 @@ select * from my_binary_t1 where c1 is true;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id | c1  
-----+-----
-  1 | 123
+ id |           c1           
+----+------------------------
+  1 | \x31323300000000000000
 (1 row)
 
 -- should get {(2, abc), (3, ), (4, )}
@@ -1231,11 +1212,11 @@ select * from my_binary_t1 where c1 is false;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id | c1  
-----+-----
-  2 | abc
-  3 | 
-  4 |  
+ id |           c1           
+----+------------------------
+  2 | \x61626300000000000000
+  3 | \x00000000000000000000
+  4 | \x20000000000000000000
 (3 rows)
 
 DISCARD ALL;
@@ -1244,7 +1225,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1267,9 +1247,9 @@ select
   least(c4, c5), 
   least(c4, c6)
 from my_binary_t1;
- least | length | least | least | least | least 
--------+--------+-------+-------+-------+-------
- 123   |      5 | 123   |       |       | NULL
+    least     | length |    least     |    least     |    least     | least 
+--------------+--------+--------------+--------------+--------------+-------
+ \x3132330000 |      5 | \x3132330000 | \x0000000000 | \x0000000000 | NULL
 (1 row)
 
 DISCARD ALL;
@@ -1323,7 +1303,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1334,17 +1313,17 @@ INSERT INTO my_binary_t1 VALUES (' bc'), ('abc'), ('Abc'), ('abcd'), ('瀚高');
 --------------------------------------------------------------------------------
 -- should get "('abc', 'abcd')"
 select * from my_binary_t1 where c1 like 'a%';
-  c1  
-------
- abc
- abcd
+           c1           
+------------------------
+ \x61626300000000000000
+ \x61626364000000000000
 (2 rows)
 
 -- should get "('Abc')"
 select * from my_binary_t1 where c1 like 'A%';
- c1  
------
- Abc
+           c1           
+------------------------
+ \x41626300000000000000
 (1 row)
 
 -- should get empty
@@ -1355,32 +1334,32 @@ select * from my_binary_t1 where c1 like '%c';
 
 -- should get "(' bc'), ('abc'), ('Abc'), ('abcd')"
 select * from my_binary_t1 where c1 like '%b%';
-  c1  
-------
-  bc
- abc
- Abc
- abcd
+           c1           
+------------------------
+ \x20626300000000000000
+ \x61626300000000000000
+ \x41626300000000000000
+ \x61626364000000000000
 (4 rows)
 
 -- should get "(' bc'), ('abc'), ('Abc'), ('abcd'), ('瀚高')"
 -- TODO[TD007]: can not display chinese
 select * from my_binary_t1 where c1 like '%';
-            c1            
---------------------------
-  bc
- abc
- Abc
- abcd
- \347\200\232\351\253\230
+           c1           
+------------------------
+ \x20626300000000000000
+ \x61626300000000000000
+ \x41626300000000000000
+ \x61626364000000000000
+ \xe7809ae9ab9800000000
 (5 rows)
 
 -- should get "('瀚高')"
 -- TODO[TD007]: can not display chinese
 select * from my_binary_t1 where c1 like '%瀚%';
-            c1            
---------------------------
- \347\200\232\351\253\230
+           c1           
+------------------------
+ \xe7809ae9ab9800000000
 (1 row)
 
 DISCARD ALL;
@@ -1433,7 +1412,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1482,7 +1460,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1518,7 +1495,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1613,7 +1589,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1624,26 +1599,26 @@ INSERT INTO my_binary_t1 VALUES ('123'), ('12345'), ('abc');
 --------------------------------------------------------------------------------
 -- should get "('12345'), ('abc')"
 SELECT * from my_binary_t1 WHERE c1 NOT BETWEEN '12' AND '1234';
-  c1   
--------
- 12345
- abc
+      c1      
+--------------
+ \x3132333435
+ \x6162630000
 (2 rows)
 
 -- should get "('abc')"
 SELECT * from my_binary_t1 WHERE c1 NOT BETWEEN '12' AND '12346';
- c1  
------
- abc
+      c1      
+--------------
+ \x6162630000
 (1 row)
 
 -- should get "('123'), ('12345'), ('abc')"
 SELECT * from my_binary_t1 WHERE c1 NOT BETWEEN '124' AND '999';
-  c1   
--------
- 123
- 12345
- abc
+      c1      
+--------------
+ \x3132330000
+ \x3132333435
+ \x6162630000
 (3 rows)
 
 DISCARD ALL;
@@ -1652,7 +1627,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1678,22 +1652,22 @@ SELECT * FROM my_binary_t1 WHERE c1
 -- should get "('abc'), ('Abc123'), (''), (' ')"
 select * from my_binary_t1 where c1
   not in ('abc', 'abc123', '瀚高');
-   c1   
---------
- abc
- Abc123
- 
-  
+       c1       
+----------------
+ \x616263000000
+ \x416263313233
+ \x000000000000
+ \x200000000000
 (4 rows)
 
 -- should get "('abc123'), ('瀚高')"
 -- TODO[TD007]: can not display chinese
 select * from my_binary_t1 where c1
   not in ('abc\0\0\0', 'Abc123', '\0\0\0\0\0\0', ' \0\0\0\0\0');
-            c1            
---------------------------
- abc123
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x616263313233
+ \xe7809ae9ab98
 (2 rows)
 
 -- should get empty
@@ -1709,7 +1683,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1721,42 +1694,42 @@ INSERT INTO my_binary_t1 VALUES (' bc'), ('abc'), ('Abc'), ('abcd'), ('瀚高');
 -- should get "(' bc'), ('Abc'), ('瀚高')"
 -- TODO[TD007]: can not display chinese
 select * from my_binary_t1 where c1 not like 'a%';
-            c1            
---------------------------
-  bc
- Abc
- \347\200\232\351\253\230
+           c1           
+------------------------
+ \x20626300000000000000
+ \x41626300000000000000
+ \xe7809ae9ab9800000000
 (3 rows)
 
 -- should get "(' bc'), ('abc'), ('abcd'), ('瀚高')"
 -- TODO[TD007]: can not display chinese
 select * from my_binary_t1 where c1 not like 'A%';
-            c1            
---------------------------
-  bc
- abc
- abcd
- \347\200\232\351\253\230
+           c1           
+------------------------
+ \x20626300000000000000
+ \x61626300000000000000
+ \x61626364000000000000
+ \xe7809ae9ab9800000000
 (4 rows)
 
 -- should get "(' bc'), ('abc'), ('Abc'), ('abcd'), ('瀚高')"
 -- TODO[TD007]: can not display chinese
 select * from my_binary_t1 where c1 not like '%c';
-            c1            
---------------------------
-  bc
- abc
- Abc
- abcd
- \347\200\232\351\253\230
+           c1           
+------------------------
+ \x20626300000000000000
+ \x61626300000000000000
+ \x41626300000000000000
+ \x61626364000000000000
+ \xe7809ae9ab9800000000
 (5 rows)
 
 -- should get "('瀚高')"
 -- TODO[TD007]: can not display chinese
 select * from my_binary_t1 where c1 not like '%b%';
-            c1            
---------------------------
- \347\200\232\351\253\230
+           c1           
+------------------------
+ \xe7809ae9ab9800000000
 (1 row)
 
 -- should get empty
@@ -1768,12 +1741,12 @@ select * from my_binary_t1 where c1 not like '%';
 -- should get "(' bc'), ('abc'), ('Abc'), ('abcd')"
 -- TODO[TD007]: can not display chinese
 select * from my_binary_t1 where c1 not like '%瀚%';
-  c1  
-------
-  bc
- abc
- Abc
- abcd
+           c1           
+------------------------
+ \x20626300000000000000
+ \x61626300000000000000
+ \x41626300000000000000
+ \x61626364000000000000
 (4 rows)
 
 DISCARD ALL;
@@ -1782,7 +1755,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1827,7 +1799,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -1883,9 +1854,9 @@ select
   c4 || c8,
   c6 || c8
 from my_binary_t1;
- ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------+----------+----------+----------+----------+----------+----------
- 123      | 123      | 123      | 123      | 1234     | abcd     | ABCD     |          | NULL     | NULL
+        ?column?        |             ?column?             |             ?column?             |                  ?column?                  |                  ?column?                  |                  ?column?                  |                  ?column?                  |                  ?column?                  | ?column? | ?column? 
+------------------------+----------------------------------+----------------------------------+--------------------------------------------+--------------------------------------------+--------------------------------------------+--------------------------------------------+--------------------------------------------+----------+----------
+ \x31323300003132330000 | \x313233000031323300000000000000 | \x313233000031323334000000000000 | \x3132330000000000000031323334000000000000 | \x3132333400000000000061626364000000000000 | \x6162636400000000000041424344000000000000 | \x4142434400000000000000000000000000000000 | \x0000000000000000000020000000000000000000 | NULL     | NULL
 (1 row)
 
 DISCARD ALL;
@@ -1894,7 +1865,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -2090,7 +2060,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_binary_t1;
@@ -2134,31 +2103,31 @@ create table tb_binary(c1 binary(5));
 COPY public.tb_binary (c1) FROM stdin;
 COPY public.tb_binary (c1) FROM stdin;
 select * from tb_binary;
-  c1   
--------
- 123
- 12345
+      c1      
+--------------
+ \x3132330000
+ \x3132333435
 (2 rows)
 
 COPY public.tb_binary (c1) FROM stdin;
 ERROR:  Data too long for column
 CONTEXT:  COPY tb_binary, line 1, column c1: "\x313233343536"
 select * from tb_binary;
-  c1   
--------
- 123
- 12345
+      c1      
+--------------
+ \x3132330000
+ \x3132333435
 (2 rows)
 
 SET sql_mode='';
 COPY public.tb_binary (c1) FROM stdin;
 WARNING:  Data truncated for column
 select * from tb_binary;
-  c1   
--------
- 123
- 12345
- 12345
+      c1      
+--------------
+ \x3132330000
+ \x3132333435
+ \x3132333435
 (3 rows)
 
 RESET sql_mode;
@@ -2188,15 +2157,15 @@ select convert('Hello World', binary(5));
 WARNING:  Truncated incorrect BINARY(5) value: (Hello World)
 LINE 1: select convert('Hello World', binary(5));
                        ^
- binary 
---------
- Hello
+    binary    
+--------------
+ \x48656c6c6f
 (1 row)
 
 select convert(123, binary),convert(123.456, binary);
- binary | binary  
---------+---------
- 123    | 123.456
+  binary  |      binary      
+----------+------------------
+ \x313233 | \x3132332e343536
 (1 row)
 
 /* Begin - bug#6051 */
@@ -2228,18 +2197,18 @@ select  avg(bcol) as avg_b from t_hex_aggregate;
 
 insert into t_hex_aggregate values(0x31323334),(X'35363738'),(x'39303132');
 select  max(bcol) as max_b, min(bcol) as min_b from t_hex_aggregate;
- max_b | min_b 
--------+-------
- 9012  | 1234
+   max_b    |   min_b    
+------------+------------
+ \x39303132 | \x31323334
 (1 row)
 
 select * from t_hex_aggregate;
- bcol 
-------
+    bcol    
+------------
  NULL
- 1234
- 5678
- 9012
+ \x31323334
+ \x35363738
+ \x39303132
 (4 rows)
 
 select  sum(bcol) as sum_b from t_hex_aggregate;

@@ -6699,17 +6699,8 @@ ivy_makeBoolAConst(bool state)
 	A_Const *n = makeNode(A_Const);
 
 	n->val.type = T_String;
-	/* Begin - BUG#Z5838 */
-	if (MYS_MODE == compatible_mode && use_mysql_bool == true)
-	{
-		n->val.val.str = (state ? "1" : "0");
-	}
-	else
-	{
-		n->val.val.str = (state ? "t" : "f");
-	}
-	/* End - BUG#Z5838 */
-
+	n->val.val.str = (state ? "t" : "f");
+	
 	return ivy_makeTypeCast((Node *)n, SystemTypeName("bool"), -1);
 }
 

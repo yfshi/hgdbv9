@@ -345,16 +345,13 @@ byteain(PG_FUNCTION_ARGS)
 		else if ((tp[0] == '\\') &&
 				 (tp[1] == '\\'))
 			tp += 2;
-/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-		else if (enable_character_blob &&
-				(tp[0] == '\\') && (tp[1] == '0') &&
-			 ((tp[2] == '\\') || (tp[2] == '\0')))
+		/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		else if (compatible_mode == MYS_MODE &&
+				 (tp[0] == '\\') && (tp[1] == '0'))
 		{
-			/* check if the inserted contains '\0', such as 'abc\0\0'. */
 			tp += 2;
-			zero_cnt += 2;
 		}
-/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 		else
 		{
 			/*
@@ -397,21 +394,14 @@ byteain(PG_FUNCTION_ARGS)
 			*rp++ = '\\';
 			tp += 2;
 		}
-/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-		else if (enable_character_blob &&
-				 (tp[0] == '\\') && (tp[1] == '0') &&
-				((tp[2] == '\\') || (tp[2] == '\0')))
+		/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		else if (compatible_mode == MYS_MODE &&
+				 (tp[0] == '\\') && (tp[1] == '0'))
 		{
-			/* convert to pg storage formate, such as 'abc\0\0' to 'abc\000\000'. */
-			bc = VAL(tp[1]);
-			bc <<= 3;
-			bc += VAL(tp[1]);
-			bc <<= 3;
-			*rp++ = bc + VAL(tp[1]);
-
-			tp += 4;
+			*rp++ = '\0';
+			tp += 2;
 		}
-/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 		else
 		{
 			/*
@@ -439,7 +429,7 @@ byteaout(PG_FUNCTION_ARGS)
 	char	   *result;
 	char	   *rp;
 
-	if (bytea_output == BYTEA_OUTPUT_HEX && !enable_character_blob) /* ReqID:SRS-MYSQL-BINARYTYPE */
+	if (bytea_output == BYTEA_OUTPUT_HEX)
 	{
 		/* Begin - Bug#z1457 */
 		if (hex_bytea && ORA_MODE == compatible_mode) /* BUG#m541 */
@@ -458,8 +448,7 @@ byteaout(PG_FUNCTION_ARGS)
 		}
 		/* End -  Bug#z1457 */
 	}
-	else if (bytea_output == BYTEA_OUTPUT_ESCAPE 
-				|| enable_character_blob) /* ReqID:SRS-MYSQL-BINARYTYPE */
+	else if (bytea_output == BYTEA_OUTPUT_ESCAPE)
 	{
 		/* Print traditional escaped format */
 		char	   *vp;
@@ -508,12 +497,6 @@ byteaout(PG_FUNCTION_ARGS)
 				rp[2] = DIG(val & 07);
 				val >>= 3;
 				rp[1] = DIG(val & 03);
-/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-				/* do not use hex to output '0' char, make it similar to mysql. */
-				if (enable_character_blob &&
-					rp[1] == '0' && rp[2] == '0' && rp[3] == '0')
-					rp[0] = '\0';
-/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 				rp += 4;
 			}
 			else

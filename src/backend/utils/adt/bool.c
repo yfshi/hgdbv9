@@ -154,21 +154,19 @@ boolin(PG_FUNCTION_ARGS)
 	while (len > 0 && isspace((unsigned char) str[len - 1]))
 		len--;
 
-	/* Begin - bug #z5484 #z5485 #z6171 */
-	if (MYS_MODE == compatible_mode &&
-		use_mysql_bool &&
-		mysql_int1_datatype_in_hook)
+	if (parse_bool_with_len(str, len, &result))
+		PG_RETURN_BOOL(result);
+	
+	/* Begin - bug#6764 */
+	if (MYS_MODE == compatible_mode && mysql_int1_datatype_in_hook)
 	{
-		int32 	ret;
+		int8 	ret;
 		bool	is_insert = CALL_IN_INSERT();
 
 		ret = mysql_int1_datatype_in_hook(in_str, is_insert);
 		PG_RETURN_BOOL(ret != 0);
 	}
-	/* End - bug #z5484 #z5485 #z6171 */
-
-	if (parse_bool_with_len(str, len, &result))
-		PG_RETURN_BOOL(result);
+	/* End - bug#6764 */
 
 	ereport(ERROR,
 			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
@@ -189,11 +187,12 @@ boolout(PG_FUNCTION_ARGS)
 	char	   *result = (char *) palloc(2);
 
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
-	if (compatible_mode == MYS_MODE && use_mysql_bool)
+	if (compatible_mode == MYS_MODE && MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
 		result[0] = (b) ? '1' : '0';
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 	else
 		result[0] = (b) ? 't' : 'f';
+
 	result[1] = '\0';
 	PG_RETURN_CSTRING(result);
 }

@@ -850,6 +850,7 @@ STABLE;
 UPDATE pg_type
 SET typinput = (SELECT oid FROM pg_proc WHERE proname='varbinary_in')
 WHERE oid = 9242;
+
 UPDATE pg_type
 SET typoutput = (SELECT oid FROM pg_proc WHERE proname='varbinary_out')
 WHERE oid = 9242;
@@ -857,6 +858,7 @@ WHERE oid = 9242;
 UPDATE pg_type
 SET typreceive = (SELECT oid FROM pg_proc WHERE proname='varbinary_recv')
 WHERE oid = 9242;
+
 UPDATE pg_type
 SET typsend = (SELECT oid FROM pg_proc WHERE proname='varbinary_send')
 WHERE oid = 9242;
@@ -864,9 +866,16 @@ WHERE oid = 9242;
 UPDATE pg_type
 SET typmodin = (SELECT oid FROM pg_proc WHERE proname='varbinary_typmodin')
 WHERE oid = 9242 or oid = 9243;
+
 UPDATE pg_type
 SET typmodout = (SELECT oid FROM pg_proc WHERE proname='varbinary_typmodout')
 WHERE oid = 9242 or oid = 9243;
+
+/* Begin - bug#6011 */
+UPDATE pg_type
+SET typcollation = (SELECT oid FROM pg_collation WHERE collname = 'binary')
+WHERE oid = 9242 or oid = 9243;
+/* End - bug#6011 */
 
 /********************************************************************************
  *

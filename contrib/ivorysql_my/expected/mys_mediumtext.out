@@ -1224,9 +1224,11 @@ select col1=col2 from tb;  -- 1
 (1 row)
 
 select binary col1=binary col2 from tb;  -- 0
-ERROR:  syntax error at or near "="
-LINE 1: select binary col1=binary col2 from tb;
-                          ^
+ ?column? 
+----------
+ f
+(1 row)
+
 drop table if exists tb;
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_CAST_001
 create table tb (col mediumtext);

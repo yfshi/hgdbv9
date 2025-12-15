@@ -493,6 +493,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 %type <list>	func_name handler_name qual_Op qual_all_Op subquery_Op
 				opt_class opt_inline_handler opt_validator validator_clause
 				opt_collate
+				func_name_without_binary /* bug#6011 */
 
 %type <range>	qualified_name insert_target OptConstrFromTable
 
@@ -702,9 +703,8 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 				ConstDatetime ConstInterval
 				Bit ConstBit BitWithLength BitWithoutLength
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-				Binary ConstBinary
-				BinaryWithLength BinaryWithoutLength
-				Blob ConstBlob
+				Binary
+				Blob
 				BlobWithLength BlobWithoutLength
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
 				Datetime /* ReqID:SRS-MYSQL-DATETYPE */
@@ -721,11 +721,13 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 %type <str>		ColId ColLabel BareColLabel name_const_label /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 %type <str>		NonReservedWord NonReservedWord_or_Sconst
 %type <str>		var_name type_function_name param_name
+				type_function_name_without_binary /* bug#6011 */
 %type <str>		createdb_opt_name plassign_target
 %type <node>	var_value zone_value
 %type <rolespec> auth_ident RoleSpec opt_granted_by UserId
 
 %type <keyword> unreserved_keyword type_func_name_keyword
+				type_func_name_keyword_without_binary /* bug#6011 */
 %type <keyword> col_name_keyword reserved_keyword
 %type <keyword> bare_label_keyword
 
@@ -946,7 +948,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
  * as NOT, at least with respect to their left-hand subexpression.
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
-%token		NOT_LA NULLS_LA WITH_LA WITH_ROLLUP /* ReqID:SRS-MYSQL-SELECT */ DELETE_FROM BINARY_F
+%token		NOT_LA NULLS_LA WITH_LA WITH_ROLLUP /* ReqID:SRS-MYSQL-SELECT */ DELETE_FROM
 
 
 %token		NCHAR_P		/* ReqID: SRS-MYSQL-CHARACTERTYPE- NCHAR VARCHAR(n) */
@@ -991,7 +993,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 /* End - ReqID:SRS-MYSQL-UPDATE */
 %nonassoc	IS ISNULL NOTNULL	/* IS sets precedence for IS NULL, etc */
 %nonassoc	'<' '>' '=' LESS_EQUALS GREATER_EQUALS NOT_EQUALS
-%nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA BINARY_F
+%nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA
 %nonassoc	ESCAPE			/* ESCAPE must be just above LIKE/ILIKE/SIMILAR */
 /*
  * To support target_el without AS, it used to be necessary to assign IDENT an
@@ -2105,7 +2107,7 @@ multi_charset:
 
 multi_encoding:
 			Sconst									{ $$ = $1; }
-			| BINARY								{ $$ = (char*)$1; } /* ReqID:SRS-MYSQL-BINARYTYPE */
+			| BINARY								{ $$ = (char *) $1; } /* ReqID:SRS-MYSQL-BINARYTYPE */
 			| IDENT 								{ $$ = $1; }	/* ReqID:SRS-MYSQL-SET */
 			| DEFAULT								{ $$ = NULL; }
 		;
@@ -2175,10 +2177,7 @@ zone_value:
 		;
 
 opt_encoding:
-			Sconst									{ $$ = $1; }
-			| BINARY								{ $$ = (char*)$1; } /* ReqID:SRS-MYSQL-BINARYTYPE */
-			| IDENT									{ $$ = $1; }	/* ReqID:SRS-MYSQL-SET */
-			| DEFAULT								{ $$ = NULL; }
+			multi_encoding							{ $$ = $1; }
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
 
@@ -4401,6 +4400,13 @@ columnDef:	ColId Typename opt_column_compression create_generic_options opt_col_
 					/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 					tpname = strVal(llast(n->typeName->names));
 					
+					/* Begin - bug#6011 */
+					if (strcmp(tpname, "binary") == 0 && n->typeName->typmods == NIL)
+					{
+						n->typeName->typmods = list_make1(makeIntConst(1, @2));
+					}
+					/* End - bug#6011 */
+
 					foreach (clist, n->constraints)
 					{
 						Constraint *con = (Constraint *) lfirst(clist);
@@ -4532,6 +4538,21 @@ ColConstraint:
 					n->location = @1;
 					$$ = (Node *) n;
 				}
+			/* Begin - bug#6011 */
+			| COLLATE BINARY
+				{
+					/*
+					 * Note: the CollateClause is momentarily included in
+					 * the list built by ColQualList, but we split it out
+					 * again in SplitColQualList.
+					 */
+					CollateClause *n = makeNode(CollateClause);
+					n->arg = NULL;
+					n->collname = list_make1(makeString(pstrdup($2)));
+					n->location = @1;
+					$$ = (Node *) n;
+				}
+			/* End - bug#6011 */
 			/* Begin - SRS-MYSQL-CREATE-TABLE */
 			| create_comment
 				{
@@ -15724,12 +15745,8 @@ SimpleTypename:
  * reduce/reduce conflicts against function names.
  */
 ConstTypename:
-			Numeric								{ $$ = $1; }
+			Numeric									{ $$ = $1; }
 			| ConstBit								{ $$ = $1; }
-/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-			| ConstBinary							{ $$ = $1; }
-			| ConstBlob								{ $$ = $1; }
-/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 			| ConstCharacter						{ $$ = $1; }
 			| ConstDatetime							{ $$ = $1; }
 		;
@@ -16167,27 +16184,65 @@ opt_varying:
 
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 /*
-*SQL binary data types
-*/
+ * SQL binary data types
+ */
 Binary:
-			BinaryWithLength
+		BINARY '(' mysql_datatype_length ')'
 			{
-				$$ = $1;
+				$$ = MySQLSystemTypeName("binary");
+				$$->typmods = list_make1(makeIntConst($3, @3));
+				$$->location = @1;
 			}
-			|	BinaryWithoutLength
+		| VARBINARY '(' mysql_datatype_length ')'
 			{
-				$$ = $1;
-			}
-		;
-ConstBinary:
-			BinaryWithLength
-			{
-				$$ = $1;
-			}
-			|	BinaryWithoutLength
-			{
-				$$ = $1;
-				$$->typmods = NIL;
+				long long int length = $3;
+
+				if (length <= 65533)
+				{
+					$$ = MySQLSystemTypeName("varbinary");
+					$$->typmods = list_make1(makeIntConst(length, @3));
+					$$->location = @1;
+				}
+				else if (length >= 65534 && length <= 16777215)
+				{
+					if (is_strict_mode())
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+									errmsg("Column length too big; use BLOB or TEXT instead")));
+					}
+					else
+					{
+						ereport(WARNING,
+								(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+									errmsg("Converting column from VARBINARY to BLOB")));
+
+							$$ = MySQLSystemTypeName("mediumblob");
+						}
+				}
+				else if (length >= 16777216 && length <= 4294967295)
+				{
+					if (is_strict_mode())
+					{
+						ereport(ERROR,
+							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+								errmsg("Column length too big; use BLOB or TEXT instead")));
+					}
+					else
+					{
+						ereport(WARNING,
+								(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+									errmsg("Converting column from VARBINARY to BLOB")));
+
+						$$ = MySQLSystemTypeName("longblob");
+					}
+				}
+				else
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								errmsg("invalid type modifier")));
+				}
 			}
 		;
 
@@ -16202,89 +16257,9 @@ mysql_datatype_length:
 				}
 		;
 
-BinaryWithLength:
-			BINARY  '(' func_arg_list_opt ')'
-				{
-					int64 length = 0;
-					length = CheckAConstTypeLength((Node *) $3);
-					if (length < 0)
-						ereport(ERROR,
-								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("You have an error in you SQL syntax in binary( ... "),
-								 parser_errposition(@1))); 
-					$$ = MySQLSystemTypeName("binary");
-					$$->typmods = list_make1(makeIntConst(length, @3));
-					$$->location = @1;
-				}
-		  | VARBINARY '(' mysql_datatype_length ')'
-				{
-					long long int length = $3;
-
-					if (length <= 65533)
-					{
-						$$ = MySQLSystemTypeName("varbinary");
-						$$->typmods = list_make1(makeIntConst(length, @3));
-						$$->location = @1;
-					}
-					else if (length >= 65534 && length <= 16777215)
-					{
-						if (is_strict_mode())
-						{
-							ereport(ERROR,
-									(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-										errmsg("Column length too big; use BLOB or TEXT instead")));
-						}
-						else
-						{
-							ereport(WARNING,
-									(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-										errmsg("Converting column from VARBINARY to BLOB")));
-
-								$$ = MySQLSystemTypeName("mediumblob");
-							}
-					}
-					else if (length >= 16777216 && length <= 4294967295)
-					{
-						if (is_strict_mode())
-						{
-							ereport(ERROR,
-								(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-									errmsg("Column length too big; use BLOB or TEXT instead")));
-						}
-						else
-						{
-							ereport(WARNING,
-									(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-										errmsg("Converting column from VARBINARY to BLOB")));
-
-							$$ = MySQLSystemTypeName("longblob");
-						}
-					}
-					else
-					{
-						ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-									errmsg("invalid type modifier")));
-					}
-				}
-		;
-
-BinaryWithoutLength:
-			BINARY
-			{
-				$$ = MySQLSystemTypeName("binary");
-				if (strcmp($1, "binary") == 0)
-				{
-					$$->typmods = NIL;
-					$$->typemod = -1;
-				}
-				$$->location = @1;
-			}
-		;
-
 /*
-*SQL blob data types
-*/
+ * SQL blob data types
+ */
 Blob:
 			BlobWithLength
 			{
@@ -16293,17 +16268,6 @@ Blob:
 			|	BlobWithoutLength
 			{
 				$$ = $1;
-			}
-		;
-ConstBlob:
-			BlobWithLength
-			{
-				$$ = $1;
-			}
-			|	BlobWithoutLength
-			{
-				$$ = $1;
-				$$->typmods = NIL;
 			}
 		;
 
@@ -16776,35 +16740,11 @@ a_expr:		c_expr									{ $$ = $1; }
 					{ $$ = makeTypeCast($1, $3, @2); }
 			| a_expr COLLATE any_name
 				{
-					char *id = NULL;
-					StringInfoData buf;
-					initStringInfo(&buf);
-
-					if (IsA($1, TypeCast))
-					{
-						TypeCast *tc = (TypeCast *) $1;
-						ListCell *lc;
-						
-						foreach(lc, tc->typeName->names)
-						{
-							id = strVal(lfirst(lc));
-							appendStringInfoString(&buf, id);
-							if (lnext(tc->typeName->names, lc))
-								appendStringInfoString(&buf, "."); 
-						}
-					}
-					if (strcasecmp(buf.data, "ivymy.varbinary") == 0)
-					{
- 						$$ = $1;
-					}
-					else
-					{
-						CollateClause *n = makeNode(CollateClause);
-						n->arg = $1;
-						n->collname = $3;
-						n->location = @2;
-						$$ = (Node *) n;
-					}
+					CollateClause *n = makeNode(CollateClause);
+					n->arg = $1;
+					n->collname = $3;
+					n->location = @2;
+					$$ = (Node *) n;
 				}
 			| a_expr AT TIME ZONE a_expr			%prec AT
 				{
@@ -17292,7 +17232,13 @@ a_expr:		c_expr									{ $$ = $1; }
 					c->fields = lcons((Node *) makeString("excluded"), c->fields);
 					$$ = (Node *) $3;
 				}
-			/* End - ReqID:SRS-MYSQL-SQL-INSERT  */
+			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+			/* Begin - bug#6011 */
+			| BINARY a_expr %prec COLLATE
+				{
+					$$ = makeTypeCast($2, MySQLSystemTypeName("varbinary"), @2);
+				}
+			/* End - bug#6011 */
 		;
 
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
@@ -17719,24 +17665,6 @@ cast_expr:
 			| CAST '(' a_expr AS UNSIGNED int4 ')'
 				{ 				
 					$$ = makeTypeCast($3, MySQLSystemTypeName("uint4"), @1);
-				}
-			| BINARY_F SCONST
-				{
-					$$ = makeTypeCast(makeStringConst($2, @1), MySQLSystemTypeName("varbinary"), @1);
-				}
-			| BINARY '(' func_arg_list_opt ')'
-				{
-					/* Begin - bug#z5768 */
-					Node *n = linitial($3);
-					
-					if (list_length($3) != 1)
-					{
-						ereport(ERROR,
-								errmsg("Operand should contain 1 column(s)"));
-					}
-
-					$$ = makeTypeCast(n, MySQLSystemTypeName("varbinary"), @1);
-					/* End - bug#z5768 */
 				}
 		;
 
@@ -19443,6 +19371,17 @@ func_name:	type_function_name
 					}
 		;
 
+/* Begin - bug#6011 */
+func_name_without_binary:
+			type_function_name_without_binary
+					{ $$ = list_make1(makeString($1)); }
+			| ColId indirection
+					{
+						$$ = check_func_name(lcons(makeString($1), $2),
+											 yyscanner);
+					}
+		;
+/* End - bug#6011 */
 
 /*
  * Constants
@@ -19500,7 +19439,7 @@ AexprConst: Iconst
 					$$ = makeHexStringConst(input + 1, @1);
 					/* End - SRS-MYSQL-HEX-LITERAL */
 				}
-			| func_name Sconst
+			| func_name_without_binary /* bug#6011 */ Sconst
 				{
 					/* generic type 'literal' syntax */
 					TypeName *t = makeTypeNameFromNameList($1);
@@ -19821,6 +19760,14 @@ type_function_name:	IDENT							{ $$ = $1; }
 			| unreserved_keyword					{ $$ = pstrdup($1); }
 			| type_func_name_keyword				{ $$ = pstrdup($1); }
 		;
+
+/* Begin - bug#6011 */
+type_function_name_without_binary:	
+			IDENT												{ $$ = $1; }
+			| unreserved_keyword								{ $$ = pstrdup($1); }
+			| type_func_name_keyword_without_binary				{ $$ = pstrdup($1); }
+		;
+/* End - bug#6011 */
 
 /* Any not-fully-reserved word --- these names can be, eg, role names.
  */
@@ -20206,7 +20153,6 @@ col_name_keyword:
 			ANONYMOUS
 			| BETWEEN
 			| BIGINT
-			| BINARY
 			| BIT
 			| BLOB_P
 			| BOOLEAN_P
@@ -20297,6 +20243,7 @@ col_name_keyword:
  */
 type_func_name_keyword:
 			  AUTHORIZATION
+			| BINARY
 			| COLLATION
 			| CONCURRENTLY
 			| CROSS
@@ -20321,6 +20268,35 @@ type_func_name_keyword:
 			| TABLESAMPLE
 			| VERBOSE
 		;
+
+/* Begin - bug#6011 */
+type_func_name_keyword_without_binary:
+			AUTHORIZATION			
+			| COLLATION
+			| CONCURRENTLY
+			| CROSS
+			| CURRENT_SCHEMA
+			| FREEZE
+			| FULL
+			| ILIKE
+			| INDEX
+			| INNER_P
+			| IS
+			| ISNULL
+			| JOIN
+			| KEY
+			| LEFT
+			| LIKE
+			| NATURAL
+			| NOTNULL
+			| OUTER_P
+			| OVERLAPS
+			| RIGHT
+			| SIMILAR
+			| TABLESAMPLE
+			| VERBOSE
+		;
+/* End - bug#6011 */
 
 /* Reserved keyword --- these keywords are usable only as a ColLabel.
  *
@@ -21195,11 +21171,7 @@ makeBoolAConst(bool state, int location)
 	A_Const *n = makeNode(A_Const);
 
 	n->val.type = T_String;
-	/* Begin - bug #z5484 #z5485 #z6171 */
-	if (use_mysql_bool == true)
-		n->val.val.str = (state ? "1" : "0");
-	else /* End - bug #z5484 #z5485 #z6171 */
-		n->val.val.str = (state ? "t" : "f");
+	n->val.val.str = (state ? "t" : "f");
 	n->location = location;
 
 	return makeTypeCast((Node *)n, SystemTypeName("bool"), -1);

@@ -4,7 +4,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS
@@ -52,14 +51,16 @@ create table my_varbinary_t01 (c1 varbinary(6));
 insert into my_varbinary_t01 values ('hgdb'), ('hgdb ');
 -- should ok
 insert into my_varbinary_t01 values ('hgdb\0\0');
+ERROR:  invalid input syntax for type bytea
+LINE 1: insert into my_varbinary_t01 values ('hgdb\0\0');
+                                             ^
 -- should get {'hgdb', 'hgdb ', 'hgdb'}
 select c1 from my_varbinary_t01;
-  c1   
--------
- hgdb
- hgdb 
- hgdb
-(3 rows)
+      c1      
+--------------
+ \x68676462
+ \x6867646220
+(2 rows)
 
 -- should get {4,5,6}
 select length(c1) from my_varbinary_t01;
@@ -67,8 +68,7 @@ select length(c1) from my_varbinary_t01;
 --------
       4
       5
-      6
-(3 rows)
+(2 rows)
 
 -- should get {1,0,0}
 select c1='hgdb' from my_varbinary_t01;
@@ -76,8 +76,7 @@ select c1='hgdb' from my_varbinary_t01;
 ----------
  t
  f
- f
-(3 rows)
+(2 rows)
 
 -- should get {0,1,0}
 select c1='hgdb ' from my_varbinary_t01;
@@ -85,18 +84,13 @@ select c1='hgdb ' from my_varbinary_t01;
 ----------
  f
  t
- f
-(3 rows)
+(2 rows)
 
 -- should get {0,0,1}
 select c1='hgdb\0\0' from my_varbinary_t01;
- ?column? 
-----------
- f
- f
- t
-(3 rows)
-
+ERROR:  invalid input syntax for type bytea
+LINE 1: select c1='hgdb\0\0' from my_varbinary_t01;
+                  ^
 -- should error BUG#5401
 create table my_varbinary_t02(c1 varbinary);
 ERROR:  syntax error at or near ")"
@@ -260,10 +254,10 @@ create table my_varbinary_t18 (c1 int, c2 varbinary(4) default 'test');
 insert into my_varbinary_t18 (c1) values (1), (2);
 -- should get {1,'test'}, {2,'test'}
 select * from my_varbinary_t18;
- c1 |  c2  
-----+------
-  1 | test
-  2 | test
+ c1 |     c2     
+----+------------
+  1 | \x74657374
+  2 | \x74657374
 (2 rows)
 
 -- should syntax error
@@ -304,7 +298,6 @@ DISCARD ALL;
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
 set enable_seqscan = off;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -321,137 +314,137 @@ INSERT INTO my_varbinary_t1 VALUES ('abcdefghij', 'bcdefghijk', 'cdefghijkl', 'd
 -- case: gin
 create index my_varbinary_t1_gin on my_varbinary_t1 using gin(c1);
 select c1 from my_varbinary_t1 where c1 = 'abcdefghij';
-     c1     
-------------
- abcdefghij
- abcdefghij
- abcdefghij
+           c1           
+------------------------
+ \x6162636465666768696a
+ \x6162636465666768696a
+ \x6162636465666768696a
 (3 rows)
 
 select c1 from my_varbinary_t1 where c1 = cast('abcdefghij' as binary);
-     c1     
-------------
- abcdefghij
- abcdefghij
- abcdefghij
+           c1           
+------------------------
+ \x6162636465666768696a
+ \x6162636465666768696a
+ \x6162636465666768696a
 (3 rows)
 
 select c1 from my_varbinary_t1 where c1 = cast('abcdefghij' as binary(10));
-     c1     
-------------
- abcdefghij
- abcdefghij
- abcdefghij
+           c1           
+------------------------
+ \x6162636465666768696a
+ \x6162636465666768696a
+ \x6162636465666768696a
 (3 rows)
 
 explain select c1 from my_varbinary_t1 where c1 = 'abcdefghij';
                                     QUERY PLAN                                    
 ----------------------------------------------------------------------------------
  Bitmap Heap Scan on my_varbinary_t1  (cost=8.01..12.02 rows=1 width=32)
-   Recheck Cond: (c1 = 'abcdefghij'::varbinary)
+   Recheck Cond: (c1 = '\x6162636465666768696a'::varbinary)
    ->  Bitmap Index Scan on my_varbinary_t1_gin  (cost=0.00..8.01 rows=1 width=0)
-         Index Cond: (c1 = 'abcdefghij'::varbinary)
+         Index Cond: (c1 = '\x6162636465666768696a'::varbinary)
 (4 rows)
 
 -- case: brin
 create index my_varbinary_t1_brin on my_varbinary_t1 using brin(c2);
 select c2 from my_varbinary_t1 where c2 = 'bcdefghijk';
-     c2     
-------------
- bcdefghijk
- bcdefghijk
- bcdefghijk
+           c2           
+------------------------
+ \x62636465666768696a6b
+ \x62636465666768696a6b
+ \x62636465666768696a6b
 (3 rows)
 
 select c2 from my_varbinary_t1 where c2 = cast('bcdefghijk' as binary);
-     c2     
-------------
- bcdefghijk
- bcdefghijk
- bcdefghijk
+           c2           
+------------------------
+ \x62636465666768696a6b
+ \x62636465666768696a6b
+ \x62636465666768696a6b
 (3 rows)
 
 select c2 from my_varbinary_t1 where c2 = cast('bcdefghijk' as binary(10));
-     c2     
-------------
- bcdefghijk
- bcdefghijk
- bcdefghijk
+           c2           
+------------------------
+ \x62636465666768696a6b
+ \x62636465666768696a6b
+ \x62636465666768696a6b
 (3 rows)
 
 explain select c2 from my_varbinary_t1 where c2 = 'bcdefghijk';
                                      QUERY PLAN                                     
 ------------------------------------------------------------------------------------
  Bitmap Heap Scan on my_varbinary_t1  (cost=12.03..16.07 rows=1 width=32)
-   Recheck Cond: (c2 = 'bcdefghijk'::varbinary)
+   Recheck Cond: (c2 = '\x62636465666768696a6b'::varbinary)
    ->  Bitmap Index Scan on my_varbinary_t1_brin  (cost=0.00..12.03 rows=3 width=0)
-         Index Cond: (c2 = 'bcdefghijk'::varbinary)
+         Index Cond: (c2 = '\x62636465666768696a6b'::varbinary)
 (4 rows)
 
 -- case: btree
 create index my_varbinary_t1_btree on my_varbinary_t1 using btree(c3);
 select c3 from my_varbinary_t1 where c3 = 'cdefghijkl';
-     c3     
-------------
- cdefghijkl
- cdefghijkl
- cdefghijkl
+           c3           
+------------------------
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
 (3 rows)
 
 select c3 from my_varbinary_t1 where c3 = cast('cdefghijkl' as binary);
-     c3     
-------------
- cdefghijkl
- cdefghijkl
- cdefghijkl
+           c3           
+------------------------
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
 (3 rows)
 
 select c3 from my_varbinary_t1 where c3 = cast('cdefghijkl' as binary(10));
-     c3     
-------------
- cdefghijkl
- cdefghijkl
- cdefghijkl
+           c3           
+------------------------
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
 (3 rows)
 
 explain select c3 from my_varbinary_t1 where c3 = 'cdefghijkl';
                                             QUERY PLAN                                             
 ---------------------------------------------------------------------------------------------------
  Index Only Scan using my_varbinary_t1_btree on my_varbinary_t1  (cost=0.13..8.15 rows=1 width=32)
-   Index Cond: (c3 = 'cdefghijkl'::varbinary)
+   Index Cond: (c3 = '\x636465666768696a6b6c'::varbinary)
 (2 rows)
 
 -- case: hash
 create index my_varbinary_t1_hash on my_varbinary_t1 using hash(c4);
 select c4 from my_varbinary_t1 where c4 = 'defghijklm';
-     c4     
-------------
- defghijklm
- defghijklm
- defghijklm
+           c4           
+------------------------
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
 (3 rows)
 
 select c4 from my_varbinary_t1 where c4 = cast('defghijklm' as binary);
-     c4     
-------------
- defghijklm
- defghijklm
- defghijklm
+           c4           
+------------------------
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
 (3 rows)
 
 select c4 from my_varbinary_t1 where c4 = cast('defghijklm' as binary(10));
-     c4     
-------------
- defghijklm
- defghijklm
- defghijklm
+           c4           
+------------------------
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
 (3 rows)
 
 explain select c4 from my_varbinary_t1 where c4 = 'defghijklm';
                                           QUERY PLAN                                          
 ----------------------------------------------------------------------------------------------
  Index Scan using my_varbinary_t1_hash on my_varbinary_t1  (cost=0.00..12.02 rows=1 width=32)
-   Index Cond: (c4 = 'defghijklm'::varbinary)
+   Index Cond: (c4 = '\x6465666768696a6b6c6d'::varbinary)
 (2 rows)
 
 DISCARD ALL;
@@ -509,7 +502,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -520,17 +512,17 @@ INSERT INTO my_varbinary_t1 VALUES ('123'), ('12345'), ('abc');
 --------------------------------------------------------------------------------
 -- should get {123}
 SELECT * from my_varbinary_t1 WHERE c1 BETWEEN '12' AND '1234';
- c1  
------
- 123
+    c1    
+----------
+ \x313233
 (1 row)
 
 -- should get {123, 12345}
 SELECT * from my_varbinary_t1 WHERE c1 BETWEEN '12' AND '12346';
-  c1   
--------
- 123
- 12345
+      c1      
+--------------
+ \x313233
+ \x3132333435
 (2 rows)
 
 -- should get empty
@@ -545,7 +537,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -626,7 +617,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -655,7 +645,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -695,7 +684,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -724,7 +712,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -753,7 +740,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -782,7 +768,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -806,7 +791,7 @@ FROM
   my_varbinary_t1;
  coalesce | coalesce | coalesce | coalesce | coalesce 
 ----------+----------+----------+----------+----------
- 123      | abc      |          |          | NULL
+ \x313233 | \x616263 | \x       | \x20     | NULL
 (1 row)
 
 DISCARD ALL;
@@ -815,7 +800,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -954,7 +938,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -972,7 +955,7 @@ INSERT INTO my_varbinary_t1 VALUES ('123', '123', 'abc', '', ' ', null);
 SELECT GREATEST(c1, c2) FROM my_varbinary_t1;
  greatest 
 ----------
- 123
+ \x313233
 (1 row)
 
 -- should get (3)
@@ -986,21 +969,21 @@ SELECT length(GREATEST(c1, c2)) FROM my_varbinary_t1;
 SELECT GREATEST(c1, c3) FROM my_varbinary_t1;
  greatest 
 ----------
- abc
+ \x616263
 (1 row)
 
 -- should get {abc}
 SELECT GREATEST(c3, c4) FROM my_varbinary_t1;
  greatest 
 ----------
- abc
+ \x616263
 (1 row)
 
 -- should get {}
 SELECT GREATEST(c4, c5) FROM my_varbinary_t1;
  greatest 
 ----------
-  
+ \x20
 (1 row)
 
 -- should get {NULL}
@@ -1022,7 +1005,7 @@ FROM
   my_varbinary_t1;
  greatest | length | greatest | greatest | greatest | greatest 
 ----------+--------+----------+----------+----------+----------
- 123      |      3 | abc      | abc      |          | NULL
+ \x313233 |      3 | \x616263 | \x616263 | \x20     | NULL
 (1 row)
 
 DISCARD ALL;
@@ -1075,7 +1058,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1087,25 +1069,15 @@ INSERT INTO my_varbinary_t1 VALUES ('abc'), ('abc123'), ('Abc123'), ('瀚高'), 
 -- TODO[TD007]: should get {abc, abc123, 瀚高}
 SELECT * FROM my_varbinary_t1 WHERE c1
   IN ('abc', 'abc123', '瀚高', '\0\0\0\0\0\0', ' \0\0\0\0\0', null);
-            c1            
---------------------------
- abc
- abc123
- \347\200\232\351\253\230
-(3 rows)
-
+ERROR:  invalid input syntax for type bytea
+LINE 2:   IN ('abc', 'abc123', '瀚高', '\0\0\0\0\0\0', ' \0\0\0\0\0'...
+                                       ^
 -- TODO[TD007]: should get {abc123, Abc123, 瀚高, , }
 SELECT * FROM my_varbinary_t1 WHERE c1
   IN ('abc\0\0\0', 'abc123', 'Abc123', '瀚高', '', ' ', null);
-            c1            
---------------------------
- abc123
- Abc123
- \347\200\232\351\253\230
- 
-  
-(5 rows)
-
+ERROR:  invalid input syntax for type bytea
+LINE 2:   IN ('abc\0\0\0', 'abc123', 'Abc123', '瀚高', '', ' ', null...
+              ^
 DISCARD ALL;
 /*
  * test mysql varbinary type operator
@@ -1151,7 +1123,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1163,12 +1134,12 @@ INSERT INTO my_varbinary_t1 VALUES (1, '123'), (2, 'abc'), (3, ''), (4, ' '), (5
 --------------------------------------------------------------------------------
 -- should get {(1, 123), (2, abc), (3, ), (4, )}
 select * from my_varbinary_t1 where c1 is not null;
- id | c1  
-----+-----
-  1 | 123
-  2 | abc
-  3 | 
-  4 |  
+ id |    c1    
+----+----------
+  1 | \x313233
+  2 | \x616263
+  3 | \x
+  4 | \x20
 (4 rows)
 
 DISCARD ALL;
@@ -1177,7 +1148,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1192,11 +1162,11 @@ select * from my_varbinary_t1 where c1 is not true;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id |  c1  
-----+------
-  2 | abc
-  3 | 
-  4 |  
+ id |    c1    
+----+----------
+  2 | \x616263
+  3 | \x
+  4 | \x20
   5 | NULL
 (4 rows)
 
@@ -1205,9 +1175,9 @@ select * from my_varbinary_t1 where c1 is not false;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id |  c1  
-----+------
-  1 | 123
+ id |    c1    
+----+----------
+  1 | \x313233
   5 | NULL
 (2 rows)
 
@@ -1217,7 +1187,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1264,7 +1233,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1279,9 +1247,9 @@ select * from my_varbinary_t1 where c1 is true;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id | c1  
-----+-----
-  1 | 123
+ id |    c1    
+----+----------
+  1 | \x313233
 (1 row)
 
 -- should get {(2, abc), (3, ), (4, )}
@@ -1289,11 +1257,11 @@ select * from my_varbinary_t1 where c1 is false;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id | c1  
-----+-----
-  2 | abc
-  3 | 
-  4 |  
+ id |    c1    
+----+----------
+  2 | \x616263
+  3 | \x
+  4 | \x20
 (3 rows)
 
 DISCARD ALL;
@@ -1302,7 +1270,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1318,9 +1285,9 @@ INSERT INTO my_varbinary_t1 VALUES ('123', '123', 'abc', '', ' ', null);
 --------------------------------------------------------------------------------
 -- should get (123, 3, 123, , , NULL)
 select least(c1, c2), length(least(c1, c2)), least(c1, c3), least(c3, c4), least(c4, c5), least(c4, c6) from my_varbinary_t1;
- least | length | least | least | least | least 
--------+--------+-------+-------+-------+-------
- 123   |      3 | 123   |       |       | NULL
+  least   | length |  least   | least | least | least 
+----------+--------+----------+-------+-------+-------
+ \x313233 |      3 | \x313233 | \x    | \x    | NULL
 (1 row)
 
 DISCARD ALL;
@@ -1373,7 +1340,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1384,56 +1350,56 @@ INSERT INTO my_varbinary_t1 VALUES (' bc'), ('abc'), ('Abc'), ('abcd'), ('瀚高
 --------------------------------------------------------------------------------
 -- should get {abc, abcd}
 select * from my_varbinary_t1 where c1 like 'a%';
-  c1  
-------
- abc
- abcd
+     c1     
+------------
+ \x616263
+ \x61626364
 (2 rows)
 
 -- should get (Abc)
 select * from my_varbinary_t1 where c1 like 'A%';
- c1  
------
- Abc
+    c1    
+----------
+ \x416263
 (1 row)
 
 -- should get { bc, abc, Abc}
 select * from my_varbinary_t1 where c1 like '%c';
- c1  
------
-  bc
- abc
- Abc
+    c1    
+----------
+ \x206263
+ \x616263
+ \x416263
 (3 rows)
 
 -- should get { bc, abc, Abc, abcd}
 select * from my_varbinary_t1 where c1 like '%b%';
-  c1  
-------
-  bc
- abc
- Abc
- abcd
+     c1     
+------------
+ \x206263
+ \x616263
+ \x416263
+ \x61626364
 (4 rows)
 
 -- should get { bc, abc, Abc, abcd, 瀚高}
 -- TODO[TD007]: can not display chinese
 select * from my_varbinary_t1 where c1 like '%';
-            c1            
---------------------------
-  bc
- abc
- Abc
- abcd
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x206263
+ \x616263
+ \x416263
+ \x61626364
+ \xe7809ae9ab98
 (5 rows)
 
 -- should get (瀚高)
 -- TODO[TD007]: can not display chinese
 select * from my_varbinary_t1 where c1 like '%瀚%';
-            c1            
---------------------------
- \347\200\232\351\253\230
+       c1       
+----------------
+ \xe7809ae9ab98
 (1 row)
 
 DISCARD ALL;
@@ -1485,7 +1451,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1534,7 +1499,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1570,7 +1534,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1665,7 +1628,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1676,26 +1638,26 @@ INSERT INTO my_varbinary_t1 VALUES ('123'), ('12345'), ('abc');
 --------------------------------------------------------------------------------
 -- should get {12345, abc}
 SELECT * from my_varbinary_t1 WHERE c1 NOT BETWEEN '12' AND '1234';
-  c1   
--------
- 12345
- abc
+      c1      
+--------------
+ \x3132333435
+ \x616263
 (2 rows)
 
 -- should get {abc}
 SELECT * from my_varbinary_t1 WHERE c1 NOT BETWEEN '12' AND '12346';
- c1  
------
- abc
+    c1    
+----------
+ \x616263
 (1 row)
 
 -- should get {123, 12345, abc}
 SELECT * from my_varbinary_t1 WHERE c1 NOT BETWEEN '124' AND '999';
-  c1   
--------
- 123
- 12345
- abc
+      c1      
+--------------
+ \x313233
+ \x3132333435
+ \x616263
 (3 rows)
 
 DISCARD ALL;
@@ -1704,7 +1666,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1716,39 +1677,31 @@ INSERT INTO my_varbinary_t1 VALUES ('abc'), ('abc123'), ('Abc123'), ('瀚高'), 
 -- should get empty
 SELECT * FROM my_varbinary_t1 WHERE c1
   NOT IN ('abc', 'abc123', '瀚高', '\0\0\0\0\0\0', ' \0\0\0\0\0', null);
- c1 
-----
-(0 rows)
-
+ERROR:  invalid input syntax for type bytea
+LINE 2:   NOT IN ('abc', 'abc123', '瀚高', '\0\0\0\0\0\0', ' \0\0\0\...
+                                           ^
 -- should get empty
 SELECT * FROM my_varbinary_t1 WHERE c1
   NOT IN ('abc\0\0\0', 'abc123', 'Abc123', '瀚高', '', ' ', null);
- c1 
-----
-(0 rows)
-
+ERROR:  invalid input syntax for type bytea
+LINE 2:   NOT IN ('abc\0\0\0', 'abc123', 'Abc123', '瀚高', '', ' ', ...
+                  ^
 -- should get {Abc123, , }
 select * from my_varbinary_t1 where c1
   not in ('abc', 'abc123', '瀚高');
-   c1   
---------
- Abc123
- 
-  
+       c1       
+----------------
+ \x416263313233
+ \x
+ \x20
 (3 rows)
 
 -- TODO[TD007]: should get {abc, abc123, 瀚高, , }
 select * from my_varbinary_t1 where c1
   not in ('abc\0\0\0', 'Abc123', '\0\0\0\0\0\0', ' \0\0\0\0\0');
-            c1            
---------------------------
- abc
- abc123
- \347\200\232\351\253\230
- 
-  
-(5 rows)
-
+ERROR:  invalid input syntax for type bytea
+LINE 2:   not in ('abc\0\0\0', 'Abc123', '\0\0\0\0\0\0', ' \0\0\0\0\...
+                  ^
 -- should get empty
 select * from my_varbinary_t1 where c1
   not in ('abc', null);
@@ -1762,7 +1715,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1774,39 +1726,39 @@ INSERT INTO my_varbinary_t1 VALUES (' bc'), ('abc'), ('Abc'), ('abcd'), ('瀚高
 -- should get { bc, Abc, 瀚高}
 -- TODO[TD007]: can not display chinese
 select * from my_varbinary_t1 where c1 not like 'a%';
-            c1            
---------------------------
-  bc
- Abc
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x206263
+ \x416263
+ \xe7809ae9ab98
 (3 rows)
 
 -- shoud get { bc, abc, abcd, 瀚高}
 -- TODO[TD007]: can not display chinese
 select * from my_varbinary_t1 where c1 not like 'A%';
-            c1            
---------------------------
-  bc
- abc
- abcd
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x206263
+ \x616263
+ \x61626364
+ \xe7809ae9ab98
 (4 rows)
 
 -- shoud get {abcd, 瀚高}
 -- TODO[TD007]: can not display chinese
 select * from my_varbinary_t1 where c1 not like '%c';
-            c1            
---------------------------
- abcd
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x61626364
+ \xe7809ae9ab98
 (2 rows)
 
 -- soud get {瀚高}
 -- TODO[TD007]: can not display chinese
 select * from my_varbinary_t1 where c1 not like '%b%';
-            c1            
---------------------------
- \347\200\232\351\253\230
+       c1       
+----------------
+ \xe7809ae9ab98
 (1 row)
 
 -- shoud get empty
@@ -1817,12 +1769,12 @@ select * from my_varbinary_t1 where c1 not like '%';
 
 -- shoud get { bc, abc, Abc, abcd}
 select * from my_varbinary_t1 where c1 not like '%瀚%';
-  c1  
-------
-  bc
- abc
- Abc
- abcd
+     c1     
+------------
+ \x206263
+ \x616263
+ \x416263
+ \x61626364
 (4 rows)
 
 DISCARD ALL;
@@ -1831,7 +1783,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1876,7 +1827,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -1921,7 +1871,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -2028,7 +1977,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_varbinary_t1;
@@ -2101,31 +2049,31 @@ create table tb_varbinary(c1 varbinary(5));
 COPY public.tb_varbinary (c1) FROM stdin;
 COPY public.tb_varbinary (c1) FROM stdin;
 select * from tb_varbinary;
-  c1   
--------
- 123
- 12345
+      c1      
+--------------
+ \x313233
+ \x3132333435
 (2 rows)
 
 COPY public.tb_varbinary (c1) FROM stdin;
 ERROR:  value too long for type varbinary(5)
 CONTEXT:  COPY tb_varbinary, line 1, column c1: "\x313233343536"
 select * from tb_varbinary;
-  c1   
--------
- 123
- 12345
+      c1      
+--------------
+ \x313233
+ \x3132333435
 (2 rows)
 
 SET sql_mode='';
 COPY public.tb_varbinary (c1) FROM stdin;
 WARNING:  value too long for type varbinary(5)
 select * from tb_varbinary;
-  c1   
--------
- 123
- 12345
- 12345
+      c1      
+--------------
+ \x313233
+ \x3132333435
+ \x3132333435
 (3 rows)
 
 RESET sql_mode;

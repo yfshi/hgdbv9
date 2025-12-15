@@ -255,3 +255,29 @@ SELECT hex(WEIGHT_STRING('Hello' LEVEL -1));
 ERROR:  syntax error at or near "-"
 LINE 1: SELECT hex(WEIGHT_STRING('Hello' LEVEL -1));
                                                ^
+/* Begin - bug#6011 */
+SELECT weight_string(binary 'A' collate utf8_bin);        -- 41
+ weight_string 
+---------------
+ \x0041
+(1 row)
+
+SELECT weight_string(binary 'a' collate utf8_bin);        -- 61
+ weight_string 
+---------------
+ \x0061
+(1 row)
+
+SELECT weight_string(binary 'A' collate utf8_general_ci); -- 41
+ weight_string 
+---------------
+ \x0041
+(1 row)
+
+SELECT weight_string(binary 'a' collate utf8_general_ci); -- 61
+ weight_string 
+---------------
+ \x0041
+(1 row)
+
+/* End - bug#6011 */

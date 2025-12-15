@@ -185,7 +185,6 @@ mysql_session_init(ProtocolExtensionConfig *self)
 		SetConfigOption("password_encryption", "mysql_native_password", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.at_or_atat", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.enable_mysql_information_schema", "true", PGC_USERSET, PGC_S_OVERRIDE);
-		SetConfigOption("mysql.use_mysql_bool", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.use_mysql_do", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.use_mysql_bit_literal", "true", PGC_USERSET, PGC_S_OVERRIDE); 
 		SetConfigOption("ivorysql.aggregates_without_group_by", "true", PGC_USERSET, PGC_S_OVERRIDE);

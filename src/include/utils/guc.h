@@ -528,7 +528,6 @@ extern PGDLLIMPORT bool mysql_convert;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT
 extern PGDLLIMPORT bool regress_test_default_value;
 extern PGDLLIMPORT bool cast_to_char;
 /* End - BUG#M533 */
-extern PGDLLIMPORT bool use_mysql_bool;
 
 extern PGDLLIMPORT bool enable_mysql_information_schema;
 
@@ -774,7 +773,6 @@ extern PGDLLIMPORT sql_mode_t  sql_mode;
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 extern PGDLLIMPORT int 	 max_allowed_packet;
 extern PGDLLIMPORT int 	 max_sort_length;
-extern PGDLLIMPORT bool  enable_character_blob;
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
 
 /* Begin - BUG#Z4610 */

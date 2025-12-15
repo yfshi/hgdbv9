@@ -4,7 +4,7 @@
 set mysql.cast_to_char = on;
 -- parameter settings
 SET ivorysql.compatible_mode TO mysql;
-set mysql.enable_character_blob to on;
+
 set mysql.mysql_convert = true;
 
 -- clean environment
