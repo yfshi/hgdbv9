@@ -115,7 +115,7 @@ unlock_current_session(PG_FUNCTION_ARGS)
 		if (sqlite_open_db_for_audit_hook)
 		{
 			char	*errtext="The current session has been unlocked, no need to unlock again";
-			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_FAIL, NULL, errtext);
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_UNLOCK_SESSION, AUDIT_FAIL, NULL, errtext);
 		}
 #endif
 /* End - BUG#Z6168 */
