@@ -805,7 +805,9 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 				}
 
 				if (indexcomment)
-					appendStringInfo(attrbuf, " COMMENT %s", indexcomment);
+				{
+					appendStringInfo(attrbuf, " COMMENT '%s'", indexcomment);
+				}
 			}
 			else
 			{
@@ -869,7 +871,10 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 				}
 
 				if (indexcomment)
-					appendStringInfo(attrbuf, " COMMENT %s", indexcomment);
+				{
+					appendStringInfo(attrbuf, " COMMENT '%s'", indexcomment);
+				}
+
 			}
 		}
 	}

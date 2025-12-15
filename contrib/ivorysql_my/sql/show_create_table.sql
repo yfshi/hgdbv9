@@ -1399,8 +1399,11 @@ INSERT INTO test_table (id, col1, col2, col3) VALUES (1, 'data1', 100, 'content1
 INSERT INTO test_table (id, col1, col2, col3) VALUES (2, 'data2', 200, 'content2');
 INSERT INTO test_table (id, col1, col2, col3) VALUES (3, 'data3', 300, 'content3');
 
+CREATE INDEX idx_test_i ON test_table (col1);
 CREATE unique INDEX idx_test_u ON test_table (col2);
 SELECT * from mys_information_schema.columns where TABLE_NAME='test_table';
+
+DESCRIBE test_table col1;
 DESCRIBE test_table col2;
 
 DROP TABLE test_table;

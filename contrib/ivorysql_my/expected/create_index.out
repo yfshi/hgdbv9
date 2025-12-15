@@ -128,6 +128,8 @@ create index t11_10 on t11(str1('10')); --error
 ERROR:  Key part 'str1' length must integer
 create index t11_9 on t11(str1(10));
 /*End - BUG#Z6293 */
+create index t11_11 on t11(id(1)); --error
+ERROR:  the used key part isn't a string or the used length is longer than the key part
 \d+ t11
                                            Table "public.t11"
  Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
