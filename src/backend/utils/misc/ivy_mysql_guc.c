@@ -90,7 +90,6 @@ static char *sql_mode_str = NULL;
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 int			max_allowed_packet = 4194304;
 int			max_sort_length = 1024;
-bool		enable_character_blob = false;
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
 /* Begin - BUG#Z1434 */
 bool		enable_ignore_columns_list = false;
@@ -106,7 +105,6 @@ int			auto_increment_offset = 1;				/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 bool		regress_test_default_value = false;
 bool		cast_to_char = true;
 /* End - BUG#M533 */
-bool		use_mysql_bool = false;
 
 bool		enable_mysql_information_schema = false;
 
@@ -202,18 +200,6 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
-	/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-	{
-		{"mysql.enable_character_blob", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
-			gettext_noop("whether enable binary/varbinary/blob type to be input and output as character."),
-			NULL,
-			GUC_NOT_IN_SAMPLE
-		},
-		&enable_character_blob,
-		false,
-		NULL, NULL, NULL
-	},
-	/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 	{
 		{"mysql.mysql_convert", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
@@ -249,16 +235,6 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M533 */
-	{
-		{"mysql.use_mysql_bool", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
-			gettext_noop("MySQL and Postgres bool is difference."),
-			NULL,
-			GUC_NOT_IN_SAMPLE
-		},
-		&use_mysql_bool,
-		false,
-		NULL, NULL, NULL
-	},
 	/* Begin - ReqID:SRS-MYSQL-SET */
 	{
 		{"mysql.at_or_atat", PGC_USERSET, COMPAT_MYSQL_OPTIONS,

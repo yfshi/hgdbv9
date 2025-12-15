@@ -52,3 +52,10 @@ select hex(WEIGHT_STRING('a' as binary(0)));
 select hex(WEIGHT_STRING('a' as char(-1)));
 select hex(WEIGHT_STRING('a' as binary(-1)));
 SELECT hex(WEIGHT_STRING('Hello' LEVEL -1));
+
+/* Begin - bug#6011 */
+SELECT weight_string(binary 'A' collate utf8_bin);        -- 41
+SELECT weight_string(binary 'a' collate utf8_bin);        -- 61
+SELECT weight_string(binary 'A' collate utf8_general_ci); -- 41
+SELECT weight_string(binary 'a' collate utf8_general_ci); -- 61
+/* End - bug#6011 */

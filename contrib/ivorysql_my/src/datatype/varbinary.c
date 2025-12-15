@@ -182,13 +182,6 @@ varbinary_in(PG_FUNCTION_ARGS)
 		else if ((tp[0] == '\\') &&
 				 (tp[1] == '\\'))
 			tp += 2;
-		else if (enable_character_blob &&
-				 (tp[0] == '\\') && (tp[1] == '0') &&
-				 ((tp[2] == '\\') || (tp[2] == '\0')))
-		{
-			tp += 2;
-			zero_cnt += 2;
-		}
 		else
 		{
 			/*
@@ -230,18 +223,6 @@ varbinary_in(PG_FUNCTION_ARGS)
 		{
 			*rp++ = '\\';
 			tp += 2;
-		}
-		else if (enable_character_blob &&
-				 (tp[0] == '\\') && (tp[1] == '0') &&
-				 ((tp[2] == '\\') || (tp[2] == '\0')))
-		{
-			bc = VAL(tp[1]);
-			bc <<= 3;
-			bc += VAL(tp[1]);
-			bc <<= 3;
-			*rp++ = bc + VAL(tp[1]);
-
-			tp += 4;
 		}
 		else
 		{

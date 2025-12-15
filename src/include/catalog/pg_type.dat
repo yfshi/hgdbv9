@@ -1046,7 +1046,8 @@
   typinput => '-', typoutput => '-',
   typreceive => '-', typsend => '-',
   typmodin => '-', typmodout => '-',
-  typalign => 'i', typstorage => 'x' }
+  typalign => 'i', typstorage => 'x',
+  typcollation => 'default' }
 # End - ReqID:ReqID:SRS-MYSQL-BINARYTYPE
 
 /* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */

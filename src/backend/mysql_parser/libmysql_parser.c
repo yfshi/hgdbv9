@@ -375,16 +375,6 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 	/* Replace cur_token if needed, based on lookahead */
 	switch (cur_token)
 	{
-		/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-		case BINARY:
-			switch (next_token)
-			{
-				case SCONST:
-					cur_token = BINARY_F;
-					break;
-			}
-			break;
-		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 		/* Begin - ReqID:SRS-MYSQL-DO */
 		case DO:
 			{

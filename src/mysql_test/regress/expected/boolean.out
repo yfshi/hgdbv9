@@ -43,9 +43,14 @@ SELECT bool 'true' AS true;
 (1 row)
 
 SELECT bool 'test' AS error;
-ERROR:  invalid input syntax for type boolean: "test"
+WARNING:  Truncated incorrect INTEGER value: 'test'
 LINE 1: SELECT bool 'test' AS error;
                     ^
+ error 
+-------
+ f
+(1 row)
+
 SELECT bool 'false' AS false;
  false 
 -------
@@ -53,9 +58,14 @@ SELECT bool 'false' AS false;
 (1 row)
 
 SELECT bool 'foo' AS error;
-ERROR:  invalid input syntax for type boolean: "foo"
+WARNING:  Truncated incorrect INTEGER value: 'foo'
 LINE 1: SELECT bool 'foo' AS error;
                     ^
+ error 
+-------
+ f
+(1 row)
+
 SELECT bool 'y' AS true;
  true 
 ------
@@ -69,9 +79,14 @@ SELECT bool 'yes' AS true;
 (1 row)
 
 SELECT bool 'yeah' AS error;
-ERROR:  invalid input syntax for type boolean: "yeah"
+WARNING:  Truncated incorrect INTEGER value: 'yeah'
 LINE 1: SELECT bool 'yeah' AS error;
                     ^
+ error 
+-------
+ f
+(1 row)
+
 SELECT bool 'n' AS false;
  false 
 -------
@@ -85,9 +100,14 @@ SELECT bool 'no' AS false;
 (1 row)
 
 SELECT bool 'nay' AS error;
-ERROR:  invalid input syntax for type boolean: "nay"
+WARNING:  Truncated incorrect INTEGER value: 'nay'
 LINE 1: SELECT bool 'nay' AS error;
                     ^
+ error 
+-------
+ f
+(1 row)
+
 SELECT bool 'on' AS true;
  true 
 ------
@@ -107,17 +127,32 @@ SELECT bool 'of' AS false;
 (1 row)
 
 SELECT bool 'o' AS error;
-ERROR:  invalid input syntax for type boolean: "o"
+WARNING:  Truncated incorrect INTEGER value: 'o'
 LINE 1: SELECT bool 'o' AS error;
                     ^
+ error 
+-------
+ f
+(1 row)
+
 SELECT bool 'on_' AS error;
-ERROR:  invalid input syntax for type boolean: "on_"
+WARNING:  Truncated incorrect INTEGER value: 'on_'
 LINE 1: SELECT bool 'on_' AS error;
                     ^
+ error 
+-------
+ f
+(1 row)
+
 SELECT bool 'off_' AS error;
-ERROR:  invalid input syntax for type boolean: "off_"
+WARNING:  Truncated incorrect INTEGER value: 'off_'
 LINE 1: SELECT bool 'off_' AS error;
                     ^
+ error 
+-------
+ f
+(1 row)
+
 SELECT bool '1' AS true;
  true 
 ------
@@ -125,9 +160,11 @@ SELECT bool '1' AS true;
 (1 row)
 
 SELECT bool '11' AS error;
-ERROR:  invalid input syntax for type boolean: "11"
-LINE 1: SELECT bool '11' AS error;
-                    ^
+ error 
+-------
+ t
+(1 row)
+
 SELECT bool '0' AS false;
  false 
 -------
@@ -135,13 +172,20 @@ SELECT bool '0' AS false;
 (1 row)
 
 SELECT bool '000' AS error;
-ERROR:  invalid input syntax for type boolean: "000"
-LINE 1: SELECT bool '000' AS error;
-                    ^
+ error 
+-------
+ f
+(1 row)
+
 SELECT bool '' AS error;
-ERROR:  invalid input syntax for type boolean: ""
+WARNING:  Truncated incorrect INTEGER value: ''
 LINE 1: SELECT bool '' AS error;
                     ^
+ error 
+-------
+ f
+(1 row)
+
 -- and, or, not in qualifications
 SELECT bool 't' or bool 'f' AS true;
  true 
@@ -287,7 +331,7 @@ INSERT INTO BOOLTBL2 (f1) VALUES (bool 'FALSE');
 -- For pre-v6.3 this evaluated to false - thomas 1997-10-23
 INSERT INTO BOOLTBL2 (f1)
    VALUES (bool 'XXX');
-ERROR:  invalid input syntax for type boolean: "XXX"
+WARNING:  Truncated incorrect INTEGER value: 'XXX'
 LINE 2:    VALUES (bool 'XXX');
                         ^
 -- BOOLTBL2 should be full of false's at this point
@@ -298,7 +342,8 @@ SELECT BOOLTBL2.* FROM BOOLTBL2;
  f
  f
  f
-(4 rows)
+ f
+(5 rows)
 
 SELECT BOOLTBL1.*, BOOLTBL2.*
    FROM BOOLTBL1, BOOLTBL2
@@ -317,7 +362,10 @@ SELECT BOOLTBL1.*, BOOLTBL2.*
  t  | f
  t  | f
  t  | f
-(12 rows)
+ t  | f
+ t  | f
+ t  | f
+(15 rows)
 
 SELECT BOOLTBL1.*, BOOLTBL2.*
    FROM BOOLTBL1, BOOLTBL2
@@ -336,7 +384,10 @@ SELECT BOOLTBL1.*, BOOLTBL2.*
  t  | f
  t  | f
  t  | f
-(12 rows)
+ t  | f
+ t  | f
+ t  | f
+(15 rows)
 
 SELECT BOOLTBL1.*, BOOLTBL2.*
    FROM BOOLTBL1, BOOLTBL2
@@ -347,7 +398,8 @@ SELECT BOOLTBL1.*, BOOLTBL2.*
  f  | f
  f  | f
  f  | f
-(4 rows)
+ f  | f
+(5 rows)
 
 SELECT BOOLTBL1.*, BOOLTBL2.*
    FROM BOOLTBL1, BOOLTBL2
@@ -359,6 +411,7 @@ SELECT BOOLTBL1.*, BOOLTBL2.*
  f  | f
  f  | f
  f  | f
+ f  | f
  t  | f
  t  | f
  t  | f
@@ -371,7 +424,10 @@ SELECT BOOLTBL1.*, BOOLTBL2.*
  t  | f
  t  | f
  t  | f
-(16 rows)
+ t  | f
+ t  | f
+ t  | f
+(20 rows)
 
 --
 -- SQL syntax
@@ -437,7 +493,8 @@ SELECT f1
  f
  f
  f
-(4 rows)
+ f
+(5 rows)
 
 SELECT f1
    FROM BOOLTBL2
@@ -448,7 +505,8 @@ SELECT f1
  f
  f
  f
-(4 rows)
+ f
+(5 rows)
 
 --
 -- Tests for BooleanTest

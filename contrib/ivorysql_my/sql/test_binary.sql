@@ -6,7 +6,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -76,7 +76,7 @@ SELECT binary'101010' as result; -- should ok
 SELECT binary('101010') as result; -- should ok
 
 set sql_mode='';
-set mysql.enable_character_blob to off;
+
 CREATE TABLE my_binary_t8 (c1 binary(8));
 INSERT  INTO my_binary_t8 values ('HGDB');
 INSERT  INTO my_binary_t8 values ('Database');
@@ -94,7 +94,7 @@ DISCARD ALL;
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
 set enable_seqscan = off;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -147,7 +147,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -182,7 +182,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -213,7 +213,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -286,7 +286,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -318,7 +318,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -349,7 +349,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -381,7 +381,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -413,7 +413,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -446,7 +446,7 @@ DISCARD ALL;
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
 set enable_seqscan to off;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -497,7 +497,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -640,7 +640,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -756,7 +756,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -820,7 +820,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -846,7 +846,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -875,7 +875,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -928,7 +928,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -957,7 +957,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1041,7 +1041,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1128,7 +1128,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1177,7 +1177,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1212,7 +1212,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1307,7 +1307,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1338,7 +1338,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1381,7 +1381,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1426,7 +1426,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1461,7 +1461,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1518,7 +1518,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment
@@ -1673,7 +1673,7 @@ DISCARD ALL;
 
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
+
 \pset null 'NULL'
 
 -- clean environment

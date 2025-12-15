@@ -4,7 +4,6 @@
 set mysql.cast_to_char = on;
 -- parameter settings
 SET ivorysql.compatible_mode TO mysql;
-set mysql.enable_character_blob to on;
 set mysql.mysql_convert = true;
 -- clean environment
 DROP TABLE IF EXISTS
@@ -66,24 +65,24 @@ INSERT  INTO pg_bytea_t14      VALUES ('1234'), ('abcd'), ('1q2w'), ('q1w2');
 -- use cast "mysql binary" to "mysql other binary"
 -- EXPECT: ok
 SELECT  cast(c1 as binary)        FROM my_binary_t01;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT convert(c1, binary)        FROM my_binary_t01;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT         c1::binary         FROM my_binary_t01;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 -- EXPECT: ok, but warning
@@ -92,8 +91,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:10 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT convert(c1, binary(0))     FROM my_binary_t01;
@@ -101,8 +100,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:10 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT         c1::binary(0)      FROM my_binary_t01;
@@ -110,58 +109,58 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:10 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 -- EXPECT: ok, but warning
 SELECT  cast(c1 as binary(1))     FROM my_binary_t01;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT convert(c1, binary(1))     FROM my_binary_t01;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT         c1::binary(1)      FROM my_binary_t01;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as binary(10))    FROM my_binary_t01;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT convert(c1, binary(10))    FROM my_binary_t01;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT         c1::binary(10)     FROM my_binary_t01;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 -- EXPECT: syntax error
@@ -203,24 +202,24 @@ ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
 -- use cast "mysql varbinary" to "mysql other binary"
 -- EXPECT: ok
 SELECT  cast(c1 as binary)        FROM my_varbinary_t02;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT convert(c1, binary)        FROM my_varbinary_t02;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT         c1::binary         FROM my_varbinary_t02;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 -- EXPECT: ok, but warning
@@ -229,8 +228,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT convert(c1, binary(0))     FROM my_varbinary_t02;
@@ -238,8 +237,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT         c1::binary(0)      FROM my_varbinary_t02;
@@ -247,81 +246,81 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 -- EXPECT: ok, but warning
 SELECT  cast(c1 as binary(1))     FROM my_varbinary_t02;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT convert(c1, binary(1))     FROM my_varbinary_t02;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT         c1::binary(1)      FROM my_varbinary_t02;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as binary(10))    FROM my_varbinary_t02;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT convert(c1, binary(10))    FROM my_varbinary_t02;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT         c1::binary(10)     FROM my_varbinary_t02;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 -- EXPECT: syntax error
 -- TODO[TD003]: ok
 SELECT  cast(c1 as varbinary(10)) FROM my_varbinary_t02;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT convert(c1, varbinary(10)) FROM my_varbinary_t02;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT         c1::varbinary(10)  FROM my_varbinary_t02;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 -- EXPECT: syntax error
@@ -356,24 +355,24 @@ ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
 -- use cast "mysql blob" to "mysql other binary"
 -- EXPECT: ok
 SELECT  cast(c1 as binary)        FROM my_blob_t03;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT convert(c1, binary)        FROM my_blob_t03;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT         c1::binary         FROM my_blob_t03;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 -- EXPECT: ok, but warning
@@ -382,8 +381,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT convert(c1, binary(0))     FROM my_blob_t03;
@@ -391,8 +390,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT         c1::binary(0)      FROM my_blob_t03;
@@ -400,58 +399,58 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 -- EXPECT: ok, but warning
 SELECT  cast(c1 as binary(1))     FROM my_blob_t03;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT convert(c1, binary(1))     FROM my_blob_t03;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT         c1::binary(1)      FROM my_blob_t03;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as binary(10))    FROM my_blob_t03;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT convert(c1, binary(10))    FROM my_blob_t03;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT         c1::binary(10)     FROM my_blob_t03;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 -- EXPECT: syntax error
@@ -464,24 +463,24 @@ ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
 -- EXPECT: syntax error
 -- TODO[TD003]: ok
 SELECT  cast(c1 as blob)          FROM my_blob_t03;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT convert(c1, blob)          FROM my_blob_t03;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT         c1::blob           FROM my_blob_t03;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 -- EXPECT: syntax error
@@ -509,24 +508,24 @@ ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
 -- use cast "mysql tinyblob" to "mysql other binary"
 -- EXPECT: ok
 SELECT  cast(c1 as binary)        FROM my_tinyblob_t04;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT convert(c1, binary)        FROM my_tinyblob_t04;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT         c1::binary         FROM my_tinyblob_t04;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 -- EXPECT: ok, but warning
@@ -535,8 +534,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT convert(c1, binary(0))     FROM my_tinyblob_t04;
@@ -544,8 +543,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT         c1::binary(0)      FROM my_tinyblob_t04;
@@ -553,58 +552,58 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 -- EXPECT: ok, but warning
 SELECT  cast(c1 as binary(1))     FROM my_tinyblob_t04;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT convert(c1, binary(1))     FROM my_tinyblob_t04;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT         c1::binary(1)      FROM my_tinyblob_t04;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as binary(10))    FROM my_tinyblob_t04;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT convert(c1, binary(10))    FROM my_tinyblob_t04;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT         c1::binary(10)     FROM my_tinyblob_t04;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 -- EXPECT: syntax error
@@ -624,24 +623,24 @@ ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
 -- EXPECT: syntax error
 -- TODO[TD003]: ok
 SELECT  cast(c1 as tinyblob)      FROM my_tinyblob_t04;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT convert(c1, tinyblob)      FROM my_tinyblob_t04;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT         c1::tinyblob       FROM my_tinyblob_t04;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 -- EXPECT: syntax error
@@ -662,24 +661,24 @@ ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
 -- use cast "mysql mediumblob" to "mysql other binary"
 -- EXPECT: ok
 SELECT  cast(c1 as binary)        FROM my_mediumblob_t05;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT convert(c1, binary)        FROM my_mediumblob_t05;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT         c1::binary         FROM my_mediumblob_t05;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 -- EXPECT: ok, but warning
@@ -688,8 +687,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT convert(c1, binary(0))     FROM my_mediumblob_t05;
@@ -697,8 +696,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT         c1::binary(0)      FROM my_mediumblob_t05;
@@ -706,58 +705,58 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 -- EXPECT: ok, but warning
 SELECT  cast(c1 as binary(1))     FROM my_mediumblob_t05;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT convert(c1, binary(1))     FROM my_mediumblob_t05;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT         c1::binary(1)      FROM my_mediumblob_t05;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as binary(10))    FROM my_mediumblob_t05;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT convert(c1, binary(10))    FROM my_mediumblob_t05;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT         c1::binary(10)     FROM my_mediumblob_t05;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 -- EXPECT: syntax error
@@ -784,24 +783,24 @@ ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
 -- EXPECT: syntax error
 -- TODO[TD003]: ok
 SELECT  cast(c1 as mediumblob)    FROM my_mediumblob_t05;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT convert(c1, mediumblob)    FROM my_mediumblob_t05;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT         c1::mediumblob     FROM my_mediumblob_t05;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 -- EXPECT: syntax error
@@ -815,24 +814,24 @@ ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
 -- use cast "mysql longblob" to "mysql other binary"
 -- EXPECT: ok
 SELECT  cast(c1 as binary)        FROM my_longblob_t06;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT convert(c1, binary)        FROM my_longblob_t06;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT         c1::binary         FROM my_longblob_t06;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 -- EXPECT: ok, but warning
@@ -841,8 +840,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT convert(c1, binary(0))     FROM my_longblob_t06;
@@ -850,8 +849,8 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 SELECT         c1::binary(0)      FROM my_longblob_t06;
@@ -859,58 +858,58 @@ WARNING:  The input length:10 exceeds the maximum length:0, data truncated
 WARNING:  The input length:4 exceeds the maximum length:0, data truncated
  c1 
 ----
- 
- 
+ \x
+ \x
 (2 rows)
 
 -- EXPECT: ok, but warning
 SELECT  cast(c1 as binary(1))     FROM my_longblob_t06;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT convert(c1, binary(1))     FROM my_longblob_t06;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 SELECT         c1::binary(1)      FROM my_longblob_t06;
 WARNING:  The input length:10 exceeds the maximum length:1, data truncated
 WARNING:  The input length:4 exceeds the maximum length:1, data truncated
- c1 
-----
- 1
- a
+  c1  
+------
+ \x31
+ \x61
 (2 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as binary(10))    FROM my_longblob_t06;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT convert(c1, binary(10))    FROM my_longblob_t06;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 SELECT         c1::binary(10)     FROM my_longblob_t06;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
 (2 rows)
 
 -- EXPECT: syntax error
@@ -944,24 +943,24 @@ ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
 -- EXPECT: syntax error
 -- TODO[TD003]: ok
 SELECT  cast(c1 as longblob)      FROM my_longblob_t06;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT convert(c1, longblob)      FROM my_longblob_t06;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 SELECT         c1::longblob       FROM my_longblob_t06;
-     c1     
-------------
- 1234567890
- abcd
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
 (2 rows)
 
 --------------------------------------------------------------------------------
@@ -969,30 +968,30 @@ SELECT         c1::longblob       FROM my_longblob_t06;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_binary_t07;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+           c1           
+------------------------
+ \x31323334000000000000
+ \x61626364000000000000
+ \x31713277000000000000
+ \x71317732000000000000
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_binary_t07;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+           c1           
+------------------------
+ \x31323334000000000000
+ \x61626364000000000000
+ \x31713277000000000000
+ \x71317732000000000000
 (4 rows)
 
 SELECT         c1::char           FROM my_binary_t07;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+           c1           
+------------------------
+ \x31323334000000000000
+ \x61626364000000000000
+ \x31713277000000000000
+ \x71317732000000000000
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1167,30 +1166,30 @@ LINE 1: SELECT         c1::json           FROM my_binary_t07;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_binary_t07;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+           c1           
+------------------------
+ \x31323334000000000000
+ \x61626364000000000000
+ \x31713277000000000000
+ \x71317732000000000000
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_binary_t07;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+           c1           
+------------------------
+ \x31323334000000000000
+ \x61626364000000000000
+ \x31713277000000000000
+ \x71317732000000000000
 (4 rows)
 
 SELECT         c1::nchar          FROM my_binary_t07;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+           c1           
+------------------------
+ \x31323334000000000000
+ \x61626364000000000000
+ \x31713277000000000000
+ \x71317732000000000000
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1440,16 +1439,16 @@ WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_varbinary_t08;
 ERROR:  invalid input syntax for type json
-DETAIL:  Token "abcd" is invalid.
-CONTEXT:  JSON data, line 1: abcd
+DETAIL:  Token "\" is invalid.
+CONTEXT:  JSON data, line 1: \...
 SELECT convert(c1, json)          FROM my_varbinary_t08;
 ERROR:  invalid input syntax for type json
-DETAIL:  Token "abcd" is invalid.
-CONTEXT:  JSON data, line 1: abcd
+DETAIL:  Token "\" is invalid.
+CONTEXT:  JSON data, line 1: \...
 SELECT         c1::json           FROM my_varbinary_t08;
 ERROR:  invalid input syntax for type json
-DETAIL:  Token "abcd" is invalid.
-CONTEXT:  JSON data, line 1: abcd
+DETAIL:  Token "\" is invalid.
+CONTEXT:  JSON data, line 1: \...
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_varbinary_t08;
@@ -1544,30 +1543,30 @@ LINE 1: SELECT         c1::unsigned       FROM my_varbinary_t08;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_blob_t09;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_blob_t09;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::char           FROM my_blob_t09;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1664,30 +1663,30 @@ LINE 1: SELECT         c1::json           FROM my_blob_t09;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_blob_t09;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_blob_t09;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::nchar          FROM my_blob_t09;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1723,30 +1722,30 @@ LINE 1: SELECT         c1::unsigned       FROM my_blob_t09;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_tinyblob_t10;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_tinyblob_t10;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::char           FROM my_tinyblob_t10;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1843,30 +1842,30 @@ LINE 1: SELECT         c1::json           FROM my_tinyblob_t10;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_tinyblob_t10;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_tinyblob_t10;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::nchar          FROM my_tinyblob_t10;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -1902,30 +1901,30 @@ LINE 1: SELECT         c1::unsigned       FROM my_tinyblob_t10;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_mediumblob_t11;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_mediumblob_t11;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::char           FROM my_mediumblob_t11;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -2022,30 +2021,30 @@ LINE 1: SELECT         c1::json           FROM my_mediumblob_t11;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_mediumblob_t11;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_mediumblob_t11;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::nchar          FROM my_mediumblob_t11;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -2081,30 +2080,30 @@ LINE 1: SELECT         c1::unsigned       FROM my_mediumblob_t11;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as char)          FROM my_longblob_t12;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, char)          FROM my_longblob_t12;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::char           FROM my_longblob_t12;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -2201,30 +2200,30 @@ LINE 1: SELECT         c1::json           FROM my_longblob_t12;
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_longblob_t12;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, nchar)         FROM my_longblob_t12;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::nchar          FROM my_longblob_t12;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok , but warning
@@ -2259,286 +2258,286 @@ LINE 1: SELECT         c1::unsigned       FROM my_longblob_t12;
 -- use cast "mysql binary" to "pg bytea"
 -- EXPECT: ok
 SELECT  cast(c1 as bytea) FROM my_binary_t13;
-  c1  
-------
- 1234
+           c1           
+------------------------
+ \x31323334000000000000
 (1 row)
 
 SELECT convert(c1, bytea) FROM my_binary_t13;
-  c1  
-------
- 1234
+           c1           
+------------------------
+ \x31323334000000000000
 (1 row)
 
 SELECT         c1::bytea  FROM my_binary_t13;
-  c1  
-------
- 1234
+           c1           
+------------------------
+ \x31323334000000000000
 (1 row)
 
 -- EXPECT: ok
 SELECT  cast(c2 as bytea) FROM my_binary_t13;
-  c2  
-------
- 1234
+     c2     
+------------
+ \x31323334
 (1 row)
 
 SELECT convert(c2, bytea) FROM my_binary_t13;
-  c2  
-------
- 1234
+     c2     
+------------
+ \x31323334
 (1 row)
 
 SELECT         c2::bytea  FROM my_binary_t13;
-  c2  
-------
- 1234
+     c2     
+------------
+ \x31323334
 (1 row)
 
 -- EXPECT: ok
 SELECT  cast(c3 as bytea) FROM my_binary_t13;
-  c3  
-------
- 1234
+     c3     
+------------
+ \x31323334
 (1 row)
 
 SELECT convert(c3, bytea) FROM my_binary_t13;
-  c3  
-------
- 1234
+     c3     
+------------
+ \x31323334
 (1 row)
 
 SELECT         c3::bytea  FROM my_binary_t13;
-  c3  
-------
- 1234
+     c3     
+------------
+ \x31323334
 (1 row)
 
 -- EXPECT: ok
 SELECT  cast(c4 as bytea) FROM my_binary_t13;
-  c4  
-------
- 1234
+     c4     
+------------
+ \x31323334
 (1 row)
 
 SELECT convert(c4, bytea) FROM my_binary_t13;
-  c4  
-------
- 1234
+     c4     
+------------
+ \x31323334
 (1 row)
 
 SELECT         c4::bytea  FROM my_binary_t13;
-  c4  
-------
- 1234
+     c4     
+------------
+ \x31323334
 (1 row)
 
 -- EXPECT: ok
 SELECT  cast(c5 as bytea) FROM my_binary_t13;
-  c5  
-------
- 1234
+     c5     
+------------
+ \x31323334
 (1 row)
 
 SELECT convert(c5, bytea) FROM my_binary_t13;
-  c5  
-------
- 1234
+     c5     
+------------
+ \x31323334
 (1 row)
 
 SELECT         c5::bytea  FROM my_binary_t13;
-  c5  
-------
- 1234
+     c5     
+------------
+ \x31323334
 (1 row)
 
 -- EXPECT: ok
 SELECT  cast(c6 as bytea) FROM my_binary_t13;
-  c6  
-------
- 1234
+     c6     
+------------
+ \x31323334
 (1 row)
 
 SELECT convert(c6, bytea) FROM my_binary_t13;
-  c6  
-------
- 1234
+     c6     
+------------
+ \x31323334
 (1 row)
 
 SELECT         c6::bytea  FROM my_binary_t13;
-  c6  
-------
- 1234
+     c6     
+------------
+ \x31323334
 (1 row)
 
 --------------------------------------------------------------------------------
 -- use cast "pg bytea" to "mysql binary"
 -- EXPECT: ok
 SELECT  cast(c1 as binary(10)) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+           c1           
+------------------------
+ \x31323334000000000000
+ \x61626364000000000000
+ \x31713277000000000000
+ \x71317732000000000000
 (4 rows)
 
 SELECT convert(c1, binary(10)) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+           c1           
+------------------------
+ \x31323334000000000000
+ \x61626364000000000000
+ \x31713277000000000000
+ \x71317732000000000000
 (4 rows)
 
 SELECT         c1::binary(10)  FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+           c1           
+------------------------
+ \x31323334000000000000
+ \x61626364000000000000
+ \x31713277000000000000
+ \x71317732000000000000
 (4 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as varbinary(10)) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, varbinary(10)) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::varbinary(10)  FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as blob) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, blob) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::blob  FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as tinyblob) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, tinyblob) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::tinyblob  FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as mediumblob) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, mediumblob) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::mediumblob  FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 -- EXPECT: ok
 SELECT  cast(c1 as longblob) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT convert(c1, longblob) FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 SELECT         c1::longblob  FROM pg_bytea_t14;
-  c1  
-------
- 1234
- abcd
- 1q2w
- q1w2
+     c1     
+------------
+ \x31323334
+ \x61626364
+ \x31713277
+ \x71317732
 (4 rows)
 
 set mysql.mysql_convert = false;

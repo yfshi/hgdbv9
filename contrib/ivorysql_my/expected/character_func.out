@@ -2686,7 +2686,6 @@ select instr(1234.5, 34.5);
 
 -- if
 set mysql.enable_mysql_information_schema TO on;
-set mysql.use_mysql_bool TO true;
 CREATE TABLE type_analysis AS
 SELECT
 	-- 1. Numeric types vs String types
@@ -2817,8 +2816,8 @@ ORDER BY
  int_to_datetime          | character varying | character varying |                          |                   |               | YES         | UTF8               | 
  time_to_int              | character varying | character varying |                          |                   |               | YES         | UTF8               | 
  int_to_time              | character varying | character varying |                          |                   |               | YES         | UTF8               | 
- binary_to_int            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
- int_to_binary            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
+ binary_to_int            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | binary
+ int_to_binary            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | binary
  concat_to_int            | character varying | character varying |                          |                   |               | YES         | UTF8               | 
  empty_string_to_int      | character varying | character varying |                          |                   |               | YES         | UTF8               | 
  string_zero_to_int       | character varying | character varying |                          |                   |               | YES         | UTF8               | 
@@ -2842,12 +2841,12 @@ ORDER BY
  string_to_null           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
  time_to_string           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
  string_to_time           | character varying | character varying |                          |                   |               | YES         | UTF8               | 
- binary_to_string         | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
- string_to_binary         | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
- hex_to_string            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
- string_to_hex            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
- bit_to_string            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
- string_to_bit            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | 
+ binary_to_string         | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | binary
+ string_to_binary         | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | binary
+ hex_to_string            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | binary
+ string_to_hex            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | binary
+ bit_to_string            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | binary
+ string_to_bit            | varbinary         | varbinary         |                          |                   |               | YES         | UTF8               | binary
  scientific_to_string     | character varying | character varying |                          |                   |               | YES         | UTF8               | 
  string_to_scientific     | character varying | character varying |                          |                   |               | YES         | UTF8               | 
  expression_to_string     | character varying | character varying |                          |                   |               | YES         | UTF8               | 
@@ -2864,7 +2863,6 @@ ORDER BY
 (63 rows)
 
 set mysql.enable_mysql_information_schema TO off;
-set mysql.use_mysql_bool TO false;
 -- ifnull
 select ifnull(null, null);
  ifnull 

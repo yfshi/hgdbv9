@@ -131,6 +131,14 @@ native_password_check(Port *port)
 
     auth_response = (uint8 *) read_switch_response(buf);
 
+    /** 
+     * Begin - bug6787
+     * Auth switch response from client may be empty.
+     */
+    if (auth_response == NULL)
+        return ret;
+    /* End - bug6787 */
+
     // s3 = sha1(scramble, s2)
     compute_sha1_hash_multi(s3, sizeof(s3), scramble, SHA1_HASH_SIZE, (uint8 *) s2, SHA1_DIGEST_LENGTH);
 

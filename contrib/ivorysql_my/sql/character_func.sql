@@ -563,7 +563,6 @@ select instr(1234.5, 34.5);
 
 -- if
 set mysql.enable_mysql_information_schema TO on;
-set mysql.use_mysql_bool TO true;
 
 CREATE TABLE type_analysis AS
 SELECT
@@ -691,7 +690,6 @@ ORDER BY
 	END,
 	ORDINAL_POSITION;
 set mysql.enable_mysql_information_schema TO off;
-set mysql.use_mysql_bool TO false;
 
 -- ifnull
 

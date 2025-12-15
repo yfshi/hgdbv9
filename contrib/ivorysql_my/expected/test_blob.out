@@ -4,7 +4,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS
@@ -74,11 +73,11 @@ create table my_blob_t01 (c1 blob(6));
 insert into my_blob_t01 values ('hgdb'), ('hgdb '), ('hgdb\0\0');
 -- should get {(hgdb,4,1,0,0), (hgdb,5,0,1,0), (hgdb,6,0,0,1)}
 select c1, length(c1), c1='hgdb', c1='hgdb ', c1='hgdb\0\0' from my_blob_t01;
-  c1   | length | ?column? | ?column? | ?column? 
--------+--------+----------+----------+----------
- hgdb  |      4 | t        | f        | f
- hgdb  |      5 | f        | t        | f
- hgdb  |      6 | f        | f        | t
+       c1       | length | ?column? | ?column? | ?column? 
+----------------+--------+----------+----------+----------
+ \x68676462     |      4 | t        | f        | f
+ \x6867646220   |      5 | f        | t        | f
+ \x686764620000 |      6 | f        | f        | t
 (3 rows)
 
 -- should ok
@@ -94,11 +93,11 @@ create table my_blob_t02 (c1 blob);
 insert into my_blob_t02 values('123'), ('1234'), ('12345');
 -- should get {(123,3), (1234,4), (12345,5)}
 select c1, length(c1) from my_blob_t02;
-  c1   | length 
--------+--------
- 123   |      3
- 1234  |      4
- 12345 |      5
+      c1      | length 
+--------------+--------
+ \x313233     |      3
+ \x31323334   |      4
+ \x3132333435 |      5
 (3 rows)
 
 -- should error
@@ -309,11 +308,9 @@ create table my_blob_t26 (c1 int, c2 blob default 'test');
 ERROR:  ERROR 1101 (42000): BLOB, TEXT, GEOMETRY or JSON column can't have a default value
 -- TODO[TD003]: should error
 select blob'101010' as result;
- result 
---------
- 101010
-(1 row)
-
+ERROR:  syntax error at or near "'101010'"
+LINE 1: select blob'101010' as result;
+                   ^
 DISCARD ALL;
 /*
  * test mysql blob type index.
@@ -321,7 +318,6 @@ DISCARD ALL;
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
 set enable_seqscan = off;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t01;
@@ -338,73 +334,73 @@ INSERT INTO my_blob_t01 VALUES ('abcdefghij', 'bcdefghijk', 'cdefghijkl', 'defgh
 -- case: gin
 create index my_blob_t01_gin on my_blob_t01 using gin(c1);
 select c1 from my_blob_t01 where c1 = 'abcdefghij';
-     c1     
-------------
- abcdefghij
- abcdefghij
- abcdefghij
+           c1           
+------------------------
+ \x6162636465666768696a
+ \x6162636465666768696a
+ \x6162636465666768696a
 (3 rows)
 
 explain select c1 from my_blob_t01 where c1 = 'abcdefghij';
                                   QUERY PLAN                                  
 ------------------------------------------------------------------------------
  Bitmap Heap Scan on my_blob_t01  (cost=8.01..12.02 rows=1 width=32)
-   Recheck Cond: (c1 = 'abcdefghij'::blob)
+   Recheck Cond: (c1 = '\x6162636465666768696a'::blob)
    ->  Bitmap Index Scan on my_blob_t01_gin  (cost=0.00..8.01 rows=1 width=0)
-         Index Cond: (c1 = 'abcdefghij'::blob)
+         Index Cond: (c1 = '\x6162636465666768696a'::blob)
 (4 rows)
 
 -- case: brin
 create index my_blob_t01_brin on my_blob_t01 using brin(c2);
 select c2 from my_blob_t01 where c2 = 'bcdefghijk';
-     c2     
-------------
- bcdefghijk
- bcdefghijk
- bcdefghijk
+           c2           
+------------------------
+ \x62636465666768696a6b
+ \x62636465666768696a6b
+ \x62636465666768696a6b
 (3 rows)
 
 explain select c2 from my_blob_t01 where c2 = 'bcdefghijk';
                                    QUERY PLAN                                   
 --------------------------------------------------------------------------------
  Bitmap Heap Scan on my_blob_t01  (cost=12.03..16.07 rows=1 width=32)
-   Recheck Cond: (c2 = 'bcdefghijk'::blob)
+   Recheck Cond: (c2 = '\x62636465666768696a6b'::blob)
    ->  Bitmap Index Scan on my_blob_t01_brin  (cost=0.00..12.03 rows=3 width=0)
-         Index Cond: (c2 = 'bcdefghijk'::blob)
+         Index Cond: (c2 = '\x62636465666768696a6b'::blob)
 (4 rows)
 
 -- case: btree
 create index my_blob_t01_btree on my_blob_t01 using btree(c3);
 select c3 from my_blob_t01 where c3 = 'cdefghijkl';
-     c3     
-------------
- cdefghijkl
- cdefghijkl
- cdefghijkl
+           c3           
+------------------------
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
+ \x636465666768696a6b6c
 (3 rows)
 
 explain select c3 from my_blob_t01 where c3 = 'cdefghijkl';
                                         QUERY PLAN                                         
 -------------------------------------------------------------------------------------------
  Index Only Scan using my_blob_t01_btree on my_blob_t01  (cost=0.13..8.15 rows=1 width=32)
-   Index Cond: (c3 = 'cdefghijkl'::blob)
+   Index Cond: (c3 = '\x636465666768696a6b6c'::blob)
 (2 rows)
 
 -- case: hash
 create index my_blob_t01_hash on my_blob_t01 using hash(c4);
 select c4 from my_blob_t01 where c4 = 'defghijklm';
-     c4     
-------------
- defghijklm
- defghijklm
- defghijklm
+           c4           
+------------------------
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
+ \x6465666768696a6b6c6d
 (3 rows)
 
 explain select c4 from my_blob_t01 where c4 = 'defghijklm';
                                       QUERY PLAN                                      
 --------------------------------------------------------------------------------------
  Index Scan using my_blob_t01_hash on my_blob_t01  (cost=0.00..12.02 rows=1 width=32)
-   Index Cond: (c4 = 'defghijklm'::blob)
+   Index Cond: (c4 = '\x6465666768696a6b6c6d'::blob)
 (2 rows)
 
 -- MySQL USAGE:
@@ -417,7 +413,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -469,7 +464,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -480,17 +474,17 @@ INSERT INTO my_blob_t1 VALUES ('123'), ('12345'), ('abc');
 --------------------------------------------------------------------------------
 -- should get (123)
 SELECT * from my_blob_t1 WHERE c1 BETWEEN '12' AND '1234';
- c1  
------
- 123
+    c1    
+----------
+ \x313233
 (1 row)
 
 -- should get {(123), (12345)}
 SELECT * from my_blob_t1 WHERE c1 BETWEEN '12' AND '12346';
-  c1   
--------
- 123
- 12345
+      c1      
+--------------
+ \x313233
+ \x3132333435
 (2 rows)
 
 -- should get empty
@@ -505,7 +499,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -579,7 +572,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -608,7 +600,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -648,7 +639,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -677,7 +667,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -706,7 +695,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -735,7 +723,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -759,7 +746,7 @@ FROM
   my_blob_t1;
  coalesce | coalesce | coalesce | coalesce | coalesce 
 ----------+----------+----------+----------+----------
- 123      | abc      |          |          | NULL
+ \x313233 | \x616263 | \x       | \x20     | NULL
 (1 row)
 
 DISCARD ALL;
@@ -768,7 +755,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -907,7 +893,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -933,7 +918,7 @@ FROM
   my_blob_t1;
  greatest | length | greatest | greatest | greatest | greatest 
 ----------+--------+----------+----------+----------+----------
- 123      |      3 | abc      | abc      |          | NULL
+ \x313233 |      3 | \x616263 | \x616263 | \x20     | NULL
 (1 row)
 
 DISCARD ALL;
@@ -986,7 +971,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -998,23 +982,23 @@ INSERT INTO my_blob_t1 VALUES ('abc'), ('abc123'), ('Abc123'), ('瀚高'), (''),
 -- TODO[TD007]: should get {abc, abc123, 瀚高}, but get error
 SELECT * FROM my_blob_t1 WHERE c1
   IN ('abc', 'abc123', '瀚高', '\0\0\0\0\0\0', ' \0\0\0\0\0', null);
-            c1            
---------------------------
- abc
- abc123
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x616263
+ \x616263313233
+ \xe7809ae9ab98
 (3 rows)
 
 -- TODO[TD007]: should get {abc123, Abc123, 瀚高, , }, but get error
 SELECT * FROM my_blob_t1 WHERE c1
   IN ('abc\0\0\0', 'abc123', 'Abc123', '瀚高', '', ' ', null);
-            c1            
---------------------------
- abc123
- Abc123
- \347\200\232\351\253\230
- 
-  
+       c1       
+----------------
+ \x616263313233
+ \x416263313233
+ \xe7809ae9ab98
+ \x
+ \x20
 (5 rows)
 
 DISCARD ALL;
@@ -1062,7 +1046,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1074,12 +1057,12 @@ INSERT INTO my_blob_t1 VALUES (1, '123'), (2, 'abc'), (3, ''), (4, ' '), (5, nul
 --------------------------------------------------------------------------------
 -- should get {(1, 123), (2, abc), (3, ), (4, )}
 select * from my_blob_t1 where c1 is not null;
- id | c1  
-----+-----
-  1 | 123
-  2 | abc
-  3 | 
-  4 |  
+ id |    c1    
+----+----------
+  1 | \x313233
+  2 | \x616263
+  3 | \x
+  4 | \x20
 (4 rows)
 
 DISCARD ALL;
@@ -1088,7 +1071,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1103,11 +1085,11 @@ select * from my_blob_t1 where c1 is not true;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id |  c1  
-----+------
-  2 | abc
-  3 | 
-  4 |  
+ id |    c1    
+----+----------
+  2 | \x616263
+  3 | \x
+  4 | \x20
   5 | NULL
 (4 rows)
 
@@ -1116,9 +1098,9 @@ select * from my_blob_t1 where c1 is not false;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id |  c1  
-----+------
-  1 | 123
+ id |    c1    
+----+----------
+  1 | \x313233
   5 | NULL
 (2 rows)
 
@@ -1128,7 +1110,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1175,7 +1156,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1190,9 +1170,9 @@ select * from my_blob_t1 where c1 is true;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id | c1  
-----+-----
-  1 | 123
+ id |    c1    
+----+----------
+  1 | \x313233
 (1 row)
 
 -- should get {(2, abc), (3, ), (4, )}
@@ -1200,11 +1180,11 @@ select * from my_blob_t1 where c1 is false;
 WARNING:  Truncated incorrect INTEGER value: 'abc'
 WARNING:  Truncated incorrect INTEGER value: ''
 WARNING:  Truncated incorrect INTEGER value: ''
- id | c1  
-----+-----
-  2 | abc
-  3 | 
-  4 |  
+ id |    c1    
+----+----------
+  2 | \x616263
+  3 | \x
+  4 | \x20
 (3 rows)
 
 DISCARD ALL;
@@ -1213,7 +1193,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1229,9 +1208,9 @@ INSERT INTO my_blob_t1 VALUES ('123', '123', 'abc', '', ' ', null);
 --------------------------------------------------------------------------------
 -- should get (123, 3, 123, , , NULL)
 select least(c1, c2), length(least(c1, c2)), least(c1, c3), least(c3, c4), least(c4, c5), least(c4, c6) from my_blob_t1;
- least | length | least | least | least | least 
--------+--------+-------+-------+-------+-------
- 123   |      3 | 123   |       |       | NULL
+  least   | length |  least   | least | least | least 
+----------+--------+----------+-------+-------+-------
+ \x313233 |      3 | \x313233 | \x    | \x    | NULL
 (1 row)
 
 DISCARD ALL;
@@ -1284,7 +1263,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1295,56 +1273,56 @@ INSERT INTO my_blob_t1 VALUES (' bc'), ('abc'), ('Abc'), ('abcd'), ('瀚高');
 --------------------------------------------------------------------------------
 -- should get {abc, abcd}
 select * from my_blob_t1 where c1 like 'a%';
-  c1  
-------
- abc
- abcd
+     c1     
+------------
+ \x616263
+ \x61626364
 (2 rows)
 
 -- should get (Abc)
 select * from my_blob_t1 where c1 like 'A%';
- c1  
------
- Abc
+    c1    
+----------
+ \x416263
 (1 row)
 
 -- should get { bc, abc, Abc}
 select * from my_blob_t1 where c1 like '%c';
- c1  
------
-  bc
- abc
- Abc
+    c1    
+----------
+ \x206263
+ \x616263
+ \x416263
 (3 rows)
 
 -- should get { bc, abc, Abc, abcd}
 select * from my_blob_t1 where c1 like '%b%';
-  c1  
-------
-  bc
- abc
- Abc
- abcd
+     c1     
+------------
+ \x206263
+ \x616263
+ \x416263
+ \x61626364
 (4 rows)
 
 -- should get { bc, abc, Abc, abcd, 瀚高}
 -- TODO[TD007]: can not display chinese
 select * from my_blob_t1 where c1 like '%';
-            c1            
---------------------------
-  bc
- abc
- Abc
- abcd
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x206263
+ \x616263
+ \x416263
+ \x61626364
+ \xe7809ae9ab98
 (5 rows)
 
 -- should get (瀚高)
 -- TODO[TD007]: can not display chinese
 select * from my_blob_t1 where c1 like '%瀚%';
-            c1            
---------------------------
- \347\200\232\351\253\230
+       c1       
+----------------
+ \xe7809ae9ab98
 (1 row)
 
 DISCARD ALL;
@@ -1396,7 +1374,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1445,7 +1422,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1481,7 +1457,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1576,7 +1551,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1587,26 +1561,26 @@ INSERT INTO my_blob_t1 VALUES ('123'), ('12345'), ('abc');
 --------------------------------------------------------------------------------
 -- should get {(12345), (abc)}
 SELECT * from my_blob_t1 WHERE c1 NOT BETWEEN '12' AND '1234';
-  c1   
--------
- 12345
- abc
+      c1      
+--------------
+ \x3132333435
+ \x616263
 (2 rows)
 
 -- should get (abc)
 SELECT * from my_blob_t1 WHERE c1 NOT BETWEEN '12' AND '12346';
- c1  
------
- abc
+    c1    
+----------
+ \x616263
 (1 row)
 
 -- should get {(123), (12345), (abc)}
 SELECT * from my_blob_t1 WHERE c1 NOT BETWEEN '124' AND '999';
-  c1   
--------
- 123
- 12345
- abc
+      c1      
+--------------
+ \x313233
+ \x3132333435
+ \x616263
 (3 rows)
 
 DISCARD ALL;
@@ -1615,7 +1589,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1641,23 +1614,23 @@ SELECT * FROM my_blob_t1 WHERE c1
 -- should get {Abc123, , }
 select * from my_blob_t1 where c1
   not in ('abc', 'abc123', '瀚高');
-   c1   
---------
- Abc123
- 
-  
+       c1       
+----------------
+ \x416263313233
+ \x
+ \x20
 (3 rows)
 
 -- TODO[TD007]: should get {abc, abc123, 瀚高, , }
 select * from my_blob_t1 where c1
   not in ('abc\0\0\0', 'Abc123', '\0\0\0\0\0\0', ' \0\0\0\0\0');
-            c1            
---------------------------
- abc
- abc123
- \347\200\232\351\253\230
- 
-  
+       c1       
+----------------
+ \x616263
+ \x616263313233
+ \xe7809ae9ab98
+ \x
+ \x20
 (5 rows)
 
 -- should get empty
@@ -1673,7 +1646,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1685,39 +1657,39 @@ INSERT INTO my_blob_t1 VALUES (' bc'), ('abc'), ('Abc'), ('abcd'), ('瀚高');
 -- should get { bc, Abc, 瀚高}
 -- TODO[TD007]: can not display chinese
 select * from my_blob_t1 where c1 not like 'a%';
-            c1            
---------------------------
-  bc
- Abc
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x206263
+ \x416263
+ \xe7809ae9ab98
 (3 rows)
 
 -- shoud get { bc, abc, abcd, 瀚高}
 -- TODO[TD007]: can not display chinese
 select * from my_blob_t1 where c1 not like 'A%';
-            c1            
---------------------------
-  bc
- abc
- abcd
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x206263
+ \x616263
+ \x61626364
+ \xe7809ae9ab98
 (4 rows)
 
 -- shoud get {abcd, 瀚高}
 -- TODO[TD007]: can not display chinese
 select * from my_blob_t1 where c1 not like '%c';
-            c1            
---------------------------
- abcd
- \347\200\232\351\253\230
+       c1       
+----------------
+ \x61626364
+ \xe7809ae9ab98
 (2 rows)
 
 -- soud get {瀚高}
 -- TODO[TD007]: can not display chinese
 select * from my_blob_t1 where c1 not like '%b%';
-            c1            
---------------------------
- \347\200\232\351\253\230
+       c1       
+----------------
+ \xe7809ae9ab98
 (1 row)
 
 -- shoud get empty
@@ -1728,12 +1700,12 @@ select * from my_blob_t1 where c1 not like '%';
 
 -- shoud get { bc, abc, Abc, abcd}
 select * from my_blob_t1 where c1 not like '%瀚%';
-  c1  
-------
-  bc
- abc
- Abc
- abcd
+     c1     
+------------
+ \x206263
+ \x616263
+ \x416263
+ \x61626364
 (4 rows)
 
 DISCARD ALL;
@@ -1742,7 +1714,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1787,7 +1758,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1821,9 +1791,9 @@ WARNING:  Truncated incorrect INTEGER value: ''
 
 -- should get (1, 1, 1, 1, 1, 0, 0, 0, NULL, NULL)
 select c1 || c1, c1 || c2, c1 || c3, c2 || c3, c3 || c4, c4 || c5, c5 || c6, c6 || c7, c4 || c8, c6 || c8 from my_blob_t1;
- ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------+----------+----------+----------+----------+----------+----------
- 123123   | 123123   | 1231234  | 1231234  | 1234abcd | abcdABCD | ABCD     |          | NULL     | NULL
+    ?column?    |    ?column?    |     ?column?     |     ?column?     |      ?column?      |      ?column?      |  ?column?  | ?column? | ?column? | ?column? 
+----------------+----------------+------------------+------------------+--------------------+--------------------+------------+----------+----------+----------
+ \x313233313233 | \x313233313233 | \x31323331323334 | \x31323331323334 | \x3132333461626364 | \x6162636441424344 | \x41424344 | \x20     | NULL     | NULL
 (1 row)
 
 DISCARD ALL;
@@ -1832,7 +1802,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
@@ -1939,7 +1908,6 @@ DISCARD ALL;
  */
 -- parameter settings
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_character_blob to on;
 \pset null 'NULL'
 -- clean environment
 DROP TABLE IF EXISTS my_blob_t1;
