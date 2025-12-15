@@ -60,15 +60,16 @@ PG_FUNCTION_INFO_V1(remove_rules);
 static bool
 check_conn_restrict_enable(bool *newval, void **extra, GucSource source)
 {
+	if (source < PGC_S_TEST)	/* Bug #6238 */
+		return true;
 	/* Only allow syssso role set the conn_restrict.enable. */
-	if(IsUnderPostmaster)
+	if(IsUnderPostmaster && IsTransactionState() && MyDatabaseId != InvalidOid)
 	{
-		if (!IS_SYSSSO(GetUserId()))
+		if (!IS_SYSSSO(GetUserId()) || 
+			(!IS_SYSDBA(GetUserId()) && !se_feature.mode)) /* Bug #6238 */
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					errmsg("permission denied"),
-					errdetail("member of syssso_role "
-								"can set the conn_restrict.enable")));
+					errmsg("permission denied")));
 	}
 	return true;
 }
@@ -84,8 +85,8 @@ void _PG_init(void)
 						 NULL,
 						 &enable_macandtime,
 						 false,
-						 PGC_SUSET,
-						 GUC_SUPERUSER_ONLY,
+						 PGC_USERSET,	/* Bug #6238 */
+						 0,
 						 &check_conn_restrict_enable,
 						 NULL,
 						 NULL);

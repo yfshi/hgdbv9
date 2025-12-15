@@ -52,7 +52,7 @@ alter_system_set_check(AlterSystemStmt *altersysstmt)
 		(pg_strncasecmp(name,"credcheck.",strlen("credcheck.")) == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug#z4191*/
 		(pg_strncasecmp(name,"se_feature.",strlen("se_feature.")) == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug#z1456 */
 		(pg_strncasecmp(name,"hg_sysmac.",strlen("hg_sysmac.")) == 0 && IS_SYSSSO(GetUserId())) ||
-		(pg_strcasecmp(name,"conn_restrict.enable") == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug #6238 */
+		(pg_strncasecmp(name,"conn_restrict.enable",strlen("conn_restrict.enable")) == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug #6238 */
 		(pg_strcasecmp(name,"count_idle_busy_time") == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug #6183 */
 		(pg_strcasecmp(name,"idle_session_timeout") == 0 && IS_SYSSSO(GetUserId())) ||
 		(pg_strcasecmp(name,"hg_session_locking_timeout") == 0 && IS_SYSSSO(GetUserId()))) /* Bug #6046*/
@@ -86,6 +86,7 @@ alter_system_set_check(AlterSystemStmt *altersysstmt)
 	if (((pg_strncasecmp(name,"audit.",strlen("audit.")) == 0) ||
 		(pg_strncasecmp(name,"credcheck.",strlen("credcheck.")) == 0 ) ||
 		(pg_strncasecmp(name,"hg_sysmac.",strlen("hg_sysmac.")) == 0 )||	
+		(pg_strncasecmp(name,"conn_restrict.enable",strlen("conn_restrict.enable")) == 0 )||	/* Bug #6238 */
 		(pg_strncasecmp(name,"se_feature.",strlen("se_feature.")) == 0 )) && IS_SYSDBA(GetUserId()))	
 	{
 		ereport(ERROR,
