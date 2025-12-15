@@ -420,18 +420,41 @@ AlterSynonym(AlterSynonymStmt *stmt)
 	Oid synoid;
 	Relation rel;
 	HeapTuple tup;
+	/* Begin - BUG#Z6742 */
+	Oid namespaceId;
+	HeapTuple tuple;
+	char *synname;
+	Form_pg_synonym synform;
+	/* End - BUG#Z6742 */
 	Datum	repl_val[Natts_pg_synonym];
 	bool	repl_null[Natts_pg_synonym];
 	bool	repl_repl[Natts_pg_synonym];
 	ObjectAddress address;
-	
+
+	/* Begin - BUG#Z6742 */
+	if (stmt->ispub)
+		namespaceId = PG_PUBLIC_NAMESPACE;
+	else
+		namespaceId = QualifiedNameGetCreationNamespace(stmt->synname, &synname);
+	tuple = SearchSysCache3(SYNONYMNAMENSP, PointerGetDatum(synname),
+							ObjectIdGetDatum(namespaceId), BoolGetDatum(stmt->ispub));
+	if (!HeapTupleIsValid(tuple))
+	{
+		if (stmt->ispub)
+			elog(ERROR, "insufficient privileges");
+		else
+			elog(ERROR, "table or view does not exist");
+	}
+	/* End - BUG#Z6742 */
+
 	rel = table_open(SynonymRelationId, RowExclusiveLock);
-	synoid = LookupSynonymByNames(stmt->synname, false);
+	/* Begin - BUG#Z6742 */
+	synform = (Form_pg_synonym) GETSTRUCT(tuple);
+	synoid = synform->oid;
+	/* End - BUG#Z6742 */
 	tup = SearchSysCacheCopy1(SYNONYMOID, ObjectIdGetDatum(synoid));
 	if (!HeapTupleIsValid(tup)) /* should not happen */
 		elog(ERROR, "cache lookup failed for synonym %u", synoid);
-	
-	/* TODO: synonym owner check */
 	
 	memset(repl_repl, false, sizeof(repl_repl));
 	if (stmt->compile_flag)
@@ -460,6 +483,7 @@ AlterSynonym(AlterSynonymStmt *stmt)
 	ObjectAddressSet(address, SynonymRelationId, synoid);
 
 	heap_freetuple(tup);
+	ReleaseSysCache(tuple);	/* BUG#Z6742 */
 	table_close(rel, NoLock);
 
 	return address;
