@@ -2980,3 +2980,23 @@ SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
 
 SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
 drop TABLE tb_test;
+
+-- bug#6779
+select convert('23:59:59', time), convert('00:00:00', time);
+select cast('23:59:59' as  time), cast('00:00:00' as time);
+
+select cast('1-1-1 00:00:00' as  datetime(3));
+select cast('1-1-1 00:00:00' as  datetime);
+select cast('00-00-00 00:00:00' as  datetime(3));
+select cast('00-00-00 00:00:00' as  datetime);
+select cast('00:00:00' as  time(3));
+select cast('00:00:00' as  time);
+
+-- bug#6777
+SELECT TIME_TO_SEC('abc19:30:10'::time);
+SELECT TIME_TO_SEC('%19:30:10'::time);
+
+SELECT TIME_TO_SEC(cast('abc19:30:10' as time));
+SELECT TIME_TO_SEC(cast('%19:30:10' as time));
+SELECT TIME_TO_SEC(cast('abc19:30:10' as time(3)));
+SELECT TIME_TO_SEC(cast('%19:30:10' as time(3)));

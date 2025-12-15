@@ -13891,3 +13891,113 @@ SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
 (4 rows)
 
 drop TABLE tb_test;
+-- bug#6779
+select convert('23:59:59', time), convert('00:00:00', time);
+ mystime  | mystime  
+----------+----------
+ 23:59:59 | 00:00:00
+(1 row)
+
+select cast('23:59:59' as  time), cast('00:00:00' as time);
+ mystime  | mystime  
+----------+----------
+ 23:59:59 | 00:00:00
+(1 row)
+
+select cast('1-1-1 00:00:00' as  datetime(3));
+      mysdatetimes       
+-------------------------
+ 0001-01-01 00:00:00.000
+(1 row)
+
+select cast('1-1-1 00:00:00' as  datetime);
+     mysdatetime     
+---------------------
+ 0001-01-01 00:00:00
+(1 row)
+
+select cast('00-00-00 00:00:00' as  datetime(3));
+WARNING:  Incorrect datetime value: '00-00-00 00:00:00'
+LINE 1: select cast('00-00-00 00:00:00' as  datetime(3));
+                    ^
+ mysdatetimes 
+--------------
+ 
+(1 row)
+
+select cast('00-00-00 00:00:00' as  datetime);
+WARNING:  Incorrect datetime value: '00-00-00 00:00:00'
+LINE 1: select cast('00-00-00 00:00:00' as  datetime);
+                    ^
+ mysdatetime 
+-------------
+ 
+(1 row)
+
+select cast('00:00:00' as  time(3));
+   mystimes   
+--------------
+ 00:00:00.000
+(1 row)
+
+select cast('00:00:00' as  time);
+ mystime  
+----------
+ 00:00:00
+(1 row)
+
+-- bug#6777
+SELECT TIME_TO_SEC('abc19:30:10'::time);
+WARNING:  Truncated incorrect time value: 'abc19:30:10'
+LINE 1: SELECT TIME_TO_SEC('abc19:30:10'::time);
+                           ^
+ TIME_TO_SEC 
+-------------
+           0
+(1 row)
+
+SELECT TIME_TO_SEC('%19:30:10'::time);
+WARNING:  Truncated incorrect time value: '%19:30:10'
+LINE 1: SELECT TIME_TO_SEC('%19:30:10'::time);
+                           ^
+ TIME_TO_SEC 
+-------------
+           0
+(1 row)
+
+SELECT TIME_TO_SEC(cast('abc19:30:10' as time));
+WARNING:  Truncated incorrect time value: 'abc19:30:10'
+LINE 1: SELECT TIME_TO_SEC(cast('abc19:30:10' as time));
+                                ^
+ TIME_TO_SEC 
+-------------
+           0
+(1 row)
+
+SELECT TIME_TO_SEC(cast('%19:30:10' as time));
+WARNING:  Truncated incorrect time value: '%19:30:10'
+LINE 1: SELECT TIME_TO_SEC(cast('%19:30:10' as time));
+                                ^
+ TIME_TO_SEC 
+-------------
+           0
+(1 row)
+
+SELECT TIME_TO_SEC(cast('abc19:30:10' as time(3)));
+WARNING:  Truncated incorrect time value: 'abc19:30:10'
+LINE 1: SELECT TIME_TO_SEC(cast('abc19:30:10' as time(3)));
+                                ^
+ TIME_TO_SEC 
+-------------
+           0
+(1 row)
+
+SELECT TIME_TO_SEC(cast('%19:30:10' as time(3)));
+WARNING:  Truncated incorrect time value: '%19:30:10'
+LINE 1: SELECT TIME_TO_SEC(cast('%19:30:10' as time(3)));
+                                ^
+ TIME_TO_SEC 
+-------------
+           0
+(1 row)
+
