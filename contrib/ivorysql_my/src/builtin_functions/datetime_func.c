@@ -796,25 +796,46 @@ str_to_date(PG_FUNCTION_ARGS)
 										Int32GetDatum(typmod));
 	if (result)
 	{
-		PG_RETURN_DATUM(result);
-	}
-	else
-	{
-		datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
-		datetemp = datetemp * 1000000;
-		time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-		datetime = datetemp + time;
+		TimeADT dtcheck = 0;
+		int64	part1, part2;
+		int		year, mon, day;
+		DateADT		date;
+		
+		dtcheck = DatumGetInt64(DirectFunctionCall1(numeric_int8, result));
 
-	#ifdef WIN32
-		snprintf(buf, MAXDATELEN, "%lld.%06d", datetime, fsec);
-	#else
-		snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
-	#endif
-		PG_RETURN_DATUM(DirectFunctionCall3(numeric_in,
-											CStringGetDatum(buf),
-											ObjectIdGetDatum(InvalidOid),
-											Int32GetDatum(typmod)));
+		date = dtcheck/1000000;
+		part1 = (date / 10000);
+		part2 = (date - part1 * 10000);
+
+		year = part1;
+		mon = part2 / 100;
+		day = part2 % 100;
+
+		/*
+		 * if param not 0000-00-00 and result not 1000-01-01,
+		 * can return by mysdatetimes.
+		 */
+		if (tm->tm_year || tm->tm_mon || tm->tm_mday
+			|| year != 1000 || mon != 1 || day != 1)
+		{
+			PG_RETURN_DATUM(result);
+		}								
 	}
+
+	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
+	datetemp = datetemp * 1000000;
+	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+	datetime = datetemp + time;
+
+#ifdef WIN32
+	snprintf(buf, MAXDATELEN, "%lld.%06d", datetime, fsec);
+#else
+	snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
+#endif
+	PG_RETURN_DATUM(DirectFunctionCall3(numeric_in,
+										CStringGetDatum(buf),
+										ObjectIdGetDatum(InvalidOid),
+										Int32GetDatum((((14 + typmod) << 16) | typmod) + VARHDRSZ)));
 }
 
 static Datum
