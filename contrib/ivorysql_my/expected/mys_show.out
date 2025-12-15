@@ -2042,12 +2042,12 @@ value VARCHAR(50),
 INDEX idx_value (value) COMMENT 'This is a test index'
 );
 SHOW CREATE TABLE test_comment1;
-     Table     |                              Create Table                              
----------------+------------------------------------------------------------------------
- test_comment1 | CREATE TABLE "test_comment1" (                                        +
-               |     "id" integer,                                                     +
-               |     "value" character varying(50),                                    +
-               |     KEY "idx_value" ("value") USING BTREE COMMENT This is a test index+
+     Table     |                               Create Table                               
+---------------+--------------------------------------------------------------------------
+ test_comment1 | CREATE TABLE "test_comment1" (                                          +
+               |     "id" integer,                                                       +
+               |     "value" character varying(50),                                      +
+               |     KEY "idx_value" ("value") USING BTREE COMMENT 'This is a test index'+
                | )
 (1 row)
 

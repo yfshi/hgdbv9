@@ -234,6 +234,7 @@ SELECT
 	CASE
 		WHEN pk.conname IS NOT NULL THEN 'PRI'
 		WHEN uq.conname IS NOT NULL THEN 'UNI'
+		WHEN idx.indexrelid IS NOT NULL AND idx.indisunique THEN 'UNI' /* BUG#Z6767 */
 		WHEN idx.indexrelid IS NOT NULL THEN 'MUL'
 		ELSE NULL
 	END::varchar(3) AS "COLUMN_KEY",
@@ -282,7 +283,7 @@ LEFT JOIN (
 ) uq ON uq.conrelid=c.oid AND uq.colnum=a.attnum
 -- MUL index info
 LEFT JOIN LATERAL (
-	SELECT i.indexrelid
+	SELECT i.indexrelid, i.indisunique /* BUG#Z6767 */
 	FROM pg_index i
 	WHERE i.indrelid=c.oid AND a.attnum = any(i.indkey) /* BUG#Z6281*/
 	LIMIT 1

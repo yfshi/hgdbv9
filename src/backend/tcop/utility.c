@@ -4416,6 +4416,7 @@ mys_is_col_all(Oid relid, IndexStmt *stmt)
 				/* Begin - BUG#Z6657 */
 				Oid typid = InvalidOid;
 				HeapTuple	 typetuple;
+				bool flag = false;
 				/* End - BUG#Z6657 */
 
 				if (nodeTag(col_name) != T_String || list_length(args) != 1)
@@ -4452,18 +4453,20 @@ mys_is_col_all(Oid relid, IndexStmt *stmt)
 						((Form_pg_type) GETSTRUCT(typetuple))->typnamespace == PG_IVYMY_NAMESPACE)
 					{
 						collength = TINYTEXT_LIMIT;
+						flag = true;
 					}
-					else if (((typid == MEDIUMTEXTOID || typid == LONGTEXTOID) &&
+					else if (((typid == MEDIUMTEXTOID || typid == LONGTEXTOID || typid == MYBLOBOID) && /* BUG#Z6767 */
 						((Form_pg_type) GETSTRUCT(typetuple))->typnamespace == PG_IVYMY_NAMESPACE) ||
 						(typid == TEXTOID &&
 						((Form_pg_type) GETSTRUCT(typetuple))->typnamespace == PG_CATALOG_NAMESPACE))
 					{
 						collength = TEXT_LIMIT;
+						flag = true;
 					}
 					ReleaseSysCache(typetuple);
 
 					aconst = (A_Const *)last_arg;
-					if (aconst->val.type == T_Integer)
+					if (flag && aconst->val.type == T_Integer) /* BUG#Z6767 */
 					{
 						if (collength > 0 && aconst->val.val.ival*3 > collength)
 						{
@@ -4480,9 +4483,20 @@ mys_is_col_all(Oid relid, IndexStmt *stmt)
 					}
 					else
 					{
-						ereport(ERROR,
-								errcode(ERRCODE_SYNTAX_ERROR),
-								errmsg("Key part '%s' length must integer", ((Value *)col_name)->val.str));
+						/* Begin - BUG#Z6767 */
+						if (!flag)
+						{
+							ereport(ERROR,
+									errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("the used key part isn't a string or the used length is longer than the key part"));
+						}
+						else
+						/* End - BUG#Z6767 */
+						{
+							ereport(ERROR,
+									errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("Key part '%s' length must integer", ((Value *)col_name)->val.str));
+						}
 					}
 				}
 				else

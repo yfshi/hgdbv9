@@ -73,6 +73,9 @@ create index t11_8 on t11(str1(11)); --error
 create index t11_10 on t11(str1('10')); --error
 create index t11_9 on t11(str1(10));
 /*End - BUG#Z6293 */
+
+create index t11_11 on t11(id(1)); --error
+
 \d+ t11
 drop table t11;
 

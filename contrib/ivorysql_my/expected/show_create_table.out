@@ -4205,20 +4205,27 @@ CREATE TABLE IF NOT EXISTS test_table ( id INT, col1 VARCHAR(50), col2 INT, col3
 INSERT INTO test_table (id, col1, col2, col3) VALUES (1, 'data1', 100, 'content1');
 INSERT INTO test_table (id, col1, col2, col3) VALUES (2, 'data2', 200, 'content2');
 INSERT INTO test_table (id, col1, col2, col3) VALUES (3, 'data3', 300, 'content3');
+CREATE INDEX idx_test_i ON test_table (col1);
 CREATE unique INDEX idx_test_u ON test_table (col2);
 SELECT * from mys_information_schema.columns where TABLE_NAME='test_table';
  TABLE_CATALOG | TABLE_SCHEMA | TABLE_NAME | COLUMN_NAME | ORDINAL_POSITION | COLUMN_DEFAULT | IS_NULLABLE |     DATA_TYPE     | CHARACTER_MAXIMUM_LENGTH | CHARACTER_OCTET_LENGTH | NUMERIC_PRECISION | NUMERIC_SCALE | DATETIME_PRECISION | CHARACTER_SET_NAME | COLLATION_NAME |      COLUMN_TYPE       | COLUMN_KEY | EXTRA |           PRIVILEGES            | COLUMN_COMMENT | GENERATION_EXPRESSION 
 ---------------+--------------+------------+-------------+------------------+----------------+-------------+-------------------+--------------------------+------------------------+-------------------+---------------+--------------------+--------------------+----------------+------------------------+------------+-------+---------------------------------+----------------+-----------------------
  def           | public       | test_table | id          | 1                |                | YES         | integer           |                          |                        | 32                | 0             |                    | UTF8               |                | integer                |            |       | INSERT,REFERENCES,SELECT,UPDATE |                | 
- def           | public       | test_table | col1        | 2                |                | YES         | character varying | 50                       | 200                    |                   |               |                    | UTF8               |                | character varying(50)  |            |       | INSERT,REFERENCES,SELECT,UPDATE |                | 
- def           | public       | test_table | col2        | 3                |                | YES         | integer           |                          |                        | 32                | 0             |                    | UTF8               |                | integer                | MUL        |       | INSERT,REFERENCES,SELECT,UPDATE |                | 
+ def           | public       | test_table | col1        | 2                |                | YES         | character varying | 50                       | 200                    |                   |               |                    | UTF8               |                | character varying(50)  | MUL        |       | INSERT,REFERENCES,SELECT,UPDATE |                | 
+ def           | public       | test_table | col2        | 3                |                | YES         | integer           |                          |                        | 32                | 0             |                    | UTF8               |                | integer                | UNI        |       | INSERT,REFERENCES,SELECT,UPDATE |                | 
  def           | public       | test_table | col3        | 4                |                | YES         | character varying | 100                      | 400                    |                   |               |                    | UTF8               |                | character varying(100) |            |       | INSERT,REFERENCES,SELECT,UPDATE |                | 
 (4 rows)
+
+DESCRIBE test_table col1;
+ Field |         Type          | Null | Key | Default | Extra 
+-------+-----------------------+------+-----+---------+-------
+ col1  | character varying(50) | YES  | MUL |         | 
+(1 row)
 
 DESCRIBE test_table col2;
  Field |  Type   | Null | Key | Default | Extra 
 -------+---------+------+-----+---------+-------
- col2  | integer | YES  | MUL |         | 
+ col2  | integer | YES  | UNI |         | 
 (1 row)
 
 DROP TABLE test_table;
@@ -4258,79 +4265,79 @@ CREATE UNIQUE INDEX idx_test7 ON test_table(col3(10), col2, col1(20)) COMMENT '1
 set sql_quote_show_create= on;
 set sql_mode='';
 SHOW CREATE TABLE test_table;
-   Table    |                                                     Create Table                                                      
-------------+-----------------------------------------------------------------------------------------------------------------------
- test_table | CREATE TABLE `test_table` (                                                                                          +
-            |     `id1` integer NOT NULL,                                                                                          +
-            |     `id2` integer,                                                                                                   +
-            |     `col1` character varying(50),                                                                                    +
-            |     `col2` integer,                                                                                                  +
-            |     `col3` character varying(100),                                                                                   +
-            |     CONSTRAINT `test_table_pkey` PRIMARY KEY (id1),                                                                  +
-            |     CONSTRAINT `test_table_id2_key` UNIQUE (id2),                                                                    +
-            |     KEY `idx_test1` (`col1`) USING BTREE,                                                                            +
-            |     KEY `idx_test2` ("left"(col1::text, 10)) USING BTREE,                                                            +
-            |     KEY `idx_test4` (`col1`) USING HASH,                                                                             +
-            |     KEY `idx_test6` (`col1`) USING BTREE COMMENT 123abc测试索引,                                                     +
-            |     UNIQUE KEY `idx_test7` ("left"(col3::text, 10), col2, "left"(col1::text, 20)) USING BTREE COMMENT 123abc测试索引,+
-            |     KEY `idx_test_composite1` (`col1`,`col2`,`col3`) USING BTREE,                                                    +
-            |     KEY `idx_test_composite2` ("left"(col1::text, 10), "left"(col3::text, 20)) USING BTREE,                          +
-            |     KEY `idx_test_composite4` (`col1`,`col2`) USING BTREE,                                                           +
-            |     KEY `idx_test_option4` (`col1`) USING HASH,                                                                      +
-            |     UNIQUE KEY `idx_unique_col3` (`col1`) USING BTREE,                                                               +
-            |     UNIQUE KEY `idx_unique_composite_col3` (`col1`,`col2`) USING BTREE                                               +
+   Table    |                                                      Create Table                                                       
+------------+-------------------------------------------------------------------------------------------------------------------------
+ test_table | CREATE TABLE `test_table` (                                                                                            +
+            |     `id1` integer NOT NULL,                                                                                            +
+            |     `id2` integer,                                                                                                     +
+            |     `col1` character varying(50),                                                                                      +
+            |     `col2` integer,                                                                                                    +
+            |     `col3` character varying(100),                                                                                     +
+            |     CONSTRAINT `test_table_pkey` PRIMARY KEY (id1),                                                                    +
+            |     CONSTRAINT `test_table_id2_key` UNIQUE (id2),                                                                      +
+            |     KEY `idx_test1` (`col1`) USING BTREE,                                                                              +
+            |     KEY `idx_test2` ("left"(col1::text, 10)) USING BTREE,                                                              +
+            |     KEY `idx_test4` (`col1`) USING HASH,                                                                               +
+            |     KEY `idx_test6` (`col1`) USING BTREE COMMENT '123abc测试索引',                                                     +
+            |     UNIQUE KEY `idx_test7` ("left"(col3::text, 10), col2, "left"(col1::text, 20)) USING BTREE COMMENT '123abc测试索引',+
+            |     KEY `idx_test_composite1` (`col1`,`col2`,`col3`) USING BTREE,                                                      +
+            |     KEY `idx_test_composite2` ("left"(col1::text, 10), "left"(col3::text, 20)) USING BTREE,                            +
+            |     KEY `idx_test_composite4` (`col1`,`col2`) USING BTREE,                                                             +
+            |     KEY `idx_test_option4` (`col1`) USING HASH,                                                                        +
+            |     UNIQUE KEY `idx_unique_col3` (`col1`) USING BTREE,                                                                 +
+            |     UNIQUE KEY `idx_unique_composite_col3` (`col1`,`col2`) USING BTREE                                                 +
             | )
 (1 row)
 
 set sql_mode='ANSI_QUOTES';
 SHOW CREATE TABLE test_table;
-   Table    |                                                     Create Table                                                      
-------------+-----------------------------------------------------------------------------------------------------------------------
- test_table | CREATE TABLE "test_table" (                                                                                          +
-            |     "id1" integer NOT NULL,                                                                                          +
-            |     "id2" integer,                                                                                                   +
-            |     "col1" character varying(50),                                                                                    +
-            |     "col2" integer,                                                                                                  +
-            |     "col3" character varying(100),                                                                                   +
-            |     CONSTRAINT "test_table_pkey" PRIMARY KEY (id1),                                                                  +
-            |     CONSTRAINT "test_table_id2_key" UNIQUE (id2),                                                                    +
-            |     KEY "idx_test1" ("col1") USING BTREE,                                                                            +
-            |     KEY "idx_test2" ("left"(col1::text, 10)) USING BTREE,                                                            +
-            |     KEY "idx_test4" ("col1") USING HASH,                                                                             +
-            |     KEY "idx_test6" ("col1") USING BTREE COMMENT 123abc测试索引,                                                     +
-            |     UNIQUE KEY "idx_test7" ("left"(col3::text, 10), col2, "left"(col1::text, 20)) USING BTREE COMMENT 123abc测试索引,+
-            |     KEY "idx_test_composite1" ("col1","col2","col3") USING BTREE,                                                    +
-            |     KEY "idx_test_composite2" ("left"(col1::text, 10), "left"(col3::text, 20)) USING BTREE,                          +
-            |     KEY "idx_test_composite4" ("col1","col2") USING BTREE,                                                           +
-            |     KEY "idx_test_option4" ("col1") USING HASH,                                                                      +
-            |     UNIQUE KEY "idx_unique_col3" ("col1") USING BTREE,                                                               +
-            |     UNIQUE KEY "idx_unique_composite_col3" ("col1","col2") USING BTREE                                               +
+   Table    |                                                      Create Table                                                       
+------------+-------------------------------------------------------------------------------------------------------------------------
+ test_table | CREATE TABLE "test_table" (                                                                                            +
+            |     "id1" integer NOT NULL,                                                                                            +
+            |     "id2" integer,                                                                                                     +
+            |     "col1" character varying(50),                                                                                      +
+            |     "col2" integer,                                                                                                    +
+            |     "col3" character varying(100),                                                                                     +
+            |     CONSTRAINT "test_table_pkey" PRIMARY KEY (id1),                                                                    +
+            |     CONSTRAINT "test_table_id2_key" UNIQUE (id2),                                                                      +
+            |     KEY "idx_test1" ("col1") USING BTREE,                                                                              +
+            |     KEY "idx_test2" ("left"(col1::text, 10)) USING BTREE,                                                              +
+            |     KEY "idx_test4" ("col1") USING HASH,                                                                               +
+            |     KEY "idx_test6" ("col1") USING BTREE COMMENT '123abc测试索引',                                                     +
+            |     UNIQUE KEY "idx_test7" ("left"(col3::text, 10), col2, "left"(col1::text, 20)) USING BTREE COMMENT '123abc测试索引',+
+            |     KEY "idx_test_composite1" ("col1","col2","col3") USING BTREE,                                                      +
+            |     KEY "idx_test_composite2" ("left"(col1::text, 10), "left"(col3::text, 20)) USING BTREE,                            +
+            |     KEY "idx_test_composite4" ("col1","col2") USING BTREE,                                                             +
+            |     KEY "idx_test_option4" ("col1") USING HASH,                                                                        +
+            |     UNIQUE KEY "idx_unique_col3" ("col1") USING BTREE,                                                                 +
+            |     UNIQUE KEY "idx_unique_composite_col3" ("col1","col2") USING BTREE                                                 +
             | )
 (1 row)
 
 set sql_quote_show_create= false;
 SHOW CREATE TABLE test_table;
-   Table    |                                                    Create Table                                                     
-------------+---------------------------------------------------------------------------------------------------------------------
- test_table | CREATE TABLE test_table (                                                                                          +
-            |     id1 integer NOT NULL,                                                                                          +
-            |     id2 integer,                                                                                                   +
-            |     col1 character varying(50),                                                                                    +
-            |     col2 integer,                                                                                                  +
-            |     col3 character varying(100),                                                                                   +
-            |     CONSTRAINT test_table_pkey PRIMARY KEY (id1),                                                                  +
-            |     CONSTRAINT test_table_id2_key UNIQUE (id2),                                                                    +
-            |     KEY idx_test1 (col1) USING BTREE,                                                                              +
-            |     KEY idx_test2 ("left"(col1::text, 10)) USING BTREE,                                                            +
-            |     KEY idx_test4 (col1) USING HASH,                                                                               +
-            |     KEY idx_test6 (col1) USING BTREE COMMENT 123abc测试索引,                                                       +
-            |     UNIQUE KEY idx_test7 ("left"(col3::text, 10), col2, "left"(col1::text, 20)) USING BTREE COMMENT 123abc测试索引,+
-            |     KEY idx_test_composite1 (col1, col2, col3) USING BTREE,                                                        +
-            |     KEY idx_test_composite2 ("left"(col1::text, 10), "left"(col3::text, 20)) USING BTREE,                          +
-            |     KEY idx_test_composite4 (col1, col2) USING BTREE,                                                              +
-            |     KEY idx_test_option4 (col1) USING HASH,                                                                        +
-            |     UNIQUE KEY idx_unique_col3 (col1) USING BTREE,                                                                 +
-            |     UNIQUE KEY idx_unique_composite_col3 (col1, col2) USING BTREE                                                  +
+   Table    |                                                     Create Table                                                      
+------------+-----------------------------------------------------------------------------------------------------------------------
+ test_table | CREATE TABLE test_table (                                                                                            +
+            |     id1 integer NOT NULL,                                                                                            +
+            |     id2 integer,                                                                                                     +
+            |     col1 character varying(50),                                                                                      +
+            |     col2 integer,                                                                                                    +
+            |     col3 character varying(100),                                                                                     +
+            |     CONSTRAINT test_table_pkey PRIMARY KEY (id1),                                                                    +
+            |     CONSTRAINT test_table_id2_key UNIQUE (id2),                                                                      +
+            |     KEY idx_test1 (col1) USING BTREE,                                                                                +
+            |     KEY idx_test2 ("left"(col1::text, 10)) USING BTREE,                                                              +
+            |     KEY idx_test4 (col1) USING HASH,                                                                                 +
+            |     KEY idx_test6 (col1) USING BTREE COMMENT '123abc测试索引',                                                       +
+            |     UNIQUE KEY idx_test7 ("left"(col3::text, 10), col2, "left"(col1::text, 20)) USING BTREE COMMENT '123abc测试索引',+
+            |     KEY idx_test_composite1 (col1, col2, col3) USING BTREE,                                                          +
+            |     KEY idx_test_composite2 ("left"(col1::text, 10), "left"(col3::text, 20)) USING BTREE,                            +
+            |     KEY idx_test_composite4 (col1, col2) USING BTREE,                                                                +
+            |     KEY idx_test_option4 (col1) USING HASH,                                                                          +
+            |     UNIQUE KEY idx_unique_col3 (col1) USING BTREE,                                                                   +
+            |     UNIQUE KEY idx_unique_composite_col3 (col1, col2) USING BTREE                                                    +
             | )
 (1 row)
 
