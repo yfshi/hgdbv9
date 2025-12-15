@@ -5613,7 +5613,11 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 		case AT_DisableTrig:	/* DISABLE TRIGGER variants */
 		case AT_DisableTrigAll:
 		case AT_DisableTrigUser:
-			ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE);
+			/* Begin - BUG#Z6789 */
+			if (ORA_MODE == compatible_mode)
+				ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE | ATT_VIEW);
+			else /* End - BUG#Z6789 */
+				ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE);
 			/* Set up recursion for phase 2; no other prep needed */
 			if (recurse)
 				cmd->recurse = true;
