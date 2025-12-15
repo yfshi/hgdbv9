@@ -21,6 +21,8 @@ CREATE FUNCTION is_superuser(oid)
 RETURNS boolean
 AS 'MODULE_PATHNAME', 'is_superuser'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+GRANT EXECUTE ON FUNCTION is_superuser TO PUBLIC;
 /* End - bug#z6385 */
 
 CREATE FUNCTION check_se_param_change()

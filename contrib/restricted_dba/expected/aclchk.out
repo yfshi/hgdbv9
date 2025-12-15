@@ -204,6 +204,7 @@ create user dba_u5 superuser createdb createrole;
 grant sysdba_role to dba_u1,dba_u2,dba_u3,dba_u4,dba_u5;
 -- \du ROLE
 /* Begin - bug#z6385 */
+\c testdb sysdba_u1
 create user du_u1 with password '1234' superuser;
 set role syssso_u1;
 set se_feature.mode to on;
@@ -221,6 +222,38 @@ set se_feature.mode to off;
  du_u1     | Admin      | {}
 
 reset role;
+create database testdb1;
+alter database testdb1 set se_feature.mode to on;
+\c testdb1 syssso_u1
+alter database testdb1 set se_feature.restricted_dba to on;
+\du du_u1
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u1     |            | {}
+
+\c testdb1 sysdba_u1
+\du du_u1
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u1     |            | {}
+
+\c testdb1 syssao_u1
+\du du_u1
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u1     |            | {}
+
+\c testdb1 du_u1
+\du du_u1
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u1     |            | {}
+
+\c testdb sysdba_u1
 drop user du_u1;
 /* End - bug#z6385 */
 -- FOR TABLE
