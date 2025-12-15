@@ -230,7 +230,9 @@ typedef enum AuditParameter
         AUDIT_MAIL,
         AUDIT_PRIVIMODE,
         AUDIT_SYSTEMOPERS,
+#ifdef USE_SQLITE
         AUDIT_SQLITEDBPATH,
+#endif
         AUDIT_TRACE_SETTINGS,
         AUDIT_LOGPOLICY,
         NUM_AUDIT_PARAMS
@@ -895,7 +897,7 @@ static void audit_define_GUC(void)
 						 AUDIT_OFF,
 						 audit_turn_options,
 						 PGC_POSTMASTER,
-						 GUC_SUPERUSER_ONLY,
+						 0,
 						 NULL,
 						 NULL,
 						 NULL);
@@ -907,7 +909,7 @@ static void audit_define_GUC(void)
 							 RETEN_SPACE,
 							 audit_retion_options,
 							 PGC_POSTMASTER,
-							 GUC_SUPERUSER_ONLY,
+							 0,
 							 NULL,
 							 NULL,
 							 NULL);
@@ -920,7 +922,7 @@ static void audit_define_GUC(void)
 				 180,
 				 1, INT_MAX,
 				 PGC_POSTMASTER,
-				 GUC_SUPERUSER_ONLY,
+				 0,
 				 NULL,
 				 NULL,
 				 NULL);
@@ -932,7 +934,7 @@ static void audit_define_GUC(void)
 				 1,
 				 1, INT_MAX,
 				 PGC_POSTMASTER,
-				 GUC_SUPERUSER_ONLY,
+				 0,
 				 NULL,
 				 NULL,
 				 NULL);
@@ -944,7 +946,7 @@ static void audit_define_GUC(void)
 					 10240,
 					 1, INT_MAX,
 					 PGC_POSTMASTER,
-					 GUC_UNIT_MB | GUC_SUPERUSER_ONLY,
+					 GUC_UNIT_MB,
 					 NULL,
 					 NULL,
 					 NULL);
@@ -955,7 +957,7 @@ static void audit_define_GUC(void)
 					  &audit_space_alarm,
 					  "0.8",
 					  PGC_POSTMASTER,
-					  GUC_SUPERUSER_ONLY,
+					  0,
 					  audit_real_check_hook,
 					  NULL,
 					  NULL);
@@ -966,7 +968,7 @@ static void audit_define_GUC(void)
 					 &audit_GUC.audit_archdir,
 					 "",
 					 PGC_POSTMASTER,
-					 GUC_SUPERUSER_ONLY,
+					 0,
 					 audit_logdir_check_hook,
 					 NULL,
 					 NULL);
@@ -977,7 +979,7 @@ static void audit_define_GUC(void)
 					 &audit_GUC.remote_archdir,
 					 "",
 					 PGC_POSTMASTER,
-					 GUC_SUPERUSER_ONLY,
+					 0,
 					 NULL,
 					 NULL,
 					 NULL);
@@ -989,7 +991,7 @@ static void audit_define_GUC(void)
 						 AUDIT_OFF,
 						 audit_turn_options,
 						 PGC_POSTMASTER,
-						 GUC_SUPERUSER_ONLY,
+						 0,
 						 NULL,
 						 NULL,
 						 NULL);
@@ -1000,7 +1002,7 @@ static void audit_define_GUC(void)
 					 &audit_GUC.audit_mail,
 					 "",
 					 PGC_POSTMASTER,
-					 GUC_SUPERUSER_ONLY,
+					 0,
 					 NULL,
 					 NULL,
 					 NULL);
@@ -1012,7 +1014,7 @@ static void audit_define_GUC(void)
 						  1,
 						  1, 2,
 						  PGC_POSTMASTER,
-						  GUC_SUPERUSER_ONLY,
+						  0,
 						  NULL,
 						  NULL,
 						  NULL);
@@ -1024,7 +1026,7 @@ static void audit_define_GUC(void)
 							  AUDIT_OPER_OFF,
 							  audit_opers_options,
 							  PGC_POSTMASTER,
-							  GUC_SUPERUSER_ONLY,
+							  0,
 							  NULL,
 							  NULL,
 							  NULL);
@@ -1036,7 +1038,7 @@ static void audit_define_GUC(void)
 					 &audit_GUC.audit_sqlitedbpath,
 					 "pgaudit/sqlite/sqlite.db",
 					 PGC_POSTMASTER,
-					 GUC_SUPERUSER_ONLY,
+					 0,
 					 audit_sqlite_check_hook,
 					 audit_sqlite_assign_hook,
 					 NULL);
@@ -1054,7 +1056,7 @@ static void audit_define_GUC(void)
 						 AUDIT_ON,
 						 audit_turn_options,
 						 PGC_POSTMASTER,
-						 GUC_SUPERUSER_ONLY,
+						 0,
 						 NULL,
 						 NULL,
 						 NULL);
@@ -1066,7 +1068,7 @@ static void audit_define_GUC(void)
 						  AUDIT_PAUSE,
 						  audit_policy_options,
 						  PGC_POSTMASTER,
-						  GUC_SUPERUSER_ONLY,
+						  0,
 						  NULL,
 						  NULL,
 						  NULL);
