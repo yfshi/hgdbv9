@@ -632,12 +632,10 @@ CheckMacInRules(char* macaddress, char* rulemac, char* outrulemac)
 	bool	include_flag = false;
 	bool	exclude_flag = false;
 	match_macflag result_flag = rulemac_notmatch;
-	/* Bug #6268*/
-	if (!macaddress || *macaddress == '\0' ||
-		(!strcmp(rulemac, "*") && !strcmp(outrulemac, "*")))
+	if (!macaddress || *macaddress == '\0')
 		return rulemac_notmatch;
 
-	include_flag = !strcmp(rulemac, "*") || CheckMacInRuleslist(macaddress, rulemac);
+	include_flag = strcmp(rulemac, "*") && CheckMacInRuleslist(macaddress, rulemac);
 	exclude_flag = strcmp(outrulemac, "*") && CheckMacInRuleslist(macaddress, outrulemac);
 
 	if (include_flag) {
@@ -790,12 +788,9 @@ CheckTimeInRules(Timestamp logintime, char* allow_time, char* outallow_time)
 	bool			include_flag = false;
 	bool			exclude_flag = false;
 	match_timeflag  result_flag = ruletime_notmatch;
-	/*Bug #6268*/
-	if (!strcmp(allow_time, "*") && !strcmp(outallow_time, "*"))
-		return ruletime_notmatch;
 	
 	/* First,check whether the login time is within the restricted time period. */
-	include_flag = !strcmp(allow_time, "*") || CheckTimeInRuleslist(logintime, allow_time);
+	include_flag = strcmp(allow_time, "*") && CheckTimeInRuleslist(logintime, allow_time);
 	/* Second,check wherther the login time is in an unrestricted time period. */
 	exclude_flag = strcmp(outallow_time, "*") && CheckTimeInRuleslist(logintime, outallow_time);
 	if(include_flag) {
@@ -881,11 +876,18 @@ LookupRerstrictRules(char* username, char* mac_address)
 		if(filter_type == 1)
 		{
 			/* Check macaddress. */
-			macflag = CheckMacInRules(mac_address, pstrdup(rule_mac), pstrdup(outrule_mac));
+			if ((!strcmp(rule_mac, "*") && !strcmp(outrule_mac, "*")))
+				macflag = rulemac_notmatch;
+			else
+				macflag = CheckMacInRules(mac_address, pstrdup(rule_mac), pstrdup(outrule_mac));
 			/* Check time. */
-			curtime = timestamptz2timestamp(GetCurrentTimestamp());
-			timeflag = CheckTimeInRules(curtime, pstrdup(allow_time), pstrdup(outallow_time));
-
+			if (!strcmp(allow_time, "*") && !strcmp(outallow_time, "*"))
+				timeflag = ruletime_notmatch;
+			else
+			{
+				curtime = timestamptz2timestamp(GetCurrentTimestamp());
+				timeflag = CheckTimeInRules(curtime, pstrdup(allow_time), pstrdup(outallow_time));
+			}
 			if (macflag == rulemac_include_match)
 					elog(ERROR, "Mac address in restricted!");
 			if (timeflag == ruletime_include_match)
@@ -895,11 +897,18 @@ LookupRerstrictRules(char* username, char* mac_address)
 		else if (filter_type == 0)
 		{
 			/* Check macaddress. */
-			macflag = CheckMacInRules(mac_address, pstrdup(rule_mac), pstrdup(outrule_mac));
+			if ((!strcmp(rule_mac, "*") && !strcmp(outrule_mac, "*")))
+				macflag = rulemac_include_match; /*Both null, check pass */
+			else
+				macflag = CheckMacInRules(mac_address, pstrdup(rule_mac), pstrdup(outrule_mac));
 			/* Check time. */
-			curtime = timestamptz2timestamp(GetCurrentTimestamp());
-			timeflag = CheckTimeInRules(curtime, pstrdup(allow_time), pstrdup(outallow_time));
-
+			if (!strcmp(allow_time, "*") && !strcmp(outallow_time, "*"))
+				timeflag = ruletime_include_match;
+			else
+			{
+				curtime = timestamptz2timestamp(GetCurrentTimestamp());
+				timeflag = CheckTimeInRules(curtime, pstrdup(allow_time), pstrdup(outallow_time));
+			}
 			/* get mac and time result */
 			if (macflag != rulemac_include_match)
 					elog(ERROR, "Mac address in restricted!");
