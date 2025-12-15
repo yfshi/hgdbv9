@@ -1088,6 +1088,10 @@ select convert_tz(101);--error
 select convert_tz(101,'-02:00');--error
 select convert_tz(101, '+02:00', '+08:00', 1);--error  syntax error
 select convert_tz(NULL,NULL,NULL);--NULL
+/* Begin - BUG#Z6775 */
+SELECT CONVERT_TZ('2023-01-01 12:00:00'::date, '+00:00', '+08:00');
+select pg_typeof(CONVERT_TZ(CAST('2023-05-20' AS DATE),'+00:00', '+08:00'));
+/* End - BUG#Z6775 */
 
 -- get_format
 select get_format(DATE, 'EUR');
@@ -1477,6 +1481,9 @@ select timestampdiff(month,'1999-09-11','2001-9-11');
 select timestampdiff(year,'1999-09-11','2001-9-11');
 select timestampdiff(year,'2004-02-28','2005-02-28');
 select timestampdiff(year,'2004-02-29','2005-02-28');
+--bug#z6783
+select timestampdiff(sql_tsi_month,'1999-09-11','2001-10-10');
+select timestampdiff(sql_tsi_year,'1999-09-11','2001-9-11');
 
 --bug#z6049
 set sql_mode ='';

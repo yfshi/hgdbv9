@@ -3184,6 +3184,15 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+CREATE FUNCTION ivymy.convert_tz(date, text, text)
+RETURNS datetime(6) /* BUG#Z6775 */
+AS $$
+	select ivymy.convert_tz($1::datetime(6), $2, $3);
+$$ LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
 CREATE FUNCTION ivymy.get_format(int, text)
 RETURNS varchar /* BUG#Z5533 */
 AS 'MODULE_PATHNAME','get_format'
