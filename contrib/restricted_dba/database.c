@@ -107,6 +107,7 @@ alter_database_set_check(AlterDatabaseSetStmt *stmt)
 	/*End -- bug#z5555*/
 
 	if (pg_strncasecmp(stmt->setstmt->name,"se_feature.",strlen("se_feature.")) == 0 ||
+		pg_strncasecmp(stmt->setstmt->name,"conn_restrict.enable",strlen("conn_restrict.enable")) == 0 ||	/* Bug #6238 */
 		pg_strncasecmp(stmt->setstmt->name,"credcheck.",strlen("credcheck.")) == 0)
 	{
 		/*Begin -- bug#z4455*/
