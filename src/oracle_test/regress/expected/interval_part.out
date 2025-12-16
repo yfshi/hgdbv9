@@ -622,3 +622,8 @@ SELECT * FROM i_partitioned_sys_p;
 
 DROP TABLE i_partitioned;
 /* End - BUG#5652 */
+/* Begin - BUG#6801 */
+CREATE TABLE i_partitioned (id int) PARTITION BY RANGE(id) INTERVAL (10);
+ALTER TABLE i_partitioned SET INTERVAL(11);
+DROP TABLE i_partitioned;
+/* End - BUG#6801 */

@@ -21693,11 +21693,11 @@ ATExecSetPartitionInterval(Relation rel, PartitionInterval *partInterval,
 	 * Non-range partitioned table or range partitioned table with non-unique
 	 * partion key columns do not support SET INTERVAL.
 	 */
-	if (partkey->strategy != PARTITION_STRATEGY_RANGE || /* not range partition */
-		partkey->partnatts > 1 ||						 /* partition key > 1 */
-		partdesc->boundinfo->default_index != -1 ||		 /* has default partition */
-		(partdesc->nparts > 0 &&						 /* has MAXVALUE partition */
-		 partdesc->boundinfo->kind[partdesc->boundinfo->ndatums - 1][0] == PARTITION_RANGE_DATUM_MAXVALUE))
+	if (partkey->strategy != PARTITION_STRATEGY_RANGE ||	/* not range partition */
+		partkey->partnatts > 1 ||							/* partition key > 1 */
+		(partdesc->nparts > 0 &&							/* has MAXVALUE partition */
+		 (partdesc->boundinfo->kind[partdesc->boundinfo->ndatums - 1][0] == PARTITION_RANGE_DATUM_MAXVALUE ||
+		  partdesc->boundinfo->default_index != -1)))		/* has default partition */	/* bug#6801 */
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("SET INTERVAL is not legal on this table"),
