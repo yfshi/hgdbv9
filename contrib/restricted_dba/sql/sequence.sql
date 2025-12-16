@@ -307,3 +307,89 @@ alter database testdb set se_feature.restricted_dba to off;
 \c template1 sysdba_u1
 drop database testdb;
 
+-- bug z6358
+\c template1 sysdba_u1
+create database testdb;
+\c testdb sysdba_u1
+create sequence seq_sysdba_u1;
+create sequence seq_syssso_u1;
+create sequence seq_syssao_u1;
+create sequence seq_u1;
+
+alter sequence seq_syssso_u1 owner to syssso_u1;
+alter sequence seq_syssao_u1 owner to syssao_u1;
+alter sequence seq_u1 owner to u1;
+
+---- nextval
+set se_feature.mode to on;
+------ should pass
+select nextval('seq_sysdba_u1');
+select nextval('seq_u1');
+------ should fail
+select nextval('seq_syssso_u1');
+select nextval('seq_syssao_u1');
+reset se_feature.mode;
+
+---- restricted_dba = on
+set se_feature.restricted_dba to on;
+set se_feature.mode to on;
+------ should pass
+select nextval('seq_sysdba_u1');
+------ should fail
+select nextval('seq_u1');
+select nextval('seq_syssso_u1');
+select nextval('seq_syssao_u1');
+reset se_feature.mode;
+reset se_feature.restricted_dba;
+
+---- setval
+set se_feature.mode to on;
+------ should pass
+select setval('seq_sysdba_u1',1);
+select setval('seq_u1',1);
+------ should fail
+select setval('seq_syssso_u1',1);
+select setval('seq_syssao_u1',1);
+reset se_feature.mode;
+
+---- restricted_dba = on
+set se_feature.restricted_dba to on;
+set se_feature.mode to on;
+------ should pass
+select setval('seq_sysdba_u1',1);
+------ should fail
+select setval('seq_u1',1);
+select setval('seq_syssso_u1',1);
+select setval('seq_syssao_u1',1);
+reset se_feature.mode;
+reset se_feature.restricted_dba;
+
+---- currval
+set se_feature.mode to on;
+------ should pass
+select currval('seq_sysdba_u1');
+select currval('seq_u1');
+------ should fail
+select currval('seq_syssso_u1');
+select currval('seq_syssao_u1');
+reset se_feature.mode;
+
+---- restricted_dba = on
+set se_feature.restricted_dba to on;
+set se_feature.mode to on;
+------ should pass
+select currval('seq_sysdba_u1');
+------ should fail
+select currval('seq_u1');
+select currval('seq_syssso_u1');
+select currval('seq_syssao_u1');
+reset se_feature.mode;
+reset se_feature.restricted_dba;
+
+---- clean
+drop sequence seq_sysdba_u1;
+drop sequence seq_syssso_u1;
+drop sequence seq_syssao_u1;
+drop sequence seq_u1;
+\c template1 sysdba_u1
+drop database testdb;

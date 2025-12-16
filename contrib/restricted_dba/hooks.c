@@ -935,6 +935,7 @@ _PG_init(void)
 	se_feature.role_is_superuser = se_role_is_superuser;
 	se_feature.role_has_createrole_priv = se_role_has_createrole_priv;
 	se_feature.role_has_createdb_priv = se_role_has_createdb_priv;
+	se_feature.use_sequence_check = se_use_sequence_check;
 
 	// /* init contextual info */
 	// memset(&sepgsql_context_info, 0, sizeof(sepgsql_context_info));

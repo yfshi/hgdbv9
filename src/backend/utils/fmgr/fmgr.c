@@ -247,6 +247,9 @@ fmgr_info_cxt_security(Oid functionId, FmgrInfo *finfo, MemoryContext mcxt,
 	Datum		prosrcdatum;
 	bool		isnull;
 	char	   *prosrc;
+	/* Begin - ReqID:SRS-SECURITY-POWERS */
+	bool		fmgr_hook_is_need;
+	/* End - ReqID:SRS-SECURITY-POWERS */
 
 	/*
 	 * fn_oid *must* be filled in last.  Some code assumes that if fn_oid is
@@ -296,10 +299,16 @@ fmgr_info_cxt_security(Oid functionId, FmgrInfo *finfo, MemoryContext mcxt,
 	 * ability to set the track_functions GUC as a local GUC parameter of an
 	 * interesting function and have the right things happen.
 	 */
+	/* Begin - ReqID:SRS-SECURITY-POWERS */
+	/* 
+	 * bug z6155 z6156: we have to make sure FmgrHookIsNeeded always be called
+	 * otherwise func_execute_check may be skipped.
+	 */
+	fmgr_hook_is_need  = FmgrHookIsNeeded(functionId);
 	if (!ignore_security &&
 		(procedureStruct->prosecdef ||
 		 !heap_attisnull(procedureTuple, Anum_pg_proc_proconfig, NULL) ||
-		 FmgrHookIsNeeded(functionId)))
+		 fmgr_hook_is_need))
 	{
 		finfo->fn_addr = fmgr_security_definer;
 		finfo->fn_stats = TRACK_FUNC_ALL;	/* ie, never track */
@@ -307,6 +316,7 @@ fmgr_info_cxt_security(Oid functionId, FmgrInfo *finfo, MemoryContext mcxt,
 		ReleaseSysCache(procedureTuple);
 		return;
 	}
+	/* End - ReqID:SRS-SECURITY-POWERS */
 
 	switch (procedureStruct->prolang)
 	{

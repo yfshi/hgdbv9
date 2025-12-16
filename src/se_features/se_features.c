@@ -26,6 +26,7 @@ static void dummy_grant_sysdba_priv_fn(Oid roleid, bool is_grant);
 static bool dummy_role_is_superuser_fn(Oid roleid);
 static bool dummy_role_has_createrole_priv_fn(Oid roleid);
 static bool dummy_role_has_createdb_priv_fn(Oid roleid);
+static bool dummy_use_sequence_check_fn (Oid seq_oid, Oid roleid, AclMode mode);
 
 // /*function warpper that hold all support function in extension*/
 // SeMethod *se_method = NULL;
@@ -36,7 +37,8 @@ SeFeature se_feature = {
     dummy_grant_sysdba_priv_fn,
     dummy_role_is_superuser_fn,
 	dummy_role_has_createrole_priv_fn,
-	dummy_role_has_createdb_priv_fn
+	dummy_role_has_createdb_priv_fn,
+	dummy_use_sequence_check_fn
 };
 
 
@@ -101,14 +103,14 @@ dummy_role_is_superuser_fn(Oid roleid)
 {
 	Assert(se_feature.mode);
     elog(ERROR, "dummy_role_is_superuser() should never be called");
-	return false;;
+	return false;
 }
 
 static bool
 dummy_role_has_createrole_priv_fn(Oid roleid)
 {
 	Assert(se_feature.mode);
-    elog(ERROR, "dummy_role_is_superuser() should never be called");
+    elog(ERROR, "dummy_role_has_createrole_priv_fn() should never be called");
 	return false;
 }
 
@@ -116,6 +118,14 @@ static bool
 dummy_role_has_createdb_priv_fn(Oid roleid)
 {
 	Assert(se_feature.mode);
-    elog(ERROR, "dummy_role_is_superuser() should never be called");
+    elog(ERROR, "dummy_role_has_createdb_priv_fn() should never be called");
+	return false;
+}
+
+static bool 
+dummy_use_sequence_check_fn (Oid seq_oid, Oid roleid, AclMode mode)
+{
+	Assert(se_feature.mode);
+	elog(ERROR, "dummy_use_sequence_check_fn() should never be called");
 	return false;
 }

@@ -61,6 +61,7 @@ extern AclResult pg_attribute_aclcheck_all_nosuper(Oid table_oid, Oid roleid, Ac
 extern AclMode pg_proc_aclmask_nosuper(Oid proc_oid, Oid roleid,
 										AclMode mask, AclMaskHow how);
 extern AclResult pg_proc_aclcheck_nosuper(Oid proc_oid, Oid roleid, AclMode mode);
+extern bool se_use_sequence_check (Oid seq_oid, Oid roleid, AclMode mode);
 
 
 /*user.c*/

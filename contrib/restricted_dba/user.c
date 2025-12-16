@@ -873,3 +873,58 @@ grant_sysdba_priv(Oid roleid, bool is_grant)
 	 */
 	table_close(pg_authid_rel, RowExclusiveLock);
 }
+
+/* Begin - bug#z6385 */
+PG_FUNCTION_INFO_V1(is_superuser);
+Datum
+is_superuser(PG_FUNCTION_ARGS)
+{
+	Oid		role_id = PG_GETARG_OID(0);
+
+	PG_RETURN_BOOL(superuser_arg(role_id));
+}
+
+PG_FUNCTION_INFO_V1(has_createrole);
+Datum
+has_createrole(PG_FUNCTION_ARGS)
+{
+	Oid			role_id = PG_GETARG_OID(0);
+	bool		result;
+	HeapTuple	utup;
+
+	if (se_feature.mode)
+		return se_feature.role_has_createrole_priv(role_id);
+
+	utup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(role_id));
+	if (HeapTupleIsValid(utup))
+	{
+		result = ((Form_pg_authid) GETSTRUCT(utup))->rolcreaterole;
+		ReleaseSysCache(utup);
+	}
+
+	PG_RETURN_BOOL(result);
+}
+
+
+PG_FUNCTION_INFO_V1(has_createdb);
+Datum
+has_createdb(PG_FUNCTION_ARGS)
+{
+	Oid			role_id = PG_GETARG_OID(0);
+	bool		result = false;
+	HeapTuple	utup;
+
+	if (se_feature.mode)
+		return se_feature.role_has_createdb_priv(role_id);
+
+
+	utup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(role_id));
+	if (HeapTupleIsValid(utup))
+	{
+		result = ((Form_pg_authid) GETSTRUCT(utup))->rolcreatedb;
+		ReleaseSysCache(utup);
+	}
+	
+	PG_RETURN_BOOL(result);
+}
+/* End - bug#z6385 */

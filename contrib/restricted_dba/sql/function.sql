@@ -339,3 +339,52 @@ alter database testdb set se_feature.restricted_dba to off;
 
 \c template1 sysdba_u1
 drop database testdb;
+
+---- bug 6155 
+\c template1 sysdba_u1
+create database testdb;
+\c testdb sysdba_u1
+create schema sch_sysdba_u1;
+create function sch_sysdba_u1.func_sysdba_u2(a integer, b integer) returns integer
+as 'select a + b' language sql security definer;
+create function public.func_syssso(a integer, b integer) returns integer
+as 'select a + b' language sql security definer;
+create function public.func_syssao(a integer, b integer) returns integer
+as 'select a + b' language sql security definer;
+create function sch_sysdba_u1.func_u1(a integer, b integer) returns integer
+as 'select a + b' language sql security definer;
+
+alter function sch_sysdba_u1.func_sysdba_u2(a integer, b integer) owner to sysdba_u2;
+alter function public.func_syssso(a integer, b integer) owner to syssso;
+alter function public.func_syssao(a integer, b integer) owner to syssao;
+alter function sch_sysdba_u1.func_u1(a integer, b integer) owner to u1;
+
+\c testdb sysdba_u1
+set se_feature.mode to on;
+------ should pass
+select sch_sysdba_u1.func_sysdba_u2(1,1);
+select sch_sysdba_u1.func_u1(1,1);
+------ should fail
+select func_syssso(1,1);
+select func_syssao(1,1);
+reset se_feature.mode;
+
+---- restricted_dba is on;
+set se_feature.restricted_dba to on;
+set se_feature.mode to on;
+------ should fail
+select func_syssso(1,1);
+select func_syssao(1,1);
+select sch_sysdba_u1.func_sysdba_u2(1,1);
+select sch_sysdba_u1.func_u1(1,1);
+reset se_feature.mode;
+reset se_feature.restricted_dba;
+
+---- clean
+drop function sch_sysdba_u1.func_sysdba_u2(a integer, b integer);
+drop function public.func_syssso(a integer, b integer);
+drop function public.func_syssao(a integer, b integer);
+drop function sch_sysdba_u1.func_u1(a integer, b integer);
+drop schema sch_sysdba_u1;
+\c template1 sysdba_u1
+drop database testdb;

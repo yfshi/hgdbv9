@@ -1548,3 +1548,47 @@ pg_proc_aclcheck_nosuper(Oid proc_oid, Oid roleid, AclMode mode)
 	else
 		return ACLCHECK_NO_PRIV;
 }
+
+
+/*
+ * This function will be called in those sequence manipulate
+ * functions, like nextval() and others, when se_feature is on.
+ */
+bool 
+se_use_sequence_check (Oid seq_oid, Oid roleid, AclMode mode)
+{
+	AclMode		privs;
+	HeapTuple	tuple;
+	Form_pg_class classForm;
+	Oid			ownerId;
+
+	Assert(se_feature.mode);
+
+	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(seq_oid));
+	classForm = (Form_pg_class) GETSTRUCT(tuple);
+	ownerId = classForm->relowner;
+
+	ReleaseSysCache(tuple);
+	
+	
+	if (IS_SYSSSO(ownerId) || IS_SYSSAO(ownerId))
+	{
+		/* we always check for sso/sao user's sequence */
+		privs = pg_class_aclmask_nosuper(seq_oid,roleid,mode, ACLMASK_ANY);
+	}
+	else if (se_feature.restricted_dba && IS_SYSDBA(roleid))
+	{
+		/* and check for sysdba when restricted_dba is on */
+		privs = pg_class_aclmask_nosuper(seq_oid,roleid,mode, ACLMASK_ANY);
+	}
+	else
+	{
+		/* we don' case other case and leave them to originl check */
+		privs = pg_class_aclmask(seq_oid,roleid,mode, ACLMASK_ANY);
+	}
+
+	if (privs != 0)
+		return true;
+	else
+		return false;
+}

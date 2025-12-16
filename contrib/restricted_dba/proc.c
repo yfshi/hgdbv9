@@ -127,6 +127,19 @@ create_proc_check(ParseState *pstate, CreateFunctionStmt *stmt)
 	}
 	/*we leave nomral user to standard acl check*/
 
+	/*Begin - bug z6230 z6239 */
+	/* we need to check current user and proonwer*/
+	// if (stmt->replace)
+	// {
+	// 	procoid = LookupFuncWithArgs(stmt->objectType, 
+	// 								 castNode(ObjectWithArgs, stmt->object),
+	// 								 false);
+	// 	/* code */
+	// }
+	
+	/*End - bug z6230 z6239 */
+
+
 	return true;
 }
 
