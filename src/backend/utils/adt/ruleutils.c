@@ -1200,7 +1200,10 @@ ivy_get_ora_triggerdef(Oid trigid, bool pretty, Jsonb *option)
 	Datum		value;
 	Datum		tmp;
 	bool		isnull;
-
+	/* Begin - BUG#Z6822 */
+	char	*new_alias = NULL;
+	char	*old_alias = NULL;
+	/* End - BUG#Z6822 */
 
 	/*
 	 * Fetch the pg_trigger tuple by the Oid of the trigger
@@ -1306,8 +1309,6 @@ ivy_get_ora_triggerdef(Oid trigid, bool pretty, Jsonb *option)
 										 &vbuf);
 		if (v != NULL && v->type == jbvBinary)
 		{
-			char	*new_alias = NULL;
-			char	*old_alias = NULL;
 			char	*str = NULL;
 
 			str = JsonbToCString(NULL, v->val.binary.data, v->val.binary.len);
@@ -1418,7 +1419,11 @@ ivy_get_ora_triggerdef(Oid trigid, bool pretty, Jsonb *option)
 		oldrte->relid = trigrec->tgrelid;
 		oldrte->relkind = relkind;
 		oldrte->rellockmode = AccessShareLock;
-		oldrte->alias = makeAlias("old", NIL);
+		/* Begin - BUG#Z6822 */
+		if (old_alias)
+			oldrte->alias = makeAlias(old_alias, NIL);
+		else /* End - BUG#Z6822 */
+			oldrte->alias = makeAlias("old", NIL);
 		oldrte->eref = oldrte->alias;
 		oldrte->lateral = false;
 		oldrte->inh = false;
@@ -1429,7 +1434,11 @@ ivy_get_ora_triggerdef(Oid trigid, bool pretty, Jsonb *option)
 		newrte->relid = trigrec->tgrelid;
 		newrte->relkind = relkind;
 		newrte->rellockmode = AccessShareLock;
-		newrte->alias = makeAlias("new", NIL);
+		/* Begin - BUG#Z6822 */
+		if (new_alias)
+			newrte->alias = makeAlias(new_alias, NIL);
+		else /* End - BUG#Z6822 */
+			newrte->alias = makeAlias("new", NIL);
 		newrte->eref = newrte->alias;
 		newrte->lateral = false;
 		newrte->inh = false;
