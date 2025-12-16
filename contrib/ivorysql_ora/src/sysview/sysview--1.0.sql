@@ -2516,7 +2516,8 @@ SELECT
             )
         ELSE NULL
     END::varchar2(422) AS referencing_names,
-    pg_get_expr(trg.tgqual, trg.tgrelid)::varchar2(4000) AS when_clause,
+
+	WHEN_CLAUSE.when_expr::varchar2(4000) AS when_clause, /* BUG#Z6822 */
 
 	CASE
 		WHEN trg.tgenabled = 'O' THEN 'ENABLED'
@@ -2557,6 +2558,15 @@ LEFT JOIN pg_language lang
     ON p.prolang = lang.oid
 LEFT JOIN pg_object obj
     ON obj.obj_oid = trg.oid
+/* Begin - BUG#Z6822 */
+LEFT JOIN LATERAL (
+	SELECT
+		trim(
+			(regexp_match(
+				pg_get_triggerdef(trg.oid, true), '(?s)WHEN\s*\((.*?)\)\s*BEGIN'))[1]
+		) AS when_expr
+) WHEN_CLAUSE ON true
+/* End - BUG#Z6822 */
 WHERE
     NOT trg.tgisinternal;
 

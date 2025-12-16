@@ -413,7 +413,7 @@ create table t1(
 
 create table t2(
   log_id  number primary key,
-  operation varchar2(50),
+  operation varchar2(200),
   emp_id number
 );
 
@@ -459,8 +459,45 @@ BEGIN
 END;
 /
 
+/* Begin - BUG#Z6822 */
+CREATE OR REPLACE TRIGGER tg_ref_basic
+BEFORE UPDATE ON t1
+FOR EACH ROW DISABLE
+WHEN (OLD.salary != NEW.salary)
+BEGIN
+	INSERT INTO t2(log_id, operation, emp_id)
+	 VALUES (log_seq.nextval,
+			 'BASIC_REFERENCING: Salary changed ' || :original.salary || '->' || :updated.salary,
+			 :updated.emp_id
+	);
+END;
+/
+
+CREATE OR REPLACE TRIGGER tg_ref_complex
+BEFORE UPDATE ON t1
+REFERENCING OLD AS old_rec NEW AS new_rec
+FOR EACH ROW DISABLE
+WHEN (old_rec.salary != new_rec.salary AND new_rec.salary > 3000)
+BEGIN
+	INSERT INTO t2 (log_id, operation, emp_id)
+	VALUES (log_seq.nextval,
+			'COMPLEX_REFERENCING: ' || 'Salary:' || :old_rec.salary || '->' || :new_rec.salary,
+			:new_rec.emp_id
+	);
+END;
+/
+/* End - BUG#Z6822 */
+
 -- get trigger defination
 SELECT pg_catalog.pg_get_triggerdef(t.oid, true) FROM pg_trigger t WHERE t.tgname = 'trg_vt1_upd';
+
+/* Begin - BUG#Z6822 */
+select trigger_name, table_name, trigger_type, status, referencing_names, when_clause
+  from all_triggers where upper(trigger_name) = 'TG_REF_BASIC';
+
+select trigger_name, table_name, trigger_type, status, referencing_names, when_clause
+  from all_triggers where upper(trigger_name) = 'TG_REF_COMPLEX';
+/* End - BUG#Z6822 */
 
 --
 -- Test insert
@@ -527,6 +564,8 @@ select * from t1 order by emp_id;
 select * from t2;
 
 -- cleanup
+drop trigger tg_ref_basic;
+drop trigger tg_ref_complex;
 drop trigger trg_vt1_del;
 drop trigger trg_vt1_upd;
 drop trigger trg_vt1_ins;
