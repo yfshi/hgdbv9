@@ -1119,6 +1119,11 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 		list_free(plisql_referenced_objects);
 		/* End - ReqID:SRS-PLSQL-TYPE */
 
+		/* Begin - BUG#Z00006811 */
+		if (OidIsValid(define_useid))
+			SetUserIdAndSecContext(save_userid, save_sec_context);
+		/* End - BUG#Z00006811 */
+
 		/*
 		 * package body compile failed, we drop package cache at best
 		 * because it may affect others packages
@@ -1443,6 +1448,11 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 		/* Begin - ReqID:SRS-PLSQL-TYPE */
 		list_free(plisql_referenced_objects);
 		/* End - ReqID:SRS-PLSQL-TYPE */
+
+		/* Begin - BUG#Z00006811 */
+		if (OidIsValid(define_useid))
+			SetUserIdAndSecContext(save_userid, save_sec_context);
+		/* End - BUG#Z00006811 */
 
 		plisql_free_package_function(item);
 		PG_RE_THROW();
@@ -3630,6 +3640,9 @@ plisql_get_subprocs_from_package(Oid pkgoid,
 		/* Begin - req#Z00001467 */
 		int rc;
 		MemoryContext curr_context = CurrentMemoryContext;
+		/* Begin - BUG#Z00006811 */
+		ResourceOwner oldowner = CurrentResourceOwner;
+		/* End - BUG#Z00006811 */
 
 		/*
 		 * Connect to SPI manager
@@ -3637,9 +3650,25 @@ plisql_get_subprocs_from_package(Oid pkgoid,
 		if ((rc = SPI_connect_ext(0)) != SPI_OK_CONNECT)
 			elog(ERROR, "SPI_connect failed: %s", SPI_result_code_string(rc));
 
+		/* Begin - BUG#Z00006811 */
+		/*
+		 * there plisql_package_compile maybe change user
+		 * to package definer, which will reset
+		 * global transaction status like prevSecContext
+		 * we should use rollback to recover it
+		 */
+		BeginInternalSubTransaction(NULL);
+		MemoryContextSwitchTo(curr_context);
+		/* End - BUG#Z00006811 */
+
 		PG_TRY();
 		{
 			item = plisql_package_compile(pkgoid, false, false);
+			/* Begin - BUG#Z00006811 */
+			ReleaseCurrentSubTransaction();
+			CurrentResourceOwner = oldowner;
+			MemoryContextSwitchTo(curr_context);
+			/* End - BUG#Z00006811 */
 		}
 
 		PG_CATCH();
@@ -3647,11 +3676,14 @@ plisql_get_subprocs_from_package(Oid pkgoid,
 			MemoryContextSwitchTo(curr_context);
 			FlushErrorState();
 			item = NULL;
+			/* Begin - BUG#Z00006811 */
+			RollbackAndReleaseCurrentSubTransaction();
+			CurrentResourceOwner = oldowner;
+			MemoryContextSwitchTo(curr_context);
+			/* End - BUG#Z00006811 */
 		}
 
 		PG_END_TRY();
-
-		MemoryContextSwitchTo(curr_context);
 
 		/*
 		 * Disconnect from SPI manager
