@@ -1311,6 +1311,10 @@ do_compile(FunctionCallInfo fcinfo,
 	PG_CATCH();
 	{
 		list_free(plisql_referenced_objects);
+		/* Begin - BUG#Z00006811 */
+		if (OidIsValid(define_useid))
+			SetUserIdAndSecContext(save_userid, save_sec_context);
+		/* End - BUG#Z00006811 */
 		PG_RE_THROW();
 	}
 	PG_END_TRY();

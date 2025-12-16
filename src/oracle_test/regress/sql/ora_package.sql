@@ -7874,4 +7874,86 @@ reset check_function_bodies;
 drop package dept_pkg;
 drop table department;
 
+--test bug#Z6811
+create user enrol11 with superuser;
+CREATE USER system WITH superuser;
+
+\c - enrol11
+
+create table test_mds(id integer);
+
+create or replace package test_pkg is
+	var1 test_mds%rowtype;
+	function test_f(id integer) return integer;
+end;
+/
+
+create or replace procedure test_p(id integer)  is
+ var1 test_mds%rowtype;
+begin
+  raise info '%','ok';
+end;
+/
+
+create or replace function test_f(id integer) return integer is
+ var1 test_mds%rowtype;
+begin
+  return id;
+end;
+/
+
+create or replace package test_pkg1 is
+  var1 integer;
+  function test_f(id integer) return integer;
+end;
+/
+
+
+create or replace package body test_pkg1 is
+  function test_f(id integer) return integer is
+    var1 test_mds%rowtype;
+  begin
+    return id;
+  end;
+end;
+/
+
+
+
+drop table test_mds;
+
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_name = 'test_pkg' or
+	object_name = 'test_p' or object_name = 'test_f' or object_name = 'test_pkg1' ORDER BY object_name,procedure_name,subprogram_id;
+
+\c - system
+
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_name = 'test_pkg' or
+	object_name = 'test_p' or object_name = 'test_f' or object_name = 'test_pkg1' ORDER BY object_name,procedure_name,subprogram_id;
+
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_name = 'test_pkg' or
+	object_name = 'test_p' or object_name = 'test_f' or object_name = 'test_pkg1' ORDER BY object_name,procedure_name,subprogram_id;
+
+begin;
+ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_name = 'test_pkg' or
+	object_name = 'test_p' or object_name = 'test_f' or object_name = 'test_pkg1' ORDER BY object_name,procedure_name,subprogram_id;
+commit;
+
+\c - enrol11
+drop package test_pkg;
+drop package test_pkg1;
+drop function test_f;
+drop procedure test_p;
+
+\c - system
+drop user enrol11;
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+
+DROP USER system;
+
 
