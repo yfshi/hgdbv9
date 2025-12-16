@@ -73,9 +73,8 @@ ProcDataShmemInit(void)
 	info.entrysize = sizeof(ProcPrivEnt);
 
 	ProcPrivDataHash = ShmemInitHash("Proc Priv Data Lookup Table",
-								  MaxConnections, MaxConnections,
+								  MaxConnections, MaxConnections * 2,
 								  &info, HASH_ELEM | HASH_BLOBS);
-	RegisterOnExithandler();
 }
 
 /* look up information in the hash table. */
@@ -182,6 +181,8 @@ ProcDataTableInsert(const int *tagPtr, int sid, int trans_state, unsigned int ti
 	if (!LWLockConditionalAcquire(proc_data_lock, LW_EXCLUSIVE))
 		return;
 
+	RegisterOnExithandler();
+
 	result = (ProcPrivEnt *)
 		hash_search(ProcPrivDataHash,
 									(void *) tagPtr,
@@ -261,6 +262,7 @@ ProcDataDelete(const int *tagPtr)
 
 	hash_search(ProcPrivDataHash, (void *) tagPtr, HASH_REMOVE,	NULL);
 	LWLockRelease(proc_data_lock);
+	elog(DEBUG5, "ProcDataDelete: proc id:%d", *tagPtr);
 }
 
 /* ReqID: SESSION-VIEWS 
