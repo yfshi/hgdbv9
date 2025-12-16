@@ -734,4 +734,11 @@ END $$ language plmysql;
 select return_result(4); --不正确的整数值
 drop function return_result;
 
+--fix bug 6816
+drop table if exists t;
+create table t(a int);
+insert into t values (1), (2), (4);
+select @var100, @var100 := @var102 / num, @var102 := @var102 + 1 from (select @var100 := a as num from t) tt;
+drop table t;
+
 set mysql.at_or_atat = off;

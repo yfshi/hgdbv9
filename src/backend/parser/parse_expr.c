@@ -4921,13 +4921,6 @@ transformVarRef(ParseState *pstate, VarRef *varref)
 
 		varref->rettype = varref->value->consttype;
 
-		/*
-		 * if this Node appears in a SET statement, return it's value,
-		 * otherwise, return the VarRef node itself.
-		 */
-		if (pstate->p_myssetvar)
-			return (Node *)varref->value;
-
 		return (Node *)varref;
 	}
 	else

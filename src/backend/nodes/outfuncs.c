@@ -4184,6 +4184,33 @@ _outIndexHintDefinition(StringInfo str, IndexHintDefinition* node)
 }
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
+/* Begin - ReqID:SRS-MYSQL-SET;Begin - BUG#Z6816 */
+static void
+_outVarAssign(StringInfo str, const VarAssign *node)
+{
+	WRITE_NODE_TYPE("VARASSIGN");
+	WRITE_STRING_FIELD(varname);
+	WRITE_NODE_FIELD(value);
+	WRITE_ENUM_FIELD(setkind, SetKindType);
+	WRITE_ENUM_FIELD(ret, SetReturn);
+	WRITE_INT_FIELD(location);
+}
+
+static void
+_outVarRef(StringInfo str, const VarRef *node)
+{
+	WRITE_NODE_TYPE("VARREF");
+	WRITE_STRING_FIELD(varname);
+	WRITE_ENUM_FIELD(varkind, VarKind);
+	WRITE_BOOL_FIELD(compiled);
+	if (node->value != NULL)
+	{
+		_outConst(str, node->value);
+	}
+	WRITE_OID_FIELD(rettype);
+	WRITE_INT_FIELD(location);
+}
+/* End - ReqID:SRS-MYSQL-SET; End- BUG#Z6816 */
 
 /*
  * outNode -
@@ -4970,6 +4997,14 @@ outNode(StringInfo str, const void *obj)
 				_outConnectByRoot(str, obj);
 				break;
 			/* End - ReqID:SRS-SQL-HierarchicalQueries */
+			/* Begin - ReqID:SRS-MYSQL-SET; Begin - BUG#Z6816 */
+			case T_VarAssign:
+				_outVarAssign(str, obj);
+				break;
+			case T_VarRef:
+				_outVarRef(str, obj);
+				break;
+			/* End - ReqID:SRS-MYSQL-SET; End - BUG#Z6816  */
 
 			default:
 
