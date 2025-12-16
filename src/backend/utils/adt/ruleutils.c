@@ -1377,6 +1377,23 @@ ivy_get_ora_triggerdef(Oid trigid, bool pretty, Jsonb *option)
 		appendStringInfoChar(&buf, '\n');
 	}
 
+	/* Begin - BUG#Z6789 */
+	/* Build ENABLE or DISABLE clause*/
+	switch(trigrec->tgenabled)
+	{
+		case 'A':
+		case 'O':
+			appendStringInfoString(&buf, " ENABLE\n");
+			break;
+		case 'D':
+			appendStringInfoString(&buf, " DISABLE\n");
+			break;
+		default:
+			elog(ERROR, "unrecognized trigger state");
+			break;
+	}
+	/* END - BUG#Z6789 */
+
 	/* If the trigger has a WHEN qualification, add that */
 	value = fastgetattr(ht_trig, Anum_pg_trigger_tgqual,
 						tgrel->rd_att, &isnull);

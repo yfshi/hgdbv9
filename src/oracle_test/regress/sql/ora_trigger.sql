@@ -84,6 +84,9 @@ BEGIN
 END;
 /
 
+-- get trigger defination
+SELECT pg_catalog.pg_get_triggerdef(t.oid, true) FROM pg_trigger t WHERE t.tgname = 'trgref';
+
 INSERT INTO empt VALUES (7382,'REFERENCING',100, to_date('24-03-2025','dd-mm-yyyy'));
 
 select * from empt;
@@ -456,6 +459,9 @@ BEGIN
 END;
 /
 
+-- get trigger defination
+SELECT pg_catalog.pg_get_triggerdef(t.oid, true) FROM pg_trigger t WHERE t.tgname = 'trg_vt1_upd';
+
 --
 -- Test insert
 --
@@ -563,11 +569,23 @@ BEGIN
 END;
 /
 
+CREATE OR REPLACE TRIGGER fourth_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW DISABLE
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('4444');
+END;
+/
+
 SET SERVEROUTPUT ON;
 
 INSERT INTO test_table (id, value) VALUES (1, 'Test');
 
+-- get trigger defination
+SELECT pg_catalog.pg_get_triggerdef(t.oid, true) FROM pg_trigger t WHERE t.tgname = 'fourth_trigger';
+
 --cleanup
+drop trigger fourth_trigger;
 drop trigger thrid_trigger;
 drop trigger second_trigger;
 drop trigger first_trigger;

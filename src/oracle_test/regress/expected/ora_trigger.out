@@ -95,6 +95,21 @@ BEGIN
 	VALUES (4, :NEW_TABLE.emp_id, 'trgref-> INSERT (100)', to_date('03-09-2025','dd-mm-yyyy'));
 END;
 /
+-- get trigger defination
+SELECT pg_catalog.pg_get_triggerdef(t.oid, true) FROM pg_trigger t WHERE t.tgname = 'trgref';
+                                          pg_get_triggerdef                                          
+-----------------------------------------------------------------------------------------------------
+ CREATE TRIGGER trgref                                                                              +
+ AFTER INSERT ON empt                                                                               +
+  REFERENCING NEW AS new_table                                                                      +
+ FOR EACH ROW                                                                                       +
+  ENABLE                                                                                            +
+ BEGIN                                                                                              +
+         INSERT INTO empt_logs (log_id, emp_id, action, log_date)                                   +
+         VALUES (4, :NEW_TABLE.emp_id, 'trgref-> INSERT (100)', to_date('03-09-2025','dd-mm-yyyy'));+
+ END
+(1 row)
+
 INSERT INTO empt VALUES (7382,'REFERENCING',100, to_date('24-03-2025','dd-mm-yyyy'));
 select * from empt;
  emp_id |    name     | salary | hire_date  
@@ -608,6 +623,24 @@ BEGIN
         VALUES (log_seq.nextval, 'DELETE', :OLD.emp_id);
 END;
 /
+-- get trigger defination
+SELECT pg_catalog.pg_get_triggerdef(t.oid, true) FROM pg_trigger t WHERE t.tgname = 'trg_vt1_upd';
+                    pg_get_triggerdef                     
+----------------------------------------------------------
+ CREATE TRIGGER trg_vt1_upd                              +
+ INSTEAD OF UPDATE ON vt1                                +
+ FOR EACH ROW                                            +
+  ENABLE                                                 +
+ BEGIN                                                   +
+     UPDATE t1                                           +
+        SET emp_name = :NEW.emp_name,                    +
+            salary   = :NEW.salary                       +
+      WHERE emp_id   = :OLD.emp_id;                      +
+     INSERT INTO t2(log_id, operation, emp_id)           +
+         VALUES (log_seq.nextval, 'UPDATE', :OLD.emp_id);+
+ END
+(1 row)
+
 --
 -- Test insert
 --
@@ -851,12 +884,33 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('3333');
 END;
 /
+CREATE OR REPLACE TRIGGER fourth_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW DISABLE
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('4444');
+END;
+/
 SET SERVEROUTPUT ON;
 INSERT INTO test_table (id, value) VALUES (1, 'Test');
 1111
 2222
 3333
+-- get trigger defination
+SELECT pg_catalog.pg_get_triggerdef(t.oid, true) FROM pg_trigger t WHERE t.tgname = 'fourth_trigger';
+         pg_get_triggerdef         
+-----------------------------------
+ CREATE TRIGGER fourth_trigger    +
+ BEFORE INSERT ON test_table      +
+ FOR EACH ROW                     +
+  DISABLE                         +
+ BEGIN                            +
+     DBMS_OUTPUT.PUT_LINE('4444');+
+ END
+(1 row)
+
 --cleanup
+drop trigger fourth_trigger;
 drop trigger thrid_trigger;
 drop trigger second_trigger;
 drop trigger first_trigger;
