@@ -206,6 +206,8 @@ grant sysdba_role to dba_u1,dba_u2,dba_u3,dba_u4,dba_u5;
 /* Begin - bug#z6385 */
 \c testdb sysdba_u1
 create user du_u1 with password '1234' superuser;
+create user du_u2 with createrole;
+create user du_u3 with createdb;
 set role syssso_u1;
 set se_feature.mode to on;
 \du du_u1
@@ -214,12 +216,36 @@ set se_feature.mode to on;
 -----------+------------+-----------
  du_u1     |            | {}
 
+\du du_u2
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u2     |            | {}
+
+\du du_u3
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u3     |            | {}
+
 set se_feature.mode to off;
 \du du_u1
            List of roles
  Role name | Attributes | Member of 
 -----------+------------+-----------
  du_u1     | Admin      | {}
+
+\du du_u2
+            List of roles
+ Role name | Attributes  | Member of 
+-----------+-------------+-----------
+ du_u2     | Create role | {}
+
+\du du_u3
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u3     | Create DB  | {}
 
 reset role;
 create database testdb1;
@@ -232,12 +258,36 @@ alter database testdb1 set se_feature.restricted_dba to on;
 -----------+------------+-----------
  du_u1     |            | {}
 
+\du du_u2
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u2     |            | {}
+
+\du du_u3
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u3     |            | {}
+
 \c testdb1 sysdba_u1
 \du du_u1
            List of roles
  Role name | Attributes | Member of 
 -----------+------------+-----------
  du_u1     |            | {}
+
+\du du_u2
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u2     |            | {}
+
+\du du_u3
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u3     |            | {}
 
 \c testdb1 syssao_u1
 \du du_u1
@@ -246,6 +296,18 @@ alter database testdb1 set se_feature.restricted_dba to on;
 -----------+------------+-----------
  du_u1     |            | {}
 
+\du du_u2
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u2     |            | {}
+
+\du du_u3
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u3     |            | {}
+
 \c testdb1 du_u1
 \du du_u1
            List of roles
@@ -253,8 +315,22 @@ alter database testdb1 set se_feature.restricted_dba to on;
 -----------+------------+-----------
  du_u1     |            | {}
 
+\du du_u2
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u2     |            | {}
+
+\du du_u3
+           List of roles
+ Role name | Attributes | Member of 
+-----------+------------+-----------
+ du_u3     |            | {}
+
 \c testdb sysdba_u1
 drop user du_u1;
+drop user du_u2;
+drop user du_u3;
 /* End - bug#z6385 */
 -- FOR TABLE
 \c testdb -

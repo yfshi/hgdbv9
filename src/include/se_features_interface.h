@@ -32,6 +32,7 @@ typedef void (*grant_sysdba_priv_fn) (Oid roleid, bool is_grant);
 typedef bool (*role_is_superuser_fn) (Oid roleid);
 typedef bool (*role_has_createrole_priv_fn) (Oid roleid);
 typedef bool (*role_has_createdb_priv_fn) (Oid roleid);
+typedef bool (*use_sequence_check_fn) (Oid seq_oid, Oid roleid, AclMode mode);
 
 typedef struct 
 {
@@ -44,6 +45,7 @@ typedef struct
 	role_is_superuser_fn role_is_superuser;
 	role_has_createrole_priv_fn role_has_createrole_priv;
 	role_has_createdb_priv_fn role_has_createdb_priv;
+	use_sequence_check_fn use_sequence_check;
 }SeFeature;
 
 extern PGDLLIMPORT SeFeature se_feature;

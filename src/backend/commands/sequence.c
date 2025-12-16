@@ -68,6 +68,10 @@
 #include "utils/guc.h"
 #include "utils/numeric.h"
 
+/*Begin - Bug#z6158*/
+#include "se_features_interface.h"
+/*End - Bug#z6158*/
+
 /*
  * We don't want to log each fetching of a value from a sequence,
  * so we pre-log a few fetches in advance. In the event of
@@ -839,13 +843,19 @@ nextval_internal(Oid relid, bool check_permissions)
 	}
 	/* End - ReqID:SRS-SQL-SEQ */
 
-	if (check_permissions &&
-		pg_class_aclcheck(elm->relid, GetUserId(),
-						  ACL_USAGE | ACL_UPDATE) != ACLCHECK_OK)
+	/* Begin - Bug#z6158*/
+	/* if se_feature.mode is on, we call our check, otherwise call orginal check */
+	if (check_permissions && 
+		(se_feature.mode ?
+			(!se_feature.use_sequence_check(elm->relid, GetUserId(),
+									ACL_USAGE | ACL_UPDATE)) :
+			(pg_class_aclcheck(elm->relid, GetUserId(),
+								ACL_USAGE | ACL_UPDATE) != ACLCHECK_OK)))
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("permission denied for sequence %s",
 						RelationGetRelationName(seqrel))));
+	/* End - Bug#z6158*/
 
 	/* read-only transactions may only modify temp sequences */
 	if (!RELATION_IS_TEMP_ON_CURRENT_SESSION(seqrel))
@@ -1590,12 +1600,18 @@ currval_oid(PG_FUNCTION_ARGS)
 	ReleaseSysCache(pgstuple);
 	/* End - ReqID:SRS-SQL-SEQ */
 
-	if (pg_class_aclcheck(elm->relid, GetUserId(),
-						  ACL_SELECT | ACL_USAGE) != ACLCHECK_OK)
+	/* Begin - Bug#z6158*/
+	/* if se_feature.mode is on, we call our check, otherwise call orginal check */
+	if (se_feature.mode ?
+		(!se_feature.use_sequence_check(elm->relid, GetUserId(),
+						   			   ACL_SELECT | ACL_USAGE)) :
+		(pg_class_aclcheck(elm->relid, GetUserId(),
+						   ACL_SELECT | ACL_USAGE) != ACLCHECK_OK))
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("permission denied for sequence %s",
 						RelationGetRelationName(seqrel))));
+	/* End - Bug#z6158*/
 
 	if (!elm->last_valid)
 		ereport(ERROR,
@@ -1686,12 +1702,18 @@ lastval(PG_FUNCTION_ARGS)
 	/* nextval() must have already been called for this sequence */
 	Assert(last_used_seq->last_valid);
 
-	if (pg_class_aclcheck(last_used_seq->relid, GetUserId(),
-						  ACL_SELECT | ACL_USAGE) != ACLCHECK_OK)
+	/* Begin - Bug#z6158*/
+	/* if se_feature.mode is on, we call our check, otherwise call orginal check */
+	if (se_feature.mode ?
+		(!se_feature.use_sequence_check(last_used_seq->relid, GetUserId(),
+						   			   ACL_SELECT | ACL_USAGE)) :
+		(pg_class_aclcheck(last_used_seq->relid, GetUserId(),
+						   ACL_SELECT | ACL_USAGE) != ACLCHECK_OK))
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("permission denied for sequence %s",
 						RelationGetRelationName(seqrel))));
+	/* End - Bug#z6158*/
 
 	result = last_used_seq->last;
 	relation_close(seqrel, NoLock);
@@ -1864,11 +1886,16 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	/* open and lock sequence */
 	init_sequence(relid, &elm, &seqrel);
 
-	if (pg_class_aclcheck(elm->relid, GetUserId(), ACL_UPDATE) != ACLCHECK_OK)
+	/* Begin - Bug#z6158*/
+	/* if se_feature.mode is on, we call our check, otherwise call orginal check */
+	if (se_feature.mode ?
+		(!se_feature.use_sequence_check(elm->relid, GetUserId(), ACL_UPDATE)) :
+		(pg_class_aclcheck(elm->relid, GetUserId(), ACL_UPDATE) != ACLCHECK_OK))
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("permission denied for sequence %s",
 						RelationGetRelationName(seqrel))));
+	/* End - Bug#z6158*/
 
 	pgstuple = SearchSysCache1(SEQRELID, ObjectIdGetDatum(relid));
 	if (!HeapTupleIsValid(pgstuple))

@@ -4091,7 +4091,7 @@ describeRoles(const char *pattern, bool verbose, bool showSystem)
 	{
 		printfPQExpBuffer(&buf,
 						  "SELECT r.rolname, hg_security.is_superuser(r.oid), r.rolinherit,\n" /* bug - #z6385 */
-						  "  r.rolcreaterole, r.rolcreatedb, r.rolcanlogin,\n"
+						  "  hg_security.has_createrole(r.oid), hg_security.has_createdb(r.oid), r.rolcanlogin,\n" /* bug - #z6385 */
 						  "  r.rolconnlimit, r.rolvaliduntil,\n"
 						  "  ARRAY(SELECT b.rolname\n"
 						  "        FROM pg_catalog.pg_auth_members m\n"
