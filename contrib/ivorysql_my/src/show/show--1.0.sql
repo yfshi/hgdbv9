@@ -517,7 +517,7 @@ LEFT JOIN pg_stats s ON s.schemaname = n.nspname AND s.tablename = t.relname AND
 WHERE
 	t.relkind = 'r' OR t.relkind = 'p'					  -- Only ordinary tables --BUG#Z5991,add OR t.relkind = 'p'
 	AND NOT i.indisprimary							  -- Exclude primary key indexes (MySQL does not show these in statistics)
-ORDER BY i.indexrelid;								  -- Eliminate the uncertain regression error
+ORDER BY i.indexrelid, k.n;								  -- Eliminate the uncertain regression error
 
 GRANT SELECT ON mys_information_schema.showstatistics TO PUBLIC;
 -- End bug#Z5973
