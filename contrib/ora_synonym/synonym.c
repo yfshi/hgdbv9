@@ -432,6 +432,7 @@ AlterSynonym(AlterSynonymStmt *stmt)
 	ObjectAddress address;
 
 	/* Begin - BUG#Z6742 */
+	namespaceId = QualifiedNameGetCreationNamespace(stmt->synname, &synname);
 	if (stmt->ispub)
 		namespaceId = PG_PUBLIC_NAMESPACE;
 	else
