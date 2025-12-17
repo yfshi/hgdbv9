@@ -147,7 +147,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{"mysql.enable_indexhint", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable index hint feature in MySQL compatible mode."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
 		},
 		&enable_indexhint,
 		false,
@@ -159,7 +159,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{"mysql.enable_ignore_columns_list", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable ignore cloumns list feature in MySQL compatible mode."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
 		},
 		&enable_ignore_columns_list,
 		false,
@@ -205,7 +205,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{"mysql.mysql_convert", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
 			gettext_noop("mysql and pg convert."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
 		},
 		&mysql_convert,
 		true,	/* BUG#Z5124 */
@@ -218,7 +218,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{"mysql.regress_test_default_value", PGC_POSTMASTER, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Controlling the functional difference between MySQL and Postgres."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
 		},
 		&regress_test_default_value,
 		false,
@@ -288,7 +288,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		{"mysql.use_mysql_bit_literal", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("Use bit-value literal with Mysql features in mysql compatible mode."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
 		},
 		&use_mysql_bit_literal,
 		false,
