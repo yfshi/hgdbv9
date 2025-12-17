@@ -3083,67 +3083,15 @@ coerce_type(ParseState *pstate, Node *node,
 
 		return result;
 	}
-	/* Begin - ReqID:SRS-MYSQL-SET */
+	/* Begin - ReqID:SRS-MYSQL-SET; Begin - BUG#Z6816 */
 	else if (compatible_mode == MYS_MODE && inputTypeId == UNKNOWNOID && IsA(node, VarRef))
 	{
-		/*
-		 * Handle the case of SELECT on non-existent
-		 * user defined variable, If the variable does
-		 * not exist, its NULL node needs to be converted.
-		 */
-		VarRef	   *ref = (VarRef *)node;
-		Const	   *tempconst = (Const *)ref->value;
-		Oid 		baseTypeId = getBaseType(inputTypeId);
-		int32		baseTypeMod = targetTypeMod;
-		int32		inputTypeMod;
-		Type		baseType;
-		Const	   *newcon = makeNode(Const);
+		VarRef *ref = (VarRef *)node;
 
-		/*
-		 * Assign an initial value, which is
-		 * the value of the node itself
-		 */
-		result = (Node *)ref->value;
-
-		/*
-		 * if the current VarRef node refers to a
-		 * non-existent user defined variable,
-		 * convert this NULL node into the target
-		 * type node.
-		 */
-		baseType = typeidType(baseTypeId);
-		inputTypeMod = -1;
-
-		newcon->consttype = baseTypeId;
-		newcon->consttypmod = inputTypeMod;
-		newcon->constcollid = typeTypeCollation(baseType);
-		newcon->constlen = typeLen(baseType);
-		newcon->constbyval = typeByVal(baseType);
-		newcon->location = -1;
-		newcon->constisnull = tempconst->constisnull;
-
-		if (!tempconst->constisnull)
-			newcon->constvalue = stringTypeDatum_mysql(baseType,
-													   DatumGetCString(tempconst->constvalue),
-													   inputTypeMod, 
-													   0);
-		else
-			newcon->constvalue = stringTypeDatum_mysql(baseType,
-													   NULL,
-													   inputTypeMod, 
-													   0);
-
-		if (baseTypeId != targetTypeId)
-			result = coerce_to_domain((Node *)newcon,
-									  baseTypeId, baseTypeMod,
-									  targetTypeId,
-									  ccontext, cformat, location,
-									  false);
-		ReleaseSysCache(baseType);
-		ref->value = newcon;
-		return result;
+		ref->rettype = targetTypeId;
+		return node;
 	}
-	/* End - ReqID:SRS-MYSQL-SET */
+	/* End - ReqID:SRS-MYSQL-SET; End - BUG#Z6816 */
 
 	if (IsA(node, Param) &&
 		pstate != NULL && pstate->p_coerce_param_hook != NULL)

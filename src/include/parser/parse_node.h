@@ -334,12 +334,7 @@ struct ParseState
 	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 	/* ReqID:SRS-MYSQL-SET
-	 * a flag for user define variable get value,
-	 * if set @var, get current variable value,
-	 * else return VarRef node.
-	 */
-	bool		p_myssetvar;
-	/* If the value is set to true, it means
+	 * If the value is set to true, it means
 	 * VarRef node has been parsed.
 	 */
 	bool		p_hasuservar;

@@ -3036,6 +3036,34 @@ _readIndexHintRelationData(void)
 }
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
+/* Begin - ReqID:SRS-MYSQL-SET Begin - BUG#Z6816 */
+static VarAssign *
+_readVarAssign(void)
+{
+	READ_LOCALS(VarAssign);
+	READ_STRING_FIELD(varname);
+	READ_NODE_FIELD(value);
+	READ_ENUM_FIELD(setkind, SetKindType);
+	READ_ENUM_FIELD(ret, SetReturn);
+	READ_INT_FIELD(location);
+
+	READ_DONE();
+}
+
+static VarRef *
+_readVarRef(void)
+{
+	READ_LOCALS(VarRef);
+	READ_STRING_FIELD(varname);
+	READ_ENUM_FIELD(varkind, VarKind);
+	READ_BOOL_FIELD(compiled);
+	READ_NODE_FIELD(value);
+	READ_OID_FIELD(rettype);
+	READ_INT_FIELD(location);
+
+	READ_DONE();
+}
+/* End - ReqID:SRS-MYSQL-SET; End - BUG#Z6816 */
 
 /*
  * parseNodeString
@@ -3356,6 +3384,12 @@ parseNodeString(void)
 	else if (MATCH("PRIORAEXPR", 10))
 		return_value = _readPriorAexpr();
 	/* End - ReqID:SRS-SQL-HierarchicalQueries */
+	/* Begin - ReqID:SRS-MYSQL-SET; Begin - BUG#Z6816 */
+	else if (MATCH("VARASSIGN", 9))
+		return_value = _readVarAssign();
+	else if (MATCH("VARREF", 6))
+		return_value = _readVarRef();
+	/* End - ReqID:SRS-MYSQL-SET; End - BUG#Z6816 */
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);
