@@ -7093,6 +7093,11 @@ mys_show_columns_check_tb(SelectStmt *stmt)
 	{
 		LOCAL_FCINFO(fcinfo, 0);
 		namespace = NameStr(*(DatumGetName(current_schema(fcinfo))));
+
+		/* Begin - bug#6850 */
+		if (namespace == NULL)
+			return;
+		/* End - bug#6850 */
 	}
 
 	/* check show columns, if table
@@ -7179,6 +7184,11 @@ mys_show_table_status_check_db(SelectStmt *stmt)
 	{
 		LOCAL_FCINFO(fcinfo, 0);
 		namespace = NameStr(*(DatumGetName(current_schema(fcinfo))));
+
+		/* Begin - bug#6850 */
+		if (namespace == NULL)
+			return;
+		/* End - bug#6850 */
 	}
 
 	/* if the namespace is null,
@@ -7221,6 +7231,11 @@ mys_show_index_check_tb(SelectStmt *stmt)
 	{
 		LOCAL_FCINFO(fcinfo, 0);
 		namespace = NameStr(*(DatumGetName(current_schema(fcinfo))));
+
+		/* Begin - bug#6850 */
+		if (namespace == NULL)
+			return;
+		/* End - bug#6850 */
 	}
 
 	if (stmt->whereClause != NULL && nodeTag(stmt->whereClause) == T_A_Expr)
