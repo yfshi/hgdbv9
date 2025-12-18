@@ -11199,6 +11199,24 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 			return true;
 		}
 	}
+	else
+	{
+		const char	*starttime;
+		const char	*endtime;
+
+		starttime = timestamptz_to_str(impt_starttime);
+
+		if (impt_endtime == DT_NOEND)
+			endtime = strdup("-infinity");
+		else
+			endtime = timestamptz_to_str(impt_endtime);
+
+		sprintf(warning_msg, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
+
+		strncpy(msg, warning_msg, strlen(warning_msg));
+
+		return true;
+	}
 
 	return false;
 }
