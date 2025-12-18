@@ -13317,6 +13317,13 @@ AlterSynoStmt:
 				{
 					AlterSynonymStmt *n = makeNode(AlterSynonymStmt);
 					n->ispub = true;
+					/* Begin - BUG#Z6742 */
+					if (list_length($4) > 1)
+						ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("missing or invalid option"),
+									parser_errposition(@4)));
+					/* End - BUG#Z6742 */
 					n->synname = $4;
 					n->compile_flag = true;
 
