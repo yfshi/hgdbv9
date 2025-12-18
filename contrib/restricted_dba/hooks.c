@@ -892,7 +892,7 @@ _PG_init(void)
 							 &se_feature.restricted_dba,
 							 false,
 							 PGC_USERSET,
-							 GUC_NOT_IN_SAMPLE | GUC_NO_RESET_ALL,
+							 GUC_NO_RESET_ALL,
 							 restricted_dba_check,
 							 restricted_dba_assign,
 							 restricted_dba_show);
@@ -903,7 +903,7 @@ _PG_init(void)
 							 &se_feature.mode,
 							 false,
 							 PGC_USERSET,
-							 GUC_NOT_IN_SAMPLE | GUC_NO_RESET_ALL,
+							 GUC_NO_RESET_ALL,
 							 se_feature_mode_check,
 							 se_feature_mode_assign,
 							 se_feature_mode_show);

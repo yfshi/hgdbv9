@@ -834,3 +834,8 @@
 #audit.sqlitedbpath = 'pgaudit/sqlite/sqlite.db'			# sqlite database path
 #audit.track_settings = on						# pg_track_settings feature switch, off or on
 
+#------------------------------------------------------------------------------
+# se_feature parameters
+#------------------------------------------------------------------------------
+#se_feature.mode = off							# turn on/off all se_features
+#se_feature.restricted_dba = off				# restrict superuser privileges 
