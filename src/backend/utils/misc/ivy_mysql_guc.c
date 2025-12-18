@@ -492,7 +492,7 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 			GUC_LIST_INPUT
 		},
 		&default_database,
-		"postgres",
+		"highgo",
 		NULL, NULL, NULL
 	},
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */

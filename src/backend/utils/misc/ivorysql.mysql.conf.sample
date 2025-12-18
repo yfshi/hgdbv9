@@ -6,7 +6,7 @@
 #mysql.port = 3306
 #mysql.protocol_type = mysql	# what kind of protocol listening with
 
-#mysql.default_database = postgres
+#mysql.default_database = highgo
 
 #sha256_password_public_key_path = '' 	# private key for caching_sha2_password auth if channel is not security.
 #sha256_password_private_key_path = ''	# public  key for caching_sha2_password auth if channel is not security.

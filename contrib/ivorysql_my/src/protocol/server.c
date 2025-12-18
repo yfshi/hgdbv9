@@ -434,9 +434,6 @@ GetItemByTypeOid(Oid oid, bool report_warning)
 			break;
 		*/
 		default:
-			if (!report_warning)
-				ereport(WARNING,
-					(errmsg("type \"%s\" cannot find the macro, use string macro instead", result->typname)));
 			result->mysql_type_id = MYSQL_TYPE_STRING;
 			break;
 	}

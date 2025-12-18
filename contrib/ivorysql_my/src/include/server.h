@@ -270,6 +270,7 @@ typedef struct {
     uint32      type;
     void        *extension;
     char        *default_value;
+    bool        is_com_field_list; /* bug#6850 */
 } mysql_column_definition_t;
 
 typedef enum enum_field_types {
