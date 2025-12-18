@@ -741,4 +741,23 @@ insert into t values (1), (2), (4);
 select @var100, @var100 := @var102 / num, @var102 := @var102 + 1 from (select @var100 := a as num from t) tt;
 drop table t;
 
+
+--fix bug 6860
+set @x4 = 5, @x5 = @x4 - 1;
+select @x4, @x5; --5 NULL
+
+set @var = 1;
+set @var = @var + 1, @var2 = @var;
+select @var, @var2; --2 1
+
+--fix bug 6860
+create table tb(tid int);
+insert into tb values(7.0),(8.0),(12.0);
+set @var = cast((select avg(tid) from tb) as unsigned);
+select @var;
+set @var = @var + 1;
+select @var;
+
+drop table tb;
+
 set mysql.at_or_atat = off;

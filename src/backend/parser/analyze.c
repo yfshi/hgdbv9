@@ -6878,6 +6878,9 @@ transformMysDoStmt(ParseState *pstate, MysDoStmt *stmt)
 			qry->utilityStmt = (Node *) setvar;
 			return qry;
 		}
+
+		/* this is a SET statement, set p_myssetvar to true, BUG#Z6860 */
+		pstate->p_myssetvar = true;
 	}
 	/* End - BUG#Z6201 */
 
