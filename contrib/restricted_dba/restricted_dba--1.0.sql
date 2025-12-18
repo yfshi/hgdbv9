@@ -76,3 +76,12 @@ grant select on pg_role to public;
 --	/* End - Bug#z4795 */
 
 GRANT USAGE ON SCHEMA hg_security TO public;
+
+/* Begin bug#z6859 */
+GRANT EXECUTE ON FUNCTION is_sysdba TO PUBLIC;
+GRANT EXECUTE ON FUNCTION is_syssso TO PUBLIC;
+GRANT EXECUTE ON FUNCTION is_syssao TO PUBLIC;
+GRANT EXECUTE ON FUNCTION check_se_param_change TO PUBLIC;
+GRANT EXECUTE ON FUNCTION set_backend_se_param TO PUBLIC;
+GRANT EXECUTE ON FUNCTION reset_all_se_param TO PUBLIC;
+/* End bug#z6859 */
