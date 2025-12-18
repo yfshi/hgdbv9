@@ -888,9 +888,11 @@ LookupRerstrictRules(char* username, char* mac_address)
 				curtime = timestamptz2timestamp(GetCurrentTimestamp());
 				timeflag = CheckTimeInRules(curtime, pstrdup(allow_time), pstrdup(outallow_time));
 			}
-			if (macflag == rulemac_include_match)
+			if (macflag == rulemac_include_match ||
+				(macflag == rulemac_notmatch && !strcmp(rule_mac, "*") && strcmp(outrule_mac, "*")))
 					elog(ERROR, "Mac address in restricted!");
-			if (timeflag == ruletime_include_match)
+			if (timeflag == ruletime_include_match || 
+				(timeflag == ruletime_notmatch && !strcmp(allow_time, "*") && strcmp(outallow_time, "*")))
 					elog(ERROR, "Login time in restricted!");
 		}
 		/* if the type is whitelist. */
