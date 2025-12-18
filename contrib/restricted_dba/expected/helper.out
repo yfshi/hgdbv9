@@ -76,3 +76,42 @@ ERROR:  permission denied
 alter system reset audit.enable;
 ERROR:  permission denied
 reset search_path;
+/* Begin bug#z6859 */
+\c - syssso
+set se_feature.mode to on;
+set se_feature.restricted_dba to on;
+set search_path to 'hg_security';
+select is_sysdba(10);
+ is_sysdba 
+-----------
+ t
+(1 row)
+
+select is_syssso(10);
+ is_syssso 
+-----------
+ f
+(1 row)
+
+select is_syssao(10);
+ is_syssao 
+-----------
+ f
+(1 row)
+
+select is_syssso('syssso'::regrole);
+ is_syssso 
+-----------
+ t
+(1 row)
+
+select is_syssao('syssao'::regrole);
+ is_syssao 
+-----------
+ t
+(1 row)
+
+reset se_feature.mode;
+reset se_feature.restricted_dba;
+reset search_path;
+/* End - bug#z6859 */
