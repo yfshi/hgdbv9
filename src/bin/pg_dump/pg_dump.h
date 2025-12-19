@@ -355,6 +355,7 @@ typedef struct _tableInfo
 	bool		dummy_view;		/* view's real definition must be postponed */
 	bool		postponed_def;	/* matview must be postponed into post-data */
 	bool		ispartition;	/* is table a partition? */
+	bool		isinterval;		/* is table a interval partition? BUG#6400 */
 	bool		unsafe_partitions;	/* is it an unsafe partitioned table? */
 	bool		force_view;		/* ReqID:SRS-SQL-FORCEVIEW */
 
