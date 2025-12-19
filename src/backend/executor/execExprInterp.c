@@ -4683,8 +4683,13 @@ mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid)
 							 -1, COERCION_EXPLICIT, COERCE_EXPLICIT_CAST,
 							 -1);
 
-		result = eval_const_expressions(NULL, result);
-		
+		/* Begin - BUG#Z6861 */
+		result = (Node *) evaluate_expr((Expr *) (result),
+										exprType((Node *) (result)),
+										exprTypmod((Node *) (result)),
+										exprCollation((Node *) (result)));
+		/* End - BUG#Z6861 */
+
 		Assert(IsA(result, Const));
 
 		newconst = (Const *) result;
