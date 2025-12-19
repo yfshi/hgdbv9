@@ -4500,8 +4500,15 @@ cost_qual_eval_walker(Node *node, cost_qual_eval_context *context)
 					TupleDescAttr(tupdesc, ((Var *)node)->varattnosyn -1)->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)	/* Bug#M0000206 */
 				{
 					node = build_column_default(rel, ((Var *)node)->varattnosyn);
-					set_opfuncid((OpExpr *) node);
-					add_function_cost(context->root, ((OpExpr *) node)->opfuncid, node, &context->total);
+					/* Begin - BUG#Z6871 */
+					if (node != NULL && IsA(node, FuncExpr))
+						add_function_cost(context->root, ((FuncExpr *) node)->funcid, node, &context->total);
+					else if (node != NULL && IsA(node, OpExpr))
+					{
+						set_opfuncid((OpExpr *) node);
+						add_function_cost(context->root, ((OpExpr *) node)->opfuncid, node, &context->total);
+					}
+					/* End - BUG#Z6871 */
 				}
 
 				RelationClose(rel);

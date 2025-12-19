@@ -276,3 +276,12 @@ end;
 create table vir_cite6 (a int, name varchar(100), v_id as (my_func(a))) partition by range (v_id);--error
 drop function my_func;
 --End - BUG#Z493
+
+--Begin - BUG#Z6871
+CREATE TABLE test_tab (a number, b int GENERATED ALWAYS AS (a * 2), name varchar2(256), id number);
+select * from test_tab order by a,name,id;
+drop table test_tab;
+CREATE TABLE test_tab (a number, b int GENERATED ALWAYS AS (2), name varchar2(256), id number);
+select * from test_tab order by a,name,id;
+drop table test_tab;
+--End - BUG#Z6871
