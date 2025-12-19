@@ -1,0 +1,1759 @@
+--
+-- ReqID:SRS-PLSQL-GOTO
+--
+-- Tests for procedures / GOTO syntax
+--
+begin
+  <<aaa>>raise notice 'aaa';
+  goto ccc;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+begin
+  <<aaa>>raise notice 'aaa';
+  goto ddd;
+  <<bbb>>raise notice 'bbb';
+  <<bbb>>raise notice 'ccc';
+  <<ddd>>raise notice 'ddd';
+end;
+/
+NOTICE:  aaa
+NOTICE:  ddd
+begin
+  <<aaa>>raise notice 'aaa';
+  goto ccc;
+  <<bbb>>raise notice 'bbb';
+  <<"ccc">>raise notice 'ccc';
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+begin
+  <<aaa>>raise notice 'aaa';
+  goto "cCc";
+  <<bbb>>raise notice 'bbb';
+  <<"cCc">>raise notice 'ccc';
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+-- test all supportted statement
+declare
+  s text;
+  i int;
+  c refcursor;
+  arr int[] := array[1,2,3,4,5,6,7,8,9,10];
+begin
+  goto label_block;
+  raise notice 'never go here';
+  <<label_block>>
+  begin
+    raise notice '[block]';
+    goto label_assign;
+  end;
+  raise notice 'never go here';
+  <<label_assign>>
+  i := 10;
+  raise notice '[assign] %', i;
+  goto label_if;
+  raise notice 'never go here';
+  <<label_if>>
+  if true then
+    raise notice '[if]';
+    goto label_case;
+  end if;
+  raise notice 'never go here';
+  <<label_case>>
+  case
+    when true then
+      raise notice '[case]';
+      goto label_loop;
+  end case;
+  raise notice 'never go here';
+  <<label_loop>>
+  loop
+    raise notice '[loop]';
+    goto label_while;
+  end loop;
+  raise notice 'never go here';
+  <<label_while>>
+  while true loop
+    raise notice '[while]';
+    goto label_for;
+  end loop;
+  raise notice 'never go here';
+  <<label_for>>
+  for i in 1..10 loop
+    raise notice '[for] %', i;
+    goto label_foreach;
+  end loop;
+  raise notice 'never go here';
+  <<label_foreach>>
+  foreach i in array arr loop
+    raise notice '[foreach] %', i;
+    goto label_exit;
+    raise notice 'never go here';
+    <<label_exit>>exit;
+  end loop;
+  goto label_raise;
+  raise notice 'never go here';
+  <<label_raise>>raise notice '[raise]';
+  goto label_assert;
+  raise notice 'never go here';
+  <<label_assert>>assert true;
+  raise notice 'never go here';
+  goto label_execsql;
+  raise notice 'never go here';
+  <<label_execsql>>select 2 into i;
+  goto label_dynexecute;
+  raise notice 'never go here';
+  <<label_dynexecute>>execute format('select 1');
+  raise notice '[execute]';
+  goto label_perform;
+  raise notice 'never go here';
+  <<label_perform>>perform 1;
+  raise notice '[perform]';
+  goto label_call;
+  raise notice 'never go here';
+  <<label_call>>
+  do $$
+  begin
+    raise notice '[call]';
+  end; $$;
+  goto label_getdiag;
+  raise notice 'never go here';
+  <<label_getdiag>>get diagnostics s = PG_CONTEXT;
+  raise notice '[getdiagnostics]';
+  goto label_open;
+  raise notice 'never go here';
+  <<label_open>>open c for select v from generate_series(1,10) v;
+  raise notice '[open]';
+  goto label_fetch;
+  raise notice 'never go here';
+  <<label_fetch>>fetch c into i;
+  raise notice '[fetch] %', i;
+  goto label_move;
+  raise notice 'never go here';
+  <<label_move>>move forward 2 from c;
+  fetch c into i;
+  raise notice '[move] %', i;
+  goto label_close;
+  raise notice 'never go here';
+  <<labeL_close>>close c;
+  raise notice '[close]';
+  goto label_null;
+  raise notice 'never go here';
+  <<label_null>>NULL;
+  raise notice '[NULL]';
+  goto label_commit;
+  raise notice 'never go here';
+  <<label_commit>>commit;
+  raise notice '[commit]';
+  goto label_rollback;
+  raise notice 'never go here';
+  <<label_rollback>>rollback;
+  raise notice '[rollback]';
+  goto label_return;
+  raise notice 'never go here';
+  <<label_return>>return;
+  raise notice '[return]';
+end;
+/
+NOTICE:  [block]
+NOTICE:  [assign] 10
+NOTICE:  [if]
+NOTICE:  [case]
+NOTICE:  [loop]
+NOTICE:  [while]
+NOTICE:  [for] 1
+NOTICE:  [foreach] 1
+NOTICE:  [raise]
+NOTICE:  never go here
+NOTICE:  [execute]
+NOTICE:  [perform]
+NOTICE:  [call]
+NOTICE:  [getdiagnostics]
+NOTICE:  [open]
+NOTICE:  [fetch] 1
+NOTICE:  [move] 4
+NOTICE:  [close]
+NOTICE:  [NULL]
+NOTICE:  [commit]
+NOTICE:  [rollback]
+-- test package
+create or replace package goto_pkg as
+  procedure proc;
+  function func return void;
+end;
+/
+create  or replace package body goto_pkg as
+  var1 int;
+  procedure proc as
+  begin
+    <<aaa>>raise notice 'pkg_proc_aaa';
+    goto ccc;
+    <<bbb>>raise notice 'pkg_proc_bbb';
+    <<ccc>>raise notice 'pkg_proc_ccc';
+  end;
+  function func return void as
+  begin
+    <<aaa>>raise notice 'pkg_func_aaa';
+    proc;
+    goto ccc;
+    <<bbb>>raise notice 'pkg_func_bbb';
+    <<ccc>>raise notice 'pkg_func_ccc';
+  end;
+begin
+  <<label_1>>var1 := 1;
+  goto label_3;
+  <<label_2>>var1 := var1 + 1;
+  <<label_3>>var1 := var1 + 1;
+  raise notice 'var1=%', var1;
+end;
+/
+begin
+  goto_pkg.proc;
+  <<aaa>>raise notice 'aaa';
+  goto ccc;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+  perform goto_pkg.func;
+end;
+/
+NOTICE:  var1=2
+NOTICE:  pkg_proc_aaa
+NOTICE:  pkg_proc_ccc
+NOTICE:  aaa
+NOTICE:  ccc
+NOTICE:  pkg_func_aaa
+NOTICE:  pkg_proc_aaa
+NOTICE:  pkg_proc_ccc
+NOTICE:  pkg_func_ccc
+-- test procedure
+create or replace procedure goto_proc as
+begin
+  goto_pkg.proc;
+  <<aaa>>raise notice 'proc_aaa';
+  goto ccc;
+  <<bbb>>raise notice 'proc_bbb';
+  <<ccc>>raise notice 'proc_ccc';
+  perform goto_pkg.func;
+end;
+/
+-- test function
+create or replace function goto_func return void as
+begin
+  goto_pkg.proc;
+  <<aaa>>raise notice 'func_aaa';
+  goto_proc;
+  goto ccc;
+  <<bbb>>raise notice 'func_bbb';
+  <<ccc>>raise notice 'func_ccc';
+  perform goto_pkg.func;
+end;
+/
+call goto_pkg.proc();
+NOTICE:  pkg_proc_aaa
+NOTICE:  pkg_proc_ccc
+select goto_pkg.func();
+NOTICE:  pkg_func_aaa
+NOTICE:  pkg_proc_aaa
+NOTICE:  pkg_proc_ccc
+NOTICE:  pkg_func_ccc
+ func 
+------
+ 
+(1 row)
+
+call goto_proc();
+NOTICE:  pkg_proc_aaa
+NOTICE:  pkg_proc_ccc
+NOTICE:  proc_aaa
+NOTICE:  proc_ccc
+NOTICE:  pkg_func_aaa
+NOTICE:  pkg_proc_aaa
+NOTICE:  pkg_proc_ccc
+NOTICE:  pkg_func_ccc
+select goto_func();
+NOTICE:  pkg_proc_aaa
+NOTICE:  pkg_proc_ccc
+NOTICE:  func_aaa
+NOTICE:  pkg_proc_aaa
+NOTICE:  pkg_proc_ccc
+NOTICE:  proc_aaa
+NOTICE:  proc_ccc
+NOTICE:  pkg_func_aaa
+NOTICE:  pkg_proc_aaa
+NOTICE:  pkg_proc_ccc
+NOTICE:  pkg_func_ccc
+NOTICE:  func_ccc
+NOTICE:  pkg_func_aaa
+NOTICE:  pkg_proc_aaa
+NOTICE:  pkg_proc_ccc
+NOTICE:  pkg_func_ccc
+ goto_func 
+-----------
+ 
+(1 row)
+
+-- label in inner scope are invisible
+begin
+  <<aaa>>raise notice 'aaa';
+  begin
+    <<bbb>>raise notice '1_bbb';
+    <<bbb>>raise notice '1_bbb';
+  end;
+  goto bbb;
+  <<bbb>>raise notice 'bbb';
+end;
+/
+NOTICE:  aaa
+NOTICE:  1_bbb
+NOTICE:  1_bbb
+NOTICE:  bbb
+-- inner scope overflow outter scope
+begin
+  <<aaa>>raise notice 'aaa';
+  <<aaa>>raise notice 'aaa';
+  begin
+    begin
+      goto aaa;
+    end;
+    <<aaa>>raise notice '1_aaa';
+  end;
+end;
+/
+NOTICE:  aaa
+NOTICE:  aaa
+NOTICE:  1_aaa
+-- error: jump to the same-named labels
+begin
+  <<aaa>>raise notice 'aaa';
+  goto bbb;
+  <<bbb>>raise notice 'bbb';
+  <<bbb>>raise notice 'ccc';
+end;
+/
+ERROR:  at most one declaration for 'bbb' is permitted
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: unsupported multiple labels
+begin
+  <<aaa>>raise notice 'aaa';
+  goto bbb;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>><<ddd>>raise notice 'ccc';
+end;
+/
+ERROR:  syntax error at or near ">><<"
+LINE 5:   <<ccc>><<ddd>>raise notice 'ccc';
+               ^
+QUERY:  begin
+  <<aaa>>raise notice 'aaa';
+  goto bbb;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>><<ddd>>raise notice 'ccc';
+end
+-- error: label1.label2....
+begin
+  <<aaa>>
+  begin
+    goto aaa.bbb;
+    <<bbb>>raise notice 'bbb';
+  end;
+end;
+/
+ERROR:  syntax error at or near "aaa"
+LINE 4:     goto aaa.bbb;
+                 ^
+QUERY:  begin
+  <<aaa>>
+  begin
+    goto aaa.bbb;
+    <<bbb>>raise notice 'bbb';
+  end;
+end
+-- cleanup
+drop package goto_pkg;
+drop procedure goto_proc;
+drop function goto_func;
+--
+-- scope
+--
+begin
+  begin
+    goto aaa;
+    begin
+      <<aaa>>raise notice '2_aaa';
+    end;
+  end;
+  <<aaa>>raise notice 'aaa';
+end;
+/
+NOTICE:  aaa
+begin
+  goto aaa;
+  <<aaa>>raise notice 'aaa';
+  begin
+    goto aaa;
+    <<aaa>>raise notice '1_aaa';
+    begin
+      goto aaa;
+      <<aaa>>raise notice '2_aaa';
+    end;
+  end;
+end;
+/
+NOTICE:  aaa
+NOTICE:  1_aaa
+NOTICE:  2_aaa
+begin
+  goto l0_bbb;
+  <<l0_aaa>>raise notice 'l0_aaa';
+  <<l0_bbb>>
+  begin
+    <<l1_aaa>>raise notice 'l1_aaa';
+    begin
+      <<l2_aaa>>raise notice 'l2_aaa';
+      goto l1_bbb;
+      <<l2_bbb>>raise notice 'l2_bbb';
+    end;
+    <<l1_bbb>>raise notice 'l1_bbb';
+  end;
+  <<l0_ccc>>raise notice 'l0_ccc';
+end;
+/
+NOTICE:  l1_aaa
+NOTICE:  l2_aaa
+NOTICE:  l1_bbb
+NOTICE:  l0_ccc
+-- error: jump from outside to block
+begin
+  begin
+    goto aaa;
+    begin
+      <<aaa>>raise notice '2_aaa';
+    end;
+  end;
+end;
+/
+ERROR:  invalid GOTO to non-label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from outside to loop
+begin
+  goto aaa;
+  loop
+    <<aaa>>raise notice 'aaa';
+  end loop;
+end;
+/
+ERROR:  invalid GOTO to non-label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from outside to fori
+begin
+  goto aaa;
+  for i in 1..10 loop
+    <<aaa>>raise notice 'aaa';
+  end loop;
+end;
+/
+ERROR:  invalid GOTO to non-label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from outside to while
+begin
+  goto aaa;
+  while true loop
+    <<aaa>>raise notice 'aaa';
+  end loop;
+end;
+/
+ERROR:  invalid GOTO to non-label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from outside to foreach
+declare
+  i int;
+  arr int[] := array[1,2,3,4,5,6,7,8,9,10];
+begin
+  goto aaa;
+  foreach i in array arr loop
+    <<aaa>>raise notice 'aaa';
+  end loop;
+end;
+/
+ERROR:  invalid GOTO to non-label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 4
+-- error: jump from outside to for
+begin
+  goto aaa;
+  for i in execute 'select generate_series(1,10)' loop
+    <<aaa>>raise notice 'aaa';
+  end loop;
+end;
+/
+ERROR:  invalid GOTO to non-label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+--
+-- IF
+--
+-- jump from branch to outside
+begin
+  if true then
+    goto aaa;
+  end if;
+  <<aaa>>raise notice 'aaa';
+end;
+/
+NOTICE:  aaa
+-- jump from branch to outside
+begin
+  if false then
+    raise notice 'false';
+  elsif true then
+    goto aaa;
+  end if;
+  <<aaa>>raise notice 'aaa';
+end;
+/
+NOTICE:  aaa
+-- jump from "else" to outside
+begin
+  if false then
+    raise notice 'false';
+  else
+    goto aaa;
+  end if;
+  <<aaa>>raise notice 'aaa';
+end;
+/
+NOTICE:  aaa
+-- jump inside branch
+begin
+  if true then
+    <<aaa>>raise notice 'aaa';
+    goto ccc;
+    <<bbb>>raise notice 'bbb';
+    <<ccc>>raise notice 'ccc';
+  end if;
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+-- jump inside branch
+begin
+  if false then
+    raise notice 'false';
+  elsif true then
+    <<aaa>>raise notice 'aaa';
+    goto ccc;
+    <<bbb>>raise notice 'bbb';
+    <<ccc>>raise notice 'ccc';
+  end if;
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+-- jump insize "else"
+begin
+  if false then
+    raise notice 'false';
+  else
+    <<aaa>>raise notice 'aaa';
+    goto ccc;
+    <<bbb>>raise notice 'bbb';
+    <<ccc>>raise notice 'ccc';
+  end if;
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+-- jump from inner to outter branch
+begin
+  if true then
+    if true then
+      if true then
+        if true then
+          if true then
+            if true then
+              <<if6>>raise notice 'if6';
+              goto if4;
+            end if;
+          end if;
+          <<if4>>raise notice 'if4';
+          goto if2;
+        end if;
+      end if;
+      <<if2>>raise notice 'if2';
+    end if;
+  end if;
+end;
+/
+NOTICE:  if6
+NOTICE:  if4
+NOTICE:  if2
+-- error: jump from inner branch to other outter branch
+begin
+  if true then
+    if true then
+      if true then
+        if true then
+          if true then
+            if true then
+              <<if6>>raise notice 'if6';
+              goto else4;
+            end if;
+          end if;
+        else
+          <<else4>>raise notice 'else4';
+          goto else2;
+        end if;
+      end if;
+    else
+      <<else2>>raise notice 'else2';
+    end if;
+  end if;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'else4'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- jump from branch to outside
+begin
+  if true then
+    goto bbb;
+  else
+    <<aaa>>raise notice 'aaa';
+  end if;
+  <<aaa>>raise notice 'aaa';
+  <<bbb>>raise notice 'bbb';
+end;
+/
+NOTICE:  bbb
+-- error: jump to the same-named label between branch and outside
+begin
+  goto aaa;
+  <<aaa>>raise notice 'aaa';
+  if true then
+    <<aaa>>raise notice 'aaa';
+  end if;
+end;
+/
+ERROR:  at most one declaration for 'aaa' is permitted
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump to the same-named label between branches
+begin
+  goto aaa;
+  if true then
+    <<aaa>>raise notice 'aaa';
+  else
+    <<aaa>>raise notice 'aaa';
+  end if;
+end;
+/
+ERROR:  at most one declaration for 'aaa' is permitted
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump to branch
+begin
+  goto aaa;
+  if true then
+    <<aaa>>raise notice 'aaa';
+  else
+    <<bbb>>raise notice 'bbb';
+  end if;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from outside to branch
+begin
+  goto bbb;
+  if true then
+    <<aaa>>raise notice 'aaa';
+  elsif false then
+    <<bbb>>raise notice 'bbb';
+  end if;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'bbb'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from outside to "else" branch
+begin
+  goto bbb;
+  if true then
+    <<aaa>>raise notice 'aaa';
+  else
+    <<bbb>>raise notice 'bbb';
+  end if;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'bbb'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from branch to another branch
+begin
+  if true then
+    goto aaa;
+  elsif false then
+    <<aaa>>raise notice 'aaa';
+  end if;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from branch to "else"
+begin
+  if true then
+    goto aaa;
+  else
+    <<aaa>>raise notice 'aaa';
+  end if;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- jump from branch in block to outter branch
+begin
+  if true then
+    begin
+      if true then
+        goto aaa;
+      end if;
+    end;
+    <<aaa>>raise notice 'aaa';
+  end if;
+end;
+/
+NOTICE:  aaa
+--
+-- CASE
+--
+-- jump to outside
+begin
+  case
+    when true then
+      goto aaa;
+  end case;
+  <<aaa>>raise notice 'aaa';
+end;
+/
+NOTICE:  aaa
+-- jump to outside
+begin
+  case
+    when false then
+      raise notice 'false';
+    when true then
+      goto aaa;
+  end case;
+  <<aaa>>raise notice 'aaa';
+end;
+/
+NOTICE:  aaa
+-- jump inside branch
+begin
+  case
+    when true then
+      <<aaa>>raise notice 'aaa';
+      goto ccc;
+      <<bbb>>raise notice 'bbb';
+      <<ccc>>raise notice 'ccc';
+  end case;
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+-- jump inside branch
+begin
+  case
+    when false then
+      raise notice 'false';
+    when true then
+      <<aaa>>raise notice 'aaa';
+      goto ccc;
+      <<bbb>>raise notice 'bbb';
+      <<ccc>>raise notice 'ccc';
+  end case;
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+-- jump inside "else" branch
+begin
+  case
+    when false then
+      raise notice 'false';
+    else
+      <<aaa>>raise notice 'aaa';
+      goto ccc;
+      <<bbb>>raise notice 'bbb';
+      <<ccc>>raise notice 'ccc';
+  end case;
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+-- jump from inner to outter branch
+begin
+  case when true then
+    case when true then
+      case when true then
+        case when true then
+          case when true then
+            case when true then
+              <<case6>>raise notice 'case6';
+              goto case4;
+            end case;
+          end case;
+          <<case4>>raise notice 'case4';
+          goto case2;
+        end case;
+      end case;
+      <<case2>>raise notice 'case2';
+    end case;
+  end case;
+end;
+/
+NOTICE:  case6
+NOTICE:  case4
+NOTICE:  case2
+-- error: jump from inner branch to other outter branch
+begin
+  case when true then
+    case when true then
+      case when true then
+        case when true then
+          case when true then
+            case when true then
+              <<case6>>raise notice 'case6';
+              goto else4;
+            end case;
+          end case;
+        else
+          <<else4>>raise notice 'else4';
+          goto else2;
+        end case;
+      end case;
+    else
+      <<else2>>raise notice 'else2';
+    end case;
+  end case;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'else4'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- jump from branch to outside
+begin
+  case
+    when true then
+      goto bbb;
+    else
+      <<aaa>>raise notice 'aaa';
+  end case;
+  <<aaa>>raise notice 'aaa';
+  <<bbb>>raise notice 'bbb';
+end;
+/
+NOTICE:  bbb
+-- error: jump to the same-named label between branche and outside
+begin
+  goto aaa;
+  <<aaa>>raise notice 'aaa';
+  case
+    when true then
+      <<aaa>>raise notice 'aaa';
+  end case;
+end;
+/
+ERROR:  at most one declaration for 'aaa' is permitted
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump to the same-named label between branches
+begin
+  goto aaa;
+  case
+    when true then
+      <<aaa>>raise notice 'aaa';
+    else
+      <<aaa>>raise notice 'aaa';
+  end case;
+end;
+/
+ERROR:  at most one declaration for 'aaa' is permitted
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump to branches which has the same-named label
+begin
+  goto aaa;
+  case
+    when true then
+    <<aaa>>raise notice 'aaa';
+    else
+      <<bbb>>raise notice 'bbb';
+  end case;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from outside to branch
+begin
+  goto bbb;
+  case
+    when true then
+      <<aaa>>raise notice 'aaa';
+    when false then
+      <<bbb>>raise notice 'bbb';
+  end case;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'bbb'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from outside to "else" branch
+begin
+  goto bbb;
+  case
+    when true then
+      <<aaa>>raise notice 'aaa';
+    else
+      <<bbb>>raise notice 'bbb';
+  end case;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'bbb'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from branch to other branch
+begin
+  case
+    when true then
+      goto aaa;
+    when false then
+      <<aaa>>raise notice 'aaa';
+  end case;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from branch to "else" branch
+begin
+  case
+    when true then
+      goto aaa;
+    else
+      <<aaa>>raise notice 'aaa';
+  end case;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- jump from branch in block to outter branch
+begin
+  case when true then
+    begin
+      case when true then
+        goto aaa;
+      end case;
+    end;
+    <<aaa>>raise notice 'aaa';
+  end case;
+end;
+/
+NOTICE:  aaa
+--
+-- EXCEPTION
+--
+-- jump from branch to another branch
+begin
+  <<aaa>>raise notice 'aaa';
+  perform 1/0;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+exception
+  when division_by_zero then
+    <<eaaa>>raise notice 'e_aaa';
+    goto ebbb;
+    <<ebbb>>raise notice 'e_bbb';
+  when others then
+    <<eother>>raise notice 'e_other';
+end;
+/
+NOTICE:  aaa
+NOTICE:  e_aaa
+NOTICE:  e_bbb
+-- jump inside branch
+begin
+  <<aaa>>raise notice 'aaa';
+  perform 1/0;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+exception
+  when others then
+    goto eccc;
+    <<eaaa>>raise notice 'eaaa';
+    <<ebbb>>raise notice 'ebbb';
+    <<eccc>>raise notice 'eccc';
+end;
+/
+NOTICE:  aaa
+NOTICE:  eccc
+-- jump from branch to "others" branch
+begin
+  <<aaa>>raise notice 'aaa';
+  perform 1/0;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+exception
+  when division_by_zero then
+    <<eaaa>>raise notice 'e_aaa';
+    goto eother;
+  when others then
+    <<eother>>raise notice 'e_other';
+end;
+/
+NOTICE:  aaa
+NOTICE:  e_aaa
+NOTICE:  e_other
+-- jump from branch to another branch
+begin
+  <<aaa>>raise notice 'aaa';
+  perform 1/0;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+exception
+  when division_by_zero then
+    <<eaaa>>raise notice 'e_aaa';
+    goto ebbb;
+  when assert_failure then
+    <<ebbb>>raise notice 'e_bbb';
+  when others then
+    <<eother>>raise notice 'e_other';
+end;
+/
+NOTICE:  aaa
+NOTICE:  e_aaa
+NOTICE:  e_bbb
+-- jump from branch to another branch
+begin
+  <<aaa>>raise notice 'aaa';
+  perform 1/0;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+exception
+  when division_by_zero then
+    <<eaaa>>raise notice 'e_aaa';
+    goto eccc;
+  when others then
+    <<ebbb>>raise notice 'e_bbb';
+    <<eccc>>raise notice 'e_ccc';
+end;
+/
+NOTICE:  aaa
+NOTICE:  e_aaa
+NOTICE:  e_ccc
+-- jump from branch to another branch
+begin
+  <<aaa>>raise notice 'aaa';
+  perform 1/0;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+exception
+  when division_by_zero then
+    <<eaaa>>raise notice 'e_aaa';
+    goto eccc;
+  when assert_failure then
+  when others then
+    <<ebbb>>raise notice 'e_bbb';
+    <<eccc>>raise notice 'e_ccc';
+end;
+/
+NOTICE:  aaa
+NOTICE:  e_aaa
+NOTICE:  e_ccc
+-- jump from inner to outter block
+begin
+  <<aaa>>raise notice 'aaa';
+  begin
+    perform 1/0;
+  exception
+    when others then
+      raise notice 'ee_aaa';
+      goto ccc;
+  end;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+end;
+/
+NOTICE:  aaa
+NOTICE:  ee_aaa
+NOTICE:  ccc
+-- jump from inner to outter via multiple layers
+begin
+  begin
+    begin
+      begin
+        perform 1/0;
+      exception
+        when others then
+          goto aaa;
+      end;
+    end;
+    <<aaa>>raise notice 'aaa';
+  end;
+end;
+/
+NOTICE:  aaa
+-- jump from inner to outter via multiple layers
+begin
+  perform 1/0;
+exception
+  when others then
+    begin
+      begin
+        begin
+          perform 1/0;
+        exception
+          when others then
+            goto aaa;
+        end;
+      end;
+      <<aaa>>raise notice 'aaa';
+    end;
+end;
+/
+NOTICE:  aaa
+-- jump from inner branch to other outter branch
+begin
+  <<aaa>>raise notice 'aaa';
+  perform 1/0;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+exception
+  when division_by_zero then
+    <<eaaa>>raise notice 'e_aaa';
+    begin
+      perform 1/0;
+    exception
+      when others then
+        raise notice 'ee_aaa';
+        goto ebbb;
+    end;
+  when assert_failure then
+    <<ebbb>>raise notice 'e_bbb';
+  when others then
+    <<eother>>raise notice 'e_other';
+end;
+/
+NOTICE:  aaa
+NOTICE:  e_aaa
+NOTICE:  ee_aaa
+NOTICE:  e_bbb
+-- jump from inner branch to outter "other" branch
+begin
+  <<aaa>>raise notice 'aaa';
+  perform 1/0;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+exception
+  when division_by_zero then
+    <<eaaa>>raise notice 'e_aaa';
+    begin
+      perform 1/0;
+    exception
+      when division_by_zero then
+        raise notice 'ee_aaa';
+        goto ebbb;
+      when others then
+        <<ebbb>>raise notice 'ee_bbb';
+        goto eother;
+    end;
+  when assert_failure then
+    <<ebbb>>raise notice 'e_bbb';
+  when others then
+    <<eother>>raise notice 'e_other';
+end;
+/
+NOTICE:  aaa
+NOTICE:  e_aaa
+NOTICE:  ee_aaa
+NOTICE:  ee_bbb
+NOTICE:  e_other
+-- jump to upper enclosed block
+begin
+  perform 1/0;
+exception
+  when others then
+    <<e0_aaa>>raise notice 'e0_aaa';
+    begin
+      perform 1/0;
+      <<e0_f1_aaa>>raise notice 'e0_f1_aaa';
+    exception
+      when others then
+        <<e1_aaa>>raise notice 'e1_aaa';
+        begin
+          perform 1/0;
+          <<e1_f1_aaa>>raise notice 'e1_f1_aaa';
+        exception
+          when others then
+            <<e2_aaa>>raise notice 'e2_aaa';
+            goto e0_bbb;
+        end;
+    end;
+    <<e0_bbb>>raise notice 'e0_bbb';
+end;
+/
+NOTICE:  e0_aaa
+NOTICE:  e1_aaa
+NOTICE:  e2_aaa
+NOTICE:  e0_bbb
+-- jump to upper enclosed block
+begin
+  begin
+    <<f1_aaa>>raise notice 'f1_aaa';
+    begin
+      perform 1/0;
+      <<f2_aaa>>raise notice 'f2_aaa';
+    exception
+      when others then
+        <<e2_aaa>>raise notice 'e2_aaa';
+        begin
+          perform 1/0;
+        exception
+          when others then
+            <<e3_aaa>>raise notice 'e3_aaa';
+            goto f1_bbb;
+        end;
+    end;
+    <<f1_bbb>>raise notice 'f1_bbb';
+  end;
+end;
+/
+NOTICE:  f1_aaa
+NOTICE:  e2_aaa
+NOTICE:  e3_aaa
+NOTICE:  f1_bbb
+-- error: jump to upper non-enclosed block
+begin
+  perform 1/0;
+exception
+  when others then
+    <<e0_aaa>>raise notice 'e0_aaa';
+    begin
+      perform 1/0;
+      <<e0_f1_aaa>>raise notice 'e0_f1_aaa';
+    exception
+      when others then
+        <<e1_aaa>>raise notice 'e1_aaa';
+        begin
+          perform 1/0;
+          <<e1_f1_aaa>>raise notice 'e1_f1_aaa';
+        exception
+          when others then
+            <<e2_aaa>>raise notice 'e2_aaa';
+            goto e0_f1_aaa;
+        end;
+    end;
+    <<e0_bbb>>raise notice 'e0_bbb';
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'e0_f1_aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from normal section to exception
+begin
+  <<aaa>>raise notice 'aaa';
+  goto eaaa;
+  perform 1/0;
+  <<bbb>>raise notice 'bbb';
+exception
+  when division_by_zero then
+    <<eaaa>>raise notice 'e_aaa';
+    goto eother;
+  when others then
+    <<eother>>raise notice 'e_other';
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'eaaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- jump to upper enclosed block
+begin
+  <<aaa>>raise notice 'aaa';
+  begin
+    perform 1/0;
+    <<aaa>>raise notice '1_aaa';
+  exception
+    when others then
+      goto aaa;
+  end;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump to the same-named labels between branches
+begin
+  <<aaa>>raise notice 'aaa';
+  perform 1/0;
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+exception
+  when division_by_zero then
+    <<aaa>>raise notice 'e_aaa';
+    goto aaa;
+  when others then
+    <<aaa>>raise notice 'e_other';
+end;
+/
+ERROR:  at most one declaration for 'aaa' is permitted
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+-- error: jump from exception to normal section
+begin
+  <<aaa>>raise notice 'aaa';
+  perform 1/0;
+exception
+  when division_by_zero then
+    <<bbb>>raise notice 'e_aaa';
+    goto aaa;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 1
+--
+-- NULL
+--
+begin
+  raise notice 'aaa';
+  goto noop;
+  raise notice 'bbb';
+  <<noop>>NULL;
+  raise notice 'ccc';
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+-- null without label does not placehold a statment index
+begin
+  goto aaa;
+  NULL;
+  NULL;
+  <<aaa>>raise notice 'aaa';
+end;
+/
+NOTICE:  aaa
+--
+-- sub procedure
+--
+declare
+  procedure sub1 as
+    procedure sub1_sub1 as
+    begin
+      goto sub1_sub1_aaa;
+      raise notice 'sub1_sub1: never go here';
+      <<sub1_sub1_aaa>>raise notice 'sub1_sub1_aaa';
+    end;
+  begin
+    goto aaa;
+    raise notice 'sub1: never go here';
+    <<aaa>>raise notice 'sub1_aaa';
+    sub1_sub1;
+  end;
+begin
+  <<aaa>>raise notice 'aaa';
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+  sub1;
+end;
+/
+NOTICE:  aaa
+NOTICE:  bbb
+NOTICE:  ccc
+NOTICE:  sub1_aaa
+NOTICE:  sub1_sub1_aaa
+-- error: branch to other procedure
+declare
+  procedure sub1 as
+    procedure sub1_sub1 as
+    begin
+      goto sub1_aaa;
+    end;
+  begin
+    <<sub1_aaa>>raise notice 'sub1_aaa';
+    goto aaa;
+  end;
+begin
+  <<aaa>>raise notice 'aaa';
+  <<bbb>>raise notice 'bbb';
+  <<ccc>>raise notice 'ccc';
+end;
+/
+ERROR:  invalid GOTO to non-label 'sub1_aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 4
+-- error: branch to sub procedure
+declare
+  procedure sub1 as
+    procedure sub1_sub1 as
+    begin
+      goto sub1_aaa;
+    end;
+  begin
+    <<sub1_aaa>>raise notice 'sub1_aaa';
+    goto aaa;
+  end;
+begin
+  goto sub1_aaa;
+end;
+/
+ERROR:  invalid GOTO to non-label 'sub1_aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 4
+-- all supported  statement
+declare
+  procedure sub as
+  declare
+    s text;
+    i int;
+    c refcursor;
+    arr int[] := array[1,2,3,4,5,6,7,8,9,10];
+  begin
+    goto label_block;
+    raise notice 'never go here';
+    <<label_block>>
+    begin
+      raise notice '[block]';
+      goto label_assign;
+    end;
+    raise notice 'never go here';
+    <<label_assign>>
+    i := 10;
+    raise notice '[assign] %', i;
+    goto label_if;
+    raise notice 'never go here';
+    <<label_if>>
+    if true then
+      raise notice '[if]';
+      goto label_case;
+    end if;
+    raise notice 'never go here';
+    <<label_case>>
+    case
+      when true then
+        raise notice '[case]';
+        goto label_loop;
+    end case;
+    raise notice 'never go here';
+    <<label_loop>>
+    loop
+      raise notice '[loop]';
+      goto label_while;
+    end loop;
+    raise notice 'never go here';
+    <<label_while>>
+    while true loop
+      raise notice '[while]';
+      goto label_for;
+    end loop;
+    raise notice 'never go here';
+    <<label_for>>
+    for i in 1..10 loop
+      raise notice '[for] %', i;
+      goto label_foreach;
+    end loop;
+    raise notice 'never go here';
+    <<label_foreach>>
+    foreach i in array arr loop
+      raise notice '[foreach] %', i;
+      goto label_exit;
+      raise notice 'never go here';
+      <<label_exit>>exit;
+    end loop;
+    goto label_raise;
+    raise notice 'never go here';
+    <<label_raise>>raise notice '[raise]';
+    goto label_assert;
+    raise notice 'never go here';
+    <<label_assert>>assert true;
+    raise notice 'never go here';
+    goto label_execsql;
+    raise notice 'never go here';
+    <<label_execsql>>select 2 into i;
+    goto label_dynexecute;
+    raise notice 'never go here';
+    <<label_dynexecute>>execute format('select 1');
+    raise notice '[execute]';
+    goto label_perform;
+    raise notice 'never go here';
+    <<label_perform>>perform 1;
+    raise notice '[perform]';
+    goto label_call;
+    raise notice 'never go here';
+    <<label_call>>
+    do $$
+    begin
+      raise notice '[call]';
+    end; $$;
+    goto label_getdiag;
+    raise notice 'never go here';
+    <<label_getdiag>>get diagnostics s = PG_CONTEXT;
+    raise notice '[getdiagnostics]';
+    goto label_open;
+    raise notice 'never go here';
+    <<label_open>>open c for select v from generate_series(1,10) v;
+    raise notice '[open]';
+    goto label_fetch;
+    raise notice 'never go here';
+    <<label_fetch>>fetch c into i;
+    raise notice '[fetch] %', i;
+    goto label_move;
+    raise notice 'never go here';
+    <<label_move>>move forward 2 from c;
+    fetch c into i;
+    raise notice '[move] %', i;
+    goto label_close;
+    raise notice 'never go here';
+    <<labeL_close>>close c;
+    raise notice '[close]';
+    goto label_null;
+    raise notice 'never go here';
+    <<label_null>>NULL;
+    raise notice '[NULL]';
+    goto label_commit;
+    raise notice 'never go here';
+    <<label_commit>>commit;
+    raise notice '[commit]';
+    goto label_rollback;
+    raise notice 'never go here';
+    <<label_rollback>>rollback;
+    raise notice '[rollback]';
+    goto label_return;
+    raise notice 'never go here';
+    <<label_return>>return;
+    raise notice '[return]';
+  end;
+begin
+  sub;
+end;
+/
+NOTICE:  [block]
+NOTICE:  [assign] 10
+NOTICE:  [if]
+NOTICE:  [case]
+NOTICE:  [loop]
+NOTICE:  [while]
+NOTICE:  [for] 1
+NOTICE:  [foreach] 1
+NOTICE:  [raise]
+NOTICE:  never go here
+NOTICE:  [execute]
+NOTICE:  [perform]
+NOTICE:  [call]
+NOTICE:  [getdiagnostics]
+NOTICE:  [open]
+NOTICE:  [fetch] 1
+NOTICE:  [move] 4
+NOTICE:  [close]
+NOTICE:  [NULL]
+NOTICE:  [commit]
+NOTICE:  [rollback]
+-- scope
+declare
+  procedure sub as
+  begin
+    begin
+      goto aaa;
+      begin
+        <<aaa>>raise notice '2_aaa';
+      end;
+    end;
+    <<aaa>>raise notice 'aaa';
+  end;
+begin
+  sub;
+end;
+/
+NOTICE:  aaa
+-- error: jump from outside to block
+declare
+  procedure sub as
+  begin
+    begin
+      goto aaa;
+      begin
+        <<aaa>>raise notice '2_aaa';
+      end;
+    end;
+  end;
+begin
+  sub;
+end;
+/
+ERROR:  invalid GOTO to non-label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 3
+-- error: jump from outside to loop
+declare
+  procedure sub as
+  begin
+    goto aaa;
+    loop
+      <<aaa>>raise notice 'aaa';
+    end loop;
+  end;
+begin
+  sub;
+end;
+/
+ERROR:  invalid GOTO to non-label 'aaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 3
+-- jump from  branch to outside
+declare
+  procedure sub as
+  begin
+    if false then
+      raise notice 'false';
+    elsif true then
+      goto aaa;
+    end if;
+    <<aaa>>raise notice 'aaa';
+  end;
+begin
+  sub;
+end;
+/
+NOTICE:  aaa
+-- jump inside branch
+declare
+  procedure sub as
+  begin
+    if false then
+      raise notice 'false';
+    elsif true then
+      <<aaa>>raise notice 'aaa';
+      goto ccc;
+      <<bbb>>raise notice 'bbb';
+      <<ccc>>raise notice 'ccc';
+    end if;
+  end;
+begin
+  sub;
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc
+-- jump from inner to outter branch
+declare
+  procedure sub as
+  begin
+    if true then
+      if true then
+        if true then
+          if true then
+            if true then
+              if true then
+                <<if6>>raise notice 'if6';
+                goto if4;
+              end if;
+            end if;
+            <<if4>>raise notice 'if4';
+            goto if2;
+          end if;
+        end if;
+        <<if2>>raise notice 'if2';
+      end if;
+    end if;
+  end;
+begin
+  sub;
+end;
+/
+NOTICE:  if6
+NOTICE:  if4
+NOTICE:  if2
+-- error: jump to the same-named label between branch and outside
+declare
+  procedure sub as
+  begin
+    goto aaa;
+    <<aaa>>raise notice 'aaa';
+    if true then
+      <<aaa>>raise notice 'aaa';
+    end if;
+  end;
+begin
+  sub;
+end;
+/
+ERROR:  at most one declaration for 'aaa' is permitted
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 3
+-- jump from branch to another branch
+declare
+  procedure sub as
+  begin
+    <<aaa>>raise notice 'aaa';
+    perform 1/0;
+    <<bbb>>raise notice 'bbb';
+    <<ccc>>raise notice 'ccc';
+  exception
+    when division_by_zero then
+      <<eaaa>>raise notice 'e_aaa';
+      goto eccc;
+    when assert_failure then
+    when others then
+      <<ebbb>>raise notice 'e_bbb';
+      <<eccc>>raise notice 'e_ccc';
+  end;
+begin
+  sub;
+end;
+/
+NOTICE:  aaa
+NOTICE:  e_aaa
+NOTICE:  e_ccc
+-- jump from inner to outter block
+declare
+  procedure sub as
+  begin
+    <<aaa>>raise notice 'aaa';
+    begin
+      perform 1/0;
+    exception
+      when others then
+        raise notice 'ee_aaa';
+        goto ccc;
+    end;
+    <<bbb>>raise notice 'bbb';
+    <<ccc>>raise notice 'ccc';
+  end;
+begin
+  sub;
+end;
+/
+NOTICE:  aaa
+NOTICE:  ee_aaa
+NOTICE:  ccc
+-- error: jump from normal section to exception
+declare
+  procedure sub as
+  begin
+    <<aaa>>raise notice 'aaa';
+    goto eaaa;
+    perform 1/0;
+    <<bbb>>raise notice 'bbb';
+  exception
+    when division_by_zero then
+      <<eaaa>>raise notice 'e_aaa';
+      goto eother;
+    when others then
+      <<eother>>raise notice 'e_other';
+  end;
+begin
+  sub;
+end;
+/
+ERROR:  illegal GOTO statement; this GOTO cannot branch to label 'eaaa'
+CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 3
+-- null statement
+declare
+  procedure sub as
+  begin
+    raise notice 'aaa';
+    goto noop;
+    raise notice 'bbb';
+    <<noop>>NULL;
+    raise notice 'ccc';
+  end;
+begin
+  sub;
+end;
+/
+NOTICE:  aaa
+NOTICE:  ccc

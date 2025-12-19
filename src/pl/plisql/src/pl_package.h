@@ -129,6 +129,13 @@ typedef struct PLiSQL_compile_global_proper
 
 	/* pl_funcs.c */
 	PLiSQL_nsitem *ns_top;
+
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	/* pl_subproc_function.c */
+	void *plisql_saved_label_context[FUNC_MAX_NEST_LEVEL];
+	/* pl_funcs.c */
+	void *plisql_label_context;
+	/* End - ReqID:SRS-PLSQL-GOTO */
 } PLiSQL_compile_global_proper;
 
 

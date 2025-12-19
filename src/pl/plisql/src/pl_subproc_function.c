@@ -98,6 +98,9 @@ int plisql_saved_datums_alloc[FUNC_MAX_NEST_LEVEL];
 int	plisql_saved_nDatums[FUNC_MAX_NEST_LEVEL];
 int plisql_saved_datums_last[FUNC_MAX_NEST_LEVEL];
 /* End - BUG#M0000168 */
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+void *plisql_saved_label_context[FUNC_MAX_NEST_LEVEL];
+/* End - ReqID:SRS-PLSQL-GOTO */
 
 
 
@@ -159,6 +162,11 @@ static void plisql_pop_subproc_func(void);
 static void plisql_push_datums(void);
 static void plisql_pop_datums(void);
 /* End - BUG#M0000168 */
+
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+static void plisql_push_label(void);
+static void plisql_pop_label(void);
+/* End - ReqID:SRS-PLSQL-GOTO */
 
 
 /*
@@ -307,6 +315,37 @@ plisql_pop_datums(void)
 	return;
 }
 
+/*
+ * ReqID:SRS-PLSQL-GOTO
+ *
+ * saved current func label into stack
+ * when begin compile subproc
+ */
+static void
+plisql_push_label(void)
+{
+	if (cur_compile_func_level > FUNC_MAX_NEST_LEVEL - 1)
+		elog(ERROR, "function or procedure nested level more than: %d", FUNC_MAX_NEST_LEVEL);
+
+	plisql_saved_label_context[cur_compile_func_level] = plisql_label_compile_context();
+}
+
+
+/*
+ * ReqID:SRS-PLSQL-GOTO
+ *
+ * recover previouts func lbel from stack
+ * when subproc finish compile
+ */
+static void
+plisql_pop_label(void)
+{
+	if (cur_compile_func_level < 0)
+		elog(ERROR, "invalid nested level %d", FUNC_MAX_NEST_LEVEL);
+
+	plisql_set_label_compile_context(plisql_saved_label_context[cur_compile_func_level]);
+}
+
 
 /*
  * saved some informations
@@ -317,6 +356,7 @@ plisql_push_subproc_info(void)
 {
 	plisql_push_datums();
 	plisql_push_subproc_func();
+	plisql_push_label();	/* ReqID:SRS-PLSQL-GOTO */
 	cur_compile_func_level++;
 }
 
@@ -330,6 +370,7 @@ plisql_pop_subproc_info(void)
 	cur_compile_func_level--;
 	plisql_pop_datums();
 	plisql_pop_subproc_func();
+	plisql_pop_label();		/* ReqID:SRS-PLSQL-GOTO */
 }
 
 /* End - BUG#M0000168 */
@@ -3407,6 +3448,7 @@ plisql_init_subprocfunc_compile(PLiSQL_subproc_function *subprocfunc)
 	plisql_set_ns(subprocfunc->global_cur);
 	plisql_start_datums();
 	plisql_start_subproc_func();
+	plisql_start_label_compile(subprocfunc->func_name);	/* ReqID:SRS-PLSQL-GOTO */
 
 	/* init datums use origin function */
 	for (i = 0; i < subprocfunc->lastoutvardno; i++)
@@ -3553,6 +3595,7 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 	/* replate origin function */
 	subprocfunc->function = function;
 	plisql_ns_push(subprocfunc->func_name, PLISQL_LABEL_BLOCK);
+	plisql_start_label_compile(subprocfunc->func_name);	/* ReqID:SRS-PLSQL-GOTO */
 
 	plisql_build_variable_from_funcargs(subprocfunc, forValidator,
 								fcinfo, found_varno);
@@ -3565,6 +3608,8 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 		elog(ERROR, "plisql parser returned %d", parse_rc);
 
 	plisql_set_subprocfunc_action(subprocfunc, plisql_parse_result);
+
+	plisql_finish_label_compile();	/* ReqID:SRS-PLSQL-GOTO */
 
 	plisql_finish_datums(function);
 

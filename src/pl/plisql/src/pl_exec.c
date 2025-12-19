@@ -276,6 +276,12 @@ static HTAB *shared_cast_hash = NULL;
 			exit_action; \
 		} \
 	} \
+	/* Begin - ReqID:SRS-PLSQL-GOTO */ \
+	else if (rc == PLISQL_RC_GOTO) \
+	{\
+		exit_action; \
+	}\
+	/* End - ReqID:SRS-PLSQL-GOTO */ \
 	else \
 		Assert(rc == PLISQL_RC_OK)
 
@@ -299,6 +305,11 @@ static int exec_stmt_block(PLiSQL_execstate *estate,
 				PLiSQL_stmt_block *block);
 static int exec_stmts(PLiSQL_execstate *estate,
 					   List *stmts);
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+static int exec_stmts_ext(PLiSQL_execstate *estate,
+						  List *stmts, bool in_exception,
+						  bool is_goto_target);
+/* End - ReqID:SRS-PLSQL-GOTO */
 static int exec_stmt_assign(PLiSQL_execstate *estate,
 				 PLiSQL_stmt_assign *stmt);
 static int exec_stmt_perform(PLiSQL_execstate *estate,
@@ -511,6 +522,10 @@ static TupleDesc plisql_get_tupledesc_fromvar(PLiSQL_execstate *estate,
 /* Begin - ReqID:SRS-PLSQL-DSQL */
 static void plisql_param_check(ParamListInfo params, FuncExpr *fexpr, void *paramArg);
 /* End - ReqID:SRS-PLSQL-DSQL */
+
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+static int exec_stmt_goto(PLiSQL_execstate *estate, PLiSQL_stmt_goto *stmt);
+/* End - ReqID:SRS-PLSQL-GOTO */
 
 /* ----------
  * plisql_exec_function	Called by the call handler for
@@ -2249,7 +2264,7 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 		PG_CATCH();
 		{
 			ErrorData  *edata;
-			ListCell   *e;
+			int			exptidx = 0;
 
 			estate->err_text = gettext_noop("during exception cleanup");
 
@@ -2327,11 +2342,17 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 			exec_eval_cleanup(estate);
 
 			/* Look for a matching exception handler */
-			foreach(e, block->exceptions->exc_list)
+			/*
+			 * ReqID:SRS-PLSQL-GOTO
+			 *   Use "index" instead of "foreach" to iterate the statement list
+			 * so that GOTO can quicly locate the target position.
+			 */
+			while (exptidx < list_length(block->exceptions->exc_list))
 			{
-				PLiSQL_exception *exception = (PLiSQL_exception *) lfirst(e);
+				PLiSQL_exception *exception = (PLiSQL_exception *) list_nth(block->exceptions->exc_list, exptidx);
 
-				if (exception_matches_conditions(estate, /* ReqID:SRS-PLSQL-EXCEPTION */
+				if (rc == PLISQL_RC_GOTO ||	/* The target is in other branch ReqID:SRS-PLSQL-EXCEPTION */
+					exception_matches_conditions(estate,
 												edata,
 												exception->conditions))
 				{
@@ -2403,7 +2424,7 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 
 					estate->err_text = NULL;
 
-					rc = exec_stmts(estate, exception->action);
+					rc = exec_stmts_ext(estate, exception->action, true, rc == PLISQL_RC_GOTO);	/* ReqID:SRS-PLSQL-GOTO */
 
 					/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
 					if (edata->nokeeperrorstack)
@@ -2415,8 +2436,29 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 						pfree(save_errmsg);
 					/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
+					/* Begin - ReqID:SRS-PLSQL-GOTO */
+					if (rc == PLISQL_RC_GOTO)
+					{
+						Assert(estate->goto_target_layers >= 0);
+						if (estate->goto_target_layers == 0)
+						{
+							/* Branch to the target "when". */
+							exptidx = estate->goto_target_exptidx;
+							estate->goto_target_exptidx = -1;
+							continue;
+						}
+						else
+						{
+							/* The target statment is in a upper layer. */
+							estate->goto_target_layers--;
+							break;
+						}
+					}
+					/* End - ReqID:SRS-PLSQL-GOTO */
+
 					break;
 				}
+				exptidx++;
 			}
 
 			/*
@@ -2427,7 +2469,7 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 			estate->cur_error = save_cur_error;
 
 			/* If no match found, re-throw the error */
-			if (e == NULL)
+			if (exptidx == list_length(block->exceptions->exc_list))
 				ReThrowError(edata);
 
 			/* Restore stmt_mcontext stack and release the error data */
@@ -2460,6 +2502,7 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 		case PLISQL_RC_OK:
 		case PLISQL_RC_RETURN:
 		case PLISQL_RC_CONTINUE:
+		case PLISQL_RC_GOTO:	/* ReqID:SRS-PLSQL-GOTO */
 			return rc;
 
 		case PLISQL_RC_EXIT:
@@ -2488,8 +2531,23 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 static int
 exec_stmts(PLiSQL_execstate *estate, List *stmts)
 {
+	return exec_stmts_ext(estate, stmts, false, false);
+}
+
+/*
+ * ReqID:SRS-PLSQL-GOTO
+ *   Support GOTO control branch by adding two parameters.
+ *
+ * "in_exception" is true to indicate that the function was called within
+ * an exception branch.
+ * "is_goto_target" is true to indicate that the function was called within
+ * an exception branch and is the GOTO's target.
+ */
+static int
+exec_stmts_ext(PLiSQL_execstate *estate, List *stmts, bool in_exception, bool is_goto_target)
+{
 	PLiSQL_stmt *save_estmt = estate->err_stmt;
-	ListCell   *s;
+	int			stmtidx = 0;
 	/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 	bool		has_savepoint = false;
 	int 		set_savepoint = estate->set_savepoint;
@@ -2508,9 +2566,29 @@ exec_stmts(PLiSQL_execstate *estate, List *stmts)
 		return PLISQL_RC_OK;
 	}
 
-	foreach(s, stmts)
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	/*
+	 * This is a target exception branch that directly jump to the
+	 * target statement.
+	 */
+	if (is_goto_target)
 	{
-		PLiSQL_stmt *stmt = (PLiSQL_stmt *) lfirst(s);
+		Assert(estate->goto_target_layers == 0);
+		Assert(estate->goto_target_exptidx == -1);
+		stmtidx = estate->goto_target_stmtidx;
+		estate->goto_target_stmtidx = -1;
+	}
+	/* End - ReqID:SRS-PLSQL-GOTO */
+
+	/*
+	 * ReqID:SRS-PLSQL-GOTO
+	 *   Use "index" instead of "foreach" to iterate the statement list
+	 * so that GOTO can quicly locate the target position.
+	 */
+	while (stmtidx < list_length(stmts))
+	{
+		/* Get statement by index */
+		PLiSQL_stmt *stmt = (PLiSQL_stmt *) list_nth(stmts, stmtidx);
 		int			rc;
 
 		estate->err_stmt = stmt;
@@ -2631,6 +2709,16 @@ exec_stmts(PLiSQL_execstate *estate, List *stmts)
 				rc = exec_stmt_rollback(estate, (PLiSQL_stmt_rollback *) stmt);
 				break;
 
+			/* Begin - ReqID:SRS-PLSQL-GOTO */
+			case PLISQL_STMT_GOTO:
+				rc = exec_stmt_goto(estate, (PLiSQL_stmt_goto *) stmt);
+				break;
+
+			case PLISQL_STMT_NULL:
+				rc = PLISQL_RC_OK;
+				break;
+			/* End - ReqID:SRS-PLSQL-GOTO */
+
 			default:
 				/* point err_stmt to parent, since this one seems corrupt */
 				estate->err_stmt = save_estmt;
@@ -2641,6 +2729,40 @@ exec_stmts(PLiSQL_execstate *estate, List *stmts)
 		/* Let the plugin know that we have finished executing this statement */
 		if (*plisql_plugin_ptr && (*plisql_plugin_ptr)->stmt_end)
 			((*plisql_plugin_ptr)->stmt_end) (estate, stmt);
+
+		/* Begin - ReqID:SRS-PLSQL-GOTO */
+		if (rc == PLISQL_RC_GOTO)
+		{
+			Assert(estate->goto_target_layers >= 0 && estate->goto_target_stmtidx >= 0);
+
+			/* The target statement is in the upper layer */
+			if (estate->goto_target_layers > 0)
+			{
+				/*
+				 * If GOTO statemnt is in exception, the levels would be levels-1 before
+				 * the end of the block where the exception is located.
+				 */
+				if (!in_exception)
+					estate->goto_target_layers--;
+				rc = PLISQL_RC_GOTO;
+			}
+			/*
+			 * The target statment is in a other branch of exception, return and jump to
+			 * the target branch outside in "exec_stmt_block".
+			 */
+			else if (estate->goto_target_exptidx != -1)
+				rc = PLISQL_RC_GOTO;
+			else
+			{
+				/* The target statemnt is in the current loop */
+				stmtidx = estate->goto_target_stmtidx;
+				estate->goto_target_stmtidx = -1;
+				rc = PLISQL_RC_OK;
+			}
+		}
+		else
+			stmtidx++;
+		/* End - ReqID:SRS-PLSQL-GOTO */
 
 		if (rc != PLISQL_RC_OK)
 		{
@@ -4902,6 +5024,12 @@ plisql_estate_setup(PLiSQL_execstate *estate,
 	/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 	estate->set_savepoint = 0;
 	/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	estate->goto_target_layers = 0;
+	estate->goto_target_exptidx = -1;
+	estate->goto_target_stmtidx = -1;
+	/* End - ReqID:SRS-PLSQL-GOTO */
 
 	/*
 	 * Create an EState and ExprContext for evaluation of simple expressions.
@@ -11891,6 +12019,22 @@ exec_assing_out_parameter_row(PLiSQL_execstate *estate, PLiSQL_row *row)
 	}
 }
 /* End - ReqID:SRS-PLSQL-RECORD */
+
+
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+/* ----------
+ * exec_stmt_goto			Execute an GOTO statement
+ * ----------
+ */
+static int
+exec_stmt_goto(PLiSQL_execstate *estate, PLiSQL_stmt_goto *stmt)
+{
+	estate->goto_target_stmtidx = stmt->target_stmtidx;
+	estate->goto_target_layers = stmt->target_layers;
+	estate->goto_target_exptidx = stmt->target_exptidx;
+	return PLISQL_RC_GOTO;
+}
+/* End - ReqID:SRS-PLSQL-GOTO */
 
 
 /* Begin - BUG#M0000376 */

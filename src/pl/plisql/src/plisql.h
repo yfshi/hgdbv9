@@ -162,7 +162,11 @@ typedef enum PLiSQL_stmt_type
 	PLISQL_STMT_PERFORM,
 	PLISQL_STMT_CALL,
 	PLISQL_STMT_COMMIT,
-	PLISQL_STMT_ROLLBACK
+	PLISQL_STMT_ROLLBACK,
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	PLISQL_STMT_GOTO,
+	PLISQL_STMT_NULL
+	/* End - ReqID:SRS-PLSQL-GOTO */
 } PLiSQL_stmt_type;
 
 /*
@@ -173,7 +177,8 @@ enum
 	PLISQL_RC_OK,
 	PLISQL_RC_EXIT,
 	PLISQL_RC_RETURN,
-	PLISQL_RC_CONTINUE
+	PLISQL_RC_CONTINUE,
+	PLISQL_RC_GOTO		/* ReqID:SRS-PLSQL-GOTO */
 };
 
 /*
@@ -1071,6 +1076,34 @@ typedef struct PLiSQL_func_hashkey
 	Oid			argtypes[FUNC_MAX_ARGS];
 } PLiSQL_func_hashkey;
 
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+
+/*
+ * GOTO statement
+ */
+typedef struct PLiSQL_stmt_goto
+{
+	PLiSQL_stmt_type cmd_type;
+	int				lineno;
+	unsigned int	stmtid;
+	char		   *target_label;	/* target label name */
+	int				target_layers;	/* layers from current to target */
+	int				target_exptidx;	/* target index in exception list */
+	int				target_stmtidx;	/* target index in block */
+} PLiSQL_stmt_goto;
+
+/*
+ * NULL statement
+ */
+typedef struct PLiSQL_stmt_null
+{
+	PLiSQL_stmt_type cmd_type;
+	int				lineno;
+	unsigned int	stmtid;
+} PLiSQL_stmt_null;
+
+/* End - ReqID:SRS-PLSQL-GOTO */
+
 /*
  * Trigger type
  */
@@ -1272,6 +1305,12 @@ typedef struct PLiSQL_execstate
 	/* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 	int			set_savepoint;	/* > 0 when we should set auto savepoint in exec_stmts. */
 	/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	int			goto_target_layers;		/* layers from current to the target */
+	int			goto_target_exptidx;	/* target index in exception list */
+	int			goto_target_stmtidx;	/* target index in block */
+	/* End - ReqID:SRS-PLSQL-GOTO */
 } PLiSQL_execstate;
 
 /*
@@ -1428,6 +1467,7 @@ extern List *plisql_referenced_objects;	/*the list elements are ObjectAddress */
 /* Begin - BUG#M0000201: support question marks as binding variables */
 extern int questionmarks_count;
 /* End - BUG#M0000201: support question marks as binding variables */
+
 
 /**********************************************************************
  * Function declarations
@@ -1646,5 +1686,29 @@ extern int	plisql_yyparse(void);
 
 /* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 extern void RegisterAutonxIsoVars_plisql_hook(void);
+
+
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+
+/*
+ * Scanner functions in pl_label.c
+ */
+extern void plisql_start_label_compile(const char *funcname);
+extern void plisql_finish_label_compile(void);
+extern void *plisql_label_compile_context(void);
+extern void plisql_set_label_compile_context(void *context);
+
+extern void plisql_blkpath_push(const char *name);
+extern void plisql_blkpath_pop(void);
+extern void plisql_blkpath_update_nstatements(bool reset);
+extern void plisql_blkpath_set_exception(bool exception);
+extern void plisql_blkpath_update_nbranches(bool reset);
+
+extern void plisql_lscope_push(const char *name);
+extern void plisql_lscope_pop(void);
+
+extern void plisql_register_label(const char *name);
+extern void plisql_register_goto(PLiSQL_stmt_goto *stmt);
+/* End - ReqID:SRS-PLSQL-GOTO */
 
 #endif							/* PLPGSQL_H */
