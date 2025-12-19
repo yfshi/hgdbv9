@@ -181,6 +181,9 @@ static const struct config_enum_entry audit_opers_options[] = {
 	{NULL, 0, false}
 };
 
+#define Int2VectorSize(n)	(offsetof(int2vector, values) + (n) * sizeof(int16))
+#define OidVectorSize(n)	(offsetof(oidvector, values) + (n) * sizeof(Oid))
+
 
 AuditSwitch pg_audit = AUDIT_OFF;
 
@@ -11117,7 +11120,7 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 			else
 			{
 
-				sprintf(warning_msg, "The baseline name \"%s\" has reached the baseline threshold \"%s\"", basename, basevalue);
+				snprintf(warning_msg, MAXPGPATH, "The baseline name \"%s\" has reached the baseline threshold \"%s\"", basename, basevalue);
 
 				strncpy(msg, warning_msg, strlen(warning_msg));
 
@@ -11154,10 +11157,15 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 						{
 							ereport(NOTICE,
 							(errmsg("It is not the important column")));
+							break;
 						}
 						else
 						{	
-							sprintf(warning_msg, "Important column \"%s\" has reached the threshold", obj->colname);
+							char *attname;
+
+							attname = get_attname(obj->objectId, impt_columns->values[i], false);
+							
+							snprintf(warning_msg, MAXPGPATH, "Important column \"%s\" has reached the threshold", attname);
 
 							strncpy(msg, warning_msg, strlen(warning_msg));
 
@@ -11182,17 +11190,20 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 		}
 		else
 		{
-			const char	*starttime;
-			const char	*endtime;
+			const char	*starttime = NULL;
+			const char	*endtime = NULL;
 
-			starttime = timestamptz_to_str(impt_starttime);
+			if (impt_starttime == DT_NOBEGIN)
+				starttime = pstrdup("-infinity");
+			else
+				starttime = pstrdup(timestamptz_to_str(impt_starttime));
 
 			if (impt_endtime == DT_NOEND)
-				endtime = strdup("-infinity");
+				endtime = pstrdup("infinity");
 			else
-				endtime = timestamptz_to_str(impt_endtime);
+				endtime = pstrdup(timestamptz_to_str(impt_endtime));
 
-			sprintf(warning_msg, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
+			snprintf(warning_msg, MAXPGPATH, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
 
 			strncpy(msg, warning_msg, strlen(warning_msg));
 
@@ -11201,17 +11212,22 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 	}
 	else
 	{
-		const char	*starttime;
-		const char	*endtime;
+		const char	*starttime = NULL;
+		const char	*endtime = NULL;
 
-		starttime = timestamptz_to_str(impt_starttime);
+		starttime = pstrdup(timestamptz_to_str(impt_starttime));
+
+		if (impt_starttime == DT_NOBEGIN)
+			starttime = pstrdup("-infinity");
+		else
+			starttime = pstrdup(timestamptz_to_str(impt_starttime));
 
 		if (impt_endtime == DT_NOEND)
-			endtime = strdup("-infinity");
+			endtime = pstrdup("infinity");
 		else
-			endtime = timestamptz_to_str(impt_endtime);
+			endtime = pstrdup(timestamptz_to_str(impt_endtime));
 
-		sprintf(warning_msg, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
+		snprintf(warning_msg, MAXPGPATH, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
 
 		strncpy(msg, warning_msg, strlen(warning_msg));
 
@@ -11649,19 +11665,37 @@ audit_secmon_threshold_check(void)
 
 			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_basename, &isnull);
 			if (!isnull)
-				basename = NameStr(*(DatumGetName(datum)));
+				basename = pstrdup(NameStr(*(DatumGetName(datum))));
 			
 			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_basevalue, &isnull);
 			if (!isnull)
-				basevalue = NameStr(*(DatumGetName(datum)));
+				basevalue = pstrdup(NameStr(*(DatumGetName(datum))));
 
 			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_impt_columns, &isnull);
 			if (!isnull)
-				impt_cloumns = (int2vector *) DatumGetPointer(datum);
+			{
+				int2vector *src;
+				int dim;
+
+				src = (int2vector *) DatumGetPointer(datum);
+				dim = src->dim1;
+				
+				impt_cloumns = (int2vector *) palloc(Int2VectorSize(dim));
+				memcpy(impt_cloumns, src, Int2VectorSize(dim));
+			}
 
 			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_ruleseq, &isnull);
 			if (!isnull)
-				ruleseq = (oidvector *) DatumGetPointer(datum);
+			{
+				oidvector *src;
+				int dim;
+				
+				src = (oidvector *) DatumGetPointer(datum);
+				dim = src->dim1;
+				
+				ruleseq = (oidvector *) palloc(OidVectorSize(dim));
+				memcpy(ruleseq, src, OidVectorSize(dim));
+			}
 
 			datum = SysCacheGetAttr(AUDITTHRESHOLDRULEIDRULESEQ, tup, Anum_pg_secmon_threshold_starttime, &isnull);
 			if (!isnull)
