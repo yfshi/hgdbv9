@@ -440,12 +440,7 @@ AlterSynonym(AlterSynonymStmt *stmt)
 	tuple = SearchSysCache3(SYNONYMNAMENSP, PointerGetDatum(synname),
 							ObjectIdGetDatum(namespaceId), BoolGetDatum(stmt->ispub));
 	if (!HeapTupleIsValid(tuple))
-	{
-		if (stmt->ispub)
-			elog(ERROR, "insufficient privileges");
-		else
-			elog(ERROR, "table or view does not exist");
-	}
+		elog(ERROR, "table or view does not exist");
 	/* End - BUG#Z6742 */
 
 	rel = table_open(SynonymRelationId, RowExclusiveLock);
