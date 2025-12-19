@@ -355,3 +355,21 @@ select *,regexp_replace(name, 'hello') is null from test_isnull;
 
 drop table test_isnull;
 reset ivorysql.enable_emptystring_is_NULL;
+
+
+--bug#Z6876
+create table test_raw_blob(id raw, b blob, ids bytea);
+
+insert into test_raw_blob values('\xab','\xab', '\xab');
+
+select * from test_raw_blob;
+
+set ivorysql.hex_bytea = on;
+
+select * from test_raw_blob;
+
+set ivorysql.disable_hex_bytea_for_blob = off;
+
+select * from test_raw_blob;
+
+drop table test_raw_blob;
