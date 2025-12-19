@@ -912,9 +912,11 @@ LookupRerstrictRules(char* username, char* mac_address)
 				timeflag = CheckTimeInRules(curtime, pstrdup(allow_time), pstrdup(outallow_time));
 			}
 			/* get mac and time result */
-			if (macflag != rulemac_include_match)
+			if (macflag != rulemac_include_match ||
+				(macflag == rulemac_exclude_match && !strcmp(rule_mac, "*") && strcmp(outrule_mac, "*"))) /* Bug 6866*/
 					elog(ERROR, "Mac address in restricted!");
-			if (timeflag != ruletime_include_match)
+			if (timeflag != ruletime_include_match ||
+				(timeflag == ruletime_exclude_match && !strcmp(allow_time, "*") && strcmp(outallow_time, "*"))) /* Bug 6866*/
 					elog(ERROR, "Login time in restricted!");
 		}
 		else
