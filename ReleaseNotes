@@ -375,3 +375,41 @@
 	318、M兼容decimal(0,0)语法的支持，bug#6506；
 	319、M兼容增加numeric到int8/uint8的类型转换，bug#6526；
 	320、审计增加查看审计参数的功能show_audit_param()，bug#6092；
+	321、M兼容convert函数转time类型0值检查错误的问题，bug#6777/6779；
+	322、系统审计增加LOCK SESSION、UNLOCK SESSION的日志记录，bug#6168；
+	323、审计功能修复了重要时刻内执行alter system未触发告警的问题，bug#6114；
+	324、身份鉴别功能修复了报错信息不统一的问题，bug#6776；
+	325、O兼容修复了修改同义词未区分公有/私有的问题，bug#6742；
+	326、O兼容修复了重新编译同义词时报unrecognized node type错误的问题，bug#6780；
+	327、M兼容convert_tz函数增加对date类型参数的支持，bug#6775;
+	328、M兼容timestampdiff函数增加对sql_tsi_year语法规则的处理，bug#6783；
+	329、M兼容str_to_date函数使用numeric返回时越界的问题，bug#6788；
+	330、M兼容修复了show create table 不显示索引创建语句的问题，bug#6420；
+	331、M兼容修复了单列唯一索引显示的问题，bug#6767；
+	332、pg_upgrade 修复了904升级到905失败的问题，bug#6400；
+	333、M兼容重构了binary表达式相关语法，bug#6011；
+	334、M兼容修改了bool值输出不对问题，bug#6764；
+	335、M兼容修复了copy方式备份还原的问题，bug#6769；
+	336、M兼容修复了连接时无认证信息导致coredump的问题，bug#6787；
+	337、会话管理修复了conn_restrict.enable参数不符合三权控制的问题，bug#6238；
+	338、会话管理修复了白名单场景下include为空报错的问题，bug#6804；
+	339、O兼容修复了备份恢复instead of触发器报错的问题，bug#6789；
+	340、O兼容修复了alter table ... set interval时存在默认分区导致coredump的问题，bug#6801；
+	341、三权增加使用sequence时nextval、setval和currval等函数的三权检查，bug#6158；
+	342、三权修复了\du显示不正确的问题，bug#6385；
+	343、三权修复了O兼容下的一些问题，bug#5354/6155/6156;
+	344、O兼容修复了包规范有问题触发assert宕机的问题，bug#6811；
+	345、O兼容修复了trigger兼容视图when条件获取报错的问题，bug#6822；
+	346、会话管理修复了未删除共享哈希表数据导致哈希表用满报OOM的问题，bug#6814；
+	347、M兼容修复了set自定义变量结果不对的问题，bug#6816；
+	348、M兼容补充了show all时显示新增的一些guc参数；
+	349、M兼容修复了show indexes from XXX结果集顺序不一致的问题，bug#6843；
+	350、O兼容修复了alter aynonym时不区分私有/公有同义词的问题，bug#6742；
+	351、审计修复了对正负无穷未判定为重要时刻没产生重要时刻告警的问题，bug#6855；
+	352、三权修复了迁移模式后，辅助函数没有执行权限的问题，bug#6859；
+	353、M兼容修复了show 存在无权限schema的search_path时coredump的问题以及修改默认数据库为highgo，bug#6850；
+	354、会话管理修复了include为null，exclude不为null且匹配失败时的黑白名单规则不对的问题，bug#6863/6866;
+	355、M兼容修复了set赋值表达式结果不正确的问题，bug#6860/6861；
+	356、O兼容修改了报错信息，bug#6862；
+	357、O兼容修复了虚拟列有转换的时候，执行order by报错的问题，bug#6871；
+	358、审计修复了重要时刻和重要列阈值告警信息不准确的问题，bug#6864；
