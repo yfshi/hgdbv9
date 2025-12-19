@@ -6137,6 +6137,7 @@ getTables(Archive *fout, int *numTables)
 	int			i_is_identity_sequence;
 	int			i_changed_acl;
 	int			i_ispartition;
+	int			i_isinterval;	/* BUG#6400 */
 	int			i_amname;
 	int			i_compatible_mode;
 	int			i_default_collation; /* BUG#M478 */
@@ -6287,6 +6288,7 @@ getTables(Archive *fout, int *numTables)
 						  "))"
 						  "AS changed_acl, "
 						  "%s AS ispartition, "
+						  "oj.option->>'INTERVAL' as isinterval, "	/* BUG#6400 */
 						  "oj.compatible_mode AS compatible_mode, "
 						  "oj.option->>'collation' as default_collation " /* BUG#M478 */
 						  "FROM pg_class c "
@@ -6973,6 +6975,7 @@ getTables(Archive *fout, int *numTables)
 	i_is_identity_sequence = PQfnumber(res, "is_identity_sequence");
 	i_changed_acl = PQfnumber(res, "changed_acl");
 	i_ispartition = PQfnumber(res, "ispartition");
+	i_isinterval = PQfnumber(res, "isinterval");	/* BUG#6400 */
 	i_amname = PQfnumber(res, "amname");
 	i_compatible_mode = PQfnumber(res, "compatible_mode");
 	i_default_collation = PQfnumber(res, "default_collation"); /* BUG#M478 */
@@ -7099,6 +7102,13 @@ getTables(Archive *fout, int *numTables)
 
 		/* Partition? */
 		tblinfo[i].ispartition = (strcmp(PQgetvalue(res, i, i_ispartition), "t") == 0);
+
+		/* Begin - BUG#6400 */
+		if (PQgetisnull(res, i, i_isinterval))
+			tblinfo[i].isinterval = false;
+		else
+			tblinfo[i].isinterval = true;
+		/* End - BUG#6400 */
 
 		/* foreign server */
 		tblinfo[i].foreign_server = atooid(PQgetvalue(res, i, i_foreignserver));
@@ -16781,7 +16791,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 					partkeydef = pg_strdup(PQgetvalue(res, 0, 0));
 					PQclear(res);
 					/* Begin - ReqID:RSR-SQL-Partition-interval */
-					if (db_mode == DB_ORACLE)
+					if (tbinfo->isinterval)	/* BUG#6400 */
 					{
 						resetPQExpBuffer(query);
 						appendPQExpBuffer(query,
