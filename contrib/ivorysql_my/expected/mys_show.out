@@ -939,7 +939,12 @@ SHOW INDEX FROM test_view;
 (0 rows)
 
 SHOW INDEX FROM temp_table;
-ERROR:  Table 'public.temp_table' doesn't exist
+   Table    | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ temp_table |          0 | temp_table_pkey      |            1 | id          | A         |           0 |          |        | NO   | btree      |         | 
+ temp_table |          0 | temp_table_email_key |            1 | email       | A         |           0 |          |        | YES  | btree      |         | 
+(2 rows)
+
 SHOW INDEX FROM temp_table FROM pg_temp_4;
    Table    | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
 ------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
@@ -948,9 +953,11 @@ SHOW INDEX FROM temp_table FROM pg_temp_4;
 (2 rows)
 
 SHOW INDEXES FROM 123abc;
-ERROR:  Table 'public.123abc' doesn't exist
+ERROR:  Table '123abc' doesn't exist
+CONTEXT:  PL/pgSQL function show_indexes(character,character) line 8 at RAISE
 SHOW INDEX FROM test_table FROM 123abc;
 ERROR:  Table '123abc.test_table' doesn't exist
+CONTEXT:  PL/pgSQL function show_indexes(character,character) line 4 at RAISE
 drop view test_view;
 drop table test_table;
 drop table temp_table;
@@ -966,7 +973,9 @@ CREATE TABLE IF NOT EXISTS test_table (
 );
 -- fix bug#Z5958
 SHOW COLUMNS FROM 123aaabbb;
-ERROR:  Table 'public.123aaabbb' doesn't exist
+ERROR:  Table '123aaabbb' doesn't exist
+CONTEXT:  PL/pgSQL function show_columns_internal(character,character) line 8 at RAISE
+SQL function "show_columns_normal" statement 1
 SHOW COLUMNS FROM test_table LIKE '123aaabbb';
  Field | Type | Null | Key | Default | Extra 
 -------+------+------+-----+---------+-------
@@ -990,7 +999,17 @@ CREATE TEMPORARY TABLE temp_table (
 	create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 SHOW COLUMNS FROM temp_table;
-ERROR:  Table 'public.temp_table' doesn't exist
+    Field    |          Type          | Null | Key |                Default                 | Extra 
+-------------+------------------------+------+-----+----------------------------------------+-------
+ id          | integer                | NO   | PRI | nextval('temp_table_id_seq'::regclass) | 
+ name        | character varying(100) | NO   |     |                                        | 
+ email       | character varying(150) | YES  | UNI |                                        | 
+ department  | character varying(50)  | YES  |     |                                        | 
+ salary      | numeric(10,2)          | YES  |     |                                        | 
+ hire_date   | date                   | YES  |     |                                        | 
+ create_time | timestamp              | YES  |     | "current_timestamp"()                  | 
+(7 rows)
+
 SHOW COLUMNS FROM temp_table FROM pg_temp_4;
     Field    |          Type          | Null | Key |                Default                 | Extra 
 -------------+------------------------+------+-----+----------------------------------------+-------
@@ -1072,9 +1091,11 @@ create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 CREATE VIEW test_sche.test_view AS SELECT * FROM test_sche.test_table;
 --SHOW TABLE STATUS IN test_sche;  --because of time always change, manual operation is required
 SHOW TABLE STATUS IN 123abc;
-ERROR:  Unknow database '123abc' 
+ERROR:  Unknown database '123abc'
+CONTEXT:  PL/pgSQL function show_table_status(character) line 4 at RAISE
 SHOW TABLE STATUS IN highgoadsfdsf;
-ERROR:  Unknow database 'highgoadsfdsf' 
+ERROR:  Unknown database 'highgoadsfdsf'
+CONTEXT:  PL/pgSQL function show_table_status(character) line 4 at RAISE
 drop view test_sche.test_view;
 drop table test_sche.test_table;
 drop schema test_sche;

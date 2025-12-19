@@ -22267,90 +22267,58 @@ makeShowTriggersStmt(Node *db_name, ShowFilter *filter)
 static SelectStmt *
 makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
 {
-	#define		INDEXES_COLUMN_NUMS 13
+	char	*relname = tb_name->relname;
+	char 	*schemaname = tb_name->schemaname;
+	char 	*funcname = "show_indexes";
+	SelectStmt 	*stmt = makeNode(SelectStmt);
+	List	*fromClause = NIL;
+	List	*targetList = NIL;
+	List 	*args = NIL;
+	ColumnRef *col;
+	ResTarget *res;
+	FuncCall *func;
+	RangeFunction *rfunc;
+	Node *whereClause;
 
-	char		colnames[INDEXES_COLUMN_NUMS][32]
-						= {"TABLE_NAME", "NON_UNIQUE","INDEX_NAME", "SEQ_IN_INDEX", "COLUMN_NAME", "COLLATION",
-						   "CARDINALITY", "SUB_PART", "PACKED", "NULLABLE", "INDEX_TYPE", "COMMENT", "INDEX_COMMENT"};
+	// make target list
+	col = makeNode(ColumnRef);
+	col->fields = list_make1(makeNode(A_Star));
+	col->location = -1;
 
-	char		ailas[INDEXES_COLUMN_NUMS][32]
-						= {"Table", "Non_unique", "Key_name", "Seq_in_index", "Column_name", "Collation",
-						   "Cardinality", "Sub_part", "Packed", "Null", "Index_type", "Comment", "Index_comment"};
-	int			i = 0;
-	SelectStmt	*outer;
-	SelectStmt	*inner = makeNode(SelectStmt);
-	ResTarget	*rt;
-	ColumnRef	*cref;
-	Node		*col_db;
-	RangeSubselect *rss;
-	Node		*col_tb;
-	A_Expr		*lexpr;
-	Node		*whereClause = NULL;
+	res = makeNode(ResTarget);
+	res->name = NULL;
+	res->indirection = NIL;
+	res->val = (Node *) col;
+	res->location = -1;
 
-	/* make subselect targetlist */
-	for (i = 0; i < INDEXES_COLUMN_NUMS; i++)
-	{
-		rt = makeShowResTarget(pstrdup(ailas[i]),
-							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
-							   -1);
-		inner->targetList = lappend(inner->targetList, rt);
-	}
+	targetList = list_make1(res);
 
-	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "showstatistics", -1));	/* BUG#Z5973 */
+	// make from clause
+	args = lappend(args, makeStringConst(relname, -1));
+	
+	if (db_name)
+		args = lappend(args, db_name);
+	else if (schemaname)
+		args = lappend(args, makeStringConst(schemaname, -1));
 
-	/*
-	 * make subselect whereClause
-	 *
-	 * [{FROM | IN} db_name]
-	 */
-	col_db = makeColumnRef("index_schema", NIL, -1, 0);
-	if (db_name) /* {FROM | IN} schema */
-	{
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", col_db, db_name, -1);
-	}
-	else if (tb_name && tb_name->schemaname) /* schema.index_name */
-	{
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
-													   col_db,
-													   makeStringConst(tb_name->schemaname, -1),
-													   -1);
-	}
-	else /* current schema */
-	{
-		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
-										  NIL,
-										  COERCE_EXPLICIT_CALL,
-										  -1);
+	func = makeFuncCall(MysqlSystemFuncName(funcname), 
+						args,
+						COERCE_EXPLICIT_CALL,
+						-1);
 
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
-													   col_db,
-													   (Node *)funcCall,
-													   -1);
-	}
+	rfunc = (RangeFunction *) makeNode(RangeFunction);
+	rfunc->functions = list_make1(list_make2(func, NIL));
 
-	/* make outerselect */
-	rss = makeShowRangeSubselect((Node *)inner, "subq");
-	cref = makeShowAllColumnRef();
-	rt = makeShowResTarget(NULL, (Node *) cref, -1);
+	fromClause = list_make1(rfunc);
 
-	/*
-	 * make outerselect whereClause
-	 *
-	 * {FROM | IN} tbl_name
-	 * [WHERE expr]
-	 */
-	col_tb = makeColumnRef("Table", NIL, -1, 0);
-	lexpr = makeSimpleA_Expr(AEXPR_OP, "=", col_tb, makeStringConst(tb_name->relname, -1), -1);
-	if (filter && filter->node)
-		whereClause = (Node *)makeBoolExpr(AND_EXPR, list_make2((Node *)lexpr, filter->node), false, -1);
-	else
-		whereClause = (Node *)lexpr;
+	// make filter
+	whereClause = makeShowFilter("Table", filter);
 
-	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), whereClause);
-	outer->mysshowtype = SHOW_INDEX;	/* BUG#Z5973 */
+	stmt->targetList = targetList;
+	stmt->fromClause = fromClause;
+	stmt->whereClause = whereClause;
 
-	return outer;
+	return stmt;
 }
 
 /* makeShowTableStatusStmt
@@ -22361,70 +22329,51 @@ makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
 static SelectStmt *
 makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 {
-	#define		TABLE_STATUS_COLUMN_NUMS 18
+	char 	*funcname = "show_table_status";
+	SelectStmt 	*stmt = makeNode(SelectStmt);
+	List	*fromClause = NIL;
+	List	*targetList = NIL;
+	List 	*args = NIL;
+	ColumnRef *col;
+	ResTarget *res;
+	FuncCall *func;
+	RangeFunction *rfunc;
+	Node *whereClause;
 
-	char		colnames[TABLE_STATUS_COLUMN_NUMS][32]
-						= {"TABLE_NAME", "ENGINE","VERSION", "ROW_FORMAT", "TABLE_ROWS", "AVG_ROW_LENGTH", "DATA_LENGTH",
-						   "MAX_DATA_LENGTH", "INDEX_LENGTH", "DATA_FREE", "AUTO_INCREMENT", "CREATE_TIME",
-						   "UPDATE_TIME", "CHECK_TIME", "TABLE_COLLATION", "CHECKSUM", "CREATE_OPTIONS", "TABLE_COMMENT"};
+	// make target list
+	col = makeNode(ColumnRef);
+	col->fields = list_make1(makeNode(A_Star));
+	col->location = -1;
 
-	char		ailas[TABLE_STATUS_COLUMN_NUMS][32]
-						= {"Name", "Engine", "Version", "Row_format", "Rows", "Avg_row_length", "Data_length",
-						   "Max_data_length", "Index_length", "Data_free", "Auto_increment", "Create_time",
-						   "Update_time","Check_time","Collation","Checksum","Create_options","Comment"};
-	int			i = 0;
-	SelectStmt	*outer;
-	SelectStmt	*inner = makeNode(SelectStmt);
-	ResTarget	*rt;
-	ColumnRef	*cref;
-	Node		*col_db;
-	RangeSubselect *rss;
+	res = makeNode(ResTarget);
+	res->name = NULL;
+	res->indirection = NIL;
+	res->val = (Node *) col;
+	res->location = -1;
 
-	/* make subselect targetlist */
-	for (i = 0; i < TABLE_STATUS_COLUMN_NUMS; i++)
-	{
-		rt = makeShowResTarget(pstrdup(ailas[i]),
-							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
-							   -1);
-		inner->targetList = lappend(inner->targetList, rt);
-	}
+	targetList = list_make1(res);
 
-	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "showtables", -1)); /* BUG#Z5968 */
+	if (db_name)
+		args = lappend(args, db_name);
 
-	/*
-	 * make subselect whereClause
-	 *
-	 * [{FROM | IN} db_name]
-	 */
-	col_db = makeColumnRef("table_schema", NIL, -1, 0);
-	if (db_name) /* {FROM | IN} schema */
-	{
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", col_db, db_name, -1);
-	}
-	else /* current schema */
-	{
-		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
-										  NIL,
-										  COERCE_EXPLICIT_CALL,
-										  -1);
+	func = makeFuncCall(MysqlSystemFuncName(funcname), 
+						args,
+						COERCE_EXPLICIT_CALL,
+						-1);
 
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
-													   col_db,
-													   (Node *)funcCall,
-													   -1);
-	}
+	rfunc = (RangeFunction *) makeNode(RangeFunction);
+	rfunc->functions = list_make1(list_make2(func, NIL));
 
-	/* make outerselect */
-	rss = makeShowRangeSubselect((Node *)inner, "subq");
-	cref = makeShowAllColumnRef();
-	rt = makeShowResTarget(NULL, (Node *) cref, -1);
-	
-	/* [LIKE 'pattern' | WHERE expr] */
-	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter("Name", filter));
-	outer->mysshowtype = SHOW_TABLES_STATUS;	/* BUG#Z5968 */
+	fromClause = list_make1(rfunc);
 
-	return outer;
+	// make filter
+	whereClause = makeShowFilter("Name", filter);
+
+	stmt->targetList = targetList;
+	stmt->fromClause = fromClause;
+	stmt->whereClause = whereClause;
+
+	return stmt;
 }
 
 /* makeShowTablesStmt
@@ -22436,6 +22385,7 @@ static SelectStmt *
 makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 {
 	#define		TABLES_COLUMN_NUMS 2
+	#define		TABLE_STATUS_COLUMN_NUMS 18
 
 	char		colnames[TABLE_STATUS_COLUMN_NUMS][16] = { "TABLE_NAME", "TABLE_TYPE" };
 	char		ailas[TABLE_STATUS_COLUMN_NUMS][16] = { "Tables", "Table_type" };
@@ -22568,112 +22518,58 @@ makeShowSchemasStmt(ShowFilter *filter)
 static SelectStmt *
 makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool full)
 {
-	#define		COLUMNS_COLUMN_NUMS 6
-	#define		FULL_COLUMNS_COLUMN_NUMS 9
+	char	*relname = tb_name->relname;
+	char 	*schemaname = tb_name->schemaname;
+	char 	*funcname = full ? "show_columns_full" : "show_columns_normal";
+	SelectStmt 	*stmt = makeNode(SelectStmt);
+	List	*fromClause = NIL;
+	List	*targetList = NIL;
+	List 	*args = NIL;
+	ColumnRef *col;
+	ResTarget *res;
+	FuncCall *func;
+	RangeFunction *rfunc;
+	Node *whereClause;
 
-	char		full_colnames[FULL_COLUMNS_COLUMN_NUMS][16]
-						= {"COLUMN_NAME", "COLUMN_TYPE",/* Bug - #z5962 #z5963*/ "COLLATION_NAME", "IS_NULLABLE", "COLUMN_KEY",
-						   "COLUMN_DEFAULT", "EXTRA", "PRIVILEGES", "COLUMN_COMMENT"};
+	// make target list
+	col = makeNode(ColumnRef);
+	col->fields = list_make1(makeNode(A_Star));
+	col->location = -1;
 
-	char		full_ailas[FULL_COLUMNS_COLUMN_NUMS][16]
-						= {"Field", "Type", "Collation", "Null", "Key",
-						   "Default", "Extra", "Privileges", "Comment"};
+	res = makeNode(ResTarget);
+	res->name = NULL;
+	res->indirection = NIL;
+	res->val = (Node *) col;
+	res->location = -1;
 
-	char		colnames[COLUMNS_COLUMN_NUMS][16]
-						= {"COLUMN_NAME", "COLUMN_TYPE",/* Bug - #z5962 #z5963*/ "IS_NULLABLE", "COLUMN_KEY", "COLUMN_DEFAULT", "EXTRA"};
-	char		ailas[COLUMNS_COLUMN_NUMS][16]
-						= {"Field", "Type",  "Null", "Key", "Default", "Extra"};
-	int			 i = 0;
-	ResTarget	*rt;
-	ColumnRef	*cref;
-	Node		*col_db, *col_tb;
-	RangeSubselect *rss;
-	A_Expr		*lexpr, *rexpr;
-	SelectStmt	*outer;
-	SelectStmt	*inner = makeNode(SelectStmt);
-	List		*order = NIL;
-	SortBy		*sort_by = NULL;
+	targetList = list_make1(res);
 
-	/* make subselect targetlist */
-	if (full)
-	{
-		for (i = 0; i < FULL_COLUMNS_COLUMN_NUMS; i++)
-		{
-			rt = makeShowResTarget(pstrdup(full_ailas[i]),
-							   (Node *)makeColumnRef(pstrdup(full_colnames[i]), NIL, -1, 0),
-							   -1);
-			inner->targetList = lappend(inner->targetList, rt);
-		}
-	}
-	else
-	{
-		for (i = 0; i < COLUMNS_COLUMN_NUMS; i++)
-		{
-			rt = makeShowResTarget(pstrdup(ailas[i]),
-							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
-							   -1);
-			inner->targetList = lappend(inner->targetList, rt);
-		}
-	}
+	// make from clause
+	args = lappend(args, makeStringConst(relname, -1));
+	
+	if (db_name)
+		args = lappend(args, db_name);
+	else if (schemaname)
+		args = lappend(args, makeStringConst(schemaname, -1));
 
-	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "showcolumns", -1));	/* bug#Z5956 */
+	func = makeFuncCall(MysqlSystemFuncName(funcname), 
+						args,
+						COERCE_EXPLICIT_CALL,
+						-1);
 
-	/*
-	 * make subselect whereClause
-	 *
-	 * [{FROM | IN} tbl_name]
-	 * [{FROM | IN} db_name]
-	 */
-	col_db = makeColumnRef("table_schema", NIL, -1, 0);
-	if (db_name) /* {FROM | IN} schema */
-	{
-		lexpr = makeSimpleA_Expr(AEXPR_OP, "=", col_db, db_name, -1);
-	}
-	else if (tb_name && tb_name->schemaname) /* schema.table_name */
-	{
-		lexpr = makeSimpleA_Expr(AEXPR_OP, "=",
-								 col_db,
-								 makeStringConst(tb_name->schemaname, -1),
-								 -1);
-	}
-	else /* current schema */
-	{
-		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
-											NIL,
-											COERCE_EXPLICIT_CALL,
-											-1);
-		lexpr = makeSimpleA_Expr(AEXPR_OP, "=",
-								 col_db,
-								 (Node *)funcCall,
-								 -1);
-	}
+	rfunc = (RangeFunction *) makeNode(RangeFunction);
+	rfunc->functions = list_make1(list_make2(func, NIL));
 
-	col_tb = makeColumnRef("table_name", NIL, -1, 0);
-	rexpr = makeSimpleA_Expr(AEXPR_OP, "=", col_tb, makeStringConst(tb_name->relname, -1), -1);
+	fromClause = list_make1(rfunc);
 
-	inner->whereClause = (Node *)makeBoolExpr(AND_EXPR, list_make2((Node *)lexpr, (Node *)rexpr), false, -1);
+	// make filter
+	whereClause = makeShowFilter("Field", filter);
 
-	sort_by = makeNode(SortBy);
-	sort_by ->node = makeColumnRef("ORDINAL_POSITION", NIL, -1, 0);
-	sort_by ->sortby_dir = SORTBY_DEFAULT;
-	sort_by ->sortby_nulls = SORTBY_NULLS_DEFAULT;
-	sort_by ->useOp = NIL;
-	sort_by ->location = -1;
+	stmt->targetList = targetList;
+	stmt->fromClause = fromClause;
+	stmt->whereClause = whereClause;
 
-	order = list_make1(sort_by);
-	insertSelectOptions((SelectStmt *) inner, order, NIL,
-						NULL, NULL,
-						0);
-
-	/* make outerselect */
-	rss = makeShowRangeSubselect((Node *)inner, "subq");
-	cref = makeShowAllColumnRef();
-	rt = makeShowResTarget(NULL, (Node *) cref, -1);
-	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter("Field", filter));
-	outer->mysshowtype = SHOW_COLUMNS;	/* BUG#Z5958 */
-
-	return outer;
+	return stmt;
 }
 /* Begin - ReqID:SRS-MYSQL-SHOW */
 

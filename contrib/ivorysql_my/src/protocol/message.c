@@ -307,7 +307,7 @@ send_column_definition41_packet(mysql_column_definition_t *field)
     mq_append_int1(buf, field->decimals);       /* decimals */
     mq_append_int2(buf, 0x00);                  /* filler */
 
-    if (field->default_value)
+    if (field->is_com_field_list)
         mq_append_string_lenenc(buf, field->default_value, -1);
 
     mq_putmessage(buf->data, buf->len);
@@ -753,7 +753,10 @@ execute_com_field_list(char *tableName)
     int rc;
     char sql[512];
 
-    start_xact_command();
+    /* Begin - bug#6850 */
+    SetCurrentStatementStartTimestamp();
+    StartTransactionCommand();
+    /* End - bug#6850 */
 
     if ((rc = SPI_connect()) != SPI_OK_CONNECT)
     {
@@ -762,32 +765,46 @@ execute_com_field_list(char *tableName)
                         errdetail("SPI_connect failed")));
     }
 
+    PushActiveSnapshot(GetTransactionSnapshot()); /* bug#6850 */
+
     snprintf(sql, sizeof(sql), "show columns from %s", tableName);
 
     rc = SPI_execute(sql, false, 0);
 
-    if (rc == SPI_OK_SELECT && SPI_processed > 0)
+    if (rc == SPI_OK_SELECT)
     {
-        TupleDesc spi_tupdesc = SPI_tuptable->tupdesc;
-        for (uint32 i = 0; i < SPI_processed; i++)
+        /* Begin - bug#6850 */
+        if (SPI_processed == 0)
         {
-            HeapTuple spi_tuple = SPI_tuptable->vals[i];
-            char *name = SPI_getvalue(spi_tuple, spi_tupdesc, SPI_fnumber(spi_tupdesc, "Field"));
-            char *default_value = SPI_getvalue(spi_tuple, spi_tupdesc, SPI_fnumber(spi_tupdesc, "Default"));
-            
-            mysql_column_definition_t *field = make_column_definition_with_name(name, tableName);
-            field->default_value = default_value;
-            send_column_definition41_packet(field);
-
-            pfree(field);
+            ereport(ERROR, errmsg("Table \'%s\' doesn't exist", tableName));
         }
+        /* End - bug#6850 */
 
-        send_eof(0, 0);
+        if (SPI_processed > 0)
+        {
+            TupleDesc spi_tupdesc = SPI_tuptable->tupdesc;
+            for (uint32 i = 0; i < SPI_processed; i++)
+            {
+                HeapTuple spi_tuple = SPI_tuptable->vals[i];
+                char *name = SPI_getvalue(spi_tuple, spi_tupdesc, SPI_fnumber(spi_tupdesc, "Field"));
+                char *default_value = SPI_getvalue(spi_tuple, spi_tupdesc, SPI_fnumber(spi_tupdesc, "Default"));            
+                mysql_column_definition_t *field = make_column_definition_with_name(name, tableName);
+
+                field->default_value = default_value;
+                field->is_com_field_list = true;
+
+                send_column_definition41_packet(field);
+
+                pfree(field);
+            }
+
+            send_eof(0, 0);
+        }
     }
 
     SPI_finish();
 
-    finish_xact_command();
+    CommitTransactionCommand();
 }
 
 static Portal

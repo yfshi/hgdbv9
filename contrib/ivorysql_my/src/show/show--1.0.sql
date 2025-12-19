@@ -529,3 +529,164 @@ AS 'MODULE_PATHNAME','mysql_get_indexdef_columns'
 LANGUAGE C
 PARALLEL SAFE STRICT;
 -- End - BUG#6420
+
+CREATE OR REPLACE FUNCTION ivymy.show_columns_internal(
+	IN  tb_name char,
+	IN  db_name char DEFAULT NULL,
+	OUT "Field" varchar,
+	OUT "Type" longtext,
+	OUT "Collation" varchar,
+	OUT "Null" varchar,
+	OUT "Key" varchar,
+	OUT "Default" longtext,
+	OUT "Extra" varchar,
+	OUT "Privileges" varchar,
+	OUT "Comment" varchar)
+RETURNS SETOF record AS $$
+BEGIN
+	IF db_name IS NOT NULL AND to_regclass(concat(db_name, '.', tb_name)) IS NULL THEN
+		RAISE EXCEPTION 'Table ''%'' doesn''t exist', concat(db_name, '.', tb_name);
+	END IF;
+
+	IF db_name IS NULL AND to_regclass(tb_name) IS NULL THEN
+		RAISE EXCEPTION 'Table ''%'' doesn''t exist', tb_name;
+	END IF;
+
+	IF db_name IS NULL THEN
+		RETURN QUERY SELECT
+			COLUMN_NAME, COLUMN_TYPE, COLLATION_NAME, IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT, EXTRA, PRIVILEGES, COLUMN_COMMENT
+		FROM mys_information_schema.showcolumns
+		WHERE table_name = tb_name
+		ORDER BY ORDINAL_POSITION;
+	ELSE
+		RETURN QUERY SELECT
+			COLUMN_NAME, COLUMN_TYPE, COLLATION_NAME, IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT, EXTRA, PRIVILEGES, COLUMN_COMMENT
+		FROM mys_information_schema.showcolumns
+		WHERE table_name = tb_name AND
+			  table_schema = db_name
+		ORDER BY ORDINAL_POSITION;
+	END IF;
+END
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION ivymy.show_columns_normal(
+	IN  tb_name char,
+	IN  db_name char DEFAULT NULL,
+	OUT "Field" varchar,
+	OUT "Type" longtext,
+	OUT "Null" varchar,
+	OUT "Key" varchar,
+	OUT "Default" longtext,
+	OUT "Extra" varchar)
+RETURNS SETOF record AS $$
+	SELECT
+		field, type, "null", "key", "default", extra
+	FROM ivymy.show_columns_internal(tb_name, db_name);
+$$ LANGUAGE SQL;
+
+
+CREATE OR REPLACE FUNCTION ivymy.show_columns_full(
+	IN  tb_name char,
+	IN  db_name char DEFAULT NULL,
+	OUT "Field" varchar,
+	OUT "Type" longtext,
+	OUT "Collation" varchar,
+	OUT "Null" varchar,
+	OUT "Key" varchar,
+	OUT "Default" longtext,
+	OUT "Extra" varchar,
+	OUT "Privileges" varchar,
+	OUT "Comment" varchar)
+RETURNS SETOF record AS $$
+	SELECT
+		field, type, "collation", "null", "key", "default", extra, privileges, comment
+	FROM ivymy.show_columns_internal(tb_name, db_name);
+$$ LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION ivymy.show_indexes(
+	IN  tb_name char,
+	IN  db_name char DEFAULT NULL,
+	OUT "Table" varchar,
+	OUT "Non_unique" bigint,
+	OUT "Key_name" varchar,
+	OUT "Seq_in_index" bigint,
+	OUT "Column_name" varchar,
+	OUT "Collation" varchar,
+	OUT "Cardinality" bigint,
+	OUT "Sub_part" bigint,
+	OUT "Packed" varchar,
+	OUT "Null" varchar,
+	OUT "Index_type" varchar,
+	OUT "Comment" varchar,
+	OUT "Index_comment" varchar)
+RETURNS SETOF record AS $$
+BEGIN
+	IF db_name IS NOT NULL AND to_regclass(concat(db_name, '.', tb_name)) IS NULL THEN
+		RAISE EXCEPTION 'Table ''%'' doesn''t exist', concat(db_name, '.', tb_name);
+	END IF;
+
+	IF db_name IS NULL AND to_regclass(tb_name) IS NULL THEN
+		RAISE EXCEPTION 'Table ''%'' doesn''t exist', tb_name;
+	END IF;
+
+	IF db_name IS NULL THEN
+		RETURN QUERY SELECT
+			TABLE_NAME, NON_UNIQUE, INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, "COLLATION", 
+			CARDINALITY, SUB_PART, PACKED, NULLABLE, INDEX_TYPE, COMMENT, INDEX_COMMENT
+		FROM mys_information_schema.showstatistics
+		WHERE table_name = tb_name;
+	ELSE
+		RETURN QUERY SELECT
+			TABLE_NAME, NON_UNIQUE, INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, "COLLATION", 
+			CARDINALITY, SUB_PART, PACKED, NULLABLE, INDEX_TYPE, COMMENT, INDEX_COMMENT
+		FROM mys_information_schema.showstatistics
+		WHERE table_name = tb_name AND
+			  index_schema = db_name;
+	END IF;
+END
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION ivymy.show_table_status(
+	IN  db_name char DEFAULT NULL,
+	OUT "Name" varchar,
+	OUT "Engine" varchar,
+	OUT "Version" uint8,
+	OUT "Row_format" varchar,
+	OUT "Rows" uint8,
+	OUT "Avg_row_length" uint8,
+	OUT "Data_length" uint8,
+	OUT "Max_data_length" uint8,
+	OUT "Index_length" uint8,
+	OUT "Data_free" uint8,
+	OUT "Auto_increment" uint8,
+	OUT "Create_time" datetime,
+	OUT "Update_time" datetime,
+	OUT "Check_time" datetime,
+	OUT "Collation" varchar,
+	OUT "Checksum" uint8,
+	OUT "Create_options" varchar,
+	OUT "Comment" varchar)
+RETURNS SETOF record AS $$
+BEGIN
+	IF db_name IS NOT NULL AND to_regnamespace(db_name) IS NULL THEN
+		RAISE EXCEPTION 'Unknown database ''%''', db_name;
+	END IF;
+
+	IF db_name IS NULL THEN
+		RETURN QUERY SELECT
+			"TABLE_NAME", "ENGINE", "VERSION", "ROW_FORMAT", "TABLE_ROWS", "AVG_ROW_LENGTH", "DATA_LENGTH",
+			"MAX_DATA_LENGTH", "INDEX_LENGTH", "DATA_FREE", "AUTO_INCREMENT", "CREATE_TIME", "UPDATE_TIME", 
+			"CHECK_TIME", "TABLE_COLLATION", "CHECKSUM", "CREATE_OPTIONS", "TABLE_COMMENT"
+		FROM mys_information_schema.showtables;
+	ELSE
+		RETURN QUERY SELECT
+			"TABLE_NAME", "ENGINE", "VERSION", "ROW_FORMAT", "TABLE_ROWS", "AVG_ROW_LENGTH", "DATA_LENGTH",
+			"MAX_DATA_LENGTH", "INDEX_LENGTH", "DATA_FREE", "AUTO_INCREMENT", "CREATE_TIME", "UPDATE_TIME", 
+			"CHECK_TIME", "TABLE_COLLATION", "CHECKSUM", "CREATE_OPTIONS", "TABLE_COMMENT"
+		FROM mys_information_schema.showtables
+		WHERE table_schema = db_name;
+	END IF;
+END
+$$ LANGUAGE plpgsql;
