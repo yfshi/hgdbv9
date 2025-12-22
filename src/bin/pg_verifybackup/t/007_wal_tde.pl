@@ -15,7 +15,7 @@ use Test::More tests => 5;
 # Start up the server and take a backup.
 my $primary = get_new_node('primary');
 $primary->init(allows_streaming => 1,
-			extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+			extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $primary->start;
 my $backup_path = $primary->backup_dir . '/test_wal';
 $primary->command_ok([ 'pg_basebackup', '-D', $backup_path, '--no-sync' ],
@@ -38,5 +38,5 @@ command_ok(
 	'missing pg_wal OK if not verifying WAL');
 
 # Should also work if we specify the correct WAL location.
-command_ok([ 'pg_verifybackup', '-w', $relocated_pg_wal, $backup_path, '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-K', 'AES' ],
+command_ok([ 'pg_verifybackup', '-w', $relocated_pg_wal, '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-K', 'AES', $backup_path ],
 	'-w can be used to specify WAL directory');

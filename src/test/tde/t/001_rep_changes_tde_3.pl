@@ -11,13 +11,13 @@ use Test::More tests => 31;
 # Initialize publisher node
 my $node_publisher = get_new_node('publisher');
 $node_publisher->init(allows_streaming => 'logical',
-					extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1' ]);
+					extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b' ]);
 $node_publisher->start;
 
 # Create subscriber node
 my $node_subscriber = get_new_node('subscriber');
 $node_subscriber->init(allows_streaming => 'logical',
-					extra => [ '-C', 'echo 456|sha256sum|cut -d \' \' -f1' ]);
+					extra => [ '-C', 'echo ff6f81930943c96a37d7741cd547ad90295a9bd63b6194b2a834a1d32bc8f85d' ]);
 $node_subscriber->start;
 
 # Create some preexisting content on publisher

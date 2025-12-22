@@ -11,7 +11,7 @@ use Test::More tests => 31;
 # Initialize publisher node
 my $node_publisher = get_new_node('publisher');
 $node_publisher->init(allows_streaming => 'logical',
-					extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1' ]);
+					extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b' ]);
 $node_publisher->start;
 
 # Create subscriber node

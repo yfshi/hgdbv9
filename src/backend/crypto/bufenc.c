@@ -35,8 +35,8 @@ static PgCipherCtx *BufEncCtx = NULL;
 static PgCipherCtx *BufDecCtx = NULL;
 
 #ifdef USE_SWSDS
-static void* hSessionHandle = NULL;
-static void* hKeyHandle = NULL;
+static void* BufhSessionHandle = NULL;
+static void* BufhKeyHandle = NULL;
 #endif
 
 #ifdef FRONTEND
@@ -44,6 +44,10 @@ bool FileEncryptionEnabled = false;
 int PG_CIPHER_ENCRYPT_CTR_REL = 0;
 CryptoKey *LocalRelKey = NULL;
 static int PG_CIPHER_ENCRYPT_CTR = 0;
+#endif
+
+#ifdef WIN32
+static bool BufCtxInitialized = false;
 #endif
 
 static void set_buffer_encryption_iv(Page page, BlockNumber blkno,
@@ -90,7 +94,7 @@ InitializeBufferEncryption(void)
 	{
 #ifdef USE_SWSDS
 		/* create session handle */
-		HSM_GetKeyHandle(&hSessionHandle, &hKeyHandle, key, hsm_get_kek_id(), true);
+		HSM_GetKeyHandle(&BufhSessionHandle, &BufhKeyHandle, key, hsm_get_kek_id(), true);
 #else
 		swsds_failure();
 #endif
@@ -113,6 +117,14 @@ EncryptPage(Page page, bool relation_is_permanent, BlockNumber blkno, Size size)
 	unsigned char *ptr = (unsigned char *) page + PageEncryptOffset;
 	bool		is_gist_page_or_similar;
 	int			enclen;
+
+#ifdef WIN32
+	if (unlikely(!BufCtxInitialized))
+	{
+		InitializeBufferEncryption();
+		BufCtxInitialized = true;
+	}
+#endif
 
 	size -= PageEncryptOffset;
 	if (size <= 0)
@@ -187,7 +199,7 @@ EncryptPage(Page page, bool relation_is_permanent, BlockNumber blkno, Size size)
 #else
 		key = LocalRelKey;
 #endif
-		if (unlikely(!HSM_Encrypt(&hSessionHandle, &hKeyHandle,
+		if (unlikely(!HSM_Encrypt(&BufhSessionHandle, &BufhKeyHandle,
 								  key, hsm_get_kek_id(),
 								  HSM_GetAlgID(PG_CIPHER_ENCRYPT_CTR),
 								  buf_encryption_iv,
@@ -210,6 +222,14 @@ DecryptPage(Page page, bool relation_is_permanent, BlockNumber blkno, Size size)
 {
 	unsigned char *ptr = (unsigned char *) page + PageEncryptOffset;
 	int			declen;
+
+#ifdef WIN32
+	if (unlikely(!BufCtxInitialized))
+	{
+		InitializeBufferEncryption();
+		BufCtxInitialized = true;
+	}
+#endif
 
 	size -= PageEncryptOffset;
 	if (size <= 0)
@@ -243,7 +263,7 @@ DecryptPage(Page page, bool relation_is_permanent, BlockNumber blkno, Size size)
 #else
 		key = LocalRelKey;
 #endif
-		if (unlikely(!HSM_Decrypt(&hSessionHandle, &hKeyHandle,
+		if (unlikely(!HSM_Decrypt(&BufhSessionHandle, &BufhKeyHandle,
 								  key, hsm_get_kek_id(),
 								  HSM_GetAlgID(PG_CIPHER_ENCRYPT_CTR),
 								  buf_encryption_iv,

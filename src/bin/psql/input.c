@@ -9,10 +9,10 @@
 
 #ifndef WIN32
 #include <unistd.h>
+#include <regex.h>
 #endif
 #include <fcntl.h>
 #include <limits.h>
-#include <regex.h>
 
 #include "common.h"
 #include "common/logging.h"

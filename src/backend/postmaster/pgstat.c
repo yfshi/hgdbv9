@@ -371,7 +371,7 @@ char * get_pgstat_stat_directory(void)
 
 void pdr_pgstat_read_db_statsfile(Oid databaseid, HTAB *tabhash, HTAB *funchash, bool permanent)
 {
-	return pgstat_read_db_statsfile(databaseid, tabhash, funchash, permanent);
+	pgstat_read_db_statsfile(databaseid, tabhash, funchash, permanent);
 }
 /* End - ReqID:SRS-MISC-PDR */
 

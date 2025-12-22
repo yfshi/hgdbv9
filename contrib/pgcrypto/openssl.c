@@ -280,7 +280,7 @@ digest_reset_sm3(PX_MD *h)
 {
 	SM3_CTX *ctx = (SM3_CTX *) h->p.ptr;
 
-	return gm_sm3_init(ctx);
+	gm_sm3_init(ctx);
 }
 
 static void
@@ -289,7 +289,7 @@ digest_update_sm3(PX_MD *h, const uint8 *data, unsigned dlen)
 	size_t datalen = dlen;
 	SM3_CTX *ctx = (SM3_CTX *) h->p.ptr;
 
-	return gm_sm3_update(ctx, data, datalen);
+	gm_sm3_update(ctx, data, datalen);
 }
 
 static void
@@ -297,7 +297,7 @@ digest_finish_sm3(PX_MD *h, uint8 *dst)
 {
 	SM3_CTX *ctx = (SM3_CTX *) h->p.ptr;
 
-	return gm_sm3_finish(ctx, dst);
+	gm_sm3_finish(ctx, dst);
 }
 
 static void

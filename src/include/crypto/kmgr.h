@@ -22,7 +22,7 @@ extern char *cluster_key_command;
 extern Size KmgrShmemSize(void);
 extern void KmgrShmemInit(void);
 extern void BootStrapKmgr(void);
-extern void InitializeKmgr(void);
 extern const CryptoKey *KmgrGetKey(int id);
+
 
 #endif							/* KMGR_H */

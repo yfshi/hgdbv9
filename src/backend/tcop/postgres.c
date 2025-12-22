@@ -112,6 +112,7 @@
 #include "hg_misc.h"
 /* End - ReqID:Performance-GUC */
 #include "utils/restrict.h"		/* ReqID: SRS-CLIENT-AUTH */
+#include "utils/formatting.h"
 
 /* ----------------
  *		global variables
@@ -4712,12 +4713,10 @@ PostgresMain(int argc, char *argv[],
 
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	/*
-	 * Initialize kmgr for cluster encryption. Since kmgr needs to attach to
-	 * shared memory the initialization must be called after BaseInit().
+	 * Initialize data encryption context, must be called after BaseInit().
 	 */
 	if (!IsUnderPostmaster)
 	{
-		InitializeKmgr();
 		InitializeBufferEncryption();
 		InitializeXLogEncryption();
 	}

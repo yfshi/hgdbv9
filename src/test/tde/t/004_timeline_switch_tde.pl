@@ -17,7 +17,7 @@ $ENV{PGDATABASE} = 'postgres';
 # Initialize primary node
 my $node_primary = get_new_node('primary');
 $node_primary->init(allows_streaming => 1,
-					extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+					extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $node_primary->start;
 
 # Take backup
@@ -79,7 +79,7 @@ is($result, qq(2000), 'check content of standby 2');
 # Initialize primary node
 my $node_primary_2 = get_new_node('primary_2');
 $node_primary_2->init(allows_streaming => 1, has_archiving => 1,
-					extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+					extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $node_primary_2->append_conf(
 	'postgresql.conf', qq(
 wal_keep_size = 512MB

@@ -71,19 +71,19 @@ sub _new
 	}
 # End - ReqID:SRS-SQL-PROC
 	#/* Begin - BUG#Z00004967 */
-	$options->{hg_product_name} = "HG Database Server"
+	$options->{hg_product_name} = qq {"HG Database Server"}
 		unless $options->{hg_product_name};		#undef means default
-	$options->{hg_major_version} = "V9"
+	$options->{hg_major_version} = qq {"V9"}
 		unless $options->{hg_major_version};		#undef means default
-	$options->{hg_extral_version} = "03-0-0-0000"
+	$options->{hg_extral_version} = qq {"03-0-0-0000"}
 		unless $options->{hg_extral_version};		#undef means default
-	$options->{hg_project_id} = "590"
+	$options->{hg_project_id} = qq {"590"}
 		unless $options->{hg_project_id};		#undef means default
-	$options->{hg_patch_str} = ""
+	$options->{hg_patch_str} = qq {""}
 		unless $options->{hg_patch_str};		#undef means default
 	#/* End - BUG#Z00004967 */
 	#/* Begin - BUG#Z00005371 */
-	$options->{hg_hgdb_version} = "V9.0"
+	$options->{hg_hgdb_version} = qq {"V9.0"}
 		unless $options->{hg_hgdb_version};		#undef means default
 	#/* End - BUG#Z00005371 */
 	return $self;
@@ -303,6 +303,7 @@ sub GenerateFiles
 		DEF_ORAPORT_STR             => qq{"$oraport"},
 		DEF_MYSPORT                 => $mysport,
 		DEF_MYSPORT_STR             => qq{"$mysport"},
+		ENABLE_DKY_BETA_FEATURE		=> undef,
 		ENABLE_GSS                 => $self->{options}->{gss} ? 1 : undef,
 		ENABLE_NLS                 => $self->{options}->{nls} ? 1 : undef,
 		ENABLE_THREAD_SAFETY       => 1,
@@ -367,6 +368,7 @@ sub GenerateFiles
 		HAVE_GETRLIMIT                              => undef,
 		HAVE_GETRUSAGE                              => undef,
 		HAVE_GETTIMEOFDAY                           => undef,
+		HAVE_GMSSL_SM4_H							=> $self->{options}->{gmssl} ? 1 : undef,
 		HAVE_GSSAPI_GSSAPI_H                        => undef,
 		HAVE_GSSAPI_H                               => undef,
 		HAVE_HMAC_CTX_FREE                          => undef,
@@ -388,13 +390,16 @@ sub GenerateFiles
 		HAVE_LDAP_H                                 => undef,
 		HAVE_LDAP_INITIALIZE                        => undef,
 		HAVE_LIBCRYPTO                              => undef,
+		HAVE_LIBGMSSL								=> $self->{options}->{gmssl} ? 1 : undef,
 		HAVE_LIBLDAP                                => undef,
 		HAVE_LIBLZ4                                 => undef,
 		HAVE_LIBM                                   => undef,
 		HAVE_LIBPAM                                 => undef,
 		HAVE_LIBREADLINE                            => undef,
 		HAVE_LIBSELINUX                             => undef,
+		HAVE_LIBSQLITE3								=> $self->{options}->{sqlite3} ? 1 : undef,
 		HAVE_LIBSSL                                 => undef,
+		HAVE_LIBSWSDS								=> undef,
 		HAVE_LIBWLDAP32                             => undef,
 		HAVE_LIBXML2                                => undef,
 		HAVE_LIBXSLT                                => undef,
@@ -447,6 +452,7 @@ sub GenerateFiles
 		HAVE_SETPROCTITLE_FAST                   => undef,
 		HAVE_SETSID                              => undef,
 		HAVE_SHM_OPEN                            => undef,
+		HAVE_SQLITE3_H							 => $self->{options}->{sqlite3} ? 1 : undef,
 		HAVE_SPINLOCKS                           => 1,
 		HAVE_SSL_CTX_SET_NUM_TICKETS             => undef,
 		HAVE_SRANDOM                             => undef,
@@ -475,6 +481,7 @@ sub GenerateFiles
 		HAVE_STRUCT_SOCKADDR_STORAGE___SS_LEN    => undef,
 		HAVE_STRUCT_SOCKADDR_UN                  => undef,
 		HAVE_STRUCT_TM_TM_ZONE                   => undef,
+		HAVE_SWSDS_H							 => undef,
 		HAVE_SYNC_FILE_RANGE                     => undef,
 		HAVE_SYMLINK                             => 1,
 		HAVE_SYNCFS                              => undef,
@@ -611,6 +618,7 @@ sub GenerateFiles
 		HG_BRANCH_HASH				=> qq {"$hg_branch_hash"},
 		HG_BRANCH_COMMIT_HASH		=> qq {"$hg_branch_commit_hash"},
 		#/* End - BUG#Z00004967 */
+		USE_GMSSL					=> $self->{options}->{gmssl} ? 1 : undef,
 		#/* Begin - BUG#Z00005371 */
 		HG_HGDB_VERSION				=> $self->{options}->{hg_hgdb_version},
 		#/* End - BUG#Z00005371 */
@@ -620,7 +628,8 @@ sub GenerateFiles
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,
-		USE_SQLITE                 => undef,
+		USE_SQLITE                 => $self->{options}->{sqlite3} ? 1 : undef,
+		USE_SWSDS				   => undef,
 		USE_PAM                    => undef,
 		USE_SLICING_BY_8_CRC32C    => undef,
 		USE_SSE42_CRC32C           => undef,
@@ -1342,6 +1351,16 @@ sub AddProject
 		$proj->AddIncludeDir($self->{options}->{uuid} . '\include');
 		$proj->AddLibrary($self->{options}->{uuid} . '\lib\uuid.lib');
 	}
+	if ($self->{options}->{gmssl})
+	{
+		$proj->AddIncludeDir($self->{options}->{gmssl} . '\include');
+		$proj->AddLibrary($self->{options}->{gmssl} . '\lib\gmssl.lib');
+	}
+	if ($self->{options}->{sqlite3})
+	{
+		$proj->AddIncludeDir($self->{options}->{sqlite3} . '\include');
+		$proj->AddLibrary($self->{options}->{sqlite3} . '\lib\sqlite3.lib');
+	}
 	return $proj;
 }
 
@@ -1466,6 +1485,8 @@ sub GetFakeConfigure
 	# Begin - ReqID:SRS-MISC-LICENSE
 	$cfg .= ' --with-license'       if ($self->{options}->{license});
 	# End - ReqID:SRS-MISC-LICENSE
+	$cfg .= ' --with-gmssl'			if ($self->{options}->{gmssl});
+	$cfg .= ' --with-sqlite'		if ($self->{options}->{sqlite3});
 	my $port = $self->{options}->{'--with-pgport'};
 	$cfg .= " --with-pgport=$port" if defined($port);
 

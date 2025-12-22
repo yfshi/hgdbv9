@@ -12,7 +12,7 @@
  * Copyright (c) 2024, HighGo Software Co.,Ltd. All rights reserved.
  *
  * Identification:
- *		src/common/mfa_common.c
+ *		src/interfaces/mfa_common.c
  *
  * Add files that require "SRS-SECURITY-IDENTITYAUTH"
  *

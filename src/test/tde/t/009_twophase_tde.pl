@@ -33,7 +33,7 @@ sub configure_and_reload
 # Setup london node
 my $node_london = get_new_node("london");
 $node_london->init(allows_streaming => 1,
-				extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+				extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $node_london->append_conf(
 	'postgresql.conf', qq(
 	max_prepared_transactions = 10

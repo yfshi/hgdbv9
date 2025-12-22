@@ -155,6 +155,10 @@ PG_FUNCTION_INFO_V1(get_format);
 #define LEAPS_THRU_END_OF(y)  ((y) / 4 - (y) / 100 + (y) / 400)
 #define FIRST_JULIAN_DAY 1721060
 
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
+
 static const int mon_starts[2][MONS_PER_YEAR] =
 {
 	{ 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 },

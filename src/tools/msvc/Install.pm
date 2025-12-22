@@ -228,6 +228,33 @@ sub Install
 		],
 		$target . '/share/extension/');
 	# End - ReqID:SRS-PLSQL-DBMS_JOB
+	my $buildenv_arch = $ENV{UP_BUILDENV_ARCH};
+	my $buildenv_dir = $ENV{UP_BUILDENV};
+	my $up_x64;
+	my $openssl_x64;
+	if ($buildenv_arch eq "win32") {
+		$up_x64='';
+		$openssl_x64='';
+	}
+	elsif ($buildenv_arch eq "x64") {
+		$up_x64='_x64';
+		$openssl_x64='-x64';
+	}
+	CopySetOfFiles(
+			'deps library',
+			[ 
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\gettext\\libintl.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\libiconv\\libiconv.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\libxml2\\bin\\libxml2.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\libxslt\\lib\\libxslt.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\zlib\\zlib1.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\openssl\\bin\\libcrypto-3' . $openssl_x64 . '.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\openssl\\bin\\libssl-3' . $openssl_x64 . '.dll'),
+				# glob($buildenv_dir . '\\deps\\lib'$up_x64'\\license\\share\\license.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\gmssl\\lib\\gmssl.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\sqlite3\\lib\\sqlite3.dll')
+			],
+			$target . '/bin/');
 	GenerateNLSFiles($target, $config->{nls}, $majorver) if ($config->{nls});
 
 	print "Installation complete.\n";

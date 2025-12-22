@@ -61,6 +61,7 @@
 #include "commands/dbcommands.h"
 #include "access/genam.h"
 #include "access/htup_details.h"
+#include "utils/formatting.h"
 
 #include "se_features_interface.h"
 
@@ -136,25 +137,6 @@ static ClientAuthentication_hook_type prev_ClientAuthentication = NULL;
 static emit_log_hook_type prev_log_hook = NULL;
 
 #ifdef _WIN32
-static const char *strcasestr(const char *haystack, const char *needle)
-{
-	size_t needle_len = 0;
-	if (!*needle)
-		return haystack;
-
-	needle_len = strlen(needle);
-
-	for (size_t i = 0; haystack[i]; ++i)
-	{
-		if (!_strnicmp(haystack + i, needle, needle_len))
-		{
-			return haystack + i;
-		}
-	}
-
-	return NULL;
-}
-
 static char *strndup(const char *s, size_t n)
 {
 	if (s == NULL)

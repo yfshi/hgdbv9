@@ -5572,7 +5572,7 @@ audit_system_event_info(bool flag, SystemEventType sqlerrcode)
 
 		return;
 	}
-#ifdef USE_SQLITE
+#if defined(USE_SQLITE) && !defined(_WIN32)
 	else
 	{
 		if (sqlite_open_db_for_audit_hook && sqlerrcode == ERRCODE_TOO_MANY_CONNECTIONS)
@@ -6328,8 +6328,8 @@ static void get_disk_space(const char *path, uint64 *total, uint64 *free)
 
 	if (GetDiskFreeSpaceExA(path, &free_bytes, &total_bytes, &total_free_bytes))
 	{
-		*total = (uint64)vfs.f_blocks * vfs.f_frsize;
-		*free = (uint64)vfs.f_bfree * vfs.f_frsize;
+		*total = (uint64)total_bytes.QuadPart;
+		*free = (uint64)total_free_bytes.QuadPart;
 	}
 	else
 	{

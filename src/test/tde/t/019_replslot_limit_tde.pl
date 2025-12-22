@@ -19,7 +19,7 @@ $ENV{PGDATABASE} = 'postgres';
 # Initialize primary node, setting wal-segsize to 1MB
 my $node_primary = get_new_node('primary');
 $node_primary->init(allows_streaming => 1, extra => ['--wal-segsize=1', 
-					'-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+					'-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $node_primary->append_conf(
 	'postgresql.conf', qq(
 min_wal_size = 2MB
@@ -260,7 +260,7 @@ $node_standby->stop;
 
 my $node_primary2 = get_new_node('primary2');
 $node_primary2->init(allows_streaming => 1,
-					extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+					extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $node_primary2->append_conf(
 	'postgresql.conf', qq(
 min_wal_size = 32MB
@@ -314,7 +314,7 @@ if ($TestLib::windows_os)
 # We do this by sending SIGSTOP to the walsender.  Skip this on Windows.
 my $node_primary3 = get_new_node('primary3');
 $node_primary3->init(allows_streaming => 1, extra => ['--wal-segsize=1', 
-					'-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+					'-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $node_primary3->append_conf(
 	'postgresql.conf', qq(
 	min_wal_size = 2MB

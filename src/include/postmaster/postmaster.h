@@ -32,7 +32,7 @@ extern PGDLLIMPORT char *DatabaseName; /* ReqID:SRS-SECURITY-AUDIT */
 
 extern int	Unix_socket_permissions;
 extern char *Unix_socket_group;
-extern char *Unix_socket_directories;
+extern PGDLLIMPORT char *Unix_socket_directories;
 extern char *ListenAddresses;
 extern bool ClientAuthInProgress;
 extern int	PreAuthDelay;

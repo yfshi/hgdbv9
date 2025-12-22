@@ -31,8 +31,8 @@ static PgCipherCtx *XLogEncCtx = NULL;
 static PgCipherCtx *XLogDecCtx = NULL;
 
 #ifdef USE_SWSDS
-static void* hSessionHandle = NULL;
-static void* hKeyHandle = NULL;
+static void* XLoghSessionHandle = NULL;
+static void* XLoghKeyHandle = NULL;
 #endif
 
 #ifdef FRONTEND
@@ -40,6 +40,10 @@ bool WALEncrypted = false;
 int PG_CIPHER_ENCRYPT_CTR_WAL = 0;
 CryptoKey *LocalXLogKey = NULL;
 static int PG_CIPHER_ENCRYPT_CTR = 0;
+#endif
+
+#ifdef WIN32
+static bool XLogCtxInitialized = false;
 #endif
 
 static void EncryptXLog(char *xlog, Size size, TimeLineID timeline, 
@@ -91,7 +95,7 @@ InitializeXLogEncryption(void)
 	{
 #ifdef USE_SWSDS
 		/* create session handle */
-		HSM_GetKeyHandle(&hSessionHandle, &hKeyHandle, key, hsm_get_kek_id(), true);
+		HSM_GetKeyHandle(&XLoghSessionHandle, &XLoghKeyHandle, key, hsm_get_kek_id(), true);
 #else
 		swsds_failure();
 #endif
@@ -185,6 +189,14 @@ EncryptXLog(char *xlog, Size size, TimeLineID timeline,
 	unsigned char *ptr = (unsigned char *) xlog;
 	int		enclen;
 
+#ifdef WIN32
+	if (unlikely(!XLogCtxInitialized))
+	{
+		InitializeXLogEncryption();
+		XLogCtxInitialized = true;
+	}
+#endif
+
 	if (size <= 0)
 		return;
 
@@ -216,7 +228,7 @@ EncryptXLog(char *xlog, Size size, TimeLineID timeline,
 #else
 		key = LocalXLogKey;
 #endif
-		if (unlikely(!HSM_Encrypt(&hSessionHandle, &hKeyHandle,
+		if (unlikely(!HSM_Encrypt(&XLoghSessionHandle, &XLoghKeyHandle,
 								  key, hsm_get_kek_id(),
 								  HSM_GetAlgID(PG_CIPHER_ENCRYPT_CTR),
 								  wal_encryption_iv,
@@ -240,6 +252,14 @@ DecryptXLog(char *xlog, Size size, TimeLineID timeline,
 {
 	unsigned char *ptr = (unsigned char *) xlog;
 	int		declen;
+
+#ifdef WIN32
+	if (unlikely(!XLogCtxInitialized))
+	{
+		InitializeXLogEncryption();
+		XLogCtxInitialized = true;
+	}
+#endif
 
 	if (size <= 0)
 		return;
@@ -272,7 +292,7 @@ DecryptXLog(char *xlog, Size size, TimeLineID timeline,
 #else
 		key = LocalXLogKey;
 #endif
-		if (unlikely(!HSM_Decrypt(&hSessionHandle, &hKeyHandle,
+		if (unlikely(!HSM_Decrypt(&XLoghSessionHandle, &XLoghKeyHandle,
 								  key, hsm_get_kek_id(),
 								  HSM_GetAlgID(PG_CIPHER_ENCRYPT_CTR),
 								  wal_encryption_iv,

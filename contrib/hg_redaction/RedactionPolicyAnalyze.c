@@ -16,6 +16,9 @@
  */
 #include "hg_redaction.h"
 
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
 
 /*---- Function declarations ----*/
 static void process_redaction(ParseState *pstate, Query *query, bool toptlistflg, bool dealtartlist);

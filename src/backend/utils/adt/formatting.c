@@ -8004,3 +8004,25 @@ float8_to_char(PG_FUNCTION_ARGS)
 	NUM_TOCHAR_finish;
 	PG_RETURN_TEXT_P(result);
 }
+
+#ifdef WIN32
+const char*
+strcasestr(const char *haystack, const char *needle)
+{
+	size_t needle_len = 0;
+	if (!*needle)
+		return haystack;
+
+	needle_len = strlen(needle);
+
+	for (size_t i = 0; haystack[i]; ++i)
+	{
+		if (!_strnicmp(haystack + i, needle, needle_len))
+		{
+			return haystack + i;
+		}
+	}
+
+	return NULL;
+}
+#endif

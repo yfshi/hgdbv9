@@ -619,7 +619,7 @@ start_postmaster(void)
 					   DEVNULL, log_file);
 	}
 	else
-		cmd = psprintf("\"%s\" /D /C \"\"%s\" %s%s < \"%s\" 2>&1\"",
+		cmd = psprintf("\"%s\" /D /C \"\"%s\" %s%s%s < \"%s\" 2>&1\"",
 					   comspec, exec_path, pgdata_opt, post_opts, 
 					   /* Begin - ReqID:SRS-SECURITY-TDE */
 					   term_fd_opt ? term_fd_opt : "",

@@ -10,7 +10,7 @@ my $node_master = get_new_node("master");
 my $node_standby = get_new_node("standby");
 
 $node_master->init(allows_streaming => 1,
-				extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+				extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $node_master->append_conf('postgresql.conf', qq(
 max_prepared_transactions = 10
 max_prepared_foreign_transactions = 10
@@ -36,9 +36,9 @@ my $node_fs2 = get_new_node("fs2");
 my $fs1_port = $node_fs1->port;
 my $fs2_port = $node_fs2->port;
 $node_fs1->init(allows_streaming => 1,
-			extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+			extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $node_fs2->init(allows_streaming => 1,
-			extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+			extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $node_fs1->append_conf('postgresql.conf', qq(max_prepared_transactions = 10));
 $node_fs2->append_conf('postgresql.conf', qq(max_prepared_transactions = 10));
 $node_fs1->start;

@@ -1373,7 +1373,7 @@ hsh_collector_main(Datum main_arg)
 
 	BackgroundWorkerUnblockSignals();
 
-	InitPostgres(NULL, InvalidOid, NULL, InvalidOid, 0, NULL);
+	InitPostgres(NULL, InvalidOid, NULL, InvalidOid, NULL, false);
 	SetProcessingMode(NormalProcessing);
 	//BackgroundWorkerInitializeConnection(hsh_database, NULL, 0);
 
@@ -2488,7 +2488,7 @@ hsh_get_ringbuf_start(void)
 	}
 
 	elog(ERROR, "Highgo Session History: shared buff did not initailized");
-
+	return tmp;
 }
 
 /*
@@ -2514,6 +2514,7 @@ hsh_get_ringbuf_end(void)
 	}
 
 	elog(ERROR, "Highgo Session History: shared buff did not initailized");
+	return tmp;
 }
 
 /*
