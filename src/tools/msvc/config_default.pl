@@ -48,7 +48,9 @@ our $config = {
 	xml       => undef,    # --with-libxml=<path>
 	xslt      => undef,    # --with-libxslt=<path>
 	iconv     => undef,    # (not in configure, path to iconv)
-	zlib      => undef    # --with-zlib=<path>
+	zlib      => undef,    # --with-zlib=<path>
+	gmssl	  => undef,	   # --with-gmssl
+	sqlite3	  => undef	   # --with-sqlite
 };
 
 1;

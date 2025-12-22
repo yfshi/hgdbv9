@@ -17,9 +17,6 @@
 
 #include "conn_restrict.h"
 
-/* GUC */
-extern bool enable_macandtime;
-
 /* hook */
 static check_connrules_hook_type prev_check_rules_hook = NULL;
 

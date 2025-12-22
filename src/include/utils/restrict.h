@@ -20,7 +20,7 @@
 
 typedef void (*check_connrules_hook_type) (char* username, char* mac_address);
 extern PGDLLIMPORT check_connrules_hook_type check_rules_hook;
-extern bool enable_macandtime;
+extern PGDLLIMPORT bool enable_macandtime;
 
 #endif							/* RESTRICT_H */
 /* End ReqID: SRS-CLIENT-AUTH */

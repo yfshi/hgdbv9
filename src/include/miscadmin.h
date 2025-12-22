@@ -501,7 +501,7 @@ extern void BaseInit(void);
 extern bool IgnoreSystemIndexes;
 extern PGDLLIMPORT bool process_shared_preload_libraries_in_progress;
 extern char *session_preload_libraries_string;
-extern char *shared_preload_libraries_string;
+extern PGDLLIMPORT char *shared_preload_libraries_string;
 extern char *local_preload_libraries_string;
 
 extern void CreateDataDirLockFile(bool amPostmaster);
@@ -541,8 +541,8 @@ extern int SetTopAutonTransactionStateStarted(void);
 
 /* in transam/atstack.c */
 typedef void (*AutoxIsoVarsHookType) (void);
-extern AutoxIsoVarsHookType RegisterAutonxIsoVars_PlisqlHook;
-extern AutoxIsoVarsHookType RegisterAutonxIsoVars_PlpgsqlHook;
+extern PGDLLIMPORT AutoxIsoVarsHookType RegisterAutonxIsoVars_PlisqlHook;
+extern PGDLLIMPORT AutoxIsoVarsHookType RegisterAutonxIsoVars_PlpgsqlHook;
 
 extern void InitAutoxIsolationState(void);
 extern void RegisterAutonxIsoVar(const char *name, void *address, int len,

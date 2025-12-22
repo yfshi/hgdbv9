@@ -79,6 +79,7 @@
 #include "nodes/pg_list.h"
 /* End - ReqID:SRS-MYSQL-CASE */
 #include "parser/analyze.h"
+#include "utils/formatting.h"
 
 /*
  * Location tracking support --- simpler than bison's default, since we only
@@ -190,6 +191,11 @@ typedef struct ShowFilter
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 #define RealAsFloat()	(has_sql_mode(MODE_REAL_AS_FLOAT))
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+
+#ifdef WIN32
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
+#endif
 
 static void makeCreateStmtOption(CreateStmt* stmt, List* option);
 
@@ -862,7 +868,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	EXTENSION EXTERNAL EXTRACT
 
 	FALSE_P FAMILY FETCH FIELD /* ReqID:SRS-MYSQL-BINARYTYPE */ FIELDS /* ReqID:SRS-MYSQL-SHOW */ FILTER FINALIZE FIRST_P
-	FIXED /* bug#z5409 */
+	FIXED_P /* bug#z5409 */
 	FLOAT_P FOLLOWING FOR
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FULLTEXT /* ReqID:SRS-MYSQL-CREATE-INDEX */ FUNCTION FUNCTIONS
 
@@ -15952,7 +15958,7 @@ decimal:
 		DEC
 		| DECIMAL_P
 		| NUMERIC
-		| FIXED /* bug#z5409 */
+		| FIXED_P /* bug#z5409 */
 	;
 
 unsigned_list:
@@ -20169,7 +20175,7 @@ col_name_keyword:
 			| EXISTS
 			| EXTRACT
 			| FIELD               /* ReqID:SRS-MYSQL-BINARYTYPE */
-			| FIXED		/* bug#z5409 */
+			| FIXED_P		/* bug#z5409 */
 			| FLOAT_P
 			| GET_FORMAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| GREATEST
@@ -20579,7 +20585,7 @@ bare_label_keyword:
 			| FIELDS		/* ReqID: SRS-MYSQL-SHOW */
 			| FINALIZE
 			| FIRST_P
-			| FIXED			/* bug#z5409 */
+			| FIXED_P			/* bug#z5409 */
 			| FLOAT_P
 			| FOLLOWING
 			| FORCE

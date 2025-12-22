@@ -14,7 +14,7 @@ use Test::More tests => 1;
 # Initialize primary node
 my $alpha = get_new_node('alpha');
 $alpha->init(allows_streaming => 1,
-			extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+			extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 # Setting wal_log_hints to off is important to get invalid page
 # references.
 $alpha->append_conf("postgresql.conf", <<EOF);

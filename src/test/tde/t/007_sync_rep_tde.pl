@@ -53,7 +53,7 @@ sub start_standby_and_wait
 # Initialize primary node
 my $node_primary = get_new_node('primary');
 $node_primary->init(allows_streaming => 1,
-					extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+					extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $node_primary->start;
 my $backup_name = 'primary_backup';
 

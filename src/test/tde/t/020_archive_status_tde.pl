@@ -15,7 +15,7 @@ my $primary = get_new_node('primary');
 $primary->init(
 	has_archiving    => 1,
 	allows_streaming => 1,
-	extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+	extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 $primary->append_conf('postgresql.conf', 'autovacuum = off');
 $primary->start;
 my $primary_data = $primary->data_dir;

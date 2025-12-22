@@ -140,8 +140,8 @@ typedef void (*SynIdGetname_hook_type)(Oid synid, char **synname, char **synnsp)
 
 extern PGDLLIMPORT SynnameGetRelname_hook_type SynnameGetRelname_hook;
 extern PGDLLIMPORT SynnameGetFuncInfo_hook_type SynnameGetFuncInfo_hook;
-extern PGDLLEXPORT SynnameGetPkgoid_recursive_hook_type SynnameGetPkgoid_recursive_hook;
-extern PGDLLEXPORT SynIdGetname_hook_type SynIdGetname_hook;
+extern PGDLLIMPORT SynnameGetPkgoid_recursive_hook_type SynnameGetPkgoid_recursive_hook;
+extern PGDLLIMPORT SynIdGetname_hook_type SynIdGetname_hook;
 /* End - ReqID:SRS-SQL-SYNONYM */
 
 

@@ -33,6 +33,7 @@
 #include "utils/hg_proc_data.h"	/* ReqID: SESSION-VIEWS */
 #include "utils/inet.h"
 #include "utils/timestamp.h"
+#include "utils/formatting.h"
 
 #define UINT32_ACCESS_ONCE(var)		 ((uint32)(*((volatile uint32 *)&(var))))
 
@@ -983,8 +984,8 @@ pg_stat_get_activity_ext(PG_FUNCTION_ARGS)
 	MemoryContext per_query_ctx;
 	MemoryContext oldcontext;
 
-	u_int32_t tmp_sid =0;
-	u_int32_t tmp_tid = 0;
+	uint32 tmp_sid =0;
+	uint32 tmp_tid = 0;
 	char idle_time[PROC_INFO_STR_LEN] = {'\0'};
 	char busy_time[PROC_INFO_STR_LEN] = {'\0'};
 	char tran_info[PROC_INFO_STR_LEN] = {'\0'};

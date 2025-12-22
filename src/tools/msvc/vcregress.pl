@@ -51,7 +51,7 @@ if (-e "src/tools/msvc/buildenv.pl")
 
 my $what = shift || "";
 if ($what =~
-	/^(check|installcheck|plcheck|contribcheck|modulescheck|ecpgcheck|isolationcheck|upgradecheck|bincheck|recoverycheck|taptest)$/i
+	/^(check|installcheck|plcheck|contribcheck|modulescheck|ecpgcheck|isolationcheck|upgradecheck|bincheck|recoverycheck|taptest|tdecheck)$/i
   )
 {
 	$what = uc $what;
@@ -76,6 +76,8 @@ $ENV{with_icu} = $config->{icu} ? 'yes' : 'no';
 $ENV{with_gssapi} = $config->{gss} ? 'yes' : 'no';
 $ENV{with_krb_srvnam} = $config->{krb_srvnam} || 'postgres';
 $ENV{with_readline} = 'no';
+$ENV{with_gmssl} = $config->{gmssl} ? 'yes' : 'no';
+$ENV{with_sqlite} = $config->{sqlite3} ? 'yes' : 'no';
 
 $ENV{PATH} = "$topdir/$Config/libpq;$ENV{PATH}";
 
@@ -109,7 +111,8 @@ my %command = (
 	BINCHECK       => \&bincheck,
 	RECOVERYCHECK  => \&recoverycheck,
 	UPGRADECHECK   => \&upgradecheck,
-	TAPTEST        => \&taptest,);
+	TAPTEST        => \&taptest,
+	TDECHECK	   => \&tdecheck,);
 
 my $proc = $command{$what};
 
@@ -551,7 +554,8 @@ sub contribcheck
 		next if ($module eq "ivorysql_my");
 		# Native PostgreSQL does not perform the test of ora_synonym.
 		next if ($module eq "ora_synonym");
-		# /* Begin - ReqID:SRS-SECURITY-POWERS */
+		# TODO(windows): set se_feature.mode = on not work.
+		next if ($module eq "restricted_dba");
 
 		subdircheck($module);
 		my $status = $? >> 8;
@@ -581,6 +585,17 @@ sub recoverycheck
 
 	my $mstat  = 0;
 	my $dir    = "$topdir/src/test/recovery";
+	my $status = tap_check($dir);
+	exit $status if $status;
+	return;
+}
+
+sub tdecheck
+{
+	InstallTemp();
+
+	my $mstat  = 0;
+	my $dir    = "$topdir/src/test/tde";
 	my $status = tap_check($dir);
 	exit $status if $status;
 	return;
@@ -796,8 +811,13 @@ sub fetchTests
 			  $config->{zlib}
 			  ? GetTests("ZLIB_TST",     $m)
 			  : GetTests("ZLIB_OFF_TST", $m);
+			my $gmtests =
+			  $config->{gmssl}
+			  ? "sm3 hmac-sm3 sm4"
+			  : "";
 			$t =~ s/\$\(CF_TESTS\)/$cftests/;
 			$t =~ s/\$\(CF_PGP_TESTS\)/$pgptests/;
+			$t =~ s/\$\(GM_TESTS\)/$gmtests/;
 		}
 	}
 
@@ -842,6 +862,7 @@ sub usage
 	  "  recoverycheck  run recovery test suite\n",
 	  "  taptest        run an arbitrary TAP test set\n",
 	  "  upgradecheck   run tests of pg_upgrade\n",
+	  "  tdecheck		run tde test suite\n",
 	  "\nOptions for <arg>: (used by check and installcheck)\n",
 	  "  serial         serial mode\n",
 	  "  parallel       parallel mode\n",

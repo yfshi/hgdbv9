@@ -958,7 +958,19 @@ DROP TABLE p_z1149;
 -- End - BUG#M0000526
 -- Begin - OA-REQ-1488
 -- if newline marker is \r\n, but find \n, skip
+-- for copy error, store '\n' and '\r\n' and '\r' is difference on Windows platform
 -- \n in middle
+-- Begin - BUG#z6807
+-- On Linux ENV, server_encoding = UTF8, client_encoding = UTF8, file format = UTF8
+-- On Windows ENV, Server_encoding = UTF8 or GBK, as file format = UTF8, so set client_encoding to UTF8
+SET client_encoding = UTF8;
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+-- End - BUG#z6807
 delete from x_bad;
 create table oa1488(a VARCHAR2(255), b VARCHAR2(255),c VARCHAR2(255), d VARCHAR2(255));
 copy oa1488 from '@abs_srcdir@/data/oa_1488_1.data' with(format csv, delimiter '^');
@@ -1147,6 +1159,7 @@ SELECT count(*) FROM x_bad WHERE taskid = '1541_4';
 
 DROP TABLE oa1541;
 -- End - OA-REQ-1541
+RESET client_encoding;
 -- clean up
 DROP TABLE x;
 DROP TABLE x_bad;

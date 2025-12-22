@@ -70,6 +70,7 @@ extern int	bootstrap_file_encryption_method;
 #define HSM_KWP_ALGORITHM_ID 0
 #endif
 
+static void InitializeKmgr(void);
 static void bzeroKmgrKeys(int status, Datum arg);
 static void KmgrWriteCryptoKeys(const char *dir, unsigned char **keys, int *key_lens);
 static CryptoKey *generate_crypto_key(int len);
@@ -272,15 +273,27 @@ KmgrShmemInit(void)
 	KmgrShmem = (KmgrShmemData *) ShmemInitStruct("File encryption key manager",
 												  KmgrShmemSize(), &found);
 
+	/*
+	 * The cluster key in shared memory shall be reset once 
+	 * every time the shared memory is reinitialized.
+	 * However, this shuold not be invoked during bootstrap (it will be set by BootStrapKmgr)
+	 */
+	if (!IsUnderPostmaster && !IsBootstrapProcessingMode())
+	{
+		InitializeKmgr();
+	}
+
+#ifndef WIN32
 	/* bzero DEK on exit */
 	on_shmem_exit(bzeroKmgrKeys, 0);
+#endif
 }
 
 /*
  * Get cluster key and verify it, then get the data encryption keys.
  * This function is called by postmaster at startup time.
  */
-void
+static void
 InitializeKmgr(void)
 {
 	unsigned char  *keys_wrap[KMGR_NUM_DATA_KEYS];

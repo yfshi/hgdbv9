@@ -517,7 +517,7 @@ IsModifySupportedInParallelMode(CmdType commandType)
 
 /* Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
 #define AUTO_SAVEPOINT_NAME "__auto_savepoint__"
-extern bool enable_ora_statement_level_rollback;
+extern PGDLLIMPORT bool enable_ora_statement_level_rollback;
 extern bool enable_ora_commit_before_desconnect;
 extern bool SetAutoSavepoint(const char *sp_name);
 extern bool RollbackToAutoSavepoint(const char *sp_name);

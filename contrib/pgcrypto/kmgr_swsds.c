@@ -61,6 +61,10 @@ typedef struct hsm_session_keys_entry {
 } hsm_session_keys_entry;
 #endif
 
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
+
 PG_FUNCTION_INFO_V1(hsm_generate_key);
 PG_FUNCTION_INFO_V1(hsm_import_key);
 PG_FUNCTION_INFO_V1(hsm_generate_key_pair);

@@ -80,4 +80,9 @@ ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
 				struct pg_tm *tm, fsec_t *fsec, int *fprec,
 				uint32 *flags, bool *have_error, bool is_conv_func);
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+#ifdef WIN32
+extern const char* strcasestr(const char *haystack, const char *needle);
+#endif
+
 #endif

@@ -19,7 +19,7 @@ plan tests => 3;
 
 my $node = PostgresNode->get_new_node('primary');
 $node->init(allows_streaming => 1,
-        extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+        extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 # We need these settings for stability of WAL behavior.
 $node->append_conf(
 	'postgresql.conf', qq(

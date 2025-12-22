@@ -35,9 +35,11 @@
 
 /* Begin ReqID: SRS-SESSION-VIEWS */
 /* following header file is used to get client MAC*/
+#ifndef WIN32
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#endif
 /* End ReqID: SRS-SESSION-VIEWS */
 
 /*
@@ -1455,6 +1457,7 @@ EstablishVariableSpace(void)
 static bool
 GetMacAddress(char *mac)
 {
+#ifndef WIN32
 	struct ifreq ifr;
 	struct ifconf ifc;
 	struct ifreq* it;
@@ -1499,6 +1502,7 @@ GetMacAddress(char *mac)
 		else
 			return false;
 	}
+#endif
 	return false;
 }
 
@@ -1527,6 +1531,7 @@ get_client_info(ClientInfo *client_info)
 static void
 getosname(char *osname)
 {
+#ifndef WIN32
 	char operatesystem[100] = "";
 	FILE *stfd = fopen("/etc/os-release", "r");
 	char* ret = NULL;
@@ -1548,5 +1553,7 @@ getosname(char *osname)
 		memcpy(osname, p + 1, strlen(p + 1) - 1);
 	}
 	fclose(stfd);
+#endif
+	return;
 }
 /* End ReqID: SRS-SESSION-VIEWS */

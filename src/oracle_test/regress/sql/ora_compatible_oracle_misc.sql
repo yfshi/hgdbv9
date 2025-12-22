@@ -197,19 +197,20 @@ reset ivorysql.enable_pg_interval_datatype;
 show ivorysql.identifier_case_switch;
 
 create database test_dwdai_id;
+create user enrol11 superuser;
 
-\c test_dwdai_id -
+\c test_dwdai_id enrol11
 show ivorysql.identifier_case_switch;
 
-\c regression -
+\c regression enrol11
 alter system set ivorysql.identifier_case_switch = interchange;
 select pg_reload_conf();
 alter database test_dwdai_id set ivorysql.identifier_case_switch = interchange;
 
-\c test_dwdai_id -
+\c test_dwdai_id enrol11
 show ivorysql.identifier_case_switch;
 
-\c regression -
+\c regression enrol11
 show ivorysql.identifier_case_switch;
 
 set ivorysql.identifier_case_switch = lowercase;
@@ -224,10 +225,18 @@ show ivorysql.identifier_case_switch;
 --recover
 alter system set ivorysql.identifier_case_switch = normal;
 select pg_reload_conf();
-\c test_dwdai_id -
-\c regression -
+\c test_dwdai_id enrol11
+\c regression enrol11
 show ivorysql.identifier_case_switch;
 
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+drop user enrol11;
 drop database test_dwdai_id;
 
 --bug#M542

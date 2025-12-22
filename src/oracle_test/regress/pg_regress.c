@@ -2424,7 +2424,6 @@ regression_main(int argc, char *argv[],
 	if (temp_instance)
 	{
 		FILE	   *pg_conf;
-		FILE	   *sec_conf;
 		const char *env_wait;
 		int			wait_seconds;
 
@@ -2469,6 +2468,13 @@ regression_main(int argc, char *argv[],
 			exit(2);
 		}
 
+		{
+			char crashdumps[64] = {0};
+			sprintf(crashdumps, "%s/data/crashdumps", temp_instance);
+			make_directory(crashdumps);
+		}
+		
+
 		/*
 		 * Adjust the default postgresql.conf for regression testing. The user
 		 * can specify a file to be appended; in any case we expand logging
@@ -2491,6 +2497,7 @@ regression_main(int argc, char *argv[],
 		fputs("log_lock_waits = on\n", pg_conf);
 		fputs("log_temp_files = 128kB\n", pg_conf);
 		fputs("max_prepared_transactions = 2\n", pg_conf);
+		fputs("audit.track_settings = off\n", pg_conf);
 
 		for (sl = temp_configs; sl != NULL; sl = sl->next)
 		{
@@ -2510,19 +2517,6 @@ regression_main(int argc, char *argv[],
 		}
 
 		fclose(pg_conf);
-
-		snprintf(buf, sizeof(buf), "%s/data/postgresql.conf", temp_instance);
-		sec_conf = fopen(buf, "a");
-		if (sec_conf == NULL)
-		{
-			fprintf(stderr, _("\n%s: could not open \"%s\" for adding extra config: %s\n"), progname, buf, strerror(errno));
-			exit(2);
-		}
-
-		fputs("\n# Configuration added by pg_regress\n\n", sec_conf);
-		fputs("audit.track_settings = off\n", sec_conf);
-
-		fclose(sec_conf);
 
 #ifdef ENABLE_SSPI
 		if (!use_unix_sockets)

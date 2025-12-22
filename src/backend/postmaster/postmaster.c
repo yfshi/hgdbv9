@@ -1503,7 +1503,6 @@ PostmasterMain(int argc, char *argv[])
 	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 	/* Begin - ReqID:SRS-SECURITY-TDE */
-	InitializeKmgr();
 	InitializeBufferEncryption();
 	InitializeXLogEncryption();
 	/* End - ReqID:SRS-SECURITY-TDE */
@@ -4797,6 +4796,11 @@ BackendInitialize(Port *port)
 	port->remote_host = "";
 	port->remote_port = "";
 
+	/* TODO(windows): set protocol_config */
+#ifdef WIN32
+	port->protocol_config = &default_protocol_config;
+#endif
+
 	/*
 	 * Initialize libpq and enable reporting of ereport errors to the client.
 	 * Must do this now because authentication uses libpq to send messages.
@@ -4840,6 +4844,43 @@ BackendInitialize(Port *port)
 	port->remote_host = strdup(remote_host);
 	port->remote_port = strdup(remote_port);
 	
+	/* TODO(windows): set protocol_config */
+#ifdef WIN32
+{
+	int			localport;
+	char		service[NI_MAXHOST];
+
+	service[0] = '\0';
+	if ((ret = pg_getnameinfo_all(&port->laddr.addr, port->laddr.salen,
+								  NULL, 0,
+								  service, sizeof(service),
+								  NI_NUMERICSERV)) != 0)
+		ereport(WARNING,
+				(errmsg_internal("pg_getnameinfo_all() failed: %s",
+								 gai_strerror(ret))));
+
+	localport = atoi(service);
+	if (localport == 0)
+	{
+		char	OraPortNumberStr[32];
+		
+		snprintf(OraPortNumberStr, sizeof(OraPortNumberStr), "%d", OraPortNumber);
+
+		if (strstr(service, OraPortNumberStr) != NULL)
+		{
+			SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
+		}
+	}
+	else
+	{
+		if (localport == OraPortNumber)
+		{
+			SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
+		}
+	}
+}
+#endif
+
 	/* And now we can issue the Log_connections message, if wanted */
 	if (Log_connections)
 	{

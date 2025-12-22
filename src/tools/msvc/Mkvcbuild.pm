@@ -114,7 +114,7 @@ my $frontend_extrasource = {
 };
 my @frontend_excludes = (
 	'pgevent',    'pg_basebackup', 'pg_rewind', 'pg_dump',
-	'pg_waldump', 'scripts');
+	'pg_waldump', 'scripts', 'pg_resetwal', 'pg_alterckey');
 
 sub mkvcbuild
 {
@@ -159,7 +159,7 @@ sub mkvcbuild
 	  keywords.c kmgr_utils.c kwlookup.c link-canary.c md5_common.c
 	  pg_get_line.c pg_lzcompress.c pgfnames.c psprintf.c relpath.c rmtree.c
 	  saslprep.c scram-common.c string.c stringinfo.c unicode_norm.c username.c
-	  wait_error.c wchar.c mfa_common.c sm3_common.c sm4_cbc.c sm4.c pass_crypt.c hkdf.c mac.c);		# ReqID:SRS-SECURITY-IDENTITYAUTH
+	  wait_error.c wchar.c pass_crypt.c hkdf.c mac.c hex.c);
 
 	if ($solution->{options}->{openssl})
 	{
@@ -176,7 +176,11 @@ sub mkvcbuild
 		push(@pgcommonallfiles, 'md5.c');
 		push(@pgcommonallfiles, 'sha1.c');
 		push(@pgcommonallfiles, 'sha2.c');
-		push(@pgcommonallfiles, 'sm3.c');	# ReqID:SRS-SECURITY-IDENTITYAUTH
+	}
+
+	if ($solution->{options}->{gmssl})
+	{
+		push(@pgcommonallfiles, 'sm3_common.c');
 	}
 
 	our @pgcommonfrontendfiles = (
@@ -573,25 +577,61 @@ sub mkvcbuild
 		AddSimpleFrontend($d);
 	}
 
+	my $pgalterckey = AddSimpleFrontend('pg_alterckey', 1);
+	$pgalterckey->{name} = 'pg_alterckey';
+	$pgalterckey->AddFile('src/bin/pg_alterckey/pg_alterckey.c');
+	$pgalterckey->AddFile('src/backend/crypto/walenc.c');
+	$pgalterckey->AddFile('src/backend/crypto/bufenc.c');
+	$pgalterckey->AddDefine('FRONTEND');
+
+	my $libpgtde = $solution->AddProject('libpgtde', 'lib', 'misc');
+	$libpgtde->AddDefine('FRONTEND');
+	$libpgtde->AddFile('src/backend/crypto/walenc.c');
+	$libpgtde->AddFile('src/backend/crypto/bufenc.c');
+
+	my $test_libpgtde_demo = $solution->AddProject('test_libpgtde_demo', 'exe', 'misc');
+	$test_libpgtde_demo->{name} = 'test_libpgtde_demo';
+	$test_libpgtde_demo->AddFile('src/bin/pg_alterckey/test_libpgtde_demo.c');
+	$test_libpgtde_demo->AddLibrary('ws2_32.lib');
+	$test_libpgtde_demo->AddReference($libpgcommon, $libpgport, $libpgtde);
+	$test_libpgtde_demo->AddDefine('FRONTEND');
+
+	my $pgresetwal = AddSimpleFrontend('pg_resetwal', 1);
+	$pgresetwal->{name} = 'pg_resetwal';
+	$pgresetwal->AddFile('src/backend/crypto/walenc.c');
+	$pgresetwal->AddFile('src/backend/crypto/bufenc.c');
+	$pgresetwal->AddDefine('FRONTEND');
+
 	my $pgbasebackup = AddSimpleFrontend('pg_basebackup', 1);
+	$pgbasebackup->AddDefine('FRONTEND');
 	$pgbasebackup->AddFile('src/bin/pg_basebackup/pg_basebackup.c');
+	$pgbasebackup->AddFile('src/backend/crypto/walenc.c');
+	$pgbasebackup->AddFile('src/backend/crypto/bufenc.c');
 	$pgbasebackup->AddLibrary('ws2_32.lib');
 
 	my $pgreceivewal = AddSimpleFrontend('pg_basebackup', 1);
 	$pgreceivewal->{name} = 'pg_receivewal';
+	$pgreceivewal->AddDefine('FRONTEND');
 	$pgreceivewal->AddFile('src/bin/pg_basebackup/pg_receivewal.c');
+	$pgreceivewal->AddFile('src/backend/crypto/walenc.c');
+	$pgreceivewal->AddFile('src/backend/crypto/bufenc.c');
 	$pgreceivewal->AddLibrary('ws2_32.lib');
 
 	my $pgrecvlogical = AddSimpleFrontend('pg_basebackup', 1);
 	$pgrecvlogical->{name} = 'pg_recvlogical';
+	$pgrecvlogical->AddDefine('FRONTEND');
 	$pgrecvlogical->AddFile('src/bin/pg_basebackup/pg_recvlogical.c');
+	$pgrecvlogical->AddFile('src/backend/crypto/walenc.c');
+	$pgrecvlogical->AddFile('src/backend/crypto/bufenc.c');
 	$pgrecvlogical->AddLibrary('ws2_32.lib');
 
 	my $pgrewind = AddSimpleFrontend('pg_rewind', 1);
 	$pgrewind->{name} = 'pg_rewind';
-	$pgrewind->AddFile('src/backend/access/transam/xlogreader.c');
-	$pgrewind->AddLibrary('ws2_32.lib');
 	$pgrewind->AddDefine('FRONTEND');
+	$pgrewind->AddFile('src/backend/access/transam/xlogreader.c');
+	$pgrewind->AddFile('src/backend/crypto/walenc.c');
+	$pgrewind->AddFile('src/backend/crypto/bufenc.c');
+	$pgrewind->AddLibrary('ws2_32.lib');
 
 	my $pgevent = $solution->AddProject('pgevent', 'dll', 'bin');
 	$pgevent->AddFiles('src/bin/pgevent', 'pgevent.c', 'pgmsgevent.rc');
@@ -652,14 +692,14 @@ sub mkvcbuild
 	{
 		push @contrib_excludes, 'uuid-ossp';
 	}
-		
 
-	# /* Begin - ReqID:SRS-SECURITY-POWERS */
-	if (!$solution->{options}->{with_security_enhancement})
+	if (!$solution->{options}->{sqlite3})
 	{
-		push @contrib_excludes, 'restricted_dba';
+		push @contrib_excludes, 'sqlite_fdw';
 	}
-	# /* End - ReqID:SRS-SECURITY-POWERS */
+
+	# TODO(windows): compile failed
+	push @contrib_excludes, 'ivorysql_my';
 
 	# AddProject() does not recognize the constructs used to populate OBJS in
 	# the pgcrypto Makefile, so it will discover no files.
@@ -677,7 +717,7 @@ sub mkvcbuild
 		'pgp-info.c',       'pgp-mpi.c',
 		'pgp-pubdec.c',     'pgp-pubenc.c',
 		'pgp-pubkey.c',     'pgp-s2k.c',
-		'pgp-pgsql.c');
+		'pgp-pgsql.c',		'kmgr_swsds.c');
 	if ($solution->{options}->{openssl})
 	{
 		$pgcrypto->AddFiles('contrib/pgcrypto', 'openssl.c',

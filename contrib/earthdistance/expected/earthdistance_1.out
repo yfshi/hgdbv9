@@ -1020,9 +1020,14 @@ ORDER BY
     1, 2, 4;
  Schema |                Name                 |     Result data type     |                                                  Argument data types                                                   | Type 
 --------+-------------------------------------+--------------------------+------------------------------------------------------------------------------------------------------------------------+------
+ public | check_se_param_change               | text                     |                                                                                                                        | func
  public | current_is_superuser                | boolean                  |                                                                                                                        | func
  public | current_is_syssao                   | boolean                  |                                                                                                                        | func
  public | current_is_syssso                   | boolean                  |                                                                                                                        | func
+ public | is_sysdba                           | boolean                  | oid                                                                                                                    | func
+ public | is_syssao                           | boolean                  | oid                                                                                                                    | func
+ public | is_syssso                           | boolean                  | oid                                                                                                                    | func
+ public | login_message_display               | void                     | username name                                                                                                          | func
  public | pg_alter_secmon_rule                | boolean                  |                                                                                                                        | func
  public | pg_alter_secmon_threshold           | boolean                  |                                                                                                                        | func
  public | pg_audit_all_user                   | text                     | statement_opts text                                                                                                    | func
@@ -1037,6 +1042,9 @@ ORDER BY
  public | pg_audit_stmt                       | text                     | text, text                                                                                                             | func
  public | pg_audit_user                       | text                     | statement_opts text, username text                                                                                     | func
  public | pg_audit_user                       | text                     | text, text, text                                                                                                       | func
+ public | pg_banned_role                      | record                   | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                                        | func
+ public | pg_banned_role_reset                | integer                  |                                                                                                                        | func
+ public | pg_banned_role_reset                | integer                  | username name                                                                                                          | func
  public | pg_clean_audit_config               | boolean                  |                                                                                                                        | func
  public | pg_clean_auditlog                   | boolean                  |                                                                                                                        | func
  public | pg_create_secmon_rule               | boolean                  |                                                                                                                        | func
@@ -1060,6 +1068,10 @@ ORDER BY
  public | pg_noaudit_user                     | text                     | statement_opts text, username text                                                                                     | func
  public | pg_noaudit_user                     | text                     | text, text, text                                                                                                       | func
  public | pg_noaudit_user_byoid               | text                     | confid oid                                                                                                             | func
+ public | pg_password_history                 | record                   | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text                  | func
+ public | pg_password_history_reset           | integer                  |                                                                                                                        | func
+ public | pg_password_history_reset           | integer                  | username name                                                                                                          | func
+ public | pg_password_history_timestamp       | integer                  | username name, new_timestamp timestamp with time zone                                                                  | func
  public | pg_track_db_role_settings           | record                   | _ts timestamp with time zone, _srvid integer                                                                           | func
  public | pg_track_db_role_settings_diff      | record                   | _from timestamp with time zone, _to timestamp with time zone, _srvid integer                                           | func
  public | pg_track_db_role_settings_log       | record                   | _name text, _srvid integer                                                                                             | func
@@ -1080,7 +1092,10 @@ ORDER BY
  public | postgres_fdw_get_connections        | record                   | OUT server_name text, OUT valid boolean                                                                                | func
  public | postgres_fdw_handler                | fdw_handler              |                                                                                                                        | func
  public | postgres_fdw_validator              | void                     | text[], oid                                                                                                            | func
-(66 rows)
+ public | reset_all_se_param                  | text                     |                                                                                                                        | func
+ public | set_backend_se_param                | text                     | oid, text, boolean                                                                                                     | func
+ public | user_expiration_info                | record                   | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                                           | func
+(75 rows)
 
 \do
                              List of operators
@@ -1118,9 +1133,14 @@ ORDER BY
     1, 2, 4;
  Schema |                Name                 |     Result data type     |                                                  Argument data types                                                   | Type 
 --------+-------------------------------------+--------------------------+------------------------------------------------------------------------------------------------------------------------+------
+ public | check_se_param_change               | text                     |                                                                                                                        | func
  public | current_is_superuser                | boolean                  |                                                                                                                        | func
  public | current_is_syssao                   | boolean                  |                                                                                                                        | func
  public | current_is_syssso                   | boolean                  |                                                                                                                        | func
+ public | is_sysdba                           | boolean                  | oid                                                                                                                    | func
+ public | is_syssao                           | boolean                  | oid                                                                                                                    | func
+ public | is_syssso                           | boolean                  | oid                                                                                                                    | func
+ public | login_message_display               | void                     | username name                                                                                                          | func
  public | pg_alter_secmon_rule                | boolean                  |                                                                                                                        | func
  public | pg_alter_secmon_threshold           | boolean                  |                                                                                                                        | func
  public | pg_audit_all_user                   | text                     | statement_opts text                                                                                                    | func
@@ -1135,6 +1155,9 @@ ORDER BY
  public | pg_audit_stmt                       | text                     | text, text                                                                                                             | func
  public | pg_audit_user                       | text                     | statement_opts text, username text                                                                                     | func
  public | pg_audit_user                       | text                     | text, text, text                                                                                                       | func
+ public | pg_banned_role                      | record                   | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                                        | func
+ public | pg_banned_role_reset                | integer                  |                                                                                                                        | func
+ public | pg_banned_role_reset                | integer                  | username name                                                                                                          | func
  public | pg_clean_audit_config               | boolean                  |                                                                                                                        | func
  public | pg_clean_auditlog                   | boolean                  |                                                                                                                        | func
  public | pg_create_secmon_rule               | boolean                  |                                                                                                                        | func
@@ -1158,6 +1181,10 @@ ORDER BY
  public | pg_noaudit_user                     | text                     | statement_opts text, username text                                                                                     | func
  public | pg_noaudit_user                     | text                     | text, text, text                                                                                                       | func
  public | pg_noaudit_user_byoid               | text                     | confid oid                                                                                                             | func
+ public | pg_password_history                 | record                   | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text                  | func
+ public | pg_password_history_reset           | integer                  |                                                                                                                        | func
+ public | pg_password_history_reset           | integer                  | username name                                                                                                          | func
+ public | pg_password_history_timestamp       | integer                  | username name, new_timestamp timestamp with time zone                                                                  | func
  public | pg_track_db_role_settings           | record                   | _ts timestamp with time zone, _srvid integer                                                                           | func
  public | pg_track_db_role_settings_diff      | record                   | _from timestamp with time zone, _to timestamp with time zone, _srvid integer                                           | func
  public | pg_track_db_role_settings_log       | record                   | _name text, _srvid integer                                                                                             | func
@@ -1178,7 +1205,10 @@ ORDER BY
  public | postgres_fdw_get_connections        | record                   | OUT server_name text, OUT valid boolean                                                                                | func
  public | postgres_fdw_handler                | fdw_handler              |                                                                                                                        | func
  public | postgres_fdw_validator              | void                     | text[], oid                                                                                                            | func
-(66 rows)
+ public | reset_all_se_param                  | text                     |                                                                                                                        | func
+ public | set_backend_se_param                | text                     | oid, text, boolean                                                                                                     | func
+ public | user_expiration_info                | record                   | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                                           | func
+(75 rows)
 
 \do public.*
                              List of operators
@@ -1239,9 +1269,14 @@ ORDER BY
     1, 2, 4;
  Schema |                Name                 |     Result data type     |                                                  Argument data types                                                   | Type 
 --------+-------------------------------------+--------------------------+------------------------------------------------------------------------------------------------------------------------+------
+ public | check_se_param_change               | text                     |                                                                                                                        | func
  public | current_is_superuser                | boolean                  |                                                                                                                        | func
  public | current_is_syssao                   | boolean                  |                                                                                                                        | func
  public | current_is_syssso                   | boolean                  |                                                                                                                        | func
+ public | is_sysdba                           | boolean                  | oid                                                                                                                    | func
+ public | is_syssao                           | boolean                  | oid                                                                                                                    | func
+ public | is_syssso                           | boolean                  | oid                                                                                                                    | func
+ public | login_message_display               | void                     | username name                                                                                                          | func
  public | pg_alter_secmon_rule                | boolean                  |                                                                                                                        | func
  public | pg_alter_secmon_threshold           | boolean                  |                                                                                                                        | func
  public | pg_audit_all_user                   | text                     | statement_opts text                                                                                                    | func
@@ -1256,6 +1291,9 @@ ORDER BY
  public | pg_audit_stmt                       | text                     | text, text                                                                                                             | func
  public | pg_audit_user                       | text                     | statement_opts text, username text                                                                                     | func
  public | pg_audit_user                       | text                     | text, text, text                                                                                                       | func
+ public | pg_banned_role                      | record                   | OUT roleid oid, OUT username name, OUT failure_count real, OUT banned_date text                                        | func
+ public | pg_banned_role_reset                | integer                  |                                                                                                                        | func
+ public | pg_banned_role_reset                | integer                  | username name                                                                                                          | func
  public | pg_clean_audit_config               | boolean                  |                                                                                                                        | func
  public | pg_clean_auditlog                   | boolean                  |                                                                                                                        | func
  public | pg_create_secmon_rule               | boolean                  |                                                                                                                        | func
@@ -1279,6 +1317,10 @@ ORDER BY
  public | pg_noaudit_user                     | text                     | statement_opts text, username text                                                                                     | func
  public | pg_noaudit_user                     | text                     | text, text, text                                                                                                       | func
  public | pg_noaudit_user_byoid               | text                     | confid oid                                                                                                             | func
+ public | pg_password_history                 | record                   | OUT userid oid, OUT rolename name, OUT password_date timestamp with time zone, OUT password_hash text                  | func
+ public | pg_password_history_reset           | integer                  |                                                                                                                        | func
+ public | pg_password_history_reset           | integer                  | username name                                                                                                          | func
+ public | pg_password_history_timestamp       | integer                  | username name, new_timestamp timestamp with time zone                                                                  | func
  public | pg_track_db_role_settings           | record                   | _ts timestamp with time zone, _srvid integer                                                                           | func
  public | pg_track_db_role_settings_diff      | record                   | _from timestamp with time zone, _to timestamp with time zone, _srvid integer                                           | func
  public | pg_track_db_role_settings_log       | record                   | _name text, _srvid integer                                                                                             | func
@@ -1299,7 +1341,11 @@ ORDER BY
  public | postgres_fdw_get_connections        | record                   | OUT server_name text, OUT valid boolean                                                                                | func
  public | postgres_fdw_handler                | fdw_handler              |                                                                                                                        | func
  public | postgres_fdw_validator              | void                     | text[], oid                                                                                                            | func
-(66 rows)
+ public | reset_all_se_param                  | text                     |                                                                                                                        | func
+ public | set_backend_se_param                | text                     | oid, text, boolean                                                                                                     | func
+ public | user_expiration_info                | record                   | username name, OUT userid oid, OUT rolename name, OUT user_validity interval                                           | func
+(75 rows)
+
 \do public.*
                              List of operators
  Schema | Name | Left arg type | Right arg type | Result type | Description 

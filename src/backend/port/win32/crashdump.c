@@ -137,7 +137,9 @@ crashDumpHandler(struct _EXCEPTION_POINTERS *pExceptionInfo)
 		 * http://msdn.microsoft.com/en-us/library/ms680519(v=VS.85).aspx
 		 */
 		dumpType = MiniDumpNormal | MiniDumpWithHandleData |
-			MiniDumpWithDataSegs;
+			MiniDumpWithDataSegs |
+			MiniDumpWithProcessThreadData | MiniDumpWithModuleHeaders |
+			MiniDumpWithFullMemoryInfo | MiniDumpWithThreadInfo;
 
 		if (GetProcAddress(hDll, "EnumDirTree") != NULL)
 		{

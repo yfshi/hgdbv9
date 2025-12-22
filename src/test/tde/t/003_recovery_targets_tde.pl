@@ -54,12 +54,12 @@ sub test_recovery_standby
 # Initialize primary node
 my $node_primary = get_new_node('primary');
 $node_primary->init(has_archiving => 1, allows_streaming => 1,
-					extra => [ '-C', 'echo 123|sha256sum|cut -d \' \' -f1', '-z', 'all' ]);
+					extra => [ '-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b', '-z', 'all' ]);
 
 # Bump the transaction ID epoch.  This is useful to stress the portability
 # of recovery_target_xid parsing.
 system_or_bail('pg_resetwal', '--epoch', '1', 
-				'-C', 'echo 123|sha256sum|cut -d \' \' -f1',
+				'-C', 'echo 181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b',
 				$node_primary->data_dir);
 
 # Start it

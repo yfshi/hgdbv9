@@ -73,6 +73,8 @@ $ENV{with_icu} = $config->{icu} ? 'yes' : 'no';
 $ENV{with_gssapi} = $config->{gss} ? 'yes' : 'no';
 $ENV{with_krb_srvnam} = $config->{krb_srvnam} || 'postgres';
 $ENV{with_readline} = 'no';
+$ENV{with_gmssl} = $config->{gmssl} ? 'yes' : 'no';
+$ENV{with_sqlite} = $config->{sqlite3} ? 'yes' : 'no';
 
 $ENV{PATH} = "$topdir/$Config/libpq;$ENV{PATH}";
 
@@ -513,6 +515,8 @@ sub contribcheck
 		next if ($module =~ /_plpython$/ && !defined($config->{python}));
 		next if ($module eq "sepgsql");
 		next if ($module eq "ivorysql_my");
+		# TODO(windows): set se_feature.mode = on not work.
+		next if ($module eq "restricted_dba");
 
 		subdircheck($module);
 		my $status = $? >> 8;
@@ -649,7 +653,7 @@ sub upgradecheck
 	# now we can chdir into the source dir
 	chdir "$topdir/src/bin/pg_upgrade";
 	print "\nDumping old cluster\n\n";
-	@args = ('pg_dumpall', '-f', "$tmp_root/dump1.sql");
+	@args = ('pg_dumpall', '-f', "$tmp_root/dump1.sql", '--restrict-key', 'test');
 	system(@args) == 0 or exit 1;
 	print "\nStopping old cluster\n\n";
 	system("pg_ctl stop") == 0 or exit 1;
@@ -663,7 +667,7 @@ sub upgradecheck
 	@args = ('pg_ctl', '-l', "$logdir/postmaster2.log", '-o', "-p $pg_port -m $mys_port", 'start');
 	system(@args) == 0 or exit 1;
 	print "\nDumping new cluster\n\n";
-	@args = ('pg_dumpall', '-f', "$tmp_root/dump2.sql");
+	@args = ('pg_dumpall', '-f', "$tmp_root/dump2.sql", '--restrict-key', 'test');
 	system(@args) == 0 or exit 1;
 	print "\nStopping new cluster\n\n";
 	system("pg_ctl stop") == 0 or exit 1;
@@ -761,8 +765,13 @@ sub fetchTests
 			  $config->{zlib}
 			  ? GetTests("ZLIB_TST",     $m)
 			  : GetTests("ZLIB_OFF_TST", $m);
+			my $gmtests =
+			  $config->{gmssl}
+			  ? "sm3 hmac-sm3 sm4"
+			  : "";
 			$t =~ s/\$\(CF_TESTS\)/$cftests/;
 			$t =~ s/\$\(CF_PGP_TESTS\)/$pgptests/;
+			$t =~ s/\$\(GM_TESTS\)/$gmtests/;
 		}
 	}
 
