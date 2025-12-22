@@ -153,8 +153,8 @@ pg_cipher_encrypt(PgCipherCtx *ctx, int cipher,
 				  unsigned char *ciphertext, int *outlen,
 				  const unsigned char *iv, const int ivlen)
 {
-	size_t			len;
-	size_t			enclen;
+	size_t			len = 0;
+	size_t			enclen = 0;
 	unsigned char  *restext = ciphertext;
 
 	Assert(ctx != NULL && ctx->ctx != NULL);
@@ -245,8 +245,8 @@ pg_cipher_decrypt(PgCipherCtx *ctx, const int cipher,
 				  unsigned char *plaintext, int *outlen,
 				  const unsigned char *iv, const int ivlen)
 {
-	size_t			declen;
-	size_t			len;
+	size_t			declen = 0;
+	size_t			len = 0;
 	unsigned char  *restext = plaintext;
 
 	Assert(ctx != NULL && ctx->ctx != NULL);
