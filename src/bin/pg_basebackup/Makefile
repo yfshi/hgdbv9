@@ -24,6 +24,12 @@ export TAR
 override CPPFLAGS := -I$(libpq_srcdir) $(CPPFLAGS)
 LDFLAGS_INTERNAL += -L$(top_builddir)/src/fe_utils -lpgfeutils $(libpq_pgport)
 
+ifeq ($(with_ssl),openssl)
+$(shell rename "_tde.disable" "_tde.pl" t/*_tde.disable 2>/dev/null)
+else
+$(shell rename "_tde.pl" "_tde.disable" t/*_tde.pl 2>/dev/null)
+endif
+
 OBJS = \
 	$(WIN32RES) \
 	receivelog.o \
