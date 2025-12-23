@@ -15,6 +15,12 @@ subdir = src/bin/pg_resetwal
 top_builddir = ../../..
 include $(top_builddir)/src/Makefile.global
 
+ifeq ($(with_ssl),openssl)
+$(shell rename "_tde.disable" "_tde.pl" t/*_tde.disable 2>/dev/null)
+else
+$(shell rename "_tde.pl" "_tde.disable" t/*_tde.pl 2>/dev/null)
+endif
+
 OBJS = \
 	$(WIN32RES) \
 	pg_resetwal.o \

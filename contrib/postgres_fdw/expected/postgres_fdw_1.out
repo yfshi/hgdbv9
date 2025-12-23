@@ -4146,13 +4146,13 @@ EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st6;
 
 PREPARE st7 AS INSERT INTO ft1 (c1,c2,c3) VALUES (1001,101,'foo');
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st7;
-                                                                                           QUERY PLAN                                                                                            
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                             QUERY PLAN                                                                                              
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Insert on public.ft1
    Remote SQL: INSERT INTO "S 1"."T 1"("C 1", c2, c3, c4, c5, c6, c7, c8) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
    Batch Size: 1
    ->  Result
-         Output: NULL::integer, 1001, 101, 'foo'::text, NULL::timestamp with time zone, NULL::timestamp without time zone, NULL::character varying, 'ft1       '::character(10), NULL::user_enum
+         Output: NULL::integer, 1001, 101, 'foo'::text, NULL::timestamp with time zone, NULL::timestamp without time zone, NULL::character varying(10), 'ft1       '::character(10), NULL::user_enum
 (5 rows)
 
 ALTER TABLE "S 1"."T 1" RENAME TO "T 0";
@@ -4180,13 +4180,13 @@ EXECUTE st6;
 (9 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st7;
-                                                                                           QUERY PLAN                                                                                            
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                             QUERY PLAN                                                                                              
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Insert on public.ft1
    Remote SQL: INSERT INTO "S 1"."T 0"("C 1", c2, c3, c4, c5, c6, c7, c8) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
    Batch Size: 1
    ->  Result
-         Output: NULL::integer, 1001, 101, 'foo'::text, NULL::timestamp with time zone, NULL::timestamp without time zone, NULL::character varying, 'ft1       '::character(10), NULL::user_enum
+         Output: NULL::integer, 1001, 101, 'foo'::text, NULL::timestamp with time zone, NULL::timestamp without time zone, NULL::character varying(10), 'ft1       '::character(10), NULL::user_enum
 (5 rows)
 
 ALTER TABLE "S 1"."T 0" RENAME TO "T 1";
@@ -4510,13 +4510,13 @@ explain (verbose, costs off) select * from ft3 f, loct3 l
 -- ===================================================================
 EXPLAIN (verbose, costs off)
 INSERT INTO ft2 (c1,c2,c3) SELECT c1+1000,c2+100, c3 || c3 FROM ft2 LIMIT 20;
-                                                                                                                    QUERY PLAN                                                                                                                    
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                                                      QUERY PLAN                                                                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Insert on public.ft2
    Remote SQL: INSERT INTO "S 1"."T 1"("C 1", c2, c3, c4, c5, c6, c7, c8) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
    Batch Size: 1
    ->  Subquery Scan on "*SELECT*"
-         Output: "*SELECT*"."?column?", "*SELECT*"."?column?_1", NULL::integer, "*SELECT*"."?column?_2", NULL::timestamp with time zone, NULL::timestamp without time zone, NULL::character varying, 'ft2       '::character(10), NULL::user_enum
+         Output: "*SELECT*"."?column?", "*SELECT*"."?column?_1", NULL::integer, "*SELECT*"."?column?_2", NULL::timestamp with time zone, NULL::timestamp without time zone, NULL::character varying(10), 'ft2       '::character(10), NULL::user_enum
          ->  Foreign Scan on public.ft2 ft2_1
                Output: (ft2_1.c1 + 1000), (ft2_1.c2 + 100), (ft2_1.c3 || ft2_1.c3)
                Remote SQL: SELECT "C 1", c2, c3 FROM "S 1"."T 1" LIMIT 20::bigint
@@ -5626,14 +5626,14 @@ SELECT c1,c2,c3,c4 FROM ft2 ORDER BY c1;
 
 EXPLAIN (verbose, costs off)
 INSERT INTO ft2 (c1,c2,c3) VALUES (1200,999,'foo') RETURNING tableoid::regclass;
-                                                                                           QUERY PLAN                                                                                            
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                             QUERY PLAN                                                                                              
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Insert on public.ft2
    Output: (ft2.tableoid)::regclass
    Remote SQL: INSERT INTO "S 1"."T 1"("C 1", c2, c3, c4, c5, c6, c7, c8) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
    Batch Size: 1
    ->  Result
-         Output: 1200, 999, NULL::integer, 'foo'::text, NULL::timestamp with time zone, NULL::timestamp without time zone, NULL::character varying, 'ft2       '::character(10), NULL::user_enum
+         Output: 1200, 999, NULL::integer, 'foo'::text, NULL::timestamp with time zone, NULL::timestamp without time zone, NULL::character varying(10), 'ft2       '::character(10), NULL::user_enum
 (6 rows)
 
 INSERT INTO ft2 (c1,c2,c3) VALUES (1200,999,'foo') RETURNING tableoid::regclass;
@@ -7446,6 +7446,119 @@ DELETE FROM rem1;                 -- can't be pushed down
 (5 rows)
 
 DROP TRIGGER trig_row_after_delete ON rem1;
+-- We are allowed to create transition-table triggers on both kinds of
+-- inheritance even if they contain foreign tables as children, but currently
+-- collecting transition tuples from such foreign tables is not supported.
+CREATE TABLE local_tbl (a text, b int);
+CREATE FOREIGN TABLE foreign_tbl (a text, b int)
+  SERVER loopback OPTIONS (table_name 'local_tbl');
+INSERT INTO foreign_tbl VALUES ('AAA', 42);
+-- Test case for partition hierarchy
+CREATE TABLE parent_tbl (a text, b int) PARTITION BY LIST (a);
+ALTER TABLE parent_tbl ATTACH PARTITION foreign_tbl FOR VALUES IN ('AAA');
+CREATE TRIGGER parent_tbl_insert_trig
+  AFTER INSERT ON parent_tbl REFERENCING NEW TABLE AS new_table
+  FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func();
+CREATE TRIGGER parent_tbl_update_trig
+  AFTER UPDATE ON parent_tbl REFERENCING OLD TABLE AS old_table NEW TABLE AS new_table
+  FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func();
+CREATE TRIGGER parent_tbl_delete_trig
+  AFTER DELETE ON parent_tbl REFERENCING OLD TABLE AS old_table
+  FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func();
+INSERT INTO parent_tbl VALUES ('AAA', 42);
+ERROR:  cannot collect transition tuples from child foreign tables
+COPY parent_tbl (a, b) FROM stdin;
+ERROR:  cannot collect transition tuples from child foreign tables
+CONTEXT:  COPY parent_tbl, line 1: "AAA	42"
+ALTER SERVER loopback OPTIONS (ADD batch_size '10');
+INSERT INTO parent_tbl VALUES ('AAA', 42);
+ERROR:  cannot collect transition tuples from child foreign tables
+COPY parent_tbl (a, b) FROM stdin;
+ERROR:  cannot collect transition tuples from child foreign tables
+CONTEXT:  COPY parent_tbl, line 1: "AAA	42"
+ALTER SERVER loopback OPTIONS (DROP batch_size);
+EXPLAIN (VERBOSE, COSTS OFF)
+UPDATE parent_tbl SET b = b + 1;
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Update on public.parent_tbl
+   Foreign Update on public.foreign_tbl parent_tbl_1
+     Remote SQL: UPDATE public.local_tbl SET b = $2 WHERE ctid = $1
+   ->  Foreign Scan on public.foreign_tbl parent_tbl_1
+         Output: (parent_tbl_1.b + 1), parent_tbl_1.tableoid, parent_tbl_1.ctid, parent_tbl_1.*
+         Remote SQL: SELECT a, b, ctid FROM public.local_tbl FOR UPDATE
+(6 rows)
+
+UPDATE parent_tbl SET b = b + 1;
+ERROR:  cannot collect transition tuples from child foreign tables
+EXPLAIN (VERBOSE, COSTS OFF)
+DELETE FROM parent_tbl;
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Delete on public.parent_tbl
+   Foreign Delete on public.foreign_tbl parent_tbl_1
+     Remote SQL: DELETE FROM public.local_tbl WHERE ctid = $1
+   ->  Foreign Scan on public.foreign_tbl parent_tbl_1
+         Output: parent_tbl_1.tableoid, parent_tbl_1.ctid
+         Remote SQL: SELECT ctid FROM public.local_tbl FOR UPDATE
+(6 rows)
+
+DELETE FROM parent_tbl;
+ERROR:  cannot collect transition tuples from child foreign tables
+ALTER TABLE parent_tbl DETACH PARTITION foreign_tbl;
+DROP TABLE parent_tbl;
+-- Test case for non-partition hierarchy
+CREATE TABLE parent_tbl (a text, b int);
+ALTER FOREIGN TABLE foreign_tbl INHERIT parent_tbl;
+CREATE TRIGGER parent_tbl_update_trig
+  AFTER UPDATE ON parent_tbl REFERENCING OLD TABLE AS old_table NEW TABLE AS new_table
+  FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func();
+CREATE TRIGGER parent_tbl_delete_trig
+  AFTER DELETE ON parent_tbl REFERENCING OLD TABLE AS old_table
+  FOR EACH STATEMENT EXECUTE PROCEDURE trigger_func();
+EXPLAIN (VERBOSE, COSTS OFF)
+UPDATE parent_tbl SET b = b + 1;
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
+ Update on public.parent_tbl
+   Update on public.parent_tbl parent_tbl_1
+   Foreign Update on public.foreign_tbl parent_tbl_2
+     Remote SQL: UPDATE public.local_tbl SET b = $2 WHERE ctid = $1
+   ->  Result
+         Output: (parent_tbl.b + 1), parent_tbl.tableoid, parent_tbl.ctid, (NULL::record)
+         ->  Append
+               ->  Seq Scan on public.parent_tbl parent_tbl_1
+                     Output: parent_tbl_1.b, parent_tbl_1.tableoid, parent_tbl_1.ctid, NULL::record
+               ->  Foreign Scan on public.foreign_tbl parent_tbl_2
+                     Output: parent_tbl_2.b, parent_tbl_2.tableoid, parent_tbl_2.ctid, parent_tbl_2.*
+                     Remote SQL: SELECT a, b, ctid FROM public.local_tbl FOR UPDATE
+(12 rows)
+
+UPDATE parent_tbl SET b = b + 1;
+ERROR:  cannot collect transition tuples from child foreign tables
+EXPLAIN (VERBOSE, COSTS OFF)
+DELETE FROM parent_tbl;
+                               QUERY PLAN                               
+------------------------------------------------------------------------
+ Delete on public.parent_tbl
+   Delete on public.parent_tbl parent_tbl_1
+   Foreign Delete on public.foreign_tbl parent_tbl_2
+     Remote SQL: DELETE FROM public.local_tbl WHERE ctid = $1
+   ->  Append
+         ->  Seq Scan on public.parent_tbl parent_tbl_1
+               Output: parent_tbl_1.tableoid, parent_tbl_1.ctid
+         ->  Foreign Scan on public.foreign_tbl parent_tbl_2
+               Output: parent_tbl_2.tableoid, parent_tbl_2.ctid
+               Remote SQL: SELECT ctid FROM public.local_tbl FOR UPDATE
+(10 rows)
+
+DELETE FROM parent_tbl;
+ERROR:  cannot collect transition tuples from child foreign tables
+ALTER FOREIGN TABLE foreign_tbl NO INHERIT parent_tbl;
+DROP TABLE parent_tbl;
+-- Cleanup
+DROP FOREIGN TABLE foreign_tbl;
+DROP TABLE local_tbl;
 -- ===================================================================
 -- test inheritance features
 -- ===================================================================
@@ -9672,7 +9785,7 @@ DO $d$
     END;
 $d$;
 ERROR:  invalid option "password"
-HINT:  Valid options in this context are: service, passfile, channel_binding, connect_timeout, dbname, host, hostaddr, port, options, application_name, keepalives, keepalives_idle, keepalives_interval, keepalives_count, tcp_user_timeout, sslmode, sslcompression, sslcert, sslkey, sslrootcert, sslcrl, sslcrldir, sslsni, requirepeer, ssl_min_protocol_version, ssl_max_protocol_version, gssencmode, krbsrvname, gsslib, target_session_attrs, privatekey, clientcertfile, clientkey, ident, mac, custom, use_remote_estimate, fdw_startup_cost, fdw_tuple_cost, extensions, updatable, truncatable, fetch_size, batch_size, async_capable, keep_connections
+HINT:  Valid options in this context are: service, passfile, channel_binding, connect_timeout, dbname, host, hostaddr, port, options, application_name, osname, client_uid, client_pid, client_mac, keepalives, keepalives_idle, keepalives_interval, keepalives_count, tcp_user_timeout, sslmode, sslcompression, sslcert, sslkey, sslrootcert, sslcrl, sslcrldir, sslsni, requirepeer, ssl_min_protocol_version, ssl_max_protocol_version, gssencmode, krbsrvname, gsslib, target_session_attrs, privatekey, clientcertfile, clientkey, ident, mac, custom, use_remote_estimate, fdw_startup_cost, fdw_tuple_cost, extensions, updatable, truncatable, fetch_size, batch_size, async_capable, keep_connections
 CONTEXT:  SQL statement "ALTER SERVER loopback_nopw OPTIONS (ADD password 'dummypw')"
 PL/pgSQL function inline_code_block line 3 at EXECUTE
 -- If we add a password for our user mapping instead, we should get a different

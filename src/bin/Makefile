@@ -32,8 +32,7 @@ SUBDIRS = \
 	pg_waldump \
 	pgbench \
 	psql \
-	scripts \
-	pg_alterckey
+	scripts
 
 # Begin - ReqID:SRS-SECURITY-IDENTITYAUTH
 SUBDIRS += pg_pgpass
@@ -46,6 +45,10 @@ endif
 
 ifeq ($(with_license), yes)
 SUBDIRS += licchk
+endif
+
+ifeq ($(with_ssl),openssl)
+SUBDIRS += pg_alterckey
 endif
 
 $(recurse)
