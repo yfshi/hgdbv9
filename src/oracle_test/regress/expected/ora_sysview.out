@@ -1,3 +1,17 @@
+DROP SCHEMA IF EXISTS system;
+NOTICE:  schema "system" does not exist, skipping
+DROP USER IF EXISTS system;
+NOTICE:  role "system" does not exist, skipping
+DROP SCHEMA IF EXISTS rnrol11;
+NOTICE:  schema "rnrol11" does not exist, skipping
+DROP SCHEMA IF EXISTS rnrol22;
+NOTICE:  schema "rnrol22" does not exist, skipping
+DROP USER IF EXISTS enrol11;
+DROP USER IF EXISTS enrol22;
+NOTICE:  role "enrol22" does not exist, skipping
+CREATE USER system WITH superuser;
+CREATE USER enrol11 superuser;
+CREATE USER enrol22;
 set ivorysql.identifier_case_switch to interchange;
 /****************************test xxx_tables************************************/
 set ivorysql.enable_ora_default_collation = on;
@@ -1197,9 +1211,7 @@ from all_tab_partitions where upper(table_name) like('BIN$%') order by table_nam
 purge recyclebin;
 set ivorysql.enable_recycle_bin to off;
 -- partitioned table related (xxx_objects)
-create user sysview_objects_u1;
-create user sysview_objects_u2 superuser;
-\c - sysview_objects_u2
+\c - enrol11
 create table sysview_objects_part(id int, age int, name text) partition by hash(id);
 create table sysview_objects_part1 partition of sysview_objects_part for values with(modulus 2, remainder 0) partition by hash(age);
 create table sysview_objects_part1_1 partition of sysview_objects_part1 for values with(modulus 2, remainder 0);
@@ -1207,9 +1219,9 @@ create table sysview_objects_part1_2 partition of sysview_objects_part1 for valu
 create table sysview_objects_part2 partition of sysview_objects_part for values with(modulus 2, remainder 1) partition by hash(age);
 create table sysview_objects_part2_1 partition of sysview_objects_part2 for values with(modulus 2, remainder 0);
 create table sysview_objects_part2_2 partition of sysview_objects_part2 for values with(modulus 2, remainder 1);
-grant select on sysview_objects_part1_2 to sysview_objects_u1;
-grant select on sysview_objects_part2 to sysview_objects_u1;
-\c - sysview_objects_u1
+grant select on sysview_objects_part1_2 to enrol22;
+grant select on sysview_objects_part2 to enrol22;
+\c - enrol22
 set ivorysql.identifier_case_switch to interchange;
 select object_name, subobject_name, object_type from all_objects where UPPER(object_name) = 'SYSVIEW_OBJECTS_PART' order by object_name, subobject_name;
      object_name      |     subobject_name      |    object_type     
@@ -1232,7 +1244,7 @@ select object_name, subobject_name, object_type from dba_objects where UPPER(obj
  SYSVIEW_OBJECTS_PART |                         | TYPE
 (8 rows)
 
-\c - sysview_objects_u2
+\c - enrol11
 set ivorysql.identifier_case_switch to interchange;
 select object_name, subobject_name, object_type from all_objects where UPPER(object_name) = 'SYSVIEW_OBJECTS_PART' order by object_name, subobject_name;
      object_name      |     subobject_name      |    object_type     
@@ -1260,22 +1272,21 @@ select object_name, subobject_name, object_type from dba_objects where UPPER(obj
  SYSVIEW_OBJECTS_PART |                         | TYPE
 (8 rows)
 
-revoke all on sysview_objects_part1_2 from sysview_objects_u1;
-revoke all on sysview_objects_part2 from sysview_objects_u1;
+revoke all on sysview_objects_part1_2 from enrol22;
+revoke all on sysview_objects_part2 from enrol22;
 drop table sysview_objects_part cascade;
+\c - system
 -- special test for user_tab_privs
-create user tab_privs_u1 superuser;
-create user tab_privs_u2;
 create role r1;
-\c - tab_privs_u1
+\c - enrol11
 create table tab_privs_tb(id int);
-grant select on table tab_privs_tb to tab_privs_u2;
-\c - tab_privs_u2
+grant select on table tab_privs_tb to enrol22;
+\c - enrol22
 set ivorysql.identifier_case_switch to interchange;
 select * from user_tab_privs;
-   grantee    |    owner     |  table_name  |   grantor    | privilege | grantable | hierarchy | common | type  | inherited 
---------------+--------------+--------------+--------------+-----------+-----------+-----------+--------+-------+-----------
- TAB_PRIVS_U2 | TAB_PRIVS_U1 | TAB_PRIVS_TB | TAB_PRIVS_U1 | SELECT    | NO        | YES       | NO     | TABLE | NO
+ grantee |  owner  |  table_name  | grantor | privilege | grantable | hierarchy | common | type  | inherited 
+---------+---------+--------------+---------+-----------+-----------+-----------+--------+-------+-----------
+ ENROL22 | ENROL11 | TAB_PRIVS_TB | ENROL11 | SELECT    | NO        | YES       | NO     | TABLE | NO
 (1 row)
 
 -- special test for all_objects for CONSTRAINT 
@@ -1309,22 +1320,21 @@ select objname from pg_object where UPPER(objname) = UPPER('objects_tb_con_new')
 (1 row)
 
 drop table objects_tb cascade;
-\c - sysview_objects_u2
+\c - enrol11
 drop table tab_privs_tb;
 -- Additional test fof xxx_tab_privs
-create user tab_privs_u11;
-create user tab_privs_u12;
+\c - system
 -- create table, view, materialized view, sequence
 create table tab_privs_tb(id int);
 insert into tab_privs_tb values (generate_series(0, 9));
 create view tab_privs_v1 as select * from tab_privs_tb;
 create materialized view tab_privs_mv1 as select * from tab_privs_tb;
 create sequence tab_privs_seq1;
-grant select on tab_privs_tb to tab_privs_u11;
-grant insert on tab_privs_tb to tab_privs_u12;
-grant select on tab_privs_v1 to tab_privs_u11;
-grant select on tab_privs_mv1 to tab_privs_u12;
-grant update on tab_privs_seq1 to tab_privs_u11;
+grant select on tab_privs_tb to enrol11;
+grant insert on tab_privs_tb to enrol22;
+grant select on tab_privs_v1 to enrol11;
+grant select on tab_privs_mv1 to enrol22;
+grant update on tab_privs_seq1 to enrol11;
 -- create function, procedure
 create or replace function tab_privs_func()
 returns varchar2(128)
@@ -1341,11 +1351,11 @@ AS $$
     end;
 $$ language plpgsql;
 /
-grant execute on function tab_privs_func to tab_privs_u11;
-grant execute on procedure tab_privs_proc to tab_privs_u12;
+grant execute on function tab_privs_func to enrol11;
+grant execute on procedure tab_privs_proc to enrol22;
 -- create type
 create type tab_privs_typ as (id int, name text);
-grant usage on type tab_privs_typ to tab_privs_u11;
+grant usage on type tab_privs_typ to enrol11;
 -- package
 CREATE OR REPLACE PACKAGE tab_privs_pkg IS
     FUNCTION GET_TIME RETURN NUMBER;
@@ -1358,138 +1368,129 @@ CREATE OR REPLACE PACKAGE BODY tab_privs_pkg IS
     END;
 END;
 /
-grant execute on package tab_privs_pkg to tab_privs_u11;
+grant execute on package tab_privs_pkg to enrol11;
 -- query
-\c - tab_privs_u11
+\c - enrol11
 set ivorysql.identifier_case_switch to interchange; 
 select table_name, owner, grantor, grantee, privilege, type from dba_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
-   table_name   |       owner        |      grantor       |    grantee    | privilege |       type        
-----------------+--------------------+--------------------+---------------+-----------+-------------------
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | FUNCTION
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | EXECUTE   | FUNCTION
- TAB_PRIVS_MV1  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | SELECT    | MATERIALIZED VIEW
- TAB_PRIVS_PKG  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | PACKAGE
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | EXECUTE   | PROCEDURE
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | EXECUTE   | PROCEDURE
- TAB_PRIVS_SEQ1 | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | UPDATE    | SEQUENCE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | TABLE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | INSERT    | TABLE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | USAGE     | TYPE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | USAGE     | TYPE
- TAB_PRIVS_V1   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | VIEW
+   table_name   | owner  | grantor | grantee | privilege |       type        
+----------------+--------+---------+---------+-----------+-------------------
+ TAB_PRIVS_FUNC | SYSTEM | SYSTEM  | ENROL11 | EXECUTE   | FUNCTION
+ TAB_PRIVS_FUNC | SYSTEM | SYSTEM  | public  | EXECUTE   | FUNCTION
+ TAB_PRIVS_MV1  | SYSTEM | SYSTEM  | ENROL22 | SELECT    | MATERIALIZED VIEW
+ TAB_PRIVS_PKG  | SYSTEM | SYSTEM  | ENROL11 | EXECUTE   | PACKAGE
+ TAB_PRIVS_PROC | SYSTEM | SYSTEM  | ENROL22 | EXECUTE   | PROCEDURE
+ TAB_PRIVS_PROC | SYSTEM | SYSTEM  | public  | EXECUTE   | PROCEDURE
+ TAB_PRIVS_SEQ1 | SYSTEM | SYSTEM  | ENROL11 | UPDATE    | SEQUENCE
+ TAB_PRIVS_TB   | SYSTEM | SYSTEM  | ENROL11 | SELECT    | TABLE
+ TAB_PRIVS_TB   | SYSTEM | SYSTEM  | ENROL22 | INSERT    | TABLE
+ TAB_PRIVS_TYP  | SYSTEM | SYSTEM  | ENROL11 | USAGE     | TYPE
+ TAB_PRIVS_TYP  | SYSTEM | SYSTEM  | public  | USAGE     | TYPE
+ TAB_PRIVS_V1   | SYSTEM | SYSTEM  | ENROL11 | SELECT    | VIEW
 (12 rows)
 
 select table_name, grantor, grantee, privilege, type from all_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, grantor, grantee, privilege, type;
-   table_name   |      grantor       |    grantee    | privilege |   type   
-----------------+--------------------+---------------+-----------+----------
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | FUNCTION
- TAB_PRIVS_PKG  | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | PACKAGE
- TAB_PRIVS_SEQ1 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | UPDATE    | SEQUENCE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | TABLE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | INSERT    | TABLE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | USAGE     | TYPE
- TAB_PRIVS_V1   | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | VIEW
-(7 rows)
+   table_name   | grantor | grantee | privilege |       type        
+----------------+---------+---------+-----------+-------------------
+ TAB_PRIVS_FUNC | SYSTEM  | ENROL11 | EXECUTE   | FUNCTION
+ TAB_PRIVS_MV1  | SYSTEM  | ENROL22 | SELECT    | MATERIALIZED VIEW
+ TAB_PRIVS_PKG  | SYSTEM  | ENROL11 | EXECUTE   | PACKAGE
+ TAB_PRIVS_SEQ1 | SYSTEM  | ENROL11 | UPDATE    | SEQUENCE
+ TAB_PRIVS_TB   | SYSTEM  | ENROL11 | SELECT    | TABLE
+ TAB_PRIVS_TB   | SYSTEM  | ENROL22 | INSERT    | TABLE
+ TAB_PRIVS_TYP  | SYSTEM  | ENROL11 | USAGE     | TYPE
+ TAB_PRIVS_V1   | SYSTEM  | ENROL11 | SELECT    | VIEW
+(8 rows)
 
 select table_name, owner, grantor, grantee, privilege, type from user_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
-   table_name   |       owner        |      grantor       |    grantee    | privilege |   type   
-----------------+--------------------+--------------------+---------------+-----------+----------
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | FUNCTION
- TAB_PRIVS_PKG  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | PACKAGE
- TAB_PRIVS_SEQ1 | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | UPDATE    | SEQUENCE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | TABLE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | USAGE     | TYPE
- TAB_PRIVS_V1   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | VIEW
+   table_name   | owner  | grantor | grantee | privilege |   type   
+----------------+--------+---------+---------+-----------+----------
+ TAB_PRIVS_FUNC | SYSTEM | SYSTEM  | ENROL11 | EXECUTE   | FUNCTION
+ TAB_PRIVS_PKG  | SYSTEM | SYSTEM  | ENROL11 | EXECUTE   | PACKAGE
+ TAB_PRIVS_SEQ1 | SYSTEM | SYSTEM  | ENROL11 | UPDATE    | SEQUENCE
+ TAB_PRIVS_TB   | SYSTEM | SYSTEM  | ENROL11 | SELECT    | TABLE
+ TAB_PRIVS_TYP  | SYSTEM | SYSTEM  | ENROL11 | USAGE     | TYPE
+ TAB_PRIVS_V1   | SYSTEM | SYSTEM  | ENROL11 | SELECT    | VIEW
 (6 rows)
 
-\c - tab_privs_u12
+\c - enrol22
 set ivorysql.identifier_case_switch to interchange; 
 select table_name, owner, grantor, grantee, privilege, type from dba_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
-   table_name   |       owner        |      grantor       |    grantee    | privilege |       type        
-----------------+--------------------+--------------------+---------------+-----------+-------------------
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | FUNCTION
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | EXECUTE   | FUNCTION
- TAB_PRIVS_MV1  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | SELECT    | MATERIALIZED VIEW
- TAB_PRIVS_PKG  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | PACKAGE
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | EXECUTE   | PROCEDURE
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | EXECUTE   | PROCEDURE
- TAB_PRIVS_SEQ1 | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | UPDATE    | SEQUENCE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | TABLE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | INSERT    | TABLE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | USAGE     | TYPE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | USAGE     | TYPE
- TAB_PRIVS_V1   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | VIEW
+   table_name   | owner  | grantor | grantee | privilege |       type        
+----------------+--------+---------+---------+-----------+-------------------
+ TAB_PRIVS_FUNC | SYSTEM | SYSTEM  | ENROL11 | EXECUTE   | FUNCTION
+ TAB_PRIVS_FUNC | SYSTEM | SYSTEM  | public  | EXECUTE   | FUNCTION
+ TAB_PRIVS_MV1  | SYSTEM | SYSTEM  | ENROL22 | SELECT    | MATERIALIZED VIEW
+ TAB_PRIVS_PKG  | SYSTEM | SYSTEM  | ENROL11 | EXECUTE   | PACKAGE
+ TAB_PRIVS_PROC | SYSTEM | SYSTEM  | ENROL22 | EXECUTE   | PROCEDURE
+ TAB_PRIVS_PROC | SYSTEM | SYSTEM  | public  | EXECUTE   | PROCEDURE
+ TAB_PRIVS_SEQ1 | SYSTEM | SYSTEM  | ENROL11 | UPDATE    | SEQUENCE
+ TAB_PRIVS_TB   | SYSTEM | SYSTEM  | ENROL11 | SELECT    | TABLE
+ TAB_PRIVS_TB   | SYSTEM | SYSTEM  | ENROL22 | INSERT    | TABLE
+ TAB_PRIVS_TYP  | SYSTEM | SYSTEM  | ENROL11 | USAGE     | TYPE
+ TAB_PRIVS_TYP  | SYSTEM | SYSTEM  | public  | USAGE     | TYPE
+ TAB_PRIVS_V1   | SYSTEM | SYSTEM  | ENROL11 | SELECT    | VIEW
 (12 rows)
 
 select table_name, grantor, grantee, privilege, type from all_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, grantor, grantee, privilege, type;
-   table_name   |      grantor       |    grantee    | privilege |       type        
-----------------+--------------------+---------------+-----------+-------------------
- TAB_PRIVS_MV1  | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | SELECT    | MATERIALIZED VIEW
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | EXECUTE   | PROCEDURE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | TABLE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | INSERT    | TABLE
+   table_name   | grantor | grantee | privilege |       type        
+----------------+---------+---------+-----------+-------------------
+ TAB_PRIVS_MV1  | SYSTEM  | ENROL22 | SELECT    | MATERIALIZED VIEW
+ TAB_PRIVS_PROC | SYSTEM  | ENROL22 | EXECUTE   | PROCEDURE
+ TAB_PRIVS_TB   | SYSTEM  | ENROL11 | SELECT    | TABLE
+ TAB_PRIVS_TB   | SYSTEM  | ENROL22 | INSERT    | TABLE
 (4 rows)
 
 select table_name, owner, grantor, grantee, privilege, type from user_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
-   table_name   |       owner        |      grantor       |    grantee    | privilege |       type        
-----------------+--------------------+--------------------+---------------+-----------+-------------------
- TAB_PRIVS_MV1  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | SELECT    | MATERIALIZED VIEW
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | EXECUTE   | PROCEDURE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | INSERT    | TABLE
+   table_name   | owner  | grantor | grantee | privilege |       type        
+----------------+--------+---------+---------+-----------+-------------------
+ TAB_PRIVS_MV1  | SYSTEM | SYSTEM  | ENROL22 | SELECT    | MATERIALIZED VIEW
+ TAB_PRIVS_PROC | SYSTEM | SYSTEM  | ENROL22 | EXECUTE   | PROCEDURE
+ TAB_PRIVS_TB   | SYSTEM | SYSTEM  | ENROL22 | INSERT    | TABLE
 (3 rows)
 
-\c - sysview_objects_u2
+\c - enrol11
 set ivorysql.identifier_case_switch to interchange; 
 select table_name, owner, grantor, grantee, privilege, type from dba_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
-   table_name   |       owner        |      grantor       |    grantee    | privilege |       type        
-----------------+--------------------+--------------------+---------------+-----------+-------------------
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | FUNCTION
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | EXECUTE   | FUNCTION
- TAB_PRIVS_MV1  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | SELECT    | MATERIALIZED VIEW
- TAB_PRIVS_PKG  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | PACKAGE
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | EXECUTE   | PROCEDURE
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | EXECUTE   | PROCEDURE
- TAB_PRIVS_SEQ1 | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | UPDATE    | SEQUENCE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | TABLE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | INSERT    | TABLE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | USAGE     | TYPE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | USAGE     | TYPE
- TAB_PRIVS_V1   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | VIEW
+   table_name   | owner  | grantor | grantee | privilege |       type        
+----------------+--------+---------+---------+-----------+-------------------
+ TAB_PRIVS_FUNC | SYSTEM | SYSTEM  | ENROL11 | EXECUTE   | FUNCTION
+ TAB_PRIVS_FUNC | SYSTEM | SYSTEM  | public  | EXECUTE   | FUNCTION
+ TAB_PRIVS_MV1  | SYSTEM | SYSTEM  | ENROL22 | SELECT    | MATERIALIZED VIEW
+ TAB_PRIVS_PKG  | SYSTEM | SYSTEM  | ENROL11 | EXECUTE   | PACKAGE
+ TAB_PRIVS_PROC | SYSTEM | SYSTEM  | ENROL22 | EXECUTE   | PROCEDURE
+ TAB_PRIVS_PROC | SYSTEM | SYSTEM  | public  | EXECUTE   | PROCEDURE
+ TAB_PRIVS_SEQ1 | SYSTEM | SYSTEM  | ENROL11 | UPDATE    | SEQUENCE
+ TAB_PRIVS_TB   | SYSTEM | SYSTEM  | ENROL11 | SELECT    | TABLE
+ TAB_PRIVS_TB   | SYSTEM | SYSTEM  | ENROL22 | INSERT    | TABLE
+ TAB_PRIVS_TYP  | SYSTEM | SYSTEM  | ENROL11 | USAGE     | TYPE
+ TAB_PRIVS_TYP  | SYSTEM | SYSTEM  | public  | USAGE     | TYPE
+ TAB_PRIVS_V1   | SYSTEM | SYSTEM  | ENROL11 | SELECT    | VIEW
 (12 rows)
 
 select table_name, grantor, grantee, privilege, type from all_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, grantor, grantee, privilege, type;
-   table_name   |      grantor       |    grantee    | privilege |       type        
-----------------+--------------------+---------------+-----------+-------------------
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | FUNCTION
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | public        | EXECUTE   | FUNCTION
- TAB_PRIVS_MV1  | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | SELECT    | MATERIALIZED VIEW
- TAB_PRIVS_PKG  | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | PACKAGE
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | EXECUTE   | PROCEDURE
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | public        | EXECUTE   | PROCEDURE
- TAB_PRIVS_SEQ1 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | UPDATE    | SEQUENCE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | TABLE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | INSERT    | TABLE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | USAGE     | TYPE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | public        | USAGE     | TYPE
- TAB_PRIVS_V1   | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | VIEW
-(12 rows)
+   table_name   | grantor | grantee | privilege |       type        
+----------------+---------+---------+-----------+-------------------
+ TAB_PRIVS_FUNC | SYSTEM  | ENROL11 | EXECUTE   | FUNCTION
+ TAB_PRIVS_MV1  | SYSTEM  | ENROL22 | SELECT    | MATERIALIZED VIEW
+ TAB_PRIVS_PKG  | SYSTEM  | ENROL11 | EXECUTE   | PACKAGE
+ TAB_PRIVS_SEQ1 | SYSTEM  | ENROL11 | UPDATE    | SEQUENCE
+ TAB_PRIVS_TB   | SYSTEM  | ENROL11 | SELECT    | TABLE
+ TAB_PRIVS_TB   | SYSTEM  | ENROL22 | INSERT    | TABLE
+ TAB_PRIVS_TYP  | SYSTEM  | ENROL11 | USAGE     | TYPE
+ TAB_PRIVS_V1   | SYSTEM  | ENROL11 | SELECT    | VIEW
+(8 rows)
 
 select table_name, owner, grantor, grantee, privilege, type from user_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
-   table_name   |       owner        |      grantor       |    grantee    | privilege |       type        
-----------------+--------------------+--------------------+---------------+-----------+-------------------
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | FUNCTION
- TAB_PRIVS_FUNC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | EXECUTE   | FUNCTION
- TAB_PRIVS_MV1  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | SELECT    | MATERIALIZED VIEW
- TAB_PRIVS_PKG  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | EXECUTE   | PACKAGE
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | EXECUTE   | PROCEDURE
- TAB_PRIVS_PROC | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | EXECUTE   | PROCEDURE
- TAB_PRIVS_SEQ1 | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | UPDATE    | SEQUENCE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | TABLE
- TAB_PRIVS_TB   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U12 | INSERT    | TABLE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | USAGE     | TYPE
- TAB_PRIVS_TYP  | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | public        | USAGE     | TYPE
- TAB_PRIVS_V1   | SYSVIEW_OBJECTS_U2 | SYSVIEW_OBJECTS_U2 | TAB_PRIVS_U11 | SELECT    | VIEW
-(12 rows)
+   table_name   | owner  | grantor | grantee | privilege |   type   
+----------------+--------+---------+---------+-----------+----------
+ TAB_PRIVS_FUNC | SYSTEM | SYSTEM  | ENROL11 | EXECUTE   | FUNCTION
+ TAB_PRIVS_PKG  | SYSTEM | SYSTEM  | ENROL11 | EXECUTE   | PACKAGE
+ TAB_PRIVS_SEQ1 | SYSTEM | SYSTEM  | ENROL11 | UPDATE    | SEQUENCE
+ TAB_PRIVS_TB   | SYSTEM | SYSTEM  | ENROL11 | SELECT    | TABLE
+ TAB_PRIVS_TYP  | SYSTEM | SYSTEM  | ENROL11 | USAGE     | TYPE
+ TAB_PRIVS_V1   | SYSTEM | SYSTEM  | ENROL11 | SELECT    | VIEW
+(6 rows)
 
 drop function tab_privs_func;
 drop procedure tab_privs_proc;
@@ -1501,3 +1502,14 @@ drop table tab_privs_tb;
 drop PACKAGE BODY tab_privs_pkg;
 drop PACKAGE tab_privs_pkg;
 set ivorysql.identifier_case_switch to normal;
+\c - system
+drop user enrol11;
+drop user enrol22;
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+DROP USER system;

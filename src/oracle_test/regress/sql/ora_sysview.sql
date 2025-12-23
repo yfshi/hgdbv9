@@ -1,3 +1,14 @@
+DROP SCHEMA IF EXISTS system;
+DROP USER IF EXISTS system;
+
+DROP SCHEMA IF EXISTS rnrol11;
+DROP SCHEMA IF EXISTS rnrol22;
+DROP USER IF EXISTS enrol11;
+DROP USER IF EXISTS enrol22;
+
+CREATE USER system WITH superuser;
+CREATE USER enrol11 superuser;
+CREATE USER enrol22;
 set ivorysql.identifier_case_switch to interchange;
 /****************************test xxx_tables************************************/
 set ivorysql.enable_ora_default_collation = on;
@@ -844,10 +855,7 @@ purge recyclebin;
 set ivorysql.enable_recycle_bin to off;
 
 -- partitioned table related (xxx_objects)
-create user sysview_objects_u1;
-create user sysview_objects_u2 superuser;
-
-\c - sysview_objects_u2
+\c - enrol11
 
 create table sysview_objects_part(id int, age int, name text) partition by hash(id);
 create table sysview_objects_part1 partition of sysview_objects_part for values with(modulus 2, remainder 0) partition by hash(age);
@@ -857,34 +865,33 @@ create table sysview_objects_part2 partition of sysview_objects_part for values 
 create table sysview_objects_part2_1 partition of sysview_objects_part2 for values with(modulus 2, remainder 0);
 create table sysview_objects_part2_2 partition of sysview_objects_part2 for values with(modulus 2, remainder 1);
 
-grant select on sysview_objects_part1_2 to sysview_objects_u1;
-grant select on sysview_objects_part2 to sysview_objects_u1;
+grant select on sysview_objects_part1_2 to enrol22;
+grant select on sysview_objects_part2 to enrol22;
 
-\c - sysview_objects_u1
+\c - enrol22
 set ivorysql.identifier_case_switch to interchange;
 select object_name, subobject_name, object_type from all_objects where UPPER(object_name) = 'SYSVIEW_OBJECTS_PART' order by object_name, subobject_name;
 select object_name, subobject_name, object_type from dba_objects where UPPER(object_name) = 'SYSVIEW_OBJECTS_PART' order by object_name, subobject_name;
 
-\c - sysview_objects_u2
+\c - enrol11
 set ivorysql.identifier_case_switch to interchange;
 select object_name, subobject_name, object_type from all_objects where UPPER(object_name) = 'SYSVIEW_OBJECTS_PART' order by object_name, subobject_name;
 select object_name, subobject_name, object_type from dba_objects where UPPER(object_name) = 'SYSVIEW_OBJECTS_PART' order by object_name, subobject_name;
 
-revoke all on sysview_objects_part1_2 from sysview_objects_u1;
-revoke all on sysview_objects_part2 from sysview_objects_u1;
+revoke all on sysview_objects_part1_2 from enrol22;
+revoke all on sysview_objects_part2 from enrol22;
 
 drop table sysview_objects_part cascade;
 
+\c - system
 -- special test for user_tab_privs
-create user tab_privs_u1 superuser;
-create user tab_privs_u2;
 create role r1;
 
-\c - tab_privs_u1
+\c - enrol11
 create table tab_privs_tb(id int);
-grant select on table tab_privs_tb to tab_privs_u2;
+grant select on table tab_privs_tb to enrol22;
 
-\c - tab_privs_u2
+\c - enrol22
 set ivorysql.identifier_case_switch to interchange;
 select * from user_tab_privs;
 
@@ -900,13 +907,11 @@ select objname from pg_object where UPPER(objname) = UPPER('objects_tb_con_new')
 
 drop table objects_tb cascade;
 
-\c - sysview_objects_u2
+\c - enrol11
 drop table tab_privs_tb;
 
 -- Additional test fof xxx_tab_privs
-create user tab_privs_u11;
-create user tab_privs_u12;
-
+\c - system
 -- create table, view, materialized view, sequence
 create table tab_privs_tb(id int);
 insert into tab_privs_tb values (generate_series(0, 9));
@@ -914,13 +919,13 @@ create view tab_privs_v1 as select * from tab_privs_tb;
 create materialized view tab_privs_mv1 as select * from tab_privs_tb;
 create sequence tab_privs_seq1;
 
-grant select on tab_privs_tb to tab_privs_u11;
-grant insert on tab_privs_tb to tab_privs_u12;
+grant select on tab_privs_tb to enrol11;
+grant insert on tab_privs_tb to enrol22;
 
-grant select on tab_privs_v1 to tab_privs_u11;
-grant select on tab_privs_mv1 to tab_privs_u12;
+grant select on tab_privs_v1 to enrol11;
+grant select on tab_privs_mv1 to enrol22;
 
-grant update on tab_privs_seq1 to tab_privs_u11;
+grant update on tab_privs_seq1 to enrol11;
 
 -- create function, procedure
 create or replace function tab_privs_func()
@@ -940,12 +945,12 @@ AS $$
 $$ language plpgsql;
 /
 
-grant execute on function tab_privs_func to tab_privs_u11;
-grant execute on procedure tab_privs_proc to tab_privs_u12;
+grant execute on function tab_privs_func to enrol11;
+grant execute on procedure tab_privs_proc to enrol22;
 
 -- create type
 create type tab_privs_typ as (id int, name text);
-grant usage on type tab_privs_typ to tab_privs_u11;
+grant usage on type tab_privs_typ to enrol11;
 
 -- package
 CREATE OR REPLACE PACKAGE tab_privs_pkg IS
@@ -961,22 +966,22 @@ CREATE OR REPLACE PACKAGE BODY tab_privs_pkg IS
 END;
 /
 
-grant execute on package tab_privs_pkg to tab_privs_u11;
+grant execute on package tab_privs_pkg to enrol11;
 
 -- query
-\c - tab_privs_u11
+\c - enrol11
 set ivorysql.identifier_case_switch to interchange; 
 select table_name, owner, grantor, grantee, privilege, type from dba_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
 select table_name, grantor, grantee, privilege, type from all_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, grantor, grantee, privilege, type;
 select table_name, owner, grantor, grantee, privilege, type from user_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
 
-\c - tab_privs_u12
+\c - enrol22
 set ivorysql.identifier_case_switch to interchange; 
 select table_name, owner, grantor, grantee, privilege, type from dba_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
 select table_name, grantor, grantee, privilege, type from all_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, grantor, grantee, privilege, type;
 select table_name, owner, grantor, grantee, privilege, type from user_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
 
-\c - sysview_objects_u2
+\c - enrol11
 set ivorysql.identifier_case_switch to interchange; 
 select table_name, owner, grantor, grantee, privilege, type from dba_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, owner, grantor, grantee, privilege, type;
 select table_name, grantor, grantee, privilege, type from all_tab_privs where table_name like ('TAB_PRIVS_%') order by table_name, grantor, grantee, privilege, type;
@@ -993,3 +998,16 @@ drop PACKAGE BODY tab_privs_pkg;
 drop PACKAGE tab_privs_pkg;
 
 set ivorysql.identifier_case_switch to normal;
+
+\c - system
+drop user enrol11;
+drop user enrol22;
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+
+DROP USER system;
