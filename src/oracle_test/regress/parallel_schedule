@@ -265,6 +265,6 @@ test: ora_statement_level_rollback
 #/* End - ReqID:SRS-SQL-TRIGGER */
 
 #/* Begin - ReqID: RQ-SQL-SYSVIEW */
-# TODO(windows) ora_sysview: regress failed FATAL:  SSPI authentication failed for user "sysview_objects_u2"
-#test: ora_sysview
+test: ora_sysview
 #/* End - ReqID: RQ-SQL-SYSVIEW */
+
