@@ -29,7 +29,7 @@
 /* Begin - BUG#M0000134 */
 #include "catalog/pg_proc.h"
 /* End - BUG#M0000134 */
-
+#include "parser/scansup.h"		/* ReqID:SRS-SQL-TRIGGER */
 
 /* Klugy flag to tell scanner how to look up identifiers */
 IdentifierLookup plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
@@ -249,19 +249,34 @@ plisql_yylex(void)
 				if (i != plisql_curr_compile->fn_nargs)
 				{
 					sprintf(buf, "%s", plisql_curr_compile->paramnames[i]);
+					paramname = buf;
 				}
 				else
 				{
 					num = calculate_oraparamnumber(aux1.lval.str);
 					sprintf(buf, "$%d", num);
+					paramname = buf;
 				}
 			}
+			/* Begin - ReqID:SRS-SQL-TRIGGER */
+			else if (plisql_curr_compile->fn_is_trigger == PLISQL_DML_TRIGGER)
+			{
+				/*
+				 * DML trigger function support :NEW/:OLD variables
+				 * here, we don't need to treat it as a real oraparam
+				 * for processing (calculate_oraparamnumber).
+				 */
+				char    *str = NULL;
+				str = downcase_identifier(pstrdup(aux1.lval.str), strlen(pstrdup(aux1.lval.str)), true, true);
+				aux1.lval.str = str;
+				paramname = aux1.lval.str;
+			} /* End - ReqID:SRS-SQL-TRIGGER */
 			else
 			{
 				num = calculate_oraparamnumber(aux1.lval.str);
 				sprintf(buf, "$%d", num);
+				paramname = buf;
 			}
-			paramname = buf;
 
 			/*
 			 * If the compiled function is PROKIND_ANONYMOUS_BLOCK_ONLY_PARSE,
@@ -594,7 +609,10 @@ internal_yylex(TokenAuxData *auxdata)
 		/* Begin - ReqID:SRS-SQL-ANONYOUT */
 		else if (token == ORAPARAM)
 		{
-			calculate_oraparamnumber(auxdata->lval.str);
+			/* Begin - ReqID:SRS-SQL-TRIGGER */
+			if (plisql_curr_compile->fn_is_trigger != PLISQL_DML_TRIGGER)
+				calculate_oraparamnumber(auxdata->lval.str);
+			/* End - ReqID:SRS-SQL-TRIGGER */
 		}
 		/* End - ReqID:SRS-SQL-ANONYOUT */
 		/* Begin - BUG#M0000316 */

@@ -13,3 +13,4 @@ src/builtin_packages/dbms_metadata/dbms_metadata
 src/builtin_packages/dbms_random/dbms_random
 src/builtin_packages/dbms_utility/dbms_utility
 src/builtin_packages/dbms_output/dbms_output
+src/ora_trigger_pred/ora_trigger_pred
