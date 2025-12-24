@@ -679,3 +679,325 @@ drop table T2;
 /* Begin - BUG#Z6516 */
 DROP TRIGGER IF EXISTS vskill;
 /* End - BUG#Z6516 */
+
+--
+-- Test ORA triggers predicate
+--
+drop table if exists student_info;
+create table student_info (
+   sno   number(10),
+   name  varchar2(30),
+   sex   varchar2(10)
+);
+
+insert into student_info(sno, name, sex) values(1, 'Accce', 'female');
+insert into student_info(sno, name, sex) values(2, 'Wyyt', 'male');
+insert into student_info(sno, name, sex) values(3, 'Bobb', 'female');
+
+select * from student_info;
+
+create or replace trigger tr_aiud_student_info
+   after insert or update or delete on student_info
+   for each row
+begin
+   case
+      when inserting then
+         RAISE NOTICE '[tr_aiud_student_info -> inserting]';
+      when updating then
+         RAISE NOTICE '[tr_aiud_student_info -> updating]';
+      when deleting then
+         RAISE NOTICE '[tr_aiud_student_info-> deleting]';
+      else
+         RAISE NOTICE 'Nothing';
+   end case;
+end;
+/
+
+insert into student_info(sno, name, sex) values(4, 'Hello', 'female');
+update student_info t  set t.name = 'OInsert' where t.sno = 1;
+delete from student_info where sno = 2;
+
+--cleanup
+drop trigger tr_aiud_student_info;
+drop table student_info;
+
+drop table if exists predict_emp;
+CREATE TABLE predict_emp (
+    emp_id      NUMBER(10) PRIMARY KEY,
+    emp_name    VARCHAR2(100) NOT NULL,
+    department  VARCHAR2(50),
+    salary      NUMBER(10,2) CHECK (salary > 0)
+);
+
+INSERT INTO predict_emp VALUES (1, 'Alice', 'HR', 5000);
+INSERT INTO predict_emp VALUES (2, 'Bob', 'IT', 7000);
+INSERT INTO predict_emp VALUES (3, 'Charlie', 'Finance', 6500);
+
+create table event_tab(op varchar2(20), info varchar2(100));
+
+CREATE TRIGGER t_predicate_emp
+BEFORE UPDATE
+ON predict_emp FOR EACH ROW
+BEGIN
+    IF :NEW.salary > 7000 AND UPDATING THEN
+        INSERT INTO event_tab values('updating', ':new.salay > 7000');
+    END IF;
+
+    IF UPDATING('department') THEN
+		INSERT INTO event_tab values('updating(department)', 'update departent column');
+    ELSE
+        INSERT INTO event_tab values('others', 'xxxxxx');
+    END IF;
+END;
+/
+
+select * from predict_emp order by emp_id;
+
+update predict_emp set salary = 5000  where emp_id = 3;
+select * from predict_emp order by emp_id;
+select * from event_tab;
+
+update predict_emp set salary = 8000  where emp_id = 1;
+select * from predict_emp order by emp_id;
+select * from event_tab;
+
+update predict_emp set department = 'DEV'  where emp_id = 2;
+select * from predict_emp order by emp_id;
+select * from event_tab;
+
+-- cleanup
+DROP TRIGGER t_predicate_emp;
+DROP TABLE event_tab;
+DROP TABLE predict_emp;
+
+DROP TABLE if exists t_main ;
+DROP TABLE if exists t_log;
+
+CREATE TABLE t_main (
+    id NUMBER PRIMARY KEY,
+    info VARCHAR2(50)
+);
+
+CREATE TABLE t_log (
+    id NUMBER,
+    msg VARCHAR2(100)
+);
+
+CREATE OR REPLACE TRIGGER trg_log_aft_ins
+AFTER INSERT OR UPDATE OR DELETE ON t_log
+FOR EACH ROW
+DECLARE
+BEGIN
+    IF INSERTING THEN
+        DBMS_OUTPUT.PUT_LINE('t_log-trigger -> INSERTING = TRUE');
+    END IF;
+
+    IF UPDATING THEN
+        DBMS_OUTPUT.PUT_LINE('t_log-trigger -> UPDATING = TRUE');
+    END IF;
+
+    IF DELETING THEN
+        DBMS_OUTPUT.PUT_LINE('t_log-trigger -> DELETING = TRUE');
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_main_bef_ins
+BEFORE INSERT ON t_main
+FOR EACH ROW
+BEGIN
+    INSERT INTO t_log VALUES(:NEW.id, 'from trg_main_bef_ins');
+END;
+/
+
+SET SERVEROUTPUT ON;
+
+INSERT INTO t_main VALUES(1, 'test');
+
+SELECT * FROM t_main;
+SELECT * FROM t_log;
+
+DROP TRIGGER trg_log_aft_ins;
+DROP TRIGGER trg_main_bef_ins;
+TRUNCATE TABLE t_main;
+TRUNCATE TABLE t_log;
+
+CREATE OR REPLACE FUNCTION test_any() RETURN void
+AS
+BEGIN
+    RAISE NOTICE 'INSERTING = %', INSERTING;
+    IF UPDATING THEN
+        RAISE NOTICE 'UPDATING is true';
+    END IF;
+END;
+/
+
+SELECT test_any() FROM dual;
+DROP FUNCTION test_any();
+
+CREATE OR REPLACE TRIGGER trg_log_aft_ins
+AFTER INSERT OR UPDATE OR DELETE ON t_log
+FOR EACH ROW
+DECLARE
+BEGIN
+    IF INSERTING THEN
+        DBMS_OUTPUT.PUT_LINE('[t_log->trigger]INSERTING = TRUE');
+    END IF;
+
+    IF UPDATING THEN
+        DBMS_OUTPUT.PUT_LINE('[t_log->trigger]UPDATING = TRUE');
+    END IF;
+
+    IF DELETING THEN
+        DBMS_OUTPUT.PUT_LINE('[t_log->trigger]DELETING = TRUE');
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_main_aft_upd
+AFTER UPDATE ON t_main
+FOR EACH ROW
+DECLARE
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('[t_main->trigger]AFTER UPDATE begin');
+    INSERT INTO t_log VALUES(:NEW.id, 'from trg_main_aft_upd');
+    DBMS_OUTPUT.PUT_LINE('[t_main->trigger]AFTER UPDATE end');
+END;
+/
+
+SET SERVEROUTPUT ON;
+
+INSERT INTO t_main VALUES(1, 'init');
+UPDATE t_main SET info = 'modified' WHERE id = 1;
+
+SELECT * FROM t_main;
+SELECT * FROM t_log;
+
+--cleanup
+DROP TRIGGER trg_log_aft_ins;
+DROP TRIGGER trg_main_aft_upd;
+TRUNCATE TABLE t_main;
+TRUNCATE TABLE t_log;
+
+
+CREATE OR REPLACE TRIGGER trg_log_aft_iud
+AFTER INSERT OR UPDATE OR DELETE ON t_log
+FOR EACH ROW
+DECLARE
+    v_dummy NUMBER;
+BEGIN
+    IF INSERTING THEN
+        DBMS_OUTPUT.PUT_LINE('[t_log->trigger]INSERTING = TRUE');
+    END IF;
+
+    IF UPDATING THEN
+        DBMS_OUTPUT.PUT_LINE('[t_log->trigger]UPDATING = TRUE');
+    END IF;
+
+    IF DELETING THEN
+        DBMS_OUTPUT.PUT_LINE('[t_log->trigger]DELETING = TRUE');
+    END IF;
+
+    -- make exception
+    v_dummy := 1 / 0;
+
+    DBMS_OUTPUT.PUT_LINE('[t_log->trigger]NOT REACH HERE');
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('[t_log->trigger]GETING EXCEPTION: ' || SQLERRM);
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_main_aft_upd
+AFTER INSERT OR UPDATE ON t_main
+FOR EACH ROW
+BEGIN
+	IF UPDATING THEN
+		DBMS_OUTPUT.PUT_LINE('[t_main->trigger]UPDATING = TRUE');
+		INSERT INTO t_log VALUES (:NEW.id, 'from trg_main_aft_upd');
+    END IF;
+
+    IF INSERTING THEN
+		DBMS_OUTPUT.PUT_LINE('[t_main->trigger]INSERTING = TRUE');
+	END IF;
+END;
+/
+
+INSERT INTO t_main VALUES (1, 'init');
+UPDATE t_main SET info = 'exception' WHERE id = 1;
+
+--cleanup
+SET SERVEROUTPUT OFF;
+DROP TRIGGER trg_main_aft_upd;
+DROP TRIGGER trg_log_aft_iud;
+DROP TABLE t_main ;
+DROP TABLE t_log ;
+
+--
+-- Test create trigger using dynamic SQL
+--
+DROP TABLE if exists emp_test;
+CREATE TABLE emp_test (
+	emp_id		NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+	emp_name	VARCHAR2(100),
+	created_at	DATE
+);
+
+CREATE OR REPLACE PROCEDURE create_emp_trigger
+IS
+    v_sql CLOB;
+BEGIN
+    v_sql := '
+        CREATE OR REPLACE TRIGGER trg_emp_test_bi
+        BEFORE INSERT ON emp_test
+        FOR EACH ROW
+        BEGIN
+            :NEW.created_at := TO_DATE(''2025-12-19'', ''YYYY-MM-DD'');
+        END;';
+
+    EXECUTE IMMEDIATE v_sql;
+
+    DBMS_OUTPUT.PUT_LINE('Trigger created successfully.');
+END;
+/
+
+SET SERVEROUTPUT ON;
+
+call create_emp_trigger();
+
+select trigger_name, table_name, trigger_type, status from all_triggers where upper(trigger_name) = 'TRG_EMP_TEST_BI';
+
+INSERT INTO emp_test (emp_name) VALUES ('Tom');
+INSERT INTO emp_test (emp_name) VALUES ('Jerry');
+
+SELECT * FROM emp_test;
+
+--cleanup
+SET SERVEROUTPUT OFF;
+DROP TRIGGER trg_emp_test_bi;
+DROP PROCEDURE create_emp_trigger();
+DROP TABLE emp_test;
+
+DROP TABLE if exists test_ids;
+DROP TABLE if exists test_dest;
+create table test_ids(id integer, name varchar2(256));
+create table test_dest(id integer, name varchar2(256));
+
+create or replace trigger test_trig
+after insert on test_ids
+for each row
+begin
+execute immediate 'insert into test_dest values(:x,:y)' using :new.id, :new.name;
+end;
+/
+
+insert into test_ids values(1, 'one');
+
+select * from test_ids;
+select * from test_dest;
+
+--cleanup
+drop trigger test_trig;
+drop table test_ids;
+drop table test_dest;

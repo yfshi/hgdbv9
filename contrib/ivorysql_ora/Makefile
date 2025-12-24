@@ -34,7 +34,8 @@ OBJS = \
 	src/builtin_packages/dbms_job/ora_dbms_job.o \
 	src/builtin_packages/dbms_job/ora_dbms_jobparse.o \
 	src/datatype/orachar_varchar.o \
-	src/builtin_packages/dbms_output/dbms_output.o
+	src/builtin_packages/dbms_output/dbms_output.o \
+	src/ora_trigger_pred/ora_trigger_pred.o
 
 EXTENSION = ivorysql_ora
 

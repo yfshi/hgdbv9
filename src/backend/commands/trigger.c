@@ -2838,6 +2838,11 @@ ExecCallTriggerFunc(TriggerData *trigdata,
 	PgStat_FunctionCallUsage fcusage;
 	Datum		result;
 	MemoryContext oldContext;
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	ObjectAddress	object;
+	PgObjectInfo	objinfo;
+	bool			is_ora_trigger = false;
+	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	/*
 	 * Protect against code paths that may fail to initialize transition table
@@ -2868,6 +2873,16 @@ ExecCallTriggerFunc(TriggerData *trigdata,
 	if (instr)
 		InstrStartNode(instr + tgindx);
 
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	ObjectAddressSet(object, TriggerRelationId, trigdata->tg_trigger->tgoid);
+	if (pg_object_get_ori_infor_hook)
+	{
+		objinfo =  pg_object_get_ori_infor_hook(object);
+		if (objinfo && objinfo->oricompatible_mode == 'o')
+			is_ora_trigger = true;
+	}
+	/* End - ReqID:SRS-SQL-TRIGGER */
+
 	/*
 	 * Do the function evaluation in the per-tuple memory context, so that
 	 * leaked memory will be reclaimed once per tuple. Note in particular that
@@ -2884,6 +2899,11 @@ ExecCallTriggerFunc(TriggerData *trigdata,
 
 	pgstat_init_function_usage(fcinfo, &fcusage);
 
+	/* Begin - ReqID:SRS-SQL-TRIGGER */
+	if (is_ora_trigger)
+		push_triggerdata(trigdata);
+	/* End - ReqID:SRS-SQL-TRIGGER */
+
 	MyTriggerDepth++;
 	PG_TRY();
 	{
@@ -2892,6 +2912,11 @@ ExecCallTriggerFunc(TriggerData *trigdata,
 	PG_FINALLY();
 	{
 		MyTriggerDepth--;
+
+		/* Begin - ReqID:SRS-SQL-TRIGGER */
+		if (is_ora_trigger)
+			pop_triggerdata();
+		/* End - ReqID:SRS-SQL-TRIGGER */
 	}
 	PG_END_TRY();
 

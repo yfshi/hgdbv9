@@ -64,6 +64,7 @@ OBJS = \
 	view.o \
 	packagecmds.o \
 	flashback.o \
-	ora_trigger_order.o
+	ora_trigger_order.o \
+	ora_trigger_stack.o
 
 include $(top_srcdir)/src/backend/common.mk
