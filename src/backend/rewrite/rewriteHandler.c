@@ -52,6 +52,7 @@
 
 #include "tcop/tcopprot.h"	/* ReqID:SRS-SQL-DBLINK */
 #include "tcop/utility.h"	/* ReqID:SRS-SQL-DBLINK */
+#include "parser/scansup.h"
 
 /* We use a list of these to detect recursion in RewriteQuery */
 typedef struct rewrite_event
@@ -264,7 +265,7 @@ AcquireRewriteLocks(Query *parsetree,
 						fdw_type = PG_FDW;
 
 					/* Begin - BUG#Z4578 */
-					ftname = psprintf("%s_%s@%s", down_character(rte->linkrelnsname, strlen(rte->linkrelnsname)), rte->linkrelname, server->servername);
+					ftname = psprintf("%s_%s@%s", downcase_identifier(rte->linkrelnsname, strlen(rte->linkrelnsname), false, false), rte->linkrelname, server->servername);
 					/* End - BUG#Z4578 */
 					PG_TRY();
 					{
@@ -4980,7 +4981,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 			if (strcmp(server->servertype, "postgres")== 0)
 				ftname = psprintf("%s_%s@%s", rte->linkrelnsname, rte->linkrelname, server->servername);
 			else if (strcmp(server->servertype, "oracle") == 0)
-				ftname = psprintf("%s_%s@%s", down_character(rte->linkrelnsname, strlen(rte->linkrelnsname)), rte->linkrelname, server->servername);
+				ftname = psprintf("%s_%s@%s", downcase_identifier(rte->linkrelnsname, strlen(rte->linkrelnsname), false, false), rte->linkrelname, server->servername);
 			/* End - BUG#Z4578 */
 			rel = get_rel_oid_from_relname(ftname, AccessShareLock, ACL_SELECT);
 

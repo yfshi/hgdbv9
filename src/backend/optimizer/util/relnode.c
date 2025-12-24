@@ -39,6 +39,7 @@
 #include "access/table.h"
 #include "access/xact.h"
 /* End - BUG#Z1391 */
+#include "parser/scansup.h"
 
 typedef struct JoinHashEntry
 {
@@ -239,7 +240,7 @@ build_simple_rel(PlannerInfo *root, int relid, RelOptInfo *parent)
 		}
 		else if (strcmp(server->servertype, "oracle") == 0)
 		{
-			ftname = psprintf("%s_%s@%s", down_character(rte->linkrelnsname, strlen(rte->linkrelnsname)), rte->linkrelname, server->servername);
+			ftname = psprintf("%s_%s@%s", downcase_identifier(rte->linkrelnsname, strlen(rte->linkrelnsname), false, false), rte->linkrelname, server->servername);
 			fdw_type = ORA_FDW;
 		}
 

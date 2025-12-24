@@ -31,6 +31,8 @@ extern char *original_identifier(const char *ident, int len,
 extern char *upcase_identifier(const char *ident, int len,
 							   bool warn, bool truncate);
 extern char *identifier_case_transform(const char *ident, int len);
+extern bool identifier_is_all_lower(const char *ident, int len);
+extern bool identifier_is_all_upper(const char *ident, int len);
 /* END - case sensitive indentify */
 
 extern char *string_case_transform(const char *ident, int len); /* BUG#Z1423 */

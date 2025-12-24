@@ -436,7 +436,7 @@ byteaout(PG_FUNCTION_ARGS)
 		{
 			rp = result = palloc(VARSIZE_ANY_EXHDR(vlena) * 2 + 1);
 			rp += hex_encode(VARDATA_ANY(vlena), VARSIZE_ANY_EXHDR(vlena), rp);
-			result = upper_character(result, VARSIZE_ANY_EXHDR(vlena) * 2);
+			result = upcase_identifier(result, VARSIZE_ANY_EXHDR(vlena) * 2, false, false);
 		}
 		else
 		{

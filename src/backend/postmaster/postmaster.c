@@ -2402,9 +2402,9 @@ retry1:
 				/* End - BUG#M0000171 */
 				{
 					if (identifier_case_switch == LOWERCASE &&
-						is_all_upper(database_name, strlen(database_name)))
+						identifier_is_all_upper(database_name, strlen(database_name)))
 					{
-						port->database_name = down_character(database_name, strlen(database_name));
+						port->database_name = downcase_identifier(database_name, strlen(database_name), false, false);
 						pfree(database_name);
 					}
 					else if (identifier_case_switch == INTERCHANGE)
@@ -2432,9 +2432,9 @@ retry1:
 							pfree(database_name);
 							pfree(casename);
 						}
-						else if (is_all_upper(database_name, strlen(database_name)))
+						else if (identifier_is_all_upper(database_name, strlen(database_name)))
 						{
-							port->database_name = down_character(database_name, strlen(database_name));
+							port->database_name = downcase_identifier(database_name, strlen(database_name), false, false);
 							pfree(database_name);
 						}
 						else
@@ -2458,9 +2458,9 @@ retry1:
 				/* End - BUG#M0000171 */
 				{
 					if (identifier_case_switch == LOWERCASE &&
-						is_all_upper(user_name, strlen(user_name)))
+						identifier_is_all_upper(user_name, strlen(user_name)))
 					{
-						port->user_name = down_character(user_name, strlen(user_name));
+						port->user_name = downcase_identifier(user_name, strlen(user_name), false, false);
 						pfree(user_name);
 					}
 					else if (identifier_case_switch == INTERCHANGE)
@@ -2488,9 +2488,9 @@ retry1:
 							pfree(user_name);
 							pfree(casename);
 						}
-						else if (is_all_upper(user_name, strlen(user_name)))
+						else if (identifier_is_all_upper(user_name, strlen(user_name)))
 						{
-							port->user_name = down_character(user_name, strlen(user_name));
+							port->user_name = downcase_identifier(user_name, strlen(user_name), false, false);
 							pfree(user_name);
 						}
 						else

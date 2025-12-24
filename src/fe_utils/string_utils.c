@@ -1852,3 +1852,135 @@ mysfmtQualifiedId(const char *schema, const char *id)
 	return id_return->data;
 }
 /* End - ReqID:SRS-MYSQL-CASE */
+
+/*
+ * transfor upper to lower
+ */
+char *
+down_character(char *src, int len, int encoding)
+{
+	char	*s ;
+	int		i;
+	Assert(src != NULL);
+	Assert(len >= 0);
+
+	s = src;
+
+	/* transfor */
+	for (i = 0; i < len ; i++)
+	{
+		int mblen = pg_encoding_mblen(encoding, s);
+
+		/* Begin - BUG#Z6063 */
+		if (mblen > 1)
+		{
+			s += mblen;
+			i += (mblen - 1);
+			continue;
+		}
+		/* End - BUG#Z6063 */
+
+		*s = tolower(*s);
+		s++;
+	}
+
+	return src;
+}
+/*
+ * transfor lower to upper
+ */
+char *
+upper_character(char *src, int len, int encoding)
+{
+	char	*s;
+	int		i;
+	Assert(src != NULL);
+	Assert(len >= 0);
+
+	s = src;
+
+	/* transfor */
+	for (i = 0; i < len ; i++)
+	{
+		int mblen = pg_encoding_mblen(encoding, s);
+
+		/* Begin - BUG#Z6063 */
+		if (mblen > 1)
+		{
+			s += mblen;
+			i += (mblen - 1);
+			continue;
+		}
+		/* End - BUG#Z6063 */
+
+		*s = toupper(*s);
+		s++;
+	}
+
+	return src;
+}
+
+/*
+ * Determine whether the letters in the string are all lowercase letters
+ */
+bool
+is_all_lower(const char *src, int len, int encoding)
+{
+	int		i;
+	const char	*s;
+
+	s = src;
+
+	for (i = 0; i < len; i++)
+	{
+		/* Begin - BUG#Z6063 */
+		int mblen = pg_encoding_mblen(encoding, s);
+
+		if (mblen > 1)
+		{
+			s += mblen;
+			i += (mblen - 1);
+			continue;
+		}
+		/* End - BUG#Z6063 */
+
+		if (isalpha(*s) && isupper(*s))
+			return false;
+		s++;
+	}
+
+	return true;
+}
+
+/*
+ * Determine whether the letters in the string are all uppercase letters
+ */
+bool
+is_all_upper(const char *src, int len, int encoding)
+{
+	int		i;
+	const char	*s;
+
+	s = src;
+
+	for (i = 0; i < len; i++)
+	{
+		/* Begin - BUG#Z6063 */
+		int mblen = pg_encoding_mblen(encoding, s);
+
+		if (mblen > 1)
+		{
+			s += mblen;
+			i += (mblen - 1);
+			continue;
+		}
+		/* End - BUG#Z6063 */
+
+		if (isalpha(*s) && islower(*s))
+			return false;
+		s++;
+	}
+
+	return true;
+}
+/* END - case sensitive indentify */

@@ -799,7 +799,7 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 				appendStringInfo(attrbuf, "(%s)", indexed_columns);
 				if (index_type)
 				{
-					to_upper = upper_character(index_type, strlen(index_type));
+					to_upper = upcase_identifier(index_type, strlen(index_type), false, false);
 					appendStringInfo(attrbuf, " USING %s", to_upper);
 					pfree(to_upper);
 				}
@@ -865,7 +865,7 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 
 				if (index_type)
 				{
-					to_upper = upper_character(index_type, strlen(index_type));
+					to_upper = upcase_identifier(index_type, strlen(index_type), false, false);
 					appendStringInfo(attrbuf, " USING %s", to_upper);
 					pfree(to_upper);
 				}

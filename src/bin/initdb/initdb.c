@@ -4215,20 +4215,6 @@ main(int argc, char *argv[])
 			 "This user must also own the server process.\n\n"),
 		   effective_user);
 
-	/* BEGIN - case sensitive indentify */
-	/* Oracle compatibility username transfor upper to lower */
-	if (database_mode == DB_ORACLE && username != NULL
-		/* Begin - BUG#M0000171 */
-		&& caseswitchmode != NORMAL
-		/* End - BUG#M0000171 */
-		&& is_all_upper(username, strlen(username)))
-	{
-		char *lowerusername = username;
-		username = down_character(username, strlen(username));
-		free(lowerusername);
-	}
-	/* END - case sensitive indentify */
-
 	set_info_version();
 
 	setup_data_file_paths();
@@ -4236,6 +4222,18 @@ main(int argc, char *argv[])
 	setup_locale_encoding();
 
 	setup_text_search();
+
+	/* BEGIN - case sensitive indentify */
+	/* Oracle compatibility username transfor upper to lower */
+	if (database_mode == DB_ORACLE && username != NULL
+		/* Begin - BUG#M0000171 */
+		&& caseswitchmode != NORMAL
+		/* End - BUG#M0000171 */
+		&& is_all_upper(username, strlen(username), encodingid))
+	{
+		username = down_character(username, strlen(username), encodingid);
+	}
+	/* END - case sensitive indentify */
 
 	printf("\n");
 

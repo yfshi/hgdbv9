@@ -954,7 +954,7 @@ other			.
 						&& !identifier_case_from_pg_dump)
 					{
 						if (identifier_case_switch == LOWERCASE
-							 && is_all_upper(ident, strlen(ident)))
+							 && identifier_is_all_upper(ident, strlen(ident)))
 						{
 							char *lowerident = ident;
 
