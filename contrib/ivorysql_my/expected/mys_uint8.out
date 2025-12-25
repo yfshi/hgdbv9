@@ -3088,13 +3088,13 @@ t + 10 as t_add10,
 t + 0x10 as t_add_hex
 from t_char_arith_hex;
 WARNING:  Truncated incorrect DECIMAL value: 'A         '
-WARNING:  Truncated incorrect DECIMAL value: 'B                                                                                                                                                                                                                                                              '
+WARNING:  Truncated incorrect DECIMAL value: 'B'
 WARNING:  Truncated incorrect DECIMAL value: 'C'
-     c      |                                                                                                                                v                                                                                                                                | t | c_add10 | c_add_hex | v_add10 | v_add_hex | t_add10 | t_add_hex 
-------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---+---------+-----------+---------+-----------+---------+-----------
- A          | B                                                                                                                                                                                                                                                               | C |      10 |        16 |      10 |        16 |      10 |        16
- 1          | 2                                                                                                                                                                                                                                                               | 3 |      11 |        17 |      12 |        18 |      13 |        19
- 9          | 0                                                                                                                                                                                                                                                               | 5 |      19 |        25 |      10 |        16 |      15 |        21
+     c      | v | t | c_add10 | c_add_hex | v_add10 | v_add_hex | t_add10 | t_add_hex 
+------------+---+---+---------+-----------+---------+-----------+---------+-----------
+ A          | B | C |      10 |        16 |      10 |        16 |      10 |        16
+ 1          | 2 | 3 |      11 |        17 |      12 |        18 |      13 |        19
+ 9          | 0 | 5 |      19 |        25 |      10 |        16 |      15 |        21
 (3 rows)
 
 drop table t_char_arith_hex;

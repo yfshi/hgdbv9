@@ -424,20 +424,48 @@ desc vtest 'na%';
 drop view vtest;
 drop table test;
 --show create view
---create table tb(id int, name text);
---create view v_tb as select * from tb;
---create view v_tb1 as select id from tb;
---create view v_tb2 as select name from tb;
---show create view v_tb;
---show create view v_tb1;
---show create view v_tb2;
---drop view v_tb;
---drop view v_tb1;
---drop view v_tb2;
---drop table tb;
---create view vtb as select 1 + 1;
---show create view vtb;
---drop view vtb;
+create table tb(id int, name text);
+create view v_tb as select * from tb;
+create view v_tb1 as select id from tb;
+create view v_tb2 as select name from tb;
+-- show create view v_tb;
+select "View", "Create View" from show_create_views('v_tb');
+ View |            Create View            
+------+-----------------------------------
+ v_tb | CREATE VIEW v_tb AS SELECT tb.id,+
+      |     tb.name                      +
+      |    FROM tb;
+(1 row)
+
+-- show create view v_tb1;
+select "View", "Create View" from show_create_views('v_tb1');
+ View  |            Create View            
+-------+-----------------------------------
+ v_tb1 | CREATE VIEW v_tb1 AS SELECT tb.id+
+       |    FROM tb;
+(1 row)
+
+-- show create view v_tb2;
+select "View", "Create View" from show_create_views('v_tb2');
+ View  |             Create View             
+-------+-------------------------------------
+ v_tb2 | CREATE VIEW v_tb2 AS SELECT tb.name+
+       |    FROM tb;
+(1 row)
+
+drop view v_tb;
+drop view v_tb1;
+drop view v_tb2;
+drop table tb;
+create view vtb as select 1 + 1;
+-- show create view vtb;
+select "View", "Create View" from show_create_views('vtb');
+ View |                  Create View                   
+------+------------------------------------------------
+ vtb  | CREATE VIEW vtb AS SELECT 1 + 1 AS "?column?";
+(1 row)
+
+drop view vtb;
 --show index
 create table tb(id int, name text);
 create index on tb(id);
@@ -2109,6 +2137,7 @@ drop schema test_sche;
 CREATE SCHEMA IF NOT EXISTS test_sche;
 SHOW TABLES FROM 123abc;
 ERROR:  Unknown database '123abc'
+CONTEXT:  PL/pgSQL function show_tables(character) line 4 at RAISE
 SHOW TABLES FROM test_sche;
  Tables_in_test_sche 
 ---------------------

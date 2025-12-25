@@ -3035,7 +3035,6 @@ _outSelectStmt(StringInfo str, const SelectStmt *node)
 	WRITE_BOOL_FIELD(all);
 	WRITE_NODE_FIELD(larg);
 	WRITE_NODE_FIELD(rarg);
-	WRITE_ENUM_FIELD(mysshowtype, ShowType);	/* BUG#Z5973, Mark the type of SHOW */
 }
 
 static void

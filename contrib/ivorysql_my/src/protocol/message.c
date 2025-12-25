@@ -356,6 +356,7 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
     switch(type)
     {
         case MYSQL_TYPE_NULL:
+            value = (Datum) 0;
             param->isnull = true;
             break;
         case MYSQL_TYPE_TINY:
