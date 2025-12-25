@@ -31,8 +31,7 @@
 	 pg_strcasecmp(CHARSET, "utf32") == 0 \
 	)
 
-extern Node *userVariable_Hash_Search(ParseState *pstate,
-								 VarRef *varRef);
+extern Node *userVariable_Hash_Search(ParseState *pstate, VarRef *varRef);
 extern void mysSetUserVarInternal(char *userVarName,
 								  Oid consttype,
 								  int32 consttypmod,

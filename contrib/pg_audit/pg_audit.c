@@ -11088,8 +11088,6 @@ static bool
 check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, TimestampTz impt_starttime,
 									TimestampTz impt_endtime, int2vector *impt_columns,  int confindex, AuditEvent *event, char *msg)
 {
-	char	warning_msg[MAXPGPATH] = {0};
-
 	/* if the occurrence time of the event is smaller than
 	 * the start time in pg_secmon_threshold, it will not
 	 * be recored
@@ -11120,9 +11118,7 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 			else
 			{
 
-				snprintf(warning_msg, MAXPGPATH, "The baseline name \"%s\" has reached the baseline threshold \"%s\"", basename, basevalue);
-
-				strncpy(msg, warning_msg, strlen(warning_msg));
+				snprintf(msg, MAXPGPATH, "The baseline name \"%s\" has reached the baseline threshold \"%s\"", basename, basevalue);
 
 				return true;
 			}
@@ -11165,9 +11161,7 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 
 							attname = get_attname(obj->objectId, impt_columns->values[i], false);
 							
-							snprintf(warning_msg, MAXPGPATH, "Important column \"%s\" has reached the threshold", attname);
-
-							strncpy(msg, warning_msg, strlen(warning_msg));
+							snprintf(msg, MAXPGPATH, "Important column \"%s\" has reached the threshold", attname);
 
 							return true;
 						}
@@ -11203,9 +11197,7 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 			else
 				endtime = pstrdup(timestamptz_to_str(impt_endtime));
 
-			snprintf(warning_msg, MAXPGPATH, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
-
-			strncpy(msg, warning_msg, strlen(warning_msg));
+			snprintf(msg, MAXPGPATH, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
 
 			return true;
 		}
@@ -11227,9 +11219,7 @@ check_onetime_threshold(TimestampTz starttime, char *basename, char *basevalue, 
 		else
 			endtime = pstrdup(timestamptz_to_str(impt_endtime));
 
-		snprintf(warning_msg, MAXPGPATH, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
-
-		strncpy(msg, warning_msg, strlen(warning_msg));
+		snprintf(msg, MAXPGPATH, "Reached the threshold of \"%s\" to \"%s\" important moments", starttime, endtime);
 
 		return true;
 	}
@@ -11258,7 +11248,6 @@ check_maxtimes_threshold(int32 interval, int32 maxtimes, TimestampTz starttime, 
 	int16		attnum_ruleoid;
 	int			count = 0;
 	bool		result = false;
-	char		warning_msg[MAXPGPATH] = {0};
 
 	current_time = GetCurrentTimestamp();
 
@@ -11325,9 +11314,7 @@ check_maxtimes_threshold(int32 interval, int32 maxtimes, TimestampTz starttime, 
 
 	if (result)
 	{
-		sprintf(warning_msg, "Reached the maximum threshold of %d times within %d minutes", maxtimes, interval);
-
-		strncpy(msg, warning_msg, strlen(warning_msg));
+		sprintf(msg, "Reached the maximum threshold of %d times within %d minutes", maxtimes, interval);
 	}
 
 	return result;	
@@ -11345,7 +11332,6 @@ check_sequence_threshold(int32 interval, int32 nsteps, TimestampTz starttime, oi
 	TimestampTz			search_end;
 	StringInfoData		str;
 	int					j;
-	char				warning_msg[MAXPGPATH] = {0};
 
 	/* no history or not enough */
 	if (SecmonCacheMemoryContext == NULL || CachedSecmonHistory.n_cached_secmon_his < nsteps)
@@ -11386,9 +11372,7 @@ check_sequence_threshold(int32 interval, int32 nsteps, TimestampTz starttime, oi
 		appendStringInfo(&str, "%u", ruleseq->values[j]);
 	}
 
-	sprintf(warning_msg, "The sequence of rule oid \"%s\" has reached the sequence threshold", str.data);
-
-	strncpy(msg, warning_msg, strlen(warning_msg));
+	sprintf(msg, "The sequence of rule oid \"%s\" has reached the sequence threshold", str.data);
 	
 	return true;	
 }

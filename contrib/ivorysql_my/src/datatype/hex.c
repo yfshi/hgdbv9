@@ -459,14 +459,10 @@ hex2bpchar(PG_FUNCTION_ARGS)
 		len = maxlen;
 	}
 
-	result = (BpChar *) palloc0(maxlen + VARHDRSZ);
-	SET_VARSIZE(result, maxlen + VARHDRSZ);
+	result = (BpChar *) palloc0(len + VARHDRSZ);
+	SET_VARSIZE(result, len + VARHDRSZ);
 	dst = VARDATA(result);
 	memcpy(dst, src, len);
-
-	/* blank pad the string if necessary */
-	if (maxlen > len)
-		memset(dst + len, ' ', maxlen - len);
 	
 	PG_RETURN_BPCHAR_P(result);
 }

@@ -165,6 +165,13 @@ typedef struct ShowFilter
 } ShowFilter;
 /* End - Req: SRS-MYSQL-CHARSET */
 
+/* Begin - ReqID:SRS-MYSQL-SHOW */
+enum {
+	STATUS_GLOBAL,
+	STATUS_SESSION,
+};
+/* End - ReqID:SRS-MYSQL-SHOW */
+
 /* ConstraintAttributeSpec yields an integer bitmask of these flags: */
 #define CAS_NOT_DEFERRABLE			0x01
 #define CAS_DEFERRABLE				0x02
@@ -293,17 +300,18 @@ static SelectStmt *makeShowTriggersStmt(Node *db_name, ShowFilter *filter);
 static SelectStmt *makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter);
 static SelectStmt *makeShowTableStatusStmt(Node *db_name, ShowFilter *filter);
 static SelectStmt *makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full);
+static SelectStmt *makeShowCreateViewStmt(RangeVar *var);
 static SelectStmt *makeShowSchemasStmt(ShowFilter *filter);
 static SelectStmt *makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool full);
-static Node *makeShowCreateDatabaseStmt(const char *showname, bool existflg);
-static Node *makeShowVariableStmt(const char *glob_or_session, ShowFilter *filter);
-static Node *makeShowStatusStmt(const char *glob_or_session, ShowFilter *filter);
-static Node *makeShowProcesslistStmt(void);
+static SelectStmt *makeShowCreateDatabaseStmt(const char *showname, bool existflg);
+static Node *makeShowVariableStmt(int status, ShowFilter *filter);
+static Node *makeShowStatusStmt(int status, ShowFilter *filter);
+static SelectStmt *makeShowProcesslistStmt(void);
 static Node *makeShowPrivilegesStmt(void);
-static Node *makeShowWarningsStmt(void);
+static SelectStmt *makeShowWarningsStmt(void);
 
 static ResTarget *makeRestaget(Node *val, char *alias);
-static Node *makeShowCreateTableStmt(RangeVar *rvar);
+static SelectStmt *makeShowCreateTableStmt(RangeVar *var);
 static Node *makeShowPluginsStmt(void);
 static Node *makeShowEnginesStmt(void);
 /* End - ReqID:SRS-MYSQL-SHOW */
@@ -2394,7 +2402,7 @@ MysqlShowStmt:
 				}
 			| SHOW CREATE VIEW qualified_name
 				{
-					$$ = (Node *)makeShowViewStmt($4);
+					$$ = (Node *)makeShowCreateViewStmt($4);
 				}
 			| SHOW databases_or_schemas opt_show_filter
 				{
@@ -2410,46 +2418,46 @@ MysqlShowStmt:
 				}
 			| SHOW CREATE database ColId
 				{
-					$$ = makeShowCreateDatabaseStmt($4, false);
+					$$ = (Node *)makeShowCreateDatabaseStmt($4, false);
 				}
 			| SHOW CREATE database IF_P NOT EXISTS ColId
 				{
-					$$ = makeShowCreateDatabaseStmt($7, true);
+					$$ = (Node *)makeShowCreateDatabaseStmt($7, true);
 				}
 			| SHOW CREATE TABLE qualified_name
 				{
-					$$ = makeShowCreateTableStmt($4);
+					$$ = (Node *)makeShowCreateTableStmt($4);
 				}
 			| SHOW VARIABLES opt_show_filter
 				{
-					$$ = makeShowVariableStmt("session", $3);
+					$$ = makeShowVariableStmt(STATUS_SESSION, $3);
 				}
 			| SHOW GLOBAL VARIABLES opt_show_filter
 				{
-					$$ = makeShowVariableStmt($2, $4);
+					$$ = makeShowVariableStmt(STATUS_GLOBAL, $4);
 				}
 			| SHOW SESSION VARIABLES opt_show_filter
 				{
-					$$ = makeShowVariableStmt($2, $4);
+					$$ = makeShowVariableStmt(STATUS_SESSION, $4);
 				}
 			/* Begin - #Z5943 */
 			| SHOW GLOBAL STATUS opt_show_filter
 				{
-					$$ = makeShowStatusStmt($2, $4);
+					$$ = makeShowStatusStmt(STATUS_GLOBAL, $4);
 				}
 			| SHOW SESSION STATUS opt_show_filter
 				{
-					$$ = makeShowStatusStmt($2, $4);
+					$$ = makeShowStatusStmt(STATUS_SESSION, $4);
 				}
 			/* End - #Z5943 */
 			/* Begin - #Z6036 */
 			| SHOW FULL PROCESSLIST
 				{
-					$$ = makeShowProcesslistStmt();
+					$$ = (Node *)makeShowProcesslistStmt();
 				}
 			| SHOW WARNINGS
 				{
-					$$ = makeShowWarningsStmt();
+					$$ = (Node *)makeShowWarningsStmt();
 				}
 			/* End - #Z6036 */
 			/* Begin - ReqID: SRS-MYSQL-PROTOCOL */
@@ -2468,21 +2476,16 @@ MysqlShowStmt:
 describe:
 			DESCRIBE
 			| DESC
-			;
+		;
 /* End - Req: SRS-MYSQL-SHOW */
 
 VariableShowStmt:
 			SHOW var_name opt_show_filter
 				{
-					/* Begin - #Z5943 */
-					if (strcasecmp($2, "status") == 0)
-					{
-						$$ = makeShowVariableStmt($2, $3);
-					} /* End - #Z5943 */
 					/* Begin - #Z6036 */
-					else if (strcasecmp($2, "processlist") == 0)
+					if (strcasecmp($2, "processlist") == 0)
 					{
-						$$ = makeShowProcesslistStmt();
+						$$ = (Node *)makeShowProcesslistStmt();
 					}
 					else if (strcasecmp($2, "privileges") == 0)
 					{
@@ -22135,16 +22138,20 @@ checkMultiDelete(DeleteStmt *stmt)
 }
 /* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
-/* Begin - Req: SRS-MYSQL-CHARSET */
+/** 
+ * Begin - Req: SRS-MYSQL-CHARSET
+ * Template for SQL:
+ *     SELECT * FROM RangeFunc(args) WHERE xxx
+ */
 static SelectStmt *
-makeRangeFuncSelect(char *funcname, Node *filter)
+makeRangeFuncSelect(char *funcname, List *args, Node *filter)
 {
 	SelectStmt 		*selectStmt = makeNode(SelectStmt);
 	ColumnRef 		*columnRef = makeNode(ColumnRef);
 	ResTarget 		*resTarget = makeNode(ResTarget);
 	RangeFunction 	*rangeFunction = makeNode(RangeFunction);
 	FuncCall 		*funcCall = makeFuncCall(list_make1(makeString(funcname)), 
-											 NIL,
+											 args,
 											 COERCE_EXPLICIT_CALL,
 											 -1);
 
@@ -22185,14 +22192,14 @@ static SelectStmt *
 makeShowCharsetStmt(ShowFilter *filter)
 {
 	Node *where = makeShowFilter("charset", filter);
-	return makeRangeFuncSelect("show_mysql_charsets", where);
+	return makeRangeFuncSelect("show_mysql_charsets", NIL, where);
 }
 
 static SelectStmt *
 makeShowCollationStmt(ShowFilter *filter)
 {
 	Node *where = makeShowFilter("collation", filter);
-	return makeRangeFuncSelect("show_mysql_collations", where);
+	return makeRangeFuncSelect("show_mysql_collations", NIL, where);
 }
 /* End - Req: SRS-MYSQL-CHARSET */
 
@@ -22205,64 +22212,9 @@ makeShowCollationStmt(ShowFilter *filter)
 static SelectStmt *
 makeShowTriggersStmt(Node *db_name, ShowFilter *filter)
 {
-	#define		TRIGGERS_COLUMN_NUMS 11
-
-	char		colnames[TRIGGERS_COLUMN_NUMS][32]
-							= {"TRIGGER_NAME", "EVENT_MANIPULATION", "EVENT_OBJECT_TABLE", "ACTION_STATEMENT",
-							   "ACTION_TIMING", "CREATED", "SQL_MODE", "DEFINER", "CHARACTER_SET_CLIENT",
-							   "COLLATION_CONNECTION", "DATABASE_COLLATION"};
-	char		ailas[TRIGGERS_COLUMN_NUMS][32]
-							= {"Trigger", "Event", "Table", "Statement", "Timing", "Created", "sql_mode",
-							   "Definer", "character_set_client", "collation_connection", "Database Collation"};
-	int			i = 0;
-	SelectStmt	*outer;
-	SelectStmt	*inner = makeNode(SelectStmt);
-	ResTarget	*rt;
-	ColumnRef	*cref;
-	Node		*col_db;
-	RangeSubselect *rss;
-
-	/* make subselect targetlist */
-	for (i = 0; i < TRIGGERS_COLUMN_NUMS; i++)
-	{
-		rt = makeShowResTarget(pstrdup(ailas[i]),
-							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
-							   -1);
-		inner->targetList = lappend(inner->targetList, rt);
-	}
-
-	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "triggers", -1));
-
-	/*
-	 * make subselect whereClause
-	 */
-	col_db = makeColumnRef("trigger_schema", NIL, -1, 0); /* [{FROM | IN} db_name] */
-	if (db_name)
-	{
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", col_db, db_name, -1);
-	}
-	else /* current schema */
-	{
-		FuncCall *funcCall = makeFuncCall(list_make2(makeString("pg_catalog"), makeString("current_schema")),
-										  NIL,
-										  COERCE_EXPLICIT_CALL,
-										  -1);
-
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
-													   col_db,
-													   (Node *)funcCall,
-													   -1);
-	}
-
-	/* make outerselect */
-	rss = makeShowRangeSubselect((Node *)inner, "subq");
-	cref = makeShowAllColumnRef();
-	rt = makeShowResTarget(NULL, (Node *) cref, -1);
-	/* [LIKE 'pattern' | WHERE expr] */
-	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter("Table", filter));
-
-	return outer;
+	return makeRangeFuncSelect("show_triggers", 
+							   db_name ? list_make1(db_name) : NIL, 
+							   makeShowFilter("Table", filter));
 }
 
 /* makeShowIndexStmt
@@ -22276,55 +22228,16 @@ makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
 	char	*relname = tb_name->relname;
 	char 	*schemaname = tb_name->schemaname;
 	char 	*funcname = "show_indexes";
-	SelectStmt 	*stmt = makeNode(SelectStmt);
-	List	*fromClause = NIL;
-	List	*targetList = NIL;
-	List 	*args = NIL;
-	ColumnRef *col;
-	ResTarget *res;
-	FuncCall *func;
-	RangeFunction *rfunc;
-	Node *whereClause;
-
-	// make target list
-	col = makeNode(ColumnRef);
-	col->fields = list_make1(makeNode(A_Star));
-	col->location = -1;
-
-	res = makeNode(ResTarget);
-	res->name = NULL;
-	res->indirection = NIL;
-	res->val = (Node *) col;
-	res->location = -1;
-
-	targetList = list_make1(res);
-
-	// make from clause
-	args = lappend(args, makeStringConst(relname, -1));
+	List 	*args = list_make1(makeStringConst(relname, -1));
 	
 	if (db_name)
 		args = lappend(args, db_name);
 	else if (schemaname)
 		args = lappend(args, makeStringConst(schemaname, -1));
 
-	func = makeFuncCall(MysqlSystemFuncName(funcname), 
-						args,
-						COERCE_EXPLICIT_CALL,
-						-1);
-
-	rfunc = (RangeFunction *) makeNode(RangeFunction);
-	rfunc->functions = list_make1(list_make2(func, NIL));
-
-	fromClause = list_make1(rfunc);
-
-	// make filter
-	whereClause = makeShowFilter("Table", filter);
-
-	stmt->targetList = targetList;
-	stmt->fromClause = fromClause;
-	stmt->whereClause = whereClause;
-
-	return stmt;
+	return makeRangeFuncSelect(funcname, 
+							   args, 
+							   makeShowFilter("Table", filter));
 }
 
 /* makeShowTableStatusStmt
@@ -22335,51 +22248,9 @@ makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
 static SelectStmt *
 makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 {
-	char 	*funcname = "show_table_status";
-	SelectStmt 	*stmt = makeNode(SelectStmt);
-	List	*fromClause = NIL;
-	List	*targetList = NIL;
-	List 	*args = NIL;
-	ColumnRef *col;
-	ResTarget *res;
-	FuncCall *func;
-	RangeFunction *rfunc;
-	Node *whereClause;
-
-	// make target list
-	col = makeNode(ColumnRef);
-	col->fields = list_make1(makeNode(A_Star));
-	col->location = -1;
-
-	res = makeNode(ResTarget);
-	res->name = NULL;
-	res->indirection = NIL;
-	res->val = (Node *) col;
-	res->location = -1;
-
-	targetList = list_make1(res);
-
-	if (db_name)
-		args = lappend(args, db_name);
-
-	func = makeFuncCall(MysqlSystemFuncName(funcname), 
-						args,
-						COERCE_EXPLICIT_CALL,
-						-1);
-
-	rfunc = (RangeFunction *) makeNode(RangeFunction);
-	rfunc->functions = list_make1(list_make2(func, NIL));
-
-	fromClause = list_make1(rfunc);
-
-	// make filter
-	whereClause = makeShowFilter("Name", filter);
-
-	stmt->targetList = targetList;
-	stmt->fromClause = fromClause;
-	stmt->whereClause = whereClause;
-
-	return stmt;
+	return makeRangeFuncSelect("show_table_status", 
+							   db_name ? list_make1(db_name) : NIL, 
+							   makeShowFilter("Name", filter));
 }
 
 /* makeShowTablesStmt
@@ -22390,95 +22261,59 @@ makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 static SelectStmt *
 makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 {
-	#define		TABLES_COLUMN_NUMS 2
-	#define		TABLE_STATUS_COLUMN_NUMS 18
+	char col_name[64], *schema_name = "";
+	SelectStmt *stmt;
+	RangeFunction *rf;
 
-	char		colnames[TABLE_STATUS_COLUMN_NUMS][16] = { "TABLE_NAME", "TABLE_TYPE" };
-	char		ailas[TABLE_STATUS_COLUMN_NUMS][16] = { "Tables", "Table_type" };
-	SelectStmt	*outer;
-	SelectStmt	*inner = makeNode(SelectStmt);
-	ResTarget	*rt;
-	ResTarget	*rt2;
-	ColumnRef	*cref;
-	Node		*col_db;
-	RangeSubselect *rss;
-	char		*schema = NULL;
-	char		*like_name;
-	char		*rtname = NULL;
-
-	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "tables", -1));
-
-	/*
-	 * make subselect whereClause
-	 *
-	 * [{FROM | IN} db_name]
-	 */
-	col_db = makeColumnRef("table_schema", NIL, -1, 0);
-	if (db_name) /* {FROM | IN} schema */
+	if (db_name)
 	{
-		inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", col_db, db_name, -1);
-		if (nodeTag(db_name) == T_A_Const)
-		{
-			A_Const *node  = (A_Const *)db_name;
-			schema = strVal(&node->val);
-		}
+		A_Const *con;
+
+		Assert(nodeTag(db_name) == T_A_Const);
+		
+		con = (A_Const *) db_name;
+
+		schema_name = strVal(&con->val);
 	}
-	else /* current schema */
+	else
 	{
-		/* The current schema myst be determined first;
-		 * otherwise, the correct value cannot be retrieved later.
-		 */
-		List	   *search_path = fetch_search_path(false);
+		List *search_path = fetch_search_path(false);
 
 		if (search_path != NIL)
 		{
-			schema = get_namespace_name(linitial_oid(search_path));
-
-			if (schema)
-			{
-				inner->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=",
-															   col_db,
-															   makeStringConst(schema, -1),
-															   -1);
-			}
+			schema_name = get_namespace_name(linitial_oid(search_path));
 
 			list_free(search_path);
 		}
 	}
 
-	/* make subselect targetlist */
-	if (schema)
-		rtname = psprintf("%s_in_%s", ailas[0], schema);
-	else
-		rtname = pstrdup(ailas[0]);
+	snprintf(col_name, sizeof(col_name), "Tables_in_%s", schema_name);
 
-	rt = makeShowResTarget(pstrdup(rtname),
-						   (Node *)makeColumnRef(pstrdup(colnames[0]), NIL, -1, 0),
-						   -1);
+	stmt = makeRangeFuncSelect("show_tables", 
+							   db_name ? list_make1(db_name) : NIL,
+							   makeShowFilter(pstrdup(col_name), filter));
 
-	inner->targetList = lappend(inner->targetList, rt);
-	like_name = rt->name;
+	// Change column's name
+	rf = linitial(stmt->fromClause);
+	rf->coldeflist = list_make2(makeColumnDef(pstrdup(col_name), VARCHAROID, -1, InvalidOid),
+								makeColumnDef(pstrdup("Table_type"), VARCHAROID, -1, InvalidOid));
 
-	if (full == true) /* display Table_type */
-	{
-		ResTarget	*rt1;
+	if (!full)
+		stmt->targetList = list_make1(makeRestaget(makeColumnRef(pstrdup(col_name), NIL, -1, 0), NULL));
 
-		rt1 = makeShowResTarget(pstrdup(ailas[1]),
-							   (Node *)makeColumnRef(pstrdup(colnames[1]), NIL, -1, 0),
-							   -1);
-		inner->targetList = lappend(inner->targetList, rt1);
-	}
+	return stmt;
+}
 
-	/* make outerselect */
-	rss = makeShowRangeSubselect((Node *)inner, "subq");
-	cref = makeShowAllColumnRef();
-	rt2 = makeShowResTarget(NULL, (Node *) cref, -1);
-	/* [LIKE 'pattern' | WHERE expr] */
-	outer = makeShowSelectStmt(list_make1(rt2), list_make1(rss), makeShowFilter(like_name, filter));
-	outer->mysshowtype =  SHOW_TABLES;	/* BUG#Z6442 */
+static SelectStmt *
+makeShowCreateViewStmt(RangeVar *var)
+{
+	char	*viewname = var->relname;
+	char 	*schemaname = var->schemaname;
 
-	return outer;
+	return makeRangeFuncSelect("show_create_views", 
+							   schemaname ? list_make2(makeStringConst(viewname, -1), makeStringConst(schemaname, -1)) 
+							   			  : list_make1(makeStringConst(viewname, -1)), 
+							   NULL);
 }
 
 /* makeShowSchemasStmt
@@ -22489,31 +22324,9 @@ makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 static SelectStmt *
 makeShowSchemasStmt(ShowFilter *filter)
 {
-	char		*colnames = "SCHEMA_NAME";
-	char		*ailas = "Database";
-	SelectStmt	*outer;
-	SelectStmt	*inner = makeNode(SelectStmt);
-	ResTarget	*rt;
-	ColumnRef	*cref;
-	RangeSubselect *rss;
-
-	/* make subselect targetlist */
-	rt = makeShowResTarget(pstrdup(ailas),
-							   (Node *)makeColumnRef(pstrdup(colnames), NIL, -1, 0),
-							   -1);
-	inner->targetList = lappend(inner->targetList, rt);
-
-	/* make subselect fromClause */
-	inner->fromClause = list_make1(makeRangeVar("mys_information_schema", "schemata", -1));
-
-	/* make outerselect */
-	rss = makeShowRangeSubselect((Node *)inner, "subq");
-	cref = makeShowAllColumnRef();
-	rt = makeShowResTarget(NULL, (Node *) cref, -1);
-	/* [LIKE 'pattern' | WHERE expr] */
-	outer = makeShowSelectStmt(list_make1(rt), list_make1(rss), makeShowFilter(ailas, filter));
-
-	return outer;
+	return makeRangeFuncSelect("show_databases", 
+							   NIL, 
+							   makeShowFilter("Database", filter));
 }
 
 /* makeShowColumnsStmt
@@ -22527,55 +22340,16 @@ makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool f
 	char	*relname = tb_name->relname;
 	char 	*schemaname = tb_name->schemaname;
 	char 	*funcname = full ? "show_columns_full" : "show_columns_normal";
-	SelectStmt 	*stmt = makeNode(SelectStmt);
-	List	*fromClause = NIL;
-	List	*targetList = NIL;
-	List 	*args = NIL;
-	ColumnRef *col;
-	ResTarget *res;
-	FuncCall *func;
-	RangeFunction *rfunc;
-	Node *whereClause;
-
-	// make target list
-	col = makeNode(ColumnRef);
-	col->fields = list_make1(makeNode(A_Star));
-	col->location = -1;
-
-	res = makeNode(ResTarget);
-	res->name = NULL;
-	res->indirection = NIL;
-	res->val = (Node *) col;
-	res->location = -1;
-
-	targetList = list_make1(res);
-
-	// make from clause
-	args = lappend(args, makeStringConst(relname, -1));
+	List 	*args = list_make1(makeStringConst(relname, -1));
 	
 	if (db_name)
 		args = lappend(args, db_name);
 	else if (schemaname)
 		args = lappend(args, makeStringConst(schemaname, -1));
 
-	func = makeFuncCall(MysqlSystemFuncName(funcname), 
-						args,
-						COERCE_EXPLICIT_CALL,
-						-1);
-
-	rfunc = (RangeFunction *) makeNode(RangeFunction);
-	rfunc->functions = list_make1(list_make2(func, NIL));
-
-	fromClause = list_make1(rfunc);
-
-	// make filter
-	whereClause = makeShowFilter("Field", filter);
-
-	stmt->targetList = targetList;
-	stmt->fromClause = fromClause;
-	stmt->whereClause = whereClause;
-
-	return stmt;
+	return makeRangeFuncSelect(funcname, 
+							   args, 
+							   makeShowFilter("Field", filter));
 }
 /* Begin - ReqID:SRS-MYSQL-SHOW */
 
@@ -22705,7 +22479,6 @@ makeVarAssgin(char *varname, Node *value, SetKindType kind, SetReturn setret, in
 static Node *
 makeVarRef(char *varname, VarKind kind, int location)
 {
-	
 	VarRef *var = makeNode(VarRef);
 
 	var->varname = varname;
@@ -22721,26 +22494,12 @@ makeVarRef(char *varname, VarKind kind, int location)
  * Construct a SelectStmt statement that
  * returns the function's result.
  */
-static Node *
+static SelectStmt *
 makeShowCreateDatabaseStmt(const char *showname, bool existflg)
 {
-	SelectStmt		   *selectStmt = makeNode(SelectStmt);
-	ColumnRef		   *columnRef = makeNode(ColumnRef);
-	ResTarget		   *resTarget = makeNode(ResTarget);
-	RangeFunction	   *rangeFunction = makeNode(RangeFunction);
-	FuncCall		   *funcCall = makeFuncCall(list_make2(makeString("ivymy"), makeString("mys_show_create_database")),
-												list_make2(makeStringConst(pstrdup(showname), -1), makeBoolAConst(existflg, -1)),
-												COERCE_EXPLICIT_CALL,
-												-1);
-
-	/* Construct a query whose result comes from a function */
-	rangeFunction->functions = list_make1(list_make2(funcCall, NIL));
-	selectStmt->fromClause = list_make1(rangeFunction);
-	columnRef->fields = list_make1(makeNode(A_Star));
-	resTarget->val = (Node *)columnRef;
-	selectStmt->targetList = list_make1(resTarget);
-
-	return (Node *) selectStmt;
+	return makeRangeFuncSelect("mys_show_create_database",
+							   list_make2(makeStringConst(pstrdup(showname), -1), makeBoolAConst(existflg, -1)),
+							   NULL);
 }
 
 /* makeRestaget
@@ -22764,27 +22523,20 @@ makeRestaget(Node *val, char *alias)
  * Construct a SelectStmt statement that
  * returns the function's result.
  */
-static Node *
-makeShowCreateTableStmt(RangeVar *rvar)
+static SelectStmt *
+makeShowCreateTableStmt(RangeVar *var)
 {
-	SelectStmt 	   *selectStmt = makeNode(SelectStmt);
-	ResTarget 	   *resTarget;
-	ResTarget 	   *resTargetcreate;
-	Oid				reloid = InvalidOid;
-	FuncCall	   *funcCall;
-	reloid = RangeVarGetRelid(rvar, NoLock, false);
-	funcCall = makeFuncCall(list_make2(makeString("ivymy"), makeString("mys_show_create_table")),
-							list_make1(makeIntConst(reloid, -1)),
-							COERCE_EXPLICIT_CALL,
-							-1);
-	/* Construct a query whose result comes from a function,
-	 * result named "Create Table", table named "Table".
-	 */
-	resTargetcreate = makeRestaget((Node *)funcCall, "Create Table");
-	resTarget = makeRestaget(makeStringConst(rvar->relname, -1), "Table");
-	selectStmt->targetList = list_make2(resTarget, resTargetcreate);
-	selectStmt->mysshowtype = SHOW_CREATE_TABLE;	/* BUG#Z5946 */
-	return (Node *) selectStmt;
+	char 	*relname = var->relname;
+	char 	*schemaname = var->schemaname;
+	Oid 	relid = RangeVarGetRelid(var, NoLock, false);
+
+	if (OidIsValid(relid) && get_rel_relkind(relid) == RELKIND_VIEW)
+		return makeShowCreateViewStmt(var);
+
+	return makeRangeFuncSelect("show_create_table",
+							   schemaname ? list_make2(makeStringConst(relname, -1), makeStringConst(schemaname, -1)) 
+							   			  : list_make1(makeStringConst(relname, -1)), 
+							   NULL);
 }
 
 /* makeShowVariableStmt
@@ -22793,40 +22545,17 @@ makeShowCreateTableStmt(RangeVar *rvar)
  * returns the view's result.
  */
 static Node *
-makeShowVariableStmt(const char *glob_or_session, ShowFilter *filter)
+makeShowVariableStmt(int status, ShowFilter *filter)
 {
 	SelectStmt	   *selectStmt = makeNode(SelectStmt);
 	ResTarget 	   *resvariablename;
 	ResTarget 	   *resvariablevalue;
 	Node		   *where = NULL;
-	char		   *viewstr = NULL;
+	char		   *viewname = NULL;
 
 	/* get system view's name */
-	if (glob_or_session != NULL )
-	{
-		if (pg_strcasecmp(glob_or_session, "global") == 0)
-		{
-			viewstr = pstrdup("global_variables");
-		}
-		else if (pg_strcasecmp(glob_or_session, "session") == 0 ||
-				 pg_strcasecmp(glob_or_session, "variables") == 0)
-		{
-			viewstr = pstrdup("session_variables");
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg(" unrecognized configuration parameter %s ", glob_or_session)));
-		}
-	}
-	else
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("unrecognized configuration parameter")));
-	}
-
+	viewname = (status == STATUS_GLOBAL) ? "global_variables" : "session_variables";
+		
 	/* A condition or a Like expression */
 	where = makeShowFilter(pstrdup("VARIABLE_NAME"), filter);
 
@@ -22836,7 +22565,7 @@ makeShowVariableStmt(const char *glob_or_session, ShowFilter *filter)
 
 	/* Construct a SelectStmt statement */
 	selectStmt->targetList = list_make2(resvariablename, resvariablevalue);
-	selectStmt->fromClause = list_make1(makeRangeVar("mys_information_schema", viewstr, -1));
+	selectStmt->fromClause = list_make1(makeRangeVar("mys_information_schema", pstrdup(viewname), -1));
 	selectStmt->whereClause = where;
 
 	return (Node *) selectStmt;
@@ -22896,7 +22625,7 @@ makeShowEnginesStmt(void)
  * returns the view's result.
  */
 static Node *
-makeShowStatusStmt(const char *glob_or_session, ShowFilter *filter)
+makeShowStatusStmt(int status, ShowFilter *filter)
 {
 	SelectStmt	   *selectStmt = makeNode(SelectStmt);
 	ResTarget 	   *resvariablename;
@@ -22905,30 +22634,8 @@ makeShowStatusStmt(const char *glob_or_session, ShowFilter *filter)
 	char		   *viewname = NULL;
 
 	/* get system view's name */
-	if (glob_or_session != NULL)
-	{
-		if (pg_strcasecmp(glob_or_session, "global") == 0)
-		{
-			viewname = pstrdup("global_status");
-		}
-		else if (pg_strcasecmp(glob_or_session, "session") == 0)
-		{
-			viewname = pstrdup("session_status");
-		}
-		else
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg(" unrecognized configuration parameter %s ", glob_or_session)));
-		}
-	}
-	else
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("unrecognized configuration parameter")));
-	}
-
+	viewname = (status == STATUS_GLOBAL) ? "global_status" : "session_status";
+	
 	/* A condition or a Like expression */
 	where = makeShowFilter(pstrdup("VARIABLE_NAME"), filter);
 
@@ -22938,7 +22645,7 @@ makeShowStatusStmt(const char *glob_or_session, ShowFilter *filter)
 
 	/* Construct a SelectStmt statement */
 	selectStmt->targetList = list_make2(resvariablename, resvariablevalue);
-	selectStmt->fromClause = list_make1(makeRangeVar("performance_schema", viewname, -1));
+	selectStmt->fromClause = list_make1(makeRangeVar("performance_schema", pstrdup(viewname), -1));
 	selectStmt->whereClause = where;
 
 	return (Node *) selectStmt;
@@ -22951,31 +22658,10 @@ makeShowStatusStmt(const char *glob_or_session, ShowFilter *filter)
  * Construct a SelectStmt statement that
  * returns the view's result.
  */
-static Node *
+static SelectStmt *
 makeShowProcesslistStmt(void)
 {
-#define		PROCESSLIST_COLUMN_NUMS 8
-	char		colnames[PROCESSLIST_COLUMN_NUMS][16]
-						= {"ID", "USER","HOST", "DB", "COMMAND", "TIME", "STATE", "INFO"};
-	char		ailas[PROCESSLIST_COLUMN_NUMS][16]
-						= {"Id", "User", "Host", "db", "Command", "Time", "State", "Info"};
-	int 		i = 0;
-	SelectStmt	*outer = makeNode(SelectStmt);
-	ResTarget	*rt;
-
-	/* make subselect targetlist */
-	for (i = 0; i < PROCESSLIST_COLUMN_NUMS; i++)
-	{
-		rt = makeShowResTarget(pstrdup(ailas[i]),
-							   (Node *)makeColumnRef(pstrdup(colnames[i]), NIL, -1, 0),
-							   -1);
-		outer->targetList = lappend(outer->targetList, rt);
-	}
-
-	/* make subselect fromClause */
-	outer->fromClause = list_make1(makeRangeVar("mys_information_schema", "processlist", -1));
-
-	return (Node *) outer;
+	return makeRangeFuncSelect("show_processlist", NIL, NULL);
 }
 
 /* makeShowPrivilegesStmt
@@ -23010,26 +22696,10 @@ makeShowPrivilegesStmt(void)
  * Construct a SelectStmt statement that
  * returns the function's result.
  */
-static Node *
+static SelectStmt *
 makeShowWarningsStmt(void)
 {
-	SelectStmt		   *selectStmt = makeNode(SelectStmt);
-	ColumnRef		   *columnRef = makeNode(ColumnRef);
-	ResTarget		   *resTarget = makeNode(ResTarget);
-	RangeFunction	   *rangeFunction = makeNode(RangeFunction);
-	FuncCall		   *funcCall = makeFuncCall(list_make2(makeString("ivymy"), makeString("mys_show_warnings")),
-												NIL,
-												COERCE_EXPLICIT_CALL,
-												-1);
-
-	/* Construct a query whose result comes from a function */
-	rangeFunction->functions = list_make1(list_make2(funcCall, NIL));
-	selectStmt->fromClause = list_make1(rangeFunction);
-	columnRef->fields = list_make1(makeNode(A_Star));
-	resTarget->val = (Node *)columnRef;
-	selectStmt->targetList = list_make1(resTarget);
-
-	return (Node *) selectStmt;
+	return makeRangeFuncSelect("mys_show_warnings", NIL, NULL);
 }
 /* End - #Z6036 */
 

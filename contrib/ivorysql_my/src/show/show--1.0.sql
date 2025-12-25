@@ -690,3 +690,152 @@ BEGIN
 	END IF;
 END
 $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION ivymy.show_triggers(
+	IN  db_name char DEFAULT NULL,
+	OUT "Trigger" varchar,
+	OUT "Event" varchar,
+	OUT "Table" varchar,
+	OUT "Statement" longtext,
+	OUT "Timing" varchar,
+	OUT "Created" datetime(2),
+	OUT "sql_mode" varchar,
+	OUT "Definer" varchar,
+	OUT "character_set_client" varchar,
+	OUT "collation_connection" varchar,
+	OUT "Database Collation" varchar)
+RETURNS SETOF record AS $$
+BEGIN
+	IF db_name IS NOT NULL AND to_regnamespace(db_name) IS NULL THEN
+		RAISE EXCEPTION 'Unknown database ''%''', db_name;
+	END IF;
+
+	IF db_name IS NULL THEN
+		RETURN QUERY SELECT
+			"TRIGGER_NAME", "EVENT_MANIPULATION", "EVENT_OBJECT_TABLE", "ACTION_STATEMENT",
+			"ACTION_TIMING", "CREATED", "SQL_MODE", "DEFINER", "CHARACTER_SET_CLIENT",
+			"COLLATION_CONNECTION", "DATABASE_COLLATION"
+		FROM mys_information_schema.triggers;
+	ELSE
+		RETURN QUERY SELECT
+			"TRIGGER_NAME", "EVENT_MANIPULATION", "EVENT_OBJECT_TABLE", "ACTION_STATEMENT",
+			"ACTION_TIMING", "CREATED", "SQL_MODE", "DEFINER", "CHARACTER_SET_CLIENT",
+			"COLLATION_CONNECTION", "DATABASE_COLLATION"
+		FROM mys_information_schema.triggers
+		WHERE trigger_schema = db_name;
+	END IF;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ivymy.show_databases(OUT "Database" varchar)
+RETURNS SETOF varchar AS $$
+	SELECT
+		"SCHEMA_NAME"
+	FROM mys_information_schema.schemata;
+$$ LANGUAGE SQL;
+
+
+CREATE OR REPLACE FUNCTION ivymy.show_processlist(
+	OUT "Id" varchar,
+	OUT "User" varchar,
+	OUT "Host" varchar,
+	OUT "db" varchar,
+	OUT "Command" varchar,
+	OUT "Time" varchar,
+	OUT "State" varchar,
+	OUT "Info" varchar)
+RETURNS SETOF record AS $$
+	SELECT
+		"ID", "USER","HOST", "DB", "COMMAND", "TIME", "STATE", "INFO"
+	FROM mys_information_schema.processlist;
+$$ LANGUAGE SQL;
+
+
+CREATE OR REPLACE FUNCTION ivymy.show_tables(
+	IN db_name char DEFAULT current_schema())
+RETURNS SETOF record AS $$
+BEGIN
+	IF db_name IS NOT NULL AND to_regnamespace(db_name) IS NULL THEN
+		RAISE EXCEPTION 'Unknown database ''%''', db_name;
+	END IF;
+
+	RETURN QUERY
+	SELECT
+		"TABLE_NAME", "TABLE_TYPE"
+	FROM mys_information_schema.tables
+	WHERE table_schema = db_name;
+END
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION ivymy.show_create_views(
+	IN  view_name char,
+	IN  db_name char DEFAULT current_schema(),
+	OUT "View" varchar,
+	OUT "Create View" varchar,
+	OUT "character_set_client" varchar,
+	OUT "collation_connection" varchar)
+RETURNS SETOF record AS $$
+DECLARE
+	rkind char;
+BEGIN
+	IF to_regclass(concat(db_name, '.', view_name)) IS NULL AND 
+	   to_regclass(view_name) IS NULL THEN
+		RAISE EXCEPTION 'Table ''%'' doesn''t exist', concat(db_name, '.', view_name);
+	END IF;
+
+	SELECT relkind INTO rkind
+	FROM pg_class
+	WHERE
+		relnamespace = to_regnamespace(db_name)::oid AND
+		relname = view_name;
+
+	IF rkind != 'v' THEN
+		RAISE EXCEPTION '''%'' is not VIEW', concat(db_name, '.', view_name);
+	END IF;
+
+	RETURN QUERY SELECT
+		v.TABLE_NAME AS "View",
+		CASE WHEN c.relpersistence = 't'
+ 			THEN concat('CREATE TEMP VIEW ', v.TABLE_NAME, ' AS', v.VIEW_DEFINITION)
+ 		ELSE
+ 			concat('CREATE VIEW ', v.TABLE_NAME, ' AS', v.VIEW_DEFINITION)
+ 		END AS "Create View",
+		v.CHARACTER_SET_CLIENT AS character_set_client,
+		v.COLLATION_CONNECTION AS collation_connection
+	FROM mys_information_schema.views v
+	JOIN pg_catalog.pg_namespace n ON v.TABLE_SCHEMA = n.nspname
+	JOIN pg_catalog.pg_class c ON v.TABLE_NAME = c.relname AND c.relnamespace = n.oid
+	WHERE v.TABLE_SCHEMA = db_name AND
+		  v.TABLE_NAME = view_name;
+END
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION ivymy.show_create_table(
+	IN  tb_name char,
+	IN  db_name char DEFAULT current_schema(),
+	OUT "Table" varchar,
+	OUT "Create Table" varchar)
+RETURNS SETOF record AS $$
+DECLARE
+	reloid 	Oid;
+BEGIN
+	-- consider temp table
+	IF to_regclass(concat(db_name, '.', tb_name)) IS NULL AND 
+	   to_regclass(tb_name) IS NULL THEN
+		RAISE EXCEPTION 'Table ''%'' doesn''t exist', concat(db_name, '.', tb_name);
+	END IF;
+
+	IF to_regclass(concat(db_name, '.', tb_name)) IS NOT NULL THEN
+		reloid := to_regclass(concat(db_name, '.', tb_name))::oid;
+	ELSE
+		reloid := to_regclass(tb_name)::oid;
+	END IF;
+
+	RETURN QUERY SELECT
+		tb_name::varchar as "Table",
+		ivymy.mys_show_create_table(reloid)::varchar as "Create Table";
+END
+$$ LANGUAGE plpgsql;

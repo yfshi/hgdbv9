@@ -1181,8 +1181,7 @@ _equalSelectStmt(const SelectStmt *a, const SelectStmt *b)
 	COMPARE_SCALAR_FIELD(all);
 	COMPARE_NODE_FIELD(larg);
 	COMPARE_NODE_FIELD(rarg);
-	COMPARE_SCALAR_FIELD(mysshowtype);	/* BUG#Z5973, Mark the type of SHOW */
-
+	
 	return true;
 }
 

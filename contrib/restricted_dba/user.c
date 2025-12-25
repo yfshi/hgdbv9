@@ -889,7 +889,7 @@ Datum
 has_createrole(PG_FUNCTION_ARGS)
 {
 	Oid			role_id = PG_GETARG_OID(0);
-	bool		result;
+	bool		result = false;
 	HeapTuple	utup;
 
 	if (se_feature.mode)

@@ -114,21 +114,25 @@ drop view vtest;
 drop table test;
 
 --show create view
---create table tb(id int, name text);
---create view v_tb as select * from tb;
---create view v_tb1 as select id from tb;
---create view v_tb2 as select name from tb;
---show create view v_tb;
---show create view v_tb1;
---show create view v_tb2;
---drop view v_tb;
---drop view v_tb1;
---drop view v_tb2;
---drop table tb;
+create table tb(id int, name text);
+create view v_tb as select * from tb;
+create view v_tb1 as select id from tb;
+create view v_tb2 as select name from tb;
+-- show create view v_tb;
+select "View", "Create View" from show_create_views('v_tb');
+-- show create view v_tb1;
+select "View", "Create View" from show_create_views('v_tb1');
+-- show create view v_tb2;
+select "View", "Create View" from show_create_views('v_tb2');
+drop view v_tb;
+drop view v_tb1;
+drop view v_tb2;
+drop table tb;
 
---create view vtb as select 1 + 1;
---show create view vtb;
---drop view vtb;
+create view vtb as select 1 + 1;
+-- show create view vtb;
+select "View", "Create View" from show_create_views('vtb');
+drop view vtb;
 
 --show index
 create table tb(id int, name text);
