@@ -3,7 +3,6 @@
  *	Compatible Oracle Trigger regression test
  *
  ********************************************/
-
 drop table if exists empt;
 CREATE TABLE empt (
 	emp_id NUMBER PRIMARY KEY,
@@ -274,7 +273,7 @@ END;
 
 /* Begin - BUG#Z6215 6216 */
 select trigger_name, trigger_type, triggering_event, base_object_type, table_name
- from user_triggers where upper(trigger_name) = 'TRG_EMP_INFO_DELETE';
+ from all_triggers where upper(trigger_name) = 'TRG_EMP_INFO_DELETE'; /* BUG#Z6879 */
 /* End - BUG#Z6215 6216 */
 /* End - BUG#Z6177 */
 
@@ -383,12 +382,12 @@ END;
 
 /* Begin - BUG#Z6215 6216 */
 select trigger_name, trigger_type, triggering_event, base_object_type, table_name
- from user_triggers where upper(trigger_name) = 'TGTIOTSC';
+ from all_triggers where upper(trigger_name) = 'TGTIOTSC';	/* BUG#Z6879 */
 /* End - BUG#Z6215 6216 */
 
 /* Begin - BUG#Z6339 */
 select trigger_name, crossedition
- from user_triggers where upper(trigger_name) = 'TGTIOTSC';
+ from all_triggers where upper(trigger_name) = 'TGTIOTSC';	/* BUG#Z6879 */
 /* End - BUG#Z6339 */
 
 INSERT INTO tb1 (name, salary) VALUES ('Wang 5', 7000); -- fire trigger
@@ -1001,3 +1000,163 @@ select * from test_dest;
 drop trigger test_trig;
 drop table test_ids;
 drop table test_dest;
+
+/* Begin - BUG#Z6559 */
+drop table if exists t_emp;
+drop table if exists salary_audit_log;
+
+CREATE TABLE t_emp (
+    emp_id     NUMBER PRIMARY KEY,
+    emp_name   VARCHAR2(50),
+    salary     NUMBER,
+    created_at DATE
+);
+
+CREATE TABLE salary_audit_log (
+    emp_id      NUMBER,
+    action      VARCHAR2(50),
+    old_salary  NUMBER,
+    new_salary  NUMBER,
+    action_time DATE
+);
+
+CREATE TRIGGER tgins6559
+BEFORE INSERT ON t_emp
+FOR EACH ROW
+WHEN (
+        OLD.salary IS NULL
+    AND NEW.salary IS NOT NULL
+)
+BEGIN
+    INSERT INTO salary_audit_log (
+        emp_id,
+        action,
+        old_salary,
+        new_salary,
+        action_time
+    )
+    VALUES (
+        :NEW.emp_id,
+        'TEST_WHEN_OLD_IS_NULL',
+        NULL,
+        :NEW.salary,
+        TO_DATE('2025-12-24','yyyy-mm-dd')
+    );
+END;
+/
+
+INSERT INTO t_emp VALUES (1, 'Alice', NULL, TO_DATE('2025-12-24','yyyy-mm-dd')); -- not fire
+INSERT INTO t_emp VALUES (2, 'Bob', 10000, TO_DATE('2025-12-24','yyyy-mm-dd')); -- fire
+
+select * from t_emp order by emp_id;
+select * from salary_audit_log;
+
+CREATE OR REPLACE TRIGGER tgins6559
+BEFORE INSERT ON t_emp
+FOR EACH ROW
+WHEN (
+        OLD.salary IS NOT NULL
+    AND NEW.salary > 20000
+)
+BEGIN
+    INSERT INTO salary_audit_log (
+        emp_id,
+        action,
+        old_salary,
+        new_salary,
+        action_time
+    )
+    VALUES (
+        :NEW.emp_id,
+        'TEST_WHEN_OLD_IS_NOT_NULL',
+        NULL,
+        :NEW.salary,
+        TO_DATE('2025-12-24','yyyy-mm-dd')
+    );
+END;
+/
+
+INSERT INTO t_emp VALUES (3, 'Hannibal', 21000, TO_DATE('2025-12-24','yyyy-mm-dd')); -- not fire
+
+select * from t_emp order by emp_id;
+select * from salary_audit_log;
+
+drop table if exists t_orders;
+drop table if exists order_delete_log;
+
+CREATE TABLE t_orders (
+    order_id   NUMBER PRIMARY KEY,
+    status     VARCHAR2(20),
+    amount     NUMBER,
+    created_at DATE
+);
+
+CREATE TABLE order_delete_log (
+    order_id    NUMBER,
+    old_status  VARCHAR2(20),
+    delete_time DATE
+);
+
+CREATE TRIGGER tgdel6559
+BEFORE DELETE ON t_orders
+FOR EACH ROW
+WHEN (
+        NEW.status IS NULL
+    AND OLD.status IN ('NEW', 'PENDING')
+)
+BEGIN
+    INSERT INTO order_delete_log (
+        order_id,
+        old_status,
+        delete_time
+    )
+    VALUES (
+        :OLD.order_id,
+        :OLD.status,
+        TO_DATE('2025-12-24','yyyy-mm-dd')
+    );
+END;
+/
+
+INSERT INTO t_orders VALUES (1001, 'NEW',         199.00, TO_DATE('2025-12-21','yyyy-mm-dd'));
+INSERT INTO t_orders VALUES (1002, 'PENDING',  299.00, TO_DATE('2025-12-22','yyyy-mm-dd'));
+INSERT INTO t_orders VALUES (1003, 'PAID',     399.00, TO_DATE('2025-12-23','yyyy-mm-dd'));
+INSERT INTO t_orders VALUES (1004, 'CANCELLED',149.00, TO_DATE('2025-12-19','yyyy-mm-dd'));
+
+SELECT * FROM t_orders ORDER BY order_id;
+DELETE FROM t_orders WHERE order_id IN (1001, 1002);
+select * from order_delete_log;
+
+CREATE OR REPLACE TRIGGER tgdel6559
+BEFORE DELETE ON t_orders
+FOR EACH ROW
+WHEN (
+        NEW.status IS NOT NULL
+    AND OLD.status IN ('PAID', 'CANCELLED')
+)
+BEGIN
+    INSERT INTO order_delete_log (
+        order_id,
+        old_status,
+        delete_time
+    )
+    VALUES (
+        :OLD.order_id,
+        :OLD.status,
+        TO_DATE('2025-12-24','yyyy-mm-dd')
+    );
+END;
+/
+
+SELECT * FROM t_orders ORDER BY order_id;
+DELETE FROM t_orders WHERE order_id IN (1003, 1004);
+select * from order_delete_log;
+
+--cleanup
+DROP TRIGGER tgdel6559;
+DROP TRIGGER tgins6559;
+DROP TABLE t_emp;
+DROP TABLE salary_audit_log;
+DROP TABLE t_orders;
+DROP TABLE order_delete_log;
+/* Begin - BUG#Z6559 */
