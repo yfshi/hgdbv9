@@ -65,6 +65,7 @@
 #include "utils/fmgroids.h"
 #include "utils/pg_locale.h"
 #include "utils/snapmgr.h"
+#include "utils/spccache.h" /* ReqID:SRS-SECURITY-TABLESPACE */
 #include "utils/syscache.h"
 #include "libpq/crypt.h"
 #include "catalog/pg_auth_members.h"
@@ -1604,6 +1605,8 @@ AlterDatabase(ParseState *pstate, AlterDatabaseStmt *stmt, bool isTopLevel)
 
 	if (dtablespace)
 	{
+		Oid dbid = InvalidOid; /* ReqID:SRS-SECURITY-TABLESPACE */
+
 		/*
 		 * While the SET TABLESPACE syntax doesn't allow any other options,
 		 * somebody could write "WITH TABLESPACE ...".  Forbid any other
@@ -1615,6 +1618,27 @@ AlterDatabase(ParseState *pstate, AlterDatabaseStmt *stmt, bool isTopLevel)
 					 errmsg("option \"%s\" cannot be specified with other options",
 							dtablespace->defname),
 					 parser_errposition(pstate, dtablespace->location)));
+
+		/* Begin - ReqID:SRS-SECURITY-TABLESPACE */
+		/*
+		 * The "ALTER DATABASE xxx SET TABLESPACE xxx" syntax doesn't allow
+		 * this operation. Specifically, it cann't move a database from a
+		 * non-encrypted tablespace to an encrypted one;
+		 */
+		dbid = get_database_oid(stmt->dbname, true);
+		if (dbid != InvalidOid)
+		{
+			char *spc = defGetString(dtablespace);
+			if (spc)
+			{
+				if (get_tablespace_encrypt(get_tablespace_oid(spc, true)) &&
+					!get_tablespace_encrypt(get_database_tablespace(dbid)))
+					elog(ERROR, "database located in non-encrypted tablespace cannot "
+								"be moved to the encrypted tablespace \"%s\".", spc);
+			}
+		}
+		/* End - ReqID:SRS-SECURITY-TABLESPACE */
+
 		/* this case isn't allowed within a transaction block */
 		PreventInTransactionBlock(isTopLevel, "ALTER DATABASE SET TABLESPACE");
 		movedb(stmt->dbname, defGetString(dtablespace));
@@ -2283,6 +2307,28 @@ get_database_name(Oid dbid)
 	return result;
 }
 
+/* Begin - ReqID:SRS-SECURITY-TABLESPACE */
+/*
+ * get_database_tablespace - given a database OID, look up the tablespace
+ */
+Oid
+get_database_tablespace(Oid dbid)
+{
+	HeapTuple	dbtuple;
+	Oid		    result;
+
+	dbtuple = SearchSysCache1(DATABASEOID, ObjectIdGetDatum(dbid));
+	if (HeapTupleIsValid(dbtuple))
+	{
+		result = ((Form_pg_database) GETSTRUCT(dbtuple))->dattablespace;
+		ReleaseSysCache(dbtuple);
+	}
+	else
+		result = InvalidOid;
+
+	return result;
+}
+/* End - ReqID:SRS-SECURITY-TABLESPACE */
 
 /*
  * While dropping a database the pg_database row is marked invalid, but the

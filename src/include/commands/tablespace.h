@@ -43,6 +43,7 @@ typedef struct TableSpaceOpts
 	float8		seq_page_cost;
 	int			effective_io_concurrency;
 	int			maintenance_io_concurrency;
+	bool		encrypt; /* ReqID:SRS-SECURITY-TABLESPACE - encrypt the tablespace */
 } TableSpaceOpts;
 
 extern Oid	CreateTableSpace(CreateTableSpaceStmt *stmt);
