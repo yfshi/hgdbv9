@@ -1,8 +1,6 @@
 # contrib/hsh/Makefile
 
-MODULE_big = hsh
-OBJS = hsh.o \
-        $(WIN32RES) 
+MODULES = hsh
 
 EXTENSION = hsh
 DATA = hsh--1.0.sql
