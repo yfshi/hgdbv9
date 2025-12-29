@@ -137,6 +137,7 @@ static void TransitionTableAddTuple(EState *estate,
 /* Begin - ReqID:SRS-SQL-TRIGGER */
 static ObjectAddress renameOratrig(Oid relid, char *trigname, char *rename);
 static bool check_tableTriglist_has_follows(Trigger             *triggers, int numtrigs);
+static TupleTableSlot *OraMakeAllNullSlot(EState *estate, ResultRelInfo *relInfo, TriggerEvent event);	/* BUG#Z6559 */
 /* End - ReqID:SRS-SQL-TRIGGER */
 
 
@@ -751,7 +752,7 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 								(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 								 errmsg("statement trigger's WHEN condition cannot reference column values"),
 								 parser_errposition(pstate, var->location)));
-					if (TRIGGER_FOR_INSERT(tgtype))
+					if (TRIGGER_FOR_INSERT(tgtype) && !stmt->ora_trfuncsrc)	/* BUG#Z6559 */
 						ereport(ERROR,
 								(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 								 errmsg("INSERT trigger's WHEN condition cannot reference OLD values"),
@@ -764,7 +765,7 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 								(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 								 errmsg("statement trigger's WHEN condition cannot reference column values"),
 								 parser_errposition(pstate, var->location)));
-					if (TRIGGER_FOR_DELETE(tgtype))
+					if (TRIGGER_FOR_DELETE(tgtype) && !stmt->ora_trfuncsrc)	/* BUG#Z6559 */
 						ereport(ERROR,
 								(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 								 errmsg("DELETE trigger's WHEN condition cannot reference NEW values"),
@@ -3997,6 +3998,43 @@ GetTupleForTrigger(EState *estate,
 	return true;
 }
 
+/* Begin - BUG#Z6559 */
+static TupleTableSlot *
+OraMakeAllNullSlot(EState *estate, ResultRelInfo *relInfo, TriggerEvent event)
+{
+	TupleDesc 		tupdesc;
+	TupleTableSlot	*slot = NULL;
+	HeapTuple 		tuple;
+	Datum			*values;
+	bool			*nulls;
+	int				natts;
+	int 			i;
+
+	tupdesc = RelationGetDescr(relInfo->ri_RelationDesc);
+	natts = tupdesc->natts;
+
+	values = (Datum *) palloc0(sizeof(Datum) * natts);
+	nulls = (bool *) palloc0(sizeof(bool) * natts);
+
+	for (i = 0; i < natts; i++)
+		nulls[i] = true;
+
+	tuple = heap_form_tuple(tupdesc, values, nulls);
+
+	if (TRIGGER_FIRED_BY_INSERT(event))
+		slot = ExecGetTriggerOldSlot(estate, relInfo);
+	else if (TRIGGER_FIRED_BY_DELETE(event))
+		slot = ExecGetTriggerNewSlot(estate, relInfo);
+
+	ExecForceStoreHeapTuple(tuple, slot, true);
+
+	pfree(values);
+	pfree(nulls);
+
+	return slot;
+}
+/* End - BUG#Z6559 */
+
 /*
  * Is trigger enabled to fire?
  */
@@ -4050,6 +4088,13 @@ TriggerEnabled(EState *estate, ResultRelInfo *relinfo,
 		ExprContext *econtext;
 		MemoryContext oldContext;
 		int			i;
+		/* Begin - BUG#Z6559 */
+		TupleTableSlot	*effective_oldslot = NULL;
+		TupleTableSlot	*effective_newslot = NULL;
+		ObjectAddress	object;
+		PgObjectInfo	objinfo;
+		bool			is_ora_trigger = false;
+		/* End - BUG#Z6559 */
 
 		Assert(estate != NULL);
 
@@ -4080,6 +4125,29 @@ TriggerEnabled(EState *estate, ResultRelInfo *relinfo,
 			MemoryContextSwitchTo(oldContext);
 		}
 
+		/* Begin - BUG#Z6559 */
+		effective_oldslot = oldslot;
+		effective_newslot = newslot;
+
+		ObjectAddressSet(object, TriggerRelationId, trigger->tgoid);
+
+		if (pg_object_get_ori_infor_hook)
+		{
+			objinfo =  pg_object_get_ori_infor_hook(object);
+			if (objinfo && objinfo->oricompatible_mode == 'o')
+				is_ora_trigger = true;
+		}
+
+		if (is_ora_trigger && TRIGGER_FIRED_BY_INSERT(event) && oldslot == NULL)
+		{
+			effective_oldslot = OraMakeAllNullSlot(estate, relinfo, event);
+		}
+		else if (is_ora_trigger && TRIGGER_FIRED_BY_DELETE(event) && newslot == NULL)
+		{
+			effective_newslot = OraMakeAllNullSlot(estate, relinfo, event);
+		}
+		/* End - BUG#Z6559 */
+
 		/*
 		 * We will use the EState's per-tuple context for evaluating WHEN
 		 * expressions (creating it if it's not already there).
@@ -4090,8 +4158,8 @@ TriggerEnabled(EState *estate, ResultRelInfo *relinfo,
 		 * Finally evaluate the expression, making the old and/or new tuples
 		 * available as INNER_VAR/OUTER_VAR respectively.
 		 */
-		econtext->ecxt_innertuple = oldslot;
-		econtext->ecxt_outertuple = newslot;
+		econtext->ecxt_innertuple = effective_oldslot;
+		econtext->ecxt_outertuple = effective_newslot;
 		if (!ExecQual(*predicate, econtext))
 			return false;
 	}
