@@ -71,20 +71,22 @@ sub _new
 	}
 # End - ReqID:SRS-SQL-PROC
 	#/* Begin - BUG#Z00004967 */
-	$options->{hg_product_name} = qq {"HG Database Server"}
+	#/* Begin - BUG#Z00006969 */
+	$options->{hg_product_name} = "HG Database Server"
 		unless $options->{hg_product_name};		#undef means default
-	$options->{hg_major_version} = qq {"V9"}
+	$options->{hg_major_version} = "V9"
 		unless $options->{hg_major_version};		#undef means default
-	$options->{hg_extral_version} = qq {"03-0-0-0000"}
+	$options->{hg_extral_version} = "05-0-0-0000"
 		unless $options->{hg_extral_version};		#undef means default
-	$options->{hg_project_id} = qq {"590"}
+	$options->{hg_project_id} = "590"
 		unless $options->{hg_project_id};		#undef means default
-	$options->{hg_patch_str} = qq {""}
+	$options->{hg_patch_str} = ""
 		unless $options->{hg_patch_str};		#undef means default
 	#/* End - BUG#Z00004967 */
 	#/* Begin - BUG#Z00005371 */
-	$options->{hg_hgdb_version} = qq {"V9.0"}
+	$options->{hg_hgdb_version} = "V9.0"
 		unless $options->{hg_hgdb_version};		#undef means default
+	#/* End - BUG#Z00006969 */
 	#/* End - BUG#Z00005371 */
 	return $self;
 }
@@ -608,20 +610,22 @@ sub GenerateFiles
 		MISC_INTERNAL              => $self->{options}->{internal_guc} ? 1 : undef,
 		# End - ReqID:SRS-Performance-GUC
 		#/* Begin - BUG#Z00004967 */
-		HG_PRODUCT_NAME				=> $self->{options}->{hg_product_name},
-		HG_MAJOR_VERSION			=> $self->{options}->{hg_major_version},
-		HG_EXTRAL_VERSION			=> $self->{options}->{hg_extral_version},
-		HG_PROJECT_ID				=> $self->{options}->{hg_project_id},
-		HG_PATCH_STR				=> $self->{options}->{hg_patch_str},
+		#/* Begin - BUG#Z00006969 */
+		HG_PRODUCT_NAME				=> qq {"$self->{options}->{hg_product_name}"},
+		HG_MAJOR_VERSION			=> qq {"$self->{options}->{hg_major_version}"},
+		HG_EXTRAL_VERSION			=> qq {"$self->{options}->{hg_extral_version}"},
+		HG_PROJECT_ID				=> qq {"$self->{options}->{hg_project_id}"},
+		HG_PATCH_STR				=> qq {"$self->{options}->{hg_patch_str}"},
 		HG_BUILD_CPU				=> qq {"$bits-bit"},
 		HG_BUILD_DATE				=> qq {"$hg_build_date"},
 		HG_BRANCH_HASH				=> qq {"$hg_branch_hash"},
 		HG_BRANCH_COMMIT_HASH		=> qq {"$hg_branch_commit_hash"},
+		#/* Begin - BUG#Z00005371 */
+		HG_HGDB_VERSION				=> qq {"$self->{options}->{hg_hgdb_version}"},
+		#/* End - BUG#Z00005371 */
+		#/* End - BUG#Z00006969 */
 		#/* End - BUG#Z00004967 */
 		USE_GMSSL					=> $self->{options}->{gmssl} ? 1 : undef,
-		#/* Begin - BUG#Z00005371 */
-		HG_HGDB_VERSION				=> $self->{options}->{hg_hgdb_version},
-		#/* End - BUG#Z00005371 */
 		# Begin - ReqID:SRS-MISC-PDR
 		HG_PLATFORM_STR            => qq{"Uninitialized version string (win32)"},
 		# End - ReqID:SRS-MISC-PDR
