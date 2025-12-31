@@ -342,21 +342,11 @@ bool pass_is_encrypted(const char *passwd)
 
 	if (strspn(passwd, _base64) != strlen(passwd))
 	{
-#ifndef FRONTEND
-		elog(WARNING, _("IsEncrypt:Non-base64 encoding"));
-#else
-		printf(_("WARNING:IsEncryptNon-base64 encoding.\n"));
-#endif
 		return false;
 	}
 	b64_dec_len = pg_b64_decode(passwd, strlen(passwd), (char *)b64_dec, sizeof(b64_dec));
 	if (b64_dec_len <= 0 || b64_dec_len < 64 || b64_dec_len % 16 != 0)
 	{
-#ifndef FRONTEND
-		elog(WARNING, _("IsEncrypt:The length of the ciphertext should be a multiple of 16 and not less than 64(%d)"), b64_dec_len);
-#else
-		printf(_("WARNING:IsEncrypt:The length of the ciphertext should be a multiple of 16 and not less than 64(%d).\n"), b64_dec_len);
-#endif
 		return false;
 	}
 
