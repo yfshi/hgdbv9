@@ -44,7 +44,10 @@ if "%2" equ "" goto help
 >>config.pl		echo $config-^>{gmssl} = '%2\deps\lib%up_x64%\gmssl';
 >>config.pl		echo $config-^>{sqlite3} = '%2\deps\lib%up_x64%\sqlite3';
 >>config.pl		echo $config-^>{tap_tests} = '1';
-::>>config.pl		echo $config-^>{license} = '%2\deps\lib%up_x64%\license';
+if not "%3"=="" (
+	>>config.pl		echo $config-^>{license} = '%3\dep\license\win64\release';
+)
+
 
 >buildenv.pl	echo # set environments
 >>buildenv.pl	echo $ENV{PATH} = 
@@ -56,7 +59,9 @@ if "%2" equ "" goto help
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\libxml2\bin;'.
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\libxslt\lib;'.
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\libiconv;'.
-::>>buildenv.pl	echo    '%2\deps\lib%up_x64%\license\lib;'.
+if not "%3"=="" (
+	>>buildenv.pl	echo    '%3\dep\license\win64\release\lib;'.
+)
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\zlib;'.
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\gmssl;'.
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\sqlite3;'.$ENV{PATH};

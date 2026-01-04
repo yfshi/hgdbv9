@@ -1350,6 +1350,12 @@ sub AddContrib
 			$proj->AddFile("$subdir/$n/$filename");
 			$proj->AddReference($postgres);
 			AdjustContribProj($proj);
+			# Begin - ReqID:SRS-MISC-LICENSE
+			if ($solution->{options}->{license} && ($n eq 'worker_pg_pdr' || $n eq 'hsh'))
+			{
+				$proj->AddIncludeDir($solution->{options}->{license} . '\include');
+			}
+			# End - ReqID:SRS-MISC-LICENSE
 		}
 	}
 	elsif ($mf =~ /^PROGRAM\s*=\s*(.*)$/mg)
