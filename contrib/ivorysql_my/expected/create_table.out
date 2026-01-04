@@ -3963,3 +3963,80 @@ SELECT * FROM test_bigint;
 (4 rows)
 
 drop TABLE test_bigint;
+-- Begin: oa-2019
+CREATE TABLE `assortimportfaildetail` (
+    `id` int NOT NULL AUTO_INCREMENT,
+    `historyid` int DEFAULT NULL,
+    `failrow` int DEFAULT NULL,
+    `failcol` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+    `assortname` varchar(1000) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+    `failreason` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+   PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 ROW_FORMAT=DYNAMIC;
+describe `assortimportfaildetail`;
+   Field    |          Type           | Null | Key |                          Default                           |     Extra      
+------------+-------------------------+------+-----+------------------------------------------------------------+----------------
+ id         | integer                 | NO   | PRI | autoinc_nextval('assortimportfaildetail_id_seq'::regclass) | auto_increment
+ historyid  | integer                 | YES  |     |                                                            | 
+ failrow    | integer                 | YES  |     |                                                            | 
+ failcol    | character varying(100)  | YES  |     | NULL::character varying                                    | 
+ assortname | character varying(1000) | YES  |     | NULL::character varying                                    | 
+ failreason | character varying(100)  | YES  |     | NULL::character varying                                    | 
+(6 rows)
+
+CREATE TABLE oa2019_1(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+describe oa2019_1;
+   Field    |          Type          | Null | Key | Default | Extra 
+------------+------------------------+------+-----+---------+-------
+ id         | integer                | NO   | PRI |         | 
+ failreason | character varying(100) | YES  |     |         | 
+(2 rows)
+
+CREATE TABLE oa2019_2(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) KEY_BLOCK_SIZE=1
+) ENGINE=InnoDB;
+CREATE TABLE oa2019_3(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB;
+CREATE TABLE oa2019_4(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) USING HASH
+) ENGINE=InnoDB;
+CREATE TABLE oa2019_5(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) USING DDDD
+) ENGINE=InnoDB;
+ERROR:  syntax error at or near 
+LINE 4:     PRIMARY KEY (`id`) USING DDDD
+                                     ^
+CREATE TABLE oa2019_6(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) KEY_BLOCK_SIZE=1 WITH PARSER MyISAM USING HASH
+) ENGINE=InnoDB;
+CREATE TABLE oa2019_7(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) WITH PARSER MyISAM USING BTREE KEY_BLOCK_SIZE=1
+) ENGINE=InnoDB;
+CREATE TABLE oa2019_8(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY USING BTREE (`id`)
+) ENGINE=InnoDB;
+CREATE TABLE oa2019_9(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY USING BTREE (`id`) USING BTREE WITH PARSER MyISAM
+) ENGINE=InnoDB;
+-- End: oa-2019
