@@ -648,6 +648,8 @@ mysql_client_authentication_finish(Port *port)
                      errmsg("Unknown database %s", mysql_conn_info.schema)));
         }
 
+        SetConfigOption("search_path", mysql_conn_info.schema, PGC_USERSET, PGC_S_OVERRIDE); /* OA-REQ-2037 */
+
         CommitTransactionCommand();
     }
     /* End - bug#6321 */
