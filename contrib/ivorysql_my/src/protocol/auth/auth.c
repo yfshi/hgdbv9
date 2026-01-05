@@ -369,9 +369,9 @@ mysql_conn_handshake(Port *port)
 
     MemoryContextSwitchTo(oldcontext);
 
-    // Set default scheam
+    // Set default scheam value and check && set search_path in mysql_client_authentication_finish()
     if (handshakeResp->database)
-        mysql_conn_info.schema = pstrdup(handshakeResp->database);    
+        mysql_conn_info.schema = pstrdup(handshakeResp->database);
     
     free_handshake(handshake);
     free_handshake_response(handshakeResp);
