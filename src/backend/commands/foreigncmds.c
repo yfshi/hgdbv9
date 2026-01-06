@@ -2224,10 +2224,10 @@ parseDblinkConnectString(CreateForeignServerStmt *server, List *connstr)
 		elog(ERROR, "invalid DBLINK connect string");
 
 	connstring = ((A_Const *)cstr)->val.val.str;
-	move_spaces_and_newlines(down_character(connstring, strlen(connstring)), &tmp);
+	move_spaces_and_newlines(downcase_identifier(connstring, strlen(connstring), false, false), &tmp);
 
-	if (tmp[0] == '(' && strstr(down_character(connstring, strlen(connstring)), "port") &&
-		strstr(down_character(connstring, strlen(connstring)), "service_name"))
+	if (tmp[0] == '(' && strstr(downcase_identifier(connstring, strlen(connstring), false, false), "port") &&
+		strstr(downcase_identifier(connstring, strlen(connstring), false, false), "service_name"))
 		is_service_name = false;
 
 	/* get the fdw name */
@@ -2292,7 +2292,7 @@ parseDblinkConnectString(CreateForeignServerStmt *server, List *connstr)
 	}
 	else
 	{
-		extractDblinkConnectString(down_character(tmp, strlen(tmp)), &host, &port, &dbname);
+		extractDblinkConnectString(downcase_identifier(tmp, strlen(tmp), false, false), &host, &port, &dbname);
 
 		if (dbname)
 			server->service_name = dbname;

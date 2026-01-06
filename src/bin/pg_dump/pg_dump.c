@@ -253,7 +253,7 @@ static void help(const char *progname);
 static ArchiveFormat parseArchiveFormat(const char *format, ArchiveMode *mode);
 static void ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, char *password);
 /* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
-static char *downMoptionString(const char*options);
+static char *downMoptionString(char *options);
 static bool Moption(const char *options, const char **moptions, int length);
 static void DatabaseCheckMoption(const char *options);
 /* END - ReqID:SRS-MYSQL-PGDUMP */
@@ -1324,13 +1324,13 @@ ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, cha
 /*
  * Convert string to lowercase
  */
-static char *downMoptionString(const char*options)
+static char *downMoptionString(char *options)
 {
 	/* Avoid the function down_character from
 	 * throwing an exception for NULL
 	 */
 	if (options != NULL)
-		return down_character(options, strlen(options));
+		return down_character(options, strlen(options), 0 /*PG_SQL_ASCII*/);
 
 	return NULL;
 }

@@ -77,6 +77,7 @@
 /* End - ReqID:SRS-SQL-FUNCOUT */
 #include "parser/parse_type.h"	/* ReqID:SRS-PLSQL-TYPE */
 #include "mysql_parser/mys_case_sensitive.h"	/* ReqID:SRS-MYSQL-CASE */
+#include "parser/scansup.h"
 
 /*
  * The namespace search path is a possibly-empty list of namespace OIDs.
@@ -2706,11 +2707,11 @@ lookup_collation(const char *collname, Oid collnamespace, int32 encoding, bool r
 		 */
 		if (ORA_MODE == compatible_mode && recurse)
 		{
-			if(!is_all_lower(collname, strlen(collname)))
-				return lookup_collation(down_character(collname, strlen(collname)), collnamespace, encoding, false);
+			if(!identifier_is_all_lower(collname, strlen(collname)))
+				return lookup_collation(downcase_identifier(collname, strlen(collname), false, false), collnamespace, encoding, false);
 			
-			if (!is_all_upper(collname, strlen(collname)))
-				return lookup_collation(upper_character(collname, strlen(collname)), collnamespace, encoding, false);
+			if (!identifier_is_all_upper(collname, strlen(collname)))
+				return lookup_collation(upcase_identifier(collname, strlen(collname), false, false), collnamespace, encoding, false);
 		}
 		/* End - Req:SRS-SQL-NLSSORT */
 

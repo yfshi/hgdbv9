@@ -82,5 +82,11 @@ extern void myspatternToSQLRegex(int encoding, PQExpBuffer dbnamebuf,
 							  int kind, int lowernum);
 extern const char *mysfmtQualifiedId(const char *schema, const char *id);
 /* End - ReqID:SRS-MYSQL-CASE */
+/* BEGIN - case sensitive indentify */
+extern char * down_character(char * src,int len, int encoding);
+extern char * upper_character(char *src, int len, int encoding);
+extern bool is_all_lower(const char *src, int len, int encoding);
+extern bool is_all_upper(const char *src, int len, int encoding);
+/* END - case sensitive indentify */
 
 #endif							/* STRING_UTILS_H */

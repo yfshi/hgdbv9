@@ -1717,9 +1717,9 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 					else if (fdw_type == ORA_FDW)
 					{
 						if (relation->schemaname)
-							imstmt->remote_schema = psprintf("%s", upper_character(relation->schemaname, strlen(relation->schemaname)));
+							imstmt->remote_schema = psprintf("%s", upcase_identifier(relation->schemaname, strlen(relation->schemaname), false, false));
 						else
-							imstmt->remote_schema = psprintf("%s", upper_character(umpname, strlen(umpname)));
+							imstmt->remote_schema = psprintf("%s", upcase_identifier(umpname, strlen(umpname), false, false));
 					}
 
 					imstmt->list_type = FDW_IMPORT_SCHEMA_LIMIT_TO;
@@ -1751,7 +1751,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 							 "foreign-data wrapper \"%s\" returned incorrect statement type %d",
 							  fdw->fdwname, (int) nodeTag(cstmt));
 
-					cstmt->servername = down_character(cstmt->servername, strlen(cstmt->servername));
+					cstmt->servername = downcase_identifier(cstmt->servername, strlen(cstmt->servername), false, false);
 					cstmt->base.relation->relname = localrelation->relname;
 					cstmt->base.relation->relpersistence = RELPERSISTENCE_TEMP;
 
@@ -1835,9 +1835,9 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 		if (fdw_type == ORA_FDW)
 		{
 			if (relation->schemaname)
-				relnspname = psprintf("%s", upper_character(relation->schemaname, strlen(relation->schemaname)));
+				relnspname = psprintf("%s", upcase_identifier(relation->schemaname, strlen(relation->schemaname), false, false));
 			else
-				relnspname = psprintf("%s", upper_character(umpname, strlen(umpname)));
+				relnspname = psprintf("%s", upcase_identifier(umpname, strlen(umpname), false, false));
 		}
 		else if (fdw_type == PG_FDW)
 		{
@@ -1944,7 +1944,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 				if (!IsA(cstmt, CreateForeignTableStmt))
 					elog(ERROR, "not a CreateForeignTableStmt");
 
-				cstmt->servername = down_character(cstmt->servername, strlen(cstmt->servername));
+				cstmt->servername = downcase_identifier(cstmt->servername, strlen(cstmt->servername), false, false);
 				cstmt->base.relation->relname = localrelation->relname;
 				cstmt->base.relation->relpersistence = RELPERSISTENCE_TEMP;
 

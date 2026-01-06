@@ -61,6 +61,8 @@ downcase_identifier(const char *ident, int len, bool warn, bool truncate)
 	char	   *result;
 	int			i;
 	bool		enc_is_single_byte;
+	Assert(ident != NULL);
+	Assert(len >= 0);
 
 	result = palloc(len + 1);
 	enc_is_single_byte = pg_database_encoding_max_length() == 1;
@@ -74,17 +76,19 @@ downcase_identifier(const char *ident, int len, bool warn, bool truncate)
 	 * the high bit set, as long as they aren't part of a multi-byte
 	 * character, and use an ASCII-only downcasing for 7-bit characters.
 	 */
-	strncpy(result, ident, len);
+	memcpy(result, ident, len);
 	for (i = 0; i < len; i++)
 	{
 		unsigned char ch = (unsigned char) ident[i];
 		/* Begin - BUG#Z6063 */
-		int mblen = pg_mblen(ident + i);
-
-		if (mblen > 1)
+		if (!enc_is_single_byte)
 		{
-			i += (mblen - 1);
-			continue;
+			int mblen = pg_mblen(ident + i);
+			if (mblen > 1)
+			{
+				i += (mblen - 1);
+				continue;
+			}
 		}
 		/* End - BUG#Z6063 */
 
@@ -110,6 +114,8 @@ upcase_identifier(const char *ident, int len, bool warn, bool truncate)
 	char	   *result;
 	int			i;
 	bool		enc_is_single_byte;
+	Assert(ident != NULL);
+	Assert(len >= 0);
 
 	result = palloc(len + 1);
 	enc_is_single_byte = pg_database_encoding_max_length() == 1;
@@ -124,17 +130,19 @@ upcase_identifier(const char *ident, int len, bool warn, bool truncate)
 	 * the high bit set, as long as they aren't part of a multi-byte
 	 * character, and use an ASCII-only downcasing for 7-bit characters.
 	 */
-	strncpy(result, ident, len);
+	memcpy(result, ident, len);
 	for (i = 0; i < len; i++)
 	{
 		unsigned char ch = (unsigned char) ident[i];
 		/* Begin - BUG#Z6063 */
-		int mblen = pg_mblen(ident + i);
-
-		if (mblen > 1)
+		if (!enc_is_single_byte)
 		{
-			i += (mblen - 1);
-			continue;
+			int mblen = pg_mblen(ident + i);
+			if (mblen > 1)
+			{
+				i += (mblen - 1);
+				continue;
+			}
 		}
 		/* End - BUG#Z6063 */
 
@@ -299,3 +307,67 @@ original_identifier(const char *ident, int len, bool warn, bool truncate)
 	return result;
 }
 /* End - ReqID:SRS-MYSQL-CASE */
+
+/*
+ * Determine whether the letters in the string are all lowercase letters
+ */
+bool
+identifier_is_all_lower(const char *ident, int len)
+{
+	int		i;
+	const char	*s;
+
+	s = ident;
+
+	for (i = 0; i < len; i++)
+	{
+		/* Begin - BUG#Z6063 */
+		int mblen = pg_mblen(s);
+
+		if (mblen > 1)
+		{
+			s += mblen;
+			i += (mblen - 1);
+			continue;
+		}
+		/* End - BUG#Z6063 */
+
+		if (isalpha(*s) && isupper(*s))
+			return false;
+		s++;
+	}
+
+	return true;
+}
+
+/*
+ * Determine whether the letters in the string are all uppercase letters
+ */
+bool
+identifier_is_all_upper(const char *ident, int len)
+{
+	int		i;
+	const char	*s;
+
+	s = ident;
+
+	for (i = 0; i < len; i++)
+	{
+		/* Begin - BUG#Z6063 */
+		int mblen = pg_mblen(s);
+
+		if (mblen > 1)
+		{
+			s += mblen;
+			i += (mblen - 1);
+			continue;
+		}
+		/* End - BUG#Z6063 */
+
+		if (isalpha(*s) && islower(*s))
+			return false;
+		s++;
+	}
+
+	return true;
+}
