@@ -1670,3 +1670,74 @@ INSERT INTO test_bigint (id,timestamp) VALUES (18446744073709551615,'2025-10-04 
 INSERT INTO test_bigint (timestamp) VALUES ('2025-10-04 12:00:00');
 SELECT * FROM test_bigint;
 drop TABLE test_bigint;
+
+-- Begin: oa-2019
+CREATE TABLE `assortimportfaildetail` (
+    `id` int NOT NULL AUTO_INCREMENT,
+    `historyid` int DEFAULT NULL,
+    `failrow` int DEFAULT NULL,
+    `failcol` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+    `assortname` varchar(1000) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+    `failreason` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+   PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 ROW_FORMAT=DYNAMIC;
+
+describe `assortimportfaildetail`;
+
+CREATE TABLE oa2019_1(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+describe oa2019_1;
+
+CREATE TABLE oa2019_2(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) KEY_BLOCK_SIZE=1
+) ENGINE=InnoDB;
+
+CREATE TABLE oa2019_3(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB;
+
+CREATE TABLE oa2019_4(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) USING HASH
+) ENGINE=InnoDB;
+
+CREATE TABLE oa2019_5(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) USING DDDD
+) ENGINE=InnoDB;
+
+CREATE TABLE oa2019_6(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) KEY_BLOCK_SIZE=1 WITH PARSER MyISAM USING HASH
+) ENGINE=InnoDB;
+
+CREATE TABLE oa2019_7(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY (`id`) WITH PARSER MyISAM USING BTREE KEY_BLOCK_SIZE=1
+) ENGINE=InnoDB;
+
+CREATE TABLE oa2019_8(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY USING BTREE (`id`)
+) ENGINE=InnoDB;
+
+CREATE TABLE oa2019_9(
+    id int NOT NULL,
+    failreason varchar(100),
+    PRIMARY KEY USING BTREE (`id`) USING BTREE WITH PARSER MyISAM
+) ENGINE=InnoDB;
+-- End: oa-2019
+

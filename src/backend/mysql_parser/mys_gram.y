@@ -443,7 +443,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	   			replica_identity partition_cmd index_partition_cmd
 /* Begin - SRS-MYSQL-CREATE-TABLE */
 %type <list>    create_table_options_list create_table_options_list_node
-%type <node>    create_engine create_comment create_table_options
+%type <node>    create_engine create_comment create_table_options create_row_format /* oa-2019 */ 
 %type <list>    index_options create_table_index_opt opt_index_options /* ReqID:SRS-MYSQL-CREATE-INDEX */
 %type <node>    index_opt 
 %type <node>    character_set_without_equal
@@ -757,6 +757,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 %type <list>	constraints_set_list
 %type <boolean> constraints_set_mode opt_with_rollup	/* ReqID:SRS-MYSQL-SELECT */
 %type <str>		OptTableSpace OptConsTableSpace
+%type <str>	OptConsTableSpaceNoEmpty OptPartitionElement /* oa-2019 */
 %type <rolespec> OptTableSpaceOwner
 %type <ival>	opt_check_option
 
@@ -919,7 +920,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVERSE REVOKE RIGHT ROLE ROLLBACK ROLLUP
-	ROUTINE ROUTINES ROW ROWS RULE
+	ROUTINE ROUTINES ROW ROWS ROW_FORMAT /* oa-2019 */ RULE
 
 	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHARED /* ReqID:SRS-MYSQL-CREATE-INDEX */ SHOW
@@ -967,6 +968,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 
 %token		NCHAR_P		/* ReqID: SRS-MYSQL-CHARACTERTYPE- NCHAR VARCHAR(n) */
 %token		CHARACTER_P	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
+%token		WITH_PARSER	/* oa-2019 */
 
 
 /*
@@ -3507,6 +3509,7 @@ create_table_options:
 			| create_comment			{ $$ = $1; }
 			| default_create_option		{ $$ = $1; }
 			| create_engine				{ $$ = NULL; }
+			| create_row_format			{ $$ = NULL; }
 		;
 
 create_engine:
@@ -3523,6 +3526,12 @@ create_comment:
 					$$ = (Node *) n;
 				}
 		;
+
+/* oa-2019 */
+create_row_format:
+		 ROW_FORMAT opt_equal name			{ $$ = NULL; }
+		;
+
 /* End - SRS-MYSQL-CREATE-TABLE */
 
 alter_column_default:
@@ -4899,22 +4908,40 @@ ConstraintElem:
 								   NULL, yyscanner);
 					$$ = (Node *)n;
 				}
-			| PRIMARY KEY '(' columnList ')' opt_c_include opt_definition OptConsTableSpace
+			| PRIMARY KEY mys_access_method_clause '(' columnList ')' opt_c_include opt_definition OptConsTableSpaceNoEmpty create_table_index_opt
 				ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
 					n->contype = CONSTR_PRIMARY;
 					n->location = @1;
-					n->keys = $4;
-					n->including = $6;
-					n->options = $7;
+					n->keys = $5;
+					n->including = $7;
+					n->options = $8;
 					n->indexname = NULL;
-					n->indexspace = $8;
-					processCASbits($9, @9, "PRIMARY KEY",
+					n->indexspace = $9;
+					processCASbits($11, @11, "PRIMARY KEY",
 								   &n->deferrable, &n->initdeferred, NULL,
 								   NULL, yyscanner);
 					$$ = (Node *)n;
 				}
+			/* Begin: oa-2019 */
+			| PRIMARY KEY mys_access_method_clause '(' columnList ')' opt_c_include opt_definition create_table_index_opt
+				ConstraintAttributeSpec
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_PRIMARY;
+					n->location = @1;
+					n->keys = $5;
+					n->including = $7;
+					n->options = $8;
+					n->indexname = NULL;
+					n->indexspace = NULL;
+					processCASbits($10, @10, "PRIMARY KEY",
+								&n->deferrable, &n->initdeferred, NULL,
+								NULL, yyscanner);
+					$$ = (Node *)n;
+				}
+			/* End: oa-2019 */
 			| PRIMARY KEY ExistingIndex ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
@@ -5232,6 +5259,17 @@ OptConsTableSpace:   USING INDEX TABLESPACE name	{ $$ = $4; }
 
 ExistingIndex:   USING INDEX name					{ $$ = $3; }
 		;
+
+/* Begin: oa-2019 */
+OptConsTableSpaceNoEmpty:      USING INDEX OptPartitionElement { $$ = $3; }
+		;
+
+OptPartitionElement:	OptTableSpace
+			{
+				$$ = $1;
+			}
+		;
+/* End : oa-2019 */
 
 /*****************************************************************************
  *
@@ -8794,7 +8832,7 @@ index_options:
 
 index_opt:
 			KEY_BLOCK_SIZE opt_equal ICONST		{ $$ = NULL; }
-			| WITH PARSER ColId					{ $$ = NULL; }
+			| WITH_PARSER PARSER ColId					{ $$ = NULL; }
 			| COMMENT SCONST
 				{
 					CommentStmt *n = makeNode(CommentStmt);
@@ -20056,6 +20094,7 @@ unreserved_keyword:
 			| ROUTINE
 			| ROUTINES
 			| ROWS
+			| ROW_FORMAT	/* oa-2019 */
 			| RULE
 			| SAVEPOINT
 			| SCHEMA
@@ -20784,6 +20823,7 @@ bare_label_keyword:
 			| ROUTINES
 			| ROW
 			| ROWS
+			| ROW_FORMAT	/* oa-2019 */
 			| RULE
 			| SAVEPOINT
 			| SCHEMA

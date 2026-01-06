@@ -433,6 +433,11 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 					cur_token = WITH_ROLLUP;
 					break;
 				/* End - ReqID:SRS-MYSQL-SELECT */
+				/* Begin - oa-2019 */
+				case PARSER:
+					cur_token = WITH_PARSER;
+					break;
+				/* End - oa-2019 */
 			}
 			break;
 
