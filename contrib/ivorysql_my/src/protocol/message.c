@@ -223,9 +223,10 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
     uint64 last_insert_id = DatumGetUInt64(DirectFunctionCall1(mys_get_lastval, (Datum) 0));
     uint16  status = ServerStatus();
 
-    if (tag == CMDTAG_SELECT ||
-        tag == CMDTAG_SHOW   ||
-        tag == CMDTAG_EXPLAIN)
+    if (tag == CMDTAG_SELECT    ||
+        tag == CMDTAG_SHOW      ||
+        tag == CMDTAG_EXPLAIN   ||
+        tag == CMDTAG_CALL /* bug#6981 */ )
     {
         send_eof(0, status);
     }

@@ -369,9 +369,9 @@ mysql_conn_handshake(Port *port)
 
     MemoryContextSwitchTo(oldcontext);
 
-    // Set default scheam
+    // Set default scheam value and check && set search_path in mysql_client_authentication_finish()
     if (handshakeResp->database)
-        mysql_conn_info.schema = pstrdup(handshakeResp->database);    
+        mysql_conn_info.schema = pstrdup(handshakeResp->database);
     
     free_handshake(handshake);
     free_handshake_response(handshakeResp);
@@ -647,6 +647,8 @@ mysql_client_authentication_finish(Port *port)
                     (errcode(ERRCODE_UNDEFINED_SCHEMA),
                      errmsg("Unknown database %s", mysql_conn_info.schema)));
         }
+
+        SetConfigOption("search_path", mysql_conn_info.schema, PGC_USERSET, PGC_S_OVERRIDE); /* OA-REQ-2037 */
 
         CommitTransactionCommand();
     }
