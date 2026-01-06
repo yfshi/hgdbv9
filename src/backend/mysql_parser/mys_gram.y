@@ -4876,18 +4876,19 @@ ConstraintElem:
 					$$ = (Node *)n;
 				}
 			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-			| UNIQUE KEY '(' columnList ')' opt_c_include opt_definition OptConsTableSpace
+			/* OA-2052: support UNIQUE INDEX */
+			| UNIQUE idx_key opt_index_name access_method_clause '(' columnList ')' create_table_index_opt
 				ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
 					n->contype = CONSTR_UNIQUE;
 					n->location = @1;
-					n->keys = $4;
-					n->including = $6;
-					n->options = $7;
+					n->keys = $6;
+					n->including = NULL;
+					n->options = NIL;
 					n->indexname = NULL;
-					n->indexspace = $8;
-					processCASbits($9, @8, "UNIQUE",
+					n->indexspace = NULL;
+					processCASbits($9, @9, "UNIQUE",
 								   &n->deferrable, &n->initdeferred, NULL,
 								   NULL, yyscanner);
 					$$ = (Node *)n;
@@ -5003,7 +5004,7 @@ ConstraintElem:
 				{
 					IndexStmt *n = makeNode(IndexStmt);
 					n->unique = false;
-					n->idxname = $2;
+					n->idxname = NULL;	/* OA-2052: ignore index name */
 					n->indexParams = $5;
 					n->accessMethod = $3;
 					n->idxcomment = NULL;
