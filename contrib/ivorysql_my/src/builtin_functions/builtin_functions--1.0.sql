@@ -3927,3 +3927,23 @@ LANGUAGE SQL
 IMMUTABLE
 PARALLEL SAFE;
 /* End - bug#6769 */
+
+/* Begin - bug#6988 */
+CREATE FUNCTION ivymy.upper(int8)
+RETURNS varchar
+AS $$
+    SELECT pg_catalog.upper($1::text);
+$$ 
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.upper(int4)
+RETURNS varchar
+AS $$
+    SELECT pg_catalog.upper($1::text);
+$$ 
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE;
+/* End - bug#6988 */

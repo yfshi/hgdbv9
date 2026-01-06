@@ -3115,3 +3115,39 @@ select binary 'test' collate utf8_bin;
  test
 (1 row)
 
+/* Begin - bug#z6988 */
+set ivorysql.compatible_mode to mysql;
+select upper(123456789 :: int8);
+   upper   
+-----------
+ 123456789
+(1 row)
+
+select hex(upper(123456789 :: int8));
+        hex         
+--------------------
+ 313233343536373839
+(1 row)
+
+select upper(66667777 :: int4);
+  upper   
+----------
+ 66667777
+(1 row)
+
+select hex(upper(66667777 :: int4));
+       hex        
+------------------
+ 3636363637373737
+(1 row)
+
+create table test_01(id bigint);
+insert into test_01 values (1234567890000);
+select upper(id) from test_01;
+     upper     
+---------------
+ 1234567890000
+(1 row)
+
+reset ivorysql.compatible_mode;
+/* End - bug#z6988 */

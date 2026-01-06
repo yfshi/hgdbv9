@@ -759,3 +759,17 @@ select char_length(X'41'), char_length(X'4142'), char_length(x'410041'), char_le
 
 -- bug#z6011
 select binary 'test' collate utf8_bin;
+
+/* Begin - bug#z6988 */
+set ivorysql.compatible_mode to mysql;
+select upper(123456789 :: int8);
+select hex(upper(123456789 :: int8));
+
+select upper(66667777 :: int4);
+select hex(upper(66667777 :: int4));
+
+create table test_01(id bigint);
+insert into test_01 values (1234567890000);
+select upper(id) from test_01;
+reset ivorysql.compatible_mode;
+/* End - bug#z6988 */
