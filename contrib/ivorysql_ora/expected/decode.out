@@ -3,12 +3,12 @@ create table test_case_number(a number,b varchar2(50));
 insert into test_case_number values(1,'bbb'),(2,'ccc'),(null,'ddd');
 create or replace view v_test_case_number as select decode(a,0,'') from test_case_number;
 \d+ v_test_case_number
-                         View "public.v_test_case_number"
- Column |      Type      | Collation | Nullable | Default | Storage  | Description 
---------+----------------+-----------+----------+---------+----------+-------------
- decode | varchar2(4000) |           |          |         | extended | 
+                      View "public.v_test_case_number"
+ Column |   Type   | Collation | Nullable | Default | Storage  | Description 
+--------+----------+-----------+----------+---------+----------+-------------
+ decode | varchar2 |           |          |         | extended | 
 View definition:
- SELECT DECODE(test_case_number.a, 0::number, NULL::varchar2(4000), NULL::varchar2(4000)) AS "decode"
+ SELECT DECODE(test_case_number.a, 0::number, NULL::varchar2, NULL::varchar2) AS "decode"
    FROM test_case_number;
 
 select * from v_test_case_number;

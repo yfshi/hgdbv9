@@ -1159,6 +1159,7 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		4, 0, 32767, /* BUG#Z1397 */
 		NULL, NULL, NULL
 	},
+	/* End - ReqID:SRS-SQL-DBLINK */
 	/* Begin - BUG#Z1325 */
 	{
 		{"open_links_per_instance", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
@@ -1171,19 +1172,6 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#Z1325 */
-	/* Begin - wai BUG#Z00001678 */
-	{
-		{"ivorysql.format_max_string_size_len", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-			gettext_noop("Set the format type length of Oracle varchar and varchar2 types when typmod is -1."),
-			NULL,
-			GUC_NOT_IN_SAMPLE
-		},
-		&format_max_string_size_len,
-		4000, 4000, 32767,
-		NULL, NULL, NULL
-	},
-	/* End - wai BUG#Z00001678 */
-	/* End - ReqID:SRS-SQL-DBLINK */
 	/* Begin - RSR-SQL-Partition-interval */
 	{
 		{"ivorysql.max_interval_partition_failures", PGC_USERSET, COMPAT_ORACLE_OPTIONS,

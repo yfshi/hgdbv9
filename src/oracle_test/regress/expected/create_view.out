@@ -305,20 +305,20 @@ SELECT relname, relkind, reloptions FROM pg_class
 CREATE VIEW unspecified_types AS
   SELECT 42 as i, 42.5 as num, 'foo' as u, 'foo'::unknown as u2, null as n;
 \d+ unspecified_types
-                      View "testviewschm2.unspecified_types"
- Column |      Type      | Collation | Nullable | Default | Storage  | Description 
---------+----------------+-----------+----------+---------+----------+-------------
- i      | integer        |           |          |         | plain    | 
- num    | numeric        |           |          |         | main     | 
- u      | varchar2(4000) |           |          |         | extended | 
- u2     | varchar2(4000) |           |          |         | extended | 
- n      | varchar2(4000) |           |          |         | extended | 
+                   View "testviewschm2.unspecified_types"
+ Column |   Type   | Collation | Nullable | Default | Storage  | Description 
+--------+----------+-----------+----------+---------+----------+-------------
+ i      | integer  |           |          |         | plain    | 
+ num    | numeric  |           |          |         | main     | 
+ u      | varchar2 |           |          |         | extended | 
+ u2     | varchar2 |           |          |         | extended | 
+ n      | varchar2 |           |          |         | extended | 
 View definition:
  SELECT 42 AS i,
     42.5 AS num,
-    'foo'::varchar2(4000) AS u,
-    'foo'::varchar2(4000) AS u2,
-    NULL::varchar2(4000) AS n;
+    'foo'::varchar2 AS u,
+    'foo'::varchar2 AS u2,
+    NULL::varchar2 AS n;
 
 SELECT * FROM unspecified_types;
  i  | num  |  u  | u2  | n 
@@ -334,19 +334,19 @@ CREATE VIEW tt1 AS
        ('0123456789', 'abc'::varchar(3), 42.12, 'abc'::varchar(4))
   ) vv(a,b,c,d);
 \d+ tt1
-                             View "testviewschm2.tt1"
- Column |      Type      | Collation | Nullable | Default | Storage  | Description 
---------+----------------+-----------+----------+---------+----------+-------------
- a      | varchar2(4000) |           |          |         | extended | 
- b      | varchar2(4000) |           |          |         | extended | 
- c      | numeric        |           |          |         | main     | 
- d      | varchar2(4)    |           |          |         | extended | 
+                            View "testviewschm2.tt1"
+ Column |    Type     | Collation | Nullable | Default | Storage  | Description 
+--------+-------------+-----------+----------+---------+----------+-------------
+ a      | varchar2    |           |          |         | extended | 
+ b      | varchar2    |           |          |         | extended | 
+ c      | numeric     |           |          |         | main     | 
+ d      | varchar2(4) |           |          |         | extended | 
 View definition:
  SELECT vv.a,
     vv.b,
     vv.c,
     vv.d
-   FROM ( VALUES ('abc'::varchar2(3),'0123456789'::varchar2(4000),42,'abcd'::varchar2(4)), ('0123456789'::varchar2(4000),'abc'::varchar2(3),42.12,'abc'::varchar2(4))) vv(a, b, c, d);
+   FROM ( VALUES ('abc'::varchar2(3),'0123456789'::varchar2,42,'abcd'::varchar2(4)), ('0123456789'::varchar2,'abc'::varchar2(3),42.12,'abc'::varchar2(4))) vv(a, b, c, d);
 
 SELECT * FROM tt1;
      a      |     b      |   c   |  d   
@@ -1813,12 +1813,12 @@ select pg_get_viewdef('tt201v', true);
      SUBSTRING('foo'::text FROM 2 FOR 3) AS s,                                                     +
      SUBSTRING('foo'::text SIMILAR 'f'::text ESCAPE '#'::text) AS ss,                              +
      "substring"('foo'::text, 'oo'::text) AS ssf,                                                  +
-     "trim"(' foo '::varchar2(4000), ' '::varchar2(4000)) AS bt,                                   +
-     ltrim(' foo '::varchar2(4000), ' '::varchar2(4000)) AS lt,                                    +
-     rtrim(' foo '::varchar2(4000)) AS rt,                                                         +
+     "trim"(' foo '::varchar2, ' '::varchar2) AS bt,                                               +
+     ltrim(' foo '::varchar2, ' '::varchar2) AS lt,                                                +
+     rtrim(' foo '::varchar2) AS rt,                                                               +
      "trim"('\x00546f6d00'::bytea, '\x00'::bytea) AS btb,                                          +
-     ltrim('\x00546f6d00'::bytea::varchar2(4000), '\x00'::bytea::varchar2(4000)) AS ltb,           +
-     rtrim('\x00546f6d00'::bytea::varchar2(4000), '\x00'::bytea::varchar2(4000)) AS rtb;
+     ltrim('\x00546f6d00'::bytea::varchar2, '\x00'::bytea::varchar2) AS ltb,                       +
+     rtrim('\x00546f6d00'::bytea::varchar2, '\x00'::bytea::varchar2) AS rtb;
 (1 row)
 
 -- corner cases with empty join conditions

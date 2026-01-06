@@ -4981,10 +4981,10 @@ select * from test2 where t ~ '/\d+/-\d';
 -- test = operator
 explain (costs off)
   select * from test2 where t = 'abcdef';
-                QUERY PLAN                
-------------------------------------------
+             QUERY PLAN             
+------------------------------------
  Seq Scan on test2
-   Filter: (t = 'abcdef'::varchar2(4000))
+   Filter: (t = 'abcdef'::varchar2)
 (2 rows)
 
 select * from test2 where t = 'abcdef';
@@ -4995,10 +4995,10 @@ select * from test2 where t = 'abcdef';
 
 explain (costs off)
   select * from test2 where t = '%line%';
-                QUERY PLAN                
-------------------------------------------
+             QUERY PLAN             
+------------------------------------
  Seq Scan on test2
-   Filter: (t = '%line%'::varchar2(4000))
+   Filter: (t = '%line%'::varchar2)
 (2 rows)
 
 select * from test2 where t = '%line%';
@@ -5267,10 +5267,10 @@ select * from test2 where t ~ '/\d+/-\d';
 -- test = operator
 explain (costs off)
   select * from test2 where t = 'abcdef';
-                QUERY PLAN                
-------------------------------------------
+             QUERY PLAN             
+------------------------------------
  Seq Scan on test2
-   Filter: (t = 'abcdef'::varchar2(4000))
+   Filter: (t = 'abcdef'::varchar2)
 (2 rows)
 
 select * from test2 where t = 'abcdef';
@@ -5281,10 +5281,10 @@ select * from test2 where t = 'abcdef';
 
 explain (costs off)
   select * from test2 where t = '%line%';
-                QUERY PLAN                
-------------------------------------------
+             QUERY PLAN             
+------------------------------------
  Seq Scan on test2
-   Filter: (t = '%line%'::varchar2(4000))
+   Filter: (t = '%line%'::varchar2)
 (2 rows)
 
 select * from test2 where t = '%line%';

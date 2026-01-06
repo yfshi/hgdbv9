@@ -393,11 +393,6 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 		case ORAVARCHARBYTEOID:
 			if (with_typemod)
 				buf = printTypmod("varchar2", typemod, typeform->typmodout);
-			/* Begin - wai BUG#Z00001678 */
-			/* add oracle buffer maxlen */
-			else if ((flags & FORMAT_TYPE_TYPEMOD_GIVEN) != 0)
-				buf = psprintf("varchar2(%d)", format_max_string_size_len);
-			/* End - wai BUG#Z00001678 */
 			else
 				buf = pstrdup("varchar2");
 			break;

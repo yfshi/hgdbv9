@@ -4168,31 +4168,6 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					if (def->typeName == NULL)
 						def->typeName = makeTypeNameFromOid(get_atttype(relid, attnum), get_atttypmod(relid, attnum));
 
-					/* Begin - BUG:M0000062 */
-					/*
-					 * You must specify the value of typmod for varchar2 and nvarchar2
-					 * when ALTER TABLE modify column type in oracle database, otherwise
-					 * an error will be thrown.
-					 */
-					if (ORA_MODE == compatible_mode &&
-						rel->rd_rel->relkind == RELKIND_RELATION &&
-						def->typeName)
-					{
-						int32	typmod;
-						Type	ctype = typenameType(NULL, def->typeName, &typmod);
-
-						if (typmod == -1)
-						{
-							Form_pg_type typtup = (Form_pg_type) GETSTRUCT(ctype);
-
-							if (typtup->oid == ORAVARCHARCHAROID ||
-								typtup->oid == ORAVARCHARBYTEOID)
-								elog(ERROR, "missing left parenthesis");
-						}
-						ReleaseSysCache(ctype);
-					}
-					/* End - BUG:M0000062 */
-
 					if (attnum > 0 &&
 						TupleDescAttr(tupdesc, attnum - 1)->attidentity)
 					{
@@ -4574,20 +4549,6 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 	 */
 	ctype = typenameType(cxt->pstate, column->typeName, &typmod);	/* BUG:M0000068 */
 	typtup = (Form_pg_type) GETSTRUCT(ctype);
-
-	/* Begin - BUG:M0000068 */
-	/*
-	 * You must specify the value of typmod when creating tables with
-	 * datatypes varchar2 and nvarchar2 in oracle database, otherwise
-	 * an error will be thrown.
-	 */
-	if (ORA_MODE == compatible_mode && typmod == -1)
-	{
-		if (typtup->oid == ORAVARCHARCHAROID ||
-			typtup->oid == ORAVARCHARBYTEOID)
-			elog(ERROR, "missing left parenthesis");
-	}
-	/* End - BUG:M0000068 */
 
 	if (column->collClause)
 	{

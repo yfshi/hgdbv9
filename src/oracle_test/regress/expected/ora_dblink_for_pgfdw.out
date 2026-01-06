@@ -585,15 +585,15 @@ UNION ALL
 reset search_path;
 \d enrol11.V_NE_EQUIPROOM
                   View "enrol11.v_ne_equiproom"
-  Column   |      Type      |   Collation    | Nullable | Default 
------------+----------------+----------------+----------+---------
- INT_ID    | number         |                |          | 
- ZH_LABEL  | varchar2(256)  | using_nls_comp |          | 
- CITY_ID   | number         |                |          | 
- COUNTY_ID | number         |                |          | 
- STATEFLAG | number         |                |          | 
- STATUS    | varchar2(4000) | using_nls_comp |          | 
- CUID      | varchar2(255)  | using_nls_comp |          | 
+  Column   |     Type      |   Collation    | Nullable | Default 
+-----------+---------------+----------------+----------+---------
+ INT_ID    | number        |                |          | 
+ ZH_LABEL  | varchar2(256) | using_nls_comp |          | 
+ CITY_ID   | number        |                |          | 
+ COUNTY_ID | number        |                |          | 
+ STATEFLAG | number        |                |          | 
+ STATUS    | varchar2      | using_nls_comp |          | 
+ CUID      | varchar2(255) | using_nls_comp |          | 
 
 select * from enrol11.V_NE_EQUIPROOM@tdblnk;
  INT_ID | ZH_LABEL | CITY_ID | COUNTY_ID | STATEFLAG | STATUS | CUID 
@@ -627,16 +627,16 @@ UNION ALL
    FROM res_accesspoint
   WHERE res_accesspoint.stateflag = 0;
 \d V_NE_EQUIPROOM0
-                  View "enrol11.v_ne_equiproom0"
-  Column   |      Type      |   Collation    | Nullable | Default 
------------+----------------+----------------+----------+---------
- int_id    | number         |                |          | 
- zh_label  | varchar2(256)  | using_nls_comp |          | 
- city_id   | number         |                |          | 
- county_id | number         |                |          | 
- stateflag | number         |                |          | 
- status    | varchar2(4000) | using_nls_comp |          | 
- cuid      | varchar2(255)  | using_nls_comp |          | 
+                 View "enrol11.v_ne_equiproom0"
+  Column   |     Type      |   Collation    | Nullable | Default 
+-----------+---------------+----------------+----------+---------
+ int_id    | number        |                |          | 
+ zh_label  | varchar2(256) | using_nls_comp |          | 
+ city_id   | number        |                |          | 
+ county_id | number        |                |          | 
+ stateflag | number        |                |          | 
+ status    | varchar2      | using_nls_comp |          | 
+ cuid      | varchar2(255) | using_nls_comp |          | 
 
 CREATE OR REPLACE VIEW V_NE_EQUIPROOM1
 AS SELECT rms_equiproom.int_id,
@@ -672,16 +672,16 @@ AS
    FROM res_accesspoint
   WHERE res_accesspoint.stateflag = 0;
 \d V_NE_EQUIPROOM2
-                  View "enrol11.v_ne_equiproom2"
-  Column   |      Type      |   Collation    | Nullable | Default 
------------+----------------+----------------+----------+---------
- int_id    | number         |                |          | 
- zh_label  | varchar2(255)  | using_nls_comp |          | 
- city_id   | number         |                |          | 
- county_id | number         |                |          | 
- stateflag | number         |                |          | 
- status    | varchar2(4000) |                |          | 
- cuid      | varchar2(255)  | using_nls_comp |          | 
+                 View "enrol11.v_ne_equiproom2"
+  Column   |     Type      |   Collation    | Nullable | Default 
+-----------+---------------+----------------+----------+---------
+ int_id    | number        |                |          | 
+ zh_label  | varchar2(255) | using_nls_comp |          | 
+ city_id   | number        |                |          | 
+ county_id | number        |                |          | 
+ stateflag | number        |                |          | 
+ status    | varchar2      |                |          | 
+ cuid      | varchar2(255) | using_nls_comp |          | 
 
 select * from V_NE_EQUIPROOM0@tdblnk;
  int_id | zh_label | city_id | county_id | stateflag | status | cuid 
@@ -698,21 +698,22 @@ select * from V_NE_EQUIPROOM2@tdblnk;
 --------+----------+---------+-----------+-----------+--------+------
 (0 rows)
 
-create table test_id_char(id char(10));
-create table test_id_char2(id char(5));
+create table test_id_char(id char(10), ids nvarchar2(256));
+create table test_id_char2(id char(5), ids nvarchar2(256));
 create view test_view as
   select * from test_id_char
 union all
   select * from test_id_char2;
 \d test_view
-                View "enrol11.test_view"
- Column |   Type   |   Collation    | Nullable | Default 
---------+----------+----------------+----------+---------
- id     | char(10) | using_nls_comp |          | 
+                     View "enrol11.test_view"
+ Column |        Type        |   Collation    | Nullable | Default 
+--------+--------------------+----------------+----------+---------
+ id     | char(10)           | using_nls_comp |          | 
+ ids    | varchar2(256 char) | using_nls_comp |          | 
 
 select * from test_view@tdblnk;
- id 
-----
+ id | ids 
+----+-----
 (0 rows)
 
 create or replace function test_f(id integer) return varchar2 is
@@ -722,10 +723,10 @@ create or replace function test_f(id integer) return varchar2 is
  /
 create view test_func_view as select test_f(23) from dual;
 \d test_func_view
-              View "enrol11.test_func_view"
- Column |      Type      | Collation | Nullable | Default 
---------+----------------+-----------+----------+---------
- test_f | varchar2(4000) |           |          | 
+           View "enrol11.test_func_view"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ test_f | varchar2 |           |          | 
 
 select * from test_func_view@tdblnk;
  test_f 
@@ -895,7 +896,7 @@ explain(costs off) select * from enrol11.test_text@tdblnk where id = '100000';
                  QUERY PLAN                 
 --------------------------------------------
  Foreign Scan on "enrol11_test_text@tdblnk"
-   Filter: (id = '100000'::varchar2(4000))
+   Filter: (id = '100000'::varchar2)
 (2 rows)
 
 --explain(costs off) select * from enrol11.test_text@tdblnk where standard.test_to_char(id) = '10000';
