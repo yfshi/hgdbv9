@@ -222,11 +222,11 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
 	const char *tagname = GetCommandTagName(tag);
     uint64 last_insert_id = DatumGetUInt64(DirectFunctionCall1(mys_get_lastval, (Datum) 0));
     uint16  status = ServerStatus();
+    uint64  nprocessed = qc->nprocessed;
 
     if (tag == CMDTAG_SELECT    ||
         tag == CMDTAG_SHOW      ||
-        tag == CMDTAG_EXPLAIN   ||
-        tag == CMDTAG_CALL /* bug#6981 */ )
+        tag == CMDTAG_EXPLAIN)
     {
         send_eof(0, status);
     }
@@ -234,6 +234,15 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
     {
         send_ok(0, 0, status, last_insert_id, NULL);
     }
+    /* Begin - bug#7011 */
+    else if (tag == CMDTAG_CALL)
+    {
+        if (nprocessed)
+            send_eof(0, status);
+        else
+            send_ok(0, 0, status, last_insert_id, NULL);
+    }
+    /* End - bug#7011 */
     else if (pg_strncasecmp(tagname, "PREPARE", 6) == 0 && current_packet_type == COM_STMT_PREPARE)
     {
         Query   *query;
@@ -259,7 +268,7 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
     else
     {
         if (has_client_capabilities(CLIENT_DEPRECATE_EOF))
-            send_ok(qc->nprocessed, 0, status, last_insert_id, NULL);
+            send_ok(nprocessed, 0, status, last_insert_id, NULL);
         else
             send_eof(0, status);
     }
