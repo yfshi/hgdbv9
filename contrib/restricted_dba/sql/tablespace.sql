@@ -30,6 +30,8 @@ drop tablespace tbspc_non_exist;
 ------ pass
 grant all on tablespace pg_default to sysdba_u2;
 grant all on tablespace pg_default to u2;
+revoke all on tablespace pg_default from u2;
+
 ------ fail
 grant all on tablespace pg_default to syssso_u1;
 grant all on tablespace pg_default to syssao_u1;

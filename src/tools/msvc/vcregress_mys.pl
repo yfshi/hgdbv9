@@ -513,8 +513,6 @@ sub contribcheck
 		next if ($module eq "sslinfo"    && !defined($config->{openssl}));
 		next if ($module eq "xml2"       && !defined($config->{xml}));
 		next if ($module eq "sepgsql");
-		# TODO(windows): set se_feature.mode = on not work.
-		next if ($module eq "restricted_dba");
 	
 		subdircheck($module);
 		my $status = $? >> 8;

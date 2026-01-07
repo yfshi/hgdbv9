@@ -515,8 +515,6 @@ sub contribcheck
 		next if ($module =~ /_plpython$/ && !defined($config->{python}));
 		next if ($module eq "sepgsql");
 		next if ($module eq "ivorysql_my");
-		# TODO(windows): set se_feature.mode = on not work.
-		next if ($module eq "restricted_dba");
 
 		subdircheck($module);
 		my $status = $? >> 8;

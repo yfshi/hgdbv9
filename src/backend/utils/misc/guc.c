@@ -314,6 +314,11 @@ static void assign_osname(const char *newval, void *extra);
 static bool check_count_idle_busy_time(bool *newval, void **extra, GucSource source);
 /* End ReqID: SESSION-VIEWS */
 
+/* Begin - ReqID:SRS-SECURITY-POWERS */
+static bool se_feature_check(bool *newval, void **extra, GucSource source);
+static const char *restricted_dba_show(void);
+/* End - ReqID:SRS-SECURITY-POWERS */
+
 /* Begin - ReqID: SRS-MYSQL-PROTOCOL */
 static const char *show_XactIsoLevel(void);
 /* End - ReqID: SRS-MYSQL-PROTOCOL */
@@ -2392,6 +2397,29 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	/* Begin - ReqID:SRS-SECURITY-POWERS */
+	{
+		{"se_feature.restricted_dba", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Turn on/off  restricted_dba"),
+			NULL,
+			GUC_NO_RESET_ALL
+		},
+		&restricted_dba,
+		false,
+		se_feature_check, NULL, restricted_dba_show
+	},
+	{
+		{"se_feature.mode", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Turn on/off  se_features"),
+			NULL,
+			GUC_NO_RESET_ALL
+		},
+		&se_feature_mode,
+		false,
+		se_feature_check, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-POWERS */
+
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_BOOL_PARAMS
 	#include "ivy_oracle_guc.c"
@@ -9296,7 +9324,7 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	 * At this point, we should be able to get all value in auto conf file, and we 
 	 * need to find all se_feature params and keep their setting.
 	 */
-	if (se_feature.mode && resetall)
+	if (se_feature_mode && resetall)
 	{
 		struct stat st;
 		ConfigVariable *item,
@@ -12176,7 +12204,7 @@ GUCArrayReset(ArrayType *array)
 	 * if we turn on se_feature.mode, we disallow superuser reset all directly,
 	 * we still need to keep the setting of security params;
 	 */
-	if (!se_feature.mode)
+	if (!se_feature_mode)
 	{
 		/* if we're superuser, we can delete everything, so just do it */
 		if (superuser())
@@ -12209,7 +12237,7 @@ GUCArrayReset(ArrayType *array)
 		*eqsgn = '\0';
 
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
-		if (se_feature.mode)
+		if (se_feature_mode)
 		{
 			/* 
 			 * Since validate_option_array_item won't call checker for reset. 
@@ -12810,6 +12838,33 @@ check_canonical_path(char **newval, void **extra, GucSource source)
 		canonicalize_path(*newval);
 	return true;
 }
+
+/* Begin - ReqID:SRS-SECURITY-POWERS */
+static bool
+se_feature_check(bool *newval, void **extra, GucSource source)
+{
+	if (source < PGC_S_TEST)
+		return true;
+
+	if (IS_SYSSSO(GetUserId()))
+	{
+		return true;
+	}
+	else
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("Only syssso users can set this value")));
+		return false;
+	}
+}
+
+static const char *
+restricted_dba_show(void)
+{
+	return (se_feature_mode && restricted_dba) ? "on" : "off";
+}
+/* End - ReqID:SRS-SECURITY-POWERS */
 
 static bool
 check_timezone_abbreviations(char **newval, void **extra, GucSource source)

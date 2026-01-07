@@ -291,7 +291,7 @@ create_index_check(IndexStmt *stmt)
 						errdetail("member of sysdba_role can only create index "
 									"on its own relation")));
 
-			if (se_feature.restricted_dba && (ownerId != GetUserId()))
+			if (restricted_dba && (ownerId != GetUserId()))
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 							errmsg("permission denied"),
@@ -338,7 +338,7 @@ alter_relation_check(AlterTableStmt *stmt)
 								" member")));			
 		}
 
-		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		if (restricted_dba && IS_SYSDBA(GetUserId()))
 		{
 			if (ownerId != GetUserId())
 			{
@@ -369,7 +369,7 @@ alter_relation_check(AlterTableStmt *stmt)
 										" be owner of relation")));	
 				}
 
-				if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+				if (restricted_dba && IS_SYSDBA(GetUserId()))
 				{
 					if (!IS_SYSDBA(newowner))
 					{
@@ -423,7 +423,7 @@ alter_relation_rename_check(RenameStmt *stmt)
 					errdetail("cannot alter relation of syssso_role/syssao_role "
 								"member")));
 
-		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		if (restricted_dba && IS_SYSDBA(GetUserId()))
 		{
 			if (relowner != GetUserId())
 			{
@@ -483,7 +483,7 @@ alter_relation_schema_check(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 								"member")));
 		}
 
-		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		if (restricted_dba && IS_SYSDBA(GetUserId()))
 		{
 			if (relowner != GetUserId())
 			{
@@ -555,7 +555,7 @@ bool drop_relation_check(DropStmt *stmt)
 									"member")));
 			}
 
-			if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+			if (restricted_dba && IS_SYSDBA(GetUserId()))
 			{
 				if (relowner != GetUserId())
 				{
@@ -605,7 +605,7 @@ alter_sequence_check(AlterSeqStmt *stmt)
 								" member")));			
 		}
 
-		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		if (restricted_dba && IS_SYSDBA(GetUserId()))
 		{
 			if (ownerId != GetUserId())
 			{
@@ -660,7 +660,7 @@ truncate_relation_check(Oid relid)
 					   	   relname);
 		}
 	}
-	else if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+	else if (restricted_dba && IS_SYSDBA(GetUserId()))
 	{
 		aclmode = pg_class_aclmask_nosuper(relid, GetUserId(), ACL_TRUNCATE,
 											 ACLMASK_ALL);

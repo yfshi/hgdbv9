@@ -307,7 +307,7 @@ static bool is_manager_in_init(const char *username, const char *databasename)
 
 	role_id = get_roleoid_by_name(username, databasename);
 
-	if (se_feature.mode)
+	if (se_feature_mode)
 		return is_member_of_sys(role_id, "syssso_role", databasename);
 	else
 		return is_member_of_sys(role_id, "sysdba_role", databasename);
@@ -315,7 +315,7 @@ static bool is_manager_in_init(const char *username, const char *databasename)
 
 static bool is_manager(void)
 {
-	if (se_feature.mode)
+	if (se_feature_mode)
 		return IS_SYSSSO(GetUserId());
 	else
 		return IS_SYSDBA(GetUserId());

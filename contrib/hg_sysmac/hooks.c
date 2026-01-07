@@ -214,7 +214,7 @@ sysmac_utility_command(PlannedStmt *pstmt,
 bool
 is_security_roles()
 {
-	if (se_feature.mode) /* Bug - #5937 #z6015 #z6056 #z6058 */
+	if (se_feature_mode) /* Bug - #5937 #z6015 #z6056 #z6058 */
 	{
 		if (!IS_SYSSSO(GetUserId()))
 			ereport(ERROR,

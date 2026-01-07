@@ -179,7 +179,7 @@ alter_proc_owner_check(AlterOwnerStmt *stmt, const char *name, Oid newOwnerId)
 					errdetail("cannot alter function/procedure/routine of "
 								"syssso_role/syssao_role member")));
 		}
-		else if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		else if (restricted_dba && IS_SYSDBA(GetUserId()))
 		{
 			if (procowner != GetUserId())
 			{
@@ -200,7 +200,7 @@ alter_proc_owner_check(AlterOwnerStmt *stmt, const char *name, Oid newOwnerId)
 					errdetail("syssso_role/syssao_role member "
 							"cannot be owner of function/procedure/routine")));
 		}
-		else if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		else if (restricted_dba && IS_SYSDBA(GetUserId()))
 		{
 			if (!IS_SYSDBA(newOwnerId))
 			{
@@ -253,7 +253,7 @@ bool alter_proc_rename_check(RenameStmt *stmt)
 					errdetail("cannot alter function/procedure/routine of "
 								"syssso_role/syssao_role member")));
 
-		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		if (restricted_dba && IS_SYSDBA(GetUserId()))
 		{
 			if (procowner != GetUserId())
 			{
@@ -307,7 +307,7 @@ alter_proc_schema_check(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 								"syssso_role/syssao_role member")));
 		}
 
-		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		if (restricted_dba && IS_SYSDBA(GetUserId()))
 		{
 			if (procowner != GetUserId())
 			{
@@ -365,7 +365,7 @@ alter_proc_check(ParseState *pstate, AlterFunctionStmt *stmt)
 								"syssso_role/syssao_role member")));
 		}
 
-		if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		if (restricted_dba && IS_SYSDBA(GetUserId()))
 		{
 			if (procowner != GetUserId())
 			{
@@ -421,7 +421,7 @@ bool drop_proc_check(DropStmt *stmt)
 									"syssso_role/syssao_role member")));
 			}
 
-			if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+			if (restricted_dba && IS_SYSDBA(GetUserId()))
 			{
 				if (procowner != GetUserId())
 				{
@@ -484,7 +484,7 @@ compile_function_check(CompileFunctionStmt *stmt)
 					aclcheck_error(aclresult, obj_type,
 									get_func_name(proc_oid));
 			}
-			else if (se_feature.restricted_dba && 
+			else if (restricted_dba &&
 					 procForm->pronamespace != PG_CATALOG_NAMESPACE &&
 					 procForm->pronamespace != PG_PUBLIC_NAMESPACE &&
 					 procForm->pronamespace != PG_SYS_NAMESPACE)

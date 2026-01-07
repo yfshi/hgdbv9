@@ -2032,8 +2032,8 @@ have_createdb_privilege(void)
 	HeapTuple	utup;
 
 	/* Begin - ReqID:SRS-SECURITY-POWERS */
-	if (se_feature.mode)
-		return se_feature.role_has_createdb_priv(GetUserId());
+	if (se_feature_mode && role_has_createdb_priv_hook)
+		return role_has_createdb_priv_hook(GetUserId());
 	/* End - ReqID:SRS-SECURITY-POWERS */
 
 	/* Superusers can always do everything */

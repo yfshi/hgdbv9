@@ -63,7 +63,7 @@ check_conn_restrict_enable(bool *newval, void **extra, GucSource source)
 	if(IsUnderPostmaster && IsTransactionState() && MyDatabaseId != InvalidOid)
 	{
 		if (!IS_SYSSSO(GetUserId()) || 
-			(!IS_SYSDBA(GetUserId()) && !se_feature.mode)) /* Bug #6238 */
+			(!IS_SYSDBA(GetUserId()) && !se_feature_mode)) /* Bug #6238 */
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					errmsg("permission denied")));
@@ -414,7 +414,7 @@ add_rules(PG_FUNCTION_ARGS)
 
 	/* Is syssso user*/
 	if (!IS_SYSSSO(GetUserId()) ||
-		(!IS_SYSDBA(GetUserId()) && !se_feature.mode)) /* Bug #6279 */
+		(!IS_SYSDBA(GetUserId()) && !se_feature_mode)) /* Bug #6279 */
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				errmsg("permission denied")));
@@ -567,7 +567,7 @@ remove_rules(PG_FUNCTION_ARGS)
 
 	/* Is syssso user*/
 	if (!IS_SYSSSO(GetUserId()) ||
-		(!IS_SYSDBA(GetUserId()) && !se_feature.mode)) /* Bug #6279 */
+		(!IS_SYSDBA(GetUserId()) && !se_feature_mode)) /* Bug #6279 */
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				errmsg("permission denied")));

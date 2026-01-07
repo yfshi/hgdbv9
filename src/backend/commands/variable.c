@@ -814,7 +814,7 @@ check_session_authorization(char **newval, void **extra, GucSource source)
 		 * We forbid security role especially member of sysdba_role 
 		 * change their role to another security role.
 		 */
-		if (se_feature.mode)
+		if (se_feature_mode)
 		{
 			if (IS_SYSDBA(GetAuthenticatedUserId()) &&
 				(IS_SYSSSO(roleid) || IS_SYSSAO(roleid)))
@@ -962,7 +962,7 @@ check_role(char **newval, void **extra, GucSource source)
 		 * We forbid security role especially member of sysdba_role 
 		 * change their role to another security role.
 		 */
-		if (se_feature.mode)
+		if (se_feature_mode)
 		{
 			if (IS_SYSDBA(GetSessionUserId()) &&
 				(IS_SYSSSO(roleid) || IS_SYSSAO(roleid)))

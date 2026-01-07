@@ -5827,8 +5827,8 @@ has_createrole_privilege(Oid roleid)
 	HeapTuple	utup;
 
 	/* Begin - ReqID:SRS-SECURITY-POWERS */
-	if (se_feature.mode)
-		return se_feature.role_has_createrole_priv(roleid);
+	if (se_feature_mode && role_has_createrole_priv_hook)
+		return role_has_createrole_priv_hook(roleid);
 	/* End - ReqID:SRS-SECURITY-POWERS */
 
 	/* Superusers bypass all permission checking. */

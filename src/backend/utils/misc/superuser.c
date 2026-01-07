@@ -60,13 +60,11 @@ superuser(void)
 bool
 superuser_arg(Oid roleid)
 {
-
 	/* when se_feature.mode is on, we use our version of superuser() */
-	if (se_feature.mode)
-		return se_feature.role_is_superuser(roleid);
+	if (se_feature_mode && role_is_superuser_hook)
+		return role_is_superuser_hook(roleid);
 	else
 		return superuser_arg_ori(roleid);
-
 }
 
 /*

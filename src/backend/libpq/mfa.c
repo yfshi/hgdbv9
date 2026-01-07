@@ -1112,7 +1112,7 @@ modify_mfa_param(const char *rolename, const char *otp, const char *param, bool 
 
 static bool is_manager(void)
 {
-	if (se_feature.mode)
+	if (se_feature_mode)
 		return IS_SYSSSO(GetUserId());
 	else
 		return IS_SYSDBA(GetUserId());

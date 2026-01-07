@@ -6054,7 +6054,7 @@ audit_arch_job(void)
 
 		/* Begin - BUG#00004708 */
 		memset(connstr, 0 , MAXPGPATH);
-		if (se_feature.mode)
+		if (se_feature_mode)
 		{
 			sprintf(connstr, "host=localhost dbname=%s port=%d user=syssao", dbname, PostPortNumber);
 		}
@@ -7142,7 +7142,7 @@ audit_real_check_hook(char **newvalue, void **extra, GucSource source)
 static void 
 check_audit_sao_permission(Oid roid, bool istable)
 {
-	if (se_feature.mode)
+	if (se_feature_mode)
 	{
 		/* Begin - BUG#00004872 */
 		if (!IS_SYSSAO(roid))
@@ -7178,7 +7178,7 @@ check_audit_sao_permission(Oid roid, bool istable)
 static void
 check_audit_saosso_perm(Oid roid, bool istable)
 {	
-	if (se_feature.mode)
+	if (se_feature_mode)
 	{
 		/* Begin - BUG#00004872 */
 		if (audit_GUC.audit_privimode == 1)
@@ -10248,7 +10248,7 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 
 	username = GetUserNameFromId(userid, true);
 
-	if (se_feature.mode)
+	if (se_feature_mode)
 	{
 		/* Begin - BUG#00004872 */
 		if (audit_GUC.audit_privimode == 1)
@@ -13000,8 +13000,8 @@ static void audit_drop_table_partition(void)
 
 				if (buf.len > 0)
 				{
-					bool old_mode = se_feature.mode;
-					se_feature.mode = false;
+					bool old_mode = se_feature_mode;
+					se_feature_mode = false;
 
 					PG_TRY();
 					{
@@ -13009,7 +13009,7 @@ static void audit_drop_table_partition(void)
 					}
 					PG_FINALLY();
 					{
-						se_feature.mode = old_mode;
+						se_feature_mode = old_mode;
 					}
 					PG_END_TRY();
 				}
@@ -13184,15 +13184,15 @@ static void audit_create_table_partition(TimestampTz time_cur)
 
 	if (buf.len > 0)
 	{
-		bool old_mode = se_feature.mode;
-		se_feature.mode = false;
+		bool old_mode = se_feature_mode;
+		se_feature_mode = false;
 		PG_TRY();
 		{
 			SPI_execute(buf.data, false, 0);
 		}
 		PG_FINALLY();
 		{
-			se_feature.mode = old_mode;
+			se_feature_mode = old_mode;
 		}
 		PG_END_TRY();
 	}

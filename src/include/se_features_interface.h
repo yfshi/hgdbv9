@@ -20,7 +20,8 @@
 #include "postgres.h"
 #include "nodes/parsenodes.h"
 
-typedef void (*grant_sysdba_priv_fn) (Oid roleid, bool is_grant);
+typedef void (*grant_sysdba_priv_hook_type) (Oid roleid, bool is_grant);
+extern PGDLLIMPORT grant_sysdba_priv_hook_type grant_sysdba_priv_hook;
 
 /*
  * Since we limit only sysdba_role can have SUPERUSER\CREATEROLE\CREATEDB
@@ -29,26 +30,25 @@ typedef void (*grant_sysdba_priv_fn) (Oid roleid, bool is_grant);
  * funciton to replace origin privilege check function. In these check
  * functions we ignore those non-sysdba_role user's privileges.
  */
-typedef bool (*role_is_superuser_fn) (Oid roleid);
-typedef bool (*role_has_createrole_priv_fn) (Oid roleid);
-typedef bool (*role_has_createdb_priv_fn) (Oid roleid);
-typedef bool (*use_sequence_check_fn) (Oid seq_oid, Oid roleid, AclMode mode);
+typedef bool (*role_is_superuser_hook_type) (Oid roleid);
+extern PGDLLIMPORT role_is_superuser_hook_type role_is_superuser_hook;
 
-typedef struct 
-{
-	bool mode;
-	bool restricted_dba;
-	/* use it with caution, it may make a normal user a superuser,maybe changed latter */
-	Oid tmp_superuser_oid;
-	/* support function interface */
-	grant_sysdba_priv_fn grant_sysdba_priv;
-	role_is_superuser_fn role_is_superuser;
-	role_has_createrole_priv_fn role_has_createrole_priv;
-	role_has_createdb_priv_fn role_has_createdb_priv;
-	use_sequence_check_fn use_sequence_check;
-}SeFeature;
+typedef bool (*role_has_createrole_priv_hook_type) (Oid roleid);
+extern PGDLLIMPORT role_has_createrole_priv_hook_type role_has_createrole_priv_hook;
 
-extern PGDLLIMPORT SeFeature se_feature;
+typedef bool (*role_has_createdb_priv_hook_type) (Oid roleid);
+extern PGDLLIMPORT role_has_createdb_priv_hook_type role_has_createdb_priv_hook;
+
+typedef bool (*use_sequence_check_hook_type) (Oid seq_oid, Oid roleid, AclMode mode);
+extern PGDLLIMPORT use_sequence_check_hook_type use_sequence_check_hook;
+
+
+/* use it with caution, it may make a normal user a superuser,maybe changed latter */
+extern PGDLLIMPORT Oid tmp_superuser_oid;
+/* se_feature switch */
+extern PGDLLIMPORT bool se_feature_mode;
+extern PGDLLIMPORT bool restricted_dba;
+
 
 #define SYSDBA_ROLE "sysdba_role"
 #define SYSSSO_ROLE "syssso_role"
