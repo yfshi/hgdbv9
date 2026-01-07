@@ -64,7 +64,6 @@ static ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 static needs_fmgr_hook_type next_needs_fmgr_hook = NULL;
 
-
 SeParamCtl *se_param_ctl = NULL;
 
 static bool 
@@ -119,7 +118,7 @@ restricted_utility(PlannedStmt *pstmt,
 	pstate->p_sourcetext = queryString;
 	pstate->p_queryEnv = queryEnv;
 
-	if (se_feature.mode)
+	if (se_feature_mode)
 	{
 		switch (nodeTag(parsetree))
 		{
@@ -148,7 +147,7 @@ restricted_utility(PlannedStmt *pstmt,
 					if((IS_SYSSSO(GetUserId()) || IS_SYSSAO(GetUserId())) &&
 						!((CopyStmt *) parsetree)->is_from)
 					{
-						se_feature.tmp_superuser_oid = GetUserId();
+						tmp_superuser_oid = GetUserId();
 						PG_TRY();
 						{	
 							DoCopy(pstate, (CopyStmt *) parsetree,
@@ -159,10 +158,10 @@ restricted_utility(PlannedStmt *pstmt,
 						}
 						PG_FINALLY();
 						{
-							se_feature.tmp_superuser_oid = InvalidOid;
+							tmp_superuser_oid = InvalidOid;
 						}
 						PG_END_TRY();
-						se_feature.tmp_superuser_oid = InvalidOid;
+						tmp_superuser_oid = InvalidOid;
 						call_next = false;
 					}
 				}
@@ -279,16 +278,16 @@ restricted_utility(PlannedStmt *pstmt,
 				break;
 			case T_CreateExtensionStmt:
 				{
-					bool saved_se_feature_param = se_feature.mode;
+					bool saved_se_feature_param = se_feature_mode;
 
 					PG_TRY();
 					{	
-						se_feature.mode = false;
+						se_feature_mode = false;
 						CreateExtension(pstate, (CreateExtensionStmt *) parsetree);
 					}
 					PG_FINALLY();
 					{
-						se_feature.mode = saved_se_feature_param;
+						se_feature_mode = saved_se_feature_param;
 					}
 					PG_END_TRY();
 					call_next = false;
@@ -297,16 +296,16 @@ restricted_utility(PlannedStmt *pstmt,
 
 			case T_AlterExtensionStmt:
 				{
-					bool saved_se_feature_param = se_feature.mode;
+					bool saved_se_feature_param = se_feature_mode;
 
 					PG_TRY();
 					{	
-						se_feature.mode = false;
+						se_feature_mode = false;
 						ExecAlterExtensionStmt(pstate, (AlterExtensionStmt *) parsetree);
 					}
 					PG_FINALLY();
 					{
-						se_feature.mode = saved_se_feature_param;
+						se_feature_mode = saved_se_feature_param;
 					}
 					PG_END_TRY();
 					call_next = false;
@@ -424,7 +423,7 @@ restricted_dba_assign (bool newval, void *extra)
 const char * 
 restricted_dba_show (void)
 {
-	return (se_feature.mode && se_feature.restricted_dba) ? "on" : "off";
+	return (se_feature_mode && restricted_dba) ? "on" : "off";
 }
 
 bool se_feature_mode_check (bool *newval, void **extra, GucSource source);
@@ -460,7 +459,7 @@ se_feature_mode_assign (bool newval, void *extra)
 const char * 
 se_feature_mode_show (void)
 {
-	return se_feature.mode ? "on" : "off";
+	return se_feature_mode ? "on" : "off";
 }
 
 
@@ -626,7 +625,7 @@ se_feature_check_perms(List *rangeTabls, bool abort)
 	ListCell   *l;
 	bool		result = true;
 
-	if(se_feature.mode)
+	if (se_feature_mode)
 	{
 		foreach(l, rangeTabls)
 		{
@@ -657,7 +656,7 @@ se_feature_check_perms(List *rangeTabls, bool abort)
 						return false;
 					}
 				}
-				else if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+				else if (restricted_dba && IS_SYSDBA(GetUserId()))
 				{
 					result = check_rte_perms(rte);
 					if (!result)
@@ -694,7 +693,7 @@ object_access_check(ObjectAccessType access,
 					int subId,
 					void *arg)
 {
-	if (se_feature.mode)
+	if (se_feature_mode)
 	{
 		switch (access)
 		{
@@ -806,7 +805,7 @@ func_execute_check(Oid proc_oid)
 		result = next_needs_fmgr_hook(proc_oid);
 
 	/* if se_feature.mode is off, just return */
-	if (!se_feature.mode)
+	if (!se_feature_mode)
 		return result;
 
 	/*
@@ -839,7 +838,7 @@ func_execute_check(Oid proc_oid)
 					aclcheck_error(aclresult, obj_type,
 									get_func_name(proc_oid));
 			}
-			else if (se_feature.restricted_dba && 
+			else if (restricted_dba &&
 					 procForm->pronamespace != PG_CATALOG_NAMESPACE &&
 					 procForm->pronamespace != PG_PUBLIC_NAMESPACE &&
 					 procForm->pronamespace != PG_SYS_NAMESPACE)
@@ -880,34 +879,6 @@ _PG_init(void)
 				 errmsg("restricted_dba must be loaded via shared_preload_libraries")));
 #endif
 
-
-	/*
-	 * restricted_dba = (on|off)
-	 *
-	 * This variable controls restricted_dba mode is on or off
-	 */
-	DefineCustomBoolVariable("se_feature.restricted_dba",
-							 "Turn on/off  restricted_dba",
-							 NULL,
-							 &se_feature.restricted_dba,
-							 false,
-							 PGC_USERSET,
-							 GUC_NO_RESET_ALL,
-							 restricted_dba_check,
-							 restricted_dba_assign,
-							 restricted_dba_show);
-
-	DefineCustomBoolVariable("se_feature.mode",
-							 "Turn on/off  se_features",
-							 NULL,
-							 &se_feature.mode,
-							 false,
-							 PGC_USERSET,
-							 GUC_NO_RESET_ALL,
-							 se_feature_mode_check,
-							 se_feature_mode_assign,
-							 se_feature_mode_show);
-
 	RequestAddinShmemSpace(MAXALIGN(sizeof(SeParamCtl)));
 	RequestNamedLWLockTranche("se_feature", 1);
 
@@ -931,12 +902,9 @@ _PG_init(void)
 	next_needs_fmgr_hook = needs_fmgr_hook;
 	needs_fmgr_hook = func_execute_check;
 
-	se_feature.grant_sysdba_priv = grant_sysdba_priv;
-	se_feature.role_is_superuser = se_role_is_superuser;
-	se_feature.role_has_createrole_priv = se_role_has_createrole_priv;
-	se_feature.role_has_createdb_priv = se_role_has_createdb_priv;
-	se_feature.use_sequence_check = se_use_sequence_check;
-
-	// /* init contextual info */
-	// memset(&sepgsql_context_info, 0, sizeof(sepgsql_context_info));
+	grant_sysdba_priv_hook = grant_sysdba_priv;
+	role_is_superuser_hook = se_role_is_superuser;
+	role_has_createrole_priv_hook = se_role_has_createrole_priv;
+	role_has_createdb_priv_hook = se_role_has_createdb_priv;
+	use_sequence_check_hook = se_use_sequence_check;
 }

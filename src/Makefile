@@ -53,11 +53,6 @@ SUBDIRS += $(LICENSE_DIR)
 SUBDIRS += ../dep/license/client_info
 endif
 
-# /* Begin - ReqID:SRS-SECURITY-POWERS */
-# always compile with se_features
-SUBDIRS += se_features
-# /* End - ReqID:SRS-SECURITY-POWERS */
-
 # There are too many interdependencies between the subdirectories, so
 # don't attempt parallel make here.
 .NOTPARALLEL:

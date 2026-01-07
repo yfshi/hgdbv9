@@ -892,8 +892,8 @@ has_createrole(PG_FUNCTION_ARGS)
 	bool		result = false;
 	HeapTuple	utup;
 
-	if (se_feature.mode)
-		return se_feature.role_has_createrole_priv(role_id);
+	if (se_feature_mode)
+		return se_role_has_createrole_priv(role_id);
 
 	utup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(role_id));
 	if (HeapTupleIsValid(utup))
@@ -914,9 +914,8 @@ has_createdb(PG_FUNCTION_ARGS)
 	bool		result = false;
 	HeapTuple	utup;
 
-	if (se_feature.mode)
-		return se_feature.role_has_createdb_priv(role_id);
-
+	if (se_feature_mode)
+		return se_role_has_createdb_priv(role_id);
 
 	utup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(role_id));
 	if (HeapTupleIsValid(utup))

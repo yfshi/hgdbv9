@@ -147,13 +147,13 @@ GRANT ALL ON DATABASE CONTRIB_REGRESSION TO U1;
 CREATE USER U2;
 GRANT ALL ON DATABASE CONTRIB_REGRESSION TO U2;
 -- create schema sv_s1 owned by u1
-\c - u1
+SET ROLE u1;
 CREATE SCHEMA SV_S1;
 -- create schema sv_s2 owned by u2
-\c - u2
+SET ROLE u2;
 CREATE SCHEMA SV_S2;
 -- create functions public.f1 and sv_s1.f1 owned by u1
-\c - u1
+SET ROLE u1;
 CREATE OR REPLACE FUNCTION F1(I INT)
 RETURN INT IS BEGIN RETURN $1; END;
 /
@@ -161,7 +161,7 @@ CREATE OR REPLACE FUNCTION SV_S1.F1(I INT)
 RETURN INT IS BEGIN RETURN $1; END;
 /
 -- create functions public.f2 and sv_s2.f2 owned by u2
-\c - u2
+SET ROLE u2;
 CREATE OR REPLACE FUNCTION F2(I INT)
 RETURN INT IS BEGIN RETURN $1; END;
 /
@@ -169,7 +169,7 @@ CREATE OR REPLACE FUNCTION SV_S2.F2(I INT)
 RETURN INT IS BEGIN RETURN $1; END;
 /
 -- select with u1
-\c - u1
+SET ROLE u1;
 SET IVORYSQL.IDENTIFIER_CASE_SWITCH = INTERCHANGE;
 SHOW IVORYSQL.IDENTIFIER_CASE_SWITCH;
  ivorysql.identifier_case_switch 
@@ -189,10 +189,10 @@ WHERE OBJECT_NAME='F1' OR OBJECT_NAME='F2';
 (3 rows)
 
 -- grant schema's usage privilege to u1
-\c - u2
+SET ROLE u2;
 GRANT USAGE ON SCHEMA SV_S2 TO U1;
 -- select with u1 again
-\c - u1
+SET ROLE u1;
 SET IVORYSQL.IDENTIFIER_CASE_SWITCH = INTERCHANGE;
 SHOW IVORYSQL.IDENTIFIER_CASE_SWITCH;
  ivorysql.identifier_case_switch 
@@ -348,3 +348,16 @@ DROP PROCEDURE p_def1(arg1 IN int, arg2 OUT int, arg3 int);
 DROP FUNCTION f_def2(arg1 IN int, arg2 IN int, arg3 IN int, arg3 int);
 DROP PROCEDURE p_def2(arg1 IN int, arg2 IN int, arg3 IN int, arg3 int);
 -- End - BUG#Z199
+SET ROLE u1;
+DROP FUNCTION f1;
+DROP SCHEMA SV_S1 CASCADE;
+NOTICE:  drop cascades to function sv_s1.f1(integer)
+SET ROLE u2;
+DROP FUNCTION f2;
+DROP SCHEMA SV_S2 CASCADE;
+NOTICE:  drop cascades to function sv_s2.f2(integer)
+RESET ROLE;
+REVOKE ALL ON DATABASE CONTRIB_REGRESSION FROM U1;
+REVOKE ALL ON DATABASE CONTRIB_REGRESSION FROM U2;
+DROP USER U1;
+DROP USER U2;

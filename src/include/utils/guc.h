@@ -554,6 +554,10 @@ extern PGDLLIMPORT char 	*version_comment_str;
 
 extern PGDLLIMPORT bool use_mysql_bit_literal;	/* SRS-MYSQL-HEX-LITERAL */
 
+extern PGDLLIMPORT bool se_feature_mode;
+extern PGDLLIMPORT bool restricted_dba;
+
+
 /*
  * Functions exported by guc.c
  */

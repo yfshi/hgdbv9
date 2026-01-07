@@ -30,6 +30,7 @@
 #include "storage/procarray.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 #include "utils/hg_proc_data.h"	/* ReqID: SESSION-VIEWS */
 #include "utils/inet.h"
 #include "utils/timestamp.h"
@@ -1003,7 +1004,7 @@ pg_stat_get_activity_ext(PG_FUNCTION_ARGS)
 	/* Bug #6195, #6192*/
 	if(IsUnderPostmaster)
 	{
-		if (!IS_SYSSSO(GetUserId()) || (!IS_SYSDBA(GetUserId()) && se_feature.mode == false))
+		if (!IS_SYSSSO(GetUserId()) || (!IS_SYSDBA(GetUserId()) && se_feature_mode == false))
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					errmsg("permission denied")));

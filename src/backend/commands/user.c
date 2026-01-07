@@ -970,13 +970,13 @@ AlterRole(AlterRoleStmt *stmt)
 	 * we use superuser_arg(authform->oid) instead of using rolsuper directly.
 	 * otherwise it may cause non-sysdba_role superuser cannot alter itself.
 	 */
-	else if (se_feature.mode? superuser_arg(authform->oid) : authform->rolsuper) /* bug# z6273 */
+	else if (se_feature_mode ? superuser_arg(authform->oid) : authform->rolsuper) /* bug# z6273 */
 	{
 		/*
 		 * If we turned on se_feautre.mode, we allow members of syssso_role
 		 * modify user's password validity period, even target user is a superuser.
 		 */
-		if (se_feature.mode)
+		if (se_feature_mode)
 		{
 			if(!superuser())
 			{
@@ -1015,7 +1015,7 @@ AlterRole(AlterRoleStmt *stmt)
 	{
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
 		/*chengxi marks here move following change to extension latter*/
-		if (se_feature.mode && IS_SYSSSO(GetUserId()))
+		if (se_feature_mode && IS_SYSSSO(GetUserId()))
 		{
 			if (!(inherit < 0 &&
 				createrole < 0 &&
@@ -1426,7 +1426,7 @@ AlterRoleSet(AlterRoleSetStmt *stmt)
 		 * To mess with a superuser you gotta be superuser; else you need
 		 * createrole, or just want to change your own settings
 		 */
-		if (se_feature.mode? superuser_arg(roleform->oid) : roleform->rolsuper) /*bug# z6273 */
+		if (se_feature_mode ? superuser_arg(roleform->oid) : roleform->rolsuper) /*bug# z6273 */
 		{
 			if (!superuser())
 				ereport(ERROR,
@@ -1558,7 +1558,7 @@ DropRole(DropRoleStmt *stmt)
 		 * roles but not superuser roles.  This is mainly to avoid the
 		 * scenario where you accidentally drop the last superuser.
 		 */
-		if ((se_feature.mode? superuser_arg(roleform->oid) : roleform->rolsuper) &&
+		if ((se_feature_mode ? superuser_arg(roleform->oid) : roleform->rolsuper) &&
 			!superuser()) /* bug# z6273 */
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
@@ -1777,7 +1777,7 @@ RenameRole(const char *oldname, const char *newname)
 	/*
 	 * createrole is enough privilege unless you want to mess with a superuser
 	 */
-	if (se_feature.mode ? 
+	if (se_feature_mode ?
 		superuser_arg(((Form_pg_authid) GETSTRUCT(oldtuple))->oid) : 
 		((Form_pg_authid) GETSTRUCT(oldtuple))->rolsuper ) /* bug# z6273 */
 	{
@@ -2164,7 +2164,8 @@ AddRoleMems(const char *rolename, Oid roleid,
 		if(IsUnderPostmaster && 
 		   (roleid == get_role_oid(SYSDBA_ROLE, false)))
 		{
-			se_feature.grant_sysdba_priv(memberid, true);
+			if (grant_sysdba_priv_hook)
+				grant_sysdba_priv_hook(memberid, true);
 		}
 		/* End - ReqID:SRS-SECURITY-POWERS */
 
@@ -2281,7 +2282,8 @@ DelRoleMems(const char *rolename, Oid roleid,
 		if(IsUnderPostmaster &&
 		   (roleid == get_role_oid(SYSDBA_ROLE, false)))
 		{
-			se_feature.grant_sysdba_priv(memberid, false);
+			if (grant_sysdba_priv_hook)
+				grant_sysdba_priv_hook(memberid, false);
 		}
 		/* End - ReqID:SRS-SECURITY-POWERS */
 

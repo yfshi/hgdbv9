@@ -33,15 +33,15 @@ bool
 se_role_is_superuser(Oid roleid)
 {
 	/* we should never get here if se_feature.mode is off */
-	Assert(se_feature.mode);
+	Assert(se_feature_mode);
 	Assert(roleid != InvalidOid);
 
 	/* Begin - ReqID:SRS-SECURITY-POWERS */
 	/* since syssso or syssao may need superuser priv, we make them a temp superuser*/
 	/* and this value could only set by code, so we always give code writer superuser privs */
 	/* since 'PUBLIC' oid is also 0, we should only make a valid user a temp superuser  */
-	if (se_feature.tmp_superuser_oid != InvalidOid &&
-		se_feature.tmp_superuser_oid == roleid)
+	if (tmp_superuser_oid != InvalidOid &&
+		tmp_superuser_oid == roleid)
 		return true;
 	/* 
 	 * some processes may also check superuser() during initialization.
@@ -66,7 +66,7 @@ se_role_is_superuser(Oid roleid)
 bool 
 se_role_has_createrole_priv(Oid roleid)
 {
-	Assert(se_feature.mode);
+	Assert(se_feature_mode);
 	if (IsUnderPostmaster)
 		return IS_SYSDBA(roleid);
 
@@ -77,7 +77,7 @@ se_role_has_createrole_priv(Oid roleid)
 bool 
 se_role_has_createdb_priv(Oid roleid)
 {
-	Assert(se_feature.mode);
+	Assert(se_feature_mode);
 	if (IsUnderPostmaster)
 		return IS_SYSDBA(roleid);
 	

@@ -232,7 +232,7 @@ grant_schema_check(InternalGrant *istmt)
 		}
 		else if (IS_SYSDBA(ownerId))
 		{
-			if (se_feature.restricted_dba && (ownerId != GetUserId()))
+			if (restricted_dba && (ownerId != GetUserId()))
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 						errmsg("permission denied"),
@@ -251,7 +251,7 @@ grant_schema_check(InternalGrant *istmt)
 								 errdetail("cannot grant create on schema of sysdba_role member to "
 											"syssso_role/syssao_role member")));
 				}
-				else if(se_feature.restricted_dba && !IS_SYSDBA(grantee))
+				else if(restricted_dba && !IS_SYSDBA(grantee))
 				{
 					ereport(ERROR,
 							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
@@ -277,7 +277,7 @@ grant_schema_check(InternalGrant *istmt)
 										"syssso_role/syssao_role member")));
 				}
 
-				if (se_feature.restricted_dba &&
+				if (restricted_dba &&
 					IS_SYSDBA(grantee) &&
 					IS_SYSDBA(GetUserId()))/*bug#z6269*/
 				{
@@ -331,7 +331,7 @@ grant_relation_check(InternalGrant *istmt)
 		}
 		else if (IS_SYSDBA(ownerId))
 		{
-			if (se_feature.restricted_dba && (ownerId != GetUserId()))
+			if (restricted_dba && (ownerId != GetUserId()))
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 						errmsg("permission denied"),
@@ -349,7 +349,7 @@ grant_relation_check(InternalGrant *istmt)
 							errdetail("cannot grant privilege of sysdba_role member to "
 										"syssso_role/syssao_role member")));
 				}	
-				else if(se_feature.restricted_dba && !IS_SYSDBA(grantee))
+				else if(restricted_dba && !IS_SYSDBA(grantee))
 				{
 					ereport(ERROR,
 							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
@@ -361,7 +361,7 @@ grant_relation_check(InternalGrant *istmt)
 		}
 		else
 		{
-			if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+			if (restricted_dba && IS_SYSDBA(GetUserId()))
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 						errmsg("permission denied"),
@@ -422,7 +422,7 @@ grant_proc_check(InternalGrant *istmt)
 		}
 		else if (IS_SYSDBA(ownerid))
 		{
-			if (se_feature.restricted_dba && (ownerid != GetUserId()))
+			if (restricted_dba && (ownerid != GetUserId()))
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 						errmsg("permission denied"),
@@ -440,7 +440,7 @@ grant_proc_check(InternalGrant *istmt)
 							errdetail("cannot grant privilege of sysdba_role member to"
 										" syssso_role/syssao_role member")));
 				}
-				else if(se_feature.restricted_dba && !IS_SYSDBA(grantee))
+				else if(restricted_dba && !IS_SYSDBA(grantee))
 				{
 					ereport(ERROR,
 							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
@@ -456,7 +456,7 @@ grant_proc_check(InternalGrant *istmt)
 			{
 				Oid grantee = lfirst_oid(cell_grantee);
 				
-				if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+				if (restricted_dba && IS_SYSDBA(GetUserId()))
 					ereport(ERROR,
 							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 							errmsg("permission denied"),
@@ -1562,7 +1562,7 @@ se_use_sequence_check (Oid seq_oid, Oid roleid, AclMode mode)
 	Form_pg_class classForm;
 	Oid			ownerId;
 
-	Assert(se_feature.mode);
+	Assert(se_feature_mode);
 
 	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(seq_oid));
 	classForm = (Form_pg_class) GETSTRUCT(tuple);
@@ -1576,7 +1576,7 @@ se_use_sequence_check (Oid seq_oid, Oid roleid, AclMode mode)
 		/* we always check for sso/sao user's sequence */
 		privs = pg_class_aclmask_nosuper(seq_oid,roleid,mode, ACLMASK_ANY);
 	}
-	else if (se_feature.restricted_dba && IS_SYSDBA(roleid))
+	else if (restricted_dba && IS_SYSDBA(roleid))
 	{
 		/* and check for sysdba when restricted_dba is on */
 		privs = pg_class_aclmask_nosuper(seq_oid,roleid,mode, ACLMASK_ANY);

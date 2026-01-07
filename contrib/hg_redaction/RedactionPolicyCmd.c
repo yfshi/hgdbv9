@@ -618,7 +618,7 @@ DropRedactionPolicy(DropRedactionPolicyStmt *stmt)
 	{
 		char	   *username = NULL;
 
-		if (se_feature.mode)
+		if (se_feature_mode)
 		{
 			username = "syssso";
 		}
@@ -1426,7 +1426,7 @@ AlterRedactionPolicy(AlterRedactionPolicyStmt *stmt)
 	if (!IS_SYSSSO(GetUserId()))
 	{
 		char	   *username = NULL;
-		if (se_feature.mode)
+		if (se_feature_mode)
 		{
 			username = "syssso";
 		}
@@ -1656,7 +1656,7 @@ CreateRedactionPolicy(CreateRedactionPolicyStmt *stmt)
 	{
 		char	   *username = NULL;
 
-		if (se_feature.mode)
+		if (se_feature_mode)
 		{
 			username = "syssso";
 		}

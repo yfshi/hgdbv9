@@ -846,8 +846,8 @@ nextval_internal(Oid relid, bool check_permissions)
 	/* Begin - Bug#z6158*/
 	/* if se_feature.mode is on, we call our check, otherwise call orginal check */
 	if (check_permissions && 
-		(se_feature.mode ?
-			(!se_feature.use_sequence_check(elm->relid, GetUserId(),
+		((se_feature_mode && use_sequence_check_hook) ?
+			(!use_sequence_check_hook(elm->relid, GetUserId(),
 									ACL_USAGE | ACL_UPDATE)) :
 			(pg_class_aclcheck(elm->relid, GetUserId(),
 								ACL_USAGE | ACL_UPDATE) != ACLCHECK_OK)))
@@ -1602,9 +1602,9 @@ currval_oid(PG_FUNCTION_ARGS)
 
 	/* Begin - Bug#z6158*/
 	/* if se_feature.mode is on, we call our check, otherwise call orginal check */
-	if (se_feature.mode ?
-		(!se_feature.use_sequence_check(elm->relid, GetUserId(),
-						   			   ACL_SELECT | ACL_USAGE)) :
+	if ((se_feature_mode && use_sequence_check_hook)?
+		(!use_sequence_check_hook(elm->relid, GetUserId(),
+								  ACL_SELECT | ACL_USAGE)) :
 		(pg_class_aclcheck(elm->relid, GetUserId(),
 						   ACL_SELECT | ACL_USAGE) != ACLCHECK_OK))
 		ereport(ERROR,
@@ -1704,9 +1704,9 @@ lastval(PG_FUNCTION_ARGS)
 
 	/* Begin - Bug#z6158*/
 	/* if se_feature.mode is on, we call our check, otherwise call orginal check */
-	if (se_feature.mode ?
-		(!se_feature.use_sequence_check(last_used_seq->relid, GetUserId(),
-						   			   ACL_SELECT | ACL_USAGE)) :
+	if ((se_feature_mode && use_sequence_check_hook)?
+		(!use_sequence_check_hook(last_used_seq->relid, GetUserId(),
+										ACL_SELECT | ACL_USAGE)) :
 		(pg_class_aclcheck(last_used_seq->relid, GetUserId(),
 						   ACL_SELECT | ACL_USAGE) != ACLCHECK_OK))
 		ereport(ERROR,
@@ -1888,8 +1888,8 @@ do_setval(Oid relid, int64 next, bool iscalled)
 
 	/* Begin - Bug#z6158*/
 	/* if se_feature.mode is on, we call our check, otherwise call orginal check */
-	if (se_feature.mode ?
-		(!se_feature.use_sequence_check(elm->relid, GetUserId(), ACL_UPDATE)) :
+	if ((se_feature_mode && use_sequence_check_hook) ?
+		(!use_sequence_check_hook(elm->relid, GetUserId(), ACL_UPDATE)) :
 		(pg_class_aclcheck(elm->relid, GetUserId(), ACL_UPDATE) != ACLCHECK_OK))
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),

@@ -144,7 +144,7 @@ use_schema_check(Oid namespaceid, Oid roleid)
 								   "syssso_role/syssao_role member schema")));
 			}
 		}
-		else if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+		else if (restricted_dba && IS_SYSDBA(GetUserId()))
 		{
 			if(!have_priv)
 			{
@@ -202,7 +202,7 @@ alter_schema_owner_check(const char *name, Oid newOwnerId)
 				 		   "cannot be owner of schema")));
 	}
 
-	if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+	if (restricted_dba && IS_SYSDBA(GetUserId()))
 	{
 		if (nspowner != GetUserId())
 		{
@@ -256,7 +256,7 @@ alter_schema_rename_check(const char *oldname, const char *newname)
 				errdetail("cannot alter schema of syssso_role/syssao_role "
 							"member")));
 
-	if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+	if (restricted_dba && IS_SYSDBA(GetUserId()))
 	{
 		if (nspowner != GetUserId())
 		{
@@ -314,7 +314,7 @@ drop_schema_check(ObjectAddress *object)
 				 errdetail("cannot drop schema of syssso_role/syssao_role "
 						"member")));
 
-	if (se_feature.restricted_dba && IS_SYSDBA(GetUserId()))
+	if (restricted_dba && IS_SYSDBA(GetUserId()))
 	{
 		if (nspowner != GetUserId())
 		{

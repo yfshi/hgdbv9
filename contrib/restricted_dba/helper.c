@@ -5,6 +5,7 @@
 #include "storage/proc.h"
 #include "utils/backend_status.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 
 #include "restricted_dba.h"
 
@@ -52,9 +53,9 @@ static bool get_se_param(void)
 		   entry->target_db_id == MyDatabaseId)
 		{
 			if(entry->is_valid & SE_FEATURE_ON)
-				se_feature.mode = entry->infos & SE_FEATURE_ON;
+				se_feature_mode = entry->infos & SE_FEATURE_ON;
 			if(entry->is_valid & RESTRICTED_DBA)
-				se_feature.restricted_dba = entry->infos & RESTRICTED_DBA;
+				restricted_dba = entry->infos & RESTRICTED_DBA;
 			entry->is_valid = 0;
 			changed = true;
 			break;
@@ -62,7 +63,7 @@ static bool get_se_param(void)
 	}
 	LWLockRelease(se_param_ctl->lock);
 
-	if(!se_feature.mode && se_feature.restricted_dba)
+	if(!se_feature_mode && restricted_dba)
 		ereport(WARNING,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("se_feature.mode is currently off, restricted_dba is invalid")));

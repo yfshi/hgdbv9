@@ -514,8 +514,6 @@ sub contribcheck
 		next if ($module eq "xml2"       && !defined($config->{xml}));
 		next if ($module eq "sepgsql");
 		next if ($module eq "gb18030_2022");	# BUGM0000294
-		# TODO(windows): set se_feature.mode = on not work.
-		next if ($module eq "restricted_dba");
 		
 		subdircheck($module);
 		my $status = $? >> 8;

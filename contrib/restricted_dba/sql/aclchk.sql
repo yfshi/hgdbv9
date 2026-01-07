@@ -397,5 +397,5 @@ drop table tb1_dba_u1;
 drop table tb1_u1;
 
 \c template1 sysdba_u1
-drop user dba_u1,dba_u2,dba_u3,dba_u4,dba_u5;
+drop user u1,u2,dba_u1,dba_u2,dba_u3,dba_u4,dba_u5;
 drop database testdb;

@@ -41,8 +41,8 @@ void create_db_seroles(Oid dboid, Oid templateid)
         {NULL,NULL,false,{NULL}}
     };
 
-    old_val = se_feature.mode;
-    se_feature.mode = false;
+	old_val = se_feature_mode;
+	se_feature_mode = false;
 
     for (se_role = &all_roles[0]; se_role->role_name != NULL; se_role++)
     {
@@ -53,7 +53,7 @@ void create_db_seroles(Oid dboid, Oid templateid)
     {
         change_dboid_and_name(se_role, dboid, templateid);
     }
-    se_feature.mode = old_val;
+	se_feature_mode = old_val;
 }
 
 /*

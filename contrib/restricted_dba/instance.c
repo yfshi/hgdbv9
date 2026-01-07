@@ -61,7 +61,7 @@ alter_system_set_check(AlterSystemStmt *altersysstmt)
 		PG_TRY();
 		{
 			// Set as superuser 
-			se_feature.tmp_superuser_oid = GetUserId();
+			tmp_superuser_oid = GetUserId();
 
 			/*do the actural work*/
 			AlterSystemSetConfigFile((AlterSystemStmt *) altersysstmt);
@@ -69,14 +69,14 @@ alter_system_set_check(AlterSystemStmt *altersysstmt)
 		PG_CATCH();
 		{
 			// Restore the original user status on error
-			se_feature.tmp_superuser_oid = InvalidOid;
+			tmp_superuser_oid = InvalidOid;
 
 			// Re-throw the error
 			PG_RE_THROW();
 		}
 		PG_END_TRY();
 		// bug# z4206 --begin
-		se_feature.tmp_superuser_oid = InvalidOid;
+		tmp_superuser_oid = InvalidOid;
 		// bug# z4206 --end
 
 		call_next = false;

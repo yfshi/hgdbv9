@@ -18,38 +18,43 @@
 
 #include "postgres.h"
 
+#include "miscadmin.h"
+#include "access/table.h"
+#include "catalog/pg_authid.h"
+#include "catalog/indexing.h"
+#include "catalog/objectaccess.h"
+#include "utils/guc.h"
+#include "utils/syscache.h"
+#include "utils/rel.h"
 #include "utils/acl.h"
 
 #include "se_features_interface.h"
 
-static void dummy_grant_sysdba_priv_fn(Oid roleid, bool is_grant);
-static bool dummy_role_is_superuser_fn(Oid roleid);
-static bool dummy_role_has_createrole_priv_fn(Oid roleid);
-static bool dummy_role_has_createdb_priv_fn(Oid roleid);
-static bool dummy_use_sequence_check_fn (Oid seq_oid, Oid roleid, AclMode mode);
 
-// /*function warpper that hold all support function in extension*/
-// SeMethod *se_method = NULL;
-SeFeature se_feature = {
-    false, 
-    false, 
-    InvalidOid,
-    dummy_grant_sysdba_priv_fn,
-    dummy_role_is_superuser_fn,
-	dummy_role_has_createrole_priv_fn,
-	dummy_role_has_createdb_priv_fn,
-	dummy_use_sequence_check_fn
-};
+/* use it with caution, it may make a normal user a superuser,maybe changed latter */
+Oid tmp_superuser_oid = InvalidOid;
 
+/* se_feature switch */
+bool se_feature_mode = false;
+bool restricted_dba = false;
 
-bool is_member_of_serole (Oid member, char* role_name)
+/*
+ * Hooks for function calls
+ */
+grant_sysdba_priv_hook_type grant_sysdba_priv_hook = NULL;
+role_is_superuser_hook_type role_is_superuser_hook = NULL;
+role_has_createrole_priv_hook_type role_has_createrole_priv_hook = NULL;
+role_has_createdb_priv_hook_type role_has_createdb_priv_hook = NULL;
+use_sequence_check_hook_type use_sequence_check_hook = NULL;
+
+bool is_member_of_serole(Oid member, char* role_name)
 {
 	Oid role_id;
 	bool result;
 
 	role_id = get_role_oid(role_name, false);
 
-	if(se_feature.mode)
+	if (se_feature_mode)
 		result = is_member_of_role_nosuper(member, role_id);
 	else
 		result = is_member_of_role(member, role_id);
@@ -88,44 +93,4 @@ check_se_rolespec_name(const RoleSpec *role, const char *detail_msg)
 					 errmsg("role name \"%s\" is reserved",
 							role->rolename)));
 	}
-}
-
-
-/* dummy support functions that make compiler quiet */
-static void
-dummy_grant_sysdba_priv_fn(Oid roleid, bool is_grant)
-{
-    /*do nothing*/
-}
-
-static bool
-dummy_role_is_superuser_fn(Oid roleid)
-{
-	Assert(se_feature.mode);
-    elog(ERROR, "dummy_role_is_superuser() should never be called");
-	return false;
-}
-
-static bool
-dummy_role_has_createrole_priv_fn(Oid roleid)
-{
-	Assert(se_feature.mode);
-    elog(ERROR, "dummy_role_has_createrole_priv_fn() should never be called");
-	return false;
-}
-
-static bool
-dummy_role_has_createdb_priv_fn(Oid roleid)
-{
-	Assert(se_feature.mode);
-    elog(ERROR, "dummy_role_has_createdb_priv_fn() should never be called");
-	return false;
-}
-
-static bool 
-dummy_use_sequence_check_fn (Oid seq_oid, Oid roleid, AclMode mode)
-{
-	Assert(se_feature.mode);
-	elog(ERROR, "dummy_use_sequence_check_fn() should never be called");
-	return false;
 }

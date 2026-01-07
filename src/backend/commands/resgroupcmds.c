@@ -307,7 +307,7 @@ CreateResourceGroup(CreateResourceGroupStmt *stmt)
 	/* Permission check - only superuser or sysdba can create groups. */
 	Oid			roleid;
 	roleid = GetUserId();
-	if ( se_feature.mode )
+	if (se_feature_mode)
 	{
 		if ( OidIsValid(roleid) && ( IS_SYSDBA(roleid) ) )
 		{
@@ -450,7 +450,7 @@ DropResourceGroup(DropResourceGroupStmt *stmt)
 
 	Oid			roleid;
 	roleid = GetUserId();
-	if ( se_feature.mode )
+	if (se_feature_mode)
 	{
 		if ( OidIsValid(roleid) && ( IS_SYSDBA(roleid) ) )
 		{
@@ -549,7 +549,7 @@ AlterResourceGroup(AlterResourceGroupStmt *stmt)
 
 	Oid			roleid;
 	roleid = GetUserId();
-	if ( se_feature.mode )
+	if (se_feature_mode)
 	{
 		if ( OidIsValid(roleid) && ( IS_SYSDBA(roleid) ) )
 		{
