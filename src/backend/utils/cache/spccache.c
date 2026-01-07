@@ -234,3 +234,16 @@ get_tablespace_maintenance_io_concurrency(Oid spcid)
 	else
 		return spc->opts->maintenance_io_concurrency;
 }
+
+/* Begin - ReqID:SRS-SECURITY-TABLESPACE */
+/*
+ * get_tablespace_encrypt
+ */
+bool
+get_tablespace_encrypt(Oid spcid)
+{
+	TableSpaceCacheEntry *spc = get_tablespace(spcid);
+
+	return spc->opts ? spc->opts->encrypt : false;
+}
+/* End - ReqID:SRS-SECURITY-TABLESPACE */

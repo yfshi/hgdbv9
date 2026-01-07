@@ -46,6 +46,7 @@
 #include "catalog/pg_statistic_ext.h"
 #include "catalog/pg_type.h"
 #include "commands/comment.h"
+#include "commands/dbcommands.h" /* ReqID:SRS-SECURITY-TABLESPACE */
 #include "commands/defrem.h"
 #include "commands/sequence.h"
 #include "commands/tablecmds.h"
@@ -77,6 +78,7 @@
 #include "utils/partcache.h"
 #include "utils/rel.h"
 #include "utils/ruleutils.h"
+#include "utils/spccache.h" /* ReqID:SRS-SECURITY-TABLESPACE */
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 #include "mysql_parser/mys_case_sensitive.h"	/* ReqID:SRS-MYSQL-CASE */
@@ -162,6 +164,54 @@ static Const *transformPartitionBoundValue(ParseState *pstate, Node *con,
 static List* GetAutoIncSeqOptions(CreateStmtContext* cxt);
 static void TransformAutoIncStart(Node* autoIncStart);
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
+
+/* Begin - ReqID:SRS-SECURITY-TABLESPACE */
+List*
+InheritEncryptFromTablespace(List *options, char *tableSpace)
+{
+	ListCell   *cell;
+	bool		has_encrypt = false;
+
+	if (tableSpace)
+	{
+		Oid spcid = get_tablespace_oid(tableSpace, true);
+
+		if (get_tablespace_encrypt(spcid))
+		{
+			foreach (cell, options)
+			{
+				DefElem    *defel = (DefElem *) lfirst(cell);
+				if (pg_strcasecmp(defel->defname, "encrypt") == 0)
+				{
+					/* create table/index xxx with (encrypt=off) tablespace xx; */
+					if (defGetBoolean(defel) == false)
+						elog(ERROR, "Non-encrypted object cannot be created in an encrypted tablespace.");
+
+					has_encrypt = true;
+					continue;
+				}
+			}
+
+			/* encrypt the object */
+			if (has_encrypt == false)
+			{
+				options = lappend(options,
+								  makeDefElem("encrypt", (Node *) makeString("on"), -1));
+			}
+		}
+	}
+	else
+	{
+		/* Check whether the database is located in an encrypted tablespace. */
+		if (get_tablespace_encrypt(get_database_tablespace(MyDatabaseId)))
+			options = lappend(options,
+							  makeDefElem("encrypt", (Node *) makeString("on"), -1));
+	}
+
+	return options;
+}
+/* End - ReqID:SRS-SECURITY-TABLESPACE */
 
 /*
  * transformCreateStmt -
@@ -299,6 +349,11 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 					(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 					 errmsg("cannot create partitioned table as inheritance child")));
 	}
+
+	/* Begin - ReqID:SRS-SECURITY-TABLESPACE */
+	/* Objects stored in an encrypted tablespace must use encryption. */
+	stmt->options = InheritEncryptFromTablespace(stmt->options, stmt->tablespacename);
+	/* End - ReqID:SRS-SECURITY-TABLESPACE */
 
 	/* Begin - ReqID:SRS-SQL-ROWID */
 	if (cxt.inhRelations)
@@ -3312,6 +3367,11 @@ transformIndexStmt(Oid relid, IndexStmt *stmt, const char *queryString)
 	ParseNamespaceItem *nsitem;
 	ListCell   *l;
 	Relation	rel;
+
+	/* Begin - ReqID:SRS-SECURITY-TABLESPACE */
+	/* Objects stored in an encrypted tablespace must use encryption. */
+	stmt->options = InheritEncryptFromTablespace(stmt->options, stmt->tableSpace);
+	/* End - ReqID:SRS-SECURITY-TABLESPACE */
 
 	/* Nothing to do if statement already transformed. */
 	if (stmt->transformed)

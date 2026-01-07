@@ -109,6 +109,7 @@
 #include "utils/relcache.h"
 #include "utils/ruleutils.h"
 #include "utils/snapmgr.h"
+#include "utils/spccache.h" /* ReqID:SRS-SECURITY-TABLESPACE */
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
 #include "utils/typcache.h"
@@ -3925,6 +3926,7 @@ SetRelationTableSpace(Relation rel,
 	ItemPointerData otid;
 	Form_pg_class rd_rel;
 	Oid			reloid = RelationGetRelid(rel);
+	Oid			oldTableSpaceId; /* ReqID:SRS-SECURITY-TABLESPACE */
 
 	Assert(CheckRelationTableSpaceMove(rel, newTableSpaceId));
 
@@ -3936,6 +3938,8 @@ SetRelationTableSpace(Relation rel,
 		elog(ERROR, "cache lookup failed for relation %u", reloid);
 	otid = tuple->t_self;
 	rd_rel = (Form_pg_class) GETSTRUCT(tuple);
+
+	oldTableSpaceId = rel->rd_rel->reltablespace; /* ReqID:SRS-SECURITY-TABLESPACE */
 
 	/* Update the pg_class row. */
 	rd_rel->reltablespace = (newTableSpaceId == MyDatabaseTableSpace) ?
@@ -3955,6 +3959,30 @@ SetRelationTableSpace(Relation rel,
 
 	heap_freetuple(tuple);
 	table_close(pg_class, RowExclusiveLock);
+
+	/* Begin - ReqID:SRS-SECURITY-TABLESPACE */
+	/* Check if the new tablespace is encrypted. */
+	if (get_tablespace_encrypt(newTableSpaceId))
+	{
+		/*
+		 * When moving a non-encrypted table to an encrypted tablespace,
+		 * the table must be encrypted.
+		 */
+		if (!RelationIsEncrypted(rel))
+		{
+			List *options = list_make1(makeDefElem("encrypt", (Node *) makeString("on"), -1));
+
+			CommandCounterIncrement();
+			ATExecSetRelOptions(rel, options, AT_SetRelOptions, AccessExclusiveLock);
+		}
+	}
+	else
+	{
+		if (get_tablespace_encrypt(oldTableSpaceId))
+			elog(NOTICE, "The table '%s' remains encrypted after being removed "
+						 "from its encrypted tablespace.", get_rel_name(reloid));
+	}
+	/* End - ReqID:SRS-SECURITY-TABLESPACE */
 }
 
 /*
@@ -15868,12 +15896,32 @@ ATExecSetRelOptions(Relation rel, List *defList, AlterTableType operation,
 	bool		repl_null[Natts_pg_class];
 	bool		repl_repl[Natts_pg_class];
 	static char *validnsps[] = HEAP_RELOPT_NAMESPACES;
+	ListCell	*cell; /* ReqID:SRS-SECURITY-TABLESPACE */
 
 	if (defList == NIL && operation != AT_ReplaceRelOptions)
 		return;					/* nothing to do */
 
 	if (gtt_oncommit_option(defList) != ONCOMMIT_NOOP)
 		elog(ERROR, "table cannot add or modify on commit parameter by ALTER TABLE command.");
+
+	/* Begin - ReqID:SRS-SECURITY-TABLESPACE */
+	/*
+	 * It is not allowed to modify a table in an encrypted
+	 * tablespace to be non-encrypted.
+	 */
+	foreach(cell, defList)
+	{
+		DefElem    *defel = (DefElem *) lfirst(cell);
+		if (pg_strcasecmp(defel->defname, "encrypt") == 0 &&
+			get_tablespace_encrypt(rel->rd_rel->reltablespace))
+		{
+			if (defGetBoolean(defel) == false)
+				elog(ERROR, "table in encrypted tablespace cannot set `encrypt=off` by ALTER TABLE command.");
+			else if (RelationIsEncrypted(rel))
+				elog(NOTICE, "table is located in encrypted tablespace and does not be encrypted again.");
+		}
+	}
+	/* End - ReqID:SRS-SECURITY-TABLESPACE */
 
 	pgclass = table_open(RelationRelationId, RowExclusiveLock);
 

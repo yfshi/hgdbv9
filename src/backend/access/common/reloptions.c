@@ -190,7 +190,7 @@ static relopt_bool boolRelOpts[] =
 			"Enables encryption on this table",
 			RELOPT_KIND_HEAP | RELOPT_KIND_TOAST |  RELOPT_KIND_BTREE |
 			RELOPT_KIND_HASH | RELOPT_KIND_GIN | RELOPT_KIND_GIST |
-			RELOPT_KIND_SPGIST | RELOPT_KIND_BRIN,
+			RELOPT_KIND_SPGIST | RELOPT_KIND_BRIN | RELOPT_KIND_TABLESPACE, /* ReqID:SRS-SECURITY-TABLESPACE */
 			AccessExclusiveLock
 		},
 		false
@@ -2146,7 +2146,8 @@ tablespace_reloptions(Datum reloptions, bool validate)
 		{"random_page_cost", RELOPT_TYPE_REAL, offsetof(TableSpaceOpts, random_page_cost)},
 		{"seq_page_cost", RELOPT_TYPE_REAL, offsetof(TableSpaceOpts, seq_page_cost)},
 		{"effective_io_concurrency", RELOPT_TYPE_INT, offsetof(TableSpaceOpts, effective_io_concurrency)},
-		{"maintenance_io_concurrency", RELOPT_TYPE_INT, offsetof(TableSpaceOpts, maintenance_io_concurrency)}
+		{"maintenance_io_concurrency", RELOPT_TYPE_INT, offsetof(TableSpaceOpts, maintenance_io_concurrency)},
+		{"encrypt", RELOPT_TYPE_BOOL, offsetof(TableSpaceOpts, encrypt)} /* ReqID:SRS-SECURITY-TABLESPACE */
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate,

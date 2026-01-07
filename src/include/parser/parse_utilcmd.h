@@ -50,4 +50,8 @@ void TransformPartitionTableInterval(ParseState *pstate, PartitionInterval *part
 									 Oid colCollation);
 /* End - ReqID:RSR-SQL-Partition-interval */
 
+/* Begin - ReqID:SRS-SECURITY-TABLESPACE */
+List *InheritEncryptFromTablespace(List *options, char *tableSpace);
+/* End - ReqID:SRS-SECURITY-TABLESPACE */
+
 #endif							/* PARSE_UTILCMD_H */

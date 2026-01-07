@@ -1028,6 +1028,17 @@ AlterTableSpaceOptions(AlterTableSpaceOptionsStmt *stmt)
 	bool		repl_null[Natts_pg_tablespace];
 	bool		repl_repl[Natts_pg_tablespace];
 	HeapTuple	newtuple;
+	ListCell   *cell; /* ReqID:SRS-SECURITY-TABLESPACE */
+
+	/* Begin - ReqID:SRS-SECURITY-TABLESPACE */
+	/* Tablespace encryption is set during creation and cannot be changed. */
+	foreach(cell, stmt->options)
+	{
+		DefElem    *defel = (DefElem *) lfirst(cell);
+		if (pg_strcasecmp(defel->defname, "encrypt") == 0)
+			elog(ERROR, "The encrypt attribute of the tablespace options cannot be modified.");
+	}
+	/* End - ReqID:SRS-SECURITY-TABLESPACE */
 
 	/* Search pg_tablespace */
 	rel = table_open(TableSpaceRelationId, RowExclusiveLock);
