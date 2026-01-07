@@ -1011,6 +1011,7 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	plisql_start_datums();
 	plisql_start_subproc_func();
 	plisql_saved_compile[cur_compile_func_level] = function;
+	plisql_start_label_compile(function->fn_signature);	/* ReqID:SRS-PLSQL-GOTO */
 
 	package_body_init(psource);
 
@@ -1138,6 +1139,7 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 
 	item->cachestatus = PACKAGE_SET_BODY_FLAG(item->cachestatus);
 
+	plisql_finish_label_compile();	/* ReqID:SRS-PLSQL-GOTO */
 	plisql_finish_datums(function);
 	plisql_finish_subproc_func(function);
 	plisql_check_subproc_define(function);
@@ -1316,6 +1318,7 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	 */
 	plisql_ns_init();
 	plisql_ns_push(NameStr(pkgStruct->pkgname), PLISQL_LABEL_BLOCK);
+	plisql_start_label_compile(NameStr(pkgStruct->pkgname));	/* ReqID:SRS-PLSQL-GOTO */
 	plisql_DumpExecTree = false;
 	cur_compile_func_level = 0;
 	plisql_start_datums();
@@ -1465,6 +1468,8 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	function->fn_nargs = 0;
 
 	add_dummy_return(function);
+
+	plisql_finish_label_compile();	/* ReqID:SRS-PLSQL-GOTO */
 
 	psource->finish_compile_special = true;
 	plisql_finish_datums(function);
@@ -2293,6 +2298,7 @@ plisql_push_compile_global_proper(void)
 		plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_saved_nsubprocfuncs[i] = plisql_saved_nsubprocfuncs[i];
 		plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_saved_subprocfunc_alloc[i] = plisql_saved_subprocfunc_alloc[i];
 		plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_saved_subprocfuncs[i] = plisql_saved_subprocfuncs[i];
+		plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_saved_label_context[i] = plisql_saved_label_context[i];	/* ReqID:SRS-PLSQL-GOTO */
 	}
 
 	/* come from pl_package.h */
@@ -2303,6 +2309,9 @@ plisql_push_compile_global_proper(void)
 
 	/* come from pl_funcs.c */
 	plisql_saved_compile_proper[plisql_curr_global_proper_level].ns_top = plisql_ns_top();
+
+	/* come from pl_funcs.c ReqID:SRS-PLSQL-GOTO */
+	plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_label_context = plisql_label_compile_context();
 
 	/* maybe add pl_udttype.h in further */
 	plisql_curr_global_proper_level++;
@@ -2366,6 +2375,7 @@ plisql_pop_compile_global_proper()
 		plisql_saved_nsubprocfuncs[i] = plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_saved_nsubprocfuncs[i];
 		plisql_saved_subprocfunc_alloc[i] = plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_saved_subprocfunc_alloc[i];
 		plisql_saved_subprocfuncs[i] = plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_saved_subprocfuncs[i];
+		plisql_saved_label_context[i] = plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_saved_label_context[i];	/* ReqID:SRS-PLSQL-GOTO */
 	}
 
 	/* come from pl_package.h */
@@ -2377,6 +2387,9 @@ plisql_pop_compile_global_proper()
 
 	/* come from pl_funcs.c */
 	plisql_set_ns(plisql_saved_compile_proper[plisql_curr_global_proper_level].ns_top);
+
+	/* come from pl_funcs.c ReqID:SRS-PLSQL-GOTO */
+	plisql_set_label_compile_context(plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_label_context);
 
 	return;
 }

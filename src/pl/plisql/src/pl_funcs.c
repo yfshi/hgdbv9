@@ -424,6 +424,12 @@ plisql_stmt_typename(PLiSQL_stmt *stmt)
 			return "COMMIT";
 		case PLISQL_STMT_ROLLBACK:
 			return "ROLLBACK";
+		/* Begin - ReqID:SRS-PLSQL-GOTO */
+		case PLISQL_STMT_GOTO:
+			return "GOTO";
+		case PLISQL_STMT_NULL:
+			return "NULL";
+		/* End - ReqID:SRS-PLSQL-GOTO */
 	}
 
 	return "unknown";
@@ -505,6 +511,7 @@ static void free_call(PLiSQL_stmt_call *stmt);
 static void free_commit(PLiSQL_stmt_commit *stmt);
 static void free_rollback(PLiSQL_stmt_rollback *stmt);
 static void free_expr(PLiSQL_expr *expr);
+static void free_goto(PLiSQL_stmt_goto *stmt);	/* ReqID:SRS-PLSQL-GOTO */
 
 
 static void
@@ -593,6 +600,13 @@ free_stmt(PLiSQL_stmt *stmt)
 		case PLISQL_STMT_ROLLBACK:
 			free_rollback((PLiSQL_stmt_rollback *) stmt);
 			break;
+		/* Begin - ReqID:SRS-PLSQL-GOTO */
+		case PLISQL_STMT_GOTO:
+			free_goto((PLiSQL_stmt_goto *) stmt);
+			break;
+		case PLISQL_STMT_NULL:
+			break;
+		/* End - ReqID:SRS-PLSQL-GOTO */
 		default:
 			elog(ERROR, "unrecognized cmd_type: %d", stmt->cmd_type);
 			break;
@@ -857,6 +871,13 @@ free_expr(PLiSQL_expr *expr)
 	}
 }
 
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+static void
+free_goto(PLiSQL_stmt_goto *stmt)
+{
+}
+/* End - ReqID:SRS-PLSQL-GOTO */
+
 void
 plisql_free_function_memory(PLiSQL_function *func,
 								int start_datum, int start_subprocfunc) /* SRS-PLSQL-SUBPROC */
@@ -1045,6 +1066,7 @@ static void dump_call(PLiSQL_stmt_call *stmt);
 static void dump_commit(PLiSQL_stmt_commit *stmt);
 static void dump_rollback(PLiSQL_stmt_rollback *stmt);
 static void dump_expr(PLiSQL_expr *expr);
+static void dump_goto(PLiSQL_stmt_goto *stmt);	/* ReqID:SRS-PLSQL-GOTO */
 
 
 static void
@@ -1143,6 +1165,13 @@ dump_stmt(PLiSQL_stmt *stmt)
 		case PLISQL_STMT_ROLLBACK:
 			dump_rollback((PLiSQL_stmt_rollback *) stmt);
 			break;
+		/* Begin - ReqID:SRS-PLSQL-GOTO */
+		case PLISQL_STMT_GOTO:
+			dump_goto((PLiSQL_stmt_goto *) stmt);
+			break;
+		case PLISQL_STMT_NULL:
+			break;
+		/* End - ReqID:SRS-PLSQL-GOTO */
 		default:
 			elog(ERROR, "unrecognized cmd_type: %d", stmt->cmd_type);
 			break;
@@ -1824,6 +1853,15 @@ dump_expr(PLiSQL_expr *expr)
 {
 	printf("'%s'", expr->query);
 }
+
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+static void
+dump_goto(PLiSQL_stmt_goto *stmt)
+{
+	dump_ind();
+	printf("GOTO %s\n", stmt->target_label);
+}
+/* End - ReqID:SRS-PLSQL-GOTO */
 
 void
 plisql_dumptree(PLiSQL_function *func, int start_datum, int start_subprocfunc) /* ReqID:SRS-SQL-PACKAGE */

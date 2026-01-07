@@ -511,6 +511,9 @@ do_compile(FunctionCallInfo fcinfo,
 	 */
 	plisql_ns_init();
 	plisql_ns_push(NameStr(procStruct->proname), PLISQL_LABEL_BLOCK);
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	plisql_start_label_compile(NameStr(procStruct->proname));
+	/* End - ReqID:SRS-PLSQL-GOTO */
 	plisql_DumpExecTree = false;
 	cur_compile_func_level = 0;
 	plisql_start_datums();
@@ -1320,6 +1323,10 @@ do_compile(FunctionCallInfo fcinfo,
 	PG_END_TRY();
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	plisql_finish_label_compile();
+	/* End - ReqID:SRS-PLSQL-GOTO */
+
 	function->action = plisql_parse_result;
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
@@ -1646,6 +1653,9 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	questionmarks_count = 0;
 	/* End - BUG#M0000201: support question marks as binding variables */
 
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	plisql_start_label_compile(func_name);
+	/* End - ReqID:SRS-PLSQL-GOTO */
 	plisql_ns_init();
 	plisql_ns_push(func_name, PLISQL_LABEL_BLOCK);
 	plisql_DumpExecTree = false;
@@ -1848,6 +1858,10 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	if (parse_rc != 0)
 		elog(ERROR, "plisql parser returned %d", parse_rc);
 	function->action = plisql_parse_result;
+
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	plisql_finish_label_compile();
+	/* End - ReqID:SRS-PLSQL-GOTO */
 
 	/*
 	 * If it returns VOID (always true at the moment), we allow control to
@@ -5204,6 +5218,9 @@ plisql_compile_inline_internal(char *proc_source)
 	function->fn_no_return = false;
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	plisql_start_label_compile(func_name);
+	/* End - ReqID:SRS-PLSQL-GOTO */
 	plisql_ns_init();
 	plisql_ns_push(func_name, PLISQL_LABEL_BLOCK);
 	plisql_DumpExecTree = false;
@@ -5260,6 +5277,10 @@ plisql_compile_inline_internal(char *proc_source)
 	if (parse_rc != 0)
 		elog(ERROR, "plisql parser returned %d", parse_rc);
 	function->action = plisql_parse_result;
+
+	/* Begin - ReqID:SRS-PLSQL-GOTO */
+	plisql_finish_label_compile();
+	/* End - ReqID:SRS-PLSQL-GOTO */
 
 	/*
 	 * Complete the function's info

@@ -266,6 +266,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %type <stmt>	for_control
 
 %type <str>		any_identifier opt_block_label opt_loop_label opt_label
+%type <str>		opt_stmt_label	/* ReqID:SRS-PLSQL-GOTO */
 %type <str>		option_value
 
 /* Begin - ReqID:SRS-PLSQL-EXCEPTION */
@@ -283,6 +284,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %type <stmt>	stmt_open stmt_fetch stmt_move stmt_close stmt_null
 %type <stmt>	stmt_commit stmt_rollback
 %type <stmt>	stmt_case stmt_foreach_a
+%type <stmt>	stmt_goto	/* ReqID:SRS-PLSQL-GOTO */
 
 %type <list>	proc_exceptions
 %type <exception_block> exception_sect
@@ -463,6 +465,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_FUNCTION
 /* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_GET
+%token <keyword>	K_GOTO		/* ReqID:SRS-PLSQL-GOTO */
 %token <keyword>	K_HINT
 %token <keyword>	K_IF
 %token <keyword>	K_IMMEDIATE	/* BUG#Z1438 */
@@ -883,6 +886,10 @@ pl_block		: decl_sect K_BEGIN proc_sect exception_sect K_END opt_label
 
 						check_labels($1.label, $6, @6);
 						plisql_ns_pop();
+						/* Begin - ReqID:SRS-PLSQL-GOTO */
+						plisql_lscope_pop();
+						plisql_register_label($1.label);
+						/* End - ReqID:SRS-PLSQL-GOTO */
 
 						$$ = (PLiSQL_stmt *)new;
 					}
@@ -1179,6 +1186,7 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						$1->lastoutvardno = plisql_nDatums;
 						plisql_push_subproc_info();
 						/* End - BUG#M0000168 */
+						plisql_start_label_compile($1->func_name);	/* ReqID:SRS-PLSQL-GOTO */
 						$1->global_cur = plisql_ns_top();
 						plisql_ns_push($1->func_name, PLISQL_LABEL_BLOCK);
 						/* Begin - BUG#M0000168 */
@@ -1195,6 +1203,7 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 
 						plisql_set_subprocfunc_action($1, (PLiSQL_stmt_block *) $5);
 						plisql_ns_pop();
+						plisql_finish_label_compile();	/* ReqID:SRS-PLSQL-GOTO */
 						plisql_finish_datums($1->function);
 						plisql_finish_subproc_func($1->function);
 						/* Begin - BUG#M0000168 */
@@ -1229,6 +1238,7 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						$1->lastoutvardno = plisql_nDatums;
 						plisql_push_subproc_info();
 						/* End - BUG#M0000168 */
+						plisql_start_label_compile($1->func_name);	/* ReqID:SRS-PLSQL-GOTO */
 						$1->global_cur = plisql_ns_top();
 						plisql_ns_push($1->func_name, PLISQL_LABEL_BLOCK);
 						/* Begin - BUG#M0000168 */
@@ -1245,6 +1255,7 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 
 						plisql_set_subprocfunc_action($1, (PLiSQL_stmt_block *) $5);
 						plisql_ns_pop();
+						plisql_finish_label_compile();	/* ReqID:SRS-PLSQL-GOTO */
 						plisql_finish_datums($1->function);
 						plisql_finish_subproc_func($1->function);
 						/* Begin - BUG#M0000168 */
@@ -1951,14 +1962,20 @@ assign_operator	: '='
 				;
 
 proc_sect		:
-					{ $$ = NIL; }
+					{
+						$$ = NIL;
+						plisql_blkpath_update_nstatements(true);		/* ReqID:SRS-PLSQL-GOTO */
+					}
 				| proc_sect proc_stmt
 					{
 						/* don't bother linking null statements into list */
 						if ($2 == NULL)
 							$$ = $1;
 						else
+						{
 							$$ = lappend($1, $2);
+							plisql_blkpath_update_nstatements(false);	/* ReqID:SRS-PLSQL-GOTO */
+						}
 					}
 				;
 
@@ -2010,16 +2027,20 @@ proc_stmt		: pl_block ';'
 						{ $$ = $1; }
 				| stmt_rollback
 						{ $$ = $1; }
+				/* Begin - ReqID:SRS-PLSQL-GOTO */
+				| stmt_goto
+						{ $$ = $1; }
+				/* End - ReqID:SRS-PLSQL-GOTO */
 				;
 
-stmt_perform	: K_PERFORM
+stmt_perform	: opt_stmt_label K_PERFORM
 					{
 						PLiSQL_stmt_perform *new;
 						int		startloc;
 
 						new = palloc0(sizeof(PLiSQL_stmt_perform));
 						new->cmd_type = PLISQL_STMT_PERFORM;
-						new->lineno   = plisql_location_to_lineno(@1);
+						new->lineno   = plisql_location_to_lineno(@2);
 						new->stmtid = ++plisql_curr_compile->nstatements;
 						plisql_push_back_token(K_PERFORM);
 
@@ -2044,17 +2065,18 @@ stmt_perform	: K_PERFORM
 						check_sql_expr(new->expr->query, new->expr->parseMode,
 									   startloc + 1);
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
 
-stmt_call		: K_CALL
+stmt_call		: opt_stmt_label K_CALL
 					{
 						PLiSQL_stmt_call *new;
 
 						new = palloc0(sizeof(PLiSQL_stmt_call));
 						new->cmd_type = PLISQL_STMT_CALL;
-						new->lineno = plisql_location_to_lineno(@1);
+						new->lineno = plisql_location_to_lineno(@2);
 						new->stmtid = ++plisql_curr_compile->nstatements;
 						plisql_push_back_token(K_CALL);
 						new->expr = read_sql_stmt();
@@ -2063,17 +2085,18 @@ stmt_call		: K_CALL
 						/* Remember we may need a procedure resource owner */
 						plisql_curr_compile->requires_procedure_resowner = true;
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 
 					}
-				| K_DO
+				| opt_stmt_label K_DO
 					{
 						/* use the same structures as for CALL, for simplicity */
 						PLiSQL_stmt_call *new;
 
 						new = palloc0(sizeof(PLiSQL_stmt_call));
 						new->cmd_type = PLISQL_STMT_CALL;
-						new->lineno = plisql_location_to_lineno(@1);
+						new->lineno = plisql_location_to_lineno(@2);
 						new->stmtid = ++plisql_curr_compile->nstatements;
 						plisql_push_back_token(K_DO);
 						new->expr = read_sql_stmt();
@@ -2082,18 +2105,19 @@ stmt_call		: K_CALL
 						/* Remember we may need a procedure resource owner */
 						plisql_curr_compile->requires_procedure_resowner = true;
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 
 					}
 				;
 
-stmt_assign		: T_DATUM
+stmt_assign		: opt_stmt_label T_DATUM
 					{
 						PLiSQL_stmt_assign *new;
 						RawParseMode pmode;
 
 						/* see how many names identify the datum */
-						switch ($1.ident ? 1 : list_length($1.idents))
+						switch ($2.ident ? 1 : list_length($2.idents))
 						{
 							case 1:
 								pmode = RAW_PARSE_PLISQL_ASSIGN1; /* BUG:M0000079 */
@@ -2111,38 +2135,39 @@ stmt_assign		: T_DATUM
 								/* End - ReqID:SRS-PLSQL-RECORD */
 						}
 
-						check_assignable($1.datum, @1);
+						check_assignable($2.datum, @2);
 
 						/* Begin - BUG#M0000376 */
-						check_oraparam_mode($1.datum, @1, PROARGMODE_OUT);
+						check_oraparam_mode($2.datum, @2, PROARGMODE_OUT);
 						/* End - BUG#M0000376 */
 
 						new = palloc0(sizeof(PLiSQL_stmt_assign));
 						new->cmd_type = PLISQL_STMT_ASSIGN;
-						new->lineno   = plisql_location_to_lineno(@1);
+						new->lineno   = plisql_location_to_lineno(@2);
 						new->stmtid = ++plisql_curr_compile->nstatements;
-						new->varno = $1.datum->dno;
+						new->varno = $2.datum->dno;
 						/* Push back the head name to include it in the stmt */
 						plisql_push_back_token(T_DATUM);
 						new->expr = read_sql_construct(';', 0, 0, ";",
 													   pmode,
 													   false, true, true,
 													   NULL, NULL, false);
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
 
-stmt_getdiag	: K_GET getdiag_area_opt K_DIAGNOSTICS getdiag_list ';'
+stmt_getdiag	: opt_stmt_label K_GET getdiag_area_opt K_DIAGNOSTICS getdiag_list ';'
 					{
 						PLiSQL_stmt_getdiag	 *new;
 						ListCell		*lc;
 
 						new = palloc0(sizeof(PLiSQL_stmt_getdiag));
 						new->cmd_type = PLISQL_STMT_GETDIAG;
-						new->lineno   = plisql_location_to_lineno(@1);
+						new->lineno   = plisql_location_to_lineno(@2);
 						new->stmtid	  = ++plisql_curr_compile->nstatements;
-						new->is_stacked = $2;
-						new->diag_items = $4;
+						new->is_stacked = $3;
+						new->diag_items = $5;
 
 						/*
 						 * Check information items are valid for area option.
@@ -2160,7 +2185,7 @@ stmt_getdiag	: K_GET getdiag_area_opt K_DIAGNOSTICS getdiag_list ';'
 												(errcode(ERRCODE_SYNTAX_ERROR),
 												 errmsg("diagnostics item %s is not allowed in GET STACKED DIAGNOSTICS",
 														plisql_getdiag_kindname(ditem->kind)),
-												 parser_errposition(@1)));
+												 parser_errposition(@2)));
 									break;
 								/* these fields are disallowed in current case */
 								case PLISQL_GETDIAG_ERROR_CONTEXT:
@@ -2178,7 +2203,7 @@ stmt_getdiag	: K_GET getdiag_area_opt K_DIAGNOSTICS getdiag_list ';'
 												(errcode(ERRCODE_SYNTAX_ERROR),
 												 errmsg("diagnostics item %s is not allowed in GET CURRENT DIAGNOSTICS",
 														plisql_getdiag_kindname(ditem->kind)),
-												 parser_errposition(@1)));
+												 parser_errposition(@2)));
 									break;
 								/* these fields are allowed in either case */
 								case PLISQL_GETDIAG_CONTEXT:
@@ -2190,6 +2215,7 @@ stmt_getdiag	: K_GET getdiag_area_opt K_DIAGNOSTICS getdiag_list ';'
 							}
 						}
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
@@ -2304,19 +2330,28 @@ getdiag_target	: T_DATUM
 					}
 				;
 
-stmt_if			: K_IF expr_until_then proc_sect stmt_elsifs stmt_else K_END K_IF ';'
+stmt_if			: opt_stmt_label K_IF expr_until_then
+					{	/* ReqID:SRS-PLSQL-GOTO */
+						plisql_blkpath_push($1 ? $1 : "[IF]");
+					}
+				proc_sect
+					{	/* ReqID:SRS-PLSQL-GOTO */
+						plisql_blkpath_pop();
+					}
+				stmt_elsifs stmt_else K_END K_IF ';'
 					{
 						PLiSQL_stmt_if *new;
 
 						new = palloc0(sizeof(PLiSQL_stmt_if));
 						new->cmd_type	= PLISQL_STMT_IF;
-						new->lineno		= plisql_location_to_lineno(@1);
+						new->lineno		= plisql_location_to_lineno(@2);
 						new->stmtid		= ++plisql_curr_compile->nstatements;
-						new->cond		= $2;
-						new->then_body	= $3;
-						new->elsif_list = $4;
-						new->else_body  = $5;
+						new->cond		= $3;
+						new->then_body	= $5;
+						new->elsif_list = $7;
+						new->else_body  = $8;
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
@@ -2325,14 +2360,19 @@ stmt_elsifs		:
 					{
 						$$ = NIL;
 					}
-				| stmt_elsifs K_ELSIF expr_until_then proc_sect
+				| stmt_elsifs K_ELSIF expr_until_then
+					{	/* ReqID:SRS-PLSQL-GOTO */
+						plisql_blkpath_push("[elsif]");
+					}
+				proc_sect
 					{
 						PLiSQL_if_elsif *new;
 
 						new = palloc0(sizeof(PLiSQL_if_elsif));
 						new->lineno = plisql_location_to_lineno(@2);
 						new->cond   = $3;
-						new->stmts  = $4;
+						new->stmts  = $5;
+						plisql_blkpath_pop();	/* ReqID:SRS-PLSQL-GOTO */
 
 						$$ = lappend($1, new);
 					}
@@ -2342,15 +2382,21 @@ stmt_else		:
 					{
 						$$ = NIL;
 					}
-				| K_ELSE proc_sect
+				| K_ELSE
+					{	/* ReqID:SRS-PLSQL-GOTO */
+						plisql_blkpath_push("[else]");
+					}
+				proc_sect
 					{
-						$$ = $2;
+						$$ = $3;
+						plisql_blkpath_pop();	/* ReqID:SRS-PLSQL-GOTO */
 					}
 				;
 
-stmt_case		: K_CASE opt_expr_until_when case_when_list opt_case_else K_END K_CASE ';'
+stmt_case		: opt_stmt_label K_CASE opt_expr_until_when case_when_list opt_case_else K_END K_CASE ';'
 					{
-						$$ = make_case(@1, $2, $3, $4);
+						$$ = make_case(@2, $3, $4, $5);
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 					}
 				;
 
@@ -2379,14 +2425,18 @@ case_when_list	: case_when_list case_when
 					}
 				;
 
-case_when		: K_WHEN expr_until_then proc_sect
+case_when		: K_WHEN expr_until_then
+					{	/* ReqID:SRS-PLSQL-GOTO */
+						plisql_blkpath_push("[casewhen]");
+					}
+				proc_sect
 					{
 						PLiSQL_case_when *new = palloc(sizeof(PLiSQL_case_when));
 
 						new->lineno	= plisql_location_to_lineno(@1);
 						new->expr	= $2;
-						new->stmts	= $3;
-
+						new->stmts	= $4;
+						plisql_blkpath_pop();	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = new;
 					}
 				;
@@ -2395,7 +2445,11 @@ opt_case_else	:
 					{
 						$$ = NIL;
 					}
-				| K_ELSE proc_sect
+				| K_ELSE
+					{	/* ReqID:SRS-PLSQL-GOTO */
+						plisql_blkpath_push("[caseelse]");
+					}
+				proc_sect
 					{
 						/*
 						 * proc_sect could return an empty list, but we
@@ -2403,10 +2457,11 @@ opt_case_else	:
 						 * Simplest fix is to return a list with one NULL
 						 * pointer, which make_case() must take care of.
 						 */
-						if ($2 != NIL)
-							$$ = $2;
+						if ($3 != NIL)
+							$$ = $3;
 						else
 							$$ = list_make1(NULL);
+						plisql_blkpath_pop();	/* ReqID:SRS-PLSQL-GOTO */
 					}
 				;
 
@@ -2423,6 +2478,11 @@ stmt_loop		: opt_loop_label K_LOOP loop_body
 
 						check_labels($1, $3.end_label, $3.end_label_location);
 						plisql_ns_pop();
+
+						/* Begin - ReqID:SRS-PLSQL-GOTO */
+						plisql_lscope_pop();
+						plisql_register_label($1);
+						/* End - ReqID:SRS-PLSQL-GOTO */
 
 						$$ = (PLiSQL_stmt *)new;
 					}
@@ -2442,6 +2502,11 @@ stmt_while		: opt_loop_label K_WHILE expr_until_loop loop_body
 
 						check_labels($1, $4.end_label, $4.end_label_location);
 						plisql_ns_pop();
+
+						/* Begin - ReqID:SRS-PLSQL-GOTO */
+						plisql_lscope_pop();
+						plisql_register_label($1);
+						/* End - ReqID:SRS-PLSQL-GOTO */
 
 						$$ = (PLiSQL_stmt *)new;
 					}
@@ -2478,6 +2543,11 @@ stmt_for		: opt_loop_label K_FOR for_control loop_body
 						check_labels($1, $4.end_label, $4.end_label_location);
 						/* close namespace started in opt_loop_label */
 						plisql_ns_pop();
+
+						/* Begin - ReqID:SRS-PLSQL-GOTO */
+						plisql_lscope_pop();
+						plisql_register_label($1);
+						/* End - ReqID:SRS-PLSQL-GOTO */
 					}
 				;
 
@@ -2896,6 +2966,11 @@ stmt_foreach_a	: opt_loop_label K_FOREACH for_variable foreach_slice K_IN K_ARRA
 						check_labels($1, $8.end_label, $8.end_label_location);
 						plisql_ns_pop();
 
+						/* Begin - ReqID:SRS-PLSQL-GOTO */
+						plisql_lscope_pop();
+						plisql_register_label($1);
+						/* End - ReqID:SRS-PLSQL-GOTO */
+
 						$$ = (PLiSQL_stmt *) new;
 					}
 				;
@@ -2910,38 +2985,38 @@ foreach_slice	:
 					}
 				;
 
-stmt_exit		: exit_type opt_label opt_exitcond
+stmt_exit		: opt_stmt_label exit_type opt_label opt_exitcond
 					{
 						PLiSQL_stmt_exit *new;
 
 						new = palloc0(sizeof(PLiSQL_stmt_exit));
 						new->cmd_type = PLISQL_STMT_EXIT;
 						new->stmtid	  = ++plisql_curr_compile->nstatements;
-						new->is_exit  = $1;
+						new->is_exit  = $2;
 						new->lineno	  = plisql_location_to_lineno(@1);
-						new->label	  = $2;
-						new->cond	  = $3;
+						new->label	  = $3;
+						new->cond	  = $4;
 
-						if ($2)
+						if ($3)
 						{
 							/* We have a label, so verify it exists */
 							PLiSQL_nsitem *label;
 
-							label = plisql_ns_lookup_label(plisql_ns_top(), $2);
+							label = plisql_ns_lookup_label(plisql_ns_top(), $3);
 							if (label == NULL)
 								ereport(ERROR,
 										(errcode(ERRCODE_SYNTAX_ERROR),
 										 errmsg("there is no label \"%s\" "
 												"attached to any block or loop enclosing this statement",
-												$2),
-										 parser_errposition(@2)));
+												$3),
+										 parser_errposition(@3)));
 							/* CONTINUE only allows loop labels */
 							if (label->itemno != PLISQL_LABEL_LOOP && !new->is_exit)
 								ereport(ERROR,
 										(errcode(ERRCODE_SYNTAX_ERROR),
 										 errmsg("block label \"%s\" cannot be used in CONTINUE",
-												$2),
-										 parser_errposition(@2)));
+												$3),
+										 parser_errposition(@3)));
 						}
 						else
 						{
@@ -2956,9 +3031,10 @@ stmt_exit		: exit_type opt_label opt_exitcond
 										 new->is_exit ?
 										 errmsg("EXIT cannot be used outside a loop, unless it has a label") :
 										 errmsg("CONTINUE cannot be used outside a loop"),
-										 parser_errposition(@1)));
+										 parser_errposition(@2)));
 						}
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
@@ -2973,7 +3049,7 @@ exit_type		: K_EXIT
 					}
 				;
 
-stmt_return		: K_RETURN
+stmt_return		: opt_stmt_label K_RETURN
 					{
 						int	tok;
 
@@ -2984,22 +3060,24 @@ stmt_return		: K_RETURN
 						if (tok_is_keyword(tok, &yylval,
 										   K_NEXT, "next"))
 						{
-							$$ = make_return_next_stmt(@1);
+							$$ = make_return_next_stmt(@2);
 						}
 						else if (tok_is_keyword(tok, &yylval,
 												K_QUERY, "query"))
 						{
-							$$ = make_return_query_stmt(@1);
+							$$ = make_return_query_stmt(@2);
 						}
 						else
 						{
 							plisql_push_back_token(tok);
-							$$ = make_return_stmt(@1);
+							$$ = make_return_stmt(@2);
 						}
+
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 					}
 				;
 
-stmt_raise		: K_RAISE
+stmt_raise		: opt_stmt_label K_RAISE
 					{
 						PLiSQL_stmt_raise		*new;
 						int	tok;
@@ -3007,7 +3085,7 @@ stmt_raise		: K_RAISE
 						new = palloc(sizeof(PLiSQL_stmt_raise));
 
 						new->cmd_type	= PLISQL_STMT_RAISE;
-						new->lineno		= plisql_location_to_lineno(@1);
+						new->lineno		= plisql_location_to_lineno(@2);
 						new->stmtid		= ++plisql_curr_compile->nstatements;
 						new->elog_level = ERROR;	/* default */
 						new->condname	= NULL;
@@ -3174,11 +3252,12 @@ stmt_raise		: K_RAISE
 
 						check_raise_parameters(new);
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
 
-stmt_assert		: K_ASSERT
+stmt_assert		: opt_stmt_label K_ASSERT
 					{
 						PLiSQL_stmt_assert		*new;
 						int	tok;
@@ -3186,7 +3265,7 @@ stmt_assert		: K_ASSERT
 						new = palloc(sizeof(PLiSQL_stmt_assert));
 
 						new->cmd_type	= PLISQL_STMT_ASSERT;
-						new->lineno		= plisql_location_to_lineno(@1);
+						new->lineno		= plisql_location_to_lineno(@2);
 						new->stmtid		= ++plisql_curr_compile->nstatements;
 
 						new->cond = read_sql_expression2(',', ';',
@@ -3198,6 +3277,7 @@ stmt_assert		: K_ASSERT
 						else
 							new->message = NULL;
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *) new;
 					}
 				;
@@ -3220,31 +3300,35 @@ loop_body		: proc_sect K_END K_LOOP opt_label ';'
  * assignment.  Give an appropriate complaint for that, instead of letting
  * the core parser throw an unhelpful "syntax error".
  */
-stmt_execsql	: K_IMPORT
+stmt_execsql	: opt_stmt_label K_IMPORT
 					{
-						$$ = make_execsql_stmt(K_IMPORT, @1);
+						$$ = make_execsql_stmt(K_IMPORT, @2);
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 					}
-				| K_INSERT
+				| opt_stmt_label K_INSERT
 					{
-						$$ = make_execsql_stmt(K_INSERT, @1);
+						$$ = make_execsql_stmt(K_INSERT, @2);
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 					}
 				/* Begin - BUG#Z1389 */
-				| K_MERGE
+				| opt_stmt_label K_MERGE
 					{
-						$$ = make_execsql_stmt(K_MERGE, @1);
+						$$ = make_execsql_stmt(K_MERGE, @2);
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 					}
 				/* End - BUG#Z1389 */
 				/* Begin - ReqID:SRS-PLSQL-CURSOR */
-				| K_SELECT
+				| opt_stmt_label K_SELECT
 					{
 						/*
 						 * there use T_WORD for handle into stmt
 						 * see details for make_execsql_stmt
 						 */
-						$$ = make_execsql_stmt(T_WORD, @1);
+						$$ = make_execsql_stmt(T_WORD, @2);
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 					}
 				/* End - ReqID:SRS-PLSQL-CURSOR */
-				| T_WORD
+				| opt_stmt_label T_WORD
 					{
 						int			tok;
 
@@ -3252,16 +3336,17 @@ stmt_execsql	: K_IMPORT
 						plisql_push_back_token(tok);
 						if (tok == '=' || tok == COLON_EQUALS ||
 							tok == '[' || tok == '.')
-							word_is_not_variable(&($1), @1);
+							word_is_not_variable(&($2), @2);
 
 						/* Begin - BUG #M0000304 */
 						if (tok == '(' || tok == ';')
-							$$ = build_call_expr(T_WORD, $1.ident, @1);
+							$$ = build_call_expr(T_WORD, $2.ident, @2);
 						else
 						/* End - BUG #M0000304 */
-							$$ = make_execsql_stmt(T_WORD, @1);
+							$$ = make_execsql_stmt(T_WORD, @2);
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 					}
-				| T_CWORD
+				| opt_stmt_label T_CWORD
 					{
 						int			tok;
 
@@ -3269,18 +3354,19 @@ stmt_execsql	: K_IMPORT
 						plisql_push_back_token(tok);
 						if (tok == '=' || tok == COLON_EQUALS ||
 							tok == '[' || tok == '.')
-							cword_is_not_variable(&($1), @1);
+							cword_is_not_variable(&($2), @2);
 
 						/* Begin - BUG #M0000304 */
 						if (tok == '(' || tok == ';')
-							$$ = build_call_expr(T_WORD, NULL, @1);
+							$$ = build_call_expr(T_WORD, NULL, @2);
 						else
 						/* End - BUG #M0000304 */
-							$$ = make_execsql_stmt(T_WORD, @1);
+							$$ = make_execsql_stmt(T_WORD, @2);
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 					}
 				;
 
-stmt_dynexecute : K_EXECUTE
+stmt_dynexecute : opt_stmt_label K_EXECUTE
 					{
 						PLiSQL_stmt_dynexecute *new;
 						PLiSQL_expr *expr;
@@ -3307,7 +3393,7 @@ stmt_dynexecute : K_EXECUTE
 
 						new = palloc(sizeof(PLiSQL_stmt_dynexecute));
 						new->cmd_type = PLISQL_STMT_DYNEXECUTE;
-						new->lineno = plisql_location_to_lineno(@1);
+						new->lineno = plisql_location_to_lineno(@2);
 						new->stmtid = ++plisql_curr_compile->nstatements;
 						new->query = expr;
 						new->into = false;
@@ -3467,12 +3553,13 @@ stmt_dynexecute : K_EXECUTE
 						}
 						/* End - ReqID:SRS-PLSQL-DSQL */
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
 
 
-stmt_open		: K_OPEN cursor_variable
+stmt_open		: opt_stmt_label K_OPEN cursor_variable
 					{
 						PLiSQL_stmt_open *new;
 						int				  tok;
@@ -3482,16 +3569,16 @@ stmt_open		: K_OPEN cursor_variable
 
 						new = palloc0(sizeof(PLiSQL_stmt_open));
 						new->cmd_type = PLISQL_STMT_OPEN;
-						new->lineno = plisql_location_to_lineno(@1);
+						new->lineno = plisql_location_to_lineno(@2);
 						new->stmtid = ++plisql_curr_compile->nstatements;
-						new->curvar = $2->dno;
+						new->curvar = $3->dno;
 						new->cursor_options = CURSOR_OPT_FAST_PLAN;
 
 						/* Begin - ReqID:SRS-SQL-PACKAGE */
-						if ($2->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
-							cursorvar = (PLiSQL_var *) ((PLiSQL_pkg_datum *) $2)->pkgvar;
+						if ($3->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+							cursorvar = (PLiSQL_var *) ((PLiSQL_pkg_datum *) $3)->pkgvar;
 						else
-							cursorvar = $2;
+							cursorvar = $3;
 						/* End - ReqID:SRS-SQL-PACKAGE */
 
 						/* Begin - ReqID:SRS-PLSQL-CURSOR */
@@ -3606,7 +3693,7 @@ stmt_open		: K_OPEN cursor_variable
 						else
 						{
 							/* predefined cursor query, so read args */
-							new->argquery = read_cursor_args($2, ';',
+							new->argquery = read_cursor_args($3, ';',
 										&new->outrowno); /* ReqID:SRS-PLSQL-CURSOR */
 						}
 
@@ -3620,7 +3707,7 @@ stmt_open		: K_OPEN cursor_variable
 							if (cursorvar->cursor_resulttupdesc == NULL)
 							{
 								/* not pkg_datum */
-								Assert($2->dtype != PLISQL_DTYPE_PACKAGE_DATUM);
+								Assert($3->dtype != PLISQL_DTYPE_PACKAGE_DATUM);
 								cursorvar->cursor_resulttupdesc =
 									plisql_get_cursor_tupdesc_incompile(cursorvar->cursor_explicit_expr,
 																		cursorvar->cursor_options);
@@ -3641,13 +3728,14 @@ stmt_open		: K_OPEN cursor_variable
 						}
 						/* End - ReqID:SRS-PLSQL-CURSOR */
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
 
-stmt_fetch		: K_FETCH opt_fetch_direction cursor_variable K_INTO
+stmt_fetch		: opt_stmt_label K_FETCH opt_fetch_direction cursor_variable K_INTO
 					{
-						PLiSQL_stmt_fetch *fetch = $2;
+						PLiSQL_stmt_fetch *fetch = $3;
 						PLiSQL_variable *target;
 
 						/* We have already parsed everything through the INTO keyword */
@@ -3664,25 +3752,27 @@ stmt_fetch		: K_FETCH opt_fetch_direction cursor_variable K_INTO
 							ereport(ERROR,
 									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 									 errmsg("FETCH statement cannot return multiple rows"),
-									 parser_errposition(@1)));
+									 parser_errposition(@2)));
 
-						fetch->lineno = plisql_location_to_lineno(@1);
+						fetch->lineno = plisql_location_to_lineno(@2);
 						fetch->target	= target;
-						fetch->curvar	= $3->dno;
+						fetch->curvar	= $4->dno;
 						fetch->is_move	= false;
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)fetch;
 					}
 				;
 
-stmt_move		: K_MOVE opt_fetch_direction cursor_variable ';'
+stmt_move		: opt_stmt_label K_MOVE opt_fetch_direction cursor_variable ';'
 					{
-						PLiSQL_stmt_fetch *fetch = $2;
+						PLiSQL_stmt_fetch *fetch = $3;
 
-						fetch->lineno = plisql_location_to_lineno(@1);
-						fetch->curvar	= $3->dno;
+						fetch->lineno = plisql_location_to_lineno(@2);
+						fetch->curvar	= $4->dno;
 						fetch->is_move	= true;
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)fetch;
 					}
 				;
@@ -3693,54 +3783,91 @@ opt_fetch_direction	:
 					}
 				;
 
-stmt_close		: K_CLOSE cursor_variable ';'
+stmt_close		: opt_stmt_label K_CLOSE cursor_variable ';'
 					{
 						PLiSQL_stmt_close *new;
 
 						new = palloc(sizeof(PLiSQL_stmt_close));
 						new->cmd_type = PLISQL_STMT_CLOSE;
-						new->lineno = plisql_location_to_lineno(@1);
+						new->lineno = plisql_location_to_lineno(@2);
 						new->stmtid = ++plisql_curr_compile->nstatements;
-						new->curvar = $2->dno;
+						new->curvar = $3->dno;
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
 
-stmt_null		: K_NULL ';'
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+stmt_null		: opt_stmt_label K_NULL ';'
 					{
-						/* We do not bother building a node for NULL */
-						$$ = NULL;
+						if ($1 != NULL)
+						{
+							PLiSQL_stmt_null *new = palloc(sizeof(PLiSQL_stmt_null));
+
+							new->cmd_type	= PLISQL_STMT_NULL;
+							new->lineno		= plisql_location_to_lineno(@2);
+							new->stmtid		= ++plisql_curr_compile->nstatements;
+
+							plisql_register_label($1);
+							$$ = (PLiSQL_stmt *) new;
+						}
+						else
+						{
+							/* We do not bother building a node for NULL */
+							$$ = NULL;
+						}
 					}
 				;
+/* End - ReqID:SRS-PLSQL-GOTO */
 
-stmt_commit		: K_COMMIT opt_transaction_chain ';'
+stmt_commit		: opt_stmt_label K_COMMIT opt_transaction_chain ';'
 					{
 						PLiSQL_stmt_commit *new;
 
 						new = palloc(sizeof(PLiSQL_stmt_commit));
 						new->cmd_type = PLISQL_STMT_COMMIT;
-						new->lineno = plisql_location_to_lineno(@1);
+						new->lineno = plisql_location_to_lineno(@2);
 						new->stmtid = ++plisql_curr_compile->nstatements;
-						new->chain = $2;
+						new->chain = $3;
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
 
-stmt_rollback	: K_ROLLBACK opt_transaction_chain ';'
+stmt_rollback	: opt_stmt_label K_ROLLBACK opt_transaction_chain ';'
 					{
 						PLiSQL_stmt_rollback *new;
 
 						new = palloc(sizeof(PLiSQL_stmt_rollback));
 						new->cmd_type = PLISQL_STMT_ROLLBACK;
-						new->lineno = plisql_location_to_lineno(@1);
+						new->lineno = plisql_location_to_lineno(@2);
 						new->stmtid = ++plisql_curr_compile->nstatements;
-						new->chain = $2;
+						new->chain = $3;
 
+						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
+
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+stmt_goto: opt_stmt_label K_GOTO any_identifier ';'
+					{
+						PLiSQL_stmt_goto	*new;
+
+						new = palloc0(sizeof(PLiSQL_stmt_goto));
+						new->cmd_type	= PLISQL_STMT_GOTO;
+						new->lineno		= plisql_location_to_lineno(@2);
+						new->stmtid		= ++plisql_curr_compile->nstatements;
+						new->target_label = $3;
+						plisql_register_label($1);
+						plisql_register_goto(new);
+
+						$$ = (PLiSQL_stmt *) new;
+					}
+				;
+/* End - ReqID:SRS-PLSQL-GOTO */
 
 opt_transaction_chain:
 			K_AND K_CHAIN			{ $$ = true; }
@@ -3843,6 +3970,13 @@ exception_sect	:
 						new->sqlerrm_varno = var->dno;
 
 						$<exception_block>$ = new;
+
+						/* Begin - ReqID:SRS-PLSQL-GOTO */
+						plisql_blkpath_pop();
+						plisql_blkpath_push("[exception]");
+						plisql_blkpath_set_exception(true);
+						plisql_blkpath_update_nbranches(true);
+						/* End - ReqID:SRS-PLSQL-GOTO */
 					}
 					proc_exceptions
 					{
@@ -3887,10 +4021,12 @@ exception_sect	:
 proc_exceptions	: proc_exceptions proc_exception
 						{
 							$$ = lappend($1, $2);
+							plisql_blkpath_update_nbranches(false);	/* ReqID:SRS-PLSQL-GOTO */
 						}
 				| proc_exception
 						{
 							$$ = list_make1($1);
+							plisql_blkpath_update_nbranches(false);	/* ReqID:SRS-PLSQL-GOTO */
 						}
 				;
 
@@ -4108,11 +4244,13 @@ expr_until_loop :
 opt_block_label	:
 					{
 						plisql_ns_push(NULL, PLISQL_LABEL_BLOCK);
+						plisql_lscope_push(NULL);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = NULL;
 					}
 				| LESS_LESS any_identifier GREATER_GREATER
 					{
 						plisql_ns_push($2, PLISQL_LABEL_BLOCK);
+						plisql_lscope_push($2);		/* ReqID:SRS-PLSQL-GOTO */
 						$$ = $2;
 					}
 				;
@@ -4120,14 +4258,26 @@ opt_block_label	:
 opt_loop_label	:
 					{
 						plisql_ns_push(NULL, PLISQL_LABEL_LOOP);
+						plisql_lscope_push(NULL);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = NULL;
 					}
 				| LESS_LESS any_identifier GREATER_GREATER
 					{
 						plisql_ns_push($2, PLISQL_LABEL_LOOP);
+						plisql_lscope_push($2);		/* ReqID:SRS-PLSQL-GOTO */
 						$$ = $2;
 					}
 				;
+
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+opt_stmt_label:
+					{ $$ = NULL; }
+				| LESS_LESS any_identifier GREATER_GREATER
+					{
+						$$ = $2;
+					}
+				;
+/* End - ReqID:SRS-PLSQL-GOTO */
 
 opt_label	:
 					{
@@ -4248,6 +4398,7 @@ unreserved_keyword	:
 				| K_FIRST
 				| K_FORWARD
 				| K_GET
+				| K_GOTO		/* ReqID:SRS-PLSQL-GOTO */
 				| K_HINT
 				| K_IMMEDIATE	/* BUG#Z1438 */
 				| K_IMPORT
@@ -4377,6 +4528,7 @@ unit_name_keyword:
 				| K_FIRST
 				| K_FORWARD
 				| K_GET
+				| K_GOTO		/* ReqID:SRS-PLSQL-GOTO */
 				| K_HINT
 				| K_IMMEDIATE	/* BUG#Z1438 */
 				| K_IMPORT

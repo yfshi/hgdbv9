@@ -170,6 +170,10 @@ extern int	plisql_saved_nDatums[];
 extern int plisql_saved_datums_last[];
 /* End - BUG#M0000168 */
 
+/* Begin - ReqID:SRS-PLSQL-GOTO */
+extern void *plisql_saved_label_context[];
+/* End - ReqID:SRS-PLSQL-GOTO */
+
 
 
 /* some userfull funcs */
