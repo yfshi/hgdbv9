@@ -1739,5 +1739,65 @@ CREATE TABLE oa2019_9(
     failreason varchar(100),
     PRIMARY KEY USING BTREE (`id`) USING BTREE WITH PARSER MyISAM
 ) ENGINE=InnoDB;
+
+drop table oa2019_1,oa2019_2,oa2019_3,oa2019_4;
+drop table oa2019_6,oa2019_7,oa2019_7,oa2019_9;
 -- End: oa-2019
 
+-- Begin: OA-2052
+CREATE TABLE `auto_generated_keys`  (
+  `current_value` int NOT NULL,
+  `table_name` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `create_time` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `last_modified_time` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  UNIQUE INDEX `table_name`(`table_name`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+
+CREATE TABLE `htmllabelinfo`  (
+  `INDEXID` int NULL DEFAULT NULL,
+  `LABELNAME` text CHARACTER SET utf8 COLLATE utf8_general_ci NULL,
+  `LANGUAGEID` int NULL DEFAULT NULL,
+  UNIQUE KEY `htmllabelinfo_ix`(`INDEXID`, `LANGUAGEID`) USING BTREE,
+  INDEX `HTMLLABELINFO_INDEXID_IN`(`INDEXID`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+
+CREATE TABLE `ecology_biz_app_module`  (
+  `ID` int NOT NULL,
+  `NAME` varchar(250) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `DESCRIPTION` varchar(250) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `STATUS` varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `CREATERID` int NULL DEFAULT NULL,
+  UNIQUE INDEX `ID`(`ID`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+
+CREATE TABLE `ecology_biz_app`  (
+  `ID` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `APPNAME` varchar(250) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `intename` varchar(250) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  UNIQUE INDEX `ID`(`ID`) USING BTREE,
+  UNIQUE INDEX `ID_2`(`ID`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+
+drop table `auto_generated_keys`;
+drop table `htmllabelinfo`;
+drop table `ecology_biz_app_module`;
+drop table `ecology_biz_app`;
+
+CREATE TABLE `auto_generated_keys`  (
+  `current_value` int NOT NULL,
+  `table_name` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `create_time` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `last_modified_time` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  INDEX `table_name`(`table_name`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+
+CREATE TABLE `auto_generated_keys2`  (
+  `current_value` int NOT NULL,
+  `table_name` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `create_time` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `last_modified_time` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  INDEX `table_name`(`table_name`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+drop table `auto_generated_keys`;
+drop table `auto_generated_keys2`;
+-- End: OA-2052
