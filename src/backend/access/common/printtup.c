@@ -24,6 +24,7 @@
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
+#include "utils/bytea.h" /* Begin - BUG#Z00006876 */
 
 
 static void printtup_startup(DestReceiver *self, int operation,
@@ -343,6 +344,22 @@ printtup(TupleTableSlot *slot, DestReceiver *self)
 			{
 				outputstr = OutputFunctionCallWithTypmod(&thisState->finfo, attr, TupleDescAttr(typeinfo, i)->atttypmod);
 			}
+			/* Begin - BUG#Z00006876 */
+			else if (ORA_MODE == compatible_mode &&
+				disable_hex_bytea_for_blob &&
+				(TupleDescAttr(typeinfo, i)->atttypid == BLOBOID) &&
+				hex_bytea)
+			{
+				int			save_nestlevel = NewGUCNestLevel();
+
+				(void) set_config_option("ivorysql.hex_bytea", "off",
+									 PGC_USERSET, PGC_S_SESSION,
+									 GUC_ACTION_SAVE, true, 0, false);
+				outputstr = OutputFunctionCall(&thisState->finfo, attr);
+
+				AtEOXact_GUC(false, save_nestlevel);
+			}
+			/* End - BUG#Z00006876 */
 			else
 			{
 				outputstr = OutputFunctionCall(&thisState->finfo, attr);

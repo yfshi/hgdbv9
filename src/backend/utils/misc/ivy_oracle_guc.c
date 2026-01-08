@@ -201,6 +201,8 @@ bool enable_compatible_numeric_division_result = false;
 
 bool hex_bytea = false; /* Bug#z1457 */
 
+bool disable_hex_bytea_for_blob = true; /* BUG#Z00006876 */
+
 bool enable_ora_user_schema = true;	/* ReqID:SRS-SQL-SCHEMA */
 
 /* Begin - BUG#M0000470: SELECT FOR UPDATE */
@@ -432,6 +434,19 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End -  Bug#z1457 */
+
+	/* Begin - BUG#Z00006876 */
+	{
+		{"ivorysql.disable_hex_bytea_for_blob", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop(" Disable ivorysql.hex_bytea affects the output of blob type ."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&disable_hex_bytea_for_blob,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#Z00006876 */
 
 	/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
 	{
