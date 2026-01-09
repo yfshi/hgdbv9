@@ -8,7 +8,25 @@
 	1、修复了编译和回归问题，恢复了windows编译；
 	2、O兼容支持触发器谓词以及使用动态SQL创建触发器的功能；
 	3、M兼容使用pl函数重构了show命令；
+	4、新增兼容PLSQL GOTO语法；
+	5、新增表空间加密功能；
+	6、新增兼容PLSQL COLLECTION相关语法；
+	7、M兼容重构了UINT3数据类型；
 2、修复问题	
 	1、会话管理补充了bug#6866遗漏的问题修复；
 	2、TDE修复了无符号整型指针被用在带符号整型在aarch平台coredump的问题；
 	3、O兼容修复了windows平台限定连接用户导致O兼容视图回归失败的问题，bug#6880；
+	4、O兼容增加了触发器WHEN条件支持引用OLD、DELETE中支持引用NEW的语法，bug#6559；
+	5、O兼容修复了windows平台下用户名大写时查询user_triggers视图报错的问题，bug#6879；
+	6、修复了windows编译时指定hg_extral_version参数不生效的问题，bug#6969；
+	7、修复了windows编译时license相关依赖不正确的问题；
+	8、修复了因不需要的大小写转换导致对象名不正确的问题，bug#6063；
+	9、M兼容对create table增加了using btree语法的支持，OA-REQ-2019;
+	10、M兼容修复了call命令无响应问题，bug#6981、OA-REQ-2043;；
+	11、M兼容修复了JDBC连接串上设置schema参数不生效的问题，OA-REQ-2037;
+	12、M兼容增加了UPPER函数支持bigint类型，bug#6988；
+	13、修复了windows编译时受限DBA不通过的回归用例；
+	14、O兼容修复了ivorysql.hex_bytea打开后，blob输出不正确的问题，bug#6876、OA_REQ-2052;
+	15、M兼容增加了create table(UNIQUE INDEX)并可忽略索引名的语法，OA-REQ-2052;
+	16、O兼容修改了varchar2类型的默认长度，避免typmod不同引起同类型不可重建的问题，bug#7004；
+	17、修复了windows下回归时端口冲突的问题；
