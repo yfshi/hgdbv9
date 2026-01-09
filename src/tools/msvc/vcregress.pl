@@ -20,6 +20,7 @@ use FindBin;
 use lib $FindBin::RealBin;
 
 use Install qw(Install);
+use TestLib qw(get_free_port);
 
 my $startdir = getcwd();
 
@@ -660,7 +661,9 @@ sub upgradecheck
 	# what pg_upgrade's "make check" does.
 
 	$ENV{PGHOST} = 'localhost';
-	$ENV{PGPORT} ||= 50432;
+	$ENV{PGPORT} ||= get_free_port();
+	$ENV{PGPORTOLD} = "$ENV{PGPORT}";
+	$ENV{PGPORTNEW} = "$ENV{PGPORT}";
 	my $tmp_root = "$topdir/src/bin/pg_upgrade/tmp_check";
 	rmtree($tmp_root);
 	mkdir $tmp_root || die $!;

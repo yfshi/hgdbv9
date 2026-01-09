@@ -14,11 +14,14 @@ our $config;
 import sys;
 use Cwd;
 use File::Path qw(rmtree);
+use TestLib qw(get_free_port);
 
 if(@ARGV != 1){
 	die "please enter the installation  directory!\n";
 }
 my $startdir = getcwd();
+my $pg_port = get_free_port();
+my $ivy_port = get_free_port();
 print "$startdir\n";
 print "$ARGV[0]\n";
 
@@ -40,6 +43,8 @@ system("initdb.exe -D $installdir/data -m pg --encoding=UTF-8");	#BUGM0000294
 open(my $conf_file, '>>', "$installdir/data/postgresql.conf") or error_exit("can not append postgresql.conf");
 print $conf_file "\n# Configuration added by pg_regress\n\n";
 print $conf_file "audit.track_settings = off\n";
+print $conf_file "port = $pg_port\n";
+print $conf_file "ivorysql.port = $ivy_port\n";
 close($conf_file);
 my $status1 = $? >> 8;
 exit $status1 if $status1;
@@ -47,7 +52,7 @@ system("pg_ctl.exe -D $installdir/data -l $installdir/log_pg.txt start");	#BUGM0
 my $status2 = $? >> 8;
 exit $status2 if $status2;
 chdir "$startdir";
-$ENV{PGPORT} = 5432;
+$ENV{PGPORT} = "$pg_port";
 $ENV{PATH} = "$installdir/bin;$ENV{PATH}";
 
 my @vcregress_pg_install = ("installcheck","plcheck","contribcheck","modulescheck","ecpgcheck","isolationcheck");
@@ -83,6 +88,8 @@ system("initdb.exe -D $installdir/data -m oracle --encoding=UTF-8");	#BUGM000029
 open(my $conf_file, '>>', "$installdir/data/postgresql.conf") or error_exit("can not append postgresql.conf");
 print $conf_file "\n# Configuration added by pg_regress\n\n";
 print $conf_file "audit.track_settings = off\n";
+print $conf_file "port = $pg_port\n";
+print $conf_file "ivorysql.port = $ivy_port\n";
 close($conf_file);
 my $status6 = $? >> 8;
 exit $status6 if $status6;
@@ -90,8 +97,7 @@ system("pg_ctl.exe -D $installdir/data -l $installdir/log_pg_ora.txt start -o \"
 my $status7 = $? >> 8;
 exit $status7 if $status7;
 chdir "$startdir";
-
-$ENV{PGPORT} = 5432;
+$ENV{PGPORT} = "$pg_port";
 
 my @vcregress_ora_pg_install = ("installcheck","plcheck","contribcheck","modulescheck","ecpgcheck","isolationcheck");
 foreach $a (@vcregress_ora_pg_install){
@@ -169,6 +175,8 @@ system("initdb.exe -D $installdir/data -c normal --encoding=UTF-8");	#BUGM000029
 open(my $conf_file, '>>', "$installdir/data/postgresql.conf") or error_exit("can not append postgresql.conf");
 print $conf_file "\n# Configuration added by pg_regress\n\n";
 print $conf_file "audit.track_settings = off\n";
+print $conf_file "port = $pg_port\n";
+print $conf_file "ivorysql.port = $ivy_port\n";
 close($conf_file);
 my $status11 = $? >> 8;
 exit $status11 if $status11;
@@ -176,8 +184,7 @@ system("pg_ctl.exe -D $installdir/data -l $installdir/log_ora.txt start -o \"-c 
 my $status12 = $? >> 8;
 exit $status12 if $status12;
 chdir "$startdir";
-
-$ENV{PGPORT} = 1521;
+$ENV{PGPORT} = "$ivy_port";
 
 my @vcregress_ora_install = ("installcheck","plcheck","modulescheck","ecpgcheck","isolationcheck","contribcheck");	#BUGM0000294
 foreach $a (@vcregress_ora_install){
