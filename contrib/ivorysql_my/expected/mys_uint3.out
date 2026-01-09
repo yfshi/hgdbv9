@@ -8,11 +8,16 @@ ERROR:  integer unsigned out of range
 insert into t1 values(-2147483648);
 ERROR:  integer unsigned out of range
 insert into t1 values(2147483647);
-ERROR:  value for domain uint3 violates check constraint "uint3_check"
+ERROR:  integer unsigned out of range
 insert into t1 values(-2147483649);
 ERROR:  integer unsigned out of range
 insert into t1 values(4294967295);
-ERROR:  value for domain uint3 violates check constraint "uint3_check"
+ERROR:  integer unsigned out of range
+insert into t1 values(16777216);
+ERROR:  integer unsigned out of range
+insert into t1 values(16777215);
+insert into t1 values(65535);
+insert into t1 values(255);
 insert into t1 values('a111') ;
 ERROR:  Incorrect integer value: 'a111' for column.
 LINE 1: insert into t1 values('a111') ;
@@ -33,14 +38,17 @@ LINE 1: insert into t1 values('111#') ;
                               ^
 insert into t1 values('111.') ;
 select * from t1;
- c1  
------
+    c1    
+----------
  0
  1
+ 16777215
+ 65535
+ 255
  0
  111
  111
-(5 rows)
+(8 rows)
 
 drop table t1;
 create table t1(c1 mediumint UNSIGNED);
@@ -203,17 +211,25 @@ ERROR:  integer unsigned out of range
 insert into t1 values(-2147483648);
 ERROR:  integer unsigned out of range
 insert into t1 values(2147483647);
-ERROR:  value for domain uint3 violates check constraint "uint3_check"
+ERROR:  integer unsigned out of range
 insert into t1 values(-2147483649);
 ERROR:  integer unsigned out of range
 insert into t1 values(4294967295);
-ERROR:  value for domain uint3 violates check constraint "uint3_check"
+ERROR:  integer unsigned out of range
+insert into t1 values(16777216);
+ERROR:  integer unsigned out of range
+insert into t1 values(16777215);
+insert into t1 values(65535);
+insert into t1 values(255);
 select * from t1;
- c1 
-----
+    c1    
+----------
  0
  1
-(2 rows)
+ 16777215
+ 65535
+ 255
+(5 rows)
 
 drop table t1;
 create table t1(c1 int3 UNSIGNED);
@@ -326,11 +342,16 @@ WARNING:  integer unsigned out of range
 insert into t1 values(-2147483648);
 WARNING:  integer unsigned out of range
 insert into t1 values(2147483647);
-ERROR:  value for domain uint3 violates check constraint "uint3_check"
+WARNING:  integer unsigned out of range
 insert into t1 values(-2147483649);
 WARNING:  integer unsigned out of range
 insert into t1 values(4294967295);
-ERROR:  value for domain uint3 violates check constraint "uint3_check"
+WARNING:  integer unsigned out of range
+insert into t1 values(16777216);
+WARNING:  integer unsigned out of range
+insert into t1 values(16777215);
+insert into t1 values(65535);
+insert into t1 values(255);
 insert into t1 values('a111') ;
 WARNING:  Incorrect integer value: 'a111' for column.
 LINE 1: insert into t1 values('a111') ;
@@ -351,13 +372,19 @@ LINE 1: insert into t1 values('111#') ;
                               ^
 insert into t1 values('111.') ;
 select * from t1;
- c1  
------
+    c1    
+----------
  0
  1
  0
  0
+ 16777215
  0
+ 16777215
+ 16777215
+ 16777215
+ 65535
+ 255
  0
  111
  0
@@ -365,7 +392,7 @@ select * from t1;
  0
  111
  111
-(12 rows)
+(18 rows)
 
 drop table t1;
 --mediumint[(M)]
@@ -462,20 +489,31 @@ WARNING:  integer unsigned out of range
 insert into t1 values(-2147483648);
 WARNING:  integer unsigned out of range
 insert into t1 values(2147483647);
-ERROR:  value for domain uint3 violates check constraint "uint3_check"
+WARNING:  integer unsigned out of range
 insert into t1 values(-2147483649);
 WARNING:  integer unsigned out of range
 insert into t1 values(4294967295);
-ERROR:  value for domain uint3 violates check constraint "uint3_check"
+WARNING:  integer unsigned out of range
+insert into t1 values(16777216);
+WARNING:  integer unsigned out of range
+insert into t1 values(16777215);
+insert into t1 values(65535);
+insert into t1 values(255);
 select * from t1;
- c1 
-----
+    c1    
+----------
  0
  1
  0
  0
+ 16777215
  0
-(5 rows)
+ 16777215
+ 16777215
+ 16777215
+ 65535
+ 255
+(11 rows)
 
 drop table t1;
 --int3[(M)]
@@ -563,6 +601,235 @@ select * from t2;
 (1 row)
 
 drop table t2;
+--numeric -> uint3
+select 2000.49999::uint3;
+ uint3 
+-------
+ 2000
+(1 row)
+
+select 2000.5::uint3;
+ uint3 
+-------
+ 2001
+(1 row)
+
+select 16777214.8::uint3;
+  uint3   
+----------
+ 16777215
+(1 row)
+
+select 16777216.1::uint3;
+WARNING:  Truncated incorrect DECIMAL value: '16777216.1'
+  uint3   
+----------
+ 16777215
+(1 row)
+
+select 999999999999999.0205::uint3;
+WARNING:  Truncated incorrect DECIMAL value: '999999999999999.0205'
+  uint3   
+----------
+ 16777215
+(1 row)
+
+select (-0.02)::uint3;
+ uint3 
+-------
+ 0
+(1 row)
+
+select (-68.753951)::uint3;
+WARNING:  Truncated incorrect DECIMAL value: '-68.753951'
+ uint3 
+-------
+ 0
+(1 row)
+
+select (-8388607.4)::uint3;
+WARNING:  Truncated incorrect DECIMAL value: '-8388607.4'
+ uint3 
+-------
+ 0
+(1 row)
+
+select (-8388609.2)::uint3;
+WARNING:  Truncated incorrect DECIMAL value: '-8388609.2'
+ uint3 
+-------
+ 0
+(1 row)
+
+select (-999999999999999.0205)::uint3;
+WARNING:  Truncated incorrect DECIMAL value: '-999999999999999.0205'
+ uint3 
+-------
+ 0
+(1 row)
+
+set SQL_MODE='TRADITIONAL';
+CREATE TABLE tb3 (a numeric, b mediumint UNSIGNED);
+insert into tb3 values (112233.556677, 9999);
+insert into tb3 values (0.62, 100);
+insert into tb3 values (7.05, 1000.123);
+insert into tb3 values (7.05, 16777214.8);
+insert into tb3 values (7.05, 16777215.0);
+insert into tb3 values (7.05, 16777216.1);
+ERROR:  Out of range value for column
+insert into tb3 values (7.05, 999999999999999.0205);
+ERROR:  Out of range value for column
+insert into tb3 values (120.007, 0);
+insert into tb3 values (9.36, -50000.753951);
+ERROR:  Out of range value for column
+insert into tb3 values (9.36, -8388607.4);
+ERROR:  Out of range value for column
+insert into tb3 values (9.36, -8388608.0);
+ERROR:  Out of range value for column
+insert into tb3 values (9.36, -8388609.2);
+ERROR:  Out of range value for column
+insert into tb3 values (9.36, -999999999999999.0205);
+ERROR:  Out of range value for column
+select * from tb3;
+       a       |    b     
+---------------+----------
+ 112233.556677 | 9999
+          0.62 | 100
+          7.05 | 1000
+          7.05 | 16777215
+          7.05 | 16777215
+       120.007 | 0
+(6 rows)
+
+select cast(a as uint3) from tb3;
+   a    
+--------
+ 112234
+ 1
+ 7
+ 7
+ 7
+ 120
+(6 rows)
+
+select convert(a, uint3) from tb3;
+   a    
+--------
+ 112234
+ 1
+ 7
+ 7
+ 7
+ 120
+(6 rows)
+
+select a::uint3 + b from tb3;
+ ?column? 
+----------
+ 122233
+ 101
+ 1007
+ 16777222
+ 16777222
+ 120
+(6 rows)
+
+drop table tb3;
+set SQL_MODE='';
+CREATE TABLE tb3 (a numeric, b mediumint UNSIGNED);
+insert into tb3 values (112233.556677, 9999);
+insert into tb3 values (0.62, 100);
+insert into tb3 values (7.05, 1000.123);
+insert into tb3 values (7.05, 16777214.8);
+insert into tb3 values (7.05, 16777215.0);
+insert into tb3 values (7.05, 16777216.1);
+WARNING:  Out of range value for column
+insert into tb3 values (7.05, 999999999999999.0205);
+WARNING:  Out of range value for column
+insert into tb3 values (120.007, 0);
+insert into tb3 values (9.36, -50000.753951);
+WARNING:  Out of range value for column
+insert into tb3 values (9.36, -8388607.4);
+WARNING:  Out of range value for column
+insert into tb3 values (9.36, -8388608.0);
+WARNING:  Out of range value for column
+insert into tb3 values (9.36, -8388609.2);
+WARNING:  Out of range value for column
+insert into tb3 values (9.36, -999999999999999.0205);
+WARNING:  Out of range value for column
+select * from tb3;
+       a       |    b     
+---------------+----------
+ 112233.556677 | 9999
+          0.62 | 100
+          7.05 | 1000
+          7.05 | 16777215
+          7.05 | 16777215
+          7.05 | 16777215
+          7.05 | 16777215
+       120.007 | 0
+          9.36 | 0
+          9.36 | 0
+          9.36 | 0
+          9.36 | 0
+          9.36 | 0
+(13 rows)
+
+select cast(a as uint3) from tb3;
+   a    
+--------
+ 112234
+ 1
+ 7
+ 7
+ 7
+ 7
+ 7
+ 120
+ 9
+ 9
+ 9
+ 9
+ 9
+(13 rows)
+
+select convert(a, uint3) from tb3;
+   a    
+--------
+ 112234
+ 1
+ 7
+ 7
+ 7
+ 7
+ 7
+ 120
+ 9
+ 9
+ 9
+ 9
+ 9
+(13 rows)
+
+select a::uint3 + b from tb3;
+ ?column? 
+----------
+ 122233
+ 101
+ 1007
+ 16777222
+ 16777222
+ 16777222
+ 16777222
+ 120
+ 9
+ 9
+ 9
+ 9
+ 9
+(13 rows)
+
+drop table tb3;
 set SQL_MODE to default;
 -- oper
 --------------------------------------------------
@@ -1358,6 +1625,96 @@ select 0 mod a from t2;
 (6 rows)
 
 drop table t2;
+set SQL_MODE='TRADITIONAL';
+CREATE TABLE t3 (a mediumint UNSIGNED, b numeric);
+insert into t3 values (16777215, 11122333.8080666);
+insert into t3 values (10020065, 123456.8742);
+insert into t3 values (10020065, -123456.8742);
+select  a / b from t3;
+ ?column? 
+----------
+   1.5084
+  81.1625
+ -81.1625
+(3 rows)
+
+select  a % b from t3;
+    ?column?     
+-----------------
+ 5654881.1919334
+      20058.1898
+      20058.1898
+(3 rows)
+
+drop table t3;
+select cast(600 as uint3);
+ uint3 
+-------
+ 600
+(1 row)
+
+select cast(16777215 as uint3);
+  uint3   
+----------
+ 16777215
+(1 row)
+
+select cast(16777216 as uint3);
+ERROR:  integer unsigned out of range
+select cast(99999999 as uint3);
+ERROR:  integer unsigned out of range
+select cast(123.456 as uint3);
+ uint3 
+-------
+ 123
+(1 row)
+
+select cast(0 as uint3);
+ uint3 
+-------
+ 0
+(1 row)
+
+select cast(-7200.145 as uint3);
+WARNING:  Truncated incorrect DECIMAL value: '-7200.145'
+ uint3 
+-------
+ 0
+(1 row)
+
+select cast(-8388609 as uint3);
+ERROR:  integer unsigned out of range
+select cast(-99999999 as uint3);
+ERROR:  integer unsigned out of range
+set sql_mode='';
+select cast(16777216 as uint3);
+WARNING:  integer unsigned out of range
+  uint3   
+----------
+ 16777215
+(1 row)
+
+select cast(99999999 as uint3);
+WARNING:  integer unsigned out of range
+  uint3   
+----------
+ 16777215
+(1 row)
+
+select cast(-836 as uint3);
+WARNING:  integer unsigned out of range
+ uint3 
+-------
+ 0
+(1 row)
+
+select cast(-99999999 as uint3);
+WARNING:  integer unsigned out of range
+ uint3 
+-------
+ 0
+(1 row)
+
 -- between and
 create table t1 (a mediumint UNSIGNED , b mediumint UNSIGNED);
 insert into t1 values(111, 444);

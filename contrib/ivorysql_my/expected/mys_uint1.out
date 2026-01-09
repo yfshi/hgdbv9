@@ -62,6 +62,56 @@ select * from t1;
 (4 rows)
 
 drop table t1;
+CREATE TABLE t1 (a tinyint UNSIGNED, b numeric);
+insert into t1 values (255, 11122333.8080666);
+insert into t1 values (60, 123456.8742);
+insert into t1 values (60, -123456.8742);
+select * from t1;
+  a  |        b         
+-----+------------------
+ 255 | 11122333.8080666
+ 60  |      123456.8742
+ 60  |     -123456.8742
+(3 rows)
+
+drop table t1;
+select cast(10 as uint1);
+ uint1 
+-------
+ 10
+(1 row)
+
+select cast(255 as uint1);
+ uint1 
+-------
+ 255
+(1 row)
+
+select cast(256 as uint1);
+ERROR:  integer unsigned out of range
+select cast(9999 as uint1);
+ERROR:  integer unsigned out of range
+select cast(123.456 as uint1);
+ uint1 
+-------
+ 123
+(1 row)
+
+select cast(0 as uint1);
+ uint1 
+-------
+ 0
+(1 row)
+
+select cast(-7200.145 as uint1);
+WARNING:  Truncated incorrect DECIMAL value: '-7200.145'
+ uint1 
+-------
+ 0
+(1 row)
+
+select cast(-9999 as uint1);
+ERROR:  integer unsigned out of range
 --tinyint[(M)]
 create table t1 (a tinyint[-1] UNSIGNED); --fail
 ERROR:  syntax error at or near "-"
@@ -575,6 +625,234 @@ select * from t2;
 (1 row)
 
 drop table t2;
+--numeric -> uint1
+select 200.49999::uint1;
+ uint1 
+-------
+ 200
+(1 row)
+
+select 200.5::uint1;
+ uint1 
+-------
+ 201
+(1 row)
+
+select 254.3::uint1;
+ uint1 
+-------
+ 254
+(1 row)
+
+select 255.1::uint1;
+ uint1 
+-------
+ 255
+(1 row)
+
+select 999999999999999.0205::uint1;
+WARNING:  Truncated incorrect DECIMAL value: '999999999999999.0205'
+ uint1 
+-------
+ 255
+(1 row)
+
+select (-0.02)::uint1;
+ uint1 
+-------
+ 0
+(1 row)
+
+select (-68.753951)::uint1;
+WARNING:  Truncated incorrect DECIMAL value: '-68.753951'
+ uint1 
+-------
+ 0
+(1 row)
+
+select (-127.9)::uint1;
+WARNING:  Truncated incorrect DECIMAL value: '-127.9'
+ uint1 
+-------
+ 0
+(1 row)
+
+select (-129.2)::uint1;
+WARNING:  Truncated incorrect DECIMAL value: '-129.2'
+ uint1 
+-------
+ 0
+(1 row)
+
+select (-999999999999999.0205)::uint1;
+WARNING:  Truncated incorrect DECIMAL value: '-999999999999999.0205'
+ uint1 
+-------
+ 0
+(1 row)
+
+set SQL_MODE='TRADITIONAL';
+CREATE TABLE tb1 (a numeric, b tinyint UNSIGNED);
+insert into tb1 values (11.556677, 20);
+insert into tb1 values (0.62, 50);
+insert into tb1 values (7.05, 18.123);
+insert into tb1 values (7.05, 254.3);
+insert into tb1 values (7.05, 255.0);
+insert into tb1 values (7.05, 256.1);
+ERROR:  Out of range value for column
+insert into tb1 values (7.05, 999999999999999.0205);
+ERROR:  Out of range value for column
+insert into tb1 values (120.007, 0);
+insert into tb1 values (9.36, -50000.753951);
+ERROR:  Out of range value for column
+insert into tb1 values (9.36, -127.9);
+ERROR:  Out of range value for column
+insert into tb1 values (9.36, -128.0);
+ERROR:  Out of range value for column
+insert into tb1 values (9.36, -129.2);
+ERROR:  Out of range value for column
+insert into tb1 values (9.36, -999999999999999.0205);
+ERROR:  Out of range value for column
+select * from tb1;
+     a     |  b  
+-----------+-----
+ 11.556677 | 20
+      0.62 | 50
+      7.05 | 18
+      7.05 | 254
+      7.05 | 255
+   120.007 | 0
+(6 rows)
+
+select cast(a as uint1) from tb1;
+  a  
+-----
+ 12
+ 1
+ 7
+ 7
+ 7
+ 120
+(6 rows)
+
+select convert(a, uint1) from tb1;
+  a  
+-----
+ 12
+ 1
+ 7
+ 7
+ 7
+ 120
+(6 rows)
+
+select a::uint1 + b from tb1;
+ ?column? 
+----------
+ 32
+ 51
+ 25
+ 261
+ 262
+ 120
+(6 rows)
+
+drop table tb1;
+set SQL_MODE='';
+CREATE TABLE tb1 (a numeric, b tinyint UNSIGNED);
+insert into tb1 values (11.556677, 20);
+insert into tb1 values (0.62, 50);
+insert into tb1 values (7.05, 18.123);
+insert into tb1 values (7.05, 254.3);
+insert into tb1 values (7.05, 255.0);
+insert into tb1 values (7.05, 256.1);
+WARNING:  Out of range value for column
+insert into tb1 values (7.05, 999999999999999.0205);
+WARNING:  Out of range value for column
+insert into tb1 values (120.007, 0);
+insert into tb1 values (9.36, -50000.753951);
+WARNING:  Out of range value for column
+insert into tb1 values (9.36, -127.9);
+WARNING:  Out of range value for column
+insert into tb1 values (9.36, -128.0);
+WARNING:  Out of range value for column
+insert into tb1 values (9.36, -129.2);
+WARNING:  Out of range value for column
+insert into tb1 values (9.36, -999999999999999.0205);
+WARNING:  Out of range value for column
+select * from tb1;
+     a     |  b  
+-----------+-----
+ 11.556677 | 20
+      0.62 | 50
+      7.05 | 18
+      7.05 | 254
+      7.05 | 255
+      7.05 | 255
+      7.05 | 255
+   120.007 | 0
+      9.36 | 0
+      9.36 | 0
+      9.36 | 0
+      9.36 | 0
+      9.36 | 0
+(13 rows)
+
+select cast(a as uint1) from tb1;
+  a  
+-----
+ 12
+ 1
+ 7
+ 7
+ 7
+ 7
+ 7
+ 120
+ 9
+ 9
+ 9
+ 9
+ 9
+(13 rows)
+
+select convert(a, uint1) from tb1;
+  a  
+-----
+ 12
+ 1
+ 7
+ 7
+ 7
+ 7
+ 7
+ 120
+ 9
+ 9
+ 9
+ 9
+ 9
+(13 rows)
+
+select a::uint1 + b from tb1;
+ ?column? 
+----------
+ 32
+ 51
+ 25
+ 261
+ 262
+ 262
+ 262
+ 120
+ 9
+ 9
+ 9
+ 9
+ 9
+(13 rows)
+
+drop table tb1;
 set SQL_MODE to default;
 -- oper
 --------------------------------------------------

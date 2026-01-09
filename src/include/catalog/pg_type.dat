@@ -1156,10 +1156,10 @@
   typmodin => '-', typmodout => '-' },
  { oid => '9210', array_type_oid => '9211',
   descr => 'mysql unsigned mediumint integer, 3-byte storage',
-  typname => 'uint3', typnamespace => 'ivymy', typlen => '4', typbyval => 't', typtype => 'd',
-  typcategory => 'N', typinput => 'domain_in', typoutput => '-', 
-  typreceive => 'domain_recv', typsend => '-', 
-  typalign => 'i' , typstorage => 'p', typbasetype => 'uint4', typtypmod => 10,
+  typname => 'uint3', typnamespace => 'ivymy', typlen => '4', typbyval => 't', 
+  typcategory => 'N', typinput => '-', typoutput => '-', 
+  typreceive => '-', typsend => '-', 
+  typalign => 'i' , 
   typmodin => '-', typmodout => '-' },
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
 

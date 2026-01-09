@@ -19,6 +19,7 @@ PG_FUNCTION_INFO_V1(hex2int4);
 PG_FUNCTION_INFO_V1(hex2int8);
 PG_FUNCTION_INFO_V1(hex2uint1);
 PG_FUNCTION_INFO_V1(hex2uint2);
+PG_FUNCTION_INFO_V1(hex2uint3);
 PG_FUNCTION_INFO_V1(hex2uint4);
 PG_FUNCTION_INFO_V1(hex2uint8);
 PG_FUNCTION_INFO_V1(hex2float4);
@@ -249,6 +250,26 @@ hex2uint2(PG_FUNCTION_ARGS)
 	}
 
 	PG_RETURN_UINT16(ret);
+}
+
+Datum
+hex2uint3(PG_FUNCTION_ARGS)
+{
+	bytea   	*hex = PG_GETARG_BYTEA_PP(0);
+	uint64 		base = (uint64) parse_hex_string_to_int64(VARDATA_ANY(hex), VARSIZE_ANY_EXHDR(hex));
+	uint32 		ret = (uint32) base;
+	bool		is_insert = CALL_IN_INSERT();
+
+	if (is_insert)
+	{
+		if (base > PG_UINT24_MAX)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			ret = PG_UINT24_MAX;
+		}
+	}
+
+	PG_RETURN_UINT32(ret);
 }
 
 Datum

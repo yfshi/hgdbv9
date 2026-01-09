@@ -583,6 +583,21 @@ WITH FUNCTION ivymy.hex2uint2(ivy_hex, int, bool, int8)
 AS ASSIGNMENT;
 
 --
+-- cast (ivy_hex as uint3)
+--
+CREATE FUNCTION ivymy.hex2uint3(ivy_hex, int, bool, int8)
+RETURNS uint3
+AS 'MODULE_PATHNAME', 'hex2uint3'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+CREATE CAST(ivy_hex as uint3) 
+WITH FUNCTION ivymy.hex2uint3(ivy_hex, int, bool, int8)
+AS ASSIGNMENT;
+
+--
 -- cast (ivy_hex as uint4)
 --
 CREATE FUNCTION ivymy.hex2uint4(ivy_hex, int, bool, int8)

@@ -9,6 +9,10 @@ insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 insert into t1 values(4294967295);
+insert into t1 values(16777216);
+insert into t1 values(16777215);
+insert into t1 values(65535);
+insert into t1 values(255);
 insert into t1 values('a111') ;
 insert into t1 values('111a') ;
 insert into t1 values('.111') ;
@@ -91,6 +95,10 @@ insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 insert into t1 values(4294967295);
+insert into t1 values(16777216);
+insert into t1 values(16777215);
+insert into t1 values(65535);
+insert into t1 values(255);
 select * from t1;
 drop table t1;
 
@@ -149,6 +157,10 @@ insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 insert into t1 values(4294967295);
+insert into t1 values(16777216);
+insert into t1 values(16777215);
+insert into t1 values(65535);
+insert into t1 values(255);
 insert into t1 values('a111') ;
 insert into t1 values('111a') ;
 insert into t1 values('.111') ;
@@ -204,6 +216,10 @@ insert into t1 values(-2147483648);
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
 insert into t1 values(4294967295);
+insert into t1 values(16777216);
+insert into t1 values(16777215);
+insert into t1 values(65535);
+insert into t1 values(255);
 select * from t1;
 drop table t1;
 
@@ -242,6 +258,60 @@ create table t2 (a int3(2) ZEROFILL);
 insert into t2 values (1);
 select * from t2;
 drop table t2;
+
+--numeric -> uint3
+select 2000.49999::uint3;
+select 2000.5::uint3;
+select 16777214.8::uint3;
+select 16777216.1::uint3;
+select 999999999999999.0205::uint3;
+select (-0.02)::uint3;
+select (-68.753951)::uint3;
+select (-8388607.4)::uint3;
+select (-8388609.2)::uint3;
+select (-999999999999999.0205)::uint3;
+
+set SQL_MODE='TRADITIONAL';
+CREATE TABLE tb3 (a numeric, b mediumint UNSIGNED);
+insert into tb3 values (112233.556677, 9999);
+insert into tb3 values (0.62, 100);
+insert into tb3 values (7.05, 1000.123);
+insert into tb3 values (7.05, 16777214.8);
+insert into tb3 values (7.05, 16777215.0);
+insert into tb3 values (7.05, 16777216.1);
+insert into tb3 values (7.05, 999999999999999.0205);
+insert into tb3 values (120.007, 0);
+insert into tb3 values (9.36, -50000.753951);
+insert into tb3 values (9.36, -8388607.4);
+insert into tb3 values (9.36, -8388608.0);
+insert into tb3 values (9.36, -8388609.2);
+insert into tb3 values (9.36, -999999999999999.0205);
+select * from tb3;
+select cast(a as uint3) from tb3;
+select convert(a, uint3) from tb3;
+select a::uint3 + b from tb3;
+drop table tb3;
+
+set SQL_MODE='';
+CREATE TABLE tb3 (a numeric, b mediumint UNSIGNED);
+insert into tb3 values (112233.556677, 9999);
+insert into tb3 values (0.62, 100);
+insert into tb3 values (7.05, 1000.123);
+insert into tb3 values (7.05, 16777214.8);
+insert into tb3 values (7.05, 16777215.0);
+insert into tb3 values (7.05, 16777216.1);
+insert into tb3 values (7.05, 999999999999999.0205);
+insert into tb3 values (120.007, 0);
+insert into tb3 values (9.36, -50000.753951);
+insert into tb3 values (9.36, -8388607.4);
+insert into tb3 values (9.36, -8388608.0);
+insert into tb3 values (9.36, -8388609.2);
+insert into tb3 values (9.36, -999999999999999.0205);
+select * from tb3;
+select cast(a as uint3) from tb3;
+select convert(a, uint3) from tb3;
+select a::uint3 + b from tb3;
+drop table tb3;
 
 set SQL_MODE to default;
 -- oper
@@ -385,6 +455,33 @@ select a mod b from t2;
 select 0 mod a from t2;
 
 drop table t2;
+
+set SQL_MODE='TRADITIONAL';
+
+CREATE TABLE t3 (a mediumint UNSIGNED, b numeric);
+insert into t3 values (16777215, 11122333.8080666);
+insert into t3 values (10020065, 123456.8742);
+insert into t3 values (10020065, -123456.8742);
+select  a / b from t3;
+select  a % b from t3;
+drop table t3;
+
+select cast(600 as uint3);
+select cast(16777215 as uint3);
+select cast(16777216 as uint3);
+select cast(99999999 as uint3);
+select cast(123.456 as uint3);
+select cast(0 as uint3);
+select cast(-7200.145 as uint3);
+select cast(-8388609 as uint3);
+select cast(-99999999 as uint3);
+
+set sql_mode='';
+
+select cast(16777216 as uint3);
+select cast(99999999 as uint3);
+select cast(-836 as uint3);
+select cast(-99999999 as uint3);
 
 -- between and
 create table t1 (a mediumint UNSIGNED , b mediumint UNSIGNED);

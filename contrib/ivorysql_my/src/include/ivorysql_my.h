@@ -59,6 +59,7 @@ extern int32  my_atoi_int32(const char *s, bool is_insert);
 extern int64  my_atoi_int64(const char *s, bool is_insert);
 extern uint8  my_atoi_uint8(const char *s, bool is_insert);
 extern uint16 my_atoi_uint16(const char *s, bool is_insert);
+extern uint32 my_atoi_uint24(const char *s, bool is_insert);
 extern uint32 my_atoi_uint32(const char *s, bool is_insert);
 extern uint64 my_atoi_uint64(const char *s, bool is_insert);
 extern float  my_atof(const char *src, bool is_insert);

@@ -363,6 +363,12 @@ my_atoi_uint16(const char *s, bool is_insert)
 }
 
 uint32
+my_atoi_uint24(const char *s, bool is_insert)
+{
+	return (uint32) cstring_to_unsigned(s, PG_UINT24_MAX, is_insert);
+}
+
+uint32
 my_atoi_uint32(const char *s, bool is_insert)
 {
 	return (uint32) cstring_to_unsigned(s, UINT32_MAX, is_insert);

@@ -27,6 +27,23 @@ insert into t1 values('1.5');
 select * from t1;
 drop table t1;
 
+CREATE TABLE t2 (a smallint UNSIGNED, b numeric);
+insert into t2 values (65535, 11122333.8080666);
+insert into t2 values (20000, 123456.8742);
+insert into t2 values (20000, -123456.8742);
+select * from t2;
+drop table t2;
+
+select cast(12 as uint2);
+select cast(65535 as uint2);
+select cast(65536 as uint2);
+select cast(99999999 as uint2);
+select cast(123.456 as uint2);
+select cast(0 as uint2);
+select cast(-72.145 as uint2);
+select cast(-32768.123 as uint2);
+select cast(-99999999 as uint2);
+
 --smallint[(M)]
 create table t1 (a smallint[-1] UNSIGNED); --fail
 
@@ -242,6 +259,60 @@ create table t2 (a int2(2) ZEROFILL);
 insert into t2 values (1);
 select * from t2;
 drop table t2;
+
+--numeric -> uint2
+select 2000.49999::uint2;
+select 2000.5::uint2;
+select 65534.6::uint2;
+select 65536.3::uint2;
+select 999999999999999.0205::uint2;
+select (-0.02)::uint2;
+select (-68.753951)::uint2;
+select (-32767.5)::uint2;
+select (-32769.1)::uint2;
+select (-999999999999999.0205)::uint2;
+
+set SQL_MODE='TRADITIONAL';
+CREATE TABLE tb2 (a numeric, b smallint UNSIGNED);
+insert into tb2 values (1122.556677, 9999);
+insert into tb2 values (0.62, 100);
+insert into tb2 values (7.05, 1000.123);
+insert into tb2 values (7.05, 65534.6);
+insert into tb2 values (7.05, 65535.0);
+insert into tb2 values (7.05, 65536.3);
+insert into tb2 values (7.05, 999999999999999.0205);
+insert into tb2 values (120.007, 0);
+insert into tb2 values (9.36, -50000.753951);
+insert into tb2 values (9.36, -32767.5);
+insert into tb2 values (9.36, -32768.0);
+insert into tb2 values (9.36, -32769.1);
+insert into tb2 values (9.36, -999999999999999.0205);
+select * from tb2;
+select cast(a as uint2) from tb2;
+select convert(a, uint2) from tb2;
+select a::uint2 + b from tb2;
+drop table tb2;
+
+set SQL_MODE='';
+CREATE TABLE tb2 (a numeric, b smallint UNSIGNED);
+insert into tb2 values (1122.556677, 9999);
+insert into tb2 values (0.62, 100);
+insert into tb2 values (7.05, 1000.123);
+insert into tb2 values (7.05, 65534.6);
+insert into tb2 values (7.05, 65535.0);
+insert into tb2 values (7.05, 65536.3);
+insert into tb2 values (7.05, 999999999999999.0205);
+insert into tb2 values (120.007, 0);
+insert into tb2 values (9.36, -50000.753951);
+insert into tb2 values (9.36, -32767.5);
+insert into tb2 values (9.36, -32768.0);
+insert into tb2 values (9.36, -32769.1);
+insert into tb2 values (9.36, -999999999999999.0205);
+select * from tb2;
+select cast(a as uint2) from tb2;
+select convert(a, uint2) from tb2;
+select a::uint2 + b from tb2;
+drop table tb2;
 
 set SQL_MODE to default;
 -- oper

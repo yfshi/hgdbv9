@@ -12036,12 +12036,30 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proname => 'hex_to_enum', provolatile => 's', prorettype => 'anyenum',
   proargtypes => 'ivy_hex int4', prosrc => 'hex_to_enum' },
 /* End - bug#6027 */
+/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 /* Begin - bug#6526 */
 { oid => '6047', descr => 'convert numeric to uint8',
   proname => 'numeric_uint8', prorettype => 'uint8', proargtypes => 'numeric int4 bool int8',
   prosrc => 'numeric_uint8' },
 /* End - bug#6526 */
-/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+{ oid => '6048', descr => 'convert numeric to uint4',
+  proname => 'numeric_uint4', prorettype => 'uint4', proargtypes => 'numeric int4 bool int8',
+  prosrc => 'numeric_uint4' },
+{ oid => '6049', descr => 'convert numeric to uint3',
+  proname => 'numeric_uint3', prorettype => 'uint3', proargtypes => 'numeric int4 bool int8',
+  prosrc => 'numeric_uint3' },
+{ oid => '6050', descr => 'convert numeric to uint2',
+  proname => 'numeric_uint2', prorettype => 'uint2', proargtypes => 'numeric int4 bool int8',
+  prosrc => 'numeric_uint2' },
+{ oid => '6051', descr => 'convert numeric to uint1',
+  proname => 'numeric_uint1', prorettype => 'uint1', proargtypes => 'numeric int4 bool int8',
+  prosrc => 'numeric_uint1' },
+{ oid => '6052', descr => 'Cast uint3 to enum for MySQL.',
+  proname => 'uint3_to_enum', provolatile => 's', prorettype => 'anyenum',
+  proargtypes => 'uint3 int4', prosrc => 'uint3_to_enum' },
+{ oid => '6053', descr => 'Cast enum to uint3 for MySQL.',
+  proname => 'enum_to_uint3', provolatile => 's', prorettype => 'uint3',
+  proargtypes => 'anyenum', prosrc => 'enum_to_uint3' },
 /*END MySQL Compatibility Metadatas*/
 /* Begin ReqID: LOCK-SESSION */
 { oid => '8302', descr => 'lock current session',

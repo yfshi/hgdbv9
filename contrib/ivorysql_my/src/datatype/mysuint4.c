@@ -59,9 +59,11 @@ PG_FUNCTION_INFO_V1(mysuint4_typmodin);
 PG_FUNCTION_INFO_V1(mysuint4_typmodout);
 PG_FUNCTION_INFO_V1(mysuint4_scale);
 
-PG_FUNCTION_INFO_V1(int_uint4);
-PG_FUNCTION_INFO_V1(numeric_uint4);
+PG_FUNCTION_INFO_V1(int8_uint4);
+PG_FUNCTION_INFO_V1(int4_uint4);
+PG_FUNCTION_INFO_V1(int2_uint4);
 PG_FUNCTION_INFO_V1(boolean_uint4);
+PG_FUNCTION_INFO_V1(uint4_numeric);
 
 PG_FUNCTION_INFO_V1(mysuint4_eq);
 PG_FUNCTION_INFO_V1(mysuint4_eqint2);
@@ -334,7 +336,7 @@ mysuint4_scale(PG_FUNCTION_ARGS)
 }
 
 Datum
-int_uint4(PG_FUNCTION_ARGS)
+int8_uint4(PG_FUNCTION_ARGS)
 {
 	int64		val1 = PG_GETARG_INT64(0);
 	
@@ -349,35 +351,33 @@ int_uint4(PG_FUNCTION_ARGS)
 }
 
 Datum
-numeric_uint4(PG_FUNCTION_ARGS)
+int4_uint4(PG_FUNCTION_ARGS)
 {
-	Numeric		num = PG_GETARG_NUMERIC(0);
-	int64		val1 = 0;
-	uint32		val2 = 0;
-	/* Begin - SRS-MYSQL-HEX-LITERAL */
-	bool		is_insert = CALL_IN_INSERT();
-
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(num)));
+	int32		val1 = PG_GETARG_INT32(0);
 	
-	val2 = (uint32) val1;
-
-	if (is_insert)
+	if (val1 < 0 || val1 > PG_UINT32_MAX)
 	{
-		if (val1 > UINT32_MAX)
-		{
-			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
-			val2 = UINT32_MAX;
-		}
-
-		if (val1 < 0)
-		{
-			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
-			val2 = 0;
-		}
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+		val1 = val1 < 0 ? 0 : PG_UINT32_MAX;
 	}
-	/* End - SRS-MYSQL-HEX-LITERAL */
 
-	PG_RETURN_UINT32(val2);
+	PG_RETURN_UINT32(val1);
+}
+
+Datum
+int2_uint4(PG_FUNCTION_ARGS)
+{
+	int16		val1 = PG_GETARG_INT16(0);
+	
+	if (val1 < 0 || val1 > PG_UINT32_MAX)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+		val1 = val1 < 0 ? 0 : PG_UINT32_MAX;
+	}
+
+	PG_RETURN_UINT32(val1);
 }
 
 Datum
@@ -385,6 +385,15 @@ boolean_uint4(PG_FUNCTION_ARGS)
 {
 	PG_RETURN_UINT32(PG_GETARG_BOOL(0));
 }
+
+Datum
+uint4_numeric(PG_FUNCTION_ARGS)
+{
+	uint32		val1 = PG_GETARG_UINT32(0);
+
+	PG_RETURN_NUMERIC(uint32_to_numeric(val1));
+}
+
 /*****************************************************************************
  *	 Operator Function														 *
  *****************************************************************************/

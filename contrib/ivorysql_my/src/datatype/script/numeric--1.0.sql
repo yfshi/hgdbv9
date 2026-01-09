@@ -734,6 +734,36 @@ CREATE OPERATOR / (
 	rightarg = numeric
 );
 
+CREATE FUNCTION ivymy.numeric_div(numeric, uint4)
+RETURNS numeric
+AS 'select $1 / $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR / (
+	procedure = ivymy.numeric_div,
+	leftarg = numeric,
+	rightarg = uint4
+);
+
+CREATE FUNCTION ivymy.numeric_div(uint4, numeric)
+RETURNS numeric
+AS 'select $1::numeric / $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR / (
+	procedure = ivymy.numeric_div,
+	leftarg = uint4,
+	rightarg = numeric
+);
+
 ------------------------------------------------------------------
 -- mysql numeric : extra div //
 ------------------------------------------------------------------
@@ -872,6 +902,36 @@ LEAKPROOF;
 CREATE OPERATOR % (
 	procedure = ivymy.numeric_mod,
 	leftarg = int4,
+	rightarg = numeric
+);
+
+CREATE FUNCTION ivymy.numeric_mod(numeric, uint4)
+RETURNS numeric
+AS 'select $1 % $2::numeric'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR % (
+	procedure = ivymy.numeric_mod,
+	leftarg = numeric,
+	rightarg = uint4
+);
+
+CREATE FUNCTION ivymy.numeric_mod(uint4, numeric)
+RETURNS numeric
+AS 'select $1::numeric % $2'
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR % (
+	procedure = ivymy.numeric_mod,
+	leftarg = uint4,
 	rightarg = numeric
 );
 
