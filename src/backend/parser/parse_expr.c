@@ -563,6 +563,16 @@ transformIndirection(ParseState *pstate, A_Indirection *ind)
 	int			location = exprLocation(result);
 	ListCell   *i;
 
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	if (pstate->p_indirection_hook != NULL)
+	{
+		Node	*node;
+		node = pstate->p_indirection_hook(pstate, result, NULL, ind->indirection, NULL, location);
+		if (node != NULL)
+			return node;
+	}
+	/* End - ReqID:SRS-PLSQL-Collection */
+
 	/*
 	 * We have to split any field-selection operations apart from
 	 * subscripting.  Adjacent A_Indices nodes have to be treated as a single

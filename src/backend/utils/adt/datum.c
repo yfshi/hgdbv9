@@ -49,6 +49,7 @@
 #include "utils/builtins.h"
 #include "utils/datum.h"
 #include "utils/expandeddatum.h"
+#include "utils/lsyscache.h" /* ReqID:SRS-PLSQL-Collection */
 /* Begin - ReqID:SRS-PLSQL-RECORD */
 #include "../pl/plisql/src/plisql.h"
 #include "../pl/plisql/src/pl_udt_type.h"
@@ -108,6 +109,12 @@ datumGetSize(Datum value, bool typByVal, int typLen)
 
 			size = (Size) (strlen(s) + 1);
 		}
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		else if (typLen == -3)
+		{
+			return sizeof(void *);
+		}
+		/* End - ReqID:SRS-PLSQL-Collection */
 		else
 		{
 			elog(ERROR, "invalid typLen: %d", typLen);
@@ -145,7 +152,16 @@ datumCopy(Datum value, bool typByVal, int typLen)
 		/* It is a varlena datatype */
 		struct varlena *vl = (struct varlena *) DatumGetPointer(value);
 
-		if (VARATT_IS_EXTERNAL_EXPANDED(vl))
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if (VARATT_IS_EXTERNAL_COLLECT(vl))
+		{
+			if (collection_funcs.loadstate != LOADED)
+				elog(ERROR, "collection functions have not been loaded");
+
+			res = collection_funcs.CopyCollectypeDatum(value);
+		}
+		/* End - ReqID:SRS-PLSQL-Collection */
+		else if (VARATT_IS_EXTERNAL_EXPANDED(vl))
 		{
 			/* Flatten into the caller's memory context */
 			ExpandedObjectHeader *eoh = DatumGetEOHP(value);
@@ -169,6 +185,22 @@ datumCopy(Datum value, bool typByVal, int typLen)
 			res = PointerGetDatum(resultptr);
 		}
 	}
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	else if (typLen == -3)
+	{
+		struct varlena *vl = (struct varlena *) DatumGetPointer(value);
+
+		if (VARATT_IS_EXTERNAL_COLLECT(vl))
+		{
+			if (collection_funcs.loadstate != LOADED)
+				elog(ERROR, "collection functions have not been loaded");
+
+			res = collection_funcs.CopyCollectypeDatum(value);
+		}
+		else
+			elog(ERROR, "unexpected typLen: %d", typLen);
+	}
+	/* End - ReqID:SRS-PLSQL-Collection */
 	else
 	{
 		/* Pass by reference, but not varlena, so not toasted */
@@ -709,6 +741,15 @@ copy_tupleAttrsValues(Datum src_value,
 	/* the datatype of record field is Oracle record type */
 	if (oid == ORARECORDOID)
 		*values = rowDatumCopy(src_value, isnull);
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	else if (IS_COLLECTOID(oid))
+	{
+		if (collection_funcs.loadstate != LOADED)
+			elog(ERROR, "collection functions have not been loaded");
+
+		*values = PointerGetDatum(collection_funcs.CopyCollectypeDatum(PointerGetDatum(src_value)));
+	}
+	/* End - ReqID:SRS-PLSQL-Collection */
 	else
 	{
 		if (!isnull)
@@ -752,9 +793,20 @@ rowDatumCopy(Datum value, bool isnull)
 		tmptup.t_data = td;
 		tup = &tmptup;
 
-		if (tupType == ORARECORDOID || tupType == RECORDOID)
+		if (tupType == ORARECORDOID ||
+			tupType == RECORDOID ||
+			get_typtype(tupType) == TYPTYPE_COMPOSITE)
 		{
-			res = HeapTupleGetDatum(heap_copy_orarec_tuple_as_datum(tup, newrowtupdes));
+			HeapTupleHeader newheader;
+			HeapTuple	newtup;
+
+			newtup = heap_copy_orarec_tuple_as_datum(tup, newrowtupdes);
+
+			newheader = (HeapTupleHeader) palloc(HeapTupleHeaderGetDatumLength(newtup->t_data));
+			memcpy(newheader, newtup->t_data, HeapTupleHeaderGetDatumLength(newtup->t_data));
+			pfree(newtup);
+
+			res = PointerGetDatum(newheader);
 		}
 	}
 	ReleaseTupleDesc(rowtupdesc);
@@ -762,3 +814,212 @@ rowDatumCopy(Datum value, bool isnull)
 	return res;
 }
 /* End - ReqID:SRS-PLSQL-RECORD */
+
+/* Begin - ReqID:SRS-PLSQL-Collection */
+/*
+ * doCastValue
+ * cast the value to the new datatype
+ */
+Datum
+doCastValue(Datum value, Oid oldTypOid, Oid newTypOid, int typmod)
+{
+	Oid 		typOutput;
+	bool		typIsVarlena;
+	Oid 		typInput;
+	Oid 		typIOParam;
+	char		*str_value;
+	Datum		result = value;
+
+	if (oldTypOid == newTypOid)
+		return result;
+
+	if (!OidIsValid(oldTypOid))
+		elog(ERROR, "Invaild type Oid (%d) input", oldTypOid);
+
+	getTypeOutputInfo(oldTypOid, &typOutput, &typIsVarlena);
+	str_value = OidOutputFunctionCall(typOutput, value);
+
+	getTypeInputInfo(newTypOid, &typInput, &typIOParam);
+	result = OidInputFunctionCall(typInput, str_value, typIOParam, typmod);
+
+	pfree(str_value);
+
+	return result;
+}
+
+/*
+ * copy record tuple to a Oracle record tuple,
+ * for a oracle record tuple, the first column is Oracle record type address.
+ *
+ * orarecord is the Oracle record type address.
+ */
+Datum
+heap_copy_tuple_as_orarecord(Datum tuple_datum, Datum ora_recordtype)
+{
+	Datum		*values;
+	bool		*nulls;
+	int 		natts;
+	HeapTuple	newtup = NULL;
+	HeapTupleHeader td;
+	Oid 		tupType;
+	int32		tupTypmod;
+	TupleDesc	tupleDesc;
+	TupleDesc	newtupdesc;
+	HeapTupleData tmptup;
+	HeapTuple	tup;
+	int			i;
+	HeapTupleHeader newheader;
+
+	td = DatumGetHeapTupleHeader(tuple_datum);
+
+	/* Extract rowtype info and find a tupdesc */
+	tupType = HeapTupleHeaderGetTypeId(td);
+	tupTypmod = HeapTupleHeaderGetTypMod(td);
+	tupleDesc = lookup_rowtype_tupdesc(tupType, tupTypmod);
+
+	/* Build a temporary HeapTuple control structure */
+	tmptup.t_len = HeapTupleHeaderGetDatumLength(td);
+	ItemPointerSetInvalid(&(tmptup.t_self));
+	tmptup.t_tableOid = InvalidOid;
+	tmptup.t_data = td;
+	tup = &tmptup;
+
+	natts = tupleDesc->natts + 1;
+	values = palloc(sizeof(Datum) * natts);
+	nulls = palloc(sizeof(bool) * natts);
+	memset(nulls, false, sizeof(bool) * natts);
+
+	newtupdesc = CreateTemplateTupleDesc(natts, false);
+	newtupdesc->tdtypeid = ORARECORDOID;
+	TupleDescInitEntry(newtupdesc, 1,
+					"__###__",
+					UDTPOINTEROID, -1,
+					0);
+	TupleDescInitEntryCollation(newtupdesc,
+								1,
+								InvalidOid);
+
+	values[0] = ora_recordtype;
+	nulls[0] = false;
+
+	for (i = 1; i < natts; i++)
+	{
+		Oid         oid;
+		bool		isnull;
+		Datum		src_value;
+
+		oid = SPI_gettypeid(tupleDesc, i);
+		src_value = SPI_getbinval(tup, tupleDesc, i, &isnull);
+
+		copy_tupleAttrsValues(src_value,
+						isnull,
+						oid,
+						tupleDesc->attrs[i - 1].attbyval,
+						tupleDesc->attrs[i - 1].attlen,
+						&(values[i]));
+		nulls[i] = isnull;
+		TupleDescInitEntry(newtupdesc, i + 1,
+					   NameStr(tupleDesc->attrs[i - 1].attname),
+					   tupleDesc->attrs[i - 1].atttypid,
+					   tupleDesc->attrs[i - 1].atttypmod,
+					   0);
+		TupleDescInitEntryCollation(newtupdesc,
+									i + 1,
+									tupleDesc->attrs[i - 1].attcollation);
+	}
+	BlessTupleDesc(newtupdesc);
+	newtup = heap_form_tuple(newtupdesc, values, nulls);
+
+	pfree(values);
+	pfree(nulls);
+	ReleaseTupleDesc(tupleDesc);
+
+	newheader = (HeapTupleHeader) palloc(HeapTupleHeaderGetDatumLength(newtup->t_data));
+	memcpy(newheader, newtup->t_data, HeapTupleHeaderGetDatumLength(newtup->t_data));
+	pfree(newtup);
+
+	return PointerGetDatum(newheader);
+}
+
+/*
+ * copy Oracle record tuple to a row tuple,
+ * for a oracle record tuple, the first column is Oracle record type address.
+ */
+Datum
+heap_copy_orarecord_as_tuple(Datum tuple_datum)
+{
+	Datum		*values;
+	bool		*nulls;
+	int 		natts;
+	HeapTuple	newtup = NULL;
+	HeapTupleHeader td;
+	Oid 		tupType;
+	int32		tupTypmod;
+	TupleDesc	tupleDesc;
+	TupleDesc	newtupdesc;
+	HeapTupleData tmptup;
+	HeapTuple	tup;
+	int 		i;
+	HeapTupleHeader newheader;
+
+	td = DatumGetHeapTupleHeader(tuple_datum);
+
+	/* Extract rowtype info and find a tupdesc */
+	tupType = HeapTupleHeaderGetTypeId(td);
+	tupTypmod = HeapTupleHeaderGetTypMod(td);
+	tupleDesc = lookup_rowtype_tupdesc(tupType, tupTypmod);
+
+	/* Build a temporary HeapTuple control structure */
+	tmptup.t_len = HeapTupleHeaderGetDatumLength(td);
+	ItemPointerSetInvalid(&(tmptup.t_self));
+	tmptup.t_tableOid = InvalidOid;
+	tmptup.t_data = td;
+	tup = &tmptup;
+
+	natts = tupleDesc->natts - 1;
+	values = palloc(sizeof(Datum) * natts);
+	nulls = palloc(sizeof(bool) * natts);
+	memset(nulls, false, sizeof(bool) * natts);
+
+	newtupdesc = CreateTemplateTupleDesc(natts, false);
+	newtupdesc->tdtypeid = tupType;
+
+	for (i = 1; i < tupleDesc->natts; i++)
+	{
+		Oid 		oid;
+		bool		isnull;
+		Datum		src_value;
+
+		oid = SPI_gettypeid(tupleDesc, i + 1);
+		src_value = SPI_getbinval(tup, tupleDesc, i + 1, &isnull);
+
+		copy_tupleAttrsValues(src_value,
+						isnull,
+						oid,
+						tupleDesc->attrs[i].attbyval,
+						tupleDesc->attrs[i].attlen,
+						&(values[i - 1]));
+		nulls[i - 1] = isnull;
+		TupleDescInitEntry(newtupdesc, i,
+					   NameStr(tupleDesc->attrs[i].attname),
+					   tupleDesc->attrs[i].atttypid,
+					   tupleDesc->attrs[i].atttypmod,
+					   0);
+		TupleDescInitEntryCollation(newtupdesc,
+									i,
+									tupleDesc->attrs[i].attcollation);
+	}
+	BlessTupleDesc(newtupdesc);
+	newtup = heap_form_tuple(newtupdesc, values, nulls);
+
+	pfree(values);
+	pfree(nulls);
+	ReleaseTupleDesc(tupleDesc);
+
+	newheader = (HeapTupleHeader) palloc(HeapTupleHeaderGetDatumLength(newtup->t_data));
+	memcpy(newheader, newtup->t_data, HeapTupleHeaderGetDatumLength(newtup->t_data));
+	pfree(newtup);
+
+	return PointerGetDatum(newheader);
+}
+/* End - ReqID:SRS-PLSQL-Collection */

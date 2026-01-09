@@ -72,7 +72,6 @@
 #include "catalog/pg_trigger.h"
 /* End - ReqID:SRS-SQL-TRIGGER */
 
-
 /*
  * All plisql function executions within a single transaction share the same
  * executor EState for evaluating "simple" expressions.  Each function call
@@ -527,6 +526,25 @@ static void plisql_param_check(ParamListInfo params, FuncExpr *fexpr, void *para
 static int exec_stmt_goto(PLiSQL_execstate *estate, PLiSQL_stmt_goto *stmt);
 /* End - ReqID:SRS-PLSQL-GOTO */
 
+/* Begin - ReqID:SRS-PLSQL-Collection */
+static Datum eval_collection_subscript(PLiSQL_execstate * estate,
+					PLiSQL_expr * expr,
+					Oid keyttype, int32 keytypmod,
+					bool * isnull);
+static void exec_assign_collection(PLiSQL_execstate *estate,
+					  PLiSQL_datum *target,
+					  Datum value,
+					  Oid valtype,
+					  int32 valtypmod,
+					  bool isnull,
+					  int nsubscripts,
+					  PLiSQL_expr **subscripts,
+					  List **fieldnames);
+static PLiSQL_type *get_collect_elem_type(PLiSQL_execstate *estate,
+					PLiSQL_datum *elem_datum,
+					bool *need_free_datatype);
+/* End - ReqID:SRS-PLSQL-Collection */
+
 /* ----------
  * plisql_exec_function	Called by the call handler for
  *				function execution.
@@ -694,6 +712,26 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 					/* Begin - ReqID:SRS-SQL-FUNCOUT */
 					}
 					/* End - ReqID:SRS-SQL-FUNCOUT */
+					/* Begin - ReqID:SRS-PLSQL-Collection */
+					else if (IS_PLSQL_ASSOCIATIVE_ARRAY(var->datatype->typtype))
+					{
+						Datum	typinfo;
+						Datum	typdatum;
+						MemoryContext	old;
+
+						if (collection_funcs.loadstate != LOADED)
+							elog(ERROR, "collection functions have not been loaded");
+
+						old = MemoryContextSwitchTo(plisql_get_relevantContext((PLiSQL_variable *) var,
+																			estate.datum_context));
+
+						typinfo = plisql_type_to_collectinfo(var->datatype);
+						typdatum = collection_funcs.InitCollectypeVar(typinfo);
+						MemoryContextSwitchTo(old);
+
+						assign_simple_var(&estate, var, typdatum, false, false);
+					}
+					/* End - ReqID:SRS-PLSQL-Collection */
 				}
 				break;
 
@@ -1691,6 +1729,11 @@ copy_plisql_datums(PLiSQL_execstate *estate,
 				ws_next += MAXALIGN(sizeof(PLiSQL_row));
 				break;
 			/* End - ReqID:SRS-PLSQL-RECORD */
+			/* Begin - ReqID:SRS-PLSQL-Collection */
+			case PLISQL_DTYPE_COLLECT_ARRAYELEM:
+				outdatum = indatum;
+				break;
+			/* End - ReqID:SRS-PLSQL-Collection */
 
 			default:
 				elog(ERROR, "unrecognized dtype: %d", indatum->dtype);
@@ -2094,6 +2137,28 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 							assign_simple_var(estate, var, newvalue, false, true);
 						}
 						/* End - ReqID:SRS-PLSQL-CURSOR */
+
+						/* Begin - ReqID:SRS-PLSQL-Collection */
+						if (IS_PLSQL_ASSOCIATIVE_ARRAY(var->datatype->typtype))
+						{
+							Datum	typinfo;
+							Datum	typdatum;
+							MemoryContext	old;
+
+							if (collection_funcs.loadstate != LOADED)
+								elog(ERROR, "collection functions have not been loaded");
+
+							old = MemoryContextSwitchTo(plisql_get_relevantContext((PLiSQL_variable *) var,
+																				estate->datum_context));
+
+							typinfo = plisql_type_to_collectinfo(var->datatype);
+							typdatum = collection_funcs.InitCollectypeVar(typinfo);
+
+							MemoryContextSwitchTo(old);
+
+							assign_simple_var(estate, var, typdatum, false, false);
+						}
+						/* End - ReqID:SRS-PLSQL-Collection */
 						/* parser should have rejected NOT NULL */
 						Assert(!var->notnull);
 					}
@@ -6323,13 +6388,28 @@ exec_assign_value(PLiSQL_execstate *estate,
 				}
 				/* End - ReqID:SRS-PLSQL-CURSOR */
 
-				newvalue = exec_cast_value(estate,
-										   value,
-										   &isNull,
-										   valtype,
-										   valtypmod,
-										   var->datatype->typoid,
-										   var->datatype->atttypmod);
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				/* do check for the collection variable assignment */
+				if (var->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+					!isNull)
+				{
+					exec_check_assign_collect_value(var,
+													value,
+													valtype,
+													valtypmod);
+					newvalue = datumCopy(value,
+										var->datatype->typbyval,
+										var->datatype->typlen);
+				}
+				else
+				/* End - ReqID:SRS-PLSQL-Collection */
+					newvalue = exec_cast_value(estate,
+											   value,
+											   &isNull,
+											   valtype,
+											   valtypmod,
+											   var->datatype->typoid,
+											   var->datatype->atttypmod);
 
 				if (isNull && var->notnull)
 					ereport(ERROR,
@@ -6731,6 +6811,52 @@ exec_assign_value(PLiSQL_execstate *estate,
 					break;
 			}
 		/* End - ReqID:SRS-PLSQL-RECORD */
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		case PLISQL_DTYPE_COLLECT_ARRAYELEM:
+			{
+				PLiSQL_arrayelem *arrayelem;
+				int			nsubscripts;
+				PLiSQL_expr *subscripts[MAXDIM];
+				List		*filenames[MAXDIM];
+				SPITupleTable *save_eval_tuptable;
+
+				/*
+				 * We need to do subscript evaluation, which might require
+				 * evaluating general expressions; and the caller might have
+				 * done that too in order to prepare the input Datum.  We have
+				 * to save and restore the caller's SPI_execute result, if
+				 * any.
+				 */
+				save_eval_tuptable = estate->eval_tuptable;
+				estate->eval_tuptable = NULL;
+
+				nsubscripts = 0;
+				do
+				{
+					arrayelem = (PLiSQL_arrayelem *) target;
+					if (nsubscripts >= MAXDIM)
+						ereport(ERROR,
+								(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+								 errmsg("number of collection dimensions (%d) exceeds the maximum allowed (%d)",
+										nsubscripts + 1, MAXDIM)));
+					subscripts[nsubscripts] = arrayelem->subscript;
+					filenames[nsubscripts] = arrayelem->indirection;
+
+					nsubscripts++;
+					target = estate->datums[arrayelem->arrayparentno];
+				} while (target->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM);
+
+				/* Fetch current value of array datum */
+				exec_assign_collection(estate, target,
+									value, valtype, valtypmod, isNull,
+									nsubscripts, subscripts, filenames);
+				/* Now we can restore caller's SPI_execute result if any. */
+				Assert(estate->eval_tuptable == NULL);
+				estate->eval_tuptable = save_eval_tuptable;
+
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-Collection */
 
 		default:
 			elog(ERROR, "unrecognized dtype: %d", target->dtype);
@@ -7192,6 +7318,12 @@ plisql_exec_get_datum_type_info(PLiSQL_execstate *estate,
 						*type_address = var->datatype;
 				}
 				/* End - ReqID:SRS-PLSQL-CURSOR */
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				else if(var->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+				{
+					*type_address = var->datatype;
+				}
+				/* End - ReqID:SRS-PLSQL-Collection */
 				break;
 			}
 
@@ -9570,6 +9702,61 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 			is_pkg_var = true;
 		/* End - ReqID:SRS-PLSQL-RECORD */
 
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if (row->nfields == 1)
+		{
+			PLiSQL_datum 	*field_datum;
+			PLiSQL_type		*datatype = NULL;
+
+			if (is_pkg_var)
+				field_datum = (PLiSQL_datum *) get_package_datum_bydno(estate,
+												row->pkgoid,
+												row->varnos[0]);
+			else
+				field_datum = (PLiSQL_datum *) (estate->datums[row->varnos[0]]);
+
+			if (field_datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM)
+			{
+				bool	need_free_datatype = false;
+
+				datatype = get_collect_elem_type(estate, field_datum, &need_free_datatype);
+
+				if (need_free_datatype)
+					pfree(datatype);
+				else if (datatype != NULL &&
+					(datatype->ttype == PLISQL_TTYPE_ORARECORD_TYPE ||
+					datatype->ttype == PLISQL_TTYPE_REC ||
+					datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR) &&
+					tupdesc)
+				{
+					Oid 		valtype;
+					int32		valtypmod;
+					HeapTuple	tup;
+					Datum		value;
+
+					valtype = datatype->typoid;
+					valtypmod = datatype->atttypmod;
+
+					tup = heap_form_tuple(tupdesc, values, nulls);
+
+					if (!HeapTupleIsValid(tup))
+						return;
+					else
+					{
+						BlessTupleDesc(tupdesc);
+						value = heap_copy_tuple_as_datum(tup, tupdesc);
+					}
+
+					exec_assign_value(estate, field_datum, value, false,
+							valtype, valtypmod);
+
+					heap_freetuple(tup);
+					return;
+				}
+			}
+		}
+		/* End - ReqID:SRS-PLSQL-Collection */
+
 		for (; fnum < row->nfields; fnum++)
 		{
 			PLiSQL_var *var;
@@ -10167,29 +10354,51 @@ do_cast_value(PLiSQL_execstate *estate,
 			  Oid valtype, int32 valtypmod,
 			  Oid reqtype, int32 reqtypmod)
 {
-	plisql_CastHashEntry *cast_entry;
-
-	cast_entry = get_cast_hashentry(estate,
-									valtype, valtypmod,
-									reqtype, reqtypmod);
-	if (cast_entry)
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	if (IS_COLLECTOID(valtype))
 	{
-		ExprContext *econtext = estate->eval_econtext;
-		MemoryContext oldcontext;
+		if (!IS_COLLECTOID(reqtype) ||
+			valtype != reqtype)
+			ereport(ERROR,
+				(errcode(ERRCODE_CANNOT_COERCE),
+				errmsg("can not cast from %u to %u", valtype, reqtype)));
 
-		oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
+		if (valtypmod == reqtypmod || *isnull)
+			return value;
 
-		econtext->caseValue_datum = value;
-		econtext->caseValue_isNull = *isnull;
+		if (collection_funcs.loadstate != LOADED)
+			elog(ERROR, "collection functions have not been loaded");
 
-		cast_entry->cast_in_use = true;
+		if (collection_funcs.CollectypeCastCheck(value, reqtypmod))
+			return value;
+	}
+	else
+	{
+	/* End - ReqID:SRS-PLSQL-Collection */
+		plisql_CastHashEntry *cast_entry;
 
-		value = ExecEvalExpr(cast_entry->cast_exprstate, econtext,
-							 isnull);
+		cast_entry = get_cast_hashentry(estate,
+										valtype, valtypmod,
+										reqtype, reqtypmod);
+		if (cast_entry)
+		{
+			ExprContext *econtext = estate->eval_econtext;
+			MemoryContext oldcontext;
 
-		cast_entry->cast_in_use = false;
+			oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
 
-		MemoryContextSwitchTo(oldcontext);
+			econtext->caseValue_datum = value;
+			econtext->caseValue_isNull = *isnull;
+
+			cast_entry->cast_in_use = true;
+
+			value = ExecEvalExpr(cast_entry->cast_exprstate, econtext,
+								 isnull);
+
+			cast_entry->cast_in_use = false;
+
+			MemoryContextSwitchTo(oldcontext);
+		}
 	}
 
 	return value;
@@ -11379,7 +11588,8 @@ assign_simple_var(PLiSQL_execstate *estate, PLiSQL_var *var,
 	 * not a problem since all array entries are always detoasted.)
 	 */
 	if (!estate->atomic && !isnull && var->datatype->typlen == -1 &&
-		VARATT_IS_EXTERNAL_NON_EXPANDED(DatumGetPointer(newvalue)))
+		VARATT_IS_EXTERNAL_NON_EXPANDED(DatumGetPointer(newvalue)) &&
+		var->datatype->ttype != PLISQL_TTYPE_COLLECT_TYPE /* ReqID:SRS-PLSQL-Collection */)
 	{
 		MemoryContext oldcxt;
 		Datum		detoasted;
@@ -11560,7 +11770,7 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 		}
 
 		/* Begin - ReqID:SRS-PLSQL-DSQL */
-		/* Store the original datatype used for new ora record variable. */
+		/* Store the original datatype used for new ora record variable or collection variable. */
 		if (param->datum_dno > -1 && param->datum_dno < estate->ndatums)
 		{
 			PLiSQL_datum *datum = (PLiSQL_datum*)estate->datums[param->datum_dno];
@@ -11576,6 +11786,93 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 
 			if (row != NULL)
 				prm->pdatatype = row->datatype;
+			/* Begin - ReqID:SRS-PLSQL-Collection */
+			else if ((datum->dtype == PLISQL_DTYPE_VAR &&
+				((PLiSQL_var *)datum)->datatype != NULL &&
+				((PLiSQL_var *)datum)->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE) ||
+				(datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
+				((PLiSQL_pkg_datum *)datum)->pkgvar->dtype == PLISQL_DTYPE_VAR &&
+				((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->datatype != NULL &&
+				((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE))
+				prm->pdatatype = ((PLiSQL_var *)datum)->datatype;
+			else if ((datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM ||
+				(datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
+				((PLiSQL_pkg_datum*)datum)->pkgvar->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM)) &&
+				(prm->ptype == ORARECORDOID ||
+				prm->ptype == RECORDOID ||
+				IS_COLLECTOID(prm->ptype)))
+			{
+				PLiSQL_arrayelem	*arrayelem;
+				int 		nsubscripts;
+				//PLiSQL_expr *subscripts[MAXDIM];
+				List		*fieldnames[MAXDIM];
+				PLiSQL_type *collect_type;
+				PLiSQL_type *val_type;
+
+				if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+				{
+					/* reference a package collection element */
+					PLiSQL_pkg_datum 	*pkg_datum = (PLiSQL_pkg_datum *)datum;
+
+					datum = pkg_datum->pkgvar;
+				}
+
+				nsubscripts = 0;
+				do
+				{
+					arrayelem = (PLiSQL_arrayelem *) datum;
+					if (nsubscripts >= MAXDIM)
+						ereport(ERROR,
+								(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+								 errmsg("number of collection dimensions (%d) exceeds the maximum allowed (%d)",
+										nsubscripts + 1, MAXDIM)));
+					//subscripts[nsubscripts] = arrayelem->subscript;
+					fieldnames[nsubscripts] = arrayelem->indirection;
+
+					nsubscripts++;
+					datum = estate->datums[arrayelem->arrayparentno];
+				} while (datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM);
+
+				collect_type = ((PLiSQL_var *)datum)->datatype;
+
+				/* get the collection element datatype */
+				for (i = 0; i < nsubscripts; i++)
+				{
+					if (collect_type->ttype != PLISQL_TTYPE_COLLECT_TYPE)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("must be a collection type")));
+
+					val_type = ((PLiSQL_ora_collection_type*)collect_type)->typdatatype;
+
+					if (fieldnames[nsubscripts - 1 - i] == NIL)
+						collect_type = val_type;
+					else
+					{
+						ListCell	*l;
+						char		*field;
+
+						foreach(l, fieldnames[nsubscripts - 1 - i])
+						{
+							/* get the filed name */
+							field = (char *)lfirst(l);
+							if (val_type->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+							{
+								val_type = get_record_field_type(val_type, field);
+								collect_type = val_type;
+							}
+							else if (val_type->ttype == PLISQL_TTYPE_REC ||
+								val_type->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+							{
+								val_type = get_row_field_type(val_type, field);
+								collect_type = val_type;
+							}
+						}
+					}
+				}
+				prm->pdatatype = collect_type;
+			}
+			/* End - ReqID:SRS-PLSQL-Collection */
 		}
 		/* End - ReqID:SRS-PLSQL-DSQL */
 
@@ -12008,13 +12305,42 @@ exec_assing_out_parameter_row(PLiSQL_execstate *estate, PLiSQL_row *row)
 		}
 		else
 		{
-			value = (Datum) 0;
-			isnull = true;
-			valtype = UNKNOWNOID;
-			valtypmod = -1;
-			exec_assign_value(estate, (PLiSQL_datum *) var,
-						  value, isnull, valtype, valtypmod);
-			exec_eval_cleanup(estate);
+			/* Begin - ReqID:SRS-PLSQL-Collection */
+			if (var->dtype == PLISQL_DTYPE_ORA_RECORD)
+				exec_assing_out_parameter_row(estate, (PLiSQL_row *)var);
+			else if (var->dtype == PLISQL_DTYPE_VAR &&
+				IS_PLSQL_ASSOCIATIVE_ARRAY(var->datatype->typtype))
+			{
+				Datum	typinfo;
+				Datum	typdatum;
+				MemoryContext	old;
+
+				if (collection_funcs.loadstate != LOADED)
+					elog(ERROR, "collection functions have not been loaded");
+
+				old = MemoryContextSwitchTo(plisql_get_relevantContext((PLiSQL_variable *) var,
+																	estate->datum_context));
+
+				typinfo = plisql_type_to_collectinfo(var->datatype);
+				typdatum = collection_funcs.InitCollectypeVar(typinfo);
+				MemoryContextSwitchTo(old);
+
+				assign_simple_var(estate, var, typdatum, false, false);
+			}
+			else if (!(var->dtype == PLISQL_DTYPE_VAR &&
+				(IS_PLSQL_NESTED_TABLE(var->datatype->typtype) ||
+				IS_PLSQL_VARRAY(var->datatype->typtype))))
+			/* End - ReqID:SRS-PLSQL-Collection */
+			{
+				value = (Datum) 0;
+				isnull = true;
+				valtype = var->datatype->typoid;
+				valtypmod = var->datatype->atttypmod;
+
+				exec_assign_value(estate, (PLiSQL_datum *) var,
+							  value, isnull, valtype, valtypmod);
+				exec_eval_cleanup(estate);
+			}
 		}
 	}
 }
@@ -12558,3 +12884,330 @@ RegisterAutonxIsoVars_plisql_hook(void)
 	RegisterAutonxIsoVar("plisql_shared_simple_eval_estate", &shared_simple_eval_estate, sizeof(void *), NULL, NULL);
 	RegisterAutonxIsoVar("plisql_shared_simple_eval_resowner", &shared_simple_eval_resowner, sizeof(void *), PostbackupAutonxIsoVars_plisql_hook, NULL);
 }
+
+/* Begin - ReqID:SRS-PLSQL-Collection */
+/*
+ *   eval_collection_subscript -  calculate the value of the collection subscript
+ */
+static Datum
+eval_collection_subscript(PLiSQL_execstate * estate,
+					PLiSQL_expr * expr,
+					Oid keyttype, int32 keytypmod,
+					bool * isnull)
+{
+	Datum	datum = (Datum) 0;
+
+	switch (keyttype)
+	{
+		case INT8OID:
+		case INT4OID:
+		case INT2OID:
+		case TEXTOID:
+		case VARCHAROID:
+		case ORAVARCHARBYTEOID:
+		case ORAVARCHARCHAROID:
+		{
+			Datum	value;
+			Oid		valtype;
+			int32   valtypmod;
+
+			value = exec_eval_expr(estate, expr, isnull, &valtype, &valtypmod);
+			datum = exec_cast_value(estate, value, isnull, valtype,
+								valtypmod, keyttype, keytypmod);
+			break;
+		}
+
+		default:
+			ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("unsupported index type")));
+	}
+
+	return datum;
+}
+
+/*
+ * exec_assign_collection - Put a value into a collection element
+ */
+static void
+exec_assign_collection(PLiSQL_execstate *estate,
+					  PLiSQL_datum *target,
+					  Datum value,
+					  Oid valtype,
+					  int32 valtypmod,
+					  bool isnull,
+					  int nsubscripts,
+					  PLiSQL_expr **subscripts,
+					  List **fieldnames)
+{
+	PLiSQL_datum	*datum;
+	PLiSQL_var		*var;
+	PLiSQL_type 	*collect_type;
+	PLiSQL_type 	*key_type;
+	PLiSQL_type 	*val_type;
+	int 			i;
+	Datum			subscriptvalues[MAXDIM];
+	Oid 			root_typoid;
+	int32			root_typmod;
+	Datum			root_value;
+	bool			root_value_isnull;
+	Datum			new_value;
+	MemoryContext	old;
+	int 			nth = 1;
+	bool			has_free_datatype = false;
+	Oid				elem_typoid;
+	int32			elem_typmod;
+	bool			elem_typbyval;
+	int16			elem_typlen;
+
+	datum = (PLiSQL_datum *) DatumGetPointer(target);
+
+	if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+	{
+		/* reference a package variable */
+		PLiSQL_pkg_datum *pkg_datum = (PLiSQL_pkg_datum *)datum;
+
+		var = (PLiSQL_var *)pkg_datum->pkgvar;
+		collect_type = var->datatype;
+	}
+	else
+	{
+		var = (PLiSQL_var *) DatumGetPointer(target);
+		collect_type = var->datatype;
+	}
+
+	/* if the associate array variable is not initialized, initialize it */
+	if (IS_PLSQL_ASSOCIATIVE_ARRAY(collect_type->typtype) &&
+		var->value == (Datum)0)
+	{
+		Datum	typinfo;
+		Datum	typdatum;
+		MemoryContext	old;
+
+		if (collection_funcs.loadstate != LOADED)
+			elog(ERROR, "collection functions have not been loaded");
+
+		/* initialize the a associate array variable */
+		old = MemoryContextSwitchTo(plisql_get_relevantContext((PLiSQL_variable *) var,
+															estate->datum_context));
+
+		typinfo = plisql_type_to_collectinfo(var->datatype);
+		typdatum = collection_funcs.InitCollectypeVar(typinfo);
+		MemoryContextSwitchTo(old);
+
+		assign_simple_var(estate, var, typdatum, false, false);
+	}
+
+	if (!var || !var->value)
+		ereport(ERROR,
+			(errcode(ERRCODE_COLLECTION_IS_NULL),
+			errmsg("Reference to uninitialized collection")));
+
+	/* calculate the subscripts value */
+	for (i = 0; i < nsubscripts; i++)
+	{
+		bool			elem_isnull;
+
+		if (collect_type->ttype != PLISQL_TTYPE_COLLECT_TYPE)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("must be a collection type")));
+
+		val_type = ((PLiSQL_ora_collection_type*)collect_type)->typdatatype;
+		key_type = ((PLiSQL_ora_collection_type*)collect_type)->typkey;
+
+		subscriptvalues[i] =
+			eval_collection_subscript(estate,
+									subscripts[nsubscripts - 1 - i],
+									key_type->typoid,
+									key_type->atttypmod,
+									&elem_isnull);
+		if (elem_isnull)
+			ereport(ERROR,
+					(errcode(ERRCODE_VALUE_ERROR),
+					errmsg("the collection subscript can not be NULL")));
+
+		if (fieldnames[nsubscripts - 1 - i] == NIL)
+			collect_type = val_type;
+		else
+		{
+			ListCell	*l;
+			char		*field;
+
+			foreach(l, fieldnames[nsubscripts - 1 - i])
+			{
+				/* get the filed name */
+				field = (char *)lfirst(l);
+				if (val_type->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+				{
+					val_type = get_record_field_type(val_type, field);
+					collect_type = val_type;
+				}
+				else if (val_type->ttype == PLISQL_TTYPE_REC ||
+					val_type->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+				{
+					val_type = get_row_field_type(val_type, field);
+					/*
+					 * in get_row_field_type function, build a datatype,
+					 * so free the new builded datatype after call get_row_field_type
+					 * function.
+					 */
+					elem_typoid = val_type->typoid;
+					elem_typmod = val_type->atttypmod;
+					elem_typbyval = val_type->typbyval;
+					elem_typlen = val_type->typlen;
+
+					pfree(val_type);
+					val_type = NULL;
+					has_free_datatype = true;
+					break;
+				}
+			}
+			if (has_free_datatype && i < nsubscripts - 1)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("the record field is wrong")));
+		}
+	}
+
+	if (!has_free_datatype)
+	{
+		elem_typoid = val_type->typoid;
+		elem_typmod = val_type->atttypmod;
+		elem_typbyval = val_type->typbyval;
+		elem_typlen = val_type->typlen;
+	}
+
+	/* get first dim of the collect value */
+	exec_eval_datum(estate, target, &root_typoid,
+					&root_typmod, &root_value, &root_value_isnull);
+
+	/* do cast for the assign value */
+	new_value = exec_cast_value(estate, value, &isnull, valtype,
+							valtypmod, elem_typoid, elem_typmod);
+
+	if (collection_funcs.loadstate != LOADED)
+		elog(ERROR, "collection functions have not been loaded");
+
+	old = MemoryContextSwitchTo(collection_funcs.GetCollectypeMcxt(var->value));
+
+	/* copy the assigned value */
+	if (!isnull)
+	{
+		if (elem_typoid == ORARECORDOID &&
+			valtype == ORARECORDOID)
+			new_value = rowDatumCopy(new_value, isnull);
+		else if (elem_typoid == ORARECORDOID &&
+			(valtype == RECORDOID || get_typtype(valtype) == TYPTYPE_COMPOSITE))
+		{
+			if (val_type == NULL)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("the datatype of the collection value can't be NULL")));
+			new_value = heap_copy_tuple_as_orarecord(new_value, PointerGetDatum(val_type));
+		}
+		else if ((elem_typoid == RECORDOID || get_typtype(elem_typoid) == TYPTYPE_COMPOSITE) &&
+			valtype == ORARECORDOID)
+			new_value = heap_copy_orarecord_as_tuple(new_value);
+		else
+			new_value = datumCopy(new_value,
+							elem_typbyval,
+							elem_typlen);
+	}
+
+	/* get the collection value and do the assign */
+	collection_funcs.SetCollectValue(root_value,
+									nsubscripts,
+									subscriptvalues,
+									&nth,
+									fieldnames,
+									var->datatype,
+									new_value,
+									isnull);
+
+	MemoryContextSwitchTo(old);
+}
+
+/*
+ * get the collection datatype according the element
+ */
+static PLiSQL_type *
+get_collect_elem_type(PLiSQL_execstate *estate, PLiSQL_datum *elem_datum, bool *need_free_datatype)
+{
+	 int			 nsubscripts = 0;
+	 PLiSQL_type	*datatype = NULL;
+	 PLiSQL_datum	*parent_datum = (PLiSQL_datum *) elem_datum;
+	 List			*fieldnames[MAXDIM];
+	 int			i;
+
+	if (elem_datum->dtype != PLISQL_DTYPE_COLLECT_ARRAYELEM)
+		return NULL;
+
+	while (parent_datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM)
+	{
+		PLiSQL_arrayelem *arrayelem = (PLiSQL_arrayelem *) parent_datum;
+		parent_datum = estate->datums[arrayelem->arrayparentno];
+		if (arrayelem->indirection != NIL)
+			fieldnames[nsubscripts] = arrayelem->indirection;
+		else
+			fieldnames[nsubscripts] = NULL;
+
+		nsubscripts++;
+	}
+
+	if (parent_datum->dtype == PLISQL_DTYPE_VAR)
+		datatype = ((PLiSQL_var *)parent_datum)->datatype;
+	else if (parent_datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+		datatype = ((PLiSQL_var *)(((PLiSQL_pkg_datum *) parent_datum)->pkgvar))->datatype;
+	else
+		ereport(ERROR,
+				(errcode(ERRCODE_VALUE_ERROR),
+				errmsg("the datatype of collection is null")));
+
+	i = nsubscripts;
+	/* get the element datatype of collection type */
+	while (i > 0)
+	{
+		if (datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+		{
+			datatype = ((PLiSQL_ora_collection_type *) datatype)->typdatatype;
+			if (fieldnames[i - 1] != NULL)
+			{
+				if (datatype->ttype == PLISQL_TTYPE_ORARECORD_TYPE ||
+					datatype->ttype == PLISQL_TTYPE_REC)
+				{
+					ListCell *lc;
+
+					foreach (lc, fieldnames[i - 1])
+					{
+						char *fieldname = (char *)lfirst(lc);
+
+						if (datatype->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+							datatype = get_record_field_type(datatype, fieldname);
+						else if (datatype->ttype == PLISQL_TTYPE_REC ||
+							datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+						{
+							datatype = get_row_field_type(datatype, fieldname);
+							*need_free_datatype = true;
+							return datatype;
+						}
+						else
+							ereport(ERROR,
+									(errcode(ERRCODE_VALUE_ERROR),
+									errmsg("the %s is not a field in a record", fieldname)));
+					}
+				}
+				else
+					ereport(ERROR,
+							(errcode(ERRCODE_VALUE_ERROR),
+							errmsg("the datatype of collection is not a record")));
+			}
+		}
+		else
+			break;
+		i--;
+	}
+
+	return datatype;
+}
+/* End - ReqID:SRS-PLSQL-Collection */

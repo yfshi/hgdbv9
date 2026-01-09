@@ -1026,7 +1026,8 @@ slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *offp,
 			/* not varlena, so safe to use att_align_nominal */
 			off = att_align_nominal(off, thisatt->attalign);
 
-			if (!slow)
+			if (!slow &&
+				thisatt->attlen != -3 /* ReqID:SRS-PLSQL-Collection */)
 				thisatt->attcacheoff = off;
 		}
 

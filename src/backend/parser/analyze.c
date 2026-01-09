@@ -4921,6 +4921,21 @@ transformPLAssignStmt(ParseState *pstate, PLAssignStmt *stmt)
 		 * rather bogus, but it's needed for backwards compatibility.
 		 */
 	}
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	else if (IS_COLLECTOID(targettype) || IS_COLLECTOID(type_id))
+	{
+		if (targettype != type_id)
+			ereport(ERROR,
+				(errcode(ERRCODE_DATATYPE_MISMATCH),
+				 errmsg("expression is of wrong type"),
+				 parser_errposition(pstate, exprLocation((Node *)tle->expr))));
+		/*
+		 * Hack: do not let coerce_to_target_type() deal with collection
+		 * types.  Just pass the expression result through as-is,
+		 * and let the PL/pgSQL executor do the conversion its way.
+		 */
+	}
+	/* End - ReqID:SRS-PLSQL-Collection */
 	else
 	{
 		/*

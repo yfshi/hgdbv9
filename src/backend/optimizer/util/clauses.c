@@ -1463,6 +1463,9 @@ contain_leaked_vars_walker(Node *node, void *context)
 		case T_BooleanTest:
 		case T_NextValueExpr:
 		case T_List:
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		case T_UdtypeRef:
+		/* End - ReqID:SRS-PLSQL-Collection */
 
 			/*
 			 * We know these node types don't contain function calls; but

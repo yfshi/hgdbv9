@@ -3930,12 +3930,21 @@ CallStmtResultDesc(CallStmt *stmt)
 		{
 			Form_pg_attribute att = TupleDescAttr(tupdesc, i);
 			Node	   *outarg = (Node *) list_nth(stmt->outargs, i);
+			/* Begin - ReqID:SRS-PLSQL-Collection */
+			Oid			outtypid = exprType(outarg);
+			int32		outtypmod = -1;
+
+			if (IS_COLLECTOID(outtypid))
+				outtypmod = exprTypmod(outarg);
+			/* End - ReqID:SRS-PLSQL-Collection */
 
 			TupleDescInitEntry(tupdesc,
 							   i + 1,
 							   NameStr(att->attname),
-							   exprType(outarg),
-							   -1,
+							   /* Begin - ReqID:SRS-PLSQL-Collection */
+							   outtypid,
+							   outtypmod,
+							   /* End - ReqID:SRS-PLSQL-Collection */
 							   0);
 		}
 	}

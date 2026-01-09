@@ -4709,6 +4709,13 @@ ArrayCastAndSet(Datum src,
 			memmove(dest, DatumGetPointer(src), typlen);
 		inc = att_align_nominal(typlen, typalign);
 	}
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	else if (typlen == -3)
+	{
+		store_att_byval(dest, src, sizeof(void *));
+		inc = att_align_nominal(sizeof(void *), typalign);
+	}
+	/* End - ReqID:SRS-PLSQL-Collection */
 	else
 	{
 		Assert(!typbyval);

@@ -46,6 +46,10 @@ typedef void (*ExecEvalOutParamSubroutine)(ExprState *state,
 										struct ExprEvalStep *op);
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
+/* Begin - ReqID:SRS-PLSQL-Collection */
+extern void ExecEvalCollectionSubscriptingRefFetch(ExprState *state, struct ExprEvalStep *op);
+/* End - ReqID:SRS-PLSQL-Collection */
+
 /* ExprEvalSteps that cache a composite type's tupdesc need one of these */
 /* (it fits in-line in some step types, otherwise allocate out-of-line) */
 typedef struct ExprEvalRowtypeCache
@@ -279,6 +283,10 @@ typedef enum ExprEvalOp
 	/* Begin - ReqID:SRS-MYSQL-SET */
 	EEOP_VARREF,
 	/* End - ReqID:SRS-MYSQL-SET */
+
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	EEOP_COLLECTYPEREF_SUBSCRIPTS,
+	/* End - ReqID:SRS-PLSQL-Collection */
 
 	/* non-existent operation, used e.g. to check array lengths */
 	EEOP_LAST
@@ -772,6 +780,10 @@ typedef struct SubscriptingRefState
 	/* if we have a nested assignment, sbs_fetch_old puts old value here */
 	Datum		prevvalue;
 	bool		prevnull;
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	int			numctindex;
+	Datum 		*ctindex;
+	/* End - ReqID:SRS-PLSQL-Collection */
 } SubscriptingRefState;
 
 /* Execution step methods used for SubscriptingRef */

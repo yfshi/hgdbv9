@@ -19,8 +19,8 @@
 SELECT p1.oid, p1.typname
 FROM pg_type as p1
 WHERE p1.typnamespace = 0 OR
-    (p1.typlen <= 0 AND p1.typlen != -1 AND p1.typlen != -2) OR
-    (p1.typtype not in ('b', 'c', 'd', 'e', 'p', 'r', 'm')) OR
+    (p1.typlen <= 0 AND p1.typlen != -1 AND p1.typlen != -2 AND p1.typlen != -3) OR
+    (p1.typtype not in ('b', 'c', 'd', 'e', 'p', 'r', 'm', 'a', 'n', 'v')) OR
     NOT p1.typisdefined OR
     (p1.typalign not in ('c', 's', 'i', 'd')) OR
     (p1.typstorage not in ('p', 'x', 'e', 'm'));
@@ -163,7 +163,7 @@ WHERE p1.typinput = p2.oid AND p2.provolatile NOT IN ('i', 's');
 -- Composites, domains, enums, multiranges, ranges should all use the same input routines
 SELECT DISTINCT typtype, typinput
 FROM pg_type AS p1
-WHERE p1.typtype not in ('b', 'p')
+WHERE p1.typtype not in ('b', 'p', 'a', 'n', 'v')
 ORDER BY 1;
 
 -- Check for bogus typoutput routines
@@ -192,7 +192,7 @@ WHERE p1.typoutput = p2.oid AND p2.provolatile NOT IN ('i', 's');
 -- Composites, enums, multiranges, ranges should all use the same output routines
 SELECT DISTINCT typtype, typoutput
 FROM pg_type AS p1
-WHERE p1.typtype not in ('b', 'd', 'p')
+WHERE p1.typtype not in ('b', 'd', 'p', 'a', 'n', 'v')
 ORDER BY 1;
 
 -- Domains should have same typoutput as their base types
@@ -248,7 +248,7 @@ WHERE p1.typreceive = p2.oid AND p2.provolatile NOT IN ('i', 's');
 -- Composites, domains, enums, multiranges, ranges should all use the same receive routines
 SELECT DISTINCT typtype, typreceive
 FROM pg_type AS p1
-WHERE p1.typtype not in ('b', 'p')
+WHERE p1.typtype not in ('b', 'p', 'a', 'n', 'v')
 ORDER BY 1;
 
 -- Check for bogus typsend routines
@@ -277,7 +277,7 @@ WHERE p1.typsend = p2.oid AND p2.provolatile NOT IN ('i', 's');
 -- Composites, enums, multiranges, ranges should all use the same send routines
 SELECT DISTINCT typtype, typsend
 FROM pg_type AS p1
-WHERE p1.typtype not in ('b', 'd', 'p')
+WHERE p1.typtype not in ('b', 'd', 'p', 'a', 'n', 'v')
 ORDER BY 1;
 
 -- Domains should have same typsend as their base types
@@ -346,7 +346,7 @@ SELECT p1.oid, p1.typname,
        p1.typelem, p1.typlen, p1.typbyval
 FROM pg_type AS p1
 WHERE p1.typsubscript = 'array_subscript_handler'::regproc AND NOT
-    (p1.typelem != 0 AND p1.typlen = -1 AND NOT p1.typbyval);
+    (p1.typelem != 0 AND p1.typlen = -1  AND p1.typlen != -3 AND NOT p1.typbyval)  AND p1.typlen != -3;
 
 SELECT p1.oid, p1.typname,
        p1.typelem, p1.typlen, p1.typbyval

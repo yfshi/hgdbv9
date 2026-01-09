@@ -96,6 +96,15 @@ typedef Node *(*CoerceParamHook) (ParseState *pstate, Param *param,
 								  Oid targetTypeId, int32 targetTypeMod,
 								  int location);
 
+/* Begin - ReqID:SRS-PLSQL-Collection */
+typedef Node *(*ParseIndirectionHook)(ParseState *pstate,
+				Node *ind_arg,
+				const char *targetName,
+				List *indirection,
+				Node *rhs,
+				int location);
+/* End - ReqID:SRS-PLSQL-Collection */
+
 /* Begin - SRS-PLSQL-SUBPROC */
 typedef int (*ParseSubprocFuncHook) (ParseState *pstate, List *funcname,
 				List **fargs, /* return value */
@@ -374,6 +383,10 @@ struct ParseState
 	 */
 	bool		p_subselect;
 	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	ParseIndirectionHook	p_indirection_hook;
+	/* End - ReqID:SRS-PLSQL-Collection */
 };
 
 /*

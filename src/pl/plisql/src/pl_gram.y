@@ -24,6 +24,7 @@
 #include "oracle_parser/ora_scanner.h"
 #include "parser/scansup.h"
 #include "utils/builtins.h"
+#include "utils/lsyscache.h" /* ReqID:SRS-PLSQL-Collection */
 
 #include "plisql.h"
 
@@ -100,7 +101,12 @@ static	PLiSQL_expr	*read_sql_construct(int until,
 											bool trim,
 											int *startloc,
 											int *endtoken,
-											bool check_assignable_datum); /* ReqID:SRS-PLSQL-DSQL */
+											bool check_assignable_datum, /* ReqID:SRS-PLSQL-DSQL */
+											bool *ismulticollectmethod /* ReqID:SRS-PLSQL-Collection */);
+
+
+
+
 static	PLiSQL_expr	*read_sql_expression(int until,
 											 const char *expected);
 static	PLiSQL_expr	*read_sql_expression2(int until, int until2,
@@ -165,6 +171,31 @@ static PLiSQL_nsitem *plisql_ns_lookup_exception(PLiSQL_nsitem *ns_cur,
 static void check_oraparam_mode(PLiSQL_datum *datum, int location, char mode);
 static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int location, char mode);
 /* End - BUG#M0000376 */
+/* Begin - ReqID:SRS-PLSQL-Collection */
+static int read_collection_type_expr(int start_token, int startlocation,
+						StringInfo expr_ds, Oid *pkgoid, int *datum_dno);
+static bool is_collect_method(int token);
+static char *get_collect_method_name(int token);
+static int get_collect_method_tok(char *method_name);
+static void read_collect_method(int start_token, const char *varname,
+					PLiSQL_type *datatype, StringInfo res,
+					int *startlocation);
+static PLiSQL_datum *reparse_cword(List *wdnames);
+static void read_collection_constructor(PLiSQL_ora_collection_type *type,
+								StringInfo ds,
+								int *startlocation);
+static List *read_collect_variable(PLiSQL_datum *top_datum,
+					int startlocation,
+					StringInfo var_ds,
+					StringInfo method_ds,
+					bool *is_method);
+static PLiSQL_stmt*get_collect_stmt(PLiSQL_datum *top_datum, int startlocation,
+								int lineno);
+static int read_out_scalar(char **fieldnames,
+				int *varnos,
+				char param_info,
+				PLiSQL_expr **expr);
+/* End - ReqID:SRS-PLSQL-Collection */
 
 
 %}
@@ -354,6 +385,11 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %type <list>	subtype_range
 /* End - ReqID:SRS-PLSQL-SUBTYPE */
 
+/* Begin - ReqID:SRS-PLSQL-Collection */
+%type <ival>	varray_limit
+%type <keyword> varray_or_varying_array
+/* End - ReqID:SRS-PLSQL-Collection */
+
 /*
  * Basic non-keyword token types.  These are hard-wired into the core lexer.
  * They must be listed first so that their numeric codes do not depend on
@@ -424,6 +460,9 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_CONSTRAINT
 %token <keyword>	K_CONSTRAINT_NAME
 %token <keyword>	K_CONTINUE
+/* Begin - ReqID:SRS-PLSQL-Collection */
+%token <keyword>	K_COUNT
+/* End - ReqID:SRS-PLSQL-Collection */
 %token <keyword>	K_CURRENT
 /* Begin - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_CURRENT_USER
@@ -437,6 +476,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 /* Begin - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_DEFINER
 /* End - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_DELETE	/* ReqID:SRS-PLSQL-Collection */
 %token <keyword>	K_DETAIL
 /* Begin - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_DETERMINISTIC
@@ -454,7 +494,9 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_EXCEPTION_INIT
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 %token <keyword>	K_EXECUTE
+%token <keyword>	K_EXISTS	/* ReqID:SRS-PLSQL-Collection */
 %token <keyword>	K_EXIT
+%token <keyword>	K_EXTEND	/* ReqID:SRS-PLSQL-Collection */
 %token <keyword>	K_FETCH
 %token <keyword>	K_FIRST
 %token <keyword>	K_FOR
@@ -471,12 +513,14 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_IMMEDIATE	/* BUG#Z1438 */
 %token <keyword>	K_IMPORT
 %token <keyword>	K_IN
+%token <keyword>	K_INDEX /* ReqID:SRS-PLSQL-Collection */
 %token <keyword>	K_INSERTING
 %token <keyword>	K_INFO
 %token <keyword>	K_INSERT
 %token <keyword>	K_INTO
 %token <keyword>	K_IS
 %token <keyword>	K_LAST
+%token <keyword>	K_LIMIT	/* ReqID:SRS-PLSQL-Collection */
 %token <keyword>	K_LOG
 %token <keyword>	K_LOOP
 %token <keyword>	K_MERGE		/* K_MERGE */
@@ -491,6 +535,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_NOT
 %token <keyword>	K_NOTICE
 %token <keyword>	K_NULL
+%token <keyword>	K_OF	/* ReqID:SRS-PLSQL-Collection */
 %token <keyword>	K_OPEN
 %token <keyword>	K_OPTION
 %token <keyword>	K_OR
@@ -562,6 +607,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 /* Begin - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_TRIGGER
 /* End - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_TRIM	/* ReqID:SRS-PLSQL-Collection */
 %token <keyword>	K_TYPE
 %token <keyword>	K_UPDATING
 %token <keyword>	K_USE_COLUMN
@@ -574,6 +620,10 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_VALUES
 /* End - BUG#Z375 */
 %token <keyword>	K_VARIABLE_CONFLICT
+/* Begin - ReqID:SRS-PLSQL-Collection */
+%token <keyword>	K_VARRAY
+%token <keyword>	K_VARYING
+/* End - ReqID:SRS-PLSQL-Collection */
 %token <keyword>	K_WARNING
 %token <keyword>	K_WHEN
 %token <keyword>	K_WHILE
@@ -1001,7 +1051,9 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						 * and the variable has a NOT NULL constraint,
 						 * var inherits the NOT NULL constraint(unless the decl_datatype is a table.column%TYPE).
 						 */
-						if (!var->notnull && $3->notnull == true)
+						if (!var->notnull &&
+							((PLiSQL_type *)($3))->ttype != PLISQL_TTYPE_COLLECT_TYPE && /* ReqID:SRS-PLSQL-Collection */
+							$3->notnull == true)
 							var->notnull = $3->notnull;
 						/* End - ReqID:SRS-PLSQL-TYPE */
 						var->default_val = $6;
@@ -1273,12 +1325,37 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						plisql_build_ora_rec_type($2.name, $2.lineno, $6);
 					}
 				/* End - ReqID:SRS-PLSQL-RECORD */
+
 				/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
 				| K_SUBTYPE decl_varname K_IS subtype_basetype subtype_range decl_notnull ';'
 					{
 						plisql_build_subtype($2.name, $2.lineno, $4, $5, $6);
 					}
 				/* End - ReqID:SRS-PLSQL-SUBTYPE */
+
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				| K_TYPE decl_varname K_IS K_TABLE K_OF decl_datatype decl_notnull K_INDEX K_BY decl_datatype ';'
+					{
+						plisql_build_ora_collection_type($2.name, $2.lineno, ASSOCIATIVE_ARRAYOID, TYPTYPE_ASSOCIATIVE_ARRAY,
+														$10, $6, 0, $7);
+					}
+				| K_TYPE decl_varname K_IS K_TABLE K_OF decl_datatype decl_notnull ';'
+					{
+						PLiSQL_type	   *keytype;
+
+						keytype = plisql_build_datatype(INT4OID, -1, InvalidOid, NULL);
+						plisql_build_ora_collection_type($2.name, $2.lineno, NESTED_TABLEOID, TYPTYPE_NESTEDTABLE,
+														keytype, $6, 0, $7);
+					}
+				| K_TYPE decl_varname K_IS varray_or_varying_array '(' varray_limit ')' K_OF decl_datatype decl_notnull ';'
+					{
+						PLiSQL_type	   *keytype;
+
+						keytype = plisql_build_datatype(INT4OID, -1, InvalidOid, NULL);
+						plisql_build_ora_collection_type($2.name, $2.lineno, VARRAYOID, TYPTYPE_VARRAY,
+														keytype, $9, $6, $10);
+					}
+				/* End - ReqID:SRS-PLSQL-Collection */
 				;
 
 /* Begin - ReqID:SRS-PLSQL-SUBTYPE */
@@ -1335,6 +1412,17 @@ opt_return_ora_rowtype : K_RETURN ora_rowtype
 
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-PLSQL-Collection */
+varray_or_varying_array: K_VARRAY				{ $$ = $1; }
+						| K_ARRAY				{ $$ = $1; }
+						| K_VARYING K_ARRAY		{ $$ = $2; }
+						;
+varray_limit	: ICONST
+					{
+						$$ = $1;
+					}
+					;
+/* End - ReqID:SRS-PLSQL-Collection */
 
 opt_scrollable :
 					{
@@ -2055,7 +2143,8 @@ stmt_perform	: opt_stmt_label K_PERFORM
 						new->expr = read_sql_construct(';', 0, 0, ";",
 													   RAW_PARSE_DEFAULT,
 													   false, false, true,
-													   &startloc, NULL, false); 
+													   &startloc, NULL, false,
+													   NULL/* ReqID:SRS-PLSQL-Collection */);
 						/* overwrite "perform" ... */
 						memcpy(new->expr->query, " SELECT", 7);
 						/* left-justify to get rid of the leading space */
@@ -2113,47 +2202,88 @@ stmt_call		: opt_stmt_label K_CALL
 
 stmt_assign		: opt_stmt_label T_DATUM
 					{
-						PLiSQL_stmt_assign *new;
-						RawParseMode pmode;
-
-						/* see how many names identify the datum */
-						switch ($2.ident ? 1 : list_length($2.idents))
+						/* Begin - ReqID:SRS-PLSQL-Collection */
+						if (($2.datum->dtype == PLISQL_DTYPE_VAR &&
+							((PLiSQL_var *)$2.datum)->datatype != NULL &&
+							((PLiSQL_var *)$2.datum)->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE) ||
+							($2.datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
+							((PLiSQL_pkg_datum *)($2.datum))->pkgvar->dtype == PLISQL_DTYPE_VAR &&
+							((PLiSQL_var *)(((PLiSQL_pkg_datum *)($2.datum))->pkgvar))->datatype != NULL &&
+							((PLiSQL_var *)(((PLiSQL_pkg_datum *)($2.datum))->pkgvar))->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE))
 						{
-							case 1:
-								pmode = RAW_PARSE_PLISQL_ASSIGN1; /* BUG:M0000079 */
-								break;
-							case 2:
-								pmode = RAW_PARSE_PLISQL_ASSIGN2; /* BUG:M0000079 */
-								break;
-							case 3:
-								pmode = RAW_PARSE_PLISQL_ASSIGN3; /* BUG:M0000079 */
-								break;
-							default:
-								/* Begin - ReqID:SRS-PLSQL-RECORD */
-								pmode = RAW_PARSE_PLISQL_ASSIGNN; /* BUG:M0000079 */
-								break;
-								/* End - ReqID:SRS-PLSQL-RECORD */
+							check_assignable($2.datum, @2);
+							$$ = (PLiSQL_stmt *)get_collect_stmt($2.datum, yylloc, plisql_location_to_lineno(@2));
 						}
+						else
+						/* End - ReqID:SRS-PLSQL-Collection */
+						{
+							RawParseMode pmode;
+							/* Begin - ReqID:SRS-PLSQL-Collection */
+							bool ismulticollectmethod = false;
+							PLiSQL_expr *expr;
+							/* End - ReqID:SRS-PLSQL-Collection */
 
-						check_assignable($2.datum, @2);
+							/* see how many names identify the datum */
+							switch ($2.ident ? 1 : list_length($2.idents))
+							{
+								case 1:
+									pmode = RAW_PARSE_PLISQL_ASSIGN1; /* BUG:M0000079 */
+									break;
+								case 2:
+									pmode = RAW_PARSE_PLISQL_ASSIGN2; /* BUG:M0000079 */
+									break;
+								case 3:
+									pmode = RAW_PARSE_PLISQL_ASSIGN3; /* BUG:M0000079 */
+									break;
+								default:
+									/* Begin - ReqID:SRS-PLSQL-RECORD */
+									pmode = RAW_PARSE_PLISQL_ASSIGNN; /* BUG:M0000079 */
+									break;
+									/* End - ReqID:SRS-PLSQL-RECORD */
+							}
 
-						/* Begin - BUG#M0000376 */
-						check_oraparam_mode($2.datum, @2, PROARGMODE_OUT);
-						/* End - BUG#M0000376 */
+							check_assignable($2.datum, @2);
 
-						new = palloc0(sizeof(PLiSQL_stmt_assign));
-						new->cmd_type = PLISQL_STMT_ASSIGN;
-						new->lineno   = plisql_location_to_lineno(@2);
-						new->stmtid = ++plisql_curr_compile->nstatements;
-						new->varno = $2.datum->dno;
-						/* Push back the head name to include it in the stmt */
-						plisql_push_back_token(T_DATUM);
-						new->expr = read_sql_construct(';', 0, 0, ";",
-													   pmode,
-													   false, true, true,
-													   NULL, NULL, false);
-						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
-						$$ = (PLiSQL_stmt *)new;
+							/* Begin - BUG#M0000376 */
+							check_oraparam_mode($2.datum, @2, PROARGMODE_OUT);
+							/* End - BUG#M0000376 */
+
+							/* Push back the head name to include it in the stmt */
+							plisql_push_back_token(T_DATUM);
+							plisql_location_to_lineno(@2);
+
+							expr = read_sql_construct(';', 0, 0, ";",
+												   pmode,
+												   false, true, true,
+												   NULL, NULL, false, &ismulticollectmethod/* ReqID:SRS-PLSQL-Collection */);
+
+							/* Begin - ReqID:SRS-PLSQL-Collection */
+							if (ismulticollectmethod)
+							{
+								PLiSQL_stmt_perform *new;
+
+								new = palloc0(sizeof(PLiSQL_stmt_perform));
+								new->cmd_type = PLISQL_STMT_PERFORM;
+								new->lineno   = plisql_location_to_lineno(@2);
+								new->stmtid = ++plisql_curr_compile->nstatements;
+								new->expr  = expr;
+								$$ = (PLiSQL_stmt *)new;
+							}
+							else
+							/* End - ReqID:SRS-PLSQL-Collection */
+							{
+								PLiSQL_stmt_assign *new;
+
+								new = palloc0(sizeof(PLiSQL_stmt_assign));
+								new->cmd_type = PLISQL_STMT_ASSIGN;
+								new->lineno   = plisql_location_to_lineno(@2);
+								new->stmtid = ++plisql_curr_compile->nstatements;
+								new->varno = $2.datum->dno;
+								new->expr = expr;
+								$$ = (PLiSQL_stmt *)new;
+							}
+							plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
+						}
 					}
 				;
 
@@ -2752,7 +2882,8 @@ for_control		: for_variable K_IN
 													   true,
 													   &expr1loc,
 													   &tok,
-													   false);
+													   false,
+													   NULL/* ReqID:SRS-PLSQL-Collection */);
 
 							if (tok == DOT_DOT)
 							{
@@ -3206,7 +3337,8 @@ stmt_raise		: opt_stmt_label K_RAISE
 															  ", or ; or USING",
 															  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 															  true, true, true,
-															  NULL, &tok, false);
+															  NULL, &tok, false,
+															  NULL/* ReqID:SRS-PLSQL-Collection */);
 									new->params = lappend(new->params, expr);
 								}
 							}
@@ -3349,6 +3481,12 @@ stmt_execsql	: opt_stmt_label K_IMPORT
 				| opt_stmt_label T_CWORD
 					{
 						int			tok;
+						/* Begin - ReqID:SRS-PLSQL-Collection */
+						int				collect_method_token;
+						PLiSQL_datum	*datum;
+						char	   		*func_name;
+						List		   *wdnames = yylval.cword.idents;
+						/* End - ReqID:SRS-PLSQL-Collection */
 
 						tok = yylex();
 						plisql_push_back_token(tok);
@@ -3356,12 +3494,96 @@ stmt_execsql	: opt_stmt_label K_IMPORT
 							tok == '[' || tok == '.')
 							cword_is_not_variable(&($2), @2);
 
-						/* Begin - BUG #M0000304 */
-						if (tok == '(' || tok == ';')
-							$$ = build_call_expr(T_WORD, NULL, @2);
+						/* Begin - ReqID:SRS-PLSQL-Collection */
+						func_name = strVal(llast(wdnames));
+						collect_method_token = get_collect_method_tok(func_name);
+						if (collect_method_token != -1)
+						{
+							datum = reparse_cword(wdnames);
+							if (datum != NULL)
+							{
+								PLiSQL_type 	*datatype = NULL;
+
+								if (datum->dtype == PLISQL_DTYPE_TYPE)
+									ereport(ERROR,
+												(errcode(ERRCODE_SYNTAX_ERROR),
+												 errmsg("Invalid variable.")));
+
+								if (datum->dtype == PLISQL_DTYPE_VAR)
+									datatype = (PLiSQL_type *)((PLiSQL_var *)datum)->datatype;
+								else if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+								{
+									PLiSQL_datum *pkgvar = ((PLiSQL_pkg_datum *)datum)->pkgvar;
+
+									if (pkgvar->dtype == PLISQL_DTYPE_VAR)
+										datatype = (PLiSQL_type *)((PLiSQL_var *)pkgvar)->datatype;
+								}
+
+								if (datatype && datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+								{
+									StringInfoData	nameinfo;
+									ListCell	*lc;
+									int 		n = list_length(wdnames);
+									int 		i;
+									StringInfoData		ds;
+									PLiSQL_expr 		*expr;
+									PLiSQL_stmt_perform *new;
+
+									initStringInfo(&nameinfo);
+									i = 1;
+									foreach(lc, wdnames)
+									{
+										if (i == n)
+											break;
+										else
+										{
+											char *name = strVal(lfirst(lc));
+
+											appendStringInfoString(&nameinfo, name);
+											if (i < n - 1)
+												appendStringInfoChar(&nameinfo, '.');
+											i++;
+										}
+									}
+
+									initStringInfo(&ds);
+									appendStringInfoString(&ds, "SELECT ");
+									read_collect_method(collect_method_token, nameinfo.data,
+													   datatype, &ds, &@1);
+									pfree(nameinfo.data);
+
+									tok = yylex();
+									while(tok != ';' && tok != 0)
+										tok = yylex();
+									expr = palloc0(sizeof(PLiSQL_expr));
+									expr->query	 = pstrdup(ds.data);
+									expr->plan 		 = NULL;
+									expr->paramnos 	 = NULL;
+									expr->ns			 = plisql_ns_top();
+
+									new = palloc0(sizeof(PLiSQL_stmt_perform));
+									new->cmd_type = PLISQL_STMT_PERFORM;
+									new->lineno   = plisql_location_to_lineno(@1);
+									new->stmtid = ++plisql_curr_compile->nstatements;
+									new->expr	= expr;
+									$$ = (PLiSQL_stmt *)new;
+								}
+							}
+							else if (datum != NULL && datum->dtype == PLISQL_DTYPE_TYPE)
+								ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											 errmsg("Invalid variable.")));
+						}
 						else
-						/* End - BUG #M0000304 */
-							$$ = make_execsql_stmt(T_WORD, @2);
+						/* End - ReqID:SRS-PLSQL-Collection */
+						{
+							/* Begin - BUG #M0000304 */
+							if (tok == '(' || tok == ';')
+								$$ = build_call_expr(T_WORD, NULL, @2);
+							else
+							/* End - BUG #M0000304 */
+								$$ = make_execsql_stmt(T_WORD, @2);
+						}
 						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 					}
 				;
@@ -3375,6 +3597,10 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 						bool has_returning = false;
 						int num_out_param = 0;
 						/* End - ReqID:SRS-PLSQL-DSQL */
+						/* Begin - ReqID:SRS-PLSQL-Collection */
+						char	*fieldnames[1024];
+						int		varnos[1024];
+						/* End - ReqID:SRS-PLSQL-Collection */
 
 						/* Begin - BUG#Z1438 */
 						int	tok;
@@ -3389,7 +3615,7 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 												  "INTO or USING or ;",
 												  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 												  true, true, true,
-												  NULL, &endtoken, false);
+												  NULL, &endtoken, false, NULL/* ReqID:SRS-PLSQL-Collection */);
 
 						new = palloc(sizeof(PLiSQL_stmt_dynexecute));
 						new->cmd_type = PLISQL_STMT_DYNEXECUTE;
@@ -3432,6 +3658,15 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 									char	param_info = PROARGMODE_IN;
 									bool	is_out_param = false;
 
+									/* Begin - ReqID:SRS-PLSQL-Collection */
+									/* Check for array overflow */
+									if (num_out_param >= 1024)
+										ereport(ERROR,
+												(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+												 errmsg("too many OUT parameters specified"),
+												 parser_errposition(yylloc)));
+									/* End - ReqID:SRS-PLSQL-Collection */
+
 									/*
 									 * USING [IN] [OUT] variable 
 									 */
@@ -3443,6 +3678,16 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 										{
 											param_info = PROARGMODE_INOUT;
 											is_out_param = true;
+											/* Begin - ReqID:SRS-PLSQL-Collection */
+											endtoken = read_out_scalar(&fieldnames[num_out_param],
+																&varnos[num_out_param], param_info, &expr);
+											num_out_param += 1;
+											new->params = lappend(new->params, expr);
+											if (endtoken == ';')
+												break;
+											else
+												continue;
+											/* End - ReqID:SRS-PLSQL-Collection */
 										}
 										else
 										{
@@ -3453,6 +3698,16 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 									{
 										param_info = PROARGMODE_OUT;
 										is_out_param = true;
+										/* Begin - ReqID:SRS-PLSQL-Collection */
+										endtoken = read_out_scalar(&fieldnames[num_out_param],
+															&varnos[num_out_param], param_info, &expr);
+										num_out_param += 1;
+										new->params = lappend(new->params, expr);
+										if (endtoken == ';')
+											break;
+										else
+											continue;
+										/* End - ReqID:SRS-PLSQL-Collection */
 									}
 									else
 									{
@@ -3464,10 +3719,10 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 															  ", or ; or INTO",
 															  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 															  true, true, true,
-															  NULL, &endtoken, is_out_param);
+															  NULL, &endtoken, is_out_param,
+															  NULL/* ReqID:SRS-PLSQL-Collection */);
 									/* Begin - ReqID:SRS-PLSQL-DSQL */
 									expr->info = param_info;
-									num_out_param += is_out_param;
 									/* End - ReqID:SRS-PLSQL-DSQL */
 									new->params = lappend(new->params, expr);
 								} while (endtoken == ',');
@@ -3494,17 +3749,11 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 								}
 
 								has_returning = true;
-								do
-								{
-									expr = read_sql_construct(',', ';', K_INTO,
-															  ", or ; or INTO",
-															  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
-															  true, true, true,
-															  NULL, &endtoken, true);
-									expr->info = PROARGMODE_OUT;
-									num_out_param++;
-									new->params = lappend(new->params, expr);
-								} while (endtoken == ',');
+								/* Begin - ReqID:SRS-PLSQL-Collection */
+								new->into = true;
+								read_into_target(&new->target, &new->strict);
+								endtoken = yylex();
+								/* End - ReqID:SRS-PLSQL-Collection */
 							}
 							/* End - ReqID:SRS-PLSQL-DSQL */
 							else if (endtoken == ';')
@@ -3522,7 +3771,6 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 						if (num_out_param > 0)
 						{
 							PLiSQL_row *row = palloc0(sizeof(PLiSQL_row));
-							ListCell *lc;
 							int	nfield = 0;
 
 							row->dtype = PLISQL_DTYPE_ROW;
@@ -3532,20 +3780,15 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 							row->nfields = num_out_param;
 							row->fieldnames = palloc(sizeof(char *) * num_out_param);
 							row->varnos = palloc(sizeof(int) * num_out_param);
-							foreach (lc, new->params)
+
+							/* Begin - ReqID:SRS-PLSQL-Collection */
+							while (nfield < num_out_param)
 							{
-								PLiSQL_expr *f_expr = (PLiSQL_expr *)lfirst(lc);
-
-								if (f_expr->info != PROARGMODE_OUT && f_expr->info != PROARGMODE_INOUT)
-									continue;
-								
-								if (nfield >= num_out_param)
-									yyerror("num of out param not mismatched");
-
-								row->fieldnames[nfield] = pstrdup(f_expr->query);
-								row->varnos[nfield++] = f_expr->datum_dno;
+								row->fieldnames[nfield] = fieldnames[nfield];
+								row->varnos[nfield] = varnos[nfield];
+								nfield++;
 							}
-							Assert(nfield == num_out_param);
+							/* End - ReqID:SRS-PLSQL-Collection */
 
 							plisql_adddatum((PLiSQL_datum *)row);
 							new->into = true;
@@ -3682,7 +3925,8 @@ stmt_open		: opt_stmt_label K_OPEN cursor_variable
 								new->query = read_sql_construct(';', K_USING, 0, ";",
 												RAW_PARSE_DEFAULT,
 												false, true, true,
-												NULL, &endtoken, false);
+												NULL, &endtoken, false,
+												NULL/* ReqID:SRS-PLSQL-Collection */);
 								if (endtoken == K_USING)
 									endtoken = yylex();
 								if (endtoken != ';')
@@ -4368,6 +4612,7 @@ unreserved_keyword	:
 				| K_CONSTRAINT
 				| K_CONSTRAINT_NAME
 				| K_CONTINUE
+				| K_COUNT	/* ReqID:SRS-PLSQL-Collection */
 				| K_CURRENT
 				/* Begin - SRS-PLSQL-SUBPROC */
 				| K_CURRENT_USER
@@ -4393,7 +4638,9 @@ unreserved_keyword	:
 				/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
 				| K_EXCEPTION_INIT
 				/* End - ReqID:SRS-PLSQL-EXCEPTION */
+				| K_EXISTS	/* ReqID:SRS-PLSQL-Collection */
 				| K_EXIT
+				| K_EXTEND	/* ReqID:SRS-PLSQL-Collection */
 				| K_FETCH
 				| K_FIRST
 				| K_FORWARD
@@ -4402,10 +4649,12 @@ unreserved_keyword	:
 				| K_HINT
 				| K_IMMEDIATE	/* BUG#Z1438 */
 				| K_IMPORT
+				| K_INDEX	/* ReqID:SRS-PLSQL-Collection */
 				| K_INFO
 				| K_INSERT
 				| K_IS
 				| K_LAST
+				| K_LIMIT	/* ReqID:SRS-PLSQL-Collection */
 				| K_LOG
 				| K_MERGE	/* BUG#Z1389 */
 				| K_MESSAGE
@@ -4465,6 +4714,7 @@ unreserved_keyword	:
 				/* Begin - SRS-PLSQL-SUBPROC */
 				| K_TRIGGER
 				/* End - SRS-PLSQL-SUBPROC */
+				| K_TRIM	/* ReqID:SRS-PLSQL-Collection */
 				| K_TYPE
 				| K_USE_COLUMN
 				| K_USE_VARIABLE
@@ -4472,6 +4722,10 @@ unreserved_keyword	:
 				| K_USING_NLS_COMP
 				/* End - SRS-PLSQL-SUBPROC */
 				| K_VARIABLE_CONFLICT
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				| K_VARRAY
+				| K_VARYING
+				/* End - ReqID:SRS-PLSQL-Collection */
 				| K_WARNING
 				;
 
@@ -4504,6 +4758,7 @@ unit_name_keyword:
 				| K_CONSTRAINT
 				| K_CONSTRAINT_NAME
 				| K_CONTINUE
+				| K_COUNT	/* ReqID:SRS-PLSQL-Collection */
 				| K_CURRENT
 				| K_CURRENT_USER
 				| K_CURSOR
@@ -4523,7 +4778,9 @@ unit_name_keyword:
 				/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
 				| K_EXCEPTION_INIT
 				/* End - ReqID:SRS-PLSQL-EXCEPTION */
+				| K_EXISTS	/* ReqID:SRS-PLSQL-Collection */
 				| K_EXIT
+				| K_EXTEND	/* ReqID:SRS-PLSQL-Collection */
 				| K_FETCH
 				| K_FIRST
 				| K_FORWARD
@@ -4669,7 +4926,7 @@ read_sql_expression(int until, const char *expected)
 {
 	return read_sql_construct(until, 0, 0, expected,
 							  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
-							  true, true, true, NULL, NULL, false);
+							  true, true, true, NULL, NULL, false, NULL/* ReqID:SRS-PLSQL-Collection */);
 }
 
 /* Convenience routine to read an expression with two possible terminators */
@@ -4679,7 +4936,7 @@ read_sql_expression2(int until, int until2, const char *expected,
 {
 	return read_sql_construct(until, until2, 0, expected,
 							  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
-							  true, true, true, NULL, endtoken, false);
+							  true, true, true, NULL, endtoken, false, NULL/* ReqID:SRS-PLSQL-Collection */);
 }
 
 /* Convenience routine to read a SQL statement that must end with ';' */
@@ -4688,7 +4945,7 @@ read_sql_stmt(void)
 {
 	return read_sql_construct(';', 0, 0, ";",
 							  RAW_PARSE_DEFAULT,
-							  false, true, true, NULL, NULL, false);
+							  false, true, true, NULL, NULL, false, NULL/* ReqID:SRS-PLSQL-Collection */);
 }
 
 /*
@@ -4717,7 +4974,8 @@ read_sql_construct(int until,
 				   bool trim,
 				   int *startloc,
 				   int *endtoken,
-				   bool check_assignable_datum) /* ReqID:SRS-PLSQL-DSQL */
+				   bool check_assignable_datum, /* ReqID:SRS-PLSQL-DSQL */
+				   bool *ismulticollectmethod /* ReqID:SRS-PLSQL-Collection */)
 {
 	int					tok;
 	StringInfoData		ds;
@@ -4731,6 +4989,12 @@ read_sql_construct(int until,
 	bool				pre_token_is_explicitcursor = false;
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 	int					datum_dno = -1;
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	Oid 				pkgoid = InvalidOid;
+	int					collect_startlocation = -1;
+	bool				hascollect = false;
+	bool				has_colon_equals = false;
+	/* End - ReqID:SRS-PLSQL-Collection */
 
 	initStringInfo(&ds);
 
@@ -4763,6 +5027,13 @@ read_sql_construct(int until,
 			if (parenlevel < 0)
 				yyerror("mismatched parentheses");
 		}
+
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if (tok == '=' ||
+			tok == COLON_EQUALS)
+			has_colon_equals = true;
+		/* End - ReqID:SRS-PLSQL-Collection */
+
 		/*
 		 * End of function definition is an error, and we don't expect to
 		 * hit a semicolon either (unless it's the until symbol, in which
@@ -4797,7 +5068,7 @@ read_sql_construct(int until,
 		}
 		else if (pre_token_is_explicitcursor)
 			elog(ERROR, "expression is of wrong type of");
-		if (tok == T_DATUM)
+		if (tok == T_DATUM && yylval.wdatum.datum != NULL /* ReqID:SRS-PLSQL-Collection */)
 		{
 			PLiSQL_datum *datum = yylval.wdatum.datum;
 
@@ -4831,6 +5102,15 @@ read_sql_construct(int until,
 			pre_token_is_explicitcursor = false;
 		}
 		/* End - ReqID:SRS-PLSQL-CURSOR */
+
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		collect_startlocation = read_collection_type_expr(tok, startlocation, &ds, &pkgoid, &datum_dno);
+		if (collect_startlocation > startlocation)
+		{
+			startlocation = collect_startlocation;
+			hascollect = true;
+		}
+		/* End - ReqID:SRS-PLSQL-Collection */
 	}
 
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
@@ -4846,7 +5126,7 @@ read_sql_construct(int until,
 		*endtoken = tok;
 
 	/* give helpful complaint about empty input */
-	if (append_startlocation >= yylloc) /* ReqID:SRS-PLSQL-CURSOR */
+	if (append_startlocation >= yylloc && !hascollect) /* ReqID:SRS-PLSQL-CURSOR */
 	{
 		if (isexpression)
 			yyerror("missing expression");
@@ -4854,7 +5134,42 @@ read_sql_construct(int until,
 			yyerror("missing SQL statement");
 	}
 
-	plisql_append_source_text(&ds, append_startlocation, yylloc); /* ReqID:SRS-PLSQL-CURSOR */
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	if (hascollect)
+	{
+		if (startlocation <= yylloc)
+		{
+			plisql_append_source_text(&ds, startlocation, yylloc);
+
+			if (!has_colon_equals &&
+				(parsemode == RAW_PARSE_PLISQL_ASSIGN1 ||
+				parsemode == RAW_PARSE_PLISQL_ASSIGN2 ||
+				parsemode == RAW_PARSE_PLISQL_ASSIGN3 ||
+				parsemode == RAW_PARSE_PLISQL_ASSIGNN) &&
+				ismulticollectmethod != NULL)
+			{
+				int		original_len = ds.len;
+
+				if (original_len > 0)
+				{
+					char	*original_data = pstrdup(ds.data);
+
+					/* reset the ds, but not free the memory */
+					resetStringInfo(&ds);
+
+					/* add "SELECT" to the begin of the ds */
+					appendStringInfoString(&ds, "SELECT ");
+					appendBinaryStringInfo(&ds, original_data, original_len);
+					pfree(original_data);
+					parsemode = RAW_PARSE_DEFAULT;
+					*ismulticollectmethod = true;
+				}
+			}
+		}
+	}
+	else
+	/* End - ReqID:SRS-PLSQL-Collection */
+		plisql_append_source_text(&ds, append_startlocation, yylloc); /* ReqID:SRS-PLSQL-CURSOR */
 
 	/* trim any trailing whitespace, for neatness */
 	if (trim)
@@ -5010,10 +5325,17 @@ read_datatype(int tok)
 			tok == K_PIPELINED) && parenlevel == 0)
 			break;
 		/* End - SRS-PLSQL-SUBPROC */
+
 		/* Begin - ReqID:SRS-PLSQL-SUBTYPE */
 		if (tok == K_RANGE && parenlevel == 0)
 			break;
 		/* End - ReqID:SRS-PLSQL-SUBTYPE */
+
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if (tok == K_INDEX)
+			break;
+		/* End - ReqID:SRS-PLSQL-Collection */
+
 		if (tok == '(')
 			parenlevel++;
 		else if (tok == ')')
@@ -5053,12 +5375,28 @@ make_execsql_stmt(int firsttoken, int location)
 	bool				have_strict = false;
 	int					into_start_loc = -1;
 	int					into_end_loc = -1;
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	bool				have_collect = false;
+	int					collect_start_loc = -1;
+	int					collect_end_loc = -1;
+	StringInfoData		ds_collect;
+	Oid					pkgoid;
+	/* End - ReqID:SRS-PLSQL-Collection */
 
 	initStringInfo(&ds);
+	initStringInfo(&ds_collect); /* ReqID:SRS-PLSQL-Collection */
 
 	/* special lookup mode for identifiers within the SQL text */
 	save_IdentifierLookup = plisql_IdentifierLookup;
-	plisql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
+
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	/*
+	 * because need to parse the the collection variable,
+	 * so change the plisql_IdentifierLookup from IDENTIFIER_LOOKUP_EXPR
+	 * to IDENTIFIER_LOOKUP_NORMAL.
+	 */
+	plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
+	/* End - ReqID:SRS-PLSQL-Collection */
 
 	/*
 	 * Scan to the end of the SQL command.  Identify any INTO-variables
@@ -5112,27 +5450,101 @@ make_execsql_stmt(int firsttoken, int location)
 				yyerror("INTO specified more than once");
 			have_into = true;
 			into_start_loc = yylloc;
-			plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
 			read_into_target(&target, &have_strict);
-			plisql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
 		}
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if (tok == T_DATUM || tok == T_CWORD)
+		{
+			if (!have_collect && collect_end_loc == -1)
+			{
+				int current_loc = yylloc;
+
+				collect_start_loc = yylloc;
+				collect_end_loc = read_collection_type_expr(tok, yylloc, &ds_collect, &pkgoid, NULL);
+				if (collect_end_loc > current_loc)
+					have_collect = true;
+				else
+				{
+					collect_start_loc = -1;
+					collect_end_loc = -1;
+				}
+			}
+			else
+			{
+				int 	current_loc = yylloc;
+				int 	tmp_loc = -1;
+				StringInfoData		ds_tmp;
+
+				initStringInfo(&ds_tmp);
+				tmp_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, NULL);
+				if (tmp_loc > current_loc)
+				{
+					appendStringInfoSpaces(&ds_collect, 1);
+					plisql_append_source_text(&ds_collect, collect_end_loc, current_loc);
+
+					appendBinaryStringInfo(&ds_collect, ds_tmp.data, ds_tmp.len);
+					collect_end_loc = tmp_loc;
+				}
+				pfree(ds_tmp.data);
+			}
+		}
+		/* End - ReqID:SRS-PLSQL-Collection */
 	}
 
 	plisql_IdentifierLookup = save_IdentifierLookup;
 
 	if (have_into)
 	{
-		/*
-		 * Insert an appropriate number of spaces corresponding to the
-		 * INTO text, so that locations within the redacted SQL statement
-		 * still line up with those in the original source text.
-		 */
-		plisql_append_source_text(&ds, location, into_start_loc);
-		appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
-		plisql_append_source_text(&ds, into_end_loc, yylloc);
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if (have_collect)
+		{
+			if (into_start_loc < collect_start_loc)
+			{
+				plisql_append_source_text(&ds, location, into_start_loc);
+				appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
+
+				plisql_append_source_text(&ds, into_end_loc, collect_start_loc);
+				appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+				if (collect_end_loc != yylloc)
+				{
+					appendStringInfoSpaces(&ds, 1);
+					plisql_append_source_text(&ds, collect_end_loc, yylloc);
+				}
+			}
+			else
+			{
+				plisql_append_source_text(&ds, location, collect_start_loc);
+				appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+				appendStringInfoSpaces(&ds, 1);
+				plisql_append_source_text(&ds, collect_end_loc, into_start_loc);
+				appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
+			}
+		}
+		else
+		{
+		/* End - ReqID:SRS-PLSQL-Collection */
+			plisql_append_source_text(&ds, location, into_start_loc);
+			appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
+			plisql_append_source_text(&ds, into_end_loc, yylloc);
+		}
 	}
 	else
-		plisql_append_source_text(&ds, location, yylloc);
+	{
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if (have_collect)
+		{
+			plisql_append_source_text(&ds, location, collect_start_loc);
+			appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+			if (collect_end_loc != yylloc)
+			{
+				appendStringInfoSpaces(&ds, 1);
+				plisql_append_source_text(&ds, collect_end_loc, yylloc);
+			}
+		}
+		else
+		/* End - ReqID:SRS-PLSQL-Collection */
+			plisql_append_source_text(&ds, location, yylloc);
+	}
 
 	/* trim any trailing whitespace, for neatness */
 	while (ds.len > 0 && scanner_isspace(ds.data[ds.len - 1]))
@@ -5147,6 +5559,7 @@ make_execsql_stmt(int firsttoken, int location)
 	expr->ns			= plisql_ns_top();
 	expr->datum_dno		= -1;
 	pfree(ds.data);
+	pfree(ds_collect.data); /* ReqID:SRS-PLSQL-Collection */
 
 	check_sql_expr(expr->query, expr->parseMode, location);
 
@@ -5635,6 +6048,11 @@ check_assignable(PLiSQL_datum *datum, int location)
 						 parser_errposition(location)));
 			break;
 		/* End - ReqID:SRS-PLSQL-CURSOR */
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		case PLISQL_DTYPE_COLLECT_ARRAYELEM:
+			/* always assignable ? */
+			break;
+		/* End - ReqID:SRS-PLSQL-Collection */
 
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
@@ -5798,21 +6216,18 @@ read_into_scalar_list(char *initial_name,
 					  PLiSQL_datum *initial_datum,
 					  int initial_location)
 {
-	int				 nfields;
+	int 			 nfields;
 	char			*fieldnames[1024];
-	int				 varnos[1024];
+	int 			 varnos[1024];
 	PLiSQL_row		*row;
-	int				 tok;
+	int 			 tok;
+	PLiSQL_datum	*cur_datum;
+	char			*fieldname;
 
-	check_assignable(initial_datum, initial_location);
-	/* Begin - BUG#M0000376 */
-	check_oraparam_mode(initial_datum, initial_location, PROARGMODE_OUT);
-	/* End - BUG#M0000376 */
-	fieldnames[0] = initial_name;
-	varnos[0]	  = initial_datum->dno;
-	nfields		  = 1;
-
-	while ((tok = yylex()) == ',')
+	nfields 	  = 0;
+	cur_datum	  = initial_datum;
+	fieldname	  = initial_name;
+	do
 	{
 		/* Check for array overflow */
 		if (nfields >= 1024)
@@ -5820,30 +6235,105 @@ read_into_scalar_list(char *initial_name,
 					(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
 					 errmsg("too many INTO variables specified"),
 					 parser_errposition(yylloc)));
+		if (is_row_record_datum(cur_datum))
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("record variable cannot be part of multiple-item INTO list"),
+					 parser_errposition(yylloc)));
+
+		check_assignable(cur_datum, yylloc);
+		/* Begin - BUG#M0000376 */
+		check_oraparam_mode(cur_datum, yylloc, PROARGMODE_OUT);
+		/* End - BUG#M0000376 */
+		if (nfields > 0 &&
+			is_row_record_datum(cur_datum)) /* ReqID:SRS-SQL-PACKAGE */
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("\"%s\" is not a scalar variable",
+							fieldname),
+					 parser_errposition(yylloc)));
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		if ((cur_datum->dtype == PLISQL_DTYPE_VAR &&
+			((PLiSQL_var *)cur_datum)->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE) ||
+			(cur_datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
+			((PLiSQL_var *)(((PLiSQL_pkg_datum *)cur_datum)->pkgvar))->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE))
+
+		{
+			StringInfoData	var_ds;
+			StringInfoData	method_ds;
+			List			*list_elems = NIL;
+			bool			is_method = false;
+			PLiSQL_datum	*top_datum;
+
+			initStringInfo(&var_ds);
+			initStringInfo(&method_ds);
+
+			top_datum = cur_datum;
+			list_elems = read_collect_variable(top_datum, initial_location,
+											&var_ds, &method_ds, &is_method);
+
+			if (nfields > 0 && is_method)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("\"%s\" is not a scalar variable",
+								fieldname),
+							parser_errposition(yylloc)));
+
+			/* put the arrayelem into plisql_Datums array if any */
+			if (list_elems != NIL)
+			{
+				ListCell	*lc;
+				int 		parent_dno = top_datum->dno;
+				PLiSQL_arrayelem *elem;
+				int 		nlist = list_length(list_elems);
+				int 		i;
+
+				i = 0;
+				foreach(lc, list_elems)
+				{
+					elem = (PLiSQL_arrayelem *) lfirst(lc);
+
+					plisql_adddatum((PLiSQL_datum *) elem);
+					elem->arrayparentno = parent_dno;
+					parent_dno = elem->dno;
+					i++;
+
+					if (i == nlist)
+					{
+						fieldnames[nfields] = fieldname;
+						varnos[nfields++]	= elem->dno;
+					}
+				}
+			}
+			else
+			{
+				fieldnames[nfields] = fieldname;
+				varnos[nfields++]	= cur_datum->dno;
+			}
+			pfree(var_ds.data);
+			pfree(method_ds.data);
+		}
+		else
+		{
+		/* End - ReqID:SRS-PLSQL-Collection */
+			fieldnames[nfields] = fieldname;
+			varnos[nfields++]	= cur_datum->dno;
+		}
 
 		tok = yylex();
-		switch (tok)
-		{
-			case T_DATUM:
-				check_assignable(yylval.wdatum.datum, yylloc);
-				/* Begin - BUG#M0000376 */
-				check_oraparam_mode(yylval.wdatum.datum, yylloc, PROARGMODE_OUT);
-				/* End - BUG#M0000376 */
-				if (is_row_record_datum(yylval.wdatum.datum)) /* ReqID:SRS-SQL-PACKAGE */
-					ereport(ERROR,
-							(errcode(ERRCODE_SYNTAX_ERROR),
-							 errmsg("\"%s\" is not a scalar variable",
-									NameOfDatum(&(yylval.wdatum))),
-							 parser_errposition(yylloc)));
-				fieldnames[nfields] = NameOfDatum(&(yylval.wdatum));
-				varnos[nfields++]	= yylval.wdatum.datum->dno;
-				break;
 
-			default:
-				/* just to give a better message than "syntax error" */
-				current_token_is_not_variable(tok);
+		if (tok != ',')
+			break;
+
+		tok = yylex();
+		if (tok != T_DATUM)
+		{
+			/* just to give a better message than "syntax error" */
+			current_token_is_not_variable(tok);
 		}
-	}
+		cur_datum = yylval.wdatum.datum;
+		fieldname = NameOfDatum(&yylval.wdatum);
+	}while(1); /* ReqID:SRS-PLSQL-Collection */
 
 	/*
 	 * We read an extra, non-comma token from yylex(), so push it
@@ -6336,7 +6826,7 @@ read_cursor_args(PLiSQL_var *cursor, int until, int *outrowno) /* ReqID:SRS-PLSQ
 								  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 								  true, true,
 								  false, /* do not trim */
-								  NULL, &endtoken, false);
+								  NULL, &endtoken, false, NULL/* ReqID:SRS-PLSQL-Collection */);
 			/* out parameter assign its null */
 			if (argitem->argmode == ARGMODE_OUT)
 				argv[argpos] = pstrdup("NULL");
@@ -6350,7 +6840,7 @@ read_cursor_args(PLiSQL_var *cursor, int until, int *outrowno) /* ReqID:SRS-PLSQ
 								  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 								  true, true,
 								  false, /* do not trim */
-								  NULL, &endtoken, false);
+								  NULL, &endtoken, false, NULL/* ReqID:SRS-PLSQL-Collection */);
 
 			argv[argpos] = item->query;
 		}
@@ -7159,3 +7649,1156 @@ plisql_ns_lookup_exception(PLiSQL_nsitem *ns_cur,
 }
 
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
+
+/* Begin - ReqID:SRS-PLSQL-Collection */
+/*
+ * If the current tok is a collection variable and the next token is '(',
+ * replace the '(' to '[', and then execute the above processing in a loop.
+ * If the current tok is a collection type, determine whether it is a
+ * collection constructor and return the constructor call statement.
+ */
+static int
+read_collection_type_expr(int start_token, int startlocation,
+						StringInfo expr_ds, Oid *pkgoid, int *datum_dno)
+{
+	int tok = start_token;
+
+	if (tok == T_DATUM)
+	{
+		/* may be a collection variable */
+		if (yylval.wdatum.datum != NULL)
+		{
+			PLiSQL_datum	*yyl_datum = yylval.wdatum.datum;
+			PLiSQL_datum	*datum = yyl_datum;
+
+			if (yyl_datum->dtype == PLISQL_DTYPE_VAR ||
+				yyl_datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+			{
+				PLiSQL_type *data_type = NULL;
+				int 		parent_dno = -1;
+
+				if (yyl_datum->dtype == PLISQL_DTYPE_VAR)
+				{
+					data_type = ((PLiSQL_var *)yyl_datum)->datatype;
+					parent_dno = yyl_datum->dno;
+				}
+				else if (yyl_datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+				{
+					/* reference a package variable */
+					PLiSQL_pkg_datum *pkg_datum = (PLiSQL_pkg_datum *)yyl_datum;
+
+					if (pkg_datum->pkgvar->dtype == PLISQL_DTYPE_VAR)
+					{
+						data_type = ((PLiSQL_var *)pkg_datum->pkgvar)->datatype;
+						parent_dno = ((PLiSQL_var *)pkg_datum->pkgvar)->dno;
+					}
+				}
+
+				if (data_type && data_type->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+				{
+					StringInfoData	   var_ds;
+
+					initStringInfo(&var_ds);
+
+					plisql_append_source_text(expr_ds, startlocation, yylloc);
+					startlocation = yylloc;
+
+					tok = yylex();
+					plisql_append_source_text(&var_ds, startlocation, yylloc);
+					startlocation = yylloc;
+
+				collect_loop:
+
+					while(tok == '(')
+					{
+						PLiSQL_arrayelem	   *new = NULL;
+						/* get current dimensional value type */
+						if (!IS_PLSQL_COLLECTYPE(data_type->typtype))
+							ereport(ERROR,
+								(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+								errmsg("number of subscripts exceeds the maximum collection type dimensions.")));
+						/* convert subscript '(' to ']' */
+						appendStringInfoChar(&var_ds, '[');
+						startlocation = yylloc + 1;
+
+						new = palloc0(sizeof(PLiSQL_arrayelem));
+						new->dtype	   = PLISQL_DTYPE_COLLECT_ARRAYELEM;
+						new->subscript  = read_sql_expression(')', ")");
+						new->arrayparentno = parent_dno;
+						new->parenttypoid = InvalidOid;
+						plisql_adddatum((PLiSQL_datum *)new);
+						parent_dno = new->dno;
+
+						datum = (PLiSQL_datum *) new;
+
+						appendStringInfoString(&var_ds, new->subscript->query);
+						appendStringInfoChar(&var_ds, ']');
+
+						tok = yylex();
+						startlocation = yylloc;
+
+						data_type = ((PLiSQL_ora_collection_type*)data_type)->typdatatype;
+						if (datum_dno != NULL)
+							*datum_dno = new->dno;
+					}
+
+					if (tok == '.')
+					{
+						tok = yylex();
+
+						/* maybe collection methods */
+						if (is_collect_method(tok))
+						{
+							read_collect_method(tok, var_ds.data, data_type, expr_ds, &startlocation);
+						}
+						else if (tok == T_WORD || tok == T_DATUM)
+						{
+							char   *name;
+							if (tok == T_WORD)
+								name = yylval.word.ident;
+							else
+								name = yylval.wdatum.ident;
+
+							appendStringInfoChar(&var_ds, '.');
+							appendStringInfoString(&var_ds, name);
+
+							if (data_type->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+								data_type = get_record_field_type(data_type, name);
+							else if (data_type->ttype != PLISQL_TTYPE_REC &&
+								data_type->ttype != PLISQL_TTYPE_EXPLICIT_CURSOR)
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("Invalid record variable.")));
+
+							if (datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM)
+							{
+								if (((PLiSQL_arrayelem *) datum)->indirection == NIL)
+									((PLiSQL_arrayelem *) datum)->indirection = list_make1(pstrdup(name));
+								else
+									((PLiSQL_arrayelem *) datum)->indirection = lappend(((PLiSQL_arrayelem *) datum)->indirection,
+																	pstrdup(name));
+							}
+							tok = yylex();
+							goto collect_loop;
+						}
+						else if (tok == T_CWORD)
+						{
+							List		*wdnames = yylval.cword.idents;
+							ListCell	*lc;
+							void		*list_last = llast(wdnames);
+							int 		method_token = -1;
+							int			i;
+							int			nlen;
+
+							nlen = list_length(wdnames);
+							i = 0;
+							foreach(lc, wdnames)
+							{
+								void *cur = lfirst(lc);
+								char *name = strVal(cur);
+
+								i++;
+								if (datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM)
+								{
+									if (((PLiSQL_arrayelem *) datum)->indirection == NIL)
+										((PLiSQL_arrayelem *) datum)->indirection = list_make1(pstrdup(name));
+									else
+										((PLiSQL_arrayelem *) datum)->indirection = lappend(((PLiSQL_arrayelem *) datum)->indirection,
+																		pstrdup(name));
+								}
+
+								if (data_type->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+								{
+									appendStringInfoChar(&var_ds, '.');
+									appendStringInfoString(&var_ds, name);
+									data_type = get_record_field_type(data_type, name);
+								}
+								else if (data_type->ttype == PLISQL_TTYPE_REC ||
+									data_type->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+								{
+									appendStringInfoChar(&var_ds, '.');
+									appendStringInfoString(&var_ds, name);
+
+									if (i < nlen)
+										ereport(ERROR,
+												(errcode(ERRCODE_SYNTAX_ERROR),
+												 errmsg("the record field is wrong"),
+												 parser_errposition(startlocation)));
+
+									break;
+								}
+								else if (data_type->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+										cur == list_last)
+								{
+									method_token = get_collect_method_tok(name);
+									if (method_token != -1)
+										read_collect_method(method_token, var_ds.data,
+													   data_type, expr_ds, &startlocation);
+								}
+							}
+							if (method_token == -1)
+							{
+								tok = yylex();
+								goto collect_loop;
+							}
+						}
+					}
+					else
+					{
+						appendBinaryStringInfo(expr_ds, var_ds.data, var_ds.len);
+						plisql_push_back_token(tok);
+						startlocation = yylloc;
+					}
+				}
+			}
+			else if (yyl_datum->dtype == PLISQL_DTYPE_TYPE)
+			{
+				/* It might be a collection constructor */
+				PLiSQL_datum_udt_type *type = (PLiSQL_datum_udt_type *)yyl_datum;
+
+				if (type->udt_type != NULL && type->udt_type->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+				{
+					plisql_append_source_text(expr_ds, startlocation, yylloc);
+					read_collection_constructor((PLiSQL_ora_collection_type *)(type->udt_type),
+											expr_ds,
+											&startlocation);
+				}
+			}
+		}
+		else if (yylval.wdatum.collectype != NULL)
+		{
+			/* It might be a collection constructor */
+			PLiSQL_type *type = (PLiSQL_type *)yylval.wdatum.collectype;
+
+			if (type != NULL && type->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+			{
+				plisql_append_source_text(expr_ds, startlocation, yylloc);
+				read_collection_constructor((PLiSQL_ora_collection_type *)type,
+										expr_ds,
+										&startlocation);
+			}
+		}
+	}
+	else if (tok == T_CWORD)
+	{
+		List		*wdnames = yylval.cword.idents;
+		PLiSQL_datum	*datum;
+		int			method_token = get_collect_method_tok(strVal(llast(wdnames)));
+		if (method_token != -1)
+		{
+			/*
+			 * collect.method
+			 */
+			datum = reparse_cword(wdnames);
+
+			if (datum != NULL)
+			{
+				PLiSQL_type 	*datatype = NULL;
+
+				if (datum->dtype == PLISQL_DTYPE_TYPE)
+					ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("Invalid variable.")));
+
+				if (datum->dtype == PLISQL_DTYPE_VAR)
+					datatype = (PLiSQL_type *)((PLiSQL_var *)datum)->datatype;
+				else if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+				{
+					PLiSQL_datum *pkgvar = ((PLiSQL_pkg_datum *)datum)->pkgvar;
+
+					if (pkgvar->dtype == PLISQL_DTYPE_VAR)
+						datatype = (PLiSQL_type *)((PLiSQL_var *)pkgvar)->datatype;
+				}
+
+				if (datatype && datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+				{
+					StringInfoData 	nameinfo;
+					ListCell 	*lc;
+					int			n = list_length(wdnames);
+					int			i;
+
+					initStringInfo(&nameinfo);
+
+					i = 1;
+					foreach(lc, wdnames)
+					{
+						if (i == n)
+							break;
+						else
+						{
+							char *name = strVal(lfirst(lc));
+
+							appendStringInfoString(&nameinfo, name);
+							if (i < n - 1)
+								appendStringInfoChar(&nameinfo, '.');
+							i++;
+						}
+					}
+
+					plisql_append_source_text(expr_ds, startlocation, yylloc);
+					read_collect_method(method_token, nameinfo.data,
+									   datatype, expr_ds, &startlocation);
+					pfree(nameinfo.data);
+				}
+			}
+		}
+	}
+
+	return startlocation;
+}
+
+/*
+ * check whether the token is a collection method token
+ */
+static bool
+is_collect_method(int token)
+{
+	bool res = false;
+
+	switch (token)
+	{
+		case K_FIRST:
+		case K_LAST:
+		case K_COUNT:
+		case K_LIMIT:
+		case K_PRIOR:
+		case K_NEXT:
+		case K_EXISTS:
+		case K_DELETE:
+		case K_TRIM:
+		case K_EXTEND:
+			res = true;
+			break;
+		default:
+			break;
+	}
+
+	return res;
+}
+
+/*
+ * check whether the token is a collection method token
+ */
+static char *
+get_collect_method_name(int token)
+{
+	char *method_name;
+
+	switch(token)
+	{
+		case K_FIRST:
+			method_name = pstrdup("FIRST");
+			break;
+		case K_LAST:
+			method_name = pstrdup("LAST");
+			break;
+		case K_COUNT:
+			method_name = pstrdup("COUNT");
+			break;
+		case K_LIMIT:
+			method_name = pstrdup("LIMIT");
+			break;
+		case K_PRIOR:
+			method_name = pstrdup("PRIOR");
+			break;
+		case K_NEXT:
+			method_name = pstrdup("NEXT");
+			break;
+		case K_EXISTS:
+			method_name = pstrdup("EXISTS");
+			break;
+		case K_DELETE:
+			method_name = pstrdup("DELETE");
+			break;
+		case K_TRIM:
+			method_name = pstrdup("TRIM");
+			break;
+		case K_EXTEND:
+			method_name = pstrdup("EXTEND");
+			break;
+		default:
+			method_name = NULL;
+			break;
+	}
+
+	if (method_name == NULL)
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_FUNCTION),
+				 errmsg("collection method %s does not supported",
+				  method_name)));
+
+	return method_name;
+}
+
+/*
+ * get the token according a collection method name
+ */
+static int
+get_collect_method_tok(char *method_name)
+{
+	int token = -1;
+
+	if (pg_strcasecmp(method_name, "FIRST") == 0)
+		token = K_FIRST;
+	else if (pg_strcasecmp(method_name, "LAST") == 0)
+		token = K_LAST;
+	else if (pg_strcasecmp(method_name, "COUNT") == 0)
+		token = K_COUNT;
+	else if (pg_strcasecmp(method_name, "LIMIT") == 0)
+		token = K_LIMIT;
+	else if (pg_strcasecmp(method_name, "PRIOR") == 0)
+		token = K_PRIOR;
+	else if (pg_strcasecmp(method_name, "NEXT") == 0)
+		token = K_NEXT;
+	else if (pg_strcasecmp(method_name, "EXISTS") == 0)
+		token = K_EXISTS;
+	else if (pg_strcasecmp(method_name, "DELETE") == 0)
+		token = K_DELETE;
+	else if (pg_strcasecmp(method_name, "TRIM") == 0)
+		token = K_TRIM;
+	else if (pg_strcasecmp(method_name, "EXTEND") == 0)
+		token = K_EXTEND;
+
+	return token;
+}
+
+/*
+ *  read_collect_method - read a collection method
+ */
+static void
+read_collect_method(int start_token, const char *varname,
+					PLiSQL_type *datatype, StringInfo res,
+					int *startlocation)
+{
+	int			tok;
+	const char *methodname;
+	Oid			keytypoid = InvalidOid;
+	char		typtype = datatype->typtype;
+
+	methodname = get_collect_method_name(start_token);
+	if (!IS_PLSQL_COLLECTYPE(typtype))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_FUNCTION),
+				errmsg("collect variable %s not support method %s",
+						varname, methodname)));
+
+	keytypoid = ((PLiSQL_ora_collection_type *)datatype)->typkey->typoid;
+
+	tok = yylex();
+	if (tok != '(')
+	{
+		plisql_push_back_token(tok);
+		*startlocation = yylloc;
+	}
+
+	appendStringInfo(res, "SYS.COLLECTION_%s(%s", methodname, varname);
+
+	switch(start_token)
+	{
+		case K_FIRST:
+		case K_LAST:
+		case K_COUNT:
+		case K_LIMIT:
+			if (tok == '(')
+			{
+				tok = yylex();
+				if (tok != ')')
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_FUNCTION),
+							 errmsg("collection method %s has no parameter",
+							  methodname)));
+				*startlocation = yylloc + 1;
+			}
+
+			if (start_token == K_FIRST || start_token == K_LAST)
+			{
+				if (keytypoid == INT4OID)
+					appendStringInfo(res, ", null::int4");
+				else if (keytypoid == INT8OID)
+					appendStringInfo(res, ", null::int8");
+				else if (keytypoid == INT2OID)
+					appendStringInfo(res, ", null::int2");
+				else
+					appendStringInfo(res, ", null::varchar");
+			}
+			break;
+		case K_PRIOR:
+		case K_NEXT:
+		case K_EXISTS:
+			{
+				PLiSQL_expr	*index_expr = NULL;
+				if (tok != '(')
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_FUNCTION),
+							 errmsg("collection method %s has no parameter",
+							  methodname)));
+
+				index_expr = read_sql_construct(')', 0, 0,
+							 ")",
+							 RAW_PARSE_PLISQL_EXPR,
+							 true, false, false, NULL, &tok, false, NULL);
+				if (keytypoid == INT4OID)
+					appendStringInfo(res, ", (%s)::int4", index_expr->query);
+				else if (keytypoid == INT8OID)
+					appendStringInfo(res, ", (%s)::int8", index_expr->query);
+				else if (keytypoid == INT2OID)
+					appendStringInfo(res, ", (%s)::int2", index_expr->query);
+				else
+					appendStringInfo(res,", (%s)::varchar", index_expr->query);
+
+				*startlocation = yylloc + 1;
+			}
+			break;
+		case K_DELETE:
+		case K_TRIM:
+		case K_EXTEND:
+			{
+				if (tok == '(')
+				{
+					tok = yylex();
+					while (tok != ')' && tok != ';' && tok != 0)
+					{
+						PLiSQL_expr	*new = NULL;
+
+						if (tok != ',' )
+							plisql_push_back_token(tok);
+
+						new = read_sql_construct(',', ')', 0,
+											")",
+											RAW_PARSE_PLISQL_EXPR,
+											true, false, false, NULL, &tok, false, NULL);
+
+						if (keytypoid == INT4OID)
+							appendStringInfo(res, ", (%s)::int4", new->query);
+						else if (keytypoid == INT8OID)
+							appendStringInfo(res, ", (%s)::int8", new->query);
+						else if (keytypoid == INT2OID)
+							appendStringInfo(res, ", (%s)::int2", new->query);
+						else
+							appendStringInfo(res,", (%s)::varchar", new->query);
+					}
+
+					*startlocation = yylloc + 1;
+				}
+			}
+			break;
+		default:
+			break;
+	}
+
+	appendStringInfoString(res, ")");
+}
+
+static PLiSQL_datum *
+reparse_cword(List *wdnames)
+{
+	char			   *first_name;
+	PLwdatum			wdatum;
+	PLword				plword;
+	PLcword				plcword;
+	bool				is_datum = false;
+
+	if (list_length(wdnames) < 2)
+		return NULL;
+
+	first_name = strVal(linitial(wdnames));
+
+	switch(list_length(wdnames))
+	{
+		case 2:
+			is_datum = plisql_parse_word(first_name,first_name, first_name, true,
+			   &wdatum, &plword);
+			if (is_datum)
+					return wdatum.datum;
+			break;
+		case 3:
+			is_datum = plisql_parse_dblword(first_name, first_name, strVal(lsecond(wdnames)),
+				&wdatum, &plcword);
+			if (is_datum)
+					return wdatum.datum;
+			break;
+		case 4:
+			is_datum = plisql_parse_tripword(first_name, first_name, strVal(lsecond(wdnames)),
+				strVal(lthird(wdnames)), &wdatum, &plcword);
+			if (is_datum)
+					return wdatum.datum;
+			break;
+		default:
+			{
+				int nnames;
+				List *newlist;
+
+				newlist = list_delete_last(list_copy(wdnames));
+				is_datum = plisql_parse_moreword(newlist, &wdatum, &plcword, '.', yylloc, &nnames);
+				if (is_datum)
+				{
+					if (wdatum.datum != NULL)
+					{
+						if (wdatum.datum->dtype == PLISQL_DTYPE_ORA_RECORD)
+						{
+							PLwdatum *pl_wdatum;
+							int nlen = list_length(newlist);
+
+							/*
+							 * check if the maximum number of layers that record nest
+							 * is greater than PLISQL_MAXNUM_NESTED_RECORD
+							 */
+							plisql_check_maxnum_record_nest(nlen, nnames);
+							pl_wdatum = plisql_get_ora_record_field(wdatum.datum,
+														newlist,
+														nlen,
+														nnames,
+														yylloc);
+							list_free(newlist);
+							if (pl_wdatum != NULL)
+								return pl_wdatum->datum;
+						}
+						else if (wdatum.datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+						{
+							list_free(newlist);
+							return ((PLiSQL_pkg_datum *)(wdatum.datum))->pkgvar;
+						}
+					}
+				}
+				list_free(newlist);
+			}
+			break;
+	}
+
+	return NULL;
+}
+
+/*
+ *  check whether the datum is a collection
+ */
+bool
+is_collection_variable(PLiSQL_datum *datum)
+{
+	if (datum && datum->dtype == PLISQL_DTYPE_VAR &&
+		IS_PLSQL_COLLECTYPE(((PLiSQL_var *) datum)->datatype->typtype))
+		return true;
+
+	return false;
+}
+
+/*
+ * build the constructor call statement.
+ * for a nested table constructor that has empty element, the statement is roughly like this
+ * "SYS.NESTED_TABLE_CONSTRUCTOR(type_address, ARRAY[]::int[])",
+ * for a nested table constructor that has initial elements,  the statement is roughly like this
+ * "SYS.NESTED_TABLE_CONSTRUCTOR(type_address, ARRAY[element1,...,elementn]::element_typname[])",
+ * for the varray constructor, the statement is roughly like this
+ * for a varray constructor that has empty element, the statement is roughly like this
+ * "SYS.VARRAY_CONSTRUCTOR(type_address, ARRAY[]::int[])",
+ * for a varray constructor that has initial elements,  the statement is roughly like this
+ * "SYS.VARRAY_CONSTRUCTOR(type_address, ARRAY[element1,...,elementn]::element_typname[])",
+ */
+static void
+read_collection_constructor(PLiSQL_ora_collection_type *collect_type,
+							StringInfo ds,
+							int *startlocation)
+{
+	int		tok;
+
+	tok = yylex();
+	if (tok != '(')
+	{
+		plisql_push_back_token(tok);
+	}
+	else if (IS_PLSQL_NESTED_TABLE(collect_type->type.typtype) ||
+		IS_PLSQL_VARRAY(collect_type->type.typtype))
+	{
+		if (IS_PLSQL_NESTED_TABLE(collect_type->type.typtype))
+			appendStringInfoString(ds, "SYS.NESTED_TABLE_CONSTRUCTOR(");
+		else
+			appendStringInfoString(ds, "SYS.VARRAY_CONSTRUCTOR(");
+
+		appendStringInfo(ds, UINT64_FORMAT,
+						(uint64)PointerGetDatum(plisql_type_to_collectinfo((PLiSQL_type *)collect_type)));
+		appendStringInfoString(ds, ", ");
+
+		tok = yylex();
+
+		if (tok == ')')
+			appendStringInfoString(ds, "ARRAY[]::int[]");
+		else
+		{
+			PLiSQL_type *datatype = collect_type->typdatatype;
+
+			appendStringInfoString(ds, "ARRAY[");
+
+			plisql_push_back_token(tok);
+
+			while(true)
+			{
+				PLiSQL_expr		*new = NULL;
+
+				new = read_sql_construct(')', ',', 0,
+							 ")",
+							 RAW_PARSE_PLISQL_EXPR,
+							 true, false, false, NULL, &tok, false, NULL);
+				appendStringInfoString(ds, new->query);
+				if (tok == ',')
+					appendStringInfoString(ds, ", ");
+				else
+					break;
+			}
+			appendStringInfoString(ds, "]");
+
+			if (!IS_PLSQL_COLLECTYPE(datatype->typtype) &&
+				datatype->ttype != PLISQL_TTYPE_ORARECORD_TYPE &&
+				OidIsValid(get_array_type(datatype->typoid)))
+			{
+				appendStringInfo(ds, "::%s", datatype->typname);
+
+				if (datatype->typoid == NUMERICOID)
+				{
+					char	buf[64];
+					int 	mod1,
+							mod2;
+					int 	typmod = datatype->atttypmod;
+
+					if (typmod > 0)
+					{
+						mod1 = ((typmod - VARHDRSZ) >> 16) & 0xffff;
+						mod2 = ((typmod - VARHDRSZ) & 0xffff);
+
+						if (mod2 > 0)
+							snprintf(buf, sizeof(buf), "(%d, %d)", mod1, mod2);
+						else
+							snprintf(buf, sizeof(buf), "(%d)", mod1);
+
+						appendStringInfoString(ds, buf);
+					}
+				}
+
+				appendStringInfoString(ds, "[]");
+			}
+		}
+	}
+	else
+		ereport(ERROR,
+			(errcode(ERRCODE_SYNTAX_ERROR),
+				errmsg("syntax error.")));
+
+	appendStringInfoString(ds, ")");
+	*startlocation = yylloc + 1;
+}
+
+/*
+ * get a List that builed for the collection subscirpt,
+ * if it is a collection method, then is_method is set to true.
+ */
+static List*
+read_collect_variable(PLiSQL_datum *top_datum,
+					int startlocation,
+					StringInfo var_ds,
+					StringInfo method_ds,
+					bool *is_method)
+{
+	PLiSQL_datum 	*datum;
+	PLiSQL_type 	*data_type = NULL;
+	int 			tok;
+	List			*list_elems = NIL;
+
+	datum = top_datum;
+	if (datum->dtype == PLISQL_DTYPE_VAR)
+	{
+		data_type = ((PLiSQL_var *)datum)->datatype;
+		appendStringInfoString(var_ds, ((PLiSQL_var *)datum)->refname);
+	}
+	else if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+	{
+		/* reference a package variable */
+		PLiSQL_pkg_datum *pkg_datum = (PLiSQL_pkg_datum *)datum;
+
+		data_type = ((PLiSQL_var *)pkg_datum->pkgvar)->datatype;
+		appendStringInfoString(var_ds, ((PLiSQL_var *)pkg_datum->pkgvar)->refname);
+	}
+	else
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("not a valid variable")));
+
+	tok = yylex();
+	while (tok == '(' || tok == '.')
+	{
+		if (tok == '(')
+		{
+			PLiSQL_arrayelem	*new;
+
+			/* get current dimensional value type */
+			if (!IS_PLSQL_COLLECTYPE(data_type->typtype))
+				ereport(ERROR,
+					(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+					errmsg("number of subscripts exceeds the maximum collection type dimensions.")));
+
+			new = palloc0(sizeof(PLiSQL_arrayelem));
+			new->dtype		= PLISQL_DTYPE_COLLECT_ARRAYELEM;
+			new->subscript	= read_sql_expression(')', ")");
+			new->arrayparentno = datum->dno;
+			new->parenttypoid = InvalidOid;
+
+			list_elems = lappend(list_elems, (void *)new);
+			datum = (PLiSQL_datum *) new;
+			data_type = ((PLiSQL_ora_collection_type*)data_type)->typdatatype;
+
+			/* convert subscript '(' to ']' */
+			appendStringInfoChar(var_ds, '[');
+			appendStringInfoString(var_ds, new->subscript->query);
+			appendStringInfoChar(var_ds, ']');
+
+			tok = yylex();
+		}
+		else if (tok == '.')
+		{
+			if (datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM)
+			{
+				PLiSQL_arrayelem	*elem;
+				List		*wdnames = NIL;
+				ListCell	*lc;
+				int			i;
+				int			nlen;
+
+				tok = yylex();
+
+				if (tok == T_WORD)
+					wdnames = lappend(wdnames, (void *)(yylval.word.ident));
+				else if (tok == T_DATUM)
+				{
+					if (yylval.wdatum.ident == NULL)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error")));
+
+					wdnames = lappend(wdnames, (void *)pstrdup(yylval.wdatum.ident));
+				}
+				else if (plisql_token_is_unreserved_keyword(tok))
+					wdnames = lappend(wdnames, (void *)pstrdup(yylval.keyword));
+				else if (tok == T_CWORD)
+				{
+					ListCell *l;
+
+					foreach(l, yylval.cword.idents)
+						wdnames = lappend(wdnames, (void *)pstrdup(strVal(lfirst(l))));
+				}
+				else
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("syntax error")));
+
+				elem = (PLiSQL_arrayelem *) datum;
+				datum = (PLiSQL_datum *) elem;
+				i = 0;
+				nlen = list_length(wdnames);
+
+				foreach(lc, wdnames)
+				{
+					char *fieldname = (char *)lfirst(lc);
+
+					i++;
+					if (elem->indirection == NIL)
+						elem->indirection = list_make1(pstrdup(fieldname));
+					else
+						elem->indirection = lappend(elem->indirection, pstrdup(fieldname));
+
+					if (data_type->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+					{
+						data_type = get_record_field_type(data_type, fieldname);
+						appendStringInfoChar(var_ds, '.');
+						appendStringInfoString(var_ds, fieldname);
+					}
+					else if (data_type->ttype == PLISQL_TTYPE_REC ||
+						data_type->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+					{
+						appendStringInfoChar(var_ds, '.');
+						appendStringInfoString(var_ds, fieldname);
+						list_free(wdnames);
+						if (i < nlen)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("the record field is wrong"),
+									 parser_errposition(startlocation)));
+
+						return list_elems;
+					}
+					else if (data_type->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+					{
+						int		method_token;
+
+						/* maybe collection methods */
+						method_token = get_collect_method_tok(fieldname);
+						if (is_collect_method(method_token))
+						{
+							read_collect_method(method_token, var_ds->data, data_type, method_ds, &startlocation);
+							*is_method = true;
+						}
+						else
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("it might not be a collection assignment"),
+									 parser_errposition(startlocation)));
+					}
+					else
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("it might not be a collection assignment"),
+									 parser_errposition(startlocation)));
+					if (data_type == NULL)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("the datatype is wrong"),
+									 parser_errposition(startlocation)));
+				}
+				tok = yylex();
+				list_free(wdnames);
+			}
+			else if (data_type && data_type->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+			{
+				/* maybe collection methods */
+				if (is_collect_method(tok))
+				{
+					read_collect_method(tok, var_ds->data, data_type, method_ds, &startlocation);
+					*is_method = true;
+				}
+				else
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("it might not be a collection assignment"),
+							 parser_errposition(startlocation)));
+			}
+			else
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("it might not be a collection assignment"),
+						 parser_errposition(startlocation)));
+		}
+	}
+	plisql_push_back_token(tok);
+
+	return list_elems;
+}
+
+/*
+ * get_collect_stmt
+ * build the collect variable assign statment or collection method call statment
+ */
+static PLiSQL_stmt*
+get_collect_stmt(PLiSQL_datum *top_datum, int startlocation, int lineno)
+{
+	StringInfoData	var_ds;
+	StringInfoData	method_ds;
+	List			*list_elems = NIL;
+	bool 			is_method = false;
+	PLiSQL_expr 	*expr;
+	int				tok;
+
+	initStringInfo(&var_ds);
+	initStringInfo(&method_ds);
+
+	list_elems = read_collect_variable(top_datum, startlocation,
+									&var_ds, &method_ds, &is_method);
+	tok = yylex();
+	if (is_method)
+	{
+		PLiSQL_stmt_perform *new;
+
+		/* free the builded elems */
+		if (list_elems != NIL)
+		{
+			ListCell *lc;
+
+			foreach(lc, list_elems)
+			{
+				PLiSQL_arrayelem *elem = (PLiSQL_arrayelem *) lfirst(lc);
+
+				pfree(elem->subscript);
+				if (elem->indirection)
+					list_free(elem->indirection);
+
+				pfree(elem);
+			}
+			pfree(list_elems);
+		}
+
+		expr = palloc0(sizeof(PLiSQL_expr));
+		expr->query 		= pstrdup(method_ds.data);
+		expr->parseMode 	= RAW_PARSE_PLISQL_EXPR;
+		expr->plan			= NULL;
+		expr->paramnos		= NULL;
+		expr->target_param	= -1;
+		expr->ns			= plisql_ns_top();
+
+		new = palloc0(sizeof(PLiSQL_stmt_perform));
+		new->cmd_type = PLISQL_STMT_PERFORM;
+		new->lineno   = lineno;
+		new->stmtid = ++plisql_curr_compile->nstatements;
+		new->expr  = expr;
+
+		pfree(var_ds.data);
+		pfree(method_ds.data);
+
+		return (PLiSQL_stmt *)new;
+	}
+	else
+	{
+		PLiSQL_stmt_assign *new;
+		PLiSQL_datum	*datum = top_datum;
+
+		if (tok != '=' && tok != COLON_EQUALS)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("it might not be a collection assignment"),
+					 parser_errposition(startlocation)));
+
+		/* put the arrayelem into plisql_Datums array if any */
+		if (list_elems != NIL)
+		{
+			ListCell 	*lc;
+			int			parent_dno = top_datum->dno;
+			PLiSQL_arrayelem *elem;
+			int 		nlist = list_length(list_elems);
+			int 		i;
+
+			i = 0;
+			foreach(lc, list_elems)
+			{
+				elem = (PLiSQL_arrayelem *) lfirst(lc);
+
+				plisql_adddatum((PLiSQL_datum *) elem);
+
+				elem->arrayparentno = parent_dno;
+				parent_dno = elem->dno;
+				i++;
+				if (i == nlist)
+					datum = (PLiSQL_datum *)elem;
+			}
+		}
+
+		/* build a PLiSQL_stmt_assign expr */
+		expr = read_sql_expression(';', ";");
+
+		new = palloc0(sizeof(PLiSQL_stmt_assign));
+		new->cmd_type = PLISQL_STMT_ASSIGN;
+		new->lineno   = lineno;
+		new->stmtid = ++plisql_curr_compile->nstatements;
+		new->varno = datum->dno;
+		new->expr  = expr;
+
+		pfree(var_ds.data);
+		pfree(method_ds.data);
+
+		return (PLiSQL_stmt *)new;
+	}
+}
+
+/*
+ * Given the datum and name after the OUT/INOUT keyword, put them
+ * in fieldnames and varnos. It should be noted that a new datum
+ * should be constructed for the collection element.
+ */
+static int
+read_out_scalar(char **fieldnames,
+				int *varnos,
+				char param_info,
+				PLiSQL_expr **expr)
+{
+	int				 tok;
+	PLiSQL_datum 	*cur_datum;
+	char			*fieldname;
+	char			*querystr;
+	int 			loc;
+
+	tok = yylex();
+	if (tok != T_DATUM)
+		current_token_is_not_variable(tok);
+
+	cur_datum = yylval.wdatum.datum;
+	check_assignable(cur_datum, yylloc);
+	fieldname = NameOfDatum(&(yylval.wdatum));
+	loc = yylloc;
+
+	if ((cur_datum->dtype == PLISQL_DTYPE_VAR &&
+		((PLiSQL_var *)cur_datum)->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE) ||
+		(cur_datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
+		((PLiSQL_var *)(((PLiSQL_pkg_datum *)cur_datum)->pkgvar))->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE))
+	{
+		StringInfoData	var_ds;
+		StringInfoData	method_ds;
+		List			*list_elems = NIL;
+		bool			is_method = false;
+		PLiSQL_datum	*top_datum;
+
+		initStringInfo(&var_ds);
+		initStringInfo(&method_ds);
+
+		top_datum = cur_datum;
+		list_elems = read_collect_variable(top_datum, loc,
+										&var_ds, &method_ds, &is_method);
+
+		if (is_method)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("\"%s\" is not a scalar variable",
+							fieldname),
+						parser_errposition(loc)));
+
+		/* put the arrayelem into plisql_Datums array if any */
+		if (list_elems != NIL)
+		{
+			ListCell	*lc;
+			int 		parent_dno = top_datum->dno;
+			PLiSQL_arrayelem *elem;
+			int 		nlist = list_length(list_elems);
+			int 		i;
+
+			i = 0;
+			foreach(lc, list_elems)
+			{
+				elem = (PLiSQL_arrayelem *) lfirst(lc);
+
+				plisql_adddatum((PLiSQL_datum *) elem);
+				elem->arrayparentno = parent_dno;
+				parent_dno = elem->dno;
+				i++;
+				if (i == nlist)
+				{
+					*fieldnames = pstrdup(fieldname);
+					*varnos = elem->dno;
+				}
+			}
+			querystr = pstrdup(var_ds.data);
+		}
+		else
+		{
+			*fieldnames = pstrdup(fieldname);
+			*varnos = cur_datum->dno;
+			querystr = pstrdup(fieldname);
+		}
+
+		pfree(var_ds.data);
+		pfree(method_ds.data);
+	}
+	else
+	{
+		*fieldnames = pstrdup(fieldname);
+		*varnos	= cur_datum->dno;
+		querystr = pstrdup(fieldname);
+	}
+
+	*expr = palloc0(sizeof(PLiSQL_expr));
+	(*expr)->query		= querystr;
+	(*expr)->parseMode	= RAW_PARSE_PLISQL_EXPR;
+	(*expr)->plan		= NULL;
+	(*expr)->paramnos	= NULL;
+	(*expr)->target_param	= -1;
+	(*expr)->ns 		= plisql_ns_top();
+	(*expr)->info		= param_info;
+	(*expr)->datum_dno	= *varnos;
+
+	check_sql_expr((*expr)->query, (*expr)->parseMode, loc);
+	tok = yylex();
+
+	return tok;
+}
+/* End - ReqID:SRS-PLSQL-Collection */

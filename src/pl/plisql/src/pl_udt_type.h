@@ -98,6 +98,16 @@ typedef struct PLiSQL_ora_record_type
 } PLiSQL_ora_record_type;
 /* End - ReqID:SRS-PLSQL-RECORD */
 
+/* Begin - ReqID:SRS-PLSQL-Collection */
+typedef struct PLiSQL_ora_collection_type
+{
+	PLiSQL_type 	type;			/* collection type base type */
+	PLiSQL_type		*typkey;		/* key type */
+	PLiSQL_type     *typdatatype;	/* value type */
+	int 			limit;			/* max limit number of varray elements */
+} PLiSQL_ora_collection_type;
+/* End - ReqID:SRS-PLSQL-Collection */
+
 /* Begin - BUG#Z1322 */
 /* The maximum number of layers that record can nest is 100 */
 #define PLISQL_MAXNUM_NESTED_RECORD		100
@@ -178,5 +188,25 @@ extern void plisql_check_maxnum_record_nest(int num_nested, int record_begin_pos
 extern void plisql_build_subtype(char *subtypnme, int lineno, PLiSQL_type* btype_p, List *range_list, bool isNotNull);
 /* End - ReqID:SRS-PLSQL-SUBTYPE */
 
+/* Begin - ReqID:SRS-PLSQL-Collection */
+extern PLiSQL_type * plisql_build_ora_collection_type(char *refname, int lineno,
+							  Oid typoid,
+							  char typtype,
+							  PLiSQL_type *keytype,
+							  PLiSQL_type *valuetype,
+							  int varraylimit,
+							  bool notnull);
+extern Datum plisql_type_to_collectinfo(PLiSQL_type *type);
+extern void exec_check_assign_collect_value(PLiSQL_var *target,
+									Datum value,
+									Oid valtype,
+									int32 valtypmod);
+extern PLiSQL_type * get_record_field_type(PLiSQL_type *data_type, char *name);
+extern PLwdatum * plisql_get_ora_record_field(PLiSQL_datum *datum,
+					List *idents,
+					int nlen,
+					int nth,
+					int loc);
+/* End - ReqID:SRS-PLSQL-Collection */
 #endif
 

@@ -25,6 +25,7 @@
 #include "catalog/pg_type.h"
 #include "funcapi.h"
 #include "nodes/makefuncs.h"
+#include "nodes/nodeFuncs.h" /* ReqID:SRS-PLSQL-Collection */
 #include "parser/parse_type.h"
 #include "plisql.h"
 #include "pl_subproc_function.h" /* SRS-PLSQL-SUBPROC */
@@ -57,6 +58,10 @@
 #include "catalog/pg_depend.h"
 #include "access/genam.h"
 /* End - ReqID:SRS-PLSQL-TYPE */
+/* Begin - ReqID:SRS-PLSQL-Collection */
+#include "parser/parse_coerce.h"
+#include "parser/parse_expr.h"
+/* End - ReqID:SRS-PLSQL-Collection */
 /* Begin - BUG#M0000376 */
 #include "parser/parse_param.h"
 /* End - BUG#M0000376 */
@@ -147,7 +152,24 @@ static void plisql_HashTableDelete(PLiSQL_function *function);
 static void plisql_add_type_referenced_objects(TypeName *typeName);
 /* End - ReqID:SRS-PLSQL-TYPE */
 static void add_ora_trigfunc_return(PLiSQL_function *function, TriggerEvent tg_event);
-
+/* Begin - ReqID:SRS-PLSQL-Collection */
+static Node *plisql_transform_indirection(ParseState *pstate,
+				Node *ind_arg,
+				const char *targetName,
+				List *indirection,
+				Node *rhs,
+				int location);
+static SubscriptingRef *transformCollectionSubscripts(ParseState *pstate,
+							 Node *containerBase,
+							 const char *targetName,
+							 Oid containerType,
+							 Oid elementType,
+							 int32 containerTypMod,
+							 List *indirection,
+							 PLiSQL_type **datatype,
+							 Node *rhs,
+							 int location);
+/* End - ReqID:SRS-PLSQL-Collection */
 
 /* ----------
  * plisql_compile		Make an execution tree for a PL/iSQL function.
@@ -1771,7 +1793,8 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 				argdtype->ttype != PLISQL_TTYPE_REC &&
 				argdtype->ttype != PLISQL_TTYPE_UDT_REF_CURSOR && /* ReqID:SRS-PLSQL-CURSOR */
 				argdtype->ttype != PLISQL_TTYPE_SUBTYPE && /* ReqID:SRS-PLSQL-SUBTYPE */
-				argdtype->ttype != PLISQL_TTYPE_ORARECORD_TYPE) /* ReqID:SRS-PLSQL-DSQL */
+				argdtype->ttype != PLISQL_TTYPE_ORARECORD_TYPE && /* ReqID:SRS-PLSQL-DSQL */
+				argdtype->ttype != PLISQL_TTYPE_COLLECT_TYPE) /* ReqID:SRS-PLSQL-Collection */
 				ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				errmsg("PLI/SQL functions cannot accept type %s",
@@ -2078,6 +2101,9 @@ plisql_parser_setup(struct ParseState *pstate, PLiSQL_expr *expr)
 	/* Begin - ReqID:SRS-PLSQL-RECORD */
 	pstate->p_orarecordconstruct_hook = plisql_ora_record_construct_ref;
 	/* End - ReqID:SRS-PLSQL-RECORD */
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	pstate->p_indirection_hook = plisql_transform_indirection;
+	/* End - ReqID:SRS-PLSQL-Collection */
 	/* no need to use p_coerce_param_hook */
 	pstate->p_ref_hook_state = (void *) expr;
 }
@@ -2885,7 +2911,20 @@ plisql_parse_dblword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, ch
 						return true;
 						/* End - BUG#Z1672 */
 					}
+					break;
 				/* End - ReqID:SRS-PLSQL-RECORD */
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				case PLISQL_NSTYPE_TYPE:
+					/* Block-qualified reference to udt type. */
+					wdatum->datum = plisql_Datums[ns->itemno];
+					wdatum->ident = NULL;
+					wdatum->quoted = false; /* not used */
+					wdatum->idents = idents;
+					/* Begin - ReqID:SRS-SQL-PACKAGE */
+					wdatum->nname_used = nnames;
+					/* End - ReqID:SRS-SQL-PACKAGE */
+					return true;
+				/* End - ReqID:SRS-PLSQL-Collection */
 
 				default:
 					break;
@@ -2920,6 +2959,15 @@ plisql_parse_dblword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, ch
 						return true;
 						break;
 					case PKG_TYPE:
+						/* Begin - ReqID:SRS-PLSQL-Collection */
+						wdatum->datum = NULL;
+						wdatum->collectype = (PLiSQL_type *) entry->value;
+						wdatum->ident = NULL;
+						wdatum->quoted = false;
+						wdatum->idents = idents;
+						wdatum->nname_used = 2;
+						return true;
+						/* End - ReqID:SRS-PLSQL-Collection */
 						break;
 					default:
 						break;
@@ -3173,6 +3221,14 @@ plisql_parse_tripword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */, char *word1, 
 						wdatum->nname_used = 3;
 						break;
 					case PKG_TYPE:
+						/* Begin - ReqID:SRS-PLSQL-Collection */
+						wdatum->datum = NULL;
+						wdatum->collectype = (PLiSQL_type *) entry->value;
+						wdatum->ident = NULL;
+						wdatum->quoted = false;
+						wdatum->idents = idents;
+						wdatum->nname_used = 3;
+						/* End - ReqID:SRS-PLSQL-Collection */
 						break;
 					default:
 						break;
@@ -3417,6 +3473,14 @@ plisql_parse_moreword(List *idents, PLwdatum *wdatum,
 						wdatum->nname_used = len;
 						break;
 					case PKG_TYPE:
+						/* Begin - ReqID:SRS-PLSQL-Collection */
+						wdatum->datum = NULL;
+						wdatum->collectype = (PLiSQL_type *) entry->value;
+						wdatum->ident = NULL;
+						wdatum->quoted = false;
+						wdatum->idents = idents;
+						wdatum->nname_used = len;
+						/* End - ReqID:SRS-PLSQL-Collection */
 						break;
 					default:
 						break;
@@ -4101,6 +4165,9 @@ plisql_build_variable(const char *refname, int lineno, PLiSQL_type *dtype,
 		case PLISQL_TTYPE_UDT_REF_CURSOR: /* ReqID:SRS-PLSQL-CURSOR */
 		case PLISQL_TTYPE_SUBTYPE: /* ReqID:SRS-PLSQL-SUBTYPE */
 		case PLISQL_TTYPE_SCALAR:
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		case PLISQL_TTYPE_COLLECT_TYPE:
+		/* End - ReqID:SRS-PLSQL-Collection */
 			{
 				/* Ordinary scalar datatype */
 				PLiSQL_var *var;
@@ -5781,3 +5848,290 @@ plisql_copy_base_datatype(PLiSQL_type *in, char *subtypnme, int lineno)
 	return out;
 }
 /* End - ReqID:SRS-PLSQL-SUBTYPE */
+
+/* Begin - ReqID:SRS-PLSQL-Collection */
+/*
+ *  transform collection subscript
+ */
+static Node *
+plisql_transform_indirection(ParseState *pstate,
+				Node *ind_arg,
+				const char *targetName,
+				List *indirection,
+				Node *rhs,
+				int location)
+{
+	Node	   *last_srf = pstate->p_last_srf;
+	Node	   *result = ind_arg;
+	List	   *subscripts = NIL;
+	Oid			arg_type = exprType(result);
+	ListCell   *i;
+	PLiSQL_type *datatype = NULL;
+
+	if (!IS_COLLECTOID(arg_type))
+		return NULL;
+
+	foreach(i, indirection)
+	{
+		Node	   *n = lfirst(i);
+
+		if (IsA(n, A_Indices))
+			subscripts = lappend(subscripts, n);
+		else if (IsA(n, A_Star))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("row expansion via \"*\" is not supported here"),
+					 parser_errposition(pstate, location)));
+		}
+		else
+		{
+			Node	   *newresult = NULL;
+
+			Assert(IsA(n, String));
+
+			/* process subscripts before this field selection */
+			if (subscripts)
+				result = (Node *) transformCollectionSubscripts(pstate,
+															   result,
+															   targetName,
+															   exprType(result),
+															   InvalidOid,
+															   exprTypmod(result),
+															   subscripts,
+															   &datatype,
+															   rhs,
+															   location);
+			subscripts = NIL;
+
+			/*prcoess record direction */
+			if (datatype->ttype == PLISQL_TTYPE_REC ||
+				datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+			{
+				TupleDesc 	tupdesc;
+				int			i;
+
+				tupdesc = plisql_get_rowtype_tupledesc(datatype);
+
+				for(i = 0; i < tupdesc->natts; i++)
+				{
+					/* skip dropped column in tuple */
+					if (tupdesc->attrs[i].attisdropped)
+						continue;
+
+					if (strcmp(strVal(n), NameStr(tupdesc->attrs[i].attname)) == 0)
+					{
+						/* Success, so generate a FieldSelect expression */
+						FieldSelect *fselect = makeNode(FieldSelect);
+
+						fselect->arg = (Expr *)result;
+						fselect->fieldnum = i + 1;
+						fselect->resulttype = tupdesc->attrs[i].atttypid;
+						fselect->resulttypmod = tupdesc->attrs[i].atttypmod;
+
+						fselect->resultcollid = -1;
+						newresult = (Node *)fselect;
+						break;
+					}
+				}
+				ReleaseTupleDesc(tupdesc);
+			}
+			else if (datatype->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+			{
+				PLiSQL_ora_record_type	*rec_type = (PLiSQL_ora_record_type *)datatype;
+				ListCell			*lc;
+				int					 i = 0;
+
+				foreach(lc, rec_type->args)
+				{
+					PLiSQL_ora_record_argitem	*argitem = (PLiSQL_ora_record_argitem*)lfirst(lc);
+
+					 if (strcmp(strVal(n), argitem->argname) == 0)
+					 {
+					 	/* Success, so generate a FieldSelect expression */
+						FieldSelect *fselect = makeNode(FieldSelect);
+
+						fselect->arg = (Expr *)result;
+						/*
+						 * Because when build a record tupdesc, we add a column as
+						 * the first column of redcord that is record datatype,
+						 * so fselect->fieldnum is set to i + 2
+						 */
+						fselect->fieldnum = i + 2;
+						fselect->resulttype = argitem->type->typoid;
+						fselect->resulttypmod = argitem->type->atttypmod;
+						/* save attribute's collation for parse_collate.c */
+						fselect->resultcollid = argitem->type->collation;
+						newresult = (Node *)fselect;
+
+						datatype = argitem->type;
+
+						break;
+					 }
+					 i++;
+				}
+
+			}
+			else
+				newresult = ParseFuncOrColumn(pstate,
+											  list_make1(n),
+											  list_make1(result),
+											  last_srf,
+											  NULL,
+											  false,
+											  location);
+
+			if (newresult == NULL)
+				ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_COLUMN),
+					 errmsg("column \"%s\" not found in data type %s",
+							strVal(n), datatype->typname),
+					 parser_errposition(pstate, location)));
+
+			result = newresult;
+		}
+	}
+
+	/* the collection only has subscripts. process trailing subscripts */
+	if (subscripts)
+	{
+		result = (Node *) transformCollectionSubscripts(pstate,
+													   result,
+													   targetName,
+													   exprType(result),
+													   InvalidOid,
+													   exprTypmod(result),
+													   subscripts,
+													   &datatype,
+													   rhs,
+													   location);
+	}
+
+	return result;
+}
+
+/*
+ *  transform collection subscirpt
+ */
+static SubscriptingRef *
+transformCollectionSubscripts(ParseState *pstate,
+							 Node *containerBase,
+							 const char *targetName,
+							 Oid containerType,
+							 Oid elementType,
+							 int32 containerTypMod,
+							 List *indirection,
+							 PLiSQL_type **datatype,
+							 Node *rhs,
+							 int location)
+{
+	PLiSQL_type 		*type_info;
+	ListCell			*idx;
+	List				*indexpr = NIL;
+	SubscriptingRef 	*sbsref;
+
+	if (datatype != NULL && *datatype != NULL)
+		type_info = *datatype;
+	else if (IsA(containerBase, Param))
+	{
+		Param *pm = (Param *) containerBase;
+		type_info = pm->type;
+	}
+	else
+		ereport(ERROR,
+			(errcode(ERRCODE_VALUE_ERROR),
+			errmsg("can't get the collection type infomation")));
+
+	/* Transform the subscript expressions.*/
+	foreach(idx, indirection)
+	{
+		A_Indices	*ai = (A_Indices *) lfirst(idx);
+		PLiSQL_ora_collection_type *collect_type;
+		Node		*subexpr;
+		Node		*new_expr;
+
+		if (!IS_PLSQL_COLLECTYPE(type_info->typtype))
+			ereport(ERROR,
+			(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+			 errmsg("number of subscripts exceeds the maximum udt dimensions.")));
+
+		collect_type = (PLiSQL_ora_collection_type *)type_info;
+
+		if (ai->uidx)
+		{
+			subexpr = transformExpr(pstate, ai->uidx, pstate->p_expr_kind);
+			new_expr = coerce_to_target_type(pstate,
+											subexpr, exprType(subexpr),
+											collect_type->typkey->typoid,
+											collect_type->typkey->atttypmod,
+											COERCION_ASSIGNMENT,
+											COERCE_IMPLICIT_CAST,
+											-1);
+			if (new_expr == NULL)
+				ereport(ERROR,
+							(errcode(ERRCODE_DATATYPE_MISMATCH),
+							 errmsg("collection subscript data type mismatch"),
+							 parser_errposition(pstate, exprLocation(ai->lidx))));
+
+			if(IsA(new_expr, Const) && ((Const *)new_expr)->constisnull)
+				ereport(ERROR,
+				(errcode(ERRCODE_VALUE_ERROR),
+				errmsg("collection type subscript must not be NULL")));
+
+			/* If there's no cast path according to the parser, fall back to using
+			 * an I/O coercion; this is semantically dubious but matches plpgsql's
+			 * historical behavior.  We would need something of the sort for
+			 * UNKNOWN literals in any case.
+			 */
+		}
+		else
+			new_expr = NULL;
+
+		indexpr = lappend(indexpr, new_expr);
+		type_info = collect_type->typdatatype;
+	}
+
+	/*
+	 * Ready to build the SubscriptingRef node.
+	 */
+	sbsref = (SubscriptingRef *) makeNode(SubscriptingRef);
+	sbsref->refcontainertype = containerType;
+	sbsref->refelemtype = type_info->typoid;
+	sbsref->refrestype = type_info->typoid;
+	sbsref->reftypmod = type_info->atttypmod;
+
+	/* refcollid will be set by parse_collate.c */
+	sbsref->reflowerindexpr = NIL;
+	sbsref->refexpr = (Expr *) containerBase;
+	sbsref->refupperindexpr = indexpr;
+	sbsref->refassgnexpr = NULL;
+
+	*datatype = type_info;
+	return sbsref;
+
+}
+
+PLiSQL_type *
+get_row_field_type(PLiSQL_type *data_type, char *name)
+{
+	TupleDesc	tupdesc;
+	int 		fno;
+	PLiSQL_type *type = NULL;
+
+	tupdesc = plisql_get_rowtype_tupledesc(data_type);
+
+	fno = SPI_fnumber(tupdesc, name);
+	if (fno <= 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_COLUMN),
+				 errmsg("record  has no field \"%s\"", name)));
+
+	type = plisql_build_datatype(tupdesc->attrs[fno - 1].atttypid,
+								tupdesc->attrs[fno - 1].atttypmod,
+								tupdesc->attrs[fno - 1].attcollation,
+								makeTypeName(NameStr(tupdesc->attrs[fno - 1].attname)));
+	ReleaseTupleDesc(tupdesc);
+
+	return type;
+}
+/* End - ReqID:SRS-PLSQL-Collection */

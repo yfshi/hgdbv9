@@ -231,8 +231,8 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 			(argtype == RECORDOID ||
 			argtype == ORARECORDOID ||
 			argtype == ORAREFCURSOROID ||
-			argtype == SYS_REFCURSOROID))
-		/*  End - ReqID: SRS-GKC-PLSQL-NESTEDCOLLRECORD_217 */
+			argtype == SYS_REFCURSOROID ||
+			IS_COLLECTOID(argtype)) /* ReqID:SRS-PLSQL-Collection */)
 			has_udt_type = true;
 		/* End - ReqID:SRS-PLSQL-RECORD */
 

@@ -35,7 +35,20 @@ OBJS = \
 	src/builtin_packages/dbms_job/ora_dbms_jobparse.o \
 	src/datatype/orachar_varchar.o \
 	src/builtin_packages/dbms_output/dbms_output.o \
-	src/ora_trigger_pred/ora_trigger_pred.o
+	src/ora_trigger_pred/ora_trigger_pred.o  \
+	src/collection/collection.o \
+	src/tstl2cl/c_algo.o \
+	src/tstl2cl/c_function.o \
+	src/tstl2cl/c_list.o \
+	src/tstl2cl/c_memory.o \
+	src/tstl2cl/c_vector.o \
+	src/tstl2cl/c_pair.o \
+	src/tstl2cl/c_tree.o \
+	src/tstl2cl/c_set.o \
+	src/tstl2cl/c_map.o \
+	src/tstl2cl/c_queue.o \
+	src/tstl2cl/c_stack.o \
+	src/tstl2cl/c_iterator.o
 
 EXTENSION = ivorysql_ora
 
@@ -103,7 +116,12 @@ ORA_REGRESS = \
 	decode \
 	ora_dbms_metadata \
 	aggregates_without_group_by \
-	ora_dbms_output
+	ora_dbms_output \
+	ora_collection
+
+#/* Begin - ReqID:SRS-PLSQL-Collection */
+PG_CPPFLAGS = -I$../src/tstl2cl/include -I$../src/tstl2cl -I$(srcdir) -I$../src/include
+#/* End - ReqID:SRS-PLSQL-Collection */
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

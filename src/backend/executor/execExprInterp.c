@@ -529,6 +529,9 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		/* Begin - ReqID:SRS-MYSQL-SET */
 		&&CASE_EEOP_VARREF,
 		/* End - ReqID:SRS-MYSQL-SET */
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		&&CASE_EEOP_COLLECTYPEREF_SUBSCRIPTS,
+		/* End - ReqID:SRS-PLSQL-Collection */
 		&&CASE_EEOP_LAST
 	};
 
@@ -1973,6 +1976,15 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			EEO_NEXT();
 		}
 		/* End - ReqID:SRS-MYSQL-SET */
+
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		EEO_CASE(EEOP_COLLECTYPEREF_SUBSCRIPTS)
+		{
+			ExecEvalCollectionSubscriptingRefFetch(state, op);
+			EEO_NEXT();
+		}
+		/* End - ReqID:SRS-PLSQL-Collection */
+
 
 		EEO_CASE(EEOP_LAST)
 		{
@@ -4703,3 +4715,20 @@ mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid)
 	return retdatum;
 }
 /* End - ReqID:SRS-MYSQL-SET */
+
+/* Begin - ReqID:SRS-PLSQL-Collection */
+/*
+ * fetch the collection element value
+ */
+void
+ExecEvalCollectionSubscriptingRefFetch(ExprState *state, ExprEvalStep *op)
+{
+	SubscriptingRefState *sbsrefstate = op->d.sbsref.state;
+
+	if (collection_funcs.loadstate != LOADED)
+		elog(ERROR, "collection functions have not been loaded");
+
+	*op->resvalue = collection_funcs.CollectypeElementRef(*op->resvalue, sbsrefstate->numctindex,
+								sbsrefstate->ctindex, op->resnull);
+}
+/* End - ReqID:SRS-PLSQL-Collection */

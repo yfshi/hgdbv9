@@ -166,6 +166,12 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 			strcmp(lastname, "rowcount") == 0))
 			return var;
 
+		/* Begin - ReqID:SRS-PLSQL-Collection */
+		/* it maybe pakage.collect_var.method */
+		if (IS_COLLECTOID(var->datatype->typoid))
+			return NULL;
+		/* End - ReqID:SRS-PLSQL-Collection */
+
 		elog(ERROR, "\"%s\" is scalar variable", parse_first_name);
 	}
 	/* only row or record, cursorvar, then name doesn't match */
@@ -189,7 +195,8 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 		nse->itemtype == PLISQL_NSTYPE_SUBPROC_PROC) &&
 		(flags != PACKAGE_PARSE_FUNC &&
 		flags != PACKAGE_PARSE_PROC &&
-		flags != PACKAGE_PARSE_ENTRY))
+		flags != PACKAGE_PARSE_ENTRY) &&
+		!missing_ok /* ReqID:SRS-PLSQL-Collection */)
 		elog(ERROR, "\"%s\" is a function or procedure", parse_first_name);
 
 	switch (nse->itemtype)

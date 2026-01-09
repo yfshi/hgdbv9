@@ -19,6 +19,7 @@
 #include "access/toast_internals.h"
 #include "common/int.h"
 #include "common/pg_lzcompress.h"
+#include "funcapi.h"	/* ReqID:SRS-PLSQL-Collection */
 #include "utils/expandeddatum.h"
 #include "utils/rel.h"
 
@@ -45,6 +46,16 @@ struct varlena *
 detoast_external_attr(struct varlena *attr)
 {
 	struct varlena *result;
+
+	/* Begin - ReqID:SRS-PLSQL-Collection */
+	if (VARATT_IS_EXTERNAL_COLLECT(attr))
+	{
+		if (collection_funcs.loadstate != LOADED)
+			elog(ERROR, "collection functions have not been loaded");
+
+		return (struct varlena *) DatumGetPointer(collection_funcs.CopyCollectypeDatum(PointerGetDatum(attr)));
+	}
+	/* End - ReqID:SRS-PLSQL-Collection */
 
 	if (VARATT_IS_EXTERNAL_ONDISK(attr))
 	{

@@ -295,6 +295,12 @@ plisql_parse_ora_rec_var(PLiSQL_datum **datums,
 					strcmp(lastname, "rowcount") == 0))
 					return datum;
 
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				if (IS_COLLECTOID(var->datatype->typoid) &&
+					is_collect_methodname(lastname))
+					return NULL;		
+				/* End - ReqID:SRS-PLSQL-Collection */
+
 				if (noError)
 					elog(ERROR, "\"%s\" is a scalar variable", parse_name);
 				return NULL;
@@ -736,3 +742,138 @@ if (num_nested - record_begin_pos > PLISQL_MAXNUM_NESTED_RECORD)
 		errmsg("The maximum number of layers that record can nest is %d", PLISQL_MAXNUM_NESTED_RECORD)));
 }
 /* End - BUG#Z1322 */
+
+/* Begin - ReqID:SRS-PLSQL-Collection */
+/*
+ * get the datatype of a record filed name
+ */
+PLiSQL_type *
+get_record_field_type(PLiSQL_type *data_type, char *name)
+{
+	PLiSQL_ora_record_type *ora_rec_type = (PLiSQL_ora_record_type *) data_type;
+	ListCell	*lc;
+
+	foreach(lc, ora_rec_type->args)
+	{
+		PLiSQL_ora_record_argitem	*argitem = (PLiSQL_ora_record_argitem*)lfirst(lc);
+
+		 if (strcmp(name, argitem->argname) == 0)
+			return argitem->type;
+	}
+
+	return NULL;
+}
+
+/*
+ * get the datum according the idents
+ */
+PLwdatum *
+plisql_get_ora_record_field(PLiSQL_datum *datum,
+					List *idents,
+					int nlen,
+					int nth,
+					int loc)
+{
+	PLiSQL_row	*ora_rec;
+	int 		i;
+	char		*word;
+	PLwdatum 	*wdatum;
+
+	ora_rec = (PLiSQL_row *) datum;
+	word = strVal(list_nth(idents, nth));
+	wdatum = palloc0(sizeof(PLwdatum));
+
+	for (i = 0; i < ora_rec->nfields; i++)
+	{
+		if (ora_rec->fieldnames[i] &&
+			pg_strcasecmp(ora_rec->fieldnames[i], word) == 0)
+		{
+			PLiSQL_datum	*datum;
+
+			datum = plisql_Datums[ora_rec->varnos[i]];
+			if (datum->dtype == PLISQL_DTYPE_ORA_RECORD)
+			{
+				if (nth == nlen - 1)
+				{
+					wdatum->datum = datum;
+					wdatum->ident = NULL;
+					wdatum->quoted = false; /* not used */
+					wdatum->idents = idents;
+					return wdatum;
+				}
+				else
+				{
+					nth++;
+					pfree(wdatum);
+					return plisql_get_ora_record_field(datum, idents, nlen, nth, loc);
+				}
+			}
+			else if (datum->dtype == PLISQL_DTYPE_REC)
+			{
+				if (nth == nlen - 1)
+				{
+					wdatum->datum = datum;
+					wdatum->ident = NULL;
+					wdatum->quoted = false; /* not used */
+					wdatum->idents = idents;
+					return wdatum;
+				}
+				else
+				{
+
+					PLiSQL_rec *rec = (PLiSQL_rec *)datum;
+					int 		i;
+
+					nth++;
+					word = strVal(list_nth(idents, nth));
+
+					/* search for a datum referencing this field */
+					i = rec->firstfield;
+					while (i >= 0)
+					{
+						PLiSQL_recfield *fld = (PLiSQL_recfield *) plisql_Datums[i];
+
+						Assert(fld->dtype == PLISQL_DTYPE_RECFIELD);
+
+						if (strcmp(fld->fieldname, word) == 0 &&
+							nth == nlen - 1)
+						{
+							wdatum->datum = (PLiSQL_datum *)fld;
+							wdatum->ident = NULL;
+							wdatum->quoted = false; /* not used */
+							wdatum->idents = idents;
+							return wdatum;
+						}
+
+						i = fld->nextfield;
+					}
+
+				}
+			}
+			else if (datum->dtype == PLISQL_DTYPE_VAR &&
+				((PLiSQL_var *)datum)->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+				nth == nlen - 2 &&
+				is_collect_methodname(strVal(list_nth(idents, nth + 1))))
+			{
+				pfree(wdatum);
+				return NULL;
+			}
+			else if (nth == nlen - 1)
+			{
+				wdatum->datum = datum;
+				wdatum->ident = NULL;
+				wdatum->quoted = false; /* not used */
+				wdatum->idents = idents;
+				return wdatum;
+			}
+			else
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					plisql_scanner_errposition(loc)));
+		}
+	}
+	pfree(wdatum);
+
+	return NULL;
+}
+/* End - ReqID:SRS-PLSQL-Collection */

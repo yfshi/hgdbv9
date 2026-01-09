@@ -942,6 +942,11 @@ plisql_free_function_memory(PLiSQL_function *func,
 			case PLISQL_DTYPE_ORA_RECORD:
 				break;
 			/* End - ReqID:SRS-PLSQL-RECORD */
+			/* Begin - ReqID:SRS-PLSQL-Collection */
+			case PLISQL_DTYPE_COLLECT_ARRAYELEM:
+				free_expr(((PLiSQL_arrayelem *) d)->subscript);
+				break;
+			/* End - ReqID:SRS-PLSQL-Collection */
 			default:
 				elog(ERROR, "unrecognized data type: %d", d->dtype);
 		}
