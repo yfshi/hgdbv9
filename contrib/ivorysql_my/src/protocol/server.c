@@ -76,6 +76,7 @@ static TypeItem type_items[] = {
     {"int8", 		MYSQL_TYPE_LONGLONG, 	INT8OID, 		0, 				0},
 	{"uint1", 		MYSQL_TYPE_TINY, 		UINT1OID, 		UNSIGNED_FLAG, 	0},
 	{"uint2", 		MYSQL_TYPE_SHORT, 		UINT2OID, 		UNSIGNED_FLAG, 	0},
+	{"uint3", 		MYSQL_TYPE_INT24, 		UINT3OID, 		UNSIGNED_FLAG, 	0},
 	{"uint4", 		MYSQL_TYPE_LONG, 		UINT4OID, 		UNSIGNED_FLAG, 	0},
     {"uint8", 		MYSQL_TYPE_LONGLONG, 	UINT8OID, 		UNSIGNED_FLAG, 	0},
 	{"oid", 		MYSQL_TYPE_LONG, 		OIDOID,			UNSIGNED_FLAG, 	0},

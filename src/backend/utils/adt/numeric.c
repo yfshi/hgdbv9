@@ -527,11 +527,18 @@ static Numeric make_result_opt_error(const NumericVar *var, bool *error);
 static void apply_typmod(NumericVar *var, int32 typmod);
 static void apply_typmod_special(Numeric num, int32 typmod);
 
+static bool numericvar_to_int8(const NumericVar *var, int8 *result);
+static bool numericvar_to_int16(const NumericVar *var, int16 *result);
 static bool numericvar_to_int32(const NumericVar *var, int32 *result);
 static bool numericvar_to_int64(const NumericVar *var, int64 *result);
 static void int64_to_numericvar(int64 val, NumericVar *var);
 static void uint64_to_numericvar(uint64 val, NumericVar *var);
 static bool numericvar_to_uint64(const NumericVar *var, uint64 *result);
+static bool numericvar_to_uint32(const NumericVar *var, uint32 *result);
+static bool numericvar_to_uint24(const NumericVar *var, uint32 *result);
+static bool numericvar_to_uint16(const NumericVar *var, uint16 *result);
+static bool numericvar_to_uint8(const NumericVar *var, uint8 *result);
+
 #ifdef HAVE_INT128
 static bool numericvar_to_int128(const NumericVar *var, int128 *result);
 static void int128_to_numericvar(int128 val, NumericVar *var);
@@ -4259,6 +4266,22 @@ uint64_to_numeric(uint64 val)
 	return res;
 }
 
+Numeric
+uint32_to_numeric(uint32 val)
+{
+	Numeric		res;
+	NumericVar	result;
+
+	init_var(&result);
+
+	uint64_to_numericvar((uint64) val, &result);
+
+	res = make_result(&result);
+
+	free_var(&result);
+
+	return res;
+}
 
 /*
  * Convert val1/(10**log10val2) to numeric.  This is much faster than normal
@@ -4433,6 +4456,40 @@ numericvar_to_int32(const NumericVar *var, int32 *result)
 
 	/* Down-convert to int4 */
 	*result = (int32) val;
+
+	return true;
+}
+
+static bool
+numericvar_to_int16(const NumericVar *var, int16 *result)
+{
+	int32		val;
+
+	if (!numericvar_to_int32(var, &val))
+		return false;
+
+	if (unlikely(val < PG_INT16_MIN) || unlikely(val > PG_INT16_MAX))
+		return false;
+
+	/* Down-convert to int2 */
+	*result = (int16) val;
+
+	return true;
+}
+
+static bool
+numericvar_to_int8(const NumericVar *var, int8 *result)
+{
+	int16		val;
+
+	if (!numericvar_to_int16(var, &val))
+		return false;
+
+	if (unlikely(val < PG_INT8_MIN) || unlikely(val > PG_INT8_MAX))
+		return false;
+
+	/* Down-convert to int1 */
+	*result = (int8) val;
 
 	return true;
 }
@@ -4802,7 +4859,7 @@ numeric_uint8(PG_FUNCTION_ARGS)
 				// num is integer and no less than INT64_MIN
 				if (x.dscale == 0 && numericvar_to_int64(&x, &tmp))
 				{
-					result = (int64) tmp;
+					result = (uint64) tmp;
 				}
 				else
 				{
@@ -4830,6 +4887,294 @@ numeric_uint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(result);
 }
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+
+Datum
+numeric_uint4(PG_FUNCTION_ARGS)
+{
+	Numeric		num = PG_GETARG_NUMERIC(0);
+	NumericVar	x;
+	uint32		result;
+
+	if (NUMERIC_IS_SPECIAL(num))
+	{
+		if (NUMERIC_IS_NAN(num))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert NaN to %s", "uint4")));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert infinity to %s", "uint4")));
+	}
+
+	/* Convert to variable format and thence to pg_lsn */
+	init_var_from_num(num, &x);
+
+	if (!numericvar_to_uint32(&x, &result))
+	{
+		if (compatible_mode == MYS_MODE)
+		{
+			bool is_insert = CALL_IN_INSERT();
+
+			if (is_insert)
+			{
+				if (numeric_is_neg(num))
+					result = 0;
+				else
+					result = PG_UINT32_MAX;
+
+				ereport(is_strict_mode() ? ERROR : WARNING,
+						(errmsg("Out of range value for column")));
+			}
+			else
+			{
+				int32 tmp;
+				
+				// num is integer and no less than INT32_MIN
+				if (x.dscale == 0 && numericvar_to_int32(&x, &tmp))
+				{
+					result = (uint32) tmp;
+				}
+				else
+				{
+					if (numeric_is_neg(num))
+						result = 0;
+					else
+						result = PG_UINT32_MAX;
+
+					ereport(WARNING,
+							(errmsg("Truncated incorrect DECIMAL value: '%s'",
+									DatumGetCString(DirectFunctionCall1(numeric_out,
+																		PointerGetDatum(num))))));
+				}
+			}
+		}
+		else
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg("unsigned int out of range")));
+		}
+	}
+
+	PG_RETURN_UINT32(result);
+}
+
+Datum
+numeric_uint3(PG_FUNCTION_ARGS)
+{
+	Numeric		num = PG_GETARG_NUMERIC(0);
+	NumericVar	x;
+	uint32		result;
+
+	if (NUMERIC_IS_SPECIAL(num))
+	{
+		if (NUMERIC_IS_NAN(num))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert NaN to %s", "uint3")));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert infinity to %s", "uint3")));
+	}
+
+	/* Convert to variable format and thence to pg_lsn */
+	init_var_from_num(num, &x);
+
+	if (!numericvar_to_uint24(&x, &result))
+	{
+		if (compatible_mode == MYS_MODE)
+		{
+			bool is_insert = CALL_IN_INSERT();
+
+			if (is_insert)
+			{
+				if (numeric_is_neg(num))
+					result = 0;
+				else
+					result = PG_UINT24_MAX;
+
+				ereport(is_strict_mode() ? ERROR : WARNING,
+						(errmsg("Out of range value for column")));
+			}
+			else
+			{
+				int32 tmp;
+				
+				// num is integer and no less than INT32_MIN
+				if (x.dscale == 0 && numericvar_to_int32(&x, &tmp))
+				{
+					result = (uint32) tmp;
+				}
+				else
+				{
+					if (numeric_is_neg(num))
+						result = 0;
+					else
+						result = PG_UINT24_MAX;
+
+					ereport(WARNING,
+							(errmsg("Truncated incorrect DECIMAL value: '%s'",
+									DatumGetCString(DirectFunctionCall1(numeric_out,
+																		PointerGetDatum(num))))));
+				}
+			}
+		}
+		else
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg("unsigned mediumint out of range")));
+		}
+	}
+
+	PG_RETURN_UINT32(result);
+}
+
+Datum
+numeric_uint2(PG_FUNCTION_ARGS)
+{
+	Numeric		num = PG_GETARG_NUMERIC(0);
+	NumericVar	x;
+	uint16		result;
+
+	if (NUMERIC_IS_SPECIAL(num))
+	{
+		if (NUMERIC_IS_NAN(num))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert NaN to %s", "uint2")));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert infinity to %s", "uint2")));
+	}
+
+	/* Convert to variable format and thence to pg_lsn */
+	init_var_from_num(num, &x);
+
+	if (!numericvar_to_uint16(&x, &result))
+	{
+		if (compatible_mode == MYS_MODE)
+		{
+			bool is_insert = CALL_IN_INSERT();
+
+			if (is_insert)
+			{
+				if (numeric_is_neg(num))
+					result = 0;
+				else
+					result = PG_UINT16_MAX;
+
+				ereport(is_strict_mode() ? ERROR : WARNING,
+						(errmsg("Out of range value for column")));
+			}
+			else
+			{
+				int16 tmp;
+				
+				// num is integer and no less than INT16_MIN
+				if (x.dscale == 0 && numericvar_to_int16(&x, &tmp))
+				{
+					result = (uint16) tmp;
+				}
+				else
+				{
+					if (numeric_is_neg(num))
+						result = 0;
+					else
+						result = PG_UINT16_MAX;
+
+					ereport(WARNING,
+							(errmsg("Truncated incorrect DECIMAL value: '%s'",
+									DatumGetCString(DirectFunctionCall1(numeric_out,
+																		PointerGetDatum(num))))));
+				}
+			}
+		}
+		else
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg("unsigned smallint out of range")));
+		}
+	}
+
+	PG_RETURN_UINT16(result);
+}
+
+Datum
+numeric_uint1(PG_FUNCTION_ARGS)
+{
+	Numeric		num = PG_GETARG_NUMERIC(0);
+	NumericVar	x;
+	uint8		result;
+
+	if (NUMERIC_IS_SPECIAL(num))
+	{
+		if (NUMERIC_IS_NAN(num))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert NaN to %s", "uint1")));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert infinity to %s", "uint1")));
+	}
+
+	/* Convert to variable format and thence to pg_lsn */
+	init_var_from_num(num, &x);
+
+	if (!numericvar_to_uint8(&x, &result))
+	{
+		if (compatible_mode == MYS_MODE)
+		{
+			bool is_insert = CALL_IN_INSERT();
+
+			if (is_insert)
+			{
+				if (numeric_is_neg(num))
+					result = 0;
+				else
+					result = PG_UINT8_MAX;
+
+				ereport(is_strict_mode() ? ERROR : WARNING,
+						(errmsg("Out of range value for column")));
+			}
+			else
+			{
+				int8 tmp;
+				
+				// num is integer and no less than INT8_MIN
+				if (x.dscale == 0 && numericvar_to_int8(&x, &tmp))
+				{
+					result = (uint8) tmp;
+				}
+				else
+				{
+					if (numeric_is_neg(num))
+						result = 0;
+					else
+						result = PG_UINT8_MAX;
+
+					ereport(WARNING,
+							(errmsg("Truncated incorrect DECIMAL value: '%s'",
+									DatumGetCString(DirectFunctionCall1(numeric_out,
+																		PointerGetDatum(num))))));
+				}
+			}
+		}
+		else
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg("unsigned tinyint out of range")));
+		}
+	}
+
+	PG_RETURN_UINT8(result);
+}
 
 /* ----------------------------------------------------------------------
  *
@@ -8239,6 +8584,70 @@ numericvar_to_uint64(const NumericVar *var, uint64 *result)
 	free_var(&rounded);
 
 	*result = val;
+
+	return true;
+}
+
+static bool
+numericvar_to_uint32(const NumericVar *var, uint32 *result)
+{
+	uint64	t_result;
+
+	if (!numericvar_to_uint64(var, &t_result))
+		return false;
+
+	if (t_result > PG_UINT32_MAX)
+		return false;
+
+	*result = (uint32) t_result;
+
+	return true;
+}
+
+static bool
+numericvar_to_uint24(const NumericVar *var, uint32 *result)
+{
+	uint64	t_result;
+
+	if (!numericvar_to_uint64(var, &t_result))
+		return false;
+
+	if (t_result > PG_UINT24_MAX)
+		return false;
+
+	*result = (uint32) t_result;
+
+	return true;
+}
+
+static bool
+numericvar_to_uint16(const NumericVar *var, uint16 *result)
+{
+	uint64	t_result;
+
+	if (!numericvar_to_uint64(var, &t_result))
+		return false;
+
+	if (t_result > PG_UINT16_MAX)
+		return false;
+
+	*result = (uint16) t_result;
+
+	return true;
+}
+
+static bool
+numericvar_to_uint8(const NumericVar *var, uint8 *result)
+{
+	uint64	t_result;
+
+	if (!numericvar_to_uint64(var, &t_result))
+		return false;
+
+	if (t_result > PG_UINT8_MAX)
+		return false;
+
+	*result = (uint8) t_result;
 
 	return true;
 }

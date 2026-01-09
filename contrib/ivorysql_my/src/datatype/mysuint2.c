@@ -57,8 +57,9 @@ PG_FUNCTION_INFO_V1(mysuint2_typmodin);
 PG_FUNCTION_INFO_V1(mysuint2_typmodout);
 PG_FUNCTION_INFO_V1(mysuint2_scale);
 
-PG_FUNCTION_INFO_V1(int_mysuint2);
-PG_FUNCTION_INFO_V1(numeric_mysuint2);
+PG_FUNCTION_INFO_V1(int8_uint2);
+PG_FUNCTION_INFO_V1(int4_uint2);
+PG_FUNCTION_INFO_V1(int2_uint2);
 PG_FUNCTION_INFO_V1(boolean_mysuint2);
 
 PG_FUNCTION_INFO_V1(mysuint2_eq);
@@ -330,7 +331,7 @@ Datum mysuint2_scale(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT32(num);
 }
 
-Datum int_mysuint2(PG_FUNCTION_ARGS)
+Datum int8_uint2(PG_FUNCTION_ARGS)
 {
 	int64 val1 = PG_GETARG_INT64(0);
 
@@ -344,22 +345,32 @@ Datum int_mysuint2(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT32(val1);
 }
 
-Datum numeric_mysuint2(PG_FUNCTION_ARGS)
+Datum int4_uint2(PG_FUNCTION_ARGS)
 {
-	Numeric num = PG_GETARG_NUMERIC(0);
-	uint32 val2 = 0;
-	int64 val1 = 0;
+	int32 val1 = PG_GETARG_INT64(0);
 
-	val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(num)));
 	if (val1 < 0 || val1 > PG_UINT16_MAX)
 	{
 		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
 		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
 		val1 = val1 < 0 ? 0 : PG_UINT16_MAX;
 	}
-	val2 = val1;
 
-	PG_RETURN_UINT32(val2);
+	PG_RETURN_UINT32(val1);
+}
+
+Datum int2_uint2(PG_FUNCTION_ARGS)
+{
+	int16 val1 = PG_GETARG_INT64(0);
+
+	if (val1 < 0 || val1 > PG_UINT16_MAX)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+		val1 = val1 < 0 ? 0 : PG_UINT16_MAX;
+	}
+
+	PG_RETURN_UINT32(val1);
 }
 
 Datum boolean_mysuint2(PG_FUNCTION_ARGS)

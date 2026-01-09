@@ -91,51 +91,45 @@ WHERE oid = 9203;
 UPDATE pg_type
 SET typmodout=(SELECT oid FROM pg_proc WHERE proname='mysuint1_typmodout')
 WHERE oid = 9203;
----------- Compatible MySQL Cast ----------
-CREATE FUNCTION ivymy.int_mysuint1(pg_catalog.int8)
+
+CREATE FUNCTION ivymy.int8_uint1(pg_catalog.int8)
 RETURNS ivymy.uint1
-AS 'MODULE_PATHNAME','int_mysuint1'
+AS 'MODULE_PATHNAME','int8_uint1'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
 CREATE CAST (pg_catalog.int8 AS ivymy.uint1)
-WITH FUNCTION ivymy.int_mysuint1(pg_catalog.int8)
+WITH FUNCTION ivymy.int8_uint1(pg_catalog.int8)
 AS ASSIGNMENT;
 
-
-CREATE FUNCTION ivymy.int_mysuint1(pg_catalog.int2)
+CREATE FUNCTION ivymy.int4_uint1(pg_catalog.int4)
 RETURNS ivymy.uint1
-AS 'MODULE_PATHNAME','int_mysuint1'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-STABLE;
-CREATE CAST (pg_catalog.int2 AS ivymy.uint1)
-WITH FUNCTION ivymy.int_mysuint1(pg_catalog.int2)
-AS ASSIGNMENT;
-
-CREATE FUNCTION ivymy.int_mysuint1(pg_catalog.int4)
-RETURNS ivymy.uint1
-AS 'MODULE_PATHNAME','int_mysuint1'
+AS 'MODULE_PATHNAME','int4_uint1'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.uint1)
-WITH FUNCTION ivymy.int_mysuint1(pg_catalog.int4)
+WITH FUNCTION ivymy.int4_uint1(pg_catalog.int4)
 AS ASSIGNMENT;
 
-CREATE FUNCTION ivymy.numeric_mysuint1(pg_catalog.numeric)
+CREATE FUNCTION ivymy.int2_uint1(pg_catalog.int2)
 RETURNS ivymy.uint1
-AS 'MODULE_PATHNAME','numeric_mysuint1'
+AS 'MODULE_PATHNAME','int2_uint1'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
+CREATE CAST (pg_catalog.int2 AS ivymy.uint1)
+WITH FUNCTION ivymy.int2_uint1(pg_catalog.int2)
+AS ASSIGNMENT;
+
 CREATE CAST (pg_catalog.numeric AS ivymy.uint1)
-WITH FUNCTION ivymy.numeric_mysuint1(pg_catalog.numeric)
+WITH FUNCTION numeric_uint1(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
 -- to bpchar

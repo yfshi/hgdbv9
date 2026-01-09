@@ -344,9 +344,10 @@ ORDER BY 2;
  6041 | text_to_enum
  6033 | uint1_to_enum
  6035 | uint2_to_enum
+ 6052 | uint3_to_enum
  6037 | uint4_to_enum
  6039 | uint8_to_enum
-(22 rows)
+(23 rows)
 
 -- anyrange and anymultirange are tighter than the rest, can only resolve
 -- from each other
@@ -1025,6 +1026,7 @@ WHERE c.castmethod = 'b' AND
  pg_ndistinct      | bytea             |        0 | i
  pg_dependencies   | bytea             |        0 | i
  pg_mcv_list       | bytea             |        0 | i
+ uint3             | uint4             |        0 | i
  tinyblob          | bytea             |        0 | i
  blob              | bytea             |        0 | i
  mediumblob        | bytea             |        0 | i
@@ -1039,7 +1041,7 @@ WHERE c.castmethod = 'b' AND
  ivy_hex           | longblob          |        0 | a
  ivy_hex           | binary            |        0 | a
  ivy_hex           | varbinary         |        0 | a
-(26 rows)
+(27 rows)
 
 -- **************** pg_conversion ****************
 -- Look for illegal values in pg_conversion fields.

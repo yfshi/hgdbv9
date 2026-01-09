@@ -1520,7 +1520,22 @@ enum_to_uint2(PG_FUNCTION_ARGS)
 }
 
 Datum
-enum_to_uint4(PG_FUNCTION_ARGS)
+uint3_to_enum(PG_FUNCTION_ARGS)
+{
+	uint32	num = PG_GETARG_UINT32(0);
+	Oid		enumtypeoid = PG_GETARG_OID(1);
+	Oid		enumelenmentoid = InvalidOid;
+
+	if (!number_2_enum_interel(enumtypeoid, num, &enumelenmentoid))
+	{
+		PG_RETURN_NULL();
+	}
+	
+	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_uint3(PG_FUNCTION_ARGS)
 {
 	Oid oid = PG_GETARG_OID(0);
 	uint32 val;
@@ -1550,6 +1565,24 @@ uint4_to_enum(PG_FUNCTION_ARGS)
 	}
 	
 	PG_RETURN_OID(enumelenmentoid);
+}
+
+Datum
+enum_to_uint4(PG_FUNCTION_ARGS)
+{
+	Oid oid = PG_GETARG_OID(0);
+	uint32 val;
+
+	if (oid == InvalidOid)
+	{
+		val = 0;
+	}
+	else
+	{
+		val = (uint32) get_enum_sortorder(oid);
+	}
+
+	PG_RETURN_UINT32(val);
 }
 
 Datum

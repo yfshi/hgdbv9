@@ -92,42 +92,41 @@ UPDATE pg_type
 SET typmodout=(SELECT oid FROM pg_proc WHERE proname='mysuint8_typmodout')
 WHERE oid = 9219;
 
----------- Compatible MySQL Cast ----------
-CREATE FUNCTION ivymy.int_uint8(pg_catalog.int8, int, bool, int8)
+-- Compatible MySQL Cast
+CREATE FUNCTION ivymy.int8_uint8(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','int_uint8'
+AS 'MODULE_PATHNAME','int8_uint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.uint8)
-WITH FUNCTION ivymy.int_uint8(pg_catalog.int8, int, bool, int8)
+WITH FUNCTION ivymy.int8_uint8(pg_catalog.int8, int, bool, int8)
 AS ASSIGNMENT;
 
-
-CREATE FUNCTION ivymy.int_uint8(pg_catalog.int2, int, bool, int8)
+CREATE FUNCTION ivymy.int4_uint8(pg_catalog.int4, int, bool, int8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','int_uint8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-STABLE;
-
-CREATE CAST (pg_catalog.int2 AS ivymy.uint8)
-WITH FUNCTION ivymy.int_uint8(pg_catalog.int2, int, bool, int8)
-AS ASSIGNMENT;
-
-CREATE FUNCTION ivymy.int_uint8(pg_catalog.int4, int, bool, int8)
-RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','int_uint8'
+AS 'MODULE_PATHNAME','int4_uint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.uint8)
-WITH FUNCTION ivymy.int_uint8(pg_catalog.int4, int, bool, int8)
+WITH FUNCTION ivymy.int4_uint8(pg_catalog.int4, int, bool, int8)
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.int2_uint8(pg_catalog.int2, int, bool, int8)
+RETURNS ivymy.uint8
+AS 'MODULE_PATHNAME','int2_uint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+STABLE;
+
+CREATE CAST (pg_catalog.int2 AS ivymy.uint8)
+WITH FUNCTION ivymy.int2_uint8(pg_catalog.int2, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.numeric AS ivymy.uint8)

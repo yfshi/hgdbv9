@@ -69,6 +69,26 @@ insert into t1 values('111.') ;
 select * from t1;
 drop table t1;
 
+CREATE TABLE t4 (a int UNSIGNED, b numeric);
+insert into t4 values (4294967295, 11122333.8080666);
+insert into t4 values (100200650, 123456.8742);
+insert into t4 values (100200650, -123456.8742);
+select  a / b from t4;
+select  a % b from t4;
+select a::numeric + 1500.123456 from t4;
+select cast(a as numeric(20,8)) from t4;
+select convert(a, numeric(20,8)) from t4;
+drop table t4;
+
+select cast(50 as uint4);
+select cast(4294967295 as uint4);
+select cast(9999999999 as uint4);
+select cast(123.456 as uint4);
+select cast(0 as uint4);
+select cast(-7200.145 as uint4);
+select cast(-2147483648 as uint4);
+select cast(-9999999999 as uint4);
+
 create table t1(c1 integer UNSIGNED);
 insert into t1 values(1.4);
 insert into t1 values(1.5);
@@ -305,6 +325,60 @@ insert into t1 values(-2147483649);
 insert into t1 values(4294967295);
 select * from t1;
 drop table t1;
+
+--numeric -> uint4
+select 2000.49999::uint4;
+select 2000.5::uint4;
+select 4294967294.3::uint4;
+select 4294967296.1::uint4;
+select 999999999999999.0205::uint4;
+select (-0.02)::uint4;
+select (-68.753951)::uint4;
+select (-2147483647.92)::uint4;
+select (-2147483649.37)::uint4;
+select (-999999999999999.0205)::uint4;
+
+set SQL_MODE='TRADITIONAL';
+CREATE TABLE tb4 (a numeric, b int UNSIGNED);
+insert into tb4 values (11223344.556677, 99999999);
+insert into tb4 values (0.62, 100);
+insert into tb4 values (7.05, 1000.123);
+insert into tb4 values (7.05, 4294967294.3);
+insert into tb4 values (7.05, 4294967295.0);
+insert into tb4 values (7.05, 4294967296.1);
+insert into tb4 values (7.05, 999999999999999.0205);
+insert into tb4 values (120.007, 0);
+insert into tb4 values (9.36, -50000.753951);
+insert into tb4 values (9.36, -2147483647.92);
+insert into tb4 values (9.36, -2147483648.0);
+insert into tb4 values (9.36, -2147483649.37);
+insert into tb4 values (9.36, -999999999999999.0205);
+select * from tb4;
+select cast(a as uint4) from tb4;
+select convert(a, uint4) from tb4;
+select a::uint4 + b from tb4;
+drop table tb4;
+
+set SQL_MODE='';
+CREATE TABLE tb4 (a numeric, b int UNSIGNED);
+insert into tb4 values (11223344.556677, 99999999);
+insert into tb4 values (0.62, 100);
+insert into tb4 values (7.05, 1000.123);
+insert into tb4 values (7.05, 4294967294.3);
+insert into tb4 values (7.05, 4294967295.0);
+insert into tb4 values (7.05, 4294967296.1);
+insert into tb4 values (7.05, 999999999999999.0205);
+insert into tb4 values (120.007, 0);
+insert into tb4 values (9.36, -50000.753951);
+insert into tb4 values (9.36, -2147483647.92);
+insert into tb4 values (9.36, -2147483648.0);
+insert into tb4 values (9.36, -2147483649.37);
+insert into tb4 values (9.36, -999999999999999.0205);
+select * from tb4;
+select cast(a as uint4) from tb4;
+select convert(a, uint4) from tb4;
+select a::uint4 + b from tb4;
+drop table tb4;
 
 set SQL_MODE to default;
 -- oper

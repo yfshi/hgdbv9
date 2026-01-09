@@ -55,7 +55,9 @@ PG_FUNCTION_INFO_V1(mysuint8_typmodin);
 PG_FUNCTION_INFO_V1(mysuint8_typmodout);
 PG_FUNCTION_INFO_V1(mysuint8_scale);
 
-PG_FUNCTION_INFO_V1(int_uint8);
+PG_FUNCTION_INFO_V1(int8_uint8);
+PG_FUNCTION_INFO_V1(int4_uint8);
+PG_FUNCTION_INFO_V1(int2_uint8);
 PG_FUNCTION_INFO_V1(boolean_uint8);
 PG_FUNCTION_INFO_V1(uint8_int2);
 PG_FUNCTION_INFO_V1(uint8_int4);
@@ -348,7 +350,7 @@ mysuint8_scale(PG_FUNCTION_ARGS)
 }
 
 Datum
-int_uint8(PG_FUNCTION_ARGS)
+int8_uint8(PG_FUNCTION_ARGS)
 {
 	int64		val1 = PG_GETARG_INT64(0);
 	uint64		val2 = val1;
@@ -365,6 +367,44 @@ int_uint8(PG_FUNCTION_ARGS)
 		}
 	}
 	/* End - SRS-MYSQL-HEX-LITERAL */
+
+	PG_RETURN_UINT64(val2);
+}
+
+Datum
+int4_uint8(PG_FUNCTION_ARGS)
+{
+	int32		val1 = PG_GETARG_INT32(0);
+	uint64		val2 = val1;
+	bool		is_insert = CALL_IN_INSERT();
+
+	if (is_insert)
+	{
+		if (val1 < 0)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = 0;
+		}
+	}
+
+	PG_RETURN_UINT64(val2);
+}
+
+Datum
+int2_uint8(PG_FUNCTION_ARGS)
+{
+	int16		val1 = PG_GETARG_INT16(0);
+	uint64		val2 = val1;
+	bool		is_insert = CALL_IN_INSERT();
+
+	if (is_insert)
+	{
+		if (val1 < 0)
+		{
+			ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Out of range value for column")));
+			val2 = 0;
+		}
+	}
 
 	PG_RETURN_UINT64(val2);
 }

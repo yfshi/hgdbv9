@@ -27,6 +27,7 @@ OBJS = \
 	src/datatype/mysint8.o \
 	src/datatype/mysuint1.o \
 	src/datatype/mysuint2.o \
+	src/datatype/mysuint3.o \
 	src/datatype/mysuint4.o \
 	src/datatype/mysuint8.o \
 	src/datatype/mysuint1_index.o \
