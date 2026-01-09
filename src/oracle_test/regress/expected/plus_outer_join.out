@@ -4114,12 +4114,12 @@ create view idx_bug584 as
    where t1.type1 = t2.type2(+) and t1.type11 = t2.type22(+)
        and t1.type1 = t3.type3(+) and t1.type11 = t3.type33(+);
 \d+ idx_bug584
-                             View "public.idx_bug584"
- Column |      Type      | Collation | Nullable | Default | Storage  | Description 
---------+----------------+-----------+----------+---------+----------+-------------
- zyfl   | varchar2(4000) |           |          |         | extended | 
+                          View "public.idx_bug584"
+ Column |   Type   | Collation | Nullable | Default | Storage  | Description 
+--------+----------+-----------+----------+---------+----------+-------------
+ zyfl   | varchar2 |           |          |         | extended | 
 View definition:
- SELECT 'a'::varchar2(4000) AS zyfl
+ SELECT 'a'::varchar2 AS zyfl
    FROM ( SELECT a_bug584.i AS type1,
             a_bug584.j AS type11
            FROM a_bug584) t1

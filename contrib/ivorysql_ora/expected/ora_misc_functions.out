@@ -81,10 +81,10 @@ drop table tmp_decode;
 create table tmp_decode as
   select decode('123', 123, 'haha', '456', timestamp'2018-08-1 00:00:00') as b from dual;
 \d tmp_decode
-                Table "public.tmp_decode"
- Column |      Type      | Collation | Nullable | Default 
---------+----------------+-----------+----------+---------
- b      | varchar2(4000) |           |          | 
+             Table "public.tmp_decode"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ b      | varchar2 |           |          | 
 
 drop table tmp_decode;
 --return type is date
@@ -140,10 +140,10 @@ drop table tmp_decode;
 create table tmp_decode as
   select decode('123', 'abc', 'haha', '456', timestamp'2018-08-1 00:00:00') as b from dual;
 \d tmp_decode
-                Table "public.tmp_decode"
- Column |      Type      | Collation | Nullable | Default 
---------+----------------+-----------+----------+---------
- b      | varchar2(4000) |           |          | 
+             Table "public.tmp_decode"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ b      | varchar2 |           |          | 
 
 drop table tmp_decode;
 --the second arg's type is date
@@ -4202,11 +4202,11 @@ select * from test_listagg;
 (3 rows)
 
 select pg_get_viewdef('test_listagg');
-                                                                   pg_get_viewdef                                                                   
-----------------------------------------------------------------------------------------------------------------------------------------------------
-  SELECT employee.department_id,                                                                                                                   +
-     "listagg"((employee.employee_name COLLATE "binary"), ', '::varchar2(4000) ORDER BY (employee.employee_name COLLATE "binary")) AS employee_list+
-    FROM employee                                                                                                                                  +
+                                                                pg_get_viewdef                                                                
+----------------------------------------------------------------------------------------------------------------------------------------------
+  SELECT employee.department_id,                                                                                                             +
+     "listagg"((employee.employee_name COLLATE "binary"), ', '::varchar2 ORDER BY (employee.employee_name COLLATE "binary")) AS employee_list+
+    FROM employee                                                                                                                            +
    GROUP BY employee.department_id;
 (1 row)
 

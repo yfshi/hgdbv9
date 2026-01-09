@@ -504,10 +504,6 @@ extern PGDLLIMPORT bool ora_global_names;
 extern PGDLLIMPORT bool dblinkrel_schema_use_user;	/* BUG#Z4433 */
 /* End - ReqID:SRS-SQL-DBLINK */
 
-/* Begin - wai BUG#Z00001678 */
-extern int format_max_string_size_len;
-/* End - wai BUG#Z00001678 */
-
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 extern PGDLLIMPORT bool enable_indexhint;

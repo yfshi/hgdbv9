@@ -448,7 +448,7 @@ EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 t1 WHERE t1.c1 = 101 AND t1.c6 = 
 -----------------------------------------------------------------------------------------------------------------------
  Foreign Scan on public.ft1 t1
    Output: c1, c2, c3, c4, c5, c6, c7, c8
-   Filter: (((t1.c7)::char(10) >= '1'::oracharbyte) AND ((t1.c6)::varchar2(10) = '1'::varchar2(4000)))
+   Filter: (((t1.c7)::char(10) >= '1'::oracharbyte) AND ((t1.c6)::varchar2(10) = '1'::varchar2))
    Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1" WHERE (("C 1" OPERATOR(sys.=) '101'::number))
 (4 rows)
 
@@ -826,7 +826,7 @@ EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 t1 WHERE c6 = E'foo''s\\bar';  --
 -------------------------------------------------------------------------
  Foreign Scan on public.ft1 t1
    Output: c1, c2, c3, c4, c5, c6, c7, c8
-   Filter: ((t1.c6)::varchar2(10) = 'foo''s\bar'::varchar2(4000))
+   Filter: ((t1.c6)::varchar2(10) = 'foo''s\bar'::varchar2)
    Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1"
 (4 rows)
 
@@ -2646,19 +2646,19 @@ SELECT * FROM local_tbl LEFT JOIN (SELECT ft1.*, COALESCE(ft1.c3 || ft2.c3, 'foo
                                                                                                                                                                                                                                    QUERY PLAN                                                                                                                                                                                                                                    
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  LockRows
-   Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::varchar2(4000) || (ft2.c3)::varchar2(4000)), 'foobar'::varchar2(4000))), local_tbl.ctid, ft1.*, ft2.*
+   Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::varchar2 || (ft2.c3)::varchar2), 'foobar'::varchar2)), local_tbl.ctid, ft1.*, ft2.*
    ->  Sort
-         Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::varchar2(4000) || (ft2.c3)::varchar2(4000)), 'foobar'::varchar2(4000))), local_tbl.ctid, ft1.*, ft2.*
+         Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::varchar2 || (ft2.c3)::varchar2), 'foobar'::varchar2)), local_tbl.ctid, ft1.*, ft2.*
          Sort Key: local_tbl.c1
          ->  Hash Left Join
-               Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::varchar2(4000) || (ft2.c3)::varchar2(4000)), 'foobar'::varchar2(4000))), local_tbl.ctid, ft1.*, ft2.*
+               Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::varchar2 || (ft2.c3)::varchar2), 'foobar'::varchar2)), local_tbl.ctid, ft1.*, ft2.*
                Hash Cond: ((local_tbl.c1)::number = ft1.c1)
                ->  Seq Scan on public.local_tbl
                      Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, local_tbl.ctid
                ->  Hash
-                     Output: ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, ft1.*, ft2.*, (COALESCE(((ft1.c3)::varchar2(4000) || (ft2.c3)::varchar2(4000)), 'foobar'::varchar2(4000)))
+                     Output: ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, ft1.*, ft2.*, (COALESCE(((ft1.c3)::varchar2 || (ft2.c3)::varchar2), 'foobar'::varchar2))
                      ->  Foreign Scan
-                           Output: ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, ft1.*, ft2.*, COALESCE(((ft1.c3)::varchar2(4000) || (ft2.c3)::varchar2(4000)), 'foobar'::varchar2(4000))
+                           Output: ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, ft1.*, ft2.*, COALESCE(((ft1.c3)::varchar2 || (ft2.c3)::varchar2), 'foobar'::varchar2)
                            Relations: (public.ft1) INNER JOIN (public.ft2)
                            Remote SQL: SELECT r4."C 1", r4.c2, r4.c3, r4.c4, r4.c5, r4.c6, r4.c7, r4.c8, CASE WHEN (r4.*)::text IS NOT NULL THEN ROW(r4."C 1", r4.c2, r4.c3, r4.c4, r4.c5, r4.c6, r4.c7, r4.c8) END, CASE WHEN (r5.*)::text IS NOT NULL THEN ROW(r5."C 1", r5.c2, r5.c3, r5.c4, r5.c5, r5.c6, r5.c7, r5.c8) END, r5.c3 FROM ("S 1"."T 1" r4 INNER JOIN "S 1"."T 1" r5 ON (((r4."C 1" OPERATOR(sys.=) r5."C 1")) AND ((r4."C 1" OPERATOR(sys.<) '100'::number))))
                            ->  Hash Join
@@ -3399,15 +3399,15 @@ select sum(c2) filter (where c2 in (select c2 from ft1 where c2 < 5)) from ft1;
 -- Ordered-sets within aggregate
 explain (verbose, costs off)
 select c2, rank('10'::pg_catalog.varchar) within group (order by c6), percentile_cont(c2/10::number) within group (order by c1) from ft1 where c2 < 10 group by c2 having percentile_cont(c2/10::number) within group (order by c1) < 500 order by c2;
-                                                                                                                                                                                                    QUERY PLAN                                                                                                                                                                                                     
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                                                                                                                                 QUERY PLAN                                                                                                                                                                                                  
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Sort
-   Output: c2, (rank('10'::varchar2(4000)) WITHIN GROUP (ORDER BY c6)), (percentile_cont(((c2 / '10'::number))::double precision) WITHIN GROUP (ORDER BY ((c1)::double precision)))
+   Output: c2, (rank('10'::varchar2) WITHIN GROUP (ORDER BY c6)), (percentile_cont(((c2 / '10'::number))::double precision) WITHIN GROUP (ORDER BY ((c1)::double precision)))
    Sort Key: ft1.c2
    ->  Foreign Scan
-         Output: c2, (rank('10'::varchar2(4000)) WITHIN GROUP (ORDER BY c6)), (percentile_cont(((c2 / '10'::number))::double precision) WITHIN GROUP (ORDER BY ((c1)::double precision)))
+         Output: c2, (rank('10'::varchar2) WITHIN GROUP (ORDER BY c6)), (percentile_cont(((c2 / '10'::number))::double precision) WITHIN GROUP (ORDER BY ((c1)::double precision)))
          Relations: Aggregate on (public.ft1)
-         Remote SQL: SELECT c2, rank('10'::varchar2(4000)) WITHIN GROUP (ORDER BY c6 ASC NULLS LAST), percentile_cont((c2 OPERATOR(sys./) '10'::number)) WITHIN GROUP (ORDER BY ("C 1") ASC NULLS LAST) FROM "S 1"."T 1" WHERE ((c2 OPERATOR(sys.<) '10'::number)) GROUP BY 1 HAVING ((percentile_cont((c2 OPERATOR(sys./) '10'::number)) WITHIN GROUP (ORDER BY ("C 1") ASC NULLS LAST) < 500::double precision))
+         Remote SQL: SELECT c2, rank('10'::varchar2) WITHIN GROUP (ORDER BY c6 ASC NULLS LAST), percentile_cont((c2 OPERATOR(sys./) '10'::number)) WITHIN GROUP (ORDER BY ("C 1") ASC NULLS LAST) FROM "S 1"."T 1" WHERE ((c2 OPERATOR(sys.<) '10'::number)) GROUP BY 1 HAVING ((percentile_cont((c2 OPERATOR(sys./) '10'::number)) WITHIN GROUP (ORDER BY ("C 1") ASC NULLS LAST) < 500::double precision))
 (7 rows)
 
 select c2, rank('10'::pg_catalog.varchar) within group (order by c6), percentile_cont(c2/10::number) within group (order by c1) from ft1 where c2 < 10 group by c2 having percentile_cont(c2/10::number) within group (order by c1) < 500 order by c2;
@@ -3813,13 +3813,13 @@ ORDER BY ref_0."C 1";
                Index Cond: (ref_0."C 1" < '10'::number)
          ->  Foreign Scan on public.ft1 ref_1
                Output: ref_1.c3, ref_0.c2
-               Filter: ((ref_1.c3)::varchar2(1024) = '00001'::varchar2(4000) COLLATE "binary")
+               Filter: ((ref_1.c3)::varchar2(1024) = '00001'::varchar2 COLLATE "binary")
                Remote SQL: SELECT c3 FROM "S 1"."T 1"
    ->  Materialize
          Output: ref_3.c3
          ->  Foreign Scan on public.ft2 ref_3
                Output: ref_3.c3
-               Filter: ((ref_3.c3)::varchar2(1024) = '00001'::varchar2(4000) COLLATE "binary")
+               Filter: ((ref_3.c3)::varchar2(1024) = '00001'::varchar2 COLLATE "binary")
                Remote SQL: SELECT c3 FROM "S 1"."T 1"
 (17 rows)
 
@@ -4583,36 +4583,36 @@ create foreign table ft3 (f1 varchar2(1024) collate "C", f2 varchar2(1024), f3 v
   server loopback options (table_name 'loct3', use_remote_estimate 'true');
 -- can be sent to remote
 explain (verbose, costs off) select * from ft3 where f1 = 'foo';
-                                              QUERY PLAN                                              
-------------------------------------------------------------------------------------------------------
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
  Foreign Scan on public.ft3
    Output: f1, f2, f3
-   Remote SQL: SELECT f1, f2, f3 FROM public.loct3 WHERE ((f1 OPERATOR(sys.=) 'foo'::varchar2(4000)))
+   Remote SQL: SELECT f1, f2, f3 FROM public.loct3 WHERE ((f1 OPERATOR(sys.=) 'foo'::varchar2))
 (3 rows)
 
 explain (verbose, costs off) select * from ft3 where f1 COLLATE "C" = 'foo';
-                                              QUERY PLAN                                              
-------------------------------------------------------------------------------------------------------
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
  Foreign Scan on public.ft3
    Output: f1, f2, f3
-   Remote SQL: SELECT f1, f2, f3 FROM public.loct3 WHERE ((f1 OPERATOR(sys.=) 'foo'::varchar2(4000)))
+   Remote SQL: SELECT f1, f2, f3 FROM public.loct3 WHERE ((f1 OPERATOR(sys.=) 'foo'::varchar2))
 (3 rows)
 
 explain (verbose, costs off) select * from ft3 where f2 = 'foo';
-                          QUERY PLAN                          
---------------------------------------------------------------
+                       QUERY PLAN                       
+--------------------------------------------------------
  Foreign Scan on public.ft3
    Output: f1, f2, f3
-   Filter: ((ft3.f2)::varchar2(1024) = 'foo'::varchar2(4000))
+   Filter: ((ft3.f2)::varchar2(1024) = 'foo'::varchar2)
    Remote SQL: SELECT f1, f2, f3 FROM public.loct3
 (4 rows)
 
 explain (verbose, costs off) select * from ft3 where f3 = 'foo';
-                         QUERY PLAN                         
-------------------------------------------------------------
+                      QUERY PLAN                      
+------------------------------------------------------
  Foreign Scan on public.ft3
    Output: f1, f2, f3
-   Filter: ((ft3.f3)::varchar2(10) = 'foo'::varchar2(4000))
+   Filter: ((ft3.f3)::varchar2(10) = 'foo'::varchar2)
    Remote SQL: SELECT f1, f2, f3 FROM public.loct3
 (4 rows)
 
@@ -4625,7 +4625,7 @@ explain (verbose, costs off) select * from ft3 f, loct3 l
    Join Filter: ((f.f3)::varchar2(10) = (l.f3)::varchar2(10))
    ->  Index Scan using loct3_f1_key on public.loct3 l
          Output: l.f1, l.f2, l.f3
-         Index Cond: (l.f1 = 'foo'::varchar2(4000))
+         Index Cond: (l.f1 = 'foo'::varchar2)
    ->  Foreign Scan on public.ft3 f
          Output: f.f1, f.f2, f.f3
          Remote SQL: SELECT f1, f2, f3 FROM public.loct3
@@ -4633,38 +4633,38 @@ explain (verbose, costs off) select * from ft3 f, loct3 l
 
 -- can't be sent to remote
 explain (verbose, costs off) select * from ft3 where f1 COLLATE "POSIX" = 'foo';
-                          QUERY PLAN                          
---------------------------------------------------------------
+                       QUERY PLAN                       
+--------------------------------------------------------
  Foreign Scan on public.ft3
    Output: f1, f2, f3
-   Filter: ((ft3.f1)::varchar2(1024) = 'foo'::varchar2(4000))
+   Filter: ((ft3.f1)::varchar2(1024) = 'foo'::varchar2)
    Remote SQL: SELECT f1, f2, f3 FROM public.loct3
 (4 rows)
 
 explain (verbose, costs off) select * from ft3 where f1 = 'foo' COLLATE "C";
-                       QUERY PLAN                       
---------------------------------------------------------
+                    QUERY PLAN                     
+---------------------------------------------------
  Foreign Scan on public.ft3
    Output: f1, f2, f3
-   Filter: (ft3.f1 = 'foo'::varchar2(4000) COLLATE "C")
+   Filter: (ft3.f1 = 'foo'::varchar2 COLLATE "C")
    Remote SQL: SELECT f1, f2, f3 FROM public.loct3
 (4 rows)
 
 explain (verbose, costs off) select * from ft3 where f2 COLLATE "C" = 'foo';
-                          QUERY PLAN                          
---------------------------------------------------------------
- Foreign Scan on public.ft3
-   Output: f1, f2, f3
-   Filter: ((ft3.f2)::varchar2(1024) = 'foo'::varchar2(4000))
-   Remote SQL: SELECT f1, f2, f3 FROM public.loct3
-(4 rows)
-
-explain (verbose, costs off) select * from ft3 where f2 = 'foo' COLLATE "C";
                        QUERY PLAN                       
 --------------------------------------------------------
  Foreign Scan on public.ft3
    Output: f1, f2, f3
-   Filter: (ft3.f2 = 'foo'::varchar2(4000) COLLATE "C")
+   Filter: ((ft3.f2)::varchar2(1024) = 'foo'::varchar2)
+   Remote SQL: SELECT f1, f2, f3 FROM public.loct3
+(4 rows)
+
+explain (verbose, costs off) select * from ft3 where f2 = 'foo' COLLATE "C";
+                    QUERY PLAN                     
+---------------------------------------------------
+ Foreign Scan on public.ft3
+   Output: f1, f2, f3
+   Filter: (ft3.f2 = 'foo'::varchar2 COLLATE "C")
    Remote SQL: SELECT f1, f2, f3 FROM public.loct3
 (4 rows)
 
@@ -4677,7 +4677,7 @@ explain (verbose, costs off) select * from ft3 f, loct3 l
    Join Filter: ((f.f3)::varchar2(10) = (l.f3)::varchar2(10))
    ->  Index Scan using loct3_f1_key on public.loct3 l
          Output: l.f1, l.f2, l.f3
-         Index Cond: (l.f1 = 'foo'::varchar2(4000))
+         Index Cond: (l.f1 = 'foo'::varchar2)
    ->  Foreign Scan on public.ft3 f
          Output: f.f1, f.f2, f.f3
          Remote SQL: SELECT f1, f2, f3 FROM public.loct3
@@ -4696,7 +4696,7 @@ INSERT INTO ft2 (c1,c2,c3) SELECT c1+1000,c2+100, c3 || c3 FROM ft2 LIMIT 20;
    ->  Subquery Scan on "*SELECT*"
          Output: "*SELECT*"."?column?", "*SELECT*"."?column?_1", NULL::integer, "*SELECT*"."?column?_2", NULL::timestamp with time zone, NULL::timestamp(6), NULL::varchar2(10) COLLATE using_nls_comp, 'ft2       '::char(10), NULL::user_enum
          ->  Foreign Scan on public.ft2 ft2_1
-               Output: (ft2_1.c1 + '1000'::number), (ft2_1.c2 + '100'::number), ((ft2_1.c3)::varchar2(4000) || (ft2_1.c3)::varchar2(4000))
+               Output: (ft2_1.c1 + '1000'::number), (ft2_1.c2 + '100'::number), ((ft2_1.c3)::varchar2 || (ft2_1.c3)::varchar2)
                Remote SQL: SELECT "C 1", c2, c3 FROM "S 1"."T 1" LIMIT 20::bigint
 (8 rows)
 
@@ -4713,22 +4713,22 @@ INSERT INTO ft2 (c1,c2,c3)
 INSERT INTO ft2 (c1,c2,c3) VALUES (1104,204,'ddd'), (1105,205,'eee');
 EXPLAIN (verbose, costs off)
 UPDATE ft2 SET c2 = c2 + 300, c3 = c3 || '_update3' WHERE c1 % 10 = 3;              -- can be pushed down
-                                                                                                      QUERY PLAN                                                                                                      
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                                   QUERY PLAN                                                                                                   
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Update on public.ft2
    ->  Foreign Update on public.ft2
-         Remote SQL: UPDATE "S 1"."T 1" SET c2 = (c2 OPERATOR(sys.+) '300'::number), c3 = (c3 OPERATOR(sys.||) '_update3'::varchar2(4000)) WHERE ((("C 1" OPERATOR(sys.%) '10'::number) OPERATOR(sys.=) '3'::number))
+         Remote SQL: UPDATE "S 1"."T 1" SET c2 = (c2 OPERATOR(sys.+) '300'::number), c3 = (c3 OPERATOR(sys.||) '_update3'::varchar2) WHERE ((("C 1" OPERATOR(sys.%) '10'::number) OPERATOR(sys.=) '3'::number))
 (3 rows)
 
 UPDATE ft2 SET c2 = c2 + 300, c3 = c3 || '_update3' WHERE c1 % 10 = 3;
 EXPLAIN (verbose, costs off)
 UPDATE ft2 SET c2 = c2 + 400, c3 = c3 || '_update7' WHERE c1 % 10 = 7 RETURNING *;  -- can be pushed down
-                                                                                                                            QUERY PLAN                                                                                                                            
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                                                         QUERY PLAN                                                                                                                         
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Update on public.ft2
    Output: c1, c2, c3, c4, c5, c6, c7, c8
    ->  Foreign Update on public.ft2
-         Remote SQL: UPDATE "S 1"."T 1" SET c2 = (c2 OPERATOR(sys.+) '400'::number), c3 = (c3 OPERATOR(sys.||) '_update7'::varchar2(4000)) WHERE ((("C 1" OPERATOR(sys.%) '10'::number) OPERATOR(sys.=) '7'::number)) RETURNING "C 1", c2, c3, c4, c5, c6, c7, c8
+         Remote SQL: UPDATE "S 1"."T 1" SET c2 = (c2 OPERATOR(sys.+) '400'::number), c3 = (c3 OPERATOR(sys.||) '_update7'::varchar2) WHERE ((("C 1" OPERATOR(sys.%) '10'::number) OPERATOR(sys.=) '7'::number)) RETURNING "C 1", c2, c3, c4, c5, c6, c7, c8
 (4 rows)
 
 UPDATE ft2 SET c2 = c2 + 400, c3 = c3 || '_update7' WHERE c1 % 10 = 7 RETURNING *;
@@ -4841,11 +4841,11 @@ UPDATE ft2 SET c2 = c2 + 400, c3 = c3 || '_update7' WHERE c1 % 10 = 7 RETURNING 
 EXPLAIN (verbose, costs off)
 UPDATE ft2 SET c2 = ft2.c2 + 500, c3 = ft2.c3 || '_update9', c7 = DEFAULT
   FROM ft1 WHERE ft1.c1 = ft2.c2 AND ft1.c1 % 10 = 9;                               -- can be pushed down
-                                                                                                                                                        QUERY PLAN                                                                                                                                                        
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                                                                                     QUERY PLAN                                                                                                                                                     
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Update on public.ft2
    ->  Foreign Update
-         Remote SQL: UPDATE "S 1"."T 1" r1 SET c2 = (r1.c2 OPERATOR(sys.+) '500'::number), c3 = (r1.c3 OPERATOR(sys.||) '_update9'::varchar2(4000)), c7 = 'ft2       '::char(10) FROM "S 1"."T 1" r2 WHERE ((r1.c2 OPERATOR(sys.=) r2."C 1")) AND (((r2."C 1" OPERATOR(sys.%) '10'::number) OPERATOR(sys.=) '9'::number))
+         Remote SQL: UPDATE "S 1"."T 1" r1 SET c2 = (r1.c2 OPERATOR(sys.+) '500'::number), c3 = (r1.c3 OPERATOR(sys.||) '_update9'::varchar2), c7 = 'ft2       '::char(10) FROM "S 1"."T 1" r2 WHERE ((r1.c2 OPERATOR(sys.=) r2."C 1")) AND (((r2."C 1" OPERATOR(sys.%) '10'::number) OPERATOR(sys.=) '9'::number))
 (3 rows)
 
 UPDATE ft2 SET c2 = ft2.c2 + 500, c3 = ft2.c3 || '_update9', c7 = DEFAULT
@@ -8351,15 +8351,15 @@ analyze remt1;
 analyze remt2;
 explain (verbose, costs off)
 update parent set b = parent.b || remt2.b from remt2 where parent.a = remt2.a returning *;
-                                                                     QUERY PLAN                                                                     
-----------------------------------------------------------------------------------------------------------------------------------------------------
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
  Update on public.parent
    Output: parent_1.a, parent_1.b, remt2.a, remt2.b
    Update on public.parent parent_1
    Foreign Update on public.remt1 parent_2
      Remote SQL: UPDATE public.loct1 SET b = $2 WHERE ctid = $1 RETURNING a, b
    ->  Nested Loop
-         Output: ((parent.b)::varchar2(4000) || (remt2.b)::varchar2(4000)), remt2.*, remt2.a, remt2.b, parent.tableoid, parent.ctid, (NULL::record)
+         Output: ((parent.b)::varchar2 || (remt2.b)::varchar2), remt2.*, remt2.a, remt2.b, parent.tableoid, parent.ctid, (NULL::record)
          Join Filter: (parent.a = remt2.a)
          ->  Append
                ->  Seq Scan on public.parent parent_1
@@ -11105,7 +11105,7 @@ SELECT * FROM local_tbl, async_pt WHERE local_tbl.a = async_pt.a AND local_tbl.c
    Output: local_tbl.a, local_tbl.b, local_tbl.c, async_pt.a, async_pt.b, async_pt.c
    ->  Seq Scan on public.local_tbl
          Output: local_tbl.a, local_tbl.b, local_tbl.c
-         Filter: ((local_tbl.c)::varchar2(1024) = 'bar'::varchar2(4000))
+         Filter: ((local_tbl.c)::varchar2(1024) = 'bar'::varchar2)
    ->  Append
          ->  Async Foreign Scan on public.async_p1 async_pt_1
                Output: async_pt_1.a, async_pt_1.b, async_pt_1.c
@@ -11124,7 +11124,7 @@ SELECT * FROM local_tbl, async_pt WHERE local_tbl.a = async_pt.a AND local_tbl.c
 -------------------------------------------------------------------------------
  Nested Loop (actual rows=1 loops=1)
    ->  Seq Scan on local_tbl (actual rows=1 loops=1)
-         Filter: ((c)::varchar2(1024) = 'bar'::varchar2(4000))
+         Filter: ((c)::varchar2(1024) = 'bar'::varchar2)
          Rows Removed by Filter: 1
    ->  Append (actual rows=1 loops=1)
          ->  Async Foreign Scan on async_p1 async_pt_1 (never executed)
@@ -11385,8 +11385,8 @@ RESET enable_hashjoin;
 -- Test that UPDATE/DELETE with inherited target works with async_capable enabled
 EXPLAIN (VERBOSE, COSTS OFF)
 UPDATE async_pt SET c = c || c WHERE b = 0 RETURNING *;
-                                                                  QUERY PLAN                                                                  
-----------------------------------------------------------------------------------------------------------------------------------------------
+                                                                 QUERY PLAN                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------
  Update on public.async_pt
    Output: async_pt_1.a, async_pt_1.b, async_pt_1.c
    Foreign Update on public.async_p1 async_pt_1
@@ -11398,7 +11398,7 @@ UPDATE async_pt SET c = c || c WHERE b = 0 RETURNING *;
          ->  Foreign Update on public.async_p2 async_pt_2
                Remote SQL: UPDATE public.base_tbl2 SET c = (c OPERATOR(sys.||) c) WHERE ((b OPERATOR(sys.=) '0'::number)) RETURNING a, b, c
          ->  Seq Scan on public.async_p3 async_pt_3
-               Output: ((async_pt_3.c)::varchar2(4000) || (async_pt_3.c)::varchar2(4000)), async_pt_3.tableoid, async_pt_3.ctid, NULL::record
+               Output: ((async_pt_3.c)::varchar2 || (async_pt_3.c)::varchar2), async_pt_3.tableoid, async_pt_3.ctid, NULL::record
                Filter: (async_pt_3.b = '0'::number)
 (13 rows)
 

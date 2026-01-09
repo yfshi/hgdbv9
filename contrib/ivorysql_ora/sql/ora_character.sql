@@ -196,24 +196,27 @@ create table test_nvarchar2_2(a nvarchar2(3));
 select attrelid::regclass, attname, atttypid from pg_attribute where (attrelid = 'test_nvarchar2_1'::regclass or attrelid = 'test_nvarchar2_2'::regclass) and attname = 'a';
 
 
--- varchar2 and nvarchar2 without specify typmod should issue an error
 -- when used in CREATE TABLE/ALTER TABLE, but it is ok for other stmt,
 -- for example used in CREATE FUNCTION stmt.
-create table test_varchar2(a varchar2);		-- error
-create table test_nvarchar2(a nvarchar2);	-- error
+--oracle raise error,but we success
+create table test_varchar2(a varchar2);
+--oracle raise error, but we success
+create table test_nvarchar2(a nvarchar2);
 create table test_varchar2_alter(a int);
-alter table test_varchar2_alter alter column a type varchar2;	-- error
-alter table test_varchar2_alter alter column a type nvarchar2;	-- error
+--oracle raise error,but we success
+alter table test_varchar2_alter alter column a type varchar2;
+--oracle raise error, but we success
+alter table test_varchar2_alter alter column a type nvarchar2;
 alter table test_varchar2_alter alter column a type varchar2(10);	-- ok
 \d test_varchar2_alter
 
 alter table test_varchar2_alter alter column a type nvarchar2(20);	-- ok
 \d test_varchar2_alter
 
-alter table test_varchar2_alter add column b varchar2;	-- error
-alter table test_varchar2_alter add column c nvarchar2;	-- error
-alter table test_varchar2_alter add column b varchar2(10);	-- ok
-alter table test_varchar2_alter add column c nvarchar2(20);	-- ok
+--oracle raise error,but we success
+alter table test_varchar2_alter add column b varchar2;
+--oracle raise error, but we success
+alter table test_varchar2_alter add column c nvarchar2;
 \d test_varchar2_alter
 
 -- ok

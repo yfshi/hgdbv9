@@ -521,7 +521,7 @@ CREATE TABLE part2_1 PARTITION OF partitioned2 FOR VALUES FROM (-1, 'aaaaa') TO 
  a      | integer |                |          |         | plain    |              | 
  b      | text    | using_nls_comp |          |         | extended |              | 
 Partition of: partitioned2 FOR VALUES FROM ('-1', 'aaaaa') TO (100, 'ccccc')
-Partition constraint: (((a + 1) IS NOT NULL) AND (substr(b, 1, 5) IS NOT NULL) AND (((a + 1) > '-1'::integer) OR (((a + 1) = '-1'::integer) AND ((substr(b, 1, 5))::varchar2(4000) >= 'aaaaa'::varchar2(4000) COLLATE "binary"))) AND (((a + 1) < 100) OR (((a + 1) = 100) AND ((substr(b, 1, 5))::varchar2(4000) < 'ccccc'::varchar2(4000) COLLATE "binary"))))
+Partition constraint: (((a + 1) IS NOT NULL) AND (substr(b, 1, 5) IS NOT NULL) AND (((a + 1) > '-1'::integer) OR (((a + 1) = '-1'::integer) AND ((substr(b, 1, 5))::varchar2 >= 'aaaaa'::varchar2 COLLATE "binary"))) AND (((a + 1) < 100) OR (((a + 1) = 100) AND ((substr(b, 1, 5))::varchar2 < 'ccccc'::varchar2 COLLATE "binary"))))
 
 DROP TABLE partitioned, partitioned2;
 -- check reference to partitioned table's rowtype in partition descriptor

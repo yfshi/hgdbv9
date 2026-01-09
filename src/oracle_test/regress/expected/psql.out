@@ -166,11 +166,11 @@ SELECT
 \gdesc
  Column |       Type       
 --------+------------------
- zero   | varchar2(4000)
+ zero   | varchar2
  one    | integer
  two    | numeric
- three  | varchar2(4000)
- four   | varchar2(4000)
+ three  | varchar2
+ four   | varchar2
  five   | double precision
  six    | varchar2(4)
  now    | date
@@ -209,10 +209,10 @@ LINE 1: TABLE bububu;
 -- query buffer should remain unchanged
 SELECT 1 AS x, 'Hello', 2 AS y, true AS "dirty\name"
 \gdesc
-   Column   |      Type      
-------------+----------------
+   Column   |   Type   
+------------+----------
  x          | integer
- ?column?   | varchar2(4000)
+ ?column?   | varchar2
  y          | integer
  dirty\name | boolean
 (4 rows)
@@ -225,10 +225,10 @@ SELECT 1 AS x, 'Hello', 2 AS y, true AS "dirty\name"
 
 -- all on one line
 SELECT 3 AS x, 'Hello', 4 AS y, true AS "dirty\name" \gdesc \g
-   Column   |      Type      
-------------+----------------
+   Column   |   Type   
+------------+----------
  x          | integer
- ?column?   | varchar2(4000)
+ ?column?   | varchar2
  y          | integer
  dirty\name | boolean
 (4 rows)

@@ -343,31 +343,31 @@ explain (costs off) select * from rlp where a <= 15;
 (17 rows)
 
 explain (costs off) select * from rlp where a > 15 and b = 'ab';
-                                 QUERY PLAN                                  
------------------------------------------------------------------------------
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
  Append
    ->  Seq Scan on rlp3abcd rlp_1
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp3efgh rlp_2
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp3nullxy rlp_3
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp3_default rlp_4
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp4_1 rlp_5
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp4_2 rlp_6
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp4_default rlp_7
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp5_1 rlp_8
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp5_default rlp_9
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp_default_30 rlp_10
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp_default_default rlp_11
-         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a > 15) AND ((b)::varchar2(4000) = 'ab'::varchar2))
 (23 rows)
 
 explain (costs off) select * from rlp where a = 16;
@@ -385,45 +385,45 @@ explain (costs off) select * from rlp where a = 16;
 (9 rows)
 
 explain (costs off) select * from rlp where a = 16 and b in ('not', 'in', 'here');
-                                           QUERY PLAN                                           
-------------------------------------------------------------------------------------------------
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
  Append
    ->  Seq Scan on rlp3abcd rlp_1
-         Filter: ((a = 16) AND ((b)::varchar2(4000) = ANY ('{not,in,here}'::varchar2(4000)[])))
+         Filter: ((a = 16) AND ((b)::varchar2(4000) = ANY ('{not,in,here}'::varchar2[])))
    ->  Seq Scan on rlp3efgh rlp_2
-         Filter: ((a = 16) AND ((b)::varchar2(4000) = ANY ('{not,in,here}'::varchar2(4000)[])))
+         Filter: ((a = 16) AND ((b)::varchar2(4000) = ANY ('{not,in,here}'::varchar2[])))
    ->  Seq Scan on rlp3nullxy rlp_3
-         Filter: ((a = 16) AND ((b)::varchar2(4000) = ANY ('{not,in,here}'::varchar2(4000)[])))
+         Filter: ((a = 16) AND ((b)::varchar2(4000) = ANY ('{not,in,here}'::varchar2[])))
    ->  Seq Scan on rlp3_default rlp_4
-         Filter: ((a = 16) AND ((b)::varchar2(4000) = ANY ('{not,in,here}'::varchar2(4000)[])))
+         Filter: ((a = 16) AND ((b)::varchar2(4000) = ANY ('{not,in,here}'::varchar2[])))
 (9 rows)
 
 explain (costs off) select * from rlp where a = 16 and b < 'ab';
-                                 QUERY PLAN                                  
------------------------------------------------------------------------------
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
  Append
    ->  Seq Scan on rlp3abcd rlp_1
-         Filter: (((b)::varchar2(4000) < 'ab'::varchar2(4000)) AND (a = 16))
+         Filter: (((b)::varchar2(4000) < 'ab'::varchar2) AND (a = 16))
    ->  Seq Scan on rlp3efgh rlp_2
-         Filter: (((b)::varchar2(4000) < 'ab'::varchar2(4000)) AND (a = 16))
+         Filter: (((b)::varchar2(4000) < 'ab'::varchar2) AND (a = 16))
    ->  Seq Scan on rlp3nullxy rlp_3
-         Filter: (((b)::varchar2(4000) < 'ab'::varchar2(4000)) AND (a = 16))
+         Filter: (((b)::varchar2(4000) < 'ab'::varchar2) AND (a = 16))
    ->  Seq Scan on rlp3_default rlp_4
-         Filter: (((b)::varchar2(4000) < 'ab'::varchar2(4000)) AND (a = 16))
+         Filter: (((b)::varchar2(4000) < 'ab'::varchar2) AND (a = 16))
 (9 rows)
 
 explain (costs off) select * from rlp where a = 16 and b <= 'ab';
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
+                               QUERY PLAN                               
+------------------------------------------------------------------------
  Append
    ->  Seq Scan on rlp3abcd rlp_1
-         Filter: (((b)::varchar2(4000) <= 'ab'::varchar2(4000)) AND (a = 16))
+         Filter: (((b)::varchar2(4000) <= 'ab'::varchar2) AND (a = 16))
    ->  Seq Scan on rlp3efgh rlp_2
-         Filter: (((b)::varchar2(4000) <= 'ab'::varchar2(4000)) AND (a = 16))
+         Filter: (((b)::varchar2(4000) <= 'ab'::varchar2) AND (a = 16))
    ->  Seq Scan on rlp3nullxy rlp_3
-         Filter: (((b)::varchar2(4000) <= 'ab'::varchar2(4000)) AND (a = 16))
+         Filter: (((b)::varchar2(4000) <= 'ab'::varchar2) AND (a = 16))
    ->  Seq Scan on rlp3_default rlp_4
-         Filter: (((b)::varchar2(4000) <= 'ab'::varchar2(4000)) AND (a = 16))
+         Filter: (((b)::varchar2(4000) <= 'ab'::varchar2) AND (a = 16))
 (9 rows)
 
 explain (costs off) select * from rlp where a = 16 and b is null;
@@ -547,39 +547,39 @@ explain (costs off) select * from rlp where a = 1 or a = 7;
 (2 rows)
 
 explain (costs off) select * from rlp where a = 1 or b = 'ab';
-                                QUERY PLAN                                 
----------------------------------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Append
    ->  Seq Scan on rlp1 rlp_1
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp2 rlp_2
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp3abcd rlp_3
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp3efgh rlp_4
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp3nullxy rlp_5
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp3_default rlp_6
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp4_1 rlp_7
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp4_2 rlp_8
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp4_default rlp_9
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp5_1 rlp_10
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp5_default rlp_11
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp_default_10 rlp_12
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp_default_30 rlp_13
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp_default_null rlp_14
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
    ->  Seq Scan on rlp_default_default rlp_15
-         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2(4000)))
+         Filter: ((a = 1) OR ((b)::varchar2(4000) = 'ab'::varchar2))
 (31 rows)
 
 explain (costs off) select * from rlp where a > 20 and a < 27;
@@ -1468,12 +1468,12 @@ create table coercepart_ab partition of coercepart for values in ('ab');
 create table coercepart_bc partition of coercepart for values in ('bc');
 create table coercepart_cd partition of coercepart for values in ('cd');
 explain (costs off) select * from coercepart where a in ('ab', to_char(125, '999'));
-                                                       QUERY PLAN                                                       
-------------------------------------------------------------------------------------------------------------------------
+                                                 QUERY PLAN                                                 
+------------------------------------------------------------------------------------------------------------
  Append
    Subplans Removed: 2
    ->  Seq Scan on coercepart_ab coercepart_1
-         Filter: ((a)::varchar2(4000) = ANY (ARRAY['ab'::varchar2(4000), (to_char(125, '999'::text))::varchar2(4000)]))
+         Filter: ((a)::varchar2(4000) = ANY (ARRAY['ab'::varchar2, (to_char(125, '999'::text))::varchar2]))
 (4 rows)
 
 explain (costs off) select * from coercepart where a ~ any ('{ab}');
@@ -1525,20 +1525,20 @@ explain (costs off) select * from coercepart where a !~ all ('{ab,bc}');
 (7 rows)
 
 explain (costs off) select * from coercepart where a = any ('{ab,bc}');
-                       QUERY PLAN                        
----------------------------------------------------------
+                    QUERY PLAN                     
+---------------------------------------------------
  Append
    ->  Seq Scan on coercepart_ab coercepart_1
-         Filter: (a = ANY ('{ab,bc}'::varchar2(4000)[]))
+         Filter: (a = ANY ('{ab,bc}'::varchar2[]))
    ->  Seq Scan on coercepart_bc coercepart_2
-         Filter: (a = ANY ('{ab,bc}'::varchar2(4000)[]))
+         Filter: (a = ANY ('{ab,bc}'::varchar2[]))
 (5 rows)
 
 explain (costs off) select * from coercepart where a = any ('{ab,null}');
-                     QUERY PLAN                      
------------------------------------------------------
+                  QUERY PLAN                   
+-----------------------------------------------
  Seq Scan on coercepart_ab coercepart
-   Filter: (a = ANY ('{ab,NULL}'::varchar2(4000)[]))
+   Filter: (a = ANY ('{ab,NULL}'::varchar2[]))
 (2 rows)
 
 explain (costs off) select * from coercepart where a = any (null::text[]);
@@ -1554,10 +1554,10 @@ explain (costs off) select * from coercepart where a = any (null::text[]);
 (7 rows)
 
 explain (costs off) select * from coercepart where a = all ('{ab}');
-                   QUERY PLAN                   
-------------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Seq Scan on coercepart_ab coercepart
-   Filter: (a = ALL ('{ab}'::varchar2(4000)[]))
+   Filter: (a = ALL ('{ab}'::varchar2[]))
 (2 rows)
 
 explain (costs off) select * from coercepart where a = all ('{ab,bc}');
@@ -1779,17 +1779,17 @@ explain (costs off) select * from lp where (a <> 'a' and a <> 'd') or a is null;
 -- which in this case are partitions of rlp that are themselves
 -- list-partitioned on b
 explain (costs off) select * from rlp where a = 15 and b <> 'ab' and b <> 'cd' and b <> 'xy' and b is not null;
-                                                                                              QUERY PLAN                                                                                              
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                     QUERY PLAN                                                                                     
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Append
    ->  Seq Scan on rlp3abcd rlp_1
-         Filter: ((b IS NOT NULL) AND ((b)::varchar2(4000) <> 'ab'::varchar2(4000)) AND ((b)::varchar2(4000) <> 'cd'::varchar2(4000)) AND ((b)::varchar2(4000) <> 'xy'::varchar2(4000)) AND (a = 15))
+         Filter: ((b IS NOT NULL) AND ((b)::varchar2(4000) <> 'ab'::varchar2) AND ((b)::varchar2(4000) <> 'cd'::varchar2) AND ((b)::varchar2(4000) <> 'xy'::varchar2) AND (a = 15))
    ->  Seq Scan on rlp3efgh rlp_2
-         Filter: ((b IS NOT NULL) AND ((b)::varchar2(4000) <> 'ab'::varchar2(4000)) AND ((b)::varchar2(4000) <> 'cd'::varchar2(4000)) AND ((b)::varchar2(4000) <> 'xy'::varchar2(4000)) AND (a = 15))
+         Filter: ((b IS NOT NULL) AND ((b)::varchar2(4000) <> 'ab'::varchar2) AND ((b)::varchar2(4000) <> 'cd'::varchar2) AND ((b)::varchar2(4000) <> 'xy'::varchar2) AND (a = 15))
    ->  Seq Scan on rlp3nullxy rlp_3
-         Filter: ((b IS NOT NULL) AND ((b)::varchar2(4000) <> 'ab'::varchar2(4000)) AND ((b)::varchar2(4000) <> 'cd'::varchar2(4000)) AND ((b)::varchar2(4000) <> 'xy'::varchar2(4000)) AND (a = 15))
+         Filter: ((b IS NOT NULL) AND ((b)::varchar2(4000) <> 'ab'::varchar2) AND ((b)::varchar2(4000) <> 'cd'::varchar2) AND ((b)::varchar2(4000) <> 'xy'::varchar2) AND (a = 15))
    ->  Seq Scan on rlp3_default rlp_4
-         Filter: ((b IS NOT NULL) AND ((b)::varchar2(4000) <> 'ab'::varchar2(4000)) AND ((b)::varchar2(4000) <> 'cd'::varchar2(4000)) AND ((b)::varchar2(4000) <> 'xy'::varchar2(4000)) AND (a = 15))
+         Filter: ((b IS NOT NULL) AND ((b)::varchar2(4000) <> 'ab'::varchar2) AND ((b)::varchar2(4000) <> 'cd'::varchar2) AND ((b)::varchar2(4000) <> 'xy'::varchar2) AND (a = 15))
 (9 rows)
 
 --
@@ -1801,34 +1801,34 @@ create table coll_pruning_multi2 partition of coll_pruning_multi for values from
 create table coll_pruning_multi3 partition of coll_pruning_multi for values from ('b', 'a') to ('b', 'e');
 -- no pruning, because no value for the leading key
 explain (costs off) select * from coll_pruning_multi where substr(a, 1) = 'e' collate "C";
-                            QUERY PLAN                            
-------------------------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Append
    ->  Seq Scan on coll_pruning_multi1 coll_pruning_multi_1
-         Filter: (substr(a, 1) = 'e'::varchar2(4000) COLLATE "C")
+         Filter: (substr(a, 1) = 'e'::varchar2 COLLATE "C")
    ->  Seq Scan on coll_pruning_multi2 coll_pruning_multi_2
-         Filter: (substr(a, 1) = 'e'::varchar2(4000) COLLATE "C")
+         Filter: (substr(a, 1) = 'e'::varchar2 COLLATE "C")
    ->  Seq Scan on coll_pruning_multi3 coll_pruning_multi_3
-         Filter: (substr(a, 1) = 'e'::varchar2(4000) COLLATE "C")
+         Filter: (substr(a, 1) = 'e'::varchar2 COLLATE "C")
 (7 rows)
 
 -- pruning, with a value provided for the leading key
 explain (costs off) select * from coll_pruning_multi where substr(a, 1) = 'a' collate "POSIX";
-                              QUERY PLAN                              
-----------------------------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Append
    ->  Seq Scan on coll_pruning_multi1 coll_pruning_multi_1
-         Filter: (substr(a, 1) = 'a'::varchar2(4000) COLLATE "POSIX")
+         Filter: (substr(a, 1) = 'a'::varchar2 COLLATE "POSIX")
    ->  Seq Scan on coll_pruning_multi2 coll_pruning_multi_2
-         Filter: (substr(a, 1) = 'a'::varchar2(4000) COLLATE "POSIX")
+         Filter: (substr(a, 1) = 'a'::varchar2 COLLATE "POSIX")
 (5 rows)
 
 -- pruning, with values provided for both keys
 explain (costs off) select * from coll_pruning_multi where substr(a, 1) = 'e' collate "C" and substr(a, 1) = 'a' collate "POSIX";
-                                                      QUERY PLAN                                                       
------------------------------------------------------------------------------------------------------------------------
+                                                QUERY PLAN                                                 
+-----------------------------------------------------------------------------------------------------------
  Seq Scan on coll_pruning_multi2 coll_pruning_multi
-   Filter: ((substr(a, 1) = 'e'::varchar2(4000) COLLATE "C") AND (substr(a, 1) = 'a'::varchar2(4000) COLLATE "POSIX"))
+   Filter: ((substr(a, 1) = 'e'::varchar2 COLLATE "C") AND (substr(a, 1) = 'a'::varchar2 COLLATE "POSIX"))
 (2 rows)
 
 --
@@ -4125,10 +4125,10 @@ create table rp_prefix_test1_p2 partition of rp_prefix_test1 for values from (2,
 -- Don't call get_steps_using_prefix() with the last partition key b plus
 -- an empty prefix
 explain (costs off) select * from rp_prefix_test1 where a <= 1 and b = 'a';
-                              QUERY PLAN                              
-----------------------------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Seq Scan on rp_prefix_test1_p1 rp_prefix_test1
-   Filter: ((a <= 1) AND ((b)::varchar2(4000) = 'a'::varchar2(4000)))
+   Filter: ((a <= 1) AND ((b)::varchar2(4000) = 'a'::varchar2))
 (2 rows)
 
 create table rp_prefix_test2 (a int, b int, c int) partition by range(a, b, c);

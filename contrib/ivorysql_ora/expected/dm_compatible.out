@@ -24,17 +24,17 @@ create table d as select * from TEXT_TBL union select * from char_tbl;
 create table e as select * from VARCHAR_TBL union select * from TEXT_TBL;
 create table f as select * from char_tbl union select * from char_tbl;
 \d a	
-                       Table "public.a"
- Column |      Type      |   Collation    | Nullable | Default 
---------+----------------+----------------+----------+---------
- f1     | varchar2(4000) | using_nls_comp |          | 
+                    Table "public.a"
+ Column |   Type   |   Collation    | Nullable | Default 
+--------+----------+----------------+----------+---------
+ f1     | varchar2 | using_nls_comp |          | 
 
 -- roltype varchar(4)
 \d b 	
-                       Table "public.b"
- Column |      Type      |   Collation    | Nullable | Default 
---------+----------------+----------------+----------+---------
- f1     | varchar2(4000) | using_nls_comp |          | 
+                    Table "public.b"
+ Column |   Type   |   Collation    | Nullable | Default 
+--------+----------+----------------+----------+---------
+ f1     | varchar2 | using_nls_comp |          | 
 
 -- roltype varchar(4)
 \d c	
@@ -96,9 +96,9 @@ explain(costs off) SELECT f1 AS three FROM CHAR_TBL UNION SELECT f1 FROM VARCHAR
 ---------------------------------------------------------------------
  Subquery Scan on "*SELECT* PseudoCollationReplace 3"
    ->  Sort
-         Sort Key: ((char_tbl.f1)::varchar2(4000)) COLLATE "binary"
+         Sort Key: ((char_tbl.f1)::varchar2) COLLATE "binary"
          ->  HashAggregate
-               Group Key: ((char_tbl.f1)::varchar2(4000))
+               Group Key: ((char_tbl.f1)::varchar2)
                ->  Append
                      ->  Bitmap Heap Scan on char_tbl
                            ->  Bitmap Index Scan on char_tbl_pkey
@@ -148,7 +148,7 @@ explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' UNION SEL
                Sort Key: ((varchar_tbl.f1)::varchar2(4)) COLLATE "binary"
                ->  Append
                      ->  Index Only Scan using varchar_tbl_pkey on varchar_tbl
-                           Index Cond: (f1 #= 'ab'::varchar2(4000))
+                           Index Cond: (f1 #= 'ab'::varchar2)
                      ->  Index Only Scan using char_tbl_pkey on char_tbl
                            Index Cond: (f1 #= 'ab'::oracharbyte)
 (9 rows)
@@ -169,17 +169,17 @@ create table d as select * from TEXT_TBL intersect select * from char_tbl;
 create table e as select * from VARCHAR_TBL intersect select * from TEXT_TBL;
 create table f as select * from char_tbl intersect select * from char_tbl;
 \d a	
-                       Table "public.a"
- Column |      Type      |   Collation    | Nullable | Default 
---------+----------------+----------------+----------+---------
- f1     | varchar2(4000) | using_nls_comp |          | 
+                    Table "public.a"
+ Column |   Type   |   Collation    | Nullable | Default 
+--------+----------+----------------+----------+---------
+ f1     | varchar2 | using_nls_comp |          | 
 
 -- roltype varchar(4)
 \d b 	
-                       Table "public.b"
- Column |      Type      |   Collation    | Nullable | Default 
---------+----------------+----------------+----------+---------
- f1     | varchar2(4000) | using_nls_comp |          | 
+                    Table "public.b"
+ Column |   Type   |   Collation    | Nullable | Default 
+--------+----------+----------------+----------+---------
+ f1     | varchar2 | using_nls_comp |          | 
 
 -- roltype varchar(4)
 \d c	
@@ -288,7 +288,7 @@ explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' intersect
                ->  Append
                      ->  Subquery Scan on "*SELECT* 1"
                            ->  Index Only Scan using varchar_tbl_pkey on varchar_tbl
-                                 Index Cond: (f1 #= 'ab'::varchar2(4000))
+                                 Index Cond: (f1 #= 'ab'::varchar2)
                      ->  Subquery Scan on "*SELECT* 2"
                            ->  Index Only Scan using char_tbl_pkey on char_tbl
                                  Index Cond: (f1 #= 'ab'::oracharbyte)
@@ -308,17 +308,17 @@ create table d as select * from TEXT_TBL except select * from char_tbl;
 create table e as select * from VARCHAR_TBL except select * from TEXT_TBL;
 create table f as select * from char_tbl except select * from char_tbl;
 \d a	
-                       Table "public.a"
- Column |      Type      |   Collation    | Nullable | Default 
---------+----------------+----------------+----------+---------
- f1     | varchar2(4000) | using_nls_comp |          | 
+                    Table "public.a"
+ Column |   Type   |   Collation    | Nullable | Default 
+--------+----------+----------------+----------+---------
+ f1     | varchar2 | using_nls_comp |          | 
 
 -- roltype varchar(4)
 \d b 	
-                       Table "public.b"
- Column |      Type      |   Collation    | Nullable | Default 
---------+----------------+----------------+----------+---------
- f1     | varchar2(4000) | using_nls_comp |          | 
+                    Table "public.b"
+ Column |   Type   |   Collation    | Nullable | Default 
+--------+----------+----------------+----------+---------
+ f1     | varchar2 | using_nls_comp |          | 
 
 -- roltype varchar(4)
 \d c	
@@ -426,7 +426,7 @@ explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' except SE
                ->  Append
                      ->  Subquery Scan on "*SELECT* 1"
                            ->  Index Only Scan using varchar_tbl_pkey on varchar_tbl
-                                 Index Cond: (f1 #= 'ab'::varchar2(4000))
+                                 Index Cond: (f1 #= 'ab'::varchar2)
                      ->  Subquery Scan on "*SELECT* 2"
                            ->  Index Only Scan using char_tbl_pkey on char_tbl
                                  Index Cond: (f1 #= 'ab'::oracharbyte)
@@ -447,20 +447,20 @@ drop table a,b,c,d,e,f;
 /* distict and group by */
 create table a as select * from char_tbl union all select * from varchar_tbl order by 1;
 \d a
-                       Table "public.a"
- Column |      Type      |   Collation    | Nullable | Default 
---------+----------------+----------------+----------+---------
- f1     | varchar2(4000) | using_nls_comp |          | 
+                    Table "public.a"
+ Column |   Type   |   Collation    | Nullable | Default 
+--------+----------+----------------+----------+---------
+ f1     | varchar2 | using_nls_comp |          | 
 
 create index on a(f1);
 explain(costs off) select distinct * from a where f1 > 'a' order by 1;
-                        QUERY PLAN                         
------------------------------------------------------------
+                     QUERY PLAN                      
+-----------------------------------------------------
  Unique
    ->  Sort
-         Sort Key: ((f1)::varchar2(4000)) COLLATE "binary"
+         Sort Key: ((f1)::varchar2) COLLATE "binary"
          ->  Index Only Scan using a_f1_idx on a
-               Index Cond: (f1 #> 'a'::varchar2(4000))
+               Index Cond: (f1 #> 'a'::varchar2)
 (5 rows)
 
 select distinct * from a where f1 > 'a' order by 1;		-- expected 3 rows
@@ -472,12 +472,12 @@ select distinct * from a where f1 > 'a' order by 1;		-- expected 3 rows
 (3 rows)
 
 explain(costs off) select * from a group by f1 order by 1;		-- expected 5 rows
-                        QUERY PLAN                         
------------------------------------------------------------
+                     QUERY PLAN                      
+-----------------------------------------------------
  Group
-   Group Key: ((f1)::varchar2(4000))
+   Group Key: ((f1)::varchar2)
    ->  Sort
-         Sort Key: ((f1)::varchar2(4000)) COLLATE "binary"
+         Sort Key: ((f1)::varchar2) COLLATE "binary"
          ->  Index Only Scan using a_f1_idx on a
 (5 rows)
 
@@ -1046,10 +1046,10 @@ select * from dmmain_table where x <= 'PG中国      '; -- 2 row
 (2 rows)
 
 \d dmmain_table
-               Table "public.dmmain_table"
- Column |      Type      | Collation | Nullable | Default 
---------+----------------+-----------+----------+---------
- x      | varchar2(4000) | C         |          | 
+            Table "public.dmmain_table"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ x      | varchar2 | C         |          | 
 
 create index dmmain_table_x on dmmain_table(x);
 set enable_seqscan to off;
@@ -1058,42 +1058,42 @@ explain(costs off) select * from dmmain_table where x != 'space'; -- 4 row
                       QUERY PLAN                      
 ------------------------------------------------------
  Index Only Scan using dmmain_table_x on dmmain_table
-   Filter: (x #<> 'space'::varchar2(4000))
+   Filter: (x #<> 'space'::varchar2)
 (2 rows)
 
 explain(costs off) select * from dmmain_table where x > 'PG中国'; -- 4 row
                       QUERY PLAN                      
 ------------------------------------------------------
  Index Only Scan using dmmain_table_x on dmmain_table
-   Index Cond: (x #> 'PG中国'::varchar2(4000))
+   Index Cond: (x #> 'PG中国'::varchar2)
 (2 rows)
 
 explain(costs off) select * from dmmain_table where x >= 'PG中国'; -- 6 row
                       QUERY PLAN                      
 ------------------------------------------------------
  Index Only Scan using dmmain_table_x on dmmain_table
-   Index Cond: (x #>= 'PG中国'::varchar2(4000))
+   Index Cond: (x #>= 'PG中国'::varchar2)
 (2 rows)
 
 explain(costs off) select * from dmmain_table where x < 'PG中国'; -- 0 row
                       QUERY PLAN                      
 ------------------------------------------------------
  Index Only Scan using dmmain_table_x on dmmain_table
-   Index Cond: (x #< 'PG中国'::varchar2(4000))
+   Index Cond: (x #< 'PG中国'::varchar2)
 (2 rows)
 
 explain(costs off) select * from dmmain_table where x < 'PG中国      '; -- 0 row
                       QUERY PLAN                      
 ------------------------------------------------------
  Index Only Scan using dmmain_table_x on dmmain_table
-   Index Cond: (x #< 'PG中国      '::varchar2(4000))
+   Index Cond: (x #< 'PG中国      '::varchar2)
 (2 rows)
 
 explain(costs off) select * from dmmain_table where x <= 'PG中国      '; -- 2 row
                       QUERY PLAN                      
 ------------------------------------------------------
  Index Only Scan using dmmain_table_x on dmmain_table
-   Index Cond: (x #<= 'PG中国      '::varchar2(4000))
+   Index Cond: (x #<= 'PG中国      '::varchar2)
 (2 rows)
 
 set ivorysql.enable_blankspace_compare to on;
@@ -1211,84 +1211,84 @@ explain(costs off)  select x from dm_varcharchar where x = 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
-   Index Cond: (x #= 'PG中国 '::varchar2(4000))
+   Index Cond: (x #= 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharchar where x >= 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
-   Index Cond: (x #>= 'PG中国 '::varchar2(4000))
+   Index Cond: (x #>= 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharchar where x <= 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
-   Index Cond: (x #<= 'PG中国 '::varchar2(4000))
+   Index Cond: (x #<= 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharchar where x < 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
-   Index Cond: (x #< 'PG中国 '::varchar2(4000))
+   Index Cond: (x #< 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharchar where x > 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
-   Index Cond: (x #> 'PG中国 '::varchar2(4000))
+   Index Cond: (x #> 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharchar where x != 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
-   Filter: (x #<> 'PG中国 '::varchar2(4000))
+   Filter: (x #<> 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharbyte where x = 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
-   Index Cond: (x #= 'PG中国 '::varchar2(4000))
+   Index Cond: (x #= 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharbyte where x >= 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
-   Index Cond: (x #>= 'PG中国 '::varchar2(4000))
+   Index Cond: (x #>= 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharbyte where x <= 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
-   Index Cond: (x #<= 'PG中国 '::varchar2(4000))
+   Index Cond: (x #<= 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharbyte where x < 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
-   Index Cond: (x #< 'PG中国 '::varchar2(4000))
+   Index Cond: (x #< 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharbyte where x > 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
-   Index Cond: (x #> 'PG中国 '::varchar2(4000))
+   Index Cond: (x #> 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharbyte where x != 'PG中国 ';
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
-   Filter: (x #<> 'PG中国 '::varchar2(4000))
+   Filter: (x #<> 'PG中国 '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_text where x = 'PG中国 ';
@@ -1408,14 +1408,14 @@ explain(costs off)  select x from dm_varcharchar where x = 'PG中国   ';
                      QUERY PLAN                      
 -----------------------------------------------------
  Index Scan using dm_varcharchar_x on dm_varcharchar
-   Index Cond: (x #= 'PG中国   '::varchar2(4000))
+   Index Cond: (x #= 'PG中国   '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharbyte where x = 'PG中国   ';
                      QUERY PLAN                      
 -----------------------------------------------------
  Index Scan using dm_varcharbyte_x on dm_varcharbyte
-   Index Cond: (x #= 'PG中国   '::varchar2(4000))
+   Index Cond: (x #= 'PG中国   '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_text where x = 'PG中国   ';
@@ -1500,17 +1500,17 @@ explain(costs off)  select x from dm_charbyte where x > 'PG中国   ';
 (2 rows)
 
 explain(costs off)  select x from dm_varcharchar where x > 'PG中国    ';
-                  QUERY PLAN                   
------------------------------------------------
+               QUERY PLAN                
+-----------------------------------------
  Seq Scan on dm_varcharchar
-   Filter: (x #> 'PG中国    '::varchar2(4000))
+   Filter: (x #> 'PG中国    '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_varcharbyte where x > 'PG中国   ';
-                  QUERY PLAN                  
-----------------------------------------------
+               QUERY PLAN               
+----------------------------------------
  Seq Scan on dm_varcharbyte
-   Filter: (x #> 'PG中国   '::varchar2(4000))
+   Filter: (x #> 'PG中国   '::varchar2)
 (2 rows)
 
 explain(costs off)  select x from dm_text where x > 'PG中国    ';
@@ -1521,10 +1521,10 @@ explain(costs off)  select x from dm_text where x > 'PG中国    ';
 (2 rows)
 
 explain(costs off)  select x from dmmain_table where x > 'PG中国    ';
-                  QUERY PLAN                   
------------------------------------------------
+               QUERY PLAN                
+-----------------------------------------
  Seq Scan on dmmain_table
-   Filter: (x #> 'PG中国    '::varchar2(4000))
+   Filter: (x #> 'PG中国    '::varchar2)
 (2 rows)
 
 select * from dm_charchar where x = 'space'; -- 1 row
@@ -1728,45 +1728,45 @@ select * from dmmain_table where x <= 'PG中国      '; -- 2 row
 -- make sure we don't replace operator when enable_blankspace_compare = on
 set ivorysql.enable_blankspace_compare to on;
 explain(costs off)  select * from dmmain_table where x != 'space'; -- 4 row
-                QUERY PLAN                
-------------------------------------------
+             QUERY PLAN             
+------------------------------------
  Seq Scan on dmmain_table
-   Filter: (x <> 'space'::varchar2(4000))
+   Filter: (x <> 'space'::varchar2)
 (2 rows)
 
 explain(costs off)  select * from dmmain_table where x > 'PG中国'; -- 4 row
-                QUERY PLAN                
-------------------------------------------
+             QUERY PLAN             
+------------------------------------
  Seq Scan on dmmain_table
-   Filter: (x > 'PG中国'::varchar2(4000))
+   Filter: (x > 'PG中国'::varchar2)
 (2 rows)
 
 explain(costs off)  select * from dmmain_table where x >= 'PG中国'; -- 6 row
-                QUERY PLAN                 
--------------------------------------------
+             QUERY PLAN              
+-------------------------------------
  Seq Scan on dmmain_table
-   Filter: (x >= 'PG中国'::varchar2(4000))
+   Filter: (x >= 'PG中国'::varchar2)
 (2 rows)
 
 explain(costs off)  select * from dmmain_table where x < 'PG中国'; -- 0 row
-                QUERY PLAN                
-------------------------------------------
+             QUERY PLAN             
+------------------------------------
  Seq Scan on dmmain_table
-   Filter: (x < 'PG中国'::varchar2(4000))
+   Filter: (x < 'PG中国'::varchar2)
 (2 rows)
 
 explain(costs off)  select * from dmmain_table where x = 'PG中国      '; -- 2 row
-                   QUERY PLAN                   
-------------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Seq Scan on dmmain_table
-   Filter: (x = 'PG中国      '::varchar2(4000))
+   Filter: (x = 'PG中国      '::varchar2)
 (2 rows)
 
 explain(costs off)  select * from dmmain_table where x <= 'PG中国      '; -- 2 row
-                   QUERY PLAN                    
--------------------------------------------------
+                QUERY PLAN                 
+-------------------------------------------
  Seq Scan on dmmain_table
-   Filter: (x <= 'PG中国      '::varchar2(4000))
+   Filter: (x <= 'PG中国      '::varchar2)
 (2 rows)
 
 drop table dm_charbyte,dm_charchar,dm_text,dm_varcharbyte,dm_varcharchar,dmmain_table;
@@ -2232,12 +2232,12 @@ explain(costs off) select x from in_tb_char where x in ('a ','ab ');     -- 2 ro
 (4 rows)
 
 explain(costs off) select x from in_tb_varchar2 where x in ('a ','ab ');     -- 0 rows
-                                      QUERY PLAN                                       
----------------------------------------------------------------------------------------
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
  Bitmap Heap Scan on in_tb_varchar2
-   Recheck Cond: ((x)::varchar2(10 char) = ANY ('{"a ","ab "}'::varchar2(4000)[]))
+   Recheck Cond: ((x)::varchar2(10 char) = ANY ('{"a ","ab "}'::varchar2[]))
    ->  Bitmap Index Scan on in_tb_varchar2_pkey
-         Index Cond: ((x)::varchar2(10 char) = ANY ('{"a ","ab "}'::varchar2(4000)[]))
+         Index Cond: ((x)::varchar2(10 char) = ANY ('{"a ","ab "}'::varchar2[]))
 (4 rows)
 
 explain(costs off) select x from in_tb_text where x in ('a ','ab ');       -- 0 rows
@@ -2251,31 +2251,31 @@ explain(costs off) select x from in_tb_text where x in ('a ','ab ');       -- 0 
 
 -- col in subquery
 explain(costs off) select x from in_tb_char where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
-                                            QUERY PLAN                                             
----------------------------------------------------------------------------------------------------
+                                          QUERY PLAN                                           
+-----------------------------------------------------------------------------------------------
  Nested Loop
    ->  Unique
          ->  Sort
                Sort Key: (((in_tb_varchar2.x)::char(10))::varchar2(10)) COLLATE using_nls_comp
                ->  Bitmap Heap Scan on in_tb_varchar2
-                     Recheck Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2(4000)[]))
+                     Recheck Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2[]))
                      ->  Bitmap Index Scan on in_tb_varchar2_pkey
-                           Index Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2(4000)[]))
+                           Index Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2[]))
    ->  Index Only Scan using in_tb_char_pkey on in_tb_char
          Index Cond: (x = ((in_tb_varchar2.x)::char(10))::varchar2(10))
 (10 rows)
 
 explain(costs off) select x from in_tb_varchar2 where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 0 rows
-                                            QUERY PLAN                                             
----------------------------------------------------------------------------------------------------
+                                           QUERY PLAN                                            
+-------------------------------------------------------------------------------------------------
  Nested Loop
    ->  Unique
          ->  Sort
                Sort Key: (((in_tb_varchar2_1.x)::char(10))::varchar2(10)) COLLATE using_nls_comp
                ->  Bitmap Heap Scan on in_tb_varchar2 in_tb_varchar2_1
-                     Recheck Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2(4000)[]))
+                     Recheck Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2[]))
                      ->  Bitmap Index Scan on in_tb_varchar2_pkey
-                           Index Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2(4000)[]))
+                           Index Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2[]))
    ->  Index Only Scan using in_tb_varchar2_pkey on in_tb_varchar2
          Index Cond: (x = ((in_tb_varchar2_1.x)::char(10))::varchar2(10))
 (10 rows)
@@ -2288,9 +2288,9 @@ explain(costs off) select x from in_tb_text where x in (select x::char(10)::varc
          ->  Sort
                Sort Key: ((((in_tb_varchar2.x)::char(10))::varchar2(10))::text) COLLATE using_nls_comp
                ->  Bitmap Heap Scan on in_tb_varchar2
-                     Recheck Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2(4000)[]))
+                     Recheck Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2[]))
                      ->  Bitmap Index Scan on in_tb_varchar2_pkey
-                           Index Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2(4000)[]))
+                           Index Cond: ((x)::varchar2(10 char) = ANY ('{a,ab}'::varchar2[]))
    ->  Index Only Scan using in_tb_text_pkey on in_tb_text
          Index Cond: (x = (((in_tb_varchar2.x)::char(10))::varchar2(10))::text)
 (10 rows)
@@ -2367,12 +2367,12 @@ explain(costs off) select x from in_tb_char where x in ('a ','ab ');     -- 2 ro
 (4 rows)
 
 explain(costs off) select x from in_tb_varchar2 where x in ('a ','ab ');     -- 2 rows
-                                       QUERY PLAN                                       
-----------------------------------------------------------------------------------------
+                                    QUERY PLAN                                    
+----------------------------------------------------------------------------------
  Bitmap Heap Scan on in_tb_varchar2
-   Recheck Cond: ((x)::varchar2(10 char) #= ANY ('{"a ","ab "}'::varchar2(4000)[]))
+   Recheck Cond: ((x)::varchar2(10 char) #= ANY ('{"a ","ab "}'::varchar2[]))
    ->  Bitmap Index Scan on in_tb_varchar2_pkey
-         Index Cond: ((x)::varchar2(10 char) #= ANY ('{"a ","ab "}'::varchar2(4000)[]))
+         Index Cond: ((x)::varchar2(10 char) #= ANY ('{"a ","ab "}'::varchar2[]))
 (4 rows)
 
 explain(costs off) select x from in_tb_text where x in ('a ','ab ');       -- 2 rows
@@ -2393,9 +2393,9 @@ explain(costs off) select x from in_tb_char where x in (select x::char(10)::varc
          ->  Sort
                Sort Key: (((in_tb_varchar2.x)::char(10))::varchar2(10)) COLLATE using_nls_comp USING #<
                ->  Bitmap Heap Scan on in_tb_varchar2
-                     Recheck Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2(4000)[]))
+                     Recheck Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2[]))
                      ->  Bitmap Index Scan on in_tb_varchar2_pkey
-                           Index Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2(4000)[]))
+                           Index Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2[]))
    ->  Index Only Scan using in_tb_char_pkey on in_tb_char
          Index Cond: (x #= ((in_tb_varchar2.x)::char(10))::varchar2(10))
 (10 rows)
@@ -2408,9 +2408,9 @@ explain(costs off) select x from in_tb_varchar2 where x in (select x::char(10)::
          ->  Sort
                Sort Key: (((in_tb_varchar2_1.x)::char(10))::varchar2(10)) COLLATE using_nls_comp USING #<
                ->  Bitmap Heap Scan on in_tb_varchar2 in_tb_varchar2_1
-                     Recheck Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2(4000)[]))
+                     Recheck Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2[]))
                      ->  Bitmap Index Scan on in_tb_varchar2_pkey
-                           Index Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2(4000)[]))
+                           Index Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2[]))
    ->  Index Only Scan using in_tb_varchar2_pkey on in_tb_varchar2
          Index Cond: (x #= ((in_tb_varchar2_1.x)::char(10))::varchar2(10))
 (10 rows)
@@ -2423,9 +2423,9 @@ explain(costs off) select x from in_tb_text where x in (select x::char(10)::varc
          ->  Sort
                Sort Key: ((((in_tb_varchar2.x)::char(10))::varchar2(10))::text) COLLATE using_nls_comp USING #<
                ->  Bitmap Heap Scan on in_tb_varchar2
-                     Recheck Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2(4000)[]))
+                     Recheck Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2[]))
                      ->  Bitmap Index Scan on in_tb_varchar2_pkey
-                           Index Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2(4000)[]))
+                           Index Cond: ((x)::varchar2(10 char) #= ANY ('{a,ab}'::varchar2[]))
    ->  Index Only Scan using in_tb_text_pkey on in_tb_text
          Index Cond: (x #= (((in_tb_varchar2.x)::char(10))::varchar2(10))::text)
 (10 rows)
@@ -2502,7 +2502,7 @@ explain(costs off) select x from saa_char where x = ALL (select x::char(10) from
    SubPlan 1
      ->  Materialize
            ->  Index Only Scan using saa_varchar_pkey on saa_varchar
-                 Index Cond: (x = 'ab '::varchar2(4000))
+                 Index Cond: (x = 'ab '::varchar2)
 (6 rows)
 
 explain(costs off) select x from saa_varchar where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
@@ -2513,7 +2513,7 @@ explain(costs off) select x from saa_varchar where x = ALL (select x::char(10) f
    SubPlan 1
      ->  Materialize
            ->  Index Only Scan using saa_varchar_pkey on saa_varchar saa_varchar_1
-                 Index Cond: (x = 'ab '::varchar2(4000))
+                 Index Cond: (x = 'ab '::varchar2)
 (6 rows)
 
 explain(costs off) select x from saa_text where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
@@ -2524,7 +2524,7 @@ explain(costs off) select x from saa_text where x = ALL (select x::char(10) from
    SubPlan 1
      ->  Materialize
            ->  Index Only Scan using saa_varchar_pkey on saa_varchar
-                 Index Cond: (x = 'ab '::varchar2(4000))
+                 Index Cond: (x = 'ab '::varchar2)
 (6 rows)
 
 select x from saa_char where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
@@ -2651,7 +2651,7 @@ explain(costs off) select x from saa_char where x = ALL (select x::char(10) from
    SubPlan 1
      ->  Materialize
            ->  Index Only Scan using saa_varchar_pkey on saa_varchar
-                 Index Cond: (x #= 'ab '::varchar2(4000))
+                 Index Cond: (x #= 'ab '::varchar2)
 (6 rows)
 
 explain(costs off) select x from saa_varchar where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
@@ -2662,7 +2662,7 @@ explain(costs off) select x from saa_varchar where x = ALL (select x::char(10) f
    SubPlan 1
      ->  Materialize
            ->  Index Only Scan using saa_varchar_pkey on saa_varchar saa_varchar_1
-                 Index Cond: (x #= 'ab '::varchar2(4000))
+                 Index Cond: (x #= 'ab '::varchar2)
 (6 rows)
 
 explain(costs off) select x from saa_text where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
@@ -2673,7 +2673,7 @@ explain(costs off) select x from saa_text where x = ALL (select x::char(10) from
    SubPlan 1
      ->  Materialize
            ->  Index Only Scan using saa_varchar_pkey on saa_varchar
-                 Index Cond: (x #= 'ab '::varchar2(4000))
+                 Index Cond: (x #= 'ab '::varchar2)
 (6 rows)
 
 select x from saa_char where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
@@ -2760,14 +2760,14 @@ explain(costs off) select * from between_char where x between 'a ' and 'a    ' o
 (6 rows)
 
 explain(costs off) select * from between_varchar where x between 'a ' and 'a    ' order by 1;    -- 0 rows
-                                                         QUERY PLAN                                                         
-----------------------------------------------------------------------------------------------------------------------------
+                                                   QUERY PLAN                                                   
+----------------------------------------------------------------------------------------------------------------
  Sort
    Sort Key: ((x)::varchar2(10)) COLLATE "binary"
    ->  Bitmap Heap Scan on between_varchar
-         Recheck Cond: (((x)::varchar2(10) >= 'a '::varchar2(4000)) AND ((x)::varchar2(10) <= 'a    '::varchar2(4000)))
+         Recheck Cond: (((x)::varchar2(10) >= 'a '::varchar2) AND ((x)::varchar2(10) <= 'a    '::varchar2))
          ->  Bitmap Index Scan on between_varchar_pkey
-               Index Cond: (((x)::varchar2(10) >= 'a '::varchar2(4000)) AND ((x)::varchar2(10) <= 'a    '::varchar2(4000)))
+               Index Cond: (((x)::varchar2(10) >= 'a '::varchar2) AND ((x)::varchar2(10) <= 'a    '::varchar2))
 (6 rows)
 
 explain(costs off) select * from between_text where x between 'a ' and 'a    ' order by 1;    -- 0 rows
@@ -2823,14 +2823,14 @@ explain(costs off) select * from between_char where x between 'a ' and 'a    ' o
 (6 rows)
 
 explain(costs off) select * from between_varchar where x between 'a ' and 'a    ' order by 1;    -- 1 rows
-                                                          QUERY PLAN                                                          
-------------------------------------------------------------------------------------------------------------------------------
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
  Sort
    Sort Key: ((x)::varchar2(10)) COLLATE "binary"
    ->  Bitmap Heap Scan on between_varchar
-         Recheck Cond: (((x)::varchar2(10) #>= 'a '::varchar2(4000)) AND ((x)::varchar2(10) #<= 'a    '::varchar2(4000)))
+         Recheck Cond: (((x)::varchar2(10) #>= 'a '::varchar2) AND ((x)::varchar2(10) #<= 'a    '::varchar2))
          ->  Bitmap Index Scan on between_varchar_pkey
-               Index Cond: (((x)::varchar2(10) #>= 'a '::varchar2(4000)) AND ((x)::varchar2(10) #<= 'a    '::varchar2(4000)))
+               Index Cond: (((x)::varchar2(10) #>= 'a '::varchar2) AND ((x)::varchar2(10) #<= 'a    '::varchar2))
 (6 rows)
 
 explain(costs off) select * from between_text where x between 'a ' and 'a    ' order by 1;    -- 1 rows

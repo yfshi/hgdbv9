@@ -1066,7 +1066,7 @@ View definition:
  SELECT test_id.id,
     test_id.name
    FROM test_id
-  WHERE test_id.id::varchar2(4000) like '1'::text AND ((test_id.name COLLATE "binary")::text) not like '%abc'::text
+  WHERE test_id.id::varchar2 like '1'::text AND ((test_id.name COLLATE "binary")::text) not like '%abc'::text
   ORDER BY test_id.id;
 
 select * from test_view8;
@@ -1102,7 +1102,7 @@ View definition:
  SELECT test_id.id,
     test_id.name
    FROM test_id
-  WHERE test_id.id::varchar2(4000) like '1'::text AND ((test_id.name COLLATE "binary")::text) like '%abc'::text
+  WHERE test_id.id::varchar2 like '1'::text AND ((test_id.name COLLATE "binary")::text) like '%abc'::text
   ORDER BY test_id.id;
 
 select * from test_view10;

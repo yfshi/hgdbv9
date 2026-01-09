@@ -526,9 +526,9 @@ select * from V_NE_EQUIPROOM1@tdblnk;
 select * from V_NE_EQUIPROOM2@tdblnk;
 
 
-create table test_id_char(id char(10));
+create table test_id_char(id char(10), ids nvarchar2(256));
 
-create table test_id_char2(id char(5));
+create table test_id_char2(id char(5), ids nvarchar2(256));
 
 create view test_view as
   select * from test_id_char

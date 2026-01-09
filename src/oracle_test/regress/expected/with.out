@@ -1514,24 +1514,24 @@ select pg_get_viewdef('v_cycle1');
 (1 row)
 
 select pg_get_viewdef('v_cycle2');
-                                         pg_get_viewdef                                          
--------------------------------------------------------------------------------------------------
-  WITH RECURSIVE search_graph(f, t, label) AS (                                                 +
-          SELECT g.f,                                                                           +
-             g.t,                                                                               +
-             (g.label COLLATE "binary") AS label                                                +
-            FROM graph g                                                                        +
-         UNION ALL                                                                              +
-          SELECT g.f,                                                                           +
-             g.t,                                                                               +
-             (g.label COLLATE "binary") AS label                                                +
-            FROM graph g,                                                                       +
-             search_graph sg                                                                    +
-           WHERE (g.f = sg.t)                                                                   +
-         ) CYCLE f, t SET is_cycle TO 'Y'::varchar2(4000) DEFAULT 'N'::varchar2(4000) USING path+
-  SELECT search_graph.f,                                                                        +
-     search_graph.t,                                                                            +
-     search_graph.label                                                                         +
+                                   pg_get_viewdef                                    
+-------------------------------------------------------------------------------------
+  WITH RECURSIVE search_graph(f, t, label) AS (                                     +
+          SELECT g.f,                                                               +
+             g.t,                                                                   +
+             (g.label COLLATE "binary") AS label                                    +
+            FROM graph g                                                            +
+         UNION ALL                                                                  +
+          SELECT g.f,                                                               +
+             g.t,                                                                   +
+             (g.label COLLATE "binary") AS label                                    +
+            FROM graph g,                                                           +
+             search_graph sg                                                        +
+           WHERE (g.f = sg.t)                                                       +
+         ) CYCLE f, t SET is_cycle TO 'Y'::varchar2 DEFAULT 'N'::varchar2 USING path+
+  SELECT search_graph.f,                                                            +
+     search_graph.t,                                                                +
+     search_graph.label                                                             +
     FROM search_graph;
 (1 row)
 

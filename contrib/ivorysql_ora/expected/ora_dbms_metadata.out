@@ -393,14 +393,14 @@ DROP TABLE Persons cascade;
 --table
 CREATE TABLE t_503(i int  CONSTRAINT firstkey PRIMARY KEY, j varchar(20) default 'The DBMS_METADATA package provides a way for you to retrieve metadata from the database dictionary as XML or creation DDL and to submit the XML to re-create the object');
 select dbms_metadata.get_ddl('TABLE', 'T_503', 'PUBLIC') from dual;
-                                                                                                       get_ddl                                                                                                       
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- CREATE TABLE "PUBLIC"."T_503"(                                                                                                                                                                                     +
-  "I" integer NOT NULL,                                                                                                                                                                                             +
-  "J" varchar2(20) DEFAULT 'The DBMS_METADATA package provides a way for you to retrieve metadata from the database dictionary as XML or creation DDL and to submit the XML to re-create the object'::varchar2(4000)+
- ,                                                                                                                                                                                                                  +
- PRIMARY KEY ("I")                                                                                                                                                                                                  +
- ) TABLESPACE "PG_DEFAULT"                                                                                                                                                                                          +
+                                                                                                    get_ddl                                                                                                    
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ CREATE TABLE "PUBLIC"."T_503"(                                                                                                                                                                               +
+  "I" integer NOT NULL,                                                                                                                                                                                       +
+  "J" varchar2(20) DEFAULT 'The DBMS_METADATA package provides a way for you to retrieve metadata from the database dictionary as XML or creation DDL and to submit the XML to re-create the object'::varchar2+
+ ,                                                                                                                                                                                                            +
+ PRIMARY KEY ("I")                                                                                                                                                                                            +
+ ) TABLESPACE "PG_DEFAULT"                                                                                                                                                                                    +
  
 (1 row)
 
