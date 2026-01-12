@@ -1640,11 +1640,8 @@ int
 varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid)
 {
 	int			result;
-	char		provider;
 
 	check_collation_set(collid);
-
-	provider = get_collation_provider(collid);
 
 	/*
 	 * Unfortunately, there is no strncoll(), so in the non-C locale case we
@@ -1659,13 +1656,13 @@ varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid)
 			result = (len1 < len2) ? -1 : 1;
 	}
 	/* Begin - SRS-SQL-NLSSORT */
-	else if(compatible_mode == ORA_MODE && provider == COLLPROVIDER_ORACLE)
+	else if(compatible_mode == ORA_MODE && get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 	{
 		result = nlssortfastcmp_internal_with_collid(arg1, len1, arg2, len2, collid, false);
 	}
 	/* End - SRS-SQL-NLSSORT */
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	else if (compatible_mode == MYS_MODE && provider == COLLPROVIDER_MYSQL)
+	else if (compatible_mode == MYS_MODE && get_collation_provider(collid) == COLLPROVIDER_MYSQL)
 	{
 		result = mysql_varstr_cmp(pstrdup(arg1), len1, pstrdup(arg2), len2, collid);
 	}
@@ -1901,10 +1898,9 @@ texteq(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-
-	if (locale && locale->deterministic)
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{
 		Datum		arg1 = PG_GETARG_DATUM(0);
 		Datum		arg2 = PG_GETARG_DATUM(1);
@@ -1957,11 +1953,9 @@ textne(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
-
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-
-	if (locale && locale->deterministic)
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{
 		Datum		arg1 = PG_GETARG_DATUM(0);
 		Datum		arg2 = PG_GETARG_DATUM(1);
@@ -2168,11 +2162,8 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 	bool		collate_c = false;
 	VarStringSortSupport *sss;
 	pg_locale_t locale = 0;
-	char		provider;
-
+	
 	check_collation_set(collid);
-
-	provider = get_collation_provider(collid);
 
 	/*
 	 * If possible, set ssup->comparator to a function which can be used to
@@ -2214,7 +2205,7 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 		collate_c = true;
 	}
 	/* Begin - SRS-SQL-NLSSORT */
-	else if(compatible_mode == ORA_MODE && nlssort_hook && provider == COLLPROVIDER_ORACLE)
+	else if(compatible_mode == ORA_MODE && get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 	{
 		if (typid == NAMEOID)
 			ssup->comparator = namefastcmp_nlssort;

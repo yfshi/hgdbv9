@@ -145,10 +145,9 @@ oravarchareq_explicit(PG_FUNCTION_ARGS)
 	
 	check_collation_set(collid);
 	
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-	
-	if (locale && locale->deterministic)
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{				
 		if (len1 != len2)
 			result = false;
@@ -158,7 +157,7 @@ oravarchareq_explicit(PG_FUNCTION_ARGS)
 			VarChar	   *targ2 = DatumGetVarCharPP(arg2);
 
 			result = (memcmp(VARDATA_ANY(targ1), VARDATA_ANY(targ2),
-							 len1 - VARHDRSZ) == 0);
+							 len1) == 0);
 
 			PG_FREE_IF_COPY(targ1, 0);
 			PG_FREE_IF_COPY(targ2, 1);
@@ -202,10 +201,9 @@ oravarcharne_explicit(PG_FUNCTION_ARGS)
 	
 	check_collation_set(collid);
 	
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-	
-	if (locale && locale->deterministic)
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{				
 		if (len1 != len2)
 			result = true;
@@ -215,7 +213,7 @@ oravarcharne_explicit(PG_FUNCTION_ARGS)
 			VarChar	   *targ2 = DatumGetVarCharPP(arg2);
 
 			result = (memcmp(VARDATA_ANY(targ1), VARDATA_ANY(targ2),
-							 len1 - VARHDRSZ) != 0);
+							 len1) != 0);
 
 			PG_FREE_IF_COPY(targ1, 0);
 			PG_FREE_IF_COPY(targ2, 1);
@@ -342,10 +340,9 @@ texteq_explicit(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-
-	if (locale && locale->deterministic)
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{
 		Datum		arg1 = PG_GETARG_DATUM(0);
 		Datum		arg2 = PG_GETARG_DATUM(1);
@@ -375,7 +372,7 @@ texteq_explicit(PG_FUNCTION_ARGS)
 			targ2 = DatumGetTextPP(arg2);
 
 			result = (memcmp(VARDATA_ANY(targ1), VARDATA_ANY(targ2),
-							 len1 - VARHDRSZ) == 0);
+							 len1) == 0);
 
 			PG_FREE_IF_COPY(targ1, 0);
 			PG_FREE_IF_COPY(targ2, 1);
@@ -404,10 +401,9 @@ textne_explicit(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-
-	if (locale && locale->deterministic)
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{
 		Datum		arg1 = PG_GETARG_DATUM(0);
 		Datum		arg2 = PG_GETARG_DATUM(1);
@@ -431,7 +427,7 @@ textne_explicit(PG_FUNCTION_ARGS)
 			targ2 = DatumGetTextPP(arg2);
 
 			result = (memcmp(VARDATA_ANY(targ1), VARDATA_ANY(targ2),
-							 len1 - VARHDRSZ) != 0);
+							 len1) != 0);
 
 			PG_FREE_IF_COPY(targ1, 0);
 			PG_FREE_IF_COPY(targ2, 1);
