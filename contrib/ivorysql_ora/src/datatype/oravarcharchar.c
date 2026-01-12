@@ -382,10 +382,9 @@ oravarchareq(PG_FUNCTION_ARGS)
 	
 	check_collation_set(collid);
 	
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-	
-	if (locale && locale->deterministic)
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{				
 		len1 = toast_raw_datum_size(arg1);
 		len2 = toast_raw_datum_size(arg2);
@@ -432,10 +431,9 @@ oravarcharne(PG_FUNCTION_ARGS)
 	
 	check_collation_set(collid);
 	
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-
-	if (locale && locale->deterministic)
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{
 		len1 = toast_raw_datum_size(arg1);
 		len2 = toast_raw_datum_size(arg2);

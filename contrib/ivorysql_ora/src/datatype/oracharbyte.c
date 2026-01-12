@@ -404,13 +404,12 @@ oracharbyteeq(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-
 	len1 = bcTruelen(arg1);
 	len2 = bcTruelen(arg2);
 
-	if (locale && locale->deterministic)
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{
 		/*
 		 * Since we only care about equality or not-equality, we can avoid all
@@ -444,13 +443,12 @@ oracharbytene(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-
 	len1 = bcTruelen(arg1);
 	len2 = bcTruelen(arg2);
 
-	if (locale && locale->deterministic)
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{
 		/*
 		 * Since we only care about equality or not-equality, we can avoid all

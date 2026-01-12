@@ -887,9 +887,6 @@ bpchareq(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-
 	len1 = bcTruelen(arg1);
 	len2 = bcTruelen(arg2);
 
@@ -904,7 +901,10 @@ bpchareq(PG_FUNCTION_ARGS)
 		PG_RETURN_BOOL(result);
 	}
 	/* End - ReqID:SRS-MYSQL-CASE */
-	if (locale && locale->deterministic)
+
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{
 		/*
 		 * Since we only care about equality or not-equality, we can avoid all
@@ -940,9 +940,6 @@ bpcharne(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		locale = pg_newlocale_from_collation(collid);
-
 	len1 = bcTruelen(arg1);
 	len2 = bcTruelen(arg2);
 
@@ -957,7 +954,10 @@ bpcharne(PG_FUNCTION_ARGS)
 		PG_RETURN_BOOL(result);
 	}
 	/* End - ReqID:SRS-MYSQL-CASE */
-	if (locale && locale->deterministic)
+	
+	if (lc_collate_is_c(collid) ||
+		collid == DEFAULT_COLLATION_OID ||
+		((locale = pg_newlocale_from_collation(collid)) && locale->deterministic))
 	{
 		/*
 		 * Since we only care about equality or not-equality, we can avoid all
@@ -1162,27 +1162,29 @@ hashbpchar(PG_FUNCTION_ARGS)
 	keydata = VARDATA_ANY(key);
 	keylen = bcTruelen(key);
 
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (is_mysql_format_collation(collid) && mysql_hash_hook)
-	{
-		result = mysql_hash_hook((unsigned char *)VARDATA_ANY(key), keylen, collid);
-		/* Avoid leaking memory for toasted inputs */
-		PG_FREE_IF_COPY(key, 0);
-
-		return result;
-	}
-	/* End - ReqID:SRS-MYSQL-CASE */
-
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		mylocale = pg_newlocale_from_collation(collid);
 
 	if (!mylocale || mylocale->deterministic)
 	{
+		char provider = get_collation_provider(collid);
+
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (provider == COLLPROVIDER_MYSQL)
+		{
+			result = mysql_hash_hook((unsigned char *)VARDATA_ANY(key), keylen, collid);
+
+			/* Avoid leaking memory for toasted inputs */
+			PG_FREE_IF_COPY(key, 0);
+
+			return result;
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
+		
 		/* Begin - Req: SRS-SQL-NLSSORT */
-		if (nlssort_hook && 
+		if (collid != ORA_COLL_OID(BINARY) && 
 			!IsPseudoCollation(collid) &&
-			collid != ORA_COLL_OID(BINARY) && 
-			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+			provider == COLLPROVIDER_ORACLE)
 		{
 			bytea *k = nlssort_hook(keydata, keylen, collid, true);
 
@@ -1247,27 +1249,27 @@ hashbpcharextended(PG_FUNCTION_ARGS)
 	keydata = VARDATA_ANY(key);
 	keylen = bcTruelen(key);
 
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (is_mysql_format_collation(collid))
-	{
-		result = hash_any_extended((unsigned char *) keydata, keylen,
-								   PG_GETARG_INT64(1));
-
-		PG_FREE_IF_COPY(key, 0);
-		return result;
-	}
-	/* End - ReqID:SRS-MYSQL-CASE */
-
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		mylocale = pg_newlocale_from_collation(collid);
 
 	if (!mylocale || mylocale->deterministic)
 	{
+		char provider = get_collation_provider(collid);
+
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (provider == COLLPROVIDER_MYSQL)
+		{
+			result = hash_any_extended((unsigned char *)keydata, keylen, PG_GETARG_INT64(1));
+
+			PG_FREE_IF_COPY(key, 0);
+			return result;
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
+		
 		/* Begin - Req: SRS-SQL-NLSSORT */
-		if (nlssort_hook && 
-			!IsPseudoCollation(collid) &&
-			collid != ORA_COLL_OID(BINARY) && 
-			get_collation_provider(collid) == COLLPROVIDER_ORACLE)		
+		if (collid != ORA_COLL_OID(BINARY) && 
+			!IsPseudoCollation(collid) && 
+			provider == COLLPROVIDER_ORACLE)
 		{
 			bytea *k = nlssort_hook(keydata, keylen, collid, true);
 
@@ -1276,7 +1278,7 @@ hashbpcharextended(PG_FUNCTION_ARGS)
 		}
 		/* End - Req: SRS-SQL-NLSSORT */
 		
-		result = hash_any_extended((unsigned char *) keydata, keylen,
+		result = hash_any_extended((unsigned char *)keydata, keylen,
 								   PG_GETARG_INT64(1));
 	}
 	else

@@ -349,39 +349,34 @@ hashtext(PG_FUNCTION_ARGS)
 	Oid			collid = PG_GET_COLLATION();
 	pg_locale_t mylocale = 0;
 	Datum		result;
-	char		provider;
-
+	
 	if (!collid)
 		ereport(ERROR,
 				(errcode(ERRCODE_INDETERMINATE_COLLATION),
 				 errmsg("could not determine which collation to use for string hashing"),
 				 errhint("Use the COLLATE clause to set the collation explicitly.")));
-
-	provider = get_collation_provider(collid);
-
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (provider == COLLPROVIDER_MYSQL && mysql_hash_hook)
-	{
-		result = mysql_hash_hook((unsigned char *)VARDATA_ANY(key), VARSIZE_ANY_EXHDR(key), collid);
-		
-		PG_FREE_IF_COPY(key, 0);
-
-		return result;
-	}
-	/* End - ReqID:SRS-MYSQL-CASE */
-
+	
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		mylocale = pg_newlocale_from_collation(collid);
 
 	if (!mylocale || mylocale->deterministic)
 	{
-		/* Begin - Req: SRS-SQL-NLSSORT */
-		char	   *keydata;
-		int			keylen;
+		char	*keydata = VARDATA_ANY(key);
+		int		keylen = VARSIZE_ANY_EXHDR(key);
+		char 	provider = get_collation_provider(collid);
 		
-		keydata = VARDATA_ANY(key);
-		keylen = VARSIZE_ANY_EXHDR(key);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (provider == COLLPROVIDER_MYSQL)
+		{
+			result = mysql_hash_hook((unsigned char *) keydata, keylen, collid);
+			
+			PG_FREE_IF_COPY(key, 0);
 
+			return result;
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
+
+		/* Begin - Req: SRS-SQL-NLSSORT */
 		if (nlssort_hook && 
 			!IsPseudoCollation(collid) &&
 			collid != ORA_COLL_OID(BINARY) && 
@@ -438,27 +433,12 @@ hashtextextended(PG_FUNCTION_ARGS)
 	Oid			collid = PG_GET_COLLATION();
 	pg_locale_t mylocale = 0;
 	Datum		result;
-	char		provider;
-
+	
 	if (!collid)
 		ereport(ERROR,
 				(errcode(ERRCODE_INDETERMINATE_COLLATION),
 				 errmsg("could not determine which collation to use for string hashing"),
 				 errhint("Use the COLLATE clause to set the collation explicitly.")));
-
-	provider = get_collation_provider(collid);
-	
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (provider == COLLPROVIDER_MYSQL)
-	{
-		result = hash_any_extended((unsigned char *) VARDATA_ANY(key),
-								   VARSIZE_ANY_EXHDR(key),
-								   PG_GETARG_INT64(1));
-
-		PG_FREE_IF_COPY(key, 0);
-		return result;
-	}
-	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		mylocale = pg_newlocale_from_collation(collid);
@@ -466,11 +446,9 @@ hashtextextended(PG_FUNCTION_ARGS)
 	if (!mylocale || mylocale->deterministic)
 	{
 		/* Begin - Req: SRS-SQL-NLSSORT */
-		char	   *keydata;
-		int			keylen;
-
-		keydata = VARDATA_ANY(key);
-		keylen = VARSIZE_ANY_EXHDR(key);
+		char	*keydata = VARDATA_ANY(key);
+		int		keylen = VARSIZE_ANY_EXHDR(key);
+		char 	provider = get_collation_provider(collid);
 
 		if (nlssort_hook && 
 			!IsPseudoCollation(collid) &&
