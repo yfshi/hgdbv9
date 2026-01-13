@@ -382,3 +382,27 @@ ALTER TABLE i_partitioned SET INTERVAL(11);
 
 DROP TABLE i_partitioned;
 /* End - BUG#6801 */
+
+/* Begin - BUG#7040 */
+create table i_partitioned(id int primary key) partition by range(id) interval(10);
+create table i_partitioned_p1 partition of i_partitioned for values from (-10) to (0);
+
+create or replace function i_partitioned_tfunc() returns trigger LANGUAGE plisql as $$
+BEGIN
+	raise info 'tg_relname=%, tg_level=%, new=%', tg_relname, tg_level, new;
+	return NULL;
+end;
+$$;
+/
+
+create trigger i_partitioned_tfunc_trig after insert on i_partitioned
+	for each statement execute function i_partitioned_tfunc();
+/
+
+with c_select as(insert into i_partitioned values(20)) insert into i_partitioned values(30);
+
+\d+ i_partitioned
+select * from i_partitioned;
+
+drop table i_partitioned;
+/* End - BUG#7040 */

@@ -627,3 +627,42 @@ CREATE TABLE i_partitioned (id int) PARTITION BY RANGE(id) INTERVAL (10);
 ALTER TABLE i_partitioned SET INTERVAL(11);
 DROP TABLE i_partitioned;
 /* End - BUG#6801 */
+/* Begin - BUG#7040 */
+create table i_partitioned(id int primary key) partition by range(id) interval(10);
+create table i_partitioned_p1 partition of i_partitioned for values from (-10) to (0);
+create or replace function i_partitioned_tfunc() returns trigger LANGUAGE plisql as $$
+BEGIN
+	raise info 'tg_relname=%, tg_level=%, new=%', tg_relname, tg_level, new;
+	return NULL;
+end;
+$$;
+/
+create trigger i_partitioned_tfunc_trig after insert on i_partitioned
+	for each statement execute function i_partitioned_tfunc();
+/
+with c_select as(insert into i_partitioned values(20)) insert into i_partitioned values(30);
+INFO:  tg_relname=i_partitioned, tg_level=STATEMENT, new=<NULL>
+\d+ i_partitioned
+                         Partitioned table "public.i_partitioned"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           | not null |         | plain   |              | 
+Partition key: RANGE (id)
+Range interval: INTERVAL (10) BASEVALUE (0)
+Indexes:
+    "i_partitioned_pkey" PRIMARY KEY, btree (id)
+Triggers:
+    i_partitioned_tfunc_trig AFTER INSERT ON i_partitioned FOR EACH STATEMENT EXECUTE FUNCTION i_partitioned_tfunc()
+Partitions: i_partitioned_p1 FOR VALUES FROM ('-10') TO (0),
+            i_partitioned_sys_p FOR VALUES FROM (30) TO (40),
+            i_partitioned_sys_p1 FOR VALUES FROM (20) TO (30)
+
+select * from i_partitioned;
+ id 
+----
+ 20
+ 30
+(2 rows)
+
+drop table i_partitioned;
+/* End - BUG#7040 */

@@ -4753,7 +4753,8 @@ CheckTableNotInUse(Relation rel, const char *stmt)
 
 	if (rel->rd_rel->relkind != RELKIND_INDEX &&
 		rel->rd_rel->relkind != RELKIND_PARTITIONED_INDEX &&
-		AfterTriggerPendingOnRel(RelationGetRelid(rel)))
+		AfterTriggerPendingOnRel(RelationGetRelid(rel)) &&
+		!rel->definterval)	/* BUG#7040 */
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_IN_USE),
 		/* translator: first %s is a SQL command, eg ALTER TABLE */
