@@ -1581,6 +1581,29 @@ list_copy_tail(const List *oldlist, int nskip)
 	return newlist;
 }
 
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ * Return a shallow copy of the specified list containing only the first 'len'
+ * elements.  If oldlist is shorter than 'len' then we copy the entire list.
+ */
+List *
+list_copy_head(const List *oldlist, int len)
+{
+	List	   *newlist;
+
+	if (oldlist == NIL || len <= 0)
+		return NIL;
+
+	len = Min(oldlist->length, len);
+
+	newlist = new_list(oldlist->type, len);
+	memcpy(newlist->elements, oldlist->elements, len * sizeof(ListCell));
+
+	check_list_invariants(newlist);
+	return newlist;
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 /*
  * Return a deep copy of the specified list.
  *

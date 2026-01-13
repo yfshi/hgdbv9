@@ -254,6 +254,7 @@ bool enable_coverwritten_ora_trigger = true;	/* ReqID:SRS-SQL-TRIGGER */
 bool convert_multiinsert_with_cte = false;
 /* End - SRS-SQL-MULTITABLEINSERT */
 
+bool enable_multi_step_partition = false;	/* ReqID:SRS-SQL-PARTITION-TABLE */
 
 #endif
 
@@ -1075,6 +1076,22 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - SRS-SQL-MULTITABLEINSERT */
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	/*
+	 * Theoretically, this is not allowed. it's a compromise made for pg_dump,
+	 * this GUC should not be enabled, as pg_dump enables it automatically.
+	 */
+	{
+		{"ivorysql.enable_multi_step_partition", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Whether allow create Oracle partitioned table using multi-step."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE | GUC_DISALLOW_IN_AUTO_FILE
+		},
+		&enable_multi_step_partition,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 #endif
 #if 0

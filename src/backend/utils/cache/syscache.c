@@ -54,6 +54,8 @@
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_opfamily.h"
+#include "catalog/pg_ora_part_tables.h" /* ReqID:SRS-SQL-PARTITION-TABLE */
+#include "catalog/pg_ora_tab_partitions.h" /* ReqID:SRS-SQL-PARTITION-TABLE */
 #include "catalog/pg_partitioned_table.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_publication.h"
@@ -712,6 +714,41 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		8
 	},
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	{OraPartitionedRelationId,		/* ORAPARTRELID */
+		OraPartitionedRelidIndexId,
+		1,
+		{
+			Anum_pg_ora_part_tables_partrelid,
+			0,
+			0,
+			0
+		},
+		32
+	},
+	{OraTabPartitionsId,		/* ORATABPARTID */
+		OraTabPartitionsIdPartIndexId,
+		1,
+		{
+			Anum_pg_ora_tab_partitions_part,
+			0,
+			0,
+			0
+		},
+		128
+	},
+	{OraTabPartitionsId,		/* ORATABPARTPARTNAME */
+		OraTabPartitionsPartNameId,
+		2,
+		{
+			Anum_pg_ora_tab_partitions_partroot,
+			Anum_pg_ora_tab_partitions_partname,
+			0,
+			0
+		},
+		128
+	},
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 	{PartitionedRelationId,		/* PARTRELID */
 		PartitionedRelidIndexId,
 		1,

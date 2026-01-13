@@ -15,6 +15,7 @@ include $(top_builddir)/src/Makefile.global
 OBJS = \
 	partbounds.o \
 	partdesc.o \
-	partprune.o
+	partprune.o \
+	ora_partition.o
 
 include $(top_srcdir)/src/backend/common.mk

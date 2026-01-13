@@ -6141,6 +6141,14 @@ getTables(Archive *fout, int *numTables)
 	int			i_amname;
 	int			i_compatible_mode;
 	int			i_default_collation; /* BUG#M478 */
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	int			i_ora_partname;
+	int			i_isorarootpart;
+	int			i_iscomposite;
+	int			i_isautomatic;
+	int			i_hastemplate;
+	int			i_isorainterval;
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/*
 	 * Find all the tables and table-like objects.
@@ -6290,7 +6298,15 @@ getTables(Archive *fout, int *numTables)
 						  "%s AS ispartition, "
 						  "oj.option->>'INTERVAL' as isinterval, "	/* BUG#6400 */
 						  "oj.compatible_mode AS compatible_mode, "
-						  "oj.option->>'collation' as default_collation " /* BUG#M478 */
+						  "oj.option->>'collation' as default_collation, " /* BUG#M478 */
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "tab_partition.partname AS ora_partname, "
+						  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid) AS isorarootpart, "
+						  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.composite is true) AS iscomposite, "
+						  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.automatic is true) AS isautomatic, "
+						  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.subpart_template is not null) AS hastemplate, "
+						  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.interval_expr is not null) AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6304,6 +6320,9 @@ getTables(Archive *fout, int *numTables)
 						  "(c.oid = pip.objoid "
 						  "AND pip.classoid = 'pg_class'::regclass "
 						  "AND pip.objsubid = 0) "
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "LEFT JOIN pg_ora_tab_partitions tab_partition ON (c.oid = tab_partition.part) "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "WHERE c.relkind in ('%c', '%c', '%c', '%c', '%c', '%c', '%c') "
 						  "%s"	/* ReqID:SRS-CMD-PGDUMP */
 						  "ORDER BY c.oid",
@@ -6364,7 +6383,15 @@ getTables(Archive *fout, int *numTables)
 						  "OR %s IS NOT NULL"
 						  "))"
 						  "AS changed_acl, "
-						  "%s AS ispartition "	/* BUG#M0000399 */
+						  "%s AS ispartition, "	/* BUG#M0000399 */
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "NULL AS ora_partname, "
+						  "false AS isorarootpart, "
+						  "false AS iscomposite, "
+						  "false AS isautomatic, "
+						  "false AS hastemplate, "
+						  "false AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6492,7 +6519,15 @@ getTables(Archive *fout, int *numTables)
 						  "OR %s IS NOT NULL"
 						  "))"
 						  "AS changed_acl, "
-						  "%s AS ispartition "
+						  "%s AS ispartition, "
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "NULL AS ora_partname, "
+						  "false AS isorarootpart, "
+						  "false AS iscomposite, "
+						  "false AS isautomatic, "
+						  "false AS hastemplate, "
+						  "false AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6570,7 +6605,15 @@ getTables(Archive *fout, int *numTables)
 						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
 						  "tc.reloptions AS toast_reloptions, "
 						  "NULL AS changed_acl, "
-						  "false AS ispartition "
+						  "false AS ispartition, "
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "NULL AS ora_partname, "
+						  "false AS isorarootpart, "
+						  "false AS iscomposite, "
+						  "false AS isautomatic, "
+						  "false AS hastemplate, "
+						  "false AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6621,7 +6664,15 @@ getTables(Archive *fout, int *numTables)
 						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
 						  "tc.reloptions AS toast_reloptions, "
 						  "NULL AS changed_acl, "
-						  "false AS ispartition "
+						  "false AS ispartition, "
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "NULL AS ora_partname, "
+						  "false AS isorarootpart, "
+						  "false AS iscomposite, "
+						  "false AS isautomatic, "
+						  "false AS hastemplate, "
+						  "false AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6672,7 +6723,15 @@ getTables(Archive *fout, int *numTables)
 						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
 						  "tc.reloptions AS toast_reloptions, "
 						  "NULL AS changed_acl, "
-						  "false AS ispartition "
+						  "false AS ispartition, "
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "NULL AS ora_partname, "
+						  "false AS isorarootpart, "
+						  "false AS iscomposite, "
+						  "false AS isautomatic, "
+						  "false AS hastemplate, "
+						  "false AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6721,7 +6780,15 @@ getTables(Archive *fout, int *numTables)
 						  "c.reloptions AS reloptions, "
 						  "tc.reloptions AS toast_reloptions, "
 						  "NULL AS changed_acl, "
-						  "false AS ispartition "
+						  "false AS ispartition, "
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "NULL AS ora_partname, "
+						  "false AS isorarootpart, "
+						  "false AS iscomposite, "
+						  "false AS isautomatic, "
+						  "false AS hastemplate, "
+						  "false AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6768,7 +6835,15 @@ getTables(Archive *fout, int *numTables)
 						  "c.reloptions AS reloptions, "
 						  "tc.reloptions AS toast_reloptions, "
 						  "NULL AS changed_acl, "
-						  "false AS ispartition "
+						  "false AS ispartition, "
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "NULL AS ora_partname, "
+						  "false AS isorarootpart, "
+						  "false AS iscomposite, "
+						  "false AS isautomatic, "
+						  "false AS hastemplate, "
+						  "false AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6814,7 +6889,15 @@ getTables(Archive *fout, int *numTables)
 						  "c.reloptions AS reloptions, "
 						  "tc.reloptions AS toast_reloptions, "
 						  "NULL AS changed_acl, "
-						  "false AS ispartition "
+						  "false AS ispartition, "
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "NULL AS ora_partname, "
+						  "false AS isorarootpart, "
+						  "false AS iscomposite, "
+						  "false AS isautomatic, "
+						  "false AS hastemplate, "
+						  "false AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6860,7 +6943,15 @@ getTables(Archive *fout, int *numTables)
 						  "c.reloptions AS reloptions, "
 						  "NULL AS toast_reloptions, "
 						  "NULL AS changed_acl, "
-						  "false AS ispartition "
+						  "false AS ispartition, "
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "NULL AS ora_partname, "
+						  "false AS isorarootpart, "
+						  "false AS iscomposite, "
+						  "false AS isautomatic, "
+						  "false AS hastemplate, "
+						  "false AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6905,7 +6996,15 @@ getTables(Archive *fout, int *numTables)
 						  "NULL AS reloptions, "
 						  "NULL AS toast_reloptions, "
 						  "NULL AS changed_acl, "
-						  "false AS ispartition "
+						  "false AS ispartition, "
+						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+						  "NULL AS ora_partname, "
+						  "false AS isorarootpart, "
+						  "false AS iscomposite, "
+						  "false AS isautomatic, "
+						  "false AS hastemplate, "
+						  "false AS isorainterval "
+						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6979,6 +7078,14 @@ getTables(Archive *fout, int *numTables)
 	i_amname = PQfnumber(res, "amname");
 	i_compatible_mode = PQfnumber(res, "compatible_mode");
 	i_default_collation = PQfnumber(res, "default_collation"); /* BUG#M478 */
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	i_ora_partname = PQfnumber(res, "ora_partname");
+	i_isorarootpart = PQfnumber(res, "isorarootpart");
+	i_iscomposite = PQfnumber(res, "iscomposite");
+	i_isautomatic = PQfnumber(res, "isautomatic");
+	i_hastemplate = PQfnumber(res, "hastemplate");
+	i_isorainterval = PQfnumber(res, "isorainterval");
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	if (dopt->lockWaitTimeout)
 	{
@@ -7119,6 +7226,19 @@ getTables(Archive *fout, int *numTables)
 		else
 			tblinfo[i].default_collation = atooid(PQgetvalue(res, i, i_default_collation)); /* BUG#M478 */
 		/* End - Req:SRS-SQL-NLSSORT */
+
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		if (PQgetisnull(res, i, i_ora_partname))
+			tblinfo[i].part_name = NULL;
+		else
+			tblinfo[i].part_name = pg_strdup(PQgetvalue(res, i, i_ora_partname));
+
+		tblinfo[i].isoraclerootpart = (strcmp(PQgetvalue(res, i, i_isorarootpart), "t") == 0);
+		tblinfo[i].iscomposite = (strcmp(PQgetvalue(res, i, i_iscomposite), "t") == 0);
+		tblinfo[i].isautomatic = (strcmp(PQgetvalue(res, i, i_isautomatic), "t") == 0);
+		tblinfo[i].hastemplate = (strcmp(PQgetvalue(res, i, i_hastemplate), "t") == 0);
+		tblinfo[i].isorainterval = (strcmp(PQgetvalue(res, i, i_isorainterval), "t") == 0);
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 		/*
 		 * Read-lock target tables to make sure they aren't DROPPED or altered
@@ -16820,6 +16940,11 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 	{
 		char	   *partkeydef = NULL;
 		char	   *partintervaldef = NULL;	/* ReqID:RSR-SQL-Partition-interval */
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		char	   *ora_intervalexprdef = NULL;
+		char	   *subpartkeydef = NULL;
+		char	   *subparttemplatedef = NULL;
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 		char	   *ftoptions = NULL;
 		char	   *srvname = NULL;
 		char	   *foreign = "";
@@ -16858,6 +16983,47 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 						PQclear(res);
 					}
 					/* End - ReqID:RSR-SQL-Partition-interval */
+
+					/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+					if (tbinfo->isoraclerootpart && tbinfo->isorainterval)
+					{
+						resetPQExpBuffer(query);
+						appendPQExpBuffer(query,
+										  "SELECT pg_get_partinterval_def('%u')",
+										  tbinfo->dobj.catId.oid);
+						res = ExecuteSqlQueryForSingleRow(fout, query->data);
+						ora_intervalexprdef = pg_strdup(PQgetvalue(res, 0, 0));
+						PQclear(res);
+					}
+
+					if (tbinfo->isoraclerootpart && tbinfo->iscomposite)
+					{
+						resetPQExpBuffer(query);
+
+						/* retrieve subpartition key definition */
+						appendPQExpBuffer(query,
+										  "SELECT ora_get_subpartkeydef('%u')",
+										  tbinfo->dobj.catId.oid);
+						res = ExecuteSqlQueryForSingleRow(fout, query->data);
+						subpartkeydef = pg_strdup(PQgetvalue(res, 0, 0));
+						PQclear(res);
+
+						if (tbinfo->hastemplate)
+						{
+							resetPQExpBuffer(query);
+
+							/* retrieve subpartition template definition */
+							appendPQExpBuffer(query,
+											  "SELECT pg_get_expr(op.subpart_template, op.partrelid) "
+											  "FROM pg_ora_part_tables op "
+											  "WHERE op.partrelid = '%u'",
+											  tbinfo->dobj.catId.oid);
+							res = ExecuteSqlQueryForSingleRow(fout, query->data);
+							subparttemplatedef = pg_strdup(PQgetvalue(res, 0, 0));
+							PQclear(res);
+						}
+					}
+					/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 					destroyPQExpBuffer(query);
 					break;
 				}
@@ -17121,11 +17287,34 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 
 			if (tbinfo->relkind == RELKIND_PARTITIONED_TABLE)
 			{
-				appendPQExpBuffer(q, "\nPARTITION BY %s", partkeydef);
-				/* Begin - ReqID:RSR-SQL-Partition-interval */
-				if (db_mode == DB_ORACLE&& partintervaldef != NULL && strlen(partintervaldef) > 0)
-					appendPQExpBuffer(q, " %s", partintervaldef);
-				/* End - ReqID:RSR-SQL-Partition-interval */
+				/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+				if (!tbinfo->isoraclerootpart)
+				{
+					appendPQExpBuffer(q, "\nPARTITION BY %s", partkeydef);
+					/* Begin - ReqID:RSR-SQL-Partition-interval */
+					if (db_mode == DB_ORACLE&& partintervaldef != NULL && strlen(partintervaldef) > 0)
+						appendPQExpBuffer(q, " %s", partintervaldef);
+					/* End - ReqID:RSR-SQL-Partition-interval */
+				}
+				else
+				{
+					/* Oracle partitioned table */
+					appendPQExpBuffer(q, "\nONLY PARTITION BY %s", partkeydef);
+
+					if (tbinfo->isautomatic)
+						appendPQExpBufferStr(q, " AUTOMATIC");
+					else if (tbinfo->isorainterval)
+						appendPQExpBuffer(q, " %s", ora_intervalexprdef);
+
+					if (tbinfo->iscomposite)
+					{
+						appendPQExpBuffer(q, "\nSUBPARTITION BY %s", subpartkeydef);
+
+						if (tbinfo->hastemplate)
+							appendPQExpBuffer(q, "\n%s", subparttemplatedef);
+					}
+				}
+				/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 			}
 
 			if (tbinfo->relkind == RELKIND_FOREIGN_TABLE)
@@ -17683,9 +17872,17 @@ dumpTableAttach(Archive *fout, const TableAttachInfo *attachinfo)
 					  "ALTER TABLE ONLY %s ",
 					  fmtQualifiedDumpable(attachinfo->parentTbl));
 	appendPQExpBuffer(q,
-					  "ATTACH PARTITION %s %s;\n",
+					  "ATTACH PARTITION %s %s",
 					  fmtQualifiedDumpable(attachinfo->partitionTbl),
 					  partbound);
+
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (attachinfo->partitionTbl->part_name)
+		appendPQExpBuffer(q,
+						  " WITH %s",
+						  fmtId(attachinfo->partitionTbl->part_name));
+	appendPQExpBufferStr(q, ";\n");
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/*
 	 * There is no point in creating a drop query as the drop is done by table

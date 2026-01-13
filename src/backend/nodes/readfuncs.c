@@ -3114,6 +3114,76 @@ _readVarRef(void)
 }
 /* End - ReqID:SRS-MYSQL-SET; End - BUG#Z6816 */
 
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ * _readOraSubPartitionTemplateSpec
+ */
+static OraSubPartitionTemplateSpec *
+_readOraSubPartitionTemplateSpec(void)
+{
+	READ_LOCALS(OraSubPartitionTemplateSpec);
+	READ_NODE_FIELD(subpartitons_desc);
+	READ_INT_FIELD(hash_subpartition_quantity);
+
+	READ_DONE();
+}
+
+/*
+ * _readOraPartitionBoundSpec
+ */
+static OraPartitionBoundSpec *
+_readOraPartitionBoundSpec(void)
+{
+	READ_LOCALS(OraPartitionBoundSpec);
+	READ_STRING_FIELD(partition_name);
+	READ_STRING_FIELD(tablespace_name);
+	READ_NODE_FIELD(bound);
+	READ_NODE_FIELD(subpart_bound);
+
+	READ_DONE();
+}
+
+static OraPartitionSpec *
+_readOraPartitionSpec(void)
+{
+	READ_LOCALS(OraPartitionSpec);
+
+	READ_ENUM_FIELD(partition_strategy, OraPartitionStrategy);
+	READ_NODE_FIELD(root_partiton_spec);
+	READ_NODE_FIELD(sub_partiton_spec);
+	READ_NODE_FIELD(partiton_desc);
+	READ_INT_FIELD(hash_partition_quantity);
+	READ_NODE_FIELD(sub_part_template);
+	READ_BOOL_FIELD(automatic);
+	READ_NODE_FIELD(part_interval);
+
+	READ_DONE();
+}
+
+static OraPartExtentedName *
+_readOraPartExtentedName(void)
+{
+	READ_LOCALS(OraPartExtentedName);
+
+	READ_STRING_FIELD(partition);
+	READ_NODE_FIELD(forexpr);
+
+	READ_DONE();
+}
+
+static OraPartSup *
+_readOraPartSup(void)
+{
+	READ_LOCALS(OraPartSup);
+
+	READ_STRING_FIELD(partname);
+	READ_INT_FIELD(partlevel);
+	READ_INT_FIELD(seqno);
+
+	READ_DONE();
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 /*
  * parseNodeString
  *
@@ -3445,6 +3515,18 @@ parseNodeString(void)
 	else if (MATCH("VARREF", 6))
 		return_value = _readVarRef();
 	/* End - ReqID:SRS-MYSQL-SET; End - BUG#Z6816 */
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	else if (MATCH("ORASUBPARTITIONTEMPLATESPEC", 27))
+		return_value = _readOraSubPartitionTemplateSpec();
+	else if (MATCH("ORAPARTITIONBOUNDSPEC", 21))
+		return_value = _readOraPartitionBoundSpec();
+	else if (MATCH("ORAPARTITIONSPEC", 16))
+		return_value = _readOraPartitionSpec();
+	else if (MATCH("ORAPARTEXTENTEDNAME", 19))
+		return_value = _readOraPartExtentedName();
+	else if (MATCH("ORAPARTSUP", 10))
+		return_value = _readOraPartSup();
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);

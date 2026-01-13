@@ -67,6 +67,7 @@
 #include "commands/typecmds.h"
 #include "executor/executor.h"
 #include "miscadmin.h"
+#include "nodes/makefuncs.h"	/* ReqID:SRS-SQL-PARTITION-TABLE */
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
 #include "parser/parse_coerce.h"
@@ -74,6 +75,11 @@
 #include "parser/parse_expr.h"
 #include "parser/parse_relation.h"
 #include "parser/parsetree.h"
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+#include "partitioning/ora_partition.h"
+#include "partitioning/partbounds.h"
+#include "partitioning/partdefs.h"
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 #include "partitioning/partdesc.h"
 #include "storage/lmgr.h"
 #include "storage/predicate.h"
@@ -2014,6 +2020,10 @@ heap_drop_with_catalog(Oid relid)
 	HeapTuple	tuple;
 	Oid			parentOid = InvalidOid,
 				defaultPartOid = InvalidOid;
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	Oid			higherOid = InvalidOid;
+	int32		cmpval = -1;
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/*
 	 * To drop a partition safely, we must grab exclusive lock on its parent,
@@ -2093,7 +2103,120 @@ heap_drop_with_catalog(Oid relid)
 	 * If a partitioned table, delete the pg_partitioned_table tuple.
 	 */
 	if (rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+	{
 		RemovePartitionKeyByRelId(relid);
+
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		if (is_oracle_partitioned_table(relid))
+			RemoveOraclePartitionedTable(relid);
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	}
+
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (rel->rd_rel->relispartition)
+	{
+		Oid		rootrelid = InvalidOid;
+		List	*ancestors;
+
+		ancestors = get_partition_ancestors(relid);
+		if (ancestors)
+			rootrelid = llast_oid(ancestors);
+
+		list_free(ancestors);
+
+		if (OidIsValid(rootrelid) && is_oracle_partitioned_table(rootrelid))
+		{
+			Relation			parentrel;
+			PartitionDesc		parent_partdesc;
+
+			/* parentOid already acquired lock */
+			parentrel = table_open(parentOid, NoLock);
+			parent_partdesc = RelationGetPartitionDesc(parentrel, false);
+
+			if (parent_partdesc->boundinfo->strategy == PARTITION_STRATEGY_RANGE)
+			{
+				if (rootrelid == parentOid &&
+					parent_partdesc->intervalinfo)
+				{
+					HeapTuple		tuple;
+					Datum			datum;
+					bool			isnull;
+					PartitionKey	parent_partkey = RelationGetPartitionKey(parentrel);
+					Const			*rbound_val;
+					PartitionBoundSpec	*relspec;
+					PartitionRangeDatum	*rbound;
+
+					Assert(parent_partdesc->intervalinfo->base);
+
+					/* get the Const datum of upper bound of rel */
+					tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
+					if (!HeapTupleIsValid(tuple))
+						elog(ERROR, "cache lookup failed for relation %u", relid);
+
+					datum = SysCacheGetAttr(RELOID, tuple,
+											Anum_pg_class_relpartbound,
+											&isnull);
+					if (isnull)
+						elog(ERROR, "null relpartbound for relation %u", relid);
+
+					relspec = (PartitionBoundSpec *)
+						stringToNode(TextDatumGetCString(datum));
+
+					if (!IsA(relspec, PartitionBoundSpec))
+						elog(ERROR, "expected PartitionBoundSpec");
+
+					ReleaseSysCache(tuple);
+
+					/* interval partition only has one partition key */
+					rbound = castNode(PartitionRangeDatum, linitial(relspec->upperdatums));
+
+					/* oracle interval partition not exist MAXVALUE bound value */
+					if (rbound->kind != PARTITION_RANGE_DATUM_VALUE)
+						elog(ERROR, "invalid range bound datum for oracle partitioned table");
+
+					rbound_val = castNode(Const, rbound->value);
+
+					/* FunctionCall2Coll not accept null, check it */
+					if (rbound_val->constisnull)
+						elog(ERROR, "invalid range bound datum");
+
+					if (parent_partdesc->intervalinfo->base->constisnull)
+						elog(ERROR, "invalid basevalue");
+
+					/* compare the basevalue and the upper bound of droped rel */
+					cmpval = DatumGetInt32(FunctionCall2Coll(&parent_partkey->partsupfunc[0],
+															 parent_partkey->partcollation[0],
+															 parent_partdesc->intervalinfo->base->constvalue,
+															 rbound_val->constvalue));
+
+					if (cmpval >= 0)
+						higherOid = update_next_range_partition_bound(relid, parentOid, true);
+				}
+				else
+				{
+					/*
+					 * range partition:
+					 * If you drop a range partition and later insert a row that would
+					 * have belonged to the dropped partition,then the database stores
+					 * the row in the next higher partition. However, if that partition
+					 * is the highest partition, then the insert will fail, because the
+					 * range of values represented by the dropped partition is no longer
+					 * valid for the table.
+					 *
+					 * Side effect:if the droped partition has subpartitions and the
+					 * subpartitions are also RANGE partitions, then there is no need
+					 * to perform pg_class relpartbound updates on the subpartitions,
+					 * we maybe fix it in the future.
+					 */
+					higherOid = update_next_range_partition_bound(relid, parentOid, true);
+				}
+			}
+
+			table_close(parentrel, NoLock);
+			RemoveOraclePartitions(relid);
+		}
+	}
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/*
 	 * If the relation being dropped is the default partition itself,
@@ -2185,12 +2308,60 @@ heap_drop_with_catalog(Oid relid)
 		if (OidIsValid(defaultPartOid) && relid != defaultPartOid)
 			CacheInvalidateRelcacheByRelid(defaultPartOid);
 
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		/* the bound of highger partition has changed */
+		if (OidIsValid(higherOid))
+			CacheInvalidateRelcacheByRelid(higherOid);
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 		/*
 		 * Invalidate the parent's relcache so that the partition is no longer
 		 * included in its partition descriptor.
 		 */
 		CacheInvalidateRelcacheByRelid(parentOid);
 		/* keep the lock */
+
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		/* update the basevalue for interval partition */
+		if (cmpval == 0)
+		{
+			Relation			parentrel;
+			PartitionDesc		parent_partdesc;
+
+			/* make the updated data visible */
+			CommandCounterIncrement();
+
+			parentrel = table_open(parentOid, NoLock);
+			parent_partdesc = RelationGetPartitionDesc(parentrel, false);
+
+			if (parent_partdesc->nparts > 0)
+			{
+				PartitionKey		parent_partkey = RelationGetPartitionKey(parentrel);
+				PartitionInterval	*partinterval;
+				Datum				highest;
+				int					i;
+
+				for (i = 1; i < parent_partdesc->boundinfo->nindexes; i++)
+					if(parent_partdesc->boundinfo->indexes[i] == -1)
+						break;
+
+				highest = parent_partdesc->boundinfo->datums[i - 1][0];
+
+				partinterval = ora_get_partition_interval(parentOid);
+
+				if (partinterval == NULL)
+					elog(ERROR, "invalid interval expr of oracle partitioned table");
+
+				partinterval->base = (Node *) makeConst(parent_partkey->parttypid[0], parent_partkey->parttypmod[0],
+														parent_partkey->partcollation[0], parent_partkey->parttyplen[0],
+														highest, false, parent_partkey->parttypbyval[0]);
+
+				StorePartitionInterval(parentrel, partinterval);
+			}
+
+			table_close(parentrel, NoLock);
+		}
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 	}
 }
 
@@ -4210,14 +4381,19 @@ DeleteForceViewAttinPgobject(Oid viewid)
 void
 StorePartitionInterval(Relation rel, PartitionInterval *partinterval)
 {
-	SetRelationInterval(RelationGetRelid(rel), RelationGetRelationName(rel),
-						RelationGetNamespace(rel), rel->rd_rel->relkind,
-						nodeToString(partinterval));
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (is_oracle_partitioned_table(RelationGetRelid(rel)))
+		UpdateOraclePartitionedTableInterval(RelationGetRelid(rel), partinterval);
+	else
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+		SetRelationInterval(RelationGetRelid(rel), RelationGetRelationName(rel),
+							RelationGetNamespace(rel), rel->rd_rel->relkind,
+							nodeToString(partinterval));
+
+	CacheInvalidateRelcache(rel);
 
 	/* Make these updates visible */
 	CommandCounterIncrement();
-
-	CacheInvalidateRelcache(rel);
 }
 
 /*
@@ -4233,7 +4409,12 @@ StorePartitionInterval(Relation rel, PartitionInterval *partinterval)
 void
 RemovePartitionInterval(Relation rel)
 {
-	DeleteRelationInterval(RelationGetRelid(rel));
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (is_oracle_partitioned_table(RelationGetRelid(rel)))
+		UpdateOraclePartitionedTableInterval(RelationGetRelid(rel), NULL);
+	else
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+		DeleteRelationInterval(RelationGetRelid(rel));
 
 	/* Make these updates visible */
 	CommandCounterIncrement();

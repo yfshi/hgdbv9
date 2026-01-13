@@ -136,11 +136,18 @@ RelationBuildPartitionInterval(Oid relid, MemoryContext context)
 	info = palloc0(sizeof(PartitionIntervalInfoData));
 
 	/* Get partition interval from metadata */
-	intervalstr = GetRelationInterval(relid);
-	if (intervalstr == NULL)
-		partinterval = NULL;
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (is_oracle_partitioned_table(relid))
+		partinterval = ora_get_partition_interval(relid);
 	else
-		partinterval = stringToNode(intervalstr);
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	{
+		intervalstr = GetRelationInterval(relid);
+		if (intervalstr == NULL)
+			partinterval = NULL;
+		else
+			partinterval = stringToNode(intervalstr);
+	}
 
 	if (oldcxt != NULL)
 		MemoryContextSwitchTo(oldcxt);

@@ -130,4 +130,9 @@ extern List *calc_new_interval_partition_rbound(ParseState *pstate, PartitionKey
 												PartitionDesc partdesc, Datum *values, bool *equal);
 /* End - ReqID:RSR-SQL-Partition-interval */
 
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+extern OraSubPartitionTemplateSpec *transformOraclePartitionedTableTemplate(PartitionKey subpartkey,
+																		OraSubPartitionTemplateSpec *subp_template);
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 #endif							/* PARTBOUNDS_H */

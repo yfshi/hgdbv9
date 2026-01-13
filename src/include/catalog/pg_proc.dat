@@ -11896,6 +11896,12 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proname => 'dbms_output_serveroutput', procost => '10', provolatile => 's',
   prorettype => 'bool', proargtypes => 'bool int4', prosrc => 'dbms_output_serveroutput' },
 # /* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
+
+# /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+{ oid => '6133', descr => 'subpartition key description',
+  proname => 'ora_get_subpartkeydef', provolatile => 's', prorettype => 'text',
+  proargtypes => 'oid', prosrc => 'ora_get_subpartkeydef' },
+# /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 /*END Oracle Compatibility Metadatas*/
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */

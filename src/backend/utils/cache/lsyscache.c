@@ -35,6 +35,11 @@
 #include "catalog/pg_statistic.h"
 #include "catalog/pg_transform.h"
 #include "catalog/pg_type.h"
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+#include "catalog/pg_ora_part_tables.h"
+#include "catalog/pg_ora_tab_partitions.h"
+#include "catalog/pg_partitioned_table.h"
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 #include "catalog/storage_gtt.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
@@ -4217,3 +4222,402 @@ type_is_numeric(Oid typid)
 	return typcategory == TYPCATEGORY_NUMERIC;
 }
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ * is_oracle_partitioned_table
+ *	  Returns true if it is an Oracle-compatible partitioned table.
+ */
+bool
+is_oracle_partitioned_table(Oid relid)
+{
+	return SearchSysCacheExists1(ORAPARTRELID, ObjectIdGetDatum(relid));
+}
+
+/*
+ * is_oracle_partitione
+ *	  Returns true if it is a partition of Oracle partitioned table.
+ */
+bool
+is_oracle_partition(Oid relid)
+{
+	HeapTuple	tp;
+
+	tp = SearchSysCache1(ORATABPARTID, ObjectIdGetDatum(relid));
+	if (HeapTupleIsValid(tp))
+	{
+		Form_pg_ora_tab_partitions tup = (Form_pg_ora_tab_partitions) GETSTRUCT(tp);
+		int16	partlevel;
+
+		partlevel = tup->partlevel;
+		ReleaseSysCache(tp);
+
+		if (partlevel == 1)
+			return true;
+		else
+			return false;
+	}
+	else
+		return false;
+}
+
+/*
+ * is_oracle_subpartitione
+ *	  Returns true if it is a subpartition of Oracle partitioned table.
+ */
+bool
+is_oracle_subpartition(Oid relid)
+{
+	HeapTuple	tp;
+
+	tp = SearchSysCache1(ORATABPARTID, ObjectIdGetDatum(relid));
+	if (HeapTupleIsValid(tp))
+	{
+		Form_pg_ora_tab_partitions tup = (Form_pg_ora_tab_partitions) GETSTRUCT(tp);
+		int16	partlevel;
+
+		partlevel = tup->partlevel;
+		ReleaseSysCache(tp);
+
+		if (partlevel == 2)
+			return true;
+		else
+			return false;
+	}
+	else
+		return false;
+}
+
+/*
+ * is_atuomatic_list_partitioning
+ *	  Returns true if is an oracle AUTOMATIC list partitioning.
+ */
+bool
+is_atuomatic_list_partitioning(Oid relid)
+{
+	bool		automatic;
+	HeapTuple	tuple;
+	Form_pg_ora_part_tables pg_ora_part_tables;
+
+	tuple = SearchSysCache1(ORAPARTRELID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(tuple))
+		return false;	/* not a oracle root partitioned table */
+
+	pg_ora_part_tables = (Form_pg_ora_part_tables) GETSTRUCT(tuple);
+	automatic = pg_ora_part_tables->automatic;
+	ReleaseSysCache(tuple);
+
+	return automatic;
+}
+
+/*
+ * is_ora_composite_partitioning
+ *	  Returns true if is an oracle composite partitioned table.
+ */
+bool
+is_ora_composite_partitioning(Oid relid)
+{
+	bool		composite;
+	HeapTuple	tuple;
+	Form_pg_ora_part_tables pg_ora_part_tables;
+
+	tuple = SearchSysCache1(ORAPARTRELID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(tuple))
+		return false;	/* not a oracle root partitioned table */
+
+	pg_ora_part_tables = (Form_pg_ora_part_tables) GETSTRUCT(tuple);
+	composite = pg_ora_part_tables->composite;
+	ReleaseSysCache(tuple);
+
+	return composite;
+}
+
+/*
+ * ora_get_partitioned_table_subpart_strategy
+ *		Returns the subpartition strategy for an oracle composite partitioned table.
+ */
+char
+ora_get_subpart_strategy(Oid rootpartid)
+{
+	char		strategy;
+	HeapTuple	tuple;
+	Form_pg_ora_part_tables pg_ora_part_tables;
+
+	tuple = SearchSysCache1(ORAPARTRELID, ObjectIdGetDatum(rootpartid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for oracle partitioned table of relation %u",
+			 rootpartid);
+
+	pg_ora_part_tables = (Form_pg_ora_part_tables) GETSTRUCT(tuple);
+
+	if (pg_ora_part_tables->composite)
+		strategy = pg_ora_part_tables->subpartstrat;
+	else
+		strategy = '0';	/* simple partition N/A */
+	ReleaseSysCache(tuple);
+
+	return strategy;
+}
+
+/*
+ * ora_get_partitioned_table_seqno
+ *		Returns the serial number used by SYS_P or SYS_SUBP.
+ */
+int32
+ora_get_partitioned_table_seqno(Oid rootpartid)
+{
+	int32		seqno;
+	HeapTuple	tuple;
+	Form_pg_ora_part_tables pg_ora_part_tables;
+
+	tuple = SearchSysCache1(ORAPARTRELID, ObjectIdGetDatum(rootpartid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for oracle partitioned table of relation %u",
+			 rootpartid);
+
+	pg_ora_part_tables = (Form_pg_ora_part_tables) GETSTRUCT(tuple);
+	seqno = pg_ora_part_tables->seqno;
+	ReleaseSysCache(tuple);
+
+	return seqno;
+}
+
+/*
+ * ora_get_subpartition_template
+ *		Returns the subpartition template of a oracle partitioned table.
+ *
+ * Returns NULL if partitiomed table does not have a subpartition template.
+ */
+OraSubPartitionTemplateSpec *
+ora_get_subpartition_template(Oid rootpartid)
+{
+	HeapTuple	tuple;
+	Datum		datum;
+	bool		isnull;
+	OraSubPartitionTemplateSpec	*subtmp;
+
+	tuple = SearchSysCache1(ORAPARTRELID, ObjectIdGetDatum(rootpartid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for oracle partitioned table of relation %u",
+			 rootpartid);
+
+	datum = SysCacheGetAttr(ORAPARTRELID, tuple,
+							Anum_pg_ora_part_tables_subpart_template,
+							&isnull);
+
+	if (isnull)
+	{
+		ReleaseSysCache(tuple);
+		return NULL;
+	}
+
+	subtmp = (OraSubPartitionTemplateSpec *) stringToNode(TextDatumGetCString(datum));
+	if (!IsA(subtmp, OraSubPartitionTemplateSpec))
+		elog(ERROR, "expected OraSubPartitionTemplateSpec");
+
+	ReleaseSysCache(tuple);
+
+	return subtmp;
+}
+
+/*
+ * ora_get_partition_interval
+ *		Returns the interval expression of a oracle partitioned table.
+ *
+ * Returns NULL if partitiomed table does not have a interval expression.
+ */
+PartitionInterval *
+ora_get_partition_interval(Oid rootpartid)
+{
+	HeapTuple	tuple;
+	Datum		datum;
+	bool		isnull;
+	PartitionInterval	*interval;
+
+	tuple = SearchSysCache1(ORAPARTRELID, ObjectIdGetDatum(rootpartid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for oracle partitioned table of relation %u",
+			 rootpartid);
+
+	datum = SysCacheGetAttr(ORAPARTRELID, tuple,
+							Anum_pg_ora_part_tables_interval_expr,
+							&isnull);
+
+	if (isnull)
+	{
+		ReleaseSysCache(tuple);
+		return NULL;
+	}
+
+	interval = (PartitionInterval *) stringToNode(TextDatumGetCString(datum));
+	if (!IsA(interval, PartitionInterval))
+		elog(ERROR, "expected PartitionInterval");
+
+	ReleaseSysCache(tuple);
+
+	return interval;
+}
+
+/*
+ * ora_get_subpartiiton_parent
+ *		Returns the parent OID of a subpartition of an Oracle partitioned table.
+ */
+Oid
+ora_get_subpartition_parent(Oid subid)
+{
+	HeapTuple	tp;
+
+	tp = SearchSysCache1(ORATABPARTID, ObjectIdGetDatum(subid));
+	if (HeapTupleIsValid(tp))
+	{
+		Form_pg_ora_tab_partitions tup = (Form_pg_ora_tab_partitions) GETSTRUCT(tp);
+		Oid			result;
+
+		if (tup->partlevel == 2)
+			result = tup->partparent;
+		else
+			result = InvalidOid;
+
+		ReleaseSysCache(tp);
+		return result;
+	}
+	else
+		return InvalidOid;
+}
+
+/*
+ * ora_get_partition_root
+ *		Returns the OID of root partition for Oracle partitioned table.
+ *
+ * pid is the OID of a partition or subpartition.
+ */
+Oid
+ora_get_partition_root(Oid pid)
+{
+	HeapTuple	tp;
+
+	tp = SearchSysCache1(ORATABPARTID, ObjectIdGetDatum(pid));
+	if (HeapTupleIsValid(tp))
+	{
+		Form_pg_ora_tab_partitions tup = (Form_pg_ora_tab_partitions) GETSTRUCT(tp);
+		Oid			result;
+
+		result = tup->partroot;
+		ReleaseSysCache(tp);
+		return result;
+	}
+	else
+		return InvalidOid;
+}
+
+/*
+ * ora_get_partid_from_partname
+ *		Given partition name and oid of root relation, look up the partition OID.
+ *
+ * Returns InvalidOid if there is no such partition.
+ */
+Oid
+ora_get_partid_from_partname(const char *partname, Oid rootid)
+{
+	HeapTuple	tp;
+
+	tp = SearchSysCache2(ORATABPARTPARTNAME,
+						ObjectIdGetDatum(rootid),
+						PointerGetDatum(partname));
+
+	if (HeapTupleIsValid(tp))
+	{
+		Form_pg_ora_tab_partitions tup = (Form_pg_ora_tab_partitions) GETSTRUCT(tp);
+		Oid			result;
+
+		if (tup->partlevel == 1)
+			result = tup->part;
+		else
+			result = InvalidOid;
+
+		ReleaseSysCache(tp);
+		return result;
+	}
+	else
+		return InvalidOid;
+}
+
+/*
+ * ora_get_subpartid_from_partname
+ *		Given subpartition name and oid of root relation, look up the subpartition OID.
+ *
+ * Returns InvalidOid if there is no such subpartition.
+ */
+Oid
+ora_get_subpartid_from_partname(const char *subpartname, Oid rootid)
+{
+	HeapTuple	tp;
+
+	tp = SearchSysCache2(ORATABPARTPARTNAME,
+						ObjectIdGetDatum(rootid),
+						PointerGetDatum(subpartname));
+
+	if (HeapTupleIsValid(tp))
+	{
+		Form_pg_ora_tab_partitions tup = (Form_pg_ora_tab_partitions) GETSTRUCT(tp);
+		Oid			result;
+
+		if (tup->partlevel == 2)
+			result = tup->part;
+		else
+			result = InvalidOid;
+
+		ReleaseSysCache(tp);
+		return result;
+	}
+	else
+		return InvalidOid;
+}
+
+/*
+ * get_partitioning_strategy
+ *		Returns the partitioning strategy of a partitioned table.
+ */
+char
+get_partitioning_strategy(Oid relid)
+{
+	char		partstrat;
+	HeapTuple	tuple;
+	Form_pg_partitioned_table pg_partitioned_table;
+
+	tuple = SearchSysCache1(PARTRELID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for partitioned table of relation %u",
+			 relid);
+
+	pg_partitioned_table = (Form_pg_partitioned_table) GETSTRUCT(tuple);
+	partstrat = pg_partitioned_table->partstrat;
+	ReleaseSysCache(tuple);
+
+	return partstrat;
+}
+
+/*
+ * get_partitioning_strategy
+ *		Returns the number of partition key columns of a partitioned table.
+ */
+int16
+get_partitioning_partnatts(Oid relid)
+{
+	int16		partnatts;
+	HeapTuple	tuple;
+	Form_pg_partitioned_table pg_partitioned_table;
+
+	tuple = SearchSysCache1(PARTRELID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for partitioned table of relation %u",
+			 relid);
+
+	pg_partitioned_table = (Form_pg_partitioned_table) GETSTRUCT(tuple);
+	partnatts = pg_partitioned_table->partnatts;
+	ReleaseSysCache(tuple);
+
+	return partnatts;
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+

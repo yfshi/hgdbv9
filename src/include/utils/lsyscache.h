@@ -231,6 +231,24 @@ extern char* get_typenamespace(Oid typid);
 extern bool type_is_anonymous_enum(Oid typid);
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+extern bool is_oracle_partitioned_table(Oid relid);
+extern bool is_oracle_partition(Oid relid);
+extern bool is_oracle_subpartition(Oid relid);
+extern bool is_atuomatic_list_partitioning(Oid relid);
+extern bool is_ora_composite_partitioning(Oid relid);
+extern char ora_get_subpart_strategy(Oid rootpartid);
+extern int32 ora_get_partitioned_table_seqno(Oid rootpartid);
+extern OraSubPartitionTemplateSpec *ora_get_subpartition_template(Oid rootpartid);
+extern PartitionInterval *ora_get_partition_interval(Oid rootpartid);
+extern Oid ora_get_subpartition_parent(Oid subid);
+extern Oid ora_get_partition_root(Oid pid);
+extern Oid ora_get_partid_from_partname(const char *partname, Oid rootid);
+extern Oid ora_get_subpartid_from_partname(const char *subpartname, Oid rootid);
+extern char get_partitioning_strategy(Oid relid);
+extern int16 get_partitioning_partnatts(Oid relid);
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 #define type_is_array(typid)  (get_element_type(typid) != InvalidOid)
 /* type_is_array_domain accepts both plain arrays and domains over arrays */
 #define type_is_array_domain(typid)  (get_base_element_type(typid) != InvalidOid)

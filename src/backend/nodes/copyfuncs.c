@@ -3722,6 +3722,7 @@ _copyAlterTableStmt(const AlterTableStmt *from)
 	COPY_NODE_FIELD(cmds);
 	COPY_SCALAR_FIELD(objtype);
 	COPY_SCALAR_FIELD(missing_ok);
+	COPY_SCALAR_FIELD(ora_modify_part_table); /* ReqID:SRS-SQL-PARTITION-TABLE */
 
 	return newnode;
 }
@@ -3744,6 +3745,14 @@ _copyAlterTableCmd(const AlterTableCmd *from)
 	COPY_SCALAR_FIELD(without_copy);
 	/* End - BUG:M0000325 */
 	COPY_SCALAR_FIELD(is_create);	/* ReqID:SRS-SQL-NLSSORT */
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	COPY_NODE_FIELD(partextname);
+	COPY_NODE_FIELD(subptemplate);
+	COPY_SCALAR_FIELD(part_oid);
+	COPY_SCALAR_FIELD(automatic);
+	COPY_NODE_FIELD(part_desc);
+	COPY_NODE_FIELD(partitions);
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	return newnode;
 }
@@ -3933,6 +3942,10 @@ CopyCreateStmtFields(const CreateStmt *from, CreateStmt *newnode)
 	COPY_NODE_FIELD(autoIncStart);/* SRS-MYSQL-CREATE-TABLE */
 	COPY_NODE_FIELD(relcomment); /* SRS-MYSQL-CREATE-TABLE */
 	COPY_SCALAR_FIELD(isantitamper);
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	COPY_NODE_FIELD(ora_partspec);
+	COPY_NODE_FIELD(ora_partsup);
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 }
 
 static CreateStmt *
@@ -3986,6 +3999,7 @@ _copyDropStmt(const DropStmt *from)
 	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 	COPY_SCALAR_FIELD(is_purge);
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	COPY_SCALAR_FIELD(nocheckpart); /* ReqID:SRS-SQL-PARTITION-TABLE */
 
 	return newnode;
 }
@@ -5395,6 +5409,7 @@ _copyPartitionSpec(const PartitionSpec *from)
 	COPY_STRING_FIELD(strategy);
 	COPY_NODE_FIELD(partParams);
 	COPY_NODE_FIELD(partInterval);
+	COPY_SCALAR_FIELD(sibling); /* ReqID:SRS-SQL-PARTITION-TABLE */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
@@ -5437,6 +5452,7 @@ _copyPartitionCmd(const PartitionCmd *from)
 	COPY_NODE_FIELD(name);
 	COPY_NODE_FIELD(bound);
 	COPY_SCALAR_FIELD(concurrent);
+	COPY_STRING_FIELD(partname);	/* ReqID:SRS-SQL-PARTITION-TABLE */
 
 	return newnode;
 }
@@ -5814,6 +5830,72 @@ _copyAlterOraTrigStmt(const AlterOraTrigStmt* from)
 	return newnode;
 }
 /* End - ReqID:SRS-SQL-TRIGGER */
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+static OraSubPartitionTemplateSpec *
+_copyOraSubPartitionTemplateSpec(const OraSubPartitionTemplateSpec *from)
+{
+	OraSubPartitionTemplateSpec *newnode = makeNode(OraSubPartitionTemplateSpec);
+
+	COPY_NODE_FIELD(subpartitons_desc);
+	COPY_SCALAR_FIELD(hash_subpartition_quantity);
+
+	return newnode;
+}
+
+static OraPartitionBoundSpec *
+_copyOraPartitionBoundSpec(const OraPartitionBoundSpec *from)
+{
+	OraPartitionBoundSpec *newnode = makeNode(OraPartitionBoundSpec);
+
+	COPY_STRING_FIELD(partition_name);
+	COPY_STRING_FIELD(tablespace_name);
+	COPY_NODE_FIELD(bound);
+	COPY_NODE_FIELD(subpart_bound);
+
+	return newnode;
+}
+
+static OraPartitionSpec *
+_copyOraPartitionSpec(const OraPartitionSpec *from)
+{
+	OraPartitionSpec *newnode = makeNode(OraPartitionSpec);
+
+	COPY_SCALAR_FIELD(partition_strategy);
+	COPY_NODE_FIELD(root_partiton_spec);
+	COPY_NODE_FIELD(sub_partiton_spec);
+	COPY_NODE_FIELD(partiton_desc);
+	COPY_SCALAR_FIELD(hash_partition_quantity);
+	COPY_NODE_FIELD(sub_part_template);
+	COPY_SCALAR_FIELD(automatic);
+	COPY_NODE_FIELD(part_interval);
+
+	return newnode;
+}
+
+static OraPartExtentedName *
+_copyOraPartExtentedName(const OraPartExtentedName *from)
+{
+	OraPartExtentedName *newnode = makeNode(OraPartExtentedName);
+
+	COPY_STRING_FIELD(partition);
+	COPY_NODE_FIELD(forexpr);
+
+	return newnode;
+}
+
+static OraPartSup *
+_copyOraPartSup(const OraPartSup *from)
+{
+	OraPartSup *newnode = makeNode(OraPartSup);
+
+	COPY_STRING_FIELD(partname);
+	COPY_SCALAR_FIELD(partlevel);
+	COPY_SCALAR_FIELD(seqno);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 /*
  * copyObjectImpl -- implementation of copyObject(); see nodes/nodes.h
@@ -6918,6 +7000,23 @@ copyObjectImpl(const void *from)
 			retval = _copyAlterOraTrigStmt(from);
 			break;
 		/* End - ReqID:SRS-SQL-TRIGGER */
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		case T_OraSubPartitionTemplateSpec:
+			retval = _copyOraSubPartitionTemplateSpec(from);
+			break;
+		case T_OraPartitionBoundSpec:
+			retval = _copyOraPartitionBoundSpec(from);
+			break;
+		case T_OraPartitionSpec:
+			retval = _copyOraPartitionSpec(from);
+			break;
+		case T_OraPartExtentedName:
+			retval = _copyOraPartExtentedName(from);
+			break;
+		case T_OraPartSup:
+			retval = _copyOraPartSup(from);
+			break;
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 		default:
 		{
 			/*

@@ -293,6 +293,11 @@ static bool isAconstNode(Node *node);
 	PartitionElem		*partelem;
 	PartitionSpec		*partspec;
 	PartitionBoundSpec	*partboundspec;
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	OraPartitionSpec	*orapartspec;
+	OraSubPartitionTemplateSpec *orasubpart_template;
+	OraPartitionBoundSpec *orapartboundspec;
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 	RoleSpec			*rolespec;
 	struct SelectLimit	*selectlimit;
 	SetQuantifier	 setquantifier;
@@ -1028,6 +1033,33 @@ static bool isAconstNode(Node *node);
 %token <keyword> LISTAGG OVERFLOW COUNT_P
 /* End - BUG#M0000457 */
 
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+%type <orapartspec>	table_partitioning_clauses range_partitions list_partitions
+					hash_partitions composite_range_partitions
+					composite_list_partitions composite_hash_partitions
+					OnlyOraclePartitionSpec
+%type <partspec>	sub_partition_by_clauses subpartition_by_range
+					subpartition_by_list subpartition_by_hash
+%token <keyword>	STORE_P LESS THAN LIST AUTOMATIC SUBPARTITION SUBPARTITIONS PARTITIONS
+					PARTITIONING MANUAL ATTRIBUTES
+%type <orapartboundspec> OraRangePartitionBoundSpec OraListPartitionBoundSpec
+						 OraHashPartitionBoundSpec OraHashSubPartitionBoundSpec
+						 OraRangeSubPartitionBoundSpec OraListSubPartitionBoundSpec
+%type <orasubpart_template>	opt_subpartition_template opt_subpartition_desc
+%type <partboundspec> range_values_clause list_values_clause
+%type <str>	opt_partition_name opt_tablespace_clause
+%type <list>	range_partition_desc list_partition_desc subpartitions_desc
+				range_subpartition_desc list_subpartition_desc individual_hash_subparts
+				individual_hash_partitions
+%type <boolean> opt_automatic_clause
+
+%type <list>	alter_table_partitioning partition_extended_names
+%type <node>	modify_table_default_attrs opt_for_part_extended_name partition_extended_name
+%type <node>	alter_automatic_partitioning set_subpartition_template add_table_partition
+				drop_table_partition modify_table_partition drop_table_subpartition
+				rename_partition_subpart truncate_partition_subpart move_table_partition
+				move_table_subpartition
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 /* Precedence: lowest to highest */
 %nonassoc	SET				/* see relation_expr_opt_alias */
@@ -1037,7 +1069,7 @@ static bool isAconstNode(Node *node);
 /* End - SRS-SQL-MULTITABLEINSERT */
 
 /* Begin - BUG#M0000307 */
-%nonassoc	DAY_P YEAR_P    /* see param_name */
+%nonassoc	DAY_P YEAR_P DEFAULT    /* see param_name */ /* ReqID:SRS-SQL-PARTITION-TABLE */
 /* End - BUG#M0000307 */
 /* Begin - SRS-SQL-MULTITABLEINSERT */
 %nonassoc  INTO
@@ -2552,6 +2584,18 @@ AlterTableStmt:
 					n->missing_ok = true;
 					$$ = (Node *)n;
 				}
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		| ALTER TABLE relation_expr alter_table_partitioning
+				{
+					AlterTableStmt *n = makeNode(AlterTableStmt);
+					n->relation = $3;
+					n->cmds = $4;
+					n->objtype = OBJECT_TABLE;
+					n->missing_ok = false;
+					n->ora_modify_part_table = true;
+					$$ = (Node *)n;
+				}
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 		;
 
 modify_typename_optional:
@@ -2618,6 +2662,280 @@ ora_alter_view_cmd:
 		;
 /* End - ReqID:SRS-SQL-FORCEVIEW */
 
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+alter_table_partitioning:
+			modify_table_default_attrs			{ $$ = list_make1($1); }
+			| alter_automatic_partitioning		{ $$ = list_make1($1); }
+			| set_subpartition_template			{ $$ = list_make1($1); }
+			| add_table_partition				{ $$ = list_make1($1); }
+			| drop_table_partition				{ $$ = list_make1($1); }
+			| modify_table_partition			{ $$ = list_make1($1); }
+			| drop_table_subpartition			{ $$ = list_make1($1); }
+			| rename_partition_subpart			{ $$ = list_make1($1); }
+			| truncate_partition_subpart		{ $$ = list_make1($1); }
+			| move_table_partition				{ $$ = list_make1($1); }
+			| move_table_subpartition			{ $$ = list_make1($1); }
+
+	;
+
+modify_table_default_attrs: MODIFY DEFAULT ATTRIBUTES opt_for_part_extended_name TABLESPACE name
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_SetTableSpace;
+					n->name = $6;
+					n->partextname = (OraPartExtentedName *) $4;
+					$$ = (Node *)n;
+				}
+		;
+
+alter_automatic_partitioning:
+					SET PARTITIONING AUTOMATIC
+						{
+							AlterTableCmd *n = makeNode(AlterTableCmd);
+							n->subtype = AT_SetPartitionAutomatic;
+							n->automatic = true;
+							$$ = (Node *)n;
+						}
+					| SET PARTITIONING MANUAL
+						{
+							AlterTableCmd *n = makeNode(AlterTableCmd);
+							n->subtype = AT_SetPartitionAutomatic;
+							n->automatic = false;
+							$$ = (Node *)n;
+						}
+					/* TODO: store in clause, interval partition reuse this */
+					| SET opt_store_in_clause
+						{
+							AlterTableCmd *n = makeNode(AlterTableCmd);
+							n->subtype = AT_SetPartitionStoreIn;
+							n->store_in = NIL;
+							$$ = (Node *)n;
+						}
+					| SET STORE_P IN_P '(' ')'
+						{
+							AlterTableCmd *n = makeNode(AlterTableCmd);
+							n->subtype = AT_SetPartitionStoreIn;
+							n->store_in = NIL;
+							$$ = (Node *)n;
+						}
+		;
+
+set_subpartition_template:
+				SET SUBPARTITION TEMPLATE '(' subpartitions_desc ')'
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+
+						OraSubPartitionTemplateSpec *temp = makeNode(OraSubPartitionTemplateSpec);
+						temp->subpartitons_desc = $5;
+						temp->hash_subpartition_quantity = 0;
+
+						n->subtype = AT_SetSubPartitionTemplate;
+						n->subptemplate = temp;
+						$$ = (Node *)n;
+					}
+				| SET SUBPARTITION TEMPLATE '(' ')'
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_SetSubPartitionTemplate;
+						n->subptemplate = NULL;	/* delete subpartition template if any */
+						$$ = (Node *)n;
+					}
+				| SET SUBPARTITION TEMPLATE Iconst
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+
+						OraSubPartitionTemplateSpec *temp = makeNode(OraSubPartitionTemplateSpec);
+						temp->subpartitons_desc = NIL;
+						temp->hash_subpartition_quantity = $4;
+
+						/* ORA-14156: invalid number of subpartitions specified in [SUBPARTITIONS | SUBPARTITION TEMPLATE] clause */
+						if (temp->hash_subpartition_quantity <= 0 ||
+							temp->hash_subpartition_quantity > 1024 * 1024 - 1)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+									 errmsg("invalid number of subpartitions specified in [SUBPARTITIONS | SUBPARTITION TEMPLATE] clause")));
+
+						n->subtype = AT_SetSubPartitionTemplate;
+						n->subptemplate = temp;
+						$$ = (Node *)n;
+					}
+		;
+
+add_table_partition:
+				ADD_P range_partition_desc
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_AddPartitions;
+						n->part_desc = $2;
+						$$ = (Node *)n;
+					}
+				| ADD_P list_partition_desc
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_AddPartitions;
+						n->part_desc = $2;
+						$$ = (Node *)n;
+					}
+				| ADD_P individual_hash_partitions
+					{
+						/* Oracle can ADD hash partition, but can't DROP */
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("HASH partitions cannot be added or deleted.")));
+					}
+		;
+
+drop_table_partition:
+				DROP partition_word partition_extended_names
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_DropPartitions;
+						n->partitions = $3;
+						$$ = (Node *)n;
+					}
+		;
+
+modify_table_partition:
+				MODIFY PARTITION partition_extended_name ADD_P range_subpartition_desc
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_AddSubPartitions;
+						n->partextname = (OraPartExtentedName *) $3;
+						n->part_desc = $5;
+						$$ = (Node *)n;
+					}
+				| MODIFY PARTITION partition_extended_name ADD_P list_subpartition_desc
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_AddSubPartitions;
+						n->partextname = (OraPartExtentedName *) $3;
+						n->part_desc = $5;
+						$$ = (Node *)n;
+					}
+				| MODIFY PARTITION partition_extended_name ADD_P individual_hash_subparts
+					{
+						/* TODO: Oracle can ADD hash subpartition, but can't DROP */
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("HASH subpartitions cannot be added or deleted.")));
+					}
+		;
+
+drop_table_subpartition:
+				DROP subpartition_word partition_extended_names
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_DropSubPartitions;
+						n->partitions = $3;
+						$$ = (Node *)n;
+					}
+		;
+
+rename_partition_subpart:
+				RENAME partition_word partition_extended_name TO name
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_RenamePartition;
+						n->partextname = (OraPartExtentedName *) $3;
+						n->name = $5;
+						$$ = (Node *)n;
+					}
+				| RENAME subpartition_word partition_extended_name TO name
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_RenameSubPartition;
+						n->partextname = (OraPartExtentedName *) $3;
+						n->name = $5;
+						$$ = (Node *)n;
+					}
+		;
+
+truncate_partition_subpart:
+				TRUNCATE partition_word partition_extended_names
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_TruncatePartition;
+						n->partitions = $3;
+						$$ = (Node *)n;
+					}
+				| TRUNCATE subpartition_word partition_extended_names
+					{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						n->subtype = AT_TruncateSubPartition;
+						n->partitions = $3;
+						$$ = (Node *)n;
+					}
+		;
+
+move_table_partition: MOVE PARTITION partition_extended_name TABLESPACE name
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_MovePartition;
+					n->name = $5;
+					n->partextname = (OraPartExtentedName *) $3;
+					$$ = (Node *)n;
+				}
+		;
+
+move_table_subpartition: MOVE SUBPARTITION partition_extended_name TABLESPACE name
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_MoveSubPartition;
+					n->name = $5;
+					n->partextname = (OraPartExtentedName *) $3;
+					$$ = (Node *)n;
+				}
+		;
+
+partition_extended_names:
+				partition_extended_name
+					{
+						$$ = list_make1($1);
+					}
+				| partition_extended_names ',' partition_extended_name
+					{
+						$$ = lappend($1, $3);
+					}
+		;
+
+partition_extended_name:
+				name
+					{
+						OraPartExtentedName *n = makeNode(OraPartExtentedName);
+						n->partition = $1;
+						$$ = (Node *)n;
+					}
+				| FOR '(' expr_list ')'
+					{
+						OraPartExtentedName *n = makeNode(OraPartExtentedName);
+						n->forexpr = $3;
+						$$ = (Node *)n;
+					}
+		;
+
+opt_for_part_extended_name:
+				FOR PARTITION partition_extended_name
+					{
+						$$ = $3;
+					}
+				| /* empty */
+					{
+						$$ = NULL;
+					}
+		;
+
+partition_word:
+			PARTITION
+			| PARTITIONS
+	;
+
+subpartition_word:
+			SUBPARTITION
+			| SUBPARTITIONS
+	;
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+
 partition_cmd:
 			/* ALTER TABLE <name> ATTACH PARTITION <table_name> FOR VALUES */
 			ATTACH PARTITION qualified_name PartitionBoundSpec
@@ -2633,6 +2951,23 @@ partition_cmd:
 
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+			/* to support pg_dump */
+			| ATTACH PARTITION qualified_name PartitionBoundSpec WITH name
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					PartitionCmd *cmd = makeNode(PartitionCmd);
+
+					n->subtype = AT_AttachPartition;
+					cmd->name = $3;
+					cmd->bound = $4;
+					cmd->concurrent = false;
+					cmd->partname = $6;
+					n->def = (Node *) cmd;
+
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 			/* ALTER TABLE <name> DETACH PARTITION <partition_name> [CONCURRENTLY] */
 			| DETACH PARTITION qualified_name opt_concurrently
 				{
@@ -4314,7 +4649,778 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		/*
+		 * Although this is a compatible Oracle partitioned table syntax rule,
+		 * do not remove non-terminal symbols that do not correspond to Oracle
+		 * syntax (such as OptWith, default_collation_option, etc.), as pg_dump
+		 * will use them. In other words, these syntaxes are for internal using
+		 * and should not be documented.
+		 */
+		| CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
+			OptInherit table_partitioning_clauses table_access_method_clause
+			OptWith default_collation_option OnCommitOption OptTableSpace
+				{
+					CreateStmt *n = makeNode(CreateStmt);
+					$4->relpersistence = $2;
+					n->relation = $4;
+					n->tableElts = $6;
+					n->inhRelations = $8;
+					n->partspec = $9->root_partiton_spec;
+					n->ora_partspec = $9;
+					n->ofTypename = NULL;
+					n->constraints = NIL;
+					n->accessMethod = $10;
+					n->options = $11;
+					n->collname = $12;
+					n->oncommit = $13;
+					if (n->oncommit == ONCOMMIT_NOOP && $4->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+						n->oncommit = ONCOMMIT_DELETE_ROWS;
+					n->tablespacename = $14;
+					n->if_not_exists = false;
+					$$ = (Node *)n;
+				}
+		/* Multi-step partition creation syntax only to support pg_dump */
+		| CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
+			OptInherit OnlyOraclePartitionSpec table_access_method_clause
+			OptWith default_collation_option OnCommitOption OptTableSpace
+				{
+					CreateStmt *n = makeNode(CreateStmt);
+					$4->relpersistence = $2;
+					n->relation = $4;
+					n->tableElts = $6;
+					n->inhRelations = $8;
+					n->partspec = $9->root_partiton_spec;
+					n->ora_partspec = $9;
+					n->ofTypename = NULL;
+					n->constraints = NIL;
+					n->accessMethod = $10;
+					n->options = $11;
+					n->collname = $12;
+					n->oncommit = $13;
+					if (n->oncommit == ONCOMMIT_NOOP && $4->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+						n->oncommit = ONCOMMIT_DELETE_ROWS;
+					n->tablespacename = $14;
+					n->if_not_exists = false;
+					$$ = (Node *)n;
+
+					if (!enable_multi_step_partition)
+						parser_yyerror("syntax error");
+				}
 		;
+
+/* only to support pg_dump */
+OnlyOraclePartitionSpec:
+				ONLY PARTITION BY RANGE '(' part_params ')' opt_partition_interval
+					{
+						OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+						n->root_partiton_spec = makeNode(PartitionSpec);
+						n->root_partiton_spec->strategy = pstrdup($4);
+						n->root_partiton_spec->partParams = $6;
+						n->root_partiton_spec->location = @1;
+
+						if ($8 != NULL && list_length($6) != 1)
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("Range partitioned table with INTERVAL clause has more than one column"),
+									parser_errposition(@3)));
+						}
+
+						n->partition_strategy = PARTITION_RANGE;
+						n->part_interval = (PartitionInterval *) $8;
+						n->partiton_desc = NIL;
+
+						$$ = n;
+					}
+				| ONLY PARTITION BY LIST '(' part_params ')' opt_automatic_clause
+					{
+						OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+						n->root_partiton_spec = makeNode(PartitionSpec);
+						n->root_partiton_spec->strategy = pstrdup($4);
+						n->root_partiton_spec->partParams = $6;
+						n->root_partiton_spec->location = @1;
+						n->partition_strategy = PARTITION_LIST;
+						n->automatic = $8;
+						n->partiton_desc = NIL;
+
+						$$ = n;
+					}
+				| ONLY PARTITION BY HASH_P '(' part_params ')'
+					{
+						OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+						n->root_partiton_spec = makeNode(PartitionSpec);
+						n->root_partiton_spec->strategy = pstrdup($4);
+						n->root_partiton_spec->partParams = $6;
+						n->root_partiton_spec->location = @1;
+						n->partition_strategy = PARTITION_HASH;
+						n->hash_partition_quantity = 0;
+						n->partiton_desc = NIL;
+
+						$$ = n;
+					}
+				| ONLY PARTITION BY RANGE '(' part_params ')' opt_partition_interval sub_partition_by_clauses opt_subpartition_template
+					{
+						OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+						n->root_partiton_spec = makeNode(PartitionSpec);
+						n->root_partiton_spec->strategy = pstrdup($4);
+						n->root_partiton_spec->partParams = $6;
+						n->root_partiton_spec->location = @1;
+
+						if ($8 != NULL && list_length($6) != 1)
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("Range partitioned table with INTERVAL clause has more than one column"),
+									parser_errposition(@3)));
+						}
+
+						n->partition_strategy = PARTITION_COMPOSITE_RANGE;
+						n->part_interval = (PartitionInterval *) $8;
+						n->sub_partiton_spec = $9;
+						n->sub_part_template = $10;
+						n->partiton_desc = NIL;
+
+						$$ = n;
+					}
+				| ONLY PARTITION BY LIST '(' part_params ')' opt_automatic_clause sub_partition_by_clauses opt_subpartition_template
+					{
+						OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+						n->root_partiton_spec = makeNode(PartitionSpec);
+						n->root_partiton_spec->strategy = pstrdup($4);
+						n->root_partiton_spec->partParams = $6;
+						n->root_partiton_spec->location = @1;
+						n->partition_strategy = PARTITION_COMPOSITE_LIST;
+						n->automatic = $8;
+						n->sub_partiton_spec = $9;
+						n->sub_part_template = $10;
+						n->partiton_desc = NIL;
+
+						$$ = n;
+					}
+				| ONLY PARTITION BY HASH_P '(' part_params ')' sub_partition_by_clauses opt_subpartition_template
+					{
+						OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+						n->root_partiton_spec = makeNode(PartitionSpec);
+						n->root_partiton_spec->strategy = pstrdup($4);
+						n->root_partiton_spec->partParams = $6;
+						n->root_partiton_spec->location = @1;
+						n->partition_strategy = PARTITION_COMPOSITE_HASH;
+						n->sub_partiton_spec = $8;
+						n->sub_part_template = $9;
+						n->partiton_desc = NIL;
+						n->hash_partition_quantity = 0;
+
+						$$ = n;
+					}
+		;
+
+
+table_partitioning_clauses:
+			range_partitions				{ $$ = $1; }
+			| list_partitions				{ $$ = $1; }
+			| hash_partitions				{ $$ = $1; }
+			| composite_range_partitions	{ $$ = $1; }
+			| composite_list_partitions		{ $$ = $1; }
+			| composite_hash_partitions		{ $$ = $1; }
+		;
+
+range_partitions: PARTITION BY RANGE '(' part_params ')' opt_partition_interval '(' range_partition_desc ')'
+					{
+						OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+						n->root_partiton_spec = makeNode(PartitionSpec);
+						n->root_partiton_spec->strategy = pstrdup($3);
+						n->root_partiton_spec->partParams = $5;
+						n->root_partiton_spec->location = @1;
+
+						if ($7 != NULL && list_length($5) != 1)
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("Range partitioned table with INTERVAL clause has more than one column"),
+									parser_errposition(@3)));
+						}
+
+						n->partition_strategy = PARTITION_RANGE;
+						n->part_interval = (PartitionInterval *) $7;
+						n->partiton_desc = $9;
+
+						$$ = n;
+					}
+			;
+
+list_partitions: PARTITION BY LIST '(' part_params ')' opt_automatic_clause '(' list_partition_desc ')'
+					{
+						OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+						n->root_partiton_spec = makeNode(PartitionSpec);
+						n->root_partiton_spec->strategy = pstrdup($3);
+						n->root_partiton_spec->partParams = $5;
+						n->root_partiton_spec->location = @1;
+
+						n->partition_strategy = PARTITION_LIST;
+						n->automatic = $7;
+						n->partiton_desc = $9;
+
+						$$ = n;
+					}
+			;
+
+hash_partitions: PARTITION BY HASH_P '(' part_params ')' '(' individual_hash_partitions ')'
+					{
+						OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+						n->root_partiton_spec = makeNode(PartitionSpec);
+						n->root_partiton_spec->strategy = pstrdup($3);
+						n->root_partiton_spec->partParams = $5;
+						n->root_partiton_spec->location = @1;
+
+						n->partition_strategy = PARTITION_HASH;
+						n->hash_partition_quantity = 0;
+						n->partiton_desc = $8;
+
+						$$ = n;
+					}
+				| PARTITION BY HASH_P '(' part_params ')' PARTITIONS Iconst opt_store_in_clause
+					{
+						/* hash_partitions_by_quantity */
+						OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+						n->root_partiton_spec = makeNode(PartitionSpec);
+						n->root_partiton_spec->strategy = pstrdup($3);
+						n->root_partiton_spec->partParams = $5;
+						n->root_partiton_spec->location = @1;
+
+						n->partition_strategy = PARTITION_HASH;
+						n->hash_partition_quantity = $8;
+						n->partiton_desc = NIL;
+
+						/* ORA-14152: invalid number of partitions specified in PARTITIONS clause */
+						if (n->hash_partition_quantity <= 0 ||
+							n->hash_partition_quantity > 1024 * 1024 - 1)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+									 errmsg("invalid number of partitions specified in PARTITIONS clause")));
+
+						$$ = n;
+					}
+			;
+
+
+composite_range_partitions: PARTITION BY RANGE '(' part_params ')' opt_partition_interval
+							sub_partition_by_clauses opt_subpartition_template '(' range_partition_desc ')'
+								{
+									OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+									n->root_partiton_spec = makeNode(PartitionSpec);
+									n->root_partiton_spec->strategy = pstrdup($3);
+									n->root_partiton_spec->partParams = $5;
+									n->root_partiton_spec->location = @1;
+
+									if ($7 != NULL && list_length($5) != 1)
+									{
+										ereport(ERROR,
+												(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+												errmsg("Range partitioned table with INTERVAL clause has more than one column"),
+												parser_errposition(@3)));
+									}
+
+									n->partition_strategy = PARTITION_COMPOSITE_RANGE;
+									n->part_interval = (PartitionInterval *) $7;
+									n->sub_partiton_spec = $8;
+									n->sub_part_template = $9;
+									n->partiton_desc = $11;
+
+									$$ = n;
+								}
+				;
+
+composite_list_partitions: PARTITION BY LIST '(' part_params ')' opt_automatic_clause
+						   sub_partition_by_clauses opt_subpartition_template '(' list_partition_desc ')'
+								{
+									OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+									n->root_partiton_spec = makeNode(PartitionSpec);
+									n->root_partiton_spec->strategy = pstrdup($3);
+									n->root_partiton_spec->partParams = $5;
+									n->root_partiton_spec->location = @1;
+
+									n->partition_strategy = PARTITION_COMPOSITE_LIST;
+									n->automatic = $7;
+									n->sub_partiton_spec = $8;
+									n->sub_part_template = $9;
+									n->partiton_desc = $11;
+
+									$$ = n;
+								}
+				;
+
+composite_hash_partitions: PARTITION BY HASH_P '(' part_params ')' sub_partition_by_clauses
+						   opt_subpartition_template '(' individual_hash_partitions ')'
+								{
+									OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+									n->root_partiton_spec = makeNode(PartitionSpec);
+									n->root_partiton_spec->strategy = pstrdup($3);
+									n->root_partiton_spec->partParams = $5;
+									n->root_partiton_spec->location = @1;
+
+									n->partition_strategy = PARTITION_COMPOSITE_HASH;
+									n->sub_partiton_spec = $7;
+									n->sub_part_template = $8;
+									n->partiton_desc = $10;
+
+									$$ = n;
+								}
+							| PARTITION BY HASH_P '(' part_params ')' sub_partition_by_clauses
+							  opt_subpartition_template PARTITIONS Iconst opt_store_in_clause
+								{
+									OraPartitionSpec *n = makeNode(OraPartitionSpec);
+
+									n->root_partiton_spec = makeNode(PartitionSpec);
+									n->root_partiton_spec->strategy = pstrdup($3);
+									n->root_partiton_spec->partParams = $5;
+									n->root_partiton_spec->location = @1;
+
+									n->partition_strategy = PARTITION_COMPOSITE_HASH;
+									n->sub_partiton_spec = $7;
+									n->sub_part_template = $8;
+									n->partiton_desc = NIL;
+									n->hash_partition_quantity = $10;
+
+									/* ORA-14152: invalid number of partitions specified in PARTITIONS clause */
+									if (n->hash_partition_quantity <= 0 ||
+										n->hash_partition_quantity > 1024 * 1024 - 1)
+										ereport(ERROR,
+												(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+												 errmsg("invalid number of partitions specified in PARTITIONS clause")));
+
+									$$ = n;
+								}
+				;
+
+sub_partition_by_clauses:
+			subpartition_by_range		{ $$ = $1; }
+			| subpartition_by_list		{ $$ = $1; }
+			| subpartition_by_hash		{ $$ = $1; }
+		;
+
+subpartition_by_range: SUBPARTITION BY RANGE '(' part_params ')'
+						{
+							PartitionSpec *n = makeNode(PartitionSpec);
+
+							n->strategy = pstrdup($3);
+							n->partParams = $5;
+							n->location = @1;
+							$$ = n;
+						}
+		;
+
+subpartition_by_list: SUBPARTITION BY LIST '(' part_params ')'
+						{
+							PartitionSpec *n = makeNode(PartitionSpec);
+
+							n->strategy = pstrdup($3);
+							n->partParams = $5;
+							n->location = @1;
+
+							$$ = n;
+						}
+		;
+
+subpartition_by_hash: SUBPARTITION BY HASH_P '(' part_params ')'
+						{
+							PartitionSpec *n = makeNode(PartitionSpec);
+
+							n->strategy = pstrdup($3);
+							n->partParams = $5;
+							n->location = @1;
+
+							$$ = n;
+						}
+		;
+
+/* TODO: STORE IN */
+opt_automatic_clause:
+			AUTOMATIC opt_store_in_clause	{ $$ = true; }
+			| /* EMPTY */					{ $$ = false; }
+		;
+
+opt_store_in_clause:
+			STORE_P IN_P '(' name_list ')'
+			| /* EMPTY */
+		;
+
+
+opt_subpartition_desc: '(' subpartitions_desc ')'
+							{
+								OraSubPartitionTemplateSpec *n = makeNode(OraSubPartitionTemplateSpec);
+
+								n->subpartitons_desc = $2;
+								n->hash_subpartition_quantity = 0;
+								$$ = n;
+							}
+						| SUBPARTITIONS Iconst opt_store_in_clause
+							{
+								OraSubPartitionTemplateSpec *n = makeNode(OraSubPartitionTemplateSpec);
+
+								n->subpartitons_desc = NIL;
+								n->hash_subpartition_quantity = $2;
+
+								/* ORA-14156: invalid number of subpartitions specified in [SUBPARTITIONS | SUBPARTITION TEMPLATE] clause */
+								if (n->hash_subpartition_quantity <= 0 ||
+									n->hash_subpartition_quantity > 1024 * 1024 - 1)
+									ereport(ERROR,
+											(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+											 errmsg("invalid number of subpartitions specified in [SUBPARTITIONS | SUBPARTITION TEMPLATE] clause")));
+								$$ = n;
+							}
+						| /* EMPTY */		{ $$ = NULL; }
+		;
+
+opt_subpartition_template: SUBPARTITION TEMPLATE '(' subpartitions_desc ')'
+								{
+									OraSubPartitionTemplateSpec *n = makeNode(OraSubPartitionTemplateSpec);
+
+									n->subpartitons_desc = $4;
+									n->hash_subpartition_quantity = 0;
+									$$ = n;
+								}
+							/* the following is the syntax specific to hash partition */
+							| SUBPARTITION TEMPLATE Iconst
+								{
+									OraSubPartitionTemplateSpec *n = makeNode(OraSubPartitionTemplateSpec);
+
+									n->subpartitons_desc = NIL;
+									n->hash_subpartition_quantity = $3;
+
+									/* ORA-14156: invalid number of subpartitions specified in [SUBPARTITIONS | SUBPARTITION TEMPLATE] clause */
+									if (n->hash_subpartition_quantity <= 0 ||
+										n->hash_subpartition_quantity > 1024 * 1024 - 1)
+										ereport(ERROR,
+												(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+												 errmsg("invalid number of subpartitions specified in [SUBPARTITIONS | SUBPARTITION TEMPLATE] clause")));
+
+									$$ = n;
+								}
+							| SUBPARTITIONS Iconst opt_store_in_clause
+								{
+									OraSubPartitionTemplateSpec *n = makeNode(OraSubPartitionTemplateSpec);
+
+									n->subpartitons_desc = NIL;
+									n->hash_subpartition_quantity = $2;
+
+									/* ORA-14156: invalid number of subpartitions specified in [SUBPARTITIONS | SUBPARTITION TEMPLATE] clause */
+									if (n->hash_subpartition_quantity <= 0 ||
+										n->hash_subpartition_quantity > 1024 * 1024 - 1)
+										ereport(ERROR,
+												(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+												 errmsg("invalid number of subpartitions specified in [SUBPARTITIONS | SUBPARTITION TEMPLATE] clause")));
+
+									$$ = n;
+								}
+							| /* EMPTY */			{ $$ = NULL; }
+		;
+
+subpartitions_desc:
+			range_subpartition_desc			{ $$ = $1; }
+			| list_subpartition_desc		{ $$ = $1; }
+			| individual_hash_subparts		{ $$ = $1; }
+		;
+
+range_subpartition_desc:
+				OraRangeSubPartitionBoundSpec
+					{
+						$$ = list_make1($1);
+					}
+				| range_subpartition_desc ',' OraRangeSubPartitionBoundSpec
+					{
+						$$ = lappend($1, $3);
+					}
+		;
+
+list_subpartition_desc:
+				OraListSubPartitionBoundSpec
+					{
+						$$ = list_make1($1);
+					}
+				| list_subpartition_desc ',' OraListSubPartitionBoundSpec
+					{
+						$$ = lappend($1, $3);
+					}
+		;
+
+individual_hash_subparts:
+				OraHashSubPartitionBoundSpec
+					{
+						$$ = list_make1($1);
+					}
+				| individual_hash_subparts ',' OraHashSubPartitionBoundSpec
+					{
+						$$ = lappend($1, $3);
+					}
+		;
+
+OraRangeSubPartitionBoundSpec: SUBPARTITION opt_partition_name range_values_clause opt_tablespace_clause
+								{
+									OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+									n->partition_name = $2;
+									n->tablespace_name = $4;
+									n->subpart_bound = NULL;	/* Oracle not have 3-level partition */
+									n->bound = $3;
+									$$ = n;
+								}
+			;
+
+OraListSubPartitionBoundSpec: SUBPARTITION opt_partition_name list_values_clause opt_tablespace_clause
+								{
+									OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+
+									n->partition_name = $2;
+									n->tablespace_name = $4;
+									n->subpart_bound = NULL;	/* Oracle not have 3-level partition */
+									n->bound = $3;
+									$$ = n;
+								}
+			;
+
+/* An ugly way to eliminate shift-reduce */
+/* SUBPARTITION opt_partition_name opt_tablespace_clause */
+OraHashSubPartitionBoundSpec: SUBPARTITION
+								{
+									/* SUBPARTITION */
+									OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+
+									n->partition_name = NULL;
+									n->tablespace_name = NULL;
+									n->subpart_bound = NULL;	/* Oracle not have 3-level partition */
+									n->bound = NULL;
+									$$ = n;
+								}
+							| SUBPARTITION name
+								{
+									/* SUBPARTITION part_name */
+									OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+
+									n->partition_name = $2;
+									n->tablespace_name = NULL;
+									n->subpart_bound = NULL;	/* Oracle not have 3-level partition */
+									n->bound = NULL;
+									$$ = n;
+								}
+							| SUBPARTITION name name
+								{
+									/* SUBPARTITION TABLESPACE tblspc_name */
+									OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+
+									if (strcmp($2, "tablespace") != 0)
+										ereport(ERROR,
+												(errcode(ERRCODE_SYNTAX_ERROR),
+												 errmsg("syntax error at or near"), parser_errposition(@2)));
+
+									n->partition_name = NULL;
+									n->tablespace_name = $3;
+									n->subpart_bound = NULL;	/* Oracle not have 3-level partition */
+									n->bound = NULL;
+									$$ = n;
+								}
+							| SUBPARTITION name name name
+								{
+									/* SUBPARTITION part_name TABLESPACE tblspc_name */
+									OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+
+									if (strcmp($3, "tablespace") != 0)
+										ereport(ERROR,
+												(errcode(ERRCODE_SYNTAX_ERROR),
+												 errmsg("syntax error at or near"), parser_errposition(@3)));
+
+									n->partition_name = $2;
+									n->tablespace_name = $4;
+									n->subpart_bound = NULL;	/* Oracle not have 3-level partition */
+									n->bound = NULL;
+									$$ = n;
+								}
+			;
+
+
+range_partition_desc:
+				OraRangePartitionBoundSpec
+					{
+						$$ = list_make1($1);
+					}
+				| range_partition_desc ',' OraRangePartitionBoundSpec
+					{
+						$$ = lappend($1, $3);
+					}
+		;
+
+OraRangePartitionBoundSpec: PARTITION opt_partition_name range_values_clause
+							opt_tablespace_clause opt_subpartition_desc
+								{
+									OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+									n->partition_name = $2;
+									n->tablespace_name = $4;
+									n->bound = $3;
+									n->subpart_bound = $5;
+									$$ = n;
+								}
+		;
+
+range_values_clause: VALUES LESS THAN '(' expr_list ')'
+						{
+							PartitionBoundSpec *n = makeNode(PartitionBoundSpec);
+
+							/*
+							 * Oracle does not have a syntax to specify the lower bound,
+							 * the lowerdatums field will be populated upon creation.
+							 */
+							n->strategy = PARTITION_STRATEGY_RANGE;
+							n->is_default = false;
+							n->lowerdatums = NIL;	/* will be filled later */
+							n->upperdatums = $5;
+							n->location = @3;
+
+							$$ = n;
+						}
+		;
+
+list_partition_desc:
+				OraListPartitionBoundSpec
+					{
+						$$ = list_make1($1);
+					}
+				| list_partition_desc ',' OraListPartitionBoundSpec
+					{
+						$$ = lappend($1, $3);
+					}
+		;
+
+OraListPartitionBoundSpec: PARTITION opt_partition_name list_values_clause
+						   opt_tablespace_clause opt_subpartition_desc
+								{
+									OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+
+									n->partition_name = $2;
+									n->tablespace_name = $4;
+									n->subpart_bound = $5;
+									n->bound = $3;
+									$$ = n;
+								}
+		;
+
+list_values_clause: VALUES '(' expr_list ')'
+						{
+							PartitionBoundSpec *n = makeNode(PartitionBoundSpec);
+
+							n->strategy = PARTITION_STRATEGY_LIST;
+							n->is_default = false;
+							n->listdatums = $3;
+							n->location = @1;
+
+							$$ = n;
+						}
+					| VALUES '(' DEFAULT ')'
+						{
+							PartitionBoundSpec *n = makeNode(PartitionBoundSpec);
+
+							n->strategy = PARTITION_STRATEGY_LIST;
+							n->is_default = true;
+							n->location = @1;
+
+							$$ = n;
+						}
+		;
+
+individual_hash_partitions:
+						OraHashPartitionBoundSpec
+							{
+								$$ = list_make1($1);
+							}
+						| individual_hash_partitions ',' OraHashPartitionBoundSpec
+							{
+								$$ = lappend($1, $3);
+							}
+		;
+
+/* An ugly way to eliminate shift-reduce */
+OraHashPartitionBoundSpec: PARTITION opt_subpartition_desc
+							{
+								/*
+								 * Oracle hash partition boundary is NULL, and the actual
+								 * boundary value is determined during the transform.
+								 */
+								OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+
+								n->partition_name = NULL;
+								n->tablespace_name = NULL;
+								n->subpart_bound = $2;
+								n->bound = NULL;
+								$$ = n;
+							}
+						| PARTITION name opt_subpartition_desc
+							{
+								/* PARTITION part_name */
+								OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+
+								n->partition_name = $2;
+								n->tablespace_name = NULL;
+								n->subpart_bound = $3;
+								n->bound = NULL;
+								$$ = n;
+							}
+						| PARTITION name name name opt_subpartition_desc
+							{
+								/* PARTITION part_name TABLESPACE tblspc_name */
+								OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+
+								if (strcmp($3, "tablespace") != 0)
+									ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											 errmsg("syntax error at or near"), parser_errposition(@3)));
+
+								n->partition_name = $2;
+								n->tablespace_name = $4;
+								n->subpart_bound = $5;
+								n->bound = NULL;
+								$$ = n;
+							}
+						| PARTITION name name opt_subpartition_desc
+							{
+								/* PARTITION TABLESPACE tblspc_name */
+								OraPartitionBoundSpec *n = makeNode(OraPartitionBoundSpec);
+
+								if (strcmp($2, "tablespace") != 0)
+									ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											 errmsg("syntax error at or near"), parser_errposition(@2)));
+
+								n->partition_name = NULL;
+								n->tablespace_name = $3;
+								n->subpart_bound = $4;
+								n->bound = NULL;
+								$$ = n;
+							}
+		;
+
+
+
+
+
+opt_partition_name: name				{ $$ = $1; }
+				| /* EMPTY */			{ $$ = NULL; }
+
+
+opt_tablespace_clause: TABLESPACE name		{ $$ = $2; }
+					| /* EMPTY */			{ $$ = NULL; }
+
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 /*
  * Redundancy here is needed to avoid shift/reduce conflicts,
@@ -5147,22 +6253,16 @@ OptPartitionSpec: PartitionSpec	{ $$ = $1; }
 			| /*EMPTY*/			{ $$ = NULL; }
 		;
 
-PartitionSpec: PARTITION BY ColId '(' part_params ')'
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ * Here we replace the ColId of PartitionSpec with RANGE HASH_P LIST
+ * to support the native PG partitioning syntax in Oracle mode.
+ */
+PartitionSpec: PARTITION BY RANGE '(' part_params ')' opt_partition_interval
 				{
 					PartitionSpec *n = makeNode(PartitionSpec);
 
-					n->strategy = $3;
-					n->partParams = $5;
-					n->partInterval = NULL;	/* ReqID:RSR-SQL-Partition-interval */
-					n->location = @1;
-
-					$$ = n;
-				}
-				/* Begin - ReqID:RSR-SQL-Partition-interval */
-				| PARTITION BY RANGE '(' part_params ')' opt_partition_interval
-				{
-					PartitionSpec *n = makeNode(PartitionSpec);
-
+					/* Begin - ReqID:RSR-SQL-Partition-interval */
 					if ($7 != NULL && list_length($5) != 1)
 					{
 						ereport(ERROR,
@@ -5170,16 +6270,39 @@ PartitionSpec: PARTITION BY ColId '(' part_params ')'
 								errmsg("Range partitioned table with INTERVAL clause has more than one column"),
 								parser_errposition(@3)));
 					}
+					/* End - ReqID:RSR-SQL-Partition-interval */
 
 					n->strategy = pstrdup($3);
 					n->partParams = $5;
-					n->partInterval = $7;
+					n->partInterval = $7;	/* ReqID:RSR-SQL-Partition-interval */
 					n->location = @1;
 
 					$$ = n;
 				}
-				/* End - ReqID:RSR-SQL-Partition-interval */
+			| PARTITION BY HASH_P '(' part_params ')'
+				{
+					PartitionSpec *n = makeNode(PartitionSpec);
+
+					n->strategy = pstrdup($3);
+					n->partParams = $5;
+					n->partInterval = NULL;	/* ReqID:RSR-SQL-Partition-interval */
+					n->location = @1;
+
+					$$ = n;
+				}
+			| PARTITION BY LIST '(' part_params ')'
+				{
+					PartitionSpec *n = makeNode(PartitionSpec);
+
+					n->strategy = pstrdup($3);
+					n->partParams = $5;
+					n->partInterval = NULL;	/* ReqID:RSR-SQL-Partition-interval */
+					n->location = @1;
+
+					$$ = n;
+				}
 		;
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 part_params:	part_elem						{ $$ = list_make1($1); }
 			| part_params ',' part_elem			{ $$ = lappend($1, $3); }
@@ -5221,7 +6344,12 @@ part_elem: ColId opt_collate opt_class
 		;
 
 /* Begin - ReqID:RSR-SQL-Partition-interval */
-opt_partition_interval:	INTERVAL '(' interval_expr ')' interval_base_expr
+/*
+ * ReqID:SRS-SQL-PARTITION-TABLE
+ * Add opt_store_in_clause clause.
+ * TODO: opt_store_in_clause now only syntax compatible.
+ */
+opt_partition_interval:	INTERVAL '(' interval_expr ')' interval_base_expr opt_store_in_clause
 				{
 					PartitionInterval *n = makeNode(PartitionInterval);
 
@@ -21422,7 +22550,9 @@ unreserved_keyword:
 			| ATOMIC
 			| ATTACH
 			| ATTRIBUTE
+			| ATTRIBUTES /* ReqID:SRS-SQL-PARTITION-TABLE */
 			| AUTHID	/* ReqID:SRS-SQL-PROC */
+			| AUTOMATIC	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| BACKWARD
 			| BADFILE /* ReqID:SRS-MISC-BULKLOAD */
 			| BADTABLE /* ReqID:SRS-MISC-BULKLOAD */
@@ -21562,8 +22692,10 @@ unreserved_keyword:
 			| LARGE_P
 			| LAST_P
 			| LEAKPROOF
+			| LESS	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| LEVEL
 			| LINK /* ReqID:SRS-SQL-DBLINK */
+			| LIST	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| LISTEN
 			| LOAD
 			| LOCAL
@@ -21575,6 +22707,7 @@ unreserved_keyword:
 			| LOGGED
 			| LONG_P	/*BUGID:0000649*/
 			| LOOP_P /* SRS-PLSQL-SUBPROC */
+			| MANUAL /* ReqID:SRS-SQL-PARTITION-TABLE */
 			| MAPPING
 			| MATCH
 			| MATCHED /* ReqID:SRS-SQL-MERGE */
@@ -21638,7 +22771,7 @@ unreserved_keyword:
 			| PARAMSTYPE	/* BUG#M0000376 */
 			| PARSER
 			| PARTIAL
-			| PARTITION
+			| PARTITIONING	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| PASSING
 			| PASSWORD
 			| PIPELINED /* ReqID:SRS-SQL-PROC */
@@ -21738,6 +22871,7 @@ unreserved_keyword:
 			| STDIN
 			| STDOUT
 			| STORAGE
+			| STORE_P	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| STORED
 			| STRICT_P
 			| STRIP_P
@@ -21752,6 +22886,7 @@ unreserved_keyword:
 			| TEMPLATE
 			| TEMPORARY
 			| TEXT_P
+			| THAN	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| TIES
 			| TRANSACTION
 			| TRANSFORM
@@ -21983,6 +23118,8 @@ reserved_keyword:
 			| ONLY
 			| OR
 			| ORDER
+			| PARTITION		/* ReqID:SRS-SQL-PARTITION-TABLE */
+			| PARTITIONS	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| PLACING
 			| PRIMARY
 			| PRIOR /* ReqID:SRS-SQL-HierarchicalQueries */
@@ -21993,6 +23130,8 @@ reserved_keyword:
 			| SESSION_USER
 			| SOME
 			| START /* ReqID:SRS-SQL-HierarchicalQueries */
+			| SUBPARTITION	/* ReqID:SRS-SQL-PARTITION-TABLE */
+			| SUBPARTITIONS	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| SYMMETRIC
 			| SYNONYM	/* ReqID:SRS-SQL-SYNONYM */
 			/* Begin - OA-REQ-1604 */
@@ -22053,9 +23192,11 @@ bare_label_keyword:
 			| ATOMIC
 			| ATTACH
 			| ATTRIBUTE
+			| ATTRIBUTES /* ReqID:SRS-SQL-PARTITION-TABLE */
 			| AUTHENTICATED 	/* ReqID:SRS-SQL-DBLINK */
 			| AUTHID	/* ReqID:SRS-SQL-PROC */
 			| AUTHORIZATION
+			| AUTOMATIC	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| BACKWARD
 			| BADFILE /* ReqID:SRS-MISC-BULKLOAD */
 			| BADTABLE /* ReqID:SRS-MISC-BULKLOAD */
@@ -22262,9 +23403,11 @@ bare_label_keyword:
 			| LEAKPROOF
 			| LEAST
 			| LEFT
+			| LESS	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| LEVEL
 			| LIKE
 			| LINK	/* ReqID:SRS-SQL-DBLINK */
+			| LIST	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| LISTAGG /* BUG#M0000457 */
 			| LISTEN
 			| LOAD
@@ -22279,6 +23422,7 @@ bare_label_keyword:
 			| LOGGED
 			| LONG_P	/*BUGID:0000649*/
 			| LOOP_P /* SRS-PLSQL-SUBPROC */
+			| MANUAL /* ReqID:SRS-SQL-PARTITION-TABLE */
 			| MAPPING
 			| MATCH
 			| MATCHED /* ReqID:SRS-SQL-MERGE */
@@ -22359,6 +23503,8 @@ bare_label_keyword:
 			| PARSER
 			| PARTIAL
 			| PARTITION
+			| PARTITIONING	/* ReqID:SRS-SQL-PARTITION-TABLE */
+			| PARTITIONS	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| PASSING
 			| PASSWORD
 			| PIPELINED /* ReqID:SRS-SQL-PROC */
@@ -22471,9 +23617,12 @@ bare_label_keyword:
 			| STDIN
 			| STDOUT
 			| STORAGE
+			| STORE_P	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| STORED
 			| STRICT_P
 			| STRIP_P
+			| SUBPARTITION	/* ReqID:SRS-SQL-PARTITION-TABLE */
+			| SUBPARTITIONS	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| SUBSCRIPTION
 			| SUBSTRING
 			| SUPPORT
@@ -22491,6 +23640,7 @@ bare_label_keyword:
 			| TEMPLATE
 			| TEMPORARY
 			| TEXT_P
+			| THAN	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| THEN
 			| TIES
 			| TIME
