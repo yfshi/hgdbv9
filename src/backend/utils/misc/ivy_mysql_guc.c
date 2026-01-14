@@ -52,9 +52,37 @@ static const struct config_enum_entry proto_type_options[] = {
 	{NULL, 0, false}
 };
 
+static const struct config_enum_entry encrytion_type_options[] = {
+	{"aes-128-ecb", mys_aes_128_ecb, false},
+	{"aes-192-ecb", mys_aes_192_ecb, false},
+	{"aes-256-ecb", mys_aes_256_ecb, false},
+
+	{"aes-128-cbc", mys_aes_128_cbc, false},
+	{"aes-192-cbc", mys_aes_192_cbc, false},
+	{"aes-256-cbc", mys_aes_256_cbc, false},
+
+	{"aes-128-cfb1", mys_aes_128_cfb1, false},
+	{"aes-192-cfb1", mys_aes_128_cfb1, false},
+	{"aes-256-cfb1", mys_aes_128_cfb1, false},
+
+	{"aes-128-cfb8", mys_aes_128_cfb8, false},
+	{"aes-192-cfb8", mys_aes_192_cfb8, false},
+	{"aes-256-cfb8", mys_aes_256_cfb8, false},
+
+	{"aes-128-cfb128", mys_aes_128_cfb128, false},
+	{"aes-192-cfb128", mys_aes_192_cfb128, false},
+	{"aes-256-cfb128", mys_aes_256_cfb128, false},
+
+	{"aes-128-ofb", mys_aes_128_ofb, false},
+	{"aes-192-ofb", mys_aes_192_ofb, false},
+	{"aes-256-ofb", mys_aes_256_ofb, false},
+	{NULL, 0, false}
+};
+
 int 	mys_port;
 char 	*mys_listen_address;
 int	 	mys_protocol_type;
+int		mys_block_encryption_mode;
 char 	*default_database;
 char    *sha256_password_public_key_path;
 char    *sha256_password_private_key_path;
@@ -677,6 +705,16 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 	},
 	&mys_protocol_type,
 	PROTOCOL_MYSQL, proto_type_options,
+	NULL, NULL, NULL
+},
+{
+	{"block_encryption_mode", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+		gettext_noop("Sets mysql block encryption mode."),
+		NULL,
+		GUC_DISALLOW_IN_FILE
+	},
+	&mys_block_encryption_mode,
+	mys_aes_128_ecb, encrytion_type_options,
 	NULL, NULL, NULL
 },
 #endif

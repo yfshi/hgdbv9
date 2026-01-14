@@ -92,3 +92,12 @@ WARNING:  Truncated incorrect DECIMAL value: '-18446744000000000000.000000000000
 (1 row)
 
 /* End - bug#6526 */
+create table t(c double );
+insert into t values(7.8),(99.097),(0.09561),(324.78);
+SELECT std(c::numeric) FROM t;
+       std        
+------------------
+ 131.107032862199
+(1 row)
+
+drop table t;

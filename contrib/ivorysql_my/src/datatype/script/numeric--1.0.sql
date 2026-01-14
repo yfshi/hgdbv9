@@ -1428,3 +1428,38 @@ CREATE OPERATOR ivymy.+ (
 	rightarg = numeric
 );
 /* End - bug#z6342 */
+
+CREATE FUNCTION ivymy.number_stddev_pop(internal)
+RETURNS numeric
+AS 'numeric_stddev_pop'
+LANGUAGE internal
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.number_accum(internal, numeric)
+RETURNS internal
+AS 'numeric_accum'
+LANGUAGE internal
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.number_accum_inv(internal, numeric)
+RETURNS internal
+AS 'numeric_accum_inv'
+LANGUAGE internal
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE AGGREGATE ivymy.std(numeric) 
+(
+	SFUNC = number_accum,
+	FINALFUNC = number_stddev_pop,
+	MSFUNC = number_accum,
+	MINVFUNC = number_accum_inv,
+	MFINALFUNC = number_stddev_pop,
+	STYPE = internal,
+	SSPACE = 128,
+	MSTYPE = internal,
+	MSSPACE = 128,
+	PARALLEL = SAFE
+);

@@ -1,9 +1,15 @@
 #include "postgres.h"
 
 #include "fmgr.h"
+#include "utils/builtins.h"
 #include "utils/fmgrprotos.h"
 #include "utils/guc.h"
 #include "utils/numeric.h"
+#include "../include/mys_locale.h"
+
+#define MAX_PRECISION 30
+#define ASCII_MINUS 45
+#define THOUS_INTERVAL 3
 
 PG_FUNCTION_INFO_V1(numeric_eq_int4);
 PG_FUNCTION_INFO_V1(int4_eq_numeric);
@@ -17,6 +23,7 @@ PG_FUNCTION_INFO_V1(uint8_mul_numeric);
 PG_FUNCTION_INFO_V1(numeric_mul_uint8);
 /* End - bug#z6039 */
 PG_FUNCTION_INFO_V1(numeric_exact_divnumeric);
+PG_FUNCTION_INFO_V1(numeric_format);
 
 Datum
 numeric_eq_int4(PG_FUNCTION_ARGS)
@@ -126,3 +133,115 @@ numeric_mul_uint8(PG_FUNCTION_ARGS)
     PG_RETURN_DATUM(ret);
 }
 /* End - bug#z6039 */
+
+Datum
+numeric_format(PG_FUNCTION_ARGS)
+{
+	Numeric	value = PG_GETARG_NUMERIC(0);
+	int64 	precision = PG_GETARG_INT64(1);
+	text *text_locale = PG_GETARG_TEXT_PP(2);
+	char *char_locale, *char_value, *rounded_val;
+	int has_minus, int_part_len, thousand_sep_num, buf_len;
+	int len, dec_point_index, acc;
+	char *buf, *buf_ptr, *val_ptr, *point;
+	MyLocale *locale = NULL;
+
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+	{
+		PG_RETURN_NULL();
+	}
+
+	precision = Min(MAX_PRECISION, Max(0, precision));
+
+	// if invalid locale received, set locale to 'en_US'
+	char_locale = text_to_cstring(text_locale);
+	locale = MyLocaleSearch(char_locale);
+	if (locale == NULL)
+	{
+		locale = MyLocaleSearch("en_US");
+	}
+
+	value = DatumGetNumeric(DirectFunctionCall2(numeric_round,
+												NumericGetDatum(value),
+												Int32GetDatum(precision)));
+	char_value = DatumGetCString(DirectFunctionCall1(numeric_out,
+													 NumericGetDatum(value)));
+
+	has_minus = (char_value[0] == ASCII_MINUS) ? 1 : 0;
+
+	len = strlen(char_value);
+	rounded_val = (char *) palloc(len + 1);
+	strcpy(rounded_val, char_value);
+
+	// find decimal point index
+	dec_point_index = -1;
+	point = strchr(char_value, '.');
+	if (point != NULL)
+	{
+		dec_point_index = point - char_value;
+	}
+
+	int_part_len = (dec_point_index == -1 ? len : dec_point_index) - has_minus;
+	thousand_sep_num = locale->thousand_sep == '\0' ? 0
+						: (int_part_len % THOUS_INTERVAL == 0 ? int_part_len / THOUS_INTERVAL - 1 : int_part_len / THOUS_INTERVAL);
+
+	if (precision <= 0)
+	{
+		buf_len = int_part_len + thousand_sep_num + 1 + has_minus;
+	}
+	else
+	{
+		buf_len = int_part_len + thousand_sep_num + precision + 2 + has_minus;
+	}
+
+	buf = (char *)palloc(buf_len);
+	buf[buf_len - 1] = '\0';
+
+	// pointer start from position of decimal point
+	buf_ptr = buf + int_part_len + thousand_sep_num + has_minus;
+
+	// add decimal point when requiring precision
+	if (precision > 0)
+	{
+		*buf_ptr = locale->decimal_point;
+	}
+
+	// handle integer part
+	val_ptr = rounded_val + int_part_len + has_minus;
+	acc = 0;
+	do
+	{
+		buf_ptr--;
+		val_ptr--;
+		*buf_ptr = *val_ptr;
+		acc++;
+		if (acc % THOUS_INTERVAL == 0 && acc != int_part_len && locale->thousand_sep != '\0')
+		{
+			*--buf_ptr = locale->thousand_sep;
+		}
+	} while (buf_ptr - 1 > buf);
+	*--buf_ptr = *--val_ptr;
+
+	if (precision <= 0)
+	{
+		PG_RETURN_TEXT_P(cstring_to_text(buf));
+	}
+
+	// handle decimal part
+	buf_ptr = buf + int_part_len + thousand_sep_num + has_minus;
+	val_ptr = rounded_val + int_part_len + has_minus;
+	for (int i = 0; i < precision; i++)
+	{
+		if (*val_ptr == '\0' || *(val_ptr + 1) == '\0')
+		{
+			*(++buf_ptr) = '0';
+		}
+		else
+		{
+			*(++buf_ptr) = *(++val_ptr);
+		}
+	}
+	pfree(rounded_val);
+
+	PG_RETURN_TEXT_P(cstring_to_text(buf));
+}

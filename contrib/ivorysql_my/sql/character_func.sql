@@ -773,3 +773,39 @@ insert into test_01 values (1234567890000);
 select upper(id) from test_01;
 reset ivorysql.compatible_mode;
 /* End - bug#z6988 */
+
+select format(1.5555,0),format(123.5555,1),format(1234.5555,2),format(12345.55555,3),format(123456.5555,4),format(1234567.5555,5),format('12345.2399',2);
+SELECT format(12345678901234567890.123, 3);
+SELECT format(12345678901234567890.123, 3, NULL);
+SELECT format(12345678901234567890.123, 3, 'ar_AE');
+SELECT format(12345678901234567890.123, 3, 'ar_SA');
+SELECT format(12345678901234567890.123, 3, 'be_BY');
+SELECT format(12345678901234567890.123, 3, 'de_DE');
+SELECT format(12345678901234567890.123, 3, 'en_IN');
+SELECT format(12345678901234567890.123, 3, 'en_US');
+SELECT format(12345678901234567890.123, 3, 'it_CH');
+SELECT format(12345678901234567890.123, 3, 'ru_RU');
+SELECT format(12345678901234567890.123, 3, 'ta_IN');
+SELECT format(123456.789, 3, 'el_GR');
+SELECT format(123456.789, 3, 'sr_RS');
+SELECT format(123456789,2,'rm_CH');
+SELECT format(123, 1, 'Non-existent-locale');
+
+CREATE TABLE t5(c1 text NOT NULL PRIMARY KEY, c2 text);
+INSERT IGNORE INTO t5 VALUES (95, 46), (31, 438), (61, 152), (78, 123), (88, 411), (122, 118), (0, 177),(75, 42), (108, 67), (79, 349), (59, 188), (69, 206), (49, 345), (118, 380),(111, 368), (94, 468), (56, 379), (77, 133), (29, 399), (9, 363), (23, 36),(116, 390), (119, 368), (87, 351), (123, 411), (24, 398), (34, 202), (28, 499),(30, 83), (5, 178), (60, 343), (4, 245), (104, 280), (106, 446), (127, 403),(44, 307), (68, 454), (57, 135);
+SELECT oct(c1) FROM t5 ORDER BY c1 DESC;
+SELECT oct(c2) FROM t5 ORDER BY c2 DESC;
+drop table t5;
+
+SELECT 'my_text' = AES_DECRYPT(AES_ENCRYPT('my_text', 'my_key_string', '', 'pbkdf2_hmac'), 'my_key_string', '', 'pbkdf2_hmac');
+SELECT 'my_text' = AES_DECRYPT(AES_ENCRYPT('my_text', 'my_key_string', '', 'pbkdf2_hmac', '4000', '10001'), 'my_key_string', '', 'pbkdf2_hmac', '4000', '10001');
+SELECT 'my_text' = AES_DECRYPT(AES_ENCRYPT('my_text', 'my_key_string', 'AAAA', 'pbkdf2_hmac'), 'my_key_string', 'AAAA', 'pbkdf2_hmac');
+SELECT 'my_text' = AES_DECRYPT(AES_ENCRYPT('my_text', 'my_key_string','AAAA', 'pbkdf2_hmac', 'salt'), 'my_key_string', 'AAAA', 'pbkdf2_hmac', 'salt');
+SELECT 'my_text' = AES_DECRYPT(AES_ENCRYPT('my_text', 'my_key_string', 'AAAA', 'pbkdf2_hmac', 'salt', '10001'), 'my_key_string', 'AAAA', 'pbkdf2_hmac', 'salt', '10001');
+SELECT AES_DECRYPT(AES_ENCRYPT('Жоро', 'a'), 'a') = 'Жоро';
+SELECT AES_DECRYPT(NULL, 'a');
+SELECT AES_DECRYPT('a', NULL);
+SELECT AES_DECRYPT(NULL, NULL);
+select aes_decrypt(AES_ENCRYPT('my_text', 'my_key_string') , 'my_key_string');
+SELECT 'a' = AES_DECRYPT(AES_ENCRYPT('a', 'a'), 'a', REPEAT('a',16));
+SELECT 'a' = AES_DECRYPT(AES_ENCRYPT('a', 'a'), 'a', REPEAT('a',100));

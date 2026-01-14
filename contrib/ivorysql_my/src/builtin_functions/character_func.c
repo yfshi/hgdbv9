@@ -122,6 +122,7 @@ PG_FUNCTION_INFO_V1(weight_string_boolean);
 PG_FUNCTION_INFO_V1(mys_strcmp);
 PG_FUNCTION_INFO_V1(database);
 PG_FUNCTION_INFO_V1(char_length_varlena); /* bug#z6050 */
+PG_FUNCTION_INFO_V1(oct);
 
 static unsigned
 b64_decode(const char* src, unsigned len, char* dst, bool flag)
@@ -1673,3 +1674,16 @@ char_length_varlena(PG_FUNCTION_ARGS)
 	PG_RETURN_INT32(VARSIZE_ANY_EXHDR(src));
 }
 /* End - bug#z6050 */
+
+Datum
+oct(PG_FUNCTION_ARGS)
+{
+	text *result;
+	Datum newval = PG_GETARG_DATUM(0);
+
+	result = DatumGetTextPP(DirectFunctionCall3(conv, newval, 10, 8));
+	if (result)
+		PG_RETURN_TEXT_P(result);
+	else
+		PG_RETURN_TEXT_P(cstring_to_text("0"));
+}
