@@ -3465,6 +3465,24 @@ pseudo_collation_replace_MergeAction(MergeAction *ma, pseudo_collation_replace_c
 	REPLACE_NODE_PSEUDO_COLLATION(ma->qual);
 }
 
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+static inline void
+pseudo_collation_replace_InsertIntoAction(InsertIntoAction *into,
+								pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(into->targetList);
+}
+
+static inline void
+pseudo_collation_replace_ConditionInsertAction(ConditionInsertAction *cinsert,
+								pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(cinsert->qual);
+	REPLACE_LIST_PSEUDO_COLLATION(cinsert->intos);
+}
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
 static inline void 
 pseudo_collation_replace_PartitionPruneStepOp(PartitionPruneStepOp *opstep, pseudo_collation_replace_context *context)
 {
@@ -3698,6 +3716,14 @@ pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *co
 		case T_MergeAction:
 			pseudo_collation_replace_MergeAction((MergeAction *) node, context);
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case T_InsertIntoAction:
+			pseudo_collation_replace_InsertIntoAction((InsertIntoAction *) node, context);
+			break;
+		case T_ConditionInsertAction:
+			pseudo_collation_replace_ConditionInsertAction((ConditionInsertAction *) node, context);
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		case T_PartitionPruneStepOp:
 			pseudo_collation_replace_PartitionPruneStepOp((PartitionPruneStepOp *) node, context);
 			break;

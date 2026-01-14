@@ -1171,6 +1171,43 @@ set_plan_refs(PlannerInfo *root, Plan *plan, int rtoffset)
 						}
 					}
 				}
+				/* Begin - SRS-SQL-MULTITABLEINSERT */
+				/*
+				 * handle insert all/first list like merge
+				 */
+				if (splan->multiInsertActionLists != NIL)
+				{
+					indexed_tlist *itlist;
+					ListCell *lc;
+
+					itlist = build_tlist_index(subplan->targetlist);
+
+					foreach (lc, splan->multiInsertActionLists)
+					{
+						ConditionInsertAction *cinsert = (ConditionInsertAction *) lfirst(lc);
+						ListCell *llc;
+
+						foreach (llc, cinsert->intos)
+						{
+							InsertIntoAction *ina = (InsertIntoAction *) lfirst(llc);
+
+							ina->targetList = fix_join_expr(root,
+															   ina->targetList,
+															   NULL, itlist,
+															   ina->target_rte,
+															   rtoffset,
+															   NUM_EXEC_TLIST(plan));
+							ina->target_rte += rtoffset;
+						}
+						cinsert->qual = (Node *) fix_join_expr(root,
+															(List *) cinsert->qual,
+															NULL, itlist,
+															0,
+															rtoffset,
+															NUM_EXEC_QUAL(plan));
+					}
+				}
+				/* End - SRS-SQL-MULTITABLEINSERT */
 
 				splan->nominalRelation += rtoffset;
 				if (splan->rootRelation)

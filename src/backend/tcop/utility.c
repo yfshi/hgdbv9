@@ -2380,6 +2380,10 @@ QueryReturnsTuples(Query *parsetree)
 			return true;
 		case CMD_MERGE:
 			return false;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case CMD_MULTI_INSERT:
+			return false;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		case CMD_INSERT:
 		case CMD_UPDATE:
 		case CMD_DELETE:
@@ -2639,6 +2643,11 @@ CreateCommandTag(Node *parsetree)
 		case T_MergeStmt:
 			tag = CMDTAG_MERGE;
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case T_MultiTableInsertStmt:
+			tag = CMDTAG_MULTIINSERT;
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 
 		case T_SelectStmt:
 			tag = CMDTAG_SELECT;
@@ -3461,6 +3470,11 @@ CreateCommandTag(Node *parsetree)
 					case CMD_UTILITY:
 						tag = CreateCommandTag(stmt->utilityStmt);
 						break;
+					/* Begin - SRS-SQL-MULTITABLEINSERT */
+					case CMD_MULTI_INSERT:
+						tag = CMDTAG_MULTIINSERT;
+						break;
+					/* End - SRS-SQL-MULTITABLEINSERT */
 					default:
 						elog(WARNING, "unrecognized commandType: %d",
 							 (int) stmt->commandType);
@@ -3521,6 +3535,11 @@ CreateCommandTag(Node *parsetree)
 					case CMD_MERGE:
 						tag = CMDTAG_MERGE;
 						break;
+					/* Begin - SRS-SQL-MULTITABLEINSERT */
+					case CMD_MULTI_INSERT:
+						tag = CMDTAG_MULTIINSERT;
+						break;
+					/* End - SRS-SQL-MULTITABLEINSERT */
 					case CMD_UTILITY:
 						tag = CreateCommandTag(stmt->utilityStmt);
 						break;
@@ -3652,6 +3671,9 @@ GetCommandLogLevel(Node *parsetree)
 		case T_DeleteStmt:
 		case T_UpdateStmt:
 		case T_MergeStmt:
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case T_MultiTableInsertStmt:
+		/* End - SRS-SQL-MULTITABLEINSERT */
 			lev = LOGSTMT_MOD;
 			break;
 
@@ -4113,6 +4135,7 @@ GetCommandLogLevel(Node *parsetree)
 					case CMD_INSERT:
 					case CMD_DELETE:
 					case CMD_MERGE:
+					case CMD_MULTI_INSERT: /* SRS-SQL-MULTITABLEINSERT */
 						lev = LOGSTMT_MOD;
 						break;
 

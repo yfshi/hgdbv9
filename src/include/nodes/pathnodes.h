@@ -1910,6 +1910,10 @@ typedef struct ModifyTablePath
 	int			epqParam;		/* ID of Param for EvalPlanQual re-eval */
 	List	   *mergeActionLists;	/* per-target-table lists of actions for
 									 * MERGE */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	List		*multiInsertActionLists;	/* list of condition insert */
+	bool		multiInsertFirst;				/* is insert first? */
+	/* End - SRS-SQL-MULTITABLEINSERT */
 } ModifyTablePath;
 
 /*

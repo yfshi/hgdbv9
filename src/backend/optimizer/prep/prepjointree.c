@@ -2171,6 +2171,28 @@ perform_pullup_replace_vars(PlannerInfo *root,
 				pullup_replace_vars((Node *) action->targetList, rvcontext);
 		}
 	}
+
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	if (parse->multiInsertActionList)
+	{
+		ListCell *lc1;
+
+		foreach (lc, parse->multiInsertActionList)
+		{
+			ConditionInsertAction *ca = (ConditionInsertAction *) lfirst(lc);
+
+			ca->qual = pullup_replace_vars(ca->qual, rvcontext);
+			foreach (lc1, ca->intos)
+			{
+				InsertIntoAction *intoa = (InsertIntoAction *) lfirst(lc1);
+
+				intoa->targetList = (List *)
+					pullup_replace_vars((Node *) intoa->targetList, rvcontext);
+			}
+		}
+	}
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	replace_vars_in_jointree((Node *) parse->jointree, rvcontext,
 							 lowest_nulling_outer_join);
 	Assert(parse->setOperations == NULL);

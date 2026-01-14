@@ -2951,6 +2951,10 @@ ExecBSInsertTriggers(EState *estate, ResultRelInfo *relinfo)
 	TriggerDesc *trigdesc;
 	int			i;
 	TriggerData LocTriggerData = {0};
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	bool	is_multi_insert = ((estate->es_plannedstmt != NULL &&
+				estate->es_plannedstmt->commandType == CMD_MULTI_INSERT) || estate->es_multi_insert_usecte);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	trigdesc = relinfo->ri_TrigDesc;
 
@@ -2960,7 +2964,12 @@ ExecBSInsertTriggers(EState *estate, ResultRelInfo *relinfo)
 		return;
 
 	/* no-op if we already fired BS triggers in this context */
-	if (before_stmt_triggers_fired(RelationGetRelid(relinfo->ri_RelationDesc),
+	/*
+	 * SRS-SQL-MULTITABLEINSERT: insert all/first can repeate call stmt
+	 * trigger on the same relation
+	 */
+	if (!is_multi_insert &&
+		before_stmt_triggers_fired(RelationGetRelid(relinfo->ri_RelationDesc),
 								   CMD_INSERT))
 		return;
 
@@ -5811,6 +5820,13 @@ MakeTransitionCaptureState(TriggerDesc *trigdesc, Oid relid, CmdType cmdType)
 			need_old_del = trigdesc->trig_delete_old_table;
 			need_new_ins = trigdesc->trig_insert_new_table;
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		/* like CMD_INSERT */
+		case CMD_MULTI_INSERT:
+			need_old_upd = need_old_del = need_new_upd = false;
+			need_new_ins = trigdesc->trig_insert_new_table;
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		default:
 			elog(ERROR, "unexpected CmdType: %d", (int) cmdType);
 			/* keep compiler quiet */
@@ -6997,7 +7013,18 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 				Assert(newslot == NULL);
 				ItemPointerSetInvalid(&(new_event.ate_ctid1));
 				ItemPointerSetInvalid(&(new_event.ate_ctid2));
-				cancel_prior_stmt_triggers(RelationGetRelid(rel),
+				/* Begin - SRS-SQL-MULTITABLEINSERT */
+				/*
+				 * insert all/first can repeate call stmt
+				 * trigger on the same relation
+				 */
+				if (estate->es_multi_insert_usecte || (estate->es_plannedstmt != NULL &&
+					estate->es_plannedstmt->commandType == CMD_MULTI_INSERT))
+					cancel_prior_stmt_triggers(RelationGetRelid(rel),
+										   CMD_MULTI_INSERT, event);
+				/* End - SRS-SQL-MULTITABLEINSERT */
+				else
+					cancel_prior_stmt_triggers(RelationGetRelid(rel),
 										   CMD_INSERT, event);
 			}
 			break;
@@ -7477,6 +7504,9 @@ cancel_prior_stmt_triggers(Oid relid, CmdType cmdType, int tgevent)
 {
 	AfterTriggersTableData *table;
 	AfterTriggersQueryData *qs = &afterTriggers.query_stack[afterTriggers.query_depth];
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	CmdType origin_cmdtype = cmdType;
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	/*
 	 * We keep this state in the AfterTriggersTableData that also holds
@@ -7485,9 +7515,19 @@ cancel_prior_stmt_triggers(Oid relid, CmdType cmdType, int tgevent)
 	 * entered after we've already fired triggers, we will allow a new set of
 	 * statement triggers to get queued without canceling the old ones.
 	 */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	/* change CMD_MULTI_INSERT to CMD_INSERT for fire insert trigger */
+	if (origin_cmdtype == CMD_MULTI_INSERT)
+		cmdType = CMD_INSERT;
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	table = GetAfterTriggersTableData(relid, cmdType);
 
-	if (table->after_trig_done)
+	/*
+	 * SRS-SQL-MULTITABLEINSERT: insert all/first can repeate call stmt
+	 * trigger on the same relation
+	 */
+	if (table->after_trig_done && origin_cmdtype != CMD_MULTI_INSERT)
 	{
 		/*
 		 * We want to start scanning from the tail location that existed just

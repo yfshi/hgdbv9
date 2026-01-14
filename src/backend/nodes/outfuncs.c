@@ -326,6 +326,9 @@ _outPlannedStmt(StringInfo str, const PlannedStmt *node)
 	WRITE_LOCATION_FIELD(stmt_location);
 	WRITE_INT_FIELD(stmt_len);
 	WRITE_INT_FIELD(countnode_num);	/* ReqID:SRS-SQL-ROWNUM */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	WRITE_BOOL_FIELD(multiInsertUseCte);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 }
 
 /*
@@ -447,6 +450,10 @@ _outModifyTable(StringInfo str, const ModifyTable *node)
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	WRITE_NODE_FIELD(rootRelations);
 	WRITE_NODE_FIELD(partresultRelations);
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	WRITE_NODE_FIELD(multiInsertActionLists);
+	WRITE_BOOL_FIELD(multiInsertFirst);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 }
 
 static void
@@ -2353,6 +2360,10 @@ _outModifyTablePath(StringInfo str, const ModifyTablePath *node)
 	WRITE_NODE_FIELD(onconflict);
 	WRITE_INT_FIELD(epqParam);
 	WRITE_NODE_FIELD(mergeActionLists);
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	WRITE_NODE_FIELD(multiInsertActionLists);
+	WRITE_BOOL_FIELD(multiInsertFirst);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 }
 
 static void
@@ -3035,6 +3046,9 @@ _outSelectStmt(StringInfo str, const SelectStmt *node)
 	WRITE_BOOL_FIELD(all);
 	WRITE_NODE_FIELD(larg);
 	WRITE_NODE_FIELD(rarg);
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	WRITE_BOOL_FIELD(multiInsert);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 }
 
 static void
@@ -3310,6 +3324,12 @@ _outQuery(StringInfo str, const Query *node)
 	WRITE_NODE_FIELD(partreloids);
 	WRITE_BOOL_FIELD(hasuservar);	/* ReqID:SRS-MYSQL-SET */
 	WRITE_NODE_FIELD(oriredactiontargetList);	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	WRITE_NODE_FIELD(multiInsertActionList);
+	WRITE_BOOL_FIELD(multiInsertFirst);
+	WRITE_BOOL_FIELD(multiInsertUseCte);
+	WRITE_BOOL_FIELD(multiInsertRewrite);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 	WRITE_LOCATION_FIELD(stmt_location);
 	WRITE_INT_FIELD(stmt_len);
 }
@@ -3324,6 +3344,9 @@ _outWithCheckOption(StringInfo str, const WithCheckOption *node)
 	WRITE_STRING_FIELD(polname);
 	WRITE_NODE_FIELD(qual);
 	WRITE_BOOL_FIELD(cascaded);
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	WRITE_INT_FIELD(target_index);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 }
 
 static void
@@ -3465,6 +3488,32 @@ _outMergeAction(StringInfo str, const MergeAction *node)
 	WRITE_NODE_FIELD(targetList);
 	WRITE_NODE_FIELD(updateColnos);
 }
+
+
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+static void
+_outInsertIntoAction(StringInfo str, const InsertIntoAction *node)
+{
+	WRITE_NODE_TYPE("INSERTINTOACTION");
+
+	WRITE_INT_FIELD(target_rte);
+	WRITE_NODE_FIELD(targetList);
+}
+
+
+static void
+_outConditionInsertAction(StringInfo str,
+								const ConditionInsertAction *node)
+{
+	WRITE_NODE_TYPE("CONDITIONINSERTACTION");
+
+	WRITE_NODE_FIELD(qual);
+	WRITE_NODE_FIELD(intos);
+	WRITE_BOOL_FIELD(is_else);
+}
+
+/* End - SRS-SQL-MULTITABLEINSERT */
+
 
 static void
 _outSetOperationStmt(StringInfo str, const SetOperationStmt *node)
@@ -4837,6 +4886,14 @@ outNode(StringInfo str, const void *obj)
 			case T_MergeAction:
 				_outMergeAction(str, obj);
 				break;
+			/* Begin - SRS-SQL-MULTITABLEINSERT */
+			case T_InsertIntoAction:
+				_outInsertIntoAction(str, obj);
+				break;
+			case T_ConditionInsertAction:
+				_outConditionInsertAction(str, obj);
+				break;
+			/* End - SRS-SQL-MULTITABLEINSERT */
 			case T_SetOperationStmt:
 				_outSetOperationStmt(str, obj);
 				break;

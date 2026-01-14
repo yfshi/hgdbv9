@@ -552,6 +552,9 @@ extern PGDLLIMPORT bool use_mysql_bit_literal;	/* SRS-MYSQL-HEX-LITERAL */
 
 extern PGDLLIMPORT bool se_feature_mode;
 extern PGDLLIMPORT bool restricted_dba;
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+extern bool convert_multiinsert_with_cte;
+/* End - SRS-SQL-MULTITABLEINSERT */
 
 
 /*

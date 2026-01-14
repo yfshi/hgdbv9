@@ -422,6 +422,25 @@ typedef struct MergeActionState
 	ExprState  *mas_whenqual;	/* WHEN [NOT] MATCHED AND conditions */
 } MergeActionState;
 
+
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+/* -----------------------
+ * ConditionInsertState information
+ *
+ * Executor state for INSERT ALL/FIRST action.
+ * -------------------------
+ */
+typedef struct ConditionInsertState
+{
+	NodeTag		type;
+	List		*intos;		/* the list of into action */
+	List		*projs;		/* the list of ProjectionInfo */
+	ExprState	*whenqual;	/* WHEN conditions */
+	bool		is_else;	/* is else conditions */
+} ConditionInsertState;
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
 /*
  * ResultRelInfo
  *
@@ -575,6 +594,10 @@ typedef struct ResultRelInfo
 	 */
 	List	   *ri_ancestorResultRels;
 	ProjectionInfo   *ri_updateProj;	/* ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	struct PartitionTupleRouting	*ri_partition_tuple_routing;
+	PartitionDirectory	ri_part_dir;
+	/* End - SRS-SQL-MULTITABLEINSERT */
 } ResultRelInfo;
 
 /*
@@ -747,6 +770,9 @@ typedef struct EState
 	int		result_rel_index;	/* ReqID:SRS-MYSQL-UPDATE */
 
 	bool		es_createtbas;	/* SRS-MYSQL-DATETYPE */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	bool	es_multi_insert_usecte;	/* is multi insert convert to cte */
+	/* End - SRS-SQL-MULTITABLEINSERT */
 } EState;
 
 
@@ -1385,6 +1411,11 @@ typedef struct ModifyTableState
 	ResultRelInfo *mt_rootResultRelInfos;
 	List	   *mt_partition_tuple_routing_list;
 	List	   *mt_root_tuple_slot_list;
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	List		*mt_multi_inserts;		/* the list of ConditionInsertState */
+	struct TransitionCaptureState **mt_transition_captures;
+	double		mt_multi_inserted;		/* multi inserted rows */
+	/* End - SRS-SQL-MULTITABLEINSERT */
 } ModifyTableState;
 
 /* ----------------

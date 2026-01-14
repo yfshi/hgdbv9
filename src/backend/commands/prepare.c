@@ -185,6 +185,7 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 		case CMD_UPDATE:
 		case CMD_DELETE:
 		case CMD_MERGE:
+		case CMD_MULTI_INSERT: /* SRS-SQL-MULTITABLEINSERT */
 			/* OK */
 			break;
 		default:

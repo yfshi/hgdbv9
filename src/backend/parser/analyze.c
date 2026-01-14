@@ -91,6 +91,10 @@
 #include "utils/varlena.h"
 #include "parser/parser.h"
 /* End - ReqID:SRS-MYSQL-SET */
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+#include "parser/parse_multitable_insert.h"
+/* End - SRS-SQL-MULTITABLEINSERT */
+
 
 /* Hook for plugins to get control at end of parse analysis */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
@@ -441,6 +445,7 @@ transformStmt(ParseState *pstate, Node *parseTree)
 		case T_UpdateStmt:
 		case T_DeleteStmt:
 		case T_MergeStmt:
+		case T_MultiTableInsertStmt: /* SRS-SQL-MULTITABLEINSERT */
 			(void) test_raw_expression_coverage(parseTree, NULL);
 			break;
 		default:
@@ -473,6 +478,17 @@ transformStmt(ParseState *pstate, Node *parseTree)
 		case T_MergeStmt:
 			result = (*pg_transform_merge_stmt_hook)(pstate, (MergeStmt *) parseTree);
 			break;
+
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case T_MultiTableInsertStmt:
+			if (convert_multiinsert_with_cte)
+				result = transformMultiTableInsertWithCte(pstate,
+						(MultiTableInsertStmt *) parseTree);
+			else
+				result = transformMultiTableInsertStmt(pstate,
+						(MultiTableInsertStmt *) parseTree);
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 
 		case T_SelectStmt:
 			{
@@ -582,6 +598,9 @@ stmt_requires_parse_analysis(RawStmt *parseTree)
 		case T_DeleteStmt:
 		case T_UpdateStmt:
 		case T_MergeStmt:
+		/* Begin - SRS-SQL-MULTITABLEINSERTT */
+		case T_MultiTableInsertStmt:
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		case T_SelectStmt:
                 case T_ReturnStmt:	
 		case T_PLAssignStmt:
@@ -2426,9 +2445,33 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	/* process the FROM clause */
 	transformFromClause(pstate, stmt->fromClause);
 
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	/*
+	 * Here, when using the `with` clause to rewrite
+	 * `insert all/first` statements, we require that sequences
+	 * are allowed in the target list, but not elsewhere.
+	 * This restriction is based on Oracle's behavior,
+	 * but it might be possible to remove this limitation.
+	 */
+	if (stmt->multiInsert)
+	{
+		Assert(pstate->p_stmt_kind == PARSE_KIND_MULTITABLE_INSERT);
+
+		pstate->p_stmt_kind = PARSE_KIND_NONE;
+	}
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	/* transform targetlist */
 	qry->targetList = transformTargetList(pstate, stmt->targetList,
 										  EXPR_KIND_SELECT_TARGET);
+
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	if (stmt->multiInsert)
+	{
+		pstate->p_stmt_kind = PARSE_KIND_MULTITABLE_INSERT;
+	}
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	/* Begin - BUG#Z6106
 	 * Keep the original target before data masking,
 	 * as it will be used for later judgment.

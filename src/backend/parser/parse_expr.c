@@ -946,6 +946,18 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 
 						seq_func = makeFuncCall(list_make2(makeString("pg_catalog"),
 							makeString(strVal(field2))), list_make1(n), COERCE_EXPLICIT_CALL, cref->location);
+						/* Begin - SRS-SQL-MULTITABLEINSERT */
+						/*
+						 * insert all/first doesn't allow sequence
+						 * ORA-02287, we doesn't place it on ParseFunOrColumn
+						 * which can't decide wether it is pg sequnce
+						 */
+						if (pstate->p_stmt_kind == PARSE_KIND_MULTITABLE_INSERT)
+							ereport(ERROR,
+										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+										 errmsg("sequence number not allowed here"),
+										  parser_errposition(pstate, cref->location)));
+						/* End - SRS-SQL-MULTITABLEINSERT */
 						return transformFuncCall(pstate, seq_func);
 					}
 					/* End - ReqID:SRS-SQL-SEQ */
@@ -1039,6 +1051,18 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 						/* End - Bug#m351 */
 						seq_func = makeFuncCall(list_make2(makeString("pg_catalog"),
 							makeString(strVal(field3))), list_make1(n), COERCE_EXPLICIT_CALL, cref->location);
+						/* Begin - SRS-SQL-MULTITABLEINSERT */
+						/*
+						 * insert all/first doesn't allow sequence
+						 * ORA-02287, we doesn't place it on ParseFunOrColumn
+						 * which can't decide wether it is pg sequnce
+						 */
+						if (pstate->p_stmt_kind == PARSE_KIND_MULTITABLE_INSERT)
+							ereport(ERROR,
+										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+										 errmsg("sequence number not allowed here"),
+										  parser_errposition(pstate, cref->location)));
+						/* End - SRS-SQL-MULTITABLEINSERT */
 						return transformFuncCall(pstate, seq_func);
 					}
 					/* End - ReqID:SRS-SQL-SEQ */
@@ -1142,6 +1166,18 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 					/* End - Bug#m351 */
 					seq_func = makeFuncCall(list_make2(makeString("pg_catalog"),
 						makeString(strVal(field4))), list_make1(n), COERCE_EXPLICIT_CALL, cref->location);
+					/* Begin - SRS-SQL-MULTITABLEINSERT */
+					/*
+					 * insert all/first doesn't allow sequence
+					 * ORA-02287, we doesn't place it on ParseFunOrColumn
+					 * which can't decide wether it is pg sequnce
+					 */
+					if (pstate->p_stmt_kind == PARSE_KIND_MULTITABLE_INSERT)
+						ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									 errmsg("sequence number not allowed here"),
+									  parser_errposition(pstate, cref->location)));
+					/* End - SRS-SQL-MULTITABLEINSERT */
 					return transformFuncCall(pstate, seq_func);
 				}
 				/* End - ReqID:SRS-SQL-SEQ */

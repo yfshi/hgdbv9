@@ -196,6 +196,11 @@ ProcessQuery(PlannedStmt *plan,
 			case CMD_MERGE:
 				SetQueryCompletion(qc, CMDTAG_MERGE, queryDesc->estate->es_processed);
 				break;
+			/* Begin - SRS-SQL-MULTITABLEINSERT */
+			case CMD_MULTI_INSERT:
+				SetQueryCompletion(qc, CMDTAG_MULTIINSERT, queryDesc->estate->es_processed);
+				break;
+			/* End - SRS-SQL-MULTITABLEINSERT */
 			default:
 				SetQueryCompletion(qc, CMDTAG_UNKNOWN, queryDesc->estate->es_processed);
 				break;
@@ -206,6 +211,18 @@ ProcessQuery(PlannedStmt *plan,
 	 * Now, we close down all the scans and free allocated resources.
 	 */
 	ExecutorFinish(queryDesc);
+
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	/*
+	 * there, if is multi table insert convert to cte
+	 * we should include cte insert rows, and cte insert rows
+	 * is processed after ExecutorFinish, so we should
+	 * reassign qc nprocessed
+	 */
+	if (qc && queryDesc->estate->es_multi_insert_usecte)
+		qc->nprocessed = queryDesc->estate->es_processed;
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	ExecutorEnd(queryDesc);
 
 	FreeQueryDesc(queryDesc);

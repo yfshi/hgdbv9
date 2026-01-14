@@ -186,7 +186,8 @@ static void FormPartitionKeyDatum(PartitionDispatch pd,
 								  TupleTableSlot *slot,
 								  EState *estate,
 								  Datum *values,
-								  bool *isnull);
+								  bool *isnull,
+								  Index rt_index); /* SRS-SQL-MULTITABLEINSERT */
 static int	get_partition_for_tuple(PartitionDispatch pd, Datum *values,
 									bool *isnull);
 static char *ExecBuildSlotPartitionKeyDescription(Relation rel,
@@ -386,7 +387,18 @@ ExecFindPartition(ModifyTableState *mtstate,
 		 * So update ecxt_scantuple accordingly.
 		 */
 		ecxt->ecxt_scantuple = slot;
-		FormPartitionKeyDatum(dispatch, slot, estate, values, isnull);
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		if (mtstate->operation == CMD_MULTI_INSERT)
+		{
+			Assert(rootResultRelInfo->ri_RangeTableIndex <= mtstate->mt_nrels);
+
+			FormPartitionKeyDatum(dispatch, slot, estate, values, isnull,
+					rootResultRelInfo->ri_RangeTableIndex - 1);
+		}
+		else
+			FormPartitionKeyDatum(dispatch, slot, estate, values, isnull,
+					0);
+		/* End - SRS-SQL-MULTITABLEINSERT */
 
 		/*
 		 * If this partitioned table has no partitions or no partition for
@@ -481,9 +493,22 @@ ExecFindPartition(ModifyTableState *mtstate,
 				 * node, we can re-use that ResultRelInfo instead of creating
 				 * a new one with ExecInitPartitionInfo().
 				 */
-				rri = ExecLookupResultRelByOid(mtstate,
+				/* Begin - SRS-SQL-MULTITABLEINSERT */
+				/*
+				 * Here, the insert all/first statement cannot find the
+				 * existing `resultRelInfo' based on the relation'oid,
+				 * because the partitioned subtable might be included in
+				 * the INTO clause.This would mean the `resultInfo` found is
+				 * not derived from the partitioned table, leading to
+				 * some problems, such as `ri_RootResultRelInfo` not being set.
+				 */
+				if (mtstate->operation == CMD_MULTI_INSERT)
+					rri = NULL;
+				else
+					rri = ExecLookupResultRelByOid(mtstate,
 											   partdesc->oids[partidx],
 											   true, false);
+				/* End - SRS-SQL-MULTITABLEINSERT */
 				if (rri)
 				{
 					ModifyTable *node = (ModifyTable *) mtstate->ps.plan;
@@ -633,12 +658,31 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 	ModifyTable *node = (ModifyTable *) mtstate->ps.plan;
 	Oid			partOid = dispatch->partdesc->oids[partidx];
 	Relation	partrel;
-	int			firstVarno = mtstate->resultRelInfo[0].ri_RangeTableIndex;
-	Relation	firstResultRel = mtstate->resultRelInfo[0].ri_RelationDesc;
+	int			firstVarno;
+	Relation	firstResultRel;
 	ResultRelInfo *leaf_part_rri;
 	MemoryContext oldcxt;
 	AttrMap    *part_attmap = NULL;
 	bool		found_whole_row;
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	Index		rtindex;
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	/*
+	 * insert all/first firstVarno and firstResultRel maybe
+	 * not the zero rtindex
+	 */
+	if (mtstate->operation == CMD_MULTI_INSERT)
+	{
+		rtindex = rootResultRelInfo->ri_RangeTableIndex - 1;
+		Assert(rtindex < mtstate->mt_nrels);
+	}
+	else
+		rtindex = 0;
+	firstVarno = mtstate->resultRelInfo[rtindex].ri_RangeTableIndex;
+	firstResultRel = mtstate->resultRelInfo[rtindex].ri_RelationDesc;
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	oldcxt = MemoryContextSwitchTo(proute->memcxt);
 
@@ -712,6 +756,9 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 				list_length(node->resultRelations) == 1) ||
 			   (node->operation == CMD_UPDATE &&
 				list_length(node->withCheckOptionLists) ==
+				list_length(node->resultRelations)) ||
+				(node->operation == CMD_MULTI_INSERT &&
+				list_length(node->withCheckOptionLists) == /* SRS-SQL-MULTITABLEINSERT */
 				list_length(node->resultRelations)));
 
 		/*
@@ -723,7 +770,13 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 		 * this partition should have the same columns, so we should be able
 		 * to map attributes successfully.
 		 */
-		wcoList = linitial(node->withCheckOptionLists);
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		if (node->operation == CMD_MULTI_INSERT)
+			wcoList = list_nth(node->withCheckOptionLists,
+								rootResultRelInfo->ri_RangeTableIndex - 1);
+		else
+			wcoList = linitial(node->withCheckOptionLists);
+		/* End - SRS-SQL-MULTITABLEINSERT */
 
 		/*
 		 * Convert Vars in it to contain this partition's attribute numbers.
@@ -1472,7 +1525,8 @@ FormPartitionKeyDatum(PartitionDispatch pd,
 					  TupleTableSlot *slot,
 					  EState *estate,
 					  Datum *values,
-					  bool *isnull)
+					  bool *isnull,
+					  Index rtindex) /* SRS-SQL-MULTITABLEINSERT */
 {
 	ListCell   *partexpr_item;
 	int			i;
@@ -1495,19 +1549,19 @@ FormPartitionKeyDatum(PartitionDispatch pd,
 		bool		isNull;
 
 		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
-		if ((keycol != 0 && (!estate->es_result_relations || !estate->es_result_relations[0])) ||
+		if ((keycol != 0 && (!estate->es_result_relations || !estate->es_result_relations[rtindex])) || /* SRS-SQL-MULTITABLEINSERT */
 					(keycol != 0 &&
 					 estate->es_result_relations &&
-					 estate->es_result_relations[0] &&
-					 estate->es_result_relations[0]->ri_RelationDesc->rd_att->attrs[keycol - 1].attgenerated != ATTRIBUTE_GENERATED_VIRTUAL))
+					 estate->es_result_relations[rtindex] &&
+					 estate->es_result_relations[rtindex]->ri_RelationDesc->rd_att->attrs[keycol - 1].attgenerated != ATTRIBUTE_GENERATED_VIRTUAL))
 		{
 			/* Plain column; get the value directly from the heap tuple */
 			datum = slot_getattr(slot, keycol, &isNull);
 		}
 		else if (ORA_MODE == compatible_mode &&
 			estate->es_result_relations &&
-			estate->es_result_relations[0] &&
-			estate->es_result_relations[0]->ri_RelationDesc->rd_att->attrs[keycol - 1].attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+			estate->es_result_relations[rtindex] && /* SRS-SQL-MULTITABLEINSERT */
+			estate->es_result_relations[rtindex]->ri_RelationDesc->rd_att->attrs[keycol - 1].attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
 		{
 			Oid		tblOid;
 			Relation	rel;
@@ -1515,7 +1569,7 @@ FormPartitionKeyDatum(PartitionDispatch pd,
 			ExprState  *exprState;
 			ExprContext *econtext;
 
-			tblOid = estate->es_result_relations[0]->ri_RelationDesc->rd_att->attrs[keycol - 1].attrelid;
+			tblOid = estate->es_result_relations[rtindex]->ri_RelationDesc->rd_att->attrs[keycol - 1].attrelid; /* SRS-SQL-MULTITABLEINSERT */
 			rel = RelationIdGetRelation(tblOid);
 			/* Begin - Bug#m0000421 */
 			if (!RelationIsValid(rel))

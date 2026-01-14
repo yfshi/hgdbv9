@@ -38,6 +38,7 @@
 #include "parser/parse_coerce.h"
 #include "parser/parse_relation.h"
 #include "parser/parsetree.h"
+#include "parser/parse_multitable_insert.h" /* SRS-SQL-MULTITABLEINSERT */
 #include "rewrite/rewriteDefine.h"
 #include "rewrite/rewriteHandler.h"
 #include "rewrite/rewriteManip.h"
@@ -115,6 +116,11 @@ static bool setNewRteIfExist(Query* parsetree, Oid base_relid, int result_relati
 									int* new_rt_index);
 
 /* End - ReqID:SRS-MYSQL-UPDATE */
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+static List *RewriteQueryForMultiTableInsert(Query *parsetree,
+				List *rewrite_events, int orig_rt_length);
+/* End - SRS-SQL-MULTITABLEINSERT */
+
 
 
 /*
@@ -1955,7 +1961,8 @@ ApplyRetrieveRule(Query *parsetree,
 				 errmsg("access to non-system view \"%s\" is restricted",
 						RelationGetRelationName(relation))));
 
-	if (rt_index == parsetree->resultRelation)
+	if (is_result_relation(parsetree->resultRelations,
+		rt_index, parsetree->resultRelation)) /* SRS-SQL-MULTITABLEINSERT */
 	{
 		/*
 		 * We have a view as the result relation of the query, and it wasn't
@@ -1974,7 +1981,8 @@ ApplyRetrieveRule(Query *parsetree,
 		 * Also note that there's a hack in fireRIRrules to avoid calling this
 		 * function again when it arrives at the copied RTE.
 		 */
-		if (parsetree->commandType == CMD_INSERT)
+		if (parsetree->commandType == CMD_INSERT ||
+			parsetree->commandType == CMD_MULTI_INSERT) /* SRS-SQL-MULTITABLEINSERT */
 			return parsetree;
 		else if (parsetree->commandType == CMD_UPDATE ||
 				 parsetree->commandType == CMD_DELETE)
@@ -2272,6 +2280,9 @@ fireRIRrules(Query *parsetree, List *activeRIRs)
 	int			origResultRelation = parsetree->resultRelation;
 	int			rt_index;
 	ListCell   *lc;
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	List		*origResultRels = parsetree->resultRelations;
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	/*
 	 * Expand SEARCH and CYCLE clauses in CTEs.
@@ -2363,7 +2374,8 @@ fireRIRrules(Query *parsetree, List *activeRIRs)
 		 * part of the join set (a source table), or is referenced by any Var
 		 * nodes, or is the result table.
 		 */
-		if (rt_index != parsetree->resultRelation &&
+		if (!is_result_relation(parsetree->resultRelations, rt_index,
+				parsetree->resultRelation) && /* SRS-SQL-MULTITABLEINSERT */
 			!rangeTableEntry_used((Node *) parsetree, rt_index, 0))
 			continue;
 
@@ -2371,8 +2383,10 @@ fireRIRrules(Query *parsetree, List *activeRIRs)
 		 * Also, if this is a new result relation introduced by
 		 * ApplyRetrieveRule, we don't want to do anything more with it.
 		 */
-		if (rt_index == parsetree->resultRelation &&
-			rt_index != origResultRelation)
+		if (is_result_relation(parsetree->resultRelations, rt_index,
+					parsetree->resultRelation) && /* SRS-SQL-MULTITABLEINSERT */
+			!is_result_relation(origResultRels, rt_index,
+					origResultRelation))
 			continue;
 
 		/*
@@ -3961,6 +3975,9 @@ rewriteTargetView(Query *parsetree, Relation view)
 			wco->relname = pstrdup(RelationGetRelationName(view));
 			wco->polname = NULL;
 			wco->qual = NULL;
+			/* Begin - SRS-SQL-MULTITABLEINSERT */
+			wco->target_index = new_rt_index;
+			/* End - SRS-SQL-MULTITABLEINSERT */
 			wco->cascaded = cascaded;
 
 			parsetree->withCheckOptions = lcons(wco,
@@ -4283,7 +4300,8 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 		Query	   *ctequery = castNode(Query, cte->ctequery);
 		List	   *newstuff;
 
-		if (ctequery->commandType == CMD_SELECT)
+		if (ctequery->commandType == CMD_SELECT ||
+			parsetree->multiInsertRewrite) /* SRS-SQL-MULTITABLEINSERT */
 			continue;
 
 		newstuff = RewriteQuery(ctequery, rewrite_events, 0);
@@ -4354,7 +4372,16 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 	 * get executed.  Also, utilities aren't rewritten at all (do we still
 	 * need that check?)
 	 */
-	if (event != CMD_SELECT && event != CMD_UTILITY)
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	if (event == CMD_MULTI_INSERT)
+	{
+		rewritten = RewriteQueryForMultiTableInsert(parsetree, rewrite_events,
+										orig_rt_length);
+		/* we need not append main query */
+		instead = true;
+	}
+	/* End - SRS-SQL-MULTITABLEINSERT */
+	else if (event != CMD_SELECT && event != CMD_UTILITY)
 	{
 		int			result_relation;
 		RangeTblEntry *rt_entry;
@@ -5060,6 +5087,174 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 		}
 	}
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
+	return rewritten;
+}
+
+
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+/*
+ * To handle the rule replacement of insert all/first statements,
+ * we trigger the replacement of insert rules as per into
+ * This is consistent with the conversion to cte mode,
+ * where we only allow one rule to be replaced.
+ */
+static List *
+RewriteQueryForMultiTableInsert(Query *parsetree,
+				List *rewrite_events, int orig_rt_length)
+{
+	/* multi table insert should one insert by one insert */
+	ListCell *lc;
+	List	*multilist = parsetree->multiInsertActionList;
+	Node	*else_qual = NULL;
+	List	*rewritten = NIL;
+	int		save_resultRelation = parsetree->resultRelation;
+	Node	*save_quals = parsetree->jointree->quals;
+	List	*save_targetList = parsetree->targetList;
+	bool	save_rewrite_into = parsetree->multiInsertRewrite;
+	List	*delete_list = NIL;
+
+	foreach (lc, multilist)
+	{
+		ConditionInsertAction *caction = (ConditionInsertAction *) lfirst(lc);
+		ListCell *onelc;
+		Node*	parseQual = NULL;
+
+		/* append where clause */
+		if (else_qual != NULL)
+		{
+			/*
+			 * is first or is else clause
+			 * we should and else_qual
+			 */
+			if (parsetree->multiInsertFirst || caction->is_else)
+			{
+				parseQual = (Node *) copyObject(make_and_qual(caction->qual,
+												else_qual));
+			}
+			else
+				parseQual = copyObject(caction->qual);
+		}
+		else
+			parseQual = copyObject(caction->qual);
+
+		foreach (onelc, caction->intos)
+		{
+			InsertIntoAction *intoaction = (InsertIntoAction *) lfirst(onelc);
+			List	*newstuff;
+			Query	*ctequery = NULL;
+
+			/* handle like insert into */
+			parsetree->commandType = CMD_INSERT;
+			parsetree->resultRelation = intoaction->target_rte;
+			parsetree->jointree->quals = copyObject(parseQual);
+			parsetree->targetList = intoaction->targetList;
+			parsetree->multiInsertRewrite = true;
+
+			newstuff = RewriteQuery(parsetree,rewrite_events, orig_rt_length);
+
+			/*
+			 * like RewriteQuery handle cte
+			 * Currently we can only handle unconditional, single-statement DO
+			 * INSTEAD rules correctly; we have to get exactly one non-utility
+			 * Query out of the rewrite operation to stuff back into the CTE node.
+			 */
+			if (list_length(newstuff) == 1)
+			{
+				/* Must check it's not a utility command */
+				ctequery = linitial_node(Query, newstuff);
+				if (!(ctequery->commandType == CMD_SELECT ||
+					  ctequery->commandType == CMD_UPDATE ||
+					  ctequery->commandType == CMD_INSERT ||
+					  ctequery->commandType == CMD_DELETE))
+				{
+					/*
+					 * Currently it could only be NOTIFY; this error message will
+					 * need work if we ever allow other utility commands in rules.
+					 */
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("DO INSTEAD NOTIFY rules are not supported for INSERT ALL/FIRST")));
+				}
+				/* if INSTEAD, we should delete this into */
+				if (ctequery->querySource == QSRC_INSTEAD_RULE)
+				{
+					caction->intos = foreach_delete_current(caction->intos, onelc);
+					/*
+					 * there, we only record dropping into
+					 *
+					 * TODO: remove resultRelations for this target_rte
+					 */
+					delete_list = lappend_int(delete_list, intoaction->target_rte);
+				}
+				else
+				{
+					intoaction->targetList = parsetree->targetList;
+					continue;
+				}
+			}
+			else if (newstuff == NIL)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("DO INSTEAD NOTHING rules are not supported for INSERT ALL/FIRST")));
+			}
+			else
+			{
+				ListCell   *lc2;
+
+				/* examine queries to determine which error message to issue */
+				foreach(lc2, newstuff)
+				{
+					Query	   *q = (Query *) lfirst(lc2);
+
+					if (q->querySource == QSRC_QUAL_INSTEAD_RULE)
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("conditional DO INSTEAD rules are not supported for INSERT ALL/FIRST")));
+					if (q->querySource == QSRC_NON_INSTEAD_RULE)
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("DO ALSO rules are not supported for INSERT ALL/FIRST")));
+				}
+
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("multi-statement DO INSTEAD rules are not supported for INSERT ALL/FIRST")));
+			}
+			rewritten = list_concat(rewritten, newstuff);
+		}
+		if (caction->qual != NULL)
+		{
+			BooleanTest *invqual;
+
+			/* Need not copy input qual, because AddQual will... */
+			invqual = makeNode(BooleanTest);
+			invqual->arg = (Expr *) copyObject(caction->qual);
+			invqual->booltesttype = IS_NOT_TRUE;
+			invqual->location = -1;
+
+			if (else_qual == NULL)
+				else_qual = (Node *) invqual;
+			else
+				else_qual = make_and_qual(else_qual, (Node *) invqual);
+		}
+	}
+
+	/* recover some properity */
+	parsetree->commandType = CMD_MULTI_INSERT;
+	parsetree->resultRelation = save_resultRelation;
+	parsetree->jointree->quals = save_quals;
+	parsetree->targetList = save_targetList;
+	parsetree->multiInsertRewrite = save_rewrite_into;
+
+	/*
+	 * if parsetree has not been all replaced
+	 * we should add origin parsetree
+	 */
+	if (list_length(parsetree->resultRelations) !=  list_length(delete_list))
+		rewritten = lcons(parsetree, rewritten);
+	list_free(delete_list);
 
 	return rewritten;
 }

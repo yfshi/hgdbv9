@@ -5898,8 +5898,15 @@ set_deparse_plan(deparse_namespace *dpns, Plan *plan)
 	{
 		if (((ModifyTable *) plan)->operation == CMD_MERGE)
 			dpns->inner_tlist = dpns->outer_plan->targetlist;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		else if (((ModifyTable *) plan)->operation == CMD_MULTI_INSERT)
+		{
+			dpns->inner_tlist = dpns->outer_plan->targetlist;
+			dpns->inner_plan = dpns->outer_plan;
+		}
 		else
 			dpns->inner_tlist = ((ModifyTable *) plan)->exclRelTlist;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 	}
 	else if (dpns->inner_plan)
 		dpns->inner_tlist = dpns->inner_plan->targetlist;

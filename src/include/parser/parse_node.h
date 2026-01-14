@@ -86,6 +86,21 @@ typedef enum ParseExprKind
 } ParseExprKind;
 
 
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+/*
+ * parse stmt kind for special
+ * like insert all/first subquery doesn't allow
+ * sequence
+ */
+typedef enum ParseStmtKind
+{
+	PARSE_KIND_NONE = 0,
+	PARSE_KIND_MULTITABLE_INSERT, /* insert all/first stmt */
+} ParseStmtKind;
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
+
 /*
  * Function signatures for parser hooks
  */
@@ -387,6 +402,9 @@ struct ParseState
 	/* Begin - ReqID:SRS-PLSQL-Collection */
 	ParseIndirectionHook	p_indirection_hook;
 	/* End - ReqID:SRS-PLSQL-Collection */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	ParseStmtKind p_stmt_kind;
+	/* End - SRS-SQL-MULTITABLEINSERT */
 };
 
 /*

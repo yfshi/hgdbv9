@@ -1070,6 +1070,12 @@ _equalQuery(const Query *a, const Query *b)
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	COMPARE_SCALAR_FIELD(hasuservar);			/* ReqID:SRS-MYSQL-SET */
 	COMPARE_NODE_FIELD(oriredactiontargetList);	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	COMPARE_NODE_FIELD(multiInsertActionList);
+	COMPARE_SCALAR_FIELD(multiInsertFirst);
+	COMPARE_SCALAR_FIELD(multiInsertUseCte);
+	COMPARE_SCALAR_FIELD(multiInsertRewrite);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 	COMPARE_LOCATION_FIELD(stmt_location);
 	COMPARE_SCALAR_FIELD(stmt_len);
 
@@ -1152,6 +1158,85 @@ _equalMergeStmt(const MergeStmt *a, const MergeStmt *b)
 	return true;
 }
 
+
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+static bool
+ _equalErrorLogClause(const ErrorLogClause *a, const ErrorLogClause *b)
+{
+	COMPARE_NODE_FIELD(intoRel);
+	COMPARE_NODE_FIELD(simple_expr);
+	COMPARE_SCALAR_FIELD(ulimited);
+	COMPARE_SCALAR_FIELD(limite_num);
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+
+
+static bool
+_equalInsertIntoClause(const InsertIntoClause *a,
+					const InsertIntoClause *b)
+{
+	COMPARE_NODE_FIELD(relation);
+	COMPARE_NODE_FIELD(cols);
+	COMPARE_NODE_FIELD(values);
+	COMPARE_NODE_FIELD(error_logging_clause);
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+
+
+static bool
+_equalConditionInsertClause(const ConditionInsertClause *a,
+				const ConditionInsertClause *b)
+{
+	COMPARE_NODE_FIELD(whenClause);
+	COMPARE_NODE_FIELD(intos);
+	COMPARE_SCALAR_FIELD(is_else);
+
+	return true;
+}
+
+
+static bool
+_equalMultiTableInsertStmt(const MultiTableInsertStmt *a,
+								const MultiTableInsertStmt *b)
+{
+	COMPARE_NODE_FIELD(subquery);
+	COMPARE_SCALAR_FIELD(is_first);
+	COMPARE_NODE_FIELD(condition_list);
+	COMPARE_NODE_FIELD(withClause);
+
+	return true;
+}
+
+
+static bool
+_equalInsertIntoAction(const InsertIntoAction *a,
+								const InsertIntoAction *b)
+{
+
+	COMPARE_SCALAR_FIELD(target_rte);
+	COMPARE_NODE_FIELD(targetList);
+
+	return true;
+}
+
+
+static bool
+_equalConditionInsertAction(const ConditionInsertAction *a,
+								const ConditionInsertAction *b)
+{
+	COMPARE_NODE_FIELD(qual);
+	COMPARE_NODE_FIELD(intos);
+	COMPARE_SCALAR_FIELD(is_else);
+
+	return true;
+}
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
 static bool
 _equalSelectStmt(const SelectStmt *a, const SelectStmt *b)
 {
@@ -1181,7 +1266,10 @@ _equalSelectStmt(const SelectStmt *a, const SelectStmt *b)
 	COMPARE_SCALAR_FIELD(all);
 	COMPARE_NODE_FIELD(larg);
 	COMPARE_NODE_FIELD(rarg);
-	
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	COMPARE_SCALAR_FIELD(multiInsert);
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	return true;
 }
 
@@ -3213,6 +3301,9 @@ _equalWithCheckOption(const WithCheckOption *a, const WithCheckOption *b)
 	COMPARE_STRING_FIELD(polname);
 	COMPARE_NODE_FIELD(qual);
 	COMPARE_SCALAR_FIELD(cascaded);
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	COMPARE_SCALAR_FIELD(target_index);
+	/* End - SRS-SQL-MULTITABLEINSERTT */
 
 	return true;
 }
@@ -3953,6 +4044,26 @@ equal(const void *a, const void *b)
 		case T_MergeStmt:
 			retval = _equalMergeStmt(a, b);
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case T_ErrorLogClause:
+			retval = _equalErrorLogClause(a, b);
+			break;
+		case T_InsertIntoClause:
+			retval = _equalInsertIntoClause(a, b);
+			break;
+		case T_ConditionInsertClause:
+			retval = _equalConditionInsertClause(a, b);
+			break;
+		case T_MultiTableInsertStmt:
+			retval = _equalMultiTableInsertStmt(a, b);
+			break;
+		case T_InsertIntoAction:
+			retval = _equalInsertIntoAction(a, b);
+			break;
+		case T_ConditionInsertAction:
+			retval = _equalConditionInsertAction(a, b);
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		case T_SelectStmt:
 			retval = _equalSelectStmt(a, b);
 			break;

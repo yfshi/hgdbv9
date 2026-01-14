@@ -258,6 +258,37 @@ preprocess_targetlist(PlannerInfo *root)
 		}
 	}
 
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	/*
+	 * handle like regular insert
+	 */
+	if (command_type == CMD_MULTI_INSERT
+		&& parse->multiInsertActionList)
+	{
+		ListCell *lc1;
+
+		foreach (lc, parse->multiInsertActionList)
+		{
+			ConditionInsertAction *ca = (ConditionInsertAction *) lfirst(lc);
+
+			foreach (lc1, ca->intos)
+			{
+				InsertIntoAction *intoa = (InsertIntoAction *) lfirst(lc1);
+				Relation new_target_relation;
+				RangeTblEntry *new_target_rte;
+
+				new_target_rte = rt_fetch(intoa->target_rte, range_table);
+
+				new_target_relation = table_open(new_target_rte->relid, NoLock);
+
+				intoa->targetList = expand_insert_targetlist(root, intoa->targetList,
+															  new_target_relation);
+				table_close(new_target_relation, NoLock);
+			}
+		}
+	}
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	/*
 	 * Add necessary junk columns for rowmarked rels.  These values are needed
 	 * for locking of rels selected FOR UPDATE/SHARE, and to do EvalPlanQual

@@ -57,6 +57,7 @@
 #include "utils/rel.h"
 #include "utils/rls.h"
 #include "utils/syscache.h"
+#include "parser/parse_multitable_insert.h" /* SRS-SQL-MULTITABLEINSERT */
 
 static void get_policies_for_relation(Relation relation,
 									  CmdType cmd, Oid user_id,
@@ -165,8 +166,10 @@ get_row_security_policies(Query *root, RangeTblEntry *rte, int rt_index,
 	 */
 	rel = table_open(rte->relid, NoLock);
 
-	commandType = rt_index == root->resultRelation ?
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	commandType = is_result_relation(root->resultRelations, rt_index, root->resultRelation) ?
 		root->commandType : CMD_SELECT;
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	/*
 	 * In some cases, we need to apply USING policies (which control the
@@ -468,6 +471,56 @@ get_row_security_policies(Query *root, RangeTblEntry *rte, int rt_index,
 							   false);
 	}
 
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	/*
+	 * handle insert all/first like insert
+	 */
+	if (commandType == CMD_MULTI_INSERT)
+	{
+		List	   *multiinsert_permissive_policies;
+		List	   *multiinsert_restrictive_policies;
+
+		/*
+		 * Fetch the INSERT policies and set them up to execute on the
+		 * existing target row before doing INSERT
+		 */
+		get_policies_for_relation(rel, CMD_INSERT, user_id,
+								  &multiinsert_permissive_policies,
+								  &multiinsert_restrictive_policies);
+		add_with_check_options(rel, rt_index,
+							   WCO_RLS_INSERT_CHECK,
+							   multiinsert_permissive_policies,
+							   multiinsert_restrictive_policies,
+							   withCheckOptions,
+							   hasSubLinks,
+							   false);
+
+		/*
+		 * Get and add ALL/SELECT policies, if SELECT rights are required for
+		 * this relation (eg: when RETURNING is used).  These are added as WCO
+		 * policies rather than security quals to ensure that an error is
+		 * raised if a policy is violated; otherwise, we might end up silently
+		 * dropping rows to be added.
+		 */
+		if (rte->requiredPerms & ACL_SELECT)
+		{
+			List	   *select_permissive_policies = NIL;
+			List	   *select_restrictive_policies = NIL;
+
+			get_policies_for_relation(rel, CMD_SELECT, user_id,
+									  &select_permissive_policies,
+									  &select_restrictive_policies);
+			add_with_check_options(rel, rt_index,
+								   WCO_RLS_INSERT_CHECK,
+								   select_permissive_policies,
+								   select_restrictive_policies,
+								   withCheckOptions,
+								   hasSubLinks,
+								   true);
+		}
+	}
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	table_close(rel, NoLock);
 
 	/*
@@ -533,6 +586,9 @@ get_policies_for_relation(Relation relation, CmdType cmd, Oid user_id,
 						cmd_matches = true;
 					break;
 				case CMD_MERGE:
+				/* Begin - SRS-SQL-MULTITABLEINSERT */
+				case CMD_MULTI_INSERT:
+				/* End - SRS-SQL-MULTITABLEINSERT */
 
 					/*
 					 * We do not support a separate policy for MERGE command.
@@ -804,6 +860,9 @@ add_with_check_options(Relation rel,
 		wco->relname = pstrdup(RelationGetRelationName(rel));
 		wco->polname = NULL;
 		wco->cascaded = false;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		wco->target_index = rt_index;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 
 		if (list_length(permissive_quals) == 1)
 			wco->qual = (Node *) linitial(permissive_quals);
@@ -837,6 +896,9 @@ add_with_check_options(Relation rel,
 				wco->polname = pstrdup(policy->policy_name);
 				wco->qual = (Node *) qual;
 				wco->cascaded = false;
+				/* Begin - SRS-SQL-MULTITABLEINSERT */
+				wco->target_index = rt_index;
+				/* End - SRS-SQL-MULTITABLEINSERT */
 
 				*withCheckOptions = list_append_unique(*withCheckOptions, wco);
 				*hasSubLinks |= policy->hassublinks;
@@ -859,6 +921,9 @@ add_with_check_options(Relation rel,
 									   sizeof(bool), BoolGetDatum(false),
 									   false, true);
 		wco->cascaded = false;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		wco->target_index = rt_index;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 
 		*withCheckOptions = lappend(*withCheckOptions, wco);
 	}

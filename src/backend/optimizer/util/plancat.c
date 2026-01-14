@@ -2198,6 +2198,7 @@ has_row_triggers(PlannerInfo *root, Index rti, CmdType event)
 	trigDesc = relation->trigdesc;
 	switch (event)
 	{
+		case CMD_MULTI_INSERT: /* SRS-SQL-MULTITABLEINSERT */
 		case CMD_INSERT:
 			if (trigDesc &&
 				(trigDesc->trig_insert_after_row ||
