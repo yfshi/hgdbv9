@@ -43,6 +43,9 @@ if "%2" equ "" goto help
 >>config.pl		echo $config-^>{zlib} = '%2\deps\lib%up_x64%\zlib';
 >>config.pl		echo $config-^>{gmssl} = '%2\deps\lib%up_x64%\gmssl';
 >>config.pl		echo $config-^>{sqlite3} = '%2\deps\lib%up_x64%\sqlite3';
+>>config.pl		echo $config-^>{icu} = '%2\deps\lib%up_x64%\icu';
+>>config.pl		echo $config-^>{oci} = '%2\deps\lib%up_x64%\instantclient_12_2\sdk';
+>>config.pl		echo $config-^>{lz4} = '%2\deps\lib%up_x64%\lz4';
 >>config.pl		echo $config-^>{tap_tests} = '1';
 if not "%3"=="" (
 	>>config.pl		echo $config-^>{license} = '%3\dep\license\win64\release';
@@ -51,7 +54,7 @@ if not "%3"=="" (
 
 >buildenv.pl	echo # set environments
 >>buildenv.pl	echo $ENV{PATH} = 
->>buildenv.pl	echo    '%2\deps\tools\usr\bin;'.
+>>buildenv.pl	echo    '%2\tools\usr\bin;'.
 >>buildenv.pl	echo    '%2\deps\python27%up_x64%;'.
 >>buildenv.pl	echo    '%2\deps\tcl85%up_x64%\bin;'.
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\gettext;'.

@@ -250,11 +250,25 @@ sub Install
 				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\zlib\\zlib1.dll'),
 				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\openssl\\bin\\libcrypto-3' . $openssl_x64 . '.dll'),
 				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\openssl\\bin\\libssl-3' . $openssl_x64 . '.dll'),
-				# glob($buildenv_dir . '\\deps\\lib'$up_x64'\\license\\share\\license.dll'),
 				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\gmssl\\lib\\gmssl.dll'),
-				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\sqlite3\\lib\\sqlite3.dll')
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\sqlite3\\lib\\sqlite3.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\icu\\bin64\\icuin50.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\icu\\bin64\\icuuc50.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\icu\\bin64\\icudt50.dll'),
+				glob($buildenv_dir . '\\deps\\perl520_x64\\bin\\perl520.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\lz4\\lib\\liblz4.dll'),
+				glob($buildenv_dir . '\\deps\\lib' . $up_x64 . '\\instantclient_12_2\\sdk\\lib\\msvc\\oci.dll')
 			],
 			$target . '/bin/');
+
+	print "Copying perl modules ... ";
+	EnsureDirectories("$buildenv_dir\\deps\\perl520_x64\\lib");
+	(my $ctarget = $target) =~ s!/!\\!g;
+	my @args = (
+		'xcopy', '/s', '/i', '/q', '/r', '/y', "$buildenv_dir\\deps\\perl520_x64\\lib\\*",
+		"$ctarget\\lib\\");
+	system(@args) && croak("Failed to copy perl modules \n");
+
 	GenerateNLSFiles($target, $config->{nls}, $majorver) if ($config->{nls});
 
 	print "Installation complete.\n";

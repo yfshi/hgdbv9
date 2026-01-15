@@ -1336,6 +1336,11 @@ sub AddContrib
 			$proj->AddIncludeDir($solution->{options}->{license} . '\include');
 		}
 		# End - ReqID:SRS-MISC-LICENSE
+		if ($solution->{options}->{oci} && $n eq 'oracle_fdw')
+		{
+			$proj->AddIncludeDir($solution->{options}->{oci} . '\include');
+			$proj->AddLibrary($solution->{options}->{oci} . '\lib\msvc\oci.lib');
+		}
 		# /* Begin - ReqID:SRS-SECURITY-POWERS */
 		$proj->AddReference($libsefeatures);
 		# /* End - ReqID:SRS-SECURITY-POWERS */
