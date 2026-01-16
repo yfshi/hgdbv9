@@ -184,9 +184,9 @@ PDBGWorkerMain(Datum main_arg)
 void
 _PG_init(void)
 {
+#ifdef MISC_INTERNAL
 	BackgroundWorker worker;
 /* Begin - ReqID:SRS-Performance-GUC */
-#ifdef MISC_INTERNAL
     /* Shared memory */
     RequestAddinShmemSpace(MAXALIGN(sizeof(bool)));
 
@@ -280,7 +280,6 @@ _PG_init(void)
 
     pdbg_log_hook = PDBGIfPrintLog;
     pdbg_autoset_hook = PDBGAutoset;
-#endif /* MISC_INTERNAL */
 /* End - ReqID:SRS-Performance-GUC */
 	/* set up information for hg_misc workers */
 	/* Begin OA#1640 */
@@ -297,6 +296,7 @@ _PG_init(void)
 
 	RegisterBackgroundWorker(&worker);
 	/* End OA#1640 */
+#endif /* MISC_INTERNAL */
 }
 
 void
