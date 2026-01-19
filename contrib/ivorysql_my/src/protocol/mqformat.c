@@ -49,9 +49,6 @@ mq_getmessage(StringInfo buf, uint32 maxlen)
     // Read PROTO_PAYLOAD_LEN bytes from recvbuf
     if (pq_getbytes(buf->data, PROTO_PAYLOAD_LEN) == EOF)
     {
-        ereport(COMMERROR,
-                (errcode(ERRCODE_PROTOCOL_VIOLATION),
-                 errmsg("unexpected EOF within PROTO_PAYLOAD_LEN word")));
         return EOF;
     }
 

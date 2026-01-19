@@ -122,7 +122,7 @@ net_send_ok(uint64 affected_rows, int16 warnings, int16 status_flag, uint64 last
     StringInfo buf = makeStringInfo();
 
     if (eof_identifier && has_client_capabilities(CLIENT_DEPRECATE_EOF))
-        mq_append_int1(buf, 254);
+        mq_append_int1(buf, 0xfe);
     else
         mq_append_int1(buf, 0);
 
@@ -169,8 +169,12 @@ net_send_eof(int16 warnings, int16 status)
     StringInfo buf = makeStringInfo();
 
     mq_append_int1(buf, 0xfe);
-    mq_append_int2(buf, warnings);
-    mq_append_int2(buf, status);
+
+    if (has_client_capabilities(CLIENT_PROTOCOL_41))
+    {
+        mq_append_int2(buf, warnings);
+        mq_append_int2(buf, status);
+    }
 
     mq_putmessage(buf->data, buf->len);
 
@@ -218,32 +222,18 @@ send_com_stmt_prepare_ok_packet(int statementId, int columns, int params)
 void
 mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undecorated_output)
 {
+    uint16      status = ServerStatus();
+    uint64      nprocessed = qc->nprocessed;
+    uint64      last_insert_id;
     CommandTag	tag = qc->commandTag;
-	const char *tagname = GetCommandTagName(tag);
-    uint64 last_insert_id = DatumGetUInt64(DirectFunctionCall1(mys_get_lastval, (Datum) 0));
-    uint16  status = ServerStatus();
-    uint64  nprocessed = qc->nprocessed;
 
-    if (tag == CMDTAG_SELECT    ||
-        tag == CMDTAG_SHOW      ||
-        tag == CMDTAG_EXPLAIN)
+    last_insert_id = DatumGetUInt64(DirectFunctionCall1(mys_get_lastval, (Datum) 0));
+    
+    if (current_packet_type == COM_STMT_CLOSE)
     {
-        send_eof(0, status);
+        // no response packet is sent to the client
     }
-    else if (tag == CMDTAG_SET)
-    {
-        send_ok(0, 0, status, last_insert_id, NULL);
-    }
-    /* Begin - bug#7011 */
-    else if (tag == CMDTAG_CALL)
-    {
-        if (nprocessed)
-            send_eof(0, status);
-        else
-            send_ok(0, 0, status, last_insert_id, NULL);
-    }
-    /* End - bug#7011 */
-    else if (pg_strncasecmp(tagname, "PREPARE", 6) == 0 && current_packet_type == COM_STMT_PREPARE)
+    else if (current_packet_type == COM_STMT_PREPARE)
     {
         Query   *query;
         int     column_count;
@@ -261,16 +251,24 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
 
         send_com_stmt_prepare_ok_packet(statement_id, column_count, param_count);
     }
-    else if (current_packet_type == COM_STMT_CLOSE)
+    else if (tag == CMDTAG_SELECT    ||
+             tag == CMDTAG_SHOW      ||
+             tag == CMDTAG_EXPLAIN)
     {
-        // no response packet is sent to the client
+        send_eof(0, status);
     }
+    /* Begin - bug#7011 */
+    else if (tag == CMDTAG_CALL)
+    {
+        if (nprocessed)
+            send_eof(0, status);
+        else
+            send_ok(0, 0, status, last_insert_id, NULL);
+    }
+    /* End - bug#7011 */
     else
     {
-        if (has_client_capabilities(CLIENT_DEPRECATE_EOF))
-            send_ok(nprocessed, 0, status, last_insert_id, NULL);
-        else
-            send_eof(0, status);
+        send_ok(nprocessed, 0, status, last_insert_id, NULL);
     }
 }
 

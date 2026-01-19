@@ -595,16 +595,11 @@ LaunchParallelWorkers(ParallelContext *pcxt)
 	 * Begin - Req: SRS-MYSQL-PROTOCOL
 	 * Multi-process synchronization mode
 	 */
-	if (MyProcPort != NULL)
-	{
-		if (compatible_mode == ORA_MODE)
-			worker.bgw_flags |= BGWORKER_COMPAT_ORA;
-		else if (compatible_mode == MYS_MODE)
-			worker.bgw_flags |= BGWORKER_COMPAT_MYS;
-		else if (compatible_mode == PG_MODE)
-			worker.bgw_flags |= BGWORKER_COMPAT_PG;
-	}
-	else
+	if (compatible_mode == ORA_MODE)
+		worker.bgw_flags |= BGWORKER_COMPAT_ORA;
+	else if (compatible_mode == MYS_MODE)
+		worker.bgw_flags |= BGWORKER_COMPAT_MYS;
+	else if (compatible_mode == PG_MODE)
 		worker.bgw_flags |= BGWORKER_COMPAT_PG;
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 

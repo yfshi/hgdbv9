@@ -722,8 +722,6 @@ ApplyLauncherRegister(void)
 	bgw.bgw_notify_pid = 0;
 	bgw.bgw_main_arg = (Datum) 0;
 	
-	bgw.bgw_flags |= BGWORKER_COMPAT_PG; /* Req: SRS-MYSQL-PROTOCOL */
-
 	RegisterBackgroundWorker(&bgw);
 }
 

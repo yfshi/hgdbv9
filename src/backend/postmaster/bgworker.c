@@ -877,6 +877,15 @@ StartBackgroundWorker(void)
 	/* We can now handle ereport(ERROR) */
 	PG_exception_stack = &local_sigjmp_buf;
 
+	/* Begin - Req: SRS-MYSQL-PROTOCOL */
+	if (worker->bgw_flags & BGWORKER_COMPAT_ORA)
+		SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE); 
+	else if (worker->bgw_flags & BGWORKER_COMPAT_MYS)
+		SetConfigOption("ivorysql.compatible_mode", "mysql", PGC_USERSET, PGC_S_OVERRIDE); 
+	else
+		SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE); 
+	/* End - Req: SRS-MYSQL-PROTOCOL */
+
 	/*
 	 * If the background worker request shared memory access, set that up now;
 	 * else, detach all shared memory segments.
