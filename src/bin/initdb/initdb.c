@@ -1441,24 +1441,35 @@ setup_config(void)
 	/* Begin - BUG#6225 */
 	{
         char *token = "#shared_preload_libraries = ''";
-		char *replacement = "#shared_preload_libraries = ''";
+		StringInfoData replacement;
 
+		initStringInfo(&replacement);
+
+		/* prefix */
+		appendStringInfo(&replacement, "shared_preload_libraries = '");
+
+		/* common */
+		appendStringInfo(&replacement, "gb18030_2022, restricted_dba, pg_audit, credcheck, hg_sysmac");
 #ifdef USE_SQLITE
-		if (database_mode == DB_PG)
-			replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw, credcheck, ora_synonym, hg_sysmac'";
-		else if (database_mode == DB_ORACLE)
-			replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, sqlite_fdw, credcheck, hg_sysmac'";
-		else if (database_mode == DB_MYSQL)
-			replacement = "shared_preload_libraries = 'gb18030_2022, libmysql_parser, ivorysql_my, pg_object, restricted_dba, pg_audit, sqlite_fdw, credcheck, hg_sysmac'";
-#else
-		if (database_mode == DB_PG)
-			replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, credcheck, ora_synonym, hg_sysmac'";
-		else if (database_mode == DB_ORACLE)
-			replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, ora_synonym, restricted_dba, pg_audit, credcheck, hg_sysmac'";
-		else if (database_mode == DB_MYSQL)
-			replacement = "shared_preload_libraries = 'gb18030_2022, libmysql_parser, ivorysql_my, pg_object, restricted_dba, pg_audit, credcheck, hg_sysmac'";
+		appendStringInfo(&replacement, ", sqlite_fdw");
 #endif
-        conflines = replace_token(conflines,token, replacement);
+#ifdef MISC_INTERVAL
+		appendStringInfo(&replacement, ", hg_misc");
+#endif
+
+		/* compatible */
+		if (database_mode == DB_PG)
+			appendStringInfo(&replacement, ", ora_synonym");
+		else if (database_mode == DB_ORACLE)
+			appendStringInfo(&replacement, ", ora_synonym, liboracle_parser, ivorysql_ora, pg_object");
+		else if (database_mode == DB_MYSQL)
+			appendStringInfo(&replacement, ", libmysql_parser, ivorysql_my, pg_object");
+
+		/* suffix */
+		appendStringInfo(&replacement, "'");
+
+		conflines = replace_token(conflines,token, replacement.data);
+		pfree(replacement.data);
 	}
 	/* End - BUG#6225 */
 
