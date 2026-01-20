@@ -938,6 +938,10 @@ typedef struct PLiSQL_stmt_fetch
 	PLiSQL_expr *expr;			/* count, if expression */
 	bool		is_move;		/* is this a fetch or move? */
 	bool		returns_multiple_rows;	/* can return more than one row? */
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	bool		bulk_collect_into;	/* BULK COLLECT INTO supplied? */
+	PLiSQL_expr 	*limit_expr;		/* BULK COLLECT limit expression */
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 } PLiSQL_stmt_fetch;
 
 /*
@@ -1054,6 +1058,9 @@ typedef struct PLiSQL_stmt_execsql
 	bool		strict;			/* INTO STRICT flag */
 	bool		mod_stmt_set;	/* is mod_stmt valid yet? */
 	PLiSQL_variable *target;	/* INTO target (record or row) */
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	bool		bulk_collect_into;	/* BULK COLLECT INTO supplied? */
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 } PLiSQL_stmt_execsql;
 
 /*
@@ -1073,6 +1080,9 @@ typedef struct PLiSQL_stmt_dynexecute
 	bool        haveout;        /* out , in out mode */
 	PLiSQL_row *out;			/* OUT target, if row */
 	/* End - ReqID:SRS-SQL-ANONYOUT */
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	bool		bulk_collect_into;	/* BULK COLLECT INTO supplied? */
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 } PLiSQL_stmt_dynexecute;
 
 /*

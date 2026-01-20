@@ -37,6 +37,7 @@
 #include "executor/functions.h"
 #include "executor/tqueue.h"
 #include "executor/tstoreReceiver.h"
+#include "funcapi.h"	/* ReqID:SRS-PLSQL-BULKCOLLECT */
 #include "libpq/libpq.h"
 #include "libpq/pqformat.h"
 #include  "miscadmin.h"
@@ -156,6 +157,14 @@ CreateDestReceiver(CommandDest dest)
 
 		case DestTupleQueue:
 			return CreateTupleQueueDestReceiver(NULL);
+
+		/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+		case DestBulkCollect:
+			if (collection_funcs.loadstate != LOADED)
+				elog(ERROR, "collection functions have not been loaded");
+
+			return (DestReceiver *)DatumGetPointer(collection_funcs.CreateBulkCollectReceiver());
+		/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 	}
 
 	/* should never get here */
@@ -220,6 +229,7 @@ EndCommand(const QueryCompletion *qc, CommandDest dest, bool force_undecorated_o
 		case DestSQLFunction:
 		case DestTransientRel:
 		case DestTupleQueue:
+		case DestBulkCollect:	/* ReqID:SRS-PLSQL-BULKCOLLECT */
 			break;
 	}
 }
@@ -265,6 +275,7 @@ NullCommand(CommandDest dest)
 		case DestSQLFunction:
 		case DestTransientRel:
 		case DestTupleQueue:
+		case DestBulkCollect:	/* ReqID:SRS-PLSQL-BULKCOLLECT */
 			break;
 	}
 }
@@ -308,6 +319,7 @@ ReadyForQuery(CommandDest dest)
 		case DestSQLFunction:
 		case DestTransientRel:
 		case DestTupleQueue:
+		case DestBulkCollect:	/* ReqID:SRS-PLSQL-BULKCOLLECT */
 			break;
 	}
 }

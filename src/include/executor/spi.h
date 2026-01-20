@@ -238,4 +238,14 @@ extern bool SPI_is_first_plisql(void);
 extern void SPI_switch_atomic(bool atomic);
 /* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+extern int SPI_execute_plan_with_paramlist_bulk_collect(SPIPlanPtr plan, ParamListInfo params,
+								bool read_only, long tcount,
+								Datum bulk_params);
+extern void SPI_scroll_cursor_fetch_bulk_collect(Portal portal,
+									FetchDirection direction,
+									long count,
+									Datum bulk_params);
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+
 #endif							/* SPI_H */

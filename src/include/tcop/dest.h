@@ -97,7 +97,10 @@ typedef enum
 	DestCopyOut,				/* results sent to COPY TO code */
 	DestSQLFunction,			/* results sent to SQL-language func mgr */
 	DestTransientRel,			/* results sent to transient relation */
-	DestTupleQueue				/* results sent to tuple queue */
+	DestTupleQueue,				/* results sent to tuple queue */
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	DestBulkCollect 			/* results sent to bulk collect into collections */
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 } CommandDest;
 
 /* ----------------
