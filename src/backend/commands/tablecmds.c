@@ -140,6 +140,7 @@
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
+#include "commands/schemacmds.h"
 
 /*
  * ON COMMIT action list
@@ -697,6 +698,12 @@ static void ATExecSetPartitionInterval(Relation rel, PartitionInterval *partInte
 static void ATExecSetAutoIncrement(Relation rel, Value* value);
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+static void createAntitamperRelTrigger(Relation rel, Datum reloptions);
+static void createAntitamperHistRelation(Relation rel, Datum reloptions);
+static void ATCheckAntiTamperTableCmd(Relation rel, AlterTableCmd* cmd);
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
+
 /* ----------------------------------------------------------------
  *		DefineRelation
  *				Creates a new relation.
@@ -752,6 +759,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	/* End - ReqID:SRS-MYSQL-CASE */
 	Oid			objectOwner = OidIsValid(ownerId) ? ownerId : GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
 	bool		defIntervalPartition = false;	/* ReqID:RSR-SQL-Partition-interval */
+	bool		isparentantitamper = false;
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (stmt->relation->relname != NULL)
@@ -1484,6 +1492,11 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 		parent = table_open(parentId, NoLock);
 		idxlist = RelationGetIndexList(parent);
 
+		/* check if the parent table is a antitampering table
+		 * if so, create the child table as a antitampering table as well.
+		  */
+		isparentantitamper = parent->rd_isantitamper;
+
 		/*
 		 * For each index in the parent table, create one in the partition
 		 */
@@ -1590,7 +1603,27 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 	ObjectAddressSet(address, RelationRelationId, relationId);
 	
-
+	/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+	/* the parent table and child table of the partition table create a history
+	 * hash table. only the child table triggers are created beceuse only 
+	 * the child table will actually perform the insertion
+	 */
+	if ((stmt->isantitamper && !IsA(stmt, CreateForeignTableStmt) && 
+		stmt->relation->relpersistence == RELPERSISTENCE_PERMANENT)  ||
+		isparentantitamper)
+	{
+		/* check is antitamper option */
+		if (!interpretAntiTamperOption(stmt->options))
+		{
+			stmt->options = lcons(makeDefElem("antitamper", (Node *)makeString("true"), -1), stmt->options);
+		}
+		createAntitamperHistRelation(rel, reloptions);
+		if (stmt->partspec == NULL)
+		{
+			createAntitamperRelTrigger(rel, reloptions);
+		}
+	}
+	/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 	/*
 	 * Clean up.  We keep lock on new relation (although it shouldn't be
@@ -1694,6 +1727,111 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 	return address;
 }
+
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+/* create antitamper table trigger*/
+static void
+createAntitamperRelTrigger(Relation rel, Datum reloptions)
+{
+	CreateTrigStmt *trigger = makeNode(CreateTrigStmt);
+
+	trigger->replace = false;
+	trigger->isconstraint = true;
+	trigger->trigname = ANTITAMPER_TRIGGER_NAME;
+	trigger->relation = NULL;
+	trigger->funcname = list_make2(makeString("hg_security"), makeString("set_generic_hash"));
+	trigger->args = NIL;
+	trigger->row = true;
+	trigger->timing = TRIGGER_TYPE_BEFORE;
+	trigger->events = TRIGGER_TYPE_INSERT | TRIGGER_TYPE_UPDATE | TRIGGER_TYPE_DELETE;
+	trigger->columns = NIL;
+	trigger->whenClause = NULL;
+	trigger->transitionRels = NIL;
+	trigger->deferrable = false;
+	trigger->initdeferred = false;
+	trigger->constrrel = NULL;
+
+	(void) CreateTrigger(trigger, NULL, RelationGetRelid(rel),
+						 InvalidOid, InvalidOid, InvalidOid, InvalidOid,
+						 InvalidOid, NULL, false, false);
+}
+
+/*
+ * createAntitamperHistRelation -- create a hist table based on the original user table.
+ *
+ * rel: The original user relation
+ * reloptions: relation options used to define new relation
+ * mainTblStmt: Some statement of the query when create the new relation.
+ */
+static void
+createAntitamperHistRelation(Relation rel, Datum reloptions)
+{
+	char hist_name[NAMEDATALEN];
+	Oid relid = RelationGetRelid(rel);
+	Oid hist_oid;
+	bool shared_relation = rel->rd_rel->relisshared;
+	Oid accessMethodId = InvalidOid;
+	TupleDesc chain_desc;
+	ObjectAddress myself;
+	ObjectAddress referenced;
+
+	snprintf(hist_name, NAMEDATALEN, "hist_%d", relid);
+
+	/*
+	 * history chain table contains all the columns from the origin user table, and then need to
+	 * record the command type,	blocknum, and hash value of last block record.
+	 */
+	chain_desc = CreateTemplateTupleDesc(3, false);
+
+	/* Now consider the additional columns and initilize the description */
+	TupleDescInitEntry(chain_desc, 1, "rec_num", INT8OID, -1, 0);
+	TupleDescInitEntry(chain_desc, 2, "hash_ins", INT8OID, -1, 0);
+	TupleDescInitEntry(chain_desc, 3, "hash_del", INT8OID, -1, 0);
+
+	/* look up the access method, verify it is for a table */
+	accessMethodId = get_table_am_oid(default_table_access_method, false);
+
+	hist_oid = heap_create_with_catalog(hist_name,
+										SECURITY_SCHEMA_NAMESPACE,
+										rel->rd_rel->reltablespace,
+										InvalidOid,
+										InvalidOid,
+										InvalidOid,
+										rel->rd_rel->relowner,
+										accessMethodId,
+										chain_desc,
+										NIL,
+										'r',
+										(rel->rd_rel->relpersistence == 't') ? 'u' : rel->rd_rel->relpersistence,
+										shared_relation,
+										false,
+										ONCOMMIT_NOOP,
+										(Datum)0,
+										true,
+										allowSystemTableMods,
+										false,
+										InvalidOid,
+										NULL);
+
+	/* make the history chain relation visible, else heap_open will fail */
+	CommandCounterIncrement();
+
+	/* Specify dependent between history table and origin table with depend option audo. */
+	myself.classId = RelationRelationId;
+	myself.objectId = hist_oid;
+	myself.objectSubId = 0;
+	referenced.classId = RelationRelationId;
+	referenced.objectId = relid;
+	referenced.objectSubId = 0;
+	recordDependencyOn(&myself, &referenced, DEPENDENCY_AUTO);
+
+	pfree(chain_desc);
+	/*
+	 * Make changes visible
+	 */
+	CommandCounterIncrement();
+}
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 /*
  * Emit the right error or warning message for a "DROP" command issued on a
@@ -5260,6 +5398,8 @@ ATController(AlterTableStmt *parsetree,
 	{
 		AlterTableCmd *cmd = (AlterTableCmd *) lfirst(lcmd);
 
+		/* check antitampering table alter, not support add/drop/modify columns */
+		ATCheckAntiTamperTableCmd(rel, cmd);/* ReqID: SRS-SECURITY-ANTITAMPERING */
 		ATPrepCmd(&wqueue, rel, cmd, recurse, false, lockmode, context);
 	}
 
@@ -5272,6 +5412,53 @@ ATController(AlterTableStmt *parsetree,
 	/* Phase 3: scan/rewrite tables as needed, and run afterStmts */
 	ATRewriteTables(parsetree, &wqueue, lockmode, context);
 }
+
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+/* the modification table is used for antitampering checks.
+ * the antitampering table does not support modifying the table columns.
+ */
+static void
+ATCheckAntiTamperTableCmd(Relation rel, AlterTableCmd* cmd)
+{
+	if (!cmd || !rel)
+		return;
+
+	switch (cmd->subtype)
+	{
+		case AT_AddColumn:		 /* ADD COLUMN */
+		case AT_DropColumn:		 /* DROP COLUMN */
+		case AT_AlterColumnType: /* ALTER COLUMN TYPE */
+		{
+			if (rel->rd_isantitamper)
+				/* AntiTamper related tables can't ALTER */
+				ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								errmsg("Unsupport to ALTER the structure of antitamper related table [%s].",
+									   RelationGetRelationName(rel))));
+		}
+			break;
+		case AT_SetRelOptions:
+		{
+			ListCell   *cell;
+			/* AntiTamper is set during creation and cannot be changed. */
+			foreach(cell, (List *) cmd->def)
+			{
+				DefElem    *defel = (DefElem *) lfirst(cell);
+				if (pg_strcasecmp(defel->defname, "antitamper") == 0)
+				{
+					ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							errmsg("Unsupport to ALTER the option of antitamper related table [%s].",
+								   RelationGetRelationName(rel))));
+				}
+			}
+		}
+			break;
+		default: /* other option will pass */
+			break;
+	}
+
+	return;
+}
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 /*
  * ATPrepCmd
@@ -18180,6 +18367,16 @@ AlterTableNamespace(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 
 	/* common checks on switching namespaces */
 	CheckSetNamespace(oldNspOid, nspOid);
+
+	/* If table has history table, we need rename corresponding history table */
+	if (rel->rd_isantitamper)
+	{
+		if (IsAntiTamperNameSpace(oldNspOid) != IsAntiTamperNameSpace(nspOid))
+		{
+			ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							errmsg("Unsupport to alter schema of a table between ledger schema and normal schema.")));
+		}
+	}
 
 	objsMoved = new_object_addresses();
 	AlterTableNamespaceInternal(rel, oldNspOid, nspOid, objsMoved);

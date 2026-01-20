@@ -1449,7 +1449,7 @@ setup_config(void)
 		appendStringInfo(&replacement, "shared_preload_libraries = '");
 
 		/* common */
-		appendStringInfo(&replacement, "gb18030_2022, restricted_dba, pg_audit, credcheck, hg_sysmac");
+		appendStringInfo(&replacement, "gb18030_2022, restricted_dba, pg_audit, credcheck, hg_sysmac, hg_antitamper");
 #ifdef USE_SQLITE
 		appendStringInfo(&replacement, ", sqlite_fdw");
 #endif
@@ -2438,6 +2438,17 @@ load_hg_sysmac(FILE *cmdfd)
 {
 	PG_CMD_PUTS("CREATE EXTENSION hg_sysmac WITH SCHEMA hg_security;\n\n");
 }
+
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+/*
+ * load hg_antitamper
+ */
+static void
+load_hg_antitamper(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION hg_antitamper WITH SCHEMA hg_security;\n\n");
+}
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 /*
  * clean everything up in template1
@@ -3725,6 +3736,8 @@ initialize_data_directory(void)
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 	load_hg_sysmac(cmdfd);
+
+	load_hg_antitamper(cmdfd);/* ReqID: SRS-SECURITY-ANTITAMPERING */
 
 	vacuum_db(cmdfd);
 

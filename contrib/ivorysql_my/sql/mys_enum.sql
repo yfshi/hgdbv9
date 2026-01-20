@@ -879,9 +879,9 @@ SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' ord
 
 -- test drop table 
 create table t_enum_table_drop(c1 int, c2 enum('aa', 'bb'), c3 enum('aaa', 'bbb'), c4 enum('aaaaa', 'bbbb'));
-SELECT typname FROM pg_type WHERE typname like '%t_enum_table_drop%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_table_drop%' order by typname;
 drop table t_enum_table_drop;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_table_drop%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_table_drop%' order by typname;
 
 -- test alter drop add col --- use pg enum
 create type alterenum1 as enum('a','b');

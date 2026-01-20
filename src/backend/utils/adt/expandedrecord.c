@@ -1037,6 +1037,21 @@ expanded_record_lookup_field(ExpandedRecordHeader *erh, const char *fieldname,
 			finfo->fcollation = attr->attcollation;
 			return true;
 		}
+
+		/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+		/* set it in the trigger function ,spectfying to obtain
+		 * the __hg_hash__ column */
+		if (namestrcmp(&attr->attname, ANTITAMPER_COL_NAME) == 0 &&
+			pg_strcasecmp(fieldname, ANTITAMPER_COL_NAME) == 0 &&
+			!attr->attisdropped && !attr->attisvisible)
+		{
+			finfo->fnumber = attr->attnum;
+			finfo->ftypeid = attr->atttypid;
+			finfo->ftypmod = attr->atttypmod;
+			finfo->fcollation = attr->attcollation;
+			return true;
+		}
+		/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 	}
 
 	/* How about system attributes? */

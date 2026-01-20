@@ -86,6 +86,9 @@ typedef struct RelationData
 	bool		rd_indexvalid;	/* is rd_indexlist valid? (also rd_pkindex and
 								 * rd_replidindex) */
 	bool		rd_statvalid;	/* is rd_statlist valid? */
+	/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+	bool		rd_isantitamper; /* relation is in antitamper schema */
+	/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 	/*----------
 	 * rd_createSubid is the ID of the highest subtransaction the rel has
@@ -371,6 +374,7 @@ typedef struct StdRdOptions
 	bool		vacuum_truncate;	/* enables vacuum to truncate a relation */
 	bool		on_commit_delete_rows;	/* global temp table */
 	bool		encrypt;		/* encrypt the relation (ReqID:SRS-SECURITY-TDE) */
+	bool		antitamper; 	/* ReqID: SRS-SECURITY-ANTITAMPERING antitamper the relation */
 } StdRdOptions;
 
 #define HEAP_MIN_FILLFACTOR			10
@@ -425,6 +429,12 @@ typedef struct StdRdOptions
 #define RelationGetParallelWorkers(relation, defaultpw) \
 	((relation)->rd_options ? \
 	 ((StdRdOptions *) (relation)->rd_options)->parallel_workers : (defaultpw))
+
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+#define RelationGetAntiTamper(relation, defaultbc) \
+	((relation)->rd_options ? \
+	 ((StdRdOptions *) (relation)->rd_options)->antitamper : (defaultbc))
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 /* ViewOptions->check_option values */
 typedef enum ViewOptCheckOption

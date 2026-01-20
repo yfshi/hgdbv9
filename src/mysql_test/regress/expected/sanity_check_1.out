@@ -181,6 +181,7 @@ regress_constr_partition1|t
 regress_constr_partitioned|t
 reservations|f
 road|t
+schema_antitamper|f
 secondparent|f
 slow_emp4000|f
 sql_features|f

@@ -483,6 +483,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 
 %type <str>		OptSchemaName
 %type <list>	OptSchemaEltList
+%type <boolean>	OptAntiTamperWith /* ReqID: SRS-SECURITY-ANTITAMPERING */
 
 %type <chr>		am_type
 
@@ -851,7 +852,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 /* ordinary key words in alphabetical order */
 %token <keyword> ABORT_P ABSOLUTE_P ACCESS ACTION ADD_P ADMIN AFTER
 	AGGREGATE ALGORITHM /* ReqID:SRS-MYSQL-CREATE-INDEX */ ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
-	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION AUTO_INCREMENT ANONYMOUS
+	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION AUTO_INCREMENT ANONYMOUS ANTITAMPER
 
 	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BIT BLOB_P
 	BOOLEAN_P BOTH BREADTH BY
@@ -1647,7 +1648,7 @@ add_drop:	ADD_P									{ $$ = +1; }
  *****************************************************************************/
 
 CreateSchemaStmt:
-			CREATE SCHEMA OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
+			CREATE SCHEMA OptSchemaName AUTHORIZATION RoleSpec OptAntiTamperWith OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -1656,11 +1657,12 @@ CreateSchemaStmt:
 					/* One can omit the schema name or the authorization id. */
 					n->schemaname = $3;
 					n->authrole = $5;
-					n->schemaElts = $6;
+					n->hasAntiTamper = $6;
+					n->schemaElts = $7;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
-			| CREATE SCHEMA ColId OptSchemaEltList
+			| CREATE SCHEMA ColId OptAntiTamperWith OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -1669,7 +1671,8 @@ CreateSchemaStmt:
 					/* ...but not both */
 					n->schemaname = $3;
 					n->authrole = NULL;
-					n->schemaElts = $4;
+					n->hasAntiTamper = $4;
+					n->schemaElts = $5;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
@@ -1683,10 +1686,11 @@ CreateSchemaStmt:
 					n->authrole = NULL;
 					n->option = $4;
 					n->if_not_exists = false;
+					n->hasAntiTamper = false;
 					$$ = (Node *)n;
 					/* End - ReqID: SRS-MYSQL-SQL-USE */
 				}
-			| CREATE SCHEMA IF_P NOT EXISTS OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
+			| CREATE SCHEMA IF_P NOT EXISTS OptSchemaName AUTHORIZATION RoleSpec OptAntiTamperWith OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -1695,16 +1699,17 @@ CreateSchemaStmt:
 					/* schema name can be omitted here, too */
 					n->schemaname = $6;
 					n->authrole = $8;
-					if ($9 != NIL)
+					n->hasAntiTamper = $9;
+					if ($10 != NIL)
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("CREATE SCHEMA IF NOT EXISTS cannot include schema elements"),
-								 parser_errposition(@9)));
-					n->schemaElts = $9;
+								 parser_errposition(@10)));
+					n->schemaElts = $10;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
-			| CREATE SCHEMA IF_P NOT EXISTS ColId OptSchemaEltList
+			| CREATE SCHEMA IF_P NOT EXISTS ColId OptAntiTamperWith OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -1713,16 +1718,17 @@ CreateSchemaStmt:
 					/* ...but not here */
 					n->schemaname = $6;
 					n->authrole = NULL;
-					if ($7 != NIL)
+					n->hasAntiTamper = $7;
+					if ($8 != NIL)
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("CREATE SCHEMA IF NOT EXISTS cannot include schema elements"),
-								 parser_errposition(@7)));
-					n->schemaElts = $7;
+								 parser_errposition(@8)));
+					n->schemaElts = $8;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
-			| CREATE SCHEMA IF_P NOT EXISTS ColId  default_create_options
+			| CREATE SCHEMA IF_P NOT EXISTS ColId OptAntiTamperWith default_create_options
 				{
 					/* Begin - ReqID: SRS-MYSQL-SQL-USE */
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
@@ -1730,12 +1736,23 @@ CreateSchemaStmt:
 					/* ...but not both */
 					n->schemaname = $6;
 					n->authrole = NULL;
-					n->option = $7;
+					n->hasAntiTamper = $7;
+					n->option = $8;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 					/* End - ReqID: SRS-MYSQL-SQL-USE */
 				}
 		;
+
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+OptAntiTamperWith:
+			WITH ANTITAMPER
+				{
+					$$ = true;
+				}
+			| /* EMPTY */							{ $$ = false; }
+		;
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 OptSchemaName:
 			ColId									{ $$ = $1; }
@@ -19871,6 +19888,7 @@ unreserved_keyword:
 			| ALSO
 			| ALTER
 			| ALWAYS
+			| ANTITAMPER
 			| ASENSITIVE
 			| ASSERTION
 			| ASSIGNMENT
@@ -20489,6 +20507,7 @@ bare_label_keyword:
 			| ANALYZE
 			| AND
 			| ANONYMOUS
+			| ANTITAMPER
 			| ANY
 			| ASC
 			| ASENSITIVE

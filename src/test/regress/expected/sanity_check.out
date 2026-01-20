@@ -53,6 +53,8 @@ hash_f8_heap|t
 hash_i4_heap|t
 hash_name_heap|t
 hash_txt_heap|t
+hg_global_antitamper|t
+hg_global_antitamper_backup|f
 hobbies_r|f
 ihighway|t
 inet_tbl|f
@@ -210,6 +212,7 @@ regress_constr_partition1|t
 regress_constr_partitioned|t
 reservations|f
 road|t
+schema_antitamper|f
 shighway|t
 slow_emp4000|f
 sql_features|f

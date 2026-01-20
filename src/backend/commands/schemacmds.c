@@ -48,6 +48,10 @@
 
 static void AlterSchemaOwner_internal(HeapTuple tup, Relation rel, Oid newOwnerId);
 
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+SchemaSetAntiTamperRel_type SchemaSetAntiTamperRel = NULL;
+SchemaGetAntiTamperFlag_type SchemaGetAntiTamperFlag = NULL;
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 /*
  * CREATE SCHEMA
  *
@@ -74,6 +78,7 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	ObjectAddress address;
 	StringInfoData pathbuf;
 	char	   *orischemaName = NULL;	/* ReqID:SRS-MYSQL-CASE */
+	bool hasAntiTamper = stmt->hasAntiTamper; /* ReqID: SRS-SECURITY-ANTITAMPERING */
 
 	GetUserIdAndSecContext(&saved_uid, &save_sec_context);
 
@@ -196,6 +201,14 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 
 		/* Advance cmd counter to make the namespace visible */
 		CommandCounterIncrement();
+
+		/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+		/* set schema_antitamper table: set schema to antitampering flag  */
+		if (hasAntiTamper && SchemaSetAntiTamperRel)
+		{
+			(*SchemaSetAntiTamperRel)(namespaceId, true);
+		}
+		/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 	}
 
 	/*
@@ -533,3 +546,34 @@ AlterSchemaOwner_internal(HeapTuple tup, Relation rel, Oid newOwnerId)
 	InvokeObjectPostAlterHook(NamespaceRelationId,
 							  nspForm->oid, 0);
 }
+
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+/* check schema is antitampering schema */
+bool
+IsAntiTamperNameSpace(Oid nspOid)
+{
+	HeapTuple tuple;
+	bool is_nspantitamper = false;
+
+	if (!OidIsValid(nspOid))
+	{
+		return false;
+	}
+
+	tuple = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(nspOid));
+	if (HeapTupleIsValid(tuple))
+	{
+		if (SchemaGetAntiTamperFlag)
+		{
+			is_nspantitamper = (*SchemaGetAntiTamperFlag)(nspOid);
+		}
+		ReleaseSysCache(tuple);
+	}
+	else
+	{
+		ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA), errmsg("schema of oid \"%u\" does not exist", nspOid)));
+	}
+
+	return is_nspantitamper;
+}
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
