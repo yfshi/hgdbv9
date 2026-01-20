@@ -55,6 +55,7 @@ typedef unsigned char uchar;
 
 extern int8   my_atoi_int8(const char *s,  bool is_insert);
 extern int16  my_atoi_int16(const char *s, bool is_insert);
+extern int32  my_atoi_int24(const char *s, bool is_insert);
 extern int32  my_atoi_int32(const char *s, bool is_insert);
 extern int64  my_atoi_int64(const char *s, bool is_insert);
 extern uint8  my_atoi_uint8(const char *s, bool is_insert);

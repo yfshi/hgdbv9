@@ -9,7 +9,7 @@ AS 'MODULE_PATHNAME','mysuint2_in'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
-STABLE;
+IMMUTABLE;
 
 CREATE FUNCTION ivymy.mysuint2_out(ivymy.uint2)
 RETURNS pg_catalog.cstring
@@ -17,7 +17,7 @@ AS 'MODULE_PATHNAME','mysuint2_out'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
-STABLE;
+IMMUTABLE;
 
 CREATE FUNCTION ivymy.mysuint2_recv(internal)
 RETURNS ivymy.uint2
@@ -99,7 +99,7 @@ AS 'MODULE_PATHNAME','int8_uint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
-STABLE;
+IMMUTABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.uint2)
 WITH FUNCTION ivymy.int8_uint2(pg_catalog.int8)
@@ -111,7 +111,7 @@ AS 'MODULE_PATHNAME','int4_uint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
-STABLE;
+IMMUTABLE;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.uint2)
 WITH FUNCTION ivymy.int4_uint2(pg_catalog.int4)
@@ -123,7 +123,7 @@ AS 'MODULE_PATHNAME','int2_uint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
-STABLE;
+IMMUTABLE;
 
 CREATE CAST (pg_catalog.int2 AS ivymy.uint2)
 WITH FUNCTION ivymy.int2_uint2(pg_catalog.int2)

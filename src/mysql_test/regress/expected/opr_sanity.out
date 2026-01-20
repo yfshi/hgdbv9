@@ -1026,6 +1026,7 @@ WHERE c.castmethod = 'b' AND
  pg_ndistinct      | bytea             |        0 | i
  pg_dependencies   | bytea             |        0 | i
  pg_mcv_list       | bytea             |        0 | i
+ "mediumint"       | integer           |        0 | i
  uint3             | uint4             |        0 | i
  tinyblob          | bytea             |        0 | i
  blob              | bytea             |        0 | i
@@ -1041,7 +1042,7 @@ WHERE c.castmethod = 'b' AND
  ivy_hex           | longblob          |        0 | a
  ivy_hex           | binary            |        0 | a
  ivy_hex           | varbinary         |        0 | a
-(27 rows)
+(28 rows)
 
 -- **************** pg_conversion ****************
 -- Look for illegal values in pg_conversion fields.

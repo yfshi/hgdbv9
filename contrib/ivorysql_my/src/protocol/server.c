@@ -72,6 +72,7 @@ static ProtocolExtensionConfig mysql_pg_protocol_config = {
 static TypeItem type_items[] = {
 	{"tinyint", 	MYSQL_TYPE_TINY, 		TINYINTOID, 	0, 				0},
     {"int2", 		MYSQL_TYPE_SHORT, 		INT2OID, 		0, 				0},
+	{"mediumint", 	MYSQL_TYPE_INT24,		MEDIUMINTOID, 	0, 				0},
 	{"int4", 		MYSQL_TYPE_LONG, 		INT4OID, 		0, 				0},
     {"int8", 		MYSQL_TYPE_LONGLONG, 	INT8OID, 		0, 				0},
 	{"uint1", 		MYSQL_TYPE_TINY, 		UINT1OID, 		UNSIGNED_FLAG, 	0},

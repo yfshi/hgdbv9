@@ -61,24 +61,43 @@ insert into t1 values(-1);
 insert into t1 values(-8388608);
 insert into t1 values(8388607);
 insert into t1 values(-8388609);
-ERROR:  value for domain "mediumint" violates check constraint "mediumint_check"
+ERROR:  Out of range value for column
 insert into t1 values(8388608);
-ERROR:  value for domain "mediumint" violates check constraint "mediumint_check"
+ERROR:  Out of range value for column
 insert into t1 values(true);--BUG#5392
 insert into t1 values(false);--BUG#5392
 select * from t1;
     c1    
 ----------
-        0
-        1
-       -1
+ 0
+ 1
+ -1
  -8388608
-  8388607
-        1
-        0
+ 8388607
+ 1
+ 0
 (7 rows)
 
 drop table t1;
+set SQL_MODE='';
+create table t1(c1 mediumint);
+insert into t1 values(8388607);
+insert into t1 values(8388608);
+WARNING:  Out of range value for column
+insert into t1 values(-8388608);
+insert into t1 values(-8388609);
+WARNING:  Out of range value for column
+select * from t1;
+    c1    
+----------
+ 8388607
+ 8388607
+ -8388608
+ -8388608
+(4 rows)
+
+drop table t1;
+set SQL_MODE to default;
 create table t1(c1 mediumint SIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
@@ -86,17 +105,17 @@ insert into t1 values(-1);
 insert into t1 values(-8388608);
 insert into t1 values(8388607);
 insert into t1 values(-8388609);
-ERROR:  value for domain "mediumint" violates check constraint "mediumint_check"
+ERROR:  Out of range value for column
 insert into t1 values(8388608);
-ERROR:  value for domain "mediumint" violates check constraint "mediumint_check"
+ERROR:  Out of range value for column
 select * from t1;
     c1    
 ----------
-        0
-        1
-       -1
+ 0
+ 1
+ -1
  -8388608
-  8388607
+ 8388607
 (5 rows)
 
 drop table t1;
@@ -108,17 +127,17 @@ insert into t1 values(-1);
 insert into t1 values(-8388608);
 insert into t1 values(8388607);
 insert into t1 values(-8388609);
-ERROR:  value for domain "mediumint" violates check constraint "mediumint_check"
+ERROR:  Out of range value for column
 insert into t1 values(8388608);
-ERROR:  value for domain "mediumint" violates check constraint "mediumint_check"
+ERROR:  Out of range value for column
 select * from t1;
     c1    
 ----------
-        0
-        1
-       -1
+ 0
+ 1
+ -1
  -8388608
-  8388607
+ 8388607
 (5 rows)
 
 drop table t1;
@@ -129,23 +148,243 @@ insert into t1 values(-1);
 insert into t1 values(-8388608);
 insert into t1 values(8388607);
 insert into t1 values(-8388609);
-ERROR:  value for domain "mediumint" violates check constraint "mediumint_check"
+ERROR:  Out of range value for column
 insert into t1 values(8388608);
-ERROR:  value for domain "mediumint" violates check constraint "mediumint_check"
+ERROR:  Out of range value for column
 select * from t1;
     c1    
 ----------
-        0
-        1
-       -1
+ 0
+ 1
+ -1
  -8388608
-  8388607
+ 8388607
 (5 rows)
 
 drop table t1;
 create table test1(b int3(0) default 3);
 insert into test1 values ();
 drop table test1;
+--numeric -> int3
+select 2000.49999::int3;
+ mediumint 
+-----------
+ 2000
+(1 row)
+
+select 2000.5::int3;
+ mediumint 
+-----------
+ 2001
+(1 row)
+
+select (-8388608.2)::int3;
+ mediumint 
+-----------
+ -8388608
+(1 row)
+
+select 8388607.1::int3;
+ mediumint 
+-----------
+ 8388607
+(1 row)
+
+select 999999999999999.0205::int3;
+WARNING:  Truncated incorrect DECIMAL value: '999999999999999.0205'
+ mediumint 
+-----------
+ 8388607
+(1 row)
+
+select (-0.02)::int3;
+ mediumint 
+-----------
+ 0
+(1 row)
+
+select (-68.753951)::int3;
+ mediumint 
+-----------
+ -69
+(1 row)
+
+select (-999999999999999.0205)::int3;
+WARNING:  Truncated incorrect DECIMAL value: '-999999999999999.0205'
+ mediumint 
+-----------
+ -8388608
+(1 row)
+
+set SQL_MODE='TRADITIONAL';
+CREATE TABLE tb3 (a numeric, b mediumint);
+insert into tb3 values (112233.556677, 9999);
+insert into tb3 values (0.62, 100);
+insert into tb3 values (7.05, 1000.123);
+insert into tb3 values (7.05, 8388607.3);
+insert into tb3 values (7.05, 8388607.0);
+insert into tb3 values (7.05, 8388607.9);
+ERROR:  Out of range value for column
+insert into tb3 values (7.05, 999999999999999.0205);
+ERROR:  Out of range value for column
+insert into tb3 values (120.007, 0);
+insert into tb3 values (9.36, -50000.753951);
+insert into tb3 values (9.36, -8388607.8);
+insert into tb3 values (9.36, -8388608.0);
+insert into tb3 values (9.36, -8388609.2);
+ERROR:  Out of range value for column
+insert into tb3 values (9.36, -999999999999999.0205);
+ERROR:  Out of range value for column
+select * from tb3;
+       a       |    b     
+---------------+----------
+ 112233.556677 | 9999
+          0.62 | 100
+          7.05 | 1000
+          7.05 | 8388607
+          7.05 | 8388607
+       120.007 | 0
+          9.36 | -50001
+          9.36 | -8388608
+          9.36 | -8388608
+(9 rows)
+
+select cast(a as int3) from tb3;
+   a    
+--------
+ 112234
+ 1
+ 7
+ 7
+ 7
+ 120
+ 9
+ 9
+ 9
+(9 rows)
+
+select convert(a, int3) from tb3;
+   a    
+--------
+ 112234
+ 1
+ 7
+ 7
+ 7
+ 120
+ 9
+ 9
+ 9
+(9 rows)
+
+select a::int3 + b from tb3;
+ ?column? 
+----------
+   122233
+      101
+     1007
+  8388614
+  8388614
+      120
+   -49992
+ -8388599
+ -8388599
+(9 rows)
+
+drop table tb3;
+set SQL_MODE='';
+CREATE TABLE tb3 (a numeric, b mediumint);
+insert into tb3 values (112233.556677, 9999);
+insert into tb3 values (0.62, 100);
+insert into tb3 values (7.05, 1000.123);
+insert into tb3 values (7.05, 8388607.3);
+insert into tb3 values (7.05, 8388607.0);
+insert into tb3 values (7.05, 8388607.9);
+WARNING:  Out of range value for column
+insert into tb3 values (7.05, 999999999999999.0205);
+WARNING:  Out of range value for column
+insert into tb3 values (120.007, 0);
+insert into tb3 values (9.36, -50000.753951);
+insert into tb3 values (9.36, -8388607.8);
+insert into tb3 values (9.36, -8388608.0);
+insert into tb3 values (9.36, -8388609.2);
+WARNING:  Out of range value for column
+insert into tb3 values (9.36, -999999999999999.0205);
+WARNING:  Out of range value for column
+select * from tb3;
+       a       |    b     
+---------------+----------
+ 112233.556677 | 9999
+          0.62 | 100
+          7.05 | 1000
+          7.05 | 8388607
+          7.05 | 8388607
+          7.05 | 8388607
+          7.05 | 8388607
+       120.007 | 0
+          9.36 | -50001
+          9.36 | -8388608
+          9.36 | -8388608
+          9.36 | -8388608
+          9.36 | -8388608
+(13 rows)
+
+select cast(a as int3) from tb3;
+   a    
+--------
+ 112234
+ 1
+ 7
+ 7
+ 7
+ 7
+ 7
+ 120
+ 9
+ 9
+ 9
+ 9
+ 9
+(13 rows)
+
+select convert(a, int3) from tb3;
+   a    
+--------
+ 112234
+ 1
+ 7
+ 7
+ 7
+ 7
+ 7
+ 120
+ 9
+ 9
+ 9
+ 9
+ 9
+(13 rows)
+
+select a::int3 + b from tb3;
+ ?column? 
+----------
+   122233
+      101
+     1007
+  8388614
+  8388614
+  8388614
+  8388614
+      120
+   -49992
+ -8388599
+ -8388599
+ -8388599
+ -8388599
+(13 rows)
+
+drop table tb3;
+set SQL_MODE to default;
 --expr
 create table test1(a int3, b int3 default 3);
 insert into test1 values();
@@ -462,9 +701,9 @@ insert into tb_test values (123),(-121),(0);
 select +id from tb_test;
  ?column? 
 ----------
-      123
-     -121
-        0
+ 123
+ -121
+ 0
 (3 rows)
 
 drop table tb_test;

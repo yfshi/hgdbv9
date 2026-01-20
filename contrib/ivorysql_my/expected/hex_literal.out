@@ -164,7 +164,7 @@ insert into hex_test values (0x3, 0x3, 0x3, 0x3, 0x3);
 select * from hex_test;
  ii | i2 | i3 | i4 | i8 
 ----+----+----+----+----
-  3 |  3 |  3 |  3 |  3
+  3 |  3 | 3  |  3 |  3
 (1 row)
 
 drop table hex_test;

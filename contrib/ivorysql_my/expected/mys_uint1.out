@@ -1841,14 +1841,14 @@ explain (COSTS OFF) select * from idx_2 where idx = cast(11 as tinyint UNSIGNED)
             QUERY PLAN             
 -----------------------------------
  Index Scan using idx2 on idx_2
-   Index Cond: (idx = (11)::uint1)
+   Index Cond: (idx = '11'::uint1)
 (2 rows)
 
 explain (COSTS OFF) select * from idx_2 where idx > cast(11 as tinyint UNSIGNED);
           QUERY PLAN           
 -------------------------------
  Seq Scan on idx_2
-   Filter: (idx > (11)::uint1)
+   Filter: (idx > '11'::uint1)
 (2 rows)
 
 set enable_seqscan =true;
