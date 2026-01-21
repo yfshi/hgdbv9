@@ -3022,7 +3022,7 @@ XLogWritePages(char *from, int npages, uint32 startoffset)
 		startoffset += written;
 	} while (nleft > 0);
 
-	return written;
+	return nbytes;
 }
 /* End - ReqID:SRS-SECURITY-TDE */
 
