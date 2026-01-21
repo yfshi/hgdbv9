@@ -246,7 +246,7 @@ sub GenerateFiles
 	print "Generating configuration headers...\n";
 	my $extraver = $self->{options}->{extraver};
 	$extraver = '' unless defined $extraver;
-	my $port = $self->{options}->{"--with-pgport"} || 5432;
+	my $port = $self->{options}->{"--with-pgport"} || 5866;
 	my $oraport = $self->{options}->{"--with-oraport"} || 1521;
 	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
 	my $mysport = $self->{options}->{"--with-mysport"} || 3306;
@@ -1321,18 +1321,9 @@ sub AddProject
 	if ($self->{options}->{icu})
 	{
 		$proj->AddIncludeDir($self->{options}->{icu} . '\include');
-		if ($self->{platform} eq 'Win32')
-		{
-			$proj->AddLibrary($self->{options}->{icu} . '\lib\icuin.lib');
-			$proj->AddLibrary($self->{options}->{icu} . '\lib\icuuc.lib');
-			$proj->AddLibrary($self->{options}->{icu} . '\lib\icudt.lib');
-		}
-		else
-		{
-			$proj->AddLibrary($self->{options}->{icu} . '\lib64\icuin.lib');
-			$proj->AddLibrary($self->{options}->{icu} . '\lib64\icuuc.lib');
-			$proj->AddLibrary($self->{options}->{icu} . '\lib64\icudt.lib');
-		}
+		$proj->AddLibrary($self->{options}->{icu} . '\lib64\icuin.lib');
+		$proj->AddLibrary($self->{options}->{icu} . '\lib64\icuuc.lib');
+		$proj->AddLibrary($self->{options}->{icu} . '\lib64\icudt.lib');
 	}
 	if ($self->{options}->{xml})
 	{
