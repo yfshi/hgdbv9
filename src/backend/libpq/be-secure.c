@@ -36,6 +36,7 @@
 #include "storage/proc.h"
 #include "tcop/tcopprot.h"
 #include "utils/memutils.h"
+#include "libpq/be-secure-tlcp.h"  //ReqID:SRS-SECURITY-TLCP
 
 char	   *ssl_library;
 char	   *ssl_cert_file;
@@ -43,6 +44,18 @@ char	   *ssl_key_file;
 char	   *ssl_ca_file;
 char	   *ssl_crl_file;
 char	   *ssl_crl_dir;
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+char 	   *tlcp_cert_file;
+char 	   *tlcp_sign_key_file;
+char 	   *tlcp_enc_key_file;
+char 	   *tlcp_ca_cert_file;
+char 	   *tlcp_sign_pass;
+char 	   *tlcp_enc_pass;
+char 	   *tlcp_pass_file;
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
 char	   *ssl_dh_params_file;
 char	   *ssl_passphrase_command;
 bool		ssl_passphrase_command_supports_reload;
@@ -78,7 +91,14 @@ int
 secure_initialize(bool isServerStart)
 {
 #ifdef USE_SSL
-	return be_tls_init(isServerStart);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	if (ssl_min_protocol_version == PG_TLCP_VERSION)
+		return be_tlcp_init(isServerStart);
+	else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+		return be_tls_init(isServerStart);
 #else
 	return 0;
 #endif
@@ -91,7 +111,14 @@ void
 secure_destroy(void)
 {
 #ifdef USE_SSL
-	be_tls_destroy();
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	if (ssl_min_protocol_version == PG_TLCP_VERSION)
+		be_tlcp_destroy();
+	else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+		be_tls_destroy();
 #endif
 }
 
@@ -117,7 +144,15 @@ secure_open_server(Port *port)
 	int			r = 0;
 
 #ifdef USE_SSL
-	r = be_tls_open_server(port);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	if (ssl_min_protocol_version == PG_TLCP_VERSION)
+		r = be_tlcp_open_server(port);
+	else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
+		r = be_tls_open_server(port);
 
 	ereport(DEBUG2,
 			(errmsg_internal("SSL connection from DN:\"%s\" CN:\"%s\"",
@@ -136,7 +171,17 @@ secure_close(Port *port)
 {
 #ifdef USE_SSL
 	if (port->ssl_in_use)
-		be_tls_close(port);
+	{
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+		if (ssl_min_protocol_version == PG_TLCP_VERSION)
+			be_tlcp_close(port);
+		else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
+			be_tls_close(port);
+	}
 #endif
 }
 
@@ -157,7 +202,18 @@ retry:
 	waitfor = 0;
 	if (port->ssl_in_use)
 	{
-		n = be_tls_read(port, ptr, len, &waitfor);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+		if (ssl_min_protocol_version == PG_TLCP_VERSION)
+		{
+			n = be_tlcp_read(port, ptr, len, &waitfor);
+			waitfor = WL_SOCKET_READABLE;
+		}
+		else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
+			n = be_tls_read(port, ptr, len, &waitfor);
 	}
 	else
 #endif
@@ -270,7 +326,17 @@ retry:
 #ifdef USE_SSL
 	if (port->ssl_in_use)
 	{
-		n = be_tls_write(port, ptr, len, &waitfor);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+		if (ssl_min_protocol_version == PG_TLCP_VERSION)
+		{
+			n = be_tlcp_write(port, ptr, len, &waitfor);
+			waitfor = WL_SOCKET_WRITEABLE;
+		}
+		else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+			n = be_tls_write(port, ptr, len, &waitfor);
 	}
 	else
 #endif

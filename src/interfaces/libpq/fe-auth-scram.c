@@ -499,10 +499,23 @@ build_client_final_message(fe_scram_state *state)
 		size_t		cbind_input_len;
 		int			encoded_cbind_len;
 
-		/* Fetch hash data of server's SSL certificate */
-		cbind_data =
-			pgtls_get_peer_certificate_hash(state->conn,
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+		if (hg_is_TLCP(conn))
+		{
+			cbind_data =
+			pgtlcp_get_peer_certificate_hash(state->conn,
 											&cbind_data_len);
+		}
+		else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+		{
+			/* Fetch hash data of server's SSL certificate */
+			cbind_data =
+				pgtls_get_peer_certificate_hash(state->conn,
+												&cbind_data_len);
+		}
 		if (cbind_data == NULL)
 		{
 			/* error message is already set on error */

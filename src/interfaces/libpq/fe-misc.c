@@ -1089,6 +1089,15 @@ pqSocketCheck(PGconn *conn, int forRead, int forWrite, time_t end_time)
 
 #ifdef USE_SSL
 	/* Check for SSL library buffering read bytes */
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	if (hg_is_TLCP(conn))
+	{
+		;//there not need read pending
+	}
+	else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
 	if (forRead && conn->ssl_in_use && pgtls_read_pending(conn))
 	{
 		/* short-circuit the select */
