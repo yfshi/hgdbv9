@@ -529,15 +529,16 @@ static void apply_typmod_special(Numeric num, int32 typmod);
 
 static bool numericvar_to_int8(const NumericVar *var, int8 *result);
 static bool numericvar_to_int16(const NumericVar *var, int16 *result);
+static bool numericvar_to_int24(const NumericVar *var, int32 *result);
 static bool numericvar_to_int32(const NumericVar *var, int32 *result);
 static bool numericvar_to_int64(const NumericVar *var, int64 *result);
 static void int64_to_numericvar(int64 val, NumericVar *var);
-static void uint64_to_numericvar(uint64 val, NumericVar *var);
-static bool numericvar_to_uint64(const NumericVar *var, uint64 *result);
-static bool numericvar_to_uint32(const NumericVar *var, uint32 *result);
-static bool numericvar_to_uint24(const NumericVar *var, uint32 *result);
-static bool numericvar_to_uint16(const NumericVar *var, uint16 *result);
 static bool numericvar_to_uint8(const NumericVar *var, uint8 *result);
+static bool numericvar_to_uint16(const NumericVar *var, uint16 *result);
+static bool numericvar_to_uint24(const NumericVar *var, uint32 *result);
+static bool numericvar_to_uint32(const NumericVar *var, uint32 *result);
+static bool numericvar_to_uint64(const NumericVar *var, uint64 *result);
+static void uint64_to_numericvar(uint64 val, NumericVar *var);
 
 #ifdef HAVE_INT128
 static bool numericvar_to_int128(const NumericVar *var, int128 *result);
@@ -4460,6 +4461,25 @@ numericvar_to_int32(const NumericVar *var, int32 *result)
 	return true;
 }
 
+/* Begin - ReqID: SRS-MYSQL-DATATYPE-INT3 */
+static bool
+numericvar_to_int24(const NumericVar *var, int32 *result)
+{
+	int32		val;
+
+	if (!numericvar_to_int32(var, &val))
+		return false;
+
+	if (unlikely(val < PG_INT24_MIN) || unlikely(val > PG_INT24_MAX))
+		return false;
+
+	/* Down-convert to int3 */
+	*result = (int32) val;
+
+	return true;
+}
+/* End - ReqID: SRS-MYSQL-DATATYPE-INT3 */
+
 static bool
 numericvar_to_int16(const NumericVar *var, int16 *result)
 {
@@ -4577,6 +4597,79 @@ numeric_int8(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(result);
 }
 
+/* Begin - ReqID: SRS-MYSQL-DATATYPE-INT3 */
+Datum
+numeric_mediumint(PG_FUNCTION_ARGS)
+{
+	Numeric		num = PG_GETARG_NUMERIC(0);
+	NumericVar	x;
+	int32		result;
+
+	if (NUMERIC_IS_SPECIAL(num))
+	{
+		if (NUMERIC_IS_NAN(num))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert NaN to %s", "mediumint")));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert infinity to %s", "mediumint")));
+	}
+
+	/* Convert to variable format and thence to mediumint */
+	init_var_from_num(num, &x);
+
+	if (!numericvar_to_int24(&x, &result))
+	{
+		if (compatible_mode == MYS_MODE)
+		{
+			bool is_insert = CALL_IN_INSERT();
+
+			if (is_insert)
+			{
+				if (numeric_is_neg(num))
+					result = PG_INT24_MIN;
+				else
+					result = PG_INT24_MAX;
+
+				ereport(is_strict_mode() ? ERROR : WARNING,
+						(errmsg("Out of range value for column")));
+			}
+			else
+			{
+				uint32 tmp;
+				
+				// num is integer and no more than UINT32_MAX
+				if (x.dscale == 0 && numericvar_to_uint32(&x, &tmp))
+				{
+					result = (int32) tmp;
+				}
+				else
+				{
+					if (numeric_is_neg(num))
+						result = PG_INT24_MIN;
+					else
+						result = PG_INT24_MAX;
+
+					ereport(WARNING,
+							(errmsg("Truncated incorrect DECIMAL value: '%s'",
+									DatumGetCString(DirectFunctionCall1(numeric_out,
+																		PointerGetDatum(num))))));
+				}
+			}
+		}
+		else
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg(" integer out of range")));
+		}
+	}
+
+	PG_RETURN_INT32(result);
+}
+/* End - ReqID: SRS-MYSQL-DATATYPE-INT3 */
 
 Datum
 int2_numeric(PG_FUNCTION_ARGS)

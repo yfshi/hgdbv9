@@ -339,6 +339,12 @@ my_atoi_int16(const char *s, bool is_insert)
 }
 
 int32
+my_atoi_int24(const char *s, bool is_insert)
+{
+	return (int32) cstring_to_signed(s, PG_INT24_MIN, PG_INT24_MAX, is_insert);
+}
+
+int32
 my_atoi_int32(const char *s, bool is_insert)
 {
 	return (int32) cstring_to_signed(s, INT32_MIN, INT32_MAX, is_insert);

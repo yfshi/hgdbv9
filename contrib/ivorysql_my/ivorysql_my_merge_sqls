@@ -2,6 +2,7 @@ src/datatype/script/datatype
 src/datatype/script/bool
 src/datatype/script/int
 src/datatype/script/int2
+src/datatype/script/int3
 src/datatype/script/int4
 src/datatype/script/int8
 src/datatype/script/uint1

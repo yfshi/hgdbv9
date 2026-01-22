@@ -12060,6 +12060,9 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
 { oid => '6053', descr => 'Cast enum to uint3 for MySQL.',
   proname => 'enum_to_uint3', provolatile => 's', prorettype => 'uint3',
   proargtypes => 'anyenum', prosrc => 'enum_to_uint3' },
+{ oid => '6054', descr => 'convert numeric to mediumint',
+  proname => 'numeric_mediumint', prorettype => 'mediumint', proargtypes => 'numeric int4 bool int8',
+  prosrc => 'numeric_mediumint' },
 /*END MySQL Compatibility Metadatas*/
 /* Begin ReqID: LOCK-SESSION */
 { oid => '8302', descr => 'lock current session',

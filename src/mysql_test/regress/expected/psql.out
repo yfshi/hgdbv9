@@ -5125,20 +5125,21 @@ List of access methods
 (2 rows)
 
 \df int*pl
-                            List of functions
-   Schema   |    Name     | Result data type | Argument data types | Type 
-------------+-------------+------------------+---------------------+------
- pg_catalog | int24pl     | integer          | smallint, integer   | func
- pg_catalog | int28pl     | bigint           | smallint, bigint    | func
- pg_catalog | int2pl      | smallint         | smallint, smallint  | func
- pg_catalog | int42pl     | integer          | integer, smallint   | func
- pg_catalog | int48pl     | bigint           | integer, bigint     | func
- pg_catalog | int4pl      | integer          | integer, integer    | func
- pg_catalog | int82pl     | bigint           | bigint, smallint    | func
- pg_catalog | int84pl     | bigint           | bigint, integer     | func
- pg_catalog | int8pl      | bigint           | bigint, bigint      | func
- pg_catalog | interval_pl | interval         | interval, interval  | func
-(10 rows)
+                               List of functions
+   Schema   |    Name     | Result data type |   Argument data types    | Type 
+------------+-------------+------------------+--------------------------+------
+ ivymy      | int3_pl     | integer          | "mediumint", "mediumint" | func
+ pg_catalog | int24pl     | integer          | smallint, integer        | func
+ pg_catalog | int28pl     | bigint           | smallint, bigint         | func
+ pg_catalog | int2pl      | smallint         | smallint, smallint       | func
+ pg_catalog | int42pl     | integer          | integer, smallint        | func
+ pg_catalog | int48pl     | bigint           | integer, bigint          | func
+ pg_catalog | int4pl      | integer          | integer, integer         | func
+ pg_catalog | int82pl     | bigint           | bigint, smallint         | func
+ pg_catalog | int84pl     | bigint           | bigint, integer          | func
+ pg_catalog | int8pl      | bigint           | bigint, bigint           | func
+ pg_catalog | interval_pl | interval         | interval, interval       | func
+(11 rows)
 
 \df int*pl int4
                           List of functions

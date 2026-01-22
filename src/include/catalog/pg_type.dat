@@ -1122,14 +1122,13 @@
   typalign => 'i', typstorage =>'m' },
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 
-/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
+/* Begin - ReqID: SRS-MYSQL-DATATYPE-INT3 */
 { oid => '9208', array_type_oid => '9209',
-  descr => 'mysql mediumint integer, domain int4',
-  typname => 'mediumint', typnamespace => 'ivymy', typlen => '4', typbyval => 't', typtype => 'd',
-  typcategory => 'N', typinput => 'domain_in', typoutput => 'int4out', typreceive => 'domain_recv',
-  typmodin => '-', typmodout => '-',
-  typsend => 'int4send', typalign => 'i', typstorage => 'p', typbasetype => 'int4' },
-/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
+  descr => 'mysql mediumint integer',
+  typname => 'mediumint', typnamespace => 'ivymy', typlen => '4', typbyval => 't',
+  typcategory => 'N', typinput => '-', typoutput => '-', typreceive => '-',
+  typsend => '-', typalign => 'i' },
+/* End - ReqID: SRS-MYSQL-DATATYPE-INT3 */
 
 { oid => '9200', array_type_oid => '9201',
   descr => 'mysql tiny integer, domain int2',

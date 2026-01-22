@@ -2009,7 +2009,7 @@ explain (COSTS OFF) select * from t_index where id BETWEEN 65::uint2 and 70::uin
                          QUERY PLAN                          
 -------------------------------------------------------------
  Index Scan using index_id_btree on t_index
-   Index Cond: ((id >= (65)::uint2) AND (id <= (70)::uint2))
+   Index Cond: ((id >= '65'::uint2) AND (id <= '70'::uint2))
 (2 rows)
 
 drop table t_index;
