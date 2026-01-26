@@ -809,3 +809,17 @@ SELECT AES_DECRYPT(NULL, NULL);
 select aes_decrypt(AES_ENCRYPT('my_text', 'my_key_string') , 'my_key_string');
 SELECT 'a' = AES_DECRYPT(AES_ENCRYPT('a', 'a'), 'a', REPEAT('a',16));
 SELECT 'a' = AES_DECRYPT(AES_ENCRYPT('a', 'a'), 'a', REPEAT('a',100));
+
+create table gct(a int, b varchar(100));
+insert into gct values (0, 'a'), (1, 'b'), (1, 'c'), (2, 'd'), (2, 'f'), (2, 'g');
+insert into gct values (0, 'a'), (1, 'c'), (1, 'b'), (2, 'g'), (2, 'f'), (2, 'd');
+select group_concat(a) from gct;					-- 0,1,1,2,2,2,0,1,1,2,2,2
+select group_concat(a, b) from gct;					-- 0a,1b,1c,2d,2f,2g,0a,1c,1b,2g,2f,2d
+select group_concat(a, b separator '/') from gct;	-- 0a/1b/1c/2d/2f/2g/0a/1c/1b/2g/2f/2d
+select group_concat(a order by a) from gct;			-- 0,0,1,1,1,1,2,2,2,2,2,2
+select group_concat(b order by b) from gct;			-- a,a,b,b,c,c,d,d,f,f,g,g
+select group_concat(a, b order by a, b) from gct;	-- 0a,0a,1b,1b,1c,1c,2d,2d,2f,2f,2g,2g
+select group_concat(a, b order by b) from gct;		-- 0a,0a,1b,1b,1c,1c,2d,2d,2f,2f,2g,2g
+select group_concat(distinct a) from gct;			-- 0,1,2
+select group_concat(distinct a, b) from gct;		-- 0a,1b,1c,2d,2f,2g
+drop table gct;

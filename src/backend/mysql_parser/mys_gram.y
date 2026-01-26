@@ -758,7 +758,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 %type <list>	constraints_set_list
 %type <boolean> constraints_set_mode opt_with_rollup	/* ReqID:SRS-MYSQL-SELECT */
 %type <str>		OptTableSpace OptConsTableSpace
-%type <str>	OptConsTableSpaceNoEmpty OptPartitionElement /* oa-2019 */
+%type <str>		OptConsTableSpaceNoEmpty OptPartitionElement /* oa-2019 */
 %type <rolespec> OptTableSpaceOwner
 %type <ival>	opt_check_option
 
@@ -823,6 +823,11 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 %type <node>		enum_val
 /* End - ReqID:SRS-MYSQL-SHOW */
 
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+%type <boolean> 	opt_distinct
+%type <str>			opt_separator
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
  * They must be listed first so that their numeric codes do not depend on
@@ -883,6 +888,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FULLTEXT /* ReqID:SRS-MYSQL-CREATE-INDEX */ FUNCTION FUNCTIONS
 
 	GENERATED GET_FORMAT GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
+	GROUP_CONCAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 	HANDLER HAVING HEADER_P HIGH_PRIORITY HOLD HOUR_P
 
@@ -923,7 +929,9 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVERSE REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWS ROW_FORMAT /* oa-2019 */ RULE
 
-	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
+	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT
+	SEPARATOR /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
+	SEQUENCE SEQUENCES
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHARED /* ReqID:SRS-MYSQL-CREATE-INDEX */ SHOW
 	SIGNED SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SPATIAL /* ReqID:SRS-MYSQL-CREATE-INDEX */ SQL_P 
 	/* Begin - bug#6410 */
@@ -17537,10 +17545,10 @@ c_expr:		columnref				%prec UMINUS	{ $$ = $1; }
 				}
 			| GROUPING '(' expr_list ')'
 			  {
-				  GroupingFunc *g = makeNode(GroupingFunc);
-				  g->args = $3;
-				  g->location = @1;
-				  $$ = (Node *)g;
+					GroupingFunc *g = makeNode(GroupingFunc);
+					g->args = $3;
+					g->location = @1;
+					$$ = (Node *)g;
 			  }
 			/* Begin - ReqID:SRS-MYSQL-SET */
 			| USER_VARIABLE_NAME COLON_EQUALS a_expr	%prec SET
@@ -18398,8 +18406,39 @@ func_expr_common_subexpr:
 					res->location = @1;
 					$$ = (Node *)res;
 				}
+			| GROUP_CONCAT '(' opt_distinct expr_list opt_sort_clause opt_separator ')'
+				{
+					FuncCall *n = makeNode(FuncCall);
+					FuncCall *cat = makeFuncCall(SystemFuncName("concat"),
+												 $4,
+												 COERCE_EXPLICIT_CALL,
+												 @4);
+
+					n->funcname = SystemFuncName("string_agg");
+					n->args = list_make2(cat, makeStringConst($6, @6));
+					n->agg_order = $5;
+					n->agg_star = false;
+					n->agg_distinct = $3;
+					n->func_variadic = false;
+					n->over = NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
 			/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 		;
+
+/* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+opt_distinct:
+			DISTINCT								{ $$ = true; }
+			| DISTINCTROW							{ $$ = true; }
+			| /* empty */							{ $$ = false; }
+		;
+
+opt_separator:
+			SEPARATOR Sconst						{ $$ = $2; }
+			| /* empty */							{ $$ = ","; }
+		;
+/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 opt_brackets: '(' ')'
 			| /*EMPTY*/
@@ -20121,6 +20160,7 @@ unreserved_keyword:
 			| SEARCH
 			| SECOND_P
 			| SECURITY
+			| SEPARATOR /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| SEQUENCE
 			| SEQUENCES
 			| SERIALIZABLE
@@ -20241,6 +20281,7 @@ col_name_keyword:
 			| GET_FORMAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| GREATEST
 			| GROUPING
+			| GROUP_CONCAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| INOUT
 			| INT_P
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
@@ -20665,6 +20706,7 @@ bare_label_keyword:
 			| GREATEST
 			| GROUPING
 			| GROUPS
+			| GROUP_CONCAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| HANDLER
 			| HEADER_P
 			| HIGH_PRIORITY
@@ -20852,6 +20894,7 @@ bare_label_keyword:
 			| SEARCH
 			| SECURITY
 			| SELECT
+			| SEPARATOR /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| SEQUENCE
 			| SEQUENCES
 			| SERIALIZABLE
