@@ -5613,6 +5613,29 @@ interpretRowidOption(List *defList, bool allowRowid)
 }
 /* End - ReqID:SRS-SQL-ROWID */
 
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+/* add AntiTamper table option */
+bool
+interpretAntiTamperOption(List *defList)
+{
+	ListCell *cell;
+
+	/* Scan list to see if ROWID was included */
+	foreach (cell, defList)
+	{
+		DefElem *def = (DefElem *)lfirst(cell);
+
+		if (def->defnamespace == NULL &&
+			strcmp(def->defname, "antitamper") == 0)
+		{
+			return defGetBoolean(def);
+		}
+	}
+
+	return false;
+}
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
+
 /* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
 void
 AddJoinOnToRtable(ParseState *pstate, JoinExpr *joinexpr)

@@ -820,6 +820,9 @@ extern Datum Float8GetDatum(float8 X);
 #define Float8GetDatumFast(X) PointerGetDatum(&(X))
 #endif
 
+#define ANTITAMPER_COL_NAME     ("__hg_hash__") /* ReqID: SRS-SECURITY-ANTITAMPERING */
+#define ANTITAMPER_TRIGGER_NAME ("__antitamper_trigger__") /* ReqID: SRS-SECURITY-ANTITAMPERING */
+
 /* Begin - Req: SRS-MYSQL-PROTOCOL */
 extern int SocketBackend(StringInfo inBuf);
 extern void start_xact_command(void);

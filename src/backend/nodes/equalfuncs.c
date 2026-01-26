@@ -1403,6 +1403,7 @@ _equalCreateStmt(const CreateStmt *a, const CreateStmt *b)
 	COMPARE_STRING_FIELD(collname);
 	COMPARE_NODE_FIELD(autoIncStart);/* SRS-MYSQL-CREATE-TABLE */
 	COMPARE_NODE_FIELD(relcomment); /* SRS-MYSQL-CREATE-TABLE */
+	COMPARE_SCALAR_FIELD(isantitamper);
 
 	return true;
 }
@@ -2532,6 +2533,7 @@ _equalCreateSchemaStmt(const CreateSchemaStmt *a, const CreateSchemaStmt *b)
 	COMPARE_NODE_FIELD(schemaElts);
 	COMPARE_SCALAR_FIELD(if_not_exists);
 	COMPARE_NODE_FIELD(option);
+	COMPARE_SCALAR_FIELD(hasAntiTamper);
 
 	return true;
 }

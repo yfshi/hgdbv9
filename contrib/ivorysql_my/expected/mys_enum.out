@@ -3416,21 +3416,21 @@ SELECT typname FROM pg_type WHERE typname like '%t_enum_column_alter_type4%' ord
 
 -- test drop table 
 create table t_enum_table_drop(c1 int, c2 enum('aa', 'bb'), c3 enum('aaa', 'bbb'), c4 enum('aaaaa', 'bbbb'));
-SELECT typname FROM pg_type WHERE typname like '%t_enum_table_drop%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_table_drop%' order by typname;
                typname                
 --------------------------------------
- t_enum_table_drop_c2_anonymous_enum
+ _t_enum_table_drop
  _t_enum_table_drop_c2_anonymous_enum
- t_enum_table_drop_c3_anonymous_enum
  _t_enum_table_drop_c3_anonymous_enum
- t_enum_table_drop_c4_anonymous_enum
  _t_enum_table_drop_c4_anonymous_enum
  t_enum_table_drop
- _t_enum_table_drop
+ t_enum_table_drop_c2_anonymous_enum
+ t_enum_table_drop_c3_anonymous_enum
+ t_enum_table_drop_c4_anonymous_enum
 (8 rows)
 
 drop table t_enum_table_drop;
-SELECT typname FROM pg_type WHERE typname like '%t_enum_table_drop%';
+SELECT typname FROM pg_type WHERE typname like '%t_enum_table_drop%' order by typname;
  typname 
 ---------
 (0 rows)

@@ -196,6 +196,17 @@ static relopt_bool boolRelOpts[] =
 		false
 	},
 	/* End - ReqID:SRS-SECURITY-TDE */
+	/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+	{
+		{
+			"antitamper",
+			"Enables antitamper on this table",
+			RELOPT_KIND_HEAP | RELOPT_KIND_TOAST | RELOPT_KIND_PARTITIONED,
+			AccessExclusiveLock
+		},
+		false
+	},
+	/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 	/* list terminator */
 	{{NULL}}
 };
@@ -1927,13 +1938,17 @@ default_reloptions(Datum reloptions, bool validate, relopt_kind kind)
 		{"parallel_workers", RELOPT_TYPE_INT,
 		offsetof(StdRdOptions, parallel_workers)},
 		{"vacuum_index_cleanup", RELOPT_TYPE_ENUM,
-		offsetof(StdRdOptions, vacuum_index_cleanup)},
+		offsetof(StdRdOptions, vacuum_index_cleanup)}, 
 		{"vacuum_truncate", RELOPT_TYPE_BOOL,
 		offsetof(StdRdOptions, vacuum_truncate)},
 		/* Begin - ReqID:SRS-SECURITY-TDE */
 		{"encrypt", RELOPT_TYPE_BOOL,
-		offsetof(StdRdOptions, encrypt)}
+		offsetof(StdRdOptions, encrypt)},
 		/* End - ReqID:SRS-SECURITY-TDE */
+		/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+		{"antitamper", RELOPT_TYPE_BOOL,
+		offsetof(StdRdOptions, antitamper)}
+		/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate, kind,
@@ -2041,7 +2056,11 @@ partitioned_table_reloptions(Datum reloptions, bool validate)
 	 */
 	static const relopt_parse_elt tab[] = {
 		{"on_commit_delete_rows", RELOPT_TYPE_BOOL,
-		offsetof(StdRdOptions, on_commit_delete_rows)}
+		offsetof(StdRdOptions, on_commit_delete_rows)},
+		/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+		{"antitamper", RELOPT_TYPE_BOOL,
+		offsetof(StdRdOptions, antitamper)}
+		/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate,

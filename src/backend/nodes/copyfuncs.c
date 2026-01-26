@@ -3826,6 +3826,7 @@ CopyCreateStmtFields(const CreateStmt *from, CreateStmt *newnode)
 	COPY_STRING_FIELD(collname); /* ReqID:SRS-SQL-NLSSORT */
 	COPY_NODE_FIELD(autoIncStart);/* SRS-MYSQL-CREATE-TABLE */
 	COPY_NODE_FIELD(relcomment); /* SRS-MYSQL-CREATE-TABLE */
+	COPY_SCALAR_FIELD(isantitamper);
 }
 
 static CreateStmt *
@@ -5073,6 +5074,7 @@ _copyCreateSchemaStmt(const CreateSchemaStmt *from)
 	COPY_NODE_FIELD(schemaElts);
 	COPY_SCALAR_FIELD(if_not_exists);
 	COPY_NODE_FIELD(option);
+	COPY_SCALAR_FIELD(hasAntiTamper);
 
 	return newnode;
 }

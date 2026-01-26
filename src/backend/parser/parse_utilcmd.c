@@ -45,10 +45,12 @@
 #include "catalog/pg_proc.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
 #include "catalog/pg_statistic_ext.h"
 #include "catalog/pg_type.h"
+#include "catalog/pg_namespace.h"
 #include "commands/comment.h"
 #include "commands/dbcommands.h" /* ReqID:SRS-SECURITY-TABLESPACE */
 #include "commands/defrem.h"
 #include "commands/sequence.h"
+#include "commands/schemacmds.h"
 #include "commands/tablecmds.h"
 #include "commands/tablespace.h"
 #include "commands/typecmds.h" /* ReqID:SRS-MYSQL-ENUMTYPE */
@@ -82,6 +84,7 @@
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 #include "mysql_parser/mys_case_sensitive.h"	/* ReqID:SRS-MYSQL-CASE */
+#include "catalog/pg_trigger.h"
 
 
 /* State shared by transformCreateStmt and its subroutines */
@@ -165,6 +168,9 @@ static List* GetAutoIncSeqOptions(CreateStmtContext* cxt);
 static void TransformAutoIncStart(Node* autoIncStart);
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+static void  createTableHashCol(CreateStmtContext cxt);
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 /* Begin - ReqID:SRS-SECURITY-TABLESPACE */
 List*
@@ -267,6 +273,28 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 		RangeVarGetAndCheckCreationNamespace(stmt->relation, NoLock,
 											 &existing_relid);
 	cancel_parser_errposition_callback(&pcbstate);
+
+	/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+	/*
+	 * Check whether relation is in antitamper schema or antitamper table. If it is, we add hash column.
+	 */
+	if (interpretAntiTamperOption(stmt->options))
+	{
+		stmt->isantitamper = true;
+	}
+	else
+	{
+		/* schema is antitamper */
+		if (IsAntiTamperNameSpace(namespaceid))
+		{
+			/* add create antitamper table option :antitamper=true
+			 * the anti-tampering option need to be set on the table
+			 */
+			stmt->options = lcons(makeDefElem("antitamper", (Node *)makeString("true"), -1), stmt->options);
+			stmt->isantitamper = true;
+		}
+	}
+	/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 	/*
 	 * If the relation already exists and the user specified "IF NOT EXISTS",
@@ -442,6 +470,17 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 				break;
 		}
 	}
+
+	/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+	/*
+	 * add hash column for table in antitamper scheam;
+	 */
+	if (stmt->isantitamper && !IsA(stmt, CreateForeignTableStmt) &&
+		stmt->relation->relpersistence == RELPERSISTENCE_PERMANENT)
+	{
+		createTableHashCol(cxt);
+	}
+	/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 	/* Begin - ReqID:SRS-SQL-IDENTCOL */
 	/*
@@ -673,6 +712,30 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 
 	return result;
 }
+
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+/* antitamper table add hash column col */
+static void
+createTableHashCol(CreateStmtContext cxt)
+{
+	ColumnDef *col = makeNode(ColumnDef);
+	col->colname = pstrdup(ANTITAMPER_COL_NAME);
+	col->typeName = SystemTypeName("int8");
+	col->inhcount = 0;
+	col->is_local = true;
+	col->is_not_null = false;
+	col->is_from_type = false;
+	col->storage = 0;
+	col->raw_default = NULL;
+	col->cooked_default = NULL;
+	col->collClause = NULL;
+	col->collOid = InvalidOid;
+	col->constraints = NIL;
+	col->fdwoptions = NIL;
+	col->isvisible = false;
+	transformColumnDefinition(&cxt, col);
+}
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 /*
  * generateSerialExtraStmts

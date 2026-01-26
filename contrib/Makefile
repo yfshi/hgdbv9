@@ -21,6 +21,7 @@ SUBDIRS = \
 		file_fdw	\
 		fuzzystrmatch	\
 		hg_sysmac       \
+		hg_antitamper   \
 		hstore		\
 		intagg		\
 		intarray	\

@@ -67,6 +67,7 @@
 #include "catalog/storage.h"
 #include "catalog/storage_gtt.h"
 #include "commands/policy.h"
+#include "commands/schemacmds.h"
 #include "commands/trigger.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
@@ -1401,6 +1402,14 @@ retry:
 		MemoryContextDelete(tmpcxt);
 	}
 #endif
+
+	/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+	/*
+	 * Check if rel is in antitamper table.
+	 * Only regular table, partition table allowed.
+	 */
+	relation->rd_isantitamper = RelationGetAntiTamper(relation, false);
+	/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 	return relation;
 }

@@ -358,6 +358,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 
 %type <str>		OptSchemaName
 %type <list>	OptSchemaEltList
+%type <boolean>	OptAntiTamperWith /* ReqID: SRS-SECURITY-ANTITAMPERING */
 
 %type <chr>		am_type
 
@@ -666,7 +667,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 /* ordinary key words in alphabetical order */
 %token <keyword> ABORT_P ABSOLUTE_P ACCESS ACTION ADD_P ADMIN AFTER
 	AGGREGATE ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
-	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION
+	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION ANTITAMPER
 
 	BACKWARD BADFILE BADTABLE /* ReqID:SRS-MISC-BULKLOAD */
 	BEFORE BEGIN_P BETWEEN BIGINT BINARY BIT
@@ -1526,57 +1527,71 @@ add_drop:	ADD_P									{ $$ = +1; }
  *****************************************************************************/
 
 CreateSchemaStmt:
-			CREATE SCHEMA OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
+			CREATE SCHEMA OptSchemaName AUTHORIZATION RoleSpec OptAntiTamperWith OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* One can omit the schema name or the authorization id. */
 					n->schemaname = $3;
 					n->authrole = $5;
-					n->schemaElts = $6;
+					n->hasAntiTamper = $6;
+					n->schemaElts = $7;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
-			| CREATE SCHEMA ColId OptSchemaEltList
+			| CREATE SCHEMA ColId OptAntiTamperWith OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* ...but not both */
 					n->schemaname = $3;
 					n->authrole = NULL;
-					n->schemaElts = $4;
+					n->hasAntiTamper = $4;
+					n->schemaElts = $5;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
-			| CREATE SCHEMA IF_P NOT EXISTS OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
+			| CREATE SCHEMA IF_P NOT EXISTS OptSchemaName AUTHORIZATION RoleSpec OptAntiTamperWith OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* schema name can be omitted here, too */
 					n->schemaname = $6;
 					n->authrole = $8;
-					if ($9 != NIL)
+					n->hasAntiTamper = $9;
+					if ($10 != NIL)
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("CREATE SCHEMA IF NOT EXISTS cannot include schema elements"),
-								 parser_errposition(@9)));
-					n->schemaElts = $9;
+								 parser_errposition(@10)));
+					n->schemaElts = $10;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
-			| CREATE SCHEMA IF_P NOT EXISTS ColId OptSchemaEltList
+			| CREATE SCHEMA IF_P NOT EXISTS ColId OptAntiTamperWith OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* ...but not here */
 					n->schemaname = $6;
 					n->authrole = NULL;
-					if ($7 != NIL)
+					n->hasAntiTamper = $7;
+					if ($8 != NIL)
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("CREATE SCHEMA IF NOT EXISTS cannot include schema elements"),
-								 parser_errposition(@7)));
-					n->schemaElts = $7;
+								 parser_errposition(@8)));
+					n->schemaElts = $8;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
 		;
+
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+OptAntiTamperWith:
+			WITH ANTITAMPER
+				{
+					$$ = true;
+				}
+			| /* EMPTY */							{ $$ = false; }
+		;
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
 OptSchemaName:
 			ColId									{ $$ = $1; }
@@ -16159,6 +16174,7 @@ unreserved_keyword:
 			| ALSO
 			| ALTER
 			| ALWAYS
+			| ANTITAMPER
 			| ASENSITIVE
 			| ASSERTION
 			| ASSIGNMENT
@@ -16692,6 +16708,7 @@ bare_label_keyword:
 			| ANALYSE
 			| ANALYZE
 			| AND
+			| ANTITAMPER
 			| ANY
 			| ASC
 			| ASENSITIVE

@@ -7648,8 +7648,10 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 							  "FROM pg_catalog.pg_trigger t "
 							  "LEFT JOIN pg_catalog.pg_trigger u ON u.oid = t.tgparentid "
 							  "WHERE t.tgrelid = '%u'::pg_catalog.oid "
+							  "AND t.tgname != '%s' "
 							  "AND (NOT t.tgisinternal OR t.tgenabled != u.tgenabled)",
-							  tbinfo->dobj.catId.oid);
+							  tbinfo->dobj.catId.oid,
+							  ANTITAMPER_TRIGGER_NAME);
 		}
 		else if (fout->remoteVersion >= 110000)
 		{
@@ -7673,8 +7675,10 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 							  " d.objid = t.oid "
 							  "LEFT JOIN pg_catalog.pg_trigger AS pt ON pt.oid = refobjid "
 							  "WHERE t.tgrelid = '%u'::pg_catalog.oid "
+							  "AND t.tgname != '%s' "
 							  "AND (NOT t.tgisinternal%s)",
 							  tbinfo->dobj.catId.oid,
+							  ANTITAMPER_TRIGGER_NAME,
 							  tbinfo->ispartition ?
 							  " OR t.tgenabled != pt.tgenabled" : "");
 		}
@@ -7689,8 +7693,10 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 							  "t.tableoid, t.oid "
 							  "FROM pg_catalog.pg_trigger t "
 							  "WHERE tgrelid = '%u'::pg_catalog.oid "
+							  "AND t.tgname != '%s' "
 							  "AND NOT tgisinternal",
-							  tbinfo->dobj.catId.oid);
+							  tbinfo->dobj.catId.oid,
+							  ANTITAMPER_TRIGGER_NAME);
 		}
 		else if (fout->remoteVersion >= 80300)
 		{
@@ -7707,8 +7713,10 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 							  "tgconstrrelid::pg_catalog.regclass AS tgconstrrelname "
 							  "FROM pg_catalog.pg_trigger t "
 							  "WHERE tgrelid = '%u'::pg_catalog.oid "
+							  "AND t.tgname != '%s' "
 							  "AND tgconstraint = 0",
-							  tbinfo->dobj.catId.oid);
+							  tbinfo->dobj.catId.oid,
+							  ANTITAMPER_TRIGGER_NAME);
 		}
 		else
 		{
@@ -7727,12 +7735,14 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 							  "tgconstrrelid::pg_catalog.regclass AS tgconstrrelname "
 							  "FROM pg_catalog.pg_trigger t "
 							  "WHERE tgrelid = '%u'::pg_catalog.oid "
+							  "AND t.tgname != '%s' "
 							  "AND (NOT tgisconstraint "
 							  " OR NOT EXISTS"
 							  "  (SELECT 1 FROM pg_catalog.pg_depend d "
 							  "   JOIN pg_catalog.pg_constraint c ON (d.refclassid = c.tableoid AND d.refobjid = c.oid) "
 							  "   WHERE d.classid = t.tableoid AND d.objid = t.oid AND d.deptype = 'i' AND c.contype = 'f'))",
-							  tbinfo->dobj.catId.oid);
+							  tbinfo->dobj.catId.oid,
+							  ANTITAMPER_TRIGGER_NAME);
 		}
 
 		res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
@@ -8455,8 +8465,10 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 						  "ON a.atttypid = t.oid\n"
 						  "WHERE a.attrelid = '%u'::pg_catalog.oid "
 						  "AND a.attnum > 0::pg_catalog.int2\n"
+						  "AND a.attname != '%s'\n"
 						  "ORDER BY a.attnum",
-						  tbinfo->dobj.catId.oid);
+						  tbinfo->dobj.catId.oid,
+						  ANTITAMPER_COL_NAME);
 
 		res = ExecuteSqlQuery(fout, q->data, PGRES_TUPLES_OK);
 
@@ -10094,6 +10106,42 @@ dumpDumpableObjectPg(Archive *fout, const DumpableObject *dobj)
 	}
 }
 
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+/*
+ * isAntiTamperNamespace
+ *	  check if it is antitampering schema
+ */
+static bool
+isAntiTamperNamespace(Archive *fout, char* qnspname)
+{
+	PQExpBuffer query = createPQExpBuffer();
+	PGresult *res;
+	int i_antitamper;
+	char *antitamperstr = NULL;
+	bool is_antitamper = false;
+
+	/* retrieve name of foreign server and generic options */
+	appendPQExpBuffer(query,
+					  "SELECT hg_security.check_schema_is_antitamper( "
+					  " (select oid from pg_namespace where nspname = '%s') "
+					  " ) as antitamper",
+					  qnspname);
+	res = ExecuteSqlQueryForSingleRow(fout, query->data);
+	i_antitamper = PQfnumber(res, "antitamper");
+
+	antitamperstr = pg_strdup(PQgetvalue(res, 0, i_antitamper));
+	PQclear(res);
+	destroyPQExpBuffer(query);
+
+	if (!strcmp(antitamperstr, "t") || !strcmp(antitamperstr, "1"))
+	{
+		is_antitamper = true;
+	}
+
+	return is_antitamper;
+}
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
+
 /*
  * dumpNamespace
  *	  writes out to fout the queries to recreate a user-defined namespace
@@ -10105,6 +10153,7 @@ dumpNamespace(Archive *fout, const NamespaceInfo *nspinfo)
 	PQExpBuffer q;
 	PQExpBuffer delq;
 	char	   *qnspname;
+	bool	   is_antitamper = false;
 
 	/* Skip if not to be dumped */
 	if (!nspinfo->dobj.dump || dopt->dataOnly)
@@ -10117,7 +10166,14 @@ dumpNamespace(Archive *fout, const NamespaceInfo *nspinfo)
 
 	appendPQExpBuffer(delq, "DROP SCHEMA %s;\n", qnspname);
 
-	appendPQExpBuffer(q, "CREATE SCHEMA %s;\n", qnspname);
+	/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+	is_antitamper = isAntiTamperNamespace(fout, qnspname);
+
+	if (is_antitamper)
+		appendPQExpBuffer(q, "CREATE SCHEMA %s with antitamper;\n", qnspname);
+	else
+	/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
+		appendPQExpBuffer(q, "CREATE SCHEMA %s;\n", qnspname);
 
 	if (dopt->binary_upgrade)
 		binary_upgrade_extension_member(q, &nspinfo->dobj,

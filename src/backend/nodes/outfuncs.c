@@ -2897,6 +2897,7 @@ _outCreateStmtInfo(StringInfo str, const CreateStmt *node)
 	WRITE_STRING_FIELD(collname);
 	WRITE_NODE_FIELD(autoIncStart);/* SRS-MYSQL-CREATE-TABLE */
 	WRITE_NODE_FIELD(relcomment); /* SRS-MYSQL-CREATE-TABLE */
+	WRITE_BOOL_FIELD(isantitamper);
 }
 
 static void

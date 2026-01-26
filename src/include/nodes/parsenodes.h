@@ -2158,6 +2158,9 @@ typedef struct CreateSchemaStmt
 	/* Begin - ReqID:SRS-MYSQL-SQL-USE */
 	Node	   *option;
 	/* End - ReqID:SRS-MYSQL-SQL-USE */
+	/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+	bool hasAntiTamper;  /* whether this schema has antitamper */
+	/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 } CreateSchemaStmt;
 
 typedef enum DropBehavior
@@ -2552,6 +2555,7 @@ typedef struct CreateStmt
 	char	   *collname;		/* ReqID:SRS-SQL-NLSSORT, table's default collation for Oracle, filled by grammer */
 	Node	   *autoIncStart;	/* SRS-MYSQL-CREATE-TABLE */
 	Node	   *relcomment;		/* SRS-MYSQL-CREATE-TABLE */
+	bool	    isantitamper;   /* ReqID: SRS-SECURITY-ANTITAMPERING whether this table is antitamper */
 } CreateStmt;
 
 /* ----------

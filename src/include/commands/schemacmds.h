@@ -26,4 +26,14 @@ extern ObjectAddress RenameSchema(const char *oldname, const char *newname);
 extern ObjectAddress AlterSchemaOwner(const char *name, Oid newOwnerId);
 extern void AlterSchemaOwner_oid(Oid schemaOid, Oid newOwnerId);
 
+/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
+typedef bool (*SchemaSetAntiTamperRel_type)(uint32 schemaoid, bool isantitamper);
+extern PGDLLIMPORT SchemaSetAntiTamperRel_type SchemaSetAntiTamperRel;
+
+typedef bool (*SchemaGetAntiTamperFlag_type)(uint32 schemaoid);
+extern PGDLLIMPORT SchemaGetAntiTamperFlag_type SchemaGetAntiTamperFlag;
+
+extern bool IsAntiTamperNameSpace(Oid nspOid);
+/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
+
 #endif							/* SCHEMACMDS_H */
