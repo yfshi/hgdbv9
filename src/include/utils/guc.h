@@ -859,4 +859,16 @@ static const char * const audit_parameters[] = {
 };
 /* End - BUG#Z6092 */
 
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+extern char    *tlcp_cert_file;
+extern char    *tlcp_sign_key_file;
+extern char    *tlcp_enc_key_file;
+extern char    *tlcp_ca_cert_file;
+extern char    *tlcp_sign_pass;
+extern char    *tlcp_enc_pass;
+extern char    *tlcp_pass_file;
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
 #endif							/* GUC_H */

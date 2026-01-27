@@ -80,6 +80,12 @@ typedef struct
 #endif
 #endif							/* USE_OPENSSL */
 
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+#include <gmssl/tls.h>
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
 /*
  * POSTGRES backend dependent Constants.
  */
@@ -387,6 +393,16 @@ struct pg_conn
 	char	   *sslmode;		/* SSL mode (require,prefer,allow,disable) */
 	char	   *sslcompression; /* SSL compression (0 or 1) */
 	char	   *sslkey;			/* client key filename */
+	/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	char	   *tlcpcacert;
+	char	   *tlcpcert;
+	char	   *tlcpkey;
+	char	   *tlcppassfile;
+	char	   *ssltlcp;
+	TLS_CONNECT *client_conn;
+#endif
+	/* End - ReqID:SRS-SECURITY-TLCP */
 	char	   *sslcert;		/* client certificate filename */
 	char	   *sslpassword;	/* client key file password */
 	char	   *sslrootcert;	/* root certificate filename */
@@ -629,11 +645,29 @@ extern char *const pgresStatus[];
 /* On Windows, the "home" directory is already PostgreSQL-specific */
 #define USER_CERT_FILE		"postgresql.crt"
 #define USER_KEY_FILE		"postgresql.key"
+
 #define ROOT_CERT_FILE		"root.crt"
 #define ROOT_CRL_FILE		"root.crl"
 #endif
 
 #endif							/* USE_SSL */
+
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+#ifndef WIN32
+#define CLIENT_CA_CERT_FILE		".postgresql/rootcacert.pem"
+#define CLIENT_CERT_FILE		".postgresql/clientcert.pem"
+#define CLIENT_CERT_KEY_FILE	".postgresql/clientkey.pem"
+#define CLIENT_TLCP_PASS_FILE	".postgresql/tlcpClientPassfile"
+#else
+#define CLIENT_CA_CERT_FILE		"rootcacert.pem"
+#define CLIENT_CERT_FILE		"clientcert.pem"
+#define CLIENT_CERT_KEY_FILE	"clientkey.pem"
+#define CLIENT_TLCP_PASS_FILE	"tlcpClientPassfile"
+#endif
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
 
 /* ----------------
  * Internal functions of libpq
@@ -889,5 +923,17 @@ extern char *libpq_ngettext(const char *msgid, const char *msgid_plural, unsigne
 #define SOCK_STRERROR strerror_r
 #define SOCK_ERRNO_SET(e) (errno = (e))
 #endif
+
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+extern bool hg_is_TLCP(PGconn *conn);
+extern int pgtlcp_init(PGconn *conn, bool do_ssl, bool do_crypto);
+extern PostgresPollingStatusType pgtlcp_open_client(PGconn *conn);
+extern void pgtlcp_close(PGconn *conn);
+extern ssize_t pgtlcp_read(PGconn *conn, void *ptr, size_t len);
+extern ssize_t pgtlcp_write(PGconn *conn, const void *ptr, size_t len);
+extern char *pgtlcp_get_peer_certificate_hash(PGconn *conn, size_t *len);
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
 
 #endif							/* LIBPQ_INT_H */

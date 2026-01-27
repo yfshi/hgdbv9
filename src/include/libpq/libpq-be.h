@@ -23,6 +23,12 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #endif
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+#include <gmssl/tls.h>
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
 #ifdef HAVE_NETINET_TCP_H
 #include <netinet/tcp.h>
 #endif
@@ -256,6 +262,12 @@ typedef struct Port
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	ProtocolExtensionConfig *protocol_config;	/* wire protocol functions */
 	/* End - Req: SRS-MYSQL-PROTOCOL */
+
+	/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	TLS_CONNECT *tlcp_conn;
+#endif
+	/* End - ReqID:SRS-SECURITY-TLCP */
 } Port;
 
 #ifdef USE_SSL

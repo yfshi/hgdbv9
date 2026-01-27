@@ -164,7 +164,15 @@ pqsecure_initialize(PGconn *conn, bool do_ssl, bool do_crypto)
 	int			r = 0;
 
 #ifdef USE_SSL
-	r = pgtls_init(conn, do_ssl, do_crypto);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+
+	if (hg_is_TLCP(conn))
+		r = pgtlcp_init(conn, do_ssl, do_crypto);
+	else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+		r = pgtls_init(conn, do_ssl, do_crypto);
 #endif
 
 	return r;
@@ -177,7 +185,15 @@ PostgresPollingStatusType
 pqsecure_open_client(PGconn *conn)
 {
 #ifdef USE_SSL
-	return pgtls_open_client(conn);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	if (hg_is_TLCP(conn))
+		return pgtlcp_open_client(conn);
+	else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
+		return pgtls_open_client(conn);
 #else
 	/* shouldn't get here */
 	return PGRES_POLLING_FAILED;
@@ -191,7 +207,14 @@ void
 pqsecure_close(PGconn *conn)
 {
 #ifdef USE_SSL
-	pgtls_close(conn);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	if (hg_is_TLCP(conn))
+		pgtlcp_close(conn);
+	else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+		pgtls_close(conn);
 #endif
 }
 
@@ -210,7 +233,15 @@ pqsecure_read(PGconn *conn, void *ptr, size_t len)
 #ifdef USE_SSL
 	if (conn->ssl_in_use)
 	{
-		n = pgtls_read(conn, ptr, len);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+		if (hg_is_TLCP(conn))
+			n = pgtlcp_read(conn, ptr, len);
+		else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
+			n = pgtls_read(conn, ptr, len);
 	}
 	else
 #endif
@@ -299,7 +330,15 @@ pqsecure_write(PGconn *conn, const void *ptr, size_t len)
 #ifdef USE_SSL
 	if (conn->ssl_in_use)
 	{
-		n = pgtls_write(conn, ptr, len);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+		if (hg_is_TLCP(conn))
+			n = pgtlcp_write(conn, ptr, len);
+		else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
+			n = pgtls_write(conn, ptr, len);
 	}
 	else
 #endif
@@ -427,6 +466,45 @@ PQsslAttributeNames(PGconn *conn)
 
 	return result;
 }
+
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifndef USE_GMSSL
+
+void *
+PQgettlcp(PGconn *conn)
+{
+	return NULL;
+}
+
+void *
+PQtlcpStruct(PGconn *conn, const char *struct_name)
+{
+	return NULL;
+}
+
+const char *
+PQtlcpAttribute(PGconn *conn, const char *attribute_name, char *str, int len)
+{
+	return NULL;
+}
+
+const char *const *
+PQtlcpAttributeNames(PGconn *conn)
+{
+	static const char *const result[] = {NULL};
+
+	return result;
+}
+
+int
+PQtlcpInUse(PGconn *conn)
+{
+	return 0;
+}
+
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+
 #endif							/* USE_SSL */
 
 /*

@@ -306,6 +306,25 @@ static const internalPQconninfoOption PQconninfoOptions[] = {
 	{"sslkey", "PGSSLKEY", NULL, NULL,
 		"SSL-Client-Key", "", 64,
 	offsetof(struct pg_conn, sslkey)},
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	{"tlcpcacert", "PGTLCPCACERT", NULL, NULL,
+		"TLCP-Client-Root-Certificate", "", 64,
+	offsetof(struct pg_conn, tlcpcacert)},
+	{"tlcpcert", "PGTLCPCERT", NULL, NULL,
+		"TLCP-Client-Cert", "", 64,
+	offsetof(struct pg_conn, tlcpcert)},
+	{"tlcpkey", "PGTLCPKEY", NULL, NULL,
+		"TLCP-Client-Key", "", 1,
+	offsetof(struct pg_conn, tlcpkey)},
+	{"tlcppassfile", "PGTLCPPASSFILE", NULL, NULL,
+		"TLCP-Pass-File", "", 1,
+	offsetof(struct pg_conn, tlcppassfile)},
+	{"ssltlcp", "PGSSLTLCP", "1", NULL,
+			"SSL-TLCP", "", 1,
+	offsetof(struct pg_conn, ssltlcp)},
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
 
 	{"sslpassword", NULL, NULL, NULL,
 		"SSL-Client-Key-Password", "*", 20,
@@ -4196,6 +4215,20 @@ freePGconn(PGconn *conn)
 		free(conn->sslcert);
 	if (conn->sslkey)
 		free(conn->sslkey);
+	/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	if (conn->tlcpcacert)
+		free(conn->tlcpcacert);
+	if (conn->tlcpcert)
+		free(conn->tlcpcert);
+	if (conn->tlcpkey)
+		free(conn->tlcpkey);
+	if (conn->ssltlcp)
+		free(conn->ssltlcp);
+	if (conn->tlcppassfile)
+		free(conn->tlcppassfile);
+#endif
+	/* End - ReqID:SRS-SECURITY-TLCP */
 	if (conn->sslpassword)
 	{
 		explicit_bzero(conn->sslpassword, strlen(conn->sslpassword));
@@ -7304,6 +7337,11 @@ sslVerifyProtocolVersion(const char *version)
 	if (pg_strcasecmp(version, "TLSv1") == 0 ||
 		pg_strcasecmp(version, "TLSv1.1") == 0 ||
 		pg_strcasecmp(version, "TLSv1.2") == 0 ||
+		/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+		pg_strcasecmp(version, "TLCP") == 0 ||
+#endif
+	/* End - ReqID:SRS-SECURITY-TLCP */
 		pg_strcasecmp(version, "TLSv1.3") == 0)
 		return true;
 

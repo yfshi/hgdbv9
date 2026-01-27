@@ -212,3 +212,8 @@ IvyStmtExecute             209
 Ivyconnectdb2              210
 Ivyfinish2	               211
 IvyStmtExecute2			   212
+PQgettlcp                213
+PQtlcpStruct               214
+PQtlcpAttributeNames       215
+PQtlcpAttribute            216
+PQtlcpInUse                 217

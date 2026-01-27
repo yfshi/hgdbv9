@@ -409,6 +409,15 @@ extern void PQinitSSL(int do_init);
 /* More detailed way to tell libpq whether it needs to initialize OpenSSL */
 extern void PQinitOpenSSL(int do_ssl, int do_crypto);
 
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+extern const char *PQtlcpAttribute(PGconn *conn, const char *attribute_name, char *str, int len);
+extern void *PQgettlcp(PGconn *conn);
+extern void *PQtlcpStruct(PGconn *conn, const char *struct_name);
+extern const char *const *PQtlcpAttributeNames(PGconn *conn);
+extern int PQtlcpInUse(PGconn *conn);
+
+/* End - ReqID:SRS-SECURITY-TLCP */
+
 /* Return true if GSSAPI encryption is in use */
 extern int	PQgssEncInUse(PGconn *conn);
 

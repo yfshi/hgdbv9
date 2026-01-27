@@ -108,6 +108,13 @@
 #ssl_crl_file = ''
 #ssl_crl_dir = ''
 #ssl_key_file = 'server.key'
+
+#tlcp_cert_file = 'tlcp_cert_file'
+#tlcp_sign_key_file = 'signkey.pem'
+#tlcp_enc_key_file = 'enckey.pem'
+#tlcp_ca_cert_file = 'cacert.pem'
+#tlcp_pass_file = 'tlcpPassfile'
+
 #ssl_ciphers = 'HIGH:MEDIUM:+3DES:!aNULL' # allowed SSL ciphers
 #ssl_prefer_server_ciphers = on
 #ssl_ecdh_curve = 'prime256v1'

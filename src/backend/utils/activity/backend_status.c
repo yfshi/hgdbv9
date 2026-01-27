@@ -24,6 +24,7 @@
 #include "utils/backend_status.h"
 #include "utils/guc.h"			/* for application_name */
 #include "utils/memutils.h"
+#include "libpq/be-secure-tlcp.h" //ReqID:SRS-SECURITY-TLCP
 
 
 /* ----------
@@ -444,13 +445,41 @@ pgstat_bestart(void)
 #ifdef USE_SSL
 	if (MyProcPort && MyProcPort->ssl_in_use)
 	{
-		lbeentry.st_ssl = true;
-		lsslstatus.ssl_bits = be_tls_get_cipher_bits(MyProcPort);
-		strlcpy(lsslstatus.ssl_version, be_tls_get_version(MyProcPort), NAMEDATALEN);
-		strlcpy(lsslstatus.ssl_cipher, be_tls_get_cipher(MyProcPort), NAMEDATALEN);
-		be_tls_get_peer_subject_name(MyProcPort, lsslstatus.ssl_client_dn, NAMEDATALEN);
-		be_tls_get_peer_serial(MyProcPort, lsslstatus.ssl_client_serial, NAMEDATALEN);
-		be_tls_get_peer_issuer_name(MyProcPort, lsslstatus.ssl_issuer_dn, NAMEDATALEN);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+		if (ssl_min_protocol_version == PG_TLCP_VERSION)
+		{
+			char str[NAMEDATALEN];
+			const char *cipher = NULL;
+			lbeentry.st_ssl = true;
+			lsslstatus.ssl_bits = 0;
+
+			memset(str, '\0', NAMEDATALEN);
+			be_tlcp_get_version(MyProcPort, str, NAMEDATALEN);
+			strlcpy(lsslstatus.ssl_version, str, NAMEDATALEN);
+
+			cipher = be_tlcp_get_cipher(MyProcPort);
+			if (cipher != NULL)
+				strlcpy(lsslstatus.ssl_cipher, cipher, NAMEDATALEN);
+			else
+				lsslstatus.ssl_cipher[0]='\0';
+
+			lsslstatus.ssl_client_dn[0] = '\0';
+			lsslstatus.ssl_client_serial[0] = '\0';
+			lsslstatus.ssl_issuer_dn[0] = '\0';
+		}
+		else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+		{
+			lbeentry.st_ssl = true;
+			lsslstatus.ssl_bits = be_tls_get_cipher_bits(MyProcPort);
+			strlcpy(lsslstatus.ssl_version, be_tls_get_version(MyProcPort), NAMEDATALEN);
+			strlcpy(lsslstatus.ssl_cipher, be_tls_get_cipher(MyProcPort), NAMEDATALEN);
+			be_tls_get_peer_subject_name(MyProcPort, lsslstatus.ssl_client_dn, NAMEDATALEN);
+			be_tls_get_peer_serial(MyProcPort, lsslstatus.ssl_client_serial, NAMEDATALEN);
+			be_tls_get_peer_issuer_name(MyProcPort, lsslstatus.ssl_issuer_dn, NAMEDATALEN);
+		}
 	}
 	else
 	{

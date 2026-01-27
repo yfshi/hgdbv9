@@ -34,6 +34,12 @@
 #define MAX_OPENSSL_TLS_VERSION  "TLSv1.2"
 #elif defined(TLS1_1_VERSION)
 #define MAX_OPENSSL_TLS_VERSION  "TLSv1.1"
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+#elif defined(TLCP_VERSION)
+#define MAX_OPENSSL_TLS_VERSION  "TLCP"
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
 #else
 #define MAX_OPENSSL_TLS_VERSION  "TLSv1"
 #endif

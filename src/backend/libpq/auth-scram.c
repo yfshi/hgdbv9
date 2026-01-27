@@ -105,6 +105,9 @@
 #include "miscadmin.h"
 #include "utils/builtins.h"
 #include "utils/timestamp.h"
+#ifdef USE_GMSSL
+#include "libpq/be-secure-tlcp.h" //Begin - ReqID:SRS-SECURITY-TLCP
+#endif
 
 /*
  * Status data for a SCRAM authentication exchange.  This should be kept
@@ -1416,9 +1419,20 @@ read_client_final_message(scram_state *state, const char *input)
 
 		Assert(state->cbind_flag == 'p');
 
-		/* Fetch hash data of server's SSL certificate */
-		cbind_data = be_tls_get_certificate_hash(state->port,
-												 &cbind_data_len);
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+		if (ssl_min_protocol_version == PG_TLCP_VERSION)
+		{
+			cbind_data = be_tlcp_get_certificate_hash(state->port, &cbind_data_len);
+		}
+		else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+		{
+			/* Fetch hash data of server's SSL certificate */
+			cbind_data = be_tls_get_certificate_hash(state->port,
+													 &cbind_data_len);
+		}
 
 		/* should not happen */
 		if (cbind_data == NULL || cbind_data_len == 0)
@@ -1429,6 +1443,17 @@ read_client_final_message(scram_state *state, const char *input)
 		cbind_input = palloc(cbind_input_len);
 		snprintf(cbind_input, cbind_input_len, "p=tls-server-end-point,,");
 		memcpy(cbind_input + cbind_header_len, cbind_data, cbind_data_len);
+
+		/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+		if (ssl_min_protocol_version == PG_TLCP_VERSION)
+		{
+			pfree((void *)cbind_data);
+			cbind_data = NULL;
+			cbind_data_len = 0;
+		}
+#endif
+		/* End - ReqID:SRS-SECURITY-TLCP */
 
 		b64_message_len = pg_b64_enc_len(cbind_input_len);
 		/* don't forget the zero-terminator */

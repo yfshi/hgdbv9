@@ -55,6 +55,7 @@
 #include "license.h"
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+//#include "libpq-int.h" //ReqID:SRS-SECURITY-TLCP
 /*
  * Editable database object types.
  */
@@ -3781,7 +3782,6 @@ connection_warnings(bool in_startup)
 	}
 }
 
-
 /*
  * printSSLInfo
  *
@@ -3798,16 +3798,36 @@ printSSLInfo(void)
 	if (!PQsslInUse(pset.db))
 		return;					/* no SSL */
 
-	protocol = PQsslAttribute(pset.db, "protocol");
-	cipher = PQsslAttribute(pset.db, "cipher");
-	bits = PQsslAttribute(pset.db, "key_bits");
-	compression = PQsslAttribute(pset.db, "compression");
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	if (PQtlcpInUse(pset.db))
+	{
+		char version[NAMEDATALEN];
+		protocol = PQtlcpAttribute(pset.db, "protocol", version, NAMEDATALEN);
+		cipher = PQtlcpAttribute(pset.db, "cipher", NULL, 0);
+		//bits = PQtlcpAttribute(pset.db, "key_bits", NULL, 0);
+		//compression = PQtlcpAttribute(pset.db, "compression", NULL, 0);
 
-	printf(_("SSL connection (protocol: %s, cipher: %s, bits: %s, compression: %s)\n"),
-		   protocol ? protocol : _("unknown"),
-		   cipher ? cipher : _("unknown"),
-		   bits ? bits : _("unknown"),
-		   (compression && strcmp(compression, "off") != 0) ? _("on") : _("off"));
+		printf(_("TLCP connection (protocol: %s, cipher: %s)\n"),
+			   protocol ? protocol : _("unknown"),
+			   cipher ? cipher : _("unknown"));
+	}
+	else
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
+	{
+		protocol = PQsslAttribute(pset.db, "protocol");
+		cipher = PQsslAttribute(pset.db, "cipher");
+		bits = PQsslAttribute(pset.db, "key_bits");
+		compression = PQsslAttribute(pset.db, "compression");
+
+		printf(_("SSL connection (protocol: %s, cipher: %s, bits: %s, compression: %s)\n"),
+			   protocol ? protocol : _("unknown"),
+			   cipher ? cipher : _("unknown"),
+			   bits ? bits : _("unknown"),
+			   (compression && strcmp(compression, "off") != 0) ? _("on") : _("off"));
+	}
+
 }
 
 /*

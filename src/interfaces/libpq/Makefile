@@ -59,6 +59,13 @@ OBJS += \
 	fe-secure-openssl.o
 endif
 
+#Begin - ReqID:SRS-SECURITY-TLCP
+ifeq ($(with_gmssl),yes)
+OBJS += \
+        fe-secure-tlcp.o
+endif
+#End - ReqID:SRS-SECURITY-TLCP
+
 ifeq ($(with_gssapi),yes)
 OBJS += \
 	fe-gssapi-common.o \

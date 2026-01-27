@@ -626,6 +626,11 @@ const struct config_enum_entry ssl_protocol_versions_info[] = {
 	{"TLSv1", PG_TLS1_VERSION, false},
 	{"TLSv1.1", PG_TLS1_1_VERSION, false},
 	{"TLSv1.2", PG_TLS1_2_VERSION, false},
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	{"TLCP", PG_TLCP_VERSION, false},
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
 	{"TLSv1.3", PG_TLS1_3_VERSION, false},
 	{NULL, 0, false}
 };
@@ -4899,7 +4904,56 @@ static struct config_string ConfigureNamesString[] =
 		"",
 		NULL, NULL, NULL
 	},
+/* Begin - ReqID:SRS-SECURITY-TLCP */
+#ifdef USE_GMSSL
+	{
+		{"tlcp_cert_file", PGC_SIGHUP, CONN_AUTH_SSL,
+			gettext_noop("TLCP double certs file."),
+			NULL
+		},
+		&tlcp_cert_file,
+		"double_certs.pem",
+		NULL, NULL, NULL
+	},
+	{
+		{"tlcp_sign_key_file", PGC_SIGHUP, CONN_AUTH_SSL,
+			gettext_noop("server sign key."),
+			NULL
+		},
+		&tlcp_sign_key_file,
+		"signkey.pem",
+		NULL, NULL, NULL
+	},
+	{
+		{"tlcp_enc_key_file", PGC_SIGHUP, CONN_AUTH_SSL,
+			gettext_noop("server enc key file."),
+			NULL
+		},
+		&tlcp_enc_key_file,
+		"enckey.pem",
+		NULL, NULL, NULL
+	},
+	{
+		{"tlcp_ca_cert_file", PGC_SIGHUP, CONN_AUTH_SSL,
+			gettext_noop("server ca cert file."),
+			NULL
+		},
+		&tlcp_ca_cert_file,
+		"",
+		NULL, NULL, NULL
+	},
+	{
+		{"tlcp_pass_file", PGC_SIGHUP, CONN_AUTH_SSL,
+			gettext_noop("enc key file and ca cert file password."),
+			NULL
+		},
+		&tlcp_pass_file,
+		"tlcpBackPassfile",
+		NULL, NULL, NULL
+	},
 
+#endif
+/* End - ReqID:SRS-SECURITY-TLCP */
 	{
 		{"stats_temp_directory", PGC_SIGHUP, STATS_COLLECTOR,
 			gettext_noop("Writes temporary statistics files to the specified directory."),
