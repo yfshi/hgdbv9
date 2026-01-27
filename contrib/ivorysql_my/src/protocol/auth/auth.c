@@ -25,8 +25,6 @@
 
 #define PRINTABLE_CHARS_COUNT                   62
 #define HANDSHAKE_RESPONSE_RESERVED_BYTES       23
-#define AUTH_PACKET_HEADER_SIZE_PROTO_41        32
-#define AUTH_PACKET_HEADER_SIZE_PROTO_40        5
 
 #define AUTH_PLUGIN_DATA_PART_1                 8
 #define CAPABILITY_UPPER_BITS                   16
@@ -137,8 +135,31 @@ send_handshakev10_packet(StringInfo buf, mysql_handshake_t *handshake)
 }
 
 static void
+read_handshake_reponse_header(StringInfo buf, Port *port, mysql_handshake_response_t *auth)
+{
+    if (has_client_capabilities(CLIENT_PROTOCOL_41))
+    {
+        mq_get_int4(buf, &auth->client_capabilities);
+        mq_get_int4(buf, &auth->max_packet_size);
+        mq_get_int1(buf, &auth->charset);
+        mq_skip_bytes(buf, HANDSHAKE_RESPONSE_RESERVED_BYTES); // all is 0
+
+        set_client_capabilities(auth->client_capabilities);
+    }
+    else
+    {
+        mq_get_int2(buf, &auth->client_capabilities);
+        mq_get_int3(buf, &auth->max_packet_size);
+    }
+
+    set_client_capabilities(auth->client_capabilities);
+}
+
+static void
 read_handshake_response320(StringInfo buf, Port *port, mysql_handshake_response_t *auth)
 {
+    read_handshake_reponse_header(buf, port, auth);
+
     auth->username = mq_get_string_null(buf);
 
     if (has_client_capabilities(CLIENT_CONNECT_WITH_DB))
@@ -155,6 +176,8 @@ read_handshake_response320(StringInfo buf, Port *port, mysql_handshake_response_
 static void
 read_handshake_response41(StringInfo buf, Port *port, mysql_handshake_response_t *auth)
 {
+    read_handshake_reponse_header(buf, port, auth);
+
     auth->username = mq_get_string_null(buf);
 
     if (has_client_capabilities(CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA))
@@ -210,6 +233,28 @@ read_handshake_response41(StringInfo buf, Port *port, mysql_handshake_response_t
     }
 }
 
+static void
+read_ssl_request(StringInfo buf, Port *port, mysql_handshake_response_t *auth)
+{
+    Assert(has_client_capabilities(CLIENT_SSL));
+
+    read_handshake_reponse_header(buf, port, auth);
+
+    // do ssl exchange
+    if (secure_open_server(port) == -1)
+    {
+        ereport(ERROR, 
+                errmsg("mysql ssl start fail"));
+    }
+    
+    // recv client response
+    if (mq_getmessage(buf, 0) != STATUS_OK)
+    {
+        DestroyStringInfo(buf);
+        return NULL;
+    }
+}
+
 /**
  * Implentment in Mysql source code with
  * function parse_client_handshake_packet()
@@ -225,52 +270,12 @@ read_handshake_response(StringInfo buf, Port *port)
      */
     mq_get_int2(buf, &auth->client_capabilities);
     buf->cursor -= 2;
-    set_client_capabilities(auth->client_capabilities);
-
-    /**
-     * JConnector only sends server capabilities before starting SSL
-     * negotiation. The below code is patch for this.
-     */
-    if (buf->len == 4 && has_client_capabilities(CLIENT_SSL))
-    {
-        mq_get_int4(buf, &auth->client_capabilities);
-        auth->max_packet_size = 0xfffff;
-        auth->charset = MYS_ENCODING_UTF8MB3_GENERAL_CI;
-    }
-    else if (has_client_capabilities(CLIENT_PROTOCOL_41))
-    {
-        mq_get_int4(buf, &auth->client_capabilities);
-        mq_get_int4(buf, &auth->max_packet_size);
-        mq_get_int1(buf, &auth->charset);
-        mq_skip_bytes(buf, HANDSHAKE_RESPONSE_RESERVED_BYTES); // all is 0
-    }
-    else
-    {
-        mq_get_int2(buf, &auth->client_capabilities);
-        mq_get_int3(buf, &auth->max_packet_size);
-    }
 
     set_client_capabilities(auth->client_capabilities);
 
-    // may be it's SSL Request Packet
     if (has_client_capabilities(CLIENT_SSL))
     {
-        if (secure_open_server(port) == -1)
-        {
-            ereport(ERROR, 
-                    errmsg("mysql ssl start fail"));
-        }
-
-        if (mq_getmessage(buf, 0) != STATUS_OK)
-        {
-            DestroyStringInfo(buf);
-            return NULL;
-        }
-
-        if (has_client_capabilities(CLIENT_PROTOCOL_41))
-            mq_skip_bytes(buf, AUTH_PACKET_HEADER_SIZE_PROTO_41);
-        else
-            mq_skip_bytes(buf, AUTH_PACKET_HEADER_SIZE_PROTO_40);
+        read_ssl_request(buf, port, auth);
     }
 
     if (has_client_capabilities(CLIENT_PROTOCOL_41))
