@@ -798,9 +798,40 @@ enum protocol_type
 	PROTOCOL_MYSQL,
 };
 
+enum block_encryption_mode
+{
+	mys_aes_128_ecb,
+	mys_aes_192_ecb,
+	mys_aes_256_ecb,
+
+	mys_aes_128_cbc,
+	mys_aes_192_cbc,
+	mys_aes_256_cbc,
+
+	mys_aes_128_cfb1,
+	mys_aes_192_cfb1,
+	mys_aes_256_cfb1,
+
+	mys_aes_128_cfb8,
+	mys_aes_192_cfb8,
+	mys_aes_256_cfb8,
+
+	mys_aes_128_cfb128,
+	mys_aes_192_cfb128,
+	mys_aes_256_cfb128,
+
+	mys_aes_128_ofb,
+	mys_aes_192_ofb,
+	mys_aes_256_ofb,
+};
+
+#define MYS_AES_BEGIN mys_aes_128_ecb
+#define MYS_AES_END mys_aes_256_ofb
+
 extern PGDLLIMPORT int	mys_port;
 extern PGDLLIMPORT char *mys_listen_address;
 extern PGDLLIMPORT int 	mys_protocol_type;
+extern PGDLLIMPORT int 	mys_block_encryption_mode;
 extern PGDLLIMPORT char *default_database;
 extern PGDLLIMPORT bool	mys_autocommit;
 /* End - Req: SRS-MYSQL-PROTOCOL */

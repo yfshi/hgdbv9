@@ -690,3 +690,10 @@ SELECT a,a & 3,a & '3.14',a <=> '3.14',a << 1,a >> 1,a << '1',a >> '1',a | 1,a |
 SELECT a,a*3,a*2023-01-01,a*'3.14' FROM db_test ORDER BY a;
 SELECT a,a/3,a /2023-01-01,a/'3.14' FROM db_test ORDER BY a;
 drop table db_test;
+
+create table t as select rand();
+describe t;
+drop table t;
+
+select rand(1) = rand(1);
+select rand(999) = rand(999);

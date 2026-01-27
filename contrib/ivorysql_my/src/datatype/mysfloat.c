@@ -58,6 +58,7 @@ PG_FUNCTION_INFO_V1(mysfloat84_pl);
 PG_FUNCTION_INFO_V1(mysfloat4_moddiv_uint8);
 PG_FUNCTION_INFO_V1(mysfloat8_moddiv_uint8);
 /* End - bug#z6040 */
+PG_FUNCTION_INFO_V1(rand_seed);
 
 /*
  * mysfloat8_not - bitwise inversion.
@@ -576,3 +577,17 @@ mysfloat8_moddiv_uint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(num);
 }
 /* End - bug#z6040 */
+
+Datum
+rand_seed(PG_FUNCTION_ARGS)
+{
+	int64 n = PG_GETARG_INT64(0);
+	float8 result;
+
+	pg_srand48((unsigned int)n);
+
+	/* result [0.0 - 1.0) */
+	result = (double)pg_lrand48() / ((double)MAX_RANDOM_VALUE + 1);
+
+	PG_RETURN_FLOAT8(result);
+}

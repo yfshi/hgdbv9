@@ -44,3 +44,8 @@ select CAST('1.8446744e19' AS decimal(65,30));
 select convert(CAST('1.8446744e19' AS decimal(65,30)), signed);
 select convert(CAST('-1.8446744e19' AS decimal(65,30)), signed);
 /* End - bug#6526 */
+
+create table t(c double );
+insert into t values(7.8),(99.097),(0.09561),(324.78);
+SELECT std(c::numeric) FROM t;
+drop table t;

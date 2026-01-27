@@ -3947,3 +3947,72 @@ LANGUAGE SQL
 STRICT
 PARALLEL SAFE;
 /* End - bug#6988 */
+
+--rand(seed)
+CREATE FUNCTION ivymy.rand(bigint)
+RETURNS double 
+AS 'MODULE_PATHNAME','rand_seed'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+--rand()->random()
+CREATE FUNCTION ivymy.rand()
+RETURNS double 
+AS 'drandom'
+LANGUAGE internal
+PARALLEL RESTRICTED
+VOLATILE;
+
+CREATE FUNCTION ivymy.format(numeric, integer, text default 'en_US')
+RETURNS text 
+AS 'MODULE_PATHNAME','numeric_format'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.format(text, integer, text default 'en_US')
+RETURNS text 
+AS $$
+	SELECT ivymy.format($1::numeric, $2, $3);
+$$
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.oct(text)
+RETURNS varchar
+AS 'MODULE_PATHNAME','oct'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.oct(ivymy.mysbit)
+RETURNS varchar
+AS $$
+	SELECT ivymy.oct($1::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.aes_encrypt(text, text, text default '', text default '', text default '', text default '')
+RETURNS varbinary
+AS 'MODULE_PATHNAME','ivymy_aes_encrypt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.aes_decrypt(text, text, text default '', text default '', text default '', text default '')
+RETURNS bytea
+AS 'MODULE_PATHNAME','ivymy_aes_decrypt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;

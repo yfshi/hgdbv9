@@ -3151,3 +3151,260 @@ select upper(id) from test_01;
 
 reset ivorysql.compatible_mode;
 /* End - bug#z6988 */
+select format(1.5555,0),format(123.5555,1),format(1234.5555,2),format(12345.55555,3),format(123456.5555,4),format(1234567.5555,5),format('12345.2399',2);
+ format | format |  format  |   format   |    format    |     format      |  format   
+--------+--------+----------+------------+--------------+-----------------+-----------
+ 2      | 123.6  | 1,234.56 | 12,345.556 | 123,456.5555 | 1,234,567.55550 | 12,345.24
+(1 row)
+
+SELECT format(12345678901234567890.123, 3);
+             format             
+--------------------------------
+ 12,345,678,901,234,567,890.123
+(1 row)
+
+SELECT format(12345678901234567890.123, 3, NULL);
+ format 
+--------
+ 
+(1 row)
+
+SELECT format(12345678901234567890.123, 3, 'ar_AE');
+             format             
+--------------------------------
+ 12,345,678,901,234,567,890.123
+(1 row)
+
+SELECT format(12345678901234567890.123, 3, 'ar_SA');
+          format          
+--------------------------
+ 12345678901234567890.123
+(1 row)
+
+SELECT format(12345678901234567890.123, 3, 'be_BY');
+             format             
+--------------------------------
+ 12.345.678.901.234.567.890,123
+(1 row)
+
+SELECT format(12345678901234567890.123, 3, 'de_DE');
+             format             
+--------------------------------
+ 12.345.678.901.234.567.890,123
+(1 row)
+
+SELECT format(12345678901234567890.123, 3, 'en_IN');
+             format             
+--------------------------------
+ 12,345,678,901,234,567,890.123
+(1 row)
+
+SELECT format(12345678901234567890.123, 3, 'en_US');
+             format             
+--------------------------------
+ 12,345,678,901,234,567,890.123
+(1 row)
+
+SELECT format(12345678901234567890.123, 3, 'it_CH');
+             format             
+--------------------------------
+ 12'345'678'901'234'567'890,123
+(1 row)
+
+SELECT format(12345678901234567890.123, 3, 'ru_RU');
+             format             
+--------------------------------
+ 12 345 678 901 234 567 890,123
+(1 row)
+
+SELECT format(12345678901234567890.123, 3, 'ta_IN');
+             format             
+--------------------------------
+ 12,345,678,901,234,567,890.123
+(1 row)
+
+SELECT format(123456.789, 3, 'el_GR');
+   format    
+-------------
+ 123,456.789
+(1 row)
+
+SELECT format(123456.789, 3, 'sr_RS');
+   format   
+------------
+ 123456.789
+(1 row)
+
+SELECT format(123456789,2,'rm_CH');
+     format     
+----------------
+ 123'456'789,00
+(1 row)
+
+SELECT format(123, 1, 'Non-existent-locale');
+ format 
+--------
+ 123.0
+(1 row)
+
+CREATE TABLE t5(c1 text NOT NULL PRIMARY KEY, c2 text);
+INSERT IGNORE INTO t5 VALUES (95, 46), (31, 438), (61, 152), (78, 123), (88, 411), (122, 118), (0, 177),(75, 42), (108, 67), (79, 349), (59, 188), (69, 206), (49, 345), (118, 380),(111, 368), (94, 468), (56, 379), (77, 133), (29, 399), (9, 363), (23, 36),(116, 390), (119, 368), (87, 351), (123, 411), (24, 398), (34, 202), (28, 499),(30, 83), (5, 178), (60, 343), (4, 245), (104, 280), (106, 446), (127, 403),(44, 307), (68, 454), (57, 135);
+SELECT oct(c1) FROM t5 ORDER BY c1 DESC;
+ oct 
+-----
+ 137
+ 136
+ 11
+ 130
+ 127
+ 117
+ 116
+ 115
+ 113
+ 105
+ 104
+ 75
+ 74
+ 73
+ 71
+ 70
+ 5
+ 61
+ 54
+ 4
+ 42
+ 37
+ 36
+ 35
+ 34
+ 30
+ 27
+ 177
+ 173
+ 172
+ 167
+ 166
+ 164
+ 157
+ 154
+ 152
+ 150
+ 0
+(38 rows)
+
+SELECT oct(c2) FROM t5 ORDER BY c2 DESC;
+ oct 
+-----
+ 123
+ 103
+ 763
+ 724
+ 56
+ 706
+ 676
+ 666
+ 52
+ 633
+ 633
+ 623
+ 617
+ 616
+ 606
+ 574
+ 573
+ 560
+ 560
+ 553
+ 44
+ 537
+ 535
+ 531
+ 527
+ 463
+ 430
+ 365
+ 316
+ 312
+ 274
+ 262
+ 261
+ 230
+ 207
+ 205
+ 173
+ 166
+(38 rows)
+
+drop table t5;
+SELECT 'my_text' = AES_DECRYPT(AES_ENCRYPT('my_text', 'my_key_string', '', 'pbkdf2_hmac'), 'my_key_string', '', 'pbkdf2_hmac');
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'my_text' = AES_DECRYPT(AES_ENCRYPT('my_text', 'my_key_string', '', 'pbkdf2_hmac', '4000', '10001'), 'my_key_string', '', 'pbkdf2_hmac', '4000', '10001');
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'my_text' = AES_DECRYPT(AES_ENCRYPT('my_text', 'my_key_string', 'AAAA', 'pbkdf2_hmac'), 'my_key_string', 'AAAA', 'pbkdf2_hmac');
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'my_text' = AES_DECRYPT(AES_ENCRYPT('my_text', 'my_key_string','AAAA', 'pbkdf2_hmac', 'salt'), 'my_key_string', 'AAAA', 'pbkdf2_hmac', 'salt');
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'my_text' = AES_DECRYPT(AES_ENCRYPT('my_text', 'my_key_string', 'AAAA', 'pbkdf2_hmac', 'salt', '10001'), 'my_key_string', 'AAAA', 'pbkdf2_hmac', 'salt', '10001');
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT AES_DECRYPT(AES_ENCRYPT('Жоро', 'a'), 'a') = 'Жоро';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT AES_DECRYPT(NULL, 'a');
+ AES_DECRYPT 
+-------------
+ 
+(1 row)
+
+SELECT AES_DECRYPT('a', NULL);
+ AES_DECRYPT 
+-------------
+ 
+(1 row)
+
+SELECT AES_DECRYPT(NULL, NULL);
+ AES_DECRYPT 
+-------------
+ 
+(1 row)
+
+select aes_decrypt(AES_ENCRYPT('my_text', 'my_key_string') , 'my_key_string');
+ aes_decrypt 
+-------------
+ my_text
+(1 row)
+
+SELECT 'a' = AES_DECRYPT(AES_ENCRYPT('a', 'a'), 'a', REPEAT('a',16));
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 'a' = AES_DECRYPT(AES_ENCRYPT('a', 'a'), 'a', REPEAT('a',100));
+ ?column? 
+----------
+ t
+(1 row)
+

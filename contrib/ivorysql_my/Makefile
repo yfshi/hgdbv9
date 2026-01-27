@@ -71,7 +71,8 @@ OBJS = \
 	src/set/set_names.o \
 	src/set/set_charset.o \
 	src/show/show.o \
-	src/information_schema/mys_information_schema.o
+	src/information_schema/mys_information_schema.o \
+	src/builtin_functions/crypto_func.o
 
 EXTENSION = ivorysql_my
 
